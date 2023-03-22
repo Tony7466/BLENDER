@@ -11,8 +11,8 @@ GPU_SHADER_CREATE_INFO(eevee_volume_lib)
     //.additional_info("eevee_legacy_lights_lib")
     //.additional_info("eevee_legacy_lightprobe_lib")
     //.additional_info("eevee_legacy_irradiance_lib")
-    .sampler(13, ImageType::FLOAT_3D, "inScattering")
-    .sampler(14, ImageType::FLOAT_3D, "inTransmittance");
+    .sampler(VOLUME_SCATTERING_TEX_SLOT, ImageType::FLOAT_3D, "inScattering")
+    .sampler(VOLUME_TRANSMITTANCE_TEX_SLOT, ImageType::FLOAT_3D, "inTransmittance");
 
 GPU_SHADER_INTERFACE_INFO(eevee_volume_vert_geom_iface, "volume_vert_iface")
     .smooth(Type::VEC4, "vPos");
@@ -20,25 +20,27 @@ GPU_SHADER_INTERFACE_INFO(eevee_volume_vert_geom_iface, "volume_vert_iface")
 GPU_SHADER_INTERFACE_INFO(eevee_volume_geom_frag_iface, "volume_geom_iface")
     .flat(Type::INT, "slice");
 
-GPU_SHADER_CREATE_INFO(eevee_volume_clear)
+GPU_SHADER_CREATE_INFO(eevee_volume_common)
+    .additional_info("draw_resource_id_varying", "eevee_volume_lib")
     .define("STANDALONE")
     .define("VOLUMETRICS")
-    .define("CLEAR")
-    .additional_info("draw_resource_id_varying")
-    .additional_info("eevee_volume_lib")
     .vertex_source("eevee_volume_vert.glsl")
     .geometry_source("eevee_volume_geom.glsl")
-    .fragment_source("eevee_volume_frag.glsl")
     .vertex_out(eevee_volume_vert_geom_iface)
     .geometry_out(eevee_volume_geom_frag_iface)
     .geometry_layout(PrimitiveIn::TRIANGLES, PrimitiveOut::TRIANGLE_STRIP, 3)
     .fragment_out(0, Type::VEC4, "volumeScattering")
     .fragment_out(1, Type::VEC4, "volumeExtinction")
     .fragment_out(2, Type::VEC4, "volumeEmissive")
-    .fragment_out(3, Type::VEC4, "volumePhase")
+    .fragment_out(3, Type::VEC4, "volumePhase");
+
+GPU_SHADER_CREATE_INFO(eevee_volume_clear)
+    .additional_info("eevee_volume_common")
+    .fragment_source("eevee_volume_clear_frag.glsl")
     .do_static_compilation(true)
     .auto_resource_location(true);
 
+/* TODO (Miguel Pozo) */
 #ifdef WITH_METAL_BACKEND
 /* Non-geometry shader equivalent for multilayered rendering.
  * NOTE: Layer selection can be done in vertex shader, and thus

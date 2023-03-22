@@ -268,13 +268,13 @@ void Volumes::begin_sync()
   ps.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z);
 }
 
-void Volumes::sync_object(Object *ob, ObjectHandle &ob_handle, ResourceHandle /*res_handle*/)
+void Volumes::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHandle /*res_handle*/)
 {
-  int mat_nr = VOLUME_MATERIAL_NR;
-  bool has_motion = inst_.velocity.step_object_sync(ob, ob_handle.object_key, ob_handle.recalc);
-  Material &material = inst_.materials.material_get(ob, has_motion, mat_nr - 1, MAT_GEOM_VOLUME);
+  ::Material *material = inst_.materials.material_from_slot(ob, VOLUME_MATERIAL_NR - 1);
+  MaterialPass material_pass = inst_.materials.material_pass_get(
+      ob, material, MAT_PIPE_VOLUME, MAT_GEOM_VOLUME);
 
-  /* TODO (Miguel Pozo): Equivalent ? Default volume is already returned from material_get.
+  /* TODO (Miguel Pozo): Equivalent ? Default volume is already returned from material_from_slot.
       if (ma == nullptr) {
         if (ob->type == OB_VOLUME) {
           ma = BKE_material_default_volume();
@@ -294,17 +294,17 @@ void Volumes::sync_object(Object *ob, ObjectHandle &ob_handle, ResourceHandle /*
   }
 
   /* If shader failed to compile or is currently compiling. */
-  if (material.shading.gpumat == nullptr) {
+  if (material_pass.gpumat == nullptr) {
     return;
   }
 
-  GPUShader *shader = GPU_material_get_shader(material.shading.gpumat);
+  GPUShader *shader = GPU_material_get_shader(material_pass.gpumat);
   if (shader == nullptr) {
     return;
   }
 
-  PassMain::Sub &ps = material.shading.sub_pass->sub(ob->id.name);
-  if (volume_sub_pass(ps, inst_.scene, ob, material.shading.gpumat)) {
+  PassMain::Sub &ps = material_pass.sub_pass->sub(ob->id.name);
+  if (volume_sub_pass(ps, inst_.scene, ob, material_pass.gpumat)) {
     /* TODO (Miguel Pozo): Is any equivalent required here?
      * DRW_shgroup_add_material_resources(grp, mat); */
 

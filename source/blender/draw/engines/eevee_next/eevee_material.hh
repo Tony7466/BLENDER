@@ -252,18 +252,18 @@ class MaterialModule {
    */
   Material &material_get(Object *ob, bool has_motion, int mat_nr, eMaterialGeometry geometry_type);
 
- private:
-  Material &material_sync(Object *ob,
-                          ::Material *blender_mat,
-                          eMaterialGeometry geometry_type,
-                          bool has_motion);
-
   /** Return correct material or empty default material if slot is empty. */
   ::Material *material_from_slot(Object *ob, int slot);
   MaterialPass material_pass_get(Object *ob,
                                  ::Material *blender_mat,
                                  eMaterialPipeline pipeline_type,
                                  eMaterialGeometry geometry_type);
+
+ private:
+  Material &material_sync(Object *ob,
+                          ::Material *blender_mat,
+                          eMaterialGeometry geometry_type,
+                          bool has_motion);
 };
 
 /** \} */

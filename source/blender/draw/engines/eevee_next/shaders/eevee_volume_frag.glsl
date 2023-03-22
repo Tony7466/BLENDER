@@ -15,7 +15,6 @@ vec3 volumeOrco = vec3(0.0);
 
 int attr_id = 0;
 
-#ifndef CLEAR
 GlobalData init_globals(void)
 {
   GlobalData surf;
@@ -59,7 +58,6 @@ vec3 coordinate_incoming(vec3 P)
 {
   return cameraVec(P);
 }
-#endif
 
 void main()
 {
@@ -84,22 +82,16 @@ void main()
   volumeOrco = worldPosition;
 #endif
 
-#ifdef CLEAR
-  volumeScattering = vec4(0.0, 0.0, 0.0, 1.0);
-  volumeExtinction = vec4(0.0, 0.0, 0.0, 1.0);
-  volumeEmissive = vec4(0.0, 0.0, 0.0, 1.0);
-  volumePhase = vec4(0.0, 0.0, 0.0, 0.0);
-#else
   g_data = init_globals();
-#  ifndef NO_ATTRIB_LOAD
+#ifndef NO_ATTRIB_LOAD
   attrib_load();
-#  endif
+#endif
   Closure cl = nodetree_exec();
-#  ifdef MESH_SHADER
+#ifdef MESH_SHADER
   cl.scatter *= drw_volume.density_scale;
   cl.absorption *= drw_volume.density_scale;
   cl.emission *= drw_volume.density_scale;
-#  endif
+#endif
 
   volumeScattering = vec4(cl.scatter, 1.0);
   volumeExtinction = vec4(cl.absorption + cl.scatter, 1.0);
@@ -111,7 +103,6 @@ void main()
   else {
     volumePhase = vec4(cl.anisotropy, vec3(1.0));
   }
-#endif
 }
 
 vec3 grid_coordinates()

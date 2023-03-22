@@ -58,25 +58,6 @@ GPU_SHADER_CREATE_INFO(eevee_geom_world)
     .vertex_source("eevee_geom_world_vert.glsl")
     .additional_info("draw_modelmat_new", "draw_resource_id_varying", "draw_view");
 
-GPU_SHADER_INTERFACE_INFO(eevee_geom_volume_vert_geom_iface, "volume_vert_iface")
-    .smooth(Type::VEC4, "vPos");
-
-GPU_SHADER_INTERFACE_INFO(eevee_geom_volume_geom_frag_iface, "volume_geom_iface")
-    .flat(Type::INT, "slice");
-
-GPU_SHADER_CREATE_INFO(eevee_geom_volume)
-    .additional_info("eevee_volume_lib", "draw_resource_id_varying")
-    .define("MAT_GEOM_VOLUME")
-    .vertex_source("eevee_volume_vert.glsl")
-    .geometry_source("eevee_volume_geom.glsl")
-    .vertex_out(eevee_geom_volume_vert_geom_iface)
-    .geometry_out(eevee_geom_volume_geom_frag_iface)
-    .geometry_layout(PrimitiveIn::TRIANGLES, PrimitiveOut::TRIANGLE_STRIP, 3)
-    .fragment_out(0, Type::VEC4, "volumeScattering")
-    .fragment_out(1, Type::VEC4, "volumeExtinction")
-    .fragment_out(2, Type::VEC4, "volumeEmissive")
-    .fragment_out(3, Type::VEC4, "volumePhase");
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -207,6 +188,32 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow)
 /* -------------------------------------------------------------------- */
 /** \name Volume
  * \{ */
+
+GPU_SHADER_CREATE_INFO(eevee_volume_material)
+    .define("MAT_GEOM_VOLUME")
+    .fragment_source("eevee_volume_frag.glsl")
+    .additional_info("eevee_volume_common",
+                     "draw_object_infos_new",
+                     "draw_volume_infos", /*TODO (Miguel Pozo): Check eevee_shaders_extra.cc */
+                     "draw_modelmat_new",
+                     "draw_resource_id_varying",
+                     "draw_view",
+                     "eevee_shared",
+                     /* TODO (Miguel Pozo): Cleanup. */
+                     "eevee_light_data",
+                     "eevee_shadow_data",
+                     "eevee_sampling_data",
+                     "eevee_aov_out",
+                     "eevee_cryptomatte_out",
+                     "eevee_render_pass_out",
+                     "eevee_camera",
+                     "eevee_utility_texture");
+
+GPU_SHADER_CREATE_INFO(eevee_volume_world).additional_info("eevee_volume_material");
+
+GPU_SHADER_CREATE_INFO(eevee_volume_object)
+    .define("MESH_SHADER")
+    .additional_info("eevee_volume_material");
 
 #if 0 /* TODO */
 GPU_SHADER_INTERFACE_INFO(eevee_volume_iface, "interp")

@@ -409,13 +409,30 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     info.fragment_source_generated = frag_gen.str();
   }
 
+  /* Volumes */
+  if (pipeline_type == MAT_PIPE_VOLUME) {
+    switch (geometry_type) {
+      /* TODO (Miguel Pozo): Not technically correct. It's still volume geometry */
+      case MAT_GEOM_WORLD:
+        info.additional_info("eevee_volume_world");
+        break;
+      case MAT_GEOM_VOLUME:
+        info.additional_info("eevee_volume_object");
+        break;
+      default:
+        BLI_assert_unreachable();
+    }
+
+    return;
+  }
+
   /* Geometry Info. */
   switch (geometry_type) {
     case MAT_GEOM_WORLD:
       info.additional_info("eevee_geom_world");
       break;
     case MAT_GEOM_VOLUME:
-      info.additional_info("eevee_geom_volume");
+      BLI_assert_unreachable();
       break;
     case MAT_GEOM_GPENCIL:
       info.additional_info("eevee_geom_gpencil");
@@ -435,6 +452,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
       info.additional_info("eevee_surf_world");
       break;
     case MAT_GEOM_VOLUME:
+      BLI_assert_unreachable();
       break;
     default:
       switch (pipeline_type) {
@@ -488,12 +506,12 @@ GPUMaterial *ShaderModule::world_shader_get(::World *blender_world,
                                             struct bNodeTree *nodetree,
                                             eMaterialPipeline pipeline_type)
 {
+  bool is_volume = (pipeline_type == MAT_PIPE_VOLUME);
+  bool deferred_compilation = false;
+
   eMaterialGeometry geometry_type = MAT_GEOM_WORLD;
 
   uint64_t shader_uuid = shader_uuid_from_material_type(pipeline_type, geometry_type);
-
-  bool is_volume = (pipeline_type == MAT_PIPE_VOLUME);
-  bool deferred_compilation = false;
 
   return DRW_shader_from_world(blender_world,
                                nodetree,
