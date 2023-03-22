@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include <mutex>
+
 #include "BLI_array.hh"
 #include "BLI_bit_vector.hh"
 #include "BLI_enumerable_thread_specific.hh"
