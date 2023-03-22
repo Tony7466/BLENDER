@@ -198,6 +198,8 @@ set(SRC
   BLI_compute_context.hh
   BLI_console.h
   BLI_convexhull_2d.h
+  BLI_copy_on_write.hh
+  BLI_copy_on_write_user.hh
   BLI_cpp_type.hh
   BLI_cpp_type_make.hh
   BLI_cpp_types.hh
@@ -351,7 +353,6 @@ set(SRC
   BLI_timecode.h
   BLI_timeit.hh
   BLI_timer.h
-  BLI_user_counter.hh
   BLI_utildefines.h
   BLI_utildefines_iter.h
   BLI_utildefines_stack.h
