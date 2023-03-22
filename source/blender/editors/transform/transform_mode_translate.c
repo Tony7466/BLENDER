@@ -348,28 +348,6 @@ static void headerTranslation(TransInfo *t, const float vec[3], char str[UI_MAX_
 /** \name Transform (Translation) Snapping
  * \{ */
 
-static void translate_snap_target_grid_ensure(TransInfo *t)
-{
-  /* Only need to calculate once. */
-  if ((t->tsnap.status & SNAP_TARGET_GRID_FOUND) == 0) {
-    if (t->data_type == &TransConvertType_Cursor3D) {
-      /* Use a fallback when transforming the cursor.
-       * In this case the center is _not_ derived from the cursor which is being transformed. */
-      copy_v3_v3(t->tsnap.snap_target_grid, TRANS_DATA_CONTAINER_FIRST_SINGLE(t)->data->iloc);
-    }
-    else if (t->around == V3D_AROUND_CURSOR) {
-      /* Use a fallback for cursor selection,
-       * this isn't useful as a global center for absolute grid snapping
-       * since its not based on the position of the selection. */
-      tranform_snap_target_median_calc(t, t->tsnap.snap_target_grid);
-    }
-    else {
-      copy_v3_v3(t->tsnap.snap_target_grid, t->center_global);
-    }
-    t->tsnap.status |= SNAP_TARGET_GRID_FOUND;
-  }
-}
-
 static void ApplySnapTranslation(TransInfo *t, float vec[3])
 {
   float point[3];
@@ -397,13 +375,7 @@ static void ApplySnapTranslation(TransInfo *t, float vec[3])
       }
     }
 
-    if (t->tsnap.snapElem == SCE_SNAP_MODE_GRID) {
-      translate_snap_target_grid_ensure(t);
-      sub_v3_v3v3(vec, point, t->tsnap.snap_target_grid);
-    }
-    else {
       sub_v3_v3v3(vec, point, t->tsnap.snap_source);
-    }
   }
 }
 

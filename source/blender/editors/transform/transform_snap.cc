@@ -606,7 +606,7 @@ void transform_snap_mixed_apply(TransInfo *t, float *vec)
     /* Time base quirky code to go around find-nearest slowness. */
     /* TODO: add exception for object mode, no need to slow it down then. */
     if (current - t->tsnap.last >= 0.01) {
-      if (t->tsnap.snap_target_fn && (t->tsnap.mode != SCE_SNAP_MODE_GRID)) {
+      if (t->tsnap.snap_target_fn) {
         t->tsnap.snap_target_fn(t, vec);
       }
       if (t->tsnap.snap_source_fn) {
