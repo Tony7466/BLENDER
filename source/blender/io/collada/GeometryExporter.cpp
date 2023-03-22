@@ -211,7 +211,7 @@ void GeometryExporter::createLooseEdgeList(Object *ob, Mesh *me, std::string &ge
 
   /* Find all loose edges in Mesh
    * and save vertex indices in edge_list */
-  const bke::LooseGeomCache &loose_edges = me->loose_edges();
+  const bke::LooseEdgeCache &loose_edges = me->loose_edges();
   if (loose_edges.count > 0) {
     for (const int64_t i : edges.index_range()) {
       if (loose_edges.is_loose_bits[i]) {

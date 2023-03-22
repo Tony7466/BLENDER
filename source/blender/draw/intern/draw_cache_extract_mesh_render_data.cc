@@ -33,7 +33,7 @@
 static void mesh_render_data_loose_geom_mesh(const MeshRenderData *mr, MeshBufferCache *cache)
 {
   using namespace blender;
-  const bke::LooseGeomCache &loose_edges = mr->me->loose_edges();
+  const bke::LooseEdgeCache &loose_edges = mr->me->loose_edges();
   if (loose_edges.count > 0) {
     cache->loose_geom.edges.reinitialize(loose_edges.count);
 
@@ -46,7 +46,7 @@ static void mesh_render_data_loose_geom_mesh(const MeshRenderData *mr, MeshBuffe
     }
   }
 
-  const bke::LooseGeomCache &loose_verts = mr->me->loose_verts();
+  const bke::LooseVertCache &loose_verts = mr->me->loose_verts();
   if (loose_verts.count > 0) {
     cache->loose_geom.verts.reinitialize(loose_verts.count);
 

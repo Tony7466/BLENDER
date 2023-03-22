@@ -1788,7 +1788,7 @@ std::optional<Mesh *> mesh_merge_by_distance_connected(const Mesh &mesh,
   range_vn_i(vert_dest_map.data(), mesh.totvert, 0);
 
   /* Collapse Edges that are shorter than the threshold. */
-  const bke::LooseGeomCache *loose_edges = nullptr;
+  const bke::LooseEdgeCache *loose_edges = nullptr;
   if (only_loose_edges) {
     loose_edges = &mesh.loose_edges();
     if (loose_edges->count == 0) {

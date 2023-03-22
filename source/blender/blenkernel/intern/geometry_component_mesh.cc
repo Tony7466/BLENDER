@@ -202,7 +202,7 @@ void adapt_mesh_domain_corner_to_point_impl(const Mesh &mesh,
   }
 
   /* Deselect loose vertices without corners that are still selected from the 'true' default. */
-  const bke::LooseGeomCache &loose_verts = mesh.loose_verts();
+  const bke::LooseVertCache &loose_verts = mesh.loose_verts();
   if (loose_verts.count > 0) {
     const BitSpan loose = loose_verts.is_loose_bits;
     threading::parallel_for(loose.index_range(), 2048, [loose, r_values](const IndexRange range) {
@@ -342,7 +342,7 @@ void adapt_mesh_domain_corner_to_edge_impl(const Mesh &mesh,
     }
   }
 
-  const bke::LooseGeomCache &loose_edges = mesh.loose_edges();
+  const bke::LooseEdgeCache &loose_edges = mesh.loose_edges();
   if (loose_edges.count > 0) {
     /* Deselect loose edges without corners that are still selected from the 'true' default. */
     threading::parallel_for(IndexRange(mesh.totedge), 2048, [&](const IndexRange range) {

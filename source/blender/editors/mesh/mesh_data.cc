@@ -1127,7 +1127,7 @@ void ED_mesh_update(Mesh *mesh, bContext *C, bool calc_edges, bool calc_edges_lo
 bool ED_mesh_edge_is_loose(const Mesh *mesh, const int index)
 {
   using namespace blender;
-  const bke::LooseGeomCache &loose_edges = mesh->loose_edges();
+  const bke::LooseEdgeCache &loose_edges = mesh->loose_edges();
   return loose_edges.count > 0 && loose_edges.is_loose_bits[index];
 }
 

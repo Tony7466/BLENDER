@@ -108,10 +108,10 @@ MeshRuntime::~MeshRuntime()
 
 }  // namespace blender::bke
 
-const blender::bke::LooseGeomCache &Mesh::loose_verts() const
+const blender::bke::LooseVertCache &Mesh::loose_verts() const
 {
   using namespace blender::bke;
-  this->runtime->loose_verts_cache.ensure([&](LooseGeomCache &r_data) {
+  this->runtime->loose_verts_cache.ensure([&](LooseVertCache &r_data) {
     // SCOPED_TIMER_AVERAGED("loose_verts");
     blender::BitVector<> &loose_verts = r_data.is_loose_bits;
     loose_verts.resize(0);
@@ -137,10 +137,10 @@ const blender::bke::LooseGeomCache &Mesh::loose_verts() const
   return this->runtime->loose_verts_cache.data();
 }
 
-const blender::bke::LooseGeomCache &Mesh::loose_edges() const
+const blender::bke::LooseEdgeCache &Mesh::loose_edges() const
 {
   using namespace blender::bke;
-  this->runtime->loose_edges_cache.ensure([&](LooseGeomCache &r_data) {
+  this->runtime->loose_edges_cache.ensure([&](LooseEdgeCache &r_data) {
     // SCOPED_TIMER_AVERAGED("loose_edges");
     blender::BitVector<> &loose_edges = r_data.is_loose_bits;
     loose_edges.resize(0);
@@ -165,7 +165,7 @@ const blender::bke::LooseGeomCache &Mesh::loose_edges() const
 void Mesh::loose_verts_tag_none() const
 {
   using namespace blender::bke;
-  this->runtime->loose_verts_cache.ensure([&](LooseGeomCache &r_data) {
+  this->runtime->loose_verts_cache.ensure([&](LooseVertCache &r_data) {
     r_data.is_loose_bits.clear_and_shrink();
     r_data.count = 0;
   });
@@ -174,7 +174,7 @@ void Mesh::loose_verts_tag_none() const
 void Mesh::loose_edges_tag_none() const
 {
   using namespace blender::bke;
-  this->runtime->loose_edges_cache.ensure([&](LooseGeomCache &r_data) {
+  this->runtime->loose_edges_cache.ensure([&](LooseEdgeCache &r_data) {
     r_data.is_loose_bits.clear_and_shrink();
     r_data.count = 0;
   });
