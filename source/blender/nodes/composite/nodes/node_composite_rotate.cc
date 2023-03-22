@@ -24,7 +24,7 @@ static void cmp_node_rotate_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Color>(N_("Image"))
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .compositor_domain_priority(0);
-  b.add_input<decl::Float>(N_("Angle"))
+  b.add_input<decl::Float>(N_("Degr"))
       .default_value(0.0f)
       .min(-10000.0f)
       .max(10000.0f)
@@ -55,7 +55,7 @@ class RotateOperation : public NodeOperation {
     Result &result = get_result("Image");
     input.pass_through(result);
 
-    const math::AngleRadian rotation = get_input("Angle").get_float_value_default(0.0f);
+    const math::AngleRadian rotation = get_input("Degr").get_float_value_default(0.0f);
 
     const float3x3 transformation = math::from_rotation<float3x3>(rotation);
 
