@@ -1986,7 +1986,7 @@ const int *BKE_subdiv_ccg_start_face_grid_index_get(const SubdivCCG *subdiv_ccg)
 
 static void adjacet_vertices_index_from_adjacent_edge(const SubdivCCG *subdiv_ccg,
                                                       const SubdivCCGCoord *coord,
-                                                      const int *corner_verts,
+                                                      const blender::Span<int> corner_verts,
                                                       const blender::OffsetIndices<int> polys,
                                                       int *r_v1,
                                                       int *r_v2)
@@ -1996,14 +1996,13 @@ static void adjacet_vertices_index_from_adjacent_edge(const SubdivCCG *subdiv_cc
   const blender::IndexRange poly = polys[poly_index];
   *r_v1 = corner_verts[coord->grid_index];
 
-  const blender::Span poly_verts(&corner_verts[poly.start()], poly.size());
-  const int i = poly_verts.first_index(*r_v1);
+  const int corner = blender::bke::mesh::poly_find_corner_from_vert(poly, corner_verts, *r_v1);
   if (coord->x == grid_size_1) {
-    const int next = ME_POLY_LOOP_NEXT(poly, i);
+    const int next = blender::bke::mesh::poly_corner_next(poly, corner);
     *r_v2 = corner_verts[next];
   }
   if (coord->y == grid_size_1) {
-    const int prev = ME_POLY_LOOP_PREV(poly, i);
+    const int prev = blender::bke::mesh::poly_corner_prev(poly, corner);
     *r_v2 = corner_verts[prev];
   }
 }
@@ -2011,7 +2010,7 @@ static void adjacet_vertices_index_from_adjacent_edge(const SubdivCCG *subdiv_cc
 SubdivCCGAdjacencyType BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(
     const SubdivCCG *subdiv_ccg,
     const SubdivCCGCoord *coord,
-    const int *corner_verts,
+    const blender::Span<int> corner_verts,
     const blender::OffsetIndices<int> polys,
     int *r_v1,
     int *r_v2)
