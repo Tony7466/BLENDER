@@ -198,8 +198,8 @@ set(SRC
   BLI_compute_context.hh
   BLI_console.h
   BLI_convexhull_2d.h
-  BLI_copy_on_write.hh
-  BLI_copy_on_write_user.hh
+  BLI_implicit_sharing.hh
+  BLI_implicit_sharing_user.hh
   BLI_cpp_type.hh
   BLI_cpp_type_make.hh
   BLI_cpp_types.hh

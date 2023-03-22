@@ -6,7 +6,7 @@
  * \ingroup bli
  */
 
-#include "BLI_copy_on_write.hh"
+#include "BLI_implicit_sharing.hh"
 
 namespace blender {
 
