@@ -1,0 +1,1 @@
+Referenced by commit 274c554f4cb07a73885d5d3e78f4643e988c4062, BLI_array_store: avoid unnecessary memcmp when detecting duplicates
