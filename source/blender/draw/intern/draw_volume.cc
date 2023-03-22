@@ -281,7 +281,7 @@ DRWShadingGroup *DRW_shgroup_volume_create_sub(Scene *scene,
 
 namespace blender::draw {
 
-static bool volume_world_grids_init(PassSimple::Sub &ps,
+static bool volume_world_grids_init(PassMain::Sub &ps,
                                     ListBaseWrapper<GPUMaterialAttribute> &attrs)
 {
   for (const GPUMaterialAttribute *attr : attrs) {
@@ -291,7 +291,7 @@ static bool volume_world_grids_init(PassSimple::Sub &ps,
   return true;
 }
 
-static bool volume_object_grids_init(PassSimple::Sub &ps,
+static bool volume_object_grids_init(PassMain::Sub &ps,
                                      Object *ob,
                                      ListBaseWrapper<GPUMaterialAttribute> &attrs)
 {
@@ -347,7 +347,7 @@ static bool volume_object_grids_init(PassSimple::Sub &ps,
   return true;
 }
 
-static bool drw_volume_object_mesh_init(PassSimple::Sub &ps,
+static bool drw_volume_object_mesh_init(PassMain::Sub &ps,
                                         Scene *scene,
                                         Object *ob,
                                         ListBaseWrapper<GPUMaterialAttribute> &attrs)
@@ -421,7 +421,7 @@ static bool drw_volume_object_mesh_init(PassSimple::Sub &ps,
   return true;
 }
 
-bool volume_sub_pass(PassSimple::Sub &ps, Scene *scene, Object *ob, GPUMaterial *gpu_material)
+bool volume_sub_pass(PassMain::Sub &ps, Scene *scene, Object *ob, GPUMaterial *gpu_material)
 {
   ListBase attr_list = GPU_material_attributes(gpu_material);
   ListBaseWrapper<GPUMaterialAttribute> attrs(attr_list);

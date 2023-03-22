@@ -12,6 +12,6 @@
 
 namespace blender::draw {
 
-bool volume_sub_pass(PassSimple::Sub &ps, Scene *scene, Object *ob, GPUMaterial *gpu_material);
+bool volume_sub_pass(PassMain::Sub &ps, Scene *scene, Object *ob, GPUMaterial *gpu_material);
 
 }  // namespace blender::draw

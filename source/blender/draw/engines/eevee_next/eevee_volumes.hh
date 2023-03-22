@@ -44,14 +44,14 @@ class Volumes {
   struct GPUTexture *volume_transmit;
 #endif
   /* EEVEE_PassList */
-  PassSimple world_ps_ = {"Volumes.World"};
-  PassSimple objects_ps_ = {"Volumes.Objects"};
-  PassSimple scatter_ps_ = {"Volumes.Scatter"};
-  PassSimple integration_ps_ = {"Volumes.Integration"};
-  PassSimple resolve_ps_ = {"Volumes.Resolve"};
-  PassSimple accum_ps_ = {"Volumes.Accum"};
+  PassMain world_ps_ = {"Volumes.World"};
+  PassMain objects_ps_ = {"Volumes.Objects"};
+  PassMain scatter_ps_ = {"Volumes.Scatter"};
+  PassMain integration_ps_ = {"Volumes.Integration"};
+  PassMain resolve_ps_ = {"Volumes.Resolve"};
+  PassMain accum_ps_ = {"Volumes.Accum"};
 
-  void bind_common_buffers(PassSimple &ps);
+  void bind_common_buffers(PassMain &ps);
 
  public:
   Volumes(Instance &inst) : inst_(inst){};
