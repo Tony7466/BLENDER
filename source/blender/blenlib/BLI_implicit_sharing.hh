@@ -35,7 +35,7 @@ namespace blender {
  *   e.g. a plain data array.
  * - It can be embedded into another struct. For that it's best to use #ImplicitSharingMixin.
  */
-class ImplicitSharingInfo : blender::NonCopyable, blender::NonMovable {
+class ImplicitSharingInfo : NonCopyable, NonMovable {
  private:
   mutable std::atomic<int> users_;
 
