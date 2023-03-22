@@ -49,21 +49,28 @@ class ImplicitSharingInfo : blender::NonCopyable, blender::NonMovable {
     BLI_assert(this->is_mutable());
   }
 
+  /** True if there are other const references to the resource, meaning it cannot be modified. */
   bool is_shared() const
   {
     return users_.load(std::memory_order_relaxed) >= 2;
   }
 
+  /** Whether the resource can be modified without a copy because there is only one owner. */
   bool is_mutable() const
   {
     return !this->is_shared();
   }
 
+  /** Call when a the data has a new additional owner. */
   void add_user() const
   {
     users_.fetch_add(1, std::memory_order_relaxed);
   }
 
+  /**
+   * Call when the data is no longer needed. This might just decrement the user count, or it might
+   * also delete the data if this was the last user.
+   */
   void remove_user_and_delete_if_last() const
   {
     const int old_user_count = users_.fetch_sub(1, std::memory_order_relaxed);
@@ -80,8 +87,8 @@ class ImplicitSharingInfo : blender::NonCopyable, blender::NonMovable {
 };
 
 /**
- * Makes it easy to embed implicit-sharing behavior into a struct. This also allows the subclass to
- * be used with #ImplicitSharingPtr.
+ * Makes it easy to embed implicit-sharing behavior into a struct. Structs that derive from this
+ * class can be used with #ImplicitSharingPtr.
  */
 class ImplicitSharingMixin : public ImplicitSharingInfo {
  public:

@@ -13,7 +13,7 @@ namespace blender {
 /**
  * #ImplicitSharingPtr is a smart pointer that manages implicit sharing. It's designed to work with
  * types that derive from #ImplicitSharingMixin. It is fairly similar to #std::shared_ptr but
- * expects the reference count to be embedded in the data.
+ * requires the reference count to be embedded in the data.
  */
 template<typename T> class ImplicitSharingPtr {
  private:
