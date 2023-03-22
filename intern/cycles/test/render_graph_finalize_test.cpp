@@ -6,6 +6,7 @@
 
 #include "device/device.h"
 
+#include "scene/colorspace.h"
 #include "scene/scene.h"
 #include "scene/shader_graph.h"
 #include "scene/shader_nodes.h"
@@ -15,11 +16,6 @@
 #include "util/stats.h"
 #include "util/string.h"
 #include "util/vector.h"
-
-#ifdef WITH_OCIO
-#  include <OpenColorIO/OpenColorIO.h>
-namespace OCIO = OCIO_NAMESPACE;
-#endif
 
 using testing::_;
 using testing::AnyNumber;
@@ -175,7 +171,7 @@ class RenderGraph : public testing::Test {
      * printed by the OCIO when accessing non-figured environment.
      * Functionally it is the same as not doing this explicit call: the OCIO will warn and then do
      * the same raw configuration. */
-    OCIO::SetCurrentConfig(OCIO::Config::CreateRaw());
+    ColorSpaceManager::init_fallback_config();
 
     device_cpu = Device::create(device_info, stats, profiler);
     scene = new Scene(scene_params, device_cpu);
