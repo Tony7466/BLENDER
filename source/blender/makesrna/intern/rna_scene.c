@@ -639,7 +639,7 @@ const EnumPropertyItem rna_enum_transform_orientation_items[] = {
      ICON_ORIENTATION_CURSOR,
      "Cursor",
      "Align the transformation axes to the 3D cursor"},
-    {V3D_ORIENT_PARENT,
+    {V3D_ORIENT_LOCAL,
      "PARENT",
      ICON_ORIENTATION_GLOBAL,
      "Parent",
