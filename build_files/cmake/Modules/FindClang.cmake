@@ -80,8 +80,21 @@ set(_CLANG_FIND_COMPONENTS
   clangAST
   clangLex
   clangBasic
-  clangSupport
 )
+
+# clangSupport does not exist on all systems but is required on some
+find_library(CLANG_SUPPORT_CHECK
+    NAMES
+      clangSupport
+    HINTS
+      ${_CLANG_SEARCH_DIRS}
+    PATH_SUFFIXES
+      lib64 lib
+    )
+
+if(CLANG_SUPPORT_CHECK)
+  list(APPEND _CLANG_FIND_COMPONENTS clangSupport)
+endif()
 
 set(_CLANG_LIBRARIES)
 foreach(COMPONENT ${_CLANG_FIND_COMPONENTS})
