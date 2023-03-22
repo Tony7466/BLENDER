@@ -80,7 +80,7 @@ void Device::build_bvh(BVH *bvh, DeviceScene *dscene, Progress &progress, bool r
     if (bvh2->params.top_level) {
       /* wait for BVH build to complete before proceeding */
       VLOG_INFO << "Waiting  on BVH2 build.";
-      bvh2->build_cv.wait(build_lock);
+      bvh2->build_cv.wait(build_lock, [=]() { return !(bvh2->built); });
       VLOG_INFO << "done waiting on BVH2 build";
     } else {
       VLOG_INFO << "Skipping BVH2 build.";
