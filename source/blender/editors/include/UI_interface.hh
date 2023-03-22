@@ -61,8 +61,13 @@ void attribute_search_add_items(StringRefNull str,
                                 bool is_first);
 
 /**
- * Interface class to implement dropping for various kinds of UI elements. This isn't used widely
- * yet, only UI views and view items use it.
+ * This provides a common interface for UI elements that want to support dragging & dropping
+ * entities into/onto them. With it, the element can determine if the dragged entity can be dropped
+ * onto itself, provide feedback while dragging and run custom code for the dropping.
+ *
+ * Note that this is just an interface. A #wmDropBox is needed to request instances of it from a UI
+ * element and call its functions. Currently only #AbstractView and #AbstractViewItem have this and
+ * make use of the interface this way.
  */
 class DropTargetInterface {
  public:
