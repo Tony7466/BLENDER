@@ -1,10 +1,16 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+
 #include "testing/testing.h"
 
 #include "BLI_fileops.hh"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
+#include "BLI_system.h"
 #include "BLI_threads.h"
+
+#include <filesystem>
+
+#include BLI_SYSTEM_PID_H
 
 namespace blender::tests {
 
@@ -25,6 +31,20 @@ class ChangeWorkingDirectoryTest : public testing::Test {
     }
 
     BLI_threadapi_exit();
+  }
+
+ protected:
+  /* Make a pseudo-unique file name in a cross-platform manner.
+   * This is an equivalent of the `std::tmpnam` which does not generate security warning. */
+  static std::string make_pseudo_unique_temp_filename()
+  {
+    namespace fs = std::filesystem;
+
+    const fs::path temp_dir = fs::temp_directory_path().generic_string();
+
+    const std::string directory_name = "blender_test_" + std::to_string(getpid());
+
+    return (temp_dir / (directory_name)).generic_string();
   }
 };
 
@@ -71,7 +91,7 @@ TEST_F(ChangeWorkingDirectoryTest, change_working_directory)
   ASSERT_TRUE(original_cwd == original_cwd_buff)
       << "Returned CWD path unexpectedly different than given char buffer.";
 
-  std::string temp_file_name(std::tmpnam(nullptr));
+  std::string temp_file_name = make_pseudo_unique_temp_filename();
   test_temp_dir = temp_file_name + "_новый";
 
   if (BLI_exists(test_temp_dir.c_str())) {
