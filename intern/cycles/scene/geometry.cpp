@@ -1222,7 +1222,7 @@ void GeometryManager::deviceDataXferAndBVHUpdate(int idx,
   // the correct data
   device_update_host_pointers(sub_device, dscene, sub_dscene, &sizes);
 
-  // Upload geometry and attribute buffers to the device
+  /* Upload geometry and attribute buffers to the device */
   {
     scoped_callback_timer timer([scene, idx](double time) {
       if (scene->update_stats) {
@@ -1250,6 +1250,7 @@ void GeometryManager::deviceDataXferAndBVHUpdate(int idx,
       }
     });
     size_t i = 0;
+    /* Build the Object BVHs */
     foreach (Geometry *geom, scene->geometry) {
       if (geom->is_modified() || geom->need_update_bvh_for_offset) {
         geom->compute_bvh(sub_device, sub_dscene, &scene->params, &progress, i, num_bvh);
@@ -1266,6 +1267,7 @@ void GeometryManager::deviceDataXferAndBVHUpdate(int idx,
         scene->scene_bvh_times[idx] = time;
       }
     });
+    /* Build the scene BVH */
     device_update_bvh(sub_device, sub_dscene, scene, can_refit, 1, 1, progress);
     device_update_bvh2(sub_device, sub_dscene, scene, progress);
   }
@@ -1485,6 +1487,7 @@ void GeometryManager::device_update(Device *device,
   }
   {
     size_t num_scenes = scene->dscenes.size();
+    VLOG_INFO << "Rendering using " << num_scenes << " devices";
     // Parallel upload the geometry data to the devices and
     // calculate or refit the BVHs
     parallel_for(

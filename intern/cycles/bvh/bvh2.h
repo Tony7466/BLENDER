@@ -10,6 +10,7 @@
 
 #include "util/types.h"
 #include "util/vector.h"
+#include "util/thread.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -32,6 +33,11 @@ struct BVHStackEntry {
  */
 class BVH2 : public BVH {
  public:
+    /* The BVH2 needs to be build only once these
+     are used to ensure that it the case.       */
+  thread_mutex build_mutex;
+  thread_condition_variable build_cv;
+  
   void build(Progress &progress, Stats *stats);
   void refit(Progress &progress);
 

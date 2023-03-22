@@ -933,7 +933,8 @@ bool GeometryManager::device_update_bvh_preprocess(Device *device,
   if (!scene->bvh) {
     bvh = scene->bvh = BVH::create(bparams, scene->geometry, scene->objects, device);
   }
-
+  /* Mark BVH as having not been built yet */
+  bvh->built = false;
   return can_refit;
 }
 

@@ -52,13 +52,39 @@ Device::~Device() noexcept(false)
 void Device::build_bvh(BVH *bvh, DeviceScene *dscene, Progress &progress, bool refit)
 {
   assert(bvh->params.bvh_layout == BVH_LAYOUT_BVH2);
-
   BVH2 *const bvh2 = static_cast<BVH2 *>(bvh);
-  if (refit) {
-    bvh2->refit(progress);
+  thread_scoped_lock build_lock(bvh2->build_mutex, std::try_to_lock);
+  if (build_lock) {
+    /* Has the BVH already been built */
+    if (!bvh->built) {
+      /* Build the BVH */
+      VLOG_INFO << "Performing BVH2 build.";
+
+      if (refit) {
+        bvh2->refit(progress);
+      }
+      else {
+        bvh2->build(progress, &stats);
+      }
+      bvh->built = true;
+      VLOG_INFO << "done building BVH2";
+    }
+    else {
+      VLOG_INFO << "BVH2 Already built";
+    }
+    bvh2->build_cv.notify_all();
   }
   else {
-    bvh2->build(progress, &stats);
+    /* Only need to wait for the top level BVH otherwise
+       this thread can skip on the the next object */
+    if (bvh2->params.top_level) {
+      /* wait for BVH build to complete before proceeding */
+      VLOG_INFO << "Waiting  on BVH2 build.";
+      bvh2->build_cv.wait(build_lock);
+      VLOG_INFO << "done waiting on BVH2 build";
+    } else {
+      VLOG_INFO << "Skipping BVH2 build.";
+    }
   }
 }
 
