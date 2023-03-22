@@ -421,6 +421,7 @@ function(blender_add_test_suite)
     EXTRA_ARGS
       --test-assets-dir "${CMAKE_SOURCE_DIR}/../lib/tests"
       --test-release-dir "${_test_release_dir}"
+      --test-temp-dir "${CMAKE_BINARY_DIR}/tests/temp"
   )
   if(WIN32)
     set_tests_properties(${ARGS_SUITE_NAME} PROPERTIES ENVIRONMENT "PATH=${CMAKE_INSTALL_PREFIX_WITH_CONFIG}/blender.shared/;$ENV{PATH}")

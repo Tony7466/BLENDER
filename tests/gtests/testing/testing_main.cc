@@ -7,6 +7,7 @@
 
 DEFINE_string(test_assets_dir, "", "lib/tests directory from SVN containing the test assets.");
 DEFINE_string(test_release_dir, "", "bin/{blender version} directory of the current build.");
+DEFINE_string(test_temp_dir, "", "Temporary directory used by the tests.");
 
 namespace blender::tests {
 
@@ -26,6 +27,15 @@ const std::string &flags_test_release_dir()
         << "Pass the flag --test-release-dir and point to the bin/{blender version} directory.";
   }
   return FLAGS_test_release_dir;
+}
+
+const std::string &flags_test_temp_dir()
+{
+  if (FLAGS_test_temp_dir.empty()) {
+    ADD_FAILURE()
+        << "Pass the flag --test-temp-dir and temporary directory which is to be used by tests.";
+  }
+  return FLAGS_test_temp_dir;
 }
 
 }  // namespace blender::tests

@@ -8,8 +8,6 @@
 #include "BLI_system.h"
 #include "BLI_threads.h"
 
-#include <filesystem>
-
 #include BLI_SYSTEM_PID_H
 
 namespace blender::tests {
@@ -34,17 +32,19 @@ class ChangeWorkingDirectoryTest : public testing::Test {
   }
 
  protected:
-  /* Make a pseudo-unique file name in a cross-platform manner.
-   * This is an equivalent of the `std::tmpnam` which does not generate security warning. */
+  /* Make a pseudo-unique file name file within the test temp directory in a cross-platform manner.
+   */
   static std::string make_pseudo_unique_temp_filename()
   {
-    namespace fs = std::filesystem;
-
-    const fs::path temp_dir = fs::temp_directory_path().generic_string();
-
+    const std::string &temp_dir = flags_test_temp_dir();
     const std::string directory_name = "blender_test_" + std::to_string(getpid());
 
-    return (temp_dir / (directory_name)).generic_string();
+    char filepath[FILE_MAX];
+    BLI_path_join(filepath, sizeof(filepath), temp_dir.c_str(), directory_name.c_str());
+
+    BLI_path_abs_from_cwd(filepath, sizeof(filepath));
+
+    return filepath;
   }
 };
 
@@ -81,6 +81,11 @@ TEST(fileops, fstream_open_charptr_filename)
 
 TEST_F(ChangeWorkingDirectoryTest, change_working_directory)
 {
+  /* Early check that the directory is provided, avoiding creation of temporary directory with the
+   * empty prefix (avoiding potential attempts to create directories in the root of the file
+   * system). */
+  ASSERT_NE(flags_test_temp_dir(), "");
+
   char original_cwd_buff[FILE_MAX];
   char *original_cwd = BLI_current_working_dir(original_cwd_buff, sizeof(original_cwd_buff));
 
@@ -112,13 +117,6 @@ TEST_F(ChangeWorkingDirectoryTest, change_working_directory)
   ASSERT_FALSE(new_cwd == nullptr) << "Unable to get the current working directory.";
   ASSERT_TRUE(new_cwd == new_cwd_buff)
       << "Returned CWD path unexpectedly different than given char buffer.";
-
-#ifdef __APPLE__
-  /* The name returned by std::tmpnam is fine but the Apple OS method
-   * picks the true var folder, not the alias, meaning the below
-   * comparison always fails unless we prepend with the correct value. */
-  test_temp_dir = "/private" + test_temp_dir;
-#endif  // #ifdef __APPLE__
 
   ASSERT_EQ(BLI_path_cmp_normalized(new_cwd, test_temp_dir.c_str()), 0)
       << "the path of the current working directory should equal the path of the temporary "

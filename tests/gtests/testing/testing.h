@@ -16,6 +16,12 @@ namespace blender::tests {
 const std::string &flags_test_asset_dir();   /* ../lib/tests in the SVN directory. */
 const std::string &flags_test_release_dir(); /* bin/{blender version} in the build directory. */
 
+/* Temporary directory for tests to be used when the system-wide is not known or undesirable
+ * to be accessed.
+ *
+ * NOTE: The directory is not guaranteed to exist. */
+const std::string &flags_test_temp_dir();
+
 }  // namespace blender::tests
 
 #define EXPECT_V2_NEAR(a, b, eps) \
