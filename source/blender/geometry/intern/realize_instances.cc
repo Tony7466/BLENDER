@@ -609,7 +609,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         const VolumeComponent *volume_component = static_cast<const VolumeComponent *>(component);
         if (!gather_info.r_tasks.first_volume) {
           volume_component->add_user();
-          gather_info.r_tasks.first_volume = const_cast<VolumeComponent *>(volume_component);
+          gather_info.r_tasks.first_volume = volume_component;
         }
         break;
       }
