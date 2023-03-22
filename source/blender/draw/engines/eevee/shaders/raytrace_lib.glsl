@@ -151,12 +151,6 @@ bool raytrace(Ray ray,
     vec4 ss_p = ssray.origin + ssray.direction * time;
     depth_sample = textureLod(maxzBuffer, ss_p.xy * hizUvScale.xy, floor(lod)).r;
 
-#ifdef METAL_AMD_RAYTRACE_WORKAROUND
-    /* For workaround, only perform discard condition check while no valid hit has been recorded to
-     * ensure only invalid rays are discarded. */
-    bool raytrace_fail_check = !hit &&
-                               ((discard_backface && prev_delta < 0.0) || (depth_sample == 1.0));
-#endif
     delta = depth_sample - ss_p.z;
     /* Check if the ray is below the surface ... */
     hit = (delta < 0.0);
@@ -164,8 +158,11 @@ bool raytrace(Ray ray,
     hit = hit && (delta > ss_p.z - ss_p.w || abs(delta) < abs(ssray.direction.z * stride * 2.0));
 
 #ifdef METAL_AMD_RAYTRACE_WORKAROUND
-    /* If a new hit fails backface and background tests, invalidate the raytrace. */
-    if (hit && raytrace_fail_check) {
+    /* For workaround, perform discard backface and background check only within
+     * the iteration where the first successful ray intersection is registered.
+     * We flag failures to discard ray hits later. */
+    bool hit_valid = !(discard_backface && prev_delta < 0.0) && (depth_sample != 1.0);
+    if (hit && !hit_valid) {
       hit_failsafe = false;
     }
 #endif
