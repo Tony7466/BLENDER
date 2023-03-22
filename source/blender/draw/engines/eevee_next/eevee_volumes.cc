@@ -51,7 +51,7 @@
 
 namespace blender::eevee {
 
-void Volumes::bind_common_buffers(PassMain &ps)
+void Volumes::bind_common_buffers(PassSimple &ps)
 {
   ps.bind_ubo(VOLUMES_BUF_SLOT, data_);
 #if 0
@@ -251,7 +251,7 @@ void Volumes::begin_sync()
     }
   }
 
-  PassMain::Sub &ps = world_ps_.sub("World Volume");
+  PassSimple::Sub &ps = world_ps_.sub("World Volume");
   if (mat) {
     ps.shader_set(GPU_material_get_shader(mat));
     if (volume_sub_pass(ps, nullptr, nullptr, mat)) {
@@ -265,7 +265,10 @@ void Volumes::begin_sync()
     /* If no world or volume material is present just clear the buffer with this drawcall */
     ps.shader_set(inst_.shaders.static_shader_get(VOLUME_CLEAR));
   }
+  std::cout << data_.tex_size << std::endl;
   ps.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z);
+
+  enabled_ = true;
 }
 
 void Volumes::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHandle /*res_handle*/)
@@ -303,7 +306,7 @@ void Volumes::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHand
     return;
   }
 
-  PassMain::Sub &ps = material_pass.sub_pass->sub(ob->id.name);
+  PassSimple::Sub &ps = material_pass.sub_pass->sub(ob->id.name);
   if (volume_sub_pass(ps, inst_.scene, ob, material_pass.gpumat)) {
     /* TODO (Miguel Pozo): Is any equivalent required here?
      * DRW_shgroup_add_material_resources(grp, mat); */
@@ -358,6 +361,8 @@ void Volumes::end_sync()
   /* TODO (Miguel Pozo): DRW_TEX_WRAP ? */
   dummy_scatter_tx_.ensure_3d(GPU_RGBA8, int3(1), GPU_TEXTURE_USAGE_SHADER_READ, scatter);
   dummy_transmit_tx_.ensure_3d(GPU_RGBA8, int3(1), GPU_TEXTURE_USAGE_SHADER_READ, transmit);
+
+  return;
 
 #if 0
     /* TODO */
