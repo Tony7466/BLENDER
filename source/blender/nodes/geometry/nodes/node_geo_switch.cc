@@ -145,11 +145,18 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 }
 
 class LazyFunctionForSwitchNode : public LazyFunction {
+ private:
+  bool can_be_field_ = true;
+
  public:
   LazyFunctionForSwitchNode(const bNode &node)
   {
     const NodeSwitch &storage = node_storage(node);
     const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.input_type);
+    if (!ELEM(data_type, SOCK_FLOAT, SOCK_INT, SOCK_BOOLEAN, SOCK_VECTOR, SOCK_RGBA)) {
+      can_be_field_ = false;
+    }
+
     const bNodeSocketType *socket_type = nullptr;
     for (const bNodeSocket *socket : node.output_sockets()) {
       if (socket->type == data_type) {
@@ -169,7 +176,7 @@ class LazyFunctionForSwitchNode : public LazyFunction {
   void execute_impl(lf::Params &params, const lf::Context & /*context*/) const override
   {
     const ValueOrField<bool> condition = params.get_input<ValueOrField<bool>>(0);
-    if (condition.is_field()) {
+    if (condition.is_field() && can_be_field_) {
       Field<bool> condition_field = condition.as_field();
       if (condition_field.node().depends_on_input()) {
         this->execute_field(condition.as_field(), params);
