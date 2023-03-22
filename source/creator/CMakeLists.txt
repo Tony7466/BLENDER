@@ -536,6 +536,7 @@ macro(install_dir from to)
     DESTINATION ${to}
     # Irrelevant files and caches.
     PATTERN ".git" EXCLUDE
+    PATTERN ".gitea" EXCLUDE
     PATTERN ".svn" EXCLUDE
     PATTERN "*.pyc" EXCLUDE
     PATTERN "*.pyo" EXCLUDE
@@ -1292,6 +1293,7 @@ elseif(APPLE)
       DIRECTORY ${from}
       DESTINATION ${to}
       PATTERN ".git" EXCLUDE
+      PATTERN ".gitea" EXCLUDE
       PATTERN ".svn" EXCLUDE
       PATTERN "*.pyc" EXCLUDE
       PATTERN "*.pyo" EXCLUDE
