@@ -61,17 +61,16 @@ void attribute_search_add_items(StringRefNull str,
                                 bool is_first);
 
 /**
- * Interface class to implement dropping for various kinds of UI elements. This isn't used widely,
- * only UI views and view items use it. Would probably be nice to have more general support for
- * dropping this way.
+ * Interface class to implement dropping for various kinds of UI elements. This isn't used widely
+ * yet, only UI views and view items use it.
  */
-class DropControllerInterface {
+class DropTargetInterface {
  public:
-  DropControllerInterface() = default;
-  virtual ~DropControllerInterface() = default;
+  DropTargetInterface() = default;
+  virtual ~DropTargetInterface() = default;
 
   /**
-   * Check if the data dragged with \a drag can be dropped on the element this controller is for.
+   * Check if the data dragged with \a drag can be dropped on the element this drop target is for.
    * \param r_disabled_hint: Return a static string to display to the user, explaining why dropping
    *                         isn't possible on this UI element. Shouldn't be done too aggressively,
    *                         e.g. don't set this if the drag-type can't be dropped here; only if it
@@ -80,15 +79,15 @@ class DropControllerInterface {
    */
   virtual bool can_drop(const wmDrag &drag, const char **r_disabled_hint) const = 0;
   /**
-   * Custom text to display when dragging over the element using this drop controller. Should
+   * Custom text to display when dragging over the element using this drop target. Should
    * explain what happens when dropping the data onto this UI element. Will only be used if
-   * #DropControllerInterface::can_drop() returns true, so the implementing override doesn't have
+   * #DropTargetInterface::can_drop() returns true, so the implementing override doesn't have
    * to check that again. The returned value must be a translated string.
    */
   virtual std::string drop_tooltip(const wmDrag &drag) const = 0;
   /**
    * Execute the logic to apply a drop of the data dragged with \a drag onto/into the UI element
-   * this controller is for.
+   * this drop target is for.
    */
   virtual bool on_drop(bContext *C, const wmDrag &drag) const = 0;
 };
@@ -149,31 +148,31 @@ void UI_list_filter_and_sort_items(uiList *ui_list,
                                    const char *propname,
                                    uiListItemGetNameFn get_name_fn = nullptr);
 
-std::unique_ptr<blender::ui::DropControllerInterface> UI_view_drop_controller(
+std::unique_ptr<blender::ui::DropTargetInterface> UI_view_drop_target(
     const uiViewHandle *view_handle);
-std::unique_ptr<blender::ui::DropControllerInterface> UI_view_item_drop_controller(
+std::unique_ptr<blender::ui::DropTargetInterface> UI_view_item_drop_target(
     const uiViewItemHandle *item_handle);
 
 /**
- * Let a drop controller handle a drop event.
+ * Let a drop target handle a drop event.
  * \return True if the dropping was successful.
  */
-bool UI_drop_controller_apply_drop(bContext &C,
-                                   const blender::ui::DropControllerInterface &drop_controller,
-                                   const ListBase &drags);
+bool UI_drop_target_apply_drop(bContext &C,
+                               const blender::ui::DropTargetInterface &drop_target,
+                               const ListBase &drags);
 /**
- * Call #DropControllerInterface::drop_tooltip() and return the result as newly allocated C string
+ * Call #DropTargetInterface::drop_tooltip() and return the result as newly allocated C string
  * (unless the result is empty, returns null then). Needs freeing with MEM_freeN().
  */
-char *UI_drop_controller_drop_tooltip(const blender::ui::DropControllerInterface &drop_controller,
-                                      const wmDrag &drag);
+char *UI_drop_target_tooltip(const blender::ui::DropTargetInterface &drop_target,
+                             const wmDrag &drag);
 
 /**
- * Try to find a view item with a drop controller under the mouse cursor, or if not found, a view
- * with a drop controller.
- * \param xy: Coordinate to find a drop controller at, in window space.
+ * Try to find a view item with a drop target under the mouse cursor, or if not found, a view
+ * with a drop target.
+ * \param xy: Coordinate to find a drop target at, in window space.
  */
-std::unique_ptr<blender::ui::DropControllerInterface> UI_region_views_find_drop_controller_at(
+std::unique_ptr<blender::ui::DropTargetInterface> UI_region_views_find_drop_target_at(
     const ARegion *region, const int xy[2]);
 
 /**

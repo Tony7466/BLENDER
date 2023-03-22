@@ -62,9 +62,9 @@ void AbstractView::update_from_old(uiBlock &new_block)
 /** \name Default implementations of virtual functions
  * \{ */
 
-std::unique_ptr<AbstractViewDropController> AbstractView::create_drop_controller() const
+std::unique_ptr<AbstractViewDropTarget> AbstractView::create_drop_target() const
 {
-  /* There's no drop controller (and hence no drop support) by default. */
+  /* There's no drop target (and hence no drop support) by default. */
   return nullptr;
 }
 
@@ -125,10 +125,10 @@ std::optional<rcti> AbstractView::get_bounds() const
 
 using namespace blender::ui;
 
-std::unique_ptr<DropControllerInterface> UI_view_drop_controller(const uiViewHandle *view_handle)
+std::unique_ptr<DropTargetInterface> UI_view_drop_target(const uiViewHandle *view_handle)
 {
   const AbstractView &view = reinterpret_cast<const AbstractView &>(*view_handle);
-  return view.create_drop_controller();
+  return view.create_drop_target();
 }
 
 /** \} */

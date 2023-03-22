@@ -12,7 +12,7 @@
  * - Custom context menus
  * - Notifier listening
  * - Drag controllers (dragging view items)
- * - Drop controllers (dropping onto/into view items)
+ * - Drop targets (dropping onto/into view items)
  */
 
 #pragma once
@@ -40,12 +40,12 @@ struct wmNotifier;
 namespace blender::ui {
 
 class AbstractViewItem;
-class AbstractViewItemDropController;
+class AbstractViewItemDropTarget;
 class AbstractViewItemDragController;
 
-/** The view drop controller can share logic with the view item drop controller for now, so just an
- * alias. */
-using AbstractViewDropController = AbstractViewItemDropController;
+/** The view drop target can share logic with the view item drop target for now, so just an alias.
+ */
+using AbstractViewDropTarget = AbstractViewItemDropTarget;
 
 class AbstractView {
   friend class AbstractViewItem;
@@ -68,13 +68,13 @@ class AbstractView {
   virtual ~AbstractView() = default;
 
   /**
-   * If a view wants to support dropping data into it, it has to return a drop controller here.
-   * That is an object implementing #AbstractViewDropController.
+   * If a view wants to support dropping data into it, it has to return a drop target here.
+   * That is an object implementing #AbstractViewDropTarget.
    *
-   * \note This drop controller may be requested for each event. The view doesn't keep a drop
-   *       controller around currently. So it can not contain persistent state.
+   * \note This drop target may be requested for each event. The view doesn't keep the drop target
+   *       around currently. So it cannot contain persistent state.
    */
-  virtual std::unique_ptr<AbstractViewDropController> create_drop_controller() const;
+  virtual std::unique_ptr<AbstractViewDropTarget> create_drop_target() const;
 
   /** Listen to a notifier, returning true if a redraw is needed. */
   virtual bool listen(const wmNotifier &) const;
@@ -160,13 +160,13 @@ class AbstractViewItem {
    */
   virtual std::unique_ptr<AbstractViewItemDragController> create_drag_controller() const;
   /**
-   * If an item wants to support dropping data into it, it has to return a drop controller here.
-   * That is an object implementing #AbstractViewItemDropController.
+   * If an item wants to support dropping data into it, it has to return a drop target here.
+   * That is an object implementing #AbstractViewItemDropTarget.
    *
-   * \note This drop controller may be requested for each event. The view doesn't keep a drop
-   *       controller around currently. So it can not contain persistent state.
+   * \note This drop target may be requested for each event. The view doesn't keep a drop target
+   *       around currently. So it can not contain persistent state.
    */
-  virtual std::unique_ptr<AbstractViewItemDropController> create_drop_controller() const;
+  virtual std::unique_ptr<AbstractViewItemDropTarget> create_drop_target() const;
 
   /** Get the view this item is registered for using #AbstractView::register_item(). */
   AbstractView &get_view() const;
@@ -227,7 +227,7 @@ template<typename ToType> ToType *AbstractViewItem::from_item_handle(uiViewItemH
  * \{ */
 
 /**
- * Class to enable dragging a view item. An item can return a drop controller for itself by
+ * Class to enable dragging a view item. An item can return a drag controller for itself by
  * implementing #AbstractViewItem::create_drag_controller().
  */
 class AbstractViewItemDragController {
@@ -249,15 +249,15 @@ class AbstractViewItemDragController {
 
 /**
  * Class to define the behavior when dropping something onto/into a view item, plus the behavior
- * when dragging over this item. An item can return a drop controller for itself via a custom
- * implementation of #AbstractViewItem::create_drop_controller().
+ * when dragging over this item. An item can return a drop target for itself via a custom
+ * implementation of #AbstractViewItem::create_drop_target().
  */
-class AbstractViewItemDropController : public DropControllerInterface {
+class AbstractViewItemDropTarget : public DropTargetInterface {
  protected:
   AbstractView &view_;
 
  public:
-  AbstractViewItemDropController(AbstractView &view);
+  AbstractViewItemDropTarget(AbstractView &view);
 
   /** Request the view the item is registered for as type #ViewType. Throws a `std::bad_cast`
    * exception if the view is not of the requested type. */
@@ -271,7 +271,7 @@ template<class ViewType> ViewType &AbstractViewItemDragController::get_view() co
   return dynamic_cast<ViewType &>(view_);
 }
 
-template<class ViewType> ViewType &AbstractViewItemDropController::get_view() const
+template<class ViewType> ViewType &AbstractViewItemDropTarget::get_view() const
 {
   static_assert(std::is_base_of<AbstractView, ViewType>::value,
                 "Type must derive from and implement the ui::AbstractView interface");
