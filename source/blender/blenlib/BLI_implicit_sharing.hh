@@ -80,7 +80,8 @@ class ImplicitSharingInfo : blender::NonCopyable, blender::NonMovable {
 };
 
 /**
- * Makes it easy to embed implicit-sharing behavior into a struct.
+ * Makes it easy to embed implicit-sharing behavior into a struct. This also allows the subclass to
+ * be used with #ImplicitSharingPtr.
  */
 class ImplicitSharingMixin : public ImplicitSharingInfo {
  public:
