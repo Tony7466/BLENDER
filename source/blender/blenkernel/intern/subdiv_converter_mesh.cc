@@ -16,7 +16,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_customdata.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.h"
 #include "BKE_subdiv.h"
 
@@ -37,7 +37,8 @@ struct ConverterStorage {
   const float (*vert_positions)[3];
   blender::Span<MEdge> edges;
   blender::Span<MPoly> polys;
-  blender::Span<MLoop> loops;
+  blender::Span<int> corner_verts;
+  blender::Span<int> corner_edges;
 
   /* CustomData layer for vertex sharpnesses. */
   const float *cd_vertex_crease;
@@ -135,10 +136,9 @@ static void get_face_vertices(const OpenSubdiv_Converter *converter,
 {
   ConverterStorage *storage = static_cast<ConverterStorage *>(converter->user_data);
   const MPoly &poly = storage->polys[manifold_face_index];
-  const blender::Span<MLoop> loops = storage->loops;
-  for (int corner = 0; corner < poly.totloop; corner++) {
-    manifold_face_vertices[corner] =
-        storage->manifold_vertex_index[loops[poly.loopstart + corner].v];
+  for (int i = 0; i < poly.totloop; i++) {
+    const int vert = storage->corner_verts[poly.loopstart + i];
+    manifold_face_vertices[i] = storage->manifold_vertex_index[vert];
   }
 }
 
@@ -219,7 +219,7 @@ static void precalc_uv_layer(const OpenSubdiv_Converter *converter, const int la
       storage->polys.data(),
       (const bool *)CustomData_get_layer_named(&mesh->pdata, CD_PROP_BOOL, ".hide_poly"),
       (const bool *)CustomData_get_layer_named(&mesh->pdata, CD_PROP_BOOL, ".select_poly"),
-      storage->loops.data(),
+      storage->corner_verts.data(),
       mloopuv,
       num_poly,
       num_vert,
@@ -398,7 +398,8 @@ static void init_user_data(OpenSubdiv_Converter *converter,
   user_data->vert_positions = BKE_mesh_vert_positions(mesh);
   user_data->edges = mesh->edges();
   user_data->polys = mesh->polys();
-  user_data->loops = mesh->loops();
+  user_data->corner_verts = mesh->corner_verts();
+  user_data->corner_edges = mesh->corner_edges();
   user_data->cd_vertex_crease = static_cast<const float *>(
       CustomData_get_layer(&mesh->vdata, CD_CREASE));
   user_data->cd_edge_crease = static_cast<const float *>(

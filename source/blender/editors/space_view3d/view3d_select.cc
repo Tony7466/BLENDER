@@ -13,7 +13,7 @@
 #include "DNA_action_types.h"
 #include "DNA_armature_types.h"
 #include "DNA_curve_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_meta_types.h"
@@ -53,7 +53,7 @@
 #include "BKE_editmesh.h"
 #include "BKE_layer.h"
 #include "BKE_mball.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_object.h"
 #include "BKE_paint.h"
 #include "BKE_scene.h"
@@ -2316,7 +2316,7 @@ static Base *mouse_select_object_center(ViewContext *vc, Base *startbase, const 
   Base *basact = nullptr;
 
   /* Put the active object at a disadvantage to cycle through other objects. */
-  const float penalty_dist = 10.0f * UI_DPI_FAC;
+  const float penalty_dist = 10.0f * UI_SCALE_FAC;
   Base *base = startbase;
   while (base) {
     if (BASE_SELECTABLE(v3d, base)) {
@@ -3664,7 +3664,8 @@ static bool do_mesh_box_select(ViewContext *vc,
   }
   if (ts->selectmode & SCE_SELECT_EDGE) {
     /* Does both use_zbuf and non-use_zbuf versions (need screen cos for both) */
-    struct BoxSelectUserData_ForMeshEdge cb_data {};
+    struct BoxSelectUserData_ForMeshEdge cb_data {
+    };
     cb_data.data = &data;
     cb_data.esel = use_zbuf ? esel : nullptr;
     cb_data.backbuf_offset = use_zbuf ? DRW_select_buffer_context_offset_for_object_elem(
