@@ -44,8 +44,7 @@ void *device_memory::host_alloc(size_t size)
     return 0;
   }
 
-  void *ptr = NULL;
-  device->host_mem_alloc(size, MIN_ALIGNMENT_CPU_DATA_TYPES, &ptr);
+  void *ptr = device->host_mem_alloc(size, MIN_ALIGNMENT_CPU_DATA_TYPES);
 
   if (ptr) {
     util_guarded_mem_alloc(size);

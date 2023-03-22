@@ -452,8 +452,8 @@ void *Device::get_cpu_osl_memory()
   return nullptr;
 }
 
-void Device::host_mem_alloc(size_t size, int alignment, void **p_mem) {
-  *p_mem = util_aligned_malloc(size, alignment);
+void *Device::host_mem_alloc(size_t size, int alignment) {
+  return util_aligned_malloc(size, alignment);
 }
 
 void Device::host_mem_free(void *p_mem) {

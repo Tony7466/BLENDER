@@ -301,7 +301,7 @@ class Device {
   friend class DeviceServer;
   friend class device_memory;
 
-  virtual void host_mem_alloc(size_t size, int alignment, void **p_mem);
+  virtual void *host_mem_alloc(size_t size, int alignment);
   virtual void host_mem_free(void *p_mem);
   virtual void mem_alloc(device_memory &mem) = 0;
   virtual void mem_copy_to(device_memory &mem) = 0;
