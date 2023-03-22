@@ -18,10 +18,6 @@
 #  include "DNA_meshdata_types.h"
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct CustomData;
 struct Mesh;
 struct MFace;
@@ -130,9 +126,13 @@ blender::MutableSpan<MPoly> BKE_mesh_legacy_convert_offsets_to_polys(
 
 void BKE_mesh_legacy_convert_polys_to_offsets(Mesh *mesh);
 
+void BKE_mesh_legacy_convert_loops_to_corners(struct Mesh *mesh);
+
 #endif
 
-void BKE_mesh_legacy_convert_loops_to_corners(struct Mesh *mesh);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Recreate #MFace Tessellation.
