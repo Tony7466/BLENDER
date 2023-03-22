@@ -25,9 +25,9 @@ namespace blender {
  * that is currently shared, it has to make a copy first.
  * This behavior is also called "copy on write".
  *
- * On top of containing a reference count, #ImplicitSharingInfo also knows how to destruct the
- * referenced data. This is important because the code freeing the data in the end might not know
- * how it was allocated (for example, it doesn't know whether an array was allocated using the
+ * In addition to containing the reference count, #ImplicitSharingInfo also knows how to destruct
+ * the referenced data. This is important because the code freeing the data in the end might not
+ * know how it was allocated (for example, it doesn't know whether an array was allocated using the
  * system or guarded allocator).
  *
  * #ImplicitSharingInfo can be used in two ways:
