@@ -146,16 +146,14 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 
 class LazyFunctionForSwitchNode : public LazyFunction {
  private:
-  bool can_be_field_ = true;
+  bool can_be_field_ = false;
 
  public:
   LazyFunctionForSwitchNode(const bNode &node)
   {
     const NodeSwitch &storage = node_storage(node);
     const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.input_type);
-    if (!ELEM(data_type, SOCK_FLOAT, SOCK_INT, SOCK_BOOLEAN, SOCK_VECTOR, SOCK_RGBA)) {
-      can_be_field_ = false;
-    }
+    can_be_field_ = ELEM(data_type, SOCK_FLOAT, SOCK_INT, SOCK_BOOLEAN, SOCK_VECTOR, SOCK_RGBA);
 
     const bNodeSocketType *socket_type = nullptr;
     for (const bNodeSocket *socket : node.output_sockets()) {
