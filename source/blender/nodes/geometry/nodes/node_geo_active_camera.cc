@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_geometry_util.hh"
+#include "DEG_depsgraph_query.h"
 
 namespace blender::nodes::node_geo_active_camera_cc {
 
@@ -11,7 +12,8 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  // TODO
+  Scene *scene = DEG_get_evaluated_scene(params.depsgraph());
+  params.set_output("Active Camera", const_cast<Object *>(scene->camera));
 }
 
 } // namespace blender::nodes::node_geo_active_camera_cc
