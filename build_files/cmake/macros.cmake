@@ -1305,10 +1305,17 @@ macro(windows_install_shared_manifest)
     list(APPEND WINDOWS_SHARED_MANIFEST_RELEASE ${WINDOWS_INSTALL_FILES})
     set(WINDOWS_CONFIGURATIONS "${WINDOWS_CONFIGURATIONS};Release;RelWithDebInfo;MinSizeRel")
   endif()
-  install(FILES ${WINDOWS_INSTALL_FILES}
-          CONFIGURATIONS ${WINDOWS_CONFIGURATIONS}
-          DESTINATION "./blender.shared"
-  )
+  if(WITH_PYTHON_MODULE)
+    install(FILES ${WINDOWS_INSTALL_FILES}
+            CONFIGURATIONS ${WINDOWS_CONFIGURATIONS}
+            DESTINATION "."
+    )
+  else()
+    install(FILES ${WINDOWS_INSTALL_FILES}
+            CONFIGURATIONS ${WINDOWS_CONFIGURATIONS}
+            DESTINATION "./blender.shared"
+    )
+  endif()
 endmacro()
 
 macro(windows_generate_manifest)
@@ -1325,24 +1332,28 @@ macro(windows_generate_manifest)
 endmacro()
 
 macro(windows_generate_shared_manifest)
-  windows_generate_manifest(
-    FILES "${WINDOWS_SHARED_MANIFEST_DEBUG}"
-    OUTPUT "${CMAKE_BINARY_DIR}/Debug/blender.shared.manifest"
-    NAME "blender.shared"
-  )
-  windows_generate_manifest(
-    FILES "${WINDOWS_SHARED_MANIFEST_RELEASE}"
-    OUTPUT "${CMAKE_BINARY_DIR}/Release/blender.shared.manifest"
-    NAME "blender.shared"
-  )
-  install(
-    FILES ${CMAKE_BINARY_DIR}/Release/blender.shared.manifest
-    DESTINATION "./blender.shared"
-    CONFIGURATIONS Release;RelWithDebInfo;MinSizeRel
-  )
-  install(
-    FILES ${CMAKE_BINARY_DIR}/Debug/blender.shared.manifest
-    DESTINATION "./blender.shared"
-    CONFIGURATIONS Debug
-  )
+  if(WINDOWS_SHARED_MANIFEST_DEBUG)
+    windows_generate_manifest(
+      FILES "${WINDOWS_SHARED_MANIFEST_DEBUG}"
+      OUTPUT "${CMAKE_BINARY_DIR}/Debug/blender.shared.manifest"
+      NAME "blender.shared"
+    )
+    install(
+      FILES ${CMAKE_BINARY_DIR}/Debug/blender.shared.manifest
+      DESTINATION "./blender.shared"
+      CONFIGURATIONS Debug
+    )
+  endif()
+  if(WINDOWS_SHARED_MANIFEST_RELEASE)
+    windows_generate_manifest(
+      FILES "${WINDOWS_SHARED_MANIFEST_RELEASE}"
+      OUTPUT "${CMAKE_BINARY_DIR}/Release/blender.shared.manifest"
+      NAME "blender.shared"
+    )
+    install(
+      FILES ${CMAKE_BINARY_DIR}/Release/blender.shared.manifest
+      DESTINATION "./blender.shared"
+      CONFIGURATIONS Release;RelWithDebInfo;MinSizeRel
+    )
+  endif()
 endmacro()
