@@ -3,6 +3,11 @@
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(common_uniforms_lib.glsl)
 
+/* Fix for #104266 wherein AMD GPUs running Metal erroneously discard a successful hit. */
+#if defined(GPU_METAL) && defined(GPU_ATI)
+#  define METAL_AMD_RAYTRACE_WORKAROUND 1
+#endif
+
 /**
  * Screen-Space Raytracing functions.
  */
@@ -126,13 +131,12 @@ bool raytrace(Ray ray,
 
   float lod_fac = saturate(fast_sqrt(params.roughness) * 2.0 - 0.4);
 
-#if defined(GPU_METAL) && defined(GPU_ATI)
-  bool hit_valid = true;
-#endif
-
   /* Cross at least one pixel. */
   float t = 1.001, time = 1.001;
   bool hit = false;
+#ifdef METAL_AMD_RAYTRACE_WORKAROUND
+  bool hit_failsafe = true;
+#endif
   const float max_steps = 255.0;
   for (float iter = 1.0; !hit && (time < ssray.max_time) && (iter < max_steps); iter++) {
     float stride = 1.0 + iter * params.trace_quality;
@@ -147,11 +151,11 @@ bool raytrace(Ray ray,
     vec4 ss_p = ssray.origin + ssray.direction * time;
     depth_sample = textureLod(maxzBuffer, ss_p.xy * hizUvScale.xy, floor(lod)).r;
 
-#if defined(GPU_METAL) && defined(GPU_ATI)
-    /* NOTE(Metal): Invalidate all future hits using immediate test to avoid side-effects from
-     * non-uniform control flow. This must only be used to invalidate while hit is false.  */
-    bool raytrace_fail_check =
-        (((discard_backface && prev_delta < 0.0) || (depth_sample == 1.0)) && !hit);
+#ifdef METAL_AMD_RAYTRACE_WORKAROUND
+    /* For workaround, only perform discard condition check while no valid hit has been recorded to
+     * ensure only invalid rays are discarded. */
+    bool raytrace_fail_check = !hit &&
+                               ((discard_backface && prev_delta < 0.0) || (depth_sample == 1.0));
 #endif
     delta = depth_sample - ss_p.z;
     /* Check if the ray is below the surface ... */
@@ -159,14 +163,15 @@ bool raytrace(Ray ray,
     /* ... and above it with the added thickness. */
     hit = hit && (delta > ss_p.z - ss_p.w || abs(delta) < abs(ssray.direction.z * stride * 2.0));
 
-#if defined(GPU_METAL) && defined(GPU_ATI)
+#ifdef METAL_AMD_RAYTRACE_WORKAROUND
+    /* If a new hit fails backface and background tests, invalidate the raytrace. */
     if (hit && raytrace_fail_check) {
-      hit_valid = false;
+      hit_failsafe = false;
     }
 #endif
   }
 
-#if !(defined(GPU_METAL) && defined(GPU_ATI))
+#ifndef METAL_AMD_RAYTRACE_WORKAROUND
   /* Discard back-face hits. */
   hit = hit && !(discard_backface && prev_delta < 0.0);
   /* Reject hit if background. */
@@ -178,9 +183,9 @@ bool raytrace(Ray ray,
 
   hit_position = ssray.origin.xyz + ssray.direction.xyz * time;
 
-#if (defined(GPU_METAL) && defined(GPU_ATI))
-  /* Apply failed ray flag to discard bad hits. */
-  if (!hit_valid) {
+#ifdef METAL_AMD_RAYTRACE_WORKAROUND
+  /* Check failed ray flag to discard bad hits. */
+  if (!hit_failsafe) {
     return false;
   }
 #endif
