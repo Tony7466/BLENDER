@@ -479,7 +479,7 @@ static void do_multires_bake(MultiresBakeRender *bkr,
   const float(*positions)[3] = (float(*)[3])dm->getVertArray(dm);
   const blender::OffsetIndices polys(blender::Span(dm->getPolyArray(dm), dm->getNumPolys(dm)));
   float(*mloopuv)[2] = static_cast<float(*)[2]>(dm->getLoopDataArray(dm, CD_PROP_FLOAT2));
-  float *pvtangent = NULL;
+  float *pvtangent = nullptr;
 
   ListBase threads;
   int i, tot_thread = bkr->threads > 0 ? bkr->threads : BLI_system_thread_count();
