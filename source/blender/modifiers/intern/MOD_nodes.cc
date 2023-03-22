@@ -179,6 +179,11 @@ static bool node_needs_own_transform_relation(const bNode &node)
     return true;
   }
 
+  if (node.type == GEO_NODE_ACTIVE_CAMERA) {
+    return true;
+    // TODO
+  }
+
   return false;
 }
 

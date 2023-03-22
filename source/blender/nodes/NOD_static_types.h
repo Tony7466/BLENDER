@@ -283,6 +283,7 @@ DefNode(FunctionNode, FN_NODE_STRING_LENGTH, 0, "STRING_LENGTH", StringLength, "
 DefNode(FunctionNode, FN_NODE_VALUE_TO_STRING, 0, "VALUE_TO_STRING", ValueToString, "Value to String", "")
 
 DefNode(GeometryNode, GEO_NODE_ACCUMULATE_FIELD, def_geo_accumulate_field, "ACCUMULATE_FIELD", AccumulateField, "Accumulate Field", "Add the values of an evaluated field together and output the running total for each element")
+DefNode(GeometryNode, GEO_NODE_ACTIVE_CAMERA, 0 /* def_geo_active_camera */, "ACTIVE_CAMERA", ActiveCamera, "Active Camera", "Retrieve the active camera")
 DefNode(GeometryNode, GEO_NODE_ATTRIBUTE_DOMAIN_SIZE, def_geo_attribute_domain_size, "ATTRIBUTE_DOMAIN_SIZE", AttributeDomainSize, "Domain Size", "Retrieve the number of elements in a geometry for each attribute domain")
 DefNode(GeometryNode, GEO_NODE_ATTRIBUTE_STATISTIC, def_geo_attribute_statistic, "ATTRIBUTE_STATISTIC",AttributeStatistic, "Attribute Statistic", "Calculate statistics about a data set from a field evaluated on a geometry")
 DefNode(GeometryNode, GEO_NODE_BLUR_ATTRIBUTE, def_geo_blur_attribute, "BLUR_ATTRIBUTE", BlurAttribute, "Blur Attribute", "Mix attribute values of neighboring elements")

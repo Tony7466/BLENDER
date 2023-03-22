@@ -9,6 +9,7 @@ void register_node_tree_type_geo();
 void register_node_type_geo_group();
 
 void register_node_type_geo_accumulate_field();
+void register_node_type_geo_active_camera();
 void register_node_type_geo_attribute_capture();
 void register_node_type_geo_attribute_domain_size();
 void register_node_type_geo_attribute_separate_xyz();

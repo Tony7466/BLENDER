@@ -282,6 +282,7 @@ class NODE_MT_geometry_node_GEO_INPUT_SCENE(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeObjectInfo")
         node_add_menu.add_node_type(layout, "GeometryNodeSelfObject")
         node_add_menu.add_node_type(layout, "GeometryNodeInputSceneTime")
+        node_add_menu.add_node_type(layout, "GeometryNodeActiveCamera")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 

@@ -13,6 +13,7 @@ void register_geometry_nodes()
   register_node_type_geo_group();
 
   register_node_type_geo_accumulate_field();
+  register_node_type_geo_active_camera();
   register_node_type_geo_attribute_capture();
   register_node_type_geo_attribute_domain_size();
   register_node_type_geo_attribute_statistic();
