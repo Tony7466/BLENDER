@@ -44,7 +44,7 @@ template<typename T> class OffsetIndices {
    */
   int64_t size() const
   {
-    return std::max(offsets_.size() - 1, 0L);
+    return std::max<int64_t>(offsets_.size() - 1, 0);
   }
 
   bool is_empty() const
