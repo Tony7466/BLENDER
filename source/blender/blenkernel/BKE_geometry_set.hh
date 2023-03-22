@@ -40,7 +40,7 @@ class Instances;
 
 /**
  * This is the base class for specialized geometry component types. A geometry component uses
- * copy-on-write behavior to avoid read-only copies. It also integrates with attribute API, which
+ * implicit sharing to avoid read-only copies. It also integrates with attribute API, which
  * generalizes storing and modifying generic information on a geometry.
  */
 class GeometryComponent : public blender::ImplicitSharingMixin {
