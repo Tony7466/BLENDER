@@ -117,18 +117,16 @@ std::optional<rcti> AbstractView::get_bounds() const
 
 /** \} */
 
-}  // namespace blender::ui
-
 /* ---------------------------------------------------------------------- */
-/** \name C-API
+/** \name General API functions
  * \{ */
 
-using namespace blender::ui;
-
-std::unique_ptr<DropTargetInterface> UI_view_drop_target(const uiViewHandle *view_handle)
+std::unique_ptr<DropTargetInterface> view_drop_target(const uiViewHandle *view_handle)
 {
   const AbstractView &view = reinterpret_cast<const AbstractView &>(*view_handle);
   return view.create_drop_target();
 }
 
 /** \} */
+
+}  // namespace blender::ui

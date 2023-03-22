@@ -217,6 +217,18 @@ bool AbstractViewItem::is_active() const
 
 /** \} */
 
+/* ---------------------------------------------------------------------- */
+/** \name General API functions
+ * \{ */
+
+std::unique_ptr<DropTargetInterface> view_item_drop_target(const uiViewItemHandle *item_handle)
+{
+  const AbstractViewItem &item = reinterpret_cast<const AbstractViewItem &>(*item_handle);
+  return item.create_drop_target();
+}
+
+/** \} */
+
 }  // namespace blender::ui
 
 /* ---------------------------------------------------------------------- */
@@ -307,12 +319,6 @@ bool UI_view_item_drag_start(bContext *C, const uiViewItemHandle *item_)
 {
   const AbstractViewItem &item = reinterpret_cast<const AbstractViewItem &>(*item_);
   return ViewItemAPIWrapper::drag_start(*C, item);
-}
-
-std::unique_ptr<DropTargetInterface> UI_view_item_drop_target(const uiViewItemHandle *item_handle)
-{
-  const AbstractViewItem &item = reinterpret_cast<const AbstractViewItem &>(*item_handle);
-  return item.create_drop_target();
 }
 
 /** \} */

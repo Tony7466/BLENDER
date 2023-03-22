@@ -189,12 +189,14 @@ uiViewItemHandle *UI_region_views_find_active_item(const ARegion *region)
   return item_but->view_item;
 }
 
-std::unique_ptr<DropTargetInterface> UI_region_views_find_drop_target_at(const ARegion *region,
-                                                                         const int xy[2])
+namespace blender::ui {
+
+std::unique_ptr<DropTargetInterface> region_views_find_drop_target_at(const ARegion *region,
+                                                                      const int xy[2])
 {
   const uiViewItemHandle *hovered_view_item = UI_region_views_find_item_at(region, xy);
   if (hovered_view_item) {
-    std::unique_ptr<DropTargetInterface> drop_target = UI_view_item_drop_target(hovered_view_item);
+    std::unique_ptr<DropTargetInterface> drop_target = view_item_drop_target(hovered_view_item);
     if (drop_target) {
       return drop_target;
     }
@@ -204,7 +206,7 @@ std::unique_ptr<DropTargetInterface> UI_region_views_find_drop_target_at(const A
   const uiStyle *style = UI_style_get_dpi();
   const uiViewHandle *hovered_view = UI_region_view_find_at(region, xy, style->buttonspacex);
   if (hovered_view) {
-    std::unique_ptr<DropTargetInterface> drop_target = UI_view_drop_target(hovered_view);
+    std::unique_ptr<DropTargetInterface> drop_target = view_drop_target(hovered_view);
     if (drop_target) {
       return drop_target;
     }
@@ -212,6 +214,8 @@ std::unique_ptr<DropTargetInterface> UI_region_views_find_drop_target_at(const A
 
   return nullptr;
 }
+
+}  // namespace blender::ui
 
 static StringRef ui_block_view_find_idname(const uiBlock &block, const AbstractView &view)
 {

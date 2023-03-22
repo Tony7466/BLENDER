@@ -92,6 +92,29 @@ class DropTargetInterface {
   virtual bool on_drop(bContext *C, const wmDrag &drag) const = 0;
 };
 
+/**
+ * Let a drop target handle a drop event.
+ * \return True if the dropping was successful.
+ */
+bool drop_target_apply_drop(bContext &C,
+                            const DropTargetInterface &drop_target,
+                            const ListBase &drags);
+/**
+ * Call #DropTargetInterface::drop_tooltip() and return the result as newly allocated C string
+ * (unless the result is empty, returns null then). Needs freeing with MEM_freeN().
+ */
+char *drop_target_tooltip(const DropTargetInterface &drop_target, const wmDrag &drag);
+
+std::unique_ptr<DropTargetInterface> view_drop_target(const uiViewHandle *view_handle);
+std::unique_ptr<DropTargetInterface> view_item_drop_target(const uiViewItemHandle *item_handle);
+/**
+ * Try to find a view item with a drop target under the mouse cursor, or if not found, a view
+ * with a drop target.
+ * \param xy: Coordinate to find a drop target at, in window space.
+ */
+std::unique_ptr<DropTargetInterface> region_views_find_drop_target_at(const ARegion *region,
+                                                                      const int xy[2]);
+
 }  // namespace blender::ui
 
 enum eUIListFilterResult {
@@ -147,33 +170,6 @@ void UI_list_filter_and_sort_items(uiList *ui_list,
                                    PointerRNA *dataptr,
                                    const char *propname,
                                    uiListItemGetNameFn get_name_fn = nullptr);
-
-std::unique_ptr<blender::ui::DropTargetInterface> UI_view_drop_target(
-    const uiViewHandle *view_handle);
-std::unique_ptr<blender::ui::DropTargetInterface> UI_view_item_drop_target(
-    const uiViewItemHandle *item_handle);
-
-/**
- * Let a drop target handle a drop event.
- * \return True if the dropping was successful.
- */
-bool UI_drop_target_apply_drop(bContext &C,
-                               const blender::ui::DropTargetInterface &drop_target,
-                               const ListBase &drags);
-/**
- * Call #DropTargetInterface::drop_tooltip() and return the result as newly allocated C string
- * (unless the result is empty, returns null then). Needs freeing with MEM_freeN().
- */
-char *UI_drop_target_tooltip(const blender::ui::DropTargetInterface &drop_target,
-                             const wmDrag &drag);
-
-/**
- * Try to find a view item with a drop target under the mouse cursor, or if not found, a view
- * with a drop target.
- * \param xy: Coordinate to find a drop target at, in window space.
- */
-std::unique_ptr<blender::ui::DropTargetInterface> UI_region_views_find_drop_target_at(
-    const ARegion *region, const int xy[2]);
 
 /**
  * Override this for all available view types.

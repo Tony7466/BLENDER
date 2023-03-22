@@ -2364,7 +2364,7 @@ static bool ui_view_drop_poll(bContext *C)
   if (region == nullptr) {
     return false;
   }
-  return UI_region_views_find_drop_target_at(region, win->eventstate->xy) != nullptr;
+  return region_views_find_drop_target_at(region, win->eventstate->xy) != nullptr;
 }
 
 static int ui_view_drop_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)
@@ -2374,10 +2374,10 @@ static int ui_view_drop_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *
   }
 
   const ARegion *region = CTX_wm_region(C);
-  std::unique_ptr<DropTargetInterface> drop_target = UI_region_views_find_drop_target_at(
+  std::unique_ptr<DropTargetInterface> drop_target = region_views_find_drop_target_at(
       region, event->xy);
 
-  if (!UI_drop_target_apply_drop(
+  if (!drop_target_apply_drop(
           *C, *drop_target, *static_cast<const ListBase *>(event->customdata))) {
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }

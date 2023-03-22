@@ -6,11 +6,11 @@
 
 #include "UI_interface.hh"
 
-using namespace blender::ui;
+namespace blender::ui {
 
-bool UI_drop_target_apply_drop(bContext &C,
-                               const DropTargetInterface &drop_target,
-                               const ListBase &drags)
+bool drop_target_apply_drop(bContext &C,
+                            const DropTargetInterface &drop_target,
+                            const ListBase &drags)
 {
 
   const char *disabled_hint_dummy = nullptr;
@@ -23,8 +23,10 @@ bool UI_drop_target_apply_drop(bContext &C,
   return false;
 }
 
-char *UI_drop_target_tooltip(const DropTargetInterface &drop_target, const wmDrag &drag)
+char *drop_target_tooltip(const DropTargetInterface &drop_target, const wmDrag &drag)
 {
   const std::string tooltip = drop_target.drop_tooltip(drag);
   return tooltip.empty() ? nullptr : BLI_strdup(tooltip.c_str());
 }
+
+}  // namespace blender::ui
