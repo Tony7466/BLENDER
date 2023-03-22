@@ -2287,10 +2287,12 @@ PBVH *BKE_object_sculpt_pbvh_get(Object *object)
   }
   return object->sculpt->pbvh;
 }
+
 bool BKE_object_sculpt_use_dyntopo(const Object *object)
 {
   return object->sculpt && object->sculpt->bm;
 }
+
 void BKE_object_sculpt_dyntopo_smooth_shading_set(Object *object, const bool value)
 {
   object->sculpt->bm_smooth_shading = value;

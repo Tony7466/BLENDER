@@ -142,13 +142,79 @@ void edges_sharp_from_angle_set(OffsetIndices<int> polys,
                                 const float split_angle,
                                 MutableSpan<bool> sharp_edges);
 
-}  // namespace blender::bke::mesh
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Topology Queries
+ * \{ */
+
+/**
+ * Find the index of the next corner in the polygon, looping to the start if necessary.
+ * The indices are into the entire corners array, not just the polygon's corners.
+ */
+inline int poly_corner_prev(const IndexRange poly, const int corner)
+{
+  return corner - 1 + (corner == poly.start()) * poly.size();
+}
+
+/**
+ * Find the index of the previous corner in the polygon, looping to the end if necessary.
+ * The indices are into the entire corners array, not just the polygon's corners.
+ */
+inline int poly_corner_next(const IndexRange poly, const int corner)
+{
+  if (corner == poly.last()) {
+    return poly.start();
+  }
+  return corner + 1;
+}
+
+/**
+ * Find the index of the corner in the polygon that uses the given vertex.
+ * The index is into the entire corners array, not just the polygon's corners.
+ */
+inline int poly_find_corner_from_vert(const IndexRange poly,
+                                      const Span<int> corner_verts,
+                                      const int vert)
+{
+  return poly[corner_verts.slice(poly).first_index(vert)];
+}
+
+/**
+ * Return the vertex indices on either side of the given vertex, ordered based on the winding
+ * direction of the polygon. The vertex must be in the polygon.
+ */
+inline int2 poly_find_adjecent_verts(const IndexRange poly,
+                                     const Span<int> corner_verts,
+                                     const int vert)
+{
+  const int corner = poly_find_corner_from_vert(poly, corner_verts, vert);
+  return {corner_verts[poly_corner_prev(poly, corner)],
+          corner_verts[poly_corner_next(poly, corner)]};
+}
+
+/**
+ * Return the index of the edge's vertex that is not the \a vert.
+ * If neither edge vertex is equal to \a v, returns -1.
+ */
+inline int edge_other_vert(const MEdge &edge, const int vert)
+{
+  if (edge.v1 == vert) {
+    return edge.v2;
+  }
+  if (edge.v2 == vert) {
+    return edge.v1;
+  }
+  return -1;
+}
 
 /** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Inline Mesh Data Access
  * \{ */
+
+}  // namespace blender::bke::mesh
 
 inline blender::Span<blender::float3> Mesh::vert_positions() const
 {

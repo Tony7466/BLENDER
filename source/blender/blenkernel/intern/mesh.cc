@@ -1535,36 +1535,6 @@ void BKE_mesh_auto_smooth_flag_set(Mesh *me,
   }
 }
 
-int poly_find_loop_from_vert(const Span<int> poly_verts, int vert)
-{
-  return poly_verts.first_index_try(vert);
-}
-
-int poly_get_adj_loops_from_vert(const blender::Span<int> poly_verts, int vert, int r_adj[2])
-{
-  int corner = poly_find_loop_from_vert(poly_verts, vert);
-
-  if (corner != -1) {
-    /* vertex was found */
-    r_adj[0] = poly_verts[mod_i(corner - 1, poly_verts.size())];
-    r_adj[1] = poly_verts[mod_i(corner + 1, poly_verts.size())];
-  }
-
-  return corner;
-}
-
-int BKE_mesh_edge_other_vert(const MEdge *edge, int v)
-{
-  if (edge->v1 == v) {
-    return edge->v2;
-  }
-  if (edge->v2 == v) {
-    return edge->v1;
-  }
-
-  return -1;
-}
-
 void BKE_mesh_looptri_get_real_edges(const MEdge *edges,
                                      const int *corner_verts,
                                      const int *corner_edges,

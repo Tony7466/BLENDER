@@ -365,18 +365,5 @@ Array<Vector<int, 2>> build_edge_to_poly_map(OffsetIndices<int> polys,
                                              int edges_num);
 Vector<Vector<int>> build_edge_to_loop_map_resizable(Span<int> corner_edges, int edges_num);
 
-inline int poly_loop_prev(const IndexRange poly, int loop_i)
-{
-  return loop_i - 1 + (loop_i == poly.start()) * poly.size();
-}
-
-inline int poly_loop_next(const IndexRange poly, int loop_i)
-{
-  if (loop_i == poly.start() + poly.size() - 1) {
-    return poly.start();
-  }
-  return loop_i + 1;
-}
-
 }  // namespace blender::bke::mesh_topology
 #endif
