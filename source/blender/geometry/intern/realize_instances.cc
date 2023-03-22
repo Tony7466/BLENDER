@@ -226,8 +226,8 @@ struct GatherTasks {
 
   /* Volumes only have very simple support currently. Only the first found volume is put into the
    * output. */
-  COWUser<const VolumeComponent> first_volume;
-  COWUser<const GeometryComponentEditData> first_edit_data;
+  ImplicitSharePtr<const VolumeComponent> first_volume;
+  ImplicitSharePtr<const GeometryComponentEditData> first_edit_data;
 };
 
 /** Current offsets while during the gather operation. */

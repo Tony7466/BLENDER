@@ -10,33 +10,33 @@
 
 namespace blender {
 
-template<typename T> class COWUser {
+template<typename T> class ImplicitSharePtr {
  private:
   T *data_ = nullptr;
 
  public:
-  COWUser() = default;
+  ImplicitSharePtr() = default;
 
-  COWUser(T *data) : data_(data)
+  ImplicitSharePtr(T *data) : data_(data)
   {
   }
 
-  COWUser(const COWUser &other) : data_(other.data_)
+  ImplicitSharePtr(const ImplicitSharePtr &other) : data_(other.data_)
   {
     this->add_user(data_);
   }
 
-  COWUser(COWUser &&other) : data_(other.data_)
+  ImplicitSharePtr(ImplicitSharePtr &&other) : data_(other.data_)
   {
     other.data_ = nullptr;
   }
 
-  ~COWUser()
+  ~ImplicitSharePtr()
   {
     this->remove_user_and_delete_if_last(data_);
   }
 
-  COWUser &operator=(const COWUser &other)
+  ImplicitSharePtr &operator=(const ImplicitSharePtr &other)
   {
     if (this == &other) {
       return *this;
@@ -48,7 +48,7 @@ template<typename T> class COWUser {
     return *this;
   }
 
-  COWUser &operator=(COWUser &&other)
+  ImplicitSharePtr &operator=(ImplicitSharePtr &&other)
   {
     if (this == &other) {
       return *this;
@@ -122,7 +122,7 @@ template<typename T> class COWUser {
     return get_default_hash(data_);
   }
 
-  friend bool operator==(const COWUser &a, const COWUser &b)
+  friend bool operator==(const ImplicitSharePtr &a, const ImplicitSharePtr &b)
   {
     return a.data_ == b.data_;
   }

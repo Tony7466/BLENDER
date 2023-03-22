@@ -12,6 +12,8 @@
 #include "BLI_utildefines.h"
 #include "BLI_utility_mixins.hh"
 
+namespace blender {
+
 /**
  * #bCopyOnWrite allows implementing copy-on-write behavior, i.e. it allows sharing read-only data
  * between multiple independend systems (e.g. meshes). The data is only copied when it is shared
@@ -30,18 +32,18 @@
  * #bCopyOnWrite is used in two ways:
  * - It can be allocated separately from the referenced data as is typically the case with raw
  *   arrays (e.g. for mesh attributes).
- * - It can be embedded into another struct. For that it's best to use #bCopyOnWriteMixin.
+ * - It can be embedded into another struct. For that it's best to use #ImplicitShareMixin.
  */
-struct bCopyOnWrite : blender::NonCopyable, blender::NonMovable {
+struct ImplicitShareInfo : blender::NonCopyable, blender::NonMovable {
  private:
   mutable std::atomic<int> users_;
 
  public:
-  bCopyOnWrite(const int initial_users) : users_(initial_users)
+  ImplicitShareInfo(const int initial_users) : users_(initial_users)
   {
   }
 
-  virtual ~bCopyOnWrite()
+  virtual ~ImplicitShareInfo()
   {
     BLI_assert(this->is_mutable());
   }
@@ -67,7 +69,7 @@ struct bCopyOnWrite : blender::NonCopyable, blender::NonMovable {
     BLI_assert(old_user_count >= 1);
     const bool was_last_user = old_user_count == 1;
     if (was_last_user) {
-      const_cast<bCopyOnWrite *>(this)->delete_self_with_data();
+      const_cast<ImplicitShareInfo *>(this)->delete_self_with_data();
     }
   }
 
@@ -79,9 +81,9 @@ struct bCopyOnWrite : blender::NonCopyable, blender::NonMovable {
 /**
  * Makes it easy to embed copy-on-write behavior into a struct.
  */
-struct bCopyOnWriteMixin : public bCopyOnWrite {
+struct ImplicitShareMixin : public ImplicitShareInfo {
  public:
-  bCopyOnWriteMixin() : bCopyOnWrite(1)
+  ImplicitShareMixin() : ImplicitShareInfo(1)
   {
   }
 
@@ -94,3 +96,5 @@ struct bCopyOnWriteMixin : public bCopyOnWrite {
 
   virtual void delete_self() = 0;
 };
+
+}  // namespace blender

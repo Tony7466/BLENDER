@@ -32,7 +32,7 @@ namespace blender::bke {
  * because that is not available in C code. If possible, the #AutoAnonymousAttributeID wrapper
  * should be used to avoid manual reference counting in C++ code.
  */
-class AnonymousAttributeID : public bCopyOnWriteMixin {
+class AnonymousAttributeID : public ImplicitShareMixin {
  protected:
   std::string name_;
 
@@ -54,7 +54,7 @@ class AnonymousAttributeID : public bCopyOnWriteMixin {
 };
 
 /** Wrapper for #AnonymousAttributeID that avoids manual reference counting. */
-using AutoAnonymousAttributeID = COWUser<const AnonymousAttributeID>;
+using AutoAnonymousAttributeID = ImplicitSharePtr<const AnonymousAttributeID>;
 
 /**
  * A set of anonymous attribute names that is passed around in geometry nodes.

@@ -43,7 +43,7 @@ class Instances;
  * copy-on-write behavior to avoid read-only copies. It also integrates with attribute API, which
  * generalizes storing and modifying generic information on a geometry.
  */
-class GeometryComponent : public bCopyOnWriteMixin {
+class GeometryComponent : public blender::ImplicitShareMixin {
  private:
   GeometryComponentType type_;
 
@@ -101,7 +101,7 @@ inline constexpr bool is_geometry_component_v = std::is_base_of_v<GeometryCompon
  */
 struct GeometrySet {
  private:
-  using GeometryComponentPtr = blender::COWUser<class GeometryComponent>;
+  using GeometryComponentPtr = blender::ImplicitSharePtr<class GeometryComponent>;
   /* Indexed by #GeometryComponentType. */
   std::array<GeometryComponentPtr, GEO_COMPONENT_TYPE_ENUM_SIZE> components_;
 
