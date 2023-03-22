@@ -66,8 +66,9 @@ void attribute_search_add_items(StringRefNull str,
  * onto itself, provide feedback while dragging and run custom code for the dropping.
  *
  * Note that this is just an interface. A #wmDropBox is needed to request instances of it from a UI
- * element and call its functions. Currently only #AbstractView and #AbstractViewItem have this and
- * make use of the interface this way.
+ * element and call its functions. For example the drop box using "UI_OT_view_drop" implements
+ * dropping for views and view items via this interface. To support other kinds of UI elements,
+ * similar drop boxes would be necessary.
  */
 class DropTargetInterface {
  public:
