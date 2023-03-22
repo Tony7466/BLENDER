@@ -226,8 +226,8 @@ struct GatherTasks {
 
   /* Volumes only have very simple support currently. Only the first found volume is put into the
    * output. */
-  ImplicitSharePtr<const VolumeComponent> first_volume;
-  ImplicitSharePtr<const GeometryComponentEditData> first_edit_data;
+  ImplicitSharingPtr<const VolumeComponent> first_volume;
+  ImplicitSharingPtr<const GeometryComponentEditData> first_edit_data;
 };
 
 /** Current offsets while during the gather operation. */

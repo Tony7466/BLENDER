@@ -10,33 +10,38 @@
 
 namespace blender {
 
-template<typename T> class ImplicitSharePtr {
+/**
+ * #ImplicitSharingPtr is a smart pointer that manages implicit sharing. It's designed to work with
+ * types that derive from #ImplicitSharingMixin. It is fairly similar to #std::shared_ptr but
+ * expects the reference count to be embedded in the data.
+ */
+template<typename T> class ImplicitSharingPtr {
  private:
   T *data_ = nullptr;
 
  public:
-  ImplicitSharePtr() = default;
+  ImplicitSharingPtr() = default;
 
-  ImplicitSharePtr(T *data) : data_(data)
+  ImplicitSharingPtr(T *data) : data_(data)
   {
   }
 
-  ImplicitSharePtr(const ImplicitSharePtr &other) : data_(other.data_)
+  ImplicitSharingPtr(const ImplicitSharingPtr &other) : data_(other.data_)
   {
     this->add_user(data_);
   }
 
-  ImplicitSharePtr(ImplicitSharePtr &&other) : data_(other.data_)
+  ImplicitSharingPtr(ImplicitSharingPtr &&other) : data_(other.data_)
   {
     other.data_ = nullptr;
   }
 
-  ~ImplicitSharePtr()
+  ~ImplicitSharingPtr()
   {
     this->remove_user_and_delete_if_last(data_);
   }
 
-  ImplicitSharePtr &operator=(const ImplicitSharePtr &other)
+  ImplicitSharingPtr &operator=(const ImplicitSharingPtr &other)
   {
     if (this == &other) {
       return *this;
@@ -48,7 +53,7 @@ template<typename T> class ImplicitSharePtr {
     return *this;
   }
 
-  ImplicitSharePtr &operator=(ImplicitSharePtr &&other)
+  ImplicitSharingPtr &operator=(ImplicitSharingPtr &&other)
   {
     if (this == &other) {
       return *this;
@@ -122,7 +127,7 @@ template<typename T> class ImplicitSharePtr {
     return get_default_hash(data_);
   }
 
-  friend bool operator==(const ImplicitSharePtr &a, const ImplicitSharePtr &b)
+  friend bool operator==(const ImplicitSharingPtr &a, const ImplicitSharingPtr &b)
   {
     return a.data_ == b.data_;
   }

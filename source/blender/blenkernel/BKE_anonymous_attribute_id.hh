@@ -54,7 +54,7 @@ class AnonymousAttributeID : public ImplicitSharingMixin {
 };
 
 /** Wrapper for #AnonymousAttributeID that avoids manual reference counting. */
-using AutoAnonymousAttributeID = ImplicitSharePtr<const AnonymousAttributeID>;
+using AutoAnonymousAttributeID = ImplicitSharingPtr<const AnonymousAttributeID>;
 
 /**
  * A set of anonymous attribute names that is passed around in geometry nodes.

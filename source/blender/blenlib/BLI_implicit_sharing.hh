@@ -15,26 +15,27 @@
 namespace blender {
 
 /**
- * #bCopyOnWrite allows implementing copy-on-write behavior, i.e. it allows sharing read-only data
- * between multiple independend systems (e.g. meshes). The data is only copied when it is shared
- * and is about to be modified. This is in contrast to making copies before it is actually known
- * that it is necessary.
+ * #ImplicitSharingInfo is the core data structure for implicit sharing in Blender. Implicit
+ * sharing is a technique that avoids copying data when it is not necessary. This results in better
+ * memory usage and performance. Only read-only data can be shared, because otherwise multiple
+ * owners might want to change the data in conflicting ways.
  *
- * Internally, this is mostly just a glorified reference count. If the reference count is 1, the
- * data only has a single owner and is mutable. If it is larger than 1, it is shared and must be
- * logically const.
+ * To determine whether data is shared, #ImplicitSharingInfo keeps a user count. If the count is 1,
+ * the data only has a single owner and is therefore mutable. If some code wants to modify data
+ * that is currently shared, it has to make a copy first.
+ * This behavior is also called "copy on write".
  *
- * On top of containing a reference count, #bCopyOnWrite also knows how to destruct the referenced
- * data. This is important because the code freeing the data in the end might not know how it was
- * allocated (for example, it doesn't know whether an array was allocated using the system or
- * guarded allocator).
+ * On top of containing a reference count, #ImplicitSharingInfo also knows how to destruct the
+ * referenced data. This is important because the code freeing the data in the end might not know
+ * how it was allocated (for example, it doesn't know whether an array was allocated using the
+ * system or guarded allocator).
  *
- * #bCopyOnWrite is used in two ways:
- * - It can be allocated separately from the referenced data as is typically the case with raw
- *   arrays (e.g. for mesh attributes).
+ * #ImplicitSharingInfo can be used in two ways:
+ * - It can be allocated separately from the referenced data. This is used when the shared data is
+ *   e.g. a plain data array.
  * - It can be embedded into another struct. For that it's best to use #ImplicitSharingMixin.
  */
-struct ImplicitSharingInfo : blender::NonCopyable, blender::NonMovable {
+class ImplicitSharingInfo : blender::NonCopyable, blender::NonMovable {
  private:
   mutable std::atomic<int> users_;
 
@@ -74,14 +75,14 @@ struct ImplicitSharingInfo : blender::NonCopyable, blender::NonMovable {
   }
 
  private:
-  /** Has to free the #bCopyOnWrite and the referenced data. */
+  /** Has to free the #ImplicitSharingInfo and the referenced data. */
   virtual void delete_self_with_data() = 0;
 };
 
 /**
- * Makes it easy to embed copy-on-write behavior into a struct.
+ * Makes it easy to embed implicit-sharing behavior into a struct.
  */
-struct ImplicitSharingMixin : public ImplicitSharingInfo {
+class ImplicitSharingMixin : public ImplicitSharingInfo {
  public:
   ImplicitSharingMixin() : ImplicitSharingInfo(1)
   {
