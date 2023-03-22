@@ -30,7 +30,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static Bounds<float3> calculate_bounds_ico_sphere(const float radius, const int subdivisions)
 {
-  const float delta_phi = (2 * M_PI) / 5;
+  const float delta_phi = (2.0f * M_PI) / 5.0f;
   const float theta = std::cos(std::atan(0.5f));
   const float ro = radius * std::sin(delta_phi);
 
@@ -39,13 +39,13 @@ static Bounds<float3> calculate_bounds_ico_sphere(const float radius, const int 
   float y_max = radius;
   float y_min = -radius;
 
-  if (1 == subdivisions) {
+  if (subdivisions == 1) {
     x_max = radius * theta;
     x_min = -x_max;
     y_max = ro * theta;
     y_min = -y_max;
   }
-  else if (2 == subdivisions) {
+  else if (subdivisions == 2) {
     x_max = ro;
     x_min = -x_max;
   }
