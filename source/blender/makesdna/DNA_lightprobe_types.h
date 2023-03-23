@@ -150,11 +150,11 @@ typedef struct LightCacheIrradianceGrid {
   /** Number of surfels in the cache. */
   int surfels_len;
   /** Currently only used at runtime for debugging the baking process. Not written to file. */
-  // struct GPUStorageBuf *surfels;
+  void *surfels;
   /** Irradiance Data. Stored as spherical harmonic. */
-  // LightCacheTexture *irradiance_L0_L1_a;
-  // LightCacheTexture *irradiance_L0_L1_b;
-  // LightCacheTexture *irradiance_L0_L1_c;
+  LightCacheTexture irradiance_L0_L1_a;
+  LightCacheTexture irradiance_L0_L1_b;
+  LightCacheTexture irradiance_L0_L1_c;
 } LightCacheIrradianceGrid;
 
 typedef struct LightCache {

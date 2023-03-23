@@ -514,10 +514,10 @@ void CapturePipeline::sync()
   /* Surfel output is done using a SSBO, so no need for a fragment shader output color or depth. */
   /* WORKAROUND: Avoid rasterizer discard, but the shaders actually use no fragment output. */
   surface_ps_.state_set(DRW_STATE_WRITE_STENCIL);
-  surface_ps_.framebuffer_set(&inst_.irradiance_cache.empty_raster_fb_);
+  surface_ps_.framebuffer_set(&inst_.irradiance_cache.bake.empty_raster_fb_);
 
-  surface_ps_.bind_ssbo(SURFEL_BUF_SLOT, &inst_.irradiance_cache.surfels_buf_);
-  surface_ps_.bind_ssbo(CAPTURE_BUF_SLOT, &inst_.irradiance_cache.capture_info_buf_);
+  surface_ps_.bind_ssbo(SURFEL_BUF_SLOT, &inst_.irradiance_cache.bake.surfels_buf_);
+  surface_ps_.bind_ssbo(CAPTURE_BUF_SLOT, &inst_.irradiance_cache.bake.capture_info_buf_);
 
   surface_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
   /* TODO(fclem): Remove. There should be no view dependent behavior during capture. */

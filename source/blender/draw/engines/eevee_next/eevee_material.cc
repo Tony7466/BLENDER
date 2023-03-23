@@ -239,14 +239,20 @@ Material &MaterialModule::material_sync(Object *ob,
 
   Material &mat = material_map_.lookup_or_add_cb(material_key, [&]() {
     Material mat;
-    /* Order is important for transparent. */
-    mat.prepass = material_pass_get(ob, blender_mat, prepass_pipe, geometry_type);
-    mat.shading = material_pass_get(ob, blender_mat, surface_pipe, geometry_type);
-    if (true) {
-      /* TODO(fclem): This can be expensive since it can trigger a shader compilation. So better
-       * avoid this if we can. */
+    if (inst_.is_baking()) {
+      mat.prepass = MaterialPass();
+      /* TODO(fclem): Still need the shading pass for correct attribute extraction. Would be better
+       * to avoid this shader compilation in another context. */
+      mat.shading = material_pass_get(ob, blender_mat, surface_pipe, geometry_type);
       mat.capture = material_pass_get(ob, blender_mat, MAT_PIPE_CAPTURE, geometry_type);
     }
+    else {
+      /* Order is important for transparent. */
+      mat.prepass = material_pass_get(ob, blender_mat, prepass_pipe, geometry_type);
+      mat.shading = material_pass_get(ob, blender_mat, surface_pipe, geometry_type);
+      mat.capture = MaterialPass();
+    }
+
     if (blender_mat->blend_shadow == MA_BS_NONE) {
       mat.shadow = MaterialPass();
     }

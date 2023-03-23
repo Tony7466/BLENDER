@@ -17,12 +17,24 @@ namespace blender::eevee {
 
 class Instance;
 
+struct IrradianceGrid {
+  float4x4 transform;
+  int3 resolution;
+};
+
+struct ReflectionCube {};
+
 struct LightProbe {
   bool used = false;
   bool initialized = false;
 };
 
 class LightProbeModule {
+ public:
+  /** Synced probe data. Only valid if the `eevee::Instance` is a baking instance. */
+  Vector<IrradianceGrid> grids;
+  Vector<ReflectionCube> cubes;
+
  private:
   Instance &inst_;
 

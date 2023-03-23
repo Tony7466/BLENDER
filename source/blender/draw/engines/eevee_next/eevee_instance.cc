@@ -19,7 +19,9 @@
 #include "DNA_modifier_types.h"
 #include "RE_pipeline.h"
 
+#include "eevee_engine.h"
 #include "eevee_instance.hh"
+#include "eevee_lightcache.h"
 
 namespace blender::eevee {
 
@@ -37,14 +39,12 @@ void Instance::init(const int2 &output_res,
                     const rcti *output_rect,
                     RenderEngine *render_,
                     Depsgraph *depsgraph_,
-                    const LightProbe *light_probe_,
                     Object *camera_object_,
                     const RenderLayer *render_layer_,
                     const DRWView *drw_view_,
                     const View3D *v3d_,
                     const RegionView3D *rv3d_)
 {
-  UNUSED_VARS(light_probe_);
   render = render_;
   depsgraph = depsgraph_;
   camera_orig_object = camera_object_;
@@ -65,6 +65,36 @@ void Instance::init(const int2 &output_res,
   sampling.init(scene);
   camera.init();
   film.init(output_res, output_rect);
+  velocity.init();
+  depth_of_field.init();
+  shadows.init();
+  motion_blur.init();
+  main_view.init();
+  irradiance_cache.init();
+}
+
+void Instance::init_light_bake(Depsgraph *depsgraph, draw::Manager *manager)
+{
+  this->depsgraph = depsgraph;
+  this->manager = manager;
+  camera_orig_object = nullptr;
+  render = nullptr;
+  render_layer = nullptr;
+  drw_view = nullptr;
+  v3d = nullptr;
+  rv3d = nullptr;
+
+  is_light_bake = true;
+  debug_mode = (eDebugMode)G.debug_value;
+  info = "";
+
+  update_eval_members();
+
+  sampling.init(scene);
+  camera.init();
+  /* Film isn't used but init to avoid side effects in other module. */
+  rcti empty_rect{0, 0, 0, 0};
+  film.init(int2(1), &empty_rect);
   velocity.init();
   depth_of_field.init();
   shadows.init();
@@ -255,8 +285,6 @@ void Instance::render_sample()
 
   main_view.render();
 
-  irradiance_cache.create_surfels();
-
   motion_blur.step();
 }
 
@@ -302,6 +330,50 @@ void Instance::render_read_result(RenderLayer *render_layer, const char *view_na
       }
     }
   }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Light Bake
+ * \{ */
+
+LightCache *Instance::light_cache_create(Vector<IrradianceGrid> grids,
+                                         Vector<ReflectionCube> cubes)
+{
+  LightCache *light_cache = EEVEE_NEXT_lightcache_create();
+  light_cache->flag = LIGHTCACHE_BAKING;
+
+  light_cache->grid_len = grids.size();
+  light_cache->grids = MEM_cnew_array<LightCacheIrradianceGrid>(grids.size(),
+                                                                "LightCacheIrradianceGrid");
+
+  for (const auto i : grids.index_range()) {
+    const IrradianceGrid &grid = grids[i];
+    size_t sample_count = grid.resolution.x * grid.resolution.y * grid.resolution.z;
+    size_t grid_texture_sample_size = sizeof(uint16_t) * 4;
+    if (sample_count * grid_texture_sample_size > INT_MAX) {
+      /* The size of the texture doesn't fit on a 32bit system. */
+      light_cache->flag |= LIGHTCACHE_INVALID;
+      info = "Scene contains an irradiance grid with too many samples points";
+      return nullptr;
+    }
+    LightCacheIrradianceGrid &irradiance_grid = light_cache->grids[i];
+    copy_m4_m4(irradiance_grid.world_to_grid, grid.transform.ptr());
+    irradiance_grid.resolution[0] = grid.resolution.x;
+    irradiance_grid.resolution[1] = grid.resolution.y;
+    irradiance_grid.resolution[2] = grid.resolution.z;
+  }
+
+  light_cache->cube_len = cubes.size();
+  // light_cache->cubes = MEM_cnew_array<LightCacheIrradianceGrid>(cubes.size(),
+  //                                                               "LightCacheIrradianceGrid");
+
+  // for (const auto i : cubes.index_range()) {
+  /* TODO */
+  // }
+
+  return light_cache;
 }
 
 /** \} */
@@ -424,6 +496,69 @@ void Instance::update_passes(RenderEngine *engine, Scene *scene, ViewLayer *view
   register_cryptomatte_passes(VIEW_LAYER_CRYPTOMATTE_ASSET, EEVEE_RENDER_PASS_CRYPTOMATTE_ASSET);
   register_cryptomatte_passes(VIEW_LAYER_CRYPTOMATTE_MATERIAL,
                               EEVEE_RENDER_PASS_CRYPTOMATTE_MATERIAL);
+}
+
+void Instance::light_bake_irradiance(LightCache *&r_light_cache,
+                                     std::function<void()> context_enable,
+                                     std::function<void()> context_disable)
+{
+  BLI_assert(is_baking());
+  BLI_assert(r_light_cache == nullptr);
+
+  auto custom_pipeline_wrapper = [&](std::function<void()> callback) {
+    context_enable();
+    DRW_custom_pipeline_begin(&draw_engine_eevee_next_type, depsgraph);
+    callback();
+    DRW_custom_pipeline_end();
+    context_disable();
+  };
+
+  auto context_wrapper = [&](std::function<void()> callback) {
+    context_enable();
+    callback();
+    context_disable();
+  };
+
+  /* Count probes. */
+  custom_pipeline_wrapper([&]() { render_sync(); });
+  /* Allocate CPU storage. */
+  r_light_cache = this->light_cache_create(light_probes.grids, light_probes.cubes);
+
+  if (r_light_cache->flag & LIGHTCACHE_INVALID) {
+    /* Something happened and the light cache couldn't be created. */
+    // stop = true;
+    // do_update = true;
+    r_light_cache->flag &= ~LIGHTCACHE_BAKING;
+    return;
+  }
+
+  /* TODO(fclem): Multiple bounce. We need to use the previous bounce result. */
+  for (int bounce = 0; bounce < 1; bounce++) {
+    for (auto i : light_probes.grids.index_range()) {
+      custom_pipeline_wrapper([&]() {
+        /* TODO: lightprobe visibility group option. */
+        render_sync();
+        irradiance_cache.bake.surfels_create(light_probes.grids[i]);
+        irradiance_cache.bake.surfels_lights_eval();
+      });
+
+      sampling.reset();
+      while (!sampling.finished()) {
+        context_wrapper([&]() {
+          /* Batch ray cast by pack of 16 to avoid too much overhead of
+           * the update function & context switch. */
+          for (int i = 0; i < 16 && !sampling.finished(); i++) {
+            sampling.step();
+            irradiance_cache.bake.propagate_light_sample();
+          }
+          irradiance_cache.bake.read_result(r_light_cache->grids[i]);
+        });
+        // do_update = true;
+      }
+    }
+  }
+
+  r_light_cache->flag &= ~LIGHTCACHE_BAKING;
 }
 
 /** \} */

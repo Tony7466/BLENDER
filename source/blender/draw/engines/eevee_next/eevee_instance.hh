@@ -73,6 +73,7 @@ class Instance {
   /** Evaluated IDs. */
   Scene *scene;
   ViewLayer *view_layer;
+  /** Camera object if rendering through a camera. nullptr otherwise. */
   Object *camera_eval_object;
   Object *camera_orig_object;
   /** Only available when rendering for final render. */
@@ -85,6 +86,8 @@ class Instance {
 
   /** True if the grease pencil engine might be running. */
   bool gpencil_engine_enabled;
+  /** True if the instance is created for light baking. */
+  bool is_light_bake = false;
 
   /** Info string displayed at the top of the render / viewport. */
   std::string info = "";
@@ -114,11 +117,12 @@ class Instance {
         irradiance_cache(*this){};
   ~Instance(){};
 
+  /* Render & Viewport. */
+  /* TODO(fclem): Split for clarity. */
   void init(const int2 &output_res,
             const rcti *output_rect,
             RenderEngine *render,
             Depsgraph *depsgraph,
-            const LightProbe *light_probe_ = nullptr,
             Object *camera_object = nullptr,
             const RenderLayer *render_layer = nullptr,
             const DRWView *drw_view = nullptr,
@@ -129,17 +133,33 @@ class Instance {
   void object_sync(Object *ob);
   void end_sync();
 
+  /* Render. */
+
   void render_sync();
   void render_frame(RenderLayer *render_layer, const char *view_name);
   void store_metadata(RenderResult *render_result);
 
+  /* Viewport. */
+
   void draw_viewport(DefaultFramebufferList *dfbl);
+
+  /* Light bake. */
+
+  void init_light_bake(Depsgraph *depsgraph, draw::Manager *manager);
+  void light_bake_irradiance(LightCache *&r_light_cache,
+                             std::function<void()> context_enable,
+                             std::function<void()> context_disable);
 
   static void update_passes(RenderEngine *engine, Scene *scene, ViewLayer *view_layer);
 
   bool is_viewport() const
   {
-    return render == nullptr;
+    return render == nullptr && !is_baking();
+  }
+
+  bool is_baking() const
+  {
+    return is_light_bake;
   }
 
   bool overlays_enabled() const
@@ -175,6 +195,13 @@ class Instance {
 
   void scene_sync();
   void mesh_sync(Object *ob, ObjectHandle &ob_handle);
+
+  /**
+   * Create a light cache big enough to fit all light-probes inside.
+   * IMPORTANT: Can return nullptr on failure, in which case, the `Instance::info` will be set
+   * to an error message.
+   */
+  LightCache *light_cache_create(Vector<IrradianceGrid> grids, Vector<ReflectionCube> cubes);
 
   void update_eval_members();
 

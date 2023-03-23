@@ -21,6 +21,9 @@ void LightProbeModule::begin_sync()
                        (inst_.scene->eevee.flag & SCE_EEVEE_GI_AUTOBAKE) != 0;
   grid_update_ = false;
   cube_update_ = false;
+
+  grids.clear();
+  cubes.clear();
 }
 
 void LightProbeModule::sync_grid(ObjectHandle &handle)
@@ -31,6 +34,10 @@ void LightProbeModule::sync_grid(ObjectHandle &handle)
     grid.initialized = true;
     grid_update_ = true;
   }
+
+  if (inst_.is_baking()) {
+    grids.append({});
+  }
 }
 
 void LightProbeModule::sync_cube(ObjectHandle &handle)
@@ -40,6 +47,10 @@ void LightProbeModule::sync_cube(ObjectHandle &handle)
   if (handle.recalc != 0 || cube.initialized == false) {
     cube.initialized = true;
     cube_update_ = true;
+  }
+
+  if (inst_.is_baking()) {
+    cubes.append({});
   }
 }
 

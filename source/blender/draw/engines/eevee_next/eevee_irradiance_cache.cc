@@ -1,10 +1,17 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "DNA_lightprobe_types.h"
+#include "GPU_capabilities.h"
+
 #include "eevee_instance.hh"
 
 #include "eevee_irradiance_cache.hh"
 
 namespace blender::eevee {
+
+/* -------------------------------------------------------------------- */
+/** \name Interface
+ * \{ */
 
 void IrradianceCache::init()
 {
@@ -12,7 +19,12 @@ void IrradianceCache::init()
 
 void IrradianceCache::sync()
 {
-  debug_pass_sync();
+  if (inst_.is_baking()) {
+    bake.sync();
+  }
+  else {
+    debug_pass_sync();
+  }
 }
 
 void IrradianceCache::debug_pass_sync()
@@ -22,13 +34,32 @@ void IrradianceCache::debug_pass_sync()
             eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_IRRADIANCE)) {
     return;
   }
+
+  LightCache *light_cache = inst_.scene->eevee.light_cache_data;
+  if (light_cache == nullptr || light_cache->version != LIGHTCACHE_NEXT_STATIC_VERSION ||
+      light_cache->grids == nullptr) {
+    return;
+  }
+
   debug_surfels_ps_.init();
   debug_surfels_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
                               DRW_STATE_DEPTH_LESS_EQUAL);
   debug_surfels_ps_.shader_set(inst_.shaders.static_shader_get(DEBUG_SURFELS));
-  debug_surfels_ps_.bind_ssbo("surfels_buf", surfels_buf_);
   debug_surfels_ps_.push_constant("surfel_radius", 0.5f / 4.0f);
   debug_surfels_ps_.push_constant("debug_mode", static_cast<int>(inst_.debug_mode));
+
+  surfels_buf_.clear();
+  for (auto i : IndexRange(light_cache->grid_len)) {
+    LightCacheIrradianceGrid &grid = light_cache->grids[i];
+    if (grid.surfels_len > 0 && grid.surfels != nullptr) {
+      Span<Surfel> grid_surfels(static_cast<Surfel *>(grid.surfels), grid.surfels_len);
+      for (const Surfel &surfel : grid_surfels) {
+        surfels_buf_.append(surfel);
+      }
+    }
+  }
+  surfels_buf_.push_update();
+  debug_surfels_ps_.bind_ssbo("surfels_buf", surfels_buf_);
   debug_surfels_ps_.draw_procedural(GPU_PRIM_TRI_STRIP, surfels_buf_.size(), 4);
 }
 
@@ -50,7 +81,17 @@ void IrradianceCache::debug_draw(View &view, GPUFrameBuffer *view_fb)
   inst_.manager->submit(debug_surfels_ps_, view);
 }
 
-void IrradianceCache::create_surfels()
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Baking
+ * \{ */
+
+void IrradianceBake::sync()
+{
+}
+
+void IrradianceBake::surfels_create(const IrradianceGrid & /* grid */)
 {
   /**
    * We rasterize the scene along the 3 axes. Each generated fragment will write a surface element
@@ -60,7 +101,7 @@ void IrradianceCache::create_surfels()
   using namespace blender::math;
 
   /* Attachment-less frame-buffer. */
-  empty_raster_fb_.ensure(int2(40 * 4));
+  empty_raster_fb_.ensure(int2(10 * 4));
 
   /** We could use multi-view rendering here to avoid multiple submissions but it is unlikely to
    * make any difference. The bottleneck is still the light propagation loop. */
@@ -89,17 +130,15 @@ void IrradianceCache::create_surfels()
   DRW_stats_group_end();
 
   /* Allocate surfel pool. */
+  GPU_memory_barrier(GPU_BARRIER_BUFFER_UPDATE);
   capture_info_buf_.read();
   if (capture_info_buf_.surfel_len == 0) {
     /* Not surfel to allocated. */
     return;
   }
-  /* 1000000 for testing. */
-  if (capture_info_buf_.surfel_len * sizeof(Surfel) > 1000000) {
-    /* TODO(fclem): Display error message. */
-    /* Not enough GPU memory to fit all needed surfels. */
-    return;
-  }
+
+  /* TODO(fclem): Check for GL limit and abort if the surfel cache doesn't fit the GPU memory. */
+  std::cout << "Resize " << capture_info_buf_.surfel_len << std::endl;
   surfels_buf_.resize(capture_info_buf_.surfel_len);
 
   DRW_stats_group_start("IrradianceBake.SurfelsCreate");
@@ -114,17 +153,37 @@ void IrradianceCache::create_surfels()
   render_axis(Axis::Z);
 
   DRW_stats_group_end();
-
-  /* TODO(fclem): Resize at the end of the light propagation. */
 }
 
-void IrradianceCache::propagate_light()
+void IrradianceBake::surfels_lights_eval()
 {
-  /* Evaluate direct lighting (and also clear the surfels radiance). */
-  /* For every ray direction over the sphere. */
-  /* Create the surfels lists. */
+}
+
+void IrradianceBake::propagate_light_sample()
+{
+  /* Pick random ray direction over the sphere. */
+  /* Project to regular grid and create the surfels lists. */
   /* Sort the surfels lists. */
   /* Propagate light. */
 }
+
+void IrradianceBake::read_result(LightCacheIrradianceGrid &light_cache_grid)
+{
+  switch (inst_.debug_mode) {
+    case eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_NORMAL:
+    case eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_IRRADIANCE:
+      GPU_memory_barrier(GPU_BARRIER_BUFFER_UPDATE);
+      std::cout << "Read " << capture_info_buf_.surfel_len << std::endl;
+      surfels_buf_.read();
+      light_cache_grid.surfels_len = capture_info_buf_.surfel_len;
+      light_cache_grid.surfels = MEM_dupallocN(surfels_buf_.data());
+      break;
+    default:
+      /* Nothing to display. */
+      return;
+  }
+}
+
+/** \} */
 
 }  // namespace blender::eevee

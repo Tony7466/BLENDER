@@ -28,6 +28,7 @@
 
 #include "wm_window.h"
 
+#include "eevee_engine.h"
 #include "eevee_instance.hh"
 
 #include "eevee_lightcache.h"
@@ -57,6 +58,11 @@ class LightBake {
 
   /** Baking instance. Created and freed in the worker thread. */
   Instance *instance_ = nullptr;
+  /** Light Cache being baked. Create in worker thread and pass ownership to original scene on
+   * first `update()` call. */
+  ::LightCache *light_cache_ = nullptr;
+  /** Manager used for command submission. Created and freed in the worker thread. */
+  draw::Manager *manager_ = nullptr;
 
  public:
   LightBake(struct Main *bmain,
@@ -93,18 +99,14 @@ class LightBake {
   {
     BLI_assert(BLI_thread_is_main());
     Scene *original_scene = DEG_get_input_scene(depsgraph_);
+    LightCache *&scene_light_cache = original_scene->eevee.light_cache_data;
 
-    if (original_scene->eevee.light_cache_data == nullptr) {
-      LightCache *light_cache = EEVEE_NEXT_lightcache_create();
-
-      LightCacheIrradianceGrid *grids = (LightCacheIrradianceGrid *)MEM_callocN(
-          1 * sizeof(LightCacheIrradianceGrid), "LightCacheIrradianceGrid");
-      grids[0].resolution[0] = 1;
-      grids[0].resolution[1] = 2;
-      grids[0].resolution[2] = 3;
-      light_cache->grid_len = 1;
-      light_cache->grids = grids;
-      original_scene->eevee.light_cache_data = light_cache;
+    if (scene_light_cache != light_cache_) {
+      if (scene_light_cache != nullptr) {
+        /* Delete old data if existing. */
+        EEVEE_NEXT_lightcache_free(scene_light_cache);
+      }
+      scene_light_cache = light_cache_;
     }
 
     EEVEE_NEXT_lightcache_info_update(&original_scene->eevee);
@@ -120,13 +122,18 @@ class LightBake {
     DEG_graph_relations_update(depsgraph_);
     DEG_evaluate_on_framechange(depsgraph_, frame_);
 
-    PIL_sleep_ms(1000);
-
     context_enable();
-
+    manager_ = new draw::Manager();
     instance_ = new eevee::Instance();
-
+    instance_->init_light_bake(depsgraph_, manager_);
     context_disable();
+
+    if (delay_ms_ > 0) {
+      PIL_sleep_ms(delay_ms_);
+    }
+
+    instance_->light_bake_irradiance(
+        light_cache_, [this]() { context_enable(); }, [this]() { context_disable(); });
 
     delete_resources();
   }
@@ -190,8 +197,9 @@ class LightBake {
     /* Bind context without GPU_render_begin(). */
     context_enable(false);
 
-    /* Free instance and its resources (Textures, Framebuffers, etc...).  */
+    /* Free GPU data (Textures, Framebuffers, etc...).  */
     delete instance_;
+    delete manager_;
 
     /* Delete / unbind the GL & GPU context. Assumes it is currently bound. */
     if (GPU_use_main_context_workaround() && !BLI_thread_is_main()) {
@@ -323,8 +331,15 @@ void EEVEE_NEXT_lightcache_free(LightCache *light_cache)
     MEM_SAFE_FREE(light_cache->cube_data);
     MEM_SAFE_FREE(light_cache->grid_data);
   }
-
-  MEM_SAFE_FREE(light_cache->grids);
+  else {
+    for (int i = 0; i < light_cache->grid_len; i++) {
+      MEM_SAFE_FREE(light_cache->grids[i].surfels);
+      MEM_SAFE_FREE(light_cache->grids[i].irradiance_L0_L1_a.data);
+      MEM_SAFE_FREE(light_cache->grids[i].irradiance_L0_L1_b.data);
+      MEM_SAFE_FREE(light_cache->grids[i].irradiance_L0_L1_c.data);
+    }
+    MEM_SAFE_FREE(light_cache->grids);
+  }
   MEM_freeN(light_cache);
 }
 
@@ -386,13 +401,76 @@ void EEVEE_NEXT_lightcache_info_update(SceneEEVEE *eevee)
 
 void EEVEE_NEXT_lightcache_blend_write(BlendWriter *writer, LightCache *light_cache)
 {
+  auto write_lightcache_texture = [&](LightCacheTexture &tex) {
+    if (tex.data) {
+      size_t data_size = tex.components * tex.tex_size[0] * tex.tex_size[1] * tex.tex_size[2];
+      if (tex.data_type == LIGHTCACHETEX_FLOAT) {
+        data_size *= sizeof(float);
+      }
+      else if (tex.data_type == LIGHTCACHETEX_UINT) {
+        data_size *= sizeof(uint);
+      }
+
+      /* FIXME: We can't save more than what 32bit systems can handle.
+       * The solution would be to split the texture but it is too late for 2.90. (see #78529) */
+      if (data_size < INT_MAX) {
+        BLO_write_raw(writer, data_size, tex.data);
+      }
+    }
+  };
+
   BLO_write_struct_array(
       writer, LightCacheIrradianceGrid, light_cache->grid_len, light_cache->grids);
+
+  for (int i = 0; i < light_cache->grid_len; i++) {
+    LightCacheIrradianceGrid &grid = light_cache->grids[i];
+    /* Surfels are runtime data. Not stored in the blend file. */
+    write_lightcache_texture(grid.irradiance_L0_L1_a);
+    write_lightcache_texture(grid.irradiance_L0_L1_b);
+    write_lightcache_texture(grid.irradiance_L0_L1_c);
+  }
 }
 
 void EEVEE_NEXT_lightcache_blend_read_data(BlendDataReader *reader, LightCache *light_cache)
 {
-  BLO_read_data_address(reader, &light_cache->grids);
+
+  if (light_cache->grids) {
+    BLO_read_data_address(reader, &light_cache->grids);
+
+    auto direct_link_lightcache_texture = [&](LightCacheTexture &lctex) {
+      /* Runtime data. Not stored in the blend file. */
+      lctex.tex = nullptr;
+
+      if (lctex.data) {
+        BLO_read_data_address(reader, &lctex.data);
+        if (lctex.data && BLO_read_requires_endian_switch(reader)) {
+          int data_size = lctex.components * lctex.tex_size[0] * lctex.tex_size[1] *
+                          lctex.tex_size[2];
+
+          if (lctex.data_type == LIGHTCACHETEX_FLOAT) {
+            BLI_endian_switch_float_array((float *)lctex.data, data_size * sizeof(float));
+          }
+          else if (lctex.data_type == LIGHTCACHETEX_UINT) {
+            BLI_endian_switch_uint32_array((uint *)lctex.data, data_size * sizeof(uint));
+          }
+        }
+      }
+
+      if (lctex.data == nullptr) {
+        zero_v3_int(lctex.tex_size);
+      }
+    };
+
+    for (int i = 0; i < light_cache->grid_len; i++) {
+      LightCacheIrradianceGrid &grid = light_cache->grids[i];
+      /* Runtime data. Not stored in the blend file. */
+      grid.surfels_len = 0;
+      grid.surfels = nullptr;
+      direct_link_lightcache_texture(grid.irradiance_L0_L1_a);
+      direct_link_lightcache_texture(grid.irradiance_L0_L1_b);
+      direct_link_lightcache_texture(grid.irradiance_L0_L1_c);
+    }
+  }
 }
 
 /** \} */
