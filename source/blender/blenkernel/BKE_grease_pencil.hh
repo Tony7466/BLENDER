@@ -46,12 +46,8 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
     if (other.name) {
       this->name = BLI_strdup(other.name);
     }
-    children_.reserve(other.children_.size());
-    for (const std::unique_ptr<TreeNode> &elem : other.children_) {
-      children_.append(std::make_unique<TreeNode>(*elem));
-    }
   }
-  TreeNode(TreeNode &&other) : children_(std::move(other.children_))
+  TreeNode(TreeNode &&other)
   {
     this->name = other.name;
     other.name = nullptr;
@@ -262,6 +258,7 @@ class Layer : public TreeNode, ::GreasePencilLayer {
   }
   Layer(const Layer &other) : TreeNode(other)
   {
+    frames_ = other.frames_;
   }
   Layer(Layer &&other) : TreeNode(std::move(other))
   {
@@ -350,9 +347,29 @@ class LayerGroup : public TreeNode {
   }
   LayerGroup(const LayerGroup &other) : TreeNode(other)
   {
+    children_.reserve(other.children_.size());
+    for (const std::unique_ptr<TreeNode> &elem : other.children_) {
+      if (elem.get()->is_group()) {
+        children_.append(std::make_unique<LayerGroup>(elem.get()->as_group()));
+      }
+      else if (elem.get()->is_layer()) {
+        children_.append(std::make_unique<Layer>(elem.get()->as_layer()));
+      }
+    }
   }
   LayerGroup(LayerGroup &&other) : TreeNode(std::move(other))
   {
+    /* TODO! */
+    // children_.reserve(other.children_.size());
+    // for (const std::unique_ptr<TreeNode> &elem : other.children_) {
+    //   if (elem.get()->is_group()) {
+    //     children_.append_as(std::move(*elem));
+    //   }
+    //   else if (elem.get()->is_layer()) {
+    //     children_.append_as(std::move(*elem));
+    //   }
+    // }
+    // other.children_.clear();
   }
   ~LayerGroup()
   {
