@@ -714,13 +714,9 @@ void paintvert_select_more(Mesh *mesh, const bool face_step)
   select_vert.finish();
 }
 
-void paintvert_select_less(bContext *C, Object *ob, const bool face_step)
+void paintvert_select_less(Mesh *mesh, const bool face_step)
 {
   using namespace blender;
-  Mesh *mesh = BKE_mesh_from_object(ob);
-  if (mesh == nullptr || mesh->totpoly == 0) {
-    return;
-  }
 
   bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
   bke::SpanAttributeWriter<bool> select_vert = attributes.lookup_or_add_for_write_span<bool>(
@@ -735,7 +731,7 @@ void paintvert_select_less(bContext *C, Object *ob, const bool face_step)
   const Span<MEdge> edges = mesh->edges();
 
   MeshElemMap *edge_poly_map;
-  int *edge_poly_mem;
+  int *edge_poly_mem = nullptr;
   if (face_step) {
     BKE_mesh_edge_poly_map_create(&edge_poly_map,
                                   &edge_poly_mem,
@@ -774,10 +770,11 @@ void paintvert_select_less(bContext *C, Object *ob, const bool face_step)
       }
     }
   }
-
+  if (edge_poly_mem) {
+    MEM_freeN(edge_poly_map);
+    MEM_freeN(edge_poly_mem);
+  }
   select_vert.finish();
-  paintvert_flush_flags(ob);
-  paintvert_tag_select_update(C, ob);
 }
 
 void paintvert_tag_select_update(bContext *C, Object *ob)
