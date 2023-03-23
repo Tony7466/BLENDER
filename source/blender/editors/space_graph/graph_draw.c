@@ -200,7 +200,7 @@ static void draw_fcurve_selected_keyframe_vertices(
         }
       }
       else {
-        const float line_length = 2 * U.dpi_fac;
+        const float line_length = 2 * U.scale_factor;
         immVertex2fv(pos, bezt->vec[1]);
 
         /* immVertex2f(pos, bezt->vec[1][0] + line_length, bezt->vec[1][1] - line_length);
@@ -1054,8 +1054,8 @@ static void draw_fcurve(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAn
       immUniform2f(
           "viewport_size", viewport_size[2] / UI_SCALE_FAC, viewport_size[3] / UI_SCALE_FAC);
       immUniform1i("colors_len", 0); /* Simple dashes. */
-      immUniform1f("dash_width", 16.0f * U.dpi_fac);
-      immUniform1f("udash_factor", 0.4f * U.dpi_fac);
+      immUniform1f("dash_width", 16.0f * U.scale_factor);
+      immUniform1f("udash_factor", 0.4f * U.scale_factor);
     }
     else {
       immBindBuiltinProgram(GPU_SHADER_3D_POLYLINE_UNIFORM_COLOR);
