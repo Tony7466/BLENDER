@@ -220,7 +220,8 @@ bool VKTexture::is_allocated() const
   return vk_image_ != VK_NULL_HANDLE && allocation_ != VK_NULL_HANDLE;
 }
 
-static VkImageUsageFlagBits to_vk_image_usage(const eGPUTextureUsage usage)
+static VkImageUsageFlagBits to_vk_image_usage(const eGPUTextureUsage usage,
+                                              const eGPUFrameBufferBits framebuffer_bits)
 {
   VkImageUsageFlagBits result = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_DST_BIT |
                                                                   VK_IMAGE_USAGE_SAMPLED_BIT);
@@ -231,8 +232,13 @@ static VkImageUsageFlagBits to_vk_image_usage(const eGPUTextureUsage usage)
     result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_STORAGE_BIT);
   }
   if (usage & GPU_TEXTURE_USAGE_ATTACHMENT) {
-    /* TODO add other types of attachments based on the format. */
-    result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+    if (framebuffer_bits & GPU_COLOR_BIT) {
+      result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+    }
+    if (framebuffer_bits & (GPU_DEPTH_BIT | GPU_STENCIL_BIT)) {
+      result = static_cast<VkImageUsageFlagBits>(result |
+                                                 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+    }
   }
   if (usage & GPU_TEXTURE_USAGE_HOST_READ) {
     result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
@@ -265,7 +271,7 @@ bool VKTexture::allocate()
    */
   image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
   image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  image_info.usage = to_vk_image_usage(gpu_image_usage_flags_);
+  image_info.usage = to_vk_image_usage(gpu_image_usage_flags_, to_framebuffer_bits(format_));
   image_info.samples = VK_SAMPLE_COUNT_1_BIT;
 
   VkResult result;
