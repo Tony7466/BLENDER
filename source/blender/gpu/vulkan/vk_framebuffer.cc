@@ -146,6 +146,10 @@ void VKFrameBuffer::clear_attachment(GPUAttachmentType /*type*/,
                                      eGPUDataFormat /*data_format*/,
                                      const void * /*clear_value*/)
 {
+  /* Clearing of a single attachment was added to implement `clear_multi` in OpenGL. As
+   * `clear_multi` is supported in Vulkan it isn't needed to implement this method.
+   */
+  BLI_assert_unreachable();
 }
 
 void VKFrameBuffer::attachment_set_loadstore_op(GPUAttachmentType /*type*/,
@@ -233,12 +237,6 @@ void VKFrameBuffer::render_pass_create()
 
     switch (type) {
       case GPU_FB_DEPTH_ATTACHMENT:
-        BLI_assert(!has_depth_attachment);
-        has_depth_attachment = true;
-        depth_attachment.attachment = attachment_index;
-        depth_attachment.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        break;
-
       case GPU_FB_DEPTH_STENCIL_ATTACHMENT:
         BLI_assert(!has_depth_attachment);
         has_depth_attachment = true;
