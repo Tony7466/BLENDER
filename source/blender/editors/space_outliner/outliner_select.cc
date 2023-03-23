@@ -1491,8 +1491,10 @@ void outliner_item_select(bContext *C,
   const bool recursive = select_flag & OL_ITEM_RECURSIVE;
 
   /* Clear previous active when activating and clear selection when not extending selection */
-  const short clear_flag = (activate ? TSE_ACTIVE : 0) | ((extend || recursive) ? 0 : TSE_SELECTED);
-  if (clear_flag) {
+  const short clear_flag = (activate ? TSE_ACTIVE : 0) | (extend ? 0 : TSE_SELECTED);
+
+  /* Do not clear the active and select flag when selecting hierarchies. */
+  if (clear_flag && !recursive) {
     outliner_flag_set(*space_outliner, clear_flag, false);
   }
 
