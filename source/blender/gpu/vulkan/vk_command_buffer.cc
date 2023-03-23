@@ -8,6 +8,7 @@
 #include "vk_command_buffer.hh"
 #include "vk_buffer.hh"
 #include "vk_context.hh"
+#include "vk_framebuffer.hh"
 #include "vk_memory.hh"
 #include "vk_pipeline.hh"
 #include "vk_texture.hh"
@@ -72,17 +73,19 @@ void VKCommandBuffer::bind(const VKDescriptorSet &descriptor_set,
       vk_command_buffer_, bind_point, vk_pipeline_layout, 0, 1, &vk_descriptor_set, 0, 0);
 }
 
-void VKCommandBuffer::bind(const VkRenderPass vk_render_pass,
-                           const VkFramebuffer vk_framebuffer,
-                           VkRect2D render_area)
+void VKCommandBuffer::begin_render_pass(const VKFrameBuffer &framebuffer)
 {
-  VkRenderPassBeginInfo render_pass_begin_info{};
+  VkRenderPassBeginInfo render_pass_begin_info = {};
   render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-  render_pass_begin_info.renderPass = vk_render_pass;
-  render_pass_begin_info.framebuffer = vk_framebuffer;
-  render_pass_begin_info.renderArea = render_area;
-
+  render_pass_begin_info.renderPass = framebuffer.vk_render_pass_get();
+  render_pass_begin_info.framebuffer = framebuffer.vk_framebuffer_get();
+  render_pass_begin_info.renderArea = framebuffer.vk_render_area_get();
   vkCmdBeginRenderPass(vk_command_buffer_, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+}
+
+void VKCommandBuffer::end_render_pass(const VKFrameBuffer & /*framebuffer*/)
+{
+  vkCmdEndRenderPass(vk_command_buffer_);
 }
 
 void VKCommandBuffer::push_constants(const VKPushConstants &push_constants,

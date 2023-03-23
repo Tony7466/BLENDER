@@ -14,7 +14,7 @@ static void test_framebuffer_clear_color_single_attachment()
   const int2 size(10, 10);
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_HOST_READ;
   GPUTexture *texture = GPU_texture_create_2d(
-      __func__, UNPACK2(size), 1, GPU_RGBA16F, usage, nullptr);
+      __func__, UNPACK2(size), 1, GPU_RGBA32F, usage, nullptr);
 
   GPUFrameBuffer *framebuffer = GPU_framebuffer_create(__func__);
   GPU_framebuffer_ensure_config(&framebuffer,
@@ -41,9 +41,9 @@ static void test_framebuffer_clear_color_multiple_attachments()
   const int2 size(10, 10);
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_HOST_READ;
   GPUTexture *texture1 = GPU_texture_create_2d(
-      __func__, UNPACK2(size), 1, GPU_RGBA16F, usage, nullptr);
+      __func__, UNPACK2(size), 1, GPU_RGBA32F, usage, nullptr);
   GPUTexture *texture2 = GPU_texture_create_2d(
-      __func__, UNPACK2(size), 1, GPU_RGBA16F, usage, nullptr);
+      __func__, UNPACK2(size), 1, GPU_RGBA32F, usage, nullptr);
 
   GPUFrameBuffer *framebuffer = GPU_framebuffer_create(__func__);
   GPU_framebuffer_ensure_config(
@@ -78,9 +78,9 @@ static void test_framebuffer_clear_multiple_color_multiple_attachments()
   const int2 size(10, 10);
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_HOST_READ;
   GPUTexture *texture1 = GPU_texture_create_2d(
-      __func__, UNPACK2(size), 1, GPU_RGBA16F, usage, nullptr);
+      __func__, UNPACK2(size), 1, GPU_RGBA32F, usage, nullptr);
   GPUTexture *texture2 = GPU_texture_create_2d(
-      __func__, UNPACK2(size), 1, GPU_RGBA16F, usage, nullptr);
+      __func__, UNPACK2(size), 1, GPU_RGBA32F, usage, nullptr);
 
   GPUFrameBuffer *framebuffer = GPU_framebuffer_create(__func__);
   GPU_framebuffer_ensure_config(

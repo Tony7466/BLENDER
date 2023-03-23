@@ -54,13 +54,17 @@ void VKFrameBuffer::bind(bool /*enabled_srgb*/)
   update_attachments();
 
   VKContext &context = *VKContext::get();
-  VKCommandBuffer &command_buffer = context.command_buffer_get();
+  context.activate_framebuffer(*this);
+}
+
+VkRect2D VKFrameBuffer::vk_render_area_get() const
+{
   VkRect2D render_area{};
   render_area.offset.x = 0;
   render_area.offset.y = 0;
   render_area.extent.width = width_;
   render_area.extent.height = height_;
-  command_buffer.bind(vk_render_pass_, vk_framebuffer_, render_area);
+  return render_area;
 }
 
 bool VKFrameBuffer::check(char /*err_out*/[256])
@@ -68,52 +72,74 @@ bool VKFrameBuffer::check(char /*err_out*/[256])
   return false;
 }
 
-void VKFrameBuffer::clear(eGPUFrameBufferBits buffers,
-                          const float clear_col[4],
-                          float clear_depth,
-                          uint clear_stencil)
+void VKFrameBuffer::build_clear_attachments_depth_stencil(
+    const eGPUFrameBufferBits buffers,
+    float clear_depth,
+    uint32_t clear_stencil,
+    Vector<VkClearAttachment> &r_attachments) const
 {
-  Vector<VkClearAttachment> clear_attachments;
+  VkClearAttachment clear_attachment = {};
+  clear_attachment.aspectMask = (buffers & GPU_DEPTH_BIT ? VK_IMAGE_ASPECT_DEPTH_BIT : 0) |
+                                (buffers & GPU_STENCIL_BIT ? VK_IMAGE_ASPECT_STENCIL_BIT : 0);
+  clear_attachment.clearValue.depthStencil.depth = clear_depth;
+  clear_attachment.clearValue.depthStencil.stencil = clear_stencil;
+  r_attachments.append(clear_attachment);
+}
 
-  if (buffers & (GPU_DEPTH_BIT | GPU_STENCIL_BIT)) {
-    VkClearAttachment clear_attachment = {};
-    clear_attachment.aspectMask = (buffers & GPU_DEPTH_BIT ? VK_IMAGE_ASPECT_DEPTH_BIT : 0) |
-                                  (buffers & GPU_STENCIL_BIT ? VK_IMAGE_ASPECT_STENCIL_BIT : 0);
-    clear_attachment.clearValue.depthStencil.depth = clear_depth;
-    clear_attachment.clearValue.depthStencil.stencil = clear_stencil;
-    clear_attachments.append(clear_attachment);
-  }
-
-  if (buffers & GPU_COLOR_BIT) {
-    for (int color_slot = 0; color_slot < GPU_FB_MAX_COLOR_ATTACHMENT; color_slot++) {
-      GPUAttachment &attachment = attachments_[GPU_FB_COLOR_ATTACHMENT0 + color_slot];
-      if (attachment.tex == nullptr) {
-        continue;
-      }
-      VkClearAttachment clear_attachment = {};
-      clear_attachment.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-      clear_attachment.colorAttachment = color_slot;
-      copy_v4_v4(clear_attachment.clearValue.color.float32, clear_col);
-      clear_attachments.append(clear_attachment);
+void VKFrameBuffer::build_clear_attachments_color(const float (*clear_colors)[4],
+                                                  const bool multi_clear_colors,
+                                                  Vector<VkClearAttachment> &r_attachments) const
+{
+  int color_index = 0;
+  for (int color_slot = 0; color_slot < GPU_FB_MAX_COLOR_ATTACHMENT; color_slot++) {
+    const GPUAttachment &attachment = attachments_[GPU_FB_COLOR_ATTACHMENT0 + color_slot];
+    if (attachment.tex == nullptr) {
+      continue;
     }
-  }
+    VkClearAttachment clear_attachment = {};
+    clear_attachment.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    clear_attachment.colorAttachment = color_slot;
+    copy_v4_v4(clear_attachment.clearValue.color.float32, clear_colors[color_index]);
+    r_attachments.append(clear_attachment);
 
+    color_index += multi_clear_colors ? 1 : 0;
+  }
+}
+
+void VKFrameBuffer::clear(const Vector<VkClearAttachment> &attachments) const
+{
   VkClearRect clear_rect = {};
-  /* Extract to function? I expect I need this multiple times. */
-  clear_rect.rect.offset.x = 1;
-  clear_rect.rect.offset.y = 1;
-  clear_rect.rect.extent.width = width_;
-  clear_rect.rect.extent.height = height_;
+  clear_rect.rect = vk_render_area_get();
   clear_rect.baseArrayLayer = 0;
   clear_rect.layerCount = 1;
 
   VKContext &context = *VKContext::get();
   VKCommandBuffer &command_buffer = context.command_buffer_get();
-  command_buffer.clear(clear_attachments, Span<VkClearRect>(&clear_rect, 1));
+  command_buffer.clear(attachments, Span<VkClearRect>(&clear_rect, 1));
 }
 
-void VKFrameBuffer::clear_multi(const float (* /*clear_col*/)[4])
+void VKFrameBuffer::clear(const eGPUFrameBufferBits buffers,
+                          const float clear_color[4],
+                          float clear_depth,
+                          uint clear_stencil)
 {
+  Vector<VkClearAttachment> attachments;
+  if (buffers & (GPU_DEPTH_BIT | GPU_STENCIL_BIT)) {
+    build_clear_attachments_depth_stencil(buffers, clear_depth, clear_stencil, attachments);
+  }
+  if (buffers & GPU_COLOR_BIT) {
+    float clear_color_single[4];
+    copy_v4_v4(clear_color_single, clear_color);
+    build_clear_attachments_color(&clear_color_single, false, attachments);
+  }
+  clear(attachments);
+}
+
+void VKFrameBuffer::clear_multi(const float (*clear_color)[4])
+{
+  Vector<VkClearAttachment> attachments;
+  build_clear_attachments_color(clear_color, true, attachments);
+  clear(attachments);
 }
 
 void VKFrameBuffer::clear_attachment(GPUAttachmentType /*type*/,
@@ -212,7 +238,7 @@ void VKFrameBuffer::render_pass_create()
   subpass.colorAttachmentCount = color_attachments.size();
   subpass.pColorAttachments = color_attachments.data();
 
-  VkRenderPassCreateInfo render_pass_info{};
+  VkRenderPassCreateInfo render_pass_info = {};
   render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
   render_pass_info.attachmentCount = attachment_descriptions.size();
   render_pass_info.pAttachments = attachment_descriptions.data();
@@ -235,7 +261,7 @@ void VKFrameBuffer::render_pass_create()
     this->size_set(0, 0);
   }
 
-  VkFramebufferCreateInfo framebuffer_create_info{};
+  VkFramebufferCreateInfo framebuffer_create_info = {};
   framebuffer_create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
   framebuffer_create_info.renderPass = vk_render_pass_;
   framebuffer_create_info.attachmentCount = image_views.size();

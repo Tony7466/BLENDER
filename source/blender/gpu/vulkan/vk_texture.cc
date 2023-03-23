@@ -215,9 +215,30 @@ void VKTexture::ensure_allocated()
   }
 }
 
-bool VKTexture::is_allocated()
+bool VKTexture::is_allocated() const
 {
   return vk_image_ != VK_NULL_HANDLE && allocation_ != VK_NULL_HANDLE;
+}
+
+static VkImageUsageFlagBits to_vk_image_usage(const eGPUTextureUsage usage)
+{
+  VkImageUsageFlagBits result = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+                                                                  VK_IMAGE_USAGE_SAMPLED_BIT);
+  if (usage & GPU_TEXTURE_USAGE_SHADER_READ) {
+    result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_STORAGE_BIT);
+  }
+  if (usage & GPU_TEXTURE_USAGE_SHADER_WRITE) {
+    result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_STORAGE_BIT);
+  }
+  if (usage & GPU_TEXTURE_USAGE_ATTACHMENT) {
+    /* TODO add other types of attachments based on the format. */
+    result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+  }
+  if (usage & GPU_TEXTURE_USAGE_HOST_READ) {
+    result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+  }
+
+  return result;
 }
 
 bool VKTexture::allocate()
@@ -237,12 +258,14 @@ bool VKTexture::allocate()
   image_info.mipLevels = 1;
   image_info.arrayLayers = 1;
   image_info.format = to_vk_format(format_);
-  image_info.tiling = VK_IMAGE_TILING_LINEAR;
+  /* Some platforms (NVIDIA) requires that attached textures are always tiled optimal.
+   *
+   * As image data are always accessed via an staging buffer we can enable optimal tiling for all
+   * texture. Tilings based on actual usages should be done in `VKFramebuffer`.
+   */
+  image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
   image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  image_info.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-                     VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
-  // TODO: this conflicts with other usages.  | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-  image_info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+  image_info.usage = to_vk_image_usage(gpu_image_usage_flags_);
   image_info.samples = VK_SAMPLE_COUNT_1_BIT;
 
   VkResult result;
@@ -263,8 +286,6 @@ bool VKTexture::allocate()
 
   VmaAllocationCreateInfo allocCreateInfo = {};
   allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
-  allocCreateInfo.flags = static_cast<VmaAllocationCreateFlagBits>(
-      VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
   allocCreateInfo.priority = 1.0f;
   result = vmaCreateImage(context.mem_allocator_get(),
                           &image_info,

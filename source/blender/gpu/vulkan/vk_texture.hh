@@ -43,10 +43,12 @@ class VKTexture : public Texture {
   void image_bind(int location);
   VkImage vk_image_handle() const
   {
+    BLI_assert(is_allocated());
     return vk_image_;
   }
   VkImageView vk_image_view_handle() const
   {
+    BLI_assert(is_allocated());
     return vk_image_view_;
   }
 
@@ -59,7 +61,7 @@ class VKTexture : public Texture {
 
  private:
   /** Is this texture already allocated on device. */
-  bool is_allocated();
+  bool is_allocated() const;
   /**
    * Allocate the texture of the device. Result is `true` when texture is successfully allocated
    * on the device.
