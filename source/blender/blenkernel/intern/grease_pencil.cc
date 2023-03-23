@@ -88,6 +88,7 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
     }
   }
 
+  /* Duplicate runtime data. */
   if (grease_pencil_src->runtime) {
     grease_pencil_dst->runtime = MEM_new<bke::GreasePencilRuntime>(__func__,
                                                                    *grease_pencil_src->runtime);
@@ -539,7 +540,7 @@ void GreasePencil::write_layer_tree_storage(BlendWriter *writer)
 
 void GreasePencil::free_layer_tree_storage()
 {
-  if (this->layer_tree_storage.nodes_num == 0 || !this->layer_tree_storage.nodes) {
+  if (this->layer_tree_storage.nodes_num == 0 || this->layer_tree_storage.nodes == nullptr) {
     return;
   }
   for (int i = 0; i < this->layer_tree_storage.nodes_num; i++) {
