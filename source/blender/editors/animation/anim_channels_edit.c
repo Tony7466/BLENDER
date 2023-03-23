@@ -58,6 +58,7 @@
 /* -------------------------------------------------------------------- */
 /** \name Channel helper functions
  * \{ */
+
 static bool get_normalized_fcurve_bounds(FCurve *fcu,
                                          bAnimContext *ac,
                                          const bAnimListElem *ale,
