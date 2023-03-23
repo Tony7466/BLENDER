@@ -85,19 +85,15 @@ static bool is_vklayer_exist(const char* vk_extension_config)
   if (ev_val == nullptr) {
     return false;
   }
-  bool exists = false;
-  if (ev_val != nullptr) {
-    const size_t size_max =  strlen(ev_val) +  strlen(vk_extension_config) + 2;
-    char *filename = (char *)malloc(size_max);
-    memset(filename, 0, size_max);
-    strcpy(filename, ev_val);
-    strcat(filename, "/");
-    strcat(filename, vk_extension_config);
-    struct stat buffer;
-    exists = (stat(filename, &buffer) == 0);
-    free(filename);
-  }
-
+  const size_t size_max =  strlen(ev_val) +  strlen(vk_extension_config) + 2;
+  char *filename = (char *)malloc(size_max);
+  memset(filename, 0, size_max);
+  strcpy(filename, ev_val);
+  strcat(filename, "/");
+  strcat(filename, vk_extension_config);
+  struct stat buffer;
+  bool exists = (stat(filename, &buffer) == 0);
+  free(filename);
   return exists;
 }
 #define __STR(A) "" #A
