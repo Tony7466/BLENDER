@@ -178,8 +178,8 @@ if(NOT MSVC_CLANG)
 endif()
 
 if(WITH_WINDOWS_SCCACHE AND CMAKE_VS_MSBUILD_COMMAND)
-    message(WARNING "Disabling sccache, sccache is not supported with msbuild")
-    set(WITH_WINDOWS_SCCACHE OFF)
+  message(WARNING "Disabling sccache, sccache is not supported with msbuild")
+  set(WITH_WINDOWS_SCCACHE OFF)
 endif()
 
 # Debug Symbol format
@@ -989,6 +989,23 @@ if(WITH_VULKAN_BACKEND)
     set(VULKAN_LIBRARIES ${VULKAN_LIBRARY})
   else()
     message(WARNING "Vulkan SDK was not found, disabling WITH_VULKAN_BACKEND")
+    set(WITH_VULKAN_BACKEND OFF)
+  endif()
+endif()
+
+if(WITH_VULKAN_BACKEND)
+  if(EXISTS ${LIBDIR}/shaderc)
+    set(SHADERC_FOUND On)
+    set(SHADERC_ROOT_DIR ${LIBDIR}/shaderc)
+    set(SHADERC_INCLUDE_DIR ${SHADERC_ROOT_DIR}/include)
+    set(SHADERC_INCLUDE_DIRS ${SHADERC_INCLUDE_DIR})
+    set(SHADERC_LIBRARY
+      DEBUG ${SHADERC_ROOT_DIR}/lib/shaderc_shared_d.lib
+      OPTIMIZED ${SHADERC_ROOT_DIR}/lib/shaderc_shared.lib
+    )
+    set(SHADERC_LIBRARIES ${SHADERC_LIBRARY})
+  else()
+    message(WARNING "Shaderc was not found, disabling WITH_VULKAN_BACKEND")
     set(WITH_VULKAN_BACKEND OFF)
   endif()
 endif()

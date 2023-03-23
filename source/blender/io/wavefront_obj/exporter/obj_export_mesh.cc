@@ -9,7 +9,7 @@
 #include "BKE_deform.h"
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.h"
 #include "BKE_object.h"
 
@@ -43,7 +43,9 @@ OBJMesh::OBJMesh(Depsgraph *depsgraph, const OBJExportParams &export_params, Obj
     mesh_positions_ = export_mesh_->vert_positions();
     mesh_edges_ = export_mesh_->edges();
     mesh_polys_ = export_mesh_->polys();
-    mesh_loops_ = export_mesh_->loops();
+    mesh_corner_verts_ = export_mesh_->corner_verts();
+    sharp_faces_ = export_mesh_->attributes().lookup_or_default<bool>(
+        "sharp_face", ATTR_DOMAIN_FACE, false);
   }
   else {
     /* Curves and NURBS surfaces need a new mesh when they're
@@ -75,7 +77,9 @@ void OBJMesh::set_mesh(Mesh *mesh)
   mesh_positions_ = mesh->vert_positions();
   mesh_edges_ = mesh->edges();
   mesh_polys_ = mesh->polys();
-  mesh_loops_ = mesh->loops();
+  mesh_corner_verts_ = mesh->corner_verts();
+  sharp_faces_ = export_mesh_->attributes().lookup_or_default<bool>(
+      "sharp_face", ATTR_DOMAIN_FACE, false);
 }
 
 void OBJMesh::clear()
@@ -194,12 +198,15 @@ void OBJMesh::calc_smooth_groups(const bool use_bitflags)
 {
   const bool *sharp_edges = static_cast<const bool *>(
       CustomData_get_layer_named(&export_mesh_->edata, CD_PROP_BOOL, "sharp_edge"));
+  const bool *sharp_faces = static_cast<const bool *>(
+      CustomData_get_layer_named(&export_mesh_->pdata, CD_PROP_BOOL, "sharp_face"));
   poly_smooth_groups_ = BKE_mesh_calc_smoothgroups(mesh_edges_.size(),
                                                    mesh_polys_.data(),
                                                    mesh_polys_.size(),
-                                                   mesh_loops_.data(),
-                                                   mesh_loops_.size(),
+                                                   export_mesh_->corner_edges().data(),
+                                                   export_mesh_->totloop,
                                                    sharp_edges,
+                                                   sharp_faces,
                                                    &tot_smooth_groups_,
                                                    use_bitflags);
 }
@@ -245,7 +252,7 @@ const Material *OBJMesh::get_object_material(const int16_t mat_nr) const
 
 bool OBJMesh::is_ith_poly_smooth(const int poly_index) const
 {
-  return mesh_polys_[poly_index].flag & ME_SMOOTH;
+  return !sharp_faces_[poly_index];
 }
 
 const char *OBJMesh::get_object_name() const
@@ -275,16 +282,10 @@ float3 OBJMesh::calc_vertex_coords(const int vert_index, const float global_scal
   return r_coords;
 }
 
-Vector<int> OBJMesh::calc_poly_vertex_indices(const int poly_index) const
+Span<int> OBJMesh::calc_poly_vertex_indices(const int poly_index) const
 {
   const MPoly &poly = mesh_polys_[poly_index];
-  const MLoop *mloop = &mesh_loops_[poly.loopstart];
-  const int totloop = poly.totloop;
-  Vector<int> r_poly_vertex_indices(totloop);
-  for (int loop_index = 0; loop_index < totloop; loop_index++) {
-    r_poly_vertex_indices[loop_index] = mloop[loop_index].v;
-  }
-  return r_poly_vertex_indices;
+  return mesh_corner_verts_.slice(poly.loopstart, poly.totloop);
 }
 
 void OBJMesh::store_uv_coords_and_indices()
@@ -305,7 +306,7 @@ void OBJMesh::store_uv_coords_and_indices()
       mesh_polys_.data(),
       nullptr,
       nullptr,
-      mesh_loops_.data(),
+      mesh_corner_verts_.data(),
       reinterpret_cast<const float(*)[2]>(uv_map.data()),
       mesh_polys_.size(),
       totvert,
@@ -354,12 +355,9 @@ Span<int> OBJMesh::calc_poly_uv_indices(const int poly_index) const
 
 float3 OBJMesh::calc_poly_normal(const int poly_index) const
 {
-  float3 r_poly_normal;
   const MPoly &poly = mesh_polys_[poly_index];
-  BKE_mesh_calc_poly_normal(&poly,
-                            &mesh_loops_[poly.loopstart],
-                            reinterpret_cast<const float(*)[3]>(mesh_positions_.data()),
-                            r_poly_normal);
+  float3 r_poly_normal = bke::mesh::poly_normal_calc(
+      mesh_positions_, mesh_corner_verts_.slice(poly.loopstart, poly.totloop));
   mul_m3_v3(world_and_axes_normal_transform_, r_poly_normal);
   normalize_v3(r_poly_normal);
   return r_poly_normal;
@@ -399,7 +397,7 @@ void OBJMesh::store_normal_coords_and_indices()
       CustomData_get_layer(&export_mesh_->ldata, CD_NORMAL));
   for (int poly_index = 0; poly_index < export_mesh_->totpoly; ++poly_index) {
     const MPoly &poly = mesh_polys_[poly_index];
-    bool need_per_loop_normals = lnors != nullptr || (poly.flag & ME_SMOOTH);
+    bool need_per_loop_normals = lnors != nullptr || !(sharp_faces_[poly_index]);
     if (need_per_loop_normals) {
       for (int loop_of_poly = 0; loop_of_poly < poly.totloop; ++loop_of_poly) {
         float3 loop_normal;
@@ -473,9 +471,8 @@ int16_t OBJMesh::get_poly_deform_group_index(const int poly_index,
   group_weights.fill(0);
   bool found_any_group = false;
   const MPoly &poly = mesh_polys_[poly_index];
-  const MLoop *mloop = &mesh_loops_[poly.loopstart];
-  for (int loop_i = 0; loop_i < poly.totloop; ++loop_i, ++mloop) {
-    const MDeformVert &dv = dverts[mloop->v];
+  for (const int vert : mesh_corner_verts_.slice(poly.loopstart, poly.totloop)) {
+    const MDeformVert &dv = dverts[vert];
     for (int weight_i = 0; weight_i < dv.totweight; ++weight_i) {
       const auto group = dv.dw[weight_i].def_nr;
       if (group < group_weights.size()) {

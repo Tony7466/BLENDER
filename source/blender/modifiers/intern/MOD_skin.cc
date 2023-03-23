@@ -59,7 +59,7 @@
 #include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_lib_id.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.h"
 #include "BKE_modifier.h"
 #include "BKE_screen.h"
@@ -464,8 +464,8 @@ static Frame **collect_hull_frames(int v,
   hull_frames = MEM_cnew_array<Frame *>(*tothullframe, __func__);
   hull_frames_num = 0;
   for (i = 0; i < emap[v].count; i++) {
-    const MEdge *edge = &edges[emap[v].indices[i]];
-    f = &frames[BKE_mesh_edge_other_vert(edge, v)];
+    const MEdge &edge = edges[emap[v].indices[i]];
+    f = &frames[blender::bke::mesh::edge_other_vert(edge, v)];
     /* Can't have adjacent branch nodes yet */
     if (f->totframe) {
       hull_frames[hull_frames_num++] = &f->frames[0];
@@ -745,7 +745,7 @@ static void build_emats_stack(BLI_Stack *stack,
 
   parent_is_branch = ((emap[parent_v].count > 2) || (vs[parent_v].flag & MVERT_SKIN_ROOT));
 
-  v = BKE_mesh_edge_other_vert(&edges[e], parent_v);
+  v = blender::bke::mesh::edge_other_vert(edges[e], parent_v);
   emat[e].origin = parent_v;
 
   /* If parent is a branch node, start a new edge chain */
@@ -796,9 +796,10 @@ static EMat *build_edge_mats(const MVertSkin *vs,
   for (v = 0; v < verts_num; v++) {
     if (vs[v].flag & MVERT_SKIN_ROOT) {
       if (emap[v].count >= 1) {
-        const MEdge *edge = &edges[emap[v].indices[0]];
-        calc_edge_mat(
-            stack_elem.mat, vert_positions[v], vert_positions[BKE_mesh_edge_other_vert(edge, v)]);
+        const MEdge &edge = edges[emap[v].indices[0]];
+        calc_edge_mat(stack_elem.mat,
+                      vert_positions[v],
+                      vert_positions[blender::bke::mesh::edge_other_vert(edge, v)]);
         stack_elem.parent_v = v;
 
         /* Add adjacent edges to stack */
@@ -837,7 +838,7 @@ static EMat *build_edge_mats(const MVertSkin *vs,
 static int calc_edge_subdivisions(const float (*vert_positions)[3],
                                   const MVertSkin *nodes,
                                   const MEdge *edge,
-                                  const int *degree)
+                                  const blender::Span<int> degree)
 {
   /* prevent memory errors #38003. */
 #define NUM_SUBDIVISIONS_MAX 128
@@ -905,21 +906,19 @@ static Mesh *subdivide_base(const Mesh *orig)
   int orig_edge_num = orig->totedge;
 
   /* Get degree of all vertices */
-  int *degree = MEM_cnew_array<int>(orig_vert_num, __func__);
+  blender::Array<int> degree(orig_vert_num, 0);
   for (i = 0; i < orig_edge_num; i++) {
     degree[orig_edges[i].v1]++;
     degree[orig_edges[i].v2]++;
   }
 
   /* Per edge, store how many subdivisions are needed */
-  int *edge_subd = MEM_cnew_array<int>(orig_edge_num, __func__);
+  blender::Array<int> edge_subd(orig_edge_num, 0);
   for (i = 0, subd_num = 0; i < orig_edge_num; i++) {
     edge_subd[i] += calc_edge_subdivisions(orig_vert_positions, orignode, &orig_edges[i], degree);
     BLI_assert(edge_subd[i] >= 0);
     subd_num += edge_subd[i];
   }
-
-  MEM_freeN(degree);
 
   /* Allocate output mesh */
   Mesh *result = BKE_mesh_new_nomain_from_template(
@@ -1023,8 +1022,6 @@ static Mesh *subdivide_base(const Mesh *orig)
     result_edges[result_edge_i].v2 = edge->v2;
     result_edge_i++;
   }
-
-  MEM_freeN(edge_subd);
 
   return result;
 }
@@ -1896,7 +1893,7 @@ static BMesh *build_skin(SkinNode *skin_nodes,
 static void skin_set_orig_indices(Mesh *mesh)
 {
   int *orig = static_cast<int *>(
-      CustomData_add_layer(&mesh->pdata, CD_ORIGINDEX, CD_CONSTRUCT, nullptr, mesh->totpoly));
+      CustomData_add_layer(&mesh->pdata, CD_ORIGINDEX, CD_CONSTRUCT, mesh->totpoly));
   copy_vn_i(orig, mesh->totpoly, ORIGINDEX_NONE);
 }
 
