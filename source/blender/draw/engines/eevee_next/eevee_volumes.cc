@@ -380,10 +380,7 @@ void Volumes::end_sync()
   bind_common_resources(integration_ps_);
   resolve_ps_.bind_texture("inScattering", &scatter_tx_);
   resolve_ps_.bind_texture("inTransmittance", &transmit_tx_);
-#if 0
-    /* TODO */
-    resolve_ps_.bind_texture("inSceneDepth", &e_data.depth_src);
-#endif
+  resolve_ps_.bind_texture("inSceneDepth", &inst_.render_buffers.depth_tx);
   resolve_ps_.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z);
 }
 
