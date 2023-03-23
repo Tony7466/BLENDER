@@ -281,8 +281,8 @@ DRWShadingGroup *DRW_shgroup_volume_create_sub(Scene *scene,
 
 namespace blender::draw {
 
-static bool volume_world_grids_init(PassMain::Sub &ps,
-                                    ListBaseWrapper<GPUMaterialAttribute> &attrs)
+template<typename PassType>
+bool volume_world_grids_init(PassType &ps, ListBaseWrapper<GPUMaterialAttribute> &attrs)
 {
   for (const GPUMaterialAttribute *attr : attrs) {
     ps.bind_texture(attr->input_name, grid_default_texture(attr->default_value));
@@ -291,9 +291,10 @@ static bool volume_world_grids_init(PassMain::Sub &ps,
   return true;
 }
 
-static bool volume_object_grids_init(PassMain::Sub &ps,
-                                     Object *ob,
-                                     ListBaseWrapper<GPUMaterialAttribute> &attrs)
+template<typename PassType>
+bool volume_object_grids_init(PassType &ps,
+                              Object *ob,
+                              ListBaseWrapper<GPUMaterialAttribute> &attrs)
 {
   VolumeUniformBufPool *pool = (VolumeUniformBufPool *)DST.vmempool->volume_grids_ubos;
   VolumeInfosBuf &volume_infos = *pool->alloc();
@@ -320,7 +321,7 @@ static bool volume_object_grids_init(PassMain::Sub &ps,
   }
 
   /* Bind volume grid textures. */
-  int grid_id = 0, grids_len = 0;
+  int grid_id = 0;
   for (const GPUMaterialAttribute *attr : attrs) {
     const VolumeGrid *volume_grid = BKE_volume_grid_find_for_read(volume, attr->name);
     const DRWVolumeGrid *drw_grid = (volume_grid) ?
@@ -347,10 +348,11 @@ static bool volume_object_grids_init(PassMain::Sub &ps,
   return true;
 }
 
-static bool drw_volume_object_mesh_init(PassMain::Sub &ps,
-                                        Scene *scene,
-                                        Object *ob,
-                                        ListBaseWrapper<GPUMaterialAttribute> &attrs)
+template<typename PassType>
+bool drw_volume_object_mesh_init(PassType &ps,
+                                 Scene *scene,
+                                 Object *ob,
+                                 ListBaseWrapper<GPUMaterialAttribute> &attrs)
 {
   VolumeUniformBufPool *pool = (VolumeUniformBufPool *)DST.vmempool->volume_grids_ubos;
   VolumeInfosBuf &volume_infos = *pool->alloc();
@@ -421,7 +423,11 @@ static bool drw_volume_object_mesh_init(PassMain::Sub &ps,
   return true;
 }
 
-bool volume_sub_pass(PassMain::Sub &ps, Scene *scene, Object *ob, GPUMaterial *gpu_material)
+template<typename PassType>
+bool volume_sub_pass_implementation(PassType &ps,
+                                    Scene *scene,
+                                    Object *ob,
+                                    GPUMaterial *gpu_material)
 {
   ListBase attr_list = GPU_material_attributes(gpu_material);
   ListBaseWrapper<GPUMaterialAttribute> attrs(attr_list);
@@ -434,6 +440,16 @@ bool volume_sub_pass(PassMain::Sub &ps, Scene *scene, Object *ob, GPUMaterial *g
   else {
     return drw_volume_object_mesh_init(ps, scene, ob, attrs);
   }
+}
+
+bool volume_sub_pass(PassMain::Sub &ps, Scene *scene, Object *ob, GPUMaterial *gpu_material)
+{
+  return volume_sub_pass_implementation(ps, scene, ob, gpu_material);
+}
+
+bool volume_sub_pass(PassSimple::Sub &ps, Scene *scene, Object *ob, GPUMaterial *gpu_material)
+{
+  return volume_sub_pass_implementation(ps, scene, ob, gpu_material);
 }
 
 }  // namespace blender::draw
