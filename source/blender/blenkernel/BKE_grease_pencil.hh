@@ -442,6 +442,9 @@ class GreasePencilRuntime {
   {
     return root_group_;
   }
+
+ public:
+  void *batch_cache = nullptr;
 };
 
 }  // namespace blender::bke

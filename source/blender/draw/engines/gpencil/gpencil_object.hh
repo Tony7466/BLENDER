@@ -112,10 +112,10 @@ class ObjectModule {
     // objects_buf_.shrink();
   }
 
-  void sync_gpencil(Manager &manager,
-                    ObjectRef &object_ref,
-                    Framebuffer &main_fb,
-                    PassSortable &main_ps)
+  void sync_grease_pencil(Manager &manager,
+                          ObjectRef &object_ref,
+                          Framebuffer &main_fb,
+                          PassSortable &main_ps)
   {
     using namespace blender::bke::gpencil;
 
@@ -126,7 +126,7 @@ class ObjectModule {
       return;
     }
 
-    const bool is_stroke_order_3d = true; /* TODO */
+    const bool is_stroke_order_3d = false; /* TODO */
     bool do_material_holdout = false;
     bool do_layer_blending = false;
     bool object_has_vfx = false;  // TODO vfx.object_has_vfx(gpd);
@@ -171,9 +171,10 @@ class ObjectModule {
           ob.layer_offset = layer_offset;
           ob.material_offset = material_offset;
 
-          GPUVertBuf *position_tx = DRW_cache_gpencil_position_buffer_get(object, current_frame_);
-          GPUVertBuf *color_tx = DRW_cache_gpencil_color_buffer_get(object, current_frame_);
-          GPUBatch *geom = DRW_cache_gpencil_get(object, current_frame_);
+          GPUVertBuf *position_tx = DRW_cache_grease_pencil_position_buffer_get(object,
+                                                                                current_frame_);
+          GPUVertBuf *color_tx = DRW_cache_grease_pencil_color_buffer_get(object, current_frame_);
+          GPUBatch *geom = DRW_cache_grease_pencil_get(object, current_frame_);
 
           if (do_layer_blending) {
             // for (const LayerData &layer : frame.layers) {

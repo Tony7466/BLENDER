@@ -138,11 +138,9 @@ class Instance {
   void object_sync(Manager &manager, ObjectRef &object_ref)
   {
     switch (object_ref.object->type) {
-      // case OB_GPENCIL_LEGACY:
-      //   objects.sync_gpencil(manager, object_ref, main_fb_, main_ps_);
-      //   break;
       case OB_GREASE_PENCIL:
-        // objects.sync_gpencil(manager, object_ref, main_fb_, main_ps_);
+        objects.sync_grease_pencil(manager, object_ref, main_fb_, main_ps_);
+        break;
       case OB_LAMP:
         lights.sync(object_ref);
         break;
