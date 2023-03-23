@@ -51,27 +51,6 @@
 
 namespace blender::eevee {
 
-void Volumes::bind_common_buffers(PassMain &ps)
-{
-  ps.bind_ubo(VOLUMES_BUF_SLOT, data_);
-#if 0
-  /* TODO (Miguel Pozo) */
-  DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
-  /* TODO(fclem): remove those (need to clean the GLSL files). */
-  DRW_shgroup_uniform_block(grp, "grid_block", sldata->grid_ubo);
-  DRW_shgroup_uniform_block(grp, "probe_block", sldata->probe_ubo);
-  DRW_shgroup_uniform_block(grp, "planar_block", sldata->planar_ubo);
-  DRW_shgroup_uniform_block(grp, "light_block", sldata->light_ubo);
-  DRW_shgroup_uniform_block(grp, "shadow_block", sldata->shadow_ubo);
-  DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
-
-  /* Should this go here? */
-  ps.bind_texture("irradianceGrid", &lcache->grid_tx.tex);
-  ps.bind_texture("shadowCubeTexture", &sldata->shadow_cube_pool);
-  ps.bind_texture("shadowCascadeTexture", &sldata->shadow_cascade_pool);
-#endif
-}
-
 void Volumes::set_jitter(uint current_sample)
 {
   double ht_point[3];
@@ -230,11 +209,11 @@ void Volumes::begin_sync()
   /* World pass is not additive as it also clear the buffer. */
   world_ps_.init();
   world_ps_.state_set(DRW_STATE_WRITE_COLOR);
-  bind_common_buffers(world_ps_);
+  bind_common_resources(world_ps_);
 
   objects_ps_.init();
   objects_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ADD);
-  bind_common_buffers(objects_ps_);
+  bind_common_resources(objects_ps_);
 
   GPUMaterial *mat = nullptr;
 
@@ -251,7 +230,7 @@ void Volumes::begin_sync()
     }
   }
 
-  PassMain::Sub &ps = world_ps_.sub("World Volume");
+  PassSimple::Sub &ps = world_ps_.sub("World Volume");
   if (mat) {
     ps.shader_set(GPU_material_get_shader(mat));
     if (volume_sub_pass(ps, nullptr, nullptr, mat)) {
@@ -369,7 +348,7 @@ void Volumes::end_sync()
   scatter_ps_.state_set(DRW_STATE_WRITE_COLOR);
   scatter_ps_.shader_set(inst_.shaders.static_shader_get(
       data_.use_lights ? VOLUME_SCATTER_WITH_LIGHTS : VOLUME_SCATTER));
-  bind_common_buffers(scatter_ps_);
+  bind_common_resources(scatter_ps_);
 
   scatter_ps_.bind_texture("volumeScattering", &prop_scattering_tx_);
   scatter_ps_.bind_texture("volumeExtinction", &prop_extinction_tx_);
@@ -388,7 +367,7 @@ void Volumes::end_sync()
   integration_ps_.init();
   integration_ps_.state_set(DRW_STATE_WRITE_COLOR);
   integration_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_INTEGRATION));
-  bind_common_buffers(integration_ps_);
+  bind_common_resources(integration_ps_);
   integration_ps_.bind_texture("volumeScattering", &scatter_tx_);
   integration_ps_.bind_texture("volumeExtinction", &transmit_tx_);
   integration_ps_.bind_image("finalScattering_img", &scatter_history_tx_);
@@ -398,7 +377,7 @@ void Volumes::end_sync()
   resolve_ps_.init();
   resolve_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
   resolve_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_RESOLVE));
-  bind_common_buffers(integration_ps_);
+  bind_common_resources(integration_ps_);
   resolve_ps_.bind_texture("inScattering", &scatter_tx_);
   resolve_ps_.bind_texture("inTransmittance", &transmit_tx_);
 #if 0

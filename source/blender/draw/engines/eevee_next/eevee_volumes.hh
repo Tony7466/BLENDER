@@ -44,14 +44,33 @@ class Volumes {
   struct GPUTexture *volume_transmit;
 #endif
   /* EEVEE_PassList */
-  PassMain world_ps_ = {"Volumes.World"};
+  PassSimple world_ps_ = {"Volumes.World"};
   PassMain objects_ps_ = {"Volumes.Objects"};
-  PassMain scatter_ps_ = {"Volumes.Scatter"};
-  PassMain integration_ps_ = {"Volumes.Integration"};
-  PassMain resolve_ps_ = {"Volumes.Resolve"};
-  PassMain accum_ps_ = {"Volumes.Accum"};
+  PassSimple scatter_ps_ = {"Volumes.Scatter"};
+  PassSimple integration_ps_ = {"Volumes.Integration"};
+  PassSimple resolve_ps_ = {"Volumes.Resolve"};
+  PassSimple accum_ps_ = {"Volumes.Accum"};
 
-  void bind_common_buffers(PassMain &ps);
+  template<typename PassType> void bind_common_resources(PassType &ps)
+  {
+    ps.bind_ubo(VOLUMES_BUF_SLOT, data_);
+#if 0
+  /* TODO (Miguel Pozo) */
+  DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
+  /* TODO(fclem): remove those (need to clean the GLSL files). */
+  DRW_shgroup_uniform_block(grp, "grid_block", sldata->grid_ubo);
+  DRW_shgroup_uniform_block(grp, "probe_block", sldata->probe_ubo);
+  DRW_shgroup_uniform_block(grp, "planar_block", sldata->planar_ubo);
+  DRW_shgroup_uniform_block(grp, "light_block", sldata->light_ubo);
+  DRW_shgroup_uniform_block(grp, "shadow_block", sldata->shadow_ubo);
+  DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
+
+  /* Should this go here? */
+  ps.bind_texture("irradianceGrid", &lcache->grid_tx.tex);
+  ps.bind_texture("shadowCubeTexture", &sldata->shadow_cube_pool);
+  ps.bind_texture("shadowCascadeTexture", &sldata->shadow_cascade_pool);
+#endif
+  }
 
  public:
   Volumes(Instance &inst) : inst_(inst){};
