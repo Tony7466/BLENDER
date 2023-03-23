@@ -181,7 +181,8 @@ typedef struct GreasePencil {
    * An array of materials.
    */
   struct Material **material_array;
-  int material_array_size;
+  short material_array_size;
+  char _pad2[2];
 
   /**
    * Global flag on the data-block.

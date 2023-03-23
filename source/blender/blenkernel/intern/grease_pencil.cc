@@ -7,6 +7,7 @@
 #include "BKE_anim_data.h"
 #include "BKE_curves.hh"
 #include "BKE_customdata.h"
+#include "BKE_grease_pencil.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_idtype.h"
 #include "BKE_lib_id.h"
@@ -51,6 +52,10 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
   printf("grease_pencil_copy_data\n");
   GreasePencil *grease_pencil_dst = (GreasePencil *)id_dst;
   const GreasePencil *grease_pencil_src = (GreasePencil *)id_src;
+
+  /* Duplicate material array. */
+  grease_pencil_dst->material_array = static_cast<Material **>(
+      MEM_dupallocN(grease_pencil_src->material_array));
 
   /* Duplicate drawing array. */
   grease_pencil_dst->drawing_array_size = grease_pencil_src->drawing_array_size;

@@ -384,7 +384,7 @@ short *BKE_object_material_len_p(Object *ob)
   }
   if (ob->type == OB_GREASE_PENCIL) {
     GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
-    return reinterpret_cast<short *>(&(grease_pencil->material_array_size));
+    return &(grease_pencil->material_array_size);
   }
   return nullptr;
 }
@@ -409,6 +409,8 @@ Material ***BKE_id_material_array_p(ID *id)
       return &(((PointCloud *)id)->mat);
     case ID_VO:
       return &(((Volume *)id)->mat);
+    case ID_GP:
+      return &(((GreasePencil *)id)->material_array);
     default:
       break;
   }
@@ -435,6 +437,8 @@ short *BKE_id_material_len_p(ID *id)
       return &(((PointCloud *)id)->totcol);
     case ID_VO:
       return &(((Volume *)id)->totcol);
+    case ID_GP:
+      return &(((GreasePencil *)id)->material_array_size);
     default:
       break;
   }
