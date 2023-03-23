@@ -168,20 +168,36 @@ static void set_fcurve_vertex_color(FCurve *fcu, bool sel)
   immUniformColor4fv(color);
 }
 
-static void draw_fcurve_selected_keyframe_vertices(
-    FCurve *fcu, View2D *v2d, bool edit, bool sel, uint pos)
+/* Draw a cross at the given position. Shader must already be bound.
+ * NOTE: the caller MUST HAVE GL_LINE_SMOOTH & GL_BLEND ENABLED, otherwise the controls don't
+ * have a consistent appearance (due to off-pixel alignments).
+ */
+static void draw_x(float position[2], float scale[2], uint attr_id)
+{
+  GPU_matrix_push();
+  GPU_matrix_translate_2fv(position);
+  GPU_matrix_scale_2f(1.0f / scale[0], 1.0f / scale[1]);
+
+  /* Draw X shape. */
+  const float line_length = 0.7f;
+  immBegin(GPU_PRIM_LINES, 4);
+  immVertex2f(attr_id, -line_length, -line_length);
+  immVertex2f(attr_id, +line_length, +line_length);
+
+  immVertex2f(attr_id, -line_length, +line_length);
+  immVertex2f(attr_id, +line_length, -line_length);
+  immEnd();
+
+  GPU_matrix_pop();
+}
+
+static void draw_fcurve_selected_keyframe_vertices(FCurve *fcu, View2D *v2d, bool sel, uint pos)
 {
   const float fac = 0.05f * BLI_rctf_size_x(&v2d->cur);
 
   set_fcurve_vertex_color(fcu, sel);
 
-  if (edit) {
-    immBeginAtMost(GPU_PRIM_POINTS, fcu->totvert);
-  }
-  else {
-    immBeginAtMost(GPU_PRIM_POINTS, fcu->totvert);
-    /* immBegin(GPU_PRIM_LINES, fcu->totvert * 2); */
-  }
+  immBeginAtMost(GPU_PRIM_POINTS, fcu->totvert);
 
   BezTriple *bezt = fcu->bezt;
   for (int i = 0; i < fcu->totvert; i++, bezt++) {
@@ -190,26 +206,42 @@ static void draw_fcurve_selected_keyframe_vertices(
      *   don't pop in/out due to slight twitches of view size.
      */
     if (IN_RANGE(bezt->vec[1][0], (v2d->cur.xmin - fac), (v2d->cur.xmax + fac))) {
-      if (edit) {
-        /* 'Keyframe' vertex only, as handle lines and handles have already been drawn
-         * - only draw those with correct selection state for the current drawing color
-         * -
-         */
-        if ((bezt->f2 & SELECT) == sel) {
-          immVertex2fv(pos, bezt->vec[1]);
-        }
-      }
-      else {
-        const float line_length = 2 * U.scale_factor;
+      /* 'Keyframe' vertex only, as handle lines and handles have already been drawn
+       * - only draw those with correct selection state for the current drawing color
+       * -
+       */
+      if ((bezt->f2 & SELECT) == sel) {
         immVertex2fv(pos, bezt->vec[1]);
-
-        /* immVertex2f(pos, bezt->vec[1][0] + line_length, bezt->vec[1][1] - line_length);
-        immVertex2f(pos, bezt->vec[1][0] - line_length, bezt->vec[1][1] + line_length); */
       }
     }
   }
 
   immEnd();
+}
+
+static void draw_locked_keyframe_vertices(FCurve *fcu, View2D *v2d, uint attr_id)
+{
+  const float correction_factor = 0.05f * BLI_rctf_size_x(&v2d->cur);
+
+  /* get view settings */
+  const float vertex_size = UI_GetThemeValuef(TH_VERTEX_SIZE);
+  float scale[2];
+  UI_view2d_scale_get(v2d, &scale[0], &scale[1]);
+  scale[0] /= vertex_size;
+  scale[1] /= vertex_size;
+
+  set_fcurve_vertex_color(fcu, false);
+
+  for (int i = 0; i < fcu->totvert; i++) {
+    BezTriple *bezt = &fcu->bezt[i];
+    if (!IN_RANGE(bezt->vec[1][0],
+                  (v2d->cur.xmin - correction_factor),
+                  (v2d->cur.xmax + correction_factor))) {
+      continue;
+    }
+    float position[2] = {bezt->vec[1][0], bezt->vec[1][1]};
+    draw_x(position, scale, attr_id);
+  }
 }
 
 /**
@@ -241,15 +273,32 @@ static void draw_fcurve_active_vertex(const FCurve *fcu, const View2D *v2d, cons
 /* helper func - draw keyframe vertices only for an F-Curve */
 static void draw_fcurve_keyframe_vertices(FCurve *fcu, View2D *v2d, bool edit, uint pos)
 {
-  immBindBuiltinProgram(GPU_SHADER_2D_POINT_UNIFORM_SIZE_UNIFORM_COLOR_AA);
+  if (edit) {
+    immBindBuiltinProgram(GPU_SHADER_2D_POINT_UNIFORM_SIZE_UNIFORM_COLOR_AA);
 
-  immUniform1f("size", UI_GetThemeValuef(TH_VERTEX_SIZE) * UI_SCALE_FAC);
+    immUniform1f("size", UI_GetThemeValuef(TH_VERTEX_SIZE) * UI_SCALE_FAC);
 
-  draw_fcurve_selected_keyframe_vertices(fcu, v2d, edit, false, pos);
-  draw_fcurve_selected_keyframe_vertices(fcu, v2d, edit, true, pos);
-  draw_fcurve_active_vertex(fcu, v2d, pos);
+    draw_fcurve_selected_keyframe_vertices(fcu, v2d, false, pos);
+    draw_fcurve_selected_keyframe_vertices(fcu, v2d, true, pos);
+    draw_fcurve_active_vertex(fcu, v2d, pos);
 
-  immUnbindProgram();
+    immUnbindProgram();
+  }
+  else {
+    if (U.animation_flag & USER_ANIM_HIGH_QUALITY_DRAWING) {
+      GPU_line_smooth(true);
+    }
+    GPU_blend(GPU_BLEND_ALPHA);
+    immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+
+    draw_locked_keyframe_vertices(fcu, v2d, pos);
+
+    immUnbindProgram();
+    GPU_blend(GPU_BLEND_NONE);
+    if (U.animation_flag & USER_ANIM_HIGH_QUALITY_DRAWING) {
+      GPU_line_smooth(false);
+    }
+  }
 }
 
 /* helper func - draw handle vertices only for an F-Curve (if it is not protected) */
@@ -497,40 +546,17 @@ static void draw_fcurve_handles(SpaceGraph *sipo, FCurve *fcu)
 
 /* Samples ---------------- */
 
-/* helper func - draw sample-range marker for an F-Curve as a cross
- * NOTE: the caller MUST HAVE GL_LINE_SMOOTH & GL_BLEND ENABLED, otherwise, the controls don't
- * have a consistent appearance (due to off-pixel alignments)...
- */
-static void draw_fcurve_sample_control(
-    float x, float y, float xscale, float yscale, float hsize, uint pos)
-{
-  /* adjust view transform before starting */
-  GPU_matrix_push();
-  GPU_matrix_translate_2f(x, y);
-  GPU_matrix_scale_2f(1.0f / xscale * hsize, 1.0f / yscale * hsize);
-
-  /* draw X shape */
-  immBegin(GPU_PRIM_LINES, 4);
-  immVertex2f(pos, -0.7f, -0.7f);
-  immVertex2f(pos, +0.7f, +0.7f);
-
-  immVertex2f(pos, -0.7f, +0.7f);
-  immVertex2f(pos, +0.7f, -0.7f);
-  immEnd();
-
-  /* restore view transform */
-  GPU_matrix_pop();
-}
-
 /* helper func - draw keyframe vertices only for an F-Curve */
 static void draw_fcurve_samples(ARegion *region, FCurve *fcu)
 {
   FPoint *first, *last;
-  float hsize, xscale, yscale;
+  float scale[2];
 
   /* get view settings */
-  hsize = UI_GetThemeValuef(TH_VERTEX_SIZE);
-  UI_view2d_scale_get(&region->v2d, &xscale, &yscale);
+  const float hsize = UI_GetThemeValuef(TH_VERTEX_SIZE);
+  UI_view2d_scale_get(&region->v2d, &scale[0], &scale[1]);
+  scale[0] /= hsize;
+  scale[1] /= hsize;
 
   /* get verts */
   first = fcu->fpt;
@@ -549,8 +575,8 @@ static void draw_fcurve_samples(ARegion *region, FCurve *fcu)
 
     immUniformThemeColor((fcu->flag & FCURVE_SELECTED) ? TH_TEXT_HI : TH_TEXT);
 
-    draw_fcurve_sample_control(first->vec[0], first->vec[1], xscale, yscale, hsize, pos);
-    draw_fcurve_sample_control(last->vec[0], last->vec[1], xscale, yscale, hsize, pos);
+    draw_x(first->vec, scale, pos);
+    draw_x(last->vec, scale, pos);
 
     immUnbindProgram();
 
