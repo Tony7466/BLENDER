@@ -110,6 +110,8 @@ class LightBake {
     }
 
     EEVEE_NEXT_lightcache_info_update(&original_scene->eevee);
+
+    DEG_id_tag_update(&original_scene->id, ID_RECALC_COPY_ON_WRITE);
   }
 
   /**

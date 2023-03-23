@@ -520,7 +520,11 @@ void Instance::light_bake_irradiance(LightCache *&r_light_cache,
   };
 
   /* Count probes. */
-  custom_pipeline_wrapper([&]() { render_sync(); });
+  custom_pipeline_wrapper([&]() {
+    manager->begin_sync();
+    render_sync();
+    manager->end_sync();
+  });
   /* Allocate CPU storage. */
   r_light_cache = this->light_cache_create(light_probes.grids, light_probes.cubes);
 
@@ -537,7 +541,9 @@ void Instance::light_bake_irradiance(LightCache *&r_light_cache,
     for (auto i : light_probes.grids.index_range()) {
       custom_pipeline_wrapper([&]() {
         /* TODO: lightprobe visibility group option. */
+        manager->begin_sync();
         render_sync();
+        manager->end_sync();
         irradiance_cache.bake.surfels_create(light_probes.grids[i]);
         irradiance_cache.bake.surfels_lights_eval();
       });

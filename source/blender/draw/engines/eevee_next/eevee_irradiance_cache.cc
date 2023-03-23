@@ -37,7 +37,7 @@ void IrradianceCache::debug_pass_sync()
 
   LightCache *light_cache = inst_.scene->eevee.light_cache_data;
   if (light_cache == nullptr || light_cache->version != LIGHTCACHE_NEXT_STATIC_VERSION ||
-      light_cache->grids == nullptr) {
+      light_cache->grids == nullptr || light_cache->grid_len == 0) {
     return;
   }
 
@@ -101,7 +101,7 @@ void IrradianceBake::surfels_create(const IrradianceGrid & /* grid */)
   using namespace blender::math;
 
   /* Attachment-less frame-buffer. */
-  empty_raster_fb_.ensure(int2(10 * 4));
+  empty_raster_fb_.ensure(int2(20 * 4));
 
   /** We could use multi-view rendering here to avoid multiple submissions but it is unlikely to
    * make any difference. The bottleneck is still the light propagation loop. */
@@ -111,7 +111,6 @@ void IrradianceBake::surfels_create(const IrradianceGrid & /* grid */)
 
     CartesianBasis basis = from_orthonormal_axes(AxisSigned(axis).next_after(), axis);
     view_.sync(from_rotation<float4x4>(basis), winmat);
-    view_.visibility_test(false);
 
     inst_.pipelines.capture.render(view_);
   };
@@ -133,12 +132,11 @@ void IrradianceBake::surfels_create(const IrradianceGrid & /* grid */)
   GPU_memory_barrier(GPU_BARRIER_BUFFER_UPDATE);
   capture_info_buf_.read();
   if (capture_info_buf_.surfel_len == 0) {
-    /* Not surfel to allocated. */
+    /* No surfel to allocated. */
     return;
   }
 
   /* TODO(fclem): Check for GL limit and abort if the surfel cache doesn't fit the GPU memory. */
-  std::cout << "Resize " << capture_info_buf_.surfel_len << std::endl;
   surfels_buf_.resize(capture_info_buf_.surfel_len);
 
   DRW_stats_group_start("IrradianceBake.SurfelsCreate");
@@ -173,7 +171,7 @@ void IrradianceBake::read_result(LightCacheIrradianceGrid &light_cache_grid)
     case eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_NORMAL:
     case eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_IRRADIANCE:
       GPU_memory_barrier(GPU_BARRIER_BUFFER_UPDATE);
-      std::cout << "Read " << capture_info_buf_.surfel_len << std::endl;
+      capture_info_buf_.read();
       surfels_buf_.read();
       light_cache_grid.surfels_len = capture_info_buf_.surfel_len;
       light_cache_grid.surfels = MEM_dupallocN(surfels_buf_.data());
