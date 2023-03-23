@@ -82,6 +82,9 @@ static const char *vulkan_error_as_string(VkResult result)
 static bool is_vklayer_exist(const char* vk_extension_config)
 {
   const char *ev_val = getenv("VK_LAYER_PATH");
+  if (ev_val == nullptr) {
+    return false;
+  }
   bool exists = false;
   if (ev_val != nullptr) {
     const size_t size_max =  strlen(ev_val) +  strlen(vk_extension_config) + 2;
@@ -94,20 +97,8 @@ static bool is_vklayer_exist(const char* vk_extension_config)
     exists = (stat(filename, &buffer) == 0);
     free(filename);
   }
-  if (exists) {
-    return exists;
-  }
 
-#if defined(_WIN32)
-  printf("Warning: VK_LAYER_KHRONOS_validation is deactivated.\nSet `..VulkanSDK/1.2.198.1/Bin` of VulkanSDK (version1.2.198.1) to "
-  "VK_LAYER_PATH.");
-#else
-  printf("Warning: VK_LAYER_KHRONOS_validation is deactivated.\nSet  `..vulkan/explicit_layer.d` of VulkanSDK (version1.2.198.1) to "
-      "VK_LAYER_PATH.");
-#endif
-
-  return false;
-
+  return exists;
 }
 #define __STR(A) "" #A
 #define VK_CHECK(__expression) \
