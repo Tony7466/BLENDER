@@ -1,2 +1,2 @@
-Referenced by issue #106043, Moving frame node jittering while cursor is still
+Referenced by issue #106043, Regression: Moving frame node jittering while cursor is still
 Referenced by pull request #106050, Fix #106043: Don't use offset for free nodes
