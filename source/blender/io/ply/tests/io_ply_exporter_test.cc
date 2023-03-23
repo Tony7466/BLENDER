@@ -21,7 +21,7 @@
 
 namespace blender::io::ply {
 
-class PlyExportTest : public BlendfileLoadingBaseTest {
+class ply_export_test : public BlendfileLoadingBaseTest {
  public:
   bool load_file_and_depsgraph(const std::string &filepath,
                                const eEvaluationMode eval_mode = DAG_EVAL_VIEWPORT)
@@ -68,8 +68,9 @@ static std::unique_ptr<PlyData> load_cube(PLYExportParams &params)
       {-1.122082, -1.122082, -1.122082},
   };
 
-  plyData->faces = {
-      {0, 2, 6, 4}, {3, 7, 6, 2}, {7, 5, 4, 6}, {5, 7, 3, 1}, {1, 3, 2, 0}, {5, 1, 0, 4}};
+  plyData->face_sizes = {4, 4, 4, 4, 4, 4};
+  plyData->face_vertices = {0, 2, 6, 4, 3, 7, 6, 2, 7, 5, 4, 6,
+                            5, 7, 3, 1, 1, 3, 2, 0, 5, 1, 0, 4};
 
   if (params.export_normals)
     plyData->vertex_normals = {
@@ -126,7 +127,7 @@ static std::vector<char> read_temp_file_in_vectorchar(const std::string &file_pa
   return res;
 }
 
-TEST_F(PlyExportTest, WriteHeaderAscii)
+TEST_F(ply_export_test, WriteHeaderAscii)
 {
   std::string filePath = get_temp_ply_filename(temp_file_path);
   PLYExportParams _params = {};
@@ -164,7 +165,7 @@ TEST_F(PlyExportTest, WriteHeaderAscii)
   ASSERT_STREQ(result.c_str(), expected.c_str());
 }
 
-TEST_F(PlyExportTest, WriteHeaderBinary)
+TEST_F(ply_export_test, WriteHeaderBinary)
 {
   std::string filePath = get_temp_ply_filename(temp_file_path);
   PLYExportParams _params = {};
@@ -202,7 +203,7 @@ TEST_F(PlyExportTest, WriteHeaderBinary)
   ASSERT_STREQ(result.c_str(), expected.c_str());
 }
 
-TEST_F(PlyExportTest, WriteVerticesAscii)
+TEST_F(ply_export_test, WriteVerticesAscii)
 {
   std::string filePath = get_temp_ply_filename(temp_file_path);
   PLYExportParams _params = {};
@@ -234,7 +235,7 @@ TEST_F(PlyExportTest, WriteVerticesAscii)
   ASSERT_STREQ(result.c_str(), expected.c_str());
 }
 
-TEST_F(PlyExportTest, WriteVerticesBinary)
+TEST_F(ply_export_test, WriteVerticesBinary)
 {
   std::string filePath = get_temp_ply_filename(temp_file_path);
   PLYExportParams _params = {};
@@ -270,7 +271,7 @@ TEST_F(PlyExportTest, WriteVerticesBinary)
   }
 }
 
-TEST_F(PlyExportTest, WriteFacesAscii)
+TEST_F(ply_export_test, WriteFacesAscii)
 {
   std::string filePath = get_temp_ply_filename(temp_file_path);
   PLYExportParams _params = {};
@@ -300,7 +301,7 @@ TEST_F(PlyExportTest, WriteFacesAscii)
   ASSERT_STREQ(result.c_str(), expected.c_str());
 }
 
-TEST_F(PlyExportTest, WriteFacesBinary)
+TEST_F(ply_export_test, WriteFacesBinary)
 {
   std::string filePath = get_temp_ply_filename(temp_file_path);
   PLYExportParams _params = {};
@@ -336,7 +337,7 @@ TEST_F(PlyExportTest, WriteFacesBinary)
   }
 }
 
-TEST_F(PlyExportTest, WriteVertexNormalsAscii)
+TEST_F(ply_export_test, WriteVertexNormalsAscii)
 {
   std::string filePath = get_temp_ply_filename(temp_file_path);
   PLYExportParams _params = {};
@@ -368,7 +369,7 @@ TEST_F(PlyExportTest, WriteVertexNormalsAscii)
   ASSERT_STREQ(result.c_str(), expected.c_str());
 }
 
-TEST_F(PlyExportTest, WriteVertexNormalsBinary)
+TEST_F(ply_export_test, WriteVertexNormalsBinary)
 {
   std::string filePath = get_temp_ply_filename(temp_file_path);
   PLYExportParams _params = {};
@@ -410,7 +411,7 @@ TEST_F(PlyExportTest, WriteVertexNormalsBinary)
   }
 }
 
-class ply_exporter_ply_data_test : public PlyExportTest {
+class ply_exporter_ply_data_test : public ply_export_test {
  public:
   PlyData load_ply_data_from_blendfile(const std::string &blendfile, PLYExportParams &params)
   {
@@ -425,37 +426,107 @@ class ply_exporter_ply_data_test : public PlyExportTest {
   }
 };
 
-TEST_F(ply_exporter_ply_data_test, CubeLoadPLYDataVertices)
+TEST_F(ply_exporter_ply_data_test, CubeLoadPLYData)
 {
   PLYExportParams params = {};
-  PlyData plyData = load_ply_data_from_blendfile(
-      "io_tests" SEP_STR "blend_geometry" SEP_STR "cube_all_data.blend", params);
+  PlyData plyData = load_ply_data_from_blendfile("io_tests/blend_geometry/cube_all_data.blend",
+                                                 params);
   EXPECT_EQ(plyData.vertices.size(), 8);
+  EXPECT_EQ(plyData.uv_coordinates.size(), 0);
 }
 TEST_F(ply_exporter_ply_data_test, CubeLoadPLYDataUV)
 {
   PLYExportParams params = {};
   params.export_uv = true;
-  PlyData plyData = load_ply_data_from_blendfile(
-      "io_tests" SEP_STR "blend_geometry" SEP_STR "cube_all_data.blend", params);
+  PlyData plyData = load_ply_data_from_blendfile("io_tests/blend_geometry/cube_all_data.blend",
+                                                 params);
+  EXPECT_EQ(plyData.vertices.size(), 8);
   EXPECT_EQ(plyData.uv_coordinates.size(), 8);
 }
+TEST_F(ply_exporter_ply_data_test, CubeLooseEdgesLoadPLYData)
+{
+  PLYExportParams params = {};
+  params.forward_axis = IO_AXIS_Y;
+  params.up_axis = IO_AXIS_Z;
+  params.global_scale = 1.0f;
+  PlyData plyData = load_ply_data_from_blendfile(
+      "io_tests/blend_geometry/cube_loose_edges_verts.blend", params);
+  float3 exp_vertices[] = {
+      {1, 1, 1},
+      {1, 1, -1},
+      {1, -1, 1},
+      {1, -1, -1},
+      {-1, 1, 1},
+      {-1, 1, -1},
+      {-1, -1, 1},
+      {-1, -1, -1},
+  };
+  std::pair<int, int> exp_edges[] = {{7, 6}, {6, 4}};
+  uint32_t exp_face_sizes[] = {4, 4};
+  uint32_t exp_faces[] = {5, 1, 3, 7, 5, 4, 0, 1};
+  EXPECT_EQ(plyData.vertices.size(), ARRAY_SIZE(exp_vertices));
+  EXPECT_EQ(plyData.uv_coordinates.size(), 0);
+  EXPECT_EQ(plyData.edges.size(), ARRAY_SIZE(exp_edges));
+  EXPECT_EQ(plyData.face_sizes.size(), ARRAY_SIZE(exp_face_sizes));
+  EXPECT_EQ(plyData.face_vertices.size(), ARRAY_SIZE(exp_faces));
+  EXPECT_EQ_ARRAY(exp_vertices, plyData.vertices.data(), ARRAY_SIZE(exp_vertices));
+  EXPECT_EQ_ARRAY(exp_edges, plyData.edges.data(), ARRAY_SIZE(exp_edges));
+  EXPECT_EQ_ARRAY(exp_face_sizes, plyData.face_sizes.data(), ARRAY_SIZE(exp_face_sizes));
+  EXPECT_EQ_ARRAY(exp_faces, plyData.face_vertices.data(), ARRAY_SIZE(exp_faces));
+}
+TEST_F(ply_exporter_ply_data_test, CubeLooseEdgesLoadPLYDataUV)
+{
+  PLYExportParams params = {};
+  params.forward_axis = IO_AXIS_Y;
+  params.up_axis = IO_AXIS_Z;
+  params.global_scale = 1.0f;
+  params.export_uv = true;
+  PlyData plyData = load_ply_data_from_blendfile(
+      "io_tests/blend_geometry/cube_loose_edges_verts.blend", params);
+  float3 exp_vertices[] = {
+      {1, 1, 1},
+      {1, 1, -1},
+      {1, -1, 1},
+      {1, -1, -1},
+      {-1, 1, 1},
+      {-1, 1, -1},
+      {-1, 1, -1},
+      {-1, -1, 1},
+      {-1, -1, -1},
+  };
+  float2 exp_uv[] = {
+      {0.625f, 0.5f},
+      {0.375f, 0.5f},
+      {0, 0},
+      {0.375f, 0.75f},
+      {0.625f, 0.25f},
+      {0.125f, 0.5f},
+      {0.375f, 0.25f},
+      {0, 0},
+      {0.125f, 0.75f},
+  };
+  std::pair<int, int> exp_edges[] = {{8, 7}, {7, 4}};
+  uint32_t exp_face_sizes[] = {4, 4};
+  uint32_t exp_faces[] = {5, 1, 3, 8, 6, 4, 0, 1};
+  EXPECT_EQ(plyData.vertices.size(), 9);
+  EXPECT_EQ(plyData.uv_coordinates.size(), 9);
+  EXPECT_EQ(plyData.edges.size(), ARRAY_SIZE(exp_edges));
+  EXPECT_EQ(plyData.face_sizes.size(), ARRAY_SIZE(exp_face_sizes));
+  EXPECT_EQ(plyData.face_vertices.size(), ARRAY_SIZE(exp_faces));
+  EXPECT_EQ_ARRAY(exp_vertices, plyData.vertices.data(), ARRAY_SIZE(exp_vertices));
+  EXPECT_EQ_ARRAY(exp_uv, plyData.uv_coordinates.data(), ARRAY_SIZE(exp_uv));
+  EXPECT_EQ_ARRAY(exp_edges, plyData.edges.data(), ARRAY_SIZE(exp_edges));
+  EXPECT_EQ_ARRAY(exp_face_sizes, plyData.face_sizes.data(), ARRAY_SIZE(exp_face_sizes));
+  EXPECT_EQ_ARRAY(exp_faces, plyData.face_vertices.data(), ARRAY_SIZE(exp_faces));
+}
+
 TEST_F(ply_exporter_ply_data_test, SuzanneLoadPLYDataUV)
 {
   PLYExportParams params = {};
   params.export_uv = true;
-  PlyData plyData = load_ply_data_from_blendfile(
-      "io_tests" SEP_STR "blend_geometry" SEP_STR "suzanne_all_data.blend", params);
+  PlyData plyData = load_ply_data_from_blendfile("io_tests/blend_geometry/suzanne_all_data.blend",
+                                                 params);
   EXPECT_EQ(plyData.uv_coordinates.size(), 542);
-}
-
-TEST_F(ply_exporter_ply_data_test, CubeLoadPLYDataUVDisabled)
-{
-  PLYExportParams params = {};
-  params.export_uv = false;
-  PlyData plyData = load_ply_data_from_blendfile(
-      "io_tests" SEP_STR "blend_geometry" SEP_STR "cube_all_data.blend", params);
-  EXPECT_EQ(plyData.uv_coordinates.size(), 0);
 }
 
 }  // namespace blender::io::ply
