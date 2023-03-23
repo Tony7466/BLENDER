@@ -1073,22 +1073,23 @@ typedef struct tGaussOperatorData {
   ListBase anim_data;     /* bAnimListElem */
 } tGaussOperatorData;
 
+/* Store data to smooth an FCurve segment. */
 typedef struct tFCurveSegmentLink {
   struct tFCurveSegmentLink *prev, *next;
   FCurve *fcu;
   FCurveSegment *segment;
-  float *samples;
+  float *samples; /* Array of y-values of the FCurve segment. */
 } tFCurveSegmentLink;
 
-static void gauss_smooth_allocate_operator_data(tGraphSliderOp *gso,
-                                                const int filter_width,
-                                                const float sigma)
+static void gaussian_smooth_allocate_operator_data(tGraphSliderOp *gso,
+                                                   const int filter_width,
+                                                   const float sigma)
 {
   tGaussOperatorData *operator_data = MEM_callocN(sizeof(tGaussOperatorData),
                                                   "tGaussOperatorData");
   const int kernel_size = filter_width + 1;
   double *kernel = MEM_callocN(sizeof(double) * kernel_size, "Gauss Kernel");
-  get_1d_gauss_kernel(sigma, kernel_size, kernel);
+  ED_ANIM_get_1d_gauss_kernel(sigma, kernel_size, kernel);
   operator_data->kernel = kernel;
 
   ListBase anim_data = {NULL, NULL};
@@ -1119,7 +1120,7 @@ static void gauss_smooth_allocate_operator_data(tGraphSliderOp *gso,
   gso->operator_data = operator_data;
 }
 
-static void gauss_smooth_free_operator_data(void *operator_data)
+static void gaussian_smooth_free_operator_data(void *operator_data)
 {
   tGaussOperatorData *gauss_data = (tGaussOperatorData *)operator_data;
   LISTBASE_FOREACH (tFCurveSegmentLink *, segment_link, &gauss_data->segment_links) {
@@ -1132,7 +1133,7 @@ static void gauss_smooth_free_operator_data(void *operator_data)
   MEM_freeN(gauss_data);
 }
 
-static void gauss_smooth_draw_status_header(bContext *C, tGraphSliderOp *gso)
+static void gaussian_smooth_draw_status_header(bContext *C, tGraphSliderOp *gso)
 {
   char status_str[UI_MAX_DRAW_STR];
   char mode_str[32];
@@ -1156,7 +1157,7 @@ static void gauss_smooth_draw_status_header(bContext *C, tGraphSliderOp *gso)
   ED_workspace_status_text(C, status_str);
 }
 
-static void gauss_smooth_modal_update(bContext *C, wmOperator *op)
+static void gaussian_smooth_modal_update(bContext *C, wmOperator *op)
 {
   tGraphSliderOp *gso = op->customdata;
 
@@ -1166,7 +1167,7 @@ static void gauss_smooth_modal_update(bContext *C, wmOperator *op)
     return;
   }
 
-  gauss_smooth_draw_status_header(C, gso);
+  gaussian_smooth_draw_status_header(C, gso);
 
   const float factor = slider_factor_get_and_remember(op);
   tGaussOperatorData *operator_data = (tGaussOperatorData *)gso->operator_data;
@@ -1189,7 +1190,7 @@ static void gauss_smooth_modal_update(bContext *C, wmOperator *op)
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
 }
 
-static int gauss_smooth_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+static int gaussian_smooth_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   const int invoke_result = graph_slider_invoke(C, op, event);
 
@@ -1198,25 +1199,26 @@ static int gauss_smooth_invoke(bContext *C, wmOperator *op, const wmEvent *event
   }
 
   tGraphSliderOp *gso = op->customdata;
-  gso->modal_update = gauss_smooth_modal_update;
+  gso->modal_update = gaussian_smooth_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
 
   const float sigma = RNA_float_get(op->ptr, "sigma");
   const int filter_width = RNA_int_get(op->ptr, "filter_width");
 
-  gauss_smooth_allocate_operator_data(gso, filter_width, sigma);
-  gso->free_operator_data = gauss_smooth_free_operator_data;
+  gaussian_smooth_allocate_operator_data(gso, filter_width, sigma);
+  gso->free_operator_data = gaussian_smooth_free_operator_data;
 
   ED_slider_allow_overshoot_set(gso->slider, false);
-  gauss_smooth_draw_status_header(C, gso);
+  ED_slider_factor_set(gso->slider, 0.0f);
+  gaussian_smooth_draw_status_header(C, gso);
 
   return invoke_result;
 }
 
-static void gauss_smooth_graph_keys(bAnimContext *ac,
-                                    const float factor,
-                                    double *kernel,
-                                    const int filter_width)
+static void gaussian_smooth_graph_keys(bAnimContext *ac,
+                                       const float factor,
+                                       double *kernel,
+                                       const int filter_width)
 {
   ListBase anim_data = {NULL, NULL};
   ANIM_animdata_filter(ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, ac->datatype);
@@ -1244,7 +1246,7 @@ static void gauss_smooth_graph_keys(bAnimContext *ac,
   ANIM_animdata_freelist(&anim_data);
 }
 
-static int gauss_exec(bContext *C, wmOperator *op)
+static int gaussian_smooth_exec(bContext *C, wmOperator *op)
 {
   bAnimContext ac;
 
@@ -1255,9 +1257,9 @@ static int gauss_exec(bContext *C, wmOperator *op)
   const int filter_width = RNA_int_get(op->ptr, "filter_width");
   const int kernel_size = filter_width + 1;
   double *kernel = MEM_callocN(sizeof(double) * kernel_size, "Gauss Kernel");
-  get_1d_gauss_kernel(RNA_float_get(op->ptr, "sigma"), kernel_size, kernel);
+  ED_ANIM_get_1d_gauss_kernel(RNA_float_get(op->ptr, "sigma"), kernel_size, kernel);
 
-  gauss_smooth_graph_keys(&ac, factor, kernel, filter_width);
+  gaussian_smooth_graph_keys(&ac, factor, kernel, filter_width);
 
   MEM_freeN(kernel);
 
@@ -1267,17 +1269,17 @@ static int gauss_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void GRAPH_OT_gauss_smooth(wmOperatorType *ot)
+void GRAPH_OT_gaussian_smooth(wmOperatorType *ot)
 {
   /* Identifiers. */
-  ot->name = "Gauss Smooth";
-  ot->idname = "GRAPH_OT_gauss_smooth";
+  ot->name = "Gaussian Smooth";
+  ot->idname = "GRAPH_OT_gaussian_smooth";
   ot->description = "Smooth the curve using a Gauss filter";
 
   /* API callbacks. */
-  ot->invoke = gauss_smooth_invoke;
+  ot->invoke = gaussian_smooth_invoke;
   ot->modal = graph_slider_modal;
-  ot->exec = gauss_exec;
+  ot->exec = gaussian_smooth_exec;
   ot->poll = graphop_editable_keyframes_poll;
 
   /* Flags. */

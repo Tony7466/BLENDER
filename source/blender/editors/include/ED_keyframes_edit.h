@@ -429,7 +429,7 @@ void breakdown_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment,
  * \param sigma The shape of the gauss distribution.
  * \param kernel_size How long the kernel array is.
  */
-void get_1d_gauss_kernel(const float sigma, int kernel_size, double *r_kernel);
+void ED_ANIM_get_1d_gauss_kernel(const float sigma, int kernel_size, double *r_kernel);
 void smooth_fcurve_segment(struct FCurve *fcu,
                            struct FCurveSegment *segment,
                            float *samples,
