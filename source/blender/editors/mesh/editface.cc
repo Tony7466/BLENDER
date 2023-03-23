@@ -350,13 +350,9 @@ void paintface_select_linked(bContext *C, Object *ob, const int mval[2], const b
   paintface_flush_flags(C, ob, true, false);
 }
 
-void paintface_select_more(bContext *C, Object *ob, const bool face_step)
+void paintface_select_more(Mesh *mesh, const bool face_step)
 {
   using namespace blender;
-  Mesh *mesh = BKE_mesh_from_object(ob);
-  if (mesh == nullptr || mesh->totpoly == 0) {
-    return;
-  }
 
   bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
   bke::SpanAttributeWriter<bool> select_poly = attributes.lookup_or_add_for_write_span<bool>(
@@ -398,40 +394,32 @@ void paintface_select_more(bContext *C, Object *ob, const bool face_step)
 
   select_poly.finish();
   select_vert.finish();
-  paintface_flush_flags(C, ob, true, false);
 }
 
-static bool poly_has_unselected_neighbour(const MPoly &poly,
-                                          blender::Span<MLoop> poly_loops,
+static bool poly_has_unselected_neighbour(blender::Span<MLoop> poly_loops,
                                           blender::Span<MEdge> edges,
-                                          blender::BitVector<> &verts_of_unselected_faces,
+                                          blender::BitSpan verts_of_unselected_faces,
                                           const bool face_step)
 {
-  for (const MLoop &loop : poly_loops.slice(poly.loopstart, poly.totloop)) {
+  for (const MLoop &loop : poly_loops) {
     const MEdge &edge = edges[loop.e];
-    bool unselected_neighbor = false;
     if (face_step) {
-      unselected_neighbor = verts_of_unselected_faces[edge.v1].test() ||
-                            verts_of_unselected_faces[edge.v2].test();
+      if (verts_of_unselected_faces[edge.v1] || verts_of_unselected_faces[edge.v2]) {
+        return true;
+      }
     }
     else {
-      unselected_neighbor = verts_of_unselected_faces[edge.v1].test() &&
-                            verts_of_unselected_faces[edge.v2].test();
-    }
-    if (unselected_neighbor) {
-      return true;
+      if (verts_of_unselected_faces[edge.v1] && verts_of_unselected_faces[edge.v2]) {
+        return true;
+      }
     }
   }
   return false;
 }
 
-void paintface_select_less(bContext *C, Object *ob, const bool face_step)
+void paintface_select_less(Mesh *mesh, const bool face_step)
 {
   using namespace blender;
-  Mesh *mesh = BKE_mesh_from_object(ob);
-  if (mesh == nullptr || mesh->totpoly == 0) {
-    return;
-  }
 
   bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
   bke::SpanAttributeWriter<bool> select_poly = attributes.lookup_or_add_for_write_span<bool>(
@@ -446,7 +434,7 @@ void paintface_select_less(bContext *C, Object *ob, const bool face_step)
   BitVector<> verts_of_unselected_faces(mesh->totvert, false);
 
   /* Find all vertices of unselected faces to help find neighboring faces after. */
-  for (const int i : select_poly.span.index_range()) {
+  for (const int i : polys.index_range()) {
     if (select_poly.span[i]) {
       continue;
     }
@@ -462,15 +450,16 @@ void paintface_select_less(bContext *C, Object *ob, const bool face_step)
         continue;
       }
       const MPoly &poly = polys[i];
-      if (poly_has_unselected_neighbour(
-              poly, loops, edges, verts_of_unselected_faces, face_step)) {
+      if (poly_has_unselected_neighbour(loops.slice(poly.loopstart, poly.totloop),
+                                        edges,
+                                        verts_of_unselected_faces,
+                                        face_step)) {
         select_poly.span[i] = false;
       }
     }
   });
 
   select_poly.finish();
-  paintface_flush_flags(C, ob, true, false);
 }
 
 bool paintface_deselect_all_visible(bContext *C, Object *ob, int action, bool flush_flags)

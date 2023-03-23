@@ -695,8 +695,16 @@ void PAINT_OT_face_select_all(wmOperatorType *ot)
 
 static int paint_select_more_exec(bContext *C, wmOperator *op)
 {
+  Object *ob = CTX_data_active_object(C);
+  Mesh *mesh = BKE_mesh_from_object(ob);
+  if (mesh == NULL || mesh->totpoly == 0) {
+    return OPERATOR_CANCELLED;
+  }
+
   const bool face_step = RNA_boolean_get(op->ptr, "face_step");
-  paintface_select_more(C, CTX_data_active_object(C), face_step);
+  paintface_select_more(mesh, face_step);
+  paintface_flush_flags(C, ob, true, false);
+
   ED_region_tag_redraw(CTX_wm_region(C));
   return OPERATOR_FINISHED;
 }
@@ -718,8 +726,16 @@ void PAINT_OT_face_select_more(wmOperatorType *ot)
 
 static int paint_select_less_exec(bContext *C, wmOperator *op)
 {
+  Object *ob = CTX_data_active_object(C);
+  Mesh *mesh = BKE_mesh_from_object(ob);
+  if (mesh == NULL || mesh->totpoly == 0) {
+    return OPERATOR_CANCELLED;
+  }
+
   const bool face_step = RNA_boolean_get(op->ptr, "face_step");
-  paintface_select_less(C, CTX_data_active_object(C), face_step);
+  paintface_select_less(mesh, face_step);
+  paintface_flush_flags(C, ob, true, false);
+
   ED_region_tag_redraw(CTX_wm_region(C));
   return OPERATOR_FINISHED;
 }
