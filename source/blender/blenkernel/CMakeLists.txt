@@ -390,6 +390,7 @@ set(SRC
   BKE_gpencil_geom_legacy.h
   BKE_gpencil_modifier_legacy.h
   BKE_gpencil_update_cache_legacy.h
+  BKE_grease_pencil.h
   BKE_grease_pencil.hh
   BKE_icons.h
   BKE_idprop.h

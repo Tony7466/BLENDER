@@ -95,10 +95,12 @@ static void grease_pencil_free_data(ID *id)
   GreasePencil *grease_pencil = (GreasePencil *)id;
   BKE_animdata_free(&grease_pencil->id, false);
 
+  MEM_SAFE_FREE(grease_pencil->material_array);
+
   grease_pencil->free_drawing_array();
   grease_pencil->free_layer_tree_storage();
 
-  MEM_SAFE_FREE(grease_pencil->material_array);
+  BKE_grease_pencil_batch_cache_free(grease_pencil);
 
   MEM_delete(grease_pencil->runtime);
   grease_pencil->runtime = nullptr;
@@ -228,6 +230,20 @@ IDTypeInfo IDType_ID_GP = {
     /*lib_override_apply_post*/ nullptr,
 };
 
+namespace blender::bke::gpencil {
+
+LayerGroup &TreeNode::as_group()
+{
+  return *static_cast<LayerGroup *>(this);
+}
+
+Layer &TreeNode::as_layer()
+{
+  return *static_cast<Layer *>(this);
+}
+
+}  // namespace blender::bke::gpencil
+
 void *BKE_grease_pencil_add(Main *bmain, const char *name)
 {
   GreasePencil *grease_pencil = static_cast<GreasePencil *>(BKE_id_new(bmain, ID_GP, name));
@@ -276,19 +292,25 @@ BoundBox *BKE_grease_pencil_boundbox_get(Object *ob)
   return ob->runtime.bb;
 }
 
-namespace blender::bke::gpencil {
+/* Draw Cache */
 
-LayerGroup &TreeNode::as_group()
+void (*BKE_grease_pencil_batch_cache_dirty_tag_cb)(GreasePencil *grease_pencil,
+                                                   int mode) = nullptr;
+void (*BKE_grease_pencil_batch_cache_free_cb)(GreasePencil *grease_pencil) = nullptr;
+
+void BKE_grease_pencil_batch_cache_dirty_tag(GreasePencil *grease_pencil, int mode)
 {
-  return *static_cast<LayerGroup *>(this);
+  if (grease_pencil->runtime && grease_pencil->runtime->batch_cache) {
+    BKE_grease_pencil_batch_cache_dirty_tag_cb(grease_pencil, mode);
+  }
 }
 
-Layer &TreeNode::as_layer()
+void BKE_grease_pencil_batch_cache_free(GreasePencil *grease_pencil)
 {
-  return *static_cast<Layer *>(this);
+  if (grease_pencil->runtime && grease_pencil->runtime->batch_cache) {
+    BKE_grease_pencil_batch_cache_free_cb(grease_pencil);
+  }
 }
-
-}  // namespace blender::bke::gpencil
 
 blender::Span<GreasePencilDrawingOrReference *> GreasePencil::drawings() const
 {

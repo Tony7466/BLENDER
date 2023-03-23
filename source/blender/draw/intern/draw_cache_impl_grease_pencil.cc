@@ -7,6 +7,7 @@
  */
 
 #include "BKE_curves.hh"
+#include "BKE_grease_pencil.h"
 #include "BKE_grease_pencil.hh"
 
 #include "BLI_task.hh"
@@ -17,6 +18,8 @@
 #include "DRW_render.h"
 
 #include "GPU_batch.h"
+
+#include "draw_cache_impl.h"
 
 #include "../engines/gpencil/gpencil_defines.h"
 
@@ -116,7 +119,7 @@ static GreasePencilBatchCache *grease_pencil_batch_cache_init(GreasePencil &grea
   return cache;
 }
 
-static void grese_pencil_batch_cache_clear(GreasePencil &grease_pencil)
+static void grease_pencil_batch_cache_clear(GreasePencil &grease_pencil)
 {
   BLI_assert(grease_pencil.runtime != nullptr);
   GreasePencilBatchCache *cache = static_cast<GreasePencilBatchCache *>(
@@ -140,7 +143,7 @@ static GreasePencilBatchCache *grease_pencil_batch_cache_get(GreasePencil &greas
   GreasePencilBatchCache *cache = static_cast<GreasePencilBatchCache *>(
       grease_pencil.runtime->batch_cache);
   if (!grease_pencil_batch_cache_valid(grease_pencil)) {
-    grese_pencil_batch_cache_clear(grease_pencil);
+    grease_pencil_batch_cache_clear(grease_pencil);
     return grease_pencil_batch_cache_init(grease_pencil, cfra);
   }
 
@@ -297,6 +300,43 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
 /** \} */
 
 }  // namespace blender::draw
+
+void DRW_grease_pencil_batch_cache_dirty_tag(GreasePencil *grease_pencil, int mode)
+{
+  using namespace blender::draw;
+  BLI_assert(grease_pencil->runtime != nullptr);
+  GreasePencilBatchCache *cache = static_cast<GreasePencilBatchCache *>(
+      grease_pencil->runtime->batch_cache);
+  if (cache == nullptr) {
+    return;
+  }
+  switch (mode) {
+    case BKE_GREASEPENCIL_BATCH_DIRTY_ALL:
+      cache->is_dirty = true;
+      break;
+    default:
+      BLI_assert_unreachable();
+  }
+}
+
+void DRW_grease_pencil_batch_cache_validate(GreasePencil *grease_pencil)
+{
+  using namespace blender::draw;
+  BLI_assert(grease_pencil->runtime != nullptr);
+  if (!grease_pencil_batch_cache_valid(*grease_pencil)) {
+    grease_pencil_batch_cache_clear(*grease_pencil);
+    /* TODO: pass correct frame here? */
+    grease_pencil_batch_cache_init(*grease_pencil, 0);
+  }
+}
+
+void DRW_grease_pencil_batch_cache_free(GreasePencil *grease_pencil)
+{
+  using namespace blender::draw;
+  grease_pencil_batch_cache_clear(*grease_pencil);
+  MEM_delete(static_cast<GreasePencilBatchCache *>(grease_pencil->runtime->batch_cache));
+  grease_pencil->runtime->batch_cache = nullptr;
+}
 
 GPUBatch *DRW_cache_grease_pencil_get(Object *ob, int cfra)
 {

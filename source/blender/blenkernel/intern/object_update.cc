@@ -31,6 +31,7 @@
 #include "BKE_effect.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
+#include "BKE_grease_pencil.h"
 #include "BKE_image.h"
 #include "BKE_key.h"
 #include "BKE_lattice.h"
@@ -321,6 +322,8 @@ void BKE_object_batch_cache_dirty_tag(Object *ob)
       break;
     case OB_GREASE_PENCIL:
       /* TODO: tag batches. */
+      BKE_grease_pencil_batch_cache_dirty_tag((struct GreasePencil *)ob->data,
+                                              BKE_GREASEPENCIL_BATCH_DIRTY_ALL);
       break;
     default:
       break;
