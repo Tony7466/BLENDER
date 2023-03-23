@@ -96,6 +96,9 @@ void BKE_mesh_legacy_convert_loose_edges_to_flag(struct Mesh *mesh);
 void BKE_mesh_legacy_attribute_flags_to_strings(struct Mesh *mesh);
 void BKE_mesh_legacy_attribute_strings_to_flags(struct Mesh *mesh);
 
+void BKE_mesh_legacy_sharp_faces_to_flags(struct Mesh *mesh);
+void BKE_mesh_legacy_sharp_faces_from_flags(struct Mesh *mesh);
+
 void BKE_mesh_legacy_sharp_edges_to_flags(struct Mesh *mesh);
 void BKE_mesh_legacy_sharp_edges_from_flags(struct Mesh *mesh);
 
@@ -109,7 +112,14 @@ struct MVert *BKE_mesh_legacy_convert_positions_to_verts(
 
 void BKE_mesh_legacy_convert_verts_to_positions(Mesh *mesh);
 
+struct MLoop *BKE_mesh_legacy_convert_corners_to_loops(
+    Mesh *mesh,
+    blender::ResourceScope &temp_arrays_for_convert,
+    blender::Vector<CustomDataLayer, 16> &loop_layers_to_write);
+
 #endif
+
+void BKE_mesh_legacy_convert_loops_to_corners(struct Mesh *mesh);
 
 /**
  * Recreate #MFace Tessellation.

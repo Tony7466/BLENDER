@@ -319,12 +319,6 @@ enum {
   UI_BUT_CHECKBOX_INVERT = 1 << 25,
 };
 
-/* scale fixed button widths by this to account for DPI */
-
-#define UI_DPI_FAC (U.dpi_fac)
-/* 16 to copy ICON_DEFAULT_HEIGHT */
-#define UI_DPI_ICON_SIZE ((float)16 * UI_DPI_FAC)
-
 /**
  * Button types, bits stored in 1 value... and a short even!
  * - bits 0-4:  #uiBut.bitnr (0-31)
@@ -2990,6 +2984,17 @@ uiBut *UI_context_active_but_prop_get(const struct bContext *C,
                                       struct PointerRNA *r_ptr,
                                       struct PropertyRNA **r_prop,
                                       int *r_index);
+
+/**
+ * As above, but for a specified region.
+ *
+ * \return active button, NULL if none found or if it doesn't contain valid RNA data.
+ */
+uiBut *UI_region_active_but_prop_get(const struct ARegion *region,
+                                     struct PointerRNA *r_ptr,
+                                     struct PropertyRNA **r_prop,
+                                     int *r_index);
+
 void UI_context_active_but_prop_handle(struct bContext *C, bool handle_undo);
 void UI_context_active_but_clear(struct bContext *C, struct wmWindow *win, struct ARegion *region);
 
@@ -3269,18 +3274,12 @@ void UI_view_item_context_menu_build(struct bContext *C,
  * \return True if dragging started successfully, otherwise false.
  */
 bool UI_view_item_drag_start(struct bContext *C, const uiViewItemHandle *item_);
-bool UI_view_item_can_drop(const uiViewItemHandle *item_,
-                           const struct wmDrag *drag,
-                           const char **r_disabled_hint);
-char *UI_view_item_drop_tooltip(const uiViewItemHandle *item, const struct wmDrag *drag);
-/**
- * Let a view item handle a drop event.
- * \return True if the drop was handled by the view item.
- */
-bool UI_view_item_drop_handle(struct bContext *C,
-                              const uiViewItemHandle *item_,
-                              const struct ListBase *drags);
 
+/**
+ * \param xy: Coordinate to find a view item at, in window space.
+ * \param pad: Extra padding added to the bounding box of the view.
+ */
+uiViewHandle *UI_region_view_find_at(const struct ARegion *region, const int xy[2], int pad);
 /**
  * \param xy: Coordinate to find a view item at, in window space.
  */

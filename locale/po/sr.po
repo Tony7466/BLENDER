@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.5.0 Beta (b'c5bbc5db6faa')\n"
+"Project-Id-Version: Blender 3.5.0 Beta (b'3962d9b931f1')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-02-27 15:19:45\n"
+"POT-Creation-Date: 2023-03-20 13:37:56\n"
 "PO-Revision-Date: 2012-09-07 22:32+0100\n"
 "Last-Translator: Nikola Radovanovic <cobisimo@gmail.com>\n"
 "Language-Team: Nikola Radovanovic\n"
@@ -1845,10 +1845,6 @@ msgstr "Спољна дебљина странице"
 
 msgid "Enabled"
 msgstr "Омогућено"
-
-
-msgid "Enable this objects as a collider for physics systems"
-msgstr "Омогући сударање са овим објектом"
 
 
 msgid "Kill Particles"
@@ -4537,10 +4533,6 @@ msgid "Effective but slow compression"
 msgstr "Ефикасна, али спора компресија"
 
 
-msgid "Number"
-msgstr "Број"
-
-
 msgid "p0"
 msgstr "п0"
 
@@ -5448,18 +5440,6 @@ msgstr "Одузимање боје"
 
 msgid "Mask Texture Overlay Alpha"
 msgstr "Маскирај провидност преклапања текстуре"
-
-
-msgid "Root"
-msgstr "Корен"
-
-
-msgid "Sharp"
-msgstr "Оштро"
-
-
-msgid "Sharper"
-msgstr "Оштрије"
 
 
 msgid "Fill Threshold"
@@ -7642,6 +7622,10 @@ msgid "Roughness Curve"
 msgstr "Крива храпавости"
 
 
+msgid "Number"
+msgstr "Број"
+
+
 msgid "Show particle number"
 msgstr "Прикажи број честица"
 
@@ -8012,10 +7996,6 @@ msgid "Modified"
 msgstr "Измењен"
 
 
-msgid "Lines"
-msgstr "Линије"
-
-
 msgid "Lines of text"
 msgstr "Линије текста"
 
@@ -8336,8 +8316,16 @@ msgid "Use soft marble"
 msgstr "Користи меки мермер"
 
 
+msgid "Sharp"
+msgstr "Оштро"
+
+
 msgid "Use more clearly defined marble"
 msgstr "Користи јесније дефинисан мермер"
+
+
+msgid "Sharper"
+msgstr "Оштрије"
 
 
 msgid "Use very clearly defined marble"
@@ -9241,6 +9229,10 @@ msgid "Weight of the point"
 msgstr "Тежина тачке"
 
 
+msgid "Active Point"
+msgstr "Активна тачка"
+
+
 msgid "Alignment"
 msgstr "Поравнање"
 
@@ -9621,6 +9613,10 @@ msgstr "Кожа темена"
 
 msgid "Radius of the skin"
 msgstr "Радиус коже"
+
+
+msgid "Root"
+msgstr "Корен"
 
 
 msgid "Name of skin layer"
@@ -10539,10 +10535,6 @@ msgid "Projectors"
 msgstr "Пројектори"
 
 
-msgid "Add target position to uv coordinates"
-msgstr "Додај циљну позицију на UV координате"
-
-
 msgid "U-Axis"
 msgstr "U оса"
 
@@ -10752,6 +10744,10 @@ msgstr "Измени путању"
 
 msgid "Number of frames cached"
 msgstr "Број кадрова у остави"
+
+
+msgid "Lines"
+msgstr "Линије"
 
 
 msgid "Free Run"
@@ -20922,10 +20918,6 @@ msgid "2D Cursor"
 msgstr "2D курсор"
 
 
-msgid "Active Point"
-msgstr "Активна тачка"
-
-
 msgid "Footage Settings"
 msgstr "Подешавање видеа"
 
@@ -25135,10 +25127,6 @@ msgid "Invert Selection"
 msgstr "Обрни избор"
 
 
-msgid "[{}]: \"{}\" ({})"
-msgstr "[{}]: \"{}\" ({})"
-
-
 msgid "Tracking"
 msgstr "Праћење"
 
@@ -25991,10 +25979,6 @@ msgstr "Датотека:"
 
 msgid "Author:"
 msgstr "Аутор:"
-
-
-msgid "author"
-msgstr "аутор"
 
 
 msgid "Version:"
