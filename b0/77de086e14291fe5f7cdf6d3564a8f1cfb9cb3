@@ -5,4 +5,4 @@ Referenced by issue #82251, Outliner Material Drag&Drop GUI issue
 Referenced by issue #81675, renaming a collection in outliner triggers renaming mode for all meshes inside
 Referenced by issue #81555, Outliner object state filter does not update on selection change
 Referenced by issue #79987, Crash when joining objects
-Referenced by issue #106021, Selected two linked objects, instead of one
+Referenced by issue #106021, Outliner: two linked objects selected, instead of one
