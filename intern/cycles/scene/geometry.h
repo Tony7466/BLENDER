@@ -108,7 +108,7 @@ class Geometry : public Node {
   int motion_step(float time) const;
 
   /* BVH */
-  void create_new_bvh_if_needed(Object *object,
+  bool create_new_bvh_if_needed(Object *object,
                                 Device *device,
                                 DeviceScene *dscene,
                                 SceneParams *params);

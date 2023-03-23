@@ -85,6 +85,7 @@ class BVH {
   {
     this->geometry = geometry;
     this->objects = objects;
+    this->built = false;
   }
 
  protected:

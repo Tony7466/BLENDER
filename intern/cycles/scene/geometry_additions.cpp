@@ -805,11 +805,12 @@ void GeometryManager::device_update_bvh_postprocess(Device *device,
   dscene->data.device_bvh = 0;
 }
 
-void Geometry::create_new_bvh_if_needed(Object *object,
+bool Geometry::create_new_bvh_if_needed(Object *object,
                                         Device *device,
                                         DeviceScene *dscene,
                                         SceneParams *params)
 {
+  bool status = false;
   const BVHLayout bvh_layout = BVHParams::best_bvh_layout(params->bvh_layout,
                                                           device->get_bvh_layout_mask());
   if (need_build_bvh(bvh_layout)) {
@@ -849,7 +850,10 @@ void Geometry::create_new_bvh_if_needed(Object *object,
       bvh = BVH::create(bparams, geometry, objects, device);
       need_update_rebuild = true;
     }
+    status = true;
   }
+
+  return status;
 }
 
 void GeometryManager::device_update_sub_bvh(Device *device,
@@ -893,8 +897,13 @@ void GeometryManager::device_update_sub_bvh(Device *device,
       if (sub_bvh != NULL) {
         delete sub_bvh;
       }
-      sub_bvh = BVH::create(bparams, bvh->geometry, bvh->objects, device);
-      bvh->set_device_bvh(device, sub_bvh);
+      VLOG_INFO << "Sub-BVH using layout " << bvh_layout_name(bparams.bvh_layout) << " from layout " << bvh_layout_name(bvh->params.bvh_layout);
+      /* BVH2 should not have a sub-bvh as only 1 is built on the CPU */
+      assert(bparams.bvh_layout != BVH_LAYOUT_BVH2); 
+      if(bparams.bvh_layout != BVH_LAYOUT_BVH2) {
+	sub_bvh = BVH::create(bparams, bvh->geometry, bvh->objects, device);
+	bvh->set_device_bvh(device, sub_bvh);
+      }
     }
     can_refit = false;
   }

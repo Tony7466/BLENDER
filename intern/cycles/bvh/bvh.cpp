@@ -70,7 +70,7 @@ BVHLayout BVHParams::best_bvh_layout(BVHLayout requested_layout, BVHLayoutMask s
 BVH::BVH(const BVHParams &params_,
          const vector<Geometry *> &geometry_,
          const vector<Object *> &objects_)
-    : params(params_), geometry(geometry_), objects(objects_)
+  : params(params_), geometry(geometry_), objects(objects_), built(false)
 {
 }
 

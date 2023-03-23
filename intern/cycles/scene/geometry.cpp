@@ -1326,8 +1326,7 @@ size_t GeometryManager::createObjectBVHs(Device *device,
     if (geom->is_modified() || geom->need_update_bvh_for_offset) {
       need_update_scene_bvh = true;
       Object *object = &object_pool[id];
-      geom->create_new_bvh_if_needed(object, device, dscene, &scene->params);
-      if (geom->need_build_bvh(bvh_layout)) {
+      if(geom->create_new_bvh_if_needed(object, device, dscene, &scene->params)) {
         num_bvh++;
       }
     }

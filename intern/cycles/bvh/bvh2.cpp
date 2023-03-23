@@ -36,7 +36,7 @@ BVH2::BVH2(const BVHParams &params_,
 
 void BVH2::build(Progress &progress, Stats *)
 {
-  progress.set_substatus("Building BVH");
+  progress.set_substatus("Building BVH2 BVH");
 
   /* build nodes */
   BVHBuild bvh_build(objects,
