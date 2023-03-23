@@ -62,13 +62,11 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
       case GREASE_PENCIL_DRAWING: {
         const GreasePencilDrawing *src_drawing = reinterpret_cast<const GreasePencilDrawing *>(
             src_drawing_or_ref);
-        const bke::CurvesGeometry &src_geom = src_drawing->geometry.wrap();
         grease_pencil_dst->drawing_array[i] = reinterpret_cast<GreasePencilDrawingOrReference *>(
             MEM_cnew<GreasePencilDrawing>(__func__));
         GreasePencilDrawing *dst_drawing = reinterpret_cast<GreasePencilDrawing *>(
             grease_pencil_dst->drawing_array[i]);
 
-        bke::CurvesGeometry &dst_geom = dst_drawing->geometry.wrap();
         dst_drawing->base.type = src_drawing->base.type;
         dst_drawing->base.flag = src_drawing->base.flag;
 
@@ -302,18 +300,27 @@ void GreasePencil::foreach_visible_drawing(
     int frame,
     blender::FunctionRef<void(GreasePencilDrawing &, blender::bke::gpencil::Layer &)> function)
 {
+  using namespace blender::bke::gpencil;
+
   blender::Span<GreasePencilDrawingOrReference *> drawings = this->drawings();
-  this->runtime->root_group().foreach_layer_pre_order([&](blender::bke::gpencil::Layer &layer) {
-    if (layer.frames().contains(frame)) {
-      int index = layer.frames().lookup(frame);
-      GreasePencilDrawingOrReference *drawing_or_reference = drawings[index];
-      if (drawing_or_reference->type == GREASE_PENCIL_DRAWING) {
-        GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(
-            drawing_or_reference);
-        function(*drawing, layer);
-      }
+  for (TreeNode &node : this->runtime->root_group().children_in_pre_order()) {
+    if (!node.is_layer()) {
+      continue;
     }
-  });
+    Layer &layer = node.as_layer();
+    if (!layer.frames().contains(frame)) {
+      continue;
+    }
+    int index = layer.frames().lookup(frame);
+    GreasePencilDrawingOrReference *drawing_or_reference = drawings[index];
+    if (drawing_or_reference->type == GREASE_PENCIL_DRAWING) {
+      GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_or_reference);
+      function(*drawing, layer);
+    }
+    else if (drawing_or_reference->type == GREASE_PENCIL_DRAWING_REFERENCE) {
+      /* TODO */
+    }
+  }
 }
 
 void GreasePencil::read_drawing_array(BlendDataReader *reader)
