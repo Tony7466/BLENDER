@@ -36,6 +36,9 @@ __all__ = (
     "get_render_plugins",
 )
 
+import os
+from pathlib import Path
+
 import bpy
 import _bpy_hydra
 
@@ -59,6 +62,8 @@ class HydraRenderEngine(bpy.types.RenderEngine):
     @classmethod
     def register(cls):
         _bpy_hydra.init()
+        os.environ['PXR_MTLX_STDLIB_SEARCH_PATHS'] = str(Path(bpy.app.binary_path).parent / "materialx/libraries") + \
+                                                     os.pathsep + os.environ.get('PXR_MTLX_STDLIB_SEARCH_PATHS', "")
 
     @classmethod
     def unregister(cls):

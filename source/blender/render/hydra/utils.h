@@ -21,6 +21,5 @@ std::string cache_image(Main *bmain,
                         ImageUser *iuser,
                         ImageSaveOptions *opts,
                         ReportList *reports);
-void set_env_paths(std::string const &name, std::vector<std::string> path_dirs);
 
 }  // namespace blender::render::hydra

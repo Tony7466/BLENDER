@@ -18,47 +18,24 @@
 
 namespace blender::render::hydra {
 
-void setup_usd_mtlx_environment()
-{
-  /* PXR_MTLX_STDLIB_SEARCH_PATHS - path to the MaterialX standard library
-   * USD's MaterialX code expects to be set. */
-
-  static bool mtlx_env_set = false;
-  if (mtlx_env_set) {
-    return;
-  }
-  mtlx_env_set = true;
-
-  char stdlib_path[FILE_MAX] = "";
-  size_t stdlib_path_len = BLI_path_join(
-      stdlib_path, sizeof(stdlib_path), BKE_appdir_program_dir(), "materialx", "libraries");
-  if (stdlib_path_len == 0 || !BLI_exists(stdlib_path)) {
-    return;
-  }
-
-  set_env_paths("PXR_MTLX_STDLIB_SEARCH_PATHS", {stdlib_path});
-}
-
 static PyObject *init_func(PyObject * /*self*/, PyObject *args)
 {
   CLOG_INFO(LOG_EN, 1, "Init");
 
   pxr::PlugRegistry::GetInstance().RegisterPlugins(std::string(BKE_appdir_program_dir()) +
                                                    "/blender.shared/usd");
-  setup_usd_mtlx_environment();
 
   Py_RETURN_NONE;
 }
 
 static PyObject *register_plugins_func(PyObject * /*self*/, PyObject *args)
 {
-  PyObject *pyplugin_dirs, *pypath_dirs;
-  if (!PyArg_ParseTuple(args, "OO", &pyplugin_dirs, &pypath_dirs)) {
+  PyObject *pyplugin_dirs;
+  if (!PyArg_ParseTuple(args, "O", &pyplugin_dirs)) {
     Py_RETURN_NONE;
   }
 
-
-  std::vector<std::string> plugin_dirs, path_dirs;
+  std::vector<std::string> plugin_dirs;
   PyObject *pyiter, *pyitem;
 
   pyiter = PyObject_GetIter(pyplugin_dirs);
@@ -70,19 +47,6 @@ static PyObject *register_plugins_func(PyObject * /*self*/, PyObject *args)
     Py_DECREF(pyiter);
   }
 
-  pyiter = PyObject_GetIter(pypath_dirs);
-  if (pyiter) {
-    while (pyitem = PyIter_Next(pyiter)) {
-      path_dirs.push_back(PyUnicode_AsUTF8(pyitem));
-      Py_DECREF(pyitem);
-    }
-    Py_DECREF(pyiter);
-  }
-
-  if (!path_dirs.empty()) {
-    set_env_paths("PATH", path_dirs);
-  }
-
   pxr::PlugRegistry &registry = pxr::PlugRegistry::GetInstance();
   registry.RegisterPlugins(plugin_dirs);
 
@@ -92,10 +56,7 @@ static PyObject *register_plugins_func(PyObject * /*self*/, PyObject *args)
   for (auto &s : plugin_dirs) {
     ss << s << ", ";
   }
-  ss << "], path=[";
-  for (auto &s : path_dirs) {
-    ss << s << ", ";
-  }
+  ss << "]";
   CLOG_INFO(LOG_EN, 1, "Register %s", ss.str().c_str());
 
   Py_RETURN_NONE;
