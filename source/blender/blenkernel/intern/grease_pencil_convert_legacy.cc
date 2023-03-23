@@ -73,7 +73,8 @@ void legacy_gpencil_frame_to_curves_geometry(GreasePencilDrawing &drawing, bGPDf
     for (const int j : stroke_points.index_range()) {
       const bGPDspoint &pt = stroke_points[j];
       curve_positions[j] = float3(pt.x, pt.y, pt.z);
-      curve_radii[j] = pt.pressure;
+      /* For now, store the actual radius of the stroke (without layer adjustment). */
+      curve_radii[j] = gps->thickness * pt.pressure;
       curve_opacities[j] = pt.strength;
       curve_selections[j] = (pt.flag & GP_SPOINT_SELECT) != 0;
     }
