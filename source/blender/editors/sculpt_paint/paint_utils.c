@@ -798,9 +798,19 @@ void PAINT_OT_vert_select_linked_pick(wmOperatorType *ot)
 
 static int paintvert_select_more_exec(bContext *C, wmOperator *op)
 {
+  Object *ob = CTX_data_active_object(C);
+  Mesh *mesh = BKE_mesh_from_object(ob);
+  if (mesh == NULL || mesh->totpoly == 0) {
+    return OPERATOR_CANCELLED;
+  }
+
   const bool face_step = RNA_boolean_get(op->ptr, "face_step");
-  paintvert_select_more(C, CTX_data_active_object(C), face_step);
+  paintvert_select_more(mesh, face_step);
+
+  paintvert_flush_flags(ob);
+  paintvert_tag_select_update(C, ob);
   ED_region_tag_redraw(CTX_wm_region(C));
+
   return OPERATOR_FINISHED;
 }
 

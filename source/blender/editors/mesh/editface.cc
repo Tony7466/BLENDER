@@ -660,13 +660,9 @@ void paintvert_select_linked(bContext *C, Object *ob)
   paintvert_select_linked_vertices(C, ob, indices, true);
 }
 
-void paintvert_select_more(bContext *C, Object *ob, const bool face_step)
+void paintvert_select_more(Mesh *mesh, const bool face_step)
 {
   using namespace blender;
-  Mesh *mesh = BKE_mesh_from_object(ob);
-  if (mesh == nullptr || mesh->totpoly == 0) {
-    return;
-  }
 
   bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
   bke::SpanAttributeWriter<bool> select_vert = attributes.lookup_or_add_for_write_span<bool>(
@@ -716,8 +712,6 @@ void paintvert_select_more(bContext *C, Object *ob, const bool face_step)
   }
 
   select_vert.finish();
-  paintvert_flush_flags(ob);
-  paintvert_tag_select_update(C, ob);
 }
 
 void paintvert_select_less(bContext *C, Object *ob, const bool face_step)
