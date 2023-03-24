@@ -3199,11 +3199,13 @@ static void animchannel_clear_selection(bAnimContext *ac)
       case ANIMTYPE_FCURVE: {
         FCurve *fcu = (FCurve *)ale->data;
         fcu->flag &= ~FCURVE_SELECTED;
-      } break;
+        break;
+      }
       case ANIMTYPE_GPLAYER: {
         bGPDlayer *gpl = (bGPDlayer *)ale->data;
         gpl->flag &= ~GP_LAYER_SELECT;
-      } break;
+        break;
+      }
       default:
         break;
     }
@@ -3219,15 +3221,16 @@ static void animchannel_select_range(bAnimContext *ac, bAnimListElem *cursor_ele
   bool in_selection_range = false;
 
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    bool is_cursor_elem = (ale->data == cursor_elem->data);
+
     switch (ale->type) {
 
       case ANIMTYPE_FCURVE:
       case ANIMTYPE_NLACURVE: {
         FCurve *fcu = (FCurve *)ale->data;
-        FCurve *cursor = (FCurve *)cursor_elem->data;
 
         /* Select first and last element from the range. Reverse selection status on extremes. */
-        if ((fcu->flag & FCURVE_ACTIVE) || fcu == cursor) {
+        if ((fcu->flag & FCURVE_ACTIVE) || is_cursor_elem) {
           fcu->flag |= FCURVE_SELECTED;
           in_selection_range = !in_selection_range;
         }
@@ -3236,12 +3239,12 @@ static void animchannel_select_range(bAnimContext *ac, bAnimListElem *cursor_ele
         if (in_selection_range) {
           fcu->flag |= FCURVE_SELECTED;
         }
-      } break;
+        break;
+      }
       case ANIMTYPE_GPLAYER: {
         bGPDlayer *gpl = (bGPDlayer *)ale->data;
-        bGPDlayer *cursor = (bGPDlayer *)cursor_elem->data;
 
-        if ((gpl->flag & GP_LAYER_ACTIVE) || gpl == cursor) {
+        if ((gpl->flag & GP_LAYER_ACTIVE) || is_cursor_elem) {
           gpl->flag |= GP_LAYER_SELECT;
           in_selection_range = !in_selection_range;
         }
@@ -3249,7 +3252,8 @@ static void animchannel_select_range(bAnimContext *ac, bAnimListElem *cursor_ele
         if (in_selection_range) {
           gpl->flag |= GP_LAYER_SELECT;
         }
-      } break;
+        break;
+      }
       default:
         break;
     }
