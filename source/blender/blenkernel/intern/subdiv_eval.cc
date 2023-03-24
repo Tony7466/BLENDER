@@ -16,7 +16,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_customdata.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_subdiv.h"
 
 #include "MEM_guardedalloc.h"
@@ -83,17 +83,16 @@ static void set_coarse_positions(Subdiv *subdiv,
 {
   const float(*positions)[3] = BKE_mesh_vert_positions(mesh);
   const blender::Span<MPoly> polys = mesh->polys();
-  const blender::Span<MLoop> loops = mesh->loops();
+  const blender::Span<int> corner_verts = mesh->corner_verts();
   /* Mark vertices which needs new coordinates. */
   /* TODO(sergey): This is annoying to calculate this on every update,
    * maybe it's better to cache this mapping. Or make it possible to have
    * OpenSubdiv's vertices match mesh ones? */
   BLI_bitmap *vertex_used_map = BLI_BITMAP_NEW(mesh->totvert, "vert used map");
   for (int poly_index = 0; poly_index < mesh->totpoly; poly_index++) {
-    const MPoly *poly = &polys[poly_index];
-    for (int corner = 0; corner < poly->totloop; corner++) {
-      const MLoop *loop = &loops[poly->loopstart + corner];
-      BLI_BITMAP_ENABLE(vertex_used_map, loop->v);
+    const MPoly &poly = polys[poly_index];
+    for (int i = 0; i < poly.totloop; i++) {
+      BLI_BITMAP_ENABLE(vertex_used_map, corner_verts[poly.loopstart + i]);
     }
   }
   /* Use a temporary buffer so we do not upload vertices one at a time to the GPU. */
@@ -139,8 +138,8 @@ static void set_face_varying_data_from_uv_task(void *__restrict userdata,
   FaceVaryingDataFromUVContext *ctx = static_cast<FaceVaryingDataFromUVContext *>(userdata);
   OpenSubdiv_TopologyRefiner *topology_refiner = ctx->topology_refiner;
   const int layer_index = ctx->layer_index;
-  const MPoly *mpoly = &ctx->polys[face_index];
-  const float(*mluv)[2] = &ctx->mloopuv[mpoly->loopstart];
+  const MPoly &poly = ctx->polys[face_index];
+  const float(*mluv)[2] = &ctx->mloopuv[poly.loopstart];
 
   /* TODO(sergey): OpenSubdiv's C-API converter can change winding of
    * loops of a face, need to watch for that, to prevent wrong UVs assigned.
