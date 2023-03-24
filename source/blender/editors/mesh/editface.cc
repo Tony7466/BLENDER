@@ -674,7 +674,7 @@ void paintvert_select_more(Mesh *mesh, const bool face_step)
 
   const Span<MPoly> polys = mesh->polys();
   const Span<int> corner_edges = mesh->corner_edges();
-  const Span<int> corner_vertices = mesh->corner_verts();
+  const Span<int> corner_verts = mesh->corner_verts();
   const Span<MEdge> edges = mesh->edges();
 
   Array<Vector<int, 2>> edge_to_face_map;
@@ -707,8 +707,8 @@ void paintvert_select_more(Mesh *mesh, const bool face_step)
         continue;
       }
       const MPoly &poly = polys[poly_i];
-      for (const int vertex_index : corner_vertices.slice(poly.loopstart, poly.totloop)) {
-        select_vert.span[vertex_index] = true;
+      for (const int vert : corner_verts.slice(poly.loopstart, poly.totloop)) {
+        select_vert.span[vert] = true;
       }
     }
   }
@@ -730,7 +730,7 @@ void paintvert_select_less(Mesh *mesh, const bool face_step)
 
   const Span<MPoly> polys = mesh->polys();
   const Span<int> corner_edges = mesh->corner_edges();
-  const Span<int> corner_vertices = mesh->corner_verts();
+  const Span<int> corner_verts = mesh->corner_verts();
   const Span<MEdge> edges = mesh->edges();
 
   MeshElemMap *edge_poly_map;
@@ -768,8 +768,8 @@ void paintvert_select_less(Mesh *mesh, const bool face_step)
         continue;
       }
       const MPoly &poly = polys[poly_i];
-      for (const int vertex_index : corner_vertices.slice(poly.loopstart, poly.totloop)) {
-        select_vert.span[vertex_index] = false;
+      for (const int vert : corner_verts.slice(poly.loopstart, poly.totloop)) {
+        select_vert.span[vert] = false;
       }
     }
   }
