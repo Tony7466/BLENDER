@@ -119,31 +119,29 @@ void Cache::end_build(const Scene *scene)
   uint64_t last_set = 0;
   for (uint64_t &receiver_collection_mask : receiver_light_sets_.values()) {
     /* Skip hash map lookup for consecutive objects with same mask for performance. */
-    if (receiver_collection_mask == last_mask) {
-      continue;
+    if (receiver_collection_mask != last_mask) {
+      last_mask = receiver_collection_mask;
+      last_set = unique_light_sets.lookup_or_add_cb(receiver_collection_mask, [&]() {
+        /* Assign unique ID for this light set. */
+        uint64_t new_id = unique_light_set_id++;
+        if (new_id >= MAX_RELATION_BITS) {
+          if (new_id == MAX_RELATION_BITS) {
+            printf("Maximum number of light linking combinations (%d) exceeded in scene \"%s\".",
+                   MAX_RELATION_BITS,
+                   scene->id.name + 2);
+          }
+          return uint64_t(0);
+        }
+
+        /* Mark emitters as a member of this light set. */
+        for (EmitterData &info : emitter_data_map_.values()) {
+          if (receiver_collection_mask & info.receiver_collection_bit) {
+            info.light_set_membership |= (1 << new_id);
+          }
+        }
+        return new_id;
+      });
     }
-
-    last_mask = receiver_collection_mask;
-    last_set = unique_light_sets.lookup_or_add_cb(receiver_collection_mask, [&]() {
-      /* Assign unique ID for this light set. */
-      uint64_t new_id = unique_light_set_id++;
-      if (new_id >= MAX_RELATION_BITS) {
-        if (new_id == MAX_RELATION_BITS) {
-          printf("Maximum number of light linking combinations (%d) exceeded in scene \"%s\".",
-                 MAX_RELATION_BITS,
-                 scene->id.name + 2);
-        }
-        return uint64_t(0);
-      }
-
-      /* Mark emitters as a member of this light set. */
-      for (EmitterData &info : emitter_data_map_.values()) {
-        if (receiver_collection_mask & info.receiver_collection_bit) {
-          info.light_set_membership |= (1 << new_id);
-        }
-      }
-      return new_id;
-    });
 
     /* Assign set index. */
     receiver_collection_mask = last_set;
