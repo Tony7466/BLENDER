@@ -252,7 +252,7 @@ class GRAPH_MT_key(Menu):
         layout.operator("graph.sound_bake")
 
         layout.separator()
-        layout.operator("graph.frame_jump", "Jump to Selected")
+        layout.operator("graph.frame_jump", text="Jump to Selected")
 
         layout.separator()
         layout.operator("graph.copy", text="Copy")
