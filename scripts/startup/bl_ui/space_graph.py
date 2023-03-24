@@ -256,6 +256,28 @@ class GRAPH_MT_key_density(Menu):
         layout.operator("graph.clean").channels = False
 
 
+class GRAPH_MT_key_blending(Menu):
+    bl_label = "Blend"
+
+    def draw(self, _context):
+        layout = self.layout
+        layout.operator_context = "INVOKE_DEFAULT"
+        layout.operator("graph.breakdown", text="Breakdown")
+        layout.operator("graph.blend_to_neighbor", text="Blend to Neighbor")
+        layout.operator("graph.blend_to_default", text="Blend to Default Value")
+        layout.operator("graph.ease", text="Ease")
+
+
+class GRAPH_MT_key_smoothing(Menu):
+    bl_label = "Smooth"
+
+    def draw(self, _context):
+        layout = self.layout
+        layout.operator_context = "INVOKE_DEFAULT"
+        layout.operator("graph.gaussian_smooth", text="Smooth (Gaussian)")
+        layout.operator("graph.smooth", text="Smooth (Legacy)")
+
+
 class GRAPH_MT_key(Menu):
     bl_label = "Key"
 
@@ -289,8 +311,8 @@ class GRAPH_MT_key(Menu):
         layout.separator()
 
         layout.menu("GRAPH_MT_key_density")
-        layout.menu("GRAPH_MT_slider", text="Slider Operators")
-        layout.operator("graph.smooth")
+        layout.menu("GRAPH_MT_key_blending")
+        layout.menu("GRAPH_MT_key_smoothing")
 
         layout.separator()
         layout.operator("graph.bake")
@@ -481,6 +503,8 @@ classes = (
     GRAPH_MT_key_density,
     GRAPH_MT_key_transform,
     GRAPH_MT_key_snap,
+    GRAPH_MT_key_smoothing,
+    GRAPH_MT_key_blending,
     GRAPH_MT_slider,
     GRAPH_MT_delete,
     GRAPH_MT_context_menu,
