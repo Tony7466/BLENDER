@@ -536,6 +536,9 @@ static void anim_channels_select_set(bAnimContext *ac,
         bGPDlayer *gpl = (bGPDlayer *)ale->data;
 
         ACHANNEL_SET_FLAG(gpl, sel, GP_LAYER_SELECT);
+        if ((gpl->flag & GP_LAYER_SELECT) == 0) {
+          gpl->flag &= ~GP_LAYER_ACTIVE;
+        }
         break;
       }
       case ANIMTYPE_MASKLAYER: {
