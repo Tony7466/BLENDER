@@ -227,7 +227,6 @@ set(VULKAN_SRC
   vulkan/vk_texture.cc
   vulkan/vk_uniform_buffer.cc
   vulkan/vk_vertex_buffer.cc
-  vulkan/vk_debug.cc
 
   vulkan/vk_backend.hh
   vulkan/vk_batch.hh

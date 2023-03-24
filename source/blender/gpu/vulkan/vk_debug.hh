@@ -37,7 +37,7 @@ namespace blender {
       void object_vk_label(VKContext* ctx, VkObjectType objType, uint64_t obj, const char* name);
       template<typename T> void object_vk_label(VKContext* ctx, T obj, const char* name) {
         if (!(G.debug & G_DEBUG_GPU)) {
-          //return;
+          return;
         }
         const size_t label_size = 64;
         char label[label_size];
