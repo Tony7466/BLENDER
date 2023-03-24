@@ -266,6 +266,8 @@ static int view3d_setobjectascamera_exec(bContext *C, wmOperator *op)
     WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, scene);
   }
 
+  DEG_relations_tag_update(CTX_data_main(C));
+
   return OPERATOR_FINISHED;
 }
 

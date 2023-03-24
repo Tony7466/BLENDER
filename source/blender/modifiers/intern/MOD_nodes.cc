@@ -179,11 +179,6 @@ static bool node_needs_own_transform_relation(const bNode &node)
     return true;
   }
 
-  if (node.type == GEO_NODE_ACTIVE_CAMERA) {
-    return true;
-    // TODO
-  }
-
   return false;
 }
 
@@ -261,6 +256,8 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
   }
 
   DEG_add_node_tree_output_relation(ctx->node, nmd->node_group, "Nodes Modifier");
+
+  add_object_relation(ctx, *ctx->scene->camera);
 
   bool needs_own_transform_relation = false;
   Set<ID *> used_ids;

@@ -28,6 +28,4 @@ void register_node_type_geo_active_camera()
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   ntype.declare = file_ns::node_declare;
   nodeRegisterType(&ntype);
-
-  // TODO
 }
