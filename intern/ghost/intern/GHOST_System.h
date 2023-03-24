@@ -152,6 +152,7 @@ class GHOST_System : public GHOST_ISystem {
 
   bool supportsCursorWarp(void);
   bool supportsWindowPosition(void);
+  bool supportsPrimaryClipboard(void);
 
   /**
    * Focus window after opening, or put them in the background.
@@ -159,6 +160,12 @@ class GHOST_System : public GHOST_ISystem {
   void useWindowFocus(const bool use_focus);
 
   bool m_windowFocus;
+
+  /**
+   * Focus and raise windows on mouse hover.
+   */
+  void setAutoFocus(const bool auto_focus);
+  bool m_autoFocus;
 
   /**
    * Get the Window under the cursor.

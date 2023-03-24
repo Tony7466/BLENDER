@@ -517,7 +517,7 @@ OPENEXR_FORCE_REBUILD=false
 OPENEXR_SKIP=false
 _with_built_openexr=false
 
-OIIO_VERSION="2.4.6.0"
+OIIO_VERSION="2.4.9.0"
 OIIO_VERSION_SHORT="2.4"
 OIIO_VERSION_MIN="2.2.0"
 OIIO_VERSION_MEX="2.5.0"
@@ -6615,11 +6615,9 @@ print_info() {
   fi
 
   if [ -d $INST/oiio ]; then
-    _1="-D WITH_OPENIMAGEIO=ON"
-    _2="-D OPENIMAGEIO_ROOT_DIR=$INST/oiio"
+    _1="-D OPENIMAGEIO_ROOT_DIR=$INST/oiio"
     PRINT "  $_1"
-    PRINT "  $_2"
-    _buildargs="$_buildargs $_1 $_2"
+    _buildargs="$_buildargs $_1"
   fi
 
   if [ "$OSL_SKIP" = false ]; then

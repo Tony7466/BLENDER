@@ -13,11 +13,12 @@ set(INC
   ../../../intern/atomic
   ../../../intern/eigen
   ../../../intern/guardedalloc
-  ../../../extern/wcwidth
-  ../../../extern/json/include
 )
 
 set(INC_SYS
+  ../../../extern/wcwidth
+  ../../../extern/json/include
+
   ${EIGEN3_INCLUDE_DIRS}
   ${ZLIB_INCLUDE_DIRS}
   ${ZSTD_INCLUDE_DIRS}
@@ -52,6 +53,7 @@ set(SRC
   intern/array_utils.cc
   intern/astar.c
   intern/atomic_disjoint_set.cc
+  intern/bit_span.cc
   intern/bitmap.c
   intern/bitmap_draw_2d.c
   intern/boxpack_2d.c
@@ -145,6 +147,7 @@ set(SRC
   intern/task_pool.cc
   intern/task_range.cc
   intern/task_scheduler.cc
+  intern/tempfile.c
   intern/threads.cc
   intern/time.c
   intern/timecode.c
@@ -177,6 +180,8 @@ set(SRC
   BLI_assert.h
   BLI_astar.h
   BLI_atomic_disjoint_set.hh
+  BLI_bit_ref.hh
+  BLI_bit_span.hh
   BLI_bit_vector.hh
   BLI_bitmap.h
   BLI_bitmap_draw_2d.h
@@ -259,14 +264,20 @@ set(SRC
   BLI_map.hh
   BLI_map_slots.hh
   BLI_math.h
+  BLI_math_angle_types.hh
+  BLI_math_axis_angle.hh
+  BLI_math_axis_angle_types.hh
   BLI_math_base.h
   BLI_math_base.hh
   BLI_math_base_safe.h
+  BLI_math_basis_types.hh
   BLI_math_bits.h
   BLI_math_boolean.hh
   BLI_math_color.h
   BLI_math_color.hh
   BLI_math_color_blend.h
+  BLI_math_euler.hh
+  BLI_math_euler_types.hh
   BLI_math_geom.h
   BLI_math_inline.h
   BLI_math_interp.h
@@ -274,6 +285,8 @@ set(SRC
   BLI_math_matrix.hh
   BLI_math_matrix_types.hh
   BLI_math_mpq.hh
+  BLI_math_quaternion.hh
+  BLI_math_quaternion_types.hh
   BLI_math_rotation.h
   BLI_math_rotation.hh
   BLI_math_rotation_legacy.hh
@@ -335,6 +348,7 @@ set(SRC
   BLI_system.h
   BLI_task.h
   BLI_task.hh
+  BLI_tempfile.h
   BLI_threads.h
   BLI_timecode.h
   BLI_timeit.hh
@@ -495,6 +509,7 @@ if(WITH_GTESTS)
     tests/BLI_math_matrix_test.cc
     tests/BLI_math_matrix_types_test.cc
     tests/BLI_math_rotation_test.cc
+    tests/BLI_math_rotation_types_test.cc
     tests/BLI_math_solvers_test.cc
     tests/BLI_math_time_test.cc
     tests/BLI_math_vector_test.cc
@@ -520,6 +535,7 @@ if(WITH_GTESTS)
     tests/BLI_string_utf8_test.cc
     tests/BLI_task_graph_test.cc
     tests/BLI_task_test.cc
+    tests/BLI_tempfile_test.cc
     tests/BLI_uuid_test.cc
     tests/BLI_vector_set_test.cc
     tests/BLI_vector_test.cc

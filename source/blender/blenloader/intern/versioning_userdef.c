@@ -91,6 +91,10 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     btheme->tui.wcol_view_item = U_theme_default.tui.wcol_view_item;
   }
 
+  if (!USER_VERSION_ATLEAST(306, 3)) {
+    FROM_DEFAULT_V4_UCHAR(space_view3d.face_retopology);
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -772,7 +776,11 @@ void blo_do_versions_userdef(UserDef *userdef)
 
   /* Set GPU backend to OpenGL. */
   if (!USER_VERSION_ATLEAST(305, 5)) {
+#ifdef __APPLE__
+    userdef->gpu_backend = GPU_BACKEND_METAL;
+#else
     userdef->gpu_backend = GPU_BACKEND_OPENGL;
+#endif
   }
 
   if (!USER_VERSION_ATLEAST(305, 10)) {
@@ -781,7 +789,18 @@ void blo_do_versions_userdef(UserDef *userdef)
     }
   }
 
-  if (!USER_VERSION_ATLEAST(306, 1)) {
+  if (!USER_VERSION_ATLEAST(306, 2)) {
+    userdef->animation_flag |= USER_ANIM_HIGH_QUALITY_DRAWING;
+  }
+
+  if (!USER_VERSION_ATLEAST(306, 4)) {
+    /* Increase the number of recently-used files if using the old default value. */
+    if (userdef->recent_files == 10) {
+      userdef->recent_files = 20;
+    }
+  }
+
+  if (!USER_VERSION_ATLEAST(306, 5)) {
     if (userdef->pythondir_legacy[0]) {
       NamedDirectoryPathEntry *script_path = MEM_callocN(sizeof(*script_path),
                                                          "Versioning user script path");
