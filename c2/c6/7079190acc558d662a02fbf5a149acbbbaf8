@@ -1,2 +1,3 @@
 Referenced by issue #102690, Object can be animated with a single keyframe
 Referenced by issue #106095, Regression: Disabling "Show Extrapolation" stops curve drawing in Graph Editor
+Referenced by commit d5d8246441a5bdc63c4c1a12d9dce8fcc3bb8e72, Fix #106095: FCurves not drawn when Extrapolation is disabled
