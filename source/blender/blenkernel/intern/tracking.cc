@@ -15,7 +15,7 @@
 #include "DNA_anim_types.h"
 #include "DNA_camera_types.h"
 #include "DNA_defaults.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_movieclip_types.h"
 #include "DNA_object_types.h" /* SELECT */
 #include "DNA_scene_types.h"
@@ -1517,10 +1517,9 @@ void BKE_tracking_marker_get_subframe_position(MovieTrackingTrack *track,
     MovieTrackingMarker *marker_next = marker + 1;
 
     if (marker_next->framenr == marker->framenr + 1) {
-      /* currently only do subframing inside tracked ranges, do not extrapolate tracked segments
+      /* Currently only do sub-framing inside tracked ranges, do not extrapolate tracked segments
        * could be changed when / if mask parent would be interpolating position in-between
-       * tracked segments
-       */
+       * tracked segments. */
 
       float fac = (framenr - int(framenr)) / (marker_next->framenr - marker->framenr);
 
