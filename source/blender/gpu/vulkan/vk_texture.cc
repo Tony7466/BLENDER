@@ -92,9 +92,10 @@ void VKTexture::clear(eGPUDataFormat format, const void *data)
   range.aspectMask = to_vk_image_aspect_flag_bits(format_);
   range.levelCount = VK_REMAINING_MIP_LEVELS;
   range.layerCount = VK_REMAINING_ARRAY_LAYERS;
+  layout_ensure(context, VK_IMAGE_LAYOUT_GENERAL);
 
   command_buffer.clear(
-      vk_image_, VK_IMAGE_LAYOUT_GENERAL, clear_color, Span<VkImageSubresourceRange>(&range, 1));
+      vk_image_, current_layout_get(), clear_color, Span<VkImageSubresourceRange>(&range, 1));
 }
 
 void VKTexture::swizzle_set(const char /*swizzle_mask*/[4])
@@ -112,7 +113,6 @@ void VKTexture::mip_range_set(int /*min*/, int /*max*/)
 void *VKTexture::read(int mip, eGPUDataFormat format)
 {
   VKContext &context = *VKContext::get();
-  const VkImageLayout previous_layout = current_layout_get();
   layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
   /* Vulkan images cannot be directly mapped to host memory and requires a staging buffer. */
@@ -139,7 +139,6 @@ void *VKTexture::read(int mip, eGPUDataFormat format)
   VKCommandBuffer &command_buffer = context.command_buffer_get();
   command_buffer.copy(staging_buffer, *this, Span<VkBufferImageCopy>(&region, 1));
   command_buffer.submit();
-  layout_ensure(context, previous_layout);
 
   void *data = MEM_mallocN(host_memory_size, __func__);
   convert_device_to_host(data, staging_buffer.mapped_memory_get(), sample_len, format, format_);
@@ -174,6 +173,7 @@ void VKTexture::update_sub(
   region.imageSubresource.mipLevel = mip;
   region.imageSubresource.layerCount = 1;
 
+  layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   VKCommandBuffer &command_buffer = context.command_buffer_get();
   command_buffer.copy(*this, staging_buffer, Span<VkBufferImageCopy>(&region, 1));
   command_buffer.submit();

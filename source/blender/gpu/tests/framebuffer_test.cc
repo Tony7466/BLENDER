@@ -137,4 +137,63 @@ static void test_framebuffer_clear_depth()
 }
 GPU_TEST(framebuffer_clear_depth);
 
+static void test_framebuffer_scissor_test()
+{
+  const int2 size(128, 128);
+  const int bar_size = 16;
+  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_HOST_READ;
+  GPUTexture *texture = GPU_texture_create_2d(
+      __func__, UNPACK2(size), 1, GPU_RGBA32F, usage, nullptr);
+
+  GPUFrameBuffer *framebuffer = GPU_framebuffer_create(__func__);
+  GPU_framebuffer_ensure_config(&framebuffer,
+                                {GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(texture)});
+  GPU_framebuffer_bind(framebuffer);
+
+  const float4 color1(0.0f);
+  const float4 color2(0.5f);
+  const float4 color3(1.0f);
+  GPU_framebuffer_clear_color(framebuffer, color1);
+
+  GPU_scissor_test(true);
+  for (int x = 0; x < size.x; x += 2 * bar_size) {
+    GPU_scissor(x, 0, bar_size, size.y);
+    GPU_framebuffer_clear_color(framebuffer, color2);
+  }
+  for (int y = 0; y < size.y; y += 2 * bar_size) {
+    GPU_scissor(0, y, size.x, bar_size);
+    GPU_framebuffer_clear_color(framebuffer, color3);
+  }
+  GPU_scissor_test(false);
+  GPU_finish();
+
+  float4 *read_data = static_cast<float4 *>(GPU_texture_read(texture, GPU_DATA_FLOAT, 0));
+  int offset = 0;
+  for (float4 pixel_color : Span<float4>(read_data, size.x * size.y)) {
+    int x = offset % size.x;
+    int y = offset / size.x;
+    int bar_x = x / bar_size;
+    int bar_y = y / bar_size;
+
+    if (bar_y % 2 == 0) {
+      EXPECT_EQ(pixel_color, color3);
+    }
+    else {
+      if (bar_x % 2 == 0) {
+        EXPECT_EQ(pixel_color, color2);
+      }
+      else {
+        EXPECT_EQ(pixel_color, color1);
+      }
+    }
+
+    offset++;
+  }
+  MEM_freeN(read_data);
+
+  GPU_framebuffer_free(framebuffer);
+  GPU_texture_free(texture);
+}
+GPU_TEST(framebuffer_scissor_test);
+
 }  // namespace blender::gpu::tests

@@ -60,23 +60,22 @@ void VKFrameBuffer::bind(bool /*enabled_srgb*/)
 VkRect2D VKFrameBuffer::vk_render_area_get() const
 {
   VkRect2D render_area = {};
-  int render_rect[4];
-  viewport_get(render_rect);
+
   if (scissor_test_get()) {
     int scissor_rect[4];
-    int viewport_rect[4];
-    copy_v4_v4_int(viewport_rect, render_rect);
     scissor_get(scissor_rect);
-    int2 scissor_offset_delta = int2(scissor_rect) - int2(viewport_rect);
-    render_rect[0] = max_ii(viewport_rect[0], scissor_rect[0]);
-    render_rect[1] = max_ii(viewport_rect[1], scissor_rect[1]);
-    render_rect[2] = min_ii(viewport_rect[2] - scissor_offset_delta[0], scissor_rect[2]);
-    render_rect[3] = min_ii(viewport_rect[3] - scissor_offset_delta[1], scissor_rect[3]);
+    render_area.offset.x = scissor_rect[0];
+    render_area.offset.y = scissor_rect[1];
+    render_area.extent.width = scissor_rect[2];
+    render_area.extent.height = scissor_rect[3];
   }
-  render_area.offset.x = render_rect[0];
-  render_area.offset.y = render_rect[1];
-  render_area.extent.width = render_rect[2];
-  render_area.extent.height = render_rect[3];
+  else {
+    render_area.offset.x = 0;
+    render_area.offset.y = 0;
+    render_area.extent.width = width_;
+    render_area.extent.height = height_;
+  }
+  
   return render_area;
 }
 
