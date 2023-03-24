@@ -676,11 +676,7 @@ ImBuf *imb_loadtarga(const uchar *mem, size_t mem_size, int flags, char colorspa
       cmap[count] = cp_data;
     }
 
-    /* Set the planes based on the number of planes of the palette. Planes are
-     * used to optimize the storage on the GPU. When planes are not set correctly the image can
-     * draw as if it was a grayscale image. */
     ibuf->planes = tga.mapbits;
-
     if (tga.mapbits != 32) { /* Set alpha bits. */
       cmap[0] &= BIG_LONG(0x00ffffffl);
     }
