@@ -147,6 +147,8 @@ static void select_cache_init(void *vedata)
     if (RETOPOLOGY_ENABLED(draw_ctx->v3d)) {
       pd->shgrp_occlude = DRW_shgroup_create(sh->select_id_uniform, psl->depth_only_pass);
       DRW_shgroup_uniform_int_copy(pd->shgrp_occlude, "id", 0);
+      DRW_shgroup_uniform_float_copy(
+          pd->shgrp_occlude, "retopologyOffset", -RETOPOLOGY_OFFSET(draw_ctx->v3d));
     }
 
     DRW_PASS_CREATE(psl->select_id_face_pass, state);
