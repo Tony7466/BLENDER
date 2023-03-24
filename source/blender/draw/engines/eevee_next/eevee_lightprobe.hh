@@ -54,7 +54,7 @@ class LightProbeModule {
   void begin_sync();
 
   void sync_cube(ObjectHandle &handle);
-  void sync_grid(ObjectHandle &handle);
+  void sync_grid(const Object *ob, ObjectHandle &handle);
 
   void sync_probe(const Object *ob, ObjectHandle &handle);
 

@@ -33,7 +33,26 @@ class IrradianceBake {
   CaptureInfoBuf capture_info_buf_;
   /** Framebuffer. */
   Framebuffer empty_raster_fb_ = {"empty_raster_fb_"};
-  View view_ = {"ortho_raster_view"};
+  /** Evaluate light object contribution and store result to surfel. */
+  PassSimple surfel_light_eval_ps_ = {"LightEval"};
+  /** Propagate light from surfel to surfel. */
+  PassSimple surfel_light_propagate_ps_ = {"LightPropagate"};
+  /** Capture surfel lighting to irradiance samples. */
+  PassSimple irradiance_capture_ps_ = {"IrradianceCapture"};
+
+  /** Basis orientation for each baking projection. */
+  math::CartesianBasis basis_x_ = math::from_orthonormal_axes(math::AxisSigned::Y_POS,
+                                                              math::AxisSigned::X_POS);
+  math::CartesianBasis basis_y_ = math::from_orthonormal_axes(math::AxisSigned::Z_POS,
+                                                              math::AxisSigned::Y_POS);
+  math::CartesianBasis basis_z_ = math::from_orthonormal_axes(math::AxisSigned::X_POS,
+                                                              math::AxisSigned::Z_POS);
+  /** Views for each baking projection. */
+  View view_x_ = {"BakingViewX"};
+  View view_y_ = {"BakingViewY"};
+  View view_z_ = {"BakingViewZ"};
+  /** Pixel resolution in each of the projection axes. Match the target surfel density. */
+  int3 grid_pixel_extent_ = int3(0);
 
  public:
   IrradianceBake(Instance &inst) : inst_(inst){};

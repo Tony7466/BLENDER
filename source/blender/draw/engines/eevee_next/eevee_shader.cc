@@ -172,6 +172,12 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_shadow_tag_usage_opaque";
     case SHADOW_TILEMAP_TAG_USAGE_TRANSPARENT:
       return "eevee_shadow_tag_usage_transparent";
+    case SURFEL_LIGHT:
+      return "eevee_surfel_light";
+    case SURFEL_LIST_BUILD:
+      return "eevee_surfel_list_build";
+    case SURFEL_LIST_SORT:
+      return "eevee_surfel_list_sort";
     /* To avoid compiler warning about missing case. */
     case MAX_SHADER_TYPE:
       return "";

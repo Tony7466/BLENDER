@@ -21,8 +21,7 @@ typedef struct EEVEE_NEXT_LightBake EEVEE_NEXT_LightBake;
  * Create the job description.
  * This is called for async (modal) bake operator.
  * The actual work will be done by `EEVEE_NEXT_lightbake_job()`.
- * Will internally call `EEVEE_NEXT_lightbake_job_data_alloc()` or reuse data from an already
- * existing baking job.
+ * Will internally call `EEVEE_NEXT_lightbake_job_data_alloc()`.
  * IMPORTANT: Must run on the main thread because of potential GPUContext creation.
  */
 struct wmJob *EEVEE_NEXT_lightbake_job_create(struct wmWindowManager *wm,

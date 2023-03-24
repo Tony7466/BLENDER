@@ -26,7 +26,7 @@ void LightProbeModule::begin_sync()
   cubes.clear();
 }
 
-void LightProbeModule::sync_grid(ObjectHandle &handle)
+void LightProbeModule::sync_grid(const Object *ob, ObjectHandle &handle)
 {
   LightProbe &grid = grid_map_.lookup_or_add_default(handle.object_key);
   grid.used = true;
@@ -36,7 +36,8 @@ void LightProbeModule::sync_grid(ObjectHandle &handle)
   }
 
   if (inst_.is_baking()) {
-    grids.append({});
+    const ::LightProbe *light_probe = (const ::LightProbe *)ob->data;
+    grids.append({float4x4(ob->object_to_world), &light_probe->grid_resolution_x});
   }
 }
 
@@ -65,7 +66,7 @@ void LightProbeModule::sync_probe(const Object *ob, ObjectHandle &handle)
       /* TODO(fclem): Remove support? Add support? */
       return;
     case LIGHTPROBE_TYPE_GRID:
-      sync_grid(handle);
+      sync_grid(ob, handle);
       return;
   }
   BLI_assert_unreachable();

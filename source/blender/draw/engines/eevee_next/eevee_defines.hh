@@ -86,6 +86,9 @@
 #define DOF_GATHER_GROUP_SIZE DOF_TILES_SIZE
 #define DOF_RESOLVE_GROUP_SIZE (DOF_TILES_SIZE * 2)
 
+/* IrradianceBake. */
+#define SURFEL_LIGHT_GROUP_SIZE 256
+
 /* Resource bindings. */
 
 /* Texture. */

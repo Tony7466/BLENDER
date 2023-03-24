@@ -264,6 +264,12 @@ Material &MaterialModule::material_sync(Object *ob,
     mat.is_alpha_blend_transparent = (blender_mat->blend_method == MA_BM_BLEND) &&
                                      GPU_material_flag_get(mat.shading.gpumat,
                                                            GPU_MATFLAG_TRANSPARENT);
+    if (inst_.is_baking()) {
+      /* WORKAROUND(fclem): This is to request the shadow for the surfels. This will well
+       * over-request the number of shadow tiles. A better way would be to request from the surfels
+       * directly. */
+      mat.is_alpha_blend_transparent = true;
+    }
     return mat;
   });
 
