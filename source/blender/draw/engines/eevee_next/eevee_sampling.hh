@@ -159,6 +159,13 @@ class Sampling {
   static float2 sample_disk(const float2 &rand);
 
   /**
+   * Uniform hemisphere distribution.
+   * \a rand is 2 random float in the [0..1] range.
+   * Returns point on a Z positive hemisphere of radius 1 and centered on the origin.
+   */
+  static float3 sample_hemisphere(const float2 &rand);
+
+  /**
    * Uniform disc distribution using Fibonacci spiral sampling.
    * \a rand is 2 random float in the [0..1] range.
    * Returns point in a disk of radius 1 and centered on the origin.

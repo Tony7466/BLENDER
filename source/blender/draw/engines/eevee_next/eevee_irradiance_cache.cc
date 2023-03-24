@@ -26,6 +26,9 @@ void IrradianceCache::sync()
   if (!inst_.is_baking()) {
     debug_pass_sync();
   }
+  else {
+    bake.sync();
+  }
 }
 
 void IrradianceCache::debug_pass_sync()
@@ -88,6 +91,55 @@ void IrradianceCache::debug_draw(View &view, GPUFrameBuffer *view_fb)
 /** \name Baking
  * \{ */
 
+void IrradianceBake::sync()
+{
+  {
+    PassSimple &pass = surfel_light_eval_ps_;
+    pass.init();
+    /* Apply lights contribution to scene surfel representation. */
+    pass.shader_set(inst_.shaders.static_shader_get(SURFEL_LIGHT));
+    pass.bind_ssbo(SURFEL_BUF_SLOT, &surfels_buf_);
+    pass.bind_ssbo(CAPTURE_BUF_SLOT, &capture_info_buf_);
+    pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
+    inst_.lights.bind_resources(&pass);
+    inst_.shadows.bind_resources(&pass);
+    /* Sync with the surfel creation stage. */
+    pass.barrier(GPU_BARRIER_SHADER_STORAGE);
+    pass.dispatch(&dispatch_per_surfel_);
+  }
+  {
+    PassSimple &pass = surfel_light_propagate_ps_;
+    pass.init();
+    {
+      PassSimple::Sub &sub = pass.sub("ListBuild");
+      sub.shader_set(inst_.shaders.static_shader_get(SURFEL_LIST_BUILD));
+      sub.bind_ssbo(SURFEL_BUF_SLOT, &surfels_buf_);
+      sub.bind_ssbo(CAPTURE_BUF_SLOT, &capture_info_buf_);
+      sub.bind_ssbo("list_start_buf", &list_start_buf_);
+      sub.bind_ssbo("list_info_buf", &list_info_buf_);
+      sub.barrier(GPU_BARRIER_SHADER_STORAGE);
+      sub.dispatch(&dispatch_per_surfel_);
+    }
+    {
+      PassSimple::Sub &sub = pass.sub("ListSort");
+      sub.shader_set(inst_.shaders.static_shader_get(SURFEL_LIST_SORT));
+      sub.bind_ssbo(SURFEL_BUF_SLOT, &surfels_buf_);
+      sub.bind_ssbo("list_start_buf", &list_start_buf_);
+      sub.bind_ssbo("list_info_buf", &list_info_buf_);
+      sub.barrier(GPU_BARRIER_SHADER_STORAGE);
+      sub.dispatch(&dispatch_per_list_);
+    }
+    {
+      // PassSimple::Sub &sub = pass.sub("LightPropagate");
+    }
+  }
+  {
+    PassSimple &pass = irradiance_capture_ps_;
+    pass.init();
+    /* TODO */
+  }
+}
+
 void IrradianceBake::surfels_create(const IrradianceGrid &grid)
 {
   /**
@@ -97,19 +149,32 @@ void IrradianceBake::surfels_create(const IrradianceGrid &grid)
    */
   using namespace blender::math;
 
-  float4x4 transform(grid.transform);
-  float3 location, scale;
-  Quaternion rotation;
-  math::to_loc_rot_scale(transform, location, rotation, scale);
+  const float4x4 transform(grid.transform);
+  float3 scale;
+  math::to_loc_rot_scale(transform, grid_location_, grid_orientation_, scale);
 
-  /** We could use multi-view rendering here to avoid multiple submissions but it is unlikely to
+  /* Extract bounding box. Order is arbitrary as it is not important for our usage. */
+  const std::array<float3, 8> bbox_corners({float3{+1, +1, +1},
+                                            float3{-1, +1, +1},
+                                            float3{+1, -1, +1},
+                                            float3{-1, -1, +1},
+                                            float3{+1, +1, -1},
+                                            float3{-1, +1, -1},
+                                            float3{+1, -1, -1},
+                                            float3{-1, -1, -1}});
+  grid_bbox_vertices.clear();
+  for (const float3 &point : bbox_corners) {
+    grid_bbox_vertices.append(transform_point(transform, point));
+  }
+
+  /* We could use multi-view rendering here to avoid multiple submissions but it is unlikely to
    * make any difference. The bottleneck is still the light propagation loop. */
   auto sync_view = [&](View &view, CartesianBasis basis) {
     float3 extent = scale;
     float4x4 winmat = projection::orthographic(
         -extent.x, extent.x, -extent.y, extent.y, -extent.z, extent.z);
-    float4x4 viewinv = math::from_loc_rot<float4x4>(location,
-                                                    rotation * to_quaternion<float>(basis));
+    float4x4 viewinv = math::from_loc_rot<float4x4>(
+        grid_location_, grid_orientation_ * to_quaternion<float>(basis));
     view.sync(invert(viewinv), winmat);
   };
 
@@ -117,12 +182,9 @@ void IrradianceBake::surfels_create(const IrradianceGrid &grid)
   sync_view(view_y_, basis_y_);
   sync_view(view_z_, basis_z_);
 
-  /* Surfel per unit distance. */
-  float surfel_density = 2.0f;
-  grid_pixel_extent_ = max(int3(1), int3(surfel_density * 2.0f * scale));
+  grid_pixel_extent_ = max(int3(1), int3(surfel_density_ * 2.0f * scale));
 
   DRW_stats_group_start("IrradianceBake.SurfelsCount");
-  GPU_debug_capture_begin();
 
   /* Raster the scene to query the number of surfel needed. */
   capture_info_buf_.do_surfel_count = true;
@@ -137,7 +199,6 @@ void IrradianceBake::surfels_create(const IrradianceGrid &grid)
   empty_raster_fb_.ensure(grid_pixel_extent_.xy());
   inst_.pipelines.capture.render(view_z_);
 
-  GPU_debug_capture_end();
   DRW_stats_group_end();
 
   /* Allocate surfel pool. */
@@ -150,6 +211,8 @@ void IrradianceBake::surfels_create(const IrradianceGrid &grid)
 
   /* TODO(fclem): Check for GL limit and abort if the surfel cache doesn't fit the GPU memory. */
   surfels_buf_.resize(capture_info_buf_.surfel_len);
+
+  dispatch_per_surfel_.x = divide_ceil_u(surfels_buf_.size(), SURFEL_GROUP_SIZE);
 
   DRW_stats_group_start("IrradianceBake.SurfelsCreate");
 
@@ -166,52 +229,10 @@ void IrradianceBake::surfels_create(const IrradianceGrid &grid)
   inst_.pipelines.capture.render(view_z_);
 
   DRW_stats_group_end();
-
-  /* Sync needs to happen after `surfels_buf_` is resized for correct dispatch size. */
-  sync();
-}
-
-void IrradianceBake::sync()
-{
-  {
-    PassSimple &pass = surfel_light_eval_ps_;
-    pass.init();
-    /* Apply lights contribution to scene surfel representation. */
-    pass.shader_set(inst_.shaders.static_shader_get(SURFEL_LIGHT));
-    pass.bind_ssbo(SURFEL_BUF_SLOT, &surfels_buf_);
-    pass.bind_ssbo(CAPTURE_BUF_SLOT, &capture_info_buf_);
-    pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
-    inst_.lights.bind_resources(&pass);
-    inst_.shadows.bind_resources(&pass);
-    /* Sync with the surfel creation stage. */
-    pass.barrier(GPU_BARRIER_SHADER_STORAGE);
-    pass.dispatch(int3(divide_ceil_u(surfels_buf_.size(), SURFEL_LIGHT_GROUP_SIZE), 1, 1));
-    pass.barrier(GPU_BARRIER_SHADER_STORAGE);
-  }
-  {
-    PassSimple &pass = surfel_light_propagate_ps_;
-    pass.init();
-    {
-      PassSimple::Sub &sub = pass.sub("ListBuild");
-      sub.shader_set(inst_.shaders.static_shader_get(SURFEL_LIST_BUILD));
-      /* TODO */
-    }
-    {
-      PassSimple::Sub &sub = pass.sub("ListSort");
-      sub.shader_set(inst_.shaders.static_shader_get(SURFEL_LIST_SORT));
-      /* TODO */
-    }
-  }
-  {
-    PassSimple &pass = irradiance_capture_ps_;
-    pass.init();
-    /* TODO */
-  }
 }
 
 void IrradianceBake::surfels_lights_eval()
 {
-  GPU_debug_capture_begin();
   /* Use the last setup view. This should work since the view is orthographic. */
   /* TODO(fclem): Remove this. It is only present to avoid crash inside `shadows.set_view` */
   inst_.render_buffers.acquire(int2(1));
@@ -221,16 +242,49 @@ void IrradianceBake::surfels_lights_eval()
   inst_.render_buffers.release();
 
   inst_.manager->submit(surfel_light_eval_ps_);
-
-  GPU_debug_capture_end();
 }
 
 void IrradianceBake::propagate_light_sample()
 {
-  /* Pick random ray direction over the sphere. */
-  /* Project to regular grid and create the surfels lists. */
-  /* Sort the surfels lists. */
-  /* Propagate light. */
+  using namespace blender::math;
+
+  float2 rand_uv = inst_.sampling.rng_2d_get(eSamplingDimension::SAMPLING_FILTER_U);
+  const float3 ray_direction = inst_.sampling.sample_hemisphere(rand_uv);
+  const float3 up = ray_direction;
+  /* Find the closest axis. */
+  const float3 grid_local_ray_direction = transform_point(grid_orientation_, ray_direction);
+  Axis closest_grid_axis = Axis::from_int(dominant_axis(grid_local_ray_direction));
+  /* Use one of the other 2 grid axes to get a reference right vector. */
+  Axis right_axis = AxisSigned(closest_grid_axis).next_after().axis();
+  const float3 grid_right = from_rotation<float3x3>(grid_orientation_)[right_axis.as_int()];
+  /* Create a view around the grid position with the ray direction as up axis.
+   * The other axes are aligned to the grid local axes to avoid to allocate too many list start. */
+  const float4x4 viewmat = invert(
+      from_orthonormal_axes<float4x4>(grid_location_, normalize(cross(up, grid_right)), up));
+
+  /* Compute projection bounds. */
+  float2 min, max;
+  INIT_MINMAX2(min, max);
+  for (const float3 &point : grid_bbox_vertices) {
+    min_max(transform_point(viewmat, point).xy(), min, max);
+  }
+
+  /* NOTE: Z values do not really matter since we are not doing any rasterization. */
+  const float4x4 winmat = projection::orthographic<float>(min.x, max.x, min.y, max.y, 0, 1);
+
+  View ray_view = {"RayProjectionView"};
+  ray_view.sync(viewmat, winmat);
+
+  list_info_buf_.ray_grid_size = math::max(int2(1), int2(surfel_density_ * (max - min)));
+  list_info_buf_.list_max = list_info_buf_.ray_grid_size.x * list_info_buf_.ray_grid_size.y;
+  list_info_buf_.push_update();
+
+  dispatch_per_list_.x = divide_ceil_u(list_info_buf_.list_max, SURFEL_LIST_GROUP_SIZE);
+
+  list_start_buf_.resize(ceil_to_multiple_u(list_info_buf_.list_max, 4));
+
+  GPU_storagebuf_clear(list_start_buf_, -1);
+  inst_.manager->submit(surfel_light_propagate_ps_, ray_view);
 }
 
 void IrradianceBake::read_result(LightCacheIrradianceGrid &light_cache_grid)

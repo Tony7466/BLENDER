@@ -19,7 +19,7 @@ GPU_SHADER_CREATE_INFO(eevee_debug_surfels)
     .do_static_compilation(true);
 
 GPU_SHADER_CREATE_INFO(eevee_surfel_light)
-    .local_group_size(CULLING_SELECT_GROUP_SIZE)
+    .local_group_size(SURFEL_GROUP_SIZE)
     .additional_info("eevee_shared",
                      "draw_view",
                      "eevee_utility_texture",
@@ -31,15 +31,20 @@ GPU_SHADER_CREATE_INFO(eevee_surfel_light)
     .do_static_compilation(true);
 
 GPU_SHADER_CREATE_INFO(eevee_surfel_list_build)
-    .local_group_size(CULLING_SELECT_GROUP_SIZE)
+    .local_group_size(SURFEL_GROUP_SIZE)
     .additional_info("eevee_shared", "draw_view")
+    .storage_buf(0, Qualifier::READ_WRITE, "int", "list_start_buf[]")
+    .storage_buf(SURFEL_BUF_SLOT, Qualifier::READ_WRITE, "Surfel", "surfel_buf[]")
+    .storage_buf(CAPTURE_BUF_SLOT, Qualifier::READ, "CaptureInfoData", "capture_info_buf")
+    .storage_buf(6, Qualifier::READ_WRITE, "SurfelListInfoData", "list_info_buf")
     .compute_source("eevee_surfel_list_build_comp.glsl")
-    .storage_buf(0, Qualifier::READ_WRITE, "Surfel", "surfels_buf[]")
     .do_static_compilation(true);
 
 GPU_SHADER_CREATE_INFO(eevee_surfel_list_sort)
-    .local_group_size(CULLING_SELECT_GROUP_SIZE)
+    .local_group_size(SURFEL_LIST_GROUP_SIZE)
     .additional_info("eevee_shared", "draw_view")
+    .storage_buf(0, Qualifier::READ_WRITE, "int", "list_start_buf[]")
+    .storage_buf(SURFEL_BUF_SLOT, Qualifier::READ_WRITE, "Surfel", "surfel_buf[]")
+    .storage_buf(6, Qualifier::READ, "SurfelListInfoData", "list_info_buf")
     .compute_source("eevee_surfel_list_sort_comp.glsl")
-    .storage_buf(0, Qualifier::READ_WRITE, "Surfel", "surfels_buf[]")
     .do_static_compilation(true);

@@ -10,6 +10,9 @@
 
 #include "BLI_rand.h"
 
+#include "BLI_math_base.hh"
+#include "BLI_math_base_safe.h"
+
 #include "eevee_instance.hh"
 #include "eevee_sampling.hh"
 
@@ -178,6 +181,14 @@ float2 Sampling::sample_disk(const float2 &rand)
 {
   float omega = rand.y * 2.0f * M_PI;
   return sqrtf(rand.x) * float2(cosf(omega), sinf(omega));
+}
+
+float3 Sampling::sample_hemisphere(const float2 &rand)
+{
+  const float omega = rand.y * 2.0f * M_PI;
+  const float cos_theta = rand.x;
+  const float sin_theta = safe_sqrtf(1.0f - square_f(cos_theta));
+  return float3(sin_theta * float2(cosf(omega), sinf(omega)), cos_theta);
 }
 
 float2 Sampling::sample_spiral(const float2 &rand)

@@ -8,6 +8,8 @@
 
 #include "DNA_lightprobe_types.h"
 
+#include "BLI_math_quaternion_types.hh"
+
 #include "eevee_lightprobe.hh"
 #include "eevee_shader_shared.hh"
 
@@ -53,6 +55,24 @@ class IrradianceBake {
   View view_z_ = {"BakingViewZ"};
   /** Pixel resolution in each of the projection axes. Match the target surfel density. */
   int3 grid_pixel_extent_ = int3(0);
+  /** Information for surfel list building. */
+  SurfelListInfoBuf list_info_buf_ = {"list_info_buf_"};
+  /** List array containing list start surfel index. Cleared to -1. */
+  StorageArrayBuffer<int, 16, true> list_start_buf_ = {"list_start_buf_"};
+
+  /* Dispatch size for per surfel workload. */
+  int3 dispatch_per_surfel_ = int3(1);
+  /* Dispatch size for per surfel list workload. */
+  int3 dispatch_per_list_ = int3(1);
+
+  /* Surfel per unit distance. */
+  float surfel_density_ = 2.0f;
+  /* Orientation of the irradiance grid being baked. */
+  math::Quaternion grid_orientation_;
+  /* Object center of the irradiance grid being baked. */
+  float3 grid_location_;
+  /* Bounding box vertices of the irradiance grid being baked. In world space. */
+  Vector<float3> grid_bbox_vertices;
 
  public:
   IrradianceBake(Instance &inst) : inst_(inst){};

@@ -833,16 +833,19 @@ static inline ShadowTileDataPacked shadow_tile_pack(ShadowTileData tile)
 struct Surfel {
   /** World position of the surfel. */
   packed_float3 position;
-  int _pad0;
+  /** Previous surfel index in the ray link-list. Only valid after sorting. */
+  int prev;
   /** World orientation of the surface. */
   packed_float3 normal;
-  int _pad1;
+  /** Next surfel index in the ray link-list. */
+  int next;
   /** Surface albedo to apply to incoming radiance. */
   packed_float3 albedo;
-  int _pad2;
-  /** Accumulated reflected radiance at this point. */
+  /** Distance along the ray direction for sorting. */
+  float ray_distance;
+  /** Accumulated reflected radiance. */
   packed_float3 radiance;
-  int _pad3;
+  int _pad0;
 };
 BLI_STATIC_ASSERT_ALIGN(Surfel, 16)
 
@@ -857,18 +860,15 @@ struct CaptureInfoData {
 };
 BLI_STATIC_ASSERT_ALIGN(CaptureInfoData, 16)
 
-enum SurfelListEntryType : uint32_t {
-  ENTRY_SURFEL = 0u,
-  ENTRY_IRRADIANCE_SAMPLE = 1u,
-};
+struct SurfelListInfoData {
+  /** Size of the grid used to project the surfels into linked lists. */
+  int2 ray_grid_size;
+  /** Maximum number of list. Is equal to `ray_grid_size.x * ray_grid_size.y`. */
+  int list_max;
 
-struct SurfelListEntry {
-  uint next_entry_index;
-  SurfelListEntryType type;
-  uint payload;
-  uint _pad0;
+  int _pad0;
 };
-BLI_STATIC_ASSERT_ALIGN(SurfelListEntry, 16)
+BLI_STATIC_ASSERT_ALIGN(SurfelListInfoData, 16)
 
 /** \} */
 
@@ -996,8 +996,9 @@ using ShadowPageCacheBuf = draw::StorageArrayBuffer<uint2, SHADOW_MAX_PAGE, true
 using ShadowTileMapDataBuf = draw::StorageVectorBuffer<ShadowTileMapData, SHADOW_MAX_TILEMAP>;
 using ShadowTileMapClipBuf = draw::StorageArrayBuffer<ShadowTileMapClip, SHADOW_MAX_TILEMAP, true>;
 using ShadowTileDataBuf = draw::StorageArrayBuffer<ShadowTileDataPacked, SHADOW_MAX_TILE, true>;
-using SurfelBuf = draw::StorageArrayBuffer<Surfel, 64, true>;
+using SurfelBuf = draw::StorageArrayBuffer<Surfel, 64>;
 using CaptureInfoBuf = draw::StorageBuffer<CaptureInfoData>;
+using SurfelListInfoBuf = draw::StorageBuffer<SurfelListInfoData>;
 using VelocityGeometryBuf = draw::StorageArrayBuffer<float4, 16, true>;
 using VelocityIndexBuf = draw::StorageArrayBuffer<VelocityIndex, 16>;
 using VelocityObjectBuf = draw::StorageArrayBuffer<float4x4, 16>;
