@@ -139,7 +139,7 @@ void ShadingView::render()
 
   inst_.irradiance_cache.debug_draw(render_view_new_, combined_fb_);
 
-  inst_.volumes.draw_resolve(render_view_new_, combined_fb_);
+  inst_.volumes.draw_resolve(render_view_new_);
 
   GPUTexture *combined_final_tx = render_postfx(rbufs.combined_tx);
 

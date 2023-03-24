@@ -35,6 +35,7 @@ class Volumes {
   /* EEVEE_FramebufferList */
   Framebuffer volumetric_fb_;
   Framebuffer scatter_fb_;
+  Framebuffer integration_fb_;
   /* EEVEE_EffectsInfo */
   int current_sample_;
   float light_clamp_;
@@ -89,7 +90,7 @@ class Volumes {
 
   void draw_compute(View &view);
 
-  void draw_resolve(View &view, Framebuffer &fb);
+  void draw_resolve(View &view);
 };
 }  // namespace blender::eevee
 

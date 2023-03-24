@@ -432,7 +432,7 @@ void Volumes::draw_compute(View &view)
   DRW_stats_group_end();
 }
 
-void Volumes::draw_resolve(View &view, Framebuffer &fb)
+void Volumes::draw_resolve(View &view)
 {
   if (!enabled_) {
     return;
@@ -440,7 +440,9 @@ void Volumes::draw_resolve(View &view, Framebuffer &fb)
 
   GPU_memory_barrier(GPU_BARRIER_TEXTURE_FETCH);
 
-  fb.bind();
+  integration_fb_.ensure(GPU_ATTACHMENT_NONE,
+                         GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.combined_tx));
+  integration_fb_.bind();
   inst_.manager->submit(resolve_ps_, view);
 }
 
