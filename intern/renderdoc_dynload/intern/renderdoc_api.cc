@@ -4,19 +4,22 @@
 #include "renderdoc_api.hh"
 
 #ifdef _WIN32
+#  define WIN32_LEAN_AND_MEAN
+#  include <Windows.h>
 #else
 #  include <dlfcn.h>
 #endif
 #include <iostream>
 
 namespace renderdoc::api {
-void Renderdoc::start_frame_capture(RENDERDOC_DevicePointer device_handle,
+bool Renderdoc::start_frame_capture(RENDERDOC_DevicePointer device_handle,
                                     RENDERDOC_WindowHandle window_handle)
 {
   if (!check_loaded()) {
-    return;
+    return false;
   }
   renderdoc_api_->StartFrameCapture(device_handle, window_handle);
+  return true;
 }
 
 void Renderdoc::end_frame_capture(RENDERDOC_DevicePointer device_handle,

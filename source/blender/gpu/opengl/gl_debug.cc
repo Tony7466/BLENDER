@@ -383,6 +383,7 @@ void GLContext::debug_group_end()
 
 bool GLContext::debug_capture_begin()
 {
+<<<<<<< HEAD
   GLBackend::get()->debug_capture_begin();
   return true;
 }
@@ -391,6 +392,17 @@ void GLBackend::debug_capture_begin()
 {
 #ifdef WITH_RENDERDOC
   renderdoc_.start_frame_capture(nullptr, nullptr);
+=======
+  return GLBackend::get()->debug_capture_begin();
+}
+
+bool GLBackend::debug_capture_begin()
+{
+#ifdef WITH_RENDERDOC
+  return renderdoc_.start_frame_capture(nullptr, nullptr);
+#else
+  return false;
+>>>>>>> main
 #endif
 }
 

@@ -19,16 +19,16 @@ void VKContext::debug_group_end()
 
 bool VKContext::debug_capture_begin()
 {
-  VKBackend::get().debug_capture_begin(vk_instance_);
-  return true;
+  return VKBackend::get().debug_capture_begin(vk_instance_);
 }
 
-void VKBackend::debug_capture_begin(VkInstance vk_instance)
+bool VKBackend::debug_capture_begin(VkInstance vk_instance)
 {
 #ifdef WITH_RENDERDOC
-  renderdoc_api_.start_frame_capture(vk_instance, nullptr);
+  return renderdoc_api_.start_frame_capture(vk_instance, nullptr);
 #else
   UNUSED_VARS(vk_instance);
+  return false;
 #endif
 }
 
