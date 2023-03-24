@@ -6,10 +6,10 @@ void main()
   switch (eDebugMode(debug_mode)) {
     default:
     case DEBUG_IRRADIANCE_CACHE_SURFELS_NORMAL:
-      out_color = vec4(pow(surfel.normal * 0.5 + 0.5, vec3(2.2)), 1.0);
+      out_color = vec4(pow(surfel.normal * 0.5 + 0.5, vec3(2.2)), 0.0);
       break;
     case DEBUG_IRRADIANCE_CACHE_SURFELS_IRRADIANCE:
-      out_color = vec4(surfel.radiance, 1.0);
+      out_color = vec4(surfel.radiance, 0.0);
       break;
   }
 
