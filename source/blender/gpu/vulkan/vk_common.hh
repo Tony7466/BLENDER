@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <typeinfo>
+
 #ifdef __APPLE__
 #  include <MoltenVK/vk_mvk_moltenvk.h>
 #else
@@ -16,7 +18,6 @@
 #include "vk_mem_alloc.h"
 
 #include "gpu_texture_private.hh"
-#include <typeinfo>
 
 namespace blender::gpu {
 
@@ -29,10 +30,10 @@ VkImageType to_vk_image_type(const eGPUTextureType type);
 template<typename T> VkObjectType to_vk_object_type(T /*vk_obj*/)
 {
   const std::type_info &tid = typeid(T);
-#define VK_EQ_TYPEID(name, name2) \
-  if (tid == typeid(name)) { \
-    return VK_OBJECT_TYPE_##name2; \
-  }
+#  define VK_EQ_TYPEID(name, name2) \
+    if (tid == typeid(name)) { \
+      return VK_OBJECT_TYPE_##name2; \
+    }
 
   VK_EQ_TYPEID(VkInstance, INSTANCE);
   VK_EQ_TYPEID(VkPhysicalDevice, PHYSICAL_DEVICE);
@@ -67,13 +68,13 @@ template<typename T> VkObjectType to_vk_object_type(T /*vk_obj*/)
   VK_EQ_TYPEID(VkSwapchainKHR, SWAPCHAIN_KHR);
   VK_EQ_TYPEID(VkDisplayKHR, DISPLAY_KHR);
   VK_EQ_TYPEID(VkDisplayModeKHR, DISPLAY_MODE_KHR);
-  VK_EQ_TYPEID(VkDebugReportCallbackEXT,DEBUG_REPORT_CALLBACK_EXT);
-#ifdef VK_ENABLE_BETA_EXTENSIONS
+  VK_EQ_TYPEID(VkDebugReportCallbackEXT, DEBUG_REPORT_CALLBACK_EXT);
+#  ifdef VK_ENABLE_BETA_EXTENSIONS
   VK_EQ_TYPEID(VkVideoSessionKHR, VIDEO_SESSION_KHR);
-#endif
-#ifdef VK_ENABLE_BETA_EXTENSIONS
+#  endif
+#  ifdef VK_ENABLE_BETA_EXTENSIONS
   VK_EQ_TYPEID(VkVideoSessionParametersKHR, VIDEO_SESSION_PARAMETERS_KHR);
-#endif
+#  endif
   VK_EQ_TYPEID(VkCuModuleNVX, CU_MODULE_NVX);
   VK_EQ_TYPEID(VkCuFunctionNVX, CU_FUNCTION_NVX);
   VK_EQ_TYPEID(VkDebugUtilsMessengerEXT, DEBUG_UTILS_MESSENGER_EXT);
@@ -86,8 +87,8 @@ template<typename T> VkObjectType to_vk_object_type(T /*vk_obj*/)
   VK_EQ_TYPEID(VkPrivateDataSlotEXT, PRIVATE_DATA_SLOT_EXT);
 
   BLI_assert_unreachable();
-#undef VK_EQ_TYPEID
+#  undef VK_EQ_TYPEID
   return VK_OBJECT_TYPE_UNKNOWN;
-}  // namespace blender::gpu
+}
 #endif
 }  // namespace blender::gpu

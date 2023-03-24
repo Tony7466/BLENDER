@@ -8,10 +8,10 @@
 #pragma once
 
 #include "gpu_context_private.hh"
-#include  "vk_common.hh"
 #include "vk_command_buffer.hh"
-#include "vk_descriptor_pools.hh"
+#include "vk_common.hh"
 #include "vk_debug.hh"
+#include "vk_descriptor_pools.hh"
 
 namespace blender::gpu {
 

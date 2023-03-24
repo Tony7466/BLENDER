@@ -235,6 +235,7 @@ set(VULKAN_SRC
   vulkan/vk_common.hh
   vulkan/vk_context.hh
   vulkan/vk_data_conversion.hh
+  vulkan/vk_debug.hh
   vulkan/vk_descriptor_pools.hh
   vulkan/vk_descriptor_set.hh
   vulkan/vk_drawlist.hh
@@ -256,7 +257,7 @@ set(VULKAN_SRC
   vulkan/vk_texture.hh
   vulkan/vk_uniform_buffer.hh
   vulkan/vk_vertex_buffer.hh
-  vulkan/vk_debug.hh
+
 
 )
 

@@ -871,8 +871,6 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
     requireExtension(extensions_available, extensions_enabled, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
   }
 
-
-
   if (use_window_surface) {
     const char *native_surface_extension_name = getPlatformSpecificSurfaceExtension();
 
