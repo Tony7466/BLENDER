@@ -18,13 +18,14 @@
 #endif
 
 #include <vector>
-
+#include <sys/stat.h>
 #include <cassert>
 #include <cstdio>
 #include <cstring>
 #include <iostream>
-#include <sstream> 
-#include <sys/stat.h>
+#include <sstream>
+
+
 /* Set to 0 to allow devices that do not have the required features.
  * This allows development on OSX until we really needs these features. */
 #define STRICT_REQUIREMENTS 1
