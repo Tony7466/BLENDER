@@ -673,12 +673,14 @@ void paintvert_select_more(Mesh *mesh, const bool face_step)
       ".hide_poly", ATTR_DOMAIN_FACE, false);
 
   const Span<MPoly> polys = mesh->polys();
-  const Span<MLoop> loops = mesh->loops();
+  const Span<int> corner_edges = mesh->corner_edges();
+  const Span<int> corner_vertices = mesh->corner_verts();
   const Span<MEdge> edges = mesh->edges();
 
   Array<Vector<int, 2>> edge_to_face_map;
   if (face_step) {
-    edge_to_face_map = bke::mesh_topology::build_edge_to_poly_map(polys, loops, mesh->totedge);
+    edge_to_face_map = bke::mesh_topology::build_edge_to_poly_map(
+        polys, corner_edges, mesh->totedge);
   }
 
   /* Need a copy of the selected verts that we can read from and is not modified. */
@@ -705,8 +707,8 @@ void paintvert_select_more(Mesh *mesh, const bool face_step)
         continue;
       }
       const MPoly &poly = polys[poly_i];
-      for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
-        select_vert.span[loop.v] = true;
+      for (const int vertex_index : corner_vertices.slice(poly.loopstart, poly.totloop)) {
+        select_vert.span[vertex_index] = true;
       }
     }
   }
@@ -727,7 +729,8 @@ void paintvert_select_less(Mesh *mesh, const bool face_step)
       ".hide_poly", ATTR_DOMAIN_FACE, false);
 
   const Span<MPoly> polys = mesh->polys();
-  const Span<MLoop> loops = mesh->loops();
+  const Span<int> corner_edges = mesh->corner_edges();
+  const Span<int> corner_vertices = mesh->corner_verts();
   const Span<MEdge> edges = mesh->edges();
 
   MeshElemMap *edge_poly_map;
@@ -738,12 +741,12 @@ void paintvert_select_less(Mesh *mesh, const bool face_step)
                                   edges.size(),
                                   polys.data(),
                                   polys.size(),
-                                  loops.data(),
-                                  loops.size());
+                                  corner_edges.data(),
+                                  corner_edges.size());
   }
 
   /* Need a copy of the selected verts that we can read from and is not modified. */
-  BitVector<> select_vert_original(mesh->totvert, false);
+  BitVector<> select_vert_original(mesh->totvert);
   for (int i = 0; i < mesh->totvert; i++) {
     select_vert_original[i].set(select_vert.span[i]);
   }
@@ -765,8 +768,8 @@ void paintvert_select_less(Mesh *mesh, const bool face_step)
         continue;
       }
       const MPoly &poly = polys[poly_i];
-      for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
-        select_vert.span[loop.v] = false;
+      for (const int vertex_index : corner_vertices.slice(poly.loopstart, poly.totloop)) {
+        select_vert.span[vertex_index] = false;
       }
     }
   }
