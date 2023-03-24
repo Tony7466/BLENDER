@@ -91,9 +91,9 @@ static bool vklayer_config_exist(const char* vk_extension_config)
   filename << "/";
   filename << vk_extension_config;
   struct stat buffer;
-  bool exists = (stat(filename.str().c_str(), &buffer) == 0);
-  return exists;
+  return (stat(filename.str().c_str(), &buffer) == 0);
 }
+
 #define __STR(A) "" #A
 #define VK_CHECK(__expression) \
   do { \
@@ -116,10 +116,6 @@ static bool vklayer_config_exist(const char* vk_extension_config)
 
 /* Triple buffering. */
 const int MAX_FRAMES_IN_FLIGHT = 2;
-enum class VkDynamicLibraryType : std::uint8_t {
-  VkValidationLayer = 0,
-  VkDynamicLibraryAll
-};
 
 GHOST_ContextVK::GHOST_ContextVK(bool stereoVisual,
 #ifdef _WIN32
@@ -419,29 +415,19 @@ static bool checkLayerSupport(vector<VkLayerProperties> &layers_available, const
 
 static void enableLayer(vector<VkLayerProperties> &layers_available,
                         vector<const char *> &layers_enabled,
-                        VkDynamicLibraryType library_type,
+                        const char* layer_name,
                         const bool warning)
 {
-  std::string layer_name   = "";
-  std::string config_name = "";
-  switch (library_type) {
-    case VkDynamicLibraryType::VkValidationLayer:
-      layer_name   = "VK_LAYER_KHRONOS_validation";
-      config_name = "VkLayer_khronos_validation.json";
-      break;
-    case VkDynamicLibraryType::VkDynamicLibraryAll:
-    default:
-      return;
- }
 
-  if (checkLayerSupport(layers_available, "VK_LAYER_KHRONOS_validation") &&
-      vklayer_config_exist("VkLayer_khronos_validation.json")) {
-       layers_enabled.push_back("VK_LAYER_KHRONOS_validation");
-  }
-  else if (warning) {
-    fprintf(stderr,
-            "Warning: Layer requested, but not supported by the platform. [%s]\n",
-            layer_name.c_str());
+  if (strcmp(layer_name, "VK_LAYER_KHRONOS_validation") == 0) {
+    if (checkLayerSupport(layers_available, layer_name) &&
+        vklayer_config_exist("VkLayer_khronos_validation.json")) {
+        layers_enabled.push_back(layer_name);
+    }
+    else if (warning) {
+      fprintf(stderr,
+              "Warning: Layer requested, but not supported by the platform. [%s]\n",layer_name);
+    }
   }
 
 }
@@ -897,7 +883,7 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
 
   vector<const char *> layers_enabled;
   if (m_debug) {
-    enableLayer(layers_available, layers_enabled, VkDynamicLibraryType::VkValidationLayer,true);
+    enableLayer(layers_available, layers_enabled, "VK_LAYER_KHRONOS_validation",true);
   }
 
   vector<const char *> extensions_device;
