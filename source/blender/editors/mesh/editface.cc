@@ -350,12 +350,12 @@ void paintface_select_linked(bContext *C, Object *ob, const int mval[2], const b
   paintface_flush_flags(C, ob, true, false);
 }
 
-static bool poly_has_selected_neighbor(blender::Span<int> edge_indices,
+static bool poly_has_selected_neighbor(blender::Span<int> poly_edges,
                                        blender::Span<MEdge> edges,
                                        blender::Span<bool> select_vert,
                                        const bool face_step)
 {
-  for (const int edge_index : edge_indices) {
+  for (const int edge_index : poly_edges) {
     const MEdge &edge = edges[edge_index];
     /* If a poly is selected, all of its verts are selected too, meaning that neighboring faces
      * will have some vertices selected. */
@@ -408,12 +408,12 @@ void paintface_select_more(Mesh *mesh, const bool face_step)
   select_vert.finish();
 }
 
-static bool poly_has_unselected_neighbor(blender::Span<int> edge_indices,
+static bool poly_has_unselected_neighbor(blender::Span<int> poly_edges,
                                          blender::Span<MEdge> edges,
                                          blender::BitSpan verts_of_unselected_faces,
                                          const bool face_step)
 {
-  for (const int edge_index : edge_indices) {
+  for (const int edge_index : poly_edges) {
     const MEdge &edge = edges[edge_index];
     if (face_step) {
       if (verts_of_unselected_faces[edge.v1] || verts_of_unselected_faces[edge.v2]) {
