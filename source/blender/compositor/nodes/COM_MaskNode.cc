@@ -3,6 +3,7 @@
 
 #include "COM_MaskNode.h"
 #include "COM_MaskOperation.h"
+#include "COM_ScaleOperation.h"
 
 namespace blender::compositor {
 
@@ -50,7 +51,21 @@ void MaskNode::convert_to_operations(NodeConverter &converter,
   }
 
   converter.add_operation(operation);
-  converter.map_output_socket(output_mask, operation->get_output_socket());
+
+
+  ScaleFixedSizeOperation *scale_operation = new ScaleFixedSizeOperation();
+  scale_operation->set_variable_size(true);
+  /* Aspect ratio is defined as X/Y so compensation in mask must be Y/X */
+  const int new_width = rd->yasp * operation->get_mask_width();
+  const int new_height = rd->xasp * operation->get_mask_height();
+  scale_operation->set_new_width(new_width);
+  scale_operation->set_new_height(new_height);
+  scale_operation->set_scale_canvas_max_size(context.get_render_size() *1.5f);
+
+  converter.add_operation(scale_operation);
+  converter.add_link(operation->get_output_socket(0), scale_operation->get_input_socket(0));
+
+  converter.map_output_socket(output_mask, scale_operation->get_output_socket(0));
 }
 
 }  // namespace blender::compositor
