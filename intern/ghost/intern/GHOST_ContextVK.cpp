@@ -88,8 +88,7 @@ static bool vklayer_config_exist(const char* vk_extension_config)
   }
   std::stringstream filename;
   filename << ev_val;
-  filename << "/";
-  filename << vk_extension_config;
+  filename << "/" << vk_extension_config;
   struct stat buffer;
   return (stat(filename.str().c_str(), &buffer) == 0);
 }
@@ -425,8 +424,7 @@ static void enableLayer(vector<VkLayerProperties> &layers_available,
         layers_enabled.push_back(layer_name);
     }
     else if (warning) {
-      fprintf(stderr,
-              "Warning: Layer requested, but not supported by the platform. [%s]\n",layer_name);
+      fprintf(stderr,"Warning: Layer requested, but not supported by the platform. [%s]\n",layer_name);
     }
   }
 
