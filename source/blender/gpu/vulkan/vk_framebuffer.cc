@@ -59,7 +59,7 @@ void VKFrameBuffer::bind(bool /*enabled_srgb*/)
 
 VkRect2D VKFrameBuffer::vk_render_area_get() const
 {
-  VkRect2D render_area{};
+  VkRect2D render_area = {};
   render_area.offset.x = 0;
   render_area.offset.y = 0;
   render_area.extent.width = width_;

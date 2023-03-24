@@ -42,9 +42,7 @@ class VKCommandBuffer : NonCopyable, NonMovable {
             VkPipelineBindPoint bind_point);
   void begin_render_pass(const VKFrameBuffer &framebuffer);
   void end_render_pass(const VKFrameBuffer &framebuffer);
-  void bind(const VkRenderPass vk_render_pass,
-            const VkFramebuffer vk_framebuffer,
-            VkRect2D render_area);
+
   /**
    * Add a push constant command to the command buffer.
    *
@@ -67,6 +65,10 @@ class VKCommandBuffer : NonCopyable, NonMovable {
              VkImageLayout vk_image_layout,
              const VkClearColorValue &vk_clear_color,
              Span<VkImageSubresourceRange> ranges);
+
+  /**
+   * Clear attachments of the active framebuffer.
+   */
   void clear(Span<VkClearAttachment> attachments, Span<VkClearRect> areas);
   void fill(VKBuffer &buffer, uint32_t data);
 
