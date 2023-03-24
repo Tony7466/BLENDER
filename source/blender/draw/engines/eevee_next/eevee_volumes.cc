@@ -213,11 +213,9 @@ void Volumes::begin_sync()
   /* World pass is not additive as it also clear the buffer. */
   world_ps_.init();
   world_ps_.state_set(DRW_STATE_WRITE_COLOR);
-  bind_common_resources(world_ps_);
 
   objects_ps_.init();
   objects_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ADD);
-  bind_common_resources(objects_ps_);
 
   GPUMaterial *mat = nullptr;
 
@@ -248,6 +246,8 @@ void Volumes::begin_sync()
     /* If no world or volume material is present just clear the buffer with this drawcall */
     ps.shader_set(inst_.shaders.static_shader_get(VOLUME_CLEAR));
   }
+
+  bind_common_resources(ps);
   ps.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z);
 }
 
@@ -293,6 +293,7 @@ void Volumes::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHand
      * effects->enabled_effects |= (EFFECT_VOLUMETRIC | EFFECT_POST_BUFFER);
      */
     enabled_ = true;
+    bind_common_resources(ps);
     ps.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z);
   }
 }
@@ -378,7 +379,7 @@ void Volumes::end_sync()
   resolve_ps_.init();
   resolve_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
   resolve_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_RESOLVE));
-  bind_common_resources(integration_ps_);
+  bind_common_resources(resolve_ps_);
   resolve_ps_.bind_texture("inScattering", &scatter_tx_.current());
   resolve_ps_.bind_texture("inTransmittance", &transmit_tx_.current());
   resolve_ps_.bind_texture("inSceneDepth", &inst_.render_buffers.depth_tx);
