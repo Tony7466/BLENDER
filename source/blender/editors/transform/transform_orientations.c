@@ -592,7 +592,7 @@ static void handle_armature_parent_orientation(const Scene *scene,
 
   if (active_pchan->parent) {
     // For child, show parent local regardless if "local location" is set for parent bone.
-    transform_orientations_create_from_axis(r_mat, UNPACK3(active_pchan->parent->bone->arm_mat));
+    transform_orientations_create_from_axis(r_mat, UNPACK3(active_pchan->parent->pose_mat));
     return;
   }
   // if root, and "Local Location" isn't set, use local transform of armature object.
