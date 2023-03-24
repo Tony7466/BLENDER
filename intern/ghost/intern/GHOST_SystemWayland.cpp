@@ -2016,7 +2016,13 @@ static char *read_file_as_buffer(const int fd, const bool nil_terminate, size_t 
 {
   struct ByteChunk {
     ByteChunk *next;
-    char data[4096 - sizeof(ByteChunk *)];
+    /* NOTE(@ideasman42): On GNOME-SHELL-43.3, non powers of two values
+     * (1023 or 4088 for e.g.) makes `read()` return longer values than are actually read
+     * (causing uninitialized memory to be used) as well as truncating the end of the buffer.
+     * The WAYLAND spec doesn't mention buffer-size so this may be a bug in GNOME-SHELL.
+     * Whatever the case, using a power of two isn't a problem (besides some slop-space waste).
+     * This works in KDE & WLROOTS based compositors, see: #106040. */
+    char data[4096];
   };
   ByteChunk *chunk_first = nullptr, **chunk_link_p = &chunk_first;
   bool ok = true;
@@ -2664,13 +2670,7 @@ static void pointer_handle_enter(void *data,
 
   /* Resetting scroll events is likely unnecessary,
    * do this to avoid any possible problems as it's harmless. */
-  seat->pointer_scroll.smooth_xy[0] = 0;
-  seat->pointer_scroll.smooth_xy[1] = 0;
-  seat->pointer_scroll.discrete_xy[0] = 0;
-  seat->pointer_scroll.discrete_xy[1] = 0;
-  seat->pointer_scroll.inverted_xy[0] = false;
-  seat->pointer_scroll.inverted_xy[1] = false;
-  seat->pointer_scroll.axis_source = WL_POINTER_AXIS_SOURCE_WHEEL;
+  seat->pointer_scroll = GWL_SeatStatePointerScroll{};
 
   seat->pointer.wl_surface_window = wl_surface;
 
@@ -4275,8 +4275,26 @@ static void gwl_seat_capability_pointer_enable(GWL_Seat *seat)
   seat->cursor.visible = true;
   seat->cursor.wl_buffer = nullptr;
   if (!get_cursor_settings(seat->cursor.theme_name, seat->cursor.theme_size)) {
-    seat->cursor.theme_name = std::string();
+    /* Use environment variables, falling back to defaults.
+     * These environment variables are used by enough WAYLAND applications
+     * that it makes sense to check them (see `Xcursor` man page). */
+    const char *env;
+
+    env = getenv("XCURSOR_THEME");
+    seat->cursor.theme_name = std::string(env ? env : "");
+
+    env = getenv("XCURSOR_SIZE");
     seat->cursor.theme_size = default_cursor_size;
+
+    if (env && (*env != '\0')) {
+      char *env_end = nullptr;
+      /* While clamping is not needed on the WAYLAND side,
+       * GHOST's internal logic may get confused by negative values, so ensure it's at least 1. */
+      const long value = strtol(env, &env_end, 10);
+      if ((*env_end == '\0') && (value > 0)) {
+        seat->cursor.theme_size = int(value);
+      }
+    }
   }
   wl_pointer_add_listener(seat->wl_pointer, &pointer_listener, seat);
 
@@ -6668,6 +6686,11 @@ bool GHOST_SystemWayland::supportsWindowPosition()
 {
   /* WAYLAND doesn't support accessing the window position. */
   return false;
+}
+
+bool GHOST_SystemWayland::supportsPrimaryClipboard()
+{
+  return true;
 }
 
 bool GHOST_SystemWayland::cursor_grab_use_software_display_get(const GHOST_TGrabCursorMode mode)
