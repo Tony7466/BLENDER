@@ -18,13 +18,11 @@
 #endif
 
 #include <vector>
-#include <sys/stat.h>
+
 #include <cassert>
 #include <cstdio>
 #include <cstring>
 #include <iostream>
-#include <sstream>
-
 
 /* Set to 0 to allow devices that do not have the required features.
  * This allows development on OSX until we really needs these features. */
@@ -80,18 +78,6 @@ static const char *vulkan_error_as_string(VkResult result)
     default:
       return "Unknown Error";
   }
-}
-static bool vklayer_config_exist(const char* vk_extension_config)
-{
-  const char *ev_val = getenv("VK_LAYER_PATH");
-  if (ev_val == nullptr) {
-    return false;
-  }
-  std::stringstream filename;
-  filename << ev_val;
-  filename << "/" << vk_extension_config;
-  struct stat buffer;
-  return (stat(filename.str().c_str(), &buffer) == 0);
 }
 
 #define __STR(A) "" #A
@@ -415,20 +401,16 @@ static bool checkLayerSupport(vector<VkLayerProperties> &layers_available, const
 
 static void enableLayer(vector<VkLayerProperties> &layers_available,
                         vector<const char *> &layers_enabled,
-                        const char* layer_name,
-                        const bool warning)
+                        const char *layer_name,
+                        const bool debug)
 {
-
-  if (strcmp(layer_name, "VK_LAYER_KHRONOS_validation") == 0) {
-    if (checkLayerSupport(layers_available, layer_name) &&
-        vklayer_config_exist("VkLayer_khronos_validation.json")) {
-        layers_enabled.push_back(layer_name);
-    }
-    else if (warning) {
-      fprintf(stderr,"Warning: Layer requested, but not supported by the platform. [%s]\n",layer_name);
-    }
+  if (checkLayerSupport(layers_available, layer_name)) {
+    layers_enabled.push_back(layer_name);
   }
-
+  else if (debug) {
+    fprintf(
+        stderr, "Warning: Layer requested, but not supported by the platform. [%s]\n", layer_name);
+  }
 }
 
 static bool device_extensions_support(VkPhysicalDevice device, vector<const char *> required_exts)
@@ -882,7 +864,7 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
 
   vector<const char *> layers_enabled;
   if (m_debug) {
-    enableLayer(layers_available, layers_enabled, "VK_LAYER_KHRONOS_validation",true);
+    enableLayer(layers_available, layers_enabled, "VK_LAYER_KHRONOS_validation", m_debug);
   }
 
   vector<const char *> extensions_device;
