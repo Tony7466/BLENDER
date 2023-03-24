@@ -363,7 +363,7 @@ void paintface_select_more(Mesh *mesh, const bool face_step)
       ".hide_poly", ATTR_DOMAIN_FACE, false);
 
   const Span<MPoly> polys = mesh->polys();
-  const Span<MLoop> loops = mesh->loops();
+  const Span<int> corner_edges = mesh->corner_edges();
   const Span<MEdge> edges = mesh->edges();
 
   threading::parallel_for(select_poly.span.index_range(), 1024, [&](const IndexRange range) {
@@ -373,8 +373,8 @@ void paintface_select_more(Mesh *mesh, const bool face_step)
       }
       const MPoly &poly = polys[i];
 
-      for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
-        const MEdge &edge = edges[loop.e];
+      for (const int edge_index : corner_edges.slice(poly.loopstart, poly.totloop)) {
+        const MEdge &edge = edges[edge_index];
         /* If a poly is selected, all of its verts are selected too, meaning that neighboring faces
          * will have some vertices selected. */
         bool selected_neighbor = false;
@@ -396,13 +396,13 @@ void paintface_select_more(Mesh *mesh, const bool face_step)
   select_vert.finish();
 }
 
-static bool poly_has_unselected_neighbour(blender::Span<MLoop> poly_loops,
-                                          blender::Span<MEdge> edges,
-                                          blender::BitSpan verts_of_unselected_faces,
-                                          const bool face_step)
+static bool poly_has_unselected_neighbor(blender::Span<int> edge_indices,
+                                         blender::Span<MEdge> edges,
+                                         blender::BitSpan verts_of_unselected_faces,
+                                         const bool face_step)
 {
-  for (const MLoop &loop : poly_loops) {
-    const MEdge &edge = edges[loop.e];
+  for (const int edge_index : edge_indices) {
+    const MEdge &edge = edges[edge_index];
     if (face_step) {
       if (verts_of_unselected_faces[edge.v1] || verts_of_unselected_faces[edge.v2]) {
         return true;
@@ -428,7 +428,8 @@ void paintface_select_less(Mesh *mesh, const bool face_step)
       ".hide_poly", ATTR_DOMAIN_FACE, false);
 
   const Span<MPoly> polys = mesh->polys();
-  const Span<MLoop> loops = mesh->loops();
+  const Span<int> corner_verts = mesh->corner_verts();
+  const Span<int> corner_edges = mesh->corner_edges();
   const Span<MEdge> edges = mesh->edges();
 
   BitVector<> verts_of_unselected_faces(mesh->totvert, false);
@@ -439,8 +440,8 @@ void paintface_select_less(Mesh *mesh, const bool face_step)
       continue;
     }
     const MPoly &poly = polys[i];
-    for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
-      verts_of_unselected_faces[loop.v].set(true);
+    for (const int vert_index : corner_verts.slice(poly.loopstart, poly.totloop)) {
+      verts_of_unselected_faces[vert_index].set(true);
     }
   }
 
@@ -450,10 +451,10 @@ void paintface_select_less(Mesh *mesh, const bool face_step)
         continue;
       }
       const MPoly &poly = polys[i];
-      if (poly_has_unselected_neighbour(loops.slice(poly.loopstart, poly.totloop),
-                                        edges,
-                                        verts_of_unselected_faces,
-                                        face_step)) {
+      if (poly_has_unselected_neighbor(corner_edges.slice(poly.loopstart, poly.totloop),
+                                       edges,
+                                       verts_of_unselected_faces,
+                                       face_step)) {
         select_poly.span[i] = false;
       }
     }
