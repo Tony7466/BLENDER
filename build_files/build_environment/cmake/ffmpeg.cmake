@@ -87,7 +87,6 @@ if(WIN32)
   if(BLENDER_PLATFORM_ARM)
     set(FFMPEG_EXTRA_FLAGS
       ${FFMPEG_EXTRA_FLAGS}
-      --disable-libopenjpeg
       --arch=aarch64
       --enable-cross-compile
       --as=armasm64
@@ -99,7 +98,6 @@ if(WIN32)
   else()
     set(FFMPEG_EXTRA_FLAGS
       ${FFMPEG_EXTRA_FLAGS}
-      --disable-libopenjpeg
       --arch=x64
       --target-os=win32
     )
