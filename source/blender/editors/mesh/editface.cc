@@ -350,6 +350,29 @@ void paintface_select_linked(bContext *C, Object *ob, const int mval[2], const b
   paintface_flush_flags(C, ob, true, false);
 }
 
+static bool poly_has_selected_neighbor(blender::Span<int> edge_indices,
+                                       blender::Span<MEdge> edges,
+                                       blender::Span<bool> select_vert,
+                                       const bool face_step)
+{
+  for (const int edge_index : edge_indices) {
+    const MEdge &edge = edges[edge_index];
+    /* If a poly is selected, all of its verts are selected too, meaning that neighboring faces
+     * will have some vertices selected. */
+    if (face_step) {
+      if (select_vert[edge.v1] || select_vert[edge.v2]) {
+        return true;
+      }
+    }
+    else {
+      if (select_vert[edge.v1] && select_vert[edge.v2]) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 void paintface_select_more(Mesh *mesh, const bool face_step)
 {
   using namespace blender;
@@ -372,22 +395,11 @@ void paintface_select_more(Mesh *mesh, const bool face_step)
         continue;
       }
       const MPoly &poly = polys[i];
-
-      for (const int edge_index : corner_edges.slice(poly.loopstart, poly.totloop)) {
-        const MEdge &edge = edges[edge_index];
-        /* If a poly is selected, all of its verts are selected too, meaning that neighboring faces
-         * will have some vertices selected. */
-        bool selected_neighbor = false;
-        if (face_step) {
-          selected_neighbor = select_vert.span[edge.v1] || select_vert.span[edge.v2];
-        }
-        else {
-          selected_neighbor = select_vert.span[edge.v1] && select_vert.span[edge.v2];
-        }
-        if (selected_neighbor) {
-          select_poly.span[i] = true;
-          break;
-        }
+      if (poly_has_selected_neighbor(corner_edges.slice(poly.loopstart, poly.totloop),
+                                     edges,
+                                     select_vert.span,
+                                     face_step)) {
+        select_poly.span[i] = true;
       }
     }
   });
