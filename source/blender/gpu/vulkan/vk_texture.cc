@@ -111,8 +111,11 @@ void VKTexture::mip_range_set(int /*min*/, int /*max*/)
 
 void *VKTexture::read(int mip, eGPUDataFormat format)
 {
-  /* Vulkan images cannot be directly mapped to host memory and requires a staging buffer. */
   VKContext &context = *VKContext::get();
+  const VkImageLayout previous_layout = current_layout_get();
+  layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+  /* Vulkan images cannot be directly mapped to host memory and requires a staging buffer. */
   VKBuffer staging_buffer;
 
   /* NOTE: mip_size_get() won't override any dimension that is equal to 0. */
@@ -136,6 +139,7 @@ void *VKTexture::read(int mip, eGPUDataFormat format)
   VKCommandBuffer &command_buffer = context.command_buffer_get();
   command_buffer.copy(staging_buffer, *this, Span<VkBufferImageCopy>(&region, 1));
   command_buffer.submit();
+  layout_ensure(context, previous_layout);
 
   void *data = MEM_mallocN(host_memory_size, __func__);
   convert_device_to_host(data, staging_buffer.mapped_memory_get(), sample_len, format, format_);
@@ -310,15 +314,7 @@ bool VKTexture::allocate()
   }
 
   /* Promote image to the correct layout. */
-  VkImageMemoryBarrier barrier{};
-  barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-  barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-  barrier.image = vk_image_;
-  barrier.subresourceRange.aspectMask = to_vk_image_aspect_flag_bits(format_);
-  barrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
-  barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
-  context.command_buffer_get().pipeline_barrier(Span<VkImageMemoryBarrier>(&barrier, 1));
+  layout_ensure(context, VK_IMAGE_LAYOUT_GENERAL);
 
   VK_ALLOCATION_CALLBACKS
   VkImageViewCreateInfo image_view_info = {};
@@ -348,5 +344,38 @@ void VKTexture::image_bind(int binding)
       shader::ShaderCreateInfo::Resource::BindType::IMAGE, binding);
   shader->pipeline_get().descriptor_set_get().image_bind(*this, location);
 }
+
+/* -------------------------------------------------------------------- */
+/** \name Image Layout
+ * \{ */
+
+VkImageLayout VKTexture::current_layout_get() const
+{
+  return current_layout_;
+}
+
+void VKTexture::current_layout_set(const VkImageLayout new_layout)
+{
+  current_layout_ = new_layout;
+}
+
+void VKTexture::layout_ensure(VKContext &context, const VkImageLayout requested_layout)
+{
+  const VkImageLayout current_layout = current_layout_get();
+  if (current_layout == requested_layout) {
+    return;
+  }
+  VkImageMemoryBarrier barrier{};
+  barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  barrier.oldLayout = current_layout;
+  barrier.newLayout = requested_layout;
+  barrier.image = vk_image_;
+  barrier.subresourceRange.aspectMask = to_vk_image_aspect_flag_bits(format_);
+  barrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
+  barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+  context.command_buffer_get().pipeline_barrier(Span<VkImageMemoryBarrier>(&barrier, 1));
+  current_layout_set(requested_layout);
+}
+/** \} */
 
 }  // namespace blender::gpu

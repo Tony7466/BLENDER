@@ -114,7 +114,7 @@ void VKCommandBuffer::copy(VKBuffer &dst_buffer,
 {
   vkCmdCopyImageToBuffer(vk_command_buffer_,
                          src_texture.vk_image_handle(),
-                         VK_IMAGE_LAYOUT_GENERAL,
+                         src_texture.current_layout_get(),
                          dst_buffer.vk_handle(),
                          regions.size(),
                          regions.data());
@@ -126,7 +126,7 @@ void VKCommandBuffer::copy(VKTexture &dst_texture,
   vkCmdCopyBufferToImage(vk_command_buffer_,
                          src_buffer.vk_handle(),
                          dst_texture.vk_image_handle(),
-                         VK_IMAGE_LAYOUT_GENERAL,
+                         dst_texture.current_layout_get(),
                          regions.size(),
                          regions.data());
 }
