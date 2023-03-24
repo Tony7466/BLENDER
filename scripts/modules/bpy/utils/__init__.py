@@ -345,17 +345,23 @@ def script_path_pref():
     DEPRECATED. Use `script_paths_pref` which supports multiple script paths now. Returns the
     first valid of these script paths for now, for compatibility.
     """
-    # TODO how to handle deprecation of this?
+    from warnings import warn
+    warn(
+        "bpy.utils.script_path_pref() is deprecated use script_paths_pref() instead!",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     script_paths = script_paths_pref()
     return script_paths[0] if len(script_paths) > 0 else ""
 
 
 def script_paths_pref():
-    """returns the user preference script directory paths or None"""
+    """Returns a list of user preference script directories."""
     paths = []
     for script_directory in _preferences.filepaths.script_directories:
-        if script_directory.directory:
-            paths.append(_os.path.normpath(script_directory.directory))
+        directory = script_directory.directory
+        if directory:
+            paths.append(_os.path.normpath(directory))
     return paths
 
 

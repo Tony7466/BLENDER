@@ -685,6 +685,7 @@ typedef struct UserDef_Experimental {
 typedef struct NamedDirectoryPathEntry {
   struct NamedDirectoryPathEntry *next, *prev;
 
+  /** Depending on the use case of this struct, this should probably be a unique name. */
   char name[64];      /* MAX_NAME */
   char dir_path[768]; /* FILE_MAXDIR */
 } NamedDirectoryPathEntry;

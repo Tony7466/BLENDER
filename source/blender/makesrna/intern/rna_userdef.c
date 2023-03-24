@@ -348,10 +348,19 @@ static void rna_userdef_script_autoexec_update(Main *UNUSED(bmain),
 static void rna_userdef_script_directory_name_set(PointerRNA *ptr, const char *value)
 {
   NamedDirectoryPathEntry *script_dir = ptr->data;
+  bool value_invalid = false;
 
+  if (!value[0]) {
+    value_invalid = true;
+  }
   if (STREQ(value, "DEFAULT")) {
-    BKE_report(NULL, RPT_ERROR, "Name 'DEFAULT' is reserved for internal use and cannot be used");
-    return;
+    BKE_report(
+        NULL, RPT_WARNING, "Name 'DEFAULT' is reserved for internal use and cannot be used");
+    value_invalid = true;
+  }
+
+  if (value_invalid) {
+    value = DATA_("Untitled");
   }
 
   BLI_strncpy_utf8(script_dir->name, value, sizeof(script_dir->name));
