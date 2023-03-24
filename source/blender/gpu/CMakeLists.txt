@@ -42,6 +42,14 @@ set(INC
   ../../../intern/mantaflow/extern
 )
 
+if(WITH_RENDERDOC)
+  list(APPEND INC
+    ../../../extern/renderdoc/include
+    ../../../intern/renderdoc_dynload/include
+  )
+  add_definitions(-DWITH_RENDERDOC)
+endif()
+
 set(INC_SYS
   ${Epoxy_INCLUDE_DIRS}
 )
@@ -195,6 +203,7 @@ set(VULKAN_SRC
   vulkan/vk_command_buffer.cc
   vulkan/vk_common.cc
   vulkan/vk_context.cc
+  vulkan/vk_debug.cc
   vulkan/vk_descriptor_pools.cc
   vulkan/vk_descriptor_set.cc
   vulkan/vk_drawlist.cc
@@ -207,6 +216,7 @@ set(VULKAN_SRC
   vulkan/vk_pixel_buffer.cc
   vulkan/vk_push_constants.cc
   vulkan/vk_query.cc
+  vulkan/vk_resource_tracker.cc
   vulkan/vk_shader.cc
   vulkan/vk_shader_interface.cc
   vulkan/vk_shader_log.cc
@@ -234,6 +244,7 @@ set(VULKAN_SRC
   vulkan/vk_pixel_buffer.hh
   vulkan/vk_push_constants.hh
   vulkan/vk_query.hh
+  vulkan/vk_resource_tracker.hh
   vulkan/vk_shader.hh
   vulkan/vk_shader_interface.hh
   vulkan/vk_shader_log.hh
@@ -736,6 +747,10 @@ target_link_libraries(bf_gpu PUBLIC
 
 if(WITH_OPENCOLORIO)
   target_link_libraries(bf_gpu PUBLIC bf_ocio_shaders)
+endif()
+
+if(WITH_RENDERDOC)
+  target_link_libraries(bf_gpu PUBLIC bf_intern_renderdoc_dynload)
 endif()
 
 
