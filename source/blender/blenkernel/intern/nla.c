@@ -1952,8 +1952,9 @@ static void BKE_nlastrip_validate_autoblends(NlaTrack *nlt, NlaStrip *nls)
   }
 }
 
-/* Ensure every transition's start/end properly set. */
-static void nlastrip_validate_start_end(NlaStrip *strip)
+/* Ensure every transition's start/end properly set.
+ * Strip will be removed / freed if it doesn't fit. */
+static void nlastrip_validate_transition_start_end(NlaStrip *strip)
 {
 
   if (!(strip->type & NLASTRIP_TYPE_TRANSITION)) {
@@ -1986,7 +1987,7 @@ void BKE_nla_validate_state(AnimData *adt)
   for (nlt = adt->nla_tracks.first; nlt; nlt = nlt->next) {
     for (strip = nlt->strips.first; strip; strip = strip->next) {
 
-      nlastrip_validate_start_end(strip);
+      nlastrip_validate_transition_start_end(strip);
 
       /* auto-blending first */
       BKE_nlastrip_validate_autoblends(nlt, strip);
