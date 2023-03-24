@@ -16,6 +16,7 @@
 #include "vk_mem_alloc.h"
 
 #include "gpu_texture_private.hh"
+#include <typeinfo>
 
 namespace blender::gpu {
 
@@ -25,11 +26,11 @@ VkComponentMapping to_vk_component_mapping(const eGPUTextureFormat format);
 VkImageViewType to_vk_image_view_type(const eGPUTextureType type);
 VkImageType to_vk_image_type(const eGPUTextureType type);
 #ifdef __cplusplus
-template<typename T> VkObjectType to_vk_object_type(T vk_obj)
+template<typename T> VkObjectType to_vk_object_type(T /*vk_obj*/)
 {
-  const type_info &tid = typeid(T);
+  const std::type_info &tid = typeid(T);
 #define VK_EQ_TYPEID(name, name2) \
-  if (tid == typeid(name##)) { \
+  if (tid == typeid(name)) { \
     return VK_OBJECT_TYPE_##name2; \
   }
 
