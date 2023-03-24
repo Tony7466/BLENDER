@@ -247,19 +247,19 @@ class GRAPH_MT_key(Menu):
         layout.operator_menu_enum("graph.mirror", "type", text="Mirror")
 
         layout.separator()
-        layout.operator_menu_enum("graph.keyframe_insert", "type")
+        layout.operator_menu_enum("graph.keyframe_insert", "type", text="Insert")
         layout.operator_menu_enum("graph.fmodifier_add", "type").only_active = False
         layout.operator("graph.sound_bake")
 
         layout.separator()
-        layout.operator("graph.frame_jump")
+        layout.operator("graph.frame_jump", "Jump to Selected")
 
         layout.separator()
-        layout.operator("graph.copy")
-        layout.operator("graph.paste")
+        layout.operator("graph.copy", text="Copy")
+        layout.operator("graph.paste", text="Paste")
         layout.operator("graph.paste", text="Paste Flipped").flipped = True
         layout.operator("graph.duplicate_move")
-        layout.operator("graph.delete")
+        layout.operator("graph.delete", text="Delete")
 
         layout.separator()
         layout.operator_menu_enum("graph.handle_type", "type", text="Handle Type")
