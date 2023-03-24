@@ -7,7 +7,6 @@
 /* Step 3 : Integrate for each froxel the final amount of light
  * scattered back to the viewer and the amount of transmittance. */
 
-/* Globals when using OPTI */
 vec3 finalScattering;
 vec3 finalTransmittance;
 

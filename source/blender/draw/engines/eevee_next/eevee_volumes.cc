@@ -253,20 +253,18 @@ void Volumes::begin_sync()
 
 void Volumes::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHandle /*res_handle*/)
 {
-  ::Material *material = inst_.materials.material_from_slot(ob, VOLUME_MATERIAL_NR - 1);
+  ::Material *material = BKE_object_material_get(ob, VOLUME_MATERIAL_NR);
+  if (material == nullptr) {
+    if (ob->type == OB_VOLUME) {
+      material = BKE_material_default_volume();
+    }
+    else {
+      return;
+    }
+  }
+
   MaterialPass material_pass = inst_.materials.material_pass_get(
       ob, material, MAT_PIPE_VOLUME, MAT_GEOM_VOLUME);
-
-  /* TODO (Miguel Pozo): Equivalent ? Default volume is already returned from material_from_slot.
-      if (ma == nullptr) {
-        if (ob->type == OB_VOLUME) {
-          ma = BKE_material_default_volume();
-        }
-        else {
-          return;
-        }
-      }
-  */
 
   float3x3 world_matrix = float3x3(float4x4(ob->object_to_world));
   float3 size = math::to_scale(world_matrix);
@@ -424,6 +422,7 @@ void Volumes::draw_compute(View &view)
   inst_.manager->submit(integration_ps_, view);
 
 #if 0
+    /* Not needed anymore since USE_VOLUME_OPTI is assumed? */
     SWAP(struct GPUFrameBuffer *, fbl->scatter_fb_, fbl->integration_fb_);
 
     effects->volume_scatter = scatter_tx_.current();
