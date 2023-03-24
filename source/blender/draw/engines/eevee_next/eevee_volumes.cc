@@ -248,7 +248,7 @@ void Volumes::begin_sync()
   }
 
   bind_common_resources(ps);
-  ps.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z);
+  ps.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z * 3);
 }
 
 void Volumes::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHandle /*res_handle*/)
@@ -294,7 +294,7 @@ void Volumes::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHand
      */
     enabled_ = true;
     bind_common_resources(ps);
-    ps.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z);
+    ps.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z * 3);
   }
 }
 
@@ -364,7 +364,7 @@ void Volumes::end_sync()
     scatter_ps_.bind_texture("shadowCascadeTexture", &sldata->shadow_cascade_pool);
 #endif
   scatter_ps_.push_constant("prev_view_projection_matrix", prev_view_projection_matrix);
-  scatter_ps_.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z);
+  scatter_ps_.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z * 3);
 
   integration_ps_.init();
   integration_ps_.state_set(DRW_STATE_WRITE_COLOR);
@@ -372,9 +372,12 @@ void Volumes::end_sync()
   bind_common_resources(integration_ps_);
   integration_ps_.bind_texture("volumeScattering", &scatter_tx_.current());
   integration_ps_.bind_texture("volumeExtinction", &transmit_tx_.current());
+  /*
   integration_ps_.bind_image("finalScattering_img", &scatter_tx_.previous());
   integration_ps_.bind_image("finalTransmittance_img", &transmit_tx_.previous());
-  integration_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 1);
+  integration_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
+  */
+  integration_ps_.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z * 3);
 
   resolve_ps_.init();
   resolve_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
@@ -383,7 +386,7 @@ void Volumes::end_sync()
   resolve_ps_.bind_texture("inScattering", &scatter_tx_.current());
   resolve_ps_.bind_texture("inTransmittance", &transmit_tx_.current());
   resolve_ps_.bind_texture("inSceneDepth", &inst_.render_buffers.depth_tx);
-  resolve_ps_.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z);
+  resolve_ps_.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z * 3);
 }
 
 void Volumes::draw_compute(View &view)
@@ -408,22 +411,26 @@ void Volumes::draw_compute(View &view)
                         GPU_ATTACHMENT_TEXTURE(prop_emission_tx_),
                         GPU_ATTACHMENT_TEXTURE(prop_phase_tx_));
 
-  scatter_fb_.ensure(GPU_ATTACHMENT_NONE,
-                     GPU_ATTACHMENT_TEXTURE(scatter_tx_.current()),
-                     GPU_ATTACHMENT_TEXTURE(transmit_tx_.current()));
-
   volumetric_fb_.bind();
   inst_.manager->submit(world_ps_, view);
   inst_.manager->submit(objects_ps_, view);
 
+  scatter_fb_.ensure(GPU_ATTACHMENT_NONE,
+                     GPU_ATTACHMENT_TEXTURE(scatter_tx_.current()),
+                     GPU_ATTACHMENT_TEXTURE(transmit_tx_.current()));
+
   scatter_fb_.bind();
   inst_.manager->submit(scatter_ps_, view);
 
-  volumetric_fb_.bind();
+  integration_fb_.ensure(GPU_ATTACHMENT_NONE,
+                         GPU_ATTACHMENT_TEXTURE(scatter_tx_.previous()),
+                         GPU_ATTACHMENT_TEXTURE(transmit_tx_.previous()));
+
+  integration_fb_.bind();
   inst_.manager->submit(integration_ps_, view);
 
 #if 0
-    /* Not needed anymore since USE_VOLUME_OPTI is assumed? */
+    /* Not needed? */
     SWAP(struct GPUFrameBuffer *, fbl->scatter_fb_, fbl->integration_fb_);
 
     effects->volume_scatter = scatter_tx_.current();
@@ -439,11 +446,11 @@ void Volumes::draw_resolve(View &view)
     return;
   }
 
-  GPU_memory_barrier(GPU_BARRIER_TEXTURE_FETCH);
+  // GPU_memory_barrier(GPU_BARRIER_TEXTURE_FETCH);
 
-  integration_fb_.ensure(GPU_ATTACHMENT_NONE,
-                         GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.combined_tx));
-  integration_fb_.bind();
+  resolve_fb_.ensure(GPU_ATTACHMENT_NONE,
+                     GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.combined_tx));
+  resolve_fb_.bind();
   inst_.manager->submit(resolve_ps_, view);
 
   /* TODO(Miguel Pozo): This should be stored per view. */

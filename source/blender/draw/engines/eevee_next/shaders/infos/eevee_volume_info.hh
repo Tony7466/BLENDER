@@ -133,8 +133,12 @@ GPU_SHADER_CREATE_INFO(eevee_volume_integration_common)
     .vertex_out(eevee_volume_vert_geom_iface)
     .vertex_source("eevee_volume_vert.glsl")
     .fragment_source("eevee_volume_integration_frag.glsl")
+    /*
     .image(0, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "finalScattering_img")
-    .image(1, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "finalTransmittance_img");
+    .image(1, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "finalTransmittance_img")
+    */
+    .fragment_out(0, Type::VEC3, "finalScattering")
+    .fragment_out(1, Type::VEC3, "finalTransmittance");
 
 GPU_SHADER_CREATE_INFO(eevee_volume_integration)
     .additional_info("eevee_volume_integration_common")

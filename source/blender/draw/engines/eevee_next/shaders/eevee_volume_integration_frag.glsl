@@ -9,9 +9,14 @@
 
 void main()
 {
+#ifdef USE_VOLUME_OPTI
+  vec3 finalScattering;
+  vec3 finalTransmittance;
+#endif
+
   /* Start with full transmittance and no scattered light. */
-  vec3 finalScattering = vec3(0.0);
-  vec3 finalTransmittance = vec3(1.0);
+  finalScattering = vec3(0.0);
+  finalTransmittance = vec3(1.0);
 
   vec3 tex_size = vec3(textureSize(volumeScattering, 0).xyz);
 
@@ -30,8 +35,12 @@ void main()
     orig_ray_len = prev_ray_len / view_cell.z;
   }
 
+#ifdef USE_VOLUME_OPTI
   int slice = textureSize(volumeScattering, 0).z;
   ivec2 texco = ivec2(gl_FragCoord.xy);
+#else
+  int slice = volume_geom_iface.slice;
+#endif
 
   for (int i = 0; i <= slice; i++) {
     ivec3 volume_cell = ivec3(ivec2(gl_FragCoord.xy), i);
@@ -62,8 +71,16 @@ void main()
 
     finalTransmittance *= Tr;
 
+#ifdef USE_VOLUME_OPTI
     ivec3 coord = ivec3(texco, i);
     imageStore(finalScattering_img, coord, vec4(finalScattering, 0.0));
     imageStore(finalTransmittance_img, coord, vec4(finalTransmittance, 0.0));
+#endif
   }
+
+  /* TODO(Miguel Pozo): Remove, just for testing. */
+  /*
+  finalScattering = vec3(1, 0, 0);
+  finalTransmittance = vec3(0, 1, 0);
+  //*/
 }

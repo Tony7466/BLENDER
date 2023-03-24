@@ -34,6 +34,7 @@ class Volumes {
   Framebuffer volumetric_fb_;
   Framebuffer scatter_fb_;
   Framebuffer integration_fb_;
+  Framebuffer resolve_fb_;
   /* EEVEE_EffectsInfo */
   int current_sample_;
   float light_clamp_;
