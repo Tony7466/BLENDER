@@ -10,9 +10,9 @@
 #include "gpu_context_private.hh"
 
 #include "vk_common.hh"
-#include "vk_context.hh"
 
 namespace blender::gpu {
+class VKContext;
 
 /**
  * Class for handing vulkan buffers (allocation/updating/binding).
@@ -35,6 +35,7 @@ class VKBuffer {
               int64_t size,
               GPUUsageType usage,
               VkBufferUsageFlagBits buffer_usage);
+  void clear(VKContext &context, uint32_t clear_value);
   void update(const void *data) const;
   void read(void *data) const;
   bool free(VKContext &context);

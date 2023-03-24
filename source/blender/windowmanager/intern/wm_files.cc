@@ -43,6 +43,7 @@
 
 #include "PIL_time.h"
 
+#include "BLO_readfile.h"
 #include "BLT_translation.h"
 
 #include "BLF_api.h"
@@ -79,7 +80,6 @@
 #include "BKE_undo_system.h"
 #include "BKE_workspace.h"
 
-#include "BLO_readfile.h"
 #include "BLO_undofile.h" /* to save from an undo memfile */
 #include "BLO_writefile.h"
 
@@ -1112,7 +1112,7 @@ void wm_homefile_read_ex(bContext *C,
   const bool use_userdef = params_homefile->use_userdef;
   bool use_factory_settings = params_homefile->use_factory_settings;
   /* Currently this only impacts preferences as it doesn't make much sense to keep the default
-   * startup open in the case the app-template doesn't happen to define it's own startup.
+   * startup open in the case the app-template doesn't happen to define its own startup.
    * Unlike preferences where we might want to only reset the app-template part of the preferences
    * so as not to reset the preferences for all other Blender instances, see: #96427. */
   const bool use_factory_settings_app_template_only =
@@ -1604,7 +1604,7 @@ static void wm_history_file_update(void)
  *
  *   - An image is saved to the thumbnail cache, sized at #PREVIEW_RENDER_LARGE_HEIGHT.
  *
- *   - A smaller thumbnail is stored in the `.blend` file it's self, sized at #BLEN_THUMB_SIZE.
+ *   - A smaller thumbnail is stored in the `.blend` file itself, sized at #BLEN_THUMB_SIZE.
  *     The size is kept small to prevent thumbnails bloating the size of `.blend` files.
  *
  *     The this thumbnail will be extracted if the file is shared or the local thumbnail cache
@@ -3261,7 +3261,7 @@ static bool wm_save_mainfile_check(bContext * /*C*/, wmOperator *op)
 {
   char filepath[FILE_MAX];
   RNA_string_get(op->ptr, "filepath", filepath);
-  if (!BLO_has_bfile_extension(filepath)) {
+  if (!BKE_blendfile_extension_check(filepath)) {
     /* some users would prefer BLI_path_extension_replace(),
      * we keep getting nitpicking bug reports about this - campbell */
     BLI_path_extension_ensure(filepath, FILE_MAX, ".blend");
@@ -3553,7 +3553,7 @@ static uiBlock *block_create_autorun_warning(struct bContext *C,
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
   UI_but_flag_enable(but, UI_BUT_ACTIVE_DEFAULT);
 
-  UI_block_bounds_set_centered(block, 14 * U.dpi_fac);
+  UI_block_bounds_set_centered(block, 14 * UI_SCALE_FAC);
 
   return block;
 }
@@ -3892,7 +3892,7 @@ static uiBlock *block_create__close_file_dialog(struct bContext *C,
     wm_block_file_close_save_button(block, post_action);
   }
 
-  UI_block_bounds_set_centered(block, 14 * U.dpi_fac);
+  UI_block_bounds_set_centered(block, 14 * UI_SCALE_FAC);
   return block;
 }
 

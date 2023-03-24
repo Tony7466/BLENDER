@@ -32,6 +32,7 @@ void VKCommandBuffer::init(const VkDevice vk_device,
   vk_device_ = vk_device;
   vk_queue_ = vk_queue;
   vk_command_buffer_ = vk_command_buffer;
+  submission_id_.reset();
 
   if (vk_fence_ == VK_NULL_HANDLE) {
     VK_ALLOCATION_CALLBACKS;
@@ -86,6 +87,11 @@ void VKCommandBuffer::push_constants(const VKPushConstants &push_constants,
                      push_constants.data());
 }
 
+void VKCommandBuffer::fill(VKBuffer &buffer, uint32_t clear_data)
+{
+  vkCmdFillBuffer(vk_command_buffer_, buffer.vk_handle(), 0, buffer.size_in_bytes(), clear_data);
+}
+
 void VKCommandBuffer::copy(VKBuffer &dst_buffer,
                            VKTexture &src_texture,
                            Span<VkBufferImageCopy> regions)
@@ -96,6 +102,30 @@ void VKCommandBuffer::copy(VKBuffer &dst_buffer,
                          dst_buffer.vk_handle(),
                          regions.size(),
                          regions.data());
+}
+void VKCommandBuffer::copy(VKTexture &dst_texture,
+                           VKBuffer &src_buffer,
+                           Span<VkBufferImageCopy> regions)
+{
+  vkCmdCopyBufferToImage(vk_command_buffer_,
+                         src_buffer.vk_handle(),
+                         dst_texture.vk_image_handle(),
+                         VK_IMAGE_LAYOUT_GENERAL,
+                         regions.size(),
+                         regions.data());
+}
+
+void VKCommandBuffer::clear(VkImage vk_image,
+                            VkImageLayout vk_image_layout,
+                            const VkClearColorValue &vk_clear_color,
+                            Span<VkImageSubresourceRange> ranges)
+{
+  vkCmdClearColorImage(vk_command_buffer_,
+                       vk_image,
+                       vk_image_layout,
+                       &vk_clear_color,
+                       ranges.size(),
+                       ranges.data());
 }
 
 void VKCommandBuffer::pipeline_barrier(VkPipelineStageFlags source_stages,
@@ -155,6 +185,7 @@ void VKCommandBuffer::submit_encoded_commands()
   submit_info.pCommandBuffers = &vk_command_buffer_;
 
   vkQueueSubmit(vk_queue_, 1, &submit_info, vk_fence_);
+  submission_id_.next();
 }
 
 }  // namespace blender::gpu
