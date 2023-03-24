@@ -1033,11 +1033,11 @@ void fsmenu_read_system(struct FSMenu *fsmenu, int read_bookmarks)
 
   FS_UDIR_PATH(U.fontdir, ICON_FILE_FONT)
   FS_UDIR_PATH(U.textudir, ICON_FILE_IMAGE)
-  LISTBASE_FOREACH (NamedDirectoryPathEntry *, pythondir, &U.script_directories) {
+  LISTBASE_FOREACH (bUserScriptDirectory *, script_dir, &U.script_directories) {
     fsmenu_insert_entry(fsmenu,
                         FS_CATEGORY_OTHER,
-                        pythondir->dir_path,
-                        pythondir->name,
+                        script_dir->dir_path,
+                        script_dir->name,
                         ICON_FILE_SCRIPT,
                         FS_INSERT_LAST);
   }

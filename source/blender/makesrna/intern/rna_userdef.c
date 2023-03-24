@@ -347,7 +347,7 @@ static void rna_userdef_script_autoexec_update(Main *UNUSED(bmain),
 
 static void rna_userdef_script_directory_name_set(PointerRNA *ptr, const char *value)
 {
-  NamedDirectoryPathEntry *script_dir = ptr->data;
+  bUserScriptDirectory *script_dir = ptr->data;
   bool value_invalid = false;
 
   if (!value[0]) {
@@ -368,13 +368,13 @@ static void rna_userdef_script_directory_name_set(PointerRNA *ptr, const char *v
                  script_dir,
                  value,
                  '.',
-                 offsetof(NamedDirectoryPathEntry, name),
+                 offsetof(bUserScriptDirectory, name),
                  sizeof(script_dir->name));
 }
 
-static NamedDirectoryPathEntry *rna_userdef_script_directory_new(void)
+static bUserScriptDirectory *rna_userdef_script_directory_new(void)
 {
-  NamedDirectoryPathEntry *script_dir = MEM_callocN(sizeof(*script_dir), __func__);
+  bUserScriptDirectory *script_dir = MEM_callocN(sizeof(*script_dir), __func__);
   BLI_addtail(&U.script_directories, script_dir);
   USERDEF_TAG_DIRTY;
   return script_dir;
@@ -382,7 +382,7 @@ static NamedDirectoryPathEntry *rna_userdef_script_directory_new(void)
 
 static void rna_userdef_script_directory_remove(ReportList *reports, PointerRNA *ptr)
 {
-  NamedDirectoryPathEntry *script_dir = ptr->data;
+  bUserScriptDirectory *script_dir = ptr->data;
   if (BLI_findindex(&U.script_directories, script_dir) == -1) {
     BKE_report(reports, RPT_ERROR, "Script directory not found");
     return;
@@ -6264,7 +6264,7 @@ static void rna_def_userdef_filepaths_asset_library(BlenderRNA *brna)
 static void rna_def_userdef_script_directory(BlenderRNA *brna)
 {
   StructRNA *srna = RNA_def_struct(brna, "ScriptDirectory", NULL);
-  RNA_def_struct_sdna(srna, "NamedDirectoryPathEntry");
+  RNA_def_struct_sdna(srna, "bUserScriptDirectory");
   RNA_def_struct_clear_flag(srna, STRUCT_UNDO);
   RNA_def_struct_ui_text(srna, "Python Scripts Directory", "");
 

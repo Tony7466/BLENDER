@@ -682,13 +682,13 @@ typedef struct UserDef_Experimental {
 /**
  * Container to store multiple directory paths and a name for each as a #ListBase.
  */
-typedef struct NamedDirectoryPathEntry {
-  struct NamedDirectoryPathEntry *next, *prev;
+typedef struct bUserScriptDirectory {
+  struct bUserScriptDirectory *next, *prev;
 
-  /** Depending on the use case of this struct, this should probably be a unique name. */
+  /** Name must be unique. */
   char name[64];      /* MAX_NAME */
   char dir_path[768]; /* FILE_MAXDIR */
-} NamedDirectoryPathEntry;
+} bUserScriptDirectory;
 
 typedef struct UserDef {
   DNA_DEFINE_CXX_METHODS(UserDef)
@@ -802,7 +802,7 @@ typedef struct UserDef {
    * launch with a new version of Blender. In this case setting the script path on top of
    * factory settings will work without problems.
    */
-  ListBase script_directories; /* #NamedDirectoryPathEntry */
+  ListBase script_directories; /* #bUserScriptDirectory */
   /** #bUserMenu. */
   struct ListBase user_menus;
   /** #bUserAssetLibrary */

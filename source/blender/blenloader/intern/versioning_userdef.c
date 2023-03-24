@@ -802,10 +802,10 @@ void blo_do_versions_userdef(UserDef *userdef)
 
   if (!USER_VERSION_ATLEAST(306, 5)) {
     if (userdef->pythondir_legacy[0]) {
-      NamedDirectoryPathEntry *script_path = MEM_callocN(sizeof(*script_path),
-                                                         "Versioning user script path");
-      STRNCPY(script_path->dir_path, userdef->pythondir_legacy);
-      BLI_addhead(&userdef->script_directories, script_path);
+      bUserScriptDirectory *script_dir = MEM_callocN(sizeof(*script_dir),
+                                                     "Versioning user script path");
+      STRNCPY(script_dir->dir_path, userdef->pythondir_legacy);
+      BLI_addhead(&userdef->script_directories, script_dir);
     }
   }
 
