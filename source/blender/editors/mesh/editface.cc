@@ -452,8 +452,8 @@ void paintface_select_less(Mesh *mesh, const bool face_step)
       continue;
     }
     const MPoly &poly = polys[i];
-    for (const int vert_index : corner_verts.slice(poly.loopstart, poly.totloop)) {
-      verts_of_unselected_faces[vert_index].set(true);
+    for (const int vert : corner_verts.slice(poly.loopstart, poly.totloop)) {
+      verts_of_unselected_faces[vert].set(true);
     }
   }
 
