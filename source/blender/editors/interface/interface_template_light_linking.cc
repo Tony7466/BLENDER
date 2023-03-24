@@ -35,7 +35,7 @@ namespace {
 class ReceiverCollectionDropTarget : public ui::AbstractViewItemDropTarget {
  public:
   ReceiverCollectionDropTarget(ui::AbstractView &view, Collection &collection)
-      : ui::AbstractViewItemDropTarget(view), collection_(&collection)
+      : ui::AbstractViewItemDropTarget(view), collection_(collection)
   {
   }
 
@@ -54,7 +54,7 @@ class ReceiverCollectionDropTarget : public ui::AbstractViewItemDropTarget {
      */
     const ID_Type id_type = GS(drag_id->id->name);
     if (!ELEM(id_type, ID_OB, ID_GR)) {
-      *r_disabled_hint = "Can only add objects and collection to the receiver collection";
+      *r_disabled_hint = "Can only add objects and collections to the receiver collection";
       return false;
     }
 
@@ -72,7 +72,7 @@ class ReceiverCollectionDropTarget : public ui::AbstractViewItemDropTarget {
     Scene *scene = CTX_data_scene(C);
 
     LISTBASE_FOREACH (wmDragID *, drag_id, &drag.ids) {
-      BKE_light_linking_receiver_to_collection(bmain, collection_, drag_id->id);
+      BKE_light_linking_receiver_to_collection(bmain, &collection_, drag_id->id);
     }
 
     /* It is possible that the receiver collection is also used by the view layer.
@@ -84,7 +84,7 @@ class ReceiverCollectionDropTarget : public ui::AbstractViewItemDropTarget {
   }
 
  private:
-  Collection *collection_{nullptr};
+  Collection &collection_;
 };
 
 class ReceiverCollectionViewItem : public ui::BasicTreeViewItem {
@@ -114,18 +114,18 @@ class ReceiverCollectionViewItem : public ui::BasicTreeViewItem {
 
 class ReceiverCollectionView : public ui::AbstractTreeView {
  public:
-  explicit ReceiverCollectionView(Collection &collection) : collection_(&collection)
+  explicit ReceiverCollectionView(Collection &collection) : collection_(collection)
   {
   }
 
   void build_tree() override
   {
-    LISTBASE_FOREACH (CollectionChild *, collection_child, &collection_->children) {
+    LISTBASE_FOREACH (CollectionChild *, collection_child, &collection_.children) {
       Collection *child_collection = collection_child->collection;
       add_tree_item<ReceiverCollectionViewItem>(child_collection->id, ICON_OUTLINER_COLLECTION);
     }
 
-    LISTBASE_FOREACH (CollectionObject *, collection_object, &collection_->gobject) {
+    LISTBASE_FOREACH (CollectionObject *, collection_object, &collection_.gobject) {
       Object *child_object = collection_object->ob;
       add_tree_item<ReceiverCollectionViewItem>(child_object->id, ICON_OBJECT_DATA);
     }
@@ -133,11 +133,11 @@ class ReceiverCollectionView : public ui::AbstractTreeView {
 
   std::unique_ptr<ui::AbstractViewDropTarget> create_drop_target() override
   {
-    return std::make_unique<ReceiverCollectionDropTarget>(*this, *collection_);
+    return std::make_unique<ReceiverCollectionDropTarget>(*this, collection_);
   }
 
  private:
-  Collection *collection_{nullptr};
+  Collection &collection_;
 };
 
 }  // namespace
