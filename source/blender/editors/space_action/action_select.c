@@ -1844,6 +1844,7 @@ static int mouse_action_keys(bAnimContext *ac,
     /* free this channel */
     MEM_freeN(ale);
   }
+
   return ret_value;
 }
 
