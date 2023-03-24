@@ -7,14 +7,11 @@
 /* Step 3 : Integrate for each froxel the final amount of light
  * scattered back to the viewer and the amount of transmittance. */
 
-vec3 finalScattering;
-vec3 finalTransmittance;
-
 void main()
 {
   /* Start with full transmittance and no scattered light. */
-  finalScattering = vec3(0.0);
-  finalTransmittance = vec3(1.0);
+  vec3 finalScattering = vec3(0.0);
+  vec3 finalTransmittance = vec3(1.0);
 
   vec3 tex_size = vec3(textureSize(volumeScattering, 0).xyz);
 

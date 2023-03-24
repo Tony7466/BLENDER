@@ -136,20 +136,11 @@ GPU_SHADER_CREATE_INFO(eevee_volume_integration_common)
     .image(0, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "finalScattering_img")
     .image(1, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "finalTransmittance_img");
 
-GPU_SHADER_CREATE_INFO(eevee_volume_integration_common_geom)
+GPU_SHADER_CREATE_INFO(eevee_volume_integration)
     .additional_info("eevee_volume_integration_common")
     .geometry_source("eevee_volume_geom.glsl")
     .geometry_out(eevee_volume_geom_frag_iface)
-    .geometry_layout(PrimitiveIn::TRIANGLES, PrimitiveOut::TRIANGLE_STRIP, 3);
-
-#ifdef WITH_METAL_BACKEND
-GPU_SHADER_CREATE_INFO(eevee_volume_integration_common_no_geom)
-    .additional_info("eevee_volume_integration_common")
-    .vertex_out(eevee_volume_geom_frag_iface);
-#endif
-
-GPU_SHADER_CREATE_INFO(eevee_volume_integration)
-    .additional_info("eevee_volume_integration_common_geom")
+    .geometry_layout(PrimitiveIn::TRIANGLES, PrimitiveOut::TRIANGLE_STRIP, 3)
     .do_static_compilation(true)
     .auto_resource_location(true);
 
@@ -157,6 +148,7 @@ GPU_SHADER_CREATE_INFO(eevee_volume_integration)
 GPU_SHADER_CREATE_INFO(eevee_volume_integration_no_geom)
     .additional_info("eevee_volume_integration_common_no_geom")
     .additional_info("eevee_volume_integration_common")
+    .vertex_out(eevee_volume_geom_frag_iface)
     .metal_backend_only(true)
     .do_static_compilation(true)
     .auto_resource_location(true);
