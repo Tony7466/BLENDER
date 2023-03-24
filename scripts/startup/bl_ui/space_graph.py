@@ -200,6 +200,7 @@ class GRAPH_MT_channel(Menu):
         layout.operator_context = 'INVOKE_REGION_CHANNELS'
 
         layout.operator("anim.channels_delete")
+
         if context.space_data.mode == 'DRIVERS':
             layout.operator("graph.driver_delete_invalid")
 
@@ -236,6 +237,25 @@ class GRAPH_MT_channel(Menu):
         layout.operator("anim.channels_view_selected")
 
 
+class GRAPH_MT_key_density(Menu):
+    bl_label = "Density"
+
+    def draw(self, _context):
+        layout = self.layout
+        operator_context = layout.operator_context
+
+        layout.operator("graph.decimate", text="Decimate (Ratio)").mode = 'RATIO'
+        # Using the modal operation doesn't make sense for this variant
+        # as we do not have a modal mode for it, so just execute it.
+        layout.operator_context = 'EXEC_REGION_WIN'
+        layout.operator("graph.decimate", text="Decimate (Allowed Change)").mode = 'ERROR'
+        layout.operator_context = operator_context
+        layout.operator("graph.sample")
+
+        layout.separator()
+        layout.operator("graph.clean").channels = False
+
+
 class GRAPH_MT_key(Menu):
     bl_label = "Key"
 
@@ -267,22 +287,12 @@ class GRAPH_MT_key(Menu):
         layout.operator_menu_enum("graph.easing_type", "type", text="Easing Type")
 
         layout.separator()
-        operator_context = layout.operator_context
 
-        layout.operator("graph.decimate", text="Decimate (Ratio)").mode = 'RATIO'
-
-        # Using the modal operation doesn't make sense for this variant
-        # as we do not have a modal mode for it, so just execute it.
-        layout.operator_context = 'EXEC_REGION_WIN'
-        layout.operator("graph.decimate", text="Decimate (Allowed Change)").mode = 'ERROR'
-        layout.operator_context = operator_context
-
+        layout.menu("GRAPH_MT_key_density")
         layout.menu("GRAPH_MT_slider", text="Slider Operators")
-
-        layout.operator("graph.clean").channels = False
-        layout.operator("graph.clean", text="Clean Channels").channels = True
         layout.operator("graph.smooth")
-        layout.operator("graph.sample")
+
+        layout.separator()
         layout.operator("graph.bake")
         layout.operator("graph.unbake")
 
@@ -468,6 +478,7 @@ classes = (
     GRAPH_MT_marker,
     GRAPH_MT_channel,
     GRAPH_MT_key,
+    GRAPH_MT_key_density,
     GRAPH_MT_key_transform,
     GRAPH_MT_key_snap,
     GRAPH_MT_slider,
