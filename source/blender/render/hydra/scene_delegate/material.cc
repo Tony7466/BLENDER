@@ -105,7 +105,7 @@ void MaterialData::export_mtlx()
   PyGILState_Release(gstate);
 
   mtlx_path = pxr::SdfAssetPath(path, path);
-  CLOG_INFO(LOG_BSD, 2, "Export: %s, mtlx=", name().c_str(), mtlx_path.GetResolvedPath().c_str());
+  CLOG_INFO(LOG_BSD, 2, "Export: %s, mtlx=%s", name().c_str(), mtlx_path.GetResolvedPath().c_str());
 }
 
 void MaterialData::insert_prim()

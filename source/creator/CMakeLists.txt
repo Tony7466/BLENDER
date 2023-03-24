@@ -981,8 +981,6 @@ elseif(WIN32)
       ${LIBDIR}/materialx/bin/MaterialXGenOsl.dll
       ${LIBDIR}/materialx/bin/MaterialXGenShader.dll
       ${LIBDIR}/materialx/bin/MaterialXRender.dll
-      ${LIBDIR}/materialx/bin/MaterialXRenderHw.dll
-      ${LIBDIR}/materialx/bin/MaterialXRenderGlsl.dll
     RELEASE
   )
   windows_install_shared_manifest(
@@ -994,8 +992,6 @@ elseif(WIN32)
       ${LIBDIR}/materialx/bin/MaterialXGenOsl_d.dll
       ${LIBDIR}/materialx/bin/MaterialXGenShader_d.dll
       ${LIBDIR}/materialx/bin/MaterialXRender_d.dll
-      ${LIBDIR}/materialx/bin/MaterialXRenderHw_d.dll
-      ${LIBDIR}/materialx/bin/MaterialXRenderGlsl_d.dll
     DEBUG
   )
 
@@ -1530,15 +1526,27 @@ if((DEFINED LIBDIR) AND TARGETDIR_LIB)
         ${USD_LIBRARY_DIR}/usd
         DESTINATION "./blender.shared"
       )
+      install(DIRECTORY
+        ${LIBDIR}/usd/plugin/usd/usdShaders
+        DESTINATION "./blender.shared/usd"
+      )
     elseif(USD_PYTHON_SUPPORT)
       install(DIRECTORY
         ${USD_LIBRARY_DIR}/usd
         DESTINATION ${TARGETDIR_LIB}
       )
+      install(DIRECTORY
+        ${LIBDIR}/usd/plugin/usd/usdShaders
+        DESTINATION ${TARGETDIR_LIB}/usd
+      )
     else()
       install(DIRECTORY
         ${USD_LIBRARY_DIR}/usd
         DESTINATION "${TARGETDIR_VER}/datafiles"
+      )
+      install(DIRECTORY
+        ${LIBDIR}/usd/plugin/usd/usdShaders
+        DESTINATION "${TARGETDIR_VER}/datafiles/usd"
       )
     endif()
   endif()
@@ -1568,14 +1576,6 @@ if((DEFINED LIBDIR) AND TARGETDIR_LIB)
       )
     endif()
   endif()
-endif()
-
-if(WITH_USD AND WITH_HYDRA)
-  install(DIRECTORY
-    ${LIBDIR}/usd/plugin/usd/hdStorm
-    ${LIBDIR}/usd/plugin/usd/usdShaders
-    DESTINATION "./blender.shared/usd"
-  )
 endif()
 
 # Always install MaterialX files regardless if Blender itself uses them, the

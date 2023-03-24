@@ -1,10 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2011-2022 Blender Foundation
 
-if(NOT TARGET MaterialXCore OR NOT TARGET MaterialXFormat)
-  message(FATAL_ERROR "Hydra Scene Delegate requires MaterialX")
-endif()
-
 if(WIN32)
   add_definitions(-DNOMINMAX -DWIN32_LEAN_AND_MEAN -DBOOST_DEBUG_PYTHON)
 endif()

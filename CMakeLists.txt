@@ -354,6 +354,9 @@ option(WITH_USD                 "Enable Universal Scene Description (USD) Suppor
 # MaterialX
 option(WITH_MATERIALX           "Enable MaterialX Support" ON)
 
+# Hydra render engine
+option(WITH_HYDRA               "Enable Hydra render engine" ON)
+
 # 3D format support
 # Disable opencollada when we don't have precompiled libs
 option(WITH_OPENCOLLADA   "Enable OpenCollada Support (http://www.opencollada.org)" ON)
@@ -792,11 +795,6 @@ mark_as_advanced(POSTINSTALL_SCRIPT)
 
 set(POSTCONFIGURE_SCRIPT "" CACHE FILEPATH "Run given CMake script as the last step of CMake configuration")
 mark_as_advanced(POSTCONFIGURE_SCRIPT)
-
-# USD Hydra plugin.
-if(WIN32 AND WITH_USD AND WITH_MATERIALX)
-  option(WITH_HYDRA "Enable USD Hydra plugin" ON)
-endif()
 
 # end option(...)
 
