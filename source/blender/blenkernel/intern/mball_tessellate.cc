@@ -30,7 +30,7 @@
 #include "BKE_global.h"
 #include "BKE_lib_id.h"
 #include "BKE_mball_tessellate.h" /* own include */
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_object.h"
 #include "BKE_scene.h"
 
@@ -39,8 +39,8 @@
 
 #include "BLI_strict_flags.h"
 
-/* experimental (faster) normal calculation */
-// #define USE_ACCUM_NORMAL
+/* experimental (faster) normal calculation (see #103021) */
+#define USE_ACCUM_NORMAL
 
 #define MBALL_ARRAY_LEN_INIT 4096
 
@@ -1463,30 +1463,29 @@ Mesh *BKE_mball_polygonize(Depsgraph *depsgraph, Scene *scene, Object *ob)
   Mesh *mesh = (Mesh *)BKE_id_new_nomain(ID_ME, ((ID *)ob->data)->name + 2);
 
   mesh->totvert = int(process.curvertex);
-  CustomData_add_layer_named(
-      &mesh->vdata, CD_PROP_FLOAT3, CD_ASSIGN, process.co, mesh->totvert, "position");
+  CustomData_add_layer_named_with_data(
+      &mesh->vdata, CD_PROP_FLOAT3, process.co, mesh->totvert, "position");
   process.co = nullptr;
 
   mesh->totpoly = int(process.curindex);
-  MPoly *mpoly = static_cast<MPoly *>(
-      CustomData_add_layer(&mesh->pdata, CD_MPOLY, CD_CONSTRUCT, nullptr, mesh->totpoly));
-  MLoop *mloop = static_cast<MLoop *>(
-      CustomData_add_layer(&mesh->ldata, CD_MLOOP, CD_CONSTRUCT, nullptr, mesh->totpoly * 4));
+  MPoly *polys = static_cast<MPoly *>(
+      CustomData_add_layer(&mesh->pdata, CD_MPOLY, CD_CONSTRUCT, mesh->totpoly));
+  int *corner_verts = static_cast<int *>(CustomData_add_layer_named(
+      &mesh->ldata, CD_PROP_INT32, CD_CONSTRUCT, mesh->totpoly * 4, ".corner_vert"));
 
   int loop_offset = 0;
   for (int i = 0; i < mesh->totpoly; i++) {
     const int *indices = process.indices[i];
 
     const int count = indices[2] != indices[3] ? 4 : 3;
-    mpoly[i].loopstart = loop_offset;
-    mpoly[i].totloop = count;
-    mpoly[i].flag = ME_SMOOTH;
+    polys[i].loopstart = loop_offset;
+    polys[i].totloop = count;
 
-    mloop[loop_offset].v = uint32_t(indices[0]);
-    mloop[loop_offset + 1].v = uint32_t(indices[1]);
-    mloop[loop_offset + 2].v = uint32_t(indices[2]);
+    corner_verts[loop_offset] = indices[0];
+    corner_verts[loop_offset + 1] = indices[1];
+    corner_verts[loop_offset + 2] = indices[2];
     if (count == 4) {
-      mloop[loop_offset + 3].v = uint32_t(indices[3]);
+      corner_verts[loop_offset + 3] = indices[3];
     }
 
     loop_offset += count;
@@ -1496,11 +1495,10 @@ Mesh *BKE_mball_polygonize(Depsgraph *depsgraph, Scene *scene, Object *ob)
   for (int i = 0; i < mesh->totvert; i++) {
     normalize_v3(process.no[i]);
   }
-  memcpy(BKE_mesh_vertex_normals_for_write(mesh),
-         process.no,
-         sizeof(float[3]) * size_t(mesh->totvert));
+  memcpy(
+      BKE_mesh_vert_normals_for_write(mesh), process.no, sizeof(float[3]) * size_t(mesh->totvert));
   MEM_freeN(process.no);
-  BKE_mesh_vertex_normals_clear_dirty(mesh);
+  BKE_mesh_vert_normals_clear_dirty(mesh);
 
   mesh->totloop = loop_offset;
 

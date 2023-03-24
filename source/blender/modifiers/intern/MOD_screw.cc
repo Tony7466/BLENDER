@@ -22,10 +22,11 @@
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
 
+#include "BKE_attribute.hh"
 #include "BKE_context.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_screen.h"
 
 #include "UI_interface.h"
@@ -180,7 +181,7 @@ static Mesh *mesh_remove_doubles_on_axis(Mesh *result,
                                         MutableSpan<int>{full_doubles_map, result->totvert},
                                         int(tot_doubles * (step_tot - 1)));
 
-    BKE_id_free(NULL, tmp);
+    BKE_id_free(nullptr, tmp);
     MEM_freeN(full_doubles_map);
   }
 
@@ -191,6 +192,7 @@ static Mesh *mesh_remove_doubles_on_axis(Mesh *result,
 
 static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *meshData)
 {
+  using namespace blender;
   const Mesh *mesh = meshData;
   Mesh *result;
   ScrewModifierData *ltmd = (ScrewModifierData *)md;
@@ -251,17 +253,16 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   uint edge_offset;
 
   MPoly *mp_new;
-  MLoop *ml_new;
-  MEdge *med_new, *med_new_firstloop;
+  MEdge *edge_new, *med_new_firstloop;
   Object *ob_axis = ltmd->ob_axis;
 
   ScrewVertConnect *vc, *vc_tmp, *vert_connect = nullptr;
 
-  const char mpoly_flag = (ltmd->flag & MOD_SCREW_SMOOTH_SHADING) ? ME_SMOOTH : 0;
+  const bool use_flat_shading = (ltmd->flag & MOD_SCREW_SMOOTH_SHADING) == 0;
 
   /* don't do anything? */
   if (!totvert) {
-    return BKE_mesh_new_nomain_from_template(mesh, 0, 0, 0, 0, 0);
+    return BKE_mesh_new_nomain_from_template(mesh, 0, 0, 0, 0);
   }
 
   switch (ltmd->axis) {
@@ -390,7 +391,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   const bool do_remove_doubles = (ltmd->flag & MOD_SCREW_MERGE) && (screw_ofs == 0.0f);
 
   result = BKE_mesh_new_nomain_from_template(
-      mesh, int(maxVerts), int(maxEdges), 0, int(maxPolys) * 4, int(maxPolys));
+      mesh, int(maxVerts), int(maxEdges), int(maxPolys) * 4, int(maxPolys));
   /* The modifier doesn't support original index mapping on the edge or face domains. Remove
    * original index layers, since otherwise edges aren't displayed at all in wireframe view. */
   CustomData_free_layers(&result->edata, CD_ORIGINDEX, result->totedge);
@@ -399,15 +400,20 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   const float(*vert_positions_orig)[3] = BKE_mesh_vert_positions(mesh);
   const blender::Span<MEdge> edges_orig = mesh->edges();
   const blender::Span<MPoly> polys_orig = mesh->polys();
-  const blender::Span<MLoop> loops_orig = mesh->loops();
+  const blender::Span<int> corner_verts_orig = mesh->corner_verts();
+  const blender::Span<int> corner_edges_orig = mesh->corner_edges();
 
   float(*vert_positions_new)[3] = BKE_mesh_vert_positions_for_write(result);
   blender::MutableSpan<MEdge> edges_new = result->edges_for_write();
   blender::MutableSpan<MPoly> polys_new = result->polys_for_write();
-  blender::MutableSpan<MLoop> loops_new = result->loops_for_write();
+  blender::MutableSpan<int> corner_verts_new = result->corner_verts_for_write();
+  blender::MutableSpan<int> corner_edges_new = result->corner_edges_for_write();
+  bke::MutableAttributeAccessor attributes = result->attributes_for_write();
+  bke::SpanAttributeWriter<bool> sharp_faces = attributes.lookup_or_add_for_write_span<bool>(
+      "sharp_face", ATTR_DOMAIN_FACE);
 
   if (!CustomData_has_layer(&result->pdata, CD_ORIGINDEX)) {
-    CustomData_add_layer(&result->pdata, CD_ORIGINDEX, CD_SET_DEFAULT, nullptr, int(maxPolys));
+    CustomData_add_layer(&result->pdata, CD_ORIGINDEX, CD_SET_DEFAULT, int(maxPolys));
   }
 
   int *origindex = static_cast<int *>(
@@ -444,12 +450,11 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   /* Set the locations of the first set of verts */
 
   /* Copy the first set of edges */
-  const MEdge *med_orig = edges_orig.data();
-  med_new = edges_new.data();
-  for (uint i = 0; i < totedge; i++, med_orig++, med_new++) {
-    med_new->v1 = med_orig->v1;
-    med_new->v2 = med_orig->v2;
-    med_new->flag = med_orig->flag;
+  const MEdge *edge_orig = edges_orig.data();
+  edge_new = edges_new.data();
+  for (uint i = 0; i < totedge; i++, edge_orig++, edge_new++) {
+    edge_new->v1 = edge_orig->v1;
+    edge_new->v2 = edge_orig->v2;
   }
 
   /* build polygon -> edge map */
@@ -467,15 +472,15 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
       uint loopstart = uint(polys_orig[i].loopstart);
       uint loopend = loopstart + uint(polys_orig[i].totloop);
 
-      const MLoop *ml_orig = &loops_orig[loopstart];
-      uint k;
-      for (k = loopstart; k < loopend; k++, ml_orig++) {
-        edge_poly_map[ml_orig->e] = uint(i);
-        vert_loop_map[ml_orig->v] = k;
+      for (uint k = loopstart; k < loopend; k++) {
+        const uint vert_i = uint(corner_verts_orig[k]);
+        const uint edge_i = uint(corner_edges_orig[k]);
+        edge_poly_map[edge_i] = uint(i);
+        vert_loop_map[vert_i] = k;
 
         /* also order edges based on faces */
-        if (edges_new[ml_orig->e].v1 != ml_orig->v) {
-          std::swap(edges_new[ml_orig->e].v1, edges_new[ml_orig->e].v2);
+        if (edges_new[edge_i].v1 != vert_i) {
+          std::swap(edges_new[edge_i].v1, edges_new[edge_i].v2);
         }
       }
     }
@@ -497,7 +502,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     if (totedge != 0) {
       // printf("\n\n\n\n\nStarting Modifier\n");
       /* set edge users */
-      med_new = edges_new.data();
+      edge_new = edges_new.data();
 
       if (ob_axis != nullptr) {
         /* `mtx_tx` is initialized early on. */
@@ -537,31 +542,31 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
       }
 
       /* this loop builds connectivity info for verts */
-      for (uint i = 0; i < totedge; i++, med_new++) {
-        vc = &vert_connect[med_new->v1];
+      for (uint i = 0; i < totedge; i++, edge_new++) {
+        vc = &vert_connect[edge_new->v1];
 
         if (vc->v[0] == SV_UNUSED) { /* unused */
-          vc->v[0] = med_new->v2;
-          vc->e[0] = med_new;
+          vc->v[0] = edge_new->v2;
+          vc->e[0] = edge_new;
         }
         else if (vc->v[1] == SV_UNUSED) {
-          vc->v[1] = med_new->v2;
-          vc->e[1] = med_new;
+          vc->v[1] = edge_new->v2;
+          vc->e[1] = edge_new;
         }
         else {
           vc->v[0] = vc->v[1] = SV_INVALID; /* error value  - don't use, 3 edges on vert */
         }
 
-        vc = &vert_connect[med_new->v2];
+        vc = &vert_connect[edge_new->v2];
 
         /* same as above but swap v1/2 */
         if (vc->v[0] == SV_UNUSED) { /* unused */
-          vc->v[0] = med_new->v1;
-          vc->e[0] = med_new;
+          vc->v[0] = edge_new->v1;
+          vc->e[0] = edge_new;
         }
         else if (vc->v[1] == SV_UNUSED) {
-          vc->v[1] = med_new->v1;
-          vc->e[1] = med_new;
+          vc->v[1] = edge_new->v1;
+          vc->e[1] = edge_new;
         }
         else {
           vc->v[0] = vc->v[1] = SV_INVALID; /* error value  - don't use, 3 edges on vert */
@@ -799,10 +804,9 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
       }
 
       /* add the new edge */
-      med_new->v1 = varray_stride + j;
-      med_new->v2 = med_new->v1 - totvert;
-      med_new->flag = 0;
-      med_new++;
+      edge_new->v1 = varray_stride + j;
+      edge_new->v2 = edge_new->v1 - totvert;
+      edge_new++;
     }
   }
 
@@ -817,15 +821,14 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     const uint varray_stride = (step_tot - 1) * totvert;
 
     for (uint i = 0; i < totvert; i++) {
-      med_new->v1 = i;
-      med_new->v2 = varray_stride + i;
-      med_new->flag = 0;
-      med_new++;
+      edge_new->v1 = i;
+      edge_new->v2 = varray_stride + i;
+      edge_new++;
     }
   }
 
   mp_new = polys_new.data();
-  ml_new = loops_new.data();
+  int new_loop_index = 0;
   med_new_firstloop = edges_new.data();
 
   /* more of an offset in this case */
@@ -880,30 +883,29 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
       else {
         origindex[mpoly_index] = ORIGINDEX_NONE;
         dst_material_index[mpoly_index] = mat_nr;
-        mp_new->flag = mpoly_flag;
+        sharp_faces.span[i] = use_flat_shading;
       }
       mp_new->loopstart = mpoly_index * 4;
       mp_new->totloop = 4;
 
       /* Loop-Custom-Data */
       if (has_mloop_orig) {
-        int l_index = int(ml_new - loops_new.data());
 
         CustomData_copy_data(
-            &mesh->ldata, &result->ldata, int(mloop_index_orig[0]), l_index + 0, 1);
+            &mesh->ldata, &result->ldata, int(mloop_index_orig[0]), new_loop_index + 0, 1);
         CustomData_copy_data(
-            &mesh->ldata, &result->ldata, int(mloop_index_orig[1]), l_index + 1, 1);
+            &mesh->ldata, &result->ldata, int(mloop_index_orig[1]), new_loop_index + 1, 1);
         CustomData_copy_data(
-            &mesh->ldata, &result->ldata, int(mloop_index_orig[1]), l_index + 2, 1);
+            &mesh->ldata, &result->ldata, int(mloop_index_orig[1]), new_loop_index + 2, 1);
         CustomData_copy_data(
-            &mesh->ldata, &result->ldata, int(mloop_index_orig[0]), l_index + 3, 1);
+            &mesh->ldata, &result->ldata, int(mloop_index_orig[0]), new_loop_index + 3, 1);
 
         if (mloopuv_layers_tot) {
           uint uv_lay;
           const float uv_u_offset_a = float(step) * uv_u_scale;
           const float uv_u_offset_b = float(step + 1) * uv_u_scale;
           for (uv_lay = 0; uv_lay < mloopuv_layers_tot; uv_lay++) {
-            blender::float2 *mluv = &mloopuv_layers[uv_lay][l_index];
+            blender::float2 *mluv = &mloopuv_layers[uv_lay][new_loop_index];
 
             mluv[quad_ord[0]][0] += uv_u_offset_a;
             mluv[quad_ord[1]][0] += uv_u_offset_a;
@@ -914,13 +916,11 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
       }
       else {
         if (mloopuv_layers_tot) {
-          int l_index = int(ml_new - loops_new.data());
-
           uint uv_lay;
           const float uv_u_offset_a = float(step) * uv_u_scale;
           const float uv_u_offset_b = float(step + 1) * uv_u_scale;
           for (uv_lay = 0; uv_lay < mloopuv_layers_tot; uv_lay++) {
-            blender::float2 *mluv = &mloopuv_layers[uv_lay][l_index];
+            blender::float2 *mluv = &mloopuv_layers[uv_lay][new_loop_index];
 
             copy_v2_fl2(mluv[quad_ord[0]], uv_u_offset_a, uv_v_offset_a);
             copy_v2_fl2(mluv[quad_ord[1]], uv_u_offset_a, uv_v_offset_b);
@@ -933,50 +933,50 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
       /* Loop-Data */
       if (!(close && step == step_last)) {
         /* regular segments */
-        ml_new[quad_ord[0]].v = i1;
-        ml_new[quad_ord[1]].v = i2;
-        ml_new[quad_ord[2]].v = i2 + totvert;
-        ml_new[quad_ord[3]].v = i1 + totvert;
+        corner_verts_new[new_loop_index + quad_ord[0]] = int(i1);
+        corner_verts_new[new_loop_index + quad_ord[1]] = int(i2);
+        corner_verts_new[new_loop_index + quad_ord[2]] = int(i2 + totvert);
+        corner_verts_new[new_loop_index + quad_ord[3]] = int(i1 + totvert);
 
-        ml_new[quad_ord_ofs[0]].e = step == 0 ? i :
-                                                (edge_offset + step + (i * (step_tot - 1))) - 1;
-        ml_new[quad_ord_ofs[1]].e = totedge + i2;
-        ml_new[quad_ord_ofs[2]].e = edge_offset + step + (i * (step_tot - 1));
-        ml_new[quad_ord_ofs[3]].e = totedge + i1;
+        corner_edges_new[new_loop_index + quad_ord_ofs[0]] = int(
+            step == 0 ? i : (edge_offset + step + (i * (step_tot - 1))) - 1);
+        corner_edges_new[new_loop_index + quad_ord_ofs[1]] = int(totedge + i2);
+        corner_edges_new[new_loop_index + quad_ord_ofs[2]] = int(edge_offset + step +
+                                                                 (i * (step_tot - 1)));
+        corner_edges_new[new_loop_index + quad_ord_ofs[3]] = int(totedge + i1);
 
         /* new vertical edge */
         if (step) { /* The first set is already done */
-          med_new->v1 = i1;
-          med_new->v2 = i2;
-          med_new->flag = med_new_firstloop->flag;
-          med_new++;
+          edge_new->v1 = i1;
+          edge_new->v2 = i2;
+          edge_new++;
         }
         i1 += totvert;
         i2 += totvert;
       }
       else {
         /* last segment */
-        ml_new[quad_ord[0]].v = i1;
-        ml_new[quad_ord[1]].v = i2;
-        ml_new[quad_ord[2]].v = med_new_firstloop->v2;
-        ml_new[quad_ord[3]].v = med_new_firstloop->v1;
+        corner_verts_new[new_loop_index + quad_ord[0]] = int(i1);
+        corner_verts_new[new_loop_index + quad_ord[1]] = int(i2);
+        corner_verts_new[new_loop_index + quad_ord[2]] = int(med_new_firstloop->v2);
+        corner_verts_new[new_loop_index + quad_ord[3]] = int(med_new_firstloop->v1);
 
-        ml_new[quad_ord_ofs[0]].e = (edge_offset + step + (i * (step_tot - 1))) - 1;
-        ml_new[quad_ord_ofs[1]].e = totedge + i2;
-        ml_new[quad_ord_ofs[2]].e = i;
-        ml_new[quad_ord_ofs[3]].e = totedge + i1;
+        corner_edges_new[new_loop_index + quad_ord_ofs[0]] = int(
+            (edge_offset + step + (i * (step_tot - 1))) - 1);
+        corner_edges_new[new_loop_index + quad_ord_ofs[1]] = int(totedge + i2);
+        corner_edges_new[new_loop_index + quad_ord_ofs[2]] = int(i);
+        corner_edges_new[new_loop_index + quad_ord_ofs[3]] = int(totedge + i1);
       }
 
       mp_new++;
-      ml_new += 4;
+      new_loop_index += 4;
       mpoly_index++;
     }
 
     /* new vertical edge */
-    med_new->v1 = i1;
-    med_new->v2 = i2;
-    med_new->flag = med_new_firstloop->flag;
-    med_new++;
+    edge_new->v1 = i1;
+    edge_new->v2 = i2;
+    edge_new++;
   }
 
 /* validate loop edges */
@@ -1005,6 +1005,8 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     }
   }
 #endif
+
+  sharp_faces.finish();
 
   if (edge_poly_map) {
     MEM_freeN(edge_poly_map);

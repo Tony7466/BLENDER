@@ -24,12 +24,14 @@ set(SRC
   intern/mesh_to_curve_convert.cc
   intern/mesh_to_volume.cc
   intern/point_merge_by_distance.cc
+  intern/points_to_volume.cc
   intern/realize_instances.cc
   intern/resample_curves.cc
   intern/reverse_uv_sampler.cc
   intern/set_curve_type.cc
   intern/subdivide_curves.cc
   intern/trim_curves.cc
+  intern/uv_pack.cc
   intern/uv_parametrizer.cc
 
   GEO_add_curves_on_mesh.hh
@@ -41,13 +43,15 @@ set(SRC
   GEO_mesh_to_curve.hh
   GEO_mesh_to_volume.hh
   GEO_point_merge_by_distance.hh
+  GEO_points_to_volume.hh
   GEO_realize_instances.hh
   GEO_resample_curves.hh
   GEO_reverse_uv_sampler.hh
   GEO_set_curve_type.hh
   GEO_subdivide_curves.hh
   GEO_trim_curves.hh
-  GEO_uv_parametrizer.h
+  GEO_uv_pack.hh
+  GEO_uv_parametrizer.hh
 )
 
 set(LIB
