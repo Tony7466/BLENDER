@@ -1706,6 +1706,11 @@ static int mouse_action_keys(bAnimContext *ac,
   actkeys_find_key_at_position(
       ac, filter, mval[0], mval[1], &ale, &selx, &frame, &found, &is_selected);
 
+   /* If nothing selected, return #OPERATOR_CANCELLED.*/
+   if (!found && ale == NULL) {
+    ret_value = OPERATOR_CANCELLED;
+  }
+
   if (select_mode != SELECT_REPLACE) {
     wait_to_deselect_others = false;
   }
@@ -1716,7 +1721,7 @@ static int mouse_action_keys(bAnimContext *ac,
   if ((select_mode == SELECT_REPLACE && found) || (!found && deselect_all)) {
     /* reset selection mode for next steps */
     select_mode = SELECT_ADD;
-   
+
     /* Rather than deselecting others, users may want to drag to box-select (drag from empty space)
      * or tweak-translate an already selected item. If these cases may apply, delay deselection. */
     if (wait_to_deselect_others && (!found || is_selected)) {
@@ -1725,19 +1730,14 @@ static int mouse_action_keys(bAnimContext *ac,
     else {
       /* deselect all keyframes */
       deselect_action_keys(ac, 0, SELECT_SUBTRACT);
-      
-      /* If nothing selected, return OPERATOR_CANCELLED.*/
-      if (!found && ale == NULL) {
-        ret_value = OPERATOR_CANCELLED;
-      }
+
       /* highlight channel clicked on */
       if (ELEM(ac->datatype, ANIMCONT_ACTION, ANIMCONT_DOPESHEET, ANIMCONT_TIMELINE)) {
         /* deselect all other channels first */
         ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_CLEAR);
-       
+
         /* Highlight Action-Group or F-Curve? */
         if (ale != NULL && ale->data) {
-
           if (ale->type == ANIMTYPE_GROUP) {
             bActionGroup *agrp = ale->data;
 
@@ -1761,6 +1761,7 @@ static int mouse_action_keys(bAnimContext *ac,
       else if (ac->datatype == ANIMCONT_GPENCIL) {
         /* deselect all other channels first */
         ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_CLEAR);
+
         /* Highlight GPencil Layer */
         if (ale != NULL && ale->data != NULL && ale->type == ANIMTYPE_GPLAYER) {
           bGPdata *gpd = (bGPdata *)ale->id;
@@ -1811,7 +1812,7 @@ static int mouse_action_keys(bAnimContext *ac,
 
     /* free this channel */
     MEM_freeN(ale);
-  } 
+  }
   return ret_value;
 }
 
@@ -1841,11 +1842,11 @@ static int actkeys_clickselect_exec(bContext *C, wmOperator *op)
 
   mval[0] = RNA_int_get(op->ptr, "mouse_x");
   mval[1] = RNA_int_get(op->ptr, "mouse_y");
- 
+
   /* Select keyframe(s) based upon mouse position. */
   ret_value = mouse_action_keys(
       &ac, mval, selectmode, deselect_all, column, channel, wait_to_deselect_others);
-  
+
   /* set notifier that keyframe selection (and channels too) have changed */
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
   WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED, NULL);
