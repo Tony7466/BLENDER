@@ -9,6 +9,8 @@
 
 #include "DNA_screen_types.h"
 
+#include "ED_view3d.h"
+
 #include "UI_resources.h"
 
 #include "DRW_engine.h"
@@ -142,6 +144,11 @@ static void select_cache_init(void *vedata)
     DRW_PASS_CREATE(psl->depth_only_pass, state);
     pd->shgrp_depth_only = DRW_shgroup_create(sh->select_id_uniform, psl->depth_only_pass);
 
+    if (RETOPOLOGY_ENABLED(draw_ctx->v3d)) {
+      pd->shgrp_occlude = DRW_shgroup_create(sh->select_id_uniform, psl->depth_only_pass);
+      DRW_shgroup_uniform_int_copy(pd->shgrp_occlude, "id", 0);
+    }
+
     DRW_PASS_CREATE(psl->select_id_face_pass, state);
     if (e_data.context.select_mode & SCE_SELECT_FACE) {
       pd->shgrp_face_flat = DRW_shgroup_create(sh->select_id_flat, psl->select_id_face_pass);
@@ -196,6 +203,14 @@ static void select_cache_populate(void *vedata, Object *ob)
 {
   SELECTID_StorageList *stl = ((SELECTID_Data *)vedata)->stl;
   const DRWContextState *draw_ctx = DRW_context_state_get();
+
+  if (!DRW_object_is_in_edit_mode(ob)) {
+    if (RETOPOLOGY_ENABLED(draw_ctx->v3d) && ob->dt >= OB_SOLID) {
+      struct GPUBatch *geom_faces = DRW_mesh_batch_cache_get_surface(ob->data);
+      DRW_shgroup_call_obmat(stl->g_data->shgrp_occlude, geom_faces, ob->object_to_world);
+    }
+    return;
+  }
 
   SELECTID_ObjectData *sel_data = (SELECTID_ObjectData *)DRW_drawdata_get(
       &ob->id, &draw_engine_select_type);

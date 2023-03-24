@@ -2771,11 +2771,15 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *region, View3D *v3d, cons
   {
     drw_engines_cache_init();
 
-    Object **obj = &sel_ctx->objects[0];
-    for (uint remaining = sel_ctx->objects_len; remaining--; obj++) {
-      Object *obj_eval = DEG_get_evaluated_object(depsgraph, *obj);
-      drw_engines_cache_populate(obj_eval);
+    DEGObjectIterSettings deg_iter_settings = {0};
+    deg_iter_settings.depsgraph = depsgraph;
+    deg_iter_settings.flags = DEG_OBJECT_ITER_FOR_RENDER_ENGINE_FLAGS;
+    DEG_OBJECT_ITER_BEGIN (&deg_iter_settings, ob) {
+      if (ob->type == OB_MESH) {
+        drw_engines_cache_populate(ob);
+      }
     }
+    DEG_OBJECT_ITER_END;
 
     drw_engines_cache_finish();
 
