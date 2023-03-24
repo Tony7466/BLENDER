@@ -431,8 +431,8 @@ void smooth_fcurve_segment(FCurve *fcu,
   const int segment_start_x = fcu->bezt[segment->start_index].vec[1][0];
   for (int i = segment->start_index; i < segment_end_index; i++) {
     const int sample_index = (int)(fcu->bezt[i].vec[1][0] - segment_start_x) + kernel_size;
-    double filter_result = samples[sample_index] * kernel[0];
     /* Apply the kernel. */
+    double filter_result = samples[sample_index] * kernel[0];
     for (int j = 1; j <= kernel_size; j++) {
       const double kernel_value = kernel[j];
       filter_result += samples[sample_index + j] * kernel_value;

@@ -195,7 +195,7 @@ static void graph_slider_exit(bContext *C, wmOperator *op)
     return;
   }
 
-  if (gso->operator_data) {
+  if (gso->free_operator_data != NULL) {
     gso->free_operator_data(gso->operator_data);
   }
 
