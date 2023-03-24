@@ -20,7 +20,7 @@
 #include "DNA_cachefile_types.h"
 #include "DNA_camera_types.h"
 #include "DNA_curves_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_key_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_light_types.h"
@@ -50,7 +50,7 @@
 #include "BKE_animsys.h"
 #include "BKE_context.h"
 #include "BKE_curve.h"
-#include "BKE_gpencil.h"
+#include "BKE_gpencil_legacy.h"
 #include "BKE_key.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
@@ -4805,7 +4805,7 @@ static void achannel_setting_slider_cb(bContext *C, void *id_poin, void *fcu_poi
   /* try to resolve the path stored in the F-Curve */
   if (RNA_path_resolve_property(&id_ptr, fcu->rna_path, &ptr, &prop)) {
     /* set the special 'replace' flag if on a keyframe */
-    if (fcurve_frame_has_keyframe(fcu, cfra, 0)) {
+    if (fcurve_frame_has_keyframe(fcu, cfra)) {
       flag |= INSERTKEY_REPLACE;
     }
 
@@ -4867,7 +4867,7 @@ static void achannel_setting_slider_shapekey_cb(bContext *C, void *key_poin, voi
     FCurve *fcu = ED_action_fcurve_ensure(bmain, act, NULL, &ptr, rna_path, 0);
 
     /* set the special 'replace' flag if on a keyframe */
-    if (fcurve_frame_has_keyframe(fcu, remapped_frame, 0)) {
+    if (fcurve_frame_has_keyframe(fcu, remapped_frame)) {
       flag |= INSERTKEY_REPLACE;
     }
 
@@ -4927,7 +4927,7 @@ static void achannel_setting_slider_nla_curve_cb(bContext *C,
 
   if (fcu && prop) {
     /* set the special 'replace' flag if on a keyframe */
-    if (fcurve_frame_has_keyframe(fcu, cfra, 0)) {
+    if (fcurve_frame_has_keyframe(fcu, cfra)) {
       flag |= INSERTKEY_REPLACE;
     }
 
@@ -5262,7 +5262,7 @@ void ANIM_channel_draw_widgets(const bContext *C,
      *       a callback available (e.g. broken F-Curve rename)
      */
     if (acf->name_prop(ale, &ptr, &prop)) {
-      const short margin_x = 3 * round_fl_to_int(UI_DPI_FAC);
+      const short margin_x = 3 * round_fl_to_int(UI_SCALE_FAC);
       const short width = ac->region->winx - offset - (margin_x * 2);
       uiBut *but;
 

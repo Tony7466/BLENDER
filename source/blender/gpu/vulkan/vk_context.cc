@@ -120,12 +120,4 @@ void VKContext::memory_statistics_get(int * /*total_mem*/, int * /*free_mem*/)
 {
 }
 
-void VKContext::debug_group_begin(const char *, int)
-{
-}
-
-void VKContext::debug_group_end()
-{
-}
-
 }  // namespace blender::gpu

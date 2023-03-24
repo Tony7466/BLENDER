@@ -42,6 +42,14 @@ set(INC
   ../../../intern/mantaflow/extern
 )
 
+if(WITH_RENDERDOC)
+  list(APPEND INC
+    ../../../extern/renderdoc/include
+    ../../../intern/renderdoc_dynload/include
+  )
+  add_definitions(-DWITH_RENDERDOC)
+endif()
+
 set(INC_SYS
   ${Epoxy_INCLUDE_DIRS}
 )
@@ -195,6 +203,7 @@ set(VULKAN_SRC
   vulkan/vk_command_buffer.cc
   vulkan/vk_common.cc
   vulkan/vk_context.cc
+  vulkan/vk_debug.cc
   vulkan/vk_descriptor_pools.cc
   vulkan/vk_descriptor_set.cc
   vulkan/vk_drawlist.cc
@@ -603,9 +612,11 @@ list(APPEND INC ${CMAKE_CURRENT_BINARY_DIR})
 
 set(SRC_SHADER_CREATE_INFOS
   ../draw/engines/basic/shaders/infos/basic_depth_info.hh
+  ../draw/engines/eevee_next/shaders/infos/eevee_deferred_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_depth_of_field_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_film_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_hiz_info.hh
+  ../draw/engines/eevee_next/shaders/infos/eevee_irradiance_cache_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_light_culling_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_material_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_motion_blur_info.hh
@@ -740,6 +751,10 @@ if(WITH_OPENCOLORIO)
   target_link_libraries(bf_gpu PUBLIC bf_ocio_shaders)
 endif()
 
+if(WITH_RENDERDOC)
+  target_link_libraries(bf_gpu PUBLIC bf_intern_renderdoc_dynload)
+endif()
+
 
 if(CXX_WARN_NO_SUGGEST_OVERRIDE)
   target_compile_options(bf_gpu PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wsuggest-override>)
@@ -809,10 +824,11 @@ if(WITH_GTESTS)
     set(TEST_SRC
       tests/gpu_testing.cc
 
-      tests/gpu_index_buffer_test.cc
-      tests/gpu_push_constants_test.cc
-      tests/gpu_shader_test.cc
-      tests/gpu_storage_buffer_test.cc
+      tests/index_buffer_test.cc
+      tests/push_constants_test.cc
+      tests/shader_test.cc
+      tests/storage_buffer_test.cc
+      tests/texture_test.cc
 
       tests/gpu_testing.hh
     )

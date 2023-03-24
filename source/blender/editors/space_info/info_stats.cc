@@ -12,7 +12,7 @@
 #include "DNA_armature_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_curve_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meta_types.h"
@@ -25,6 +25,7 @@
 #include "BLI_listbase.h"
 #include "BLI_math.h"
 #include "BLI_string.h"
+#include "BLI_timecode.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -36,11 +37,11 @@
 #include "BKE_curve.h"
 #include "BKE_displist.h"
 #include "BKE_editmesh.h"
-#include "BKE_gpencil.h"
+#include "BKE_gpencil_legacy.h"
 #include "BKE_key.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_object.h"
 #include "BKE_paint.h"
 #include "BKE_particle.h"
@@ -616,6 +617,24 @@ static const char *info_statusbar_string(Main *bmain,
     }
   }
 
+  /* Scene Duration. */
+  if (statusbar_flag & STATUSBAR_SHOW_SCENE_DURATION) {
+    if (info[0]) {
+      ofs += BLI_snprintf_rlen(info + ofs, len - ofs, " | ");
+    }
+    const int relative_current_frame = (scene->r.cfra - scene->r.sfra) + 1;
+    const int frame_count = (scene->r.efra - scene->r.sfra) + 1;
+    char timecode[32];
+    BLI_timecode_string_from_time(
+        timecode, sizeof(timecode), -2, FRA2TIME(frame_count), FPS, U.timecode_style);
+    ofs += BLI_snprintf_rlen(info + ofs,
+                             len - ofs,
+                             TIP_("Duration: %s (Frame %i/%i)"),
+                             timecode,
+                             relative_current_frame,
+                             frame_count);
+  }
+
   /* Memory status. */
   if (statusbar_flag & STATUSBAR_SHOW_MEMORY) {
     if (info[0]) {
@@ -668,7 +687,8 @@ const char *ED_info_statistics_string(Main *bmain, Scene *scene, ViewLayer *view
 {
   const eUserpref_StatusBar_Flag statistics_status_bar_flag = STATUSBAR_SHOW_STATS |
                                                               STATUSBAR_SHOW_MEMORY |
-                                                              STATUSBAR_SHOW_VERSION;
+                                                              STATUSBAR_SHOW_VERSION |
+                                                              STATUSBAR_SHOW_SCENE_DURATION;
 
   return info_statusbar_string(bmain, scene, view_layer, statistics_status_bar_flag);
 }
