@@ -128,7 +128,6 @@ void VKContext::memory_statistics_get(int * /*total_mem*/, int * /*free_mem*/)
 {
 }
 
-<<<<<<< HEAD
 void VKContext::activate_framebuffer(VKFrameBuffer &framebuffer)
 {
   if (has_active_framebuffer()) {
@@ -153,6 +152,4 @@ void VKContext::deactivate_framebuffer()
   active_fb = nullptr;
 }
 
-=======
->>>>>>> main
 }  // namespace blender::gpu
