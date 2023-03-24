@@ -444,7 +444,7 @@ void paintface_select_less(Mesh *mesh, const bool face_step)
   const Span<int> corner_edges = mesh->corner_edges();
   const Span<MEdge> edges = mesh->edges();
 
-  BitVector<> verts_of_unselected_faces(mesh->totvert, false);
+  BitVector<> verts_of_unselected_faces(mesh->totvert);
 
   /* Find all vertices of unselected faces to help find neighboring faces after. */
   for (const int i : polys.index_range()) {
