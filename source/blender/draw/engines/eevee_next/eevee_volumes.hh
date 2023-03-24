@@ -28,10 +28,8 @@ class Volumes {
   Texture prop_extinction_tx_;
   Texture prop_emission_tx_;
   Texture prop_phase_tx_;
-  Texture scatter_tx_;
-  Texture transmit_tx_;
-  Texture scatter_history_tx_;
-  Texture transmit_history_tx_;
+  SwapChain<Texture, 2> scatter_tx_;
+  SwapChain<Texture, 2> transmit_tx_;
   /* EEVEE_FramebufferList */
   Framebuffer volumetric_fb_;
   Framebuffer scatter_fb_;
@@ -40,7 +38,7 @@ class Volumes {
   int current_sample_;
   float light_clamp_;
 #if 0
-  /* TODO (Miguel Pozo): Are these the same ones from EEVEE_TextureList ? */
+  /* TODO (Miguel Pozo): These ones were used for transparency */
   struct GPUTexture *volume_scatter;
   struct GPUTexture *volume_transmit;
 #endif
@@ -51,6 +49,8 @@ class Volumes {
   PassSimple integration_ps_ = {"Volumes.Integration"};
   PassSimple resolve_ps_ = {"Volumes.Resolve"};
   PassSimple accum_ps_ = {"Volumes.Accum"};
+
+  float4x4 prev_view_projection_matrix;
 
   template<typename PassType> void bind_common_resources(PassType &ps)
   {

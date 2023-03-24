@@ -27,8 +27,7 @@ void main()
   outScattering.rgb += irradiance_volumetric(P) * s_scattering * phase_function_isotropic();
 
   /* TODO (Miguel Pozo) */
-#if 0
-#  ifdef VOLUME_LIGHTING /* Lights */
+#ifdef VOLUME_LIGHTING /* Lights */
   for (int i = 0; i < MAX_LIGHT && i < laNumLight; i++) {
     LightData ld = lights_data[i];
 
@@ -51,17 +50,14 @@ void main()
     outScattering.rgb += Li * vis * s_scattering *
                          phase_function(-V, l_vector.xyz / l_vector.w, s_anisotropy);
   }
-#  endif
 #endif
 
-  /* TODO (Miguel Pozo) */
-#if 0
   /* Temporal supersampling */
   /* Note : this uses the cell non-jittered position (texel center). */
   vec3 curr_ndc = volume_to_ndc(vec3(gl_FragCoord.xy, float(volume_geom_iface.slice) + 0.5) *
                                 volumes_buf.inv_tex_size);
   vec3 wpos = get_world_space_from_depth(curr_ndc.xy, curr_ndc.z);
-  vec3 prev_ndc = project_point(pastViewProjectionMatrix, wpos);
+  vec3 prev_ndc = project_point(prev_view_projection_matrix, wpos);
   vec3 prev_volume = ndc_to_volume(prev_ndc * 0.5 + 0.5);
 
   if ((volumes_buf.history_alpha > 0.0) && all(greaterThan(prev_volume, vec3(0.0))) &&
@@ -71,7 +67,6 @@ void main()
     outScattering = mix(outScattering, h_Scattering, volumes_buf.history_alpha);
     outTransmittance = mix(outTransmittance, h_Transmittance, volumes_buf.history_alpha);
   }
-#endif
 
   /* Catch NaNs */
   if (any(isnan(outScattering)) || any(isnan(outTransmittance))) {

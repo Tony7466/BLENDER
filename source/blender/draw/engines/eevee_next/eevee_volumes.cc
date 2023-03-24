@@ -89,6 +89,7 @@ void Volumes::init()
     data_.tex_size = tex_size;
     data_.inv_tex_size = 1.0f / float3(tex_size);
     data_.history_alpha = 0.0f;
+    prev_view_projection_matrix = float4x4::identity();
   }
   else {
     /* Like frostbite's paper, 5% blend of the new frame. */
@@ -146,6 +147,9 @@ void Volumes::init()
 
 void Volumes::begin_sync()
 {
+  scatter_tx_.swap();
+  transmit_tx_.swap();
+
   const DRWContextState *draw_ctx = DRW_context_state_get();
   Scene *scene = draw_ctx->scene;
   const Scene *scene_eval = DEG_get_evaluated_scene(draw_ctx->depsgraph);
@@ -302,12 +306,10 @@ void Volumes::end_sync()
     prop_extinction_tx_.free();
     prop_emission_tx_.free();
     prop_phase_tx_.free();
-    scatter_tx_.free();
-    transmit_tx_.free();
-    scatter_history_tx_.free();
-    transmit_history_tx_.free();
-    /* volumetric_fb_ */;
-    /* scatter_fb_ */;
+    scatter_tx_.current().free();
+    scatter_tx_.previous().free();
+    transmit_tx_.current().free();
+    transmit_tx_.previous().free();
     return;
   }
 
@@ -322,15 +324,15 @@ void Volumes::end_sync()
   /* Volume scattering: We compute for each froxel the
    * Scattered light towards the view. We also resolve temporal
    * super sampling during this stage. */
-  scatter_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
-  transmit_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
+  scatter_tx_.current().ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
+  transmit_tx_.current().ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
 
   /* Final integration: We compute for each froxel the
    * amount of scattered light and extinction coef at this
    * given depth. We use these textures as double buffer
    * for the volumetric history. */
-  scatter_history_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
-  transmit_history_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
+  scatter_tx_.previous().ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
+  transmit_tx_.previous().ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
 
   float4 scatter = float4(0.0f);
   float4 transmit = float4(1.0f);
@@ -340,8 +342,8 @@ void Volumes::end_sync()
 
 #if 0
     /* TODO */
-    scatter_tx_ = dummy_scatter_tx_;
-    transmit_tx_ = dummy_transmit_tx_;
+    effects->volume_scatter = dummy_scatter_tx_;
+    effects->volume_scatter = dummy_transmit_tx_;
 #endif
 
   scatter_ps_.init();
@@ -354,32 +356,33 @@ void Volumes::end_sync()
   scatter_ps_.bind_texture("volumeExtinction", &prop_extinction_tx_);
   scatter_ps_.bind_texture("volumeEmission", &prop_emission_tx_);
   scatter_ps_.bind_texture("volumePhase", &prop_phase_tx_);
-  scatter_ps_.bind_texture("historyScattering", &scatter_history_tx_);
-  scatter_ps_.bind_texture("historyTransmittance", &transmit_history_tx_);
+  scatter_ps_.bind_texture("historyScattering", &scatter_tx_.previous());
+  scatter_ps_.bind_texture("historyTransmittance", &transmit_tx_.previous());
 #if 0
     /* TODO */
     scatter_ps_.bind_texture("irradianceGrid", &lcache->grid_tx.tex);
     scatter_ps_.bind_texture("shadowCubeTexture", &sldata->shadow_cube_pool);
     scatter_ps_.bind_texture("shadowCascadeTexture", &sldata->shadow_cascade_pool);
 #endif
+  scatter_ps_.push_constant("prev_view_projection_matrix", prev_view_projection_matrix);
   scatter_ps_.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z);
 
   integration_ps_.init();
   integration_ps_.state_set(DRW_STATE_WRITE_COLOR);
   integration_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_INTEGRATION));
   bind_common_resources(integration_ps_);
-  integration_ps_.bind_texture("volumeScattering", &scatter_tx_);
-  integration_ps_.bind_texture("volumeExtinction", &transmit_tx_);
-  integration_ps_.bind_image("finalScattering_img", &scatter_history_tx_);
-  integration_ps_.bind_image("finalTransmittance_img", &transmit_history_tx_);
+  integration_ps_.bind_texture("volumeScattering", &scatter_tx_.current());
+  integration_ps_.bind_texture("volumeExtinction", &transmit_tx_.current());
+  integration_ps_.bind_image("finalScattering_img", &scatter_tx_.previous());
+  integration_ps_.bind_image("finalTransmittance_img", &transmit_tx_.previous());
   integration_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 1);
 
   resolve_ps_.init();
   resolve_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
   resolve_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_RESOLVE));
   bind_common_resources(integration_ps_);
-  resolve_ps_.bind_texture("inScattering", &scatter_tx_);
-  resolve_ps_.bind_texture("inTransmittance", &transmit_tx_);
+  resolve_ps_.bind_texture("inScattering", &scatter_tx_.current());
+  resolve_ps_.bind_texture("inTransmittance", &transmit_tx_.current());
   resolve_ps_.bind_texture("inSceneDepth", &inst_.render_buffers.depth_tx);
   resolve_ps_.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z);
 }
@@ -407,8 +410,8 @@ void Volumes::draw_compute(View &view)
                         GPU_ATTACHMENT_TEXTURE(prop_phase_tx_));
 
   scatter_fb_.ensure(GPU_ATTACHMENT_NONE,
-                     GPU_ATTACHMENT_TEXTURE(scatter_tx_),
-                     GPU_ATTACHMENT_TEXTURE(transmit_tx_));
+                     GPU_ATTACHMENT_TEXTURE(scatter_tx_.current()),
+                     GPU_ATTACHMENT_TEXTURE(transmit_tx_.current()));
 
   volumetric_fb_.bind();
   inst_.manager->submit(world_ps_, view);
@@ -422,11 +425,9 @@ void Volumes::draw_compute(View &view)
 
 #if 0
     SWAP(struct GPUFrameBuffer *, fbl->scatter_fb_, fbl->integration_fb_);
-    SWAP(GPUTexture *, scatter_tx_, scatter_history_tx_);
-    SWAP(GPUTexture *, transmit_tx_, transmit_history_tx_);
 
-    effects->volume_scatter = scatter_tx_;
-    effects->volume_transmit = transmit_tx_;
+    effects->volume_scatter = scatter_tx_.current();
+    effects->volume_transmit = transmit_tx_.current();
 #endif
 
   DRW_stats_group_end();
@@ -444,6 +445,9 @@ void Volumes::draw_resolve(View &view)
                          GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.combined_tx));
   integration_fb_.bind();
   inst_.manager->submit(resolve_ps_, view);
+
+  /* TODO(Miguel Pozo): This should be stored per view. */
+  prev_view_projection_matrix = view.winmat() * view.viewmat();
 }
 
 /* -------------------------------------------------------------------- */
@@ -477,8 +481,8 @@ void Volumes::draw_resolve(View &view)
     if ((effects->enabled_effects & EFFECT_VOLUMETRIC) != 0) {
       grp = DRW_shgroup_create(EEVEE_shaders_volumes_resolve_sh_get(true),
                                psl->volumetric_accum_ps);
-      DRW_shgroup_uniform_texture_ref(grp, "inScattering", &scatter_tx_);
-      DRW_shgroup_uniform_texture_ref(grp, "inTransmittance", &transmit_tx_);
+      DRW_shgroup_uniform_texture_ref(grp, "inScattering", &scatter_tx_.current());
+      DRW_shgroup_uniform_texture_ref(grp, "inTransmittance", &transmit_tx_.current());
       DRW_shgroup_uniform_texture_ref(grp, "inSceneDepth", &e_data.depth_src);
       DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
       DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
