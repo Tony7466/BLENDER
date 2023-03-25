@@ -736,7 +736,7 @@ bNode *node_copy(bNodeTree *dst_tree, const bNode &src_node, int flag, bool use_
  * Move socket default_value from TO_SOCKET to FROM_SOCKET or some other other place specified for
  * FROM_NODE.
  */
-void node_link_move_default_value_back(const bContext &C, bNodeTree &tree, const bNodeLink &link);
+void node_socket_default_value(Main &bmain, bNodeTree &tree, bNodeSocket &src, bNodeSocket &dst);
 
 /**
  * Free the node itself.

@@ -2355,93 +2355,92 @@ bNode *node_copy_with_mapping(bNodeTree *dst_tree,
   return node_dst;
 }
 
-void node_link_move_default_value_back(const bContext &C, bNodeTree &tree, const bNodeLink &link)
+static void for_each_geo_socket_instance(Main &bmain,
+                                         const bNodeTree &node_group,
+                                         const StringRef socket_identifier,
+                                         const FunctionRef<void(bNodeSocket &)> func)
 {
-  bNode &from_node = *link.fromnode;
-  bNode &to_node = *link.tonode;
+  LISTBASE_FOREACH (bNodeTree *, other_tree, &bmain.nodetrees) {
+    if (other_tree->type != NTREE_GEOMETRY) {
+      continue;
+    }
+    /* Avoid iteration on self tree nodes. */
+    if (other_tree == &node_group) {
+      continue;
+    }
 
-  bNodeSocket &from_socket = *link.fromsock;
-  bNodeSocket &to_socket = *link.tosock;
+    other_tree->ensure_topology_cache();
+    for (bNode *node : other_tree->group_nodes()) {
+      if (reinterpret_cast<bNodeTree *>(node->id) != &node_group) {
+        continue;
+      }
+      bNodeSocket &group_input_socket = node->input_by_identifier(socket_identifier);
+      func(group_input_socket);
+    }
+  }
+}
 
-  if (to_socket.is_multi_input()) {
+void node_socket_default_value(Main &bmain, bNodeTree &tree, bNodeSocket &src, bNodeSocket &dst)
+{
+  tree.ensure_topology_cache();
+
+  bNode &dst_node = dst.owner_node();
+  bNode &src_node = src.owner_node();
+
+  if (src.is_multi_input()) {
     /* Multi input sockets no have value. */
     return;
   }
-
-  if (ELEM(NODE_REROUTE, from_node.type, to_node.type)) {
+  if (ELEM(NODE_REROUTE, dst_node.type, src_node.type)) {
     /* Reroute node can't have ownership of socket value directly. */
     return;
   }
-
-  if (&from_node == &to_node) {
-    /* Stop recursion. */
-    return;
-  }
-
-  if (from_socket.type != to_socket.type) {
+  if (dst.type != src.type) {
     /* It could be possible to support conversion in future. */
     return;
   }
 
-  switch (from_socket.type) {
+  ID **src_socket_value = nullptr;
+  Vector<ID **> dst_values;
+  switch (dst.type) {
     case SOCK_IMAGE: {
-      Image **src_socket_value = &to_socket.default_value_typed<bNodeSocketValueImage>()->value;
-      Image **dst_value = nullptr;
-
+      Image **tmp_socket_value = &src.default_value_typed<bNodeSocketValueImage>()->value;
+      src_socket_value = reinterpret_cast<ID **>(tmp_socket_value);
       if (*src_socket_value == nullptr) {
         break;
       }
 
-      switch (from_node.type) {
+      switch (dst_node.type) {
         case GEO_NODE_IMAGE: {
-          dst_value = reinterpret_cast<Image **>(&from_node.id);
-          *dst_value = *src_socket_value;
-
-          id_us_plus(reinterpret_cast<ID *>(*src_socket_value));
+          dst_values.append(&dst_node.id);
           break;
         }
         case NODE_GROUP_INPUT: {
-          const int group_input_index = BLI_findindex(&from_node.outputs, &from_socket);
-
-          LISTBASE_FOREACH (bNodeTree *, other_tree, &CTX_data_main(&C)->nodetrees) {
-            if (other_tree->type != NTREE_GEOMETRY) {
-              continue;
-            }
-
-            /* Avoid iteration on self tree nodes. */
-            if (other_tree == &tree) {
-              continue;
-            }
-
-            other_tree->ensure_topology_cache();
-            for (bNode *group : other_tree->group_nodes()) {
-              if (reinterpret_cast<bNodeTree *>(group->id) == &tree) {
-                bNodeSocket *group_input_socket = reinterpret_cast<bNodeSocket *>(
-                    BLI_findlink(&group->inputs, group_input_index));
-
-                dst_value =
-                    &group_input_socket->default_value_typed<bNodeSocketValueImage>()->value;
-                *dst_value = *src_socket_value;
-
-                id_us_plus(reinterpret_cast<ID *>(*src_socket_value));
-              }
-            }
-          }
+          const StringRef socket_identifier(dst.identifier);
+          for_each_geo_socket_instance(bmain, tree, socket_identifier, [&](bNodeSocket &socket) {
+            Image **tmp_dst_value = &socket.default_value_typed<bNodeSocketValueImage>()->value;
+            dst_values.append(reinterpret_cast<ID **>(tmp_dst_value));
+          });
           break;
         }
         default: {
           break;
         }
       }
-
-      id_us_min(reinterpret_cast<ID *>(*src_socket_value));
-      *src_socket_value = nullptr;
       break;
     }
     default: {
       break;
     }
   }
+
+  for (ID **dst_value : dst_values) {
+    *dst_value = *src_socket_value;
+    id_us_plus(*dst_value);
+  }
+
+  id_us_min(*src_socket_value);
+  *src_socket_value = nullptr;
 }
 
 bNode *node_copy(bNodeTree *dst_tree, const bNode &src_node, const int flag, const bool use_unique)

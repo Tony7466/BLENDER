@@ -2,6 +2,7 @@
 
 #include "BLI_set.hh"
 
+#include "BKE_context.h"
 #include "BKE_node.h"
 
 #include "UI_interface.h"
@@ -58,7 +59,7 @@ void LinkSearchOpParams::connect_available_socket(bNode &new_node, StringRef soc
   if (in_out == SOCK_OUT) {
     /* If the old socket already contained a value, then transfer it to a new one, from
      * which this value will get there. */
-    bke::node_link_move_default_value_back(C, node_tree, link);
+    bke::node_socket_default_value(*CTX_data_main(&C), node_tree, socket, *new_node_socket);
   }
 }
 
