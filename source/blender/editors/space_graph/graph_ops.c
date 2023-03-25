@@ -464,7 +464,6 @@ void graphedit_operatortypes(void)
   WM_operatortype_append(GRAPH_OT_breakdown);
   WM_operatortype_append(GRAPH_OT_ease);
   WM_operatortype_append(GRAPH_OT_blend_to_default);
-<<<<<<< HEAD
   WM_operatortype_append(GRAPH_OT_ease_ease);
   WM_operatortype_append(GRAPH_OT_push_pull);
   WM_operatortype_append(GRAPH_OT_scale_left);
