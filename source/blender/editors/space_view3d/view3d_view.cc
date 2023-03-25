@@ -267,6 +267,7 @@ static int view3d_setobjectascamera_exec(bContext *C, wmOperator *op)
   }
 
   DEG_relations_tag_update(CTX_data_main(C));
+  DEG_id_tag_update(&scene->camera->id, ID_RECALC_TRANSFORM);
 
   return OPERATOR_FINISHED;
 }
