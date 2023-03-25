@@ -808,7 +808,7 @@ IndexMask IndexMask::from_expr(const Expr &expr,
 
   const Vector<int64_t> possible_chunk_ids = get_chunk_ids_to_evaluate_expression_in(expr,
                                                                                      universe);
-  Vector<Chunk> possible_chunks(possible_chunk_ids.size());
+  Array<Chunk> possible_chunks(possible_chunk_ids.size());
   std::mutex memory_mutex;
   threading::parallel_for(possible_chunk_ids.index_range(), 32, [&](const IndexRange range) {
     eval_expressions_for_chunk_ids(expr,
