@@ -13,7 +13,6 @@
 
 #include "BLI_array.hh"
 #include "BLI_index_mask_ops.hh"
-#include "BLI_index_range.hh"
 #include "BLI_math_base.h"
 #include "BLI_math_color.h"
 #include "BLI_vector.hh"
@@ -308,10 +307,13 @@ static void transform_active_color(bContext *C, wmOperator *op, const TransformF
   BKE_pbvh_search_gather(obact->sculpt->pbvh, nullptr, nullptr, &nodes, &nodes_num);
   for (int i : IndexRange(nodes_num)) {
     SCULPT_undo_push_node(obact, nodes[i], SCULPT_UNDO_COLOR);
-    BKE_pbvh_node_mark_update_color(nodes[i]);
   }
 
   transform_active_color_data(*BKE_mesh_from_object(obact), transform_fn);
+
+  for (int i : IndexRange(nodes_num)) {
+    BKE_pbvh_node_mark_update_color(nodes[i]);
+  }
 
   SCULPT_undo_push_end(obact);
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, obact);
