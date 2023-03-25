@@ -326,10 +326,23 @@ class GRAPH_MT_slider(Menu):
     def draw(self, _context):
         layout = self.layout
         layout.operator_context = "INVOKE_DEFAULT"
-        layout.operator("graph.breakdown", text="Breakdown")
+        layout.operator("graph.blend_ease", text="Blend to Ease")
         layout.operator("graph.blend_to_neighbor", text="Blend to Neighbor")
         layout.operator("graph.blend_to_default", text="Blend to Default Value")
+        layout.operator("graph.blend_infinity", text="Blend to Infinity")
+        layout.operator("graph.blend_offset", text="Blend Offset")
+        layout.separator()
         layout.operator("graph.ease", text="Ease")
+        layout.operator("graph.ease_ease", text="Ease Ease")
+        layout.separator()
+        layout.operator("graph.scale_left", text="Scale Left")
+        layout.operator("graph.scale_right", text="Scale Right")
+        layout.operator("graph.scale_average", text="Scale Average")
+        layout.separator()
+        layout.operator("graph.push_pull", text="Push Pull")
+        layout.operator("graph.breakdown", text="Breakdown")
+        layout.operator("graph.shear_left", text="Shear Left")
+        layout.operator("graph.shear_right", text="Shear Right")
 
 
 class GRAPH_MT_view_pie(Menu):

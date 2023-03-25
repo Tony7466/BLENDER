@@ -436,6 +436,611 @@ void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor
 
 /* ---------------- */
 
+float s_curve(float x, float slope, float width, float height, float xshift, float yshift) {
+    /* Formula for 'S' curve */
+    float curve = height * pow((x - xshift), slope) / (pow((x - xshift), slope) + pow((width - (x - xshift)), slope)) + yshift;
+    if (x > xshift + width) {
+        curve = height + yshift;
+    } else if (x < xshift) {
+        curve = yshift;
+    }
+    return curve;
+}
+
+void ease_ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+{
+  const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
+
+  const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
+
+  const float key_x_range = right_key->vec[1][0] - left_key->vec[1][0];
+  const float key_y_range = right_key->vec[1][1] - left_key->vec[1][1];
+
+  /* Happens if there is only 1 key on the FCurve. Needs to be skipped because it
+   * would be a divide by 0. */
+  if (IS_EQF(key_x_range, 0.0f)) {
+    return;
+  }
+
+  /* In order to have a curve that favors the right key, the curve needs to be mirrored in x and y.
+   * Having an exponent that is a fraction of 1 would produce a similar but inferior result. */
+  const float mirrored_factor =  factor * 2 - 1;
+
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+    /* For easy calculation of the curve, the  values are normalized. */
+    const float normalized_x = (fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range;
+
+    float ease = s_curve(normalized_x, 2.0, 1.0, 1.0, -mirrored_factor, 0.0);
+
+    const float key_y_value = left_key->vec[1][1] + key_y_range * ease;
+    move_key(&fcu->bezt[i], key_y_value);
+  }
+}
+
+/* ---------------- */
+
+void ease_b_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+{
+  const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
+
+  const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
+
+  const float key_x_range = right_key->vec[1][0] - left_key->vec[1][0];
+  const float key_y_range = right_key->vec[1][1] - left_key->vec[1][1];
+
+  /* Happens if there is only 1 key on the FCurve. Needs to be skipped because it
+   * would be a divide by 0. */
+  if (IS_EQF(key_x_range, 0.0f)) {
+    return;
+  }
+
+  /* In order to have a curve that favors the right key, the curve needs to be mirrored in x and y.
+   * Having an exponent that is a fraction of 1 would produce a similar but inferior result. */
+  const bool slider_right_side = factor > 0.5;
+  const float ping_pong_factor = fabs(factor * 2 - 1) * 5;
+  float shift = 0;
+
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+    /* For easy calculation of the curve, the  values are normalized. */
+    const float normalized_x = (fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range;
+
+    if (slider_right_side) {
+      shift = -1.0;
+    }
+    else {
+      shift = 0.0;
+    }
+
+    float ease = s_curve(normalized_x, ping_pong_factor, 2.0, 2.0, shift, shift);
+
+    const float key_y_value = left_key->vec[1][1] + key_y_range * ease;
+    move_key(&fcu->bezt[i], key_y_value);
+  }
+}
+
+/* ---------------- */
+
+void blend_ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+{
+  const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
+
+  const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
+
+  const float key_x_range = right_key->vec[1][0] - left_key->vec[1][0];
+  const float key_y_range = right_key->vec[1][1] - left_key->vec[1][1];
+
+  /* Happens if there is only 1 key on the FCurve. Needs to be skipped because it
+   * would be a divide by 0. */
+  if (IS_EQF(key_x_range, 0.0f)) {
+    return;
+  }
+
+  /* In order to have a curve that favors the right key, the curve needs to be mirrored in x and y.
+   * Having an exponent that is a fraction of 1 would produce a similar but inferior result. */
+  const bool slider_right_side = factor > 0.5;
+  const float mirrored_factor =  factor * 2 - 1;
+  float delta = 0;
+  float base = 0;
+
+
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+    /* For easy calculation of the curve, the  values are normalized. */
+    const float normalized_x = (fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range;
+
+
+    if (slider_right_side) {
+      float ease = s_curve(normalized_x, 3, 2.0, 2.0, -1.0, -1.0);
+      base = left_key->vec[1][1] + key_y_range * ease;
+      delta = base - fcu->bezt[i].vec[1][1];
+    }
+    else {
+      float ease = s_curve(normalized_x, 3, 2.0, 2.0, 0.0, 0.0);
+      base = left_key->vec[1][1] + key_y_range * ease;
+      delta = fcu->bezt[i].vec[1][1] - base;
+    }
+
+    const float key_y_value = fcu->bezt[i].vec[1][1] + delta * mirrored_factor;
+    move_key(&fcu->bezt[i], key_y_value);
+  }
+}
+
+/* ---------------- */
+
+void blend_neighbor_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+{
+  const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
+
+  const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
+
+  const float key_x_range = right_key->vec[1][0] - left_key->vec[1][0];
+
+  /* Happens if there is only 1 key on the FCurve. Needs to be skipped because it
+   * would be a divide by 0. */
+  if (IS_EQF(key_x_range, 0.0f)) {
+    return;
+  }
+
+  /* In order to have a curve that favors the right key, the curve needs to be mirrored in x and y.
+   * Having an exponent that is a fraction of 1 would produce a similar but inferior result. */
+  const bool slider_right_side = factor > 0.5;
+  const float ping_pong_factor = fabs(factor * 2 - 1);
+  float delta = 0;
+
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+    /* For easy calculation of the curve, the  values are normalized. */
+    // const float normalized_x = (fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range;
+
+    if (slider_right_side) {
+      delta = right_key->vec[1][1] - fcu->bezt[i].vec[1][1];
+    }
+    else {
+      delta = left_key->vec[1][1] - fcu->bezt[i].vec[1][1];
+    }
+
+    const float key_y_value = fcu->bezt[i].vec[1][1] + delta * ping_pong_factor;
+    move_key(&fcu->bezt[i], key_y_value);
+  }
+}
+
+/* ---------------- */
+
+void blend_infinity_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+{
+  const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
+  const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
+
+  const BezTriple *beyond_left_key = fcurve_segment_start_get(fcu, segment->start_index - 1);
+  const BezTriple *beyond_right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length + 1);
+
+  // int beyond_right_index = segment->start_index + segment->length + 1;
+  // int beyond_left_index = segment->start_index - 1;
+
+  const float key_x_range = right_key->vec[1][0] - left_key->vec[1][0];
+
+  /* Happens if there is only 1 key on the FCurve. Needs to be skipped because it
+   * would be a divide by 0. */
+  if (IS_EQF(key_x_range, 0.0f)) {
+    return;
+  }
+
+  /* In order to have a curve that favors the right key, the curve needs to be mirrored in x and y.
+   * Having an exponent that is a fraction of 1 would produce a similar but inferior result. */
+  const bool slider_right_side = factor >= 0.5;
+  const bool slider_left_side = factor < 0.5;
+  const float ping_pong_factor = fabs(factor * 2 - 1);
+  float delta = 0;
+  float x_delta = 0;
+  float y_delta = 0;
+
+  if(slider_right_side){
+    y_delta = beyond_right_key->vec[1][1] - right_key->vec[1][1];
+    x_delta = beyond_right_key->vec[1][0] - right_key->vec[1][0];
+  }
+  else if(slider_left_side){
+    y_delta = beyond_left_key->vec[1][1] - left_key->vec[1][1];
+    x_delta = beyond_left_key->vec[1][0] - left_key->vec[1][0];
+  }
+  else {
+    y_delta = 1;
+    x_delta = 1;
+  }
+
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+    /* For easy calculation of the curve, the  values are normalized. */
+    // const float normalized_x = (fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range;
+    float new_x_delta = 0;
+    float new_y_delta = 0;
+    float refe = 0;
+
+    if (slider_right_side) {
+      new_x_delta = fcu->bezt[i].vec[1][0] - right_key->vec[1][0];
+      refe = right_key->vec[1][1];
+    }
+    else {
+      new_x_delta = fcu->bezt[i].vec[1][0] - left_key->vec[1][0];
+      refe = left_key->vec[1][1];
+    }
+
+    if(x_delta != 0){
+      new_y_delta = new_x_delta * y_delta / x_delta;
+    }
+
+    delta = refe + new_y_delta - fcu->bezt[i].vec[1][1];
+
+    const float key_y_value = fcu->bezt[i].vec[1][1] + delta * ping_pong_factor;
+    move_key(&fcu->bezt[i], key_y_value);
+  }
+}
+
+/* ---------------- */
+
+void blend_offset_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+{
+  const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
+  const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
+
+  const BezTriple *segment_first_key = fcurve_segment_start_get(fcu, segment->start_index + 1);
+  const BezTriple *segment_last_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length - 1);
+
+  const float key_x_range = right_key->vec[1][0] - left_key->vec[1][0];
+
+  /* Happens if there is only 1 key on the FCurve. Needs to be skipped because it
+   * would be a divide by 0. */
+  if (IS_EQF(key_x_range, 0.0f)) {
+    return;
+  }
+
+  /* In order to have a curve that favors the right key, the curve needs to be mirrored in x and y.
+   * Having an exponent that is a fraction of 1 would produce a similar but inferior result. */
+  const bool slider_right_side = factor > 0.5;
+  const float ping_pong_factor = fabs(factor * 2 - 1);
+  float delta = 0;
+
+  if (slider_right_side) {
+      delta = right_key->vec[1][1] - segment_last_key->vec[1][1];
+    }
+    else {
+      delta = left_key->vec[1][1] - segment_first_key->vec[1][1];
+    }
+
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+    /* For easy calculation of the curve, the  values are normalized. */
+    // const float normalized_x = (fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range;
+
+    const float key_y_value = fcu->bezt[i].vec[1][1] + delta * ping_pong_factor;
+    move_key(&fcu->bezt[i], key_y_value);
+  }
+}
+
+/* ---------------- */
+
+void blend_infinity_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+{
+  const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
+  const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
+
+  const BezTriple *beyond_left_key = fcurve_segment_start_get(fcu, segment->start_index - 1);
+  const BezTriple *beyond_right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length + 1);
+
+  // int beyond_right_index = segment->start_index + segment->length + 1;
+  // int beyond_left_index = segment->start_index - 1;
+
+  const float key_x_range = right_key->vec[1][0] - left_key->vec[1][0];
+
+  /* Happens if there is only 1 key on the FCurve. Needs to be skipped because it
+   * would be a divide by 0. */
+  if (IS_EQF(key_x_range, 0.0f)) {
+    return;
+  }
+
+  /* In order to have a curve that favors the right key, the curve needs to be mirrored in x and y.
+   * Having an exponent that is a fraction of 1 would produce a similar but inferior result. */
+  const bool slider_right_side = factor >= 0.5;
+  const bool slider_left_side = factor < 0.5;
+  const float ping_pong_factor = fabs(factor * 2 - 1);
+  float delta = 0;
+  float x_delta = 0;
+  float y_delta = 0;
+
+  if(slider_right_side){
+    y_delta = beyond_right_key->vec[1][1] - right_key->vec[1][1];
+    x_delta = beyond_right_key->vec[1][0] - right_key->vec[1][0];
+  }
+  else if(slider_left_side){
+    y_delta = beyond_left_key->vec[1][1] - left_key->vec[1][1];
+    x_delta = beyond_left_key->vec[1][0] - left_key->vec[1][0];
+  }
+  else {
+    y_delta = 1;
+    x_delta = 1;
+  }
+
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+    /* For easy calculation of the curve, the  values are normalized. */
+    // const float normalized_x = (fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range;
+    float new_x_delta = 0;
+    float new_y_delta = 0;
+    float refe = 0;
+
+    if (slider_right_side) {
+      new_x_delta = fcu->bezt[i].vec[1][0] - right_key->vec[1][0];
+      refe = right_key->vec[1][1];
+    }
+    else {
+      new_x_delta = fcu->bezt[i].vec[1][0] - left_key->vec[1][0];
+      refe = left_key->vec[1][1];
+    }
+
+    if(x_delta != 0){
+      new_y_delta = new_x_delta * y_delta / x_delta;
+    }
+
+    delta = refe + new_y_delta - fcu->bezt[i].vec[1][1];
+
+    const float key_y_value = fcu->bezt[i].vec[1][1] + delta * ping_pong_factor;
+    move_key(&fcu->bezt[i], key_y_value);
+  }
+}
+
+/* ---------------- */
+
+void time_offset_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+{
+  const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
+  const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
+
+  const float key_x_range = right_key->vec[1][0] - left_key->vec[1][0];
+
+  /* Happens if there is only 1 key on the FCurve. Needs to be skipped because it
+   * would be a divide by 0. */
+  if (IS_EQF(key_x_range, 0.0f)) {
+    return;
+  }
+
+  /* In order to have a curve that favors the right key, the curve needs to be mirrored in x and y.
+   * Having an exponent that is a fraction of 1 would produce a similar but inferior result. */
+  const bool slider_right_side = factor > 0.5;
+  const float ping_pong_factor = fabs(factor * 2 - 1);
+  float delta = 0;
+
+  if (slider_right_side) {
+      // delta = right_key->vec[1][1] - segment_last_key->vec[1][1];
+    }
+    else {
+      // delta = left_key->vec[1][1] - segment_first_key->vec[1][1];
+    }
+
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+    /* For easy calculation of the curve, the  values are normalized. */
+    // const float normalized_x = (fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range;
+
+    const float key_y_value = fcu->bezt[i].vec[1][1] + delta * ping_pong_factor;
+    move_key(&fcu->bezt[i], key_y_value);
+  }
+}
+
+/* ---------------- */
+
+void shear_left_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+{
+  const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
+
+  const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
+
+  const float key_x_range = right_key->vec[1][0] - left_key->vec[1][0];
+  const float key_y_range = right_key->vec[1][1] - left_key->vec[1][1];
+
+  /* Happens if there is only 1 key on the FCurve. Needs to be skipped because it
+   * would be a divide by 0. */
+  if (IS_EQF(key_x_range, 0.0f)) {
+    return;
+  }
+
+  /* In order to have a curve that favors the right key, the curve needs to be mirrored in x and y.
+   * Having an exponent that is a fraction of 1 would produce a similar but inferior result. */
+  const float mirroed_factor =  factor * 2 - 1;
+
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+    /* For easy calculation of the curve, the  values are normalized. */
+    const float normalized_x = (fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range;
+
+    const float lineal = key_y_range * normalized_x;
+
+    const float key_y_value = fcu->bezt[i].vec[1][1] + lineal * mirroed_factor;
+    move_key(&fcu->bezt[i], key_y_value);
+  }
+}
+
+/* ---------------- */
+
+void shear_right_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+{
+  const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
+
+  const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
+
+  const float key_x_range = right_key->vec[1][0] - left_key->vec[1][0];
+  const float key_y_range = right_key->vec[1][1] - left_key->vec[1][1];
+
+  /* Happens if there is only 1 key on the FCurve. Needs to be skipped because it
+   * would be a divide by 0. */
+  if (IS_EQF(key_x_range, 0.0f)) {
+    return;
+  }
+
+  /* In order to have a curve that favors the right key, the curve needs to be mirrored in x and y.
+   * Having an exponent that is a fraction of 1 would produce a similar but inferior result. */
+  const float mirroed_factor =  factor * 2 - 1;
+
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+    /* For easy calculation of the curve, the  values are normalized. */
+    const float normalized_x = (right_key->vec[1][0] - fcu->bezt[i].vec[1][0]) / key_x_range;
+
+    const float lineal = key_y_range * normalized_x;
+
+    const float key_y_value = fcu->bezt[i].vec[1][1] + lineal * mirroed_factor;
+    move_key(&fcu->bezt[i], key_y_value);
+  }
+}
+
+/* ---------------- */
+
+void tween_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+{
+  const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
+
+  const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
+
+  const float key_x_range = right_key->vec[1][0] - left_key->vec[1][0];
+  const float key_y_range = right_key->vec[1][1] - left_key->vec[1][1];
+
+  /* Happens if there is only 1 key on the FCurve. Needs to be skipped because it
+   * would be a divide by 0. */
+  if (IS_EQF(key_x_range, 0.0f)) {
+    return;
+  }
+
+  /* In order to have a curve that favors the right key, the curve needs to be mirrored in x and y.
+   * Having an exponent that is a fraction of 1 would produce a similar but inferior result. */
+
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+    /* For easy calculation of the curve, the  values are normalized. */
+
+    const float key_y_value = left_key->vec[1][1] + key_y_range * factor;
+    move_key(&fcu->bezt[i], key_y_value);
+  }
+}
+
+/* ---------------- */
+
+void push_pull_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+{
+  const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
+
+  const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
+
+  const float key_x_range = right_key->vec[1][0] - left_key->vec[1][0];
+  const float key_y_range = right_key->vec[1][1] - left_key->vec[1][1];
+
+  /* Happens if there is only 1 key on the FCurve. Needs to be skipped because it
+   * would be a divide by 0. */
+  if (IS_EQF(key_x_range, 0.0f)) {
+    return;
+  }
+
+  /* In order to have a curve that favors the right key, the curve needs to be mirrored in x and y.
+   * Having an exponent that is a fraction of 1 would produce a similar but inferior result. */
+
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+    /* For easy calculation of the curve, the  values are normalized. */
+    const float normalized_x = (fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range;
+
+    const float lineal = left_key->vec[1][1] + key_y_range * normalized_x;
+
+    const float delta = fcu->bezt[i].vec[1][1] - lineal;
+
+    const float key_y_value = lineal + delta * factor * 2;
+    move_key(&fcu->bezt[i], key_y_value);
+  }
+}
+
+/* ---------------- */
+
+void scale_left_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+{
+  const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
+
+  const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
+
+  const float key_x_range = right_key->vec[1][0] - left_key->vec[1][0];
+
+  /* Happens if there is only 1 key on the FCurve. Needs to be skipped because it
+   * would be a divide by 0. */
+  if (IS_EQF(key_x_range, 0.0f)) {
+    return;
+  }
+
+  /* In order to have a curve that favors the right key, the curve needs to be mirrored in x and y.
+   * Having an exponent that is a fraction of 1 would produce a similar but inferior result. */
+  const float mirrored_factor =  factor * 2 - 1;
+
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+    /* For easy calculation of the curve, the  values are normalized. */
+    const float delta = fcu->bezt[i].vec[1][1] - left_key->vec[1][1];
+
+    const float key_y_value = fcu->bezt[i].vec[1][1] + delta * mirrored_factor;
+    move_key(&fcu->bezt[i], key_y_value);
+  }
+}
+
+/* ---------------- */
+
+void scale_right_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+{
+  const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
+
+  const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
+
+  const float key_x_range = right_key->vec[1][0] - left_key->vec[1][0];
+
+  /* Happens if there is only 1 key on the FCurve. Needs to be skipped because it
+   * would be a divide by 0. */
+  if (IS_EQF(key_x_range, 0.0f)) {
+    return;
+  }
+
+  /* In order to have a curve that favors the right key, the curve needs to be mirrored in x and y.
+   * Having an exponent that is a fraction of 1 would produce a similar but inferior result. */
+  const float mirrored_factor =  factor * 2 - 1;
+
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+    /* For easy calculation of the curve, the  values are normalized. */
+    const float delta = fcu->bezt[i].vec[1][1] - right_key->vec[1][1];
+
+    const float key_y_value = fcu->bezt[i].vec[1][1] + delta * mirrored_factor;
+    move_key(&fcu->bezt[i], key_y_value);
+  }
+}
+
+/* ---------------- */
+
+void scale_average_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+{
+  const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
+
+  const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
+
+  const float key_x_range = right_key->vec[1][0] - left_key->vec[1][0];
+
+  /* Happens if there is only 1 key on the FCurve. Needs to be skipped because it
+   * would be a divide by 0. */
+  if (IS_EQF(key_x_range, 0.0f)) {
+    return;
+  }
+
+  /* In order to have a curve that favors the right key, the curve needs to be mirrored in x and y.
+   * Having an exponent that is a fraction of 1 would produce a similar but inferior result. */
+
+  const float mirrored_factor =  factor * 2 - 1;
+  float y = 0;
+
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+    y = y + fcu->bezt[i].vec[1][1];
+  }
+  
+  float y_average = y/segment->length;
+
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+    /* For easy calculation of the curve, the  values are normalized. */
+    const float delta = fcu->bezt[i].vec[1][1] - y_average;
+
+    const float key_y_value = fcu->bezt[i].vec[1][1] + delta * mirrored_factor;
+    move_key(&fcu->bezt[i], key_y_value);
+  }
+}
+
+/* ---------------- */
+
 void breakdown_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
 {
   const BezTriple *left_bezt = fcurve_segment_start_get(fcu, segment->start_index);

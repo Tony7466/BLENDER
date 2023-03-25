@@ -426,6 +426,20 @@ void blend_to_neighbor_fcurve_segment(struct FCurve *fcu,
                                       float factor);
 void breakdown_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
 void ease_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
+float s_curve(float x, float slope, float width, float height, float xshift, float yshift);
+void ease_ease_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
+void ease_b_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
+void blend_ease_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
+void blend_neighbor_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
+void blend_infinity_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
+void blend_offset_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
+void tween_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
+void push_pull_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
+void shear_left_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
+void shear_right_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
+void scale_left_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
+void scale_right_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
+void scale_average_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
 bool decimate_fcurve(struct bAnimListElem *ale, float remove_ratio, float error_sq_max);
 void blend_to_default_fcurve(struct PointerRNA *id_ptr, struct FCurve *fcu, float factor);
 /**
