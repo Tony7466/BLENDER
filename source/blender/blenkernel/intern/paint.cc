@@ -1847,6 +1847,11 @@ static void sculpt_update_object(
   }
 
   if (is_paint_tool) {
+    if (ss->vcol_domain == ATTR_DOMAIN_CORNER) {
+      /* Ensure pbvh nodes have loop indices, needed for undo. */
+      BKE_pbvh_ensure_node_loops(ss->pbvh);
+    }
+
     /*
      * We should rebuild the PBVH_pixels when painting canvas changes.
      *
