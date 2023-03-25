@@ -97,6 +97,51 @@ std::ostream &operator<<(std::ostream &stream, const IndexMask &mask)
   return stream;
 }
 
+static IndexMask strip_empty_chunks_and_create_mask(const Span<Chunk> possible_chunks,
+                                                    const Span<int64_t> possible_chunk_ids,
+                                                    IndexMaskMemory &memory)
+{
+  Vector<int64_t> non_empty_chunks;
+  for (const int64_t i : possible_chunks.index_range()) {
+    const Chunk &chunk = possible_chunks[i];
+    if (chunk.size() > 0) {
+      non_empty_chunks.append(i);
+    }
+  }
+  const int64_t chunks_num = non_empty_chunks.size();
+  if (chunks_num == 0) {
+    return {};
+  }
+
+  MutableSpan<Chunk> final_chunks = memory.allocate_array<Chunk>(chunks_num);
+  MutableSpan<int64_t> final_chunk_ids = memory.allocate_array<int64_t>(chunks_num);
+  MutableSpan<int64_t> final_cumulative_chunk_sizes = memory.allocate_array<int64_t>(chunks_num +
+                                                                                     1);
+  int64_t counter = 0;
+  for (const int64_t i : IndexRange(chunks_num)) {
+    const int64_t i2 = non_empty_chunks[i];
+    const Chunk &chunk = possible_chunks[i2];
+    final_chunks[i] = chunk;
+    final_chunk_ids[i] = possible_chunk_ids[i2];
+    final_cumulative_chunk_sizes[i] = counter;
+    counter += chunk.size();
+  }
+  final_cumulative_chunk_sizes.last() = counter;
+
+  const Chunk &last_chunk = final_chunks.last();
+
+  IndexMask mask;
+  IndexMaskData &data = mask.data_for_inplace_construction();
+  data.chunks_num = chunks_num;
+  data.indices_num = counter;
+  data.chunks = final_chunks.data();
+  data.chunk_ids = final_chunk_ids.data();
+  data.cumulative_chunk_sizes = final_cumulative_chunk_sizes.data();
+  data.begin_it = RawChunkIterator{0, 0};
+  data.end_it = last_chunk.end_iterator();
+  return mask;
+}
+
 namespace unique_sorted_indices {
 
 template<typename T>
@@ -819,46 +864,7 @@ IndexMask IndexMask::from_expr(const Expr &expr,
                                    memory_mutex);
   });
 
-  Vector<int64_t> non_empty_chunks;
-  for (const int64_t i : possible_chunks.index_range()) {
-    const Chunk &chunk = possible_chunks[i];
-    if (chunk.size() > 0) {
-      non_empty_chunks.append(i);
-    }
-  }
-  const int64_t chunks_num = non_empty_chunks.size();
-  if (chunks_num == 0) {
-    return {};
-  }
-
-  MutableSpan<Chunk> final_chunks = memory.allocate_array<Chunk>(chunks_num);
-  MutableSpan<int64_t> final_chunk_ids = memory.allocate_array<int64_t>(chunks_num);
-  MutableSpan<int64_t> final_cumulative_chunk_sizes = memory.allocate_array<int64_t>(chunks_num +
-                                                                                     1);
-  int64_t counter = 0;
-  for (const int64_t i : IndexRange(chunks_num)) {
-    const int64_t i2 = non_empty_chunks[i];
-    const Chunk &chunk = possible_chunks[i2];
-    final_chunks[i] = chunk;
-    final_chunk_ids[i] = possible_chunk_ids[i2];
-    final_cumulative_chunk_sizes[i] = counter;
-    counter += chunk.size();
-  }
-  final_cumulative_chunk_sizes.last() = counter;
-
-  const Chunk &last_chunk = final_chunks.last();
-
-  IndexMask mask;
-  IndexMaskData &data = mask.data_for_inplace_construction();
-  data.chunks_num = chunks_num;
-  data.indices_num = counter;
-  data.chunks = final_chunks.data();
-  data.chunk_ids = final_chunk_ids.data();
-  data.cumulative_chunk_sizes = final_cumulative_chunk_sizes.data();
-  data.begin_it = RawChunkIterator{0, 0};
-  data.end_it = last_chunk.end_iterator();
-
-  return mask;
+  return strip_empty_chunks_and_create_mask(possible_chunks, possible_chunk_ids, memory);
 }
 
 template<typename T> void IndexMask::to_indices(MutableSpan<T> r_indices) const
