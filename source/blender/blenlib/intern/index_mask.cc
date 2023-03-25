@@ -339,6 +339,16 @@ template<typename T> void from_index_mask(const IndexMask &mask, MutableSpan<T> 
   });
 }
 
+template<typename T> static void from_set(const Set<T> &set, MutableSpan<T> span)
+{
+  int64_t i = 0;
+  for (const T value : set) {
+    span[i] = value;
+    i++;
+  }
+  std::sort(span.begin(), span.end());
+}
+
 }  // namespace unique_sorted_indices
 
 void IndexMask::foreach_span_impl(const FunctionRef<void(OffsetSpan<int64_t, int16_t>)> fn) const
@@ -770,22 +780,17 @@ static void eval_expressions_for_chunk_ids(const Expr &expr,
     MutableSpan<const int16_t *> indices_by_segment;
     MutableSpan<int16_t> indices_in_segment;
     MutableSpan<int16_t> cumulative_segment_sizes;
-
     {
       std::lock_guard lock{memory_mutex};
       indices_by_segment = memory.allocate_array<const int16_t *>(1);
       indices_in_segment = memory.allocate_array<int16_t>(indices_in_chunk.size());
       cumulative_segment_sizes = memory.allocate_array<int16_t>(2);
     }
+
     indices_by_segment[0] = indices_in_segment.data();
     cumulative_segment_sizes[0] = 0;
     cumulative_segment_sizes[1] = int16_t(indices_in_chunk.size());
-    int64_t counter = 0;
-    for (const int16_t index : indices_in_chunk) {
-      indices_in_segment[counter] = index;
-      counter++;
-    }
-    std::sort(indices_in_segment.begin(), indices_in_segment.end());
+    unique_sorted_indices::from_set(indices_in_chunk, indices_in_segment);
 
     chunk.segments_num = 1;
     chunk.indices_by_segment = indices_by_segment.data();
