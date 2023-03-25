@@ -903,7 +903,10 @@ static uiTooltipData *ui_tooltip_data_from_button_or_extra_icon(bContext *C,
     bool disabled_msg_free = false;
 
     /* If operator poll check failed, it can give pretty precise info why. */
-    if (optype) {
+    if (strcmp(rna_struct.strinfo, "SCULPT_OT_mask_from_cavity") == 0 || strstr(rna_prop.strinfo, "automasking")) {
+      disabled_msg = "The active brush already has the same auto-masking enabled.";
+    }
+    else if (optype) {
       const wmOperatorCallContext opcontext = extra_icon ? extra_icon->optype_params->opcontext :
                                                            but->opcontext;
       wmOperatorCallParams call_params{};
