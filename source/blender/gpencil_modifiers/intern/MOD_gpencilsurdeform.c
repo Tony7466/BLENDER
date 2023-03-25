@@ -1475,7 +1475,7 @@ static bool free_layer(SurDeformGpencilModifierData *smd_orig,
 
   /*Do the same thing as add, but in reverse*/
   smd_orig->num_of_layers--;
-  void *temp_layers_pointer = MEM_malloc_arrayN(smd_orig->num_of_layers, sizeof(*smd_orig->layers), "SDefGPLayers");
+  SDefGPLayer *temp_layers_pointer = MEM_malloc_arrayN(smd_orig->num_of_layers, sizeof(*smd_orig->layers), "SDefGPLayers");
 
   if (temp_layers_pointer == NULL) {
     BKE_gpencil_modifier_set_error( (GpencilModifierData *)smd_eval, "Out of memory");
@@ -1516,7 +1516,7 @@ static bool free_frame(SurDeformGpencilModifierData *smd_orig,
 
   /*Do the same thing as add, but in reverse */
   sdef_layer->num_of_frames--;
-  void *temp_frames_pointer = MEM_malloc_arrayN(sdef_layer->num_of_frames, sizeof(*sdef_layer->frames), "SDefGPFrames");
+  SDefGPFrame *temp_frames_pointer = MEM_malloc_arrayN(sdef_layer->num_of_frames, sizeof(*sdef_layer->frames), "SDefGPFrames");
 
   if (temp_frames_pointer == NULL) {
     BKE_gpencil_modifier_set_error( (GpencilModifierData *)smd_eval, "Out of memory");
