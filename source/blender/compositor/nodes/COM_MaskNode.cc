@@ -60,7 +60,9 @@ void MaskNode::convert_to_operations(NodeConverter &converter,
   const int new_height = rd->xasp * operation->get_mask_height();
   scale_operation->set_new_width(new_width);
   scale_operation->set_new_height(new_height);
-  scale_operation->set_scale_canvas_max_size(context.get_render_size() *1.5f);
+  scale_operation->set_is_aspect(false);
+  scale_operation->set_is_crop(false);
+  scale_operation->set_scale_canvas_max_size({float(data->size_x), float(data->size_y)});
 
   converter.add_operation(scale_operation);
   converter.add_link(operation->get_output_socket(0), scale_operation->get_input_socket(0));
