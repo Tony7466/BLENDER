@@ -296,6 +296,8 @@ void IrradianceBake::read_result(LightCacheIrradianceGrid &light_cache_grid)
       capture_info_buf_.read();
       surfels_buf_.read();
       light_cache_grid.surfels_len = capture_info_buf_.surfel_len;
+      /* TODO(fclem): This isn't threadsafe. */
+      MEM_SAFE_FREE(light_cache_grid.surfels);
       light_cache_grid.surfels = MEM_dupallocN(surfels_buf_.data());
       break;
     default:
