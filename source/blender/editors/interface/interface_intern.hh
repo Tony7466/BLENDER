@@ -1386,7 +1386,11 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
  * menu to show when right clicking on the panel header
  */
 void ui_popup_context_menu_for_panel(bContext *C, ARegion *region, Panel *panel);
-
+/**
+ * Menu to show when right clicking on an empty space within the side regions, the menu allow the
+ * user flip side regions. Mainly used where no other menu is displayed.
+ */
+void ui_popup_context_menu_side_region_flip(bContext *C);
 /* interface_eyedropper.c */
 
 wmKeyMap *eyedropper_modal_keymap(wmKeyConfig *keyconf);

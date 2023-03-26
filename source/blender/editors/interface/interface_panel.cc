@@ -2390,7 +2390,16 @@ int ui_handler_panel_region(bContext *C,
       break;
     }
   }
-
+  if (retval == WM_UI_HANDLER_BREAK) {
+    return retval;
+  }
+  ScrArea *area = CTX_wm_area(C);
+  if (area && event->type == RIGHTMOUSE && !active_but &&
+      (ELEM(region->regiontype, RGN_TYPE_UI, RGN_TYPE_TOOLS) ||
+       (region->regiontype == RGN_TYPE_CHANNELS && area->spacetype == SPACE_SEQ))) {
+    ui_popup_context_menu_side_region_flip(C);
+    retval = WM_UI_HANDLER_BREAK;
+  }
   return retval;
 }
 

@@ -374,6 +374,10 @@ ScrArea *ED_screen_temp_space_open(struct bContext *C,
 void ED_screens_header_tools_menu_create(struct bContext *C, struct uiLayout *layout, void *arg);
 void ED_screens_footer_tools_menu_create(struct bContext *C, struct uiLayout *layout, void *arg);
 void ED_screens_region_flip_menu_create(struct bContext *C, struct uiLayout *layout, void *arg);
+void ED_screens_region_flip_menu_create(struct bContext *C, struct uiLayout *layout, void *arg);
+void ED_screens_area_flip_side_regions_menu_create(struct bContext *C,
+                                                   struct uiLayout *layout,
+                                                   void *arg);
 /**
  * \return true if any active area requires to see in 3D.
  */

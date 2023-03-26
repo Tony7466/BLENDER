@@ -4196,6 +4196,55 @@ static void SCREEN_OT_region_flip(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Flip Side Regions Operator
+ * \{ */
+/*
+ * This operation flips the alignment of the side regions within the #ScrArea. It's particularly
+ * useful when one region is on the right side of the area and the other is on the left
+ * side, allowing the user to swap their positions in a single command.
+ */
+
+static int area_flip_side_regions_exec(bContext *C, wmOperator *UNUSED(op))
+{
+  ScrArea *area = CTX_wm_area(C);
+  LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
+    if (region->alignment == RGN_ALIGN_LEFT) {
+      region->alignment = RGN_ALIGN_RIGHT;
+    }
+    else if (region->alignment == RGN_ALIGN_RIGHT) {
+      region->alignment = RGN_ALIGN_LEFT;
+    }
+  }
+  ED_area_tag_redraw(CTX_wm_area(C));
+  WM_event_add_mousemove(CTX_wm_window(C));
+  WM_event_add_notifier(C, NC_SCREEN | NA_EDITED, NULL);
+  return OPERATOR_FINISHED;
+}
+
+static bool area_flip_side_regions_poll(bContext *C)
+{
+  ScrArea *area = CTX_wm_area(C);
+  if (!area) {
+    return OPERATOR_CANCELLED;
+  }
+
+  return ED_operator_areaactive(C);
+}
+
+static void SCREEN_OT_area_flip_side_regions(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Flip Side Regions";
+  ot->idname = "SCREEN_OT_area_flip_side_regions";
+  ot->description = "Flip all the side region's alignment in the area (left/right)";
+
+  /* api callbacks */
+  ot->exec = area_flip_side_regions_exec;
+  ot->poll = area_flip_side_regions_poll;
+  ot->flag = 0;
+}
+/** \} */
+/* -------------------------------------------------------------------- */
 /** \name Header Toggle Menu Operator
  * \{ */
 
@@ -4352,8 +4401,26 @@ void ED_screens_region_flip_menu_create(bContext *C, uiLayout *layout, void *UNU
 
   /* default is WM_OP_INVOKE_REGION_WIN, which we don't want here. */
   uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
-
   uiItemO(layout, but_flip_str, ICON_NONE, "SCREEN_OT_region_flip");
+}
+
+void ED_screens_area_flip_side_regions_menu_create(bContext *C,
+                                                   uiLayout *layout,
+                                                   void *UNUSED(arg))
+{
+  ScrArea *area = CTX_wm_area(C);
+  int side_regions_count = 0;
+  LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
+    if (ELEM(region->alignment, RGN_ALIGN_LEFT, RGN_ALIGN_RIGHT)) {
+      side_regions_count++;
+    }
+    if (side_regions_count == 2) {
+      uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
+      uiItemO(layout, IFACE_("Flip Side Regions"), ICON_NONE, "SCREEN_OT_area_flip_side_regions");
+      return;
+    }
+  }
+  ED_screens_region_flip_menu_create(C, layout, NULL);
 }
 
 static void ed_screens_statusbar_menu_create(uiLayout *layout, void *UNUSED(arg))
@@ -5723,6 +5790,7 @@ void ED_operatortypes_screen(void)
   WM_operatortype_append(SCREEN_OT_region_scale);
   WM_operatortype_append(SCREEN_OT_region_toggle);
   WM_operatortype_append(SCREEN_OT_region_flip);
+  WM_operatortype_append(SCREEN_OT_area_flip_side_regions);
   WM_operatortype_append(SCREEN_OT_header_toggle_menus);
   WM_operatortype_append(SCREEN_OT_region_context_menu);
   WM_operatortype_append(SCREEN_OT_screen_set);

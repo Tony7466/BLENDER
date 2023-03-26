@@ -1237,11 +1237,17 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
     if (!region) {
       /* skip */
     }
+    else if (region->regiontype == RGN_TYPE_TOOLS) {
+      uiItemS(layout);
+      ED_screens_area_flip_side_regions_menu_create(C, layout, nullptr);
+    }
     else if (ELEM(region->regiontype, RGN_TYPE_HEADER, RGN_TYPE_TOOL_HEADER)) {
+      uiItemS(layout);
       uiItemMenuF(
           layout, IFACE_("Header"), ICON_NONE, ED_screens_header_tools_menu_create, nullptr);
     }
     else if (region->regiontype == RGN_TYPE_NAV_BAR) {
+      uiItemS(layout);
       uiItemMenuF(layout,
                   IFACE_("Navigation Bar"),
                   ICON_NONE,
@@ -1249,6 +1255,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
                   nullptr);
     }
     else if (region->regiontype == RGN_TYPE_FOOTER) {
+      uiItemS(layout);
       uiItemMenuF(
           layout, IFACE_("Footer"), ICON_NONE, ED_screens_footer_tools_menu_create, nullptr);
     }
@@ -1319,6 +1326,28 @@ void ui_popup_context_menu_for_panel(bContext *C, ARegion *region, Panel *panel)
       but->flag |= UI_BUT_HAS_SEP_CHAR;
     }
   }
+  UI_popup_menu_end(C, pup);
+}
+
+void ui_popup_context_menu_side_region_flip(bContext *C)
+{
+  ARegion *region = CTX_wm_region(C);
+  ScrArea *area = CTX_wm_area(C);
+  SpaceFile *sfile = CTX_wm_space_file(C);
+
+  const char *menu_name = region->regiontype == RGN_TYPE_UI       ? IFACE_("Sidebar") :
+                          region->regiontype == RGN_TYPE_CHANNELS ? IFACE_("Channels") :
+                          area->spacetype == SPACE_SPREADSHEET    ? IFACE_("Geometry Data") :
+                          area->spacetype == SPACE_FILE           ? (sfile->browse_mode ==
+                                                                   FILE_BROWSE_MODE_ASSETS ?
+                                                                         IFACE_("Asset Catalogs") :
+                                                                         IFACE_("File Browser")) :
+                                                                    IFACE_("Toolbar");
+
+  uiPopupMenu *pup = UI_popup_menu_begin(C, menu_name, ICON_NONE);
+  uiLayout *layout = UI_popup_menu_layout(pup);
+  uiItemS(layout);
+  ED_screens_area_flip_side_regions_menu_create(C, layout, nullptr);
   UI_popup_menu_end(C, pup);
 }
 

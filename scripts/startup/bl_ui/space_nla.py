@@ -330,6 +330,9 @@ class NLA_MT_channel_context_menu(Menu):
 
         layout.operator_menu_enum("anim.channels_move", "direction", text="Track Ordering...")
         layout.operator("anim.channels_clean_empty")
+        
+        layout.separator()
+        layout.operator("screen.area_flip_side_regions")
 
 
 classes = (

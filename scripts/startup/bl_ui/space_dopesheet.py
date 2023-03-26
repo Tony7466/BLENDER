@@ -752,6 +752,9 @@ class DOPESHEET_MT_channel_context_menu(Menu):
         layout.separator()
 
         layout.operator("anim.channels_delete")
+        
+        layout.separator()
+        layout.operator("screen.area_flip_side_regions")
 
 
 class DOPESHEET_MT_snap_pie(Menu):

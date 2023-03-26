@@ -11358,9 +11358,17 @@ static int ui_region_handler(bContext *C, const wmEvent *event, void * /*userdat
 {
   /* here we handle buttons at the region level, non-modal */
   ARegion *region = CTX_wm_region(C);
+  ScrArea *area = CTX_wm_area(C);
+
   int retval = WM_UI_HANDLER_CONTINUE;
 
   if (region == nullptr || BLI_listbase_is_empty(&region->uiblocks)) {
+    if (event->type == RIGHTMOUSE &&
+        (ELEM(region->regiontype, RGN_TYPE_UI, RGN_TYPE_TOOLS) ||
+         (region->regiontype == RGN_TYPE_CHANNELS && area->spacetype == SPACE_SEQ))) {
+      ui_popup_context_menu_side_region_flip(C);
+      return WM_UI_HANDLER_BREAK;
+    }
     return retval;
   }
 
