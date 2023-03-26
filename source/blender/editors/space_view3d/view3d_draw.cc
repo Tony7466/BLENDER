@@ -1104,8 +1104,9 @@ static void draw_rotation_guide(const RegionView3D *rv3d)
   immUnbindProgram();
 
   /* -- draw rotation center -- */
-  immBindBuiltinProgram(GPU_SHADER_2D_POINT_UNIFORM_SIZE_UNIFORM_COLOR_AA);
+  immBindBuiltinProgram(GPU_SHADER_3D_POINT_UNIFORM_SIZE_UNIFORM_COLOR_AA);
   immUniform1f("size", 7.0f);
+  immUniform4fv("color", float4(color));
   immBegin(GPU_PRIM_POINTS, 1);
   immAttr4ubv(col, color);
   immVertex3fv(pos, o);
@@ -1385,8 +1386,7 @@ static void draw_selected_name(
     }
 
     /* color depends on whether there is a keyframe */
-    if (id_frame_has_keyframe(
-            (ID *)ob, /* BKE_scene_ctime_get(scene) */ float(cfra), ANIMFILTER_KEYS_LOCAL)) {
+    if (id_frame_has_keyframe((ID *)ob, /* BKE_scene_ctime_get(scene) */ float(cfra))) {
       UI_FontThemeColor(font_id, TH_TIME_KEYFRAME);
     }
     else if (ED_gpencil_has_keyframe_v3d(scene, ob, cfra)) {

@@ -25,7 +25,7 @@
 #include "PIL_time.h"
 
 #include "DNA_brush_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_material_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
@@ -37,10 +37,10 @@
 #include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_global.h"
-#include "BKE_gpencil.h"
-#include "BKE_gpencil_curve.h"
-#include "BKE_gpencil_geom.h"
-#include "BKE_gpencil_update_cache.h"
+#include "BKE_gpencil_curve_legacy.h"
+#include "BKE_gpencil_geom_legacy.h"
+#include "BKE_gpencil_legacy.h"
+#include "BKE_gpencil_update_cache_legacy.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
@@ -296,7 +296,7 @@ static bool gpencil_draw_poll(bContext *C)
 
     /* only grease pencil object type */
     Object *ob = CTX_data_active_object(C);
-    if ((ob == NULL) || (ob->type != OB_GPENCIL)) {
+    if ((ob == NULL) || (ob->type != OB_GPENCIL_LEGACY)) {
       return false;
     }
 
@@ -764,7 +764,7 @@ static short gpencil_stroke_addpoint(tGPsdata *p,
 
       /* store settings */
       copy_v2_v2(pt->m_xy, mval);
-      /* #44932 - Pressure vals are unreliable, so ignore for now */
+      /* Pressure values are unreliable, so ignore for now, see #44932. */
       pt->pressure = 1.0f;
       pt->strength = 1.0f;
       pt->time = (float)(curtime - p->inittime);
@@ -780,7 +780,7 @@ static short gpencil_stroke_addpoint(tGPsdata *p,
 
       /* store settings */
       copy_v2_v2(pt->m_xy, mval);
-      /* #44932 - Pressure vals are unreliable, so ignore for now */
+      /* Pressure values are unreliable, so ignore for now, see #44932. */
       pt->pressure = 1.0f;
       pt->strength = 1.0f;
       pt->time = (float)(curtime - p->inittime);
@@ -2051,7 +2051,7 @@ static bool gpencil_session_initdata(bContext *C, wmOperator *op, tGPsdata *p)
     return 0;
   }
 
-  if ((!obact) || (obact->type != OB_GPENCIL)) {
+  if ((!obact) || (obact->type != OB_GPENCIL_LEGACY)) {
     View3D *v3d = p->area->spacedata.first;
     /* if active object doesn't exist or isn't a GP Object, create one */
     const float *cur = p->scene->cursor.location;
@@ -3308,7 +3308,7 @@ static int gpencil_draw_invoke(bContext *C, wmOperator *op, const wmEvent *event
     gpencil_guide_event_handling(C, op, event, p);
   }
 
-  if ((ob->type == OB_GPENCIL) && ((p->gpd->flag & GP_DATA_STROKE_PAINTMODE) == 0)) {
+  if ((ob->type == OB_GPENCIL_LEGACY) && ((p->gpd->flag & GP_DATA_STROKE_PAINTMODE) == 0)) {
     /* FIXME: use the mode switching operator, this misses notifiers, messages. */
     /* Just set paintmode flag... */
     p->gpd->flag |= GP_DATA_STROKE_PAINTMODE;
@@ -3685,7 +3685,7 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
   }
 
   /* We don't pass on key events, GP is used with key-modifiers -
-   * prevents Dkey to insert drivers. */
+   * prevents D-key to insert drivers. */
   if (ISKEYBOARD(event->type)) {
     if (ELEM(event->type, EVT_LEFTARROWKEY, EVT_DOWNARROWKEY, EVT_RIGHTARROWKEY, EVT_UPARROWKEY)) {
       /* allow some keys:

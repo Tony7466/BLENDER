@@ -37,6 +37,7 @@
 #include "WM_api.h"
 #include "wm_cursors.h"
 
+#include "IMB_colormanagement.h"
 #include "IMB_imbuf_types.h"
 
 #include "ED_image.h"
@@ -200,10 +201,18 @@ static void load_tex_task_cb_ex(void *__restrict userdata,
         y = len * sinf(angle);
       }
 
-      if (col) {
-        float rgba[4];
+      float avg;
+      float rgba[4];
+      paint_get_tex_pixel(mtex, x, y, pool, thread_id, &avg, rgba);
 
-        paint_get_tex_pixel_col(mtex, x, y, rgba, pool, thread_id, convert_to_linear, colorspace);
+      if (col) {
+        if (convert_to_linear) {
+          IMB_colormanagement_colorspace_to_scene_linear_v3(rgba, colorspace);
+        }
+
+        linearrgb_to_srgb_v3_v3(rgba, rgba);
+
+        clamp_v4(rgba, 0.0f, 1.0f);
 
         buffer[index * 4] = rgba[0] * 255;
         buffer[index * 4 + 1] = rgba[1] * 255;
@@ -211,8 +220,6 @@ static void load_tex_task_cb_ex(void *__restrict userdata,
         buffer[index * 4 + 3] = rgba[3] * 255;
       }
       else {
-        float avg = paint_get_tex_pixel(mtex, x, y, pool, thread_id);
-
         avg += br->texture_sample_bias;
 
         /* Clamp to avoid precision overflow. */
@@ -336,7 +343,7 @@ static int load_tex(Brush *br, ViewContext *vc, float zoom, bool col, bool prima
       eGPUTextureFormat format = col ? GPU_RGBA8 : GPU_R8;
       eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT |
                                GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW;
-      target->overlay_texture = GPU_texture_create_2d_ex(
+      target->overlay_texture = GPU_texture_create_2d(
           "paint_cursor_overlay", size, size, 1, format, usage, nullptr);
       GPU_texture_update(target->overlay_texture, GPU_DATA_UBYTE, buffer);
 
@@ -456,7 +463,7 @@ static int load_tex_cursor(Brush *br, ViewContext *vc, float zoom)
     if (!cursor_snap.overlay_texture) {
       eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT |
                                GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW;
-      cursor_snap.overlay_texture = GPU_texture_create_2d_ex(
+      cursor_snap.overlay_texture = GPU_texture_create_2d(
           "cursor_snap_overaly", size, size, 1, GPU_R8, usage, nullptr);
       GPU_texture_update(cursor_snap.overlay_texture, GPU_DATA_UBYTE, buffer);
 

@@ -306,14 +306,23 @@ static void gwl_window_frame_update_from_pending(GWL_Window *win);
 #ifdef USE_EVENT_BACKGROUND_THREAD
 
 enum eGWL_PendingWindowActions {
-  PENDING_FRAME_CONFIGURE = 0,
-  PENDING_EGL_RESIZE,
+  /**
+   * The state of the window frame has changed, apply the state from #GWL_Window::frame_pending.
+   */
+  PENDING_WINDOW_FRAME_CONFIGURE = 0,
+  /** The EGL buffer must be resized to match #GWL_WindowFrame::size. */
+  PENDING_EGL_WINDOW_RESIZE,
 #  ifdef GHOST_OPENGL_ALPHA
+  /** Draw an opaque region behind the window. */
   PENDING_OPAQUE_SET,
 #  endif
-  PENDING_SCALE_UPDATE,
+  /**
+   * The DPI for a monitor has changed or the monitors (outputs)
+   * this window is visible on may have changed. Recalculate the windows scale.
+   */
+  PENDING_OUTPUT_SCALE_UPDATE,
 };
-#  define PENDING_NUM (PENDING_SCALE_UPDATE + 1)
+#  define PENDING_NUM (PENDING_OUTPUT_SCALE_UPDATE + 1)
 
 static void gwl_window_pending_actions_tag(GWL_Window *win, enum eGWL_PendingWindowActions type)
 {
@@ -323,10 +332,10 @@ static void gwl_window_pending_actions_tag(GWL_Window *win, enum eGWL_PendingWin
 
 static void gwl_window_pending_actions_handle(GWL_Window *win)
 {
-  if (win->pending_actions[PENDING_FRAME_CONFIGURE].exchange(false)) {
+  if (win->pending_actions[PENDING_WINDOW_FRAME_CONFIGURE].exchange(false)) {
     gwl_window_frame_update_from_pending(win);
   }
-  if (win->pending_actions[PENDING_EGL_RESIZE].exchange(false)) {
+  if (win->pending_actions[PENDING_EGL_WINDOW_RESIZE].exchange(false)) {
     wl_egl_window_resize(win->egl_window, UNPACK2(win->frame.size), 0, 0);
   }
 #  ifdef GHOST_OPENGL_ALPHA
@@ -334,7 +343,7 @@ static void gwl_window_pending_actions_handle(GWL_Window *win)
     win->ghost_window->setOpaque();
   }
 #  endif
-  if (win->pending_actions[PENDING_SCALE_UPDATE].exchange(false)) {
+  if (win->pending_actions[PENDING_OUTPUT_SCALE_UPDATE].exchange(false)) {
     win->ghost_window->outputs_changed_update_scale();
   }
 }
@@ -342,9 +351,10 @@ static void gwl_window_pending_actions_handle(GWL_Window *win)
 #endif /* USE_EVENT_BACKGROUND_THREAD */
 
 /**
- * Update the window's #GWL_WindowFrame
+ * Update the window's #GWL_WindowFrame.
+ * The caller must handle locking & run from the main thread.
  */
-static void gwl_window_frame_update_from_pending_lockfree(GWL_Window *win)
+static void gwl_window_frame_update_from_pending_no_lock(GWL_Window *win)
 {
 #ifdef USE_EVENT_BACKGROUND_THREAD
   GHOST_ASSERT(win->ghost_system->main_thread_id == std::this_thread::get_id(),
@@ -381,7 +391,7 @@ static void gwl_window_frame_update_from_pending(GWL_Window *win)
 #ifdef USE_EVENT_BACKGROUND_THREAD
   std::lock_guard lock_frame_guard{win->frame_pending_mutex};
 #endif
-  gwl_window_frame_update_from_pending_lockfree(win);
+  gwl_window_frame_update_from_pending_no_lock(win);
 }
 
 /** \} */
@@ -503,8 +513,8 @@ static void xdg_toplevel_handle_close(void *data, xdg_toplevel * /*xdg_toplevel*
 }
 
 static const xdg_toplevel_listener xdg_toplevel_listener = {
-    xdg_toplevel_handle_configure,
-    xdg_toplevel_handle_close,
+    /*configure*/ xdg_toplevel_handle_configure,
+    /*close*/ xdg_toplevel_handle_close,
 };
 
 #undef LOG
@@ -576,12 +586,12 @@ static void frame_handle_configure(struct libdecor_frame *frame,
     GHOST_SystemWayland *system = win->ghost_system;
     const bool is_main_thread = system->main_thread_id == std::this_thread::get_id();
     if (!is_main_thread) {
-      gwl_window_pending_actions_tag(win, PENDING_FRAME_CONFIGURE);
+      gwl_window_pending_actions_tag(win, PENDING_WINDOW_FRAME_CONFIGURE);
     }
     else
 #  endif
     {
-      gwl_window_frame_update_from_pending_lockfree(win);
+      gwl_window_frame_update_from_pending_no_lock(win);
     }
   }
 }
@@ -607,7 +617,8 @@ static void frame_handle_commit(struct libdecor_frame * /*frame*/, void *data)
 #  endif
 }
 
-static struct libdecor_frame_interface libdecor_frame_iface = {
+/* NOTE: cannot be `const` because of the LIBDECOR API.  */
+static libdecor_frame_interface libdecor_frame_iface = {
     frame_handle_configure,
     frame_handle_close,
     frame_handle_commit,
@@ -639,7 +650,7 @@ static void xdg_toplevel_decoration_handle_configure(
 }
 
 static const zxdg_toplevel_decoration_v1_listener xdg_toplevel_decoration_v1_listener = {
-    xdg_toplevel_decoration_handle_configure,
+    /*configure*/ xdg_toplevel_decoration_handle_configure,
 };
 
 #undef LOG
@@ -671,7 +682,7 @@ static void xdg_surface_handle_configure(void *data,
   if (!is_main_thread) {
     /* NOTE(@ideasman42): this only gets one redraw,
      * I could not find a case where this causes problems. */
-    gwl_window_pending_actions_tag(win, PENDING_FRAME_CONFIGURE);
+    gwl_window_pending_actions_tag(win, PENDING_WINDOW_FRAME_CONFIGURE);
   }
   else
 #endif
@@ -683,7 +694,7 @@ static void xdg_surface_handle_configure(void *data,
 }
 
 static const xdg_surface_listener xdg_surface_listener = {
-    xdg_surface_handle_configure,
+    /*configure*/ xdg_surface_handle_configure,
 };
 
 #undef LOG
@@ -731,9 +742,9 @@ static void surface_handle_leave(void *data,
   }
 }
 
-static const struct wl_surface_listener wl_surface_listener = {
-    surface_handle_enter,
-    surface_handle_leave,
+static const wl_surface_listener wl_surface_listener = {
+    /*enter*/ surface_handle_enter,
+    /*leave*/ surface_handle_leave,
 };
 
 #undef LOG
@@ -1373,7 +1384,7 @@ bool GHOST_WindowWayland::outputs_changed_update_scale()
 {
 #ifdef USE_EVENT_BACKGROUND_THREAD
   if (system_->main_thread_id != std::this_thread::get_id()) {
-    gwl_window_pending_actions_tag(window_, PENDING_SCALE_UPDATE);
+    gwl_window_pending_actions_tag(window_, PENDING_OUTPUT_SCALE_UPDATE);
     return false;
   }
 #endif

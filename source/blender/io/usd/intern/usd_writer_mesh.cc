@@ -3,6 +3,7 @@
 #include "usd_writer_mesh.h"
 #include "usd_hierarchy_iterator.h"
 
+#include <pxr/usd/usdGeom/bboxCache.h>
 #include <pxr/usd/usdGeom/mesh.h>
 #include <pxr/usd/usdGeom/primvarsAPI.h>
 #include <pxr/usd/usdShade/material.h>
@@ -17,7 +18,7 @@
 #include "BKE_customdata.h"
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.h"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
@@ -247,6 +248,15 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
   if (usd_export_context_.export_params.export_materials) {
     assign_materials(context, usd_mesh, usd_mesh_data.face_groups);
   }
+
+  /* Blender grows its bounds cache to cover animated meshes, so only author once. */
+  float bound_min[3];
+  float bound_max[3];
+  INIT_MINMAX(bound_min, bound_max);
+  BKE_mesh_minmax(mesh, bound_min, bound_max);
+  pxr::VtArray<pxr::GfVec3f> extent{pxr::GfVec3f{bound_min[0], bound_min[1], bound_min[2]},
+                                    pxr::GfVec3f{bound_max[0], bound_max[1], bound_max[2]}};
+  usd_mesh.CreateExtentAttr().Set(extent);
 }
 
 static void get_vertices(const Mesh *mesh, USDMeshData &usd_mesh_data)
@@ -278,13 +288,13 @@ static void get_loops_polys(const Mesh *mesh, USDMeshData &usd_mesh_data)
   usd_mesh_data.face_indices.reserve(mesh->totloop);
 
   const Span<MPoly> polys = mesh->polys();
-  const Span<MLoop> loops = mesh->loops();
+  const Span<int> corner_verts = mesh->corner_verts();
 
   for (const int i : polys.index_range()) {
     const MPoly &poly = polys[i];
     usd_mesh_data.face_vertex_counts.push_back(poly.totloop);
-    for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
-      usd_mesh_data.face_indices.push_back(loop.v);
+    for (const int vert : corner_verts.slice(poly.loopstart, poly.totloop)) {
+      usd_mesh_data.face_indices.push_back(vert);
     }
   }
 }
@@ -371,9 +381,9 @@ void USDGenericMeshWriter::assign_materials(const HierarchyContext &context,
   }
 
   if (mesh_material_bound) {
-    /* USD will require that prims with material bindings have the MaterialBindingAPI applied
+    /* USD will require that prims with material bindings have the #MaterialBindingAPI applied
      * schema. While Bind() above will create the binding attribute, Apply() needs to be called as
-     * well to add the MaterialBindingAPI schema to the prim itself.*/
+     * well to add the #MaterialBindingAPI schema to the prim itself. */
     material_binding_api.Apply(mesh_prim);
   }
   else {
@@ -406,7 +416,7 @@ void USDGenericMeshWriter::assign_materials(const HierarchyContext &context,
     auto subset_prim = usd_face_subset.GetPrim();
     auto subset_material_api = pxr::UsdShadeMaterialBindingAPI(subset_prim);
     subset_material_api.Bind(usd_material);
-    /* Apply the MaterialBindingAPI applied schema, as required by USD.*/
+    /* Apply the #MaterialBindingAPI applied schema, as required by USD. */
     subset_material_api.Apply(subset_prim);
   }
 }
@@ -417,7 +427,7 @@ void USDGenericMeshWriter::write_normals(const Mesh *mesh, pxr::UsdGeomMesh usd_
   const float(*lnors)[3] = static_cast<const float(*)[3]>(
       CustomData_get_layer(&mesh->ldata, CD_NORMAL));
   const Span<MPoly> polys = mesh->polys();
-  const Span<MLoop> loops = mesh->loops();
+  const Span<int> corner_verts = mesh->corner_verts();
 
   pxr::VtVec3fArray loop_normals;
   loop_normals.reserve(mesh->totloop);
@@ -430,22 +440,25 @@ void USDGenericMeshWriter::write_normals(const Mesh *mesh, pxr::UsdGeomMesh usd_
   }
   else {
     /* Compute the loop normals based on the 'smooth' flag. */
-    const float(*vert_normals)[3] = BKE_mesh_vertex_normals_ensure(mesh);
-    const float(*face_normals)[3] = BKE_mesh_poly_normals_ensure(mesh);
+    bke::AttributeAccessor attributes = mesh->attributes();
+    const Span<float3> vert_normals = mesh->vert_normals();
+    const Span<float3> poly_normals = mesh->poly_normals();
+    const VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
+        "sharp_face", ATTR_DOMAIN_FACE, false);
     for (const int i : polys.index_range()) {
       const MPoly &poly = polys[i];
 
-      if ((poly.flag & ME_SMOOTH) == 0) {
+      if (sharp_faces[i]) {
         /* Flat shaded, use common normal for all verts. */
-        pxr::GfVec3f pxr_normal(face_normals[i]);
+        pxr::GfVec3f pxr_normal(&poly_normals[i].x);
         for (int loop_idx = 0; loop_idx < poly.totloop; ++loop_idx) {
           loop_normals.push_back(pxr_normal);
         }
       }
       else {
         /* Smooth shaded, use individual vert normals. */
-        for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
-          loop_normals.push_back(pxr::GfVec3f(vert_normals[loop.v]));
+        for (const int vert : corner_verts.slice(poly.loopstart, poly.totloop)) {
+          loop_normals.push_back(pxr::GfVec3f(&vert_normals[vert].x));
         }
       }
     }

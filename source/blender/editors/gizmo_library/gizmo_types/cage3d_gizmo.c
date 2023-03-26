@@ -38,7 +38,6 @@
 /* own includes */
 #include "../gizmo_library_intern.h"
 
-#define GIZMO_RESIZER_SIZE 10.0f
 #define GIZMO_MARGIN_OFFSET_SCALE 1.5f
 
 static void gizmo_calc_matrix_final_no_offset(const wmGizmo *gz,
@@ -539,12 +538,9 @@ static int gizmo_cage3d_modal(bContext *C,
           }
         }
 
-        if (delta_orig < 0) {
-          scale[i] = -delta_curr / (pivot[i] + 0.5f);
-        }
-        else {
-          scale[i] = delta_curr / (0.5f - pivot[i]);
-        }
+        /* Original cursor position does not exactly lie on the cage boundary due to margin. */
+        const float delta_boundary = signf(delta_orig) * 0.5f - pivot[i];
+        scale[i] = delta_curr / delta_boundary;
       }
     }
 

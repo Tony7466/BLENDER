@@ -329,7 +329,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
                                 OB_CURVES_LEGACY,
                                 OB_SURF,
                                 OB_FONT,
-                                OB_GPENCIL,
+                                OB_GPENCIL_LEGACY,
                                 OB_CURVES,
                                 OB_POINTCLOUD,
                                 OB_VOLUME);
@@ -467,7 +467,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
           OVERLAY_metaball_cache_populate(data, ob);
         }
         break;
-      case OB_GPENCIL:
+      case OB_GPENCIL_LEGACY:
         OVERLAY_gpencil_cache_populate(data, ob);
         break;
     }
@@ -630,6 +630,10 @@ static void OVERLAY_draw_scene(void *vedata)
 
   if (DRW_state_is_fbo()) {
     GPU_framebuffer_bind(fbl->overlay_line_fb);
+  }
+
+  if (pd->ctx_mode == CTX_MODE_SCULPT_CURVES) {
+    OVERLAY_sculpt_curves_draw_wires(data);
   }
 
   OVERLAY_wireframe_draw(data);

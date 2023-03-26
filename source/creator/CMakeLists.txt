@@ -6,7 +6,6 @@ set(INC
   ../../intern/guardedalloc
   ../blender/blenkernel
   ../blender/blenlib
-  ../blender/blenloader
   ../blender/depsgraph
   ../blender/editors/include
   ../blender/gpu
@@ -411,10 +410,11 @@ if(WITH_PYTHON)
   endif()
 
   install(
-    DIRECTORY ${CMAKE_SOURCE_DIR}/release/scripts
+    DIRECTORY ${CMAKE_SOURCE_DIR}/scripts
     DESTINATION ${TARGETDIR_VER}
     PATTERN ".git" EXCLUDE
     PATTERN ".gitignore" EXCLUDE
+    PATTERN ".gitea" EXCLUDE
     PATTERN ".github" EXCLUDE
     PATTERN ".arcconfig" EXCLUDE
     PATTERN "__pycache__" EXCLUDE
@@ -426,12 +426,12 @@ if(WITH_PYTHON)
   if(WITH_PYTHON_INSTALL)
     if(WIN32)
       install(
-        FILES ${CMAKE_SOURCE_DIR}/release/scripts/site/sitecustomize.py
+        FILES ${CMAKE_SOURCE_DIR}/scripts/site/sitecustomize.py
         DESTINATION ${TARGETDIR_VER}/python/lib/site-packages
       )
     else()
       install(
-        FILES ${CMAKE_SOURCE_DIR}/release/scripts/site/sitecustomize.py
+        FILES ${CMAKE_SOURCE_DIR}/scripts/site/sitecustomize.py
         DESTINATION ${TARGETDIR_VER}/python/lib/python${PYTHON_VERSION}/site-packages
       )
     endif()
@@ -448,7 +448,7 @@ install(
 
 # localization
 if(WITH_INTERNATIONAL)
-  set(_locale_dir "${CMAKE_SOURCE_DIR}/release/datafiles/locale")
+  set(_locale_dir "${CMAKE_SOURCE_DIR}/locale")
   set(_locale_target_dir ${TARGETDIR_VER}/datafiles/locale)
 
   file(GLOB _po_files "${_locale_dir}/po/*.po")
@@ -536,6 +536,9 @@ macro(install_dir from to)
     DESTINATION ${to}
     # Irrelevant files and caches.
     PATTERN ".git" EXCLUDE
+    PATTERN ".gitignore" EXCLUDE
+    PATTERN ".gitea" EXCLUDE
+    PATTERN ".github" EXCLUDE
     PATTERN ".svn" EXCLUDE
     PATTERN "*.pyc" EXCLUDE
     PATTERN "*.pyo" EXCLUDE
@@ -1220,6 +1223,16 @@ elseif(WIN32)
   )
 
   windows_install_shared_manifest(
+    FILES ${LIBDIR}/shaderc/bin/shaderc_shared.dll
+    RELEASE
+  )
+
+  windows_install_shared_manifest(
+    FILES ${LIBDIR}/shaderc/bin/shaderc_shared_d.dll
+    DEBUG
+  )
+
+  windows_install_shared_manifest(
     FILES
       ${LIBDIR}/openal/lib/OpenAL32.dll
     ALL
@@ -1286,33 +1299,6 @@ elseif(APPLE)
     # Uppercase name for app bundle.
     set_target_properties(blender PROPERTIES OUTPUT_NAME Blender)
   endif()
-
-  # Handy install macro to exclude files, we use \$ escape for the "to"
-  # argument when calling so `${BUILD_TYPE}` does not get expanded.
-  macro(install_dir from to)
-    install(
-      DIRECTORY ${from}
-      DESTINATION ${to}
-      PATTERN ".git" EXCLUDE
-      PATTERN ".svn" EXCLUDE
-      PATTERN "*.pyc" EXCLUDE
-      PATTERN "*.pyo" EXCLUDE
-      PATTERN "*.orig" EXCLUDE
-      PATTERN "*.rej" EXCLUDE
-      PATTERN "__pycache__" EXCLUDE
-      PATTERN "__MACOSX" EXCLUDE
-      PATTERN ".DS_Store" EXCLUDE
-      PATTERN "config-${PYTHON_VERSION}/*.a" EXCLUDE  # static lib
-      PATTERN "lib2to3" EXCLUDE                   # ./lib2to3
-      PATTERN "tkinter" EXCLUDE                   # ./tkinter
-      PATTERN "lib-dynload/_tkinter.*" EXCLUDE    # ./lib-dynload/_tkinter.co
-      PATTERN "idlelib" EXCLUDE                   # ./idlelib
-      PATTERN "test" EXCLUDE                      # ./test
-      PATTERN "turtledemo" EXCLUDE                # ./turtledemo
-      PATTERN "turtle.py" EXCLUDE                 # ./turtle.py
-      PATTERN "wininst*.exe" EXCLUDE              # from distutils, avoid malware false positive
-    )
-  endmacro()
 
   set(OSX_APP_SOURCEDIR ${CMAKE_SOURCE_DIR}/release/darwin/Blender.app)
 
@@ -1481,6 +1467,20 @@ install(
   DIRECTORY ${CMAKE_SOURCE_DIR}/release/datafiles/studiolights
   DESTINATION ${TARGETDIR_VER}/datafiles
 )
+
+
+# -----------------------------------------------------------------------------
+# Bundle assets
+
+set(ASSET_BUNDLE_DIR ${CMAKE_SOURCE_DIR}/../lib/assets/publish/)
+
+if(EXISTS "${ASSET_BUNDLE_DIR}")
+  install(
+    DIRECTORY ${ASSET_BUNDLE_DIR}
+    DESTINATION ${TARGETDIR_VER}/datafiles/assets
+    PATTERN ".svn" EXCLUDE
+  )
+endif()
 
 
 # -----------------------------------------------------------------------------

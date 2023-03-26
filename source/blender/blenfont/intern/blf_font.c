@@ -60,7 +60,7 @@ static FT_Library ft_lib = NULL;
 static FTC_Manager ftc_manager = NULL;
 static FTC_CMapCache ftc_charmap_cache = NULL;
 
-/* Lock for FreeType library, used around face creation and deletion.  */
+/* Lock for FreeType library, used around face creation and deletion. */
 static ThreadMutex ft_lib_mutex;
 
 /* May be set to #UI_widgetbase_draw_cache_flush. */
@@ -1430,6 +1430,14 @@ bool blf_ensure_face(FontBLF *font)
 
   font->face_flags = font->face->face_flags;
 
+  /* XXX: Temporarily disable kerning in our main font. Kerning had been accidentally removed
+   * from our font in 3.1. In 3.4 we disable kerning here in the new version to keep spacing the
+   * same
+   * (#101506). Enable again later with change of font, placement, or rendering - Harley. */
+  if (font && font->filepath && BLI_str_endswith(font->filepath, BLF_DEFAULT_PROPORTIONAL_FONT)) {
+    font->face_flags &= ~FT_FACE_FLAG_KERNING;
+  }
+
   if (FT_HAS_MULTIPLE_MASTERS(font)) {
     FT_Get_MM_Var(font->face, &(font->variations));
   }
@@ -1471,7 +1479,7 @@ struct FaceDetails {
 /* Details about the fallback fonts we ship, so that we can load only when needed. */
 static const struct FaceDetails static_face_details[] = {
     {"lastresort.woff2", UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX},
-    {"Noto Sans CJK Regular.woff2", 0x30000083L, 0x2BDF3C10L, 0x16L, 0},
+    {"Noto Sans CJK Regular.woff2", 0x30000083L, 0x29DF3C10L, 0x16L, 0},
     {"NotoEmoji-VariableFont_wght.woff2", 0x80000003L, 0x241E4ACL, 0x14000000L, 0x4000000L},
     {"NotoSansArabic-VariableFont_wdth,wght.woff2",
      TT_UCR_ARABIC,
@@ -1558,7 +1566,7 @@ FontBLF *blf_font_new_ex(const char *name,
     }
   }
 
-  /* Detect "Last resort" fonts. They have everything. Usually except last 5 bits.  */
+  /* Detect "Last resort" fonts. They have everything. Usually except last 5 bits. */
   if (font->unicode_ranges[0] == 0xffffffffU && font->unicode_ranges[1] == 0xffffffffU &&
       font->unicode_ranges[2] == 0xffffffffU && font->unicode_ranges[3] >= 0x7FFFFFFU) {
     font->flags |= BLF_LAST_RESORT;

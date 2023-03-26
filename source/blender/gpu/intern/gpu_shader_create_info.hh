@@ -21,8 +21,8 @@
 
 namespace blender::gpu::shader {
 
-#ifndef GPU_SHADER_CREATE_INFO
 /* Helps intellisense / auto-completion. */
+#ifndef GPU_SHADER_CREATE_INFO
 #  define GPU_SHADER_INTERFACE_INFO(_interface, _inst_name) \
     StageInterfaceInfo _interface(#_interface, _inst_name); \
     _interface
@@ -291,8 +291,10 @@ struct StageInterfaceInfo {
   };
 
   StringRefNull name;
-  /** Name of the instance of the block (used to access).
-   *  Can be empty string (i.e: "") only if not using geometry shader. */
+  /**
+   * Name of the instance of the block (used to access).
+   * Can be empty string (i.e: "") only if not using geometry shader.
+   */
   StringRefNull instance_name;
   /** List of all members of the interface. */
   Vector<InOut> inouts;
