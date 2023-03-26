@@ -5,7 +5,7 @@
 #include <pxr/imaging/hd/tokens.h>
 
 #include "BKE_material.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.h"
 #include "BKE_object.h"
 
@@ -162,12 +162,12 @@ void MeshData::set_mesh(Mesh *mesh)
   face_vertex_counts = pxr::VtIntArray(tris_len, 3);
 
   /* face_vertex_indices */
-  blender::Span<MLoop> loops = mesh->loops();
+  blender::Span<int> corner_verts = mesh->corner_verts();
   face_vertex_indices.reserve(loopTris.size() * 3);
   for (MLoopTri lt : loopTris) {
-    face_vertex_indices.push_back(loops[lt.tri[0]].v);
-    face_vertex_indices.push_back(loops[lt.tri[1]].v);
-    face_vertex_indices.push_back(loops[lt.tri[2]].v);
+    face_vertex_indices.push_back(corner_verts[lt.tri[0]]);
+    face_vertex_indices.push_back(corner_verts[lt.tri[1]]);
+    face_vertex_indices.push_back(corner_verts[lt.tri[2]]);
   }
 
   /* vertices */

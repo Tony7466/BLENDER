@@ -14,6 +14,12 @@ add_definitions(-DBLENDER_GFLAGS_NAMESPACE=${GFLAGS_NAMESPACE})
 
 add_definitions(-DBOOST_ALL_NO_LIB)
 
+if(WIN32)
+  # Some USD library headers trigger the "unreferenced formal parameter" warning alert.
+  # Silence them by restore warn C4100 back to w4
+  remove_cc_flag(/w34100)
+endif()
+
 set(INC
   ../../../../intern/clog
   ../../../../intern/glew-mx
@@ -24,9 +30,6 @@ set(INC
   ../../blenlib
   ../../depsgraph
   ../../blenkernel
-  ../../io/usd
-  ../../io/common
-  ../../io/usd/intern
   ../../gpu
   ../../gpu/opengl
   ../../gpu/intern
@@ -42,6 +45,7 @@ set(INC_SYS
   ${BOOST_INCLUDE_DIR}
   ${TBB_INCLUDE_DIR}
   ${GFLAGS_INCLUDE_DIRS}
+  ${LIBDIR}/MaterialX/include
 )
 
 set(SRC
@@ -90,9 +94,5 @@ set(LIB
 )
 
 blender_add_lib(bf_render_hydra "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
-
-target_link_libraries(bf_render_hydra PRIVATE
-    MaterialXCore
-    MaterialXFormat)
 
 add_dependencies(bf_render_hydra bf_rna)
