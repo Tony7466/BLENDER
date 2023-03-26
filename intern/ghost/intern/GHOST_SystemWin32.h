@@ -199,6 +199,8 @@ class GHOST_SystemWin32 : public GHOST_System {
    */
   GHOST_TSuccess getButtons(GHOST_Buttons &buttons) const;
 
+  GHOST_TCapabilityFlag capabilityFlag() const;
+
   /**
    * Returns unsigned char from CUT_BUFFER0
    * \param selection: Used by X11 only.
