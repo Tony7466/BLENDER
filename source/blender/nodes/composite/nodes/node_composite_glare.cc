@@ -773,14 +773,14 @@ class GlareOperation : public NodeOperation {
     for (const int i : downsample_passes_range) {
       /* For the first downsample pass, we use a special "Karis" downsample pass that applies a
        * form of local tone mapping to reduce the contributions of fireflies, see the shader for
-       * more information. Later passes use a simple box downsampling filter because fireflies
+       * more information. Later passes use a simple average downsampling filter because fireflies
        * doesn't service the first pass. */
       if (i == downsample_passes_range.first()) {
-        shader = shader_manager().get("compositor_glare_fog_glow_downsample_karis");
+        shader = shader_manager().get("compositor_glare_fog_glow_downsample_karis_average");
         GPU_shader_bind(shader);
       }
       else {
-        shader = shader_manager().get("compositor_glare_fog_glow_downsample_box");
+        shader = shader_manager().get("compositor_glare_fog_glow_downsample_simple_average");
         GPU_shader_bind(shader);
       }
 

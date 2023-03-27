@@ -115,13 +115,13 @@ GPU_SHADER_CREATE_INFO(compositor_glare_fog_glow_downsample_shared)
     .image(0, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D, "output_img")
     .compute_source("compositor_glare_fog_glow_downsample.glsl");
 
-GPU_SHADER_CREATE_INFO(compositor_glare_fog_glow_downsample_box)
-    .define("BOX_FILTER")
+GPU_SHADER_CREATE_INFO(compositor_glare_fog_glow_downsample_simple_average)
+    .define("SIMPLE_AVERAGE")
     .additional_info("compositor_glare_fog_glow_downsample_shared")
     .do_static_compilation(true);
 
-GPU_SHADER_CREATE_INFO(compositor_glare_fog_glow_downsample_karis)
-    .define("KARIS_FILTER")
+GPU_SHADER_CREATE_INFO(compositor_glare_fog_glow_downsample_karis_average)
+    .define("KARIS_AVERAGE")
     .additional_info("compositor_glare_fog_glow_downsample_shared")
     .do_static_compilation(true);
 
