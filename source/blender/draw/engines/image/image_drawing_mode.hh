@@ -83,10 +83,19 @@ template<size_t Divisions> class ScreenTileTextures {
     update_region_bounds_from_uv_bounds(region_uv_bounds, int2(region->winx, region->winy));
   }
 
-  void ensure_gpu_textures_allocation()
+  /**
+   * Get the texture size of a single texture for the current settings.
+   */
+  int2 gpu_texture_size() const
   {
     float2 viewport_size = DRW_viewport_size_get();
     int2 texture_size(ceil(viewport_size.x / Divisions), ceil(viewport_size.y / Divisions));
+    return texture_size;
+  }
+
+  void ensure_gpu_textures_allocation()
+  {
+    int2 texture_size = gpu_texture_size();
     for (TextureInfo &info : instance_data->texture_infos) {
       info.ensure_gpu_texture(texture_size);
     }
@@ -172,9 +181,10 @@ template<size_t Divisions> class ScreenTileTextures {
       }
     }
 
+    const int2 texture_size = gpu_texture_size();
     for (TextureInfo &info : instance_data->texture_infos) {
-      int2 bottom_left = tile_origin + region_size * info.tile_id;
-      int2 top_right = bottom_left + region_size;
+      int2 bottom_left = tile_origin + texture_size * info.tile_id;
+      int2 top_right = bottom_left + texture_size;
       BLI_rcti_init(&info.clipping_bounds, bottom_left.x, top_right.x, bottom_left.y, top_right.y);
     }
   }
