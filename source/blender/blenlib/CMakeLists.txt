@@ -13,11 +13,12 @@ set(INC
   ../../../intern/atomic
   ../../../intern/eigen
   ../../../intern/guardedalloc
-  ../../../extern/wcwidth
-  ../../../extern/json/include
 )
 
 set(INC_SYS
+  ../../../extern/wcwidth
+  ../../../extern/json/include
+
   ${EIGEN3_INCLUDE_DIRS}
   ${ZLIB_INCLUDE_DIRS}
   ${ZSTD_INCLUDE_DIRS}
@@ -130,6 +131,7 @@ set(SRC
   intern/scanfill_utils.c
   intern/serialize.cc
   intern/session_uuid.c
+  intern/smaa_textures.c
   intern/smallhash.c
   intern/sort.c
   intern/sort_utils.c
@@ -146,6 +148,7 @@ set(SRC
   intern/task_pool.cc
   intern/task_range.cc
   intern/task_scheduler.cc
+  intern/tempfile.c
   intern/threads.cc
   intern/time.c
   intern/timecode.c
@@ -328,6 +331,7 @@ set(SRC
   BLI_set_slots.hh
   BLI_shared_cache.hh
   BLI_simd.h
+  BLI_smaa_textures.h
   BLI_smallhash.h
   BLI_sort.h
   BLI_sort.hh
@@ -346,6 +350,7 @@ set(SRC
   BLI_system.h
   BLI_task.h
   BLI_task.hh
+  BLI_tempfile.h
   BLI_threads.h
   BLI_timecode.h
   BLI_timeit.hh
@@ -532,6 +537,7 @@ if(WITH_GTESTS)
     tests/BLI_string_utf8_test.cc
     tests/BLI_task_graph_test.cc
     tests/BLI_task_test.cc
+    tests/BLI_tempfile_test.cc
     tests/BLI_uuid_test.cc
     tests/BLI_vector_set_test.cc
     tests/BLI_vector_test.cc
