@@ -27,6 +27,7 @@ struct MeshRuntime;
 class AttributeAccessor;
 class MutableAttributeAccessor;
 struct LooseEdgeCache;
+struct LooseVertCache;
 }  // namespace bke
 }  // namespace blender
 using MeshRuntimeHandle = blender::bke::MeshRuntime;
@@ -285,7 +286,15 @@ typedef struct Mesh {
    * Cached information about loose edges, calculated lazily when necessary.
    */
   const blender::bke::LooseEdgeCache &loose_edges() const;
-  const blender::bke::LooseVertCache &loose_verts() const;
+  /**
+   * Cached information about vertices that aren't used by any edges.
+   */
+  const blender::bke::LooseVertCache &loose_verts_edge() const;
+  /**
+   * Cached information about vertices that aren't used by faces (but may be used by loose edges).
+   */
+  const blender::bke::LooseVertCache &loose_verts_face() const;
+
   /**
    * Explicitly set the cached number of loose edges to zero. This can improve performance
    * later on, because finding loose edges lazily can be skipped entirely.

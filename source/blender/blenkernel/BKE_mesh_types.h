@@ -82,8 +82,10 @@ struct LooseGeomCache {
   int count = -1;
 };
 
-using LooseEdgeCache = LooseGeomCache;
-using LooseVertCache = LooseGeomCache;
+struct LooseEdgeCache : public LooseGeomCache {
+};
+struct LooseVertCache : public LooseGeomCache {
+};
 
 struct MeshRuntime {
   /* Evaluated mesh for objects which do not have effective modifiers.
@@ -170,7 +172,8 @@ struct MeshRuntime {
    * unchanged topology. Accessed with #Mesh::loose_edges()/loose_verts().
    */
   SharedCache<LooseEdgeCache> loose_edges_cache;
-  SharedCache<LooseVertCache> loose_verts_cache;
+  SharedCache<LooseVertCache> loose_verts_edge_cache;
+  SharedCache<LooseVertCache> loose_verts_face_cache;
 
   /**
    * A bit vector the size of the number of vertices, set to true for the center vertices of

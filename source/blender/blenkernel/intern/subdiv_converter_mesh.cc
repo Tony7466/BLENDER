@@ -359,7 +359,7 @@ static void initialize_manifold_indices(ConverterStorage *storage)
   using namespace blender;
   const Mesh *mesh = storage->mesh;
   const blender::Span<MEdge> edges = storage->edges;
-  const bke::LooseVertCache &loose_verts = mesh->loose_verts();
+  const bke::LooseVertCache &loose_verts = mesh->loose_verts_face();
   const bke::LooseEdgeCache &loose_edges = mesh->loose_edges();
   initialize_manifold_index_array(loose_verts.is_loose_bits,
                                   mesh->totvert,
