@@ -22,8 +22,8 @@ void main()
    * input. */
   ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
 
-  /* Add 0.5 to evaluate the input sampler at the center of the output pixel and divide by the
-   * output image size to get the coordinates into the sampler's expected [0, 1] range. */
+  /* Add 0.5 to evaluate the sampler at the center of the pixel and divide by the image size to get
+   * the coordinates into the sampler's expected [0, 1] range. */
   vec2 coordinates = (vec2(texel) + vec2(0.5)) / vec2(imageSize(output_img));
 
   /* All the offsets in the following code section are in the normalized pixel space of the input

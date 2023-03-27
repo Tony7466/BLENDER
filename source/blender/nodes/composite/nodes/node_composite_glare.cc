@@ -690,9 +690,9 @@ class GlareOperation : public NodeOperation {
    * --------------- */
 
   /* Fog glow is computed by first progressively half-downsampling the highlights down to a certain
-   * size, performing a small blur in the process, then progressively double-upsampling the last
-   * downsampled result up to the original size of the highlights, adding the downsampled result of
-   * the same size in each upsampling step. This can be illustrated as follows:
+   * size, then progressively double-upsampling the last downsampled result up to the original size
+   * of the highlights, adding the downsampled result of the same size in each upsampling step.
+   * This can be illustrated as follows:
    *
    *              Highlights  ---+---> Fog Glare
    *                  |                   |
@@ -705,7 +705,7 @@ class GlareOperation : public NodeOperation {
    *                 ...                  |
    *              Downsampled ------------'
    *
-   * The blur-downsampling followed by smooth upsampling can be thought of as a cheap way to
+   * The smooth downsampling followed by smooth upsampling can be thought of as a cheap way to
    * approximate a large radius blur, and adding the corresponding downsampled result while
    * upsampling is done to counter the attenuation that happens during downsampling.
    *
