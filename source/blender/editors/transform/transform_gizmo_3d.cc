@@ -2709,6 +2709,7 @@ static wmGizmoGroup *gizmogroup_xform_find(TransInfo *t)
 {
   struct wmGizmoMap *gizmo_map = t->region->gizmo_map;
   if (gizmo_map == nullptr) {
+    BLI_assert_msg(false, "#T_NO_GIZMO should already be set to return early before.");
     return nullptr;
   }
 
