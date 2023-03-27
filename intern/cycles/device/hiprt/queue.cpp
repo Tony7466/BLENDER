@@ -30,13 +30,17 @@ bool HIPRTDeviceQueue::enqueue(DeviceKernel kernel,
 
   debug_enqueue_begin(kernel, work_size);
 
-  if (work_size > HIPRT_NUM_MAX_THREADS * HIPRT_GLOBAL_STACK_HEADROOM_FACTOR) {
-    VLOG_WARNING << "HIP RT global stack buffer is not large enough and could result in "
-                    "unexpected behaviour.";
-  }
-
   const HIPContextScope scope(hiprt_device_);
   const HIPDeviceKernel &hip_kernel = hiprt_device_->kernels.get(kernel);
+
+  if (!hiprt_device_->global_stack_buffer.device_pointer) {
+    int max_path = num_concurrent_states(0);
+    hiprt_device_->global_stack_buffer.alloc(max_path * HIPRT_SHARED_STACK_SIZE * sizeof(int));
+    hiprt_device_->global_stack_buffer.zero_to_device();
+  }
+
+  DeviceKernelArguments args_copy = args;
+  args_copy.add(&hiprt_device_->global_stack_buffer.device_pointer);
 
   /* Compute kernel launch parameters. */
   const int num_threads_per_block = HIPRT_THREAD_GROUP_SIZE;
@@ -52,7 +56,7 @@ bool HIPRTDeviceQueue::enqueue(DeviceKernel kernel,
                                        1,
                                        shared_mem_bytes,
                                        hip_stream_,
-                                       const_cast<void **>(args.values),
+                                       const_cast<void **>(args_copy.values),
                                        0),
                  "enqueue");
 

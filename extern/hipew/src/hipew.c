@@ -61,11 +61,7 @@ typedef void* DynamicLibrary;
         _LIBRARY_FIND_CHECKED(hip_lib, name)
 #define HIP_LIBRARY_FIND(name) _LIBRARY_FIND(hip_lib, name)
 
-#define HIPRTC_LIBRARY_FIND_CHECKED( name ) _LIBRARY_FIND_CHECKED( hiprtc_lib, name )
-#define HIPRTC_LIBRARY_FIND( name ) _LIBRARY_FIND( hiprtc_lib, name )
-
 static DynamicLibrary hip_lib;
-static DynamicLibrary hiprtc_lib;
 
 /* Function definitions. */
 thipGetErrorName *hipGetErrorName;
@@ -272,21 +268,11 @@ static int hipewHipInit(void) {
   /* Expected in C:/Windows/System32 or similar, no path needed. */
   const char* hip_paths[] = {"amdhip64.dll", NULL};
 
-  // hiprtc is only needed when runtime compiler is used.
-  // It exports all the function that start with hiprtc
-  // The numbers are associated with comgr/compiler version
-  // Currently, kernels are compiled through hipcc, but if runtime compiler is used
-  // the hiprtc version should match the comgr version
-  const char *hiprtc_paths[] = {"hiprtc0504.dll",
-                                "hiprtc0503.dll",
-                                NULL};
 #elif defined(__APPLE__)
   /* Default installation path. */
   const char *hip_paths[] = {"", NULL};
-  const char* hiprtc_paths[] = { NULL };
 #else
   const char *hip_paths[] = {"libamdhip64.so", "/opt/rocm/hip/lib/libamdhip64.so", NULL};
-  const char* hiprtc_paths[] = {"libhiprtc.so", " "/opt/rocm/hip/lib/libhiprtc.so", NULL };
 #endif
   static int initialized = 0;
   static int result = 0;
@@ -314,7 +300,6 @@ static int hipewHipInit(void) {
 
   /* Load library. */
   hip_lib = dynamic_library_open_find(hip_paths);
-  hiprtc_lib = dynamic_library_open_find(hiprtc_paths);
 
   if (hip_lib == NULL) {
     result = HIPEW_ERROR_OPEN_FAILED;
@@ -447,44 +432,6 @@ static int hipewHipInit(void) {
   HIP_LIBRARY_FIND_CHECKED(hipImportExternalMemory);
   HIP_LIBRARY_FIND_CHECKED(hipExternalMemoryGetMappedBuffer);
   HIP_LIBRARY_FIND_CHECKED(hipDestroyExternalMemory);
-  if(hiprtc_lib)
-  {
-      HIPRTC_LIBRARY_FIND_CHECKED(hiprtcGetErrorString);
-      HIPRTC_LIBRARY_FIND_CHECKED(hiprtcAddNameExpression);
-      HIPRTC_LIBRARY_FIND_CHECKED(hiprtcCompileProgram);
-      HIPRTC_LIBRARY_FIND_CHECKED(hiprtcCreateProgram);
-      HIPRTC_LIBRARY_FIND_CHECKED(hiprtcDestroyProgram);
-      HIPRTC_LIBRARY_FIND_CHECKED(hiprtcGetLoweredName);
-      HIPRTC_LIBRARY_FIND_CHECKED(hiprtcGetProgramLog);
-      HIPRTC_LIBRARY_FIND_CHECKED(hiprtcGetProgramLogSize);
-	  HIPRTC_LIBRARY_FIND_CHECKED(hiprtcGetCode);
-	  HIPRTC_LIBRARY_FIND_CHECKED(hiprtcGetBitcodeSize);
-      HIPRTC_LIBRARY_FIND_CHECKED(hiprtcGetBitcode);
-      HIPRTC_LIBRARY_FIND_CHECKED(hiprtcGetCodeSize);
-	  HIPRTC_LIBRARY_FIND_CHECKED(hiprtcLinkCreate);
-	  HIPRTC_LIBRARY_FIND_CHECKED(hiprtcLinkAddFile);
-	  HIPRTC_LIBRARY_FIND_CHECKED(hiprtcLinkAddData);
-	  HIPRTC_LIBRARY_FIND_CHECKED(hiprtcLinkComplete);
-	  HIPRTC_LIBRARY_FIND_CHECKED(hiprtcLinkDestroy);
-  }
-  else
-  {
-      HIP_LIBRARY_FIND_CHECKED(hiprtcGetErrorString);
-      HIP_LIBRARY_FIND_CHECKED(hiprtcAddNameExpression);
-      HIP_LIBRARY_FIND_CHECKED(hiprtcCompileProgram);
-      HIP_LIBRARY_FIND_CHECKED(hiprtcCreateProgram);
-      HIP_LIBRARY_FIND_CHECKED(hiprtcDestroyProgram);
-      HIP_LIBRARY_FIND_CHECKED(hiprtcGetLoweredName);
-      HIP_LIBRARY_FIND_CHECKED(hiprtcGetProgramLog);
-      HIP_LIBRARY_FIND_CHECKED(hiprtcGetProgramLogSize);
-      HIP_LIBRARY_FIND_CHECKED(hiprtcGetCode);
-      HIP_LIBRARY_FIND_CHECKED(hiprtcGetCodeSize);
-	  HIP_LIBRARY_FIND_CHECKED(hiprtcLinkCreate);
-	  HIP_LIBRARY_FIND_CHECKED(hiprtcLinkAddFile);
-	  HIP_LIBRARY_FIND_CHECKED(hiprtcLinkAddData);
-	  HIP_LIBRARY_FIND_CHECKED(hiprtcLinkComplete);
-	  HIP_LIBRARY_FIND_CHECKED(hiprtcLinkDestroy);
-  }
 
   result = HIPEW_SUCCESS;
   return result;

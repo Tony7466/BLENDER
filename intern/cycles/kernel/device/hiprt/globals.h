@@ -11,23 +11,9 @@
 
 #define HIPRT_SHARED_STACK
 
-// This is the size of the memory that serves as a fallback stack for traversal.
-// The total memory required for the global stack is a function of number threads in a kernel
-// execution and the size of stack per thread. The maximum number of threads is a function of
-// number of compute units and number of threads per unit. The stack size is empirical and is
-// defined in HIPRT_THREAD_STACK_SIZE Currently allocating this buffer dynamically causes
-// instability, so HIPRT_GLOBAL_STACK_SIZE and maximum number of threads is hard coded The total
-// size will be (max number of threads) x (thread stack size) x sizeof(int) x (headroom factor) A
-// headroom factor of 2 is empirical
 #define HIPRT_THREAD_STACK_SIZE \
-  64  // The size of global stack  availavle to eacj thread (memory reserved for each thread in
+  64  // The size of global stack  availavle to each thread (memory reserved for each thread in
       // global_stack_buffer)
-#define HIPRT_NUM_MAX_THREADS 1024 * 1024
-#define HIPRT_STACK_ELEMENT_BYTE 4
-#define HIPRT_GLOBAL_STACK_HEADROOM_FACTOR 2
-#define HIPRT_GLOBAL_STACK_SIZE \
-  HIPRT_THREAD_STACK_SIZE *HIPRT_NUM_MAX_THREADS *HIPRT_STACK_ELEMENT_BYTE \
-      *HIPRT_GLOBAL_STACK_HEADROOM_FACTOR
 #define HIPRT_SHARED_STACK_SIZE \
   24  // LDS (Local Data Storage) allocation for each thread, the number is obtained empirically
 // HIPRT_THREAD_GROUP_SIZE is the number of threads per work group for intersection kernels
@@ -41,25 +27,27 @@
 CCL_NAMESPACE_BEGIN
 
 struct KernelGlobalsGPU {
-
+  int *global_stack_buffer;
 #ifdef HIPRT_SHARED_STACK
   int *shared_stack;
-#else
-  int unused[1];
 #endif
 };
 typedef ccl_global KernelGlobalsGPU *ccl_restrict KernelGlobals;
 
 #if defined(HIPRT_SHARED_STACK)
+
 // this macro allocate shared memory and to pass the shared memory down to intersection functions
 // KernelGlobals is used
-#  define HIPRT_SET_SHARED_MEMORY() \
+#  define HIPRT_INIT_KERNEL_GLOBAL() \
     ccl_gpu_shared int shared_stack[HIPRT_SHARED_STACK_SIZE * HIPRT_THREAD_GROUP_SIZE]; \
     ccl_global KernelGlobalsGPU kg_gpu; \
     KernelGlobals kg = &kg_gpu; \
-    kg->shared_stack = &shared_stack[0];
+    kg->shared_stack = &shared_stack[0];\
+    kg->global_stack_buffer = stack_buffer;
 #else
-#  define HIPRT_SET_SHARED_MEMORY() KernelGlobals kg = NULL;
+#  define HIPRT_INIT_KERNEL_GLOBAL() \
+   KernelGlobals kg = NULL; \
+   kg->global_stack_buffer = stack_buffer;
 #endif
 
 struct KernelParamsHIPRT {
@@ -150,14 +138,6 @@ enum Filter_Function_Table_Index {
 
 #ifdef __KERNEL_GPU__
 __constant__ KernelParamsHIPRT kernel_params;
-
-// global_stack_buffer is defined in global memory and the size is hard coded otherwise it causes
-// instability the correct size of global_stack_buffer is (total number of threads) x STACK_SIZE it
-// is a fallback space for HIPRT traversal if the stack on the local memory overflows each thread
-// can store up to HIPRT_SHARED_STACK_SIZE elements in local memory and up to
-// HIPRT_THREAD_STACK_SIZE elements in global memory.
-
-__attribute__((device)) int global_stack_buffer[HIPRT_GLOBAL_STACK_SIZE];
 
 #  ifdef HIPRT_SHARED_STACK
 typedef hiprtGlobalStack Stack;

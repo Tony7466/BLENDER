@@ -42,7 +42,7 @@ struct LocalPayload {
 
 #  if defined(HIPRT_SHARED_STACK)
 #    define GET_TRAVERSAL_STACK() \
-      Stack stack(&global_stack_buffer[0], \
+      Stack stack(&kg->global_stack_buffer[0], \
                   HIPRT_THREAD_STACK_SIZE, \
                   kg->shared_stack, \
                   HIPRT_SHARED_STACK_SIZE);

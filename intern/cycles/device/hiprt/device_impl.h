@@ -53,6 +53,8 @@ class HIPRTDevice : public HIPDevice {
     return hiprt_context;
   }
 
+  device_vector<int> global_stack_buffer;
+
  protected:
   enum Filter_Function { Closest = 0, Shadows, Local, Volume, Max_Intersect_Filter_Function };
   enum Primitive_Type { Triangle = 0, Curve, Motion_Triangle, Point, Max_Primitive_Type };
@@ -114,16 +116,6 @@ class HIPRTDevice : public HIPDevice {
   // prim_time_offset returns the offset to add to primitive id to retrieve primitive time.
   device_vector<float2> prims_time;
   device_vector<int> prim_time_offset;
-
-  // global_stack_buffer is defined in global memory and the size is hard coded otherwise it causes
-  // instablity. The correct size of global_stack_buffer is (total number of threads) x
-  // HIPRT_THREAD_STACK_SIZE Global stack is a fallback space for HIP RT traversal if the stack on
-  // the local memory overflows. Each thread can store up to HIPRT_SHARED_STACK_SIZE elements in
-  // local memory and up to HIPRT_THREAD_STACK_SIZE elements in global memory. The code that
-  // allocates the buffer dynamically is commented out for the time being until the instability is
-  // root-caused. The size if calculated dynamically will br num_concurrent_states x
-  // HIPRT_THREAD_STACK_SIZE x sizeof(int)
-  // device_vector<int> global_stack_buffer;
 };
 CCL_NAMESPACE_END
 

@@ -70,7 +70,8 @@ HIPRTDevice::HIPRTDevice(const DeviceInfo &info, Stats &stats, Profiler &profile
       custom_prim_info(this, "custom_prim_info", MEM_GLOBAL),
       custom_prim_info_offset(this, "custom_prim_info_offset", MEM_GLOBAL),
       prims_time(this, "prims_time", MEM_GLOBAL),
-      prim_time_offset(this, "prim_time_offset", MEM_GLOBAL)
+      prim_time_offset(this, "prim_time_offset", MEM_GLOBAL),
+      global_stack_buffer(this, "global_stack_buffer", MEM_DEVICE_ONLY)
 {
   HIPContextScope scope(this);
   hiprtContextCreationInput hiprt_context_input = {0};
@@ -99,6 +100,7 @@ HIPRTDevice::~HIPRTDevice()
   custom_prim_info.free();
   prim_time_offset.free();
   prims_time.free();
+  global_stack_buffer.free();
   hiprtDestroyFuncTable(hiprt_context, functions_table);
   hiprtDestroyScene(hiprt_context, scene);
   hiprtDestroyContext(hiprt_context);
@@ -1070,12 +1072,6 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
     hip_assert(hipMemcpyHtoD(
         table_device_ptr + kernel_param_offset[index], &functions_table, sizeof(device_ptr)));
   }
-
-  // Allocating global stack buffer.
-  HIPRTDeviceQueue queue(this);
-  /*int max_path = queue.num_concurrent_states(0);
-  global_stack_buffer.alloc(max_path * HIPRT_SHARED_STACK_SIZE * sizeof(int));
-  global_stack_buffer.zero_to_device();*/
 
   return scene;
 }
