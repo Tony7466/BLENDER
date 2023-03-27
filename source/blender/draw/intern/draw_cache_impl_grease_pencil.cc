@@ -186,6 +186,29 @@ static int count_cyclic_curves(bke::CurvesGeometry &curves)
       [&](const int a, const int b) { return a + b; });
 }
 
+BLI_INLINE int32_t pack_rotation_aspect_hardness(float rot, float asp, float hard)
+{
+  int32_t packed = 0;
+  /* Aspect uses 9 bits */
+  float asp_normalized = (asp > 1.0f) ? (1.0f / asp) : asp;
+  packed |= int32_t(unit_float_to_uchar_clamp(asp_normalized));
+  /* Store if inversed in the 9th bit. */
+  if (asp > 1.0f) {
+    packed |= 1 << 8;
+  }
+  /* Rotation uses 9 bits */
+  /* Rotation are in [-90°..90°] range, so we can encode the sign of the angle + the cosine
+   * because the cosine will always be positive. */
+  packed |= int32_t(unit_float_to_uchar_clamp(cosf(rot))) << 9;
+  /* Store sine sign in 9th bit. */
+  if (rot < 0.0f) {
+    packed |= 1 << 17;
+  }
+  /* Hardness uses 8 bits */
+  packed |= int32_t(unit_float_to_uchar_clamp(hard)) << 18;
+  return packed;
+}
+
 static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
 {
   BLI_assert(grease_pencil.runtime != nullptr);
@@ -249,45 +272,43 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
         VArray<int> materials = attributes.lookup_or_default<int>(
             "material_index", ATTR_DOMAIN_CURVE, -1);
 
+        auto populate_point = [&](int curve_i, int point_i, int v_start, int v) {
+          copy_v3_v3(verts[v].pos, positions[point_i]);
+          verts[v].radius = radii[point_i];
+          verts[v].opacity = opacities[point_i];
+          verts[v].point_id = v;
+          verts[v].stroke_id = v_start;
+          verts[v].mat = materials[curve_i] % GPENCIL_MATERIAL_BUFFER_LEN;
+          verts[v].packed_asp_hard_rot = pack_rotation_aspect_hardness(0.0f, 1.0f, 1.0f);
+          verts[v].u_stroke = 0;
+          verts[v].uv_fill[0] = verts[v].uv_fill[1] = 0;
+
+          int v_mat = (v << GP_VERTEX_ID_SHIFT) | GP_IS_STROKE_VERTEX_BIT;
+          GPU_indexbuf_add_tri_verts(&ibo, v_mat + 0, v_mat + 1, v_mat + 2);
+          GPU_indexbuf_add_tri_verts(&ibo, v_mat + 2, v_mat + 1, v_mat + 3);
+        };
+
         for (const int curve_i : curves.curves_range()) {
           IndexRange points = points_by_curve[curve_i];
           const bool is_cyclic = cyclic[curve_i];
           const int v_start = v;
 
           /* First point is not drawn. */
+          verts[v].mat = -1;
           v++;
 
           for (const int point_i : points) {
-            copy_v3_v3(verts[v].pos, positions[point_i]);
-            verts[v].radius = radii[point_i];
-            verts[v].opacity = opacities[point_i];
-            verts[v].point_id = v;
-            verts[v].stroke_id = v_start;
-            verts[v].mat = materials[curve_i] % GPENCIL_MATERIAL_BUFFER_LEN;
-
-            int v_mat = (v << GP_VERTEX_ID_SHIFT) | GP_IS_STROKE_VERTEX_BIT;
-            GPU_indexbuf_add_tri_verts(&ibo, v_mat + 0, v_mat + 1, v_mat + 2);
-            GPU_indexbuf_add_tri_verts(&ibo, v_mat + 2, v_mat + 1, v_mat + 3);
-
+            populate_point(curve_i, point_i, v_start, v);
             v++;
           }
 
           if (is_cyclic) {
-            copy_v3_v3(verts[v].pos, positions[points.first()]);
-            verts[v].radius = radii[points.first()];
-            verts[v].opacity = opacities[points.first()];
-            verts[v].point_id = v;
-            verts[v].stroke_id = v_start;
-            verts[v].mat = materials[curve_i] % GPENCIL_MATERIAL_BUFFER_LEN;
-
-            int v_mat = (v << GP_VERTEX_ID_SHIFT) | GP_IS_STROKE_VERTEX_BIT;
-            GPU_indexbuf_add_tri_verts(&ibo, v_mat + 0, v_mat + 1, v_mat + 2);
-            GPU_indexbuf_add_tri_verts(&ibo, v_mat + 2, v_mat + 1, v_mat + 3);
-
+            populate_point(curve_i, points.first(), v_start, v);
             v++;
           }
 
           /* Last point is not drawn. */
+          verts[v].mat = -1;
           v++;
         }
       });
