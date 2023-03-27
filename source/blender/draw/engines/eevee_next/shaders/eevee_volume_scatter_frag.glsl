@@ -57,7 +57,7 @@ void main()
   vec3 curr_ndc = volume_to_ndc(vec3(gl_FragCoord.xy, float(volume_geom_iface.slice) + 0.5) *
                                 volumes_buf.inv_tex_size);
   vec3 wpos = get_world_space_from_depth(curr_ndc.xy, curr_ndc.z);
-  vec3 prev_ndc = project_point(prev_view_projection_matrix, wpos);
+  vec3 prev_ndc = project_point(volumes_buf.prev_view_projection_matrix, wpos);
   vec3 prev_volume = ndc_to_volume(prev_ndc * 0.5 + 0.5);
 
   if ((volumes_buf.history_alpha > 0.0) && all(greaterThan(prev_volume, vec3(0.0))) &&

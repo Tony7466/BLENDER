@@ -363,7 +363,6 @@ void Volumes::end_sync()
     scatter_ps_.bind_texture("shadowCubeTexture", &sldata->shadow_cube_pool);
     scatter_ps_.bind_texture("shadowCascadeTexture", &sldata->shadow_cascade_pool);
 #endif
-  scatter_ps_.push_constant("prev_view_projection_matrix", prev_view_projection_matrix);
   scatter_ps_.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z * 3);
 
   integration_ps_.init();
@@ -454,7 +453,7 @@ void Volumes::draw_resolve(View &view)
   inst_.manager->submit(resolve_ps_, view);
 
   /* TODO(Miguel Pozo): This should be stored per view. */
-  prev_view_projection_matrix = view.winmat() * view.viewmat();
+  data_.prev_view_projection_matrix = view.winmat() * view.viewmat();
 }
 
 /* -------------------------------------------------------------------- */

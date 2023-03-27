@@ -439,6 +439,7 @@ struct VolumesData {
   int use_soft_shadows;
   float2 coord_scale_a; /*TODO (Miguel Pozo): Rename. */
   float2 coord_scale_b;
+  float4x4 prev_view_projection_matrix;
 };
 BLI_STATIC_ASSERT_ALIGN(VolumesData, 16)
 
