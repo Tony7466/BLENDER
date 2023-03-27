@@ -1308,7 +1308,7 @@ macro(windows_install_shared_manifest)
   if(WITH_PYTHON_MODULE)
     install(FILES ${WINDOWS_INSTALL_FILES}
             CONFIGURATIONS ${WINDOWS_CONFIGURATIONS}
-            DESTINATION "."
+            DESTINATION "./bpy"
     )
   else()
     install(FILES ${WINDOWS_INSTALL_FILES}
