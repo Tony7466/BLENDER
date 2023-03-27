@@ -1299,21 +1299,27 @@ macro(windows_install_shared_manifest)
   endif()
   if(WINDOWS_INSTALL_DEBUG)
     set(WINDOWS_CONFIGURATIONS "${WINDOWS_CONFIGURATIONS};Debug")
-    list(APPEND WINDOWS_SHARED_MANIFEST_DEBUG ${WINDOWS_INSTALL_FILES})
   endif()
   if(WINDOWS_INSTALL_RELEASE)
-    list(APPEND WINDOWS_SHARED_MANIFEST_RELEASE ${WINDOWS_INSTALL_FILES})
     set(WINDOWS_CONFIGURATIONS "${WINDOWS_CONFIGURATIONS};Release;RelWithDebInfo;MinSizeRel")
   endif()
-  if(WITH_PYTHON_MODULE)
-    install(FILES ${WINDOWS_INSTALL_FILES}
-            CONFIGURATIONS ${WINDOWS_CONFIGURATIONS}
-            DESTINATION "./bpy"
-    )
-  else()
+  if(NOT WITH_PYTHON_MODULE)
+    # Blender executable with manifest.
+    if(WINDOWS_INSTALL_DEBUG)
+      list(APPEND WINDOWS_SHARED_MANIFEST_DEBUG ${WINDOWS_INSTALL_FILES})
+    endif()
+    if(WINDOWS_INSTALL_RELEASE)
+      list(APPEND WINDOWS_SHARED_MANIFEST_RELEASE ${WINDOWS_INSTALL_FILES})
+    endif()
     install(FILES ${WINDOWS_INSTALL_FILES}
             CONFIGURATIONS ${WINDOWS_CONFIGURATIONS}
             DESTINATION "./blender.shared"
+    )
+  else()
+    # Python module without manifest.
+    install(FILES ${WINDOWS_INSTALL_FILES}
+            CONFIGURATIONS ${WINDOWS_CONFIGURATIONS}
+            DESTINATION "./bpy"
     )
   endif()
 endmacro()
