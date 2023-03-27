@@ -414,35 +414,71 @@ void build_bvh(BVH *bvh, DeviceScene *dscene, Progress &progress, bool refit) ov
   void mem_free(device_memory &mem) override
   {
     device_ptr key = mem.device_pointer;
-    size_t existing_size = mem.device_size;
+    /* key is zero if the pointer is NULL */
+    if (key != 0) {
+      size_t existing_size = mem.device_size;
 
-    /* Free memory that was allocated for all devices (see above) on each device */
-    foreach (const vector<SubDevice *> &island, peer_islands) {
-      SubDevice *owner_sub = find_matching_mem_device(key, island.front());
-      mem.device = owner_sub->device;
-      mem.device_pointer = owner_sub->ptr_map[key];
-      mem.device_size = existing_size;
+      /* Free memory that was allocated for all devices (see above) on each device */
+      foreach (const vector<SubDevice *> &island, peer_islands) {
+        SubDevice *owner_sub = find_matching_mem_device(key, island.front());
+        mem.device = owner_sub->device;
+        mem.device_pointer = owner_sub->ptr_map[key];
+        mem.device_size = existing_size;
+        owner_sub->device->mem_free(mem);
+        owner_sub->ptr_map.erase(owner_sub->ptr_map.find(key));
 
-      owner_sub->device->mem_free(mem);
-      owner_sub->ptr_map.erase(owner_sub->ptr_map.find(key));
-
-      if (mem.type == MEM_TEXTURE) {
-        /* Free texture objects on all devices */
-        foreach (SubDevice *island_sub, island) {
-          if (island_sub != owner_sub) {
-            island_sub->device->mem_free(mem);
+        if (mem.type == MEM_TEXTURE) {
+          /* Free texture objects on all devices */
+          foreach (SubDevice *island_sub, island) {
+            if (island_sub != owner_sub) {
+              island_sub->device->mem_free(mem);
+            }
           }
         }
       }
-    }
 
-    if (mem.device_pointer) {
+      /* restore the device */
       mem.device = this;
+
+      /* NULL the pointer and size and update the memory tracking */
       mem.device_pointer = 0;
       mem.device_size = 0;
       stats.mem_free(existing_size);
     }
   }
+  
+  // void mem_free(device_memory &mem) override
+  // {
+  //   device_ptr key = mem.device_pointer;
+  //   size_t existing_size = mem.device_size;
+
+  //   /* Free memory that was allocated for all devices (see above) on each device */
+  //   foreach (const vector<SubDevice *> &island, peer_islands) {
+  //     SubDevice *owner_sub = find_matching_mem_device(key, island.front());
+  //     mem.device = owner_sub->device;
+  //     mem.device_pointer = owner_sub->ptr_map[key];
+  //     mem.device_size = existing_size;
+
+  //     owner_sub->device->mem_free(mem);
+  //     owner_sub->ptr_map.erase(owner_sub->ptr_map.find(key));
+
+  //     if (mem.type == MEM_TEXTURE) {
+  //       /* Free texture objects on all devices */
+  //       foreach (SubDevice *island_sub, island) {
+  //         if (island_sub != owner_sub) {
+  //           island_sub->device->mem_free(mem);
+  //         }
+  //       }
+  //     }
+  //   }
+
+  //   if (mem.device_pointer) {
+  //     mem.device = this;
+  //     mem.device_pointer = 0;
+  //     mem.device_size = 0;
+  //     stats.mem_free(existing_size);
+  //   }
+  // }
 
   void const_copy_to(const char *name, void *host, size_t size) override
   {
