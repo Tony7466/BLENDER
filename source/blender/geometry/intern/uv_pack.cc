@@ -552,6 +552,18 @@ static void pack_island_xatlas(const Span<UVAABBIsland *> island_indices,
   *r_max_v = max_v;
 }
 
+/**
+ * Helper function for #pack_islands_alpaca_rotate
+ *
+ * The "Hole" is an AABB region of the UV plane that is stored in an unusual way.
+ * `hole` is the xy position of lower left corner of the AABB.
+ * `hole_diagonal` is the extent of the AABB, possibly flipped.
+ * `hole_rotate` is a boolean value, tracking if `hole_diagonal` is flipped.
+ *
+ * Given an alternate AABB specified by `(u0, v0, u1, v1)`, the helper will
+ * update the Hole to the condidate location if it is larger.
+ */
+
 static void update_hole_rotate(float2 &hole,
                                float2 &hole_diagonal,
                                bool &hole_rotate,
@@ -560,10 +572,12 @@ static void update_hole_rotate(float2 &hole,
                                const float u1,
                                const float v1)
 {
-  const float p = hole_diagonal.x * hole_diagonal.y;
+  BLI_assert(hole_diagonal.x <= hole_diagonal.y); /* Confirm invariants. */
+
+  const float hole_area = hole_diagonal.x * hole_diagonal.y;
   const float quad_area = (u1 - u0) * (v1 - v0);
-  if (p >= quad_area) {
-    return;
+  if (quad_area <= hole_area) {
+    return; /* No update, existing hole is larger than candidate. */
   }
   hole.x = u0;
   hole.y = v0;
@@ -576,15 +590,21 @@ static void update_hole_rotate(float2 &hole,
   else {
     hole_rotate = false;
   }
-  const float q = hole_diagonal.x * hole_diagonal.y;
-  BLI_assert(q > p);
-  UNUSED_VARS(q);
+
+  const float updated_area = hole_diagonal.x * hole_diagonal.y;
+  BLI_assert(hole_area < updated_area); /* Confirm hole grew in size. */
+  UNUSED_VARS(updated_area);
+
+  BLI_assert(hole_diagonal.x <= hole_diagonal.y); /* Confirm invariants. */
 }
 
 /**
  * Pack AABB islands using the "Alpaca" strategy, with rotation.
  *
- * Same as #pack_islands_alpaca_turbo with support for rotation in 90 degree increments.
+ * Same as #pack_islands_alpaca_turbo, with support for rotation in 90 degree increments.
+ *
+ * Also adds the concept of a "Hole", which is unused space that can be filled.
+ * Tracking the "Hole" has a slight performance cost, while improving packing efficiency.
  */
 static void pack_islands_alpaca_rotate(const Span<UVAABBIsland *> islands,
                                        float *r_max_u,
@@ -631,7 +651,7 @@ static void pack_islands_alpaca_rotate(const Span<UVAABBIsland *> islands,
       update_hole_rotate(hole, hole_diagonal, hole_rotate, p[0], p[3], p[4], p[5]);
       update_hole_rotate(hole, hole_diagonal, hole_rotate, p[2], p[1], p[4], p[5]);
 
-      /* Island is placed, no need to check for restart. */
+      /* Island is placed in the hole, no need to check for restart, or process movement. */
       continue;
     }
 
@@ -659,6 +679,8 @@ static void pack_islands_alpaca_rotate(const Span<UVAABBIsland *> islands,
     }
     island->uv_placement.x = u0;
     island->uv_placement.y = v0;
+
+    /* Move according to the "Alpaca rules", with rotation. */
     if (zigzag) {
       /* Move upwards. */
       v0 += min_dsm;
@@ -700,6 +722,9 @@ static float pack_islands_scale_margin(const Span<PackIsland *> islands,
    * - Combine results.
    */
 
+  /* Workaround bug in #pack_islands_alpaca_rotate with non-square islands. */
+  bool contains_non_square_islands = false;
+
   /* First, copy information from our input into the AABB structure. */
   Array<UVAABBIsland *> aabbs(islands.size());
   for (const int64_t i : islands.index_range()) {
@@ -709,6 +734,9 @@ static float pack_islands_scale_margin(const Span<PackIsland *> islands,
     aabb->uv_diagonal.x = BLI_rctf_size_x(&pack_island->bounds_rect) * scale + 2 * margin;
     aabb->uv_diagonal.y = BLI_rctf_size_y(&pack_island->bounds_rect) * scale + 2 * margin;
     aabbs[i] = aabb;
+    if (pack_island->aspect_y != 1.0f) {
+      contains_non_square_islands = true;
+    }
   }
 
   /* Sort from "biggest" to "smallest". */
@@ -785,7 +813,7 @@ static float pack_islands_scale_margin(const Span<PackIsland *> islands,
   /* At this stage, `max_u` and `max_v` contain the box_pack UVs. */
 
   /* Call Alpaca. */
-  if (params.rotate) {
+  if (params.rotate && !contains_non_square_islands) {
     pack_islands_alpaca_rotate(aabbs.as_mutable_span().drop_front(max_box_pack), &max_u, &max_v);
   }
   else {
@@ -941,6 +969,10 @@ static float calc_margin_from_aabb_length_sum(const Span<PackIsland *> &island_v
   }
   return params.margin * aabb_length_sum * 0.1f;
 }
+
+/**
+ * Smooth differences between old API and new API by converting between storage representations.
+ */
 
 static BoxPack *pack_islands_box_array(const Span<PackIsland *> &islands,
                                        const UVPackIsland_Params &params,
