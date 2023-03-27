@@ -210,6 +210,8 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits /*planes*/,
                             int /*dst_offset_x*/,
                             int /*dst_offset_y*/)
 {
+  /* Framebuffer blitting is deprecated and not used anymore. */
+  BLI_assert_unreachable();
 }
 
 /** \} */
