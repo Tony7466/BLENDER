@@ -15,6 +15,8 @@
 #include "BKE_object.h"
 
 #include "BLI_math_vector_types.hh"
+#include "BLI_memarena.h"
+#include "BLI_polyfill_2d.h"
 #include "BLI_span.hh"
 #include "BLI_stack.hh"
 
@@ -76,6 +78,7 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
         dst_drawing->base.flag = src_drawing->base.flag;
 
         new (&dst_drawing->geometry) bke::CurvesGeometry(src_drawing->geometry.wrap());
+        dst_drawing->runtime = MEM_new<bke::GreasePencilDrawingRuntime>(__func__);
         break;
       }
       case GREASE_PENCIL_DRAWING_REFERENCE: {
@@ -298,6 +301,67 @@ BoundBox *BKE_grease_pencil_boundbox_get(Object *ob)
   return ob->runtime.bb;
 }
 
+static void grease_pencil_drawing_calculate_fill_triangles(GreasePencilDrawing &drawing)
+{
+  using namespace blender;
+  MemArena *pf_arena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __func__);
+
+  bke::CurvesGeometry &curves = drawing.geometry.wrap();
+  Span<float3> positions = curves.positions();
+  offset_indices::OffsetIndices<int> points_by_curve = curves.points_by_curve();
+
+  for (int curve_i : curves.curves_range()) {
+    IndexRange points = points_by_curve[curve_i];
+
+    int tot_verts = points.size();
+    int tot_tris = tot_verts - 2;
+
+    uint(*tris)[3] = static_cast<uint(*)[3]>(
+        BLI_memarena_alloc(pf_arena, sizeof(*tris) * size_t(tot_tris)));
+    float(*projverts)[2] = static_cast<float(*)[2]>(
+        BLI_memarena_alloc(pf_arena, sizeof(*projverts) * size_t(tot_verts)));
+
+    /* TODO: calculate axis_mat properly. */
+    float3x3 axis_mat;
+    axis_dominant_v3_to_m3(axis_mat.ptr(), float3(0.0f, -1.0f, 0.0f));
+
+    for (const int i : IndexRange(tot_verts)) {
+      mul_v2_m3v3(projverts[i], axis_mat.ptr(), positions[points[i]]);
+    }
+
+    BLI_polyfill_calc_arena(projverts, tot_verts, 1, tris, pf_arena);
+
+    for (const int i : IndexRange(tot_tris)) {
+      drawing.runtime->triangles_cache.append(uint3(tris[i]));
+    }
+
+    BLI_memarena_clear(pf_arena);
+  }
+
+  BLI_memarena_free(pf_arena);
+}
+
+void BKE_grease_pencil_eval_geometry(Depsgraph * /*depsgraph*/, GreasePencil &grease_pencil)
+{
+  printf("BKE_grease_pencil_eval_geometry\n");
+  for (int i = 0; i < grease_pencil.drawing_array_size; i++) {
+    GreasePencilDrawingOrReference *drawing_or_ref = grease_pencil.drawing_array[i];
+    switch (drawing_or_ref->type) {
+      case GREASE_PENCIL_DRAWING: {
+        GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_or_ref);
+        BLI_assert(drawing->runtime != nullptr);
+        drawing->runtime->triangles_cache.clear_and_shrink();
+        grease_pencil_drawing_calculate_fill_triangles(*drawing);
+        break;
+      }
+      case GREASE_PENCIL_DRAWING_REFERENCE: {
+        /* Pass. */
+        break;
+      }
+    }
+  }
+}
+
 /* Draw Cache */
 
 void (*BKE_grease_pencil_batch_cache_dirty_tag_cb)(GreasePencil *grease_pencil,
@@ -364,6 +428,7 @@ void GreasePencil::read_drawing_array(BlendDataReader *reader)
         /* Initialize runtime data. */
         drawing->geometry.runtime = MEM_new<blender::bke::CurvesGeometryRuntime>(__func__);
         drawing->geometry.wrap().update_curve_types();
+        drawing->runtime = MEM_new<blender::bke::GreasePencilDrawingRuntime>(__func__);
         break;
       }
       case GREASE_PENCIL_DRAWING_REFERENCE: {
@@ -406,6 +471,7 @@ void GreasePencil::free_drawing_array()
       case GREASE_PENCIL_DRAWING: {
         GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_or_ref);
         drawing->geometry.wrap().~CurvesGeometry();
+        MEM_delete(drawing->runtime);
         MEM_freeN(drawing);
         break;
       }

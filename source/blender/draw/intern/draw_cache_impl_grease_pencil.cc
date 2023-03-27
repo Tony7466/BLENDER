@@ -234,6 +234,7 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
          * vertex.*/
         total_points_num += curves.points_num() + num_cyclic + curves.curves_num() * 2;
         total_triangles_num += (curves.points_num() + num_cyclic) * 2;
+        total_triangles_num += drawing.runtime->triangles_cache.size();
       });
 
   GPUUsageType vbo_flag = GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY;
@@ -279,23 +280,44 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
           verts[v].point_id = v;
           verts[v].stroke_id = v_start;
           verts[v].mat = materials[curve_i] % GPENCIL_MATERIAL_BUFFER_LEN;
+
+          /* TODO */
           verts[v].packed_asp_hard_rot = pack_rotation_aspect_hardness(0.0f, 1.0f, 1.0f);
+          /* TODO */
           verts[v].u_stroke = 0;
+          /* TODO */
           verts[v].uv_fill[0] = verts[v].uv_fill[1] = 0;
+
+          /* TODO */
+          copy_v4_v4(cols[v].vcol, float4(0.0f, 0.0f, 0.0f, 0.0f));
+          copy_v4_v4(cols[v].fcol, float4(0.0f, 0.0f, 0.0f, 0.0f));
+
+          /* TODO */
+          cols[v].fcol[3] = (int(cols[v].fcol[3] * 10000.0f) * 10.0f) + 1.0f;
 
           int v_mat = (v << GP_VERTEX_ID_SHIFT) | GP_IS_STROKE_VERTEX_BIT;
           GPU_indexbuf_add_tri_verts(&ibo, v_mat + 0, v_mat + 1, v_mat + 2);
           GPU_indexbuf_add_tri_verts(&ibo, v_mat + 2, v_mat + 1, v_mat + 3);
         };
 
+        int t = 0;
         for (const int curve_i : curves.curves_range()) {
           IndexRange points = points_by_curve[curve_i];
           const bool is_cyclic = cyclic[curve_i];
           const int v_start = v;
+          const int num_triangles = points.size() - 2;
 
           /* First point is not drawn. */
           verts[v].mat = -1;
           v++;
+
+          for (const int tri_i : IndexRange(num_triangles)) {
+            uint3 tri = drawing.runtime->triangles_cache[t + tri_i];
+            GPU_indexbuf_add_tri_verts(&ibo,
+                                       (v + tri.x) << GP_VERTEX_ID_SHIFT,
+                                       (v + tri.y) << GP_VERTEX_ID_SHIFT,
+                                       (v + tri.z) << GP_VERTEX_ID_SHIFT);
+          }
 
           for (const int point_i : points) {
             populate_point(curve_i, point_i, v_start, v);
@@ -310,6 +332,8 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
           /* Last point is not drawn. */
           verts[v].mat = -1;
           v++;
+
+          t += num_triangles;
         }
       });
 

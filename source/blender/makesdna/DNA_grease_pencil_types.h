@@ -15,14 +15,16 @@
 #  include "BLI_span.hh"
 namespace blender::bke {
 class GreasePencilRuntime;
+class GreasePencilDrawingRuntime;
 namespace gpencil {
 class Layer;
 }
 }  // namespace blender::bke
 using GreasePencilRuntimeHandle = blender::bke::GreasePencilRuntime;
+using GreasePencilDrawingRuntimeHandle = blender::bke::GreasePencilDrawingRuntime;
 #else
-typedef struct GreasePencilLayerRuntimeHandle GreasePencilLayerRuntimeHandle;
 typedef struct GreasePencilRuntimeHandle GreasePencilRuntimeHandle;
+typedef struct GreasePencilDrawingRuntimeHandle GreasePencilDrawingRuntimeHandle;
 #endif
 
 #ifdef __cplusplus
@@ -61,6 +63,10 @@ typedef struct GreasePencilDrawing {
    * The stroke data for this drawing.
    */
   CurvesGeometry geometry;
+  /**
+   * Runtime data on the drawing.
+   */
+  GreasePencilDrawingRuntimeHandle *runtime;
 } GreasePencilDrawing;
 
 typedef struct GreasePencilDrawingReference {

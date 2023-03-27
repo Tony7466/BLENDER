@@ -443,6 +443,12 @@ void legacy_gpencil_to_grease_pencil(GreasePencil &grease_pencil, bGPdata &gpd);
 }  // namespace gpencil
 
 using namespace blender::bke::gpencil;
+
+class GreasePencilDrawingRuntime {
+ public:
+  Vector<uint3> triangles_cache;
+};
+
 class GreasePencilRuntime {
  private:
   LayerGroup root_group_;
@@ -467,7 +473,9 @@ class GreasePencilRuntime {
 }  // namespace blender::bke
 
 struct Main;
+struct Depsgraph;
 struct BoundBox;
 
 void *BKE_grease_pencil_add(Main *bmain, const char *name);
 BoundBox *BKE_grease_pencil_boundbox_get(Object *ob);
+void BKE_grease_pencil_eval_geometry(Depsgraph *depsgraph, GreasePencil &grease_pencil);
