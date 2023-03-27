@@ -181,17 +181,16 @@ static void nlastrip_overlap_reorder(TransDataNla *tdn, NlaStrip *strip)
  * strips for overlap instead of all of them. */
 static void nlastrip_flag_overlaps(NlaStrip *strip)
 {
-  {
-    NlaStrip *adj_strip = strip->prev;
-    if (adj_strip != NULL && !(adj_strip->flag & NLASTRIP_FLAG_SELECT) &&
-        nlastrip_is_overlap(strip, 0, adj_strip, 0)) {
-      strip->flag |= NLASTRIP_FLAG_INVALID_LOCATION;
-    }
-    adj_strip = strip->next;
-    if (adj_strip != NULL && !(adj_strip->flag & NLASTRIP_FLAG_SELECT) &&
-        nlastrip_is_overlap(strip, 0, adj_strip, 0)) {
-      strip->flag |= NLASTRIP_FLAG_INVALID_LOCATION;
-    }
+
+  NlaStrip *adj_strip = strip->prev;
+  if (adj_strip != NULL && !(adj_strip->flag & NLASTRIP_FLAG_SELECT) &&
+      nlastrip_is_overlap(strip, 0, adj_strip, 0)) {
+    strip->flag |= NLASTRIP_FLAG_INVALID_LOCATION;
+  }
+  adj_strip = strip->next;
+  if (adj_strip != NULL && !(adj_strip->flag & NLASTRIP_FLAG_SELECT) &&
+      nlastrip_is_overlap(strip, 0, adj_strip, 0)) {
+    strip->flag |= NLASTRIP_FLAG_INVALID_LOCATION;
   }
 }
 
@@ -749,13 +748,12 @@ static void special_aftertrans_update__nla(bContext *C, TransInfo *t)
   }
 
   ListBase anim_data = {NULL, NULL};
-  bAnimListElem *ale;
   short filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_FOREDIT | ANIMFILTER_FCURVESONLY);
 
   /* get channels to work on */
   ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
 
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     NlaTrack *nlt = (NlaTrack *)ale->data;
 
     /* make sure strips are in order again */

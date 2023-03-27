@@ -1974,7 +1974,6 @@ static void nlastrip_validate_transition_start_end(NlaStrip *strip)
 
 void BKE_nla_validate_state(AnimData *adt)
 {
-  NlaStrip *strip = NULL;
   NlaTrack *nlt;
 
   /* sanity checks */
@@ -1985,9 +1984,16 @@ void BKE_nla_validate_state(AnimData *adt)
   /* Adjust blending values for auto-blending,
    * and also do an initial pass to find the earliest strip. */
   for (nlt = adt->nla_tracks.first; nlt; nlt = nlt->next) {
-    for (strip = nlt->strips.first; strip; strip = strip->next) {
+    LISTBASE_FOREACH_MUTABLE (ListBase *, strip, &nlt->strips) {
 
       nlastrip_validate_transition_start_end(strip);
+
+      if (strip == NULL) {
+        printf(
+            "NLA strip was in an invalid location and was removed by "
+            "nlastrip_validate_transition_start_end \n");
+        return;
+      }
 
       /* auto-blending first */
       BKE_nlastrip_validate_autoblends(nlt, strip);
