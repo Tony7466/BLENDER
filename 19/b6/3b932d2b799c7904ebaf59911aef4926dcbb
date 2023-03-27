@@ -4,3 +4,4 @@ Referenced by issue #104396, Regression: Crash when moving Keyframes in Graph Ed
 Referenced by issue #104353, Regression: Crash on opening sculpting template
 Referenced by issue #106141, Regression: Node duplication via menu results in a crash
 Referenced by pull request #106174, Fix #106141: crash when duplicating a node
+Referenced by commit 1bd4a3c9f3519e0ce3527647e5b6bf4282e37f15, Fix #106141: crash when duplicating a node
