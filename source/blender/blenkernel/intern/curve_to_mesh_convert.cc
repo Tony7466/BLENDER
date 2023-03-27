@@ -773,6 +773,7 @@ Mesh *curve_to_mesh_sweep(const CurvesGeometry &main,
 
   if (!offsets.any_single_point_curve) {
     /* If there are no single point curves, every curve combination will always have faces. */
+    mesh->loose_verts_tag_none();
     mesh->loose_edges_tag_none();
   }
 

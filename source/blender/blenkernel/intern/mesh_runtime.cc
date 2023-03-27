@@ -187,17 +187,26 @@ const blender::bke::LooseEdgeCache &Mesh::loose_edges() const
   return this->runtime->loose_edges_cache.data();
 }
 
-void Mesh::loose_verts_tag_none() const
+void Mesh::loose_verts_edge_tag_none() const
 {
   using namespace blender::bke;
   this->runtime->loose_verts_edge_cache.ensure([&](LooseVertCache &r_data) {
     r_data.is_loose_bits.clear_and_shrink();
     r_data.count = 0;
   });
+}
+void Mesh::loose_verts_face_tag_none() const
+{
+  using namespace blender::bke;
   this->runtime->loose_verts_face_cache.ensure([&](LooseVertCache &r_data) {
     r_data.is_loose_bits.clear_and_shrink();
     r_data.count = 0;
   });
+}
+void Mesh::loose_verts_tag_none() const
+{
+  this->loose_verts_edge_tag_none();
+  this->loose_verts_face_tag_none();
 }
 
 void Mesh::loose_edges_tag_none() const

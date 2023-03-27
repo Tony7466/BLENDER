@@ -303,6 +303,8 @@ typedef struct Mesh {
    * cache dirty. If the mesh was changed first, the relevant dirty tags should be called first.
    */
   void loose_edges_tag_none() const;
+  void loose_verts_edge_tag_none() const;
+  void loose_verts_face_tag_none() const;
   void loose_verts_tag_none() const;
 
   /**
