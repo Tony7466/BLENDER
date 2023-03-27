@@ -1815,6 +1815,8 @@ void ED_update_for_newframe(Main *bmain, Depsgraph *depsgraph)
       BKE_screen_view3d_scene_sync(screen, scene);
     }
     DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&scene->camera->id, ID_RECALC_TRANSFORM);
+    DEG_relations_tag_update(bmain);
   }
 #endif
 

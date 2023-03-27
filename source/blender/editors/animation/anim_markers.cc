@@ -1873,6 +1873,7 @@ static int ed_marker_camera_bind_exec(bContext *C, wmOperator *op)
   BKE_scene_camera_switch_update(scene);
   BKE_screen_view3d_scene_sync(screen, scene);
   DEG_relations_tag_update(CTX_data_main(C));
+  DEG_id_tag_update(&scene->camera->id, ID_RECALC_TRANSFORM);
 
   WM_event_add_notifier(C, NC_SCENE | ND_MARKERS, nullptr);
   WM_event_add_notifier(C, NC_ANIMATION | ND_MARKERS, nullptr);
