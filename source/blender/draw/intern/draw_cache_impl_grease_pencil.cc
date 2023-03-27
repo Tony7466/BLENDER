@@ -22,6 +22,7 @@
 #include "draw_cache_impl.h"
 
 #include "../engines/gpencil/gpencil_defines.h"
+#include "../engines/gpencil/gpencil_shader_shared.h"
 
 namespace blender::draw {
 
@@ -201,7 +202,7 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
 
   /* First count how many vertices and triangles are needed for the whole object. */
   int total_points_num = 0;
-  int total_triangles_num = 0;  // TODO
+  int total_triangles_num = 0;
   grease_pencil.foreach_visible_drawing(
       cfra, [&](GreasePencilDrawing &drawing, blender::bke::gpencil::Layer &layer) {
         bke::CurvesGeometry &curves = drawing.geometry.wrap();
@@ -209,6 +210,7 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
         /* One vertex is stored before and after as padding. Cyclic strokes have one extra
          * vertex.*/
         total_points_num += curves.points_num() + num_cyclic + curves.curves_num() * 2;
+        total_triangles_num += (curves.points_num() + num_cyclic) * 2;
       });
 
   GPUUsageType vbo_flag = GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY;
@@ -262,6 +264,11 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
             verts[v].point_id = v;
             verts[v].stroke_id = v_start;
             verts[v].mat = materials[curve_i] % GPENCIL_MATERIAL_BUFFER_LEN;
+
+            int v_mat = (v << GP_VERTEX_ID_SHIFT) | GP_IS_STROKE_VERTEX_BIT;
+            GPU_indexbuf_add_tri_verts(&ibo, v_mat + 0, v_mat + 1, v_mat + 2);
+            GPU_indexbuf_add_tri_verts(&ibo, v_mat + 2, v_mat + 1, v_mat + 3);
+
             v++;
           }
 
@@ -272,6 +279,11 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
             verts[v].point_id = v;
             verts[v].stroke_id = v_start;
             verts[v].mat = materials[curve_i] % GPENCIL_MATERIAL_BUFFER_LEN;
+
+            int v_mat = (v << GP_VERTEX_ID_SHIFT) | GP_IS_STROKE_VERTEX_BIT;
+            GPU_indexbuf_add_tri_verts(&ibo, v_mat + 0, v_mat + 1, v_mat + 2);
+            GPU_indexbuf_add_tri_verts(&ibo, v_mat + 2, v_mat + 1, v_mat + 3);
+
             v++;
           }
 

@@ -160,6 +160,10 @@ class ObjectModule {
     object_subpass.state_set(state);
     object_subpass.shader_set(shaders_.static_shader_get(GREASE_PENCIL));
 
+    GPUVertBuf *position_tx = DRW_cache_grease_pencil_position_buffer_get(object, current_frame_);
+    GPUVertBuf *color_tx = DRW_cache_grease_pencil_color_buffer_get(object, current_frame_);
+    GPUBatch *geom = DRW_cache_grease_pencil_get(object, current_frame_);
+
     grease_pencil.foreach_visible_drawing(
         current_frame_, [&](GreasePencilDrawing &drawing, bke::gpencil::Layer &layer) {
           /* TODO(fclem): Pass per frame object matrix here. */
@@ -170,11 +174,6 @@ class ObjectModule {
           ob.tint = float4(1.0);  // frame_tint_get(gpd, frame.gpf, current_frame_);
           ob.layer_offset = layer_offset;
           ob.material_offset = material_offset;
-
-          GPUVertBuf *position_tx = DRW_cache_grease_pencil_position_buffer_get(object,
-                                                                                current_frame_);
-          GPUVertBuf *color_tx = DRW_cache_grease_pencil_color_buffer_get(object, current_frame_);
-          GPUBatch *geom = DRW_cache_grease_pencil_get(object, current_frame_);
 
           if (do_layer_blending) {
             // for (const LayerData &layer : frame.layers) {
