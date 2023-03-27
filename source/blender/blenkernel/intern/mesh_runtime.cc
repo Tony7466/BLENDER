@@ -112,7 +112,6 @@ const blender::bke::LooseVertCache &Mesh::loose_verts_edge() const
 {
   using namespace blender::bke;
   this->runtime->loose_verts_edge_cache.ensure([&](LooseVertCache &r_data) {
-    // SCOPED_TIMER_AVERAGED("loose_verts_edge");
     blender::BitVector<> &loose_verts = r_data.is_loose_bits;
     loose_verts.resize(0);
     loose_verts.resize(this->totvert, true);
@@ -141,7 +140,6 @@ const blender::bke::LooseVertCache &Mesh::loose_verts_face() const
 {
   using namespace blender::bke;
   this->runtime->loose_verts_face_cache.ensure([&](LooseVertCache &r_data) {
-    // SCOPED_TIMER_AVERAGED("loose_verts_face");
     blender::BitVector<> &loose_verts = r_data.is_loose_bits;
     loose_verts.resize(0);
     loose_verts.resize(this->totvert, true);
@@ -166,7 +164,6 @@ const blender::bke::LooseEdgeCache &Mesh::loose_edges() const
 {
   using namespace blender::bke;
   this->runtime->loose_edges_cache.ensure([&](LooseEdgeCache &r_data) {
-    // SCOPED_TIMER_AVERAGED("loose_edges");
     blender::BitVector<> &loose_edges = r_data.is_loose_bits;
     loose_edges.resize(0);
     loose_edges.resize(this->totedge, true);
@@ -315,6 +312,8 @@ void BKE_mesh_tag_edges_split(struct Mesh *mesh)
   reset_normals(*mesh->runtime);
   free_subdiv_ccg(*mesh->runtime);
   mesh->runtime->loose_edges_cache.tag_dirty();
+  mesh->runtime->loose_verts_edge_cache.tag_dirty();
+  mesh->runtime->loose_verts_face_cache.tag_dirty();
   mesh->runtime->subsurf_face_dot_tags.clear_and_shrink();
   mesh->runtime->subsurf_optimal_display_edges.clear_and_shrink();
   if (mesh->runtime->shrinkwrap_data) {

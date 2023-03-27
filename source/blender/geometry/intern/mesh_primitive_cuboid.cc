@@ -416,7 +416,6 @@ Mesh *create_cuboid_mesh(const float3 &size,
 
   const float3 bounds = size * 0.5f;
   mesh->bounds_set_eager({-bounds, bounds});
-
   mesh->loose_verts_tag_none();
 
   return mesh;

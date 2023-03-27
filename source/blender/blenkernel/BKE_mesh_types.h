@@ -168,7 +168,7 @@ struct MeshRuntime {
   mutable Vector<float3> poly_normals;
 
   /**
-   * A cache of data about the loose edges/verts. Can be shared with other data-blocks with
+   * Caches of data about the loose edges/verts. Can be shared with other data-blocks with
    * unchanged topology. Accessed with #Mesh::loose_edges()/loose_verts().
    */
   SharedCache<LooseEdgeCache> loose_edges_cache;
