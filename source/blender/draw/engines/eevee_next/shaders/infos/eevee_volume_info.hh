@@ -37,8 +37,7 @@ GPU_SHADER_CREATE_INFO(eevee_volume_common)
 GPU_SHADER_CREATE_INFO(eevee_volume_clear)
     .additional_info("eevee_volume_common")
     .fragment_source("eevee_volume_clear_frag.glsl")
-    .do_static_compilation(true)
-    .auto_resource_location(true);
+    .do_static_compilation(true);
 
 /* TODO (Miguel Pozo) */
 #ifdef WITH_METAL_BACKEND
@@ -92,8 +91,7 @@ GPU_SHADER_CREATE_INFO(eevee_volume_scatter)
     .geometry_source("eevee_volume_geom.glsl")
     .geometry_out(eevee_volume_geom_frag_iface)
     .geometry_layout(PrimitiveIn::TRIANGLES, PrimitiveOut::TRIANGLE_STRIP, 3)
-    .do_static_compilation(true)
-    .auto_resource_location(true);
+    .do_static_compilation(true);
 
 #ifdef WITH_METAL_BACKEND
 GPU_SHADER_CREATE_INFO(eevee_volume_scatter_no_geom)
@@ -109,8 +107,7 @@ GPU_SHADER_CREATE_INFO(eevee_volume_scatter_with_lights_common).define("VOLUME_L
 GPU_SHADER_CREATE_INFO(eevee_volume_scatter_with_lights)
     .additional_info("eevee_volume_scatter_with_lights_common")
     .additional_info("eevee_volume_scatter")
-    .do_static_compilation(true)
-    .auto_resource_location(true);
+    .do_static_compilation(true);
 
 #ifdef WITH_METAL_BACKEND
 GPU_SHADER_CREATE_INFO(eevee_volume_scatter_with_lights_no_geom)
@@ -145,8 +142,7 @@ GPU_SHADER_CREATE_INFO(eevee_volume_integration)
     .geometry_source("eevee_volume_geom.glsl")
     .geometry_out(eevee_volume_geom_frag_iface)
     .geometry_layout(PrimitiveIn::TRIANGLES, PrimitiveOut::TRIANGLE_STRIP, 3)
-    .do_static_compilation(true)
-    .auto_resource_location(true);
+    .do_static_compilation(true);
 
 #ifdef WITH_METAL_BACKEND
 GPU_SHADER_CREATE_INFO(eevee_volume_integration_no_geom)
@@ -162,14 +158,12 @@ GPU_SHADER_CREATE_INFO(eevee_volume_resolve_common)
     .additional_info("draw_fullscreen")
     .additional_info("eevee_volume_lib")
     .sampler(0, ImageType::DEPTH_2D, "inSceneDepth")
-    .fragment_source("eevee_volume_resolve_frag.glsl")
-    .auto_resource_location(true);
+    .fragment_source("eevee_volume_resolve_frag.glsl");
 
 GPU_SHADER_CREATE_INFO(eevee_volume_resolve)
     .additional_info("eevee_volume_resolve_common")
     .fragment_out(0, Type::VEC4, "FragColor0", DualBlend::SRC_0)
     .fragment_out(0, Type::VEC4, "FragColor1", DualBlend::SRC_1)
-    .auto_resource_location(true)
     .do_static_compilation(true);
 
 GPU_SHADER_CREATE_INFO(eevee_volume_resolve_accum)
@@ -177,7 +171,6 @@ GPU_SHADER_CREATE_INFO(eevee_volume_resolve_accum)
     .additional_info("eevee_volume_resolve_common")
     .fragment_out(0, Type::VEC4, "FragColor0")
     .fragment_out(1, Type::VEC4, "FragColor1")
-    .auto_resource_location(true)
     .do_static_compilation(true);
 
 /* EEVEE_shaders_volumes_accum_sh_get */
@@ -187,5 +180,4 @@ GPU_SHADER_CREATE_INFO(eevee_volume_accum)
     .fragment_out(0, Type::VEC4, "FragColor0")
     .fragment_out(1, Type::VEC4, "FragColor1")
     .fragment_source("eevee_volume_accum_frag.glsl")
-    .auto_resource_location(true)
     .do_static_compilation(true);

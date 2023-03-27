@@ -383,10 +383,10 @@ void Volumes::end_sync()
   resolve_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
   resolve_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_RESOLVE));
   bind_common_resources(resolve_ps_);
-  resolve_ps_.bind_texture("inScattering", &scatter_tx_.current());
-  resolve_ps_.bind_texture("inTransmittance", &transmit_tx_.current());
+  resolve_ps_.bind_texture("inScattering", &scatter_tx_.next());
+  resolve_ps_.bind_texture("inTransmittance", &transmit_tx_.next());
   resolve_ps_.bind_texture("inSceneDepth", &inst_.render_buffers.depth_tx);
-  resolve_ps_.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z * 3);
+  resolve_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
 }
 
 void Volumes::draw_compute(View &view)
@@ -423,8 +423,8 @@ void Volumes::draw_compute(View &view)
   inst_.manager->submit(scatter_ps_, view);
 
   integration_fb_.ensure(GPU_ATTACHMENT_NONE,
-                         GPU_ATTACHMENT_TEXTURE(scatter_tx_.previous()),
-                         GPU_ATTACHMENT_TEXTURE(transmit_tx_.previous()));
+                         GPU_ATTACHMENT_TEXTURE(scatter_tx_.next()),
+                         GPU_ATTACHMENT_TEXTURE(transmit_tx_.next()));
 
   integration_fb_.bind();
   inst_.manager->submit(integration_ps_, view);
