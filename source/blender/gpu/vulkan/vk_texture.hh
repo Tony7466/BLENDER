@@ -82,7 +82,7 @@ class VKTexture : public Texture {
    * \{ */
  public:
   /**
-   * Change the current layout setting, without actually changing the layout.
+   * Update the current layout attribute, without actually changing the layout.
    *
    * Vulkan can change the layout of an image, when a command is being executed.
    * The start of a render pass or the end of a render pass can also alter the
@@ -100,7 +100,7 @@ class VKTexture : public Texture {
   /**
    * Ensure the layout of the texture. This also performs the conversion by adding a memory
    * barrier to the active command buffer to perform the conversion.
-   * 
+   *
    * When texture is already in the requested layout, nothing will be done.
    */
   void layout_ensure(VKContext &context, VkImageLayout requested_layout);
