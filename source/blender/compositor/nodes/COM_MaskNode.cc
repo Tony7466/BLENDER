@@ -54,11 +54,10 @@ void MaskNode::convert_to_operations(NodeConverter &converter,
 
   ScaleFixedSizeOperation *scale_operation = new ScaleFixedSizeOperation();
   scale_operation->set_variable_size(true);
-  /* Aspect ratio is defined as X/Y so compensation in mask must be Y/X */
-  const int new_width = rd->yasp * operation->get_mask_width();
-  const int new_height = rd->xasp * operation->get_mask_height();
-  scale_operation->set_new_width(new_width);
+  /* Consider aspect ratio from scene. */
+  const int new_height = rd->xasp / rd->yasp * operation->get_mask_height();
   scale_operation->set_new_height(new_height);
+  scale_operation->set_new_width(operation->get_mask_width());
   scale_operation->set_is_aspect(false);
   scale_operation->set_is_crop(false);
   scale_operation->set_scale_canvas_max_size({float(data->size_x), float(data->size_y)});
