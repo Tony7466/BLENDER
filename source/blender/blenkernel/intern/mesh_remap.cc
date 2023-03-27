@@ -2123,7 +2123,7 @@ void BKE_mesh_remap_calc_polys_from_mesh(const int mode,
                                          const int numverts_dst,
                                          const int *corner_verts_dst,
                                          const blender::OffsetIndices<int> polys_dst,
-                                         Mesh *me_src,
+                                         const Mesh *me_src,
                                          MeshPairRemap *r_map)
 {
   const float full_weight = 1.0f;
