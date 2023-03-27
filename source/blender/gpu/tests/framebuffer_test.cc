@@ -43,7 +43,7 @@ static void test_framebuffer_clear_color_multiple_attachments()
   GPUTexture *texture1 = GPU_texture_create_2d(
       __func__, UNPACK2(size), 1, GPU_RGBA32F, usage, nullptr);
   GPUTexture *texture2 = GPU_texture_create_2d(
-      __func__, UNPACK2(size), 1, GPU_RGBA32F, usage, nullptr);
+      __func__, UNPACK2(size), 1, GPU_RGBA32UI, usage, nullptr);
 
   GPUFrameBuffer *framebuffer = GPU_framebuffer_create(__func__);
   GPU_framebuffer_ensure_config(
@@ -61,9 +61,10 @@ static void test_framebuffer_clear_color_multiple_attachments()
   }
   MEM_freeN(read_data1);
 
-  float4 *read_data2 = static_cast<float4 *>(GPU_texture_read(texture2, GPU_DATA_FLOAT, 0));
-  for (float4 pixel_color : Span<float4>(read_data1, size.x * size.y)) {
-    EXPECT_EQ(pixel_color, clear_color);
+  uint4 *read_data2 = static_cast<uint4 *>(GPU_texture_read(texture2, GPU_DATA_UINT, 0));
+  uint4 clear_color_uint(1036831949, 1045220557, 1056964608, 1065353216);
+  for (uint4 pixel_color : Span<uint4>(read_data2, size.x * size.y)) {
+    EXPECT_EQ(pixel_color, clear_color_uint);
   }
   MEM_freeN(read_data2);
 

@@ -75,7 +75,7 @@ VkRect2D VKFrameBuffer::vk_render_area_get() const
     render_area.extent.width = width_;
     render_area.extent.height = height_;
   }
-  
+
   return render_area;
 }
 
@@ -111,7 +111,9 @@ void VKFrameBuffer::build_clear_attachments_color(const float (*clear_colors)[4]
     VkClearAttachment clear_attachment = {};
     clear_attachment.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     clear_attachment.colorAttachment = color_slot;
-    copy_v4_v4(clear_attachment.clearValue.color.float32, clear_colors[color_index]);
+    eGPUDataFormat data_format = to_data_format(GPU_texture_format(attachment.tex));
+    clear_attachment.clearValue.color = to_vk_clear_color_value(data_format,
+                                                                &clear_colors[color_index]);
     r_attachments.append(clear_attachment);
 
     color_index += multi_clear_colors ? 1 : 0;
