@@ -176,7 +176,7 @@ namespace blender::draw {
 static void accumululate_material_counts_bm(
     const BMesh &bm, threading::EnumerableThreadSpecific<Array<int>> &all_tri_counts)
 {
-  threading::parallel_for(IndexRange(bm.totface), 4096, [&](const IndexRange range) {
+  threading::parallel_for(IndexRange(bm.totface), 1024, [&](const IndexRange range) {
     Array<int> &tri_counts = all_tri_counts.local();
     const short last_index = tri_counts.size() - 1;
     for (const int i : range) {
@@ -199,7 +199,7 @@ static void accumululate_material_counts_mesh(
 
   const Span<MPoly> polys = mr.polys;
   const Span material_indices(mr.material_indices, mr.poly_len);
-  threading::parallel_for(material_indices.index_range(), 4096, [&](const IndexRange range) {
+  threading::parallel_for(material_indices.index_range(), 1024, [&](const IndexRange range) {
     Array<int> &tri_counts = all_tri_counts.local();
     const int last_index = tri_counts.size() - 1;
     if (mr.use_hide && mr.hide_poly) {
