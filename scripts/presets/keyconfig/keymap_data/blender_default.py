@@ -5611,6 +5611,8 @@ def km_font(params):
         ("font.text_insert", {"type": 'TEXTINPUT', "value": 'ANY', "any": True, "repeat": True}, None),
         ("font.text_insert", {"type": 'BACK_SPACE', "value": 'PRESS', "alt": True, "repeat": True},
          {"properties": [("accent", True)]}),
+
+        op_menu("VIEW3D_MT_edit_font_chars", {"type": 'A', "value": 'PRESS', "shift": True, "ctrl": True}),
         *_template_items_context_menu("VIEW3D_MT_edit_font_context_menu", params.context_menu_event),
     ])
 
