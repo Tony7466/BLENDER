@@ -4810,44 +4810,192 @@ class VIEW3D_MT_edit_surface(Menu):
     draw = draw_curve
 
 
+class VIEW3D_MT_edit_font_chars_math(Menu):
+    bl_label = "Math"
+    bl_translation_context = i18n_contexts.id_text
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("font.text_insert", text="Multiplication Sign \u00D7",
+                        text_ctxt=i18n_contexts.id_text).text = "\u00D7"
+        layout.operator("font.text_insert", text="Division Sign \u00F7",
+                        text_ctxt=i18n_contexts.id_text).text = "\u00F7"
+        layout.operator("font.text_insert", text="Degree Sign \u00B0", text_ctxt=i18n_contexts.id_text).text = "\u00B0"
+        layout.operator("font.text_insert", text="Per Mille \u2030", text_ctxt=i18n_contexts.id_text).text = "\u2030"
+        layout.operator("font.text_insert", text="Not Sign \u00AC", text_ctxt=i18n_contexts.id_text).text = "\u00AC"
+        layout.operator("font.text_insert", text="Prime \u2032", text_ctxt=i18n_contexts.id_text).text = "\u2032"
+        layout.operator("font.text_insert", text="Double Prime \u2033", text_ctxt=i18n_contexts.id_text).text = "\u2033"
+        layout.operator("font.text_insert", text="Triple Prime \u2034", text_ctxt=i18n_contexts.id_text).text = "\u2034"
+
+
+class VIEW3D_MT_edit_font_chars_fraction(Menu):
+    bl_label = "Fraction"
+    bl_translation_context = i18n_contexts.id_text
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("font.text_insert", text="One Half \u00BD", text_ctxt=i18n_contexts.id_text).text = "\u00BD"
+        layout.operator("font.text_insert", text="One Third \u2153", text_ctxt=i18n_contexts.id_text).text = "\u2153"
+        layout.operator("font.text_insert", text="Two Thirds \u2154", text_ctxt=i18n_contexts.id_text).text = "\u2154"
+        layout.operator("font.text_insert", text="One Quarter \u00BC", text_ctxt=i18n_contexts.id_text).text = "\u00BC"
+        layout.operator("font.text_insert", text="Three Quarters \u00BE",
+                        text_ctxt=i18n_contexts.id_text).text = "\u00BE"
+        layout.operator("font.text_insert", text="One Tenth \u2152", text_ctxt=i18n_contexts.id_text).text = "\u2152"
+
+
+class VIEW3D_MT_edit_font_chars_superscript(Menu):
+    bl_label = "Superscript"
+    bl_translation_context = i18n_contexts.id_text
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("font.text_insert", text="Superscript \u00b9", text_ctxt=i18n_contexts.id_text).text = "\u00b9"
+        layout.operator("font.text_insert", text="Superscript \u00b2", text_ctxt=i18n_contexts.id_text).text = "\u00b2"
+        layout.operator("font.text_insert", text="Superscript \u00b3", text_ctxt=i18n_contexts.id_text).text = "\u00b3"
+        layout.operator("font.text_insert", text="Superscript \u2074", text_ctxt=i18n_contexts.id_text).text = "\u2074"
+        layout.operator("font.text_insert", text="Superscript \u2075", text_ctxt=i18n_contexts.id_text).text = "\u2075"
+        layout.operator("font.text_insert", text="Superscript \u2076", text_ctxt=i18n_contexts.id_text).text = "\u2076"
+        layout.operator("font.text_insert", text="Superscript \u2077", text_ctxt=i18n_contexts.id_text).text = "\u2077"
+        layout.operator("font.text_insert", text="Superscript \u2078", text_ctxt=i18n_contexts.id_text).text = "\u2078"
+        layout.operator("font.text_insert", text="Superscript \u2079", text_ctxt=i18n_contexts.id_text).text = "\u2079"
+        layout.operator("font.text_insert", text="Superscript \u2070", text_ctxt=i18n_contexts.id_text).text = "\u2070"
+
+
+class VIEW3D_MT_edit_font_chars_subscript(Menu):
+    bl_label = "Subscript"
+    bl_translation_context = i18n_contexts.id_text
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("font.text_insert", text="Subscript \u2081", text_ctxt=i18n_contexts.id_text).text = "\u2081"
+        layout.operator("font.text_insert", text="Subscript \u2082", text_ctxt=i18n_contexts.id_text).text = "\u2082"
+        layout.operator("font.text_insert", text="Subscript \u2083", text_ctxt=i18n_contexts.id_text).text = "\u2083"
+        layout.operator("font.text_insert", text="Subscript \u2084", text_ctxt=i18n_contexts.id_text).text = "\u2084"
+        layout.operator("font.text_insert", text="Subscript \u2085", text_ctxt=i18n_contexts.id_text).text = "\u2085"
+        layout.operator("font.text_insert", text="Subscript \u2086", text_ctxt=i18n_contexts.id_text).text = "\u2086"
+        layout.operator("font.text_insert", text="Subscript \u2087", text_ctxt=i18n_contexts.id_text).text = "\u2087"
+        layout.operator("font.text_insert", text="Subscript \u2088", text_ctxt=i18n_contexts.id_text).text = "\u2088"
+        layout.operator("font.text_insert", text="Subscript \u2089", text_ctxt=i18n_contexts.id_text).text = "\u2089"
+        layout.operator("font.text_insert", text="Subscript \u2080", text_ctxt=i18n_contexts.id_text).text = "\u2080"
+
+
+class VIEW3D_MT_edit_font_chars_quotation(Menu):
+    bl_label = "Quotation mark"
+    bl_translation_context = i18n_contexts.id_text
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("font.text_insert", text="Left Quote \u201C", text_ctxt=i18n_contexts.id_text).text = "\u201C"
+        layout.operator("font.text_insert", text="Right Quote \u201D", text_ctxt=i18n_contexts.id_text).text = "\u201D"
+        layout.operator("font.text_insert", text="Low Quote \u201E", text_ctxt=i18n_contexts.id_text).text = "\u201E"
+        layout.operator("font.text_insert", text="Left Guillemet \u00AB",
+                        text_ctxt=i18n_contexts.id_text).text = "\u00AB"
+        layout.operator("font.text_insert", text="Right Guillemet \u00BB",
+                        text_ctxt=i18n_contexts.id_text).text = "\u00BB"
+        layout.operator(
+            "font.text_insert",
+            text="Single Left Guillemet \u2039",
+            text_ctxt=i18n_contexts.id_text).text = "\u2039"
+        layout.operator(
+            "font.text_insert",
+            text="Single Right Guillemet \u203A",
+            text_ctxt=i18n_contexts.id_text).text = "\u203A"
+
+
+class VIEW3D_MT_edit_font_chars_punctuation(Menu):
+    bl_label = "Punctuation"
+    bl_translation_context = i18n_contexts.id_text
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator(
+            "font.text_insert",
+            text="Inverted Question Mark \u00BF",
+            text_ctxt=i18n_contexts.id_text).text = "\u00BF"
+        layout.operator(
+            "font.text_insert",
+            text="Inverted Exclamation Mark \u00A1",
+            text_ctxt=i18n_contexts.id_text).text = "\u00A1"
+        layout.operator("font.text_insert", text="Interrobang \u203D", text_ctxt=i18n_contexts.id_text).text = "\u203D"
+        layout.operator("font.text_insert", text="Ellipsis \u2026", text_ctxt=i18n_contexts.id_text).text = "\u2026"
+        layout.operator("font.text_insert", text="Bullet \u2022", text_ctxt=i18n_contexts.id_text).text = "\u2022"
+        layout.operator("font.text_insert", text="Section Sign \u00A7", text_ctxt=i18n_contexts.id_text).text = "\u00A7"
+        layout.operator("font.text_insert", text="Paragraph Sign \u00B6",
+                        text_ctxt=i18n_contexts.id_text).text = "\u00B6"
+        layout.operator("font.text_insert", text="Asterism \u2042", text_ctxt=i18n_contexts.id_text).text = "\u2042"
+        layout.operator("font.text_insert", text="Dagger \u2020", text_ctxt=i18n_contexts.id_text).text = "\u2020"
+        layout.operator("font.text_insert", text="Double Dagger \u2021",
+                        text_ctxt=i18n_contexts.id_text).text = "\u2021"
+        layout.operator("font.text_insert", text="Interpunct \u00B7", text_ctxt=i18n_contexts.id_text).text = "\u00B7"
+
+
+class VIEW3D_MT_edit_font_chars_dash(Menu):
+    bl_label = "Dash"
+    bl_translation_context = i18n_contexts.id_text
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("font.text_insert", text="M Dash \u2014", text_ctxt=i18n_contexts.id_text).text = "\u2014"
+        layout.operator("font.text_insert", text="N Dash \u2013", text_ctxt=i18n_contexts.id_text).text = "\u2013"
+
+
+class VIEW3D_MT_edit_font_chars_currency(Menu):
+    bl_label = "Currency"
+    bl_translation_context = i18n_contexts.id_text
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("font.text_insert", text="Currency Sign \u00A4",
+                        text_ctxt=i18n_contexts.id_text).text = "\u00A4"
+        layout.operator("font.text_insert", text="Cent \u00A2", text_ctxt=i18n_contexts.id_text).text = "\u00A2"
+        layout.operator("font.text_insert", text="Dollar $", text_ctxt=i18n_contexts.id_text).text = "$"
+        layout.operator("font.text_insert", text="Euro \u20AC", text_ctxt=i18n_contexts.id_text).text = "\u20AC"
+        layout.operator("font.text_insert", text="Pound \u00A3", text_ctxt=i18n_contexts.id_text).text = "\u00A3"
+        layout.operator("font.text_insert", text="Yen \u00A5", text_ctxt=i18n_contexts.id_text).text = "\u00A5"
+
+
+class VIEW3D_MT_edit_font_chars_intellectual_property(Menu):
+    bl_label = "Intellectual Property"
+    bl_translation_context = i18n_contexts.id_text
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("font.text_insert", text="Copyright \u00A9", text_ctxt=i18n_contexts.id_text).text = "\u00A9"
+        layout.operator(
+            "font.text_insert",
+            text="Registered Trademark \u00AE",
+            text_ctxt=i18n_contexts.id_text).text = "\u00AE"
+        layout.operator("font.text_insert", text="Trademark \u2122", text_ctxt=i18n_contexts.id_text).text = "\u2122"
+        layout.operator(
+            "font.text_insert",
+            text="Sound Recording Copyright \u2117",
+            text_ctxt=i18n_contexts.id_text).text = "\u2117"
+
+
 class VIEW3D_MT_edit_font_chars(Menu):
     bl_label = "Special Characters"
 
     def draw(self, _context):
         layout = self.layout
 
-        layout.operator("font.text_insert", text="Copyright").text = "\u00A9"
-        layout.operator("font.text_insert", text="Registered Trademark").text = "\u00AE"
-
-        layout.separator()
-
-        layout.operator("font.text_insert", text="Degree Sign").text = "\u00B0"
-        layout.operator("font.text_insert", text="Multiplication Sign").text = "\u00D7"
-        layout.operator("font.text_insert", text="Circle").text = "\u008A"
-
-        layout.separator()
-
-        layout.operator("font.text_insert", text="Superscript 1").text = "\u00B9"
-        layout.operator("font.text_insert", text="Superscript 2").text = "\u00B2"
-        layout.operator("font.text_insert", text="Superscript 3").text = "\u00B3"
-
-        layout.separator()
-
-        layout.operator("font.text_insert", text="Double >>").text = "\u00BB"
-        layout.operator("font.text_insert", text="Double <<").text = "\u00AB"
-        layout.operator("font.text_insert", text="Promillage").text = "\u2030"
-
-        layout.separator()
-
-        layout.operator("font.text_insert", text="Dutch Florin").text = "\u00A4"
-        layout.operator("font.text_insert", text="British Pound").text = "\u00A3"
-        layout.operator("font.text_insert", text="Japanese Yen").text = "\u00A5"
-
-        layout.separator()
-
-        layout.operator("font.text_insert", text="German S").text = "\u00DF"
-        layout.operator("font.text_insert", text="Spanish Question Mark").text = "\u00BF"
-        layout.operator("font.text_insert", text="Spanish Exclamation Mark").text = "\u00A1"
+        layout.menu("VIEW3D_MT_edit_font_chars_math")
+        layout.menu("VIEW3D_MT_edit_font_chars_fraction")
+        layout.menu("VIEW3D_MT_edit_font_chars_subscript")
+        layout.menu("VIEW3D_MT_edit_font_chars_superscript")
+        layout.menu("VIEW3D_MT_edit_font_chars_quotation")
+        layout.menu("VIEW3D_MT_edit_font_chars_punctuation")
+        layout.menu("VIEW3D_MT_edit_font_chars_dash")
+        layout.menu("VIEW3D_MT_edit_font_chars_currency")
+        layout.menu("VIEW3D_MT_edit_font_chars_intellectual_property")
 
 
 class VIEW3D_MT_edit_font_kerning(Menu):
@@ -8246,6 +8394,15 @@ classes = (
     VIEW3D_MT_edit_surface,
     VIEW3D_MT_edit_font,
     VIEW3D_MT_edit_font_chars,
+    VIEW3D_MT_edit_font_chars_dash,
+    VIEW3D_MT_edit_font_chars_intellectual_property,
+    VIEW3D_MT_edit_font_chars_math,
+    VIEW3D_MT_edit_font_chars_fraction,
+    VIEW3D_MT_edit_font_chars_subscript,
+    VIEW3D_MT_edit_font_chars_superscript,
+    VIEW3D_MT_edit_font_chars_quotation,
+    VIEW3D_MT_edit_font_chars_currency,
+    VIEW3D_MT_edit_font_chars_punctuation,
     VIEW3D_MT_edit_font_kerning,
     VIEW3D_MT_edit_font_delete,
     VIEW3D_MT_edit_font_context_menu,
