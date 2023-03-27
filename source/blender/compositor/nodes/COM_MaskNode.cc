@@ -52,7 +52,6 @@ void MaskNode::convert_to_operations(NodeConverter &converter,
 
   converter.add_operation(operation);
 
-
   ScaleFixedSizeOperation *scale_operation = new ScaleFixedSizeOperation();
   scale_operation->set_variable_size(true);
   /* Aspect ratio is defined as X/Y so compensation in mask must be Y/X */
