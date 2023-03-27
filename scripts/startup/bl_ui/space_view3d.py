@@ -8097,6 +8097,31 @@ class VIEW3D_PT_viewport_debug(Panel):
         layout.prop(overlay, "use_debug_freeze_view_culling")
 
 
+class VIEW3D_PT_realtime_clock(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "Realtime"
+    bl_label = "Realtime Clock"
+
+    def draw(self, context):
+        layout = self.layout
+        screen = context.screen
+
+        row = layout.row(align=True)
+        row.scale_x = 2
+        if not screen.is_realtime_clock_running:
+            row.operator("screen.realtime_clock_start", text="", icon='PLAY')
+        else:
+            row.operator("screen.realtime_clock_stop", text="", icon='PAUSE')
+        row.scale_x = 1
+
+        layout.separator_spacer()
+
+        layout.prop(screen, "realtime_clock_elapsed_real_time", text="Elapsed Real Time")
+        layout.prop(screen, "realtime_clock_elapsed_scene_time", text="Elapsed Scene Time")
+        layout.prop(screen, "realtime_clock_elapsed_frames", text="Elapsed Frames")
+
+
 classes = (
     VIEW3D_HT_header,
     VIEW3D_HT_tool_header,
@@ -8339,6 +8364,7 @@ classes = (
     VIEW3D_PT_curves_sculpt_parameter_falloff,
     VIEW3D_PT_curves_sculpt_grow_shrink_scaling,
     VIEW3D_PT_viewport_debug,
+    VIEW3D_PT_realtime_clock,
 )
 
 

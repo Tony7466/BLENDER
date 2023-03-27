@@ -16,6 +16,7 @@
 
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -52,7 +53,8 @@ void DEG_evaluate_on_refresh(Depsgraph *graph)
   const float ctime = BKE_scene_ctime_get(scene);
 
   if (deg_graph->frame != frame || ctime != deg_graph->ctime) {
-    deg_graph->tag_time_source();
+    /* Scene frame changed. */
+    deg_graph->tag_time_source(eTimeSourceType::DEG_TIME_SOURCE_SCENE);
     deg_graph->frame = frame;
     deg_graph->ctime = ctime;
   }
@@ -62,7 +64,7 @@ void DEG_evaluate_on_refresh(Depsgraph *graph)
      * In this case reading back the undo state will behave as if no updates on frame change
      * is needed as the #Depsgraph.ctime & frame will match the values in the input scene.
      * Use #ID_RECALC_FRAME_CHANGE to detect that recalculation is necessary. see: #66913. */
-    deg_graph->tag_time_source();
+    deg_graph->tag_time_source(eTimeSourceType::DEG_TIME_SOURCE_SCENE);
   }
 
   deg_flush_updates_and_refresh(deg_graph);
@@ -73,8 +75,30 @@ void DEG_evaluate_on_framechange(Depsgraph *graph, float frame)
   deg::Depsgraph *deg_graph = reinterpret_cast<deg::Depsgraph *>(graph);
   const Scene *scene = DEG_get_input_scene(graph);
 
-  deg_graph->tag_time_source();
+  deg_graph->tag_time_source(eTimeSourceType::DEG_TIME_SOURCE_SCENE);
   deg_graph->frame = frame;
   deg_graph->ctime = BKE_scene_frame_to_ctime(scene, frame);
+  deg_flush_updates_and_refresh(deg_graph);
+}
+
+void DEG_evaluate_on_timestep(Depsgraph *graph, int active_clock)
+{
+  deg::Depsgraph *deg_graph = reinterpret_cast<deg::Depsgraph *>(graph);
+
+  switch (active_clock) {
+    case ANIMTIMER_ANIMATION: {
+      const Scene *scene = DEG_get_input_scene(graph);
+      const float frame = BKE_scene_frame_get(scene);
+      const float ctime = BKE_scene_ctime_get(scene);
+      deg_graph->tag_time_source(eTimeSourceType::DEG_TIME_SOURCE_SCENE);
+      deg_graph->frame = frame;
+      deg_graph->ctime = ctime;
+      break;
+    }
+    case ANIMTIMER_REALTIME:
+      deg_graph->tag_time_source(eTimeSourceType::DEG_TIME_SOURCE_REALTIME);
+      break;
+  }
+
   deg_flush_updates_and_refresh(deg_graph);
 }

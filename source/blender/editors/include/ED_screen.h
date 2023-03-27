@@ -320,7 +320,9 @@ void ED_screen_exit(struct bContext *C, struct wmWindow *window, struct bScreen 
  * \param enable: 1 - forward on, -1 - backwards on, 0 - off.
  */
 void ED_screen_animation_timer(struct bContext *C, int redraws, int sync, int enable);
+void ED_screen_realtime_timer(struct bContext *C, int redraws, bool enable);
 void ED_screen_animation_timer_update(struct bScreen *screen, int redraws);
+void ED_screen_realtime_timer_update(struct bScreen *screen, int redraws);
 void ED_screen_restore_temp_type(struct bContext *C, ScrArea *area);
 ScrArea *ED_screen_full_newspace(struct bContext *C, ScrArea *area, int type);
 /**
@@ -474,6 +476,14 @@ void ED_workspace_do_listen(struct bContext *C, const struct wmNotifier *note);
 
 /* anim */
 /**
+ * Tag for depsgraph update after frame changes.
+ */
+void ED_tag_for_newframe(struct Main *bmain, struct Scene *scene);
+/**
+ * Tag for depsgraph update after realtime clock step.
+ */
+void ED_tag_for_realtime_clock(struct Main *bmain, struct Scene *scene);
+/**
  * Results in fully updated anim system.
  */
 void ED_update_for_newframe(struct Main *bmain, struct Depsgraph *depsgraph);
@@ -487,10 +497,30 @@ void ED_refresh_viewport_fps(struct bContext *C);
  */
 int ED_screen_animation_play(struct bContext *C, int sync, int mode);
 /**
+ * Start realtime clock.
+ */
+int ED_screen_realtime_clock_start(struct bContext *C);
+/**
+ * Stop realtime clock.
+ */
+int ED_screen_realtime_clock_stop(struct bContext *C);
+/**
+ * Animation is playing.
+ */
+bool ED_screen_animation_is_playing(struct bScreen *screen);
+/**
+ * Realtime clock is running.
+ */
+bool ED_screen_realtime_clock_is_running(struct bScreen *screen);
+/**
  * Find window that owns the animation timer.
  */
 bScreen *ED_screen_animation_playing(const struct wmWindowManager *wm);
 bScreen *ED_screen_animation_no_scrub(const struct wmWindowManager *wm);
+/**
+ * Find screen that owns the realtime clock timer.
+ */
+bScreen *ED_screen_realtime_clock_running(const struct wmWindowManager *wm);
 
 /* screen keymaps */
 /* called in spacetypes.c */

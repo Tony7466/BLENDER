@@ -57,6 +57,14 @@ enum {
   DAG_EVAL_NEED_SHRINKWRAP_BOUNDARY = (1 << 1),
 };
 
+/* Types of time sources. */
+typedef enum eTimeSourceType {
+  /* Changes of the current scene frame. */
+  DEG_TIME_SOURCE_SCENE,
+  /* Ticks of the realtime clock. */
+  DEG_TIME_SOURCE_REALTIME,
+} eTimeSourceType;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -134,10 +142,10 @@ void DEG_graph_id_tag_update(struct Main *bmain,
                              unsigned int flags);
 
 /** Tag all dependency graphs when time has changed. */
-void DEG_time_tag_update(struct Main *bmain);
+void DEG_time_tag_update(struct Main *bmain, eTimeSourceType time_source_type);
 
 /** Tag a dependency graph when time has changed. */
-void DEG_graph_time_tag_update(struct Depsgraph *depsgraph);
+void DEG_graph_time_tag_update(struct Depsgraph *depsgraph, eTimeSourceType time_source_type);
 
 /**
  * Mark a particular data-block type as having changing.
@@ -186,6 +194,11 @@ void DEG_evaluate_on_framechange(Depsgraph *graph, float frame);
  * Evaluate all nodes tagged for updating.
  */
 void DEG_evaluate_on_refresh(Depsgraph *graph);
+
+/**
+ * Generic time step update from frame change or realtime node.
+ */
+void DEG_evaluate_on_timestep(Depsgraph *graph, int active_clock);
 
 /** \} */
 

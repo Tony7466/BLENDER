@@ -2995,14 +2995,14 @@ static void SCREEN_OT_frame_offset(wmOperatorType *ot)
 static int frame_jump_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
-  wmTimer *animtimer = CTX_wm_screen(C)->animtimer;
+  bScreen *screen = CTX_wm_screen(C);
 
   /* Don't change scene->r.cfra directly if animtimer is running as this can cause
    * first/last frame not to be actually shown (bad since for example physics
    * simulations aren't reset properly).
    */
-  if (animtimer) {
-    ScreenAnimData *sad = animtimer->customdata;
+  if (ED_screen_animation_is_playing(screen)) {
+    ScreenAnimData *sad = &((ScreenTimerData *)screen->animtimer->customdata)->animation;
 
     sad->flag |= ANIMPLAY_FLAG_USE_NEXT_FRAME;
 
@@ -4342,6 +4342,7 @@ static void ed_screens_statusbar_menu_create(uiLayout *layout, void *UNUSED(arg)
 
   RNA_pointer_create(NULL, &RNA_PreferencesView, &U, &ptr);
   uiItemR(layout, &ptr, "show_statusbar_stats", 0, IFACE_("Scene Statistics"), ICON_NONE);
+  uiItemR(layout, &ptr, "show_statusbar_scene_duration", 0, IFACE_("Scene Duration"), ICON_NONE);
   uiItemR(layout, &ptr, "show_statusbar_memory", 0, IFACE_("System Memory"), ICON_NONE);
   if (GPU_mem_stats_supported()) {
     uiItemR(layout, &ptr, "show_statusbar_vram", 0, IFACE_("Video Memory"), ICON_NONE);
@@ -4414,7 +4415,8 @@ static bool screen_animation_region_supports_time_follow(eSpace_Type spacetype,
 static bool match_region_with_redraws(const ScrArea *area,
                                       eRegion_Type regiontype,
                                       eScreen_Redraws_Flag redraws,
-                                      bool from_anim_edit)
+                                      bool from_anim_edit,
+                                      bool from_realtime_clock)
 {
   const eSpace_Type spacetype = area->spacetype;
   if (regiontype == RGN_TYPE_WINDOW) {
@@ -4468,13 +4470,21 @@ static bool match_region_with_redraws(const ScrArea *area,
     }
   }
   else if (regiontype == RGN_TYPE_UI) {
-    if (spacetype == SPACE_CLIP) {
-      /* Track Preview button is on Properties Editor in SpaceClip,
-       * and it's very common case when users want it be refreshing
-       * during playback, so asking people to enable special option
-       * for this is a bit tricky, so add exception here for refreshing
-       * Properties Editor for SpaceClip always */
-      return true;
+    switch (spacetype) {
+      case SPACE_CLIP:
+        /* Track Preview button is on Properties Editor in SpaceClip,
+         * and it's very common case when users want it be refreshing
+         * during playback, so asking people to enable special option
+         * for this is a bit tricky, so add exception here for refreshing
+         * Properties Editor for SpaceClip always */
+        return true;
+      case SPACE_VIEW3D:
+        /* Realtime clock is displayed in View3D buttons */
+        if (from_realtime_clock) {
+          return true;
+        }
+      default:
+        break;
     }
 
     if (redraws & TIME_ALL_BUTS_WIN) {
@@ -4565,15 +4575,10 @@ static void screen_animation_region_tag_redraw(
 
 //#define PROFILE_AUDIO_SYNCH
 
-static int screen_animation_step_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *event)
+static void screen_animation_step_playback(bContext *C)
 {
   bScreen *screen = CTX_wm_screen(C);
   wmTimer *wt = screen->animtimer;
-
-  if (!(wt && wt == event->customdata)) {
-    return OPERATOR_PASS_THROUGH;
-  }
-
   wmWindow *win = CTX_wm_window(C);
 
 #ifdef PROFILE_AUDIO_SYNCH
@@ -4581,13 +4586,11 @@ static int screen_animation_step_invoke(bContext *C, wmOperator *UNUSED(op), con
   int newfra_int;
 #endif
 
-  Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = WM_window_get_active_view_layer(win);
   Depsgraph *depsgraph = BKE_scene_get_depsgraph(scene, view_layer);
   Scene *scene_eval = (depsgraph != NULL) ? DEG_get_evaluated_scene(depsgraph) : NULL;
-  ScreenAnimData *sad = wt->customdata;
-  wmWindowManager *wm = CTX_wm_manager(C);
+  ScreenAnimData *sad = &((ScreenTimerData *)wt->customdata)->animation;
   int sync;
   double time;
 
@@ -4725,10 +4728,53 @@ static int screen_animation_step_invoke(bContext *C, wmOperator *UNUSED(op), con
     old_frame = scene->r.cfra;
 #endif
   }
+}
+
+static void screen_animation_step_realtime(bContext *C)
+{
+  bScreen *screen = CTX_wm_screen(C);
+  wmTimer *wt = screen->animtimer;
+  ScreenRealtimeData *srd = &((ScreenTimerData *)wt->customdata)->realtime;
+
+  srd->elapsed_real_time += wt->delta;
+  srd->elapsed_scene_time += wt->timestep;
+  srd->elapsed_frames += 1;
+}
+
+static int screen_animation_step_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *event)
+{
+  wmWindowManager *wm = CTX_wm_manager(C);
+  bScreen *screen = CTX_wm_screen(C);
+  wmTimer *wt = screen->animtimer;
+  wmWindow *win = CTX_wm_window(C);
+  Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = WM_window_get_active_view_layer(win);
+  Depsgraph *depsgraph = BKE_scene_get_depsgraph(scene, view_layer);
+
+  if (screen->active_clock == 0 || !wt || wt != event->customdata) {
+    return OPERATOR_PASS_THROUGH;
+  }
+
+  if (screen->active_clock & ANIMTIMER_ANIMATION) {
+    screen_animation_step_playback(C);
+  }
+  if (screen->active_clock & ANIMTIMER_REALTIME) {
+    screen_animation_step_realtime(C);
+  }
 
   /* Since we follow draw-flags, we can't send notifier but tag regions ourselves. */
   if (depsgraph != NULL) {
-    ED_update_for_newframe(bmain, depsgraph);
+    Main *bmain = CTX_data_main(C);
+    Scene *eval_scene = DEG_get_input_scene(depsgraph);
+
+    if (screen->active_clock & ANIMTIMER_ANIMATION) {
+      ED_tag_for_newframe(bmain, eval_scene);
+    }
+    if (screen->active_clock & ANIMTIMER_REALTIME) {
+      ED_tag_for_realtime_clock(bmain, eval_scene);
+    }
+
+    BKE_scene_graph_update_for_timestep(depsgraph, screen->active_clock);
   }
 
   LISTBASE_FOREACH (wmWindow *, window, &wm->windows) {
@@ -4736,17 +4782,28 @@ static int screen_animation_step_invoke(bContext *C, wmOperator *UNUSED(op), con
 
     LISTBASE_FOREACH (ScrArea *, area, &win_screen->areabase) {
       LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
-        bool redraw = false;
-        if (region == sad->region) {
-          redraw = true;
+        if (screen->active_clock & ANIMTIMER_ANIMATION) {
+          ScreenAnimData *sad = &((ScreenTimerData *)wt->customdata)->animation;
+          bool redraw = false;
+          if (region == sad->region ||
+              match_region_with_redraws(
+                  area, region->regiontype, sad->redraws, sad->from_anim_edit, false)) {
+            redraw = true;
+          }
+          if (redraw) {
+            screen_animation_region_tag_redraw(C, area, region, scene, sad->redraws);
+          }
         }
-        else if (match_region_with_redraws(
-                     area, region->regiontype, sad->redraws, sad->from_anim_edit)) {
-          redraw = true;
-        }
-
-        if (redraw) {
-          screen_animation_region_tag_redraw(C, area, region, scene, sad->redraws);
+        if (screen->active_clock & ANIMTIMER_REALTIME) {
+          ScreenRealtimeData *srd = &((ScreenTimerData *)wt->customdata)->realtime;
+          bool redraw = false;
+          if (region == srd->region ||
+              match_region_with_redraws(area, region->regiontype, srd->redraws, false, true)) {
+            redraw = true;
+          }
+          if (redraw) {
+            screen_animation_region_tag_redraw(C, area, region, scene, srd->redraws);
+          }
         }
       }
     }
@@ -4789,32 +4846,6 @@ static void SCREEN_OT_animation_step(wmOperatorType *ot)
  * Animation Playback with Timer.
  * \{ */
 
-bScreen *ED_screen_animation_playing(const wmWindowManager *wm)
-{
-  LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
-    bScreen *screen = WM_window_get_active_screen(win);
-
-    if (screen->animtimer || screen->scrubbing) {
-      return screen;
-    }
-  }
-
-  return NULL;
-}
-
-bScreen *ED_screen_animation_no_scrub(const wmWindowManager *wm)
-{
-  LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
-    bScreen *screen = WM_window_get_active_screen(win);
-
-    if (screen->animtimer) {
-      return screen;
-    }
-  }
-
-  return NULL;
-}
-
 int ED_screen_animation_play(bContext *C, int sync, int mode)
 {
   bScreen *screen = CTX_wm_screen(C);
@@ -4836,15 +4867,88 @@ int ED_screen_animation_play(bContext *C, int sync, int mode)
 
     ED_screen_animation_timer(C, screen->redraws_flag, sync, mode);
 
-    if (screen->animtimer) {
-      wmTimer *wt = screen->animtimer;
-      ScreenAnimData *sad = wt->customdata;
+    if (screen->active_clock & ANIMTIMER_ANIMATION) {
+      ScreenAnimData *sad = &((ScreenTimerData *)screen->animtimer->customdata)->animation;
 
       sad->region = CTX_wm_region(C);
     }
   }
 
   return OPERATOR_FINISHED;
+}
+
+int ED_screen_realtime_clock_start(bContext *C)
+{
+  bScreen *screen = CTX_wm_screen(C);
+  //  Scene *scene_eval = DEG_get_evaluated_scene(CTX_data_ensure_evaluated_depsgraph(C));
+
+  //  BKE_sound_play_scene(scene_eval);
+  ED_screen_realtime_timer(C, screen->redraws_flag, true);
+
+  return OPERATOR_FINISHED;
+}
+
+int ED_screen_realtime_clock_stop(bContext *C)
+{
+  Scene *scene = CTX_data_scene(C);
+  //  Scene *scene_eval = DEG_get_evaluated_scene(CTX_data_ensure_evaluated_depsgraph(C));
+
+  /* stop playback now */
+  ED_screen_realtime_timer(C, 0, false);
+  //  BKE_sound_stop_scene(scene_eval);
+
+  WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
+
+  return OPERATOR_FINISHED;
+}
+
+bool ED_screen_animation_is_playing(bScreen *screen)
+{
+  return screen && screen->active_clock & ANIMTIMER_ANIMATION;
+}
+
+bool ED_screen_realtime_clock_is_running(bScreen *screen)
+{
+  return screen && screen->active_clock & ANIMTIMER_REALTIME;
+}
+
+bScreen *ED_screen_animation_playing(const wmWindowManager *wm)
+{
+  LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
+    bScreen *screen = WM_window_get_active_screen(win);
+
+    if (screen->active_clock & ANIMTIMER_ANIMATION || screen->scrubbing) {
+      return screen;
+    }
+  }
+
+  return NULL;
+}
+
+bScreen *ED_screen_animation_no_scrub(const wmWindowManager *wm)
+{
+  LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
+    bScreen *screen = WM_window_get_active_screen(win);
+
+    if (screen->active_clock & ANIMTIMER_ANIMATION) {
+      return screen;
+    }
+  }
+
+  return NULL;
+}
+
+bScreen *ED_screen_realtime_clock_running(const wmWindowManager *wm)
+{
+  LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
+    bScreen *screen = WM_window_get_active_screen(win);
+
+    if (screen->active_clock & ANIMTIMER_REALTIME) {
+      return screen;
+    }
+  }
+
+  return NULL;
 }
 
 static int screen_animation_play_exec(bContext *C, wmOperator *op)
@@ -4891,8 +4995,9 @@ static int screen_animation_cancel_exec(bContext *C, wmOperator *op)
   bScreen *screen = ED_screen_animation_playing(CTX_wm_manager(C));
 
   if (screen) {
-    if (RNA_boolean_get(op->ptr, "restore_frame") && screen->animtimer) {
-      ScreenAnimData *sad = screen->animtimer->customdata;
+    if (RNA_boolean_get(op->ptr, "restore_frame") &&
+        (screen->active_clock & ANIMTIMER_ANIMATION)) {
+      ScreenAnimData *sad = &((ScreenTimerData *)screen->animtimer->customdata)->animation;
       Scene *scene = CTX_data_scene(C);
 
       /* reset current frame before stopping, and just send a notifier to deal with the rest
@@ -4927,6 +5032,59 @@ static void SCREEN_OT_animation_cancel(wmOperatorType *ot)
                   true,
                   "Restore Frame",
                   "Restore the frame when animation was initialized");
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Realtime Clock Start
+ * \{ */
+
+static int screen_realtime_clock_start_exec(bContext *C, wmOperator *UNUSED(op))
+{
+  return ED_screen_realtime_clock_start(C);
+}
+
+static void SCREEN_OT_realtime_clock_start(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Start Realtime Clock";
+  ot->description = "Start realtime clock";
+  ot->idname = "SCREEN_OT_realtime_clock_start";
+
+  /* api callbacks */
+  ot->exec = screen_realtime_clock_start_exec;
+  ot->poll = ED_operator_screenactive_norender;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Realtime Clock Stop Operator
+ * \{ */
+
+static int screen_realtime_clock_stop_exec(bContext *C, wmOperator *UNUSED(op))
+{
+  bScreen *screen = ED_screen_realtime_clock_running(CTX_wm_manager(C));
+
+  if (screen) {
+    /* call the other "toggling" operator to clean up now */
+    ED_screen_realtime_clock_stop(C);
+  }
+
+  return OPERATOR_PASS_THROUGH;
+}
+
+static void SCREEN_OT_realtime_clock_stop(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Stop Realtime Clock";
+  ot->description = "Stop realtime clock";
+  ot->idname = "SCREEN_OT_realtime_clock_stop";
+
+  /* api callbacks */
+  ot->exec = screen_realtime_clock_stop_exec;
+  ot->poll = ED_operator_screenactive;
 }
 
 /** \} */
@@ -5718,6 +5876,10 @@ void ED_operatortypes_screen(void)
   WM_operatortype_append(SCREEN_OT_animation_step);
   WM_operatortype_append(SCREEN_OT_animation_play);
   WM_operatortype_append(SCREEN_OT_animation_cancel);
+
+  /* Realtime clock */
+  WM_operatortype_append(SCREEN_OT_realtime_clock_start);
+  WM_operatortype_append(SCREEN_OT_realtime_clock_stop);
 
   /* New/delete. */
   WM_operatortype_append(SCREEN_OT_new);

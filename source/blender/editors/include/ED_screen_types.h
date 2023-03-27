@@ -14,7 +14,7 @@ extern "C" {
 /* ----------------------------------------------------- */
 
 /**
- * For animation playback operator, stored in #bScreen.animtimer.customdata.
+ * For animation playback operator.
  */
 typedef struct ScreenAnimData {
   ARegion *region; /* do not read from this, only for comparing if region exists */
@@ -26,7 +26,27 @@ typedef struct ScreenAnimData {
   bool from_anim_edit;        /* playback was invoked from animation editor */
 } ScreenAnimData;
 
-/** #ScreenAnimData.flag */
+/**
+ * Realtime clock data.
+ */
+typedef struct ScreenRealtimeData {
+  ARegion *region; /* do not read from this, only for comparing if region exists */
+  short flag;
+  short redraws;            /* Which editors get redrawn during animation playback */
+  float elapsed_real_time;  /* Real physical time elapsed since the clock was started */
+  float elapsed_scene_time; /* Scene time (1/fps) elapsed since the clock was started */
+  int elapsed_frames;       /* Amount of frames since the clock was started */
+} ScreenRealtimeData;
+
+/**
+ * Shared timer data for animation playback and realtime clock, stored in #bScreen.animtimer.customdata.
+ */
+typedef struct ScreenTimerData {
+  ScreenAnimData animation;
+  ScreenRealtimeData realtime;
+} ScreenTimerData;
+
+/** #ScreenAnimData.animation.flag */
 enum {
   /* user-setting - frame range is played backwards */
   ANIMPLAY_FLAG_REVERSE = (1 << 0),
