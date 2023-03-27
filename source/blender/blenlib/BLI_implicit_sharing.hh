@@ -73,7 +73,7 @@ class ImplicitSharingInfo : NonCopyable, NonMovable {
    */
   void remove_user_and_delete_if_last() const
   {
-    const int old_user_count = users_.fetch_sub(1, std::memory_order_relaxed);
+    const int old_user_count = users_.fetch_sub(1, std::memory_order_acq_rel);
     BLI_assert(old_user_count >= 1);
     const bool was_last_user = old_user_count == 1;
     if (was_last_user) {
