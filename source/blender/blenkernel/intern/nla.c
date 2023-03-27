@@ -1984,7 +1984,7 @@ void BKE_nla_validate_state(AnimData *adt)
   /* Adjust blending values for auto-blending,
    * and also do an initial pass to find the earliest strip. */
   for (nlt = adt->nla_tracks.first; nlt; nlt = nlt->next) {
-    LISTBASE_FOREACH_MUTABLE (ListBase *, strip, &nlt->strips) {
+    LISTBASE_FOREACH_MUTABLE (NlaStrip *, strip, &nlt->strips) {
 
       nlastrip_validate_transition_start_end(strip);
 
