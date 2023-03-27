@@ -10,3 +10,4 @@ Referenced by issue #85962, Many Nodes (Join geometry, Boolean, Object Info?) an
 Referenced by issue #104789, uv_layers.remove() always raises error
 Referenced by commit b7e39acfcdc8ffc40245968d6d958f428fadc642, Fix #104789: uv_layers.remove() always raises error
 Referenced by issue #104947, Regression: Attributes: Delete UV map doesn't cause update as delete uv attribute
+Referenced by pull request #106185, Fix #106128: OBJ exporter crash when a mesh only has loose vertices
