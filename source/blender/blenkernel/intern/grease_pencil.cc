@@ -91,6 +91,10 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
     }
   }
 
+  /* Do not copy layer tree storage. */
+  grease_pencil_dst->layer_tree_storage.nodes = nullptr;
+  grease_pencil_dst->layer_tree_storage.nodes_num = 0;
+
   /* Duplicate runtime data. */
   if (grease_pencil_src->runtime) {
     grease_pencil_dst->runtime = MEM_new<bke::GreasePencilRuntime>(__func__,
@@ -152,6 +156,8 @@ static void grease_pencil_blend_write(BlendWriter *writer, ID *id, const void *i
   grease_pencil->write_drawing_array(writer);
   /* Write layer tree. */
   grease_pencil->write_layer_tree_storage(writer);
+  /* Free the layer tree storage again after writing. */
+  grease_pencil->free_layer_tree_storage();
   /* Write materials. */
   BLO_write_pointer_array(
       writer, grease_pencil->material_array_size, grease_pencil->material_array);
@@ -175,6 +181,8 @@ static void grease_pencil_blend_read_data(BlendDataReader *reader, ID *id)
 
   grease_pencil->runtime = MEM_new<blender::bke::GreasePencilRuntime>(__func__);
   grease_pencil->load_layer_tree_from_storage();
+  /* Free the layer tree storage again after loading. */
+  grease_pencil->free_layer_tree_storage();
 }
 
 static void grease_pencil_blend_read_lib(BlendLibReader *reader, ID *id)
