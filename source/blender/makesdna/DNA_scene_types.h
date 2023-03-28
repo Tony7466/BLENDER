@@ -903,6 +903,19 @@ typedef struct TimeMarker {
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Real time clock
+ * \{ */
+
+typedef struct RealTimeClock {
+  /** Current frame. */
+  int frame;
+  /** Sub-frame offset from `frame`, in 0.0-1.0. */
+  float subframe;
+} RealTimeClock;
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Paint Mode/Tool Data
  * \{ */
 
@@ -1920,6 +1933,7 @@ typedef struct Scene {
   /* No, is on the right place (ton). */
   struct RenderData r;
   struct AudioData audio;
+  struct RealTimeClock realtime_clock;
 
   ListBase markers;
   ListBase transform_spaces;

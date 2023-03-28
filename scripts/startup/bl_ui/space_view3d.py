@@ -8106,6 +8106,7 @@ class VIEW3D_PT_realtime_clock(Panel):
     def draw(self, context):
         layout = self.layout
         screen = context.screen
+        scene = context.scene
 
         row = layout.row(align=True)
         row.scale_x = 2
@@ -8114,6 +8115,10 @@ class VIEW3D_PT_realtime_clock(Panel):
         else:
             row.operator("screen.realtime_clock_stop", text="", icon='PAUSE')
         row.scale_x = 1
+
+        layout.separator_spacer()
+
+        layout.prop(scene.realtime_clock, "frame", text="Frame")
 
         layout.separator_spacer()
 

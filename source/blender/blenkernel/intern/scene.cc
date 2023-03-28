@@ -2510,6 +2510,36 @@ void BKE_scene_frame_set(Scene *scene, float frame)
 }
 
 /* -------------------------------------------------------------------- */
+/** \name Realtime clock
+ * \{ */
+
+void BKE_scene_realtime_clock_set(Scene *scene, int frame, float subframe)
+{
+  float intpart;
+  scene->realtime_clock.subframe = modf(subframe, &intpart);
+  scene->realtime_clock.frame = frame + int(intpart);
+}
+
+void BKE_scene_realtime_clock_increment(Scene *scene, float delta_frame)
+{
+  float intpart;
+  scene->realtime_clock.subframe = modf(scene->realtime_clock.subframe + delta_frame, &intpart);
+  scene->realtime_clock.frame += int(intpart);
+}
+
+float BKE_scene_realtime_clock_get_delta_frames(Scene *scene, int old_frame, float old_subframe)
+{
+  return (float)(scene->realtime_clock.frame - old_frame) + scene->realtime_clock.subframe - old_subframe;
+}
+
+float BKE_scene_realtime_clock_get_delta_time(Scene *scene, int old_frame, float old_subframe)
+{
+  return BKE_scene_realtime_clock_get_delta_frames(scene, old_frame, old_subframe) * scene->r.framelen;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Scene Orientation Slots
  * \{ */
 

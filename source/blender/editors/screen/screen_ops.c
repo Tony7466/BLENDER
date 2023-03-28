@@ -4735,10 +4735,13 @@ static void screen_animation_step_realtime(bContext *C)
   bScreen *screen = CTX_wm_screen(C);
   wmTimer *wt = screen->animtimer;
   ScreenRealtimeData *srd = &((ScreenTimerData *)wt->customdata)->realtime;
+  Scene *scene = CTX_data_scene(C);
 
   srd->elapsed_real_time += wt->delta;
   srd->elapsed_scene_time += wt->timestep;
   srd->elapsed_frames += 1;
+
+  BKE_scene_realtime_clock_increment(scene, 1.0f);
 }
 
 static int screen_animation_step_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *event)

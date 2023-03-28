@@ -7065,6 +7065,30 @@ static void rna_def_timeline_markers(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_function_ui_description(func, "Remove all timeline markers");
 }
 
+static void rna_def_realtime_clock(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "RealTimeClock", NULL);
+  RNA_def_struct_sdna(srna, "RealTimeClock");
+  RNA_def_struct_nested(brna, srna, "Scene");
+  RNA_def_struct_ui_text(srna, "Real Time Clock", "Clock for interactive simulations");
+
+  prop = RNA_def_property(srna, "frame", PROP_INT, PROP_TIME);
+  RNA_def_property_int_sdna(prop, NULL, "frame");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
+  RNA_def_property_ui_text(
+      prop, "Frame", "Number of full frames since start of the realtime clock");
+
+  prop = RNA_def_property(srna, "subframe", PROP_FLOAT, PROP_TIME);
+  RNA_def_property_float_sdna(prop, NULL, "subframe");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.01, 2);
+  RNA_def_property_ui_text(prop, "Subframe", "Subframe fraction between the current frame and the next");
+}
+
 /* scene.keying_sets */
 static void rna_def_scene_keying_sets(BlenderRNA *brna, PropertyRNA *cprop)
 {
@@ -8198,6 +8222,13 @@ void RNA_def_scene(BlenderRNA *brna)
       prop, "Timeline Markers", "Markers used in all timelines for the current scene");
   rna_def_timeline_markers(brna, prop);
 
+  /* Realtime clock */
+  prop = RNA_def_property(srna, "realtime_clock", PROP_POINTER, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_NEVER_NULL);
+  RNA_def_property_pointer_sdna(prop, NULL, "realtime_clock");
+  RNA_def_property_struct_type(prop, "RealTimeClock");
+  RNA_def_property_ui_text(prop, "Realtime Clock", "");
+
   /* Transform Orientations */
   prop = RNA_def_property(srna, "transform_orientation_slots", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_funcs(prop,
@@ -8383,6 +8414,7 @@ void RNA_def_scene(BlenderRNA *brna)
   rna_def_view_layer_lightgroup(brna);
   rna_def_view_layer_eevee(brna);
   rna_def_scene_gpencil(brna);
+  rna_def_realtime_clock(brna);
   RNA_define_animate_sdna(true);
   /* *** Animated *** */
   rna_def_scene_render_data(brna);
