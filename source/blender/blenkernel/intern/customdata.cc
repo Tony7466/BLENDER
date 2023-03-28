@@ -59,6 +59,7 @@
 #include "data_transfer_intern.h"
 
 using blender::float2;
+using blender::ImplicitSharingInfo;
 using blender::IndexRange;
 using blender::Set;
 using blender::Span;
@@ -2158,13 +2159,14 @@ void customData_mask_layers__print(const CustomData_MeshMasks *mask)
 
 static void customData_update_offsets(CustomData *data);
 
-static CustomDataLayer *customData_add_layer__internal(CustomData *data,
-                                                       eCustomDataType type,
-                                                       eCDAllocType alloctype,
-                                                       void *layer_data_to_assign,
-                                                       const bCopyOnWrite *cow_to_assign,
-                                                       int totelem,
-                                                       const char *name);
+static CustomDataLayer *customData_add_layer__internal(
+    CustomData *data,
+    eCustomDataType type,
+    eCDAllocType alloctype,
+    void *layer_data_to_assign,
+    const ImplicitSharingInfo *implicit_sharing_info_to_assign,
+    int totelem,
+    const char *name);
 
 void CustomData_update_typemap(CustomData *data)
 {
@@ -2266,23 +2268,28 @@ static bool customdata_merge_internal(const CustomData *source,
     }
 
     void *layer_data_to_assign = nullptr;
-    const bCopyOnWrite *cow_to_assign = nullptr;
+    const ImplicitSharingInfo *implicit_sharing_info_to_assign = nullptr;
     if (alloctype == CD_ASSIGN) {
       if (src_layer.data != nullptr) {
-        if (src_layer.cow == nullptr) {
+        if (src_layer.implicit_sharing_info == nullptr) {
           /* Can't share the layer, duplicate it instead. */
           layer_data_to_assign = copy_layer_data(type, src_layer.data, totelem);
         }
         else {
           /* Share the layer. */
           layer_data_to_assign = src_layer.data;
-          cow_to_assign = src_layer.cow;
+          implicit_sharing_info_to_assign = src_layer.implicit_sharing_info;
         }
       }
     }
 
-    CustomDataLayer *new_layer = customData_add_layer__internal(
-        dest, type, alloctype, layer_data_to_assign, cow_to_assign, totelem, src_layer.name);
+    CustomDataLayer *new_layer = customData_add_layer__internal(dest,
+                                                                type,
+                                                                alloctype,
+                                                                layer_data_to_assign,
+                                                                implicit_sharing_info_to_assign,
+                                                                totelem,
+                                                                src_layer.name);
 
     new_layer->uid = src_layer.uid;
     new_layer->flag |= src_layer_flag & (CD_FLAG_EXTERNAL | CD_FLAG_IN_MEMORY);
@@ -2345,18 +2352,18 @@ CustomData CustomData_shallow_copy_remove_non_bmesh_attributes(const CustomData 
 }
 
 /**
- * A #bCopyOnWrite that knows how to free the entire referenced custom data layer (including
+ * A #ImplicitSharingInfo that knows how to free the entire referenced custom data layer (including
  * potentially separately allocated chunks like for vertex groups).
  */
-class CustomDataLayerCOW : public bCopyOnWrite {
+class CustomDataLayerImplicitSharing : public ImplicitSharingInfo {
  private:
   const void *data_;
   const int totelem_;
   const eCustomDataType type_;
 
  public:
-  CustomDataLayerCOW(const void *data, const int totelem, const eCustomDataType type)
-      : bCopyOnWrite(1), data_(data), totelem_(totelem), type_(type)
+  CustomDataLayerImplicitSharing(const void *data, const int totelem, const eCustomDataType type)
+      : ImplicitSharingInfo(1), data_(data), totelem_(totelem), type_(type)
   {
   }
 
@@ -2368,12 +2375,12 @@ class CustomDataLayerCOW : public bCopyOnWrite {
   }
 };
 
-/** Create a #bCopyOnWrite that takes ownership of the data. */
-static bCopyOnWrite *make_cow_for_array(const eCustomDataType type,
-                                        const void *data,
-                                        const int totelem)
+/** Create a #ImplicitSharingInfo that takes ownership of the data. */
+static ImplicitSharingInfo *make_cow_for_array(const eCustomDataType type,
+                                               const void *data,
+                                               const int totelem)
 {
-  return MEM_new<CustomDataLayerCOW>(__func__, data, totelem, type);
+  return MEM_new<CustomDataLayerImplicitSharing>(__func__, data, totelem, type);
 }
 
 /**
@@ -2384,16 +2391,16 @@ static void ensure_layer_data_is_mutable(CustomDataLayer &layer, const int totel
   if (layer.data == nullptr) {
     return;
   }
-  if (layer.cow == nullptr) {
+  if (layer.implicit_sharing_info == nullptr) {
     /* Can not be shared without cow data. */
     return;
   }
-  if (layer.cow->is_shared()) {
+  if (layer.implicit_sharing_info->is_shared()) {
     const eCustomDataType type = eCustomDataType(layer.type);
     const void *old_data = layer.data;
     layer.data = copy_layer_data(type, old_data, totelem);
-    layer.cow->remove_user_and_delete_if_last();
-    layer.cow = make_cow_for_array(type, layer.data, totelem);
+    layer.implicit_sharing_info->remove_user_and_delete_if_last();
+    layer.implicit_sharing_info = make_cow_for_array(type, layer.data, totelem);
   }
 }
 
@@ -2415,14 +2422,15 @@ void CustomData_realloc(CustomData *data, const int old_size, const int new_size
       memcpy(new_layer_data, layer->data, std::min(old_size_in_bytes, new_size_in_bytes));
     }
     /* Remove ownership of old array */
-    if (layer->cow) {
-      layer->cow->remove_user_and_delete_if_last();
-      layer->cow = nullptr;
+    if (layer->implicit_sharing_info) {
+      layer->implicit_sharing_info->remove_user_and_delete_if_last();
+      layer->implicit_sharing_info = nullptr;
     }
     /* Take ownership of new array. */
     layer->data = new_layer_data;
     if (layer->data) {
-      layer->cow = make_cow_for_array(eCustomDataType(layer->type), layer->data, new_size);
+      layer->implicit_sharing_info = make_cow_for_array(
+          eCustomDataType(layer->type), layer->data, new_size);
     }
 
     if (new_size > old_size) {
@@ -2468,13 +2476,13 @@ static void customData_free_layer__internal(CustomDataLayer *layer, const int to
     layer->anonymous_id = nullptr;
   }
   const eCustomDataType type = eCustomDataType(layer->type);
-  if (layer->cow == nullptr) {
+  if (layer->implicit_sharing_info == nullptr) {
     if (layer->data) {
       free_layer_data(type, layer->data, totelem);
     }
   }
   else {
-    layer->cow->remove_user_and_delete_if_last();
+    layer->implicit_sharing_info->remove_user_and_delete_if_last();
   }
 }
 
@@ -2830,13 +2838,14 @@ static void customData_resize(CustomData *data, const int grow_amount)
   data->maxlayer += grow_amount;
 }
 
-static CustomDataLayer *customData_add_layer__internal(CustomData *data,
-                                                       const eCustomDataType type,
-                                                       const eCDAllocType alloctype,
-                                                       void *layer_data_to_assign,
-                                                       const bCopyOnWrite *cow_to_assign,
-                                                       const int totelem,
-                                                       const char *name)
+static CustomDataLayer *customData_add_layer__internal(
+    CustomData *data,
+    const eCustomDataType type,
+    const eCDAllocType alloctype,
+    void *layer_data_to_assign,
+    const ImplicitSharingInfo *implicit_sharing_info_to_assign,
+    const int totelem,
+    const char *name)
 {
   const LayerTypeInfo &type_info = *layerType_getInfo(type);
   int flag = 0;
@@ -2891,23 +2900,23 @@ static CustomDataLayer *customData_add_layer__internal(CustomData *data,
       break;
     }
     case CD_ASSIGN: {
-      if (totelem == 0 && cow_to_assign == nullptr) {
+      if (totelem == 0 && implicit_sharing_info_to_assign == nullptr) {
         MEM_SAFE_FREE(layer_data_to_assign);
       }
       else {
         new_layer.data = layer_data_to_assign;
-        new_layer.cow = cow_to_assign;
-        if (new_layer.cow) {
-          new_layer.cow->add_user();
+        new_layer.implicit_sharing_info = implicit_sharing_info_to_assign;
+        if (new_layer.implicit_sharing_info) {
+          new_layer.implicit_sharing_info->add_user();
         }
       }
       break;
     }
   }
 
-  if (new_layer.data != nullptr && new_layer.cow == nullptr) {
+  if (new_layer.data != nullptr && new_layer.implicit_sharing_info == nullptr) {
     /* Make layer data shareable. */
-    new_layer.cow = make_cow_for_array(type, new_layer.data, totelem);
+    new_layer.implicit_sharing_info = make_cow_for_array(type, new_layer.data, totelem);
   }
 
   new_layer.type = type;
@@ -2968,7 +2977,7 @@ const void *CustomData_add_layer_with_data(CustomData *data,
                                            const eCustomDataType type,
                                            void *layer_data,
                                            const int totelem,
-                                           const bCopyOnWrite *cow)
+                                           const ImplicitSharingInfo *cow)
 {
   const LayerTypeInfo *typeInfo = layerType_getInfo(type);
 
@@ -3004,7 +3013,7 @@ const void *CustomData_add_layer_named_with_data(CustomData *data,
                                                  void *layer_data,
                                                  int totelem,
                                                  const char *name,
-                                                 const bCopyOnWrite *cow)
+                                                 const ImplicitSharingInfo *cow)
 {
   CustomDataLayer *layer = customData_add_layer__internal(
       data, type, CD_ASSIGN, layer_data, cow, totelem, name);
@@ -3042,7 +3051,7 @@ const void *CustomData_add_layer_anonymous_with_data(
     const AnonymousAttributeIDHandle *anonymous_id,
     const int totelem,
     void *layer_data,
-    const bCopyOnWrite *cow)
+    const ImplicitSharingInfo *cow)
 {
   const char *name = anonymous_id->name().c_str();
   CustomDataLayer *layer = customData_add_layer__internal(

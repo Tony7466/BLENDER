@@ -11,6 +11,8 @@
 
 #include "DNA_defs.h"
 
+#include "BLI_implicit_sharing.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -24,8 +26,6 @@ using AnonymousAttributeIDHandle = blender::bke::AnonymousAttributeID;
 #else
 typedef struct AnonymousAttributeIDHandle AnonymousAttributeIDHandle;
 #endif
-
-struct bCopyOnWrite;
 
 /** Descriptor and storage for a custom data layer. */
 typedef struct CustomDataLayer {
@@ -59,7 +59,7 @@ typedef struct CustomDataLayer {
    * Run-time data that allows sharing `data` with other entities (mostly custom data layers on
    * other geometries).
    */
-  const struct bCopyOnWrite *cow;
+  const ImplicitSharingInfoHandle *implicit_sharing_info;
 } CustomDataLayer;
 
 #define MAX_CUSTOMDATA_LAYER_NAME 68
