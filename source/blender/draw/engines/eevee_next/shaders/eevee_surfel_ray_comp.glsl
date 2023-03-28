@@ -68,14 +68,16 @@ void main()
 
   vec4 radiance_with_pdf = vec4(0.0);
   if (surfel.next > -1) {
-    radiance_transfer(surfel_buf[surfel.next], surfel);
+    Surfel next = surfel_buf[surfel.next];
+    radiance_transfer(next, surfel);
   }
   else {
     sky_radiance(surfel);
   }
 
   if (surfel.prev > -1) {
-    radiance_transfer(surfel_buf[surfel.prev], surfel);
+    Surfel prev = surfel_buf[surfel.prev];
+    radiance_transfer(prev, surfel);
   }
   else {
     sky_radiance(surfel);
