@@ -32,6 +32,11 @@ struct TimeSourceNode : public Node {
 
   bool tagged_for_update = false;
 
+  /* Frame at which the depsgraph was last evaluated, including subframe. */
+  float frame;
+  /* Frame at which the depsgraph was last evaluated, after remapping (time stretching). */
+  float ctime;
+
   DEG_DEPSNODE_DECLARE;
 };
 

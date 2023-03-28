@@ -32,6 +32,7 @@
 #include "intern/depsgraph.h"
 #include "intern/eval/deg_eval_copy_on_write.h"
 #include "intern/node/deg_node_id.h"
+#include "intern/node/deg_node_time.h"
 
 namespace blender::deg {
 
@@ -102,10 +103,19 @@ eEvaluationMode DEG_get_mode(const Depsgraph *graph)
   return deg_graph->mode;
 }
 
-float DEG_get_ctime(const Depsgraph *graph)
+float DEG_get_ctime_ex(const Depsgraph *graph, eTimeSourceType source_type)
 {
   const deg::Depsgraph *deg_graph = reinterpret_cast<const deg::Depsgraph *>(graph);
-  return deg_graph->ctime;
+  deg::TimeSourceNode *time_source = deg_graph->find_time_source(source_type);
+  if (time_source) {
+    return time_source->ctime;
+  }
+  return 0.0f;
+}
+
+float DEG_get_ctime(const Depsgraph *graph)
+{
+  return DEG_get_ctime_ex(graph, eTimeSourceType::DEG_TIME_SOURCE_SCENE);
 }
 
 bool DEG_id_type_updated(const Depsgraph *graph, short id_type)

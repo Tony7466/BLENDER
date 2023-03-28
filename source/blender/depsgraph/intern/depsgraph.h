@@ -47,10 +47,15 @@ struct Depsgraph {
   Depsgraph(Main *bmain, Scene *scene, ViewLayer *view_layer, eEvaluationMode mode);
   ~Depsgraph();
 
-  TimeSourceNode *add_time_source(eTimeSourceType source_type);
+  TimeSourceNode *add_time_source(eTimeSourceType source_type, float frame, float ctime);
   TimeSourceNode *find_time_source(eTimeSourceType source_type) const;
   void clear_time_sources();
   void tag_time_source(eTimeSourceType source_type);
+  /**
+   * Set the current frame and ctime.
+   * @param tag_if_changed Tag the node if the time is different.
+   */
+  void set_time(eTimeSourceType source_type, float frame, float ctime, bool tag_if_changed = true);
 
   IDNode *find_id_node(const ID *id) const;
   IDNode *add_id_node(ID *id, ID *id_cow_hint = nullptr);
@@ -129,11 +134,6 @@ struct Depsgraph {
   Scene *scene;
   ViewLayer *view_layer;
   eEvaluationMode mode;
-
-  /* Time at which dependency graph is being or was last evaluated.
-   * frame is the value before, and ctime the value after time remapping. */
-  float frame;
-  float ctime;
 
   /* Evaluated version of datablocks we access a lot.
    * Stored here to save us form doing hash lookup. */

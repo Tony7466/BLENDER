@@ -2513,6 +2513,11 @@ void BKE_scene_frame_set(Scene *scene, float frame)
 /** \name Realtime clock
  * \{ */
 
+float BKE_scene_realtime_clock_get(Scene *scene)
+{
+  return (float)scene->realtime_clock.frame + scene->realtime_clock.subframe;
+}
+
 void BKE_scene_realtime_clock_set(Scene *scene, int frame, float subframe)
 {
   float intpart;

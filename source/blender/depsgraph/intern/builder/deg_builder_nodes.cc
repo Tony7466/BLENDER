@@ -215,9 +215,11 @@ IDNode *DepsgraphNodeBuilder::find_id_node(const ID *id)
   return graph_->find_id_node(id);
 }
 
-TimeSourceNode *DepsgraphNodeBuilder::add_time_source(eTimeSourceType source_type)
+TimeSourceNode *DepsgraphNodeBuilder::add_time_source(eTimeSourceType source_type,
+                                                      float frame,
+                                                      float ctime)
 {
-  return graph_->add_time_source(source_type);
+  return graph_->add_time_source(source_type, frame, ctime);
 }
 
 ComponentNode *DepsgraphNodeBuilder::add_component_node(ID *id,

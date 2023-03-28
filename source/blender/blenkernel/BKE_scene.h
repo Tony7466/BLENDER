@@ -177,6 +177,10 @@ float BKE_scene_frame_get(const struct Scene *scene);
 void BKE_scene_frame_set(struct Scene *scene, float frame);
 
 /**
+ * Get the realtime clock time.
+ */
+float BKE_scene_realtime_clock_get(struct Scene *scene);
+/**
  * Set the realtime clock.
  */
 void BKE_scene_realtime_clock_set(struct Scene *scene, int frame, float subframe);

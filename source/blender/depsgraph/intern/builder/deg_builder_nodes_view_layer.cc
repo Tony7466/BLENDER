@@ -29,6 +29,7 @@
 #include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_node.h"
+#include "BKE_scene.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -79,8 +80,12 @@ void DepsgraphNodeBuilder::build_view_layer(Scene *scene,
   IDNode *id_node = add_id_node(&scene->id);
   id_node->linked_state = linked_state;
   /* Time source. */
-  add_time_source(eTimeSourceType::DEG_TIME_SOURCE_SCENE);
-  add_time_source(eTimeSourceType::DEG_TIME_SOURCE_REALTIME);
+  add_time_source(eTimeSourceType::DEG_TIME_SOURCE_SCENE,
+                  BKE_scene_frame_get(scene),
+                  BKE_scene_ctime_get(scene));
+  add_time_source(eTimeSourceType::DEG_TIME_SOURCE_REALTIME,
+                  BKE_scene_realtime_clock_get(scene),
+                  BKE_scene_realtime_clock_get(scene));
   /* Setup currently building context. */
   scene_ = scene;
   view_layer_ = view_layer;

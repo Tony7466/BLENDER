@@ -53,8 +53,6 @@ Depsgraph::Depsgraph(Main *bmain, Scene *scene, ViewLayer *view_layer, eEvaluati
       scene(scene),
       view_layer(view_layer),
       mode(mode),
-      frame(BKE_scene_frame_get(scene)),
-      ctime(BKE_scene_ctime_get(scene)),
       scene_cow(nullptr),
       is_active(false),
       use_visibility_optimization(true),
@@ -67,7 +65,9 @@ Depsgraph::Depsgraph(Main *bmain, Scene *scene, ViewLayer *view_layer, eEvaluati
   memset(id_type_exist, 0, sizeof(id_type_exist));
   memset(physics_relations, 0, sizeof(physics_relations));
 
-  add_time_source(eTimeSourceType::DEG_TIME_SOURCE_SCENE);
+  add_time_source(eTimeSourceType::DEG_TIME_SOURCE_SCENE,
+                  BKE_scene_frame_get(scene),
+                  BKE_scene_ctime_get(scene));
 }
 
 Depsgraph::~Depsgraph()
@@ -79,12 +79,14 @@ Depsgraph::~Depsgraph()
 
 /* Node Management ---------------------------- */
 
-TimeSourceNode *Depsgraph::add_time_source(eTimeSourceType source_type)
+TimeSourceNode *Depsgraph::add_time_source(eTimeSourceType source_type, float frame, float ctime)
 {
-  return time_sources.lookup_or_add_cb(source_type, [source_type]() {
+  return time_sources.lookup_or_add_cb(source_type, [source_type, frame, ctime]() {
     DepsNodeFactory *factory = type_get_factory(NodeType::TIMESOURCE);
     TimeSourceNode *time_source = (TimeSourceNode *)factory->create_node(nullptr, "", "Time Source");
     time_source->source_type = source_type;
+    time_source->frame = frame;
+    time_source->ctime = ctime;
     return time_source;
   });
 }
@@ -107,6 +109,18 @@ void Depsgraph::tag_time_source(eTimeSourceType source_type)
   TimeSourceNode *time_source = time_sources.lookup_default(source_type, nullptr);
   if (time_source) {
     time_source->tag_update(this, DEG_UPDATE_SOURCE_TIME);
+  }
+}
+
+void Depsgraph::set_time(eTimeSourceType source_type, float frame, float ctime, bool tag_if_changed)
+{
+  TimeSourceNode *time_source = time_sources.lookup_default(source_type, nullptr);
+  if (time_source) {
+    if (tag_if_changed && (time_source->frame != frame || time_source->ctime != ctime)) {
+      time_source->tag_update(this, DEG_UPDATE_SOURCE_TIME);
+    }
+    time_source->frame = frame;
+    time_source->ctime = ctime;
   }
 }
 
