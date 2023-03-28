@@ -52,6 +52,7 @@ endif()
 
 set(INC_SYS
   ${Epoxy_INCLUDE_DIRS}
+  ${IMATH_INCLUDE_DIR}
 )
 
 set(SRC
@@ -203,6 +204,7 @@ set(VULKAN_SRC
   vulkan/vk_command_buffer.cc
   vulkan/vk_common.cc
   vulkan/vk_context.cc
+  vulkan/vk_data_conversion.cc
   vulkan/vk_debug.cc
   vulkan/vk_descriptor_pools.cc
   vulkan/vk_descriptor_set.cc
@@ -216,6 +218,7 @@ set(VULKAN_SRC
   vulkan/vk_pixel_buffer.cc
   vulkan/vk_push_constants.cc
   vulkan/vk_query.cc
+  vulkan/vk_resource_tracker.cc
   vulkan/vk_shader.cc
   vulkan/vk_shader_interface.cc
   vulkan/vk_shader_log.cc
@@ -231,6 +234,7 @@ set(VULKAN_SRC
   vulkan/vk_command_buffer.hh
   vulkan/vk_common.hh
   vulkan/vk_context.hh
+  vulkan/vk_data_conversion.hh
   vulkan/vk_descriptor_pools.hh
   vulkan/vk_descriptor_set.hh
   vulkan/vk_drawlist.hh
@@ -243,6 +247,7 @@ set(VULKAN_SRC
   vulkan/vk_pixel_buffer.hh
   vulkan/vk_push_constants.hh
   vulkan/vk_query.hh
+  vulkan/vk_resource_tracker.hh
   vulkan/vk_shader.hh
   vulkan/vk_shader_interface.hh
   vulkan/vk_shader_log.hh
@@ -432,6 +437,7 @@ set(GLSL_SRC
   shaders/common/gpu_shader_math_matrix_lib.glsl
   shaders/common/gpu_shader_math_rotation_lib.glsl
   shaders/common/gpu_shader_math_vector_lib.glsl
+  shaders/common/gpu_shader_smaa_lib.glsl
   shaders/common/gpu_shader_test_lib.glsl
   shaders/common/gpu_shader_utildefines_lib.glsl
 
@@ -794,6 +800,8 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
     bf_blenlib
     bf_intern_ghost
     ${PLATFORM_LINKLIBS}
+    ${IMATH_LIBRARIES}
+    ${IMATH_LIBRARY}
   )
   target_include_directories(shader_builder PRIVATE ${INC} ${CMAKE_CURRENT_BINARY_DIR})
 
