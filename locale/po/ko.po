@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.5.0 Beta (b'c5bbc5db6faa')\n"
+"Project-Id-Version: Blender 3.5.0 Release Candidate (b'14efe7000449')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-02-27 15:19:45\n"
+"POT-Creation-Date: 2023-03-27 16:38:19\n"
 "PO-Revision-Date: 2020-01-04 05:04+0900\n"
 "Last-Translator: Geuntak Jeong <beroberos@gmail.com>\n"
 "Language-Team: Korean (http://www.transifex.com/lxlalexlxl/blender/language/ko/)\n"
@@ -925,6 +925,10 @@ msgstr "활성 편집본"
 
 msgid "Armatures active edit bone"
 msgstr "아마튜어의 활성 편집본"
+
+
+msgid "Copyright"
+msgstr "저작권"
 
 
 msgid "Description"
@@ -4469,10 +4473,6 @@ msgstr "바깥 페이스 두께"
 
 msgid "Enabled"
 msgstr "활성화됨"
-
-
-msgid "Enable this objects as a collider for physics systems"
-msgstr "이 오브젝트를 피직스 시스템의 충돌체로 사용"
 
 
 msgid "Single Sided"
@@ -11309,10 +11309,6 @@ msgid "Minimum number of particles per cell (ensures that each cell has at least
 msgstr "셀당 최소 파티클들의 수 (각 셀에 최소한이 정도의 파티클들이 있는지 보장)"
 
 
-msgid "Number"
-msgstr "번호"
-
-
 msgid "Particle number factor (higher value results in more particles)"
 msgstr "파티클 수 팩터 (값이 클수록 파티클들이 많아짐)"
 
@@ -14918,30 +14914,6 @@ msgid "Editable falloff curve"
 msgstr "편집 가능한 커브 감소"
 
 
-msgid "Curve Preset"
-msgstr "커브 프리셋"
-
-
-msgid "Smoother"
-msgstr "더 매끄럽게"
-
-
-msgid "Root"
-msgstr "루트"
-
-
-msgid "Sharp"
-msgstr "샤프"
-
-
-msgid "Sharper"
-msgstr "샤프터"
-
-
-msgid "Inverse Square"
-msgstr "제곱 반전"
-
-
 msgid "Dash Ratio"
 msgstr "대시 비율"
 
@@ -15844,10 +15816,6 @@ msgstr "월드의 원점과 관련하여 오브젝트를 확대 또는 축소하
 
 msgid "Up"
 msgstr "위쪽"
-
-
-msgid "Second"
-msgstr "초"
 
 
 msgid "Camera data-block for storing camera settings"
@@ -18106,6 +18074,10 @@ msgstr "거리와 강도 소멸"
 
 msgid "Inverse Linear"
 msgstr "선형을 반전"
+
+
+msgid "Inverse Square"
+msgstr "제곱 반전"
 
 
 msgid "Inverse Coefficients"
@@ -20755,6 +20727,10 @@ msgid "Show hair simulation grid"
 msgstr "헤어 시뮬레이션 격자를 표시"
 
 
+msgid "Number"
+msgstr "번호"
+
+
 msgid "Show particle number"
 msgstr "파티클 번호를 표시"
 
@@ -21621,10 +21597,6 @@ msgid "Text file on disk is different than the one in memory"
 msgstr "디스크상의 텍스트 파일은 메모리 것과 다름"
 
 
-msgid "Lines"
-msgstr "라인"
-
-
 msgid "Lines of text"
 msgstr "텍스트의 행"
 
@@ -22245,8 +22217,16 @@ msgid "Use soft marble"
 msgstr "소프트 마블을 사용"
 
 
+msgid "Sharp"
+msgstr "샤프"
+
+
 msgid "Use more clearly defined marble"
 msgstr "더 명확하게 정의된 대리석을 사용"
+
+
+msgid "Sharper"
+msgstr "샤프터"
 
 
 msgid "Use very clearly defined marble"
@@ -26213,6 +26193,10 @@ msgid "Active spline of masking layer"
 msgstr "마스킹 레이어의 활성 스플라인"
 
 
+msgid "Active Point"
+msgstr "활성 포인트"
+
+
 msgid "Grease Pencil Color"
 msgstr "그리스 펜슬 컬러"
 
@@ -27338,6 +27322,10 @@ msgstr "스킨의 반지름"
 
 msgid "If vertex has multiple adjacent edges, it is hulled to them directly"
 msgstr "버텍스에 인접한 여러 에지가 있는 경우에는 버텍스에 직접 선체됨"
+
+
+msgid "Root"
+msgstr "루트"
 
 
 msgid "Vertex is a root for rotation calculations and armature generation, setting this flag does not clear other roots in the same mesh island"
@@ -30525,10 +30513,6 @@ msgid "UVWarp Modifier"
 msgstr "UV 왜곡 모디파이어"
 
 
-msgid "Add target position to uv coordinates"
-msgstr "UV 좌표에 대상 위치를 추가"
-
-
 msgid "U-Axis"
 msgstr "U 축"
 
@@ -31146,6 +31130,10 @@ msgstr "캐시된 프레임 수"
 
 msgid "Line Thickness"
 msgstr "라인 두께"
+
+
+msgid "Lines"
+msgstr "라인"
 
 
 msgid "Motion Path Points"
@@ -40634,10 +40622,6 @@ msgid "Export vertex colors with meshes"
 msgstr "메쉬로 버텍스 컬러를 내보내기"
 
 
-msgid "Copyright"
-msgstr "저작권"
-
-
 msgid "Legal rights and conditions for the model"
 msgstr "모델에 대한 법적 권리와 조건"
 
@@ -44703,17 +44687,9 @@ msgid "Clear Restrict View"
 msgstr "제한 뷰를 지우기"
 
 
-msgid "Reveal the layer by setting the hide flag"
-msgstr "숨기기 플레그를 설정하여 레이어를 보이기"
-
-
 msgctxt "Operator"
 msgid "Set Restrict View"
 msgstr "제한 뷰를 설정"
-
-
-msgid "Hide the layer by setting the hide flag"
-msgstr "숨기기 플레그를 설정하여 레이어를 숨기기"
 
 
 msgctxt "Operator"
@@ -49185,10 +49161,6 @@ msgid "Hook selected vertices to the first selected object"
 msgstr "첫 번째 선택된 오브젝트에 선택된 버택스를 후크"
 
 
-msgid "Assign the hook to the hook objects active bone"
-msgstr "활성 본을 후크 오브젝트하는 후크를 할당"
-
-
 msgctxt "Operator"
 msgid "Assign to Hook"
 msgstr "후크로 할당"
@@ -51674,10 +51646,6 @@ msgid "Add Simple UVs"
 msgstr "심플 UV를 추가"
 
 
-msgid "Add cube map uvs on mesh"
-msgstr "메쉬에 큐브 맵 UV를 추가"
-
-
 msgctxt "Operator"
 msgid "Brush Select"
 msgstr "브러시 선택"
@@ -53664,10 +53632,6 @@ msgstr "활성 라인 설정과 관련된 라인 스타일로 라인 컬러 모�
 msgctxt "Operator"
 msgid "Fill Range by Selection"
 msgstr "선택으로 범위를 채우기"
-
-
-msgid "Fill the Range Min/Max entries by the min/max distance between selected mesh objects and the source object "
-msgstr "선택된 메쉬 오브젝트와 소스 오브젝트 사이의 최소/최대 거리로 최소/최대 범위 항목을 채우기 "
 
 
 msgid "Name of the modifier to work on"
@@ -60728,10 +60692,6 @@ msgid "2D Cursor"
 msgstr "2D 커서"
 
 
-msgid "Active Point"
-msgstr "활성 포인트"
-
-
 msgid "Predefined tracking camera intrinsics"
 msgstr "미리 정의된 트래킹 카메라 내장"
 
@@ -64679,10 +64639,6 @@ msgstr "축 아이콘의 크기"
 
 msgid "Mini Axes Type"
 msgstr "미니 축 유형"
-
-
-msgid "Simple Axis"
-msgstr "심플 축"
 
 
 msgid "Interactive Navigation"
@@ -72384,10 +72340,6 @@ msgid "Display Texture Paint UVs"
 msgstr "텍스처 페인트 UV를 표시"
 
 
-msgid "Display overlay of texture paint uv layer"
-msgstr "택스처 페인트 UV 레이어의 오버레이를 표시"
-
-
 msgid "Tile Grid Shape"
 msgstr "타일 그리드 셰이프"
 
@@ -77443,10 +77395,6 @@ msgid "Invert Selection"
 msgstr "선택을 반전"
 
 
-msgid "[{}]: \"{}\" ({})"
-msgstr "[{}]: \"{}\" ({})"
-
-
 msgid "Tracking"
 msgstr "트래킹"
 
@@ -78330,20 +78278,8 @@ msgid "Hair dynamics disabled"
 msgstr "헤어 역학 사용 중지됨"
 
 
-msgid "Iterations: %d .. %d (avg. %d)"
-msgstr "반복: %d .. %d (avg. %d)"
-
-
-msgid "Error: %.5f .. %.5f (avg. %.5f)"
-msgstr "오류: %.5f .. %.5f (avg. %.5f)"
-
-
 msgid "Multiply Mass with Size"
 msgstr "크기에 질량을 곱하기"
-
-
-msgid "Spacing: %g"
-msgstr "간격: %g"
 
 
 msgid "Show Emitter"
@@ -78390,10 +78326,6 @@ msgid "Coordinate System"
 msgstr "좌표 시스템"
 
 
-msgid "%d fluid particles for this frame"
-msgstr "이 프레임에 대한 %d 유체 파티클"
-
-
 msgctxt "Operator"
 msgid "Delete Edit"
 msgstr "편집을 삭제"
@@ -78405,6 +78337,18 @@ msgstr "타이밍을 사용"
 
 msgid "Display percentage makes dynamics inaccurate without baking"
 msgstr "디스플레이 백분율은 배이킹하지 않고 역학을 부정확하게 만듭니다"
+
+
+msgid "Iterations: %d .. %d (avg. %d)"
+msgstr "반복: %d .. %d (avg. %d)"
+
+
+msgid "Error: %.5f .. %.5f (avg. %.5f)"
+msgstr "오류: %.5f .. %.5f (avg. %.5f)"
+
+
+msgid "Spacing: %g"
+msgstr "간격: %g"
 
 
 msgid "Not yet functional"
@@ -78419,6 +78363,10 @@ msgstr "모두 연결"
 msgctxt "Operator"
 msgid "Disconnect All"
 msgstr "모두 연결 끊기"
+
+
+msgid "%d fluid particles for this frame"
+msgstr "이 프레임에 대한 %d 유체 파티클"
 
 
 msgid "Speed Multiplier"
@@ -78805,6 +78753,10 @@ msgid "Velocity Linear"
 msgstr "속도 선형"
 
 
+msgid "Second"
+msgstr "초"
+
+
 msgid "X Stiffness"
 msgstr "X 강성"
 
@@ -79183,11 +79135,6 @@ msgstr "키 프레임 A를 설정"
 msgctxt "Operator"
 msgid "Set Keyframe B"
 msgstr "키 프레임 B를 설정"
-
-
-msgctxt "Operator"
-msgid "Zoom %d:%d"
-msgstr "줌 %d:%d"
 
 
 msgctxt "Operator"
@@ -80221,10 +80168,6 @@ msgid "Rotation"
 msgstr "회전"
 
 
-msgid "Original frame range: %d-%d (%d)"
-msgstr "원본 프레임 범위: %d-%d (%d)"
-
-
 msgid "Strip Offset Start"
 msgstr "스트립 오프셋 시작"
 
@@ -80269,10 +80212,6 @@ msgid "Effect Fader"
 msgstr "이펙트 페더"
 
 
-msgid "%dx%d"
-msgstr "%dx%d"
-
-
 msgid "Original Frame Range"
 msgstr "원본 프레임 범위"
 
@@ -80287,6 +80226,10 @@ msgstr "포장 해제"
 
 msgid "Pack"
 msgstr "포장"
+
+
+msgid "Original frame range: %d-%d (%d)"
+msgstr "원본 프레임 범위: %d-%d (%d)"
 
 
 msgid "Source Channel"
@@ -80375,10 +80318,6 @@ msgstr "라인을 위로 이동"
 msgctxt "Operator"
 msgid "Move Line(s) Down"
 msgstr "라인을 아래로 이동"
-
-
-msgid "Text: ExternalText: Internal"
-msgstr "텍스트: 외부 텍스트: 내부"
 
 
 msgid "File: *%s (unsaved)"
@@ -80709,10 +80648,6 @@ msgid "View Name"
 msgstr "뷰 이름"
 
 
-msgid "3D Viewport Axis"
-msgstr "3D 뷰포트 축"
-
-
 msgid "Limit Size"
 msgstr "크기를 제한"
 
@@ -80817,10 +80752,6 @@ msgstr "파일:"
 
 msgid "Author:"
 msgstr "작성자:"
-
-
-msgid "author"
-msgstr "작성자"
 
 
 msgid "Version:"
@@ -88044,10 +87975,6 @@ msgid "Driver not found in this animation data"
 msgstr "이 애니메이션 데이터에서 드라이버를 찾을 수 없습니다"
 
 
-msgid "Registering keying set info class: '%s' is too long, maximum length is %d"
-msgstr "등록하는 키잉 클래스: '%s' 는 너무 깁니다, 최대 길이는 %d"
-
-
 msgid "NlaTrack '%s' cannot be removed"
 msgstr "NLA트랙 '%s'을 제거 할 수 없습니다"
 
@@ -88361,22 +88288,6 @@ msgid "NLA strip '%s' not found in track '%s'"
 msgstr "NLA 스트립 '%s'을 트랙 '%s'에서 찾을 수 없습니다"
 
 
-msgid "Functions"
-msgstr "함수"
-
-
-msgid "Comparison"
-msgstr "비교"
-
-
-msgid "Trigonometric"
-msgstr "삼각법"
-
-
-msgid "Conversion"
-msgstr "변환"
-
-
 msgid "Same input/output direction of sockets"
 msgstr "소켓의 동일한 입력/출력 방향"
 
@@ -88387,10 +88298,6 @@ msgstr "노드 트리에서 연결을 찾을 수 없음"
 
 msgid "Unable to create socket"
 msgstr "소켓을 만들 수 없음"
-
-
-msgid "Registering node tree class: '%s' is too long, maximum length is %d"
-msgstr "등록하는 노드 트리 클래스: '%s' 는 너무 깁니다, 최대 길이는 %d"
 
 
 msgid "Node tree '%s' has undefined type %s"
@@ -88411,10 +88318,6 @@ msgstr "노드 트리에서 노드 '%s' 찾을 수 없음"
 
 msgid "Unable to locate socket '%s' in node"
 msgstr "노드에서 소켓 '%s' 찾을 수 없음"
-
-
-msgid "Registering node class: '%s' is too long, maximum length is %d"
-msgstr "등록하는 노드 클래스: '%s' 는 너무 깁니다, 최대 길이는 %d"
 
 
 msgid "Registering node socket class: '%s' is too long, maximum length is %d"
@@ -88550,10 +88453,6 @@ msgid "Bone '%s' has out of date B-Bone segment data!"
 msgstr "Bone '%s'은 오래된 B-본 세그먼트 데이터를 가지고 있습니다!"
 
 
-msgid "Registering render engine class: '%s' is too long, maximum length is %d"
-msgstr "등록하는 렌더 엔진 클래스: '%s' 는 너무 깁니다, 최대 길이는 %d"
-
-
 msgid "A non convex collision shape was passed to the function, use only convex collision shapes"
 msgstr "비 볼록 충돌 셰이프가 함수에 전달되고 볼록 충돌 셰이프 만 사용됩니다"
 
@@ -88646,30 +88545,6 @@ msgid "Region not found in space type"
 msgstr "공간 유형에서 지역을 찾을 수 없습니다"
 
 
-msgid "Registering panel class: '%s' is too long, maximum length is %d"
-msgstr "패널 클래스 등록 중: '%s' 는 너무 깁니다, 최대 길이는 %d"
-
-
-msgid "Registering panel class: '%s' has category '%s' "
-msgstr "패널 클래스 등록 중: '%s'은 (는) '%s'카테고리를 가지고 있습니다 "
-
-
-msgid "Registering panel class: parent '%s' for '%s' not found"
-msgstr "패널 클래스 등록 중: 부모 '%s'을 찾을 수 없습니다. '%s'에 대한"
-
-
-msgid "Registering uilist class: '%s' is too long, maximum length is %d"
-msgstr "등록하는 UI 목록 클래스: '%s' 는 너무 깁니다, 최대 길이는 %d"
-
-
-msgid "Registering header class: '%s' is too long, maximum length is %d"
-msgstr "등록하는 헤더 클래스: '%s' 는 너무 깁니다, 최대 길이는 %d"
-
-
-msgid "Registering menu class: '%s' is too long, maximum length is %d"
-msgstr "등록하는 메뉴 클래스: '%s' 는 너무 깁니다, 최대 길이는 %d"
-
-
 msgid "Add-on is no longer valid"
 msgstr "애드온이 더 이상 유효하지 않음"
 
@@ -88678,16 +88553,8 @@ msgid "Excluded path is no longer valid"
 msgstr "제외된 경로는 더 이상 유효하지 않음"
 
 
-msgid "Registering add-on preferences class: '%s' is too long, maximum length is %d"
-msgstr "애드온 환경 설정 클래스 등록 중: '%s'는 너무 길고, 최대 길이는 %d입니다"
-
-
 msgid "Font not packed"
 msgstr "폰트가 포장되지 않음"
-
-
-msgid "Registering key-config preferences class: '%s' is too long, maximum length is %d"
-msgstr "키-구성 환경 설정 클래스를 등록중: '%s'는 너무 길고, 최대 길이는 %d"
 
 
 msgid "Not a non-modal keymap"
@@ -88730,20 +88597,8 @@ msgid "KeyConfig '%s' cannot be removed"
 msgstr "키 설정 '%s'을 제거 할 수 없습니다"
 
 
-msgid "Area type does not support gizmos"
-msgstr "영역 유형은 기즈모를 지원하지 않습니다"
-
-
-msgid "Registering gizmo class: '%s' is too long, maximum length is %d"
-msgstr "기즈모 클래스를 등록중: '%s'은 너무 길고, 최대 길이는 %d"
-
-
 msgid "GizmoType '%s' not known"
 msgstr "기지모 유형 '%s' 알 수 없음"
-
-
-msgid "Registering gizmogroup class: '%s' is too long, maximum length is %d"
-msgstr "기즈모 그룹 클래스를 등록중: '%s'이 너무 길고. 최대 길이는 %d"
 
 
 msgid "Gizmo target property '%s.%s' not found"

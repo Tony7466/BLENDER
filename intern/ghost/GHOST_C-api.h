@@ -924,14 +924,9 @@ extern bool GHOST_setConsoleWindowState(GHOST_TConsoleWindowState action);
 extern bool GHOST_UseNativePixels(void);
 
 /**
- * Warp the cursor, if supported.
+ * Return features which are supported by the GHOST back-end.
  */
-extern bool GHOST_SupportsCursorWarp(void);
-
-/**
- * Support positioning windows (when false `wmWindow.x,y` are meaningless).
- */
-extern bool GHOST_SupportsWindowPosition(void);
+extern GHOST_TCapabilityFlag GHOST_GetCapabilities(void);
 
 /**
  * Assign the callback which generates a back-trace (may be NULL).
@@ -942,6 +937,11 @@ extern void GHOST_SetBacktraceHandler(GHOST_TBacktraceFn backtrace_fn);
  * Focus window after opening, or put them in the background.
  */
 extern void GHOST_UseWindowFocus(bool use_focus);
+
+/**
+ * Focus and raise windows on mouse hover.
+ */
+extern void GHOST_SetAutoFocus(bool auto_focus);
 
 /**
  * If window was opened using native pixel size, it returns scaling factor.

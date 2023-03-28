@@ -132,22 +132,22 @@ bool CustomData_bmesh_has_free(const struct CustomData *data);
 bool CustomData_has_referenced(const struct CustomData *data);
 
 /**
- * Copies the "value" (e.g. mloopuv uv or mloopcol colors) from one block to
+ * Copies the "value" (e.g. `mloopuv` UV or `mloopcol` colors) from one block to
  * another, while not overwriting anything else (e.g. flags).  probably only
- * implemented for mloopuv/mloopcol, for now.
+ * implemented for `mloopuv/mloopcol`, for now.
  */
 void CustomData_data_copy_value(int type, const void *source, void *dest);
 void CustomData_data_set_default_value(int type, void *elem);
 
 /**
- * Mixes the "value" (e.g. mloopuv uv or mloopcol colors) from one block into
+ * Mixes the "value" (e.g. `mloopuv` UV or `mloopcol` colors) from one block into
  * another, while not overwriting anything else (e.g. flags).
  */
 void CustomData_data_mix_value(
     int type, const void *source, void *dest, int mixmode, float mixfactor);
 
 /**
- * Compares if data1 is equal to data2.  type is a valid CustomData type
+ * Compares if data1 is equal to data2.  type is a valid #CustomData type
  * enum (e.g. #CD_PROP_FLOAT). the layer type's equal function is used to compare
  * the data, if it exists, otherwise #memcmp is used.
  */
@@ -233,17 +233,28 @@ void CustomData_free_temporary(struct CustomData *data, int totelem);
  * backed by an external data array. the different allocation types are
  * defined above. returns the data of the layer.
  */
-void *CustomData_add_layer(
-    struct CustomData *data, int type, eCDAllocType alloctype, void *layer, int totelem);
+void *CustomData_add_layer(struct CustomData *data,
+                           eCustomDataType type,
+                           eCDAllocType alloctype,
+                           int totelem);
+const void *CustomData_add_layer_with_data(struct CustomData *data,
+                                           eCustomDataType type,
+                                           void *layer_data,
+                                           int totelem);
+
 /**
  * Same as above but accepts a name.
  */
 void *CustomData_add_layer_named(struct CustomData *data,
-                                 int type,
+                                 eCustomDataType type,
                                  eCDAllocType alloctype,
-                                 void *layer,
                                  int totelem,
                                  const char *name);
+const void *CustomData_add_layer_named_with_data(struct CustomData *data,
+                                                 eCustomDataType type,
+                                                 void *layer_data,
+                                                 int totelem,
+                                                 const char *name);
 void *CustomData_add_layer_anonymous(struct CustomData *data,
                                      int type,
                                      eCDAllocType alloctype,
@@ -474,6 +485,8 @@ const char *CustomData_get_active_layer_name(const struct CustomData *data, int 
  * if no such active layer is defined.
  */
 const char *CustomData_get_render_layer_name(const struct CustomData *data, int type);
+
+bool CustomData_layer_is_anonymous(const struct CustomData *data, int type, int n);
 
 void CustomData_bmesh_set(const struct CustomData *data,
                           void *block,

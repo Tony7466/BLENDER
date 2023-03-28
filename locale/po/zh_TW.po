@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.5.0 Beta (b'c5bbc5db6faa')\n"
+"Project-Id-Version: Blender 3.5.0 Release Candidate (b'14efe7000449')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-02-27 15:19:45\n"
+"POT-Creation-Date: 2023-03-27 16:38:19\n"
 "PO-Revision-Date: 2023-01-28 11:09+0800\n"
 "Last-Translator: Cheng-Chia Tseng <pswo10680@gmail.com>\n"
 "Language-Team: Chinese (Traditional) <http://weblate.slat.org/projects/blender/blender/zh_Hant/>\n"
@@ -4397,10 +4397,6 @@ msgstr "外面厚度"
 
 msgid "Enabled"
 msgstr "已啟用"
-
-
-msgid "Enable this objects as a collider for physics systems"
-msgstr "將此物體設定為物理系統中的的碰撞子"
 
 
 msgid "Kill Particles"
@@ -9757,10 +9753,6 @@ msgid "Effective but slow compression"
 msgstr "有效但緩慢的壓縮"
 
 
-msgid "Number"
-msgstr "數目"
-
-
 msgid "Randomness"
 msgstr "隨機度"
 
@@ -11614,22 +11606,6 @@ msgstr "遮罩紋理疊層 Alpha"
 
 msgid "Editable falloff curve"
 msgstr "可編輯的衰減曲線"
-
-
-msgid "Root"
-msgstr "基根"
-
-
-msgid "Sharp"
-msgstr "銳利"
-
-
-msgid "Sharper"
-msgstr "更銳利"
-
-
-msgid "Inverse Square"
-msgstr "反轉平方"
 
 
 msgid "Paint most on faces pointing towards the view according to this angle"
@@ -13930,6 +13906,10 @@ msgid "Inverse Linear"
 msgstr "反轉線性"
 
 
+msgid "Inverse Square"
+msgstr "反轉平方"
+
+
 msgid "Lin/Quad Weighted"
 msgstr "線性/二次型權重"
 
@@ -15777,6 +15757,10 @@ msgid "Show guide hairs"
 msgstr "顯示導引毛髮"
 
 
+msgid "Number"
+msgstr "數目"
+
+
 msgid "Show particle number"
 msgstr "顯示粒子數目"
 
@@ -16495,10 +16479,6 @@ msgid "Text file on disk is different than the one in memory"
 msgstr "磁碟上的文字檔與記憶體中的不同"
 
 
-msgid "Lines"
-msgstr "線條"
-
-
 msgid "Lines of text"
 msgstr "文字的列"
 
@@ -17103,8 +17083,16 @@ msgid "Use soft marble"
 msgstr "使用柔大理石"
 
 
+msgid "Sharp"
+msgstr "銳利"
+
+
 msgid "Use more clearly defined marble"
 msgstr "使用更清晰定義的大理石"
+
+
+msgid "Sharper"
+msgstr "更銳利"
 
 
 msgid "Use very clearly defined marble"
@@ -19160,6 +19148,10 @@ msgid "Weight of feather point"
 msgstr "羽毛點的權重"
 
 
+msgid "Active Point"
+msgstr "作用中的點"
+
+
 msgid "Alignment"
 msgstr "對齊"
 
@@ -19776,6 +19768,10 @@ msgstr "皮膚的半徑"
 
 msgid "If vertex has multiple adjacent edges, it is hulled to them directly"
 msgstr "如果頂點有多條相鄰邊線，它會被它們直接拉過去"
+
+
+msgid "Root"
+msgstr "基根"
 
 
 msgid "Mesh Skin Vertex Layer"
@@ -21906,10 +21902,6 @@ msgid "UVWarp Modifier"
 msgstr "UVWarp 修改器"
 
 
-msgid "Add target position to uv coordinates"
-msgstr "添加目標位置到 UV 座標軸"
-
-
 msgid "U-Axis"
 msgstr "U 軸"
 
@@ -22455,6 +22447,10 @@ msgstr "快取的幀數"
 
 msgid "Line Thickness"
 msgstr "線條厚度"
+
+
+msgid "Lines"
+msgstr "線條"
 
 
 msgid "Use straight lines between keyframe points"
@@ -32223,17 +32219,9 @@ msgid "Clear Restrict View"
 msgstr "清除限制視圖"
 
 
-msgid "Reveal the layer by setting the hide flag"
-msgstr "揭開設有隱藏旗幟的層"
-
-
 msgctxt "Operator"
 msgid "Set Restrict View"
 msgstr "設定限制視圖"
-
-
-msgid "Hide the layer by setting the hide flag"
-msgstr "隱藏設有隱藏旗幟的層"
 
 
 msgctxt "Operator"
@@ -35420,10 +35408,6 @@ msgstr "鉤至選取的物體"
 
 msgid "Hook selected vertices to the first selected object"
 msgstr "將選取的頂點鉤至第一個選取的物體"
-
-
-msgid "Assign the hook to the hook objects active bone"
-msgstr "將鉤指派給鉤物體作用中骨骼"
 
 
 msgctxt "Operator"
@@ -43732,10 +43716,6 @@ msgstr "攝影機預置"
 
 msgid "2D Cursor"
 msgstr "2D 游標"
-
-
-msgid "Active Point"
-msgstr "作用中的點"
 
 
 msgid "Predefined tracking camera intrinsics"
@@ -54237,10 +54217,6 @@ msgid "Invert Selection"
 msgstr "反轉選取項"
 
 
-msgid "[{}]: \"{}\" ({})"
-msgstr "[{}]: \"{}\" ({})"
-
-
 msgid "Tracking"
 msgstr "跟蹤"
 
@@ -54270,12 +54246,12 @@ msgid "Active object is not a mesh"
 msgstr "作用中物體非網格"
 
 
-msgid "Remove Add-on: %r?"
-msgstr "是否移除擴充元件：%r？"
-
-
 msgid "Warning, file already exists. Overwrite existing file?"
 msgstr "警告：檔案已經存在。是否覆蓋既有檔案？"
+
+
+msgid "Remove Add-on: %r?"
+msgstr "是否移除擴充元件：%r？"
 
 
 msgctxt "Operator"
@@ -54692,10 +54668,6 @@ msgid "Strand Shape"
 msgstr "股段外形"
 
 
-msgid "Spacing: %g"
-msgstr "間隔：%g"
-
-
 msgid "Settings used for fluid"
 msgstr "用於流體的設定"
 
@@ -54704,16 +54676,20 @@ msgid "Jittering Amount"
 msgstr "抖動量"
 
 
-msgid "%d fluid particles for this frame"
-msgstr "此框幀的 %d 個流體粒子"
-
-
 msgid "Use Timing"
 msgstr "使用計時"
 
 
+msgid "Spacing: %g"
+msgstr "間隔：%g"
+
+
 msgid "Not yet functional"
 msgstr "尚未能運作"
+
+
+msgid "%d fluid particles for this frame"
+msgstr "此框幀的 %d 個流體粒子"
 
 
 msgid "Dynamic Mesh"
@@ -55452,12 +55428,12 @@ msgid "Rotation"
 msgstr "旋轉"
 
 
-msgid "Original frame range: %d-%d (%d)"
-msgstr "原始框幀區間：%d-%d (%d)"
-
-
 msgid "Unpack"
 msgstr "解包"
+
+
+msgid "Original frame range: %d-%d (%d)"
+msgstr "原始框幀區間：%d-%d (%d)"
 
 
 msgctxt "Text"
@@ -55628,10 +55604,6 @@ msgid "View Name"
 msgstr "視圖名稱"
 
 
-msgid "3D Viewport Axis"
-msgstr "3D 視接口座標軸"
-
-
 msgid "Limit Size"
 msgstr "限制大小"
 
@@ -55664,10 +55636,6 @@ msgid "Excluded Paths"
 msgstr "排除的路徑"
 
 
-msgid "Color Set %d"
-msgstr "色彩集 %d"
-
-
 msgid "Invert Wheel Zoom Direction"
 msgstr "反轉滾輪遠近調焦方向"
 
@@ -55678,6 +55646,10 @@ msgstr "找到多個同名的附加元件！"
 
 msgid "Missing script files"
 msgstr "遺失的指令稿檔案"
+
+
+msgid "Color Set %d"
+msgstr "色彩集 %d"
 
 
 msgid "Description:"
@@ -55694,10 +55666,6 @@ msgstr "檔案："
 
 msgid "Author:"
 msgstr "作者："
-
-
-msgid "author"
-msgstr "作者"
 
 
 msgid "Version:"
@@ -60402,10 +60370,6 @@ msgid "No valid driver data to create copy of"
 msgstr "無有效的驅動器資料可製作副本，副本來源為"
 
 
-msgid "Registering keying set info class: '%s' is too long, maximum length is %d"
-msgstr "正在註冊鍵處理集資訊型別：「%s」過長，最大長度為 %d"
-
-
 msgid "NlaTrack '%s' cannot be removed"
 msgstr "無法移除 NlaTrack「%s」"
 
@@ -60635,10 +60599,6 @@ msgid "Unable to create socket"
 msgstr "無法建立接口"
 
 
-msgid "Registering node tree class: '%s' is too long, maximum length is %d"
-msgstr "正在註冊節點樹型別：「%s」過長，最大長度為 %d"
-
-
 msgid "Node tree '%s' has undefined type %s"
 msgstr "節點樹「%s」有未定義的類型 %s"
 
@@ -60657,10 +60617,6 @@ msgstr "無法定位節點樹中的「%s」節點"
 
 msgid "Unable to locate socket '%s' in node"
 msgstr "無法定位節點中的「%s」接口"
-
-
-msgid "Registering node class: '%s' is too long, maximum length is %d"
-msgstr "正在註冊節點型別：「%s」過長，最大長度為 %d"
 
 
 msgid "Registering node socket class: '%s' is too long, maximum length is %d"
@@ -60774,14 +60730,6 @@ msgstr "無法移除 MovieTracking「%s」"
 
 msgid "Region not found in space type"
 msgstr "空間類型中找不到區塊"
-
-
-msgid "Registering add-on preferences class: '%s' is too long, maximum length is %d"
-msgstr "正在註冊附加元件偏好設定型別：「%s」過長，最大長度為 %d"
-
-
-msgid "Registering key-config preferences class: '%s' is too long, maximum length is %d"
-msgstr "正在註冊鍵設定偏好設定型別：「%s」過長，最大長度為 %d"
 
 
 msgid "Not a non-modal keymap"

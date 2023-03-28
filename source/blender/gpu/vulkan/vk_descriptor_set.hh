@@ -12,7 +12,10 @@
 
 #include "gpu_shader_private.hh"
 
+#include "vk_buffer.hh"
 #include "vk_common.hh"
+#include "vk_resource_tracker.hh"
+#include "vk_uniform_buffer.hh"
 
 namespace blender::gpu {
 class VKIndexBuffer;
@@ -21,6 +24,7 @@ class VKStorageBuffer;
 class VKTexture;
 class VKUniformBuffer;
 class VKVertexBuffer;
+class VKDescriptorSetTracker;
 
 /**
  * In vulkan shader resources (images and buffers) are grouped in descriptor sets.
@@ -31,7 +35,6 @@ class VKVertexBuffer;
  * to use 2 descriptor sets per shader. One for each #blender::gpu::shader::Frequency.
  */
 class VKDescriptorSet : NonCopyable {
-  struct Binding;
 
  public:
   /**
@@ -69,13 +72,48 @@ class VKDescriptorSet : NonCopyable {
       return binding;
     }
 
-    friend struct Binding;
+    friend class VKDescriptorSetTracker;
     friend class VKShaderInterface;
   };
 
- private:
+  VkDescriptorPool vk_descriptor_pool_ = VK_NULL_HANDLE;
+  VkDescriptorSet vk_descriptor_set_ = VK_NULL_HANDLE;
+
+ public:
+  VKDescriptorSet() = default;
+  VKDescriptorSet(VkDescriptorPool vk_descriptor_pool, VkDescriptorSet vk_descriptor_set)
+      : vk_descriptor_pool_(vk_descriptor_pool), vk_descriptor_set_(vk_descriptor_set)
+  {
+  }
+  VKDescriptorSet(VKDescriptorSet &&other);
+  virtual ~VKDescriptorSet();
+
+  VKDescriptorSet &operator=(VKDescriptorSet &&other)
+  {
+    vk_descriptor_set_ = other.vk_descriptor_set_;
+    vk_descriptor_pool_ = other.vk_descriptor_pool_;
+    other.mark_freed();
+    return *this;
+  }
+
+  VkDescriptorSet vk_handle() const
+  {
+    return vk_descriptor_set_;
+  }
+
+  VkDescriptorPool vk_pool_handle() const
+  {
+    return vk_descriptor_pool_;
+  }
+  void mark_freed();
+};
+
+class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
+  friend class VKDescriptorSet;
+
+ public:
   struct Binding {
-    Location location;
+    VKDescriptorSet::Location location;
     VkDescriptorType type;
 
     VkBuffer vk_buffer = VK_NULL_HANDLE;
@@ -99,53 +137,41 @@ class VKDescriptorSet : NonCopyable {
     }
   };
 
-  VkDescriptorPool vk_descriptor_pool_ = VK_NULL_HANDLE;
-  VkDescriptorSet vk_descriptor_set_ = VK_NULL_HANDLE;
-
-  /** A list of bindings that needs to be updated. */
+ private:
+  /** A list of bindings that needs to be updated.*/
   Vector<Binding> bindings_;
+  VkDescriptorSetLayout layout_;
 
  public:
-  VKDescriptorSet() = default;
-  VKDescriptorSet(VkDescriptorPool vk_descriptor_pool, VkDescriptorSet vk_descriptor_set)
-      : vk_descriptor_pool_(vk_descriptor_pool), vk_descriptor_set_(vk_descriptor_set)
+  VKDescriptorSetTracker()
   {
   }
-  virtual ~VKDescriptorSet();
 
-  VKDescriptorSet &operator=(VKDescriptorSet &&other)
+  VKDescriptorSetTracker(VkDescriptorSetLayout layout) : layout_(layout)
   {
-    vk_descriptor_set_ = other.vk_descriptor_set_;
-    vk_descriptor_pool_ = other.vk_descriptor_pool_;
-    other.mark_freed();
-    return *this;
   }
 
-  VkDescriptorSet vk_handle() const
-  {
-    return vk_descriptor_set_;
-  }
-
-  VkDescriptorPool vk_pool_handle() const
-  {
-    return vk_descriptor_pool_;
-  }
-
-  void bind_as_ssbo(VKVertexBuffer &buffer, Location location);
-  void bind_as_ssbo(VKIndexBuffer &buffer, Location location);
-  void bind(VKStorageBuffer &buffer, Location location);
-  void bind(VKUniformBuffer &buffer, Location location);
-  void image_bind(VKTexture &texture, Location location);
+  void bind_as_ssbo(VKVertexBuffer &buffer, VKDescriptorSet::Location location);
+  void bind_as_ssbo(VKIndexBuffer &buffer, VKDescriptorSet::Location location);
+  void bind(VKStorageBuffer &buffer, VKDescriptorSet::Location location);
+  void bind(VKUniformBuffer &buffer, VKDescriptorSet::Location location);
+  void image_bind(VKTexture &texture, VKDescriptorSet::Location location);
 
   /**
    * Update the descriptor set on the device.
    */
-  void update(VkDevice vk_device);
+  void update(VKContext &context);
 
-  void mark_freed();
+  std::unique_ptr<VKDescriptorSet> &active_descriptor_set()
+  {
+    return active_resource();
+  }
+
+ protected:
+  std::unique_ptr<VKDescriptorSet> create_resource(VKContext &context) override;
 
  private:
-  Binding &ensure_location(Location location);
+  Binding &ensure_location(VKDescriptorSet::Location location);
 };
 
 }  // namespace blender::gpu
