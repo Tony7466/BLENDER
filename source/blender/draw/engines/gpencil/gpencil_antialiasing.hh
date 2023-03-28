@@ -17,7 +17,7 @@
 
 #include "gpencil_shader.hh"
 
-#include "smaa_textures.h"
+#include "BLI_smaa_textures.h"
 
 namespace blender::gpencil {
 
