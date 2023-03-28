@@ -687,20 +687,21 @@ bool VKShader::finalize(const shader::ShaderCreateInfo *info)
     BLI_assert((fragment_module_ != VK_NULL_HANDLE && info->tf_type_ == GPU_SHADER_TFB_NONE) ||
                (fragment_module_ == VK_NULL_HANDLE && info->tf_type_ != GPU_SHADER_TFB_NONE));
     BLI_assert(compute_module_ == VK_NULL_HANDLE);
-    result = finalize_graphics_pipeline(vk_device);
+    pipeline_ = VKPipeline::create_graphics_pipeline(layout_,
+                                                     vk_interface->push_constants_layout_get());
+    result = true;
   }
   else {
     BLI_assert(vertex_module_ == VK_NULL_HANDLE);
     BLI_assert(geometry_module_ == VK_NULL_HANDLE);
     BLI_assert(fragment_module_ == VK_NULL_HANDLE);
     BLI_assert(compute_module_ != VK_NULL_HANDLE);
-    compute_pipeline_ = VKPipeline::create_compute_pipeline(
-        *context_,
-        compute_module_,
-        layout_,
-        pipeline_layout_,
-        vk_interface->push_constants_layout_get());
-    result = compute_pipeline_.is_valid();
+    pipeline_ = VKPipeline::create_compute_pipeline(*context_,
+                                                    compute_module_,
+                                                    layout_,
+                                                    pipeline_layout_,
+                                                    vk_interface->push_constants_layout_get());
+    result = pipeline_.is_valid();
   }
 
   if (result) {
@@ -710,36 +711,6 @@ bool VKShader::finalize(const shader::ShaderCreateInfo *info)
     delete vk_interface;
   }
   return result;
-}
-
-bool VKShader::finalize_graphics_pipeline(VkDevice /*vk_device */)
-{
-  Vector<VkPipelineShaderStageCreateInfo> pipeline_stages;
-  VkPipelineShaderStageCreateInfo vertex_stage_info = {};
-  vertex_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-  vertex_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
-  vertex_stage_info.module = vertex_module_;
-  vertex_stage_info.pName = "main";
-  pipeline_stages.append(vertex_stage_info);
-
-  if (geometry_module_ != VK_NULL_HANDLE) {
-    VkPipelineShaderStageCreateInfo geo_stage_info = {};
-    geo_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    geo_stage_info.stage = VK_SHADER_STAGE_GEOMETRY_BIT;
-    geo_stage_info.module = geometry_module_;
-    geo_stage_info.pName = "main";
-    pipeline_stages.append(geo_stage_info);
-  }
-  if (fragment_module_ != VK_NULL_HANDLE) {
-    VkPipelineShaderStageCreateInfo fragment_stage_info = {};
-    fragment_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    fragment_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fragment_stage_info.module = fragment_module_;
-    fragment_stage_info.pName = "main";
-    pipeline_stages.append(fragment_stage_info);
-  }
-
-  return true;
 }
 
 bool VKShader::finalize_pipeline_layout(VkDevice vk_device,
@@ -981,26 +952,26 @@ bool VKShader::transform_feedback_enable(GPUVertBuf *)
 void VKShader::transform_feedback_disable()
 {
 }
+void VKShader::update_graphics_pipeline(VKContext &context)
+{
+  BLI_assert(is_graphics_shader());
+  pipeline_get().finalize(context, vertex_module_, fragment_module_, pipeline_layout_);
+}
 
 void VKShader::bind()
 {
   VKContext *context = VKContext::get();
 
   if (is_compute_shader()) {
-    context->command_buffer_get().bind(compute_pipeline_, VK_PIPELINE_BIND_POINT_COMPUTE);
+    context->command_buffer_get().bind(pipeline_, VK_PIPELINE_BIND_POINT_COMPUTE);
   }
-  else {
-    BLI_assert_unreachable();
-  }
+
+  /* Graphics pipeline needs to be constructed just before drawing in order to take the GPU state
+   * into account. GPU state can be changed after binding the shader. */
 }
 
 void VKShader::unbind()
 {
-  if (is_compute_shader()) {
-  }
-  else {
-    BLI_assert_unreachable();
-  }
 }
 
 void VKShader::uniform_float(int location, int comp_len, int array_size, const float *data)
@@ -1244,7 +1215,7 @@ int VKShader::program_handle_get() const
 
 VKPipeline &VKShader::pipeline_get()
 {
-  return compute_pipeline_;
+  return pipeline_;
 }
 
 const VKShaderInterface &VKShader::interface_get() const

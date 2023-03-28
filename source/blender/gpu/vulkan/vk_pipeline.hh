@@ -18,7 +18,17 @@
 
 namespace blender::gpu {
 class VKContext;
+class VKShader;
 
+/**
+ * Pipeline can be a compute pipeline or a graphic pipeline.
+ *
+ * Compute pipelines can be constructed early on, but graphics
+ * pipelines depends on the actual GPU state/context.
+ *
+ * - TODO: we should sanitize the interface. There we can also
+ *   use late construction for compute pipelines.
+ */
 class VKPipeline : NonCopyable {
   VkPipeline vk_pipeline_ = VK_NULL_HANDLE;
   VKDescriptorSetTracker descriptor_set_;
@@ -28,6 +38,7 @@ class VKPipeline : NonCopyable {
   VKPipeline() = default;
 
   virtual ~VKPipeline();
+  VKPipeline(VkDescriptorSetLayout vk_descriptor_set_layout, VKPushConstants &&push_constants);
   VKPipeline(VkPipeline vk_pipeline,
              VkDescriptorSetLayout vk_descriptor_set_layout,
              VKPushConstants &&push_constants);
@@ -45,6 +56,8 @@ class VKPipeline : NonCopyable {
                                             VkDescriptorSetLayout &descriptor_set_layout,
                                             VkPipelineLayout &pipeline_layouts,
                                             const VKPushConstants::Layout &push_constants_layout);
+  static VKPipeline create_graphics_pipeline(VkDescriptorSetLayout &descriptor_set_layout,
+                                             const VKPushConstants::Layout &push_constants_layout);
 
   VKDescriptorSetTracker &descriptor_set_get()
   {
@@ -58,6 +71,11 @@ class VKPipeline : NonCopyable {
 
   VkPipeline vk_handle() const;
   bool is_valid() const;
+
+  void finalize(VKContext &context,
+                VkShaderModule vertex_module,
+                VkShaderModule fragment_module,
+                VkPipelineLayout &pipeline_layout);
 };
 
 }  // namespace blender::gpu

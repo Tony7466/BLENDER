@@ -72,6 +72,8 @@ class VKCommandBuffer : NonCopyable, NonMovable {
   void clear(Span<VkClearAttachment> attachments, Span<VkClearRect> areas);
   void fill(VKBuffer &buffer, uint32_t data);
 
+  void draw(int v_first, int v_count, int i_first, int i_count);
+
   /**
    * Stop recording commands, encode + send the recordings to Vulkan, wait for the until the
    * commands have been executed and start the command buffer to accept recordings again.

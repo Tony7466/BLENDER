@@ -56,8 +56,12 @@ class VKContext : public Context {
   bool debug_capture_scope_begin(void *scope) override;
   void debug_capture_scope_end(void *scope) override;
 
+  bool has_active_framebuffer() const;
   void activate_framebuffer(VKFrameBuffer &framebuffer);
   void deactivate_framebuffer();
+  VKFrameBuffer *active_framebuffer_get() const;
+
+  void bind_graphics_pipeline();
 
   static VKContext *get(void)
   {
@@ -106,8 +110,6 @@ class VKContext : public Context {
 
  private:
   void init_physical_device_limits();
-
-  bool has_active_framebuffer() const;
 };
 
 }  // namespace blender::gpu

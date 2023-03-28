@@ -150,6 +150,11 @@ void VKCommandBuffer::clear(Span<VkClearAttachment> attachments, Span<VkClearRec
       vk_command_buffer_, attachments.size(), attachments.data(), areas.size(), areas.data());
 }
 
+void VKCommandBuffer::draw(int v_first, int v_count, int i_first, int i_count)
+{
+  vkCmdDraw(vk_command_buffer_, v_count, i_count, v_first, i_first);
+}
+
 void VKCommandBuffer::pipeline_barrier(VkPipelineStageFlags source_stages,
                                        VkPipelineStageFlags destination_stages)
 {

@@ -10,6 +10,7 @@
 #include "vk_backend.hh"
 #include "vk_framebuffer.hh"
 #include "vk_memory.hh"
+#include "vk_shader.hh"
 #include "vk_state_manager.hh"
 
 #include "GHOST_C-api.h"
@@ -108,25 +109,47 @@ void VKContext::begin_frame()
 
 void VKContext::end_frame()
 {
+  if (has_active_framebuffer()) {
+    deactivate_framebuffer();
+  }
   command_buffer_.end_recording();
 }
 
 void VKContext::flush()
 {
+  VKFrameBuffer *previous_framebuffer = active_framebuffer_get();
+  if (has_active_framebuffer()) {
+    deactivate_framebuffer();
+  }
+
   command_buffer_.submit();
+
+  if (previous_framebuffer != nullptr) {
+    activate_framebuffer(*previous_framebuffer);
+  }
 }
 
 void VKContext::finish()
 {
+  VKFrameBuffer *previous_framebuffer = active_framebuffer_get();
   if (has_active_framebuffer()) {
     deactivate_framebuffer();
   }
+
   command_buffer_.submit();
+
+  if (previous_framebuffer != nullptr) {
+    activate_framebuffer(*previous_framebuffer);
+  }
 }
 
 void VKContext::memory_statistics_get(int * /*total_mem*/, int * /*free_mem*/)
 {
 }
+
+/* -------------------------------------------------------------------- */
+/** \name Framebuffer
+ * \{ */
 
 void VKContext::activate_framebuffer(VKFrameBuffer &framebuffer)
 {
@@ -139,17 +162,37 @@ void VKContext::activate_framebuffer(VKFrameBuffer &framebuffer)
   command_buffer_.begin_render_pass(framebuffer);
 }
 
+VKFrameBuffer *VKContext::active_framebuffer_get() const
+{
+  return unwrap(active_fb);
+}
+
 bool VKContext::has_active_framebuffer() const
 {
-  return active_fb != nullptr;
+  return active_framebuffer_get() != nullptr;
 }
 
 void VKContext::deactivate_framebuffer()
 {
-  BLI_assert(active_fb != nullptr);
-  VKFrameBuffer *framebuffer = unwrap(active_fb);
+  VKFrameBuffer *framebuffer = active_framebuffer_get();
+  BLI_assert(framebuffer != nullptr);
   command_buffer_.end_render_pass(*framebuffer);
   active_fb = nullptr;
 }
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Graphics pipeline
+ * \{ */
+void VKContext::bind_graphics_pipeline()
+{
+  VKShader *shader = unwrap(this->shader);
+  BLI_assert(shader);
+  shader->update_graphics_pipeline(*this);
+  command_buffer_get().bind(shader->pipeline_get(), VK_PIPELINE_BIND_POINT_GRAPHICS);
+}
+
+/** \} */
 
 }  // namespace blender::gpu

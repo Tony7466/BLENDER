@@ -87,6 +87,7 @@ class VKFrameBuffer : public FrameBuffer {
     BLI_assert(vk_render_pass_ != VK_NULL_HANDLE);
     return vk_render_pass_;
   }
+  VkViewport vk_viewport_get() const;
   VkRect2D vk_render_area_get() const;
 
  private:

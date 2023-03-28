@@ -7,10 +7,16 @@
 
 #include "vk_batch.hh"
 
+#include "vk_context.hh"
+
 namespace blender::gpu {
 
-void VKBatch::draw(int /*v_first*/, int /*v_count*/, int /*i_first*/, int /*i_count*/)
+void VKBatch::draw(int v_first, int v_count, int i_first, int i_count)
 {
+  // Based on the context construct the pipeline.
+  VKContext &context = *VKContext::get();
+  context.bind_graphics_pipeline();
+  context.command_buffer_get().draw(v_first, v_count, i_first, i_count);
 }
 
 void VKBatch::draw_indirect(GPUStorageBuf * /*indirect_buf*/, intptr_t /*offset*/)

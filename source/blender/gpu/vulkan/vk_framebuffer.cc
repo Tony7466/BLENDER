@@ -18,6 +18,7 @@ namespace blender::gpu {
 VKFrameBuffer::VKFrameBuffer(const char *name) : FrameBuffer(name)
 {
   immutable_ = false;
+  size_set(1, 1);
 }
 
 VKFrameBuffer::VKFrameBuffer(const char *name,
@@ -29,15 +30,12 @@ VKFrameBuffer::VKFrameBuffer(const char *name,
   immutable_ = true;
   /* Never update an internal frame-buffer. */
   dirty_attachments_ = false;
-  width_ = vk_extent.width;
-  height_ = vk_extent.height;
   vk_framebuffer_ = vk_framebuffer;
   vk_render_pass_ = vk_render_pass;
 
-  viewport_[0] = scissor_[0] = 0;
-  viewport_[1] = scissor_[1] = 0;
-  viewport_[2] = scissor_[2] = width_;
-  viewport_[3] = scissor_[3] = height_;
+  size_set(vk_extent.width, vk_extent.height);
+  viewport_reset();
+  scissor_reset();
 }
 
 VKFrameBuffer::~VKFrameBuffer()
@@ -51,10 +49,34 @@ VKFrameBuffer::~VKFrameBuffer()
 
 void VKFrameBuffer::bind(bool /*enabled_srgb*/)
 {
+  VKContext &context = *VKContext::get();
+  /* Updating attachments can issue pipeline barriers, this should be done outside the render pass.
+   * When done inside a render pass there should be a self-dependency between sub-passes on the
+   * active render pass. As the active render pass isn't aware of the new render pass (and should
+   * not) it is better to deactivate it before updating the attachments. For more information check
+   * `VkSubpassDependency`. */
+  if (context.has_active_framebuffer()) {
+    context.deactivate_framebuffer();
+  }
+
   update_attachments();
 
-  VKContext &context = *VKContext::get();
   context.activate_framebuffer(*this);
+}
+
+VkViewport VKFrameBuffer::vk_viewport_get() const
+{
+  VkViewport viewport;
+  int viewport_rect[4];
+  viewport_get(viewport_rect);
+
+  viewport.x = viewport_rect[0];
+  viewport.y = viewport_rect[1];
+  viewport.width = viewport_rect[2];
+  viewport.height = viewport_rect[3];
+  viewport.minDepth = 0.0f;
+  viewport.maxDepth = 1.0f;
+  return viewport;
 }
 
 VkRect2D VKFrameBuffer::vk_render_area_get() const
@@ -81,7 +103,7 @@ VkRect2D VKFrameBuffer::vk_render_area_get() const
 
 bool VKFrameBuffer::check(char /*err_out*/[256])
 {
-  return false;
+  return true;
 }
 
 void VKFrameBuffer::build_clear_attachments_depth_stencil(
@@ -318,7 +340,8 @@ void VKFrameBuffer::render_pass_create()
     size_set(size[0], size[1]);
   }
   else {
-    this->size_set(0, 0);
+    /* A framebuffer should at least be 1 by 1.*/
+    this->size_set(1, 1);
   }
   viewport_reset();
   scissor_reset();
