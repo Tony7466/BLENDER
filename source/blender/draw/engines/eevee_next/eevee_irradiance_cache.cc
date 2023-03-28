@@ -49,7 +49,7 @@ void IrradianceCache::debug_pass_sync()
   debug_surfels_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
                               DRW_STATE_DEPTH_LESS_EQUAL);
   debug_surfels_ps_.shader_set(inst_.shaders.static_shader_get(DEBUG_SURFELS));
-  debug_surfels_ps_.push_constant("surfel_radius", 0.5f / 4.0f);
+  debug_surfels_ps_.push_constant("surfel_radius", 1.5f / 4.0f);
   debug_surfels_ps_.push_constant("debug_mode", static_cast<int>(inst_.debug_mode));
 
   surfels_buf_.clear();
@@ -130,7 +130,12 @@ void IrradianceBake::sync()
       sub.dispatch(&dispatch_per_list_);
     }
     {
-      // PassSimple::Sub &sub = pass.sub("LightPropagate");
+      PassSimple::Sub &sub = pass.sub("RayEval");
+      sub.shader_set(inst_.shaders.static_shader_get(SURFEL_RAY));
+      sub.bind_ssbo(SURFEL_BUF_SLOT, &surfels_buf_);
+      sub.bind_ssbo(CAPTURE_BUF_SLOT, &capture_info_buf_);
+      sub.barrier(GPU_BARRIER_SHADER_STORAGE);
+      sub.dispatch(&dispatch_per_surfel_);
     }
   }
   {

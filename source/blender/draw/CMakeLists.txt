@@ -502,6 +502,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_surfel_light_comp.glsl
   engines/eevee_next/shaders/eevee_surfel_list_build_comp.glsl
   engines/eevee_next/shaders/eevee_surfel_list_sort_comp.glsl
+  engines/eevee_next/shaders/eevee_surfel_ray_comp.glsl
   engines/eevee_next/shaders/eevee_transparency_lib.glsl
   engines/eevee_next/shaders/eevee_velocity_lib.glsl
 

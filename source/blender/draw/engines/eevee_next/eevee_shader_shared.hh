@@ -840,12 +840,22 @@ struct Surfel {
   /** Next surfel index in the ray link-list. */
   int next;
   /** Surface albedo to apply to incoming radiance. */
-  packed_float3 albedo;
+  packed_float3 albedo_front;
+  int _pad0;
+  packed_float3 albedo_back;
   /** Distance along the ray direction for sorting. */
   float ray_distance;
-  /** Accumulated reflected radiance. */
-  packed_float3 radiance;
-  int _pad0;
+  /** Reflected radiance from previous bounce. */
+  packed_float3 radiance_front;
+  int _pad1;
+  packed_float3 radiance_back;
+  int _pad2;
+  /**
+   * Accumulated reflected radiance for the current bounce.
+   * Weight is stored in the fourth component.
+   */
+  float4 radiance_bounce_front;
+  float4 radiance_bounce_back;
 };
 BLI_STATIC_ASSERT_ALIGN(Surfel, 16)
 

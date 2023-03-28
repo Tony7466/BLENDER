@@ -48,3 +48,11 @@ GPU_SHADER_CREATE_INFO(eevee_surfel_list_sort)
     .storage_buf(6, Qualifier::READ, "SurfelListInfoData", "list_info_buf")
     .compute_source("eevee_surfel_list_sort_comp.glsl")
     .do_static_compilation(true);
+
+GPU_SHADER_CREATE_INFO(eevee_surfel_ray)
+    .local_group_size(SURFEL_GROUP_SIZE)
+    .additional_info("eevee_shared", "draw_view")
+    .storage_buf(SURFEL_BUF_SLOT, Qualifier::READ_WRITE, "Surfel", "surfel_buf[]")
+    .storage_buf(CAPTURE_BUF_SLOT, Qualifier::READ, "CaptureInfoData", "capture_info_buf")
+    .compute_source("eevee_surfel_ray_comp.glsl")
+    .do_static_compilation(true);

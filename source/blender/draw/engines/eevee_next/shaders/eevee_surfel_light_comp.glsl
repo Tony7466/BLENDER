@@ -35,7 +35,8 @@ void light_eval_surfel(
   }
   LIGHT_FOREACH_END
 
-  LIGHT_FOREACH_BEGIN_LOCAL_NO_CULL (light_cull_buf, l_idx) {
+  LIGHT_FOREACH_BEGIN_LOCAL_NO_CULL(light_cull_buf, l_idx)
+  {
     light_eval_ex(diffuse,
                   reflection,
                   false,
@@ -73,7 +74,13 @@ void main()
 
   light_eval_surfel(diffuse_data, surfel.position, surfel.normal, thickness, diffuse_light);
 
-  surfel.radiance += diffuse_light * surfel.albedo;
+  surfel_buf[index].radiance_front += diffuse_light * surfel.albedo_front;
 
-  surfel_buf[index] = surfel;
+  diffuse_data.N = -surfel.normal;
+  diffuse_light = vec3(0.0);
+  reflection_light = vec3(0.0);
+
+  light_eval_surfel(diffuse_data, surfel.position, -surfel.normal, thickness, diffuse_light);
+
+  surfel_buf[index].radiance_back += diffuse_light * surfel.albedo_back;
 }

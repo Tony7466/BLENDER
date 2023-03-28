@@ -45,8 +45,14 @@ void main()
       if (capture_info_buf.do_surfel_output) {
         surfel_buf[surfel_id].position = g_data.P;
         surfel_buf[surfel_id].normal = gl_FrontFacing ? g_data.Ng : -g_data.Ng;
-        surfel_buf[surfel_id].albedo = albedo;
-        surfel_buf[surfel_id].radiance = g_emission;
+        surfel_buf[surfel_id].albedo_front = albedo;
+        surfel_buf[surfel_id].radiance_front = g_emission;
+        /* TODO(fclem): 2nd surface evaluation. */
+        surfel_buf[surfel_id].albedo_back = albedo;
+        surfel_buf[surfel_id].radiance_back = g_emission;
+
+        surfel_buf[surfel_id].radiance_bounce_front = vec4(0.0);
+        surfel_buf[surfel_id].radiance_bounce_back = vec4(0.0);
       }
     }
   }
