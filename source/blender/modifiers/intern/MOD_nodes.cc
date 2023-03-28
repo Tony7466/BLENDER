@@ -329,27 +329,35 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
   }
 }
 
-static bool check_tree_for_time_node(const bNodeTree &tree,
-                                     Set<const bNodeTree *> &r_checked_trees)
+static void check_tree_for_time_node(const bNodeTree &tree,
+                                     Set<const bNodeTree *> &r_checked_trees,
+                                     bool *r_scene_time,
+                                     bool *r_real_time)
 {
   if (!r_checked_trees.add(&tree)) {
-    return false;
+    return;
   }
   LISTBASE_FOREACH (const bNode *, node, &tree.nodes) {
-    if (ELEM(node->type, GEO_NODE_INPUT_SCENE_TIME, GEO_NODE_SIMULATION_INPUT)) {
-      return true;
+    if (ELEM(node->type, GEO_NODE_INPUT_SCENE_TIME)) {
+      *r_scene_time = true;
+    }
+    if (ELEM(node->type, GEO_NODE_SIMULATION_INPUT)) {
+      *r_real_time = true;
     }
     if (node->type == NODE_GROUP) {
       const bNodeTree *sub_tree = reinterpret_cast<const bNodeTree *>(node->id);
-      if (sub_tree && check_tree_for_time_node(*sub_tree, r_checked_trees)) {
-        return true;
+      if (sub_tree) {
+        check_tree_for_time_node(*sub_tree, r_checked_trees, r_scene_time, r_real_time);
       }
     }
+    /* Early exit. */
+    if (*r_scene_time && *r_real_time) {
+      return;
+    }
   }
-  return false;
 }
 
-static void dependsOnTime(struct Scene * /*scene*/, ModifierData *md, bool *r_scene_time, bool */*r_real_time*/)
+static void dependsOnTime(struct Scene * /*scene*/, ModifierData *md, bool *r_scene_time, bool *r_real_time)
 {
   const NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
   const bNodeTree *tree = nmd->node_group;
@@ -357,7 +365,7 @@ static void dependsOnTime(struct Scene * /*scene*/, ModifierData *md, bool *r_sc
     return;
   }
   Set<const bNodeTree *> checked_trees;
-  *r_scene_time = check_tree_for_time_node(*tree, checked_trees);
+  check_tree_for_time_node(*tree, checked_trees, r_scene_time, r_real_time);
 }
 
 static void foreachIDLink(ModifierData *md, Object *ob, IDWalkFunc walk, void *userData)
