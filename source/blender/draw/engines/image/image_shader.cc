@@ -19,6 +19,7 @@ namespace blender::draw::image_engine {
 struct IMAGE_Shaders {
   GPUShader *image_sh;
   GPUShader *depth_sh;
+  GPUShader *color_depth_sh;
 };
 
 static struct {
@@ -41,6 +42,15 @@ GPUShader *IMAGE_shader_depth_get()
     sh_data->depth_sh = GPU_shader_create_from_info_name("image_engine_depth_shader");
   }
   return sh_data->depth_sh;
+}
+
+GPUShader *IMAGE_shader_color_depth_get()
+{
+  IMAGE_Shaders *sh_data = &e_data.shaders;
+  if (sh_data->color_depth_sh == nullptr) {
+    sh_data->color_depth_sh = GPU_shader_create_from_info_name("image_engine_color_depth_shader");
+  }
+  return sh_data->color_depth_sh;
 }
 
 void IMAGE_shader_free()

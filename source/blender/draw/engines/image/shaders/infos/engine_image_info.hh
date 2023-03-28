@@ -32,3 +32,25 @@ GPU_SHADER_CREATE_INFO(image_engine_depth_shader)
     .additional_info("draw_modelmat")
     .depth_write(DepthWrite::ANY)
     .do_static_compilation(true);
+
+GPU_SHADER_CREATE_INFO(image_engine_color_depth_base)
+    .vertex_in(0, Type::IVEC2, "pos")
+    .vertex_in(1, Type::VEC2, "uv")
+    .vertex_out(image_engine_color_iface)
+    .fragment_out(0, Type::VEC4, "fragColor")
+    .push_constant(Type::VEC4, "min_max_uv")
+    .push_constant(Type::VEC4, "shuffle")
+    .push_constant(Type::VEC2, "farNearDistances")
+    .push_constant(Type::IVEC2, "offset")
+    .push_constant(Type::INT, "drawFlags")
+    .push_constant(Type::BOOL, "imgPremultiplied")
+    .sampler(0, ImageType::FLOAT_2D, "imageTexture")
+    .vertex_source("image_engine_color_depth_vert.glsl")
+    .fragment_source("image_engine_color_depth_frag.glsl")
+    .additional_info("draw_modelmat");
+
+GPU_SHADER_CREATE_INFO(image_engine_color_depth_shader)
+    .additional_info("image_engine_color_depth_base")
+    .sampler(0, ImageType::FLOAT_2D, "image_texture")
+    .do_static_compilation(true);
+;
