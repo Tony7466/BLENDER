@@ -3221,16 +3221,17 @@ static void animchannel_select_range(bAnimContext *ac, bAnimListElem *cursor_ele
   bool in_selection_range = false;
 
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    bool is_cursor_elem = (ale->data == cursor_elem->data);
-
+    const bool is_cursor_elem = (ale->data == cursor_elem->data);
+    bool is_active_elem = false;
     switch (ale->type) {
 
       case ANIMTYPE_FCURVE:
       case ANIMTYPE_NLACURVE: {
         FCurve *fcu = (FCurve *)ale->data;
+        is_active_elem = fcu->flag & FCURVE_ACTIVE;
 
         /* Select first and last element from the range. Reverse selection status on extremes. */
-        if ((fcu->flag & FCURVE_ACTIVE) || is_cursor_elem) {
+        if (is_active_elem || is_cursor_elem) {
           fcu->flag |= FCURVE_SELECTED;
           in_selection_range = !in_selection_range;
         }
@@ -3243,8 +3244,9 @@ static void animchannel_select_range(bAnimContext *ac, bAnimListElem *cursor_ele
       }
       case ANIMTYPE_GPLAYER: {
         bGPDlayer *gpl = (bGPDlayer *)ale->data;
+        is_active_elem = gpl->flag & GP_LAYER_ACTIVE;
 
-        if ((gpl->flag & GP_LAYER_ACTIVE) || is_cursor_elem) {
+        if (is_active_elem || is_cursor_elem) {
           gpl->flag |= GP_LAYER_SELECT;
           in_selection_range = !in_selection_range;
         }
@@ -3256,6 +3258,11 @@ static void animchannel_select_range(bAnimContext *ac, bAnimListElem *cursor_ele
       }
       default:
         break;
+    }
+    if (is_active_elem && is_cursor_elem) {
+      /* Selection range is only one element when active channel and clicked channel are same. So
+       * exit out of the loop when this condition is hit. */
+      break;
     }
   }
 
@@ -3276,14 +3283,7 @@ static int click_select_channel_fcurve(bAnimContext *ac,
   }
   else if (selectmode == SELECT_EXTEND_RANGE) {
     animchannel_clear_selection(ac);
-    /* When active channel is being clicked again for range selection, only select the
-     * clicked/active channel. Otherwise call range selection function. */
-    if (fcu->flag & FCURVE_ACTIVE) {
-      fcu->flag |= FCURVE_SELECTED;
-    }
-    else {
-      animchannel_select_range(ac, ale);
-    }
+    animchannel_select_range(ac, ale);
   }
   else {
     /* select F-Curve by itself */
@@ -3363,14 +3363,7 @@ static int click_select_channel_gplayer(bContext *C,
   }
   else if (selectmode == SELECT_EXTEND_RANGE) {
     animchannel_clear_selection(ac);
-    /* When active channel is being clicked again for range selection, only select the
-     * clicked/active channel. Otherwise call range selection function. */
-    if (gpl->flag & FCURVE_ACTIVE) {
-      gpl->flag |= GP_LAYER_SELECT;
-    }
-    else {
-      animchannel_select_range(ac, ale);
-    }
+    animchannel_select_range(ac, ale);
   }
   else {
     /* select layer by itself */
