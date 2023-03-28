@@ -59,6 +59,7 @@
 #include <primary-selection-unstable-v1-client-protocol.h>
 #include <relative-pointer-unstable-v1-client-protocol.h>
 #include <tablet-unstable-v2-client-protocol.h>
+#include <xdg-activation-v1-client-protocol.h>
 #include <xdg-output-unstable-v1-client-protocol.h>
 
 /* Decorations `xdg_decor`. */
@@ -798,7 +799,12 @@ struct GWL_Seat {
   struct zwp_primary_selection_device_v1 *wp_primary_selection_device = nullptr;
   struct GWL_PrimarySelection primary_selection;
 
-  /** Last device that was active. */
+  /**
+   * Last input device that was active (pointer/tablet/keyboard).
+   *
+   * \note Multi-touch gestures don't set this value,
+   * if there is some use-case where this is needed - assignments can be added.
+   */
   uint32_t data_source_serial = 0;
 };
 
@@ -929,6 +935,7 @@ struct GWL_Display {
   struct zwp_tablet_manager_v2 *wp_tablet_manager = nullptr;
   struct zwp_relative_pointer_manager_v1 *wp_relative_pointer_manager = nullptr;
   struct zwp_primary_selection_device_manager_v1 *wp_primary_selection_device_manager = nullptr;
+  struct xdg_activation_v1 *xdg_activation_manager = nullptr;
 
   struct zwp_pointer_constraints_v1 *wp_pointer_constraints = nullptr;
   struct zwp_pointer_gestures_v1 *wp_pointer_gestures = nullptr;
@@ -4057,7 +4064,7 @@ static void keyboard_handle_key(void *data,
 
 static void keyboard_handle_modifiers(void *data,
                                       struct wl_keyboard * /*wl_keyboard*/,
-                                      const uint32_t /*serial*/,
+                                      const uint32_t serial,
                                       const uint32_t mods_depressed,
                                       const uint32_t mods_latched,
                                       const uint32_t mods_locked,
@@ -4088,6 +4095,8 @@ static void keyboard_handle_modifiers(void *data,
 #ifdef USE_GNOME_KEYBOARD_SUPPRESS_WARNING
   seat->key_depressed_suppress_warning.any_mod_held = mods_depressed != 0;
 #endif
+
+  seat->data_source_serial = serial;
 }
 
 static void keyboard_handle_repeat_info(void *data,
@@ -5154,6 +5163,24 @@ static void gwl_registry_wp_pointer_gestures_remove(GWL_Display *display,
   *value_p = nullptr;
 }
 
+/* #GWL_Display.xdg_activation */
+
+static void gwl_registry_xdg_activation_add(GWL_Display *display,
+                                            const GWL_RegisteryAdd_Params *params)
+{
+  display->xdg_activation_manager = static_cast<xdg_activation_v1 *>(
+      wl_registry_bind(display->wl_registry, params->name, &xdg_activation_v1_interface, 1));
+  gwl_registry_entry_add(display, params, nullptr);
+}
+static void gwl_registry_xdg_activation_remove(GWL_Display *display,
+                                               void * /*user_data*/,
+                                               const bool /*on_exit*/)
+{
+  struct xdg_activation_v1 **value_p = &display->xdg_activation_manager;
+  xdg_activation_v1_destroy(*value_p);
+  *value_p = nullptr;
+}
+
 /* #GWL_Display.wp_primary_selection_device_manager */
 
 static void gwl_registry_wp_primary_selection_device_manager_add(
@@ -5256,6 +5283,12 @@ static const GWL_RegistryHandler gwl_registry_handlers[] = {
         gwl_registry_wp_pointer_gestures_add,
         nullptr,
         gwl_registry_wp_pointer_gestures_remove,
+    },
+    {
+        &xdg_activation_v1_interface.name,
+        gwl_registry_xdg_activation_add,
+        nullptr,
+        gwl_registry_xdg_activation_remove,
     },
     /* Display outputs. */
     {
@@ -6816,9 +6849,34 @@ struct zwp_primary_selection_device_manager_v1 *GHOST_SystemWayland::wp_primary_
   return display_->wp_primary_selection_device_manager;
 }
 
+struct xdg_activation_v1 *GHOST_SystemWayland::xdg_activation_manager()
+{
+  return display_->xdg_activation_manager;
+}
+
 struct zwp_pointer_gestures_v1 *GHOST_SystemWayland::wp_pointer_gestures()
 {
   return display_->wp_pointer_gestures;
+}
+
+/* This value is expected to match the base name of the `.desktop` file. see #101805.
+ *
+ * NOTE: the XDG desktop-entry-spec defines that this should follow the "reverse DNS" convention.
+ * For e.g. `org.blender.Blender` - however the `.desktop` file distributed with Blender is
+ * simply called `blender.desktop`, so the it's important to follow that name.
+ * Other distributions such as SNAP & FLATPAK may need to change this value #101779.
+ * Currently there isn't a way to configure this, we may want to support that. */
+static const char *ghost_wl_app_id = (
+#ifdef WITH_GHOST_WAYLAND_APP_ID
+    STRINGIFY(WITH_GHOST_WAYLAND_APP_ID)
+#else
+    "blender"
+#endif
+);
+
+const char *GHOST_SystemWayland::xdg_app_id()
+{
+  return ghost_wl_app_id;
 }
 
 #ifdef WITH_GHOST_WAYLAND_LIBDECOR
@@ -6905,6 +6963,16 @@ GHOST_TSuccess GHOST_SystemWayland::pushEvent_maybe_pending(GHOST_IEvent *event)
 void GHOST_SystemWayland::seat_active_set(const struct GWL_Seat *seat)
 {
   gwl_display_seat_active_set(display_, seat);
+}
+
+struct wl_seat *GHOST_SystemWayland::wl_seat_active_get_with_input_serial(uint32_t &serial)
+{
+  GWL_Seat *seat = gwl_display_seat_active_get(display_);
+  if (seat) {
+    serial = seat->data_source_serial;
+    return seat->wl_seat;
+  }
+  return nullptr;
 }
 
 bool GHOST_SystemWayland::window_surface_unref(const wl_surface *wl_surface)
