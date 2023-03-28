@@ -26,6 +26,7 @@ VkFormat to_vk_format(const eGPUTextureFormat format);
 VkComponentMapping to_vk_component_mapping(const eGPUTextureFormat format);
 VkImageViewType to_vk_image_view_type(const eGPUTextureType type);
 VkImageType to_vk_image_type(const eGPUTextureType type);
+VkClearColorValue to_vk_clear_color_value(const eGPUDataFormat format, const void *data);
 #ifdef __cplusplus
 template<typename T> VkObjectType to_vk_object_type(T /*vk_obj*/)
 {
@@ -44,8 +45,6 @@ template<typename T> VkObjectType to_vk_object_type(T /*vk_obj*/)
   VK_EQ_TYPEID(VkFence, FENCE);
   VK_EQ_TYPEID(VkDeviceMemory, DEVICE_MEMORY);
   VK_EQ_TYPEID(VkBuffer, BUFFER);
-  VK_EQ_TYPEID(VkImage, IMAGE);
-
   VK_EQ_TYPEID(VkImage, IMAGE);
   VK_EQ_TYPEID(VkEvent, EVENT);
   VK_EQ_TYPEID(VkQueryPool, QUERY_POOL);
