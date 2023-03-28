@@ -140,7 +140,7 @@ static void select_cache_init(void *vedata)
   DRWState state = DRW_STATE_DEFAULT;
   state |= RV3D_CLIPPING_ENABLED(draw_ctx->v3d, draw_ctx->rv3d) ? DRW_STATE_CLIP_PLANES : 0;
 
-  bool show_retopology = RETOPOLOGY_ENABLED(draw_ctx->v3d);
+  bool retopology_occlusion = RETOPOLOGY_OCCLUSION(draw_ctx->v3d);
   float retopology_offset = RETOPOLOGY_OFFSET(draw_ctx->v3d);
 
   {
@@ -148,7 +148,7 @@ static void select_cache_init(void *vedata)
     pd->shgrp_depth_only = DRW_shgroup_create(sh->select_id_uniform, psl->depth_only_pass);
     DRW_shgroup_uniform_float_copy(pd->shgrp_depth_only, "retopologyOffset", retopology_offset);
 
-    if (show_retopology) {
+    if (retopology_occlusion) {
       pd->shgrp_occlude = DRW_shgroup_create(sh->select_id_uniform, psl->depth_only_pass);
       DRW_shgroup_uniform_int_copy(pd->shgrp_occlude, "id", 0);
       DRW_shgroup_uniform_float_copy(pd->shgrp_occlude, "retopologyOffset", 0.0f);
