@@ -228,7 +228,7 @@ void BKE_mesh_calc_edges_legacy(Mesh *me)
     return;
   }
 
-  edges = (MEdge *)CustomData_add_layer_with_data(&me->edata, CD_MEDGE, edges, totedge);
+  edges = (MEdge *)CustomData_add_layer_with_data(&me->edata, CD_MEDGE, edges, totedge, nullptr);
   me->totedge = totedge;
 
   BKE_mesh_tag_topology_changed(me);
@@ -1152,11 +1152,11 @@ static int mesh_tessface_calc(Mesh &mesh,
                                             sizeof(*mface_to_poly_map) * size_t(totface));
   }
 
-  CustomData_add_layer_with_data(fdata, CD_MFACE, mface, totface);
+  CustomData_add_layer_with_data(fdata, CD_MFACE, mface, totface, nullptr);
 
   /* #CD_ORIGINDEX will contain an array of indices from tessellation-faces to the polygons
    * they are directly tessellated from. */
-  CustomData_add_layer_with_data(fdata, CD_ORIGINDEX, mface_to_poly_map, totface);
+  CustomData_add_layer_with_data(fdata, CD_ORIGINDEX, mface_to_poly_map, totface, nullptr);
   add_mface_layers(mesh, fdata, ldata, totface);
 
   /* NOTE: quad detection issue - fourth vertex-index vs fourth loop-index:
@@ -1300,17 +1300,22 @@ void BKE_mesh_legacy_face_set_to_generic(Mesh *mesh)
     return;
   }
   void *faceset_data = nullptr;
+  const bCopyOnWrite *faceset_cow = nullptr;
   for (const int i : IndexRange(mesh->pdata.totlayer)) {
-    if (mesh->pdata.layers[i].type == CD_SCULPT_FACE_SETS) {
-      faceset_data = mesh->pdata.layers[i].data;
-      mesh->pdata.layers[i].data = nullptr;
+    CustomDataLayer &layer = mesh->pdata.layers[i];
+    if (layer.type == CD_SCULPT_FACE_SETS) {
+      faceset_data = layer.data;
+      faceset_cow = layer.cow;
+      layer.data = nullptr;
+      layer.cow = nullptr;
       CustomData_free_layer(&mesh->pdata, CD_SCULPT_FACE_SETS, mesh->totpoly, i);
       break;
     }
   }
   if (faceset_data != nullptr) {
     CustomData_add_layer_named_with_data(
-        &mesh->pdata, CD_PROP_INT32, faceset_data, mesh->totpoly, ".sculpt_face_set");
+        &mesh->pdata, CD_PROP_INT32, faceset_data, mesh->totpoly, ".sculpt_face_set", faceset_cow);
+    faceset_cow->remove_user_and_delete_if_last();
   }
 }
 
@@ -1811,28 +1816,31 @@ void BKE_mesh_legacy_convert_uvs_to_generic(Mesh *mesh)
 
     CustomData_free_layer_named(&mesh->ldata, name.c_str(), mesh->totloop);
     CustomData_add_layer_named_with_data(
-        &mesh->ldata, CD_PROP_FLOAT2, coords, mesh->totloop, name.c_str());
+        &mesh->ldata, CD_PROP_FLOAT2, coords, mesh->totloop, name.c_str(), nullptr);
     char buffer[MAX_CUSTOMDATA_LAYER_NAME];
     if (vert_selection) {
       CustomData_add_layer_named_with_data(&mesh->ldata,
                                            CD_PROP_BOOL,
                                            vert_selection,
                                            mesh->totloop,
-                                           BKE_uv_map_vert_select_name_get(name.c_str(), buffer));
+                                           BKE_uv_map_vert_select_name_get(name.c_str(), buffer),
+                                           nullptr);
     }
     if (edge_selection) {
       CustomData_add_layer_named_with_data(&mesh->ldata,
                                            CD_PROP_BOOL,
                                            edge_selection,
                                            mesh->totloop,
-                                           BKE_uv_map_edge_select_name_get(name.c_str(), buffer));
+                                           BKE_uv_map_edge_select_name_get(name.c_str(), buffer),
+                                           nullptr);
     }
     if (pin) {
       CustomData_add_layer_named_with_data(&mesh->ldata,
                                            CD_PROP_BOOL,
                                            pin,
                                            mesh->totloop,
-                                           BKE_uv_map_pin_name_get(name.c_str(), buffer));
+                                           BKE_uv_map_pin_name_get(name.c_str(), buffer),
+                                           nullptr);
     }
   }
 

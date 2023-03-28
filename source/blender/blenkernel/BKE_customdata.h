@@ -74,14 +74,10 @@ extern const CustomData_MeshMasks CD_MASK_EVERYTHING;
 
 /** Add/copy/merge allocation types. */
 typedef enum eCDAllocType {
-  /** Use the data pointer. */
+  /** Use the data pointer. This is only used internally. */
   CD_ASSIGN = 0,
   /** Allocate and set to default, which is usually just zeroed memory. */
   CD_SET_DEFAULT = 2,
-  /** Use data pointers, set layer flag NOFREE. */
-  CD_REFERENCE = 3,
-  /** Do a full copy of all layers, only allowed if source has same number of elements. */
-  CD_DUPLICATE = 4,
   /**
    * Default construct new layer values. Does nothing for trivial types. This should be used
    * if all layer values will be set by the caller after creating the layer.
@@ -158,15 +154,23 @@ void CustomData_data_multiply(int type, void *data, float fac);
 void CustomData_data_add(int type, void *data1, const void *data2);
 
 /**
- * Initializes a CustomData object with the same layer setup as source.
- * mask is a bit-field where `(mask & (1 << (layer type)))` indicates
- * if a layer should be copied or not. alloctype must be one of the above.
+ * Initializes a CustomData object with the same layer setup as source. `mask` is a bit-field where
+ * `(mask & (1 << (layer type)))` indicates if a layer should be copied or not. The data layers
+ * will be shared or copied depending on whether the layer uses COW.
  */
 void CustomData_copy(const struct CustomData *source,
                      struct CustomData *dest,
                      eCustomDataMask mask,
-                     eCDAllocType alloctype,
                      int totelem);
+/**
+ * Initializes a CustomData object with the same layers as source. The data is not copied from the
+ * source. Instead, the new layers are initialized using the given `alloctype`.
+ */
+void CustomData_copy_new(const struct CustomData *source,
+                         struct CustomData *dest,
+                         eCustomDataMask mask,
+                         eCDAllocType alloctype,
+                         int totelem);
 
 /* BMESH_TODO, not really a public function but readfile.c needs it */
 void CustomData_update_typemap(struct CustomData *data);
@@ -178,8 +182,12 @@ void CustomData_update_typemap(struct CustomData *data);
 bool CustomData_merge(const struct CustomData *source,
                       struct CustomData *dest,
                       eCustomDataMask mask,
-                      eCDAllocType alloctype,
                       int totelem);
+bool CustomData_merge_new(const struct CustomData *source,
+                          struct CustomData *dest,
+                          eCustomDataMask mask,
+                          eCDAllocType alloctype,
+                          int totelem);
 
 /**
  * Reallocate custom data to a new element count. If the new size is larger, the new values use
@@ -193,12 +201,12 @@ void CustomData_realloc(struct CustomData *data, int old_size, int new_size);
  * then goes through the mesh and makes sure all the custom-data blocks are
  * consistent with the new layout.
  */
-bool CustomData_bmesh_merge(const struct CustomData *source,
-                            struct CustomData *dest,
-                            eCustomDataMask mask,
-                            eCDAllocType alloctype,
-                            struct BMesh *bm,
-                            char htype);
+bool CustomData_bmesh_merge_new(const struct CustomData *source,
+                                struct CustomData *dest,
+                                eCustomDataMask mask,
+                                eCDAllocType alloctype,
+                                struct BMesh *bm,
+                                char htype);
 
 /**
  * Remove layers that aren't stored in BMesh or are stored as flags on BMesh.
@@ -229,18 +237,23 @@ void CustomData_free_typemask(struct CustomData *data, int totelem, eCustomDataM
 void CustomData_free_temporary(struct CustomData *data, int totelem);
 
 /**
- * Adds a data layer of the given type to the #CustomData object, optionally
- * backed by an external data array. the different allocation types are
- * defined above. returns the data of the layer.
+ * Adds a layer of the given type to the #CustomData object. The new layer is initialized based on
+ * the given alloctype. \return The layer data.
  */
 void *CustomData_add_layer(struct CustomData *data,
                            eCustomDataType type,
                            eCDAllocType alloctype,
                            int totelem);
+
+/**
+ * Adds a layer of the given type to the #CustomData object. The new layer takes ownership of the
+ * passed in `layer_data`. If a #bCopyOnWrite is passed in, it's user count is increased.
+ */
 const void *CustomData_add_layer_with_data(struct CustomData *data,
                                            eCustomDataType type,
                                            void *layer_data,
-                                           int totelem);
+                                           int totelem,
+                                           const struct bCopyOnWrite *cow);
 
 /**
  * Same as above but accepts a name.
@@ -250,17 +263,26 @@ void *CustomData_add_layer_named(struct CustomData *data,
                                  eCDAllocType alloctype,
                                  int totelem,
                                  const char *name);
+
 const void *CustomData_add_layer_named_with_data(struct CustomData *data,
                                                  eCustomDataType type,
                                                  void *layer_data,
                                                  int totelem,
-                                                 const char *name);
+                                                 const char *name,
+                                                 const struct bCopyOnWrite *cow);
+
 void *CustomData_add_layer_anonymous(struct CustomData *data,
-                                     int type,
+                                     eCustomDataType type,
                                      eCDAllocType alloctype,
-                                     void *layer,
                                      int totelem,
                                      const AnonymousAttributeIDHandle *anonymous_id);
+const void *CustomData_add_layer_anonymous_with_data(
+    struct CustomData *data,
+    eCustomDataType type,
+    const AnonymousAttributeIDHandle *anonymous_id,
+    int totelem,
+    void *layer_data,
+    const struct bCopyOnWrite *cow);
 
 /**
  * Frees the active or first data layer with the give type.
@@ -295,11 +317,6 @@ bool CustomData_has_layer(const struct CustomData *data, int type);
 int CustomData_number_of_layers(const struct CustomData *data, int type);
 int CustomData_number_of_anonymous_layers(const struct CustomData *data, int type);
 int CustomData_number_of_layers_typemask(const struct CustomData *data, eCustomDataMask mask);
-
-/**
- * Duplicate all the layers with flag NOFREE, and remove the flag from duplicated layers.
- */
-void CustomData_duplicate_referenced_layers(CustomData *data, int totelem);
 
 /**
  * Set the #CD_FLAG_NOCOPY flag in custom data layers where the mask is

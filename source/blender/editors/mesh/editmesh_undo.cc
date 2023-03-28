@@ -16,6 +16,7 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_array_utils.h"
+#include "BLI_copy_on_write.hh"
 #include "BLI_listbase.h"
 #include "BLI_task.hh"
 
@@ -271,8 +272,16 @@ static void um_arraystore_cd_compact(CustomData *cdata,
       }
 
       if (layer->data) {
+        if (layer->cow) {
+          /* This assumes that the layer is not shared, which it is not here because it has just
+           * been created in #BM_mesh_bm_to_me. The situation is a bit tricky here, because the
+           * layer data may be freed partially below for e.g. vertex groups. */
+          BLI_assert(layer->cow->is_mutable());
+          MEM_delete(layer->cow);
+        }
         MEM_freeN(layer->data);
         layer->data = nullptr;
+        layer->cow = nullptr;
       }
     }
 

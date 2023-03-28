@@ -85,6 +85,7 @@
 
 #include "BLI_bitmap.h"
 #include "BLI_blenlib.h"
+#include "BLI_copy_on_write.hh"
 #include "BLI_endian_defines.h"
 #include "BLI_endian_switch.h"
 #include "BLI_link_utils.h"
@@ -1694,6 +1695,21 @@ void BLO_write_string(BlendWriter *writer, const char *data_ptr)
 bool BLO_write_is_undo(BlendWriter *writer)
 {
   return writer->wd->use_memfile;
+}
+
+void BLO_write_cow(BlendWriter *writer, const void *data_ptr, const bCopyOnWrite *cow)
+{
+  BLI_assert(writer->wd->use_memfile);
+  if (data_ptr == nullptr) {
+    return;
+  }
+  MemFile &memfile = *writer->wd->mem.written_memfile;
+  if (memfile.cow_storage == nullptr) {
+    memfile.cow_storage = MEM_new<MemFileCowStorage>(__func__);
+  }
+  if (memfile.cow_storage->map.add(data_ptr, cow)) {
+    cow->add_user();
+  }
 }
 
 /** \} */

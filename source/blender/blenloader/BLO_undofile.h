@@ -13,6 +13,25 @@
 struct GHash;
 struct Scene;
 
+#ifdef __cplusplus
+
+#  include "BLI_copy_on_write.hh"
+#  include "BLI_map.hh"
+
+/**
+ * Takes (shared) ownership of copy-on-write data so that it does not have to be copied into the
+ * undo step.
+ */
+struct MemFileCowStorage {
+  blender::Map<const void *, const bCopyOnWrite *> map;
+
+  ~MemFileCowStorage();
+};
+
+#else
+typedef struct MemFileCowStorage MemFileCowStorage;
+#endif
+
 typedef struct {
   void *next, *prev;
   const char *buf;
@@ -32,6 +51,7 @@ typedef struct {
 typedef struct MemFile {
   ListBase chunks;
   size_t size;
+  MemFileCowStorage *cow_storage;
 } MemFile;
 
 typedef struct MemFileWriteData {
@@ -102,7 +122,6 @@ extern struct Main *BLO_memfile_main_get(struct MemFile *memfile,
  *
  * \return success.
  */
-extern bool BLO_memfile_write_file(struct MemFile *memfile, const char *filepath);
 
 FileReader *BLO_memfile_new_filereader(MemFile *memfile, int undo_direction);
 
