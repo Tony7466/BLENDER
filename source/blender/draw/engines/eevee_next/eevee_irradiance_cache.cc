@@ -275,7 +275,19 @@ void IrradianceBake::propagate_light_sample()
   View ray_view = {"RayProjectionView"};
   ray_view.sync(viewmat, winmat);
 
-  list_info_buf_.ray_grid_size = math::max(int2(1), int2(surfel_density_ * (max - min)));
+  /* This avoid light leaking by making sure that for one surface there will always be at least 1
+   * surfel capture inside a ray list. Since the surface with the maximum distance (after
+   * projection) between adjacent surfels is a slope that goes through 3 corners of a cube,
+   * the distance the grid needs to cover is the diagonal of a cube face.
+   *
+   * The lower the number the more surfels it clumps together in the same surfel-list.
+   * Biasing the grid_density like that will create many invalid link between coplanar surfels.
+   * These are dealt with during the list sorting pass.
+   *
+   * We add an extra epsilon just in case. We really need this step to be leak free. */
+  const float max_distance_between_neighbor_surfels_inv = M_SQRT1_2 - 1e-4;
+  const float ray_grid_density = surfel_density_ * max_distance_between_neighbor_surfels_inv;
+  list_info_buf_.ray_grid_size = math::max(int2(1), int2(ray_grid_density * (max - min)));
   list_info_buf_.list_max = list_info_buf_.ray_grid_size.x * list_info_buf_.ray_grid_size.y;
   list_info_buf_.push_update();
 
