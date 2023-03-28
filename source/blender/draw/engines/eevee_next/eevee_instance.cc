@@ -358,7 +358,8 @@ LightCache *Instance::light_cache_create(Vector<IrradianceGrid> grids,
       return nullptr;
     }
     LightCacheIrradianceGrid &irradiance_grid = light_cache->grids[i];
-    copy_m4_m4(irradiance_grid.world_to_grid, grid.transform.ptr());
+    float4x4 world_to_grid = math::invert(grid.transform);
+    copy_m4_m4(irradiance_grid.world_to_grid, world_to_grid.ptr());
     irradiance_grid.resolution[0] = grid.resolution.x;
     irradiance_grid.resolution[1] = grid.resolution.y;
     irradiance_grid.resolution[2] = grid.resolution.z;
