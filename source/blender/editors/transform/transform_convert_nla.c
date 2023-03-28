@@ -204,16 +204,17 @@ static void nlastrip_fix_overlapping(TransInfo *t, TransDataNla *tdn, NlaStrip *
    *
    * this is done as a iterative procedure (done 5 times max for now)
    */
+  short iter_max = 5;
   NlaStrip *prev = BKE_nlastrip_prev_in_track(strip, true);
   NlaStrip *next = BKE_nlastrip_next_in_track(strip, true);
 
   PointerRNA strip_ptr;
 
-  for (short iter = 0; iter < 5; iter++) {
-    const bool pExceeded = (prev != NULL) && (tdn->h1[0] < prev->end);
-    const bool nExceeded = (next != NULL) && (tdn->h2[0] > next->start);
+  for (short iter = 0; iter <= iter_max; iter++) {
+    const bool p_exceeded = (prev != NULL) && (tdn->h1[0] < prev->end);
+    const bool n_exceeded = (next != NULL) && (tdn->h2[0] > next->start);
 
-    if ((pExceeded && nExceeded) || (iter == 4)) {
+    if ((p_exceeded && n_exceeded) || (iter == 4)) {
       /* both endpoints exceeded (or iteration ping-pong'd meaning that we need a
        * compromise)
        * - Simply crop strip to fit within the bounds of the strips bounding it
@@ -229,14 +230,14 @@ static void nlastrip_fix_overlapping(TransInfo *t, TransDataNla *tdn, NlaStrip *
         tdn->h2[0] = strip->end;
       }
     }
-    else if (nExceeded) {
+    else if (n_exceeded) {
       /* move backwards */
       float offset = tdn->h2[0] - next->start;
 
       tdn->h1[0] -= offset;
       tdn->h2[0] -= offset;
     }
-    else if (pExceeded) {
+    else if (p_exceeded) {
       /* more forwards */
       float offset = prev->end - tdn->h1[0];
 
@@ -475,8 +476,6 @@ static void recalcData_nla(TransInfo *t)
 {
   SpaceNla *snla = (SpaceNla *)t->area->spacedata.first;
 
-  const bool is_translating = ELEM(t->mode, TFM_TRANSLATION);
-
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
 
   /* handle auto-snapping
@@ -551,7 +550,7 @@ static void recalcData_nla(TransInfo *t)
     }
 
     const bool nlatrack_isliboverride = BKE_nlatrack_is_nonlocal_in_liboverride(tdn->id, tdn->nlt);
-    const bool allow_overlap = !nlatrack_isliboverride && is_translating;
+    const bool allow_overlap = !nlatrack_isliboverride && ELEM(t->mode, TFM_TRANSLATION);
 
     if (allow_overlap) {
       nlastrip_overlap_reorder(tdn, strip);
@@ -649,10 +648,10 @@ typedef struct IDGroupedTransData {
 /** horizontally translate (shuffle) the transformed strip to a non-overlapping state. */
 static void nlastrip_shuffle_transformed(TransDataContainer *tc, TransDataNla *first_trans_data)
 {
-  /** Element: (IDGroupedTransData*) */
+  /* Element: (IDGroupedTransData*) */
   ListBase grouped_trans_datas = {NULL, NULL};
 
-  /** Flag all non-library-override transformed strips so we can distinguish them when
+  /* Flag all non-library-override transformed strips so we can distinguish them when
    * shuffling.
    *
    * Group trans_datas by ID so shuffling is unique per ID.
@@ -692,11 +691,11 @@ static void nlastrip_shuffle_transformed(TransDataContainer *tc, TransDataNla *f
     }
   }
 
-  /** Apply shuffling. */
+  /* Apply shuffling. */
   LISTBASE_FOREACH (IDGroupedTransData *, group, &grouped_trans_datas) {
     ListBase *trans_datas = &group->trans_datas;
 
-    /** Apply horizontal shuffle. */
+    /* Apply horizontal shuffle. */
     const float minimum_time_offset = transdata_get_time_shuffle_offset(trans_datas);
     LISTBASE_FOREACH (LinkData *, link, trans_datas) {
       TransDataNla *trans_data = (TransDataNla *)link->data;
@@ -708,7 +707,7 @@ static void nlastrip_shuffle_transformed(TransDataContainer *tc, TransDataNla *f
     }
   }
 
-  /** Memory cleanup. */
+  /* Memory cleanup. */
   LISTBASE_FOREACH (IDGroupedTransData *, group, &grouped_trans_datas) {
     BLI_freelistN(&group->trans_datas);
   }
@@ -730,14 +729,13 @@ static void special_aftertrans_update__nla(bContext *C, TransInfo *t)
 
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
   TransDataNla *first_trans_data = tc->custom.type.data;
-  const bool is_translating = ELEM(t->mode, TFM_TRANSLATION);
 
-  /** Shuffle transformed strips. */
-  if (is_translating) {
+  /* Shuffle transformed strips. */
+  if (ELEM(t->mode, TFM_TRANSLATION)) {
     nlastrip_shuffle_transformed(tc, first_trans_data);
   }
 
-  /** Clear NLASTRIP_FLAG_INVALID_LOCATION flag. */
+  /* Clear NLASTRIP_FLAG_INVALID_LOCATION flag. */
   TransDataNla *tdn = first_trans_data;
   for (int i = 0; i < tc->data_len; i++, tdn++) {
     if (tdn->strip == NULL) {

@@ -1953,12 +1953,13 @@ static void BKE_nlastrip_validate_autoblends(NlaTrack *nlt, NlaStrip *nls)
 }
 
 /* Ensure every transition's start/end properly set.
- * Strip will be removed / freed if it doesn't fit. */
-static void nlastrip_validate_transition_start_end(NlaStrip *strip)
+ * Strip will be removed / freed if it doesn't fit.
+ * Return value indicates if passed strip was freed or not. */
+static bool nlastrip_validate_transition_start_end(NlaStrip *strip)
 {
 
   if (!(strip->type & NLASTRIP_TYPE_TRANSITION)) {
-    return;
+    return false;
   }
   if (strip->prev) {
     strip->start = strip->prev->end;
@@ -1968,8 +1969,9 @@ static void nlastrip_validate_transition_start_end(NlaStrip *strip)
   }
   if (strip->start >= strip->end || strip->prev == NULL || strip->next == NULL) {
     BKE_nlastrip_free(strip, true);
+    return true;
   }
-  return;
+  return false;
 }
 
 void BKE_nla_validate_state(AnimData *adt)
@@ -1986,13 +1988,11 @@ void BKE_nla_validate_state(AnimData *adt)
   for (nlt = adt->nla_tracks.first; nlt; nlt = nlt->next) {
     LISTBASE_FOREACH_MUTABLE (NlaStrip *, strip, &nlt->strips) {
 
-      nlastrip_validate_transition_start_end(strip);
-
-      if (strip == NULL) {
+      if (nlastrip_validate_transition_start_end(strip)) {
         printf(
-            "NLA strip was in an invalid location and was removed by "
-            "nlastrip_validate_transition_start_end \n");
-        return;
+            "While moving NLA strips, a transition strip could no longer be applied to the new "
+            "positions and was removed. \n");
+        continue;
       }
 
       /* auto-blending first */
