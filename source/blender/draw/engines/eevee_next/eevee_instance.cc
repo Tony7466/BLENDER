@@ -98,7 +98,6 @@ void Instance::init_light_bake(Depsgraph *depsgraph, draw::Manager *manager)
   velocity.init();
   depth_of_field.init();
   shadows.init();
-  motion_blur.init();
   main_view.init();
   irradiance_cache.init();
 }
