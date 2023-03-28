@@ -719,8 +719,10 @@ void bmo_create_grid_exec(BMesh *bm, BMOperator *op)
   const float xtot_inv2 = 2.0f / (xtot);
   const float ytot_inv2 = 2.0f / (ytot);
 
-  const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_PROP_FLOAT2);
-  const bool calc_uvs = (cd_loop_uv_offset != -1) && BMO_slot_bool_get(op->slots_in, "calc_uvs");
+  const int uv_index = BMO_slot_bool_get(op->slots_in, "uv_index");
+  const int cd_loop_uv_offset = uv_index != -1 ?
+                                    CustomData_get_n_offset(&bm->ldata, CD_PROP_FLOAT2, uv_index) :
+                                    -1;
 
   BMVert **varr;
   BMVert *vquad[4];
@@ -760,7 +762,7 @@ void bmo_create_grid_exec(BMesh *bm, BMOperator *op)
       vquad[3] = varr[XY(x - 1, y)];
 
       f = BM_face_create_verts(bm, vquad, 4, NULL, BM_CREATE_NOP, true);
-      if (calc_uvs) {
+      if (cd_loop_uv_offset != -1) {
         BMO_face_flag_enable(bm, f, FACE_MARK);
       }
     }
@@ -768,7 +770,7 @@ void bmo_create_grid_exec(BMesh *bm, BMOperator *op)
 
 #undef XY
 
-  if (calc_uvs) {
+  if (cd_loop_uv_offset != -1) {
     BM_mesh_calc_uvs_grid(bm, xtot, ytot, FACE_MARK, cd_loop_uv_offset);
   }
 }
@@ -836,8 +838,10 @@ void bmo_create_uvsphere_exec(BMesh *bm, BMOperator *op)
   const int seg = BMO_slot_int_get(op->slots_in, "u_segments");
   const int tot = BMO_slot_int_get(op->slots_in, "v_segments");
 
-  const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_PROP_FLOAT2);
-  const bool calc_uvs = (cd_loop_uv_offset != -1) && BMO_slot_bool_get(op->slots_in, "calc_uvs");
+  const int uv_index = BMO_slot_bool_get(op->slots_in, "uv_index");
+  const int cd_loop_uv_offset = uv_index != -1 ?
+                                    CustomData_get_n_offset(&bm->ldata, CD_PROP_FLOAT2, uv_index) :
+                                    -1;
 
   BMOperator bmop, prevop;
   BMVert *eve, *preveve;
@@ -914,7 +918,7 @@ void bmo_create_uvsphere_exec(BMesh *bm, BMOperator *op)
         bm, op->flag, "remove_doubles verts=%fv dist=%f", VERT_MARK, min_ff(len, len2) / 3.0f);
   }
 
-  if (calc_uvs) {
+  if (cd_loop_uv_offset != -1) {
     BMFace *f;
     BMLoop *l;
     BMIter fiter, liter;
@@ -955,8 +959,10 @@ void bmo_create_icosphere_exec(BMesh *bm, BMOperator *op)
   const float rad_div = rad / 200.0f;
   const int subdiv = BMO_slot_int_get(op->slots_in, "subdivisions");
 
-  const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_PROP_FLOAT2);
-  const bool calc_uvs = (cd_loop_uv_offset != -1) && BMO_slot_bool_get(op->slots_in, "calc_uvs");
+  const int uv_index = BMO_slot_bool_get(op->slots_in, "uv_index");
+  const int cd_loop_uv_offset = uv_index != -1 ?
+                                    CustomData_get_n_offset(&bm->ldata, CD_PROP_FLOAT2, uv_index) :
+                                    -1;
 
   BMVert *eva[12];
   BMVert *v;
@@ -997,7 +1003,7 @@ void bmo_create_icosphere_exec(BMesh *bm, BMOperator *op)
 
     /* Set the UVs here, the iteration order of the faces is not guaranteed,
      * so it's best to set the UVs right after the face is created. */
-    if (calc_uvs) {
+    if (cd_loop_uv_offset != -1) {
       int loop_index;
       BM_ITER_ELEM_INDEX (l, &liter, f, BM_LOOPS_OF_FACE, loop_index) {
         float *luv = BM_ELEM_CD_GET_FLOAT_P(l, cd_loop_uv_offset);
@@ -1159,8 +1165,10 @@ void bmo_create_monkey_exec(BMesh *bm, BMOperator *op)
 
   BMO_slot_mat4_get(op->slots_in, "matrix", mat);
 
-  const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_PROP_FLOAT2);
-  const bool calc_uvs = (cd_loop_uv_offset != -1) && BMO_slot_bool_get(op->slots_in, "calc_uvs");
+  const int uv_index = BMO_slot_bool_get(op->slots_in, "uv_index");
+  const int cd_loop_uv_offset = uv_index != -1 ?
+                                    CustomData_get_n_offset(&bm->ldata, CD_PROP_FLOAT2, uv_index) :
+                                    -1;
 
   for (i = 0; i < monkeynv; i++) {
     float v[3];
@@ -1209,7 +1217,7 @@ void bmo_create_monkey_exec(BMesh *bm, BMOperator *op)
 
     /* Set the UVs here, the iteration order of the faces is not guaranteed,
      * so it's best to set the UVs right after the face is created. */
-    if (calc_uvs) {
+    if (cd_loop_uv_offset != -1) {
       BMLoop *l;
       BMIter liter;
       BM_ITER_ELEM (l, &liter, f_new_a, BM_LOOPS_OF_FACE) {
@@ -1239,8 +1247,10 @@ void bmo_create_circle_exec(BMesh *bm, BMOperator *op)
   const bool cap_ends = BMO_slot_bool_get(op->slots_in, "cap_ends");
   const bool cap_tris = BMO_slot_bool_get(op->slots_in, "cap_tris");
 
-  const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_PROP_FLOAT2);
-  const bool calc_uvs = (cd_loop_uv_offset != -1) && BMO_slot_bool_get(op->slots_in, "calc_uvs");
+  const int uv_index = BMO_slot_bool_get(op->slots_in, "uv_index");
+  const int cd_loop_uv_offset = uv_index != -1 ?
+                                    CustomData_get_n_offset(&bm->ldata, CD_PROP_FLOAT2, uv_index) :
+                                    -1;
 
   BMVert *v1, *lastv1 = NULL, *cent1, *firstv1 = NULL;
   float vec[3], mat[4][4];
@@ -1301,7 +1311,7 @@ void bmo_create_circle_exec(BMesh *bm, BMOperator *op)
     f = BM_face_create_quad_tri(bm, cent1, v1, firstv1, NULL, NULL, BM_CREATE_NOP);
     BMO_face_flag_enable(bm, f, FACE_NEW);
 
-    if (calc_uvs) {
+    if (cd_loop_uv_offset != -1) {
       BM_mesh_calc_uvs_circle(bm, mat, radius, FACE_NEW, cd_loop_uv_offset);
     }
   }
@@ -1361,8 +1371,10 @@ void bmo_create_cone_exec(BMesh *bm, BMOperator *op)
   const bool cap_ends = BMO_slot_bool_get(op->slots_in, "cap_ends");
   const bool cap_tris = BMO_slot_bool_get(op->slots_in, "cap_tris");
 
-  const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_PROP_FLOAT2);
-  const bool calc_uvs = (cd_loop_uv_offset != -1) && BMO_slot_bool_get(op->slots_in, "calc_uvs");
+  const int uv_index = BMO_slot_bool_get(op->slots_in, "uv_index");
+  const int cd_loop_uv_offset = uv_index != -1 ?
+                                    CustomData_get_n_offset(&bm->ldata, CD_PROP_FLOAT2, uv_index) :
+                                    -1;
 
   if (!segs) {
     return;
@@ -1413,20 +1425,20 @@ void bmo_create_cone_exec(BMesh *bm, BMOperator *op)
     if (i) {
       if (cap_ends) {
         f = BM_face_create_quad_tri(bm, cent1, lastv1, v1, NULL, NULL, BM_CREATE_NOP);
-        if (calc_uvs) {
+        if (cd_loop_uv_offset != -1) {
           BMO_face_flag_enable(bm, f, FACE_MARK);
         }
         BMO_face_flag_enable(bm, f, FACE_NEW);
 
         f = BM_face_create_quad_tri(bm, cent2, v2, lastv2, NULL, NULL, BM_CREATE_NOP);
-        if (calc_uvs) {
+        if (cd_loop_uv_offset != -1) {
           BMO_face_flag_enable(bm, f, FACE_MARK);
         }
         BMO_face_flag_enable(bm, f, FACE_NEW);
       }
 
       f = BM_face_create_quad_tri(bm, lastv1, lastv2, v2, v1, NULL, BM_CREATE_NOP);
-      if (calc_uvs) {
+      if (cd_loop_uv_offset != -1) {
         BMO_face_flag_enable(bm, f, FACE_MARK);
       }
       side_faces[i - 1] = f;
@@ -1442,24 +1454,24 @@ void bmo_create_cone_exec(BMesh *bm, BMOperator *op)
 
   if (cap_ends) {
     f = BM_face_create_quad_tri(bm, cent1, v1, firstv1, NULL, NULL, BM_CREATE_NOP);
-    if (calc_uvs) {
+    if (cd_loop_uv_offset != -1) {
       BMO_face_flag_enable(bm, f, FACE_MARK);
     }
     BMO_face_flag_enable(bm, f, FACE_NEW);
 
     f = BM_face_create_quad_tri(bm, cent2, firstv2, v2, NULL, NULL, BM_CREATE_NOP);
-    if (calc_uvs) {
+    if (cd_loop_uv_offset != -1) {
       BMO_face_flag_enable(bm, f, FACE_MARK);
     }
     BMO_face_flag_enable(bm, f, FACE_NEW);
   }
 
   f = BM_face_create_quad_tri(bm, v1, v2, firstv2, firstv1, NULL, BM_CREATE_NOP);
-  if (calc_uvs) {
+  if (cd_loop_uv_offset != -1) {
     BMO_face_flag_enable(bm, f, FACE_MARK);
   }
 
-  if (calc_uvs) {
+  if (cd_loop_uv_offset != -1) {
     BM_mesh_calc_uvs_cone(bm, mat, rad2, rad1, segs, cap_ends, FACE_MARK, cd_loop_uv_offset);
   }
 
@@ -1609,8 +1621,10 @@ void bmo_create_cube_exec(BMesh *bm, BMOperator *op)
   float mat[4][4];
   float off = BMO_slot_float_get(op->slots_in, "size") / 2.0f;
 
-  const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_PROP_FLOAT2);
-  const bool calc_uvs = (cd_loop_uv_offset != -1) && BMO_slot_bool_get(op->slots_in, "calc_uvs");
+  const int uv_index = BMO_slot_bool_get(op->slots_in, "uv_index");
+  const int cd_loop_uv_offset = uv_index != -1 ?
+                                    CustomData_get_n_offset(&bm->ldata, CD_PROP_FLOAT2, uv_index) :
+                                    -1;
 
   /* rotation order set to match 'BM_mesh_calc_uvs_cube' */
   const char faces[6][4] = {
@@ -1651,12 +1665,12 @@ void bmo_create_cube_exec(BMesh *bm, BMOperator *op)
     };
 
     f = BM_face_create_verts(bm, quad, 4, NULL, BM_CREATE_NOP, true);
-    if (calc_uvs) {
+    if (cd_loop_uv_offset != -1) {
       BMO_face_flag_enable(bm, f, FACE_MARK);
     }
   }
 
-  if (calc_uvs) {
+  if (cd_loop_uv_offset != -1) {
     BM_mesh_calc_uvs_cube(bm, FACE_MARK);
   }
 

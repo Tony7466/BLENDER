@@ -8,6 +8,7 @@
 #include "BLI_math.h"
 #include "BLI_sys_types.h"
 
+#include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
@@ -112,8 +113,12 @@ static int add_primitive_plane_exec(bContext *C, wmOperator *op)
 
   em = BKE_editmesh_from_object(obedit);
 
+  int uv_index = -1;
   if (calc_uvs) {
-    ED_mesh_uv_ensure(obedit->data, NULL);
+    Mesh *mesh = obedit->data;
+    ED_mesh_uv_ensure(mesh, NULL);
+    uv_index = CustomData_get_named_layer(
+        &em->bm->ldata, CD_PROP_FLOAT2, mesh->active_uv_attribute);
   }
 
   if (!EDBM_op_call_and_selectf(
@@ -121,12 +126,12 @@ static int add_primitive_plane_exec(bContext *C, wmOperator *op)
           op,
           "verts.out",
           false,
-          "create_grid x_segments=%i y_segments=%i size=%f matrix=%m4 calc_uvs=%b",
+          "create_grid x_segments=%i y_segments=%i size=%f matrix=%m4 uv_index=%i",
           0,
           0,
           RNA_float_get(op->ptr, "size") / 2.0f,
           creation_data.mat,
-          calc_uvs)) {
+          uv_index)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -177,18 +182,22 @@ static int add_primitive_cube_exec(bContext *C, wmOperator *op)
 
   em = BKE_editmesh_from_object(obedit);
 
+  int uv_index = -1;
   if (calc_uvs) {
-    ED_mesh_uv_ensure(obedit->data, NULL);
+    Mesh *mesh = obedit->data;
+    ED_mesh_uv_ensure(mesh, NULL);
+    uv_index = CustomData_get_named_layer(
+        &em->bm->ldata, CD_PROP_FLOAT2, mesh->active_uv_attribute);
   }
 
   if (!EDBM_op_call_and_selectf(em,
                                 op,
                                 "verts.out",
                                 false,
-                                "create_cube matrix=%m4 size=%f calc_uvs=%b",
+                                "create_cube matrix=%m4 size=%f uv_index=%i",
                                 creation_data.mat,
                                 RNA_float_get(op->ptr, "size"),
-                                calc_uvs)) {
+                                uv_index)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -251,8 +260,12 @@ static int add_primitive_circle_exec(bContext *C, wmOperator *op)
 
   em = BKE_editmesh_from_object(obedit);
 
+  int uv_index = -1;
   if (calc_uvs) {
-    ED_mesh_uv_ensure(obedit->data, NULL);
+    Mesh *mesh = obedit->data;
+    ED_mesh_uv_ensure(mesh, NULL);
+    uv_index = CustomData_get_named_layer(
+        &em->bm->ldata, CD_PROP_FLOAT2, mesh->active_uv_attribute);
   }
 
   if (!EDBM_op_call_and_selectf(
@@ -260,13 +273,13 @@ static int add_primitive_circle_exec(bContext *C, wmOperator *op)
           op,
           "verts.out",
           false,
-          "create_circle segments=%i radius=%f cap_ends=%b cap_tris=%b matrix=%m4 calc_uvs=%b",
+          "create_circle segments=%i radius=%f cap_ends=%b cap_tris=%b matrix=%m4 uv_index=%i",
           RNA_int_get(op->ptr, "vertices"),
           RNA_float_get(op->ptr, "radius"),
           cap_end,
           cap_tri,
           creation_data.mat,
-          calc_uvs)) {
+          uv_index)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -323,8 +336,12 @@ static int add_primitive_cylinder_exec(bContext *C, wmOperator *op)
                           &creation_data);
   em = BKE_editmesh_from_object(obedit);
 
+  int uv_index = -1;
   if (calc_uvs) {
-    ED_mesh_uv_ensure(obedit->data, NULL);
+    Mesh *mesh = obedit->data;
+    ED_mesh_uv_ensure(mesh, NULL);
+    uv_index = CustomData_get_named_layer(
+        &em->bm->ldata, CD_PROP_FLOAT2, mesh->active_uv_attribute);
   }
 
   if (!EDBM_op_call_and_selectf(em,
@@ -332,7 +349,7 @@ static int add_primitive_cylinder_exec(bContext *C, wmOperator *op)
                                 "verts.out",
                                 false,
                                 "create_cone segments=%i radius1=%f radius2=%f cap_ends=%b "
-                                "cap_tris=%b depth=%f matrix=%m4 calc_uvs=%b",
+                                "cap_tris=%b depth=%f matrix=%m4 uv_index=%i",
                                 RNA_int_get(op->ptr, "vertices"),
                                 RNA_float_get(op->ptr, "radius"),
                                 RNA_float_get(op->ptr, "radius"),
@@ -340,7 +357,7 @@ static int add_primitive_cylinder_exec(bContext *C, wmOperator *op)
                                 cap_tri,
                                 RNA_float_get(op->ptr, "depth"),
                                 creation_data.mat,
-                                calc_uvs)) {
+                                uv_index)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -399,8 +416,12 @@ static int add_primitive_cone_exec(bContext *C, wmOperator *op)
                           &creation_data);
   em = BKE_editmesh_from_object(obedit);
 
+  int uv_index = -1;
   if (calc_uvs) {
-    ED_mesh_uv_ensure(obedit->data, NULL);
+    Mesh *mesh = obedit->data;
+    ED_mesh_uv_ensure(mesh, NULL);
+    uv_index = CustomData_get_named_layer(
+        &em->bm->ldata, CD_PROP_FLOAT2, mesh->active_uv_attribute);
   }
 
   if (!EDBM_op_call_and_selectf(em,
@@ -408,7 +429,7 @@ static int add_primitive_cone_exec(bContext *C, wmOperator *op)
                                 "verts.out",
                                 false,
                                 "create_cone segments=%i radius1=%f radius2=%f cap_ends=%b "
-                                "cap_tris=%b depth=%f matrix=%m4 calc_uvs=%b",
+                                "cap_tris=%b depth=%f matrix=%m4 uv_index=%i",
                                 RNA_int_get(op->ptr, "vertices"),
                                 RNA_float_get(op->ptr, "radius1"),
                                 RNA_float_get(op->ptr, "radius2"),
@@ -416,7 +437,7 @@ static int add_primitive_cone_exec(bContext *C, wmOperator *op)
                                 cap_tri,
                                 RNA_float_get(op->ptr, "depth"),
                                 creation_data.mat,
-                                calc_uvs)) {
+                                uv_index)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -475,8 +496,12 @@ static int add_primitive_grid_exec(bContext *C, wmOperator *op)
                           &creation_data);
   em = BKE_editmesh_from_object(obedit);
 
+  int uv_index = -1;
   if (calc_uvs) {
-    ED_mesh_uv_ensure(obedit->data, NULL);
+    Mesh *mesh = obedit->data;
+    ED_mesh_uv_ensure(mesh, NULL);
+    uv_index = CustomData_get_named_layer(
+        &em->bm->ldata, CD_PROP_FLOAT2, mesh->active_uv_attribute);
   }
 
   if (!EDBM_op_call_and_selectf(
@@ -484,12 +509,12 @@ static int add_primitive_grid_exec(bContext *C, wmOperator *op)
           op,
           "verts.out",
           false,
-          "create_grid x_segments=%i y_segments=%i size=%f matrix=%m4 calc_uvs=%b",
+          "create_grid x_segments=%i y_segments=%i size=%f matrix=%m4 uv_index=%i",
           RNA_int_get(op->ptr, "x_subdivisions"),
           RNA_int_get(op->ptr, "y_subdivisions"),
           RNA_float_get(op->ptr, "size") / 2.0f,
           creation_data.mat,
-          calc_uvs)) {
+          uv_index)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -552,17 +577,21 @@ static int add_primitive_monkey_exec(bContext *C, wmOperator *op)
 
   em = BKE_editmesh_from_object(obedit);
 
+  int uv_index = -1;
   if (calc_uvs) {
-    ED_mesh_uv_ensure(obedit->data, NULL);
+    Mesh *mesh = obedit->data;
+    ED_mesh_uv_ensure(mesh, NULL);
+    uv_index = CustomData_get_named_layer(
+        &em->bm->ldata, CD_PROP_FLOAT2, mesh->active_uv_attribute);
   }
 
   if (!EDBM_op_call_and_selectf(em,
                                 op,
                                 "verts.out",
                                 false,
-                                "create_monkey matrix=%m4 calc_uvs=%b",
+                                "create_monkey matrix=%m4 uv_index=%i",
                                 creation_data.mat,
-                                calc_uvs)) {
+                                uv_index)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -613,8 +642,12 @@ static int add_primitive_uvsphere_exec(bContext *C, wmOperator *op)
                           &creation_data);
   em = BKE_editmesh_from_object(obedit);
 
+  int uv_index = -1;
   if (calc_uvs) {
-    ED_mesh_uv_ensure(obedit->data, NULL);
+    Mesh *mesh = obedit->data;
+    ED_mesh_uv_ensure(mesh, NULL);
+    uv_index = CustomData_get_named_layer(
+        &em->bm->ldata, CD_PROP_FLOAT2, mesh->active_uv_attribute);
   }
 
   if (!EDBM_op_call_and_selectf(
@@ -622,12 +655,12 @@ static int add_primitive_uvsphere_exec(bContext *C, wmOperator *op)
           op,
           "verts.out",
           false,
-          "create_uvsphere u_segments=%i v_segments=%i radius=%f matrix=%m4 calc_uvs=%b",
+          "create_uvsphere u_segments=%i v_segments=%i radius=%f matrix=%m4 uv_index=%i",
           RNA_int_get(op->ptr, "segments"),
           RNA_int_get(op->ptr, "ring_count"),
           RNA_float_get(op->ptr, "radius"),
           creation_data.mat,
-          calc_uvs)) {
+          uv_index)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -681,8 +714,12 @@ static int add_primitive_icosphere_exec(bContext *C, wmOperator *op)
                           &creation_data);
   em = BKE_editmesh_from_object(obedit);
 
+  int uv_index = -1;
   if (calc_uvs) {
-    ED_mesh_uv_ensure(obedit->data, NULL);
+    Mesh *mesh = obedit->data;
+    ED_mesh_uv_ensure(mesh, NULL);
+    uv_index = CustomData_get_named_layer(
+        &em->bm->ldata, CD_PROP_FLOAT2, mesh->active_uv_attribute);
   }
 
   if (!EDBM_op_call_and_selectf(
@@ -690,11 +727,11 @@ static int add_primitive_icosphere_exec(bContext *C, wmOperator *op)
           op,
           "verts.out",
           false,
-          "create_icosphere subdivisions=%i radius=%f matrix=%m4 calc_uvs=%b",
+          "create_icosphere subdivisions=%i radius=%f matrix=%m4 uv_index=%i",
           RNA_int_get(op->ptr, "subdivisions"),
           RNA_float_get(op->ptr, "radius"),
           creation_data.mat,
-          calc_uvs)) {
+          uv_index)) {
     return OPERATOR_CANCELLED;
   }
 

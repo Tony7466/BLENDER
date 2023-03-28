@@ -10,6 +10,7 @@
 
 #include "BLI_math.h"
 
+#include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
@@ -327,18 +328,22 @@ static int add_primitive_cube_gizmo_exec(bContext *C, wmOperator *op)
 
   const bool calc_uvs = RNA_boolean_get(op->ptr, "calc_uvs");
 
+  int uv_index = -1;
   if (calc_uvs) {
-    ED_mesh_uv_ensure(obedit->data, NULL);
+    Mesh *mesh = obedit->data;
+    ED_mesh_uv_ensure(mesh, NULL);
+    uv_index = CustomData_get_named_layer(
+        &em->bm->ldata, CD_PROP_FLOAT2, mesh->active_uv_attribute);
   }
 
   if (!EDBM_op_call_and_selectf(em,
                                 op,
                                 "verts.out",
                                 false,
-                                "create_cube matrix=%m4 size=%f calc_uvs=%b",
+                                "create_cube matrix=%m4 size=%f uv_index=%b",
                                 matrix,
                                 1.0f,
-                                calc_uvs)) {
+                                uv_index)) {
     return OPERATOR_CANCELLED;
   }
 
