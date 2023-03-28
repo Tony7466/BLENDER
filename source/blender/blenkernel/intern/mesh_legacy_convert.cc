@@ -1319,6 +1319,8 @@ void BKE_mesh_legacy_face_set_to_generic(Mesh *mesh)
                                          mesh->totpoly,
                                          ".sculpt_face_set",
                                          faceset_implicit_sharing_info);
+  }
+  if (faceset_implicit_sharing_info != nullptr) {
     faceset_implicit_sharing_info->remove_user_and_delete_if_last();
   }
 }
