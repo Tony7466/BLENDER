@@ -56,9 +56,9 @@ static void initData(ModifierData *md)
   MEMCPY_STRUCT_AFTER(wmd, DNA_struct_default_get(WaveModifierData), modifier);
 }
 
-static bool dependsOnTime(Scene * /*scene*/, ModifierData * /*md*/)
+static void dependsOnTime(Scene * /*scene*/, ModifierData * /*md*/, bool *r_scene_time, bool */*r_real_time*/)
 {
-  return true;
+  *r_scene_time = true;
 }
 
 static void foreachIDLink(ModifierData *md, Object *ob, IDWalkFunc walk, void *userData)

@@ -84,13 +84,12 @@ static void foreachTexLink(ModifierData *md, Object *ob, TexWalkFunc walk, void 
   walk(userData, ob, md, "texture");
 }
 
-static bool dependsOnTime(struct Scene * /*scene*/, ModifierData *md)
+static void dependsOnTime(struct Scene * /*scene*/, ModifierData *md, bool *r_scene_time, bool */*r_real_time*/)
 {
   VolumeDisplaceModifierData *vdmd = reinterpret_cast<VolumeDisplaceModifierData *>(md);
   if (vdmd->texture) {
-    return BKE_texture_dependsOnTime(vdmd->texture);
+    *r_scene_time = BKE_texture_dependsOnTime(vdmd->texture);
   }
-  return false;
 }
 
 static void panel_draw(const bContext *C, Panel *panel)

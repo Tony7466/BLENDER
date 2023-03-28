@@ -200,9 +200,9 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
   tclmd->solver_result = NULL;
 }
 
-static bool dependsOnTime(struct Scene *UNUSED(scene), ModifierData *UNUSED(md))
+static void dependsOnTime(struct Scene *UNUSED(scene), ModifierData *UNUSED(md), bool *r_scene_time, bool *UNUSED(r_real_time))
 {
-  return true;
+  *r_scene_time = true;
 }
 
 static void freeData(ModifierData *md)

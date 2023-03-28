@@ -149,9 +149,9 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 #endif /* WITH_FLUID */
 }
 
-static bool dependsOnTime(struct Scene *UNUSED(scene), ModifierData *UNUSED(md))
+static void dependsOnTime(struct Scene *UNUSED(scene), ModifierData *UNUSED(md), bool *r_scene_time, bool *UNUSED(r_real_time))
 {
-  return true;
+  *r_scene_time = true;
 }
 
 static bool is_flow_cb(Object *UNUSED(ob), ModifierData *md)

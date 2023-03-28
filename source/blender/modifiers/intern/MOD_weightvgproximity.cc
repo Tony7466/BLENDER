@@ -345,14 +345,13 @@ static void requiredDataMask(ModifierData *md, CustomData_MeshMasks *r_cddata_ma
   /* No need to ask for CD_PREVIEW_MLOOPCOL... */
 }
 
-static bool dependsOnTime(Scene * /*scene*/, ModifierData *md)
+static void dependsOnTime(Scene * /*scene*/, ModifierData *md, bool *r_scene_time, bool */*r_real_time*/)
 {
   WeightVGProximityModifierData *wmd = (WeightVGProximityModifierData *)md;
 
   if (wmd->mask_texture) {
-    return BKE_texture_dependsOnTime(wmd->mask_texture);
+    *r_scene_time = BKE_texture_dependsOnTime(wmd->mask_texture);
   }
-  return false;
 }
 
 static void foreachIDLink(ModifierData *md, Object *ob, IDWalkFunc walk, void *userData)

@@ -101,15 +101,13 @@ static void matrix_from_obj_pchan(float mat[4][4],
   }
 }
 
-static bool dependsOnTime(struct Scene *UNUSED(scene), ModifierData *md)
+static void dependsOnTime(struct Scene *UNUSED(scene), ModifierData *md, bool *r_scene_time, bool *UNUSED(r_real_time))
 {
   WarpModifierData *wmd = (WarpModifierData *)md;
 
   if (wmd->texture) {
-    return BKE_texture_dependsOnTime(wmd->texture);
+    *r_scene_time = BKE_texture_dependsOnTime(wmd->texture);
   }
-
-  return false;
 }
 
 static void freeData(ModifierData *md)

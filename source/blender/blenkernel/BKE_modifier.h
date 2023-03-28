@@ -302,7 +302,7 @@ typedef struct ModifierTypeInfo {
    *
    * This function is optional (assumes false if not present).
    */
-  bool (*dependsOnTime)(struct Scene *scene, struct ModifierData *md);
+  void (*dependsOnTime)(struct Scene *scene, struct ModifierData *md, bool *r_scene_time, bool *r_real_time);
 
   /**
    * True when a deform modifier uses normals, the requiredDataMask
@@ -421,7 +421,8 @@ void BKE_modifier_copydata(const struct ModifierData *md, struct ModifierData *t
 void BKE_modifier_copydata_ex(const struct ModifierData *md,
                               struct ModifierData *target,
                               int flag);
-bool BKE_modifier_depends_ontime(struct Scene *scene, struct ModifierData *md);
+bool BKE_modifier_depends_on_scene_time(struct Scene *scene, struct ModifierData *md);
+bool BKE_modifier_depends_on_real_time(struct Scene *scene, struct ModifierData *md);
 bool BKE_modifier_supports_mapping(struct ModifierData *md);
 bool BKE_modifier_supports_cage(struct Scene *scene, struct ModifierData *md);
 bool BKE_modifier_couldbe_cage(struct Scene *scene, struct ModifierData *md);

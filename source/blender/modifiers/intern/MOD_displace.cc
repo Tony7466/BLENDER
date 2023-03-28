@@ -78,15 +78,13 @@ static void requiredDataMask(ModifierData *md, CustomData_MeshMasks *r_cddata_ma
   }
 }
 
-static bool dependsOnTime(Scene * /*scene*/, ModifierData *md)
+static void dependsOnTime(Scene * /*scene*/, ModifierData *md, bool *r_scene_time, bool */*r_real_time*/)
 {
   DisplaceModifierData *dmd = (DisplaceModifierData *)md;
 
   if (dmd->texture) {
-    return BKE_texture_dependsOnTime(dmd->texture);
+    *r_scene_time = BKE_texture_dependsOnTime(dmd->texture);
   }
-
-  return false;
 }
 
 static bool dependsOnNormals(ModifierData *md)

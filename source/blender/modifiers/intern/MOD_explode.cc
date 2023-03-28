@@ -74,9 +74,9 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
 
   temd->facepa = nullptr;
 }
-static bool dependsOnTime(Scene * /*scene*/, ModifierData * /*md*/)
+static void dependsOnTime(Scene * /*scene*/, ModifierData * /*md*/, bool *r_scene_time, bool */*r_real_time*/)
 {
-  return true;
+  *r_scene_time = true;
 }
 static void requiredDataMask(ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {

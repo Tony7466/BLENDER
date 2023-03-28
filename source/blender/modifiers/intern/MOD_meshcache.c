@@ -54,10 +54,10 @@ static void initData(ModifierData *md)
   MEMCPY_STRUCT_AFTER(mcmd, DNA_struct_default_get(MeshCacheModifierData), modifier);
 }
 
-static bool dependsOnTime(struct Scene *UNUSED(scene), ModifierData *md)
+static void dependsOnTime(struct Scene *UNUSED(scene), ModifierData *md, bool *r_scene_time, bool *UNUSED(r_real_time))
 {
   MeshCacheModifierData *mcmd = (MeshCacheModifierData *)md;
-  return (mcmd->play_mode == MOD_MESHCACHE_PLAY_CFEA);
+  *r_scene_time = (mcmd->play_mode == MOD_MESHCACHE_PLAY_CFEA);
 }
 
 static bool isDisabled(const struct Scene *UNUSED(scene),

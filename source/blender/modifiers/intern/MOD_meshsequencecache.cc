@@ -276,16 +276,15 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 #endif
 }
 
-static bool dependsOnTime(Scene *scene, ModifierData *md)
+static void dependsOnTime(Scene *scene, ModifierData *md, bool *r_scene_time, bool */*r_real_time*/)
 {
 #if defined(WITH_USD) || defined(WITH_ALEMBIC)
   MeshSeqCacheModifierData *mcmd = reinterpret_cast<MeshSeqCacheModifierData *>(md);
   /* Do not evaluate animations if using the render engine procedural. */
-  return (mcmd->cache_file != nullptr) &&
-         !BKE_cache_file_uses_render_procedural(mcmd->cache_file, scene);
+  *r_scene_time = (mcmd->cache_file != nullptr) &&
+                  !BKE_cache_file_uses_render_procedural(mcmd->cache_file, scene);
 #else
   UNUSED_VARS(scene, md);
-  return false;
 #endif
 }
 

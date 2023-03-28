@@ -48,9 +48,9 @@ static void initData(ModifierData *md)
   MEMCPY_STRUCT_AFTER(bmd, DNA_struct_default_get(BuildModifierData), modifier);
 }
 
-static bool dependsOnTime(Scene * /*scene*/, ModifierData * /*md*/)
+static void dependsOnTime(Scene * /*scene*/, ModifierData * /*md*/, bool *r_scene_time, bool */*r_real_time*/)
 {
-  return true;
+  *r_scene_time = true;
 }
 
 static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)

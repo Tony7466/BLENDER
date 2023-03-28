@@ -349,15 +349,15 @@ static bool check_tree_for_time_node(const bNodeTree &tree,
   return false;
 }
 
-static bool dependsOnTime(struct Scene * /*scene*/, ModifierData *md)
+static void dependsOnTime(struct Scene * /*scene*/, ModifierData *md, bool *r_scene_time, bool */*r_real_time*/)
 {
   const NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
   const bNodeTree *tree = nmd->node_group;
   if (tree == nullptr) {
-    return false;
+    return;
   }
   Set<const bNodeTree *> checked_trees;
-  return check_tree_for_time_node(*tree, checked_trees);
+  *r_scene_time = check_tree_for_time_node(*tree, checked_trees);
 }
 
 static void foreachIDLink(ModifierData *md, Object *ob, IDWalkFunc walk, void *userData)

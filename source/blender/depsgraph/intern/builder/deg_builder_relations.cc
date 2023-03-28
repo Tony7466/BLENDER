@@ -915,7 +915,7 @@ void DepsgraphRelationBuilder::build_object_modifiers(Object *object)
     }
 
     /* Time dependency. */
-    if (BKE_modifier_depends_ontime(scene_, modifier)) {
+    if (BKE_modifier_depends_on_scene_time(scene_, modifier)) {
       const TimeSourceKey time_src_key;
       add_relation(time_src_key, modifier_key, "Time Source -> Modifier");
     }

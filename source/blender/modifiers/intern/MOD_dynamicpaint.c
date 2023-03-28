@@ -140,9 +140,9 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
   }
 }
 
-static bool dependsOnTime(struct Scene *UNUSED(scene), ModifierData *UNUSED(md))
+static void dependsOnTime(struct Scene *UNUSED(scene), ModifierData *UNUSED(md), bool *r_scene_time, bool *UNUSED(r_real_time))
 {
-  return true;
+  *r_scene_time = true;
 }
 
 static void foreachIDLink(ModifierData *md, Object *ob, IDWalkFunc walk, void *userData)
