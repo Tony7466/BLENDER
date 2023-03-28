@@ -59,7 +59,7 @@ typedef struct CustomDataLayer {
    * Run-time data that allows sharing `data` with other entities (mostly custom data layers on
    * other geometries).
    */
-  const ImplicitSharingInfoHandle *implicit_sharing_info;
+  const ImplicitSharingInfoHandle *sharing_info;
 } CustomDataLayer;
 
 #define MAX_CUSTOMDATA_LAYER_NAME 68

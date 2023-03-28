@@ -255,7 +255,7 @@ const void *CustomData_add_layer_with_data(struct CustomData *data,
                                            eCustomDataType type,
                                            void *layer_data,
                                            int totelem,
-                                           const ImplicitSharingInfoHandle *implicit_sharing_info);
+                                           const ImplicitSharingInfoHandle *sharing_info);
 
 /**
  * Same as above but accepts a name.
@@ -266,13 +266,12 @@ void *CustomData_add_layer_named(struct CustomData *data,
                                  int totelem,
                                  const char *name);
 
-const void *CustomData_add_layer_named_with_data(
-    struct CustomData *data,
-    eCustomDataType type,
-    void *layer_data,
-    int totelem,
-    const char *name,
-    const ImplicitSharingInfoHandle *implicit_sharing_info);
+const void *CustomData_add_layer_named_with_data(struct CustomData *data,
+                                                 eCustomDataType type,
+                                                 void *layer_data,
+                                                 int totelem,
+                                                 const char *name,
+                                                 const ImplicitSharingInfoHandle *sharing_info);
 
 void *CustomData_add_layer_anonymous(struct CustomData *data,
                                      eCustomDataType type,
@@ -285,7 +284,7 @@ const void *CustomData_add_layer_anonymous_with_data(
     const AnonymousAttributeIDHandle *anonymous_id,
     int totelem,
     void *layer_data,
-    const ImplicitSharingInfoHandle *implicit_sharing_info);
+    const ImplicitSharingInfoHandle *sharing_info);
 
 /**
  * Frees the active or first data layer with the give type.

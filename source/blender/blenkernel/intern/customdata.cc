@@ -2164,7 +2164,7 @@ static CustomDataLayer *customData_add_layer__internal(
     eCustomDataType type,
     eCDAllocType alloctype,
     void *layer_data_to_assign,
-    const ImplicitSharingInfo *implicit_sharing_info_to_assign,
+    const ImplicitSharingInfo *sharing_info_to_assign,
     int totelem,
     const char *name);
 
@@ -2268,17 +2268,17 @@ static bool customdata_merge_internal(const CustomData *source,
     }
 
     void *layer_data_to_assign = nullptr;
-    const ImplicitSharingInfo *implicit_sharing_info_to_assign = nullptr;
+    const ImplicitSharingInfo *sharing_info_to_assign = nullptr;
     if (alloctype == CD_ASSIGN) {
       if (src_layer.data != nullptr) {
-        if (src_layer.implicit_sharing_info == nullptr) {
+        if (src_layer.sharing_info == nullptr) {
           /* Can't share the layer, duplicate it instead. */
           layer_data_to_assign = copy_layer_data(type, src_layer.data, totelem);
         }
         else {
           /* Share the layer. */
           layer_data_to_assign = src_layer.data;
-          implicit_sharing_info_to_assign = src_layer.implicit_sharing_info;
+          sharing_info_to_assign = src_layer.sharing_info;
         }
       }
     }
@@ -2287,7 +2287,7 @@ static bool customdata_merge_internal(const CustomData *source,
                                                                 type,
                                                                 alloctype,
                                                                 layer_data_to_assign,
-                                                                implicit_sharing_info_to_assign,
+                                                                sharing_info_to_assign,
                                                                 totelem,
                                                                 src_layer.name);
 
@@ -2391,16 +2391,16 @@ static void ensure_layer_data_is_mutable(CustomDataLayer &layer, const int totel
   if (layer.data == nullptr) {
     return;
   }
-  if (layer.implicit_sharing_info == nullptr) {
+  if (layer.sharing_info == nullptr) {
     /* Can not be shared without cow data. */
     return;
   }
-  if (layer.implicit_sharing_info->is_shared()) {
+  if (layer.sharing_info->is_shared()) {
     const eCustomDataType type = eCustomDataType(layer.type);
     const void *old_data = layer.data;
     layer.data = copy_layer_data(type, old_data, totelem);
-    layer.implicit_sharing_info->remove_user_and_delete_if_last();
-    layer.implicit_sharing_info = make_cow_for_array(type, layer.data, totelem);
+    layer.sharing_info->remove_user_and_delete_if_last();
+    layer.sharing_info = make_cow_for_array(type, layer.data, totelem);
   }
 }
 
@@ -2422,14 +2422,14 @@ void CustomData_realloc(CustomData *data, const int old_size, const int new_size
       memcpy(new_layer_data, layer->data, std::min(old_size_in_bytes, new_size_in_bytes));
     }
     /* Remove ownership of old array */
-    if (layer->implicit_sharing_info) {
-      layer->implicit_sharing_info->remove_user_and_delete_if_last();
-      layer->implicit_sharing_info = nullptr;
+    if (layer->sharing_info) {
+      layer->sharing_info->remove_user_and_delete_if_last();
+      layer->sharing_info = nullptr;
     }
     /* Take ownership of new array. */
     layer->data = new_layer_data;
     if (layer->data) {
-      layer->implicit_sharing_info = make_cow_for_array(
+      layer->sharing_info = make_cow_for_array(
           eCustomDataType(layer->type), layer->data, new_size);
     }
 
@@ -2476,14 +2476,14 @@ static void customData_free_layer__internal(CustomDataLayer *layer, const int to
     layer->anonymous_id = nullptr;
   }
   const eCustomDataType type = eCustomDataType(layer->type);
-  if (layer->implicit_sharing_info == nullptr) {
+  if (layer->sharing_info == nullptr) {
     if (layer->data) {
       free_layer_data(type, layer->data, totelem);
     }
   }
   else {
-    layer->implicit_sharing_info->remove_user_and_delete_if_last();
-    layer->implicit_sharing_info = nullptr;
+    layer->sharing_info->remove_user_and_delete_if_last();
+    layer->sharing_info = nullptr;
   }
 }
 
@@ -2844,7 +2844,7 @@ static CustomDataLayer *customData_add_layer__internal(
     const eCustomDataType type,
     const eCDAllocType alloctype,
     void *layer_data_to_assign,
-    const ImplicitSharingInfo *implicit_sharing_info_to_assign,
+    const ImplicitSharingInfo *sharing_info_to_assign,
     const int totelem,
     const char *name)
 {
@@ -2901,23 +2901,23 @@ static CustomDataLayer *customData_add_layer__internal(
       break;
     }
     case CD_ASSIGN: {
-      if (totelem == 0 && implicit_sharing_info_to_assign == nullptr) {
+      if (totelem == 0 && sharing_info_to_assign == nullptr) {
         MEM_SAFE_FREE(layer_data_to_assign);
       }
       else {
         new_layer.data = layer_data_to_assign;
-        new_layer.implicit_sharing_info = implicit_sharing_info_to_assign;
-        if (new_layer.implicit_sharing_info) {
-          new_layer.implicit_sharing_info->add_user();
+        new_layer.sharing_info = sharing_info_to_assign;
+        if (new_layer.sharing_info) {
+          new_layer.sharing_info->add_user();
         }
       }
       break;
     }
   }
 
-  if (new_layer.data != nullptr && new_layer.implicit_sharing_info == nullptr) {
+  if (new_layer.data != nullptr && new_layer.sharing_info == nullptr) {
     /* Make layer data shareable. */
-    new_layer.implicit_sharing_info = make_cow_for_array(type, new_layer.data, totelem);
+    new_layer.sharing_info = make_cow_for_array(type, new_layer.data, totelem);
   }
 
   new_layer.type = type;
@@ -5200,13 +5200,12 @@ void CustomData_blend_read(BlendDataReader *reader, CustomData *data, const int 
     if (layer->flag & CD_FLAG_EXTERNAL) {
       layer->flag &= ~CD_FLAG_IN_MEMORY;
     }
-    layer->implicit_sharing_info = nullptr;
+    layer->sharing_info = nullptr;
 
     if (CustomData_verify_versions(data, i)) {
       BLO_read_data_address(reader, &layer->data);
       if (layer->data != nullptr) {
-        layer->implicit_sharing_info = make_cow_for_array(
-            eCustomDataType(layer->type), layer->data, count);
+        layer->sharing_info = make_cow_for_array(eCustomDataType(layer->type), layer->data, count);
       }
       if (CustomData_layer_ensure_data_exists(layer, count)) {
         /* Under normal operations, this shouldn't happen, but...

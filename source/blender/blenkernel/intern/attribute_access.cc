@@ -242,17 +242,17 @@ static const void *add_generic_custom_data_layer_with_existing_data(
     const AttributeIDRef &attribute_id,
     const int domain_size,
     void *layer_data,
-    const ImplicitSharingInfo *implicit_sharing_info)
+    const ImplicitSharingInfo *sharing_info)
 {
   if (attribute_id.is_anonymous()) {
     const AnonymousAttributeID &anonymous_id = attribute_id.anonymous_id();
     return CustomData_add_layer_anonymous_with_data(
-        &custom_data, data_type, &anonymous_id, domain_size, layer_data, implicit_sharing_info);
+        &custom_data, data_type, &anonymous_id, domain_size, layer_data, sharing_info);
   }
   char attribute_name_c[MAX_CUSTOMDATA_LAYER_NAME];
   attribute_id.name().copy(attribute_name_c);
   return CustomData_add_layer_named_with_data(
-      &custom_data, data_type, layer_data, domain_size, attribute_name_c, implicit_sharing_info);
+      &custom_data, data_type, layer_data, domain_size, attribute_name_c, sharing_info);
 }
 
 static bool add_custom_data_layer_from_attribute_init(const AttributeIDRef &attribute_id,

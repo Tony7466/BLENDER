@@ -1300,14 +1300,14 @@ void BKE_mesh_legacy_face_set_to_generic(Mesh *mesh)
     return;
   }
   void *faceset_data = nullptr;
-  const ImplicitSharingInfo *faceset_implicit_sharing_info = nullptr;
+  const ImplicitSharingInfo *faceset_sharing_info = nullptr;
   for (const int i : IndexRange(mesh->pdata.totlayer)) {
     CustomDataLayer &layer = mesh->pdata.layers[i];
     if (layer.type == CD_SCULPT_FACE_SETS) {
       faceset_data = layer.data;
-      faceset_implicit_sharing_info = layer.implicit_sharing_info;
+      faceset_sharing_info = layer.sharing_info;
       layer.data = nullptr;
-      layer.implicit_sharing_info = nullptr;
+      layer.sharing_info = nullptr;
       CustomData_free_layer(&mesh->pdata, CD_SCULPT_FACE_SETS, mesh->totpoly, i);
       break;
     }
@@ -1318,10 +1318,10 @@ void BKE_mesh_legacy_face_set_to_generic(Mesh *mesh)
                                          faceset_data,
                                          mesh->totpoly,
                                          ".sculpt_face_set",
-                                         faceset_implicit_sharing_info);
+                                         faceset_sharing_info);
   }
-  if (faceset_implicit_sharing_info != nullptr) {
-    faceset_implicit_sharing_info->remove_user_and_delete_if_last();
+  if (faceset_sharing_info != nullptr) {
+    faceset_sharing_info->remove_user_and_delete_if_last();
   }
 }
 

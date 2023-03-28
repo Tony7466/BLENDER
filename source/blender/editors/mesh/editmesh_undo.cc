@@ -272,16 +272,16 @@ static void um_arraystore_cd_compact(CustomData *cdata,
       }
 
       if (layer->data) {
-        if (layer->implicit_sharing_info) {
+        if (layer->sharing_info) {
           /* This assumes that the layer is not shared, which it is not here because it has just
            * been created in #BM_mesh_bm_to_me. The situation is a bit tricky here, because the
            * layer data may be freed partially below for e.g. vertex groups. */
-          BLI_assert(layer->implicit_sharing_info->is_mutable());
-          MEM_delete(layer->implicit_sharing_info);
+          BLI_assert(layer->sharing_info->is_mutable());
+          MEM_delete(layer->sharing_info);
         }
         MEM_freeN(layer->data);
         layer->data = nullptr;
-        layer->implicit_sharing_info = nullptr;
+        layer->sharing_info = nullptr;
       }
     }
 
