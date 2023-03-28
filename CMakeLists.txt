@@ -886,8 +886,11 @@ set_and_warn_dependency(WITH_TBB WITH_MOD_FLUID         OFF)
 # NanoVDB requires OpenVDB to convert the data structure
 set_and_warn_dependency(WITH_OPENVDB WITH_NANOVDB       OFF)
 
-# OpenVDB and OpenColorIO uses 'half' type from OpenEXR
+# OpenVDB, Alembic and Vulkan, OSL uses 'half' or 'imath' from OpenEXR
 set_and_warn_dependency(WITH_IMAGE_OPENEXR WITH_OPENVDB OFF)
+set_and_warn_dependency(WITH_IMAGE_OPENEXR WITH_ALEMBIC OFF)
+set_and_warn_dependency(WITH_IMAGE_OPENEXR WITH_VULKAN_BACKEND OFF)
+set_and_warn_dependency(WITH_IMAGE_OPENEXR WITH_CYCLES_OSL OFF)
 
 # Haru needs `TIFFFaxBlackCodes` & `TIFFFaxWhiteCodes` symbols from TIFF.
 set_and_warn_dependency(WITH_IMAGE_TIFF WITH_HARU       OFF)
@@ -949,7 +952,6 @@ if(WITH_CYCLES_DEVICE_HIP)
   # Currently HIP must be dynamically loaded, this may change in future toolkits
   set(WITH_HIP_DYNLOAD ON)
 endif()
-
 
 # -----------------------------------------------------------------------------
 # Check if Sub-modules are Cloned
@@ -1231,7 +1233,6 @@ if(WITH_METAL_BACKEND)
   # Metal-OpenGL Interop are already being added by
   # build_files/cmake/platform/platform_apple.cmake
 endif()
-
 
 # -----------------------------------------------------------------------------
 # Configure OpenMP
