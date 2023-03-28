@@ -833,6 +833,7 @@ if(WITH_GTESTS)
       tests/gpu_testing.cc
 
       tests/index_buffer_test.cc
+      tests/offscreen_test.cc
       tests/push_constants_test.cc
       tests/shader_test.cc
       tests/storage_buffer_test.cc
