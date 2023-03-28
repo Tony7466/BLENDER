@@ -5204,6 +5204,10 @@ void CustomData_blend_read(BlendDataReader *reader, CustomData *data, const int 
 
     if (CustomData_verify_versions(data, i)) {
       BLO_read_data_address(reader, &layer->data);
+      if (layer->data != nullptr) {
+        layer->implicit_sharing_info = make_cow_for_array(
+            eCustomDataType(layer->type), layer->data, count);
+      }
       if (CustomData_layer_ensure_data_exists(layer, count)) {
         /* Under normal operations, this shouldn't happen, but...
          * For a CD_PROP_BOOL example, see #84935.
