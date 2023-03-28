@@ -39,6 +39,8 @@ class IrradianceBake {
   PassSimple surfel_light_eval_ps_ = {"LightEval"};
   /** Propagate light from surfel to surfel. */
   PassSimple surfel_light_propagate_ps_ = {"LightPropagate"};
+  /** Start of a light bounce. Accumulate light from previous propagation. */
+  PassSimple surfel_light_bounce_ps_ = {"LightBounce"};
   /** Capture surfel lighting to irradiance samples. */
   PassSimple irradiance_capture_ps_ = {"IrradianceCapture"};
 
@@ -85,6 +87,8 @@ class IrradianceBake {
   void surfels_lights_eval();
   /** Propagate light from surfel to surfel in a random direction over the sphere. */
   void propagate_light_sample();
+  /** Accumulate light inside `surfel.radiance_bounce` to `surfel.radiance`. */
+  void accumulate_bounce();
 
   /** Read grid final irradiance back to CPU into \a light_cache_grid . */
   void read_result(LightCacheIrradianceGrid &light_cache_grid);

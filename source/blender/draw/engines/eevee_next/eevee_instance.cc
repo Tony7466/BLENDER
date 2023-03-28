@@ -535,19 +535,20 @@ void Instance::light_bake_irradiance(LightCache *&r_light_cache,
     return;
   }
 
-  /* TODO(fclem): Multiple bounce. We need to use the previous bounce result. */
-  for (int bounce = 0; bounce < 1; bounce++) {
-    for (auto i : light_probes.grids.index_range()) {
-      custom_pipeline_wrapper([&]() {
-        /* TODO: lightprobe visibility group option. */
-        manager->begin_sync();
-        render_sync();
-        manager->end_sync();
-        irradiance_cache.bake.surfels_create(light_probes.grids[i]);
-        irradiance_cache.bake.surfels_lights_eval();
-      });
+  for (auto i : light_probes.grids.index_range()) {
+    custom_pipeline_wrapper([&]() {
+      /* TODO: lightprobe visibility group option. */
+      manager->begin_sync();
+      render_sync();
+      manager->end_sync();
+      irradiance_cache.bake.surfels_create(light_probes.grids[i]);
+      irradiance_cache.bake.surfels_lights_eval();
+    });
 
-      sampling.reset();
+    int bounce_len = scene->eevee.gi_diffuse_bounces;
+    /* Start at bounce 1 as 0 bounce is no indirect lighting. */
+    for (int bounce = 1; bounce <= bounce_len; bounce++) {
+      sampling.init(scene);
       while (!sampling.finished()) {
         context_wrapper([&]() {
           /* Batch ray cast by pack of 16 to avoid too much overhead of
@@ -556,10 +557,18 @@ void Instance::light_bake_irradiance(LightCache *&r_light_cache,
             sampling.step();
             irradiance_cache.bake.propagate_light_sample();
           }
+          if (sampling.finished()) {
+            irradiance_cache.bake.accumulate_bounce();
+          }
           irradiance_cache.bake.read_result(r_light_cache->grids[i]);
         });
         // do_update = true;
       }
+    }
+
+    if (bounce_len == 0) {
+      /* Still read result for debugging surfel direct lighting. */
+      context_wrapper([&]() { irradiance_cache.bake.read_result(r_light_cache->grids[i]); });
     }
   }
 

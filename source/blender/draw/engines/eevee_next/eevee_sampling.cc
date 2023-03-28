@@ -26,6 +26,7 @@ void Sampling::init(const Scene *scene)
 {
   if (inst_.is_baking()) {
     sample_count_ = max_ii(1, scene->eevee.gi_irradiance_samples);
+    sample_ = 0;
   }
   else {
     sample_count_ = inst_.is_viewport() ? scene->eevee.taa_samples :

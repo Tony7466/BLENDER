@@ -20,13 +20,13 @@
  */
 void radiance_transfer(Surfel surfel_a, inout Surfel surfel_b)
 {
-  bool facing = dot(surfel_a.normal, surfel_b.normal) < 0.0;
-
   vec3 L = normalize(surfel_a.position - surfel_b.position);
   vec3 N = surfel_b.normal;
   float NL = dot(N, L);
   float pdf = abs(NL);
+  bool facing = dot(-L, surfel_a.normal) > 0.0;
   vec3 irradiance = facing ? surfel_a.radiance_front : surfel_a.radiance_back;
+  irradiance *= M_1_PI;
 
   if (NL > 0.0) {
     surfel_b.radiance_bounce_front += vec4(surfel_b.albedo_front * irradiance * pdf, pdf);

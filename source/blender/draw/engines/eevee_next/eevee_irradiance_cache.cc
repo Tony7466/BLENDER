@@ -124,6 +124,7 @@ void IrradianceBake::sync()
       PassSimple::Sub &sub = pass.sub("ListSort");
       sub.shader_set(inst_.shaders.static_shader_get(SURFEL_LIST_SORT));
       sub.bind_ssbo(SURFEL_BUF_SLOT, &surfels_buf_);
+      sub.bind_ssbo(CAPTURE_BUF_SLOT, &capture_info_buf_);
       sub.bind_ssbo("list_start_buf", &list_start_buf_);
       sub.bind_ssbo("list_info_buf", &list_info_buf_);
       sub.barrier(GPU_BARRIER_SHADER_STORAGE);
@@ -142,6 +143,15 @@ void IrradianceBake::sync()
     PassSimple &pass = irradiance_capture_ps_;
     pass.init();
     /* TODO */
+  }
+  {
+    PassSimple &pass = surfel_light_bounce_ps_;
+    pass.init();
+    pass.shader_set(inst_.shaders.static_shader_get(SURFEL_BOUNCE));
+    pass.bind_ssbo(SURFEL_BUF_SLOT, &surfels_buf_);
+    pass.bind_ssbo(CAPTURE_BUF_SLOT, &capture_info_buf_);
+    pass.barrier(GPU_BARRIER_SHADER_STORAGE);
+    pass.dispatch(&dispatch_per_surfel_);
   }
 }
 
@@ -302,6 +312,11 @@ void IrradianceBake::propagate_light_sample()
 
   GPU_storagebuf_clear(list_start_buf_, -1);
   inst_.manager->submit(surfel_light_propagate_ps_, ray_view);
+}
+
+void IrradianceBake::accumulate_bounce()
+{
+  inst_.manager->submit(surfel_light_bounce_ps_);
 }
 
 void IrradianceBake::read_result(LightCacheIrradianceGrid &light_cache_grid)
