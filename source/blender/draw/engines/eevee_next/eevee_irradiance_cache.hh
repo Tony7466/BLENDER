@@ -109,15 +109,22 @@ class IrradianceCache {
   /** Debug surfel elements copied from the light cache. */
   draw::StorageVectorBuffer<Surfel> surfels_buf_;
 
+  bool display_grids_enabled_ = false;
+  PassSimple display_grids_ps_ = {"IrradianceCache.Display Grids"};
+
  public:
   IrradianceCache(Instance &inst) : bake(inst), inst_(inst){};
   ~IrradianceCache(){};
 
   void init();
   void sync();
+  void viewport_draw(View &view, GPUFrameBuffer *view_fb);
 
+ private:
   void debug_pass_sync();
-  void debug_draw(View &view, GPUFrameBuffer *view_fb);
+  void debug_pass_draw(View &view, GPUFrameBuffer *view_fb);
+  void display_pass_sync();
+  void display_pass_draw(View &view, GPUFrameBuffer *view_fb);
 };
 
 }  // namespace blender::eevee

@@ -25,9 +25,18 @@ void IrradianceCache::sync()
 {
   if (!inst_.is_baking()) {
     debug_pass_sync();
+    display_pass_sync();
   }
   else {
     bake.sync();
+  }
+}
+
+void IrradianceCache::viewport_draw(View &view, GPUFrameBuffer *view_fb)
+{
+  if (!inst_.is_baking()) {
+    debug_pass_draw(view, view_fb);
+    display_pass_draw(view, view_fb);
   }
 }
 
@@ -67,7 +76,7 @@ void IrradianceCache::debug_pass_sync()
   debug_surfels_ps_.draw_procedural(GPU_PRIM_TRI_STRIP, surfels_buf_.size(), 4);
 }
 
-void IrradianceCache::debug_draw(View &view, GPUFrameBuffer *view_fb)
+void IrradianceCache::debug_pass_draw(View &view, GPUFrameBuffer *view_fb)
 {
   switch (inst_.debug_mode) {
     case eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_NORMAL:
@@ -83,6 +92,42 @@ void IrradianceCache::debug_draw(View &view, GPUFrameBuffer *view_fb)
 
   GPU_framebuffer_bind(view_fb);
   inst_.manager->submit(debug_surfels_ps_, view);
+}
+
+void IrradianceCache::display_pass_sync()
+{
+  LightCache *light_cache = inst_.scene->eevee.light_cache_data;
+
+  display_grids_enabled_ = light_cache && light_cache->grid_len > 0 && light_cache->grids &&
+                           DRW_state_draw_support() &&
+                           inst_.scene->eevee.flag & SCE_EEVEE_SHOW_IRRADIANCE;
+  if (!display_grids_enabled_) {
+    return;
+  }
+
+  display_grids_ps_.init();
+  display_grids_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
+                              DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CULL_BACK);
+  display_grids_ps_.shader_set(inst_.shaders.static_shader_get(DISPLAY_PROBE_GRID));
+
+  for (auto i : IndexRange(light_cache->grid_len)) {
+    LightCacheIrradianceGrid &grid = light_cache->grids[i];
+    display_grids_ps_.push_constant("sphere_radius", 0.1f);
+    display_grids_ps_.push_constant("grid_resolution", int3(grid.resolution));
+    float4x4 grid_to_world = math::invert(float4x4(grid.world_to_grid));
+    display_grids_ps_.push_constant("grid_to_world", grid_to_world);
+
+    int cell_count = grid.resolution[0] * grid.resolution[1] * grid.resolution[2];
+    display_grids_ps_.draw_procedural(GPU_PRIM_TRIS, 1, cell_count * 3 * 2);
+  }
+}
+
+void IrradianceCache::display_pass_draw(View &view, GPUFrameBuffer *view_fb)
+{
+  if (display_grids_enabled_) {
+    GPU_framebuffer_bind(view_fb);
+    inst_.manager->submit(display_grids_ps_, view);
+  }
 }
 
 /** \} */

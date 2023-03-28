@@ -60,3 +60,18 @@ GPU_SHADER_CREATE_INFO(eevee_surfel_ray)
     .additional_info("eevee_shared", "eevee_surfel_common", "draw_view")
     .compute_source("eevee_surfel_ray_comp.glsl")
     .do_static_compilation(true);
+
+GPU_SHADER_INTERFACE_INFO(eevee_display_probe_grid_iface, "")
+    .smooth(Type::VEC2, "lP")
+    .flat(Type::INT, "cell_index");
+
+GPU_SHADER_CREATE_INFO(eevee_display_probe_grid)
+    .additional_info("eevee_shared", "draw_view")
+    .vertex_source("eevee_display_probe_grid_vert.glsl")
+    .vertex_out(eevee_display_probe_grid_iface)
+    .fragment_source("eevee_display_probe_grid_frag.glsl")
+    .fragment_out(0, Type::VEC4, "out_color")
+    .push_constant(Type::FLOAT, "sphere_radius")
+    .push_constant(Type::IVEC3, "grid_resolution")
+    .push_constant(Type::MAT4, "grid_to_world")
+    .do_static_compilation(true);

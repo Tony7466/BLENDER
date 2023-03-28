@@ -102,6 +102,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_motion_blur_tiles_flatten_viewport";
     case DEBUG_SURFELS:
       return "eevee_debug_surfels";
+    case DISPLAY_PROBE_GRID:
+      return "eevee_display_probe_grid";
     case DOF_BOKEH_LUT:
       return "eevee_depth_of_field_bokeh_lut";
     case DOF_DOWNSAMPLE:

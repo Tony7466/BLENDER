@@ -598,6 +598,7 @@ class RENDER_PT_eevee_next_indirect_lighting(RenderButtonsPanel, Panel):
         col.prop(props, "gi_auto_bake")
         col.prop(props, "gi_diffuse_bounces")
         col.prop(props, "gi_irradiance_samples")
+        col.prop(props, "gi_show_irradiance")
 
 
 class RENDER_PT_eevee_indirect_lighting_display(RenderButtonsPanel, Panel):
