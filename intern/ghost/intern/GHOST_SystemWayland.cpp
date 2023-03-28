@@ -59,6 +59,7 @@
 #include <primary-selection-unstable-v1-client-protocol.h>
 #include <relative-pointer-unstable-v1-client-protocol.h>
 #include <tablet-unstable-v2-client-protocol.h>
+#include <xdg-activation-v1-client-protocol.h>
 #include <xdg-output-unstable-v1-client-protocol.h>
 
 /* Decorations `xdg_decor`. */
@@ -537,6 +538,8 @@ struct GWL_SeatStatePointerScroll {
   wl_fixed_t smooth_xy[2] = {0, 0};
   /** Discrete scrolling (handled & reset with pointer "frame" callback). */
   int32_t discrete_xy[2] = {0, 0};
+  /** True when the axis is inverted (also known is "natural" scrolling). */
+  bool inverted_xy[2] = {false, false};
   /** The source of scroll event. */
   enum wl_pointer_axis_source axis_source = WL_POINTER_AXIS_SOURCE_WHEEL;
 };
@@ -796,7 +799,12 @@ struct GWL_Seat {
   struct zwp_primary_selection_device_v1 *wp_primary_selection_device = nullptr;
   struct GWL_PrimarySelection primary_selection;
 
-  /** Last device that was active. */
+  /**
+   * Last input device that was active (pointer/tablet/keyboard).
+   *
+   * \note Multi-touch gestures don't set this value,
+   * if there is some use-case where this is needed - assignments can be added.
+   */
   uint32_t data_source_serial = 0;
 };
 
@@ -927,6 +935,7 @@ struct GWL_Display {
   struct zwp_tablet_manager_v2 *wp_tablet_manager = nullptr;
   struct zwp_relative_pointer_manager_v1 *wp_relative_pointer_manager = nullptr;
   struct zwp_primary_selection_device_manager_v1 *wp_primary_selection_device_manager = nullptr;
+  struct xdg_activation_v1 *xdg_activation_manager = nullptr;
 
   struct zwp_pointer_constraints_v1 *wp_pointer_constraints = nullptr;
   struct zwp_pointer_gestures_v1 *wp_pointer_gestures = nullptr;
@@ -1115,7 +1124,7 @@ using GWL_RegistryHandler_UpdateFn = void (*)(GWL_Display *display,
 using GWL_RegistryEntry_RemoveFn = void (*)(GWL_Display *display, void *user_data, bool on_exit);
 
 struct GWL_RegistryHandler {
-  /** Pointer to the name (not the name it's self), needed as the values aren't set on startup. */
+  /** Pointer to the name (not the name itself), needed as the values aren't set on startup. */
   const char *const *interface_p = nullptr;
 
   /** Add the interface. */
@@ -2014,7 +2023,13 @@ static char *read_file_as_buffer(const int fd, const bool nil_terminate, size_t 
 {
   struct ByteChunk {
     ByteChunk *next;
-    char data[4096 - sizeof(ByteChunk *)];
+    /* NOTE(@ideasman42): On GNOME-SHELL-43.3, non powers of two values
+     * (1023 or 4088 for e.g.) makes `read()` *intermittently* include uninitialized memory
+     * (failing to read the end of the chunk) as well as truncating the end of the whole buffer.
+     * The WAYLAND spec doesn't mention buffer-size so this may be a bug in GNOME-SHELL.
+     * Whatever the case, using a power of two isn't a problem (besides some slop-space waste).
+     * This workaround isn't necessary for KDE & WLROOTS based compositors, see: #106040. */
+    char data[4096];
   };
   ByteChunk *chunk_first = nullptr, **chunk_link_p = &chunk_first;
   bool ok = true;
@@ -2227,13 +2242,13 @@ static void data_source_handle_action(void * /*data*/,
   CLOG_INFO(LOG, 2, "handle_action (dnd_action=%u)", dnd_action);
 }
 
-static const struct wl_data_source_listener data_source_listener = {
-    data_source_handle_target,
-    data_source_handle_send,
-    data_source_handle_cancelled,
-    data_source_handle_dnd_drop_performed,
-    data_source_handle_dnd_finished,
-    data_source_handle_action,
+static const wl_data_source_listener data_source_listener = {
+    /*target*/ data_source_handle_target,
+    /*send*/ data_source_handle_send,
+    /*cancelled*/ data_source_handle_cancelled,
+    /*dnd_drop_performed*/ data_source_handle_dnd_drop_performed,
+    /*dnd_finished*/ data_source_handle_dnd_finished,
+    /*action*/ data_source_handle_action,
 };
 
 #undef LOG
@@ -2274,10 +2289,10 @@ static void data_offer_handle_action(void *data,
   data_offer->dnd.action = (enum wl_data_device_manager_dnd_action)dnd_action;
 }
 
-static const struct wl_data_offer_listener data_offer_listener = {
-    data_offer_handle_offer,
-    data_offer_handle_source_actions,
-    data_offer_handle_action,
+static const wl_data_offer_listener data_offer_listener = {
+    /*offer*/ data_offer_handle_offer,
+    /*source_actions*/ data_offer_handle_source_actions,
+    /*action*/ data_offer_handle_action,
 };
 
 #undef LOG
@@ -2514,13 +2529,13 @@ static void data_device_handle_selection(void *data,
   seat->data_offer_copy_paste = data_offer;
 }
 
-static const struct wl_data_device_listener data_device_listener = {
-    data_device_handle_data_offer,
-    data_device_handle_enter,
-    data_device_handle_leave,
-    data_device_handle_motion,
-    data_device_handle_drop,
-    data_device_handle_selection,
+static const wl_data_device_listener data_device_listener = {
+    /*data_offer*/ data_device_handle_data_offer,
+    /*enter*/ data_device_handle_enter,
+    /*leave*/ data_device_handle_leave,
+    /*motion*/ data_device_handle_motion,
+    /*drop*/ data_device_handle_drop,
+    /*selection*/ data_device_handle_selection,
 };
 
 #undef LOG
@@ -2547,8 +2562,8 @@ static void cursor_buffer_handle_release(void *data, struct wl_buffer *wl_buffer
   }
 }
 
-static const struct wl_buffer_listener cursor_buffer_listener = {
-    cursor_buffer_handle_release,
+static const wl_buffer_listener cursor_buffer_listener = {
+    /*release*/ cursor_buffer_handle_release,
 };
 
 #undef LOG
@@ -2623,9 +2638,9 @@ static void cursor_surface_handle_leave(void *data,
   update_cursor_scale(seat->cursor, seat->system->wl_shm(), seat_state_pointer, wl_surface);
 }
 
-static const struct wl_surface_listener cursor_surface_listener = {
-    cursor_surface_handle_enter,
-    cursor_surface_handle_leave,
+static const wl_surface_listener cursor_surface_listener = {
+    /*enter*/ cursor_surface_handle_enter,
+    /*leave*/ cursor_surface_handle_leave,
 };
 
 #undef LOG
@@ -2662,11 +2677,7 @@ static void pointer_handle_enter(void *data,
 
   /* Resetting scroll events is likely unnecessary,
    * do this to avoid any possible problems as it's harmless. */
-  seat->pointer_scroll.smooth_xy[0] = 0;
-  seat->pointer_scroll.smooth_xy[1] = 0;
-  seat->pointer_scroll.discrete_xy[0] = 0;
-  seat->pointer_scroll.discrete_xy[1] = 0;
-  seat->pointer_scroll.axis_source = WL_POINTER_AXIS_SOURCE_WHEEL;
+  seat->pointer_scroll = GWL_SeatStatePointerScroll{};
 
   seat->pointer.wl_surface_window = wl_surface;
 
@@ -2851,7 +2862,9 @@ static void pointer_handle_frame(void *data, struct wl_pointer * /*wl_pointer*/)
            * has already been applied so there is no need to read this preference. */
           -wl_fixed_to_int(seat->pointer_scroll.smooth_xy[0]),
           -wl_fixed_to_int(seat->pointer_scroll.smooth_xy[1]),
-          false));
+          /* NOTE: GHOST does not support per-axis inversion.
+           * Assume inversion is used or not. */
+          seat->pointer_scroll.inverted_xy[0] || seat->pointer_scroll.inverted_xy[1]));
     }
 
     seat->pointer_scroll.smooth_xy[0] = 0;
@@ -2859,6 +2872,8 @@ static void pointer_handle_frame(void *data, struct wl_pointer * /*wl_pointer*/)
   }
 
   seat->pointer_scroll.axis_source = WL_POINTER_AXIS_SOURCE_WHEEL;
+  seat->pointer_scroll.inverted_xy[0] = false;
+  seat->pointer_scroll.inverted_xy[1] = false;
 }
 static void pointer_handle_axis_source(void *data,
                                        struct wl_pointer * /*wl_pointer*/,
@@ -2890,17 +2905,46 @@ static void pointer_handle_axis_discrete(void *data,
   GWL_Seat *seat = static_cast<GWL_Seat *>(data);
   seat->pointer_scroll.discrete_xy[index] = discrete;
 }
+static void pointer_handle_axis_value120(void * /*data*/,
+                                         struct wl_pointer * /*wl_pointer*/,
+                                         uint32_t axis,
+                                         int32_t value120)
+{
+  /* NOTE: the axis handler seems high resolution enough.
+   * Nevertheless, we might want to support this. */
+  CLOG_INFO(LOG, 2, "axis_value120 (axis=%u, value120=%d)", axis, value120);
+}
+#ifdef WL_POINTER_AXIS_RELATIVE_DIRECTION_ENUM /* Requires WAYLAND 1.22 or newer. */
+static void pointer_handle_axis_relative_direction(void *data,
+                                                   struct wl_pointer * /*wl_pointer*/,
+                                                   uint32_t axis,
+                                                   uint32_t direction)
+{
+  CLOG_INFO(LOG, 2, "axis_relative_direction (axis=%u, direction=%u)", axis, direction);
+  const int index = pointer_axis_as_index(axis);
+  if (UNLIKELY(index == -1)) {
+    return;
+  }
+  GWL_Seat *seat = static_cast<GWL_Seat *>(data);
+  seat->pointer_scroll.inverted_xy[index] = (direction ==
+                                             WL_POINTER_AXIS_RELATIVE_DIRECTION_INVERTED);
+}
+#endif /* WL_POINTER_AXIS_RELATIVE_DIRECTION_ENUM */
 
-static const struct wl_pointer_listener pointer_listener = {
-    pointer_handle_enter,
-    pointer_handle_leave,
-    pointer_handle_motion,
-    pointer_handle_button,
-    pointer_handle_axis,
-    pointer_handle_frame,
-    pointer_handle_axis_source,
-    pointer_handle_axis_stop,
-    pointer_handle_axis_discrete,
+static const wl_pointer_listener pointer_listener = {
+    /*enter*/ pointer_handle_enter,
+    /*leave*/ pointer_handle_leave,
+    /*motion*/ pointer_handle_motion,
+    /*button*/ pointer_handle_button,
+    /*axis*/ pointer_handle_axis,
+    /*frame*/ pointer_handle_frame,
+    /*axis_source*/ pointer_handle_axis_source,
+    /*axis_stop*/ pointer_handle_axis_stop,
+    /*axis_discrete*/ pointer_handle_axis_discrete,
+    /*axis_value120*/ pointer_handle_axis_value120,
+#ifdef WL_POINTER_AXIS_RELATIVE_DIRECTION_ENUM
+    /*axis_relative_direction*/ pointer_handle_axis_relative_direction,
+#endif
 };
 
 #undef LOG
@@ -2936,9 +2980,9 @@ static void gesture_hold_handle_end(
   CLOG_INFO(LOG, 2, "end (cancelled=%i)", cancelled);
 }
 
-static const struct zwp_pointer_gesture_hold_v1_listener gesture_hold_listener = {
-    gesture_hold_handle_begin,
-    gesture_hold_handle_end,
+static const zwp_pointer_gesture_hold_v1_listener gesture_hold_listener = {
+    /*begin*/ gesture_hold_handle_begin,
+    /*end*/ gesture_hold_handle_end,
 };
 
 #  undef LOG
@@ -3078,10 +3122,10 @@ static void gesture_pinch_handle_end(void * /*data*/,
   CLOG_INFO(LOG, 2, "end (cancelled=%i)", cancelled);
 }
 
-static const struct zwp_pointer_gesture_pinch_v1_listener gesture_pinch_listener = {
-    gesture_pinch_handle_begin,
-    gesture_pinch_handle_update,
-    gesture_pinch_handle_end,
+static const zwp_pointer_gesture_pinch_v1_listener gesture_pinch_listener = {
+    /*begin*/ gesture_pinch_handle_begin,
+    /*update*/ gesture_pinch_handle_update,
+    /*end*/ gesture_pinch_handle_end,
 };
 
 #  undef LOG
@@ -3133,10 +3177,10 @@ static void gesture_swipe_handle_end(
   CLOG_INFO(LOG, 2, "end (cancelled=%i)", cancelled);
 }
 
-static const struct zwp_pointer_gesture_swipe_v1_listener gesture_swipe_listener = {
-    gesture_swipe_handle_begin,
-    gesture_swipe_handle_update,
-    gesture_swipe_handle_end,
+static const zwp_pointer_gesture_swipe_v1_listener gesture_swipe_listener = {
+    /*begin*/ gesture_swipe_handle_begin,
+    /*update*/ gesture_swipe_handle_update,
+    /*end*/ gesture_swipe_handle_end,
 };
 
 #  undef LOG
@@ -3214,14 +3258,14 @@ static void touch_seat_handle_orientation(void * /*data*/,
   CLOG_INFO(LOG, 2, "orientation");
 }
 
-static const struct wl_touch_listener touch_seat_listener = {
-    touch_seat_handle_down,
-    touch_seat_handle_up,
-    touch_seat_handle_motion,
-    touch_seat_handle_frame,
-    touch_seat_handle_cancel,
-    touch_seat_handle_shape,
-    touch_seat_handle_orientation,
+static const wl_touch_listener touch_seat_listener = {
+    /*down*/ touch_seat_handle_down,
+    /*up*/ touch_seat_handle_up,
+    /*motion*/ touch_seat_handle_motion,
+    /*frame*/ touch_seat_handle_frame,
+    /*cancel*/ touch_seat_handle_cancel,
+    /*shape*/ touch_seat_handle_shape,
+    /*orientation*/ touch_seat_handle_orientation,
 };
 
 #undef LOG
@@ -3540,26 +3584,26 @@ static void tablet_tool_handle_frame(void *data,
   }
 }
 
-static const struct zwp_tablet_tool_v2_listener tablet_tool_listner = {
-    tablet_tool_handle_type,
-    tablet_tool_handle_hardware_serial,
-    tablet_tool_handle_hardware_id_wacom,
-    tablet_tool_handle_capability,
-    tablet_tool_handle_done,
-    tablet_tool_handle_removed,
-    tablet_tool_handle_proximity_in,
-    tablet_tool_handle_proximity_out,
-    tablet_tool_handle_down,
-    tablet_tool_handle_up,
-    tablet_tool_handle_motion,
-    tablet_tool_handle_pressure,
-    tablet_tool_handle_distance,
-    tablet_tool_handle_tilt,
-    tablet_tool_handle_rotation,
-    tablet_tool_handle_slider,
-    tablet_tool_handle_wheel,
-    tablet_tool_handle_button,
-    tablet_tool_handle_frame,
+static const zwp_tablet_tool_v2_listener tablet_tool_listner = {
+    /*type*/ tablet_tool_handle_type,
+    /*hardware_serial*/ tablet_tool_handle_hardware_serial,
+    /*hardware_id_wacom*/ tablet_tool_handle_hardware_id_wacom,
+    /*capability*/ tablet_tool_handle_capability,
+    /*done*/ tablet_tool_handle_done,
+    /*removed*/ tablet_tool_handle_removed,
+    /*proximity_in*/ tablet_tool_handle_proximity_in,
+    /*proximity_out*/ tablet_tool_handle_proximity_out,
+    /*down*/ tablet_tool_handle_down,
+    /*up*/ tablet_tool_handle_up,
+    /*motion*/ tablet_tool_handle_motion,
+    /*pressure*/ tablet_tool_handle_pressure,
+    /*distance*/ tablet_tool_handle_distance,
+    /*tilt*/ tablet_tool_handle_tilt,
+    /*rotation*/ tablet_tool_handle_rotation,
+    /*slider*/ tablet_tool_handle_slider,
+    /*wheel*/ tablet_tool_handle_wheel,
+    /*button*/ tablet_tool_handle_button,
+    /*frame*/ tablet_tool_handle_frame,
 };
 
 #undef LOG
@@ -3590,7 +3634,7 @@ static void tablet_seat_handle_tool_added(void *data,
   GWL_TabletTool *tablet_tool = new GWL_TabletTool();
   tablet_tool->seat = seat;
 
-  /* Every tool has it's own cursor wl_surface. */
+  /* Every tool has its own cursor wl_surface. */
   tablet_tool->wl_surface_cursor = wl_compositor_create_surface(seat->system->wl_compositor());
   ghost_wl_surface_tag_cursor_tablet(tablet_tool->wl_surface_cursor);
 
@@ -3608,10 +3652,10 @@ static void tablet_seat_handle_pad_added(void * /*data*/,
   CLOG_INFO(LOG, 2, "pad_added (id=%p)", id);
 }
 
-static const struct zwp_tablet_seat_v2_listener tablet_seat_listener = {
-    tablet_seat_handle_tablet_added,
-    tablet_seat_handle_tool_added,
-    tablet_seat_handle_pad_added,
+static const zwp_tablet_seat_v2_listener tablet_seat_listener = {
+    /*tablet_added*/ tablet_seat_handle_tablet_added,
+    /*tool_added*/ tablet_seat_handle_tool_added,
+    /*pad_added*/ tablet_seat_handle_pad_added,
 };
 
 #undef LOG
@@ -3932,7 +3976,7 @@ static void keyboard_handle_key(void *data,
     }
     else if (xkb_keymap_key_repeats(xkb_state_get_keymap(seat->xkb_state), key_code)) {
       if (etype == GHOST_kEventKeyDown) {
-        /* Any other key-down always cancels (and may start it's own repeat timer). */
+        /* Any other key-down always cancels (and may start its own repeat timer). */
         timer_action = CANCEL;
       }
       else {
@@ -4020,7 +4064,7 @@ static void keyboard_handle_key(void *data,
 
 static void keyboard_handle_modifiers(void *data,
                                       struct wl_keyboard * /*wl_keyboard*/,
-                                      const uint32_t /*serial*/,
+                                      const uint32_t serial,
                                       const uint32_t mods_depressed,
                                       const uint32_t mods_latched,
                                       const uint32_t mods_locked,
@@ -4051,9 +4095,11 @@ static void keyboard_handle_modifiers(void *data,
 #ifdef USE_GNOME_KEYBOARD_SUPPRESS_WARNING
   seat->key_depressed_suppress_warning.any_mod_held = mods_depressed != 0;
 #endif
+
+  seat->data_source_serial = serial;
 }
 
-static void keyboard_repeat_handle_info(void *data,
+static void keyboard_handle_repeat_info(void *data,
                                         struct wl_keyboard * /*wl_keyboard*/,
                                         const int32_t rate,
                                         const int32_t delay)
@@ -4075,13 +4121,13 @@ static void keyboard_repeat_handle_info(void *data,
   }
 }
 
-static const struct wl_keyboard_listener keyboard_listener = {
-    keyboard_handle_keymap,
-    keyboard_handle_enter,
-    keyboard_handle_leave,
-    keyboard_handle_key,
-    keyboard_handle_modifiers,
-    keyboard_repeat_handle_info,
+static const wl_keyboard_listener keyboard_listener = {
+    /*keymap*/ keyboard_handle_keymap,
+    /*enter*/ keyboard_handle_enter,
+    /*leave*/ keyboard_handle_leave,
+    /*key*/ keyboard_handle_key,
+    /*modifiers*/ keyboard_handle_modifiers,
+    /*repeat_info*/ keyboard_handle_repeat_info,
 };
 
 #undef LOG
@@ -4108,8 +4154,8 @@ static void primary_selection_offer_offer(void *data,
   data_offer->types.insert(std::string(type));
 }
 
-static const struct zwp_primary_selection_offer_v1_listener primary_selection_offer_listener = {
-    primary_selection_offer_offer,
+static const zwp_primary_selection_offer_v1_listener primary_selection_offer_listener = {
+    /*offer*/ primary_selection_offer_offer,
 };
 
 #undef LOG
@@ -4160,9 +4206,9 @@ static void primary_selection_device_handle_selection(
   primary->data_offer = data_offer;
 }
 
-static const struct zwp_primary_selection_device_v1_listener primary_selection_device_listener = {
-    primary_selection_device_handle_data_offer,
-    primary_selection_device_handle_selection,
+static const zwp_primary_selection_device_v1_listener primary_selection_device_listener = {
+    /*data_offer*/ primary_selection_device_handle_data_offer,
+    /*selection*/ primary_selection_device_handle_selection,
 };
 
 #undef LOG
@@ -4212,9 +4258,9 @@ static void primary_selection_source_cancelled(void *data,
   }
 }
 
-static const struct zwp_primary_selection_source_v1_listener primary_selection_source_listener = {
-    primary_selection_source_send,
-    primary_selection_source_cancelled,
+static const zwp_primary_selection_source_v1_listener primary_selection_source_listener = {
+    /*send*/ primary_selection_source_send,
+    /*cancelled*/ primary_selection_source_cancelled,
 };
 
 #undef LOG
@@ -4238,8 +4284,26 @@ static void gwl_seat_capability_pointer_enable(GWL_Seat *seat)
   seat->cursor.visible = true;
   seat->cursor.wl_buffer = nullptr;
   if (!get_cursor_settings(seat->cursor.theme_name, seat->cursor.theme_size)) {
-    seat->cursor.theme_name = std::string();
+    /* Use environment variables, falling back to defaults.
+     * These environment variables are used by enough WAYLAND applications
+     * that it makes sense to check them (see `Xcursor` man page). */
+    const char *env;
+
+    env = getenv("XCURSOR_THEME");
+    seat->cursor.theme_name = std::string(env ? env : "");
+
+    env = getenv("XCURSOR_SIZE");
     seat->cursor.theme_size = default_cursor_size;
+
+    if (env && (*env != '\0')) {
+      char *env_end = nullptr;
+      /* While clamping is not needed on the WAYLAND side,
+       * GHOST's internal logic may get confused by negative values, so ensure it's at least 1. */
+      const long value = strtol(env, &env_end, 10);
+      if ((*env_end == '\0') && (value > 0)) {
+        seat->cursor.theme_size = int(value);
+      }
+    }
   }
   wl_pointer_add_listener(seat->wl_pointer, &pointer_listener, seat);
 
@@ -4417,9 +4481,9 @@ static void seat_handle_name(void *data, struct wl_seat * /*wl_seat*/, const cha
   static_cast<GWL_Seat *>(data)->name = std::string(name);
 }
 
-static const struct wl_seat_listener seat_listener = {
-    seat_handle_capabilities,
-    seat_handle_name,
+static const wl_seat_listener seat_listener = {
+    /*capabilities*/ seat_handle_capabilities,
+    /*name*/ seat_handle_name,
 };
 
 #undef LOG
@@ -4505,12 +4569,12 @@ static void xdg_output_handle_description(void * /*data*/,
   CLOG_INFO(LOG, 2, "description (description=\"%s\")", description);
 }
 
-static const struct zxdg_output_v1_listener xdg_output_listener = {
-    xdg_output_handle_logical_position,
-    xdg_output_handle_logical_size,
-    xdg_output_handle_done,
-    xdg_output_handle_name,
-    xdg_output_handle_description,
+static const zxdg_output_v1_listener xdg_output_listener = {
+    /*logical_position*/ xdg_output_handle_logical_position,
+    /*logical_size*/ xdg_output_handle_logical_size,
+    /*done*/ xdg_output_handle_done,
+    /*name*/ xdg_output_handle_name,
+    /*description*/ xdg_output_handle_description,
 };
 
 #undef LOG
@@ -4622,11 +4686,11 @@ static void output_handle_scale(void *data, struct wl_output * /*wl_output*/, co
   output->system->output_scale_update(output);
 }
 
-static const struct wl_output_listener output_listener = {
-    output_handle_geometry,
-    output_handle_mode,
-    output_handle_done,
-    output_handle_scale,
+static const wl_output_listener output_listener = {
+    /*geometry*/ output_handle_geometry,
+    /*mode*/ output_handle_mode,
+    /*done*/ output_handle_done,
+    /*scale*/ output_handle_scale,
 };
 
 #undef LOG
@@ -4648,8 +4712,8 @@ static void shell_handle_ping(void * /*data*/,
   xdg_wm_base_pong(xdg_wm_base, serial);
 }
 
-static const struct xdg_wm_base_listener shell_listener = {
-    shell_handle_ping,
+static const xdg_wm_base_listener shell_listener = {
+    /*ping*/ shell_handle_ping,
 };
 
 #undef LOG
@@ -5099,6 +5163,24 @@ static void gwl_registry_wp_pointer_gestures_remove(GWL_Display *display,
   *value_p = nullptr;
 }
 
+/* #GWL_Display.xdg_activation */
+
+static void gwl_registry_xdg_activation_add(GWL_Display *display,
+                                            const GWL_RegisteryAdd_Params *params)
+{
+  display->xdg_activation_manager = static_cast<xdg_activation_v1 *>(
+      wl_registry_bind(display->wl_registry, params->name, &xdg_activation_v1_interface, 1));
+  gwl_registry_entry_add(display, params, nullptr);
+}
+static void gwl_registry_xdg_activation_remove(GWL_Display *display,
+                                               void * /*user_data*/,
+                                               const bool /*on_exit*/)
+{
+  struct xdg_activation_v1 **value_p = &display->xdg_activation_manager;
+  xdg_activation_v1_destroy(*value_p);
+  *value_p = nullptr;
+}
+
 /* #GWL_Display.wp_primary_selection_device_manager */
 
 static void gwl_registry_wp_primary_selection_device_manager_add(
@@ -5135,90 +5217,97 @@ static void gwl_registry_wp_primary_selection_device_manager_remove(GWL_Display 
 static const GWL_RegistryHandler gwl_registry_handlers[] = {
     /* Low level interfaces. */
     {
-        &wl_compositor_interface.name,
-        gwl_registry_compositor_add,
-        nullptr,
-        gwl_registry_compositor_remove,
+        /*interface_p*/ &wl_compositor_interface.name,
+        /*add_fn*/ gwl_registry_compositor_add,
+        /*update_fn*/ nullptr,
+        /*remove_fn*/ gwl_registry_compositor_remove,
     },
     {
-        &wl_shm_interface.name,
-        gwl_registry_wl_shm_add,
-        nullptr,
-        gwl_registry_wl_shm_remove,
+        /*interface_p*/ &wl_shm_interface.name,
+        /*add_fn*/ gwl_registry_wl_shm_add,
+        /*update_fn*/ nullptr,
+        /*remove_fn*/ gwl_registry_wl_shm_remove,
     },
     {
-        &xdg_wm_base_interface.name,
-        gwl_registry_xdg_wm_base_add,
-        nullptr,
-        gwl_registry_xdg_wm_base_remove,
+        /*interface_p*/ &xdg_wm_base_interface.name,
+        /*add_fn*/ gwl_registry_xdg_wm_base_add,
+        /*update_fn*/ nullptr,
+        /*remove_fn*/ gwl_registry_xdg_wm_base_remove,
     },
     /* Managers. */
     {
-        &zxdg_decoration_manager_v1_interface.name,
-        gwl_registry_xdg_decoration_manager_add,
-        nullptr,
-        gwl_registry_xdg_decoration_manager_remove,
+        /*interface_p*/ &zxdg_decoration_manager_v1_interface.name,
+        /*add_fn*/ gwl_registry_xdg_decoration_manager_add,
+        /*update_fn*/ nullptr,
+        /*remove_fn*/ gwl_registry_xdg_decoration_manager_remove,
     },
     {
-        &zxdg_output_manager_v1_interface.name,
-        gwl_registry_xdg_output_manager_add,
-        nullptr,
-        gwl_registry_xdg_output_manager_remove,
+        /*interface_p*/ &zxdg_output_manager_v1_interface.name,
+        /*add_fn*/ gwl_registry_xdg_output_manager_add,
+        /*update_fn*/ nullptr,
+        /*remove_fn*/ gwl_registry_xdg_output_manager_remove,
     },
     {
-        &wl_data_device_manager_interface.name,
-        gwl_registry_wl_data_device_manager_add,
-        nullptr,
-        gwl_registry_wl_data_device_manager_remove,
+        /*interface_p*/ &wl_data_device_manager_interface.name,
+        /*add_fn*/ gwl_registry_wl_data_device_manager_add,
+        /*update_fn*/ nullptr,
+        /*remove_fn*/ gwl_registry_wl_data_device_manager_remove,
     },
     {
-        &zwp_primary_selection_device_manager_v1_interface.name,
-        gwl_registry_wp_primary_selection_device_manager_add,
-        nullptr,
-        gwl_registry_wp_primary_selection_device_manager_remove,
+        /*interface_p*/ &zwp_primary_selection_device_manager_v1_interface.name,
+        /*add_fn*/ gwl_registry_wp_primary_selection_device_manager_add,
+        /*update_fn*/ nullptr,
+        /*remove_fn*/ gwl_registry_wp_primary_selection_device_manager_remove,
     },
     {
-        &zwp_tablet_manager_v2_interface.name,
-        gwl_registry_wp_tablet_manager_add,
-        nullptr,
-        gwl_registry_wp_tablet_manager_remove,
+        /*interface_p*/ &zwp_tablet_manager_v2_interface.name,
+        /*add_fn*/ gwl_registry_wp_tablet_manager_add,
+        /*update_fn*/ nullptr,
+        /*remove_fn*/ gwl_registry_wp_tablet_manager_remove,
     },
     {
-        &zwp_relative_pointer_manager_v1_interface.name,
-        gwl_registry_wp_relative_pointer_manager_add,
-        nullptr,
-        gwl_registry_wp_relative_pointer_manager_remove,
+        /*interface_p*/ &zwp_relative_pointer_manager_v1_interface.name,
+        /*add_fn*/ gwl_registry_wp_relative_pointer_manager_add,
+        /*update_fn*/ nullptr,
+        /*remove_fn*/ gwl_registry_wp_relative_pointer_manager_remove,
     },
     /* Higher level interfaces. */
     {
-        &zwp_pointer_constraints_v1_interface.name,
-        gwl_registry_wp_pointer_constraints_add,
-        nullptr,
-        gwl_registry_wp_pointer_constraints_remove,
+        /*interface_p*/ &zwp_pointer_constraints_v1_interface.name,
+        /*add_fn*/ gwl_registry_wp_pointer_constraints_add,
+        /*update_fn*/ nullptr,
+        /*remove_fn*/ gwl_registry_wp_pointer_constraints_remove,
     },
     {
-        &zwp_pointer_gestures_v1_interface.name,
-        gwl_registry_wp_pointer_gestures_add,
-        nullptr,
-        gwl_registry_wp_pointer_gestures_remove,
+        /*interface_p*/ &zwp_pointer_gestures_v1_interface.name,
+        /*add_fn*/ gwl_registry_wp_pointer_gestures_add,
+        /*update_fn*/ nullptr,
+        /*remove_fn*/ gwl_registry_wp_pointer_gestures_remove,
+    },
+    {
+        /*interface_p*/ &xdg_activation_v1_interface.name,
+        /*add_fn*/ gwl_registry_xdg_activation_add,
+        /*update_fn*/ nullptr,
+        /*remove_fn*/ gwl_registry_xdg_activation_remove,
     },
     /* Display outputs. */
     {
-        &wl_output_interface.name,
-        gwl_registry_wl_output_add,
-        gwl_registry_wl_output_update,
-        gwl_registry_wl_output_remove,
+        /*interface_p*/ &wl_output_interface.name,
+        /*add_fn*/ gwl_registry_wl_output_add,
+        /*update_fn*/ gwl_registry_wl_output_update,
+        /*remove_fn*/ gwl_registry_wl_output_remove,
     },
     /* Seats.
      * Keep the seat near the end to ensure other types are created first.
      * as the seat creates data based on other interfaces. */
     {
-        &wl_seat_interface.name,
-        gwl_registry_wl_seat_add,
-        gwl_registry_wl_seat_update,
-        gwl_registry_wl_seat_remove,
+        /*interface_p*/ &wl_seat_interface.name,
+        /*add_fn*/ gwl_registry_wl_seat_add,
+        /*update_fn*/ gwl_registry_wl_seat_update,
+        /*remove_fn*/ gwl_registry_wl_seat_remove,
     },
-    {nullptr, nullptr, nullptr},
+
+    {nullptr},
 };
 
 /**
@@ -5336,9 +5425,9 @@ static void global_handle_remove(void *data,
   }
 }
 
-static const struct wl_registry_listener registry_listener = {
-    global_handle_add,
-    global_handle_remove,
+static const wl_registry_listener registry_listener = {
+    /*global*/ global_handle_add,
+    /*global_remove*/ global_handle_remove,
 };
 
 #undef LOG
@@ -6620,17 +6709,16 @@ GHOST_TSuccess GHOST_SystemWayland::cursor_visibility_set(const bool visible)
   return GHOST_kSuccess;
 }
 
-bool GHOST_SystemWayland::supportsCursorWarp()
+GHOST_TCapabilityFlag GHOST_SystemWayland::getCapabilities() const
 {
-  /* WAYLAND doesn't support setting the cursor position directly,
-   * this is an intentional choice, forcing us to use a software cursor in this case. */
-  return false;
-}
-
-bool GHOST_SystemWayland::supportsWindowPosition()
-{
-  /* WAYLAND doesn't support accessing the window position. */
-  return false;
+  return GHOST_TCapabilityFlag(
+      GHOST_CAPABILITY_FLAG_ALL &
+      ~(
+          /* WAYLAND doesn't support accessing the window position. */
+          GHOST_kCapabilityWindowPosition |
+          /* WAYLAND doesn't support setting the cursor position directly,
+           * this is an intentional choice, forcing us to use a software cursor in this case. */
+          GHOST_kCapabilityCursorWarp));
 }
 
 bool GHOST_SystemWayland::cursor_grab_use_software_display_get(const GHOST_TGrabCursorMode mode)
@@ -6762,9 +6850,34 @@ struct zwp_primary_selection_device_manager_v1 *GHOST_SystemWayland::wp_primary_
   return display_->wp_primary_selection_device_manager;
 }
 
+struct xdg_activation_v1 *GHOST_SystemWayland::xdg_activation_manager()
+{
+  return display_->xdg_activation_manager;
+}
+
 struct zwp_pointer_gestures_v1 *GHOST_SystemWayland::wp_pointer_gestures()
 {
   return display_->wp_pointer_gestures;
+}
+
+/* This value is expected to match the base name of the `.desktop` file. see #101805.
+ *
+ * NOTE: the XDG desktop-entry-spec defines that this should follow the "reverse DNS" convention.
+ * For e.g. `org.blender.Blender` - however the `.desktop` file distributed with Blender is
+ * simply called `blender.desktop`, so the it's important to follow that name.
+ * Other distributions such as SNAP & FLATPAK may need to change this value #101779.
+ * Currently there isn't a way to configure this, we may want to support that. */
+static const char *ghost_wl_app_id = (
+#ifdef WITH_GHOST_WAYLAND_APP_ID
+    STRINGIFY(WITH_GHOST_WAYLAND_APP_ID)
+#else
+    "blender"
+#endif
+);
+
+const char *GHOST_SystemWayland::xdg_app_id()
+{
+  return ghost_wl_app_id;
 }
 
 #ifdef WITH_GHOST_WAYLAND_LIBDECOR
@@ -6851,6 +6964,16 @@ GHOST_TSuccess GHOST_SystemWayland::pushEvent_maybe_pending(GHOST_IEvent *event)
 void GHOST_SystemWayland::seat_active_set(const struct GWL_Seat *seat)
 {
   gwl_display_seat_active_set(display_, seat);
+}
+
+struct wl_seat *GHOST_SystemWayland::wl_seat_active_get_with_input_serial(uint32_t &serial)
+{
+  GWL_Seat *seat = gwl_display_seat_active_get(display_);
+  if (seat) {
+    serial = seat->data_source_serial;
+    return seat->wl_seat;
+  }
+  return nullptr;
 }
 
 bool GHOST_SystemWayland::window_surface_unref(const wl_surface *wl_surface)
@@ -6978,7 +7101,7 @@ bool GHOST_SystemWayland::window_cursor_grab_set(const GHOST_TGrabCursorMode mod
   const struct GWL_SeatStateGrab grab_state_next = seat_grab_state_from_mode(mode,
                                                                              use_software_confine);
 
-  /* Check for wrap as #supportsCursorWarp isn't supported. */
+  /* Check for wrap as #GHOST_kCapabilityCursorWarp isn't supported. */
   const bool use_visible = !(ELEM(mode, GHOST_kGrabHide, GHOST_kGrabWrap) || use_software_confine);
   const bool is_hardware_cursor = !cursor_is_software(mode, use_software_confine);
 

@@ -142,7 +142,7 @@ typedef enum {
   /** Do not display Xform gizmo even though it is available. */
   T_NO_GIZMO = 1 << 24,
 } eTFlag;
-ENUM_OPERATORS(eTFlag, T_NO_CURSOR_WRAP);
+ENUM_OPERATORS(eTFlag, T_NO_GIZMO);
 
 #define T_ALL_RESTRICTIONS (T_NO_CONSTRAINT | T_NULL_ONE)
 #define T_PROP_EDIT_ALL (T_PROP_EDIT | T_PROP_CONNECTED | T_PROP_PROJECTED)
@@ -268,6 +268,7 @@ enum {
 
   TFM_MODAL_VERT_EDGE_SLIDE = 31,
   TFM_MODAL_TRACKBALL = 32,
+  TFM_MODAL_ROTATE_NORMALS = 33,
 };
 
 /** \} */
@@ -290,10 +291,6 @@ typedef struct TransSnap {
   eSnapSourceOP source_operation;
   /* Determines which objects are possible target */
   eSnapTargetOP target_operation;
-  bool align;
-  bool project;
-  bool peel;
-  bool use_backface_culling;
   short face_nearest_steps;
   eTSnap status;
   /* Snapped Element Type (currently for objects only). */
