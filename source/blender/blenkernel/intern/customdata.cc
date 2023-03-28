@@ -2483,6 +2483,7 @@ static void customData_free_layer__internal(CustomDataLayer *layer, const int to
   }
   else {
     layer->implicit_sharing_info->remove_user_and_delete_if_last();
+    layer->implicit_sharing_info = nullptr;
   }
 }
 
@@ -5199,6 +5200,7 @@ void CustomData_blend_read(BlendDataReader *reader, CustomData *data, const int 
     if (layer->flag & CD_FLAG_EXTERNAL) {
       layer->flag &= ~CD_FLAG_IN_MEMORY;
     }
+    layer->implicit_sharing_info = nullptr;
 
     if (CustomData_verify_versions(data, i)) {
       BLO_read_data_address(reader, &layer->data);
