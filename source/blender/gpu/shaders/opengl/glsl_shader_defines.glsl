@@ -15,6 +15,14 @@
 #define depthCubeArray samplerCubeArray
 #define depth2DArrayShadow sampler2DArrayShadow
 
+/* Memory scope and pass by reference types.
+ * NOTE: These are required by Metal, but are not required in all cases by GLSL. */
+#define device
+#define threadgroup
+#define OUT(type, name, array_len) out type name[array_len]
+#define DEVICE_OUT_ARRAY(type, name, array_len) out type name[array_len]
+#define DEVICE_OUT(type, name) out type
+
 /* Backend Functions. */
 #define select(A, B, mask) mix(A, B, mask)
 

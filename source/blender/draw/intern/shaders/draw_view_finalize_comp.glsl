@@ -33,7 +33,7 @@ void projmat_dimensions(mat4 winmat,
   }
 }
 
-void frustum_boundbox_calc(mat4 winmat, mat4 viewinv, out vec4 corners[8])
+void frustum_boundbox_calc(mat4 winmat, mat4 viewinv, DEVICE_OUT_ARRAY(vec4, corners, 8))
 {
   float left, right, bottom, top, near, far;
   bool is_persp = winmat[3][3] == 0.0;
@@ -68,12 +68,12 @@ void frustum_boundbox_calc(mat4 winmat, mat4 viewinv, out vec4 corners[8])
 }
 
 void planes_from_projmat(mat4 mat,
-                         out vec4 left,
-                         out vec4 right,
-                         out vec4 bottom,
-                         out vec4 top,
-                         out vec4 near,
-                         out vec4 far)
+                         DEVICE_OUT(vec4, left),
+                         DEVICE_OUT(vec4, right),
+                         DEVICE_OUT(vec4, bottom),
+                         DEVICE_OUT(vec4, top),
+                         DEVICE_OUT(vec4, near),
+                         DEVICE_OUT(vec4, far))
 {
   /* References:
    *
@@ -89,7 +89,7 @@ void planes_from_projmat(mat4 mat,
   far = mat[3] - mat[2];
 }
 
-void frustum_culling_planes_calc(mat4 winmat, mat4 viewmat, out vec4 planes[6])
+void frustum_culling_planes_calc(mat4 winmat, mat4 viewmat, DEVICE_OUT_ARRAY(vec4, planes, 6))
 {
   mat4 persmat = winmat * viewmat;
   planes_from_projmat(persmat, planes[0], planes[5], planes[1], planes[3], planes[4], planes[2]);
@@ -100,7 +100,7 @@ void frustum_culling_planes_calc(mat4 winmat, mat4 viewmat, out vec4 planes[6])
   }
 }
 
-vec4 frustum_culling_sphere_calc(vec4 corners[8])
+vec4 frustum_culling_sphere_calc(device vec4 corners[8])
 {
   /* Extract Bounding Sphere */
   /* TODO(fclem): This is significantly less precise than CPU, but it isn't used in most cases. */
