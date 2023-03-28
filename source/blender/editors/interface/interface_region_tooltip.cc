@@ -897,16 +897,25 @@ static uiTooltipData *ui_tooltip_data_from_button_or_extra_icon(bContext *C,
     MEM_freeN(str);
   }
 
+  if (but->flag & UI_BUT_INACTIVE) {
+    const char *inactive_msg = nullptr;
+    if ((rna_struct.strinfo && strcmp(rna_struct.strinfo, "SCULPT_OT_mask_from_cavity") == 0) || (rna_prop.strinfo && strstr(rna_prop.strinfo, "automasking"))) {
+      inactive_msg = "The active brush already has the same auto-masking enabled.";
+    }
+    if (inactive_msg && inactive_msg[0]) {
+      uiTooltipField *field = text_field_add(
+          data, uiTooltipFormat::Style::Normal, uiTooltipFormat::ColorID::Alert);
+      field->text = BLI_sprintfN(TIP_("Disabled: %s"), inactive_msg);
+    }
+  }
+
   /* Button is disabled, we may be able to tell user why. */
   if ((but->flag & UI_BUT_DISABLED) || extra_icon) {
     const char *disabled_msg = nullptr;
     bool disabled_msg_free = false;
 
     /* If operator poll check failed, it can give pretty precise info why. */
-    if (strcmp(rna_struct.strinfo, "SCULPT_OT_mask_from_cavity") == 0 || strstr(rna_prop.strinfo, "automasking")) {
-      disabled_msg = "The active brush already has the same auto-masking enabled.";
-    }
-    else if (optype) {
+    if (optype) {
       const wmOperatorCallContext opcontext = extra_icon ? extra_icon->optype_params->opcontext :
                                                            but->opcontext;
       wmOperatorCallParams call_params{};
