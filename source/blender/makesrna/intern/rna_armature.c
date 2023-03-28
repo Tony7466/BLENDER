@@ -1473,6 +1473,7 @@ static void rna_def_armature(BlenderRNA *brna)
        0,
        "Wire",
        "Display bones as thin wires, showing subdivision and B-Splines"},
+      {ARM_SPHERES, "SPHERE", 0, "Sphere", "Display bones as spheres at the joints"},
       {0, NULL, 0, NULL, NULL},
   };
   static const EnumPropertyItem prop_pose_position_items[] = {

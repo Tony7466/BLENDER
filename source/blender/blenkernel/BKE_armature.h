@@ -199,6 +199,13 @@ void BKE_armature_bone_hash_free(struct bArmature *arm);
 
 bool BKE_armature_bone_flag_test_recursive(const struct Bone *bone, int flag);
 
+/**
+ * Return whether the armature supports selecting the head and tail separately
+ * from the bone itself (true) or whether the entire bone is selected as a
+ * single unit (false).
+ */
+bool BKE_armature_bone_can_select_headtail(const struct bArmature *arm);
+
 void BKE_armature_refresh_layer_used(struct Depsgraph *depsgraph, struct bArmature *arm);
 
 /**

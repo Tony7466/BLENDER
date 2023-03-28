@@ -649,7 +649,8 @@ static EditBone *get_nearest_editbonepoint(
   /* find the bone after the current active bone, so as to bump up its chances in selection.
    * this way overlapping bones will cycle selection state as with objects. */
   Object *obedit_orig = vc->obedit;
-  EditBone *ebone_active_orig = ((bArmature *)obedit_orig->data)->act_edbone;
+  bArmature *armature = ((bArmature *)obedit_orig->data);
+  EditBone *ebone_active_orig = armature->act_edbone;
   if (ebone_active_orig == NULL) {
     use_cycle = false;
   }
@@ -846,16 +847,22 @@ cache_end:
     if (result->hitresult != -1) {
       *r_base = result->base;
 
-      *r_selmask = 0;
-      if (result->hitresult & BONESEL_ROOT) {
-        *r_selmask |= BONE_ROOTSEL;
+      if (BKE_armature_bone_can_select_headtail(armature)) {
+        *r_selmask = 0;
+        if (result->hitresult & BONESEL_ROOT) {
+          *r_selmask |= BONE_ROOTSEL;
+        }
+        if (result->hitresult & BONESEL_TIP) {
+          *r_selmask |= BONE_TIPSEL;
+        }
+        if (result->hitresult & BONESEL_BONE) {
+          *r_selmask |= BONE_SELECTED;
+        }
       }
-      if (result->hitresult & BONESEL_TIP) {
-        *r_selmask |= BONE_TIPSEL;
+      else {
+        *r_selmask = BONE_SELECTED;
       }
-      if (result->hitresult & BONESEL_BONE) {
-        *r_selmask |= BONE_SELECTED;
-      }
+
       MEM_freeN(bases);
       return result->ebone;
     }

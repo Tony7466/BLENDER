@@ -131,6 +131,8 @@ static struct DRWShapeCache {
   GPUBatch *drw_lightprobe_grid;
   GPUBatch *drw_bone_octahedral;
   GPUBatch *drw_bone_octahedral_wire;
+  GPUBatch *drw_bone_balls;
+  GPUBatch *drw_bone_balls_wire;
   GPUBatch *drw_bone_box;
   GPUBatch *drw_bone_box_wire;
   GPUBatch *drw_bone_envelope;

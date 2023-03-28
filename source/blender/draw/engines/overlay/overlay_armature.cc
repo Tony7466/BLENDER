@@ -259,6 +259,7 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
       cb->solid.custom_fill = grp;
       cb->solid.box_fill = BUF_INSTANCE(grp, format, DRW_cache_bone_box_get());
       cb->solid.octa_fill = BUF_INSTANCE(grp, format, DRW_cache_bone_octahedral_get());
+      cb->solid.spheres_fill = BUF_INSTANCE(grp, format, DRW_cache_bone_point_get());
 
       grp = DRW_shgroup_create(sh, armature_ps);
       DRW_shgroup_state_disable(grp, DRW_STATE_WRITE_DEPTH);
@@ -267,6 +268,7 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
       cb->transp.custom_fill = grp;
       cb->transp.box_fill = BUF_INSTANCE(grp, format, DRW_cache_bone_box_get());
       cb->transp.octa_fill = BUF_INSTANCE(grp, format, DRW_cache_bone_octahedral_get());
+      cb->transp.spheres_fill = BUF_INSTANCE(grp, format, DRW_cache_bone_point_get());
 
       sh = OVERLAY_shader_armature_sphere(true);
       grp = DRW_shgroup_create(sh, armature_ps);
@@ -292,6 +294,8 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_uniform_float_copy(grp, "alpha", 1.0f);
       cb->solid.box_outline = BUF_INSTANCE(grp, format, DRW_cache_bone_box_wire_get());
       cb->solid.octa_outline = BUF_INSTANCE(grp, format, DRW_cache_bone_octahedral_wire_get());
+      cb->solid.spheres_outline = BUF_INSTANCE(
+          grp, format, DRW_cache_bone_point_wire_outline_get());
 
       if (use_wire_alpha) {
         cb->transp.custom_outline = grp = DRW_shgroup_create(sh, armature_ps);
@@ -300,6 +304,8 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
         DRW_shgroup_uniform_float_copy(grp, "alpha", wire_alpha);
         cb->transp.box_outline = BUF_INSTANCE(grp, format, DRW_cache_bone_box_wire_get());
         cb->transp.octa_outline = BUF_INSTANCE(grp, format, DRW_cache_bone_octahedral_wire_get());
+        cb->transp.spheres_outline = BUF_INSTANCE(
+            grp, format, DRW_cache_bone_point_wire_outline_get());
       }
       else {
         cb->transp.custom_outline = cb->solid.custom_outline;
@@ -2423,6 +2429,132 @@ class ArmatureBoneDrawStrategyWire : public ArmatureBoneDrawStrategy {
   }
 };
 
+/** Bone drawing strategy for ARM_SPHERES.
+ *
+ * This one is only used for pose mode, as edit mode still requires access to the entire bone.
+ *
+ * We could use this strategy in edit mode as well, but then selection of the
+ * sphere would have to imply selection of the entire bone.
+ */
+class ArmatureBoneDrawStrategySpheres : public ArmatureBoneDrawStrategy {
+ public:
+  void update_display_matrix(EditBone *eBone, bPoseChannel *pchan) const override
+  {
+    /* This is basically a copy of draw_bone_update_disp_matrix_default() but
+     * adjusted to, for the size of the bone, use the head radius instead of the
+     * bone scale. */
+    float ebmat[4][4];
+    float sphere_radius;
+    float bone_scale_vec[3];
+    float(*bone_mat)[4];
+    float(*disp_mat)[4];
+    float(*disp_tail_mat)[4];
+
+    /* See DRW_cache_bone_point_get(). */
+    constexpr float shader_point_radius = 0.05f;
+
+    /* TODO: This should be moved to depsgraph or armature refresh
+     * and not be tight to the draw pass creation.
+     * This would refresh armature without invalidating the draw cache */
+    if (pchan) {
+      bone_mat = pchan->pose_mat;
+      disp_mat = pchan->disp_mat;
+      disp_tail_mat = pchan->disp_tail_mat;
+      sphere_radius = pchan->bone->rad_head;
+    }
+    else {
+      eBone->length = len_v3v3(eBone->tail, eBone->head);
+      ED_armature_ebone_to_mat4(eBone, ebmat);
+
+      sphere_radius = eBone->rad_head;
+      bone_mat = ebmat;
+      disp_mat = eBone->disp_mat;
+      disp_tail_mat = eBone->disp_tail_mat;
+    }
+
+    copy_v3_fl(bone_scale_vec, sphere_radius / shader_point_radius);
+    copy_m4_m4(disp_mat, bone_mat);
+    rescale_m4(disp_mat, bone_scale_vec);
+    copy_m4_m4(disp_tail_mat, disp_mat);
+    translate_m4(disp_tail_mat, 0.0f, 1.0f, 0.0f);
+  }
+
+  bool culling_test(const DRWView *view,
+                    const Object *ob,
+                    const bPoseChannel *pchan) const override
+  {
+    return pchan_culling_test_simple(view, ob, pchan);
+  }
+
+  void draw_context_setup(ArmatureDrawContext *ctx,
+                          OVERLAY_ArmatureCallBuffersInner *cb,
+                          const bool is_filled,
+                          const bool /*do_envelope_dist*/) const override
+  {
+    ctx->outline = cb->spheres_outline;
+    ctx->solid = (is_filled) ? cb->spheres_fill : nullptr;
+
+    /* Regardless of what was chosen, this draw mode always draws relationship lines between the
+     * spheres. */
+    ctx->draw_relation_from_head = true;
+  }
+
+  bool use_bone_relation_to_parent(const EditBone *ebone,
+                                   const bPoseChannel *pchan,
+                                   const int boneflag) const override
+  {
+    if (pchan && pchan->parent) {
+      /* The spheres are never drawn 'connected', so just always draw the relationship lines. */
+      return true;
+    }
+    return ArmatureBoneDrawStrategy::use_bone_relation_to_parent(ebone, pchan, boneflag);
+  }
+
+  void draw_bone(ArmatureDrawContext *ctx,
+                 const EditBone *eBone,
+                 const bPoseChannel *pchan,
+                 const bArmature *arm,
+                 const int boneflag,
+                 const short constflag,
+                 const int select_id) const override
+  {
+    float col_solid_head[4], col_wire_head[4], col_hint_head[4];
+
+    copy_v4_v4(col_solid_head, G_draw.block.color_bone_solid);
+    copy_v4_v4(col_wire_head,
+               (ctx->const_color) ? ctx->const_color : &G_draw.block.color_vertex.x);
+
+    col_wire_head[3] = get_bone_wire_thickness(ctx, boneflag);
+
+    /* Edit bone points can be selected */
+    if (eBone) {
+      if (eBone->flag & BONE_ROOTSEL) {
+        copy_v3_v3(col_wire_head, G_draw.block.color_vertex_select);
+      }
+    }
+    else if (arm->flag & ARM_POSEMODE) {
+      const float *solid_color = get_bone_solid_color(ctx, eBone, pchan, arm, boneflag, constflag);
+      const float *wire_color = get_bone_wire_color(ctx, eBone, pchan, arm, boneflag, constflag);
+      copy_v4_v4(col_wire_head, wire_color);
+      copy_v4_v4(col_solid_head, solid_color);
+    }
+
+    bone_hint_color_shade(col_hint_head, (ctx->const_color) ? col_solid_head : col_wire_head);
+
+    /* Draw the head of the bone only. */
+    if (select_id != -1) {
+      DRW_select_load_id(select_id | BONESEL_ROOT);
+    }
+
+    const float(*disp_mat)[4] = BONE_VAR(eBone, pchan, disp_mat);
+    drw_shgroup_bone_point(ctx, disp_mat, col_solid_head, col_hint_head, col_wire_head);
+
+    if (select_id != -1) {
+      DRW_select_load_id(-1);
+    }
+  }
+};
+
 namespace {
 /** Armature drawing strategies.
  *
@@ -2437,6 +2569,7 @@ static ArmatureBoneDrawStrategyLine strat_line;
 static ArmatureBoneDrawStrategyBBone strat_b_bone;
 static ArmatureBoneDrawStrategyEnvelope strat_envelope;
 static ArmatureBoneDrawStrategyWire strat_wire;
+static ArmatureBoneDrawStrategySpheres strat_balls;
 static ArmatureBoneDrawStrategyEmpty strat_empty;
 };  // namespace
 
@@ -2446,7 +2579,8 @@ static ArmatureBoneDrawStrategyEmpty strat_empty;
  * Note that this does not consider custom bone shapes, as those can be set per bone.
  * For those occasions just instance a `ArmatureBoneDrawStrategyCustomShape` and use that.
  */
-static ArmatureBoneDrawStrategy &strategy_for_armature_drawtype(const eArmature_Drawtype drawtype)
+static ArmatureBoneDrawStrategy &strategy_for_armature_drawtype_editmode(
+    const eArmature_Drawtype drawtype)
 {
   switch (drawtype) {
     case ARM_OCTA:
@@ -2459,6 +2593,31 @@ static ArmatureBoneDrawStrategy &strategy_for_armature_drawtype(const eArmature_
       return strat_envelope;
     case ARM_WIRE:
       return strat_wire;
+    case ARM_SPHERES:
+      /* Spheres draw type doesn't work in edit mode yet, as it doesn't expose
+       * all the controls necessary for editing. */
+      return strat_octa;
+  }
+  BLI_assert_unreachable();
+  return strat_empty;
+}
+
+static ArmatureBoneDrawStrategy &strategy_for_armature_drawtype_posemode(
+    const eArmature_Drawtype drawtype)
+{
+  switch (drawtype) {
+    case ARM_OCTA:
+      return strat_octa;
+    case ARM_LINE:
+      return strat_line;
+    case ARM_B_BONE:
+      return strat_b_bone;
+    case ARM_ENVELOPE:
+      return strat_envelope;
+    case ARM_WIRE:
+      return strat_wire;
+    case ARM_SPHERES:
+      return strat_balls;
   }
   BLI_assert_unreachable();
   return strat_empty;
@@ -2488,7 +2647,7 @@ static void draw_armature_edit(ArmatureDrawContext *ctx)
   edbo_compute_bbone_child(arm);
 
   /* Determine drawing strategy. */
-  const ArmatureBoneDrawStrategy &draw_strat = strategy_for_armature_drawtype(
+  const ArmatureBoneDrawStrategy &draw_strat = strategy_for_armature_drawtype_editmode(
       eArmature_Drawtype(arm->drawtype));
 
   for (eBone = static_cast<EditBone *>(arm->edbo->first), index = ob_orig->runtime.select_id;
@@ -2606,7 +2765,7 @@ static void draw_armature_pose(ArmatureDrawContext *ctx)
 
   const DRWView *view = is_pose_select ? DRW_view_default_get() : nullptr;
 
-  const ArmatureBoneDrawStrategy &draw_strat_normal = strategy_for_armature_drawtype(
+  const ArmatureBoneDrawStrategy &draw_strat_normal = strategy_for_armature_drawtype_posemode(
       eArmature_Drawtype(arm->drawtype));
   const ArmatureBoneDrawStrategyCustomShape draw_strat_custom;
 
@@ -2719,7 +2878,9 @@ static void armature_context_setup(ArmatureDrawContext *ctx,
   /* Call the draw strategy after setting the generic context properties, so
    * that they can be overridden. */
   const eArmature_Drawtype drawtype = eArmature_Drawtype(arm->drawtype);
-  const ArmatureBoneDrawStrategy &draw_strat = strategy_for_armature_drawtype(drawtype);
+  const ArmatureBoneDrawStrategy &draw_strat =
+      is_edit_mode ? strategy_for_armature_drawtype_editmode(drawtype) :
+                     strategy_for_armature_drawtype_posemode(drawtype);
   draw_strat.draw_context_setup(ctx, cb, is_filled, do_envelope_dist);
 }
 

@@ -658,6 +658,12 @@ bool BKE_armature_bone_flag_test_recursive(const Bone *bone, int flag)
   return false;
 }
 
+bool BKE_armature_bone_can_select_headtail(const bArmature *arm)
+{
+  /* Only 'Spheres' mode needs to select bones entirely, as it only shows the bones' heads. */
+  return arm->drawtype != ARM_SPHERES;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

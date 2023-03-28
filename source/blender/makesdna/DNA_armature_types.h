@@ -181,6 +181,7 @@ typedef enum eArmature_Drawtype {
   ARM_B_BONE = 2,
   ARM_ENVELOPE = 3,
   ARM_WIRE = 4,
+  ARM_SPHERES = 5,
 } eArmature_Drawtype;
 
 /* armature->deformflag */

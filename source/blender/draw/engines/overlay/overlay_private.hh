@@ -223,6 +223,9 @@ typedef struct OVERLAY_ArmatureCallBuffersInner {
 
   DRWCallBuffer *wire;
 
+  DRWCallBuffer *spheres_outline;
+  DRWCallBuffer *spheres_fill;
+
   DRWShadingGroup *custom_outline;
   DRWShadingGroup *custom_fill;
   DRWShadingGroup *custom_wire;
