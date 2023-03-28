@@ -5076,10 +5076,6 @@ void CustomData_blend_write(BlendWriter *writer,
       writer, CustomDataLayer, data->totlayer, data->layers, layers_to_write.data());
 
   for (const CustomDataLayer &layer : layers_to_write) {
-    if (BLO_write_is_undo(writer) && layer.cow != nullptr) {
-      BLO_write_cow(writer, layer.data, layer.cow);
-      continue;
-    }
     switch (layer.type) {
       case CD_MDEFORMVERT:
         BKE_defvert_blend_write(writer, count, static_cast<const MDeformVert *>(layer.data));
@@ -5196,17 +5192,7 @@ void CustomData_blend_read(BlendDataReader *reader, CustomData *data, const int 
     }
 
     if (CustomData_verify_versions(data, i)) {
-      if (BLO_read_is_cow_data(reader, layer->data)) {
-        BLI_assert(layer->cow != nullptr);
-        layer->cow->add_user();
-        i++;
-        continue;
-      }
       BLO_read_data_address(reader, &layer->data);
-      if (layer->data != nullptr) {
-        /* Make layer data shareable. */
-        layer->cow = make_cow_for_array(eCustomDataType(layer->type), layer->data, count);
-      }
       if (CustomData_layer_ensure_data_exists(layer, count)) {
         /* Under normal operations, this shouldn't happen, but...
          * For a CD_PROP_BOOL example, see #84935.
