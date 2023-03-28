@@ -78,7 +78,8 @@ GPU_SHADER_CREATE_INFO(gpencil_geometry_next)
     .vertex_out(gpencil_geometry_iface)
     .vertex_source("gpencil_vert.glsl")
     .fragment_source("gpencil_frag.glsl")
-    .additional_info("draw_gpencil_new");
+    .additional_info("draw_gpencil_new")
+    .depth_write(DepthWrite::ANY);
 
 /** \} */
 
