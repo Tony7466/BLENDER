@@ -6,14 +6,10 @@
  */
 
 #include "BKE_global.h"
-#include "CLG_log.h"
 
 #include "vk_debug.hh"
 #include "vk_backend.hh"
-#include "vk_common.hh"
 #include "vk_context.hh"
-
-static CLG_LogRef LOG = {"gpu.debug.vulkan"};
 
 namespace blender::gpu {
 void VKContext::debug_group_begin(const char *, int)
@@ -66,7 +62,6 @@ bool VKContext::debug_capture_scope_begin(void * /*scope*/)
 void VKContext::debug_capture_scope_end(void * /*scope*/)
 {
 }
-
 }  // namespace blender::gpu
 
 namespace blender::gpu::debug {
@@ -123,7 +118,6 @@ static void vulkan_dynamic_debug_functions(VKContext *ctx, PFN_vkGetInstanceProc
 
 bool init_vk_callbacks(VKContext *ctx, PFN_vkGetInstanceProcAddr instload)
 {
-  CLOG_ENSURE(&LOG);
   if (instload) {
     vulkan_dynamic_debug_functions(ctx, instload);
     return true;

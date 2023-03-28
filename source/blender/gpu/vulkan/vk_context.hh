@@ -32,7 +32,10 @@ class VKContext : public Context {
 
   /** Limits of the device linked to this context. */
   VkPhysicalDeviceLimits vk_physical_device_limits_;
-  debug::VKDebuggingTools vk_debugging_tools;
+
+  /** Functions of vk_ext_debugutils to use in this context. */
+  debug::VKDebuggingTools vk_debugging_tools_;
+
   void *ghost_context_;
 
  public:
@@ -110,12 +113,12 @@ class VKContext : public Context {
     return mem_allocator_;
   }
 
-  debug::VKDebuggingTools& debuggingtools_get()
+  debug::VKDebuggingTools &debuggingtools_get()
   {
-    return vk_debugging_tools;
+    return vk_debugging_tools_;
   }
 
-private:
+ private:
   void init_physical_device_limits();
 
   bool has_active_framebuffer() const;

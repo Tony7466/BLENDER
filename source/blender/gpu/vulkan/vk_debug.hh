@@ -13,8 +13,7 @@
 
 #include <typeindex>
 
-namespace blender {
-namespace gpu {
+namespace blender::gpu {
 class VKContext;
 namespace debug {
 typedef struct VKDebuggingTools {
@@ -58,5 +57,4 @@ void setMarker(VKContext *ctx, VkQueue q, const char *name);
 void popMarker(VKContext *ctx, VkQueue q);
 
 }  // namespace debug
-}  // namespace gpu
-}  // namespace blender
+}  // namespace blender::gpu
