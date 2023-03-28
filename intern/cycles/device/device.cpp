@@ -78,10 +78,10 @@ void Device::build_bvh(BVH *bvh, DeviceScene *dscene, Progress &progress, bool r
     /* Only need to wait for the top level BVH otherwise
        this thread can skip on to the next object */
     if (bvh2->params.top_level) {
-      //thread_scoped_lock build_wait_lock(bvh2->build_mutex);
+      thread_scoped_lock build_wait_lock(bvh2->build_mutex);
       /* wait for BVH build to complete before proceeding */
       VLOG_INFO << std::this_thread::get_id() << ": Waiting  on BVH2 build.";
-      bvh2->build_cv.wait(build_lock/*wait_lock*/, [=]() { return (bvh2->built); });
+      bvh2->build_cv.wait(build_wait_lock, [=]() { return (bvh2->built); });
       VLOG_INFO << std::this_thread::get_id() << ": done waiting on BVH2 build";
     } else {
       VLOG_INFO << std::this_thread::get_id() << ": Skipping BVH2 build.";
