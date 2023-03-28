@@ -144,14 +144,16 @@ void object_vk_label(blender::gpu::VKContext *ctx,
                      uint64_t obj,
                      const char *name)
 {
-  VKDebuggingTools tools = ctx->debuggingtools_get();
-  if (tools.enabled) {
-    VkDebugUtilsObjectNameInfoEXT info = {};
-    info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
-    info.objectType = objType;
-    info.objectHandle = obj;
-    info.pObjectName = name;
-    tools.vkSetDebugUtilsObjectNameEXT_r(ctx->device_get(), &info);
+  if (G.debug & G_DEBUG_GPU) {
+    VKDebuggingTools tools = ctx->debuggingtools_get();
+    if (tools.enabled) {
+      VkDebugUtilsObjectNameInfoEXT info = {};
+      info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+      info.objectType = objType;
+      info.objectHandle = obj;
+      info.pObjectName = name;
+      tools.vkSetDebugUtilsObjectNameEXT_r(ctx->device_get(), &info);
+    }
   }
 }
 
