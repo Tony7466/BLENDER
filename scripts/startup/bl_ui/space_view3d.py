@@ -7860,33 +7860,33 @@ class VIEW3D_PT_sculpt_automasking(Panel):
 
         col = layout.column(align=True)
         sub = col.column()
-        sub.enabled = not data.use_automasking_topology
+        sub.active = not data.use_automasking_topology
         sub.prop(sculpt, "use_automasking_topology", text="Topology")
 
         sub = col.column()
-        sub.enabled = not data.use_automasking_face_sets
+        sub.active = not data.use_automasking_face_sets
         sub.prop(sculpt, "use_automasking_face_sets", text="Face Sets")
 
         col.separator()
 
         col = layout.column(align=True)
         sub = col.column()
-        sub.enabled = not data.use_automasking_boundary_edges
+        sub.active = not data.use_automasking_boundary_edges
         sub.prop(sculpt, "use_automasking_boundary_edges", text="Mesh Boundary")
 
         sub = col.column()
-        sub.enabled = not data.use_automasking_boundary_face_sets
+        sub.active = not data.use_automasking_boundary_face_sets
         sub.prop(sculpt, "use_automasking_boundary_face_sets", text="Face Sets Boundary")
 
         if sculpt.use_automasking_boundary_edges or sculpt.use_automasking_boundary_face_sets:
             sub = col.column()
-            sub.enabled = not data.use_automasking_boundary_edges or not data.use_automasking_boundary_face_sets
+            sub.active = not data.use_automasking_boundary_edges or not data.use_automasking_boundary_face_sets
             sub.prop(sculpt.brush, "automasking_boundary_edges_propagation_steps")
 
         col.separator()
 
         col = layout.column(align=True)
-        col.enabled = not data.use_automasking_cavity and not data.use_automasking_cavity_inverted
+        col.active = not data.use_automasking_cavity and not data.use_automasking_cavity_inverted
         row = col.row()
         row.prop(sculpt, "use_automasking_cavity", text="Cavity")
 
@@ -7900,12 +7900,12 @@ class VIEW3D_PT_sculpt_automasking(Panel):
 
         if is_cavity_active:
             col = layout.column(align=True)
-            col.enabled = not data.use_automasking_cavity_inverted and not data.use_automasking_cavity
+            col.active = not data.use_automasking_cavity_inverted and not data.use_automasking_cavity
             col.prop(sculpt, "automasking_cavity_factor", text="Factor")
             col.prop(sculpt, "automasking_cavity_blur_steps", text="Blur")
 
             col = layout.column()
-            col.enabled = not data.use_automasking_cavity_inverted and not data.use_automasking_cavity
+            col.active = not data.use_automasking_cavity_inverted and not data.use_automasking_cavity
             col.prop(sculpt, "use_automasking_custom_cavity_curve", text="Custom Curve")
 
             if sculpt.use_automasking_custom_cavity_curve:
@@ -7914,7 +7914,7 @@ class VIEW3D_PT_sculpt_automasking(Panel):
         col.separator()
 
         col = layout.column(align=True)
-        col.enabled = not data.use_automasking_view_normal
+        col.active = not data.use_automasking_view_normal
         col.prop(sculpt, "use_automasking_view_normal", text="View Normal")
 
         if sculpt.use_automasking_view_normal:
@@ -7925,12 +7925,12 @@ class VIEW3D_PT_sculpt_automasking(Panel):
             subcol.prop(sculpt, "automasking_view_normal_falloff", text="Falloff")
 
         col = layout.column()
-        col.enabled = not data.use_automasking_start_normal
+        col.active = not data.use_automasking_start_normal
         col.prop(sculpt, "use_automasking_start_normal", text="Area Normal")
 
         if sculpt.use_automasking_start_normal:
             col = layout.column(align=True)
-            col.enabled = not data.use_automasking_start_normal
+            col.active = not data.use_automasking_start_normal
             col.prop(sculpt, "automasking_start_normal_limit", text="Limit")
             col.prop(sculpt, "automasking_start_normal_falloff", text="Falloff")
 
