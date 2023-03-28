@@ -305,18 +305,21 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
           IndexRange points = points_by_curve[curve_i];
           const bool is_cyclic = cyclic[curve_i];
           const int v_start = v;
-          const int num_triangles = points.size() - 2;
+          int num_triangles = 0;
 
           /* First point is not drawn. */
           verts[v].mat = -1;
           v++;
 
-          for (const int tri_i : IndexRange(num_triangles)) {
-            uint3 tri = drawing.runtime->triangles_cache[t + tri_i];
-            GPU_indexbuf_add_tri_verts(&ibo,
-                                       (v + tri.x) << GP_VERTEX_ID_SHIFT,
-                                       (v + tri.y) << GP_VERTEX_ID_SHIFT,
-                                       (v + tri.z) << GP_VERTEX_ID_SHIFT);
+          if (points.size() > 3) {
+            num_triangles = points.size() - 2;
+            for (const int tri_i : IndexRange(num_triangles)) {
+              uint3 tri = drawing.runtime->triangles_cache[t + tri_i];
+              GPU_indexbuf_add_tri_verts(&ibo,
+                                         (v + tri.x) << GP_VERTEX_ID_SHIFT,
+                                         (v + tri.y) << GP_VERTEX_ID_SHIFT,
+                                         (v + tri.z) << GP_VERTEX_ID_SHIFT);
+            }
           }
 
           for (const int point_i : points) {

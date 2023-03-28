@@ -321,6 +321,10 @@ static void grease_pencil_drawing_calculate_fill_triangles(GreasePencilDrawing &
   for (int curve_i : curves.curves_range()) {
     IndexRange points = points_by_curve[curve_i];
 
+    if (points.size() < 3) {
+      continue;
+    }
+
     int tot_verts = points.size();
     int tot_tris = tot_verts - 2;
 
