@@ -1067,6 +1067,10 @@ static bool acf_fcurve_setting_valid(bAnimContext *ac,
     case ACHANNEL_SETTING_ALWAYS_VISIBLE:
       return false;
 
+    case ACHANNEL_SETTING_MOD_OFF:
+      /* Only available when this FCurve actually has a modifier. */
+      return !BLI_listbase_is_empty(&fcu->modifiers);
+
     /* always available */
     default:
       return true;
