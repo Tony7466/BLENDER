@@ -82,7 +82,7 @@ class AssetLibraryService {
   /**
    * Return the start position of the last blendfile extension in given path, or std::string::npos
    * if not found. Works with both kind of path separators. */
-  size_t rfind_blendfile_extension(StringRef path);
+  int64_t rfind_blendfile_extension(StringRef path);
   /**
    * Return a normalized version of #AssetWeakReference.relative_asset_identifier.
    * Special care is required here because slahes or backslashes should not be converted in the ID
