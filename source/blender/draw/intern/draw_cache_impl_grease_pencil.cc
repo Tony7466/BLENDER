@@ -311,7 +311,7 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
           verts[v].mat = -1;
           v++;
 
-          if (points.size() > 3) {
+          if (points.size() >= 3) {
             num_triangles = points.size() - 2;
             for (const int tri_i : IndexRange(num_triangles)) {
               uint3 tri = drawing.runtime->triangles_cache[t + tri_i];
