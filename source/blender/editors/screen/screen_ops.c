@@ -5072,7 +5072,7 @@ static int screen_realtime_clock_stop_exec(bContext *C, wmOperator *UNUSED(op))
 
   if (screen) {
     /* call the other "toggling" operator to clean up now */
-    ED_screen_realtime_clock_stop(C);
+    return ED_screen_realtime_clock_stop(C);
   }
 
   return OPERATOR_PASS_THROUGH;
