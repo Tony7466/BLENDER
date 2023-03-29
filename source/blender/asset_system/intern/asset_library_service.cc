@@ -310,11 +310,9 @@ std::string AssetLibraryService::normalize_asset_weak_reference_relative_asset_i
   StringRefNull relative_asset_identifier = asset_reference.relative_asset_identifier;
   int64_t offset = rfind_blendfile_extension(asset_reference.relative_asset_identifier);
 
-  int64_t alt_group_len;
   int64_t group_len;
   if (offset != StringRef::not_found) {
-    alt_group_len = relative_asset_identifier.find(ALTSEP, offset);
-    group_len = std::min(relative_asset_identifier.find(SEP, offset), alt_group_len);
+    group_len = relative_asset_identifier.find_first_of(SEP_STR ALTSEP_STR, offset);
     /* If there is a blend file in the relative asset path, then there should be group and id name
      * after it. */
     BLI_assert(group_len != StringRef::not_found);
@@ -324,8 +322,7 @@ std::string AssetLibraryService::normalize_asset_weak_reference_relative_asset_i
     offset = 0;
   }
 
-  alt_group_len = relative_asset_identifier.find(ALTSEP, offset);
-  group_len = std::min(relative_asset_identifier.find(SEP, offset), alt_group_len);
+  group_len = relative_asset_identifier.find_first_of(SEP_STR ALTSEP_STR, offset);
 
   return utils::normalize_path(relative_asset_identifier, group_len + 1);
 }
