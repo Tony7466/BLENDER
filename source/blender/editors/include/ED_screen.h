@@ -505,6 +505,10 @@ int ED_screen_realtime_clock_start(struct bContext *C);
  */
 int ED_screen_realtime_clock_stop(struct bContext *C);
 /**
+ * Reset realtime clock to zero.
+ */
+int ED_screen_realtime_clock_reset(struct bContext *C);
+/**
  * Animation is playing.
  */
 bool ED_screen_animation_is_playing(struct bScreen *screen);

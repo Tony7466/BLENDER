@@ -4905,6 +4905,17 @@ int ED_screen_realtime_clock_stop(bContext *C)
   return OPERATOR_FINISHED;
 }
 
+int ED_screen_realtime_clock_reset(bContext *C)
+{
+  Scene *scene = CTX_data_scene(C);
+
+  BKE_scene_realtime_clock_set(scene, 0, 0.0f);
+
+  WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
+
+  return OPERATOR_FINISHED;
+}
+
 bool ED_screen_animation_is_playing(bScreen *screen)
 {
   return screen && screen->active_clock & ANIMTIMER_ANIMATION;
@@ -5087,6 +5098,29 @@ static void SCREEN_OT_realtime_clock_stop(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = screen_realtime_clock_stop_exec;
+  ot->poll = ED_operator_screenactive;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Realtime Clock Reset Operator
+ * \{ */
+
+static int screen_realtime_clock_reset_exec(bContext *C, wmOperator *UNUSED(op))
+{
+  return ED_screen_realtime_clock_reset(C);
+}
+
+static void SCREEN_OT_realtime_clock_reset(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Reset Realtime Clock";
+  ot->description = "Reset realtime clock";
+  ot->idname = "SCREEN_OT_realtime_clock_reset";
+
+  /* api callbacks */
+  ot->exec = screen_realtime_clock_reset_exec;
   ot->poll = ED_operator_screenactive;
 }
 
@@ -5883,6 +5917,7 @@ void ED_operatortypes_screen(void)
   /* Realtime clock */
   WM_operatortype_append(SCREEN_OT_realtime_clock_start);
   WM_operatortype_append(SCREEN_OT_realtime_clock_stop);
+  WM_operatortype_append(SCREEN_OT_realtime_clock_reset);
 
   /* New/delete. */
   WM_operatortype_append(SCREEN_OT_new);
