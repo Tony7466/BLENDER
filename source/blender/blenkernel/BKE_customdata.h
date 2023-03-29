@@ -144,18 +144,18 @@ void CustomData_data_set_default_value(eCustomDataType type, void *elem);
  * another, while not overwriting anything else (e.g. flags).
  */
 void CustomData_data_mix_value(
-    int type, const void *source, void *dest, int mixmode, float mixfactor);
+    eCustomDataType type, const void *source, void *dest, int mixmode, float mixfactor);
 
 /**
  * Compares if data1 is equal to data2.  type is a valid #CustomData type
  * enum (e.g. #CD_PROP_FLOAT). the layer type's equal function is used to compare
  * the data, if it exists, otherwise #memcmp is used.
  */
-bool CustomData_data_equals(int type, const void *data1, const void *data2);
-void CustomData_data_initminmax(int type, void *min, void *max);
-void CustomData_data_dominmax(int type, const void *data, void *min, void *max);
-void CustomData_data_multiply(int type, void *data, float fac);
-void CustomData_data_add(int type, void *data1, const void *data2);
+bool CustomData_data_equals(eCustomDataType type, const void *data1, const void *data2);
+void CustomData_data_initminmax(eCustomDataType type, void *min, void *max);
+void CustomData_data_dominmax(eCustomDataType type, const void *data, void *min, void *max);
+void CustomData_data_multiply(eCustomDataType type, void *data, float fac);
+void CustomData_data_add(eCustomDataType type, void *data1, const void *data2);
 
 /**
  * Initializes a CustomData object with the same layer setup as source.
@@ -674,7 +674,7 @@ enum {
 typedef struct CustomDataTransferLayerMap {
   struct CustomDataTransferLayerMap *next, *prev;
 
-  int data_type;
+  eCustomDataType data_type;
   int mix_mode;
   float mix_factor;
   /** If non-NULL, array of weights, one for each dest item, replaces mix_factor. */

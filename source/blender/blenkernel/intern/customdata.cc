@@ -3986,8 +3986,11 @@ void CustomData_data_copy_value(const eCustomDataType type, const void *source, 
   }
 }
 
-void CustomData_data_mix_value(
-    int type, const void *source, void *dest, const int mixmode, const float mixfactor)
+void CustomData_data_mix_value(const eCustomDataType type,
+                               const void *source,
+                               void *dest,
+                               const int mixmode,
+                               const float mixfactor)
 {
   const LayerTypeInfo *typeInfo = layerType_getInfo(type);
 
@@ -4004,7 +4007,7 @@ void CustomData_data_mix_value(
   }
 }
 
-bool CustomData_data_equals(int type, const void *data1, const void *data2)
+bool CustomData_data_equals(const eCustomDataType type, const void *data1, const void *data2)
 {
   const LayerTypeInfo *typeInfo = layerType_getInfo(type);
 
@@ -4015,7 +4018,7 @@ bool CustomData_data_equals(int type, const void *data1, const void *data2)
   return !memcmp(data1, data2, typeInfo->size);
 }
 
-void CustomData_data_initminmax(int type, void *min, void *max)
+void CustomData_data_initminmax(const eCustomDataType type, void *min, void *max)
 {
   const LayerTypeInfo *typeInfo = layerType_getInfo(type);
 
@@ -4024,7 +4027,7 @@ void CustomData_data_initminmax(int type, void *min, void *max)
   }
 }
 
-void CustomData_data_dominmax(int type, const void *data, void *min, void *max)
+void CustomData_data_dominmax(const eCustomDataType type, const void *data, void *min, void *max)
 {
   const LayerTypeInfo *typeInfo = layerType_getInfo(type);
 
@@ -4033,7 +4036,7 @@ void CustomData_data_dominmax(int type, const void *data, void *min, void *max)
   }
 }
 
-void CustomData_data_multiply(int type, void *data, const float fac)
+void CustomData_data_multiply(const eCustomDataType type, void *data, const float fac)
 {
   const LayerTypeInfo *typeInfo = layerType_getInfo(type);
 
@@ -4042,7 +4045,7 @@ void CustomData_data_multiply(int type, void *data, const float fac)
   }
 }
 
-void CustomData_data_add(int type, void *data1, const void *data2)
+void CustomData_data_add(const eCustomDataType type, void *data1, const void *data2)
 {
   const LayerTypeInfo *typeInfo = layerType_getInfo(type);
 
@@ -4756,7 +4759,7 @@ static void customdata_data_transfer_interp_generic(const CustomDataTransferLaye
    * more than 0.5 of weight. */
   int best_src_idx = 0;
 
-  const int data_type = laymap->data_type;
+  const eCustomDataType data_type = laymap->data_type;
   const int mix_mode = laymap->mix_mode;
 
   size_t data_size;
@@ -4865,7 +4868,7 @@ void customdata_data_transfer_interp_normal_normals(const CustomDataTransferLaye
   BLI_assert(weights != nullptr);
   BLI_assert(count > 0);
 
-  const int data_type = laymap->data_type;
+  const eCustomDataType data_type = laymap->data_type;
   const int mix_mode = laymap->mix_mode;
 
   SpaceTransform *space_transform = static_cast<SpaceTransform *>(laymap->interp_data);

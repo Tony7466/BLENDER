@@ -516,7 +516,7 @@ void data_transfer_layersmapping_add_item(ListBase *r_map,
 
   BLI_assert(data_dst != nullptr);
 
-  item->data_type = cddata_type;
+  item->data_type = eCustomDataType(cddata_type);
   item->mix_mode = mix_mode;
   item->mix_factor = mix_factor;
   item->mix_weights = mix_weights;
