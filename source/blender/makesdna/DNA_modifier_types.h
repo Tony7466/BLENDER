@@ -122,7 +122,7 @@ typedef struct ModifierData {
   void *runtime;
 } ModifierData;
 
-typedef enum {
+typedef enum {  
   /** This modifier has been inserted in local override, and hence can be fully edited. */
   eModifierFlag_OverrideLibrary_Local = (1 << 0),
   /** This modifier does not own its caches, but instead shares them with another modifier. */

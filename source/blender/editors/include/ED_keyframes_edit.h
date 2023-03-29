@@ -444,6 +444,7 @@ void blend_ease_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment
 void blend_neighbor_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
 void blend_infinity_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
 void blend_offset_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
+void time_offset_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
 void tween_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
 void push_pull_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
 void shear_left_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);

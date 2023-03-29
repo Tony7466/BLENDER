@@ -339,10 +339,12 @@ class GRAPH_MT_slider(Menu):
         layout.operator("graph.scale_right", text="Scale Right")
         layout.operator("graph.scale_average", text="Scale Average")
         layout.separator()
-        layout.operator("graph.push_pull", text="Push Pull")
-        layout.operator("graph.breakdown", text="Breakdown")
         layout.operator("graph.shear_left", text="Shear Left")
         layout.operator("graph.shear_right", text="Shear Right")
+        layout.separator()
+        layout.operator("graph.push_pull", text="Push Pull")
+        layout.operator("graph.time_offset", text="Time Offset")
+        layout.operator("graph.breakdown", text="Breakdown")
 
 
 class GRAPH_MT_view_pie(Menu):

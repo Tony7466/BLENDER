@@ -124,6 +124,7 @@ void GRAPH_OT_blend_offset(struct wmOperatorType *ot);
 void GRAPH_OT_shear_left(struct wmOperatorType *ot);
 void GRAPH_OT_shear_right(struct wmOperatorType *ot);
 void GRAPH_OT_blend_infinity(struct wmOperatorType *ot);
+void GRAPH_OT_time_offset(struct wmOperatorType *ot);
 void GRAPH_OT_decimate(struct wmOperatorType *ot);
 void GRAPH_OT_blend_to_default(struct wmOperatorType *ot);
 void GRAPH_OT_gaussian_smooth(struct wmOperatorType *ot);

@@ -475,6 +475,7 @@ void graphedit_operatortypes(void)
   WM_operatortype_append(GRAPH_OT_shear_left);
   WM_operatortype_append(GRAPH_OT_shear_right);
   WM_operatortype_append(GRAPH_OT_blend_infinity);
+  WM_operatortype_append(GRAPH_OT_time_offset);
   WM_operatortype_append(GRAPH_OT_euler_filter);
   WM_operatortype_append(GRAPH_OT_delete);
   WM_operatortype_append(GRAPH_OT_duplicate);
