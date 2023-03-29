@@ -448,7 +448,7 @@ class LayerGroup : public TreeNode {
     TreeNode::save_to_storage(&new_group->base);
 
     /* Save number of children. */
-    new_group->children_num = total_num_children();
+    new_group->children_num = this->num_children();
 
     /* Store pointer. */
     *dst = reinterpret_cast<GreasePencilLayerTreeNode *>(new_group);

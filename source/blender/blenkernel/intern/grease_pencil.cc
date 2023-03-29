@@ -534,7 +534,9 @@ static void read_layer_node_recursive(blender::bke::gpencil::LayerGroup &current
   switch (node->type) {
     case GREASE_PENCIL_LAYER_TREE_LEAF: {
       GreasePencilLayerTreeLeaf *node_leaf = reinterpret_cast<GreasePencilLayerTreeLeaf *>(node);
-      current_group.add_layer(Layer(node_leaf->base.name));
+      Layer new_layer(node_leaf->base.name);
+      new_layer.load_from_storage(node_leaf->layer);
+      current_group.add_layer(std::move(new_layer));
       break;
     }
     case GREASE_PENCIL_LAYER_TREE_GROUP: {
@@ -556,10 +558,12 @@ void GreasePencil::load_layer_tree_from_storage()
     return;
   }
   /* The first node should be the root group. */
-  BLI_assert(
-      reinterpret_cast<GreasePencilLayerTreeNode *>(this->layer_tree_storage.nodes[0])->type ==
-      GREASE_PENCIL_LAYER_TREE_GROUP);
-  read_layer_node_recursive(this->runtime->root_group(), this->layer_tree_storage.nodes, 1);
+  GreasePencilLayerTreeNode *root = reinterpret_cast<GreasePencilLayerTreeNode *>(
+      this->layer_tree_storage.nodes[0]);
+  BLI_assert(root->type == GREASE_PENCIL_LAYER_TREE_GROUP);
+  for (int i = 0; i < reinterpret_cast<GreasePencilLayerTreeGroup *>(root)->children_num; i++) {
+    read_layer_node_recursive(this->runtime->root_group(), this->layer_tree_storage.nodes, i + 1);
+  }
 }
 
 void GreasePencil::read_layer_tree_storage(BlendDataReader *reader)
