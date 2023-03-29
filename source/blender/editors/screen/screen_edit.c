@@ -1834,7 +1834,7 @@ void ED_tag_for_newframe(Main *bmain, Scene *scene)
   ED_clip_update_frame(bmain, scene->r.cfra);
 }
 
-void ED_tag_for_realtime_clock(Main *bmain, Scene *scene)
+void ED_tag_for_realtime_clock(Main *bmain, Scene *UNUSED(scene))
 {
   DEG_time_tag_update(bmain, DEG_TIME_SOURCE_REALTIME);
 }
