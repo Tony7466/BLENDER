@@ -179,7 +179,7 @@ void BKE_scene_frame_set(struct Scene *scene, float frame);
 /**
  * Get the realtime clock time.
  */
-float BKE_scene_realtime_clock_get(struct Scene *scene);
+float BKE_scene_realtime_clock_get(const struct Scene *scene);
 /**
  * Set the realtime clock.
  */
@@ -191,11 +191,11 @@ void BKE_scene_realtime_clock_increment(struct Scene *scene, float delta_frame);
 /**
  * Get a frame delta based on a previous frame.
  */
-float BKE_scene_realtime_clock_get_delta_frames(struct Scene *scene, int old_frame, float old_subframe);
+float BKE_scene_realtime_clock_get_delta_frames(const struct Scene *scene, int old_frame, float old_subframe);
 /**
  * Get a time delta based on a previous frame.
  */
-float BKE_scene_realtime_clock_get_delta_time(struct Scene *scene, int old_frame, float old_subframe);
+float BKE_scene_realtime_clock_get_delta_time(const struct Scene *scene, int old_frame, float old_subframe);
 
 struct TransformOrientationSlot *BKE_scene_orientation_slot_get_from_flag(struct Scene *scene,
                                                                           int flag);

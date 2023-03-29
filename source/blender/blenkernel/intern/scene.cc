@@ -2513,7 +2513,7 @@ void BKE_scene_frame_set(Scene *scene, float frame)
 /** \name Realtime clock
  * \{ */
 
-float BKE_scene_realtime_clock_get(Scene *scene)
+float BKE_scene_realtime_clock_get(const Scene *scene)
 {
   return (float)scene->realtime_clock.frame + scene->realtime_clock.subframe;
 }
@@ -2532,12 +2532,12 @@ void BKE_scene_realtime_clock_increment(Scene *scene, float delta_frame)
   scene->realtime_clock.frame += int(intpart);
 }
 
-float BKE_scene_realtime_clock_get_delta_frames(Scene *scene, int old_frame, float old_subframe)
+float BKE_scene_realtime_clock_get_delta_frames(const Scene *scene, int old_frame, float old_subframe)
 {
   return (float)(scene->realtime_clock.frame - old_frame) + scene->realtime_clock.subframe - old_subframe;
 }
 
-float BKE_scene_realtime_clock_get_delta_time(Scene *scene, int old_frame, float old_subframe)
+float BKE_scene_realtime_clock_get_delta_time(const Scene *scene, int old_frame, float old_subframe)
 {
   return BKE_scene_realtime_clock_get_delta_frames(scene, old_frame, old_subframe) * scene->r.framelen;
 }
