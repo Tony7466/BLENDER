@@ -2782,13 +2782,16 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *region, View3D *v3d, cons
       deg_iter_settings.depsgraph = depsgraph;
       deg_iter_settings.flags = DEG_OBJECT_ITER_FOR_RENDER_ENGINE_FLAGS;
       DEG_OBJECT_ITER_BEGIN (&deg_iter_settings, ob) {
-        /* The iterator has evaluated meshes for all solid objects.
-         * It also has non-mesh objects however, which are not supported here.
-         *
-         * Only background (non-edit) objects are used for occlusion. */
-        if ((ob->type == OB_MESH) && !DRW_object_is_in_edit_mode(ob)) {
-          drw_engines_cache_populate(ob);
+        if (ob->type != OB_MESH) {
+          /* The iterator has evaluated meshes for all solid objects.
+           * It also has non-mesh objects however, which are not supported here. */
+          continue;
         }
+        if (DRW_object_is_in_edit_mode(ob)) {
+          /* Only background (non-edit) objects are used for occlusion. */
+          continue;
+        }
+        drw_engines_cache_populate(ob);
       }
       DEG_OBJECT_ITER_END;
     }
