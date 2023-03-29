@@ -136,8 +136,8 @@ bool CustomData_has_referenced(const struct CustomData *data);
  * another, while not overwriting anything else (e.g. flags).  probably only
  * implemented for `mloopuv/mloopcol`, for now.
  */
-void CustomData_data_copy_value(int type, const void *source, void *dest);
-void CustomData_data_set_default_value(int type, void *elem);
+void CustomData_data_copy_value(eCustomDataType type, const void *source, void *dest);
+void CustomData_data_set_default_value(eCustomDataType type, void *elem);
 
 /**
  * Mixes the "value" (e.g. `mloopuv` UV or `mloopcol` colors) from one block into

@@ -3771,7 +3771,7 @@ void CustomData_bmesh_free_block_data_exclude_by_type(CustomData *data,
   }
 }
 
-void CustomData_data_set_default_value(const int type, void *elem)
+void CustomData_data_set_default_value(const eCustomDataType type, void *elem)
 {
   const LayerTypeInfo *typeInfo = layerType_getInfo(type);
   if (typeInfo->set_default_value) {
@@ -3785,7 +3785,8 @@ void CustomData_data_set_default_value(const int type, void *elem)
 static void CustomData_bmesh_set_default_n(CustomData *data, void **block, const int n)
 {
   const int offset = data->layers[n].offset;
-  CustomData_data_set_default_value(data->layers[n].type, POINTER_OFFSET(*block, offset));
+  CustomData_data_set_default_value(eCustomDataType(data->layers[n].type),
+                                    POINTER_OFFSET(*block, offset));
 }
 
 void CustomData_bmesh_set_default(CustomData *data, void **block)
@@ -3969,7 +3970,7 @@ bool CustomData_has_referenced(const CustomData *data)
   return false;
 }
 
-void CustomData_data_copy_value(int type, const void *source, void *dest)
+void CustomData_data_copy_value(const eCustomDataType type, const void *source, void *dest)
 {
   const LayerTypeInfo *typeInfo = layerType_getInfo(type);
 
