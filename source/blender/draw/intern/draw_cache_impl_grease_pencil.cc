@@ -92,12 +92,12 @@ static GPUVertFormat *grease_pencil_color_format()
 /** \name Internal Utilities
  * \{ */
 
-static bool grease_pencil_batch_cache_valid(const GreasePencil &grease_pencil)
+static bool grease_pencil_batch_cache_valid(const GreasePencil &grease_pencil, int cfra)
 {
   BLI_assert(grease_pencil.runtime != nullptr);
   const GreasePencilBatchCache *cache = static_cast<GreasePencilBatchCache *>(
       grease_pencil.runtime->batch_cache);
-  return (cache && cache->is_dirty == false);
+  return (cache && cache->is_dirty == false && cache->cache_frame == cfra);
 }
 
 static GreasePencilBatchCache *grease_pencil_batch_cache_init(GreasePencil &grease_pencil,
@@ -106,12 +106,12 @@ static GreasePencilBatchCache *grease_pencil_batch_cache_init(GreasePencil &grea
   BLI_assert(grease_pencil.runtime != nullptr);
   GreasePencilBatchCache *cache = static_cast<GreasePencilBatchCache *>(
       grease_pencil.runtime->batch_cache);
-  if (!cache) {
+  if (cache == nullptr) {
     cache = MEM_new<GreasePencilBatchCache>(__func__);
     grease_pencil.runtime->batch_cache = cache;
   }
   else {
-    grease_pencil.runtime->batch_cache = {};
+    *cache = {};
   }
 
   cache->is_dirty = false;
@@ -143,7 +143,7 @@ static GreasePencilBatchCache *grease_pencil_batch_cache_get(GreasePencil &greas
   BLI_assert(grease_pencil.runtime != nullptr);
   GreasePencilBatchCache *cache = static_cast<GreasePencilBatchCache *>(
       grease_pencil.runtime->batch_cache);
-  if (!grease_pencil_batch_cache_valid(grease_pencil)) {
+  if (!grease_pencil_batch_cache_valid(grease_pencil, cfra)) {
     grease_pencil_batch_cache_clear(grease_pencil);
     return grease_pencil_batch_cache_init(grease_pencil, cfra);
   }
@@ -383,7 +383,8 @@ void DRW_grease_pencil_batch_cache_validate(GreasePencil *grease_pencil)
 {
   using namespace blender::draw;
   BLI_assert(grease_pencil->runtime != nullptr);
-  if (!grease_pencil_batch_cache_valid(*grease_pencil)) {
+  /* TODO: pass correct frame here? */
+  if (!grease_pencil_batch_cache_valid(*grease_pencil, 0)) {
     grease_pencil_batch_cache_clear(*grease_pencil);
     /* TODO: pass correct frame here? */
     grease_pencil_batch_cache_init(*grease_pencil, 0);
