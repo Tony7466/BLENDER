@@ -473,6 +473,7 @@ static void spreadsheet_main_region_listener(const wmRegionListenerParams *param
       switch (wmn->data) {
         case ND_MODE:
         case ND_FRAME:
+        case ND_REALTIME_CLOCK:
         case ND_OB_ACTIVE: {
           ED_region_tag_redraw(region);
           break;
@@ -619,6 +620,7 @@ static void spreadsheet_dataset_region_listener(const wmRegionListenerParams *pa
     case NC_SCENE: {
       switch (wmn->data) {
         case ND_FRAME:
+        case ND_REALTIME_CLOCK:
           ED_region_tag_redraw(region);
           break;
       }

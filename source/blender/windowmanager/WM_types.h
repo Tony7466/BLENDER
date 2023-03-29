@@ -403,6 +403,7 @@ typedef struct wmNotifier {
 #define ND_TRANSFORM_DONE (18 << 16)
 #define ND_WORLD (92 << 16)
 #define ND_LAYER_CONTENT (101 << 16)
+#define ND_REALTIME_CLOCK (102 << 16)
 
 /* NC_OBJECT Object */
 #define ND_TRANSFORM (18 << 16)

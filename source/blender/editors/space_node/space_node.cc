@@ -400,6 +400,7 @@ static void node_area_listener(const wmSpaceTypeListenerParams *params)
           break;
         }
         case ND_FRAME:
+        case ND_REALTIME_CLOCK:
           node_area_tag_tree_recalc(snode, area);
           break;
         case ND_COMPO_RESULT: {

@@ -528,7 +528,7 @@ void wm_event_do_notifiers(bContext *C)
   /* Cache & catch WM level notifiers, such as frame change, scene/screen set. */
   LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
     Scene *scene = WM_window_get_active_scene(win);
-    bool do_anim = false;
+    int updated_clocks = 0;
     bool clear_info_stats = false;
 
     CTX_wm_window_set(C, win);
@@ -595,7 +595,10 @@ void wm_event_do_notifiers(bContext *C)
           (note->window == nullptr && ELEM(note->reference, nullptr, scene))) {
         if (note->category == NC_SCENE) {
           if (note->data == ND_FRAME) {
-            do_anim = true;
+            updated_clocks |= ANIMTIMER_ANIMATION;
+          }
+          if (note->data == ND_REALTIME_CLOCK) {
+            updated_clocks |= ANIMTIMER_REALTIME;
           }
         }
       }
@@ -611,15 +614,20 @@ void wm_event_do_notifiers(bContext *C)
       WM_event_add_notifier(C, NC_SPACE | ND_SPACE_INFO, nullptr);
     }
 
-    if (do_anim) {
-
-      /* XXX: quick frame changes can cause a crash if frame-change and rendering
-       * collide (happens on slow scenes), BKE_scene_graph_update_for_newframe can be called
-       * twice which can depsgraph update the same object at once. */
-      if (G.is_rendering == false) {
+    /* XXX: quick frame changes can cause a crash if frame-change and rendering
+     * collide (happens on slow scenes), BKE_scene_graph_update_for_newframe can be called
+     * twice which can depsgraph update the same object at once. */
+    if (G.is_rendering == false) {
+      if (updated_clocks & ANIMTIMER_ANIMATION) {
+        ED_tag_for_newframe(CTX_data_main(C), scene);
+      }
+      if (updated_clocks & ANIMTIMER_REALTIME) {
+        ED_tag_for_realtime_clock(CTX_data_main(C), scene);
+      }
+      if (updated_clocks != 0) {
         /* Depsgraph gets called, might send more notifiers. */
         Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
-        ED_update_for_newframe(CTX_data_main(C), depsgraph);
+        BKE_scene_graph_update_for_timestep(depsgraph, updated_clocks);
       }
     }
   }

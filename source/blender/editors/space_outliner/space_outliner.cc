@@ -128,6 +128,7 @@ static void outliner_main_region_listener(const wmRegionListenerParams *params)
         case ND_MODE:
         case ND_KEYINGSET:
         case ND_FRAME:
+        case ND_REALTIME_CLOCK:
         case ND_RENDER_OPTIONS:
         case ND_SEQUENCER:
         case ND_LAYER_CONTENT:

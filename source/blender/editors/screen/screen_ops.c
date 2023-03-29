@@ -4900,7 +4900,7 @@ int ED_screen_realtime_clock_stop(bContext *C)
   ED_screen_realtime_timer(C, 0, false);
   //  BKE_sound_stop_scene(scene_eval);
 
-  WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
+  WM_event_add_notifier(C, NC_SCENE | ND_REALTIME_CLOCK, scene);
 
   return OPERATOR_FINISHED;
 }
@@ -4911,7 +4911,7 @@ int ED_screen_realtime_clock_reset(bContext *C)
 
   BKE_scene_realtime_clock_set(scene, 0, 0.0f);
 
-  WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
+  WM_event_add_notifier(C, NC_SCENE | ND_REALTIME_CLOCK, scene);
 
   return OPERATOR_FINISHED;
 }

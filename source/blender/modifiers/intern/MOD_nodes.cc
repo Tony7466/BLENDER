@@ -1237,10 +1237,12 @@ static GeometrySet compute_geometry(
             nmd_orig->simulation_cache->try_get_last_state_before(current_time);
         if (prev_sim_state.second != nullptr) {
           geo_nodes_modifier_data.prev_simulation_state = prev_sim_state.second;
-          geo_nodes_modifier_data.simulation_time_delta = current_time - prev_sim_state.first;
-          if (geo_nodes_modifier_data.simulation_time_delta > 1.0f) {
+          const float frame_delta = current_time - prev_sim_state.first;
+          if (frame_delta > 1.0f) {
             nmd_orig->simulation_cache->invalidate();
           }
+          const double frame_rate = double(scene->r.frs_sec) / double(scene->r.frs_sec_base);
+          geo_nodes_modifier_data.simulation_time_delta = frame_delta / frame_rate;
         }
         geo_nodes_modifier_data.current_simulation_state_for_write =
             &nmd_orig->simulation_cache->get_state_for_write(current_time);
@@ -1261,6 +1263,8 @@ static GeometrySet compute_geometry(
       const float current_frame = DEG_get_frame_ex(ctx->depsgraph, eTimeSourceType::DEG_TIME_SOURCE_REALTIME);
       const float current_time = DEG_get_ctime_ex(ctx->depsgraph, eTimeSourceType::DEG_TIME_SOURCE_REALTIME);
       if (DEG_is_active(ctx->depsgraph)) {
+        const Scene *scene = DEG_get_input_scene(ctx->depsgraph);
+
         if (nmd_orig->simulation_cache == nullptr) {
           nmd_orig->simulation_cache = MEM_new<blender::bke::sim::ModifierSimulationCache>(
               __func__);
@@ -1277,10 +1281,13 @@ static GeometrySet compute_geometry(
             nmd_orig->simulation_cache->try_get_last_state_before(current_time);
         if (prev_sim_state.second != nullptr) {
           geo_nodes_modifier_data.prev_simulation_state = prev_sim_state.second;
-          geo_nodes_modifier_data.simulation_time_delta = current_time - prev_sim_state.first;
-          if (geo_nodes_modifier_data.simulation_time_delta > 1.0f) {
+          printf("TIME: %f, PREV: %f\n", current_time, prev_sim_state.first);
+          const float frame_delta = current_time - prev_sim_state.first;
+          if (frame_delta > 1.0f) {
             nmd_orig->simulation_cache->invalidate();
           }
+          const double frame_rate = double(scene->r.frs_sec) / double(scene->r.frs_sec_base);
+          geo_nodes_modifier_data.simulation_time_delta = frame_delta / frame_rate;
         }
         /* Replace the cache with a single new output state.
          * Cache should only ever contain one frame for the realtime clock mode. */

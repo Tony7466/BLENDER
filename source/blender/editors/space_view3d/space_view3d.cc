@@ -1167,6 +1167,7 @@ static void view3d_main_region_listener(const wmRegionListenerParams *params)
         case ND_OB_SELECT:
           ATTR_FALLTHROUGH;
         case ND_FRAME:
+        case ND_REALTIME_CLOCK:
         case ND_TRANSFORM:
         case ND_OB_VISIBLE:
         case ND_RENDER_OPTIONS:
@@ -1559,6 +1560,7 @@ static void view3d_header_region_listener(const wmRegionListenerParams *params)
     case NC_SCENE:
       switch (wmn->data) {
         case ND_FRAME:
+        case ND_REALTIME_CLOCK:
         case ND_OB_ACTIVE:
         case ND_OB_SELECT:
         case ND_OB_VISIBLE:
@@ -1789,6 +1791,7 @@ static void view3d_buttons_region_listener(const wmRegionListenerParams *params)
     case NC_SCENE:
       switch (wmn->data) {
         case ND_FRAME:
+        case ND_REALTIME_CLOCK:
         case ND_OB_ACTIVE:
         case ND_OB_SELECT:
         case ND_OB_VISIBLE:

@@ -318,6 +318,7 @@ static void image_listener(const wmSpaceTypeListenerParams *params)
     case NC_SCENE:
       switch (wmn->data) {
         case ND_FRAME:
+        case ND_REALTIME_CLOCK:
           image_scopes_tag_refresh(area);
           ED_area_tag_refresh(area);
           ED_area_tag_redraw(area);

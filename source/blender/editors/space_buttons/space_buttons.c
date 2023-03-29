@@ -664,6 +664,7 @@ static void buttons_area_listener(const wmSpaceTypeListenerParams *params)
           sbuts->preview = 1;
           break;
         case ND_FRAME:
+        case ND_REALTIME_CLOCK:
           /* any buttons area can have animated properties so redraw all */
           ED_area_tag_redraw(area);
           sbuts->preview = 1;

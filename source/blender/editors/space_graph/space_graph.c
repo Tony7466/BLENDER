@@ -409,6 +409,7 @@ static void graph_region_listener(const wmRegionListenerParams *params)
         case ND_OB_ACTIVE:
         case ND_FRAME:
         case ND_FRAME_RANGE:
+        case ND_REALTIME_CLOCK:
         case ND_MARKERS:
           ED_region_tag_redraw(region);
           break;
