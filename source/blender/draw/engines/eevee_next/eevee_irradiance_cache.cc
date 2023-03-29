@@ -150,6 +150,8 @@ void IrradianceBake::sync()
     inst_.shadows.bind_resources(&pass);
     /* Sync with the surfel creation stage. */
     pass.barrier(GPU_BARRIER_SHADER_STORAGE);
+    pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
+    pass.barrier(GPU_BARRIER_TEXTURE_FETCH);
     pass.dispatch(&dispatch_per_surfel_);
   }
   {

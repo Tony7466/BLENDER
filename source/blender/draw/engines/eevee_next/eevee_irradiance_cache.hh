@@ -29,8 +29,6 @@ class IrradianceBake {
 
   /** Light cache being baked. */
   LightCache *light_cache_ = nullptr;
-  /** Surface elements that represent the scene. */
-  SurfelBuf surfels_buf_;
   /** Capture state. */
   CaptureInfoBuf capture_info_buf_;
   /** Framebuffer. */
@@ -67,8 +65,6 @@ class IrradianceBake {
   /* Dispatch size for per surfel list workload. */
   int3 dispatch_per_list_ = int3(1);
 
-  /* Surfel per unit distance. */
-  float surfel_density_ = 2.0f;
   /* Orientation of the irradiance grid being baked. */
   math::Quaternion grid_orientation_;
   /* Object center of the irradiance grid being baked. */
@@ -77,6 +73,11 @@ class IrradianceBake {
   Vector<float3> grid_bbox_vertices;
 
  public:
+  /** Surface elements that represent the scene. */
+  SurfelBuf surfels_buf_;
+  /* Surfel per unit distance. */
+  float surfel_density_ = 2.0f;
+
   IrradianceBake(Instance &inst) : inst_(inst){};
 
   void sync();
