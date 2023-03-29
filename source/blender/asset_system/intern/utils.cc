@@ -29,17 +29,17 @@ std::string normalize_directory_path(StringRef directory)
 
 std::string normalize_path(StringRefNull path, int64_t max_len)
 {
-  max_len = (max_len == StringRef::not_found) ? path.size() : std::min(max_len, path.size());
+  const int64_t len = max_len ? std::min(max_len, path.size()) : path.size();
 
-  char *buf = BLI_strdupn(path.c_str(), max_len);
+  char *buf = BLI_strdupn(path.c_str(), len);
   BLI_path_slash_native(buf);
   BLI_path_normalize(nullptr, buf);
 
   std::string normalized_path = buf;
   MEM_freeN(buf);
 
-  if (max_len != path.size()) {
-    normalized_path = normalized_path + path.substr(max_len);
+  if (len != path.size()) {
+    normalized_path = normalized_path + path.substr(len);
   }
 
   return normalized_path;
