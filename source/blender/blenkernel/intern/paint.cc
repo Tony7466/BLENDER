@@ -2250,12 +2250,22 @@ PBVH *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Object *ob)
   if (pbvh != nullptr) {
     /* NOTE: It is possible that grids were re-allocated due to modifier
      * stack. Need to update those pointers. */
-    if (BKE_pbvh_type(pbvh) == PBVH_GRIDS) {
-      Object *object_eval = DEG_get_evaluated_object(depsgraph, ob);
-      Mesh *mesh_eval = static_cast<Mesh *>(object_eval->data);
-      SubdivCCG *subdiv_ccg = mesh_eval->runtime->subdiv_ccg;
-      if (subdiv_ccg != nullptr) {
-        BKE_sculpt_bvh_update_from_ccg(pbvh, subdiv_ccg);
+    const PBVHType pbvh_type = BKE_pbvh_type(pbvh);
+    switch (pbvh_type) {
+      case PBVH_FACES: {
+        break;
+      }
+      case PBVH_GRIDS: {
+        Object *object_eval = DEG_get_evaluated_object(depsgraph, ob);
+        Mesh *mesh_eval = static_cast<Mesh *>(object_eval->data);
+        SubdivCCG *subdiv_ccg = mesh_eval->runtime->subdiv_ccg;
+        if (subdiv_ccg != nullptr) {
+          BKE_sculpt_bvh_update_from_ccg(pbvh, subdiv_ccg);
+        }
+        break;
+      }
+      case PBVH_BMESH: {
+        break;
       }
     }
 
