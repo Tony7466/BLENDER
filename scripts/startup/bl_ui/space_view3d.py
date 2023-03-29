@@ -8114,8 +8114,8 @@ class VIEW3D_PT_realtime_clock(Panel):
             row.operator("screen.realtime_clock_start", text="", icon='PLAY')
         else:
             row.operator("screen.realtime_clock_stop", text="", icon='PAUSE')
-        row.scale_x = 1
         row.operator("screen.realtime_clock_reset", text="", icon='FILE_REFRESH')
+        row.scale_x = 1
 
         layout.separator_spacer()
 
