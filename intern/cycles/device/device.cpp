@@ -53,13 +53,24 @@ void Device::build_bvh(BVH *bvh, DeviceScene *dscene, Progress &progress, bool r
 {
   assert(bvh->params.bvh_layout == BVH_LAYOUT_BVH2);
   BVH2 *const bvh2 = static_cast<BVH2 *>(bvh);
+  static std::atomic<int> building{0};
+  /* Top level BVH2 build must wait on all other BVH2 builds to finish
+     otherwise the top level BVH2 will not have all the correct data
+   */
+  if(bvh2->params.top_level) {
+    thread_scoped_lock build_wait_lock(bvh2->build_mutex);
+    /* Wait for other BVH2 builds to complete before proceeding */
+    VLOG_INFO << std::this_thread::get_id() << ":" << bvh2 << " Waiting on other BVH2 builds.";
+    bvh2->build_cv.wait(build_wait_lock, [=]() { return (building == 0); });
+    VLOG_INFO << std::this_thread::get_id() << ":" << bvh2 << " Done waiting on other BVH2 builds";
+  }
   thread_scoped_lock build_lock(bvh2->build_mutex, std::try_to_lock);
   if (build_lock) {
-    /* Has the BVH already been built */
+    /* Has the BVH already been built? */
     if (!bvh->built) {
+      building++;
       /* Build the BVH */
-      VLOG_INFO << std::this_thread::get_id() << ": Performing BVH2 build.";
-
+      VLOG_INFO << std::this_thread::get_id() << ":" << bvh2 << " Performing BVH2 build.";
       if (refit) {
         bvh2->refit(progress);
       }
@@ -67,10 +78,11 @@ void Device::build_bvh(BVH *bvh, DeviceScene *dscene, Progress &progress, bool r
         bvh2->build(progress, &stats);
       }
       bvh->built = true;
-      VLOG_INFO << std::this_thread::get_id() << ": done building BVH2";
+      VLOG_INFO << std::this_thread::get_id() << ":" << bvh2 << " Done building BVH2";
+      building--;
     }
     else {
-      VLOG_INFO << std::this_thread::get_id() << ": BVH2 Already built";
+      VLOG_INFO << std::this_thread::get_id() << ":" << bvh2 << " BVH2 Already built";
     }
     bvh2->build_cv.notify_all();
   }
@@ -80,11 +92,11 @@ void Device::build_bvh(BVH *bvh, DeviceScene *dscene, Progress &progress, bool r
     if (bvh2->params.top_level) {
       thread_scoped_lock build_wait_lock(bvh2->build_mutex);
       /* wait for BVH build to complete before proceeding */
-      VLOG_INFO << std::this_thread::get_id() << ": Waiting  on BVH2 build.";
+      VLOG_INFO << std::this_thread::get_id() << ":" << bvh2 << " Waiting  on BVH2 build.";
       bvh2->build_cv.wait(build_wait_lock, [=]() { return (bvh2->built); });
-      VLOG_INFO << std::this_thread::get_id() << ": done waiting on BVH2 build";
+      VLOG_INFO << std::this_thread::get_id() << ":" << bvh2 << " Done waiting on BVH2 build";
     } else {
-      VLOG_INFO << std::this_thread::get_id() << ": Skipping BVH2 build.";
+       VLOG_INFO << std::this_thread::get_id() << ":" << bvh2 << " Skipping BVH2 build.";
     }
   }
 }
