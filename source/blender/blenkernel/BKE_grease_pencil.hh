@@ -10,6 +10,7 @@
 #include "BLI_function_ref.hh"
 #include "BLI_map.hh"
 #include "BLI_math_vector.h"
+#include "BLI_shared_cache.hh"
 #include "BLI_stack.hh"
 #include "BLI_string.h"
 
@@ -247,7 +248,7 @@ class Layer : public TreeNode, ::GreasePencilLayer {
    * drawings, then the last referenced drawing is held for the rest of the duration.
    */
   Map<int, int> frames_;
-  Vector<int> sorted_keys_cache_;
+  mutable SharedCache<Vector<int>> sorted_keys_cache_;
 
  public:
   Layer() : TreeNode(GREASE_PENCIL_LAYER_TREE_LEAF), frames_()
@@ -284,26 +285,26 @@ class Layer : public TreeNode, ::GreasePencilLayer {
 
   bool insert_frame(int frame_number, int index)
   {
-    sorted_keys_cache_.clear_and_shrink();
+    sorted_keys_cache_.tag_dirty();
     return frames_.add(frame_number, index);
   }
 
   bool overwrite_frame(int frame_number, int index)
   {
-    sorted_keys_cache_.clear_and_shrink();
+    sorted_keys_cache_.tag_dirty();
     return frames_.add_overwrite(frame_number, index);
   }
 
   Span<int> sorted_keys()
   {
-    if (sorted_keys_cache_.is_empty() && frames_.size() > 0) {
-      sorted_keys_cache_.reserve(frames_.size());
-      for (int16_t key : frames_.keys()) {
-        sorted_keys_cache_.append(key);
+    sorted_keys_cache_.ensure([&](Vector<int> &r_data) {
+      r_data.reserve(frames_.size());
+      for (int64_t key : frames_.keys()) {
+        r_data.append(key);
       }
-      std::sort(sorted_keys_cache_.begin(), sorted_keys_cache_.end());
-    }
-    return sorted_keys_cache_.as_span();
+      std::sort(r_data.begin(), r_data.end());
+    });
+    return sorted_keys_cache_.data().as_span();
   }
 
   void save_to_storage(GreasePencilLayerTreeNode **dst)
@@ -334,6 +335,28 @@ class Layer : public TreeNode, ::GreasePencilLayer {
     for (int i = 0; i < node.frames_storage.size; i++) {
       this->frames_.add(node.frames_storage.keys[i], node.frames_storage.values[i]);
     }
+  }
+
+  /**
+   * Return the index of the drawing at frame \a frame or -1 if there is no drawing.
+   */
+  int drawing_at(int frame)
+  {
+    Span<int> sorted_keys = this->sorted_keys();
+    /* Before the first drawing, return no drawing. */
+    if (frame < sorted_keys.first()) {
+      return -1;
+    }
+    /* After or at the last drawing, return the last drawing. */
+    if (frame >= sorted_keys.last()) {
+      return frames().lookup(sorted_keys.last());
+    }
+    /* Search for the drawing. upper_bound will get the drawing just after. */
+    auto it = std::upper_bound(sorted_keys.begin(), sorted_keys.end(), frame);
+    if (it == sorted_keys.end() || it == sorted_keys.begin()) {
+      return -1;
+    }
+    return frames().lookup(*std::prev(it));
   }
 };
 

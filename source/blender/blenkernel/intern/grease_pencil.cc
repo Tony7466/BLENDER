@@ -412,10 +412,10 @@ void GreasePencil::foreach_visible_drawing(
       continue;
     }
     Layer &layer = node.as_layer();
-    if (!layer.frames().contains(frame)) {
+    int index = layer.drawing_at(frame);
+    if (index == -1) {
       continue;
     }
-    int index = layer.frames().lookup(frame);
     GreasePencilDrawingOrReference *drawing_or_reference = drawings[index];
     if (drawing_or_reference->type == GREASE_PENCIL_DRAWING) {
       GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_or_reference);
