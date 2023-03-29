@@ -841,21 +841,23 @@ struct Surfel {
   int next;
   /** Surface albedo to apply to incoming radiance. */
   packed_float3 albedo_front;
-  int _pad0;
+  int _pad3;
   packed_float3 albedo_back;
   /** Distance along the ray direction for sorting. */
   float ray_distance;
-  /** Reflected radiance from previous bounce. */
+  /** Surface  radiance. */
   packed_float3 radiance_front;
-  int _pad1;
+  int _pad4;
   packed_float3 radiance_back;
+  int _pad0;
+  /** Radiance from previous bounce. This is what is being scattered during a bounce. */
+  packed_float3 outgoing_light_front;
+  int _pad1;
+  packed_float3 outgoing_light_back;
   int _pad2;
-  /**
-   * Accumulated reflected radiance for the current bounce.
-   * Weight is stored in the fourth component.
-   */
-  float4 radiance_bounce_front;
-  float4 radiance_bounce_back;
+  /** Accumulated radiance for the current bounce. Weight is stored in the fourth component. */
+  float4 incomming_light_front;
+  float4 incomming_light_back;
 };
 BLI_STATIC_ASSERT_ALIGN(Surfel, 16)
 

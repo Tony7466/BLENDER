@@ -16,15 +16,15 @@
 void radiance_transfer(inout Surfel surfel, vec3 irradiance, vec3 L)
 {
   float NL = dot(surfel.normal, L);
-  /* Lambertian BSDF. */
-  vec3 bsdf = irradiance * M_1_PI;
+  /* Lambertian BSDF. Albedo applied later depending on which side of the surfel was hit. */
+  float bsdf = M_1_PI;
   /* Outgoing light. */
-  vec3 radiance = bsdf * abs(NL);
+  vec3 radiance = bsdf * irradiance * abs(NL);
   if (NL > 0.0) {
-    surfel.radiance_bounce_front += vec4(radiance, 1.0);
+    surfel.incomming_light_front += vec4(radiance * surfel.albedo_front, 1.0);
   }
   else {
-    surfel.radiance_bounce_back += vec4(radiance, 1.0);
+    surfel.incomming_light_back += vec4(radiance * surfel.albedo_back, 1.0);
   }
 }
 
@@ -32,7 +32,8 @@ void radiance_transfer(inout Surfel surfel, Surfel surfel_emitter)
 {
   vec3 L = safe_normalize(surfel_emitter.position - surfel.position);
   bool facing = dot(-L, surfel_emitter.normal) > 0.0;
-  vec3 irradiance = facing ? surfel_emitter.radiance_front : surfel_emitter.radiance_back;
+  vec3 irradiance = facing ? surfel_emitter.outgoing_light_front :
+                             surfel_emitter.outgoing_light_back;
 
   radiance_transfer(surfel, irradiance, L);
 }
@@ -64,6 +65,6 @@ void main()
     radiance_transfer(surfel, vec3(0.0), -sky_L);
   }
 
-  surfel_buf[surfel_index].radiance_bounce_front = surfel.radiance_bounce_front;
-  surfel_buf[surfel_index].radiance_bounce_back = surfel.radiance_bounce_back;
+  surfel_buf[surfel_index].incomming_light_front = surfel.incomming_light_front;
+  surfel_buf[surfel_index].incomming_light_back = surfel.incomming_light_back;
 }
