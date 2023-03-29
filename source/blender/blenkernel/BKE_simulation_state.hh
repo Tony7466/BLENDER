@@ -95,6 +95,13 @@ class ModifierSimulationCache {
         time, []() { return std::make_unique<ModifierSimulationState>(); });
   }
 
+  ModifierSimulationState &get_single_state_for_write(const float time)
+  {
+    states_by_time_.clear();
+    return *states_by_time_.lookup_or_add_cb(
+        time, []() { return std::make_unique<ModifierSimulationState>(); });
+  }
+
   std::pair<float, const ModifierSimulationState *> try_get_last_state_before(
       const float time) const
   {

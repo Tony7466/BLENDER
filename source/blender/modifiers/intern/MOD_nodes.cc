@@ -1216,37 +1216,84 @@ static GeometrySet compute_geometry(
   geo_nodes_modifier_data.self_object = ctx->object;
   auto eval_log = std::make_unique<GeoModifierLog>();
 
-  const float current_time = DEG_get_ctime(ctx->depsgraph);
-  if (DEG_is_active(ctx->depsgraph)) {
-    const Scene *scene = DEG_get_input_scene(ctx->depsgraph);
-    const int start_frame = scene->r.sfra;
+  /* TODO currently hardcoded to use realtime clock */
+  const eTimeSourceType time_source_type = eTimeSourceType::DEG_TIME_SOURCE_REALTIME;
+  switch (time_source_type) {
+    case eTimeSourceType::DEG_TIME_SOURCE_SCENE: {
+      const float current_frame = DEG_get_frame(ctx->depsgraph);
+      const float current_time = DEG_get_ctime(ctx->depsgraph);
+      if (DEG_is_active(ctx->depsgraph)) {
+        const Scene *scene = DEG_get_input_scene(ctx->depsgraph);
+        const int start_frame = scene->r.sfra;
 
-    if (nmd_orig->simulation_cache == nullptr) {
-      nmd_orig->simulation_cache = MEM_new<blender::bke::sim::ModifierSimulationCache>(__func__);
-    }
-    if (nmd_orig->simulation_cache->is_invalid() && current_time == start_frame) {
-      nmd_orig->simulation_cache->reset();
-    }
-    std::pair<float, const blender::bke::sim::ModifierSimulationState *> prev_sim_state =
-        nmd_orig->simulation_cache->try_get_last_state_before(current_time);
-    if (prev_sim_state.second != nullptr) {
-      geo_nodes_modifier_data.prev_simulation_state = prev_sim_state.second;
-      geo_nodes_modifier_data.simulation_time_delta = current_time - prev_sim_state.first;
-      if (geo_nodes_modifier_data.simulation_time_delta > 1.0f) {
-        nmd_orig->simulation_cache->invalidate();
+        if (nmd_orig->simulation_cache == nullptr) {
+          nmd_orig->simulation_cache = MEM_new<blender::bke::sim::ModifierSimulationCache>(
+              __func__);
+        }
+        if (nmd_orig->simulation_cache->is_invalid() && current_frame == start_frame) {
+          nmd_orig->simulation_cache->reset();
+        }
+        std::pair<float, const blender::bke::sim::ModifierSimulationState *> prev_sim_state =
+            nmd_orig->simulation_cache->try_get_last_state_before(current_time);
+        if (prev_sim_state.second != nullptr) {
+          geo_nodes_modifier_data.prev_simulation_state = prev_sim_state.second;
+          geo_nodes_modifier_data.simulation_time_delta = current_time - prev_sim_state.first;
+          if (geo_nodes_modifier_data.simulation_time_delta > 1.0f) {
+            nmd_orig->simulation_cache->invalidate();
+          }
+        }
+        geo_nodes_modifier_data.current_simulation_state_for_write =
+            &nmd_orig->simulation_cache->get_state_for_write(current_time);
+        geo_nodes_modifier_data.current_simulation_state =
+            geo_nodes_modifier_data.current_simulation_state_for_write;
       }
+      else {
+        /* TODO: Should probably only access baked data that is not modified in the original data
+         * anymore. */
+        if (nmd_orig->simulation_cache != nullptr) {
+          geo_nodes_modifier_data.current_simulation_state =
+              nmd_orig->simulation_cache->get_state_at_time(current_time);
+        }
+      }
+      break;
     }
-    geo_nodes_modifier_data.current_simulation_state_for_write =
-        &nmd_orig->simulation_cache->get_state_for_write(current_time);
-    geo_nodes_modifier_data.current_simulation_state =
-        geo_nodes_modifier_data.current_simulation_state_for_write;
-  }
-  else {
-    /* TODO: Should probably only access baked data that is not modified in the original data
-     * anymore. */
-    if (nmd_orig->simulation_cache != nullptr) {
-      geo_nodes_modifier_data.current_simulation_state =
-          nmd_orig->simulation_cache->get_state_at_time(current_time);
+    case eTimeSourceType::DEG_TIME_SOURCE_REALTIME: {
+      const float current_frame = DEG_get_frame_ex(ctx->depsgraph, eTimeSourceType::DEG_TIME_SOURCE_REALTIME);
+      const float current_time = DEG_get_ctime_ex(ctx->depsgraph, eTimeSourceType::DEG_TIME_SOURCE_REALTIME);
+      if (DEG_is_active(ctx->depsgraph)) {
+        if (nmd_orig->simulation_cache == nullptr) {
+          nmd_orig->simulation_cache = MEM_new<blender::bke::sim::ModifierSimulationCache>(
+              __func__);
+        }
+        /* For the realtime clock a frame value of 0.0f counts as "reset" */
+        if (nmd_orig->simulation_cache->is_invalid() && current_frame == 0.0f) {
+          nmd_orig->simulation_cache->reset();
+        }
+        std::pair<float, const blender::bke::sim::ModifierSimulationState *> prev_sim_state =
+            nmd_orig->simulation_cache->try_get_last_state_before(current_time);
+        if (prev_sim_state.second != nullptr) {
+          geo_nodes_modifier_data.prev_simulation_state = prev_sim_state.second;
+          geo_nodes_modifier_data.simulation_time_delta = current_time - prev_sim_state.first;
+          if (geo_nodes_modifier_data.simulation_time_delta > 1.0f) {
+            nmd_orig->simulation_cache->invalidate();
+          }
+        }
+        /* Replace the cache with a single new output state.
+         * Cache should only ever contain one frame for the realtime clock mode. */
+        geo_nodes_modifier_data.current_simulation_state_for_write =
+            &nmd_orig->simulation_cache->get_single_state_for_write(current_time);
+        geo_nodes_modifier_data.current_simulation_state =
+            geo_nodes_modifier_data.current_simulation_state_for_write;
+      }
+      else {
+        /* TODO: Should probably only access baked data that is not modified in the original data
+         * anymore. */
+        if (nmd_orig->simulation_cache != nullptr) {
+          geo_nodes_modifier_data.current_simulation_state =
+              nmd_orig->simulation_cache->get_state_at_time(current_time);
+        }
+      }
+      break;
     }
   }
 
