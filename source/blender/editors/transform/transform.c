@@ -1458,10 +1458,10 @@ static void drawAutoKeyWarning(TransInfo *UNUSED(t), ARegion *region)
       offset = U.gizmo_size_navigate_v3d;
       break;
     case USER_MINI_AXIS_TYPE_MINIMAL:
-      offset = U.gizmo_size_navigate_v3d;  // this part is wrong and should be changed
+      offset = U.rvisize * 1.2f;  // Scaled by 1.2 so it's not touching the gizmo
       break;
     case USER_MINI_AXIS_TYPE_NONE:
-      offset = 25;
+      offset = 25;  // Just a number that works based on empirical testing
       break;
   }
 
