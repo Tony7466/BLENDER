@@ -2,59 +2,39 @@
 /**
  * For every surfel, compute the incomming radiance from both side.
  * For that, walk the ray surfel linked-list and gather the light from the neighbor surfels.
+ * This shader is dispatched for a random ray in a uniform hemisphere as we evaluate the
+ * radiance in both directions.
  *
  * Dispatched as 1 thread per surfel.
  */
 
-#pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_base_lib.glsl)
+#pragma BLENDER_REQUIRE(common_view_lib.glsl)
+#pragma BLENDER_REQUIRE(common_math_lib.glsl)
 
-/**
- * Evaluate radiance transfer from `surfel_a` to `surfel_b`.
- * Assume ray direction is uniformly distributed over the sphere.
- * NOTE: In practice the ray is not evenly distributed but that's a by-product
- * of the surfel list method.
- *
- * Return radiance + pdf.
- */
-void radiance_transfer(Surfel surfel_a, inout Surfel surfel_b)
+void radiance_transfer(inout Surfel surfel, vec3 irradiance, vec3 L)
 {
-  vec3 L = normalize(surfel_a.position - surfel_b.position);
-  vec3 N = surfel_b.normal;
-  float NL = dot(N, L);
-  float pdf = abs(NL);
-  bool facing = dot(-L, surfel_a.normal) > 0.0;
-  vec3 irradiance = facing ? surfel_a.radiance_front : surfel_a.radiance_back;
-  irradiance *= M_1_PI;
-
+  float NL = dot(surfel.normal, L);
+  /* Lambertian BSDF. */
+  vec3 bsdf = irradiance * M_1_PI;
+  /* Outgoing light. */
+  vec3 radiance = bsdf * abs(NL);
   if (NL > 0.0) {
-    surfel_b.radiance_bounce_front += vec4(surfel_b.albedo_front * irradiance * pdf, pdf);
+    surfel.radiance_bounce_front += vec4(radiance, 1.0);
   }
   else {
-    surfel_b.radiance_bounce_back += vec4(surfel_b.albedo_back * irradiance * pdf, pdf);
+    surfel.radiance_bounce_back += vec4(radiance, 1.0);
   }
 }
 
-void sky_radiance(inout Surfel surfel)
+void radiance_transfer(inout Surfel surfel, Surfel surfel_emitter)
 {
-  vec3 L = cameraVec(surfel.position);
-  vec3 N = surfel.normal;
-  float NL = dot(N, L);
-  /* TODO(fclem): Sky cubemap sampling. */
-  vec3 Li = vec3(0.0);
-  /* Assume white albedo. */
-  // float pdf = M_1_PI;
-  float pdf = abs(NL);
+  vec3 L = safe_normalize(surfel_emitter.position - surfel.position);
+  bool facing = dot(-L, surfel_emitter.normal) > 0.0;
+  vec3 irradiance = facing ? surfel_emitter.radiance_front : surfel_emitter.radiance_back;
 
-  vec3 radiance = Li;
-
-  if (NL > 0.0) {
-    surfel.radiance_bounce_front += vec4(radiance * pdf, pdf);
-  }
-  else {
-    surfel.radiance_bounce_back += vec4(radiance * pdf, pdf);
-  }
+  radiance_transfer(surfel, irradiance, L);
 }
 
 void main()
@@ -66,21 +46,22 @@ void main()
 
   Surfel surfel = surfel_buf[surfel_index];
 
-  vec4 radiance_with_pdf = vec4(0.0);
+  vec3 sky_L = cameraVec(surfel.position);
+
   if (surfel.next > -1) {
-    Surfel next = surfel_buf[surfel.next];
-    radiance_transfer(next, surfel);
+    radiance_transfer(surfel, surfel_buf[surfel.next]);
   }
   else {
-    sky_radiance(surfel);
+    /* TODO(fclem): Sky radiance. */
+    radiance_transfer(surfel, vec3(0.0), sky_L);
   }
 
   if (surfel.prev > -1) {
-    Surfel prev = surfel_buf[surfel.prev];
-    radiance_transfer(prev, surfel);
+    radiance_transfer(surfel, surfel_buf[surfel.prev]);
   }
   else {
-    sky_radiance(surfel);
+    /* TODO(fclem): Sky radiance. */
+    radiance_transfer(surfel, vec3(0.0), -sky_L);
   }
 
   surfel_buf[surfel_index].radiance_bounce_front = surfel.radiance_bounce_front;
