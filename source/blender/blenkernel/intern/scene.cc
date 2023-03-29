@@ -2861,26 +2861,23 @@ void BKE_scene_graph_update_for_timestep_ex(Depsgraph *depsgraph,
   bool used_multiple_passes = false;
 
   /* Keep this first. */
-  switch (active_clock) {
-    case ANIMTIMER_ANIMATION:
-      BKE_callback_exec_id(bmain, &scene->id, BKE_CB_EVT_FRAME_CHANGE_PRE);
-      break;
-    case ANIMTIMER_REALTIME:
-      /* TODO callback for realtime clock updates */
-      break;
+  if (active_clock & ANIMTIMER_ANIMATION) {
+    BKE_callback_exec_id(bmain, &scene->id, BKE_CB_EVT_FRAME_CHANGE_PRE);
+  }
+  if (active_clock & ANIMTIMER_REALTIME) {
+    /* TODO callback for realtime clock updates */
   }
 
   for (int pass = 0; pass < 2; pass++) {
-    switch (active_clock) {
-      case ANIMTIMER_ANIMATION:
-        /* Update animated image textures for particles, modifiers, gpu, etc,
-         * call this at the start so modifiers with textures don't lag 1 frame.
-         */
-        BKE_image_editors_update_frame(bmain, scene->r.cfra);
-        BKE_sound_set_cfra(scene->r.cfra);
-        break;
-      case ANIMTIMER_REALTIME:
-        break;
+    if (active_clock & ANIMTIMER_ANIMATION) {
+      /* Update animated image textures for particles, modifiers, gpu, etc,
+       * call this at the start so modifiers with textures don't lag 1 frame.
+       */
+      BKE_image_editors_update_frame(bmain, scene->r.cfra);
+      BKE_sound_set_cfra(scene->r.cfra);
+    }
+    if (active_clock & ANIMTIMER_REALTIME) {
+      /* Nothing to do yet. */
     }
 
     DEG_graph_relations_update(depsgraph);
@@ -2901,13 +2898,11 @@ void BKE_scene_graph_update_for_timestep_ex(Depsgraph *depsgraph,
 
     /* Notify editors and python about recalc. */
     if (pass == 0) {
-      switch (active_clock) {
-        case ANIMTIMER_ANIMATION:
-          BKE_callback_exec_id_depsgraph(bmain, &scene->id, depsgraph, BKE_CB_EVT_FRAME_CHANGE_POST);
-          break;
-        case ANIMTIMER_REALTIME:
-          /* TODO callback for realtime clock updates */
-          break;
+      if (active_clock & ANIMTIMER_ANIMATION) {
+        BKE_callback_exec_id_depsgraph(bmain, &scene->id, depsgraph, BKE_CB_EVT_FRAME_CHANGE_POST);
+      }
+      if (active_clock & ANIMTIMER_REALTIME) {
+        /* TODO callback for realtime clock updates */
       }
 
       /* NOTE: Similar to this case in scene_graph_update_tagged(). Need to ensure that
