@@ -82,16 +82,17 @@ void DEG_evaluate_on_timestep(Depsgraph *graph, int active_clock)
 {
   deg::Depsgraph *deg_graph = reinterpret_cast<deg::Depsgraph *>(graph);
 
+  const Scene *scene = DEG_get_input_scene(graph);
   switch (active_clock) {
     case ANIMTIMER_ANIMATION: {
-      const Scene *scene = DEG_get_input_scene(graph);
       const float frame = BKE_scene_frame_get(scene);
       const float ctime = BKE_scene_ctime_get(scene);
       deg_graph->set_time(eTimeSourceType::DEG_TIME_SOURCE_SCENE, frame, ctime);
       break;
     }
     case ANIMTIMER_REALTIME:
-      deg_graph->tag_time_source(eTimeSourceType::DEG_TIME_SOURCE_REALTIME);
+      const float frame = BKE_scene_realtime_clock_get(scene);
+      deg_graph->set_time(eTimeSourceType::DEG_TIME_SOURCE_REALTIME, frame, frame);
       break;
   }
 
