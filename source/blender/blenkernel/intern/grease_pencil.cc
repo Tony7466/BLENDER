@@ -341,7 +341,7 @@ static void grease_pencil_drawing_calculate_fill_triangles(GreasePencilDrawing &
       mul_v2_m3v3(projverts[i], axis_mat.ptr(), positions[points[i]]);
     }
 
-    BLI_polyfill_calc_arena(projverts, tot_verts, 1, tris, pf_arena);
+    BLI_polyfill_calc_arena(projverts, tot_verts, 0, tris, pf_arena);
 
     for (const int i : IndexRange(tot_tris)) {
       drawing.runtime->triangles_cache.append(uint3(tris[i]));
