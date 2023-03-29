@@ -95,13 +95,6 @@ class ModifierSimulationCache {
         time, []() { return std::make_unique<ModifierSimulationState>(); });
   }
 
-  ModifierSimulationState &get_single_state_for_write(const float time)
-  {
-    states_by_time_.clear();
-    return *states_by_time_.lookup_or_add_cb(
-        time, []() { return std::make_unique<ModifierSimulationState>(); });
-  }
-
   std::pair<float, const ModifierSimulationState *> try_get_last_state_before(
       const float time) const
   {
@@ -129,6 +122,17 @@ class ModifierSimulationCache {
   void reset()
   {
     states_by_time_.clear();
+    invalid_ = false;
+  }
+
+  void prune(int max_states)
+  {
+    Vector<float> times(states_by_time_.keys().begin(), states_by_time_.keys().end());
+    std::sort(times.begin(), times.end());
+
+    for (const float key : times.as_span().drop_back(max_states)) {
+      states_by_time_.remove(key);
+    }
     invalid_ = false;
   }
 };

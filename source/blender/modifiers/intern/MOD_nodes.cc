@@ -1269,6 +1269,10 @@ static GeometrySet compute_geometry(
         if (nmd_orig->simulation_cache->is_invalid() && current_frame == 0.0f) {
           nmd_orig->simulation_cache->reset();
         }
+        else {
+          /* Realtime clock simulation runs indefinitely, so the cache just needs the last state. */
+          nmd_orig->simulation_cache->prune(1);
+        }
         std::pair<float, const blender::bke::sim::ModifierSimulationState *> prev_sim_state =
             nmd_orig->simulation_cache->try_get_last_state_before(current_time);
         if (prev_sim_state.second != nullptr) {
@@ -1281,7 +1285,7 @@ static GeometrySet compute_geometry(
         /* Replace the cache with a single new output state.
          * Cache should only ever contain one frame for the realtime clock mode. */
         geo_nodes_modifier_data.current_simulation_state_for_write =
-            &nmd_orig->simulation_cache->get_single_state_for_write(current_time);
+            &nmd_orig->simulation_cache->get_state_for_write(current_time);
         geo_nodes_modifier_data.current_simulation_state =
             geo_nodes_modifier_data.current_simulation_state_for_write;
       }
