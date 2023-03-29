@@ -60,7 +60,7 @@ Material *MeshData::material()
 
 pxr::HdMeshTopology MeshData::mesh_topology()
 {
-  return pxr::HdMeshTopology(pxr::PxOsdOpenSubdivTokens->catmullClark,
+  return pxr::HdMeshTopology(pxr::PxOsdOpenSubdivTokens->none,
                              pxr::HdTokens->rightHanded,
                              face_vertex_counts,
                              face_vertex_indices);
