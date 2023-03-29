@@ -439,13 +439,7 @@ static ParamHandle *construct_param_handle(const Scene *scene,
   ParamHandle *handle = blender::geometry::uv_parametrizer_construct_begin();
 
   if (options->correct_aspect) {
-    float aspx, aspy;
-
-    ED_uvedit_get_aspect(ob, &aspx, &aspy);
-
-    if (aspx != aspy) {
-      blender::geometry::uv_parametrizer_aspect_ratio(handle, aspx, aspy);
-    }
+    blender::geometry::uv_parametrizer_aspect_ratio(handle, ED_uvedit_get_aspect_y(ob));
   }
 
   /* we need the vert indices */
@@ -488,12 +482,7 @@ static ParamHandle *construct_param_handle_multi(const Scene *scene,
 
   if (options->correct_aspect) {
     Object *ob = objects[0];
-    float aspx, aspy;
-
-    ED_uvedit_get_aspect(ob, &aspx, &aspy);
-    if (aspx != aspy) {
-      blender::geometry::uv_parametrizer_aspect_ratio(handle, aspx, aspy);
-    }
+    blender::geometry::uv_parametrizer_aspect_ratio(handle, ED_uvedit_get_aspect_y(ob));
   }
 
   /* we need the vert indices */
@@ -616,13 +605,7 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
   ParamHandle *handle = blender::geometry::uv_parametrizer_construct_begin();
 
   if (options->correct_aspect) {
-    float aspx, aspy;
-
-    ED_uvedit_get_aspect(ob, &aspx, &aspy);
-
-    if (aspx != aspy) {
-      blender::geometry::uv_parametrizer_aspect_ratio(handle, aspx, aspy);
-    }
+    blender::geometry::uv_parametrizer_aspect_ratio(handle, ED_uvedit_get_aspect_y(ob));
   }
 
   /* number of subdivisions to perform */
@@ -1404,7 +1387,6 @@ static void uvedit_pack_islands_multi(const Scene *scene,
   for (int i = 0; i < island_vector.size(); i++) {
     FaceIsland *face_island = island_vector[i];
     blender::geometry::PackIsland *pack_island = new blender::geometry::PackIsland();
-    pack_island->bounds_rect = face_island->bounds_rect;
     pack_island->caller_index = i;
     pack_island->aspect_y = face_island->aspect_y;
     pack_island->angle = 0.0f;

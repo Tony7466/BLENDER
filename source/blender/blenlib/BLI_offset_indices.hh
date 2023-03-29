@@ -32,7 +32,7 @@ template<typename T> class OffsetIndices {
     BLI_assert(std::is_sorted(offsets_.begin(), offsets_.end()));
   }
 
-  /** Return the total number of elements in the the referenced arrays. */
+  /** Return the total number of elements in the referenced arrays. */
   T total_size() const
   {
     return offsets_.size() == 1 ? 0 : offsets_.last();
