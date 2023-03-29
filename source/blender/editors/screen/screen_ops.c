@@ -4911,6 +4911,15 @@ int ED_screen_realtime_clock_reset(bContext *C)
 
   BKE_scene_realtime_clock_set(scene, 0, 0.0f);
 
+  /* XXX This is ugly: The ND_REALTIME_CLOCK notifier should be enough to ensure a clock reset.
+   * Problem is that, if the clock is running while resetting, the clock increment can happen right
+   * after reset, and at the point of depsgraph update the clock value is already 1.
+   * Since cache invalidation is based on finding a clock time of 0 it will not be invalidated
+   * in that case. Doing an explicit depsgraph update ensures the cache is invalidated right away.
+   */
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+  DEG_evaluate_on_timestep(depsgraph, ANIMTIMER_REALTIME);
+
   WM_event_add_notifier(C, NC_SCENE | ND_REALTIME_CLOCK, scene);
 
   return OPERATOR_FINISHED;

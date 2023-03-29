@@ -1269,8 +1269,9 @@ static GeometrySet compute_geometry(
           nmd_orig->simulation_cache = MEM_new<blender::bke::sim::ModifierSimulationCache>(
               __func__);
         }
-        /* For the realtime clock a frame value of 0.0f counts as "reset" */
-        if (nmd_orig->simulation_cache->is_invalid() && current_frame == 0.0f) {
+        /* For the realtime clock a frame value of 0.0f counts as "reset".
+         * The cache is always "invalid", we never want to reuse old value except the previous frame. */
+        if (/*nmd_orig->simulation_cache->is_invalid() &&*/ current_frame == 0.0f) {
           nmd_orig->simulation_cache->reset();
         }
         else {
