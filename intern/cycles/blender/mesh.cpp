@@ -958,8 +958,10 @@ static void create_mesh(Scene *scene,
   const int *corner_verts = find_corner_vert_attribute(b_mesh);
   const int *material_indices = find_material_index_attribute(b_mesh);
   const bool *sharp_faces = find_sharp_face_attribute(b_mesh);
-  const float(*corner_normals)[3] = static_cast<const float(*)[3]>(
-      b_mesh.corner_normals[0].ptr.data);
+  const float(*corner_normals)[3] = nullptr;
+  if (use_loop_normals) {
+    corner_normals = static_cast<const float(*)[3]>(b_mesh.corner_normals[0].ptr.data);
+  }
 
   int numngons = 0;
   int numtris = 0;
@@ -989,7 +991,7 @@ static void create_mesh(Scene *scene,
   Attribute *attr_N = attributes.add(ATTR_STD_VERTEX_NORMAL);
   float3 *N = attr_N->data_float3();
 
-  if (subdivision || !use_loop_normals) {
+  if (!corner_normals) {
     const float(*b_vert_normals)[3] = static_cast<const float(*)[3]>(
         b_mesh.vertex_normals[0].ptr.data);
     for (int i = 0; i < numverts; i++) {
@@ -1045,7 +1047,7 @@ static void create_mesh(Scene *scene,
       std::fill(shader, shader + numtris, 0);
     }
 
-    if (sharp_faces && !use_loop_normals) {
+    if (sharp_faces && !corner_normals) {
       for (int i = 0; i < numtris; i++) {
         const int poly_index = looptris[i].poly;
         smooth[i] = !sharp_faces[poly_index];
@@ -1055,7 +1057,7 @@ static void create_mesh(Scene *scene,
       std::fill(smooth, smooth + numtris, true);
     }
 
-    if (use_loop_normals && corner_normals) {
+    if (corner_normals) {
       for (int i = 0; i < numtris; i++) {
         const MLoopTri &tri = looptris[i];
         for (int i = 0; i < 3; i++) {
@@ -1095,8 +1097,8 @@ static void create_mesh(Scene *scene,
       std::fill(subd_shader, subd_shader + numfaces, 0);
     }
 
-    int ptex_offset = 0;
     const MPoly *polys = static_cast<const MPoly *>(b_mesh.polygons[0].ptr.data);
+    int ptex_offset = 0;
     for (int i = 0; i < numfaces; i++) {
       const MPoly &b_poly = polys[i];
       subd_start_corner[i] = b_poly.loopstart;
