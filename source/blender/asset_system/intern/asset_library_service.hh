@@ -93,7 +93,13 @@ class AssetLibraryService {
    * asset. */
   std::string resolve_asset_weak_reference_to_library_path(
       const AssetWeakReference &asset_reference);
-  /* See #AS_asset_full_path_resolve_from_weak_ref(). */
+  /**
+   * Attempt to build a full path to an asset based on the currently available (not necessary
+   * loaded) asset libraries. The path is not guaranteed to exist. The returned path will be
+   * normalized and using native slashes.
+   *
+   * \note Only works for asset libraries on disk (others can't be resolved).
+   */
   std::string resolve_asset_weak_reference_to_full_path(const AssetWeakReference &asset_reference);
   /** Struct to hold results from path explosion functions
    * (#resolve_asset_weak_reference_to_exploded_path()). */
