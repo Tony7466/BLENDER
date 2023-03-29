@@ -140,7 +140,7 @@ static void select_cache_init(void *vedata)
   DRWState state = DRW_STATE_DEFAULT;
   state |= RV3D_CLIPPING_ENABLED(draw_ctx->v3d, draw_ctx->rv3d) ? DRW_STATE_CLIP_PLANES : 0;
 
-  bool retopology_occlusion = RETOPOLOGY_OCCLUSION(draw_ctx->v3d);
+  bool retopology_occlusion = RETOPOLOGY_ENABLED(draw_ctx->v3d) && !XRAY_ENABLED(draw_ctx->v3d);
   float retopology_offset = RETOPOLOGY_OFFSET(draw_ctx->v3d);
 
   {

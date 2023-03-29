@@ -1335,7 +1335,6 @@ void ED_view3d_shade_update(struct Main *bmain, struct View3D *v3d, struct ScrAr
 
 #define RETOPOLOGY_ENABLED(v3d) (OVERLAY_RETOPOLOGY_ENABLED((v3d)->overlay))
 #define RETOPOLOGY_OFFSET(v3d) (OVERLAY_RETOPOLOGY_OFFSET((v3d)->overlay))
-#define RETOPOLOGY_OCCLUSION(v3d) (RETOPOLOGY_ENABLED(v3d) && !XRAY_ENABLED(v3d))
 
 /* view3d_draw_legacy.c */
 
