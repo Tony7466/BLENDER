@@ -597,7 +597,9 @@ void MESH_OT_uv_texture_remove(wmOperatorType *ot)
 
 /* *** CustomData clear functions, we need an operator for each *** */
 
-static int mesh_customdata_clear_exec__internal(bContext *C, char htype, int type)
+static int mesh_customdata_clear_exec__internal(bContext *C,
+                                                char htype,
+                                                const eCustomDataType type)
 {
   Mesh *me = ED_mesh_context(C);
 
@@ -622,7 +624,7 @@ static int mesh_customdata_clear_exec__internal(bContext *C, char htype, int typ
   return OPERATOR_CANCELLED;
 }
 
-static int mesh_customdata_add_exec__internal(bContext *C, char htype, int type)
+static int mesh_customdata_add_exec__internal(bContext *C, char htype, const eCustomDataType type)
 {
   Mesh *mesh = ED_mesh_context(C);
 
