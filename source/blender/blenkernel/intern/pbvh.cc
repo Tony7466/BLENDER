@@ -833,7 +833,10 @@ void BKE_pbvh_update_mesh_pointers(PBVH *pbvh, Mesh *mesh)
 
   pbvh->polys = mesh->polys().data();
   pbvh->corner_verts = mesh->corner_verts().data();
-  pbvh->vert_positions = BKE_mesh_vert_positions_for_write(mesh);
+  if (!pbvh->deformed) {
+    /* If it was deformed, a new array is allocated. */
+    pbvh->vert_positions = BKE_mesh_vert_positions_for_write(mesh);
+  }
 
   pbvh->material_indices = static_cast<const int *>(
       CustomData_get_layer_named(&mesh->pdata, CD_PROP_INT32, "material_index"));
