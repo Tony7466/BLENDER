@@ -52,9 +52,7 @@ class PinchOperation : public CurvesSculptStrokeOperation {
   friend struct PinchOperationExecutor;
 
  public:
-  PinchOperation(const bool invert_pinch) : invert_pinch_(invert_pinch)
-  {
-  }
+  PinchOperation(const bool invert_pinch) : invert_pinch_(invert_pinch) {}
 
   void on_stroke_extended(const bContext &C, const StrokeExtension &stroke_extension) override;
 };
@@ -83,9 +81,7 @@ struct PinchOperationExecutor {
 
   float2 brush_pos_re_;
 
-  PinchOperationExecutor(const bContext &C) : ctx_(C)
-  {
-  }
+  PinchOperationExecutor(const bContext &C) : ctx_(C) {}
 
   void execute(PinchOperation &self, const bContext &C, const StrokeExtension &stroke_extension)
   {

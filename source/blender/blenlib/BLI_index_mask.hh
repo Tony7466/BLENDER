@@ -21,9 +21,7 @@ namespace blender {
 struct GrainSize {
   int64_t value;
 
-  explicit GrainSize(const int64_t grain_size) : value(grain_size)
-  {
-  }
+  explicit GrainSize(const int64_t grain_size) : value(grain_size) {}
 };
 
 template<typename T> class VArray;
@@ -100,25 +98,19 @@ struct Expr {
   };
   Type type;
 
-  Expr(const Type type) : type(type)
-  {
-  }
+  Expr(const Type type) : type(type) {}
 };
 
 struct AtomicExpr : public Expr {
   const IndexMask *mask;
 
-  AtomicExpr(const IndexMask &mask) : Expr(Type::Atomic), mask(&mask)
-  {
-  }
+  AtomicExpr(const IndexMask &mask) : Expr(Type::Atomic), mask(&mask) {}
 };
 
 struct UnionExpr : public Expr {
   Vector<const Expr *> children;
 
-  UnionExpr(Vector<const Expr *> children) : Expr(Type::Union), children(std::move(children))
-  {
-  }
+  UnionExpr(Vector<const Expr *> children) : Expr(Type::Union), children(std::move(children)) {}
 };
 
 struct DifferenceExpr : public Expr {
@@ -134,9 +126,7 @@ struct DifferenceExpr : public Expr {
 struct ComplementExpr : public Expr {
   const Expr *base = nullptr;
 
-  ComplementExpr(const Expr &base) : Expr(Type::Complement), base(&base)
-  {
-  }
+  ComplementExpr(const Expr &base) : Expr(Type::Complement), base(&base) {}
 };
 
 struct IntersectionExpr : public Expr {
