@@ -103,6 +103,21 @@ eEvaluationMode DEG_get_mode(const Depsgraph *graph)
   return deg_graph->mode;
 }
 
+float DEG_get_frame_ex(const Depsgraph *graph, eTimeSourceType source_type)
+{
+  const deg::Depsgraph *deg_graph = reinterpret_cast<const deg::Depsgraph *>(graph);
+  deg::TimeSourceNode *time_source = deg_graph->find_time_source(source_type);
+  if (time_source) {
+    return time_source->frame;
+  }
+  return 0.0f;
+}
+
+float DEG_get_frame(const Depsgraph *graph)
+{
+  return DEG_get_frame_ex(graph, eTimeSourceType::DEG_TIME_SOURCE_SCENE);
+}
+
 float DEG_get_ctime_ex(const Depsgraph *graph, eTimeSourceType source_type)
 {
   const deg::Depsgraph *deg_graph = reinterpret_cast<const deg::Depsgraph *>(graph);

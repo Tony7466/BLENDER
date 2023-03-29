@@ -49,6 +49,10 @@ struct Main *DEG_get_bmain(const Depsgraph *graph);
 /** Get evaluation mode that depsgraph was built for. */
 eEvaluationMode DEG_get_mode(const Depsgraph *graph);
 
+/** Get frame that depsgraph is being evaluated or was last evaluated at. */
+float DEG_get_frame_ex(const Depsgraph *graph, eTimeSourceType source_type);
+/** Get frame that depsgraph is being evaluated or was last evaluated at. */
+float DEG_get_frame(const Depsgraph *graph);
 /** Get time that depsgraph is being evaluated or was last evaluated at. */
 float DEG_get_ctime_ex(const Depsgraph *graph, eTimeSourceType source_type);
 /** Get time that depsgraph is being evaluated or was last evaluated at. */
