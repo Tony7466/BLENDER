@@ -12,6 +12,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_array.hh"
+#include "BLI_hash.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_multi_value_map.hh"
@@ -145,38 +146,80 @@ static void initData(ModifierData *md)
   MEMCPY_STRUCT_AFTER(nmd, DNA_struct_default_get(NodesModifierData), modifier);
 }
 
-static void add_used_ids_from_sockets(const ListBase &sockets, Set<ID *> &ids)
+enum eNodeModifierIDRelation : int8_t {
+  OBJECT_GEOMETRY = 1 << 0,
+  OBJECT_TRANSFORM = 1 << 1,
+  OBJECT_LAYERS = 1 << 2,
+  COLLECTION = 1 << 3,
+  CURVES = 1 << 4,
+  ALL = ~0,
+};
+
+/*
+template<class T> inline T operator~ (T a) { return (T)~(int)a; }
+template<class T> inline T operator| (T a, T b) { return (T)((int)a | (int)b); }
+template<class T> inline T operator& (T a, T b) { return (T)((int)a & (int)b); }
+template<class T> inline T operator^ (T a, T b) { return (T)((int)a ^ (int)b); }
+template<class T> inline T& operator&= (T& a, T b) { return (T&)((int&)a &= (int)b); }
+template<class T> inline T& operator^= (T& a, T b) { return (T&)((int&)a ^= (int)b); }
+*/
+template<class T> inline T &operator|=(T &a, T b)
+{
+  return (T &)((int8_t &)a |= (int8_t)b);
+}
+
+struct IDRelation {
+  ID *id;
+  eNodeModifierIDRelation flag;
+
+  uint64_t hash() const
+  {
+    return blender::get_default_hash_2(id, flag);
+  }
+
+  bool operator==(const IDRelation &other) const
+  {
+    return (this->id == other.id) && (this->flag == other.flag);
+  }
+};
+
+static void add_used_ids_from_sockets(const ListBase &sockets, Set<IDRelation> &ids)
 {
   LISTBASE_FOREACH (const bNodeSocket *, socket, &sockets) {
     switch (socket->type) {
       case SOCK_OBJECT: {
         if (Object *object = ((bNodeSocketValueObject *)socket->default_value)->value) {
-          ids.add(&object->id);
+          IDRelation relation{&object->id, ALL};
+          ids.add(relation);
         }
         break;
       }
       case SOCK_COLLECTION: {
         if (Collection *collection =
                 ((bNodeSocketValueCollection *)socket->default_value)->value) {
-          ids.add(&collection->id);
+          IDRelation relation{&collection->id, ALL};
+          ids.add(relation);
         }
         break;
       }
       case SOCK_MATERIAL: {
         if (Material *material = ((bNodeSocketValueMaterial *)socket->default_value)->value) {
-          ids.add(&material->id);
+          IDRelation relation{&material->id, ALL};
+          ids.add(relation);
         }
         break;
       }
       case SOCK_TEXTURE: {
         if (Tex *texture = ((bNodeSocketValueTexture *)socket->default_value)->value) {
-          ids.add(&texture->id);
+          IDRelation relation{&texture->id, ALL};
+          ids.add(relation);
         }
         break;
       }
       case SOCK_IMAGE: {
         if (Image *image = ((bNodeSocketValueImage *)socket->default_value)->value) {
-          ids.add(&image->id);
+          IDRelation relation{&image->id, ALL};
+          ids.add(relation);
         }
         break;
       }
@@ -190,60 +233,92 @@ static void add_used_ids_from_sockets(const ListBase &sockets, Set<ID *> &ids)
  * more properties like whether the node is muted, but we would have to accept the cost of updating
  * relations when those properties are changed.
  */
-static bool node_needs_own_transform_relation(const bNode &node)
-{
-  if (node.type == GEO_NODE_COLLECTION_INFO) {
-    const NodeGeometryCollectionInfo &storage = *static_cast<const NodeGeometryCollectionInfo *>(
-        node.storage);
-    return storage.transform_space == GEO_NODE_TRANSFORM_SPACE_RELATIVE;
-  }
-
-  if (node.type == GEO_NODE_OBJECT_INFO) {
-    const NodeGeometryObjectInfo &storage = *static_cast<const NodeGeometryObjectInfo *>(
-        node.storage);
-    return storage.transform_space == GEO_NODE_TRANSFORM_SPACE_RELATIVE;
-  }
-
-  if (node.type == GEO_NODE_SELF_OBJECT) {
-    return true;
-  }
-  if (node.type == GEO_NODE_DEFORM_CURVES_ON_SURFACE) {
-    return true;
-  }
-
-  return false;
-}
-
 static void process_nodes_for_depsgraph(const bNodeTree &tree,
-                                        Set<ID *> &ids,
+                                        Set<IDRelation> &ids,
                                         bool &r_needs_own_transform_relation)
 {
   Set<const bNodeTree *> handled_groups;
 
   LISTBASE_FOREACH (const bNode *, node, &tree.nodes) {
-    add_used_ids_from_sockets(node->inputs, ids);
-    add_used_ids_from_sockets(node->outputs, ids);
-
-    if (ELEM(node->type, NODE_GROUP, NODE_CUSTOM_GROUP)) {
-      const bNodeTree *group = (bNodeTree *)node->id;
-      if (group != nullptr && handled_groups.add(group)) {
-        process_nodes_for_depsgraph(*group, ids, r_needs_own_transform_relation);
+    switch (node->type) {
+      case (NODE_GROUP):
+      case (NODE_CUSTOM_GROUP): {
+        const bNodeTree *group = (bNodeTree *)node->id;
+        if (group != nullptr && handled_groups.add(group)) {
+          process_nodes_for_depsgraph(*group, ids, r_needs_own_transform_relation);
+        }
+        add_used_ids_from_sockets(node->inputs, ids);
+        add_used_ids_from_sockets(node->outputs, ids);
+        break;
+      }
+      case (GEO_NODE_COLLECTION_INFO): {
+        const NodeGeometryCollectionInfo &storage =
+            *static_cast<const NodeGeometryCollectionInfo *>(node->storage);
+        const bool own_transform_relation = storage.transform_space ==
+                                            GEO_NODE_TRANSFORM_SPACE_RELATIVE;
+        bNodeSocket *collection_socket = nodeFindSocket(node, SOCK_IN, "Collection");
+        BLI_assert(collection_socket);
+        Collection *collection =
+            collection_socket->default_value_typed<bNodeSocketValueCollection>()->value;
+        if (collection == nullptr) {
+          break;
+        }
+        IDRelation relation{&collection->id, OBJECT_GEOMETRY};
+        if (own_transform_relation) {
+          relation.flag |= OBJECT_TRANSFORM;
+          r_needs_own_transform_relation = true;
+        }
+        ids.add(relation);
+        break;
+      }
+      case (GEO_NODE_OBJECT_INFO): {
+        const NodeGeometryObjectInfo &storage = *static_cast<const NodeGeometryObjectInfo *>(
+            node->storage);
+        const bool own_transform_relation = storage.transform_space ==
+                                            GEO_NODE_TRANSFORM_SPACE_RELATIVE;
+        bNodeSocket *object_socket = nodeFindSocket(node, SOCK_IN, "Object");
+        BLI_assert(object_socket);
+        Object *object = object_socket->default_value_typed<bNodeSocketValueObject>()->value;
+        if (object == nullptr) {
+          break;
+        }
+        IDRelation relation{&object->id, OBJECT_GEOMETRY};
+        if (own_transform_relation) {
+          relation.flag |= OBJECT_TRANSFORM;
+          r_needs_own_transform_relation = true;
+        }
+        ids.add(relation);
+        break;
+      }
+      case (GEO_NODE_SELF_OBJECT): {
+        r_needs_own_transform_relation = true;
+        break;
+      }
+      case (GEO_NODE_DEFORM_CURVES_ON_SURFACE): {
+        r_needs_own_transform_relation = true;
+        break;
+      }
+      default: {
+        add_used_ids_from_sockets(node->inputs, ids);
+        add_used_ids_from_sockets(node->outputs, ids);
+        break;
       }
     }
-    r_needs_own_transform_relation |= node_needs_own_transform_relation(*node);
   }
 }
 
-static void find_used_ids_from_settings(const NodesModifierSettings &settings, Set<ID *> &ids)
+static void find_used_ids_from_settings(const NodesModifierSettings &settings,
+                                        Set<IDRelation> &ids)
 {
   IDP_foreach_property(
       settings.properties,
       IDP_TYPE_FILTER_ID,
       [](IDProperty *property, void *user_data) {
-        Set<ID *> *ids = (Set<ID *> *)user_data;
+        Set<IDRelation> *ids = (Set<IDRelation> *)user_data;
         ID *id = IDP_Id(property);
         if (id != nullptr) {
-          ids->add(id);
+          IDRelation relation{id, ALL};
+          ids->add(relation);
         }
       },
       &ids);
@@ -257,23 +332,33 @@ static const CustomData_MeshMasks dependency_data_mask{CD_MASK_PROP_ALL | CD_MAS
                                                        CD_MASK_PROP_ALL};
 
 static void add_collection_relation(const ModifierUpdateDepsgraphContext *ctx,
-                                    Collection &collection)
+                                    const IDRelation &collection_relation)
 {
-  DEG_add_collection_geometry_relation(ctx->node, &collection, "Nodes Modifier");
-  DEG_add_collection_geometry_customdata_mask(ctx->node, &collection, &dependency_data_mask);
+  Collection *collection = reinterpret_cast<Collection *>(collection_relation.id);
+  DEG_add_collection_geometry_relation(ctx->node, collection, "Nodes Modifier");
+  DEG_add_collection_geometry_customdata_mask(ctx->node, collection, &dependency_data_mask);
 }
 
-static void add_object_relation(const ModifierUpdateDepsgraphContext *ctx, Object &object)
+static void add_object_relation(const ModifierUpdateDepsgraphContext *ctx,
+                                const IDRelation &object_relation)
 {
-  DEG_add_object_relation(ctx->node, &object, DEG_OB_COMP_TRANSFORM, "Nodes Modifier");
-  if (&(ID &)object != &ctx->object->id) {
-    if (object.type == OB_EMPTY && object.instance_collection != nullptr) {
-      add_collection_relation(ctx, *object.instance_collection);
-    }
-    else if (DEG_object_has_geometry_component(&object)) {
-      DEG_add_object_relation(ctx->node, &object, DEG_OB_COMP_GEOMETRY, "Nodes Modifier");
-      DEG_add_customdata_mask(ctx->node, &object, &dependency_data_mask);
-    }
+  Object &object = *reinterpret_cast<Object *>(object_relation.id);
+
+  if (&(ID &)object == &ctx->object->id) {
+    return;
+  }
+
+  if (object_relation.flag & OBJECT_TRANSFORM) {
+    DEG_add_object_relation(ctx->node, &object, DEG_OB_COMP_TRANSFORM, "Nodes Modifier");
+  }
+
+  if (object.type == OB_EMPTY && object.instance_collection != nullptr) {
+    add_collection_relation(ctx, object_relation);
+    return;
+  }
+  if (DEG_object_has_geometry_component(&object)) {
+    DEG_add_object_relation(ctx->node, &object, DEG_OB_COMP_GEOMETRY, "Nodes Modifier");
+    DEG_add_customdata_mask(ctx->node, &object, &dependency_data_mask);
   }
 }
 
@@ -287,32 +372,31 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
   DEG_add_node_tree_output_relation(ctx->node, nmd->node_group, "Nodes Modifier");
 
   bool needs_own_transform_relation = false;
-  Set<ID *> used_ids;
+  Set<IDRelation> used_ids;
   find_used_ids_from_settings(nmd->settings, used_ids);
   process_nodes_for_depsgraph(*nmd->node_group, used_ids, needs_own_transform_relation);
 
   if (ctx->object->type == OB_CURVES) {
     Curves *curves_id = static_cast<Curves *>(ctx->object->data);
     if (curves_id->surface != nullptr) {
-      used_ids.add(&curves_id->surface->id);
+      IDRelation relation{&curves_id->surface->id, CURVES};
+      used_ids.add(relation);
     }
   }
 
-  for (ID *id : used_ids) {
-    switch ((ID_Type)GS(id->name)) {
+  for (const IDRelation &id_relation : used_ids) {
+    switch ((ID_Type)GS(id_relation.id->name)) {
       case ID_OB: {
-        Object *object = reinterpret_cast<Object *>(id);
-        add_object_relation(ctx, *object);
+        add_object_relation(ctx, id_relation);
         break;
       }
       case ID_GR: {
-        Collection *collection = reinterpret_cast<Collection *>(id);
-        add_collection_relation(ctx, *collection);
+        add_collection_relation(ctx, id_relation);
         break;
       }
       case ID_IM:
       case ID_TE: {
-        DEG_add_generic_id_relation(ctx->node, id, "Nodes Modifier");
+        DEG_add_generic_id_relation(ctx->node, id_relation.id, "Nodes Modifier");
         break;
       }
       default: {
