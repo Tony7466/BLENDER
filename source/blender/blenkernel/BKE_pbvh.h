@@ -287,6 +287,7 @@ PBVH *BKE_pbvh_new(PBVHType type);
  * (which means it may rewrite it if needed, see #BKE_pbvh_vert_coords_apply().
  */
 void BKE_pbvh_build_mesh(PBVH *pbvh, struct Mesh *mesh);
+void BKE_pbvh_update_mesh_pointers(PBVH *pbvh, struct Mesh *mesh);
 /**
  * Do a full rebuild with on Grids data structure.
  */

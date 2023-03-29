@@ -827,6 +827,30 @@ static void pbvh_validate_node_prims(PBVH *pbvh)
 }
 #endif
 
+void BKE_pbvh_update_mesh_pointers(PBVH *pbvh, Mesh *mesh)
+{
+  BLI_assert(pbvh->header.type == PBVH_FACES);
+
+  pbvh->polys = mesh->polys().data();
+  pbvh->corner_verts = mesh->corner_verts().data();
+  pbvh->vert_positions = BKE_mesh_vert_positions_for_write(mesh);
+
+  pbvh->material_indices = static_cast<const int *>(
+      CustomData_get_layer_named(&mesh->pdata, CD_PROP_INT32, "material_index"));
+  pbvh->hide_poly = static_cast<bool *>(CustomData_get_layer_named_for_write(
+      &mesh->pdata, CD_PROP_BOOL, ".hide_poly", mesh->totpoly));
+  pbvh->hide_vert = static_cast<bool *>(CustomData_get_layer_named_for_write(
+      &mesh->vdata, CD_PROP_BOOL, ".hide_vert", mesh->totvert));
+
+  /* Make sure cached normals start out calculated. */
+  mesh->vert_normals();
+  pbvh->vert_normals = BKE_mesh_vert_normals_for_write(mesh);
+
+  pbvh->vdata = &mesh->vdata;
+  pbvh->ldata = &mesh->ldata;
+  pbvh->pdata = &mesh->pdata;
+}
+
 void BKE_pbvh_build_mesh(PBVH *pbvh, Mesh *mesh)
 {
   BBC *prim_bbc = nullptr;
@@ -844,19 +868,12 @@ void BKE_pbvh_build_mesh(PBVH *pbvh, Mesh *mesh)
 
   pbvh->mesh = mesh;
   pbvh->header.type = PBVH_FACES;
-  pbvh->polys = polys.data();
-  pbvh->hide_poly = static_cast<bool *>(CustomData_get_layer_named_for_write(
-      &mesh->pdata, CD_PROP_BOOL, ".hide_poly", mesh->totpoly));
-  pbvh->material_indices = static_cast<const int *>(
-      CustomData_get_layer_named(&mesh->pdata, CD_PROP_INT32, "material_index"));
-  pbvh->corner_verts = corner_verts.data();
+
+  BKE_pbvh_update_mesh_pointers(pbvh, mesh);
+
+  /* Those are not set in #BKE_pbvh_update_mesh_pointers because they are owned by the #PBVH. */
   pbvh->looptri = looptri;
-  pbvh->vert_positions = reinterpret_cast<float(*)[3]>(positions.data());
-  /* Make sure cached normals start out calculated. */
-  mesh->vert_normals();
-  pbvh->vert_normals = BKE_mesh_vert_normals_for_write(mesh);
-  pbvh->hide_vert = static_cast<bool *>(CustomData_get_layer_named_for_write(
-      &mesh->vdata, CD_PROP_BOOL, ".hide_vert", mesh->totvert));
+
   pbvh->vert_bitmap = static_cast<bool *>(
       MEM_calloc_arrayN(mesh->totvert, sizeof(bool), "bvh->vert_bitmap"));
   pbvh->totvert = mesh->totvert;
@@ -870,9 +887,6 @@ void BKE_pbvh_build_mesh(PBVH *pbvh, Mesh *mesh)
   pbvh->leaf_limit = LEAF_LIMIT;
 #endif
 
-  pbvh->vdata = &mesh->vdata;
-  pbvh->ldata = &mesh->ldata;
-  pbvh->pdata = &mesh->pdata;
   pbvh->faces_num = mesh->totpoly;
 
   pbvh->face_sets_color_seed = mesh->face_sets_color_seed;
