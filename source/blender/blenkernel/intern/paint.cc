@@ -2182,27 +2182,11 @@ static PBVH *build_pbvh_for_dynamic_topology(Object *ob)
 static PBVH *build_pbvh_from_regular_mesh(Object *ob, Mesh *me_eval_deform, bool respect_hide)
 {
   Mesh *me = BKE_object_get_original_mesh(ob);
-  const int looptris_num = poly_to_tri_count(me->totpoly, me->totloop);
+
   PBVH *pbvh = BKE_pbvh_new(PBVH_FACES);
   BKE_pbvh_respect_hide_set(pbvh, respect_hide);
 
-  MutableSpan<float3> positions = me->vert_positions_for_write();
-  const Span<MPoly> polys = me->polys();
-  const Span<int> corner_verts = me->corner_verts();
-
-  MLoopTri *looptri = static_cast<MLoopTri *>(
-      MEM_malloc_arrayN(looptris_num, sizeof(*looptri), __func__));
-
-  blender::bke::mesh::looptris_calc(positions, polys, corner_verts, {looptri, looptris_num});
-
-  BKE_pbvh_build_mesh(pbvh,
-                      me,
-                      polys.data(),
-                      corner_verts.data(),
-                      reinterpret_cast<float(*)[3]>(positions.data()),
-                      me->totvert,
-                      looptri,
-                      looptris_num);
+  BKE_pbvh_build_mesh(pbvh, me);
 
   const bool is_deformed = check_sculpt_object_deformed(ob, true);
   if (is_deformed && me_eval_deform != nullptr) {

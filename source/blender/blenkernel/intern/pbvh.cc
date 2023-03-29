@@ -36,6 +36,10 @@
 
 #include "pbvh_intern.hh"
 
+using blender::float3;
+using blender::MutableSpan;
+using blender::Span;
+
 #define LEAF_LIMIT 10000
 
 /* Uncomment to test if triangles of the same face are
@@ -823,36 +827,39 @@ static void pbvh_validate_node_prims(PBVH *pbvh)
 }
 #endif
 
-void BKE_pbvh_build_mesh(PBVH *pbvh,
-                         Mesh *mesh,
-                         const MPoly *polys,
-                         const int *corner_verts,
-                         float (*vert_positions)[3],
-                         int totvert,
-                         const MLoopTri *looptri,
-                         int looptri_num)
+void BKE_pbvh_build_mesh(PBVH *pbvh, Mesh *mesh)
 {
   BBC *prim_bbc = nullptr;
   BB cb;
 
+  const int looptri_num = poly_to_tri_count(mesh->totpoly, mesh->totloop);
+  MutableSpan<float3> positions = mesh->vert_positions_for_write();
+  const Span<MPoly> polys = mesh->polys();
+  const Span<int> corner_verts = mesh->corner_verts();
+
+  MLoopTri *looptri = static_cast<MLoopTri *>(
+      MEM_malloc_arrayN(looptri_num, sizeof(*looptri), __func__));
+
+  blender::bke::mesh::looptris_calc(positions, polys, corner_verts, {looptri, looptri_num});
+
   pbvh->mesh = mesh;
   pbvh->header.type = PBVH_FACES;
-  pbvh->polys = polys;
+  pbvh->polys = polys.data();
   pbvh->hide_poly = static_cast<bool *>(CustomData_get_layer_named_for_write(
       &mesh->pdata, CD_PROP_BOOL, ".hide_poly", mesh->totpoly));
   pbvh->material_indices = static_cast<const int *>(
       CustomData_get_layer_named(&mesh->pdata, CD_PROP_INT32, "material_index"));
-  pbvh->corner_verts = corner_verts;
+  pbvh->corner_verts = corner_verts.data();
   pbvh->looptri = looptri;
-  pbvh->vert_positions = vert_positions;
+  pbvh->vert_positions = reinterpret_cast<float(*)[3]>(positions.data());
   /* Make sure cached normals start out calculated. */
   mesh->vert_normals();
   pbvh->vert_normals = BKE_mesh_vert_normals_for_write(mesh);
   pbvh->hide_vert = static_cast<bool *>(CustomData_get_layer_named_for_write(
       &mesh->vdata, CD_PROP_BOOL, ".hide_vert", mesh->totvert));
   pbvh->vert_bitmap = static_cast<bool *>(
-      MEM_calloc_arrayN(totvert, sizeof(bool), "bvh->vert_bitmap"));
-  pbvh->totvert = totvert;
+      MEM_calloc_arrayN(mesh->totvert, sizeof(bool), "bvh->vert_bitmap"));
+  pbvh->totvert = mesh->totvert;
 
 #ifdef TEST_PBVH_FACE_SPLIT
   /* Use lower limit to increase probability of
@@ -884,7 +891,7 @@ void BKE_pbvh_build_mesh(PBVH *pbvh,
     BB_reset((BB *)bbc);
 
     for (int j = 0; j < sides; j++) {
-      BB_expand((BB *)bbc, vert_positions[pbvh->corner_verts[lt->tri[j]]]);
+      BB_expand((BB *)bbc, positions[pbvh->corner_verts[lt->tri[j]]]);
     }
 
     BBC_update_centroid(bbc);
@@ -905,7 +912,7 @@ void BKE_pbvh_build_mesh(PBVH *pbvh,
   MEM_freeN(prim_bbc);
 
   /* Clear the bitmap so it can be used as an update tag later on. */
-  memset(pbvh->vert_bitmap, 0, sizeof(bool) * totvert);
+  memset(pbvh->vert_bitmap, 0, sizeof(bool) * mesh->totvert);
 
   BKE_pbvh_update_active_vcol(pbvh, mesh);
 
