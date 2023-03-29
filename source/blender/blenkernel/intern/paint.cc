@@ -2201,9 +2201,6 @@ static PBVH *build_pbvh_from_regular_mesh(Object *ob, Mesh *me_eval_deform, bool
                       corner_verts.data(),
                       reinterpret_cast<float(*)[3]>(positions.data()),
                       me->totvert,
-                      &me->vdata,
-                      &me->ldata,
-                      &me->pdata,
                       looptri,
                       looptris_num);
 

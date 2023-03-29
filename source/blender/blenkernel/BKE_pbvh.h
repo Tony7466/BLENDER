@@ -292,9 +292,6 @@ void BKE_pbvh_build_mesh(PBVH *pbvh,
                          const int *corner_verts,
                          float (*vert_positions)[3],
                          int totvert,
-                         struct CustomData *vdata,
-                         struct CustomData *ldata,
-                         struct CustomData *pdata,
                          const struct MLoopTri *looptri,
                          int looptri_num);
 /**
