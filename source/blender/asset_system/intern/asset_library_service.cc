@@ -333,7 +333,10 @@ std::string AssetLibraryService::normalize_asset_weak_reference_relative_asset_i
   const int64_t group_name_sep_pos = relative_asset_identifier.find_first_of(SEP_STR ALTSEP_STR,
                                                                              blend_path_len);
 
-  return utils::normalize_path(relative_asset_identifier, group_name_sep_pos + 1);
+  return utils::normalize_path(relative_asset_identifier,
+                               (group_name_sep_pos == StringRef::not_found) ?
+                                   StringRef::not_found :
+                                   group_name_sep_pos + 1);
 }
 
 /* TODO currently only works for asset libraries on disk (custom or essentials asset libraries).
