@@ -538,8 +538,8 @@ GPUMaterial *DRW_shader_from_material(Material *ma,
 
   drw_register_shader_vlattrs(mat);
 
-  if (DRW_state_is_image_render()) {
-    /* Do not deferred if doing render. */
+  if (DRW_state_is_image_render() || DRW_state_is_playback()) {
+    /* Do not defer during rendering or animation playback. */
     deferred = false;
   }
 
