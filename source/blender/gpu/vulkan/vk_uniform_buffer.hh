@@ -7,19 +7,19 @@
 
 #pragma once
 
+#include "BLI_utility_mixins.hh"
+
 #include "gpu_uniform_buffer_private.hh"
 
 #include "vk_buffer.hh"
 
 namespace blender::gpu {
 
-class VKUniformBuffer : public UniformBuf {
+class VKUniformBuffer : public UniformBuf, NonCopyable {
   VKBuffer buffer_;
 
  public:
-  VKUniformBuffer(int size, const char *name) : UniformBuf(size, name)
-  {
-  }
+  VKUniformBuffer(int size, const char *name) : UniformBuf(size, name) {}
 
   void update(const void *data) override;
   void clear_to_zero() override;
