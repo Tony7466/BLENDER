@@ -1078,6 +1078,7 @@ static void create_mesh(Scene *scene,
     int *subd_shader = mesh->get_subd_shader().data();
     bool *subd_smooth = mesh->get_subd_smooth().data();
     int *subd_ptex_offset = mesh->get_subd_ptex_offset().data();
+    int *subd_face_corners = mesh->get_subd_face_corners().data();
 
     if (sharp_faces) {
       for (int i = 0; i < numfaces; i++) {
@@ -1096,6 +1097,8 @@ static void create_mesh(Scene *scene,
     else {
       std::fill(subd_shader, subd_shader + numfaces, 0);
     }
+
+    std::copy(corner_verts, corner_verts + numcorners, subd_face_corners);
 
     const MPoly *polys = static_cast<const MPoly *>(b_mesh.polygons[0].ptr.data);
     int ptex_offset = 0;
