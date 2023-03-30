@@ -112,6 +112,9 @@ float2 node_link_calculate_multi_input_position(const float2 &socket_position,
 {
   const float offset = (total_inputs * NODE_MULTI_INPUT_LINK_GAP - NODE_MULTI_INPUT_LINK_GAP) *
                        0.5f;
+  if (index == -1) {
+    return {socket_position.x, socket_position.y + offset};
+  }
   return {socket_position.x, socket_position.y - offset + index * NODE_MULTI_INPUT_LINK_GAP};
 }
 
