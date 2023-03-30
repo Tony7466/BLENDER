@@ -25,19 +25,7 @@ using namespace draw;
 
 class ObjectModule {
  private:
-  /* TODO(fclem): This is a workaround to the current GPencil data structure.
-   * Rendering is much easier if we have frame containing layers. */
-  struct LayerData {
-    /* Layer / Frame tuple representing a layer inside a frame. */
-    const bGPDlayer *gpl;
-    const bGPDframe *gpf;
-  };
-  struct FrameData {
-    /* First layer frame to access frame members. */
-    const bGPDframe *gpf;
-    Vector<LayerData, 8> layers;
-  };
-
+ 
   LayerModule &layers_;
   MaterialModule &materials_;
   ShaderModule &shaders_;
@@ -280,23 +268,6 @@ class ObjectModule {
   //   tint[3] = (gpd->onion_factor > 0.0f) ? clamp_f(tint[3], 0.1f, 1.0f) :
   //                                          clamp_f(tint[3], 0.01f, 1.0f);
   //   return tint;
-  // }
-
-  // void displayed_frame_select(Vector<FrameData, 5> &frames,
-  //                             ListBaseWrapper<const bGPDlayer> layers)
-  // {
-  //   /* TODO(fclem): Select onion skin frames. */
-  //   /** \note Change data layout to be Frame major instead of Layer major.
-  //    * Hopefully the GPencil data layout will be closer to that in the future. */
-  //   FrameData frame_data;
-  //   frame_data.gpf = layers.get(0)->actframe;
-  //   for (const bGPDlayer *layer : layers) {
-  //     LayerData layer_data;
-  //     layer_data.gpf = layer->actframe;
-  //     layer_data.gpl = layer;
-  //     frame_data.layers.append(layer_data);
-  //   }
-  //   frames.append(frame_data);
   // }
 };
 
