@@ -667,9 +667,9 @@ class NodeTreeMainUpdater {
       link.tonode = &node;
       link.tosock = to_socket;
       link.flag |= NODE_LINK_VALID;
-      /* Drawing of internal link for multi-input socket have to starting at last index of set of
-       * random number of connection. */
-      link.multi_input_socket_index = -1;
+      const int internal_multi_input_socket_index = from_socket->directly_linked_links().size() -
+                                                    1;
+      link.multi_input_socket_index = internal_multi_input_socket_index;
       node.runtime->internal_links.append(link);
     }
     BKE_ntree_update_tag_node_internal_link(&ntree, &node);
