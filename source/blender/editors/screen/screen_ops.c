@@ -24,12 +24,14 @@
 #include "DNA_mask_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meta_types.h"
+#include "DNA_modifier_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_userdef_types.h"
 #include "DNA_workspace_types.h"
 
+#include "BKE_collection.h"
 #include "BKE_context.h"
 #include "BKE_editmesh.h"
 #include "BKE_fcurve.h"
@@ -42,6 +44,7 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.h"
+#include "BKE_simulation_state.h"
 #include "BKE_sound.h"
 #include "BKE_workspace.h"
 
@@ -4905,20 +4908,40 @@ int ED_screen_realtime_clock_stop(bContext *C)
   return OPERATOR_FINISHED;
 }
 
+/* TODO What to call this? Where to put it? Should it become one of the IDTypeForeach callbacks? */
+typedef void (*SceneForeachSimulationCacheFunctionCallback)(struct Object *ob,
+                                                            struct ModifierData *md,
+                                                            struct ModifierSimulationCacheHandle *cache,
+                                                            void *user_data);
+static void BKE_scene_foreach_simulation_cache(
+    Scene *scene, SceneForeachSimulationCacheFunctionCallback function_callback, void *user_data)
+{
+  FOREACH_SCENE_OBJECT_BEGIN (scene, ob) {
+    LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
+      if (md->type == eModifierType_Nodes) {
+        NodesModifierData *nmd = (NodesModifierData *)md;
+        function_callback(ob, md, nmd->simulation_cache, user_data);
+      }
+    }
+  }
+  FOREACH_SCENE_OBJECT_END;
+}
+
+static void sceen_realtime_clock_reset__invalidate_cache_cb(Object *UNUSED(ob),
+                                                            ModifierData *UNUSED(md),
+                                                            ModifierSimulationCacheHandle *cache,
+                                                            void *UNUSED(user_data))
+{
+  BKE_modifier_simulation_cache_invalidate(cache);
+}
+
 int ED_screen_realtime_clock_reset(bContext *C)
 {
   Scene *scene = CTX_data_scene(C);
 
   BKE_scene_realtime_clock_set(scene, 0, 0.0f);
 
-  /* XXX This is ugly: The ND_REALTIME_CLOCK notifier should be enough to ensure a clock reset.
-   * Problem is that, if the clock is running while resetting, the clock increment can happen right
-   * after reset, and at the point of depsgraph update the clock value is already 1.
-   * Since cache invalidation is based on finding a clock time of 0 it will not be invalidated
-   * in that case. Doing an explicit depsgraph update ensures the cache is invalidated right away.
-   */
-  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  DEG_evaluate_on_timestep(depsgraph, ANIMTIMER_REALTIME);
+  BKE_scene_foreach_simulation_cache(scene, sceen_realtime_clock_reset__invalidate_cache_cb, NULL);
 
   WM_event_add_notifier(C, NC_SCENE | ND_REALTIME_CLOCK, scene);
 
