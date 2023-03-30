@@ -226,16 +226,15 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
   /* First count how many vertices and triangles are needed for the whole object. */
   int total_points_num = 0;
   int total_triangles_num = 0;
-  grease_pencil.foreach_visible_drawing(
-      cfra, [&](GreasePencilDrawing &drawing, blender::bke::gpencil::Layer &layer) {
-        bke::CurvesGeometry &curves = drawing.geometry.wrap();
-        int num_cyclic = count_cyclic_curves(curves);
-        /* One vertex is stored before and after as padding. Cyclic strokes have one extra
-         * vertex.*/
-        total_points_num += curves.points_num() + num_cyclic + curves.curves_num() * 2;
-        total_triangles_num += (curves.points_num() + num_cyclic) * 2;
-        total_triangles_num += drawing.runtime->triangles_cache.size();
-      });
+  grease_pencil.foreach_visible_drawing(cfra, [&](GreasePencilDrawing &drawing) {
+    bke::CurvesGeometry &curves = drawing.geometry.wrap();
+    int num_cyclic = count_cyclic_curves(curves);
+    /* One vertex is stored before and after as padding. Cyclic strokes have one extra
+     * vertex.*/
+    total_points_num += curves.points_num() + num_cyclic + curves.curves_num() * 2;
+    total_triangles_num += (curves.points_num() + num_cyclic) * 2;
+    total_triangles_num += drawing.runtime->triangles_cache.size();
+  });
 
   GPUUsageType vbo_flag = GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY;
   /* Create VBOs. */
@@ -259,86 +258,84 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
 
   /* Fill buffers with data. */
   int v = 0;
-  grease_pencil.foreach_visible_drawing(
-      cfra, [&](GreasePencilDrawing &drawing, blender::bke::gpencil::Layer &layer) {
-        bke::CurvesGeometry &curves = drawing.geometry.wrap();
-        bke::AttributeAccessor attributes = curves.attributes();
-        offset_indices::OffsetIndices<int> points_by_curve = curves.points_by_curve();
-        const Span<float3> positions = curves.positions();
-        const VArray<bool> cyclic = curves.cyclic();
-        VArray<float> radii = attributes.lookup_or_default<float>(
-            "radius", ATTR_DOMAIN_POINT, 1.0f);
-        VArray<float> opacities = attributes.lookup_or_default<float>(
-            "opacity", ATTR_DOMAIN_POINT, 1.0f);
-        VArray<int> materials = attributes.lookup_or_default<int>(
-            "material_index", ATTR_DOMAIN_CURVE, -1);
+  grease_pencil.foreach_visible_drawing(cfra, [&](GreasePencilDrawing &drawing) {
+    bke::CurvesGeometry &curves = drawing.geometry.wrap();
+    bke::AttributeAccessor attributes = curves.attributes();
+    offset_indices::OffsetIndices<int> points_by_curve = curves.points_by_curve();
+    const Span<float3> positions = curves.positions();
+    const VArray<bool> cyclic = curves.cyclic();
+    VArray<float> radii = attributes.lookup_or_default<float>("radius", ATTR_DOMAIN_POINT, 1.0f);
+    VArray<float> opacities = attributes.lookup_or_default<float>(
+        "opacity", ATTR_DOMAIN_POINT, 1.0f);
+    VArray<int> materials = attributes.lookup_or_default<int>(
+        "material_index", ATTR_DOMAIN_CURVE, -1);
 
-        auto populate_point = [&](int curve_i, int point_i, int v_start, int v) {
-          copy_v3_v3(verts[v].pos, positions[point_i]);
-          verts[v].radius = radii[point_i];
-          verts[v].opacity = opacities[point_i];
-          verts[v].point_id = v;
-          verts[v].stroke_id = v_start;
-          verts[v].mat = materials[curve_i] % GPENCIL_MATERIAL_BUFFER_LEN;
+    auto populate_point = [&](int curve_i, int point_i, int v_start, int v) {
+      copy_v3_v3(verts[v].pos, positions[point_i]);
+      verts[v].radius = radii[point_i];
+      verts[v].opacity = opacities[point_i];
+      verts[v].point_id = v;
+      verts[v].stroke_id = v_start;
+      verts[v].mat = materials[curve_i] % GPENCIL_MATERIAL_BUFFER_LEN;
 
-          /* TODO */
-          verts[v].packed_asp_hard_rot = pack_rotation_aspect_hardness(0.0f, 1.0f, 1.0f);
-          /* TODO */
-          verts[v].u_stroke = 0;
-          /* TODO */
-          verts[v].uv_fill[0] = verts[v].uv_fill[1] = 0;
+      /* TODO */
+      verts[v].packed_asp_hard_rot = pack_rotation_aspect_hardness(0.0f, 1.0f, 1.0f);
+      /* TODO */
+      verts[v].u_stroke = 0;
+      /* TODO */
+      verts[v].uv_fill[0] = verts[v].uv_fill[1] = 0;
 
-          /* TODO */
-          copy_v4_v4(cols[v].vcol, float4(0.0f, 0.0f, 0.0f, 0.0f));
-          copy_v4_v4(cols[v].fcol, float4(0.0f, 0.0f, 0.0f, 0.0f));
+      /* TODO */
+      copy_v4_v4(cols[v].vcol, float4(0.0f, 0.0f, 0.0f, 0.0f));
+      copy_v4_v4(cols[v].fcol, float4(0.0f, 0.0f, 0.0f, 0.0f));
 
-          /* TODO */
-          cols[v].fcol[3] = (int(cols[v].fcol[3] * 10000.0f) * 10.0f) + 1.0f;
+      /* TODO */
+      cols[v].fcol[3] = (int(cols[v].fcol[3] * 10000.0f) * 10.0f) + 1.0f;
 
-          int v_mat = (v << GP_VERTEX_ID_SHIFT) | GP_IS_STROKE_VERTEX_BIT;
-          GPU_indexbuf_add_tri_verts(&ibo, v_mat + 0, v_mat + 1, v_mat + 2);
-          GPU_indexbuf_add_tri_verts(&ibo, v_mat + 2, v_mat + 1, v_mat + 3);
-        };
+      int v_mat = (v << GP_VERTEX_ID_SHIFT) | GP_IS_STROKE_VERTEX_BIT;
+      GPU_indexbuf_add_tri_verts(&ibo, v_mat + 0, v_mat + 1, v_mat + 2);
+      GPU_indexbuf_add_tri_verts(&ibo, v_mat + 2, v_mat + 1, v_mat + 3);
+    };
 
-        int t = 0;
-        for (const int curve_i : curves.curves_range()) {
-          IndexRange points = points_by_curve[curve_i];
-          const bool is_cyclic = cyclic[curve_i];
-          const int v_start = v;
-          int num_triangles = 0;
+    int t = 0;
+    for (const int curve_i : curves.curves_range()) {
+      IndexRange points = points_by_curve[curve_i];
+      const bool is_cyclic = cyclic[curve_i];
+      const int v_start = v;
+      int num_triangles = 0;
 
-          /* First point is not drawn. */
-          verts[v].mat = -1;
-          v++;
+      /* First point is not drawn. */
+      verts[v].mat = -1;
+      v++;
 
-          if (points.size() >= 3) {
-            num_triangles = points.size() - 2;
-            for (const int tri_i : IndexRange(num_triangles)) {
-              uint3 tri = drawing.runtime->triangles_cache[t + tri_i];
-              GPU_indexbuf_add_tri_verts(&ibo,
-                                         (v + tri.x) << GP_VERTEX_ID_SHIFT,
-                                         (v + tri.y) << GP_VERTEX_ID_SHIFT,
-                                         (v + tri.z) << GP_VERTEX_ID_SHIFT);
-            }
-          }
-
-          for (const int point_i : points) {
-            populate_point(curve_i, point_i, v_start, v);
-            v++;
-          }
-
-          if (is_cyclic) {
-            populate_point(curve_i, points.first(), v_start, v);
-            v++;
-          }
-
-          /* Last point is not drawn. */
-          verts[v].mat = -1;
-          v++;
-
-          t += num_triangles;
+      if (points.size() >= 3) {
+        num_triangles = points.size() - 2;
+        for (const int tri_i : IndexRange(num_triangles)) {
+          uint3 tri = drawing.runtime->triangles_cache[t + tri_i];
+          GPU_indexbuf_add_tri_verts(&ibo,
+                                     (v + tri.x) << GP_VERTEX_ID_SHIFT,
+                                     (v + tri.y) << GP_VERTEX_ID_SHIFT,
+                                     (v + tri.z) << GP_VERTEX_ID_SHIFT);
         }
-      });
+      }
+
+      for (const int point_i : points) {
+        populate_point(curve_i, point_i, v_start, v);
+        v++;
+      }
+
+      if (is_cyclic) {
+        populate_point(curve_i, points.first(), v_start, v);
+        v++;
+      }
+
+      /* Last point is not drawn. */
+      verts[v].mat = -1;
+      v++;
+
+      t += num_triangles;
+    }
+  });
 
   /* Mark last 2 verts as invalid. */
   verts[total_points_num + 0].mat = -1;

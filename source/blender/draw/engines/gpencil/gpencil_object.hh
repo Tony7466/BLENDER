@@ -25,7 +25,6 @@ using namespace draw;
 
 class ObjectModule {
  private:
- 
   LayerModule &layers_;
   MaterialModule &materials_;
   ShaderModule &shaders_;
@@ -152,39 +151,39 @@ class ObjectModule {
     GPUVertBuf *color_tx = DRW_cache_grease_pencil_color_buffer_get(object, current_frame_);
     GPUBatch *geom = DRW_cache_grease_pencil_get(object, current_frame_);
 
-    grease_pencil.foreach_visible_drawing(
-        current_frame_, [&](GreasePencilDrawing &drawing, bke::gpencil::Layer &layer) {
-          /* TODO(fclem): Pass per frame object matrix here. */
-          ResourceHandle handle = manager.resource_handle(object_ref);
-          gpObject &ob = objects_buf_.get_or_resize(handle.resource_index());
-          ob.is_shadeless = false;
-          ob.stroke_order3d = false;
-          ob.tint = float4(1.0);  // frame_tint_get(gpd, frame.gpf, current_frame_);
-          ob.layer_offset = layer_offset;
-          ob.material_offset = material_offset;
+    // grease_pencil.foreach_visible_drawing(current_frame_, [&](GreasePencilDrawing & /*drawing*/)
+    // {
+    /* TODO(fclem): Pass per frame object matrix here. */
+    ResourceHandle handle = manager.resource_handle(object_ref);
+    gpObject &ob = objects_buf_.get_or_resize(handle.resource_index());
+    ob.is_shadeless = false;
+    ob.stroke_order3d = false;
+    ob.tint = float4(1.0);  // frame_tint_get(gpd, frame.gpf, current_frame_);
+    ob.layer_offset = layer_offset;
+    ob.material_offset = material_offset;
 
-          if (do_layer_blending) {
-            // for (const LayerData &layer : frame.layers) {
-            // UNUSED_VARS(layer);
-            // if (has_blending(layer)) {
-            //   object_subpass.framebuffer_set(*vfx_fb.current());
-            // }
+    if (do_layer_blending) {
+      // for (const LayerData &layer : frame.layers) {
+      // UNUSED_VARS(layer);
+      // if (has_blending(layer)) {
+      //   object_subpass.framebuffer_set(*vfx_fb.current());
+      // }
 
-            /* TODO(fclem): Only draw subrange of geometry for this layer. */
-            object_subpass.draw(geom, handle);
+      /* TODO(fclem): Only draw subrange of geometry for this layer. */
+      object_subpass.draw(geom, handle);
 
-            // if (has_blending(layer)) {
-            //   layer_blend_sync(object_ref, object_subpass);
-            // }
-            // }
-          }
-          else {
-            /* Fast path. */
-            object_subpass.bind_texture("gp_pos_tx", position_tx);
-            object_subpass.bind_texture("gp_col_tx", color_tx);
-            object_subpass.draw(geom, handle);
-          }
-        });
+      // if (has_blending(layer)) {
+      //   layer_blend_sync(object_ref, object_subpass);
+      // }
+      // }
+    }
+    else {
+      /* Fast path. */
+      object_subpass.bind_texture("gp_pos_tx", position_tx);
+      object_subpass.bind_texture("gp_col_tx", color_tx);
+      object_subpass.draw(geom, handle);
+    }
+    // });
 
 #if 0
     if (object_has_vfx) {

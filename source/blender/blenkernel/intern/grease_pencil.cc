@@ -401,8 +401,7 @@ blender::Span<GreasePencilDrawingOrReference *> GreasePencil::drawings() const
 }
 
 void GreasePencil::foreach_visible_drawing(
-    int frame,
-    blender::FunctionRef<void(GreasePencilDrawing &, blender::bke::gpencil::Layer &)> function)
+    int frame, blender::FunctionRef<void(GreasePencilDrawing &)> function)
 {
   using namespace blender::bke::gpencil;
 
@@ -419,7 +418,7 @@ void GreasePencil::foreach_visible_drawing(
     GreasePencilDrawingOrReference *drawing_or_reference = drawings[index];
     if (drawing_or_reference->type == GREASE_PENCIL_DRAWING) {
       GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_or_reference);
-      function(*drawing, layer);
+      function(*drawing);
     }
     else if (drawing_or_reference->type == GREASE_PENCIL_DRAWING_REFERENCE) {
       /* TODO */
