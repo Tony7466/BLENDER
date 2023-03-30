@@ -23,6 +23,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Vector>(N_("Location"));
   b.add_output<decl::Vector>(N_("Rotation"));
   b.add_output<decl::Vector>(N_("Scale"));
+  b.add_output<decl::Int>(N_("Mode"));
   b.add_output<decl::Geometry>(N_("Geometry"));
 }
 
@@ -59,6 +60,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Location", location);
   params.set_output("Rotation", float3(rotation));
   params.set_output("Scale", scale);
+
+  params.set_output("Mode", object->mode);
 
   if (params.output_is_required("Geometry")) {
     if (object == self_object) {
