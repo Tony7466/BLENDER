@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+ * Copyright 2020 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -34,9 +34,9 @@ namespace gpu {
 class GLBackend : public GPUBackend {
  private:
   GLSharedOrphanLists shared_orphan_list_;
-  #ifdef WITH_RENDERDOC
+#ifdef WITH_RENDERDOC
   renderdoc::api::Renderdoc renderdoc_;
-  #endif
+#endif
 
  public:
   GLBackend()
