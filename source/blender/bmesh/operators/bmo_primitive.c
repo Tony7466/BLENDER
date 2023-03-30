@@ -1671,20 +1671,18 @@ void bmo_create_cube_exec(BMesh *bm, BMOperator *op)
   }
 
   if (cd_loop_uv_offset != -1) {
-    BM_mesh_calc_uvs_cube(bm, FACE_MARK);
+    BM_mesh_calc_uvs_cube(bm, FACE_MARK, cd_loop_uv_offset);
   }
 
   BMO_slot_buffer_from_enabled_flag(bm, op, op->slots_out, "verts.out", BM_VERT, VERT_MARK);
 }
 
-void BM_mesh_calc_uvs_cube(BMesh *bm, const short oflag)
+void BM_mesh_calc_uvs_cube(BMesh *bm, const short oflag, const int cd_loop_uv_offset)
 {
   BMFace *f;
   BMLoop *l;
   BMIter fiter, liter;
   const float width = 0.25f;
-
-  const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_PROP_FLOAT2);
 
   float x = 0.375f;
   float y = 0.0f;

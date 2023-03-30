@@ -13,6 +13,7 @@
 #include "BLI_utildefines.h"
 
 #include "DNA_brush_types.h"
+#include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -464,6 +465,7 @@ static void uv_sculpt_stroke_apply(bContext *C,
   float co[2], radius, radius_root;
   Scene *scene = CTX_data_scene(C);
   ARegion *region = CTX_wm_region(C);
+  Mesh *mesh = obedit->data;
   BMEditMesh *em = BKE_editmesh_from_object(obedit);
   uint tool;
   UvSculptData *sculptdata = (UvSculptData *)op->customdata;
@@ -490,7 +492,8 @@ static void uv_sculpt_stroke_apply(bContext *C,
   radius = radius * radius;
   radius_root = sqrtf(radius);
 
-  const int cd_loop_uv_offset = CustomData_get_offset(&em->bm->ldata, CD_PROP_FLOAT2);
+  const int cd_loop_uv_offset = CustomData_get_offset_named(
+      &em->bm->ldata, CD_PROP_FLOAT2, mesh->active_uv_attribute);
 
   /*
    * Pinch Tool

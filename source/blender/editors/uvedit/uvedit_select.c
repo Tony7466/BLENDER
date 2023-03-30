@@ -1791,7 +1791,7 @@ static void uv_select_linked_multi(Scene *scene,
      *
      * Better solve this by having a delimit option for select-linked operator,
      * keeping island-select working as is. */
-    UvVertMap *vmap = BM_uv_vert_map_create(em->bm, !uv_sync_select);
+    UvVertMap *vmap = BM_uv_vert_map_create(em->bm, offsets.uv, !uv_sync_select);
     if (vmap == NULL) {
       continue;
     }
@@ -3290,7 +3290,7 @@ static void uv_select_flush_from_tag_face(const Scene *scene, Object *obedit, co
     uint efa_index;
 
     BM_mesh_elem_table_ensure(em->bm, BM_FACE);
-    struct UvVertMap *vmap = BM_uv_vert_map_create(em->bm, false);
+    struct UvVertMap *vmap = BM_uv_vert_map_create(em->bm, offsets.uv, false);
     if (vmap == NULL) {
       return;
     }
@@ -3379,7 +3379,7 @@ static void uv_select_flush_from_tag_loop(const Scene *scene, Object *obedit, co
     uint efa_index;
 
     BM_mesh_elem_table_ensure(em->bm, BM_FACE);
-    struct UvVertMap *vmap = BM_uv_vert_map_create(em->bm, false);
+    struct UvVertMap *vmap = BM_uv_vert_map_create(em->bm, offsets.uv, false);
     if (vmap == NULL) {
       return;
     }
@@ -3435,7 +3435,7 @@ static void uv_select_flush_from_loop_edge_flag(const Scene *scene, BMEditMesh *
     bm_clear_uv_vert_selection(scene, em->bm, offsets);
 
     BM_mesh_elem_table_ensure(em->bm, BM_FACE);
-    struct UvVertMap *vmap = BM_uv_vert_map_create(em->bm, false);
+    struct UvVertMap *vmap = BM_uv_vert_map_create(em->bm, offsets.uv, false);
     if (vmap == NULL) {
       return;
     }

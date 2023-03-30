@@ -216,7 +216,7 @@ void BM_mesh_calc_uvs_cone(BMesh *bm,
  * \param bm: The BMesh to operate on.
  * \param oflag: The flag to check faces with.
  */
-void BM_mesh_calc_uvs_cube(BMesh *bm, short oflag);
+void BM_mesh_calc_uvs_cube(BMesh *bm, short oflag, const int cd_loop_uv_offset);
 
 #include "intern/bmesh_operator_api_inline.h"
 

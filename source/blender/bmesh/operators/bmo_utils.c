@@ -478,7 +478,8 @@ void bmo_rotate_uvs_exec(BMesh *bm, BMOperator *op)
   BMIter l_iter;   /* iteration loop */
 
   const bool use_ccw = BMO_slot_bool_get(op->slots_in, "use_ccw");
-  const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_PROP_FLOAT2);
+  const int uv_index = BMO_slot_int_get(op->slots_in, "uv_index");
+  const int cd_loop_uv_offset = CustomData_get_offset_n(&bm->ldata, CD_PROP_FLOAT2, uv_index);
 
   if (cd_loop_uv_offset != -1) {
     BMO_ITER (fs, &fs_iter, op->slots_in, "faces", BM_FACE) {
@@ -561,7 +562,8 @@ void bmo_reverse_uvs_exec(BMesh *bm, BMOperator *op)
 {
   BMOIter iter;
   BMFace *f;
-  const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_PROP_FLOAT2);
+  const int uv_index = BMO_slot_int_get(op->slots_in, "uv_index");
+  const int cd_loop_uv_offset = CustomData_get_offset_n(&bm->ldata, CD_PROP_FLOAT2, uv_index);
 
   if (cd_loop_uv_offset != -1) {
     BMO_ITER (f, &iter, op->slots_in, "faces", BM_FACE) {

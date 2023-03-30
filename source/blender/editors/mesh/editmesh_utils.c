@@ -444,7 +444,7 @@ void EDBM_flag_enable_all(BMEditMesh *em, const char hflag)
 /** \name UV Vertex Map API
  * \{ */
 
-UvVertMap *BM_uv_vert_map_create(BMesh *bm, const bool use_select)
+UvVertMap *BM_uv_vert_map_create(BMesh *bm, const int cd_loop_uv_offset, const bool use_select)
 {
   /* NOTE: delimiting on alternate face-winding was once supported and could be useful
    * in some cases. If this is need see: D17137 to restore support. */
@@ -453,7 +453,6 @@ UvVertMap *BM_uv_vert_map_create(BMesh *bm, const bool use_select)
   BMLoop *l;
   BMIter iter, liter;
   uint a;
-  const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_PROP_FLOAT2);
 
   BM_mesh_elem_index_ensure(bm, BM_VERT | BM_FACE);
 

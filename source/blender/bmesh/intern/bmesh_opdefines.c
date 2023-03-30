@@ -1477,6 +1477,7 @@ static BMOpDefine bmo_rotate_uvs_def = {
   /* slots_in */
   {{"faces", BMO_OP_SLOT_ELEMENT_BUF, {BM_FACE}},    /* input faces */
    {"use_ccw", BMO_OP_SLOT_BOOL},         /* rotate counter-clockwise if true, otherwise clockwise */
+   {"uv_index", BMO_OP_SLOT_INT},         /* Index of UV map to adjust */
    {{'\0'}},
   },
   {{{'\0'}}},  /* no output */
@@ -1493,6 +1494,7 @@ static BMOpDefine bmo_reverse_uvs_def = {
   "reverse_uvs",
   /* slots_in */
   {{"faces", BMO_OP_SLOT_ELEMENT_BUF, {BM_FACE}},    /* input faces */
+   {"uv_index", BMO_OP_SLOT_INT},         /* Index of UV map to adjust */
    {{'\0'}},
   },
   {{{'\0'}}},  /* no output */

@@ -3043,6 +3043,7 @@ static int edbm_rotate_uvs_exec(bContext *C, wmOperator *op)
       scene, view_layer, CTX_wm_view3d(C), &objects_len);
   for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
     Object *obedit = objects[ob_index];
+    Mesh *mesh = static_cast<Mesh *>(obedit->data);
     BMEditMesh *em = BKE_editmesh_from_object(obedit);
 
     if (em->bm->totfacesel == 0) {
@@ -3051,7 +3052,16 @@ static int edbm_rotate_uvs_exec(bContext *C, wmOperator *op)
 
     BMOperator bmop;
 
-    EDBM_op_init(em, &bmop, op, "rotate_uvs faces=%hf use_ccw=%b", BM_ELEM_SELECT, use_ccw);
+    const int uv_index = CustomData_get_named_layer(
+        &mesh->ldata, CD_PROP_FLOAT2, mesh->active_uv_attribute);
+
+    EDBM_op_init(em,
+                 &bmop,
+                 op,
+                 "rotate_uvs faces=%hf use_ccw=%b uv_index=%i",
+                 BM_ELEM_SELECT,
+                 use_ccw,
+                 uv_index);
 
     BMO_op_exec(em->bm, &bmop);
 
