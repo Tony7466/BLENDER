@@ -1,2 +1,2 @@
 Referenced by issue #103094, Cycles: The sun lamp from Nitisha sky is not included in the light tree.
-Referenced by issue #106293, World setup with two sky textures and two suns produces different results in 3.4.1 and 3.5
+Referenced by issue #106293, Regression: World setup with two sky textures is lacking proper direct light sampling on the suns - 3.5+
