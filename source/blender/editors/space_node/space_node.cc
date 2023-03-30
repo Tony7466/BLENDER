@@ -242,6 +242,8 @@ static SpaceLink *node_create(const ScrArea * /*area*/, const Scene * /*scene*/)
 
   /* backdrop */
   snode->zoom = 1.0f;
+  snode->xasp = 1.0f;
+  snode->yasp = 1.0f;
 
   /* select the first tree type for valid type */
   NODE_TREE_TYPES_BEGIN (treetype) {

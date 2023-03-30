@@ -736,6 +736,11 @@ class NODE_PT_backdrop(Panel):
         col.prop(snode, "backdrop_zoom", text="Zoom")
 
         col.prop(snode, "backdrop_offset", text="Offset")
+        
+        col.separator()
+
+        col.prop(snode, "backdrop_aspect_ratio_x", text="Aspect Ratio X")
+        col.prop(snode, "backdrop_aspect_ratio_y", text="Y")
 
         col.separator()
 

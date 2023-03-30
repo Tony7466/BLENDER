@@ -96,13 +96,22 @@ class SpaceNodeAccessor : public AbstractSpaceAccessor {
     float image_display_offset[2];
     mul_v2_v2fl(display_resolution, image_resolution, snode->zoom);
     mul_v2_v2fl(image_display_offset, image_offset, snode->zoom);
+
+    float yasp = 1.0f, xasp = 0.1f;
+    if( snode->xasp != 0.0f)
+    {
+      yasp = snode->yasp / snode->xasp;
+      xasp = 1.0f;
+    }
+//    todo: handle xasp = 0 or yasp = 0
+
     const float scale_x = display_resolution[0] / region->winx;
-    const float scale_y = display_resolution[1] / region->winy;
+    const float scale_y = display_resolution[1] / region->winy * yasp;
     const float translate_x = ((region->winx - display_resolution[0]) * 0.5f + snode->xof +
                                image_display_offset[0]) /
                               region->winx;
-    const float translate_y = ((region->winy - display_resolution[1]) * 0.5f + snode->yof +
-                               image_display_offset[1]) /
+    const float translate_y = ((region->winy - display_resolution[1] * yasp) * 0.5f + snode->yof +
+                               image_display_offset[1] * yasp) /
                               region->winy;
 
     r_uv_to_texture[0][0] = scale_x;

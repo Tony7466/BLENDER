@@ -7506,6 +7506,22 @@ static void rna_def_space_node(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Backdrop Offset", "Backdrop offset");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_NODE_VIEW, NULL);
 
+  prop = RNA_def_property(srna, "backdrop_aspect_ratio_x", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "xasp");
+  RNA_def_property_range(prop, 0.1f, FLT_MAX);
+  RNA_def_property_float_default(prop, 1.0f);
+  RNA_def_property_ui_range(prop, 0.1f, 5000.0f, 1, 2);
+  RNA_def_property_ui_text(prop, "Aspect Ratio X", "Backdrop display aspect ratio in horizontal direction");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_NODE_VIEW, "rna_SpaceNodeEditor_show_backdrop_update");
+
+  prop = RNA_def_property(srna, "backdrop_aspect_ratio_y", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "yasp");
+  RNA_def_property_range(prop, 0.1f, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0.1f, 5000.0f, 1, 2);
+  RNA_def_property_float_default(prop, 1.0f);
+  RNA_def_property_ui_text(prop, "Y", "Backdrop display aspect ratio in vertical direction");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_NODE_VIEW, "rna_SpaceNodeEditor_show_backdrop_update");
+
   prop = RNA_def_property(srna, "backdrop_channels", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_bitflag_sdna(prop, NULL, "flag");
   RNA_def_property_enum_items(prop, backdrop_channels_items);

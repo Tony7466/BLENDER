@@ -72,8 +72,16 @@ static void gizmo_node_backdrop_prop_matrix_get(const wmGizmo * /*gz*/,
   float(*matrix)[4] = (float(*)[4])value_p;
   BLI_assert(gz_prop->type->array_length == 16);
   const SpaceNode *snode = (const SpaceNode *)gz_prop->custom_func.user_data;
+
+  // todo(zazizizou): handle yasp = 0 or xasp = 0: ideally make it impossible to set xasp = 0
+  float yasp = 1.0f, xasp = 0.1f;
+  if( snode->xasp != 0.0f)
+  {
+    yasp = snode->yasp / snode->xasp;
+    xasp = 1.0f;
+  }
   matrix[0][0] = snode->zoom;
-  matrix[1][1] = snode->zoom;
+  matrix[1][1] = snode->zoom * yasp;
   matrix[3][0] = snode->xof;
   matrix[3][1] = snode->yof;
 }

@@ -1578,6 +1578,9 @@ typedef struct SpaceNode {
   /** Zoom for backdrop. */
   float zoom;
 
+  /** Aspect ratio for drawing the backdrop */
+  float xasp, yasp;
+
   /**
    * XXX nodetree pointer info is all in the path stack now,
    * remove later on and use bNodeTreePath instead.
