@@ -17,6 +17,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
+#include "BLI_math.h"
 #include "BLI_string.h"
 
 #include "DNA_anim_types.h"
@@ -1321,10 +1322,17 @@ void GRAPH_OT_gaussian_smooth(wmOperatorType *ot)
 /** \name Curve Straightening
  * \{ */
 
-static void fft_filter_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+static void fft_filter_fcurve_segment(FCurve *fcu,
+                                      FCurveSegment *segment,
+                                      const float C,
+                                      const float ku,
+                                      const float kl,
+                                      const float factor)
 {
+  const float falloff_width = 0.1f;
   const float start_frame = fcu->bezt[segment->start_index].vec[1][0];
-  const int sample_count = 1;
+  const float end_frame = fcu->bezt[segment->start_index + segment->length - 1].vec[1][0];
+  const int sample_count = (int)(end_frame - start_frame) + 1;
   float *samples = MEM_callocN(sizeof(float) * sample_count, "FFT Samples");
   sample_fcurve_segment(fcu, start_frame, samples, sample_count);
 
@@ -1345,11 +1353,30 @@ static void fft_filter_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const
   fftw_execute(fft_plan_forward);
   fftw_destroy_plan(fft_plan_forward);
 
+  const double euler = 2.71828182845904523536;
+  for (int i = 0; i < sample_count; i++) {
+    const double real = spectrum[i][0];
+    const double imaginary = spectrum[i][1];
+
+    const double percent = (double)(i) / (double)(sample_count - 1);
+
+    /* Before frequency cutoff. */
+    if (percent < factor) {
+      continue;
+    }
+
+    double foo = interpd(0, 1, (percent - factor) / (factor + falloff_width));
+    foo = foo < 0 ? 0 : foo;
+    const double result = foo * real;
+    spectrum[i][0] = result;
+    spectrum[i][1] = imaginary * foo;
+  }
+
   fftw_execute(fft_plan_backward);
   fftw_destroy_plan(fft_plan_backward);
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
-    const int sample_index = (int)(fcu->bezt[i].vec[i][0] -
+    const int sample_index = (int)(fcu->bezt[i].vec[1][0] -
                                    fcu->bezt[segment->start_index].vec[1][0]);
     fcu->bezt[i].vec[1][1] = (float)sample_data[sample_index][0] / sample_count;
   }
@@ -1492,10 +1519,8 @@ static int foo_smooth_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   return invoke_result;
 }
 
-static void foo_smooth_graph_keys(bAnimContext *ac,
-                                  const float factor,
-                                  double *kernel,
-                                  const int filter_width)
+static void foo_smooth_graph_keys(
+    bAnimContext *ac, const float factor, const float frq, const float ku, const float kl)
 {
   ListBase anim_data = {NULL, NULL};
   ANIM_animdata_filter(ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, ac->datatype);
@@ -1505,14 +1530,7 @@ static void foo_smooth_graph_keys(bAnimContext *ac,
     ListBase segments = find_fcurve_segments(fcu);
 
     LISTBASE_FOREACH (FCurveSegment *, segment, &segments) {
-      BezTriple left_bezt = fcu->bezt[segment->start_index];
-      BezTriple right_bezt = fcu->bezt[segment->start_index + segment->length - 1];
-      const int sample_count = (int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) +
-                               (filter_width * 2 + 1);
-      float *samples = MEM_callocN(sizeof(float) * sample_count, "Smooth FCurve Op Samples");
-      sample_fcurve_segment(fcu, left_bezt.vec[1][0] - filter_width, samples, sample_count);
-      smooth_fcurve_segment(fcu, segment, samples, factor, filter_width, kernel);
-      MEM_freeN(samples);
+      fft_filter_fcurve_segment(fcu, segment, frq, ku, kl, factor);
     }
 
     BLI_freelistN(&segments);
@@ -1531,14 +1549,11 @@ static int foo_smooth_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
   const float factor = RNA_float_get(op->ptr, "factor");
-  const int filter_width = RNA_int_get(op->ptr, "filter_width");
-  const int kernel_size = filter_width + 1;
-  double *kernel = MEM_callocN(sizeof(double) * kernel_size, "Gauss Kernel");
-  ED_ANIM_get_1d_gauss_kernel(RNA_float_get(op->ptr, "sigma"), kernel_size, kernel);
+  const float frq = RNA_float_get(op->ptr, "cutoff_frequency");
+  const float falloff_ku = RNA_float_get(op->ptr, "falloff_ku");
+  const float falloff_kl = RNA_float_get(op->ptr, "falloff_kl");
 
-  foo_smooth_graph_keys(&ac, factor, kernel, filter_width);
-
-  MEM_freeN(kernel);
+  foo_smooth_graph_keys(&ac, factor, frq, falloff_ku, falloff_kl);
 
   /* Set notifier that keyframes have changed. */
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
@@ -1546,16 +1561,14 @@ static int foo_smooth_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void GRAPH_OT_foo_smooth(wmOperatorType *ot)
+void GRAPH_OT_curve_straightening(wmOperatorType *ot)
 {
   /* Identifiers. */
   ot->name = "Foo Smooth";
-  ot->idname = "GRAPH_OT_foo_smooth";
+  ot->idname = "GRAPH_OT_curve_straightening";
   ot->description = "Smooth the curve using a foo filter";
 
   /* API callbacks. */
-  ot->invoke = foo_smooth_invoke;
-  ot->modal = graph_slider_modal;
   ot->exec = foo_smooth_exec;
   ot->poll = graphop_editable_keyframes_poll;
 
@@ -1573,23 +1586,17 @@ void GRAPH_OT_foo_smooth(wmOperatorType *ot)
                        1.0f);
 
   RNA_def_float(ot->srna,
-                "sigma",
+                "cutoff_frequency",
                 0.33f,
                 0.001f,
                 FLT_MAX,
-                "Sigma",
-                "The shape of the gaussian distribution, lower values make it sharper",
+                "Cutoff Frquency",
+                "foo",
                 0.001f,
                 100.0f);
 
-  RNA_def_int(ot->srna,
-              "filter_width",
-              6,
-              1,
-              64,
-              "Filter Width",
-              "How far to each side the operator will average the key values",
-              1,
-              32);
+  RNA_def_float(ot->srna, "falloff_ku", 1.0f, 0, FLT_MAX, "kU", "foo", 1, 32);
+
+  RNA_def_float(ot->srna, "falloff_kl", 1.0f, 0, FLT_MAX, "kL", "foo", 1, 32);
 }
 /** \} */
