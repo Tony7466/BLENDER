@@ -257,6 +257,13 @@ class MaterialModule {
     material.alignment_rot[0] = cosf(gp_style->alignment_rotation);
     material.alignment_rot[1] = sinf(gp_style->alignment_rotation);
 
+    if (gp_style->flag & GP_MATERIAL_STROKE_SHOW) {
+      material.flag |= GP_SHOW_STROKE;
+    }
+    if (gp_style->flag & GP_MATERIAL_FILL_SHOW) {
+      material.flag |= GP_SHOW_FILL;
+    }
+
     /* Stroke Style */
     if ((gp_style->stroke_style == GP_MATERIAL_STROKE_STYLE_TEXTURE) && (gp_style->sima)) {
       material.flag |= texture_sync(
