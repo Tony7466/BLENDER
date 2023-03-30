@@ -39,6 +39,7 @@ class LayerModule {
     gp_layer.opacity = 1.0f;
     gp_layer.thickness_offset = 0.0f;
     gp_layer.tint = float4(1.0f, 1.0f, 1.0f, 0.0f);
+    gp_layer.stroke_index_offset = 0.0f;
 
     layers_buf_.append(gp_layer);
 
