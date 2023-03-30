@@ -251,6 +251,7 @@ static void mesh_blend_write(BlendWriter *writer, ID *id, const void *id_address
 
     mesh->totpoly = 0;
     memset(&mesh->pdata, 0, sizeof(mesh->pdata));
+    mesh->poly_offset_indices = nullptr;
   }
   else {
     Set<std::string> names_to_skip;
@@ -313,10 +314,6 @@ static void mesh_blend_write(BlendWriter *writer, ID *id, const void *id_address
       BKE_mesh_legacy_convert_uvs_to_struct(mesh, temp_arrays_for_legacy_format, loop_layers);
       BKE_mesh_legacy_face_set_from_generic(poly_layers);
     }
-
-    if (mesh->poly_offset_indices) {
-      BLO_write_int32_array(writer, mesh->totpoly + 1, mesh->poly_offset_indices);
-    }
   }
 
   mesh->runtime = nullptr;
@@ -346,6 +343,10 @@ static void mesh_blend_write(BlendWriter *writer, ID *id, const void *id_address
       writer, &mesh->ldata, loop_layers, mesh->totloop, CD_MASK_MESH.lmask, &mesh->id);
   CustomData_blend_write(
       writer, &mesh->pdata, poly_layers, mesh->totpoly, CD_MASK_MESH.pmask, &mesh->id);
+
+  if (mesh->poly_offset_indices) {
+    BLO_write_int32_array(writer, mesh->totpoly + 1, mesh->poly_offset_indices);
+  }
 }
 
 static void mesh_blend_read_data(BlendDataReader *reader, ID *id)
