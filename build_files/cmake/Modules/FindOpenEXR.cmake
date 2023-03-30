@@ -120,8 +120,8 @@ UNSET(_openexr_libs_ver)
 
 IF(OPENEXR_VERSION VERSION_GREATER_EQUAL "3.0.0")
   # For OpenEXR 3.x, we also need to find the now separate Imath library.
-  # For simplicity we also add it to the OpenEXR includes and libraries, as it's simpler to
-  # support both 2.x and 3.x this way.
+  # For simplicity we also add it to the OpenEXR includes and libraries,
+  # as it's simpler to support both 2.x and 3.x this way.
 
   # Find include directory
   FIND_PATH(IMATH_INCLUDE_DIR
@@ -173,7 +173,6 @@ IF(OPENEXR_VERSION VERSION_GREATER_EQUAL "3.0.0")
 ELSE()
 	SET(IMATH_LIBRARIES ${OPENEXR_IMATH_LIBRARY})
 ENDIF()
-
 
 # handle the QUIETLY and REQUIRED arguments and set OPENEXR_FOUND to TRUE if
 # all listed variables are TRUE

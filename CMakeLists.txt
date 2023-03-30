@@ -953,6 +953,7 @@ if(WITH_CYCLES_DEVICE_HIP)
   set(WITH_HIP_DYNLOAD ON)
 endif()
 
+
 # -----------------------------------------------------------------------------
 # Check if Sub-modules are Cloned
 
@@ -1233,6 +1234,7 @@ if(WITH_METAL_BACKEND)
   # Metal-OpenGL Interop are already being added by
   # build_files/cmake/platform/platform_apple.cmake
 endif()
+
 
 # -----------------------------------------------------------------------------
 # Configure OpenMP
