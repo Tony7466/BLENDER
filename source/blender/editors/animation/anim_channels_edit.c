@@ -767,8 +767,6 @@ void ANIM_frame_channel_y_extents(bContext *C, bAnimContext *ac)
   window_region->v2d.cur.ymin = bounds.ymin;
   window_region->v2d.cur.ymax = bounds.ymax;
 
-  /* UI_view2d_smooth_view(C, window_region, &bounds, 0); */
-
   ANIM_animdata_freelist(&anim_data);
 }
 /** \} */
