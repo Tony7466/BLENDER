@@ -273,20 +273,20 @@ class Layer : public TreeNode, ::GreasePencilLayer {
   bool insert_frame(int frame_number, int index)
   {
     sorted_keys_cache_.tag_dirty();
-    return frames_.add(frame_number, index);
+    return frames_for_write().add(frame_number, index);
   }
 
   bool overwrite_frame(int frame_number, int index)
   {
     sorted_keys_cache_.tag_dirty();
-    return frames_.add_overwrite(frame_number, index);
+    return frames_for_write().add_overwrite(frame_number, index);
   }
 
   Span<int> sorted_keys()
   {
     sorted_keys_cache_.ensure([&](Vector<int> &r_data) {
-      r_data.reserve(frames_.size());
-      for (int64_t key : frames_.keys()) {
+      r_data.reserve(frames().size());
+      for (int64_t key : frames().keys()) {
         r_data.append(key);
       }
       std::sort(r_data.begin(), r_data.end());
