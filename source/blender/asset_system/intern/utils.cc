@@ -29,7 +29,8 @@ std::string normalize_directory_path(StringRef directory)
 
 std::string normalize_path(StringRefNull path, int64_t max_len)
 {
-  const int64_t len = max_len ? std::min(max_len, path.size()) : path.size();
+  const int64_t len = (max_len == StringRef::not_found) ? path.size() :
+                                                          std::min(max_len, path.size());
 
   char *buf = BLI_strdupn(path.c_str(), len);
   BLI_path_slash_native(buf);
