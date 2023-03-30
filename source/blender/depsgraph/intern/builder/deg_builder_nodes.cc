@@ -912,10 +912,19 @@ void DepsgraphNodeBuilder::build_object_modifiers(Object *object)
         if (!DEG_is_active(depsgraph)) {
           return;
         }
-        if (modifier_node->flag & DEPSOP_FLAG_USER_MODIFIED) {
-          if (nmd->simulation_cache) {
-            nmd->simulation_cache->invalidate();
-          }
+        /* TODO currently hardcoded to use realtime clock */
+        const eTimeSourceType time_source_type = eTimeSourceType::DEG_TIME_SOURCE_REALTIME;
+        switch (time_source_type) {
+          case eTimeSourceType::DEG_TIME_SOURCE_SCENE:
+            /* Modifier changes invalidate the cache when using the scene clock. */
+            if (modifier_node->flag & DEPSOP_FLAG_USER_MODIFIED) {
+              if (nmd->simulation_cache) {
+                nmd->simulation_cache->invalidate();
+              }
+            }
+            break;
+          case eTimeSourceType::DEG_TIME_SOURCE_REALTIME:
+            break;
         }
       };
     }
