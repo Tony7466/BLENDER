@@ -136,20 +136,21 @@ static Volume *mesh_to_volume(ModifierData *md,
 
   const float4x4 mesh_to_own_object_space_transform = float4x4(ctx->object->world_to_object) *
                                                       float4x4(object_to_convert->object_to_world);
-  geometry::MeshToVolumeResolution resolution;
-  resolution.mode = (MeshToVolumeModifierResolutionMode)mvmd->resolution_mode;
-  if (resolution.mode == MESH_TO_VOLUME_RESOLUTION_MODE_VOXEL_AMOUNT) {
-    resolution.settings.voxel_amount = mvmd->voxel_amount;
-    if (resolution.settings.voxel_amount <= 0.0f) {
-      return input_volume;
-    }
+  const float volume_simplify = BKE_volume_simplify_factor(ctx->depsgraph);
+  if (volume_simplify == 0.0f) {
+    return input_volume;
   }
-  else if (resolution.mode == MESH_TO_VOLUME_RESOLUTION_MODE_VOXEL_SIZE) {
-    resolution.settings.voxel_size = mvmd->voxel_size;
-    if (resolution.settings.voxel_size <= 0.0f) {
-      return input_volume;
-    }
-  }
+
+  geometry::MeshToVolumeSettings settings{/* voxels */ 0,
+                                          /* voxel_size */ 0.0f,
+                                          /* interior_band_width */ mvmd->interior_band_width,
+                                          /* exterior_band_width */ mvmd->exterior_band_width,
+                                          /* density */ 0.0f,
+                                          /* simplify */ volume_simplify,
+                                          /* fill_volume */ (bool)(mvmd->fill_volume),
+                                          /* use_world_space_units */ true,
+                                          /* convert_to_fog */ true,
+                                          /* unsigned_distance */ false};
 
   auto bounds_fn = [&](float3 &r_min, float3 &r_max) {
     const BoundBox *bb = BKE_object_boundbox_get(mvmd->object);
@@ -157,11 +158,23 @@ static Volume *mesh_to_volume(ModifierData *md,
     r_max = bb->vec[6];
   };
 
-  const float voxel_size = geometry::volume_compute_voxel_size(ctx->depsgraph,
-                                                               bounds_fn,
-                                                               resolution,
-                                                               mvmd->exterior_band_width,
-                                                               mesh_to_own_object_space_transform);
+  auto mode = (MeshToVolumeModifierResolutionMode)mvmd->resolution_mode;
+  if (mode == MESH_TO_VOLUME_RESOLUTION_MODE_VOXEL_AMOUNT) {
+    settings.voxels = mvmd->voxel_amount;
+    if (settings.voxels <= 0) {
+      return input_volume;
+    }
+    settings.voxel_size = geometry::volume_compute_voxel_size(
+        settings, bounds_fn, mesh_to_own_object_space_transform);
+  }
+  else if (mode == MESH_TO_VOLUME_RESOLUTION_MODE_VOXEL_SIZE) {
+    settings.voxel_size = mvmd->voxel_size;
+  }
+
+  if (settings.voxel_size < 1e-5f) {
+    /* The voxel size is too small. */
+    return input_volume;
+  }
 
   /* Create a new volume. */
   Volume *volume;
@@ -173,15 +186,8 @@ static Volume *mesh_to_volume(ModifierData *md,
   }
 
   /* Convert mesh to grid and add to volume. */
-  geometry::fog_volume_grid_add_from_mesh(volume,
-                                          "density",
-                                          mesh,
-                                          mesh_to_own_object_space_transform,
-                                          voxel_size,
-                                          mvmd->fill_volume,
-                                          mvmd->exterior_band_width,
-                                          mvmd->interior_band_width,
-                                          mvmd->density);
+  geometry::volume_grid_add_from_mesh(
+      volume, "density", mesh, mesh_to_own_object_space_transform, settings);
 
   return volume;
 

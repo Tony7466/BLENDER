@@ -20,12 +20,17 @@ struct Depsgraph;
 
 namespace blender::geometry {
 
-struct MeshToVolumeResolution {
-  MeshToVolumeModifierResolutionMode mode;
-  union {
-    float voxel_size;
-    float voxel_amount;
-  } settings;
+struct MeshToVolumeSettings {
+  int voxels;
+  float voxel_size;
+  float interior_band_width;
+  float exterior_band_width;
+  float density;
+  float simplify;
+  bool fill_volume;
+  bool use_world_space_units;
+  bool convert_to_fog;
+  bool unsigned_distance;
 };
 
 #ifdef WITH_OPENVDB
@@ -34,27 +39,16 @@ struct MeshToVolumeResolution {
  * \param bounds_fn: Return the bounds of the mesh positions,
  * used for deciding the voxel size in "Amount" mode.
  */
-float volume_compute_voxel_size(const Depsgraph *depsgraph,
+float volume_compute_voxel_size(const MeshToVolumeSettings &settings,
                                 FunctionRef<void(float3 &r_min, float3 &r_max)> bounds_fn,
-                                MeshToVolumeResolution resolution,
-                                float exterior_band_width,
                                 const float4x4 &transform);
 /**
- * Add a new fog VolumeGrid to the Volume by converting the supplied mesh.
+ * Add a new VolumeGrid to the Volume by converting the supplied mesh.
  */
-VolumeGrid *fog_volume_grid_add_from_mesh(Volume *volume,
-                                          StringRefNull name,
-                                          const Mesh *mesh,
-                                          const float4x4 &mesh_to_volume_space_transform,
-                                          float voxel_size,
-                                          bool fill_volume,
-                                          float exterior_band_width,
-                                          float interior_band_width,
-                                          float density);
-/**
- * Add a new SDF VolumeGrid to the Volume by converting the supplied mesh.
- */
-VolumeGrid *sdf_volume_grid_add_from_mesh(
-    Volume *volume, StringRefNull name, const Mesh &mesh, float voxel_size, float half_band_width);
+VolumeGrid *volume_grid_add_from_mesh(Volume *volume,
+                                      StringRefNull name,
+                                      const Mesh *mesh,
+                                      const float4x4 &mesh_to_volume_space_transform,
+                                      const MeshToVolumeSettings &settings);
 #endif
 }  // namespace blender::geometry

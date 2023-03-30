@@ -31,13 +31,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .min(0.01f)
       .max(FLT_MAX)
       .subtype(PROP_DISTANCE);
-  b.add_input<decl::Float>(N_("Voxel Amount")).default_value(64.0f).min(0.0f).max(FLT_MAX);
-  b.add_input<decl::Float>(N_("Exterior Band Width"))
-      .default_value(0.1f)
-      .min(0.0f)
-      .max(FLT_MAX)
-      .subtype(PROP_DISTANCE)
-      .description(N_("Width of the volume outside of the mesh"));
+  b.add_input<decl::Int>(N_("Voxel Amount")).default_value(64).min(1);
   b.add_input<decl::Float>(N_("Interior Band Width"))
       .default_value(0.0f)
       .min(0.0f)
@@ -85,30 +79,29 @@ static Volume *create_volume_from_mesh(const Mesh &mesh, GeoNodeExecParams &para
       *(const NodeGeometryMeshToVolume *)params.node().storage;
 
   const float density = params.get_input<float>("Density");
-  const float exterior_band_width = params.get_input<float>("Exterior Band Width");
   const float interior_band_width = params.get_input<float>("Interior Band Width");
   const bool fill_volume = params.get_input<bool>("Fill Volume");
 
-  geometry::MeshToVolumeResolution resolution;
-  resolution.mode = (MeshToVolumeModifierResolutionMode)storage.resolution_mode;
-  if (resolution.mode == MESH_TO_VOLUME_RESOLUTION_MODE_VOXEL_AMOUNT) {
-    resolution.settings.voxel_amount = params.get_input<float>("Voxel Amount");
-    if (resolution.settings.voxel_amount <= 0.0f) {
-      return nullptr;
-    }
-  }
-  else if (resolution.mode == MESH_TO_VOLUME_RESOLUTION_MODE_VOXEL_SIZE) {
-    resolution.settings.voxel_size = params.get_input<float>("Voxel Size");
-    if (resolution.settings.voxel_size <= 0.0f) {
-      return nullptr;
-    }
-  }
-
-  if (mesh.totvert == 0 || mesh.totpoly == 0) {
+  if (interior_band_width <= 0.0f && !fill_volume) {
     return nullptr;
   }
 
   const float4x4 mesh_to_volume_space_transform = float4x4::identity();
+  const float volume_simplify = BKE_volume_simplify_factor(params.depsgraph());
+  if (volume_simplify == 0.0f) {
+    return nullptr;
+  }
+
+  geometry::MeshToVolumeSettings settings{/* voxels */ 0,
+                                          /* voxel_size */ 0.0f,
+                                          /* interior_band_width */ interior_band_width,
+                                          /* exterior_band_width */ 0.0f,
+                                          /* density */ density,
+                                          /* simplify */ volume_simplify,
+                                          /* fill_volume */ fill_volume,
+                                          /* use_world_space_units */ true,
+                                          /* convert_to_fog */ true,
+                                          /* unsigned_distance */ false};
 
   auto bounds_fn = [&](float3 &r_min, float3 &r_max) {
     float3 min{std::numeric_limits<float>::max()};
@@ -118,24 +111,33 @@ static Volume *create_volume_from_mesh(const Mesh &mesh, GeoNodeExecParams &para
     r_max = max;
   };
 
-  const float voxel_size = geometry::volume_compute_voxel_size(params.depsgraph(),
-                                                               bounds_fn,
-                                                               resolution,
-                                                               exterior_band_width,
-                                                               mesh_to_volume_space_transform);
+  auto mode = (MeshToVolumeModifierResolutionMode)storage.resolution_mode;
+  if (mode == MESH_TO_VOLUME_RESOLUTION_MODE_VOXEL_AMOUNT) {
+    settings.voxels = params.get_input<int>("Voxel Amount");
+    if (settings.voxels <= 0) {
+      return nullptr;
+    }
+    settings.voxel_size = geometry::volume_compute_voxel_size(
+        settings, bounds_fn, mesh_to_volume_space_transform);
+  }
+  else if (mode == MESH_TO_VOLUME_RESOLUTION_MODE_VOXEL_SIZE) {
+    settings.voxel_size = params.get_input<float>("Voxel Size");
+  }
+
+  if (settings.voxel_size < 1e-5f) {
+    /* The voxel size is too small. */
+    return nullptr;
+  }
+
+  if (mesh.totpoly == 0) {
+    return nullptr;
+  }
 
   Volume *volume = reinterpret_cast<Volume *>(BKE_id_new_nomain(ID_VO, nullptr));
 
   /* Convert mesh to grid and add to volume. */
-  geometry::fog_volume_grid_add_from_mesh(volume,
-                                          "density",
-                                          &mesh,
-                                          mesh_to_volume_space_transform,
-                                          voxel_size,
-                                          fill_volume,
-                                          exterior_band_width,
-                                          interior_band_width,
-                                          density);
+  VolumeGrid *volumegrid = geometry::volume_grid_add_from_mesh(
+      volume, "density", &mesh, mesh_to_volume_space_transform, settings);
 
   return volume;
 }
