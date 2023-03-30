@@ -235,6 +235,9 @@ static void gpencil_draw_scene(void *vedata)
     STRNCPY(ved->info, "Error: No shader storage buffer support");
     return;
   }
+  if (DRW_state_is_select() || DRW_state_is_depth()) {
+    return;
+  }
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
   const DRWView *default_view = DRW_view_default_get();
   draw::Manager *manager = DRW_manager_get();
