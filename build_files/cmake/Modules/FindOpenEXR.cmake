@@ -122,7 +122,6 @@ IF(OPENEXR_VERSION VERSION_GREATER_EQUAL "3.0.0")
   # For OpenEXR 3.x, we also need to find the now separate Imath library.
   # For simplicity we also add it to the OpenEXR includes and libraries, as it's simpler to
   # support both 2.x and 3.x this way.
-  SET(IMATH_LIBRARIES)
 
   # Find include directory
   FIND_PATH(IMATH_INCLUDE_DIR
@@ -160,7 +159,6 @@ IF(OPENEXR_VERSION VERSION_GREATER_EQUAL "3.0.0")
     PATH_SUFFIXES
       lib64 lib
     )
-  LIST(APPEND IMATH_LIBRARIES "${IMATH_LIBRARY}")
   LIST(APPEND _openexr_LIBRARIES "${IMATH_LIBRARY}")
 
   # In cmake version 3.21 and up, we can instead use the NO_CACHE option for
@@ -169,6 +167,13 @@ IF(OPENEXR_VERSION VERSION_GREATER_EQUAL "3.0.0")
   UNSET(_imath_libs_ver)
   UNSET(_imath_build_specification)
 ENDIF()
+
+IF(OPENEXR_VERSION VERSION_GREATER_EQUAL "3.0.0")
+	SET(IMATH_LIBRARIES ${IMATH_LIBRARY})
+ELSE()
+	SET(IMATH_LIBRARIES ${OPENEXR_IMATH_LIBRARY})
+ENDIF()
+
 
 # handle the QUIETLY and REQUIRED arguments and set OPENEXR_FOUND to TRUE if
 # all listed variables are TRUE
