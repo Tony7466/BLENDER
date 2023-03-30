@@ -424,10 +424,16 @@ void USDMeshReader::read_color_data_all(Mesh *mesh, const double motionSampleTim
   pxr::UsdGeomPrimvarsAPI pv_api = pxr::UsdGeomPrimvarsAPI(mesh_prim_);
   std::vector<pxr::UsdGeomPrimvar> primvars = pv_api.GetPrimvarsWithValues();
 
+  pxr::TfToken active_color_name;
+
   /* Convert color primvars to custom layer data. */
   for (pxr::UsdGeomPrimvar &pv : primvars) {
+    if (!pv.HasValue()) {
+      continue;
+    }
 
     pxr::SdfValueTypeName type = pv.GetTypeName();
+    const char *name_as_string = type.GetAsToken().GetText();
 
     if (!ELEM(type,
               pxr::SdfValueTypeNames->Color3hArray,
@@ -438,6 +444,13 @@ void USDMeshReader::read_color_data_all(Mesh *mesh, const double motionSampleTim
 
     pxr::TfToken name = pv.GetPrimvarName();
 
+    /* Set the active color name to 'displayColor', if a color primvar
+     * with this name exists.  Otherwise, use the name of the first
+     * color primvar we find for the active color. */
+    if (active_color_name.IsEmpty() || name == usdtokens::displayColor) {
+      active_color_name = name;
+    }
+
     /* Skip if we read this primvar before and it isn't animated. */
     const std::map<const pxr::TfToken, bool>::const_iterator is_animated_iter =
         primvar_varying_map_.find(name);
@@ -446,6 +459,10 @@ void USDMeshReader::read_color_data_all(Mesh *mesh, const double motionSampleTim
     }
 
     read_color_data(mesh, pv, motionSampleTime);
+  }
+
+  if (!active_color_name.IsEmpty()) {
+    BKE_id_attributes_active_color_set(&mesh->id, active_color_name.GetText());
   }
 }
 
@@ -510,54 +527,61 @@ void USDMeshReader::read_color_data(Mesh *mesh,
     return;
   }
 
-  /* Check for situations that allow for a straight-forward copy by index. */
-  if ((ELEM(interp, pxr::UsdGeomTokens->vertex)) ||
-      (color_domain == ATTR_DOMAIN_CORNER && !is_left_handed_)) {
-    for (int i = 0; i < usd_colors.size(); i++) {
-      ColorGeometry4f color = ColorGeometry4f(
-          usd_colors[i][0], usd_colors[i][1], usd_colors[i][2], 1.0f);
-      color_data.span[i] = color;
-    }
+  if (ELEM(interp, pxr::UsdGeomTokens->constant, pxr::UsdGeomTokens->uniform)) {
+    /* For situations where there's only a single item, flood fill the object. */
+    color_data.span.fill(
+        ColorGeometry4f(usd_colors[0][0], usd_colors[0][1], usd_colors[0][2], 1.0f));
   }
-
-  /* Special case: expand uniform color into corner color.
-   * Uniforms in USD come through as single colors, face-varying. Since Blender does not
-   * support this particular combination for paintable color attributes, we convert the type
-   * here to make sure that the user gets the same visual result.
-   * */
-  else if (ELEM(interp, pxr::UsdGeomTokens->uniform)) {
-    for (int i = 0; i < usd_colors.size(); i++) {
-      const ColorGeometry4f color = ColorGeometry4f(
-          usd_colors[i][0], usd_colors[i][1], usd_colors[i][2], 1.0f);
-      color_data.span[i * 4] = color;
-      color_data.span[i * 4 + 1] = color;
-      color_data.span[i * 4 + 2] = color;
-      color_data.span[i * 4 + 3] = color;
-    }
-  }
-
   else {
-    /* Loop-level data, but left-handed, requires a bit of a swizzle. */
-    const Span<MPoly> polys = mesh->polys();
-
-    for (const MPoly &poly : polys) {
-      for (int j = 0; j < poly.totloop; ++j) {
-        /* Default for constant varying interpolation. */
-        int usd_index = poly.loopstart;
-        if (is_left_handed_) {
-          usd_index += poly.totloop - 1 - j;
-        }
-        else {
-          usd_index += j;
-        }
-
-        if (usd_index >= usd_colors.size()) {
-          continue;
-        }
-
+    /* Check for situations that allow for a straight-forward copy by index. */
+    if ((ELEM(interp, pxr::UsdGeomTokens->vertex)) ||
+        (color_domain == ATTR_DOMAIN_CORNER && !is_left_handed_)) {
+      for (int i = 0; i < usd_colors.size(); i++) {
         ColorGeometry4f color = ColorGeometry4f(
-            usd_colors[usd_index][0], usd_colors[usd_index][1], usd_colors[usd_index][2], 1.0f);
-        color_data.span[usd_index] = color;
+            usd_colors[i][0], usd_colors[i][1], usd_colors[i][2], 1.0f);
+        color_data.span[i] = color;
+      }
+    }
+
+    /* Special case: expand uniform color into corner color.
+     * Uniforms in USD come through as single colors, face-varying. Since Blender does not
+     * support this particular combination for paintable color attributes, we convert the type
+     * here to make sure that the user gets the same visual result.
+     * */
+    else if (ELEM(interp, pxr::UsdGeomTokens->uniform)) {
+      for (int i = 0; i < usd_colors.size(); i++) {
+        const ColorGeometry4f color = ColorGeometry4f(
+            usd_colors[i][0], usd_colors[i][1], usd_colors[i][2], 1.0f);
+        color_data.span[i * 4] = color;
+        color_data.span[i * 4 + 1] = color;
+        color_data.span[i * 4 + 2] = color;
+        color_data.span[i * 4 + 3] = color;
+      }
+    }
+
+    else {
+      /* Loop-level data, but left-handed, requires a bit of a swizzle. */
+      const Span<MPoly> polys = mesh->polys();
+
+      for (const MPoly &poly : polys) {
+        for (int j = 0; j < poly.totloop; ++j) {
+          /* Default for constant varying interpolation. */
+          int usd_index = poly.loopstart;
+          if (is_left_handed_) {
+            usd_index += poly.totloop - 1 - j;
+          }
+          else {
+            usd_index += j;
+          }
+
+          if (usd_index >= usd_colors.size()) {
+            continue;
+          }
+
+          ColorGeometry4f color = ColorGeometry4f(
+              usd_colors[usd_index][0], usd_colors[usd_index][1], usd_colors[usd_index][2], 1.0f);
+          color_data.span[usd_index] = color;
+        }
       }
     }
   }
