@@ -153,7 +153,7 @@ static void SCULPT_dynamic_topology_disable_ex(
     CustomData_free(&me->fdata, me->totface);
     CustomData_free(&me->ldata, me->totloop);
     CustomData_free(&me->pdata, me->totpoly);
-    MEM_SAFE_FREE(me->poly_offsets_data);
+    MEM_SAFE_FREE(me->poly_offset_indices);
 
     /* Copy over stored custom data. */
     SculptUndoNodeGeometry *geometry = &unode->geometry_bmesh_enter;
@@ -170,7 +170,7 @@ static void SCULPT_dynamic_topology_disable_ex(
         &geometry->ldata, &me->ldata, CD_MASK_MESH.lmask, CD_DUPLICATE, geometry->totloop);
     CustomData_copy(
         &geometry->pdata, &me->pdata, CD_MASK_MESH.pmask, CD_DUPLICATE, geometry->totpoly);
-    me->poly_offsets_data = static_cast<int *>(MEM_dupallocN(geometry->poly_offsets_data));
+    me->poly_offset_indices = static_cast<int *>(MEM_dupallocN(geometry->poly_offset_indices));
   }
   else {
     BKE_sculptsession_bm_to_me(ob, true);

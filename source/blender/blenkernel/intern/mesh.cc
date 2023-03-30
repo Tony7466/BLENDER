@@ -157,7 +157,8 @@ static void mesh_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int 
   CustomData_copy(&mesh_src->ldata, &mesh_dst->ldata, mask.lmask, alloc_type, mesh_dst->totloop);
   CustomData_copy(&mesh_src->pdata, &mesh_dst->pdata, mask.pmask, alloc_type, mesh_dst->totpoly);
   if (mesh_src->totpoly > 0) {
-    mesh_dst->poly_offsets_data = static_cast<int *>(MEM_dupallocN(mesh_src->poly_offsets_data));
+    mesh_dst->poly_offset_indices = static_cast<int *>(
+        MEM_dupallocN(mesh_src->poly_offset_indices));
   }
   if (do_tessface) {
     CustomData_copy(&mesh_src->fdata, &mesh_dst->fdata, mask.fmask, alloc_type, mesh_dst->totface);
@@ -279,7 +280,7 @@ static void mesh_blend_write(BlendWriter *writer, ID *id, const void *id_address
 
       MutableSpan<MPoly> legacy_polys = BKE_mesh_legacy_convert_offsets_to_polys(
           mesh, temp_arrays_for_legacy_format, poly_layers);
-      mesh->poly_offsets_data = nullptr;
+      mesh->poly_offset_indices = nullptr;
 
       BKE_mesh_legacy_convert_hide_layers_to_flags(mesh, legacy_polys);
       BKE_mesh_legacy_convert_selection_layers_to_flags(mesh, legacy_polys);
@@ -316,8 +317,8 @@ static void mesh_blend_write(BlendWriter *writer, ID *id, const void *id_address
       BKE_mesh_legacy_face_set_from_generic(poly_layers);
     }
 
-    if (mesh->poly_offsets_data) {
-      BLO_write_int32_array(writer, mesh->totpoly + 1, mesh->poly_offsets_data);
+    if (mesh->poly_offset_indices) {
+      BLO_write_int32_array(writer, mesh->totpoly + 1, mesh->poly_offset_indices);
     }
   }
 
@@ -373,7 +374,7 @@ static void mesh_blend_read_data(BlendDataReader *reader, ID *id)
 
   BLO_read_list(reader, &mesh->vertex_group_names);
 
-  BLO_read_int32_array(reader, mesh->totpoly + 1, &mesh->poly_offsets_data);
+  BLO_read_int32_array(reader, mesh->totpoly + 1, &mesh->poly_offset_indices);
 
   CustomData_blend_read(reader, &mesh->vdata, mesh->totvert);
   CustomData_blend_read(reader, &mesh->edata, mesh->totedge);
@@ -916,7 +917,7 @@ static void mesh_clear_geometry(Mesh *mesh)
   CustomData_free(&mesh->fdata, mesh->totface);
   CustomData_free(&mesh->ldata, mesh->totloop);
   CustomData_free(&mesh->pdata, mesh->totpoly);
-  MEM_SAFE_FREE(mesh->poly_offsets_data);
+  MEM_SAFE_FREE(mesh->poly_offset_indices);
 
   MEM_SAFE_FREE(mesh->mselect);
 
@@ -960,12 +961,12 @@ Mesh *BKE_mesh_add(Main *bmain, const char *name)
 
 void BKE_mesh_poly_offsets_ensure(Mesh *mesh)
 {
-  BLI_assert(mesh->poly_offsets_data == nullptr);
+  BLI_assert(mesh->poly_offset_indices == nullptr);
   if (mesh->totpoly == 0) {
     return;
   }
-  if (!mesh->poly_offsets_data) {
-    mesh->poly_offsets_data = static_cast<int *>(
+  if (!mesh->poly_offset_indices) {
+    mesh->poly_offset_indices = static_cast<int *>(
         MEM_malloc_arrayN(mesh->totpoly + 1, sizeof(int), __func__));
   }
 #ifdef DEBUG

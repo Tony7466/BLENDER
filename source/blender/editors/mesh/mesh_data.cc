@@ -1229,7 +1229,7 @@ static void mesh_add_loops(Mesh *mesh, int len)
 
   /* Keep the last poly offset up to date with the corner total (they must be the same). We have
    * to be careful here though, since the mesh may not be in a valid state at this point. */
-  if (mesh->poly_offsets_data) {
+  if (mesh->poly_offset_indices) {
     mesh->poly_offsets_for_write().last() = mesh->totloop;
   }
 }
@@ -1250,8 +1250,8 @@ static void mesh_add_polys(Mesh *mesh, int len)
   CustomData_copy(&mesh->pdata, &pdata, CD_MASK_MESH.pmask, CD_SET_DEFAULT, totpoly);
   CustomData_copy_data(&mesh->pdata, &pdata, 0, 0, mesh->totpoly);
 
-  mesh->poly_offsets_data = static_cast<int *>(
-      MEM_reallocN(mesh->poly_offsets_data, sizeof(int) * (totpoly + 1)));
+  mesh->poly_offset_indices = static_cast<int *>(
+      MEM_reallocN(mesh->poly_offset_indices, sizeof(int) * (totpoly + 1)));
 
   CustomData_free(&mesh->pdata, mesh->totpoly);
   mesh->pdata = pdata;

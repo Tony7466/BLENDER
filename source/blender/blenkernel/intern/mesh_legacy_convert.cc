@@ -2238,7 +2238,7 @@ static bool poly_loops_orders_match(const Span<MPoly> polys)
 void BKE_mesh_legacy_convert_polys_to_offsets(Mesh *mesh)
 {
   using namespace blender;
-  if (mesh->poly_offsets_data) {
+  if (mesh->poly_offset_indices) {
     return;
   }
   const Span<MPoly> polys(static_cast<const MPoly *>(CustomData_get_layer(&mesh->pdata, CD_MPOLY)),

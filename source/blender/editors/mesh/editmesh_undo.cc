@@ -120,7 +120,7 @@ struct UndoMesh {
   /* Null arrays are considered empty. */
   struct { /* most data is stored as 'custom' data */
     BArrayCustomData *vdata, *edata, *ldata, *pdata;
-    BArrayState *poly_offsets_data;
+    BArrayState *poly_offset_indices;
     BArrayState **keyblocks;
     BArrayState *mselect;
   } store;
@@ -385,20 +385,20 @@ static void um_arraystore_compact_ex(UndoMesh *um, const UndoMesh *um_ref, bool 
                                  &um->store.pdata);
       },
       [&]() {
-        if (me->poly_offsets_data) {
-          BLI_assert(create == (um->store.poly_offsets_data == nullptr));
+        if (me->poly_offset_indices) {
+          BLI_assert(create == (um->store.poly_offset_indices == nullptr));
           if (create) {
-            BArrayState *state_reference = um_ref ? um_ref->store.poly_offsets_data : nullptr;
-            const size_t stride = sizeof(*me->poly_offsets_data);
+            BArrayState *state_reference = um_ref ? um_ref->store.poly_offset_indices : nullptr;
+            const size_t stride = sizeof(*me->poly_offset_indices);
             BArrayStore *bs = BLI_array_store_at_size_ensure(
                 &um_arraystore.bs_stride[ARRAY_STORE_INDEX_POLY_OFFSETS],
                 stride,
                 array_chunk_size_calc(stride));
-            um->store.poly_offsets_data = BLI_array_store_state_add(
-                bs, me->poly_offsets_data, size_t(me->totpoly + 1) * stride, state_reference);
+            um->store.poly_offset_indices = BLI_array_store_state_add(
+                bs, me->poly_offset_indices, size_t(me->totpoly + 1) * stride, state_reference);
           }
 
-          MEM_SAFE_FREE(me->poly_offsets_data);
+          MEM_SAFE_FREE(me->poly_offset_indices);
         }
       },
       [&]() {
@@ -560,11 +560,11 @@ static void um_arraystore_expand(UndoMesh *um)
     }
   }
 
-  if (um->store.poly_offsets_data) {
-    const size_t stride = sizeof(*me->poly_offsets_data);
-    BArrayState *state = um->store.poly_offsets_data;
+  if (um->store.poly_offset_indices) {
+    const size_t stride = sizeof(*me->poly_offset_indices);
+    BArrayState *state = um->store.poly_offset_indices;
     size_t state_len;
-    me->poly_offsets_data = static_cast<int *>(
+    me->poly_offset_indices = static_cast<int *>(
         BLI_array_store_state_data_get_alloc(state, &state_len));
     BLI_assert((me->totpoly + 1) == (state_len / stride));
     UNUSED_VARS_NDEBUG(stride);
@@ -600,13 +600,13 @@ static void um_arraystore_free(UndoMesh *um)
     um->store.keyblocks = nullptr;
   }
 
-  if (um->store.poly_offsets_data) {
-    const size_t stride = sizeof(*me->poly_offsets_data);
+  if (um->store.poly_offset_indices) {
+    const size_t stride = sizeof(*me->poly_offset_indices);
     BArrayStore *bs = BLI_array_store_at_size_get(
         &um_arraystore.bs_stride[ARRAY_STORE_INDEX_POLY_OFFSETS], stride);
-    BArrayState *state = um->store.poly_offsets_data;
+    BArrayState *state = um->store.poly_offset_indices;
     BLI_array_store_state_remove(bs, state);
-    um->store.poly_offsets_data = nullptr;
+    um->store.poly_offset_indices = nullptr;
   }
   if (um->store.mselect) {
     const size_t stride = sizeof(*me->mselect);
