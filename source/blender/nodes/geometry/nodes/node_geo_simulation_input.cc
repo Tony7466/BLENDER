@@ -49,7 +49,6 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
     if (!params.output_was_set(0)) {
       const float delta_time = modifier_data.simulation_time_delta;
       params.set_output(0, fn::ValueOrField<float>(delta_time));
-      printf("DELTA: %f\n", delta_time);
     }
 
     const bke::sim::SimulationZoneID zone_id = get_simulation_zone_id(*user_data.compute_context,

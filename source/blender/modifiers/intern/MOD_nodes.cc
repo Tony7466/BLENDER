@@ -1281,7 +1281,6 @@ static GeometrySet compute_geometry(
             nmd_orig->simulation_cache->try_get_last_state_before(current_time);
         if (prev_sim_state.second != nullptr) {
           geo_nodes_modifier_data.prev_simulation_state = prev_sim_state.second;
-          printf("TIME: %f, PREV: %f\n", current_time, prev_sim_state.first);
           const float frame_delta = current_time - prev_sim_state.first;
           if (frame_delta > 1.0f) {
             nmd_orig->simulation_cache->invalidate();
