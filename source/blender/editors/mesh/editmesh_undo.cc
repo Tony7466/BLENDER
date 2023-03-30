@@ -566,7 +566,7 @@ static void um_arraystore_expand(UndoMesh *um)
     size_t state_len;
     me->poly_offsets_data = static_cast<int *>(
         BLI_array_store_state_data_get_alloc(state, &state_len));
-    BLI_assert(me->totpoly == (state_len / stride));
+    BLI_assert((me->totpoly + 1) == (state_len / stride));
     UNUSED_VARS_NDEBUG(stride);
   }
   if (um->store.mselect) {
