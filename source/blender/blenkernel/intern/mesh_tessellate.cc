@@ -197,7 +197,7 @@ static void mesh_recalc_looptri__single_threaded(const Span<int> corner_verts,
     BLI_memarena_free(pf_arena);
     pf_arena = nullptr;
   }
-  BLI_assert(tri_index == uint(poly_to_tri_count(polys.size(), int(corner_verts.size()))));
+  BLI_assert(tri_index == uint(poly_to_tri_count(int(polys.size()), int(corner_verts.size()))));
 }
 
 struct TessellationUserData {
