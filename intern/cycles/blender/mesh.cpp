@@ -991,7 +991,7 @@ static void create_mesh(Scene *scene,
   Attribute *attr_N = attributes.add(ATTR_STD_VERTEX_NORMAL);
   float3 *N = attr_N->data_float3();
 
-  if (!corner_normals) {
+  if (subdivision || !(use_loop_normals && corner_normals)) {
     const float(*b_vert_normals)[3] = static_cast<const float(*)[3]>(
         b_mesh.vertex_normals[0].ptr.data);
     for (int i = 0; i < numverts; i++) {
@@ -1047,7 +1047,7 @@ static void create_mesh(Scene *scene,
       std::fill(shader, shader + numtris, 0);
     }
 
-    if (sharp_faces && !corner_normals) {
+    if (sharp_faces && !(use_loop_normals && corner_normals)) {
       for (int i = 0; i < numtris; i++) {
         const int poly_index = looptris[i].poly;
         smooth[i] = !sharp_faces[poly_index];
@@ -1057,7 +1057,7 @@ static void create_mesh(Scene *scene,
       std::fill(smooth, smooth + numtris, true);
     }
 
-    if (corner_normals) {
+    if (use_loop_normals && corner_normals) {
       for (int i = 0; i < numtris; i++) {
         const MLoopTri &tri = looptris[i];
         for (int i = 0; i < 3; i++) {
@@ -1068,6 +1068,7 @@ static void create_mesh(Scene *scene,
         }
       }
     }
+
     mesh->tag_triangles_modified();
     mesh->tag_shader_modified();
     mesh->tag_smooth_modified();
@@ -1080,7 +1081,7 @@ static void create_mesh(Scene *scene,
     int *subd_ptex_offset = mesh->get_subd_ptex_offset().data();
     int *subd_face_corners = mesh->get_subd_face_corners().data();
 
-    if (sharp_faces) {
+    if (sharp_faces && !use_loop_normals) {
       for (int i = 0; i < numfaces; i++) {
         subd_smooth[i] = !sharp_faces[i];
       }
