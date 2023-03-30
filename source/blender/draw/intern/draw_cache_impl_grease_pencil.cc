@@ -11,6 +11,7 @@
 #include "BKE_grease_pencil.hh"
 
 #include "BLI_task.hh"
+#include "BLI_timeit.hh"
 
 #include "DNA_grease_pencil_types.h"
 
@@ -219,6 +220,8 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
     return;
   }
 
+  SCOPED_TIMER("grease_pencil_batches_ensure");
+
   /* Should be discarded together. */
   BLI_assert(cache->vbo == nullptr && cache->ibo == nullptr);
   BLI_assert(cache->geom_batch == nullptr);
@@ -226,14 +229,37 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
   /* First count how many vertices and triangles are needed for the whole object. */
   int total_points_num = 0;
   int total_triangles_num = 0;
+  Vector<Vector<int>> verts_start_offsets_per_visible_drawing;
+  Vector<Vector<int>> tris_start_offsets_per_visible_drawing;
   grease_pencil.foreach_visible_drawing(cfra, [&](GreasePencilDrawing &drawing) {
     bke::CurvesGeometry &curves = drawing.geometry.wrap();
+    offset_indices::OffsetIndices<int> points_by_curve = curves.points_by_curve();
+    const VArray<bool> cyclic = curves.cyclic();
+    Vector<int> verts_start_offsets(curves.curves_num());
+    Vector<int> tris_start_offsets(curves.curves_num());
     int num_cyclic = count_cyclic_curves(curves);
     /* One vertex is stored before and after as padding. Cyclic strokes have one extra
      * vertex.*/
     total_points_num += curves.points_num() + num_cyclic + curves.curves_num() * 2;
     total_triangles_num += (curves.points_num() + num_cyclic) * 2;
     total_triangles_num += drawing.runtime->triangles_cache.size();
+
+    int t = 0;
+    int v = 0;
+    for (const int curve_i : curves.curves_range()) {
+      IndexRange points = points_by_curve[curve_i];
+      const bool is_cyclic = cyclic[curve_i];
+
+      tris_start_offsets.append(t);
+      if (points.size() >= 3) {
+        t += points.size() - 2;
+      }
+
+      verts_start_offsets.append(v);
+      v += 1 + points.size() + (is_cyclic ? 1 : 0) + 1;
+    }
+    verts_start_offsets_per_visible_drawing.append(std::move(verts_start_offsets));
+    tris_start_offsets_per_visible_drawing.append(std::move(tris_start_offsets));
   });
 
   GPUUsageType vbo_flag = GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY;
@@ -257,7 +283,8 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
   GPU_indexbuf_init(&ibo, GPU_PRIM_TRIS, total_triangles_num, 0xFFFFFFFFu);
 
   /* Fill buffers with data. */
-  int v = 0;
+  // int v = 0;
+  int drawing_i = 0;
   grease_pencil.foreach_visible_drawing(cfra, [&](GreasePencilDrawing &drawing) {
     bke::CurvesGeometry &curves = drawing.geometry.wrap();
     bke::AttributeAccessor attributes = curves.attributes();
@@ -269,13 +296,16 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
         "opacity", ATTR_DOMAIN_POINT, 1.0f);
     VArray<int> materials = attributes.lookup_or_default<int>(
         "material_index", ATTR_DOMAIN_CURVE, -1);
+    Span<uint3> tris = drawing.runtime->triangles_cache.as_span();
+    Span<int> verts_start_offsets = verts_start_offsets_per_visible_drawing[drawing_i].as_span();
+    Span<int> tris_start_offsets = tris_start_offsets_per_visible_drawing[drawing_i].as_span();
 
-    auto populate_point = [&](int curve_i, int point_i, int v_start, int v) {
+    auto populate_point = [&](int curve_i, int point_i, int verts_start_offset, int v) {
       copy_v3_v3(verts[v].pos, positions[point_i]);
       verts[v].radius = radii[point_i];
       verts[v].opacity = opacities[point_i];
       verts[v].point_id = v;
-      verts[v].stroke_id = v_start;
+      verts[v].stroke_id = verts_start_offset;
       verts[v].mat = materials[curve_i] % GPENCIL_MATERIAL_BUFFER_LEN;
 
       /* TODO */
@@ -297,44 +327,102 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
       GPU_indexbuf_add_tri_verts(&ibo, v_mat + 2, v_mat + 1, v_mat + 3);
     };
 
-    int t = 0;
-    for (const int curve_i : curves.curves_range()) {
-      IndexRange points = points_by_curve[curve_i];
-      const bool is_cyclic = cyclic[curve_i];
-      const int v_start = v;
-      int num_triangles = 0;
+    threading::parallel_for(curves.curves_range(), 256, [&](IndexRange range) {
+      for (const int curve_i : range) {
+        IndexRange points = points_by_curve[curve_i];
+        const bool is_cyclic = cyclic[curve_i];
+        const int verts_start_offset = verts_start_offsets[curve_i];
+        const int tris_start_offset = tris_start_offsets[curve_i];
+        const int num_verts = 1 + points.size() + (is_cyclic ? 1 : 0) + 1;
+        IndexRange verts_range = IndexRange(verts_start_offset, num_verts);
+        // MutableSpan<GreasePencilStrokeVert> verts_slice = verts.slice(verts_range);
+        // MutableSpan<GreasePencilColorVert> cols_slice = cols.slice(verts_range);
 
-      /* First point is not drawn. */
-      verts[v].mat = -1;
-      v++;
+        // int num_triangles = 0;
 
-      if (points.size() >= 3) {
-        num_triangles = points.size() - 2;
-        for (const int tri_i : IndexRange(num_triangles)) {
-          uint3 tri = drawing.runtime->triangles_cache[t + tri_i];
-          GPU_indexbuf_add_tri_verts(&ibo,
-                                     (v + tri.x) << GP_VERTEX_ID_SHIFT,
-                                     (v + tri.y) << GP_VERTEX_ID_SHIFT,
-                                     (v + tri.z) << GP_VERTEX_ID_SHIFT);
+        /* First point is not drawn. */
+        verts[verts_range.first()].mat = -1;
+        // v++;
+
+        if (points.size() >= 3) {
+          // num_triangles = points.size() - 2;
+          Span<uint3> tris_slice = tris.slice(tris_start_offset, points.size() - 2);
+          for (uint3 tri : tris_slice) {
+            GPU_indexbuf_add_tri_verts(&ibo,
+                                       (verts_range[1] + tri.x) << GP_VERTEX_ID_SHIFT,
+                                       (verts_range[1] + tri.y) << GP_VERTEX_ID_SHIFT,
+                                       (verts_range[1] + tri.z) << GP_VERTEX_ID_SHIFT);
+          }
         }
+
+        for (const int i : IndexRange(points.size())) {
+          const int point_i = points[i];
+          const int vert_i = verts_range[i + 1];
+          populate_point(curve_i, point_i, verts_range.first(), vert_i);
+          // v++;
+        }
+
+        if (is_cyclic) {
+          populate_point(
+              curve_i, points.first(), verts_range.first(), verts_range[points.size() + 1]);
+          // v++;
+        }
+
+        /* Last point is not drawn. */
+        verts[verts_range.last()].mat = -1;
+        // v++;
       }
+    });
 
-      for (const int point_i : points) {
-        populate_point(curve_i, point_i, v_start, v);
-        v++;
-      }
+    // int t = 0;
+    // for (const int curve_i : curves.curves_range()) {
+    //   IndexRange points = points_by_curve[curve_i];
+    //   const bool is_cyclic = cyclic[curve_i];
+    //   const int verts_start_offset = v;
+    //   const int tris_start_offset = t;
+    //   const int num_points = 1 + points.size() + (is_cyclic ? 1 : 0) + 1;
+    //   IndexRange verts_range = IndexRange(verts_start_offset, num_points);
+    //   MutableSpan<GreasePencilStrokeVert> verts_slice = verts.slice(verts_range);
+    //   MutableSpan<GreasePencilColorVert> cols_slice = cols.slice(verts_range);
 
-      if (is_cyclic) {
-        populate_point(curve_i, points.first(), v_start, v);
-        v++;
-      }
+    //   int num_triangles = 0;
 
-      /* Last point is not drawn. */
-      verts[v].mat = -1;
-      v++;
+    //   /* First point is not drawn. */
+    //   verts_slice.first().mat = -1;
+    //   v++;
 
-      t += num_triangles;
-    }
+    //   if (points.size() >= 3) {
+    //     num_triangles = points.size() - 2;
+    //     Span<uint3> tris_slice = tris.slice(tris_start_offset, points.size() - 2);
+    //     for (uint3 tri : tris_slice) {
+    //       GPU_indexbuf_add_tri_verts(&ibo,
+    //                                  (verts_range[1] + tri.x) << GP_VERTEX_ID_SHIFT,
+    //                                  (verts_range[1] + tri.y) << GP_VERTEX_ID_SHIFT,
+    //                                  (verts_range[1] + tri.z) << GP_VERTEX_ID_SHIFT);
+    //     }
+    //   }
+
+    //   for (const int i : IndexRange(points.size())) {
+    //     const int point_i = points[i];
+    //     const int vert_i = verts_range[i + 1];
+    //     populate_point(curve_i, point_i, verts_range.first(), vert_i);
+    //     v++;
+    //   }
+
+    //   if (is_cyclic) {
+    //     populate_point(
+    //         curve_i, points.first(), verts_range.first(), verts_range[points.size() + 1]);
+    //     v++;
+    //   }
+
+    //   /* Last point is not drawn. */
+    //   verts_slice.last().mat = -1;
+    //   v++;
+
+    //   t += num_triangles;
+    // }
+
+    drawing_i++;
   });
 
   /* Mark last 2 verts as invalid. */
