@@ -204,7 +204,7 @@ static void nlastrip_fix_overlapping(TransInfo *t, TransDataNla *tdn, NlaStrip *
    *
    * this is done as a iterative procedure (done 5 times max for now)
    */
-  short iter_max = 5;
+  short iter_max = 4;
   NlaStrip *prev = BKE_nlastrip_prev_in_track(strip, true);
   NlaStrip *next = BKE_nlastrip_next_in_track(strip, true);
 
@@ -214,7 +214,7 @@ static void nlastrip_fix_overlapping(TransInfo *t, TransDataNla *tdn, NlaStrip *
     const bool p_exceeded = (prev != NULL) && (tdn->h1[0] < prev->end);
     const bool n_exceeded = (next != NULL) && (tdn->h2[0] > next->start);
 
-    if ((p_exceeded && n_exceeded) || (iter == 4)) {
+    if ((p_exceeded && n_exceeded) || (iter == iter_max)) {
       /* both endpoints exceeded (or iteration ping-pong'd meaning that we need a
        * compromise)
        * - Simply crop strip to fit within the bounds of the strips bounding it
