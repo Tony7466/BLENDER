@@ -433,7 +433,6 @@ void USDMeshReader::read_color_data_all(Mesh *mesh, const double motionSampleTim
     }
 
     pxr::SdfValueTypeName type = pv.GetTypeName();
-    const char *name_as_string = type.GetAsToken().GetText();
 
     if (!ELEM(type,
               pxr::SdfValueTypeNames->Color3hArray,
