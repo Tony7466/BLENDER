@@ -126,9 +126,7 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
     TreeNode *_root;
 
    public:
-    explicit PreOrderRange(TreeNode *root) : _root(root)
-    {
-    }
+    explicit PreOrderRange(TreeNode *root) : _root(root) {}
 
     Iterator begin()
     {
@@ -191,16 +189,6 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
     }
   }
 
-  void save_to_storage(GreasePencilLayerTreeNode *dst)
-  {
-    dst->type = this->type;
-    copy_v3_v3_uchar(dst->color, this->color);
-    dst->flag = this->flag;
-    if (this->name) {
-      dst->name = BLI_strdup(this->name);
-    }
-  }
-
  private:
   void foreach_children_pre_order_recursive_(TreeNodeIterFn function)
   {
@@ -251,12 +239,8 @@ class Layer : public TreeNode, ::GreasePencilLayer {
   mutable SharedCache<Vector<int>> sorted_keys_cache_;
 
  public:
-  Layer() : TreeNode(GREASE_PENCIL_LAYER_TREE_LEAF), frames_()
-  {
-  }
-  Layer(StringRefNull name) : TreeNode(GREASE_PENCIL_LAYER_TREE_LEAF, name), frames_()
-  {
-  }
+  Layer() : TreeNode(GREASE_PENCIL_LAYER_TREE_LEAF), frames_() {}
+  Layer(StringRefNull name) : TreeNode(GREASE_PENCIL_LAYER_TREE_LEAF, name), frames_() {}
   Layer(const Layer &other) : TreeNode(other)
   {
     frames_ = other.frames_;
@@ -265,9 +249,7 @@ class Layer : public TreeNode, ::GreasePencilLayer {
   {
     frames_ = std::move(other.frames_);
   }
-  ~Layer()
-  {
-  }
+  ~Layer() {}
 
   bool operator==(const Layer &other) const
   {
@@ -279,6 +261,11 @@ class Layer : public TreeNode, ::GreasePencilLayer {
   }
 
   const Map<int, int> &frames()
+  {
+    return frames_;
+  }
+
+  Map<int, int> &frames_for_write()
   {
     return frames_;
   }
@@ -305,29 +292,6 @@ class Layer : public TreeNode, ::GreasePencilLayer {
       std::sort(r_data.begin(), r_data.end());
     });
     return sorted_keys_cache_.data().as_span();
-  }
-
-  void save_to_storage(GreasePencilLayerTreeNode **dst)
-  {
-    GreasePencilLayerTreeLeaf *new_leaf = MEM_cnew<GreasePencilLayerTreeLeaf>(__func__);
-    /* Save properties. */
-    TreeNode::save_to_storage(&new_leaf->base);
-
-    /* Save frames map. */
-    int frames_size = frames_.size();
-    new_leaf->layer.frames_storage.size = frames_size;
-    new_leaf->layer.frames_storage.keys = MEM_cnew_array<int>(frames_size, __func__);
-    new_leaf->layer.frames_storage.values = MEM_cnew_array<int>(frames_size, __func__);
-
-    MutableSpan<int> keys{new_leaf->layer.frames_storage.keys, frames_size};
-    MutableSpan<int> values{new_leaf->layer.frames_storage.values, frames_size};
-    keys.copy_from(sorted_keys());
-    for (int i : keys.index_range()) {
-      values[i] = frames_.lookup(keys[i]);
-    }
-
-    /* Store pointer. */
-    *dst = reinterpret_cast<GreasePencilLayerTreeNode *>(new_leaf);
   }
 
   void load_from_storage(GreasePencilLayer &node)
@@ -362,12 +326,8 @@ class Layer : public TreeNode, ::GreasePencilLayer {
 
 class LayerGroup : public TreeNode {
  public:
-  LayerGroup() : TreeNode(GREASE_PENCIL_LAYER_TREE_GROUP)
-  {
-  }
-  LayerGroup(StringRefNull name) : TreeNode(GREASE_PENCIL_LAYER_TREE_GROUP, name)
-  {
-  }
+  LayerGroup() : TreeNode(GREASE_PENCIL_LAYER_TREE_GROUP) {}
+  LayerGroup(StringRefNull name) : TreeNode(GREASE_PENCIL_LAYER_TREE_GROUP, name) {}
   LayerGroup(const LayerGroup &other) : TreeNode(other)
   {
     children_.reserve(other.children_.size());
@@ -394,9 +354,7 @@ class LayerGroup : public TreeNode {
     // }
     // other.children_.clear();
   }
-  ~LayerGroup()
-  {
-  }
+  ~LayerGroup() {}
 
  public:
   bool operator==(const LayerGroup &other) const
@@ -440,19 +398,6 @@ class LayerGroup : public TreeNode {
     BLI_assert(index >= 0 && index < children_.size());
     children_.remove(index);
   }
-
-  void save_to_storage(GreasePencilLayerTreeNode **dst)
-  {
-    GreasePencilLayerTreeGroup *new_group = MEM_cnew<GreasePencilLayerTreeGroup>(__func__);
-    /* Save properties. */
-    TreeNode::save_to_storage(&new_group->base);
-
-    /* Save number of children. */
-    new_group->children_num = this->num_children();
-
-    /* Store pointer. */
-    *dst = reinterpret_cast<GreasePencilLayerTreeNode *>(new_group);
-  }
 };
 
 namespace convert {
@@ -477,12 +422,8 @@ class GreasePencilRuntime {
   LayerGroup root_group_;
 
  public:
-  GreasePencilRuntime()
-  {
-  }
-  GreasePencilRuntime(const GreasePencilRuntime &other) : root_group_(other.root_group_)
-  {
-  }
+  GreasePencilRuntime() {}
+  GreasePencilRuntime(const GreasePencilRuntime &other) : root_group_(other.root_group_) {}
 
   LayerGroup &root_group()
   {
