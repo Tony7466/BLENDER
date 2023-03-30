@@ -415,7 +415,7 @@ void USDMeshReader::read_uvs(Mesh *mesh, const double motionSampleTime, const bo
   }
 }
 
-void USDMeshReader::read_color_data_all(Mesh *mesh, const double motionSampleTime)
+void USDMeshReader::read_color_data_all_primvars(Mesh *mesh, const double motionSampleTime)
 {
   if (!(mesh && mesh_prim_ && mesh->totloop > 0)) {
     return;
@@ -457,7 +457,7 @@ void USDMeshReader::read_color_data_all(Mesh *mesh, const double motionSampleTim
       continue;
     }
 
-    read_color_data(mesh, pv, motionSampleTime);
+    read_color_data_primvar(mesh, pv, motionSampleTime);
   }
 
   if (!active_color_name.IsEmpty()) {
@@ -465,7 +465,7 @@ void USDMeshReader::read_color_data_all(Mesh *mesh, const double motionSampleTim
   }
 }
 
-void USDMeshReader::read_color_data(Mesh *mesh,
+void USDMeshReader::read_color_data_primvar(Mesh *mesh,
                                     const pxr::UsdGeomPrimvar &color_primvar,
                                     const double motionSampleTime)
 {
@@ -765,7 +765,7 @@ void USDMeshReader::read_custom_data(const ImportSettings *settings,
                                      const double motionSampleTime)
 {
   if ((settings->read_flag & MOD_MESHSEQ_READ_COLOR) != 0) {
-    read_color_data_all(mesh, motionSampleTime);
+    read_color_data_all_primvars(mesh, motionSampleTime);
   }
 
   /* TODO: Generic readers for custom data layers not listed above. */

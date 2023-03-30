@@ -77,8 +77,9 @@ class USDMeshReader : public USDGeomReader {
                         Mesh *mesh,
                         double motionSampleTime);
 
-  void read_color_data_all(Mesh *mesh, double motionSampleTime);
-  void read_color_data(Mesh *mesh, const pxr::UsdGeomPrimvar &color_primvar, double motionSampleTime);
+  void read_color_data_all_primvars(Mesh *mesh, const double motionSampleTime);
+  void read_color_data_primvar(Mesh *mesh, const pxr::UsdGeomPrimvar &color_primvar,
+                               const double motionSampleTime);
 };
 
 }  // namespace blender::io::usd
