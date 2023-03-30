@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. All rights reserved. */
+ * Copyright 2022 Blender Foundation */
 
 /** \file
  * \ingroup spseq
@@ -429,7 +429,7 @@ static void draw_seq_in_view(bContext *C, wmWindow *UNUSED(win), wmDrag *drag, c
     float handle_size = 8.0f; /* SEQ_HANDLE_SIZE */
 
     /* Calculate height needed for drawing text on strip. */
-    float text_margin_y = y2 - min_ff(0.40f, 20 * U.dpi_fac * pixely);
+    float text_margin_y = y2 - min_ff(0.40f, 20 * UI_SCALE_FAC * pixely);
     float text_margin_x = 2.0f * (pixelx * handle_size) * U.pixelsize;
 
     rctf rect;

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2004 Blender Foundation. All rights reserved. */
+ * Copyright 2004 Blender Foundation */
 
 /** \file
  * \ingroup edmesh
@@ -38,7 +38,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_object.h"
 #include "BKE_report.h"
 #include "BKE_texture.h"
@@ -3125,15 +3125,15 @@ static int edbm_rotate_colors_exec(bContext *C, wmOperator *op)
 
     BMOperator bmop;
 
-    const Mesh *me = BKE_object_get_original_mesh(ob);
-    const CustomDataLayer *layer = BKE_id_attributes_active_color_get(&me->id);
-
-    if (!layer || BKE_id_attribute_domain(&me->id, layer) != ATTR_DOMAIN_CORNER) {
+    Mesh *me = BKE_object_get_original_mesh(ob);
+    const CustomDataLayer *layer = BKE_id_attribute_search(
+        &me->id, me->active_color_attribute, CD_MASK_COLOR_ALL, ATTR_DOMAIN_MASK_CORNER);
+    if (!layer) {
       continue;
     }
 
     int color_index = BKE_id_attribute_to_index(
-        &me->id, layer, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
+        &me->id, layer, ATTR_DOMAIN_MASK_CORNER, CD_MASK_COLOR_ALL);
     EDBM_op_init(em,
                  &bmop,
                  op,
@@ -3177,17 +3177,17 @@ static int edbm_reverse_colors_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    const Mesh *me = BKE_object_get_original_mesh(obedit);
-    const CustomDataLayer *layer = BKE_id_attributes_active_color_get(&me->id);
-
-    if (!layer || BKE_id_attribute_domain(&me->id, layer) != ATTR_DOMAIN_CORNER) {
+    Mesh *me = BKE_object_get_original_mesh(obedit);
+    const CustomDataLayer *layer = BKE_id_attribute_search(
+        &me->id, me->active_color_attribute, CD_MASK_COLOR_ALL, ATTR_DOMAIN_MASK_CORNER);
+    if (!layer) {
       continue;
     }
 
     BMOperator bmop;
 
     int color_index = BKE_id_attribute_to_index(
-        &me->id, layer, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
+        &me->id, layer, ATTR_DOMAIN_MASK_CORNER, CD_MASK_COLOR_ALL);
     EDBM_op_init(
         em, &bmop, op, "reverse_colors faces=%hf color_index=%i", BM_ELEM_SELECT, color_index);
 
@@ -6814,8 +6814,7 @@ static void sort_bmelem_flag(bContext *C,
         /* Multiplying with totface and adding i ensures us
          * we keep current order for all faces of same mat. */
         sb[affected[2]++].srt = srt * float(totelem[2]) + float(i);
-        // printf("e: %d; srt: %f; final: %f\n",
-        //        i, srt, srt * ((float)totface) + ((float)i));
+        // printf("e: %d; srt: %f; final: %f\n", i, srt, srt * float(totface) + float(i));
       }
       else {
         pb[i] = true;

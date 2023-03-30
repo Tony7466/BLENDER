@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. All rights reserved. */
+ * Copyright 2011 Blender Foundation */
 
 /** \file
  * \ingroup spclip
@@ -1104,7 +1104,7 @@ static int change_frame_invoke(bContext *C, wmOperator *op, const wmEvent *event
   ARegion *region = CTX_wm_region(C);
 
   if (region->regiontype == RGN_TYPE_WINDOW) {
-    if (event->mval[1] > 16 * UI_DPI_FAC) {
+    if (event->mval[1] > 16 * UI_SCALE_FAC) {
       return OPERATOR_PASS_THROUGH;
     }
   }

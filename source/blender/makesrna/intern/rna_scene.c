@@ -8,7 +8,7 @@
 
 #include "DNA_brush_types.h"
 #include "DNA_collection_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_layer_types.h"
 #include "DNA_linestyle_types.h"
 #include "DNA_modifier_types.h"
@@ -132,7 +132,8 @@ const EnumPropertyItem rna_enum_proportional_falloff_curve_only_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
-/* keep for operators, not used here */
+/* Keep for operators, not used here. */
+
 const EnumPropertyItem rna_enum_mesh_select_mode_items[] = {
     {SCE_SELECT_VERTEX, "VERT", ICON_VERTEXSEL, "Vertex", "Vertex selection mode"},
     {SCE_SELECT_EDGE, "EDGE", ICON_EDGESEL, "Edge", "Edge selection mode"},
@@ -667,7 +668,7 @@ const EnumPropertyItem rna_enum_transform_orientation_items[] = {
 #  include "BKE_context.h"
 #  include "BKE_freestyle.h"
 #  include "BKE_global.h"
-#  include "BKE_gpencil.h"
+#  include "BKE_gpencil_legacy.h"
 #  include "BKE_idprop.h"
 #  include "BKE_image.h"
 #  include "BKE_image_format.h"
@@ -4281,7 +4282,7 @@ static void rna_def_view_layer_eevee(BlenderRNA *brna)
 static void rna_def_view_layer_aovs(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;
-  /*  PropertyRNA *prop; */
+  // PropertyRNA *prop;
 
   FunctionRNA *func;
   PropertyRNA *parm;
@@ -4294,6 +4295,14 @@ static void rna_def_view_layer_aovs(BlenderRNA *brna, PropertyRNA *cprop)
   func = RNA_def_function(srna, "add", "BKE_view_layer_add_aov");
   parm = RNA_def_pointer(func, "aov", "AOV", "", "Newly created AOV");
   RNA_def_function_return(func, parm);
+
+  /* Defined in `rna_layer.c`. */
+  func = RNA_def_function(srna, "remove", "rna_ViewLayer_remove_aov");
+  parm = RNA_def_pointer(func, "aov", "AOV", "", "AOV to remove");
+  RNA_def_function_ui_description(func, "Remove an AOV");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS);
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
 }
 
 static void rna_def_view_layer_aov(BlenderRNA *brna)

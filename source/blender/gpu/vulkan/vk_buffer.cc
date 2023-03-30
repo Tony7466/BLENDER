@@ -1,11 +1,12 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation. All rights reserved. */
+ * Copyright 2023 Blender Foundation */
 
 /** \file
  * \ingroup gpu
  */
 
 #include "vk_buffer.hh"
+#include "vk_context.hh"
 
 namespace blender::gpu {
 
@@ -84,10 +85,22 @@ void VKBuffer::update(const void *data) const
   memcpy(mapped_memory_, data, size_in_bytes_);
 }
 
+void VKBuffer::clear(VKContext &context, uint32_t clear_value)
+{
+  VKCommandBuffer &command_buffer = context.command_buffer_get();
+  command_buffer.fill(*this, clear_value);
+}
+
 void VKBuffer::read(void *data) const
 {
   BLI_assert_msg(is_mapped(), "Cannot read a non-mapped buffer.");
   memcpy(data, mapped_memory_, size_in_bytes_);
+}
+
+void *VKBuffer::mapped_memory_get() const
+{
+  BLI_assert_msg(is_mapped(), "Cannot access a non-mapped buffer.");
+  return mapped_memory_;
 }
 
 bool VKBuffer::is_mapped() const

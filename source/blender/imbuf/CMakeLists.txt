@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation. All rights reserved.
+# Copyright 2006 Blender Foundation
 
 set(INC
   .
@@ -18,6 +18,7 @@ set(INC_SYS
   ${JPEG_INCLUDE_DIR}
   ${PNG_INCLUDE_DIRS}
   ${ZLIB_INCLUDE_DIRS}
+  ${OPENIMAGEIO_INCLUDE_DIRS}
 )
 
 set(SRC
@@ -29,6 +30,7 @@ set(SRC
   intern/divers.c
   intern/filetype.c
   intern/filter.c
+  intern/format_psd.cc
   intern/imageprocess.c
   intern/indexer.c
   intern/iris.c

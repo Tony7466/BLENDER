@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup spview3d
@@ -15,7 +15,7 @@
 #include "BKE_action.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
-#include "BKE_gpencil_modifier.h"
+#include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_idprop.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
@@ -675,7 +675,7 @@ int view3d_opengl_select_ex(ViewContext *vc,
     GPU_depth_test(GPU_DEPTH_LESS_EQUAL);
   }
 
-  /* If in xray mode, we select the wires in priority. */
+  /* If in X-ray mode, we select the wires in priority. */
   if (XRAY_ACTIVE(v3d) && use_nearest) {
     /* We need to call "GPU_select_*" API's inside DRW_draw_select_loop
      * because the OpenGL context created & destroyed inside this function. */

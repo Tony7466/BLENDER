@@ -80,6 +80,11 @@ static const EnumPropertyItem prop_graphkeys_insertkey_types[] = {
      0,
      "Only Selected Channels",
      "Insert a keyframe on selected F-Curves using each curve's current value"},
+    {GRAPHKEYS_INSERTKEY_ACTIVE,
+     "ACTIVE",
+     0,
+     "Only Active F-Curve",
+     "Insert a keyframe on the active F-Curve using the curve's current value"},
     {GRAPHKEYS_INSERTKEY_ACTIVE | GRAPHKEYS_INSERTKEY_CURSOR,
      "CURSOR_ACTIVE",
      0,
@@ -2853,7 +2858,7 @@ void GRAPH_OT_fmodifier_add(wmOperatorType *ot)
   ot->prop = prop;
 
   RNA_def_boolean(
-      ot->srna, "only_active", 1, "Only Active", "Only add F-Modifier to active F-Curve");
+      ot->srna, "only_active", false, "Only Active", "Only add F-Modifier to active F-Curve");
 }
 
 /** \} */

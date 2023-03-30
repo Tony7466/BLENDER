@@ -248,7 +248,7 @@ class GRAPH_MT_key(Menu):
 
         layout.separator()
         layout.operator_menu_enum("graph.keyframe_insert", "type")
-        layout.operator_menu_enum("graph.fmodifier_add", "type")
+        layout.operator_menu_enum("graph.fmodifier_add", "type").only_active = False
         layout.operator("graph.sound_bake")
 
         layout.separator()
@@ -330,6 +330,7 @@ class GRAPH_MT_slider(Menu):
         layout.operator("graph.blend_to_neighbor", text="Blend to Neighbor")
         layout.operator("graph.blend_to_default", text="Blend to Default Value")
         layout.operator("graph.ease", text="Ease")
+        layout.operator("graph.gaussian_smooth", text="Smooth")
 
 
 class GRAPH_MT_view_pie(Menu):

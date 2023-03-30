@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation. All rights reserved.
+# Copyright 2006 Blender Foundation
 
 # -----------------------------------------------------------------------------
 # Early Initialization
@@ -617,10 +617,12 @@ endif()
 
 option(WITH_OPENGL "When off limits visibility of the opengl headers to just bf_gpu and gawain (temporary option for development purposes)" ON)
 option(WITH_GPU_BUILDTIME_SHADER_BUILDER "Shader builder is a developer option enabling linting on GLSL during compilation" OFF)
+option(WITH_RENDERDOC "Use Renderdoc API to capture frames" OFF)
 
 mark_as_advanced(
   WITH_OPENGL
   WITH_GPU_BUILDTIME_SHADER_BUILDER
+  WITH_RENDERDOC
 )
 
 # Vulkan
@@ -1554,6 +1556,9 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
   # gives too many unfixable warnings
   # add_check_c_compiler_flag(C_WARNINGS C_WARN_UNUSED_MACROS      -Wunused-macros)
   # add_check_cxx_compiler_flag(CXX_WARNINGS CXX_WARN_UNUSED_MACROS          -Wunused-macros)
+
+  add_check_c_compiler_flag(C_WARNINGS C_WARN_ERROR_UNGUARDED_AVAILABILITY_NEW -Werror=unguarded-availability-new)
+  add_check_c_compiler_flag(CXX_WARNINGS CXX_WARN_ERROR_UNGUARDED_AVAILABILITY_NEW -Werror=unguarded-availability-new)
 
   # ---------------------
   # Suppress Strict Flags

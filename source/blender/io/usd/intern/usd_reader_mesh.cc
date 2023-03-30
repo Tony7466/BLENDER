@@ -10,7 +10,7 @@
 #include "BKE_customdata.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_object.h"
 
 #include "BLI_math.h"
@@ -38,7 +38,6 @@
 #include <pxr/usd/usdGeom/mesh.h>
 #include <pxr/usd/usdGeom/primvarsAPI.h>
 #include <pxr/usd/usdGeom/subset.h>
-#include <pxr/usd/usdGeom/primvarsAPI.h>
 #include <pxr/usd/usdShade/materialBindingAPI.h>
 
 #include <iostream>
@@ -166,8 +165,7 @@ static void *add_customdata_cb(Mesh *mesh, const char *name, const int data_type
 
   /* Create a new layer. */
   numloops = mesh->totloop;
-  cd_ptr = CustomData_add_layer_named(
-      loopdata, cd_data_type, CD_SET_DEFAULT, nullptr, numloops, name);
+  cd_ptr = CustomData_add_layer_named(loopdata, cd_data_type, CD_SET_DEFAULT, numloops, name);
   return cd_ptr;
 }
 
@@ -268,7 +266,7 @@ bool USDMeshReader::topology_changed(const Mesh *existing_mesh, const double mot
 void USDMeshReader::read_mpolys(Mesh *mesh)
 {
   MutableSpan<MPoly> polys = mesh->polys_for_write();
-  MutableSpan<MLoop> loops = mesh->loops_for_write();
+  MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
 
   int loop_index = 0;
 
@@ -285,12 +283,12 @@ void USDMeshReader::read_mpolys(Mesh *mesh)
     if (is_left_handed_) {
       int loop_end_index = loop_index + (face_size - 1);
       for (int f = 0; f < face_size; ++f, ++loop_index) {
-        loops[loop_index].v = face_indices_[loop_end_index - f];
+        corner_verts[loop_index] = face_indices_[loop_end_index - f];
       }
     }
     else {
       for (int f = 0; f < face_size; ++f, ++loop_index) {
-        loops[loop_index].v = face_indices_[loop_index];
+        corner_verts[loop_index] = face_indices_[loop_index];
       }
     }
   }
@@ -356,7 +354,7 @@ void USDMeshReader::read_uvs(Mesh *mesh, const double motionSampleTime, const bo
     }
   }
 
-  const Span<MLoop> loops = mesh->loops();
+  const Span<int> corner_verts = mesh->corner_verts();
   for (int i = 0; i < face_counts_.size(); i++) {
     const int face_size = face_counts_[i];
 
@@ -392,7 +390,7 @@ void USDMeshReader::read_uvs(Mesh *mesh, const double motionSampleTime, const bo
 
         /* For Vertex interpolation, use the vertex index. */
         int usd_uv_index = sample.interpolation == pxr::UsdGeomTokens->vertex ?
-                               loops[loop_index].v :
+                               corner_verts[loop_index] :
                                loop_index;
 
         if (usd_uv_index >= sample.uvs.size()) {
@@ -613,7 +611,7 @@ void USDMeshReader::read_vertex_creases(Mesh *mesh, const double motionSampleTim
   }
 
   float *creases = static_cast<float *>(
-      CustomData_add_layer(&mesh->vdata, CD_CREASE, CD_SET_DEFAULT, nullptr, mesh->totvert));
+      CustomData_add_layer(&mesh->vdata, CD_CREASE, CD_SET_DEFAULT, mesh->totvert));
 
   for (size_t i = 0; i < corner_indices.size(); i++) {
     creases[corner_indices[i]] = corner_sharpnesses[i];

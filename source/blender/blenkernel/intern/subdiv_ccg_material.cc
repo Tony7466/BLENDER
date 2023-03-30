@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2018 Blender Foundation. All rights reserved. */
+ * Copyright 2018 Blender Foundation */
 
 /** \file
  * \ingroup bke
  */
 
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_subdiv_ccg.h"
 
 #include "MEM_guardedalloc.h"

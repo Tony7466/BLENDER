@@ -16,8 +16,8 @@
 #include "DNA_camera_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_curve_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_gpencil_modifier_types.h"
-#include "DNA_gpencil_types.h"
 #include "DNA_key_types.h"
 #include "DNA_light_types.h"
 #include "DNA_lightprobe_types.h"
@@ -56,9 +56,9 @@
 #include "BKE_effect.h"
 #include "BKE_geometry_set.h"
 #include "BKE_geometry_set.hh"
-#include "BKE_gpencil_curve.h"
-#include "BKE_gpencil_geom.h"
-#include "BKE_gpencil_modifier.h"
+#include "BKE_gpencil_curve_legacy.h"
+#include "BKE_gpencil_geom_legacy.h"
+#include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_key.h"
 #include "BKE_lattice.h"
 #include "BKE_layer.h"
@@ -71,7 +71,7 @@
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_mball.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.h"
 #include "BKE_nla.h"
 #include "BKE_node.h"
@@ -127,7 +127,8 @@ using blender::Vector;
 
 /* This is an exact copy of the define in `rna_light.c`
  * kept here because of linking order.
- * Icons are only defined here */
+ * Icons are only defined here. */
+
 const EnumPropertyItem rna_enum_light_type_items[] = {
     {LA_LOCAL, "POINT", ICON_LIGHT_POINT, "Point", "Omnidirectional point light source"},
     {LA_SUN, "SUN", ICON_LIGHT_SUN, "Sun", "Constant direction parallel ray light source"},
@@ -3747,9 +3748,7 @@ static int duplicate_exec(bContext *C, wmOperator *op)
     Base *base_src = nullptr;
     Object *object_new = nullptr;
 
-    DuplicateObjectLink(Base *base_src) : base_src(base_src)
-    {
-    }
+    DuplicateObjectLink(Base *base_src) : base_src(base_src) {}
   };
 
   blender::Vector<DuplicateObjectLink> object_base_links;

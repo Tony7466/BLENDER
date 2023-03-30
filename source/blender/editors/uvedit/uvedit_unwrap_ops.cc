@@ -39,7 +39,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_subdiv.h"
@@ -141,8 +141,7 @@ static bool ED_uvedit_ensure_uvs(Object *obedit)
 /** \name UDIM Access
  * \{ */
 
-static void ED_uvedit_udim_params_from_image_space(const SpaceImage *sima,
-                                                   UVPackIsland_Params *r_params)
+void blender::geometry::UVPackIsland_Params::setUDIMOffsetFromSpaceImage(const SpaceImage *sima)
 {
   if (!sima) {
     return; /* Nothing to do. */
@@ -155,8 +154,8 @@ static void ED_uvedit_udim_params_from_image_space(const SpaceImage *sima,
     ImageTile *active_tile = static_cast<ImageTile *>(
         BLI_findlink(&image->tiles, image->active_tile_index));
     if (active_tile) {
-      r_params->udim_base_offset[0] = (active_tile->tile_number - 1001) % 10;
-      r_params->udim_base_offset[1] = (active_tile->tile_number - 1001) / 10;
+      udim_base_offset[0] = (active_tile->tile_number - 1001) % 10;
+      udim_base_offset[1] = (active_tile->tile_number - 1001) / 10;
     }
     return;
   }
@@ -164,8 +163,8 @@ static void ED_uvedit_udim_params_from_image_space(const SpaceImage *sima,
   /* TODO: Support storing an active UDIM when there are no tiles present.
    * Until then, use 2D cursor to find the active tile index for the UDIM grid. */
   if (uv_coords_isect_udim(sima->image, sima->tile_grid_shape, sima->cursor)) {
-    r_params->udim_base_offset[0] = floorf(sima->cursor[0]);
-    r_params->udim_base_offset[1] = floorf(sima->cursor[1]);
+    udim_base_offset[0] = floorf(sima->cursor[0]);
+    udim_base_offset[1] = floorf(sima->cursor[1]);
   }
 }
 /** \} */
@@ -194,6 +193,15 @@ struct UnwrapOptions {
   /** Treat unselected uvs as if they were pinned. */
   bool pin_unselected;
 };
+
+void blender::geometry::UVPackIsland_Params::setFromUnwrapOptions(const UnwrapOptions &options)
+{
+  only_selected_uvs = options.only_selected_uvs;
+  only_selected_faces = options.only_selected_faces;
+  use_seams = !options.topology_from_uvs || options.topology_from_uvs_use_seams;
+  correct_aspect = options.correct_aspect;
+  pin_unselected = options.pin_unselected;
+}
 
 static bool uvedit_have_selection(const Scene *scene, BMEditMesh *em, const UnwrapOptions *options)
 {
@@ -431,13 +439,7 @@ static ParamHandle *construct_param_handle(const Scene *scene,
   ParamHandle *handle = blender::geometry::uv_parametrizer_construct_begin();
 
   if (options->correct_aspect) {
-    float aspx, aspy;
-
-    ED_uvedit_get_aspect(ob, &aspx, &aspy);
-
-    if (aspx != aspy) {
-      blender::geometry::uv_parametrizer_aspect_ratio(handle, aspx, aspy);
-    }
+    blender::geometry::uv_parametrizer_aspect_ratio(handle, ED_uvedit_get_aspect_y(ob));
   }
 
   /* we need the vert indices */
@@ -480,12 +482,7 @@ static ParamHandle *construct_param_handle_multi(const Scene *scene,
 
   if (options->correct_aspect) {
     Object *ob = objects[0];
-    float aspx, aspy;
-
-    ED_uvedit_get_aspect(ob, &aspx, &aspy);
-    if (aspx != aspy) {
-      blender::geometry::uv_parametrizer_aspect_ratio(handle, aspx, aspy);
-    }
+    blender::geometry::uv_parametrizer_aspect_ratio(handle, ED_uvedit_get_aspect_y(ob));
   }
 
   /* we need the vert indices */
@@ -608,13 +605,7 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
   ParamHandle *handle = blender::geometry::uv_parametrizer_construct_begin();
 
   if (options->correct_aspect) {
-    float aspx, aspy;
-
-    ED_uvedit_get_aspect(ob, &aspx, &aspy);
-
-    if (aspx != aspy) {
-      blender::geometry::uv_parametrizer_aspect_ratio(handle, aspx, aspy);
-    }
+    blender::geometry::uv_parametrizer_aspect_ratio(handle, ED_uvedit_get_aspect_y(ob));
   }
 
   /* number of subdivisions to perform */
@@ -631,7 +622,7 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
   const float(*subsurfedPositions)[3] = BKE_mesh_vert_positions(subdiv_mesh);
   const blender::Span<MEdge> subsurf_edges = subdiv_mesh->edges();
   const blender::Span<MPoly> subsurf_polys = subdiv_mesh->polys();
-  const blender::Span<MLoop> subsurf_loops = subdiv_mesh->loops();
+  const blender::Span<int> subsurf_corner_verts = subdiv_mesh->corner_verts();
 
   const int *origVertIndices = static_cast<const int *>(
       CustomData_get_layer(&subdiv_mesh->vdata, CD_ORIGINDEX));
@@ -683,32 +674,52 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
       }
     }
 
-    const MLoop *mloop = &subsurf_loops[poly.loopstart];
+    const int *poly_corner_verts = &subsurf_corner_verts[poly.loopstart];
 
     /* We will not check for v4 here. Sub-surface faces always have 4 vertices. */
     BLI_assert(poly.totloop == 4);
     key = (ParamKey)i;
-    vkeys[0] = (ParamKey)mloop[0].v;
-    vkeys[1] = (ParamKey)mloop[1].v;
-    vkeys[2] = (ParamKey)mloop[2].v;
-    vkeys[3] = (ParamKey)mloop[3].v;
+    vkeys[0] = (ParamKey)poly_corner_verts[0];
+    vkeys[1] = (ParamKey)poly_corner_verts[1];
+    vkeys[2] = (ParamKey)poly_corner_verts[2];
+    vkeys[3] = (ParamKey)poly_corner_verts[3];
 
-    co[0] = subsurfedPositions[mloop[0].v];
-    co[1] = subsurfedPositions[mloop[1].v];
-    co[2] = subsurfedPositions[mloop[2].v];
-    co[3] = subsurfedPositions[mloop[3].v];
+    co[0] = subsurfedPositions[poly_corner_verts[0]];
+    co[1] = subsurfedPositions[poly_corner_verts[1]];
+    co[2] = subsurfedPositions[poly_corner_verts[2]];
+    co[3] = subsurfedPositions[poly_corner_verts[3]];
 
     /* This is where all the magic is done.
      * If the vertex exists in the, we pass the original uv pointer to the solver, thus
      * flushing the solution to the edit mesh. */
-    texface_from_original_index(
-        scene, offsets, origFace, origVertIndices[mloop[0].v], &uv[0], &pin[0], &select[0]);
-    texface_from_original_index(
-        scene, offsets, origFace, origVertIndices[mloop[1].v], &uv[1], &pin[1], &select[1]);
-    texface_from_original_index(
-        scene, offsets, origFace, origVertIndices[mloop[2].v], &uv[2], &pin[2], &select[2]);
-    texface_from_original_index(
-        scene, offsets, origFace, origVertIndices[mloop[3].v], &uv[3], &pin[3], &select[3]);
+    texface_from_original_index(scene,
+                                offsets,
+                                origFace,
+                                origVertIndices[poly_corner_verts[0]],
+                                &uv[0],
+                                &pin[0],
+                                &select[0]);
+    texface_from_original_index(scene,
+                                offsets,
+                                origFace,
+                                origVertIndices[poly_corner_verts[1]],
+                                &uv[1],
+                                &pin[1],
+                                &select[1]);
+    texface_from_original_index(scene,
+                                offsets,
+                                origFace,
+                                origVertIndices[poly_corner_verts[2]],
+                                &uv[2],
+                                &pin[2],
+                                &select[2]);
+    texface_from_original_index(scene,
+                                offsets,
+                                origFace,
+                                origVertIndices[poly_corner_verts[3]],
+                                &uv[3],
+                                &pin[3],
+                                &select[3]);
 
     blender::geometry::uv_parametrizer_face_add(handle, key, 4, vkeys, co, uv, pin, select);
   }
@@ -1012,19 +1023,6 @@ void UV_OT_minimize_stretch(wmOperatorType *ot)
 
 /** \} */
 
-/** Compute `r = mat * (a + b)` with high precision. */
-static void mul_v2_m2_add_v2v2(float r[2],
-                               const float mat[2][2],
-                               const float a[2],
-                               const float b[2])
-{
-  const double x = double(a[0]) + double(b[0]);
-  const double y = double(a[1]) + double(b[1]);
-
-  r[0] = float(mat[0][0] * x + mat[1][0] * y);
-  r[1] = float(mat[0][1] * x + mat[1][1] * y);
-}
-
 static void island_uv_transform(FaceIsland *island,
                                 const float matrix[2][2],    /* Scale and rotation. */
                                 const float pre_translate[2] /* (pre) Translation. */
@@ -1049,7 +1047,7 @@ static void island_uv_transform(FaceIsland *island,
     BMIter iter;
     BM_ITER_ELEM (l, &iter, f, BM_LOOPS_OF_FACE) {
       float *luv = BM_ELEM_CD_GET_FLOAT_P(l, cd_loop_uv_offset);
-      mul_v2_m2_add_v2v2(luv, matrix, luv, pre_translate);
+      blender::geometry::mul_v2_m2_add_v2v2(luv, matrix, luv, pre_translate);
     }
   }
 }
@@ -1156,6 +1154,8 @@ static void face_island_uv_rotate_fit_aabb(FaceIsland *island)
     }
   }
 
+  /* As the UV Packing API doesn't yet support rotation, we need
+   * to pre-rotate each island into the smallest AABB. */
   float angle = BLI_convexhull_aabb_fit_points_2d(coords, coords_len);
 
   /* Rotate coords by `angle` before computing bounding box. */
@@ -1176,9 +1176,13 @@ static void face_island_uv_rotate_fit_aabb(FaceIsland *island)
     minmax_v2v2_v2(bounds_min, bounds_max, coords[i]);
   }
 
+  /* "Stand-up" islands.
+   * If we rotate the AABB by 90 degrees, the aspect ratio correction for the X axis will be
+   * `aspect_y` and for the Y axis will be `1.0f / aspect_y`. Applying both corrections gives
+   * a combined factor of `aspect_y / (1.0f / aspect_y) == aspect_y * aspect_y`. */
   float size[2];
   sub_v2_v2v2(size, bounds_max, bounds_min);
-  if (size[1] < size[0]) {
+  if (size[1] < size[0] * (aspect_y * aspect_y)) {
     angle += DEG2RADF(90.0f);
   }
 
@@ -1250,7 +1254,7 @@ static float uv_nearest_grid_tile_distance(const int udim_grid[2],
 
 static bool island_has_pins(const Scene *scene,
                             FaceIsland *island,
-                            const UVPackIsland_Params *params)
+                            const blender::geometry::UVPackIsland_Params *params)
 {
   const bool pin_unselected = params->pin_unselected;
   const bool only_selected_faces = params->only_selected_faces;
@@ -1291,7 +1295,7 @@ static void uvedit_pack_islands_multi(const Scene *scene,
                                       const int objects_len,
                                       BMesh **bmesh_override,
                                       const UVMapUDIM_Params *closest_udim,
-                                      const UVPackIsland_Params *params)
+                                      const blender::geometry::UVPackIsland_Params *params)
 {
   blender::Vector<FaceIsland *> island_vector;
 
@@ -1376,15 +1380,41 @@ static void uvedit_pack_islands_multi(const Scene *scene,
     selection_center[1] = (selection_min_co[1] + selection_max_co[1]) / 2.0f;
   }
 
+  MemArena *arena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __func__);
+  Heap *heap = BLI_heap_new();
+
   float scale[2] = {1.0f, 1.0f};
   blender::Vector<blender::geometry::PackIsland *> pack_island_vector;
   for (int i = 0; i < island_vector.size(); i++) {
     FaceIsland *face_island = island_vector[i];
     blender::geometry::PackIsland *pack_island = new blender::geometry::PackIsland();
-    pack_island->bounds_rect = face_island->bounds_rect;
     pack_island->caller_index = i;
+    pack_island->aspect_y = face_island->aspect_y;
+    pack_island->angle = 0.0f;
     pack_island_vector.append(pack_island);
+
+    for (int i = 0; i < face_island->faces_len; i++) {
+      BMFace *f = face_island->faces[i];
+
+      /* Storage. */
+      blender::Array<blender::float2> uvs(f->len);
+
+      /* Obtain UVs of polygon. */
+      BMLoop *l;
+      BMIter iter;
+      int j;
+      BM_ITER_ELEM_INDEX (l, &iter, f, BM_LOOPS_OF_FACE, j) {
+        copy_v2_v2(uvs[j], BM_ELEM_CD_GET_FLOAT_P(l, face_island->offsets.uv));
+      }
+
+      pack_island->add_polygon(uvs, arena, heap);
+
+      BLI_memarena_clear(arena);
+    }
+    pack_island->finalize_geometry(*params, arena, heap);
   }
+  BLI_heap_free(heap, nullptr);
+  BLI_memarena_free(arena);
   pack_islands(pack_island_vector, *params, scale);
 
   float base_offset[2] = {0.0f, 0.0f};
@@ -1427,10 +1457,12 @@ static void uvedit_pack_islands_multi(const Scene *scene,
   for (int64_t i : pack_island_vector.index_range()) {
     blender::geometry::PackIsland *pack_island = pack_island_vector[i];
     FaceIsland *island = island_vector[pack_island->caller_index];
-    matrix[0][0] = scale[0];
-    matrix[0][1] = 0.0f;
-    matrix[1][0] = 0.0f;
-    matrix[1][1] = scale[1];
+    const float cos_angle = cosf(pack_island->angle);
+    const float sin_angle = sinf(pack_island->angle);
+    matrix[0][0] = cos_angle * scale[0];
+    matrix[0][1] = -sin_angle * scale[0] * pack_island->aspect_y;
+    matrix[1][0] = sin_angle * scale[1] / pack_island->aspect_y;
+    matrix[1][1] = cos_angle * scale[1];
     invert_m2_m2(matrix_inverse, matrix);
 
     /* Add base_offset, post transform. */
@@ -1502,22 +1534,20 @@ static int pack_islands_exec(bContext *C, wmOperator *op)
     RNA_float_set(op->ptr, "margin", scene->toolsettings->uvcalc_margin);
   }
 
-  UVPackIsland_Params pack_island_params{};
+  blender::geometry::UVPackIsland_Params pack_island_params;
+  pack_island_params.setFromUnwrapOptions(options);
   pack_island_params.rotate = RNA_boolean_get(op->ptr, "rotate");
-  pack_island_params.only_selected_uvs = options.only_selected_uvs;
-  pack_island_params.only_selected_faces = options.only_selected_faces;
-  pack_island_params.use_seams = !options.topology_from_uvs || options.topology_from_uvs_use_seams;
-  pack_island_params.correct_aspect = options.correct_aspect;
   pack_island_params.ignore_pinned = false;
-  pack_island_params.pin_unselected = options.pin_unselected;
   pack_island_params.margin_method = eUVPackIsland_MarginMethod(
       RNA_enum_get(op->ptr, "margin_method"));
   pack_island_params.margin = RNA_float_get(op->ptr, "margin");
+  pack_island_params.shape_method = eUVPackIsland_ShapeMethod(
+      RNA_enum_get(op->ptr, "shape_method"));
 
   UVMapUDIM_Params closest_udim_buf;
   UVMapUDIM_Params *closest_udim = nullptr;
   if (udim_source == PACK_UDIM_SRC_ACTIVE) {
-    ED_uvedit_udim_params_from_image_space(sima, &pack_island_params);
+    pack_island_params.setUDIMOffsetFromSpaceImage(sima);
   }
   else if (sima) {
     BLI_assert(udim_source == PACK_UDIM_SRC_CLOSEST);
@@ -1546,6 +1576,14 @@ static const EnumPropertyItem pack_margin_method_items[] = {
      0,
      "Fraction",
      "Specify a precise fraction of final UV output"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+static const EnumPropertyItem pack_shape_method_items[] = {
+    {ED_UVPACK_SHAPE_CONCAVE, "CONCAVE", 0, "Exact shape (Concave)", "Uses exact geometry"},
+    {ED_UVPACK_SHAPE_CONVEX, "CONVEX", 0, "Boundary shape (Convex)", "Uses convex hull"},
+    RNA_ENUM_ITEM_SEPR,
+    {ED_UVPACK_SHAPE_AABB, "AABB", 0, "Bounding box", "Uses bounding boxes"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -1583,6 +1621,12 @@ void UV_OT_pack_islands(wmOperatorType *ot)
                "");
   RNA_def_float_factor(
       ot->srna, "margin", 0.001f, 0.0f, 1.0f, "Margin", "Space between islands", 0.0f, 1.0f);
+  RNA_def_enum(ot->srna,
+               "shape_method",
+               pack_shape_method_items,
+               ED_UVPACK_SHAPE_CONCAVE,
+               "Shape Method",
+               "");
 }
 
 /** \} */
@@ -2290,15 +2334,10 @@ void ED_uvedit_live_unwrap(const Scene *scene, Object **objects, int objects_len
     options.correct_aspect = (scene->toolsettings->uvcalc_flag & UVCALC_NO_ASPECT_CORRECT) == 0;
     uvedit_unwrap_multi(scene, objects, objects_len, &options, nullptr);
 
-    UVPackIsland_Params pack_island_params{};
+    blender::geometry::UVPackIsland_Params pack_island_params;
+    pack_island_params.setFromUnwrapOptions(options);
     pack_island_params.rotate = true;
-    pack_island_params.only_selected_uvs = options.only_selected_uvs;
-    pack_island_params.only_selected_faces = options.only_selected_faces;
-    pack_island_params.use_seams = !options.topology_from_uvs ||
-                                   options.topology_from_uvs_use_seams;
-    pack_island_params.correct_aspect = options.correct_aspect;
     pack_island_params.ignore_pinned = true;
-    pack_island_params.pin_unselected = options.pin_unselected;
     pack_island_params.margin_method = ED_UVPACK_MARGIN_SCALED;
     pack_island_params.margin = scene->toolsettings->uvcalc_margin;
 
@@ -2436,14 +2475,10 @@ static int unwrap_exec(bContext *C, wmOperator *op)
   int count_failed = 0;
   uvedit_unwrap_multi(scene, objects, objects_len, &options, &count_changed, &count_failed);
 
-  UVPackIsland_Params pack_island_params{};
+  blender::geometry::UVPackIsland_Params pack_island_params;
+  pack_island_params.setFromUnwrapOptions(options);
   pack_island_params.rotate = true;
-  pack_island_params.only_selected_uvs = options.only_selected_uvs;
-  pack_island_params.only_selected_faces = options.only_selected_faces;
-  pack_island_params.use_seams = !options.topology_from_uvs || options.topology_from_uvs_use_seams;
-  pack_island_params.correct_aspect = options.correct_aspect;
   pack_island_params.ignore_pinned = true;
-  pack_island_params.pin_unselected = options.pin_unselected;
   pack_island_params.margin_method = eUVPackIsland_MarginMethod(
       RNA_enum_get(op->ptr, "margin_method"));
   pack_island_params.margin = RNA_float_get(op->ptr, "margin");
@@ -2819,7 +2854,7 @@ static int smart_project_exec(bContext *C, wmOperator *op)
     /* Depsgraph refresh functions are called here. */
     const bool correct_aspect = RNA_boolean_get(op->ptr, "correct_aspect");
 
-    UVPackIsland_Params params{};
+    blender::geometry::UVPackIsland_Params params;
     params.rotate = true;
     params.only_selected_uvs = only_selected_uvs;
     params.only_selected_faces = true;
@@ -3808,7 +3843,7 @@ void ED_uvedit_add_simple_uvs(Main *bmain, const Scene *scene, Object *ob)
   uvedit_unwrap_cube_project(scene, bm, 2.0, false, false, nullptr);
 
   /* Pack UVs. */
-  UVPackIsland_Params params{};
+  blender::geometry::UVPackIsland_Params params;
   params.rotate = true;
   params.only_selected_uvs = false;
   params.only_selected_faces = false;
