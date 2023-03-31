@@ -196,7 +196,7 @@ class GRAPH_MT_channel(Menu):
 
     def draw(self, context):
         layout = self.layout
-
+        operator_context = layout.operator_context
         layout.operator_context = 'INVOKE_REGION_CHANNELS'
 
         layout.operator("anim.channels_delete")
@@ -216,7 +216,10 @@ class GRAPH_MT_channel(Menu):
         layout.separator()
         layout.operator("anim.channels_editable_toggle")
         layout.operator_menu_enum("graph.extrapolation_type", "type", text="Extrapolation Mode")
-        layout.operator_menu_enum("graph.fmodifier_add", "type", text="Add F-Curve Modifier").only_active = False
+        # To get it to display the hotkey.
+        layout.operator_context = operator_context
+        layout.operator_menu_enum("graph.fmodifier_add", "type").only_active = False
+        layout.operator_context = 'INVOKE_REGION_CHANNELS'
 
         layout.separator()
         layout.operator("graph.hide", text="Hide Selected Curves").unselected = False
@@ -232,6 +235,14 @@ class GRAPH_MT_channel(Menu):
 
         layout.separator()
         layout.operator("anim.channels_fcurves_enable")
+
+        layout.separator()
+        layout.operator("graph.bake")
+        layout.operator("graph.unbake")
+        layout.operator("graph.sound_bake")
+
+        layout.separator()
+        layout.operator("graph.euler_filter", text="Discontinuity (Euler) Filter")
 
         layout.separator()
         layout.operator("anim.channels_view_selected")
@@ -289,14 +300,10 @@ class GRAPH_MT_key(Menu):
         layout.operator_menu_enum("graph.mirror", "type", text="Mirror")
 
         layout.separator()
-        layout.operator_menu_enum("graph.keyframe_insert", "type", text="Insert")
-        layout.operator_menu_enum("graph.fmodifier_add", "type").only_active = False
-        layout.operator("graph.sound_bake")
-
-        layout.separator()
         layout.operator("graph.frame_jump", text="Jump to Selected")
 
         layout.separator()
+        layout.operator_menu_enum("graph.keyframe_insert", "type", text="Insert")
         layout.operator("graph.copy", text="Copy")
         layout.operator("graph.paste", text="Paste")
         layout.operator("graph.paste", text="Paste Flipped").flipped = True
@@ -313,13 +320,6 @@ class GRAPH_MT_key(Menu):
         layout.menu("GRAPH_MT_key_density")
         layout.menu("GRAPH_MT_key_blending")
         layout.menu("GRAPH_MT_key_smoothing")
-
-        layout.separator()
-        layout.operator("graph.bake")
-        layout.operator("graph.unbake")
-
-        layout.separator()
-        layout.operator("graph.euler_filter", text="Discontinuity (Euler) Filter")
 
 
 class GRAPH_MT_key_transform(Menu):
