@@ -392,6 +392,19 @@
     .lasso_face_down = 1, \
     .circle_edge = 2, \
     .circle_face = 1, \
+ \
+    /* X-Ray */ \
+    .xray_button = true, \
+    .auto_xray_object = true, \
+    .auto_xray_edit = true, \
+    .auto_xray_box = true, \
+    .auto_xray_lasso = true, \
+    .auto_xray_circle = true, \
+    .select_through = true, \
+    .select_through_object = true, \
+    .select_through_box = true, \
+    .select_through_lasso = true, \
+    .select_through_circle = true, \
   }
 
 /* clang-format off */

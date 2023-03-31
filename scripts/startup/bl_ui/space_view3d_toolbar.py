@@ -154,7 +154,7 @@ class VIEW3D_PT_tools_meshedit_options(View3DPanel, Panel):
     bl_context = ".mesh_edit"  # dot on purpose (access from topbar)
     bl_label = "Options"
     bl_options = {'DEFAULT_CLOSED'}
-    bl_ui_units_x = 14
+    bl_ui_units_x = 15
 
     @classmethod
     def poll(cls, context):
@@ -191,7 +191,7 @@ class VIEW3D_PT_tools_meshedit_options(View3DPanel, Panel):
         row.active = ob.data.use_mirror_x or ob.data.use_mirror_y or ob.data.use_mirror_z
         row.prop(mesh, "use_mirror_topology")
 
-        if bpy.context.preferences.inputs.drag_select_mesh_control == 'USER_MESH_TOOLSETTING':
+        if bpy.context.preferences.inputs.drag_select_control == 'USER_DRAG_TOOLSETTING':
             from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
             _cls = ToolSelectPanelHelper._tool_class_from_space_type('VIEW_3D')
 
@@ -201,7 +201,7 @@ class VIEW3D_PT_tools_meshedit_options(View3DPanel, Panel):
                 tool = ToolSelectPanelHelper.tool_active_from_context(context).idname
 
             if tool == "builtin.select_box" or tool == "builtin.select_lasso" or tool == "builtin.select_circle":
-                row = layout.row(align=True, heading="Drag Select")
+                row = layout.row(align=True)
                 if tool == "builtin.select_box":
                     row.prop(tool_settings, "box_drag_direction")
                     row = layout.row(align=True)

@@ -5785,17 +5785,17 @@ static void rna_def_userdef_input(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
-  static const EnumPropertyItem drag_select_mesh_control_types[] = {
-      {USER_DRAG_SELECT_MESH_KEYMAP,
-       "USER_MESH_KEYMAP",
-       0,
-       "Keymap",
-       "Use the keymap to control mesh selection style for box, lasso, and circle"},
-      {USER_DRAG_SELECT_MESH_TOOLSETTING,
-       "USER_MESH_TOOLSETTING",
+  static const EnumPropertyItem drag_select_control_types[] = {
+      {USER_DRAG_SELECT_TOOLSETTING,
+       "USER_DRAG_TOOLSETTING",
        0,
        "Toolsetting",
-       "Use toolsettings to control mesh selection style for box, lasso, and circle"},
+       "Use toolsettings to control selection options for box, lasso, and circle select"},
+      {USER_DRAG_SELECT_KEYMAP,
+       "USER_DRAG_KEYMAP",
+       0,
+       "Keymap",
+       "Use the keymap to control selection options for box, lasso, and circle selection"},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -5910,11 +5910,11 @@ static void rna_def_userdef_input(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Keymap Drag Directions", "Style of click-drag direction the keymap will use");
 
-  prop = RNA_def_property(srna, "drag_select_mesh_control", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, drag_select_mesh_control_types);
+  prop = RNA_def_property(srna, "drag_select_control", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, drag_select_control_types);
   RNA_def_property_ui_text(prop,
-                           "Mesh Drag Select Control",
-                           "Use either the keymap or toolsettings to control edge and face selection style "
+                           "Drag Select Control",
+                           "Use either the keymap or toolsettings to control selection options "
                            "for box, lasso, and circle select");
 
   prop = RNA_def_property(srna, "use_numeric_input_advanced", PROP_BOOLEAN, PROP_NONE);

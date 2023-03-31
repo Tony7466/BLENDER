@@ -399,6 +399,19 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
   ts->lasso_face_down = 1;
   ts->circle_edge = 2;
   ts->circle_face = 1;
+
+  /* X-Ray. */
+  ts->xray_button = true;
+  ts->auto_xray_object = true;
+  ts->auto_xray_edit = true;
+  ts->auto_xray_box = true;
+  ts->auto_xray_lasso = true;
+  ts->auto_xray_circle = true;
+  ts->select_through = true;
+  ts->select_through_object = true;
+  ts->select_through_box = true;
+  ts->select_through_lasso = true;
+  ts->select_through_circle = true;
 }
 
 void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)

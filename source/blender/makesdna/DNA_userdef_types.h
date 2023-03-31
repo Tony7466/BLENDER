@@ -843,7 +843,7 @@ typedef struct UserDef {
   /** Keymap click-drag direction style. */
   char click_drag_direction;
   /** Box, lasso, and circle select mesh control style. */
-  char drag_select_mesh_control;
+  char drag_select_control;
   char _pad7[2];
 
   /** Private, defaults to 20 for 72 DPI setting. */
@@ -1164,11 +1164,11 @@ typedef enum eUserpref_Click_Drag_Direction {
   USER_CLICK_DRAG_DIRECTION_UP_DOWN = 2,
 } eUserpref_Click_Drag_Direction;
 
-/** #UserDef.drag_select_mesh_control_types */
-typedef enum eUserpref_Drag_Select_Mesh_Control {
-  USER_DRAG_SELECT_MESH_KEYMAP = 0,
-  USER_DRAG_SELECT_MESH_TOOLSETTING = 1,
-} eUserpref_Drag_Select_Mesh_Control;
+/** #UserDef.drag_select_control_types */
+typedef enum eUserpref_Drag_Select_Control {
+  USER_DRAG_SELECT_TOOLSETTING = 0,
+  USER_DRAG_SELECT_KEYMAP = 1,
+} eUserpref_Drag_Select_Control;
 
 /** #UserDef.app_flag */
 typedef enum eUserpref_APP_Flag {

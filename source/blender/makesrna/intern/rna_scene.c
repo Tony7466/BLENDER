@@ -3130,11 +3130,11 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   /* Mesh select settings. */
   prop = RNA_def_property(srna, "box_drag_direction", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, mesh_drag_direction_items);
-  RNA_def_property_ui_text(prop, "Box Direction", "Click-drag direction style for box select");
+  RNA_def_property_ui_text(prop, "Mesh Drag Direction", "Click-drag direction style for box select");
 
   prop = RNA_def_property(srna, "lasso_drag_direction", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, mesh_drag_direction_items);
-  RNA_def_property_ui_text(prop, "Lasso Direction", "Click-drag direction style for lasso select");
+  RNA_def_property_ui_text(prop, "Mesh Drag Direction", "Click-drag direction style for lasso select");
 
   prop = RNA_def_property(srna, "box_direction_upright", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "box_direction_upright", 0);
@@ -3903,6 +3903,103 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "normal_vector", PROP_FLOAT, PROP_XYZ);
   RNA_def_property_ui_text(prop, "Normal Vector", "Normal Vector used to copy, add or multiply");
   RNA_def_property_ui_range(prop, -10000.0, 10000.0, 1, 3);
+
+  /* UI prop helper, so you can use a heading without a real property or operator on the same line */
+  prop = RNA_def_property(srna, "ui_prop", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "ui_prop", 0);
+  RNA_def_property_ui_text(prop, "UI Prop", "");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
+
+  /* X-Ray header button */
+  prop = RNA_def_property(srna, "xray_button", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "xray_button", 0);
+  RNA_def_property_ui_text(
+      prop, "X-Ray Button", "Show button for X-Ray in viewport header");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
+
+  /* Auto X-Ray */
+  prop = RNA_def_property(srna, "auto_xray", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "auto_xray", 0);
+  RNA_def_property_ui_text(prop, "Auto X-Ray", "Transparent scene display during drag select");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
+
+  prop = RNA_def_property(srna, "auto_xray_button", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "auto_xray_button", 0);
+  RNA_def_property_ui_text(prop, "Auto X-Ray Button", "Show button for automatic X-Ray in viewport header");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
+
+  prop = RNA_def_property(srna, "auto_xray_reset", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "auto_xray_reset", 0);
+  RNA_def_property_ui_text(prop, "Auto X-Ray Reset", "Helper that turns xray off for autoxray");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
+
+  prop = RNA_def_property(srna, "auto_xray_object", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "auto_xray_object", 0);
+  RNA_def_property_ui_text(prop, "Auto X-Ray Object", "Automatic X-Ray in object mode");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
+
+  prop = RNA_def_property(srna, "auto_xray_edit", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "auto_xray_edit", 0);
+  RNA_def_property_ui_text(prop, "Auto X-Ray Edit", "Automatic X-Ray in edit mode");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
+
+  prop = RNA_def_property(srna, "auto_xray_box", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "auto_xray_box", 0);
+  RNA_def_property_ui_text(prop, "Auto X-Ray Box", "Transparent scene display during box select");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
+
+  prop = RNA_def_property(srna, "auto_xray_lasso", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "auto_xray_lasso", 0);
+  RNA_def_property_ui_text(prop, "Auto X-Ray Lasso", "Transparent scene display during lasso select");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
+
+  prop = RNA_def_property(srna, "auto_xray_circle", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "auto_xray_circle", 0);
+  RNA_def_property_ui_text(prop, "Auto X-Ray Circle", "Transparent scene display during circle select");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
+
+  /* Select Through */
+  prop = RNA_def_property(srna, "select_through", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "select_through", 0);
+  RNA_def_property_ui_text(
+      prop, "Select Through", "Select occluded objects and mesh elements with drag select");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
+
+  prop = RNA_def_property(srna, "select_through_button", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "select_through_button", 0);
+  RNA_def_property_ui_text(
+      prop, "Select Through Button", "Show button for select through in viewport header");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
+
+  prop = RNA_def_property(srna, "select_through_object", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "select_through_object", 0);
+  RNA_def_property_ui_text(prop, "Select Through Object", "Select through in object mode");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
+
+  prop = RNA_def_property(srna, "select_through_edit", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "select_through_edit", 0);
+  RNA_def_property_ui_text(prop, "Select Through Edit", "Select through in edit mode");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
+
+  prop = RNA_def_property(srna, "select_through_box", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "select_through_box", 0);
+  RNA_def_property_ui_text(
+      prop, "Select Through Box", "Select occluded objects and mesh elements with box select");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
+
+  prop = RNA_def_property(srna, "select_through_lasso", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "select_through_lasso", 0);
+  RNA_def_property_ui_text(prop,
+                            "Select Through Lasso",
+                            "Select occluded objects and mesh elements with lasso select");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
+
+  prop = RNA_def_property(srna, "select_through_circle", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "select_through_circle", 0);
+  RNA_def_property_ui_text(prop,
+                            "Select Through Circle",
+                            "Select occluded objects and mesh elements with circle select");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
 
   /* Unified Paint Settings */
   prop = RNA_def_property(srna, "unified_paint_settings", PROP_POINTER, PROP_NONE);

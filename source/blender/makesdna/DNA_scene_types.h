@@ -1557,7 +1557,28 @@ typedef struct ToolSettings {
   char gpencil_v3d_align;
   /** General 2D Editor. */
   char gpencil_v2d_align;
-  char _pad0[2];
+
+  /* Give the UI an empty prop to expand formatting */
+  char ui_prop;
+
+  /* X-Ray Options */
+  char xray_button;
+  char auto_xray;
+  char auto_xray_button;
+  char auto_xray_reset;
+  char auto_xray_object;
+  char auto_xray_edit;
+  char auto_xray_box;
+  char auto_xray_lasso;
+  char auto_xray_circle;  
+  char select_through;
+  char select_through_button;
+  char select_through_object;
+  char select_through_edit;
+  char select_through_box;
+  char select_through_lasso;
+  char select_through_circle;
+  char _pad0[1];
 
   /* Annotations. */
   /** Stroke placement settings - 3D View. */
@@ -2379,6 +2400,22 @@ enum {
   MESH_DIRECTION_ANY = (1 << 0),
   MESH_DIRECTION_LEFT_RIGHT = (1 << 1),
   MESH_DIRECTION_UP_DOWN = (1 << 2),
+};
+
+/** #ToolSettings.auto_xray_mode */
+enum {
+  AUTO_XRAY_DISABLE = (1 << 0),
+  AUTO_XRAY_OBJECT = (1 << 1),
+  AUTO_XRAY_EDIT = (1 << 2),
+  AUTO_XRAY_BOTH = (1 << 3),
+};
+
+/** #ToolSettings.select_through_mode */
+enum {
+  SELECT_THROUGH_DISABLE = (1 << 0),
+  SELECT_THROUGH_OBJECT = (1 << 1),
+  SELECT_THROUGH_EDIT = (1 << 2),
+  SELECT_THROUGH_BOTH = (1 << 3),
 };
 
 /** #ToolSettings.selectmode */

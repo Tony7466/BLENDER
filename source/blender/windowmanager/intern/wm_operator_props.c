@@ -456,11 +456,43 @@ void WM_operator_properties_gesture_box_ex(wmOperatorType *ot, bool deselect, bo
       {0, NULL, 0, NULL, NULL},
   };
 
+  static const EnumPropertyItem auto_xray_items[] = {
+      {AUTO_XRAY_DISABLE, "AUTO_XRAY_DISABLE", 0, "Disable", "Disable Automatic X-Ray"},
+      {AUTO_XRAY_OBJECT,
+       "AUTO_XRAY_OBJECT",
+       0,
+       "Object",
+       "Enable X-Ray during box select in object mode"},
+      {AUTO_XRAY_EDIT, "AUTO_XRAY_EDIT", 0, "Edit", "Enable X-Ray during box select in edit mode"},
+      {AUTO_XRAY_BOTH,
+       "AUTO_XRAY_BOTH",
+       0,
+       "Both",
+       "Enable X-Ray during box select in object and edit mode"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem select_through_items[] = {
+      {SELECT_THROUGH_OBJECT, "SELECT_THROUGH_OBJECT", 0, "Object", "Select occluded objects"},
+      {SELECT_THROUGH_EDIT, "SELECT_THROUGH_EDIT", 0, "Edit", "Select occluded mesh elements"},
+      {SELECT_THROUGH_BOTH,
+       "SELECT_THROUGH_BOTH",
+       0,
+       "Both",
+       "Select occluded objects and mesh elements"},
+      {SELECT_THROUGH_DISABLE, "SELECT_THROUGH_DISABLE", 0, "Disable", "Disable Select Through"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   WM_operator_properties_border(ot);
 
   prop = RNA_def_enum(ot->srna, "face_type", face_select_items, 0, "Face Select", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
   prop = RNA_def_enum(ot->srna, "edge_type", edge_select_items, 0, "Edge Select", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_enum(ot->srna, "auto_xray", auto_xray_items, 0, "Automatic X-Ray", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_enum(ot->srna, "select_through", select_through_items, 0, "Select Through", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
   if (deselect) {
@@ -614,9 +646,48 @@ void WM_operator_properties_gesture_lasso(wmOperatorType *ot)
        "Select edges that are fully inside the selection area"},
       {0, NULL, 0, NULL, NULL},
   };
+
+  static const EnumPropertyItem auto_xray_items[] = {
+      {AUTO_XRAY_DISABLE, "AUTO_XRAY_DISABLE", 0, "Disable", "Disable Automatic X-Ray"},
+      {AUTO_XRAY_OBJECT,
+       "AUTO_XRAY_OBJECT",
+       0,
+       "Object",
+       "Enable X-Ray during lasso select in object mode"},
+      {AUTO_XRAY_EDIT,
+       "AUTO_XRAY_EDIT",
+       0,
+       "Edit",
+       "Enable X-Ray during lasso select in edit mode"},
+      {AUTO_XRAY_BOTH,
+       "AUTO_XRAY_BOTH",
+       0,
+       "Both",
+       "Enable X-Ray during lasso select in object and edit mode"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem select_through_items[] = {
+      {SELECT_THROUGH_OBJECT, "SELECT_THROUGH_OBJECT", 0, "Object", "Select occluded objects"},
+      {SELECT_THROUGH_EDIT, "SELECT_THROUGH_EDIT", 0, "Edit", "Select occluded mesh elements"},
+      {SELECT_THROUGH_BOTH,
+       "SELECT_THROUGH_BOTH",
+       0,
+       "Both",
+       "Select occluded objects and mesh elements"},
+      {SELECT_THROUGH_DISABLE, "SELECT_THROUGH_DISABLE", 0, "Disable", "Disable Select Through"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  WM_operator_properties_border(ot);
+
   prop = RNA_def_enum(ot->srna, "face_type", face_select_items, 0, "Face Select", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
   prop = RNA_def_enum(ot->srna, "edge_type", edge_select_items, 0, "Edge Select", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_enum(ot->srna, "auto_xray", auto_xray_items, 0, "Automatic X-Ray", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_enum(ot->srna, "select_through", select_through_items, 0, "Select Through", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
   prop = RNA_def_collection_runtime(ot->srna, "path", &RNA_OperatorMousePath, "Path", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
@@ -695,6 +766,42 @@ void WM_operator_properties_gesture_circle(wmOperatorType *ot)
       {0, NULL, 0, NULL, NULL},
   };
 
+  static const EnumPropertyItem auto_xray_items[] = {
+      {AUTO_XRAY_DISABLE, "AUTO_XRAY_DISABLE", 0, "Disable", "Disable Automatic X-Ray"},
+      {AUTO_XRAY_OBJECT,
+       "AUTO_XRAY_OBJECT",
+       0,
+       "Object",
+       "Enable X-Ray during circle select in object mode"},
+      {AUTO_XRAY_EDIT, "AUTO_XRAY_EDIT", 0, "Edit", "Enable X-Ray during circle select in edit mode"},
+      {AUTO_XRAY_BOTH,
+       "AUTO_XRAY_BOTH",
+       0,
+       "Both",
+       "Enable X-Ray during circle select in object and edit mode"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem select_through_items[] = {
+      {SELECT_THROUGH_OBJECT,
+       "SELECT_THROUGH_OBJECT",
+       0,
+       "Object",
+       "Select occluded objects"},
+      {SELECT_THROUGH_EDIT,
+       "SELECT_THROUGH_EDIT",
+       0,
+       "Edit",
+       "Select occluded mesh elements"},
+      {SELECT_THROUGH_BOTH,
+       "SELECT_THROUGH_BOTH",
+       0,
+       "Both",
+       "Select occluded objects and mesh elements"},
+      {SELECT_THROUGH_DISABLE, "SELECT_THROUGH_DISABLE", 0, "Disable", "Disable Select Through"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   prop = RNA_def_int(ot->srna, "x", 0, INT_MIN, INT_MAX, "X", "", INT_MIN, INT_MAX);
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
   prop = RNA_def_int(ot->srna, "y", 0, INT_MIN, INT_MAX, "Y", "", INT_MIN, INT_MAX);
@@ -707,6 +814,10 @@ void WM_operator_properties_gesture_circle(wmOperatorType *ot)
   prop = RNA_def_enum(ot->srna, "face_type", face_select_items, 0, "Face Select", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
   prop = RNA_def_enum(ot->srna, "edge_type", edge_select_items, 0, "Edge Select", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_enum(ot->srna, "auto_xray", auto_xray_items, 0, "Automatic X-Ray", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_enum(ot->srna, "select_through", select_through_items, 0, "Select Through", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
