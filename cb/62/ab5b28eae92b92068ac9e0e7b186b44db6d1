@@ -2,4 +2,4 @@ Referenced by pull request #105297, Cleanup: Mesh: Access looptris with Span
 Referenced by commit eb68334b58d22e325af8c23f064ab63fe3272cbc, Cleanup: Mesh: Access looptris with Span
 Referenced by commit 62c6eb12bf7762b2205af7da854a3d83c22a7eb4, Fix #105165: Weighted normal modifier crash after recent cleanup
 Referenced by issue #105331, Regression: Crash when opening file
-Referenced by issue #106315, Smooth shading artefacts with mirror modifier
+Referenced by issue #106315, Regression: Smooth shading artefacts with mirror modifier (in 3.5, 3.6 is fine, for corrective release)
