@@ -4,4 +4,4 @@ Referenced by issue #103818, VSE: frozen frames after simple edit/cut in final r
 Referenced by issue #103774, Crash scaling object with boolean modifier
 Referenced by issue #95966, Struct of Arrays Refactor for Mesh Edges
 Referenced by issue #72011, Visible wireframe artifacts after baking normal map with bevel shader (2)
-Referenced by issue #106315, Smooth shading artefacts with mirror modifier
+Referenced by issue #106315, Regression: Smooth shading artefacts with mirror modifier (in 3.5, 3.6 is fine, for corrective release)
