@@ -162,6 +162,7 @@ struct PBVH {
   const int *material_indices;
   const int *corner_verts;
   const MLoopTri *looptri;
+  const int *looptri_polys;
   CustomData *vdata;
   CustomData *ldata;
   CustomData *pdata;

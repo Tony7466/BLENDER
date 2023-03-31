@@ -277,6 +277,7 @@ typedef struct Mesh {
    * Cached triangulation of the mesh.
    */
   blender::Span<MLoopTri> looptris() const;
+  blender::Span<int> looptri_polys() const;
 
   /** Set cached mesh bounds to a known-correct value to avoid their lazy calculation later on. */
   void bounds_set_eager(const blender::Bounds<blender::float3> &bounds);

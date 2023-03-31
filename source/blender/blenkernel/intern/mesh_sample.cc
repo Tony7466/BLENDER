@@ -113,12 +113,11 @@ void sample_face_attribute(const Mesh &mesh,
                            const IndexMask mask,
                            const MutableSpan<T> dst)
 {
-  const Span<MLoopTri> looptris = mesh.looptris();
+  const Span<int> looptri_polys = mesh.looptri_polys();
 
   for (const int i : mask) {
     const int looptri_index = looptri_indices[i];
-    const MLoopTri &looptri = looptris[looptri_index];
-    const int poly_index = looptri.poly;
+    const int poly_index = looptri_polys[looptri_index];
     dst[i] = src[poly_index];
   }
 }

@@ -47,6 +47,7 @@ void BKE_mesh_calc_loop_tangent_ex(const float (*vert_positions)[3],
                                    uint polys_len,
                                    const int *corner_verts,
                                    const struct MLoopTri *looptri,
+                                   const int *looptri_polys,
                                    uint looptri_len,
                                    const bool *sharp_faces,
 

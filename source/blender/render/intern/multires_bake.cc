@@ -70,6 +70,7 @@ struct MResolvePixelData {
   float (*mloopuv)[2];
   float uv_offset[2];
   const MLoopTri *mlooptri;
+  const int *looptri_polys;
   float *pvtangent;
   const blender::float3 *poly_normals;
   int w, h;

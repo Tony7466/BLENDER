@@ -179,8 +179,8 @@ struct SGLSLMeshToTangent {
   {
 #ifdef USE_LOOPTRI_DETECT_QUADS
     if (face_as_quad_map) {
-      const MLoopTri *lt = &looptri[face_as_quad_map[face_num]];
-      const MPoly &poly = polys[lt->poly];
+      const int poly_index = looptri_polys[face_as_quad_map[face_num]];
+      const MPoly &poly = polys[poly_index];
       if (poly.totloop == 4) {
         return 4;
       }
@@ -192,37 +192,41 @@ struct SGLSLMeshToTangent {
 #endif
   }
 
-  uint GetLoop(const uint face_num, const uint vert_num, const MLoopTri *&lt)
+  uint GetLoop(const uint face_num, const uint vert_num, MLoopTri &lt, int &poly_index)
   {
 #ifdef USE_LOOPTRI_DETECT_QUADS
     if (face_as_quad_map) {
-      lt = &looptri[face_as_quad_map[face_num]];
-      const MPoly &poly = polys[lt->poly];
+      lt = looptri[face_as_quad_map[face_num]];
+      poly_index = looptri_polys[face_as_quad_map[face_num]];
+      const MPoly &poly = polys[poly_index];
       if (poly.totloop == 4) {
         return (uint(poly.loopstart) + vert_num);
       }
       /* fall through to regular triangle */
     }
     else {
-      lt = &looptri[face_num];
+      lt = looptri[face_num];
+      poly_index = looptri_polys[face_num];
     }
 #else
     lt = &looptri[face_num];
 #endif
-    return lt->tri[vert_num];
+    return lt.tri[vert_num];
   }
 
   mikk::float3 GetPosition(const uint face_num, const uint vert_num)
   {
-    const MLoopTri *lt;
-    uint loop_index = GetLoop(face_num, vert_num, lt);
+    MLoopTri lt;
+    int poly_index;
+    uint loop_index = GetLoop(face_num, vert_num, lt, poly_index);
     return mikk::float3(positions[corner_verts[loop_index]]);
   }
 
   mikk::float3 GetTexCoord(const uint face_num, const uint vert_num)
   {
-    const MLoopTri *lt;
-    uint loop_index = GetLoop(face_num, vert_num, lt);
+    MLoopTri lt;
+    int poly_index;
+    uint loop_index = GetLoop(face_num, vert_num, lt, poly_index);
     if (mloopuv != nullptr) {
       const float2 &uv = mloopuv[loop_index];
       return mikk::float3(uv[0], uv[1], 1.0f);
@@ -235,17 +239,18 @@ struct SGLSLMeshToTangent {
 
   mikk::float3 GetNormal(const uint face_num, const uint vert_num)
   {
-    const MLoopTri *lt;
-    uint loop_index = GetLoop(face_num, vert_num, lt);
+    MLoopTri lt;
+    int poly_index;
+    uint loop_index = GetLoop(face_num, vert_num, lt, poly_index);
     if (precomputedLoopNormals) {
       return mikk::float3(precomputedLoopNormals[loop_index]);
     }
-    if (sharp_faces && sharp_faces[lt->poly]) { /* flat */
+    if (sharp_faces && sharp_faces[poly_index]) { /* flat */
       if (precomputedFaceNormals) {
-        return mikk::float3(precomputedFaceNormals[lt->poly]);
+        return mikk::float3(precomputedFaceNormals[poly_index]);
       }
 #ifdef USE_LOOPTRI_DETECT_QUADS
-      const MPoly &poly = polys[lt->poly];
+      const MPoly &poly = polys[poly_index];
       float normal[3];
       if (poly.totloop == 4) {
         normal_quad_v3(normal,
@@ -258,9 +263,9 @@ struct SGLSLMeshToTangent {
 #endif
       {
         normal_tri_v3(normal,
-                      positions[corner_verts[lt->tri[0]]],
-                      positions[corner_verts[lt->tri[1]]],
-                      positions[corner_verts[lt->tri[2]]]);
+                      positions[corner_verts[lt.tri[0]]],
+                      positions[corner_verts[lt.tri[1]]],
+                      positions[corner_verts[lt.tri[2]]]);
       }
       return mikk::float3(normal);
     }
@@ -269,8 +274,9 @@ struct SGLSLMeshToTangent {
 
   void SetTangentSpace(const uint face_num, const uint vert_num, mikk::float3 T, bool orientation)
   {
-    const MLoopTri *lt;
-    uint loop_index = GetLoop(face_num, vert_num, lt);
+    MLoopTri lt;
+    int poly_index;
+    uint loop_index = GetLoop(face_num, vert_num, lt, poly_index);
 
     copy_v4_fl4(tangent[loop_index], T.x, T.y, T.z, orientation ? 1.0f : -1.0f);
   }
@@ -278,6 +284,7 @@ struct SGLSLMeshToTangent {
   const float (*precomputedFaceNormals)[3];
   const float (*precomputedLoopNormals)[3];
   const MLoopTri *looptri;
+  const int *looptri_polys;
   const float2 *mloopuv;       /* texture coordinates */
   const MPoly *polys;          /* indices */
   const int *corner_verts;     /* indices */
@@ -393,6 +400,7 @@ void BKE_mesh_calc_loop_tangent_ex(const float (*vert_positions)[3],
                                    const uint polys_len,
                                    const int *corner_verts,
                                    const MLoopTri *looptri,
+                                   const int *looptri_polys,
                                    const uint looptri_len,
                                    const bool *sharp_faces,
 
@@ -466,7 +474,7 @@ void BKE_mesh_calc_loop_tangent_ex(const float (*vert_positions)[3],
       for (k = 0, j = 0; j < int(looptri_len); k++, j++) {
         face_as_quad_map[k] = j;
         /* step over all quads */
-        if (polys[looptri[j].poly].totloop == 4) {
+        if (polys[looptri_polys[j]].totloop == 4) {
           j++; /* skips the nest looptri */
         }
       }
@@ -499,6 +507,7 @@ void BKE_mesh_calc_loop_tangent_ex(const float (*vert_positions)[3],
         mesh2tangent->polys = polys;
         mesh2tangent->corner_verts = corner_verts;
         mesh2tangent->looptri = looptri;
+        mesh2tangent->looptri_polys = looptri_polys;
         mesh2tangent->sharp_faces = sharp_faces;
         /* NOTE: we assume we do have tessellated loop normals at this point
          * (in case it is object-enabled), have to check this is valid. */
@@ -584,6 +593,7 @@ void BKE_mesh_calc_loop_tangents(Mesh *me_eval,
       uint(me_eval->totpoly),
       me_eval->corner_verts().data(),
       looptris.data(),
+      me_eval->looptri_polys().data(),
       uint(looptris.size()),
       static_cast<const bool *>(
           CustomData_get_layer_named(&me_eval->pdata, CD_PROP_BOOL, "sharp_face")),

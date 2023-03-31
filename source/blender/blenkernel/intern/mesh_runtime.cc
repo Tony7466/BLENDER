@@ -162,6 +162,16 @@ blender::Span<MLoopTri> Mesh::looptris() const
   return this->runtime->looptris_cache.data();
 }
 
+blender::Span<int> Mesh::looptri_polys() const
+{
+  this->runtime->looptri_polys_cache.ensure([&](blender::Array<int> &r_data) {
+    const Span<MPoly> polys = this->polys();
+    r_data.reinitialize(poly_to_tri_count(polys.size(), this->totloop));
+    blender::bke::mesh::looptris_calc_poly_indices(polys, r_data);
+  });
+  return this->runtime->looptri_polys_cache.data();
+}
+
 int BKE_mesh_runtime_looptri_len(const Mesh *mesh)
 {
   /* Allow returning the size without calculating the cache. */
@@ -220,6 +230,7 @@ void BKE_mesh_runtime_clear_geometry(Mesh *mesh)
   mesh->runtime->bounds_cache.tag_dirty();
   mesh->runtime->loose_edges_cache.tag_dirty();
   mesh->runtime->looptris_cache.tag_dirty();
+  mesh->runtime->looptri_polys_cache.tag_dirty();
   mesh->runtime->subsurf_face_dot_tags.clear_and_shrink();
   mesh->runtime->subsurf_optimal_display_edges.clear_and_shrink();
   if (mesh->runtime->shrinkwrap_data) {

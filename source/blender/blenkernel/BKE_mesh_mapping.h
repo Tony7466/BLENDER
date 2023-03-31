@@ -210,7 +210,7 @@ void BKE_mesh_origindex_map_create_looptri(MeshElemMap **r_map,
                                            int **r_mem,
                                            const struct MPoly *polys,
                                            int polys_num,
-                                           const struct MLoopTri *looptri,
+                                           const int *looptri_polys,
                                            int looptri_num);
 
 /* islands */

@@ -565,6 +565,7 @@ void BKE_mesh_remap_calc_verts_from_mesh(const int mode,
       const blender::Span<MPoly> polys_src = me_src->polys();
       const blender::Span<int> corner_verts_src = me_src->corner_verts();
       const float(*vcos_src)[3] = BKE_mesh_vert_positions(me_src);
+      const blender::Span<int> looptri_polys = me_src->looptri_polys();
       const blender::Span<blender::float3> vert_normals_dst = me_dst->vert_normals();
 
       size_t tmp_buff_size = MREMAP_DEFAULT_BUFSIZE;
@@ -589,8 +590,8 @@ void BKE_mesh_remap_calc_verts_from_mesh(const int mode,
 
           if (mesh_remap_bvhtree_query_raycast(
                   &treedata, &rayhit, tmp_co, tmp_no, ray_radius, max_dist, &hit_dist)) {
-            const MLoopTri *lt = &treedata.looptri[rayhit.index];
-            const int sources_num = mesh_remap_interp_poly_data_get(polys_src[lt->poly],
+            const int poly_index = looptri_polys[rayhit.index];
+            const int sources_num = mesh_remap_interp_poly_data_get(polys_src[poly_index],
                                                                     corner_verts_src,
                                                                     vcos_src,
                                                                     rayhit.co,
@@ -623,11 +624,11 @@ void BKE_mesh_remap_calc_verts_from_mesh(const int mode,
 
           if (mesh_remap_bvhtree_query_nearest(
                   &treedata, &nearest, tmp_co, max_dist_sq, &hit_dist)) {
-            const MLoopTri *lt = &treedata.looptri[nearest.index];
+            const int poly_index = looptri_polys[rayhit.index];
 
             if (mode == MREMAP_MODE_VERT_POLY_NEAREST) {
               int index;
-              mesh_remap_interp_poly_data_get(polys_src[lt->poly],
+              mesh_remap_interp_poly_data_get(polys_src[poly_index],
                                               corner_verts_src,
                                               vcos_src,
                                               nearest.co,
@@ -642,7 +643,7 @@ void BKE_mesh_remap_calc_verts_from_mesh(const int mode,
               mesh_remap_item_define(r_map, i, hit_dist, 0, 1, &index, &full_weight);
             }
             else if (mode == MREMAP_MODE_VERT_POLYINTERP_NEAREST) {
-              const int sources_num = mesh_remap_interp_poly_data_get(polys_src[lt->poly],
+              const int sources_num = mesh_remap_interp_poly_data_get(polys_src[poly_index],
                                                                       corner_verts_src,
                                                                       vcos_src,
                                                                       nearest.co,
@@ -867,6 +868,7 @@ void BKE_mesh_remap_calc_edges_from_mesh(const int mode,
       const blender::Span<MEdge> edges_src = me_src->edges();
       const blender::Span<MPoly> polys_src = me_src->polys();
       const blender::Span<int> corner_edges_src = me_src->corner_edges();
+      const blender::Span<int> looptri_polys = me_src->looptri_polys();
       const float(*vcos_src)[3] = BKE_mesh_vert_positions(me_src);
 
       BKE_bvhtree_from_mesh_get(&treedata, me_src, BVHTREE_FROM_LOOPTRI, 2);
@@ -884,8 +886,8 @@ void BKE_mesh_remap_calc_edges_from_mesh(const int mode,
 
         if (mesh_remap_bvhtree_query_nearest(
                 &treedata, &nearest, tmp_co, max_dist_sq, &hit_dist)) {
-          const MLoopTri *lt = &treedata.looptri[nearest.index];
-          const MPoly &poly_src = polys_src[lt->poly];
+          const int poly_index = looptri_polys[rayhit.index];
+          const MPoly &poly_src = polys_src[poly_index];
           const int *corner_edge_src = &corner_edges_src[poly_src.loopstart];
           int nloops = poly_src.totloop;
           float best_dist_sq = FLT_MAX;
@@ -1307,6 +1309,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
     const blender::Span<int> corner_verts_src = me_src->corner_verts();
     const blender::Span<int> corner_edges_src = me_src->corner_edges();
     blender::Span<MLoopTri> looptris_src;
+    blender::Span<int> looptri_polys_src;
 
     size_t buff_size_interp = MREMAP_DEFAULT_BUFSIZE;
     float(*vcos_interp)[3] = nullptr;
@@ -1533,13 +1536,14 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
     else { /* We use polygons. */
       if (use_islands) {
         looptris_src = me_src->looptris();
+        looptri_polys_src = me_src->looptri_polys();
         blender::BitVector<> looptri_active(looptris_src.size());
 
         for (tindex = 0; tindex < num_trees; tindex++) {
           int num_looptri_active = 0;
           looptri_active.fill(false);
           for (const int64_t i : looptris_src.index_range()) {
-            const MPoly &poly = polys_src[looptris_src[i].poly];
+            const MPoly &poly = polys_src[looptri_polys_src[i]];
             if (island_store.items_to_islands[poly.loopstart] == tindex) {
               looptri_active[i].set();
               num_looptri_active++;
@@ -1570,6 +1574,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
       islands_res[tindex] = static_cast<IslandResult *>(
           MEM_mallocN(sizeof(**islands_res) * islands_res_buff_size, __func__));
     }
+    const blender::Span<int> looptri_polys = me_src->looptri_polys();
 
     for (pidx_dst = 0, mp_dst = polys_dst; pidx_dst < numpolys_dst; pidx_dst++, mp_dst++) {
       float pnor_dst[3];
@@ -1724,7 +1729,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
                       tdata, &rayhit, tmp_co, tmp_no, ray_radius / w, max_dist, &hit_dist)) {
                 islands_res[tindex][plidx_dst].factor = (hit_dist ? (1.0f / hit_dist) : 1e18f) * w;
                 islands_res[tindex][plidx_dst].hit_dist = hit_dist;
-                islands_res[tindex][plidx_dst].index_src = int(tdata->looptri[rayhit.index].poly);
+                islands_res[tindex][plidx_dst].index_src = looptri_polys[rayhit.index];
                 copy_v3_v3(islands_res[tindex][plidx_dst].hit_point, rayhit.co);
                 break;
               }
@@ -1753,7 +1758,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
               if (mesh_remap_bvhtree_query_nearest(
                       tdata, &nearest, tmp_co, max_dist_sq, &hit_dist)) {
                 islands_res[tindex][plidx_dst].hit_dist = hit_dist;
-                islands_res[tindex][plidx_dst].index_src = int(tdata->looptri[nearest.index].poly);
+                islands_res[tindex][plidx_dst].index_src = looptri_polys[nearest.index];
                 copy_v3_v3(islands_res[tindex][plidx_dst].hit_point, nearest.co);
               }
               else {
@@ -1776,7 +1781,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
                     tdata, &nearest, tmp_co, max_dist_sq, &hit_dist)) {
               islands_res[tindex][plidx_dst].factor = hit_dist ? (1.0f / hit_dist) : 1e18f;
               islands_res[tindex][plidx_dst].hit_dist = hit_dist;
-              islands_res[tindex][plidx_dst].index_src = int(tdata->looptri[nearest.index].poly);
+              islands_res[tindex][plidx_dst].index_src = looptri_polys[nearest.index];
               copy_v3_v3(islands_res[tindex][plidx_dst].hit_point, nearest.co);
             }
             else {
@@ -2003,8 +2008,8 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
                                                             &poly_to_looptri_map_src_buff,
                                                             polys_src.data(),
                                                             int(polys_src.size()),
-                                                            looptris_src.data(),
-                                                            int(looptris_src.size()));
+                                                            looptri_polys_src.data(),
+                                                            int(looptri_polys_src.size()));
                     }
 
                     for (j = poly_to_looptri_map_src[pidx_src].count; j--;) {
@@ -2179,6 +2184,7 @@ void BKE_mesh_remap_calc_polys_from_mesh(const int mode,
     BVHTreeNearest nearest = {0};
     BVHTreeRayHit rayhit = {0};
     float hit_dist;
+    const blender::Span<int> looptri_polys = me_src->looptri_polys();
 
     BKE_bvhtree_from_mesh_get(&treedata, me_src, BVHTREE_FROM_LOOPTRI, 2);
 
@@ -2198,8 +2204,7 @@ void BKE_mesh_remap_calc_polys_from_mesh(const int mode,
 
         if (mesh_remap_bvhtree_query_nearest(
                 &treedata, &nearest, tmp_co, max_dist_sq, &hit_dist)) {
-          const MLoopTri *lt = &treedata.looptri[nearest.index];
-          const int poly_index = int(lt->poly);
+          const int poly_index = looptri_polys[nearest.index];
           mesh_remap_item_define(r_map, i, hit_dist, 0, 1, &poly_index, &full_weight);
         }
         else {
@@ -2225,9 +2230,7 @@ void BKE_mesh_remap_calc_polys_from_mesh(const int mode,
 
         if (mesh_remap_bvhtree_query_raycast(
                 &treedata, &rayhit, tmp_co, tmp_no, ray_radius, max_dist, &hit_dist)) {
-          const MLoopTri *lt = &treedata.looptri[rayhit.index];
-          const int poly_index = int(lt->poly);
-
+          const int poly_index = looptri_polys[rayhit.index];
           mesh_remap_item_define(r_map, i, hit_dist, 0, 1, &poly_index, &full_weight);
         }
         else {
@@ -2380,9 +2383,8 @@ void BKE_mesh_remap_calc_polys_from_mesh(const int mode,
             while (n--) {
               if (mesh_remap_bvhtree_query_raycast(
                       &treedata, &rayhit, tmp_co, tmp_no, ray_radius / w, max_dist, &hit_dist)) {
-                const MLoopTri *lt = &treedata.looptri[rayhit.index];
-
-                weights[lt->poly] += w;
+                const int poly_index = looptri_polys[rayhit.index];
+                weights[poly_index] += w;
                 totweights += w;
                 hit_dist_accum += hit_dist;
                 break;
