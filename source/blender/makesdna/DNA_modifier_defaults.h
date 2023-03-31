@@ -26,6 +26,7 @@
     .offset_ob = NULL, \
     .offset = {1.0f, 0.0f, 0.0f}, \
     .scale = {1.0f, 0.0f, 0.0f}, \
+    .rotate = {0.0f, 0.0f, 0.0f}, \
     .length = 0.0f, \
     .merge_dist = 0.01f, \
     .fit_type = MOD_ARR_FIXEDCOUNT, \

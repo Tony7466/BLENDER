@@ -2950,6 +2950,27 @@ static void rna_def_modifier_array(BlenderRNA *brna)
       "The size of the geometry will determine the distance between arrayed items");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
+  prop = RNA_def_property(srna, "rotate_x", PROP_FLOAT, PROP_ANGLE);
+  RNA_def_property_float_sdna(prop, NULL, "rotate[0]");
+  RNA_def_property_range(prop, -FLT_MAX, FLT_MAX);
+  RNA_def_property_ui_range(prop, DEG2RAD(-360.0), DEG2RAD(360.0), 10.0, 3);
+  RNA_def_property_ui_text(prop, "Rotate X", "Amount to rotate array items on the X axis");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "rotate_y", PROP_FLOAT, PROP_ANGLE);
+  RNA_def_property_float_sdna(prop, NULL, "rotate[1]");
+  RNA_def_property_range(prop, -FLT_MAX, FLT_MAX);
+  RNA_def_property_ui_range(prop, DEG2RAD(-360.0), DEG2RAD(360.0), 10.0, 3);
+  RNA_def_property_ui_text(prop, "Rotate Y", "Amount to rotate array items on the Y axis");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "rotate_z", PROP_FLOAT, PROP_ANGLE);
+  RNA_def_property_float_sdna(prop, NULL, "rotate[2]");
+  RNA_def_property_range(prop, -FLT_MAX, FLT_MAX);
+  RNA_def_property_ui_range(prop, DEG2RAD(-360.0), DEG2RAD(360.0), 10.0, 3);
+  RNA_def_property_ui_text(prop, "Rotate Z", "Amount to rotate array items on the Z axis");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
   /* Vertex merging parameters */
   prop = RNA_def_property(srna, "use_merge_vertices", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_ARR_MERGE);

@@ -308,6 +308,8 @@ typedef struct ArrayModifierData {
    * 1 means the duplicates are 1 object-width apart.
    */
   float scale[3];
+  /** The amount to rotate each array item in XYZ */
+  float rotate[3];
   /** The length over which to distribute the duplicates. */
   float length;
   /** The limit below which to merge vertices in adjacent duplicates. */
@@ -335,6 +337,7 @@ typedef struct ArrayModifierData {
   /** The number of duplicates to generate for #MOD_ARR_FIXEDCOUNT. */
   int count;
   float uv_offset[2];
+  float _pad;
 } ArrayModifierData;
 
 /** #ArrayModifierData.fit_type */

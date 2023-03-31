@@ -78,6 +78,7 @@ static void foreachIDLink(ModifierData *md, Object *ob, IDWalkFunc walk, void *u
 static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
   ArrayModifierData *amd = (ArrayModifierData *)md;
+
   bool need_transform_dependency = false;
   if (amd->start_cap != nullptr) {
     DEG_add_object_relation(
@@ -281,6 +282,7 @@ static void mesh_merge_transform(Mesh *result,
                                  const bool recalc_normals_later)
 {
   using namespace blender;
+
   int *index_orig;
   int i;
   MEdge *edge;
@@ -460,6 +462,10 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
     for (j = 3; j--;) {
       offset[3][j] += amd->scale[j] * (max[j] - min[j]);
     }
+
+    rotate_m4(offset, 'X', amd->rotate[0]);
+    rotate_m4(offset, 'Y', amd->rotate[1]);
+    rotate_m4(offset, 'Z', amd->rotate[2]);
   }
 
   if (use_offset_ob) {
@@ -880,6 +886,9 @@ static void relative_offset_draw(const bContext * /*C*/, Panel *panel)
 
   uiLayoutSetActive(col, RNA_boolean_get(ptr, "use_relative_offset"));
   uiItemR(col, ptr, "relative_offset_displace", 0, IFACE_("Factor"), ICON_NONE);
+  uiItemR(col, ptr, "rotate_x", UI_ITEM_R_EXPAND, IFACE_("Rotate X"), ICON_NONE);
+  uiItemR(col, ptr, "rotate_y", UI_ITEM_R_EXPAND, IFACE_("Y"), ICON_NONE);
+  uiItemR(col, ptr, "rotate_z", UI_ITEM_R_EXPAND, IFACE_("Z"), ICON_NONE);
 }
 
 static void constant_offset_header_draw(const bContext * /*C*/, Panel *panel)
