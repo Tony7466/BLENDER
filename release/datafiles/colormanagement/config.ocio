@@ -36,26 +36,26 @@ file_rules:
 
 displays:
   sRGB:
-    - !<View> {name: Guard Rail, colorspace: Guard Rail sRGB}
+    - !<View> {name: Standard, colorspace: Guard Rail sRGB}
     - !<View> {name: AgX, colorspace: AgX Base sRGB}
     - !<View> {name: Filmic, colorspace: Filmic sRGB}
     - !<View> {name: AgX Log,colorspace: AgX Log}
     - !<View> {name: AgX False Color, colorspace: AgX False Color}
     - !<View> {name: None, colorspace: Non-Color}
   Display P3:
-    - !<View> {name: Guard Rail, colorspace: Guard Rail P3}
+    - !<View> {name: Standard, colorspace: Guard Rail P3}
     - !<View> {name: AgX, colorspace: AgX Base Display P3}
     - !<View> {name: AgX Log,colorspace: AgX Log}
     - !<View> {name: AgX False Color, colorspace: AgX False Color}
     - !<View> {name: None, colorspace: Non-Color}
   BT.1886:
-    - !<View> {name: Guard Rail, colorspace: Guard Rail BT.1886}
+    - !<View> {name: Standard, colorspace: Guard Rail BT.1886}
     - !<View> {name: AgX, colorspace: AgX Base BT.1886}
     - !<View> {name: AgX Log,colorspace: AgX Log}
     - !<View> {name: AgX False Color, colorspace: AgX False Color}
     - !<View> {name: None, colorspace: Non-Color}
   BT.2020:
-    - !<View> {name: Guard Rail, colorspace: Guard Rail BT.2020}
+    - !<View> {name: Standard, colorspace: Guard Rail BT.2020}
     - !<View> {name: AgX, colorspace: AgX Base BT.2020}
     - !<View> {name: AgX Log,colorspace: AgX Log}
     - !<View> {name: AgX False Color, colorspace: AgX False Color}
