@@ -188,16 +188,16 @@ static void draw_normalization_borders(Scene *scene, View2D *v2d)
   GPU_blend(GPU_BLEND_ALPHA);
 
   GPUVertFormat *format = immVertexFormat();
-  uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  const uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-  immUniformThemeColorShadeAlpha(TH_BACK, -25, -100);
+  immUniformThemeColorShadeAlpha(TH_BACK, -25, -180);
 
   if (v2d->cur.ymax >= 1) {
-    immRectf(pos, (float)scene->r.sfra, 1, scene->r.efra, v2d->cur.ymax);
+    immRectf(pos, scene->r.sfra, 1, scene->r.efra, v2d->cur.ymax);
   }
   if (v2d->cur.ymin <= -1) {
-    immRectf(pos, (float)scene->r.sfra, v2d->cur.ymin, scene->r.efra, -1);
+    immRectf(pos, scene->r.sfra, v2d->cur.ymin, scene->r.efra, -1);
   }
 
   GPU_blend(GPU_BLEND_NONE);
