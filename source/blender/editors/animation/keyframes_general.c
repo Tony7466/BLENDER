@@ -464,6 +464,12 @@ void fft_filter_fcurve_segment(FCurve *fcu,
   float *samples = MEM_callocN(sizeof(float) * sample_count, "FFT Samples");
   sample_fcurve_segment(fcu, start_frame, samples, sample_count);
 
+  float length_curve = 0;
+  for (int i = 1; i < sample_count; i++) {
+    length_curve += sqrt(1 + pow2f(samples_y[i - 1] - samples_y[i]));
+    curve_length_y[i] = length_curve;
+  }
+
   fftw_complex *sample_data = MEM_callocN(sizeof(fftw_complex) * sample_count, "fftw_sample_data");
 
   for (int i = 0; i < sample_count; i++) {
