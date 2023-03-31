@@ -3728,7 +3728,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   /* Auto X-Ray */
   prop = RNA_def_property(srna, "auto_xray", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "auto_xray", 0);
-  RNA_def_property_ui_text(prop, "Auto X-Ray Box", "Transparent scene display during drag select");
+  RNA_def_property_ui_text(prop, "Auto X-Ray", "Transparent scene display during drag select");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
 
   prop = RNA_def_property(srna, "auto_xray_reset", PROP_BOOLEAN, PROP_NONE);
