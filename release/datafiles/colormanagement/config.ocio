@@ -27,9 +27,10 @@ roles:
   scene_linear: Linear BT.709 I-E
   rendering: Linear BT.709 I-E
   texture_paint: sRGB
-  # When using Spectral Cycles, Change XYZ role to I-E
+  # When using Spectral Cycles, Change XYZ role to I-E, and comment out the aces_interchange role
   XYZ: Linear CIE-XYZ I-D65
-
+  aces_interchange: ACES2065-1
+  cie_xyz_d65_interchange: Linear CIE-XYZ I-D65
 file_rules:
   - !<Rule> {name: Default, colorspace: default}
 
