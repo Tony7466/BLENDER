@@ -309,7 +309,7 @@ static void sort_multi_input_socket_links_with_drag(bNodeSocket &socket,
   });
 
   for (const int i : links.index_range()) {
-    links[i].link->multi_input_socket_index = i;
+    links[i].link->multi_input_socket_index = links.size() - 1 - i;
   }
 }
 
