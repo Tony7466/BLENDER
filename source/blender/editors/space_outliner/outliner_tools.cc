@@ -2191,8 +2191,6 @@ static Base *outliner_batch_delete_hierarchy(
     }
   }
 
-  base_next = base->next;
-
   if (object->id.tag & LIB_TAG_INDIRECT) {
     BKE_reportf(reports,
                 RPT_WARNING,
@@ -2210,6 +2208,8 @@ static Base *outliner_batch_delete_hierarchy(
                 scene->id.name + 2);
     return base_next;
   }
+
+  base_next = base->next;
 
   DEG_id_tag_update_ex(bmain, &object->id, ID_RECALC_BASE_FLAGS);
   BKE_scene_collections_object_remove(bmain, scene, object, false);
