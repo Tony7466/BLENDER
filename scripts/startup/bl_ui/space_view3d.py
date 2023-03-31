@@ -6291,15 +6291,17 @@ class VIEW3D_PT_auto_xray(Panel):
         tool_settings = context.tool_settings
 
         row = layout.row()
-        row.prop(tool_settings, "auto_xray", text="Automatic X-Ray")
-        if tool_settings.auto_xray:
-            row = layout.row(align=True)
-            row.prop(tool_settings, "auto_xray_object", text="Object")
-            row.prop(tool_settings, "auto_xray_edit", text="Edit")
-            row = layout.row(align=True)
-            row.prop(tool_settings, "auto_xray_box", text="Box", toggle=True)
-            row.prop(tool_settings, "auto_xray_lasso", text="Lasso", toggle=True)
-            row.prop(tool_settings, "auto_xray_circle", text="Circle", toggle=True)
+        row.prop(tool_settings, "auto_xray", text="Auto X-Ray")
+        sub = row.row()
+        sub.active = tool_settings.auto_xray
+        sub.prop(tool_settings, "auto_xray_object", text="Object")
+        sub.prop(tool_settings, "auto_xray_edit", text="Edit")
+        row = layout.row()
+        sub = row.row(align=True)
+        sub.active = tool_settings.auto_xray
+        sub.prop(tool_settings, "auto_xray_box", text="Box", toggle=True)
+        sub.prop(tool_settings, "auto_xray_lasso", text="Lasso", toggle=True)
+        sub.prop(tool_settings, "auto_xray_circle", text="Circle", toggle=True)
 
 
 class VIEW3D_PT_overlay(Panel):
