@@ -1629,9 +1629,6 @@ static void object_get_datamask(const Depsgraph *depsgraph,
                                 CustomData_MeshMasks *r_mask,
                                 bool *r_need_mapping)
 {
-  Scene *scene = DEG_get_evaluated_scene(depsgraph);
-  ViewLayer *view_layer = DEG_get_evaluated_view_layer(depsgraph);
-
   DEG_get_customdata_mask_for_object(depsgraph, ob, r_mask);
 
   if (r_need_mapping) {
@@ -1644,37 +1641,31 @@ static void object_get_datamask(const Depsgraph *depsgraph,
     return;
   }
 
-  BKE_view_layer_synced_ensure(scene, view_layer);
-  Object *actob = BKE_view_layer_active_object_get(view_layer);
-  if (actob) {
-    actob = DEG_get_original_object(actob);
+  Object *origob = DEG_get_original_object(ob);
+  bool editing = BKE_paint_select_face_test(origob);
+
+  /* weight paint and face select need original indices because of selection buffer drawing */
+  if (r_need_mapping) {
+    *r_need_mapping = (editing || (ob->mode & (OB_MODE_WEIGHT_PAINT | OB_MODE_VERTEX_PAINT)));
   }
-  if (DEG_get_original_object(ob) == actob) {
-    bool editing = BKE_paint_select_face_test(actob);
 
-    /* weight paint and face select need original indices because of selection buffer drawing */
-    if (r_need_mapping) {
-      *r_need_mapping = (editing || (ob->mode & (OB_MODE_WEIGHT_PAINT | OB_MODE_VERTEX_PAINT)));
-    }
+  /* check if we need tfaces & mcols due to face select or texture paint */
+  if ((ob->mode & OB_MODE_TEXTURE_PAINT) || editing) {
+    r_mask->lmask |= CD_MASK_PROP_FLOAT2 | CD_MASK_PROP_BYTE_COLOR;
+    r_mask->fmask |= CD_MASK_MTFACE;
+  }
 
-    /* check if we need tfaces & mcols due to face select or texture paint */
-    if ((ob->mode & OB_MODE_TEXTURE_PAINT) || editing) {
-      r_mask->lmask |= CD_MASK_PROP_FLOAT2 | CD_MASK_PROP_BYTE_COLOR;
-      r_mask->fmask |= CD_MASK_MTFACE;
-    }
+  /* check if we need mcols due to vertex paint or weightpaint */
+  if (ob->mode & OB_MODE_VERTEX_PAINT) {
+    r_mask->lmask |= CD_MASK_PROP_BYTE_COLOR;
+  }
 
-    /* check if we need mcols due to vertex paint or weightpaint */
-    if (ob->mode & OB_MODE_VERTEX_PAINT) {
-      r_mask->lmask |= CD_MASK_PROP_BYTE_COLOR;
-    }
+  if (ob->mode & OB_MODE_WEIGHT_PAINT) {
+    r_mask->vmask |= CD_MASK_MDEFORMVERT;
+  }
 
-    if (ob->mode & OB_MODE_WEIGHT_PAINT) {
-      r_mask->vmask |= CD_MASK_MDEFORMVERT;
-    }
-
-    if (ob->mode & OB_MODE_EDIT) {
-      r_mask->vmask |= CD_MASK_MVERT_SKIN;
-    }
+  if (ob->mode & OB_MODE_EDIT) {
+    r_mask->vmask |= CD_MASK_MVERT_SKIN;
   }
 }
 
