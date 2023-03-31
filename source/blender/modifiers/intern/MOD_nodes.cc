@@ -155,71 +155,38 @@ enum eNodeModifierIDRelation : int8_t {
   ALL = ~0,
 };
 
-/*
-template<class T> inline T operator~ (T a) { return (T)~(int)a; }
-template<class T> inline T operator| (T a, T b) { return (T)((int)a | (int)b); }
-template<class T> inline T operator& (T a, T b) { return (T)((int)a & (int)b); }
-template<class T> inline T operator^ (T a, T b) { return (T)((int)a ^ (int)b); }
-template<class T> inline T& operator&= (T& a, T b) { return (T&)((int&)a &= (int)b); }
-template<class T> inline T& operator^= (T& a, T b) { return (T&)((int&)a ^= (int)b); }
-*/
-template<class T> inline T &operator|=(T &a, T b)
-{
-  return (T &)((int8_t &)a |= (int8_t)b);
-}
-
-struct IDRelation {
-  ID *id;
-  eNodeModifierIDRelation flag;
-
-  uint64_t hash() const
-  {
-    return blender::get_default_hash_2(id, flag);
-  }
-
-  bool operator==(const IDRelation &other) const
-  {
-    return (this->id == other.id) && (this->flag == other.flag);
-  }
-};
-
-static void add_used_ids_from_sockets(const ListBase &sockets, Set<IDRelation> &ids)
+static void add_used_ids_from_sockets(const ListBase &sockets, Map<ID *, eNodeModifierIDRelation> &ids)
 {
   LISTBASE_FOREACH (const bNodeSocket *, socket, &sockets) {
     switch (socket->type) {
       case SOCK_OBJECT: {
         if (Object *object = ((bNodeSocketValueObject *)socket->default_value)->value) {
-          IDRelation relation{&object->id, ALL};
-          ids.add(relation);
+          ids.lookup_or_add_default(&object->id) = ALL;
         }
         break;
       }
       case SOCK_COLLECTION: {
         if (Collection *collection =
                 ((bNodeSocketValueCollection *)socket->default_value)->value) {
-          IDRelation relation{&collection->id, ALL};
-          ids.add(relation);
+          ids.lookup_or_add_default(&collection->id) = ALL;
         }
         break;
       }
       case SOCK_MATERIAL: {
         if (Material *material = ((bNodeSocketValueMaterial *)socket->default_value)->value) {
-          IDRelation relation{&material->id, ALL};
-          ids.add(relation);
+          ids.lookup_or_add_default(&material->id) = ALL;
         }
         break;
       }
       case SOCK_TEXTURE: {
         if (Tex *texture = ((bNodeSocketValueTexture *)socket->default_value)->value) {
-          IDRelation relation{&texture->id, ALL};
-          ids.add(relation);
+          ids.lookup_or_add_default(&texture->id) = ALL;
         }
         break;
       }
       case SOCK_IMAGE: {
         if (Image *image = ((bNodeSocketValueImage *)socket->default_value)->value) {
-          IDRelation relation{&image->id, ALL};
-          ids.add(relation);
+          ids.lookup_or_add_default(&image->id) = ALL;
         }
         break;
       }
@@ -234,7 +201,7 @@ static void add_used_ids_from_sockets(const ListBase &sockets, Set<IDRelation> &
  * relations when those properties are changed.
  */
 static void process_nodes_for_depsgraph(const bNodeTree &tree,
-                                        Set<IDRelation> &ids,
+                                        Map<ID *, eNodeModifierIDRelation> &ids,
                                         bool &r_needs_own_transform_relation)
 {
   Set<const bNodeTree *> handled_groups;
@@ -263,12 +230,12 @@ static void process_nodes_for_depsgraph(const bNodeTree &tree,
         if (collection == nullptr) {
           break;
         }
-        IDRelation relation{&collection->id, OBJECT_GEOMETRY};
+        eNodeModifierIDRelation &id_relation = ids.lookup_or_add_default(&collection->id);
+        id_relation = OBJECT_GEOMETRY;
         if (own_transform_relation) {
-          relation.flag |= OBJECT_TRANSFORM;
+          id_relation |= OBJECT_TRANSFORM;
           r_needs_own_transform_relation = true;
         }
-        ids.add(relation);
         break;
       }
       case (GEO_NODE_OBJECT_INFO): {
@@ -282,12 +249,12 @@ static void process_nodes_for_depsgraph(const bNodeTree &tree,
         if (object == nullptr) {
           break;
         }
-        IDRelation relation{&object->id, OBJECT_GEOMETRY};
+        eNodeModifierIDRelation &id_relation = ids.lookup_or_add_default(&collection->id);
+        id_relation = OBJECT_GEOMETRY;
         if (own_transform_relation) {
-          relation.flag |= OBJECT_TRANSFORM;
+          id_relation |= OBJECT_TRANSFORM;
           r_needs_own_transform_relation = true;
         }
-        ids.add(relation);
         break;
       }
       case (GEO_NODE_SELF_OBJECT): {
@@ -308,17 +275,16 @@ static void process_nodes_for_depsgraph(const bNodeTree &tree,
 }
 
 static void find_used_ids_from_settings(const NodesModifierSettings &settings,
-                                        Set<IDRelation> &ids)
+                                        Map<ID *, eNodeModifierIDRelation> &ids)
 {
   IDP_foreach_property(
       settings.properties,
       IDP_TYPE_FILTER_ID,
       [](IDProperty *property, void *user_data) {
-        Set<IDRelation> *ids = (Set<IDRelation> *)user_data;
+        Map<ID *, eNodeModifierIDRelation> *ids = (Map<ID *, eNodeModifierIDRelation> *)user_data;
         ID *id = IDP_Id(property);
         if (id != nullptr) {
-          IDRelation relation{id, ALL};
-          ids->add(relation);
+          ids->lookup_or_add_default(id) = ALL;
         }
       },
       &ids);
@@ -372,31 +338,30 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
   DEG_add_node_tree_output_relation(ctx->node, nmd->node_group, "Nodes Modifier");
 
   bool needs_own_transform_relation = false;
-  Set<IDRelation> used_ids;
+  Map<ID *, eNodeModifierIDRelation> used_ids;
   find_used_ids_from_settings(nmd->settings, used_ids);
   process_nodes_for_depsgraph(*nmd->node_group, used_ids, needs_own_transform_relation);
 
   if (ctx->object->type == OB_CURVES) {
     Curves *curves_id = static_cast<Curves *>(ctx->object->data);
     if (curves_id->surface != nullptr) {
-      IDRelation relation{&curves_id->surface->id, CURVES};
-      used_ids.add(relation);
+      used_ids.lookup_or_add_default(&curves_id->surface->id) = CURVES;
     }
   }
 
-  for (const IDRelation &id_relation : used_ids) {
-    switch ((ID_Type)GS(id_relation.id->name)) {
+  for (const auto [id, relation] : used_ids.items()) {
+    switch ((ID_Type)GS(id.id->name)) {
       case ID_OB: {
-        add_object_relation(ctx, id_relation);
+        add_object_relation(ctx, id);
         break;
       }
       case ID_GR: {
-        add_collection_relation(ctx, id_relation);
+        add_collection_relation(ctx, id);
         break;
       }
       case ID_IM:
       case ID_TE: {
-        DEG_add_generic_id_relation(ctx->node, id_relation.id, "Nodes Modifier");
+        DEG_add_generic_id_relation(ctx->node, id.id, "Nodes Modifier");
         break;
       }
       default: {
