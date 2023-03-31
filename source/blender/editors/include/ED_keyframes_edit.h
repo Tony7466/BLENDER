@@ -437,6 +437,8 @@ void smooth_fcurve_segment(struct FCurve *fcu,
                            float factor,
                            int kernel_size,
                            double *kernel);
+void fft_filter_fcurve_segment(
+    struct FCurve *fcu, struct FCurveSegment *segment, float C, float ku, float kl, float factor);
 void ease_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
 bool decimate_fcurve(struct bAnimListElem *ale, float remove_ratio, float error_sq_max);
 

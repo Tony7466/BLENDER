@@ -37,6 +37,8 @@
 #include "ED_keyframes_edit.h"
 #include "ED_keyframing.h"
 
+#include "fftw3.h"
+
 /* This file contains code for various keyframe-editing tools which are 'destructive'
  * (i.e. they will modify the order of the keyframes, and change the size of the array).
  * While some of these tools may eventually be moved out into blenkernel, for now, it is
@@ -447,6 +449,72 @@ void smooth_fcurve_segment(FCurve *fcu,
     move_key(&fcu->bezt[i], key_y_value);
   }
 }
+
+void fft_filter_fcurve_segment(FCurve *fcu,
+                               FCurveSegment *segment,
+                               const float C,
+                               const float ku,
+                               const float kl,
+                               const float factor)
+{
+  const float falloff_width = 0.1f;
+  const float start_frame = fcu->bezt[segment->start_index].vec[1][0];
+  const float end_frame = fcu->bezt[segment->start_index + segment->length - 1].vec[1][0];
+  const int sample_count = (int)(end_frame - start_frame) + 1;
+  float *samples = MEM_callocN(sizeof(float) * sample_count, "FFT Samples");
+  sample_fcurve_segment(fcu, start_frame, samples, sample_count);
+
+  fftw_complex *sample_data = MEM_callocN(sizeof(fftw_complex) * sample_count, "fftw_sample_data");
+
+  for (int i = 0; i < sample_count; i++) {
+    sample_data[i][0] = (double)samples[i];
+    sample_data[i][1] = 0;
+  }
+
+  fftw_complex *spectrum = MEM_mallocN(sizeof(fftw_complex) * sample_count, "fftw_spectrum");
+
+  fftw_plan fft_plan_forward = fftw_plan_dft_1d(
+      sample_count, sample_data, spectrum, FFTW_FORWARD, FFTW_ESTIMATE);
+  fftw_plan fft_plan_backward = fftw_plan_dft_1d(
+      sample_count, spectrum, sample_data, FFTW_BACKWARD, FFTW_ESTIMATE);
+
+  fftw_execute(fft_plan_forward);
+  fftw_destroy_plan(fft_plan_forward);
+
+  const double euler = 2.71828182845904523536;
+  for (int i = 0; i < sample_count; i++) {
+    const double real = spectrum[i][0];
+    const double imaginary = spectrum[i][1];
+
+    /* Percent of frequency tuples.  */
+    const double frq_percent = (double)(i) / (double)(sample_count - 1);
+
+    /* Before frequency cutoff keep tuples untouched. */
+    if (frq_percent < C) {
+      continue;
+    }
+
+    /* Will be between 0 and 1. */
+    double frq_factor = interpd(0, 1, (frq_percent - C) / (C + falloff_width));
+    frq_factor = frq_factor < 0 ? 0 : frq_factor;
+    spectrum[i][0] = real * frq_factor;
+    spectrum[i][1] = imaginary * frq_factor;
+  }
+
+  fftw_execute(fft_plan_backward);
+  fftw_destroy_plan(fft_plan_backward);
+
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+    const int sample_index = (int)(fcu->bezt[i].vec[1][0] -
+                                   fcu->bezt[segment->start_index].vec[1][0]);
+    fcu->bezt[i].vec[1][1] = (float)sample_data[sample_index][0] / sample_count;
+  }
+
+  MEM_SAFE_FREE(spectrum);
+  MEM_freeN(samples);
+  MEM_freeN(sample_data);
+}
+
 /* ---------------- */
 
 void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)

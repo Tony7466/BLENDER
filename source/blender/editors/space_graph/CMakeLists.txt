@@ -57,17 +57,6 @@ if(WITH_AUDASPACE)
   add_definitions(-DWITH_AUDASPACE)
 endif()
 
-if(WITH_FFTW3)
-  list(APPEND INC_SYS
-    ${FFTW3_INCLUDE_DIRS}
-  )
-  list(APPEND LIB
-    ${FFTW3_LIBRARIES}
-  )
-  add_definitions(-DFFTW3=1)
-endif()
-
-
 blender_add_lib(bf_editor_space_graph "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
 # RNA_prototypes.h dna_type_offsets.h

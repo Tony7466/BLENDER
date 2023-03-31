@@ -17,7 +17,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_string.h"
 
 #include "DNA_anim_types.h"
@@ -41,7 +40,6 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
-#include "fftw3.h"
 #include "graph_intern.h"
 
 /* -------------------------------------------------------------------- */
@@ -1319,207 +1317,10 @@ void GRAPH_OT_gaussian_smooth(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Curve Straightening
+/** \name FFT Smooth
  * \{ */
 
-static void fft_filter_fcurve_segment(FCurve *fcu,
-                                      FCurveSegment *segment,
-                                      const float C,
-                                      const float ku,
-                                      const float kl,
-                                      const float factor)
-{
-  const float falloff_width = 0.1f;
-  const float start_frame = fcu->bezt[segment->start_index].vec[1][0];
-  const float end_frame = fcu->bezt[segment->start_index + segment->length - 1].vec[1][0];
-  const int sample_count = (int)(end_frame - start_frame) + 1;
-  float *samples = MEM_callocN(sizeof(float) * sample_count, "FFT Samples");
-  sample_fcurve_segment(fcu, start_frame, samples, sample_count);
-
-  fftw_complex *sample_data = MEM_callocN(sizeof(fftw_complex) * sample_count, "fftw_sample_data");
-
-  for (int i = 0; i < sample_count; i++) {
-    sample_data[i][0] = (double)samples[i];
-    sample_data[i][1] = 0;
-  }
-
-  fftw_complex *spectrum = MEM_mallocN(sizeof(fftw_complex) * sample_count, "fftw_spectrum");
-
-  fftw_plan fft_plan_forward = fftw_plan_dft_1d(
-      sample_count, sample_data, spectrum, FFTW_FORWARD, FFTW_ESTIMATE);
-  fftw_plan fft_plan_backward = fftw_plan_dft_1d(
-      sample_count, spectrum, sample_data, FFTW_BACKWARD, FFTW_ESTIMATE);
-
-  fftw_execute(fft_plan_forward);
-  fftw_destroy_plan(fft_plan_forward);
-
-  const double euler = 2.71828182845904523536;
-  for (int i = 0; i < sample_count; i++) {
-    const double real = spectrum[i][0];
-    const double imaginary = spectrum[i][1];
-
-    const double percent = (double)(i) / (double)(sample_count - 1);
-
-    /* Before frequency cutoff. */
-    if (percent < factor) {
-      continue;
-    }
-
-    double foo = interpd(0, 1, (percent - factor) / (factor + falloff_width));
-    foo = foo < 0 ? 0 : foo;
-    const double result = foo * real;
-    spectrum[i][0] = result;
-    spectrum[i][1] = imaginary * foo;
-  }
-
-  fftw_execute(fft_plan_backward);
-  fftw_destroy_plan(fft_plan_backward);
-
-  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
-    const int sample_index = (int)(fcu->bezt[i].vec[1][0] -
-                                   fcu->bezt[segment->start_index].vec[1][0]);
-    fcu->bezt[i].vec[1][1] = (float)sample_data[sample_index][0] / sample_count;
-  }
-
-  MEM_SAFE_FREE(spectrum);
-  MEM_freeN(samples);
-  MEM_freeN(sample_data);
-}
-
-static void foo_smooth_allocate_operator_data(tGraphSliderOp *gso,
-                                              const int filter_width,
-                                              const float sigma)
-{
-  tGaussOperatorData *operator_data = MEM_callocN(sizeof(tGaussOperatorData),
-                                                  "tGaussOperatorData");
-  const int kernel_size = filter_width + 1;
-  double *kernel = MEM_callocN(sizeof(double) * kernel_size, "Gauss Kernel");
-  ED_ANIM_get_1d_gauss_kernel(sigma, kernel_size, kernel);
-  operator_data->kernel = kernel;
-
-  ListBase anim_data = {NULL, NULL};
-  ANIM_animdata_filter(&gso->ac, &anim_data, OPERATOR_DATA_FILTER, gso->ac.data, gso->ac.datatype);
-
-  ListBase segment_links = {NULL, NULL};
-  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    FCurve *fcu = (FCurve *)ale->key_data;
-    ListBase fcu_segments = find_fcurve_segments(fcu);
-    LISTBASE_FOREACH (FCurveSegment *, segment, &fcu_segments) {
-      tFCurveSegmentLink *segment_link = MEM_callocN(sizeof(tFCurveSegmentLink),
-                                                     "FCurve Segment Link");
-      segment_link->fcu = fcu;
-      segment_link->segment = segment;
-      BezTriple left_bezt = fcu->bezt[segment->start_index];
-      BezTriple right_bezt = fcu->bezt[segment->start_index + segment->length - 1];
-      const int sample_count = (int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) +
-                               (filter_width * 2 + 1);
-      float *samples = MEM_callocN(sizeof(float) * sample_count, "Smooth FCurve Op Samples");
-      sample_fcurve_segment(fcu, left_bezt.vec[1][0] - filter_width, samples, sample_count);
-      segment_link->samples = samples;
-      BLI_addtail(&segment_links, segment_link);
-    }
-  }
-
-  operator_data->anim_data = anim_data;
-  operator_data->segment_links = segment_links;
-  gso->operator_data = operator_data;
-}
-
-static void foo_smooth_free_operator_data(void *operator_data)
-{
-  tGaussOperatorData *gauss_data = (tGaussOperatorData *)operator_data;
-  LISTBASE_FOREACH (tFCurveSegmentLink *, segment_link, &gauss_data->segment_links) {
-    MEM_freeN(segment_link->samples);
-    MEM_freeN(segment_link->segment);
-  }
-  MEM_freeN(gauss_data->kernel);
-  BLI_freelistN(&gauss_data->segment_links);
-  ANIM_animdata_freelist(&gauss_data->anim_data);
-  MEM_freeN(gauss_data);
-}
-
-static void foo_smooth_draw_status_header(bContext *C, tGraphSliderOp *gso)
-{
-  char status_str[UI_MAX_DRAW_STR];
-  char slider_string[UI_MAX_DRAW_STR];
-
-  ED_slider_status_string_get(gso->slider, slider_string, UI_MAX_DRAW_STR);
-
-  const char *mode_str = TIP_("Foo Smooth");
-
-  if (hasNumInput(&gso->num)) {
-    char str_ofs[NUM_STR_REP_LEN];
-
-    outputNumInput(&gso->num, str_ofs, &gso->scene->unit);
-
-    BLI_snprintf(status_str, sizeof(status_str), "%s: %s", mode_str, str_ofs);
-  }
-  else {
-    BLI_snprintf(status_str, sizeof(status_str), "%s: %s", mode_str, slider_string);
-  }
-
-  ED_workspace_status_text(C, status_str);
-}
-
-static void foo_smooth_modal_update(bContext *C, wmOperator *op)
-{
-  tGraphSliderOp *gso = op->customdata;
-
-  bAnimContext ac;
-
-  if (ANIM_animdata_get_context(C, &ac) == 0) {
-    return;
-  }
-
-  foo_smooth_draw_status_header(C, gso);
-
-  const float factor = slider_factor_get_and_remember(op);
-  tGaussOperatorData *operator_data = (tGaussOperatorData *)gso->operator_data;
-  const int filter_width = RNA_int_get(op->ptr, "filter_width");
-
-  LISTBASE_FOREACH (tFCurveSegmentLink *, segment, &operator_data->segment_links) {
-    smooth_fcurve_segment(segment->fcu,
-                          segment->segment,
-                          segment->samples,
-                          factor,
-                          filter_width,
-                          operator_data->kernel);
-  }
-
-  LISTBASE_FOREACH (bAnimListElem *, ale, &operator_data->anim_data) {
-    ale->update |= ANIM_UPDATE_DEFAULT;
-  }
-
-  ANIM_animdata_update(&ac, &operator_data->anim_data);
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
-}
-
-static int foo_smooth_invoke(bContext *C, wmOperator *op, const wmEvent *event)
-{
-  const int invoke_result = graph_slider_invoke(C, op, event);
-
-  if (invoke_result == OPERATOR_CANCELLED) {
-    return invoke_result;
-  }
-
-  tGraphSliderOp *gso = op->customdata;
-  gso->modal_update = foo_smooth_modal_update;
-  gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
-
-  const float sigma = RNA_float_get(op->ptr, "sigma");
-  const int filter_width = RNA_int_get(op->ptr, "filter_width");
-
-  foo_smooth_allocate_operator_data(gso, filter_width, sigma);
-  gso->free_operator_data = foo_smooth_free_operator_data;
-
-  ED_slider_allow_overshoot_set(gso->slider, false);
-  ED_slider_factor_set(gso->slider, 0.0f);
-  foo_smooth_draw_status_header(C, gso);
-
-  return invoke_result;
-}
-
-static void foo_smooth_graph_keys(
+static void smooth_graph_keys(
     bAnimContext *ac, const float factor, const float frq, const float ku, const float kl)
 {
   ListBase anim_data = {NULL, NULL};
@@ -1541,7 +1342,7 @@ static void foo_smooth_graph_keys(
   ANIM_animdata_freelist(&anim_data);
 }
 
-static int foo_smooth_exec(bContext *C, wmOperator *op)
+static int curve_straighten_exec(bContext *C, wmOperator *op)
 {
   bAnimContext ac;
 
@@ -1553,7 +1354,7 @@ static int foo_smooth_exec(bContext *C, wmOperator *op)
   const float falloff_ku = RNA_float_get(op->ptr, "falloff_ku");
   const float falloff_kl = RNA_float_get(op->ptr, "falloff_kl");
 
-  foo_smooth_graph_keys(&ac, factor, frq, falloff_ku, falloff_kl);
+  smooth_graph_keys(&ac, factor, frq, falloff_ku, falloff_kl);
 
   /* Set notifier that keyframes have changed. */
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
@@ -1569,7 +1370,7 @@ void GRAPH_OT_curve_straightening(wmOperatorType *ot)
   ot->description = "Smooth the curve using a foo filter";
 
   /* API callbacks. */
-  ot->exec = foo_smooth_exec;
+  ot->exec = curve_straighten_exec;
   ot->poll = graphop_editable_keyframes_poll;
 
   /* Flags. */
@@ -1585,15 +1386,8 @@ void GRAPH_OT_curve_straightening(wmOperatorType *ot)
                        0.0f,
                        1.0f);
 
-  RNA_def_float(ot->srna,
-                "cutoff_frequency",
-                0.33f,
-                0.001f,
-                FLT_MAX,
-                "Cutoff Frquency",
-                "foo",
-                0.001f,
-                100.0f);
+  RNA_def_float_factor(
+      ot->srna, "cutoff_frequency", 0.33f, 0.0f, 1.0f, "Cutoff Frquency", "foo", 0.0f, 1.0f);
 
   RNA_def_float(ot->srna, "falloff_ku", 1.0f, 0, FLT_MAX, "kU", "foo", 1, 32);
 
