@@ -33,7 +33,7 @@ BLI_INLINE bool is_edge_visible(const MeshExtract_LinesData *data, const int edg
   if (data->e_origindex && data->e_origindex[edge] == ORIGINDEX_NONE) {
     return false;
   }
-  if (!data->optimal_display_edges.is_empty() && data->optimal_display_edges[edge] == 0) {
+  if (!data->optimal_display_edges.is_empty() && !data->optimal_display_edges[edge]) {
     return false;
   }
   return true;
