@@ -118,12 +118,12 @@ static const EnumPropertyItem node_quality_items[] = {
 };
 
 static const EnumPropertyItem node_chunksize_items[] = {
-    {NTREE_CHUNKSIZE_32, "32", 0, "32x32", "Chunksize of 32x32"},
-    {NTREE_CHUNKSIZE_64, "64", 0, "64x64", "Chunksize of 64x64"},
-    {NTREE_CHUNKSIZE_128, "128", 0, "128x128", "Chunksize of 128x128"},
-    {NTREE_CHUNKSIZE_256, "256", 0, "256x256", "Chunksize of 256x256"},
-    {NTREE_CHUNKSIZE_512, "512", 0, "512x512", "Chunksize of 512x512"},
-    {NTREE_CHUNKSIZE_1024, "1024", 0, "1024x1024", "Chunksize of 1024x1024"},
+    {NTREE_CHUNKSIZE_32, "32", 0, "32\u00D732", "Chunksize of 32\u00D732"},
+    {NTREE_CHUNKSIZE_64, "64", 0, "64\u00D764", "Chunksize of 64\u00D764"},
+    {NTREE_CHUNKSIZE_128, "128", 0, "128\u00D7128", "Chunksize of 128\u00D7128"},
+    {NTREE_CHUNKSIZE_256, "256", 0, "256\u00D7256", "Chunksize of 256\u00D7256"},
+    {NTREE_CHUNKSIZE_512, "512", 0, "512\u00D7512", "Chunksize of 512\u00D7512"},
+    {NTREE_CHUNKSIZE_1024, "1024", 0, "1024\u00D71024", "Chunksize of 1024\u00D71024"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 #endif

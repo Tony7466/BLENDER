@@ -1649,8 +1649,8 @@ static const EnumPropertyItem transform_filter_items[] = {
     {SEQ_TRANSFORM_FILTER_NEAREST_3x3,
      "SUBSAMPLING_3x3",
      0,
-     "Subsampling (3x3)",
-     "Use nearest with 3x3 subsamples during rendering"},
+     "Subsampling (3\u00D73)",
+     "Use nearest with 3\u00D73 subsamples during rendering"},
     {0, NULL, 0, NULL, NULL},
 };
 

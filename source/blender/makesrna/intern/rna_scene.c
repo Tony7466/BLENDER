@@ -6320,10 +6320,10 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
 
   static const EnumPropertyItem pixel_size_items[] = {
       {0, "AUTO", 0, "Automatic", "Automatic pixel size, depends on the user interface scale"},
-      {1, "1", 0, "1x", "Render at full resolution"},
-      {2, "2", 0, "2x", "Render at 50% resolution"},
-      {4, "4", 0, "4x", "Render at 25% resolution"},
-      {8, "8", 0, "8x", "Render at 12.5% resolution"},
+      {1, "1", 0, "1\u00D7", "Render at full resolution"},
+      {2, "2", 0, "2\u00D7", "Render at 50% resolution"},
+      {4, "4", 0, "4\u00D7", "Render at 25% resolution"},
+      {8, "8", 0, "8\u00D7", "Render at 12.5% resolution"},
       {0, NULL, 0, NULL, NULL},
   };
 

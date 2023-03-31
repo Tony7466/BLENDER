@@ -5454,10 +5454,10 @@ static void rna_def_userdef_system(BlenderRNA *brna)
 
   static const EnumPropertyItem anisotropic_items[] = {
       {1, "FILTER_0", 0, "Off", ""},
-      {2, "FILTER_2", 0, "2x", ""},
-      {4, "FILTER_4", 0, "4x", ""},
-      {8, "FILTER_8", 0, "8x", ""},
-      {16, "FILTER_16", 0, "16x", ""},
+      {2, "FILTER_2", 0, "2\u00D7", ""},
+      {4, "FILTER_4", 0, "4\u00D7", ""},
+      {8, "FILTER_8", 0, "8\u00D7", ""},
+      {16, "FILTER_16", 0, "16\u00D7", ""},
       {0, NULL, 0, NULL, NULL},
   };
 

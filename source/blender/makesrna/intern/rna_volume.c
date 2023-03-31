@@ -418,7 +418,7 @@ static void rna_def_volume_display(BlenderRNA *brna)
        "FINE",
        0,
        "Fine",
-       "Display box for each leaf node containing 8x8 voxels"},
+       "Display box for each leaf node containing 8\u00D78 voxels"},
       {0, NULL, 0, NULL, NULL},
   };
 
