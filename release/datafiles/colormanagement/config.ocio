@@ -17,7 +17,7 @@ roles:
   color_picking: sRGB I-E
   color_timing: AgX Log
   compositing_log: AgX Log
-  data: Generic Data
+  data: Non-Color
   default: sRGB
   default_byte: sRGB
   default_float: Linear BT.709 I-D65
@@ -41,25 +41,25 @@ displays:
     - !<View> {name: Filmic, colorspace: Filmic sRGB}
     - !<View> {name: AgX Log,colorspace: AgX Log}
     - !<View> {name: AgX False Color, colorspace: AgX False Color}
-    - !<View> {name: None, colorspace: Generic Data}
+    - !<View> {name: None, colorspace: Non-Color}
   Display P3:
     - !<View> {name: Guard Rail, colorspace: Guard Rail P3}
     - !<View> {name: AgX, colorspace: AgX Base Display P3}
     - !<View> {name: AgX Log,colorspace: AgX Log}
     - !<View> {name: AgX False Color, colorspace: AgX False Color}
-    - !<View> {name: None, colorspace: Generic Data}
+    - !<View> {name: None, colorspace: Non-Color}
   BT.1886:
     - !<View> {name: Guard Rail, colorspace: Guard Rail BT.1886}
     - !<View> {name: AgX, colorspace: AgX Base BT.1886}
     - !<View> {name: AgX Log,colorspace: AgX Log}
     - !<View> {name: AgX False Color, colorspace: AgX False Color}
-    - !<View> {name: None, colorspace: Generic Data}
+    - !<View> {name: None, colorspace: Non-Color}
   BT.2020:
     - !<View> {name: Guard Rail, colorspace: Guard Rail BT.2020}
     - !<View> {name: AgX, colorspace: AgX Base BT.2020}
     - !<View> {name: AgX Log,colorspace: AgX Log}
     - !<View> {name: AgX False Color, colorspace: AgX False Color}
-    - !<View> {name: None, colorspace: Generic Data}
+    - !<View> {name: None, colorspace: Non-Color}
 active_displays: []
 active_views: []
 inactive_colorspaces: [Guard Rail sRGB, Guard Rail P3, Guard Rail BT.1886, Guard Rail BT.2020, Luminance Compensation BT.2020, Display P3 I-E, sRGB I-E, BT.2020 I-E, AgX False Color]
@@ -678,12 +678,12 @@ colorspaces:
         - !<ColorSpaceTransform> {src: Linear CIE-XYZ I-E, dst: Linear E-Gamut I-D65, direction: inverse}
 
   - !<ColorSpace>
-    name: Generic Data
-    aliases: [Non-Color, Non-colour Data, Raw]
+    name: Non-Color
+    aliases: [Generic Data, Non-colour Data, Raw]
     family: Data/Generic Data
     equalitygroup: ""
     bitdepth: unknown
-    description: Generic data encoding
+    description: Generic Data encoding
     isdata: true
     allocation: uniform
 
