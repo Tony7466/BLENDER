@@ -332,7 +332,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
       break;
   }
 
-  const bool do_fragment_attrib_load = (geometry_type == MAT_GEOM_WORLD);
+  const bool do_fragment_attrib_load = ELEM(geometry_type, MAT_GEOM_WORLD, MAT_GEOM_VOLUME);
 
   if (do_fragment_attrib_load && !info.vertex_out_interfaces_.is_empty()) {
     /* Codegen outputs only one interface. */
@@ -378,106 +378,106 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
   {
     frag_gen << ((codegen.material_functions) ? codegen.material_functions : "\n");
 
-    if (codegen.displacement) {
-      /* Bump displacement. Needed to recompute normals after displacement. */
-      info.define("MAT_DISPLACEMENT_BUMP");
-
-      frag_gen << "vec3 nodetree_displacement()\n";
+    if (ELEM(pipeline_type, MAT_PIPE_WORLD_VOLUME, MAT_PIPE_VOLUME)) {
+      frag_gen << "Closure nodetree_volume()\n";
       frag_gen << "{\n";
-      frag_gen << codegen.displacement;
+      /* frag_gen << "  closure_weights_reset();\n"; TODO(Miguel Pozo) */
+      frag_gen << ((codegen.volume) ? codegen.volume : "return Closure(0);\n");
       frag_gen << "}\n\n";
     }
+    else {
+      if (codegen.displacement) {
+        /* Bump displacement. Needed to recompute normals after displacement. */
+        info.define("MAT_DISPLACEMENT_BUMP");
 
-    frag_gen << "Closure nodetree_surface()\n";
-    frag_gen << "{\n";
-    frag_gen << "  closure_weights_reset();\n";
-    frag_gen << ((codegen.surface) ? codegen.surface : "return Closure(0);\n");
-    frag_gen << "}\n\n";
+        frag_gen << "vec3 nodetree_displacement()\n";
+        frag_gen << "{\n";
+        frag_gen << codegen.displacement;
+        frag_gen << "}\n\n";
+      }
 
-    frag_gen << "Closure nodetree_volume()\n";
-    frag_gen << "{\n";
-    frag_gen << "  closure_weights_reset();\n";
-    frag_gen << ((codegen.volume) ? codegen.volume : "return Closure(0);\n");
-    frag_gen << "}\n\n";
+      frag_gen << "Closure nodetree_surface()\n";
+      frag_gen << "{\n";
+      frag_gen << "  closure_weights_reset();\n";
+      frag_gen << ((codegen.surface) ? codegen.surface : "return Closure(0);\n");
+      frag_gen << "}\n\n";
 
-    frag_gen << "float nodetree_thickness()\n";
-    frag_gen << "{\n";
-    /* TODO(fclem): Better default. */
-    frag_gen << ((codegen.thickness) ? codegen.thickness : "return 0.1;\n");
-    frag_gen << "}\n\n";
+      frag_gen << "float nodetree_thickness()\n";
+      frag_gen << "{\n";
+      /* TODO(fclem): Better default. */
+      frag_gen << ((codegen.thickness) ? codegen.thickness : "return 0.1;\n");
+      frag_gen << "}\n\n";
+    }
 
     info.fragment_source_generated = frag_gen.str();
   }
 
   /* Volumes */
-  if (pipeline_type == MAT_PIPE_VOLUME) {
-    switch (geometry_type) {
-      /* TODO (Miguel Pozo): Not technically correct. It's still volume geometry */
-      case MAT_GEOM_WORLD:
+  if (geometry_type == MAT_GEOM_VOLUME) {
+    switch (pipeline_type) {
+      case MAT_PIPE_WORLD_VOLUME:
         info.additional_info("eevee_volume_world");
         break;
-      case MAT_GEOM_VOLUME:
+      case MAT_PIPE_VOLUME:
         info.additional_info("eevee_volume_object");
         break;
       default:
         BLI_assert_unreachable();
     }
-
-    return;
   }
-
-  /* Geometry Info. */
-  switch (geometry_type) {
-    case MAT_GEOM_WORLD:
-      info.additional_info("eevee_geom_world");
-      break;
-    case MAT_GEOM_VOLUME:
-      BLI_assert_unreachable();
-      break;
-    case MAT_GEOM_GPENCIL:
-      info.additional_info("eevee_geom_gpencil");
-      break;
-    case MAT_GEOM_CURVES:
-      info.additional_info("eevee_geom_curves");
-      break;
-    case MAT_GEOM_MESH:
-    default:
-      info.additional_info("eevee_geom_mesh");
-      break;
-  }
-
-  /* Pipeline Info. */
-  switch (geometry_type) {
-    case MAT_GEOM_WORLD:
-      info.additional_info("eevee_surf_world");
-      break;
-    case MAT_GEOM_VOLUME:
-      BLI_assert_unreachable();
-      break;
-    default:
-      switch (pipeline_type) {
-        case MAT_PIPE_FORWARD_PREPASS_VELOCITY:
-        case MAT_PIPE_DEFERRED_PREPASS_VELOCITY:
-          info.additional_info("eevee_surf_depth", "eevee_velocity_geom");
-          break;
-        case MAT_PIPE_FORWARD_PREPASS:
-        case MAT_PIPE_DEFERRED_PREPASS:
-          info.additional_info("eevee_surf_depth");
-          break;
-        case MAT_PIPE_SHADOW:
-          info.additional_info("eevee_surf_shadow");
-          break;
-        case MAT_PIPE_DEFERRED:
-          info.additional_info("eevee_surf_deferred");
-          break;
-        case MAT_PIPE_FORWARD:
-          info.additional_info("eevee_surf_forward");
-          break;
-        default:
-          BLI_assert(0);
-          break;
-      }
-      break;
+  else {
+    /* Geometry Info. */
+    switch (geometry_type) {
+      case MAT_GEOM_WORLD:
+        info.additional_info("eevee_geom_world");
+        break;
+      case MAT_GEOM_VOLUME:
+        BLI_assert_unreachable();
+        break;
+      case MAT_GEOM_GPENCIL:
+        info.additional_info("eevee_geom_gpencil");
+        break;
+      case MAT_GEOM_CURVES:
+        info.additional_info("eevee_geom_curves");
+        break;
+      case MAT_GEOM_MESH:
+      default:
+        info.additional_info("eevee_geom_mesh");
+        break;
+    }
+    /* Pipeline Info. */
+    switch (geometry_type) {
+      case MAT_GEOM_WORLD:
+        info.additional_info("eevee_surf_world");
+        break;
+      case MAT_GEOM_VOLUME:
+        BLI_assert_unreachable();
+        break;
+      default:
+        switch (pipeline_type) {
+          case MAT_PIPE_FORWARD_PREPASS_VELOCITY:
+          case MAT_PIPE_DEFERRED_PREPASS_VELOCITY:
+            info.additional_info("eevee_surf_depth", "eevee_velocity_geom");
+            break;
+          case MAT_PIPE_FORWARD_PREPASS:
+          case MAT_PIPE_DEFERRED_PREPASS:
+            info.additional_info("eevee_surf_depth");
+            break;
+          case MAT_PIPE_SHADOW:
+            info.additional_info("eevee_surf_shadow");
+            break;
+          case MAT_PIPE_DEFERRED:
+            info.additional_info("eevee_surf_deferred");
+            break;
+          case MAT_PIPE_FORWARD:
+            info.additional_info("eevee_surf_forward");
+            break;
+          default:
+            BLI_assert(0);
+            break;
+        }
+        break;
+    }
   }
 }
 
@@ -494,9 +494,10 @@ GPUMaterial *ShaderModule::material_shader_get(::Material *blender_mat,
                                                eMaterialGeometry geometry_type,
                                                bool deferred_compilation)
 {
-  uint64_t shader_uuid = shader_uuid_from_material_type(pipeline_type, geometry_type);
-
   bool is_volume = (pipeline_type == MAT_PIPE_VOLUME);
+  BLI_assert(pipeline_type != MAT_PIPE_WORLD_VOLUME);
+
+  uint64_t shader_uuid = shader_uuid_from_material_type(pipeline_type, geometry_type);
 
   return DRW_shader_from_material(
       blender_mat, nodetree, shader_uuid, is_volume, deferred_compilation, codegen_callback, this);
@@ -506,20 +507,15 @@ GPUMaterial *ShaderModule::world_shader_get(::World *blender_world,
                                             struct bNodeTree *nodetree,
                                             eMaterialPipeline pipeline_type)
 {
-  bool is_volume = (pipeline_type == MAT_PIPE_VOLUME);
-  bool deferred_compilation = false;
+  bool is_volume = (pipeline_type == MAT_PIPE_WORLD_VOLUME);
+  BLI_assert(pipeline_type != MAT_PIPE_VOLUME);
 
-  eMaterialGeometry geometry_type = MAT_GEOM_WORLD;
+  eMaterialGeometry geometry_type = is_volume ? MAT_GEOM_VOLUME : MAT_GEOM_WORLD;
 
   uint64_t shader_uuid = shader_uuid_from_material_type(pipeline_type, geometry_type);
 
-  return DRW_shader_from_world(blender_world,
-                               nodetree,
-                               shader_uuid,
-                               is_volume,
-                               deferred_compilation,
-                               codegen_callback,
-                               this);
+  return DRW_shader_from_world(
+      blender_world, nodetree, shader_uuid, is_volume, false, codegen_callback, this);
 }
 
 /* Variation to compile a material only with a nodetree. Caller needs to maintain the list of

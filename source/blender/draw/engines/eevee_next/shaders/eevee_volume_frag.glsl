@@ -1,6 +1,15 @@
 
 #pragma BLENDER_REQUIRE(eevee_volume_lib.glsl)
 
+/* Needed includes for shader nodes. */
+#pragma BLENDER_REQUIRE(common_math_lib.glsl)
+#pragma BLENDER_REQUIRE(common_view_lib.glsl)
+#pragma BLENDER_REQUIRE(common_attribute_lib.glsl)
+#pragma BLENDER_REQUIRE(closure_type_lib.glsl)
+#pragma BLENDER_REQUIRE(closure_eval_volume_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_light_eval_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
+
 /* Based on Frosbite Unified Volumetric.
  * https://www.ea.com/frostbite/news/physically-based-unified-volumetric-rendering-in-frostbite */
 
@@ -33,6 +42,8 @@ GlobalData init_globals(void)
   return surf;
 }
 
+/* TODO (Miguel Pozo): Already defined at eevee_attributes_lib.glsl. Check differences. */
+#if 0
 vec3 coordinate_camera(vec3 P)
 {
   vec3 vP;
@@ -58,6 +69,10 @@ vec3 coordinate_incoming(vec3 P)
 {
   return cameraVec(P);
 }
+#endif
+
+Closure nodetree_volume();
+void attrib_load();
 
 void main()
 {
@@ -86,7 +101,7 @@ void main()
 #ifndef NO_ATTRIB_LOAD
   attrib_load();
 #endif
-  Closure cl = nodetree_exec();
+  Closure cl = nodetree_volume();
 #ifdef MESH_SHADER
   cl.scatter *= drw_volume.density_scale;
   cl.absorption *= drw_volume.density_scale;
@@ -105,15 +120,17 @@ void main()
   }
 }
 
+/* TODO (Miguel Pozo): Already defined at eevee_attributes_lib.glsl. Check differences. */
+#if 0
 vec3 grid_coordinates()
 {
   vec3 co = volumeOrco;
-#ifdef MESH_SHADER
+#  ifdef MESH_SHADER
   /* Optional per-grid transform. */
   if (drw_volume.grids_xform[attr_id][3][3] != 0.0) {
     co = (drw_volume.grids_xform[attr_id] * vec4(objectPosition, 1.0)).xyz;
   }
-#endif
+#  endif
   attr_id += 1;
   return co;
 }
@@ -149,23 +166,24 @@ float attr_load_float(sampler3D tex)
  * the engine side. But as of now, the engines are responsible for loading the attributes. */
 float attr_load_temperature_post(float attr)
 {
-#ifdef MESH_SHADER
+#  ifdef MESH_SHADER
   /* Bring the into standard range without having to modify the grid values */
   attr = (attr > 0.01) ? (attr * drw_volume.temperature_mul + drw_volume.temperature_bias) : 0.0;
-#endif
+#  endif
   return attr;
 }
 vec4 attr_load_color_post(vec4 attr)
 {
-#ifdef MESH_SHADER
+#  ifdef MESH_SHADER
   /* Density is premultiplied for interpolation, divide it out here. */
   attr.rgb *= safe_rcp(attr.a);
   attr.rgb *= drw_volume.color_mul.rgb;
   attr.a = 1.0;
-#endif
+#  endif
   return attr;
 }
 vec4 attr_load_uniform(vec4 attr, const uint attr_hash)
 {
   return attr;
 }
+#endif

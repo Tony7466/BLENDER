@@ -224,7 +224,7 @@ void Volumes::begin_sync()
   if (world && world->use_nodes && world->nodetree &&
       !LOOK_DEV_STUDIO_LIGHT_ENABLED(draw_ctx->v3d)) {
 
-    mat = inst_.shaders.world_shader_get(world, world->nodetree, MAT_PIPE_VOLUME);
+    mat = inst_.shaders.world_shader_get(world, world->nodetree, MAT_PIPE_WORLD_VOLUME);
 
     if (!GPU_material_has_volume_output(mat)) {
       /* TODO (Miguel Pozo): This should never happen ? */
