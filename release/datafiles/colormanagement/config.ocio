@@ -37,6 +37,7 @@ displays:
   sRGB:
     - !<View> {name: Guard Rail, colorspace: Guard Rail sRGB}
     - !<View> {name: AgX, colorspace: AgX Base sRGB}
+    - !<View> {name: Filmic, colorspace: Filmic sRGB}
     - !<View> {name: AgX Log,colorspace: AgX Log}
     - !<View> {name: AgX False Color, colorspace: AgX False Color}
     - !<View> {name: None, colorspace: Generic Data}
