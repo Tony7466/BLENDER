@@ -6284,22 +6284,24 @@ class VIEW3D_PT_select_through(Panel):
     bl_region_type = 'HEADER'
     bl_parent_id = 'VIEW3D_PT_xray'
     bl_label = "Select Through"
-    bl_ui_units_x = 13
+    bl_ui_units_x = 10
 
     def draw(self, context):
         layout = self.layout
         tool_settings = context.tool_settings
 
         row = layout.row()
-        row.prop(tool_settings, "select_through", text="Select Through")
-        if tool_settings.select_through:
-            row = layout.row(align=True)
-            row.prop(tool_settings, "select_through_object", text="Object")
-            row.prop(tool_settings, "select_through_edit", text="Edit")
-            row = layout.row(align=True)
-            row.prop(tool_settings, "select_through_box", text="Box", toggle=True)
-            row.prop(tool_settings, "select_through_lasso", text="Lasso", toggle=True)
-            row.prop(tool_settings, "select_through_circle", text="Circle", toggle=True)
+        row.prop(tool_settings, "select_through", text="Enable")
+        sub = row.row()
+        sub.active = tool_settings.select_through
+        sub.prop(tool_settings, "select_through_object", text="Object")
+        sub.prop(tool_settings, "select_through_edit", text="Edit")
+        row = layout.row()
+        sub = row.row(align=True)
+        sub.active = tool_settings.select_through
+        sub.prop(tool_settings, "select_through_box", text="Box", toggle=True)
+        sub.prop(tool_settings, "select_through_lasso", text="Lasso", toggle=True)
+        sub.prop(tool_settings, "select_through_circle", text="Circle", toggle=True)
 
 
 class VIEW3D_PT_overlay(Panel):

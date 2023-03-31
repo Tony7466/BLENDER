@@ -3728,7 +3728,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   /* Select Through */
   prop = RNA_def_property(srna, "select_through", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "select_through", 0);
-  RNA_def_property_ui_text(prop, "Select Through Box", "Select occluded objects and mesh elements with drag select");
+  RNA_def_property_ui_text(prop, "Select Through", "Select occluded objects and mesh elements with drag select");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
 
   prop = RNA_def_property(srna, "select_through_object", PROP_BOOLEAN, PROP_NONE);
