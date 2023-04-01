@@ -140,9 +140,10 @@ void ui_block_views_listen(const uiBlock *block, const wmRegionListenerParams *l
   }
 }
 
-/* Similar to #ui_but_find_mouse_over_ex(). */
 uiViewHandle *UI_region_view_find_at(const ARegion *region, const int xy[2], const int pad)
 {
+  /* NOTE: Similar to #ui_but_find_mouse_over_ex(). */
+
   if (!ui_region_contains_point_px(region, xy)) {
     return nullptr;
   }
@@ -194,7 +195,7 @@ namespace blender::ui {
 std::unique_ptr<DropTargetInterface> region_views_find_drop_target_at(const ARegion *region,
                                                                       const int xy[2])
 {
-  const uiViewItemHandle *hovered_view_item = UI_region_views_find_item_at(region, xy);
+  uiViewItemHandle *hovered_view_item = UI_region_views_find_item_at(region, xy);
   if (hovered_view_item) {
     std::unique_ptr<DropTargetInterface> drop_target = view_item_drop_target(hovered_view_item);
     if (drop_target) {
@@ -204,7 +205,7 @@ std::unique_ptr<DropTargetInterface> region_views_find_drop_target_at(const AReg
 
   /* Get style for some sensible padding around the view items. */
   const uiStyle *style = UI_style_get_dpi();
-  const uiViewHandle *hovered_view = UI_region_view_find_at(region, xy, style->buttonspacex);
+  uiViewHandle *hovered_view = UI_region_view_find_at(region, xy, style->buttonspacex);
   if (hovered_view) {
     std::unique_ptr<DropTargetInterface> drop_target = view_drop_target(hovered_view);
     if (drop_target) {

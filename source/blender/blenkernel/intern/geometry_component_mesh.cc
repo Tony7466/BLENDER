@@ -25,9 +25,7 @@ extern "C" MDeformVert *BKE_object_defgroup_data_create(ID *id);
 /** \name Geometry Component Implementation
  * \{ */
 
-MeshComponent::MeshComponent() : GeometryComponent(GEO_COMPONENT_TYPE_MESH)
-{
-}
+MeshComponent::MeshComponent() : GeometryComponent(GEO_COMPONENT_TYPE_MESH) {}
 
 MeshComponent::~MeshComponent()
 {
@@ -606,7 +604,7 @@ void adapt_mesh_domain_edge_to_corner_impl(const Mesh &mesh,
 
     /* For every corner, mix the values from the adjacent edges on the face. */
     for (const int loop_index : IndexRange(poly.loopstart, poly.totloop)) {
-      const int loop_index_prev = mesh_topology::poly_loop_prev(poly, loop_index);
+      const int loop_index_prev = mesh::poly_corner_prev(poly, loop_index);
       const int edge = corner_edges[loop_index];
       const int edge_prev = corner_edges[loop_index_prev];
       mixer.mix_in(loop_index, old_values[edge]);
@@ -633,7 +631,7 @@ void adapt_mesh_domain_edge_to_corner_impl(const Mesh &mesh,
     for (const int poly_index : range) {
       const MPoly &poly = polys[poly_index];
       for (const int loop_index : IndexRange(poly.loopstart, poly.totloop)) {
-        const int loop_index_prev = mesh_topology::poly_loop_prev(poly, loop_index);
+        const int loop_index_prev = mesh::poly_corner_prev(poly, loop_index);
         const int edge = corner_edges[loop_index];
         const int edge_prev = corner_edges[loop_index_prev];
         if (old_values[edge] && old_values[edge_prev]) {
