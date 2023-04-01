@@ -44,13 +44,16 @@ class IrradianceBake {
   /** Capture surfel lighting to irradiance samples. */
   PassSimple irradiance_capture_ps_ = {"IrradianceCapture"};
 
-  /** Basis orientation for each baking projection. */
-  math::CartesianBasis basis_x_ = math::from_orthonormal_axes(math::AxisSigned::Y_POS,
-                                                              math::AxisSigned::X_POS);
-  math::CartesianBasis basis_y_ = math::from_orthonormal_axes(math::AxisSigned::Z_POS,
-                                                              math::AxisSigned::Y_POS);
-  math::CartesianBasis basis_z_ = math::from_orthonormal_axes(math::AxisSigned::X_POS,
-                                                              math::AxisSigned::Z_POS);
+  /**
+   * Basis orientation for each baking projection.
+   * Note that this is the view orientation. The projection matrix will take the negative Z axis
+   * as forward and Y as up. */
+  math::CartesianBasis basis_x_ = {
+      math::AxisSigned::Y_POS, math::AxisSigned::Z_POS, math::AxisSigned::X_POS};
+  math::CartesianBasis basis_y_ = {
+      math::AxisSigned::X_POS, math::AxisSigned::Z_POS, math::AxisSigned::Y_NEG};
+  math::CartesianBasis basis_z_ = {
+      math::AxisSigned::X_POS, math::AxisSigned::Y_POS, math::AxisSigned::Z_POS};
   /** Views for each baking projection. */
   View view_x_ = {"BakingViewX"};
   View view_y_ = {"BakingViewY"};
@@ -81,6 +84,8 @@ class IrradianceBake {
 
   void sync();
 
+  /** Create the views used to rasterize the scene into surfel representation. */
+  void surfel_raster_views_sync(const IrradianceGrid &grid);
   /** Create a surfel representation of the scene from the \a grid using the capture pipeline. */
   void surfels_create(const IrradianceGrid &grid);
   /** Evaluate direct lighting (and also clear the surfels radiance). */

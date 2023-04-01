@@ -200,6 +200,32 @@ void IrradianceBake::sync()
   }
 }
 
+void IrradianceBake::surfel_raster_views_sync(const IrradianceGrid &grid)
+{
+  using namespace blender::math;
+  const float4x4 transform(grid.transform);
+
+  float3 scale;
+  math::to_loc_rot_scale(transform, grid_location_, grid_orientation_, scale);
+
+  grid_pixel_extent_ = max(int3(1), int3(surfel_density_ * 2.0f * scale));
+
+  /* We could use multi-view rendering here to avoid multiple submissions but it is unlikely to
+   * make any difference. The bottleneck is still the light propagation loop. */
+  auto sync_view = [&](View &view, CartesianBasis basis) {
+    float3 extent = transform_point(invert(basis), scale);
+    float4x4 winmat = projection::orthographic(
+        -extent.x, extent.x, -extent.y, extent.y, -extent.z, extent.z);
+    float4x4 viewinv = math::from_loc_rot<float4x4>(
+        grid_location_, grid_orientation_ * to_quaternion<float>(basis));
+    view.sync(invert(viewinv), winmat);
+  };
+
+  sync_view(view_x_, basis_x_);
+  sync_view(view_y_, basis_y_);
+  sync_view(view_z_, basis_z_);
+}
+
 void IrradianceBake::surfels_create(const IrradianceGrid &grid)
 {
   /**
@@ -209,9 +235,9 @@ void IrradianceBake::surfels_create(const IrradianceGrid &grid)
    */
   using namespace blender::math;
 
+  surfel_raster_views_sync(grid);
+
   const float4x4 transform(grid.transform);
-  float3 scale;
-  math::to_loc_rot_scale(transform, grid_location_, grid_orientation_, scale);
 
   /* Extract bounding box. Order is arbitrary as it is not important for our usage. */
   const std::array<float3, 8> bbox_corners({float3{+1, +1, +1},
@@ -227,23 +253,6 @@ void IrradianceBake::surfels_create(const IrradianceGrid &grid)
     grid_bbox_vertices.append(transform_point(transform, point));
   }
 
-  /* We could use multi-view rendering here to avoid multiple submissions but it is unlikely to
-   * make any difference. The bottleneck is still the light propagation loop. */
-  auto sync_view = [&](View &view, CartesianBasis basis) {
-    float3 extent = scale;
-    float4x4 winmat = projection::orthographic(
-        -extent.x, extent.x, -extent.y, extent.y, -extent.z, extent.z);
-    float4x4 viewinv = math::from_loc_rot<float4x4>(
-        grid_location_, grid_orientation_ * to_quaternion<float>(basis));
-    view.sync(invert(viewinv), winmat);
-  };
-
-  sync_view(view_x_, basis_x_);
-  sync_view(view_y_, basis_y_);
-  sync_view(view_z_, basis_z_);
-
-  grid_pixel_extent_ = max(int3(1), int3(surfel_density_ * 2.0f * scale));
-
   DRW_stats_group_start("IrradianceBake.SurfelsCount");
 
   /* Raster the scene to query the number of surfel needed. */
@@ -252,11 +261,11 @@ void IrradianceBake::surfels_create(const IrradianceGrid &grid)
   capture_info_buf_.surfel_len = 0u;
   capture_info_buf_.push_update();
 
-  empty_raster_fb_.ensure(grid_pixel_extent_.yz());
+  empty_raster_fb_.ensure(transform_point(invert(basis_x_), grid_pixel_extent_).xy());
   inst_.pipelines.capture.render(view_x_);
-  empty_raster_fb_.ensure(int2(grid_pixel_extent_.x, grid_pixel_extent_.z));
+  empty_raster_fb_.ensure(transform_point(invert(basis_y_), grid_pixel_extent_).xy());
   inst_.pipelines.capture.render(view_y_);
-  empty_raster_fb_.ensure(grid_pixel_extent_.xy());
+  empty_raster_fb_.ensure(transform_point(invert(basis_z_), grid_pixel_extent_).xy());
   inst_.pipelines.capture.render(view_z_);
 
   DRW_stats_group_end();
@@ -281,11 +290,12 @@ void IrradianceBake::surfels_create(const IrradianceGrid &grid)
   capture_info_buf_.do_surfel_output = true;
   capture_info_buf_.surfel_len = 0u;
   capture_info_buf_.push_update();
-  empty_raster_fb_.ensure(grid_pixel_extent_.yz());
+
+  empty_raster_fb_.ensure(transform_point(invert(basis_x_), grid_pixel_extent_).xy());
   inst_.pipelines.capture.render(view_x_);
-  empty_raster_fb_.ensure(int2(grid_pixel_extent_.x, grid_pixel_extent_.z));
+  empty_raster_fb_.ensure(transform_point(invert(basis_y_), grid_pixel_extent_).xy());
   inst_.pipelines.capture.render(view_y_);
-  empty_raster_fb_.ensure(grid_pixel_extent_.xy());
+  empty_raster_fb_.ensure(transform_point(invert(basis_z_), grid_pixel_extent_).xy());
   inst_.pipelines.capture.render(view_z_);
 
   DRW_stats_group_end();
