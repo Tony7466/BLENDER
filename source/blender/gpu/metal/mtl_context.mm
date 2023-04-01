@@ -2138,9 +2138,14 @@ void present(MTLRenderPassDescriptor *blit_descriptor,
   MTLCommandBufferManager::num_active_cmd_bufs++;
 
   if (MTLCommandBufferManager::sync_event != nil) {
-    /* Ensure command buffer ordering. */
-    [cmdbuf encodeWaitForEvent:MTLCommandBufferManager::sync_event
-                         value:MTLCommandBufferManager::event_signal_val];
+    /* Create new synchronization event for next frame of work
+     * We require synchronisation for command submissions within
+     * a frame to ensure that workload order remains, however,
+     * we can avoid creating excessive schdeuling dependencies
+     * by splitting events per frame. */
+    [MTLCommandBufferManager::sync_event release];
+    MTLCommandBufferManager::sync_event = nil;
+    MTLCommandBufferManager::event_signal_val = 0;
   }
 
   /* Do Present Call and final Blit to MTLDrawable. */
@@ -2191,17 +2196,6 @@ void present(MTLRenderPassDescriptor *blit_descriptor,
                  ((float)MTLContext::avg_drawable_latency_us) / 1000.0f,
                  perf_max_drawables);
   }];
-
-  if (MTLCommandBufferManager::sync_event == nil) {
-    MTLCommandBufferManager::sync_event = [ctx->device newEvent];
-    BLI_assert(MTLCommandBufferManager::sync_event);
-    [MTLCommandBufferManager::sync_event retain];
-  }
-  BLI_assert(MTLCommandBufferManager::sync_event != nil);
-
-  MTLCommandBufferManager::event_signal_val++;
-  [cmdbuf encodeSignalEvent:MTLCommandBufferManager::sync_event
-                      value:MTLCommandBufferManager::event_signal_val];
 
   [cmdbuf commit];
 
