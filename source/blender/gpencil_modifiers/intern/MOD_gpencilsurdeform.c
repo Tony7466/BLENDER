@@ -20,7 +20,7 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
-
+#include "BKE_scene.h"
 #include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_gpencil.h"
@@ -1909,7 +1909,7 @@ static bool surfacedeformBind(Object *ob,
 
   smd_orig->target_verts_num = target_verts_num;
   smd_orig->target_polys_num = target_polys_num;
-  
+  float current_frame = BKE_scene_frame_get(scene);
   
   /* Bind all layers and bind only one layer are mutually exclusive. */
   if (smd_orig->bind_modes & GP_MOD_SDEF_BIND_ALL_LAYERS) 
@@ -1942,7 +1942,8 @@ static bool surfacedeformBind(Object *ob,
           if ( f != smd_orig->layers->num_of_frames ) 
           {continue;}
           add_frame(smd_orig, smd_eval, smd_orig->layers, curr_gpf); 
-
+          BKE_scene_frame_set(scene, (float)curr_gpf->framenum);
+          BKE_scene_graph_update_for_newframe(depsgraph);
           uint s = 0;
           LISTBASE_FOREACH (bGPDstroke *, curr_gps, &curr_gpf->strokes)
           {
@@ -2006,6 +2007,8 @@ static bool surfacedeformBind(Object *ob,
           if ( f != smd_orig->layers->num_of_frames ) 
           {continue;}
           add_frame(smd_orig, smd_eval, smd_orig->layers, curr_gpf); 
+          BKE_scene_frame_set(scene, (float)curr_gpf->framenum);
+          BKE_scene_graph_update_for_newframe(depsgraph);
           uint s = 0;
           LISTBASE_FOREACH (bGPDstroke *, curr_gps, &curr_gpf->strokes)
           {
@@ -2044,7 +2047,7 @@ static bool surfacedeformBind(Object *ob,
     }
   }
 
-
+  BKE_scene_frame_set(scene, current_frame);
   freeAdjacencyMap(vert_edges, adj_array, edge_polys);
   free_bvhtree_from_mesh(&treeData);
   return true;
