@@ -3175,6 +3175,7 @@ void ntreeSetOutput(bNodeTree *ntree)
       if (ELEM(node->type, CMP_NODE_OUTPUT_FILE, GEO_NODE_VIEWER)) {
         continue;
       }
+      const bool node_is_output = ELEM(node->type, CMP_NODE_VIEWER, CMP_NODE_SPLITVIEWER);
 
       int output = 0;
       /* there is more types having output class, each one is checked */
@@ -3186,7 +3187,6 @@ void ntreeSetOutput(bNodeTree *ntree)
 
         /* same type, exception for viewer */
         const bool tnode_is_output = ELEM(tnode->type, CMP_NODE_VIEWER, CMP_NODE_SPLITVIEWER);
-        const bool node_is_output = ELEM(node->type, CMP_NODE_VIEWER, CMP_NODE_SPLITVIEWER);
         const bool compositor_case = is_compositor && tnode_is_output && node_is_output;
         if (tnode->type == node->type || compositor_case) {
           if (tnode->flag & NODE_DO_OUTPUT) {
@@ -3202,8 +3202,6 @@ void ntreeSetOutput(bNodeTree *ntree)
         node->flag |= NODE_DO_OUTPUT;
       }
     }
-
-    /* TODO (mod_moder): Below and above loops can be stopped after first `output == 0` case...? */
 
     /* group node outputs use this flag too */
     if (node->type == NODE_GROUP_OUTPUT) {
