@@ -513,6 +513,12 @@ void fft_filter_fcurve_segment(FCurve *fcu,
 
   fftw_execute(fft_plan_forward);
   fftw_destroy_plan(fft_plan_forward);
+  double amplitude_max = 0;
+  for (int i = 0; i < eq_dist_sample_count; i++) {
+    if (spectrum[i][0] > amplitude_max) {
+      amplitude_max = spectrum[i][0];
+    }
+  }
 
   const double euler = 2.71828182845904523536;
   for (int i = 0; i < eq_dist_sample_count; i++) {
@@ -521,17 +527,19 @@ void fft_filter_fcurve_segment(FCurve *fcu,
 
     /* Percent of frequency tuples.  */
     const double frq_percent = (double)(i) / (double)(eq_dist_sample_count - 1);
+    const double amplitude_percent = fabs(real) / amplitude_max;
 
     /* Before frequency cutoff keep tuples untouched. */
-    if (frq_percent < C) {
+    if (amplitude_percent > C) {
       continue;
     }
 
     /* Will be between 0 and 1. */
-    double frq_factor = interpd(0, 1, (frq_percent - C) / falloff_width);
-    frq_factor = frq_factor < 0 ? 0 : frq_factor;
-    spectrum[i][0] = real * frq_factor;
-    spectrum[i][1] = imaginary * frq_factor;
+    // double scale_factor = interpd(0, 1, (frq_percent - C) / falloff_width);
+    double scale_factor = 0.0f;
+    scale_factor = scale_factor < 0 ? 0 : scale_factor;
+    spectrum[i][0] = real * scale_factor;
+    // spectrum[i][1] = imaginary * scale_factor;
   }
 
   fftw_execute(fft_plan_backward);
