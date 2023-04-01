@@ -573,6 +573,7 @@ void Instance::light_bake_irradiance(LightCache *&r_light_cache,
     }
   }
 
+  r_light_cache->flag |= LIGHTCACHE_BAKED;
   r_light_cache->flag &= ~LIGHTCACHE_BAKING;
 }
 

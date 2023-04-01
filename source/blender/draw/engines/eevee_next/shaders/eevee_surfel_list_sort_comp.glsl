@@ -123,6 +123,9 @@ void main()
     }
   }
 
+  /* Update list start for irradiance sample capture. */
+  list_start_buf[list_index] = sorted_list.first;
+
   /* Now that we have a sorted list, try to avoid connection from coplanar surfels.
    * For that we disconnect them and link them to the first non-coplanar surfel.
    * Note that this changes the list to a tree, which doesn't affect the rest of the algorithm.

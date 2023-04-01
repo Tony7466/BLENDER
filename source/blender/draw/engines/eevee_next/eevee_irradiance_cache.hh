@@ -69,6 +69,13 @@ class IrradianceBake {
   int3 dispatch_per_surfel_ = int3(1);
   /* Dispatch size for per surfel list workload. */
   int3 dispatch_per_list_ = int3(1);
+  /* Dispatch size for per grid sample workload. */
+  int3 dispatch_per_grid_sample_ = int3(1);
+
+  /** Irradiance textures for baking. Only represents one grid in there. */
+  Texture irradiance_L0_L1_a_tx_ = {"irradiance_L0_L1_a_tx_"};
+  Texture irradiance_L0_L1_b_tx_ = {"irradiance_L0_L1_b_tx_"};
+  Texture irradiance_L0_L1_c_tx_ = {"irradiance_L0_L1_c_tx_"};
 
   /* Surfel per unit distance. */
   float surfel_density_ = 2.0f;

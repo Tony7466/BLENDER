@@ -339,6 +339,9 @@ void EEVEE_NEXT_lightcache_free(LightCache *light_cache)
       MEM_SAFE_FREE(light_cache->grids[i].irradiance_L0_L1_a.data);
       MEM_SAFE_FREE(light_cache->grids[i].irradiance_L0_L1_b.data);
       MEM_SAFE_FREE(light_cache->grids[i].irradiance_L0_L1_c.data);
+      DRW_TEXTURE_FREE_SAFE(light_cache->grids[i].irradiance_L0_L1_a.tex);
+      DRW_TEXTURE_FREE_SAFE(light_cache->grids[i].irradiance_L0_L1_b.tex);
+      DRW_TEXTURE_FREE_SAFE(light_cache->grids[i].irradiance_L0_L1_c.tex);
     }
     MEM_SAFE_FREE(light_cache->grids);
   }

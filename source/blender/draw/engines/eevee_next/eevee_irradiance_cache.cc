@@ -17,9 +17,7 @@ namespace blender::eevee {
 /** \name Interface
  * \{ */
 
-void IrradianceCache::init()
-{
-}
+void IrradianceCache::init() {}
 
 void IrradianceCache::sync()
 {
@@ -112,10 +110,33 @@ void IrradianceCache::display_pass_sync()
 
   for (auto i : IndexRange(light_cache->grid_len)) {
     LightCacheIrradianceGrid &grid = light_cache->grids[i];
-    display_grids_ps_.push_constant("sphere_radius", 0.1f);
+
+    if (grid.irradiance_L0_L1_a.data == nullptr) {
+      continue;
+    }
+
+    auto load_texture = [&](const char *name, LightCacheTexture &cache_texture) {
+      if ((light_cache->flag & LIGHTCACHE_BAKED) && cache_texture.tex != nullptr) {
+        return;
+      }
+      if (light_cache->flag & LIGHTCACHE_BAKING) {
+        GPU_TEXTURE_FREE_SAFE(cache_texture.tex);
+      }
+      eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ;
+      cache_texture.tex = GPU_texture_create_3d(
+          name, UNPACK3(cache_texture.tex_size), 1, GPU_RGBA16F, usage, cache_texture.data);
+    };
+    load_texture("grid.irradiance_L0_L1_a", grid.irradiance_L0_L1_a);
+    load_texture("grid.irradiance_L0_L1_b", grid.irradiance_L0_L1_b);
+    load_texture("grid.irradiance_L0_L1_c", grid.irradiance_L0_L1_c);
+
+    display_grids_ps_.push_constant("sphere_radius", 0.3f);
     display_grids_ps_.push_constant("grid_resolution", int3(grid.resolution));
     float4x4 grid_to_world = math::invert(float4x4(grid.world_to_grid));
     display_grids_ps_.push_constant("grid_to_world", grid_to_world);
+    display_grids_ps_.bind_texture("irradiance_a_tx", grid.irradiance_L0_L1_a.tex);
+    display_grids_ps_.bind_texture("irradiance_b_tx", grid.irradiance_L0_L1_b.tex);
+    display_grids_ps_.bind_texture("irradiance_c_tx", grid.irradiance_L0_L1_c.tex);
 
     int cell_count = grid.resolution[0] * grid.resolution[1] * grid.resolution[2];
     display_grids_ps_.draw_procedural(GPU_PRIM_TRIS, 1, cell_count * 3 * 2);
@@ -187,7 +208,16 @@ void IrradianceBake::sync()
   {
     PassSimple &pass = irradiance_capture_ps_;
     pass.init();
-    /* TODO */
+    pass.shader_set(inst_.shaders.static_shader_get(LIGHTPROBE_IRRADIANCE_RAY));
+    pass.bind_ssbo(SURFEL_BUF_SLOT, &surfels_buf_);
+    pass.bind_ssbo(CAPTURE_BUF_SLOT, &capture_info_buf_);
+    pass.bind_ssbo("list_start_buf", &list_start_buf_);
+    pass.bind_ssbo("list_info_buf", &list_info_buf_);
+    pass.bind_image("irradiance_L0_L1_a_img", &irradiance_L0_L1_a_tx_);
+    pass.bind_image("irradiance_L0_L1_b_img", &irradiance_L0_L1_b_tx_);
+    pass.bind_image("irradiance_L0_L1_c_img", &irradiance_L0_L1_c_tx_);
+    pass.barrier(GPU_BARRIER_SHADER_STORAGE | GPU_BARRIER_SHADER_IMAGE_ACCESS);
+    pass.dispatch(&dispatch_per_grid_sample_);
   }
   {
     PassSimple &pass = surfel_light_bounce_ps_;
@@ -236,6 +266,26 @@ void IrradianceBake::surfels_create(const IrradianceGrid &grid)
   using namespace blender::math;
 
   surfel_raster_views_sync(grid);
+
+  dispatch_per_grid_sample_ = math::divide_ceil(grid.resolution, int3(IRRADIANCE_GRID_GROUP_SIZE));
+  capture_info_buf_.irradiance_grid_size = grid.resolution;
+  capture_info_buf_.irradiance_grid_local_to_world = grid.transform;
+  capture_info_buf_.irradiance_accum_solid_angle = 0.0f;
+  /* Divide by twice the sample count because each ray is evaluated in both directions. */
+  capture_info_buf_.irradiance_sample_solid_angle = 4.0f * float(M_PI) /
+                                                    (2 * inst_.sampling.sample_count());
+
+  eGPUTextureUsage texture_usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE |
+                                   GPU_TEXTURE_USAGE_HOST_READ;
+
+  /* 32bit float is needed here otherwise we loose too much energy from rounding error during the
+   * accumulation when the sample count is above 500. */
+  irradiance_L0_L1_a_tx_.ensure_3d(GPU_RGBA32F, grid.resolution, texture_usage);
+  irradiance_L0_L1_b_tx_.ensure_3d(GPU_RGBA32F, grid.resolution, texture_usage);
+  irradiance_L0_L1_c_tx_.ensure_3d(GPU_RGBA32F, grid.resolution, texture_usage);
+  irradiance_L0_L1_a_tx_.clear(float4(0.0f));
+  irradiance_L0_L1_b_tx_.clear(float4(0.0f));
+  irradiance_L0_L1_c_tx_.clear(float4(0.0f));
 
   const float4x4 transform(grid.transform);
 
@@ -367,6 +417,7 @@ void IrradianceBake::propagate_light_sample()
 
   GPU_storagebuf_clear(list_start_buf_, -1);
   inst_.manager->submit(surfel_light_propagate_ps_, ray_view);
+  inst_.manager->submit(irradiance_capture_ps_, ray_view);
 }
 
 void IrradianceBake::accumulate_bounce()
@@ -376,6 +427,18 @@ void IrradianceBake::accumulate_bounce()
 
 void IrradianceBake::read_result(LightCacheIrradianceGrid &light_cache_grid)
 {
+  auto read_texture = [&](LightCacheTexture &cache_texture, draw::Texture &texture) {
+    MEM_SAFE_FREE(cache_texture.data);
+    cache_texture.data = (char *)texture.read<float4>(GPU_DATA_FLOAT);
+    copy_v3_v3_int(cache_texture.tex_size, light_cache_grid.resolution);
+    cache_texture.data_type = LIGHTCACHETEX_FLOAT;
+    cache_texture.components = 4;
+  };
+  GPU_memory_barrier(GPU_BARRIER_TEXTURE_UPDATE);
+  read_texture(light_cache_grid.irradiance_L0_L1_a, irradiance_L0_L1_a_tx_);
+  read_texture(light_cache_grid.irradiance_L0_L1_b, irradiance_L0_L1_b_tx_);
+  read_texture(light_cache_grid.irradiance_L0_L1_c, irradiance_L0_L1_c_tx_);
+
   switch (inst_.debug_mode) {
     case eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_NORMAL:
     case eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_IRRADIANCE:

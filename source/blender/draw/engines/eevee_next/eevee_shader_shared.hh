@@ -862,13 +862,20 @@ struct Surfel {
 BLI_STATIC_ASSERT_ALIGN(Surfel, 16)
 
 struct CaptureInfoData {
+  /** Number of surfels inside the surfel buffer or the needed len. */
+  int3 irradiance_grid_size;
   /** True if the surface shader needs to write the surfel data. */
   bool1 do_surfel_output;
   /** True if the surface shader needs to increment the surfel_len. */
   bool1 do_surfel_count;
   /** Number of surfels inside the surfel buffer or the needed len. */
   uint surfel_len;
-  int _pad0;
+  /** Solid angle subtended by a single ray sample. Equal to `4 * pi / sample_count`. */
+  float irradiance_sample_solid_angle;
+  /** Accumulated solid angle. Should reach `4 * pi` at the end of the accumulation. */
+  float irradiance_accum_solid_angle;
+  /** Transform of the lightprobe object. */
+  float4x4 irradiance_grid_local_to_world;
 };
 BLI_STATIC_ASSERT_ALIGN(CaptureInfoData, 16)
 

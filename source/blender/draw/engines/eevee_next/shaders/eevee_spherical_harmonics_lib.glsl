@@ -102,6 +102,7 @@ struct SphericalHarmonicL2 {
 /** \name Encode
  *
  * Decompose an input signal into spherical harmonic coefficients.
+ * Note that `amplitude` need to be scaled by solid angle.
  * \{ */
 
 void spherical_harmonics_L0_encode_signal_sample(vec3 direction,
@@ -210,6 +211,37 @@ vec3 spherical_harmonics_evaluate_lambert(vec3 N, SphericalHarmonicL2 sh)
   return spherical_harmonics_L0_evaluate(N, sh.L0) +
          spherical_harmonics_L1_evaluate(N, sh.L1) * (2.0 / 3.0) +
          spherical_harmonics_L2_evaluate(N, sh.L2) * (1.0 / 4.0);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Load/Store
+ *
+ * This section define the compression scheme of spherical harmonic data.
+ * \{ */
+
+SphericalHarmonicL1 spherical_harmonics_unpack(vec4 L0_L1_a, vec4 L0_L1_b, vec4 L0_L1_c)
+{
+  SphericalHarmonicL1 sh;
+  sh.L0.M0 = L0_L1_a.xyz;
+  sh.L1.Mn1 = L0_L1_b.xyz;
+  sh.L1.M0 = L0_L1_c.xyz;
+  sh.L1.Mp1 = vec3(L0_L1_a.w, L0_L1_b.w, L0_L1_c.w);
+  return sh;
+}
+
+void spherical_harmonics_pack(SphericalHarmonicL1 sh,
+                              out vec4 L0_L1_a,
+                              out vec4 L0_L1_b,
+                              out vec4 L0_L1_c)
+{
+  L0_L1_a.xyz = sh.L0.M0;
+  L0_L1_b.xyz = sh.L1.Mn1;
+  L0_L1_c.xyz = sh.L1.M0;
+  L0_L1_a.w = sh.L1.Mp1.x;
+  L0_L1_b.w = sh.L1.Mp1.y;
+  L0_L1_c.w = sh.L1.Mp1.z;
 }
 
 /** \} */

@@ -16,7 +16,7 @@ class DataButtonsPanel:
 class DATA_PT_context_lightprobe(DataButtonsPanel, Panel):
     bl_label = ""
     bl_options = {'HIDE_HEADER'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_RENDER'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_RENDER', 'BLENDER_EEVEE_NEXT'}
 
     def draw(self, context):
         layout = self.layout
@@ -33,7 +33,7 @@ class DATA_PT_context_lightprobe(DataButtonsPanel, Panel):
 
 class DATA_PT_lightprobe(DataButtonsPanel, Panel):
     bl_label = "Probe"
-    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_RENDER'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_RENDER', 'BLENDER_EEVEE_NEXT'}
 
     def draw(self, context):
         layout = self.layout

@@ -89,6 +89,7 @@
 /* IrradianceBake. */
 #define SURFEL_GROUP_SIZE 256
 #define SURFEL_LIST_GROUP_SIZE 256
+#define IRRADIANCE_GRID_GROUP_SIZE 4 /* In each dimension, do 4x4x4 workgroup size. */
 
 /* Resource bindings. */
 
