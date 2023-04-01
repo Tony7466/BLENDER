@@ -7,7 +7,7 @@
 #include "BKE_bvhutils.h"
 #include "BKE_context.h"
 #include "BKE_geometry_set.hh"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.h"
 #include "BKE_mesh_sample.hh"
 #include "BKE_modifier.h"
@@ -91,9 +91,7 @@ struct DensityAddOperationExecutor {
 
   CurvesSurfaceTransforms transforms_;
 
-  DensityAddOperationExecutor(const bContext &C) : ctx_(C)
-  {
-  }
+  DensityAddOperationExecutor(const bContext &C) : ctx_(C) {}
 
   void execute(DensityAddOperation &self,
                const bContext &C,
@@ -530,9 +528,7 @@ struct DensitySubtractOperationExecutor {
 
   KDTree_3d *root_points_kdtree_;
 
-  DensitySubtractOperationExecutor(const bContext &C) : ctx_(C)
-  {
-  }
+  DensitySubtractOperationExecutor(const bContext &C) : ctx_(C) {}
 
   void execute(DensitySubtractOperation &self,
                const bContext &C,

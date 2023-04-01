@@ -649,9 +649,7 @@ static void attr_create_subd_uv_map(Scene *scene, Mesh *mesh, BL::Mesh &b_mesh, 
 /* Compare vertices by sum of their coordinates. */
 class VertexAverageComparator {
  public:
-  VertexAverageComparator(const array<float3> &verts) : verts_(verts)
-  {
-  }
+  VertexAverageComparator(const array<float3> &verts) : verts_(verts) {}
 
   bool operator()(const int &vert_idx_a, const int &vert_idx_b)
   {
@@ -818,6 +816,23 @@ static void attr_create_pointiness(Scene *scene, Mesh *mesh, BL::Mesh &b_mesh, b
   }
 }
 
+static std::optional<BL::IntAttribute> find_corner_vert_attribute(BL::Mesh b_mesh)
+{
+  for (BL::Attribute &b_attribute : b_mesh.attributes) {
+    if (b_attribute.domain() != BL::Attribute::domain_CORNER) {
+      continue;
+    }
+    if (b_attribute.data_type() != BL::Attribute::data_type_INT) {
+      continue;
+    }
+    if (b_attribute.name() != ".corner_vert") {
+      continue;
+    }
+    return BL::IntAttribute{b_attribute};
+  }
+  return std::nullopt;
+}
+
 /* The Random Per Island attribute is a random float associated with each
  * connected component (island) of the mesh. The attribute is computed by
  * first classifying the vertices into different sets using a Disjoint Set
@@ -864,11 +879,11 @@ static void attr_create_random_per_island(Scene *scene,
   else {
     if (polys_num != 0) {
       const MPoly *polys = static_cast<const MPoly *>(b_mesh.polygons[0].ptr.data);
-      const MLoop *loops = static_cast<const MLoop *>(b_mesh.loops[0].ptr.data);
+      BL::IntAttribute corner_verts = *find_corner_vert_attribute(b_mesh);
       for (int i = 0; i < polys_num; i++) {
         const MPoly &b_poly = polys[i];
-        const MLoop &b_loop = loops[b_poly.loopstart];
-        data[i] = hash_uint_to_float(vertices_sets.find(b_loop.v));
+        const int vert = corner_verts.data[b_poly.loopstart].value();
+        data[i] = hash_uint_to_float(vertices_sets.find(vert));
       }
     }
   }
@@ -889,6 +904,23 @@ static std::optional<BL::IntAttribute> find_material_index_attribute(BL::Mesh b_
       continue;
     }
     return BL::IntAttribute{b_attribute};
+  }
+  return std::nullopt;
+}
+
+static std::optional<BL::BoolAttribute> find_sharp_face_attribute(BL::Mesh b_mesh)
+{
+  for (BL::Attribute &b_attribute : b_mesh.attributes) {
+    if (b_attribute.domain() != BL::Attribute::domain_FACE) {
+      continue;
+    }
+    if (b_attribute.data_type() != BL::Attribute::data_type_BOOLEAN) {
+      continue;
+    }
+    if (b_attribute.name() != "sharp_face") {
+      continue;
+    }
+    return BL::BoolAttribute{b_attribute};
   }
   return std::nullopt;
 }
@@ -983,16 +1015,22 @@ static void create_mesh(Scene *scene,
     return 0;
   };
 
+  std::optional<BL::BoolAttribute> sharp_faces = find_sharp_face_attribute(b_mesh);
+  auto get_face_sharp = [&](const int poly_index) -> bool {
+    if (sharp_faces) {
+      return sharp_faces->data[poly_index].value();
+    }
+    return false;
+  };
+
   /* create faces */
-  const MPoly *polys = static_cast<const MPoly *>(b_mesh.polygons[0].ptr.data);
   if (!subdivision) {
     for (BL::MeshLoopTriangle &t : b_mesh.loop_triangles) {
       const int poly_index = t.polygon_index();
-      const MPoly &b_poly = polys[poly_index];
       int3 vi = get_int3(t.vertices());
 
       int shader = get_material_index(poly_index);
-      bool smooth = (b_poly.flag & ME_SMOOTH) || use_loop_normals;
+      bool smooth = !get_face_sharp(poly_index) || use_loop_normals;
 
       if (use_loop_normals) {
         BL::Array<float, 9> loop_normals = t.split_normals();
@@ -1012,19 +1050,19 @@ static void create_mesh(Scene *scene,
   else {
     vector<int> vi;
 
-    const MLoop *loops = static_cast<const MLoop *>(b_mesh.loops[0].ptr.data);
+    const MPoly *polys = static_cast<const MPoly *>(b_mesh.polygons[0].ptr.data);
+    std::optional<BL::IntAttribute> corner_verts = find_corner_vert_attribute(b_mesh);
 
     for (int i = 0; i < numfaces; i++) {
       const MPoly &b_poly = polys[i];
       int n = b_poly.totloop;
       int shader = get_material_index(i);
-      bool smooth = (b_poly.flag & ME_SMOOTH) || use_loop_normals;
+      bool smooth = !get_face_sharp(i) || use_loop_normals;
 
       vi.resize(n);
       for (int i = 0; i < n; i++) {
         /* NOTE: Autosmooth is already taken care about. */
-
-        vi[i] = loops[b_poly.loopstart + i].v;
+        vi[i] = corner_verts->data[b_poly.loopstart + i].value();
       }
 
       /* create subd faces */

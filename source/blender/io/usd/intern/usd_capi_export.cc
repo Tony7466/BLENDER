@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. All rights reserved. */
+ * Copyright 2019 Blender Foundation */
 
 #include "usd.h"
 #include "usd_common.h"
@@ -42,7 +42,8 @@ struct ExportJobData {
   Depsgraph *depsgraph;
   wmWindowManager *wm;
 
-  char unarchived_filepath[FILE_MAX]; /* unarchived_filepath is used for usda/usdc/usd export. */
+  /** Unarchived_filepath is used for USDA/USDC/USD export. */
+  char unarchived_filepath[FILE_MAX];
   char usdz_filepath[FILE_MAX];
   USDExportParams params;
 

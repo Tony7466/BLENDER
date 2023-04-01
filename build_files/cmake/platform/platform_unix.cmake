@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2016 Blender Foundation. All rights reserved.
+# Copyright 2016 Blender Foundation
 
 # Libraries configuration for any *nix system including Linux and Unix (excluding APPLE).
 
@@ -394,6 +394,7 @@ if(WITH_BOOST)
       list(APPEND __boost_packages python${PYTHON_VERSION_NO_DOTS})
     endif()
     list(APPEND __boost_packages system)
+    set(Boost_NO_WARN_NEW_VERSIONS ON)
     find_package(Boost 1.48 COMPONENTS ${__boost_packages})
     if(NOT Boost_FOUND)
       # try to find non-multithreaded if -mt not found, this flag
@@ -438,32 +439,7 @@ if(WITH_IMAGE_WEBP)
   set_and_warn_library_found("WebP" WEBP_FOUND WITH_IMAGE_WEBP)
 endif()
 
-if(WITH_OPENIMAGEIO)
-  find_package_wrapper(OpenImageIO)
-  set(OPENIMAGEIO_LIBRARIES
-    ${OPENIMAGEIO_LIBRARIES}
-    ${PNG_LIBRARIES}
-    ${JPEG_LIBRARIES}
-    ${ZLIB_LIBRARIES}
-  )
-
-  set(OPENIMAGEIO_DEFINITIONS "")
-
-  if(WITH_BOOST)
-    list(APPEND OPENIMAGEIO_LIBRARIES "${BOOST_LIBRARIES}")
-  endif()
-  if(WITH_IMAGE_TIFF)
-    list(APPEND OPENIMAGEIO_LIBRARIES "${TIFF_LIBRARY}")
-  endif()
-  if(WITH_IMAGE_OPENEXR)
-    list(APPEND OPENIMAGEIO_LIBRARIES "${OPENEXR_LIBRARIES}")
-  endif()
-  if(WITH_IMAGE_WEBP)
-    list(APPEND OPENIMAGEIO_LIBRARIES "${WEBP_LIBRARIES}")
-  endif()
-
-  set_and_warn_library_found("OPENIMAGEIO" OPENIMAGEIO_FOUND WITH_OPENIMAGEIO)
-endif()
+find_package_wrapper(OpenImageIO REQUIRED)
 add_bundled_libraries(openimageio/lib)
 
 if(WITH_OPENCOLORIO)
@@ -670,7 +646,7 @@ if(WITH_GHOST_WAYLAND)
   else()
     # Rocky8 packages have too old a version, a newer version exist in the pre-compiled libraries.
     find_path(WAYLAND_PROTOCOLS_DIR
-      NAMES unstable/xdg-decoration/xdg-decoration-unstable-v1.xml
+      NAMES staging/xdg-activation/xdg-activation-v1.xml
       PATH_SUFFIXES share/wayland-protocols
       PATHS ${LIBDIR}/wayland-protocols
     )

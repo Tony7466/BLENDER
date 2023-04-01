@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. All rights reserved. */
+ * Copyright 2021 Blender Foundation */
 
 /** \file
  * \ingroup draw
@@ -97,36 +97,36 @@ static void extract_edge_fac_iter_poly_bm(const MeshRenderData *mr,
 }
 
 static void extract_edge_fac_iter_poly_mesh(const MeshRenderData *mr,
-                                            const MPoly *mp,
-                                            const int mp_index,
+                                            const MPoly *poly,
+                                            const int poly_index,
                                             void *_data)
 {
   MeshExtract_EdgeFac_Data *data = static_cast<MeshExtract_EdgeFac_Data *>(_data);
   const BitSpan optimal_display_edges = mr->me->runtime->subsurf_optimal_display_edges;
 
-  const MLoop *mloop = mr->mloop;
-  const int ml_index_end = mp->loopstart + mp->totloop;
-  for (int ml_index = mp->loopstart; ml_index < ml_index_end; ml_index += 1) {
-    const MLoop *ml = &mloop[ml_index];
+  const int ml_index_end = poly->loopstart + poly->totloop;
+  for (int ml_index = poly->loopstart; ml_index < ml_index_end; ml_index += 1) {
+    const int vert = mr->corner_verts[ml_index];
+    const int edge = mr->corner_edges[ml_index];
 
     if (data->use_edge_render) {
-      data->vbo_data[ml_index] = optimal_display_edges[ml->e] ? 255 : 0;
+      data->vbo_data[ml_index] = optimal_display_edges[edge] ? 255 : 0;
     }
     else {
 
       /* Count loop per edge to detect non-manifold. */
-      if (data->edge_loop_count[ml->e] < 3) {
-        data->edge_loop_count[ml->e]++;
+      if (data->edge_loop_count[edge] < 3) {
+        data->edge_loop_count[edge]++;
       }
-      if (data->edge_loop_count[ml->e] == 2) {
+      if (data->edge_loop_count[edge] == 2) {
         /* Manifold */
-        const int ml_index_last = mp->totloop + mp->loopstart - 1;
-        const int ml_index_other = (ml_index == ml_index_last) ? mp->loopstart : (ml_index + 1);
-        const MLoop *ml_next = &mr->mloop[ml_index_other];
-        float ratio = loop_edge_factor_get(mr->poly_normals[mp_index],
-                                           mr->vert_positions[ml->v],
-                                           mr->vert_normals[ml->v],
-                                           mr->vert_positions[ml_next->v]);
+        const int ml_index_last = poly->totloop + poly->loopstart - 1;
+        const int ml_index_other = (ml_index == ml_index_last) ? poly->loopstart : (ml_index + 1);
+        const int vert_next = mr->corner_verts[ml_index_other];
+        float ratio = loop_edge_factor_get(mr->poly_normals[poly_index],
+                                           mr->vert_positions[vert],
+                                           mr->vert_normals[vert],
+                                           mr->vert_positions[vert_next]);
         data->vbo_data[ml_index] = ratio * 253 + 1;
       }
       else {
@@ -137,20 +137,20 @@ static void extract_edge_fac_iter_poly_mesh(const MeshRenderData *mr,
   }
 }
 
-static void extract_edge_fac_iter_ledge_bm(const MeshRenderData *mr,
-                                           const BMEdge * /*eed*/,
-                                           const int ledge_index,
-                                           void *_data)
+static void extract_edge_fac_iter_loose_edge_bm(const MeshRenderData *mr,
+                                                const BMEdge * /*eed*/,
+                                                const int ledge_index,
+                                                void *_data)
 {
   MeshExtract_EdgeFac_Data *data = static_cast<MeshExtract_EdgeFac_Data *>(_data);
   data->vbo_data[mr->loop_len + (ledge_index * 2) + 0] = 255;
   data->vbo_data[mr->loop_len + (ledge_index * 2) + 1] = 255;
 }
 
-static void extract_edge_fac_iter_ledge_mesh(const MeshRenderData *mr,
-                                             const MEdge * /*med*/,
-                                             const int ledge_index,
-                                             void *_data)
+static void extract_edge_fac_iter_loose_edge_mesh(const MeshRenderData *mr,
+                                                  const MEdge * /*edge*/,
+                                                  const int ledge_index,
+                                                  void *_data)
 {
   MeshExtract_EdgeFac_Data *data = static_cast<MeshExtract_EdgeFac_Data *>(_data);
 
@@ -223,23 +223,23 @@ static void extract_edge_fac_init_subdiv(const DRWSubdivCache *subdiv_cache,
 
   /* Create a temporary buffer for the edge original indices if it was not requested. */
   const bool has_edge_idx = edge_idx != nullptr;
-  GPUVertBuf *loop_edge_idx = nullptr;
+  GPUVertBuf *loop_edge_draw_flag = nullptr;
   if (has_edge_idx) {
-    loop_edge_idx = edge_idx;
+    loop_edge_draw_flag = edge_idx;
   }
   else {
-    loop_edge_idx = GPU_vertbuf_calloc();
+    loop_edge_draw_flag = GPU_vertbuf_calloc();
     draw_subdiv_init_origindex_buffer(
-        loop_edge_idx,
-        static_cast<int *>(GPU_vertbuf_get_data(subdiv_cache->edges_orig_index)),
+        loop_edge_draw_flag,
+        static_cast<int *>(GPU_vertbuf_get_data(subdiv_cache->edges_draw_flag)),
         subdiv_cache->num_subdiv_loops,
         0);
   }
 
-  draw_subdiv_build_edge_fac_buffer(subdiv_cache, pos_nor, loop_edge_idx, vbo);
+  draw_subdiv_build_edge_fac_buffer(subdiv_cache, pos_nor, loop_edge_draw_flag, vbo);
 
   if (!has_edge_idx) {
-    GPU_vertbuf_discard(loop_edge_idx);
+    GPU_vertbuf_discard(loop_edge_draw_flag);
   }
 }
 
@@ -279,8 +279,8 @@ constexpr MeshExtract create_extractor_edge_fac()
   extractor.init = extract_edge_fac_init;
   extractor.iter_poly_bm = extract_edge_fac_iter_poly_bm;
   extractor.iter_poly_mesh = extract_edge_fac_iter_poly_mesh;
-  extractor.iter_ledge_bm = extract_edge_fac_iter_ledge_bm;
-  extractor.iter_ledge_mesh = extract_edge_fac_iter_ledge_mesh;
+  extractor.iter_loose_edge_bm = extract_edge_fac_iter_loose_edge_bm;
+  extractor.iter_loose_edge_mesh = extract_edge_fac_iter_loose_edge_mesh;
   extractor.init_subdiv = extract_edge_fac_init_subdiv;
   extractor.iter_loose_geom_subdiv = extract_edge_fac_loose_geom_subdiv;
   extractor.finish = extract_edge_fac_finish;

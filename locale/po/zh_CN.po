@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.5.0 Beta (b'c5bbc5db6faa')\n"
+"Project-Id-Version: Blender 3.5.0 Release Candidate (b'14efe7000449')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-02-27 15:19:45\n"
+"POT-Creation-Date: 2023-03-27 16:38:19\n"
 "PO-Revision-Date: \n"
 "Last-Translator: DeathBlood\n"
 "Language-Team: \n"
@@ -1107,6 +1107,10 @@ msgstr "目录简单名称"
 
 msgid "Simple name of the asset's catalog, for debugging and data recovery purposes"
 msgstr "用于调试和数据恢复目的的资产目录的简单名称"
+
+
+msgid "Copyright"
+msgstr "版权"
 
 
 msgid "Description"
@@ -5653,10 +5657,6 @@ msgstr "外面厚度"
 
 msgid "Enabled"
 msgstr "已开启"
-
-
-msgid "Enable this objects as a collider for physics systems"
-msgstr "将该物体设置为物理仿真的碰撞器"
 
 
 msgid "Single Sided"
@@ -13700,10 +13700,6 @@ msgid "Minimum number of particles per cell (ensures that each cell has at least
 msgstr "每个单元的最小粒子数(确保每个单元至少具有此数量的粒子)"
 
 
-msgid "Number"
-msgstr "*Number"
-
-
 msgid "Particle number factor (higher value results in more particles)"
 msgstr "粒子数因子(值越高，粒子越多)"
 
@@ -16422,10 +16418,6 @@ msgid "Texture Mapping"
 msgstr "纹理映射"
 
 
-msgid "Change stroke uv texture values"
-msgstr "修改UV笔画纹理值"
-
-
 msgid "Time Offset"
 msgstr "时间偏移"
 
@@ -17934,10 +17926,6 @@ msgstr "厚度系数"
 
 msgid "Amount of noise to apply to thickness"
 msgstr "应用于宽度的噪波量"
-
-
-msgid "Amount of noise to apply uv rotation"
-msgstr "应用UV旋转的噪波量"
 
 
 msgid "Noise Offset"
@@ -19545,30 +19533,6 @@ msgid "Editable falloff curve"
 msgstr "可编辑衰减曲线"
 
 
-msgid "Curve Preset"
-msgstr "曲线预设"
-
-
-msgid "Smoother"
-msgstr "平滑器"
-
-
-msgid "Root"
-msgstr "根"
-
-
-msgid "Sharp"
-msgstr "锐边"
-
-
-msgid "Sharper"
-msgstr "较锐利"
-
-
-msgid "Inverse Square"
-msgstr "反向平方"
-
-
 msgid "Curves Sculpt Settings"
 msgstr "曲线雕刻设置"
 
@@ -21013,16 +20977,8 @@ msgid "Name of the Alembic attribute used for generating motion blur data"
 msgstr "用于生成运动模糊数据的Alembic属性的名称"
 
 
-msgid "Velocity Unit"
-msgstr "速度单位"
-
-
 msgid "Define how the velocity vectors are interpreted with regard to time, 'frame' means the delta time is 1 frame, 'second' means the delta time is 1 / FPS"
 msgstr "定义如何速度矢量相对时间的解析方式， '帧'表示时间增量是1帧， \"秒\" 表示时间增量是 1/Fps"
-
-
-msgid "Second"
-msgstr "第二"
 
 
 msgid "Camera data-block for storing camera settings"
@@ -23806,6 +23762,10 @@ msgstr "随距离的衰减强度"
 
 msgid "Inverse Linear"
 msgstr "反向线性"
+
+
+msgid "Inverse Square"
+msgstr "反向平方"
 
 
 msgid "Inverse Coefficients"
@@ -26964,6 +26924,10 @@ msgid "Display boid health"
 msgstr "显示群集康度"
 
 
+msgid "Number"
+msgstr "*Number"
+
+
 msgid "Show particle number"
 msgstr "显示粒子数"
 
@@ -28039,10 +28003,6 @@ msgid "Text file on disk is different than the one in memory"
 msgstr "磁盘上的文本文件与内存中的不同"
 
 
-msgid "Lines"
-msgstr "行数(线)"
-
-
 msgid "Lines of text"
 msgstr "文本行"
 
@@ -28713,8 +28673,16 @@ msgid "Use soft marble"
 msgstr "使用柔和的大理石纹"
 
 
+msgid "Sharp"
+msgstr "锐边"
+
+
 msgid "Use more clearly defined marble"
 msgstr "使用轮廓更加分明的大理石纹"
+
+
+msgid "Sharper"
+msgstr "较锐利"
 
 
 msgid "Use very clearly defined marble"
@@ -33530,6 +33498,10 @@ msgid "Active spline of masking layer"
 msgstr "遮罩层活动样条"
 
 
+msgid "Active Point"
+msgstr "活动点"
+
+
 msgid "Grease Pencil Color"
 msgstr "蜡笔颜色"
 
@@ -34944,6 +34916,10 @@ msgid "If vertex has multiple adjacent edges, it is hulled to them directly"
 msgstr "如果顶点被多条相邻边共用, 那么它会直接附在其上"
 
 
+msgid "Root"
+msgstr "根"
+
+
 msgid "Vertex is a root for rotation calculations and armature generation, setting this flag does not clear other roots in the same mesh island"
 msgstr "顶点是用于旋转计算和骨架生成的一个根, 设定此标识在相同网格孤岛不清除其它根"
 
@@ -35070,10 +35046,6 @@ msgstr "UV 贴图名称"
 
 msgid "UV Pin"
 msgstr "UV 钉固"
-
-
-msgid "UV pinned state in the uv editor"
-msgstr "UV 编辑器中的 UV 钉固状态"
 
 
 msgid "UV coordinates on face corners"
@@ -38909,10 +38881,6 @@ msgid "UVWarp Modifier"
 msgstr "UV 偏移修改器"
 
 
-msgid "Add target position to uv coordinates"
-msgstr "将目标位置添加到 UV 坐标"
-
-
 msgid "U-Axis"
 msgstr "U- 轴"
 
@@ -39694,6 +39662,10 @@ msgstr "线条宽度"
 
 msgid "Line thickness for motion path"
 msgstr "用于运动路径的线条宽度"
+
+
+msgid "Lines"
+msgstr "行数(线)"
 
 
 msgid "Use straight lines between keyframe points"
@@ -44670,10 +44642,6 @@ msgstr "计算网格面的表面积"
 
 msgid "Is Face Planar"
 msgstr "面是否平直"
-
-
-msgid "Retrieve whether all triangles in a face are on the same plane, i.e. whether have the same normal"
-msgstr "检索面中的所有三角形是否在同一平面上，即是否具有相同的法向"
 
 
 msgid "Face Neighbors"
@@ -54052,10 +54020,6 @@ msgid "Export vertex colors with meshes"
 msgstr "随网格导出顶点色"
 
 
-msgid "Copyright"
-msgstr "版权"
-
-
 msgid "Legal rights and conditions for the model"
 msgstr "模型的法律权限和条款"
 
@@ -59915,17 +59879,9 @@ msgid "Clear Restrict View"
 msgstr "清除显示限制"
 
 
-msgid "Reveal the layer by setting the hide flag"
-msgstr "通过对隐藏标记进行设置, 恢复层的可见性"
-
-
 msgctxt "Operator"
 msgid "Set Restrict View"
 msgstr "设置显示限制"
-
-
-msgid "Hide the layer by setting the hide flag"
-msgstr "通过设置隐藏标识来隐藏图层"
 
 
 msgctxt "Operator"
@@ -65533,10 +65489,6 @@ msgid "Hook selected vertices to the first selected object"
 msgstr "钩挂到选中的物体骨骼"
 
 
-msgid "Assign the hook to the hook objects active bone"
-msgstr "将挂钩指定到钩挂物体的活动骨骼上"
-
-
 msgctxt "Operator"
 msgid "Assign to Hook"
 msgstr "指定到挂钩"
@@ -68395,14 +68347,6 @@ msgid "Library Operation"
 msgstr "库操作"
 
 
-msgid ""
-"Delete this library and all its item.\n"
-"Warning: No undo"
-msgstr ""
-"删除此库与其全部条目。\n"
-"警告: 无法撤销"
-
-
 msgid "Relocate"
 msgstr "重定位"
 
@@ -68819,10 +68763,6 @@ msgstr "尝试在转换前选择一个点的控制柄"
 msgctxt "Operator"
 msgid "Add Simple UVs"
 msgstr "添加简易UV"
-
-
-msgid "Add cube map uvs on mesh"
-msgstr "在网格上添加立方体映射UVs"
 
 
 msgctxt "Operator"
@@ -71286,10 +71226,6 @@ msgstr "激活线条集中添加一个线条颜色修改器来添加线条样式
 msgctxt "Operator"
 msgid "Fill Range by Selection"
 msgstr "按选中项填充范围"
-
-
-msgid "Fill the Range Min/Max entries by the min/max distance between selected mesh objects and the source object "
-msgstr "根据所选网格对象和源对象之间的最小/最大距离，填充范围最小/最大条目 "
 
 
 msgid "Name of the modifier to work on"
@@ -76395,10 +76331,6 @@ msgid "Align Rotation"
 msgstr "对齐旋转"
 
 
-msgid "Align uv island's rotation"
-msgstr "对齐UV孤岛的旋转"
-
-
 msgid "Axis to align to"
 msgstr "要对齐的轴"
 
@@ -76845,10 +76777,6 @@ msgstr "将 UV 映射到顾及分辨率及的摄像机区域"
 
 msgid "Use orthographic projection"
 msgstr "使用正交投射"
-
-
-msgid "Randomize uv island's location, rotation, and scale"
-msgstr "随机化UV孤岛的位置/旋转/缩放"
 
 
 msgid "Maximum rotation"
@@ -81931,10 +81859,6 @@ msgid "2D Cursor"
 msgstr "2D 游标"
 
 
-msgid "Active Point"
-msgstr "活动点"
-
-
 msgid "Predefined tracking camera intrinsics"
 msgstr "预定义的轨迹摄像机内部参数"
 
@@ -86983,14 +86907,6 @@ msgid "Mini Axes Type"
 msgstr "迷你坐标轴类型"
 
 
-msgid "Show a small rotating 3D axes in the top right corner of the 3D viewport"
-msgstr "在3D视图的左下角显示一个可旋转的小3D坐标轴"
-
-
-msgid "Simple Axis"
-msgstr "单一轴向"
-
-
 msgid "Interactive Navigation"
 msgstr "交互漫游"
 
@@ -89996,10 +89912,6 @@ msgstr "附加细分"
 
 msgid "Additional subdivision along the curves"
 msgstr "沿着曲线附加细分"
-
-
-msgid "Curves Shape Type"
-msgstr "曲线形状类型"
 
 
 msgid "Curves shape type"
@@ -96853,10 +96765,6 @@ msgstr "根据 UV 及其 3D 坐标的拉伸幅度使用不同的颜色对面进�
 
 msgid "Display Texture Paint UVs"
 msgstr "显示纹理绘制UV"
-
-
-msgid "Display overlay of texture paint uv layer"
-msgstr "叠加显示纹理绘制UV层"
 
 
 msgid "Tile Grid Shape"
@@ -105131,10 +105039,6 @@ msgid "No compatible GPUs found for Cycles"
 msgstr "找不到Cycles的兼容 GPU"
 
 
-msgid "(TM)TRADE MARK SIGN(tm)TRADE MARK SIGN(R)REGISTERED SIGN(C)COPYRIGHT SIGN"
-msgstr "(TM)TRADE MARK SIGN(tm)TRADE MARK SIGN(R)REGISTERED SIGN(C)COPYRIGHT SIGN"
-
-
 msgid "Requires NVIDIA GPU with compute capability %s"
 msgstr "要求具有计算能力 %s 的Nvidia GPU"
 
@@ -105143,16 +105047,24 @@ msgid "and NVIDIA driver version %s or newer"
 msgstr "以及Nvidia驱动程序 %s 版本或更新"
 
 
+msgid "Requires Intel GPU with Xe-HPG architecture"
+msgstr "需要Xe-HPG 架构的英特尔 GPU"
+
+
+msgid "Requires Intel GPU with Xe-HPG architecture and"
+msgstr "需要Xe-HPG 架构的英特尔 GPU 以及"
+
+
+msgid "  - oneAPI Level-Zero Loader"
+msgstr "  - oneAPI Level-Zero 加载器"
+
+
 msgid "and AMD Radeon Pro %s driver or newer"
 msgstr "以及AMD Radeon Pro %s 驱动器或更新"
 
 
 msgid "and AMD driver version %s or newer"
 msgstr "以及AMD驱动程序 %s 版本或更新"
-
-
-msgid "Requires Intel GPU with Xe-HPG architecture"
-msgstr "需要Xe-HPG 架构的英特尔 GPU"
 
 
 msgid "and Windows driver version %s or newer"
@@ -105167,16 +105079,8 @@ msgid "or AMD with macOS %s or newer"
 msgstr "或者AMD搭配 macOS %s 或更新版本"
 
 
-msgid "Requires Intel GPU with Xe-HPG architecture and"
-msgstr "需要Xe-HPG 架构的英特尔 GPU 以及"
-
-
 msgid "  - intel-level-zero-gpu version %s or newer"
 msgstr "  - intel-level-zero-gpu 版本 %s 或更新版本"
-
-
-msgid "  - oneAPI Level-Zero Loader"
-msgstr "  - oneAPI Level-Zero 加载器"
 
 
 msgid "Noise Threshold"
@@ -105965,10 +105869,6 @@ msgid "Invert Selection"
 msgstr "反选"
 
 
-msgid "[{}]: \"{}\" ({})"
-msgstr "[{}]: \"{}\" ({})"
-
-
 msgid "Tracking"
 msgstr "追踪"
 
@@ -106052,13 +105952,13 @@ msgid "Restore"
 msgstr "恢复"
 
 
-msgid "%s (Global)"
-msgstr "%s (全局)"
-
-
 msgctxt "WindowManager"
 msgid "Add New"
 msgstr "新增"
+
+
+msgid "%s (Global)"
+msgstr "%s (全局)"
 
 
 msgctxt "Operator"
@@ -106375,14 +106275,6 @@ msgid "Current frame not within strip framerange"
 msgstr "当前帧不在片段帧范围内"
 
 
-msgid "Remove Add-on: %r?"
-msgstr "删除插件: %r?"
-
-
-msgid "Path: %r"
-msgstr "路径: %r"
-
-
 msgid "Reload Start-Up file to restore settings"
 msgstr "重新加载启动文件以还原设置"
 
@@ -106447,6 +106339,14 @@ msgid "Source file is in the add-on search path: %r"
 msgstr "源文件位于插件查找路径中: %r"
 
 
+msgid "Remove Add-on: %r?"
+msgstr "删除插件: %r?"
+
+
+msgid "Path: %r"
+msgstr "路径: %r"
+
+
 msgid "Active face must be a quad"
 msgstr "活动面必须是四边形"
 
@@ -106467,10 +106367,6 @@ msgid "See OperatorList.txt text block"
 msgstr "见OperatorList.txt 文本块"
 
 
-msgid "Rename %d %s"
-msgstr "重命名 %d %s"
-
-
 msgid "Renamed %d of %d %s"
 msgstr "已重命名 %d of %d %s"
 
@@ -106486,18 +106382,6 @@ msgstr "主题"
 msgctxt "Operator"
 msgid "Open..."
 msgstr "打开..."
-
-
-msgid "Date: %s %sutf-8replaceutf-8replace"
-msgstr "日期: %s %sutf-8replaceutf-8replace"
-
-
-msgid "Hash: %sascii"
-msgstr "哈希: %sascii"
-
-
-msgid "Branch: %sutf-8replace"
-msgstr "分支: %sutf-8replace"
 
 
 msgid "Blender is free software"
@@ -106565,11 +106449,6 @@ msgstr "空格"
 
 
 msgctxt "Operator"
-msgid "Load %d.%d SettingsOperator"
-msgstr "加载 %d.%d 设置操作"
-
-
-msgctxt "Operator"
 msgid "Save New Settings"
 msgstr "保存新设置"
 
@@ -106591,10 +106470,6 @@ msgstr "发布说明"
 msgctxt "Operator"
 msgid "Development Fund"
 msgstr "开发筹资"
-
-
-msgid "Windowing Environment: %s"
-msgstr "窗口环境：%s"
 
 
 msgctxt "Operator"
@@ -106780,6 +106655,10 @@ msgid "Strip From"
 msgstr "片段来自"
 
 
+msgid "Rename %d %s"
+msgstr "重命名 %d %s"
+
+
 msgid "Date: %s %s"
 msgstr "日期: %s %s"
 
@@ -106811,6 +106690,10 @@ msgstr "无效正则表达式(查找): "
 msgctxt "Operator"
 msgid "Load %d.%d Settings"
 msgstr "加载 %d.%d 设置"
+
+
+msgid "Windowing Environment: %s"
+msgstr "窗口环境：%s"
 
 
 msgid "Type \"%s\" can not be found"
@@ -107325,10 +107208,6 @@ msgstr "删除全部形态键"
 msgctxt "Operator"
 msgid "Apply All Shape Keys"
 msgstr "应用全部形态键"
-
-
-msgid "%s ▶ %s"
-msgstr "%s ▶ %s"
 
 
 msgid "Name collisions: , "
@@ -107999,20 +107878,8 @@ msgid "Hair dynamics disabled"
 msgstr "已禁用毛发动力学"
 
 
-msgid "Iterations: %d .. %d (avg. %d)"
-msgstr "迭代：%d .. %d (avg. %d)"
-
-
-msgid "Error: %.5f .. %.5f (avg. %.5f)"
-msgstr "错误: %.5f .. %.5f (avg. %.5f)"
-
-
 msgid "Multiply Mass with Size"
 msgstr "将粒子尺寸与质量相乘"
-
-
-msgid "Spacing: %g"
-msgstr "间隔: %g"
 
 
 msgid "Show Emitter"
@@ -108059,10 +107926,6 @@ msgid "Coordinate System"
 msgstr "坐标系系统"
 
 
-msgid "%d fluid particles for this frame"
-msgstr "此帧包含 %d 个液体粒子"
-
-
 msgctxt "Operator"
 msgid "Delete Edit"
 msgstr "删除编辑"
@@ -108074,6 +107937,18 @@ msgstr "使用时序"
 
 msgid "Display percentage makes dynamics inaccurate without baking"
 msgstr "在非烘焙情况下非精确仿真效果的显示百分比"
+
+
+msgid "Iterations: %d .. %d (avg. %d)"
+msgstr "迭代：%d .. %d (avg. %d)"
+
+
+msgid "Error: %.5f .. %.5f (avg. %.5f)"
+msgstr "错误: %.5f .. %.5f (avg. %.5f)"
+
+
+msgid "Spacing: %g"
+msgstr "间隔: %g"
 
 
 msgid "Not yet functional"
@@ -108088,6 +107963,10 @@ msgstr "全部连接"
 msgctxt "Operator"
 msgid "Disconnect All"
 msgstr "全部断开"
+
+
+msgid "%d fluid particles for this frame"
+msgstr "此帧包含 %d 个液体粒子"
 
 
 msgid "Speed Multiplier"
@@ -108550,6 +108429,10 @@ msgid "This object is part of a compound shape"
 msgstr "此物体是复合形状的一部分"
 
 
+msgid "Second"
+msgstr "第二"
+
+
 msgid "X Stiffness"
 msgstr "X 硬度"
 
@@ -108760,11 +108643,6 @@ msgstr "精确模式"
 
 msgid "Unknown add-ons"
 msgstr "未知插件"
-
-
-msgctxt "Operator"
-msgid "%s: %s"
-msgstr "%s：%s"
 
 
 msgid "category"
@@ -109043,11 +108921,6 @@ msgstr "用于旋转/缩放的轨迹"
 
 
 msgctxt "Operator"
-msgid "Zoom %d:%d"
-msgstr "缩放比 %d:%d"
-
-
-msgctxt "Operator"
 msgid "View Fit"
 msgstr "匹配视图"
 
@@ -109067,12 +108940,12 @@ msgid "Frame All Fit"
 msgstr "框显完全匹配"
 
 
-msgid "Solve error: %.2f px"
-msgstr "解算错误: %.2f px"
-
-
 msgid "Zoom %d:%d"
 msgstr "缩放比 %d:%d"
+
+
+msgid "Solve error: %.2f px"
+msgstr "解算错误: %.2f px"
 
 
 msgctxt "Operator"
@@ -110460,10 +110333,6 @@ msgid "Default Fade"
 msgstr "默认过渡"
 
 
-msgid "Original frame range: %d-%d (%d)"
-msgstr "原始帧范围: %d-%d (%d)"
-
-
 msgid "Strip Offset Start"
 msgstr "片段偏移量起始"
 
@@ -110527,14 +110396,6 @@ msgid "Effect Fader"
 msgstr "效果渐变"
 
 
-msgid "%dx%d"
-msgstr "%dx%d"
-
-
-msgid "%.2f"
-msgstr "%.2f"
-
-
 msgid "Original Frame Range"
 msgstr "原始帧范围"
 
@@ -110559,8 +110420,8 @@ msgid "Pack"
 msgstr "打包"
 
 
-msgid "%d Hz"
-msgstr "%d Hz"
+msgid "Original frame range: %d-%d (%d)"
+msgstr "原始帧范围: %d-%d (%d)"
 
 
 msgid "Source Channel"
@@ -110675,10 +110536,6 @@ msgstr "向上移行"
 msgctxt "Operator"
 msgid "Move Line(s) Down"
 msgstr "向下移行"
-
-
-msgid "Text: ExternalText: Internal"
-msgstr "文本: 外部文本; 内部"
 
 
 msgid "File: *%s (unsaved)"
@@ -111006,11 +110863,6 @@ msgstr "加载Blender初始设置"
 
 
 msgctxt "Operator"
-msgid "Load Factory %s Settings"
-msgstr "加载初始 %s 设置"
-
-
-msgctxt "Operator"
 msgid "Collada (.dae)"
 msgstr "Collada (.dae)"
 
@@ -111113,6 +110965,11 @@ msgstr "节点标签"
 
 msgid "NLA Strip Name"
 msgstr "NLA片段名称"
+
+
+msgctxt "Operator"
+msgid "Load Factory %s Settings"
+msgstr "加载初始 %s 设置"
 
 
 msgid "Auto-Save Preferences"
@@ -111289,10 +111146,6 @@ msgid "Playback Frame Rate (FPS)"
 msgstr "播放帧率(FPS)"
 
 
-msgid "3D Viewport Axis"
-msgstr "3D 视图轴向"
-
-
 msgid "Smooth Wires"
 msgstr "平滑线框"
 
@@ -111408,21 +111261,8 @@ msgid "Load Factory Blender Preferences"
 msgstr "加载初始Blender偏好设置"
 
 
-msgctxt "Operator"
-msgid "Load Factory %s Preferences"
-msgstr "加载初始 %s 偏好设置"
-
-
 msgid "Requires a restart of Blender to take effect"
 msgstr "需要重新启动 Blender 才能生效"
-
-
-msgid "Color Set %d"
-msgstr "颜色集 %d"
-
-
-msgid "Color %d"
-msgstr "颜色 %d"
 
 
 msgid "Player"
@@ -111465,6 +111305,14 @@ msgid "Load Factory %s Preferences"
 msgstr "加载初始 %s 偏好设置"
 
 
+msgid "Color Set %d"
+msgstr "颜色集 %d"
+
+
+msgid "Color %d"
+msgstr "颜色 %d"
+
+
 msgid "Description:"
 msgstr "描述:"
 
@@ -111479,10 +111327,6 @@ msgstr "文件:"
 
 msgid "Author:"
 msgstr "作者:"
-
-
-msgid "author"
-msgstr "作者"
 
 
 msgid "Version:"
@@ -112643,10 +112487,6 @@ msgstr "零权重"
 
 msgid "Snap To"
 msgstr "吸附至"
-
-
-msgid "PAINT_GPENCILEDIT_GPENCILSCULPT_GPENCILWEIGHT_GPENCILVERTEX_GPENCILOBJECTDraw Grease PencilEdit Grease PencilSculpt Grease PencilWeight Grease PencilVertex Grease PencilGrease Pencil"
-msgstr "PAINT_GPENCILEDIT_GPENCILSCULPT_GPENCILWEIGHT_GPENCILVERTEX_GPENCILOBJECTDraw Grease PencilEdit Grease PencilSculpt Grease PencilWeight Grease PencilVertex Grease PencilGrease Pencil"
 
 
 msgid "Fade Inactive Layers"
@@ -120569,10 +120409,6 @@ msgid "Undefined Socket Type"
 msgstr "未定义的接口类型"
 
 
-msgid "Group Input "
-msgstr "组输入 "
-
-
 msgid "Could not determine type of group node"
 msgstr "无法确定组节点的类型"
 
@@ -122845,10 +122681,6 @@ msgid "Driver not found in this animation data"
 msgstr "未能在该动画数据中找到驱动器"
 
 
-msgid "Registering keying set info class: '%s' is too long, maximum length is %d"
-msgstr "将帧设置注册至类: '%s' 太长, 最大长度为 %d"
-
-
 msgid "NlaTrack '%s' cannot be removed"
 msgstr "无法移除 NLA 轨道 '%s'"
 
@@ -123424,22 +123256,6 @@ msgid "NLA strip '%s' not found in track '%s'"
 msgstr "NLA 片段 '%s' 未在轨道 '%s' 中找到"
 
 
-msgid "Functions"
-msgstr "函数"
-
-
-msgid "Comparison"
-msgstr "比较"
-
-
-msgid "Trigonometric"
-msgstr "三角函数"
-
-
-msgid "Conversion"
-msgstr "转换"
-
-
 msgid "CustomGroup"
 msgstr "自定义组"
 
@@ -123480,10 +123296,6 @@ msgid "Unable to move sockets in built-in node"
 msgstr "无法移动内置节点中的接口"
 
 
-msgid "Registering node tree class: '%s' is too long, maximum length is %d"
-msgstr "注册节点树类: '%s' 过长, 最大长度为 %d"
-
-
 msgid "Node tree '%s' has undefined type %s"
 msgstr "节点树 '%s' 包含未定义的类型 '%s'"
 
@@ -123510,10 +123322,6 @@ msgstr "无法在节点树中找到节点 '%s'"
 
 msgid "Unable to locate socket '%s' in node"
 msgstr "无法在节点上找到接口 '%s'"
-
-
-msgid "Registering node class: '%s' is too long, maximum length is %d"
-msgstr "注册节点类: '%s' 过长, 最大长度为 %d"
 
 
 msgid "Registering node socket class: '%s' is too long, maximum length is %d"
@@ -123705,10 +123513,6 @@ msgid "Invalid index %d for B-Bone segments of '%s'!"
 msgstr "索引 %d 对柔性骨骼分段 '%s' 无效!"
 
 
-msgid "Registering render engine class: '%s' is too long, maximum length is %d"
-msgstr "注册的渲染引擎类: '%s' 太长, 最大长度为 %d"
-
-
 msgid "A non convex collision shape was passed to the function, use only convex collision shapes"
 msgstr "向函数传递了没有设置为凸壳的碰撞形状, 只使用凸壳作为碰撞形状"
 
@@ -123833,30 +123637,6 @@ msgid "Region not found in space type"
 msgstr "空间类型里找不到区域"
 
 
-msgid "Registering panel class: '%s' is too long, maximum length is %d"
-msgstr "注册的面板类: '%s' 太长, 最大长度为 %d"
-
-
-msgid "Registering panel class: '%s' has category '%s' "
-msgstr "注册面板类: '%s'具有类别'%s' "
-
-
-msgid "Registering panel class: parent '%s' for '%s' not found"
-msgstr "注册面板类: '%s' 作为 '%s' 父级未找到"
-
-
-msgid "Registering uilist class: '%s' is too long, maximum length is %d"
-msgstr "注册的工具类: '%s' 太长, 最大长度为 %d"
-
-
-msgid "Registering header class: '%s' is too long, maximum length is %d"
-msgstr "注册的标题栏类: '%s' 太长, 最大长度为 %d"
-
-
-msgid "Registering menu class: '%s' is too long, maximum length is %d"
-msgstr "注册的菜单类: '%s' 太长, 最大长度为 %d"
-
-
 msgid "Add-on is no longer valid"
 msgstr "插件已失效"
 
@@ -123865,16 +123645,8 @@ msgid "Excluded path is no longer valid"
 msgstr "已排除路径不再有效"
 
 
-msgid "Registering add-on preferences class: '%s' is too long, maximum length is %d"
-msgstr "注册插件设置类: '%s' 太长, 最大的长度是 %d"
-
-
 msgid "Font not packed"
 msgstr "未打包字体"
-
-
-msgid "Registering key-config preferences class: '%s' is too long, maximum length is %d"
-msgstr "注册键位配置设置类: '%s'过长, 长度上限为 %d"
 
 
 msgid "Not a non-modal keymap"
@@ -123937,24 +123709,12 @@ msgid "KeyConfig '%s' cannot be removed"
 msgstr "无法移除键配置 %s"
 
 
-msgid "Area type does not support gizmos"
-msgstr "区域类型不支持Gizmo"
-
-
-msgid "Registering gizmo class: '%s' is too long, maximum length is %d"
-msgstr "注册Gizmo类:'%s' 过长,最大长度为 %d"
-
-
 msgid "GizmoType '%s' not known"
 msgstr "未知Gizmo类型 '%s'"
 
 
 msgid "GizmoType '%s' is for a 3D gizmo-group. The 'draw_select' callback is set where only 'test_select' will be used"
 msgstr "Gizmo类型 '%s' 用于三维gizmo组. 在将用到 'test_select' 的位置设置了 'draw_select' 回调"
-
-
-msgid "Registering gizmogroup class: '%s' is too long, maximum length is %d"
-msgstr "注册Gizmo群组类:'%s' 过长,最大长度为 %d"
 
 
 msgid "Gizmo target property '%s.%s' not found"

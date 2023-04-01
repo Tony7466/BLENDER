@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006-2007 Blender Foundation. All rights reserved. */
+ * Copyright 2006-2007 Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -48,9 +48,9 @@ static int last_studiolight_id = 0;
  */
 #define STUDIOLIGHT_LOAD_CACHED_FILES
 
-static const char *STUDIOLIGHT_LIGHTS_FOLDER = "studiolights/studio/";
-static const char *STUDIOLIGHT_WORLD_FOLDER = "studiolights/world/";
-static const char *STUDIOLIGHT_MATCAP_FOLDER = "studiolights/matcap/";
+static const char *STUDIOLIGHT_LIGHTS_FOLDER = "studiolights" SEP_STR "studio" SEP_STR;
+static const char *STUDIOLIGHT_WORLD_FOLDER = "studiolights" SEP_STR "world" SEP_STR;
+static const char *STUDIOLIGHT_MATCAP_FOLDER = "studiolights" SEP_STR "matcap" SEP_STR;
 
 static const char *STUDIOLIGHT_WORLD_DEFAULT = "forest.exr";
 static const char *STUDIOLIGHT_MATCAP_DEFAULT = "basic_1.exr";

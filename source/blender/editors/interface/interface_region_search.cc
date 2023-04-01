@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup edinterface
@@ -651,7 +651,7 @@ static void ui_searchbox_region_draw_fn(const bContext *C, ARegion *region)
 
           if (icon == ICON_BLANK1) {
             icon = ICON_NONE;
-            rect.xmin -= UI_DPI_ICON_SIZE / 4;
+            rect.xmin -= UI_ICON_SIZE / 4;
           }
 
           /* The previous menu item draws the active selection. */
@@ -762,7 +762,7 @@ static void ui_searchbox_region_layout_fn(const struct bContext *C, struct ARegi
 
     /* We should make this wider if there is a path or hint on the right. */
     if (ui_searchbox_item_separator(data) != UI_MENU_ITEM_SEPARATOR_NONE) {
-      searchbox_width += 12 * data->fstyle.points * U.dpi_fac;
+      searchbox_width += 12 * data->fstyle.points * UI_SCALE_FAC;
     }
 
     rctf rect_fl;

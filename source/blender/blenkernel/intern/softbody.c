@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright Blender Foundation. All rights reserved. */
+ * Copyright Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -567,11 +567,10 @@ static void ccd_update_deflector_hash(Depsgraph *depsgraph,
 static int count_mesh_quads(Mesh *me)
 {
   int a, result = 0;
-  const MPoly *mp = BKE_mesh_polys(me);
-
-  if (mp) {
-    for (a = me->totpoly; a > 0; a--, mp++) {
-      if (mp->totloop == 4) {
+  const MPoly *polys = BKE_mesh_polys(me);
+  if (polys) {
+    for (a = me->totpoly; a > 0; a--) {
+      if (polys[a].totloop == 4) {
         result++;
       }
     }
@@ -583,16 +582,14 @@ static void add_mesh_quad_diag_springs(Object *ob)
 {
   Mesh *me = ob->data;
   // BodyPoint *bp; /* UNUSED */
-  int a;
-
   if (ob->soft) {
     int nofquads;
     // float s_shear = ob->soft->shearstiff*ob->soft->shearstiff;
 
     nofquads = count_mesh_quads(me);
     if (nofquads) {
-      const MLoop *mloop = BKE_mesh_loops(me);
-      const MPoly *mp = BKE_mesh_polys(me);
+      const int *corner_verts = BKE_mesh_corner_verts(me);
+      const MPoly *polys = BKE_mesh_polys(me);
       BodySpring *bs;
 
       /* resize spring-array to hold additional quad springs */
@@ -600,17 +597,17 @@ static void add_mesh_quad_diag_springs(Object *ob)
                                         sizeof(BodySpring) * (ob->soft->totspring + nofquads * 2));
 
       /* fill the tail */
-      a = 0;
       bs = &ob->soft->bspring[ob->soft->totspring];
       // bp = ob->soft->bpoint; /* UNUSED */
-      for (a = me->totpoly; a > 0; a--, mp++) {
-        if (mp->totloop == 4) {
-          bs->v1 = mloop[mp->loopstart + 0].v;
-          bs->v2 = mloop[mp->loopstart + 2].v;
+      for (int a = 0; a < me->totpoly; a++) {
+        const MPoly *poly = &polys[a];
+        if (poly->totloop == 4) {
+          bs->v1 = corner_verts[poly->loopstart + 0];
+          bs->v2 = corner_verts[poly->loopstart + 2];
           bs->springtype = SB_STIFFQUAD;
           bs++;
-          bs->v1 = mloop[mp->loopstart + 1].v;
-          bs->v2 = mloop[mp->loopstart + 3].v;
+          bs->v1 = corner_verts[poly->loopstart + 1];
+          bs->v2 = corner_verts[poly->loopstart + 3];
           bs->springtype = SB_STIFFQUAD;
           bs++;
         }
@@ -2663,7 +2660,7 @@ static void mesh_to_softbody(Object *ob)
 {
   SoftBody *sb;
   Mesh *me = ob->data;
-  const MEdge *medge = BKE_mesh_edges(me);
+  const MEdge *edge = BKE_mesh_edges(me);
   BodyPoint *bp;
   BodySpring *bs;
   int a, totedge;
@@ -2718,11 +2715,11 @@ static void mesh_to_softbody(Object *ob)
 
   /* but we only optionally add body edge springs */
   if (ob->softflag & OB_SB_EDGES) {
-    if (medge) {
+    if (edge) {
       bs = sb->bspring;
-      for (a = me->totedge; a > 0; a--, medge++, bs++) {
-        bs->v1 = medge->v1;
-        bs->v2 = medge->v2;
+      for (a = me->totedge; a > 0; a--, edge++, bs++) {
+        bs->v1 = edge->v1;
+        bs->v2 = edge->v2;
         bs->springtype = SB_EDGE;
       }
 
@@ -2756,21 +2753,22 @@ static void mesh_faces_to_scratch(Object *ob)
   int a;
   const float(*vert_positions)[3] = BKE_mesh_vert_positions(me);
   const MPoly *polys = BKE_mesh_polys(me);
-  const MLoop *loops = BKE_mesh_loops(me);
+  const int *corner_verts = BKE_mesh_corner_verts(me);
 
   /* Allocate and copy faces. */
 
   sb->scratch->totface = poly_to_tri_count(me->totpoly, me->totloop);
   looptri = lt = MEM_mallocN(sizeof(*looptri) * sb->scratch->totface, __func__);
-  BKE_mesh_recalc_looptri(loops, polys, vert_positions, me->totloop, me->totpoly, looptri);
+  BKE_mesh_recalc_looptri(
+      corner_verts, polys, vert_positions, me->totvert, me->totloop, me->totpoly, looptri);
 
   bodyface = sb->scratch->bodyface = MEM_mallocN(sizeof(BodyFace) * sb->scratch->totface,
                                                  "SB_body_Faces");
 
   for (a = 0; a < sb->scratch->totface; a++, lt++, bodyface++) {
-    bodyface->v1 = loops[lt->tri[0]].v;
-    bodyface->v2 = loops[lt->tri[1]].v;
-    bodyface->v3 = loops[lt->tri[2]].v;
+    bodyface->v1 = corner_verts[lt->tri[0]];
+    bodyface->v2 = corner_verts[lt->tri[1]];
+    bodyface->v3 = corner_verts[lt->tri[2]];
     zero_v3(bodyface->ext_force);
     bodyface->ext_force[0] = bodyface->ext_force[1] = bodyface->ext_force[2] = 0.0f;
     bodyface->flag = 0;
@@ -3600,9 +3598,9 @@ void sbObjectStep(struct Depsgraph *depsgraph,
     /* pass */
   }
   else if (/*ob->id.lib || */
-           /* "library linking & pointcaches" has to be solved properly at some point */
+           /* "library linking & point-caches" has to be solved properly at some point. */
            (cache->flag & PTCACHE_BAKED)) {
-    /* if baked and nothing in cache, do nothing */
+    /* If baked and nothing in cache, do nothing. */
     if (can_write_cache) {
       BKE_ptcache_invalidate(cache);
     }

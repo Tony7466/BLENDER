@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -167,11 +167,12 @@ GPUNodeLink *GPU_image(GPUMaterial *mat,
                        struct Image *ima,
                        struct ImageUser *iuser,
                        eGPUSamplerState sampler_state);
-GPUNodeLink *GPU_image_tiled(GPUMaterial *mat,
-                             struct Image *ima,
-                             struct ImageUser *iuser,
-                             eGPUSamplerState sampler_state);
-GPUNodeLink *GPU_image_tiled_mapping(GPUMaterial *mat, struct Image *ima, struct ImageUser *iuser);
+void GPU_image_tiled(GPUMaterial *mat,
+                     struct Image *ima,
+                     struct ImageUser *iuser,
+                     eGPUSamplerState sampler_state,
+                     GPUNodeLink **r_image_tiled_link,
+                     GPUNodeLink **r_image_tiled_mapping_link);
 GPUNodeLink *GPU_image_sky(GPUMaterial *mat,
                            int width,
                            int height,

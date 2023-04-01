@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup spnode
  */
 
 #include "DNA_ID.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_light_types.h"
 #include "DNA_material_types.h"
 #include "DNA_node_types.h"
@@ -15,7 +15,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BKE_context.h"
-#include "BKE_gpencil.h"
+#include "BKE_gpencil_legacy.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_remap.h"
 #include "BKE_node.h"
@@ -402,9 +402,14 @@ static void node_area_listener(const wmSpaceTypeListenerParams *params)
         case ND_FRAME:
           node_area_tag_tree_recalc(snode, area);
           break;
-        case ND_COMPO_RESULT:
+        case ND_COMPO_RESULT: {
           ED_area_tag_redraw(area);
+          /* Backdrop image offset is calculated during compositing so gizmos need to be updated
+           * afterwards. */
+          const ARegion *region = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
+          WM_gizmomap_tag_refresh(region->gizmo_map);
           break;
+        }
         case ND_TRANSFORM_DONE:
           node_area_tag_recalc_auto_compositing(snode, area);
           break;
@@ -616,8 +621,8 @@ static void node_cursor(wmWindow *win, ScrArea *area, ARegion *region)
   node_set_cursor(*win, *snode, snode->runtime->cursor);
 
   /* XXX snode->runtime->cursor is in placing new nodes space */
-  snode->runtime->cursor[0] /= UI_DPI_FAC;
-  snode->runtime->cursor[1] /= UI_DPI_FAC;
+  snode->runtime->cursor[0] /= UI_SCALE_FAC;
+  snode->runtime->cursor[1] /= UI_SCALE_FAC;
 }
 
 /* Initialize main region, setting handlers. */
@@ -950,7 +955,7 @@ static void node_id_remap_cb(ID *old_id, ID *new_id, void *user_data)
       snode->from = new_id;
     }
   }
-  else if (GS(old_id->name) == ID_GD) {
+  else if (GS(old_id->name) == ID_GD_LEGACY) {
     if ((ID *)snode->gpd == old_id) {
       snode->gpd = (bGPdata *)new_id;
       id_us_min(old_id);
