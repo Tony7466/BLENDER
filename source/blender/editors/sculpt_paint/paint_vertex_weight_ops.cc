@@ -8,6 +8,7 @@
 
 #include "BLI_bitmap.h"
 #include "BLI_math.h"
+#include "BLI_virtual_array.hh"
 
 #include "DNA_brush_types.h"
 #include "DNA_mesh_types.h"
@@ -19,6 +20,7 @@
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
 
+#include "BKE_attribute.hh"
 #include "BKE_brush.h"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
@@ -592,6 +594,7 @@ struct WPGradient_userData {
   Mesh *me;
   MDeformVert *dvert;
   const bool *select_vert;
+  blender::VArray<bool> hide_vert;
   Brush *brush;
   const float *sco_start; /* [2] */
   const float *sco_end;   /* [2] */
@@ -675,6 +678,10 @@ static void gradientVertUpdate__mapFunc(void *userData,
   WPGradient_vertStore *vs = &grad_data->vert_cache->elem[index];
 
   if (vs->sco[0] == FLT_MAX) {
+    return;
+  }
+
+  if (grad_data->hide_vert[index]) {
     return;
   }
 
@@ -815,12 +822,15 @@ static int paint_weight_gradient_exec(bContext *C, wmOperator *op)
         __func__));
   }
 
+  const blender::bke::AttributeAccessor attributes = me->attributes();
+
   data.region = region;
   data.scene = scene;
   data.me = me;
   data.dvert = dverts;
   data.select_vert = (const bool *)CustomData_get_layer_named(
       &me->vdata, CD_PROP_BOOL, ".select_vert");
+  data.hide_vert = attributes.lookup_or_default<bool>(".hide_vert", ATTR_DOMAIN_POINT, false);
   data.sco_start = sco_start;
   data.sco_end = sco_end;
   data.sco_line_div = 1.0f / len_v2v2(sco_start, sco_end);
