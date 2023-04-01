@@ -492,11 +492,13 @@ IndexMask IndexMask::from_bools(const IndexMask &universe,
                                 const VArray<bool> &bools,
                                 IndexMaskMemory &memory)
 {
-  if (const std::optional<bool> single_value = bools.get_if_single()) {
-    if (*single_value) {
-      return universe;
-    }
-    return {};
+  const CommonVArrayInfo info = bools.common_info();
+  if (info.type == CommonVArrayInfo::Type::Single) {
+    return *static_cast<const bool *>(info.data) ? universe : IndexMask();
+  }
+  if (info.type == CommonVArrayInfo::Type::Span) {
+    const Span<bool> span(static_cast<const bool *>(info.data), bools.size());
+    return from_bools(universe, span, memory);
   }
   return IndexMask::from_predicate(
       universe, GrainSize(512), memory, [&](const int64_t index) { return bools[index]; });
