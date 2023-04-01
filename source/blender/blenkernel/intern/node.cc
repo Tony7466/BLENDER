@@ -2355,40 +2355,25 @@ bNode *node_copy_with_mapping(bNodeTree *dst_tree,
   return node_dst;
 }
 
-static bNodeTree *node_find_tree_by_name(Main &bmain, const StringRef tree_name)
+static void for_each_node_group_instance(Main &bmain,
+                                         ID *node_group,
+                                         const Span<int> tree_types_to_lookup,
+                                         const FunctionRef<void(bNode &)> func)
 {
-  LISTBASE_FOREACH (bNodeTree *, node_tree, &bmain.nodetrees) {
-    if (node_tree->id.name == tree_name) {
-      return node_tree;
-    }
-  }
-  return nullptr;
-}
-
-static void for_each_group_socket_instance(Main &bmain,
-                                           const StringRef group_identifier,
-                                           const StringRef socket_identifier,
-                                           const Span<int> tree_types_to_lookup,
-                                           const FunctionRef<void(bNodeSocket &)> func)
-{
-  const bNodeTree *target_tree = node_find_tree_by_name(bmain, group_identifier);
-
+  BLI_assert(node_group != nullptr);
   LISTBASE_FOREACH (bNodeTree *, other_group, &bmain.nodetrees) {
     if (!tree_types_to_lookup.contains(other_group->type)) {
       continue;
     }
-    if (other_group == target_tree) {
+    if (reinterpret_cast<const ID *>(other_group) == node_group) {
       continue;
     }
 
     other_group->ensure_topology_cache();
-    const ID *group_tree_id = reinterpret_cast<const ID *>(target_tree);
     for (bNode *node : other_group->group_nodes()) {
-      if (node->id != group_tree_id) {
-        continue;
+      if (node->id == node_group) {
+        func(*node);
       }
-      bNodeSocket &group_input_socket = node->input_by_identifier(socket_identifier);
-      func(group_input_socket);
     }
   }
 }
@@ -2429,14 +2414,9 @@ void node_socket_default_value(Main &bmain, bNodeTree &tree, bNodeSocket &src, b
           break;
         }
         case NODE_GROUP_INPUT: {
-          const StringRef socket_identifier(dst.identifier);
-          const StringRef group_identifier(tree.id.name);
-          for_each_group_socket_instance(
-              bmain,
-              group_identifier,
-              socket_identifier,
-              {NTREE_GEOMETRY},
-              [&](bNodeSocket &socket) {
+          for_each_node_group_instance(
+              bmain, reinterpret_cast<ID *>(&tree), {NTREE_GEOMETRY}, [&](bNode &node_group) {
+                bNodeSocket &socket = node_group.input_by_identifier(dst.identifier);
                 Image **tmp_dst_value =
                     &socket.default_value_typed<bNodeSocketValueImage>()->value;
                 dst_values.append(reinterpret_cast<ID **>(tmp_dst_value));
