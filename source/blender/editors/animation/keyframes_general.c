@@ -462,38 +462,65 @@ void fft_filter_fcurve_segment(FCurve *fcu,
   const float end_frame = fcu->bezt[segment->start_index + segment->length - 1].vec[1][0];
   const int sample_count = (int)(end_frame - start_frame) + 1;
   float *samples = MEM_callocN(sizeof(float) * sample_count, "FFT Samples");
+  float *samples_dist = MEM_callocN(sizeof(float) * sample_count, "FFT Samples Dist");
   sample_fcurve_segment(fcu, start_frame, samples, sample_count);
 
   float length_curve = 0;
+  samples_dist[0] = 0.0f;
   for (int i = 1; i < sample_count; i++) {
-    length_curve += sqrt(1 + pow2f(samples_y[i - 1] - samples_y[i]));
-    curve_length_y[i] = length_curve;
+    /* Assumes that curve between frames is linear, which is usually approximately right. */
+    length_curve += sqrt(1 + pow2f(samples[i - 1] - samples[i]));
+    samples_dist[i] = length_curve;
   }
 
-  fftw_complex *sample_data = MEM_callocN(sizeof(fftw_complex) * sample_count, "fftw_sample_data");
+  const float sample_distance = 0.5f;
+  const int eq_dist_sample_count = (int)(length_curve / sample_distance) + 1;
+  vec2f *eq_dist_samples = MEM_callocN(sizeof(vec2f) * eq_dist_sample_count, "EQ FFT Samples");
 
-  for (int i = 0; i < sample_count; i++) {
-    sample_data[i][0] = (double)samples[i];
+  float cumulative_distance = 0;
+  int sample_index = 1;
+  int eq_dist_index = 0;
+  while (sample_index < sample_count && eq_dist_index < eq_dist_sample_count) {
+    const float interp_fac = (cumulative_distance - samples_dist[sample_index - 1]) /
+                             (samples_dist[sample_index] - samples_dist[sample_index - 1]);
+    const float eval_time = interpf(
+        start_frame + sample_index, start_frame + sample_index - 1, interp_fac);
+
+    eq_dist_samples[eq_dist_index].x = eval_time;
+    eq_dist_samples[eq_dist_index].y = evaluate_fcurve(fcu, eval_time);
+    eq_dist_index++;
+    cumulative_distance += sample_distance;
+    if (cumulative_distance > samples_dist[sample_index]) {
+      sample_index++;
+    }
+  }
+
+  fftw_complex *sample_data = MEM_callocN(sizeof(fftw_complex) * eq_dist_sample_count,
+                                          "fftw_sample_data");
+
+  for (int i = 0; i < eq_dist_sample_count; i++) {
+    sample_data[i][0] = (double)eq_dist_samples[i].y;
     sample_data[i][1] = 0;
   }
 
-  fftw_complex *spectrum = MEM_mallocN(sizeof(fftw_complex) * sample_count, "fftw_spectrum");
+  fftw_complex *spectrum = MEM_mallocN(sizeof(fftw_complex) * eq_dist_sample_count,
+                                       "fftw_spectrum");
 
   fftw_plan fft_plan_forward = fftw_plan_dft_1d(
-      sample_count, sample_data, spectrum, FFTW_FORWARD, FFTW_ESTIMATE);
+      eq_dist_sample_count, sample_data, spectrum, FFTW_FORWARD, FFTW_ESTIMATE);
   fftw_plan fft_plan_backward = fftw_plan_dft_1d(
-      sample_count, spectrum, sample_data, FFTW_BACKWARD, FFTW_ESTIMATE);
+      eq_dist_sample_count, spectrum, sample_data, FFTW_BACKWARD, FFTW_ESTIMATE);
 
   fftw_execute(fft_plan_forward);
   fftw_destroy_plan(fft_plan_forward);
 
   const double euler = 2.71828182845904523536;
-  for (int i = 0; i < sample_count; i++) {
+  for (int i = 0; i < eq_dist_sample_count; i++) {
     const double real = spectrum[i][0];
     const double imaginary = spectrum[i][1];
 
     /* Percent of frequency tuples.  */
-    const double frq_percent = (double)(i) / (double)(sample_count - 1);
+    const double frq_percent = (double)(i) / (double)(eq_dist_sample_count - 1);
 
     /* Before frequency cutoff keep tuples untouched. */
     if (frq_percent < C) {
@@ -501,7 +528,7 @@ void fft_filter_fcurve_segment(FCurve *fcu,
     }
 
     /* Will be between 0 and 1. */
-    double frq_factor = interpd(0, 1, (frq_percent - C) / (C + falloff_width));
+    double frq_factor = interpd(0, 1, (frq_percent - C) / falloff_width);
     frq_factor = frq_factor < 0 ? 0 : frq_factor;
     spectrum[i][0] = real * frq_factor;
     spectrum[i][1] = imaginary * frq_factor;
@@ -510,14 +537,27 @@ void fft_filter_fcurve_segment(FCurve *fcu,
   fftw_execute(fft_plan_backward);
   fftw_destroy_plan(fft_plan_backward);
 
+  eq_dist_index = 1;
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
-    const int sample_index = (int)(fcu->bezt[i].vec[1][0] -
-                                   fcu->bezt[segment->start_index].vec[1][0]);
-    fcu->bezt[i].vec[1][1] = (float)sample_data[sample_index][0] / sample_count;
+    const float key_x = fcu->bezt[i].vec[1][0];
+    while (key_x > eq_dist_samples[eq_dist_index].x && eq_dist_index < eq_dist_sample_count) {
+      eq_dist_index++;
+    }
+    if (eq_dist_index >= eq_dist_sample_count) {
+      break;
+    }
+    const double lerp_fac = (eq_dist_samples[eq_dist_index].x - key_x) /
+                            (eq_dist_samples[eq_dist_index].x -
+                             eq_dist_samples[eq_dist_index - 1].x);
+    const double foo = interpd(
+        sample_data[eq_dist_index][0], sample_data[eq_dist_index - 1][0], lerp_fac);
+    fcu->bezt[i].vec[1][1] = (float)foo / eq_dist_sample_count;
   }
 
   MEM_SAFE_FREE(spectrum);
   MEM_freeN(samples);
+  MEM_freeN(samples_dist);
+  MEM_freeN(eq_dist_samples);
   MEM_freeN(sample_data);
 }
 
