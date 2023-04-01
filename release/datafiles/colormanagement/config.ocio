@@ -45,6 +45,7 @@ displays:
     - !<View> {name: AgX Log,colorspace: AgX Log}
     - !<View> {name: AgX False Color, colorspace: AgX False Color}
     - !<View> {name: None, colorspace: Non-Color}
+    - !<View> {name: Legacy Standard, colorspace: sRGB}
   Display P3:
     - !<View> {name: Standard, colorspace: Guard Rail P3}
     - !<View> {name: AgX, colorspace: AgX Base Display P3}
