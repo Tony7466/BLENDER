@@ -2138,11 +2138,10 @@ void present(MTLRenderPassDescriptor *blit_descriptor,
   MTLCommandBufferManager::num_active_cmd_bufs++;
 
   if (MTLCommandBufferManager::sync_event != nil) {
-    /* Create new synchronization event for next frame of work
-     * We require synchronisation for command submissions within
-     * a frame to ensure that workload order remains, however,
-     * we can avoid creating excessive schdeuling dependencies
-     * by splitting events per frame. */
+    /* Release synchronization primitive for current frame to avoid cross-frame dependencies.
+     * We require MTLEvents to ensure correct ordering of workload submissions within a frame,
+     * however, we should not create long chains of dependencies spanning several drawables as any
+     * temporary stalls can then trigger erroneous GPU timeouts in non-dependent submsisions.  */
     [MTLCommandBufferManager::sync_event release];
     MTLCommandBufferManager::sync_event = nil;
     MTLCommandBufferManager::event_signal_val = 0;
