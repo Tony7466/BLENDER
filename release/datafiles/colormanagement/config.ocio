@@ -39,30 +39,33 @@ file_rules:
 
 displays:
   sRGB:
-    - !<View> {name: Standard, colorspace: Guard Rail sRGB}
+    - !<View> {name: Guard Rail, colorspace: Guard Rail sRGB}
     - !<View> {name: AgX, colorspace: AgX Base sRGB}
     - !<View> {name: Filmic, colorspace: Filmic sRGB}
     - !<View> {name: AgX Log,colorspace: AgX Log}
     - !<View> {name: AgX False Color, colorspace: AgX False Color}
+    - !<View> {name: Standard, colorspace: sRGB}
     - !<View> {name: None, colorspace: Non-Color}
-    - !<View> {name: Legacy Standard, colorspace: sRGB}
   Display P3:
-    - !<View> {name: Standard, colorspace: Guard Rail P3}
+    - !<View> {name: Guard Rail, colorspace: Guard Rail P3}
     - !<View> {name: AgX, colorspace: AgX Base Display P3}
     - !<View> {name: AgX Log,colorspace: AgX Log}
     - !<View> {name: AgX False Color, colorspace: AgX False Color}
+    - !<View> {name: Standard, colorspace: Display P3}
     - !<View> {name: None, colorspace: Non-Color}
   BT.1886:
-    - !<View> {name: Standard, colorspace: Guard Rail BT.1886}
+    - !<View> {name: Guard Rail, colorspace: Guard Rail BT.1886}
     - !<View> {name: AgX, colorspace: AgX Base BT.1886}
     - !<View> {name: AgX Log,colorspace: AgX Log}
     - !<View> {name: AgX False Color, colorspace: AgX False Color}
+    - !<View> {name: Standard, colorspace: BT.1886}
     - !<View> {name: None, colorspace: Non-Color}
   BT.2020:
-    - !<View> {name: Standard, colorspace: Guard Rail BT.2020}
+    - !<View> {name: Guard Rail, colorspace: Guard Rail BT.2020}
     - !<View> {name: AgX, colorspace: AgX Base BT.2020}
     - !<View> {name: AgX Log,colorspace: AgX Log}
     - !<View> {name: AgX False Color, colorspace: AgX False Color}
+    - !<View> {name: Standard, colorspace: BT.2020}
     - !<View> {name: None, colorspace: Non-Color}
 active_displays: []
 active_views: []
@@ -432,11 +435,7 @@ colorspaces:
         - !<ExponentTransform> {value: 1.5, direction: inverse}
         - !<BuiltinTransform> {style: CURVE - LINEAR_to_ST-2084, direction: inverse}
         - !<RangeTransform> {min_in_value: 0, min_out_value: 0, max_in_value: 10, max_out_value: 100, style: noclamp, direction: inverse}
-        - !<ColorSpaceTransform> {src: Linear E-Gamut I-D65, dst: Linear BT.709 I-D65}
-        # CDL sat Transform is a hack to compensate for purity lost due to LUT precision
-        - !<CDLTransform> {sat: 1.08}
-        - !<ColorSpaceTransform> {src: Linear BT.709 I-D65, dst: sRGB}
-        - !<RangeTransform> {min_in_value: 0, min_out_value: 0, max_in_value: 1, max_out_value: 1}
+        - !<ColorSpaceTransform> {src: Linear E-Gamut I-D65, dst: sRGB}
     to_scene_reference: !<GroupTransform>
       children:
         - !<ColorSpaceTransform> {src: sRGB, dst: Linear CIE-XYZ I-E}
