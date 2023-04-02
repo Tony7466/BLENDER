@@ -347,7 +347,23 @@ wmKeyMap *WM_keymap_guess_opname(const bContext *C, const char *opname)
   }
   /* Node Editor */
   else if (STRPREFIX(opname, "NODE_OT")) {
-    km = WM_keymap_find_all(wm, "Node Editor", sl->spacetype, 0);
+    SpaceNode *snode = (SpaceNode *)sl;
+
+    if (STRPREFIX(snode->tree_idname, "Shader")) {
+      km = WM_keymap_find_all(wm, "Shader Nodes", sl->spacetype, 0);
+    }
+    else if (STRPREFIX(snode->tree_idname, "Texture")) {
+      km = WM_keymap_find_all(wm, "Texture Nodes", sl->spacetype, 0);
+    }
+    else if (STRPREFIX(snode->tree_idname, "Geometry")) {
+      km = WM_keymap_find_all(wm, "Geometry Nodes", sl->spacetype, 0);
+    }
+    else if (STRPREFIX(snode->tree_idname, "Compositor")) {
+      km = WM_keymap_find_all(wm, "Compositor Nodes", sl->spacetype, 0);
+    }
+    else {
+      km = WM_keymap_find_all(wm, "Node Editor", sl->spacetype, 0);
+    }
   }
   /* Animation Editor Channels */
   else if (STRPREFIX(opname, "ANIM_OT_channels")) {

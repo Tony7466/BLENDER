@@ -123,6 +123,11 @@ void node_keymap(wmKeyConfig *keyconf)
   /* Main Region only ----------------- */
   WM_keymap_ensure(keyconf, "Node Editor", SPACE_NODE, 0);
 
+  WM_keymap_ensure(keyconf, "Shader Nodes", SPACE_NODE, 0);
+  WM_keymap_ensure(keyconf, "Texture Nodes", SPACE_NODE, 0);
+  WM_keymap_ensure(keyconf, "Geometry Nodes", SPACE_NODE, 0);
+  WM_keymap_ensure(keyconf, "Compositor Nodes", SPACE_NODE, 0);
+
   node_link_modal_keymap(keyconf);
 }
 

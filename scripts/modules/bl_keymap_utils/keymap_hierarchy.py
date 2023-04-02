@@ -155,6 +155,10 @@ _km_hierarchy = [
 
     ('Node Editor', 'NODE_EDITOR', 'WINDOW', [
         ('Node Generic', 'NODE_EDITOR', 'WINDOW', []),
+        ('Shader Nodes', 'NODE_EDITOR', 'WINDOW', []),
+        ('Texture Nodes', 'NODE_EDITOR', 'WINDOW', []),
+        ('Geometry Nodes', 'NODE_EDITOR', 'WINDOW', []),
+        ('Compositor Nodes', 'NODE_EDITOR', 'WINDOW', []),
     ]),
     ('SequencerCommon', 'SEQUENCE_EDITOR', 'WINDOW', [
         ('Sequencer', 'SEQUENCE_EDITOR', 'WINDOW', [

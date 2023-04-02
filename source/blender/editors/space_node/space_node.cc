@@ -46,6 +46,8 @@
 
 using blender::float2;
 
+static char G_tree_idname[64] = {};
+
 /* ******************** tree path ********************* */
 
 void ED_node_tree_start(SpaceNode *snode, bNodeTree *ntree, ID *id, ID *from)
@@ -324,6 +326,9 @@ static void node_init(wmWindowManager * /*wm*/, ScrArea *area)
   if (snode->runtime == nullptr) {
     snode->runtime = MEM_new<SpaceNode_Runtime>(__func__);
   }
+
+  BLI_strncpy(
+      G_tree_idname, snode->tree_idname, strlen(snode->tree_idname) - strlen("NodeTree") + 1);
 }
 
 static bool any_node_uses_id(const bNodeTree *ntree, const ID *id)
@@ -638,6 +643,9 @@ static void node_main_region_init(wmWindowManager *wm, ARegion *region)
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
   keymap = WM_keymap_ensure(wm->defaultconf, "Node Editor", SPACE_NODE, 0);
+  WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
+
+  keymap = WM_keymap_ensure(wm->defaultconf, strcat(G_tree_idname, " Nodes"), SPACE_NODE, 0);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
 
   /* add drop boxes */
