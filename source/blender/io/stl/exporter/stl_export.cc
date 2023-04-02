@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <string>
 
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_object.h"
 
 #include "DEG_depsgraph_query.h"
@@ -16,6 +16,7 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_math_vector.h"
+#include "BLI_math_vector_types.hh"
 
 #include "IO_stl.h"
 
@@ -95,11 +96,12 @@ void exporter_main(bContext *C, const STLExportParams &export_params)
     rescale_m4(obmat4x4, scale_vec);
 
     /* Write triangles. */
-    auto loops = mesh->loops();
-    for (const auto &loop_tri : mesh->looptris()) {
+    const Span<float3> vertices = mesh->vert_positions();
+    const blender::Span<int> corner_verts = mesh->corner_verts();
+    for (const MLoopTri &loop_tri : mesh->looptris()) {
       Triangle t{};
       for (int i = 0; i < 3; i++) {
-        auto co = mesh->vert_positions()[loops[loop_tri.tri[i]].v];
+        float3 co = vertices[corner_verts[loop_tri.tri[i]]];
         mul_m4_v3(obmat4x4, co);
         for (int j = 0; j < 3; j++) {
           t.vertices[i][j] = co[j];
