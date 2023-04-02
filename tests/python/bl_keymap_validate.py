@@ -301,7 +301,7 @@ def main() -> None:
 
             # Comparing a pretty printed string tends to give more useful
             # text output compared to the data-structure. Both will work.
-            if (cmp_message := report_humanly_readable_difference(
+            if (cmp_message: = report_humanly_readable_difference(
                     pprint.pformat(data_orig, indent=0, width=120),
                     pprint.pformat(data_reimport, indent=0, width=120),
             )):

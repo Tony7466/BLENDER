@@ -221,7 +221,7 @@ def cmake_cache_var(var: str) -> Optional[str]:
     with open(os.path.join(CMAKE_DIR, "CMakeCache.txt"), encoding='utf-8') as cache_file:
         lines = [
             l_strip for l in cache_file
-            if (l_strip := l.strip())
+            if (l_strip :=l.strip())
             if not l_strip.startswith(("//", "#"))
         ]
 

@@ -94,7 +94,7 @@ if USE_SHARED_RNA_ENUM_ITEMS_STATIC:
         for key, enum_items in rna_enum_dict.items()
         # It's possible the first item is a heading (which has no identifier).
         # skip these as the `EnumProperty.enum_items` does not expose them.
-        if (enum_prop := next(iter(enum_prop for enum_prop in enum_items if enum_prop.identifier), None))
+        if (enum_prop: = next(iter(enum_prop for enum_prop in enum_items if enum_prop.identifier), None))
     }
 
 
@@ -1369,7 +1369,7 @@ def pyrna_enum2sphinx(prop, use_empty_descriptions=False):
 
     # Write a link to the enum if this is part of `rna_enum_pointer_map`.
     if USE_SHARED_RNA_ENUM_ITEMS_STATIC:
-        if (result := pyrna_enum2sphinx_shared_link(prop)) is not None:
+        if (result: = pyrna_enum2sphinx_shared_link(prop)) is not None:
             return result
 
     if use_empty_descriptions:
@@ -2188,8 +2188,8 @@ def pyrna_enum2sphinx_shared_link(prop):
     """
     if (
             (prop.type == "enum") and
-            (pointer := prop.enum_pointer) and
-            (identifier := rna_enum_pointer_to_id_map.get(pointer))
+            (pointer: = prop.enum_pointer) and
+            (identifier: = rna_enum_pointer_to_id_map.get(pointer))
     ):
         return ":ref:`%s`" % identifier
     return None
