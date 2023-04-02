@@ -267,8 +267,6 @@ void IrradianceBake::surfels_create(const IrradianceGrid &grid)
    */
   using namespace blender::math;
 
-  surfel_raster_views_sync(grid);
-
   dispatch_per_grid_sample_ = math::divide_ceil(grid.resolution, int3(IRRADIANCE_GRID_GROUP_SIZE));
   capture_info_buf_.irradiance_grid_size = grid.resolution;
   capture_info_buf_.irradiance_grid_local_to_world = grid.transform;
@@ -350,6 +348,9 @@ void IrradianceBake::surfels_create(const IrradianceGrid &grid)
   empty_raster_fb_.ensure(transform_point(invert(basis_z_), grid_pixel_extent_).xy());
   inst_.pipelines.capture.render(view_z_);
 
+  /* Sync with any other following pass using the surfel buffer. */
+  GPU_memory_barrier(GPU_BARRIER_SHADER_STORAGE);
+
   DRW_stats_group_end();
 }
 
@@ -363,7 +364,7 @@ void IrradianceBake::surfels_lights_eval()
   inst_.shadows.set_view(view_z_);
   inst_.render_buffers.release();
 
-  inst_.manager->submit(surfel_light_eval_ps_);
+  inst_.manager->submit(surfel_light_eval_ps_, view_z_);
 }
 
 void IrradianceBake::propagate_light_sample()

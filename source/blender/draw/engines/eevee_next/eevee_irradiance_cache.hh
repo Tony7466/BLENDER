@@ -17,18 +17,24 @@ namespace blender::eevee {
 
 class Instance;
 class CapturePipeline;
+class ShadowModule;
+class Camera;
 
 /**
  * Baking related pass and data. Not used at runtime.
  */
 class IrradianceBake {
   friend CapturePipeline;
+  friend ShadowModule;
+  friend Camera;
 
  private:
   Instance &inst_;
 
   /** Light cache being baked. */
   LightCache *light_cache_ = nullptr;
+  /** Surface elements that represent the scene. */
+  SurfelBuf surfels_buf_;
   /** Capture state. */
   CaptureInfoBuf capture_info_buf_;
   /** Framebuffer. */
@@ -81,13 +87,10 @@ class IrradianceBake {
   float3 grid_location_;
   /* Bounding box vertices of the irradiance grid being baked. In world space. */
   Vector<float3> grid_bbox_vertices;
-
- public:
-  /** Surface elements that represent the scene. */
-  SurfelBuf surfels_buf_;
   /* Surfel per unit distance. */
   float surfel_density_ = 2.0f;
 
+ public:
   IrradianceBake(Instance &inst) : inst_(inst){};
 
   void sync();

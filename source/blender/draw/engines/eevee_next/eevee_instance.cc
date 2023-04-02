@@ -520,6 +520,7 @@ void Instance::light_bake_irradiance(LightCache *&r_light_cache,
   };
 
   /* Count probes. */
+  /* TODO(fclem): Ideally, this should only iterate the despgraph and not do a full sync. */
   custom_pipeline_wrapper([&]() {
     manager->begin_sync();
     render_sync();
@@ -538,12 +539,16 @@ void Instance::light_bake_irradiance(LightCache *&r_light_cache,
 
   for (auto i : light_probes.grids.index_range()) {
     custom_pipeline_wrapper([&]() {
+      GPU_debug_capture_begin();
+      irradiance_cache.bake.surfel_raster_views_sync(light_probes.grids[i]);
       /* TODO: lightprobe visibility group option. */
       manager->begin_sync();
       render_sync();
       manager->end_sync();
+
       irradiance_cache.bake.surfels_create(light_probes.grids[i]);
       irradiance_cache.bake.surfels_lights_eval();
+      GPU_debug_capture_end();
     });
 
     int bounce_len = scene->eevee.gi_diffuse_bounces;

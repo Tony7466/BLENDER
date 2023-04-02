@@ -78,7 +78,29 @@ void Camera::sync()
 
   CameraData &data = data_;
 
-  if (inst_.drw_view) {
+  /* WORKAROUND(fclem): This is an abomination that should be remove ASAP. */
+  bool is_first_baking_sync = inst_.light_probes.grids.size() == 0;
+  if (inst_.is_baking() && !is_first_baking_sync) {
+    /* Any view so that shadows and light culling works during irradiance bake. */
+    draw::View &view = inst_.irradiance_cache.bake.view_z_;
+    data.viewmat = view.viewmat();
+    data.viewinv = view.viewinv();
+    data.winmat = view.winmat();
+    data.wininv = view.wininv();
+    data.persmat = data.winmat * data.viewmat;
+    data.persinv = math::invert(data.persmat);
+    data.uv_scale = float2(1.0f);
+    data.uv_bias = float2(0.0f);
+    data.type = CAMERA_ORTHO;
+
+    /* \note: Follow camera parameters where distances are positive in front of the camera. */
+    data.clip_near = -view.far_clip();
+    data.clip_far = -view.near_clip();
+    data.fisheye_fov = data.fisheye_lens = -1.0f;
+    data.equirect_bias = float2(0.0f);
+    data.equirect_scale = float2(0.0f);
+  }
+  else if (inst_.drw_view) {
     DRW_view_viewmat_get(inst_.drw_view, data.viewmat.ptr(), false);
     DRW_view_viewmat_get(inst_.drw_view, data.viewinv.ptr(), true);
     DRW_view_winmat_get(inst_.drw_view, data.winmat.ptr(), false);

@@ -198,7 +198,8 @@ void shadow_tag_usage_surfel(Surfel surfel, int directional_level)
 
   LIGHT_FOREACH_BEGIN_LOCAL_NO_CULL(light_cull_buf, l_idx)
   {
-    float dist_to_cam = 1; /* Set it to 1 to avoid changing footprint_ratio. */
+    /* Set distance to camera to 1 to avoid changing footprint_ratio. */
+    float dist_to_cam = 1.0;
     shadow_tag_usage_tilemap_punctual(l_idx, P, dist_to_cam, 0);
   }
   LIGHT_FOREACH_END

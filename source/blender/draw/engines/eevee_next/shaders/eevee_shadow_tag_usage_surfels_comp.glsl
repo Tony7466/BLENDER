@@ -11,6 +11,11 @@
 
 void main()
 {
-  Surfel surfel = surfels_buf[gl_GlobalInvocationID.x];
+  int index = int(gl_GlobalInvocationID.x);
+  if (index >= capture_info_buf.surfel_len) {
+    return;
+  }
+
+  Surfel surfel = surfel_buf[index];
   shadow_tag_usage_surfel(surfel, directional_level);
 }

@@ -62,13 +62,16 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_tag_usage_opaque)
 
 GPU_SHADER_CREATE_INFO(eevee_shadow_tag_usage_surfels)
     .do_static_compilation(true)
-    .local_group_size(1, 1, 1)
-    .storage_buf(5, Qualifier::READ_WRITE, "ShadowTileMapData", "tilemaps_buf[]")
-    .storage_buf(6, Qualifier::READ_WRITE, "ShadowTileDataPacked", "tiles_buf[]")
-    .storage_buf(7, Qualifier::READ_WRITE, "Surfel", "surfels_buf[]")
+    .local_group_size(SURFEL_GROUP_SIZE)
+    .storage_buf(6, Qualifier::READ_WRITE, "ShadowTileMapData", "tilemaps_buf[]")
+    .storage_buf(7, Qualifier::READ_WRITE, "ShadowTileDataPacked", "tiles_buf[]")
     .push_constant(Type::INT, "directional_level")
     .push_constant(Type::FLOAT, "tilemap_projection_ratio")
-    .additional_info("eevee_shared", "draw_view", "draw_view_culling", "eevee_light_data")
+    .additional_info("eevee_shared",
+                     "draw_view",
+                     "draw_view_culling",
+                     "eevee_light_data",
+                     "eevee_surfel_common")
     .compute_source("eevee_shadow_tag_usage_surfels_comp.glsl");
 
 GPU_SHADER_INTERFACE_INFO(eevee_shadow_tag_transparent_iface, "interp")

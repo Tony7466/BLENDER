@@ -708,6 +708,7 @@ void ShadowModule::begin_sync()
 
     if (inst_.is_baking()) {
       SurfelBuf &surfels_buf = inst_.irradiance_cache.bake.surfels_buf_;
+      CaptureInfoBuf &capture_info_buf = inst_.irradiance_cache.bake.capture_info_buf_;
       float surfel_coverage_area = inst_.irradiance_cache.bake.surfel_density_;
 
       /* Directional shadows. */
@@ -720,13 +721,15 @@ void ShadowModule::begin_sync()
       sub.shader_set(inst_.shaders.static_shader_get(SHADOW_TILEMAP_TAG_USAGE_SURFELS));
       sub.bind_ssbo("tilemaps_buf", &tilemap_pool.tilemaps_data);
       sub.bind_ssbo("tiles_buf", &tilemap_pool.tiles_data);
-      sub.bind_ssbo("surfels_buf", &surfels_buf);
+      sub.bind_ssbo("surfel_buf", &surfels_buf);
+      sub.bind_ssbo("capture_info_buf", &capture_info_buf);
       sub.push_constant("directional_level", directional_level);
       sub.push_constant("tilemap_projection_ratio", projection_ratio);
       inst_.lights.bind_resources(&sub);
-      sub.dispatch(int3(surfels_buf.size(), 1, 1));
+      sub.dispatch(&inst_.irradiance_cache.bake.dispatch_per_surfel_);
 
-      return; /* Skip opaque and transparent tagging for light baking. */
+      /* Skip opaque and transparent tagging for light baking. */
+      return;
     }
 
     {
