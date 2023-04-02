@@ -1375,7 +1375,6 @@ macro(windows_process_platform_bundled_libraries library_deps)
          ("${library_upper}" STREQUAL "ALL"))
         set(next_library_mode "${library_upper}")
       else()
-        message("windows_install_shared_manifest( FILES ${library} ${next_library_mode} )")
         windows_install_shared_manifest(
             FILES ${library}
             ${next_library_mode}
