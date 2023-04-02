@@ -97,13 +97,8 @@ class SpaceNodeAccessor : public AbstractSpaceAccessor {
     mul_v2_v2fl(display_resolution, image_resolution, snode->zoom);
     mul_v2_v2fl(image_display_offset, image_offset, snode->zoom);
 
-    float yasp = 1.0f, xasp = 0.1f;
-    if( snode->xasp != 0.0f)
-    {
-      yasp = snode->yasp / snode->xasp;
-      xasp = 1.0f;
-    }
-//    todo: handle xasp = 0 or yasp = 0
+    BLI_assert(snode->yasp != 0 && snode->xasp != 0);
+    const float yasp = snode->yasp / snode->xasp;
 
     const float scale_x = display_resolution[0] / region->winx;
     const float scale_y = display_resolution[1] / region->winy * yasp;
