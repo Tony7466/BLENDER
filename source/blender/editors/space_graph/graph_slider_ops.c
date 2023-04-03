@@ -1061,10 +1061,10 @@ void GRAPH_OT_ease(wmOperatorType *ot)
 }
 
 /* -------------------------------------------------------------------- */
-/** \name Scale to Right Operator
+/** \name Scale Right Operator
  * \{ */
 
-static void scale_to_right_graph_keys(bAnimContext *ac, const float factor)
+static void scale_right_graph_keys(bAnimContext *ac, const float factor)
 {
   ListBase anim_data = {NULL, NULL};
 
@@ -1074,7 +1074,7 @@ static void scale_to_right_graph_keys(bAnimContext *ac, const float factor)
     ListBase segments = find_fcurve_segments(fcu);
 
     LISTBASE_FOREACH (FCurveSegment *, segment, &segments) {
-      scale_to_right_fcurve_segment(fcu, segment, factor);
+      scale_right_fcurve_segment(fcu, segment, factor);
     }
 
     ale->update |= ANIM_UPDATE_DEFAULT;
@@ -1085,7 +1085,7 @@ static void scale_to_right_graph_keys(bAnimContext *ac, const float factor)
   ANIM_animdata_freelist(&anim_data);
 }
 
-static void scale_to_right_draw_status_header(bContext *C, tGraphSliderOp *gso)
+static void scale_right_draw_status_header(bContext *C, tGraphSliderOp *gso)
 {
   char status_str[UI_MAX_DRAW_STR];
   char mode_str[32];
@@ -1093,7 +1093,7 @@ static void scale_to_right_draw_status_header(bContext *C, tGraphSliderOp *gso)
 
   ED_slider_status_string_get(gso->slider, slider_string, UI_MAX_DRAW_STR);
 
-  strcpy(mode_str, TIP_("Scale to Right Keys"));
+  strcpy(mode_str, TIP_("Scale Right Keys"));
 
   if (hasNumInput(&gso->num)) {
     char str_ofs[NUM_STR_REP_LEN];
@@ -1109,20 +1109,20 @@ static void scale_to_right_draw_status_header(bContext *C, tGraphSliderOp *gso)
   ED_workspace_status_text(C, status_str);
 }
 
-static void scale_to_right_modal_update(bContext *C, wmOperator *op)
+static void scale_right_modal_update(bContext *C, wmOperator *op)
 {
   tGraphSliderOp *gso = op->customdata;
 
-  scale_to_right_draw_status_header(C, gso);
+  scale_right_draw_status_header(C, gso);
 
   /* Reset keyframes to the state at invoke. */
   reset_bezts(gso);
   const float factor = slider_factor_get_and_remember(op);
-  scale_to_right_graph_keys(&gso->ac, factor);
+  scale_right_graph_keys(&gso->ac, factor);
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
 }
 
-static int scale_to_right_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+static int scale_right_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   const int invoke_result = graph_slider_invoke(C, op, event);
 
@@ -1131,14 +1131,14 @@ static int scale_to_right_invoke(bContext *C, wmOperator *op, const wmEvent *eve
   }
 
   tGraphSliderOp *gso = op->customdata;
-  gso->modal_update = scale_to_right_modal_update;
+  gso->modal_update = scale_right_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
-  scale_to_right_draw_status_header(C, gso);
+  scale_right_draw_status_header(C, gso);
 
   return invoke_result;
 }
 
-static int scale_to_right_exec(bContext *C, wmOperator *op)
+static int scale_right_exec(bContext *C, wmOperator *op)
 {
   bAnimContext ac;
 
@@ -1149,7 +1149,7 @@ static int scale_to_right_exec(bContext *C, wmOperator *op)
 
   const float factor = RNA_float_get(op->ptr, "factor");
 
-  scale_to_right_graph_keys(&ac, factor);
+  scale_right_graph_keys(&ac, factor);
 
   /* Set notifier that keyframes have changed. */
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
@@ -1157,18 +1157,18 @@ static int scale_to_right_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void GRAPH_OT_scale_to_right(wmOperatorType *ot)
+void GRAPH_OT_scale_right(wmOperatorType *ot)
 {
   /* Identifiers. */
-  ot->name = "Scale to Right Keyframes";
-  ot->idname = "GRAPH_OT_scale_to_right";
+  ot->name = "Scale Right Keyframes";
+  ot->idname = "GRAPH_OT_scale_right";
   ot->description = "Increase or decrease the value of selected keys \n\
   in relationship to the right neighboring one";
 
   /* API callbacks. */
-  ot->invoke = scale_to_right_invoke;
+  ot->invoke = scale_right_invoke;
   ot->modal = graph_slider_modal;
-  ot->exec = scale_to_right_exec;
+  ot->exec = scale_right_exec;
   ot->poll = graphop_editable_keyframes_poll;
 
   /* Flags. */
