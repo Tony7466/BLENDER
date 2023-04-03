@@ -49,13 +49,15 @@ class TestPropArray(unittest.TestCase):
     def setUp(self):
         id_type.test_array_f = FloatVectorProperty(size=10)
         id_type.test_array_i = IntVectorProperty(size=10)
-        scene = bpy.context.scene
-        self.array_f = scene.test_array_f
-        self.array_i = scene.test_array_i
+        id_type.test_array_b = BoolVectorProperty(size=10)
+        self.array_f = id_inst.test_array_f
+        self.array_i = id_inst.test_array_i
+        self.array_b = id_inst.test_array_b
 
     def tearDown(self):
         del id_type.test_array_f
         del id_type.test_array_i
+        del id_type.test_array_b
 
     def test_foreach_getset_i(self):
         with self.assertRaises(TypeError):
@@ -71,6 +73,9 @@ class TestPropArray(unittest.TestCase):
 
         with self.assertRaises(TypeError):
             self.array_i.foreach_get(np.arange(10, dtype=np.float32))
+
+        with self.assertRaises(TypeError):
+            self.array_i.foreach_get(np.ones(10, dtype=bool))
 
         a = np.arange(10, dtype=np.int32)
         self.array_i.foreach_set(a)
@@ -106,6 +111,9 @@ class TestPropArray(unittest.TestCase):
         with self.assertRaises(TypeError):
             self.array_f.foreach_get(np.arange(10, dtype=np.float64))
 
+        with self.assertRaises(TypeError):
+            self.array_f.foreach_get(np.ones(10, dtype=bool))
+
         a = np.arange(10, dtype=np.float32)
         self.array_f.foreach_set(a)
         for v1, v2 in zip(a, self.array_f[:]):
@@ -118,6 +126,47 @@ class TestPropArray(unittest.TestCase):
 
         b = [None] * 10
         self.array_f.foreach_get(b)
+        for v1, v2 in zip(a, b):
+            self.assertEqual(v1, v2)
+
+    def test_foreach_getset_b(self):
+        with self.assertRaises(TypeError):
+            self.array_b.foreach_set(range(5))
+
+        self.array_b.foreach_set(range(5, 15))
+
+        self.array_b.foreach_set([True, False] * 5)
+
+        with self.assertRaises(TypeError):
+            self.array_b.foreach_set([" ", ""] * 5)
+
+        with self.assertRaises(TypeError):
+            self.array_b.foreach_set([(0, 1), ()] * 5)
+
+        with self.assertRaises(TypeError):
+            self.array_b.foreach_set(np.ones(5, dtype=bool))
+
+        with self.assertRaises(TypeError):
+            self.array_b.foreach_set(np.arange(10, dtype=np.byte))
+
+        with self.assertRaises(TypeError):
+            self.array_b.foreach_get(np.arange(10, dtype=np.int32))
+
+        with self.assertRaises(TypeError):
+            self.array_b.foreach_get(np.arange(10, dtype=np.float32))
+
+        a = np.array([True, False] * 5, dtype=bool)
+        self.array_b.foreach_set(a)
+        for v1, v2 in zip(a, self.array_b[:]):
+            self.assertEqual(v1, v2)
+
+        b = np.empty(10, dtype=bool)
+        self.array_b.foreach_get(b)
+        for v1, v2 in zip(a, b):
+            self.assertEqual(v1, v2)
+
+        b = [None] * 10
+        self.array_b.foreach_get(b)
         for v1, v2 in zip(a, b):
             self.assertEqual(v1, v2)
 

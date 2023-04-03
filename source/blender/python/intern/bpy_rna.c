@@ -5570,8 +5570,8 @@ static PyObject *pyprop_array_foreach_getset(BPy_PropertyArrayRNA *self,
   /* Get/set both take the same args currently. */
   PyObject *seq;
 
-  if (!ELEM(prop_type, PROP_INT, PROP_FLOAT)) {
-    PyErr_Format(PyExc_TypeError, "foreach_get/set available only for int and float");
+  if (!ELEM(prop_type, PROP_INT, PROP_FLOAT, PROP_BOOLEAN)) {
+    PyErr_Format(PyExc_TypeError, "foreach_get/set available only for int, float and bool");
     return NULL;
   }
 
@@ -5644,6 +5644,26 @@ static PyObject *pyprop_array_foreach_getset(BPy_PropertyArrayRNA *self,
         }
         break;
       case PROP_BOOLEAN:
+        array = PyMem_Malloc(sizeof(bool) * size);
+        if (do_set) {
+          for (i = 0; i < size; i++) {
+            item = PySequence_GetItem(seq, i);
+            ((bool *)array)[i] = (int)PyLong_AsLong(item) != 0;
+            Py_DECREF(item);
+          }
+
+          RNA_property_boolean_set_array(&self->ptr, self->prop, array);
+        }
+        else {
+          RNA_property_boolean_get_array(&self->ptr, self->prop, array);
+
+          for (i = 0; i < size; i++) {
+            item = PyBool_FromLong((long)((bool *)array)[i]);
+            PySequence_SetItem(seq, i, item);
+            Py_DECREF(item);
+          }
+        }
+        break;
       case PROP_STRING:
       case PROP_ENUM:
       case PROP_POINTER:
@@ -5665,7 +5685,8 @@ static PyObject *pyprop_array_foreach_getset(BPy_PropertyArrayRNA *self,
   else {
     const char f = buf.format ? buf.format[0] : 0;
     if ((prop_type == PROP_INT && (buf.itemsize != sizeof(int) || !ELEM(f, 'l', 'i'))) ||
-        (prop_type == PROP_FLOAT && (buf.itemsize != sizeof(float) || f != 'f')))
+        (prop_type == PROP_FLOAT && (buf.itemsize != sizeof(float) || f != 'f')) ||
+        (prop_type == PROP_BOOLEAN && (buf.itemsize != sizeof(bool) || f != '?')))
     {
       PyBuffer_Release(&buf);
       PyErr_Format(PyExc_TypeError, "incorrect sequence item type: %s", buf.format);
@@ -5690,6 +5711,13 @@ static PyObject *pyprop_array_foreach_getset(BPy_PropertyArrayRNA *self,
         }
         break;
       case PROP_BOOLEAN:
+        if (do_set) {
+          RNA_property_boolean_set_array(&self->ptr, self->prop, buf.buf);
+        }
+        else {
+          RNA_property_boolean_get_array(&self->ptr, self->prop, buf.buf);
+        }
+        break;
       case PROP_STRING:
       case PROP_ENUM:
       case PROP_POINTER:
