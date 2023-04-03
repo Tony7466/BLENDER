@@ -8,7 +8,6 @@
 
 #include "BLI_bitmap.h"
 #include "BLI_math.h"
-#include "BLI_virtual_array.hh"
 
 #include "DNA_brush_types.h"
 #include "DNA_mesh_types.h"
