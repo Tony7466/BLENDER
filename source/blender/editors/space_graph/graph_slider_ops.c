@@ -1061,10 +1061,10 @@ void GRAPH_OT_ease(wmOperatorType *ot)
 }
 
 /* -------------------------------------------------------------------- */
-/** \name Blend to Offset Operator
+/** \name Blend Offset Operator
  * \{ */
 
-static void blend_to_offset_graph_keys(bAnimContext *ac, const float factor)
+static void blend_offset_graph_keys(bAnimContext *ac, const float factor)
 {
   ListBase anim_data = {NULL, NULL};
 
@@ -1074,7 +1074,7 @@ static void blend_to_offset_graph_keys(bAnimContext *ac, const float factor)
     ListBase segments = find_fcurve_segments(fcu);
 
     LISTBASE_FOREACH (FCurveSegment *, segment, &segments) {
-      blend_to_offset_fcurve_segment(fcu, segment, factor);
+      blend_offset_fcurve_segment(fcu, segment, factor);
     }
 
     ale->update |= ANIM_UPDATE_DEFAULT;
@@ -1085,7 +1085,7 @@ static void blend_to_offset_graph_keys(bAnimContext *ac, const float factor)
   ANIM_animdata_freelist(&anim_data);
 }
 
-static void blend_to_offset_draw_status_header(bContext *C, tGraphSliderOp *gso)
+static void blend_offset_draw_status_header(bContext *C, tGraphSliderOp *gso)
 {
   char status_str[UI_MAX_DRAW_STR];
   char mode_str[32];
@@ -1093,7 +1093,7 @@ static void blend_to_offset_draw_status_header(bContext *C, tGraphSliderOp *gso)
 
   ED_slider_status_string_get(gso->slider, slider_string, UI_MAX_DRAW_STR);
 
-  strcpy(mode_str, TIP_("Blend to Offset Keys"));
+  strcpy(mode_str, TIP_("Blend Offset Keys"));
 
   if (hasNumInput(&gso->num)) {
     char str_ofs[NUM_STR_REP_LEN];
@@ -1109,20 +1109,20 @@ static void blend_to_offset_draw_status_header(bContext *C, tGraphSliderOp *gso)
   ED_workspace_status_text(C, status_str);
 }
 
-static void blend_to_offset_modal_update(bContext *C, wmOperator *op)
+static void blend_offset_modal_update(bContext *C, wmOperator *op)
 {
   tGraphSliderOp *gso = op->customdata;
 
-  blend_to_offset_draw_status_header(C, gso);
+  blend_offset_draw_status_header(C, gso);
 
   /* Reset keyframes to the state at invoke. */
   reset_bezts(gso);
   const float factor = slider_factor_get_and_remember(op);
-  blend_to_offset_graph_keys(&gso->ac, factor);
+  blend_offset_graph_keys(&gso->ac, factor);
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
 }
 
-static int blend_to_offset_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+static int blend_offset_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   const int invoke_result = graph_slider_invoke(C, op, event);
 
@@ -1131,14 +1131,14 @@ static int blend_to_offset_invoke(bContext *C, wmOperator *op, const wmEvent *ev
   }
 
   tGraphSliderOp *gso = op->customdata;
-  gso->modal_update = blend_to_offset_modal_update;
+  gso->modal_update = blend_offset_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
-  blend_to_offset_draw_status_header(C, gso);
+  blend_offset_draw_status_header(C, gso);
 
   return invoke_result;
 }
 
-static int blend_to_offset_exec(bContext *C, wmOperator *op)
+static int blend_offset_exec(bContext *C, wmOperator *op)
 {
   bAnimContext ac;
 
@@ -1149,7 +1149,7 @@ static int blend_to_offset_exec(bContext *C, wmOperator *op)
 
   const float factor = RNA_float_get(op->ptr, "factor");
 
-  blend_to_offset_graph_keys(&ac, factor);
+  blend_offset_graph_keys(&ac, factor);
 
   /* Set notifier that keyframes have changed. */
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
@@ -1157,17 +1157,17 @@ static int blend_to_offset_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void GRAPH_OT_blend_to_offset(wmOperatorType *ot)
+void GRAPH_OT_blend_offset(wmOperatorType *ot)
 {
   /* Identifiers. */
-  ot->name = "Blend to Offset Keyframes";
-  ot->idname = "GRAPH_OT_blend_to_offset";
+  ot->name = "Blend Offset Keyframes";
+  ot->idname = "GRAPH_OT_blend_offset";
   ot->description = "Shift selected keys to the value of the neighboring keys as a block";
 
   /* API callbacks. */
-  ot->invoke = blend_to_offset_invoke;
+  ot->invoke = blend_offset_invoke;
   ot->modal = graph_slider_modal;
-  ot->exec = blend_to_offset_exec;
+  ot->exec = blend_offset_exec;
   ot->poll = graphop_editable_keyframes_poll;
 
   /* Flags. */
