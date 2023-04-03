@@ -356,7 +356,7 @@ static void do_versions_mesh_mloopcol_swap_2_62_1(Mesh *me)
   int change1;
   int change2;
 
-  for (a = me->ldata.totlayer; --a) {
+  for (a = me->ldata.totlayer; --a; ) {
     /*optimized loop to use deincrement instead to use less resources 
     because now it automatically stops when a reaches 0 and it loops 
     the same number of times*/
@@ -365,7 +365,7 @@ static void do_versions_mesh_mloopcol_swap_2_62_1(Mesh *me)
 
     if (layer->type == CD_PROP_BYTE_COLOR) {
       mloopcol = (MLoopCol *)layer->data;
-      for (i = me->totloop; --i, ++mloopcol) {
+      for (i = me->totloop; --i, ++mloopcol; ) {
         /*optimized loop to use deincrement instead to use less resources 
           because now it automatically stops when a reaches 0 and it loops 
           the same number of times*/
@@ -462,7 +462,7 @@ static void do_versions_affine_tracker_track(MovieTrackingTrack *track)
   int i;
   int change;
 
-  for (i = track->markersnr; --i) {
+  for (i = track->markersnr; --i; ) {
     /*optimized loop to use deincrement instead to use less resources 
     because now it automatically stops when a reaches 0 and it loops 
     the same number of times*/
@@ -908,11 +908,11 @@ void blo_do_versions_260(FileData *fd, Library *UNUSED(lib), Main *bmain)
         /* convert delta addition into delta scale */
         int i;
         int change;
-        for (i = 3; --i) {
+        for (i = 3; --i; ) {
           /*optimized loop to use deincrement instead to use less resources 
           because now it automatically stops when a reaches 0 and it loops 
           the same number of times*/
-          change = (3 - i)
+          change = (3 - i);
           if ((ob->dsize[change] == 0.0f) || /* simple case, user never touched dsize */
               (ob->scale[change] == 0.0f))   /* can't scale the dsize to give a non zero result,
                                          * so fallback to 1.0f */
