@@ -383,7 +383,7 @@ void paintface_select_more(Mesh *mesh, const bool face_step)
   const VArray<bool> hide_poly = attributes.lookup_or_default<bool>(
       ".hide_poly", ATTR_DOMAIN_FACE, false);
 
-  const Span<MPoly> polys = mesh->polys();
+  const OffsetIndices polys = mesh->polys();
   const Span<int> corner_edges = mesh->corner_edges();
   const Span<MEdge> edges = mesh->edges();
 
@@ -392,11 +392,9 @@ void paintface_select_more(Mesh *mesh, const bool face_step)
       if (select_poly.span[i] || hide_poly[i]) {
         continue;
       }
-      const MPoly &poly = polys[i];
-      if (poly_has_selected_neighbor(corner_edges.slice(poly.loopstart, poly.totloop),
-                                     edges,
-                                     select_vert.span,
-                                     face_step)) {
+      const IndexRange poly = polys[i];
+      if (poly_has_selected_neighbor(
+              corner_edges.slice(poly), edges, select_vert.span, face_step)) {
         select_poly.span[i] = true;
       }
     }
@@ -437,7 +435,7 @@ void paintface_select_less(Mesh *mesh, const bool face_step)
   const VArray<bool> hide_poly = attributes.lookup_or_default<bool>(
       ".hide_poly", ATTR_DOMAIN_FACE, false);
 
-  const Span<MPoly> polys = mesh->polys();
+  const OffsetIndices polys = mesh->polys();
   const Span<int> corner_verts = mesh->corner_verts();
   const Span<int> corner_edges = mesh->corner_edges();
   const Span<MEdge> edges = mesh->edges();
@@ -449,8 +447,8 @@ void paintface_select_less(Mesh *mesh, const bool face_step)
     if (select_poly.span[i]) {
       continue;
     }
-    const MPoly &poly = polys[i];
-    for (const int vert : corner_verts.slice(poly.loopstart, poly.totloop)) {
+    const IndexRange poly = polys[i];
+    for (const int vert : corner_verts.slice(poly)) {
       verts_of_unselected_faces[vert].set(true);
     }
   }
@@ -460,11 +458,9 @@ void paintface_select_less(Mesh *mesh, const bool face_step)
       if (!select_poly.span[i] || hide_poly[i]) {
         continue;
       }
-      const MPoly &poly = polys[i];
-      if (poly_has_unselected_neighbor(corner_edges.slice(poly.loopstart, poly.totloop),
-                                       edges,
-                                       verts_of_unselected_faces,
-                                       face_step)) {
+      const IndexRange poly = polys[i];
+      if (poly_has_unselected_neighbor(
+              corner_edges.slice(poly), edges, verts_of_unselected_faces, face_step)) {
         select_poly.span[i] = false;
       }
     }
@@ -793,7 +789,7 @@ void paintvert_select_more(Mesh *mesh, const bool face_step)
   const VArray<bool> hide_poly = attributes.lookup_or_default<bool>(
       ".hide_poly", ATTR_DOMAIN_FACE, false);
 
-  const Span<MPoly> polys = mesh->polys();
+  const OffsetIndices polys = mesh->polys();
   const Span<int> corner_edges = mesh->corner_edges();
   const Span<int> corner_verts = mesh->corner_verts();
   const Span<MEdge> edges = mesh->edges();
@@ -827,8 +823,8 @@ void paintvert_select_more(Mesh *mesh, const bool face_step)
       if (hide_poly[poly_i]) {
         continue;
       }
-      const MPoly &poly = polys[poly_i];
-      for (const int vert : corner_verts.slice(poly.loopstart, poly.totloop)) {
+      const IndexRange poly = polys[poly_i];
+      for (const int vert : corner_verts.slice(poly)) {
         select_vert.span[vert] = true;
       }
     }
@@ -849,7 +845,7 @@ void paintvert_select_less(Mesh *mesh, const bool face_step)
   const VArray<bool> hide_poly = attributes.lookup_or_default<bool>(
       ".hide_poly", ATTR_DOMAIN_FACE, false);
 
-  const Span<MPoly> polys = mesh->polys();
+  const OffsetIndices polys = mesh->polys();
   const Span<int> corner_edges = mesh->corner_edges();
   const Span<int> corner_verts = mesh->corner_verts();
   const Span<MEdge> edges = mesh->edges();
@@ -860,8 +856,7 @@ void paintvert_select_less(Mesh *mesh, const bool face_step)
     BKE_mesh_edge_poly_map_create(&edge_poly_map,
                                   &edge_poly_mem,
                                   edges.size(),
-                                  polys.data(),
-                                  polys.size(),
+                                  polys,
                                   corner_edges.data(),
                                   corner_edges.size());
   }
@@ -888,8 +883,8 @@ void paintvert_select_less(Mesh *mesh, const bool face_step)
       if (hide_poly[poly_i]) {
         continue;
       }
-      const MPoly &poly = polys[poly_i];
-      for (const int vert : corner_verts.slice(poly.loopstart, poly.totloop)) {
+      const IndexRange poly = polys[poly_i];
+      for (const int vert : corner_verts.slice(poly)) {
         select_vert.span[vert] = false;
       }
     }
