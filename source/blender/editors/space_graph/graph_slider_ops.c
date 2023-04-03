@@ -1162,7 +1162,8 @@ void GRAPH_OT_scale_average(wmOperatorType *ot)
   /* Identifiers. */
   ot->name = "Scale Average Keyframes";
   ot->idname = "GRAPH_OT_scale_average";
-  ot->description = "Increase or decrease the value of selected keys \n\
+  ot->description =
+      "Increase or decrease the value of selected keys \n\
   in relationship to their average";
 
   /* API callbacks. */

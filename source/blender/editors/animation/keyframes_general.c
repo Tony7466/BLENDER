@@ -505,15 +505,15 @@ void scale_average_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const flo
   }
 
   /* The factor goes from 0 to 1, but for this tool it needs to go from -1 to 1. */
-  const float mirrored_factor =  factor * 2 - 1;
+  const float mirrored_factor = factor * 2 - 1;
   float y = 0;
 
   /* Find first the average of the y values to then use it in the final calculation. */
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
     y = y + fcu->bezt[i].vec[1][1];
   }
-  
-  float y_average = y/segment->length;
+
+  float y_average = y / segment->length;
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
     const float delta = fcu->bezt[i].vec[1][1] - y_average;
