@@ -701,7 +701,7 @@ colorspaces:
     family: Data/Generic Data
     equalitygroup: ""
     bitdepth: unknown
-    description: Generic Data encoding
+    description: Generic data that is not color, will not apply any color transform
     isdata: true
     allocation: uniform
 
