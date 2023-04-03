@@ -952,8 +952,6 @@ static void create_mesh(Scene *scene,
                         const bool subdivision = false,
                         const bool subdivide_uvs = true)
 {
-  scoped_timer timer;
-
   const int numverts = b_mesh.vertices.length();
   const int polys_num = b_mesh.polygons.length();
   int numfaces = (!subdivision) ? b_mesh.loop_triangles.length() : b_mesh.polygons.length();
@@ -1158,8 +1156,6 @@ static void create_mesh(Scene *scene,
 
     *tfm = transform_translate(-loc) * transform_scale(size);
   }
-
-  std::cout << time_human_readable_from_seconds(timer.get_time()) << '\n';
 }
 
 static void create_subd_mesh(Scene *scene,
