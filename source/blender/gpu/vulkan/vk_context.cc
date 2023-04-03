@@ -31,11 +31,11 @@ VKContext::VKContext(void *ghost_window, void *ghost_context)
                          &vk_device_,
                          &vk_queue_family_,
                          &vk_queue_);
-  debug::init_vk_callbacks(this, vkGetInstanceProcAddr);
+  debug::init_callbacks(this, vkGetInstanceProcAddr);
   init_physical_device_limits();
 
-  debug::object_vk_label(this, vk_device_, "VkLogicalDevice");
-  debug::object_vk_label(this, vk_queue_, "VkGraphicsQueue");
+  debug::object_label(this, vk_device_, "LogicalDevice");
+  debug::object_label(this, vk_queue_, "GenericQueue");
 
   /* Initialize the memory allocator. */
   VmaAllocatorCreateInfo info = {};
@@ -61,7 +61,7 @@ VKContext::VKContext(void *ghost_window, void *ghost_context)
 VKContext::~VKContext()
 {
   vmaDestroyAllocator(mem_allocator_);
-  debug::destroy_vk_callbacks(this);
+  debug::destroy_callbacks(this);
 }
 
 void VKContext::init_physical_device_limits()

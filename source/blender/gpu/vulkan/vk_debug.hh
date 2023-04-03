@@ -32,11 +32,11 @@ typedef struct VKDebuggingTools {
   PFN_vkSetDebugUtilsObjectTagEXT vkSetDebugUtilsObjectTagEXT_r = nullptr;
 
 } VKDebuggingTools;
-bool init_vk_callbacks(VKContext *ctx, PFN_vkGetInstanceProcAddr instload);
-void destroy_vk_callbacks(VKContext *ctx);
-void object_vk_label(VKContext *ctx, VkObjectType objType, uint64_t obj, const char *name);
+bool init_callbacks(VKContext *context, PFN_vkGetInstanceProcAddr instload);
+void destroy_callbacks(VKContext *context);
+void object_label(VKContext *context, VkObjectType objType, uint64_t obj, const char *name);
 
-template<typename T> void object_vk_label(VKContext *ctx, T obj, const char *name)
+template<typename T> void object_label(VKContext *context, T obj, const char *name)
 {
   if (!(G.debug & G_DEBUG_GPU)) {
     return;
@@ -46,15 +46,15 @@ template<typename T> void object_vk_label(VKContext *ctx, T obj, const char *nam
   memset(label, 0, label_size);
   static int stats = 0;
   SNPRINTF(label, "%s_%d", name, stats++);
-  object_vk_label(ctx, to_vk_object_type(obj), (uint64_t)obj, (const char *)label);
+  object_label(context, to_vk_object_type(obj), (uint64_t)obj, (const char *)label);
 };
 
-void pushMarker(VKContext *ctx, VkCommandBuffer cmd, const char *name);
-void setMarker(VKContext *ctx, VkCommandBuffer cmd, const char *name);
-void popMarker(VKContext *ctx, VkCommandBuffer cmd);
-void pushMarker(VKContext *ctx, VkQueue q, const char *name);
-void setMarker(VKContext *ctx, VkQueue q, const char *name);
-void popMarker(VKContext *ctx, VkQueue q);
+void push_marker(VKContext *context, VkCommandBuffer cmd, const char *name);
+void set_marker(VKContext *context, VkCommandBuffer cmd, const char *name);
+void pop_marker(VKContext *context, VkCommandBuffer cmd);
+void push_marker(VKContext *context, VkQueue queue, const char *name);
+void set_marker(VKContext *context, VkQueue queue, const char *name);
+void pop_marker(VKContext *context, VkQueue queue);
 
 }  // namespace debug
 }  // namespace blender::gpu

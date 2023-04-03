@@ -60,10 +60,10 @@ void VKContext::debug_capture_scope_end(void * /*scope*/) {}
 
 namespace blender::gpu::debug {
 
-static void vulkan_dynamic_debug_functions(VKContext *ctx, PFN_vkGetInstanceProcAddr instload)
+static void vulkan_dynamic_debug_functions(VKContext *context, PFN_vkGetInstanceProcAddr instload)
 {
-  VKDebuggingTools &tools = ctx->debuggingtools_get();
-  VkInstance instance = ctx->instance_get();
+  VKDebuggingTools &tools = context->debuggingtools_get();
+  VkInstance instance = context->instance_get();
 
   if (instload) {
 
@@ -110,7 +110,7 @@ static void vulkan_dynamic_debug_functions(VKContext *ctx, PFN_vkGetInstanceProc
   }
 }
 
-bool init_vk_callbacks(VKContext *ctx, PFN_vkGetInstanceProcAddr instload)
+bool init_callbacks(VKContext *ctx, PFN_vkGetInstanceProcAddr instload)
 {
   if (instload) {
     vulkan_dynamic_debug_functions(ctx, instload);
@@ -119,36 +119,36 @@ bool init_vk_callbacks(VKContext *ctx, PFN_vkGetInstanceProcAddr instload)
   return false;
 }
 
-void destroy_vk_callbacks(VKContext *ctx)
+void destroy_callbacks(VKContext *context)
 {
-  VKDebuggingTools tools = ctx->debuggingtools_get();
+  VKDebuggingTools tools = context->debuggingtools_get();
   if (tools.enabled) {
-    vulkan_dynamic_debug_functions(ctx, nullptr);
+    vulkan_dynamic_debug_functions(context, nullptr);
   }
 }
 
-void object_vk_label(blender::gpu::VKContext *ctx,
+void object_label(VKContext *context,
                      VkObjectType objType,
                      uint64_t obj,
                      const char *name)
 {
   if (G.debug & G_DEBUG_GPU) {
-    VKDebuggingTools tools = ctx->debuggingtools_get();
+    VKDebuggingTools tools = context->debuggingtools_get();
     if (tools.enabled) {
       VkDebugUtilsObjectNameInfoEXT info = {};
       info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
       info.objectType = objType;
       info.objectHandle = obj;
       info.pObjectName = name;
-      tools.vkSetDebugUtilsObjectNameEXT_r(ctx->device_get(), &info);
+      tools.vkSetDebugUtilsObjectNameEXT_r(context->device_get(), &info);
     }
   }
 }
 
-void pushMarker(blender::gpu::VKContext *ctx, VkCommandBuffer cmd, const char *name)
+void push_marker(VKContext *context, VkCommandBuffer cmd, const char *name)
 {
   if (G.debug & G_DEBUG_GPU) {
-    VKDebuggingTools tools = ctx->debuggingtools_get();
+    VKDebuggingTools tools = context->debuggingtools_get();
     if (tools.enabled) {
       VkDebugUtilsLabelEXT info = {};
       info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
@@ -158,10 +158,10 @@ void pushMarker(blender::gpu::VKContext *ctx, VkCommandBuffer cmd, const char *n
   }
 }
 
-void setMarker(blender::gpu::VKContext *ctx, VkCommandBuffer cmd, const char *name)
+void set_marker(VKContext *context, VkCommandBuffer cmd, const char *name)
 {
   if (G.debug & G_DEBUG_GPU) {
-    VKDebuggingTools tools = ctx->debuggingtools_get();
+    VKDebuggingTools tools = context->debuggingtools_get();
     if (tools.enabled) {
       VkDebugUtilsLabelEXT info = {};
       info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
@@ -171,48 +171,48 @@ void setMarker(blender::gpu::VKContext *ctx, VkCommandBuffer cmd, const char *na
   }
 }
 
-void popMarker(blender::gpu::VKContext *ctx, VkCommandBuffer cmd)
+void pop_marker(VKContext *context, VkCommandBuffer cmd)
 {
   if (G.debug & G_DEBUG_GPU) {
-    VKDebuggingTools tools = ctx->debuggingtools_get();
+    VKDebuggingTools tools = context->debuggingtools_get();
     if (tools.enabled) {
       tools.vkCmdEndDebugUtilsLabelEXT_r(cmd);
     }
   }
 }
 
-void pushMarker(blender::gpu::VKContext *ctx, VkQueue q, const char *name)
+void push_marker(VKContext *context, VkQueue queue, const char *name)
 {
   if (G.debug & G_DEBUG_GPU) {
-    VKDebuggingTools tools = ctx->debuggingtools_get();
+    VKDebuggingTools tools = context->debuggingtools_get();
     if (tools.enabled) {
       VkDebugUtilsLabelEXT info = {};
       info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
       info.pLabelName = name;
-      tools.vkQueueBeginDebugUtilsLabelEXT_r(q, &info);
+      tools.vkQueueBeginDebugUtilsLabelEXT_r(queue, &info);
     }
   }
 }
 
-void setMarker(blender::gpu::VKContext *ctx, VkQueue q, const char *name)
+void set_marker(VKContext *context, VkQueue queue, const char *name)
 {
   if (G.debug & G_DEBUG_GPU) {
-    VKDebuggingTools tools = ctx->debuggingtools_get();
+    VKDebuggingTools tools = context->debuggingtools_get();
     if (tools.enabled) {
       VkDebugUtilsLabelEXT info = {};
       info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
       info.pLabelName = name;
-      tools.vkQueueInsertDebugUtilsLabelEXT_r(q, &info);
+      tools.vkQueueInsertDebugUtilsLabelEXT_r(queue, &info);
     }
   }
 }
 
-void popMarker(blender::gpu::VKContext *ctx, VkQueue q)
+void pop_marker(VKContext *context, VkQueue queue)
 {
   if (G.debug & G_DEBUG_GPU) {
-    VKDebuggingTools tools = ctx->debuggingtools_get();
+    VKDebuggingTools tools = context->debuggingtools_get();
     if (tools.enabled) {
-      tools.vkQueueEndDebugUtilsLabelEXT_r(q);
+      tools.vkQueueEndDebugUtilsLabelEXT_r(queue);
     }
   }
 }
