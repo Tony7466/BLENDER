@@ -738,7 +738,8 @@ bNode *node_copy(bNodeTree *dst_tree, const bNode &src_node, int flag, bool use_
 /**
  * Move socket default from \a src (input socket) to locations specified by \a dst (output socket).
  * Result value moved in specific location. (potentially multiple group nodes socket values, if \a
- * dst is a group input node). \node Conceptually, the effect should be such that the evaluation of
+ * dst is a group input node).
+ * \note Conceptually, the effect should be such that the evaluation of
  * this graph again returns the value in src.
  */
 void node_socket_move_default_value(Main &bmain,
