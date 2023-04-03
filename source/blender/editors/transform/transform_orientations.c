@@ -618,7 +618,6 @@ static void handle_object_parent_orientation(Object *ob, float r_mat[3][3])
   // If object has parent, then orient to parent.
   if (ob->parent) {
     transform_orientations_create_from_axis(r_mat, UNPACK3(ob->parent->object_to_world));
-    7
   }
   else {
     // If object doesn't have parent, then orient to world.
