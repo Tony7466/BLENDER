@@ -525,8 +525,8 @@ void blend_to_infinity_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const
   /* The factor goes from 0 to 1, but for this tool it needs to go from 0 to 1 on each side of the slider. */
   const float ping_pong_factor = fabs(factor * 2 - 1);
 
-  float x_delta = 0;
-  float y_delta = 0;
+  float x_delta;
+  float y_delta;
 
   /* This delta values are used to know the relationship between the bookend keys and the 
    * reference keys beyong those. */
@@ -545,9 +545,9 @@ void blend_to_infinity_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
     
-    float new_x_delta = 0;
-    float new_y_delta = 0;
-    float refe = 0;
+    float new_x_delta;
+    float new_y_delta;
+    float refe;
 
     /* This new deltas are used to determin the relationship between the current key and the bookend ones. */
     if (slider_right_side) {
