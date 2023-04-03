@@ -521,7 +521,7 @@ void blend_offset_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const floa
   /* For this tool the calculations are made easier if each side of the slider goes from 0 to porisive 1. */
   const float ping_pong_factor = fabs(factor * 2 - 1);
   
-  float y_delta = 0;
+  float y_delta;
 
   if (slider_right_side) {
       y_delta = right_y - segment_last_key_y;
