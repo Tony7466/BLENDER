@@ -191,7 +191,7 @@ struct PBVHBatches {
     switch (args->pbvh_type) {
       case PBVH_FACES: {
         for (int i = 0; i < args->totprim; i++) {
-          int face_index = args->mlooptri[args->prim_indices[i]].poly;
+          int face_index = args->looptri_polys[args->prim_indices[i]];
 
           if (args->hide_poly && args->hide_poly[face_index]) {
             continue;
@@ -337,12 +337,13 @@ struct PBVHBatches {
     int last_poly = -1;
     bool flat = false;
 
-    foreach_faces([&](int /*buffer_i*/, int /*tri_i*/, int vertex_i, const MLoopTri *tri) {
-      if (tri->poly != last_poly) {
-        last_poly = tri->poly;
-        flat = sharp_faces && sharp_faces[tri->poly];
+    foreach_faces([&](int /*buffer_i*/, int tri_i, int vertex_i, const MLoopTri * /*tri*/) {
+      const int poly_i = args->looptri_polys[tri_i];
+      if (args->looptri_polys[tri_i] != last_poly) {
+        last_poly = poly_i;
+        flat = sharp_faces && sharp_faces[poly_i];
         if (flat) {
-          const MPoly &poly = args->polys[tri->poly];
+          const MPoly &poly = args->polys[poly_i];
           const float3 fno = blender::bke::mesh::poly_normal_calc(
               {reinterpret_cast<const float3 *>(args->vert_positions), args->mesh_verts_num},
               {&args->corner_verts[poly.loopstart], poly.totloop});
@@ -550,7 +551,7 @@ struct PBVHBatches {
           int buffer_i = 0;
 
           for (int i : IndexRange(args->totprim)) {
-            int face_index = args->mlooptri[args->prim_indices[i]].poly;
+            int face_index = args->looptri_polys[args->prim_indices[i]];
 
             if (args->hide_poly && args->hide_poly[face_index]) {
               continue;
@@ -618,11 +619,12 @@ struct PBVHBatches {
           uchar fset_color[4] = {UCHAR_MAX, UCHAR_MAX, UCHAR_MAX, UCHAR_MAX};
 
           foreach_faces(
-              [&](int /*buffer_i*/, int /*tri_i*/, int /*vertex_i*/, const MLoopTri *tri) {
-                if (last_poly != tri->poly) {
-                  last_poly = tri->poly;
+              [&](int /*buffer_i*/, int tri_i, int /*vertex_i*/, const MLoopTri * /*tri*/) {
+                const int poly_i = args->looptri_polys[tri_i];
+                if (last_poly != poly_i) {
+                  last_poly = poly_i;
 
-                  const int fset = face_sets[tri->poly];
+                  const int fset = face_sets[poly_i];
 
                   if (fset != args->face_sets_color_default) {
                     BKE_paint_face_set_overlay_color_get(
@@ -974,7 +976,7 @@ struct PBVHBatches {
         CustomData_get_layer_named(args->pdata, CD_PROP_INT32, "material_index"));
 
     if (mat_index && args->totprim) {
-      int poly_index = args->mlooptri[args->prim_indices[0]].poly;
+      int poly_index = args->looptri_polys[args->prim_indices[0]];
       material_index = mat_index[poly_index];
     }
 
@@ -983,12 +985,13 @@ struct PBVHBatches {
     /* Calculate number of edges. */
     int edge_count = 0;
     for (int i = 0; i < args->totprim; i++) {
-      const MLoopTri *lt = args->mlooptri + args->prim_indices[i];
-
-      if (args->hide_poly && args->hide_poly[lt->poly]) {
+      const int tri_i = args->prim_indices[i];
+      const int poly_i = args->looptri_polys[i];
+      if (args->hide_poly && args->hide_poly[poly_i]) {
         continue;
       }
 
+      const MLoopTri *lt = args->mlooptri + args->prim_indices[i];
       int r_edges[3];
       BKE_mesh_looptri_get_real_edges(
           edges.data(), args->corner_verts.data(), args->corner_edges.data(), lt, r_edges);
@@ -1009,12 +1012,13 @@ struct PBVHBatches {
 
     int vertex_i = 0;
     for (int i = 0; i < args->totprim; i++) {
-      const MLoopTri *lt = args->mlooptri + args->prim_indices[i];
-
-      if (args->hide_poly && args->hide_poly[lt->poly]) {
+      const int tri_i = args->prim_indices[i];
+      const int poly_i = args->looptri_polys[i];
+      if (args->hide_poly && args->hide_poly[poly_i]) {
         continue;
       }
 
+      const MLoopTri *lt = args->mlooptri + args->prim_indices[i];
       int r_edges[3];
       BKE_mesh_looptri_get_real_edges(
           edges.data(), args->corner_verts.data(), args->corner_edges.data(), lt, r_edges);

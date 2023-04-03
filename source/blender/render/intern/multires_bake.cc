@@ -115,7 +115,7 @@ static void multiresbake_get_normal(const MResolvePixelData *data,
                                     const int vert_index,
                                     float r_normal[3])
 {
-  const int poly_index = data->mlooptri[tri_num].poly;
+  const int poly_index = data->looptri_polys[tri_num];
   const MPoly &poly = data->polys[poly_index];
   const bool smoothnormal = !(data->sharp_faces && data->sharp_faces[poly_index]);
 

@@ -506,7 +506,7 @@ static void test_face_boundaries(PBVH *pbvh)
     switch (BKE_pbvh_type(pbvh)) {
       case PBVH_FACES: {
         for (int j = 0; j < node->totprim; j++) {
-          int poly = pbvh->looptri[node->prim_indices[j]].poly;
+          int poly = pbvh->looptri_polys[node->prim_indices[j]];
 
           if (node_map[poly] >= 0 && node_map[poly] != i) {
             int old_i = node_map[poly];
@@ -776,7 +776,7 @@ static void pbvh_validate_node_prims(PBVH *pbvh)
       int poly;
 
       if (pbvh->header.type == PBVH_FACES) {
-        poly = pbvh->looptri[node->prim_indices[j]].poly;
+        poly = pbvh->looptri_polys[node->prim_indices[j]];
       }
       else {
         poly = BKE_subdiv_ccg_grid_to_face_index(pbvh->subdiv_ccg, node->prim_indices[j]);
@@ -803,7 +803,7 @@ static void pbvh_validate_node_prims(PBVH *pbvh)
       int poly;
 
       if (pbvh->header.type == PBVH_FACES) {
-        poly = pbvh->looptri[node->prim_indices[j]].poly;
+        poly = pbvh->looptri_polys[node->prim_indices[j]];
       }
       else {
         poly = BKE_subdiv_ccg_grid_to_face_index(pbvh->subdiv_ccg, node->prim_indices[j]);
@@ -3789,7 +3789,7 @@ void BKE_pbvh_face_iter_init(PBVH *pbvh, PBVHNode *node, PBVHFaceIter *fd)
     case PBVH_FACES:
       fd->polys_ = pbvh->polys;
       fd->corner_verts_ = pbvh->corner_verts;
-      fd->looptri_polys_ = pbvh->looptri;
+      fd->looptri_polys_ = pbvh->looptri_polys;
       fd->hide_poly_ = pbvh->hide_poly;
       fd->face_sets_ = pbvh->face_sets;
       fd->last_face_index_ = -1;
