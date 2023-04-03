@@ -1061,10 +1061,10 @@ void GRAPH_OT_ease(wmOperatorType *ot)
 }
 
 /* -------------------------------------------------------------------- */
-/** \name Blend Ease Operator
+/** \name Blend to Ease Operator
  * \{ */
 
-static void blend_ease_graph_keys(bAnimContext *ac, const float factor)
+static void blend_to_ease_graph_keys(bAnimContext *ac, const float factor)
 {
   ListBase anim_data = {NULL, NULL};
 
@@ -1074,7 +1074,7 @@ static void blend_ease_graph_keys(bAnimContext *ac, const float factor)
     ListBase segments = find_fcurve_segments(fcu);
 
     LISTBASE_FOREACH (FCurveSegment *, segment, &segments) {
-      blend_ease_fcurve_segment(fcu, segment, factor);
+      blend_to_ease_fcurve_segment(fcu, segment, factor);
     }
 
     ale->update |= ANIM_UPDATE_DEFAULT;
@@ -1085,7 +1085,7 @@ static void blend_ease_graph_keys(bAnimContext *ac, const float factor)
   ANIM_animdata_freelist(&anim_data);
 }
 
-static void blend_ease_draw_status_header(bContext *C, tGraphSliderOp *gso)
+static void blend_to_ease_draw_status_header(bContext *C, tGraphSliderOp *gso)
 {
   char status_str[UI_MAX_DRAW_STR];
   char mode_str[32];
@@ -1093,7 +1093,7 @@ static void blend_ease_draw_status_header(bContext *C, tGraphSliderOp *gso)
 
   ED_slider_status_string_get(gso->slider, slider_string, UI_MAX_DRAW_STR);
 
-  strcpy(mode_str, TIP_("Blend Ease Keys"));
+  strcpy(mode_str, TIP_("Blend to Ease Keys"));
 
   if (hasNumInput(&gso->num)) {
     char str_ofs[NUM_STR_REP_LEN];
@@ -1109,20 +1109,20 @@ static void blend_ease_draw_status_header(bContext *C, tGraphSliderOp *gso)
   ED_workspace_status_text(C, status_str);
 }
 
-static void blend_ease_modal_update(bContext *C, wmOperator *op)
+static void blend_to_ease_modal_update(bContext *C, wmOperator *op)
 {
   tGraphSliderOp *gso = op->customdata;
 
-  blend_ease_draw_status_header(C, gso);
+  blend_to_ease_draw_status_header(C, gso);
 
   /* Reset keyframes to the state at invoke. */
   reset_bezts(gso);
   const float factor = slider_factor_get_and_remember(op);
-  blend_ease_graph_keys(&gso->ac, factor);
+  blend_to_ease_graph_keys(&gso->ac, factor);
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
 }
 
-static int blend_ease_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+static int blend_to_ease_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   const int invoke_result = graph_slider_invoke(C, op, event);
 
@@ -1131,14 +1131,14 @@ static int blend_ease_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   }
 
   tGraphSliderOp *gso = op->customdata;
-  gso->modal_update = blend_ease_modal_update;
+  gso->modal_update = blend_to_ease_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
-  blend_ease_draw_status_header(C, gso);
+  blend_to_ease_draw_status_header(C, gso);
 
   return invoke_result;
 }
 
-static int blend_ease_exec(bContext *C, wmOperator *op)
+static int blend_to_ease_exec(bContext *C, wmOperator *op)
 {
   bAnimContext ac;
 
@@ -1149,7 +1149,7 @@ static int blend_ease_exec(bContext *C, wmOperator *op)
 
   const float factor = RNA_float_get(op->ptr, "factor");
 
-  blend_ease_graph_keys(&ac, factor);
+  blend_to_ease_graph_keys(&ac, factor);
 
   /* Set notifier that keyframes have changed. */
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
@@ -1157,17 +1157,17 @@ static int blend_ease_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void GRAPH_OT_blend_ease(wmOperatorType *ot)
+void GRAPH_OT_blend_to_ease(wmOperatorType *ot)
 {
   /* Identifiers. */
-  ot->name = "Blend Ease Keyframes";
-  ot->idname = "GRAPH_OT_blend_ease";
-  ot->description = "Align keyframes on a ease-in or ease-out curve";
+  ot->name = "Blend to Ease Keyframes";
+  ot->idname = "GRAPH_OT_blend_to_ease";
+  ot->description = "Blends keyframes from current state to an ease-in or ease-out curve";
 
   /* API callbacks. */
-  ot->invoke = blend_ease_invoke;
+  ot->invoke = blend_to_ease_invoke;
   ot->modal = graph_slider_modal;
-  ot->exec = blend_ease_exec;
+  ot->exec = blend_to_ease_exec;
   ot->poll = graphop_editable_keyframes_poll;
 
   /* Flags. */

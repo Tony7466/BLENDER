@@ -506,7 +506,7 @@ float s_curve(float x, float slope, float width, float height, float xshift, flo
     return curve;
 }
 
-void ease_b_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+void blend_to_ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
 {
   const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
   const float left_x = left_key->vec[1][0];
@@ -515,7 +515,7 @@ void ease_b_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float fact
   const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
 
   const float key_x_range = right_key->vec[1][0] - left_x;
-  const float key_y_range = right_key->vec[1][1] - left_y;
+  const float key_y_range = right_key->vec[1][1] - left_x;
 
   /* Happens if there is only 1 key on the FCurve. Needs to be skipped because it
    * would be a divide by 0. */
@@ -526,29 +526,30 @@ void ease_b_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float fact
   /* The calculation needs diferent values for each side of the slider. */
   const bool slider_right_side = factor > 0.5;
 
-  /* The factor goes from 0 to 1, but for this tool it needs to go from 0 to 1 on each side of the slider. */
-  const float ping_pong_factor = fabs(factor * 2 - 1) * 5;
+  /* The factor goes from 0 to 1, but for this tool it needs to go from -1 to 1. */
+  const float long_factor =  factor * 2 - 1;
 
-  /* By duplicating the size of the curve we get only half of the "S" shape (kind of a "C" shape). */
-  const float width = 2.0;
-  const float height = 2.0;
-  float xshift = 0.0;
-  float yshift = 0.0;
+  float y_delta = 0;
+  float base = 0;
+
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
     /* For easy calculation of the curve, the  values are normalized. */
     const float normalized_x = (fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range;
 
-    /* For values on the right side of the slider we need the other half of the "S" shape. */
+
     if (slider_right_side) {
-      xshift = -1.0;
-      yshift = -1.0;
+      float ease = s_curve(normalized_x, 3, 2.0, 2.0, -1.0, -1.0);
+      base = left_key->vec[1][1] + key_y_range * ease;
+      y_delta = base - fcu->bezt[i].vec[1][1];
+    }
+    else {
+      float ease = s_curve(normalized_x, 3, 2.0, 2.0, 0.0, 0.0);
+      base = left_key->vec[1][1] + key_y_range * ease;
+      y_delta = fcu->bezt[i].vec[1][1] - base;
     }
 
-    /* The factor is used to affect the slope of the the "C" shape. */
-    float ease = s_curve(normalized_x, ping_pong_factor, width, height, xshift, yshift);
-
-    const float key_y_value = left_key->vec[1][1] + key_y_range * ease;
+    const float key_y_value = fcu->bezt[i].vec[1][1] + y_delta * long_factor;
     move_key(&fcu->bezt[i], key_y_value);
   }
 }
