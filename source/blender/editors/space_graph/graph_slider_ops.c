@@ -1162,7 +1162,8 @@ void GRAPH_OT_scale_left(wmOperatorType *ot)
   /* Identifiers. */
   ot->name = "Scale Left Keyframes";
   ot->idname = "GRAPH_OT_scale_left";
-  ot->description = "Increase or decrease the value of selected keys \n\
+  ot->description =
+      "Increase or decrease the value of selected keys \n\
   in relationship to the left neighboring one";
 
   /* API callbacks. */
