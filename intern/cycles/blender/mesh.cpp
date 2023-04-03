@@ -372,6 +372,9 @@ static void attr_create_generic(Scene *scene,
   for (BL::Attribute &b_attribute : b_mesh.attributes) {
     const ustring name{b_attribute.name().c_str()};
     const bool is_render_color = name == default_color_name;
+    if (b_attribute.data.length() == 0) {
+      continue;
+    }
 
     if (need_motion && name == u_velocity) {
       attr_create_motion(mesh, b_attribute, motion_scale);
@@ -829,6 +832,9 @@ static const int *find_corner_vert_attribute(BL::Mesh b_mesh)
     if (b_attribute.name() != ".corner_vert") {
       continue;
     }
+    if (b_attribute.data.length() == 0) {
+      return nullptr;
+    }
     return static_cast<const int *>(BL::IntAttribute(b_attribute).data[0].ptr.data);
   }
   return nullptr;
@@ -873,10 +879,10 @@ static void attr_create_random_per_island(Scene *scene,
   float *data = attribute->data_float();
 
   if (!subdivision) {
-    const int numtris = b_mesh.loop_triangles.length();
-    if (numtris != 0) {
+    const int tris_num = b_mesh.loop_triangles.length();
+    if (tris_num != 0) {
       const MLoopTri *looptris = static_cast<const MLoopTri *>(b_mesh.loop_triangles[0].ptr.data);
-      for (int i = 0; i < numtris; i++) {
+      for (int i = 0; i < tris_num; i++) {
         const int vert = corner_verts[looptris[i].tri[0]];
         data[i] = hash_uint_to_float(vertices_sets.find(vert));
       }
@@ -909,6 +915,9 @@ static const int *find_material_index_attribute(BL::Mesh b_mesh)
     if (b_attribute.name() != "material_index") {
       continue;
     }
+    if (b_attribute.data.length() == 0) {
+      return nullptr;
+    }
     return static_cast<const int *>(BL::IntAttribute{b_attribute}.data[0].ptr.data);
   }
   return nullptr;
@@ -925,6 +934,9 @@ static const bool *find_sharp_face_attribute(BL::Mesh b_mesh)
     }
     if (b_attribute.name() != "sharp_face") {
       continue;
+    }
+    if (b_attribute.data.length() == 0) {
+      return nullptr;
     }
     return static_cast<const bool *>(BL::BoolAttribute{b_attribute}.data[0].ptr.data);
   }
@@ -1172,7 +1184,7 @@ static void create_subd_mesh(Scene *scene,
   if (edges_num != 0 && b_mesh.edge_creases.length() > 0) {
     const float *creases = static_cast<const float *>(b_mesh.edge_creases[0].data[0].ptr.data);
 
-    int num_creases = 0;
+    size_t num_creases = 0;
     for (int i = 0; i < edges_num; i++) {
       if (creases[i] != 0.0f) {
         num_creases++;
