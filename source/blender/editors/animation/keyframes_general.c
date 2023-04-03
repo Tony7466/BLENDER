@@ -521,38 +521,38 @@ void time_offset_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float
   const int fcu_x_range = last_key_x - first_key_x;
   float delta_y;
 
-  /* If we operate directly on the fcurve there will be a feedback loop 
+  /* If we operate directly on the fcurve there will be a feedback loop
    * so we need to capture the "y" values on an array to then apply them on a second loop*/
   float y_values[segment->length];
-  
+
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
-    
+
     /* This simulates the fcu curve moving in time. */
     float time = fcu->bezt[i].vec[1][0] + fcu_x_range * long_factor;
 
-    /* The values need to go back to the ones at the other end of the fcurve 
+    /* The values need to go back to the ones at the other end of the fcurve
      * every time we get to the last or the first key. */
-    if(time > last_key_x){
+    if (time > last_key_x) {
       int offset_frame = fcu->bezt[i].vec[1][0] - fcu_x_range;
       time = offset_frame + fcu_x_range * long_factor;
       delta_y = last_key_y - first_key_y;
     }
-    else if(time < first_key_x){
+    else if (time < first_key_x) {
       int offset_frame = fcu->bezt[i].vec[1][0] + fcu_x_range;
       time = offset_frame + fcu_x_range * long_factor;
       delta_y = first_key_y - last_key_y;
     }
-    else{
+    else {
       delta_y = 0;
     }
 
     const float key_y_value = evaluate_fcurve(fcu, time) + delta_y;
-    const int index_from_zero = i-segment->start_index;
+    const int index_from_zero = i - segment->start_index;
     y_values[index_from_zero] = key_y_value;
   }
 
-  for (int i = segment->start_index; i < segment->start_index + segment->length; i++){
-    const int index_from_zero = i-segment->start_index;
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+    const int index_from_zero = i - segment->start_index;
     move_key(&fcu->bezt[i], y_values[index_from_zero]);
   }
 }
