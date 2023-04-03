@@ -732,8 +732,6 @@ set(GLSL_SRC
   engines/image/shaders/image_engine_color_vert.glsl
   engines/image/shaders/image_engine_depth_frag.glsl
   engines/image/shaders/image_engine_depth_vert.glsl
-  engines/image/shaders/image_engine_color_depth_frag.glsl
-  engines/image/shaders/image_engine_color_depth_vert.glsl
 )
 
 set(GLSL_C)
