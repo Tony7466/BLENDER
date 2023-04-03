@@ -176,6 +176,7 @@ typedef struct bNodeSocket {
   bool is_output() const;
 
   /** Utility to access the value of the socket. */
+  template<typename T> T *default_value_typed();
   template<typename T> const T *default_value_typed() const;
 
   template<typename T> T *default_value_typed();
