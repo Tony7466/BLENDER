@@ -504,6 +504,9 @@ void GreasePencil::write_drawing_array(BlendWriter *writer)
 
 void GreasePencil::free_drawing_array()
 {
+  if (this->drawing_array == nullptr || this->drawing_array_size == 0) {
+    return;
+  }
   for (int i = 0; i < this->drawing_array_size; i++) {
     GreasePencilDrawingOrReference *drawing_or_ref = this->drawing_array[i];
     switch (drawing_or_ref->type) {
