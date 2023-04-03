@@ -330,6 +330,7 @@ class GRAPH_MT_slider(Menu):
         layout.operator("graph.blend_to_neighbor", text="Blend to Neighbor")
         layout.operator("graph.blend_to_default", text="Blend to Default Value")
         layout.operator("graph.ease", text="Ease")
+        layout.operator("graph.time_offset", text="Time Offset")
         layout.operator("graph.gaussian_smooth", text="Smooth")
 
 
