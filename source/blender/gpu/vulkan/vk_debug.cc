@@ -62,7 +62,7 @@ namespace blender::gpu::debug {
 
 static void vulkan_dynamic_debug_functions(VKContext *context, PFN_vkGetInstanceProcAddr instload)
 {
-  VKDebuggingTools &tools = context->debuggingtools_get();
+  VKDebuggingTools &tools = context->debugging_tools_get();
   VkInstance instance = context->instance_get();
 
   if (instload) {
@@ -121,7 +121,7 @@ bool init_callbacks(VKContext *context, PFN_vkGetInstanceProcAddr instload)
 
 void destroy_callbacks(VKContext *context)
 {
-  VKDebuggingTools tools = context->debuggingtools_get();
+  VKDebuggingTools tools = context->debugging_tools_get();
   if (tools.enabled) {
     vulkan_dynamic_debug_functions(context, nullptr);
   }
@@ -133,7 +133,7 @@ void object_label(VKContext *context,
                      const char *name)
 {
   if (G.debug & G_DEBUG_GPU) {
-    VKDebuggingTools tools = context->debuggingtools_get();
+    VKDebuggingTools tools = context->debugging_tools_get();
     if (tools.enabled) {
       VkDebugUtilsObjectNameInfoEXT info = {};
       info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
@@ -148,7 +148,7 @@ void object_label(VKContext *context,
 void push_marker(VKContext *context, VkCommandBuffer cmd, const char *name)
 {
   if (G.debug & G_DEBUG_GPU) {
-    VKDebuggingTools tools = context->debuggingtools_get();
+    VKDebuggingTools tools = context->debugging_tools_get();
     if (tools.enabled) {
       VkDebugUtilsLabelEXT info = {};
       info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
@@ -161,7 +161,7 @@ void push_marker(VKContext *context, VkCommandBuffer cmd, const char *name)
 void set_marker(VKContext *context, VkCommandBuffer cmd, const char *name)
 {
   if (G.debug & G_DEBUG_GPU) {
-    VKDebuggingTools tools = context->debuggingtools_get();
+    VKDebuggingTools tools = context->debugging_tools_get();
     if (tools.enabled) {
       VkDebugUtilsLabelEXT info = {};
       info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
@@ -174,7 +174,7 @@ void set_marker(VKContext *context, VkCommandBuffer cmd, const char *name)
 void pop_marker(VKContext *context, VkCommandBuffer cmd)
 {
   if (G.debug & G_DEBUG_GPU) {
-    VKDebuggingTools tools = context->debuggingtools_get();
+    VKDebuggingTools tools = context->debugging_tools_get();
     if (tools.enabled) {
       tools.vkCmdEndDebugUtilsLabelEXT_r(cmd);
     }
@@ -184,7 +184,7 @@ void pop_marker(VKContext *context, VkCommandBuffer cmd)
 void push_marker(VKContext *context, VkQueue queue, const char *name)
 {
   if (G.debug & G_DEBUG_GPU) {
-    VKDebuggingTools tools = context->debuggingtools_get();
+    VKDebuggingTools tools = context->debugging_tools_get();
     if (tools.enabled) {
       VkDebugUtilsLabelEXT info = {};
       info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
@@ -197,7 +197,7 @@ void push_marker(VKContext *context, VkQueue queue, const char *name)
 void set_marker(VKContext *context, VkQueue queue, const char *name)
 {
   if (G.debug & G_DEBUG_GPU) {
-    VKDebuggingTools tools = context->debuggingtools_get();
+    VKDebuggingTools tools = context->debugging_tools_get();
     if (tools.enabled) {
       VkDebugUtilsLabelEXT info = {};
       info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
@@ -210,7 +210,7 @@ void set_marker(VKContext *context, VkQueue queue, const char *name)
 void pop_marker(VKContext *context, VkQueue queue)
 {
   if (G.debug & G_DEBUG_GPU) {
-    VKDebuggingTools tools = context->debuggingtools_get();
+    VKDebuggingTools tools = context->debugging_tools_get();
     if (tools.enabled) {
       tools.vkQueueEndDebugUtilsLabelEXT_r(queue);
     }

@@ -34,7 +34,7 @@ class VKContext : public Context {
   VkPhysicalDeviceLimits vk_physical_device_limits_;
 
   /** Functions of vk_ext_debugutils to use in this context. */
-  debug::VKDebuggingTools vk_debugging_tools_;
+  debug::VKDebuggingTools debugging_tools_;
 
   void *ghost_context_;
 
@@ -113,9 +113,9 @@ class VKContext : public Context {
     return mem_allocator_;
   }
 
-  debug::VKDebuggingTools &debuggingtools_get()
+  debug::VKDebuggingTools &debugging_tools_get()
   {
-    return vk_debugging_tools_;
+    return debugging_tools_;
   }
 
  private:
