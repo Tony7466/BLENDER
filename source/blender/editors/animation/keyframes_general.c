@@ -491,19 +491,24 @@ void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor
 
 /* ---------------- */
 
-float s_curve(float x, float slope, float width, float height, float xshift, float yshift) {
-    /* Formula for 'S' curve we use for the "ease" sliders. The shift values move the curve vertiacly or horizontaly.
-     * The range of the curve used is from 0 to 1 on "x" and "y" so we can scale it (width and height) and move it (xshift and y yshift) 
-     * to crop the part of the curve we need. Slope determins how curvy the shape is */
-    float curve = height * pow((x - xshift), slope) / (pow((x - xshift), slope) + pow((width - (x - xshift)), slope)) + yshift;
+float s_curve(float x, float slope, float width, float height, float xshift, float yshift)
+{
+  /* Formula for 'S' curve we use for the "ease" sliders. The shift values move the curve vertiacly
+   * or horizontaly. The range of the curve used is from 0 to 1 on "x" and "y" so we can scale it
+   * (width and height) and move it (xshift and y yshift) to crop the part of the curve we need.
+   * Slope determins how curvy the shape is */
+  float curve = height * pow((x - xshift), slope) /
+                    (pow((x - xshift), slope) + pow((width - (x - xshift)), slope)) +
+                yshift;
 
-    /* The curve has some noise beyond our margins so we clamp the values */
-    if (x > xshift + width) {
-        curve = height + yshift;
-    } else if (x < xshift) {
-        curve = yshift;
-    }
-    return curve;
+  /* The curve has some noise beyond our margins so we clamp the values */
+  if (x > xshift + width) {
+    curve = height + yshift;
+  }
+  else if (x < xshift) {
+    curve = yshift;
+  }
+  return curve;
 }
 
 void blend_to_ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
@@ -527,14 +532,13 @@ void blend_to_ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const flo
   const bool slider_right_side = factor > 0.5;
 
   /* The factor goes from 0 to 1, but for this tool it needs to go from -1 to 1. */
-  const float long_factor =  factor * 2 - 1;
+  const float long_factor = factor * 2 - 1;
 
   float y_delta;
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
     /* For easy calculation of the curve, the  values are normalized. */
     const float normalized_x = (fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range;
-
 
     if (slider_right_side) {
       const float ease = s_curve(normalized_x, 3, 2.0, 2.0, -1.0, -1.0);
