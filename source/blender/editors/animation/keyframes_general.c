@@ -491,6 +491,31 @@ void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor
 
 /* ---------------- */
 
+void scale_to_right_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+{
+  const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
+  const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
+
+  const float key_x_range = right_key->vec[1][0] - left_key->vec[1][0];
+
+  /* Happens if there is only 1 key on the FCurve. Needs to be skipped because it
+   * would be a divide by 0. */
+  if (IS_EQF(key_x_range, 0.0f)) {
+    return;
+  }
+
+  /* The factor goes from 0 to 1, but for this tool it needs to go from -1 to 1. */
+  const float long_factor =  factor * 2 - 1;
+
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+    const float delta = fcu->bezt[i].vec[1][1] - right_key->vec[1][1];
+    const float key_y_value = fcu->bezt[i].vec[1][1] + delta * long_factor;
+    move_key(&fcu->bezt[i], key_y_value);
+  }
+}
+
+/* ---------------- */
+
 void breakdown_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
 {
   const BezTriple *left_bezt = fcurve_segment_start_get(fcu, segment->start_index);
