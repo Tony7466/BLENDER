@@ -5861,6 +5861,7 @@ void GPENCIL_OT_stroke_merge_by_distance(wmOperatorType *ot)
 typedef enum eGP_NormalizeMode {
   GP_NORMALIZE_THICKNESS = 0,
   GP_NORMALIZE_OPACITY,
+  GP_NORMALIZE_HARDNESS,
 } eGP_NormalizeMode;
 
 static bool gpencil_stroke_normalize_poll(bContext *C)
@@ -5891,13 +5892,21 @@ static void gpencil_stroke_normalize_ui(bContext *UNUSED(C), wmOperator *op)
   row = uiLayoutRow(layout, true);
   uiItemR(row, op->ptr, "mode", 0, NULL, ICON_NONE);
 
-  if (mode == GP_NORMALIZE_THICKNESS) {
-    row = uiLayoutRow(layout, true);
-    uiItemR(row, op->ptr, "value", 0, NULL, ICON_NONE);
-  }
-  else if (mode == GP_NORMALIZE_OPACITY) {
-    row = uiLayoutRow(layout, true);
-    uiItemR(row, op->ptr, "factor", 0, NULL, ICON_NONE);
+  switch (mode) {
+    case GP_NORMALIZE_THICKNESS:
+      row = uiLayoutRow(layout, true);
+      uiItemR(row, op->ptr, "value", 0, NULL, ICON_NONE);
+      break;
+    case GP_NORMALIZE_OPACITY:
+      row = uiLayoutRow(layout, true);
+      uiItemR(row, op->ptr, "factor", 0, NULL, ICON_NONE);
+      break;
+    case GP_NORMALIZE_HARDNESS:
+      row = uiLayoutRow(layout, true);
+      uiItemR(row, op->ptr, "factor", 0, NULL, ICON_NONE);
+      break;
+    default:
+      break;
   }
 }
 
@@ -5947,6 +5956,10 @@ static int gpencil_stroke_normalize_exec(bContext *C, wmOperator *op)
           if (mode == GP_NORMALIZE_OPACITY) {
             gps->fill_opacity_fac = factor;
             CLAMP(gps->fill_opacity_fac, 0.0f, 1.0f);
+          }
+          if (mode == GP_NORMALIZE_HARDNESS) {
+            gps->hardeness = factor;
+            CLAMP(gps->hardeness, 0.0f, 1.0f);
           }
 
           /* Loop all Polyline points. */
@@ -6008,6 +6021,11 @@ void GPENCIL_OT_stroke_normalize(wmOperatorType *ot)
        0,
        "Opacity",
        "Normalizes the stroke opacity by making all points use the same opacity value"},
+      {GP_NORMALIZE_HARDNESS,
+       "HARDNESS",
+       0,
+       "Hardness",
+       "Normalizes the stroke hardness by making all points use the same hardness value"},
       {0, NULL, 0, NULL, NULL},
   };
 

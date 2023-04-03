@@ -5287,6 +5287,7 @@ class VIEW3D_MT_edit_gpencil_stroke(Menu):
         layout.separator()
         layout.operator("gpencil.stroke_normalize", text="Normalize Thickness").mode = 'THICKNESS'
         layout.operator("gpencil.stroke_normalize", text="Normalize Opacity").mode = 'OPACITY'
+        layout.operator("gpencil.stroke_normalize", text="Normalize Hardness").mode = 'HARDNESS'
         layout.prop(settings, "use_scale_thickness", text="Scale Thickness")
 
         layout.separator()
