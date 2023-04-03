@@ -110,10 +110,10 @@ static void vulkan_dynamic_debug_functions(VKContext *context, PFN_vkGetInstance
   }
 }
 
-bool init_callbacks(VKContext *contex, PFN_vkGetInstanceProcAddr instload)
+bool init_callbacks(VKContext *context, PFN_vkGetInstanceProcAddr instload)
 {
   if (instload) {
-    vulkan_dynamic_debug_functions(contex, instload);
+    vulkan_dynamic_debug_functions(context, instload);
     return true;
   };
   return false;
