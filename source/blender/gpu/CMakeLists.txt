@@ -257,8 +257,6 @@ set(VULKAN_SRC
   vulkan/vk_texture.hh
   vulkan/vk_uniform_buffer.hh
   vulkan/vk_vertex_buffer.hh
-
-
 )
 
 set(METAL_SRC
