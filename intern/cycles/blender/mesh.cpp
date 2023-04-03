@@ -372,9 +372,6 @@ static void attr_create_generic(Scene *scene,
   for (BL::Attribute &b_attribute : b_mesh.attributes) {
     const ustring name{b_attribute.name().c_str()};
     const bool is_render_color = name == default_color_name;
-    if (b_attribute.data.length() == 0) {
-      continue;
-    }
 
     if (need_motion && name == u_velocity) {
       attr_create_motion(mesh, b_attribute, motion_scale);
@@ -415,6 +412,9 @@ static void attr_create_generic(Scene *scene,
     switch (b_data_type) {
       case BL::Attribute::data_type_FLOAT: {
         BL::FloatAttribute b_float_attribute{b_attribute};
+        if (b_float_attribute.data.length() == 0) {
+          continue;
+        }
         const float *src = static_cast<const float *>(b_float_attribute.data[0].ptr.data);
         Attribute *attr = attributes.add(name, TypeFloat, element);
         float *data = attr->data_float();
@@ -423,6 +423,9 @@ static void attr_create_generic(Scene *scene,
       }
       case BL::Attribute::data_type_BOOLEAN: {
         BL::BoolAttribute b_bool_attribute{b_attribute};
+        if (b_bool_attribute.data.length() == 0) {
+          continue;
+        }
         const bool *src = static_cast<const bool *>(b_bool_attribute.data[0].ptr.data);
         Attribute *attr = attributes.add(name, TypeFloat, element);
         float *data = attr->data_float();
@@ -432,6 +435,9 @@ static void attr_create_generic(Scene *scene,
       }
       case BL::Attribute::data_type_INT: {
         BL::IntAttribute b_int_attribute{b_attribute};
+        if (b_int_attribute.data.length() == 0) {
+          continue;
+        }
         const int *src = static_cast<const int *>(b_int_attribute.data[0].ptr.data);
         Attribute *attr = attributes.add(name, TypeFloat, element);
         float *data = attr->data_float();
@@ -441,6 +447,9 @@ static void attr_create_generic(Scene *scene,
       }
       case BL::Attribute::data_type_FLOAT_VECTOR: {
         BL::FloatVectorAttribute b_vector_attribute{b_attribute};
+        if (b_vector_attribute.data.length() == 0) {
+          continue;
+        }
         const float(*src)[3] = static_cast<const float(*)[3]>(b_vector_attribute.data[0].ptr.data);
         Attribute *attr = attributes.add(name, TypeVector, element);
         float3 *data = attr->data_float3();
@@ -451,6 +460,9 @@ static void attr_create_generic(Scene *scene,
       }
       case BL::Attribute::data_type_BYTE_COLOR: {
         BL::ByteColorAttribute b_color_attribute{b_attribute};
+        if (b_color_attribute.data.length() == 0) {
+          continue;
+        }
         const uchar(*src)[4] = static_cast<const uchar(*)[4]>(b_color_attribute.data[0].ptr.data);
 
         if (element == ATTR_ELEMENT_CORNER) {
@@ -481,6 +493,9 @@ static void attr_create_generic(Scene *scene,
       }
       case BL::Attribute::data_type_FLOAT_COLOR: {
         BL::FloatColorAttribute b_color_attribute{b_attribute};
+        if (b_color_attribute.data.length() == 0) {
+          continue;
+        }
         const float(*src)[4] = static_cast<const float(*)[4]>(b_color_attribute.data[0].ptr.data);
 
         Attribute *attr = attributes.add(name, TypeRGBA, element);
@@ -496,6 +511,9 @@ static void attr_create_generic(Scene *scene,
       }
       case BL::Attribute::data_type_FLOAT2: {
         BL::Float2Attribute b_float2_attribute{b_attribute};
+        if (b_float2_attribute.data.length() == 0) {
+          continue;
+        }
         const float(*src)[2] = static_cast<const float(*)[2]>(b_float2_attribute.data[0].ptr.data);
         Attribute *attr = attributes.add(name, TypeFloat2, element);
         float2 *data = attr->data_float2();
@@ -832,10 +850,11 @@ static const int *find_corner_vert_attribute(BL::Mesh b_mesh)
     if (b_attribute.name() != ".corner_vert") {
       continue;
     }
-    if (b_attribute.data.length() == 0) {
+    BL::IntAttribute b_int_attribute{b_attribute};
+    if (b_int_attribute.data.length() == 0) {
       return nullptr;
     }
-    return static_cast<const int *>(BL::IntAttribute(b_attribute).data[0].ptr.data);
+    return static_cast<const int *>(b_int_attribute.data[0].ptr.data);
   }
   return nullptr;
 }
@@ -915,10 +934,11 @@ static const int *find_material_index_attribute(BL::Mesh b_mesh)
     if (b_attribute.name() != "material_index") {
       continue;
     }
-    if (b_attribute.data.length() == 0) {
+    BL::IntAttribute b_int_attribute{b_attribute};
+    if (b_int_attribute.data.length() == 0) {
       return nullptr;
     }
-    return static_cast<const int *>(BL::IntAttribute{b_attribute}.data[0].ptr.data);
+    return static_cast<const int *>(b_int_attribute.data[0].ptr.data);
   }
   return nullptr;
 }
@@ -935,10 +955,11 @@ static const bool *find_sharp_face_attribute(BL::Mesh b_mesh)
     if (b_attribute.name() != "sharp_face") {
       continue;
     }
-    if (b_attribute.data.length() == 0) {
+    BL::IntAttribute b_int_attribute{b_attribute};
+    if (b_int_attribute.data.length() == 0) {
       return nullptr;
     }
-    return static_cast<const bool *>(BL::BoolAttribute{b_attribute}.data[0].ptr.data);
+    return static_cast<const bool *>(b_int_attribute.data[0].ptr.data);
   }
   return nullptr;
 }
