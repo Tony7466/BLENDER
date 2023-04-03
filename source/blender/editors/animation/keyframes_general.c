@@ -529,7 +529,7 @@ void blend_to_ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const flo
   /* The factor goes from 0 to 1, but for this tool it needs to go from -1 to 1. */
   const float long_factor =  factor * 2 - 1;
 
-  float y_delta = 0;
+  float y_delta;
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
     /* For easy calculation of the curve, the  values are normalized. */
@@ -537,14 +537,14 @@ void blend_to_ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const flo
 
 
     if (slider_right_side) {
-      float ease = s_curve(normalized_x, 3, 2.0, 2.0, -1.0, -1.0);
+      const float ease = s_curve(normalized_x, 3, 2.0, 2.0, -1.0, -1.0);
       const float base = left_key->vec[1][1] + key_y_range * ease;
-      const float y_delta = base - fcu->bezt[i].vec[1][1];
+      y_delta = base - fcu->bezt[i].vec[1][1];
     }
     else {
-      float ease = s_curve(normalized_x, 3, 2.0, 2.0, 0.0, 0.0);
+      const float ease = s_curve(normalized_x, 3, 2.0, 2.0, 0.0, 0.0);
       const float base = left_key->vec[1][1] + key_y_range * ease;
-      const float y_delta = fcu->bezt[i].vec[1][1] - base;
+      y_delta = fcu->bezt[i].vec[1][1] - base;
     }
 
     const float key_y_value = fcu->bezt[i].vec[1][1] + y_delta * long_factor;
