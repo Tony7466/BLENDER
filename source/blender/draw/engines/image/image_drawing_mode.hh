@@ -583,6 +583,7 @@ template<typename TextureMethod> class ScreenSpaceDrawingMode : public AbstractD
     if (!instance_data->flags.do_tile_drawing) {
       add_depth_shgroups(*instance_data, image, iuser);
     }
+    add_shgroups(instance_data);
   }
 
   void draw_finish(IMAGE_Data *vedata) const override
