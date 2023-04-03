@@ -1,1 +1,2 @@
 Referenced by commit 2cdcb1c1716, Revert "Fix off by one error in display of start/end frame in sequencer."
+Referenced by issue #106480, "Set End Frame" is set to next frame, instead of playhead position (VSE)
