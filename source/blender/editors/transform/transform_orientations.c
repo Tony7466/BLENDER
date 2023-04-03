@@ -590,18 +590,25 @@ static void handle_armature_parent_orientation(const Scene *scene,
 {
   bPoseChannel *active_pchan = BKE_pose_channel_active(ob, false);
 
+  // If Child bone has "Local Location" on, use local location orientation.
+  if (!(active_pchan->bone->flag & BONE_NO_LOCAL_LOCATION)) {
+    ED_getTransformOrientationMatrix(scene, view_layer, v3d, ob, obedit, pivot_point, r_mat);
+    return;
+  }
+
   if (active_pchan->parent) {
-    // For child, show parent local regardless if "local location" is set for parent bone.
+    // If Child bone doesn't have "Local Location" use parent space.
     transform_orientations_create_from_axis(r_mat, UNPACK3(active_pchan->parent->pose_mat));
     return;
   }
-  // if root, and "Local Location" isn't set, use local transform of armature object.
+
+  // If root, and "Local Location" isn't set, use local transform of armature object.
   if (active_pchan->bone->flag & BONE_NO_LOCAL_LOCATION) {
     transform_orientations_create_from_axis(r_mat, UNPACK3(ob->object_to_world));
     return;
   }
 
-  // if root or child bone has "Local Location" set, use bone local.
+  // If root has "Local Location" set, use bone local.
   ED_getTransformOrientationMatrix(scene, view_layer, v3d, ob, obedit, pivot_point, r_mat);
   return;
 }
@@ -611,6 +618,7 @@ static void handle_object_parent_orientation(Object *ob, float r_mat[3][3])
   // If object has parent, then orient to parent.
   if (ob->parent) {
     transform_orientations_create_from_axis(r_mat, UNPACK3(ob->parent->object_to_world));
+    7
   }
   else {
     // If object doesn't have parent, then orient to world.
