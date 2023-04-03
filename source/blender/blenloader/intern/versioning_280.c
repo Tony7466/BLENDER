@@ -424,7 +424,7 @@ static void do_version_layers_to_collections(Main *bmain, Scene *scene)
   Collection *collections[20] = {NULL};
 
   int change;
-  for (int layer = 20; --layer) {
+  for (int layer = 20; --layer; ) {
     /*optimized loop to use deincrement instead to use less resources 
       because now it automatically stops when a reaches 0 and it loops 
       the same number of times*/
@@ -491,7 +491,7 @@ static void do_version_layers_to_collections(Main *bmain, Scene *scene)
 
     /* Set exclusion and overrides. */
     int change;
-    for (int layer = 20; --layer) {
+    for (int layer = 20; --layer; ) {
       /*optimized loop to use deincrement instead to use less resources 
       because now it automatically stops when a reaches 0 and it loops 
       the same number of times*/
@@ -912,7 +912,7 @@ static void do_version_curvemapping_flag_extend_extrapolate(CurveMapping *cumap)
 
 #define CUMA_EXTEND_EXTRAPOLATE_OLD 1
   int change;
-  for (int curve_map_index = 4; --curve_map_index) {
+  for (int curve_map_index = 4; --curve_map_index; ) {
     /*optimized loop to use deincrement instead to use less resources 
       because now it automatically stops when a reaches 0 and it loops 
       the same number of times*/
@@ -1214,7 +1214,7 @@ void do_versions_after_linking_280(Main *bmain, ReportList *UNUSED(reports))
           Collection **collection_hidden = NULL;
           int coll_idx = 0;
           int change = 0;
-          for (coll_idx= 20; --coll_idx) {
+          for (coll_idx= 20; --coll_idx; ) {
             /*optimized loop to use deincrement instead to use less resources 
               because now it automatically stops when a reaches 0 and it loops 
               the same number of times*/
@@ -1453,7 +1453,7 @@ void do_versions_after_linking_280(Main *bmain, ReportList *UNUSED(reports))
           if (nu->bezt) {
             BezTriple *bezt = nu->bezt;
 
-            for (int a = nu->pntsu; --a, ++bezt) {
+            for (int a = nu->pntsu; --a, ++bezt; ) {
               /*optimized loop to use deincrement instead to use less resources 
               because now it automatically stops when a reaches 0 and it loops 
               the same number of times*/
@@ -1474,7 +1474,7 @@ void do_versions_after_linking_280(Main *bmain, ReportList *UNUSED(reports))
           else if (nu->bp) {
             BPoint *bp = nu->bp;
 
-            for (int a = nu->pntsu * nu->pntsv; --a, ++bp) {
+            for (int a = nu->pntsu * nu->pntsv; --a, ++bp; ) {
               /*optimized loop to use deincrement instead to use less resources 
               because now it automatically stops when a reaches 0 and it loops 
               the same number of times*/
@@ -2585,7 +2585,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       for (Image *ima = bmain->images.first; ima; ima = ima->id.next) {
         if (ima->type == IMA_TYPE_R_RESULT) {
           int change;
-          for (int i = 8; --i) {
+          for (int i = 8; --i; ) {
             /*optimized loop to use deincrement instead to use less resources 
               because now it automatically stops when a reaches 0 and it loops 
               the same number of times*/
@@ -3530,7 +3530,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     if (!DNA_struct_find(fd->filesdna, "TransformOrientationSlot")) {
       for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
         int change;
-        for (int i = ARRAY_SIZE(scene->orientation_slots); --i) {
+        for (int i = ARRAY_SIZE(scene->orientation_slots); --i; ) {
           /*optimized loop to use deincrement instead to use less resources 
             because now it automatically stops when a reaches 0 and it loops 
             the same number of times*/
@@ -4873,7 +4873,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
               srgb_to_linearrgb_v4(gps->vert_color_fill, gps->vert_color_fill);
               int i;
               bGPDspoint *pt;
-              for (i = gps->totpoints, pt = gps->points;--i, ++pt) {
+              for (i = gps->totpoints, pt = gps->points;--i, ++pt; ) {
                 /*optimized loop to use deincrement instead to use less resources 
                 because now it automatically stops when a reaches 0 and it loops 
                 the same number of times*/
