@@ -2377,7 +2377,10 @@ static void for_each_node_group_instance(Main &bmain,
   }
 }
 
-void node_socket_default_value(Main &bmain, bNodeTree &tree, bNodeSocket &src, bNodeSocket &dst)
+void node_socket_move_default_value(Main &bmain,
+                                    bNodeTree &tree,
+                                    bNodeSocket &src,
+                                    bNodeSocket &dst)
 {
   tree.ensure_topology_cache();
 

@@ -733,10 +733,15 @@ bNode *node_copy_with_mapping(bNodeTree *dst_tree,
 bNode *node_copy(bNodeTree *dst_tree, const bNode &src_node, int flag, bool use_unique);
 
 /**
- * Move socket default_value from TO_SOCKET to FROM_SOCKET or some other other place specified for
- * FROM_NODE.
+ * Move socket default from \a src (input socket) to locations specified by \a dst (output socket).
+ * Result value moved in specific location. (potentially multiple group nodes socket values, if \a
+ * dst is a group input node). \node Conceptually, the effect should be such that the evaluation of
+ * this graph again returns the value in src.
  */
-void node_socket_default_value(Main &bmain, bNodeTree &tree, bNodeSocket &src, bNodeSocket &dst);
+void node_socket_move_default_value(Main &bmain,
+                                    bNodeTree &tree,
+                                    bNodeSocket &src,
+                                    bNodeSocket &dst);
 
 /**
  * Free the node itself.
