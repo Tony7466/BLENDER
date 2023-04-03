@@ -491,6 +491,53 @@ void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor
 
 /* ---------------- */
 
+void blend_to_offset_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+{
+  const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
+  const float left_x = left_key->vec[1][0];
+  const float left_y = left_key->vec[1][1];
+
+  const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
+  const float right_x = right_key->vec[1][0];
+  const float right_y = right_key->vec[1][1];
+
+  const BezTriple *segment_first_key = fcurve_segment_start_get(fcu, segment->start_index + 1);
+  const float segment_first_key_y = segment_first_key->vec[1][1];
+
+  const BezTriple *segment_last_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length - 1);
+  const float segment_last_key_y = segment_last_key->vec[1][1];
+
+  const float key_x_range = right_x - left_x;
+
+  /* Happens if there is only 1 key on the FCurve. Needs to be skipped because it
+   * would be a divide by 0. */
+  if (IS_EQF(key_x_range, 0.0f)) {
+    return;
+  }
+
+  /* The calculation needs diferent values for each side of the slider. */
+  const bool slider_right_side = factor > 0.5;
+
+  /* For this tool the calculations are made easier if each side of the slider goes from 0 to porisive 1. */
+  const float ping_pong_factor = fabs(factor * 2 - 1);
+  
+  float y_delta = 0;
+
+  if (slider_right_side) {
+      y_delta = right_y - segment_last_key_y;
+    }
+    else {
+      y_delta = left_y - segment_first_key_y;
+    }
+
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+    const float key_y_value = fcu->bezt[i].vec[1][1] + y_delta * ping_pong_factor;
+    move_key(&fcu->bezt[i], key_y_value);
+  }
+}
+
+/* ---------------- */
+
 void breakdown_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
 {
   const BezTriple *left_bezt = fcurve_segment_start_get(fcu, segment->start_index);
