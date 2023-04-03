@@ -1162,7 +1162,8 @@ void GRAPH_OT_shear_left(wmOperatorType *ot)
   /* Identifiers. */
   ot->name = "Shear Left Keyframes";
   ot->idname = "GRAPH_OT_shear_left";
-  ot->description = "Affects the value of the keys linealy keeping the same \n\
+  ot->description =
+      "Affects the value of the keys linealy keeping the same \n\
   relationship between them using the left key as reference";
 
   /* API callbacks. */
