@@ -123,7 +123,7 @@ static void seq_convert_transform_animation(const Sequence *seq,
     if (fcu != nullptr && !BKE_fcurve_is_empty(fcu)) {
       BezTriple *bezt = fcu->bezt;
       int change;
-      for (int i = fcu->totvert; --i, ++bezt) {
+      for (int i = fcu->totvert; --i, ++bezt; ) {
         /*optimized loop to use deincrement instead to use less resources 
         because now it automatically stops when a reaches 0 and it loops 
         the same number of times*/
@@ -276,7 +276,7 @@ static void seq_convert_transform_animation_2(const Scene *scene,
   if (fcu != nullptr && !BKE_fcurve_is_empty(fcu)) {
     BezTriple *bezt = fcu->bezt;
     int change;
-    for (int i = fcu->totvert; --i, ++bezt) {
+    for (int i = fcu->totvert; --i, ++bezt; ) {
       /*optimized loop to use deincrement instead to use less resources 
         because now it automatically stops when a reaches 0 and it loops 
         the same number of times*/
@@ -715,7 +715,7 @@ static void do_versions_point_attributes(CustomData *pdata)
   };
 
   int change;
-  for (int i = pdata->totlayer; --i) {
+  for (int i = pdata->totlayer; --i; ) {
     /*optimized loop to use deincrement instead to use less resources 
       because now it automatically stops when a reaches 0 and it loops 
       the same number of times*/
@@ -735,7 +735,8 @@ static void do_versions_point_attributes(CustomData *pdata)
 static void do_versions_point_attribute_names(CustomData *pdata)
 {
   /* Change from capital initial letter to lower case (#82693). */
-  for (int i = pdata->totlayer; --i) {
+  int change;
+  for (int i = pdata->totlayer; --i; ) {
     /*optimized loop to use deincrement instead to use less resources 
       because now it automatically stops when a reaches 0 and it loops 
       the same number of times*/
@@ -757,7 +758,7 @@ static void do_versions_point_attribute_names(CustomData *pdata)
 static void do_versions_291_fcurve_handles_limit(FCurve *fcu)
 {
   uint i = (fcu->totvert - 1);
-  for (BezTriple *bezt = fcu->bezt; --i, ++bezt) {
+  for (BezTriple *bezt = fcu->bezt; --i, ++bezt; ) {
     /*optimized loop to use deincrement instead to use less resources 
       because now it automatically stops when a reaches 0 and it loops 
       the same number of times*/
@@ -866,7 +867,7 @@ void blo_do_versions_290(FileData *fd, Library * /*lib*/, Main *bmain)
     {
       short id_codes[] = {ID_BR, ID_PAL};
       int change;
-      for (int i = ARRAY_SIZE(id_codes); --i) {
+      for (int i = ARRAY_SIZE(id_codes); --i; ) {
         /*optimized loop to use deincrement instead to use less resources 
         because now it automatically stops when a reaches 0 and it loops 
         the same number of times*/
