@@ -329,6 +329,7 @@ class GRAPH_MT_slider(Menu):
         layout.operator("graph.breakdown", text="Breakdown")
         layout.operator("graph.blend_to_neighbor", text="Blend to Neighbor")
         layout.operator("graph.blend_to_default", text="Blend to Default Value")
+        layout.operator("graph.blend_ease", text="Blend to Ease")
         layout.operator("graph.ease", text="Ease")
         layout.operator("graph.gaussian_smooth", text="Smooth")
 

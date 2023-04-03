@@ -491,6 +491,70 @@ void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor
 
 /* ---------------- */
 
+float s_curve(float x, float slope, float width, float height, float xshift, float yshift) {
+    /* Formula for 'S' curve we use for the "ease" sliders. The shift values move the curve vertiacly or horizontaly.
+     * The range of the curve used is from 0 to 1 on "x" and "y" so we can scale it (width and height) and move it (xshift and y yshift) 
+     * to crop the part of the curve we need. Slope determins how curvy the shape is */
+    float curve = height * pow((x - xshift), slope) / (pow((x - xshift), slope) + pow((width - (x - xshift)), slope)) + yshift;
+
+    /* The curve has some noise beyond our margins so we clamp the values */
+    if (x > xshift + width) {
+        curve = height + yshift;
+    } else if (x < xshift) {
+        curve = yshift;
+    }
+    return curve;
+}
+
+void ease_b_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+{
+  const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
+  const float left_x = left_key->vec[1][0];
+  const float left_y = left_key->vec[1][1];
+
+  const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
+
+  const float key_x_range = right_key->vec[1][0] - left_x;
+  const float key_y_range = right_key->vec[1][1] - left_y;
+
+  /* Happens if there is only 1 key on the FCurve. Needs to be skipped because it
+   * would be a divide by 0. */
+  if (IS_EQF(key_x_range, 0.0f)) {
+    return;
+  }
+
+  /* The calculation needs diferent values for each side of the slider. */
+  const bool slider_right_side = factor > 0.5;
+
+  /* The factor goes from 0 to 1, but for this tool it needs to go from 0 to 1 on each side of the slider. */
+  const float ping_pong_factor = fabs(factor * 2 - 1) * 5;
+
+  /* By duplicating the size of the curve we get only half of the "S" shape (kind of a "C" shape). */
+  const float width = 2.0;
+  const float height = 2.0;
+  float xshift = 0.0;
+  float yshift = 0.0;
+
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+    /* For easy calculation of the curve, the  values are normalized. */
+    const float normalized_x = (fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range;
+
+    /* For values on the right side of the slider we need the other half of the "S" shape. */
+    if (slider_right_side) {
+      xshift = -1.0;
+      yshift = -1.0;
+    }
+
+    /* The factor is used to affect the slope of the the "C" shape. */
+    float ease = s_curve(normalized_x, ping_pong_factor, width, height, xshift, yshift);
+
+    const float key_y_value = left_key->vec[1][1] + key_y_range * ease;
+    move_key(&fcu->bezt[i], key_y_value);
+  }
+}
+
+/* ---------------- */
+
 void breakdown_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
 {
   const BezTriple *left_bezt = fcurve_segment_start_get(fcu, segment->start_index);
