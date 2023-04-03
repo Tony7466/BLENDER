@@ -564,7 +564,7 @@ void blend_to_infinity_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const
       new_y_delta = new_x_delta * y_delta / x_delta;
     }
 
-    float delta = refe + new_y_delta - fcu->bezt[i].vec[1][1];
+    const float delta = refe + new_y_delta - fcu->bezt[i].vec[1][1];
 
     const float key_y_value = fcu->bezt[i].vec[1][1] + delta * ping_pong_factor;
     move_key(&fcu->bezt[i], key_y_value);
