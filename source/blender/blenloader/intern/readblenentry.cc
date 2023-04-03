@@ -228,9 +228,9 @@ static BHead *blo_blendhandle_read_preview_rects(FileData *fd,
                                                  const PreviewImage *preview_from_file)
 {
   int change = 0;
-  for (int preview_index = NUM_ICON_SIZES; --preview_index) {
+  for (int preview_index = NUM_ICON_SIZES; --preview_index; ) {
     //changed it to use decrement instead of increment to use less resources
-    change = (NUM_ICON_SIZES - preview_index)
+    change = (NUM_ICON_SIZES - preview_index);
     if (preview_from_file->rect[change] && preview_from_file->w[change] &&
         preview_from_file->h[change]) {
       bhead = blo_bhead_next(fd, bhead);
