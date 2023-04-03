@@ -37,7 +37,6 @@
 #include "DNA_mask_types.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
-#include "DNA_meta_types.h"
 #include "DNA_movieclip_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_force_types.h"
@@ -2054,6 +2053,9 @@ void DepsgraphRelationBuilder::build_rigidbody(Scene *scene)
                      object_transform_final_key,
                      "Rigidbody Sync -> Transform Final");
       }
+
+      /* Relations between colliders and force fields, needed for force field absorption. */
+      build_collision_relations(graph_, nullptr, eModifierType_Collision);
     }
     FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
   }
