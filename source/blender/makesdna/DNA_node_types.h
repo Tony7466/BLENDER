@@ -179,8 +179,6 @@ typedef struct bNodeSocket {
   template<typename T> T *default_value_typed();
   template<typename T> const T *default_value_typed() const;
 
-  template<typename T> T *default_value_typed();
-
   /* The following methods are only available when #bNodeTree.ensure_topology_cache has been
    * called. */
 

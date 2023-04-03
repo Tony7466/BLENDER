@@ -788,11 +788,6 @@ template<typename T> const T *bNodeSocket::default_value_typed() const
   return static_cast<const T *>(this->default_value);
 }
 
-template<typename T> T *bNodeSocket::default_value_typed()
-{
-  return static_cast<T *>(this->default_value);
-}
-
 inline bool bNodeSocket::is_input() const
 {
   return this->in_out == SOCK_IN;
