@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. All rights reserved. */
+ * Copyright 2011 Blender Foundation */
 
 /** \file
  * \ingroup spclip
@@ -997,7 +997,7 @@ static void graph_region_draw(const bContext *C, ARegion *region)
   {
     rcti rect;
     BLI_rcti_init(
-        &rect, 0, 15 * UI_DPI_FAC, 15 * UI_DPI_FAC, region->winy - UI_TIME_SCRUB_MARGIN_Y);
+        &rect, 0, 15 * UI_SCALE_FAC, 15 * UI_SCALE_FAC, region->winy - UI_TIME_SCRUB_MARGIN_Y);
     UI_view2d_draw_scale_y__values(region, v2d, &rect, TH_TEXT);
   }
 }
@@ -1056,9 +1056,7 @@ static void clip_preview_region_draw(const bContext *C, ARegion *region)
   }
 }
 
-static void clip_preview_region_listener(const wmRegionListenerParams * /*params*/)
-{
-}
+static void clip_preview_region_listener(const wmRegionListenerParams * /*params*/) {}
 
 /****************** channels region ******************/
 
@@ -1097,9 +1095,7 @@ static void clip_channels_region_draw(const bContext *C, ARegion *region)
   UI_view2d_view_restore(C);
 }
 
-static void clip_channels_region_listener(const wmRegionListenerParams * /*params*/)
-{
-}
+static void clip_channels_region_listener(const wmRegionListenerParams * /*params*/) {}
 
 /****************** header region ******************/
 

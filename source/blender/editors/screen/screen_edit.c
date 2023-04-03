@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup edscr
@@ -1064,7 +1064,7 @@ static void screen_global_area_refresh(wmWindow *win,
 
 static int screen_global_header_size(void)
 {
-  return (int)ceilf(ED_area_headersize() / UI_DPI_FAC);
+  return (int)ceilf(ED_area_headersize() / UI_SCALE_FAC);
 }
 
 static void screen_global_topbar_area_refresh(wmWindow *win, bScreen *screen)

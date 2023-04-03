@@ -294,6 +294,7 @@ class USERPREF_PT_interface_statusbar(InterfacePanel, CenterAlignMixIn, Panel):
 
         col = layout.column(heading="Show")
         col.prop(view, "show_statusbar_stats", text="Scene Statistics")
+        col.prop(view, "show_statusbar_scene_duration", text="Scene Duration")
         col.prop(view, "show_statusbar_memory", text="System Memory")
         col.prop(view, "show_statusbar_vram", text="Video Memory")
         col.prop(view, "show_statusbar_version", text="Blender Version")
@@ -728,7 +729,7 @@ class USERPREF_PT_viewport_display(ViewportPanel, CenterAlignMixIn, Panel):
 
         col.separator()
 
-        col.prop(view, "mini_axis_type", text="3D Viewport Axis")
+        col.prop(view, "mini_axis_type", text="3D Viewport Axes")
 
         if view.mini_axis_type == 'MINIMAL':
             col.prop(view, "mini_axis_size", text="Size")
