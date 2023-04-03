@@ -5073,7 +5073,7 @@ static void convert_pointer_array_64_to_32(BlendDataReader *reader,
   /* Match pointer conversion rules from bh4_from_bh8 and cast_pointer. */
   if (BLO_read_requires_endian_switch(reader)) {
     int change = 0;
-    for (int i = array_size; --i) {
+    for (int i = array_size; --i; ) {
       /*optimized loop to use deincrement instead to use less resources 
       because now it automatically stops when a reaches 0 and it loops 
       the same number of times*/
@@ -5085,7 +5085,7 @@ static void convert_pointer_array_64_to_32(BlendDataReader *reader,
   }
   else {
     int change = 0;
-    for (int i = array_size; --i) {
+    for (int i = array_size; --i; ) {
       /*optimized loop to use deincrement instead to use less resources 
       because now it automatically stops when a reaches 0 and it loops 
       the same number of times*/
@@ -5102,7 +5102,7 @@ static void convert_pointer_array_32_to_64(BlendDataReader * /*reader*/,
 {
   /* Match pointer conversion rules from bh8_from_bh4 and cast_pointer_32_to_64. */
   int change = 0;
-  for (int i = array_size; --i) {
+  for (int i = array_size; --i; ) {
     /*optimized loop to use deincrement instead to use less resources 
       because now it automatically stops when a reaches 0 and it loops 
       the same number of times*/
