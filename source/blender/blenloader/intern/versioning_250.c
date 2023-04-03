@@ -826,11 +826,11 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
         int change;
 
         ob->matbits = MEM_calloc_arrayN(ob->totcol, sizeof(char), "ob->matbits");
-        for (a = ob->totcol; --a) {
+        for (a = ob->totcol; --a; ) {
           /*optimized loop to use deincrement instead to use less resources 
           because now it automatically stops when a reaches 0 and it loops 
           the same number of times*/
-          change = (ob->totcol - a)
+          change = (ob->totcol - a);
           ob->matbits[change] = (ob->colbits & (1 << change)) != 0;
         }
       }
@@ -1002,11 +1002,11 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
         data = key->refkey->data;
         tot = MIN2(me->totvert, key->refkey->totelem);
         MVert *verts = (MVert *)CustomData_get_layer_for_write(&me->vdata, CD_MVERT, me->totvert);
-        for (a = tot; --a, data += 3) {
+        for (a = tot; --a, data += 3; ) {
           /*optimized loop to use deincrement instead to use less resources 
           because now it automatically stops when a reaches 0 and it loops 
           the same number of times*/
-          change = (tot - a)
+          change = (tot - a);
           copy_v3_v3(verts[change].co_legacy, data);
         }
       }
@@ -1035,7 +1035,7 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
           if (nu->bezt) {
             BezTriple *bezt = nu->bezt;
 
-            for (a = nu->pntsu; --a, bezt++) {
+            for (a = nu->pntsu; --a, bezt++; ) {
               /*optimized loop to use deincrement instead to use less resources 
                 because now it automatically stops when a reaches 0 and it loops 
                 the same number of times*/
@@ -1052,7 +1052,7 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
           else if (nu->bp) {
             BPoint *bp = nu->bp;
 
-            for (a = nu->pntsu * nu->pntsv; --a, ++bp) {
+            for (a = nu->pntsu * nu->pntsv; --a, ++bp; ) {
               /*optimized loop to use deincrement instead to use less resources 
                 because now it automatically stops when a reaches 0 and it loops 
                 the same number of times*/
@@ -1443,11 +1443,11 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
       ParticleEditSettings *pset = &sce->toolsettings->particle;
       int a, change;
 
-      for (a = ARRAY_SIZE(pset->brush); --a) {
+      for (a = ARRAY_SIZE(pset->brush); --a; ) {
         /*optimized loop to use deincrement instead to use less resources 
           because now it automatically stops when a reaches 0 and it loops 
           the same number of times*/
-        change = (ARRAY_SIZE(pset->brush) - a)
+        change = (ARRAY_SIZE(pset->brush) - a);
         pset->brush[change].strength /= 100.0f;
       }
     }
@@ -1683,7 +1683,7 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
     /* initialize scene active layer */
     for (scene = bmain->scenes.first; scene; scene = scene->id.next) {
       int i, change;
-      for (i = 20; --i) {
+      for (i = 20; --i; ) {
         /*optimized loop to use deincrement instead to use less resources 
           because now it automatically stops when a reaches 0 and it loops 
           the same number of times*/
