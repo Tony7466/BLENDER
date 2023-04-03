@@ -32,6 +32,7 @@
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_grease_pencil.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_image.h"
 #include "BKE_key.h"
 #include "BKE_lattice.h"
@@ -198,7 +199,7 @@ void BKE_object_handle_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
       BKE_volume_data_update(depsgraph, scene, ob);
       break;
     case OB_GREASE_PENCIL:
-      /* TODO: data update. */
+      BKE_grease_pencil_data_update(depsgraph, scene, ob);
       break;
   }
 

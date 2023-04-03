@@ -82,6 +82,11 @@ static const char *object_mode_op_string(eObjectMode mode)
   if (mode == OB_MODE_EDIT_GPENCIL) {
     return "GPENCIL_OT_editmode_toggle";
   }
+  if (U.experimental.use_grease_pencil_version3) {
+    if (mode == OB_MODE_PAINT_GPENCIL) {
+      return "GREASE_PENCIL_OT_draw_mode_toggle";
+    }
+  }
   if (mode == OB_MODE_PAINT_GPENCIL) {
     return "GPENCIL_OT_paintmode_toggle";
   }

@@ -10,6 +10,7 @@
 #include "BLI_function_ref.hh"
 #include "BLI_map.hh"
 #include "BLI_math_vector.h"
+#include "BLI_math_vector_types.hh"
 #include "BLI_shared_cache.hh"
 #include "BLI_stack.hh"
 #include "BLI_string.h"
@@ -439,7 +440,13 @@ class GreasePencilRuntime {
 struct Main;
 struct Depsgraph;
 struct BoundBox;
+struct Scene;
+struct Object;
 
 void *BKE_grease_pencil_add(Main *bmain, const char *name);
+GreasePencil *BKE_grease_pencil_new_nomain();
 BoundBox *BKE_grease_pencil_boundbox_get(Object *ob);
 void BKE_grease_pencil_eval_geometry(Depsgraph *depsgraph, GreasePencil &grease_pencil);
+void BKE_grease_pencil_data_update(struct Depsgraph *depsgraph,
+                                   struct Scene *scene,
+                                   struct Object *object);

@@ -268,6 +268,13 @@ void *BKE_grease_pencil_add(Main *bmain, const char *name)
   return grease_pencil;
 }
 
+GreasePencil *BKE_grease_pencil_new_nomain()
+{
+  GreasePencil *grease_pencil = static_cast<GreasePencil *>(BKE_id_new_nomain(ID_GP, nullptr));
+  grease_pencil_init_data(&grease_pencil->id);
+  return grease_pencil;
+}
+
 BoundBox *BKE_grease_pencil_boundbox_get(Object *ob)
 {
   BLI_assert(ob->type == OB_GREASE_PENCIL);
@@ -307,6 +314,27 @@ BoundBox *BKE_grease_pencil_boundbox_get(Object *ob)
   }
 
   return ob->runtime.bb;
+}
+
+void BKE_grease_pencil_data_update(struct Depsgraph *depsgraph, struct Scene *scene, Object *object)
+{
+  /* Free any evaluated data and restore original data. */
+  BKE_object_free_derived_caches(object);
+
+  GreasePencil *grease_pencil = static_cast<GreasePencil *>(object->data);
+  /* Evaluate modifiers. */
+  /* TODO. */
+
+  /* Assign evaluated object. */
+  /* TODO: Get eval from modifiers geometry set. */
+  GreasePencil *grease_pencil_eval = nullptr;
+  if (grease_pencil_eval == nullptr) {
+    grease_pencil_eval = BKE_grease_pencil_new_nomain();
+    BKE_object_eval_assign_data(object, &grease_pencil_eval->id, true);
+  }
+  else {
+    BKE_object_eval_assign_data(object, &grease_pencil_eval->id, false);
+  }
 }
 
 static void grease_pencil_drawing_calculate_fill_triangles(GreasePencilDrawing &drawing)

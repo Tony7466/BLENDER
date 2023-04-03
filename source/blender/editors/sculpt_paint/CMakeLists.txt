@@ -41,6 +41,7 @@ set(SRC
   curves_sculpt_slide.cc
   curves_sculpt_smooth.cc
   curves_sculpt_snake_hook.cc
+  grease_pencil_draw_ops.cc
   paint_canvas.cc
   paint_cursor.cc
   paint_curve.c
