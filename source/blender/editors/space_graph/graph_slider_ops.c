@@ -1162,7 +1162,8 @@ void GRAPH_OT_scale_right(wmOperatorType *ot)
   /* Identifiers. */
   ot->name = "Scale Right Keyframes";
   ot->idname = "GRAPH_OT_scale_right";
-  ot->description = "Increase or decrease the value of selected keys \n\
+  ot->description =
+      "Increase or decrease the value of selected keys \n\
   in relationship to the right neighboring one";
 
   /* API callbacks. */

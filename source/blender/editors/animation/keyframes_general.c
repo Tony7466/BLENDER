@@ -505,7 +505,7 @@ void scale_right_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float
   }
 
   /* The factor goes from 0 to 1, but for this tool it needs to go from -1 to 1. */
-  const float long_factor =  factor * 2 - 1;
+  const float long_factor = factor * 2 - 1;
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
     const float delta = fcu->bezt[i].vec[1][1] - right_key->vec[1][1];
