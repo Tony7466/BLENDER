@@ -58,10 +58,6 @@ class NodeAddOperator:
         else:
             space.cursor_location = tree.view_center
 
-    # XXX explicit node_type argument is usually not necessary,
-    # but required to make search operator work:
-    # add_search has to override the 'type' property
-    # since it's hardcoded in bpy_operator_wrap.c ...
     def create_node(self, context, node_type=None):
         space = context.space_data
         tree = space.edit_tree
