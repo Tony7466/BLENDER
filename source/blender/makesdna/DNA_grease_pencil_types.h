@@ -82,7 +82,7 @@ typedef struct GreasePencilDrawingReference {
   /**
    * A reference to another GreasePencil data-block.
    * If the data-block has multiple drawings, this drawing references all of them sequentially.
-   * See the note in `GreasePencilLayer->frames()` for a detailed expelantion of this.
+   * See the note in `GreasePencilLayer->frames()` for a detailed explanation of this.
    */
   struct GreasePencil *id_reference;
 } GreasePencilDrawingReference;
