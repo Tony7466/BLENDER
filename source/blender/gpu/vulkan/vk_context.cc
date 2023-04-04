@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. All rights reserved. */
+ * Copyright 2022 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -8,6 +8,7 @@
 #include "vk_context.hh"
 
 #include "vk_backend.hh"
+#include "vk_framebuffer.hh"
 #include "vk_memory.hh"
 #include "vk_state_manager.hh"
 
@@ -48,6 +49,9 @@ VKContext::VKContext(void *ghost_window, void *ghost_context)
   state_manager = new VKStateManager();
 
   VKBackend::capabilities_init(*this);
+
+  /* For off-screen contexts. Default frame-buffer is empty. */
+  back_left = new VKFrameBuffer("back_left");
 }
 
 VKContext::~VKContext()
@@ -65,11 +69,30 @@ void VKContext::init_physical_device_limits()
 
 void VKContext::activate()
 {
+  if (ghost_window_) {
+    VkImage image; /* TODO will be used for reading later... */
+    VkFramebuffer vk_framebuffer;
+    VkRenderPass render_pass;
+    VkExtent2D extent;
+    uint32_t fb_id;
+
+    GHOST_GetVulkanBackbuffer(
+        (GHOST_WindowHandle)ghost_window_, &image, &vk_framebuffer, &render_pass, &extent, &fb_id);
+
+    /* Recreate the gpu::VKFrameBuffer wrapper after every swap. */
+    if (has_active_framebuffer()) {
+      deactivate_framebuffer();
+    }
+    delete back_left;
+
+    VKFrameBuffer *framebuffer = new VKFrameBuffer(
+        "back_left", vk_framebuffer, render_pass, extent);
+    back_left = framebuffer;
+    framebuffer->bind(false);
+  }
 }
 
-void VKContext::deactivate()
-{
-}
+void VKContext::deactivate() {}
 
 void VKContext::begin_frame()
 {
@@ -93,19 +116,36 @@ void VKContext::flush()
 
 void VKContext::finish()
 {
+  if (has_active_framebuffer()) {
+    deactivate_framebuffer();
+  }
   command_buffer_.submit();
 }
 
-void VKContext::memory_statistics_get(int * /*total_mem*/, int * /*free_mem*/)
+void VKContext::memory_statistics_get(int * /*total_mem*/, int * /*free_mem*/) {}
+
+void VKContext::activate_framebuffer(VKFrameBuffer &framebuffer)
 {
+  if (has_active_framebuffer()) {
+    deactivate_framebuffer();
+  }
+
+  BLI_assert(active_fb == nullptr);
+  active_fb = &framebuffer;
+  command_buffer_.begin_render_pass(framebuffer);
 }
 
-void VKContext::debug_group_begin(const char *, int)
+bool VKContext::has_active_framebuffer() const
 {
+  return active_fb != nullptr;
 }
 
-void VKContext::debug_group_end()
+void VKContext::deactivate_framebuffer()
 {
+  BLI_assert(active_fb != nullptr);
+  VKFrameBuffer *framebuffer = unwrap(active_fb);
+  command_buffer_.end_render_pass(*framebuffer);
+  active_fb = nullptr;
 }
 
 }  // namespace blender::gpu

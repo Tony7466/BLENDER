@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation. All rights reserved. */
+ * Copyright 2006 Blender Foundation */
 
 /** \file
  * \ingroup render
@@ -163,21 +163,11 @@ static bool do_write_image_or_movie(Render *re,
                                     const char *name_override);
 
 /* default callbacks, set in each new render */
-static void result_nothing(void * /*arg*/, RenderResult * /*rr*/)
-{
-}
-static void result_rcti_nothing(void * /*arg*/, RenderResult * /*rr*/, struct rcti * /*rect*/)
-{
-}
-static void current_scene_nothing(void * /*arg*/, Scene * /*scene*/)
-{
-}
-static void stats_nothing(void * /*arg*/, RenderStats * /*rs*/)
-{
-}
-static void float_nothing(void * /*arg*/, float /*val*/)
-{
-}
+static void result_nothing(void * /*arg*/, RenderResult * /*rr*/) {}
+static void result_rcti_nothing(void * /*arg*/, RenderResult * /*rr*/, struct rcti * /*rect*/) {}
+static void current_scene_nothing(void * /*arg*/, Scene * /*scene*/) {}
+static void stats_nothing(void * /*arg*/, RenderStats * /*rs*/) {}
+static void float_nothing(void * /*arg*/, float /*val*/) {}
 static bool default_break(void * /*arg*/)
 {
   return G.is_break == true;
@@ -862,7 +852,7 @@ void RE_test_break_cb(Render *re, void *handle, bool (*f)(void *handle))
 
 void RE_gl_context_create(Render *re)
 {
-  /* Needs to be created in the main ogl thread. */
+  /* Needs to be created in the main OpenGL thread. */
   re->gl_context = WM_opengl_context_create();
   /* So we activate the window's one afterwards. */
   wm_window_reset_drawable();
@@ -870,7 +860,7 @@ void RE_gl_context_create(Render *re)
 
 void RE_gl_context_destroy(Render *re)
 {
-  /* Needs to be called from the thread which used the ogl context for rendering. */
+  /* Needs to be called from the thread which used the OpenGL context for rendering. */
   if (re->gl_context) {
     if (re->gpu_context) {
       WM_opengl_context_activate(re->gl_context);

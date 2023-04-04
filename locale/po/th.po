@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.5.0 Beta (b'c5bbc5db6faa')\n"
+"Project-Id-Version: Blender 3.6.0 Alpha (b'e05010b2f292')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-02-27 15:19:45\n"
+"POT-Creation-Date: 2023-04-03 10:36:36\n"
 "PO-Revision-Date: 2019-12-08 17:40+0700\n"
 "Last-Translator: gongpha <gongpha@gmail.com>\n"
 "Language-Team: Thai Translation Team <gongpha@gmail.com>\n"
@@ -1359,18 +1359,6 @@ msgid "Add Color"
 msgstr "เพิ่มสี"
 
 
-msgid "Root"
-msgstr "ฐาน"
-
-
-msgid "Sharp"
-msgstr "แหลม"
-
-
-msgid "Inverse Square"
-msgstr "จัตุรัสผกผัน"
-
-
 msgid "Repeat"
 msgstr "ทำซ้ำ"
 
@@ -1567,6 +1555,10 @@ msgstr "เฉพาะจุด"
 msgctxt "Light"
 msgid "Area"
 msgstr "พื้นที่"
+
+
+msgid "Inverse Square"
+msgstr "จัตุรัสผกผัน"
 
 
 msgid "Samples"
@@ -1868,10 +1860,6 @@ msgid "Memory"
 msgstr "หน่วยความจำ"
 
 
-msgid "Lines"
-msgstr "เส้น"
-
-
 msgid "Register"
 msgstr "ทะเบียน"
 
@@ -1914,6 +1902,10 @@ msgstr "สะท้อน Y"
 
 msgid "Pattern"
 msgstr "ลวดลาย"
+
+
+msgid "Sharp"
+msgstr "แหลม"
 
 
 msgid "Rings"
@@ -2253,6 +2245,10 @@ msgid "Polygon Center"
 msgstr "ศูนย์กลางโพลิกอน"
 
 
+msgid "Root"
+msgstr "ฐาน"
+
+
 msgid "Intersect"
 msgstr "ตัดกัน"
 
@@ -2356,6 +2352,10 @@ msgstr "แนวฉาก Z"
 
 msgid "Face Area"
 msgstr "พื้นที่ด้าน"
+
+
+msgid "Lines"
+msgstr "เส้น"
 
 
 msgid "Units"
@@ -2584,6 +2584,10 @@ msgid "Paste from Clipboard"
 msgstr "วางจากคลิปบอร์ด"
 
 
+msgid "Selection"
+msgstr "การเลือก"
+
+
 msgid "Report"
 msgstr "รายงาน"
 
@@ -2715,10 +2719,6 @@ msgstr "ค้นหาทั้งหมด"
 
 msgid "Next"
 msgstr "ถัดไป"
-
-
-msgid "Selection"
-msgstr "การเลือก"
 
 
 msgctxt "Operator"
@@ -4016,10 +4016,6 @@ msgid "Display Grid Floor"
 msgstr "แสดงพื้นตาราง"
 
 
-msgid "Hidden Wire"
-msgstr "เส้นที่มองไม่เห็น"
-
-
 msgid "Viewport Shading"
 msgstr "วิวพอร์ตแรเงา"
 
@@ -4116,10 +4112,6 @@ msgstr "    ตำแหน่ง RNA: bpy.types."
 
 msgid "    RNA Context: "
 msgstr "    บริบท RNA: "
-
-
-msgid "[{}]: \"{}\" ({})"
-msgstr "[{}]: \"{}\" ({})"
 
 
 msgctxt "Operator"
@@ -4255,11 +4247,6 @@ msgstr "คำนวณ"
 msgctxt "Operator"
 msgid "Location"
 msgstr "ตำแหน่ง"
-
-
-msgctxt "Operator"
-msgid "Zoom %d:%d"
-msgstr "ซูม %d:%d"
 
 
 msgid "Zoom %d:%d"
@@ -4753,10 +4740,6 @@ msgstr "ไฟล์:"
 
 msgid "Author:"
 msgstr "ผู้สร้าง:"
-
-
-msgid "author"
-msgstr "ผู้สร้าง"
 
 
 msgid "Version:"

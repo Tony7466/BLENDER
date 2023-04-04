@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.5.0 Beta (b'c5bbc5db6faa')\n"
+"Project-Id-Version: Blender 3.6.0 Alpha (b'e05010b2f292')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-02-27 15:19:45\n"
+"POT-Creation-Date: 2023-04-03 10:36:36\n"
 "PO-Revision-Date: 2012-09-07 22:32+0100\n"
 "Last-Translator: Nikola Radovanovic <cobisimo@gmail.com>\n"
 "Language-Team: Nikola Radovanovic\n"
@@ -1845,10 +1845,6 @@ msgstr "Спољна дебљина странице"
 
 msgid "Enabled"
 msgstr "Омогућено"
-
-
-msgid "Enable this objects as a collider for physics systems"
-msgstr "Омогући сударање са овим објектом"
 
 
 msgid "Kill Particles"
@@ -4537,10 +4533,6 @@ msgid "Effective but slow compression"
 msgstr "Ефикасна, али спора компресија"
 
 
-msgid "Number"
-msgstr "Број"
-
-
 msgid "p0"
 msgstr "п0"
 
@@ -5448,18 +5440,6 @@ msgstr "Одузимање боје"
 
 msgid "Mask Texture Overlay Alpha"
 msgstr "Маскирај провидност преклапања текстуре"
-
-
-msgid "Root"
-msgstr "Корен"
-
-
-msgid "Sharp"
-msgstr "Оштро"
-
-
-msgid "Sharper"
-msgstr "Оштрије"
 
 
 msgid "Fill Threshold"
@@ -7642,6 +7622,10 @@ msgid "Roughness Curve"
 msgstr "Крива храпавости"
 
 
+msgid "Number"
+msgstr "Број"
+
+
 msgid "Show particle number"
 msgstr "Прикажи број честица"
 
@@ -7744,6 +7728,10 @@ msgstr "Виртуелни родитељ"
 
 msgid "Active Movie Clip"
 msgstr "Активни филмски исечак"
+
+
+msgid "Mirror Object"
+msgstr "Објекат као огледало"
 
 
 msgid "Inverse"
@@ -8010,10 +7998,6 @@ msgstr "Меморија"
 
 msgid "Modified"
 msgstr "Измењен"
-
-
-msgid "Lines"
-msgstr "Линије"
 
 
 msgid "Lines of text"
@@ -8336,8 +8320,16 @@ msgid "Use soft marble"
 msgstr "Користи меки мермер"
 
 
+msgid "Sharp"
+msgstr "Оштро"
+
+
 msgid "Use more clearly defined marble"
 msgstr "Користи јесније дефинисан мермер"
+
+
+msgid "Sharper"
+msgstr "Оштрије"
 
 
 msgid "Use very clearly defined marble"
@@ -9241,6 +9233,10 @@ msgid "Weight of the point"
 msgstr "Тежина тачке"
 
 
+msgid "Active Point"
+msgstr "Активна тачка"
+
+
 msgid "Alignment"
 msgstr "Поравнање"
 
@@ -9621,6 +9617,10 @@ msgstr "Кожа темена"
 
 msgid "Radius of the skin"
 msgstr "Радиус коже"
+
+
+msgid "Root"
+msgstr "Корен"
 
 
 msgid "Name of skin layer"
@@ -10247,10 +10247,6 @@ msgid "Time Mode"
 msgstr "Мод времена"
 
 
-msgid "Mirror Object"
-msgstr "Објекат као огледало"
-
-
 msgid "Object to use as mirror"
 msgstr "Објекат који се користи као огледало"
 
@@ -10539,10 +10535,6 @@ msgid "Projectors"
 msgstr "Пројектори"
 
 
-msgid "Add target position to uv coordinates"
-msgstr "Додај циљну позицију на UV координате"
-
-
 msgid "U-Axis"
 msgstr "U оса"
 
@@ -10752,6 +10744,10 @@ msgstr "Измени путању"
 
 msgid "Number of frames cached"
 msgstr "Број кадрова у остави"
+
+
+msgid "Lines"
+msgstr "Линије"
 
 
 msgid "Free Run"
@@ -12481,6 +12477,10 @@ msgid "Interactively change the current frame number"
 msgstr "Интерактивно мења број текућег кадра"
 
 
+msgid "Include Handles"
+msgstr "Укључи ручке"
+
+
 msgctxt "Operator"
 msgid "Mouse Click on Channels"
 msgstr "Клик мишем на канале"
@@ -13727,6 +13727,10 @@ msgid "Paste text from clipboard"
 msgstr "Убаци текст из оставе"
 
 
+msgid "Selection"
+msgstr "Избор"
+
+
 msgctxt "Operator"
 msgid "Scrollback Append"
 msgstr "Додај на препис"
@@ -14659,10 +14663,6 @@ msgid "Change Spacing"
 msgstr "Промени размак"
 
 
-msgid "Selection"
-msgstr "Избор"
-
-
 msgctxt "Operator"
 msgid "Line Break"
 msgstr "Прелом редова"
@@ -15130,8 +15130,8 @@ msgid "Only Active"
 msgstr "Само активне"
 
 
-msgid "Include Handles"
-msgstr "Укључи ручке"
+msgid "Sigma"
+msgstr "Сигма"
 
 
 msgctxt "Operator"
@@ -17684,15 +17684,6 @@ msgstr "Придружује изабрана темена новој групи
 
 msgid "Make a copy of the active vertex group"
 msgstr "Поставља активну групу темена"
-
-
-msgctxt "Operator"
-msgid "Fix Vertex Group Deform"
-msgstr "Исправи деформацију групе темена"
-
-
-msgid "Change Sensitivity"
-msgstr "Промени осетљивост"
 
 
 msgid "Add Weights"
@@ -20920,10 +20911,6 @@ msgstr "Предефинисане камере"
 
 msgid "2D Cursor"
 msgstr "2D курсор"
-
-
-msgid "Active Point"
-msgstr "Активна тачка"
 
 
 msgid "Footage Settings"
@@ -25135,10 +25122,6 @@ msgid "Invert Selection"
 msgstr "Обрни избор"
 
 
-msgid "[{}]: \"{}\" ({})"
-msgstr "[{}]: \"{}\" ({})"
-
-
 msgid "Tracking"
 msgstr "Праћење"
 
@@ -25740,6 +25723,11 @@ msgid "Make and Replace Links"
 msgstr "Створи и замени везе"
 
 
+msgctxt "Operator"
+msgid "Online Manual"
+msgstr "Упутство на интернету"
+
+
 msgid "Slot %d"
 msgstr "Слот %d"
 
@@ -25991,10 +25979,6 @@ msgstr "Датотека:"
 
 msgid "Author:"
 msgstr "Аутор:"
-
-
-msgid "author"
-msgstr "аутор"
 
 
 msgid "Version:"
@@ -26781,11 +26765,6 @@ msgstr "Врати један на почетну вредност"
 msgctxt "Operator"
 msgid "Remove Shortcut"
 msgstr "Уклони пречицу"
-
-
-msgctxt "Operator"
-msgid "Online Manual"
-msgstr "Упутство на интернету"
 
 
 msgctxt "Operator"
@@ -27966,10 +27945,6 @@ msgid "Subsurface"
 msgstr "Издељена површ"
 
 
-msgid "Sigma"
-msgstr "Сигма"
-
-
 msgid "View Vector"
 msgstr "Вектор погледа"
 
@@ -28167,22 +28142,6 @@ msgstr "Blender-ов преглед датотека"
 
 msgid "unable to open the file"
 msgstr "Не могу да отворим датотеку"
-
-
-msgid "Cannot read file '%s': %s"
-msgstr "Не могу да прочитам датотеку '%s': %s"
-
-
-msgid "File format is not supported in file '%s'"
-msgstr "Формат није подржан у датотеци '%s'"
-
-
-msgid "File path '%s' invalid"
-msgstr "Путања '%s' није исправна"
-
-
-msgid "Unknown error loading '%s'"
-msgstr "Непозната грешака приликом учитавања: '%s'"
 
 
 msgid "Not a library"

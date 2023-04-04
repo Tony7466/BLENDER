@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2014 Blender Foundation. All rights reserved. */
+ * Copyright 2014 Blender Foundation */
 
 /** \file
  * \ingroup edgizmolib
@@ -580,12 +580,19 @@ static void cage2d_draw_circle_wire(const float color[3],
   immUnbindProgram();
 }
 
-static void cage2d_draw_rect_handles(const rctf *r,
-                                     const float margin[2],
-                                     const float color[3],
-                                     const int transform_flag,
-                                     bool solid)
+static void cage2d_draw_rect_corner_handles(const rctf *r,
+                                            const int highlighted,
+                                            const float margin[2],
+                                            const float color[3],
+                                            const int transform_flag,
+                                            bool solid)
 {
+  /* Only draw corner handles when hovering over the corners. */
+  if (highlighted < ED_GIZMO_CAGE2D_PART_SCALE_MIN_X_MIN_Y ||
+      highlighted > ED_GIZMO_CAGE2D_PART_SCALE_MAX_X_MAX_Y) {
+    return;
+  }
+
   uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   void (*circle_fn)(uint, float, float, float, float, int) = (solid) ?
                                                                  imm_draw_circle_fill_aspect_2d :
@@ -610,6 +617,38 @@ static void cage2d_draw_rect_handles(const rctf *r,
         r->ymax + (margin[1] * GIZMO_MARGIN_OFFSET_SCALE),
     };
     circle_fn(pos, handle[0], handle[1], rad[0], rad[1], resolu);
+  }
+
+  immUnbindProgram();
+}
+
+static void cage2d_draw_rect_edge_handles(const rctf *r,
+                                          const int highlighted,
+                                          const float size[2],
+                                          const float margin[2],
+                                          const float color[3],
+                                          bool solid)
+{
+  uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+
+  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+  immUniformColor3fv(color);
+
+  switch (highlighted) {
+    case ED_GIZMO_CAGE2D_PART_SCALE_MIN_X:
+    case ED_GIZMO_CAGE2D_PART_SCALE_MAX_X: {
+      const float rad[2] = {0.2f * margin[0], 0.4f * size[1]};
+      imm_draw_point_aspect_2d(pos, r->xmin, 0.0f, rad[0], rad[1], solid);
+      imm_draw_point_aspect_2d(pos, r->xmax, 0.0f, rad[0], rad[1], solid);
+      break;
+    }
+    case ED_GIZMO_CAGE2D_PART_SCALE_MIN_Y:
+    case ED_GIZMO_CAGE2D_PART_SCALE_MAX_Y: {
+      const float rad[2] = {0.4f * size[0], 0.2f * margin[1]};
+      imm_draw_point_aspect_2d(pos, 0.0f, r->ymin, rad[0], rad[1], solid);
+      imm_draw_point_aspect_2d(pos, 0.0f, r->ymax, rad[0], rad[1], solid);
+      break;
+    }
   }
 
   immUnbindProgram();
@@ -665,15 +704,15 @@ static void gizmo_cage2d_draw_intern(wmGizmo *gz,
     else {
       if (transform_flag & ED_GIZMO_CAGE_XFORM_FLAG_SCALE) {
         int scale_parts[] = {
-            ED_GIZMO_CAGE2D_PART_SCALE_MIN_X,
-            ED_GIZMO_CAGE2D_PART_SCALE_MAX_X,
-            ED_GIZMO_CAGE2D_PART_SCALE_MIN_Y,
-            ED_GIZMO_CAGE2D_PART_SCALE_MAX_Y,
-
             ED_GIZMO_CAGE2D_PART_SCALE_MIN_X_MIN_Y,
             ED_GIZMO_CAGE2D_PART_SCALE_MIN_X_MAX_Y,
             ED_GIZMO_CAGE2D_PART_SCALE_MAX_X_MIN_Y,
             ED_GIZMO_CAGE2D_PART_SCALE_MAX_X_MAX_Y,
+
+            ED_GIZMO_CAGE2D_PART_SCALE_MIN_X,
+            ED_GIZMO_CAGE2D_PART_SCALE_MAX_X,
+            ED_GIZMO_CAGE2D_PART_SCALE_MIN_Y,
+            ED_GIZMO_CAGE2D_PART_SCALE_MAX_Y,
         };
         for (int i = 0; i < ARRAY_SIZE(scale_parts); i++) {
           GPU_select_load_id(select_id | scale_parts[i]);
@@ -754,9 +793,15 @@ static void gizmo_cage2d_draw_intern(wmGizmo *gz,
         cage2d_draw_rect_wire(&r, margin, black, transform_flag, draw_options, outline_line_width);
         cage2d_draw_rect_wire(&r, margin, color, transform_flag, draw_options, gz->line_width);
 
-        /* Corner gizmos. */
-        cage2d_draw_rect_handles(&r, margin, black, transform_flag, false);
-        cage2d_draw_rect_handles(&r, margin, color, transform_flag, true);
+        /* Edge handles. */
+        cage2d_draw_rect_edge_handles(&r, gz->highlight_part, size_real, margin, color, true);
+        cage2d_draw_rect_edge_handles(&r, gz->highlight_part, size_real, margin, black, false);
+
+        /* Corner handles. */
+        cage2d_draw_rect_corner_handles(
+            &r, gz->highlight_part, margin, color, transform_flag, true);
+        cage2d_draw_rect_corner_handles(
+            &r, gz->highlight_part, margin, black, transform_flag, false);
       }
       else if (draw_style == ED_GIZMO_CAGE2D_STYLE_CIRCLE) {
         cage2d_draw_circle_wire(black, size_real, margin, outline_line_width);
@@ -1174,21 +1219,30 @@ static int gizmo_cage2d_modal(bContext *C,
       }
     }
 
+    float scale[2] = {1.0f, 1.0f};
+    for (int i = 0; i < 2; i++) {
+      if (size_orig[i] == 0) {
+        size_orig[i] = 1.0f;
+        gz->matrix_offset[i][i] = 1.0f;
+      }
+      scale[i] = size_new[i] / size_orig[i];
+    }
+
     if (transform_flag & ED_GIZMO_CAGE_XFORM_FLAG_SCALE_UNIFORM) {
       if (constrain_axis[0] == false && constrain_axis[1] == false) {
         if (draw_style == ED_GIZMO_CAGE2D_STYLE_CIRCLE) {
           /* So that the cursor lies on the circle. */
-          size_new[1] = size_new[0] = len_v2(size_new);
+          scale[1] = scale[0] = len_v2(scale);
         }
         else {
-          size_new[1] = size_new[0] = (size_new[1] + size_new[0]) / 2.0f;
+          scale[1] = scale[0] = (scale[1] + scale[0]) / 2.0f;
         }
       }
       else if (constrain_axis[0] == false) {
-        size_new[1] = size_new[0];
+        scale[1] = scale[0];
       }
       else if (constrain_axis[1] == false) {
-        size_new[0] = size_new[1];
+        scale[0] = scale[1];
       }
       else {
         BLI_assert(0);
@@ -1196,18 +1250,11 @@ static int gizmo_cage2d_modal(bContext *C,
     }
 
     /* Scale around pivot. */
-    float scale[2];
     float matrix_scale[4][4];
     unit_m4(matrix_scale);
 
-    for (int i = 0; i < 2; i++) {
-      if (size_orig[i] == 0) {
-        size_orig[i] = 1.0f;
-        gz->matrix_offset[i][i] = 1.0f;
-      }
-      scale[i] = size_new[i] / size_orig[i];
-      mul_v3_fl(matrix_scale[i], scale[i]);
-    }
+    mul_v3_fl(matrix_scale[0], scale[0]);
+    mul_v3_fl(matrix_scale[1], scale[1]);
 
     transform_pivot_set_m4(matrix_scale, (const float[3]){UNPACK2(pivot), 0.0f});
     mul_m4_m4_post(gz->matrix_offset, matrix_scale);
