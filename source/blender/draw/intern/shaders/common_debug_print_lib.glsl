@@ -2,17 +2,17 @@
 /**
  * Debug print implementation for shaders.
  *
- * `print()`:
+ * 'print()':
  *   Log variable or strings inside the viewport.
  *   Using a unique non string argument will print the variable name with it.
- *   Concatenate by using multiple arguments. i.e: `print("Looped ", n, "times.")`.
- * `drw_print_no_endl()`:
- *   Same as `print()` but does not finish the line.
- * `drw_print_value()`:
+ *   Concatenate by using multiple arguments. i.e: 'print("Looped ", n, "times.")'.
+ * 'drw_print_no_endl()':
+ *   Same as 'print()' but does not finish the line.
+ * 'drw_print_value()':
  *   Display only the value of a variable. Does not finish the line.
- * `drw_print_value_hex()`:
+ * 'drw_print_value_hex()':
  *   Display only the hex representation of a variable. Does not finish the line.
- * `drw_print_value_binary()`: Display only the binary representation of a
+ * 'drw_print_value_binary()': Display only the binary representation of a
  * variable. Does not finish the line.
  *
  * IMPORTANT: As it is now, it is not yet thread safe. Only print from one thread. You can use the
@@ -151,7 +151,7 @@ void drw_print_value_uint(uint value, const bool hex, bool is_negative, const bo
   uint digits[3] = uint[3](blank_value, blank_value, prefix);
   const uint base = hex ? 16u : 10u;
   uint digit = 0u;
-  /* Add `u` suffix. */
+  /* Add 'u' suffix. */
   if (is_unsigned) {
     drw_print_append_char('u', digits[digit / 4u]);
     digit++;
@@ -280,7 +280,7 @@ void drw_print_value(float val)
     uint sign_char = (exponent < 0.0) ? '-' : '+';
     drw_print_append_char(sign_char, digits[digit / 4u]);
     digit++;
-    /* Exponent `e` suffix. */
+    /* Exponent 'e' suffix. */
     drw_print_append_char(0x65u, digits[digit / 4u]);
     digit++;
   }

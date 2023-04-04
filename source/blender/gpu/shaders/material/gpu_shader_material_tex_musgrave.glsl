@@ -88,7 +88,7 @@ void node_tex_musgrave_multi_fractal_1d(vec3 co,
  * H: fractal dimension of the roughest area
  * lacunarity: gap between successive frequencies
  * octaves: number of frequencies in the fBm
- * offset: raises the terrain from `sea level'
+ * offset: raises the terrain from 'sea level'
  */
 
 void node_tex_musgrave_hetero_terrain_1d(vec3 co,
@@ -134,7 +134,7 @@ void node_tex_musgrave_hetero_terrain_1d(vec3 co,
  * H: fractal dimension of the roughest area
  * lacunarity: gap between successive frequencies
  * octaves: number of frequencies in the fBm
- * offset: raises the terrain from `sea level'
+ * offset: raises the terrain from 'sea level'
  */
 
 void node_tex_musgrave_hybrid_multi_fractal_1d(vec3 co,
@@ -187,7 +187,7 @@ void node_tex_musgrave_hybrid_multi_fractal_1d(vec3 co,
  * H: fractal dimension of the roughest area
  * lacunarity: gap between successive frequencies
  * octaves: number of frequencies in the fBm
- * offset: raises the terrain from `sea level'
+ * offset: raises the terrain from 'sea level'
  */
 
 void node_tex_musgrave_ridged_multi_fractal_1d(vec3 co,
@@ -313,7 +313,7 @@ void node_tex_musgrave_multi_fractal_2d(vec3 co,
  * H: fractal dimension of the roughest area
  * lacunarity: gap between successive frequencies
  * octaves: number of frequencies in the fBm
- * offset: raises the terrain from `sea level'
+ * offset: raises the terrain from 'sea level'
  */
 
 void node_tex_musgrave_hetero_terrain_2d(vec3 co,
@@ -359,7 +359,7 @@ void node_tex_musgrave_hetero_terrain_2d(vec3 co,
  * H: fractal dimension of the roughest area
  * lacunarity: gap between successive frequencies
  * octaves: number of frequencies in the fBm
- * offset: raises the terrain from `sea level'
+ * offset: raises the terrain from 'sea level'
  */
 
 void node_tex_musgrave_hybrid_multi_fractal_2d(vec3 co,
@@ -412,7 +412,7 @@ void node_tex_musgrave_hybrid_multi_fractal_2d(vec3 co,
  * H: fractal dimension of the roughest area
  * lacunarity: gap between successive frequencies
  * octaves: number of frequencies in the fBm
- * offset: raises the terrain from `sea level'
+ * offset: raises the terrain from 'sea level'
  */
 
 void node_tex_musgrave_ridged_multi_fractal_2d(vec3 co,
@@ -538,7 +538,7 @@ void node_tex_musgrave_multi_fractal_3d(vec3 co,
  * H: fractal dimension of the roughest area
  * lacunarity: gap between successive frequencies
  * octaves: number of frequencies in the fBm
- * offset: raises the terrain from `sea level'
+ * offset: raises the terrain from 'sea level'
  */
 
 void node_tex_musgrave_hetero_terrain_3d(vec3 co,
@@ -584,7 +584,7 @@ void node_tex_musgrave_hetero_terrain_3d(vec3 co,
  * H: fractal dimension of the roughest area
  * lacunarity: gap between successive frequencies
  * octaves: number of frequencies in the fBm
- * offset: raises the terrain from `sea level'
+ * offset: raises the terrain from 'sea level'
  */
 
 void node_tex_musgrave_hybrid_multi_fractal_3d(vec3 co,
@@ -637,7 +637,7 @@ void node_tex_musgrave_hybrid_multi_fractal_3d(vec3 co,
  * H: fractal dimension of the roughest area
  * lacunarity: gap between successive frequencies
  * octaves: number of frequencies in the fBm
- * offset: raises the terrain from `sea level'
+ * offset: raises the terrain from 'sea level'
  */
 
 void node_tex_musgrave_ridged_multi_fractal_3d(vec3 co,
@@ -763,7 +763,7 @@ void node_tex_musgrave_multi_fractal_4d(vec3 co,
  * H: fractal dimension of the roughest area
  * lacunarity: gap between successive frequencies
  * octaves: number of frequencies in the fBm
- * offset: raises the terrain from `sea level'
+ * offset: raises the terrain from 'sea level'
  */
 
 void node_tex_musgrave_hetero_terrain_4d(vec3 co,
@@ -809,7 +809,7 @@ void node_tex_musgrave_hetero_terrain_4d(vec3 co,
  * H: fractal dimension of the roughest area
  * lacunarity: gap between successive frequencies
  * octaves: number of frequencies in the fBm
- * offset: raises the terrain from `sea level'
+ * offset: raises the terrain from 'sea level'
  */
 
 void node_tex_musgrave_hybrid_multi_fractal_4d(vec3 co,
@@ -862,7 +862,7 @@ void node_tex_musgrave_hybrid_multi_fractal_4d(vec3 co,
  * H: fractal dimension of the roughest area
  * lacunarity: gap between successive frequencies
  * octaves: number of frequencies in the fBm
- * offset: raises the terrain from `sea level'
+ * offset: raises the terrain from 'sea level'
  */
 
 void node_tex_musgrave_ridged_multi_fractal_4d(vec3 co,

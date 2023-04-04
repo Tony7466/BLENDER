@@ -236,7 +236,7 @@ void main()
      *    |     |
      * v0 +-----+ v1
      *
-     * otherwise, weight would be `1.0 - uv.x` for `v2 <-> v3`, but `uv.x` for `v0 <-> v1`.
+     * otherwise, weight would be '1.0 - uv.x' for 'v2 <-> v3', but 'uv.x' for 'v0 <-> v1'.
      */
     Vertex result = interp_vertex(v0, v1, v3, v2, uv);
     write_vertex(loop_index, result);

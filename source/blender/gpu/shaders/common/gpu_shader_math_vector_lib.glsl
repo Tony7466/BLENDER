@@ -23,16 +23,16 @@ bool is_any_zero(vec3 vec);
 bool is_any_zero(vec4 vec);
 
 /**
- * Return true if the deference between`a` and `b` is below the `epsilon` value.
- * Epsilon value is scaled by magnitude of `a` before comparison.
+ * Return true if the deference between'a' and 'b' is below the 'epsilon' value.
+ * Epsilon value is scaled by magnitude of 'a' before comparison.
  */
 bool almost_equal_relative(vec2 a, vec2 b, const float epsilon_factor);
 bool almost_equal_relative(vec3 a, vec3 b, const float epsilon_factor);
 bool almost_equal_relative(vec4 a, vec4 b, const float epsilon_factor);
 
 /**
- * Safe `a` modulo `b`.
- * If `b` equal 0 the result will be 0.
+ * Safe 'a' modulo 'b'.
+ * If 'b' equal 0 the result will be 0.
  */
 vec2 safe_mod(vec2 a, vec2 b);
 vec3 safe_mod(vec3 a, vec3 b);
@@ -43,7 +43,7 @@ vec4 safe_mod(vec4 a, float b);
 
 /**
  * Returns \a a if it is a multiple of \a b or the next multiple or \a b after \b a .
- * In other words, it is equivalent to `divide_ceil(a, b) * b`.
+ * In other words, it is equivalent to 'divide_ceil(a, b) * b'.
  * It is undefined if \a a is negative or \b b is not strictly positive.
  */
 ivec2 ceil_to_multiple(ivec2 a, ivec2 b);
@@ -72,8 +72,8 @@ void min_max(vec3 vector, inout vec3 min, inout vec3 max);
 void min_max(vec4 vector, inout vec4 min, inout vec4 max);
 
 /**
- * Safe divide `a` by `b`.
- * If `b` equal 0 the result will be 0.
+ * Safe divide 'a' by 'b'.
+ * If 'b' equal 0 the result will be 0.
  */
 vec2 safe_divide(vec2 a, vec2 b);
 vec3 safe_divide(vec3 a, vec3 b);
@@ -83,7 +83,7 @@ vec3 safe_divide(vec3 a, float b);
 vec4 safe_divide(vec4 a, float b);
 
 /**
- * Return the manhattan length of `a`.
+ * Return the manhattan length of 'a'.
  * This is also the sum of the absolute value of all components.
  */
 float length_manhattan(vec2 a);
@@ -91,33 +91,33 @@ float length_manhattan(vec3 a);
 float length_manhattan(vec4 a);
 
 /**
- * Return the length squared of `a`.
+ * Return the length squared of 'a'.
  */
 float length_squared(vec2 a);
 float length_squared(vec3 a);
 float length_squared(vec4 a);
 
 /**
- * Return the manhattan distance between `a` and `b`.
+ * Return the manhattan distance between 'a' and 'b'.
  */
 float distance_manhattan(vec2 a, vec2 b);
 float distance_manhattan(vec3 a, vec3 b);
 float distance_manhattan(vec4 a, vec4 b);
 
 /**
- * Return the squared distance between `a` and `b`.
+ * Return the squared distance between 'a' and 'b'.
  */
 float distance_squared(vec2 a, vec2 b);
 float distance_squared(vec3 a, vec3 b);
 float distance_squared(vec4 a, vec4 b);
 
 /**
- * Return the projection of `p` onto `v_proj`.
+ * Return the projection of 'p' onto 'v_proj'.
  */
 vec3 project(vec3 p, vec3 v_proj);
 
 /**
- * Return normalized version of the `vector` and its length.
+ * Return normalized version of the 'vector' and its length.
  */
 vec2 normalize_and_get_length(vec2 vector, out float out_length);
 vec3 normalize_and_get_length(vec3 vector, out float out_length);
@@ -131,14 +131,14 @@ vec3 interpolate(vec3 a, vec3 b, float t);
 vec4 interpolate(vec4 a, vec4 b, float t);
 
 /**
- * Return half-way point between `a` and  `b`.
+ * Return half-way point between 'a' and  'b'.
  */
 vec2 midpoint(vec2 a, vec2 b);
 vec3 midpoint(vec3 a, vec3 b);
 vec4 midpoint(vec4 a, vec4 b);
 
 /**
- * Return `vector` if `incident` and `reference` are pointing in the same direction.
+ * Return 'vector' if 'incident' and 'reference' are pointing in the same direction.
  */
 // vec2 faceforward(vec2 vector, vec2 incident, vec2 reference); /* Built-in GLSL. */
 
@@ -160,7 +160,7 @@ vec3 orthogonal(vec3 v);
 vec2 orthogonal(vec2 v);
 
 /**
- * Return true if the difference between`a` and `b` is below the `epsilon` value.
+ * Return true if the difference between'a' and 'b' is below the 'epsilon' value.
  */
 bool is_equal(vec2 a, vec2 b, const float epsilon);
 bool is_equal(vec3 a, vec3 b, const float epsilon);
@@ -414,7 +414,7 @@ vec2 normalize_and_get_length(vec2 vector, out float out_length)
     out_length = sqrt(out_length);
     return vector / out_length;
   }
-  /* Either the vector is small or one of it's values contained `nan`. */
+  /* Either the vector is small or one of it's values contained 'nan'. */
   out_length = 0.0;
   return vec2(0.0);
 }
@@ -426,7 +426,7 @@ vec3 normalize_and_get_length(vec3 vector, out float out_length)
     out_length = sqrt(out_length);
     return vector / out_length;
   }
-  /* Either the vector is small or one of it's values contained `nan`. */
+  /* Either the vector is small or one of it's values contained 'nan'. */
   out_length = 0.0;
   return vec3(0.0);
 }
@@ -438,7 +438,7 @@ vec4 normalize_and_get_length(vec4 vector, out float out_length)
     out_length = sqrt(out_length);
     return vector / out_length;
   }
-  /* Either the vector is small or one of it's values contained `nan`. */
+  /* Either the vector is small or one of it's values contained 'nan'. */
   out_length = 0.0;
   return vec4(0.0);
 }

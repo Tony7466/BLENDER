@@ -95,7 +95,7 @@ void main()
   }
 
   if (flag_test(grid_flag, SHOW_GRID)) {
-    /* Using `max(dot(dFdxPos, ViewMatrixInverse[0]), dot(dFdyPos, ViewMatrixInverse[1]))`
+    /* Using 'max(dot(dFdxPos, ViewMatrixInverse[0]), dot(dFdyPos, ViewMatrixInverse[1]))'
      * would be more accurate, but not really necessary. */
     float grid_res = dot(dFdxPos, ViewMatrixInverse[0].xyz);
 
@@ -105,12 +105,12 @@ void main()
     /* For UV/Image editor use grid_buf.zoom_factor. */
     if (flag_test(grid_flag, PLANE_IMAGE) &&
         /* Grid begins to appear when the length of one grid unit is at least
-         * (256/grid_size) pixels Value of grid_size defined in `overlay_grid.c`. */
+         * (256/grid_size) pixels Value of grid_size defined in 'overlay_grid.c'. */
         !flag_test(grid_flag, CUSTOM_GRID)) {
       grid_res = grid_buf.zoom_factor;
     }
 
-/** Keep in sync with `SI_GRID_STEPS_LEN` in `DNA_space_types.h`. */
+/** Keep in sync with 'SI_GRID_STEPS_LEN' in 'DNA_space_types.h'. */
 #define STEPS_LEN 8
     int step_id_x = STEPS_LEN - 1;
     int step_id_y = STEPS_LEN - 1;
@@ -132,7 +132,7 @@ void main()
     float scaleBy = grid_buf.steps[min(step_id_y + 1, STEPS_LEN - 1)].y;
     float scaleCy = grid_buf.steps[min(step_id_y + 2, STEPS_LEN - 1)].y;
 
-    /* Subtract from 1.0 to fix blending when `scale0x == scaleAx`. */
+    /* Subtract from 1.0 to fix blending when 'scale0x == scaleAx'. */
     float blend = 1.0 - linearstep(scale0x + scale0y, scaleAx + scaleAy, grid_res + grid_res);
     blend = blend * blend * blend;
 

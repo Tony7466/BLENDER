@@ -132,13 +132,13 @@ mat3x3 adjoint(mat3x3 mat);
 mat4x4 adjoint(mat4x4 mat);
 
 /**
- * Equivalent to `mat * from_location(translation)` but with fewer operation.
+ * Equivalent to 'mat * from_location(translation)' but with fewer operation.
  */
 mat4x4 translate(mat4x4 mat, vec2 translation);
 mat4x4 translate(mat4x4 mat, vec3 translation);
 
 /**
- * Equivalent to `mat * from_rotation(rotation)` but with fewer operation.
+ * Equivalent to 'mat * from_rotation(rotation)' but with fewer operation.
  * Optimized for rotation on basis vector (i.e: AxisAngle({1, 0, 0}, 0.2)).
  */
 mat3x3 rotate(mat3x3 mat, AxisAngle rotation);
@@ -147,7 +147,7 @@ mat4x4 rotate(mat4x4 mat, AxisAngle rotation);
 mat4x4 rotate(mat4x4 mat, EulerXYZ rotation);
 
 /**
- * Equivalent to `mat * from_scale(scale)` but with fewer operation.
+ * Equivalent to 'mat * from_scale(scale)' but with fewer operation.
  */
 mat3x3 scale(mat3x3 mat, vec2 scale);
 mat3x3 scale(mat3x3 mat, vec3 scale);
@@ -171,8 +171,8 @@ mat4x4 scale(mat4x4 mat, vec3 scale);
  * However, it gives un-expected results even with non-uniformly scaled matrices,
  * see #46418 for an example.
  *
- * \param A: Input matrix which is totally effective with `t = 0.0`.
- * \param B: Input matrix which is totally effective with `t = 1.0`.
+ * \param A: Input matrix which is totally effective with 't = 0.0'.
+ * \param B: Input matrix which is totally effective with 't = 1.0'.
  * \param t: Interpolation factor.
  */
 mat3x3 interpolate_fast(mat3x3 a, mat3x3 b, float t);
@@ -233,13 +233,13 @@ mat4x4 from_loc_rot_scale(vec3 location, EulerXYZ rotation, vec3 scale);
 /**
  * Create a rotation matrix from 2 basis vectors.
  * The matrix determinant is given to be positive and it can be converted to other rotation types.
- * \note `forward` and `up` must be normalized.
+ * \note 'forward' and 'up' must be normalized.
  */
 // mat3x3 from_normalized_axis_data(vec3 forward, vec3 up); /* TODO. */
 
 /**
  * Create a transform matrix with translation and rotation from 2 basis vectors and a translation.
- * \note `forward` and `up` must be normalized.
+ * \note 'forward' and 'up' must be normalized.
  */
 // mat4x4 from_normalized_axis_data(vec3 location, vec3 forward, vec3 up); /* TODO. */
 
@@ -368,7 +368,7 @@ mat4x4 projection_orthographic(
 /**
  * \brief Create a perspective projection matrix using OpenGL coordinate convention:
  * Maps each axis range to [-1..1] range for all axes.
- * `left`, `right`, `bottom`, `top` are frustum side distances at `z=near_clip`.
+ * 'left', 'right', 'bottom', 'top' are frustum side distances at 'z=near_clip'.
  * The resulting matrix can be used with #project_point.
  */
 mat4x4 projection_perspective(
@@ -1063,8 +1063,8 @@ Quaternion normalized_to_quat_fast(mat3 mat)
   Quaternion q;
 
   /* Method outlined by Mike Day, ref: https://math.stackexchange.com/a/3183435/220949
-   * with an additional `sqrtf(..)` for higher precision result.
-   * Removing the `sqrt` causes tests to fail unless the precision is set to 1e-6 or larger. */
+   * with an additional 'sqrtf(..)' for higher precision result.
+   * Removing the 'sqrt' causes tests to fail unless the precision is set to 1e-6 or larger. */
 
   if (mat[2][2] < 0.0f) {
     if (mat[0][0] > mat[1][1]) {

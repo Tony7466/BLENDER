@@ -2,8 +2,8 @@
 /* -------------------------------------------------------------------- */
 /** \name Spherical Harmonics Functions
  *
- * `L` denote the row and `M` the column in the spherical harmonics table (1).
- * `p` denote positive column and `n` negative ones.
+ * 'L' denote the row and 'M' the column in the spherical harmonics table (1).
+ * 'p' denote positive column and 'n' negative ones.
  *
  * Use precomputed constants to avoid constant folding differences across compilers.
  * Note that (2) doesn't use Condon-Shortley phase whereas our implementation does.

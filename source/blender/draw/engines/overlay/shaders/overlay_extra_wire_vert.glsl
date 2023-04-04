@@ -28,7 +28,7 @@ void main()
 
   if (colorid != 0) {
     /* TH_CAMERA_PATH is the only color code at the moment.
-     * Checking `colorid != 0` to avoid having to sync its value with the GLSL code. */
+     * Checking 'colorid != 0' to avoid having to sync its value with the GLSL code. */
     finalColor = colorCameraPath;
     finalColor.a = 0.0; /* No Stipple */
   }
