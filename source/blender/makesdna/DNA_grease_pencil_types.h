@@ -12,6 +12,7 @@
 #ifdef __cplusplus
 #  include "BLI_function_ref.hh"
 #  include "BLI_map.hh"
+#  include "BLI_math_vector_types.hh"
 #  include "BLI_span.hh"
 namespace blender::bke {
 class GreasePencilRuntime;
@@ -63,6 +64,13 @@ typedef struct GreasePencilDrawing {
    * The stroke data for this drawing.
    */
   CurvesGeometry geometry;
+#ifdef __cplusplus
+  /**
+   * The triangles for all the fills in the geometry.
+   */
+  blender::Span<blender::uint3> triangles() const;
+  void tag_positions_changed();
+#endif
   /**
    * Runtime data on the drawing.
    */

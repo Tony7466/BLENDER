@@ -415,7 +415,7 @@ using namespace blender::bke::gpencil;
 
 class GreasePencilDrawingRuntime {
  public:
-  Vector<uint3> triangles_cache;
+  mutable SharedCache<Vector<uint3>> triangles_cache;
 };
 
 class GreasePencilRuntime {
@@ -446,7 +446,6 @@ struct Object;
 void *BKE_grease_pencil_add(Main *bmain, const char *name);
 GreasePencil *BKE_grease_pencil_new_nomain();
 BoundBox *BKE_grease_pencil_boundbox_get(Object *ob);
-void BKE_grease_pencil_eval_geometry(Depsgraph *depsgraph, GreasePencil &grease_pencil);
 void BKE_grease_pencil_data_update(struct Depsgraph *depsgraph,
                                    struct Scene *scene,
                                    struct Object *object);

@@ -234,23 +234,22 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
   Vector<Vector<int>> verts_start_offsets_per_visible_drawing;
   Vector<Vector<int>> tris_start_offsets_per_visible_drawing;
   grease_pencil.foreach_visible_drawing(cfra, [&](GreasePencilDrawing &drawing) {
-    bke::CurvesGeometry &curves = drawing.geometry.wrap();
-    offset_indices::OffsetIndices<int> points_by_curve = curves.points_by_curve();
+    const bke::CurvesGeometry &curves = drawing.geometry.wrap();
+    const offset_indices::OffsetIndices<int> points_by_curve = curves.points_by_curve();
     const VArray<bool> cyclic = curves.cyclic();
     Vector<int> verts_start_offsets(curves.curves_num());
     Vector<int> tris_start_offsets(curves.curves_num());
-    int num_cyclic = count_cyclic_curves(curves);
-    /* One vertex is stored before and after as padding. Cyclic strokes have one extra
-     * vertex.*/
-    total_points_num += curves.points_num() + num_cyclic + curves.curves_num() * 2;
-    total_triangles_num += (curves.points_num() + num_cyclic) * 2;
-    total_triangles_num += drawing.runtime->triangles_cache.size();
 
     /* Calculate the vertex and triangle offsets for all the curves. */
     int t = 0;
+    int num_cyclic = 0;
     for (const int curve_i : curves.curves_range()) {
       IndexRange points = points_by_curve[curve_i];
       const bool is_cyclic = cyclic[curve_i];
+
+      if (is_cyclic) {
+        num_cyclic++;
+      }
 
       tris_start_offsets[curve_i] = t;
       if (points.size() >= 3) {
@@ -260,6 +259,13 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
       verts_start_offsets[curve_i] = v;
       v += 1 + points.size() + (is_cyclic ? 1 : 0) + 1;
     }
+
+    /* One vertex is stored before and after as padding. Cyclic strokes have one extra
+     * vertex.*/
+    total_points_num += curves.points_num() + num_cyclic + curves.curves_num() * 2;
+    total_triangles_num += (curves.points_num() + num_cyclic) * 2;
+    total_triangles_num += drawing.triangles().size();
+
     verts_start_offsets_per_visible_drawing.append(std::move(verts_start_offsets));
     tris_start_offsets_per_visible_drawing.append(std::move(tris_start_offsets));
   });
@@ -298,7 +304,7 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
         "opacity", ATTR_DOMAIN_POINT, 1.0f);
     const VArray<int> materials = attributes.lookup_or_default<int>(
         "material_index", ATTR_DOMAIN_CURVE, -1);
-    const Span<uint3> tris = drawing.runtime->triangles_cache.as_span();
+    const Span<uint3> triangles = drawing.triangles();
     const Span<int> verts_start_offsets =
         verts_start_offsets_per_visible_drawing[drawing_i].as_span();
     const Span<int> tris_start_offsets =
@@ -352,7 +358,7 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
 
         /* If the stroke has more than 2 points, add the triangle indices to the index buffer. */
         if (points.size() >= 3) {
-          const Span<uint3> tris_slice = tris.slice(tris_start_offset, points.size() - 2);
+          const Span<uint3> tris_slice = triangles.slice(tris_start_offset, points.size() - 2);
           for (const uint3 tri : tris_slice) {
             GPU_indexbuf_add_tri_verts(&ibo,
                                        (verts_range[1] + tri.x) << GP_VERTEX_ID_SHIFT,
