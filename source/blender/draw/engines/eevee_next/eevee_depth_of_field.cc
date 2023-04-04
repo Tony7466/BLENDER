@@ -259,8 +259,8 @@ void DepthOfField::setup_pass_sync()
 
   setup_ps_.init();
   setup_ps_.shader_set(inst_.shaders.static_shader_get(DOF_SETUP));
-  setup_ps_.bind_texture("color_tx", &input_color_tx_, no_filter);
-  setup_ps_.bind_texture("depth_tx", &render_buffers.depth_tx, no_filter);
+  setup_ps_.bind_texture("color_tx", &input_color_tx_, GPUSamplerState::default_sampler());
+  setup_ps_.bind_texture("depth_tx", &render_buffers.depth_tx, GPUSamplerState::default_sampler());
   setup_ps_.bind_ubo("dof_buf", data_);
   setup_ps_.bind_image("out_color_img", &setup_color_tx_);
   setup_ps_.bind_image("out_coc_img", &setup_coc_tx_);
@@ -279,11 +279,13 @@ void DepthOfField::stabilize_pass_sync()
   stabilize_ps_.bind_ubo("camera_curr", &(*velocity.camera_steps[STEP_CURRENT]));
   /* This is only for temporal stability. The next step is not needed. */
   stabilize_ps_.bind_ubo("camera_next", &(*velocity.camera_steps[STEP_PREVIOUS]));
-  stabilize_ps_.bind_texture("coc_tx", &setup_coc_tx_, no_filter);
-  stabilize_ps_.bind_texture("color_tx", &setup_color_tx_, no_filter);
-  stabilize_ps_.bind_texture("velocity_tx", &render_buffers.vector_tx, no_filter);
-  stabilize_ps_.bind_texture("in_history_tx", &stabilize_input_, with_filter);
-  stabilize_ps_.bind_texture("depth_tx", &render_buffers.depth_tx, no_filter);
+  stabilize_ps_.bind_texture("coc_tx", &setup_coc_tx_, GPUSamplerState::default_sampler());
+  stabilize_ps_.bind_texture("color_tx", &setup_color_tx_, GPUSamplerState::default_sampler());
+  stabilize_ps_.bind_texture(
+      "velocity_tx", &render_buffers.vector_tx, GPUSamplerState::default_sampler());
+  stabilize_ps_.bind_texture("in_history_tx", &stabilize_input_, {GPU_SAMPLER_FILTERING_LINEAR});
+  stabilize_ps_.bind_texture(
+      "depth_tx", &render_buffers.depth_tx, GPUSamplerState::default_sampler());
   stabilize_ps_.bind_ubo("dof_buf", data_);
   stabilize_ps_.push_constant("u_use_history", &stabilize_valid_history_, 1);
   stabilize_ps_.bind_image("out_coc_img", reduced_coc_tx_.mip_view(0));
@@ -297,8 +299,10 @@ void DepthOfField::downsample_pass_sync()
 {
   downsample_ps_.init();
   downsample_ps_.shader_set(inst_.shaders.static_shader_get(DOF_DOWNSAMPLE));
-  downsample_ps_.bind_texture("color_tx", reduced_color_tx_.mip_view(0), no_filter);
-  downsample_ps_.bind_texture("coc_tx", reduced_coc_tx_.mip_view(0), no_filter);
+  downsample_ps_.bind_texture(
+      "color_tx", reduced_color_tx_.mip_view(0), GPUSamplerState::default_sampler());
+  downsample_ps_.bind_texture(
+      "coc_tx", reduced_coc_tx_.mip_view(0), GPUSamplerState::default_sampler());
   downsample_ps_.bind_image("out_color_img", &downsample_tx_);
   downsample_ps_.dispatch(&dispatch_downsample_size_);
   downsample_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH);
@@ -309,7 +313,7 @@ void DepthOfField::reduce_pass_sync()
   reduce_ps_.init();
   reduce_ps_.shader_set(inst_.shaders.static_shader_get(DOF_REDUCE));
   reduce_ps_.bind_ubo("dof_buf", data_);
-  reduce_ps_.bind_texture("downsample_tx", &downsample_tx_, no_filter);
+  reduce_ps_.bind_texture("downsample_tx", &downsample_tx_, GPUSamplerState::default_sampler());
   reduce_ps_.bind_ssbo("scatter_fg_list_buf", scatter_fg_list_buf_);
   reduce_ps_.bind_ssbo("scatter_bg_list_buf", scatter_bg_list_buf_);
   reduce_ps_.bind_ssbo("scatter_fg_indirect_buf", scatter_fg_indirect_buf_);
@@ -334,7 +338,7 @@ void DepthOfField::tiles_flatten_pass_sync()
   /* NOTE(fclem): We should use the reduced_coc_tx_ as it is stable, but we need the slight focus
    * flag from the setup pass. A better way would be to do the brute-force in focus gather without
    * this. */
-  tiles_flatten_ps_.bind_texture("coc_tx", &setup_coc_tx_, no_filter);
+  tiles_flatten_ps_.bind_texture("coc_tx", &setup_coc_tx_, GPUSamplerState::default_sampler());
   tiles_flatten_ps_.bind_image("out_tiles_fg_img", &tiles_fg_tx_.current());
   tiles_flatten_ps_.bind_image("out_tiles_bg_img", &tiles_bg_tx_.current());
   tiles_flatten_ps_.dispatch(&dispatch_tiles_flatten_size_);
@@ -454,9 +458,11 @@ void DepthOfField::resolve_pass_sync()
   inst_.sampling.bind_resources(&resolve_ps_);
   resolve_ps_.shader_set(inst_.shaders.static_shader_get(sh_type));
   resolve_ps_.bind_ubo("dof_buf", data_);
-  resolve_ps_.bind_texture("depth_tx", &render_buffers.depth_tx, no_filter);
-  resolve_ps_.bind_texture("color_tx", &input_color_tx_, no_filter);
-  resolve_ps_.bind_texture("stable_color_tx", &resolve_stable_color_tx_, no_filter);
+  resolve_ps_.bind_texture(
+      "depth_tx", &render_buffers.depth_tx, GPUSamplerState::default_sampler());
+  resolve_ps_.bind_texture("color_tx", &input_color_tx_, GPUSamplerState::default_sampler());
+  resolve_ps_.bind_texture(
+      "stable_color_tx", &resolve_stable_color_tx_, GPUSamplerState::default_sampler());
   resolve_ps_.bind_texture("color_bg_tx", &color_bg_tx_.current(), with_filter);
   resolve_ps_.bind_texture("color_fg_tx", &color_fg_tx_.current(), with_filter);
   resolve_ps_.bind_image("in_tiles_fg_img", &tiles_fg_tx_.current());

@@ -26,9 +26,6 @@ class ShadowPunctual;
 
 using namespace draw;
 
-constexpr GPUSamplerState no_filter = GPUSamplerState::default_sampler();
-constexpr GPUSamplerState with_filter = {GPU_SAMPLER_FILTERING_LINEAR};
-
 #endif
 
 #define UBO_MIN_MAX_SUPPORTED_SIZE 1 << 14
