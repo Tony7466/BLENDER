@@ -115,7 +115,7 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
       threading::parallel_for(self_points.index_range(), 128, [&](const IndexRange range) {
         for (const int64_t index : self_points.slice(range)) {
           const int index_of_nearest = kdtree_find_neighboard(tree, positions[index], index);
-          if (index == -1) {
+          if (index_of_nearest == -1) {
             indices[index] = index;
           }
           else {
@@ -178,7 +178,7 @@ void register_node_type_geo_index_of_nearest()
 
   static bNodeType ntype;
 
-  geo_node_type_base(&ntype, GEO_NODE_INDEX_OF_NEAREST, "Index Of Nearest", NODE_CLASS_CONVERTER);
+  geo_node_type_base(&ntype, GEO_NODE_INDEX_OF_NEAREST, "Index of Nearest", NODE_CLASS_CONVERTER);
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   ntype.declare = file_ns::node_declare;
   nodeRegisterType(&ntype);
