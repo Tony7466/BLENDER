@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup spnode
@@ -524,7 +524,8 @@ static void remove_links_to_unavailable_viewer_sockets(bNodeTree &btree, bNode &
 
 static bNodeSocket *determine_socket_to_view(bNode &node_to_view)
 {
-  int last_linked_socket_index = -1;
+  int last_linked_data_socket_index = -1;
+  bool has_linked_geometry_socket = false;
   for (bNodeSocket *socket : node_to_view.output_sockets()) {
     if (!socket_can_be_viewed(*socket)) {
       continue;
@@ -537,17 +538,17 @@ static bNodeSocket *determine_socket_to_view(bNode &node_to_view)
           /* This socket is linked to a deactivated viewer, the viewer should be activated. */
           return socket;
         }
-        if (socket->type == SOCK_GEOMETRY && (target_node.flag & NODE_DO_OUTPUT)) {
-          /* Skip geometry sockets connected to viewer nodes when deciding whether to cycle through
-           * outputs. */
-          continue;
+        if (socket->type == SOCK_GEOMETRY) {
+          has_linked_geometry_socket = true;
         }
-        last_linked_socket_index = socket->index();
+        else {
+          last_linked_data_socket_index = socket->index();
+        }
       }
     }
   }
 
-  if (last_linked_socket_index == -1) {
+  if (last_linked_data_socket_index == -1 && !has_linked_geometry_socket) {
     /* Return the first socket that can be viewed. */
     for (bNodeSocket *socket : node_to_view.output_sockets()) {
       if (socket_can_be_viewed(*socket)) {
@@ -560,11 +561,16 @@ static bNodeSocket *determine_socket_to_view(bNode &node_to_view)
   /* Pick the next socket to be linked to the viewer. */
   const int tot_outputs = node_to_view.output_sockets().size();
   for (const int offset : IndexRange(1, tot_outputs)) {
-    const int index = (last_linked_socket_index + offset) % tot_outputs;
+    const int index = (last_linked_data_socket_index + offset) % tot_outputs;
     bNodeSocket &output_socket = node_to_view.output_socket(index);
     if (!socket_can_be_viewed(output_socket)) {
       continue;
     }
+    if (has_linked_geometry_socket && output_socket.type == SOCK_GEOMETRY) {
+      /* Skip geometry sockets when cycling if one is already viewed. */
+      continue;
+    }
+
     bool is_currently_viewed = false;
     for (const bNodeLink *link : output_socket.directly_linked_links()) {
       bNodeSocket &target_socket = *link->tosock;

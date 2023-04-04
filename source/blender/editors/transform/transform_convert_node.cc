@@ -46,7 +46,7 @@ static void create_transform_data_for_node(TransData &td,
 {
   float locx, locy;
   /* Account for parents (nested nodes). */
-  nodeToView(&node, node.offsetx, node.offsety, &locx, &locy);
+  nodeToView(&node, roundf(node.offsetx), roundf(node.offsety), &locx, &locy);
 
   /* use top-left corner as the transform origin for nodes */
   /* Weirdo - but the node system is a mix of free 2d elements and DPI sensitive UI. */
@@ -235,8 +235,8 @@ static void flushTransNodes(TransInfo *t)
       loc[0] /= dpi_fac;
       loc[1] /= dpi_fac;
 
-      loc[0] -= node->offsetx;
-      loc[1] -= node->offsety;
+      loc[0] -= roundf(node->offsetx);
+      loc[1] -= roundf(node->offsety);
       if (const bNode *parent_space = node->parent) {
         nodeFromView(parent_space, loc[0], loc[1], &loc[0], &loc[1]);
       }
