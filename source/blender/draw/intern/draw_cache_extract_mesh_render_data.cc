@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. All rights reserved. */
+ * Copyright 2021 Blender Foundation */
 
 /** \file
  * \ingroup draw
@@ -197,7 +197,7 @@ static void accumululate_material_counts_mesh(
     return;
   }
 
-  const Span<MPoly> polys = mr.polys;
+  const OffsetIndices polys = mr.polys;
   const Span material_indices(mr.material_indices, mr.poly_len);
   threading::parallel_for(material_indices.index_range(), 1024, [&](const IndexRange range) {
     Array<int> &tri_counts = all_tri_counts.local();
@@ -206,14 +206,14 @@ static void accumululate_material_counts_mesh(
       for (const int i : range) {
         if (!mr.hide_poly[i]) {
           const int mat = std::clamp(material_indices[i], 0, last_index);
-          tri_counts[mat] += ME_POLY_TRI_TOT(&polys[i]);
+          tri_counts[mat] += ME_POLY_TRI_TOT(polys[i].size());
         }
       }
     }
     else {
       for (const int i : range) {
         const int mat = std::clamp(material_indices[i], 0, last_index);
-        tri_counts[mat] += ME_POLY_TRI_TOT(&polys[i]);
+        tri_counts[mat] += ME_POLY_TRI_TOT(polys[i].size());
       }
     }
   });
@@ -280,10 +280,9 @@ static void mesh_render_data_polys_sorted_build(MeshRenderData *mr, MeshBufferCa
   else {
     for (int i = 0; i < mr->poly_len; i++) {
       if (!(mr->use_hide && mr->hide_poly && mr->hide_poly[i])) {
-        const MPoly &poly = mr->polys[i];
         const int mat = mr->material_indices ? clamp_i(mr->material_indices[i], 0, mat_last) : 0;
         tri_first_index[i] = mat_tri_offs[mat];
-        mat_tri_offs[mat] += poly.totloop - 2;
+        mat_tri_offs[mat] += mr->polys[i].size() - 2;
       }
       else {
         tri_first_index[i] = -1;
