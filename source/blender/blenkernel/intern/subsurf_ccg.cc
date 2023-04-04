@@ -227,8 +227,11 @@ static int getFaceIndex(
          (y - 1) * (gridSize - 2) + (x - 1);
 }
 
-static void get_face_uv_map_vert(
-    UvVertMap *vmap, const MPoly *polys, const int *poly_verts, int fi, CCGVertHDL *fverts)
+static void get_face_uv_map_vert(UvVertMap *vmap,
+                                 const blender::Span<MPoly> polys,
+                                 const int *poly_verts,
+                                 int fi,
+                                 CCGVertHDL *fverts)
 {
   UvMapVert *v, *nv;
   int j, nverts = polys[fi].totloop;
@@ -252,7 +255,7 @@ static int ss_sync_from_uv(CCGSubSurf *ss,
                            DerivedMesh *dm,
                            const float (*mloopuv)[2])
 {
-  MPoly *polys = dm->getPolyArray(dm);
+  const blender::Span<MPoly> polys(dm->getPolyArray(dm), dm->getNumPolys(dm));
   int *corner_verts = dm->getCornerVertArray(dm);
   int totvert = dm->getNumVerts(dm);
   int totface = dm->getNumPolys(dm);
@@ -270,7 +273,7 @@ static int ss_sync_from_uv(CCGSubSurf *ss,
    * Also, initially intention is to treat merged vertices from mirror modifier as seams.
    * This fixes a very old regression (2.49 was correct here) */
   vmap = BKE_mesh_uv_vert_map_create(
-      polys, nullptr, nullptr, corner_verts, mloopuv, totface, totvert, limit, false, true);
+      polys.data(), nullptr, nullptr, corner_verts, mloopuv, totface, totvert, limit, false, true);
   if (!vmap) {
     return 0;
   }
@@ -316,7 +319,7 @@ static int ss_sync_from_uv(CCGSubSurf *ss,
 
     fverts.reinitialize(nverts);
 
-    get_face_uv_map_vert(vmap, &poly, &corner_verts[poly.loopstart], i, fverts.data());
+    get_face_uv_map_vert(vmap, polys, &corner_verts[poly.loopstart], i, fverts.data());
 
     for (j = 0, j_next = nverts - 1; j < nverts; j_next = j++) {
       uint v0 = POINTER_AS_UINT(fverts[j_next]);
@@ -363,7 +366,7 @@ static void set_subsurf_legacy_uv(CCGSubSurf *ss, DerivedMesh *dm, DerivedMesh *
   MTFace *tface = static_cast<MTFace *>(
       CustomData_get_layer_n_for_write(&result->faceData, CD_MTFACE, n, result->numTessFaceData));
   float(*mloopuv)[2] = static_cast<float(*)[2]>(CustomData_get_layer_n_for_write(
-      &result->loopData, CD_PROP_FLOAT2, n, result->getNumLoops(dm)));
+      &result->loopData, CD_PROP_FLOAT2, n, result->getNumLoops(result)));
 
   if (!dmloopuv || (!tface && !mloopuv)) {
     return;
@@ -1446,40 +1449,6 @@ static BLI_bitmap **ccgDM_getGridHidden(DerivedMesh *dm)
   return ccgdm->gridHidden;
 }
 
-/* WARNING! *MUST* be called in an 'loops_cache_rwlock' protected thread context! */
-static void ccgDM_recalcLoopTri(DerivedMesh *dm)
-{
-  const int tottri = dm->numPolyData * 2;
-  int i, poly_index;
-
-  DM_ensure_looptri_data(dm);
-  MLoopTri *mlooptri = dm->looptris.array_wip;
-
-  BLI_assert(tottri == 0 || mlooptri != nullptr);
-  BLI_assert(poly_to_tri_count(dm->numPolyData, dm->numLoopData) == dm->looptris.num);
-  BLI_assert(tottri == dm->looptris.num);
-
-  for (i = 0, poly_index = 0; i < tottri; i += 2, poly_index += 1) {
-    MLoopTri *lt;
-    lt = &mlooptri[i];
-    /* quad is (0, 3, 2, 1) */
-    lt->tri[0] = (poly_index * 4) + 0;
-    lt->tri[1] = (poly_index * 4) + 2;
-    lt->tri[2] = (poly_index * 4) + 3;
-    lt->poly = poly_index;
-
-    lt = &mlooptri[i + 1];
-    lt->tri[0] = (poly_index * 4) + 0;
-    lt->tri[1] = (poly_index * 4) + 1;
-    lt->tri[2] = (poly_index * 4) + 2;
-    lt->poly = poly_index;
-  }
-
-  BLI_assert(dm->looptris.array == nullptr);
-  atomic_cas_ptr((void **)&dm->looptris.array, dm->looptris.array, dm->looptris.array_wip);
-  dm->looptris.array_wip = nullptr;
-}
-
 static void set_default_ccgdm_callbacks(CCGDerivedMesh *ccgdm)
 {
   ccgdm->dm.getNumVerts = ccgDM_getNumVerts;
@@ -1506,8 +1475,6 @@ static void set_default_ccgdm_callbacks(CCGDerivedMesh *ccgdm)
   ccgdm->dm.getGridKey = ccgDM_getGridKey;
   ccgdm->dm.getGridFlagMats = ccgDM_getGridFlagMats;
   ccgdm->dm.getGridHidden = ccgDM_getGridHidden;
-
-  ccgdm->dm.recalcLoopTri = ccgDM_recalcLoopTri;
 
   ccgdm->dm.release = ccgDM_release;
 }
@@ -1856,6 +1823,10 @@ static CCGDerivedMesh *getCCGDerivedMesh(CCGSubSurf *ss,
                    0,
                    ccgSubSurf_getNumFinalFaces(ss) * 4,
                    ccgSubSurf_getNumFinalFaces(ss));
+  CustomData_free_layer_named(
+      &ccgdm->dm.loopData, ".corner_vert", ccgSubSurf_getNumFinalFaces(ss) * 4);
+  CustomData_free_layer_named(
+      &ccgdm->dm.loopData, ".corner_edge", ccgSubSurf_getNumFinalFaces(ss) * 4);
 
   ccgdm->reverseFaceMap = static_cast<int *>(
       MEM_callocN(sizeof(int) * ccgSubSurf_getNumFinalFaces(ss), "reverseFaceMap"));
