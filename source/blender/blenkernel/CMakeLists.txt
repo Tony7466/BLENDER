@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation. All rights reserved.
+# Copyright 2006 Blender Foundation
 
 set(INC
   .
@@ -72,6 +72,7 @@ set(SRC
   intern/armature_selection.cc
   intern/armature_update.c
   intern/asset.cc
+  intern/asset_weak_reference.cc
   intern/attribute.cc
   intern/attribute_access.cc
   intern/attribute_math.cc
@@ -143,11 +144,11 @@ set(SRC
   intern/geometry_fields.cc
   intern/geometry_set.cc
   intern/geometry_set_instances.cc
-  intern/gpencil.c
-  intern/gpencil_curve.c
-  intern/gpencil_geom.cc
-  intern/gpencil_modifier.c
-  intern/gpencil_update_cache.c
+  intern/gpencil_legacy.c
+  intern/gpencil_curve_legacy.c
+  intern/gpencil_geom_legacy.cc
+  intern/gpencil_modifier_legacy.c
+  intern/gpencil_update_cache_legacy.c
   intern/icons.cc
   intern/icons_rasterize.c
   intern/idprop.c
@@ -251,6 +252,7 @@ set(SRC
   intern/pbvh_bmesh.cc
   intern/pbvh_colors.cc
   intern/pbvh_pixels.cc
+  intern/pbvh_pixels_copy.cc
   intern/pbvh_uv_islands.cc
   intern/pointcache.c
   intern/pointcloud.cc
@@ -382,11 +384,11 @@ set(SRC
   BKE_geometry_set.hh
   BKE_geometry_set_instances.hh
   BKE_global.h
-  BKE_gpencil.h
-  BKE_gpencil_curve.h
-  BKE_gpencil_geom.h
-  BKE_gpencil_modifier.h
-  BKE_gpencil_update_cache.h
+  BKE_gpencil_legacy.h
+  BKE_gpencil_curve_legacy.h
+  BKE_gpencil_geom_legacy.h
+  BKE_gpencil_modifier_legacy.h
+  BKE_gpencil_update_cache_legacy.h
   BKE_icons.h
   BKE_idprop.h
   BKE_idprop.hh
@@ -419,6 +421,7 @@ set(SRC
   BKE_mball.h
   BKE_mball_tessellate.h
   BKE_mesh.h
+  BKE_mesh.hh
   BKE_mesh_boolean_convert.hh
   BKE_mesh_fair.h
   BKE_mesh_iterators.h
@@ -494,6 +497,7 @@ set(SRC
   nla_private.h
   particle_private.h
   tracking_private.h
+
   intern/CCGSubSurf.h
   intern/CCGSubSurf_inline.h
   intern/CCGSubSurf_intern.h
@@ -505,6 +509,7 @@ set(SRC
   intern/multires_unsubdivide.h
   intern/ocean_intern.h
   intern/pbvh_intern.hh
+  intern/pbvh_pixels_copy.hh
   intern/pbvh_uv_islands.hh
   intern/subdiv_converter.h
   intern/subdiv_inline.h

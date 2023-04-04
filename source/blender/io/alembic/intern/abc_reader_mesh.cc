@@ -29,7 +29,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
 
@@ -176,7 +176,7 @@ void read_mverts(Mesh &mesh, const P3fArraySamplePtr positions, const N3fArraySa
 static void read_mpolys(CDStreamConfig &config, const AbcMeshData &mesh_data)
 {
   MPoly *polys = config.polys;
-  MLoop *mloops = config.mloop;
+  int *corner_verts = config.corner_verts;
   float2 *mloopuvs = config.mloopuv;
 
   const Int32ArraySamplePtr &face_indices = mesh_data.face_indices;
@@ -203,25 +203,24 @@ static void read_mpolys(CDStreamConfig &config, const AbcMeshData &mesh_data)
 
     /* Polygons are always assumed to be smooth-shaded. If the Alembic mesh should be flat-shaded,
      * this is encoded in custom loop normals. See #71246. */
-    poly.flag |= ME_SMOOTH;
 
     /* NOTE: Alembic data is stored in the reverse order. */
     rev_loop_index = loop_index + (face_size - 1);
 
     uint last_vertex_index = 0;
     for (int f = 0; f < face_size; f++, loop_index++, rev_loop_index--) {
-      MLoop &loop = mloops[rev_loop_index];
-      loop.v = (*face_indices)[loop_index];
+      const int vert = (*face_indices)[loop_index];
+      corner_verts[rev_loop_index] = vert;
 
-      if (f > 0 && loop.v == last_vertex_index) {
+      if (f > 0 && vert == last_vertex_index) {
         /* This face is invalid, as it has consecutive loops from the same vertex. This is caused
          * by invalid geometry in the Alembic file, such as in #76514. */
         seen_invalid_geometry = true;
       }
-      last_vertex_index = loop.v;
+      last_vertex_index = vert;
 
       if (do_uvs) {
-        uv_index = (*uvs_indices)[do_uvs_per_loop ? loop_index : loop.v];
+        uv_index = (*uvs_indices)[do_uvs_per_loop ? loop_index : last_vertex_index];
 
         /* Some Alembic files are broken (or at least export UVs in a way we don't expect). */
         if (uv_index >= uvs_size) {
@@ -393,8 +392,7 @@ static void *add_customdata_cb(Mesh *mesh, const char *name, int data_type)
 
   /* Create a new layer. */
   int numloops = mesh->totloop;
-  cd_ptr = CustomData_add_layer_named(
-      &mesh->ldata, cd_data_type, CD_SET_DEFAULT, nullptr, numloops, name);
+  cd_ptr = CustomData_add_layer_named(&mesh->ldata, cd_data_type, CD_SET_DEFAULT, numloops, name);
   return cd_ptr;
 }
 
@@ -519,7 +517,7 @@ CDStreamConfig get_config(Mesh *mesh, const bool use_vertex_interpolation)
   CDStreamConfig config;
   config.mesh = mesh;
   config.positions = mesh->vert_positions_for_write().data();
-  config.mloop = mesh->loops_for_write().data();
+  config.corner_verts = mesh->corner_verts_for_write().data();
   config.polys = mesh->polys_for_write().data();
   config.totvert = mesh->totvert;
   config.totloop = mesh->totloop;
@@ -892,7 +890,7 @@ static void read_vertex_creases(Mesh *mesh,
   }
 
   float *vertex_crease_data = (float *)CustomData_add_layer(
-      &mesh->vdata, CD_CREASE, CD_SET_DEFAULT, nullptr, mesh->totvert);
+      &mesh->vdata, CD_CREASE, CD_SET_DEFAULT, mesh->totvert);
   const int totvert = mesh->totvert;
 
   for (int i = 0, v = indices->size(); i < v; ++i) {
@@ -918,7 +916,7 @@ static void read_edge_creases(Mesh *mesh,
   EdgeHash *edge_hash = BLI_edgehash_new_ex(__func__, edges.size());
 
   float *creases = static_cast<float *>(
-      CustomData_add_layer(&mesh->edata, CD_CREASE, CD_SET_DEFAULT, nullptr, edges.size()));
+      CustomData_add_layer(&mesh->edata, CD_CREASE, CD_SET_DEFAULT, edges.size()));
 
   for (const int i : edges.index_range()) {
     MEdge *edge = &edges[i];

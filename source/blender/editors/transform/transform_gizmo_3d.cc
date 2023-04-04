@@ -9,7 +9,7 @@
  */
 
 #include "DNA_armature_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_meta_types.h"
 
@@ -19,7 +19,7 @@
 #include "BKE_curve.h"
 #include "BKE_editmesh.h"
 #include "BKE_global.h"
-#include "BKE_gpencil.h"
+#include "BKE_gpencil_legacy.h"
 #include "BKE_layer.h"
 #include "BKE_object.h"
 #include "BKE_paint.h"
@@ -2219,7 +2219,13 @@ void VIEW3D_GGT_xform_gizmo_context(wmGizmoGroupType *gzgt)
 
 static wmGizmoGroup *gizmogroup_xform_find(TransInfo *t)
 {
-  wmGizmo *gizmo_modal_current = WM_gizmomap_get_modal(t->region->gizmo_map);
+  struct wmGizmoMap *gizmo_map = t->region->gizmo_map;
+  if (gizmo_map == nullptr) {
+    BLI_assert_msg(false, "#T_NO_GIZMO should already be set to return early before.");
+    return nullptr;
+  }
+
+  wmGizmo *gizmo_modal_current = WM_gizmomap_get_modal(gizmo_map);
   if (gizmo_modal_current) {
     wmGizmoGroup *gzgroup = gizmo_modal_current->parent_gzgroup;
     /* Check #wmGizmoGroup::customdata to make sure the GizmoGroup has been initialized. */
@@ -2229,7 +2235,7 @@ static wmGizmoGroup *gizmogroup_xform_find(TransInfo *t)
   }
   else {
     /* See #WM_gizmomap_group_find_ptr. */
-    LISTBASE_FOREACH (wmGizmoGroup *, gzgroup, WM_gizmomap_group_list(t->region->gizmo_map)) {
+    LISTBASE_FOREACH (wmGizmoGroup *, gzgroup, WM_gizmomap_group_list(gizmo_map)) {
       if (ELEM(gzgroup->type, g_GGT_xform_gizmo, g_GGT_xform_gizmo_context)) {
         /* Choose the one that has been initialized. */
         if (gzgroup->customdata) {

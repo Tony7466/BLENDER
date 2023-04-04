@@ -84,6 +84,7 @@
  * `bpy.app.handler` callbacks for example.
  * Even though this is arguably "correct", it's going to cause problems for existing scripts,
  * so accept having this for the time being. */
+
 BPy_StructRNA *bpy_context_module = NULL; /* for fast access */
 
 static PyObject *pyrna_struct_Subtype(PointerRNA *ptr);
@@ -6515,10 +6516,6 @@ static PyObject *pyrna_func_doc_get(BPy_FunctionRNA *self, void *UNUSED(closure)
   return ret;
 }
 
-/**
- * Sub-classes of #pyrna_struct_Type which support idprop definitions use this as a meta-class.
- * \note tp_base member is set to `&PyType_Type` on initialization.
- */
 PyTypeObject pyrna_struct_meta_idprop_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     /*tp_name*/ "bpy_struct_meta_idprop",
@@ -6578,6 +6575,7 @@ PyTypeObject pyrna_struct_meta_idprop_Type = {
 };
 
 /*-----------------------BPy_StructRNA method def------------------------------*/
+
 PyTypeObject pyrna_struct_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     /*tp_name*/ "bpy_struct",
@@ -6644,6 +6642,7 @@ PyTypeObject pyrna_struct_Type = {
 };
 
 /*-----------------------BPy_PropertyRNA method def------------------------------*/
+
 PyTypeObject pyrna_prop_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     /*tp_name*/ "bpy_prop",
@@ -6870,6 +6869,7 @@ static PyTypeObject pyrna_prop_collection_idprop_Type = {
 };
 
 /*-----------------------BPy_PropertyRNA method def------------------------------*/
+
 PyTypeObject pyrna_func_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     /*tp_name*/ "bpy_func",
@@ -7316,6 +7316,7 @@ static PyObject *pyrna_struct_Subtype(PointerRNA *ptr)
 }
 
 /*-----------------------CreatePyObject---------------------------------*/
+
 PyObject *pyrna_struct_CreatePyObject(PointerRNA *ptr)
 {
   BPy_StructRNA *pyrna = NULL;
@@ -7405,6 +7406,27 @@ PyObject *pyrna_struct_CreatePyObject(PointerRNA *ptr)
   }
 #endif
   return (PyObject *)pyrna;
+}
+
+PyObject *pyrna_struct_CreatePyObject_with_primitive_support(PointerRNA *ptr)
+{
+  if (ptr->type == &RNA_PrimitiveString) {
+    const PrimitiveStringRNA *data = ptr->data;
+    return PyC_UnicodeFromBytes(data->value);
+  }
+  if (ptr->type == &RNA_PrimitiveInt) {
+    const PrimitiveIntRNA *data = ptr->data;
+    return PyLong_FromLong(data->value);
+  }
+  if (ptr->type == &RNA_PrimitiveFloat) {
+    const PrimitiveFloatRNA *data = ptr->data;
+    return PyFloat_FromDouble(data->value);
+  }
+  if (ptr->type == &RNA_PrimitiveBoolean) {
+    const PrimitiveBooleanRNA *data = ptr->data;
+    return PyBool_FromLong(data->value);
+  }
+  return pyrna_struct_CreatePyObject(ptr);
 }
 
 PyObject *pyrna_prop_CreatePyObject(PointerRNA *ptr, PropertyRNA *prop)
@@ -7816,6 +7838,7 @@ int pyrna_struct_as_ptr_or_null_parse(PyObject *o, void *p)
 }
 
 /* Orphan functions, not sure where they should go. */
+
 StructRNA *srna_from_self(PyObject *self, const char *error_prefix)
 {
 
@@ -8659,13 +8682,12 @@ static void bpy_class_free(void *pyob_ptr)
   PyGILState_Release(gilstate);
 }
 
-/**
- * \note This isn't essential to run on startup, since sub-types will lazy initialize.
- * But keep running in debug mode so we get immediate notification of bad class hierarchy
- * or any errors in "bpy_types.py" at load time, so errors don't go unnoticed.
- */
 void pyrna_alloc_types(void)
 {
+  /* NOTE: This isn't essential to run on startup, since sub-types will lazy initialize.
+   * But keep running in debug mode so we get immediate notification of bad class hierarchy
+   * or any errors in "bpy_types.py" at load time, so errors don't go unnoticed. */
+
 #ifdef DEBUG
   PyGILState_STATE gilstate;
 

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. All rights reserved. */
+ * Copyright 2022 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -542,7 +542,7 @@ Vector<uint32_t> VKShader::compile_glsl_to_spirv(Span<const char *> sources,
                                                  shaderc_shader_kind stage)
 {
   std::string combined_sources = combine_sources(sources);
-  VKBackend &backend = static_cast<VKBackend &>(*VKBackend::get());
+  VKBackend &backend = VKBackend::get();
   shaderc::Compiler &compiler = backend.get_shaderc_compiler();
   shaderc::CompileOptions options;
   options.SetOptimizationLevel(shaderc_optimization_level_performance);
@@ -659,9 +659,7 @@ void VKShader::compute_shader_from_glsl(MutableSpan<const char *> sources)
   build_shader_module(sources, shaderc_compute_shader, &compute_module_);
 }
 
-void VKShader::warm_cache(int /*limit*/)
-{
-}
+void VKShader::warm_cache(int /*limit*/) {}
 
 bool VKShader::finalize(const shader::ShaderCreateInfo *info)
 {
@@ -909,7 +907,7 @@ static void add_descriptor_set_layout_bindings(
     r_bindings.append(create_descriptor_set_layout_binding(location, resource));
   }
 
-  /* Add push constants to the descriptor when push constants are stored in an uniform buffer.*/
+  /* Add push constants to the descriptor when push constants are stored in an uniform buffer. */
   const VKPushConstants::Layout &push_constants_layout = interface.push_constants_layout_get();
   if (push_constants_layout.storage_type_get() == VKPushConstants::StorageType::UNIFORM_BUFFER) {
     r_bindings.append(create_descriptor_set_layout_binding(push_constants_layout));
@@ -978,9 +976,7 @@ bool VKShader::transform_feedback_enable(GPUVertBuf *)
   return false;
 }
 
-void VKShader::transform_feedback_disable()
-{
-}
+void VKShader::transform_feedback_disable() {}
 
 void VKShader::bind()
 {
