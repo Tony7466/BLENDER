@@ -82,7 +82,7 @@ Mesh *STLMeshHelper::to_mesh(Main *bmain, char *mesh_name)
 
   mesh->totpoly = tris_.size();
   mesh->totloop = tris_.size() * 3;
-  BKE_mesh_poly_offsets_ensure(mesh);
+  BKE_mesh_poly_offsets_ensure_alloc(mesh);
   CustomData_add_layer_named(
       &mesh->ldata, CD_PROP_INT32, CD_SET_DEFAULT, mesh->totloop, ".corner_vert");
 

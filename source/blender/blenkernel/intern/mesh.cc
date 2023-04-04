@@ -957,7 +957,7 @@ Mesh *BKE_mesh_add(Main *bmain, const char *name)
   return me;
 }
 
-void BKE_mesh_poly_offsets_ensure(Mesh *mesh)
+void BKE_mesh_poly_offsets_ensure_alloc(Mesh *mesh)
 {
   BLI_assert(mesh->poly_offset_indices == nullptr);
   if (mesh->totpoly == 0) {
@@ -1013,7 +1013,7 @@ Mesh *BKE_mesh_new_nomain(int verts_len, int edges_len, int loops_len, int polys
   mesh->totpoly = polys_len;
 
   mesh_ensure_cdlayers_primary(mesh);
-  BKE_mesh_poly_offsets_ensure(mesh);
+  BKE_mesh_poly_offsets_ensure_alloc(mesh);
 
   return mesh;
 }
@@ -1110,7 +1110,7 @@ Mesh *BKE_mesh_new_nomain_from_template_ex(const Mesh *me_src,
   /* The destination mesh should at least have valid primary CD layers,
    * even in cases where the source mesh does not. */
   mesh_ensure_cdlayers_primary(me_dst);
-  BKE_mesh_poly_offsets_ensure(me_dst);
+  BKE_mesh_poly_offsets_ensure_alloc(me_dst);
   if (do_tessface && !CustomData_get_layer(&me_dst->fdata, CD_MFACE)) {
     CustomData_add_layer(&me_dst->fdata, CD_MFACE, CD_SET_DEFAULT, me_dst->totface);
   }

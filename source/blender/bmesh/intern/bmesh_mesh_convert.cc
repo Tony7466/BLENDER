@@ -1326,7 +1326,7 @@ static void bm_to_mesh_faces(const BMesh &bm,
                              MutableSpan<bool> sharp_faces,
                              MutableSpan<int> material_indices)
 {
-  BKE_mesh_poly_offsets_ensure(&mesh);
+  BKE_mesh_poly_offsets_ensure_alloc(&mesh);
   const Vector<BMeshToMeshLayerInfo> info = bm_to_mesh_copy_info_calc(bm.pdata, mesh.pdata);
   MutableSpan<int> dst_poly_offsets = mesh.poly_offsets_for_write();
   threading::parallel_for(bm_faces.index_range(), 1024, [&](const IndexRange range) {

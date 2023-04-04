@@ -142,7 +142,7 @@ void BKE_mesh_copy_parameters(struct Mesh *me_dst, const struct Mesh *me_src);
 void BKE_mesh_ensure_skin_customdata(struct Mesh *me);
 
 /** Add poly offsets to describe faces to a new mesh. */
-void BKE_mesh_poly_offsets_ensure(struct Mesh *mesh);
+void BKE_mesh_poly_offsets_ensure_alloc(struct Mesh *mesh);
 
 struct Mesh *BKE_mesh_new_nomain(int verts_len, int edges_len, int loops_len, int polys_len);
 struct Mesh *BKE_mesh_new_nomain_from_template(

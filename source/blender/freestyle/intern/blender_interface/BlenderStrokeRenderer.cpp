@@ -580,7 +580,7 @@ void BlenderStrokeRenderer::GenerateStrokeMesh(StrokeGroup *group, bool hasTex)
   mesh->totpoly = group->totpoly;
   mesh->totloop = group->totloop;
   mesh->totcol = group->materials.size();
-  BKE_mesh_poly_offsets_ensure(mesh);
+  BKE_mesh_poly_offsets_ensure_alloc(mesh);
 
   float3 *vert_positions = (float3 *)CustomData_add_layer_named(
       &mesh->vdata, CD_PROP_FLOAT3, CD_SET_DEFAULT, mesh->totvert, "position");

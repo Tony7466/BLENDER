@@ -53,7 +53,7 @@ Mesh *convert_ply_to_mesh(PlyData &data, Mesh *mesh, const PLYImportParams &para
     /* Create poly and loop layers. */
     mesh->totpoly = int(data.face_sizes.size());
     mesh->totloop = int(data.face_vertices.size());
-    BKE_mesh_poly_offsets_ensure(mesh);
+    BKE_mesh_poly_offsets_ensure_alloc(mesh);
     CustomData_add_layer_named(
         &mesh->ldata, CD_PROP_INT32, CD_CONSTRUCT, mesh->totloop, ".corner_vert");
     MutableSpan<int> poly_offsets = mesh->poly_offsets_for_write();

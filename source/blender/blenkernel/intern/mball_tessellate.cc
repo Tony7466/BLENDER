@@ -1459,7 +1459,7 @@ Mesh *BKE_mball_polygonize(Depsgraph *depsgraph, Scene *scene, Object *ob)
   mesh->vert_positions_for_write().copy_from(process.co);
 
   mesh->totpoly = int(process.curindex);
-  BKE_mesh_poly_offsets_ensure(mesh);
+  BKE_mesh_poly_offsets_ensure_alloc(mesh);
   blender::MutableSpan<int> poly_offsets = mesh->poly_offsets_for_write();
   int *corner_verts = static_cast<int *>(CustomData_add_layer_named(
       &mesh->ldata, CD_PROP_INT32, CD_CONSTRUCT, mesh->totpoly * 4, ".corner_vert"));
