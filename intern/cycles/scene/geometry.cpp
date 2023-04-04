@@ -253,9 +253,7 @@ GeometryManager::GeometryManager()
   need_flags_update = true;
 }
 
-GeometryManager::~GeometryManager()
-{
-}
+GeometryManager::~GeometryManager() {}
 
 void GeometryManager::update_osl_globals(Device *device, Scene *scene)
 {

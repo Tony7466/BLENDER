@@ -45,9 +45,7 @@ uint Device::devices_initialized_mask = 0;
 
 /* Device */
 
-Device::~Device() noexcept(false)
-{
-}
+Device::~Device() noexcept(false) {}
 
 void Device::build_bvh(BVH *bvh, DeviceScene *dscene, Progress &progress, bool refit)
 {
@@ -499,9 +497,7 @@ void Device::host_mem_free(void *p_mem) {
   util_aligned_free(p_mem);
 }
 
-GPUDevice::~GPUDevice() noexcept(false)
-{
-}
+GPUDevice::~GPUDevice() noexcept(false) {}
 
 bool GPUDevice::load_texture_info()
 {
