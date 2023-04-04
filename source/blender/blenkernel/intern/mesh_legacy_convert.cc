@@ -2261,7 +2261,7 @@ void BKE_mesh_legacy_convert_polys_to_offsets(Mesh *mesh)
     });
     CustomData old_poly_data = mesh->pdata;
     CustomData_reset(&mesh->pdata);
-    CustomData_copy(&old_poly_data, &mesh->pdata, CD_MASK_MESH.lmask, CD_CONSTRUCT, mesh->totloop);
+    CustomData_copy(&old_poly_data, &mesh->pdata, CD_MASK_MESH.pmask, CD_CONSTRUCT, mesh->totpoly);
 
     int offset = 0;
     for (const int i : orig_indices.index_range()) {
