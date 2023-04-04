@@ -174,21 +174,25 @@ class NODE_OT_add_node_pair(NodeAddOperator, Operator):
         default=(0, 0),
     )
 
-    # Default execute simply adds a node
     def execute(self, context):
         props = self.properties
-        if props.is_property_set("origin_type") and props.is_property_set("target_type"):
-            self.deselect_nodes(context)
-            origin_node = self.create_node(context, self.origin_type)
-            target_node = self.create_node(context, self.target_type)
-
-            if props.is_property_set("offset"):
-                origin_node.location -= Vector(self.offset)
-                target_node.location += Vector(self.offset)
-
-            return {'FINISHED'}
-        else:
+        if not props.is_property_set("origin_type") or not props.is_property_set("target_type"):
             return {'CANCELLED'}
+
+        self.deselect_nodes(context)
+        origin_node = self.create_node(context, self.origin_type)
+        target_node = self.create_node(context, self.target_type)
+        if origin_node is None or target_node is None:
+            return {'CANCELLED'}
+    
+        # Simulation input must be paired with the output
+        origin_node.pair_with_output(target_node)
+
+        if props.is_property_set("offset"):
+            origin_node.location -= Vector(self.offset)
+            target_node.location += Vector(self.offset)
+
+        return {'FINISHED'}
 
 
 class NODE_OT_collapse_hide_unused_toggle(Operator):
