@@ -52,6 +52,7 @@
 typedef enum eGP_EyeMode {
   GP_EYE_MATERIAL = 0,
   GP_EYE_PALETTE = 1,
+  GP_EYE_BRUSH = 2,
 } eGP_EyeMode;
 
 struct EyedropperGPencil {
@@ -223,6 +224,40 @@ static void eyedropper_add_palette_color(bContext *C, const float col_conv[4])
   }
 }
 
+/* Set the active brush's color. */
+static void eyedropper_set_brush_color(bContext *C, const float col_conv[4])
+{
+  Scene *scene = CTX_data_scene(C);
+  ToolSettings *ts = scene->toolsettings;
+
+  const enum eContextObjectMode mode = CTX_data_mode_enum(C);
+
+  Paint *paint = nullptr;
+
+  switch (mode) {
+    case CTX_MODE_PAINT_GPENCIL:
+      paint = &ts->gp_paint->paint;
+      break;
+    case CTX_MODE_VERTEX_GPENCIL:
+      paint = &ts->gp_vertexpaint->paint;
+      break;
+    default:
+      return;
+      break;
+  }
+
+  if (paint == nullptr) {
+    return;
+  }
+
+  Brush *brush = paint->brush;
+  if (brush == nullptr) {
+    return;
+  }
+
+  copy_v3_v3(brush->rgb, col_conv);
+}
+
 /* Set the material or the palette color. */
 static void eyedropper_gpencil_color_set(bContext *C, const wmEvent *event, EyedropperGPencil *eye)
 {
@@ -233,10 +268,10 @@ static void eyedropper_gpencil_color_set(bContext *C, const wmEvent *event, Eyed
 
   float col_conv[4];
 
-  /* Convert from linear rgb space to display space because palette colors are in display
+  /* Convert from linear rgb space to display space because palette and brush colors are in display
    *  space, and this conversion is needed to undo the conversion to linear performed by
    *  eyedropper_color_sample_fl. */
-  if ((eye->display) && (eye->mode == GP_EYE_PALETTE)) {
+  if ((eye->display) && (eye->mode == GP_EYE_PALETTE || eye->mode == GP_EYE_BRUSH)) {
     copy_v3_v3(col_conv, eye->color);
     IMB_colormanagement_scene_linear_to_display_v3(col_conv, eye->display);
   }
@@ -244,12 +279,17 @@ static void eyedropper_gpencil_color_set(bContext *C, const wmEvent *event, Eyed
     copy_v3_v3(col_conv, eye->color);
   }
 
-  /* Add material or Palette color. */
-  if (eye->mode == GP_EYE_MATERIAL) {
-    eyedropper_add_material(C, col_conv, only_stroke, only_fill, both);
-  }
-  else {
-    eyedropper_add_palette_color(C, col_conv);
+  /* Add material, Palette color or set Brush. */
+  switch (eye->mode) {
+    case GP_EYE_MATERIAL:
+      eyedropper_add_material(C, col_conv, only_stroke, only_fill, both);
+      break;
+    case GP_EYE_PALETTE:
+      eyedropper_add_palette_color(C, col_conv);
+      break;
+    case GP_EYE_BRUSH:
+      eyedropper_set_brush_color(C, col_conv);
+      break;
   }
 }
 
@@ -355,6 +395,7 @@ void UI_OT_eyedropper_gpencil_color(wmOperatorType *ot)
   static const EnumPropertyItem items_mode[] = {
       {GP_EYE_MATERIAL, "MATERIAL", 0, "Material", ""},
       {GP_EYE_PALETTE, "PALETTE", 0, "Palette", ""},
+      {GP_EYE_BRUSH, "BRUSH", 0, "Brush", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
