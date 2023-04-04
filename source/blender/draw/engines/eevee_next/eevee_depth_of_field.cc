@@ -373,9 +373,11 @@ void DepthOfField::gather_pass_sync()
     inst_.sampling.bind_resources(&drw_pass);
     drw_pass.shader_set(inst_.shaders.static_shader_get(sh_type));
     drw_pass.bind_ubo("dof_buf", data_);
-    drw_pass.bind_texture("color_bilinear_tx", reduced_color_tx_, gather_bilinear);
-    drw_pass.bind_texture("color_tx", reduced_color_tx_, gather_nearest);
-    drw_pass.bind_texture("coc_tx", reduced_coc_tx_, gather_nearest);
+    drw_pass.bind_texture("color_bilinear_tx",
+                          reduced_color_tx_,
+                          {GPU_SAMPLER_FILTERING_MIPMAP | GPU_SAMPLER_FILTERING_LINEAR});
+    drw_pass.bind_texture("color_tx", reduced_color_tx_, {GPU_SAMPLER_FILTERING_MIPMAP});
+    drw_pass.bind_texture("coc_tx", reduced_coc_tx_, {GPU_SAMPLER_FILTERING_MIPMAP});
     drw_pass.bind_image("in_tiles_fg_img", &tiles_fg_tx_.current());
     drw_pass.bind_image("in_tiles_bg_img", &tiles_bg_tx_.current());
     drw_pass.bind_image("out_color_img", &color_chain.current());
@@ -433,9 +435,11 @@ void DepthOfField::hole_fill_pass_sync()
   inst_.sampling.bind_resources(&hole_fill_ps_);
   hole_fill_ps_.shader_set(inst_.shaders.static_shader_get(DOF_GATHER_HOLE_FILL));
   hole_fill_ps_.bind_ubo("dof_buf", data_);
-  hole_fill_ps_.bind_texture("color_bilinear_tx", reduced_color_tx_, gather_bilinear);
-  hole_fill_ps_.bind_texture("color_tx", reduced_color_tx_, gather_nearest);
-  hole_fill_ps_.bind_texture("coc_tx", reduced_coc_tx_, gather_nearest);
+  hole_fill_ps_.bind_texture("color_bilinear_tx",
+                             reduced_color_tx_,
+                             {GPU_SAMPLER_FILTERING_MIPMAP | GPU_SAMPLER_FILTERING_LINEAR});
+  hole_fill_ps_.bind_texture("color_tx", reduced_color_tx_, {GPU_SAMPLER_FILTERING_MIPMAP});
+  hole_fill_ps_.bind_texture("coc_tx", reduced_coc_tx_, {GPU_SAMPLER_FILTERING_MIPMAP});
   hole_fill_ps_.bind_image("in_tiles_fg_img", &tiles_fg_tx_.current());
   hole_fill_ps_.bind_image("in_tiles_bg_img", &tiles_bg_tx_.current());
   hole_fill_ps_.bind_image("out_color_img", &hole_fill_color_tx_);
