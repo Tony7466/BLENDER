@@ -1940,7 +1940,16 @@ class _defs_gpencil_paint:
                 operator="gpencil.draw",
             ),
         )
-
+    
+    @ToolDef.from_fn
+    def draw():
+        return dict(
+            idname="builtin_brush.draw",
+            label="Draw",
+            icon="brush.gpencil_draw.draw",
+            data_block='DRAW',
+        )
+    
     @ToolDef.from_fn
     def cutter():
         def draw_settings(_context, layout, tool):
@@ -3121,7 +3130,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         'PAINT_GPENCIL': [
             _defs_view3d_generic.cursor,
             None,
-            _defs_gpencil_paint.generate_from_brushes,
+            _defs_gpencil_paint.draw,
             _defs_gpencil_paint.cutter,
             None,
             _defs_gpencil_paint.eyedropper,

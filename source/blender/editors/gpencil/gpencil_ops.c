@@ -138,7 +138,12 @@ static bool gpencil_stroke_weightmode_poll_with_tool(bContext *C, const char gpe
 /* Poll callback for stroke painting (draw brush) */
 static bool gpencil_stroke_paintmode_draw_poll(bContext *C)
 {
-  return gpencil_stroke_paintmode_poll_with_tool(C, GPAINT_TOOL_DRAW);
+  Object *object = CTX_data_active_object(C);
+  if (object == NULL || object->type != OB_GREASE_PENCIL) {
+    return false;
+  }
+  return true;
+  // return gpencil_stroke_paintmode_poll_with_tool(C, GPAINT_TOOL_DRAW);
 }
 
 /* Poll callback for stroke painting (erase brush) */

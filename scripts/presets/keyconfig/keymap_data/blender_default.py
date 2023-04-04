@@ -3812,16 +3812,22 @@ def km_grease_pencil_stroke_paint_draw_brush(params):
 
     items.extend([
         # Draw
-        ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS'},
-         {"properties": [("mode", 'DRAW'), ("wait_for_input", False)]}),
-        ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
-         {"properties": [("mode", 'DRAW'), ("wait_for_input", False)]}),
-        # Draw - straight lines
-        ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
-         {"properties": [("mode", 'DRAW_STRAIGHT'), ("wait_for_input", False)]}),
-        # Erase
-        ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
-         {"properties": [("mode", 'ERASER'), ("wait_for_input", False)]}),
+        ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+         {"properties": [("mode", 'NORMAL')]}),
+        ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
+         {"properties": [("mode", 'INVERT')]}),
+        ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+         {"properties": [("mode", 'SMOOTH')]}),
+        # ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+        #  {"properties": [("mode", 'DRAW'), ("wait_for_input", False)]}),
+        # ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+        #  {"properties": [("mode", 'DRAW'), ("wait_for_input", False)]}),
+        # # Draw - straight lines
+        # ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
+        #  {"properties": [("mode", 'DRAW_STRAIGHT'), ("wait_for_input", False)]}),
+        # # Erase
+        # ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
+        #  {"properties": [("mode", 'ERASER'), ("wait_for_input", False)]}),
         # Constrain Guides Speedlines
         # Freehand
         ("gpencil.draw", {"type": 'O', "value": 'PRESS'}, None),
