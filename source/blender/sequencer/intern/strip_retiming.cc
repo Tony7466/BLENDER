@@ -292,7 +292,7 @@ class RetimingRangeData {
         continue;
       }
       const SeqRetimingHandle *handle_prev = &handle - 1;
-      float speed = SEQ_retiming_handle_speed_get(scene, seq, &handle);
+      float speed = SEQ_retiming_handle_speed_get(seq, &handle);
       int frame_start = SEQ_time_start_frame_get(seq) + handle_prev->strip_frame_index;
       int frame_end = SEQ_time_start_frame_get(seq) + handle.strip_frame_index;
 
