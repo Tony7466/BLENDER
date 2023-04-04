@@ -1227,8 +1227,6 @@ static void apply_ao_callback(DerivedMesh *lores_dm,
                               const int y)
 {
   const MLoopTri *lt = lores_dm->getLoopTriArray(lores_dm) + tri_index;
-  const int *poly_offsets = lores_dm->getPolyArray(lores_dm);
-  const blender::IndexRange poly(poly_offsets[lt->poly], poly_offsets[lt->poly+1] - poly_offsets[lt->poly]);
   float (*mloopuv)[2] = lores_dm->getLoopDataArray(lores_dm, CD_PROP_FLOAT2);
   MAOBakeData *ao_data = (MAOBakeData *)bake_data;
 

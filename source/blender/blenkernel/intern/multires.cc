@@ -488,14 +488,13 @@ static int get_levels_from_disps(Object *ob)
 {
   Mesh *me = static_cast<Mesh *>(ob->data);
   const blender::OffsetIndices polys = me->polys();
-  int j, totlvl = 0;
+  int totlvl = 0;
 
   const MDisps *mdisp = static_cast<const MDisps *>(CustomData_get_layer(&me->ldata, CD_MDISPS));
 
   for (const int i : polys.index_range()) {
-    const MDisps *md = mdisp + polys[i].start();
-
-    for (j = 0; j < polys[i].size(); j++, md++) {
+    for (const int corner : polys[i]) {
+      const MDisps *md = &mdisp[corner];
       if (md->totdisp == 0) {
         continue;
       }
@@ -675,12 +674,10 @@ static void multires_del_higher(MultiresModifierData *mmd, Object *ob, int lvl)
     if (lvl > 0) {
       int nsize = multires_side_tot[lvl];
       int hsize = multires_side_tot[mmd->totlvl];
-      int j;
 
       for (const int i : polys.index_range()) {
-        for (j = 0; j < polys[i].size(); j++) {
-          int g = polys[i].start() + j;
-          MDisps *mdisp = &mdisps[g];
+        for (const int corner : polys[i]) {
+          MDisps *mdisp = &mdisps[corner];
           float(*disps)[3], (*ndisps)[3], (*hdisps)[3];
           int totdisp = multires_grid_tot[lvl];
 
@@ -706,7 +703,7 @@ static void multires_del_higher(MultiresModifierData *mmd, Object *ob, int lvl)
           mdisp->level = lvl;
 
           if (gpm) {
-            multires_grid_paint_mask_downsample(&gpm[g], lvl);
+            multires_grid_paint_mask_downsample(&gpm[corner], lvl);
           }
         }
       }
