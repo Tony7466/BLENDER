@@ -1017,11 +1017,11 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
         data = key->refkey->data;
         tot = MIN2(lt->pntsu * lt->pntsv * lt->pntsw, key->refkey->totelem);
 
-        for (a = tot; --a, data += 3) {
+        for (a = tot; --a, data += 3; ) {
           /*optimized loop to use deincrement instead to use less resources 
           because now it automatically stops when a reaches 0 and it loops 
           the same number of times*/
-          change = (tot - a)
+          change = (tot - a);
           copy_v3_v3(lt->def[change].vec, data);
         }
       }
