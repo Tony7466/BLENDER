@@ -24,15 +24,17 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
   LazyFunctionForSimulationInputNode(const bNodeTree &node_tree, const bNode &node)
   {
     output_node_id_ = node_storage(node).output_node_id;
-    const bNode &output_node = *node_tree.node_by_id(output_node_id_);
-    const NodeGeometrySimulationOutput &storage = *static_cast<NodeGeometrySimulationOutput *>(
-        output_node.storage);
-    simulation_items_ = {storage.items, storage.items_num};
-    outputs_.append_as("Delta Time", CPPType::get<ValueOrField<float>>());
-    for (const NodeSimulationItem &item : Span(storage.items, storage.items_num)) {
-      const CPPType &type = get_simulation_item_cpp_type(item);
-      inputs_.append_as(item.name, type, lf::ValueUsage::Maybe);
-      outputs_.append_as(item.name, type);
+    const bNode *output_node = node_tree.node_by_id(output_node_id_);
+    if (output_node) {
+      const NodeGeometrySimulationOutput &storage = *static_cast<NodeGeometrySimulationOutput *>(
+          output_node->storage);
+      simulation_items_ = {storage.items, storage.items_num};
+      outputs_.append_as("Delta Time", CPPType::get<ValueOrField<float>>());
+      for (const NodeSimulationItem &item : Span(storage.items, storage.items_num)) {
+        const CPPType &type = get_simulation_item_cpp_type(item);
+        inputs_.append_as(item.name, type, lf::ValueUsage::Maybe);
+        outputs_.append_as(item.name, type);
+      }
     }
   }
 
