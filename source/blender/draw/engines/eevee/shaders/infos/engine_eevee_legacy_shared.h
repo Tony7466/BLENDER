@@ -53,7 +53,7 @@ struct CommonUniformBlock {
   /* Specular */
   bool _specToggle;
   /* Lights */
-  int         _laNumLight;
+  int _laNumLight;
   /* Probes */
   int _prbNumPlanar;
   int _prbNumRenderCube;
