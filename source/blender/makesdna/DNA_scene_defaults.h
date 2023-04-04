@@ -366,6 +366,12 @@
     /* UV painting */ \
     .uv_sculpt_settings = 0, \
     .uv_relax_method = UV_SCULPT_TOOL_RELAX_LAPLACIAN, \
+ \
+    /* Viewport-Facing Select */ \
+    .viewport_facing_select_mode = 1, \
+    .viewport_facing_select_vert = 1, \
+    .viewport_facing_select_edge = 1, \
+    .viewport_facing_select_face = 1, \
   }
 
 /* clang-format off */
