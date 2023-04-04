@@ -680,18 +680,8 @@ GPUNodeLink *GPU_color_band(GPUMaterial *mat, int size, float *pixels, float *ro
   GPUNodeGraph *graph = gpu_material_node_graph(mat);
   GPUNodeLink *link = gpu_node_link_create();
   link->link_type = GPU_NODE_LINK_COLORBAND;
-<<<<<<< HEAD
-  link->texture = gpu_node_graph_add_texture(graph,
-                                             nullptr,
-                                             nullptr,
-                                             colorband,
-                                             nullptr,
-                                             link->link_type,
-                                             GPUSamplerState::internal_sampler());
-=======
   link->texture = gpu_node_graph_add_texture(
-      graph, nullptr, nullptr, colorband, nullptr, false, GPU_SAMPLER_MAX);
->>>>>>> main
+      graph, nullptr, nullptr, colorband, nullptr, false, GPUSamplerState::internal_sampler());
   return link;
 }
 
