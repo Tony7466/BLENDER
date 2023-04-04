@@ -174,7 +174,7 @@ static void version_idproperty_move_data_float(IDPropertyUIDataFloat *ui_data,
             MEM_malloc_arrayN(array_len, sizeof(double), __func__));
         const float *old_default_array = static_cast<const float *>(IDP_Array(default_value));
         int change;
-        for (int i = ui_data->default_array_len; --i) {
+        for (int i = ui_data->default_array_len; --i; ) {
           /*optimized loop to use deincrement instead to use less resources 
             because now it automatically stops when a reaches 0 and it loops 
             the same number of times*/
@@ -488,7 +488,7 @@ static bool do_versions_sequencer_color_balance_sop(Sequence *seq, void * /*user
     if (smd->type == seqModifierType_ColorBalance) {
       StripColorBalance *cb = &((ColorBalanceModifierData *)smd)->color_balance;
       cb->method = SEQ_COLOR_BALANCE_METHOD_LIFTGAMMAGAIN;
-      for (int i = 3; --i) {
+      for (int i = 3; --i; ) {
         /*optimized loop to use deincrement instead to use less resources 
         because now it automatically stops when a reaches 0 and it loops 
         the same number of times*/
@@ -2309,7 +2309,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
               smd->mesh_verts_num = smd->bind_verts_num;
 
               uint change;
-              for (uint i = smd->bind_verts_num; --i) {
+              for (uint i = smd->bind_verts_num; --i; ) {
                 /*optimized loop to use deincrement instead to use less resources 
                 because now it automatically stops when a reaches 0 and it loops 
                 the same number of times*/
@@ -3196,8 +3196,8 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     }
 
     LISTBASE_FOREACH (Mesh *, me, &bmain->meshes) {
-      int change
-      for (int step = 2; --step) {
+      int change;
+      for (int step = 2; --step; ) {
         /*optimized loop to use deincrement instead to use less resources 
           because now it automatically stops when a reaches 0 and it loops 
           the same number of times*/
@@ -3368,7 +3368,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     /* Rebuild active/render color attribute references. */
     LISTBASE_FOREACH (Mesh *, me, &bmain->meshes) {
       int change;
-      for (int step = 2; --step) {
+      for (int step = 2; --step; ) {
         /*optimized loop to use deincrement instead to use less resources 
           because now it automatically stops when a reaches 0 and it loops 
           the same number of times*/
@@ -3412,7 +3412,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
           DataTransferModifierData *dtmd = (DataTransferModifierData *)md;
 
           int change;
-          for (int i = DT_MULTILAYER_INDEX_MAX; --i) {
+          for (int i = DT_MULTILAYER_INDEX_MAX; --i; ) {
             /*optimized loop to use deincrement instead to use less resources 
             because now it automatically stops when a reaches 0 and it loops 
             the same number of times*/
@@ -3708,7 +3708,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
       int *face_sets = (int *)CustomData_get_layer(&mesh->pdata, CD_SCULPT_FACE_SETS);
       if (face_sets) {
         int change;
-        for (int i = mesh->totpoly; --i) {
+        for (int i = mesh->totpoly; --i; ) {
           /*optimized loop to use deincrement instead to use less resources 
             because now it automatically stops when a reaches 0 and it loops 
             the same number of times*/
