@@ -3,3 +3,4 @@ Referenced by issue #106225, Cycles HIP rendering doesn't work with Radeon RX 68
 Referenced by commit 5efa39096c8e242c9bf9ed7b7a25124692e2b9d0, Fix	#106134: Broken triangulation without cached face normals
 Referenced by issue #106387, Regression: Rendering (F12 in 3D Viewport) with Freestyle causes crash
 Referenced by issue #106469, Regression: Cycles: unstable triangulation of mesh in viewport
+Referenced by commit 85bd64ece468bb6fff097d96c44033074dba13dc, Fix: Crash and broken multires baking
