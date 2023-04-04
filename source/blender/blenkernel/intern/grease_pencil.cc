@@ -318,7 +318,9 @@ BoundBox *BKE_grease_pencil_boundbox_get(Object *ob)
   return ob->runtime.bb;
 }
 
-void BKE_grease_pencil_data_update(struct Depsgraph *depsgraph, struct Scene *scene, Object *object)
+void BKE_grease_pencil_data_update(struct Depsgraph * /*depsgraph*/,
+                                   struct Scene * /*scene*/,
+                                   Object *object)
 {
   /* Free any evaluated data and restore original data. */
   BKE_object_free_derived_caches(object);
@@ -329,11 +331,14 @@ void BKE_grease_pencil_data_update(struct Depsgraph *depsgraph, struct Scene *sc
 
   /* Assign evaluated object. */
   /* TODO: Get eval from modifiers geometry set. */
-  GreasePencil *grease_pencil_eval = nullptr;
-  if (grease_pencil_eval == nullptr) {
-    grease_pencil_eval = BKE_grease_pencil_new_nomain();
-    BKE_object_eval_assign_data(object, &grease_pencil_eval->id, true);
-  }
+  GreasePencil *grease_pencil_eval = (GreasePencil *)BKE_id_copy_ex(
+      nullptr, &grease_pencil->id, nullptr, LIB_ID_COPY_LOCALIZE);
+  // if (grease_pencil_eval == nullptr) {
+  //   grease_pencil_eval = BKE_grease_pencil_new_nomain();
+  //   BKE_object_eval_assign_data(object, &grease_pencil_eval->id, true);
+  // }
+  BKE_object_eval_assign_data(object, &grease_pencil_eval->id, true);
+}
 
 /* Draw Cache */
 
@@ -362,15 +367,15 @@ blender::Span<blender::uint3> GreasePencilDrawing::triangles() const
   using namespace blender;
   const bke::GreasePencilDrawingRuntime &runtime = *this->runtime;
   runtime.triangles_cache.ensure([&](Vector<uint3> &cache) {
-  MemArena *pf_arena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __func__);
+    MemArena *pf_arena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __func__);
 
     const bke::CurvesGeometry &curves = this->geometry.wrap();
     const Span<float3> positions = curves.positions();
     const offset_indices::OffsetIndices<int> points_by_curve = curves.points_by_curve();
 
     int total_triangles = 0;
-  for (int curve_i : curves.curves_range()) {
-    IndexRange points = points_by_curve[curve_i];
+    for (int curve_i : curves.curves_range()) {
+      IndexRange points = points_by_curve[curve_i];
       if (points.size() > 2) {
         total_triangles += points.size() - 2;
       }
@@ -382,36 +387,36 @@ blender::Span<blender::uint3> GreasePencilDrawing::triangles() const
     for (int curve_i : curves.curves_range()) {
       const IndexRange points = points_by_curve[curve_i];
 
-    if (points.size() < 3) {
-      continue;
-    }
+      if (points.size() < 3) {
+        continue;
+      }
 
       const int num_trinagles = points.size() - 2;
 
-    uint(*tris)[3] = static_cast<uint(*)[3]>(
+      uint(*tris)[3] = static_cast<uint(*)[3]>(
           BLI_memarena_alloc(pf_arena, sizeof(*tris) * size_t(num_trinagles)));
-    float(*projverts)[2] = static_cast<float(*)[2]>(
+      float(*projverts)[2] = static_cast<float(*)[2]>(
           BLI_memarena_alloc(pf_arena, sizeof(*projverts) * size_t(points.size())));
 
-    /* TODO: calculate axis_mat properly. */
-    float3x3 axis_mat;
-    axis_dominant_v3_to_m3(axis_mat.ptr(), float3(0.0f, -1.0f, 0.0f));
+      /* TODO: calculate axis_mat properly. */
+      float3x3 axis_mat;
+      axis_dominant_v3_to_m3(axis_mat.ptr(), float3(0.0f, -1.0f, 0.0f));
 
       for (const int i : IndexRange(points.size())) {
-      mul_v2_m3v3(projverts[i], axis_mat.ptr(), positions[points[i]]);
-    }
+        mul_v2_m3v3(projverts[i], axis_mat.ptr(), positions[points[i]]);
+      }
 
       BLI_polyfill_calc_arena(projverts, points.size(), 0, tris, pf_arena);
 
       for (const int i : IndexRange(num_trinagles)) {
         cache[t] = uint3(tris[i]);
         t++;
+      }
+
+      BLI_memarena_clear(pf_arena);
     }
 
-    BLI_memarena_clear(pf_arena);
-  }
-
-  BLI_memarena_free(pf_arena);
+    BLI_memarena_free(pf_arena);
   });
 
   return this->runtime->triangles_cache.data().as_span();
