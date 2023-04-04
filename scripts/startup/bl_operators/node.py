@@ -10,8 +10,12 @@ from bpy.props import (
     BoolProperty,
     CollectionProperty,
     EnumProperty,
+    FloatVectorProperty,
     IntProperty,
     StringProperty,
+)
+from mathutils import (
+    Vector,
 )
 
 from bpy.app.translations import pgettext_tip as tip_
@@ -29,10 +33,6 @@ class NodeSetting(PropertyGroup):
 # Base class for node 'Add' operators
 class NodeAddOperator:
 
-    type: StringProperty(
-        name="Node Type",
-        description="Node type",
-    )
     use_transform: BoolProperty(
         name="Use Transform",
         description="Start transform operator after inserting the node",
@@ -58,16 +58,18 @@ class NodeAddOperator:
         else:
             space.cursor_location = tree.view_center
 
-    def create_node(self, context, node_type=None):
+    # Deselect all nodes in the tree
+    @staticmethod
+    def deselect_nodes(context):
         space = context.space_data
         tree = space.edit_tree
-
-        if node_type is None:
-            node_type = self.type
-
-        # select only the new node
         for n in tree.nodes:
             n.select = False
+
+
+    def create_node(self, context, node_type):
+        space = context.space_data
+        tree = space.edit_tree
 
         try:
             node = tree.nodes.new(type=node_type)
@@ -107,14 +109,6 @@ class NodeAddOperator:
         return (space and (space.type == 'NODE_EDITOR') and
                 space.edit_tree and not space.edit_tree.library)
 
-    # Default execute simply adds a node
-    def execute(self, context):
-        if self.properties.is_property_set("type"):
-            self.create_node(context)
-            return {'FINISHED'}
-        else:
-            return {'CANCELLED'}
-
     # Default invoke stores the mouse position to place the node correctly
     # and optionally invokes the transform operator
     def invoke(self, context, event):
@@ -127,6 +121,28 @@ class NodeAddOperator:
 
         return result
 
+
+# Simple basic operator for adding a node
+class NODE_OT_add_node(NodeAddOperator, Operator):
+    '''Add a node to the active tree'''
+    bl_idname = "node.add_node"
+    bl_label = "Add Node"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    type: StringProperty(
+        name="Node Type",
+        description="Node type",
+    )
+
+    # Default execute simply adds a node
+    def execute(self, context):
+        if self.properties.is_property_set("type"):
+            self.deselect_nodes(context)
+            self.create_node(context, self.type)
+            return {'FINISHED'}
+        else:
+            return {'CANCELLED'}
+
     @classmethod
     def description(cls, _context, properties):
         nodetype = properties["type"]
@@ -137,12 +153,42 @@ class NodeAddOperator:
             return ""
 
 
-# Simple basic operator for adding a node
-class NODE_OT_add_node(NodeAddOperator, Operator):
-    '''Add a node to the active tree'''
-    bl_idname = "node.add_node"
-    bl_label = "Add Node"
+class NODE_OT_add_node_pair(NodeAddOperator, Operator):
+    '''Add a node pair to the active tree'''
+    bl_idname = "node.add_node_pair"
+    bl_label = "Add Node Pair"
     bl_options = {'REGISTER', 'UNDO'}
+
+    origin_type: StringProperty(
+        name="Origin Node Type",
+        description="Origin node type",
+    )
+    target_type: StringProperty(
+        name="Target Node Type",
+        description="Target node type",
+    )
+    offset: FloatVectorProperty(
+        name="Offset",
+        description="Offset of nodes from the cursor when added",
+        size=2,
+        default=(0, 0),
+    )
+
+    # Default execute simply adds a node
+    def execute(self, context):
+        props = self.properties
+        if props.is_property_set("origin_type") and props.is_property_set("target_type"):
+            self.deselect_nodes(context)
+            origin_node = self.create_node(context, self.origin_type)
+            target_node = self.create_node(context, self.target_type)
+
+            if props.is_property_set("offset"):
+                origin_node.location -= Vector(self.offset)
+                target_node.location += Vector(self.offset)
+
+            return {'FINISHED'}
+        else:
+            return {'CANCELLED'}
 
 
 class NODE_OT_collapse_hide_unused_toggle(Operator):
@@ -200,6 +246,7 @@ classes = (
     NodeSetting,
 
     NODE_OT_add_node,
+    NODE_OT_add_node_pair,
     NODE_OT_collapse_hide_unused_toggle,
     NODE_OT_tree_path_parent,
 )

@@ -58,6 +58,24 @@ def draw_root_assets(layout):
     layout.menu_contents("NODE_MT_node_add_root_catalogs")
 
 
+def add_node_type_pair(layout, origin_node_type, target_node_type, label):
+    """Add a pair of node types to a menu."""
+    origin_bl_rna = bpy.types.Node.bl_rna_get_subclass(origin_node_type)
+    target_bl_rna = bpy.types.Node.bl_rna_get_subclass(target_node_type)
+    if target_bl_rna:
+        translation_context = target_bl_rna.translation_context
+    elif origin_bl_rna:
+        translation_context = origin_bl_rna.translation_context
+    else:
+        translation_context = i18n_contexts.default
+    props = layout.operator("node.add_node_pair", text=label, text_ctxt=translation_context)
+    props.origin_type = origin_node_type
+    props.target_type = target_node_type
+    props.use_transform = True
+    props.offset = (150, 0)
+    return props
+
+
 classes = (
 )
 
