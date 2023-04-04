@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation. All rights reserved.
+# Copyright 2006 Blender Foundation
 
 set(INC
   ../../intern/clog
@@ -52,6 +52,10 @@ endif()
 
 if(WITH_VULKAN_BACKEND)
   add_definitions(-DWITH_VULKAN_BACKEND)
+endif()
+
+if(WITH_RENDERDOC)
+  add_definitions(-DWITH_RENDERDOC)
 endif()
 
 if(WITH_CODEC_FFMPEG)

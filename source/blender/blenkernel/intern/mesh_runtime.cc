@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -241,6 +241,12 @@ void BKE_mesh_tag_edges_split(struct Mesh *mesh)
   if (mesh->runtime->shrinkwrap_data) {
     BKE_shrinkwrap_boundary_data_free(mesh->runtime->shrinkwrap_data);
   }
+}
+
+void BKE_mesh_tag_face_winding_changed(Mesh *mesh)
+{
+  mesh->runtime->vert_normals_dirty = true;
+  mesh->runtime->poly_normals_dirty = true;
 }
 
 void BKE_mesh_tag_positions_changed(Mesh *mesh)

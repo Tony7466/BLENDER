@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. All rights reserved. */
+ * Copyright 2022 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -93,9 +93,7 @@ void VKContext::activate()
   }
 }
 
-void VKContext::deactivate()
-{
-}
+void VKContext::deactivate() {}
 
 void VKContext::begin_frame()
 {
@@ -143,9 +141,7 @@ void VKContext::finish()
   }
 }
 
-void VKContext::memory_statistics_get(int * /*total_mem*/, int * /*free_mem*/)
-{
-}
+void VKContext::memory_statistics_get(int * /*total_mem*/, int * /*free_mem*/) {}
 
 /* -------------------------------------------------------------------- */
 /** \name Framebuffer

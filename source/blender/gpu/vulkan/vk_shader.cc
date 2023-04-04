@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. All rights reserved. */
+ * Copyright 2022 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -360,7 +360,7 @@ static void print_resource(std::ostream &os,
       array_offset = res.uniformbuf.name.find_first_of("[");
       name_no_array = (array_offset == -1) ? res.uniformbuf.name :
                                              StringRef(res.uniformbuf.name.c_str(), array_offset);
-      os << "uniform " << name_no_array << " { " << res.uniformbuf.type_name << " _"
+      os << "uniform _" << name_no_array << " { " << res.uniformbuf.type_name << " "
          << res.uniformbuf.name << "; };\n";
       break;
     case ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER:
@@ -368,8 +368,8 @@ static void print_resource(std::ostream &os,
       name_no_array = (array_offset == -1) ? res.storagebuf.name :
                                              StringRef(res.storagebuf.name.c_str(), array_offset);
       print_qualifier(os, res.storagebuf.qualifiers);
-      os << "buffer ";
-      os << name_no_array << " { " << res.storagebuf.type_name << " _" << res.storagebuf.name
+      os << "buffer _";
+      os << name_no_array << " { " << res.storagebuf.type_name << " " << res.storagebuf.name
          << "; };\n";
       break;
   }
@@ -381,29 +381,6 @@ static void print_resource(std::ostream &os,
 {
   const VKDescriptorSet::Location location = shader_interface.descriptor_set_location(res);
   print_resource(os, location, res);
-}
-
-static void print_resource_alias(std::ostream &os, const ShaderCreateInfo::Resource &res)
-{
-  int64_t array_offset;
-  StringRef name_no_array;
-
-  switch (res.bind_type) {
-    case ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER:
-      array_offset = res.uniformbuf.name.find_first_of("[");
-      name_no_array = (array_offset == -1) ? res.uniformbuf.name :
-                                             StringRef(res.uniformbuf.name.c_str(), array_offset);
-      os << "#define " << name_no_array << " (_" << name_no_array << ")\n";
-      break;
-    case ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER:
-      array_offset = res.storagebuf.name.find_first_of("[");
-      name_no_array = (array_offset == -1) ? res.storagebuf.name :
-                                             StringRef(res.storagebuf.name.c_str(), array_offset);
-      os << "#define " << name_no_array << " (_" << name_no_array << ")\n";
-      break;
-    default:
-      break;
-  }
 }
 
 inline int get_location_count(const Type &type)
@@ -659,9 +636,7 @@ void VKShader::compute_shader_from_glsl(MutableSpan<const char *> sources)
   build_shader_module(sources, shaderc_compute_shader, &compute_module_);
 }
 
-void VKShader::warm_cache(int /*limit*/)
-{
-}
+void VKShader::warm_cache(int /*limit*/) {}
 
 bool VKShader::finalize(const shader::ShaderCreateInfo *info)
 {
@@ -949,9 +924,8 @@ bool VKShader::transform_feedback_enable(GPUVertBuf *)
   return false;
 }
 
-void VKShader::transform_feedback_disable()
-{
-}
+void VKShader::transform_feedback_disable() {}
+
 void VKShader::update_graphics_pipeline(VKContext &context)
 {
   BLI_assert(is_graphics_shader());
@@ -970,9 +944,7 @@ void VKShader::bind()
    * into account. GPU state can be changed after binding the shader. */
 }
 
-void VKShader::unbind()
-{
-}
+void VKShader::unbind() {}
 
 void VKShader::uniform_float(int location, int comp_len, int array_size, const float *data)
 {
@@ -994,16 +966,10 @@ std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) co
   for (const ShaderCreateInfo::Resource &res : info.pass_resources_) {
     print_resource(ss, interface, res);
   }
-  for (const ShaderCreateInfo::Resource &res : info.pass_resources_) {
-    print_resource_alias(ss, res);
-  }
 
   ss << "\n/* Batch Resources. */\n";
   for (const ShaderCreateInfo::Resource &res : info.batch_resources_) {
     print_resource(ss, interface, res);
-  }
-  for (const ShaderCreateInfo::Resource &res : info.batch_resources_) {
-    print_resource_alias(ss, res);
   }
 
   /* Push constants. */
