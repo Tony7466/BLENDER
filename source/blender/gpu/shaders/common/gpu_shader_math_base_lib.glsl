@@ -18,7 +18,7 @@
 #define M_LN2 0.69314718055994530942     /* log_e 2 */
 #define M_LN10 2.30258509299404568402    /* log_e 10 */
 
-/* 'powf' is really slow for raising to integer powers. */
+/* `powf` is really slow for raising to integer powers. */
 
 float pow2f(float x)
 {
@@ -86,8 +86,8 @@ float atan2(float y, float x)
 }
 
 /**
- * Safe 'a' modulo 'b'.
- * If 'b' equal 0 the result will be 0.
+ * Safe `a` modulo `b`.
+ * If `b` equal 0 the result will be 0.
  */
 float safe_mod(float a, float b)
 {
@@ -96,7 +96,7 @@ float safe_mod(float a, float b)
 
 /**
  * Returns \a a if it is a multiple of \a b or the next multiple or \a b after \b a .
- * In other words, it is equivalent to 'divide_ceil(a, b) * b'.
+ * In other words, it is equivalent to `divide_ceil(a, b) * b`.
  * It is undefined if \a a is negative or \b b is not strictly positive.
  */
 int ceil_to_multiple(int a, int b)
@@ -131,8 +131,8 @@ void min_max(float value, inout float min_v, inout float max_v)
 }
 
 /**
- * Safe divide 'a' by 'b'.
- * If 'b' equal 0 the result will be 0.
+ * Safe divide `a` by `b`.
+ * If `b` equal 0 the result will be 0.
  */
 float safe_divide(float a, float b)
 {
@@ -140,7 +140,7 @@ float safe_divide(float a, float b)
 }
 
 /**
- * Return true if the difference between'a' and 'b' is below the 'epsilon' value.
+ * Return true if the difference between`a` and `b` is below the `epsilon` value.
  */
 bool is_equal(float a, float b, const float epsilon)
 {

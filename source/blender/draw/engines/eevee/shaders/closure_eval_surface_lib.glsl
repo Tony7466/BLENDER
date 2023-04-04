@@ -53,7 +53,7 @@ bool output_ssr(ClosureReflection reflection)
 
 void output_aov(vec4 color, float value, uint hash)
 {
-  /* Keep in sync with 'render_pass_aov_hash' and 'EEVEE_renderpasses_aov_hash'. */
+  /* Keep in sync with `render_pass_aov_hash` and `EEVEE_renderpasses_aov_hash`. */
   hash <<= 1u;
 
   if (renderPassAOV && !aov_is_valid && hash == render_pass_aov_hash()) {

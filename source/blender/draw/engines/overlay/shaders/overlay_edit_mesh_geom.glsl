@@ -61,7 +61,7 @@ void main()
   bool horizontal = line.x > line.y;
   edge_ofs = (horizontal) ? edge_ofs.zyz : edge_ofs.xzz;
 
-  /* Due to an AMD glitch, this line was moved out of the 'do_vertex'
+  /* Due to an AMD glitch, this line was moved out of the `do_vertex`
    * function (see #62792). */
   view_clipping_distances_set(gl_in[0]);
   do_vertex(geometry_in[0].finalColor_, pos0, half_size, edge_ofs.xy);

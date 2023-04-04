@@ -77,7 +77,7 @@ void main()
   /* Defrag page in "old" range. */
   bool is_empty = (src == end);
   if (!is_empty) {
-    /* 'page_cached_end' refers to the next empty slot.
+    /* `page_cached_end` refers to the next empty slot.
      * Decrement by one to refer to the first slot we can defrag. */
     for (uint dst = end - 1; dst > src; dst--) {
       /* Find hole. */

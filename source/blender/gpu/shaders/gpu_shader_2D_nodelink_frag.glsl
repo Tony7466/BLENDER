@@ -11,7 +11,7 @@ void main()
     float distance_along_line = lineLength * lineU;
     float normalized_distance = fract(distance_along_line / DASH_WIDTH);
 
-    /* Checking if 'normalized_distance <= dashFactor' is already enough for a basic
+    /* Checking if `normalized_distance <= dashFactor` is already enough for a basic
      * dash, however we want to handle a nice antialias. */
 
     float dash_center = DASH_WIDTH * dashFactor * 0.5;

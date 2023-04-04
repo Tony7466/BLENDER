@@ -491,7 +491,7 @@ void main()
     evaluate_patches_limits_extra(patch_co.patch_index, uv.x, uv.y, pos);
 
     /* Set w = 0.0 to indicate that this is not a generic attribute.
-     * See comments in 'extract_mesh_vbo_orco.cc'. */
+     * See comments in `extract_mesh_vbo_orco.cc`. */
     vec4 orco_data = vec4(pos, 0.0);
     output_orcos[loop_index] = orco_data;
 #  endif

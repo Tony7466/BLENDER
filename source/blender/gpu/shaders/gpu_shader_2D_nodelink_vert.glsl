@@ -5,9 +5,9 @@
 #define MID_VERTEX 65
 
 /**
- * 'uv.x' is position along the curve, defining the tangent space.
- * 'uv.y' is "signed" distance (compressed to [0..1] range) from the pos in expand direction
- * 'pos' is the verts position in the curve tangent space
+ * `uv.x` is position along the curve, defining the tangent space.
+ * `uv.y` is "signed" distance (compressed to [0..1] range) from the pos in expand direction
+ * `pos` is the verts position in the curve tangent space
  */
 
 void main(void)

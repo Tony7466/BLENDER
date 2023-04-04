@@ -496,7 +496,7 @@ void dof_gather_accumulate_sample_ring(DofGatherData ring_data,
   }
 }
 
-/* FIXME(@fclem): Seems to be wrong since it needs 'ringcount + 1' as input for slightfocus gather.
+/* FIXME(@fclem): Seems to be wrong since it needs `ringcount + 1` as input for slightfocus gather.
  */
 int dof_gather_total_sample_count(const int ring_count, const int ring_density)
 {

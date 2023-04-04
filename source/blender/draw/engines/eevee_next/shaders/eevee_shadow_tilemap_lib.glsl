@@ -29,8 +29,8 @@ ivec2 shadow_tile_coord_in_atlas(ivec2 tile, int tilemap_index)
 }
 
 /**
- * Return tile index inside 'tiles_buf' for a given tile coordinate inside a specific LOD.
- * 'tiles_index' should be 'ShadowTileMapData.tiles_index'.
+ * Return tile index inside `tiles_buf` for a given tile coordinate inside a specific LOD.
+ * `tiles_index` should be `ShadowTileMapData.tiles_index`.
  */
 int shadow_tile_offset(ivec2 tile, int tiles_index, int lod)
 {
@@ -102,7 +102,7 @@ ShadowTileData shadow_tile_load(usampler2D tilemaps_tx, ivec2 tile_co, int tilem
  * This function should be the inverse of ShadowDirectional::coverage_get().
  *
  * \a lP shading point position in light space, relative to the to camera position snapped to
- * the smallest clipmap level ('shadow_world_to_local(light, P) - light._position').
+ * the smallest clipmap level (`shadow_world_to_local(light, P) - light._position`).
  */
 int shadow_directional_level(LightData light, vec3 lP)
 {
@@ -149,7 +149,7 @@ ivec2 shadow_decompress_grid_offset(eLightType light_type, ivec2 offset, int lev
 }
 
 /**
- * \a lP shading point position in light space ('shadow_world_to_local(light, P)').
+ * \a lP shading point position in light space (`shadow_world_to_local(light, P)`).
  */
 ShadowCoordinates shadow_directional_coordinates_at_level(LightData light, vec3 lP, int level)
 {
@@ -176,7 +176,7 @@ ShadowCoordinates shadow_directional_coordinates_at_level(LightData light, vec3 
 }
 
 /**
- * \a lP shading point position in light space ('shadow_world_to_local(light, P)').
+ * \a lP shading point position in light space (`shadow_world_to_local(light, P)`).
  */
 ShadowCoordinates shadow_directional_coordinates(LightData light, vec3 lP)
 {
