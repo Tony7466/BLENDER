@@ -251,11 +251,12 @@ bool SequenceHandle::seek(double position)
 	double target_frame = 0;
 	if(pitch_property != nullptr)
 	{
+		int frame_start = m_entry->m_begin * m_entry->m_sequence_data->getFPS();
 		int i = 0;
 		while(seek_frame > 0)
 		{
 			float pitch;
-			pitch_property->read(i, &pitch);
+			pitch_property->read(frame_start + i, &pitch);
 			const double factor = seek_frame > 1.0 ? 1.0 : seek_frame;
 			target_frame += pitch * factor;
 			seek_frame--;
