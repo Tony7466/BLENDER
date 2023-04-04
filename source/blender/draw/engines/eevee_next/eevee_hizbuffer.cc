@@ -36,8 +36,7 @@ void HiZBuffer::sync()
     hiz_update_ps_.init();
     hiz_update_ps_.shader_set(inst_.shaders.static_shader_get(HIZ_UPDATE));
     hiz_update_ps_.bind_ssbo("finished_tile_counter", atomic_tile_counter_);
-    hiz_update_ps_.bind_texture(
-        "depth_tx", &render_buffers.depth_tx, {GPU_SAMPLER_FILTERING_LINEAR});
+    hiz_update_ps_.bind_texture("depth_tx", &render_buffers.depth_tx, with_filter);
     hiz_update_ps_.bind_image("out_mip_0", hiz_tx_.mip_view(0));
     hiz_update_ps_.bind_image("out_mip_1", hiz_tx_.mip_view(1));
     hiz_update_ps_.bind_image("out_mip_2", hiz_tx_.mip_view(2));
