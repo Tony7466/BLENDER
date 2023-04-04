@@ -1067,10 +1067,10 @@ class VIEW3D_MT_transform(VIEW3D_MT_transform_base, Menu):
         elif context.mode == 'EDIT_CURVE':
             layout.operator("transform.transform", text="Radius").mode = 'CURVE_SHRINKFATTEN'
 
-        layout.separator()
-
-        layout.operator("transform.translate", text="Move Texture Space").texture_space = True
-        layout.operator("transform.resize", text="Scale Texture Space").texture_space = True
+        if context.mode != 'EDIT_CURVES':
+            layout.separator()
+            layout.operator("transform.translate", text="Move Texture Space").texture_space = True
+            layout.operator("transform.resize", text="Scale Texture Space").texture_space = True
 
 
 # Object-specific extensions to Transform menu
@@ -2011,6 +2011,9 @@ class VIEW3D_MT_select_paint_mask(Menu):
         layout.operator("paint.face_select_all", text="None").action = 'DESELECT'
         layout.operator("paint.face_select_all", text="Invert").action = 'INVERT'
 
+        layout.operator("paint.face_select_more")
+        layout.operator("paint.face_select_less")
+
         layout.separator()
 
         layout.operator("view3d.select_box")
@@ -2031,6 +2034,9 @@ class VIEW3D_MT_select_paint_mask_vertex(Menu):
         layout.operator("paint.vert_select_all", text="All").action = 'SELECT'
         layout.operator("paint.vert_select_all", text="None").action = 'DESELECT'
         layout.operator("paint.vert_select_all", text="Invert").action = 'INVERT'
+
+        layout.operator("paint.vert_select_more"),
+        layout.operator("paint.vert_select_less"),
 
         layout.separator()
 
@@ -2832,7 +2838,9 @@ class VIEW3D_MT_object_parent(Menu):
         layout.separator()
 
         layout.operator_context = 'EXEC_REGION_WIN'
-        layout.operator("object.parent_no_inverse_set")
+        layout.operator("object.parent_no_inverse_set").keep_transform = False
+        props = layout.operator("object.parent_no_inverse_set", text="Make Parent without Inverse (Keep Transform)")
+        props.keep_transform = True
         layout.operator_context = operator_context_default
 
         layout.separator()
@@ -3201,7 +3209,6 @@ class VIEW3D_MT_paint_weight(Menu):
             props.data_type = 'VGROUP_WEIGHTS'
 
         layout.operator("object.vertex_group_limit_total", text="Limit Total")
-        layout.operator("object.vertex_group_fix", text="Fix Deforms")
 
         if not is_editmode:
             layout.separator()
@@ -3220,17 +3227,35 @@ class VIEW3D_MT_sculpt(Menu):
     def draw(self, _context):
         layout = self.layout
 
+        layout.operator("transform.translate")
+        layout.operator("transform.rotate")
+        layout.operator("transform.resize", text="Scale")
+
+        props = layout.operator("sculpt.mesh_filter", text="Sphere")
+        props.type = 'SPHERE'
+
+        layout.separator()
+
+        props = layout.operator("paint.hide_show", text="Box Hide")
+        props.action = 'HIDE'
+
+        props = layout.operator("paint.hide_show", text="Box Show")
+        props.action = 'SHOW'
+
+        layout.separator()
+
+        props = layout.operator("sculpt.face_set_change_visibility", text="Toggle Visibility")
+        props.mode = 'TOGGLE'
+
+        props = layout.operator("sculpt.face_set_change_visibility", text="Hide Active Face Set")
+        props.mode = 'HIDE_ACTIVE'
+
         props = layout.operator("paint.hide_show", text="Show All")
         props.action = 'SHOW'
         props.area = 'ALL'
 
-        props = layout.operator("paint.hide_show", text="Box Show")
-        props.action = 'SHOW'
-        props.area = 'INSIDE'
-
-        props = layout.operator("paint.hide_show", text="Box Hide")
-        props.action = 'HIDE'
-        props.area = 'INSIDE'
+        props = layout.operator("sculpt.face_set_change_visibility", text="Invert Visible")
+        props.mode = 'INVERT'
 
         props = layout.operator("paint.hide_show", text="Hide Masked")
         props.action = 'HIDE'
@@ -3238,10 +3263,55 @@ class VIEW3D_MT_sculpt(Menu):
 
         layout.separator()
 
+        props = layout.operator("sculpt.trim_box_gesture", text="Box Trim")
+        props.trim_mode = 'DIFFERENCE'
+
+        props = layout.operator("sculpt.trim_lasso_gesture", text="Lasso Trim")
+        props.trim_mode = 'DIFFERENCE'
+
+        props = layout.operator("sculpt.trim_box_gesture", text="Box Add")
+        props.trim_mode = 'JOIN'
+
+        props = layout.operator("sculpt.trim_lasso_gesture", text="Lasso Add")
+        props.trim_mode = 'JOIN'
+
+        layout.operator("sculpt.project_line_gesture", text="Line Project")
+
+        layout.separator()
+
+        # Fair Positions
+        props = layout.operator("sculpt.face_set_edit", text="Fair Positions")
+        props.mode = 'FAIR_POSITIONS'
+
+        # Fair Tangency
+        props = layout.operator("sculpt.face_set_edit", text="Fair Tangency")
+        props.mode = 'FAIR_TANGENCY'
+
+        layout.separator()
+
+        sculpt_filters_types = [
+            ('SMOOTH', "Smooth"),
+            ('SURFACE_SMOOTH', "Surface Smooth"),
+            ('INFLATE', "Inflate"),
+            ('RELAX', "Relax Topology"),
+            ('RELAX_FACE_SETS', "Relax Face Sets"),
+            ('SHARPEN', "Sharpen"),
+            ('ENHANCE_DETAILS', "Enhance Details"),
+            ('ERASE_DISCPLACEMENT', "Erase Multires Displacement"),
+            ('RANDOM', "Randomize")
+        ]
+
+        for filter_type, ui_name in sculpt_filters_types:
+            props = layout.operator("sculpt.mesh_filter", text=ui_name)
+            props.type = filter_type
+
+        layout.separator()
+
         layout.menu("VIEW3D_MT_sculpt_set_pivot", text="Set Pivot")
 
         layout.separator()
 
+        # Rebuild BVH
         layout.operator("sculpt.optimize")
 
         layout.separator()
@@ -6212,6 +6282,7 @@ class VIEW3D_PT_shading_compositor(Panel):
     bl_region_type = 'HEADER'
     bl_label = "Compositor"
     bl_parent_id = 'VIEW3D_PT_shading'
+    bl_order = 10
 
     @classmethod
     def poll(cls, context):
@@ -6376,6 +6447,9 @@ class VIEW3D_PT_overlay_object(Panel):
 
         sub = split.column(align=True)
         sub.prop(overlay, "show_extras", text="Extras")
+        subsub = sub.column()
+        subsub.active = overlay.show_extras
+        subsub.prop(overlay, "show_light_colors")
         sub.prop(overlay, "show_relationship_lines")
         sub.prop(overlay, "show_outline_selected")
 
@@ -6549,7 +6623,11 @@ class VIEW3D_PT_overlay_edit_mesh_shading(Panel):
         col = layout.column()
         col.active = display_all
 
-        col.prop(overlay, "show_occlude_wire")
+        row = col.row(align=True)
+        row.prop(overlay, "show_retopology", text="")
+        sub = row.row()
+        sub.active = overlay.show_retopology
+        sub.prop(overlay, "retopology_offset", text="Retopology")
 
         col.prop(overlay, "show_weight", text="Vertex Group Weights")
         if overlay.show_weight:
@@ -6975,13 +7053,16 @@ class VIEW3D_PT_snapping(Panel):
 
             col.prop(tool_settings, "use_snap_backface_culling")
 
-            if 'FACE' in snap_elements:
-                col.prop(tool_settings, "use_snap_project")
+            is_face_nearest_enabled = 'FACE_NEAREST' in snap_elements
+            if is_face_nearest_enabled or 'FACE' in snap_elements:
+                sub = col.column()
+                sub.active = not is_face_nearest_enabled
+                sub.prop(tool_settings, "use_snap_project")
 
-            if 'FACE_NEAREST' in snap_elements:
-                col.prop(tool_settings, "use_snap_to_same_target")
-                if object_mode == 'EDIT':
-                    col.prop(tool_settings, "snap_face_nearest_steps")
+                if is_face_nearest_enabled:
+                    col.prop(tool_settings, "use_snap_to_same_target")
+                    if object_mode == 'EDIT':
+                        col.prop(tool_settings, "snap_face_nearest_steps")
 
             if 'VOLUME' in snap_elements:
                 col.prop(tool_settings, "use_snap_peel_object")

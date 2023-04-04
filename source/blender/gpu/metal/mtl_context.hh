@@ -740,6 +740,11 @@ class MTLContext : public Context {
 
   void debug_group_begin(const char *name, int index) override;
   void debug_group_end() override;
+  bool debug_capture_begin() override;
+  void debug_capture_end() override;
+  void *debug_capture_scope_create(const char *name) override;
+  bool debug_capture_scope_begin(void *scope) override;
+  void debug_capture_scope_end(void *scope) override;
 
   /*** MTLContext Utility functions. */
   /*
@@ -768,6 +773,7 @@ class MTLContext : public Context {
   void texture_unbind_all();
   id<MTLSamplerState> get_sampler_from_state(MTLSamplerState state);
   id<MTLSamplerState> generate_sampler_from_state(MTLSamplerState state);
+  id<MTLSamplerState> generate_icon_sampler();
   id<MTLSamplerState> get_default_sampler_state();
 
   /* Metal Context pipeline state. */

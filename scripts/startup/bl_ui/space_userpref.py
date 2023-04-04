@@ -294,6 +294,7 @@ class USERPREF_PT_interface_statusbar(InterfacePanel, CenterAlignMixIn, Panel):
 
         col = layout.column(heading="Show")
         col.prop(view, "show_statusbar_stats", text="Scene Statistics")
+        col.prop(view, "show_statusbar_scene_duration", text="Scene Duration")
         col.prop(view, "show_statusbar_memory", text="System Memory")
         col.prop(view, "show_statusbar_vram", text="Video Memory")
         col.prop(view, "show_statusbar_version", text="Blender Version")
@@ -559,6 +560,8 @@ class USERPREF_PT_animation_fcurves(AnimationPanel, CenterAlignMixIn, Panel):
         flow.prop(edit, "keyframe_new_handle_type", text="Default Handles")
         flow.prop(edit, "use_insertkey_xyz_to_rgb", text="XYZ to RGB")
         flow.prop(edit, "use_anim_channel_group_colors")
+        flow.prop(edit, "show_only_selected_curve_keyframes")
+        flow.prop(edit, "use_fcurve_high_quality_drawing")
 
 
 # -----------------------------------------------------------------------------
@@ -726,7 +729,7 @@ class USERPREF_PT_viewport_display(ViewportPanel, CenterAlignMixIn, Panel):
 
         col.separator()
 
-        col.prop(view, "mini_axis_type", text="3D Viewport Axis")
+        col.prop(view, "mini_axis_type", text="3D Viewport Axes")
 
         if view.mini_axis_type == 'MINIMAL':
             col.prop(view, "mini_axis_size", text="Size")

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup spfile
@@ -849,7 +849,7 @@ static bool filepath_drop_poll(bContext *C, wmDrag *drag, const wmEvent *UNUSED(
 
 static void filepath_drop_copy(bContext *UNUSED(C), wmDrag *drag, wmDropBox *drop)
 {
-  RNA_string_set(drop->ptr, "filepath", drag->path);
+  RNA_string_set(drop->ptr, "filepath", WM_drag_get_path(drag));
 }
 
 /* region dropbox definition */

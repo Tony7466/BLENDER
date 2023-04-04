@@ -13,7 +13,7 @@
 #include "BKE_global.h"
 #include "BKE_instances.hh"
 #include "BKE_lib_id.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.h"
 #include "BKE_modifier.h"
 #include "BKE_volume.h"
@@ -165,16 +165,11 @@ static std::unique_ptr<ColumnValues> build_mesh_debug_columns(const Mesh &mesh,
       return {};
     }
     case ATTR_DOMAIN_CORNER: {
-      const Span<MLoop> loops = mesh.loops();
       if (name == "Vertex") {
-        return std::make_unique<ColumnValues>(
-            name,
-            VArray<int>::ForFunc(loops.size(), [loops](int64_t index) { return loops[index].v; }));
+        return std::make_unique<ColumnValues>(name, VArray<int>::ForSpan(mesh.corner_verts()));
       }
       if (name == "Edge") {
-        return std::make_unique<ColumnValues>(
-            name,
-            VArray<int>::ForFunc(loops.size(), [loops](int64_t index) { return loops[index].e; }));
+        return std::make_unique<ColumnValues>(name, VArray<int>::ForSpan(mesh.corner_edges()));
       }
       return {};
     }
@@ -268,7 +263,7 @@ std::unique_ptr<ColumnValues> GeometryDataSource::get_column_values(
       if (STREQ(column_id.name, "Rotation")) {
         return std::make_unique<ColumnValues>(
             column_id.name, VArray<float3>::ForFunc(domain_num, [transforms](int64_t index) {
-              return float3(math::to_euler(transforms[index]));
+              return float3(math::to_euler(math::normalize(transforms[index])));
             }));
       }
       if (STREQ(column_id.name, "Scale")) {

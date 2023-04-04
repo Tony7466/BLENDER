@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup spseq
@@ -232,9 +232,7 @@ static void sequencer_free(SpaceLink *sl)
 }
 
 /* Space-type init callback. */
-static void sequencer_init(struct wmWindowManager *UNUSED(wm), ScrArea *UNUSED(area))
-{
-}
+static void sequencer_init(struct wmWindowManager *UNUSED(wm), ScrArea *UNUSED(area)) {}
 
 static void sequencer_refresh(const bContext *C, ScrArea *area)
 {
@@ -292,7 +290,7 @@ static void sequencer_refresh(const bContext *C, ScrArea *area)
     case SEQ_VIEW_SEQUENCE_PREVIEW:
       if (region_main && region_preview) {
         /* Get available height (without DPI correction). */
-        const float height = (area->winy - ED_area_headersize()) / UI_DPI_FAC;
+        const float height = (area->winy - ED_area_headersize()) / UI_SCALE_FAC;
 
         /* We reuse hidden region's size, allows to find same layout as before if we just switch
          * between one 'full window' view and the combined one. This gets lost if we switch to both
@@ -331,11 +329,6 @@ static void sequencer_refresh(const bContext *C, ScrArea *area)
 
   ARegion *region_channels = sequencer_find_region(area, RGN_TYPE_CHANNELS);
   if (sseq->view == SEQ_VIEW_SEQUENCE) {
-    if (region_channels && (region_channels->flag & RGN_FLAG_HIDDEN)) {
-      region_channels->flag &= ~RGN_FLAG_HIDDEN;
-      region_channels->v2d.flag &= ~V2D_IS_INIT;
-      view_changed = true;
-    }
     if (region_channels && region_channels->alignment != RGN_ALIGN_LEFT) {
       region_channels->alignment = RGN_ALIGN_LEFT;
       view_changed = true;

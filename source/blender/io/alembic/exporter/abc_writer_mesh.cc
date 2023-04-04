@@ -16,7 +16,7 @@
 #include "BKE_customdata.h"
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
 
@@ -176,8 +176,8 @@ void ABCGenericMeshWriter::do_write(HierarchyContext &context)
 
   m_custom_data_config.pack_uvs = args_.export_params->packuv;
   m_custom_data_config.mesh = mesh;
-  m_custom_data_config.mpoly = mesh->polys_for_write().data();
-  m_custom_data_config.mloop = mesh->loops_for_write().data();
+  m_custom_data_config.polys = mesh->polys_for_write().data();
+  m_custom_data_config.corner_verts = mesh->corner_verts_for_write().data();
   m_custom_data_config.totpoly = mesh->totpoly;
   m_custom_data_config.totloop = mesh->totloop;
   m_custom_data_config.totvert = mesh->totvert;
@@ -450,12 +450,20 @@ static void get_topology(struct Mesh *mesh,
                          bool &r_has_flat_shaded_poly)
 {
   const Span<MPoly> polys = mesh->polys();
-  const Span<MLoop> loops = mesh->loops();
-  r_has_flat_shaded_poly = false;
+  const Span<int> corner_verts = mesh->corner_verts();
+  const bke::AttributeAccessor attributes = mesh->attributes();
+  const VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
+      "sharp_face", ATTR_DOMAIN_FACE, false);
+  for (const int i : sharp_faces.index_range()) {
+    if (sharp_faces[i]) {
+      r_has_flat_shaded_poly = true;
+      break;
+    }
+  }
 
   poly_verts.clear();
   loop_counts.clear();
-  poly_verts.reserve(loops.size());
+  poly_verts.reserve(corner_verts.size());
   loop_counts.reserve(polys.size());
 
   /* NOTE: data needs to be written in the reverse order. */
@@ -463,12 +471,9 @@ static void get_topology(struct Mesh *mesh,
     const MPoly &poly = polys[i];
     loop_counts.push_back(poly.totloop);
 
-    r_has_flat_shaded_poly |= (poly.flag & ME_SMOOTH) == 0;
-
-    const MLoop *loop = &loops[poly.loopstart + (poly.totloop - 1)];
-
-    for (int j = 0; j < poly.totloop; j++, loop--) {
-      poly_verts.push_back(loop->v);
+    int corner = poly.loopstart + (poly.totloop - 1);
+    for (int j = 0; j < poly.totloop; j++, corner--) {
+      poly_verts.push_back(corner_verts[corner]);
     }
   }
 }
@@ -548,17 +553,15 @@ static void get_loop_normals(struct Mesh *mesh,
   const Span<MPoly> polys = mesh->polys();
 
   for (const int i : polys.index_range()) {
-    const MPoly *mp = &polys[i];
-    for (int j = mp->totloop - 1; j >= 0; j--, abc_index++) {
-      int blender_index = mp->loopstart + j;
+    const MPoly &poly = polys[i];
+    for (int j = poly.totloop - 1; j >= 0; j--, abc_index++) {
+      int blender_index = poly.loopstart + j;
       copy_yup_from_zup(normals[abc_index].getValue(), lnors[blender_index]);
     }
   }
 }
 
-ABCMeshWriter::ABCMeshWriter(const ABCWriterConstructorArgs &args) : ABCGenericMeshWriter(args)
-{
-}
+ABCMeshWriter::ABCMeshWriter(const ABCWriterConstructorArgs &args) : ABCGenericMeshWriter(args) {}
 
 Mesh *ABCMeshWriter::get_export_mesh(Object *object_eval, bool & /*r_needsfree*/)
 {

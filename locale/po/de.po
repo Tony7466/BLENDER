@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.5.0 Beta (b'5fd4d47206ff')\n"
+"Project-Id-Version: Blender 3.6.0 Alpha (b'e05010b2f292')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-02-20 13:46:36\n"
+"POT-Creation-Date: 2023-04-03 10:36:36\n"
 "PO-Revision-Date: \n"
 "Last-Translator: Martin Reininger <martinreininger@gmx.net>\n"
 "Language-Team: German translation team\n"
@@ -998,6 +998,10 @@ msgid "Catalog UUID"
 msgstr "Katalog UUID"
 
 
+msgid "Copyright"
+msgstr "Urheberrecht"
+
+
 msgid "Description"
 msgstr "Beschreibung"
 
@@ -1872,6 +1876,10 @@ msgstr "Formschlüssel"
 
 msgid "Shape Key data-blocks"
 msgstr "Formschlüssel-Datenblöcke"
+
+
+msgid "Simulations"
+msgstr "Simulationen"
 
 
 msgid "Sounds"
@@ -5134,10 +5142,6 @@ msgid "Enabled"
 msgstr "Aktivieren"
 
 
-msgid "Enable this objects as a collider for physics systems"
-msgstr "Aktiviert diese Objekte als Kollider für physikalische Systeme"
-
-
 msgid "Single Sided"
 msgstr "Einseitig"
 
@@ -7851,6 +7855,10 @@ msgid "Bone Name"
 msgstr "Knochenname"
 
 
+msgid "Active Scene"
+msgstr "Aktive Szene"
+
+
 msgid "Data Path"
 msgstr "Datenpfad"
 
@@ -9840,10 +9848,6 @@ msgid "Show Scene data-blocks"
 msgstr "Szenen-Datenblöcke anzeigen"
 
 
-msgid "Simulations"
-msgstr "Simulationen"
-
-
 msgid "Show Simulation data-blocks"
 msgstr "Simulations-Datenblöcke anzeigen"
 
@@ -10522,10 +10526,6 @@ msgstr "Effektive, aber langsame Kompression"
 
 msgid "Data Depth"
 msgstr "Datentiefe"
-
-
-msgid "Number"
-msgstr "Nummer"
 
 
 msgid "Randomness"
@@ -13089,30 +13089,6 @@ msgid "Mask Texture Overlay Alpha"
 msgstr "Maskentextur überlagert Alpha"
 
 
-msgid "Curve Preset"
-msgstr "Kurve Voreinstellung"
-
-
-msgid "Smoother"
-msgstr "Weicher"
-
-
-msgid "Root"
-msgstr "Wurzel"
-
-
-msgid "Sharp"
-msgstr "Scharf"
-
-
-msgid "Sharper"
-msgstr "Schärfer"
-
-
-msgid "Inverse Square"
-msgstr "Invers"
-
-
 msgid "Comb Curves"
 msgstr "Kombiniere Kurven"
 
@@ -13723,14 +13699,6 @@ msgstr "Hoch"
 
 msgid "Velocity Attribute"
 msgstr "Geschwindigkeitsattribut"
-
-
-msgid "Velocity Unit"
-msgstr "Geschwindigkeitseinheit"
-
-
-msgid "Second"
-msgstr "Sekunde"
 
 
 msgid "Field of View"
@@ -15245,6 +15213,10 @@ msgstr "Abfall-Typ"
 
 
 msgid "Inverse Linear"
+msgstr "Invers"
+
+
+msgid "Inverse Square"
 msgstr "Invers"
 
 
@@ -16895,6 +16867,10 @@ msgid "Strand shape parameter"
 msgstr "Strangformparameter"
 
 
+msgid "Number"
+msgstr "Nummer"
+
+
 msgid "Show particle size"
 msgstr "Dateien nach Größe sortieren"
 
@@ -17057,6 +17033,10 @@ msgstr "Szenendatenblock, bestehend aus Objekten und Definition von Zeit- und Re
 
 msgid "Active Movie Clip"
 msgstr "Aktiver Filmclip"
+
+
+msgid "Mirror Object"
+msgstr "Spiegel-Objekt"
 
 
 msgid "Distance Model"
@@ -17533,10 +17513,6 @@ msgid "Modified"
 msgstr "Modifizieren"
 
 
-msgid "Lines"
-msgstr "Zeilen"
-
-
 msgid "Lines of text"
 msgstr "Textzeilen"
 
@@ -17899,6 +17875,14 @@ msgstr "Muster"
 
 msgid "Use soft marble"
 msgstr "Weichen Marmor verwenden"
+
+
+msgid "Sharp"
+msgstr "Scharf"
+
+
+msgid "Sharper"
+msgstr "Schärfer"
 
 
 msgid "Sin"
@@ -20584,6 +20568,10 @@ msgid "Active spline of masking layer"
 msgstr "Aktiver Spline der Maskierungsebene"
 
 
+msgid "Active Point"
+msgstr "Aktive Punkte"
+
+
 msgid "Grease Pencil Color"
 msgstr "Wachsstift-Farbe"
 
@@ -21095,6 +21083,10 @@ msgid "Curve Context Menu"
 msgstr "Kurven Kontextmenü"
 
 
+msgid "Select More/Less"
+msgstr "Mehr/weniger anzeigen"
+
+
 msgid "Special Characters"
 msgstr "Sonderzeichen"
 
@@ -21125,10 +21117,6 @@ msgstr "Schleifen auswählen"
 
 msgid "Mesh Select Mode"
 msgstr "Maschenauswahlmodus"
-
-
-msgid "Select More/Less"
-msgstr "Mehr/weniger anzeigen"
 
 
 msgid "Select Similar"
@@ -21425,6 +21413,10 @@ msgstr "Hautpunkt"
 
 msgid "Radius of the skin"
 msgstr "Radius der Haut"
+
+
+msgid "Root"
+msgstr "Wurzel"
 
 
 msgid "Mesh Skin Vertex Layer"
@@ -22469,10 +22461,6 @@ msgstr "Volumen füllen"
 
 msgid "Mirroring modifier"
 msgstr "Spiegel-Modifikator"
-
-
-msgid "Mirror Object"
-msgstr "Spiegel-Objekt"
 
 
 msgid "Object to use as mirror"
@@ -23589,6 +23577,10 @@ msgstr "Pfad wird bearbeitet"
 
 msgid "Line Thickness"
 msgstr "Linienstärke"
+
+
+msgid "Lines"
+msgstr "Zeilen"
 
 
 msgid "Use Bone Heads"
@@ -25520,10 +25512,6 @@ msgid "Map Range"
 msgstr "Bereich"
 
 
-msgid "Clamp result of the node to 0.0 to 1.0 range"
-msgstr "Resultat der Knoten in einer Spanne von 0.0 bis 1.0 halten"
-
-
 msgid "Map Value"
 msgstr "Map Wert"
 
@@ -25719,6 +25707,10 @@ msgstr "Konvertiere von Grad zu Radiant"
 
 msgid "Convert from radians to degrees"
 msgstr "Konvertiere von Radiant zu Grad"
+
+
+msgid "Clamp result of the node to 0.0 to 1.0 range"
+msgstr "Resultat der Knoten in einer Spanne von 0.0 bis 1.0 halten"
 
 
 msgid "Include alpha of second input in this operation"
@@ -25935,10 +25927,6 @@ msgstr "Beide Achsen"
 
 msgid "Wrap all pixels on both axes"
 msgstr "Verpacke alle Pixel an beiden Achsen"
-
-
-msgid "ColorRamp"
-msgstr "Farbregler"
 
 
 msgid "Vector Blur"
@@ -29674,6 +29662,10 @@ msgid "Paste text from clipboard"
 msgstr "Text aus der Zwischenablage einfügen"
 
 
+msgid "Selection"
+msgstr "Auswahl"
+
+
 msgid "Information"
 msgstr "Information"
 
@@ -30742,10 +30734,6 @@ msgid "Export cameras"
 msgstr "Kamera exportieren"
 
 
-msgid "Copyright"
-msgstr "Urheberrecht"
-
-
 msgid "Compression level"
 msgstr "Komprimierungsgrad"
 
@@ -30788,10 +30776,6 @@ msgstr "Cycles-Mascheneinstellungen"
 
 msgid "Animation settings"
 msgstr "Animationseinstellungen"
-
-
-msgid "Active Scene"
-msgstr "Aktive Szene"
 
 
 msgid "Loose Points"
@@ -31229,10 +31213,6 @@ msgstr "Delta"
 msgctxt "Operator"
 msgid "Change Spacing"
 msgstr "Leerzeichen ändern"
-
-
-msgid "Selection"
-msgstr "Auswahl"
 
 
 msgctxt "Operator"
@@ -32549,6 +32529,14 @@ msgstr "F-Modifikator einfügen"
 
 msgid "Place the cursor on the midpoint of selected keyframes"
 msgstr "Drehpunkt um den Mittelpunkt der ausgewählten Objekte"
+
+
+msgid "Filter Width"
+msgstr "Filterbreite"
+
+
+msgid "Sigma"
+msgstr "Sigma"
 
 
 msgctxt "Operator"
@@ -36960,11 +36948,6 @@ msgid "Copy Vertex Group to Selected"
 msgstr "Knotengruppe zur Auswahl kopieren"
 
 
-msgctxt "Operator"
-msgid "Fix Vertex Group Deform"
-msgstr "Knotengruppen-Deformation fixieren"
-
-
 msgid "Invert active vertex group's weights"
 msgstr "Gewichte der aktiven Knotengruppe umkehren"
 
@@ -41092,6 +41075,10 @@ msgid "Pack Islands"
 msgstr "Bild einpacken"
 
 
+msgid "Bounding box"
+msgstr "Begrenzungsrahmen"
+
+
 msgctxt "Operator"
 msgid "Pin"
 msgstr "Punkt"
@@ -43141,10 +43128,6 @@ msgstr "Kamera-Voreinstellungen"
 
 msgid "2D Cursor"
 msgstr "2D Cursor"
-
-
-msgid "Active Point"
-msgstr "Aktive Punkte"
 
 
 msgid "Footage Settings"
@@ -46344,10 +46327,6 @@ msgid "Mini Axes Type"
 msgstr "Mini Achsentyp"
 
 
-msgid "Simple Axis"
-msgstr "Einfache Achse"
-
-
 msgid "Pie menu size in pixels"
 msgstr "Kreismenügröße in Pixel"
 
@@ -46850,10 +46829,6 @@ msgstr "Skalierung der Bildhelligkeit"
 
 msgid "Transparent Glass"
 msgstr "Transparentes Glas"
-
-
-msgid "Filter Width"
-msgstr "Filterbreite"
 
 
 msgid "Pixel filter width"
@@ -50207,16 +50182,8 @@ msgid "Auto Normalization"
 msgstr "Automatische Normalisierung"
 
 
-msgid "Use High Quality Display"
-msgstr "Hohe Anzeigequalität verwenden"
-
-
 msgid "Use Normalization"
 msgstr "Normalisierung verwenden"
-
-
-msgid "Only Selected Curve Keyframes"
-msgstr "Nur ausgewählte Kurven-Schlüsselbilder"
 
 
 msgid "Only Selected Keyframes Handles"
@@ -53173,44 +53140,20 @@ msgid "Double precision"
 msgstr "Doppelte Genauigkeit"
 
 
-msgid "Integer 64-bit"
-msgstr "Ganzzahl 64-bit"
-
-
 msgid "64-bit integer"
 msgstr "64-Bit Ganzzahl"
-
-
-msgid "Float Vector"
-msgstr "Gleitkomma Vektor"
 
 
 msgid "3D float vector"
 msgstr "3D Gleitkomma Vektor"
 
 
-msgid "Double Vector"
-msgstr "Vektor verdoppeln"
-
-
 msgid "3D double vector"
 msgstr "3D Verdoppelungsvektor"
 
 
-msgid "Integer Vector"
-msgstr "Ganzzahl Vektor"
-
-
 msgid "3D integer vector"
 msgstr "3D Ganzzahl Vektor"
-
-
-msgid "Points (Unsupported)"
-msgstr "Punkte (nicht unterstützt)"
-
-
-msgid "Unknown"
-msgstr "Unbekannt"
 
 
 msgid "Unsupported data type"
@@ -54997,10 +54940,6 @@ msgid "Invert Selection"
 msgstr "Auswahl umkehren"
 
 
-msgid "[{}]: \"{}\" ({})"
-msgstr "[{}]: \"{}\" ({})"
-
-
 msgid "Tracking"
 msgstr "Verfolgen"
 
@@ -55207,14 +55146,6 @@ msgstr ""
 "%s nicht gestartet werden"
 
 
-msgid "Remove Add-on: %r?"
-msgstr "Add-on entfernen: %r?"
-
-
-msgid "Path: %r"
-msgstr "Pfad: %r"
-
-
 msgid "Reload Start-Up file to restore settings"
 msgstr "Startdatei erneut laden um die Einstellungen wiederherzustellen"
 
@@ -55279,6 +55210,14 @@ msgid "Source file is in the add-on search path: %r"
 msgstr "Quelldatei ist in dem Add-On Suchpfad: %r"
 
 
+msgid "Remove Add-on: %r?"
+msgstr "Add-on entfernen: %r?"
+
+
+msgid "Path: %r"
+msgstr "Pfad: %r"
+
+
 msgid "Active face must be a quad"
 msgstr "Aktive Fläche muss ein Quadrat sein"
 
@@ -55299,10 +55238,6 @@ msgid "See OperatorList.txt text block"
 msgstr "OperatorList.txt Textblock anschauen"
 
 
-msgid "Rename %d %s"
-msgstr "Umbenennen %d %s"
-
-
 msgid "Renamed %d of %d %s"
 msgstr "Umbenannt %d of %d %s"
 
@@ -55318,18 +55253,6 @@ msgstr "Thema"
 msgctxt "Operator"
 msgid "Open..."
 msgstr "Öffnen..."
-
-
-msgid "Date: %s %sutf-8replaceutf-8replace"
-msgstr "Datum: %s %sutf-8replaceutf-8replace"
-
-
-msgid "Hash: %sascii"
-msgstr "Hash: %sascii"
-
-
-msgid "Branch: %sutf-8replace"
-msgstr "Branch: %sutf-8replace"
 
 
 msgid "Blender is free software"
@@ -55390,11 +55313,6 @@ msgstr "Auswählen mit"
 
 msgid "Spacebar"
 msgstr "Leertaste"
-
-
-msgctxt "Operator"
-msgid "Load %d.%d SettingsOperator"
-msgstr "Lade %d.%d Einstellungsoperator"
 
 
 msgctxt "Operator"
@@ -55496,6 +55414,10 @@ msgid "Strip From"
 msgstr "Entfernen von"
 
 
+msgid "Rename %d %s"
+msgstr "Umbenennen %d %s"
+
+
 msgid "Date: %s %s"
 msgstr "Datum: %s %s"
 
@@ -55515,6 +55437,10 @@ msgstr "Lade %d.%d Einstellungen"
 
 msgid "Type \"%s\" can not be found"
 msgstr "Typ \"%s\" konnte nicht gefunden werden"
+
+
+msgid "Unknown"
+msgstr "Unbekannt"
 
 
 msgctxt "Operator"
@@ -55901,10 +55827,6 @@ msgstr "Bogengröße"
 msgctxt "Operator"
 msgid "Lock Invert All"
 msgstr "Alle Sperrungen invertieren"
-
-
-msgid "%s ▶ %s"
-msgstr "%s ▶ %s"
 
 
 msgctxt "Operator"
@@ -56412,10 +56334,6 @@ msgid "Coordinate System"
 msgstr "Koordinatensystem"
 
 
-msgid "%d fluid particles for this frame"
-msgstr "%d Flüssigkeits-Partikel für diesen Frame"
-
-
 msgctxt "Operator"
 msgid "Delete Edit"
 msgstr "Lösche Bearbeitung"
@@ -56437,6 +56355,10 @@ msgstr "Alles verbinden"
 msgctxt "Operator"
 msgid "Disconnect All"
 msgstr "Alles trennen"
+
+
+msgid "%d fluid particles for this frame"
+msgstr "%d Flüssigkeits-Partikel für diesen Frame"
 
 
 msgid "Speed Multiplier"
@@ -56741,6 +56663,10 @@ msgstr "Pausenregel - ESC für Pause"
 
 msgid "Velocity Linear"
 msgstr "Lineare Geschwindigkeit"
+
+
+msgid "Second"
+msgstr "Sekunde"
 
 
 msgid "X Stiffness"
@@ -57132,11 +57058,6 @@ msgstr "Schlüsselbildtyp A festlegen"
 msgctxt "Operator"
 msgid "Set Keyframe B"
 msgstr "Schlüsselbildtyp B festlegen"
-
-
-msgctxt "Operator"
-msgid "Zoom %d:%d"
-msgstr "Zoom %d:%d"
 
 
 msgctxt "Operator"
@@ -57820,6 +57741,11 @@ msgid "Make and Replace Links"
 msgstr "Verknüpfungen ersetzen und erzeugen"
 
 
+msgctxt "Operator"
+msgid "Online Manual"
+msgstr "Online-Handbuch"
+
+
 msgid "Inputs:"
 msgstr "Eingaben:"
 
@@ -58283,14 +58209,6 @@ msgid "Clear Fade"
 msgstr "Ausblendung löschen"
 
 
-msgid "%dx%d"
-msgstr "%dx%d"
-
-
-msgid "%.2f"
-msgstr "%.2f"
-
-
 msgid "Custom Proxy"
 msgstr "Benutzerdefinierter Proxy"
 
@@ -58394,10 +58312,6 @@ msgstr "Linie(n) nach oben bewegen"
 msgctxt "Operator"
 msgid "Move Line(s) Down"
 msgstr "Linie(n) nach unten bewegen"
-
-
-msgid "Text: ExternalText: Internal"
-msgstr "Text: ExternerText: Intern"
 
 
 msgid "File: *%s (unsaved)"
@@ -58629,11 +58543,6 @@ msgstr "SVG als Wachsstift"
 
 
 msgctxt "Operator"
-msgid "Universal Scene Description (.usd, .usdc, .usda)"
-msgstr "Universal Scene Description (.usd, .usdc, .usda)"
-
-
-msgctxt "Operator"
 msgid "Render Image"
 msgstr "Bild rendern"
 
@@ -58838,10 +58747,6 @@ msgid "View Name"
 msgstr "Ansichtnamen"
 
 
-msgid "3D Viewport Axis"
-msgstr "3D Viewport Achsen"
-
-
 msgid "Smooth Wires"
 msgstr "Weichet Draht"
 
@@ -58936,14 +58841,6 @@ msgid "Save as Studio light"
 msgstr "Speichere als Studiolicht"
 
 
-msgid "Color Set %d"
-msgstr "Farbset %d"
-
-
-msgid "Color %d"
-msgstr "Farbe %d"
-
-
 msgid "Player"
 msgstr "Player"
 
@@ -58972,6 +58869,14 @@ msgid ":"
 msgstr ":"
 
 
+msgid "Color Set %d"
+msgstr "Farbset %d"
+
+
+msgid "Color %d"
+msgstr "Farbe %d"
+
+
 msgid "Description:"
 msgstr "Beschreibung:"
 
@@ -58986,10 +58891,6 @@ msgstr "Datei:"
 
 msgid "Author:"
 msgstr "Autor:"
-
-
-msgid "author"
-msgstr "Autor"
 
 
 msgid "Version:"
@@ -59509,13 +59410,13 @@ msgid "Limit Total"
 msgstr "Totale Grenze"
 
 
-msgctxt "Operator"
-msgid "Fix Deforms"
-msgstr "Verformung fixieren"
-
-
 msgid "Locks"
 msgstr "Sperren"
+
+
+msgctxt "Operator"
+msgid "Invert Visible"
+msgstr "Sichtbares vertauschen"
 
 
 msgctxt "Operator"
@@ -59874,11 +59775,6 @@ msgstr "Fülltransformation zurücksetzen"
 msgctxt "Operator"
 msgid "View Selected"
 msgstr "Ausgewählte zeigen"
-
-
-msgctxt "Operator"
-msgid "Invert Visible"
-msgstr "Sichtbares vertauschen"
 
 
 msgid "Local Camera"
@@ -60632,10 +60528,6 @@ msgstr "Datei wurden von neuer Blender binary (%d.%d) geschrieben, rechne mit Da
 
 msgid "Loading failed: "
 msgstr "Laden fehlgeschlagen: "
-
-
-msgid "Loading '%s' failed: "
-msgstr "Laden von '%s' fehlgeschlagen: "
 
 
 msgid "Linked Data"
@@ -61703,11 +61595,6 @@ msgstr "Tastenkürzel entfernen"
 
 
 msgctxt "Operator"
-msgid "Online Manual"
-msgstr "Online-Handbuch"
-
-
-msgctxt "Operator"
 msgid "Online Python Reference"
 msgstr "Online-Python-Referenz"
 
@@ -61722,10 +61609,6 @@ msgstr "Für Sprache '%s' unter %s wurde kein gültiger po gefunden"
 
 msgid "Hex"
 msgstr "Hex"
-
-
-msgid "Value:"
-msgstr "Wert:"
 
 
 msgid "(Gamma Corrected)"
@@ -63519,6 +63402,10 @@ msgid "Add Input Variable"
 msgstr "Eingabewert hinzufügen"
 
 
+msgid "Value:"
+msgstr "Wert:"
+
+
 msgid "Update Dependencies"
 msgstr "Abhängigkeiten aktualisieren"
 
@@ -63773,10 +63660,6 @@ msgstr "Quetschen"
 
 msgid "Undefined Socket Type"
 msgstr "Undefinierter Socket Typ"
-
-
-msgid "Group Input "
-msgstr "Gruppeneingabe "
 
 
 msgid " (String)"
@@ -64754,22 +64637,6 @@ msgid "Unable to create new strip"
 msgstr "Neuer Streifen kann nicht erzeugt werden"
 
 
-msgid "Functions"
-msgstr "Funktionen"
-
-
-msgid "Comparison"
-msgstr "Vergleich"
-
-
-msgid "Trigonometric"
-msgstr "Trigonometrie"
-
-
-msgid "Conversion"
-msgstr "Konvertierung"
-
-
 msgid "Same input/output direction of sockets"
 msgstr "Gleiche Eingangs-/Ausgangsrichtung von Sockeln"
 
@@ -65050,10 +64917,6 @@ msgstr "Faltenkanten"
 
 msgid "Fac"
 msgstr "Faktor"
-
-
-msgid "Bounding box"
-msgstr "Begrenzungsrahmen"
 
 
 msgid "Color Space:"
@@ -65492,10 +65355,6 @@ msgid "Clearcoat Normal"
 msgstr "Klarlack-Normale"
 
 
-msgid "Sigma"
-msgstr "Sigma"
-
-
 msgid "View Vector"
 msgstr "Ansicht Vektor"
 
@@ -65904,44 +65763,12 @@ msgid "Engine '%s' not available for scene '%s' (an add-on may need to be instal
 msgstr "Engine '%s' ist nicht verfügbar für Szene '%s' (möglicherweise muss ein Addon installiert oder aktiviert werden)"
 
 
-msgid "Cannot read file '%s': %s"
-msgstr "Datei '%s' kann nicht gelesen werden: %s"
-
-
-msgid "File format is not supported in file '%s'"
-msgstr "Dateiformat wird nicht in Datei: '%s' unterstützt."
-
-
-msgid "File path '%s' invalid"
-msgstr "Dateipfad '%s' ist ungültig"
-
-
-msgid "Unknown error loading '%s'"
-msgstr "Unbekannter Ladefehler: '%s'."
-
-
-msgid "Application Template '%s' not found"
-msgstr "Anwendungstemplate '%s' konnte nicht gefunden werden"
-
-
-msgid "Could not read '%s'"
-msgstr "'%s' konnte nicht gelesen werden"
-
-
-msgid "Cannot save blend file, path '%s' is not writable"
-msgstr "Blend-Datei konnte nicht gespeichert werden, Pfad '%s' ist nicht beschreibbar"
-
-
 msgid "Cannot overwrite used library '%.240s'"
 msgstr "Kann die genutzte Bibliothek  '%.240s' nicht überschreiben"
 
 
 msgid "Saved \"%s\""
 msgstr "Gespeichert \"%s\""
-
-
-msgid "Can't read alternative start-up file: '%s'"
-msgstr "Alternative Startdatei '%s' konnte nicht gelesen werden."
 
 
 msgid "Not a library"

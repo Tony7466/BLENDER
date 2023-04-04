@@ -1,10 +1,10 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.5.0 Beta (b'5fd4d47206ff')\n"
+"Project-Id-Version: Blender 3.6.0 Alpha (b'e05010b2f292')\n"
 "(b'0000000000000000000000000000000000000000')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-02-20 13:46:36\n"
+"POT-Creation-Date: 2023-04-03 10:36:36\n"
 "PO-Revision-Date: 2013-11-05 13:47+0600\n"
 "Last-Translator: Chyngyz Dzhumaliev <kyrgyzl10n@gmail.com>\n"
 "Language-Team: Kirghiz <kyrgyzl10n@gmail.com>\n"
@@ -2008,6 +2008,10 @@ msgid "Eraser"
 msgstr "Өчүргүч"
 
 
+msgid "Sigma"
+msgstr "Сигма"
+
+
 msgctxt "Operator"
 msgid "New Image"
 msgstr "Жаңы сүрөт"
@@ -3234,10 +3238,6 @@ msgid "Statistics"
 msgstr "Статистика"
 
 
-msgid "[{}]: \"{}\" ({})"
-msgstr "[{}]: \"{}\" ({})"
-
-
 msgid "Tracking"
 msgstr "Трекинг"
 
@@ -3464,10 +3464,6 @@ msgid "Author:"
 msgstr "Автору:"
 
 
-msgid "author"
-msgstr "автор"
-
-
 msgid "Version:"
 msgstr "Версиясы:"
 
@@ -3620,10 +3616,6 @@ msgstr "Бет"
 
 msgid "Hex"
 msgstr "Hex"
-
-
-msgid "Value:"
-msgstr "Мааниси:"
 
 
 msgid "Zoom in"
@@ -3862,6 +3854,10 @@ msgid "File name"
 msgstr "Файл аты"
 
 
+msgid "Value:"
+msgstr "Мааниси:"
+
+
 msgid "Add Modifier"
 msgstr "Модификаторду кошуу"
 
@@ -3959,10 +3955,6 @@ msgstr "Анизотропия"
 
 msgid "BSDF"
 msgstr "BSDF"
-
-
-msgid "Sigma"
-msgstr "Сигма"
 
 
 msgid "Transparency"

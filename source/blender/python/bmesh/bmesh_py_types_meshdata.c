@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation. All rights reserved. */
+ * Copyright 2012 Blender Foundation */
 
 /** \file
  * \ingroup pybmesh
@@ -131,7 +131,7 @@ static PyObject *bpy_bmloopuv_select_edge_get(BPy_BMLoopUV *self, void *UNUSED(c
 }
 static int bpy_bmloopuv_select_edge_set(BPy_BMLoopUV *self, PyObject *value, void *UNUSED(closure))
 {
-  /* TODO: see comment above on bpy_bmloopuv_pin_uv_set(), the same applies here.  */
+  /* TODO: see comment above on bpy_bmloopuv_pin_uv_set(), the same applies here. */
   BLI_assert(self->edge_select);
   if (self->edge_select) {
     *self->edge_select = PyC_Long_AsBool(value);
@@ -710,7 +710,7 @@ static struct PyMethodDef bpy_bmdeformvert_methods[] = {
     {"values", (PyCFunction)bpy_bmdeformvert_values, METH_NOARGS, bpy_bmdeformvert_values_doc},
     {"items", (PyCFunction)bpy_bmdeformvert_items, METH_NOARGS, bpy_bmdeformvert_items_doc},
     {"get", (PyCFunction)bpy_bmdeformvert_get, METH_VARARGS, bpy_bmdeformvert_get_doc},
-    /* BMESH_TODO pop, popitem, update */
+    /* BMESH_TODO `pop`, `popitem`, `update`. */
     {"clear", (PyCFunction)bpy_bmdeformvert_clear, METH_NOARGS, bpy_bmdeformvert_clear_doc},
     {NULL, NULL, 0, NULL},
 };
