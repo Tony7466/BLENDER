@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup spseq
@@ -329,11 +329,6 @@ static void sequencer_refresh(const bContext *C, ScrArea *area)
 
   ARegion *region_channels = sequencer_find_region(area, RGN_TYPE_CHANNELS);
   if (sseq->view == SEQ_VIEW_SEQUENCE) {
-    if (region_channels && (region_channels->flag & RGN_FLAG_HIDDEN)) {
-      region_channels->flag &= ~RGN_FLAG_HIDDEN;
-      region_channels->v2d.flag &= ~V2D_IS_INIT;
-      view_changed = true;
-    }
     if (region_channels && region_channels->alignment != RGN_ALIGN_LEFT) {
       region_channels->alignment = RGN_ALIGN_LEFT;
       view_changed = true;
