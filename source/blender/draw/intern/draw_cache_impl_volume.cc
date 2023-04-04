@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2017 Blender Foundation. All rights reserved. */
+ * Copyright 2017 Blender Foundation */
 
 /** \file
  * \ingroup draw
@@ -307,14 +307,13 @@ static DRWVolumeGrid *volume_grid_cache_get(const Volume *volume,
 
     /* Create GPU texture. */
     eGPUTextureFormat format = (channels == 3) ? GPU_RGB16F : GPU_R16F;
-    cache_grid->texture = GPU_texture_create_3d_ex("volume_grid",
-                                                   UNPACK3(dense_grid.resolution),
-                                                   1,
-                                                   format,
-                                                   GPU_DATA_FLOAT,
-                                                   GPU_TEXTURE_USAGE_SHADER_READ |
-                                                       GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
-                                                   dense_grid.voxels);
+    cache_grid->texture = GPU_texture_create_3d("volume_grid",
+                                                UNPACK3(dense_grid.resolution),
+                                                1,
+                                                format,
+                                                GPU_TEXTURE_USAGE_SHADER_READ |
+                                                    GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
+                                                dense_grid.voxels);
     /* The texture can be null if the resolution along one axis is larger than
      * GL_MAX_3D_TEXTURE_SIZE. */
     if (cache_grid->texture != nullptr) {

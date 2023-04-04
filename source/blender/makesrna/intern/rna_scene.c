@@ -8,7 +8,7 @@
 
 #include "DNA_brush_types.h"
 #include "DNA_collection_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_layer_types.h"
 #include "DNA_linestyle_types.h"
 #include "DNA_modifier_types.h"
@@ -132,7 +132,8 @@ const EnumPropertyItem rna_enum_proportional_falloff_curve_only_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
-/* keep for operators, not used here */
+/* Keep for operators, not used here. */
+
 const EnumPropertyItem rna_enum_mesh_select_mode_items[] = {
     {SCE_SELECT_VERTEX, "VERT", ICON_VERTEXSEL, "Vertex", "Vertex selection mode"},
     {SCE_SELECT_EDGE, "EDGE", ICON_EDGESEL, "Edge", "Edge selection mode"},
@@ -667,7 +668,7 @@ const EnumPropertyItem rna_enum_transform_orientation_items[] = {
 #  include "BKE_context.h"
 #  include "BKE_freestyle.h"
 #  include "BKE_global.h"
-#  include "BKE_gpencil.h"
+#  include "BKE_gpencil_legacy.h"
 #  include "BKE_idprop.h"
 #  include "BKE_image.h"
 #  include "BKE_image_format.h"
@@ -724,7 +725,7 @@ static void rna_Gpencil_extend_selection(bContext *C, PointerRNA *UNUSED(ptr))
   ViewLayer *view_layer = CTX_data_view_layer(C);
   BKE_view_layer_synced_ensure(scene, view_layer);
   Object *ob = BKE_view_layer_active_object_get(view_layer);
-  if ((ob) && (ob->type == OB_GPENCIL)) {
+  if ((ob) && (ob->type == OB_GPENCIL_LEGACY)) {
     bGPdata *gpd = (bGPdata *)ob->data;
     CTX_DATA_BEGIN (C, bGPDstroke *, gps, editable_gpencil_strokes) {
       if ((gps->flag & GP_STROKE_SELECT) && (gps->totpoints > 1)) {
@@ -1193,7 +1194,9 @@ static char *rna_ImageFormatSettings_path(const PointerRNA *ptr)
       for (node = ntree->nodes.first; node; node = node->next) {
         if (node->type == CMP_NODE_OUTPUT_FILE) {
           if (&((NodeImageMultiFile *)node->storage)->format == imf) {
-            return BLI_sprintfN("nodes['%s'].format", node->name);
+            char node_name_esc[sizeof(node->name) * 2];
+            BLI_str_escape(node_name_esc, node->name, sizeof(node_name_esc));
+            return BLI_sprintfN("nodes[\"%s\"].format", node_name_esc);
           }
           else {
             bNodeSocket *sock;
@@ -1201,8 +1204,14 @@ static char *rna_ImageFormatSettings_path(const PointerRNA *ptr)
             for (sock = node->inputs.first; sock; sock = sock->next) {
               NodeImageMultiFileSocket *sockdata = sock->storage;
               if (&sockdata->format == imf) {
+                char node_name_esc[sizeof(node->name) * 2];
+                BLI_str_escape(node_name_esc, node->name, sizeof(node_name_esc));
+
+                char socketdata_path_esc[sizeof(sockdata->path) * 2];
+                BLI_str_escape(socketdata_path_esc, sockdata->path, sizeof(socketdata_path_esc));
+
                 return BLI_sprintfN(
-                    "nodes['%s'].file_slots['%s'].format", node->name, sockdata->path);
+                    "nodes[\"%s\"].file_slots[\"%s\"].format", node_name_esc, socketdata_path_esc);
               }
             }
           }
@@ -3405,7 +3414,8 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "snap_flag", SCE_SNAP_PROJECT);
   RNA_def_property_ui_text(prop,
                            "Project Individual Elements",
-                           "Project individual elements on the surface of other objects");
+                           "Project individual elements on the surface of other objects (Always "
+                           "enabled with Face Nearest)");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL); /* header redraw */
 
   prop = RNA_def_property(srna, "use_snap_backface_culling", PROP_BOOLEAN, PROP_NONE);
@@ -4273,7 +4283,7 @@ static void rna_def_view_layer_eevee(BlenderRNA *brna)
 static void rna_def_view_layer_aovs(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;
-  /*  PropertyRNA *prop; */
+  // PropertyRNA *prop;
 
   FunctionRNA *func;
   PropertyRNA *parm;
@@ -4286,6 +4296,14 @@ static void rna_def_view_layer_aovs(BlenderRNA *brna, PropertyRNA *cprop)
   func = RNA_def_function(srna, "add", "BKE_view_layer_add_aov");
   parm = RNA_def_pointer(func, "aov", "AOV", "", "Newly created AOV");
   RNA_def_function_return(func, parm);
+
+  /* Defined in `rna_layer.c`. */
+  func = RNA_def_function(srna, "remove", "rna_ViewLayer_remove_aov");
+  parm = RNA_def_pointer(func, "aov", "AOV", "", "AOV to remove");
+  RNA_def_function_ui_description(func, "Remove an AOV");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS);
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, 0);
 }
 
 static void rna_def_view_layer_aov(BlenderRNA *brna)
@@ -6440,6 +6458,7 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
   prop = RNA_def_property(srna, "hair_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, hair_shape_type_items);
   RNA_def_property_ui_text(prop, "Curves Shape Type", "Curves shape type");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_CURVES);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_Scene_render_update");
 
   prop = RNA_def_property(srna, "hair_subdiv", PROP_INT, PROP_NONE);
@@ -7224,7 +7243,7 @@ static void rna_def_scene_display(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_SCENE | NA_EDITED, "rna_Scene_set_update");
 
-  prop = RNA_def_property(srna, "matcap_ssao_distance", PROP_FLOAT, PROP_NONE);
+  prop = RNA_def_property(srna, "matcap_ssao_distance", PROP_FLOAT, PROP_DISTANCE);
   RNA_def_property_ui_text(
       prop, "Distance", "Distance of object that contribute to the Cavity/Edge effect");
   RNA_def_property_range(prop, 0.0f, 100000.0f);

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation. All rights reserved. */
+ * Copyright 2023 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -35,6 +35,7 @@ class VKDescriptorPools {
   static constexpr uint32_t POOL_SIZE_STORAGE_IMAGE = 1000;
   static constexpr uint32_t POOL_SIZE_COMBINED_IMAGE_SAMPLER = 1000;
   static constexpr uint32_t POOL_SIZE_UNIFORM_BUFFER = 1000;
+  static constexpr uint32_t POOL_SIZE_UNIFORM_TEXEL_BUFFER = 1000;
 
   VkDevice vk_device_ = VK_NULL_HANDLE;
   Vector<VkDescriptorPool> pools_;
@@ -46,7 +47,7 @@ class VKDescriptorPools {
 
   void init(const VkDevice vk_device);
 
-  VKDescriptorSet allocate(const VkDescriptorSetLayout &descriptor_set_layout);
+  std::unique_ptr<VKDescriptorSet> allocate(const VkDescriptorSetLayout &descriptor_set_layout);
   void free(VKDescriptorSet &descriptor_set);
 
   /**

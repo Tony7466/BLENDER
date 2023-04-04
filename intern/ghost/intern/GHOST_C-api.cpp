@@ -895,16 +895,10 @@ bool GHOST_UseNativePixels(void)
   return system->useNativePixel();
 }
 
-bool GHOST_SupportsCursorWarp(void)
+GHOST_TCapabilityFlag GHOST_GetCapabilities(void)
 {
   GHOST_ISystem *system = GHOST_ISystem::getSystem();
-  return system->supportsCursorWarp();
-}
-
-bool GHOST_SupportsWindowPosition(void)
-{
-  GHOST_ISystem *system = GHOST_ISystem::getSystem();
-  return system->supportsWindowPosition();
+  return system->getCapabilities();
 }
 
 void GHOST_SetBacktraceHandler(GHOST_TBacktraceFn backtrace_fn)
@@ -916,6 +910,12 @@ void GHOST_UseWindowFocus(bool use_focus)
 {
   GHOST_ISystem *system = GHOST_ISystem::getSystem();
   return system->useWindowFocus(use_focus);
+}
+
+void GHOST_SetAutoFocus(bool auto_focus)
+{
+  GHOST_ISystem *system = GHOST_ISystem::getSystem();
+  system->setAutoFocus(auto_focus);
 }
 
 float GHOST_GetNativePixelSize(GHOST_WindowHandle windowhandle)
@@ -1228,4 +1228,4 @@ void GHOST_GetVulkanBackbuffer(GHOST_WindowHandle windowhandle,
   window->getVulkanBackbuffer(image, framebuffer, render_pass, extent, fb_id);
 }
 
-#endif /* WITH_VULKAN */
+#endif /* WITH_VULKAN_BACKEND */

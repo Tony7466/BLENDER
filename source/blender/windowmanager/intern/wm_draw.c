@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 Blender Foundation. All rights reserved. */
+ * Copyright 2007 Blender Foundation */
 
 /** \file
  * \ingroup wm
@@ -179,7 +179,7 @@ struct GrabState {
 static bool wm_software_cursor_needed(void)
 {
   if (UNLIKELY(g_software_cursor.enabled == -1)) {
-    g_software_cursor.enabled = !GHOST_SupportsCursorWarp();
+    g_software_cursor.enabled = !(WM_capabilities_flag() & WM_CAPABILITY_CURSOR_WARP);
   }
   return g_software_cursor.enabled;
 }
@@ -231,8 +231,9 @@ static void wm_software_cursor_draw_bitmap(const int event_xy[2],
   GPU_blend(GPU_BLEND_ALPHA);
 
   float gl_matrix[4][4];
+  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_GENERAL;
   GPUTexture *texture = GPU_texture_create_2d(
-      "softeare_cursor", bitmap->data_size[0], bitmap->data_size[1], 1, GPU_RGBA8, NULL);
+      "softeare_cursor", bitmap->data_size[0], bitmap->data_size[1], 1, GPU_RGBA8, usage, NULL);
   GPU_texture_update(texture, GPU_DATA_UBYTE, bitmap->data);
   GPU_texture_filter_mode(texture, false);
 
@@ -290,7 +291,7 @@ static void wm_software_cursor_draw_crosshair(const int event_xy[2])
   /* Draw a primitive cross-hair cursor.
    * NOTE: the `win->cursor` could be used for drawing although it's complicated as some cursors
    * are set by the operating-system, where the pixel information isn't easily available. */
-  const float unit = max_ff(U.dpi_fac, 1.0f);
+  const float unit = max_ff(UI_SCALE_FAC, 1.0f);
   uint pos = GPU_vertformat_attr_add(
       immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);

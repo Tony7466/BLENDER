@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+ * Copyright 2020 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -339,12 +339,6 @@ void GLTexture::update_sub(int offset[3],
   glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 }
 
-/**
- * This will create the mipmap images and populate them with filtered data from base level.
- *
- * WARNING: Depth textures are not populated but they have their mips correctly defined.
- * WARNING: This resets the mipmap range.
- */
 void GLTexture::generate_mipmap()
 {
   /* Allow users to provide mipmaps stored in compressed textures.
@@ -594,11 +588,11 @@ void GLTexture::samplers_init()
   }
   samplers_update();
 
-  /* Custom sampler for icons. */
+  /* Custom sampler for icons.
+   * NOTE: The icon texture is sampled within the shader using a -0.5f LOD bias. */
   GLuint icon_sampler = samplers_[GPU_SAMPLER_ICON];
   glSamplerParameteri(icon_sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
   glSamplerParameteri(icon_sampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glSamplerParameterf(icon_sampler, GL_TEXTURE_LOD_BIAS, -0.5f);
 
   debug::object_label(GL_SAMPLER, icon_sampler, "icons");
 }
