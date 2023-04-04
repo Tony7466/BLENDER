@@ -47278,6 +47278,10 @@ msgid "Vector Math"
 msgstr "矢量运算"
 
 
+msgid "Vector Math"
+msgstr "矢量运算"
+
+
 msgid "Perform vector math operation"
 msgstr "执行矢量数学运算"
 
