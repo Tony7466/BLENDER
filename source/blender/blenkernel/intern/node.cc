@@ -2447,6 +2447,10 @@ void node_socket_move_default_value(Main &bmain,
     /* It could be possible to support conversion in future. */
     return;
   }
+  if (ELEM(dst.type, SOCK_CUSTOM, SOCK_SHADER, SOCK_GEOMETRY)) {
+    /* Unmovable types. */
+    return;
+  }
 
   ID **src_socket_value = nullptr;
   Vector<ID **> dst_values;
@@ -2480,6 +2484,10 @@ void node_socket_move_default_value(Main &bmain,
     default: {
       break;
     }
+  }
+
+  if (dst_values.is_empty() || src_socket_value == nullptr) {
+    return;
   }
 
   for (ID **dst_value : dst_values) {
