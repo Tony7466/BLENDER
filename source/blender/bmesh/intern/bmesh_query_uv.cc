@@ -24,9 +24,7 @@ BMUVOffsets BM_uv_map_get_offsets_n(const BMesh *bm, int layer)
 {
   using namespace blender;
   using namespace blender::bke;
-  const int layer_index = layer == -1 ?
-                              CustomData_get_active_layer_index(&bm->ldata, CD_PROP_FLOAT2) :
-                              CustomData_get_layer_index_n(&bm->ldata, CD_PROP_FLOAT2, layer);
+  const int layer_index = CustomData_get_layer_index_n(&bm->ldata, CD_PROP_FLOAT2, layer);
   if (layer_index == -1) {
     return {-1, -1, -1, -1};
   }
@@ -48,7 +46,7 @@ BMUVOffsets BM_uv_map_get_offsets_n(const BMesh *bm, int layer)
 
 BMUVOffsets BM_uv_map_get_offsets(const BMesh *bm)
 {
-  return BM_uv_map_get_offsets_n(bm, -1);
+  return BM_uv_map_get_offsets_n(bm, CustomData_get_active_layer_index(&bm->ldata, CD_PROP_FLOAT2));
 }
 
 static void uv_aspect(const BMLoop *l,
