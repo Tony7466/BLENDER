@@ -112,6 +112,7 @@ def create_manifest(
     print(f'Building manifest of files:  "{outpath}"...', end="", flush=True)
     with outpath.open("w", encoding="utf-8") as outfile:
         main_files_to_manifest(blender_srcdir, outfile)
+        assets_to_manifest(blender_srcdir, outfile)
         submodules_to_manifest(blender_srcdir, version, outfile)
 
         if packages_dir:
@@ -138,6 +139,18 @@ def submodules_to_manifest(
 
         for path in git_ls_files(blender_srcdir / submodule):
             print(path, file=outfile)
+
+
+def assets_to_manifest(blender_srcdir: Path, outfile: TextIO) -> None:
+    assert not blender_srcdir.is_absolute()
+
+    assets_dir = blender_srcdir.parent / "lib" / "assets"
+    for path in assets_dir.glob("*"):
+        if path.name == "working":
+            continue
+        if path.name in SKIP_NAMES:
+            continue
+        print(path, file=outfile)
 
 
 def packages_to_manifest(outfile: TextIO, packages_dir: Path) -> None:
