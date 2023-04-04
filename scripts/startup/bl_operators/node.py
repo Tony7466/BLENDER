@@ -153,6 +153,17 @@ class NODE_OT_add_node(NodeAddOperator, Operator):
             return ""
 
 
+class AddNodePairOperatorLink(PropertyGroup):
+    from_socket: StringProperty(
+        name="From Socket",
+        description="Socket of the origin node to connect",
+    )
+    to_socket: StringProperty(
+        name="To Socket",
+        description="Socket of the target node to connect",
+    )
+
+
 class NODE_OT_add_node_pair(NodeAddOperator, Operator):
     '''Add a node pair to the active tree'''
     bl_idname = "node.add_node_pair"
@@ -173,8 +184,17 @@ class NODE_OT_add_node_pair(NodeAddOperator, Operator):
         size=2,
         default=(0, 0),
     )
+    links: CollectionProperty(
+        name="Links",
+        description="Links to add between the origin and target node",
+        type=AddNodePairOperatorLink,
+        options={'SKIP_SAVE'},
+    )
 
     def execute(self, context):
+        space = context.space_data
+        tree = space.edit_tree
+
         props = self.properties
         if not props.is_property_set("origin_type") or not props.is_property_set("target_type"):
             return {'CANCELLED'}
@@ -191,6 +211,11 @@ class NODE_OT_add_node_pair(NodeAddOperator, Operator):
         if props.is_property_set("offset"):
             origin_node.location -= Vector(self.offset)
             target_node.location += Vector(self.offset)
+
+        for link in self.links:
+            from_socket = origin_node.outputs.get(link.from_socket)
+            to_socket = target_node.inputs.get(link.to_socket)
+            tree.links.new(to_socket, from_socket)
 
         return {'FINISHED'}
 
@@ -248,6 +273,7 @@ class NODE_OT_tree_path_parent(Operator):
 
 classes = (
     NodeSetting,
+    AddNodePairOperatorLink,
 
     NODE_OT_add_node,
     NODE_OT_add_node_pair,

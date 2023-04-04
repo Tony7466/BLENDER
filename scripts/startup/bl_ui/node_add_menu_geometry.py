@@ -469,7 +469,13 @@ class NODE_MT_category_simulation(Menu):
 
     def draw(self, _context):
         layout = self.layout
-        node_add_menu.add_node_type_pair(layout, "GeometryNodeSimulationInput", "GeometryNodeSimulationOutput", label="Simulation Nodes")
+        node_add_menu.add_node_type_pair(
+            layout,
+            "GeometryNodeSimulationInput",
+            "GeometryNodeSimulationOutput",
+            label="Simulation Nodes",
+            links=[("Geometry", "Geometry")]
+        )
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
