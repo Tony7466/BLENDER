@@ -1,4 +1,5 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2023 Blender Foundation. */
 
 /** \file
  * \ingroup draw
@@ -11,7 +12,6 @@
 #include "BKE_grease_pencil.hh"
 
 #include "BLI_task.hh"
-#include "BLI_timeit.hh"
 
 #include "DNA_grease_pencil_types.h"
 
@@ -158,35 +158,6 @@ static GreasePencilBatchCache *grease_pencil_batch_cache_get(GreasePencil &greas
 /** \name Vertex Buffers
  * \{ */
 
-static int count_cyclic_curves(bke::CurvesGeometry &curves)
-{
-  VArray<bool> cyclic = curves.cyclic();
-  const CommonVArrayInfo info = cyclic.common_info();
-  if (info.type == CommonVArrayInfo::Type::Single) {
-    const bool single = *static_cast<const bool *>(info.data);
-    return single ? curves.curves_num() : 0;
-  }
-  else if (info.type == CommonVArrayInfo::Type::Span) {
-    const Span<bool> span(static_cast<const bool *>(info.data), cyclic.size());
-    return span.count(true);
-  }
-  return threading::parallel_reduce(
-      cyclic.index_range(),
-      2048,
-      0,
-      [&](const IndexRange range, const int init) {
-        /* Alternatively, this could use #materialize to retrieve many values at once. */
-        int sum = init;
-        for (const int64_t i : range) {
-          if (cyclic[i]) {
-            sum++;
-          }
-        }
-        return sum;
-      },
-      [&](const int a, const int b) { return a + b; });
-}
-
 BLI_INLINE int32_t pack_rotation_aspect_hardness(float rot, float asp, float hard)
 {
   int32_t packed = 0;
@@ -219,8 +190,6 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
   if (cache->vbo != nullptr) {
     return;
   }
-
-  SCOPED_TIMER("grease_pencil_batches_ensure");
 
   /* Should be discarded together. */
   BLI_assert(cache->vbo == nullptr && cache->ibo == nullptr);
