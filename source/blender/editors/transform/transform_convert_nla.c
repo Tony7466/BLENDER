@@ -54,6 +54,12 @@ typedef struct TransDataNla {
 
   /** index of track that strip is currently in. */
   int trackIndex;
+
+  // TODO go over this comment
+  /** NOTE: This index is relative to the initial first track at the start of transforming and
+   * thus can be negative when the tracks list grows downward. */
+  int signed_track_index;
+
   /** handle-index: 0 for dummy entry, -1 for start, 1 for end, 2 for both ends. */
   int handle;
 } TransDataNla;
@@ -135,7 +141,94 @@ static float transdata_get_time_shuffle_offset(ListBase *trans_datas)
   BLI_assert(offset_left <= 0);
   BLI_assert(offset_right >= 0);
 
-  return -offset_left < offset_right ? offset_left : offset_right;
+  return fabs(offset_left) < offset_right ? offset_left : offset_right;
+}
+
+// TODO go over these comments
+/** Assumes all of given trans_datas are part of the same ID.
+ *
+ * \param r_total_offset: The minimal total signed offset that results in valid strip track-moves
+ * for all strips from \a trans_datas.
+ *
+ * \returns true if \a r_total_offset results in a valid offset, false if no solution exists in the
+ * desired direction.
+ */
+static bool transdata_get_track_shuffle_offset_side(ListBase *trans_datas,
+                                                    const bool shuffle_down,
+                                                    int *r_total_offset)
+{
+  *r_total_offset = 0;
+  if (BLI_listbase_is_empty(trans_datas)) {
+    return false;
+  }
+
+  ListBase *tracks = &BKE_animdata_from_id(
+                          ((TransDataNla *)((LinkData *)trans_datas->first)->data)->id)
+                          ->nla_tracks;
+
+  int offset;
+  do {
+    offset = 0;
+
+    LISTBASE_FOREACH (LinkData *, link, trans_datas) {
+      TransDataNla *trans_data = (TransDataNla *)link->data;
+
+      NlaTrack *dst_track = BLI_findlink(tracks, trans_data->trackIndex + *r_total_offset);
+
+      /* Cannot keep moving strip in given track direction. No solution. */
+      if (dst_track == NULL) {
+        return false;
+      }
+
+      /* Shuffle only if track is locked or library override. */
+      if (((dst_track->flag & NLATRACK_PROTECTED) == 0) &&
+          !BKE_nlatrack_is_nonlocal_in_liboverride(trans_data->id, dst_track)) {
+        continue;
+      }
+
+      offset = shuffle_down ? 1 : -1;
+      break;
+    }
+
+    *r_total_offset += offset;
+  } while (offset != 0);
+
+  return true;
+}
+
+// TODO go over these comments
+/** Assumes all of given trans_datas are part of the same ID.
+ *
+ * \param r_track_offset: The minimal total signed offset that results in valid strip track-moves
+ * for all strips from \a trans_datas.
+ *
+ * \returns true if \a r_track_offset results in a valid offset, false if no solution exists in
+ * either direction.
+ */
+static bool transdata_get_track_shuffle_offset(ListBase *trans_datas, int *r_track_offset)
+{
+  int offset_down = 0;
+  const bool down_valid = transdata_get_track_shuffle_offset_side(trans_datas, true, &offset_down);
+
+  int offset_up = 0;
+  const bool up_valid = transdata_get_track_shuffle_offset_side(trans_datas, false, &offset_up);
+
+  if (down_valid && up_valid) {
+    if (abs(offset_down) < offset_up) {
+      *r_track_offset = offset_down;
+    }
+    else {
+      *r_track_offset = offset_up;
+    }
+  }
+  else if (down_valid) {
+    *r_track_offset = offset_down;
+  }
+  else if (up_valid) {
+    *r_track_offset = offset_up;
+  }
+
+  return down_valid || up_valid;
 }
 
 /* -------------------------------------------------------------------- */
@@ -396,6 +489,7 @@ static void createTransNlaData(bContext *C, TransInfo *t)
             tdn->oldTrack = tdn->nlt = nlt;
             tdn->strip = strip;
             tdn->trackIndex = BLI_findindex(&adt->nla_tracks, nlt);
+            tdn->signed_track_index = tdn->trackIndex;
 
             yval = (float)(tdn->trackIndex * NLACHANNEL_STEP(snla));
 
@@ -577,54 +671,78 @@ static void recalcData_nla(TransInfo *t)
       continue;
     }
 
-    delta_y1 = ((int)tdn->h1[1] / NLACHANNEL_STEP(snla) - tdn->trackIndex);
-    delta_y2 = ((int)tdn->h2[1] / NLACHANNEL_STEP(snla) - tdn->trackIndex);
+    delta_y1 = ((int)tdn->h1[1] / NLACHANNEL_STEP(snla) - tdn->signed_track_index);
+    delta_y2 = ((int)tdn->h2[1] / NLACHANNEL_STEP(snla) - tdn->signed_track_index);
 
+    /* Move strip into track in the requested direction. */
     if (delta_y1 || delta_y2) {
-      NlaTrack *track;
       int delta = (delta_y2) ? delta_y2 : delta_y1;
-      int n;
 
-      /* Move in the requested direction,
-       * checking at each layer if there's space for strip to pass through,
-       * stopping on the last track available or that we're able to fit in.
+      AnimData *anim_data = BKE_animdata_from_id(tdn->id);
+      ListBase *nla_tracks = &anim_data->nla_tracks;
+
+      NlaTrack *old_track = tdn->nlt;
+      NlaTrack *dst_track = NULL;
+
+      /* Calculate the total new tracks needed
+       *
+       * Determine dst_track, which will end up being NULL, the last library override
+       * track, or a normal local track. The first two cases lead to delta_new_tracks!=0.
+       * The last case leads to delta_new_tracks==0.
        */
-      if (delta > 0) {
-        for (track = tdn->nlt->next, n = 0; (track) && (n < delta); track = track->next, n++) {
-          /* check if space in this track for the strip */
-          if (BKE_nlatrack_has_space(track, strip->start, strip->end) &&
-              !BKE_nlatrack_is_nonlocal_in_liboverride(tdn->id, track)) {
-            /* move strip to this track */
-            BKE_nlatrack_remove_strip(tdn->nlt, strip);
-            BKE_nlatrack_add_strip(track, strip, is_liboverride);
 
-            tdn->nlt = track;
-            tdn->trackIndex++;
-          }
-          else { /* can't move any further */
-            break;
-          }
+      int delta_new_tracks = delta;
+      dst_track = old_track;
+
+      while (delta_new_tracks < 0) {
+        dst_track = dst_track->prev;
+        if (dst_track == NULL || BKE_nlatrack_is_nonlocal_in_liboverride(tdn->id, dst_track)) {
+          break;
         }
+        delta_new_tracks++;
       }
-      else {
-        /* make delta 'positive' before using it, since we now know to go backwards */
-        delta = -delta;
 
-        for (track = tdn->nlt->prev, n = 0; (track) && (n < delta); track = track->prev, n++) {
-          /* check if space in this track for the strip */
-          if (BKE_nlatrack_has_space(track, strip->start, strip->end) &&
-              !BKE_nlatrack_is_nonlocal_in_liboverride(tdn->id, track)) {
-            /* move strip to this track */
-            BKE_nlatrack_remove_strip(tdn->nlt, strip);
-            BKE_nlatrack_add_strip(track, strip, is_liboverride);
+      /** We assume all library tracks are grouped at the bottom of the nla stack. Thus, no need
+       * to check for them when moving tracks upward. */
 
-            tdn->nlt = track;
-            tdn->trackIndex--;
-          }
-          else { /* can't move any further */
-            break;
-          }
+      while (delta_new_tracks > 0) {
+        dst_track = dst_track->next;
+        if (dst_track == NULL) {
+          break;
         }
+        delta_new_tracks--;
+      }
+
+      /* Auto-grow track list. */
+      for (int i = 0; i < -delta_new_tracks; i++) {
+        NlaTrack *new_track = BKE_nlatrack_new();
+        new_track->flag |= NLATRACK_TEMPORARILY_ADDED;
+        BKE_nlatrack_insert_before(
+            nla_tracks, (NlaTrack *)nla_tracks->first, new_track, is_liboverride);
+        dst_track = new_track;
+      }
+
+      for (int i = 0; i < delta_new_tracks; i++) {
+        NlaTrack *new_track = BKE_nlatrack_new();
+        new_track->flag |= NLATRACK_TEMPORARILY_ADDED;
+
+        BKE_nlatrack_insert_after(
+            nla_tracks, (NlaTrack *)nla_tracks->last, new_track, is_liboverride);
+        dst_track = new_track;
+      }
+
+      /* Move strip from old_track to dst_track. */
+      if (dst_track != old_track) {
+        BKE_nlatrack_remove_strip(old_track, strip);
+        BKE_nlastrips_add_strip(&dst_track->strips, strip);
+
+        tdn->nlt = dst_track;
+        tdn->signed_track_index += delta;
+        tdn->trackIndex = BLI_findindex(nla_tracks, dst_track);
+      }
+
+      if (tdn->nlt->flag & NLATRACK_PROTECTED) {
+        strip->flag |= NLASTRIP_FLAG_INVALID_LOCATION;
       }
     }
 
@@ -695,6 +813,34 @@ static void nlastrip_shuffle_transformed(TransDataContainer *tc, TransDataNla *f
   LISTBASE_FOREACH (IDGroupedTransData *, group, &grouped_trans_datas) {
     ListBase *trans_datas = &group->trans_datas;
 
+    /* Apply vertical shuffle. */
+    int minimum_track_offset = 0;
+    const bool track_offset_valid = transdata_get_track_shuffle_offset(trans_datas,
+                                                                       &minimum_track_offset);
+
+    /* Debug assert to ensure strips preserved their relative track offsets from eachother and
+     * none were compressed. Otherwise, no amount of vertical shuffling is a solution.
+     *
+     * This is considered a bug. */
+    BLI_assert(track_offset_valid);
+    if (minimum_track_offset != 0) {
+      ListBase *tracks = &BKE_animdata_from_id(group->id)->nla_tracks;
+
+      LISTBASE_FOREACH (LinkData *, link, trans_datas) {
+        TransDataNla *trans_data = (TransDataNla *)link->data;
+
+        trans_data->trackIndex = trans_data->trackIndex + minimum_track_offset;
+        NlaTrack *dst_track = BLI_findlink(tracks, trans_data->trackIndex);
+
+        NlaStrip *strip = trans_data->strip;
+        BKE_nlatrack_remove_strip(trans_data->nlt, strip);
+        // Should this be false? Should we short circuit the loop
+        BKE_nlatrack_add_strip(dst_track, strip, false);
+
+        trans_data->nlt = dst_track;
+      }
+    }
+
     /* Apply horizontal shuffle. */
     const float minimum_time_offset = transdata_get_time_shuffle_offset(trans_datas);
     LISTBASE_FOREACH (LinkData *, link, trans_datas) {
@@ -746,6 +892,7 @@ static void special_aftertrans_update__nla(bContext *C, TransInfo *t)
   }
 
   ListBase anim_data = {NULL, NULL};
+  bAnimListElem *ale;
   short filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_FOREDIT | ANIMFILTER_FCURVESONLY);
 
   /* get channels to work on */
@@ -769,6 +916,52 @@ static void special_aftertrans_update__nla(bContext *C, TransInfo *t)
 
   /* free temp memory */
   ANIM_animdata_freelist(&anim_data);
+
+  /** Truncate temporarily added tracks. */
+  // TODO move this into a method
+  {
+    filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_ANIMDATA);
+    ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
+
+    for (ale = anim_data.first; ale; ale = ale->next) {
+      ListBase *nla_tracks = &ale->adt->nla_tracks;
+
+      /** Remove top tracks that weren't necessary. */
+      LISTBASE_FOREACH_BACKWARD_MUTABLE (NlaTrack *, track, nla_tracks) {
+        if (!(track->flag & NLATRACK_TEMPORARILY_ADDED)) {
+          break;
+        }
+        if (track->strips.first != NULL) {
+          break;
+        }
+        BKE_nlatrack_remove_and_free(nla_tracks, track, true);
+      }
+
+      /** Remove bottom tracks that weren't necessary. */
+      LISTBASE_FOREACH_MUTABLE (NlaTrack *, track, nla_tracks) {
+        /** Library override tracks are the first N tracks. They're never temporary and determine
+         * where we start removing temporaries.*/
+        if ((track->flag & NLATRACK_OVERRIDELIBRARY_LOCAL) == 0) {
+          continue;
+        }
+        if (!(track->flag & NLATRACK_TEMPORARILY_ADDED)) {
+          break;
+        }
+        if (track->strips.first != NULL) {
+          break;
+        }
+        BKE_nlatrack_remove_and_free(nla_tracks, track, true);
+      }
+
+      /** Clear temporary flag. */
+      LISTBASE_FOREACH_MUTABLE (NlaTrack *, track, nla_tracks) {
+        track->flag &= ~NLATRACK_TEMPORARILY_ADDED;
+      }
+    }
+
+    ANIM_animdata_freelist(&anim_data);
+  }
+  // END TODO
 
   /* Perform after-transform validation. */
   ED_nla_postop_refresh(&ac);
