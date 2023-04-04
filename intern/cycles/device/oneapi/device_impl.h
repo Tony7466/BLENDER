@@ -50,7 +50,7 @@ class OneapiDevice : public Device {
 
   void generic_alloc(device_memory &mem);
 
-  void generic_copy_to(device_memory &mem);
+  void generic_copy_to(device_memory &mem, size_t size = -1, size_t offset = 0);
 
   void generic_free(device_memory &mem);
 
@@ -60,7 +60,7 @@ class OneapiDevice : public Device {
 
   void mem_alloc(device_memory &mem) override;
 
-  void mem_copy_to(device_memory &mem) override;
+  void mem_copy_to(device_memory &mem, size_t size = -1, size_t offset = 0) override;
 
   void mem_copy_from(device_memory &mem, size_t y, size_t w, size_t h, size_t elem) override;
 
