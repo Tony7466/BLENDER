@@ -152,6 +152,7 @@ static int *dm_getPolyArray(DerivedMesh *dm)
 {
   if (!dm->poly_offsets) {
     dm->poly_offsets = MEM_cnew_array<int>(dm->getNumPolys(dm) + 1, __func__);
+    dm->copyPolyArray(dm, dm->poly_offsets);
   }
   return dm->poly_offsets;
 }
@@ -213,6 +214,7 @@ void DM_from_template(DerivedMesh *dm,
   CustomData_copy(&source->faceData, &dm->faceData, mask->fmask, CD_SET_DEFAULT, numTessFaces);
   CustomData_copy(&source->loopData, &dm->loopData, mask->lmask, CD_SET_DEFAULT, numLoops);
   CustomData_copy(&source->polyData, &dm->polyData, mask->pmask, CD_SET_DEFAULT, numPolys);
+  dm->poly_offsets = static_cast<int *>(MEM_dupallocN(source->poly_offsets));
 
   dm->type = type;
   dm->numVertData = numVerts;
@@ -228,6 +230,7 @@ void DM_from_template(DerivedMesh *dm,
 
 bool DM_release(DerivedMesh *dm)
 {
+  MEM_SAFE_FREE(dm->poly_offsets);
   if (dm->needsFree) {
     CustomData_free(&dm->vertData, dm->numVertData);
     CustomData_free(&dm->edgeData, dm->numEdgeData);

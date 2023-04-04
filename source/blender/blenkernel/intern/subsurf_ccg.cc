@@ -327,7 +327,7 @@ static int ss_sync_from_uv(CCGSubSurf *ss,
 
       if (BLI_edgeset_add(eset, v0, v1)) {
         CCGEdge *e, *orige = ccgSubSurf_getFaceEdge(origf, j_next);
-        CCGEdgeHDL ehdl = POINTER_FROM_INT(poly.start() + j_next);
+        CCGEdgeHDL ehdl = POINTER_FROM_INT(poly[j_next]);
         float crease = ccgSubSurf_getEdgeCrease(orige);
 
         ccgSubSurf_syncEdge(ss, ehdl, fverts[j_next], fverts[j], crease, &e);
@@ -1826,6 +1826,7 @@ static CCGDerivedMesh *getCCGDerivedMesh(CCGSubSurf *ss,
       &ccgdm->dm.loopData, ".corner_vert", ccgSubSurf_getNumFinalFaces(ss) * 4);
   CustomData_free_layer_named(
       &ccgdm->dm.loopData, ".corner_edge", ccgSubSurf_getNumFinalFaces(ss) * 4);
+  MEM_SAFE_FREE(ccgdm->dm.poly_offsets);
 
   ccgdm->reverseFaceMap = static_cast<int *>(
       MEM_callocN(sizeof(int) * ccgSubSurf_getNumFinalFaces(ss), "reverseFaceMap"));
