@@ -11,7 +11,8 @@ extern "C" {
 #endif
 
 /**
- * Retrieve the custom data offsets for layers used for user interaction with a UV map, returns the active uv map if layer is -1.
+ * Retrieve the custom data offsets for layers used for user interaction with a UV map, returns the
+ * active uv map if layer is -1.
  */
 BMUVOffsets BM_uv_map_get_offsets(const BMesh *bm);
 BMUVOffsets BM_uv_map_get_offsets_n(const BMesh *bm, int layer);
