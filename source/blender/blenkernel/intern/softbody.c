@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright Blender Foundation. All rights reserved. */
+ * Copyright Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -3598,9 +3598,9 @@ void sbObjectStep(struct Depsgraph *depsgraph,
     /* pass */
   }
   else if (/*ob->id.lib || */
-           /* "library linking & pointcaches" has to be solved properly at some point */
+           /* "library linking & point-caches" has to be solved properly at some point. */
            (cache->flag & PTCACHE_BAKED)) {
-    /* if baked and nothing in cache, do nothing */
+    /* If baked and nothing in cache, do nothing. */
     if (can_write_cache) {
       BKE_ptcache_invalidate(cache);
     }

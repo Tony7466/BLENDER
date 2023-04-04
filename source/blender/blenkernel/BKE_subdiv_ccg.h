@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2018 Blender Foundation. All rights reserved. */
+ * Copyright 2018 Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -310,6 +310,7 @@ typedef enum SubdivCCGAdjacencyType {
 SubdivCCGAdjacencyType BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(const SubdivCCG *subdiv_ccg,
                                                                      const SubdivCCGCoord *coord,
                                                                      const int *corner_verts,
+                                                                     int corners_num,
                                                                      const struct MPoly *mpoly,
                                                                      int *r_v1,
                                                                      int *r_v2);

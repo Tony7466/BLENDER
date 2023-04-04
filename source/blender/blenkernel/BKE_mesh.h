@@ -72,6 +72,11 @@ void BKE_mesh_tag_topology_changed(struct Mesh *mesh);
  */
 void BKE_mesh_tag_edges_split(struct Mesh *mesh);
 
+/**
+ * Call when face vertex order has changed but positions and faces haven't changed
+ */
+void BKE_mesh_tag_face_winding_changed(struct Mesh *mesh);
+
 /* *** mesh.c *** */
 
 struct BMesh *BKE_mesh_to_bmesh_ex(const struct Mesh *me,
@@ -104,26 +109,6 @@ void BKE_mesh_ensure_default_orig_index_customdata(struct Mesh *mesh);
  */
 void BKE_mesh_ensure_default_orig_index_customdata_no_check(struct Mesh *mesh);
 
-/**
- * Find the index of the loop in 'poly' which references vertex,
- * returns -1 if not found
- */
-int poly_find_loop_from_vert(const struct MPoly *poly, const int *poly_verts, int vert);
-/**
- * Fill \a r_adj with the loop indices in \a poly adjacent to the
- * vertex. Returns the index of the loop matching vertex, or -1 if the
- * vertex is not in \a poly
- */
-int poly_get_adj_loops_from_vert(const struct MPoly *poly,
-                                 const int *corner_verts,
-                                 int vert,
-                                 int r_adj[2]);
-
-/**
- * Return the index of the edge vert that is not equal to \a v. If
- * neither edge vertex is equal to \a v, returns -1.
- */
-int BKE_mesh_edge_other_vert(const struct MEdge *e, int v);
 /**
  * Sets each output array element to the edge index if it is a real edge, or -1.
  */
@@ -349,28 +334,9 @@ const float (*BKE_mesh_poly_normals_ensure(const struct Mesh *mesh))[3];
 float (*BKE_mesh_vert_normals_for_write(struct Mesh *mesh))[3];
 
 /**
- * Retrieve write access to the cached polygon normals, ensuring that they are allocated but *not*
- * that they are calculated. The provided polygon normals should be the same as if they were
- * calculated automatically.
- *
- * \note In order to clear the dirty flag, this function should be followed by a call to
- * #BKE_mesh_poly_normals_clear_dirty. This is separate so that normals are still tagged dirty
- * while they are being assigned.
- *
- * \warning The memory returned by this function is not initialized if it was not previously
- * allocated.
- */
-float (*BKE_mesh_poly_normals_for_write(struct Mesh *mesh))[3];
-
-/**
  * Mark the mesh's vertex normals non-dirty, for when they are calculated or assigned manually.
  */
 void BKE_mesh_vert_normals_clear_dirty(struct Mesh *mesh);
-
-/**
- * Mark the mesh's poly normals non-dirty, for when they are calculated or assigned manually.
- */
-void BKE_mesh_poly_normals_clear_dirty(struct Mesh *mesh);
 
 /**
  * Return true if the mesh vertex normals either are not stored or are dirty.

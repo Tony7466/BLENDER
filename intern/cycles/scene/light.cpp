@@ -138,6 +138,8 @@ NODE_DEFINE(Light)
 
   SOCKET_STRING(lightgroup, "Light Group", ustring());
 
+  SOCKET_BOOLEAN(normalize, "Normalize", true);
+
   return type;
 }
 
@@ -239,34 +241,6 @@ void LightManager::test_enabled_lights(Scene *scene)
   }
 }
 
-bool LightManager::object_usable_as_light(Object *object)
-{
-  Geometry *geom = object->get_geometry();
-  if (geom->geometry_type != Geometry::MESH && geom->geometry_type != Geometry::VOLUME) {
-    return false;
-  }
-  /* Skip objects with NaNs */
-  if (!object->bounds.valid()) {
-    return false;
-  }
-  /* Skip if we are not visible for BSDFs. */
-  if (!(object->get_visibility() & (PATH_RAY_DIFFUSE | PATH_RAY_GLOSSY | PATH_RAY_TRANSMIT))) {
-    return false;
-  }
-  /* Skip if we have no emission shaders. */
-  /* TODO(sergey): Ideally we want to avoid such duplicated loop, since it'll
-   * iterate all geometry shaders twice (when counting and when calculating
-   * triangle area.
-   */
-  foreach (Node *node, geom->get_used_shaders()) {
-    Shader *shader = static_cast<Shader *>(node);
-    if (shader->emission_sampling != EMISSION_SAMPLING_NONE) {
-      return true;
-    }
-  }
-  return false;
-}
-
 void LightManager::device_update_distribution(Device *,
                                               DeviceScene *dscene,
                                               Scene *scene,
@@ -284,7 +258,7 @@ void LightManager::device_update_distribution(Device *,
     if (progress.get_cancel())
       return;
 
-    if (!object_usable_as_light(object)) {
+    if (!object->usable_as_light()) {
       continue;
     }
 
@@ -329,7 +303,7 @@ void LightManager::device_update_distribution(Device *,
     if (progress.get_cancel())
       return;
 
-    if (!object_usable_as_light(object)) {
+    if (!object->usable_as_light()) {
       j++;
       continue;
     }
@@ -465,11 +439,6 @@ void LightManager::device_update_tree(Device *,
   KernelIntegrator *kintegrator = &dscene->data.integrator;
 
   if (!kintegrator->use_light_tree) {
-    dscene->light_tree_nodes.free();
-    dscene->light_tree_emitters.free();
-    dscene->light_to_tree.free();
-    dscene->object_lookup_offset.free();
-    dscene->triangle_to_tree.free();
     return;
   }
 
@@ -510,7 +479,7 @@ void LightManager::device_update_tree(Device *,
     if (progress.get_cancel())
       return;
 
-    if (!object_usable_as_light(object)) {
+    if (!object->usable_as_light()) {
       object_id++;
       continue;
     }
@@ -569,10 +538,10 @@ void LightManager::device_update_tree(Device *,
    * To do so, we repeatedly move to the left child of the current node until we reach the leftmost
    * descendant, while keeping track of the right child of each node we visited by storing the
    * pointer in the `right_node_stack`.
-   * Once finished visiting the left subtree, we retrieve the the last stored pointer from
+   * Once finished visiting the left subtree, we retrieve the last stored pointer from
    * `right_node_stack`, assign it to its parent (retrieved from `left_index_stack`), and repeat
    * the process from there. */
-  int left_index_stack[32]; /* sizeof(bit_trail) * 8 == 32 */
+  int left_index_stack[32]; /* `sizeof(bit_trail) * 8 == 32`. */
   LightTreeNode *right_node_stack[32];
   int stack_id = 0;
   const LightTreeNode *node = light_tree.get_root();
@@ -1008,7 +977,8 @@ void LightManager::device_update_lights(Device *device, DeviceScene *dscene, Sce
       shader_id &= ~SHADER_AREA_LIGHT;
 
       float radius = light->size;
-      float invarea = (radius > 0.0f) ? 1.0f / (M_PI_F * radius * radius) : 1.0f;
+      float invarea = (light->normalize && radius > 0.0f) ? 1.0f / (M_PI_F * radius * radius) :
+                                                            1.0f;
 
       if (light->use_mis && radius > 0.0f)
         shader_id |= SHADER_USE_MIS;
@@ -1024,7 +994,7 @@ void LightManager::device_update_lights(Device *device, DeviceScene *dscene, Sce
       float radius = tanf(angle);
       float cosangle = cosf(angle);
       float area = M_PI_F * radius * radius;
-      float invarea = (area > 0.0f) ? 1.0f / area : 1.0f;
+      float invarea = (light->normalize && area > 0.0f) ? 1.0f / area : 1.0f;
       float3 dir = light->dir;
 
       dir = safe_normalize(dir);
@@ -1069,7 +1039,7 @@ void LightManager::device_update_lights(Device *device, DeviceScene *dscene, Sce
       if (light->ellipse) {
         area *= -M_PI_4_F;
       }
-      float invarea = (area != 0.0f) ? 1.0f / area : 1.0f;
+      float invarea = (light->normalize && area != 0.0f) ? 1.0f / area : 1.0f;
       float3 dir = light->dir;
 
       /* Clamp angles in (0, 0.1) to 0.1 to prevent zero intensity due to floating-point precision
@@ -1109,7 +1079,8 @@ void LightManager::device_update_lights(Device *device, DeviceScene *dscene, Sce
       }
 
       float radius = light->size;
-      float invarea = (radius > 0.0f) ? 1.0f / (M_PI_F * radius * radius) : 1.0f;
+      float invarea = (light->normalize && radius > 0.0f) ? 1.0f / (M_PI_F * radius * radius) :
+                                                            1.0f;
       float cos_half_spot_angle = cosf(light->spot_angle * 0.5f);
       float spot_smooth = (1.0f - cos_half_spot_angle) * light->spot_smooth;
 
@@ -1201,10 +1172,10 @@ void LightManager::device_update(Device *device,
 
 void LightManager::device_free(Device *, DeviceScene *dscene, const bool free_background)
 {
-  /* TODO: check if the light tree member variables need to be wrapped in a conditional too. */
   dscene->light_tree_nodes.free();
   dscene->light_tree_emitters.free();
   dscene->light_to_tree.free();
+  dscene->object_lookup_offset.free();
   dscene->triangle_to_tree.free();
 
   dscene->light_distribution.free();

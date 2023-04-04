@@ -106,22 +106,10 @@ float (*BKE_mesh_vert_normals_for_write(Mesh *mesh))[3]
   return reinterpret_cast<float(*)[3]>(mesh->runtime->vert_normals.data());
 }
 
-float (*BKE_mesh_poly_normals_for_write(Mesh *mesh))[3]
-{
-  mesh->runtime->poly_normals.reinitialize(mesh->totpoly);
-  return reinterpret_cast<float(*)[3]>(mesh->runtime->poly_normals.data());
-}
-
 void BKE_mesh_vert_normals_clear_dirty(Mesh *mesh)
 {
   mesh->runtime->vert_normals_dirty = false;
   BLI_assert(mesh->runtime->vert_normals.size() == mesh->totvert);
-}
-
-void BKE_mesh_poly_normals_clear_dirty(Mesh *mesh)
-{
-  mesh->runtime->poly_normals_dirty = false;
-  BLI_assert(mesh->runtime->poly_normals.size() == mesh->totpoly);
 }
 
 bool BKE_mesh_vert_normals_are_dirty(const Mesh *mesh)
@@ -1284,7 +1272,7 @@ static void loop_split_generator(TaskPool *pool, LoopSplitTaskDataCommon *common
     const MPoly &poly = polys[poly_index];
 
     for (const int ml_curr_index : IndexRange(poly.loopstart, poly.totloop)) {
-      const int ml_prev_index = mesh_topology::poly_loop_prev(poly, ml_curr_index);
+      const int ml_prev_index = mesh::poly_corner_prev(poly, ml_curr_index);
 
 #if 0
       printf("Checking loop %d / edge %u / vert %u (sharp edge: %d, skiploop: %d)",

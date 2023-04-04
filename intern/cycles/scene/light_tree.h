@@ -23,9 +23,7 @@ struct OrientationBounds {
   float theta_o; /* angle bounding the normals */
   float theta_e; /* angle bounding the light emissions */
 
-  __forceinline OrientationBounds()
-  {
-  }
+  __forceinline OrientationBounds() {}
 
   __forceinline OrientationBounds(const float3 &axis_, float theta_o_, float theta_e_)
       : axis(axis_), theta_o(theta_o_), theta_e(theta_e_)
@@ -69,9 +67,7 @@ struct LightTreePrimitivesMeasure {
 
   __forceinline LightTreePrimitivesMeasure() = default;
 
-  __forceinline LightTreePrimitivesMeasure(empty_t)
-  {
-  }
+  __forceinline LightTreePrimitivesMeasure(empty_t) {}
 
   __forceinline LightTreePrimitivesMeasure(const BoundBox &bbox,
                                            const OrientationBounds &bcone,
@@ -160,7 +156,7 @@ struct LightTreeNode {
   int num_prims = -1;                    /* The number of primitives a leaf node stores. A negative
                                             number indicates it is an inner node. */
   int first_prim_index;                  /* Leaf nodes contain an index to first primitive. */
-  unique_ptr<LightTreeNode> children[2]; /* Inner node has two chlidren. */
+  unique_ptr<LightTreeNode> children[2]; /* Inner node has two children. */
 
   LightTreeNode() = default;
 

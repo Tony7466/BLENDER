@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. All rights reserved. */
+ * Copyright 2011 Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -929,38 +929,80 @@ static bool mesh_validate_customdata(CustomData *data,
 
   PRINT_MSG("%s: Checking %d CD layers...\n", __func__, data->totlayer);
 
+  /* Set dummy values so the layer-type is always initialized on first access. */
+  int layer_num = -1;
+  int layer_num_type = -1;
+
   while (i < data->totlayer) {
     CustomDataLayer *layer = &data->layers[i];
+    const eCustomDataType type = eCustomDataType(layer->type);
     bool ok = true;
 
-    if (CustomData_layertype_is_singleton(layer->type)) {
-      const int layer_tot = CustomData_number_of_layers(data, layer->type);
-      if (layer_tot > 1) {
-        PRINT_ERR("\tCustomDataLayer type %d is a singleton, found %d in Mesh structure\n",
+    /* Count layers when the type changes. */
+    if (layer_num_type != type) {
+      layer_num = CustomData_number_of_layers(data, type);
+      layer_num_type = type;
+    }
+
+    /* Validate active index, for a time this could be set to a negative value, see: #105860. */
+    int *active_index_array[] = {
+        &layer->active,
+        &layer->active_rnd,
+        &layer->active_clone,
+        &layer->active_mask,
+    };
+    for (int *active_index : Span(active_index_array, ARRAY_SIZE(active_index_array))) {
+      if (*active_index < 0) {
+        PRINT_ERR("\tCustomDataLayer type %d has a negative active index (%d)\n",
                   layer->type,
-                  layer_tot);
+                  *active_index);
+        if (do_fixes) {
+          *active_index = 0;
+          has_fixes = true;
+        }
+      }
+      else {
+        if (*active_index >= layer_num) {
+          PRINT_ERR("\tCustomDataLayer type %d has an out of bounds active index (%d >= %d)\n",
+                    layer->type,
+                    *active_index,
+                    layer_num);
+          if (do_fixes) {
+            BLI_assert(layer_num > 0);
+            *active_index = layer_num - 1;
+            has_fixes = true;
+          }
+        }
+      }
+    }
+
+    if (CustomData_layertype_is_singleton(type)) {
+      if (layer_num > 1) {
+        PRINT_ERR("\tCustomDataLayer type %d is a singleton, found %d in Mesh structure\n",
+                  type,
+                  layer_num);
         ok = false;
       }
     }
 
     if (mask != 0) {
-      eCustomDataMask layer_typemask = CD_TYPE_AS_MASK(layer->type);
+      eCustomDataMask layer_typemask = CD_TYPE_AS_MASK(type);
       if ((layer_typemask & mask) == 0) {
-        PRINT_ERR("\tCustomDataLayer type %d which isn't in the mask\n", layer->type);
+        PRINT_ERR("\tCustomDataLayer type %d which isn't in the mask\n", type);
         ok = false;
       }
     }
 
     if (ok == false) {
       if (do_fixes) {
-        CustomData_free_layer(data, layer->type, 0, i);
+        CustomData_free_layer(data, type, 0, i);
         has_fixes = true;
       }
     }
 
     if (ok) {
       if (CustomData_layer_validate(layer, totitems, do_fixes)) {
-        PRINT_ERR("\tCustomDataLayer type %d has some invalid data\n", layer->type);
+        PRINT_ERR("\tCustomDataLayer type %d has some invalid data\n", type);
         has_fixes = do_fixes;
       }
       i++;
