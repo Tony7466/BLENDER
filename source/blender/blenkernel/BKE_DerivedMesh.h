@@ -68,10 +68,10 @@ struct Scene;
 
 /*
  * NOTE: all #MFace interfaces now officially operate on tessellated data.
- *       Also, the #MFace orig-index layer indexes #MPoly, not #MFace.
+ *       Also, the #MFace orig-index layer indexes polys, not #MFace.
  */
 
-/* keep in sync with MFace/MPoly types */
+/* keep in sync with MFace type */
 typedef struct DMFlagMat {
   short mat_nr;
   bool sharp;
@@ -87,9 +87,9 @@ struct DerivedMesh {
   /** Private DerivedMesh data, only for internal DerivedMesh use */
   CustomData vertData, edgeData, faceData, loopData, polyData;
   int numVertData, numEdgeData, numTessFaceData, numLoopData, numPolyData;
-  int needsFree;    /* checked on ->release, is set to 0 for cached results */
-  int deformedOnly; /* set by modifier stack if only deformed from original */
   DerivedMeshType type;
+  /* Always owned by this object. */
+  int *poly_offsets;
 
   short tangent_mask; /* which tangent layers are calculated */
 
@@ -113,7 +113,7 @@ struct DerivedMesh {
   struct MEdge *(*getEdgeArray)(DerivedMesh *dm);
   int *(*getCornerVertArray)(DerivedMesh *dm);
   int *(*getCornerEdgeArray)(DerivedMesh *dm);
-  struct MPoly *(*getPolyArray)(DerivedMesh *dm);
+  int *(*getPolyArray)(DerivedMesh *dm);
 
   /** Copy all verts/edges/faces from the derived mesh into
    * *{vert/edge/face}_r (must point to a buffer large enough)
@@ -122,7 +122,7 @@ struct DerivedMesh {
   void (*copyEdgeArray)(DerivedMesh *dm, struct MEdge *r_edge);
   void (*copyCornerVertArray)(DerivedMesh *dm, int *r_corner_verts);
   void (*copyCornerEdgeArray)(DerivedMesh *dm, int *r_corner_edges);
-  void (*copyPolyArray)(DerivedMesh *dm, struct MPoly *r_poly);
+  void (*copyPolyArray)(DerivedMesh *dm, int *r_poly_offsets);
 
   /** Return a pointer to the entire array of vert/edge/face custom data
    * from the derived mesh (this gives a pointer to the actual data, not
@@ -145,12 +145,6 @@ struct DerivedMesh {
   /** Direct Access Operations
    * - Can be undefined
    * - Must be defined for modifiers that only deform however */
-
-  /** Get vertex location, undefined if index is not valid */
-  void (*getVertCo)(DerivedMesh *dm, int index, float r_co[3]);
-
-  /** Get smooth vertex normal, undefined if index is not valid */
-  void (*getVertNo)(DerivedMesh *dm, int index, float r_no[3]);
 
   /** Release reference to the DerivedMesh. This function decides internally
    * if the DerivedMesh will be freed, or cached for later use. */
@@ -189,11 +183,7 @@ void DM_from_template(DerivedMesh *dm,
                       int numLoops,
                       int numPolys);
 
-/**
- * Utility function to release a DerivedMesh's layers
- * returns true if DerivedMesh has to be released by the backend, false otherwise.
- */
-bool DM_release(DerivedMesh *dm);
+void DM_release(DerivedMesh *dm);
 
 /**
  * set the #CD_FLAG_NOCOPY flag in custom data layers where the mask is
