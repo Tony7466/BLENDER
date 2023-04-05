@@ -1,2 +1,2 @@
 Referenced by pull request #105776, Cycles: only apply function #ensure_valid_reflection to glossy materials
-Referenced by issue #106394, Strange shading when motion blur is on.
+Referenced by issue #106394, Strange shading when motion blur is on (fixed in 3.6, request for backport)
