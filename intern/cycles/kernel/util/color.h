@@ -4,6 +4,7 @@
 #pragma once
 
 #include "kernel/integrator/state_util.h"
+#include "kernel/util/lookup_table.h"
 #include "util/color.h"
 #include "util/math.h"
 
@@ -96,7 +97,7 @@ rgb_to_spectrum(KernelGlobals kg, ConstIntegratorGenericState state, int32_t pat
 }
 
 ccl_device_inline Spectrum rgb_to_spectrum(KernelGlobals kg,
-                                           nullptr_t state,
+                                           std::nullptr_t state,
                                            int32_t path_flag,
                                            float3 rgb)
 {
@@ -157,7 +158,7 @@ spectrum_to_rgb(KernelGlobals kg, ConstIntegratorGenericState state, int32_t pat
 }
 
 ccl_device_inline float3 spectrum_to_rgb(KernelGlobals kg,
-                                         nullptr_t state,
+                                         std::nullptr_t state,
                                          int32_t path_flag,
                                          Spectrum s)
 {
