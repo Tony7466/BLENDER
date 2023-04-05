@@ -8,34 +8,19 @@
 #include "BLI_multi_value_map.hh"
 #include "BLI_task.hh"
 
-#include "BKE_geometry_fields.hh"
-
 #include "node_geometry_util.hh"
-
-#include "UI_interface.h"
-#include "UI_resources.h"
 
 namespace blender::nodes::node_geo_index_of_nearest_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Vector>("Position").implicit_field(implicit_field_inputs::position);
+  b.add_input<decl::Vector>(N_("Position")).implicit_field(implicit_field_inputs::position);
 
-  b.add_input<decl::Int>("Self Group ID").supports_field().hide_value().default_value(0);
-  b.add_input<decl::Int>("Group ID to Search").supports_field().hide_value().default_value(0);
+  b.add_input<decl::Int>(N_("Self Group ID")).supports_field().hide_value().default_value(0);
+  b.add_input<decl::Int>(N_("Nearest Group ID")).supports_field().hide_value().default_value(0);
 
-  b.add_output<decl::Int>("Index").field_source().description(N_("Index of nearest element"));
-}
-
-int kdtree_find_neighboard(KDTree_3d *tree, const float3 &position, int index)
-{
-  return BLI_kdtree_3d_find_nearest_cb(
-      tree, position, 0, [index](const int other_new_i, const float * /*co*/, float /*dist_sq*/) {
-        if (index == other_new_i) {
-          return 0;
-        }
-        return 1;
-      });
+  b.add_output<decl::Int>(N_("Index")).field_source().description(N_("Index of nearest element"));
+  b.add_output<decl::Bool>(N_("Valid")).field_source();
 }
 
 class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
@@ -64,63 +49,56 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
     evaluator.add(search_group_);
     evaluator.evaluate();
 
-    const VArray<float3> positions = evaluator.get_evaluated<float3>(0);
-    const VArray<int> group = evaluator.get_evaluated<int>(1);
-    const VArray<int> search_group = evaluator.get_evaluated<int>(2);
+    const VArray<float3> &positions = evaluator.get_evaluated<float3>(0);
+    const VArray<int> &group = evaluator.get_evaluated<int>(1);
+    const VArray<int> &search_group = evaluator.get_evaluated<int>(2);
 
-    const bool group_use = !group.is_single();
-    const bool group_to_find_use = !search_group.is_single();
+    const bool use_group = !group.is_single();
+    const bool use_search_group = !search_group.is_single();
 
     MultiValueMap<int, int64_t> in_group;
     MultiValueMap<int, int64_t> out_group;
     Array<int> indices(mask.min_array_size());
 
-    threading::parallel_invoke((indices.size() > 512) && group_to_find_use && group_use,
-                               [&]() {
-                                 if (group_use) {
-                                   for (const int64_t i : mask.index_range()) {
-                                     in_group.add(group[mask[i]], i);
-                                   }
-                                 }
-                                 else {
-                                   const int group_key = group.get_internal_single();
-                                   in_group.add_multiple(group_key, {});
-                                 }
-                               },
-                               [&]() {
-                                 if (group_to_find_use) {
-                                   for (const int64_t i : mask.index_range()) {
-                                     out_group.add(search_group[mask[i]], i);
-                                   }
-                                 }
-                               });
+    threading::parallel_invoke(
+        (indices.size() > 512) && use_search_group && use_group,
+        [&]() {
+          if (use_group) {
+            mask.foreach_index([&](const auto index) { in_group.add(group[index], index); });
+            return;
+          }
+          const int group_key = group.get_internal_single();
+          in_group.add_multiple(group_key, {});
+        },
+        [&]() {
+          if (use_search_group) {
+            mask.foreach_index(
+                [&](const auto index) { out_group.add(search_group[index], index); });
+          }
+        });
 
-    for (int key : in_group.keys()) {
+    for (const int key : in_group.keys()) {
       /* Never empty. */
-      const Span<int64_t> self_points = group_use ? in_group.lookup(key) : mask.indices();
-      const Span<int64_t> search_points = group_to_find_use ? out_group.lookup(key) : self_points;
+      const IndexMask self_points(use_group ? IndexMask(in_group.lookup(key)) : mask);
+      const IndexMask search_points(use_search_group ? IndexMask(out_group.lookup(key)) :
+                                                       self_points);
 
       if (search_points.is_empty()) {
-        indices.as_mutable_span().fill_indices(self_points, 0);
+        indices.as_mutable_span().fill_indices(self_points, -1);
         continue;
       }
 
       KDTree_3d *tree = BLI_kdtree_3d_new(search_points.size());
+
       for (const int64_t index : search_points) {
         BLI_kdtree_3d_insert(tree, index, positions[index]);
       }
 
       BLI_kdtree_3d_balance(tree);
 
-      threading::parallel_for(self_points.index_range(), 128, [&](const IndexRange range) {
+      threading::parallel_for(self_points.index_range(), 512, [&](const IndexRange range) {
         for (const int64_t index : self_points.slice(range)) {
-          const int index_of_nearest = kdtree_find_neighboard(tree, positions[index], index);
-          if (index_of_nearest == -1) {
-            indices[index] = index;
-          }
-          else {
-            indices[index] = index_of_nearest;
-          }
+          indices[index] = this->kdtree_find_neighboard(tree, positions[index], index);
         }
       });
 
@@ -130,6 +108,22 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
     return VArray<int>::ForContainer(std::move(indices));
   }
 
+ protected:
+  int kdtree_find_neighboard(KDTree_3d *tree, const float3 &position, int index) const
+  {
+    return BLI_kdtree_3d_find_nearest_cb(
+        tree,
+        position,
+        0,
+        [index](const int other_new_i, const float * /*co*/, float /*dist_sq*/) {
+          if (index == other_new_i) {
+            return 0;
+          }
+          return 1;
+        });
+  }
+
+ public:
   void for_each_field_input_recursive(FunctionRef<void(const FieldInput &)> fn) const
   {
     positions_.node().for_each_field_input_recursive(fn);
@@ -160,14 +154,34 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  const Field<float3> position = params.extract_input<Field<float3>>("Position");
+  Field<float3> position_field = params.extract_input<Field<float3>>("Position");
 
-  const Field<int> self_group = params.extract_input<Field<int>>("Self Group ID");
-  const Field<int> search_group = params.extract_input<Field<int>>("Group ID to Search");
+  Field<int> self_group_field = params.extract_input<Field<int>>("Self Group ID");
+  Field<int> search_group_field = params.extract_input<Field<int>>("Nearest Group ID");
 
-  params.set_output("Index",
-                    Field<int>{std::make_shared<IndexOfNearestFieldInput>(
-                        std::move(position), std::move(self_group), std::move(search_group))});
+  Field<int> index_of_nearest_field(std::make_shared<IndexOfNearestFieldInput>(
+      std::move(position_field), std::move(self_group_field), std::move(search_group_field)));
+
+  if (params.output_is_required("Index")) {
+    static auto clamp_fn = mf::build::SI1_SO<int, int>(
+        "Clamp",
+        [](const int index) { return math::max(0, index); },
+        mf::build::exec_presets::AllSpanOrSingle());
+    auto clamp_op = std::make_shared<FieldOperation>(
+        FieldOperation(std::move(clamp_fn), {index_of_nearest_field}));
+    params.set_output("Index", Field<int>(clamp_op, 0));
+  }
+
+  if (params.output_is_required("Valid")) {
+    static auto valid_fn = mf::build::SI1_SO<int, bool>(
+        "Valid Index",
+        [](const int index) { return index != -1; },
+        mf::build::exec_presets::AllSpanOrSingle());
+
+    auto valid_op = std::make_shared<FieldOperation>(
+        FieldOperation(std::move(valid_fn), {std::move(index_of_nearest_field)}));
+    params.set_output("Valid", Field<bool>(valid_op, 0));
+  }
 }
 
 }  // namespace blender::nodes::node_geo_index_of_nearest_cc
