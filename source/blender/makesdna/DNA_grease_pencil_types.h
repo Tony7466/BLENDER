@@ -20,6 +20,7 @@ class GreasePencilDrawingRuntime;
 struct StrokePoint;
 namespace gpencil {
 class Layer;
+class LayerGroup;
 }
 }  // namespace blender::bke
 using GreasePencilRuntimeHandle = blender::bke::GreasePencilRuntime;
@@ -187,7 +188,6 @@ typedef struct GreasePencil {
   /* Only used for storage in the .blend file. */
   GreasePencilLayerTreeStorage layer_tree_storage;
 #ifdef __cplusplus
-  blender::bke::gpencil::Layer *get_active_layer();
   void save_layer_tree_to_storage();
   void load_layer_tree_from_storage();
   void read_layer_tree_storage(BlendDataReader *reader);
@@ -210,6 +210,10 @@ typedef struct GreasePencil {
    * Runtime struct pointer.
    */
   GreasePencilRuntimeHandle *runtime;
+#ifdef __cplusplus
+  blender::bke::gpencil::Layer *get_active_layer();
+  blender::bke::gpencil::LayerGroup &root_group();
+#endif
 } GreasePencil;
 
 #ifdef __cplusplus

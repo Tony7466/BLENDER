@@ -35,7 +35,7 @@ TEST(gpencil, create_grease_pencil_id)
 
   GreasePencil *grease_pencil = static_cast<GreasePencil *>(BKE_id_new(ctx.bmain, ID_GP, "GP"));
   EXPECT_EQ(grease_pencil->drawings().size(), 0);
-  EXPECT_EQ(grease_pencil->runtime->root_group().total_num_children(), 0);
+  EXPECT_EQ(grease_pencil->root_group().total_num_children(), 0);
 }
 
 /* --------------------------------------------------------------------------------------------- */

@@ -452,7 +452,7 @@ void GreasePencil::foreach_visible_drawing(
   using namespace blender::bke::gpencil;
 
   blender::Span<GreasePencilDrawingOrReference *> drawings = this->drawings();
-  for (TreeNode &node : this->runtime->root_group().children_in_pre_order()) {
+  for (TreeNode &node : this->root_group().children_in_pre_order()) {
     if (!node.is_layer()) {
       continue;
     }
@@ -476,13 +476,19 @@ blender::bke::gpencil::Layer *GreasePencil::get_active_layer()
 {
   using namespace blender::bke::gpencil;
   /* TOOD. For now get the first layer. */
-  for (TreeNode &node : this->runtime->root_group().children_in_pre_order()) {
+  for (TreeNode &node : this->root_group().children_in_pre_order()) {
     if (!node.is_layer()) {
       continue;
     }
     return &node.as_layer();
   }
   return nullptr;
+}
+
+blender::bke::gpencil::LayerGroup &GreasePencil::root_group()
+{
+  BLI_assert(this->runtime != nullptr);
+  return this->runtime->root_group();
 }
 
 void GreasePencil::read_drawing_array(BlendDataReader *reader)
@@ -617,14 +623,14 @@ void GreasePencil::save_layer_tree_to_storage()
 {
   using namespace blender::bke::gpencil;
   /* We always store the root group, so we have to add one here. */
-  int num_tree_nodes = this->runtime->root_group().total_num_children() + 1;
+  int num_tree_nodes = this->root_group().total_num_children() + 1;
   this->layer_tree_storage.nodes_num = num_tree_nodes;
   this->layer_tree_storage.nodes = MEM_cnew_array<GreasePencilLayerTreeNode *>(num_tree_nodes,
                                                                                __func__);
 
   int i = 0;
-  save_layer_group_to_storage(this->runtime->root_group(), &this->layer_tree_storage.nodes[i++]);
-  for (TreeNode &node : this->runtime->root_group().children_in_pre_order()) {
+  save_layer_group_to_storage(this->root_group(), &this->layer_tree_storage.nodes[i++]);
+  for (TreeNode &node : this->root_group().children_in_pre_order()) {
     GreasePencilLayerTreeNode **dst = &this->layer_tree_storage.nodes[i];
     if (node.is_group()) {
       LayerGroup &group = node.as_group();

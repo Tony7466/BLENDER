@@ -109,7 +109,7 @@ void legacy_gpencil_to_grease_pencil(GreasePencil &grease_pencil, bGPdata &gpd)
 
   int i = 0;
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd.layers) {
-    Layer &new_layer = grease_pencil.runtime->root_group().add_layer(Layer(gpl->info));
+    Layer &new_layer = grease_pencil.root_group().add_layer(Layer(gpl->info));
     LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
       grease_pencil.drawing_array[i] = reinterpret_cast<GreasePencilDrawingOrReference *>(
           MEM_new<GreasePencilDrawing>(__func__));
