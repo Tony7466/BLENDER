@@ -473,7 +473,7 @@ class NODE_MT_category_simulation(Menu):
             layout,
             "GeometryNodeSimulationInput",
             "GeometryNodeSimulationOutput",
-            label="Simulation Nodes",
+            label="Simulation Zone",
             links=[("Geometry", "Geometry")]
         )
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
