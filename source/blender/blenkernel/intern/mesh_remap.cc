@@ -296,20 +296,6 @@ void BKE_mesh_remap_find_best_match_from_mesh(const float (*vert_positions_dst)[
 /** \name Mesh to Mesh Mapping
  * \{ */
 
-void BKE_mesh_remap_calc_source_cddata_masks_from_map_modes(const int /*vert_mode*/,
-                                                            const int /*edge_mode*/,
-                                                            const int loop_mode,
-                                                            const int /*poly_mode*/,
-                                                            CustomData_MeshMasks *r_cddata_mask)
-{
-  /* vert, edge and poly mapping modes never need extra cddata from source object. */
-  const bool need_lnors_src = (loop_mode & MREMAP_USE_LOOP) && (loop_mode & MREMAP_USE_NORMAL);
-
-  if (need_lnors_src) {
-    r_cddata_mask->lmask |= CD_MASK_NORMAL;
-  }
-}
-
 void BKE_mesh_remap_init(MeshPairRemap *map, const int items_num)
 {
   MemArena *mem = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __func__);
@@ -462,7 +448,6 @@ void BKE_mesh_remap_calc_verts_from_mesh(const int mode,
                                          const float ray_radius,
                                          const float (*vert_positions_dst)[3],
                                          const int numverts_dst,
-                                         const bool /*dirty_nors_dst*/,
                                          const Mesh *me_src,
                                          Mesh *me_dst,
                                          MeshPairRemap *r_map)
@@ -685,7 +670,6 @@ void BKE_mesh_remap_calc_edges_from_mesh(const int mode,
                                          const int numverts_dst,
                                          const MEdge *edges_dst,
                                          const int numedges_dst,
-                                         const bool /*dirty_nors_dst*/,
                                          const Mesh *me_src,
                                          Mesh *me_dst,
                                          MeshPairRemap *r_map)
@@ -1219,19 +1203,14 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
                                          const SpaceTransform *space_transform,
                                          const float max_dist,
                                          const float ray_radius,
-                                         Mesh *mesh_dst,
+                                         const Mesh *mesh_dst,
                                          const float (*vert_positions_dst)[3],
                                          const int numverts_dst,
                                          const MEdge *edges_dst,
                                          const int numedges_dst,
                                          const int *corner_verts_dst,
-                                         const int *corner_edges_dst,
                                          const int numloops_dst,
                                          const blender::OffsetIndices<int> polys_dst,
-                                         CustomData *ldata_dst,
-                                         const bool use_split_nors_dst,
-                                         const float split_angle_dst,
-                                         const bool dirty_nors_dst,
                                          const Mesh *me_src,
                                          MeshRemapIslandsCalc gen_islands_src,
                                          const float islands_precision_src,
@@ -1276,7 +1255,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
     blender::Span<blender::float3> loop_normals_src;
 
     blender::Span<blender::float3> poly_normals_dst;
-    blender::float3 *loop_normals_dst;
+    blender::Span<blender::float3> loop_normals_dst;
 
     blender::Array<blender::float3> poly_cents_src;
 
@@ -1333,13 +1312,13 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
         poly_normals_dst = mesh_dst->poly_normals();
       }
       if (need_lnors_dst) {
-        loop_normals_dst = BKE_mesh_corner_normals_ensure(mesh_dst);
+        loop_normals_dst = mesh_dst->corner_normals();
       }
       if (need_pnors_src) {
-        poly_normals_src = BKE_mesh_poly_normals_ensure(me_src);
+        poly_normals_src = me_src->poly_normals();
       }
       if (need_lnors_src) {
-        loop_normals_src = BKE_mesh_corner_normals_ensure(me_src);
+        loop_normals_src = me_src->corner_normals();
       }
     }
 

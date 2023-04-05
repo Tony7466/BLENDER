@@ -138,8 +138,8 @@ bool BKE_shrinkwrap_init_tree(
 
   if (force_normals || BKE_shrinkwrap_needs_normals(shrinkType, shrinkMode)) {
     data->poly_normals = reinterpret_cast<const float(*)[3]>(mesh->poly_normals().data());
-    if ((mesh->flag & ME_AUTOSMOOTH) != 0) {
-      data->clnors = BKE_mesh_corner_normals_ensure(mesh);
+    if (mesh->normal_domain_all_info() == ATTR_DOMAIN_CORNER) {
+      data->clnors = reinterpret_cast<const float(*)[3]>(mesh->corner_normals().data());
     }
   }
 

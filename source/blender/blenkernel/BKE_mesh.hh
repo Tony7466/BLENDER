@@ -6,6 +6,8 @@
  * \ingroup bke
  */
 
+#include "BLI_virtual_array.hh"
+
 #include "BKE_mesh.h"
 
 namespace blender::bke::mesh {
@@ -94,10 +96,8 @@ void normals_calc_loop(Span<float3> vert_positions,
                        Span<int> loop_to_poly_map,
                        Span<float3> vert_normals,
                        Span<float3> poly_normals,
-                       const bool *sharp_edges,
-                       const bool *sharp_faces,
-                       bool use_split_normals,
-                       float split_angle,
+                       const VArray<bool> &sharp_edges,
+                       const VArray<bool> &sharp_faces,
                        short (*clnors_data)[2],
                        MLoopNorSpaceArray *r_lnors_spacearr,
                        MutableSpan<float3> r_loop_normals);
@@ -109,7 +109,7 @@ void normals_loop_custom_set(Span<float3> vert_positions,
                              Span<int> corner_edges,
                              Span<float3> vert_normals,
                              Span<float3> poly_normals,
-                             const bool *sharp_faces,
+                             const VArray<bool> &sharp_faces,
                              MutableSpan<bool> sharp_edges,
                              MutableSpan<float3> r_custom_loop_normals,
                              short (*r_clnors_data)[2]);
@@ -121,7 +121,7 @@ void normals_loop_custom_set_from_verts(Span<float3> vert_positions,
                                         Span<int> corner_edges,
                                         Span<float3> vert_normals,
                                         Span<float3> poly_normals,
-                                        const bool *sharp_faces,
+                                        const VArray<bool> &sharp_faces,
                                         MutableSpan<bool> sharp_edges,
                                         MutableSpan<float3> r_custom_vert_normals,
                                         short (*r_clnors_data)[2]);
@@ -138,7 +138,7 @@ void edges_sharp_from_angle_set(OffsetIndices<int> polys,
                                 Span<int> corner_verts,
                                 Span<int> corner_edges,
                                 Span<float3> poly_normals,
-                                const bool *sharp_faces,
+                                const VArray<bool> &sharp_faces,
                                 const float split_angle,
                                 MutableSpan<bool> sharp_edges);
 

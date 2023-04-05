@@ -9,6 +9,7 @@
 #include <pxr/usd/usdShade/material.h>
 #include <pxr/usd/usdShade/materialBindingAPI.h>
 
+#include "BLI_array_utils.hh"
 #include "BLI_assert.h"
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
@@ -424,43 +425,32 @@ void USDGenericMeshWriter::assign_materials(const HierarchyContext &context,
 void USDGenericMeshWriter::write_normals(const Mesh *mesh, pxr::UsdGeomMesh usd_mesh)
 {
   pxr::UsdTimeCode timecode = get_export_time_code();
-  /* TODO: Only when necessary. */
-  const float(*lnors)[3] = BKE_mesh_corner_normals_ensure(mesh);
-  const OffsetIndices polys = mesh->polys();
-  const Span<int> corner_verts = mesh->corner_verts();
 
   pxr::VtVec3fArray loop_normals;
-  loop_normals.reserve(mesh->totloop);
+  loop_normals.resize(mesh->totloop);
 
-  if (lnors != nullptr) {
-    /* Export custom loop normals. */
-    for (int loop_idx = 0, totloop = mesh->totloop; loop_idx < totloop; ++loop_idx) {
-      loop_normals.push_back(pxr::GfVec3f(lnors[loop_idx]));
+  MutableSpan dst_normals(reinterpret_cast<float3 *>(loop_normals.data()), loop_normals.size());
+
+  switch (mesh->normal_domain_all_info()) {
+    case ATTR_DOMAIN_POINT: {
+      const Span<int> corner_verts = mesh->corner_verts();
+      array_utils::gather(mesh->vert_normals(), corner_verts, dst_normals);
+      break;
     }
-  }
-  else {
-    /* Compute the loop normals based on the 'smooth' flag. */
-    bke::AttributeAccessor attributes = mesh->attributes();
-    const Span<float3> vert_normals = mesh->vert_normals();
-    const Span<float3> poly_normals = mesh->poly_normals();
-    const VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
-        "sharp_face", ATTR_DOMAIN_FACE, false);
-    for (const int i : polys.index_range()) {
-      const IndexRange poly = polys[i];
-      if (sharp_faces[i]) {
-        /* Flat shaded, use common normal for all verts. */
-        pxr::GfVec3f pxr_normal(&poly_normals[i].x);
-        for (int loop_idx = 0; loop_idx < poly.size(); ++loop_idx) {
-          loop_normals.push_back(pxr_normal);
-        }
+    case ATTR_DOMAIN_FACE: {
+      const OffsetIndices polys = mesh->polys();
+      const Span<float3> poly_normals = mesh->poly_normals();
+      for (const int i : polys.index_range()) {
+        dst_normals.slice(polys[i]).fill(poly_normals[i]);
       }
-      else {
-        /* Smooth shaded, use individual vert normals. */
-        for (const int vert : corner_verts.slice(poly)) {
-          loop_normals.push_back(pxr::GfVec3f(&vert_normals[vert].x));
-        }
-      }
+      break;
     }
+    case ATTR_DOMAIN_CORNER: {
+      array_utils::copy(mesh->corner_normals(), dst_normals);
+      break;
+    }
+    default:
+      BLI_assert_unreachable();
   }
 
   pxr::UsdAttribute attr_normals = usd_mesh.CreateNormalsAttr(pxr::VtValue(), true);

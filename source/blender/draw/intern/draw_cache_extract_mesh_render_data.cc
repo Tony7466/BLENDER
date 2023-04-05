@@ -338,8 +338,6 @@ void mesh_render_data_update_looptris(MeshRenderData *mr,
 void mesh_render_data_update_normals(MeshRenderData *mr, const eMRDataType data_flag)
 {
   Mesh *me = mr->me;
-  const bool is_auto_smooth = (me->flag & ME_AUTOSMOOTH) != 0;
-  const float split_angle = is_auto_smooth ? me->smoothresh : float(M_PI);
 
   if (mr->extract_type != MR_EXTRACT_BMESH) {
     /* Mesh */
@@ -347,7 +345,9 @@ void mesh_render_data_update_normals(MeshRenderData *mr, const eMRDataType data_
     if (data_flag & (MR_DATA_POLY_NOR | MR_DATA_LOOP_NOR | MR_DATA_TAN_LOOP_NOR)) {
       mr->poly_normals = mr->me->poly_normals();
     }
-    if (((data_flag & MR_DATA_LOOP_NOR) && is_auto_smooth) || (data_flag & MR_DATA_TAN_LOOP_NOR)) {
+    if (((data_flag & MR_DATA_LOOP_NOR) &&
+         mr->me->normal_domain_all_info() == ATTR_DOMAIN_CORNER) ||
+        (data_flag & MR_DATA_TAN_LOOP_NOR)) {
       mr->corner_normals = mr->me->corner_normals();
     }
   }
@@ -356,7 +356,7 @@ void mesh_render_data_update_normals(MeshRenderData *mr, const eMRDataType data_
     if (data_flag & MR_DATA_POLY_NOR) {
       /* Use #BMFace.no instead. */
     }
-    if (((data_flag & MR_DATA_LOOP_NOR) && is_auto_smooth) || (data_flag & MR_DATA_TAN_LOOP_NOR)) {
+    if (((data_flag & MR_DATA_LOOP_NOR)) || (data_flag & MR_DATA_TAN_LOOP_NOR)) {
 
       const float(*vert_coords)[3] = nullptr;
       const float(*vert_normals)[3] = nullptr;
@@ -374,8 +374,7 @@ void mesh_render_data_update_normals(MeshRenderData *mr, const eMRDataType data_
                                 vert_coords,
                                 vert_normals,
                                 poly_normals,
-                                is_auto_smooth,
-                                split_angle,
+                                true,
                                 reinterpret_cast<float(*)[3]>(mr->bm_loop_normals.data()),
                                 nullptr,
                                 nullptr,

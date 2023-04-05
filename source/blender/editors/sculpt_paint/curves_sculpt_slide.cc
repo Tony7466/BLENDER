@@ -170,16 +170,13 @@ struct SlideOperationExecutor {
       return;
     }
     surface_looptris_orig_ = surface_orig_->looptris();
+    corner_normals_orig_su_ = surface_orig_->corner_normals();
     surface_uv_map_orig_ = surface_orig_->attributes().lookup<float2>(uv_map_name,
                                                                       ATTR_DOMAIN_CORNER);
     if (surface_uv_map_orig_.is_empty()) {
       report_missing_uv_map_on_original_surface(stroke_extension.reports);
       return;
     }
-    corner_normals_orig_su_ = {
-        reinterpret_cast<const float3 *>(BKE_mesh_corner_normals_ensure(surface_orig_)),
-        surface_orig_->totloop};
-
     surface_ob_eval_ = DEG_get_evaluated_object(ctx_.depsgraph, surface_ob_orig_);
     if (surface_ob_eval_ == nullptr) {
       return;

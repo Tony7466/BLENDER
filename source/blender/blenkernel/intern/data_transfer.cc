@@ -71,7 +71,7 @@ void BKE_object_data_transfer_dttypes_to_cdmask(const int dtdata_types,
       r_data_masks->lmask |= CD_MASK_PROP_FLOAT2;
     }
     else if (cddata_type == CD_FAKE_LNOR) {
-      r_data_masks->lmask |= CD_MASK_NORMAL | CD_MASK_CUSTOMLOOPNORMAL;
+      r_data_masks->lmask |= CD_MASK_CUSTOMLOOPNORMAL;
     }
   }
 }
@@ -347,60 +347,6 @@ static void data_transfer_mesh_attributes_transfer_default_color_string(
 
 /* ********** */
 
-/* Generic pre/post processing, only used by custom loop normals currently. */
-
-static void data_transfer_dtdata_type_preprocess(const Mesh *me_src,
-                                                 Mesh *me_dst,
-                                                 const int dtdata_type,
-                                                 const bool dirty_nors_dst)
-{
-  if (dtdata_type == DT_TYPE_LNOR) {
-    /* Compute custom normals into regular loop normals, which will be used for the transfer. */
-    CustomData *ldata_dst = &me_dst->ldata;
-
-    const bool use_split_nors_dst = (me_dst->flag & ME_AUTOSMOOTH) != 0;
-    const float split_angle_dst = me_dst->smoothresh;
-
-    /* This should be ensured by cddata_masks we pass to code generating/giving us me_src now. */
-    BLI_assert(CustomData_get_layer(&me_src->ldata, CD_NORMAL) != nullptr);
-    (void)me_src;
-
-    short(*custom_nors_dst)[2] = static_cast<short(*)[2]>(
-        CustomData_get_layer_for_write(ldata_dst, CD_CUSTOMLOOPNORMAL, me_dst->totloop));
-
-    /* Cache loop nors into a temp CDLayer. */
-    blender::float3 *loop_nors_dst = static_cast<blender::float3 *>(
-        CustomData_get_layer_for_write(ldata_dst, CD_NORMAL, me_dst->totloop));
-    const bool do_loop_nors_dst = (loop_nors_dst == nullptr);
-    if (do_loop_nors_dst) {
-      loop_nors_dst = static_cast<blender::float3 *>(
-          CustomData_add_layer(ldata_dst, CD_NORMAL, CD_SET_DEFAULT, me_dst->totloop));
-      CustomData_set_layer_flag(ldata_dst, CD_NORMAL, CD_FLAG_TEMPORARY);
-    }
-    if (dirty_nors_dst || do_loop_nors_dst) {
-      const bool *sharp_edges = static_cast<const bool *>(
-          CustomData_get_layer_named(&me_dst->edata, CD_PROP_BOOL, "sharp_edge"));
-      const bool *sharp_faces = static_cast<const bool *>(
-          CustomData_get_layer_named(&me_dst->pdata, CD_PROP_BOOL, "sharp_face"));
-      blender::bke::mesh::normals_calc_loop(me_dst->vert_positions(),
-                                            me_dst->edges(),
-                                            me_dst->polys(),
-                                            me_dst->corner_verts(),
-                                            me_dst->corner_edges(),
-                                            {},
-                                            me_dst->vert_normals(),
-                                            me_dst->poly_normals(),
-                                            sharp_edges,
-                                            sharp_faces,
-                                            use_split_nors_dst,
-                                            split_angle_dst,
-                                            custom_nors_dst,
-                                            nullptr,
-                                            {loop_nors_dst, me_dst->totloop});
-    }
-  }
-}
-
 static void data_transfer_dtdata_type_postprocess(Mesh *me_dst,
                                                   const int dtdata_type,
                                                   const bool changed)
@@ -426,8 +372,8 @@ static void data_transfer_dtdata_type_postprocess(Mesh *me_dst,
     bke::MutableAttributeAccessor attributes = me_dst->attributes_for_write();
     bke::SpanAttributeWriter<bool> sharp_edges = attributes.lookup_or_add_for_write_span<bool>(
         "sharp_edge", ATTR_DOMAIN_EDGE);
-    const bool *sharp_faces = static_cast<const bool *>(
-        CustomData_get_layer_named(&me_dst->pdata, CD_PROP_BOOL, "sharp_face"));
+    const VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
+        "sharp_face", ATTR_DOMAIN_FACE, false);
     /* Note loop_nors_dst contains our custom normals as transferred from source... */
     blender::bke::mesh::normals_loop_custom_set(me_dst->vert_positions(),
                                                 me_dst->edges(),
@@ -1303,8 +1249,6 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
   SpaceTransform auto_space_transform;
 
   const Mesh *me_src;
-  /* Assumed always true if not using an evaluated mesh as destination. */
-  bool dirty_nors_dst = true;
 
   const MDeformVert *mdef = nullptr;
   int vg_idx = -1;
@@ -1323,7 +1267,6 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
   BLI_assert((ob_src != ob_dst) && (ob_src->type == OB_MESH) && (ob_dst->type == OB_MESH));
 
   if (me_dst) {
-    dirty_nors_dst = BKE_mesh_vert_normals_are_dirty(me_dst);
     /* Never create needed custom layers on passed destination mesh
      * (assumed to *not* be ob_dst->data, aka modifier case). */
     use_create = false;
@@ -1342,8 +1285,6 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
 
   /* Get source evaluated mesh. */
   BKE_object_data_transfer_dttypes_to_cdmask(data_types, &me_src_mask);
-  BKE_mesh_remap_calc_source_cddata_masks_from_map_modes(
-      map_vert_mode, map_edge_mode, map_loop_mode, map_poly_mode, &me_src_mask);
   if (is_modifier) {
     me_src = BKE_modifier_get_evaluated_mesh_from_evaluated_object(ob_src);
 
@@ -1380,8 +1321,6 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
     if (!(data_types & dtdata_type)) {
       continue;
     }
-
-    data_transfer_dtdata_type_preprocess(me_src, me_dst, dtdata_type, dirty_nors_dst);
 
     cddata_type = BKE_object_data_transfer_dttype_to_cdtype(dtdata_type);
 
@@ -1436,7 +1375,6 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
                                             ray_radius,
                                             positions_dst,
                                             num_verts_dst,
-                                            dirty_nors_dst,
                                             me_src,
                                             me_dst,
                                             &geom_map[VDATA]);
@@ -1516,7 +1454,6 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
                                             num_verts_dst,
                                             edges_dst.data(),
                                             edges_dst.size(),
-                                            dirty_nors_dst,
                                             me_src,
                                             me_dst,
                                             &geom_map[EDATA]);
@@ -1569,8 +1506,6 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
       const blender::Span<MEdge> edges_dst = me_dst->edges();
       const blender::OffsetIndices polys_dst = me_dst->polys();
       const blender::Span<int> corner_verts_dst = me_dst->corner_verts();
-      const blender::Span<int> corner_edges_dst = me_dst->corner_edges();
-      CustomData *ldata_dst = &me_dst->ldata;
 
       MeshRemapIslandsCalc island_callback = data_transfer_get_loop_islands_generator(cddata_type);
 
@@ -1610,13 +1545,8 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
                                             edges_dst.data(),
                                             edges_dst.size(),
                                             corner_verts_dst.data(),
-                                            corner_edges_dst.data(),
                                             corner_verts_dst.size(),
                                             polys_dst,
-                                            ldata_dst,
-                                            (me_dst->flag & ME_AUTOSMOOTH) != 0,
-                                            me_dst->smoothresh,
-                                            dirty_nors_dst,
                                             me_src,
                                             island_callback,
                                             islands_handling_precision,

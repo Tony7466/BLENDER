@@ -115,13 +115,10 @@ struct PuffOperationExecutor {
 
     transforms_ = CurvesSurfaceTransforms(*object_, surface_ob_);
 
-    corner_normals_su_ = {
-        reinterpret_cast<const float3 *>(BKE_mesh_corner_normals_ensure(surface_)),
-        surface_->totloop};
-
     surface_positions_ = surface_->vert_positions();
     surface_corner_verts_ = surface_->corner_verts();
     surface_looptris_ = surface_->looptris();
+    corner_normals_su_ = surface_->corner_normals();
     BKE_bvhtree_from_mesh_get(&surface_bvh_, surface_, BVHTREE_FROM_LOOPTRI, 2);
     BLI_SCOPED_DEFER([&]() { free_bvhtree_from_mesh(&surface_bvh_); });
 

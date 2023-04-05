@@ -65,7 +65,6 @@ static void requiredDataMask(ModifierData *md, CustomData_MeshMasks *r_cddata_ma
 {
   SubsurfModifierData *smd = (SubsurfModifierData *)md;
   if (smd->flags & eSubsurfModifierFlag_UseCustomNormals) {
-    r_cddata_masks->lmask |= CD_MASK_NORMAL;
     r_cddata_masks->lmask |= CD_MASK_CUSTOMLOOPNORMAL;
   }
   if (smd->flags & eSubsurfModifierFlag_UseCrease) {
@@ -262,11 +261,8 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   }
   const bool use_clnors = BKE_subsurf_modifier_use_custom_loop_normals(smd, mesh);
   if (use_clnors) {
-    CustomData_add_layer(&mesh->ldata,
-                         CD_NORMAL,
-                         CD_DUPLICATE,
-                         const_cast<float(*)[3]>(BKE_mesh_corner_normals_ensure(mesh)),
-                         mesh->totloop);
+    void *data = CustomData_add_layer(&mesh->ldata, CD_NORMAL, CD_CONSTRUCT, mesh->totloop);
+    memcpy(data, mesh->corner_normals().data(), mesh->corner_normals().size_in_bytes());
   }
   /* TODO(sergey): Decide whether we ever want to use CCG for subsurf,
    * maybe when it is a last modifier in the stack? */

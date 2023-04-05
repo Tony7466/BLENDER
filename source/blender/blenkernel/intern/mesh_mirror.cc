@@ -12,6 +12,7 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
+#include "BKE_attribute.hh"
 #include "BKE_deform.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
@@ -375,8 +376,8 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
   }
 
   /* handle custom split normals */
-  if (ob->type == OB_MESH && (((Mesh *)ob->data)->flag & ME_AUTOSMOOTH) &&
-      CustomData_has_layer(&result->ldata, CD_CUSTOMLOOPNORMAL) && result->totpoly > 0) {
+  if (ob->type == OB_MESH && CustomData_has_layer(&result->ldata, CD_CUSTOMLOOPNORMAL) &&
+      result->totpoly > 0) {
     blender::Array<blender::float3> loop_normals(result_corner_verts.size());
     CustomData *ldata = &result->ldata;
     short(*clnors)[2] = static_cast<short(*)[2]>(
@@ -391,10 +392,11 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
 
     /* calculate custom normals into loop_normals, then mirror first half into second half */
 
-    const bool *sharp_edges = static_cast<const bool *>(
-        CustomData_get_layer_named(&result->edata, CD_PROP_BOOL, "sharp_edge"));
-    const bool *sharp_faces = static_cast<const bool *>(
-        CustomData_get_layer_named(&result->pdata, CD_PROP_BOOL, "sharp_face"));
+    const blender::bke::AttributeAccessor attributes = result->attributes();
+    const blender::VArray<bool> sharp_edges = attributes.lookup_or_default<bool>(
+        "sharp_edge", ATTR_DOMAIN_EDGE, false);
+    const blender::VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
+        "sharp_face", ATTR_DOMAIN_FACE, false);
     blender::bke::mesh::normals_calc_loop(result->vert_positions(),
                                           result_edges,
                                           result_polys,
@@ -405,8 +407,6 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
                                           result->poly_normals(),
                                           sharp_edges,
                                           sharp_faces,
-                                          true,
-                                          result->smoothresh,
                                           clnors,
                                           &lnors_spacearr,
                                           loop_normals);

@@ -505,6 +505,7 @@ static void do_multires_bake(MultiresBakeRender *bkr,
   const blender::Span<int> corner_verts = temp_mesh->corner_verts();
   const blender::Span<blender::float3> vert_normals = temp_mesh->vert_normals();
   const blender::Span<blender::float3> poly_normals = temp_mesh->poly_normals();
+  const blender::Span<blender::float3> corner_normals = temp_mesh->corner_normals();
   const blender::Span<MLoopTri> looptris = temp_mesh->looptris();
 
   if (require_tangent) {
@@ -523,7 +524,7 @@ static void do_multires_bake(MultiresBakeRender *bkr,
           0,
           reinterpret_cast<const float(*)[3]>(vert_normals.data()),
           reinterpret_cast<const float(*)[3]>(poly_normals.data()),
-          BKE_mesh_corner_normals_ensure(temp_mesh),
+          reinterpret_cast<const float(*)[3]>(corner_normals.data()),
           (const float(*)[3])dm->getVertDataArray(dm, CD_ORCO), /* May be nullptr. */
           /* result */
           &dm->loopData,

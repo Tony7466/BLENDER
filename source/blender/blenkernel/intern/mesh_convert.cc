@@ -1029,7 +1029,6 @@ Mesh *BKE_mesh_new_from_object_to_bmain(Main *bmain,
   mesh_in_bmain->mat = mesh->mat;
   mesh_in_bmain->totcol = mesh->totcol;
   mesh_in_bmain->flag = mesh->flag;
-  mesh_in_bmain->smoothresh = mesh->smoothresh;
   mesh->mat = nullptr;
 
   BKE_mesh_nomain_to_mesh(mesh, mesh_in_bmain, nullptr);

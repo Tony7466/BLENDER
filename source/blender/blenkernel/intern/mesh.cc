@@ -1035,7 +1035,6 @@ void BKE_mesh_copy_parameters(Mesh *me_dst, const Mesh *me_src)
   /* Copy general settings. */
   me_dst->editflag = me_src->editflag;
   me_dst->flag = me_src->flag;
-  me_dst->smoothresh = me_src->smoothresh;
   me_dst->remesh_voxel_size = me_src->remesh_voxel_size;
   me_dst->remesh_voxel_adaptivity = me_src->remesh_voxel_adaptivity;
   me_dst->remesh_mode = me_src->remesh_mode;
@@ -1521,17 +1520,23 @@ void BKE_mesh_smooth_flag_set(Mesh *me, const bool use_smooth)
   }
 }
 
-void BKE_mesh_auto_smooth_flag_set(Mesh *me,
-                                   const bool use_auto_smooth,
-                                   const float auto_smooth_angle)
+void BKE_mesh_sharp_edges_set_from_angle(Mesh *me, const float auto_smooth_angle)
 {
-  if (use_auto_smooth) {
-    me->flag |= ME_AUTOSMOOTH;
-    me->smoothresh = auto_smooth_angle;
-  }
-  else {
-    me->flag &= ~ME_AUTOSMOOTH;
-  }
+  using namespace blender;
+  using namespace blender::bke;
+  bke::MutableAttributeAccessor attributes = me->attributes_for_write();
+  bke::SpanAttributeWriter<bool> sharp_edges = attributes.lookup_or_add_for_write_span<bool>(
+      "sharp_edge", ATTR_DOMAIN_EDGE);
+  const VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
+      "sharp_face", ATTR_DOMAIN_FACE, false);
+  bke::mesh::edges_sharp_from_angle_set(me->polys(),
+                                        me->corner_verts(),
+                                        me->corner_edges(),
+                                        me->poly_normals(),
+                                        sharp_faces,
+                                        auto_smooth_angle,
+                                        sharp_edges.span);
+  sharp_edges.finish();
 }
 
 void BKE_mesh_looptri_get_real_edges(const MEdge *edges,

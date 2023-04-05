@@ -84,14 +84,8 @@ static ModifierData *modifier_get_last_enabled_for_mode(const Scene *scene,
 
 bool BKE_subsurf_modifier_use_custom_loop_normals(const SubsurfModifierData *smd, const Mesh *mesh)
 {
-  return (smd->flags & eSubsurfModifierFlag_UseCustomNormals) && (mesh->flag & ME_AUTOSMOOTH) &&
-         CustomData_has_layer(&mesh->ldata, CD_CUSTOMLOOPNORMAL);
-}
-
-static bool subsurf_modifier_use_autosmooth_or_split_normals(const SubsurfModifierData *smd,
-                                                             const Mesh *mesh)
-{
-  return (mesh->flag & ME_AUTOSMOOTH) || BKE_subsurf_modifier_use_custom_loop_normals(smd, mesh);
+  return smd->flags & eSubsurfModifierFlag_UseCustomNormals &&
+         mesh->normal_domain_all_info() == ATTR_DOMAIN_CORNER;
 }
 
 static bool is_subdivision_evaluation_possible_on_gpu()
@@ -125,7 +119,7 @@ bool BKE_subsurf_modifier_force_disable_gpu_evaluation_for_mesh(const SubsurfMod
     return false;
   }
 
-  return subsurf_modifier_use_autosmooth_or_split_normals(smd, mesh);
+  return BKE_subsurf_modifier_use_custom_loop_normals(smd, mesh);
 }
 
 bool BKE_subsurf_modifier_can_do_gpu_subdiv(const Scene *scene,
@@ -140,7 +134,7 @@ bool BKE_subsurf_modifier_can_do_gpu_subdiv(const Scene *scene,
 
   /* Deactivate GPU subdivision if autosmooth or custom split normals are used as those are
    * complicated to support on GPU, and should really be separate workflows. */
-  if (subsurf_modifier_use_autosmooth_or_split_normals(smd, mesh)) {
+  if (BKE_subsurf_modifier_use_custom_loop_normals(smd, mesh)) {
     return false;
   }
 

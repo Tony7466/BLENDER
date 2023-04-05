@@ -80,11 +80,10 @@ struct WeightedNormalData {
   blender::Span<int> loop_to_poly;
   short (*clnors)[2];
   bool has_clnors; /* True if clnors already existed, false if we had to create them. */
-  float split_angle;
 
   blender::OffsetIndices<int> polys;
   blender::Span<blender::float3> poly_normals;
-  const bool *sharp_faces;
+  blender::VArray<bool> sharp_faces;
   const int *poly_strength;
 
   const MDeformVert *dvert;
@@ -203,7 +202,6 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
   ModePair *mode_pair = wn_data->mode_pair;
 
   const bool has_clnors = wn_data->has_clnors;
-  const float split_angle = wn_data->split_angle;
   MLoopNorSpaceArray lnors_spacearr = {nullptr};
 
   const bool keep_sharp = (wnmd->flag & MOD_WEIGHTEDNORMAL_KEEP_SHARP) != 0;
@@ -229,10 +227,8 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
                                  loop_to_poly,
                                  wn_data->vert_normals,
                                  wn_data->poly_normals,
-                                 wn_data->sharp_edges.data(),
+                                 blender::VArray<bool>::ForSpan(wn_data->sharp_edges),
                                  wn_data->sharp_faces,
-                                 true,
-                                 split_angle,
                                  has_clnors ? clnors : nullptr,
                                  &lnors_spacearr,
                                  loop_normals);
@@ -395,10 +391,8 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
                                             loop_to_poly,
                                             wn_data->vert_normals,
                                             poly_normals,
-                                            wn_data->sharp_edges.data(),
+                                            blender::VArray<bool>::ForSpan(wn_data->sharp_edges),
                                             wn_data->sharp_faces,
-                                            true,
-                                            split_angle,
                                             has_clnors ? clnors : nullptr,
                                             nullptr,
                                             loop_normals);
@@ -521,24 +515,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   WeightedNormalModifierData *wnmd = (WeightedNormalModifierData *)md;
   Object *ob = ctx->object;
 
-  /* XXX TODO(Rohan Rathi):
-   * Once we fully switch to Mesh evaluation of modifiers,
-   * we can expect to get that flag from the COW copy.
-   * But for now, it is lost in the DM intermediate step,
-   * so we need to directly check orig object's data. */
-#if 0
-  if (!(mesh->flag & ME_AUTOSMOOTH))
-#else
-  if (!(((Mesh *)ob->data)->flag & ME_AUTOSMOOTH))
-#endif
-  {
-    BKE_modifier_set_error(
-        ctx->object, (ModifierData *)wnmd, "Enable 'Auto Smooth' in Object Data Properties");
-    return mesh;
-  }
-
-  Mesh *result;
-  result = (Mesh *)BKE_id_copy_ex(nullptr, &mesh->id, nullptr, LIB_ID_COPY_LOCALIZE);
+  Mesh *result = (Mesh *)BKE_id_copy_ex(nullptr, &mesh->id, nullptr, LIB_ID_COPY_LOCALIZE);
 
   const int verts_num = result->totvert;
   const blender::Span<blender::float3> positions = mesh->vert_positions();
@@ -564,7 +541,6 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     weight = (weight - 1) * 25;
   }
 
-  const float split_angle = mesh->smoothresh;
   short(*clnors)[2] = static_cast<short(*)[2]>(
       CustomData_get_layer_for_write(&result->ldata, CD_CUSTOMLOOPNORMAL, mesh->totloop));
 
@@ -599,12 +575,10 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   wn_data.loop_to_poly = loop_to_poly_map;
   wn_data.clnors = clnors;
   wn_data.has_clnors = has_clnors;
-  wn_data.split_angle = split_angle;
 
   wn_data.polys = polys;
   wn_data.poly_normals = mesh->poly_normals();
-  wn_data.sharp_faces = static_cast<const bool *>(
-      CustomData_get_layer_named(&mesh->pdata, CD_PROP_BOOL, "sharp_face"));
+  wn_data.sharp_faces = attributes.lookup_or_default<bool>("sharp_face", ATTR_DOMAIN_FACE, false);
   wn_data.poly_strength = static_cast<const int *>(CustomData_get_layer_named(
       &result->pdata, CD_PROP_INT32, MOD_WEIGHTEDNORMALS_FACEWEIGHT_CDLAYER_ID));
 

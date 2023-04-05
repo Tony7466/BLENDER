@@ -107,7 +107,6 @@ Mesh *STLMeshHelper::to_mesh(Main *bmain, char *mesh_name)
 
   if (use_custom_normals_ && loop_normals_.size() == mesh->totloop) {
     BKE_mesh_set_custom_normals(mesh, reinterpret_cast<float(*)[3]>(loop_normals_.data()));
-    mesh->flag |= ME_AUTOSMOOTH;
   }
 
   return mesh;

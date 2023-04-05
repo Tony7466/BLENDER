@@ -989,7 +989,6 @@ static void bm_mesh_loops_calc_normals_for_vert_without_clnors(
     const float (*fnos)[3],
     float (*r_lnos)[3],
     const bool do_rebuild,
-    const float split_angle_cos,
     /* TLS */
     MLoopNorSpaceArray *r_lnors_spacearr,
     BLI_Stack *edge_vectors,
@@ -1067,8 +1066,7 @@ static void bm_mesh_loops_calc_normals__single_threaded(BMesh *bm,
                                                         MLoopNorSpaceArray *r_lnors_spacearr,
                                                         const short (*clnors_data)[2],
                                                         const int cd_loop_clnors_offset,
-                                                        const bool do_rebuild,
-                                                        const float split_angle_cos)
+                                                        const bool do_rebuild)
 {
   BMIter fiter;
   BMFace *f_curr;
@@ -1161,7 +1159,6 @@ typedef struct BMLoopsCalcNormalsWithCoordsData {
   const short (*clnors_data)[2];
   int cd_loop_clnors_offset;
   bool do_rebuild;
-  float split_angle_cos;
 
   /* Output. */
   float (*r_lnos)[3];
@@ -1254,7 +1251,6 @@ static void bm_mesh_loops_calc_normals_for_vert_without_clnors_fn(
                                                      data->r_lnos,
 
                                                      data->do_rebuild,
-                                                     data->split_angle_cos,
                                                      /* Thread local. */
                                                      tls_data->lnors_spacearr,
                                                      tls_data->edge_vectors,
@@ -1269,8 +1265,7 @@ static void bm_mesh_loops_calc_normals__multi_threaded(BMesh *bm,
                                                        MLoopNorSpaceArray *r_lnors_spacearr,
                                                        const short (*clnors_data)[2],
                                                        const int cd_loop_clnors_offset,
-                                                       const bool do_rebuild,
-                                                       const float split_angle_cos)
+                                                       const bool do_rebuild)
 {
   const bool has_clnors = clnors_data || (cd_loop_clnors_offset != -1);
   MLoopNorSpaceArray _lnors_spacearr = {nullptr};
@@ -1321,7 +1316,6 @@ static void bm_mesh_loops_calc_normals__multi_threaded(BMesh *bm,
   data.clnors_data = clnors_data;
   data.cd_loop_clnors_offset = cd_loop_clnors_offset;
   data.do_rebuild = do_rebuild;
-  data.split_angle_cos = split_angle_cos;
 
   BM_iter_parallel(bm,
                    BM_VERTS_OF_MESH,
@@ -1344,30 +1338,15 @@ static void bm_mesh_loops_calc_normals(BMesh *bm,
                                        MLoopNorSpaceArray *r_lnors_spacearr,
                                        const short (*clnors_data)[2],
                                        const int cd_loop_clnors_offset,
-                                       const bool do_rebuild,
-                                       const float split_angle_cos)
+                                       const bool do_rebuild)
 {
   if (bm->totloop < BM_OMP_LIMIT) {
-    bm_mesh_loops_calc_normals__single_threaded(bm,
-                                                vcos,
-                                                fnos,
-                                                r_lnos,
-                                                r_lnors_spacearr,
-                                                clnors_data,
-                                                cd_loop_clnors_offset,
-                                                do_rebuild,
-                                                split_angle_cos);
+    bm_mesh_loops_calc_normals__single_threaded(
+        bm, vcos, fnos, r_lnos, r_lnors_spacearr, clnors_data, cd_loop_clnors_offset, do_rebuild);
   }
   else {
-    bm_mesh_loops_calc_normals__multi_threaded(bm,
-                                               vcos,
-                                               fnos,
-                                               r_lnos,
-                                               r_lnors_spacearr,
-                                               clnors_data,
-                                               cd_loop_clnors_offset,
-                                               do_rebuild,
-                                               split_angle_cos);
+    bm_mesh_loops_calc_normals__multi_threaded(
+        bm, vcos, fnos, r_lnos, r_lnors_spacearr, clnors_data, cd_loop_clnors_offset, do_rebuild);
   }
 }
 
@@ -1689,7 +1668,6 @@ void BM_loops_calc_normal_vcos(BMesh *bm,
                                const float (*vnos)[3],
                                const float (*fnos)[3],
                                const bool use_split_normals,
-                               const float split_angle,
                                float (*r_lnos)[3],
                                MLoopNorSpaceArray *r_lnors_spacearr,
                                short (*clnors_data)[2],
@@ -1699,15 +1677,8 @@ void BM_loops_calc_normal_vcos(BMesh *bm,
   const bool has_clnors = clnors_data || (cd_loop_clnors_offset != -1);
 
   if (use_split_normals) {
-    bm_mesh_loops_calc_normals(bm,
-                               vcos,
-                               fnos,
-                               r_lnos,
-                               r_lnors_spacearr,
-                               clnors_data,
-                               cd_loop_clnors_offset,
-                               do_rebuild,
-                               has_clnors ? -1.0f : cosf(split_angle));
+    bm_mesh_loops_calc_normals(
+        bm, vcos, fnos, r_lnos, r_lnors_spacearr, clnors_data, cd_loop_clnors_offset, do_rebuild);
   }
   else {
     BLI_assert(!r_lnors_spacearr);
@@ -1736,7 +1707,6 @@ void BM_lnorspacearr_store(BMesh *bm, float (*r_lnors)[3])
                             nullptr,
                             nullptr,
                             true,
-                            M_PI,
                             r_lnors,
                             bm->lnor_spacearr,
                             nullptr,
@@ -1861,7 +1831,6 @@ void BM_lnorspace_rebuild(BMesh *bm, bool preserve_clnor)
                             nullptr,
                             nullptr,
                             true,
-                            M_PI,
                             r_lnors,
                             bm->lnor_spacearr,
                             nullptr,
@@ -1937,17 +1906,8 @@ void BM_lnorspace_err(BMesh *bm)
 
   int cd_loop_clnors_offset = CustomData_get_offset(&bm->ldata, CD_CUSTOMLOOPNORMAL);
   float(*lnors)[3] = static_cast<float(*)[3]>(MEM_callocN(sizeof(*lnors) * bm->totloop, __func__));
-  BM_loops_calc_normal_vcos(bm,
-                            nullptr,
-                            nullptr,
-                            nullptr,
-                            true,
-                            M_PI,
-                            lnors,
-                            temp,
-                            nullptr,
-                            cd_loop_clnors_offset,
-                            true);
+  BM_loops_calc_normal_vcos(
+      bm, nullptr, nullptr, nullptr, true, lnors, temp, nullptr, cd_loop_clnors_offset, true);
 
   for (int i = 0; i < bm->totloop; i++) {
     int j = 0;

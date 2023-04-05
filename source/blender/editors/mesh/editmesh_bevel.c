@@ -335,11 +335,6 @@ static bool edbm_bevel_calc(wmOperator *op)
 
     Mesh *me = obedit->data;
 
-    if (harden_normals && !(me->flag & ME_AUTOSMOOTH)) {
-      /* harden_normals only has a visible effect if autosmooth is on, so turn it on */
-      me->flag |= ME_AUTOSMOOTH;
-    }
-
     EDBM_op_init(em,
                  &bmop,
                  op,

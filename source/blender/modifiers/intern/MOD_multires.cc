@@ -66,7 +66,6 @@ static void requiredDataMask(ModifierData *md, CustomData_MeshMasks *r_cddata_ma
 {
   MultiresModifierData *mmd = (MultiresModifierData *)md;
   if (mmd->flags & eMultiresModifierFlag_UseCustomNormals) {
-    r_cddata_masks->lmask |= CD_MASK_NORMAL;
     r_cddata_masks->lmask |= CD_MASK_CUSTOMLOOPNORMAL;
   }
 }
@@ -216,8 +215,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     return result;
   }
   const bool use_clnors = mmd->flags & eMultiresModifierFlag_UseCustomNormals &&
-                          mesh->flag & ME_AUTOSMOOTH &&
-                          CustomData_has_layer(&mesh->ldata, CD_CUSTOMLOOPNORMAL);
+                          mesh->normal_domain_all_info() == ATTR_DOMAIN_CORNER;
   /* NOTE: Orco needs final coordinates on CPU side, which are expected to be
    * accessible via mesh vertices. For this reason we do not evaluate multires to
    * grids when orco is requested. */
@@ -252,11 +250,8 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   }
   else {
     if (use_clnors) {
-      CustomData_add_layer(&mesh->ldata,
-                           CD_NORMAL,
-                           CD_DUPLICATE,
-                           const_cast<float(*)[3]>(BKE_mesh_corner_normals_ensure(mesh)),
-                           mesh->totloop);
+      void *data = CustomData_add_layer(&mesh->ldata, CD_NORMAL, CD_CONSTRUCT, mesh->totloop);
+      memcpy(data, mesh->corner_normals().data(), mesh->corner_normals().size_in_bytes());
     }
 
     result = multires_as_mesh(mmd, ctx, mesh, subdiv);

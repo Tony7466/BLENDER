@@ -51,11 +51,8 @@ static Mesh *triangulate_mesh(Mesh *mesh,
   bool keep_clnors = (flag & MOD_TRIANGULATE_KEEP_CUSTOMLOOP_NORMALS) != 0;
 
   if (keep_clnors) {
-    CustomData_add_layer(&mesh->ldata,
-                         CD_NORMAL,
-                         CD_DUPLICATE,
-                         const_cast<float(*)[3]>(BKE_mesh_corner_normals_ensure(mesh)),
-                         mesh->totloop);
+    void *data = CustomData_add_layer(&mesh->ldata, CD_NORMAL, CD_CONSTRUCT, mesh->totloop);
+    memcpy(data, mesh->corner_normals().data(), mesh->corner_normals().size_in_bytes());
   }
 
   BMeshCreateParams bmesh_create_params{};

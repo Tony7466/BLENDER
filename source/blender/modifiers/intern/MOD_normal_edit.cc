@@ -237,6 +237,9 @@ static void normalEditModifier_do_radial(NormalEditModifierData *enmd,
                                          blender::MutableSpan<int> corner_edges,
                                          const blender::OffsetIndices<int> polys)
 {
+  using namespace blender;
+  const bke::AttributeAccessor attributes = mesh->attributes();
+
   Object *ob_target = enmd->target;
 
   const bool do_polynors_fix = (enmd->flag & MOD_NORMALEDIT_NO_POLYNORS_FIX) == 0;
@@ -328,8 +331,8 @@ static void normalEditModifier_do_radial(NormalEditModifierData *enmd,
           corner_verts, corner_edges, nos.data(), &mesh->ldata, polys, mesh->poly_normals())) {
     BKE_mesh_tag_face_winding_changed(mesh);
   }
-  const bool *sharp_faces = static_cast<const bool *>(
-      CustomData_get_layer_named(&mesh->pdata, CD_PROP_BOOL, "sharp_face"));
+  const VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
+      "sharp_face", ATTR_DOMAIN_FACE, false);
   blender::bke::mesh::normals_loop_custom_set(vert_positions,
                                               edges,
                                               polys,
@@ -365,6 +368,8 @@ static void normalEditModifier_do_directional(NormalEditModifierData *enmd,
                                               blender::MutableSpan<int> corner_edges,
                                               const blender::OffsetIndices<int> polys)
 {
+  using namespace blender;
+  const bke::AttributeAccessor attributes = mesh->attributes();
   Object *ob_target = enmd->target;
 
   const bool do_polynors_fix = (enmd->flag & MOD_NORMALEDIT_NO_POLYNORS_FIX) == 0;
@@ -435,8 +440,8 @@ static void normalEditModifier_do_directional(NormalEditModifierData *enmd,
           corner_verts, corner_edges, nos.data(), &mesh->ldata, polys, mesh->poly_normals())) {
     BKE_mesh_tag_face_winding_changed(mesh);
   }
-  const bool *sharp_faces = static_cast<const bool *>(
-      CustomData_get_layer_named(&mesh->pdata, CD_PROP_BOOL, "sharp_face"));
+  const VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
+      "sharp_face", ATTR_DOMAIN_FACE, false);
   blender::bke::mesh::normals_loop_custom_set(positions,
                                               edges,
                                               polys,
@@ -486,22 +491,6 @@ static Mesh *normalEditModifier_do(NormalEditModifierData *enmd,
     return mesh;
   }
 
-  /* XXX TODO(Rohan Rathi):
-   * Once we fully switch to Mesh evaluation of modifiers,
-   * we can expect to get that flag from the COW copy.
-   * But for now, it is lost in the DM intermediate step,
-   * so we need to directly check orig object's data. */
-#if 0
-  if (!(mesh->flag & ME_AUTOSMOOTH))
-#else
-  if (!(((Mesh *)ob->data)->flag & ME_AUTOSMOOTH))
-#endif
-  {
-    BKE_modifier_set_error(
-        ob, (ModifierData *)enmd, "Enable 'Auto Smooth' in Object Data Properties");
-    return mesh;
-  }
-
   Mesh *result;
   if (mesh->edges().data() == ((Mesh *)ob->data)->edges().data()) {
     /* We need to duplicate data here, otherwise setting custom normals
@@ -536,8 +525,8 @@ static Mesh *normalEditModifier_do(NormalEditModifierData *enmd,
     clnors = static_cast<short(*)[2]>(
         CustomData_get_layer_for_write(ldata, CD_CUSTOMLOOPNORMAL, corner_verts.size()));
     loop_normals.reinitialize(corner_verts.size());
-    const bool *sharp_faces = static_cast<const bool *>(
-        CustomData_get_layer_named(&result->pdata, CD_PROP_BOOL, "sharp_face"));
+    const VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
+        "sharp_face", ATTR_DOMAIN_FACE, false);
     blender::bke::mesh::normals_calc_loop(positions,
                                           edges,
                                           polys,
@@ -546,10 +535,8 @@ static Mesh *normalEditModifier_do(NormalEditModifierData *enmd,
                                           {},
                                           result->vert_normals(),
                                           result->poly_normals(),
-                                          sharp_edges.span.data(),
+                                          VArray<bool>::ForSpan(sharp_edges.span),
                                           sharp_faces,
-                                          true,
-                                          result->smoothresh,
                                           clnors,
                                           nullptr,
                                           loop_normals);

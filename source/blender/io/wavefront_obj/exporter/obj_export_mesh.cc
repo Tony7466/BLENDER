@@ -364,8 +364,12 @@ void OBJMesh::store_normal_coords_and_indices()
   normal_to_index.reserve(export_mesh_->totpoly);
   loop_to_normal_index_.resize(export_mesh_->totloop);
   loop_to_normal_index_.fill(-1);
-  /* TODO: Only retrieve when necessary. */
-  const float(*lnors)[3] = BKE_mesh_corner_normals_ensure(export_mesh_);
+
+  Span<float3> corner_normals;
+  if (export_mesh_->normal_domain_all_info() == ATTR_DOMAIN_CORNER) {
+    corner_normals = export_mesh_->corner_normals();
+  }
+
   for (int poly_index = 0; poly_index < export_mesh_->totpoly; ++poly_index) {
     const IndexRange poly = mesh_polys_[poly_index];
     bool need_per_loop_normals = lnors != nullptr || !(sharp_faces_[poly_index]);

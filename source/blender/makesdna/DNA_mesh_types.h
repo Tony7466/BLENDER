@@ -16,6 +16,7 @@
 /** Workaround to forward-declare C++ type in C header. */
 #ifdef __cplusplus
 
+#  include "BKE_attribute.h"
 #  include "BLI_bounds_types.hh"
 #  include "BLI_math_vector_types.hh"
 #  include "BLI_offset_indices.hh"
@@ -306,6 +307,12 @@ typedef struct Mesh {
   void loose_edges_tag_none() const;
 
   /**
+   * \warning This ignores auto-smooth currently. This has to land *after* auto-smooth is turned
+   * into a modifier.
+   */
+  eAttrDomain normal_domain_all_info() const;
+
+  /**
    * Normal direction of polygons, defined by positions and the winding direction of face corners.
    */
   blender::Span<blender::float3> poly_normals() const;
@@ -314,7 +321,13 @@ typedef struct Mesh {
    * surrounding each vertex and the normalized position for loose vertices.
    */
   blender::Span<blender::float3> vert_normals() const;
-
+  /**
+   * Normal direction at each face corner. Defined by a combination of face normals, vertex
+   * normals, the `sharp_edge` and `sharp_face` attributes, and potentially by custom normals.
+   *
+   * \note Because of the large memory requirements of storing normals per face corner, prefer
+   * using #poly_normals() or #vert_normals() when possible (see #normal_domain_all_info()).
+   */
   blender::Span<blender::float3> corner_normals() const;
 #endif
 } Mesh;
@@ -370,9 +383,9 @@ enum {
   ME_FLAG_DEPRECATED_2 = 1 << 2, /* deprecated */
   ME_FLAG_UNUSED_3 = 1 << 3,     /* cleared */
   ME_FLAG_UNUSED_4 = 1 << 4,     /* cleared */
-  ME_AUTOSMOOTH = 1 << 5,
-  ME_FLAG_UNUSED_6 = 1 << 6, /* cleared */
-  ME_FLAG_UNUSED_7 = 1 << 7, /* cleared */
+  ME_AUTOSMOOTH = 1 << 5,        /* deprecated */
+  ME_FLAG_UNUSED_6 = 1 << 6,     /* cleared */
+  ME_FLAG_UNUSED_7 = 1 << 7,     /* cleared */
   ME_REMESH_REPROJECT_VERTEX_COLORS = 1 << 8,
   ME_DS_EXPAND = 1 << 9,
   ME_SCULPT_DYNAMIC_TOPOLOGY = 1 << 10,

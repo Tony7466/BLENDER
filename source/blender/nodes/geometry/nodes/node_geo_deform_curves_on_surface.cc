@@ -315,12 +315,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   /* Retrieve face corner normals from each mesh. It's necessary to use face corner normals
    * because face normals or vertex normals may lose information (custom normals, auto smooth) in
    * some cases. */
-  const Span<float3> corner_normals_orig(
-      reinterpret_cast<const float3 *>(BKE_mesh_corner_normals_ensure(surface_mesh_orig)),
-      surface_mesh_orig->totloop);
-  const Span<float3> corner_normals_eval(
-      reinterpret_cast<const float3 *>(BKE_mesh_corner_normals_ensure(surface_mesh_eval)),
-      surface_mesh_eval->totloop);
+  const Span<float3> corner_normals_orig = surface_mesh_orig->corner_normals();
+  const Span<float3> corner_normals_eval = surface_mesh_eval->corner_normals();
 
   std::atomic<int> invalid_uv_count = 0;
 

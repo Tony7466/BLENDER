@@ -313,6 +313,103 @@ void normals_calc_poly_vert(const Span<float3> positions,
 /** \name Mesh Normal Calculation
  * \{ */
 
+enum class BoolArrayMix {
+  None,
+  AllFalse,
+  AllTrue,
+  Mixed,
+};
+BoolArrayMix bool_array_mix_calc(const VArray<bool> &varray,
+                                 const blender::IndexRange range_to_check)
+{
+  using namespace blender;
+  if (varray.is_empty()) {
+    return BoolArrayMix::None;
+  }
+  const CommonVArrayInfo info = varray.common_info();
+  if (info.type == CommonVArrayInfo::Type::Single) {
+    return *static_cast<const bool *>(info.data) ? BoolArrayMix::AllTrue : BoolArrayMix::AllFalse;
+  }
+  if (info.type == CommonVArrayInfo::Type::Span) {
+    const Span<bool> span(static_cast<const bool *>(info.data), varray.size());
+    return threading::parallel_reduce(
+        range_to_check,
+        4096,
+        BoolArrayMix::None,
+        [&](const IndexRange range, const BoolArrayMix init) {
+          if (init == BoolArrayMix::Mixed) {
+            return init;
+          }
+
+          const Span<bool> slice = span.slice(range);
+          const bool first = slice.first();
+          for (const bool value : slice.drop_front(1)) {
+            if (value != first) {
+              return BoolArrayMix::Mixed;
+            }
+          }
+          return first ? BoolArrayMix::AllTrue : BoolArrayMix::AllFalse;
+        },
+        [&](BoolArrayMix a, BoolArrayMix b) { return (a == b) ? a : BoolArrayMix::Mixed; });
+  }
+  return threading::parallel_reduce(
+      range_to_check,
+      2048,
+      BoolArrayMix::None,
+      [&](const IndexRange range, const BoolArrayMix init) {
+        if (init == BoolArrayMix::Mixed) {
+          return init;
+        }
+        /* Alternatively, this could use #materialize to retrieve many values at once. */
+        const bool first = varray[range.first()];
+        for (const int64_t i : range.drop_front(1)) {
+          if (varray[i] != first) {
+            return BoolArrayMix::Mixed;
+          }
+        }
+        return first ? BoolArrayMix::AllTrue : BoolArrayMix::AllFalse;
+      },
+      [&](BoolArrayMix a, BoolArrayMix b) { return (a == b) ? a : BoolArrayMix::Mixed; });
+}
+
+BoolArrayMix bool_array_mix_calc(const VArray<bool> &varray)
+{
+  return bool_array_mix_calc(varray, varray.index_range());
+}
+
+eAttrDomain Mesh::normal_domain_all_info() const
+{
+  using namespace blender;
+  using namespace blender::bke;
+  const short(*custom_normals)[2] = static_cast<const short(*)[2]>(
+      CustomData_get_layer(&this->ldata, CD_CUSTOMLOOPNORMAL));
+  if (custom_normals) {
+    return ATTR_DOMAIN_CORNER;
+  }
+
+  const AttributeAccessor attributes = this->attributes();
+  const VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
+      "sharp_face", ATTR_DOMAIN_FACE, false);
+
+  const BoolArrayMix face_mix = bool_array_mix_calc(sharp_faces);
+  if (face_mix == BoolArrayMix::AllTrue) {
+    return ATTR_DOMAIN_FACE;
+  }
+
+  const VArray<bool> sharp_edges = attributes.lookup_or_default<bool>(
+      "sharp_edge", ATTR_DOMAIN_EDGE, false);
+  const BoolArrayMix edge_mix = bool_array_mix_calc(sharp_edges);
+  if (edge_mix == BoolArrayMix::AllTrue) {
+    return ATTR_DOMAIN_FACE;
+  }
+
+  if (edge_mix == BoolArrayMix::AllFalse && face_mix == BoolArrayMix::AllFalse) {
+    return ATTR_DOMAIN_POINT;
+  }
+
+  return ATTR_DOMAIN_CORNER;
+}
+
 blender::Span<blender::float3> Mesh::vert_normals() const
 {
   if (!this->runtime->vert_normals_dirty) {
@@ -383,63 +480,77 @@ const float (*BKE_mesh_poly_normals_ensure(const Mesh *mesh))[3]
   return reinterpret_cast<const float(*)[3]>(mesh->vert_normals().data());
 }
 
-const float (*BKE_mesh_corner_normals_ensure(const Mesh *mesh))[3]
+blender::Span<blender::float3> Mesh::corner_normals() const
 {
-  if (!BKE_mesh_corner_normals_are_dirty(mesh)) {
-    BLI_assert(mesh->runtime->corner_normals != nullptr || mesh->totloop == 0);
-    return mesh->runtime->corner_normals;
+  using namespace blender;
+  using namespace blender::bke;
+  if (!this->runtime->corner_normals_dirty) {
+    BLI_assert(this->runtime->corner_normals.size() == this->totloop);
+    return this->runtime->corner_normals;
   }
 
-  if (mesh->totpoly == 0) {
-    return nullptr;
+  std::lock_guard lock{this->runtime->normals_mutex};
+  if (!this->runtime->corner_normals_dirty) {
+    BLI_assert(this->runtime->corner_normals.size() == this->totloop);
+    return this->runtime->corner_normals;
   }
-
-  const float(*vert_normals)[3] = BKE_mesh_vertex_normals_ensure(mesh);
-  const float(*poly_normals)[3] = BKE_mesh_poly_normals_ensure(mesh);
-
-  std::lock_guard lock{mesh->runtime->normals_mutex};
-  if (!BKE_mesh_corner_normals_are_dirty(mesh)) {
-    BLI_assert(mesh->runtime->corner_normals != nullptr);
-    return mesh->runtime->corner_normals;
-  }
-
-  float(*corner_normals)[3];
 
   /* Isolate task because a mutex is locked and computing normals is multi-threaded. */
-  blender::threading::isolate_task([&]() {
-    Mesh &mesh_mutable = *const_cast<Mesh *>(mesh);
-    const Span<MVert> verts = mesh_mutable.verts();
-    const Span<MEdge> edges = mesh_mutable.edges();
-    const Span<MPoly> polys = mesh_mutable.polys();
-    const Span<MLoop> loops = mesh_mutable.loops();
+  threading::isolate_task([&]() {
+    const OffsetIndices polys = this->polys();
+    this->runtime->corner_normals.reinitialize(this->totloop);
+    MutableSpan<float3> corner_normals = this->runtime->corner_normals;
+    switch (this->normal_domain_all_info()) {
+      case ATTR_DOMAIN_POINT: {
+        array_utils::gather(this->vert_normals(), this->corner_verts(), corner_normals);
+        break;
+      }
+      case ATTR_DOMAIN_FACE: {
+        const Span<float3> poly_normals = this->poly_normals();
+        threading::parallel_for(poly_normals.index_range(), 1024, [&](const IndexRange range) {
+          for (const int i : range) {
+            corner_normals.slice(polys[i]).fill(poly_normals[i]);
+          }
+        });
+        break;
+      }
+      case ATTR_DOMAIN_CORNER: {
+        const AttributeAccessor attributes = this->attributes();
+        const VArray<bool> sharp_edges = attributes.lookup_or_default<bool>(
+            "sharp_edge", ATTR_DOMAIN_EDGE, false);
+        const VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
+            "sharp_face", ATTR_DOMAIN_FACE, false);
+        const short(*custom_normals)[2] = static_cast<const short(*)[2]>(
+            CustomData_get_layer(&this->ldata, CD_CUSTOMLOOPNORMAL));
 
-    if (mesh_mutable.runtime->corner_normals == nullptr) {
-      mesh_mutable.runtime->corner_normals = (float(*)[3])MEM_malloc_arrayN(
-          mesh_mutable.totloop, sizeof(float[3]), __func__);
+        bke::mesh::normals_calc_loop(this->vert_positions(),
+                                     this->edges(),
+                                     this->polys(),
+                                     this->corner_verts(),
+                                     this->corner_edges(),
+                                     {},
+                                     this->vert_normals(),
+                                     this->poly_normals(),
+                                     sharp_edges,
+                                     sharp_faces,
+                                     custom_normals,
+                                     nullptr,
+                                     this->runtime->corner_normals);
+        break;
+      }
+      default:
+        BLI_assert_unreachable();
     }
 
-    const short(*custom_normals)[2] = (const short(*)[2])CustomData_get_layer(&mesh->ldata,
-                                                                              CD_CUSTOMLOOPNORMAL);
-
-    BKE_mesh_normals_loop_split(verts.data(),
-                                vert_normals,
-                                verts.size(),
-                                edges.data(),
-                                edges.size(),
-                                loops.data(),
-                                corner_normals,
-                                loops.size(),
-                                polys.data(),
-                                poly_normals,
-                                polys.size(),
-                                true,
-                                mesh->smoothresh,
-                                nullptr,
-                                custom_normals,
-                                nullptr);
-
-    BKE_mesh_corner_normals_clear_dirty(&mesh_mutable);
+    this->runtime->corner_normals_dirty = false;
   });
+
+  return this->runtime->corner_normals;
+}
+
+const float (*BKE_mesh_corner_normals_ensure(const Mesh *mesh))[3]
+{
+  return reinterpret_cast<const float(*)[3]>(mesh->corner_normals().data());
 }
 
 void BKE_mesh_ensure_normals_for_display(Mesh *mesh)
@@ -782,17 +893,14 @@ static void mesh_edges_sharp_tag(const OffsetIndices<int> polys,
                                  const Span<int> corner_edges,
                                  const Span<int> loop_to_poly_map,
                                  const Span<float3> poly_normals,
-                                 const Span<bool> sharp_faces,
-                                 const Span<bool> sharp_edges,
+                                 const VArray<bool> &sharp_faces,
+                                 const VArray<bool> &sharp_edges,
                                  const bool check_angle,
                                  const float split_angle,
                                  MutableSpan<int2> edge_to_loops,
                                  MutableSpan<bool> r_sharp_edges)
 {
   const float split_angle_cos = check_angle ? cosf(split_angle) : -1.0f;
-  auto poly_is_smooth = [&](const int poly_i) {
-    return sharp_faces.is_empty() || !sharp_faces[poly_i];
-  };
 
   for (const int poly_i : polys.index_range()) {
     for (const int loop_index : polys[poly_i]) {
@@ -806,7 +914,7 @@ static void mesh_edges_sharp_tag(const OffsetIndices<int> polys,
         /* 'Empty' edge until now, set e2l[0] (and e2l[1] to INDEX_UNSET to tag it as unset). */
         e2l[0] = loop_index;
         /* We have to check this here too, else we might miss some flat faces!!! */
-        e2l[1] = (poly_is_smooth(poly_i)) ? INDEX_UNSET : INDEX_INVALID;
+        e2l[1] = sharp_faces[poly_i] ? INDEX_INVALID : INDEX_UNSET;
       }
       else if (e2l[1] == INDEX_UNSET) {
         const bool is_angle_sharp = (check_angle &&
@@ -818,14 +926,14 @@ static void mesh_edges_sharp_tag(const OffsetIndices<int> polys,
          * or both poly have opposed (flipped) normals, i.e. both loops on the same edge share the
          * same vertex, or angle between both its polys' normals is above split_angle value.
          */
-        if (!poly_is_smooth(poly_i) || (!sharp_edges.is_empty() && sharp_edges[edge_i]) ||
-            vert_i == corner_verts[e2l[0]] || is_angle_sharp) {
+        if (sharp_faces[poly_i] || sharp_edges[edge_i] || vert_i == corner_verts[e2l[0]] ||
+            is_angle_sharp) {
           /* NOTE: we are sure that loop != 0 here ;). */
           e2l[1] = INDEX_INVALID;
 
           /* We want to avoid tagging edges as sharp when it is already defined as such by
            * other causes than angle threshold. */
-          if (!r_sharp_edges.is_empty() && is_angle_sharp) {
+          if (is_angle_sharp) {
             r_sharp_edges[edge_i] = true;
           }
         }
@@ -839,9 +947,52 @@ static void mesh_edges_sharp_tag(const OffsetIndices<int> polys,
 
         /* We want to avoid tagging edges as sharp when it is already defined as such by
          * other causes than angle threshold. */
-        if (!r_sharp_edges.is_empty()) {
-          r_sharp_edges[edge_i] = false;
+        r_sharp_edges[edge_i] = false;
+      }
+      /* Else, edge is already 'disqualified' (i.e. sharp)! */
+    }
+  }
+}
+
+static void build_edge_to_loop_map(const OffsetIndices<int> polys,
+                                   const Span<int> corner_verts,
+                                   const Span<int> corner_edges,
+                                   const VArray<bool> &sharp_faces,
+                                   const VArray<bool> &sharp_edges,
+                                   MutableSpan<int2> edge_to_loops)
+{
+
+  for (const int poly_i : polys.index_range()) {
+    for (const int loop_index : polys[poly_i]) {
+      const int vert_i = corner_verts[loop_index];
+      const int edge_i = corner_edges[loop_index];
+
+      int2 &e2l = edge_to_loops[edge_i];
+
+      /* Check whether current edge might be smooth or sharp */
+      if ((e2l[0] | e2l[1]) == 0) {
+        /* 'Empty' edge until now, set e2l[0] (and e2l[1] to INDEX_UNSET to tag it as unset). */
+        e2l[0] = loop_index;
+        /* We have to check this here too, else we might miss some flat faces!!! */
+        e2l[1] = sharp_faces[poly_i] ? INDEX_INVALID : INDEX_UNSET;
+      }
+      else if (e2l[1] == INDEX_UNSET) {
+        /* Second loop using this edge, time to test its sharpness.
+         * An edge is sharp if it is tagged as such, or its face is not smooth,
+         * or both poly have opposed (flipped) normals, i.e. both loops on the same edge share the
+         * same vertex, or angle between both its polys' normals is above split_angle value.
+         */
+        if (sharp_faces[poly_i] || sharp_edges[edge_i] || vert_i == corner_verts[e2l[0]]) {
+          /* NOTE: we are sure that loop != 0 here ;). */
+          e2l[1] = INDEX_INVALID;
         }
+        else {
+          e2l[1] = loop_index;
+        }
+      }
+      else if (!IS_EDGE_SHARP(e2l)) {
+        /* More than two loops using this edge, tag as sharp if not yet done. */
+        e2l[1] = INDEX_INVALID;
       }
       /* Else, edge is already 'disqualified' (i.e. sharp)! */
     }
@@ -852,7 +1003,7 @@ void edges_sharp_from_angle_set(const OffsetIndices<int> polys,
                                 const Span<int> corner_verts,
                                 const Span<int> corner_edges,
                                 const Span<float3> poly_normals,
-                                const bool *sharp_faces,
+                                const VArray<bool> &sharp_faces,
                                 const float split_angle,
                                 MutableSpan<bool> sharp_edges)
 {
@@ -872,8 +1023,8 @@ void edges_sharp_from_angle_set(const OffsetIndices<int> polys,
                        corner_edges,
                        loop_to_poly,
                        poly_normals,
-                       Span<bool>(sharp_faces, sharp_faces ? polys.size() : 0),
-                       sharp_edges,
+                       sharp_faces,
+                       VArray<bool>::ForSpan(sharp_edges),
                        true,
                        split_angle,
                        edge_to_loops,
@@ -1436,39 +1587,12 @@ void normals_calc_loop(const Span<float3> vert_positions,
                        const Span<int> loop_to_poly_map,
                        const Span<float3> vert_normals,
                        const Span<float3> poly_normals,
-                       const bool *sharp_edges,
-                       const bool *sharp_faces,
-                       bool use_split_normals,
-                       float split_angle,
+                       const VArray<bool> &sharp_edges,
+                       const VArray<bool> &sharp_faces,
                        short (*clnors_data)[2],
                        MLoopNorSpaceArray *r_lnors_spacearr,
                        MutableSpan<float3> r_loop_normals)
 {
-  /* For now this is not supported.
-   * If we do not use split normals, we do not generate anything fancy! */
-  BLI_assert(use_split_normals || !(r_lnors_spacearr));
-
-  if (!use_split_normals) {
-    /* In this case, simply fill `r_loop_normals` with `vert_normals`
-     * (or `poly_normals` for flat faces), quite simple!
-     * Note this is done here to keep some logic and consistency in this quite complex code,
-     * since we may want to use loop_normals even when mesh's 'autosmooth' is disabled
-     * (see e.g. mesh mapping code). As usual, we could handle that on case-by-case basis,
-     * but simpler to keep it well confined here. */
-    for (const int poly_index : polys.index_range()) {
-      const bool is_poly_flat = sharp_faces && sharp_faces[poly_index];
-      for (const int corner : polys[poly_index]) {
-        if (is_poly_flat) {
-          copy_v3_v3(r_loop_normals[corner], poly_normals[poly_index]);
-        }
-        else {
-          copy_v3_v3(r_loop_normals[corner], vert_normals[corner_verts[corner]]);
-        }
-      }
-    }
-    return;
-  }
-
   /**
    * Mapping edge -> loops.
    * If that edge is used by more than two loops (polys),
@@ -1495,9 +1619,6 @@ void normals_calc_loop(const Span<float3> vert_positions,
   else {
     loop_to_poly = loop_to_poly_map;
   }
-
-  /* When using custom loop normals, disable the angle feature! */
-  const bool check_angle = (split_angle < float(M_PI)) && (clnors_data == nullptr);
 
   MLoopNorSpaceArray _lnors_spacearr = {nullptr};
 
@@ -1534,17 +1655,8 @@ void normals_calc_loop(const Span<float3> vert_positions,
   array_utils::gather(vert_normals, corner_verts, r_loop_normals, 1024);
 
   /* This first loop check which edges are actually smooth, and compute edge vectors. */
-  mesh_edges_sharp_tag(polys,
-                       corner_verts,
-                       corner_edges,
-                       loop_to_poly,
-                       poly_normals,
-                       Span<bool>(sharp_faces, sharp_faces ? polys.size() : 0),
-                       Span<bool>(sharp_edges, sharp_edges ? edges.size() : 0),
-                       check_angle,
-                       split_angle,
-                       edge_to_loops,
-                       {});
+  build_edge_to_loop_map(
+      polys, corner_verts, corner_edges, sharp_faces, sharp_edges, edge_to_loops);
 
   if (corner_verts.size() < LOOP_SPLIT_TASK_BLOCK_SIZE * 8) {
     /* Not enough loops to be worth the whole threading overhead. */
@@ -1588,7 +1700,7 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
                                          Span<int> corner_edges,
                                          Span<float3> vert_normals,
                                          Span<float3> poly_normals,
-                                         const bool *sharp_faces,
+                                         const VArray<bool> &sharp_faces,
                                          const bool use_vertices,
                                          MutableSpan<float3> r_custom_loop_normals,
                                          MutableSpan<bool> sharp_edges,
@@ -1603,10 +1715,6 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
   BitVector<> done_loops(corner_verts.size(), false);
   Array<float3> loop_normals(corner_verts.size());
   const Array<int> loop_to_poly = mesh_topology::build_loop_to_poly_map(polys);
-  /* In this case we always consider split nors as ON,
-   * and do not want to use angle to define smooth fans! */
-  const bool use_split_normals = true;
-  const float split_angle = float(M_PI);
 
   BLI_SMALLSTACK_DECLARE(clnors_data, short *);
 
@@ -1619,10 +1727,8 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
                     loop_to_poly,
                     vert_normals,
                     poly_normals,
-                    sharp_edges.data(),
+                    VArray<bool>::ForSpan(sharp_edges),
                     sharp_faces,
-                    use_split_normals,
-                    split_angle,
                     r_clnors_data,
                     &lnors_spacearr,
                     loop_normals);
@@ -1745,10 +1851,8 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
                       loop_to_poly,
                       vert_normals,
                       poly_normals,
-                      sharp_edges.data(),
+                      VArray<bool>::ForSpan(sharp_edges),
                       sharp_faces,
-                      use_split_normals,
-                      split_angle,
                       r_clnors_data,
                       &lnors_spacearr,
                       loop_normals);
@@ -1819,7 +1923,7 @@ void normals_loop_custom_set(const Span<float3> vert_positions,
                              const Span<int> corner_edges,
                              const Span<float3> vert_normals,
                              const Span<float3> poly_normals,
-                             const bool *sharp_faces,
+                             const VArray<bool> &sharp_faces,
                              MutableSpan<bool> sharp_edges,
                              MutableSpan<float3> r_custom_loop_normals,
                              short (*r_clnors_data)[2])
@@ -1845,7 +1949,7 @@ void normals_loop_custom_set_from_verts(const Span<float3> vert_positions,
                                         const Span<int> corner_edges,
                                         const Span<float3> vert_normals,
                                         const Span<float3> poly_normals,
-                                        const bool *sharp_faces,
+                                        const VArray<bool> &sharp_faces,
                                         MutableSpan<bool> sharp_edges,
                                         MutableSpan<float3> r_custom_vert_normals,
                                         short (*r_clnors_data)[2])
@@ -1881,8 +1985,8 @@ static void mesh_set_custom_normals(Mesh *mesh, float (*r_custom_nors)[3], const
   MutableAttributeAccessor attributes = mesh->attributes_for_write();
   SpanAttributeWriter<bool> sharp_edges = attributes.lookup_or_add_for_write_span<bool>(
       "sharp_edge", ATTR_DOMAIN_EDGE);
-  const bool *sharp_faces = static_cast<const bool *>(
-      CustomData_get_layer_named(&mesh->pdata, CD_PROP_BOOL, "sharp_face"));
+  const VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
+      "sharp_face", ATTR_DOMAIN_FACE, false);
 
   mesh_normals_loop_custom_set(mesh->vert_positions(),
                                mesh->edges(),

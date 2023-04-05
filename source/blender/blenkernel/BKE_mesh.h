@@ -208,7 +208,7 @@ bool BKE_mesh_material_index_used(struct Mesh *me, short index);
 void BKE_mesh_material_index_clear(struct Mesh *me);
 void BKE_mesh_material_remap(struct Mesh *me, const unsigned int *remap, unsigned int remap_len);
 void BKE_mesh_smooth_flag_set(struct Mesh *me, bool use_smooth);
-void BKE_mesh_auto_smooth_flag_set(struct Mesh *me, bool use_auto_smooth, float auto_smooth_angle);
+void BKE_mesh_sharp_edges_set_from_angle(struct Mesh *me, float auto_smooth_angle);
 
 /**
  * Used for unit testing; compares two meshes, checking only
@@ -321,6 +321,10 @@ const float (*BKE_mesh_vert_normals_ensure(const struct Mesh *mesh))[3];
  */
 const float (*BKE_mesh_poly_normals_ensure(const struct Mesh *mesh))[3];
 
+/**
+ * See #Mesh::corner_normals().
+ * \warning May return null if the mesh is empty or has no polygons.
+ */
 const float (*BKE_mesh_corner_normals_ensure(const struct Mesh *mesh))[3];
 
 /**
@@ -341,8 +345,6 @@ float (*BKE_mesh_vert_normals_for_write(struct Mesh *mesh))[3];
  * Mark the mesh's vertex normals non-dirty, for when they are calculated or assigned manually.
  */
 void BKE_mesh_vert_normals_clear_dirty(struct Mesh *mesh);
-
-void BKE_mesh_corner_normals_clear_dirty(struct Mesh *mesh);
 
 /**
  * Return true if the mesh vertex normals either are not stored or are dirty.

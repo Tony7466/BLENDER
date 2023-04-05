@@ -440,27 +440,13 @@ static void add_orco_mesh(
   }
 }
 
-static bool mesh_has_modifier_final_normals(const Mesh *mesh_input,
-                                            const CustomData_MeshMasks *final_datamask,
-                                            Mesh *mesh_final)
-{
-  /* Test if mesh has the required loop normals, in case an additional modifier
-   * evaluation from another instance or from an operator requests it but the
-   * initial normals were not loop normals. */
-  const bool calc_loop_normals = ((mesh_input->flag & ME_AUTOSMOOTH) != 0 ||
-                                  (final_datamask->lmask & CD_MASK_NORMAL) != 0);
-
-  return (!calc_loop_normals || CustomData_has_layer(&mesh_final->ldata, CD_NORMAL));
-}
-
 static void mesh_calc_modifier_final_normals(const Mesh *mesh_input,
                                              const CustomData_MeshMasks *final_datamask,
                                              const bool sculpt_dyntopo,
                                              Mesh *mesh_final)
 {
   /* Compute normals. */
-  const bool calc_loop_normals = ((mesh_input->flag & ME_AUTOSMOOTH) != 0 ||
-                                  (final_datamask->lmask & CD_MASK_NORMAL) != 0);
+  const bool calc_loop_normals = mesh_final->normal_domain_all_info() == ATTR_DOMAIN_CORNER;
 
   /* Needed as `final_datamask` is not preserved outside modifier stack evaluation. */
   SubsurfRuntimeData *subsurf_runtime_data = mesh_final->runtime->subsurf_runtime_data;
@@ -1007,13 +993,6 @@ static void mesh_calc_modifiers(struct Depsgraph *depsgraph,
         mesh_final = runtime->mesh_eval;
       }
     }
-    else if (!mesh_has_modifier_final_normals(mesh_input, &final_datamask, runtime->mesh_eval)) {
-      /* Modifier stack was (re-)evaluated with a request for additional normals
-       * different than the instanced mesh, can't instance anymore now. */
-      mesh_final = BKE_mesh_copy_for_eval(mesh_input, true);
-      mesh_calc_modifier_final_normals(mesh_input, &final_datamask, sculpt_dyntopo, mesh_final);
-      mesh_calc_finalize(mesh_input, mesh_final);
-    }
     else {
       /* Already finalized by another instance, reuse. */
       mesh_final = runtime->mesh_eval;
@@ -1071,8 +1050,7 @@ bool editbmesh_modifier_is_enabled(const Scene *scene,
 static void editbmesh_calc_modifier_final_normals(Mesh *mesh_final,
                                                   const CustomData_MeshMasks *final_datamask)
 {
-  const bool calc_loop_normals = ((mesh_final->flag & ME_AUTOSMOOTH) != 0 ||
-                                  (final_datamask->lmask & CD_MASK_NORMAL) != 0);
+  const bool calc_loop_normals = mesh_final->normal_domain_all_info() == ATTR_DOMAIN_CORNER;
 
   SubsurfRuntimeData *subsurf_runtime_data = mesh_final->runtime->subsurf_runtime_data;
   if (subsurf_runtime_data) {

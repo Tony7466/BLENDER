@@ -204,10 +204,7 @@ struct AddOperationExecutor {
     }
 
     const Span<MLoopTri> surface_looptris_orig = surface_orig.looptris();
-    const Span<float3> corner_normals_su = {
-        reinterpret_cast<const float3 *>(BKE_mesh_corner_normals_ensure(&surface_orig)),
-        surface_orig.totloop};
-
+    const Span<float3> corner_normals_su = surface_orig.corner_normals();
     const geometry::ReverseUVSampler reverse_uv_sampler{surface_uv_map, surface_looptris_orig};
 
     geometry::AddCurvesOnMeshInputs add_inputs;

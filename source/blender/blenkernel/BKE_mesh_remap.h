@@ -143,13 +143,6 @@ enum {
   MREMAP_MODE_TOPOLOGY = MREMAP_MODE_VERT | MREMAP_MODE_EDGE | MREMAP_MODE_LOOP | MREMAP_MODE_POLY,
 };
 
-void BKE_mesh_remap_calc_source_cddata_masks_from_map_modes(
-    int vert_mode,
-    int edge_mode,
-    int loop_mode,
-    int poly_mode,
-    struct CustomData_MeshMasks *cddata_mask);
-
 /**
  * Compute a value of the difference between both given meshes.
  * The smaller the result, the better the match.
@@ -179,7 +172,6 @@ void BKE_mesh_remap_calc_verts_from_mesh(int mode,
                                          float ray_radius,
                                          const float (*vert_positions_dst)[3],
                                          int numverts_dst,
-                                         bool dirty_nors_dst,
                                          const struct Mesh *me_src,
                                          struct Mesh *me_dst,
                                          MeshPairRemap *r_map);
@@ -192,7 +184,6 @@ void BKE_mesh_remap_calc_edges_from_mesh(int mode,
                                          int numverts_dst,
                                          const struct MEdge *edges_dst,
                                          int numedges_dst,
-                                         bool dirty_nors_dst,
                                          const struct Mesh *me_src,
                                          struct Mesh *me_dst,
                                          MeshPairRemap *r_map);
@@ -207,19 +198,14 @@ void BKE_mesh_remap_calc_loops_from_mesh(int mode,
                                          const struct SpaceTransform *space_transform,
                                          float max_dist,
                                          float ray_radius,
-                                         struct Mesh *mesh_dst,
+                                         const struct Mesh *mesh_dst,
                                          const float (*vert_positions_dst)[3],
                                          int numverts_dst,
                                          const struct MEdge *edges_dst,
                                          int numedges_dst,
                                          const int *corner_verts_dst,
-                                         const int *corner_edges_dst,
                                          int numloops_dst,
                                          const blender::OffsetIndices<int> polys_dst,
-                                         struct CustomData *ldata_dst,
-                                         bool use_split_nors_dst,
-                                         float split_angle_dst,
-                                         bool dirty_nors_dst,
                                          const struct Mesh *me_src,
                                          MeshRemapIslandsCalc gen_islands_src,
                                          float islands_precision_src,

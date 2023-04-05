@@ -338,8 +338,8 @@ static Mesh *mesh_wrapper_ensure_subdivision(Mesh *me)
   Mesh *subdiv_mesh = BKE_subdiv_to_mesh(subdiv, &mesh_settings, me);
 
   if (use_clnors) {
-    const float(*lnors)[3] = BKE_mesh_corner_normals_ensure(subdiv_mesh);
-    BKE_mesh_set_custom_normals(subdiv_mesh, lnors);
+    BKE_mesh_set_custom_normals(
+        subdiv_mesh, reinterpret_cast<const float(*)[3]>(subdiv_mesh->corner_normals().data()));
   }
 
   if (!ELEM(subdiv, runtime_data->subdiv_cpu, runtime_data->subdiv_gpu)) {

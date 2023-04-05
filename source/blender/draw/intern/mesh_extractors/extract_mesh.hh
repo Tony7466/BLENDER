@@ -66,6 +66,7 @@ struct MeshRenderData {
   const float (*bm_vert_normals)[3];
   const float (*bm_poly_normals)[3];
   const float (*bm_poly_centers)[3];
+  blender::Array<blender::float3> bm_loop_normals;
 
   const int *v_origindex, *e_origindex, *p_origindex;
   int edge_crease_ofs;
@@ -97,8 +98,6 @@ struct MeshRenderData {
   const bool *select_edge;
   const bool *select_poly;
   const bool *sharp_faces;
-
-  blender::Array<blender::float3> bm_loop_normals;
 
   blender::Span<int> loose_verts;
   blender::Span<int> loose_edges;

@@ -332,25 +332,41 @@ static void compute_normal_outputs(const Mesh &mesh,
                                    const Span<int> looptri_indices,
                                    MutableSpan<float3> r_normals)
 {
-  Array<float3> corner_normals(mesh.totloop);
-  BKE_mesh_calc_normals_split_ex(
-      const_cast<Mesh *>(&mesh), nullptr, reinterpret_cast<float(*)[3]>(corner_normals.data()));
+  /* TODO: Normalization. */
+  switch (mesh.normal_domain_all_info()) {
+    case ATTR_DOMAIN_POINT: {
+      const Span<float3> vert_normals = mesh.vert_normals();
+      bke::mesh_surface_sample::sample_point_attribute(mesh,
+                                                       looptri_indices,
+                                                       bary_coords,
+                                                       VArray<float3>::ForSpan(vert_normals),
+                                                       IndexMask(looptri_indices.index_range()),
+                                                       r_normals);
 
-  const Span<MLoopTri> looptris = mesh.looptris();
-
-  threading::parallel_for(bary_coords.index_range(), 512, [&](const IndexRange range) {
-    for (const int i : range) {
-      const int looptri_index = looptri_indices[i];
-      const MLoopTri &looptri = looptris[looptri_index];
-      const float3 &bary_coord = bary_coords[i];
-
-      const float3 normal = math::normalize(
-          bke::mesh_surface_sample::sample_corner_attrribute_with_bary_coords(
-              bary_coord, looptri, corner_normals.as_span()));
-
-      r_normals[i] = normal;
+      break;
     }
-  });
+    case ATTR_DOMAIN_FACE: {
+      const Span<float3> poly_normals = mesh.poly_normals();
+      bke::mesh_surface_sample::sample_face_attribute(mesh,
+                                                      looptri_indices,
+                                                      VArray<float3>::ForSpan(poly_normals),
+                                                      IndexMask(looptri_indices.index_range()),
+                                                      r_normals);
+      break;
+    }
+    case ATTR_DOMAIN_CORNER: {
+      const Span<float3> corner_normals = mesh.corner_normals();
+      bke::mesh_surface_sample::sample_corner_attribute(mesh,
+                                                        looptri_indices,
+                                                        bary_coords,
+                                                        VArray<float3>::ForSpan(corner_normals),
+                                                        IndexMask(looptri_indices.index_range()),
+                                                        r_normals);
+      break;
+    }
+    default:
+      BLI_assert_unreachable();
+  }
 }
 
 static void compute_legacy_normal_outputs(const Mesh &mesh,

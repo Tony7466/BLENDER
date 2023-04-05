@@ -135,15 +135,16 @@ void BKE_mesh_calc_loop_tangent_single(Mesh *mesh,
     return;
   }
 
-  BKE_mesh_calc_loop_tangent_single_ex(BKE_mesh_vert_positions(mesh),
-                                       mesh->totvert,
-                                       mesh->corner_verts().data(),
-                                       r_looptangents,
-                                       BKE_mesh_corner_normals_ensure(mesh),
-                                       reinterpret_cast<const float(*)[2]>(uv_map.data()),
-                                       mesh->totloop,
-                                       mesh->polys(),
-                                       reports);
+  BKE_mesh_calc_loop_tangent_single_ex(
+      BKE_mesh_vert_positions(mesh),
+      mesh->totvert,
+      mesh->corner_verts().data(),
+      r_looptangents,
+      reinterpret_cast<const float(*)[3]>(mesh->corner_normals().data()),
+      reinterpret_cast<const float(*)[2]>(uv_map.data()),
+      mesh->totloop,
+      mesh->polys(),
+      reports);
 }
 
 /** \} */
@@ -579,7 +580,7 @@ void BKE_mesh_calc_loop_tangents(Mesh *me_eval,
       tangent_names_len,
       reinterpret_cast<const float(*)[3]>(me_eval->vert_normals().data()),
       reinterpret_cast<const float(*)[3]>(me_eval->poly_normals().data()),
-      BKE_mesh_corner_normals_ensure(me_eval),
+      reinterpret_cast<const float(*)[3]>(me_eval->corner_normals().data()),
       /* may be nullptr */
       static_cast<const float(*)[3]>(CustomData_get_layer(&me_eval->vdata, CD_ORCO)),
       /* result */

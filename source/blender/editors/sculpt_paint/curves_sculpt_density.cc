@@ -254,10 +254,7 @@ struct DensityAddOperationExecutor {
     }
     self_->new_deformed_root_positions_.extend(new_positions_cu);
 
-    const Span<float3> corner_normals_su = {
-        reinterpret_cast<const float3 *>(BKE_mesh_corner_normals_ensure(surface_orig_)),
-        surface_orig_->totloop};
-
+    const Span<float3> corner_normals_su = surface_orig_->corner_normals();
     const Span<MLoopTri> surface_looptris_orig = surface_orig_->looptris();
     const geometry::ReverseUVSampler reverse_uv_sampler{surface_uv_map, surface_looptris_orig};
 
