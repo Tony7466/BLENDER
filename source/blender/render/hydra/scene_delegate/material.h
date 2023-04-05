@@ -13,24 +13,30 @@
 
 namespace blender::render::hydra {
 
+class MeshData;
+
 class MaterialData : IdData {
+  friend MeshData;
+
  public:
-  static std::unique_ptr<MaterialData> init(BlenderSceneDelegate *scene_delegate,
-                                            Material *material);
+  static std::unique_ptr<MaterialData> create(BlenderSceneDelegate *scene_delegate,
+                                              Material *material);
   static pxr::SdfPath prim_id(BlenderSceneDelegate *scene_delegate, Material *material);
 
   MaterialData(BlenderSceneDelegate *scene_delegate, Material *material);
 
-  pxr::VtValue get_data(pxr::TfToken const &key) override;
-  void insert_prim() override;
-  void remove_prim() override;
-  void mark_prim_dirty(DirtyBits dirty_bits) override;
+  void init() override;
+  void insert() override;
+  void remove() override;
+  void update() override;
+  pxr::VtValue get_data(pxr::TfToken const &key) const override;
 
   pxr::VtValue material_resource();
   void export_mtlx();
 
  private:
   pxr::SdfAssetPath mtlx_path;
+  pxr::VtValue material_network_map;
 };
 
 using MaterialDataMap =

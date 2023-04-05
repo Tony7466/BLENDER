@@ -18,22 +18,21 @@ class IdData {
   IdData(BlenderSceneDelegate *scene_delegate, ID *id);
   virtual ~IdData() = default;
 
-  std::string name();
-  virtual pxr::VtValue get_data(pxr::TfToken const &key);
-  template<class T> const T get_data(pxr::TfToken const &key);
+  virtual void init() = 0;
+  virtual void insert() = 0;
+  virtual void remove() = 0;
+  virtual void update() = 0;
 
-  enum class DirtyBits { DIRTY_TRANSFORM = 1, DIRTY_VISIBILITY, DIRTY_MATERIAL, ALL_DIRTY };
-
-  virtual void insert_prim() = 0;
-  virtual void remove_prim() = 0;
-  virtual void mark_prim_dirty(DirtyBits dirty_bits) = 0;
+  virtual pxr::VtValue get_data(pxr::TfToken const &key) const;
+  template<class T> const T get_data(pxr::TfToken const &key) const;
 
  protected:
   BlenderSceneDelegate *scene_delegate;
   ID *id;
+  pxr::SdfPath p_id;
 };
 
-template<class T> const T IdData::get_data(pxr::TfToken const &key)
+template<class T> const T IdData::get_data(pxr::TfToken const &key) const
 {
   return get_data(key).Get<T>();
 }

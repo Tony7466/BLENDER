@@ -8,6 +8,7 @@
 
 #include "BKE_duplilist.h"
 
+#include "material.h"
 #include "object.h"
 
 namespace blender::render::hydra {
@@ -16,32 +17,20 @@ class MeshData : public ObjectData {
  public:
   MeshData(BlenderSceneDelegate *scene_delegate, Object *object);
 
-  pxr::VtValue get_data(pxr::TfToken const &key) override;
+  void init() override;
+  void insert() override;
+  void remove() override;
+  void update() override;
+  pxr::VtValue get_data(pxr::TfToken const &key) const override;
+  bool update_visibility(View3D *view3d) override;
 
-  void insert_prim() override;
-  void remove_prim() override;
-  void mark_prim_dirty(DirtyBits dirty_bits) override;
-
-  Material *material();
   pxr::HdMeshTopology mesh_topology();
   pxr::HdPrimvarDescriptorVector primvar_descriptors(pxr::HdInterpolation interpolation);
-  pxr::HdPrimvarDescriptorVector instancer_primvar_descriptors(pxr::HdInterpolation interpolation);
-  pxr::VtIntArray instance_indices();
-  size_t sample_instancer_transform(size_t max_sample_count,
-                                    float *sample_times,
-                                    pxr::GfMatrix4d *sample_values);
-  size_t sample_instancer_primvar(pxr::TfToken const &key,
-                                  size_t max_sample_count,
-                                  float *sample_times,
-                                  pxr::VtValue *sample_values);
+  pxr::SdfPath material_id();
 
-  void add_instance(DupliObject *dupli);
-
-  pxr::SdfPath material_id;
-  pxr::SdfPath instancer_id;
-
- private:
+ protected:
   void set_mesh(Mesh *mesh);
+  void set_material();
 
   pxr::VtIntArray face_vertex_counts;
   pxr::VtIntArray face_vertex_indices;
@@ -50,6 +39,8 @@ class MeshData : public ObjectData {
   pxr::VtVec2fArray uvs;
 
   pxr::VtMatrix4dArray instances;
+
+  MaterialData *mat_data;
 };
 
 }  // namespace blender::render::hydra

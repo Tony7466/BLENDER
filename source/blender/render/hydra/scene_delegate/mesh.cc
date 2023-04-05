@@ -16,22 +16,12 @@
 namespace blender::render::hydra {
 
 MeshData::MeshData(BlenderSceneDelegate *scene_delegate, Object *object)
-    : ObjectData(scene_delegate, object)
+    : ObjectData(scene_delegate, object), mat_data(nullptr)
 {
-  if (object->type == OB_MESH && object->mode == OB_MODE_OBJECT &&
-      BLI_listbase_is_empty(&object->modifiers)) {
-    set_mesh((Mesh *)object->data);
-  }
-  else {
-    Mesh *mesh = BKE_object_to_mesh(nullptr, object, false);
-    if (mesh) {
-      set_mesh(mesh);
-    }
-    BKE_object_to_mesh_clear(object);
-  }
+  CLOG_INFO(LOG_BSD, 2, "%s, id=%s", id->name, p_id.GetText());
 }
 
-pxr::VtValue MeshData::get_data(pxr::TfToken const &key)
+pxr::VtValue MeshData::get_data(pxr::TfToken const &key) const
 {
   pxr::VtValue ret;
   if (key == pxr::HdTokens->points) {
@@ -49,13 +39,14 @@ pxr::VtValue MeshData::get_data(pxr::TfToken const &key)
   return ret;
 }
 
-Material *MeshData::material()
+bool MeshData::update_visibility(View3D *view3d)
 {
-  Object *object = (Object *)id;
-  if (BKE_object_material_count_eval(object) == 0) {
-    return nullptr;
+  bool ret = ObjectData::update_visibility(view3d);
+  if (ret) {
+    scene_delegate->GetRenderIndex().GetChangeTracker().MarkRprimDirty(
+        p_id, pxr::HdChangeTracker::DirtyVisibility);
   }
-  return BKE_object_material_get_eval(object, object->actcol);
+  return ret;
 }
 
 pxr::HdMeshTopology MeshData::mesh_topology()
@@ -88,68 +79,22 @@ pxr::HdPrimvarDescriptorVector MeshData::primvar_descriptors(pxr::HdInterpolatio
   return primvars;
 }
 
-pxr::HdPrimvarDescriptorVector MeshData::instancer_primvar_descriptors(
-    pxr::HdInterpolation interpolation)
+pxr::SdfPath MeshData::material_id()
 {
-  pxr::HdPrimvarDescriptorVector primvars;
-  if (interpolation == pxr::HdInterpolationInstance) {
-    primvars.emplace_back(
-        pxr::HdInstancerTokens->instanceTransform, interpolation, pxr::HdPrimvarRoleTokens->none);
+  if (!mat_data) {
+    return pxr::SdfPath();
   }
-  return primvars;
-}
-
-pxr::VtIntArray MeshData::instance_indices()
-{
-  pxr::VtIntArray ret(instances.size());
-  for (size_t i = 0; i < ret.size(); ++i) {
-    ret[i] = i;
-  }
-  return ret;
-}
-
-size_t MeshData::sample_instancer_transform(size_t max_sample_count,
-                                            float *sample_times,
-                                            pxr::GfMatrix4d *sample_values)
-{
-  *sample_times = 0.0f;
-  *sample_values = pxr::GfMatrix4d(1.0);
-  return 1;
-}
-
-size_t MeshData::sample_instancer_primvar(pxr::TfToken const &key,
-                                          size_t max_sample_count,
-                                          float *sample_times,
-                                          pxr::VtValue *sample_values)
-{
-  if (key == pxr::HdInstancerTokens->instanceTransform) {
-    if (max_sample_count > 0) {
-      sample_times[0] = 0.0f;
-      sample_values[0] = instances;
-      return 1;
-    }
-  }
-  return 0;
-}
-
-void MeshData::add_instance(DupliObject *dupli)
-{
-  if (instancer_id.IsEmpty()) {
-    instancer_id = prim_id(scene_delegate, (Object *)id).AppendElementString("Instancer");
-    scene_delegate->GetRenderIndex().InsertInstancer(scene_delegate, instancer_id);
-    CLOG_INFO(LOG_BSD, 2, "Instancer: %s, id=%s", name().c_str(), instancer_id.GetText());
-  }
-  if (instances.empty()) {
-    // USD hides the prototype mesh when instancing in contrary to the Blender, so we must add it
-    // back implicitly
-    instances.push_back(pxr::GfMatrix4d(1.0));
-  }
-  instances.push_back(transform().GetInverse() * gf_matrix_from_transform(dupli->mat));
-  CLOG_INFO(LOG_BSD, 2, "%s - %d", instancer_id.GetText(), dupli->random_id);
+  return mat_data->p_id;
 }
 
 void MeshData::set_mesh(Mesh *mesh)
 {
+  face_vertex_counts.clear();
+  face_vertex_indices.clear();
+  vertices.clear();
+  normals.clear();
+  uvs.clear();
+
   BKE_mesh_calc_normals_split(mesh);
   int tris_len = BKE_mesh_runtime_looptri_len(mesh);
   if (tris_len == 0) {
@@ -200,62 +145,100 @@ void MeshData::set_mesh(Mesh *mesh)
   }
 }
 
-void MeshData::insert_prim()
+void MeshData::set_material()
+{
+  Object *object = (Object *)id;
+  Material *mat = nullptr;
+  if (BKE_object_material_count_eval(object) > 0) {
+    mat = BKE_object_material_get_eval(object, object->actcol);
+  }
+
+  if (!mat) {
+    mat_data = nullptr;
+    return;
+  }
+  pxr::SdfPath id = MaterialData::prim_id(scene_delegate, mat);
+  mat_data = scene_delegate->material_data(id);
+  if (!mat_data) {
+    scene_delegate->materials[id] = MaterialData::create(scene_delegate, mat);
+    mat_data = scene_delegate->material_data(id);
+  }
+}
+
+void MeshData::init()
+{
+  CLOG_INFO(LOG_BSD, 2, "%s", id->name);
+
+  Object *object = (Object *)id;
+  if (object->type == OB_MESH && object->mode == OB_MODE_OBJECT &&
+      BLI_listbase_is_empty(&object->modifiers)) {
+    set_mesh((Mesh *)object->data);
+  }
+  else {
+    Mesh *mesh = BKE_object_to_mesh(nullptr, object, false);
+    if (mesh) {
+      set_mesh(mesh);
+    }
+    BKE_object_to_mesh_clear(object);
+  }
+
+  set_material();
+}
+
+void MeshData::insert()
 {
   if (face_vertex_counts.empty()) {
     return;
   }
 
-  pxr::SdfPath p_id = prim_id(scene_delegate, (Object *)id);
+  CLOG_INFO(LOG_BSD, 2, "%s", id->name);
   scene_delegate->GetRenderIndex().InsertRprim(pxr::HdPrimTypeTokens->mesh, scene_delegate, p_id);
-  CLOG_INFO(LOG_BSD, 2, "Add: %s id=%s", name().c_str(), p_id.GetString().c_str());
 }
 
-void MeshData::remove_prim()
+void MeshData::remove()
 {
-  pxr::SdfPath p_id = prim_id(scene_delegate, (Object *)id);
   if (!scene_delegate->GetRenderIndex().HasRprim(p_id)) {
     return;
   }
 
+  CLOG_INFO(LOG_BSD, 2, "%s", id->name);
   scene_delegate->GetRenderIndex().RemoveRprim(p_id);
-  CLOG_INFO(LOG_BSD, 2, "Remove: %s", name().c_str());
 }
 
-void MeshData::mark_prim_dirty(DirtyBits dirty_bits)
+void MeshData::update()
 {
-  pxr::SdfPath p_id = prim_id(scene_delegate, (Object *)id);
+  pxr::HdDirtyBits bits = pxr::HdChangeTracker::Clean;
+  Object *object = (Object *)id;
+  if ((id->recalc & ID_RECALC_GEOMETRY) || (((ID *)object->data)->recalc & ID_RECALC_GEOMETRY)) {
+    init();
+    bits = pxr::HdChangeTracker::AllDirty;
+  }
+  else {
+    if (id->recalc & ID_RECALC_SHADING) {
+      set_material();
+      bits |= pxr::HdChangeTracker::DirtyMaterialId;
+    }
+    if (id->recalc & ID_RECALC_TRANSFORM) {
+      bits |= pxr::HdChangeTracker::DirtyTransform;
+    }
+  }
+
+  if (bits == pxr::HdChangeTracker::Clean) {
+    return;
+  }
+
   if (!scene_delegate->GetRenderIndex().HasRprim(p_id)) {
-    /* Trying to insert prim */
-    insert_prim();
+    insert();
     return;
   }
 
   if (face_vertex_counts.empty()) {
     /* Remove prim without faces */
-    remove_prim();
+    remove();
     return;
   }
-
-  pxr::HdDirtyBits bits = pxr::HdChangeTracker::Clean;
-  switch (dirty_bits) {
-    case DirtyBits::DIRTY_TRANSFORM:
-      bits = pxr::HdChangeTracker::DirtyTransform;
-      break;
-    case DirtyBits::DIRTY_VISIBILITY:
-      bits = pxr::HdChangeTracker::DirtyVisibility;
-      break;
-    case DirtyBits::DIRTY_MATERIAL:
-      bits = pxr::HdChangeTracker::DirtyMaterialId;
-      break;
-    case DirtyBits::ALL_DIRTY:
-      bits = pxr::HdChangeTracker::AllDirty;
-      break;
-    default:
-      break;
-  }
+  CLOG_INFO(LOG_BSD, 2, "%s", id->name);
   scene_delegate->GetRenderIndex().GetChangeTracker().MarkRprimDirty(p_id, bits);
-  CLOG_INFO(LOG_BSD, 2, "Update: [%d] %s", dirty_bits, name().c_str());
 }
 
 }  // namespace blender::render::hydra

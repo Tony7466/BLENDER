@@ -15,10 +15,12 @@ class LightData : public ObjectData {
  public:
   LightData(BlenderSceneDelegate *scene_delegate, Object *object);
 
-  pxr::VtValue get_data(pxr::TfToken const &key) override;
-  void insert_prim() override;
-  void remove_prim() override;
-  void mark_prim_dirty(DirtyBits dirty_bits) override;
+  void init() override;
+  void insert() override;
+  void remove() override;
+  void update() override;
+  pxr::VtValue get_data(pxr::TfToken const &key) const override;
+  bool update_visibility(View3D *view3d) override;
 
  private:
   std::map<pxr::TfToken, pxr::VtValue> data;

@@ -20,10 +20,13 @@
 
 namespace blender::render::hydra {
 
-std::unique_ptr<MaterialData> MaterialData::init(BlenderSceneDelegate *scene_delegate,
-                                                 Material *material)
+std::unique_ptr<MaterialData> MaterialData::create(BlenderSceneDelegate *scene_delegate,
+                                                   Material *material)
 {
-  return std::make_unique<MaterialData>(scene_delegate, material);
+  auto data = std::make_unique<MaterialData>(scene_delegate, material);
+  data->init();
+  data->insert();
+  return data;
 }
 
 pxr::SdfPath MaterialData::prim_id(BlenderSceneDelegate *scene_delegate, Material *material)
@@ -38,40 +41,16 @@ pxr::SdfPath MaterialData::prim_id(BlenderSceneDelegate *scene_delegate, Materia
 MaterialData::MaterialData(BlenderSceneDelegate *scene_delegate, Material *material)
     : IdData(scene_delegate, (ID *)material)
 {
+  p_id = prim_id(scene_delegate, material);
+  CLOG_INFO(LOG_BSD, 2, "%s, id=%s", id->name, p_id.GetText());
 }
 
-pxr::VtValue MaterialData::get_data(pxr::TfToken const &key)
+void MaterialData::init()
 {
-  pxr::VtValue ret;
-  if (key.GetString() == "MaterialXFilename") {
-    if (!mtlx_path.GetResolvedPath().empty()) {
-      ret = mtlx_path;
-    }
-    CLOG_INFO(LOG_BSD, 3, "%s", key.GetText());
-  }
-  return ret;
-}
+  CLOG_INFO(LOG_BSD, 2, "%s", id->name);
 
-pxr::VtValue MaterialData::material_resource()
-{
-  std::string const &path = mtlx_path.GetResolvedPath();
-  if (!path.empty()) {
-    pxr::HdRenderDelegate *render_delegate = scene_delegate->GetRenderIndex().GetRenderDelegate();
-    pxr::TfTokenVector shader_source_types = render_delegate->GetShaderSourceTypes();
-    pxr::TfTokenVector render_contexts = render_delegate->GetMaterialRenderContexts();
+  material_network_map = pxr::VtValue();
 
-    pxr::HdMaterialNetworkMap material_network_map;
-    HdMtlxConvertToMaterialNetworkMap(
-        path, shader_source_types, render_contexts, &material_network_map);
-
-    CLOG_INFO(LOG_BSD, 3, "%s", path.c_str());
-    return pxr::VtValue(material_network_map);
-  }
-  return pxr::VtValue();
-}
-
-void MaterialData::export_mtlx()
-{
   /* Call of python function hydra.export_mtlx() */
 
   PyGILState_STATE gstate;
@@ -97,7 +76,7 @@ void MaterialData::export_mtlx()
     Py_DECREF(result);
   }
   else {
-    CLOG_ERROR(LOG_BSD, "Export error for %s", name().c_str());
+    CLOG_ERROR(LOG_BSD, "Export error for %s", id->name);
     PyErr_Print();
   }
   Py_DECREF(module);
@@ -105,37 +84,59 @@ void MaterialData::export_mtlx()
   PyGILState_Release(gstate);
 
   mtlx_path = pxr::SdfAssetPath(path, path);
-  CLOG_INFO(LOG_BSD, 2, "Export: %s, mtlx=%s", name().c_str(), mtlx_path.GetResolvedPath().c_str());
+  CLOG_INFO(LOG_BSD, 2, "Export: %s, mtlx=%s", id->name, mtlx_path.GetResolvedPath().c_str());
 }
 
-void MaterialData::insert_prim()
+pxr::VtValue MaterialData::get_data(pxr::TfToken const &key) const
 {
-  pxr::SdfPath p_id = prim_id(scene_delegate, (Material *)id);
+  pxr::VtValue ret;
+  if (key.GetString() == "MaterialXFilename") {
+    if (!mtlx_path.GetResolvedPath().empty()) {
+      ret = mtlx_path;
+    }
+    CLOG_INFO(LOG_BSD, 3, "%s", key.GetText());
+  }
+  return ret;
+}
+
+pxr::VtValue MaterialData::material_resource()
+{
+  if (material_network_map.IsEmpty()) {
+    const std::string &path = mtlx_path.GetResolvedPath();
+    if (!path.empty()) {
+      pxr::HdRenderDelegate *render_delegate =
+          scene_delegate->GetRenderIndex().GetRenderDelegate();
+      pxr::TfTokenVector shader_source_types = render_delegate->GetShaderSourceTypes();
+      pxr::TfTokenVector render_contexts = render_delegate->GetMaterialRenderContexts();
+
+      pxr::HdMaterialNetworkMap network_map;
+      HdMtlxConvertToMaterialNetworkMap(path, shader_source_types, render_contexts, &network_map);
+
+      material_network_map = network_map;
+    }
+  }
+  return material_network_map;
+}
+
+void MaterialData::insert()
+{
+  CLOG_INFO(LOG_BSD, 2, "%s", id->name);
   scene_delegate->GetRenderIndex().InsertSprim(
       pxr::HdPrimTypeTokens->material, scene_delegate, p_id);
-  CLOG_INFO(LOG_BSD, 2, "Add: %s id=%s", name().c_str(), p_id.GetString().c_str());
 }
 
-void MaterialData::remove_prim()
+void MaterialData::remove()
 {
-  pxr::SdfPath p_id = prim_id(scene_delegate, (Material *)id);
+  CLOG_INFO(LOG_BSD, 2, "%s", id->name);
   scene_delegate->GetRenderIndex().RemoveSprim(pxr::HdPrimTypeTokens->material, p_id);
-  CLOG_INFO(LOG_BSD, 2, "Remove: %s", name().c_str());
 }
 
-void MaterialData::mark_prim_dirty(DirtyBits dirty_bits)
+void MaterialData::update()
 {
-  pxr::HdDirtyBits bits = pxr::HdMaterial::Clean;
-  switch (dirty_bits) {
-    case DirtyBits::ALL_DIRTY:
-      bits = pxr::HdMaterial::AllDirty;
-      break;
-    default:
-      break;
-  }
-  pxr::SdfPath p_id = prim_id(scene_delegate, (Material *)id);
-  scene_delegate->GetRenderIndex().GetChangeTracker().MarkSprimDirty(p_id, bits);
-  CLOG_INFO(LOG_BSD, 2, "Update: %s, mtlx=%s", name().c_str(), mtlx_path.GetResolvedPath().c_str());
+  CLOG_INFO(LOG_BSD, 2, "%s", id->name);
+  init();
+  scene_delegate->GetRenderIndex().GetChangeTracker().MarkSprimDirty(p_id,
+                                                                     pxr::HdMaterial::AllDirty);
 }
 
 }  // namespace blender::render::hydra

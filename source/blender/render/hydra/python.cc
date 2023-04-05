@@ -106,7 +106,6 @@ static PyObject *engine_create_func(PyObject * /*self*/, PyObject *args)
   }
 
   RenderEngine *bl_engine = (RenderEngine *)PyLong_AsVoidPtr(pyengine);
-  
 
   Engine *engine;
   if (STREQ(engine_type, "VIEWPORT")) {
@@ -136,7 +135,7 @@ static PyObject *engine_free_func(PyObject * /*self*/, PyObject *args)
     Py_RETURN_NONE;
   }
 
-  Engine *engine = (Engine *) PyLong_AsVoidPtr(pyengine);
+  Engine *engine = (Engine *)PyLong_AsVoidPtr(pyengine);
   delete engine;
 
   CLOG_INFO(LOG_EN, 2, "Engine %016llx", engine);

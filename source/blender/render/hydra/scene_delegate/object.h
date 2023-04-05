@@ -17,14 +17,13 @@ namespace blender::render::hydra {
 class ObjectData : public IdData {
  public:
   static bool supported(Object *object);
-  static std::unique_ptr<ObjectData> init(BlenderSceneDelegate *scene_delegate, Object *object);
+  static std::unique_ptr<ObjectData> create(BlenderSceneDelegate *scene_delegate, Object *object);
   static pxr::SdfPath prim_id(BlenderSceneDelegate *scene_delegate, Object *object);
 
   ObjectData(BlenderSceneDelegate *scene_delegate, Object *object);
 
-  int type();
-  pxr::GfMatrix4d transform();
-  bool update_visibility(View3D *view3d);
+  virtual pxr::GfMatrix4d transform();
+  virtual bool update_visibility(View3D *view3d);
 
   bool visible;
 };

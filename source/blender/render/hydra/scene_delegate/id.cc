@@ -13,14 +13,7 @@ IdData::IdData(BlenderSceneDelegate *scene_delegate, ID *id)
 {
 }
 
-std::string IdData::name()
-{
-  char str[MAX_ID_FULL_NAME];
-  BKE_id_full_name_get(str, id, 0);
-  return str;
-}
-
-pxr::VtValue IdData::get_data(pxr::TfToken const &key)
+pxr::VtValue IdData::get_data(pxr::TfToken const &key) const
 {
   return pxr::VtValue();
 }

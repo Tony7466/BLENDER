@@ -18,12 +18,21 @@ namespace blender::render::hydra {
 LightData::LightData(BlenderSceneDelegate *scene_delegate, Object *object)
     : ObjectData(scene_delegate, object)
 {
-  Light *light = (Light *)((Object *)id)->data;
+  CLOG_INFO(LOG_BSD, 2, "%s id=%s", id->name, p_id.GetText());
+}
 
-  data[pxr::HdLightTokens->intensity] = scene_delegate->engine_type ==
-                                                BlenderSceneDelegate::EngineType::PREVIEW ?
-                                            light->energy / 1000 :
-                                            light->energy;
+void LightData::init()
+{
+  CLOG_INFO(LOG_BSD, 2, "%s", id->name);
+
+  Light *light = (Light *)((Object *)id)->data;
+  data.clear();
+
+  float intensity = light->energy;
+  if (scene_delegate->engine_type == BlenderSceneDelegate::EngineType::PREVIEW) {
+    intensity *= 0.001;
+  }
+  data[pxr::HdLightTokens->intensity] = intensity;
 
   data[pxr::HdLightTokens->color] = pxr::GfVec3f(light->r, light->g, light->b);
 
@@ -112,7 +121,7 @@ pxr::TfToken LightData::prim_type()
   return ret;
 }
 
-pxr::VtValue LightData::get_data(pxr::TfToken const &key)
+pxr::VtValue LightData::get_data(pxr::TfToken const &key) const
 {
   pxr::VtValue ret;
   auto it = data.find(key);
@@ -133,41 +142,43 @@ pxr::VtValue LightData::get_data(pxr::TfToken const &key)
   return ret;
 }
 
-void LightData::insert_prim()
+bool LightData::update_visibility(View3D *view3d)
 {
-  pxr::SdfPath p_id = prim_id(scene_delegate, (Object *)id);
+  bool ret = ObjectData::update_visibility(view3d);
+  if (ret) {
+    scene_delegate->GetRenderIndex().GetChangeTracker().MarkSprimDirty(p_id,
+                                                                       pxr::HdLight::DirtyParams);
+  }
+  return ret;
+}
+
+void LightData::insert()
+{
+  CLOG_INFO(LOG_BSD, 2, "%s", id->name);
   scene_delegate->GetRenderIndex().InsertSprim(prim_type(), scene_delegate, p_id);
-  CLOG_INFO(LOG_BSD, 2, "Add: %s id=%s", name().c_str(), p_id.GetString().c_str());
 }
 
-void LightData::remove_prim()
+void LightData::remove()
 {
-  pxr::SdfPath p_id = prim_id(scene_delegate, (Object *)id);
+  CLOG_INFO(LOG_BSD, 2, "%s", id->name);
   scene_delegate->GetRenderIndex().RemoveSprim(prim_type(), p_id);
-  CLOG_INFO(LOG_BSD, 2, "Remove: %s", name().c_str());
 }
 
-void LightData::mark_prim_dirty(DirtyBits dirty_bits)
+void LightData::update()
 {
   /* TODO: prim_type was changed we have to do remove..add light */
 
+  CLOG_INFO(LOG_BSD, 2, "%s", id->name);
+
   pxr::HdDirtyBits bits = pxr::HdLight::Clean;
-  switch (dirty_bits) {
-    case DirtyBits::DIRTY_TRANSFORM:
-      bits = pxr::HdLight::DirtyTransform;
-      break;
-    case DirtyBits::DIRTY_VISIBILITY:
-      bits = pxr::HdLight::DirtyParams;
-      break;
-    case DirtyBits::ALL_DIRTY:
-      bits = pxr::HdLight::AllDirty;
-      break;
-    default:
-      break;
+  if (id->recalc & ID_RECALC_GEOMETRY) {
+    init();
+    bits = pxr::HdLight::AllDirty;
   }
-  pxr::SdfPath p_id = prim_id(scene_delegate, (Object *)id);
+  else if (id->recalc & ID_RECALC_TRANSFORM) {
+    bits = pxr::HdLight::DirtyTransform;
+  }
   scene_delegate->GetRenderIndex().GetChangeTracker().MarkSprimDirty(p_id, bits);
-  CLOG_INFO(LOG_BSD, 2, "Update: [%d] %s", dirty_bits, name().c_str());
 }
 
 }  // namespace blender::render::hydra

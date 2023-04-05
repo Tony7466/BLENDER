@@ -28,11 +28,14 @@
 
 namespace blender::render::hydra {
 
-std::unique_ptr<WorldData> WorldData::init(BlenderSceneDelegate *scene_delegate,
-                                           World *world,
-                                           bContext *context)
+std::unique_ptr<WorldData> WorldData::create(BlenderSceneDelegate *scene_delegate,
+                                             World *world,
+                                             bContext *context)
 {
-  return std::make_unique<WorldData>(scene_delegate, world, context);
+  auto data = std::make_unique<WorldData>(scene_delegate, world, context);
+  data->init();
+  data->insert();
+  return data;
 }
 
 pxr::SdfPath WorldData::prim_id(BlenderSceneDelegate *scene_delegate)
@@ -41,17 +44,39 @@ pxr::SdfPath WorldData::prim_id(BlenderSceneDelegate *scene_delegate)
 }
 
 WorldData::WorldData(BlenderSceneDelegate *scene_delegate, World *world, bContext *context)
-    : IdData(scene_delegate, (ID *)world)
+    : IdData(scene_delegate, (ID *)world), context(context)
 {
+  p_id = prim_id(scene_delegate);
+  CLOG_INFO(LOG_BSD, 2, "%s, id=%s", id->name, p_id.GetText());
+}
+
+void WorldData::init()
+{
+  CLOG_INFO(LOG_BSD, 2, "%s", id->name);
+
+  World *world = (World *)id;
+  data.clear();
+
   data[pxr::UsdLuxTokens->orientToStageUpAxis] = true;
 
   if (world->use_nodes) {
     /* TODO: Create nodes parsing system */
 
     bNode *output_node = ntreeShaderOutputNode(world->nodetree, SHD_OUTPUT_ALL);
-    bNodeSocket input_socket = output_node->input_by_identifier("Surface");
-    bNodeLink const *link = input_socket.directly_linked_links()[0];
-    if (input_socket.directly_linked_links().is_empty()) {
+    blender::Span<bNodeSocket *> input_sockets = output_node->input_sockets();
+    bNodeSocket *input_socket = nullptr;
+
+    for (auto socket : input_sockets) {
+      if (STREQ(socket->name, "Surface")) {
+        input_socket = socket;
+        break;
+      }
+    }
+    if (!input_socket) {
+      return;
+    }
+    bNodeLink const *link = input_socket->directly_linked_links()[0];
+    if (input_socket->directly_linked_links().is_empty()) {
       return;
     }
 
@@ -113,7 +138,7 @@ pxr::GfMatrix4d WorldData::transform()
   return transform;
 }
 
-pxr::VtValue WorldData::get_data(pxr::TfToken const &key)
+pxr::VtValue WorldData::get_data(pxr::TfToken const &key) const
 {
   pxr::VtValue ret;
   auto it = data.find(key);
@@ -123,34 +148,30 @@ pxr::VtValue WorldData::get_data(pxr::TfToken const &key)
   return ret;
 }
 
-void WorldData::insert_prim()
+void WorldData::insert()
 {
-  pxr::SdfPath p_id = prim_id(scene_delegate);
+  CLOG_INFO(LOG_BSD, 2, "%s", id->name);
   scene_delegate->GetRenderIndex().InsertSprim(
       pxr::HdPrimTypeTokens->domeLight, scene_delegate, p_id);
-  CLOG_INFO(LOG_BSD, 2, "Add: id=%s", p_id.GetText());
 }
 
-void WorldData::remove_prim()
+void WorldData::remove()
 {
-  pxr::SdfPath p_id = prim_id(scene_delegate);
+  CLOG_INFO(LOG_BSD, 2, "%s", id->name);
   scene_delegate->GetRenderIndex().RemoveSprim(pxr::HdPrimTypeTokens->domeLight, p_id);
-  CLOG_INFO(LOG_BSD, 2, "Remove");
 }
 
-void WorldData::mark_prim_dirty(DirtyBits dirty_bits)
+void WorldData::update()
 {
-  pxr::HdDirtyBits bits = pxr::HdLight::Clean;
-  switch (dirty_bits) {
-    case DirtyBits::ALL_DIRTY:
-      bits = pxr::HdLight::AllDirty;
-      break;
-    default:
-      break;
-  }
-  pxr::SdfPath p_id = prim_id(scene_delegate);
-  scene_delegate->GetRenderIndex().GetChangeTracker().MarkSprimDirty(p_id, bits);
-  CLOG_INFO(LOG_BSD, 2, "Update");
+  CLOG_INFO(LOG_BSD, 2, "%s", id->name);
+  init();
+  scene_delegate->GetRenderIndex().GetChangeTracker().MarkSprimDirty(p_id, pxr::HdLight::AllDirty);
+}
+
+void WorldData::update(World *world)
+{
+  id = (ID *)world;
+  update();
 }
 
 }  // namespace blender::render::hydra

@@ -28,24 +28,32 @@ bool ObjectData::supported(Object *object)
   return false;
 }
 
-std::unique_ptr<ObjectData> ObjectData::init(BlenderSceneDelegate *scene_delegate, Object *object)
+std::unique_ptr<ObjectData> ObjectData::create(BlenderSceneDelegate *scene_delegate,
+                                               Object *object)
 {
+  std::unique_ptr<ObjectData> data;
+
   switch (object->type) {
     case OB_MESH:
     case OB_SURF:
     case OB_FONT:
-    case OB_CURVES:
     case OB_CURVES_LEGACY:
     case OB_MBALL:
-      return std::make_unique<MeshData>(scene_delegate, object);
+      data = std::make_unique<MeshData>(scene_delegate, object);
+      break;
 
     case OB_LAMP:
-      return std::make_unique<LightData>(scene_delegate, object);
+      data = std::make_unique<LightData>(scene_delegate, object);
+      break;
 
     default:
       break;
   }
-  return nullptr;
+  if (data) {
+    data->init();
+    data->insert();
+  }
+  return data;
 }
 
 pxr::SdfPath ObjectData::prim_id(BlenderSceneDelegate *scene_delegate, Object *object)
@@ -60,11 +68,7 @@ pxr::SdfPath ObjectData::prim_id(BlenderSceneDelegate *scene_delegate, Object *o
 ObjectData::ObjectData(BlenderSceneDelegate *scene_delegate, Object *object)
     : IdData(scene_delegate, (ID *)object), visible(true)
 {
-}
-
-int ObjectData::type()
-{
-  return ((Object *)id)->type;
+  p_id = prim_id(scene_delegate, object);
 }
 
 pxr::GfMatrix4d ObjectData::transform()

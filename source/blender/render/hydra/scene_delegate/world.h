@@ -20,22 +20,26 @@ namespace blender::render::hydra {
 
 class WorldData : public IdData {
  public:
-  static std::unique_ptr<WorldData> init(BlenderSceneDelegate *scene_delegate,
-                                         World *world,
-                                         bContext *context);
+  static std::unique_ptr<WorldData> create(BlenderSceneDelegate *scene_delegate,
+                                           World *world,
+                                           bContext *context);
   static pxr::SdfPath prim_id(BlenderSceneDelegate *scene_delegate);
 
   WorldData(BlenderSceneDelegate *scene_delegate, World *world, bContext *context);
 
+  void init() override;
+  void insert() override;
+  void remove() override;
+  void update() override;
+  void update(World *world);
+
   pxr::GfMatrix4d transform();
 
-  pxr::VtValue get_data(pxr::TfToken const &key) override;
-  void insert_prim() override;
-  void remove_prim() override;
-  void mark_prim_dirty(DirtyBits dirty_bits) override;
+  pxr::VtValue get_data(pxr::TfToken const &key) const override;
 
  private:
   std::map<pxr::TfToken, pxr::VtValue> data;
+  bContext *context;
 };
 
 }  // namespace blender::render::hydra

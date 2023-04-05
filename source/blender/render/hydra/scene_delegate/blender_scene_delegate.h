@@ -10,6 +10,7 @@
 
 #include "CLG_log.h"
 
+#include "instancer.h"
 #include "light.h"
 #include "mesh.h"
 #include "object.h"
@@ -17,9 +18,12 @@
 
 namespace blender::render::hydra {
 
-extern struct CLG_LogRef *LOG_BSD;  /* BSD - Blender Scene Delegate */
+extern struct CLG_LogRef *LOG_BSD; /* BSD - Blender Scene Delegate */
 
 class BlenderSceneDelegate : public pxr::HdSceneDelegate {
+  friend MeshData;
+  friend InstancerData;
+
  public:
   enum class EngineType { VIEWPORT = 1, FINAL, PREVIEW };
 
@@ -44,16 +48,7 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
   pxr::SdfPathVector GetInstancerPrototypes(pxr::SdfPath const &instancer_id) override;
   pxr::VtIntArray GetInstanceIndices(pxr::SdfPath const &instancer_id,
                                      pxr::SdfPath const &prototype_id) override;
-  pxr::GfMatrix4d get_instancer_transform(pxr::SdfPath const &instancer_id);
-  size_t SampleInstancerTransform(pxr::SdfPath const &instancer_id,
-                                  size_t max_sample_count,
-                                  float *sample_times,
-                                  pxr::GfMatrix4d *sample_values) override;
-  size_t SamplePrimvar(pxr::SdfPath const &id,
-                       pxr::TfToken const &key,
-                       size_t max_sample_count,
-                       float *sample_times,
-                       pxr::VtValue *sample_values) override;
+  pxr::GfMatrix4d GetInstancerTransform(pxr::SdfPath const &instancer_id) override;
 
   EngineType engine_type;
 
@@ -62,17 +57,18 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
   MeshData *mesh_data(pxr::SdfPath const &id);
   LightData *light_data(pxr::SdfPath const &id);
   MaterialData *material_data(pxr::SdfPath const &id);
+  InstancerData *instancer_data(pxr::SdfPath const &id, bool base_prim = false);
+  InstancerData *instancer_data(Object *object);
 
-  void add_update_object(Object *object, bool geometry, bool transform, bool shading);
-  void add_update_instance(DupliObject *dupli);
-  void set_material(MeshData &mesh_data);
-  void update_material(Material *material);
+  void add_update_object(Object *object);
+  void add_update_instancer(Object *object);
   void update_world();
   void update_collection(bool remove, bool visibility);
 
  private:
   Depsgraph *depsgraph;
   bContext *context;
+  Scene *scene;
   View3D *view3d;
 
   ObjectDataMap objects;
