@@ -107,10 +107,10 @@ inline void BLI_kdtree_nd_(range_search_cb_cpp)(const KDTree *tree,
 }
 
 template<typename Fn>
-inline int BLI_kdtree_nd_(find_nearest_cb)(const KDTree *tree,
-                                           const float co[KD_DIMS],
-                                           KDTreeNearest *r_nearest,
-                                           const Fn &fn)
+inline int BLI_kdtree_nd_(find_nearest_cb_cpp)(const KDTree *tree,
+                                               const float co[KD_DIMS],
+                                               KDTreeNearest *r_nearest,
+                                               const Fn &fn)
 {
   return BLI_kdtree_nd_(find_nearest_cb)(
       tree,

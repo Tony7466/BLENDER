@@ -111,7 +111,7 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
  protected:
   int kdtree_find_neighboard(KDTree_3d *tree, const float3 &position, int index) const
   {
-    return BLI_kdtree_3d_find_nearest_cb(
+    return BLI_kdtree_3d_find_nearest_cb_cpp(
         tree,
         position,
         0,
