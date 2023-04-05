@@ -633,9 +633,9 @@ static void movieclip_main_area_set_view2d(const bContext *C, ARegion *region)
   region->v2d.cur.ymax /= h;
 }
 
-static bool clip_main_region_poll(const bContext *C)
+static bool clip_main_region_poll(const RegionPollParams *params)
 {
-  const SpaceClip *sclip = CTX_wm_space_clip(C);
+  const SpaceClip *sclip = static_cast<SpaceClip *>(params->area->spacedata.first);
   return ELEM(sclip->view, SC_VIEW_CLIP);
 }
 
@@ -794,9 +794,9 @@ static void clip_main_region_listener(const wmRegionListenerParams *params)
 
 /****************** preview region ******************/
 
-static bool clip_preview_region_poll(const bContext *C)
+static bool clip_preview_region_poll(const RegionPollParams *params)
 {
-  const SpaceClip *sclip = CTX_wm_space_clip(C);
+  const SpaceClip *sclip = static_cast<SpaceClip *>(params->area->spacedata.first);
   return ELEM(sclip->view, SC_VIEW_GRAPH, SC_VIEW_DOPESHEET);
 }
 
@@ -925,9 +925,9 @@ static void clip_preview_region_listener(const wmRegionListenerParams * /*params
 
 /****************** channels region ******************/
 
-static bool clip_channels_region_poll(const bContext *C)
+static bool clip_channels_region_poll(const RegionPollParams *params)
 {
-  const SpaceClip *sclip = CTX_wm_space_clip(C);
+  const SpaceClip *sclip = static_cast<SpaceClip *>(params->area->spacedata.first);
   return ELEM(sclip->view, SC_VIEW_DOPESHEET);
 }
 
@@ -1005,9 +1005,9 @@ static void clip_header_region_listener(const wmRegionListenerParams *params)
 
 /****************** tools region ******************/
 
-static bool clip_tools_region_poll(const bContext *C)
+static bool clip_tools_region_poll(const RegionPollParams *params)
 {
-  const SpaceClip *sclip = CTX_wm_space_clip(C);
+  const SpaceClip *sclip = static_cast<SpaceClip *>(params->area->spacedata.first);
   return ELEM(sclip->view, SC_VIEW_CLIP);
 }
 
@@ -1061,9 +1061,9 @@ static void clip_props_region_listener(const wmRegionListenerParams *params)
 
 /****************** properties region ******************/
 
-static bool clip_properties_region_poll(const bContext *C)
+static bool clip_properties_region_poll(const RegionPollParams *params)
 {
-  const SpaceClip *sclip = CTX_wm_space_clip(C);
+  const SpaceClip *sclip = static_cast<SpaceClip *>(params->area->spacedata.first);
   return ELEM(sclip->view, SC_VIEW_CLIP);
 }
 

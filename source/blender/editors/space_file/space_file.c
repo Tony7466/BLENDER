@@ -629,22 +629,22 @@ static void file_keymap(struct wmKeyConfig *keyconf)
   WM_keymap_ensure(keyconf, "File Browser Buttons", SPACE_FILE, 0);
 }
 
-static bool file_ui_region_poll(const bContext *C)
+static bool file_ui_region_poll(const RegionPollParams *params)
 {
-  const SpaceFile *sfile = CTX_wm_space_file(C);
+  const SpaceFile *sfile = (SpaceFile *)params->area->spacedata.first;
   /* Always visible except when browsing assets. */
   return sfile->browse_mode != FILE_BROWSE_MODE_ASSETS;
 }
 
-static bool file_tool_props_region_poll(const bContext *C)
+static bool file_tool_props_region_poll(const RegionPollParams *params)
 {
-  const SpaceFile *sfile = CTX_wm_space_file(C);
+  const SpaceFile *sfile = (SpaceFile *)params->area->spacedata.first;
   return (sfile->browse_mode == FILE_BROWSE_MODE_ASSETS) || (sfile->op != NULL);
 }
 
-static bool file_execution_region_poll(const bContext *C)
+static bool file_execution_region_poll(const RegionPollParams *params)
 {
-  const SpaceFile *sfile = CTX_wm_space_file(C);
+  const SpaceFile *sfile = (SpaceFile *)params->area->spacedata.first;
   return sfile->op != NULL;
 }
 

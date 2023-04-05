@@ -713,14 +713,23 @@ void ED_screens_init(Main *bmain, wmWindowManager *wm)
   }
 }
 
-static bool region_poll(const bContext *C, const ARegion *region)
+static bool region_poll(const bContext *C,
+                        const bScreen *screen,
+                        const ScrArea *area,
+                        const ARegion *region)
 {
   if (!region->type || !region->type->poll) {
     /* Show region by default. */
     return true;
   }
 
-  return region->type->poll(C);
+  RegionPollParams params = {0};
+  params.context = C;
+  params.screen = screen;
+  params.area = area;
+  params.region = region;
+
+  return region->type->poll(&params);
 }
 
 static void screen_regions_poll(bContext *C, const wmWindow *win, bScreen *screen)
@@ -738,7 +747,7 @@ static void screen_regions_poll(bContext *C, const wmWindow *win, bScreen *scree
       region->flag &= ~RGN_FLAG_POLL_FAILED;
 
       CTX_wm_region_set(C, region);
-      if (region_poll(C, region) == false) {
+      if (region_poll(C, screen, area, region) == false) {
         region->flag |= RGN_FLAG_POLL_FAILED;
       }
 

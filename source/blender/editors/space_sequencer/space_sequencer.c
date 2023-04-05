@@ -440,9 +440,9 @@ static void sequencer_gizmos(void)
 
 /* *********************** sequencer (main) region ************************ */
 
-static bool sequencer_main_region_poll(const bContext *C)
+static bool sequencer_main_region_poll(const RegionPollParams *params)
 {
-  const SpaceSeq *sseq = CTX_wm_space_seq(C);
+  const SpaceSeq *sseq = (SpaceSeq *)params->area->spacedata.first;
   return ELEM(sseq->view, SEQ_VIEW_SEQUENCE, SEQ_VIEW_SEQUENCE_PREVIEW);
 }
 
@@ -700,9 +700,9 @@ static void sequencer_tools_region_draw(const bContext *C, ARegion *region)
 }
 /* *********************** preview region ************************ */
 
-static bool sequencer_preview_region_poll(const bContext *C)
+static bool sequencer_preview_region_poll(const RegionPollParams *params)
 {
-  const SpaceSeq *sseq = CTX_wm_space_seq(C);
+  const SpaceSeq *sseq = (SpaceSeq *)params->area->spacedata.first;
   return ELEM(sseq->view, SEQ_VIEW_PREVIEW, SEQ_VIEW_SEQUENCE_PREVIEW);
 }
 
@@ -928,9 +928,9 @@ static void sequencer_id_remap(ScrArea *UNUSED(area),
 
 /* ************************************* */
 
-static bool sequencer_channel_region_poll(const bContext *C)
+static bool sequencer_channel_region_poll(const RegionPollParams *params)
 {
-  const SpaceSeq *sseq = CTX_wm_space_seq(C);
+  const SpaceSeq *sseq = (SpaceSeq *)params->area->spacedata.first;
   return ELEM(sseq->view, SEQ_VIEW_SEQUENCE);
 }
 

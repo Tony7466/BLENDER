@@ -155,6 +155,16 @@ typedef struct wmRegionMessageSubscribeParams {
   struct ARegion *region;
 } wmRegionMessageSubscribeParams;
 
+typedef struct RegionPollParams {
+  /** Context in case non-WM context is needed. Any screen/area/region context should be obtained
+   * using the members below instead (avoids many context queries on redraws). */
+  const struct bContext *context;
+
+  const struct bScreen *screen;
+  const struct ScrArea *area;
+  const struct ARegion *region;
+} RegionPollParams;
+
 typedef struct ARegionType {
   struct ARegionType *next, *prev;
 
@@ -170,7 +180,7 @@ typedef struct ARegionType {
    * available to the user in any way. Callbacks can assume that context has the owning area and
    * space-data set.
    */
-  bool (*poll)(const struct bContext *C);
+  bool (*poll)(const RegionPollParams *params);
   /* draw entirely, view changes should be handled here */
   void (*draw)(const struct bContext *C, struct ARegion *region);
   /**

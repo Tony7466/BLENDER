@@ -156,10 +156,9 @@ static void userpref_navigation_region_draw(const bContext *C, ARegion *region)
   ED_region_panels(C, region);
 }
 
-static bool userpref_execute_region_poll(const bContext *C)
+static bool userpref_execute_region_poll(const RegionPollParams *params)
 {
-  const ScrArea *area = CTX_wm_area(C);
-  const ARegion *region_header = BKE_area_find_region_type(area, RGN_TYPE_HEADER);
+  const ARegion *region_header = BKE_area_find_region_type(params->area, RGN_TYPE_HEADER);
   return !region_header->visible;
 }
 
