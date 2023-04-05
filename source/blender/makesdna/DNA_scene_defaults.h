@@ -405,6 +405,12 @@
     .select_through_box = true, \
     .select_through_lasso = true, \
     .select_through_circle = true, \
+ \
+    /* Viewport-Facing Select */ \
+    .viewport_facing_select_mode = 1, \
+    .viewport_facing_select_vert = 1, \
+    .viewport_facing_select_edge = 1, \
+    .viewport_facing_select_face = 1, \
   }
 
 /* clang-format off */
