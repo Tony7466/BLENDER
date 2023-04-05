@@ -305,7 +305,7 @@ bool edbm_circle_enclose_edge(BMEdge *eed, struct CircleSelectUserData *data)
   return enclose_edge;
 }
 
-bool edbm_circle_enclose_face(ViewContext *vc, BMFace *efa, struct CircleSelectUserData *cdata)
+bool edbm_circle_enclose_face(ViewContext *vc, BMFace *efa, struct CircleSelectUserData *data)
 {
   BMVert *eve;
   BMIter iter;
@@ -316,7 +316,7 @@ bool edbm_circle_enclose_face(ViewContext *vc, BMFace *efa, struct CircleSelectU
     float vertv2[2] = {0.0f, 0.0f};
     ED_view3d_project_float_object(
         vc->region, vertv3, vertv2, V3D_PROJ_TEST_CLIP_NEAR | V3D_PROJ_TEST_CLIP_BB);
-    enclose_face = len_squared_v2v2(cdata->mval_fl, vertv2) <= cdata->radius_squared;
+    enclose_face = len_squared_v2v2(data->mval_fl, vertv2) <= data->radius_squared;
     if (!enclose_face) {
       break;
     }
@@ -326,20 +326,15 @@ bool edbm_circle_enclose_face(ViewContext *vc, BMFace *efa, struct CircleSelectU
 
 bool edbm_center_face(ViewContext *vc,
                       BMFace *efa,
-                      const rcti *rect,
+                      const rctf *rect,
                       struct LassoSelectUserData *lassoData,
                       struct CircleSelectUserData *circleData)
 {
   BMVert *eve;
   BMIter iter;
-  rctf rectf;
   float centerv3[3] = {0.0f, 0.0f, 0.0f};
   float centerv2[2] = {0.0f, 0.0f};
   bool center_face = false;
-
-  if (rect != NULL) {
-    BLI_rctf_rcti_copy(&rectf, rect);
-  }
 
   /* tri */
   if (efa->len == 3) {
@@ -385,7 +380,7 @@ bool edbm_center_face(ViewContext *vc,
 
   /* lasso center */
   if (lassoData != NULL) {
-    center_face = BLI_rctf_isect_pt_v(&rectf, centerv2) &&
+    center_face = BLI_rctf_isect_pt_v(rect, centerv2) &&
                   BLI_lasso_is_point_inside(lassoData->mcoords,
                                             lassoData->mcoords_len,
                                             centerv2[0],
@@ -398,7 +393,7 @@ bool edbm_center_face(ViewContext *vc,
   }
   /* box center */
   else {
-    center_face = BLI_rctf_isect_pt_v(&rectf, centerv2);
+    center_face = BLI_rctf_isect_pt_v(rect, centerv2);
   }
   return center_face;
 }
@@ -483,19 +478,24 @@ static bool edbm_backbuf_check_and_select_faces(ViewContext *vc,
                                                 const eSelectOp sel_op,
                                                 const rcti *rect,
                                                 const int face_style,
-                                                void *lassoData,
-                                                void *circleData)
+                                                void *ldata,
+                                                void *cdata)
 {
   BMIter iter, viter;
   BMFace *efa;
   BMVert *eve;
   bool changed = false;
+  rctf rectf;
 
-  LassoSelectUserData *ldata = static_cast<LassoSelectUserData *>(lassoData);
-  CircleSelectUserData *cdata = static_cast<CircleSelectUserData *>(circleData);
+  LassoSelectUserData *lassoData = static_cast<LassoSelectUserData *>(ldata);
+  CircleSelectUserData *circleData = static_cast<CircleSelectUserData *>(cdata);
   const BLI_bitmap *select_bitmap = esel->select_bitmap;
   uint index = DRW_select_buffer_context_offset_for_object_elem(depsgraph, ob, SCE_SELECT_FACE);
   uint vindex = DRW_select_buffer_context_offset_for_object_elem(depsgraph, ob, SCE_SELECT_VERTEX);
+
+  if (rect != NULL) {
+    BLI_rctf_rcti_copy(&rectf, rect);
+  }
 
   if (index == 0 || vindex == 0) {
     return false;
@@ -511,20 +511,20 @@ static bool edbm_backbuf_check_and_select_faces(ViewContext *vc,
       bool center_face = true;
       if (face_style > 2 && is_inside) {
         if (face_style == 4) {
-          BM_ITER_ELEM (eve, &viter, efa, BM_VERTS_OF_FACE) {
-            if (circleData != NULL) {
-              enclose_face = edbm_circle_enclose_face(vc, efa, cdata);
-            }
-            else {
-              if (!BLI_BITMAP_TEST_BOOL(select_bitmap, vindex + BM_elem_index_get(eve))) {
-                enclose_face = false;
+          if (circleData != NULL) {
+            enclose_face = edbm_circle_enclose_face(vc, efa, circleData);
+          }
+          else {
+            BM_ITER_ELEM (eve, &viter, efa, BM_VERTS_OF_FACE) {
+              enclose_face = BLI_BITMAP_TEST_BOOL(select_bitmap, vindex + BM_elem_index_get(eve));
+              if (!enclose_face){
                 break;
               }
             }
           }
         }
         else {
-          center_face = edbm_center_face(vc, efa, rect, ldata, cdata);
+          center_face = edbm_center_face(vc, efa, &rectf, lassoData, circleData);
         }
       }
 
