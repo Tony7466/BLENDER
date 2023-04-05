@@ -4510,8 +4510,6 @@ static void mesh_circle_doSelectEdge(void *userData,
                                      int /*index*/)
 {
   CircleSelectUserData *data = static_cast<CircleSelectUserData *>(userData);
-  BMVert *eve;
-  BMIter iter;
   bool enclose_edge = true;
 
   if (edge_inside_circle(data->mval_fl, data->radius, screen_co_a, screen_co_b)) {
@@ -4534,8 +4532,6 @@ static void mesh_circle_doSelectFace(void *userData,
                                      bool *face_hit)
 {
   CircleSelectUserData *data = static_cast<CircleSelectUserData *>(userData);
-  BMIter iter;
-  BMVert *eve;
   bool enclose_face = true;
 
   if (!BLI_rctf_isect_circle(screen_rect, data->mval_fl, data->radius)) {
