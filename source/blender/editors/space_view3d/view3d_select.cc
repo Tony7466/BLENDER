@@ -287,7 +287,7 @@ struct CircleSelectUserData {
   bool is_changed;
 };
 
-static int edbm_select_style(ToolSettings *ts,
+int edbm_select_style(ToolSettings *ts,
                       int style[2],
                       const bool box)
 {
