@@ -580,15 +580,17 @@ void BlenderStrokeRenderer::GenerateStrokeMesh(StrokeGroup *group, bool hasTex)
   mesh->totpoly = group->totpoly;
   mesh->totloop = group->totloop;
   mesh->totcol = group->materials.size();
+  BKE_mesh_poly_offsets_ensure_alloc(mesh);
 
   float3 *vert_positions = (float3 *)CustomData_add_layer_named(
       &mesh->vdata, CD_PROP_FLOAT3, CD_SET_DEFAULT, mesh->totvert, "position");
   MEdge *edges = (MEdge *)CustomData_add_layer(
       &mesh->edata, CD_MEDGE, CD_SET_DEFAULT, mesh->totedge);
-  MPoly *polys = (MPoly *)CustomData_add_layer(
-      &mesh->pdata, CD_MPOLY, CD_SET_DEFAULT, mesh->totpoly);
-  MLoop *loops = (MLoop *)CustomData_add_layer(
-      &mesh->ldata, CD_MLOOP, CD_SET_DEFAULT, mesh->totloop);
+  blender::MutableSpan<int> poly_offsets = mesh->poly_offsets_for_write();
+  int *corner_verts = (int *)CustomData_add_layer_named(
+      &mesh->ldata, CD_PROP_INT32, CD_SET_DEFAULT, mesh->totloop, ".corner_vert");
+  int *corner_edges = (int *)CustomData_add_layer_named(
+      &mesh->ldata, CD_PROP_INT32, CD_SET_DEFAULT, mesh->totloop, ".corner_vert");
   int *material_indices = (int *)CustomData_add_layer_named(
       &mesh->pdata, CD_PROP_INT32, CD_SET_DEFAULT, mesh->totpoly, "material_index");
   blender::float2 *loopsuv[2] = {nullptr};
@@ -627,7 +629,7 @@ void BlenderStrokeRenderer::GenerateStrokeMesh(StrokeGroup *group, bool hasTex)
   //  Data copy
   ////////////////////
 
-  int vertex_index = 0, edge_index = 0, loop_index = 0;
+  int vertex_index = 0, edge_index = 0, loop_index = 0, poly_index = 0;
   int visible_faces, visible_segments;
   bool visible;
   Strip::vertex_container::iterator v[3];
@@ -708,36 +710,36 @@ void BlenderStrokeRenderer::GenerateStrokeMesh(StrokeGroup *group, bool hasTex)
           ++edge_index;
 
           // poly
-          polys->loopstart = loop_index;
-          polys->totloop = 3;
+          poly_offsets[poly_index] = loop_index;
           *material_indices = matnr;
           ++material_indices;
-          ++polys;
+          ++poly_index;
 
           // Even and odd loops connect triangles vertices differently
           bool is_odd = n % 2;
           // loops
           if (is_odd) {
-            loops[0].v = vertex_index - 1;
-            loops[0].e = edge_index - 2;
+            corner_verts[0] = vertex_index - 1;
+            corner_edges[0] = edge_index - 2;
 
-            loops[1].v = vertex_index - 3;
-            loops[1].e = edge_index - 3;
+            corner_verts[1] = vertex_index - 3;
+            corner_edges[1] = edge_index - 3;
 
-            loops[2].v = vertex_index - 2;
-            loops[2].e = edge_index - 1;
+            corner_verts[2] = vertex_index - 2;
+            corner_edges[2] = edge_index - 1;
           }
           else {
-            loops[0].v = vertex_index - 1;
-            loops[0].e = edge_index - 1;
+            corner_verts[0] = vertex_index - 1;
+            corner_edges[0] = edge_index - 1;
 
-            loops[1].v = vertex_index - 2;
-            loops[1].e = edge_index - 3;
+            corner_verts[1] = vertex_index - 2;
+            corner_edges[1] = edge_index - 3;
 
-            loops[2].v = vertex_index - 3;
-            loops[2].e = edge_index - 2;
+            corner_verts[2] = vertex_index - 3;
+            corner_edges[2] = edge_index - 2;
           }
-          loops += 3;
+          corner_verts += 3;
+          corner_edges += 3;
           loop_index += 3;
 
           // UV

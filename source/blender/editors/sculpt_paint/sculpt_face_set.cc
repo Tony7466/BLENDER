@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+ * Copyright 2020 Blender Foundation */
 
 /** \file
  * \ingroup edsculpt
@@ -129,7 +129,6 @@ static void do_draw_face_sets_brush_task_cb_ex(void *__restrict userdata,
   const Span<float3> positions(
       reinterpret_cast<const float3 *>(SCULPT_mesh_deformed_positions_get(ss)),
       SCULPT_vertex_count_get(ss));
-  const Span<MLoop> loops(ss->mloop, data->me->totloop);
   AutomaskingNodeData automask_data;
   SCULPT_automasking_node_begin(
       data->ob, ss, ss->cache->automasking, &automask_data, data->nodes[n]);
@@ -141,10 +140,10 @@ static void do_draw_face_sets_brush_task_cb_ex(void *__restrict userdata,
     if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES) {
       MeshElemMap *vert_map = &ss->pmap[vd.index];
       for (int j = 0; j < ss->pmap[vd.index].count; j++) {
-        const MPoly &poly = ss->polys[vert_map->indices[j]];
+        const blender::IndexRange poly = ss->polys[vert_map->indices[j]];
 
-        const float3 poly_center = bke::mesh::poly_center_calc(
-            positions, loops.slice(poly.loopstart, poly.totloop));
+        const float3 poly_center = bke::mesh::poly_center_calc(positions,
+                                                               ss->corner_verts.slice(poly));
 
         if (!sculpt_brush_test_sq_fn(&test, poly_center)) {
           continue;
@@ -551,17 +550,12 @@ static void sculpt_face_sets_init_flood_fill(Object *ob, const FaceSetsFloodFill
   int *face_sets = ss->face_sets;
 
   const Span<MEdge> edges = mesh->edges();
-  const Span<MPoly> polys = mesh->polys();
-  const Span<MLoop> loops = mesh->loops();
+  const OffsetIndices polys = mesh->polys();
+  const Span<int> corner_edges = mesh->corner_edges();
 
   if (!ss->epmap) {
-    BKE_mesh_edge_poly_map_create(&ss->epmap,
-                                  &ss->epmap_mem,
-                                  edges.size(),
-                                  polys.data(),
-                                  polys.size(),
-                                  loops.data(),
-                                  loops.size());
+    BKE_mesh_edge_poly_map_create(
+        &ss->epmap, &ss->epmap_mem, edges.size(), polys, corner_edges.data(), corner_edges.size());
   }
 
   int next_face_set = 1;
@@ -578,11 +572,9 @@ static void sculpt_face_sets_init_flood_fill(Object *ob, const FaceSetsFloodFill
 
     while (!queue.empty()) {
       const int poly_i = queue.front();
-      const MPoly &poly = polys[poly_i];
       queue.pop();
 
-      for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
-        const int edge_i = loop.e;
+      for (const int edge_i : corner_edges.slice(polys[poly_i])) {
         const Span<int> neighbor_polys(ss->epmap[edge_i].indices, ss->epmap[edge_i].count);
         for (const int neighbor_i : neighbor_polys) {
           if (neighbor_i == poly_i) {
@@ -1110,18 +1102,17 @@ static void sculpt_face_set_grow(Object *ob,
                                  const int active_face_set_id,
                                  const bool modify_hidden)
 {
+  using namespace blender;
   Mesh *mesh = BKE_mesh_from_object(ob);
-  const blender::Span<MPoly> polys = mesh->polys();
-  const blender::Span<MLoop> loops = mesh->loops();
+  const OffsetIndices polys = mesh->polys();
+  const Span<int> corner_verts = mesh->corner_verts();
 
   for (const int p : polys.index_range()) {
     if (!modify_hidden && prev_face_sets[p] <= 0) {
       continue;
     }
-    const MPoly &c_poly = polys[p];
-    for (int l = 0; l < c_poly.totloop; l++) {
-      const MLoop *c_loop = &loops[c_poly.loopstart + l];
-      const MeshElemMap *vert_map = &ss->pmap[c_loop->v];
+    for (const int vert : corner_verts.slice(polys[p])) {
+      const MeshElemMap *vert_map = &ss->pmap[vert];
       for (int i = 0; i < vert_map->count; i++) {
         const int neighbor_face_index = vert_map->indices[i];
         if (neighbor_face_index == p) {
@@ -1141,18 +1132,17 @@ static void sculpt_face_set_shrink(Object *ob,
                                    const int active_face_set_id,
                                    const bool modify_hidden)
 {
+  using namespace blender;
   Mesh *mesh = BKE_mesh_from_object(ob);
-  const blender::Span<MPoly> polys = mesh->polys();
-  const blender::Span<MLoop> loops = mesh->loops();
+  const OffsetIndices polys = mesh->polys();
+  const Span<int> corner_verts = mesh->corner_verts();
   for (const int p : polys.index_range()) {
     if (!modify_hidden && prev_face_sets[p] <= 0) {
       continue;
     }
     if (abs(prev_face_sets[p]) == active_face_set_id) {
-      const MPoly &c_poly = polys[p];
-      for (int l = 0; l < c_poly.totloop; l++) {
-        const MLoop *c_loop = &loops[c_poly.loopstart + l];
-        const MeshElemMap *vert_map = &ss->pmap[c_loop->v];
+      for (const int vert_i : corner_verts.slice(polys[p])) {
+        const MeshElemMap *vert_map = &ss->pmap[vert_i];
         for (int i = 0; i < vert_map->count; i++) {
           const int neighbor_face_index = vert_map->indices[i];
           if (neighbor_face_index == p) {

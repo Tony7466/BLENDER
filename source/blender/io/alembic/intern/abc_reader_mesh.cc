@@ -175,8 +175,8 @@ void read_mverts(Mesh &mesh, const P3fArraySamplePtr positions, const N3fArraySa
 
 static void read_mpolys(CDStreamConfig &config, const AbcMeshData &mesh_data)
 {
-  MPoly *polys = config.polys;
-  MLoop *mloops = config.mloop;
+  int *poly_offsets = config.poly_offsets;
+  int *corner_verts = config.corner_verts;
   float2 *mloopuvs = config.mloopuv;
 
   const Int32ArraySamplePtr &face_indices = mesh_data.face_indices;
@@ -197,9 +197,7 @@ static void read_mpolys(CDStreamConfig &config, const AbcMeshData &mesh_data)
   for (int i = 0; i < face_counts->size(); i++) {
     const int face_size = (*face_counts)[i];
 
-    MPoly &poly = polys[i];
-    poly.loopstart = loop_index;
-    poly.totloop = face_size;
+    poly_offsets[i] = loop_index;
 
     /* Polygons are always assumed to be smooth-shaded. If the Alembic mesh should be flat-shaded,
      * this is encoded in custom loop normals. See #71246. */
@@ -209,18 +207,18 @@ static void read_mpolys(CDStreamConfig &config, const AbcMeshData &mesh_data)
 
     uint last_vertex_index = 0;
     for (int f = 0; f < face_size; f++, loop_index++, rev_loop_index--) {
-      MLoop &loop = mloops[rev_loop_index];
-      loop.v = (*face_indices)[loop_index];
+      const int vert = (*face_indices)[loop_index];
+      corner_verts[rev_loop_index] = vert;
 
-      if (f > 0 && loop.v == last_vertex_index) {
+      if (f > 0 && vert == last_vertex_index) {
         /* This face is invalid, as it has consecutive loops from the same vertex. This is caused
          * by invalid geometry in the Alembic file, such as in #76514. */
         seen_invalid_geometry = true;
       }
-      last_vertex_index = loop.v;
+      last_vertex_index = vert;
 
       if (do_uvs) {
-        uv_index = (*uvs_indices)[do_uvs_per_loop ? loop_index : loop.v];
+        uv_index = (*uvs_indices)[do_uvs_per_loop ? loop_index : last_vertex_index];
 
         /* Some Alembic files are broken (or at least export UVs in a way we don't expect). */
         if (uv_index >= uvs_size) {
@@ -269,14 +267,14 @@ static void process_loop_normals(CDStreamConfig &config, const N3fArraySamplePtr
   float(*lnors)[3] = static_cast<float(*)[3]>(
       MEM_malloc_arrayN(loop_count, sizeof(float[3]), "ABC::FaceNormals"));
 
-  const Span<MPoly> polys = mesh->polys();
+  const OffsetIndices polys = mesh->polys();
   const N3fArraySample &loop_normals = *loop_normals_ptr;
   int abc_index = 0;
-  for (const int i : polys.index_range()) {
-    const MPoly &poly = polys[i];
+  for (int i = 0, e = mesh->totpoly; i < e; i++) {
+    const IndexRange poly = polys[i];
     /* As usual, ABC orders the loops in reverse. */
-    for (int j = poly.totloop - 1; j >= 0; j--, abc_index++) {
-      int blender_index = poly.loopstart + j;
+    for (int j = poly.size() - 1; j >= 0; j--, abc_index++) {
+      int blender_index = poly[j];
       copy_zup_from_yup(lnors[blender_index], loop_normals[abc_index].getValue());
     }
   }
@@ -517,8 +515,8 @@ CDStreamConfig get_config(Mesh *mesh, const bool use_vertex_interpolation)
   CDStreamConfig config;
   config.mesh = mesh;
   config.positions = mesh->vert_positions_for_write().data();
-  config.mloop = mesh->loops_for_write().data();
-  config.polys = mesh->polys_for_write().data();
+  config.corner_verts = mesh->corner_verts_for_write().data();
+  config.poly_offsets = mesh->poly_offsets_for_write().data();
   config.totvert = mesh->totvert;
   config.totloop = mesh->totloop;
   config.totpoly = mesh->totpoly;
