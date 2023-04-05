@@ -181,6 +181,7 @@ typedef struct GreasePencil {
   blender::Span<GreasePencilDrawingOrReference *> drawings() const;
   blender::MutableSpan<GreasePencilDrawingOrReference *> drawings_for_write();
   void add_empty_drawings(int n);
+  void remove_drawing(int index);
   void foreach_visible_drawing(int frame,
                                blender::FunctionRef<void(GreasePencilDrawing &)> function);
   void read_drawing_array(BlendDataReader *reader);

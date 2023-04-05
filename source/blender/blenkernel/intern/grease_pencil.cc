@@ -441,16 +441,31 @@ blender::Span<blender::bke::StrokePoint> GreasePencilDrawing::stroke_buffer()
 
 /* GreasePencil API */
 
-static void grease_pencil_grow_drawing_array_by(GreasePencil &self, const int added_capacity)
+static void grease_pencil_grow_drawing_array_by(GreasePencil &self, const int add_capacity)
 {
-  BLI_assert(added_capacity > 0);
-  const int new_drawing_array_size = self.drawing_array_size + added_capacity;
+  BLI_assert(add_capacity > 0);
+  const int new_drawing_array_size = self.drawing_array_size + add_capacity;
   GreasePencilDrawingOrReference **new_drawing_array =
       reinterpret_cast<GreasePencilDrawingOrReference **>(
           MEM_cnew_array<GreasePencilDrawingOrReference *>(new_drawing_array_size, __func__));
 
   blender::uninitialized_relocate_n(
       self.drawing_array, self.drawing_array_size, new_drawing_array);
+
+  self.drawing_array = new_drawing_array;
+  self.drawing_array_size = new_drawing_array_size;
+}
+
+static void grease_pencil_shrink_drawing_array_by(GreasePencil &self, const int remove_capacity)
+{
+  BLI_assert(remove_capacity > 0);
+  const int new_drawing_array_size = self.drawing_array_size - remove_capacity;
+  GreasePencilDrawingOrReference **new_drawing_array =
+      reinterpret_cast<GreasePencilDrawingOrReference **>(
+          MEM_cnew_array<GreasePencilDrawingOrReference *>(new_drawing_array_size, __func__));
+
+  blender::uninitialized_move_n(self.drawing_array, new_drawing_array_size, new_drawing_array);
+  MEM_freeN(self.drawing_array);
 
   self.drawing_array = new_drawing_array;
   self.drawing_array_size = new_drawing_array_size;
@@ -479,7 +494,74 @@ void GreasePencil::add_empty_drawings(int n)
   for (const int i : IndexRange(new_drawings.size())) {
     new_drawings[i] = reinterpret_cast<GreasePencilDrawingOrReference *>(
         MEM_new<GreasePencilDrawing>(__func__));
+    GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(new_drawings[i]);
+    new (&drawing->geometry) bke::CurvesGeometry();
   }
+}
+
+void GreasePencil::remove_drawing(int index_to_remove)
+{
+  using namespace blender::bke::gpencil;
+  /* In order to not change the indices of the drawings, we do the following to the drawing to be
+   * removed:
+   *  - If the drawing (A) is not the last one:
+   *     1.1) Find any frames in the layers that reference the last drawing (B) and point them to
+   *          A's index.
+   *     1.2) Swap drawing A with drawing B.
+   *  2) Destroy A and shrink the array by one.
+   *  3) Remove any frames in the layers that reference the A's index.
+   */
+  BLI_assert(this->drawing_array_size > 0);
+  BLI_assert(index_to_remove >= 0 && index_to_remove < this->drawing_array_size);
+
+  /* Move the drawing that should be removed to the last index. */
+  const int last_drawing_index = this->drawing_array_size - 1;
+  if (index_to_remove != last_drawing_index) {
+    this->root_group().foreach_layer_pre_order(
+        [last_drawing_index, index_to_remove](Layer &layer) {
+          blender::Map<int, int> &frames = layer.frames_for_write();
+          for (auto item : frames.items()) {
+            if (item.value == last_drawing_index) {
+              item.value = index_to_remove;
+            }
+            else if (item.value == index_to_remove) {
+              item.value = last_drawing_index;
+            }
+          }
+        });
+    std::swap(this->drawings_for_write()[index_to_remove],
+              this->drawings_for_write()[last_drawing_index]);
+  }
+
+  /* Delete the last drawing. */
+  GreasePencilDrawingOrReference *drawing_or_ref_to_remove =
+      this->drawings_for_write()[last_drawing_index];
+  switch (drawing_or_ref_to_remove->type) {
+    case GREASE_PENCIL_DRAWING: {
+      GreasePencilDrawing *drawing_to_remove = reinterpret_cast<GreasePencilDrawing *>(
+          drawing_or_ref_to_remove);
+      drawing_to_remove->geometry.wrap().~CurvesGeometry();
+      MEM_delete(drawing_to_remove->runtime);
+      drawing_to_remove->runtime = nullptr;
+      MEM_freeN(drawing_to_remove);
+      break;
+    }
+    case GREASE_PENCIL_DRAWING_REFERENCE: {
+      GreasePencilDrawingReference *drawing_reference_to_remove =
+          reinterpret_cast<GreasePencilDrawingReference *>(drawing_or_ref_to_remove);
+      MEM_freeN(drawing_reference_to_remove);
+      break;
+    }
+  }
+
+  /* Remove any frame that points to the last drawing. */
+  this->root_group().foreach_layer_pre_order([last_drawing_index](Layer &layer) {
+    blender::Map<int, int> &frames = layer.frames_for_write();
+    frames.remove_if([last_drawing_index](auto item) { return item.value == last_drawing_index; });
+  });
+
+  /* Shrink drawing array. */
+  grease_pencil_shrink_drawing_array_by(*this, 1);
 }
 
 void GreasePencil::foreach_visible_drawing(

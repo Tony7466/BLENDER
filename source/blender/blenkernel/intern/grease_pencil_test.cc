@@ -3,6 +3,7 @@
 
 #include "testing/testing.h"
 
+#include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_idtype.h"
 #include "BKE_lib_id.h"
@@ -47,6 +48,46 @@ TEST(gpencil, add_empty_drawings)
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(BKE_id_new(ctx.bmain, ID_GP, "GP"));
   grease_pencil.add_empty_drawings(3);
   EXPECT_EQ(grease_pencil.drawings().size(), 3);
+}
+
+TEST(gpencil, remove_drawing)
+{
+  GreasePencilIDTestContext ctx;
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(BKE_id_new(ctx.bmain, ID_GP, "GP"));
+  grease_pencil.add_empty_drawings(3);
+
+  GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(
+      grease_pencil.drawings_for_write()[1]);
+  drawing->geometry.wrap().resize(0, 10);
+
+  Layer layer1("Layer1");
+  Layer layer2("Layer2");
+
+  layer1.frames_for_write().add(0, 0);
+  layer1.frames_for_write().add(10, 1);
+  layer1.frames_for_write().add(20, 2);
+
+  layer2.frames_for_write().add(0, 1);
+
+  grease_pencil.root_group().add_layer(std::move(layer1));
+  grease_pencil.root_group().add_layer(std::move(layer2));
+
+  grease_pencil.remove_drawing(1);
+  EXPECT_EQ(grease_pencil.drawings().size(), 2);
+
+  static int expected_frames_size[] = {2, 0};
+  static int expected_frames_pairs_layer0[][2] = {{0, 0}, {20, 1}};
+  int layer_i = 0;
+  grease_pencil.root_group().foreach_layer_pre_order([&](Layer &layer) {
+    EXPECT_EQ(layer.frames().size(), expected_frames_size[layer_i]);
+    if (layer_i == 0) {
+      for (const int i : IndexRange(2)) {
+        EXPECT_EQ(layer.frames().lookup(expected_frames_pairs_layer0[i][0]),
+                  expected_frames_pairs_layer0[i][1]);
+      }
+    }
+    layer_i++;
+  });
 }
 
 /* --------------------------------------------------------------------------------------------- */
