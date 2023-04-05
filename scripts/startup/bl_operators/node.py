@@ -153,42 +153,19 @@ class NODE_OT_add_node(NodeAddOperator, Operator):
             return ""
 
 
-class AddNodePairOperatorLink(PropertyGroup):
-    from_socket: StringProperty(
-        name="From Socket",
-        description="Socket of the origin node to connect",
-    )
-    to_socket: StringProperty(
-        name="To Socket",
-        description="Socket of the target node to connect",
-    )
-
-
-class NODE_OT_add_node_pair(NodeAddOperator, Operator):
-    '''Add a node pair to the active tree'''
-    bl_idname = "node.add_node_pair"
-    bl_label = "Add Node Pair"
+class NODE_OT_add_simulation_zone(NodeAddOperator, Operator):
+    '''Add simulation zone input and output nodes to the active tree'''
+    bl_idname = "node.add_simulation_zone"
+    bl_label = "Add Simulation Zone"
     bl_options = {'REGISTER', 'UNDO'}
 
-    origin_type: StringProperty(
-        name="Origin Node Type",
-        description="Origin node type",
-    )
-    target_type: StringProperty(
-        name="Target Node Type",
-        description="Target node type",
-    )
+    origin_type = "GeometryNodeSimulationInput"
+    target_type = "GeometryNodeSimulationOutput"
     offset: FloatVectorProperty(
         name="Offset",
         description="Offset of nodes from the cursor when added",
         size=2,
-        default=(0, 0),
-    )
-    links: CollectionProperty(
-        name="Links",
-        description="Links to add between the origin and target node",
-        type=AddNodePairOperatorLink,
-        options={'SKIP_SAVE'},
+        default=(150, 0),
     )
 
     def execute(self, context):
@@ -196,8 +173,6 @@ class NODE_OT_add_node_pair(NodeAddOperator, Operator):
         tree = space.edit_tree
 
         props = self.properties
-        if not props.is_property_set("origin_type") or not props.is_property_set("target_type"):
-            return {'CANCELLED'}
 
         self.deselect_nodes(context)
         origin_node = self.create_node(context, self.origin_type)
@@ -208,14 +183,13 @@ class NODE_OT_add_node_pair(NodeAddOperator, Operator):
         # Simulation input must be paired with the output
         origin_node.pair_with_output(target_node)
 
-        if props.is_property_set("offset"):
-            origin_node.location -= Vector(self.offset)
-            target_node.location += Vector(self.offset)
+        origin_node.location -= Vector(self.offset)
+        target_node.location += Vector(self.offset)
 
-        for link in self.links:
-            from_socket = origin_node.outputs.get(link.from_socket)
-            to_socket = target_node.inputs.get(link.to_socket)
-            tree.links.new(to_socket, from_socket)
+        # Connect geometry sockets by default
+        from_socket = origin_node.outputs.get("Geometry")
+        to_socket = target_node.inputs.get("Geometry")
+        tree.links.new(to_socket, from_socket)
 
         return {'FINISHED'}
 
@@ -273,10 +247,9 @@ class NODE_OT_tree_path_parent(Operator):
 
 classes = (
     NodeSetting,
-    AddNodePairOperatorLink,
 
     NODE_OT_add_node,
-    NODE_OT_add_node_pair,
+    NODE_OT_add_simulation_zone,
     NODE_OT_collapse_hide_unused_toggle,
     NODE_OT_tree_path_parent,
 )
