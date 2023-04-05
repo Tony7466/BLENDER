@@ -156,13 +156,11 @@ typedef struct wmRegionMessageSubscribeParams {
 } wmRegionMessageSubscribeParams;
 
 typedef struct RegionPollParams {
-  /** Context in case non-WM context is needed. Any screen/area/region context should be obtained
-   * using the members below instead (avoids many context queries on redraws). */
-  const struct bContext *context;
-
   const struct bScreen *screen;
   const struct ScrArea *area;
   const struct ARegion *region;
+
+  /* For now only WM context members here, could add the scene or even #bContext if needed. */
 } RegionPollParams;
 
 typedef struct ARegionType {
