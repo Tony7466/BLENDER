@@ -159,8 +159,8 @@ class NODE_OT_add_simulation_zone(NodeAddOperator, Operator):
     bl_label = "Add Simulation Zone"
     bl_options = {'REGISTER', 'UNDO'}
 
-    origin_type = "GeometryNodeSimulationInput"
-    target_type = "GeometryNodeSimulationOutput"
+    input_node_type = "GeometryNodeSimulationInput"
+    output_node_type = "GeometryNodeSimulationOutput"
     offset: FloatVectorProperty(
         name="Offset",
         description="Offset of nodes from the cursor when added",
@@ -175,20 +175,20 @@ class NODE_OT_add_simulation_zone(NodeAddOperator, Operator):
         props = self.properties
 
         self.deselect_nodes(context)
-        origin_node = self.create_node(context, self.origin_type)
-        target_node = self.create_node(context, self.target_type)
-        if origin_node is None or target_node is None:
+        input_node = self.create_node(context, self.input_node_type)
+        output_node = self.create_node(context, self.output_node_type)
+        if input_node is None or output_node is None:
             return {'CANCELLED'}
     
         # Simulation input must be paired with the output
-        origin_node.pair_with_output(target_node)
+        input_node.pair_with_output(output_node)
 
-        origin_node.location -= Vector(self.offset)
-        target_node.location += Vector(self.offset)
+        input_node.location -= Vector(self.offset)
+        output_node.location += Vector(self.offset)
 
         # Connect geometry sockets by default
-        from_socket = origin_node.outputs.get("Geometry")
-        to_socket = target_node.inputs.get("Geometry")
+        from_socket = input_node.outputs.get("Geometry")
+        to_socket = output_node.inputs.get("Geometry")
         tree.links.new(to_socket, from_socket)
 
         return {'FINISHED'}
