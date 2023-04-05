@@ -1766,7 +1766,7 @@ static int node_delete_exec(bContext *C, wmOperator * /*op*/)
   ED_preview_kill_jobs(CTX_wm_manager(C), bmain);
 
   /* Delete paired nodes as well. */
-  node_select_paired(snode->edittree);
+  node_select_paired(*snode->edittree);
 
   LISTBASE_FOREACH_MUTABLE (bNode *, node, &snode->edittree->nodes) {
     if (node->flag & SELECT) {
@@ -1856,7 +1856,7 @@ static int node_delete_reconnect_exec(bContext *C, wmOperator * /*op*/)
   ED_preview_kill_jobs(CTX_wm_manager(C), CTX_data_main(C));
 
   /* Delete paired nodes as well. */
-  node_select_paired(snode->edittree);
+  node_select_paired(*snode->edittree);
 
   LISTBASE_FOREACH_MUTABLE (bNode *, node, &snode->edittree->nodes) {
     if (node->flag & SELECT) {

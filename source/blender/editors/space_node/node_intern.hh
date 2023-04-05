@@ -193,7 +193,7 @@ void node_deselect_all_output_sockets(bNodeTree &node_tree, bool deselect_nodes)
 /**
  * Select nodes that are paired to a selected node.
  */
-void node_select_paired(bNodeTree *node_tree);
+void node_select_paired(bNodeTree &node_tree);
 void node_select_single(bContext &C, bNode &node);
 
 void NODE_OT_select(wmOperatorType *ot);
