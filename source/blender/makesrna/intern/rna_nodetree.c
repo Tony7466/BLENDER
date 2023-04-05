@@ -4094,7 +4094,7 @@ static bool rna_GeometryNodeSimulationInput_pair_with_output(
 {
   bNodeTree *ntree = (bNodeTree *)id;
 
-  if (!node_geo_simulation_input_pair_with_output(node, output_node)) {
+  if (!node_geo_simulation_input_pair_with_output(ntree, node, output_node)) {
     BKE_reportf(reports,
                 RPT_ERROR,
                 "Failed to pair simulation input node %s with output node %s",
