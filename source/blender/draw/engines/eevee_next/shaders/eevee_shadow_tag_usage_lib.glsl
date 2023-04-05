@@ -50,7 +50,7 @@ void shadow_tag_usage_tilemap_directional(uint l_idx, vec3 P, vec3 V, float radi
 
   vec3 lP = shadow_world_to_local(light, P);
 
-  if (radius == 0) {
+  if (radius == 0.0) {
     ShadowCoordinates coord = shadow_directional_coordinates(light, lP);
     shadow_tag_usage_tile(light, coord.tile_coord, 0, coord.tilemap_index);
   }
@@ -62,9 +62,9 @@ void shadow_tag_usage_tilemap_directional(uint l_idx, vec3 P, vec3 V, float radi
 
     for (int level = min_level; level <= max_level; level++) {
       ShadowCoordinates coord_min = shadow_directional_coordinates_at_level(
-          light, lP - vec3(radius, radius, 0), level);
+          light, lP - vec3(radius, radius, 0.0), level);
       ShadowCoordinates coord_max = shadow_directional_coordinates_at_level(
-          light, lP + vec3(radius, radius, 0), level);
+          light, lP + vec3(radius, radius, 0.0), level);
 
       for (int x = coord_min.tile_coord.x; x <= coord_max.tile_coord.x; x++) {
         for (int y = coord_min.tile_coord.y; y <= coord_max.tile_coord.y; y++) {
