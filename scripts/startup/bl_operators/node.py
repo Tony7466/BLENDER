@@ -180,13 +180,13 @@ class NODE_OT_add_simulation_zone(NodeAddOperator, Operator):
         if input_node is None or output_node is None:
             return {'CANCELLED'}
     
-        # Simulation input must be paired with the output
+        # Simulation input must be paired with the output.
         input_node.pair_with_output(output_node)
 
         input_node.location -= Vector(self.offset)
         output_node.location += Vector(self.offset)
 
-        # Connect geometry sockets by default
+        # Connect geometry sockets by default.
         from_socket = input_node.outputs.get("Geometry")
         to_socket = output_node.inputs.get("Geometry")
         tree.links.new(to_socket, from_socket)
