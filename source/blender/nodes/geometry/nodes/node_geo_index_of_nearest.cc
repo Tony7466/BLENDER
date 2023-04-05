@@ -2,8 +2,6 @@
 
 #include "BKE_attribute_math.hh"
 
-#include "NOD_socket_search_link.hh"
-
 #include "BLI_kdtree.h"
 #include "BLI_multi_value_map.hh"
 #include "BLI_task.hh"
@@ -25,18 +23,18 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
  private:
-  const Field<float3> positions_;
-  const Field<int> group_;
-  const Field<int> search_group_;
+  const Field<float3> positions_field_;
+  const Field<int> group_field_;
+  const Field<int> search_group_field_;
 
  public:
-  IndexOfNearestFieldInput(const Field<float3> positions,
-                           const Field<int> group,
-                           const Field<int> search_group)
+  IndexOfNearestFieldInput(const Field<float3> positions_field,
+                           const Field<int> group_field,
+                           const Field<int> search_group_field)
       : bke::GeometryFieldInput(CPPType::get<int>(), "Nearest to"),
-        positions_(std::move(positions)),
-        group_(std::move(group)),
-        search_group_(std::move(search_group))
+        positions_field_(std::move(positions_field)),
+        group_field_(std::move(group_field)),
+        search_group_field_(std::move(search_group_field))
   {
   }
 
@@ -44,9 +42,9 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
                                  IndexMask mask) const final
   {
     fn::FieldEvaluator evaluator{context, &mask};
-    evaluator.add(positions_);
-    evaluator.add(group_);
-    evaluator.add(search_group_);
+    evaluator.add(positions_field_);
+    evaluator.add(group_field_);
+    evaluator.add(search_group_field_);
     evaluator.evaluate();
 
     const VArray<float3> &positions = evaluator.get_evaluated<float3>(0);
@@ -109,13 +107,13 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
   }
 
  protected:
-  int kdtree_find_neighboard(KDTree_3d *tree, const float3 &position, int index) const
+  int kdtree_find_neighboard(KDTree_3d *tree, const float3 &position, const int index) const
   {
     return BLI_kdtree_3d_find_nearest_cb_cpp(
         tree,
         position,
         0,
-        [index](const int other_new_i, const float * /*co*/, float /*dist_sq*/) {
+        [index](const int other_new_i, const float * /*co*/, const float /*dist_sq*/) {
           if (index == other_new_i) {
             return 0;
           }
@@ -126,29 +124,30 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
  public:
   void for_each_field_input_recursive(FunctionRef<void(const FieldInput &)> fn) const
   {
-    positions_.node().for_each_field_input_recursive(fn);
-    group_.node().for_each_field_input_recursive(fn);
-    search_group_.node().for_each_field_input_recursive(fn);
+    positions_field_.node().for_each_field_input_recursive(fn);
+    group_field_.node().for_each_field_input_recursive(fn);
+    search_group_field_.node().for_each_field_input_recursive(fn);
   }
 
   uint64_t hash() const override
   {
-    return get_default_hash_3(positions_, group_, search_group_);
+    return get_default_hash_3(positions_field_, group_field_, search_group_field_);
   }
 
   bool is_equal_to(const fn::FieldNode &other) const override
   {
     if (const IndexOfNearestFieldInput *other_field =
             dynamic_cast<const IndexOfNearestFieldInput *>(&other)) {
-      return positions_ == other_field->positions_ && group_ == other_field->group_ &&
-             search_group_ == other_field->search_group_;
+      return positions_field_ == other_field->positions_field_ &&
+             group_field_ == other_field->group_field_ &&
+             search_group_field_ == other_field->search_group_field_;
     }
     return false;
   }
 
   std::optional<eAttrDomain> preferred_domain(const GeometryComponent &component) const override
   {
-    return bke::try_detect_field_domain(component, positions_);
+    return bke::try_detect_field_domain(component, positions_field_);
   }
 };
 
@@ -164,9 +163,9 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   if (params.output_is_required("Index")) {
     static auto clamp_fn = mf::build::SI1_SO<int, int>(
-        "Clamp",
+        "Index Clamping",
         [](const int index) { return math::max(0, index); },
-        mf::build::exec_presets::AllSpanOrSingle());
+        mf::build::exec_presets::Materialized());
     auto clamp_op = std::make_shared<FieldOperation>(
         FieldOperation(std::move(clamp_fn), {index_of_nearest_field}));
     params.set_output("Index", Field<int>(clamp_op, 0));
@@ -174,10 +173,9 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   if (params.output_is_required("Valid")) {
     static auto valid_fn = mf::build::SI1_SO<int, bool>(
-        "Valid Index",
+        "Index Validating",
         [](const int index) { return index != -1; },
-        mf::build::exec_presets::AllSpanOrSingle());
-
+        mf::build::exec_presets::Materialized());
     auto valid_op = std::make_shared<FieldOperation>(
         FieldOperation(std::move(valid_fn), {std::move(index_of_nearest_field)}));
     params.set_output("Valid", Field<bool>(valid_op, 0));
