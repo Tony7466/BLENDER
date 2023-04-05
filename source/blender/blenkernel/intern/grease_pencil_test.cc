@@ -33,9 +33,20 @@ TEST(gpencil, create_grease_pencil_id)
 {
   GreasePencilIDTestContext ctx;
 
-  GreasePencil *grease_pencil = static_cast<GreasePencil *>(BKE_id_new(ctx.bmain, ID_GP, "GP"));
-  EXPECT_EQ(grease_pencil->drawings().size(), 0);
-  EXPECT_EQ(grease_pencil->root_group().total_num_children(), 0);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(BKE_id_new(ctx.bmain, ID_GP, "GP"));
+  EXPECT_EQ(grease_pencil.drawings().size(), 0);
+  EXPECT_EQ(grease_pencil.root_group().total_num_children(), 0);
+}
+
+/* --------------------------------------------------------------------------------------------- */
+/* Drawing Array Tests. */
+
+TEST(gpencil, add_empty_drawings)
+{
+  GreasePencilIDTestContext ctx;
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(BKE_id_new(ctx.bmain, ID_GP, "GP"));
+  grease_pencil.add_empty_drawings(3);
+  EXPECT_EQ(grease_pencil.drawings().size(), 3);
 }
 
 /* --------------------------------------------------------------------------------------------- */

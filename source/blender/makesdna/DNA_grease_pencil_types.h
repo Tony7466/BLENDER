@@ -21,7 +21,7 @@ struct StrokePoint;
 namespace gpencil {
 class Layer;
 class LayerGroup;
-}
+}  // namespace gpencil
 }  // namespace blender::bke
 using GreasePencilRuntimeHandle = blender::bke::GreasePencilRuntime;
 using GreasePencilDrawingRuntimeHandle = blender::bke::GreasePencilDrawingRuntime;
@@ -179,6 +179,8 @@ typedef struct GreasePencil {
 
 #ifdef __cplusplus
   blender::Span<GreasePencilDrawingOrReference *> drawings() const;
+  blender::MutableSpan<GreasePencilDrawingOrReference *> drawings_for_write();
+  void add_empty_drawings(int n);
   void foreach_visible_drawing(int frame,
                                blender::FunctionRef<void(GreasePencilDrawing &)> function);
   void read_drawing_array(BlendDataReader *reader);

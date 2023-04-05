@@ -16,6 +16,7 @@
 
 #include "BLI_math_vector_types.hh"
 #include "BLI_memarena.h"
+#include "BLI_memory_utils.hh"
 #include "BLI_polyfill_2d.h"
 #include "BLI_span.hh"
 #include "BLI_stack.hh"
@@ -440,10 +441,45 @@ blender::Span<blender::bke::StrokePoint> GreasePencilDrawing::stroke_buffer()
 
 /* GreasePencil API */
 
+static void grease_pencil_grow_drawing_array_by(GreasePencil &self, const int added_capacity)
+{
+  BLI_assert(added_capacity > 0);
+  const int new_drawing_array_size = self.drawing_array_size + added_capacity;
+  GreasePencilDrawingOrReference **new_drawing_array =
+      reinterpret_cast<GreasePencilDrawingOrReference **>(
+          MEM_cnew_array<GreasePencilDrawingOrReference *>(new_drawing_array_size, __func__));
+
+  blender::uninitialized_relocate_n(
+      self.drawing_array, self.drawing_array_size, new_drawing_array);
+
+  self.drawing_array = new_drawing_array;
+  self.drawing_array_size = new_drawing_array_size;
+}
+
 blender::Span<GreasePencilDrawingOrReference *> GreasePencil::drawings() const
 {
   return blender::Span<GreasePencilDrawingOrReference *>{this->drawing_array,
                                                          this->drawing_array_size};
+}
+
+blender::MutableSpan<GreasePencilDrawingOrReference *> GreasePencil::drawings_for_write()
+{
+  return blender::MutableSpan<GreasePencilDrawingOrReference *>{this->drawing_array,
+                                                                this->drawing_array_size};
+}
+
+void GreasePencil::add_empty_drawings(int n)
+{
+  using namespace blender;
+  BLI_assert(n > 0);
+  const int prev_size = this->drawings().size();
+  grease_pencil_grow_drawing_array_by(*this, n);
+  MutableSpan<GreasePencilDrawingOrReference *> new_drawings =
+      this->drawings_for_write().drop_front(prev_size);
+  for (const int i : IndexRange(new_drawings.size())) {
+    new_drawings[i] = reinterpret_cast<GreasePencilDrawingOrReference *>(
+        MEM_new<GreasePencilDrawing>(__func__));
+  }
 }
 
 void GreasePencil::foreach_visible_drawing(
