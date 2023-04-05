@@ -310,23 +310,15 @@ void node_deselect_all_output_sockets(bNodeTree &node_tree, const bool deselect_
 
 void node_select_paired(bNodeTree *node_tree)
 {
-  for (bNode *node : node_tree->all_nodes()) {
-    if (node->flag & NODE_SELECT) {
-      if (node->type == GEO_NODE_SIMULATION_INPUT) {
-        NodeGeometrySimulationInput *storage = static_cast<NodeGeometrySimulationInput *>(
-            node->storage);
-        if (bNode *output_node = node_tree->node_by_id(storage->output_node_id)) {
-          output_node->flag |= NODE_SELECT;
-        }
+  for (bNode *input_node : node_tree->nodes_by_type("GeometryNodeSimulationInput")) {
+    NodeGeometrySimulationInput *storage = static_cast<NodeGeometrySimulationInput *>(
+        input_node->storage);
+    if (bNode *output_node = node_tree->node_by_id(storage->output_node_id)) {
+      if (input_node->flag & NODE_SELECT) {
+        output_node->flag |= NODE_SELECT;
       }
-      if (node->type == GEO_NODE_SIMULATION_OUTPUT) {
-        for (bNode *input_node : node_tree->nodes_by_type("GeometryNodeSimulationInput")) {
-          NodeGeometrySimulationInput *storage = static_cast<NodeGeometrySimulationInput *>(
-              input_node->storage);
-          if (storage->output_node_id == node->identifier) {
-            input_node->flag |= NODE_SELECT;
-          }
-        }
+      if (output_node->flag & NODE_SELECT) {
+        input_node->flag |= NODE_SELECT;
       }
     }
   }
