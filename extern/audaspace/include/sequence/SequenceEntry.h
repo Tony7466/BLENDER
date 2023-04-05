@@ -126,9 +126,10 @@ public:
 	 * \param begin The start time.
 	 * \param end The end time or a negative value if determined by the sound.
 	 * \param skip How much seconds should be skipped at the beginning.
+	 * \param sequence_data Reference to sequence_data. Mainly needed to get the FPS of the scene.
 	 * \param id The ID of the entry.
 	 */
-	SequenceEntry(std::shared_ptr<ISound> sound, double begin, double end, double skip, std::shared_ptr<SequenceData> m_sequence_data, int id);
+	SequenceEntry(std::shared_ptr<ISound> sound, double begin, double end, double skip, std::shared_ptr<SequenceData> sequence_data, int id);
 	virtual ~SequenceEntry();
 
 	/**
