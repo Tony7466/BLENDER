@@ -364,7 +364,7 @@ bool edbm_circle_enclose_edge(BMEdge *eed, struct CircleSelectUserData *data)
   return enclose_edge;
 }
 
-bool edbm_circle_enclose_face(ViewContext *vc, BMFace *efa, struct CircleSelectUserData *cdata)
+bool edbm_circle_enclose_face(ViewContext *vc, BMFace *efa, struct CircleSelectUserData *data)
 {
   BMVert *eve;
   BMIter iter;
@@ -375,7 +375,7 @@ bool edbm_circle_enclose_face(ViewContext *vc, BMFace *efa, struct CircleSelectU
     float vertv2[2] = {0.0f, 0.0f};
     ED_view3d_project_float_object(
         vc->region, vertv3, vertv2, V3D_PROJ_TEST_CLIP_NEAR | V3D_PROJ_TEST_CLIP_BB);
-    enclose_face = len_squared_v2v2(cdata->mval_fl, vertv2) <= cdata->radius_squared;
+    enclose_face = len_squared_v2v2(data->mval_fl, vertv2) <= data->radius_squared;
     if (!enclose_face) {
       break;
     }
@@ -543,8 +543,8 @@ static bool edbm_backbuf_check_and_select_faces(ViewContext *vc,
                                                 const eSelectOp sel_op,
                                                 const rcti *rect,
                                                 const int face_style,
-                                                void *lassoData,
-                                                void *circleData)
+                                                void *ldata,
+                                                void *cdata)
 {
   BMIter iter, viter;
   BMFace *efa;
@@ -553,8 +553,8 @@ static bool edbm_backbuf_check_and_select_faces(ViewContext *vc,
 
   const BLI_bitmap *select_bitmap = esel->select_bitmap;
   rctf rectf;
-  LassoSelectUserData *ldata = static_cast<LassoSelectUserData *>(lassoData);
-  CircleSelectUserData *cdata = static_cast<CircleSelectUserData *>(circleData);
+  LassoSelectUserData *lassoData = static_cast<LassoSelectUserData *>(ldata);
+  CircleSelectUserData *circleData = static_cast<CircleSelectUserData *>(cdata);
   uint index = DRW_select_buffer_context_offset_for_object_elem(depsgraph, ob, SCE_SELECT_FACE);
   uint vindex = DRW_select_buffer_context_offset_for_object_elem(depsgraph, ob, SCE_SELECT_VERTEX);
 
@@ -575,8 +575,8 @@ static bool edbm_backbuf_check_and_select_faces(ViewContext *vc,
       bool center_face = true;
       if (face_style > 2 && is_inside) {
         if (face_style == 4) {
-          if (cdata != NULL) {
-            enclose_face = edbm_circle_enclose_face(vc, efa, cdata);
+          if (circleData != NULL) {
+            enclose_face = edbm_circle_enclose_face(vc, efa, circleData);
           }
           else {
             BM_ITER_ELEM (eve, &viter, efa, BM_VERTS_OF_FACE) {
@@ -588,7 +588,7 @@ static bool edbm_backbuf_check_and_select_faces(ViewContext *vc,
           }
         }
         else {
-          center_face = edbm_center_face(vc, efa, rect, ldata, cdata);
+          center_face = edbm_center_face(vc, efa, rect, lassoData, circleData);
         }
       }
 
