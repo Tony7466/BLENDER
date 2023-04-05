@@ -4208,9 +4208,9 @@ static bool project_paint_check_face_paintable(const ProjPaintState *ps,
 
     if ((face_lookup->index_mp_to_orig != nullptr) &&
         ((orig_index = (face_lookup->index_mp_to_orig[lt->poly])) != ORIGINDEX_NONE)) {
-      return face_lookup->hide_poly_orig && !face_lookup->hide_poly_orig[orig_index];
+      return !(face_lookup->hide_poly_orig && face_lookup->hide_poly_orig[orig_index]);
     }
-    return !ps->hide_poly_eval || !ps->hide_poly_eval[lt->poly];
+    return !(ps->hide_poly_eval && ps->hide_poly_eval[lt->poly]);
   }
 }
 
