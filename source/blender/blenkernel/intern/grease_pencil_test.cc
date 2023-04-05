@@ -4,16 +4,65 @@
 #include "testing/testing.h"
 
 #include "BKE_grease_pencil.hh"
+#include "BKE_idtype.h"
+#include "BKE_lib_id.h"
+#include "BKE_main.h"
 
 using namespace blender::bke::gpencil;
 
 namespace blender::bke::gpencil::tests {
 
-class gpencil_LayerTreeTest : public testing::Test {
- protected:
-  void SetUp() override
+/* --------------------------------------------------------------------------------------------- */
+/* Grease Pencil ID Tests. */
+
+struct GreasePencilIDTestContext {
+  Main *bmain = nullptr;
+
+  GreasePencilIDTestContext()
   {
-    StringRefNull names[] = {"Group1", "Layer1", "Layer2", "Group2", "Layer3", "Layer4", "Layer5"};
+    BKE_idtype_init();
+    bmain = BKE_main_new();
+  }
+  ~GreasePencilIDTestContext()
+  {
+    BKE_main_free(bmain);
+  }
+};
+
+TEST(gpencil, create_grease_pencil_id)
+{
+  GreasePencilIDTestContext ctx;
+
+  GreasePencil *grease_pencil = static_cast<GreasePencil *>(BKE_id_new(ctx.bmain, ID_GP, "GP"));
+  EXPECT_EQ(grease_pencil->drawings().size(), 0);
+  EXPECT_EQ(grease_pencil->runtime->root_group().total_num_children(), 0);
+}
+
+/* --------------------------------------------------------------------------------------------- */
+/* Layer Tree Tests. */
+
+TEST(gpencil, layer_tree_empty)
+{
+  LayerGroup root{};
+}
+
+TEST(gpencil, layer_tree_build_simple)
+{
+  LayerGroup root{};
+
+  LayerGroup group("Group1");
+  group.add_layer(Layer("Layer1"));
+  group.add_layer(Layer("Layer2"));
+  root.add_group(std::move(group));
+}
+
+struct GreasePencilLayerTreeExample {
+  StringRefNull names[7] = {"Group1", "Layer1", "Layer2", "Group2", "Layer3", "Layer4", "Layer5"};
+  const bool is_layer[7] = {false, true, true, false, true, true, true};
+  LayerGroup root;
+
+  GreasePencilLayerTreeExample()
+  {
     LayerGroup group(names[0]);
     group.add_layer(Layer(names[1]));
     group.add_layer(Layer(names[2]));
@@ -26,53 +75,38 @@ class gpencil_LayerTreeTest : public testing::Test {
     root.add_group(std::move(group));
     root.add_layer(Layer(names[6]));
   }
-
-  LayerGroup root;
 };
 
-TEST(gpencil, empty_layer_group)
+TEST(gpencil, layer_tree_pre_order_iteration_callback)
 {
-  LayerGroup root{};
-}
-
-TEST(gpencil, build_simple_tree)
-{
-  LayerGroup root{};
-
-  LayerGroup group("Group1");
-  group.add_layer(Layer("Layer1"));
-  group.add_layer(Layer("Layer2"));
-  root.add_group(std::move(group));
-}
-
-TEST_F(gpencil_LayerTreeTest, pre_order_iteration1)
-{
-  StringRefNull names[] = {"Group1", "Layer1", "Layer2", "Group2", "Layer3", "Layer4", "Layer5"};
+  GreasePencilLayerTreeExample ex;
   int i = 0;
-  root.foreach_children_pre_order([&](TreeNode &child) { EXPECT_EQ(child.name, names[i++]); });
+  ex.root.foreach_children_pre_order(
+      [&](TreeNode &child) { EXPECT_EQ(child.name, ex.names[i++]); });
 }
 
-TEST_F(gpencil_LayerTreeTest, pre_order_iteration2)
+TEST(gpencil, layer_tree_pre_order_iteration_loop)
 {
-  StringRefNull names[] = {"Group1", "Layer1", "Layer2", "Group2", "Layer3", "Layer4", "Layer5"};
+  GreasePencilLayerTreeExample ex;
   int i = 0;
-  for (TreeNode &child : root.children_in_pre_order()) {
-    EXPECT_EQ(child.name, names[i++]);
+  for (TreeNode &child : ex.root.children_in_pre_order()) {
+    EXPECT_EQ(child.name, ex.names[i++]);
   }
 }
 
-TEST_F(gpencil_LayerTreeTest, layer_tree_total_size)
+TEST(gpencil, layer_tree_total_size)
 {
-  EXPECT_EQ(root.total_num_children(), 7);
+  GreasePencilLayerTreeExample ex;
+  EXPECT_EQ(ex.root.total_num_children(), 7);
 }
 
-TEST_F(gpencil_LayerTreeTest, layer_tree_node_types)
+TEST(gpencil, layer_tree_node_types)
 {
-  const bool is_layer[] = {false, true, true, false, true, true, true};
+  GreasePencilLayerTreeExample ex;
   int i = 0;
-  for (TreeNode &child : root.children_in_pre_order()) {
-    EXPECT_EQ(child.is_layer(), is_layer[i]);
-    EXPECT_EQ(child.is_group(), !is_layer[i]);
+  for (TreeNode &child : ex.root.children_in_pre_order()) {
+    EXPECT_EQ(child.is_layer(), ex.is_layer[i]);
+    EXPECT_EQ(child.is_group(), !ex.is_layer[i]);
     i++;
   }
 }
