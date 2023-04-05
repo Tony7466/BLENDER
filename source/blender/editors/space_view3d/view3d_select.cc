@@ -1128,8 +1128,7 @@ static bool do_lasso_select_mesh(ViewContext *vc,
                                  wmGenericUserData *wm_userdata,
                                  const int mcoords[][2],
                                  const int mcoords_len,
-                                 const eSelectOp sel_op,
-                                 wmOperator *op)
+                                 const eSelectOp sel_op)
 {
   LassoSelectUserData data;
   ToolSettings *ts = vc->scene->toolsettings;
@@ -1665,8 +1664,7 @@ static bool view3d_lasso_select(bContext *C,
                                 ViewContext *vc,
                                 const int mcoords[][2],
                                 const int mcoords_len,
-                                const eSelectOp sel_op,
-                                wmOperator *op)
+                                const eSelectOp sel_op)
 {
   using namespace blender;
   Object *ob = CTX_data_active_object(C);
@@ -1710,7 +1708,7 @@ static bool view3d_lasso_select(bContext *C,
 
       switch (vc->obedit->type) {
         case OB_MESH:
-          changed = do_lasso_select_mesh(vc, wm_userdata, mcoords, mcoords_len, sel_op, op);
+          changed = do_lasso_select_mesh(vc, wm_userdata, mcoords, mcoords_len, sel_op);
           break;
         case OB_CURVES_LEGACY:
         case OB_SURF:
@@ -1781,7 +1779,7 @@ static int view3d_lasso_select_exec(bContext *C, wmOperator *op)
     ED_view3d_viewcontext_init(C, &vc, depsgraph);
 
     eSelectOp sel_op = static_cast<eSelectOp>(RNA_enum_get(op->ptr, "mode"));
-    bool changed_multi = view3d_lasso_select(C, &vc, mcoords, mcoords_len, sel_op, op);
+    bool changed_multi = view3d_lasso_select(C, &vc, mcoords, mcoords_len, sel_op);
 
     MEM_freeN((void *)mcoords);
 
@@ -3977,8 +3975,7 @@ static void do_mesh_box_select__doSelectFaceCenter(void *userData,
 static bool do_mesh_box_select(ViewContext *vc,
                                wmGenericUserData *wm_userdata,
                                const rcti *rect,
-                               const eSelectOp sel_op,
-                               wmOperator *op)
+                               const eSelectOp sel_op)
 {
   BoxSelectUserData data;
   ToolSettings *ts = vc->scene->toolsettings;
@@ -4414,7 +4411,7 @@ static int view3d_box_select_exec(bContext *C, wmOperator *op)
       switch (vc.obedit->type) {
         case OB_MESH:
           vc.em = BKE_editmesh_from_object(vc.obedit);
-          changed = do_mesh_box_select(&vc, wm_userdata, &rect, sel_op, op);
+          changed = do_mesh_box_select(&vc, wm_userdata, &rect, sel_op);
           if (changed) {
             DEG_id_tag_update(static_cast<ID *>(vc.obedit->data), ID_RECALC_SELECT);
             WM_event_add_notifier(C, NC_GEOM | ND_SELECT, vc.obedit->data);
@@ -4652,8 +4649,7 @@ static bool mesh_circle_select(ViewContext *vc,
                                wmGenericUserData *wm_userdata,
                                eSelectOp sel_op,
                                const int mval[2],
-                               float rad,
-                               wmOperator *op)
+                               float rad)
 {
   ToolSettings *ts = vc->scene->toolsettings;
   CircleSelectUserData data;
@@ -5260,15 +5256,14 @@ static bool obedit_circle_select(bContext *C,
                                  wmGenericUserData *wm_userdata,
                                  const eSelectOp sel_op,
                                  const int mval[2],
-                                 float rad,
-                                 wmOperator *op)
+                                 float rad)
 {
   using namespace blender;
   bool changed = false;
   BLI_assert(ELEM(sel_op, SEL_OP_SET, SEL_OP_ADD, SEL_OP_SUB));
   switch (vc->obedit->type) {
     case OB_MESH:
-      changed = mesh_circle_select(vc, wm_userdata, sel_op, mval, rad, op);
+      changed = mesh_circle_select(vc, wm_userdata, sel_op, mval, rad);
       break;
     case OB_CURVES_LEGACY:
     case OB_SURF:
@@ -5429,7 +5424,7 @@ static int view3d_circle_select_exec(bContext *C, wmOperator *op)
       obedit = vc.obedit;
 
       if (obedit) {
-        obedit_circle_select(C, &vc, wm_userdata, sel_op, mval, float(radius), op);
+        obedit_circle_select(C, &vc, wm_userdata, sel_op, mval, float(radius));
       }
       else if (BKE_paint_select_face_test(obact)) {
         paint_facesel_circle_select(&vc, wm_userdata, sel_op, mval, float(radius));
