@@ -428,6 +428,16 @@ void GreasePencilDrawing::tag_positions_changed()
   this->runtime->triangles_cache.tag_dirty();
 }
 
+bool GreasePencilDrawing::has_stroke_buffer()
+{
+  return this->runtime->stroke_cache.size() > 0;
+}
+
+blender::Span<blender::bke::StrokePoint> GreasePencilDrawing::stroke_buffer()
+{
+  return this->runtime->stroke_cache.as_span();
+}
+
 /* GreasePencil API */
 
 blender::Span<GreasePencilDrawingOrReference *> GreasePencil::drawings() const
@@ -460,6 +470,19 @@ void GreasePencil::foreach_visible_drawing(
       /* TODO */
     }
   }
+}
+
+blender::bke::gpencil::Layer *GreasePencil::get_active_layer()
+{
+  using namespace blender::bke::gpencil;
+  /* TOOD. For now get the first layer. */
+  for (TreeNode &node : this->runtime->root_group().children_in_pre_order()) {
+    if (!node.is_layer()) {
+      continue;
+    }
+    return &node.as_layer();
+  }
+  return nullptr;
 }
 
 void GreasePencil::read_drawing_array(BlendDataReader *reader)

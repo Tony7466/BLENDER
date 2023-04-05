@@ -17,6 +17,7 @@
 namespace blender::bke {
 class GreasePencilRuntime;
 class GreasePencilDrawingRuntime;
+struct StrokePoint;
 namespace gpencil {
 class Layer;
 }
@@ -70,6 +71,8 @@ typedef struct GreasePencilDrawing {
    */
   blender::Span<blender::uint3> triangles() const;
   void tag_positions_changed();
+  bool has_stroke_buffer();
+  blender::Span<blender::bke::StrokePoint> stroke_buffer();
 #endif
   /**
    * Runtime data on the drawing.
@@ -184,6 +187,7 @@ typedef struct GreasePencil {
   /* Only used for storage in the .blend file. */
   GreasePencilLayerTreeStorage layer_tree_storage;
 #ifdef __cplusplus
+  blender::bke::gpencil::Layer *get_active_layer();
   void save_layer_tree_to_storage();
   void load_layer_tree_from_storage();
   void read_layer_tree_storage(BlendDataReader *reader);

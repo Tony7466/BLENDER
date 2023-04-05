@@ -413,9 +413,23 @@ void legacy_gpencil_to_grease_pencil(GreasePencil &grease_pencil, bGPdata &gpd);
 
 using namespace blender::bke::gpencil;
 
+struct StrokePoint {
+  float3 position;
+  float radius;
+  float opacity;
+  float4 color;
+};
+
 class GreasePencilDrawingRuntime {
  public:
   mutable SharedCache<Vector<uint3>> triangles_cache;
+
+  /**
+   * Stroke cache for a stroke that is currently being drawn.
+   */
+  Vector<StrokePoint> stroke_cache = {};
+  Vector<uint3> stroke_triangle_cache = {};
+  int stroke_mat = 0;
 };
 
 class GreasePencilRuntime {

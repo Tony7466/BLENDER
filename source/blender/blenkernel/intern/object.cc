@@ -1945,6 +1945,7 @@ bool BKE_object_data_is_in_editmode(const Object *ob, const ID *id)
     case ID_AR:
       return ((const bArmature *)id)->edbo != nullptr;
     case ID_CV:
+    case ID_GP:
       if (ob) {
         return BKE_object_is_in_editmode(ob);
       }
