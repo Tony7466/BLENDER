@@ -584,29 +584,6 @@ void CUDADevice::mem_alloc(device_memory &mem)
   }
 }
 
-void CUDADevice::mem_copy_to(device_memory &mem)
-{
-  if (mem.type == MEM_GLOBAL) {
-    if ((mem.device_size < mem.memory_size()) || (!mem.device_pointer)) {
-      global_free(mem);
-      global_alloc(mem);
-    }
-    else {
-      generic_copy_to(mem);
-    }
-  }
-  else if (mem.type == MEM_TEXTURE) {
-    tex_free((device_texture &)mem);
-    tex_alloc((device_texture &)mem);
-  }
-  else {
-    if (!mem.device_pointer) {
-      generic_alloc(mem);
-    }
-    generic_copy_to(mem);
-  }
-}
-
 void CUDADevice::mem_copy_to(device_memory &mem, size_t size, size_t offset)
 {
   if (mem.type == MEM_GLOBAL) {

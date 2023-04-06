@@ -134,32 +134,27 @@ void CPUDevice::mem_alloc(device_memory &mem)
   }
 }
 
-void CPUDevice::mem_copy_to(device_memory &mem)
+void CPUDevice::mem_copy_to(device_memory &mem, size_t /* size */, size_t /* offset */)
 {
-  if (mem.type == MEM_GLOBAL) {
-    global_free(mem);
-    global_alloc(mem);
-  }
-  else if (mem.type == MEM_TEXTURE) {
-    tex_free((device_texture &)mem);
-    tex_alloc((device_texture &)mem);
-  }
-  else {
-    if (!mem.device_pointer) {
-      mem_alloc(mem);
-    }
-
-    /* copy is no-op */
-  }
-}
-
-void CPUDevice::mem_copy_to(device_memory &mem, size_t, size_t offset)
-{
-  /* size (2n param) is not used as this does not actually copy anything
+  /* size (2n param) or offset are not used as this does not actually copy anything
    * as the original host memory is used as is. The device
    * memory is the same memory.
    */
-  mem_copy_to(mem);
+  if (mem.type == MEM_GLOBAL) {
+     global_free(mem);
+     global_alloc(mem);
+   }
+   else if (mem.type == MEM_TEXTURE) {
+     tex_free((device_texture &)mem);
+     tex_alloc((device_texture &)mem);
+   }
+   else {
+     if (!mem.device_pointer) {
+       mem_alloc(mem);
+     }
+
+     /* copy is no-op */
+   }
 }
 
 void CPUDevice::mem_copy_from(

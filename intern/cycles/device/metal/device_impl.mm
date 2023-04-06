@@ -766,26 +766,11 @@ size_t offset)
 
   std::lock_guard<std::recursive_mutex> lock(metal_mem_map_mutex);
   if (!metal_mem_map.at(&mem)->use_UMA || mem.host_pointer != mem.shared_pointer) {
+    size = ((size == -1) ? mem.memory_size() : size);
     MetalMem &mmem = *metal_mem_map.at(&mem);
-    memcpy(mmem.hostPtr, mem.host_pointer, mem.memory_size());
+    memcpy( reinterpret_cast<unsigned char *>(mmem.hostPtr) + offset,  reinterpret_cast<unsigned char *>(mem.host_pointer) + offset, size);
     if (mmem.mtlBuffer.storageMode == MTLStorageModeManaged) {
       [mmem.mtlBuffer didModifyRange:NSMakeRange(offset, size)];
-    }
-  }
-}
-
-void MetalDevice::generic_copy_to(device_memory &mem)
-{
-  if (!mem.host_pointer || !mem.device_pointer) {
-    return;
-  }
-
-  std::lock_guard<std::recursive_mutex> lock(metal_mem_map_mutex);
-  if (!metal_mem_map.at(&mem)->use_UMA || mem.host_pointer != mem.shared_pointer) {
-    MetalMem &mmem = *metal_mem_map.at(&mem);
-    memcpy(mmem.hostPtr, mem.host_pointer, mem.memory_size());
-    if (mmem.mtlBuffer.storageMode == MTLStorageModeManaged) {
-      [mmem.mtlBuffer didModifyRange:NSMakeRange(0, mem.memory_size())];
     }
   }
 }
@@ -867,26 +852,6 @@ void MetalDevice::mem_copy_to(device_memory &mem, size_t size, size_t offset)
       generic_alloc(mem);
     }
     generic_copy_to(mem, size, offset);
-  }
-}
-
-void MetalDevice::mem_copy_to(device_memory &mem)
-{
-  if (mem.type == MEM_GLOBAL) {
-	if ((mem.device_size < mem.memory_size()) || (!mem.device_pointer)) {
-		global_free(mem);
-		global_alloc(mem);
-	}
-  }
-  else if (mem.type == MEM_TEXTURE) {
-    tex_free((device_texture &)mem);
-    tex_alloc((device_texture &)mem);
-  }
-  else {
-    if (!mem.device_pointer) {
-      generic_alloc(mem);
-    }
-    generic_copy_to(mem);
   }
 }
 
