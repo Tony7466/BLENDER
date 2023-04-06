@@ -65,7 +65,7 @@ void AnimateableProperty::write(const float* data)
 	std::memcpy(getBuffer(), data, m_count * sizeof(float));
 }
 
-void AnimateableProperty::write_constant_range(const float* data, int position_start, int position_end)
+void AnimateableProperty::writeConstantRange(const float* data, int position_start, int position_end)
 {
 	assureSize(position_end * m_count * sizeof(float), true);
 	float* buf = getBuffer();

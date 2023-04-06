@@ -72,7 +72,7 @@ extern AUD_API void AUD_Sequence_remove(AUD_Sound* sequence, AUD_SequenceEntry* 
  * \param frame_end End of the frame range.
  * \param data The data to write.
  */
-AUD_API void AUD_SequenceEntry_setAnimationData_constant_range(AUD_SequenceEntry* entry, AUD_AnimateablePropertyType type, int frame_start, int frame_end, float* data);
+AUD_API void AUD_SequenceEntry_setConstantRangeAnimationData(AUD_SequenceEntry* entry, AUD_AnimateablePropertyType type, int frame_start, int frame_end, float* data);
 
 /**
  * Writes animation data to a sequenced entry.
