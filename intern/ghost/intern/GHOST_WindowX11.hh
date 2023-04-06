@@ -16,8 +16,6 @@
 #  include <X11/extensions/XInput.h>
 #endif
 
-#include "GHOST_TaskbarX11.hh"
-
 #include <map>
 
 class GHOST_SystemX11;
@@ -92,9 +90,6 @@ class GHOST_WindowX11 : public GHOST_Window {
   GHOST_TSuccess setOrder(GHOST_TWindowOrder order) override;
 
   GHOST_TSuccess invalidate() override;
-
-  GHOST_TSuccess setProgressBar(float progress) override;
-  GHOST_TSuccess endProgressBar() override;
 
   /**
    * Destructor.
@@ -235,8 +230,6 @@ class GHOST_WindowX11 : public GHOST_Window {
 
   /** Cache of XC_* ID's to XCursor structures */
   std::map<uint, Cursor> m_standard_cursors;
-
-  GHOST_TaskBarX11 m_taskbar;
 
 #ifdef WITH_XDND
   GHOST_DropTargetX11 *m_dropTarget;
