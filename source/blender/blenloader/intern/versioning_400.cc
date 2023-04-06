@@ -8,25 +8,48 @@
 
 #include "CLG_log.h"
 
+#include "DNA_mesh_types.h"
 #include "DNA_movieclip_types.h"
 
 #include "BLI_assert.h"
 #include "BLI_listbase.h"
 
+#include "BKE_customdata.h"
 #include "BKE_main.h"
 #include "BKE_mesh_legacy_convert.h"
 #include "BKE_tracking.h"
 
+#include "BLI_index_range.hh"
+#include "BLI_offset_indices.hh"
 #include "BLO_readfile.h"
 
 #include "readfile.h"
 
 #include "versioning_common.h"
 
+using blender::IndexRange;
+using blender::OffsetIndices;
+
 // static CLG_LogRef LOG = {"blo.readfile.doversion"};
 
 static void version_mesh_legacy_to_struct_of_array_format(Mesh &mesh)
 {
+  /* Autosave files don't have CD_MPOLY layers.
+   */
+  if (!CustomData_has_layer(&mesh.pdata, CD_MPOLY) && mesh.poly_offset_indices) {
+    MPoly *polys_legacy = static_cast<MPoly *>(
+        CustomData_add_layer(&mesh.pdata, CD_MPOLY, CD_CONSTRUCT, mesh.totpoly));
+
+    /* Getting a link error when using mesh.polys(),
+     * for now just read poly_offset_indices directly.
+     */
+    for (int poly_i : IndexRange(mesh.totpoly)) {
+      polys_legacy[poly_i].loopstart = mesh.poly_offset_indices[poly_i];
+      polys_legacy[poly_i].totloop = mesh.poly_offset_indices[poly_i + 1] -
+                                     mesh.poly_offset_indices[poly_i];
+    }
+  }
+
   BKE_mesh_legacy_convert_flags_to_selection_layers(&mesh);
   BKE_mesh_legacy_convert_flags_to_hide_layers(&mesh);
   BKE_mesh_legacy_convert_uvs_to_generic(&mesh);
