@@ -9386,7 +9386,7 @@ static EnumPropertyItem normal_vector_tool_items[] = {
      "RESET",
      0,
      "Reset Normal",
-     "Reset internal clipboard and/or normal of selected element"},
+     "Reset the internal clipboard and/or normal of selected element"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
