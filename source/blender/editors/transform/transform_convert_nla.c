@@ -141,7 +141,7 @@ static float transdata_get_time_shuffle_offset(ListBase *trans_datas)
   BLI_assert(offset_left <= 0);
   BLI_assert(offset_right >= 0);
 
-  return fabs(offset_left) < offset_right ? offset_left : offset_right;
+  return -offset_left < offset_right ? offset_left : offset_right;
 }
 
 // TODO go over these comments
@@ -231,6 +231,54 @@ static bool transdata_get_track_shuffle_offset(ListBase *trans_datas, int *r_tra
   return down_valid || up_valid;
 }
 
+/* -------------------------------------------------------------------- */
+/** \name Transform application to NLA strips
+ * \{ */
+
+/** \} */
+nlatrack_truncate_temporary_tracks()
+{
+  filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_ANIMDATA);
+  ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
+
+  for (ale = anim_data.first; ale; ale = ale->next) {
+    ListBase *nla_tracks = &ale->adt->nla_tracks;
+
+    /** Remove top tracks that weren't necessary. */
+    LISTBASE_FOREACH_BACKWARD_MUTABLE (NlaTrack *, track, nla_tracks) {
+      if (!(track->flag & NLATRACK_TEMPORARILY_ADDED)) {
+        break;
+      }
+      if (track->strips.first != NULL) {
+        break;
+      }
+      BKE_nlatrack_remove_and_free(nla_tracks, track, true);
+    }
+
+    /** Remove bottom tracks that weren't necessary. */
+    LISTBASE_FOREACH_MUTABLE (NlaTrack *, track, nla_tracks) {
+      /** Library override tracks are the first N tracks. They're never temporary and determine
+       * where we start removing temporaries.*/
+      if ((track->flag & NLATRACK_OVERRIDELIBRARY_LOCAL) == 0) {
+        continue;
+      }
+      if (!(track->flag & NLATRACK_TEMPORARILY_ADDED)) {
+        break;
+      }
+      if (track->strips.first != NULL) {
+        break;
+      }
+      BKE_nlatrack_remove_and_free(nla_tracks, track, true);
+    }
+
+    /** Clear temporary flag. */
+    LISTBASE_FOREACH_MUTABLE (NlaTrack *, track, nla_tracks) {
+      track->flag &= ~NLATRACK_TEMPORARILY_ADDED;
+    }
+  }
+
+  ANIM_animdata_freelist(&anim_data);
+}
 /* -------------------------------------------------------------------- */
 /** \name Transform application to NLA strips
  * \{ */
@@ -917,51 +965,9 @@ static void special_aftertrans_update__nla(bContext *C, TransInfo *t)
   /* free temp memory */
   ANIM_animdata_freelist(&anim_data);
 
-  /** Truncate temporarily added tracks. */
+  /* Truncate temporarily added tracks. */
   // TODO move this into a method
-  {
-    filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_ANIMDATA);
-    ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
-
-    for (ale = anim_data.first; ale; ale = ale->next) {
-      ListBase *nla_tracks = &ale->adt->nla_tracks;
-
-      /** Remove top tracks that weren't necessary. */
-      LISTBASE_FOREACH_BACKWARD_MUTABLE (NlaTrack *, track, nla_tracks) {
-        if (!(track->flag & NLATRACK_TEMPORARILY_ADDED)) {
-          break;
-        }
-        if (track->strips.first != NULL) {
-          break;
-        }
-        BKE_nlatrack_remove_and_free(nla_tracks, track, true);
-      }
-
-      /** Remove bottom tracks that weren't necessary. */
-      LISTBASE_FOREACH_MUTABLE (NlaTrack *, track, nla_tracks) {
-        /** Library override tracks are the first N tracks. They're never temporary and determine
-         * where we start removing temporaries.*/
-        if ((track->flag & NLATRACK_OVERRIDELIBRARY_LOCAL) == 0) {
-          continue;
-        }
-        if (!(track->flag & NLATRACK_TEMPORARILY_ADDED)) {
-          break;
-        }
-        if (track->strips.first != NULL) {
-          break;
-        }
-        BKE_nlatrack_remove_and_free(nla_tracks, track, true);
-      }
-
-      /** Clear temporary flag. */
-      LISTBASE_FOREACH_MUTABLE (NlaTrack *, track, nla_tracks) {
-        track->flag &= ~NLATRACK_TEMPORARILY_ADDED;
-      }
-    }
-
-    ANIM_animdata_freelist(&anim_data);
-  }
-  // END TODO
+  nlatrack_truncate_temporary_tracks();
 
   /* Perform after-transform validation. */
   ED_nla_postop_refresh(&ac);
