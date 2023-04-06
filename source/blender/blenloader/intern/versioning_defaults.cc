@@ -373,6 +373,9 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
   if (idprop) {
     IDP_ClearProperty(idprop);
   }
+
+  /* Object Origin Select */
+  ts->select_origin_circle = true;
 }
 
 void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)

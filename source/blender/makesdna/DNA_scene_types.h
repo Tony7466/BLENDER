@@ -1557,7 +1557,10 @@ typedef struct ToolSettings {
   char gpencil_v3d_align;
   /** General 2D Editor. */
   char gpencil_v2d_align;
-  char _pad0[2];
+
+  /* object origin select */
+  char select_origin_box;
+  char select_origin_circle;
 
   /* Annotations. */
   /** Stroke placement settings - 3D View. */

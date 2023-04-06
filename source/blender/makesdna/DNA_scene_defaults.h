@@ -366,6 +366,9 @@
     /* UV painting */ \
     .uv_sculpt_settings = 0, \
     .uv_relax_method = UV_SCULPT_TOOL_RELAX_LAPLACIAN, \
+ \
+    /* Object Origin Select */ \
+    .select_origin_circle = true, \
   }
 
 /* clang-format off */
