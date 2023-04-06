@@ -37,6 +37,7 @@ __all__ = (
 )
 
 import os
+import traceback
 from pathlib import Path
 
 import bpy
@@ -115,5 +116,10 @@ def export_mtlx(material):
 
     except ImportError:
         print("ERROR: no MaterialX addon available")
+
+    except:
+        # This is a placeholder, this code will be moved to C part later
+        # This code shouldn't raise any exception due to breaking refcounts on RenderEngine
+        traceback.print_exc()
 
     return ""
