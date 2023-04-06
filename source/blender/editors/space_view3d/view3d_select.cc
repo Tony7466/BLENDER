@@ -518,59 +518,50 @@ int edbm_select_style(ToolSettings *ts, int style[2], const bool box, const bool
   return style[2];
 }
 
-bool edbm_circle_enclose_edge(BMEdge *eed, struct CircleSelectUserData *data)
+bool edbm_circle_enclose_mesh(BMEdge *eed, BMFace *efa, struct CircleSelectUserData *data)
 {
   BMVert *eve;
   BMIter iter;
-  bool enclose_edge = false;
-  BM_ITER_ELEM (eve, &iter, eed, BM_VERTS_OF_EDGE) {
-    float vertv3[3] = {eve->co[0], eve->co[1], eve->co[2]};
-    float vertv2[2] = {0.0f, 0.0f};
-    ED_view3d_project_float_object(
-        data->vc->region, vertv3, vertv2, V3D_PROJ_TEST_CLIP_NEAR | V3D_PROJ_TEST_CLIP_BB);
-    enclose_edge = len_squared_v2v2(data->mval_fl, vertv2) <= data->radius_squared;
-    if (!enclose_edge) {
-      break;
+  bool enclose = false;
+
+  if (eed != NULL) {
+    BM_ITER_ELEM (eve, &iter, eed, BM_VERTS_OF_EDGE) {
+      float vertv3[3] = {eve->co[0], eve->co[1], eve->co[2]};
+      float vertv2[2] = {0.0f, 0.0f};
+      ED_view3d_project_float_object(
+          data->vc->region, vertv3, vertv2, V3D_PROJ_TEST_CLIP_NEAR | V3D_PROJ_TEST_CLIP_BB);
+      enclose = len_squared_v2v2(data->mval_fl, vertv2) <= data->radius_squared;
+      if (!enclose) {
+        break;
+      }
     }
   }
-  return enclose_edge;
-}
-
-bool edbm_circle_enclose_face(ViewContext *vc, BMFace *efa, struct CircleSelectUserData *data)
-{
-  BMVert *eve;
-  BMIter iter;
-  bool enclose_face = false;
-
-  BM_ITER_ELEM (eve, &iter, efa, BM_VERTS_OF_FACE) {
-    float vertv3[3] = {eve->co[0], eve->co[1], eve->co[2]};
-    float vertv2[2] = {0.0f, 0.0f};
-    ED_view3d_project_float_object(
-        vc->region, vertv3, vertv2, V3D_PROJ_TEST_CLIP_NEAR | V3D_PROJ_TEST_CLIP_BB);
-    enclose_face = len_squared_v2v2(data->mval_fl, vertv2) <= data->radius_squared;
-    if (!enclose_face) {
-      break;
+  else if (efa != NULL) {
+    BM_ITER_ELEM (eve, &iter, efa, BM_VERTS_OF_FACE) {
+      float vertv3[3] = {eve->co[0], eve->co[1], eve->co[2]};
+      float vertv2[2] = {0.0f, 0.0f};
+      ED_view3d_project_float_object(
+          data->vc->region, vertv3, vertv2, V3D_PROJ_TEST_CLIP_NEAR | V3D_PROJ_TEST_CLIP_BB);
+      enclose = len_squared_v2v2(data->mval_fl, vertv2) <= data->radius_squared;
+      if (!enclose) {
+        break;
+      }
     }
   }
-  return enclose_face;
+  return enclose;
 }
 
 bool edbm_center_face(ViewContext *vc,
                       BMFace *efa,
-                      const rcti *rect,
+                      const rctf *rect,
                       struct LassoSelectUserData *lassoData,
                       struct CircleSelectUserData *circleData)
 {
   BMVert *eve;
   BMIter iter;
-  rctf rectf;
   float centerv3[3] = {0.0f, 0.0f, 0.0f};
   float centerv2[2] = {0.0f, 0.0f};
   bool center_face = false;
-
-  if (rect != NULL) {
-    BLI_rctf_rcti_copy(&rectf, rect);
-  }
 
   /* tri */
   if (efa->len == 3) {
@@ -616,7 +607,7 @@ bool edbm_center_face(ViewContext *vc,
 
   /* lasso center */
   if (lassoData != NULL) {
-    center_face = BLI_rctf_isect_pt_v(&rectf, centerv2) &&
+    center_face = BLI_rctf_isect_pt_v(rect, centerv2) &&
                   BLI_lasso_is_point_inside(lassoData->mcoords,
                                             lassoData->mcoords_len,
                                             centerv2[0],
@@ -629,7 +620,7 @@ bool edbm_center_face(ViewContext *vc,
   }
   /* box center */
   else {
-    center_face = BLI_rctf_isect_pt_v(&rectf, centerv2);
+    center_face = BLI_rctf_isect_pt_v(rect, centerv2);
   }
   return center_face;
 }
@@ -707,7 +698,7 @@ static bool edbm_backbuf_check_and_select_edges(void *userData,
       bool mesh_facing = true;
 
       if (data->edge_style == 4 && is_inside) {
-        enclose_edge = edbm_circle_enclose_edge(eed, data);
+        enclose_edge = edbm_circle_enclose_mesh(eed, NULL, data);
       }
 
       if (check_mesh_facing && is_inside) {
@@ -732,7 +723,7 @@ static bool edbm_backbuf_check_and_select_faces(ViewContext *vc,
                                                 Object *ob,
                                                 BMEditMesh *em,
                                                 const eSelectOp sel_op,
-                                                const rcti *rect,
+                                                const rctf *rect,
                                                 const int face_style,
                                                 void *ldata,
                                                 void *cdata)
@@ -744,17 +735,12 @@ static bool edbm_backbuf_check_and_select_faces(ViewContext *vc,
   bool changed = false;
   const int style = ts->viewport_facing_select_face;
   const bool check_mesh_facing = edbm_facing_viewport_precheck(ts, style, false);
-
   const BLI_bitmap *select_bitmap = esel->select_bitmap;
-  rctf rectf;
   LassoSelectUserData *lassoData = static_cast<LassoSelectUserData *>(ldata);
   CircleSelectUserData *circleData = static_cast<CircleSelectUserData *>(cdata);
   uint index = DRW_select_buffer_context_offset_for_object_elem(depsgraph, ob, SCE_SELECT_FACE);
   uint vindex = DRW_select_buffer_context_offset_for_object_elem(depsgraph, ob, SCE_SELECT_VERTEX);
 
-  if (rect != NULL) {
-    BLI_rctf_rcti_copy(&rectf, rect);
-  }
   if (index == 0 || vindex == 0) {
     return false;
   }
@@ -772,7 +758,7 @@ static bool edbm_backbuf_check_and_select_faces(ViewContext *vc,
       if (face_style > 2 && is_inside) {
         if (face_style == 4) {
           if (circleData != NULL) {
-            enclose_face = edbm_circle_enclose_face(vc, efa, circleData);
+            enclose_face = edbm_circle_enclose_mesh(NULL, efa, circleData);
           }
           else {
             BM_ITER_ELEM (eve, &viter, efa, BM_VERTS_OF_FACE) {
@@ -1652,13 +1638,15 @@ static bool do_lasso_select_mesh(ViewContext *vc,
 
   if (ts->selectmode & SCE_SELECT_FACE) {
     if (use_zbuf) {
+      rctf rectf;
+      BLI_rctf_rcti_copy(&rectf, &rect);
       data.is_changed |= edbm_backbuf_check_and_select_faces(vc,
                                                              esel,
                                                              vc->depsgraph,
                                                              vc->obedit,
                                                              vc->em,
                                                              sel_op,
-                                                             &rect,
+                                                             &rectf,
                                                              data.face_style,
                                                              &data,
                                                              NULL);
@@ -4516,8 +4504,10 @@ static bool do_mesh_box_select(ViewContext *vc,
 
   if (ts->selectmode & SCE_SELECT_FACE) {
     if (use_zbuf) {
+      rctf rectf;
+      BLI_rctf_rcti_copy(&rectf, rect);
       data.is_changed |= edbm_backbuf_check_and_select_faces(
-          vc, esel, vc->depsgraph, vc->obedit, vc->em, sel_op, rect, data.face_style, NULL, NULL);
+          vc, esel, vc->depsgraph, vc->obedit, vc->em, sel_op, &rectf, data.face_style, NULL, NULL);
     }
     else {
       data.check_mesh_direction = edbm_facing_viewport_precheck(
@@ -5064,7 +5054,7 @@ static void mesh_circle_doSelectEdge(void *userData,
   bool mesh_facing = true;
   if (edge_inside_circle(data->mval_fl, data->radius, screen_co_a, screen_co_b)) {
     if (data->edge_style == 4) {
-      enclose_edge = edbm_circle_enclose_edge(eed, data);
+      enclose_edge = edbm_circle_enclose_mesh(eed, NULL, data);
     }
 
     if (data->check_mesh_direction) {
@@ -5112,7 +5102,7 @@ static void mesh_circle_doSelectFace(void *userData,
   *face_hit = inside;
 
   if (data->face_style == 4 && inside) {
-    enclose_face = edbm_circle_enclose_face(data->vc, efa, data);
+    enclose_face = edbm_circle_enclose_mesh(NULL, efa, data);
   }
 
   if (data->check_mesh_direction) {
