@@ -8,7 +8,6 @@
 
 #include "CLG_log.h"
 
-#include "DNA_mesh_types.h"
 #include "DNA_movieclip_types.h"
 
 #include "BLI_assert.h"
