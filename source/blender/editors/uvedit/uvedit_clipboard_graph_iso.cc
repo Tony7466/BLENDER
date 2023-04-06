@@ -310,7 +310,7 @@ static void maximum_common_subgraph_internal(int incumbent[][2],
                                              int n0,
                                              uint8_t **adjmat1,
                                              int n1,
-                                             bool *search_abandoned)
+                                             bool *r_search_abandoned)
 {
   int min = std::min(n0, n1);
 
@@ -337,7 +337,7 @@ static void maximum_common_subgraph_internal(int incumbent[][2],
        * Can occur with moderate sized inputs where the graph has lots of symmetry, e.g. a cube
        * subdivided 3x times.
        */
-      *search_abandoned = true;
+      *r_search_abandoned = true;
       *inc_pos = 0;
       break;
     }
@@ -398,7 +398,7 @@ bool ED_uvedit_clipboard_maximum_common_subgraph(GraphISO *g0_input,
                                                  GraphISO *g1_input,
                                                  int solution[][2],
                                                  int *solution_length,
-                                                 bool *search_abandoned)
+                                                 bool *r_search_abandoned)
 {
   if (check_automorphism(g0_input, g1_input, solution, solution_length)) {
     return true;
@@ -417,7 +417,7 @@ bool ED_uvedit_clipboard_maximum_common_subgraph(GraphISO *g0_input,
 
   int sol_len = 0;
   maximum_common_subgraph_internal(
-      solution, &sol_len, g0->adjmat, n0, g1->adjmat, n1, search_abandoned);
+      solution, &sol_len, g0->adjmat, n0, g1->adjmat, n1, r_search_abandoned);
   *solution_length = sol_len;
 
   bool result = (sol_len == n0);
