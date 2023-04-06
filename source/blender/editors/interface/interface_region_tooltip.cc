@@ -897,8 +897,8 @@ static uiTooltipData *ui_tooltip_data_from_button_or_extra_icon(bContext *C,
     MEM_freeN(str);
   }
 
-  /* Button is disabled, we may be able to tell user why. */
-  if ((but->flag & UI_BUT_DISABLED) || extra_icon) {
+  /* Button is disabled or set to inactive, we may be able to tell user why. */
+  if ((but->flag & UI_BUT_DISABLED) || (but->flag & UI_BUT_INACTIVE) || extra_icon) {
     const char *disabled_msg = nullptr;
     bool disabled_msg_free = false;
 

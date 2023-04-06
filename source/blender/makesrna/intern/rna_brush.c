@@ -3078,6 +3078,7 @@ static void rna_def_brush(BlenderRNA *brna)
                            "Propagation Steps",
                            "Distance where boundary edge automasking is going to protect vertices "
                            "from the fully masked edge");
+  RNA_def_property_editable_func(prop, "rna_Scene_automasking_mesh_and_face_sets_boundary_editable");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
 
   prop = RNA_def_property(srna, "auto_smooth_factor", PROP_FLOAT, PROP_FACTOR);
@@ -3839,3 +3840,13 @@ void RNA_def_brush(BlenderRNA *brna)
 }
 
 #endif
+
+static int rna_Scene_automasking_mesh_and_face_sets_boundary_editable(struct PointerRNA *ptr, const char **r_info) {
+  Brush *br = (Brush*)ptr->data;
+  if (br && (br->automasking_flags & BRUSH_AUTOMASKING_BOUNDARY_EDGES) && (br->automasking_flags & BRUSH_AUTOMASKING_BOUNDARY_FACE_SETS)) {
+    *r_info = "The active brush already has the same auto-masking enabled.";
+    return PROP_INACTIVE | PROP_EDITABLE;
+  }
+
+  return br ? PROP_EDITABLE: 0;
+}
