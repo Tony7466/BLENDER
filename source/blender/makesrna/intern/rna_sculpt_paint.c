@@ -1809,7 +1809,13 @@ static int rna_Scene_automasking_view_normal_editable(struct PointerRNA *ptr, co
 
   if (sd && (sd->paint.brush->automasking_flags & BRUSH_AUTOMASKING_VIEW_NORMAL)) {
     *r_info = "The active brush already has the same auto-masking enabled.";
+    // TODO should probably utilize RNA_def_property_float_funcs to sync values between automasking_view and automasking_scene_view
+    sd->automasking_scene_view_normal_limit = sd->automasking_view_normal_limit;
+    sd->automasking_scene_view_normal_falloff = sd->automasking_view_normal_falloff;
     return PROP_INACTIVE | PROP_EDITABLE;
+  } else {
+    sd->automasking_view_normal_limit = sd->automasking_scene_view_normal_limit;
+    sd->automasking_view_normal_falloff = sd->automasking_scene_view_normal_falloff;
   }
 
   return sd ? PROP_EDITABLE: 0;
