@@ -1180,8 +1180,8 @@ static void mesh_add_edges(Mesh *mesh, int len)
   CustomData_copy(&mesh->edata, &edata, CD_MASK_MESH.emask, CD_SET_DEFAULT, totedge);
   CustomData_copy_data(&mesh->edata, &edata, 0, 0, mesh->totedge);
 
-  if (!CustomData_has_layer(&edata, CD_MEDGE)) {
-    CustomData_add_layer(&edata, CD_MEDGE, CD_SET_DEFAULT, totedge);
+  if (!CustomData_get_layer_named(&edata, CD_PROP_INT2, ".edge_verts")) {
+    CustomData_add_layer_named(&edata, CD_PROP_INT2, CD_CONSTRUCT, totedge, ".edge_verts");
   }
 
   CustomData_free(&mesh->edata, mesh->totedge);

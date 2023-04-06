@@ -72,7 +72,7 @@ static Mesh *hull_from_bullet(const Mesh *mesh, Span<float3> coords)
   Array<int> corner_verts(loops_num);
   Array<int> corner_edges(loops_num);
   uint edge_index = 0;
-  MutableSpan<MEdge> edges = result->edges_for_write();
+  MutableSpan<int2> edges = result->edges_for_write();
 
   for (const int i : IndexRange(loops_num)) {
     int v_from;
@@ -82,9 +82,9 @@ static Mesh *hull_from_bullet(const Mesh *mesh, Span<float3> coords)
     corner_verts[i] = v_from;
     /* Add edges for ascending order loops only. */
     if (v_from < v_to) {
-      MEdge &edge = edges[edge_index];
-      edge.v1 = v_from;
-      edge.v2 = v_to;
+      int2 &edge = edges[edge_index];
+      edge[0] = v_from;
+      edge[1] = v_to;
 
       /* Write edge index into both loops that have it. */
       int reverse_index = plConvexHullGetReversedLoopIndex(hull, i);
@@ -95,9 +95,9 @@ static Mesh *hull_from_bullet(const Mesh *mesh, Span<float3> coords)
   }
   if (edges_num == 1) {
     /* In this case there are no loops. */
-    MEdge &edge = edges[0];
-    edge.v1 = 0;
-    edge.v2 = 1;
+    int2 &edge = edges[0];
+    edge[0] = 0;
+    edge[1] = 1;
     edge_index++;
   }
   BLI_assert(edge_index == edges_num);

@@ -88,6 +88,13 @@ template<> struct AttributeTypeConverter<ColorGeometry4b, gpuMeshCol> {
   }
 };
 
+template<> struct AttributeTypeConverter<int2, int3> {
+  static int3 convert_value(int2 value)
+  {
+    return {value[0], value[1], 0};
+  }
+};
+
 /* Return the number of component for the attribute's value type, or 0 if is it unsupported. */
 static uint gpu_component_size_for_attribute_type(eCustomDataType type)
 {
@@ -99,6 +106,7 @@ static uint gpu_component_size_for_attribute_type(eCustomDataType type)
       /* TODO(@kevindietrich): should be 1 when scalar attributes conversion is handled by us. See
        * comment #extract_attr_init. */
       return 3;
+    case CD_PROP_INT2:
     case CD_PROP_FLOAT2:
       return 2;
     case CD_PROP_FLOAT3:
@@ -115,6 +123,7 @@ static GPUVertFetchMode get_fetch_mode_for_type(eCustomDataType type)
 {
   switch (type) {
     case CD_PROP_INT8:
+    case CD_PROP_INT2:
     case CD_PROP_INT32:
       return GPU_FETCH_INT_TO_FLOAT;
     case CD_PROP_BYTE_COLOR:
@@ -128,6 +137,7 @@ static GPUVertCompType get_comp_type_for_type(eCustomDataType type)
 {
   switch (type) {
     case CD_PROP_INT8:
+    case CD_PROP_INT2:
     case CD_PROP_INT32:
       return GPU_COMP_I32;
     case CD_PROP_BYTE_COLOR:
@@ -295,6 +305,9 @@ static void extract_attr(const MeshRenderData *mr,
       break;
     case CD_PROP_INT8:
       extract_attr_generic<int8_t, int3>(mr, vbo, request);
+      break;
+    case CD_PROP_INT2:
+      extract_attr_generic<int2, int3>(mr, vbo, request);
       break;
     case CD_PROP_INT32:
       extract_attr_generic<int32_t, int3>(mr, vbo, request);

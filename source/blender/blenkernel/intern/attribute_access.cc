@@ -57,6 +57,9 @@ bool allow_procedural_attribute_access(StringRef attribute_name)
   if (attribute_name.startswith(".corner")) {
     return false;
   }
+  if (attribute_name.startswith(".edge")) {
+    return false;
+  }
   if (attribute_name.startswith(".select")) {
     return false;
   }
@@ -91,6 +94,8 @@ static int attribute_data_type_complexity(const eCustomDataType data_type)
     case CD_PROP_INT32:
       return 2;
     case CD_PROP_FLOAT:
+      return 3;
+    case CD_PROP_INT2:
       return 3;
     case CD_PROP_FLOAT2:
       return 4;

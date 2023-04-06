@@ -119,7 +119,7 @@ static std::unique_ptr<ColumnValues> build_mesh_debug_columns(const Mesh &mesh,
       return {};
     }
     case ATTR_DOMAIN_EDGE: {
-      const Span<MEdge> edges = mesh.edges();
+      const Span<int2> edges = mesh.edges();
       if (name == "Original Index") {
         const int *data = static_cast<const int *>(
             CustomData_get_layer(&mesh.edata, CD_ORIGINDEX));
@@ -130,13 +130,13 @@ static std::unique_ptr<ColumnValues> build_mesh_debug_columns(const Mesh &mesh,
       if (name == "Vertex 1") {
         return std::make_unique<ColumnValues>(
             name, VArray<int>::ForFunc(edges.size(), [edges](int64_t index) {
-              return edges[index].v1;
+              return edges[index][0];
             }));
       }
       if (name == "Vertex 2") {
         return std::make_unique<ColumnValues>(
             name, VArray<int>::ForFunc(edges.size(), [edges](int64_t index) {
-              return edges[index].v2;
+              return edges[index][1];
             }));
       }
       return {};

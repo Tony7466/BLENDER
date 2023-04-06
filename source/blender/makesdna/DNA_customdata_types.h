@@ -101,7 +101,9 @@ typedef enum eCustomDataType {
   CD_MSTICKY = 1, /* DEPRECATED */
 #endif
   CD_MDEFORMVERT = 2, /* Array of `MDeformVert`. */
-  CD_MEDGE = 3,
+#ifdef DNA_DEPRECATED_ALLOW
+  CD_MEDGE = 3, /* DEPRECATED */
+#endif
   CD_MFACE = 4,
   CD_MTFACE = 5,
   CD_MCOL = 6,
@@ -154,7 +156,8 @@ typedef enum eCustomDataType {
   /* CD_LOCATION = 43, */ /* UNUSED */
   /* CD_RADIUS = 44, */   /* UNUSED */
   CD_PROP_INT8 = 45,
-  /* CD_HAIRMAPPING = 46, */ /* UNUSED, can be reused. */
+  /* Two 32-bit signed integers. */
+  CD_PROP_INT2 = 46,
 
   CD_PROP_COLOR = 47,
   CD_PROP_FLOAT3 = 48,
@@ -170,7 +173,6 @@ typedef enum eCustomDataType {
 // #define CD_MASK_MVERT (1 << CD_MVERT) /* DEPRECATED */
 // #define CD_MASK_MSTICKY      (1 << CD_MSTICKY)  /* DEPRECATED */
 #define CD_MASK_MDEFORMVERT (1 << CD_MDEFORMVERT)
-#define CD_MASK_MEDGE (1 << CD_MEDGE)
 #define CD_MASK_MFACE (1 << CD_MFACE)
 #define CD_MASK_MTFACE (1 << CD_MTFACE)
 #define CD_MASK_MCOL (1 << CD_MCOL)
@@ -211,6 +213,7 @@ typedef enum eCustomDataType {
 #define CD_MASK_PROP_FLOAT2 (1ULL << CD_PROP_FLOAT2)
 #define CD_MASK_PROP_BOOL (1ULL << CD_PROP_BOOL)
 #define CD_MASK_PROP_INT8 (1ULL << CD_PROP_INT8)
+#define CD_MASK_PROP_INT2 (1ULL << CD_PROP_INT2)
 
 #define CD_MASK_HAIRLENGTH (1ULL << CD_HAIRLENGTH)
 
@@ -224,7 +227,7 @@ typedef enum eCustomDataType {
 #define CD_MASK_PROP_ALL \
   (CD_MASK_PROP_FLOAT | CD_MASK_PROP_FLOAT2 | CD_MASK_PROP_FLOAT3 | CD_MASK_PROP_INT32 | \
    CD_MASK_PROP_COLOR | CD_MASK_PROP_STRING | CD_MASK_PROP_BYTE_COLOR | CD_MASK_PROP_BOOL | \
-   CD_MASK_PROP_INT8)
+   CD_MASK_PROP_INT8 | CD_MASK_PROP_INT2)
 
 /* All color attributes */
 #define CD_MASK_COLOR_ALL (CD_MASK_PROP_COLOR | CD_MASK_PROP_BYTE_COLOR)

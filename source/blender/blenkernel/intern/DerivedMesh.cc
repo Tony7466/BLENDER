@@ -105,15 +105,15 @@ static float *dm_getVertArray(DerivedMesh *dm)
   return (float *)positions;
 }
 
-static MEdge *dm_getEdgeArray(DerivedMesh *dm)
+static vec2i *dm_getEdgeArray(DerivedMesh *dm)
 {
-  MEdge *edge = (MEdge *)CustomData_get_layer_for_write(
-      &dm->edgeData, CD_MEDGE, dm->getNumEdges(dm));
+  vec2i *edge = (vec2i *)CustomData_get_layer_named_for_write(
+      &dm->edgeData, CD_PROP_INT2, ".edge_verts", dm->getNumEdges(dm));
 
   if (!edge) {
-    edge = (MEdge *)CustomData_add_layer(
-        &dm->edgeData, CD_MEDGE, CD_SET_DEFAULT, dm->getNumEdges(dm));
-    CustomData_set_layer_flag(&dm->edgeData, CD_MEDGE, CD_FLAG_TEMPORARY);
+    edge = (vec2i *)CustomData_add_layer_named(
+        &dm->edgeData, CD_PROP_INT2, CD_SET_DEFAULT, dm->getNumEdges(dm), ".edge_verts");
+    CustomData_set_layer_flag(&dm->edgeData, CD_PROP_INT2, CD_FLAG_TEMPORARY);
     dm->copyEdgeArray(dm, edge);
   }
 
@@ -283,10 +283,6 @@ void *DM_get_vert_data_layer(DerivedMesh *dm, const eCustomDataType type)
 
 void *DM_get_edge_data_layer(DerivedMesh *dm, const eCustomDataType type)
 {
-  if (type == CD_MEDGE) {
-    return dm->getEdgeArray(dm);
-  }
-
   return CustomData_get_layer_for_write(&dm->edgeData, type, dm->getNumEdges(dm));
 }
 
