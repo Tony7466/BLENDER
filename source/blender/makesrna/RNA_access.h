@@ -274,6 +274,7 @@ bool RNA_property_editable(PointerRNA *ptr, PropertyRNA *prop);
  * that can be exposed in UI.
  */
 bool RNA_property_editable_info(PointerRNA *ptr, PropertyRNA *prop, const char **r_info);
+bool RNA_property_is_inactive_info(PointerRNA *ptr, PropertyRNA *prop, const char **r_info);
 /**
  * Same as RNA_property_editable(), except this checks individual items in an array.
  */

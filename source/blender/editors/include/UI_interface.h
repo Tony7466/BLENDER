@@ -896,6 +896,7 @@ void UI_but_dragflag_enable(uiBut *but, int flag);
 void UI_but_dragflag_disable(uiBut *but, int flag);
 
 void UI_but_disable(uiBut *but, const char *disabled_hint);
+void UI_but_inactive(uiBut *but, const char *disabled_hint);
 
 void UI_but_type_set_menu_from_pulldown(uiBut *but);
 

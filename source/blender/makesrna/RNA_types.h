@@ -188,6 +188,15 @@ typedef enum PropertyFlag {
    */
   PROP_EDITABLE = (1 << 0),
   /**
+   * Inactive specifically only refers to the front end
+   * where UI elements are grayed out but can still be
+   * toggled. It is specifically used to add Disabled
+   * message for when UI is set to inactive through Python
+   * script. It is completely unrelated to anything that
+   * is performed in the backend.
+   */
+  PROP_INACTIVE = (1 << 9),
+  /**
    * This property is editable even if it is lib linked,
    * meaning it will get lost on reload, but it's useful
    * for editing.

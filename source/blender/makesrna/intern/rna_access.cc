@@ -1935,6 +1935,32 @@ int RNA_property_ui_icon(const PropertyRNA *prop)
   return rna_ensure_property((PropertyRNA *)prop)->icon;
 }
 
+static bool rna_property_is_inactive_do(PointerRNA *ptr,
+                                     PropertyRNA *prop_orig,
+                                     const int index,
+                                     const char **r_info)
+{
+  PropertyRNA *prop = rna_ensure_property(prop_orig);
+
+  const char *info = "";
+  const int flag = (prop->itemeditable != nullptr && index >= 0) ?
+                       prop->itemeditable(ptr, index) :
+                       (prop->editable != nullptr ? prop->editable(ptr, &info) : prop->flag);
+  if (r_info != nullptr) {
+    *r_info = info;
+  }
+
+  /* Return true if the property itself is inative. */
+  if ((flag & PROP_INACTIVE) != 0) {
+    if (r_info != nullptr && (*r_info)[0] == '\0') {
+      *r_info = N_("This property is for internal use only and can't be edited");
+    }
+    return true;
+  }
+
+  return false;
+}
+
 static bool rna_property_editable_do(PointerRNA *ptr,
                                      PropertyRNA *prop_orig,
                                      const int index,
@@ -1999,6 +2025,11 @@ static bool rna_property_editable_do(PointerRNA *ptr,
 bool RNA_property_editable(PointerRNA *ptr, PropertyRNA *prop)
 {
   return rna_property_editable_do(ptr, prop, -1, nullptr);
+}
+
+bool RNA_property_is_inactive_info(PointerRNA *ptr, PropertyRNA *prop, const char **r_info)
+{
+  return rna_property_is_inactive_do(ptr, prop, -1, r_info);
 }
 
 bool RNA_property_editable_info(PointerRNA *ptr, PropertyRNA *prop, const char **r_info)
