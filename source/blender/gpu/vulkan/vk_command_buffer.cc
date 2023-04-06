@@ -9,9 +9,11 @@
 #include "vk_buffer.hh"
 #include "vk_context.hh"
 #include "vk_framebuffer.hh"
+#include "vk_index_buffer.hh"
 #include "vk_memory.hh"
 #include "vk_pipeline.hh"
 #include "vk_texture.hh"
+#include "vk_vertex_buffer.hh"
 
 #include "BLI_assert.h"
 
@@ -72,6 +74,20 @@ void VKCommandBuffer::bind(const VKDescriptorSet &descriptor_set,
   VkDescriptorSet vk_descriptor_set = descriptor_set.vk_handle();
   vkCmdBindDescriptorSets(
       vk_command_buffer_, bind_point, vk_pipeline_layout, 0, 1, &vk_descriptor_set, 0, 0);
+}
+
+void VKCommandBuffer::bind(const uint32_t binding,
+                           const VKVertexBuffer &vertex_buffer,
+                           const VkDeviceSize offset)
+{
+  VkBuffer vk_buffer = vertex_buffer.vk_handle();
+  vkCmdBindVertexBuffers(vk_command_buffer_, binding, 1, &vk_buffer, &offset);
+}
+
+void VKCommandBuffer::bind(const VKIndexBuffer &index_buffer, VkIndexType index_type)
+{
+  VkBuffer vk_buffer = index_buffer.vk_handle();
+  vkCmdBindIndexBuffer(vk_command_buffer_, vk_buffer, 0, index_type);
 }
 
 void VKCommandBuffer::begin_render_pass(const VKFrameBuffer &framebuffer)

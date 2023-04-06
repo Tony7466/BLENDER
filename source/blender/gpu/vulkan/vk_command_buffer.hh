@@ -16,9 +16,11 @@ namespace blender::gpu {
 class VKBuffer;
 class VKDescriptorSet;
 class VKFrameBuffer;
+class VKIndexBuffer;
 class VKPipeline;
 class VKPushConstants;
 class VKTexture;
+class VKVertexBuffer;
 
 /** Command buffer to keep track of the life-time of a command buffer. */
 class VKCommandBuffer : NonCopyable, NonMovable {
@@ -40,6 +42,10 @@ class VKCommandBuffer : NonCopyable, NonMovable {
   void bind(const VKDescriptorSet &descriptor_set,
             const VkPipelineLayout vk_pipeline_layout,
             VkPipelineBindPoint bind_point);
+  void bind(const uint32_t binding,
+            const VKVertexBuffer &vertex_buffer,
+            const VkDeviceSize offset);
+  void bind(const VKIndexBuffer &index_buffer, VkIndexType index_type);
   void begin_render_pass(const VKFrameBuffer &framebuffer);
   void end_render_pass(const VKFrameBuffer &framebuffer);
 

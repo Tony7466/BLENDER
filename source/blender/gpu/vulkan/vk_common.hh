@@ -15,15 +15,18 @@
 
 #include "vk_mem_alloc.h"
 
+#include "gpu_index_buffer_private.hh"
 #include "gpu_texture_private.hh"
 
 namespace blender::gpu {
 
 VkImageAspectFlagBits to_vk_image_aspect_flag_bits(const eGPUTextureFormat format);
 VkFormat to_vk_format(const eGPUTextureFormat format);
+VkFormat to_vk_format(const GPUVertCompType type, const uint32_t size);
 VkComponentMapping to_vk_component_mapping(const eGPUTextureFormat format);
 VkImageViewType to_vk_image_view_type(const eGPUTextureType type);
 VkImageType to_vk_image_type(const eGPUTextureType type);
 VkClearColorValue to_vk_clear_color_value(const eGPUDataFormat format, const void *data);
+VkIndexType to_vk_index_type(const GPUIndexBufType index_type);
 
 }  // namespace blender::gpu

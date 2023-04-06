@@ -53,6 +53,7 @@ void VKVertexBuffer::acquire_data()
   }
 
   /* Discard previous data if any. */
+  /* TODO: Use mapped memory. */
   MEM_SAFE_FREE(data);
   data = (uchar *)MEM_mallocN(sizeof(uchar) * this->size_alloc_get(), __func__);
 }
@@ -64,7 +65,23 @@ void VKVertexBuffer::release_data()
   MEM_SAFE_FREE(data);
 }
 
-void VKVertexBuffer::upload_data() {}
+void VKVertexBuffer::upload_data()
+{
+  VKContext &context = *VKContext::get();
+  if (!buffer_.is_allocated()) {
+    allocate(context);
+  }
+
+  if (flag &= GPU_VERTBUF_DATA_DIRTY) {
+    buffer_.update(data);
+    if (usage_ == GPU_USAGE_STATIC) {
+      MEM_SAFE_FREE(data);
+    }
+
+    flag &= ~GPU_VERTBUF_DATA_DIRTY;
+    flag |= GPU_VERTBUF_DATA_UPLOADED;
+  }
+}
 
 void VKVertexBuffer::duplicate_data(VertBuf * /*dst*/) {}
 

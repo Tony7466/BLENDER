@@ -28,6 +28,7 @@ class VKVertexBuffer : public VertBuf {
 
   VkBuffer vk_handle() const
   {
+    BLI_assert(buffer_.is_allocated());
     return buffer_.vk_handle();
   }
 
@@ -41,5 +42,10 @@ class VKVertexBuffer : public VertBuf {
  private:
   void allocate(VKContext &context);
 };
+
+static inline VKVertexBuffer *unwrap(VertBuf *vertex_buffer)
+{
+  return static_cast<VKVertexBuffer *>(vertex_buffer);
+}
 
 }  // namespace blender::gpu
