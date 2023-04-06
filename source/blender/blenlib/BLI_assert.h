@@ -57,9 +57,13 @@ void _BLI_assert_unreachable_print(const char *file, int line, const char *funct
                       _BLI_ASSERT_ABORT(), \
                       NULL)) : \
                     NULL)
+/* BLI_assert_cb() don't inline passed argument. Clear way to skip compiling and executing lamba.
+ */
+#  define BLI_assert_cb(callback) BLI_assert(callback());
 #else
 #  define BLI_assert(a) ((void)0)
 #  define BLI_assert_msg(a, msg) ((void)0)
+#  define BLI_assert_cb(callback) ((void)0)
 #endif
 
 #if defined(__cplusplus)

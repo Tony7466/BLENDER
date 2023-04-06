@@ -415,8 +415,56 @@ static void update_group_output_node(const bNodeTree &ntree)
   }
 }
 
+namespace node_tree_validate {
+
+static bool links_extra_cyclic(const bNodeTree &ntree)
+{
+  LISTBASE_FOREACH (const bNodeLink *, link, &ntree.links) {
+    if (link->fromnode == link->tonode) {
+      return true;
+    }
+    if (link->fromsock == link->tosock) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool links_missing_socket_or_node(const bNodeTree &ntree)
+{
+  LISTBASE_FOREACH (const bNodeLink *, link, &ntree.links) {
+    if (ELEM(nullptr, link->fromnode, link->tonode, link->fromsock, link->tosock)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool links_unrelated_socket_and_node(const bNodeTree &ntree)
+{
+  LISTBASE_FOREACH (const bNodeLink *, link, &ntree.links) {
+    if (BLI_findindex(&link->fromnode->outputs, link->fromsock) == -1) {
+      return true;
+    }
+    if (BLI_findindex(&link->tonode->inputs, link->tosock) == -1) {
+      return true;
+    }
+  }
+  return false;
+}
+
+}  // namespace node_tree_validate
+
 static void ensure_topology_cache(const bNodeTree &ntree)
 {
+  BLI_assert_cb([ntree]() -> bool { return !node_tree_validate::links_extra_cyclic(ntree); });
+
+  BLI_assert_cb(
+      [ntree]() -> bool { return !node_tree_validate::links_missing_socket_or_node(ntree); });
+
+  BLI_assert_cb(
+      [ntree]() -> bool { return !node_tree_validate::links_unrelated_socket_and_node(ntree); });
+
   bNodeTreeRuntime &tree_runtime = *ntree.runtime;
   tree_runtime.topology_cache_mutex.ensure([&]() {
     update_interface_sockets(ntree);
