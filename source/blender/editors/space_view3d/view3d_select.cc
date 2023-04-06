@@ -723,7 +723,7 @@ static bool edbm_backbuf_check_and_select_faces(ViewContext *vc,
                                                 Object *ob,
                                                 BMEditMesh *em,
                                                 const eSelectOp sel_op,
-                                                const rctf *rect,
+                                                const rcti *rect,
                                                 const int face_style,
                                                 void *ldata,
                                                 void *cdata)
@@ -732,6 +732,7 @@ static bool edbm_backbuf_check_and_select_faces(ViewContext *vc,
   BMIter iter, viter;
   BMFace *efa;
   BMVert *eve;
+  rctf rectf;
   bool changed = false;
   const int style = ts->viewport_facing_select_face;
   const bool check_mesh_facing = edbm_facing_viewport_precheck(ts, style, false);
@@ -740,6 +741,10 @@ static bool edbm_backbuf_check_and_select_faces(ViewContext *vc,
   CircleSelectUserData *circleData = static_cast<CircleSelectUserData *>(cdata);
   uint index = DRW_select_buffer_context_offset_for_object_elem(depsgraph, ob, SCE_SELECT_FACE);
   uint vindex = DRW_select_buffer_context_offset_for_object_elem(depsgraph, ob, SCE_SELECT_VERTEX);
+
+  if (rect != NULL) {
+    BLI_rctf_rcti_copy(&rectf, rect);
+  }
 
   if (index == 0 || vindex == 0) {
     return false;
@@ -770,7 +775,7 @@ static bool edbm_backbuf_check_and_select_faces(ViewContext *vc,
           }
         }
         else {
-          center_face = edbm_center_face(vc, efa, rect, lassoData, circleData);
+          center_face = edbm_center_face(vc, efa, &rectf, lassoData, circleData);
         }
       }
 
@@ -1638,15 +1643,13 @@ static bool do_lasso_select_mesh(ViewContext *vc,
 
   if (ts->selectmode & SCE_SELECT_FACE) {
     if (use_zbuf) {
-      rctf rectf;
-      BLI_rctf_rcti_copy(&rectf, &rect);
       data.is_changed |= edbm_backbuf_check_and_select_faces(vc,
                                                              esel,
                                                              vc->depsgraph,
                                                              vc->obedit,
                                                              vc->em,
                                                              sel_op,
-                                                             &rectf,
+                                                             &rect,
                                                              data.face_style,
                                                              &data,
                                                              NULL);
@@ -4504,10 +4507,8 @@ static bool do_mesh_box_select(ViewContext *vc,
 
   if (ts->selectmode & SCE_SELECT_FACE) {
     if (use_zbuf) {
-      rctf rectf;
-      BLI_rctf_rcti_copy(&rectf, rect);
       data.is_changed |= edbm_backbuf_check_and_select_faces(
-          vc, esel, vc->depsgraph, vc->obedit, vc->em, sel_op, &rectf, data.face_style, NULL, NULL);
+          vc, esel, vc->depsgraph, vc->obedit, vc->em, sel_op, rect, data.face_style, NULL, NULL);
     }
     else {
       data.check_mesh_direction = edbm_facing_viewport_precheck(
