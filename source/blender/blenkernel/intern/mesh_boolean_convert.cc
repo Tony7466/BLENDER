@@ -434,6 +434,11 @@ static void copy_edge_attributes(Mesh *dest_mesh,
   const CustomData *source_cd = &orig_me->edata;
   for (int source_layer_i = 0; source_layer_i < source_cd->totlayer; ++source_layer_i) {
     const eCustomDataType ty = eCustomDataType(source_cd->layers[source_layer_i].type);
+    if (ty == CD_PROP_INT2) {
+      if (STREQ(source_cd->layers[source_layer_i].name, ".edge_verts")) {
+        continue;
+      }
+    }
     const char *name = source_cd->layers[source_layer_i].name;
     int target_layer_i = CustomData_get_named_layer_index(target_cd, ty, name);
     if (target_layer_i != -1) {
