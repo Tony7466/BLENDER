@@ -1292,6 +1292,7 @@ static void bm_to_mesh_edges(const BMesh &bm,
     for (const int edge_i : range) {
       const BMEdge &src_edge = *bm_edges[edge_i];
       dst_edges[edge_i] = {BM_elem_index_get(src_edge.v1), BM_elem_index_get(src_edge.v2)};
+      bmesh_block_copy_to_mesh_attributes(info, edge_i, src_edge.head.data);
     }
     if (!select_edge.is_empty()) {
       for (const int edge_i : range) {
