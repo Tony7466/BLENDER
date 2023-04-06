@@ -2353,6 +2353,11 @@ typedef enum MeshToVolumeModifierResolutionMode {
   MESH_TO_VOLUME_RESOLUTION_MODE_VOXEL_SIZE = 1,
 } MeshToVolumeModifierResolutionMode;
 
+typedef enum MeshToVolumeModifierUnits {
+  MESH_TO_VOLUME_UNIT_LOCAL = 0,
+  MESH_TO_VOLUME_UNIT_VOXELS = 1,
+} MeshToVolumeModifierUnits;
+
 typedef struct VolumeDisplaceModifierData {
   ModifierData modifier;
 

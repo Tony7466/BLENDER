@@ -10159,11 +10159,26 @@ static void def_geo_mesh_to_volume(StructRNA *srna)
       {0, NULL, 0, NULL, NULL},
   };
 
+  static EnumPropertyItem units_items[] = {
+      {MESH_TO_VOLUME_UNIT_VOXELS, "VOXELS", 0, "Voxels", "Specify narrow-band width in voxels"},
+      {MESH_TO_VOLUME_UNIT_LOCAL,
+       "LOCAL",
+       0,
+       "Local space",
+       "Specify narrow-band width in local space units"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   RNA_def_struct_sdna_from(srna, "NodeGeometryMeshToVolume", "storage");
 
   prop = RNA_def_property(srna, "resolution_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, resolution_mode_items);
   RNA_def_property_ui_text(prop, "Resolution Mode", "How the voxel size is specified");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+
+  prop = RNA_def_property(srna, "units", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, units_items);
+  RNA_def_property_ui_text(prop, "Units", "Which units to use for the narrow band");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 
@@ -10185,11 +10200,26 @@ static void def_geo_mesh_to_sdf_volume(StructRNA *srna)
       {0, NULL, 0, NULL, NULL},
   };
 
+  static EnumPropertyItem units_items[] = {
+      {MESH_TO_VOLUME_UNIT_VOXELS, "VOXELS", 0, "Voxels", "Specify narrow-band width in voxels"},
+      {MESH_TO_VOLUME_UNIT_LOCAL,
+       "LOCAL",
+       0,
+       "Local space",
+       "Specify narrow-band width in local space units"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   RNA_def_struct_sdna_from(srna, "NodeGeometryMeshToVolume", "storage");
 
   prop = RNA_def_property(srna, "resolution_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, resolution_mode_items);
   RNA_def_property_ui_text(prop, "Resolution Mode", "How the voxel size is specified");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+
+  prop = RNA_def_property(srna, "units", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, units_items);
+  RNA_def_property_ui_text(prop, "Units", "Which units to use for the narrow band");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 

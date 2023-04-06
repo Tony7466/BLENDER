@@ -33,14 +33,16 @@ static void node_declare(NodeDeclarationBuilder &b)
       .subtype(PROP_DISTANCE);
   b.add_input<decl::Int>(N_("Voxel Amount")).default_value(64).min(1);
   b.add_input<decl::Float>(N_("Interior Band Width"))
-      .default_value(0.0f)
-      .min(0.0f)
+      .default_value(0.2f)
+      .min(0.0001f)
       .max(FLT_MAX)
       .subtype(PROP_DISTANCE)
-      .description(N_("Width of the volume inside of the mesh"));
-  b.add_input<decl::Bool>(N_("Fill Volume"))
-      .default_value(true)
-      .description(N_("Initialize the density grid in every cell inside the enclosed volume"));
+      .description(N_("Width of the gradient inside of the mesh"));
+  b.add_input<decl::Int>(N_("Interior Band Voxels"))
+      .default_value(3)
+      .min(1)
+      .max(INT_MAX)
+      .description(N_("Width of the gradient inside of the mesh in voxels"));
   b.add_output<decl::Geometry>(N_("Volume"));
 }
 
@@ -49,12 +51,14 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
   uiItemR(layout, ptr, "resolution_mode", 0, IFACE_("Resolution"), ICON_NONE);
+  uiItemR(layout, ptr, "units", 0, IFACE_("Units"), ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeGeometryMeshToVolume *data = MEM_cnew<NodeGeometryMeshToVolume>(__func__);
   data->resolution_mode = MESH_TO_VOLUME_RESOLUTION_MODE_VOXEL_AMOUNT;
+  data->units = MESH_TO_VOLUME_UNIT_LOCAL;
   node->storage = data;
 }
 
@@ -69,6 +73,11 @@ static void node_update(bNodeTree *ntree, bNode *node)
                             data.resolution_mode == MESH_TO_VOLUME_RESOLUTION_MODE_VOXEL_AMOUNT);
   nodeSetSocketAvailability(
       ntree, voxel_size_socket, data.resolution_mode == MESH_TO_VOLUME_RESOLUTION_MODE_VOXEL_SIZE);
+
+  bNodeSocket *unit_local_socket = nodeFindSocket(node, SOCK_IN, "Interior Band Width");
+  bNodeSocket *unit_voxels_socket = nodeFindSocket(node, SOCK_IN, "Interior Band Voxels");
+  nodeSetSocketAvailability(ntree, unit_local_socket, data.units == MESH_TO_VOLUME_UNIT_LOCAL);
+  nodeSetSocketAvailability(ntree, unit_voxels_socket, data.units == MESH_TO_VOLUME_UNIT_VOXELS);
 }
 
 #ifdef WITH_OPENVDB
@@ -79,11 +88,22 @@ static Volume *create_volume_from_mesh(const Mesh &mesh, GeoNodeExecParams &para
       *(const NodeGeometryMeshToVolume *)params.node().storage;
 
   const float density = params.get_input<float>("Density");
-  const float interior_band_width = params.get_input<float>("Interior Band Width");
-  const bool fill_volume = params.get_input<bool>("Fill Volume");
 
-  if (interior_band_width <= 0.0f && !fill_volume) {
-    return nullptr;
+  auto unit_mode = (MeshToVolumeModifierUnits)storage.units;
+  float interior_band_width;
+
+  if (unit_mode == MESH_TO_VOLUME_UNIT_LOCAL) {
+    interior_band_width = params.get_input<float>("Interior Band Width");
+    if (interior_band_width <= 1e-5f) {
+      return nullptr;
+    }
+  }
+  else {
+    int voxels = params.get_input<int>("Interior Band Voxels");
+    if (voxels < 1) {
+      return nullptr;
+    }
+    interior_band_width = (float)voxels;
   }
 
   const float4x4 mesh_to_volume_space_transform = float4x4::identity();
@@ -98,8 +118,9 @@ static Volume *create_volume_from_mesh(const Mesh &mesh, GeoNodeExecParams &para
                                           /* exterior_band_width */ 0.0f,
                                           /* density */ density,
                                           /* simplify */ volume_simplify,
-                                          /* fill_volume */ fill_volume,
-                                          /* use_world_space_units */ true,
+                                          /* fill_volume */ false,
+                                          /* use_world_space_units */ unit_mode ==
+                                              MESH_TO_VOLUME_UNIT_LOCAL,
                                           /* convert_to_fog */ true,
                                           /* unsigned_distance */ false};
 

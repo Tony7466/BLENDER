@@ -1370,6 +1370,8 @@ typedef struct NodeGeometryVolumeToMesh {
 typedef struct NodeGeometryMeshToVolume {
   /* MeshToVolumeModifierResolutionMode */
   uint8_t resolution_mode;
+  /* MeshToVolumeModifierUnits */
+  uint8_t units;
 } NodeGeometryMeshToVolume;
 
 typedef struct NodeGeometrySubdivisionSurface {
