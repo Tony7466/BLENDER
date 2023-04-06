@@ -365,9 +365,9 @@ void PAINT_OT_vertex_color_brightness_contrast(wmOperatorType *ot)
   PropertyRNA *prop;
 
   /* identifiers */
-  ot->name = "Vertex Paint Brightness Contrast";
+  ot->name = "Vertex Paint Brightness/Contrast";
   ot->idname = "PAINT_OT_vertex_color_brightness_contrast";
-  ot->description = "Adjust vertex color brightness contrast";
+  ot->description = "Adjust vertex color brightness/contrast";
 
   /* api callbacks */
   ot->exec = vertex_color_brightness_contrast_exec;
