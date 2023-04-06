@@ -61,9 +61,6 @@ typedef struct LightProbe {
   struct Image *image;
   /** Object visibility group, inclusive or exclusive. */
   struct Collection *visibility_grp;
-
-  /* Runtime display data */
-  float distfalloff, distgridinf;
 } LightProbe;
 
 /* Probe->type */
@@ -200,6 +197,114 @@ enum {
   LIGHTCACHETEX_FLOAT = (1 << 1),
   LIGHTCACHETEX_UINT = (1 << 2),
 };
+
+/* -------------------------------------------------------------------- */
+/** \name Irradiance grid data storage
+ *
+ * Each spherical harmonic band is stored separately. This allow loading only a specific band.
+ * The layout of each array is set by the #LightProbeGridType.
+ * Any unavailable data is be set to nullptr.
+ * \{ */
+
+/**
+ * Irradiance data (RGB) stored along visibility (A).
+ * This is the format used during baking and is used for visualizing the baking process.
+ */
+typedef struct LightProbeBakingData {
+  float (*L0)[4];
+  float (*L1_a)[4];
+  float (*L1_b)[4];
+  float (*L1_c)[4];
+} LightProbeBakingData;
+
+/**
+ * Irradiance stored as RGB triple using scene referred color space.
+ */
+typedef struct LightProbeIrradianceData {
+  float (*L0)[3];
+  float (*L1_a)[3];
+  float (*L1_b)[3];
+  float (*L1_c)[3];
+} LightProbeIrradianceData;
+
+/**
+ * Normalized visibility of distant light. Used for compositing grids together.
+ */
+typedef struct LightProbeVisibilityData {
+  uint8_t *L0;
+  uint8_t *L1_a;
+  uint8_t *L1_b;
+  uint8_t *L1_c;
+} LightProbeVisibilityData;
+
+/**
+ * Used to avoid light leaks. Validate visibility between each grid sample.
+ */
+typedef struct LightProbeConnectivityData {
+  /** Stores a bitmask of valid connections within a cell. */
+  uint8_t *bitmask;
+} LightProbeConnectivityData;
+
+/**
+ * Defines one block of data inside the grid cache data arrays.
+ * The block size if the same for all the blocks.
+ */
+typedef struct LightProbeBlockData {
+  /* Offset inside the level-of-detail this block starts. */
+  int offset[3];
+  /* Level-of-detail this block is from. */
+  int level;
+} LightProbeBlockData;
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name LightProbeGridCache
+ *
+ * \{ */
+
+typedef struct LightProbeGridCache {
+  /** Allow correct versioning / different types of data for the same layout. */
+  int cache_type;
+  /** Spatial layout type of the data stored inside the data arrays. */
+  int data_layout;
+
+  char _pad0[4];
+
+  /** Number of samples in the highest level of detail. */
+  int size[3];
+
+  /** Sparse or adaptive layout only: number of blocks inside data arrays. */
+  int block_len;
+  /** Sparse or adaptive layout only: size of a block in samples. All 3 dimensions are equal. */
+  int block_size;
+  /** Sparse or adaptive layout only: specify the blocks positions. */
+  LightProbeBlockData *block_infos;
+
+  /** Baked data. */
+  LightProbeBakingData baking;
+  LightProbeIrradianceData irradiance;
+  LightProbeVisibilityData visibility;
+  LightProbeConnectivityData connectivity;
+} LightProbeGridCache;
+
+/** #LightProbeGridCache.type (int) */
+enum {
+  /** Light cache was just created and is not yet baked. */
+  LIGHTPROBE_CACHE_TYPE_NONE = 0,
+  /** Light cache is baked for one specific frame and capture all indirect lighting. */
+  LIGHTPROBE_CACHE_TYPE_STATIC = 1,
+};
+
+/** #LightProbeGridCache.data_layout (int) */
+enum {
+  /** Simple uniform grid. Raw output from GPU. Used during the baking process. */
+  LIGHTPROBE_CACHE_UNIFORM_GRID = 0,
+  /** Fills the space with different level of resolution. More efficient storage. */
+  LIGHTPROBE_CACHE_ADAPTIVE_RESOLUTION = 1,
+};
+
+/** \} */
 
 #ifdef __cplusplus
 }

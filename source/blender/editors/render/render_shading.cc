@@ -37,6 +37,7 @@
 #include "BKE_image.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
+#include "BKE_lightprobe.h"
 #include "BKE_linestyle.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
@@ -53,6 +54,7 @@
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_query.h"
 
 #ifdef WITH_FREESTYLE
 #  include "BKE_freestyle.h"
@@ -1492,6 +1494,87 @@ void SCENE_OT_light_cache_bake(wmOperatorType *ot)
   RNA_def_property_flag(ot->prop, PROP_SKIP_SAVE);
 }
 
+/* NOTE: New version destined to replace the old lightcache bake operator. */
+
+static int lightprobe_cache_bake_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  Scene *scene = CTX_data_scene(C);
+  Object *active_ob = CTX_data_active_object(C);
+
+  BKE_lightprobe_grid_caches_free(active_ob);
+  BKE_lightprobe_grid_caches_create(active_ob);
+
+  DEG_id_tag_update(&active_ob->id, ID_RECALC_COPY_ON_WRITE);
+
+  WM_event_add_modal_handler(C, op);
+
+  /* store actual owner of job, so modal operator could check for it,
+   * the reason of this is that active scene could change when rendering
+   * several layers from compositor #31800. */
+  op->customdata = scene;
+
+  WM_cursor_wait(false);
+
+  return OPERATOR_RUNNING_MODAL;
+}
+
+static int lightprobe_cache_bake_modal(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  Scene *scene = (Scene *)op->customdata;
+
+  /* No running bake, remove handler and pass through. */
+  if (0 == WM_jobs_test(CTX_wm_manager(C), scene, WM_JOB_TYPE_LIGHT_BAKE)) {
+    return OPERATOR_FINISHED | OPERATOR_PASS_THROUGH;
+  }
+
+  /* Running bake. */
+  switch (event->type) {
+    case EVT_ESCKEY:
+      return OPERATOR_RUNNING_MODAL;
+  }
+  return OPERATOR_PASS_THROUGH;
+}
+
+static void lightprobe_cache_bake_cancel(bContext *C, wmOperator *op)
+{
+  wmWindowManager *wm = CTX_wm_manager(C);
+  Scene *scene = (Scene *)op->customdata;
+
+  /* Kill on cancel, because job is using op->reports. */
+  WM_jobs_kill_type(wm, scene, WM_JOB_TYPE_LIGHT_BAKE);
+}
+
+/* Executes blocking render. */
+static int lightprobe_cache_bake_exec(bContext * /*C*/, wmOperator * /*op*/)
+{
+  return OPERATOR_FINISHED;
+}
+
+void OBJECT_OT_lightprobe_cache_bake(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Bake Light Cache";
+  ot->idname = "OBJECT_OT_lightprobe_cache_bake";
+  ot->description = "Bake the active view layer lighting";
+
+  /* api callbacks */
+  ot->invoke = lightprobe_cache_bake_invoke;
+  ot->modal = lightprobe_cache_bake_modal;
+  ot->cancel = lightprobe_cache_bake_cancel;
+  ot->exec = lightprobe_cache_bake_exec;
+
+  ot->prop = RNA_def_int(ot->srna,
+                         "delay",
+                         0,
+                         0,
+                         2000,
+                         "Delay",
+                         "Delay in millisecond before baking starts",
+                         0,
+                         2000);
+  RNA_def_property_flag(ot->prop, PROP_SKIP_SAVE);
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1539,6 +1622,49 @@ void SCENE_OT_light_cache_free(wmOperatorType *ot)
   /* api callbacks */
   ot->exec = light_cache_free_exec;
   ot->poll = light_cache_free_poll;
+}
+
+/* NOTE: New version destined to replace the old lightcache bake operator. */
+
+static bool lightprobe_cache_free_poll(bContext *C)
+{
+  Object *object = CTX_data_active_object(C);
+
+  return object && object->irradiance_caches != nullptr;
+}
+
+static int lightprobe_cache_free_exec(bContext *C, wmOperator * /*op*/)
+{
+  Scene *scene = CTX_data_scene(C);
+  Object *object = CTX_data_active_object(C);
+
+  /* Kill potential bake job first (see #57011). */
+  wmWindowManager *wm = CTX_wm_manager(C);
+  WM_jobs_kill_type(wm, scene, WM_JOB_TYPE_LIGHT_BAKE);
+
+  if (object->irradiance_caches == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+
+  BKE_lightprobe_grid_caches_free(object);
+
+  DEG_id_tag_update(&object->id, ID_RECALC_COPY_ON_WRITE);
+
+  WM_event_add_notifier(C, NC_OBJECT | ND_OB_SHADING, scene);
+
+  return OPERATOR_FINISHED;
+}
+
+void OBJECT_OT_lightprobe_cache_free(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Delete Light Cache";
+  ot->idname = "OBJECT_OT_lightprobe_cache_free";
+  ot->description = "Delete cached indirect lighting";
+
+  /* api callbacks */
+  ot->exec = lightprobe_cache_free_exec;
+  ot->poll = lightprobe_cache_free_poll;
 }
 
 /** \} */

@@ -267,6 +267,19 @@ static void object_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const in
   if (ob_src->lightgroup) {
     ob_dst->lightgroup = (LightgroupMembership *)MEM_dupallocN(ob_src->lightgroup);
   }
+
+  if ((flag & LIB_ID_COPY_SET_COPIED_ON_WRITE) != 0) {
+    /* Reference the original object data. */
+    ob_dst->irradiance_caches = ob_src->irradiance_caches;
+    ob_dst->irradiance_caches_len = ob_src->irradiance_caches_len;
+    ob_dst->irradiance_caches_shared = true;
+  }
+  else {
+    /* Do not copy lightprobe's cache. */
+    ob_dst->irradiance_caches = nullptr;
+    ob_dst->irradiance_caches_len = 0;
+    ob_dst->irradiance_caches_shared = false;
+  }
 }
 
 static void object_free_data(ID *id)
@@ -319,6 +332,10 @@ static void object_free_data(ID *id)
   BKE_previewimg_free(&ob->preview);
 
   MEM_SAFE_FREE(ob->lightgroup);
+
+  if (ob->irradiance_caches_shared == false) {
+    BKE_lightprobe_grid_caches_free(ob);
+  }
 }
 
 static void library_foreach_modifiersForeachIDLink(void *user_data,
@@ -597,6 +614,12 @@ static void object_blend_write(BlendWriter *writer, ID *id, const void *id_addre
   if (ob->lightgroup) {
     BLO_write_struct(writer, LightgroupMembership, ob->lightgroup);
   }
+
+  if (ob->irradiance_caches) {
+    BLO_write_pointer_array(writer, ob->irradiance_caches_len, ob->irradiance_caches);
+    BKE_lightprobe_grid_cache_blend_write(
+        writer, ob->irradiance_caches, ob->irradiance_caches_len);
+  }
 }
 
 /* XXX deprecated - old animation system */
@@ -815,6 +838,9 @@ static void object_blend_read_data(BlendDataReader *reader, ID *id)
   BKE_previewimg_blend_read(reader, ob->preview);
 
   BLO_read_data_address(reader, &ob->lightgroup);
+
+  BLO_read_pointer_array(reader, (void **)&ob->irradiance_caches);
+  BKE_lightprobe_grid_cache_blend_read(reader, ob->irradiance_caches, ob->irradiance_caches_len);
 }
 
 /* XXX deprecated - old animation system */
