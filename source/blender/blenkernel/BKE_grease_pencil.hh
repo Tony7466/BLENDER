@@ -25,6 +25,12 @@ namespace gpencil {
 class LayerGroup;
 class Layer;
 
+/**
+ * A TreeNode represents one node in the layer tree.
+ * It can either be a layer or a group. The node has zero children if it is a layer or zero or more
+ * children if it is a group.
+ * This class is mainly used for iteration over the layer tree.
+ */
 class TreeNode : public ::GreasePencilLayerTreeNode {
   using TreeNodeIterFn = FunctionRef<void(TreeNode &)>;
   using LayerIterFn = FunctionRef<void(Layer &)>;
@@ -210,6 +216,10 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
   }
 };
 
+/**
+ * A layer maps drawings to scene frames. It can be thought of as one independent channel in the
+ * timeline.
+ */
 class Layer : public TreeNode, ::GreasePencilLayer {
  private:
   /**
@@ -268,6 +278,7 @@ class Layer : public TreeNode, ::GreasePencilLayer {
 
   Map<int, int> &frames_for_write()
   {
+    sorted_keys_cache_.tag_dirty();
     return frames_;
   }
 
@@ -325,6 +336,9 @@ class Layer : public TreeNode, ::GreasePencilLayer {
   }
 };
 
+/**
+ * A LayerGroup is a grouping of zero or more Layers.
+ */
 class LayerGroup : public TreeNode {
  public:
   LayerGroup() : TreeNode(GREASE_PENCIL_LAYER_TREE_GROUP) {}
@@ -389,7 +403,7 @@ class LayerGroup : public TreeNode {
     return children_[index].get()->as_layer();
   }
 
-  int num_children()
+  int num_children() const
   {
     return children_.size();
   }

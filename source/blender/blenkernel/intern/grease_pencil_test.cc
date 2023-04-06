@@ -63,11 +63,11 @@ TEST(gpencil, remove_drawing)
   Layer layer1("Layer1");
   Layer layer2("Layer2");
 
-  layer1.frames_for_write().add(0, 0);
-  layer1.frames_for_write().add(10, 1);
-  layer1.frames_for_write().add(20, 2);
+  layer1.insert_frame(0, 0);
+  layer1.insert_frame(10, 1);
+  layer1.insert_frame(20, 2);
 
-  layer2.frames_for_write().add(0, 1);
+  layer2.insert_frame(0, 1);
 
   grease_pencil.root_group().add_layer(std::move(layer1));
   grease_pencil.root_group().add_layer(std::move(layer2));

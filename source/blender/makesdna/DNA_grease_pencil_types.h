@@ -162,8 +162,6 @@ typedef struct GreasePencilLayerTreeStorage {
 
 /**
  * The grease pencil data-block.
- * It holds a set of grease pencil drawings, a tree of layer groups, and a set of layers whithin
- * each layer group.
  */
 typedef struct GreasePencil {
   ID id;
@@ -171,7 +169,9 @@ typedef struct GreasePencil {
   struct AnimData *adt;
 
   /**
-   * An array of GreasePencilDrawing's.
+   * An array of pointers to drawings. The drawing can own it's data or reference it from another
+   * data-block. Note that the order of this array is arbitrary. The mapping of drawings to frames
+   * is done by the layers. See the `Layer` class in `BKE_grease_pencil.hh`.
    */
   GreasePencilDrawingOrReference **drawing_array;
   int drawing_array_size;
