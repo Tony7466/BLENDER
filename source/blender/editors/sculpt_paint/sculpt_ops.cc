@@ -1243,7 +1243,7 @@ static void SCULPT_OT_mask_from_cavity(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = sculpt_bake_cavity_exec;
-  ot->poll = SCULPT_mode_poll;
+  ot->poll = SCULPT_mode_poll_cavity_automask;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 

@@ -4273,6 +4273,19 @@ bool SCULPT_mode_poll(bContext *C)
   return ob && ob->mode & OB_MODE_SCULPT;
 }
 
+bool SCULPT_mode_poll_cavity_automask(bContext *C)
+{
+  ToolSettings *tool_settings = CTX_data_tool_settings(C);
+  int automasking_flags = tool_settings->sculpt->paint.brush->automasking_flags;
+
+  if (SCULPT_mode_poll(C) && !(automasking_flags & BRUSH_AUTOMASKING_CAVITY_ALL)) {
+    return true;
+  } else {
+    CTX_wm_operator_poll_msg_set(C, "The active brush already has the same auto-masking enabled.");
+    return false;
+  }
+}
+
 bool SCULPT_mode_poll_view3d(bContext *C)
 {
   return (SCULPT_mode_poll(C) && CTX_wm_region_view3d(C));

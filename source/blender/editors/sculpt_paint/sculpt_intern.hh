@@ -843,6 +843,7 @@ struct ExpandCache {
  * \{ */
 
 bool SCULPT_mode_poll(bContext *C);
+bool SCULPT_mode_poll_cavity_automask(bContext *C);
 bool SCULPT_mode_poll_view3d(bContext *C);
 /**
  * Checks for a brush, not just sculpt mode.
