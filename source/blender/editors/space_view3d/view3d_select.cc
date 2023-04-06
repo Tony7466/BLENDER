@@ -1142,22 +1142,7 @@ static bool do_lasso_select_mesh(ViewContext *vc,
   }
 
   if (ts->selectmode & SCE_SELECT_FACE) {
-    /* xray auto and center face with fallback for touch and enclose intersect */
-    if (!use_zbuf &&
-        (data.face_style == 1 || data.face_style == 8 || SEL_OP_USE_OUTSIDE(sel_op))) {
-      mesh_foreachScreenFaceCenter(
-          vc, do_lasso_select_mesh__doSelectFaceCenter, &data, V3D_PROJ_TEST_CLIP_DEFAULT);
-    }
-    /* xray touch and enclose face */
-    else if (!use_zbuf) {
-      /* works for everything except intersect for some reason */
-      mesh_foreachScreenFaceVerts(vc,
-                                  do_lasso_select_mesh__doSelectFace,
-                                  &data,
-                                  V3D_PROJ_TEST_CLIP_NEAR | V3D_PROJ_TEST_CLIP_BB);
-    }
-    /* near face */
-    else {
+    if (use_zbuf) {
       data.is_changed |= edbm_backbuf_check_and_select_faces(vc,
                                                              esel,
                                                              vc->depsgraph,
@@ -1168,6 +1153,20 @@ static bool do_lasso_select_mesh(ViewContext *vc,
                                                              data.face_style,
                                                              &data,
                                                              NULL);
+    }
+    else {
+      /* xray auto and center face with fallback for touch and enclose intersect */
+      if (data.face_style == 1 || data.face_style == 8 || SEL_OP_USE_OUTSIDE(sel_op)) {
+        mesh_foreachScreenFaceCenter(
+            vc, do_lasso_select_mesh__doSelectFaceCenter, &data, V3D_PROJ_TEST_CLIP_DEFAULT);
+      }
+      /* xray touch and enclose face - doesn't work with intersect */
+      else {
+        mesh_foreachScreenFaceVerts(vc,
+                                    do_lasso_select_mesh__doSelectFace,
+                                    &data,
+                                    V3D_PROJ_TEST_CLIP_NEAR | V3D_PROJ_TEST_CLIP_BB);
+      }
     }
   }
 
@@ -3987,24 +3986,23 @@ static bool do_mesh_box_select(ViewContext *vc,
   }
 
   if (ts->selectmode & SCE_SELECT_FACE) {
-    /* xray auto and center face with fallback for touch and enclose intersect */
-    if (!use_zbuf &&
-        (data.face_style == 1 || data.face_style == 8 || SEL_OP_USE_OUTSIDE(sel_op))) {
-      mesh_foreachScreenFaceCenter(
-          vc, do_mesh_box_select__doSelectFaceCenter, &data, V3D_PROJ_TEST_CLIP_DEFAULT);
-    }
-    /* xray touch and enclose face */
-    else if (!use_zbuf) {
-      /* works for everything except intersect for some reason */
-      mesh_foreachScreenFaceVerts(vc,
-                                  do_mesh_box_select__doSelectFace,
-                                  &data,
-                                  V3D_PROJ_TEST_CLIP_NEAR | V3D_PROJ_TEST_CLIP_BB);
-    }
-    /* near face */
-    else {
+    if (use_zbuf) {
       data.is_changed |= edbm_backbuf_check_and_select_faces(
           vc, esel, vc->depsgraph, vc->obedit, vc->em, sel_op, rect, data.face_style, NULL, NULL);
+    }
+    else {
+      /* xray auto and center face with fallback for touch and enclose intersect */
+      if (data.face_style == 1 || data.face_style == 8 || SEL_OP_USE_OUTSIDE(sel_op)) {
+        mesh_foreachScreenFaceCenter(
+            vc, do_mesh_box_select__doSelectFaceCenter, &data, V3D_PROJ_TEST_CLIP_DEFAULT);
+      }
+      /* xray touch and enclose face - doesn't work with intersect */
+      else {
+        mesh_foreachScreenFaceVerts(vc,
+                                    do_mesh_box_select__doSelectFace,
+                                    &data,
+                                    V3D_PROJ_TEST_CLIP_NEAR | V3D_PROJ_TEST_CLIP_BB);
+      }
     }
   }
 
@@ -4652,18 +4650,7 @@ static bool mesh_circle_select(ViewContext *vc,
   }
 
   if (ts->selectmode & SCE_SELECT_FACE) {
-    /* xray default and center face */
-    if (!use_zbuf && (data.face_style == 1 || data.face_style == 8)) {
-      mesh_foreachScreenFaceCenter(
-          vc, mesh_circle_doSelectFaceCenter, &data, V3D_PROJ_TEST_CLIP_DEFAULT);
-    }
-    /* xray touch and enclose face */
-    else if (!use_zbuf) {
-      mesh_foreachScreenFaceVerts(
-          vc, mesh_circle_doSelectFace, &data, V3D_PROJ_TEST_CLIP_NEAR | V3D_PROJ_TEST_CLIP_BB);
-    }
-    /* near face */
-    else {
+    if (use_zbuf) {
       if (esel->select_bitmap != NULL) {
         changed |= edbm_backbuf_check_and_select_faces(vc,
                                                        esel,
@@ -4675,6 +4662,18 @@ static bool mesh_circle_select(ViewContext *vc,
                                                        data.face_style,
                                                        NULL,
                                                        &data);
+      }
+    }
+    else {
+      /* xray default and center face */
+      if (data.face_style == 1 || data.face_style == 8) {
+        mesh_foreachScreenFaceCenter(
+            vc, mesh_circle_doSelectFaceCenter, &data, V3D_PROJ_TEST_CLIP_DEFAULT);
+      }
+      /* xray touch and enclose face */
+      else {
+        mesh_foreachScreenFaceVerts(
+            vc, mesh_circle_doSelectFace, &data, V3D_PROJ_TEST_CLIP_NEAR | V3D_PROJ_TEST_CLIP_BB);
       }
     }
   }
