@@ -380,6 +380,14 @@ static void meshdeformModifier_do(ModifierData *md,
     goto finally;
   }
 
+  /* The UI will not allow enabling Dynamic once bound, but setting via RNA or drivers might
+   * happen. Evaluation will miss important binding data then though, so better do nothing in such
+   * case (alternatively re-binding could be considered, see above). */
+  if (mmd->flag & MOD_MDEF_DYNAMIC_BIND && !mmd->dynverts) {
+    BKE_modifier_set_error(ob, md, "Dynamic binding data missing");
+    goto finally;
+  }
+
   /* verify we have compatible weights */
   cage_verts_num = BKE_mesh_wrapper_vert_len(cagemesh);
 
