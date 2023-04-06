@@ -287,41 +287,37 @@ struct CircleSelectUserData {
   bool is_changed;
 };
 
-bool edbm_circle_enclose_edge(BMEdge *eed, struct CircleSelectUserData *data)
+bool edbm_circle_enclose_mesh(BMEdge *eed, BMFace *efa, struct CircleSelectUserData *data)
 {
   BMVert *eve;
   BMIter iter;
-  bool enclose_edge = false;
-  BM_ITER_ELEM (eve, &iter, eed, BM_VERTS_OF_EDGE) {
-    float vertv3[3] = {eve->co[0], eve->co[1], eve->co[2]};
-    float vertv2[2] = {0.0f, 0.0f};
-    ED_view3d_project_float_object(
-        data->vc->region, vertv3, vertv2, V3D_PROJ_TEST_CLIP_NEAR | V3D_PROJ_TEST_CLIP_BB);
-    enclose_edge = len_squared_v2v2(data->mval_fl, vertv2) <= data->radius_squared;
-    if (!enclose_edge) {
-      break;
+  bool enclose_mesh = false;
+
+  if (eed != NULL) {
+    BM_ITER_ELEM (eve, &iter, eed, BM_VERTS_OF_EDGE) {
+      float vertv3[3] = {eve->co[0], eve->co[1], eve->co[2]};
+      float vertv2[2] = {0.0f, 0.0f};
+      ED_view3d_project_float_object(
+          data->vc->region, vertv3, vertv2, V3D_PROJ_TEST_CLIP_NEAR | V3D_PROJ_TEST_CLIP_BB);
+      enclose_mesh = len_squared_v2v2(data->mval_fl, vertv2) <= data->radius_squared;
+      if (!enclose_mesh) {
+        break;
+      }
     }
   }
-  return enclose_edge;
-}
-
-bool edbm_circle_enclose_face(ViewContext *vc, BMFace *efa, struct CircleSelectUserData *data)
-{
-  BMVert *eve;
-  BMIter iter;
-  bool enclose_face = false;
-
-  BM_ITER_ELEM (eve, &iter, efa, BM_VERTS_OF_FACE) {
-    float vertv3[3] = {eve->co[0], eve->co[1], eve->co[2]};
-    float vertv2[2] = {0.0f, 0.0f};
-    ED_view3d_project_float_object(
-        vc->region, vertv3, vertv2, V3D_PROJ_TEST_CLIP_NEAR | V3D_PROJ_TEST_CLIP_BB);
-    enclose_face = len_squared_v2v2(data->mval_fl, vertv2) <= data->radius_squared;
-    if (!enclose_face) {
-      break;
+  else if (efa != NULL) {
+    BM_ITER_ELEM (eve, &iter, efa, BM_VERTS_OF_FACE) {
+      float vertv3[3] = {eve->co[0], eve->co[1], eve->co[2]};
+      float vertv2[2] = {0.0f, 0.0f};
+      ED_view3d_project_float_object(
+          data->vc->region, vertv3, vertv2, V3D_PROJ_TEST_CLIP_NEAR | V3D_PROJ_TEST_CLIP_BB);
+      enclose_mesh = len_squared_v2v2(data->mval_fl, vertv2) <= data->radius_squared;
+      if (!enclose_mesh) {
+        break;
+      }
     }
   }
-  return enclose_face;
+  return enclose_mesh;
 }
 
 bool edbm_center_face(ViewContext *vc,
@@ -456,7 +452,7 @@ static bool edbm_backbuf_check_and_select_edges(void *userData,
       bool enclose_edge = true;
 
       if (data->edge_style == 4 && is_inside) {
-        enclose_edge = edbm_circle_enclose_edge(eed, data);
+        enclose_edge = edbm_circle_enclose_mesh(eed, NULL, data);
       }
       const int sel_op_result = ED_select_op_action_deselected(
           sel_op, is_select, is_inside && enclose_edge);
@@ -512,7 +508,7 @@ static bool edbm_backbuf_check_and_select_faces(ViewContext *vc,
       if (face_style > 2 && is_inside) {
         if (face_style == 4) {
           if (circleData != NULL) {
-            enclose_face = edbm_circle_enclose_face(vc, efa, circleData);
+            enclose_face = edbm_circle_enclose_mesh(NULL, efa, circleData);
           }
           else {
             BM_ITER_ELEM (eve, &viter, efa, BM_VERTS_OF_FACE) {
@@ -4514,7 +4510,7 @@ static void mesh_circle_doSelectEdge(void *userData,
 
   if (edge_inside_circle(data->mval_fl, data->radius, screen_co_a, screen_co_b)) {
     if (data->edge_style == 4) {
-      enclose_edge = edbm_circle_enclose_edge(eed, data);
+      enclose_edge = edbm_circle_enclose_mesh(eed, NULL, data);
     }
 
     if (enclose_edge) {
@@ -4556,7 +4552,7 @@ static void mesh_circle_doSelectFace(void *userData,
   *face_hit = inside;
   
   if (data->face_style == 4 && inside) {
-    enclose_face = edbm_circle_enclose_face(data->vc, efa, data);
+    enclose_face = edbm_circle_enclose_mesh(NULL, efa, data);
   }
 
   if (inside && enclose_face) {
