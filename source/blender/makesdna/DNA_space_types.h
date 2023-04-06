@@ -1980,6 +1980,7 @@ typedef struct SpreadsheetRowFilter {
   char _pad0[2];
 
   int value_int;
+  int value_int2[2];
   char *value_string;
   float value_float;
   float threshold;
