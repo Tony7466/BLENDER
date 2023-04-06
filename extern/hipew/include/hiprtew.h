@@ -20,15 +20,14 @@
 
 #include "hiprt/hiprt_types.h"
 #ifdef __cplusplus
-//extern "C" {
+
 #endif
 
 #define HIPRT_MAJOR_VERSION 2
 #define HIPRT_MINOR_VERSION 0
-#define HIPRT_PATCH_VERSION 0
+#define HIPRT_PATCH_VERSION 0xb68861
 
-#define HIPRT_API_VERSION 2000000
-#define HIPRT_VERSION 2000
+#define HIPRT_API_VERSION 2000
 #define HIPRT_VERSION_STR "02000"
 
 typedef unsigned int       uint32_t;

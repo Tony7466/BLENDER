@@ -85,6 +85,14 @@ HIPRTDevice::HIPRTDevice(const DeviceInfo &info, Stats &stats, Profiler &profile
     set_error(string_printf("Failed to create HIPRT context"));
     return;
   }
+
+  rt_result = hiprtCreateFuncTable(
+      hiprt_context, Max_Primitive_Type, Max_Intersect_Filter_Function, &functions_table);
+
+  if (rt_result != hipSuccess) {
+    set_error(string_printf("Failed to create HIPRT Function Table"));
+    return;
+  }
 }
 
 HIPRTDevice::~HIPRTDevice()
@@ -120,83 +128,6 @@ string HIPRTDevice::compile_kernel_get_common_cflags(const uint kernel_features)
   return cflags;
 }
 
-bool HIPRTDevice::set_function_table(hiprtFuncNameSet *func_name_set)
-{
-  static const char *filter_functions[] = {
-      "closest_intersection_filter",
-      "shadow_intersection_filter",
-      "local_intersection_filter",
-      "volume_intersection_filter",
-  };
-
-  static const char *intersect_function[] = {"NULL",
-                                             "NULL",
-                                             "NULL",
-                                             "NULL",
-                                             "curve_custom_intersect",
-                                             "curve_custom_intersect",
-                                             "NULL",
-                                             "NULL",
-                                             "motion_triangle_custom_intersect",
-                                             "motion_triangle_custom_intersect",
-                                             "motion_triangle_custom_local_intersect",
-                                             "motion_triangle_custom_volume_intersect",
-                                             "point_custom_intersect",
-                                             "point_custom_intersect"};
-
-  for (int filter_function = 0; filter_function < Max_Intersect_Filter_Function;
-       filter_function++) {
-    for (int prim = 0; prim < Max_Primitive_Type; prim++) {
-
-      int table_index = prim + filter_function * Max_Intersect_Filter_Function;
-
-      switch (table_index) {
-        case Curve_Intersect_Function:
-        case Curve_Intersect_Shadow:
-        case Motion_Triangle_Intersect_Function:
-        case Motion_Triangle_Intersect_Shadow:
-        case Motion_Triangle_Intersect_Local:
-        case Motion_Triangle_Intersect_Volume:
-        case Point_Intersect_Function:
-        case Point_Intersect_Shadow:
-          func_name_set[table_index].intersectFuncName =
-              intersect_function[Max_Primitive_Type * prim + filter_function];
-          break;
-        default:
-          break;
-      }
-
-      switch (table_index) {
-        case Triangle_Filter_Closest:
-        case Triangle_Filter_Shadow:
-        case Curve_Filter_Shadow:
-        case Motion_Triangle_Filter_Shadow:
-        case Point_Filter_Shadow:
-        case Triangle_Filter_Local:
-        case Motion_Triangle_Filter_Local:
-        case Triangle_Filter_Volume:
-        case Motion_Triangle_Filter_Volume:
-          func_name_set[table_index].filterFuncName = filter_functions[filter_function];
-          break;
-        default:
-          break;
-      }
-    }
-  }
-
-  hiprtFuncDataSet func_data_set;
-  hiprtError result = hiprtCreateFuncTable(
-      hiprt_context, Max_Primitive_Type, Max_Intersect_Filter_Function, &functions_table);
-  if (result == hiprtSuccess)
-    result = hiprtSetFuncTable(hiprt_context,
-                               functions_table,
-                               Max_Primitive_Type,
-                               Max_Intersect_Filter_Function,
-                               func_data_set);
-
-  return (result == hiprtSuccess);
-}
-
 string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name, const char *base)
 {
   int major, minor;
@@ -209,11 +140,6 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
   if (arch == NULL) {
     arch = props.gcnArchName;
   }
-
-  hiprtFuncNameSet func_name_sets[Max_Primitive_Type * Max_Intersect_Filter_Function] = {0};
-
-  if (!set_function_table(func_name_sets))
-    return string();
 
   if (!use_adaptive_compilation()) {
     const string fatbin = path_get(string_printf("lib/%s_rt_gfx.hipfb", name));
@@ -335,7 +261,7 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
   string hiprt_bc;
   hiprt_bc = hiprt_path + "\\hiprt" + hiprt_ver + "_amd_lib_win.bc";
 
-  string linker_command = string_printf("clang %s \"%s\" %s -o \"%s\"",
+  string linker_command = string_printf("clang++ %s \"%s\" %s -o \"%s\"",
                                         linker_options.c_str(),
                                         bitcode.c_str(),
                                         hiprt_bc.c_str(),
@@ -397,7 +323,6 @@ bool HIPRTDevice::load_kernels(const uint kernel_features)
 
   if (result == hipSuccess) {
     kernels.load(this);
-    // reserve_local_memory(kernel_features);
     {
       const DeviceKernel test_kernel = (kernel_features & KERNEL_FEATURE_NODE_RAYTRACE) ?
                                            DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE :
@@ -449,8 +374,7 @@ void HIPRTDevice::const_copy_to(const char *name, void *host, size_t size)
   KERNEL_DATA_ARRAY(int2, custom_prim_info)
   KERNEL_DATA_ARRAY(int, prim_time_offset)
   KERNEL_DATA_ARRAY(float2, prims_time)
-  // global_stack_buffer is not dynamically allocated because of stability issues
-  // KERNEL_DATA_ARRAY(int, global_stack_buffer)
+
 #  include "kernel/data_arrays.h"
 #  undef KERNEL_DATA_ARRAY
 }
