@@ -189,6 +189,11 @@ MTLContext::MTLContext(void *ghost_window, void *ghost_context)
   [this->queue retain];
   [this->device retain];
 
+  /* Enable increased concurrent shader compiler limit. */
+  if (@available(macOS 13.3, *)) {
+    [this->device setShouldMaximizeConcurrentCompilation:YES];
+  }
+
   /* Register present callback. */
   this->ghost_context_->metalRegisterPresentCallback(&present);
 
