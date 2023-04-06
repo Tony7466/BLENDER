@@ -1089,6 +1089,7 @@ typedef struct Sculpt {
 
   float automasking_start_normal_limit, automasking_start_normal_falloff;
   float automasking_view_normal_limit, automasking_view_normal_falloff;
+  float automasking_scene_view_normal_limit, automasking_scene_view_normal_falloff;
 
   struct CurveMapping *automasking_cavity_curve;
   /** For use by operators. */

@@ -1243,7 +1243,7 @@ static void SCULPT_OT_mask_from_cavity(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = sculpt_bake_cavity_exec;
-  ot->poll = SCULPT_mode_poll_cavity_automask;
+  ot->poll = SCULPT_mode_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
@@ -1288,6 +1288,13 @@ static void SCULPT_OT_mask_from_cavity(wmOperatorType *ot)
   RNA_def_boolean(ot->srna, "use_curve", false, "Custom Curve", "");
 
   RNA_def_boolean(ot->srna, "invert", false, "Cavity (Inverted)", "");
+}
+
+static void SCULPT_OT_scene_mask_from_cavity(wmOperatorType *ot)
+{
+  SCULPT_OT_mask_from_cavity(ot);
+  ot->idname = "SCULPT_OT_scene_mask_from_cavity";
+  ot->poll = SCULPT_mode_poll_cavity_automask;
 }
 
 static int sculpt_reveal_all_exec(bContext *C, wmOperator *op)
@@ -1424,6 +1431,7 @@ void ED_operatortypes_sculpt(void)
   WM_operatortype_append(SCULPT_OT_mask_init);
 
   WM_operatortype_append(SCULPT_OT_expand);
+  WM_operatortype_append(SCULPT_OT_scene_mask_from_cavity);
   WM_operatortype_append(SCULPT_OT_mask_from_cavity);
   WM_operatortype_append(SCULPT_OT_reveal_all);
 }

@@ -984,11 +984,24 @@ static void rna_def_sculpt(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, NULL, "automasking_view_normal_limit");
   RNA_def_property_range(prop, 0.0001f, M_PI);
   RNA_def_property_ui_text(prop, "View Normal Limit", "The range of angles that will be affected");
-  RNA_def_property_editable_func(prop, "rna_Scene_automasking_view_normal_editable");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
 
   prop = RNA_def_property(srna, "automasking_view_normal_falloff", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, NULL, "automasking_view_normal_falloff");
+  RNA_def_property_range(prop, 0.0001f, 1.0f);
+  RNA_def_property_ui_text(
+      prop, "View Normal Falloff", "Extend the angular range with a falloff gradient");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
+
+  prop = RNA_def_property(srna, "automasking_scene_view_normal_limit", PROP_FLOAT, PROP_ANGLE);
+  RNA_def_property_float_sdna(prop, NULL, "automasking_scene_view_normal_limit");
+  RNA_def_property_range(prop, 0.0001f, M_PI);
+  RNA_def_property_ui_text(prop, "View Normal Limit", "The range of angles that will be affected");
+  RNA_def_property_editable_func(prop, "rna_Scene_automasking_view_normal_editable");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
+
+  prop = RNA_def_property(srna, "automasking_scene_view_normal_falloff", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, NULL, "automasking_scene_view_normal_falloff");
   RNA_def_property_range(prop, 0.0001f, 1.0f);
   RNA_def_property_ui_text(
       prop, "View Normal Falloff", "Extend the angular range with a falloff gradient");

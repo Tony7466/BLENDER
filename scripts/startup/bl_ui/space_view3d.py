@@ -7896,7 +7896,7 @@ class VIEW3D_PT_sculpt_automasking(Panel):
         if is_cavity_active:
             subrow = row.column(align=True)
             subrow.enabled = not brush.use_automasking_cavity and not brush.use_automasking_cavity_inverted
-            props = subrow.operator("sculpt.mask_from_cavity", text="Create Mask")
+            props = subrow.operator("sculpt.scene_mask_from_cavity", text="Create Mask")
             props.settings_source = "SCENE"
 
         subcol = col.column(align=True)
@@ -7926,8 +7926,8 @@ class VIEW3D_PT_sculpt_automasking(Panel):
             col.prop(sculpt, "use_automasking_view_occlusion", text="Occlusion")
             subcol = col.column(align=True)
             subcol.active = not sculpt.use_automasking_view_occlusion
-            subcol.prop(sculpt, "automasking_view_normal_limit", text="Limit")
-            subcol.prop(sculpt, "automasking_view_normal_falloff", text="Falloff")
+            subcol.prop(sculpt, "automasking_scene_view_normal_limit", text="Limit")
+            subcol.prop(sculpt, "automasking_scene_view_normal_falloff", text="Falloff")
 
         col = layout.column()
         col.active = not brush.use_automasking_start_normal
