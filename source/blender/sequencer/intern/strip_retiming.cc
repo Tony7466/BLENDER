@@ -284,7 +284,7 @@ class RetimingRange {
 class RetimingRangeData {
  public:
   std::vector<RetimingRange> ranges;
-  RetimingRangeData(const Scene *scene, const Sequence *seq)
+  RetimingRangeData(const Sequence *seq)
   {
     MutableSpan handles = SEQ_retiming_handles_get(seq);
     for (const SeqRetimingHandle &handle : handles) {
@@ -350,14 +350,14 @@ class RetimingRangeData {
 
 static RetimingRangeData seq_retiming_range_data_get(const Scene *scene, const Sequence *seq)
 {
-  RetimingRangeData strip_retiming_data = RetimingRangeData(scene, seq);
+  RetimingRangeData strip_retiming_data = RetimingRangeData(seq);
 
   const Sequence *meta_parent = seq_sequence_lookup_meta_by_seq(scene, seq);
   if (meta_parent == nullptr) {
     return strip_retiming_data;
   }
 
-  RetimingRangeData meta_retiming_data = RetimingRangeData(scene, meta_parent);
+  RetimingRangeData meta_retiming_data = RetimingRangeData(meta_parent);
   strip_retiming_data *= meta_retiming_data;
   return strip_retiming_data;
 }
