@@ -59,8 +59,6 @@ class HIPRTDevice : public HIPDevice {
   enum Filter_Function { Closest = 0, Shadows, Local, Volume, Max_Intersect_Filter_Function };
   enum Primitive_Type { Triangle = 0, Curve, Motion_Triangle, Point, Max_Primitive_Type };
 
-  bool set_function_table(hiprtFuncNameSet *func_name_set);
-
   hiprtGeometry build_blas(BVHHIPRT *bvh, Geometry *geom, hiprtBuildOptions options);
   hiprtScene build_tlas(BVHHIPRT *bvh,
                         vector<Object *> objects,
