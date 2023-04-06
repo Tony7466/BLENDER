@@ -116,6 +116,7 @@ void legacy_gpencil_to_grease_pencil(GreasePencil &grease_pencil, bGPdata &gpd)
       GreasePencilDrawing &drawing = *reinterpret_cast<GreasePencilDrawing *>(
           grease_pencil.drawing_array[i]);
       drawing.base.type = GREASE_PENCIL_DRAWING;
+      drawing.runtime = MEM_new<bke::GreasePencilDrawingRuntime>(__func__);
       /* TODO: copy flag. */
 
       /* Convert the frame to a drawing. */
