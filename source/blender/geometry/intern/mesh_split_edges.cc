@@ -77,7 +77,9 @@ static void add_new_edges(Mesh &mesh,
       continue;
     }
     if (!id.is_anonymous()) {
-      named_ids.append(id.name());
+      if (id.name() != ".edge_verts") {
+        named_ids.append(id.name());
+      }
     }
     else {
       anonymous_ids.append(&id.anonymous_id());
@@ -344,7 +346,7 @@ static void split_edge_per_poly(const int edge_i,
   }
   int new_edge_index = new_edge_start;
   for (const int loop_i : edge_to_loop_map[edge_i].as_span().drop_front(1)) {
-    const int2 new_edge(new_edges[edge_i]);
+    const int2 &new_edge(new_edges[edge_i]);
     new_edges[new_edge_index] = new_edge;
     new_to_old_edges_map[new_edge_index] = edge_i;
     edge_to_loop_map[new_edge_index].append({loop_i});
@@ -363,7 +365,7 @@ void split_edges(Mesh &mesh,
   Array<bool> should_split_vert(mesh.totvert, false);
   const Span<int2> edges = mesh.edges();
   for (const int edge_i : mask) {
-    const int2 edge = edges[edge_i];
+    const int2 &edge = edges[edge_i];
     should_split_vert[edge[0]] = true;
     should_split_vert[edge[1]] = true;
   }
