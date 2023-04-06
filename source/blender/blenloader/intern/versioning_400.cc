@@ -34,22 +34,6 @@ using blender::OffsetIndices;
 
 static void version_mesh_legacy_to_struct_of_array_format(Mesh &mesh)
 {
-  /* Autosave files don't have CD_MPOLY layers.
-   */
-  if (!CustomData_has_layer(&mesh.pdata, CD_MPOLY) && mesh.poly_offset_indices) {
-    MPoly *polys_legacy = static_cast<MPoly *>(
-        CustomData_add_layer(&mesh.pdata, CD_MPOLY, CD_CONSTRUCT, mesh.totpoly));
-
-    /* Getting a link error when using mesh.polys(),
-     * for now just read poly_offset_indices directly.
-     */
-    for (int poly_i : IndexRange(mesh.totpoly)) {
-      polys_legacy[poly_i].loopstart = mesh.poly_offset_indices[poly_i];
-      polys_legacy[poly_i].totloop = mesh.poly_offset_indices[poly_i + 1] -
-                                     mesh.poly_offset_indices[poly_i];
-    }
-  }
-
   BKE_mesh_legacy_convert_flags_to_selection_layers(&mesh);
   BKE_mesh_legacy_convert_flags_to_hide_layers(&mesh);
   BKE_mesh_legacy_convert_uvs_to_generic(&mesh);
