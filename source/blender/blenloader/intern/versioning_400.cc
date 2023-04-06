@@ -14,21 +14,15 @@
 #include "BLI_assert.h"
 #include "BLI_listbase.h"
 
-#include "BKE_customdata.h"
 #include "BKE_main.h"
 #include "BKE_mesh_legacy_convert.h"
 #include "BKE_tracking.h"
 
-#include "BLI_index_range.hh"
-#include "BLI_offset_indices.hh"
 #include "BLO_readfile.h"
 
 #include "readfile.h"
 
 #include "versioning_common.h"
-
-using blender::IndexRange;
-using blender::OffsetIndices;
 
 // static CLG_LogRef LOG = {"blo.readfile.doversion"};
 
