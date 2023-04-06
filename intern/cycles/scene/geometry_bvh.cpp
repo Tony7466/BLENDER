@@ -1,0 +1,325 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright 2011-2022 Blender Foundation */
+
+#include "bvh/bvh.h"
+#include "bvh/bvh2.h"
+
+#include "device/device.h"
+
+#include "scene/attribute.h"
+#include "scene/camera.h"
+#include "scene/geometry.h"
+#include "scene/hair.h"
+#include "scene/light.h"
+#include "scene/mesh.h"
+#include "scene/object.h"
+#include "scene/pointcloud.h"
+#include "scene/scene.h"
+#include "scene/shader.h"
+#include "scene/shader_nodes.h"
+#include "scene/stats.h"
+#include "scene/volume.h"
+
+#include "subd/patch_table.h"
+#include "subd/split.h"
+
+#include "kernel/osl/globals.h"
+
+#include "util/foreach.h"
+#include "util/log.h"
+#include "util/progress.h"
+#include "util/task.h"
+
+CCL_NAMESPACE_BEGIN
+
+void GeometryManager::device_update_bvh(Device *device,
+                                        DeviceScene *dscene,
+                                        Scene *scene,
+                                        bool can_refit,
+                                        size_t n,
+                                        size_t total,
+                                        Progress &progress)
+{
+  BVH *bvh = scene->bvh;
+  BVH *sub_bvh = scene->bvh->get_device_bvh(device);
+  GeometryManager::device_update_sub_bvh(
+      device, dscene, bvh, sub_bvh, can_refit, n, total, &progress);
+}
+
+void GeometryManager::device_update_bvh2(Device *device,
+                                         DeviceScene *dscene,
+                                         Scene *scene,
+                                         Progress &progress)
+{
+  BVH *bvh = scene->bvh;
+  if (bvh->params.bvh_layout == BVH_LAYOUT_BVH2) {
+    BVH2 *bvh2 = static_cast<BVH2 *>(bvh);
+
+    /* When using BVH2, we always have to copy/update the data as its layout is dependent on
+     * the BVH's leaf nodes which may be different when the objects or vertices move. */
+
+    if (bvh2->pack.nodes.size()) {
+      dscene->bvh_nodes.assign_mem(bvh2->pack.nodes);
+      dscene->bvh_nodes.copy_to_device();
+    }
+    if (bvh2->pack.leaf_nodes.size()) {
+      dscene->bvh_leaf_nodes.assign_mem(bvh2->pack.leaf_nodes);
+      dscene->bvh_leaf_nodes.copy_to_device();
+    }
+    if (bvh2->pack.object_node.size()) {
+      dscene->object_node.assign_mem(bvh2->pack.object_node);
+      dscene->object_node.copy_to_device();
+    }
+    if (bvh2->pack.prim_type.size()) {
+      dscene->prim_type.assign_mem(bvh2->pack.prim_type);
+      dscene->prim_type.copy_to_device();
+    }
+    if (bvh2->pack.prim_visibility.size()) {
+      dscene->prim_visibility.assign_mem(bvh2->pack.prim_visibility);
+      dscene->prim_visibility.copy_to_device();
+    }
+    if (bvh2->pack.prim_index.size()) {
+      dscene->prim_index.assign_mem(bvh2->pack.prim_index);
+      dscene->prim_index.copy_to_device();
+    }
+    if (bvh2->pack.prim_object.size()) {
+      dscene->prim_object.assign_mem(bvh2->pack.prim_object);
+      dscene->prim_object.copy_to_device();
+    }
+    if (bvh2->pack.prim_time.size()) {
+      dscene->prim_time.assign_mem(bvh2->pack.prim_time);
+      dscene->prim_time.copy_to_device();
+    }
+  }
+}
+
+void GeometryManager::device_update_bvh_postprocess(Device *device,
+                                                    DeviceScene *dscene,
+                                                    Scene *scene,
+                                                    Progress &progress)
+{
+  BVH *bvh = scene->bvh;
+
+  const bool has_bvh2_layout = (bvh->params.bvh_layout == BVH_LAYOUT_BVH2);
+
+  //PackedBVH pack;
+  if (has_bvh2_layout) {
+    BVH2 *bvh2 = static_cast<BVH2 *>(scene->bvh);
+    //pack = std::move(static_cast<BVH2 *>(bvh)->pack);
+    dscene->data.bvh.root = bvh2->pack.root_index;
+  }
+  else {
+    //pack.root_index = -1;
+    dscene->data.bvh.root = -1;
+  }
+
+  dscene->data.bvh.use_bvh_steps = (scene->params.num_bvh_time_steps != 0);
+  dscene->data.bvh.curve_subdivisions = scene->params.curve_subdivisions();
+  dscene->data.device_bvh = 0;
+}
+
+bool Geometry::create_new_bvh_if_needed(Object *object,
+                                        Device *device,
+                                        DeviceScene *dscene,
+                                        SceneParams *params)
+{
+  bool status = false;
+  const BVHLayout bvh_layout = BVHParams::best_bvh_layout(params->bvh_layout,
+                                                          device->get_bvh_layout_mask());
+  if (need_build_bvh(bvh_layout)) {
+    /* Ensure all visibility bits are set at the geometry level BVH. In
+     * the object level BVH is where actual visibility is tested. */
+    object->set_is_shadow_catcher(true);
+    object->set_visibility(~0);
+
+    object->set_geometry(this);
+
+    vector<Geometry *> geometry;
+    geometry.push_back(this);
+    vector<Object *> objects;
+    objects.push_back(object);
+
+    if (bvh && !need_update_rebuild) {
+      bvh->replace_geometry(geometry, objects);
+    }
+    else {
+      if (bvh != NULL) {
+        delete bvh;
+      }
+      const BVHLayout bvh_layout = BVHParams::best_bvh_layout(params->bvh_layout,
+                                                              device->get_bvh_layout_mask());
+
+      BVHParams bparams;
+      bparams.use_spatial_split = params->use_bvh_spatial_split;
+      bparams.use_compact_structure = params->use_bvh_compact_structure;
+      bparams.bvh_layout = bvh_layout;
+      bparams.use_unaligned_nodes = dscene->data.bvh.have_curves &&
+                                    params->use_bvh_unaligned_nodes;
+      bparams.num_motion_triangle_steps = params->num_bvh_time_steps;
+      bparams.num_motion_curve_steps = params->num_bvh_time_steps;
+      bparams.num_motion_point_steps = params->num_bvh_time_steps;
+      bparams.bvh_type = params->bvh_type;
+      bparams.curve_subdivisions = params->curve_subdivisions();
+      bvh = BVH::create(bparams, geometry, objects, device);
+      need_update_rebuild = true;
+    }
+    status = true;
+  }
+
+  return status;
+}
+
+void GeometryManager::device_update_sub_bvh(Device *device,
+                                            DeviceScene *dscene,
+                                            BVH *bvh,
+                                            BVH *sub_bvh,
+                                            bool can_refit,
+                                            size_t n,
+                                            size_t total,
+                                            Progress *progress)
+{
+  string msg = "Updating Geometry BVH";
+
+  // Is this a multi-bvh?
+  if (sub_bvh && can_refit) {
+    progress->set_status(msg, "Refitting BVH");
+    // Don't redo the setup if this is not a sub-bvh
+    if (sub_bvh != bvh) {
+      sub_bvh->replace_geometry(bvh->geometry, bvh->objects);
+      // sub_bvh->geometry = bvh->geometry;
+      // sub_bvh->objects = bvh->objects;
+    }
+  }
+  else {
+    progress->set_status(msg, "Building BVH");
+    // Don't redo the setup if this is not a sub-bvh
+    if (sub_bvh != bvh) {
+      // Yes, so setup the device specific sub_bvh in the multi-bvh.
+      BVHParams bparams = bvh->params;
+      // Set the layout to the correct one for the device
+      if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_OPTIX)
+        bparams.bvh_layout = BVH_LAYOUT_OPTIX;
+      else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_METAL)
+        bparams.bvh_layout = BVH_LAYOUT_METAL;
+      else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_OPTIX_EMBREE)
+        bparams.bvh_layout = device->info.type == DEVICE_OPTIX ? BVH_LAYOUT_OPTIX :
+                                                                 BVH_LAYOUT_EMBREE;
+      else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_METAL_EMBREE)
+        bparams.bvh_layout = device->info.type == DEVICE_METAL ? BVH_LAYOUT_METAL :
+                                                                 BVH_LAYOUT_EMBREE;
+      if (sub_bvh != NULL) {
+        delete sub_bvh;
+      }
+      VLOG_INFO << "Sub-BVH using layout " << bvh_layout_name(bparams.bvh_layout) << " from layout " << bvh_layout_name(bvh->params.bvh_layout);
+      /* BVH2 should not have a sub-bvh as only 1 is built on the CPU */
+      assert(bparams.bvh_layout != BVH_LAYOUT_BVH2); 
+      if(bparams.bvh_layout != BVH_LAYOUT_BVH2) {
+	sub_bvh = BVH::create(bparams, bvh->geometry, bvh->objects, device);
+	bvh->set_device_bvh(device, sub_bvh);
+      }
+    }
+    can_refit = false;
+  }
+  device->build_bvh(sub_bvh, dscene, *progress, can_refit);
+}
+
+bool GeometryManager::device_update_bvh_preprocess(Device *device,
+                                                   DeviceScene *dscene,
+                                                   Scene *scene,
+                                                   Progress &progress)
+{
+  /* bvh build */
+
+  BVHParams bparams;
+  bparams.top_level = true;
+  bparams.bvh_layout = BVHParams::best_bvh_layout(scene->params.bvh_layout,
+                                                  device->get_bvh_layout_mask());
+  bparams.use_spatial_split = scene->params.use_bvh_spatial_split;
+  bparams.use_unaligned_nodes = dscene->data.bvh.have_curves &&
+                                scene->params.use_bvh_unaligned_nodes;
+  bparams.num_motion_triangle_steps = scene->params.num_bvh_time_steps;
+  bparams.num_motion_curve_steps = scene->params.num_bvh_time_steps;
+  bparams.num_motion_point_steps = scene->params.num_bvh_time_steps;
+  bparams.bvh_type = scene->params.bvh_type;
+  bparams.curve_subdivisions = scene->params.curve_subdivisions();
+
+  VLOG_INFO << "Using " << bvh_layout_name(bparams.bvh_layout) << " layout.";
+
+  const bool can_refit = scene->bvh != nullptr &&
+                         (bparams.bvh_layout == BVHLayout::BVH_LAYOUT_OPTIX ||
+                          bparams.bvh_layout == BVHLayout::BVH_LAYOUT_METAL ||
+                          bparams.bvh_layout == BVHLayout::BVH_LAYOUT_MULTI_OPTIX ||
+                          bparams.bvh_layout == BVHLayout::BVH_LAYOUT_MULTI_METAL);
+
+  BVH *bvh = scene->bvh;
+  if (!scene->bvh) {
+    bvh = scene->bvh = BVH::create(bparams, scene->geometry, scene->objects, device);
+  }
+  /* Mark BVH as having not been built yet */
+  bvh->built = false;
+  return can_refit;
+}
+
+/*
+ * Creates a new BVH for the geometry if it is needed otherwise
+ * it determines if the BVH can be refitted. It also counts
+ * the number of BVH that need to be built.
+ */
+size_t GeometryManager::createObjectBVHs(Device *device,
+                                         DeviceScene *dscene,
+                                         Scene *scene,
+                                         const BVHLayout bvh_layout,
+                                         bool &need_update_scene_bvh)
+{
+  scoped_callback_timer timer([scene](double time) {
+    if (scene->update_stats) {
+      scene->update_stats->geometry.times.add_entry(
+          {"device_update (object BVHs preprocess)", time});
+    }
+  });
+  size_t num_bvh = 0;
+
+  if (scene->geometry.size() > object_pool.size()) {
+    object_pool.resize(scene->geometry.size());
+  }
+
+  // Create BVH structures where needed
+  int id = 0;
+  foreach (Geometry *geom, scene->geometry) {
+    if (geom->is_modified() || geom->need_update_bvh_for_offset) {
+      need_update_scene_bvh = true;
+      Object *object = &object_pool[id];
+      if(geom->create_new_bvh_if_needed(object, device, dscene, &scene->params)) {
+        num_bvh++;
+      }
+    }
+    id++;
+  }
+
+  return num_bvh;
+}
+
+/*
+ * Prepares scene BVH for building or refitting. Then builds or refits the scene
+ * BVH for all the devices.
+ */
+void GeometryManager::updateSceneBVHs(Device *device,
+                                      DeviceScene *dscene,
+                                      Scene *scene,
+                                      Progress &progress)
+{
+  scoped_callback_timer timer([scene](double time) {
+    if (scene->update_stats) {
+      scene->update_stats->geometry.times.add_entry({"device_update (build scene BVH)", time});
+    }
+  });
+
+  bool can_refit = device_update_bvh_preprocess(device, dscene, scene, progress);
+  foreach (auto sub_dscene, scene->dscenes) {
+    Device *sub_device = sub_dscene->tri_verts.device;
+    device_update_bvh(sub_device, sub_dscene, scene, can_refit, 1, 1, progress);
+  }
+  device_update_bvh_postprocess(device, dscene, scene, progress);
+}
+
+CCL_NAMESPACE_END
