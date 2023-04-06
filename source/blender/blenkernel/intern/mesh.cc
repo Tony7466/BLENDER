@@ -603,6 +603,34 @@ static int customdata_compare(
       }
 
       switch (l1->type) {
+        case CD_PROP_INT2: {
+          blender::int2 *e1 = (blender::int2 *)l1->data;
+          blender::int2 *e2 = (blender::int2 *)l2->data;
+
+          if (StringRef(l1->name) == ".edge_verts") {
+            int etot = m1->totedge;
+            EdgeHash *eh = BLI_edgehash_new_ex(__func__, etot);
+
+            for (j = 0; j < etot; j++, e1++) {
+              BLI_edgehash_insert(eh, (*e1)[0], (*e1)[1], e1);
+            }
+
+            for (j = 0; j < etot; j++, e2++) {
+              if (!BLI_edgehash_lookup(eh, (*e2)[0], (*e2)[1])) {
+                return MESHCMP_EDGEUNKNOWN;
+              }
+            }
+            BLI_edgehash_free(eh, nullptr);
+          }
+          else {
+            for (j = 0; j < total_length; j++) {
+              if (e1[j] != e2[j]) {
+                return MESHCMP_ATTRIBUTE_VALUE_MISMATCH;
+              }
+            }
+          }
+          break;
+        }
         case CD_PROP_BYTE_COLOR: {
           MLoopCol *lp1 = (MLoopCol *)l1->data;
           MLoopCol *lp2 = (MLoopCol *)l2->data;
@@ -703,17 +731,7 @@ static int customdata_compare(
           }
           break;
         }
-        case CD_PROP_INT2: {
-          const blender::int2 *l1_data = (blender::int2 *)l1->data;
-          const blender::int2 *l2_data = (blender::int2 *)l2->data;
 
-          for (int i = 0; i < total_length; i++) {
-            if (l1_data[i] != l2_data[i]) {
-              return MESHCMP_ATTRIBUTE_VALUE_MISMATCH;
-            }
-          }
-          break;
-        }
         case CD_PROP_BOOL: {
           const bool *l1_data = (bool *)l1->data;
           const bool *l2_data = (bool *)l2->data;
