@@ -486,6 +486,15 @@ class Vector {
     }
   }
 
+  int append_non_duplicates_and_get_index(const T &value)
+  {
+    const int index = this->first_index_of_try(value);
+    if (index == -1) {
+      return this->append_and_get_index(value);
+    }
+    return index;
+  }
+
   /**
    * Append the value and assume that vector has enough memory reserved. This invokes undefined
    * behavior when not enough capacity has been reserved beforehand. Only use this in performance
