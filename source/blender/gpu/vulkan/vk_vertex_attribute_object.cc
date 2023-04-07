@@ -32,26 +32,14 @@ VKVertexAttributeObject &VKVertexAttributeObject::operator=(const VKVertexAttrib
     return *this;
   }
 
-  /* TODO: resize is an exact resize. Might introduce unneeded re-allocations. */
-  /* TODO: This might copy data, that isn't needed. */
-
   is_valid = other.is_valid;
   info = other.info;
-  bindings.resize(other.bindings.size());
-  int i = 0;
-  for (const VkVertexInputBindingDescription &e : other.bindings) {
-    bindings[i++] = e;
-  }
-  i = 0;
-  attributes.resize(other.attributes.size());
-  for (const VkVertexInputAttributeDescription e : other.attributes) {
-    attributes[i++] = e;
-  }
-  i = 0;
-  vbos.resize(other.vbos.size());
-  for (VKVertexBuffer *e : other.vbos) {
-    vbos[i++] = e;
-  }
+  bindings.clear();
+  bindings.extend(other.bindings);
+  attributes.clear();
+  attributes.extend(other.attributes);
+  vbos.clear();
+  vbos.extend(other.vbos);
   return *this;
 }
 
@@ -74,6 +62,7 @@ void VKVertexAttributeObject::bind(VKContext &context)
 
 void VKVertexAttributeObject::update_bindings(const VKContext &context, VKBatch &batch)
 {
+  clear();
   const VKShaderInterface &interface = unwrap(context.shader)->interface_get();
   AttributeMask occupied_attributes = 0;
 
@@ -91,6 +80,8 @@ void VKVertexAttributeObject::update_bindings(const VKContext &context, VKBatch 
     }
   }
 
+  is_valid = true;
+
   BLI_assert(interface.enabled_attr_mask_ == occupied_attributes);
 }
 
@@ -107,7 +98,6 @@ void VKVertexAttributeObject::update_bindings(VKVertexBuffer &vertex_buffer,
 
   uint32_t offset = 0;
   uint32_t stride = format.stride;
-  const uint32_t binding = bindings.size();
 
   for (uint32_t attribute_index = 0; attribute_index < format.attr_len; attribute_index++) {
     const GPUVertAttr &attribute = format.attrs[attribute_index];
@@ -120,14 +110,9 @@ void VKVertexAttributeObject::update_bindings(VKVertexBuffer &vertex_buffer,
       offset = attribute.offset;
     }
 
-    VkVertexInputBindingDescription vk_binding_descriptor = {};
-    vk_binding_descriptor.binding = binding;
-    vk_binding_descriptor.stride = stride;
-    vk_binding_descriptor.inputRate = use_instancing ? VK_VERTEX_INPUT_RATE_INSTANCE :
-                                                       VK_VERTEX_INPUT_RATE_VERTEX;
-    bindings.append(vk_binding_descriptor);
-    vbos.append(&vertex_buffer);
+    const uint32_t binding = bindings.size();
 
+    bool attribute_used_by_shader = false;
     for (uint32_t name_index = 0; name_index < attribute.name_len; name_index++) {
       const char *name = GPU_vertformat_attr_name_get(&format, &attribute, name_index);
       const ShaderInput *shader_input = interface.attr_get(name);
@@ -141,13 +126,25 @@ void VKVertexAttributeObject::update_bindings(VKVertexBuffer &vertex_buffer,
         continue;
       }
       r_occupied_attributes |= attribute_mask;
+      attribute_used_by_shader = true;
 
       VkVertexInputAttributeDescription attribute_description = {};
       attribute_description.binding = binding;
       attribute_description.location = shader_input->location;
+      attribute_description.offset = offset;
       attribute_description.format = to_vk_format(
           static_cast<GPUVertCompType>(attribute.comp_type), attribute.size);
       attributes.append(attribute_description);
+    }
+
+    if (attribute_used_by_shader) {
+      VkVertexInputBindingDescription vk_binding_descriptor = {};
+      vk_binding_descriptor.binding = binding;
+      vk_binding_descriptor.stride = stride;
+      vk_binding_descriptor.inputRate = use_instancing ? VK_VERTEX_INPUT_RATE_INSTANCE :
+                                                         VK_VERTEX_INPUT_RATE_VERTEX;
+      bindings.append(vk_binding_descriptor);
+      vbos.append(&vertex_buffer);
     }
   }
 }

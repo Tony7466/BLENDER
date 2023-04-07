@@ -108,15 +108,7 @@ void VKPipeline::finalize(VKContext &context,
   vertex_stage_info.module = vertex_module;
   vertex_stage_info.pName = "main";
   pipeline_stages.append(vertex_stage_info);
-  /*
-    if (geometry_module_ != VK_NULL_HANDLE) {
-      VkPipelineShaderStageCreateInfo geo_stage_info = {};
-      geo_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-      geo_stage_info.stage = VK_SHADER_STAGE_GEOMETRY_BIT;
-      geo_stage_info.module = geometry_module_;
-      geo_stage_info.pName = "main";
-      pipeline_stages.append(geo_stage_info);
-    }*/
+
   if (fragment_module != VK_NULL_HANDLE) {
     VkPipelineShaderStageCreateInfo fragment_stage_info = {};
     fragment_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -170,7 +162,7 @@ void VKPipeline::finalize(VKContext &context,
   multisample_state.minSampleShading = 1.0f;
   pipeline_create_info.pMultisampleState = &multisample_state;
 
-  /* Color blend state. */
+  /* States from the state manager. */
   const VKPipelineStateManager &state_manager = state_manager_get();
   pipeline_create_info.pColorBlendState = &state_manager.pipeline_color_blend_state;
   pipeline_create_info.pRasterizationState = &state_manager.rasterization_state;
