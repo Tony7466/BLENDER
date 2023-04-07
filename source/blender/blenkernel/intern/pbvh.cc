@@ -859,15 +859,16 @@ void BKE_pbvh_build_mesh(PBVH *pbvh, Mesh *mesh)
   BBC *prim_bbc = nullptr;
   BB cb;
 
+  const int totvert = mesh->totvert;
   const int looptri_num = poly_to_tri_count(mesh->totpoly, mesh->totloop);
-  MutableSpan<float3> positions = mesh->vert_positions_for_write();
+  MutableSpan<float3> vert_positions = mesh->vert_positions_for_write();
   const blender::OffsetIndices<int> polys = mesh->polys();
   const Span<int> corner_verts = mesh->corner_verts();
 
   MLoopTri *looptri = static_cast<MLoopTri *>(
       MEM_malloc_arrayN(looptri_num, sizeof(*looptri), __func__));
 
-  blender::bke::mesh::looptris_calc(positions, polys, corner_verts, {looptri, looptri_num});
+  blender::bke::mesh::looptris_calc(vert_positions, polys, corner_verts, {looptri, looptri_num});
 
   pbvh->mesh = mesh;
   pbvh->header.type = PBVH_FACES;
@@ -878,8 +879,8 @@ void BKE_pbvh_build_mesh(PBVH *pbvh, Mesh *mesh)
   pbvh->looptri = looptri;
 
   pbvh->vert_bitmap = static_cast<bool *>(
-      MEM_calloc_arrayN(mesh->totvert, sizeof(bool), "bvh->vert_bitmap"));
-  pbvh->totvert = mesh->totvert;
+      MEM_calloc_arrayN(totvert, sizeof(bool), "bvh->vert_bitmap"));
+  pbvh->totvert = totvert;
 
 #ifdef TEST_PBVH_FACE_SPLIT
   /* Use lower limit to increase probability of
@@ -908,7 +909,7 @@ void BKE_pbvh_build_mesh(PBVH *pbvh, Mesh *mesh)
     BB_reset((BB *)bbc);
 
     for (int j = 0; j < sides; j++) {
-      BB_expand((BB *)bbc, positions[pbvh->corner_verts[lt->tri[j]]]);
+      BB_expand((BB *)bbc, vert_positions[pbvh->corner_verts[lt->tri[j]]]);
     }
 
     BBC_update_centroid(bbc);

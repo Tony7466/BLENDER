@@ -2177,7 +2177,6 @@ static PBVH *build_pbvh_for_dynamic_topology(Object *ob)
 static PBVH *build_pbvh_from_regular_mesh(Object *ob, Mesh *me_eval_deform, bool respect_hide)
 {
   Mesh *me = BKE_object_get_original_mesh(ob);
-
   PBVH *pbvh = BKE_pbvh_new(PBVH_FACES);
   BKE_pbvh_respect_hide_set(pbvh, respect_hide);
 
@@ -2224,8 +2223,8 @@ PBVH *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Object *ob)
 
   PBVH *pbvh = ob->sculpt->pbvh;
   if (pbvh != nullptr) {
-    /* NOTE: It is possible that grids were re-allocated due to modifier
-     * stack. Need to update those pointers. */
+    /* NOTE: It is possible that pointers to grids or other geometry data changed. Need to update
+     * those pointers. */
     const PBVHType pbvh_type = BKE_pbvh_type(pbvh);
     switch (pbvh_type) {
       case PBVH_FACES: {

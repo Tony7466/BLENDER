@@ -285,9 +285,6 @@ PBVH *BKE_pbvh_new(PBVHType type);
 
 /**
  * Do a full rebuild with on Mesh data structure.
- *
- * \note Unlike mpoly/corner_verts/verts, looptri is *totally owned* by PBVH
- * (which means it may rewrite it if needed, see #BKE_pbvh_vert_coords_apply().
  */
 void BKE_pbvh_build_mesh(PBVH *pbvh, struct Mesh *mesh);
 void BKE_pbvh_update_mesh_pointers(PBVH *pbvh, struct Mesh *mesh);
