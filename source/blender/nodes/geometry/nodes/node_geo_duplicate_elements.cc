@@ -603,7 +603,7 @@ static void copy_edge_attributes_without_id(
                                              dst_attributes,
                                              ATTR_DOMAIN_MASK_POINT | ATTR_DOMAIN_MASK_EDGE,
                                              propagation_info,
-                                             {"id"})) {
+                                             {"id", ".edge_verts"})) {
     attribute_math::convert_to_static_type(attribute.src.type(), [&](auto dummy) {
       using T = decltype(dummy);
       const Span<T> src = attribute.src.typed<T>();
