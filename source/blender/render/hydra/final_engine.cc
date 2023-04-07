@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
-#include <pxr/imaging/glf/drawTarget.h>
-
 #include "BKE_lib_id.h"
 #include "DEG_depsgraph_query.h"
+#include "GPU_framebuffer.h"
+#include "GPU_texture.h"
 
 #include "camera.h"
 #include "final_engine.h"
@@ -195,31 +195,21 @@ void FinalEngineGL::render(Depsgraph *depsgraph)
       {"Combined", std::vector<float>(res[0] * res[1] * 4)}};  // 4 - number of channels
   std::vector<float> &pixels = render_images["Combined"];
 
-  GLuint framebuffer_name = 0;
-  glGenFramebuffers(1, &framebuffer_name);
-  glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_name);
+  GPUFrameBuffer *framebuffer = GPU_framebuffer_create("fbHydraRenderFinal");
+  GPUTexture *texture = GPU_texture_create_2d("texHydraRenderFinal",
+                                              res[0],
+                                              res[1],
+                                              1,
+                                              GPU_RGBA32F,
+                                              GPU_TEXTURE_USAGE_GENERAL,
+                                              nullptr);
+  GPU_texture_filter_mode(texture, true);
+  GPU_texture_wrap_mode(texture, true, true);
+  GPU_framebuffer_texture_attach(framebuffer, texture, 0, 0);
 
-  // The texture we're going to render to
-  GLuint rendered_texture;
-  glGenTextures(1, &rendered_texture);
-
-  // "Bind" the newly created texture : all future texture functions will modify this texture
-  glBindTexture(GL_TEXTURE_2D, rendered_texture);
-
-  // Give an empty image to OpenGL ( the last "0" )
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, res[0], res[1], 0, GL_RGBA, GL_FLOAT, 0);
-
-  // Poor filtering. Needed !
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-  // Set "rendered_texture" as our colour attachement #0
-  glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, rendered_texture, 0);
-
-  // Generate vertex array
-  GLuint vao;
-  glGenVertexArrays(1, &vao);
-  glBindVertexArray(vao);
+  GPU_framebuffer_bind(framebuffer);
+  float clear_color[4] = {0.0, 0.0, 0.0, 0.0};
+  GPU_framebuffer_clear_color_depth(framebuffer, clear_color, 1.0);
 
   {
     // Release the GIL before calling into hydra, in case any hydra plugins call into python.
@@ -246,12 +236,19 @@ void FinalEngineGL::render(Depsgraph *depsgraph)
       break;
     }
 
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, pixels.data());
+    void *data = GPU_texture_read(texture, GPU_DATA_FLOAT, 0);
+    memcpy(pixels.data(), data, pixels.size() * sizeof(float));
+    MEM_freeN(data);
     update_render_result(render_images, layer_name, res[0], res[1]);
   }
 
-  glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, pixels.data());
+  void *data = GPU_texture_read(texture, GPU_DATA_FLOAT, 0);
+  memcpy(pixels.data(), data, pixels.size() * sizeof(float));
+  MEM_freeN(data);
   update_render_result(render_images, layer_name, res[0], res[1]);
+
+  GPU_framebuffer_free(framebuffer);
+  GPU_texture_free(texture);
 }
 
 }  // namespace blender::render::hydra

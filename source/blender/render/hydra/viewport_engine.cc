@@ -1,8 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
-#include <epoxy/gl.h>
-
 #include <pxr/base/gf/camera.h>
 #include <pxr/imaging/glf/drawTarget.h>
 #include <pxr/usd/usdGeom/camera.h>
@@ -14,7 +12,7 @@
 #include "BKE_camera.h"
 #include "BLI_math_matrix.h"
 #include "DEG_depsgraph_query.h"
-#include "GPU_shader.h"
+#include "GPU_matrix.h"
 // clang-format on
 
 #include "camera.h"
@@ -134,20 +132,32 @@ pxr::GfCamera ViewSettings::gf_camera()
                                             (float)border[3] / screen_height));
 }
 
-GLTexture::GLTexture() : texture_id(0), width(0), height(0), channels(4)
+DrawTexture::DrawTexture() : texture(nullptr), width(0), height(0), channels(4)
 {
+  float coords[8] = {0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0};
+
+  GPUVertFormat format = {0};
+  GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  GPU_vertformat_attr_add(&format, "texCoord", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+  GPU_vertbuf_data_alloc(vbo, 4);
+  GPU_vertbuf_attr_fill(vbo, 0, coords);
+  GPU_vertbuf_attr_fill(vbo, 1, coords);
+
+  batch = GPU_batch_create_ex(GPU_PRIM_TRI_FAN, vbo, nullptr, GPU_BATCH_OWNS_VBO);
 }
 
-GLTexture::~GLTexture()
+DrawTexture::~DrawTexture()
 {
-  if (texture_id) {
+  if (texture) {
     free();
   }
+  GPU_batch_discard(batch);
 }
 
-void GLTexture::set_buffer(pxr::HdRenderBuffer *buffer)
+void DrawTexture::set_buffer(pxr::HdRenderBuffer *buffer)
 {
-  if (!texture_id) {
+  if (!texture) {
     create(buffer);
     return;
   }
@@ -158,86 +168,49 @@ void GLTexture::set_buffer(pxr::HdRenderBuffer *buffer)
     return;
   }
 
-  glBindTexture(GL_TEXTURE_2D, texture_id);
-
   void *data = buffer->Map();
-  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_FLOAT, data);
+  GPU_texture_update(texture, GPU_DATA_FLOAT, data);
   buffer->Unmap();
 }
 
-void GLTexture::create(pxr::HdRenderBuffer *buffer)
+void DrawTexture::create(pxr::HdRenderBuffer *buffer)
 {
   width = buffer->GetWidth();
   height = buffer->GetHeight();
   channels = pxr::HdGetComponentCount(buffer->GetFormat());
 
-  glGenTextures(1, &texture_id);
-  glBindTexture(GL_TEXTURE_2D, texture_id);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
   void *data = buffer->Map();
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, data);
+  texture = GPU_texture_create_2d("texHydraRenderViewport",
+                                  width,
+                                  height,
+                                  1,
+                                  GPU_RGBA16F,
+                                  GPU_TEXTURE_USAGE_GENERAL,
+                                  (float *)data);
   buffer->Unmap();
+
+  GPU_texture_filter_mode(texture, true);
+  GPU_texture_wrap_mode(texture, true, true);
 }
 
-void GLTexture::free()
+void DrawTexture::free()
 {
-  glDeleteTextures(1, &texture_id);
-  texture_id = 0;
+  GPU_texture_free(texture);
+  texture = nullptr;
 }
 
-void GLTexture::draw(GLfloat x, GLfloat y)
+void DrawTexture::draw(GPUShader *shader, float x, float y)
 {
-  // INITIALIZATION
+  int slot = GPU_shader_get_sampler_binding(shader, "image");
+  GPU_texture_bind(texture, slot);
+  GPU_shader_uniform_1i(shader, "image", slot);
 
-  // Getting shader program
-  GLint shader_program;
-  glGetIntegerv(GL_CURRENT_PROGRAM, &shader_program);
-
-  // Generate vertex array
-  GLuint vertex_array;
-  glGenVertexArrays(1, &vertex_array);
-
-  GLint texturecoord_location = glGetAttribLocation(shader_program, "texCoord");
-  GLint position_location = glGetAttribLocation(shader_program, "pos");
-
-  // Generate geometry buffers for drawing textured quad
-  GLfloat position[8] = {x, y, x + width, y, x + width, y + height, x, y + height};
-  GLfloat texcoord[8] = {0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0};
-
-  GLuint vertex_buffer[2];
-  glGenBuffers(2, vertex_buffer);
-  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer[0]);
-  glBufferData(GL_ARRAY_BUFFER, 32, position, GL_STATIC_DRAW);
-  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer[1]);
-  glBufferData(GL_ARRAY_BUFFER, 32, texcoord, GL_STATIC_DRAW);
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-  // DRAWING
-  glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, texture_id);
-
-  glBindVertexArray(vertex_array);
-  glEnableVertexAttribArray(texturecoord_location);
-  glEnableVertexAttribArray(position_location);
-
-  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer[0]);
-  glVertexAttribPointer(position_location, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
-  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer[1]);
-  glVertexAttribPointer(texturecoord_location, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-  glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-
-  glBindVertexArray(0);
-  glBindTexture(GL_TEXTURE_2D, 0);
-
-  // DELETING
-  glDeleteBuffers(2, vertex_buffer);
-  glDeleteVertexArrays(1, &vertex_array);
+  GPU_matrix_push();
+  GPU_matrix_translate_2f(x, y);
+  GPU_matrix_scale_2f(width, height);
+  GPU_batch_set_shader(batch, shader);
+  GPU_batch_draw(batch);
+  GPU_matrix_pop();
 }
 
 void ViewportEngine::sync(Depsgraph *depsgraph,
@@ -298,8 +271,8 @@ void ViewportEngine::render(Depsgraph *depsgraph, bContext *context)
     engine->Execute(render_index.get(), &tasks);
 
     if ((bl_engine->type->flag & RE_USE_GPU_CONTEXT) == 0) {
-      texture.set_buffer(render_task_delegate->get_renderer_aov(pxr::HdAovTokens->color));
-      texture.draw((GLfloat)view_settings.border[0], (GLfloat)view_settings.border[1]);
+      draw_texture.set_buffer(render_task_delegate->get_renderer_aov(pxr::HdAovTokens->color));
+      draw_texture.draw(shader, view_settings.border[0], view_settings.border[1]);
     }
   }
 

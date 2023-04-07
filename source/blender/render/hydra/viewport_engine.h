@@ -5,26 +5,29 @@
 
 #include <chrono>
 
-#include <epoxy/gl.h>
-
 #include <pxr/imaging/hd/renderBuffer.h>
+
+#include "GPU_batch.h"
+#include "GPU_shader.h"
+#include "GPU_texture.h"
 
 #include "engine.h"
 
 namespace blender::render::hydra {
 
-class GLTexture {
+class DrawTexture {
  public:
-  GLTexture();
-  ~GLTexture();
+  DrawTexture();
+  ~DrawTexture();
   void set_buffer(pxr::HdRenderBuffer *buffer);
-  void draw(GLfloat x, GLfloat y);
+  void draw(GPUShader *shader, float x, float y);
 
  private:
   void create(pxr::HdRenderBuffer *buffer);
   void free();
 
-  GLuint texture_id;
+  GPUTexture *texture;
+  GPUBatch *batch;
   int width, height, channels;
 };
 
@@ -43,7 +46,7 @@ class ViewportEngine : public Engine {
  private:
   std::chrono::time_point<std::chrono::steady_clock> time_begin;
 
-  GLTexture texture;
+  DrawTexture draw_texture;
 };
 
 }  // namespace blender::render::hydra

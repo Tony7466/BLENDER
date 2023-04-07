@@ -9,7 +9,6 @@ endif()
 add_definitions(-DTBB_SUPPRESS_DEPRECATED_MESSAGES=1)
 
 add_definitions(${GFLAGS_DEFINES})
-add_definitions(-DGLOG_NO_ABBREVIATED_SEVERITIES)
 add_definitions(-DBLENDER_GFLAGS_NAMESPACE=${GFLAGS_NAMESPACE})
 
 add_definitions(-DBOOST_ALL_NO_LIB)
@@ -31,7 +30,6 @@ set(INC
   ../../depsgraph
   ../../blenkernel
   ../../gpu
-  ../../gpu/opengl
   ../../gpu/intern
   ../../python/intern
   ..
@@ -39,7 +37,6 @@ set(INC
 )
 
 set(INC_SYS
-  ${Epoxy_INCLUDE_DIRS}
   ${PYTHON_INCLUDE_DIRS}
   ${USD_INCLUDE_DIRS}
   ${BOOST_INCLUDE_DIR}
