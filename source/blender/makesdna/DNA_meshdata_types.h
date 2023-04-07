@@ -369,7 +369,6 @@ typedef struct MEdge {
   short flag_legacy;
 } MEdge;
 
-#  ifdef DNA_DEPRECATED_ALLOW
 /** #MEdge.flag */
 enum {
   /** Deprecated selection status. Now stored in ".select_edge" attribute. */
@@ -382,7 +381,6 @@ enum {
   /** Deprecated sharp edge status. Now stored in "sharp_edge" attribute. */
   ME_SHARP = (1 << 9),
 };
-#  endif
 
 /**
  * Mesh Faces.
@@ -402,7 +400,6 @@ typedef struct MPoly {
 } MPoly;
 
 /** #MPoly.flag */
-#  ifdef DNA_DEPRECATED_ALLOW
 enum {
   /** Deprecated smooth shading status. Now stored reversed in "sharp_face" attribute. */
   ME_SMOOTH = (1 << 0),
@@ -411,7 +408,6 @@ enum {
   /** Deprecated hide status. Now stored in ".hide_poly" attribute. */
   /* ME_HIDE = (1 << 4), */
 };
-#  endif
 
 /**
  * UV coordinate for a polygon face & flag for selection & other options.
