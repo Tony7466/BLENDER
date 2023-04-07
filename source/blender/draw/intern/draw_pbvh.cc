@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -342,10 +342,9 @@ struct PBVHBatches {
         last_poly = tri->poly;
         flat = sharp_faces && sharp_faces[tri->poly];
         if (flat) {
-          const MPoly &poly = args->polys[tri->poly];
           const float3 fno = blender::bke::mesh::poly_normal_calc(
               {reinterpret_cast<const float3 *>(args->vert_positions), args->mesh_verts_num},
-              {&args->corner_verts[poly.loopstart], poly.totloop});
+              args->corner_verts.slice(args->polys[tri->poly]));
           normal_float_to_short_v3(no, fno);
         }
       }

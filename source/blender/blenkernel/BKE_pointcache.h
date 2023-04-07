@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation. All rights reserved. */
+ * Copyright 2006 Blender Foundation */
 
 #pragma once
 
@@ -170,9 +170,9 @@ typedef struct PTCacheBaker {
   struct Scene *scene;
   struct ViewLayer *view_layer;
   struct Depsgraph *depsgraph;
-  int bake;
-  int render;
-  int anim_init;
+  bool bake;
+  bool render;
+  bool anim_init;
   int quick_step;
   struct PTCacheID pid;
 
