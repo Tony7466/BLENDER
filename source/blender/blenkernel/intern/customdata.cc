@@ -2162,7 +2162,7 @@ static void customData_update_offsets(CustomData *data);
 static CustomDataLayer *customData_add_layer__internal(
     CustomData *data,
     eCustomDataType type,
-    eCDAllocType alloctype,
+    std::optional<eCDAllocType> alloctype,
     void *layer_data_to_assign,
     const ImplicitSharingInfo *sharing_info_to_assign,
     int totelem,
@@ -2218,7 +2218,7 @@ static void free_layer_data(const eCustomDataType type, const void *data, const 
 static bool customdata_merge_internal(const CustomData *source,
                                       CustomData *dest,
                                       const eCustomDataMask mask,
-                                      const eCDAllocType alloctype,
+                                      const std::optional<eCDAllocType> alloctype,
                                       const int totelem)
 {
   bool changed = false;
@@ -2269,7 +2269,7 @@ static bool customdata_merge_internal(const CustomData *source,
 
     void *layer_data_to_assign = nullptr;
     const ImplicitSharingInfo *sharing_info_to_assign = nullptr;
-    if (alloctype == CD_ASSIGN) {
+    if (!alloctype.has_value()) {
       if (src_layer.data != nullptr) {
         if (src_layer.sharing_info == nullptr) {
           /* Can't share the layer, duplicate it instead. */
@@ -2314,7 +2314,7 @@ bool CustomData_merge(const CustomData *source,
                       eCustomDataMask mask,
                       int totelem)
 {
-  return customdata_merge_internal(source, dest, mask, CD_ASSIGN, totelem);
+  return customdata_merge_internal(source, dest, mask, std::nullopt, totelem);
 }
 
 bool CustomData_merge_layout(const CustomData *source,
@@ -2847,7 +2847,7 @@ static void customData_resize(CustomData *data, const int grow_amount)
 static CustomDataLayer *customData_add_layer__internal(
     CustomData *data,
     const eCustomDataType type,
-    const eCDAllocType alloctype,
+    const std::optional<eCDAllocType> alloctype,
     void *layer_data_to_assign,
     const ImplicitSharingInfo *sharing_info_to_assign,
     const int totelem,
@@ -2883,40 +2883,41 @@ static CustomDataLayer *customData_add_layer__internal(
    * leaks into the new layer. */
   memset(&new_layer, 0, sizeof(CustomDataLayer));
 
-  switch (alloctype) {
-    case CD_SET_DEFAULT: {
-      if (totelem > 0) {
-        if (type_info.set_default_value) {
+  if (alloctype.has_value()) {
+    switch (*alloctype) {
+      case CD_SET_DEFAULT: {
+        if (totelem > 0) {
+          if (type_info.set_default_value) {
+            new_layer.data = MEM_malloc_arrayN(totelem, type_info.size, layerType_getName(type));
+            type_info.set_default_value(new_layer.data, totelem);
+          }
+          else {
+            new_layer.data = MEM_calloc_arrayN(totelem, type_info.size, layerType_getName(type));
+          }
+        }
+        break;
+      }
+      case CD_CONSTRUCT: {
+        if (totelem > 0) {
           new_layer.data = MEM_malloc_arrayN(totelem, type_info.size, layerType_getName(type));
-          type_info.set_default_value(new_layer.data, totelem);
+          if (type_info.construct) {
+            type_info.construct(new_layer.data, totelem);
+          }
         }
-        else {
-          new_layer.data = MEM_calloc_arrayN(totelem, type_info.size, layerType_getName(type));
-        }
+        break;
       }
-      break;
     }
-    case CD_CONSTRUCT: {
-      if (totelem > 0) {
-        new_layer.data = MEM_malloc_arrayN(totelem, type_info.size, layerType_getName(type));
-        if (type_info.construct) {
-          type_info.construct(new_layer.data, totelem);
-        }
-      }
-      break;
+  }
+  else {
+    if (totelem == 0 && sharing_info_to_assign == nullptr) {
+      MEM_SAFE_FREE(layer_data_to_assign);
     }
-    case CD_ASSIGN: {
-      if (totelem == 0 && sharing_info_to_assign == nullptr) {
-        MEM_SAFE_FREE(layer_data_to_assign);
+    else {
+      new_layer.data = layer_data_to_assign;
+      new_layer.sharing_info = sharing_info_to_assign;
+      if (new_layer.sharing_info) {
+        new_layer.sharing_info->add_user();
       }
-      else {
-        new_layer.data = layer_data_to_assign;
-        new_layer.sharing_info = sharing_info_to_assign;
-        if (new_layer.sharing_info) {
-          new_layer.sharing_info->add_user();
-        }
-      }
-      break;
     }
   }
 
@@ -2988,7 +2989,7 @@ const void *CustomData_add_layer_with_data(CustomData *data,
   const LayerTypeInfo *typeInfo = layerType_getInfo(type);
 
   CustomDataLayer *layer = customData_add_layer__internal(
-      data, type, CD_ASSIGN, layer_data, cow, totelem, typeInfo->defaultname);
+      data, type, std::nullopt, layer_data, cow, totelem, typeInfo->defaultname);
   CustomData_update_typemap(data);
 
   if (layer) {
@@ -3022,7 +3023,7 @@ const void *CustomData_add_layer_named_with_data(CustomData *data,
                                                  const ImplicitSharingInfo *cow)
 {
   CustomDataLayer *layer = customData_add_layer__internal(
-      data, type, CD_ASSIGN, layer_data, cow, totelem, name);
+      data, type, std::nullopt, layer_data, cow, totelem, name);
   CustomData_update_typemap(data);
 
   if (layer) {
@@ -3061,7 +3062,7 @@ const void *CustomData_add_layer_anonymous_with_data(
 {
   const char *name = anonymous_id->name().c_str();
   CustomDataLayer *layer = customData_add_layer__internal(
-      data, type, CD_ASSIGN, layer_data, cow, totelem, name);
+      data, type, std::nullopt, layer_data, cow, totelem, name);
   CustomData_update_typemap(data);
 
   if (layer == nullptr) {

@@ -75,8 +75,6 @@ extern const CustomData_MeshMasks CD_MASK_EVERYTHING;
 
 /** Add/copy/merge allocation types. */
 typedef enum eCDAllocType {
-  /** Use the data pointer. This is only used internally. */
-  CD_ASSIGN = 0,
   /** Allocate and set to default, which is usually just zeroed memory. */
   CD_SET_DEFAULT = 2,
   /**
