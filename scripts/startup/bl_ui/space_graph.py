@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from bpy.types import Header, Menu, Panel
+from bl_ui_utils.layout import operator_context
 from bl_ui.space_dopesheet import (
     DopesheetFilterPopoverBase,
     dopesheet_filter,
@@ -107,16 +108,9 @@ class GRAPH_MT_view(Menu):
             layout.separator()
             layout.prop(st, "show_markers")
 
-        layout.separator()
-        layout.prop(st, "use_beauty_drawing")
-
-        layout.separator()
-
         layout.prop(st, "show_extrapolation")
 
         layout.prop(st, "show_handles")
-
-        layout.prop(st, "use_only_selected_curves_handles")
         layout.prop(st, "use_only_selected_keyframe_handles")
 
         layout.prop(st, "show_seconds")
@@ -255,7 +249,7 @@ class GRAPH_MT_key(Menu):
 
         layout.separator()
         layout.operator_menu_enum("graph.keyframe_insert", "type")
-        layout.operator_menu_enum("graph.fmodifier_add", "type")
+        layout.operator_menu_enum("graph.fmodifier_add", "type").only_active = False
         layout.operator("graph.sound_bake")
 
         layout.separator()
@@ -274,15 +268,13 @@ class GRAPH_MT_key(Menu):
         layout.operator_menu_enum("graph.easing_type", "type", text="Easing Type")
 
         layout.separator()
-        operator_context = layout.operator_context
 
         layout.operator("graph.decimate", text="Decimate (Ratio)").mode = 'RATIO'
 
         # Using the modal operation doesn't make sense for this variant
         # as we do not have a modal mode for it, so just execute it.
-        layout.operator_context = 'EXEC_REGION_WIN'
-        layout.operator("graph.decimate", text="Decimate (Allowed Change)").mode = 'ERROR'
-        layout.operator_context = operator_context
+        with operator_context(layout, 'EXEC_REGION_WIN'):
+            layout.operator("graph.decimate", text="Decimate (Allowed Change)").mode = 'ERROR'
 
         layout.menu("GRAPH_MT_slider", text="Slider Operators")
 
@@ -337,6 +329,7 @@ class GRAPH_MT_slider(Menu):
         layout.operator("graph.blend_to_neighbor", text="Blend to Neighbor")
         layout.operator("graph.blend_to_default", text="Blend to Default Value")
         layout.operator("graph.ease", text="Ease")
+        layout.operator("graph.gaussian_smooth", text="Smooth")
 
 
 class GRAPH_MT_view_pie(Menu):

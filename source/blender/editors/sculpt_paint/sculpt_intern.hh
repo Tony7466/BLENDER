@@ -146,6 +146,7 @@ struct SculptUndoNodeGeometry {
   CustomData edata;
   CustomData ldata;
   CustomData pdata;
+  int *poly_offset_indices;
   int totvert;
   int totedge;
   int totloop;
@@ -1683,6 +1684,7 @@ void SCULPT_OT_set_pivot_position(wmOperatorType *ot);
 /* Mesh Filter. */
 
 void SCULPT_OT_mesh_filter(wmOperatorType *ot);
+struct wmKeyMap *filter_mesh_modal_keymap(struct wmKeyConfig *keyconf);
 
 /* Cloth Filter. */
 

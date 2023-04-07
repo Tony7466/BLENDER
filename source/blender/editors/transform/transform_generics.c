@@ -9,7 +9,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
@@ -420,8 +420,16 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
       t->orient_axis_ortho = RNA_property_enum_get(op->ptr, prop);
     }
 
-    if (op && ((prop = RNA_struct_find_property(op->ptr, "orient_matrix")) &&
-               RNA_property_is_set(op->ptr, prop))) {
+    /* The properties "orient_matrix" and "orient_matrix_type" are used to store the orientation
+     * calculated in the first operator call. This allows for reuse of the orientation during
+     * subsequent calls of the same operator. When making adjustments through the Redo panel
+     * (#OP_IS_REPEAT), reusing the orientation prevents unpredictable changes that can occur when
+     * using #V3D_ORIENT_VIEW. However, when activated by #SCREEN_OT_repeat_last
+     * (#OP_IS_REPEAT_LAST), it's best to avoid reusing the orientation to prevent unintended
+     * changes. */
+    if (op && !(op->flag & OP_IS_REPEAT_LAST) &&
+        ((prop = RNA_struct_find_property(op->ptr, "orient_matrix")) &&
+         RNA_property_is_set(op->ptr, prop))) {
       RNA_property_float_get_array(op->ptr, prop, &custom_matrix[0][0]);
 
       if ((prop = RNA_struct_find_property(op->ptr, "orient_matrix_type")) &&
@@ -705,7 +713,7 @@ void postTrans(bContext *C, TransInfo *t)
   if (t->data_len_all != 0) {
     FOREACH_TRANS_DATA_CONTAINER (t, tc) {
       /* free data malloced per trans-data */
-      if (ELEM(t->obedit_type, OB_CURVES_LEGACY, OB_SURF, OB_GPENCIL) ||
+      if (ELEM(t->obedit_type, OB_CURVES_LEGACY, OB_SURF, OB_GPENCIL_LEGACY) ||
           (t->spacetype == SPACE_GRAPH)) {
         TransData *td = tc->data;
         for (int a = 0; a < tc->data_len; a++, td++) {
@@ -1159,8 +1167,6 @@ void calculateCenter(TransInfo *t)
   calculateZfac(t);
 }
 
-/* Called every time the view changes due to navigation.
- * Adjusts the mouse position relative to the object. */
 void tranformViewUpdate(TransInfo *t)
 {
   float zoom_prev = t->zfac;

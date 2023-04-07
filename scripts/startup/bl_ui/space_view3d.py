@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 import bpy
+from bl_ui_utils.layout import operator_context
 from bpy.types import (
     Header,
     Menu,
@@ -2011,6 +2012,9 @@ class VIEW3D_MT_select_paint_mask(Menu):
         layout.operator("paint.face_select_all", text="None").action = 'DESELECT'
         layout.operator("paint.face_select_all", text="Invert").action = 'INVERT'
 
+        layout.operator("paint.face_select_more")
+        layout.operator("paint.face_select_less")
+
         layout.separator()
 
         layout.operator("view3d.select_box")
@@ -2031,6 +2035,9 @@ class VIEW3D_MT_select_paint_mask_vertex(Menu):
         layout.operator("paint.vert_select_all", text="All").action = 'SELECT'
         layout.operator("paint.vert_select_all", text="None").action = 'DESELECT'
         layout.operator("paint.vert_select_all", text="Invert").action = 'INVERT'
+
+        layout.operator("paint.vert_select_more"),
+        layout.operator("paint.vert_select_less"),
 
         layout.separator()
 
@@ -2825,17 +2832,15 @@ class VIEW3D_MT_object_parent(Menu):
 
     def draw(self, _context):
         layout = self.layout
-        operator_context_default = layout.operator_context
 
         layout.operator_enum("object.parent_set", "type")
 
         layout.separator()
 
-        layout.operator_context = 'EXEC_REGION_WIN'
-        layout.operator("object.parent_no_inverse_set").keep_transform = False
-        props = layout.operator("object.parent_no_inverse_set", text="Make Parent without Inverse (Keep Transform)")
-        props.keep_transform = True
-        layout.operator_context = operator_context_default
+        with operator_context(layout, 'EXEC_REGION_WIN'):
+            layout.operator("object.parent_no_inverse_set").keep_transform = False
+            props = layout.operator("object.parent_no_inverse_set", text="Make Parent without Inverse (Keep Transform)")
+            props.keep_transform = True
 
         layout.separator()
 
@@ -3221,17 +3226,35 @@ class VIEW3D_MT_sculpt(Menu):
     def draw(self, _context):
         layout = self.layout
 
+        layout.operator("transform.translate")
+        layout.operator("transform.rotate")
+        layout.operator("transform.resize", text="Scale")
+
+        props = layout.operator("sculpt.mesh_filter", text="Sphere")
+        props.type = 'SPHERE'
+
+        layout.separator()
+
+        props = layout.operator("paint.hide_show", text="Box Hide")
+        props.action = 'HIDE'
+
+        props = layout.operator("paint.hide_show", text="Box Show")
+        props.action = 'SHOW'
+
+        layout.separator()
+
+        props = layout.operator("sculpt.face_set_change_visibility", text="Toggle Visibility")
+        props.mode = 'TOGGLE'
+
+        props = layout.operator("sculpt.face_set_change_visibility", text="Hide Active Face Set")
+        props.mode = 'HIDE_ACTIVE'
+
         props = layout.operator("paint.hide_show", text="Show All")
         props.action = 'SHOW'
         props.area = 'ALL'
 
-        props = layout.operator("paint.hide_show", text="Box Show")
-        props.action = 'SHOW'
-        props.area = 'INSIDE'
-
-        props = layout.operator("paint.hide_show", text="Box Hide")
-        props.action = 'HIDE'
-        props.area = 'INSIDE'
+        props = layout.operator("sculpt.face_set_change_visibility", text="Invert Visible")
+        props.mode = 'INVERT'
 
         props = layout.operator("paint.hide_show", text="Hide Masked")
         props.action = 'HIDE'
@@ -3239,10 +3262,55 @@ class VIEW3D_MT_sculpt(Menu):
 
         layout.separator()
 
+        props = layout.operator("sculpt.trim_box_gesture", text="Box Trim")
+        props.trim_mode = 'DIFFERENCE'
+
+        props = layout.operator("sculpt.trim_lasso_gesture", text="Lasso Trim")
+        props.trim_mode = 'DIFFERENCE'
+
+        props = layout.operator("sculpt.trim_box_gesture", text="Box Add")
+        props.trim_mode = 'JOIN'
+
+        props = layout.operator("sculpt.trim_lasso_gesture", text="Lasso Add")
+        props.trim_mode = 'JOIN'
+
+        layout.operator("sculpt.project_line_gesture", text="Line Project")
+
+        layout.separator()
+
+        # Fair Positions
+        props = layout.operator("sculpt.face_set_edit", text="Fair Positions")
+        props.mode = 'FAIR_POSITIONS'
+
+        # Fair Tangency
+        props = layout.operator("sculpt.face_set_edit", text="Fair Tangency")
+        props.mode = 'FAIR_TANGENCY'
+
+        layout.separator()
+
+        sculpt_filters_types = [
+            ('SMOOTH', "Smooth"),
+            ('SURFACE_SMOOTH', "Surface Smooth"),
+            ('INFLATE', "Inflate"),
+            ('RELAX', "Relax Topology"),
+            ('RELAX_FACE_SETS', "Relax Face Sets"),
+            ('SHARPEN', "Sharpen"),
+            ('ENHANCE_DETAILS', "Enhance Details"),
+            ('ERASE_DISCPLACEMENT', "Erase Multires Displacement"),
+            ('RANDOM', "Randomize")
+        ]
+
+        for filter_type, ui_name in sculpt_filters_types:
+            props = layout.operator("sculpt.mesh_filter", text=ui_name)
+            props.type = filter_type
+
+        layout.separator()
+
         layout.menu("VIEW3D_MT_sculpt_set_pivot", text="Set Pivot")
 
         layout.separator()
 
+        # Rebuild BVH
         layout.operator("sculpt.optimize")
 
         layout.separator()
@@ -6984,13 +7052,16 @@ class VIEW3D_PT_snapping(Panel):
 
             col.prop(tool_settings, "use_snap_backface_culling")
 
-            if 'FACE' in snap_elements:
-                col.prop(tool_settings, "use_snap_project")
+            is_face_nearest_enabled = 'FACE_NEAREST' in snap_elements
+            if is_face_nearest_enabled or 'FACE' in snap_elements:
+                sub = col.column()
+                sub.active = not is_face_nearest_enabled
+                sub.prop(tool_settings, "use_snap_project")
 
-            if 'FACE_NEAREST' in snap_elements:
-                col.prop(tool_settings, "use_snap_to_same_target")
-                if object_mode == 'EDIT':
-                    col.prop(tool_settings, "snap_face_nearest_steps")
+                if is_face_nearest_enabled:
+                    col.prop(tool_settings, "use_snap_to_same_target")
+                    if object_mode == 'EDIT':
+                        col.prop(tool_settings, "snap_face_nearest_steps")
 
             if 'VOLUME' in snap_elements:
                 col.prop(tool_settings, "use_snap_peel_object")

@@ -4,7 +4,7 @@ from bpy.types import Menu, Panel, UIList
 from rna_prop_ui import PropertyPanel
 
 from bpy.app.translations import (
-    pgettext_tip as iface_,
+    pgettext_iface as iface_,
     pgettext_tip as tip_,
 )
 
@@ -604,7 +604,7 @@ class DATA_PT_mesh_attributes(MeshButtonsPanel, Panel):
         colliding_names = []
         for collection in (
                 # Built-in names.
-                {"shade_smooth": None, "crease": None},
+                {"crease": None},
                 mesh.attributes,
                 None if ob is None else ob.vertex_groups,
         ):

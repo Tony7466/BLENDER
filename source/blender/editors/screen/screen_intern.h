@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup edscr
@@ -46,13 +46,13 @@ typedef enum eScreenAxis {
 #define AZONEFADEOUT (6.5f * U.widget_unit) /* when we start seeing the #AZone */
 
 /* Edges must be within these to allow joining. */
-#define AREAJOINTOLERANCEX (AREAMINX * U.dpi_fac)
-#define AREAJOINTOLERANCEY (HEADERY * U.dpi_fac)
+#define AREAJOINTOLERANCEX (AREAMINX * UI_SCALE_FAC)
+#define AREAJOINTOLERANCEY (HEADERY * UI_SCALE_FAC)
 
 /**
  * Expanded interaction influence of area borders.
  */
-#define BORDERPADDING ((2.0f * U.dpi_fac) + U.pixelsize)
+#define BORDERPADDING ((2.0f * UI_SCALE_FAC) + U.pixelsize)
 
 /* area.cc */
 

@@ -40,7 +40,7 @@
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_mball.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.h"
 #include "BKE_mesh_wrapper.h"
 #include "BKE_modifier.h"
@@ -76,6 +76,21 @@ using blender::StringRefNull;
 
 static CLG_LogRef LOG = {"bke.mesh_convert"};
 
+static void poly_edgehash_insert(EdgeHash *ehash, const Span<int> poly_verts)
+{
+  int i = poly_verts.size();
+
+  int next = 0;              /* first loop */
+  int poly_corner = (i - 1); /* last loop */
+
+  while (i-- != 0) {
+    BLI_edgehash_reinsert(ehash, poly_verts[poly_corner], poly_verts[next], nullptr);
+
+    poly_corner = next;
+    next++;
+  }
+}
+
 /**
  * Specialized function to use when we _know_ existing edges don't overlap with poly edges.
  */
@@ -83,14 +98,15 @@ static void make_edges_mdata_extend(Mesh &mesh)
 {
   int totedge = mesh.totedge;
 
-  const Span<MPoly> polys = mesh.polys();
-  MutableSpan<MLoop> loops = mesh.loops_for_write();
+  const blender::OffsetIndices polys = mesh.polys();
+  const Span<int> corner_verts = mesh.corner_verts();
+  MutableSpan<int> corner_edges = mesh.corner_edges_for_write();
 
   const int eh_reserve = max_ii(totedge, BLI_EDGEHASH_SIZE_GUESS_FROM_POLYS(mesh.totpoly));
   EdgeHash *eh = BLI_edgehash_new_ex(__func__, eh_reserve);
 
-  for (const MPoly &poly : polys) {
-    BKE_mesh_poly_edgehash_insert(eh, &poly, &loops[poly.loopstart]);
+  for (const int i : polys.index_range()) {
+    poly_edgehash_insert(eh, corner_verts.slice(polys[i]));
   }
 
   const int totedge_new = BLI_edgehash_len(eh);
@@ -122,14 +138,15 @@ static void make_edges_mdata_extend(Mesh &mesh)
     BLI_edgehashIterator_free(ehi);
 
     for (const int i : polys.index_range()) {
-      const MPoly &poly = polys[i];
-      MLoop *l = &loops[poly.loopstart];
-      MLoop *l_prev = (l + (poly.totloop - 1));
+      const IndexRange poly = polys[i];
+      int corner = poly.start();
+      int corner_prev = poly.start() + (poly.size() - 1);
       int j;
-      for (j = 0; j < poly.totloop; j++, l++) {
+      for (j = 0; j < poly.size(); j++, corner++) {
         /* lookup hashed edge index */
-        l_prev->e = POINTER_AS_UINT(BLI_edgehash_lookup(eh, l_prev->v, l->v));
-        l_prev = l;
+        corner_edges[corner_prev] = POINTER_AS_UINT(
+            BLI_edgehash_lookup(eh, corner_verts[corner_prev], corner_verts[corner]));
+        corner_prev = corner;
       }
     }
   }
@@ -189,14 +206,17 @@ static Mesh *mesh_nurbs_displist_to_mesh(const Curve *cu, const ListBase *dispba
   Mesh *mesh = BKE_mesh_new_nomain(totvert, totedge, totloop, totpoly);
   MutableSpan<float3> positions = mesh->vert_positions_for_write();
   MutableSpan<MEdge> edges = mesh->edges_for_write();
-  MutableSpan<MPoly> polys = mesh->polys_for_write();
-  MutableSpan<MLoop> loops = mesh->loops_for_write();
+  MutableSpan<int> poly_offsets = mesh->poly_offsets_for_write();
+  MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
 
   MutableAttributeAccessor attributes = mesh->attributes_for_write();
   SpanAttributeWriter<int> material_indices = attributes.lookup_or_add_for_write_only_span<int>(
       "material_index", ATTR_DOMAIN_FACE);
+  SpanAttributeWriter<bool> sharp_faces = attributes.lookup_or_add_for_write_span<bool>(
+      "sharp_face", ATTR_DOMAIN_FACE);
+
   blender::float2 *mloopuv = static_cast<blender::float2 *>(CustomData_add_layer_named(
-      &mesh->ldata, CD_PROP_FLOAT2, CD_SET_DEFAULT, nullptr, mesh->totloop, DATA_("UVMap")));
+      &mesh->ldata, CD_PROP_FLOAT2, CD_SET_DEFAULT, mesh->totloop, DATA_("UVMap")));
 
   int dst_vert = 0;
   int dst_edge = 0;
@@ -264,23 +284,20 @@ static Mesh *mesh_nurbs_displist_to_mesh(const Curve *cu, const ListBase *dispba
       a = dl->parts;
       const int *index = dl->index;
       while (a--) {
-        loops[dst_loop + 0].v = startvert + index[0];
-        loops[dst_loop + 1].v = startvert + index[2];
-        loops[dst_loop + 2].v = startvert + index[1];
-        polys[dst_poly].loopstart = dst_loop;
-        polys[dst_poly].totloop = 3;
+        corner_verts[dst_loop + 0] = startvert + index[0];
+        corner_verts[dst_loop + 1] = startvert + index[2];
+        corner_verts[dst_loop + 2] = startvert + index[1];
+        poly_offsets[dst_poly] = dst_loop;
         material_indices.span[dst_poly] = dl->col;
 
         if (mloopuv) {
           for (int i = 0; i < 3; i++, mloopuv++) {
-            (*mloopuv)[0] = (loops[dst_loop + i].v - startvert) / float(dl->nr - 1);
+            (*mloopuv)[0] = (corner_verts[dst_loop + i] - startvert) / float(dl->nr - 1);
             (*mloopuv)[1] = 0.0f;
           }
         }
 
-        if (is_smooth) {
-          polys[dst_poly].flag |= ME_SMOOTH;
-        }
+        sharp_faces.span[dst_poly] = !is_smooth;
         dst_poly++;
         dst_loop += 3;
         index += 3;
@@ -323,12 +340,11 @@ static Mesh *mesh_nurbs_displist_to_mesh(const Curve *cu, const ListBase *dispba
         }
 
         for (; b < dl->nr; b++) {
-          loops[dst_loop + 0].v = p1;
-          loops[dst_loop + 1].v = p3;
-          loops[dst_loop + 2].v = p4;
-          loops[dst_loop + 3].v = p2;
-          polys[dst_poly].loopstart = dst_loop;
-          polys[dst_poly].totloop = 4;
+          corner_verts[dst_loop + 0] = p1;
+          corner_verts[dst_loop + 1] = p3;
+          corner_verts[dst_loop + 2] = p4;
+          corner_verts[dst_loop + 3] = p2;
+          poly_offsets[dst_poly] = dst_loop;
           material_indices.span[dst_poly] = dl->col;
 
           if (mloopuv) {
@@ -348,7 +364,7 @@ static Mesh *mesh_nurbs_displist_to_mesh(const Curve *cu, const ListBase *dispba
 
             for (int i = 0; i < 4; i++, mloopuv++) {
               /* find uv based on vertex index into grid array */
-              int v = loops[dst_loop + i].v - startvert;
+              int v = corner_verts[dst_loop + i] - startvert;
 
               (*mloopuv)[0] = (v / dl->nr) / float(orco_sizev);
               (*mloopuv)[1] = (v % dl->nr) / float(orco_sizeu);
@@ -363,9 +379,7 @@ static Mesh *mesh_nurbs_displist_to_mesh(const Curve *cu, const ListBase *dispba
             }
           }
 
-          if (is_smooth) {
-            polys[dst_poly].flag |= ME_SMOOTH;
-          }
+          sharp_faces.span[dst_poly] = !is_smooth;
           dst_poly++;
           dst_loop += 4;
 
@@ -383,6 +397,7 @@ static Mesh *mesh_nurbs_displist_to_mesh(const Curve *cu, const ListBase *dispba
   }
 
   material_indices.finish();
+  sharp_faces.finish();
 
   return mesh;
 }
@@ -453,10 +468,8 @@ void BKE_mesh_to_curve_nurblist(const Mesh *me, ListBase *nurblist, const int ed
 {
   const Span<float3> positions = me->vert_positions();
   const Span<MEdge> mesh_edges = me->edges();
-  const Span<MPoly> polys = me->polys();
-  const Span<MLoop> loops = me->loops();
-
-  int totedges = 0;
+  const blender::OffsetIndices polys = me->polys();
+  const Span<int> corner_edges = me->corner_edges();
 
   /* only to detect edge polylines */
   int *edge_users;
@@ -466,11 +479,8 @@ void BKE_mesh_to_curve_nurblist(const Mesh *me, ListBase *nurblist, const int ed
   /* get boundary edges */
   edge_users = (int *)MEM_calloc_arrayN(mesh_edges.size(), sizeof(int), __func__);
   for (const int i : polys.index_range()) {
-    const MPoly &poly = polys[i];
-    const MLoop *ml = &loops[poly.loopstart];
-    int j;
-    for (j = 0; j < poly.totloop; j++, ml++) {
-      edge_users[ml->e]++;
+    for (const int edge : corner_edges.slice(polys[i])) {
+      edge_users[edge]++;
     }
   }
 
@@ -481,7 +491,6 @@ void BKE_mesh_to_curve_nurblist(const Mesh *me, ListBase *nurblist, const int ed
       edl->edge = &mesh_edges[i];
 
       BLI_addtail(&edges, edl);
-      totedges++;
     }
   }
   MEM_freeN(edge_users);
@@ -503,7 +512,6 @@ void BKE_mesh_to_curve_nurblist(const Mesh *me, ListBase *nurblist, const int ed
       appendPolyLineVert(&polyline, endVert);
       totpoly++;
       BLI_freelinkN(&edges, edges.last);
-      totedges--;
 
       while (ok) { /* while connected edges are found... */
         EdgeLink *edl = (EdgeLink *)edges.last;
@@ -515,10 +523,9 @@ void BKE_mesh_to_curve_nurblist(const Mesh *me, ListBase *nurblist, const int ed
 
           if (edge->v1 == endVert) {
             endVert = edge->v2;
-            appendPolyLineVert(&polyline, edge->v2);
+            appendPolyLineVert(&polyline, endVert);
             totpoly++;
             BLI_freelinkN(&edges, edl);
-            totedges--;
             ok = true;
           }
           else if (edge->v2 == endVert) {
@@ -526,7 +533,6 @@ void BKE_mesh_to_curve_nurblist(const Mesh *me, ListBase *nurblist, const int ed
             appendPolyLineVert(&polyline, endVert);
             totpoly++;
             BLI_freelinkN(&edges, edl);
-            totedges--;
             ok = true;
           }
           else if (edge->v1 == startVert) {
@@ -534,7 +540,6 @@ void BKE_mesh_to_curve_nurblist(const Mesh *me, ListBase *nurblist, const int ed
             prependPolyLineVert(&polyline, startVert);
             totpoly++;
             BLI_freelinkN(&edges, edl);
-            totedges--;
             ok = true;
           }
           else if (edge->v2 == startVert) {
@@ -542,7 +547,6 @@ void BKE_mesh_to_curve_nurblist(const Mesh *me, ListBase *nurblist, const int ed
             prependPolyLineVert(&polyline, startVert);
             totpoly++;
             BLI_freelinkN(&edges, edl);
-            totedges--;
             ok = true;
           }
 
@@ -566,18 +570,18 @@ void BKE_mesh_to_curve_nurblist(const Mesh *me, ListBase *nurblist, const int ed
         /* create new 'nurb' within the curve */
         nu = MEM_new<Nurb>("MeshNurb", blender::dna::shallow_zero_initialize());
 
-        nu->pntsu = polys.size();
+        nu->pntsu = totpoly;
         nu->pntsv = 1;
         nu->orderu = 4;
         nu->flagu = CU_NURB_ENDPOINT | (closed ? CU_NURB_CYCLIC : 0); /* endpoint */
         nu->resolu = 12;
 
-        nu->bp = (BPoint *)MEM_calloc_arrayN(polys.size(), sizeof(BPoint), "bpoints");
+        nu->bp = (BPoint *)MEM_calloc_arrayN(totpoly, sizeof(BPoint), "bpoints");
 
         /* add points */
         vl = (VertLink *)polyline.first;
         int i;
-        for (i = 0, bp = nu->bp; i < polys.size(); i++, bp++, vl = (VertLink *)vl->next) {
+        for (i = 0, bp = nu->bp; i < totpoly; i++, bp++, vl = (VertLink *)vl->next) {
           copy_v3_v3(bp->vec, positions[vl->index]);
           bp->f1 = SELECT;
           bp->radius = bp->weight = 1.0;
@@ -1131,6 +1135,8 @@ void BKE_mesh_nomain_to_mesh(Mesh *mesh_src, Mesh *mesh_dst, Object *ob)
   CustomData_copy(&mesh_src->edata, &mesh_dst->edata, mask.emask, CD_ASSIGN, mesh_src->totedge);
   CustomData_copy(&mesh_src->pdata, &mesh_dst->pdata, mask.pmask, CD_ASSIGN, mesh_src->totpoly);
   CustomData_copy(&mesh_src->ldata, &mesh_dst->ldata, mask.lmask, CD_ASSIGN, mesh_src->totloop);
+  mesh_dst->poly_offset_indices = static_cast<int *>(mesh_src->poly_offset_indices);
+  mesh_src->poly_offset_indices = nullptr;
 
   /* Make sure active/default color attribute (names) are brought over. */
   if (mesh_src->active_color_attribute) {

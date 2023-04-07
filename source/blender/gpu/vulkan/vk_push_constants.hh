@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation. All rights reserved. */
+ * Copyright 2023 Blender Foundation. */
 
 /** \file
  * \ingroup gpu
@@ -43,14 +43,14 @@ class VKContext;
  * It should also keep track of the submissions in order to reuse the allocated
  * data.
  */
-class VKPushConstants : NonCopyable {
+class VKPushConstants : VKResourceTracker<VKUniformBuffer> {
  public:
-  /** Different methods to store push constants.*/
+  /** Different methods to store push constants. */
   enum class StorageType {
-    /** Push constants aren't in use.*/
+    /** Push constants aren't in use. */
     NONE,
 
-    /** Store push constants as regular vulkan push constants.*/
+    /** Store push constants as regular vulkan push constants. */
     PUSH_CONSTANTS,
 
     /**
@@ -67,7 +67,7 @@ class VKPushConstants : NonCopyable {
     static constexpr StorageType STORAGE_TYPE_FALLBACK = StorageType::UNIFORM_BUFFER;
 
     struct PushConstant {
-      /* Used as lookup based on ShaderInput.*/
+      /* Used as lookup based on ShaderInput. */
       int32_t location;
 
       /** Offset in the push constant data (in bytes). */
@@ -151,7 +151,7 @@ class VKPushConstants : NonCopyable {
  private:
   const Layout *layout_ = nullptr;
   void *data_ = nullptr;
-  VKUniformBuffer *uniform_buffer_ = nullptr;
+  bool is_dirty_ = false;
 
  public:
   VKPushConstants();
@@ -170,6 +170,11 @@ class VKPushConstants : NonCopyable {
   {
     return *layout_;
   }
+
+  /**
+   * Part of Resource Tracking API is called when new resource is needed.
+   */
+  std::unique_ptr<VKUniformBuffer> create_resource(VKContext &context) override;
 
   /**
    * Get the reference to the active data.
@@ -209,11 +214,12 @@ class VKPushConstants : NonCopyable {
                          layout_->size_in_bytes(),
                      "Tried to write outside the push constant allocated memory.");
       memcpy(dst, input_data, comp_len * array_size * sizeof(T));
+      is_dirty_ = true;
       return;
     }
 
     /* Store elements in uniform buffer as array. In Std140 arrays have an element stride of 16
-     * bytes.*/
+     * bytes. */
     BLI_assert(sizeof(T) == 4);
     const T *src = input_data;
     for (const int i : IndexRange(array_size)) {
@@ -222,6 +228,7 @@ class VKPushConstants : NonCopyable {
       src += comp_len;
       dst += 4;
     }
+    is_dirty_ = true;
   }
 
   /**
@@ -243,7 +250,7 @@ class VKPushConstants : NonCopyable {
    *
    * Only valid when storage type = StorageType::UNIFORM_BUFFER.
    */
-  VKUniformBuffer &uniform_buffer_get();
+  std::unique_ptr<VKUniformBuffer> &uniform_buffer_get();
 };
 
 }  // namespace blender::gpu

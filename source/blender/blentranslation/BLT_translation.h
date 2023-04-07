@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. All rights reserved. */
+ * Copyright 2011 Blender Foundation */
 
 /** \file
  * \ingroup blt
@@ -201,7 +201,7 @@ typedef struct {
         BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_CONSTRAINT, "constraint"), \
         BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_COLOR, "color"), \
         BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_AMOUNT, "amount"), \
-        BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_UNIT, "unit"),   \
+        BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_UNIT, "unit"), \
     { \
       NULL, NULL, NULL \
     } \

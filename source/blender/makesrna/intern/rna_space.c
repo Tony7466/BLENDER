@@ -32,7 +32,7 @@
 #include "BLI_uuid.h"
 
 #include "DNA_action_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_key_types.h"
 #include "DNA_mask_types.h"
 #include "DNA_material_types.h"
@@ -263,7 +263,9 @@ static EnumPropertyItem rna_enum_space_action_ui_mode_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 #endif
-/* expose as ui_mode */
+
+/* Expose as `ui_mode`. */
+
 const EnumPropertyItem rna_enum_space_action_mode_items[] = {
     SACT_ITEM_DOPESHEET,
     SACT_ITEM_TIMELINE,
@@ -923,7 +925,7 @@ static void rna_GPencil_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *UN
   bool changed = false;
   /* need set all caches as dirty to recalculate onion skinning */
   for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
-    if (ob->type == OB_GPENCIL) {
+    if (ob->type == OB_GPENCIL_LEGACY) {
       bGPdata *gpd = (bGPdata *)ob->data;
       DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
       changed = true;
@@ -2374,6 +2376,18 @@ static void rna_SpaceGraphEditor_display_mode_update(bContext *C, PointerRNA *pt
   ED_area_tag_refresh(area);
 }
 
+static void rna_SpaceGraphEditor_normalize_update(bContext *C, PointerRNA *UNUSED(ptr))
+{
+  bAnimContext ac;
+
+  if (ANIM_animdata_get_context(C, &ac) == 0) {
+    return;
+  }
+
+  ANIM_frame_channel_y_extents(C, &ac);
+  ED_area_tag_refresh(ac.area);
+}
+
 static bool rna_SpaceGraphEditor_has_ghost_curves_get(PointerRNA *ptr)
 {
   SpaceGraph *sipo = (SpaceGraph *)(ptr->data);
@@ -2624,8 +2638,8 @@ static void rna_SpaceNodeEditor_cursor_location_from_region(SpaceNode *snode,
   float cursor_location[2];
 
   UI_view2d_region_to_view(&region->v2d, x, y, &cursor_location[0], &cursor_location[1]);
-  cursor_location[0] /= UI_DPI_FAC;
-  cursor_location[1] /= UI_DPI_FAC;
+  cursor_location[0] /= UI_SCALE_FAC;
+  cursor_location[1] /= UI_SCALE_FAC;
 
   ED_node_cursor_location_set(snode, cursor_location);
 }
@@ -3006,9 +3020,7 @@ static PointerRNA rna_FileBrowser_FSMenu_get(CollectionPropertyIterator *iter)
   return r_ptr;
 }
 
-static void rna_FileBrowser_FSMenu_end(CollectionPropertyIterator *UNUSED(iter))
-{
-}
+static void rna_FileBrowser_FSMenu_end(CollectionPropertyIterator *UNUSED(iter)) {}
 
 static void rna_FileBrowser_FSMenuSystem_data_begin(CollectionPropertyIterator *iter,
                                                     PointerRNA *UNUSED(ptr))
@@ -3394,8 +3406,8 @@ static struct IDFilterEnumPropertyItem rna_enum_space_file_id_filter_categories[
      ICON_WORLD_DATA,
      "Environment",
      "Show worlds, lights, cameras and speakers"},
-    {FILTER_ID_BR | FILTER_ID_GD | FILTER_ID_PA | FILTER_ID_PAL | FILTER_ID_PC | FILTER_ID_TXT |
-         FILTER_ID_VF | FILTER_ID_CF | FILTER_ID_WS,
+    {FILTER_ID_BR | FILTER_ID_GD_LEGACY | FILTER_ID_PA | FILTER_ID_PAL | FILTER_ID_PC |
+         FILTER_ID_TXT | FILTER_ID_VF | FILTER_ID_CF | FILTER_ID_WS,
      "category_misc",
      ICON_GREASEPENCIL,
      "Miscellaneous",
@@ -3909,7 +3921,7 @@ static void rna_def_space_outliner(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_OUTLINER, NULL);
 
   prop = RNA_def_property(srna, "use_filter_object_grease_pencil", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_negative_sdna(prop, NULL, "filter", SO_FILTER_NO_OB_GPENCIL);
+  RNA_def_property_boolean_negative_sdna(prop, NULL, "filter", SO_FILTER_NO_OB_GPENCIL_LEGACY);
   RNA_def_property_ui_text(prop, "Show Grease Pencil", "Show grease pencil objects");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_OUTLINER, NULL);
 
@@ -5087,7 +5099,9 @@ static void rna_def_space_view3d(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "RegionView3D");
   RNA_def_property_pointer_funcs(prop, "rna_SpaceView3D_region_3d_get", NULL, NULL, NULL);
   RNA_def_property_ui_text(
-      prop, "3D Region", "3D region in this space, in case of quad view the camera region");
+      prop,
+      "3D Region",
+      "3D region for this space. When the space is in quad view, the camera region");
 
   prop = RNA_def_property(srna, "region_quadviews", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "RegionView3D");
@@ -5291,9 +5305,9 @@ static void rna_def_space_view3d(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop,
       "Is Axis Aligned",
-      "Is current view aligned to an axis "
-      "(does not check the view is orthographic use \"is_perspective\" for that). "
-      "Assignment sets the \"view_rotation\" to the closest axis aligned view");
+      "Whether the current view is aligned to an axis "
+      "(does not check whether the view is orthographic, use \"is_perspective\" for that). "
+      "Setting this will rotate the view to the closest axis");
 
   /* This isn't directly accessible from the UI, only an operator. */
   prop = RNA_def_property(srna, "use_clip_planes", PROP_BOOLEAN, PROP_NONE);
@@ -6329,25 +6343,10 @@ static void rna_def_space_graph(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Show Handles", "Show handles of Bezier control points");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_GRAPH, NULL);
 
-  prop = RNA_def_property(srna, "use_only_selected_curves_handles", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", SIPO_SELCUVERTSONLY);
-  RNA_def_property_ui_text(prop,
-                           "Only Selected Curve Keyframes",
-                           "Only keyframes of selected F-Curves are visible and editable");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_GRAPH, NULL);
-
   prop = RNA_def_property(srna, "use_only_selected_keyframe_handles", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", SIPO_SELVHANDLESONLY);
   RNA_def_property_ui_text(
       prop, "Only Selected Keyframes Handles", "Only show and edit handles of selected keyframes");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_GRAPH, NULL);
-
-  prop = RNA_def_property(srna, "use_beauty_drawing", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_negative_sdna(prop, NULL, "flag", SIPO_BEAUTYDRAW_OFF);
-  RNA_def_property_ui_text(prop,
-                           "Use High Quality Display",
-                           "Display F-Curves using Anti-Aliasing and other fancy effects "
-                           "(disable for better performance)");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_GRAPH, NULL);
 
   prop = RNA_def_property(srna, "show_markers", PROP_BOOLEAN, PROP_NONE);
@@ -6429,7 +6428,9 @@ static void rna_def_space_graph(BlenderRNA *brna)
                            "Use Normalization",
                            "Display curves in normalized range from -1 to 1, "
                            "for easier editing of multiple curves with different ranges");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_GRAPH, NULL);
+  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
+  RNA_def_property_update(
+      prop, NC_SPACE | ND_SPACE_GRAPH, "rna_SpaceGraphEditor_normalize_update");
 
   prop = RNA_def_property(srna, "use_auto_normalization", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, NULL, "flag", SIPO_NORMALIZE_FREEZE);
@@ -6769,7 +6770,7 @@ static void rna_def_fileselect_params(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_library_browsing", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(
-      prop, "Library Browser", "Whether we may browse blender files' content or not");
+      prop, "Library Browser", "Whether we may browse Blender files' content or not");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_boolean_funcs(prop, "rna_FileSelectParams_use_lib_get", NULL);
 
