@@ -930,7 +930,7 @@ void BKE_pbvh_build_mesh(PBVH *pbvh, Mesh *mesh)
   MEM_freeN(prim_bbc);
 
   /* Clear the bitmap so it can be used as an update tag later on. */
-  memset(pbvh->vert_bitmap, 0, sizeof(bool) * mesh->totvert);
+  memset(pbvh->vert_bitmap, 0, sizeof(bool) * totvert);
 
   BKE_pbvh_update_active_vcol(pbvh, mesh);
 
