@@ -129,7 +129,7 @@ void register_node_type_geo_realize_instances();
 void register_node_type_geo_remove_attribute();
 void register_node_type_geo_rotate_instances();
 void register_node_type_geo_sample_index();
-void register_node_type_geo_sample_material();
+void register_node_type_geo_sample_materials();
 void register_node_type_geo_sample_nearest_surface();
 void register_node_type_geo_sample_nearest();
 void register_node_type_geo_sample_uv_surface();

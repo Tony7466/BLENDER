@@ -13,14 +13,14 @@
 
 #include "node_geometry_util.hh"
 
-namespace blender::nodes::node_geo_sample_material_cc {
+namespace blender::nodes::node_geo_sample_materials_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>(N_("Geometry"));
   b.add_input<decl::Geometry>(N_("Material Source"));
   b.add_input<decl::Bool>(N_("Selection")).default_value(true).hide_value().field_on({0});
-  b.add_input<decl::Int>(N_("Material Index")).default_value(1).field_on({0});
+  b.add_input<decl::Int>(N_("Material Index")).field_on({0});
   /* TODO: It's possible to avoid propagation from second geometry input? Or i miss something? */
   b.add_output<decl::Geometry>(N_("Geometry")).propagate_all();
 }
@@ -67,10 +67,8 @@ static void node_geo_exec(GeoNodeExecParams params)
     Vector<Material *> materials = original_materials;
 
     const auto append_material = [source_mesh, &materials](const int index) -> int {
-      if (index < 0 || source_mesh->totcol < index) {
-        return 0;
-      }
-      Material *material = source_mesh->mat[index];
+      const int limited_index = math::clamp<int>(index, 0, source_mesh->totcol - 1);
+      Material *material = source_mesh->mat[limited_index];
       return materials.append_non_duplicates_and_get_index(material);
     };
 
@@ -104,15 +102,15 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Geometry", std::move(geometry));
 }
 
-}  // namespace blender::nodes::node_geo_sample_material_cc
+}  // namespace blender::nodes::node_geo_sample_materials_cc
 
-void register_node_type_geo_sample_material()
+void register_node_type_geo_sample_materials()
 {
-  namespace file_ns = blender::nodes::node_geo_sample_material_cc;
+  namespace file_ns = blender::nodes::node_geo_sample_materials_cc;
 
   static bNodeType ntype;
 
-  geo_node_type_base(&ntype, GEO_NODE_SAMPLE_MATERIAL, "Sample Material", NODE_CLASS_GEOMETRY);
+  geo_node_type_base(&ntype, GEO_NODE_SAMPLE_MATERIALS, "Sample Materials", NODE_CLASS_GEOMETRY);
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   ntype.declare = file_ns::node_declare;
   nodeRegisterType(&ntype);
