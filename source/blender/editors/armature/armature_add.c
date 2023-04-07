@@ -1189,7 +1189,6 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
       }
 
       /* Set temp pointer to mirrored ebones */
-      ebone = ED_armature_ebone_get_mirrored(arm->edbo, ebone_iter);
       if (ebone) {
         ebone_iter->temp.ebone = ebone;
       }
