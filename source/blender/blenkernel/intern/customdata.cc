@@ -2352,8 +2352,8 @@ CustomData CustomData_shallow_copy_remove_non_bmesh_attributes(const CustomData 
 }
 
 /**
- * A #ImplicitSharingInfo that knows how to free the entire referenced custom data layer (including
- * potentially separately allocated chunks like for vertex groups).
+ * An #ImplicitSharingInfo that knows how to free the entire referenced custom data layer
+ * (including potentially separately allocated chunks like for vertex groups).
  */
 class CustomDataLayerImplicitSharing : public ImplicitSharingInfo {
  private:
@@ -2398,6 +2398,8 @@ static void ensure_layer_data_is_mutable(CustomDataLayer &layer, const int totel
   if (layer.sharing_info->is_shared()) {
     const eCustomDataType type = eCustomDataType(layer.type);
     const void *old_data = layer.data;
+    /* Copy the layer before removing the user because otherwise the data might be freed while
+     * we're still copying from it here. */
     layer.data = copy_layer_data(type, old_data, totelem);
     layer.sharing_info->remove_user_and_delete_if_last();
     layer.sharing_info = make_cow_for_array(type, layer.data, totelem);
@@ -2414,7 +2416,7 @@ void CustomData_realloc(CustomData *data, const int old_size, const int new_size
     const int64_t new_size_in_bytes = int64_t(new_size) * typeInfo->size;
 
     void *new_layer_data = MEM_mallocN(new_size_in_bytes, __func__);
-    /* Copy or relocate data to new array. */
+    /* Copy data to new array. */
     if (typeInfo->copy) {
       typeInfo->copy(layer->data, new_layer_data, std::min(old_size, new_size));
     }
@@ -5264,6 +5266,7 @@ void CustomData_blend_read(BlendDataReader *reader, CustomData *data, const int 
     if (CustomData_verify_versions(data, i)) {
       BLO_read_data_address(reader, &layer->data);
       if (layer->data != nullptr) {
+        /* Make layer data shareable. */
         layer->sharing_info = make_cow_for_array(eCustomDataType(layer->type), layer->data, count);
       }
       if (CustomData_layer_ensure_data_exists(layer, count)) {
