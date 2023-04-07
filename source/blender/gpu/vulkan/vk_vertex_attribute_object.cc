@@ -75,35 +75,34 @@ void VKVertexAttributeObject::bind(VKContext &context)
 void VKVertexAttributeObject::update_bindings(const VKContext &context, VKBatch &batch)
 {
   const VKShaderInterface &interface = unwrap(context.shader)->interface_get();
+  AttributeMask occupied_attributes = 0;
 
-  /* Reverse order so first VBO'S have more prevalence (in term of attribute override). */
-  AttributeMask attribute_mask = interface.enabled_attr_mask_;
-
-  for (int v = GPU_BATCH_VBO_MAX_LEN - 1; v > -1; v--) {
+  for (int v = 0; v < GPU_BATCH_VBO_MAX_LEN; v++) {
     VKVertexBuffer *vbo = batch.vertex_buffer_get(v);
     if (vbo) {
-      attribute_mask &= ~update_bindings(*vbo, interface, false);
+      update_bindings(*vbo, interface, occupied_attributes, false);
     }
   }
 
-  for (int v = GPU_BATCH_INST_VBO_MAX_LEN - 1; v > -1; v--) {
+  for (int v = 0; v < GPU_BATCH_INST_VBO_MAX_LEN; v++) {
     VKVertexBuffer *vbo = batch.instance_buffer_get(v);
     if (vbo) {
-      attribute_mask &= ~update_bindings(*vbo, interface, true);
+      update_bindings(*vbo, interface, occupied_attributes, false);
     }
   }
+
+  BLI_assert(interface.enabled_attr_mask_ == occupied_attributes);
 }
 
-AttributeMask VKVertexAttributeObject::update_bindings(VKVertexBuffer &vertex_buffer,
-                                                       const VKShaderInterface &interface,
-                                                       const bool use_instancing)
+void VKVertexAttributeObject::update_bindings(VKVertexBuffer &vertex_buffer,
+                                              const VKShaderInterface &interface,
+                                              AttributeMask &r_occupied_attributes,
+                                              const bool use_instancing)
 {
-
-  uint enabled_attributes = 0;
   const GPUVertFormat &format = vertex_buffer.format;
 
   if (format.attr_len <= 0) {
-    return enabled_attributes;
+    return;
   }
 
   uint32_t offset = 0;
@@ -129,26 +128,28 @@ AttributeMask VKVertexAttributeObject::update_bindings(VKVertexBuffer &vertex_bu
     bindings.append(vk_binding_descriptor);
     vbos.append(&vertex_buffer);
 
-    for (uint32_t name_index = 0; name_index <= attribute.name_len; name_index++) {
+    for (uint32_t name_index = 0; name_index < attribute.name_len; name_index++) {
       const char *name = GPU_vertformat_attr_name_get(&format, &attribute, name_index);
       const ShaderInput *shader_input = interface.attr_get(name);
       if (shader_input == nullptr || shader_input->location == -1) {
         continue;
       }
 
+      /* Don't overwrite attributes that are already occupied. */
+      AttributeMask attribute_mask = 1 << shader_input->location;
+      if (r_occupied_attributes & attribute_mask) {
+        continue;
+      }
+      r_occupied_attributes |= attribute_mask;
+
       VkVertexInputAttributeDescription attribute_description = {};
-      enabled_attributes |= (1 << shader_input->location);
       attribute_description.binding = binding;
       attribute_description.location = shader_input->location;
       attribute_description.format = to_vk_format(
           static_cast<GPUVertCompType>(attribute.comp_type), attribute.size);
       attributes.append(attribute_description);
     }
-
-    // TODO: resolving conflicting location numbers.
   }
-
-  return enabled_attributes;
 }
 
 }  // namespace blender::gpu

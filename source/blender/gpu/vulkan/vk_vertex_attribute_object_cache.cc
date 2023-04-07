@@ -169,7 +169,7 @@ VKVertexAttributeObject &VKVaoCache::lookup(const VKShaderInterface *interface)
   }
 }
 
-VKVertexAttributeObject &VKVaoCache::vao_get(GPUBatch *batch)
+VKVertexAttributeObject &VKVaoCache::vao_get(GPUBatch * /*batch*/)
 {
   Shader *shader = VKContext::get()->shader;
   VKShaderInterface *interface = static_cast<VKShaderInterface *>(shader->interface);

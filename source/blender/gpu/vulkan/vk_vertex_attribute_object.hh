@@ -40,8 +40,9 @@ struct VKVertexAttributeObject {
   void update_bindings(const VKContext &context, VKBatch &batch);
 
  private:
-  AttributeMask update_bindings(VKVertexBuffer &vertex_buffer,
+  void update_bindings(VKVertexBuffer &vertex_buffer,
                                 const VKShaderInterface &interface,
+                                AttributeMask &r_occupied_attributes,
                                 const bool use_instancing);
 };
 

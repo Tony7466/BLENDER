@@ -140,11 +140,9 @@ void VKPipeline::finalize(VKContext &context,
   VkPipelineVertexInputStateCreateInfo vertex_input_state = {};
   vertex_input_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
   vertex_input_state.vertexBindingDescriptionCount = 0;
-  vertex_input_state.vertexBindingDescriptionCount =
-      1;  // vertex_attribute_object.bindings.size();
+  vertex_input_state.vertexBindingDescriptionCount = vertex_attribute_object.bindings.size();
   vertex_input_state.pVertexBindingDescriptions = vertex_attribute_object.bindings.data();
-  vertex_input_state.vertexAttributeDescriptionCount =
-      1;  // vertex_attribute_object.attributes.size();
+  vertex_input_state.vertexAttributeDescriptionCount = vertex_attribute_object.attributes.size();
   vertex_input_state.pVertexAttributeDescriptions = vertex_attribute_object.attributes.data();
   pipeline_create_info.pVertexInputState = &vertex_input_state;
 
