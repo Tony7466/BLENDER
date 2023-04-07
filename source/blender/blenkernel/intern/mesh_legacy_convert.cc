@@ -1826,28 +1826,31 @@ void BKE_mesh_legacy_convert_uvs_to_generic(Mesh *mesh)
     uv_names[i] = new_name;
 
     CustomData_add_layer_named_with_data(
-        &mesh->ldata, CD_PROP_FLOAT2, coords, mesh->totloop, new_name);
+        &mesh->ldata, CD_PROP_FLOAT2, coords, mesh->totloop, new_name, nullptr);
     char buffer[MAX_CUSTOMDATA_LAYER_NAME];
     if (vert_selection) {
       CustomData_add_layer_named_with_data(&mesh->ldata,
                                            CD_PROP_BOOL,
                                            vert_selection,
                                            mesh->totloop,
-                                           BKE_uv_map_vert_select_name_get(new_name, buffer));
+                                           BKE_uv_map_vert_select_name_get(new_name, buffer),
+                                           nullptr);
     }
     if (edge_selection) {
       CustomData_add_layer_named_with_data(&mesh->ldata,
                                            CD_PROP_BOOL,
                                            edge_selection,
                                            mesh->totloop,
-                                           BKE_uv_map_edge_select_name_get(new_name, buffer));
+                                           BKE_uv_map_edge_select_name_get(new_name, buffer),
+                                           nullptr);
     }
     if (pin) {
       CustomData_add_layer_named_with_data(&mesh->ldata,
                                            CD_PROP_BOOL,
                                            pin,
                                            mesh->totloop,
-                                           BKE_uv_map_pin_name_get(new_name, buffer));
+                                           BKE_uv_map_pin_name_get(new_name, buffer),
+                                           nullptr);
     }
   }
 
@@ -2283,7 +2286,8 @@ void BKE_mesh_legacy_convert_polys_to_offsets(Mesh *mesh)
     });
     CustomData old_poly_data = mesh->pdata;
     CustomData_reset(&mesh->pdata);
-    CustomData_copy(&old_poly_data, &mesh->pdata, CD_MASK_MESH.pmask, CD_CONSTRUCT, mesh->totpoly);
+    CustomData_copy_new(
+        &old_poly_data, &mesh->pdata, CD_MASK_MESH.pmask, CD_CONSTRUCT, mesh->totpoly);
 
     int offset = 0;
     for (const int i : orig_indices.index_range()) {

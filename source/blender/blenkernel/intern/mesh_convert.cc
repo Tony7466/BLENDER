@@ -1124,10 +1124,10 @@ void BKE_mesh_nomain_to_mesh(Mesh *mesh_src, Mesh *mesh_dst, Object *ob)
 
   /* Using #CD_MASK_MESH ensures that only data that should exist in Main meshes is moved. */
   const CustomData_MeshMasks mask = CD_MASK_MESH;
-  CustomData_copy(&mesh_src->vdata, &mesh_dst->vdata, mask.vmask, CD_ASSIGN, mesh_src->totvert);
-  CustomData_copy(&mesh_src->edata, &mesh_dst->edata, mask.emask, CD_ASSIGN, mesh_src->totedge);
-  CustomData_copy(&mesh_src->pdata, &mesh_dst->pdata, mask.pmask, CD_ASSIGN, mesh_src->totpoly);
-  CustomData_copy(&mesh_src->ldata, &mesh_dst->ldata, mask.lmask, CD_ASSIGN, mesh_src->totloop);
+  CustomData_copy(&mesh_src->vdata, &mesh_dst->vdata, mask.vmask, mesh_src->totvert);
+  CustomData_copy(&mesh_src->edata, &mesh_dst->edata, mask.emask, mesh_src->totedge);
+  CustomData_copy(&mesh_src->pdata, &mesh_dst->pdata, mask.pmask, mesh_src->totpoly);
+  CustomData_copy(&mesh_src->ldata, &mesh_dst->ldata, mask.lmask, mesh_src->totloop);
   mesh_dst->poly_offset_indices = static_cast<int *>(mesh_src->poly_offset_indices);
   mesh_src->poly_offset_indices = nullptr;
 
