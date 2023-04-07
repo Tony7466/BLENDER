@@ -14,7 +14,7 @@
 
 #include "node_composite_util.hh"
 
-/* **************** Bright and Contrast  ******************** */
+/* **************** Brightness and Contrast  ******************** */
 
 namespace blender::nodes::node_composite_brightness_cc {
 
