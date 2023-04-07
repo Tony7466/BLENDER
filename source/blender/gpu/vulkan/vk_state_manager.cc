@@ -6,12 +6,28 @@
  */
 
 #include "vk_state_manager.hh"
+#include "vk_context.hh"
+#include "vk_pipeline.hh"
+#include "vk_shader.hh"
 #include "vk_texture.hh"
 
 namespace blender::gpu {
-void VKStateManager::apply_state() {}
 
-void VKStateManager::force_state() {}
+void VKStateManager::apply_state()
+{
+  VKContext &context = *VKContext::get();
+  VKShader &shader = unwrap(*context.shader);
+  VKPipeline &pipeline = shader.pipeline_get();
+  pipeline.state_manager_get().set_state(state, mutable_state);
+}
+
+void VKStateManager::force_state()
+{
+  VKContext &context = *VKContext::get();
+  VKShader &shader = unwrap(*context.shader);
+  VKPipeline &pipeline = shader.pipeline_get();
+  pipeline.state_manager_get().force_state(state, mutable_state);
+}
 
 void VKStateManager::issue_barrier(eGPUBarrier /*barrier_bits*/)
 {

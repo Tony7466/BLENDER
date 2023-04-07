@@ -22,6 +22,7 @@ void VKBatch::draw(int v_first, int v_count, int i_first, int i_count)
 
   // Based on the context construct the pipeline.
   VKContext &context = *VKContext::get();
+  context.state_manager->apply_state();
   VKVertexAttributeObject &vao = vao_cache_.vao_get(this);
   vao.update_bindings(context, *this);
   context.bind_graphics_pipeline(*this, vao);

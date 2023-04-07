@@ -10,6 +10,7 @@
 #include "vk_context.hh"
 #include "vk_framebuffer.hh"
 #include "vk_memory.hh"
+#include "vk_state_manager.hh"
 #include "vk_vertex_attribute_object.hh"
 
 namespace blender::gpu {
@@ -153,12 +154,6 @@ void VKPipeline::finalize(VKContext &context,
   pipeline_input_assembly.topology = to_vk_primitive_topology(batch.prim_type);
   pipeline_create_info.pInputAssemblyState = &pipeline_input_assembly;
 
-  VkPipelineRasterizationStateCreateInfo rasterization_state = {};
-  rasterization_state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-  pipeline_create_info.pRasterizationState = &rasterization_state;
-  /* TODO: Needs to be sourced from GPU_state. */
-  rasterization_state.lineWidth = 1.0;
-
   /* Viewport state. */
   VkPipelineViewportStateCreateInfo viewport_state = {};
   viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -178,14 +173,10 @@ void VKPipeline::finalize(VKContext &context,
   pipeline_create_info.pMultisampleState = &multisample_state;
 
   /* Color blend state. */
-  VkPipelineColorBlendStateCreateInfo pipeline_color_blend_state = {};
-  pipeline_color_blend_state.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-  VkPipelineColorBlendAttachmentState color_blend_attachment = {};
-  color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-                                          VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-  pipeline_color_blend_state.attachmentCount = 1;
-  pipeline_color_blend_state.pAttachments = &color_blend_attachment;
-  pipeline_create_info.pColorBlendState = &pipeline_color_blend_state;
+  const VKPipelineStateManager &state_manager = state_manager_get();
+  pipeline_create_info.pColorBlendState = &state_manager.pipeline_color_blend_state;
+  pipeline_create_info.pRasterizationState = &state_manager.rasterization_state;
+  pipeline_create_info.pDepthStencilState = &state_manager.depth_stencil_state;
 
   VkDevice vk_device = context.device_get();
   vkCreateGraphicsPipelines(

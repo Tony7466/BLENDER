@@ -496,7 +496,6 @@ VkPrimitiveTopology to_vk_primitive_topology(const GPUPrimType prim_type)
     case GPU_PRIM_LINE_STRIP:
       return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
     case GPU_PRIM_LINE_LOOP:
-      /* TODO: Line loop should add an additional index?*/
       return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
     case GPU_PRIM_TRI_STRIP:
       return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
@@ -514,8 +513,20 @@ VkPrimitiveTopology to_vk_primitive_topology(const GPUPrimType prim_type)
   }
 
   BLI_assert_unreachable();
-
   return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 }
 
+VkCullModeFlags to_vk_cull_mode_flags(const eGPUFaceCullTest cull_test)
+{
+  switch (cull_test) {
+    case GPU_CULL_FRONT:
+      return VK_CULL_MODE_FRONT_BIT;
+    case GPU_CULL_BACK:
+      return VK_CULL_MODE_BACK_BIT;
+    case GPU_CULL_NONE:
+      return VK_CULL_MODE_NONE;
+  }
+  BLI_assert_unreachable();
+  return VK_CULL_MODE_NONE;
+}
 }  // namespace blender::gpu

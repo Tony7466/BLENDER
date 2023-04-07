@@ -29,5 +29,6 @@ VkImageType to_vk_image_type(const eGPUTextureType type);
 VkClearColorValue to_vk_clear_color_value(const eGPUDataFormat format, const void *data);
 VkIndexType to_vk_index_type(const GPUIndexBufType index_type);
 VkPrimitiveTopology to_vk_primitive_topology(const GPUPrimType prim_type);
+VkCullModeFlags to_vk_cull_mode_flags(const eGPUFaceCullTest cull_test);
 
 }  // namespace blender::gpu

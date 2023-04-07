@@ -16,6 +16,7 @@ namespace blender::gpu {
 class VKFrameBuffer;
 class VKVertexAttributeObject;
 class VKBatch;
+class VKStateManager;
 
 class VKContext : public Context {
  private:
@@ -105,6 +106,8 @@ class VKContext : public Context {
   {
     return descriptor_pools_;
   }
+
+  const VKStateManager &state_manager_get() const;
 
   VmaAllocator mem_allocator_get() const
   {

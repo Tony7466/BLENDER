@@ -9,6 +9,10 @@
 
 #include "gpu_state_private.hh"
 
+#include "vk_common.hh"
+
+#include "BLI_vector.hh"
+
 namespace blender::gpu {
 class VKStateManager : public StateManager {
  public:
@@ -27,4 +31,5 @@ class VKStateManager : public StateManager {
 
   void texture_unpack_row_length_set(uint len) override;
 };
+
 }  // namespace blender::gpu

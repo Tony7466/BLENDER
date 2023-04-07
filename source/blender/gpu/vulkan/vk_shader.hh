@@ -96,6 +96,11 @@ class VKShader : public Shader {
   }
 };
 
+static inline VKShader &unwrap(Shader &shader)
+{
+  return static_cast<VKShader &>(shader);
+}
+
 static inline VKShader *unwrap(Shader *shader)
 {
   return static_cast<VKShader *>(shader);

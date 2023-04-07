@@ -14,6 +14,7 @@
 
 #include "vk_common.hh"
 #include "vk_descriptor_set.hh"
+#include "vk_pipeline_state.hh"
 #include "vk_push_constants.hh"
 
 namespace blender::gpu {
@@ -35,6 +36,7 @@ class VKPipeline : NonCopyable {
   VkPipeline vk_pipeline_ = VK_NULL_HANDLE;
   VKDescriptorSetTracker descriptor_set_;
   VKPushConstants push_constants_;
+  VKPipelineStateManager state_manager_;
 
  public:
   VKPipeline() = default;
@@ -69,6 +71,11 @@ class VKPipeline : NonCopyable {
   VKPushConstants &push_constants_get()
   {
     return push_constants_;
+  }
+
+  VKPipelineStateManager &state_manager_get()
+  {
+    return state_manager_;
   }
 
   VkPipeline vk_handle() const;
