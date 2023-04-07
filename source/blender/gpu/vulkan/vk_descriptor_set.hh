@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation. All rights reserved. */
+ * Copyright 2023 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -136,7 +136,7 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
   };
 
  private:
-  /** A list of bindings that needs to be updated.*/
+  /** A list of bindings that needs to be updated. */
   Vector<Binding> bindings_;
   VkDescriptorSetLayout layout_;
 

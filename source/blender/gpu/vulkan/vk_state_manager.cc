@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation. All rights reserved. */
+ * Copyright 2023 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -22,7 +22,7 @@ void VKStateManager::issue_barrier(eGPUBarrier /*barrier_bits*/)
   command_buffer.submit();
 }
 
-void VKStateManager::texture_bind(Texture * /*tex*/, eGPUSamplerState /*sampler*/, int /*unit*/) {}
+void VKStateManager::texture_bind(Texture * /*tex*/, GPUSamplerState /*sampler*/, int /*unit*/) {}
 
 void VKStateManager::texture_unbind(Texture * /*tex*/) {}
 
