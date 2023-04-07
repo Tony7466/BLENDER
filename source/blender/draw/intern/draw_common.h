@@ -48,7 +48,7 @@ bool DRW_object_axis_orthogonal_to_view(struct Object *ob, int axis);
 /* draw_hair.cc */
 
 /**
- * This creates a shading group with disW_b
+ * This creates a shading group with display hairs.
  * The draw call is already added by this function, just add additional uniforms.
  */
 struct DRWShadingGroup *DRW_shgroup_hair_create_sub(struct Object *object,
