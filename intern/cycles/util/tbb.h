@@ -11,6 +11,7 @@
 #include <tbb/enumerable_thread_specific.h>
 #include <tbb/parallel_for.h>
 #include <tbb/parallel_for_each.h>
+#include <tbb/parallel_invoke.h>
 #include <tbb/task_arena.h>
 #include <tbb/task_group.h>
 
@@ -26,6 +27,7 @@ using tbb::blocked_range;
 using tbb::enumerable_thread_specific;
 using tbb::parallel_for;
 using tbb::parallel_for_each;
+using tbb::parallel_invoke;
 
 static inline void thread_capture_fp_settings()
 {
