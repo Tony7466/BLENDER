@@ -8,6 +8,7 @@
 
 #include <cstring>
 
+#include "DNA_modifier_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
@@ -21,10 +22,13 @@
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 
+#include "NOD_socket.h"
+
 #include "BKE_animsys.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_main_namemap.h"
+#include "BKE_modifier.h"
 #include "BKE_node.h"
 #include "BKE_node_runtime.hh"
 
@@ -295,42 +299,97 @@ namespace replace_legacy_instances {
 
 using namespace blender;
 
-bNodeTree *childrens_combine_node_group(Main *bmain,
-                                        const Span<Object *> objects,
-                                        const char *name)
+static bNodeSocket &node_input_by_name(const StringRefNull name, bNode *node)
 {
-  const std::string tree_name = std::string(name) + std::string("_childrens");
-  bNodeTree *node_tree = ntreeAddTree(bmain, tree_name.c_str(), "GeometryNodeTree");
-
-  ntreeAddSocketInterface(node_tree, SOCK_OUT, "NodeSocketGeometry", "Childrens");
-
-  bNode *join_objects = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_JOIN_GEOMETRY);
-
-  bNodeSocket *to_join_objects = reinterpret_cast<bNodeSocket *>(join_objects->inputs.first);
-
-  for (const Object *object : objects) {
-    bNode *object_info = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_OBJECT_INFO);
-
-    bNodeSocket *from_object = reinterpret_cast<bNodeSocket *>(object_info->outputs.last);
-
-    nodeAddLink(node_tree, object_info, from_object, join_objects, to_join_objects);
+  LISTBASE_FOREACH (bNodeSocket *, socket, &node->inputs) {
+    if (StringRefNull(socket->name) == name) {
+      return *socket;
+    }
   }
+  BLI_assert_unreachable();
+  return *reinterpret_cast<bNodeSocket *>(node->inputs.first);
+}
+
+static bNodeSocket &node_output_by_name(const StringRefNull name, bNode *node)
+{
+  LISTBASE_FOREACH (bNodeSocket *, socket, &node->outputs) {
+    if (StringRefNull(socket->name) == name) {
+      return *socket;
+    }
+  }
+  BLI_assert_unreachable();
+  return *reinterpret_cast<bNodeSocket *>(node->outputs.first);
+}
+
+static bNodeTree *builtin_instancing_node_group(Main *bmain, const bool /*on_vertices*/)
+{
+  bNodeTree *node_tree = ntreeAddTree(bmain, "Legacy Point Instances", "GeometryNodeTree");
+
+  ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketGeometry", "Instancer");
+  ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketGeometry", "Instance");
+  ntreeAddSocketInterface(node_tree, SOCK_OUT, "NodeSocketGeometry", "Instances");
+
+  bke::node_field_inferencing::update_field_inferencing(*node_tree);
 
   return node_tree;
 }
-bNodeTree *buildin_instancing_node_group(Main *bmain, const bool on_vertices)
+
+static bNodeTree *childrens_combine_node_group(Main *bmain,
+                                               bNodeTree *instancer_node_group,
+                                               const Span<Object *> objects,
+                                               const StringRefNull name)
 {
-  return nullptr;
-}
-bNodeTree *instances_node_group(Main *bmain,
-                                bNodeTree *children_combine_node_group,
-                                bNodeTree *instancer_node_group)
-{
-  return nullptr;
+  const std::string tree_name = std::string(name) + std::string("_childrens");
+  bNodeTree *node_tree = ntreeAddTree(bmain, tree_name.c_str(), "GeometryNodeTree");
+  ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketGeometry", "Geometry");
+  ntreeAddSocketInterface(node_tree, SOCK_OUT, "NodeSocketGeometry", "Childrens");
+
+  bNode *group_input = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
+  bNodeSocket &input_geometry = node_output_by_name("Geometry", group_input);
+
+  bNode *group = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP);
+  group->id = &instancer_node_group->id;
+  bke::node_field_inferencing::update_field_inferencing(*node_tree);
+  nodes::update_node_declaration_and_sockets(*node_tree, *group);
+
+  bNodeSocket &instancer_geometry = node_input_by_name("Instancer", group);
+  nodeAddLink(node_tree, group_input, &input_geometry, group, &instancer_geometry);
+
+  bNode *join_geometrys = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_JOIN_GEOMETRY);
+
+  bNodeSocket &childrens_to_join = node_output_by_name("Geometry", join_geometrys);
+  bNodeSocket &group_instance_input = node_input_by_name("Instance", group);
+  nodeAddLink(node_tree, join_geometrys, &childrens_to_join, group, &group_instance_input);
+
+  bNodeSocket &joined_childrens = node_input_by_name("Geometry", join_geometrys);
+
+  for (Object *object : objects) {
+    bNode *object_info = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_OBJECT_INFO);
+
+    bNodeSocket &object_input = node_input_by_name("Object", object_info);
+    bNodeSocket &as_instance = node_input_by_name("As Instance", object_info);
+    object_input.default_value_typed<bNodeSocketValueObject>()->value = object;
+    as_instance.default_value_typed<bNodeSocketValueBoolean>()->value = true;
+
+    bNodeSocket &object_geometry = node_output_by_name("Geometry", object_info);
+    nodeAddLink(node_tree, object_info, &object_geometry, join_geometrys, &joined_childrens);
+  }
+
+  bNode *group_output = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_OUTPUT);
+  bNodeSocket &instances = node_output_by_name("Instances", group);
+  bNodeSocket &childrens_output = node_input_by_name("Childrens", group_output);
+  nodeAddLink(node_tree, group_output, &childrens_output, group, &instances);
+
+  // version_socket_update_is_used(node_tree); ??
+  return node_tree;
 }
 
-void object_push_instances_modifier(Main *bmain, Object *object, bNodeTree *node_tree)
+static void object_push_instances_modifier(Main * /*bmain*/, Object *object, bNodeTree *node_tree)
 {
+  ModifierData *new_modifier = BKE_modifier_new(eModifierType_Nodes);
+  NodesModifierData &node_modifier = *reinterpret_cast<NodesModifierData *>(new_modifier);
+  node_modifier.node_group = node_tree;
+  BLI_addtail(&object->modifiers, new_modifier);
 }
 
 }  //  namespace replace_legacy_instances
@@ -360,15 +419,15 @@ void remove_legacy_instances_on(Main *bmain, ListBase &lb_objects)
     /* Or on faces (OB_DUPLIFACES). */
     const bool on_vertices = (parent->transflag & OB_DUPLIVERTS) != 0;
 
-    using namespace replace_legacy_instances;
-    bNodeTree *childrens_combine_node = childrens_combine_node_group(
-        bmain, objects, parent->id.name + 2);
-    bNodeTree *instancer_node = buildin_instancing_node_group(bmain, on_vertices);
-    bNodeTree *geometry_node_instances_group = instances_node_group(
-        bmain, childrens_combine_node, instancer_node);
-    object_push_instances_modifier(bmain, parent, geometry_node_instances_group);
+    const StringRefNull parent_name(parent->id.name + 2);
 
-    // parent->transflag = 0;
+    using namespace replace_legacy_instances;
+    bNodeTree *instancer_node_group = builtin_instancing_node_group(bmain, on_vertices);
+    bNodeTree *childrens_combine_node = childrens_combine_node_group(
+        bmain, instancer_node_group, objects, parent_name);
+    object_push_instances_modifier(bmain, parent, childrens_combine_node);
+
+    parent->transflag = 0;
   }
 
   printf("HELLO!\n");

@@ -27,6 +27,7 @@ static void node_declare(const bNodeTree &node_tree,
     return;
   }
 
+  BLI_assert(group->runtime->field_inferencing_interface != nullptr);
   const FieldInferencingInterface &field_interface = *group->runtime->field_inferencing_interface;
   for (const int i : r_declaration.inputs.index_range()) {
     r_declaration.inputs[i]->input_field_type = field_interface.inputs[i];

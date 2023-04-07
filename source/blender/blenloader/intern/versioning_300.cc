@@ -1348,7 +1348,7 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
     FOREACH_NODETREE_END;
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 306, 1)) {
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 5)) {
     remove_legacy_instances_on(bmain, bmain->objects);
   }
 
