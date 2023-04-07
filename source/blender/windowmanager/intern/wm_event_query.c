@@ -273,7 +273,6 @@ int WM_event_drag_direction(const wmEvent *event, ToolSettings *ts)
 
   bool left_right = U.click_drag_direction & USER_CLICK_DRAG_DIRECTION_LEFT_RIGHT;
   bool up_down = U.click_drag_direction & USER_CLICK_DRAG_DIRECTION_UP_DOWN;
-  bool drag_select_toolsetting = U.drag_select_control & USER_DRAG_SELECT_TOOLSETTING;
   int theta = left_right ?
                   round_fl_to_int(atan2f(0.0f, (float)delta[0]) / (float)M_PI) :
               up_down ?
@@ -310,7 +309,7 @@ int WM_event_drag_direction(const wmEvent *event, ToolSettings *ts)
     }
   }
 
-  if (drag_select_toolsetting) {
+  if (U.drag_select_control < 1) {
     int box = ts->box_drag_direction;
     int lasso = ts->lasso_drag_direction;
 
