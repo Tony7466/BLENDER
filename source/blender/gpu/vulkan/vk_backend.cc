@@ -151,13 +151,49 @@ shaderc::Compiler &VKBackend::get_shaderc_compiler()
   return shaderc_compiler_;
 }
 
-void VKBackend::capabilities_init(VKContext & /*context*/)
+void VKBackend::capabilities_init(VKContext &context)
 {
   /* Reset all capabilities from previous context. */
   GCaps = {};
   GCaps.compute_shader_support = true;
   GCaps.shader_storage_buffer_objects_support = true;
   GCaps.shader_image_load_store_support = true;
+  
+  
+  /* Check enabled instance extensions and search for memstat support. */
+  bool memstat_supported = false;
+
+  uint32_t extension_count = 0;
+  vkEnumerateInstanceExtensionProperties(NULL, &extension_count, NULL);
+  std::vector<VkExtensionProperties> instance_extensions(extension_count);
+  vkEnumerateInstanceExtensionProperties(NULL, &extension_count, instance_extensions.data());
+  for (const auto &prop : instance_extensions)
+  {
+    if (strcmp(prop.extensionName, "VK_KHR_get_physical_device_properties2") == 0)
+    {
+      memstat_supported = true;
+      break;
+    }
+  }
+
+  /* Check for enabled device extensions. */
+  if (memstat_supported)
+  {
+    memstat_supported = false;
+    vkEnumerateDeviceExtensionProperties(context.physical_device_get(), NULL, &extension_count, NULL);
+    std::vector<VkExtensionProperties> device_extensions(extension_count);
+    vkEnumerateDeviceExtensionProperties(context.physical_device_get(), NULL, &extension_count, device_extensions.data());
+    for (const auto &prop : device_extensions)
+    {
+      if (strcmp(prop.extensionName, "VK_EXT_memory_budget") == 0)
+      {
+        memstat_supported = true;
+        break;
+      }
+    }
+  }
+
+  GCaps.mem_stats_support = memstat_supported;
 }
 
 }  // namespace blender::gpu

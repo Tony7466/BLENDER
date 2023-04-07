@@ -14,6 +14,8 @@
 
 #include "GHOST_C-api.h"
 
+#include "gpu_capabilities.h"
+
 namespace blender::gpu {
 
 VKContext::VKContext(void *ghost_window, void *ghost_context)
@@ -43,6 +45,10 @@ VKContext::VKContext(void *ghost_window, void *ghost_context)
   info.device = vk_device_;
   info.instance = vk_instance_;
   info.pAllocationCallbacks = vk_allocation_callbacks;
+  if (GPU_mem_stats_supported())
+  {
+    info.flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+  }
   vmaCreateAllocator(&info, &mem_allocator_);
   descriptor_pools_.init(vk_device_);
 
@@ -122,7 +128,34 @@ void VKContext::finish()
   command_buffer_.submit();
 }
 
-void VKContext::memory_statistics_get(int * /*total_mem*/, int * /*free_mem*/) {}
+void VKContext::memory_statistics_get(int *total_mem, int *free_mem) 
+{
+  const VkPhysicalDeviceMemoryProperties *mem_props = nullptr;
+  vmaGetMemoryProperties(mem_allocator_, &mem_props);
+  int num_heaps = mem_props->memoryHeapCount;
+  if (GPU_mem_stats_supported()) 
+  {
+    VmaBudget *budgets = new VmaBudget[num_heaps];
+    vmaGetHeapBudgets(mem_allocator_, budgets);
+    VkDeviceSize free_mem_bytes = 0, used_mem_bytes = 0;
+    for (int i = 0; i < num_heaps; i++)
+    {
+      used_mem_bytes += budgets[i].usage;
+      free_mem_bytes += budgets[i].budget;
+    }
+    VkDeviceSize total_mem_bytes = used_mem_bytes + free_mem_bytes;
+
+    *total_mem = (int) (total_mem_bytes / 1024);
+    *free_mem = (int) (free_mem_bytes / 1024);
+
+    delete[] budgets;
+  }
+  else
+  {
+    *total_mem = 0;
+    *free_mem = 0;
+  }
+}
 
 void VKContext::activate_framebuffer(VKFrameBuffer &framebuffer)
 {

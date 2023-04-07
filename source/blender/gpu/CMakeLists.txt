@@ -842,8 +842,10 @@ if(WITH_GTESTS)
       tests/gpu_testing.hh
     )
     if(WITH_VULKAN_BACKEND)
+      add_compile_definitions(IMATH_HALF_NO_LOOKUP_TABLE)
       list(APPEND TEST_SRC
         tests/memory_layout_test.cc
+        tests/memory_statistics_test.cc
       )
     endif()
 
