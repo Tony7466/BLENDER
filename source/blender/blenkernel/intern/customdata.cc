@@ -3699,12 +3699,12 @@ void CustomData_bmesh_init_pool(CustomData *data, const int totelem, const char 
   }
 }
 
-bool CustomData_bmesh_merge_new(const CustomData *source,
-                                CustomData *dest,
-                                eCustomDataMask mask,
-                                eCDAllocType alloctype,
-                                BMesh *bm,
-                                const char htype)
+bool CustomData_bmesh_merge_layout(const CustomData *source,
+                                   CustomData *dest,
+                                   eCustomDataMask mask,
+                                   eCDAllocType alloctype,
+                                   BMesh *bm,
+                                   const char htype)
 {
 
   if (CustomData_number_of_layers_typemask(source, mask) == 0) {
