@@ -1096,71 +1096,6 @@ static EditBone *get_symmetrized_bone(bArmature *arm, EditBone *bone)
   return (mirror != NULL) ? mirror : bone;
 }
 
-static void ED_armature_set_symmetrizable_ebone_selection(bArmature *arm, int axis, int direction)
-{
-  /* Deselects ebones depending on input axis and direction.
-   * A symmetrizable selection contains selected ebones of the input direction
-   * and unique selected bones with an unique flippable name.*/
-  EditBone *ebone_iter;
-
-  for (ebone_iter = arm->edbo->first; ebone_iter; ebone_iter = ebone_iter->next) {
-    if (!(EBONE_VISIBLE(arm, ebone_iter) && (ebone_iter->flag & BONE_SELECTED))) {
-      /* ignore selected bones which are invisble */
-      continue;
-    }
-
-    char name_flip[MAXBONENAME];
-
-    if (ebone_iter == NULL) {
-      continue;
-    }
-
-    BLI_string_flip_side_name(name_flip, ebone_iter->name, false, sizeof(name_flip));
-
-    if (STREQ(name_flip, ebone_iter->name)) {
-      /* if the name matches, we don't have the potential to be mirrored, just skip */
-      ebone_iter->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
-      continue;
-    }
-
-    EditBone *ebone = ED_armature_ebone_find_name(arm->edbo, name_flip);
-
-    if (!ebone) {
-      continue;
-    }
-
-    if ((ebone->flag & BONE_SELECTED) == 0) {
-      /* ebone is only once selected per side */
-      continue;
-    }
-
-    /* complicated - choose which direction to copy */
-    float axis_delta;
-
-    axis_delta = ebone->head[axis] - ebone_iter->head[axis];
-    if (axis_delta == 0.0f) {
-      axis_delta = ebone->tail[axis] - ebone_iter->tail[axis];
-
-      if (axis_delta == 0.0f) {
-        /* Both mirrored bones exist and point to each other and overlap exactly.
-         * in this case there's no well defined solution, so de-select both and skip.
-         */
-        ebone->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
-        ebone_iter->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
-        continue;
-      }
-    }
-
-    // deselect depending on direction
-    if (((axis_delta < 0.0f) ? -1 : 1) == direction) {
-      ebone_iter->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
-    }
-    else {
-      ebone->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
-    }
-  }
-}
-
 /**
  * near duplicate of #armature_duplicate_selected_exec,
  * except for parenting part (keep in sync)
@@ -1192,16 +1127,71 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
 
     preEditBoneDuplicate(arm->edbo);
 
-    /* Select mirrored bones */
-    ED_armature_set_symmetrizable_ebone_selection(arm, axis, direction);
+    /* Deselect ebones depending on input axis and direction.
+     * A symmetrizable selection contains selected ebones of the input direction
+     * and unique selected bones with an unique flippable name.
+     *
+     * Storing temp ptrs to mirrored unselected ebones. */
     for (ebone_iter = arm->edbo->first; ebone_iter; ebone_iter = ebone_iter->next) {
-      if (EBONE_VISIBLE(arm, ebone_iter) && (ebone_iter->flag & BONE_SELECTED)) {
-        EditBone *ebone;
-        /* Set temp pointer to mirrored ebones */
-        ebone = ED_armature_ebone_get_mirrored(arm->edbo, ebone_iter);
-        if (ebone) {
-          ebone_iter->temp.ebone = ebone;
+      if (!(EBONE_VISIBLE(arm, ebone_iter) && (ebone_iter->flag & BONE_SELECTED))) {
+        /* Skipping invisible selected bones. */
+        continue;
+      }
+
+      char name_flip[MAXBONENAME];
+      if (ebone_iter == NULL) {
+        continue;
+      }
+
+      BLI_string_flip_side_name(name_flip, ebone_iter->name, false, sizeof(name_flip));
+
+      if (STREQ(name_flip, ebone_iter->name)) {
+        /* Skipping ebones without flippable as they don't have the potential to be mirrored. */
+        ebone_iter->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
+        continue;
+      }
+
+      EditBone *ebone = ED_armature_ebone_find_name(arm->edbo, name_flip);
+
+      if (!ebone) {
+        /* The ebone_iter is unique and mirrorable. */
+        continue;
+      }
+
+      if (ebone->flag & BONE_SELECTED) {
+        /* The mirrored ebone and the ebone_iter are selected.
+         * Deselect based on the input direction and axis. */
+        float axis_delta;
+
+        axis_delta = ebone->head[axis] - ebone_iter->head[axis];
+        if (axis_delta == 0.0f) {
+          /* The ebone heads are overlapping. */
+          axis_delta = ebone->tail[axis] - ebone_iter->tail[axis];
+
+          if (axis_delta == 0.0f) {
+            /* Both mirrored bones point to each other and overlap exactly.
+             * In this case there's no well defined solution, so de-select both and skip. */
+            ebone->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
+            ebone_iter->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
+            continue;
+          }
         }
+
+        /* Deselect depending on direction. */
+        if (((axis_delta < 0.0f) ? -1 : 1) == direction) {
+          /* Don't store temp ptr if the iter_bone gets deselected.
+           * In this case, the ebone.temp should point to the ebone_iter. */
+          ebone_iter->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
+          continue;
+        }
+
+        ebone->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
+      }
+
+      /* Set temp pointer to mirrored ebones */
+      ebone = ED_armature_ebone_get_mirrored(arm->edbo, ebone_iter);
+      if (ebone) {
+        ebone_iter->temp.ebone = ebone;
       }
     }
 
