@@ -45,14 +45,14 @@ IDNode::ComponentIDKey::ComponentIDKey(NodeType type, const char *name) : type(t
 
 bool IDNode::ComponentIDKey::operator==(const ComponentIDKey &other) const
 {
-  return type == other.type && STREQ(name, other.name);
+  return type == other.type && name == other.name;
 }
 
 uint64_t IDNode::ComponentIDKey::hash() const
 {
   const int type_as_int = int(type);
   return BLI_ghashutil_combine_hash(BLI_ghashutil_uinthash(type_as_int),
-                                    BLI_ghashutil_strhash_p(name));
+                                    BLI_ghashutil_strhash_p(name.c_str()));
 }
 
 void IDNode::init(const ID *id, const char * /*subdata*/)

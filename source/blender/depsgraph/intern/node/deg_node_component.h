@@ -33,7 +33,7 @@ struct ComponentNode : public Node {
   /* Key used to look up operations within a component */
   struct OperationIDKey {
     OperationCode opcode;
-    const char *name;
+    string name;
     int name_tag;
 
     OperationIDKey();

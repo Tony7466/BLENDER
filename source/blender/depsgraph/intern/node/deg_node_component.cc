@@ -54,7 +54,7 @@ string ComponentNode::OperationIDKey::identifier() const
 
 bool ComponentNode::OperationIDKey::operator==(const OperationIDKey &other) const
 {
-  return (opcode == other.opcode) && STREQ(name, other.name) && (name_tag == other.name_tag);
+  return (opcode == other.opcode) && (name == other.name) && (name_tag == other.name_tag);
 }
 
 uint64_t ComponentNode::OperationIDKey::hash() const
@@ -63,7 +63,7 @@ uint64_t ComponentNode::OperationIDKey::hash() const
   return BLI_ghashutil_combine_hash(
       name_tag,
       BLI_ghashutil_combine_hash(BLI_ghashutil_uinthash(opcode_as_int),
-                                 BLI_ghashutil_strhash_p(name)));
+                                 BLI_ghashutil_strhash_p(name.c_str())));
 }
 
 ComponentNode::ComponentNode()
@@ -106,7 +106,7 @@ OperationNode *ComponentNode::find_operation(OperationIDKey key) const
   else {
     for (OperationNode *op_node : operations) {
       if (op_node->opcode == key.opcode && op_node->name_tag == key.name_tag &&
-          STREQ(op_node->name.c_str(), key.name)) {
+          op_node->name == key.name) {
         node = op_node;
         break;
       }

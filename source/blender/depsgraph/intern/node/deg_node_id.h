@@ -38,7 +38,7 @@ struct IDNode : public Node {
     bool operator==(const ComponentIDKey &other) const;
 
     NodeType type;
-    const char *name;
+    string name;
   };
 
   /** Initialize 'id' node - from pointer data given. */
