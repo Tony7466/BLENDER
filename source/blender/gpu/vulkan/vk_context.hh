@@ -15,6 +15,7 @@
 namespace blender::gpu {
 class VKFrameBuffer;
 class VKVertexAttributeObject;
+class VKBatch;
 
 class VKContext : public Context {
  private:
@@ -62,7 +63,8 @@ class VKContext : public Context {
   void deactivate_framebuffer();
   VKFrameBuffer *active_framebuffer_get() const;
 
-  void bind_graphics_pipeline(const VKVertexAttributeObject &vertex_attribute_object);
+  void bind_graphics_pipeline(const VKBatch &batch,
+                              const VKVertexAttributeObject &vertex_attribute_object);
 
   static VKContext *get(void)
   {

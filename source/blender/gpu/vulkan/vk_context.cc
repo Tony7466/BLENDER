@@ -182,11 +182,12 @@ void VKContext::deactivate_framebuffer()
 /** \name Graphics pipeline
  * \{ */
 
-void VKContext::bind_graphics_pipeline(const VKVertexAttributeObject &vertex_attribute_object)
+void VKContext::bind_graphics_pipeline(const VKBatch &batch,
+                                       const VKVertexAttributeObject &vertex_attribute_object)
 {
   VKShader *shader = unwrap(this->shader);
   BLI_assert(shader);
-  shader->update_graphics_pipeline(*this, vertex_attribute_object);
+  shader->update_graphics_pipeline(*this, batch, vertex_attribute_object);
   command_buffer_get().bind(shader->pipeline_get(), VK_PIPELINE_BIND_POINT_GRAPHICS);
   shader->pipeline_get().push_constants_get().update(*this);
 }

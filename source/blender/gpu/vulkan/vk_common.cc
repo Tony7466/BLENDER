@@ -484,4 +484,38 @@ VkIndexType to_vk_index_type(const GPUIndexBufType index_type)
   return VK_INDEX_TYPE_UINT16;
 }
 
+VkPrimitiveTopology to_vk_primitive_topology(const GPUPrimType prim_type)
+{
+  switch (prim_type) {
+    case GPU_PRIM_POINTS:
+      return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+    case GPU_PRIM_LINES:
+      return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+    case GPU_PRIM_TRIS:
+      return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    case GPU_PRIM_LINE_STRIP:
+      return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+    case GPU_PRIM_LINE_LOOP:
+      /* TODO: Line loop should add an additional index?*/
+      return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+    case GPU_PRIM_TRI_STRIP:
+      return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+    case GPU_PRIM_TRI_FAN:
+      return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
+    case GPU_PRIM_LINES_ADJ:
+      return VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY;
+    case GPU_PRIM_TRIS_ADJ:
+      return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY;
+    case GPU_PRIM_LINE_STRIP_ADJ:
+      return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY;
+
+    case GPU_PRIM_NONE:
+      break;
+  }
+
+  BLI_assert_unreachable();
+
+  return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+}
+
 }  // namespace blender::gpu

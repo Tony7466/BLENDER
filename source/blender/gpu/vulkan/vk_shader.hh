@@ -71,6 +71,7 @@ class VKShader : public Shader {
   const VKShaderInterface &interface_get() const;
 
   void update_graphics_pipeline(VKContext &context,
+                                const VKBatch &batch,
                                 const VKVertexAttributeObject &vertex_attribute_object);
 
  private:

@@ -6,6 +6,7 @@
  */
 
 #include "vk_pipeline.hh"
+#include "vk_batch.hh"
 #include "vk_context.hh"
 #include "vk_framebuffer.hh"
 #include "vk_memory.hh"
@@ -92,6 +93,7 @@ void VKPipeline::finalize(VKContext &context,
                           VkShaderModule vertex_module,
                           VkShaderModule fragment_module,
                           VkPipelineLayout &pipeline_layout,
+                          const VKBatch &batch,
                           const VKVertexAttributeObject &vertex_attribute_object)
 {
   BLI_assert(vertex_module != VK_NULL_HANDLE);
@@ -137,16 +139,18 @@ void VKPipeline::finalize(VKContext &context,
   VkPipelineVertexInputStateCreateInfo vertex_input_state = {};
   vertex_input_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
   vertex_input_state.vertexBindingDescriptionCount = 0;
-  vertex_input_state.vertexBindingDescriptionCount = 1;//vertex_attribute_object.bindings.size();
+  vertex_input_state.vertexBindingDescriptionCount =
+      1;  // vertex_attribute_object.bindings.size();
   vertex_input_state.pVertexBindingDescriptions = vertex_attribute_object.bindings.data();
-  vertex_input_state.vertexAttributeDescriptionCount = 1;//vertex_attribute_object.attributes.size();
+  vertex_input_state.vertexAttributeDescriptionCount =
+      1;  // vertex_attribute_object.attributes.size();
   vertex_input_state.pVertexAttributeDescriptions = vertex_attribute_object.attributes.data();
   pipeline_create_info.pVertexInputState = &vertex_input_state;
 
   /* Input assembly state. */
   VkPipelineInputAssemblyStateCreateInfo pipeline_input_assembly = {};
   pipeline_input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-  pipeline_input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+  pipeline_input_assembly.topology = to_vk_primitive_topology(batch.prim_type);
   pipeline_create_info.pInputAssemblyState = &pipeline_input_assembly;
 
   VkPipelineRasterizationStateCreateInfo rasterization_state = {};
