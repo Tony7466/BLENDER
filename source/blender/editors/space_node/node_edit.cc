@@ -64,6 +64,7 @@
 #include "NOD_composite.h"
 #include "NOD_geometry.h"
 #include "NOD_shader.h"
+#include "NOD_socket.h"
 #include "NOD_texture.h"
 #include "node_intern.hh" /* own include */
 
@@ -1247,6 +1248,33 @@ static void node_duplicate_reparent_recursive(bNodeTree *ntree,
   }
 }
 
+static void remap_pairing(bNodeTree &dst_tree, const Map<bNode *, bNode *> &node_map)
+{
+  /* We don't have the old tree for looking up output nodes by ID,
+   * so have to build a map first to find copied output nodes in the new tree. */
+  Map<uint32_t, bNode *> dst_output_node_map;
+  for (const auto &item : node_map.items()) {
+    if (item.key->type == GEO_NODE_SIMULATION_OUTPUT) {
+      dst_output_node_map.add_new(item.key->identifier, item.value);
+    }
+  }
+
+  for (bNode *dst_node : node_map.values()) {
+    if (dst_node->type == GEO_NODE_SIMULATION_INPUT) {
+      NodeGeometrySimulationInput *data = static_cast<NodeGeometrySimulationInput *>(
+          dst_node->storage);
+      const bNode *dst_output_node = dst_output_node_map.lookup_default(data->output_node_id, nullptr);
+      if (dst_output_node != nullptr) {
+        data->output_node_id = dst_output_node->identifier;
+      }
+      else {
+        data->output_node_id = 0;
+        blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
+      }
+    }
+  }
+}
+
 static int node_duplicate_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
@@ -1333,6 +1361,8 @@ static int node_duplicate_exec(bContext *C, wmOperator *op)
       node_duplicate_reparent_recursive(ntree, node_map, node);
     }
   }
+
+  remap_pairing(*ntree, node_map);
 
   /* Deselect old nodes, select the copies instead. */
   for (const auto item : node_map.items()) {
