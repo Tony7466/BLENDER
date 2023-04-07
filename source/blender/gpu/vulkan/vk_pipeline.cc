@@ -9,6 +9,7 @@
 #include "vk_context.hh"
 #include "vk_framebuffer.hh"
 #include "vk_memory.hh"
+#include "vk_vertex_attribute_object.hh"
 
 namespace blender::gpu {
 
@@ -90,7 +91,8 @@ bool VKPipeline::is_valid() const
 void VKPipeline::finalize(VKContext &context,
                           VkShaderModule vertex_module,
                           VkShaderModule fragment_module,
-                          VkPipelineLayout &pipeline_layout)
+                          VkPipelineLayout &pipeline_layout,
+                          const VKVertexAttributeObject &vertex_attribute_object)
 {
   BLI_assert(vertex_module != VK_NULL_HANDLE);
 
@@ -135,21 +137,10 @@ void VKPipeline::finalize(VKContext &context,
   VkPipelineVertexInputStateCreateInfo vertex_input_state = {};
   vertex_input_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
   vertex_input_state.vertexBindingDescriptionCount = 0;
-  /* Dummy attribute containing the vertex positions. These should be extracted from shader create
-   * infos. */
-  VkVertexInputBindingDescription binding_description = {};
-  binding_description.binding = 0;
-  binding_description.stride = 4 * 3;
-  binding_description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-  vertex_input_state.vertexBindingDescriptionCount = 1;
-  vertex_input_state.pVertexBindingDescriptions = &binding_description;
-  VkVertexInputAttributeDescription attribute_description = {};
-  attribute_description.location = 0;
-  attribute_description.binding = 0;
-  attribute_description.format = VK_FORMAT_R32G32B32_SFLOAT;
-  attribute_description.offset = 0;
-  vertex_input_state.vertexAttributeDescriptionCount = 1;
-  vertex_input_state.pVertexAttributeDescriptions = &attribute_description;
+  vertex_input_state.vertexBindingDescriptionCount = 1;//vertex_attribute_object.bindings.size();
+  vertex_input_state.pVertexBindingDescriptions = vertex_attribute_object.bindings.data();
+  vertex_input_state.vertexAttributeDescriptionCount = 1;//vertex_attribute_object.attributes.size();
+  vertex_input_state.pVertexAttributeDescriptions = vertex_attribute_object.attributes.data();
   pipeline_create_info.pVertexInputState = &vertex_input_state;
 
   /* Input assembly state. */

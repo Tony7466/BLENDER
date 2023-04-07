@@ -19,6 +19,7 @@
 namespace blender::gpu {
 class VKContext;
 class VKShader;
+class VKVertexAttributeObject;
 
 /**
  * Pipeline can be a compute pipeline or a graphic pipeline.
@@ -75,7 +76,8 @@ class VKPipeline : NonCopyable {
   void finalize(VKContext &context,
                 VkShaderModule vertex_module,
                 VkShaderModule fragment_module,
-                VkPipelineLayout &pipeline_layout);
+                VkPipelineLayout &pipeline_layout,
+               const VKVertexAttributeObject &vertex_attribute_object);
 };
 
 }  // namespace blender::gpu

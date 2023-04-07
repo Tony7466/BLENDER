@@ -70,7 +70,8 @@ class VKShader : public Shader {
 
   const VKShaderInterface &interface_get() const;
 
-  void update_graphics_pipeline(VKContext &context);
+  void update_graphics_pipeline(VKContext &context,
+                                const VKVertexAttributeObject &vertex_attribute_object);
 
  private:
   Vector<uint32_t> compile_glsl_to_spirv(Span<const char *> sources, shaderc_shader_kind kind);
