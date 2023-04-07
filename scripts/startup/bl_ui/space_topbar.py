@@ -215,17 +215,14 @@ class TOPBAR_MT_blender(Menu):
     def draw(self, _context):
         layout = self.layout
 
-        layout.operator("wm.splash")
-        layout.operator("wm.splash_about")
+        layout.operator("script.reload")
 
         layout.separator()
 
-        layout.operator("preferences.app_template_install",
-                        text="Install Application Template...")
-
-        layout.separator()
-
-        layout.menu("TOPBAR_MT_blender_system")
+        layout.operator("wm.memory_statistics")
+        layout.operator("wm.debug_menu")
+        layout.operator_menu_enum("wm.redraw_timer", "type")
+        layout.operator("screen.spacedata_cleanup")
 
 
 class TOPBAR_MT_file_cleanup(Menu):
@@ -277,6 +274,10 @@ class TOPBAR_MT_file(Menu):
         layout.menu("TOPBAR_MT_file_open_recent")
         layout.operator("wm.revert_mainfile")
         layout.menu("TOPBAR_MT_file_recover")
+        layout.operator_context = 'INVOKE_AREA'
+        layout.operator("wm.link", text="Link...", icon='LINK_BLEND')
+        layout.operator("wm.append", text="Append...", icon='APPEND_BLEND')
+        layout.menu("TOPBAR_MT_file_import", icon='IMPORT')
 
         layout.separator()
 
@@ -287,27 +288,14 @@ class TOPBAR_MT_file(Menu):
         layout.operator("wm.save_as_mainfile", text="Save As...")
         layout.operator_context = 'INVOKE_AREA'
         layout.operator("wm.save_as_mainfile", text="Save Copy...").copy = True
-
-        layout.separator()
-
-        layout.operator_context = 'INVOKE_AREA'
-        layout.operator("wm.link", text="Link...", icon='LINK_BLEND')
-        layout.operator("wm.append", text="Append...", icon='APPEND_BLEND')
-        layout.menu("TOPBAR_MT_file_previews")
-
-        layout.separator()
-
-        layout.menu("TOPBAR_MT_file_import", icon='IMPORT')
         layout.menu("TOPBAR_MT_file_export", icon='EXPORT')
 
         layout.separator()
 
-        layout.menu("TOPBAR_MT_file_external_data")
-        layout.menu("TOPBAR_MT_file_cleanup")
-
-        layout.separator()
-
         layout.menu("TOPBAR_MT_file_defaults")
+        layout.menu("TOPBAR_MT_file_cleanup")
+        layout.menu("TOPBAR_MT_file_external_data")
+        layout.menu("TOPBAR_MT_file_previews")
 
         layout.separator()
 
@@ -378,6 +366,12 @@ class TOPBAR_MT_file_new(Menu):
         if show_more:
             layout.menu("TOPBAR_MT_templates_more", text="...")
 
+        if not use_splash:
+            layout.separator()
+            layout.operator_context = 'INVOKE_AREA'
+            layout.operator("preferences.app_template_install",
+                        text="Install Application Template...")
+
     def draw(self, context):
         TOPBAR_MT_file_new.draw_ex(self.layout, context)
 
@@ -426,26 +420,6 @@ class TOPBAR_MT_file_defaults(Menu):
             del display_name
         else:
             layout.operator("wm.read_factory_settings")
-
-
-# Include technical operators here which would otherwise have no way for users to access.
-class TOPBAR_MT_blender_system(Menu):
-    bl_label = "System"
-
-    def draw(self, _context):
-        layout = self.layout
-
-        layout.operator("script.reload")
-
-        layout.separator()
-
-        layout.operator("wm.memory_statistics")
-        layout.operator("wm.debug_menu")
-        layout.operator_menu_enum("wm.redraw_timer", "type")
-
-        layout.separator()
-
-        layout.operator("screen.spacedata_cleanup")
 
 
 class TOPBAR_MT_templates_more(Menu):
@@ -596,19 +570,13 @@ class TOPBAR_MT_edit(Menu):
 
         layout.operator("ed.undo")
         layout.operator("ed.redo")
-
-        layout.separator()
-
         layout.menu("TOPBAR_MT_undo_history")
 
         layout.separator()
 
+        layout.operator("screen.redo_last", text="Adjust Last Operation...")
         layout.operator("screen.repeat_last")
         layout.operator("screen.repeat_history", text="Repeat History...")
-
-        layout.separator()
-
-        layout.operator("screen.redo_last", text="Adjust Last Operation...")
 
         layout.separator()
 
@@ -694,46 +662,29 @@ class TOPBAR_MT_help(Menu):
 
         show_developer = context.preferences.view.show_developer_ui
 
-        layout.operator("wm.url_open_preset", text="Manual",
-                        icon='HELP').type = 'MANUAL'
+        layout.operator("wm.url_open_preset", text="Manual", icon='URL').type = 'MANUAL'
 
-        layout.operator(
-            "wm.url_open", text="Tutorials", icon='URL',
-        ).url = "https://www.blender.org/tutorials"
-        layout.operator(
-            "wm.url_open", text="Support", icon='URL',
-        ).url = "https://www.blender.org/support"
+        layout.operator("wm.url_open", text="Tutorials").url = "https://www.blender.org/tutorials"
+        layout.operator("wm.url_open", text="Support").url = "https://www.blender.org/support"
+        layout.operator("wm.url_open", text="User Communities").url = "https://www.blender.org/community/"
 
         layout.separator()
-
-        layout.operator(
-            "wm.url_open", text="User Communities", icon='URL',
-        ).url = "https://www.blender.org/community/"
-        layout.operator(
-            "wm.url_open", text="Developer Community", icon='URL',
-        ).url = "https://devtalk.blender.org"
-
-        layout.separator()
-
-        layout.operator(
-            "wm.url_open_preset", text="Python API Reference", icon='URL',
-        ).type = 'API'
 
         if show_developer:
-            layout.operator(
-                "wm.url_open", text="Developer Documentation", icon='URL',
-            ).url = "https://wiki.blender.org/wiki/Main_Page"
-
+            layout.operator("wm.url_open", text="Developer Community", icon='URL').url = "https://devtalk.blender.org"
+            layout.operator("wm.url_open_preset", text="Python API Reference").type = 'API'
+            layout.operator("wm.url_open", text="Developer Documentation").url = "https://wiki.blender.org/wiki/Main_Page"
             layout.operator("wm.operator_cheat_sheet", icon='TEXT')
 
         layout.separator()
 
-        layout.operator("wm.url_open_preset",
-                        text="Report a Bug", icon='URL').type = 'BUG'
+        layout.operator("wm.url_open_preset", text="Report a Bug", icon='URL').type = 'BUG'
+        layout.operator("wm.sysinfo")
 
         layout.separator()
 
-        layout.operator("wm.sysinfo")
+        layout.operator("wm.splash")
+        layout.operator("wm.splash_about")
 
 
 class TOPBAR_MT_file_context_menu(Menu):
@@ -941,7 +892,6 @@ classes = (
     TOPBAR_MT_workspace_menu,
     TOPBAR_MT_editor_menus,
     TOPBAR_MT_blender,
-    TOPBAR_MT_blender_system,
     TOPBAR_MT_file,
     TOPBAR_MT_file_new,
     TOPBAR_MT_file_recover,
