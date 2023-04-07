@@ -11,12 +11,8 @@ shader node_separate_color(string color_type = "rgb",
                            output float Blue = 0.0)
 {
   color col;
-  if (color_type == "rgb")
-    col = Color;
-  else if (color_type == "hsv")
-    col = rgb_to_hsv(Color);
-  else if (color_type == "hsl")
-    col = rgb_to_hsl(Color);
+  if (color_type == "rgb" || color_type == "hsv" || color_type == "hsl")
+    col = transformc(color_type, Color);
   else
     warning("%s", "Unknown color space!");
 

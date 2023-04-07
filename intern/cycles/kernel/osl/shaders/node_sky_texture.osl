@@ -56,8 +56,8 @@ color sky_radiance_preetham(normal dir,
   float Y = radiance[0] * sky_perez_function(config_x, theta, gamma);
 
   /* convert to RGB */
-  color xyz = xyY_to_xyz(x, y, Y);
-  return xyz_to_rgb(xyz[0], xyz[1], xyz[2]);
+  color xyz = transformc("xyY", "XYZ", color(x, y, Y));
+  return transformc("XYZ", "rgb", xyz);
 }
 
 /* Hosek / Wilkie */
@@ -100,7 +100,7 @@ color sky_radiance_hosek(normal dir,
   float z = sky_radiance_internal(config_z, theta, gamma) * radiance[2];
 
   /* convert to RGB and adjust strength */
-  return xyz_to_rgb(x, y, z) * (M_2PI / 683);
+  return transformc("XYZ", "rgb", color(x, y, z)) * (M_2PI / 683);
 }
 
 /* Nishita improved */
@@ -193,7 +193,7 @@ color sky_radiance_nishita(vector dir, float nishita_data[10], string filename)
     }
   }
   /* convert to RGB */
-  return xyz_to_rgb(xyz[0], xyz[1], xyz[2]);
+  return transformc("XYZ", "rgb", xyz);
 }
 
 shader node_sky_texture(

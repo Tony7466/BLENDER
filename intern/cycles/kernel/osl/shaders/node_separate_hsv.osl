@@ -9,7 +9,7 @@ shader node_separate_hsv(color Color = 0.8,
                          output float S = 0.0,
                          output float V = 0.0)
 {
-  color col = rgb_to_hsv(Color);
+  color col = transformc("hsv", Color);
 
   H = col[0];
   S = col[1];

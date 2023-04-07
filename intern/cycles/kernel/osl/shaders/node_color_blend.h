@@ -165,12 +165,12 @@ color node_mix_burn(float t, color col1, color col2)
 color node_mix_hue(float t, color col1, color col2)
 {
   color outcol = col1;
-  color hsv2 = rgb_to_hsv(col2);
+  color hsv2 = transformc("hsv", col2);
 
   if (hsv2[1] != 0.0) {
-    color hsv = rgb_to_hsv(outcol);
+    color hsv = transformc("hsv", outcol);
     hsv[0] = hsv2[0];
-    color tmp = hsv_to_rgb(hsv);
+    color tmp = transformc("hsv", "rgb", hsv);
 
     outcol = mix(outcol, tmp, t);
   }
@@ -184,13 +184,13 @@ color node_mix_sat(float t, color col1, color col2)
 
   color outcol = col1;
 
-  color hsv = rgb_to_hsv(outcol);
+  color hsv = transformc("hsv", outcol);
 
   if (hsv[1] != 0.0) {
-    color hsv2 = rgb_to_hsv(col2);
+    color hsv2 = transformc("hsv", col2);
 
     hsv[1] = tm * hsv[1] + t * hsv2[1];
-    outcol = hsv_to_rgb(hsv);
+    outcol = transformc("hsv", "rgb", hsv);
   }
 
   return outcol;
@@ -200,24 +200,24 @@ color node_mix_val(float t, color col1, color col2)
 {
   float tm = 1.0 - t;
 
-  color hsv = rgb_to_hsv(col1);
-  color hsv2 = rgb_to_hsv(col2);
+  color hsv = transformc("hsv", col1);
+  color hsv2 = transformc("hsv", col2);
 
   hsv[2] = tm * hsv[2] + t * hsv2[2];
 
-  return hsv_to_rgb(hsv);
+  return transformc("hsv", "rgb", hsv);
 }
 
 color node_mix_color(float t, color col1, color col2)
 {
   color outcol = col1;
-  color hsv2 = rgb_to_hsv(col2);
+  color hsv2 = transformc("hsv", col2);
 
   if (hsv2[1] != 0.0) {
-    color hsv = rgb_to_hsv(outcol);
+    color hsv = transformc("hsv", outcol);
     hsv[0] = hsv2[0];
     hsv[1] = hsv2[1];
-    color tmp = hsv_to_rgb(hsv);
+    color tmp = transformc("hsv", "rgb", hsv);
 
     outcol = mix(outcol, tmp, t);
   }
