@@ -2317,11 +2317,11 @@ bool CustomData_merge(const CustomData *source,
   return customdata_merge_internal(source, dest, mask, CD_ASSIGN, totelem);
 }
 
-bool CustomData_merge_new(const CustomData *source,
-                          CustomData *dest,
-                          const eCustomDataMask mask,
-                          const eCDAllocType alloctype,
-                          const int totelem)
+bool CustomData_merge_layout(const CustomData *source,
+                             CustomData *dest,
+                             const eCustomDataMask mask,
+                             const eCDAllocType alloctype,
+                             const int totelem)
 {
   return customdata_merge_internal(source, dest, mask, alloctype, totelem);
 }
@@ -2454,11 +2454,11 @@ void CustomData_copy(const CustomData *source, CustomData *dest, eCustomDataMask
   CustomData_merge(source, dest, mask, totelem);
 }
 
-void CustomData_copy_new(const struct CustomData *source,
-                         struct CustomData *dest,
-                         eCustomDataMask mask,
-                         eCDAllocType alloctype,
-                         int totelem)
+void CustomData_copy_layout(const struct CustomData *source,
+                            struct CustomData *dest,
+                            eCustomDataMask mask,
+                            eCDAllocType alloctype,
+                            int totelem)
 {
   CustomData_reset(dest);
 
@@ -2466,7 +2466,7 @@ void CustomData_copy_new(const struct CustomData *source,
     dest->external = static_cast<CustomDataExternal *>(MEM_dupallocN(source->external));
   }
 
-  CustomData_merge_new(source, dest, mask, alloctype, totelem);
+  CustomData_merge_layout(source, dest, mask, alloctype, totelem);
 }
 
 static void customData_free_layer__internal(CustomDataLayer *layer, const int totelem)
@@ -3717,7 +3717,7 @@ bool CustomData_bmesh_merge_new(const CustomData *source,
     destold.layers = static_cast<CustomDataLayer *>(MEM_dupallocN(destold.layers));
   }
 
-  if (CustomData_merge_new(source, dest, mask, alloctype, 0) == false) {
+  if (CustomData_merge_layout(source, dest, mask, alloctype, 0) == false) {
     if (destold.layers) {
       MEM_freeN(destold.layers);
     }

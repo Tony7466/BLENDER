@@ -167,28 +167,31 @@ void CustomData_copy(const struct CustomData *source,
  * Initializes a CustomData object with the same layers as source. The data is not copied from the
  * source. Instead, the new layers are initialized using the given `alloctype`.
  */
-void CustomData_copy_new(const struct CustomData *source,
-                         struct CustomData *dest,
-                         eCustomDataMask mask,
-                         eCDAllocType alloctype,
-                         int totelem);
+void CustomData_copy_layout(const struct CustomData *source,
+                            struct CustomData *dest,
+                            eCustomDataMask mask,
+                            eCDAllocType alloctype,
+                            int totelem);
 
 /* BMESH_TODO, not really a public function but readfile.c needs it */
 void CustomData_update_typemap(struct CustomData *data);
 
 /**
- * Same as the above, except that this will preserve existing layers, and only
- * add the layers that were not there yet.
+ * Copies all layers from source to destination that don't exist there yet.
  */
 bool CustomData_merge(const struct CustomData *source,
                       struct CustomData *dest,
                       eCustomDataMask mask,
                       int totelem);
-bool CustomData_merge_new(const struct CustomData *source,
-                          struct CustomData *dest,
-                          eCustomDataMask mask,
-                          eCDAllocType alloctype,
-                          int totelem);
+/**
+ * Copies all layers from source to destination that don't exist there yet. The layer data is not
+ * copied. Instead the newly created layers are initialized using the given `alloctype`.
+ */
+bool CustomData_merge_layout(const struct CustomData *source,
+                             struct CustomData *dest,
+                             eCustomDataMask mask,
+                             eCDAllocType alloctype,
+                             int totelem);
 
 /**
  * Reallocate custom data to a new element count. If the new size is larger, the new values use
