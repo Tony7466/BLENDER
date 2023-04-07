@@ -24,6 +24,7 @@
 #include "util/path.h"
 #include "util/progress.h"
 #include "util/task.h"
+#include <stack>
 
 CCL_NAMESPACE_BEGIN
 
@@ -452,7 +453,8 @@ void LightManager::device_update_tree(Device *,
 
   /* We want to create separate arrays corresponding to triangles and lights,
    * which will be used to index back into the light tree for PDF calculations. */
-  uint *light_array = dscene->light_to_tree.alloc(kintegrator->num_lights);
+  uint *lamp_array = dscene->lamp_to_tree.alloc(kintegrator->num_lights);
+  uint *mesh_light_array = dscene->mesh_to_tree.alloc(scene->objects.size());
   uint *triangle_array = dscene->triangle_to_tree.alloc(light_tree.num_triangles);
 
   /* First initialize the light tree's nodes. */
@@ -473,11 +475,39 @@ void LightManager::device_update_tree(Device *,
    * Once finished visiting the left subtree, we retrieve the last stored pointer from
    * `right_node_stack`, assign it to its parent (retrieved from `left_index_stack`), and repeat
    * the process from there. */
-  int left_index_stack[32]; /* `sizeof(bit_trail) * 8 == 32`. */
-  LightTreeNode *right_node_stack[32];
-  int stack_id = 0;
-  const LightTreeNode *node = root;
+
+  std::stack<int> left_indices;
+  std::stack<LightTreeNode *> right_nodes;
+
+  /* Subtree. */
+  int top_level_stack_size = -1;
+  std::queue<LightTreeNode *> mesh_light_nodes;
+  std::unordered_map<LightTreeNode *, int> processed_mesh;
+
+  LightTreeNode *node = root;
+
   for (int node_index = 0; node_index < light_tree.num_nodes; node_index++) {
+    if (node->is_instance()) {
+      KernelLightTreeEmitter *mesh_light = &light_tree_emitters[mesh_light_array[node->object_id]];
+      mesh_light->node_id = node_index;
+      node->bit_trail = light_tree_nodes[mesh_light->parent_index].bit_trail;
+      LightTreeNode *reference = node->get_reference();
+
+      auto map_it = processed_mesh.find(reference);
+      if (map_it != processed_mesh.end()) {
+        light_tree_nodes[node_index].reference = map_it->second;
+      }
+      else {
+        if (node != reference) {
+          /* Flatten the node with the subtree first so the subsequent instances know the index. */
+          std::swap(node->type, reference->type);
+          std::swap(node->children, reference->children);
+        }
+        node->type &= ~LIGHT_TREE_INSTANCE;
+        processed_mesh[reference] = node_index;
+      }
+    }
+
     light_tree_nodes[node_index].energy = node->measure.energy;
 
     light_tree_nodes[node_index].bbox.min = node->measure.bbox.min;
@@ -488,11 +518,19 @@ void LightManager::device_update_tree(Device *,
     light_tree_nodes[node_index].bcone.theta_e = node->measure.bcone.theta_e;
 
     light_tree_nodes[node_index].bit_trail = node->bit_trail;
-    light_tree_nodes[node_index].num_emitters = node->num_emitters;
+    light_tree_nodes[node_index].type = static_cast<LightTreeNodeType>(node->type);
 
-    /* Here we need to make a distinction between interior and leaf nodes. */
-    if (node->is_leaf()) {
-      light_tree_nodes[node_index].child_index = -node->first_emitter_index;
+    if (node->is_inner()) {
+      light_tree_nodes[node_index].num_emitters = -1;
+      /* Fill in the stacks. */
+      left_indices.push(node_index);
+      right_nodes.push(node->children[LightTree::right].get());
+      node = node->children[LightTree::left].get();
+      continue;
+    }
+    if (node->is_leaf() || node->is_distant()) {
+      light_tree_nodes[node_index].num_emitters = node->num_emitters;
+      light_tree_nodes[node_index].first_emitter = node->first_emitter_index;
 
       for (int i = 0; i < node->num_emitters; i++) {
         int emitter_index = i + node->first_emitter_index;
@@ -503,7 +541,6 @@ void LightManager::device_update_tree(Device *,
         light_tree_emitters[emitter_index].theta_e = emitter.measure.bcone.theta_e;
 
         if (emitter.is_triangle()) {
-          light_tree_emitters[emitter_index].mesh_light.object_id = emitter.object_id;
 
           int shader_flag = 0;
           Object *object = scene->objects[emitter.object_id];
@@ -532,41 +569,58 @@ void LightManager::device_update_tree(Device *,
 
           light_tree_emitters[emitter_index].prim_id = emitter.prim_id + mesh->prim_offset;
           light_tree_emitters[emitter_index].mesh_light.shader_flag = shader_flag;
+          light_tree_emitters[emitter_index].mesh_light.object_id = emitter.object_id;
           light_tree_emitters[emitter_index].emission_sampling = shader->emission_sampling;
           triangle_array[emitter.prim_id + dscene->object_lookup_offset[emitter.object_id]] =
               emitter_index;
         }
-        else {
-          light_tree_emitters[emitter_index].prim_id = emitter.prim_id;
+        else if (emitter.is_lamp()) {
+          light_tree_emitters[emitter_index].lamp_id = emitter.lamp_id;
           light_tree_emitters[emitter_index].mesh_light.shader_flag = 0;
           light_tree_emitters[emitter_index].mesh_light.object_id = OBJECT_NONE;
-          light_tree_emitters[emitter_index].emission_sampling = EMISSION_SAMPLING_FRONT_BACK;
-          light_array[~emitter.prim_id] = emitter_index;
+          lamp_array[~emitter.lamp_id] = emitter_index;
+        }
+        else {
+          assert(emitter.is_mesh());
+          light_tree_emitters[emitter_index].object_id = emitter.object_id;
+          light_tree_emitters[emitter_index].mesh_light.shader_flag = 0;
+          light_tree_emitters[emitter_index].mesh_light.object_id = OBJECT_NONE;
+          mesh_light_array[emitter.object_id] = emitter_index;
+          mesh_light_nodes.push(emitter.root.get());
+          top_level_stack_size = left_indices.size();
         }
         light_tree_emitters[emitter_index].parent_index = node_index;
       }
+    }
 
-      /* Retrieve from the stacks. */
-      if (stack_id == 0) {
-        break;
+    if (left_indices.empty()) {
+      break;
+    }
+
+    if (left_indices.size() == top_level_stack_size) {
+      if (!mesh_light_nodes.empty()) {
+        node = mesh_light_nodes.front();
+        mesh_light_nodes.pop();
+        continue;
       }
-      stack_id--;
-      light_tree_nodes[left_index_stack[stack_id]].child_index = node_index + 1;
-      node = right_node_stack[stack_id];
+      /* Finished processing subtrees in the last leaf node, go back to the top level tree. */
+      top_level_stack_size = -1;
     }
-    else {
-      /* Fill in the stacks. */
-      left_index_stack[stack_id] = node_index;
-      right_node_stack[stack_id] = node->children[LightTree::right].get();
-      node = node->children[LightTree::left].get();
-      stack_id++;
-    }
+
+    /* Retrieve from the stacks. */
+    light_tree_nodes[left_indices.top()].right_child = node_index + 1;
+    node = right_nodes.top();
+
+    left_indices.pop();
+    right_nodes.pop();
   }
 
   /* Copy arrays to device. */
   dscene->light_tree_nodes.copy_to_device();
   dscene->light_tree_emitters.copy_to_device();
-  dscene->light_to_tree.copy_to_device();
+  dscene->lamp_to_tree.copy_to_device();
+  dscene->mesh_to_tree.copy_to_device();
+  dscene->object_lookup_offset.copy_to_device();
   dscene->triangle_to_tree.copy_to_device();
 }
 
@@ -1106,7 +1160,8 @@ void LightManager::device_free(Device *, DeviceScene *dscene, const bool free_ba
 {
   dscene->light_tree_nodes.free();
   dscene->light_tree_emitters.free();
-  dscene->light_to_tree.free();
+  dscene->lamp_to_tree.free();
+  dscene->mesh_to_tree.free();
   dscene->object_lookup_offset.free();
   dscene->triangle_to_tree.free();
 

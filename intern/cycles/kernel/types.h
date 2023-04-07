@@ -1370,6 +1370,13 @@ using BoundingCone = struct BoundingCone {
   float theta_e;
 };
 
+using LightTreeNodeType = enum LightTreeNodeType {
+  LIGHT_TREE_INSTANCE = (1 << 0),
+  LIGHT_TREE_INNER = (1 << 1),
+  LIGHT_TREE_LEAF = (1 << 2),
+  LIGHT_TREE_DISTANT = (1 << 3),
+};
+
 typedef struct KernelLightTreeNode {
   /* Bounding box. */
   BoundingBox bbox;
@@ -1380,17 +1387,19 @@ typedef struct KernelLightTreeNode {
   /* Energy. */
   float energy;
 
-  /* If this is 0 or less, we're at a leaf node
-   * and the negative value indexes into the first child of the light array.
-   * Otherwise, it's an index to the node's second child. */
-  int child_index;
-  int num_emitters; /* leaf nodes need to know the number of emitters stored. */
+  LightTreeNodeType type;
+
+  /* Leaf nodes need to know the number of emitters stored. */
+  int num_emitters;
+
+  union {
+    int first_emitter; /* Leaf node stores the index of the first emitter. */
+    int right_child;   /* Inner node stores the index of the right child. */
+    int reference;     /* Instance node refers to the node with the subtree. */
+  };
 
   /* Bit trail. */
   uint bit_trail;
-
-  /* Padding. */
-  int pad;
 } KernelLightTreeNode;
 static_assert_align(KernelLightTreeNode, 16);
 
@@ -1402,10 +1411,21 @@ typedef struct KernelLightTreeEmitter {
   /* Energy. */
   float energy;
 
-  /* The location in the lights or triangles array. */
-  int prim_id;
+  union {
+    struct {
+      int prim_id; /* The location in the triangles array. */
+      EmissionSampling emission_sampling;
+    }; /* Emissive triangle. */
+
+    int lamp_id; /* The location in the lamps array. */
+
+    struct {
+      int object_id;
+      int node_id;
+    }; /* Mesh Light. */
+  };
+
   MeshLight mesh_light;
-  EmissionSampling emission_sampling;
 
   /* Parent. */
   int parent_index;
