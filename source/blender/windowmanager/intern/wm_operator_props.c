@@ -486,6 +486,9 @@ void WM_operator_properties_gesture_box_ex(wmOperatorType *ot, bool deselect, bo
 
   WM_operator_properties_border(ot);
 
+  prop = RNA_def_boolean(ot->srna, "select_origin_box", false, "Select Object Origin", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+
   prop = RNA_def_enum(ot->srna, "face_type", face_select_items, 0, "Face Select", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
   prop = RNA_def_enum(ot->srna, "edge_type", edge_select_items, 0, "Edge Select", "");
@@ -809,6 +812,9 @@ void WM_operator_properties_gesture_circle(wmOperatorType *ot)
   RNA_def_int(ot->srna, "radius", radius_default, 1, INT_MAX, "Radius", "", 1, INT_MAX);
 
   prop = RNA_def_boolean(ot->srna, "wait_for_input", true, "Wait for Input", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+
+  prop = RNA_def_boolean(ot->srna, "select_origin_circle", true, "Select Object Origin", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
   prop = RNA_def_enum(ot->srna, "face_type", face_select_items, 0, "Face Select", "");

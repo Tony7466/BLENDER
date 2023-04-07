@@ -411,6 +411,9 @@
     .viewport_facing_select_vert = 1, \
     .viewport_facing_select_edge = 1, \
     .viewport_facing_select_face = 1, \
+ \
+    /* Object Origin Select */ \
+    .select_origin_circle = true, \
   }
 
 /* clang-format off */

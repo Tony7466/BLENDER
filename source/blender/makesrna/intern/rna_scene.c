@@ -4144,6 +4144,19 @@ static void rna_def_tool_settings(BlenderRNA *brna)
                             "Select occluded objects and mesh elements with circle select");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
 
+  /* Object Origin Select */
+  prop = RNA_def_property(srna, "select_origin_box", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "select_origin_box", 0);
+  RNA_def_property_ui_text(
+      prop, "Select Origin", "Select objects by their origin with box select");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
+
+  prop = RNA_def_property(srna, "select_origin_circle", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "select_origin_circle", 0);
+  RNA_def_property_ui_text(
+      prop, "Select Origin", "Select objects by their origin with circle select");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
+
   /* Unified Paint Settings */
   prop = RNA_def_property(srna, "unified_paint_settings", PROP_POINTER, PROP_NONE);
   RNA_def_property_flag(prop, PROP_NEVER_NULL);

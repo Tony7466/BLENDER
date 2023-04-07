@@ -688,6 +688,7 @@ int WM_operator_call_notest(struct bContext *C, struct wmOperator *op);
  * Execute this operator again, put here so it can share above code
  */
 int WM_operator_repeat(struct bContext *C, struct wmOperator *op);
+int WM_operator_repeat_tool(struct bContext *C, struct wmOperator *op);
 int WM_operator_repeat_last(struct bContext *C, struct wmOperator *op);
 /**
  * \return true if #WM_operator_repeat can run.

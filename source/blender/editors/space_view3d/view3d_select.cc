@@ -1206,13 +1206,15 @@ static bool do_lasso_select_objects(ViewContext *vc,
         }
         else {
           is_inside = base->object->id.tag & LIB_TAG_DOIT ?
+                          ts->select_origin_circle ?
                           (ED_view3d_project_float_global(vc->region,
                                                           base->object->object_to_world[3],
                                                           region_co,
                                                           V3D_PROJ_TEST_CLIP_DEFAULT) ==
-                           V3D_PROJ_RET_OK) &&
-                              len_squared_v2v2(mval_fl, region_co) <=
-                                  circle_data[2] * circle_data[2] :
+                           V3D_PROJ_RET_OK) ?
+                          len_squared_v2v2(mval_fl, region_co) <= circle_data[2] * circle_data[2] :
+                          false :
+                          true :
                           false;
         }
 
@@ -4692,13 +4694,20 @@ static bool do_object_box_select(
   View3D *v3d = vc->v3d;
   int totobj = MAXPICKELEMS; /* XXX solve later */
   ToolSettings *ts = vc->scene->toolsettings;
+  rctf rect_f_data;
+  rctf *rect_f = &rect_f_data;
+  BLI_rctf_rcti_copy(rect_f, rect);
+  float region_co[2];
 
   /* Selection buffer has bones potentially too, so we add #MAXPICKELEMS. */
   GPUSelectResult *buffer = static_cast<GPUSelectResult *>(
       MEM_mallocN((totobj + MAXPICKELEMS) * sizeof(GPUSelectResult), __func__));
   const eV3DSelectObjectFilter select_filter = ED_view3d_select_filter_from_mode(vc->scene,
                                                                                  vc->obact);
-  const int select_through_int = RNA_enum_get(op->ptr, "select_through");
+  const bool select_origin = U.drag_select_control & USER_DRAG_SELECT_KEYMAP ?
+                                 RNA_boolean_get(op->ptr, "select_origin_box") :
+                                 ts->select_origin_box;
+  const bool select_through_int = RNA_enum_get(op->ptr, "select_through");
   const bool select_through = U.drag_select_control & USER_DRAG_SELECT_KEYMAP ?
                                   select_through_int == 2 || select_through_int == 8 :
                                   ts->select_through && ts->select_through_object &&
@@ -4753,7 +4762,13 @@ static bool do_object_box_select(
   for (Base *base = static_cast<Base *>(object_bases->first); base && hits; base = base->next) {
     if (BASE_SELECTABLE(v3d, base)) {
       const bool is_select = base->flag & BASE_SELECTED;
-      const bool is_inside = base->object->id.tag & LIB_TAG_DOIT;
+      const bool is_inside = base->object->id.tag & LIB_TAG_DOIT ?
+                                 select_origin ?
+                                 (ED_view3d_project_base(vc->region, base, region_co) ==
+                                  V3D_PROJ_RET_OK) &&
+                                         BLI_rctf_isect_pt_v(rect_f, region_co) :
+                                 true :
+                                 false;
       const int sel_op_result = ED_select_op_action_deselected(sel_op, is_select, is_inside);
       if (sel_op_result != -1) {
         ED_object_base_select(base, sel_op_result ? BA_SELECT : BA_DESELECT);
@@ -5913,15 +5928,6 @@ static int view3d_circle_select_exec(bContext *C, wmOperator *op)
       static_cast<eSelectOp>(RNA_enum_get(op->ptr, "mode")), WM_gesture_is_modal_first(gesture));
   ED_view3d_viewcontext_init(C, &vc, depsgraph);
 
-  ToolSettings *ts = vc.scene->toolsettings;
-  const int select_through_int = RNA_enum_get(op->ptr, "select_through");
-  const bool select_through_object = U.drag_select_control & USER_DRAG_SELECT_KEYMAP ?
-                                  select_through_int == 2 || select_through_int == 8 :
-                                  ts->select_through && ts->select_through_object &&
-                                      ts->select_through_circle;
-  if (!select_through_object) {
-    BKE_object_update_select_id(CTX_data_main(C));
-  }
   Object *obact = vc.obact;
   Object *obedit = vc.obedit;
 
@@ -5967,7 +5973,16 @@ static int view3d_circle_select_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
   else {
-    if (select_through_object) {
+    ToolSettings *ts = vc.scene->toolsettings;
+    const int select_through_int = RNA_enum_get(op->ptr, "select_through");
+    const bool default_object_select = U.drag_select_control & USER_DRAG_SELECT_KEYMAP ?
+                                           RNA_boolean_get(op->ptr, "select_origin_circle") &&
+                                               (select_through_int == 2 ||
+                                                select_through_int == 8) :
+                                           ts->select_through && ts->select_through_object &&
+                                               ts->select_through_circle &&
+                                               ts->select_origin_circle;
+    if (default_object_select) {
       if (object_circle_select(&vc, sel_op, mval, float(radius))) {
         DEG_id_tag_update(&vc.scene->id, ID_RECALC_SELECT);
         WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, vc.scene);
@@ -5976,6 +5991,7 @@ static int view3d_circle_select_exec(bContext *C, wmOperator *op)
       }
     }
     else {
+      BKE_object_update_select_id(CTX_data_main(C));
       int circle_data[3] = {mval[0], mval[1], radius};
       do_lasso_select_objects(&vc, NULL, NULL, sel_op, op, circle_data);
     }

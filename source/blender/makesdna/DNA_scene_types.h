@@ -1587,6 +1587,11 @@ typedef struct ToolSettings {
   char viewport_facing_select_edge;
   char viewport_facing_select_face;
 
+  /* object origin select */
+  char select_origin_box;
+  char select_origin_circle;
+  char _pad0[6];
+
   /* Annotations. */
   /** Stroke placement settings - 3D View. */
   char annotate_v3d_align;

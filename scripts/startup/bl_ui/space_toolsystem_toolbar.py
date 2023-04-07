@@ -390,6 +390,10 @@ class _defs_view3d_select:
             row = layout.row()
             row.use_property_split = False
             row.prop(props, "mode", text="", expand=True, icon_only=True)
+
+            if _context.mode == 'OBJECT':
+                tool_settings = _context.tool_settings
+                layout.prop(tool_settings, "select_origin_box")
         return dict(
             idname="builtin.select_box",
             label="Select Box",
@@ -423,6 +427,10 @@ class _defs_view3d_select:
             row.use_property_split = False
             row.prop(props, "mode", text="", expand=True, icon_only=True)
             layout.prop(props, "radius")
+
+            if _context.mode == 'OBJECT':
+                tool_settings = _context.tool_settings
+                layout.prop(tool_settings, "select_origin_circle")
 
         def draw_cursor(_context, tool, xy):
             from gpu_extras.presets import draw_circle_2d
