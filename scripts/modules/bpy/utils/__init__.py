@@ -30,7 +30,6 @@ __all__ = (
     "previews",
     "resource_path",
     "script_path_user",
-    "script_path_pref",
     "script_paths",
     "smpte_from_frame",
     "smpte_from_seconds",
@@ -340,21 +339,6 @@ def script_path_user():
     return _os.path.normpath(path) if path else None
 
 
-def script_path_pref():
-    """
-    DEPRECATED. Use `script_paths_pref` which supports multiple script paths now. Returns the
-    first valid of these script paths for now, for compatibility.
-    """
-    from warnings import warn
-    warn(
-        "bpy.utils.script_path_pref() is deprecated use script_paths_pref() instead!",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    script_paths = script_paths_pref()
-    return script_paths[0] if len(script_paths) > 0 else ""
-
-
 def script_paths_pref():
     """Returns a list of user preference script directories."""
     paths = []
@@ -402,9 +386,6 @@ def script_paths(*, subdir=None, user_pref=True, check_all=False, use_user=True)
     if not check_all:
         if use_user:
             base_paths.append(path_user)
-
-    if user_pref:
-        base_paths.append(script_path_pref())
 
     scripts = []
     for path in base_paths:

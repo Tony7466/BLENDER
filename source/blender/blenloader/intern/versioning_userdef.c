@@ -31,6 +31,8 @@
 
 #include "BLO_readfile.h"
 
+#include "BLT_translation.h"
+
 #include "GPU_platform.h"
 
 #include "MEM_guardedalloc.h"
@@ -804,7 +806,9 @@ void blo_do_versions_userdef(UserDef *userdef)
     if (userdef->pythondir_legacy[0]) {
       bUserScriptDirectory *script_dir = MEM_callocN(sizeof(*script_dir),
                                                      "Versioning user script path");
+
       STRNCPY(script_dir->dir_path, userdef->pythondir_legacy);
+      STRNCPY(script_dir->name, DATA_("Untitled"));
       BLI_addhead(&userdef->script_directories, script_dir);
     }
   }

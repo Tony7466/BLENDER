@@ -354,8 +354,6 @@ static void rna_userdef_script_directory_name_set(PointerRNA *ptr, const char *v
     value_invalid = true;
   }
   if (STREQ(value, "DEFAULT")) {
-    BKE_report(
-        NULL, RPT_WARNING, "Name 'DEFAULT' is reserved for internal use and cannot be used");
     value_invalid = true;
   }
 
