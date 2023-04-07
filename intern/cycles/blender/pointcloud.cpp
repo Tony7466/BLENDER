@@ -13,6 +13,7 @@
 #include "util/color.h"
 #include "util/foreach.h"
 #include "util/hash.h"
+#include "util/tbb.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -87,9 +88,11 @@ static void copy_attributes(PointCloud *pointcloud,
         const bool *src = static_cast<const bool *>(b_bool_attribute.data[0].ptr.data);
         Attribute *attr = attributes.add(name, TypeFloat, element);
         float *data = attr->data_float();
-        for (int i = 0; i < num_points; i++) {
-          data[i] = float(src[i]);
-        }
+        parallel_for(blocked_range<int>(0, num_points, 4096), [&](const blocked_range<int> &r) {
+          for (size_t i = r.begin(); i != r.end(); i++) {
+            data[i] = float(src[i]);
+          }
+        });
         break;
       }
       case BL::Attribute::data_type_INT: {
@@ -97,9 +100,11 @@ static void copy_attributes(PointCloud *pointcloud,
         const int *src = static_cast<const int *>(b_int_attribute.data[0].ptr.data);
         Attribute *attr = attributes.add(name, TypeFloat, element);
         float *data = attr->data_float();
-        for (int i = 0; i < num_points; i++) {
-          data[i] = float(src[i]);
-        }
+        parallel_for(blocked_range<int>(0, num_points, 4096), [&](const blocked_range<int> &r) {
+          for (size_t i = r.begin(); i != r.end(); i++) {
+            data[i] = float(src[i]);
+          }
+        });
         break;
       }
       case BL::Attribute::data_type_FLOAT_VECTOR: {
@@ -107,9 +112,11 @@ static void copy_attributes(PointCloud *pointcloud,
         const float(*src)[3] = static_cast<const float(*)[3]>(b_vector_attribute.data[0].ptr.data);
         Attribute *attr = attributes.add(name, TypeVector, element);
         float3 *data = attr->data_float3();
-        for (int i = 0; i < num_points; i++) {
-          data[i] = make_float3(src[i][0], src[i][1], src[i][2]);
-        }
+        parallel_for(blocked_range<int>(0, num_points, 4096), [&](const blocked_range<int> &r) {
+          for (size_t i = r.begin(); i != r.end(); i++) {
+            data[i] = make_float3(src[i][0], src[i][1], src[i][2]);
+          }
+        });
         break;
       }
       case BL::Attribute::data_type_BYTE_COLOR: {
@@ -117,12 +124,14 @@ static void copy_attributes(PointCloud *pointcloud,
         const uchar(*src)[4] = static_cast<const uchar(*)[4]>(b_color_attribute.data[0].ptr.data);
         Attribute *attr = attributes.add(name, TypeRGBA, element);
         float4 *data = attr->data_float4();
-        for (int i = 0; i < num_points; i++) {
-          data[i] = make_float4(color_srgb_to_linear(byte_to_float(src[i][0])),
-                                color_srgb_to_linear(byte_to_float(src[i][1])),
-                                color_srgb_to_linear(byte_to_float(src[i][2])),
-                                color_srgb_to_linear(byte_to_float(src[i][3])));
-        }
+        parallel_for(blocked_range<int>(0, num_points, 4096), [&](const blocked_range<int> &r) {
+          for (size_t i = r.begin(); i != r.end(); i++) {
+            data[i] = make_float4(color_srgb_to_linear(byte_to_float(src[i][0])),
+                                  color_srgb_to_linear(byte_to_float(src[i][1])),
+                                  color_srgb_to_linear(byte_to_float(src[i][2])),
+                                  color_srgb_to_linear(byte_to_float(src[i][3])));
+          }
+        });
         break;
       }
       case BL::Attribute::data_type_FLOAT_COLOR: {
@@ -130,9 +139,11 @@ static void copy_attributes(PointCloud *pointcloud,
         const float(*src)[4] = static_cast<const float(*)[4]>(b_color_attribute.data[0].ptr.data);
         Attribute *attr = attributes.add(name, TypeRGBA, element);
         float4 *data = attr->data_float4();
-        for (int i = 0; i < num_points; i++) {
-          data[i] = make_float4(src[i][0], src[i][1], src[i][2], src[i][3]);
-        }
+        parallel_for(blocked_range<int>(0, num_points, 4096), [&](const blocked_range<int> &r) {
+          for (size_t i = r.begin(); i != r.end(); i++) {
+            data[i] = make_float4(src[i][0], src[i][1], src[i][2], src[i][3]);
+          }
+        });
         break;
       }
       case BL::Attribute::data_type_FLOAT2: {
@@ -140,9 +151,11 @@ static void copy_attributes(PointCloud *pointcloud,
         const float(*src)[2] = static_cast<const float(*)[2]>(b_float2_attribute.data[0].ptr.data);
         Attribute *attr = attributes.add(name, TypeFloat2, element);
         float2 *data = attr->data_float2();
-        for (int i = 0; i < num_points; i++) {
-          data[i] = make_float2(src[i][0], src[i][1]);
-        }
+        parallel_for(blocked_range<int>(0, num_points, 4096), [&](const blocked_range<int> &r) {
+          for (size_t i = r.begin(); i != r.end(); i++) {
+            data[i] = make_float2(src[i][0], src[i][1]);
+          }
+        });
         break;
       }
       default:
@@ -196,15 +209,19 @@ static void export_pointcloud(Scene *scene,
                               const bool need_motion,
                               const float motion_scale)
 {
+  scoped_timer timer;
+
   const int num_points = b_pointcloud.points.length();
   pointcloud->resize(num_points);
 
   const float(*b_attr_position)[3] = find_position_attribute(b_pointcloud);
   float3 *points = pointcloud->get_points().data();
 
-  for (int i = 0; i < num_points; i++) {
-    points[i] = make_float3(b_attr_position[i][0], b_attr_position[i][1], b_attr_position[i][2]);
-  }
+  parallel_for(blocked_range<int>(0, num_points, 4096), [&](const blocked_range<int> &r) {
+    for (size_t i = r.begin(); i != r.end(); i++) {
+      points[i] = make_float3(b_attr_position[i][0], b_attr_position[i][1], b_attr_position[i][2]);
+    }
+  });
 
   const float *b_attr_radius = find_radius_attribute(b_pointcloud);
   float *radius = pointcloud->get_radius().data();
@@ -221,12 +238,16 @@ static void export_pointcloud(Scene *scene,
   if (pointcloud->need_attribute(scene, ATTR_STD_POINT_RANDOM)) {
     Attribute *attr_random = pointcloud->attributes.add(ATTR_STD_POINT_RANDOM);
     float *data = attr_random->data_float();
-    for (int i = 0; i < num_points; i++) {
-      data[i] = hash_uint2_to_float(i, 0);
-    }
+    parallel_for(blocked_range<int>(0, num_points, 4096), [&](const blocked_range<int> &r) {
+      for (size_t i = r.begin(); i != r.end(); i++) {
+        data[i] = hash_uint2_to_float(i, 0);
+      }
+    });
   }
 
   copy_attributes(pointcloud, b_pointcloud, need_motion, motion_scale);
+
+  std::cout << time_human_readable_from_seconds(timer.get_time()) << '\n';
 }
 
 static void export_pointcloud_motion(PointCloud *pointcloud,
