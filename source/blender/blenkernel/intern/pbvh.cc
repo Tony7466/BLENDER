@@ -834,7 +834,8 @@ void BKE_pbvh_update_mesh_pointers(PBVH *pbvh, Mesh *mesh)
   pbvh->polys = mesh->polys();
   pbvh->corner_verts = mesh->corner_verts().data();
   if (!pbvh->deformed) {
-    /* If it was deformed, a new array is allocated. */
+    /* Deformed positions not matching the original mesh are owned directly by the PBVH, and are
+     * set separately by #BKE_pbvh_vert_coords_apply. */
     pbvh->vert_positions = BKE_mesh_vert_positions_for_write(mesh);
   }
 
