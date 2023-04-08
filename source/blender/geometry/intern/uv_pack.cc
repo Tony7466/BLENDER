@@ -1337,8 +1337,8 @@ static int64_t pack_island_xatlas(const Span<UVAABBIsland *> island_indices,
     return 0;
   }
   *r_extent = extent;
-  for (const int64_t i : phis.index_range()) {
-    const int64_t island_index = island_indices[i]->index;
+  for (int64_t j = 0; j < i; j++) {
+    const int64_t island_index = island_indices[j]->index;
     r_phis[island_index] = phis[island_index];
   }
   return i;
