@@ -104,6 +104,7 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
    */
   {
     /* Keep this block, even when empty. */
+    btheme->space_node.dash_alpha = 0.0f;
   }
 
 #undef FROM_DEFAULT_V4_UCHAR
