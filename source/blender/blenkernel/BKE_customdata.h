@@ -154,8 +154,8 @@ void CustomData_data_add(eCustomDataType type, void *data1, const void *data2);
 
 /**
  * Initializes a CustomData object with the same layer setup as source. `mask` is a bit-field where
- * `(mask & (1 << (layer type)))` indicates if a layer should be copied or not. The data layers
- * will be shared or copied depending on whether the layer uses COW.
+ * `(mask & (1 << (layer type)))` indicates if a layer should be copied or not. Data layers using
+ * implicit-sharing will not actually be copied but will be shared between source and destination.
  */
 void CustomData_copy(const struct CustomData *source,
                      struct CustomData *dest,
@@ -240,7 +240,8 @@ void CustomData_free_temporary(struct CustomData *data, int totelem);
 
 /**
  * Adds a layer of the given type to the #CustomData object. The new layer is initialized based on
- * the given alloctype. \return The layer data.
+ * the given alloctype.
+ * \return The layer data.
  */
 void *CustomData_add_layer(struct CustomData *data,
                            eCustomDataType type,
