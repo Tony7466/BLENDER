@@ -3290,105 +3290,105 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "show_box_options", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "show_box_options", 0);
   RNA_def_property_ui_text(
-      prop, "Box Options", "Additional options for box selection of mesh elements");
+      prop, "Mesh Options", "Additional options for box selection of mesh elements");
 
   prop = RNA_def_property(srna, "show_lasso_options", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "show_lasso_options", 0);
   RNA_def_property_ui_text(
-      prop, "Lasso Options", "Additional options for lasso selection of mesh elements");
+      prop, "Mesh Options", "Additional options for lasso selection of mesh elements");
 
   prop = RNA_def_property(srna, "show_circle_options", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "show_circle_options", 0);
   RNA_def_property_ui_text(
-      prop, "Circle Options", "Additional options for circle selection of mesh elements");
+      prop, "Mesh Options", "Additional options for circle selection of mesh elements");
 
   prop = RNA_def_property(srna, "box_edge", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, edge_select_items);
-  RNA_def_property_ui_text(prop, "Box Edge", "Box edge selection style");
+  RNA_def_property_ui_text(prop, "Edge", "Box edge selection style");
 
   prop = RNA_def_property(srna, "box_edge_left", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, edge_select_items);
-  RNA_def_property_ui_text(prop, "Box Edge Left", "Box edge selection style when dragging left");
+  RNA_def_property_ui_text(prop, "Edge", "Box edge selection style when dragging left");
 
   prop = RNA_def_property(srna, "box_edge_right", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, edge_select_items);
-  RNA_def_property_ui_text(prop, "Box Edge Right", "Box edge selection style when dragging right");
+  RNA_def_property_ui_text(prop, "Edge", "Box edge selection style when dragging right");
 
   prop = RNA_def_property(srna, "box_edge_up", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, edge_select_items);
-  RNA_def_property_ui_text(prop, "Box Edge Up", "Box edge selection style when dragging up");
+  RNA_def_property_ui_text(prop, "Edge", "Box edge selection style when dragging up");
 
   prop = RNA_def_property(srna, "box_edge_down", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, edge_select_items);
-  RNA_def_property_ui_text(prop, "Box Edge Down", "Box edge selection style when dragging down");
+  RNA_def_property_ui_text(prop, "Edge", "Box edge selection style when dragging down");
 
   prop = RNA_def_property(srna, "box_face", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, face_select_items);
-  RNA_def_property_ui_text(prop, "Box Face", "Box face selection style");
+  RNA_def_property_ui_text(prop, "Face", "Box face selection style");
 
   prop = RNA_def_property(srna, "box_face_left", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, face_select_items);
-  RNA_def_property_ui_text(prop, "Box Face Left", "Box face selection style when dragging left");
+  RNA_def_property_ui_text(prop, "Face", "Box face selection style when dragging left");
 
   prop = RNA_def_property(srna, "box_face_right", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, face_select_items);
-  RNA_def_property_ui_text(prop, "Box Face Right", "Box face selection style when dragging right");
+  RNA_def_property_ui_text(prop, "Face", "Box face selection style when dragging right");
 
   prop = RNA_def_property(srna, "box_face_up", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, face_select_items);
-  RNA_def_property_ui_text(prop, "Box Face Up", "Box face selection style when dragging up");
+  RNA_def_property_ui_text(prop, "Face", "Box face selection style when dragging up");
 
   prop = RNA_def_property(srna, "box_face_down", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, face_select_items);
-  RNA_def_property_ui_text(prop, "Box Face Down", "Box face selection style when dragging down");
+  RNA_def_property_ui_text(prop, "Face", "Box face selection style when dragging down");
 
   prop = RNA_def_property(srna, "lasso_edge", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, edge_select_items);
-  RNA_def_property_ui_text(prop, "Lasso Edge", "Lasso edge selection style");
+  RNA_def_property_ui_text(prop, "Edge", "Lasso edge selection style");
 
   prop = RNA_def_property(srna, "lasso_edge_left", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, edge_select_items);
-  RNA_def_property_ui_text(prop, "Lasso Edge Left", "Lasso edge selection style when dragging left");
+  RNA_def_property_ui_text(prop, "Edge", "Lasso edge selection style when dragging left");
 
   prop = RNA_def_property(srna, "lasso_edge_right", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, edge_select_items);
-  RNA_def_property_ui_text(prop, "Lasso Edge Right", "Lasso edge selection style when dragging right");
+  RNA_def_property_ui_text(prop, "Edge", "Lasso edge selection style when dragging right");
 
   prop = RNA_def_property(srna, "lasso_edge_up", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, edge_select_items);
-  RNA_def_property_ui_text(prop, "Lasso Edge Up", "Lasso edge selection style when dragging up");
+  RNA_def_property_ui_text(prop, "Edge", "Lasso edge selection style when dragging up");
 
   prop = RNA_def_property(srna, "lasso_edge_down", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, edge_select_items);
-  RNA_def_property_ui_text(prop, "Lasso Edge Down", "Lasso edge selection style when dragging down");
+  RNA_def_property_ui_text(prop, "Edge", "Lasso edge selection style when dragging down");
 
   prop = RNA_def_property(srna, "lasso_face", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, face_select_items);
-  RNA_def_property_ui_text(prop, "Lasso Face", "Lasso face selection style");
+  RNA_def_property_ui_text(prop, "Face", "Lasso face selection style");
 
   prop = RNA_def_property(srna, "lasso_face_left", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, face_select_items);
-  RNA_def_property_ui_text(prop, "Lasso Face Left", "Lasso face selection style when dragging left");
+  RNA_def_property_ui_text(prop, "Face", "Lasso face selection style when dragging left");
 
   prop = RNA_def_property(srna, "lasso_face_right", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, face_select_items);
-  RNA_def_property_ui_text(prop, "Lasso Face Right", "Lasso face selection style when dragging right");
+  RNA_def_property_ui_text(prop, "Face", "Lasso face selection style when dragging right");
 
   prop = RNA_def_property(srna, "lasso_face_up", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, face_select_items);
-  RNA_def_property_ui_text(prop, "Lasso Face Up", "Lasso face selection style when dragging up");
+  RNA_def_property_ui_text(prop, "Face", "Lasso face selection style when dragging up");
 
   prop = RNA_def_property(srna, "lasso_face_down", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, face_select_items);
-  RNA_def_property_ui_text(prop, "Lasso Face Down", "Lasso face selection style when dragging down");
+  RNA_def_property_ui_text(prop, "Face", "Lasso face selection style when dragging down");
 
   prop = RNA_def_property(srna, "circle_edge", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, edge_circle_select_items);
-  RNA_def_property_ui_text(prop, "Circle Edge", "Circle edge selection style");
+  RNA_def_property_ui_text(prop, "Edge", "Circle edge selection style");
 
   prop = RNA_def_property(srna, "circle_face", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, face_select_items);
-  RNA_def_property_ui_text(prop, "Circle Face", "Circle face selection style");
+  RNA_def_property_ui_text(prop, "Face", "Circle face selection style");
 
   prop = RNA_def_property(srna, "sculpt", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "Sculpt");
