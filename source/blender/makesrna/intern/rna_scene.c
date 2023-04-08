@@ -4062,11 +4062,17 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Normal Vector", "Normal Vector used to copy, add or multiply");
   RNA_def_property_ui_range(prop, -10000.0, 10000.0, 1, 3);
 
-  /* UI prop helper, so you can use a heading without a real property or operator on the same line */
+  /* UI prop helper, might help with formatting and using headings on a blank line, unused for now */
   prop = RNA_def_property(srna, "ui_prop", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "ui_prop", 0);
   RNA_def_property_ui_text(prop, "UI Prop", "");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, NULL);
+
+  /* Shrink Shading Header */
+  prop = RNA_def_property(srna, "shrink_shading_header", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "shrink_shading_header", 0);
+  RNA_def_property_ui_text(
+      prop, "Shrink Header", "Combine the four Shading Header buttons into one button that also toggles X-Ray");
 
   /* X-Ray header button */
   prop = RNA_def_property(srna, "xray_button", PROP_BOOLEAN, PROP_NONE);

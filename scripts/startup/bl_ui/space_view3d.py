@@ -949,7 +949,18 @@ class VIEW3D_HT_header(Header):
         row.popover(panel="VIEW3D_PT_xray", text="")
 
         row = layout.row(align=True)
-        row.prop(shading, "type", text="", expand=True)
+        if tool_settings.shrink_shading_header:
+            if shading.type == 'SOLID':
+                shadicon = 'SHADING_SOLID'
+            elif shading.type == 'MATERIAL':
+                shadicon = 'SHADING_TEXTURE'
+            elif shading.type == 'RENDERED':
+                shadicon = 'SHADING_RENDERED'
+            else:
+                shadicon = 'SHADING_WIRE'
+            row.operator("view3d.toggle_xray", text="", icon=shadicon, depress=draw_depressed)
+        else:
+            row.prop(shading, "type", text="", expand=True)
         sub = row.row(align=True)
         # TODO, currently render shading type ignores mesh two-side, until it's supported
         # show the shading popover which shows double-sided option.
@@ -5929,6 +5940,12 @@ class VIEW3D_PT_shading(Panel):
     def draw(self, _context):
         layout = self.layout
         layout.label(text="Viewport Shading")
+        tool_settings = _context.tool_settings
+        shading = VIEW3D_PT_shading.get_shading(_context)
+
+        layout.prop(tool_settings, "shrink_shading_header")
+        if tool_settings.shrink_shading_header:
+            layout.prop(shading, "type", text = '', expand=True)
 
 
 class VIEW3D_PT_shading_lighting(Panel):
@@ -5941,6 +5958,7 @@ class VIEW3D_PT_shading_lighting(Panel):
     def poll(cls, context):
         shading = VIEW3D_PT_shading.get_shading(context)
         engine = context.scene.render.engine
+
         return shading.type in {'SOLID', 'MATERIAL'} or engine == 'BLENDER_EEVEE' and shading.type == 'RENDERED'
 
     def draw(self, context):

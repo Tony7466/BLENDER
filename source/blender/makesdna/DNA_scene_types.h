@@ -1746,7 +1746,10 @@ typedef struct ToolSettings {
   char show_box_options;
   char show_lasso_options;
   char show_circle_options;
-  char _pad6[7];
+
+  /* Combine shading and xray header buttons */
+  char shrink_shading_header;
+  char _pad6[6];
 
   /**
    * Custom Curve Profile for bevel tool:
