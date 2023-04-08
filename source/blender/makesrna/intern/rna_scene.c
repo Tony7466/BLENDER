@@ -3273,11 +3273,11 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   /* Mesh select settings. */
   prop = RNA_def_property(srna, "box_drag_direction", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, mesh_drag_direction_items);
-  RNA_def_property_ui_text(prop, "Mesh Drag Direction", "Click-drag direction style for box select");
+  RNA_def_property_ui_text(prop, "Drag Direction", "Click-drag direction style for box select");
 
   prop = RNA_def_property(srna, "lasso_drag_direction", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, mesh_drag_direction_items);
-  RNA_def_property_ui_text(prop, "Mesh Drag Direction", "Click-drag direction style for lasso select");
+  RNA_def_property_ui_text(prop, "Drag Direction", "Click-drag direction style for lasso select");
 
   prop = RNA_def_property(srna, "box_direction_upright", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "box_direction_upright", 0);
@@ -3286,6 +3286,21 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "lasso_direction_upright", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "lasso_direction_upright", 0);
   RNA_def_property_ui_text(prop, "Lasso Direction Helper", "");
+
+  prop = RNA_def_property(srna, "show_box_options", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "show_box_options", 0);
+  RNA_def_property_ui_text(
+      prop, "Box Options", "Additional options for box selection of mesh elements");
+
+  prop = RNA_def_property(srna, "show_lasso_options", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "show_lasso_options", 0);
+  RNA_def_property_ui_text(
+      prop, "Lasso Options", "Additional options for lasso selection of mesh elements");
+
+  prop = RNA_def_property(srna, "show_circle_options", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "show_circle_options", 0);
+  RNA_def_property_ui_text(
+      prop, "Circle Options", "Additional options for circle selection of mesh elements");
 
   prop = RNA_def_property(srna, "box_edge", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, edge_select_items);
