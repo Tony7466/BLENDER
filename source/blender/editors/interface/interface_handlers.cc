@@ -3738,19 +3738,45 @@ static void ui_do_but_textedit(
         }
         break;
       case EVT_RIGHTARROWKEY:
-        ui_textedit_move(but,
+#if defined(__APPLE__)
+            if (event->modifier == KM_OSKEY || event->modifier == (KM_OSKEY + KM_SHIFT))
+#else
+            if (event->modifier == KM_CTRL)
+#endif
+            {
+                /*Allows for standard macOS cursor behavior for this key command*/
+                if (event->type == EVT_RIGHTARROWKEY) {
+                    ui_textedit_move(but, data, STRCUR_DIR_NEXT, event->modifier & KM_SHIFT,
+                                     ((event->modifier & KM_ALT) || (event->modifier & KM_CTRL)) ? STRCUR_JUMP_DELIM : STRCUR_JUMP_ALL);
+                }
+            }
+            else
+            ui_textedit_move(but,
                          data,
                          STRCUR_DIR_NEXT,
                          event->modifier & KM_SHIFT,
-                         (event->modifier & KM_CTRL) ? STRCUR_JUMP_DELIM : STRCUR_JUMP_NONE);
+                             ((event->modifier & KM_ALT) || (event->modifier & KM_CTRL)) ? STRCUR_JUMP_DELIM : STRCUR_JUMP_NONE);
         retval = WM_UI_HANDLER_BREAK;
         break;
       case EVT_LEFTARROWKEY:
-        ui_textedit_move(but,
+#if defined(__APPLE__)
+            if (event->modifier == KM_OSKEY || event->modifier == (KM_OSKEY + KM_SHIFT))
+#else
+            if (event->modifier == KM_CTRL)
+#endif
+            {
+                /*Allows for standard macOS cursor behavior for this key command*/
+                if (event->type == EVT_LEFTARROWKEY) {
+                    ui_textedit_move(but, data, STRCUR_DIR_PREV, event->modifier & KM_SHIFT,
+                                     ((event->modifier & KM_ALT) || (event->modifier & KM_CTRL)) ? STRCUR_JUMP_DELIM : STRCUR_JUMP_ALL);
+                }
+            }
+            else
+            ui_textedit_move(but,
                          data,
                          STRCUR_DIR_PREV,
                          event->modifier & KM_SHIFT,
-                         (event->modifier & KM_CTRL) ? STRCUR_JUMP_DELIM : STRCUR_JUMP_NONE);
+                             ((event->modifier & KM_ALT) || (event->modifier & KM_CTRL)) ? STRCUR_JUMP_DELIM : STRCUR_JUMP_NONE);
         retval = WM_UI_HANDLER_BREAK;
         break;
       case WHEELDOWNMOUSE:
@@ -3796,7 +3822,8 @@ static void ui_do_but_textedit(
         changed = ui_textedit_delete(but,
                                      data,
                                      STRCUR_DIR_NEXT,
-                                     (event->modifier & KM_CTRL) ? STRCUR_JUMP_DELIM :
+                                     /*Allows for standard macOS cursor behavior for this key command*/
+                                     ((event->modifier & KM_ALT) || (event->modifier & KM_CTRL)) ? STRCUR_JUMP_DELIM :
                                                                    STRCUR_JUMP_NONE);
         retval = WM_UI_HANDLER_BREAK;
         break;
@@ -3805,7 +3832,8 @@ static void ui_do_but_textedit(
         changed = ui_textedit_delete(but,
                                      data,
                                      STRCUR_DIR_PREV,
-                                     (event->modifier & KM_CTRL) ? STRCUR_JUMP_DELIM :
+                                     /*Allows for standard macOS cursor behavior for this key command*/
+                                     ((event->modifier & KM_ALT) || (event->modifier & KM_CTRL)) ? STRCUR_JUMP_DELIM :
                                                                    STRCUR_JUMP_NONE);
         retval = WM_UI_HANDLER_BREAK;
         break;
