@@ -2376,9 +2376,9 @@ class CustomDataLayerImplicitSharing : public ImplicitSharingInfo {
 };
 
 /** Create a #ImplicitSharingInfo that takes ownership of the data. */
-static ImplicitSharingInfo *make_cow_for_array(const eCustomDataType type,
-                                               const void *data,
-                                               const int totelem)
+static ImplicitSharingInfo *make_implicit_sharing_info_for_layer(const eCustomDataType type,
+                                                                 const void *data,
+                                                                 const int totelem)
 {
   return MEM_new<CustomDataLayerImplicitSharing>(__func__, data, totelem, type);
 }
@@ -2392,7 +2392,7 @@ static void ensure_layer_data_is_mutable(CustomDataLayer &layer, const int totel
     return;
   }
   if (layer.sharing_info == nullptr) {
-    /* Can not be shared without cow data. */
+    /* Can not be shared without implicit-sharing data. */
     return;
   }
   if (layer.sharing_info->is_shared()) {
@@ -2402,7 +2402,7 @@ static void ensure_layer_data_is_mutable(CustomDataLayer &layer, const int totel
      * we're still copying from it here. */
     layer.data = copy_layer_data(type, old_data, totelem);
     layer.sharing_info->remove_user_and_delete_if_last();
-    layer.sharing_info = make_cow_for_array(type, layer.data, totelem);
+    layer.sharing_info = make_implicit_sharing_info_for_layer(type, layer.data, totelem);
   }
 }
 
@@ -2431,7 +2431,7 @@ void CustomData_realloc(CustomData *data, const int old_size, const int new_size
     /* Take ownership of new array. */
     layer->data = new_layer_data;
     if (layer->data) {
-      layer->sharing_info = make_cow_for_array(
+      layer->sharing_info = make_implicit_sharing_info_for_layer(
           eCustomDataType(layer->type), layer->data, new_size);
     }
 
@@ -2925,7 +2925,7 @@ static CustomDataLayer *customData_add_layer__internal(
 
   if (new_layer.data != nullptr && new_layer.sharing_info == nullptr) {
     /* Make layer data shareable. */
-    new_layer.sharing_info = make_cow_for_array(type, new_layer.data, totelem);
+    new_layer.sharing_info = make_implicit_sharing_info_for_layer(type, new_layer.data, totelem);
   }
 
   new_layer.type = type;
@@ -2986,12 +2986,12 @@ const void *CustomData_add_layer_with_data(CustomData *data,
                                            const eCustomDataType type,
                                            void *layer_data,
                                            const int totelem,
-                                           const ImplicitSharingInfo *cow)
+                                           const ImplicitSharingInfo *sharing_info)
 {
   const LayerTypeInfo *typeInfo = layerType_getInfo(type);
 
   CustomDataLayer *layer = customData_add_layer__internal(
-      data, type, std::nullopt, layer_data, cow, totelem, typeInfo->defaultname);
+      data, type, std::nullopt, layer_data, sharing_info, totelem, typeInfo->defaultname);
   CustomData_update_typemap(data);
 
   if (layer) {
@@ -3022,10 +3022,10 @@ const void *CustomData_add_layer_named_with_data(CustomData *data,
                                                  void *layer_data,
                                                  int totelem,
                                                  const char *name,
-                                                 const ImplicitSharingInfo *cow)
+                                                 const ImplicitSharingInfo *sharing_info)
 {
   CustomDataLayer *layer = customData_add_layer__internal(
-      data, type, std::nullopt, layer_data, cow, totelem, name);
+      data, type, std::nullopt, layer_data, sharing_info, totelem, name);
   CustomData_update_typemap(data);
 
   if (layer) {
@@ -3060,11 +3060,11 @@ const void *CustomData_add_layer_anonymous_with_data(
     const AnonymousAttributeIDHandle *anonymous_id,
     const int totelem,
     void *layer_data,
-    const ImplicitSharingInfo *cow)
+    const ImplicitSharingInfo *sharing_info)
 {
   const char *name = anonymous_id->name().c_str();
   CustomDataLayer *layer = customData_add_layer__internal(
-      data, type, std::nullopt, layer_data, cow, totelem, name);
+      data, type, std::nullopt, layer_data, sharing_info, totelem, name);
   CustomData_update_typemap(data);
 
   if (layer == nullptr) {
@@ -5267,7 +5267,8 @@ void CustomData_blend_read(BlendDataReader *reader, CustomData *data, const int 
       BLO_read_data_address(reader, &layer->data);
       if (layer->data != nullptr) {
         /* Make layer data shareable. */
-        layer->sharing_info = make_cow_for_array(eCustomDataType(layer->type), layer->data, count);
+        layer->sharing_info = make_implicit_sharing_info_for_layer(
+            eCustomDataType(layer->type), layer->data, count);
       }
       if (CustomData_layer_ensure_data_exists(layer, count)) {
         /* Under normal operations, this shouldn't happen, but...
