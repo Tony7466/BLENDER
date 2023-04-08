@@ -81,7 +81,7 @@ static size_t array_chunk_size_calc(const size_t stride)
 {
   /* Return a chunk size that targets a size in bytes,
    * this is done so boolean arrays don't add so much overhead and
-   * larger arrays aren't unreasonably big, see: #105205. */
+   * larger arrays aren't so big as to waste memory, see: #105205. */
   return std::max(ARRAY_CHUNK_NUM_MIN, ARRAY_CHUNK_SIZE_IN_BYTES / power_of_2_max_i(stride));
 }
 
@@ -120,6 +120,7 @@ struct UndoMesh {
   /* Null arrays are considered empty. */
   struct { /* most data is stored as 'custom' data */
     BArrayCustomData *vdata, *edata, *ldata, *pdata;
+    BArrayState *poly_offset_indices;
     BArrayState **keyblocks;
     BArrayState *mselect;
   } store;
@@ -143,6 +144,7 @@ enum {
   ARRAY_STORE_INDEX_EDGE,
   ARRAY_STORE_INDEX_LOOP,
   ARRAY_STORE_INDEX_POLY,
+  ARRAY_STORE_INDEX_POLY_OFFSETS,
   ARRAY_STORE_INDEX_SHAPE,
   ARRAY_STORE_INDEX_MSEL,
 };
@@ -344,9 +346,9 @@ static void um_arraystore_compact_ex(UndoMesh *um, const UndoMesh *um_ref, bool 
   /* Compacting can be time consuming, run in parallel.
    *
    * NOTE(@ideasman42): this could be further parallelized with every custom-data layer
-   * running in it's own thread. If this is a bottleneck it's worth considering.
-   * At the moment it seems fast enough to split by element type.
-   * Since this is it's self a background thread, using too many threads here could
+   * running in its own thread. If this is a bottleneck it's worth considering.
+   * At the moment it seems fast enough to split by domain.
+   * Since this is itself a background thread, using too many threads here could
    * interfere with foreground tasks. */
   blender::threading::parallel_invoke(
       4096 < (me->totvert + me->totedge + me->totloop + me->totpoly),
@@ -381,6 +383,23 @@ static void um_arraystore_compact_ex(UndoMesh *um, const UndoMesh *um_ref, bool 
                                  ARRAY_STORE_INDEX_POLY,
                                  um_ref ? um_ref->store.pdata : nullptr,
                                  &um->store.pdata);
+      },
+      [&]() {
+        if (me->poly_offset_indices) {
+          BLI_assert(create == (um->store.poly_offset_indices == nullptr));
+          if (create) {
+            BArrayState *state_reference = um_ref ? um_ref->store.poly_offset_indices : nullptr;
+            const size_t stride = sizeof(*me->poly_offset_indices);
+            BArrayStore *bs = BLI_array_store_at_size_ensure(
+                &um_arraystore.bs_stride[ARRAY_STORE_INDEX_POLY_OFFSETS],
+                stride,
+                array_chunk_size_calc(stride));
+            um->store.poly_offset_indices = BLI_array_store_state_add(
+                bs, me->poly_offset_indices, size_t(me->totpoly + 1) * stride, state_reference);
+          }
+
+          MEM_SAFE_FREE(me->poly_offset_indices);
+        }
       },
       [&]() {
         if (me->key && me->key->totkey) {
@@ -541,6 +560,15 @@ static void um_arraystore_expand(UndoMesh *um)
     }
   }
 
+  if (um->store.poly_offset_indices) {
+    const size_t stride = sizeof(*me->poly_offset_indices);
+    BArrayState *state = um->store.poly_offset_indices;
+    size_t state_len;
+    me->poly_offset_indices = static_cast<int *>(
+        BLI_array_store_state_data_get_alloc(state, &state_len));
+    BLI_assert((me->totpoly + 1) == (state_len / stride));
+    UNUSED_VARS_NDEBUG(stride);
+  }
   if (um->store.mselect) {
     const size_t stride = sizeof(*me->mselect);
     BArrayState *state = um->store.mselect;
@@ -572,6 +600,14 @@ static void um_arraystore_free(UndoMesh *um)
     um->store.keyblocks = nullptr;
   }
 
+  if (um->store.poly_offset_indices) {
+    const size_t stride = sizeof(*me->poly_offset_indices);
+    BArrayStore *bs = BLI_array_store_at_size_get(
+        &um_arraystore.bs_stride[ARRAY_STORE_INDEX_POLY_OFFSETS], stride);
+    BArrayState *state = um->store.poly_offset_indices;
+    BLI_array_store_state_remove(bs, state);
+    um->store.poly_offset_indices = nullptr;
+  }
   if (um->store.mselect) {
     const size_t stride = sizeof(*me->mselect);
     BArrayStore *bs = BLI_array_store_at_size_get(&um_arraystore.bs_stride[ARRAY_STORE_INDEX_MSEL],
