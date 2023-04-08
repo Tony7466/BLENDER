@@ -1,1 +1,1 @@
-Referenced by issue #106702, 3.6.0 Eevee/Viewport broken on macOS Big Sur Intel nVidia
+Referenced by issue #106702, 3.6.0 OpenGL/Metal Backend both broken on macOS Intel (Big Sur and Monterey)
