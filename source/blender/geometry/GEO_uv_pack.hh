@@ -84,6 +84,12 @@ class UVPackIsland_Params {
   float target_aspect_y;
   /** Which shape to use when packing. */
   eUVPackIsland_ShapeMethod shape_method;
+
+  /** Should we abandon the pack? From wmJob. */
+  bool *stop;
+  bool *do_update;
+  /** How much progress we have made. From wmJob. */
+  float *progress;
 };
 
 class uv_phi;
