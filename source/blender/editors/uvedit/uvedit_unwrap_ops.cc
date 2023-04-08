@@ -18,6 +18,8 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
+#include "BKE_global.h"
+
 #include "BLI_array.hh"
 #include "BLI_convexhull_2d.h"
 #include "BLI_linklist.h"
@@ -1368,7 +1370,53 @@ enum {
   PACK_ORIGINAL_AABB,
 };
 
-static int pack_islands_exec(bContext *C, wmOperator *op)
+struct pack_islands_data {
+  wmWindowManager *wm;
+
+  const Scene *scene;
+
+  Object **objects;
+  uint objects_len;
+  const SpaceImage *sima;
+  int udim_source;
+
+  blender::geometry::UVPackIsland_Params pack_island_params;
+};
+
+static void pack_islands_startjob(void *pidv, bool *stop, bool *do_update, float *progress)
+{
+
+  *progress = 0.02f;
+  //  *do_update = 1;
+
+  pack_islands_data *pid = static_cast<pack_islands_data *>(pidv);
+
+  pid->pack_island_params.stop = stop;
+  pid->pack_island_params.do_update = do_update;
+  pid->pack_island_params.progress = progress;
+
+  uvedit_pack_islands_multi(pid->scene,
+                            pid->objects,
+                            pid->objects_len,
+                            nullptr,
+                            (pid->udim_source == PACK_UDIM_SRC_CLOSEST) ? pid->sima : nullptr,
+                            (pid->udim_source == PACK_ORIGINAL_AABB),
+                            &pid->pack_island_params);
+
+  *progress = 0.99f;
+  *do_update = 1;
+}
+
+static void pack_islands_freejob(void *pidv)
+{
+  WM_cursor_wait(false);
+  pack_islands_data *pid = static_cast<pack_islands_data *>(pidv);
+  MEM_freeN(pid->objects);
+  WM_set_locked_interface(pid->wm, false);
+  MEM_freeN(pid);
+}
+
+static int pack_islands_combined(bContext *C, wmOperator *op, const bool use_job)
 {
   ViewLayer *view_layer = CTX_data_view_layer(C);
   const Scene *scene = CTX_data_scene(C);
@@ -1400,7 +1448,12 @@ static int pack_islands_exec(bContext *C, wmOperator *op)
     RNA_float_set(op->ptr, "margin", scene->toolsettings->uvcalc_margin);
   }
 
+  pack_islands_data *pid = static_cast<pack_islands_data *>(
+      MEM_mallocN(sizeof(pack_islands_data), "pack_islands_data"));
+  pid->wm = CTX_wm_manager(C);
+
   blender::geometry::UVPackIsland_Params pack_island_params;
+
   pack_island_params.setFromUnwrapOptions(options);
   pack_island_params.rotate = RNA_boolean_get(op->ptr, "rotate");
   pack_island_params.scale_to_fit = RNA_boolean_get(op->ptr, "scale");
@@ -1416,16 +1469,44 @@ static int pack_islands_exec(bContext *C, wmOperator *op)
     pack_island_params.setUDIMOffsetFromSpaceImage(sima);
   }
 
-  uvedit_pack_islands_multi(scene,
-                            objects,
-                            objects_len,
-                            nullptr,
-                            (udim_source == PACK_UDIM_SRC_CLOSEST) ? sima : nullptr,
-                            (udim_source == PACK_ORIGINAL_AABB),
-                            &pack_island_params);
+  /* setup job */
+  pid->scene = scene;
+  pid->objects = objects;
+  pid->objects_len = objects_len;
+  pid->sima = sima;
+  pid->udim_source = udim_source;
+  pid->pack_island_params = pack_island_params;
+  wmJob *wm_job = WM_jobs_get(
+      pid->wm, CTX_wm_window(C), scene, "Packing UVs", WM_JOB_PROGRESS, WM_JOB_TYPE_UV_PACK);
+  WM_jobs_customdata_set(wm_job, pid, pack_islands_freejob);
+  WM_jobs_timer(wm_job, 0.1, 0, 0);
+  WM_set_locked_interface(pid->wm, true);
+  WM_jobs_callbacks(wm_job, pack_islands_startjob, nullptr, nullptr, nullptr);
 
-  MEM_freeN(objects);
+  if (use_job) {
+    WM_cursor_wait(true);
+    G.is_break = false;
+    WM_jobs_start(CTX_wm_manager(C), wm_job);
+
+    /* add modal handler for ESC */
+    WM_event_add_modal_handler(C, op);
+    return OPERATOR_RUNNING_MODAL;
+  }
+
+  pack_islands_startjob(pid, nullptr, nullptr, nullptr);
+
+  MEM_freeN(pid);
   return OPERATOR_FINISHED;
+}
+
+static int pack_islands_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  return pack_islands_combined(C, op, true);
+}
+
+static int pack_islands_exec(bContext *C, wmOperator *op)
+{
+  return pack_islands_combined(C, op, false);
 }
 
 static const EnumPropertyItem pack_margin_method_items[] = {
@@ -1491,6 +1572,7 @@ void UV_OT_pack_islands(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = pack_islands_exec;
+  ot->invoke = pack_islands_invoke;
   ot->poll = ED_operator_uvedit;
 
   /* properties */
