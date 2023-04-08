@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. All rights reserved. */
+ * Copyright 2011 Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -15,7 +15,7 @@
 #include "DNA_anim_types.h"
 #include "DNA_camera_types.h"
 #include "DNA_defaults.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_movieclip_types.h"
 #include "DNA_object_types.h" /* SELECT */
 #include "DNA_scene_types.h"
@@ -1834,8 +1834,6 @@ MovieTrackingPlaneMarker *BKE_tracking_plane_marker_get(MovieTrackingPlaneTrack 
 
   /* If there's no marker for exact position, use nearest marker from left side. */
   return &plane_track->markers[a];
-
-  return nullptr;
 }
 
 MovieTrackingPlaneMarker *BKE_tracking_plane_marker_get_exact(MovieTrackingPlaneTrack *plane_track,
@@ -3121,6 +3119,7 @@ static void tracking_dopesheet_channels_segments_calc(MovieTrackingDopesheetChan
       }
 
       channel->tot_segment++;
+      (void)len; /* Quiet set-but-unused warning (may be removed). */
     }
 
     i++;

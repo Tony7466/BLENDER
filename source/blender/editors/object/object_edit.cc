@@ -25,7 +25,7 @@
 #include "DNA_armature_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_curve_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
@@ -56,7 +56,7 @@
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_mball.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
 #include "BKE_paint.h"
@@ -469,11 +469,17 @@ void ED_collection_hide_menu_draw(const bContext *C, uiLayout *layout)
   }
 }
 
-static int object_hide_collection_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+static int object_hide_collection_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   /* Immediately execute if collection index was specified. */
   int index = RNA_int_get(op->ptr, "collection_index");
   if (index != COLLECTION_INVALID_INDEX) {
+    /* Only initialize extend from the shift key if the property isn't set
+     * (typically initialized from the key-map). */
+    PropertyRNA *prop = RNA_struct_find_property(op->ptr, "extend");
+    if (!RNA_property_is_set(op->ptr, prop)) {
+      RNA_property_boolean_set(op->ptr, prop, (event->modifier & KM_SHIFT) != 0);
+    }
     return object_hide_collection_exec(C, op);
   }
 

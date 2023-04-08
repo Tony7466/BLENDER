@@ -33,6 +33,8 @@
 #include "BKE_report.h"
 #include "BKE_vfont.h"
 
+#include "BLI_string_utf8.h"
+
 #include "BLT_translation.h"
 
 #include "DEG_depsgraph.h"
@@ -57,6 +59,7 @@
 #define MAXTEXT 32766
 
 static int kill_selection(Object *obedit, int ins);
+static char *font_select_to_buffer(Object *obedit);
 
 /* -------------------------------------------------------------------- */
 /** \name Internal Utilities
@@ -453,6 +456,19 @@ static int kill_selection(Object *obedit, int ins) /* ins == new character len *
   return direction;
 }
 
+static void font_select_update_primary_clipboard(Object *obedit)
+{
+  if ((WM_capabilities_flag() & WM_CAPABILITY_PRIMARY_CLIPBOARD) == 0) {
+    return;
+  }
+  char *buf = font_select_to_buffer(obedit);
+  if (buf == NULL) {
+    return;
+  }
+  WM_clipboard_text_set(buf, true);
+  MEM_freeN(buf);
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -521,6 +537,29 @@ static bool font_paste_utf8(bContext *C, const char *str, const size_t str_len)
   MEM_freeN(mem);
 
   return retval;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Generic Copy Functions
+ * \{ */
+
+static char *font_select_to_buffer(Object *obedit)
+{
+  int selstart, selend;
+  if (!BKE_vfont_select_get(obedit, &selstart, &selend)) {
+    return NULL;
+  }
+  Curve *cu = obedit->data;
+  EditFont *ef = cu->editfont;
+  char32_t *text_buf = ef->textbuf + selstart;
+  const size_t text_buf_len = selend - selstart;
+
+  const size_t len_utf8 = BLI_str_utf32_as_utf8_len_ex(text_buf, text_buf_len + 1);
+  char *buf = MEM_mallocN(len_utf8 + 1, __func__);
+  BLI_str_utf32_as_utf8(buf, text_buf, len_utf8);
+  return buf;
 }
 
 /** \} */
@@ -864,6 +903,7 @@ static int font_select_all_exec(bContext *C, wmOperator *UNUSED(op))
     ef->pos = ef->len;
 
     text_update_edited(C, obedit, FO_SELCHANGE);
+    font_select_update_primary_clipboard(obedit);
 
     return OPERATOR_FINISHED;
   }
@@ -1000,6 +1040,7 @@ static bool paste_selection(Object *obedit, ReportList *reports)
 
 static int paste_text_exec(bContext *C, wmOperator *op)
 {
+  const bool selection = RNA_boolean_get(op->ptr, "selection");
   Object *obedit = CTX_data_edit_object(C);
   int retval;
   size_t len_utf8;
@@ -1013,7 +1054,7 @@ static int paste_text_exec(bContext *C, wmOperator *op)
     int len;
   } clipboard_system = {NULL}, clipboard_vfont = {NULL};
 
-  clipboard_system.buf = WM_clipboard_text_get(false, &clipboard_system.len);
+  clipboard_system.buf = WM_clipboard_text_get(selection, &clipboard_system.len);
 
   if (clipboard_system.buf == NULL) {
     return OPERATOR_CANCELLED;
@@ -1077,6 +1118,15 @@ void FONT_OT_text_paste(wmOperatorType *ot)
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+  PropertyRNA *prop;
+  prop = RNA_def_boolean(ot->srna,
+                         "selection",
+                         0,
+                         "Selection",
+                         "Paste text selected elsewhere rather than copied (X11/Wayland only)");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
 /** \} */
@@ -1216,6 +1266,7 @@ static int move_cursor(bContext *C, int type, const bool select)
 
   if (select) {
     ef->selend = ef->pos;
+    font_select_update_primary_clipboard(obedit);
   }
 
   text_update_edited(C, obedit, cursmove);
@@ -1923,33 +1974,16 @@ static const EnumPropertyItem case_items[] = {
 static int set_case(bContext *C, int ccase)
 {
   Object *obedit = CTX_data_edit_object(C);
-  Curve *cu = obedit->data;
-  EditFont *ef = cu->editfont;
-  char32_t *str;
-  int len;
   int selstart, selend;
 
   if (BKE_vfont_select_get(obedit, &selstart, &selend)) {
-    len = (selend - selstart) + 1;
-    str = &ef->textbuf[selstart];
-    while (len) {
-      if (*str >= 'a' && *str <= 'z') {
-        *str -= 32;
-      }
-      len--;
-      str++;
-    }
+    Curve *cu = (Curve *)obedit->data;
+    EditFont *ef = cu->editfont;
+    char32_t *str = &ef->textbuf[selstart];
 
-    if (ccase == CASE_LOWER) {
-      len = (selend - selstart) + 1;
-      str = &ef->textbuf[selstart];
-      while (len) {
-        if (*str >= 'A' && *str <= 'Z') {
-          *str += 32;
-        }
-        len--;
-        str++;
-      }
+    for (int len = (selend - selstart) + 1; len; len--, str++) {
+      *str = (ccase == CASE_LOWER) ? BLI_str_utf32_char_to_lower(*str) :
+                                     BLI_str_utf32_char_to_upper(*str);
     }
 
     text_update_edited(C, obedit, FO_EDIT);

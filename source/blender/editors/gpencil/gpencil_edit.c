@@ -23,8 +23,8 @@
 
 #include "BLT_translation.h"
 
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_gpencil_modifier_types.h"
-#include "DNA_gpencil_types.h"
 #include "DNA_material_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
@@ -37,9 +37,9 @@
 #include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_global.h"
-#include "BKE_gpencil.h"
-#include "BKE_gpencil_curve.h"
-#include "BKE_gpencil_geom.h"
+#include "BKE_gpencil_curve_legacy.h"
+#include "BKE_gpencil_geom_legacy.h"
+#include "BKE_gpencil_legacy.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_library.h"
@@ -1714,33 +1714,36 @@ static int gpencil_strokes_paste_exec(bContext *C, wmOperator *op)
          *       doesn't exist already depending on REC button status.
          */
 
-        for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
-          if (gpf->flag & GP_FRAME_SELECT) {
-            if (gpf) {
-              /* Create new stroke */
-              bGPDstroke *new_stroke = BKE_gpencil_stroke_duplicate(gps, true, true);
-              new_stroke->runtime.tmp_layerinfo[0] = '\0';
-              new_stroke->next = new_stroke->prev = NULL;
-
-              /* Calc geometry data. */
-              BKE_gpencil_stroke_geometry_update(gpd, new_stroke);
-
-              if (on_back) {
-                BLI_addhead(&gpf->strokes, new_stroke);
-              }
-              else {
-                BLI_addtail(&gpf->strokes, new_stroke);
-              }
-
-              /* Remap material */
-              Material *ma = BLI_ghash_lookup(new_colors, POINTER_FROM_INT(new_stroke->mat_nr));
-              new_stroke->mat_nr = BKE_gpencil_object_material_index_get(ob, ma);
-              CLAMP_MIN(new_stroke->mat_nr, 0);
+        /* Multiframe paste. */
+        if (is_multiedit) {
+          for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
+            /* Active frame is copied later, so don't need duplicate the stroke here. */
+            if (gpl->actframe == gpf) {
+              continue;
             }
-          }
-          /* If not multi-edit, exit loop. */
-          if (!is_multiedit) {
-            break;
+            if (gpf->flag & GP_FRAME_SELECT) {
+              if (gpf) {
+                /* Create new stroke */
+                bGPDstroke *new_stroke = BKE_gpencil_stroke_duplicate(gps, true, true);
+                new_stroke->runtime.tmp_layerinfo[0] = '\0';
+                new_stroke->next = new_stroke->prev = NULL;
+
+                /* Calc geometry data. */
+                BKE_gpencil_stroke_geometry_update(gpd, new_stroke);
+
+                if (on_back) {
+                  BLI_addhead(&gpf->strokes, new_stroke);
+                }
+                else {
+                  BLI_addtail(&gpf->strokes, new_stroke);
+                }
+
+                /* Remap material */
+                Material *ma = BLI_ghash_lookup(new_colors, POINTER_FROM_INT(new_stroke->mat_nr));
+                new_stroke->mat_nr = BKE_gpencil_object_material_index_get(ob, ma);
+                CLAMP_MIN(new_stroke->mat_nr, 0);
+              }
+            }
           }
         }
 

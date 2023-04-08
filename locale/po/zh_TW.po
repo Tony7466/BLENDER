@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.5.0 Beta (b'4e3286478670')\n"
+"Project-Id-Version: Blender 3.6.0 Alpha (b'e05010b2f292')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-03-06 08:08:35\n"
+"POT-Creation-Date: 2023-04-03 10:36:36\n"
 "PO-Revision-Date: 2023-01-28 11:09+0800\n"
 "Last-Translator: Cheng-Chia Tseng <pswo10680@gmail.com>\n"
 "Language-Team: Chinese (Traditional) <http://weblate.slat.org/projects/blender/blender/zh_Hant/>\n"
@@ -1653,6 +1653,10 @@ msgstr "外形鍵"
 
 msgid "Shape Key data-blocks"
 msgstr "外形鍵資料塊"
+
+
+msgid "Simulations"
+msgstr "模擬"
 
 
 msgid "Sounds"
@@ -9353,10 +9357,6 @@ msgid "Fonts"
 msgstr "字型"
 
 
-msgid "Simulations"
-msgstr "模擬"
-
-
 msgid "Show workspace data-blocks"
 msgstr "顯示工作空間資料塊"
 
@@ -9751,10 +9751,6 @@ msgstr "使用的壓縮方法"
 
 msgid "Effective but slow compression"
 msgstr "有效但緩慢的壓縮"
-
-
-msgid "Number"
-msgstr "數目"
 
 
 msgid "Randomness"
@@ -11610,22 +11606,6 @@ msgstr "遮罩紋理疊層 Alpha"
 
 msgid "Editable falloff curve"
 msgstr "可編輯的衰減曲線"
-
-
-msgid "Root"
-msgstr "基根"
-
-
-msgid "Sharp"
-msgstr "銳利"
-
-
-msgid "Sharper"
-msgstr "更銳利"
-
-
-msgid "Inverse Square"
-msgstr "反轉平方"
 
 
 msgid "Paint most on faces pointing towards the view according to this angle"
@@ -13926,6 +13906,10 @@ msgid "Inverse Linear"
 msgstr "反轉線性"
 
 
+msgid "Inverse Square"
+msgstr "反轉平方"
+
+
 msgid "Lin/Quad Weighted"
 msgstr "線性/二次型權重"
 
@@ -15773,6 +15757,10 @@ msgid "Show guide hairs"
 msgstr "顯示導引毛髮"
 
 
+msgid "Number"
+msgstr "數目"
+
+
 msgid "Show particle number"
 msgstr "顯示粒子數目"
 
@@ -15999,6 +15987,10 @@ msgstr "虛擬親代的相對量"
 
 msgid "Active Movie Clip"
 msgstr "作用中影片剪輯"
+
+
+msgid "Mirror Object"
+msgstr "鏡像物體"
 
 
 msgid "Distance Model"
@@ -16489,10 +16481,6 @@ msgstr "已修改"
 
 msgid "Text file on disk is different than the one in memory"
 msgstr "磁碟上的文字檔與記憶體中的不同"
-
-
-msgid "Lines"
-msgstr "線條"
 
 
 msgid "Lines of text"
@@ -17099,8 +17087,16 @@ msgid "Use soft marble"
 msgstr "使用柔大理石"
 
 
+msgid "Sharp"
+msgstr "銳利"
+
+
 msgid "Use more clearly defined marble"
 msgstr "使用更清晰定義的大理石"
+
+
+msgid "Sharper"
+msgstr "更銳利"
 
 
 msgid "Use very clearly defined marble"
@@ -19156,6 +19152,10 @@ msgid "Weight of feather point"
 msgstr "羽毛點的權重"
 
 
+msgid "Active Point"
+msgstr "作用中的點"
+
+
 msgid "Alignment"
 msgstr "對齊"
 
@@ -19478,6 +19478,10 @@ msgid "Bone Roll"
 msgstr "骨骼滾動"
 
 
+msgid "Select More/Less"
+msgstr "較多/較少選取"
+
+
 msgid "Special Characters"
 msgstr "特殊字元"
 
@@ -19488,10 +19492,6 @@ msgstr "面資料"
 
 msgid "Mesh Select Mode"
 msgstr "網格選取模式"
-
-
-msgid "Select More/Less"
-msgstr "較多/較少選取"
 
 
 msgid "Select Similar"
@@ -19772,6 +19772,10 @@ msgstr "皮膚的半徑"
 
 msgid "If vertex has multiple adjacent edges, it is hulled to them directly"
 msgstr "如果頂點有多條相鄰邊線，它會被它們直接拉過去"
+
+
+msgid "Root"
+msgstr "基根"
 
 
 msgid "Mesh Skin Vertex Layer"
@@ -21100,10 +21104,6 @@ msgstr "在其他變形物體上 (較慢且較耗費記憶體) 動態重新計�
 
 msgid "Mirroring modifier"
 msgstr "鏡像處理修改器"
-
-
-msgid "Mirror Object"
-msgstr "鏡像物體"
 
 
 msgid "Object to use as mirror"
@@ -22447,6 +22447,10 @@ msgstr "快取的幀數"
 
 msgid "Line Thickness"
 msgstr "線條厚度"
+
+
+msgid "Lines"
+msgstr "線條"
 
 
 msgid "Use straight lines between keyframe points"
@@ -25114,10 +25118,6 @@ msgid "Wrap all pixels on both axes"
 msgstr "於兩軸包覆所有像素"
 
 
-msgid "ColorRamp"
-msgstr "色彩漸變"
-
-
 msgid "Vector Blur"
 msgstr "向量模糊"
 
@@ -26774,6 +26774,14 @@ msgstr "以互動方式更改目前幀號"
 msgctxt "Operator"
 msgid "Select Channel Keyframes"
 msgstr "選取通道鍵幀"
+
+
+msgid "Include Handles"
+msgstr "包括控制桿"
+
+
+msgid "Include handles of keyframes when calculating extents"
+msgstr "當計算範圍時包括鍵幀的控制桿"
 
 
 msgctxt "Operator"
@@ -29030,6 +29038,10 @@ msgid "Paste text from clipboard"
 msgstr "從剪貼簿貼上文字"
 
 
+msgid "Selection"
+msgstr "選取項"
+
+
 msgctxt "Operator"
 msgid "Scrollback Append"
 msgstr "附加滾動條"
@@ -30665,10 +30677,6 @@ msgid "Amount to decrease or increase character spacing with"
 msgstr "字元間距要增減的量"
 
 
-msgid "Selection"
-msgstr "選取項"
-
-
 msgid "Next or Selection"
 msgstr "下一項或目前選項"
 
@@ -31361,6 +31369,14 @@ msgid "Place the cursor on the midpoint of selected keyframes"
 msgstr "將游標放置至所選鍵幀的中點"
 
 
+msgid "Filter Width"
+msgstr "過濾寬度"
+
+
+msgid "Sigma"
+msgstr "Sigma"
+
+
 msgctxt "Operator"
 msgid "Clear Ghost Curves"
 msgstr "清除殘影曲線"
@@ -31385,10 +31401,6 @@ msgstr "將游標值 (Y/水平部份) 作為鏡像線翻轉所選鍵幀的值"
 
 msgid "Flip times of selected keyframes, effectively reversing the order they appear in"
 msgstr "翻轉所選框幀的時間，可有效反轉它們出現的順序"
-
-
-msgid "Include Handles"
-msgstr "包括控制桿"
 
 
 msgid "Are handles tested individually against the selection criteria"
@@ -31472,10 +31484,6 @@ msgstr "殼曲線的振幅會總結 (或者，當啟用「累加」時，正差�
 
 msgid "The output is a square curve (negative values always result in -1, and positive ones in 1)"
 msgstr "輸出為平方曲線 (負值總是 -1，而正值總是 1)"
-
-
-msgid "Include handles of keyframes when calculating extents"
-msgstr "當計算範圍時包括鍵幀的控制桿"
 
 
 msgid "Reset viewable area to show selected keyframe range"
@@ -32215,17 +32223,9 @@ msgid "Clear Restrict View"
 msgstr "清除限制視圖"
 
 
-msgid "Reveal the layer by setting the hide flag"
-msgstr "揭開設有隱藏旗幟的層"
-
-
 msgctxt "Operator"
 msgid "Set Restrict View"
 msgstr "設定限制視圖"
-
-
-msgid "Hide the layer by setting the hide flag"
-msgstr "隱藏設有隱藏旗幟的層"
 
 
 msgctxt "Operator"
@@ -36388,31 +36388,6 @@ msgid "Copy Vertex Group to Selected"
 msgstr "將頂點群組複製至已選取"
 
 
-msgctxt "Operator"
-msgid "Fix Vertex Group Deform"
-msgstr "修正頂點群組變形"
-
-
-msgid "Modify the position of selected vertices by changing only their respective groups' weights (this tool may be slow for many vertices)"
-msgstr "藉由僅更改其對應群組權重來修改所選頂點的位置 (此工具可能對許多頂點來說相當緩慢)"
-
-
-msgid "Change Sensitivity"
-msgstr "更改敏感度"
-
-
-msgid "Change the amount weights are altered with each iteration: lower values are slower"
-msgstr "更改被每此迭代修改的權重量：較低的值較慢"
-
-
-msgid "The distance to move to"
-msgstr "要移動的距離"
-
-
-msgid "The distance moved can be changed by this multiplier"
-msgstr "可以透過此乘數更改的移動距離"
-
-
 msgid "Invert active vertex group's weights"
 msgstr "反向作用中頂點群組的權重"
 
@@ -40573,10 +40548,6 @@ msgid "Toggle overwrite while typing"
 msgstr "輸入時切換覆寫"
 
 
-msgid "Paste text selected elsewhere rather than copied (X11 only)"
-msgstr "在其他地方貼上所選文字，而不是複製 (僅用於 X11)"
-
-
 msgctxt "Operator"
 msgid "Refresh PyConstraints"
 msgstr "重新整理 PyContraints"
@@ -41677,6 +41648,10 @@ msgstr "島塊間的空間"
 
 msgid "Rotate islands for best fit"
 msgstr "旋轉島塊以最佳適應"
+
+
+msgid "Bounding box"
+msgstr "邊界方塊"
 
 
 msgctxt "Operator"
@@ -43722,10 +43697,6 @@ msgid "2D Cursor"
 msgstr "2D 游標"
 
 
-msgid "Active Point"
-msgstr "作用中的點"
-
-
 msgid "Predefined tracking camera intrinsics"
 msgstr "預先定義的追蹤攝影機內在本質"
 
@@ -45522,6 +45493,10 @@ msgid "Color of texture overlay"
 msgstr "紋理疊層的色彩"
 
 
+msgid "Only keyframes of selected F-Curves are visible and editable"
+msgstr "僅所選 F 曲線的鍵幀可見且可被編輯"
+
+
 msgid "Undo Memory Size"
 msgstr "取消動作記憶體大小"
 
@@ -46760,10 +46735,6 @@ msgstr "使用實驗中與未完成的功能，可能導致失敗，或是未來
 
 msgid "Image brightness scale"
 msgstr "影像亮度縮放"
-
-
-msgid "Filter Width"
-msgstr "過濾寬度"
 
 
 msgid "Pixel filter width"
@@ -50114,14 +50085,6 @@ msgid "Use Normalization"
 msgstr "使用規一處理"
 
 
-msgid "Only Selected Curve Keyframes"
-msgstr "僅選取曲線鍵幀"
-
-
-msgid "Only keyframes of selected F-Curves are visible and editable"
-msgstr "僅所選 F 曲線的鍵幀可見且可被編輯"
-
-
 msgid "Only Selected Keyframes Handles"
 msgstr "僅選取的鍵幀控制桿"
 
@@ -52699,10 +52662,6 @@ msgid "Consider objects as whole when finding volume center"
 msgstr "當尋找體積中心時將物體視為整體"
 
 
-msgid "Project individual elements on the surface of other objects"
-msgstr "將各自元素投影至其他物體的表面上"
-
-
 msgid "Snap onto Selectable Only"
 msgstr "僅針對選取吸附"
 
@@ -53129,14 +53088,6 @@ msgstr "所有物體原點"
 
 msgid "Show the object origin center dot for all (selected and unselected) objects"
 msgstr "顯示所有物體的物體原始中心點 (無論選取與否)"
-
-
-msgid "Hidden Wire"
-msgstr "隱藏線框"
-
-
-msgid "Use hidden wireframe display"
-msgstr "使用隱藏的線框顯示"
 
 
 msgid "Outline Selected"
@@ -54225,10 +54176,6 @@ msgid "Invert Selection"
 msgstr "反轉選取項"
 
 
-msgid "[{}]: \"{}\" ({})"
-msgstr "[{}]: \"{}\" ({})"
-
-
 msgid "Tracking"
 msgstr "跟蹤"
 
@@ -54258,12 +54205,12 @@ msgid "Active object is not a mesh"
 msgstr "作用中物體非網格"
 
 
-msgid "Remove Add-on: %r?"
-msgstr "是否移除擴充元件：%r？"
-
-
 msgid "Warning, file already exists. Overwrite existing file?"
 msgstr "警告：檔案已經存在。是否覆蓋既有檔案？"
+
+
+msgid "Remove Add-on: %r?"
+msgstr "是否移除擴充元件：%r？"
 
 
 msgctxt "Operator"
@@ -54680,10 +54627,6 @@ msgid "Strand Shape"
 msgstr "股段外形"
 
 
-msgid "Spacing: %g"
-msgstr "間隔：%g"
-
-
 msgid "Settings used for fluid"
 msgstr "用於流體的設定"
 
@@ -54692,16 +54635,20 @@ msgid "Jittering Amount"
 msgstr "抖動量"
 
 
-msgid "%d fluid particles for this frame"
-msgstr "此框幀的 %d 個流體粒子"
-
-
 msgid "Use Timing"
 msgstr "使用計時"
 
 
+msgid "Spacing: %g"
+msgstr "間隔：%g"
+
+
 msgid "Not yet functional"
 msgstr "尚未能運作"
+
+
+msgid "%d fluid particles for this frame"
+msgstr "此框幀的 %d 個流體粒子"
 
 
 msgid "Dynamic Mesh"
@@ -55282,6 +55229,11 @@ msgid "Make and Replace Links"
 msgstr "製作連結並替換連結"
 
 
+msgctxt "Operator"
+msgid "Online Manual"
+msgstr "線上手冊"
+
+
 msgid "Inputs:"
 msgstr "輸入："
 
@@ -55440,12 +55392,12 @@ msgid "Rotation"
 msgstr "旋轉"
 
 
-msgid "Original frame range: %d-%d (%d)"
-msgstr "原始框幀區間：%d-%d (%d)"
-
-
 msgid "Unpack"
 msgstr "解包"
+
+
+msgid "Original frame range: %d-%d (%d)"
+msgstr "原始框幀區間：%d-%d (%d)"
 
 
 msgctxt "Text"
@@ -55616,10 +55568,6 @@ msgid "View Name"
 msgstr "視圖名稱"
 
 
-msgid "3D Viewport Axis"
-msgstr "3D 視接口座標軸"
-
-
 msgid "Limit Size"
 msgstr "限制大小"
 
@@ -55652,10 +55600,6 @@ msgid "Excluded Paths"
 msgstr "排除的路徑"
 
 
-msgid "Color Set %d"
-msgstr "色彩集 %d"
-
-
 msgid "Invert Wheel Zoom Direction"
 msgstr "反轉滾輪遠近調焦方向"
 
@@ -55666,6 +55610,10 @@ msgstr "找到多個同名的附加元件！"
 
 msgid "Missing script files"
 msgstr "遺失的指令稿檔案"
+
+
+msgid "Color Set %d"
+msgstr "色彩集 %d"
 
 
 msgid "Description:"
@@ -55682,10 +55630,6 @@ msgstr "檔案："
 
 msgid "Author:"
 msgstr "作者："
-
-
-msgid "author"
-msgstr "作者"
 
 
 msgid "Version:"
@@ -56063,11 +56007,6 @@ msgstr "量子化"
 msgctxt "Operator"
 msgid "Limit Total"
 msgstr "限制總計"
-
-
-msgctxt "Operator"
-msgid "Fix Deforms"
-msgstr "修正變形"
 
 
 msgctxt "Operator"
@@ -56769,10 +56708,6 @@ msgstr "檔案是由較新的 Blender 二元檔 (%d.%d) 寫入，預期會遺失
 
 msgid "Loading failed: "
 msgstr "載入失敗： "
-
-
-msgid "Loading '%s' failed: "
-msgstr "載入「%s」失敗： "
 
 
 msgid "Appended Data"
@@ -57707,11 +57642,6 @@ msgstr "重設單項回預設值"
 msgctxt "Operator"
 msgid "Remove Shortcut"
 msgstr "移除快捷鍵"
-
-
-msgctxt "Operator"
-msgid "Online Manual"
-msgstr "線上手冊"
 
 
 msgctxt "Operator"
@@ -60881,10 +60811,6 @@ msgid "Determinator"
 msgstr "判定器"
 
 
-msgid "Bounding box"
-msgstr "邊界方塊"
-
-
 msgid "Color Space:"
 msgstr "色彩空間："
 
@@ -61083,10 +61009,6 @@ msgstr "穿透粗糙度"
 
 msgid "Emission Strength"
 msgstr "發光強度"
-
-
-msgid "Sigma"
-msgstr "Sigma"
 
 
 msgid "View Vector"
@@ -61473,44 +61395,12 @@ msgid "Engine '%s' not available for scene '%s' (an add-on may need to be instal
 msgstr "「%s」引擎無法用於「%s」場景 (可能需要安裝或啟用某項附加元件)"
 
 
-msgid "Cannot read file '%s': %s"
-msgstr "無法讀取「%s」檔案：%s"
-
-
-msgid "File format is not supported in file '%s'"
-msgstr "不支援「%s」檔案的格式"
-
-
-msgid "File path '%s' invalid"
-msgstr "無效的檔案路徑「%s」"
-
-
-msgid "Unknown error loading '%s'"
-msgstr "未知的載入錯誤「%s」"
-
-
-msgid "Application Template '%s' not found"
-msgstr "找不到「%s」應用程式範本"
-
-
-msgid "Could not read '%s'"
-msgstr "無法讀取「%s」"
-
-
-msgid "Cannot save blend file, path '%s' is not writable"
-msgstr "無法儲存 blend 檔，「%s」路徑無法寫入"
-
-
 msgid "Cannot overwrite used library '%.240s'"
 msgstr "無法覆寫已使用的函式庫「%.240s」"
 
 
 msgid "Saved \"%s\""
 msgstr "已儲存「%s」"
-
-
-msgid "Can't read alternative start-up file: '%s'"
-msgstr "無法讀取替代性初始啟動檔：「%s」"
 
 
 msgid "Not a library"
