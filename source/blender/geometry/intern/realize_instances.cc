@@ -13,6 +13,7 @@
 #include "BLI_noise.hh"
 #include "BLI_task.hh"
 
+#include "BKE_attribute_math.hh"
 #include "BKE_collection.h"
 #include "BKE_curves.hh"
 #include "BKE_deform.h"
@@ -875,6 +876,29 @@ static void gather_meshes_to_realize(const GeometrySet &geometry_set,
   }
 }
 
+static void set_meshes_parameters(const Span<RealizeMeshTask> tasks, Mesh &dst_mesh)
+{
+  /* Copy settings from the first input geometry set with a mesh. */
+  const RealizeMeshTask &first_task = tasks.first();
+  const Mesh &first_mesh = *first_task.mesh_info->mesh;
+  BKE_mesh_copy_parameters_for_eval(&dst_mesh, &first_mesh);
+
+  /* Interpolate texture spaces from all source meshes. */
+  Vector<float3, 2> mesh_texture_space;
+  const int location = mesh_texture_space.append_and_get_index({});
+  const int size = mesh_texture_space.append_and_get_index({});
+  attribute_math::DefaultMixer<float3> mix_meshes_texture_space(
+      mesh_texture_space.as_mutable_span());
+  for (const RealizeMeshTask &task : tasks) {
+    const Mesh &mesh = *task.mesh_info->mesh;
+    mix_meshes_texture_space.mix_in(location, mesh.texspace_location);
+    mix_meshes_texture_space.mix_in(size, mesh.texspace_size);
+  }
+  mix_meshes_texture_space.finalize();
+  copy_v3_v3(dst_mesh.texspace_location, mesh_texture_space[location]);
+  copy_v3_v3(dst_mesh.texspace_size, mesh_texture_space[size]);
+}
+
 static AllMeshesInfo preprocess_meshes(const GeometrySet &geometry_set,
                                        const RealizeInstancesOptions &options)
 {
@@ -1094,10 +1118,8 @@ static void execute_realize_mesh_tasks(const RealizeInstancesOptions &options,
   MutableSpan<int> dst_corner_verts = dst_mesh->corner_verts_for_write();
   MutableSpan<int> dst_corner_edges = dst_mesh->corner_edges_for_write();
 
-  /* Copy settings from the first input geometry set with a mesh. */
-  const RealizeMeshTask &first_task = tasks.first();
-  const Mesh &first_mesh = *first_task.mesh_info->mesh;
-  BKE_mesh_copy_parameters_for_eval(dst_mesh, &first_mesh);
+  set_meshes_parameters(tasks, *dst_mesh);
+
   /* The above line also copies vertex group names. We don't want that here because the new
    * attributes are added explicitly below. */
   BLI_freelistN(&dst_mesh->vertex_group_names);
