@@ -625,7 +625,6 @@ void BKE_pointcloud_from_mesh(const Mesh *me, PointCloud *pointcloud)
 {
   CustomData_free(&pointcloud->pdata, pointcloud->totpoint);
   pointcloud->totpoint = me->totvert;
-
   CustomData_merge(&me->vdata, &pointcloud->pdata, CD_MASK_PROP_ALL, me->totvert);
 }
 
