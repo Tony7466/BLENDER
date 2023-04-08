@@ -7,7 +7,10 @@
 #include "RNA_types.h"
 
 #include "BLI_color.hh"
+#include "BLI_function_ref.hh"
 #include "BLI_math_vector_types.hh"
+
+using BlenderObjectPtr = Object *;
 
 namespace blender::nodes::decl {
 
@@ -162,22 +165,53 @@ class IDSocketDeclaration : public SocketDeclaration {
  public:
   IDSocketDeclaration(const char *idname);
 
+  virtual void construct_default_value(bNode &node, bNodeSocket &socket) const = 0;
+
   bNodeSocket &build(bNodeTree &ntree, bNode &node) const override;
   bool matches(const bNodeSocket &socket) const override;
   bNodeSocket &update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket &socket) const override;
   bool can_connect(const bNodeSocket &socket) const override;
 };
 
+class ObjectBuilder;
+
 class Object : public IDSocketDeclaration {
  public:
-  using Builder = SocketDeclarationBuilder<Object>;
+  std::function<BlenderObjectPtr(const bNode *node)> object_cb;
+
+  void construct_default_value(bNode &node, bNodeSocket &socket) const
+  {
+    printf("1!\n");
+    if (!this->object_cb) {
+      return;
+    }
+    printf("2!\n");
+    printf("%p, %p, %p;\n", &socket, this->object_cb(&node), nullptr);
+    printf("3!\n");
+    socket.default_value_typed<bNodeSocketValueObject>()->value = this->object_cb(&node);
+    printf("4!\n");
+  }
+
+  friend ObjectBuilder;
+
+ public:
+  using Builder = ObjectBuilder;
 
   Object();
+};
+
+class ObjectBuilder : public SocketDeclarationBuilder<Object> {
+ public:
+  ObjectBuilder &default_value_cb(std::function<BlenderObjectPtr(const bNode *node)> object_cb);
 };
 
 class Material : public IDSocketDeclaration {
  public:
   using Builder = SocketDeclarationBuilder<Material>;
+  void construct_default_value(bNode & /*node*/, bNodeSocket & /*socket*/) const
+  {
+    return;
+  }
 
   Material();
 };
@@ -185,6 +219,10 @@ class Material : public IDSocketDeclaration {
 class Collection : public IDSocketDeclaration {
  public:
   using Builder = SocketDeclarationBuilder<Collection>;
+  void construct_default_value(bNode & /*node*/, bNodeSocket & /*socket*/) const
+  {
+    return;
+  }
 
   Collection();
 };
@@ -192,6 +230,10 @@ class Collection : public IDSocketDeclaration {
 class Texture : public IDSocketDeclaration {
  public:
   using Builder = SocketDeclarationBuilder<Texture>;
+  void construct_default_value(bNode & /*node*/, bNodeSocket & /*socket*/) const
+  {
+    return;
+  }
 
   Texture();
 };
@@ -199,7 +241,10 @@ class Texture : public IDSocketDeclaration {
 class Image : public IDSocketDeclaration {
  public:
   using Builder = SocketDeclarationBuilder<Image>;
-
+  void construct_default_value(bNode & /*node*/, bNodeSocket & /*socket*/) const
+  {
+    return;
+  }
   Image();
 };
 
@@ -362,6 +407,19 @@ inline BoolBuilder &BoolBuilder::default_value(const bool value)
 inline ColorBuilder &ColorBuilder::default_value(const ColorGeometry4f value)
 {
   decl_->default_value = value;
+  return *this;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name #ColorBuilder Inline Methods
+ * \{ */
+
+inline ObjectBuilder &ObjectBuilder::default_value_cb(
+    std::function<BlenderObjectPtr(const bNode *node)> object_cb)
+{
+  decl_->object_cb = std::move(object_cb);
   return *this;
 }
 

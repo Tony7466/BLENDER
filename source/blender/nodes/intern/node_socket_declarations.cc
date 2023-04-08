@@ -436,6 +436,13 @@ bNodeSocket &IDSocketDeclaration::build(bNodeTree &ntree, bNode &node) const
   bNodeSocket &socket = *nodeAddSocket(
       &ntree, &node, this->in_out, this->idname, this->identifier.c_str(), this->name.c_str());
   this->set_common_flags(socket);
+
+  if (const auto *ptr = dynamic_cast<const Object *>(this)) {
+    printf("Start\n");
+    ptr->construct_default_value(node, socket);
+    printf("End\n");
+  }
+
   return socket;
 }
 
