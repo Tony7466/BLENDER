@@ -150,7 +150,6 @@ static void select_cache_init(void *vedata)
 
     if (retopology_occlusion) {
       pd->shgrp_occlude = DRW_shgroup_create(sh->select_id_uniform, psl->depth_only_pass);
-      DRW_shgroup_uniform_int_copy(pd->shgrp_occlude, "id", 0);
       DRW_shgroup_uniform_float_copy(pd->shgrp_occlude, "retopologyOffset", 0.0f);
     }
 
