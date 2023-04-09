@@ -20,9 +20,7 @@ static Result detect_edges(Context &context,
                            float threshold,
                            float local_contrast_adaptation_factor)
 {
-  GPUShader *shader = context.shader_manager().get(input.type() == ResultType::Float ?
-                                                       "compositor_smaa_edge_detection_float" :
-                                                       "compositor_smaa_edge_detection_color");
+  GPUShader *shader = context.shader_manager().get("compositor_smaa_edge_detection");
   GPU_shader_bind(shader);
 
   switch (input.type()) {
@@ -37,8 +35,11 @@ static Result detect_edges(Context &context,
       GPU_shader_uniform_3fv(shader, "luminance_coefficients", luminance_coefficients);
       break;
     }
-    default:
+    case ResultType::Float: {
+      float luminance_coefficients[3] = {1.0f, 0.0f, 0.0f};
+      GPU_shader_uniform_3fv(shader, "luminance_coefficients", luminance_coefficients);
       break;
+    }
   }
 
   GPU_shader_uniform_1f(shader, "smaa_threshold", threshold);
