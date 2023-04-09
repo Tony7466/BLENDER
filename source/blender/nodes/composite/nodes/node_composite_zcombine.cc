@@ -17,6 +17,8 @@
 #include "COM_algorithm_smaa.hh"
 #include "COM_node_operation.hh"
 
+#include "GPU_shader.h"
+
 #include "node_composite_util.hh"
 
 /* **************** Z COMBINE ******************** */
