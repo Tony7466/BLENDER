@@ -3027,6 +3027,77 @@ static int click_select_channel_scene(bAnimListElem *ale,
   return (ND_ANIMCHAN | NA_SELECTED);
 }
 
+static void animchannel_clear_selection(bAnimContext *ac)
+{
+  ListBase anim_data = anim_channels_for_selection(ac);
+
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    switch (ale->type) {
+      case ANIMTYPE_FCURVE: {
+        FCurve *fcu = (FCurve *)ale->data;
+        fcu->flag &= ~FCURVE_SELECTED;
+        break;
+      }
+      case ANIMTYPE_GPLAYER: {
+        bGPDlayer *gpl = (bGPDlayer *)ale->data;
+        gpl->flag &= ~GP_LAYER_SELECT;
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  ANIM_animdata_freelist(&anim_data);
+}
+
+/* Select channels that lies between active channel and last clicked channel. */
+static void animchannel_select_range(bAnimContext *ac, bAnimListElem *cursor_elem)
+{
+  ListBase anim_data = anim_channels_for_selection(ac);
+  bool in_selection_range = false;
+
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    bool is_active_elem = false;
+
+    switch (ale->type) {
+      case ANIMTYPE_FCURVE:
+      case ANIMTYPE_NLACURVE: {
+        FCurve *fcu = (FCurve *)ale->data;
+        is_active_elem = fcu->flag & FCURVE_ACTIVE;
+        break;
+      }
+      case ANIMTYPE_GPLAYER: {
+        bGPDlayer *gpl = (bGPDlayer *)ale->data;
+        is_active_elem = gpl->flag & GP_LAYER_ACTIVE;
+        break;
+      }
+      default:
+        break;
+    }
+
+    const bool is_cursor_elem = (ale->data == cursor_elem->data);
+
+    if (is_active_elem || is_cursor_elem) {
+      /* Select first and last element from the range. Reverse selection status on extremes. */
+      ANIM_channel_setting_set(ac, ale, ACHANNEL_SETTING_SELECT, ACHANNEL_SETFLAG_ADD);
+      in_selection_range = !in_selection_range;
+    }
+    else if (in_selection_range) {
+      /* Select elements between the range. */
+      ANIM_channel_setting_set(ac, ale, ACHANNEL_SETTING_SELECT, ACHANNEL_SETFLAG_ADD);
+    }
+
+    if (is_active_elem && is_cursor_elem) {
+      /* Selection range is only one element when active channel and clicked channel are same. So
+       * exit out of the loop when this condition is hit. */
+      break;
+    }
+  }
+
+  ANIM_animdata_freelist(&anim_data);
+}
+
 static int click_select_channel_object(bContext *C,
                                        bAnimContext *ac,
                                        bAnimListElem *ale,
@@ -3188,85 +3259,6 @@ static int click_select_channel_group(bAnimContext *ac,
   }
 
   return (ND_ANIMCHAN | NA_SELECTED);
-}
-
-static void animchannel_clear_selection(bAnimContext *ac)
-{
-  ListBase anim_data = anim_channels_for_selection(ac);
-
-  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    switch (ale->type) {
-      case ANIMTYPE_FCURVE: {
-        FCurve *fcu = (FCurve *)ale->data;
-        fcu->flag &= ~FCURVE_SELECTED;
-        break;
-      }
-      case ANIMTYPE_GPLAYER: {
-        bGPDlayer *gpl = (bGPDlayer *)ale->data;
-        gpl->flag &= ~GP_LAYER_SELECT;
-        break;
-      }
-      default:
-        break;
-    }
-  }
-
-  ANIM_animdata_freelist(&anim_data);
-}
-
-/* Select channels that lies between active channel and last clicked channel. */
-static void animchannel_select_range(bAnimContext *ac, bAnimListElem *cursor_elem)
-{
-  ListBase anim_data = anim_channels_for_selection(ac);
-  bool in_selection_range = false;
-
-  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    const bool is_cursor_elem = (ale->data == cursor_elem->data);
-    bool is_active_elem = false;
-    switch (ale->type) {
-
-      case ANIMTYPE_FCURVE:
-      case ANIMTYPE_NLACURVE: {
-        FCurve *fcu = (FCurve *)ale->data;
-        is_active_elem = fcu->flag & FCURVE_ACTIVE;
-
-        /* Select first and last element from the range. Reverse selection status on extremes. */
-        if (is_active_elem || is_cursor_elem) {
-          fcu->flag |= FCURVE_SELECTED;
-          in_selection_range = !in_selection_range;
-        }
-
-        /* Select elements between the range. */
-        if (in_selection_range) {
-          fcu->flag |= FCURVE_SELECTED;
-        }
-        break;
-      }
-      case ANIMTYPE_GPLAYER: {
-        bGPDlayer *gpl = (bGPDlayer *)ale->data;
-        is_active_elem = gpl->flag & GP_LAYER_ACTIVE;
-
-        if (is_active_elem || is_cursor_elem) {
-          gpl->flag |= GP_LAYER_SELECT;
-          in_selection_range = !in_selection_range;
-        }
-
-        if (in_selection_range) {
-          gpl->flag |= GP_LAYER_SELECT;
-        }
-        break;
-      }
-      default:
-        break;
-    }
-    if (is_active_elem && is_cursor_elem) {
-      /* Selection range is only one element when active channel and clicked channel are same. So
-       * exit out of the loop when this condition is hit. */
-      break;
-    }
-  }
-
-  ANIM_animdata_freelist(&anim_data);
 }
 
 static int click_select_channel_fcurve(bAnimContext *ac,
