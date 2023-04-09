@@ -1014,9 +1014,9 @@ typedef enum eUserPref_Flag {
   USER_FLAG_NUMINPUT_ADVANCED = (1 << 1),
   USER_ADJUSTABLE_CLICK_SELECT = (1 << 2),
   USER_SELECT_UNBIASED = (1 << 3),
-  USER_FLAG_UNUSED_4 = (1 << 4), /* cleared */
+  USER_ALTERNATE_CURSOR = (1 << 4),
   USER_TRACKBALL = (1 << 5),
-  USER_FLAG_UNUSED_6 = (1 << 6), /* cleared */
+  USER_ALTERNATE_CURSOR_LARGE = (1 << 6),
   USER_FLAG_UNUSED_7 = (1 << 7), /* cleared */
   USER_MAT_ON_OB = (1 << 8),
   USER_FLAG_UNUSED_9 = (1 << 9), /* cleared */

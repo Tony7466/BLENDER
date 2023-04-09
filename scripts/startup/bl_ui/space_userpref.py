@@ -501,6 +501,11 @@ class USERPREF_PT_edit_misc(EditingPanel, CenterAlignMixIn, Panel):
         colsub.active = edit.adjustable_click_select
         colsub.prop(edit, "select_unbiased")
         colsub.prop(edit, "selection_radius")
+        col = layout.column()
+        col.prop(edit, "alternate_cursor")
+        colsub = col.column(align=True)
+        colsub.active = edit.alternate_cursor
+        colsub.prop(edit, "alternate_cursor_large")
 
 
 

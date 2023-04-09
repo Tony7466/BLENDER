@@ -5337,6 +5337,14 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "uiflag", USER_DEPTH_CURSOR);
   RNA_def_property_ui_text(
       prop, "Cursor Surface Project", "Use the surface depth for cursor placement");
+
+  prop = RNA_def_property(srna, "alternate_cursor", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", USER_ALTERNATE_CURSOR);
+  RNA_def_property_ui_text(prop, "Alternate Cursor", "Alternate edit mode crosshair");
+
+  prop = RNA_def_property(srna, "alternate_cursor_large", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", USER_ALTERNATE_CURSOR_LARGE);
+  RNA_def_property_ui_text(prop, "Large Cursor", "Supersize the alternate edit mode crosshair");
 }
 
 static void rna_def_userdef_system(BlenderRNA *brna)
@@ -5931,6 +5939,8 @@ static void rna_def_userdef_input(BlenderRNA *brna)
                            "Drag Select Control",
                            "Use either the keymap or toolsettings to control selection options "
                            "for box, lasso, and circle select");
+
+
 
   prop = RNA_def_property(srna, "use_numeric_input_advanced", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", USER_FLAG_NUMINPUT_ADVANCED);
