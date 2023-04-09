@@ -5945,7 +5945,7 @@ class VIEW3D_PT_shading(Panel):
 
         layout.prop(tool_settings, "shrink_shading_header")
         if tool_settings.shrink_shading_header:
-            layout.prop(shading, "type", text = '', expand=True)
+            layout.prop(shading, "type", text="", expand=True)
 
 
 class VIEW3D_PT_shading_lighting(Panel):
