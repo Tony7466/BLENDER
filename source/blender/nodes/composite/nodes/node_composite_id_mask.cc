@@ -12,6 +12,8 @@
 #include "UI_interface.h"
 #include "UI_resources.h"
 
+#include "GPU_shader.h"
+
 #include "COM_algorithm_smaa.hh"
 #include "COM_node_operation.hh"
 
