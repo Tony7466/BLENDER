@@ -889,7 +889,7 @@ class VIEW3D_HT_header(Header):
         sub.active = overlay.show_overlays
         sub.popover(panel="VIEW3D_PT_overlay", text="")
 
-        row = layout.row()
+        row = layout.row(align=True)
         row.active = (object_mode == 'EDIT') or (shading.type in {'WIREFRAME', 'SOLID'})
 
         # While exposing `shading.show_xray(_wireframe)` is correct.
@@ -900,15 +900,27 @@ class VIEW3D_HT_header(Header):
             draw_depressed = shading.show_xray_wireframe
         else:
             draw_depressed = shading.show_xray
-        row.operator(
-            "view3d.toggle_xray",
-            text="",
-            icon='XRAY',
-            depress=draw_depressed,
-        )
 
-        row = layout.row(align=True)
-        row.prop(shading, "type", text="", expand=True)
+        if tool_settings.xray_shading_header:
+            if shading.type == 'SOLID':
+                shadicon = 'SHADING_SOLID'
+            elif shading.type == 'MATERIAL':
+                shadicon = 'SHADING_TEXTURE'
+            elif shading.type == 'RENDERED':
+                shadicon = 'SHADING_RENDERED'
+            else:
+                shadicon = 'SHADING_WIRE'
+            row.operator("view3d.toggle_xray", text="", icon=shadicon, depress=draw_depressed)
+        else:
+            row.operator(
+                "view3d.toggle_xray",
+                text="",
+                icon='XRAY',
+                depress=draw_depressed,
+            )
+
+            row = layout.row(align=True)
+            row.prop(shading, "type", text="", expand=True)
         sub = row.row(align=True)
         # TODO, currently render shading type ignores mesh two-side, until it's supported
         # show the shading popover which shows double-sided option.
@@ -5888,6 +5900,12 @@ class VIEW3D_PT_shading(Panel):
     def draw(self, _context):
         layout = self.layout
         layout.label(text="Viewport Shading")
+        tool_settings = _context.tool_settings
+        shading = VIEW3D_PT_shading.get_shading(_context)
+
+        layout.prop(tool_settings, "xray_shading_header")
+        if tool_settings.xray_shading_header:
+            layout.prop(shading, "type", text="", expand=True)
 
 
 class VIEW3D_PT_shading_lighting(Panel):

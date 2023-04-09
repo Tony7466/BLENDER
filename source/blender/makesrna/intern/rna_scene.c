@@ -3725,6 +3725,14 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Normal Vector", "Normal Vector used to copy, add or multiply");
   RNA_def_property_ui_range(prop, -10000.0, 10000.0, 1, 3);
 
+  /* X-Ray Shading Header */
+  prop = RNA_def_property(srna, "xray_shading_header", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "xray_shading_header", 0);
+  RNA_def_property_ui_text(
+      prop,
+      "Shrink Header",
+      "Combine the four Shading header buttons and the X-Ray header button");
+
   /* Unified Paint Settings */
   prop = RNA_def_property(srna, "unified_paint_settings", PROP_POINTER, PROP_NONE);
   RNA_def_property_flag(prop, PROP_NEVER_NULL);

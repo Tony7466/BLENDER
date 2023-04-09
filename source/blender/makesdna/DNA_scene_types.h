@@ -1682,7 +1682,10 @@ typedef struct ToolSettings {
 
   /** Normal Editing. */
   float normal_vector[3];
-  char _pad6[4];
+
+  /** Combine X-Ray and Shading Header **/
+  char xray_shading_header;
+  char _pad6[3];
 
   /**
    * Custom Curve Profile for bevel tool:
