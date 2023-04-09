@@ -6485,6 +6485,21 @@ class VIEW3D_PT_overlay_edit_mesh(Panel):
 
         is_any_solid_shading = not (shading.show_xray or (shading.type == 'WIREFRAME'))
 
+        if shading.type == 'WIREFRAME':
+            xray = shading.show_xray_wireframe and shading.xray_alpha_wireframe < 1.0
+        elif shading.type == 'SOLID':
+            xray = shading.show_xray and shading.xray_alpha < 1.0
+        else:
+            xray = False
+
+        if xray:
+            fdot_draw_depressed = overlay.show_face_center_xray
+        else:
+            fdot_draw_depressed = overlay.show_face_center
+
+        col = layout.column()
+        col.active = display_all
+
         col = layout.column()
         col.active = display_all
 
@@ -6496,8 +6511,7 @@ class VIEW3D_PT_overlay_edit_mesh(Panel):
         sub = split.column()
         sub.prop(overlay, "show_faces", text="Faces")
         sub = split.column()
-        sub.active = is_any_solid_shading
-        sub.prop(overlay, "show_face_center", text="Center")
+        sub.operator("view3d.toggle_facedots", text="Facedots", depress = fdot_draw_depressed)
 
         row = col.row(align=True)
         row.prop(overlay, "show_edge_crease", text="Creases", toggle=True)
