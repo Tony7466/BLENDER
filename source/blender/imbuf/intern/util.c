@@ -66,6 +66,7 @@ const char *imb_ext_movie[] = {
 };
 
 /** Sort of wrong having audio extensions in imbuf. */
+
 const char *imb_ext_audio[] = {
     ".wav",
     ".ogg",

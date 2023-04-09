@@ -174,24 +174,20 @@ std::unique_ptr<AbstractViewItemDragController> AbstractViewItem::create_drag_co
   return nullptr;
 }
 
-std::unique_ptr<AbstractViewItemDropTarget> AbstractViewItem::create_drop_target() const
+std::unique_ptr<AbstractViewItemDropTarget> AbstractViewItem::create_drop_target()
 {
   /* There's no drop target (and hence no drop support) by default. */
   return nullptr;
 }
 
-AbstractViewItemDragController::AbstractViewItemDragController(AbstractView &view) : view_(view)
-{
-}
+AbstractViewItemDragController::AbstractViewItemDragController(AbstractView &view) : view_(view) {}
 
 void AbstractViewItemDragController::on_drag_start()
 {
   /* Do nothing by default. */
 }
 
-AbstractViewItemDropTarget::AbstractViewItemDropTarget(AbstractView &view) : view_(view)
-{
-}
+AbstractViewItemDropTarget::AbstractViewItemDropTarget(AbstractView &view) : view_(view) {}
 
 /** \} */
 
@@ -208,6 +204,16 @@ AbstractView &AbstractViewItem::get_view() const
   return *view_;
 }
 
+void AbstractViewItem::disable_interaction()
+{
+  is_interactive_ = false;
+}
+
+bool AbstractViewItem::is_interactive() const
+{
+  return is_interactive_;
+}
+
 bool AbstractViewItem::is_active() const
 {
   BLI_assert_msg(get_view().is_reconstructed(),
@@ -221,9 +227,9 @@ bool AbstractViewItem::is_active() const
 /** \name General API functions
  * \{ */
 
-std::unique_ptr<DropTargetInterface> view_item_drop_target(const uiViewItemHandle *item_handle)
+std::unique_ptr<DropTargetInterface> view_item_drop_target(uiViewItemHandle *item_handle)
 {
-  const AbstractViewItem &item = reinterpret_cast<const AbstractViewItem &>(*item_handle);
+  AbstractViewItem &item = reinterpret_cast<AbstractViewItem &>(*item_handle);
   return item.create_drop_target();
 }
 
@@ -281,6 +287,12 @@ class ViewItemAPIWrapper {
 }  // namespace blender::ui
 
 using namespace blender::ui;
+
+bool UI_view_item_is_interactive(const uiViewItemHandle *item_handle)
+{
+  const AbstractViewItem &item = reinterpret_cast<const AbstractViewItem &>(*item_handle);
+  return item.is_interactive();
+}
 
 bool UI_view_item_is_active(const uiViewItemHandle *item_handle)
 {
