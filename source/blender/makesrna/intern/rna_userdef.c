@@ -5940,8 +5940,6 @@ static void rna_def_userdef_input(BlenderRNA *brna)
                            "Use either the keymap or toolsettings to control selection options "
                            "for box, lasso, and circle select");
 
-
-
   prop = RNA_def_property(srna, "use_numeric_input_advanced", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", USER_FLAG_NUMINPUT_ADVANCED);
   RNA_def_property_ui_text(prop,
