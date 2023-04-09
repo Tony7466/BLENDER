@@ -34,6 +34,7 @@ enum eV3D_OpPropFlag {
   V3D_OP_PROP_DELTA = (1 << 1),
   V3D_OP_PROP_USE_ALL_REGIONS = (1 << 2),
   V3D_OP_PROP_USE_MOUSE_INIT = (1 << 3),
+  V3D_OP_PROP_FRAME_SELECTED_DISTANCE = (1 << 4),
 };
 
 enum {
