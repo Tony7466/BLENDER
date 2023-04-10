@@ -333,14 +333,13 @@ void Volumes::end_sync()
   scatter_tx_.previous().ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
   transmit_tx_.previous().ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
 
-  float4 scatter = float4(0.0f);
-  float4 transmit = float4(1.0f);
-  /* TODO (Miguel Pozo): DRW_TEX_WRAP ? */
-  dummy_scatter_tx_.ensure_3d(GPU_RGBA8, int3(1), GPU_TEXTURE_USAGE_SHADER_READ, scatter);
-  dummy_transmit_tx_.ensure_3d(GPU_RGBA8, int3(1), GPU_TEXTURE_USAGE_SHADER_READ, transmit);
-
 #if 0
     /* TODO */
+    float4 scatter = float4(0.0f);
+    float4 transmit = float4(1.0f);
+    /* TODO (Miguel Pozo): DRW_TEX_WRAP ? */
+    dummy_scatter_tx_.ensure_3d(GPU_RGBA8, int3(1), GPU_TEXTURE_USAGE_SHADER_READ, scatter);
+    dummy_transmit_tx_.ensure_3d(GPU_RGBA8, int3(1), GPU_TEXTURE_USAGE_SHADER_READ, transmit);
     effects->volume_scatter = dummy_scatter_tx_;
     effects->volume_scatter = dummy_transmit_tx_;
 #endif
@@ -453,7 +452,7 @@ void Volumes::draw_resolve(View &view)
   inst_.manager->submit(resolve_ps_, view);
 
   /* TODO(Miguel Pozo): This should be stored per view. */
-  data_.prev_view_projection_matrix = view.winmat() * view.viewmat();
+  data_.prev_view_projection_matrix = (view.winmat() * view.viewmat());
 }
 
 /* -------------------------------------------------------------------- */
