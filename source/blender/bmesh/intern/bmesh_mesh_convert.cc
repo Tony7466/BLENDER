@@ -1391,7 +1391,14 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
   CustomData_free(&me->fdata, me->totface);
   CustomData_free(&me->ldata, me->totloop);
   CustomData_free(&me->pdata, me->totpoly);
-  MEM_SAFE_FREE(me->poly_offset_indices);
+  if (me->poly_offsets_sharing_info) {
+    me->poly_offsets_sharing_info->remove_user_and_delete_if_last();
+    me->poly_offset_indices = nullptr;
+    me->poly_offsets_sharing_info = nullptr;
+  }
+  else {
+    MEM_SAFE_FREE(me->poly_offset_indices);
+  }
   BKE_mesh_runtime_clear_geometry(me);
 
   me->totvert = bm->totvert;

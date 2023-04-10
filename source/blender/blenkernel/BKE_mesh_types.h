@@ -16,6 +16,7 @@
 #  include "BLI_array.hh"
 #  include "BLI_bit_vector.hh"
 #  include "BLI_bounds_types.hh"
+#  include "BLI_implicit_sharing.hh"
 #  include "BLI_math_vector_types.hh"
 #  include "BLI_shared_cache.hh"
 #  include "BLI_span.hh"
@@ -62,6 +63,23 @@ typedef enum eMeshWrapperType {
 #endif
 
 #ifdef __cplusplus
+
+class MEMFreeImplicitSharing : public blender::ImplicitSharingInfo {
+  void *data_;
+
+ public:
+  MEMFreeImplicitSharing(void *data) : ImplicitSharingInfo(1), data_(data)
+  {
+    BLI_assert(data_ != nullptr);
+  }
+
+ private:
+  void delete_self_with_data() override
+  {
+    MEM_freeN(const_cast<void *>(data_));
+    MEM_delete(this);
+  }
+};
 
 namespace blender::bke {
 

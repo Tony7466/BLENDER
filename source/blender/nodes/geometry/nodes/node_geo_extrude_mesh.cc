@@ -108,8 +108,27 @@ static void expand_mesh(Mesh &mesh,
     const int old_polys_num = mesh.totpoly;
     mesh.totpoly += poly_expand;
     CustomData_realloc(&mesh.pdata, old_polys_num, mesh.totpoly);
-    mesh.poly_offset_indices = static_cast<int *>(
-        MEM_reallocN(mesh.poly_offset_indices, sizeof(int) * (mesh.totpoly + 1)));
+
+    if (mesh.poly_offsets_sharing_info && mesh.poly_offsets_sharing_info->is_mutable()) {
+      mesh.poly_offset_indices = static_cast<int *>(
+          MEM_reallocN(mesh.poly_offset_indices, sizeof(int) * (mesh.totpoly + 1)));
+      MEM_delete(mesh.poly_offsets_sharing_info);
+      mesh.poly_offsets_sharing_info = MEM_new<MEMFreeImplicitSharing>(__func__,
+                                                                       mesh.poly_offset_indices);
+    }
+    else {
+      const Span<int> old_offsets(mesh.poly_offset_indices, old_polys_num ? old_polys_num + 1 : 0);
+      ImplicitSharingInfo *old_sharing_info = mesh.poly_offsets_sharing_info;
+
+      mesh.poly_offset_indices = nullptr;
+      mesh.poly_offsets_sharing_info = nullptr;
+      BKE_mesh_poly_offsets_ensure_alloc(&mesh);
+
+      mesh.poly_offsets_for_write().take_front(old_offsets.size()).copy_from(old_offsets);
+      if (old_sharing_info) {
+        old_sharing_info->remove_user_and_delete_if_last();
+      }
+    }
     mesh.poly_offsets_for_write().last() = mesh.totloop + loop_expand;
   }
   if (loop_expand != 0) {

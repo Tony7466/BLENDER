@@ -153,7 +153,9 @@ static void SCULPT_dynamic_topology_disable_ex(
     CustomData_free(&me->fdata, me->totface);
     CustomData_free(&me->ldata, me->totloop);
     CustomData_free(&me->pdata, me->totpoly);
-    MEM_SAFE_FREE(me->poly_offset_indices);
+    if (me->poly_offsets_sharing_info) {
+      me->poly_offsets_sharing_info->remove_user_and_delete_if_last();
+    }
 
     /* Copy over stored custom data. */
     SculptUndoNodeGeometry *geometry = &unode->geometry_bmesh_enter;
@@ -166,7 +168,9 @@ static void SCULPT_dynamic_topology_disable_ex(
     CustomData_copy(&geometry->edata, &me->edata, CD_MASK_MESH.emask, geometry->totedge);
     CustomData_copy(&geometry->ldata, &me->ldata, CD_MASK_MESH.lmask, geometry->totloop);
     CustomData_copy(&geometry->pdata, &me->pdata, CD_MASK_MESH.pmask, geometry->totpoly);
-    me->poly_offset_indices = static_cast<int *>(MEM_dupallocN(geometry->poly_offset_indices));
+    me->poly_offset_indices = geometry->poly_offset_indices;
+    me->poly_offsets_sharing_info = geometry->poly_offsets_sharing_info;
+    me->poly_offsets_sharing_info->add_user();
   }
   else {
     BKE_sculptsession_bm_to_me(ob, true);

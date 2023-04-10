@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include "BLI_implicit_sharing.h"
+
 #include "DNA_ID.h"
 #include "DNA_customdata_types.h"
 #include "DNA_defs.h"
@@ -80,6 +82,7 @@ typedef struct Mesh {
    * polygon, with the total number of corners at the end. See #Mesh::polys() and #OffsetIndices.
    */
   int *poly_offset_indices;
+  ImplicitSharingInfoHandle *poly_offsets_sharing_info;
 
   CustomData vdata, edata, pdata, ldata;
 

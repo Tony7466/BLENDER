@@ -687,13 +687,24 @@ int ED_mesh_join_objects_exec(bContext *C, wmOperator *op)
   CustomData_free(&me->edata, me->totedge);
   CustomData_free(&me->ldata, me->totloop);
   CustomData_free(&me->pdata, me->totpoly);
-  MEM_SAFE_FREE(me->poly_offset_indices);
+  if (me->poly_offsets_sharing_info) {
+    me->poly_offsets_sharing_info->remove_user_and_delete_if_last();
+  }
   me->poly_offset_indices = poly_offsets;
 
   me->totvert = totvert;
   me->totedge = totedge;
   me->totloop = totloop;
   me->totpoly = totpoly;
+
+  if (me->totpoly) {
+    me->poly_offsets_sharing_info->remove_user_and_delete_if_last();
+    me->poly_offset_indices = nullptr;
+    me->poly_offsets_sharing_info = nullptr;
+
+    BKE_mesh_poly_offsets_ensure_alloc(me);
+    me->poly_offsets_for_write().copy_from({poly_offsets, me->totpoly});
+  }
 
   me->vdata = vdata;
   me->edata = edata;
