@@ -225,6 +225,13 @@ class Shader : public SocketDeclaration {
 class ShaderBuilder : public SocketDeclarationBuilder<Shader> {
 };
 
+class Function : public IDSocketDeclaration {
+ public:
+  using Builder = SocketDeclarationBuilder<Function>;
+
+  Function();
+};
+
 class ExtendBuilder;
 
 class Extend : public SocketDeclaration {
@@ -400,6 +407,10 @@ inline Collection::Collection() : IDSocketDeclaration("NodeSocketCollection") {}
 inline Texture::Texture() : IDSocketDeclaration("NodeSocketTexture") {}
 
 inline Image::Image() : IDSocketDeclaration("NodeSocketImage") {}
+
+inline Function::Function() : IDSocketDeclaration("NodeSocketFunction")
+{
+}
 
 /** \} */
 

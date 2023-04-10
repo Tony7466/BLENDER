@@ -251,6 +251,9 @@ static SocketDeclarationPtr declaration_for_interface_socket(const bNodeTree &nt
       dst = std::move(value);
       break;
     }
+    case SOCK_FUNCTION:
+      dst = std::make_unique<decl::Function>();
+      break;
     case SOCK_CUSTOM:
       std::unique_ptr<decl::Custom> decl = std::make_unique<decl::Custom>();
       decl->idname_ = io_socket.idname;

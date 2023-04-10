@@ -405,6 +405,9 @@ static Vector<NodeLinkItem> ui_node_link_items(NodeLinkArg *arg,
       else if (dynamic_cast<const decl::Object *>(&socket_decl)) {
         item.socket_type = SOCK_OBJECT;
       }
+      else if (dynamic_cast<const decl::Function *>(&socket_decl)) {
+        item.socket_type = SOCK_FUNCTION;
+      }
       else {
         item.socket_type = SOCK_CUSTOM;
       }

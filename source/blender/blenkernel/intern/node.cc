@@ -321,6 +321,7 @@ static void library_foreach_node_socket(LibraryForeachIDData *data, bNodeSocket 
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
+    case SOCK_FUNCTION:
       break;
   }
 }
@@ -466,6 +467,7 @@ static void write_node_socket_default_value(BlendWriter *writer, bNodeSocket *so
     case __SOCK_MESH:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
+    case SOCK_FUNCTION:
       BLI_assert_unreachable();
       break;
   }
@@ -886,6 +888,7 @@ static void lib_link_node_socket(BlendLibReader *reader, Library *lib, bNodeSock
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
+    case SOCK_FUNCTION:
       break;
   }
 }
@@ -981,6 +984,7 @@ static void expand_node_socket(BlendExpander *expander, bNodeSocket *sock)
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
+      case SOCK_FUNCTION:
       break;
   }
 }
@@ -1627,6 +1631,7 @@ static void socket_id_user_increment(bNodeSocket *sock)
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
+    case SOCK_FUNCTION:
       break;
   }
 }
@@ -1673,6 +1678,7 @@ static bool socket_id_user_decrement(bNodeSocket *sock)
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
+    case SOCK_FUNCTION:
       break;
   }
   return false;
@@ -1855,6 +1861,8 @@ const char *nodeStaticSocketType(const int type, const int subtype)
       return "NodeSocketTexture";
     case SOCK_MATERIAL:
       return "NodeSocketMaterial";
+    case SOCK_FUNCTION:
+      return "NodeSocketFunction";
     default:
       break;
   }
@@ -1934,6 +1942,8 @@ const char *nodeStaticSocketInterfaceType(const int type, const int subtype)
       return "NodeSocketInterfaceTexture";
     case SOCK_MATERIAL:
       return "NodeSocketInterfaceMaterial";
+    case SOCK_FUNCTION:
+      return "NodeSocketInterfaceFunction";
     default:
       break;
   }
@@ -1969,6 +1979,8 @@ const char *nodeStaticSocketLabel(const int type, const int /*subtype*/)
       return "Texture";
     case SOCK_MATERIAL:
       return "Material";
+    case SOCK_FUNCTION:
+      return "Function";
     default:
       break;
   }

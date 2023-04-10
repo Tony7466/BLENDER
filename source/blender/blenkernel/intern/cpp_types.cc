@@ -9,6 +9,7 @@
 
 #include "DNA_meshdata_types.h"
 
+#include "FN_closure.hh"
 #include "FN_init.h"
 
 struct Tex;
@@ -30,6 +31,8 @@ BLI_CPP_TYPE_MAKE(MStringProperty, CPPTypeFlags::None);
 
 BLI_CPP_TYPE_MAKE(blender::bke::AnonymousAttributeSet, CPPTypeFlags::None);
 
+BLI_CPP_TYPE_MAKE(blender::fn::Closure, CPPTypeFlags::None);
+
 void BKE_cpp_types_init()
 {
   blender::register_cpp_types();
@@ -49,4 +52,6 @@ void BKE_cpp_types_init()
   BLI_CPP_TYPE_REGISTER(MStringProperty);
 
   BLI_CPP_TYPE_REGISTER(blender::bke::AnonymousAttributeSet);
+
+  BLI_CPP_TYPE_REGISTER(blender::fn::Closure);
 }

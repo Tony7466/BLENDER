@@ -33,6 +33,7 @@
 #include "NOD_node_declaration.hh"
 #include "NOD_socket.h"
 
+#include "FN_closure.hh"
 #include "FN_field.hh"
 
 using namespace blender;
@@ -778,6 +779,18 @@ static bNodeSocketType *make_socket_type_material()
   return socktype;
 }
 
+static bNodeSocketType *make_socket_type_function()
+{
+  bNodeSocketType *socktype = make_standard_socket_type(SOCK_FUNCTION, PROP_NONE);
+  socktype->base_cpp_type = &blender::CPPType::get<fn::Closure>();
+  socktype->get_base_cpp_value = [](const bNodeSocket &/*socket*/, void *r_value) {
+    new (r_value) fn::Closure();
+  };
+  socktype->geometry_nodes_cpp_type = socktype->base_cpp_type;
+  socktype->get_geometry_nodes_cpp_value = socktype->get_base_cpp_value;
+  return socktype;
+}
+
 void register_standard_node_socket_types()
 {
   /* Draw callbacks are set in `drawnode.c` to avoid bad-level calls. */
@@ -823,6 +836,8 @@ void register_standard_node_socket_types()
   nodeRegisterSocketType(make_socket_type_image());
 
   nodeRegisterSocketType(make_socket_type_material());
+
+  nodeRegisterSocketType(make_socket_type_function());
 
   nodeRegisterSocketType(make_socket_type_virtual());
 }

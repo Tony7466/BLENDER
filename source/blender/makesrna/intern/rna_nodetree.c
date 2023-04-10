@@ -72,6 +72,7 @@ static const EnumPropertyItem node_socket_data_type_items[] = {
     {SOCK_COLLECTION, "COLLECTION", 0, "Collection", ""},
     {SOCK_TEXTURE, "TEXTURE", 0, "Texture", ""},
     {SOCK_MATERIAL, "MATERIAL", 0, "Material", ""},
+    {SOCK_FUNCTION, "FUNCTION", 0, "Function", ""},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -100,6 +101,7 @@ static const EnumPropertyItem node_socket_type_items[] = {
     {SOCK_COLLECTION, "COLLECTION", 0, "Collection", ""},
     {SOCK_TEXTURE, "TEXTURE", 0, "Texture", ""},
     {SOCK_MATERIAL, "MATERIAL", 0, "Material", ""},
+    {SOCK_FUNCTION, "FUNCTION", 0, "Function", ""},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -2077,7 +2079,8 @@ static bool switch_type_supported(const EnumPropertyItem *item)
               SOCK_COLLECTION,
               SOCK_TEXTURE,
               SOCK_MATERIAL,
-              SOCK_IMAGE);
+              SOCK_IMAGE,
+              SOCK_FUNCTION);
 }
 
 static const EnumPropertyItem *rna_GeometryNodeSwitch_type_itemf(bContext *UNUSED(C),
@@ -11932,6 +11935,21 @@ static void rna_def_node_socket_material(BlenderRNA *brna,
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
 }
 
+static void rna_def_node_socket_function(BlenderRNA *brna,
+                                         const char *identifier,
+                                         const char *interface_idname)
+{
+  StructRNA *srna;
+
+  srna = RNA_def_struct(brna, identifier, "NodeSocketStandard");
+  RNA_def_struct_ui_text(srna, "Function Node Socket", "Function socket of a node");
+  RNA_def_struct_sdna(srna, "bNodeSocket");
+
+  srna = RNA_def_struct(brna, interface_idname, "NodeSocketInterfaceStandard");
+  RNA_def_struct_ui_text(srna, "Function Node Socket Interface", "Function socket of a node");
+  RNA_def_struct_sdna(srna, "bNodeSocket");
+}
+
 static void rna_def_node_socket_standard_types(BlenderRNA *brna)
 {
   /* XXX Workaround: Registered functions are not exposed in python by bpy,
@@ -12084,6 +12102,8 @@ static void rna_def_node_socket_standard_types(BlenderRNA *brna)
   rna_def_node_socket_texture(brna, "NodeSocketTexture", "NodeSocketInterfaceTexture");
 
   rna_def_node_socket_material(brna, "NodeSocketMaterial", "NodeSocketInterfaceMaterial");
+
+  rna_def_node_socket_function(brna, "NodeSocketFunction", "NodeSocketInterfaceFunction");
 }
 
 static void rna_def_internal_node(BlenderRNA *brna)
