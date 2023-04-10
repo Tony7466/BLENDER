@@ -16,6 +16,8 @@
 #include "utils.h"
 #include "viewport_engine.h"
 
+#include "BLI_timer.h"
+
 namespace blender::render::hydra {
 
 static PyObject *init_func(PyObject * /*self*/, PyObject *args)
@@ -112,7 +114,7 @@ static PyObject *engine_create_func(PyObject * /*self*/, PyObject *args)
     engine = new ViewportEngine(bl_engine, render_delegate_id);
   }
   else if (STREQ(engine_type, "PREVIEW")) {
-    engine = new PreviewEngine(bl_engine, render_delegate_id);
+    engine = PreviewEngine::get_instance(bl_engine, render_delegate_id);
   }
   else {
     if (bl_engine->type->flag & RE_USE_GPU_CONTEXT) {
@@ -136,7 +138,13 @@ static PyObject *engine_free_func(PyObject * /*self*/, PyObject *args)
   }
 
   Engine *engine = (Engine *)PyLong_AsVoidPtr(pyengine);
-  delete engine;
+  PreviewEngine *preview_engine = dynamic_cast<PreviewEngine *>(engine);
+  if (preview_engine) {
+    PreviewEngine::schedule_free();
+  }
+  else {
+    delete engine;
+  }
 
   CLOG_INFO(LOG_EN, 2, "Engine %016llx", engine);
   Py_RETURN_NONE;

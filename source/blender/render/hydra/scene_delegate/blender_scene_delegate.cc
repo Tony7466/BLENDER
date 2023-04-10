@@ -434,4 +434,18 @@ pxr::VtValue BlenderSceneDelegate::GetLightParamValue(pxr::SdfPath const &id,
   return pxr::VtValue();
 }
 
+void BlenderSceneDelegate::clear()
+{
+  for (auto &it : materials) {
+    it.second->remove();
+  }
+
+  for (auto &it : objects) {
+    it.second->remove();
+  }
+
+  materials.clear();
+  objects.clear();
+}
+
 }  // namespace blender::render::hydra

@@ -33,6 +33,7 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
   ~BlenderSceneDelegate() override = default;
 
   void populate(Depsgraph *depsgraph, bContext *context);
+  void clear();
 
   // delegate methods
   pxr::HdMeshTopology GetMeshTopology(pxr::SdfPath const &id) override;

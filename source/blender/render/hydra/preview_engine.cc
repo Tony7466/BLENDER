@@ -5,17 +5,64 @@
 
 #include "camera.h"
 #include "preview_engine.h"
+#include "BLI_timer.h"
 
 namespace blender::render::hydra {
+
+const double LIFETIME = 180.0;
+
+std::unique_ptr<PreviewEngine> PreviewEngine::instance;
+
+void PreviewEngine::schedule_free()
+{
+  instance->render_delegate->Stop();
+
+  /* Register timer for schedule free PreviewEngine instance */
+  BLI_timer_register((uintptr_t)instance.get(),
+                      free_instance,
+                      nullptr,
+                      nullptr,
+                      LIFETIME,
+                      true);
+}
+
+PreviewEngine *PreviewEngine::get_instance(RenderEngine *bl_engine, const std::string &render_delegate_id)
+{
+  if (!instance) {
+    instance = std::make_unique<PreviewEngine>(bl_engine, render_delegate_id);
+  }
+  if (BLI_timer_is_registered((uintptr_t)instance.get())) {
+    /* Unregister timer while PreviewEngine is working */
+    BLI_timer_unregister((uintptr_t)instance.get());
+  }
+  instance->update(bl_engine, render_delegate_id);
+
+  return instance.get();
+}
+
+double PreviewEngine::free_instance(uintptr_t uuid, void *user_data)
+{
+  if (!instance->render_task_delegate->is_converged()) {
+    /* Restart timer if render isn't completed */
+    return LIFETIME;
+  }
+
+  CLOG_INFO(LOG_EN, 2, "");
+  instance = nullptr;
+  return -1;
+}
 
 void PreviewEngine::sync(Depsgraph *depsgraph,
                          bContext *context,
                          pxr::HdRenderSettingsMap &render_settings)
 {
-  scene_delegate = std::make_unique<BlenderSceneDelegate>(
-      render_index.get(),
-      pxr::SdfPath::AbsoluteRootPath().AppendElementString("scene"),
-      BlenderSceneDelegate::EngineType::PREVIEW);
+  if (!scene_delegate) {
+    scene_delegate = std::make_unique<BlenderSceneDelegate>(
+        render_index.get(),
+        pxr::SdfPath::AbsoluteRootPath().AppendElementString("scene"),
+        BlenderSceneDelegate::EngineType::PREVIEW);
+  }
+  scene_delegate->clear();
   scene_delegate->populate(depsgraph, context);
 
   for (auto const &setting : render_settings) {
@@ -68,6 +115,12 @@ void PreviewEngine::render(Depsgraph *depsgraph)
 
   render_task_delegate->get_renderer_aov_data(pxr::HdAovTokens->color, pixels.data());
   update_render_result(layer_name, res[0], res[1], pixels);
+}
+
+void PreviewEngine::update(RenderEngine *bl_engine, const std::string &render_delegate_id)
+{
+  this->bl_engine = bl_engine;
+  /* TODO: recreate render_delegate when render_delegate_id is changed */
 }
 
 void PreviewEngine::update_render_result(const std::string &layer_name,

@@ -7,7 +7,6 @@
 #include <pxr/imaging/hd/tokens.h>
 #include <pxr/usd/usdLux/tokens.h>
 
-#include "BKE_light.h"
 #include "DNA_light_types.h"
 
 #include "blender_scene_delegate.h"
@@ -80,13 +79,14 @@ void LightData::init()
       break;
   }
 
+  p_type = prim_type(light);
+
   /* TODO: temporary value, it should be delivered through Python UI */
   data[pxr::HdLightTokens->exposure] = 1.0f;
 }
 
-pxr::TfToken LightData::prim_type()
+pxr::TfToken LightData::prim_type(Light *light)
 {
-  Light *light = (Light *)((Object *)id)->data;
   pxr::TfToken ret;
   switch (light->type) {
     case LA_LOCAL:
@@ -155,20 +155,26 @@ bool LightData::update_visibility(View3D *view3d)
 void LightData::insert()
 {
   CLOG_INFO(LOG_BSD, 2, "%s", id->name);
-  scene_delegate->GetRenderIndex().InsertSprim(prim_type(), scene_delegate, p_id);
+  scene_delegate->GetRenderIndex().InsertSprim(p_type, scene_delegate, p_id);
 }
 
 void LightData::remove()
 {
   CLOG_INFO(LOG_BSD, 2, "%s", id->name);
-  scene_delegate->GetRenderIndex().RemoveSprim(prim_type(), p_id);
+  scene_delegate->GetRenderIndex().RemoveSprim(p_type, p_id);
 }
 
 void LightData::update()
 {
-  /* TODO: prim_type was changed we have to do remove..add light */
-
   CLOG_INFO(LOG_BSD, 2, "%s", id->name);
+
+  Light *light = (Light *)((Object *)id)->data;
+  if (prim_type(light) != p_type) {
+    remove();
+    init();
+    insert();
+    return;
+  }
 
   pxr::HdDirtyBits bits = pxr::HdLight::Clean;
   if (id->recalc & ID_RECALC_GEOMETRY) {

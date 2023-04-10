@@ -19,7 +19,7 @@ class CustomHydraRenderEngine(HydraRenderEngine):
     def register(cls):
         super().register()
 
-        bpy_hydra.register_plugins(["/path/to/plugin")], ["/additional/system/path")])
+        bpy_hydra.register_plugins(["/path/to/plugin")])
 
     def get_delegate_settings(self, engine_type):
         return {
@@ -59,6 +59,7 @@ class HydraRenderEngine(bpy.types.RenderEngine):
             return
 
         _bpy_hydra.engine_free(self.engine_ptr)
+        del self.engine_ptr
 
     @classmethod
     def register(cls):
@@ -75,16 +76,14 @@ class HydraRenderEngine(bpy.types.RenderEngine):
 
     # final render
     def update(self, data, depsgraph):
-        pass
-
-    def render(self, depsgraph):
         engine_type = 'PREVIEW' if self.is_preview else 'FINAL'
-
         self.engine_ptr = _bpy_hydra.engine_create(self.as_pointer(), engine_type, self.delegate_id)
         delegate_settings = self.get_delegate_settings(engine_type)
-
         _bpy_hydra.engine_sync(self.engine_ptr, depsgraph.as_pointer(), bpy.context.as_pointer(), delegate_settings)
-        _bpy_hydra.engine_render(self.engine_ptr, depsgraph.as_pointer())
+
+    def render(self, depsgraph):
+        if self.engine_ptr:
+            _bpy_hydra.engine_render(self.engine_ptr, depsgraph.as_pointer())
 
     # viewport render
     def view_update(self, context, depsgraph):

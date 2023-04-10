@@ -7,6 +7,8 @@
 #include <pxr/usd/sdf/assetPath.h>
 #include <pxr/usd/sdf/path.h>
 
+#include "BKE_light.h"
+
 #include "object.h"
 
 namespace blender::render::hydra {
@@ -24,7 +26,8 @@ class LightData : public ObjectData {
 
  private:
   std::map<pxr::TfToken, pxr::VtValue> data;
-  pxr::TfToken prim_type();
+  pxr::TfToken p_type;
+  pxr::TfToken prim_type(Light *light);
 };
 
 }  // namespace blender::render::hydra
