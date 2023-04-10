@@ -1443,7 +1443,7 @@ static void pbvh_update_normals_accum_task_cb(void *__restrict userdata,
 
     for (int i = 0; i < totface; i++) {
       const int tri_index = faces[i];
-      const int poly_index = pbvh->looptri_polys[i];
+      const int poly_index = pbvh->looptri_polys[tri_index];
       const MLoopTri *lt = &pbvh->looptri[faces[i]];
       const int vtri[3] = {
           pbvh->corner_verts[lt->tri[0]],

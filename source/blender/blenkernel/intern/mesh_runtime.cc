@@ -164,10 +164,11 @@ blender::Span<MLoopTri> Mesh::looptris() const
 
 blender::Span<int> Mesh::looptri_polys() const
 {
+  using namespace blender;
   this->runtime->looptri_polys_cache.ensure([&](blender::Array<int> &r_data) {
-    const Span<MPoly> polys = this->polys();
+    const OffsetIndices polys = this->polys();
     r_data.reinitialize(poly_to_tri_count(polys.size(), this->totloop));
-    blender::bke::mesh::looptris_calc_poly_indices(polys, r_data);
+    bke::mesh::looptris_calc_poly_indices(polys, r_data);
   });
   return this->runtime->looptri_polys_cache.data();
 }
@@ -181,6 +182,11 @@ int BKE_mesh_runtime_looptri_len(const Mesh *mesh)
 const MLoopTri *BKE_mesh_runtime_looptri_ensure(const Mesh *mesh)
 {
   return mesh->looptris().data();
+}
+
+const int *BKE_mesh_runtime_looptri_polys_ensure(const Mesh *mesh)
+{
+  return mesh->looptri_polys().data();
 }
 
 void BKE_mesh_runtime_verttri_from_looptri(MVertTri *r_verttri,

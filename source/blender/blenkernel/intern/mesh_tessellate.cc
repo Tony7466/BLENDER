@@ -307,13 +307,13 @@ void looptris_calc(const Span<float3> vert_positions,
   looptris_calc_all(vert_positions, polys, corner_verts, {}, looptris);
 }
 
-void looptris_calc_poly_indices(const Span<MPoly> polys, MutableSpan<int> looptri_polys)
+void looptris_calc_poly_indices(const OffsetIndices<int> polys, MutableSpan<int> looptri_polys)
 {
   threading::parallel_for(polys.index_range(), 1024, [&](const IndexRange range) {
     for (const int64_t i : range) {
-      const MPoly &poly = polys[i];
-      const int start = poly_to_tri_count(int(i), poly.loopstart);
-      const int num = ME_POLY_TRI_TOT(&poly);
+      const IndexRange poly = polys[i];
+      const int start = poly_to_tri_count(int(i), int(poly.start()));
+      const int num = ME_POLY_TRI_TOT(int(poly.size()));
       looptri_polys.slice(start, num).fill(int(i));
     }
   });

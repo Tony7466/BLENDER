@@ -985,7 +985,7 @@ struct PBVHBatches {
     int edge_count = 0;
     for (int i = 0; i < args->totprim; i++) {
       const int tri_i = args->prim_indices[i];
-      const int poly_i = args->looptri_polys[i];
+      const int poly_i = args->looptri_polys[tri_i];
       if (args->hide_poly && args->hide_poly[poly_i]) {
         continue;
       }
@@ -1012,7 +1012,7 @@ struct PBVHBatches {
     int vertex_i = 0;
     for (int i = 0; i < args->totprim; i++) {
       const int tri_i = args->prim_indices[i];
-      const int poly_i = args->looptri_polys[i];
+      const int poly_i = args->looptri_polys[tri_i];
       if (args->hide_poly && args->hide_poly[poly_i]) {
         continue;
       }

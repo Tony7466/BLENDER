@@ -171,7 +171,7 @@ enum {
  * \note A #MLoopTri may be in the middle of an ngon and not reference **any** edges.
  */
 typedef struct MLoopTri {
-  uint tri[3];
+  unsigned int tri[3];
 } MLoopTri;
 #
 #

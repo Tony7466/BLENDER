@@ -664,7 +664,7 @@ static void get_ccgdm_data(const blender::OffsetIndices<int> lores_polys,
                            DerivedMesh *hidm,
                            const int *index_mp_to_orig,
                            const int lvl,
-                           const MLoopTri *lt,
+                           const int poly_index,
                            const float u,
                            const float v,
                            float co[3],
@@ -675,7 +675,6 @@ static void get_ccgdm_data(const blender::OffsetIndices<int> lores_polys,
   float crn_x, crn_y;
   int grid_size, S, face_side;
   int *grid_offset, g_index;
-  int poly_index = lt->poly;
 
   grid_size = hidm->getGridSize(hidm);
   grid_data = hidm->getGridData(hidm);
@@ -860,7 +859,8 @@ static void apply_heights_callback(const blender::Span<blender::float3> vert_pos
                                    const int y)
 {
   const MLoopTri *lt = &looptris[tri_index];
-  const blender::IndexRange poly = polys[looptri_polys[tri_index]];
+  const int poly_i = looptri_polys[tri_index];
+  const blender::IndexRange poly = polys[poly_i];
   MHeightBakeData *height_data = (MHeightBakeData *)bake_data;
   MultiresBakeThread *thread_data = (MultiresBakeThread *)thread_data_v;
   float uv[2];
@@ -887,11 +887,18 @@ static void apply_heights_callback(const blender::Span<blender::float3> vert_pos
   clamp_v2(uv, 0.0f, 1.0f);
 
   get_ccgdm_data(
-      polys, hires_dm, height_data->orig_index_mp_to_orig, lvl, lt, uv[0], uv[1], p1, nullptr);
+      polys, hires_dm, height_data->orig_index_mp_to_orig, lvl, poly_i, uv[0], uv[1], p1, nullptr);
 
   if (height_data->ssdm) {
-    get_ccgdm_data(
-        polys, height_data->ssdm, height_data->orig_index_mp_to_orig, 0, lt, uv[0], uv[1], p0, n);
+    get_ccgdm_data(polys,
+                   height_data->ssdm,
+                   height_data->orig_index_mp_to_orig,
+                   0,
+                   poly_i,
+                   uv[0],
+                   uv[1],
+                   p0,
+                   n);
   }
   else {
     if (poly.size() == 4) {
@@ -975,7 +982,8 @@ static void apply_tangmat_callback(const blender::Span<blender::float3> /*vert_p
                                    const int y)
 {
   const MLoopTri *lt = &looptris[tri_index];
-  const blender::IndexRange poly = polys[looptri_polys[tri_index]];
+  const int poly_i = looptri_polys[tri_index];
+  const blender::IndexRange poly = polys[poly_i];
   MNormalBakeData *normal_data = (MNormalBakeData *)bake_data;
   float uv[2];
   const float *st0, *st1, *st2, *st3;
@@ -1001,7 +1009,7 @@ static void apply_tangmat_callback(const blender::Span<blender::float3> /*vert_p
   clamp_v2(uv, 0.0f, 1.0f);
 
   get_ccgdm_data(
-      polys, hires_dm, normal_data->orig_index_mp_to_orig, lvl, lt, uv[0], uv[1], nullptr, n);
+      polys, hires_dm, normal_data->orig_index_mp_to_orig, lvl, poly_i, uv[0], uv[1], nullptr, n);
 
   mul_v3_m3v3(vec, tangmat, n);
   normalize_v3_length(vec, 0.5);
