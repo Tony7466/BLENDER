@@ -191,8 +191,9 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow)
 
 GPU_SHADER_CREATE_INFO(eevee_volume_material)
     .define("MAT_GEOM_VOLUME")
-    .fragment_source("eevee_volume_frag.glsl")
-    .additional_info("eevee_volume_common",
+    .vertex_source("eevee_volume_material_vert.glsl")
+    .fragment_source("eevee_volume_material_frag.glsl")
+    .additional_info("eevee_volume_base",
                      "draw_object_infos_new",
                      "draw_volume_infos", /*TODO (Miguel Pozo): Check eevee_shaders_extra.cc */
                      "draw_modelmat_new",

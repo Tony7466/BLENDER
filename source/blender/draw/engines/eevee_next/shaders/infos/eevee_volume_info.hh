@@ -20,11 +20,10 @@ GPU_SHADER_INTERFACE_INFO(eevee_volume_vert_geom_iface, "volume_vert_iface")
 GPU_SHADER_INTERFACE_INFO(eevee_volume_geom_frag_iface, "volume_geom_iface")
     .flat(Type::INT, "slice");
 
-GPU_SHADER_CREATE_INFO(eevee_volume_common)
+GPU_SHADER_CREATE_INFO(eevee_volume_base)
     .additional_info("draw_resource_id_varying", "eevee_volume_lib")
     .define("STANDALONE")
     .define("VOLUMETRICS")
-    .vertex_source("eevee_volume_vert.glsl")
     .geometry_source("eevee_volume_geom.glsl")
     .vertex_out(eevee_volume_vert_geom_iface)
     .geometry_out(eevee_volume_geom_frag_iface)
@@ -33,6 +32,10 @@ GPU_SHADER_CREATE_INFO(eevee_volume_common)
     .fragment_out(1, Type::VEC4, "volumeExtinction")
     .fragment_out(2, Type::VEC4, "volumeEmissive")
     .fragment_out(3, Type::VEC4, "volumePhase");
+
+GPU_SHADER_CREATE_INFO(eevee_volume_common)
+    .additional_info("eevee_volume_base")
+    .vertex_source("eevee_volume_vert.glsl");
 
 GPU_SHADER_CREATE_INFO(eevee_volume_clear)
     .additional_info("eevee_volume_common")

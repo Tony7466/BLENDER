@@ -190,8 +190,16 @@ float attr_load_float(samplerBuffer cd_buf)
 #    error draw_object_infos is mandatory for volume objects
 #  endif
 
-vec3 g_orco;
+/* WARNING: these are not attributes, these are global vars. */
+vec3 worldPosition = vec3(0.0);
+vec3 objectPosition = vec3(0.0);
+vec3 viewPosition = vec3(0.0);
+vec3 viewNormal = vec3(0.0);
+
+vec3 g_orco = vec3(0.0);
 int g_attr_id = 0;
+
+/* TODO (Miguel Pozo): Check differences with volumetric_frag.glsl. */
 
 vec3 grid_coordinates()
 {
@@ -211,7 +219,7 @@ vec3 attr_load_orco(sampler3D tex)
 }
 vec4 attr_load_tangent(sampler3D tex)
 {
-  attr_id += 1;
+  g_attr_id += 1;
   return vec4(0);
 }
 vec4 attr_load_vec4(sampler3D tex)
@@ -236,7 +244,7 @@ vec4 attr_load_color(sampler3D tex)
 }
 vec3 attr_load_uv(sampler3D attr)
 {
-  attr_id += 1;
+  g_attr_id += 1;
   return vec3(0);
 }
 
