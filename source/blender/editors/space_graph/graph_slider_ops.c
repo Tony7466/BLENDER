@@ -1190,7 +1190,6 @@ void GRAPH_OT_blend_to_frame(wmOperatorType *ot)
                        1.0f);
 }
 
-
 /** \} */
 /* -------------------------------------------------------------------- */
 /** \name Gauss Smooth Operator

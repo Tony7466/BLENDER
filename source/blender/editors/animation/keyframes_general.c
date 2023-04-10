@@ -491,7 +491,10 @@ void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor
 
 /* ---------------- */
 
-void blend_to_frame_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const int frame_current, const float factor)
+void blend_to_frame_fcurve_segment(FCurve *fcu,
+                                   FCurveSegment *segment,
+                                   const int frame_current,
+                                   const float factor)
 {
   const float current_frame_y = evaluate_fcurve(fcu, frame_current);
 
