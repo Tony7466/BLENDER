@@ -318,7 +318,7 @@ class RENDER_PT_eevee_bloom(RenderButtonsPanel, Panel):
 class RENDER_PT_eevee_volumetric(RenderButtonsPanel, Panel):
     bl_label = "Volumetrics"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT'}
 
     @classmethod
     def poll(cls, context):
@@ -344,7 +344,7 @@ class RENDER_PT_eevee_volumetric(RenderButtonsPanel, Panel):
 class RENDER_PT_eevee_volumetric_lighting(RenderButtonsPanel, Panel):
     bl_label = "Volumetric Lighting"
     bl_parent_id = "RENDER_PT_eevee_volumetric"
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT'}
 
     def draw_header(self, context):
         scene = context.scene
@@ -365,7 +365,7 @@ class RENDER_PT_eevee_volumetric_lighting(RenderButtonsPanel, Panel):
 class RENDER_PT_eevee_volumetric_shadows(RenderButtonsPanel, Panel):
     bl_label = "Volumetric Shadows"
     bl_parent_id = "RENDER_PT_eevee_volumetric"
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT'}
 
     def draw_header(self, context):
         scene = context.scene

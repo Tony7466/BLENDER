@@ -56,6 +56,7 @@ class Volumes {
   template<typename PassType> void bind_common_resources(PassType &ps)
   {
     ps.bind_ubo("volumes_buf", data_);
+    inst_.lights.bind_resources(&ps);
 #if 0
   /* TODO (Miguel Pozo) */
   DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);

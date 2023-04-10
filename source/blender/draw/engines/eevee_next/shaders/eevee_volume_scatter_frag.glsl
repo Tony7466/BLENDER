@@ -7,6 +7,43 @@
 /* Step 2 : Evaluate all light scattering for each froxels.
  * Also do the temporal reprojection to fight aliasing artifacts. */
 
+#ifdef VOLUME_LIGHTING
+
+vec3 volume_scatter_light_eval(vec3 P, vec3 V, uint l_idx, float s_anisotropy)
+{
+  LightData ld = light_buf[l_idx];
+
+  if (ld.volume_power == 0.0) {
+    return vec3(0);
+  }
+
+  vec4 l_vector;
+  l_vector.xyz = light_volume_light_vector(ld, P);
+  l_vector.w = length(l_vector.xyz);
+
+  vec3 L;
+  float dist;
+  light_vector_get(ld, P, L, dist);
+  float attenuation = light_attenuation(ld, L, dist);
+
+#  if 0
+  /* TODO(Miguel Pozo): Was shadowing applied twice ? */
+  float vis = light_visibility(ld, P, l_vector);
+#  else
+  float vis = attenuation;
+#  endif
+
+  if (vis < 1e-4) {
+    return vec3(0);
+  }
+
+  vec3 Li = light_volume(ld, l_vector) * light_volume_shadow(ld, P, l_vector, volumeExtinction);
+
+  return Li * vis * phase_function(-V, l_vector.xyz / l_vector.w, s_anisotropy);
+}
+
+#endif
+
 void main()
 {
   ivec3 volume_cell = ivec3(ivec2(gl_FragCoord.xy), volume_geom_iface.slice);
@@ -17,7 +54,8 @@ void main()
   vec3 s_scattering = texelFetch(volumeScattering, volume_cell, 0).rgb;
   vec3 volume_ndc = volume_to_ndc((vec3(volume_cell) + volumes_buf.jitter) *
                                   volumes_buf.inv_tex_size);
-  vec3 P = get_world_space_from_depth(volume_ndc.xy, volume_ndc.z);
+  vec3 vP = get_view_space_from_depth(volume_ndc.xy, volume_ndc.z);
+  vec3 P = point_view_to_world(vP);
   vec3 V = cameraVec(P);
 
   vec2 phase = texelFetch(volumePhase, volume_cell, 0).rg;
@@ -26,30 +64,19 @@ void main()
   /* Environment : Average color. */
   outScattering.rgb += irradiance_volumetric(P) * s_scattering * phase_function_isotropic();
 
-  /* TODO (Miguel Pozo) */
-#ifdef VOLUME_LIGHTING /* Lights */
-  for (int i = 0; i < MAX_LIGHT && i < laNumLight; i++) {
-    LightData ld = lights_data[i];
+#ifdef VOLUME_LIGHTING
 
-    if (ld.l_volume == 0.0) {
-      continue;
-    }
-
-    vec4 l_vector;
-    l_vector.xyz = light_volume_light_vector(ld, P);
-    l_vector.w = length(l_vector.xyz);
-
-    float vis = light_visibility(ld, P, l_vector);
-
-    if (vis < 1e-4) {
-      continue;
-    }
-
-    vec3 Li = light_volume(ld, l_vector) * light_volume_shadow(ld, P, l_vector, volumeExtinction);
-
-    outScattering.rgb += Li * vis * s_scattering *
-                         phase_function(-V, l_vector.xyz / l_vector.w, s_anisotropy);
+  LIGHT_FOREACH_BEGIN_DIRECTIONAL (light_cull_buf, l_idx) {
+    outScattering.rgb += volume_scatter_light_eval(P, V, l_idx, s_anisotropy) * s_scattering;
   }
+  LIGHT_FOREACH_END
+
+  LIGHT_FOREACH_BEGIN_LOCAL (
+      light_cull_buf, light_zbin_buf, light_tile_buf, gl_FragCoord.xy, vP.z, l_idx) {
+    outScattering.rgb += volume_scatter_light_eval(P, V, l_idx, s_anisotropy) * s_scattering;
+  }
+  LIGHT_FOREACH_END
+
 #endif
 
   /* Temporal supersampling */
