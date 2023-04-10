@@ -4544,6 +4544,51 @@ static const EnumPropertyItem *rna_NodeConvertColorSpace_color_space_itemf(
   return items;
 }
 
+static void rna_FunctionNodeBind_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+{
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
+  bNode *node = (bNode *)ptr->data;
+
+  BKE_ntree_update_tag_node_property(ntree, node);
+  ED_node_tree_propagate_change(NULL, bmain, ntree);
+  DEG_relations_tag_update(bmain);
+}
+
+static void rna_FunctionNodeBind_node_tree_set(PointerRNA *ptr,
+                                        const PointerRNA value,
+                                        struct ReportList *UNUSED(reports))
+{
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
+  bNode *node = ptr->data;
+  bNodeTree *ngroup = value.data;
+
+  const char *disabled_hint = NULL;
+  if (nodeGroupPoll(ntree, ngroup, &disabled_hint)) {
+    if (node->id) {
+      id_us_min(node->id);
+    }
+    if (ngroup) {
+      id_us_plus(&ngroup->id);
+    }
+
+    node->id = &ngroup->id;
+  }
+}
+
+static bool rna_FunctionNodeBind_node_tree_poll(PointerRNA *ptr, const PointerRNA value)
+{
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
+  bNodeTree *ngroup = value.data;
+
+  /* only allow node trees of the same type as the bind node's tree */
+  if (ngroup->type != ntree->type) {
+    return false;
+  }
+
+  const char *disabled_hint = NULL;
+  return nodeGroupPoll(ntree, ngroup, &disabled_hint);
+}
+
 #else
 
 static const EnumPropertyItem prop_image_layer_items[] = {
@@ -5198,6 +5243,25 @@ static void def_fn_combsep_color(StructRNA *srna)
   RNA_def_property_enum_items(prop, rna_node_combsep_color_items);
   RNA_def_property_ui_text(prop, "Mode", "Mode of color processing");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+}
+
+static void def_fn_bind(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  prop = RNA_def_property(srna, "node_tree", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, NULL, "id");
+  RNA_def_property_struct_type(prop, "NodeTree");
+  RNA_def_property_pointer_funcs(
+      prop, NULL, "rna_FunctionNodeBind_node_tree_set", NULL, "rna_FunctionNodeBind_node_tree_poll");
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_ui_text(prop, "Node Tree", "");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_FunctionNodeBind_update");
+}
+
+static void def_fn_evaluate(StructRNA *srna)
+{
 }
 
 /* -- Shader Nodes ---------------------------------------------------------- */

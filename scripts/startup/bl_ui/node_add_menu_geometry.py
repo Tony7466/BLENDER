@@ -617,6 +617,16 @@ class NODE_MT_category_GEO_GROUP(Menu):
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
+class NODE_MT_category_GEO_FUNCTION(Menu):
+    bl_idname = "NODE_MT_category_GEO_FUNCTION"
+    bl_label = "Function"
+
+    def draw(self, context):
+        layout = self.layout
+        node_add_menu.add_node_type(layout, "FunctionNodeBind")
+        node_add_menu.add_node_type(layout, "FunctionNodeEvaluate")
+
+
 class NODE_MT_category_GEO_LAYOUT(Menu):
     bl_idname = "NODE_MT_category_GEO_LAYOUT"
     bl_label = "Layout"
@@ -651,6 +661,7 @@ class NODE_MT_geometry_node_add_all(Menu):
         layout.menu("NODE_MT_category_GEO_UTILITIES")
         layout.separator()
         layout.menu("NODE_MT_category_GEO_GROUP")
+        layout.menu("NODE_MT_category_GEO_FUNCTION")
         layout.menu("NODE_MT_category_GEO_LAYOUT")
         node_add_menu.draw_root_assets(layout)
 
@@ -696,6 +707,7 @@ classes = (
     NODE_MT_category_GEO_UTILITIES_MATH,
     NODE_MT_category_GEO_UTILITIES_ROTATION,
     NODE_MT_category_GEO_GROUP,
+    NODE_MT_category_GEO_FUNCTION,
     NODE_MT_category_GEO_LAYOUT,
 )
 

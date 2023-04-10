@@ -279,6 +279,8 @@ DefNode(FunctionNode, FN_NODE_SEPARATE_COLOR, def_fn_combsep_color, "SEPARATE_CO
 DefNode(FunctionNode, FN_NODE_SLICE_STRING, 0, "SLICE_STRING", SliceString, "Slice String", "")
 DefNode(FunctionNode, FN_NODE_STRING_LENGTH, 0, "STRING_LENGTH", StringLength, "String Length", "")
 DefNode(FunctionNode, FN_NODE_VALUE_TO_STRING, 0, "VALUE_TO_STRING", ValueToString, "Value to String", "")
+DefNode(FunctionNode, FN_NODE_BIND, def_fn_bind, "BIND", Bind, "Bind", "")
+DefNode(FunctionNode, FN_NODE_EVALUATE, def_fn_evaluate, "EVALUATE", Evaluate, "Evaluate", "")
 
 DefNode(GeometryNode, GEO_NODE_ACCUMULATE_FIELD, def_geo_accumulate_field, "ACCUMULATE_FIELD", AccumulateField, "Accumulate Field", "Add the values of an evaluated field together and output the running total for each element")
 DefNode(GeometryNode, GEO_NODE_ATTRIBUTE_DOMAIN_SIZE, def_geo_attribute_domain_size, "ATTRIBUTE_DOMAIN_SIZE", AttributeDomainSize, "Domain Size", "Retrieve the number of elements in a geometry for each attribute domain")
