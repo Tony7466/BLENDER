@@ -1,3 +1,4 @@
 Referenced by issue #106043, Regression: Moving frame node jittering while cursor is still
 Referenced by pull request #106050, Fix #106043: Don't use offset for free nodes
 Referenced by issue #100749, Blender LTS: Maintenance Task 3.3
+Referenced by issue #106594, Node frame grid alignment issue
