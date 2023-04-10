@@ -2417,11 +2417,14 @@ void CustomData_realloc(CustomData *data, const int old_size, const int new_size
 
     void *new_layer_data = MEM_mallocN(new_size_in_bytes, __func__);
     /* Copy data to new array. */
-    if (typeInfo->copy) {
-      typeInfo->copy(layer->data, new_layer_data, std::min(old_size, new_size));
-    }
-    else {
-      memcpy(new_layer_data, layer->data, std::min(old_size_in_bytes, new_size_in_bytes));
+    if (old_size_in_bytes) {
+      if (typeInfo->copy) {
+        typeInfo->copy(layer->data, new_layer_data, std::min(old_size, new_size));
+      }
+      else {
+        BLI_assert(layer->data != nullptr);
+        memcpy(new_layer_data, layer->data, std::min(old_size_in_bytes, new_size_in_bytes));
+      }
     }
     /* Remove ownership of old array */
     if (layer->sharing_info) {
