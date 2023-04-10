@@ -44,10 +44,6 @@ class HIPRTDevice : public HIPDevice {
 
   virtual void build_bvh(BVH *bvh, Progress &progress, bool refit) override;
 
-  hiprtGeometryBuildInput prepare_triangle_blas(BVHHIPRT *bvh, Mesh *mesh);
-  hiprtGeometryBuildInput prepare_curve_blas(BVHHIPRT *bvh, Hair *hair);
-  hiprtGeometryBuildInput prepare_point_blas(BVHHIPRT *bvh, PointCloud *pointcloud);
-
   hiprtContext get_hiprt_context()
   {
     return hiprt_context;
@@ -59,7 +55,10 @@ class HIPRTDevice : public HIPDevice {
   enum Filter_Function { Closest = 0, Shadows, Local, Volume, Max_Intersect_Filter_Function };
   enum Primitive_Type { Triangle = 0, Curve, Motion_Triangle, Point, Max_Primitive_Type };
 
-  hiprtGeometry build_blas(BVHHIPRT *bvh, Geometry *geom, hiprtBuildOptions options);
+  hiprtGeometryBuildInput prepare_triangle_blas(BVHHIPRT *bvh, Mesh *mesh);
+  hiprtGeometryBuildInput prepare_curve_blas(BVHHIPRT *bvh, Hair *hair);
+  hiprtGeometryBuildInput prepare_point_blas(BVHHIPRT *bvh, PointCloud *pointcloud);
+  void build_blas(BVHHIPRT *bvh, Geometry *geom, hiprtBuildOptions options);
   hiprtScene build_tlas(BVHHIPRT *bvh,
                         vector<Object *> objects,
                         hiprtBuildOptions options,
@@ -68,6 +67,10 @@ class HIPRTDevice : public HIPDevice {
   hiprtContext hiprt_context;
   hiprtScene scene;
   hiprtFuncTable functions_table;
+
+  thread_mutex hiprt_mutex;
+  size_t scratch_buffer_size;
+  device_vector<char> scratch_buffer;
 
   // The following vectors are to transfer scene information available on the host to the GPU
   // visibility, instance_transform_matrix, transform_headers, and hiprt_blas_ptr are passed to

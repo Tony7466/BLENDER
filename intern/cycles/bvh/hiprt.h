@@ -28,6 +28,7 @@ class BVHHIPRT : public BVH {
   hiprtGeometry hiprt_geom;
   hiprtTriangleMeshPrimitive triangle_mesh;
   hiprtAABBListPrimitive custom_prim_aabb;
+  hiprtGeometryBuildInput geom_input;
 
   vector<int2> custom_prim_info;  // x: prim_id, y: prim_type
   vector<float2> prims_time;

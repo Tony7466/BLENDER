@@ -58,9 +58,12 @@ BVHLayoutMask HIPRTDevice::get_bvh_layout_mask() const
 
 HIPRTDevice::HIPRTDevice(const DeviceInfo &info, Stats &stats, Profiler &profiler)
     : HIPDevice(info, stats, profiler),
+      global_stack_buffer(this, "global_stack_buffer", MEM_DEVICE_ONLY),
       hiprt_context(NULL),
       scene(NULL),
       functions_table(NULL),
+      scratch_buffer_size(0),
+      scratch_buffer(this, "scratch_buffer", MEM_DEVICE_ONLY),
       visibility(this, "visibility", MEM_READ_ONLY),
       instance_transform_matrix(this, "instance_transform_matrix", MEM_READ_ONLY),
       transform_headers(this, "transform_headers", MEM_READ_ONLY),
@@ -70,8 +73,7 @@ HIPRTDevice::HIPRTDevice(const DeviceInfo &info, Stats &stats, Profiler &profile
       custom_prim_info(this, "custom_prim_info", MEM_GLOBAL),
       custom_prim_info_offset(this, "custom_prim_info_offset", MEM_GLOBAL),
       prims_time(this, "prims_time", MEM_GLOBAL),
-      prim_time_offset(this, "prim_time_offset", MEM_GLOBAL),
-      global_stack_buffer(this, "global_stack_buffer", MEM_DEVICE_ONLY)
+      prim_time_offset(this, "prim_time_offset", MEM_GLOBAL)
 {
   HIPContextScope scope(this);
   hiprtContextCreationInput hiprt_context_input = {0};
@@ -252,8 +254,8 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
     }
   }
 
-  // After compilation, the bitcode produced is linked with HIP RT bitcode (containing implementations of
-  // HIP RT functions, e.g. traversal, to produce the final executable code
+  // After compilation, the bitcode produced is linked with HIP RT bitcode (containing
+  // implementations of HIP RT functions, e.g. traversal, to produce the final executable code
   string linker_options;
   linker_options.append(" --offload-arch=").append(arch);
   linker_options.append(" -fgpu-rdc --hip-link --cuda-device-only ");
@@ -381,8 +383,8 @@ void HIPRTDevice::const_copy_to(const char *name, void *host, size_t size)
 
 hiprtGeometryBuildInput HIPRTDevice::prepare_triangle_blas(BVHHIPRT *bvh, Mesh *mesh)
 {
-  hiprtGeometryBuildInput geomInput;
-  geomInput.geomType = Triangle;
+  hiprtGeometryBuildInput geom_input;
+  geom_input.geomType = Triangle;
 
   if (mesh->has_motion_blur() &&
       !(bvh->params.num_motion_triangle_steps == 0 || bvh->params.use_spatial_split)) {
@@ -439,9 +441,9 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_triangle_blas(BVHHIPRT *bvh, Mesh *
     bvh->custom_primitive_bound.copy_to_device();
     bvh->custom_prim_aabb.aabbs = (void *)bvh->custom_primitive_bound.device_pointer;
 
-    geomInput.type = hiprtPrimitiveTypeAABBList;
-    geomInput.aabbList.primitive = &bvh->custom_prim_aabb;
-    geomInput.geomType = Motion_Triangle;
+    geom_input.type = hiprtPrimitiveTypeAABBList;
+    geom_input.aabbList.primitive = &bvh->custom_prim_aabb;
+    geom_input.geomType = Motion_Triangle;
   }
   else {
 
@@ -472,15 +474,15 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_triangle_blas(BVHHIPRT *bvh, Mesh *
     bvh->triangle_mesh.vertices = (void *)(bvh->vertex_data.device_pointer);
     bvh->vertex_data.host_pointer = 0;
 
-    geomInput.type = hiprtPrimitiveTypeTriangleMesh;
-    geomInput.triangleMesh.primitive = &(bvh->triangle_mesh);
+    geom_input.type = hiprtPrimitiveTypeTriangleMesh;
+    geom_input.triangleMesh.primitive = &(bvh->triangle_mesh);
   }
-  return geomInput;
+  return geom_input;
 }
 
 hiprtGeometryBuildInput HIPRTDevice::prepare_curve_blas(BVHHIPRT *bvh, Hair *hair)
 {
-  hiprtGeometryBuildInput geomInput;
+  hiprtGeometryBuildInput geom_input;
 
   const PrimitiveType primitive_type = hair->primitive_type();
   const size_t num_curves = hair->num_curves();
@@ -594,16 +596,16 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_curve_blas(BVHHIPRT *bvh, Hair *hai
   bvh->custom_primitive_bound.copy_to_device();
   bvh->custom_prim_aabb.aabbs = (void *)bvh->custom_primitive_bound.device_pointer;
 
-  geomInput.type = hiprtPrimitiveTypeAABBList;
-  geomInput.aabbList.primitive = &bvh->custom_prim_aabb;
-  geomInput.geomType = Curve;
+  geom_input.type = hiprtPrimitiveTypeAABBList;
+  geom_input.aabbList.primitive = &bvh->custom_prim_aabb;
+  geom_input.geomType = Curve;
 
-  return geomInput;
+  return geom_input;
 }
 
 hiprtGeometryBuildInput HIPRTDevice::prepare_point_blas(BVHHIPRT *bvh, PointCloud *pointcloud)
 {
-  hiprtGeometryBuildInput geomInput;
+  hiprtGeometryBuildInput geom_input;
 
   const Attribute *point_attr_mP = NULL;
   if (pointcloud->has_motion_blur()) {
@@ -695,17 +697,16 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_point_blas(BVHHIPRT *bvh, PointClou
   bvh->custom_primitive_bound.copy_to_device();
   bvh->custom_prim_aabb.aabbs = (void *)bvh->custom_primitive_bound.device_pointer;
 
-  geomInput.type = hiprtPrimitiveTypeAABBList;
-  geomInput.aabbList.primitive = &bvh->custom_prim_aabb;
-  geomInput.geomType = Point;
+  geom_input.type = hiprtPrimitiveTypeAABBList;
+  geom_input.aabbList.primitive = &bvh->custom_prim_aabb;
+  geom_input.geomType = Point;
 
-  return geomInput;
+  return geom_input;
 }
 
-hiprtGeometry HIPRTDevice::build_blas(BVHHIPRT *bvh, Geometry *geom, hiprtBuildOptions options)
+void HIPRTDevice::build_blas(BVHHIPRT *bvh, Geometry *geom, hiprtBuildOptions options)
 {
-  hiprtGeometry hiprt_geom = NULL;
-  hiprtGeometryBuildInput geomInput;
+  hiprtGeometryBuildInput geom_input = {};
 
   switch (geom->geometry_type) {
     case Geometry::MESH:
@@ -713,9 +714,9 @@ hiprtGeometry HIPRTDevice::build_blas(BVHHIPRT *bvh, Geometry *geom, hiprtBuildO
       Mesh *mesh = static_cast<Mesh *>(geom);
 
       if (mesh->num_triangles() == 0)
-        return 0;
+        return;
 
-      geomInput = prepare_triangle_blas(bvh, mesh);
+      geom_input = prepare_triangle_blas(bvh, mesh);
       break;
     }
 
@@ -723,47 +724,75 @@ hiprtGeometry HIPRTDevice::build_blas(BVHHIPRT *bvh, Geometry *geom, hiprtBuildO
       Hair *const hair = static_cast<Hair *const>(geom);
 
       if (hair->num_segments() == 0)
-        return 0;
+        return;
 
-      geomInput = prepare_curve_blas(bvh, hair);
+      geom_input = prepare_curve_blas(bvh, hair);
       break;
     }
 
     case Geometry::POINTCLOUD: {
       PointCloud *pointcloud = static_cast<PointCloud *>(geom);
       if (pointcloud->num_points() == 0)
-        return 0;
+        return;
 
-      geomInput = prepare_point_blas(bvh, pointcloud);
+      geom_input = prepare_point_blas(bvh, pointcloud);
       break;
     }
 
     default:
-      assert(0);
+      assert(geom_input.geomType != hiprtInvalidValue);
   }
 
-  size_t scratch_buffer_size;
-
+  size_t blas_scratch_buffer_size = 0;
   hiprtError rt_err = hiprtGetGeometryBuildTemporaryBufferSize(
-      hiprt_context, &geomInput, &options, &scratch_buffer_size);
+      hiprt_context, &geom_input, &options, &blas_scratch_buffer_size);
 
-  rt_err = hiprtCreateGeometry(hiprt_context, &geomInput, &options, &hiprt_geom);
+  if (rt_err != hiprtSuccess) {
+    set_error(string_printf("Failed to get scratch buffer size for BLAS!"));
+  }
 
-  device_vector<char> scratch_buffer(this, "scratch buffer", MEM_DEVICE_ONLY);
-  scratch_buffer.alloc(scratch_buffer_size);
-  scratch_buffer.zero_to_device();
+  rt_err = hiprtCreateGeometry(hiprt_context, &geom_input, &options, &bvh->hiprt_geom);
 
-  rt_err = hiprtBuildGeometry(hiprt_context,
-                              hiprtBuildOperationBuild,
-                              &geomInput,
-                              &options,
-                              (void *)scratch_buffer.device_pointer,
-                              0,
-                              hiprt_geom);
-  scratch_buffer.free();
-
-  return hiprt_geom;
+  if (rt_err != hiprtSuccess) {
+    set_error(string_printf("Failed to create BLAS!"));
+  }
+  bvh->geom_input = geom_input;
+  {
+    thread_scoped_lock lock(hiprt_mutex);
+    if (blas_scratch_buffer_size > scratch_buffer_size) {
+      scratch_buffer.alloc(blas_scratch_buffer_size);
+      scratch_buffer_size = blas_scratch_buffer_size;
+      scratch_buffer.zero_to_device();
+    }
+    rt_err = hiprtBuildGeometry(hiprt_context,
+                                hiprtBuildOperationBuild,
+                                &bvh->geom_input,
+                                &options,
+                                (void *)(scratch_buffer.device_pointer),
+                                0,
+                                bvh->hiprt_geom);
+  }
+  if (rt_err != hiprtSuccess) {
+    set_error(string_printf("Failed to build BLAS"));
+  }
 }
+
+// void HIPRTDevice::build_blas(BVHHIPRT *bvh,
+//                                      device_ptr scratch_buffer, hiprtBuildOptions options)
+//{
+//  hiprtError rt_err = hiprtBuildGeometry(hiprt_context,
+//                                         hiprtBuildOperationBuild,
+//                                         &bvh->geom_input,
+//                                         &options,
+//                                         (void *)scratch_buffer,
+//                                         0,
+//                                         bvh->hiprt_geom);
+//
+//  if (rt_err != hiprtSuccess) {
+//    set_error(string_printf("Failed to build BLAS"));
+//  }
+//}
+
 hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
                                    vector<Object *> objects,
                                    hiprtBuildOptions options,
@@ -802,15 +831,14 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
     bool transform_applied = geom->transform_applied;
 
     BVHHIPRT *current_bvh = static_cast<BVHHIPRT *>(geom->bvh);
-    hiprtGeometry hiprt_geom_current = (current_bvh == NULL) ?
-                                           build_blas(current_bvh, geom, options) :
-                                           current_bvh->hiprt_geom;
+    bool is_valid_geometry = current_bvh->geom_input.geomType != hiprtInvalidValue;
+    hiprtGeometry hiprt_geom_current = current_bvh->hiprt_geom;
 
     hiprtFrameMatrix hiprt_transform_matrix = {0};
     Transform identity_matrix = transform_identity();
     get_hiprt_transform(hiprt_transform_matrix.matrix, identity_matrix);
 
-    if (hiprt_geom_current) {
+    if (is_valid_geometry) {
       bool is_custom_prim = current_bvh->custom_prim_info.size() > 0;
 
       if (is_custom_prim) {
@@ -935,13 +963,22 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
 
   hiprtError rt_err = hiprtCreateScene(hiprt_context, &scene_input_ptr, &options, &scene);
 
-  size_t scratch_buffer_size;
-  rt_err = hiprtGetSceneBuildTemporaryBufferSize(
-      hiprt_context, &scene_input_ptr, &options, &scratch_buffer_size);
+  if (rt_err != hiprtSuccess) {
+    set_error(string_printf("Failed to create TLAS"));
+  }
 
-  device_vector<char> scratch_buffer(this, "scratch buffer", MEM_DEVICE_ONLY);
-  scratch_buffer.alloc(scratch_buffer_size);
-  scratch_buffer.zero_to_device();
+  size_t tlas_scratch_buffer_size;
+  rt_err = hiprtGetSceneBuildTemporaryBufferSize(
+      hiprt_context, &scene_input_ptr, &options, &tlas_scratch_buffer_size);
+
+  if (rt_err != hiprtSuccess) {
+    set_error(string_printf("Failed to get scratch buffer size for TLAS"));
+  }
+
+  if (tlas_scratch_buffer_size > scratch_buffer_size) {
+    scratch_buffer.alloc(tlas_scratch_buffer_size);
+    scratch_buffer.zero_to_device();
+  }
 
   rt_err = hiprtBuildScene(hiprt_context,
                            build_operation,
@@ -951,7 +988,12 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
                            0,
                            scene);
 
+  if (rt_err != hiprtSuccess) {
+    set_error(string_printf("Failed to build TLAS"));
+  }
+
   scratch_buffer.free();
+  scratch_buffer_size = 0;
 
   if (bvh->custom_prim_info.size()) {
     size_t data_size = bvh->custom_prim_info.size();
@@ -1009,12 +1051,12 @@ void HIPRTDevice::build_bvh(BVH *bvh, Progress &progress, bool refit)
 
   BVHHIPRT *bvh_rt = static_cast<BVHHIPRT *>(bvh);
   HIPContextScope scope(this);
-  if (!bvh_rt->is_tlas()) {
 
+  if (!bvh_rt->is_tlas()) {
     vector<Geometry *> geometry = bvh_rt->geometry;
     assert(geometry.size() == 1);
     Geometry *geom = geometry[0];
-    bvh_rt->hiprt_geom = build_blas(bvh_rt, geom, options);
+    build_blas(bvh_rt, geom, options);
   }
   else {
 
