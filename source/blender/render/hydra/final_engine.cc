@@ -204,7 +204,7 @@ void FinalEngineGL::render(Depsgraph *depsgraph)
                                               GPU_TEXTURE_USAGE_GENERAL,
                                               nullptr);
   GPU_texture_filter_mode(texture, true);
-  GPU_texture_wrap_mode(texture, true, true);
+  GPU_texture_mipmap_mode(texture, true, true);
   GPU_framebuffer_texture_attach(framebuffer, texture, 0, 0);
 
   GPU_framebuffer_bind(framebuffer);

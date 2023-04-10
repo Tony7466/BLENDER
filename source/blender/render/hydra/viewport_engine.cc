@@ -190,7 +190,7 @@ void DrawTexture::create(pxr::HdRenderBuffer *buffer)
   buffer->Unmap();
 
   GPU_texture_filter_mode(texture, true);
-  GPU_texture_wrap_mode(texture, true, true);
+  GPU_texture_mipmap_mode(texture, true, true);
 }
 
 void DrawTexture::free()
