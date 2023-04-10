@@ -104,12 +104,12 @@ static void copy_attributes(PointCloud *pointcloud,
       }
       case BL::Attribute::data_type_INT32_2D: {
         BL::Int2Attribute b_int2_attribute{b_attribute};
+        const int2 *src = static_cast<const int2 *>(b_int2_attribute.data[0].ptr.data);
         Attribute *attr = attributes.add(name, TypeFloat2, element);
         float2 *data = attr->data_float2();
-        fill_generic_attribute(b_pointcloud, data, [&](int i) {
-          BL::Array<int, 2> v = b_int2_attribute.data[i].value();
-          return make_float2(float(v[0]), float(v[1]));
-        });
+        for (int i = 0; i < num_points; i++) {
+          data[i] = make_float2(float(src[i][0]), float(src[i][1]));
+        }
         break;
       }
       case BL::Attribute::data_type_FLOAT_VECTOR: {
