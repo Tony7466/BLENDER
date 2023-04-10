@@ -491,7 +491,7 @@ void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor
 
 /* ---------------- */
 
-float s_curve(float x, float slope, float width, float height, float xshift, float yshift)
+static float s_curve(float x, float slope, float width, float height, float xshift, float yshift)
 {
   /* Formula for 'S' curve we use for the "ease" sliders. The shift values move the curve vertiacly
    * or horizontaly. The range of the curve used is from 0 to 1 on "x" and "y" so we can scale it
@@ -514,13 +514,10 @@ float s_curve(float x, float slope, float width, float height, float xshift, flo
 void blend_to_ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
 {
   const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
-  const float left_x = left_key->vec[1][0];
-  const float left_y = left_key->vec[1][1];
-
   const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
 
-  const float key_x_range = right_key->vec[1][0] - left_x;
-  const float key_y_range = right_key->vec[1][1] - left_x;
+  const float key_x_range = right_key->vec[1][0] - left_key->vec[1][0];
+  const float key_y_range = right_key->vec[1][1] - left_key->vec[1][1];
 
   /* Happens if there is only 1 key on the FCurve. Needs to be skipped because it
    * would be a divide by 0. */
