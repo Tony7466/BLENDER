@@ -753,4 +753,6 @@ inline Span<SocketDeclarationPtr> NodeDeclaration::sockets(eNodeSocketInOut in_o
 
 /** \} */
 
+SocketDeclarationPtr declaration_for_interface_socket(const bNodeSocket &io_socket);
+
 }  // namespace blender::nodes

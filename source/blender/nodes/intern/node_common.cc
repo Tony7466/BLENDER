@@ -157,8 +157,8 @@ static std::function<ID *(const bNode &node)> get_default_id_getter(const bNodeT
   };
 }
 
-static SocketDeclarationPtr declaration_for_interface_socket(const bNodeTree &ntree,
-                                                             const bNodeSocket &io_socket)
+SocketDeclarationPtr declaration_for_interface_socket(const bNodeTree &ntree,
+                                                      const bNodeSocket &io_socket)
 {
   SocketDeclarationPtr dst;
   switch (io_socket.type) {
