@@ -107,9 +107,6 @@ enum {
  *
  * Usage examples:
  * \code{.c}
- * // access polygon attribute value.
- * T value = polygon_attribute[lt->poly];
- *
  * // access vertex locations.
  * float *vtri_co[3] = {
  *     positions[corner_verts[lt->tri[0]]],
