@@ -620,11 +620,10 @@ static void rna_MeshLoop_bitangent_get(PointerRNA *ptr, float *values)
   Mesh *me = rna_mesh(ptr);
   const int index = rna_MeshLoop_index_get(ptr);
   const float(*loop_normals)[3] = BKE_mesh_corner_normals_ensure(me);
-  const float(*nor)[3] = loop_normals[index];
   const float(*vec)[4] = CustomData_get(&me->ldata, index, CD_MLOOPTANGENT);
 
-  if (nor && vec) {
-    cross_v3_v3v3(values, nor[index], vec[index]);
+  if (vec) {
+    cross_v3_v3v3(values, loop_normals[index][index], vec[index]);
     mul_v3_fl(values, vec[index][3]);
   }
   else {

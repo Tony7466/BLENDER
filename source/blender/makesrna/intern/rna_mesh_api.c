@@ -51,7 +51,6 @@ static void rna_Mesh_create_normals_split(Mesh *mesh)
 static void rna_Mesh_free_normals_split(Mesh *mesh)
 {
   /* TODO: Deprecation? */
-  BKE_mesh_normals_tag_dirty(mesh);
 }
 
 static void rna_Mesh_calc_tangents(Mesh *mesh, ReportList *reports, const char *uvmap)

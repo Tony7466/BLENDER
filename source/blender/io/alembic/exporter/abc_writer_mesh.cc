@@ -62,8 +62,7 @@ namespace blender::io::alembic {
 static void get_vertices(struct Mesh *mesh, std::vector<Imath::V3f> &points);
 static void get_topology(struct Mesh *mesh,
                          std::vector<int32_t> &poly_verts,
-                         std::vector<int32_t> &loop_counts,
-                         bool &r_has_flat_shaded_poly);
+                         std::vector<int32_t> &loop_counts);
 static void get_edge_creases(struct Mesh *mesh,
                              std::vector<int32_t> &indices,
                              std::vector<int32_t> &lengths,
@@ -71,9 +70,7 @@ static void get_edge_creases(struct Mesh *mesh,
 static void get_vert_creases(struct Mesh *mesh,
                              std::vector<int32_t> &indices,
                              std::vector<float> &sharpnesses);
-static void get_loop_normals(struct Mesh *mesh,
-                             std::vector<Imath::V3f> &normals,
-                             bool has_flat_shaded_poly);
+static void get_loop_normals(struct Mesh *mesh, std::vector<Imath::V3f> &normals);
 
 ABCGenericMeshWriter::ABCGenericMeshWriter(const ABCWriterConstructorArgs &args)
     : ABCAbstractWriter(args), is_subd_(false)

@@ -372,12 +372,12 @@ void OBJMesh::store_normal_coords_and_indices()
 
   for (int poly_index = 0; poly_index < export_mesh_->totpoly; ++poly_index) {
     const IndexRange poly = mesh_polys_[poly_index];
-    bool need_per_loop_normals = lnors != nullptr || !(sharp_faces_[poly_index]);
+    bool need_per_loop_normals = !corner_normals.is_empty() && !(sharp_faces_[poly_index]);
     if (need_per_loop_normals) {
       for (const int corner : poly) {
         float3 loop_normal;
         BLI_assert(corner < export_mesh_->totloop);
-        copy_v3_v3(loop_normal, lnors[corner]);
+        copy_v3_v3(loop_normal, corner_normals[corner]);
         mul_m3_v3(world_and_axes_normal_transform_, loop_normal);
         normalize_v3(loop_normal);
         float3 rounded_loop_normal = round_float3_to_n_digits(loop_normal, round_digits);

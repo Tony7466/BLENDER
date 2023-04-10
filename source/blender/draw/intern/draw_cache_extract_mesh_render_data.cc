@@ -337,8 +337,6 @@ void mesh_render_data_update_looptris(MeshRenderData *mr,
 
 void mesh_render_data_update_normals(MeshRenderData *mr, const eMRDataType data_flag)
 {
-  Mesh *me = mr->me;
-
   if (mr->extract_type != MR_EXTRACT_BMESH) {
     /* Mesh */
     mr->vert_normals = mr->me->vert_normals();
