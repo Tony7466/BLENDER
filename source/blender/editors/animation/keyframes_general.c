@@ -493,32 +493,14 @@ void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor
 
 void time_offset_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
 {
-  const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
-  const float left_x = left_key->vec[1][0];
-
-  const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
-
-  const float key_x_range = right_key->vec[1][0] - left_x;
-
-  /* Happens if there is only 1 key on the FCurve. Needs to be skipped because it
-   * would be a divide by 0. */
-  if (IS_EQF(key_x_range, 0.0f)) {
-    return;
-  }
-
   /* The factor goes from 0 to 1, but for this tool it needs to go from -1 to 1. */
   const float long_factor = factor * 2 - 1;
 
   /* Two bookend keys of the fcurve are needed to be able to cycle the values. */
   const BezTriple *last_key = &fcu->bezt[fcu->totvert - 1];
-  const float last_key_x = last_key->vec[1][0];
-  const float last_key_y = last_key->vec[1][1];
-
   const BezTriple *first_key = &fcu->bezt[0];
-  const float first_key_x = first_key->vec[1][0];
-  const float first_key_y = first_key->vec[1][1];
 
-  const int fcu_x_range = last_key_x - first_key_x;
+  const int fcu_x_range = last_key->vec[1][0] - first_key->vec[1][0];
   float delta_y;
 
   /* If we operate directly on the fcurve there will be a feedback loop
@@ -532,15 +514,15 @@ void time_offset_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float
 
     /* The values need to go back to the ones at the other end of the fcurve
      * every time we get to the last or the first key. */
-    if (time > last_key_x) {
+    if (time > last_key->vec[1][0]) {
       int offset_frame = fcu->bezt[i].vec[1][0] - fcu_x_range;
       time = offset_frame + fcu_x_range * long_factor;
-      delta_y = last_key_y - first_key_y;
+      delta_y = last_key->vec[1][1] - first_key->vec[1][1];
     }
-    else if (time < first_key_x) {
+    else if (time < first_key->vec[1][0]) {
       int offset_frame = fcu->bezt[i].vec[1][0] + fcu_x_range;
       time = offset_frame + fcu_x_range * long_factor;
-      delta_y = first_key_y - last_key_y;
+      delta_y = first_key->vec[1][1] - last_key->vec[1][1];
     }
     else {
       delta_y = 0;
