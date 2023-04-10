@@ -42,6 +42,8 @@
 
 #include "graph_intern.h"
 
+#include "BKE_scene.h"
+
 /* -------------------------------------------------------------------- */
 /** \name Internal Struct & Defines
  * \{ */
@@ -1059,6 +1061,135 @@ void GRAPH_OT_ease(wmOperatorType *ot)
                        0.0f,
                        1.0f);
 }
+
+/* -------------------------------------------------------------------- */
+/** \name Blend to Frame Operator
+ * \{ */
+
+static void blend_to_frame_graph_keys(bContext *C, bAnimContext *ac, const float factor)
+{
+  ListBase anim_data = {NULL, NULL};
+  Scene *scene = CTX_data_scene(C);
+  const int frame_current = BKE_scene_frame_get(scene);
+
+  ANIM_animdata_filter(ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, ac->datatype);
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    FCurve *fcu = (FCurve *)ale->key_data;
+    ListBase segments = find_fcurve_segments(fcu);
+
+    LISTBASE_FOREACH (FCurveSegment *, segment, &segments) {
+      blend_to_frame_fcurve_segment(fcu, segment, frame_current, factor);
+    }
+
+    ale->update |= ANIM_UPDATE_DEFAULT;
+    BLI_freelistN(&segments);
+  }
+
+  ANIM_animdata_update(ac, &anim_data);
+  ANIM_animdata_freelist(&anim_data);
+}
+
+static void blend_to_frame_draw_status_header(bContext *C, tGraphSliderOp *gso)
+{
+  char status_str[UI_MAX_DRAW_STR];
+  char mode_str[32];
+  char slider_string[UI_MAX_DRAW_STR];
+
+  ED_slider_status_string_get(gso->slider, slider_string, UI_MAX_DRAW_STR);
+
+  strcpy(mode_str, TIP_("Blend to Frame"));
+
+  if (hasNumInput(&gso->num)) {
+    char str_ofs[NUM_STR_REP_LEN];
+
+    outputNumInput(&gso->num, str_ofs, &gso->scene->unit);
+
+    BLI_snprintf(status_str, sizeof(status_str), "%s: %s", mode_str, str_ofs);
+  }
+  else {
+    BLI_snprintf(status_str, sizeof(status_str), "%s: %s", mode_str, slider_string);
+  }
+
+  ED_workspace_status_text(C, status_str);
+}
+
+static void blend_to_frame_modal_update(bContext *C, wmOperator *op)
+{
+  tGraphSliderOp *gso = op->customdata;
+
+  blend_to_frame_draw_status_header(C, gso);
+
+  /* Reset keyframes to the state at invoke. */
+  reset_bezts(gso);
+  const float factor = slider_factor_get_and_remember(op);
+  blend_to_frame_graph_keys(C, &gso->ac, factor);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+}
+
+static int blend_to_frame_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  const int invoke_result = graph_slider_invoke(C, op, event);
+
+  if (invoke_result == OPERATOR_CANCELLED) {
+    return invoke_result;
+  }
+
+  tGraphSliderOp *gso = op->customdata;
+  gso->modal_update = blend_to_frame_modal_update;
+  gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
+  ED_slider_allow_overshoot_set(gso->slider, false);
+  ED_slider_factor_set(gso->slider, 0.0f);
+  blend_to_frame_draw_status_header(C, gso);
+
+  return invoke_result;
+}
+
+static int blend_to_frame_exec(bContext *C, wmOperator *op)
+{
+  bAnimContext ac;
+
+  /* Get editor data. */
+  if (ANIM_animdata_get_context(C, &ac) == 0) {
+    return OPERATOR_CANCELLED;
+  }
+
+  const float factor = RNA_float_get(op->ptr, "factor");
+
+  blend_to_frame_graph_keys(C, &ac, factor);
+
+  /* Set notifier that keyframes have changed. */
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+
+  return OPERATOR_FINISHED;
+}
+
+void GRAPH_OT_blend_to_frame(wmOperatorType *ot)
+{
+  /* Identifiers. */
+  ot->name = "Blend to Frame";
+  ot->idname = "GRAPH_OT_blend_to_frame";
+  ot->description = "Blends selected frames to the value of the current frame";
+
+  /* API callbacks. */
+  ot->invoke = blend_to_frame_invoke;
+  ot->modal = graph_slider_modal;
+  ot->exec = blend_to_frame_exec;
+  ot->poll = graphop_editable_keyframes_poll;
+
+  /* Flags. */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  RNA_def_float_factor(ot->srna,
+                       "factor",
+                       0.5f,
+                       -FLT_MAX,
+                       FLT_MAX,
+                       "Curve Bend",
+                       "Control the bend of the curve",
+                       0.0f,
+                       1.0f);
+}
+
 
 /** \} */
 /* -------------------------------------------------------------------- */

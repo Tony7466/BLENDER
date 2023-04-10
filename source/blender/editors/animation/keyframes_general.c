@@ -491,6 +491,21 @@ void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor
 
 /* ---------------- */
 
+void blend_to_frame_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const int frame_current, const float factor)
+{
+  const float current_frame_y = evaluate_fcurve(fcu, frame_current);
+
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+
+    const float delta = current_frame_y - fcu->bezt[i].vec[1][1];
+
+    const float key_y_value = fcu->bezt[i].vec[1][1] + delta * factor;
+    move_key(&fcu->bezt[i], key_y_value);
+  }
+}
+
+/* ---------------- */
+
 void breakdown_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
 {
   const BezTriple *left_bezt = fcurve_segment_start_get(fcu, segment->start_index);
