@@ -48,11 +48,29 @@ struct BasisCache {
 
 }  // namespace curves::nurbs
 
+template<typename T,
+         int64_t InlineBufferCapacity = default_inline_buffer_capacity(sizeof(T)),
+         typename Allocator = GuardedAllocator>
+class SharedVector : public Vector<T, InlineBufferCapacity, Allocator>,
+                     public ImplicitSharingMixin {
+
+ public:
+  SharedVector() = default;
+  SharedVector(const int64_t size) : Vector<T, InlineBufferCapacity, Allocator>(size) {}
+  SharedVector(const Span<T> data) : Vector<T, InlineBufferCapacity, Allocator>(data) {}
+  void delete_self() override
+  {
+    delete this;
+  }
+};
+
 /**
  * Contains derived data, caches, and other information not saved in files.
  */
 class CurvesGeometryRuntime {
  public:
+  ImplicitSharingPtr<SharedVector<int>> curve_offset_indices;
+
   /**
    * The cached number of curves with each type. Unlike other caches here, this is not computed
    * lazily, since it is needed so often and types are not adjusted much anyway.
@@ -846,7 +864,10 @@ inline const std::array<int, CURVE_TYPES_NUM> &CurvesGeometry::curve_type_counts
 
 inline OffsetIndices<int> CurvesGeometry::points_by_curve() const
 {
-  return OffsetIndices<int>({this->curve_offsets, this->curve_num + 1});
+  if (!this->runtime->curve_offset_indices) {
+    return {};
+  }
+  return OffsetIndices<int>(this->runtime->curve_offset_indices->as_span());
 }
 
 inline int CurvesGeometry::evaluated_points_num() const
