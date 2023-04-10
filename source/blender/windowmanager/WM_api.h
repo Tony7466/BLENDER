@@ -872,14 +872,17 @@ void WM_operator_properties_border_to_rctf(struct wmOperator *op, rctf *rect);
 /**
  * Use with #WM_gesture_box_invoke
  */
-void WM_operator_properties_gesture_box_ex(struct wmOperatorType *ot, bool deselect, bool extend);
+void WM_operator_properties_gesture_box_ex(struct wmOperatorType *ot, bool deselect, bool extend, bool keymap);
 void WM_operator_properties_gesture_box(struct wmOperatorType *ot);
+void WM_operator_properties_gesture_box_toolsetting(struct wmOperatorType *ot);
 void WM_operator_properties_gesture_box_select(struct wmOperatorType *ot);
 void WM_operator_properties_gesture_box_zoom(struct wmOperatorType *ot);
 /**
  * Use with #WM_gesture_lasso_invoke
  */
 void WM_operator_properties_gesture_lasso(struct wmOperatorType *ot);
+void WM_operator_properties_gesture_lasso_toolsetting(struct wmOperatorType *ot);
+void WM_operator_properties_gesture_lasso_ex(struct wmOperatorType *ot, bool keymap);
 /**
  * Use with #WM_gesture_straightline_invoke
  */
@@ -888,6 +891,8 @@ void WM_operator_properties_gesture_straightline(struct wmOperatorType *ot, int 
  * Use with #WM_gesture_circle_invoke
  */
 void WM_operator_properties_gesture_circle(struct wmOperatorType *ot);
+void WM_operator_properties_gesture_circle_toolsetting(struct wmOperatorType *ot);
+void WM_operator_properties_gesture_circle_ex(struct wmOperatorType *ot, bool keymap);
 /**
  * See #ED_select_pick_params_from_operator to initialize parameters defined here.
  */

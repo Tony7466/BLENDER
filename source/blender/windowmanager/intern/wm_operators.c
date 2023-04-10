@@ -3852,6 +3852,7 @@ static void gesture_circle_modal_keymap(wmKeyConfig *keyconf)
 
   /* assign map to operators */
   WM_modalkeymap_assign(keymap, "VIEW3D_OT_select_circle");
+  WM_modalkeymap_assign(keymap, "VIEW3D_OT_select_circle_toolsetting");
   WM_modalkeymap_assign(keymap, "UV_OT_select_circle");
   WM_modalkeymap_assign(keymap, "CLIP_OT_select_circle");
   WM_modalkeymap_assign(keymap, "MASK_OT_select_circle");
@@ -3941,6 +3942,7 @@ static void gesture_box_modal_keymap(wmKeyConfig *keyconf)
   WM_modalkeymap_assign(keymap, "VIEW3D_OT_clip_border");
   WM_modalkeymap_assign(keymap, "VIEW3D_OT_render_border");
   WM_modalkeymap_assign(keymap, "VIEW3D_OT_select_box");
+  WM_modalkeymap_assign(keymap, "VIEW3D_OT_select_box_toolsetting");
   /* XXX TODO: zoom border should perhaps map right-mouse to zoom out instead of in+cancel. */
   WM_modalkeymap_assign(keymap, "VIEW3D_OT_zoom_border");
   WM_modalkeymap_assign(keymap, "IMAGE_OT_render_border");
@@ -3967,6 +3969,7 @@ static void gesture_lasso_modal_keymap(wmKeyConfig *keyconf)
 
   /* assign map to operators */
   WM_modalkeymap_assign(keymap, "VIEW3D_OT_select_lasso");
+  WM_modalkeymap_assign(keymap, "VIEW3D_OT_select_lasso_toolsetting");
   WM_modalkeymap_assign(keymap, "GPENCIL_OT_stroke_cutter");
   WM_modalkeymap_assign(keymap, "GPENCIL_OT_select_lasso");
   WM_modalkeymap_assign(keymap, "MASK_OT_select_lasso");

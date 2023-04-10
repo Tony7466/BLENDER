@@ -926,9 +926,9 @@ class VIEW3D_HT_header(Header):
         if object_mode in 'EDIT' or object_mode in 'OBJECT':
             if bpy.context.preferences.inputs.drag_select_control == 'USER_DRAG_TOOLSETTING':
                 if tool_settings.auto_xray_button:
-                    row.operator("view3d.toggle_auto_xray", text="", icon='XRAY', depress=depress_auto_xray)
+                    row.operator("view3d.toggle_auto_xray", text="", icon='AUTO_XRAY', depress=depress_auto_xray)
                 if tool_settings.select_through_button:
-                    row.operator("view3d.toggle_select_through", text="", icon='XRAY', depress=depress_select_through)
+                    row.operator("view3d.toggle_select_through", text="", icon='SELECT_THROUGH', depress=depress_select_through)
 
         # While exposing `shading.show_xray(_wireframe)` is correct.
         # this hides the key shortcut from users: #70433.

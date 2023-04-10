@@ -269,6 +269,7 @@ class _defs_transform:
         def draw_settings(context, layout, _tool):
             _defs_transform.draw_transform_sculpt_tool_settings(context, layout)
             _template_widget.VIEW3D_GGT_xform_gizmo.draw_settings_with_index(context, layout, 1)
+
         return dict(
             idname="builtin.move",
             label="Move",

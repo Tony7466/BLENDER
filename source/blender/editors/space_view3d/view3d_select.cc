@@ -2251,6 +2251,26 @@ void VIEW3D_OT_select_lasso(wmOperatorType *ot)
   WM_operator_properties_select_operation(ot);
 }
 
+void VIEW3D_OT_select_lasso_toolsetting(wmOperatorType *ot)
+{
+  ot->name = "Lasso Select";
+  ot->description = "Select items using lasso selection";
+  ot->idname = "VIEW3D_OT_select_lasso_toolsetting";
+
+  ot->invoke = WM_gesture_lasso_invoke;
+  ot->modal = WM_gesture_lasso_modal;
+  ot->exec = view3d_lasso_select_exec;
+  ot->poll = view3d_selectable_data;
+  ot->cancel = WM_gesture_lasso_cancel;
+
+  /* flags */
+  ot->flag = OPTYPE_UNDO | OPTYPE_DEPENDS_ON_CURSOR;
+
+  /* properties */
+  WM_operator_properties_gesture_lasso_toolsetting(ot);
+  WM_operator_properties_select_operation(ot);
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -5063,6 +5083,28 @@ void VIEW3D_OT_select_box(wmOperatorType *ot)
   WM_operator_properties_select_operation(ot);
 }
 
+void VIEW3D_OT_select_box_toolsetting(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Box Select";
+  ot->description = "Select items using box selection";
+  ot->idname = "VIEW3D_OT_select_box_toolsetting";
+
+  /* api callbacks */
+  ot->invoke = WM_gesture_box_invoke;
+  ot->exec = view3d_box_select_exec;
+  ot->modal = WM_gesture_box_modal;
+  ot->poll = view3d_selectable_data;
+  ot->cancel = WM_gesture_box_cancel;
+
+  /* flags */
+  ot->flag = OPTYPE_UNDO;
+
+  /* rna */
+  WM_operator_properties_gesture_box_toolsetting(ot);
+  WM_operator_properties_select_operation(ot);
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -6088,6 +6130,27 @@ void VIEW3D_OT_select_circle(wmOperatorType *ot)
 
   /* properties */
   WM_operator_properties_gesture_circle(ot);
+  WM_operator_properties_select_operation_simple(ot);
+}
+
+void VIEW3D_OT_select_circle_toolsetting(wmOperatorType *ot)
+{
+  ot->name = "Circle Select";
+  ot->description = "Select items using circle selection";
+  ot->idname = "VIEW3D_OT_select_circle_toolsetting";
+
+  ot->invoke = WM_gesture_circle_invoke;
+  ot->modal = view3d_circle_select_modal;
+  ot->exec = view3d_circle_select_exec;
+  ot->poll = view3d_selectable_data;
+  ot->cancel = view3d_circle_select_cancel;
+  ot->get_name = ED_select_circle_get_name;
+
+  /* flags */
+  ot->flag = OPTYPE_UNDO;
+
+  /* properties */
+  WM_operator_properties_gesture_circle_toolsetting(ot);
   WM_operator_properties_select_operation_simple(ot);
 }
 
