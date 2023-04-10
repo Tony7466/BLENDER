@@ -38,8 +38,6 @@ float (*ED_curves_point_normals_array_create(const struct Curves *curves_id))[3]
  */
 void ED_curves_transverts_create(struct Curves *curves_id, struct TransVertStore *tvs);
 
-int *ED_curves_offsets_for_write(struct Curves *curves_id);
-
 /** \} */
 
 #ifdef __cplusplus

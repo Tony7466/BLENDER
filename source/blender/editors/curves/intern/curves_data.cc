@@ -57,8 +57,3 @@ void ED_curves_transverts_create(Curves *curves_id, TransVertStore *tvs)
   bke::CurvesGeometry &curves = curves_id->geometry.wrap();
   ed::curves::transverts_from_curves_positions_create(curves, tvs);
 }
-
-int *ED_curves_offsets_for_write(struct Curves *curves_id)
-{
-  return curves_id->geometry.wrap().offsets_for_write().data();
-}
