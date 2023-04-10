@@ -238,7 +238,7 @@ void Volumes::begin_sync()
 
   PassSimple::Sub &ps = world_ps_.sub("World Volume");
   if (mat) {
-    ps.shader_set(GPU_material_get_shader(mat));
+    ps.material_set(*inst_.manager, mat);
     if (volume_sub_pass(ps, nullptr, nullptr, mat)) {
       /* TODO (Miguel Pozo):
        * effects->enabled_effects |= (EFFECT_VOLUMETRIC | EFFECT_POST_BUFFER);
@@ -288,11 +288,11 @@ void Volumes::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHand
     return;
   }
 
-  PassMain::Sub &ps = material_pass.sub_pass->sub(ob->id.name);
+  /* TODO (Miguel Pozo): Fix material sub passes for volume materials. */
+  // PassMain::Sub &ps = material_pass.sub_pass->sub(ob->id.name);
+  PassMain::Sub &ps = objects_ps_.sub(ob->id.name);
+  ps.material_set(*inst_.manager, material_pass.gpumat);
   if (volume_sub_pass(ps, inst_.scene, ob, material_pass.gpumat)) {
-    /* TODO (Miguel Pozo): Is any equivalent required here?
-     * DRW_shgroup_add_material_resources(grp, mat); */
-
     /* TODO (Miguel Pozo):
      * effects->enabled_effects |= (EFFECT_VOLUMETRIC | EFFECT_POST_BUFFER);
      */
