@@ -416,6 +416,7 @@ struct ProjPaintState {
   blender::OffsetIndices<int> polys_eval;
   blender::Span<int> corner_verts_eval;
   const bool *select_poly_eval;
+  const bool *hide_poly_eval;
   const int *material_indices;
   const bool *sharp_faces_eval;
   blender::Span<MLoopTri> looptris_eval;
@@ -4089,6 +4090,8 @@ static bool proj_paint_state_mesh_eval_init(const bContext *C, ProjPaintState *p
   ps->corner_verts_eval = ps->me_eval->corner_verts();
   ps->select_poly_eval = (const bool *)CustomData_get_layer_named(
       &ps->me_eval->pdata, CD_PROP_BOOL, ".select_poly");
+  ps->hide_poly_eval = (const bool *)CustomData_get_layer_named(
+      &ps->me_eval->pdata, CD_PROP_BOOL, ".hide_poly");
   ps->material_indices = (const int *)CustomData_get_layer_named(
       &ps->me_eval->pdata, CD_PROP_INT32, "material_index");
   ps->sharp_faces_eval = static_cast<const bool *>(
@@ -4179,26 +4182,28 @@ static bool project_paint_clone_face_skip(ProjPaintState *ps,
 
 struct ProjPaintFaceLookup {
   const bool *select_poly_orig;
-
+  const bool *hide_poly_orig;
   const int *index_mp_to_orig;
 };
 
 static void proj_paint_face_lookup_init(const ProjPaintState *ps, ProjPaintFaceLookup *face_lookup)
 {
   memset(face_lookup, 0, sizeof(*face_lookup));
+  Mesh *orig_mesh = (Mesh *)ps->ob->data;
+  face_lookup->index_mp_to_orig = static_cast<const int *>(
+      CustomData_get_layer(&ps->me_eval->pdata, CD_ORIGINDEX));
   if (ps->do_face_sel) {
-    Mesh *orig_mesh = (Mesh *)ps->ob->data;
-    face_lookup->index_mp_to_orig = static_cast<const int *>(
-        CustomData_get_layer(&ps->me_eval->pdata, CD_ORIGINDEX));
     face_lookup->select_poly_orig = static_cast<const bool *>(
         CustomData_get_layer_named(&orig_mesh->pdata, CD_PROP_BOOL, ".select_poly"));
   }
+  face_lookup->hide_poly_orig = static_cast<const bool *>(
+      CustomData_get_layer_named(&orig_mesh->pdata, CD_PROP_BOOL, ".hide_poly"));
 }
 
-/* Return true if face should be considered selected, false otherwise */
-static bool project_paint_check_face_sel(const ProjPaintState *ps,
-                                         const ProjPaintFaceLookup *face_lookup,
-                                         const int tri_i)
+/* Return true if face should be considered paintable, false otherwise */
+static bool project_paint_check_face_paintable(const ProjPaintState *ps,
+                                               const ProjPaintFaceLookup *face_lookup,
+                                               const int tri_i)
 {
   if (ps->do_face_sel) {
     int orig_index;
@@ -4209,7 +4214,15 @@ static bool project_paint_check_face_sel(const ProjPaintState *ps,
     }
     return ps->select_poly_eval && ps->select_poly_eval[poly_i];
   }
-  return true;
+  else {
+    int orig_index;
+    const int poly_i = ps->looptri_polys_eval[tri_i];
+    if ((face_lookup->index_mp_to_orig != nullptr) &&
+        ((orig_index = (face_lookup->index_mp_to_orig[poly_i])) != ORIGINDEX_NONE)) {
+      return !(face_lookup->hide_poly_orig && face_lookup->hide_poly_orig[orig_index]);
+    }
+    return !(ps->hide_poly_eval && ps->hide_poly_eval[poly_i]);
+  }
 }
 
 struct ProjPaintFaceCoSS {
@@ -4325,10 +4338,10 @@ static void project_paint_prepare_all_faces(ProjPaintState *ps,
   BLI_assert(ps->image_tot == 0);
 
   for (tri_index = 0; tri_index < ps->looptris_eval.size(); tri_index++) {
-    bool is_face_sel;
+    bool is_face_paintable;
     bool skip_tri = false;
 
-    is_face_sel = project_paint_check_face_sel(ps, face_lookup, tri_index);
+    is_face_paintable = project_paint_check_face_paintable(ps, face_lookup, tri_index);
 
     if (!ps->do_stencil_brush) {
       slot = project_paint_face_paint_slot(ps, tri_index);
@@ -4381,7 +4394,7 @@ static void project_paint_prepare_all_faces(ProjPaintState *ps,
 
     BLI_assert(mloopuv_base != nullptr);
 
-    if (is_face_sel && tpage) {
+    if (is_face_paintable && tpage) {
       ProjPaintFaceCoSS coSS;
       proj_paint_face_coSS_init(ps, &looptris[tri_index], &coSS);
 

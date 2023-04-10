@@ -2731,22 +2731,11 @@ bool CustomData_layer_is_anonymous(const struct CustomData *data, eCustomDataTyp
   return data->layers[layer_index].anonymous_id != nullptr;
 }
 
-static bool customData_resize(CustomData *data, const int amount)
+static void customData_resize(CustomData *data, const int grow_amount)
 {
-  CustomDataLayer *tmp = static_cast<CustomDataLayer *>(
-      MEM_calloc_arrayN((data->maxlayer + amount), sizeof(*tmp), __func__));
-  if (!tmp) {
-    return false;
-  }
-
-  data->maxlayer += amount;
-  if (data->layers) {
-    memcpy(tmp, data->layers, sizeof(*tmp) * data->totlayer);
-    MEM_freeN(data->layers);
-  }
-  data->layers = tmp;
-
-  return true;
+  data->layers = static_cast<CustomDataLayer *>(
+      MEM_reallocN(data->layers, (data->maxlayer + grow_amount) * sizeof(CustomDataLayer)));
+  data->maxlayer += grow_amount;
 }
 
 static CustomDataLayer *customData_add_layer__internal(CustomData *data,
@@ -2821,12 +2810,7 @@ static CustomDataLayer *customData_add_layer__internal(CustomData *data,
 
   int index = data->totlayer;
   if (index >= data->maxlayer) {
-    if (!customData_resize(data, CUSTOMDATA_GROW)) {
-      if (newlayerdata != layerdata) {
-        MEM_freeN(newlayerdata);
-      }
-      return nullptr;
-    }
+    customData_resize(data, CUSTOMDATA_GROW);
   }
 
   data->totlayer++;
@@ -4217,6 +4201,16 @@ void CustomData_blend_write_prepare(CustomData &data,
   }
   data.totlayer = layers_to_write.size();
   data.maxlayer = data.totlayer;
+
+  /* Note: data->layers may be null, this happens when adding
+   * a legacy MPoly struct to a mesh with no other face attributes.
+   * This leaves us with no unique ID for DNA to identify the old
+   * data with when loading the file.
+   */
+  if (!data.layers && layers_to_write.size() > 0) {
+    /* We just need an address that's unique. */
+    data.layers = reinterpret_cast<CustomDataLayer *>(&data.layers);
+  }
 }
 
 int CustomData_sizeof(const eCustomDataType type)
@@ -4820,7 +4814,7 @@ static void customdata_data_transfer_interp_generic(const CustomDataTransferLaye
     return;
   }
 
-  if (data_type & CD_FAKE) {
+  if (int(data_type) & CD_FAKE) {
     data_size = laymap->data_size;
   }
   else {
@@ -4891,7 +4885,7 @@ static void customdata_data_transfer_interp_generic(const CustomDataTransferLaye
       copy_bit_flag(data_dst, tmp_dst, data_size, data_flag);
     }
   }
-  else if (!(data_type & CD_FAKE)) {
+  else if (!(int(data_type) & CD_FAKE)) {
     CustomData_data_mix_value(data_type, tmp_dst, data_dst, mix_mode, mix_factor);
   }
   /* Else we can do nothing by default, needs custom interp func!
@@ -4970,7 +4964,7 @@ void CustomData_data_transfer(const MeshPairRemap *me_remap,
         tmp_buff_size, sizeof(*tmp_data_src), __func__);
   }
 
-  if (data_type & CD_FAKE) {
+  if (int(data_type) & CD_FAKE) {
     data_step = laymap->elem_size;
     data_size = laymap->data_size;
     data_offset = laymap->data_offset;
