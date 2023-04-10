@@ -494,33 +494,12 @@ void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor
 void blend_to_infinity_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
 {
   const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
-  const float left_x = left_key->vec[1][0];
-  const float left_y = left_key->vec[1][1];
-
   const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
-  const float right_x = right_key->vec[1][0];
-  const float right_y = right_key->vec[1][1];
 
-  /* One key on the outside left side of the neighboring keys is needed to use as reference. */
+  /* One key on the outside of the neighboring keys is needed to use as reference. */
   const BezTriple *beyond_left_key = fcurve_segment_start_get(fcu, segment->start_index - 1);
-
-  const float beyond_left_x = beyond_left_key->vec[1][0];
-  const float beyond_left_y = beyond_left_key->vec[1][1];
-
-  /* One key on the outside right side of the neighboring keys is needed to use as reference. */
   const BezTriple *beyond_right_key = fcurve_segment_end_get(
       fcu, segment->start_index + segment->length + 1);
-
-  const float beyond_right_x = beyond_right_key->vec[1][0];
-  const float beyond_right_y = beyond_right_key->vec[1][1];
-
-  const float key_x_range = right_x - left_x;
-
-  /* Happens if there is only 1 key on the FCurve. Needs to be skipped because it
-   * would be a divide by 0. */
-  if (IS_EQF(key_x_range, 0.0f)) {
-    return;
-  }
 
   /* The calculation needs diferent values for each side of the slider. */
   const bool slider_right_side = factor >= 0.5;
@@ -540,16 +519,16 @@ void blend_to_infinity_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const
     if (segment->start_index + segment->length == fcu->totvert) {
       return;
     }
-    y_delta = beyond_right_y - right_y;
-    x_delta = beyond_right_x - right_x;
+    y_delta = beyond_right_key->vec[1][1] - right_key->vec[1][1];
+    x_delta = beyond_right_key->vec[1][0] - right_key->vec[1][0];
   }
   else if (slider_left_side) {
     /* Stop the fucntion if there is no key beyond the left neighboring one. */
     if (segment->start_index == 0) {
       return;
     }
-    y_delta = beyond_left_y - left_y;
-    x_delta = beyond_left_x - left_x;
+    y_delta = beyond_left_key->vec[1][1] - left_key->vec[1][1];
+    x_delta = beyond_left_key->vec[1][0] - left_key->vec[1][0];
   }
   else {
     y_delta = 1;
@@ -560,26 +539,26 @@ void blend_to_infinity_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const
 
     float new_x_delta = 0;
     float new_y_delta = 0;
-    float refe = 0;
+    float reference_y = 0;
 
-    /* This new deltas are used to determin the relationship between the current key and the
+    /* These new deltas are used to determine the relationship between the current key and the
      * bookend ones. */
     if (slider_right_side) {
-      new_x_delta = fcu->bezt[i].vec[1][0] - right_x;
-      refe = right_y;
+      new_x_delta = fcu->bezt[i].vec[1][0] - right_key->vec[1][0];
+      reference_y = right_key->vec[1][1];
     }
     else {
-      new_x_delta = fcu->bezt[i].vec[1][0] - left_x;
-      refe = left_key->vec[1][1];
+      new_x_delta = fcu->bezt[i].vec[1][0] - left_key->vec[1][0];
+      reference_y = left_key->vec[1][1];
     }
 
-    /* we use compound rule of 3 to find the "Y" delta we are missing using the other deltas we
+    /* We use compound rule of 3 to find the "Y" delta we are missing using the other deltas we
      * know. */
     if (x_delta != 0) {
       new_y_delta = new_x_delta * y_delta / x_delta;
     }
 
-    const float delta = refe + new_y_delta - fcu->bezt[i].vec[1][1];
+    const float delta = reference_y + new_y_delta - fcu->bezt[i].vec[1][1];
 
     const float key_y_value = fcu->bezt[i].vec[1][1] + delta * ping_pong_factor;
     move_key(&fcu->bezt[i], key_y_value);
