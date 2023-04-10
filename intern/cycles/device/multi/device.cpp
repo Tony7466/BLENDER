@@ -41,54 +41,49 @@ class MultiDevice : public Device {
   MultiDevice(const DeviceInfo &info, Stats &stats, Profiler &profiler)
       : Device(info, stats, profiler), unique_key(1)
   {
-    foreach (const DeviceInfo &subinfo, info.multi_devices) {
-      /* Always add CPU devices at the back since GPU devices can change
-       * host memory pointers, which CPU uses as device pointer. */
-      SubDevice *sub = new SubDevice;
-      if (subinfo.type == DEVICE_CPU) {
+      int cpu_device_idx = -1;
+      foreach (const DeviceInfo &subinfo, info.multi_devices) {
+        /* Always add CPU devices at the back since GPU devices can change
+         * host memory pointers, which CPU uses as device pointer. */
+        SubDevice *sub = new SubDevice;
+        if (subinfo.type == DEVICE_CPU) {
+          assert(cpu_device_idx == -1);
+          cpu_device_idx = devices.size();
+        }
         devices.emplace_back(sub);
+        sub->device = Device::create(subinfo, sub->stats, profiler);
       }
-      else {
-        devices.emplace_back(sub);
-        // find first CPU device and swop it with the new device
-        // to keep the CPU devices at the end of the vector.
+
+      /* Swop the CPU device with the last device to ensure the CPU device is the last */
+      {
         int last = devices.size() - 1;
-        int o = last;
-        while ((o > 0) && (devices[o - 1]->device->info.type == DEVICE_CPU)) {
-          o--;
-        };
-        if (o != last) {
-          std::swap(devices[last], devices[o]);
-        }
-        sub = devices[o];
-      }
-
-      sub->device = Device::create(subinfo, sub->stats, profiler);
-    }
-
-    /* Build a list of peer islands for the available render devices */
-    foreach (SubDevice *sub, devices) {
-      /* First ensure that every device is in at least once peer island */
-      if (sub->peer_island_index < 0) {
-        peer_islands.emplace_back();
-        sub->peer_island_index = (int)peer_islands.size() - 1;
-        peer_islands[sub->peer_island_index].push_back(sub);
-      }
-
-      if (!info.has_peer_memory) {
-        continue;
-      }
-
-      /* Second check peer access between devices and fill up the islands accordingly */
-      foreach (SubDevice *peer_sub, devices) {
-        if (peer_sub->peer_island_index < 0 &&
-            peer_sub->device->info.type == sub->device->info.type &&
-            peer_sub->device->check_peer_access(sub->device)) {
-          peer_sub->peer_island_index = sub->peer_island_index;
-          peer_islands[sub->peer_island_index].push_back(peer_sub);
+        if (cpu_device_idx != last) {
+          std::swap(devices[last], devices[cpu_device_idx]);
         }
       }
-    }
+      /* Build a list of peer islands for the available render devices */
+      foreach (SubDevice *sub, devices) {
+        /* First ensure that every device is in at least once peer island */
+        if (sub->peer_island_index < 0) {
+          peer_islands.emplace_back();
+          sub->peer_island_index = (int)peer_islands.size() - 1;
+          peer_islands[sub->peer_island_index].push_back(sub);
+        }
+
+        if (!info.has_peer_memory) {
+          continue;
+        }
+
+        /* Second check peer access between devices and fill up the islands accordingly */
+        foreach (SubDevice *peer_sub, devices) {
+          if (peer_sub->peer_island_index < 0 &&
+              peer_sub->device->info.type == sub->device->info.type &&
+              peer_sub->device->check_peer_access(sub->device)) {
+            peer_sub->peer_island_index = sub->peer_island_index;
+            peer_islands[sub->peer_island_index].push_back(peer_sub);
+          }
+        }
+      }
   }
 
   ~MultiDevice()
