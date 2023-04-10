@@ -532,7 +532,7 @@ void ease_ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float f
     /* For easy calculation of the curve, the  values are normalized. */
     const float normalized_x = (fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range;
 
-    /* these ease values use the entire curve to get the "S" shape. The value 2.0 on the slope 
+    /* these ease values use the entire curve to get the "S" shape. The value 2.0 on the slope
      * makes it a bit sharper. By using the factor on the xshift we are basicaly moving the
      * curve horizontaly. */
     const float ease = s_curve(normalized_x, 2.0, 1.0, 1.0, -long_factor, 0.0);
