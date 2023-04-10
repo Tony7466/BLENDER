@@ -496,6 +496,17 @@ class USERPREF_PT_edit_misc(EditingPanel, CenterAlignMixIn, Panel):
         col = layout.column()
         col.prop(edit, "sculpt_paint_overlay_color", text="Sculpt Overlay Color")
         col.prop(edit, "node_margin", text="Node Auto-Offset Margin")
+        col.prop(edit, "adjustable_click_select")
+        colsub = col.column(align=True)
+        colsub.active = edit.adjustable_click_select
+        colsub.prop(edit, "select_unbiased")
+        colsub.prop(edit, "selection_radius")
+        col = layout.column()
+        col.prop(edit, "alternate_cursor")
+        colsub = col.column(align=True)
+        colsub.active = edit.alternate_cursor
+        colsub.prop(edit, "alternate_cursor_large")
+
 
 
 # -----------------------------------------------------------------------------
@@ -1559,6 +1570,8 @@ class USERPREF_PT_input_mouse(InputPanel, CenterAlignMixIn, Panel):
 
         flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=False)
 
+        flow.prop(inputs, "click_drag_direction")
+        flow.prop(inputs, "drag_select_control")
         flow.prop(inputs, "use_mouse_emulate_3_button")
         if sys.platform[:3] != "win":
             rowsub = flow.row()

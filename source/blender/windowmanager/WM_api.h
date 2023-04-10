@@ -688,6 +688,7 @@ int WM_operator_call_notest(struct bContext *C, struct wmOperator *op);
  * Execute this operator again, put here so it can share above code
  */
 int WM_operator_repeat(struct bContext *C, struct wmOperator *op);
+int WM_operator_repeat_tool(struct bContext *C, struct wmOperator *op);
 int WM_operator_repeat_last(struct bContext *C, struct wmOperator *op);
 /**
  * \return true if #WM_operator_repeat can run.
@@ -1620,7 +1621,7 @@ bool WM_event_is_modal_drag_exit(const struct wmEvent *event,
                                  short init_event_val);
 bool WM_event_is_mouse_drag(const struct wmEvent *event);
 bool WM_event_is_mouse_drag_or_press(const wmEvent *event);
-int WM_event_drag_direction(const wmEvent *event);
+int WM_event_drag_direction(const wmEvent *event, struct ToolSettings *ts);
 char WM_event_utf8_to_ascii(const struct wmEvent *event) ATTR_NONNULL(1) ATTR_WARN_UNUSED_RESULT;
 
 /**

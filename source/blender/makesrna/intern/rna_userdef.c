@@ -5310,6 +5310,21 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
       prop, "Auto-offset Margin", "Minimum distance between nodes for Auto-offsetting nodes");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 
+  prop = RNA_def_property(srna, "adjustable_click_select", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", USER_ADJUSTABLE_CLICK_SELECT);
+  RNA_def_property_ui_text(
+      prop, "Adjustable Click-Select", "Use additional options for single-click select");
+
+  prop = RNA_def_property(srna, "select_unbiased", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", USER_SELECT_UNBIASED);
+  RNA_def_property_ui_text(
+      prop, "Select Unbiased", "Click-select will not favor unselected mesh elements");
+
+  prop = RNA_def_property(srna, "selection_radius", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_range(prop, 0.1f, 150.0f);
+  RNA_def_property_ui_range(prop, 0.1f, 150.0f, 0.01f, 2);
+  RNA_def_property_ui_text(prop, "Radius", "Size of single-click selection radius"); 
+
   /* cursor */
   prop = RNA_def_property(srna, "use_cursor_lock_adjust", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "uiflag", USER_LOCK_CURSOR_ADJUST);
@@ -5322,6 +5337,14 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "uiflag", USER_DEPTH_CURSOR);
   RNA_def_property_ui_text(
       prop, "Cursor Surface Project", "Use the surface depth for cursor placement");
+
+  prop = RNA_def_property(srna, "alternate_cursor", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", USER_ALTERNATE_CURSOR);
+  RNA_def_property_ui_text(prop, "Alternate Cursor", "Alternate edit mode crosshair");
+
+  prop = RNA_def_property(srna, "alternate_cursor_large", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", USER_ALTERNATE_CURSOR_LARGE);
+  RNA_def_property_ui_text(prop, "Large Cursor", "Supersize the alternate edit mode crosshair");
 }
 
 static void rna_def_userdef_system(BlenderRNA *brna)
@@ -5774,6 +5797,31 @@ static void rna_def_userdef_input(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
+  static const EnumPropertyItem click_drag_direction_types[] = {
+      {USER_CLICK_DRAG_DIRECTION_EIGHT_WAY,
+       "EIGHT_WAY",
+       0,
+       "Eight",
+       "Eight directions (N, NE, E, SE, S, SW, W, NW)"},
+      {USER_CLICK_DRAG_DIRECTION_LEFT_RIGHT, "LEFT_RIGHT", 0, "Left Right", "Left and right"},
+      {USER_CLICK_DRAG_DIRECTION_UP_DOWN, "UP_DOWN", 0, "Up Down", "Up and down"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem drag_select_control_types[] = {
+      {USER_DRAG_SELECT_TOOLSETTING,
+       "USER_DRAG_TOOLSETTING",
+       0,
+       "Toolsetting",
+       "Use toolsettings to control selection options for box, lasso, and circle select"},
+      {USER_DRAG_SELECT_KEYMAP,
+       "USER_DRAG_KEYMAP",
+       0,
+       "Keymap",
+       "Use the keymap to control selection options for box, lasso, and circle selection"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   static const EnumPropertyItem view_zoom_styles[] = {
       {USER_ZOOM_CONTINUE,
        "CONTINUE",
@@ -5879,6 +5927,18 @@ static void rna_def_userdef_input(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "Release Confirms",
                            "Moving things with a mouse drag confirms when releasing the button");
+
+  prop = RNA_def_property(srna, "click_drag_direction", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, click_drag_direction_types);
+  RNA_def_property_ui_text(
+      prop, "Keymap Drag Directions", "Style of click-drag direction the keymap will use");
+
+  prop = RNA_def_property(srna, "drag_select_control", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, drag_select_control_types);
+  RNA_def_property_ui_text(prop,
+                           "Drag Select Control",
+                           "Use either the keymap or toolsettings to control selection options "
+                           "for box, lasso, and circle select");
 
   prop = RNA_def_property(srna, "use_numeric_input_advanced", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", USER_FLAG_NUMINPUT_ADVANCED);

@@ -1292,6 +1292,11 @@ int WM_operator_repeat(bContext *C, wmOperator *op)
   op->flag &= ~op_flag;
   return ret;
 }
+int WM_operator_repeat_tool(bContext *C, wmOperator *op)
+{
+  const int ret = WM_operator_name_call_ptr(C, op->type, WM_OP_INVOKE_DEFAULT, NULL, NULL);
+  return ret;
+}
 int WM_operator_repeat_last(bContext *C, wmOperator *op)
 {
   const int op_flag = OP_IS_REPEAT_LAST;
@@ -3432,7 +3437,8 @@ static eHandlerActionFlag wm_handlers_do(bContext *C, wmEvent *event, ListBase *
         if ((event->flag & WM_EVENT_FORCE_DRAG_THRESHOLD) ||
             WM_event_drag_test(event, event->prev_press_xy)) {
           win->event_queue_check_drag_handled = true;
-          const int direction = WM_event_drag_direction(event);
+          ToolSettings *ts = CTX_data_tool_settings(C);
+          const int direction = WM_event_drag_direction(event, ts);
 
           /* Intentionally leave `event->xy` as-is, event users are expected to use
            * `event->prev_press_xy` if they need to access the drag start location. */

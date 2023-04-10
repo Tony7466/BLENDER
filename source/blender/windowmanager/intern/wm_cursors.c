@@ -50,7 +50,15 @@ static GHOST_TStandardCursor convert_to_ghost_standard_cursor(WMCursorType curs)
       return GHOST_kStandardCursorWait;
     case WM_CURSOR_EDIT:
     case WM_CURSOR_CROSS:
-      return GHOST_kStandardCursorCrosshair;
+      if (U.flag & USER_ALTERNATE_CURSOR && !(U.flag & USER_ALTERNATE_CURSOR_LARGE)) {
+        return GHOST_kStandardCursorCrosshairD;
+      }
+      else if (U.flag & USER_ALTERNATE_CURSOR && U.flag & USER_ALTERNATE_CURSOR_LARGE) {
+        return GHOST_kStandardCursorCrosshairE;
+      }
+      else {
+        return GHOST_kStandardCursorCrosshair;
+      }
     case WM_CURSOR_X_MOVE:
       return GHOST_kStandardCursorLeftRight;
     case WM_CURSOR_Y_MOVE:

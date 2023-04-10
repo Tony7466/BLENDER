@@ -366,6 +366,54 @@
     /* UV painting */ \
     .uv_sculpt_settings = 0, \
     .uv_relax_method = UV_SCULPT_TOOL_RELAX_LAPLACIAN, \
+ \
+    /* Mesh Select */ \
+    .box_drag_direction = 1, \
+    .lasso_drag_direction = 1, \
+    .box_edge = 1, \
+    .box_edge_left = 1, \
+    .box_edge_right = 1, \
+    .box_edge_up = 1, \
+    .box_edge_down = 1, \
+    .box_face = 1, \
+    .box_face_left = 1, \
+    .box_face_right = 1, \
+    .box_face_up = 1, \
+    .box_face_down = 1, \
+    .lasso_edge = 1, \
+    .lasso_edge_left = 1, \
+    .lasso_edge_right = 1, \
+    .lasso_edge_up = 1, \
+    .lasso_edge_down = 1, \
+    .lasso_face = 1, \
+    .lasso_face_left = 1, \
+    .lasso_face_right = 1, \
+    .lasso_face_up = 1, \
+    .lasso_face_down = 1, \
+    .circle_edge = 2, \
+    .circle_face = 1, \
+ \
+    /* X-Ray */ \
+    .xray_button = true, \
+    .auto_xray_object = true, \
+    .auto_xray_edit = true, \
+    .auto_xray_box = true, \
+    .auto_xray_lasso = true, \
+    .auto_xray_circle = true, \
+    .select_through = true, \
+    .select_through_object = true, \
+    .select_through_box = true, \
+    .select_through_lasso = true, \
+    .select_through_circle = true, \
+ \
+    /* Viewport-Facing Select */ \
+    .viewport_facing_select_mode = 1, \
+    .viewport_facing_select_vert = 1, \
+    .viewport_facing_select_edge = 1, \
+    .viewport_facing_select_face = 1, \
+ \
+    /* Object Origin Select */ \
+    .select_origin_circle = true, \
   }
 
 /* clang-format off */

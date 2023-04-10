@@ -235,6 +235,8 @@ typedef enum {
   GHOST_kStandardCursorCrosshairA,
   GHOST_kStandardCursorCrosshairB,
   GHOST_kStandardCursorCrosshairC,
+  GHOST_kStandardCursorCrosshairD,
+  GHOST_kStandardCursorCrosshairE,
   GHOST_kStandardCursorPencil,
   GHOST_kStandardCursorUpArrow,
   GHOST_kStandardCursorDownArrow,

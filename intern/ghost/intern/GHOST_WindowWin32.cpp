@@ -772,6 +772,12 @@ HCURSOR GHOST_WindowWin32::getStandardCursor(GHOST_TStandardCursor shape) const
     case GHOST_kStandardCursorCrosshairC:
       cursor = ::LoadImage(module, "crossC_cursor", IMAGE_CURSOR, cx, cy, flags);
       break; /* Minimal Crosshair C */
+    case GHOST_kStandardCursorCrosshairD:
+      cursor = ::LoadImage(module, "crossD_cursor", IMAGE_CURSOR, cx, cy, flags);
+      break; /* Alternate Crosshair D */
+    case GHOST_kStandardCursorCrosshairE:
+      cursor = ::LoadImage(module, "crossE_cursor", IMAGE_CURSOR, cx, cy, flags);
+      break; /* Large Crosshair E */
     case GHOST_kStandardCursorBottomSide:
     case GHOST_kStandardCursorUpDown:
       cursor = ::LoadImage(module, "movens_cursor", IMAGE_CURSOR, cx, cy, flags);
