@@ -319,8 +319,8 @@ enum class BoolArrayMix {
   AllTrue,
   Mixed,
 };
-BoolArrayMix bool_array_mix_calc(const VArray<bool> &varray,
-                                 const blender::IndexRange range_to_check)
+static BoolArrayMix bool_array_mix_calc(const VArray<bool> &varray,
+                                        const blender::IndexRange range_to_check)
 {
   using namespace blender;
   if (varray.is_empty()) {
@@ -372,7 +372,7 @@ BoolArrayMix bool_array_mix_calc(const VArray<bool> &varray,
       [&](BoolArrayMix a, BoolArrayMix b) { return (a == b) ? a : BoolArrayMix::Mixed; });
 }
 
-BoolArrayMix bool_array_mix_calc(const VArray<bool> &varray)
+static BoolArrayMix bool_array_mix_calc(const VArray<bool> &varray)
 {
   return bool_array_mix_calc(varray, varray.index_range());
 }
@@ -381,9 +381,11 @@ eAttrDomain Mesh::normal_domain_all_info() const
 {
   using namespace blender;
   using namespace blender::bke;
-  const short(*custom_normals)[2] = static_cast<const short(*)[2]>(
-      CustomData_get_layer(&this->ldata, CD_CUSTOMLOOPNORMAL));
-  if (custom_normals) {
+  if (this->totpoly == 0) {
+    return ATTR_DOMAIN_POINT;
+  }
+
+  if (CustomData_has_layer(&this->ldata, CD_CUSTOMLOOPNORMAL)) {
     return ATTR_DOMAIN_CORNER;
   }
 
@@ -520,7 +522,7 @@ blender::Span<blender::float3> Mesh::corner_normals() const
             "sharp_edge", ATTR_DOMAIN_EDGE, false);
         const VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
             "sharp_face", ATTR_DOMAIN_FACE, false);
-        const short(*custom_normals)[2] = static_cast<const short(*)[2]>(
+        const short2 *custom_normals = static_cast<const short2 *>(
             CustomData_get_layer(&this->ldata, CD_CUSTOMLOOPNORMAL));
 
         bke::mesh::normals_calc_loop(this->vert_positions(),
@@ -551,26 +553,6 @@ blender::Span<blender::float3> Mesh::corner_normals() const
 const float (*BKE_mesh_corner_normals_ensure(const Mesh *mesh))[3]
 {
   return reinterpret_cast<const float(*)[3]>(mesh->corner_normals().data());
-}
-
-void BKE_mesh_ensure_normals_for_display(Mesh *mesh)
-{
-  switch (mesh->runtime->wrapper_type) {
-    case ME_WRAPPER_TYPE_SUBD:
-    case ME_WRAPPER_TYPE_MDATA:
-      mesh->vert_normals();
-      mesh->poly_normals();
-      break;
-    case ME_WRAPPER_TYPE_BMESH: {
-      BMEditMesh *em = mesh->edit_mesh;
-      EditMeshData *emd = mesh->runtime->edit_data;
-      if (emd->vertexCos) {
-        BKE_editmesh_cache_ensure_vert_normals(em, emd);
-        BKE_editmesh_cache_ensure_poly_normals(em, emd);
-      }
-      return;
-    }
-  }
 }
 
 void BKE_lnor_spacearr_init(MLoopNorSpaceArray *lnors_spacearr,
@@ -1589,7 +1571,7 @@ void normals_calc_loop(const Span<float3> vert_positions,
                        const Span<float3> poly_normals,
                        const VArray<bool> &sharp_edges,
                        const VArray<bool> &sharp_faces,
-                       short (*clnors_data)[2],
+                       const short2 *custom_normals_data,
                        MLoopNorSpaceArray *r_lnors_spacearr,
                        MutableSpan<float3> r_loop_normals)
 {
@@ -1626,7 +1608,7 @@ void normals_calc_loop(const Span<float3> vert_positions,
   SCOPED_TIMER_AVERAGED(__func__);
 #endif
 
-  if (!r_lnors_spacearr && clnors_data) {
+  if (!r_lnors_spacearr && custom_normals_data) {
     /* We need to compute lnor spacearr if some custom lnor data are given to us! */
     r_lnors_spacearr = &_lnors_spacearr;
   }
@@ -1638,8 +1620,8 @@ void normals_calc_loop(const Span<float3> vert_positions,
   LoopSplitTaskDataCommon common_data;
   common_data.lnors_spacearr = r_lnors_spacearr;
   common_data.loop_normals = r_loop_normals;
-  common_data.clnors_data = {reinterpret_cast<short2 *>(clnors_data),
-                             clnors_data ? corner_verts.size() : 0};
+  common_data.clnors_data = {const_cast<short2 *>(custom_normals_data),
+                             custom_normals_data ? corner_verts.size() : 0};
   common_data.positions = vert_positions;
   common_data.edges = edges;
   common_data.polys = polys;
@@ -1704,7 +1686,7 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
                                          const bool use_vertices,
                                          MutableSpan<float3> r_custom_loop_normals,
                                          MutableSpan<bool> sharp_edges,
-                                         short (*r_clnors_data)[2])
+                                         short2 *r_clnors_data)
 {
   /* We *may* make that poor #bke::mesh::normals_calc_loop() even more complex by making it
    * handling that feature too, would probably be more efficient in absolute. However, this
@@ -1926,7 +1908,7 @@ void normals_loop_custom_set(const Span<float3> vert_positions,
                              const VArray<bool> &sharp_faces,
                              MutableSpan<bool> sharp_edges,
                              MutableSpan<float3> r_custom_loop_normals,
-                             short (*r_clnors_data)[2])
+                             short2 *r_clnors_data)
 {
   mesh_normals_loop_custom_set(vert_positions,
                                edges,
@@ -1952,7 +1934,7 @@ void normals_loop_custom_set_from_verts(const Span<float3> vert_positions,
                                         const VArray<bool> &sharp_faces,
                                         MutableSpan<bool> sharp_edges,
                                         MutableSpan<float3> r_custom_vert_normals,
-                                        short (*r_clnors_data)[2])
+                                        short2 *r_clnors_data)
 {
   mesh_normals_loop_custom_set(vert_positions,
                                edges,
@@ -1970,16 +1952,16 @@ void normals_loop_custom_set_from_verts(const Span<float3> vert_positions,
 
 static void mesh_set_custom_normals(Mesh *mesh, float (*r_custom_nors)[3], const bool use_vertices)
 {
-  short(*clnors)[2];
+  short2 *clnors;
   const int numloops = mesh->totloop;
 
-  clnors = (short(*)[2])CustomData_get_layer_for_write(
+  clnors = (short2 *)CustomData_get_layer_for_write(
       &mesh->ldata, CD_CUSTOMLOOPNORMAL, mesh->totloop);
   if (clnors != nullptr) {
     memset(clnors, 0, sizeof(*clnors) * size_t(numloops));
   }
   else {
-    clnors = (short(*)[2])CustomData_add_layer(
+    clnors = (short2 *)CustomData_add_layer(
         &mesh->ldata, CD_CUSTOMLOOPNORMAL, CD_SET_DEFAULT, numloops);
   }
   MutableAttributeAccessor attributes = mesh->attributes_for_write();

@@ -2280,7 +2280,7 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
         "sharp_edge", ATTR_DOMAIN_EDGE, false);
     const blender::VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
         "sharp_face", ATTR_DOMAIN_FACE, false);
-    const short(*custom_normals)[2] = static_cast<const short(*)[2]>(
+    const blender::short2 *custom_normals = static_cast<const blender::short2 *>(
         CustomData_get_layer(&mesh->ldata, CD_CUSTOMLOOPNORMAL));
     blender::bke::mesh::normals_calc_loop(
         {reinterpret_cast<const blender::float3 *>(positions), mesh->totvert},

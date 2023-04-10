@@ -83,10 +83,8 @@ using blender::VArray;
 #endif
 
 static void mesh_init_origspace(Mesh *mesh);
-static void editbmesh_calc_modifier_final_normals(Mesh *mesh_final,
-                                                  const CustomData_MeshMasks *final_datamask);
-static void editbmesh_calc_modifier_final_normals_or_defer(
-    Mesh *mesh_final, const CustomData_MeshMasks *final_datamask);
+static void editbmesh_calc_modifier_final_normals(Mesh *mesh_final);
+static void editbmesh_calc_modifier_final_normals_or_defer(Mesh *mesh_final);
 
 /* -------------------------------------------------------------------- */
 
@@ -440,21 +438,17 @@ static void add_orco_mesh(
   }
 }
 
-static void mesh_calc_modifier_final_normals(const Mesh *mesh_input,
-                                             const CustomData_MeshMasks *final_datamask,
-                                             const bool sculpt_dyntopo,
-                                             Mesh *mesh_final)
+static void mesh_calc_modifier_final_normals(const bool sculpt_dyntopo, Mesh *mesh_final)
 {
-  /* Compute normals. */
-  const bool calc_loop_normals = mesh_final->normal_domain_all_info() == ATTR_DOMAIN_CORNER;
+  const eAttrDomain domain = mesh_final->normal_domain_all_info();
 
   /* Needed as `final_datamask` is not preserved outside modifier stack evaluation. */
   SubsurfRuntimeData *subsurf_runtime_data = mesh_final->runtime->subsurf_runtime_data;
   if (subsurf_runtime_data) {
-    subsurf_runtime_data->calc_loop_normals = calc_loop_normals;
+    subsurf_runtime_data->calc_loop_normals = domain == ATTR_DOMAIN_CORNER;
   }
 
-  if (calc_loop_normals) {
+  if (domain == ATTR_DOMAIN_CORNER) {
     /* Compute loop normals (NOTE: will compute poly and vert normals as well, if needed!). In case
      * of deferred CPU subdivision, this will be computed when the wrapper is generated. */
     if (!subsurf_runtime_data || subsurf_runtime_data->resolution == 0) {
@@ -468,7 +462,12 @@ static void mesh_calc_modifier_final_normals(const Mesh *mesh_input,
        * this where possible since calculating polygon normals isn't fast,
        * note that this isn't a problem for subsurf (only quads) or edit-mode
        * which deals with drawing differently. */
-      BKE_mesh_ensure_normals_for_display(mesh_final);
+      if (domain == ATTR_DOMAIN_FACE) {
+        mesh_final->poly_normals();
+      }
+      else if (domain == ATTR_DOMAIN_FACE) {
+        mesh_final->vert_normals();
+      }
     }
   }
 }
@@ -487,11 +486,10 @@ static void mesh_calc_finalize(const Mesh *mesh_input, Mesh *mesh_eval)
   mesh_eval->edit_mesh = mesh_input->edit_mesh;
 }
 
-void BKE_mesh_wrapper_deferred_finalize_mdata(Mesh *me_eval,
-                                              const CustomData_MeshMasks *cd_mask_finalize)
+void BKE_mesh_wrapper_deferred_finalize_mdata(Mesh *me_eval)
 {
   if (me_eval->runtime->wrapper_type_finalize & (1 << ME_WRAPPER_TYPE_BMESH)) {
-    editbmesh_calc_modifier_final_normals(me_eval, cd_mask_finalize);
+    editbmesh_calc_modifier_final_normals(me_eval);
     me_eval->runtime->wrapper_type_finalize = eMeshWrapperType(
         me_eval->runtime->wrapper_type_finalize & ~(1 << ME_WRAPPER_TYPE_BMESH));
   }
@@ -970,7 +968,7 @@ static void mesh_calc_modifiers(struct Depsgraph *depsgraph,
 
   /* Compute normals. */
   if (is_own_mesh) {
-    mesh_calc_modifier_final_normals(mesh_input, &final_datamask, sculpt_dyntopo, mesh_final);
+    mesh_calc_modifier_final_normals(sculpt_dyntopo, mesh_final);
     mesh_calc_finalize(mesh_input, mesh_final);
   }
   else {
@@ -982,8 +980,7 @@ static void mesh_calc_modifiers(struct Depsgraph *depsgraph,
          * Isolate since computing normals is multithreaded and we are holding a lock. */
         blender::threading::isolate_task([&] {
           mesh_final = BKE_mesh_copy_for_eval(mesh_input, true);
-          mesh_calc_modifier_final_normals(
-              mesh_input, &final_datamask, sculpt_dyntopo, mesh_final);
+          mesh_calc_modifier_final_normals(sculpt_dyntopo, mesh_final);
           mesh_calc_finalize(mesh_input, mesh_final);
           runtime->mesh_eval = mesh_final;
         });
@@ -1047,17 +1044,16 @@ bool editbmesh_modifier_is_enabled(const Scene *scene,
   return true;
 }
 
-static void editbmesh_calc_modifier_final_normals(Mesh *mesh_final,
-                                                  const CustomData_MeshMasks *final_datamask)
+static void editbmesh_calc_modifier_final_normals(Mesh *mesh_final)
 {
-  const bool calc_loop_normals = mesh_final->normal_domain_all_info() == ATTR_DOMAIN_CORNER;
+  const eAttrDomain domain = mesh_final->normal_domain_all_info();
 
   SubsurfRuntimeData *subsurf_runtime_data = mesh_final->runtime->subsurf_runtime_data;
   if (subsurf_runtime_data) {
-    subsurf_runtime_data->calc_loop_normals = calc_loop_normals;
+    subsurf_runtime_data->calc_loop_normals = domain == ATTR_DOMAIN_CORNER;
   }
 
-  if (calc_loop_normals) {
+  if (domain == ATTR_DOMAIN_CORNER) {
     /* Compute loop normals. In case of deferred CPU subdivision, this will be computed when the
      * wrapper is generated. */
     if (!subsurf_runtime_data || subsurf_runtime_data->resolution == 0) {
@@ -1065,14 +1061,32 @@ static void editbmesh_calc_modifier_final_normals(Mesh *mesh_final,
     }
   }
   else {
-    /* Same as #mesh_calc_modifiers.
-     * If using loop normals, poly normals have already been computed. */
-    BKE_mesh_ensure_normals_for_display(mesh_final);
+    switch (mesh_final->runtime->wrapper_type) {
+      case ME_WRAPPER_TYPE_SUBD:
+        break;
+      case ME_WRAPPER_TYPE_MDATA:
+        /* Same as #mesh_calc_modifiers. */
+        if (domain == ATTR_DOMAIN_FACE) {
+          mesh_final->poly_normals();
+        }
+        else if (domain == ATTR_DOMAIN_FACE) {
+          mesh_final->vert_normals();
+        }
+        break;
+      case ME_WRAPPER_TYPE_BMESH: {
+        BMEditMesh *em = mesh_final->edit_mesh;
+        EditMeshData *emd = mesh_final->runtime->edit_data;
+        if (emd->vertexCos) {
+          BKE_editmesh_cache_ensure_vert_normals(em, emd);
+          BKE_editmesh_cache_ensure_poly_normals(em, emd);
+        }
+        return;
+      }
+    }
   }
 }
 
-static void editbmesh_calc_modifier_final_normals_or_defer(
-    Mesh *mesh_final, const CustomData_MeshMasks *final_datamask)
+static void editbmesh_calc_modifier_final_normals_or_defer(Mesh *mesh_final)
 {
   if (mesh_final->runtime->wrapper_type != ME_WRAPPER_TYPE_MDATA) {
     /* Generated at draw time. */
@@ -1081,7 +1095,7 @@ static void editbmesh_calc_modifier_final_normals_or_defer(
     return;
   }
 
-  editbmesh_calc_modifier_final_normals(mesh_final, final_datamask);
+  editbmesh_calc_modifier_final_normals(mesh_final);
 }
 
 static void editbmesh_calc_modifiers(struct Depsgraph *depsgraph,
@@ -1362,9 +1376,9 @@ static void editbmesh_calc_modifiers(struct Depsgraph *depsgraph,
   }
 
   /* Compute normals. */
-  editbmesh_calc_modifier_final_normals_or_defer(mesh_final, &final_datamask);
+  editbmesh_calc_modifier_final_normals_or_defer(mesh_final);
   if (mesh_cage && (mesh_cage != mesh_final)) {
-    editbmesh_calc_modifier_final_normals_or_defer(mesh_cage, &final_datamask);
+    editbmesh_calc_modifier_final_normals_or_defer(mesh_cage);
   }
 
   /* Return final mesh. */

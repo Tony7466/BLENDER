@@ -48,7 +48,7 @@ static void rna_Mesh_create_normals_split(Mesh *mesh)
   BKE_mesh_corner_normals_ensure(mesh);
 }
 
-static void rna_Mesh_free_normals_split(Mesh *mesh)
+static void rna_Mesh_free_normals_split(Mesh *UNUSED(mesh))
 {
   /* TODO: Deprecation? */
 }

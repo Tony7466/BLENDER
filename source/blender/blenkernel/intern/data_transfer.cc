@@ -361,11 +361,11 @@ static void data_transfer_dtdata_type_postprocess(Mesh *me_dst,
 
     blender::float3 *loop_nors_dst = static_cast<blender::float3 *>(
         CustomData_get_layer_for_write(ldata_dst, CD_NORMAL, me_dst->totloop));
-    short(*custom_nors_dst)[2] = static_cast<short(*)[2]>(
+    blender::short2 *custom_nors_dst = static_cast<blender::short2 *>(
         CustomData_get_layer_for_write(ldata_dst, CD_CUSTOMLOOPNORMAL, me_dst->totloop));
 
     if (!custom_nors_dst) {
-      custom_nors_dst = static_cast<short(*)[2]>(
+      custom_nors_dst = static_cast<blender::short2 *>(
           CustomData_add_layer(ldata_dst, CD_CUSTOMLOOPNORMAL, CD_SET_DEFAULT, me_dst->totloop));
     }
 
@@ -1503,7 +1503,6 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
     if (DT_DATATYPE_IS_LOOP(dtdata_type)) {
       const float(*positions_dst)[3] = BKE_mesh_vert_positions(me_dst);
       const int num_verts_dst = me_dst->totvert;
-      const blender::Span<MEdge> edges_dst = me_dst->edges();
       const blender::OffsetIndices polys_dst = me_dst->polys();
       const blender::Span<int> corner_verts_dst = me_dst->corner_verts();
 
@@ -1542,8 +1541,6 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
                                             me_dst,
                                             positions_dst,
                                             num_verts_dst,
-                                            edges_dst.data(),
-                                            edges_dst.size(),
                                             corner_verts_dst.data(),
                                             corner_verts_dst.size(),
                                             polys_dst,

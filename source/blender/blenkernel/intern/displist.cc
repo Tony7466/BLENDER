@@ -758,7 +758,6 @@ static GeometrySet curve_calc_modifiers_post(Depsgraph *depsgraph,
   if (geometry_set.has_mesh()) {
     Mesh *final_mesh = geometry_set.get_mesh_for_write();
 
-    BKE_mesh_ensure_normals_for_display(final_mesh);
 
     BLI_strncpy(final_mesh->id.name, cu->id.name, sizeof(final_mesh->id.name));
     *((short *)final_mesh->id.name) = ID_ME;

@@ -192,8 +192,6 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     }
   }
 
-  Object *ob = ctx->object;
-
   BM_mesh_bevel(bm,
                 value,
                 offset_type,
@@ -214,7 +212,6 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
                 miter_outer,
                 miter_inner,
                 spread,
-                mesh->smoothresh,
                 bmd->custom_profile,
                 bmd->vmesh_method);
 

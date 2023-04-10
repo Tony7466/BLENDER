@@ -78,7 +78,7 @@ struct WeightedNormalData {
   blender::Span<int> corner_verts;
   blender::Span<int> corner_edges;
   blender::Span<int> loop_to_poly;
-  short (*clnors)[2];
+  blender::short2 *clnors;
   bool has_clnors; /* True if clnors already existed, false if we had to create them. */
 
   blender::OffsetIndices<int> polys;
@@ -190,7 +190,7 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
   const blender::Span<int> corner_verts = wn_data->corner_verts;
   const blender::Span<int> corner_edges = wn_data->corner_edges;
 
-  short(*clnors)[2] = wn_data->clnors;
+  blender::short2 *clnors = wn_data->clnors;
   const blender::Span<int> loop_to_poly = wn_data->loop_to_poly;
 
   const blender::Span<blender::float3> poly_normals = wn_data->poly_normals;
@@ -513,7 +513,6 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 {
   using namespace blender;
   WeightedNormalModifierData *wnmd = (WeightedNormalModifierData *)md;
-  Object *ob = ctx->object;
 
   Mesh *result = (Mesh *)BKE_id_copy_ex(nullptr, &mesh->id, nullptr, LIB_ID_COPY_LOCALIZE);
 
@@ -541,14 +540,14 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     weight = (weight - 1) * 25;
   }
 
-  short(*clnors)[2] = static_cast<short(*)[2]>(
+  blender::short2 *clnors = static_cast<blender::short2 *>(
       CustomData_get_layer_for_write(&result->ldata, CD_CUSTOMLOOPNORMAL, mesh->totloop));
 
   /* Keep info whether we had clnors,
    * it helps when generating clnor spaces and default normals. */
   const bool has_clnors = clnors != nullptr;
   if (!clnors) {
-    clnors = static_cast<short(*)[2]>(CustomData_add_layer(
+    clnors = static_cast<blender::short2 *>(CustomData_add_layer(
         &result->ldata, CD_CUSTOMLOOPNORMAL, CD_SET_DEFAULT, corner_verts.size()));
   }
 

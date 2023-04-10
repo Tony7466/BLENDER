@@ -250,7 +250,7 @@ float (*BKE_editmesh_vert_coords_alloc_orco(BMEditMesh *em, int *r_vert_len))[3]
   return BM_mesh_vert_coords_alloc(em->bm, r_vert_len);
 }
 
-void BKE_editmesh_lnorspace_update(BMEditMesh *em, Mesh *me)
+void BKE_editmesh_lnorspace_update(BMEditMesh *em)
 {
   BM_lnorspace_update(em->bm);
 }

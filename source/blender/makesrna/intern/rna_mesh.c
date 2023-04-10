@@ -620,10 +620,10 @@ static void rna_MeshLoop_bitangent_get(PointerRNA *ptr, float *values)
   Mesh *me = rna_mesh(ptr);
   const int index = rna_MeshLoop_index_get(ptr);
   const float(*loop_normals)[3] = BKE_mesh_corner_normals_ensure(me);
-  const float(*vec)[4] = CustomData_get(&me->ldata, index, CD_MLOOPTANGENT);
+  const float(*vec)[4] = CustomData_get_layer(&me->ldata, CD_MLOOPTANGENT);
 
   if (vec) {
-    cross_v3_v3v3(values, loop_normals[index][index], vec[index]);
+    cross_v3_v3v3(values, loop_normals[index], vec[index]);
     mul_v3_fl(values, vec[index][3]);
   }
   else {
@@ -2041,6 +2041,12 @@ int rna_Mesh_loops_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
   r_ptr->type = &RNA_MeshLoop;
   r_ptr->data = &BKE_mesh_corner_verts_for_write(mesh)[index];
   return true;
+}
+
+static int rna_Mesh_normal_domain_all_info_get(PointerRNA *ptr)
+{
+  const Mesh *mesh = rna_mesh(ptr);
+  return ED_mesh_normal_domain_all_info_get(mesh);
 }
 
 static void rna_Mesh_vertex_normals_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
@@ -4216,6 +4222,12 @@ static void rna_def_mesh(BlenderRNA *brna)
   rna_def_mesh_polygons(brna, prop);
 
   rna_def_normal_layer_value(brna);
+
+  prop = RNA_def_property(srna, "normal_domain_all_info", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_attribute_domain_only_mesh_no_edge_items);
+  RNA_def_property_ui_text(prop, "Normal Domain ALl Info", "");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_enum_funcs(prop, "rna_Mesh_normal_domain_all_info_get", NULL, NULL);
 
   prop = RNA_def_property(srna, "vertex_normals", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "MeshNormalValue");

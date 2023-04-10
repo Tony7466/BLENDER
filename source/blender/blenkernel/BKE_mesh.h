@@ -365,11 +365,6 @@ void BKE_mesh_calc_poly_normal(const int *poly_verts,
                                float r_no[3]);
 
 /**
- * Called after calculating all modifiers.
- */
-void BKE_mesh_ensure_normals_for_display(struct Mesh *mesh);
-
-/**
  * References a contiguous loop-fan with normal offset vars.
  */
 typedef struct MLoopNorSpace {
@@ -710,8 +705,7 @@ void BKE_mesh_calc_edges(struct Mesh *mesh, bool keep_existing_edges, bool selec
 void BKE_mesh_calc_edges_tessface(struct Mesh *mesh);
 
 /* In DerivedMesh.cc */
-void BKE_mesh_wrapper_deferred_finalize_mdata(struct Mesh *me_eval,
-                                              const struct CustomData_MeshMasks *cd_mask_finalize);
+void BKE_mesh_wrapper_deferred_finalize_mdata(struct Mesh *me_eval);
 
 /* **** Depsgraph evaluation **** */
 

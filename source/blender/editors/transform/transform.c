@@ -2016,7 +2016,7 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
         else if (!do_skip) {
           const bool preserve_clnor = RNA_property_boolean_get(op->ptr, prop);
           if (preserve_clnor) {
-            BKE_editmesh_lnorspace_update(em, tc->obedit->data);
+            BKE_editmesh_lnorspace_update(em);
             t->flag |= T_CLNOR_REBUILD;
           }
           BM_lnorspace_invalidate(em->bm, true);

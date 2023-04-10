@@ -140,7 +140,7 @@ void BKE_mesh_wrapper_ensure_mdata(Mesh *me)
     }
 
     if (me->runtime->wrapper_type_finalize) {
-      BKE_mesh_wrapper_deferred_finalize_mdata(me, &me->runtime->cd_mask_extra);
+      BKE_mesh_wrapper_deferred_finalize_mdata(me);
     }
 
     /* Keep type assignment last, so that read-only access only uses the mdata code paths after all
@@ -338,8 +338,9 @@ static Mesh *mesh_wrapper_ensure_subdivision(Mesh *me)
   Mesh *subdiv_mesh = BKE_subdiv_to_mesh(subdiv, &mesh_settings, me);
 
   if (use_clnors) {
-    BKE_mesh_set_custom_normals(
-        subdiv_mesh, reinterpret_cast<const float(*)[3]>(subdiv_mesh->corner_normals().data()));
+    BKE_mesh_set_custom_normals(subdiv_mesh,
+                                const_cast<float(*)[3]>(reinterpret_cast<const float(*)[3]>(
+                                    subdiv_mesh->corner_normals().data())));
   }
 
   if (!ELEM(subdiv, runtime_data->subdiv_cpu, runtime_data->subdiv_gpu)) {

@@ -33,7 +33,6 @@ void bmo_bevel_exec(BMesh *bm, BMOperator *op)
   const int miter_outer = BMO_slot_int_get(op->slots_in, "miter_outer");
   const int miter_inner = BMO_slot_int_get(op->slots_in, "miter_inner");
   const float spread = BMO_slot_float_get(op->slots_in, "spread");
-  const float smoothresh = BMO_slot_float_get(op->slots_in, "smoothresh");
   const CurveProfile *custom_profile = BMO_slot_ptr_get(op->slots_in, "custom_profile");
   const int vmesh_method = BMO_slot_int_get(op->slots_in, "vmesh_method");
 
@@ -79,7 +78,6 @@ void bmo_bevel_exec(BMesh *bm, BMOperator *op)
                   miter_outer,
                   miter_inner,
                   spread,
-                  smoothresh,
                   custom_profile,
                   vmesh_method);
 

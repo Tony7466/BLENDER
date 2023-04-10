@@ -70,7 +70,7 @@ static void get_edge_creases(struct Mesh *mesh,
 static void get_vert_creases(struct Mesh *mesh,
                              std::vector<int32_t> &indices,
                              std::vector<float> &sharpnesses);
-static void get_loop_normals(struct Mesh *mesh, std::vector<Imath::V3f> &normals);
+static void get_loop_normals(const Mesh *mesh, std::vector<Imath::V3f> &normals);
 
 ABCGenericMeshWriter::ABCGenericMeshWriter(const ABCWriterConstructorArgs &args)
     : ABCAbstractWriter(args), is_subd_(false)
@@ -277,10 +277,9 @@ void ABCGenericMeshWriter::write_subd(HierarchyContext &context, struct Mesh *me
   std::vector<Imath::V3f> points;
   std::vector<int32_t> poly_verts, loop_counts;
   std::vector<int32_t> edge_crease_indices, edge_crease_lengths, vert_crease_indices;
-  bool has_flat_poly = false;
 
   get_vertices(mesh, points);
-  get_topology(mesh, poly_verts, loop_counts, has_flat_poly);
+  get_topology(mesh, poly_verts, loop_counts);
   get_edge_creases(mesh, edge_crease_indices, edge_crease_lengths, edge_crease_sharpness);
   get_vert_creases(mesh, vert_crease_indices, vert_crease_sharpness);
 

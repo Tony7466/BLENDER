@@ -41,6 +41,5 @@ void BM_mesh_bevel(BMesh *bm,
                    int miter_outer,
                    int miter_inner,
                    float spread,
-                   float smoothresh,
                    const struct CurveProfile *custom_profile,
                    int vmesh_method);
