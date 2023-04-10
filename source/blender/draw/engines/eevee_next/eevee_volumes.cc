@@ -143,6 +143,10 @@ void Volumes::init()
 
   data_.use_lights = (scene_eval->eevee.flag & SCE_EEVEE_VOLUMETRIC_LIGHTS) != 0;
   data_.use_soft_shadows = (scene_eval->eevee.flag & SCE_EEVEE_SHADOW_SOFT) != 0;
+
+  /* TODO(Miguel Pozo): Remove, just for testing. */
+  data_.use_lights = false;
+  data_.use_soft_shadows = false;
 }
 
 void Volumes::begin_sync()
