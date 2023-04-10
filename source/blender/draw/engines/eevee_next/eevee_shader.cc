@@ -327,7 +327,10 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
       info.vertex_inputs_.clear();
       break;
     case MAT_GEOM_VOLUME:
-      /** No attributes supported. */
+      /** Volume grid attributes come from 3D textures. Transfer attributes to samplers. */
+      for (auto &input : info.vertex_inputs_) {
+        info.sampler(0, ImageType::FLOAT_3D, input.name, Frequency::BATCH);
+      }
       info.vertex_inputs_.clear();
       break;
   }
