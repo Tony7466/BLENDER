@@ -75,7 +75,7 @@ ccl_device int bsdf_microfacet_hair_setup(ccl_private ShaderData *sd,
   kernel_assert(isfinite_safe(X));
   kernel_assert(isfinite_safe(h));
 
-  if (bsdf->aspect_ratio != 1.0f) {
+  if (bsdf->aspect_ratio != 1.0f && !(sd->type & PRIMITIVE_TRIANGLE)) {
     if (bsdf->aspect_ratio > 1.0f) {
       bsdf->aspect_ratio = 1.0f / bsdf->aspect_ratio;
 
