@@ -24,56 +24,64 @@ typedef struct CommonUniformBlock CommonUniformBlock;
 #  define DO_SPLIT_CLOSURE_EVAL 1
 #endif
 
-#if (defined(GPU_METAL) && defined(GPU_ATI))
-#define BLOCK_ATTR(name) name
+/* NOTE: Due to compatibility issues between legacy Intel drivers that doesn't unroll macros
+ * as expected we added an underscore before the attribute name to make a distinction between the
+ * macro name and the variable it needs to access. This fails on MacOS/ATI resulting in failing to
+ * render Eevee on those devices. Issue happens both on Metal and OpenGL backend.
+ *
+ * This is a quick fix to support both issues until we have a better solution or that Eevee is
+ * replaced.
+ */
+#if (defined(OS_MAC) && defined(GPU_ATI))
+#  define BLOCK_ATTR(name) name
 #else
-#define BLOCK_ATTR(name) _##name
+#  define BLOCK_ATTR(name) _##name
 #endif
 
 struct CommonUniformBlock {
   mat4 BLOCK_ATTR(pastViewProjectionMatrix);
-  vec4 _hizUvScale; /* To correct mip level texel misalignment */
+  vec4 BLOCK_ATTR(hizUvScale); /* To correct mip level texel misalignment */
   /* Ambient Occlusion */
-  vec4 _aoParameters[2];
+  vec4 BLOCK_ATTR(aoParameters)[2];
   /* Volumetric */
-  ivec4 _volTexSize;
-  vec4 _volDepthParameters; /* Parameters to the volume Z equation */
-  vec4 _volInvTexSize;
-  vec4 _volJitter;
-  vec4 _volCoordScale; /* To convert volume uvs to screen uvs */
-  float _volHistoryAlpha;
-  float _volShadowSteps;
-  bool _volUseLights;
-  bool _volUseSoftShadows;
+  ivec4 BLOCK_ATTR(volTexSize);
+  vec4 BLOCK_ATTR(volDepthParameters); /* Parameters to the volume Z equation */
+  vec4 BLOCK_ATTR(volInvTexSize);
+  vec4 BLOCK_ATTR(volJitter);
+  vec4 BLOCK_ATTR(volCoordScale); /* To convert volume uvs to screen uvs */
+  float BLOCK_ATTR(volHistoryAlpha);
+  float BLOCK_ATTR(volShadowSteps);
+  bool BLOCK_ATTR(volUseLights);
+  bool BLOCK_ATTR(volUseSoftShadows);
   /* Screen Space Reflections */
-  vec4 _ssrParameters;
-  float _ssrBorderFac;
-  float _ssrMaxRoughness;
-  float _ssrFireflyFac;
-  float _ssrBrdfBias;
-  bool _ssrToggle;
-  bool _ssrefractToggle;
+  vec4 BLOCK_ATTR(ssrParameters);
+  float BLOCK_ATTR(ssrBorderFac);
+  float BLOCK_ATTR(ssrMaxRoughness);
+  float BLOCK_ATTR(ssrFireflyFac);
+  float BLOCK_ATTR(ssrBrdfBias);
+  bool BLOCK_ATTR(ssrToggle);
+  bool BLOCK_ATTR(ssrefractToggle);
   /* SubSurface Scattering */
-  float _sssJitterThreshold;
-  bool _sssToggle;
+  float BLOCK_ATTR(sssJitterThreshold);
+  bool BLOCK_ATTR(sssToggle);
   /* Specular */
-  bool _specToggle;
+  bool BLOCK_ATTR(specToggle);
   /* Lights */
-  int _laNumLight;
+  int BLOCK_ATTR(laNumLight);
   /* Probes */
-  int _prbNumPlanar;
-  int _prbNumRenderCube;
-  int _prbNumRenderGrid;
-  int _prbIrradianceVisSize;
-  float _prbIrradianceSmooth;
-  float _prbLodCubeMax;
+  int BLOCK_ATTR(prbNumPlanar);
+  int BLOCK_ATTR(prbNumRenderCube);
+  int BLOCK_ATTR(prbNumRenderGrid);
+  int BLOCK_ATTR(prbIrradianceVisSize);
+  float BLOCK_ATTR(prbIrradianceSmooth);
+  float BLOCK_ATTR(prbLodCubeMax);
   /* Misc */
-  int _rayType;
-  float _rayDepth;
-  float _alphaHashOffset;
-  float _alphaHashScale;
-  vec4 _cameraUvScaleBias;
-  vec4 _planarClipPlane;
+  int BLOCK_ATTR(rayType);
+  float BLOCK_ATTR(rayDepth);
+  float BLOCK_ATTR(alphaHashOffset);
+  float BLOCK_ATTR(alphaHashScale);
+  vec4 BLOCK_ATTR(cameraUvScaleBias);
+  vec4 BLOCK_ATTR(planarClipPlane);
 };
 BLI_STATIC_ASSERT_ALIGN(CommonUniformBlock, 16)
 
@@ -108,17 +116,17 @@ struct GridData {
 BLI_STATIC_ASSERT_ALIGN(GridData, 16)
 
 struct ProbeBlock {
-  CubeData _probes_data[MAX_PROBE];
+  CubeData BLOCK_ATTR(probes_data)[MAX_PROBE];
 };
 BLI_STATIC_ASSERT_ALIGN(ProbeBlock, 16)
 
 struct GridBlock {
-  GridData _grids_data[MAX_GRID];
+  GridData BLOCK_ATTR(grids_data)[MAX_GRID];
 };
 BLI_STATIC_ASSERT_ALIGN(GridBlock, 16)
 
 struct PlanarBlock {
-  PlanarData _planars_data[MAX_PLANAR];
+  PlanarData BLOCK_ATTR(planars_data)[MAX_PLANAR];
 };
 BLI_STATIC_ASSERT_ALIGN(PlanarBlock, 16)
 
@@ -147,9 +155,9 @@ struct ShadowCascadeData {
 BLI_STATIC_ASSERT_ALIGN(ShadowCascadeData, 16)
 
 struct ShadowBlock {
-  ShadowData _shadows_data[MAX_SHADOW];
-  ShadowCubeData _shadows_cube_data[MAX_SHADOW_CUBE];
-  ShadowCascadeData _shadows_cascade_data[MAX_SHADOW_CASCADE];
+  ShadowData BLOCK_ATTR(shadows_data)[MAX_SHADOW];
+  ShadowCubeData BLOCK_ATTR(shadows_cube_data)[MAX_SHADOW_CUBE];
+  ShadowCascadeData BLOCK_ATTR(shadows_cascade_data)[MAX_SHADOW_CASCADE];
 };
 BLI_STATIC_ASSERT_ALIGN(ShadowBlock, 16)
 
@@ -165,20 +173,20 @@ struct LightData {
 BLI_STATIC_ASSERT_ALIGN(LightData, 16)
 
 struct LightBlock {
-  LightData _lights_data[MAX_LIGHT];
+  LightData BLOCK_ATTR(lights_data)[MAX_LIGHT];
 };
 BLI_STATIC_ASSERT_ALIGN(LightBlock, 16)
 
 struct RenderpassBlock {
-  bool _renderPassDiffuse;
-  bool _renderPassDiffuseLight;
-  bool _renderPassGlossy;
-  bool _renderPassGlossyLight;
-  bool _renderPassEmit;
-  bool _renderPassSSSColor;
-  bool _renderPassEnvironment;
-  bool _renderPassAOV;
-  uint _renderPassAOVActive;
+  bool BLOCK_ATTR(renderPassDiffuse);
+  bool BLOCK_ATTR(renderPassDiffuseLight);
+  bool BLOCK_ATTR(renderPassGlossy);
+  bool BLOCK_ATTR(renderPassGlossyLight);
+  bool BLOCK_ATTR(renderPassEmit);
+  bool BLOCK_ATTR(renderPassSSSColor);
+  bool BLOCK_ATTR(renderPassEnvironment);
+  bool BLOCK_ATTR(renderPassAOV);
+  uint BLOCK_ATTR(renderPassAOVActive);
 };
 BLI_STATIC_ASSERT_ALIGN(RenderpassBlock, 16)
 
@@ -201,74 +209,74 @@ BLI_STATIC_ASSERT_ALIGN(SSSProfileBlock, 16)
 
 /* Keep compatibility_with old global scope syntax. */
 #    define pastViewProjectionMatrix common_block.BLOCK_ATTR(pastViewProjectionMatrix)
-#    define hizUvScale common_block._hizUvScale
-#    define aoParameters common_block._aoParameters
-#    define volTexSize common_block._volTexSize
-#    define volDepthParameters common_block._volDepthParameters
-#    define volInvTexSize common_block._volInvTexSize
-#    define volJitter common_block._volJitter
-#    define volCoordScale common_block._volCoordScale
-#    define volHistoryAlpha common_block._volHistoryAlpha
-#    define volShadowSteps common_block._volShadowSteps
-#    define volUseLights common_block._volUseLights
-#    define volUseSoftShadows common_block._volUseSoftShadows
-#    define ssrParameters common_block._ssrParameters
-#    define ssrBorderFac common_block._ssrBorderFac
-#    define ssrMaxRoughness common_block._ssrMaxRoughness
-#    define ssrFireflyFac common_block._ssrFireflyFac
-#    define ssrBrdfBias common_block._ssrBrdfBias
-#    define ssrToggle common_block._ssrToggle
-#    define ssrefractToggle common_block._ssrefractToggle
-#    define sssJitterThreshold common_block._sssJitterThreshold
-#    define sssToggle common_block._sssToggle
-#    define specToggle common_block._specToggle
-#    define laNumLight common_block._laNumLight
-#    define prbNumPlanar common_block._prbNumPlanar
-#    define prbNumRenderCube common_block._prbNumRenderCube
-#    define prbNumRenderGrid common_block._prbNumRenderGrid
-#    define prbIrradianceVisSize common_block._prbIrradianceVisSize
-#    define prbIrradianceSmooth common_block._prbIrradianceSmooth
-#    define prbLodCubeMax common_block._prbLodCubeMax
-#    define rayType common_block._rayType
-#    define rayDepth common_block._rayDepth
-#    define alphaHashOffset common_block._alphaHashOffset
-#    define alphaHashScale common_block._alphaHashScale
-#    define cameraUvScaleBias common_block._cameraUvScaleBias
-#    define planarClipPlane common_block._planarClipPlane
+#    define hizUvScale common_block.BLOCK_ATTR(hizUvScale)
+#    define aoParameters common_block.BLOCK_ATTR(aoParameters)
+#    define volTexSize common_block.BLOCK_ATTR(volTexSize)
+#    define volDepthParameters common_block.BLOCK_ATTR(volDepthParameters)
+#    define volInvTexSize common_block.BLOCK_ATTR(volInvTexSize)
+#    define volJitter common_block.BLOCK_ATTR(volJitter)
+#    define volCoordScale common_block.BLOCK_ATTR(volCoordScale)
+#    define volHistoryAlpha common_block.BLOCK_ATTR(volHistoryAlpha)
+#    define volShadowSteps common_block.BLOCK_ATTR(volShadowSteps)
+#    define volUseLights common_block.BLOCK_ATTR(volUseLights)
+#    define volUseSoftShadows common_block.BLOCK_ATTR(volUseSoftShadows)
+#    define ssrParameters common_block.BLOCK_ATTR(ssrParameters)
+#    define ssrBorderFac common_block.BLOCK_ATTR(ssrBorderFac)
+#    define ssrMaxRoughness common_block.BLOCK_ATTR(ssrMaxRoughness)
+#    define ssrFireflyFac common_block.BLOCK_ATTR(ssrFireflyFac)
+#    define ssrBrdfBias common_block.BLOCK_ATTR(ssrBrdfBias)
+#    define ssrToggle common_block.BLOCK_ATTR(ssrToggle)
+#    define ssrefractToggle common_block.BLOCK_ATTR(ssrefractToggle)
+#    define sssJitterThreshold common_block.BLOCK_ATTR(sssJitterThreshold)
+#    define sssToggle common_block.BLOCK_ATTR(sssToggle)
+#    define specToggle common_block.BLOCK_ATTR(specToggle)
+#    define laNumLight common_block.BLOCK_ATTR(laNumLight)
+#    define prbNumPlanar common_block.BLOCK_ATTR(prbNumPlanar)
+#    define prbNumRenderCube common_block.BLOCK_ATTR(prbNumRenderCube)
+#    define prbNumRenderGrid common_block.BLOCK_ATTR(prbNumRenderGrid)
+#    define prbIrradianceVisSize common_block.BLOCK_ATTR(prbIrradianceVisSize)
+#    define prbIrradianceSmooth common_block.BLOCK_ATTR(prbIrradianceSmooth)
+#    define prbLodCubeMax common_block.BLOCK_ATTR(prbLodCubeMax)
+#    define rayType common_block.BLOCK_ATTR(rayType)
+#    define rayDepth common_block.BLOCK_ATTR(rayDepth)
+#    define alphaHashOffset common_block.BLOCK_ATTR(alphaHashOffset)
+#    define alphaHashScale common_block.BLOCK_ATTR(alphaHashScale)
+#    define cameraUvScaleBias common_block.BLOCK_ATTR(cameraUvScaleBias)
+#    define planarClipPlane common_block.BLOCK_ATTR(planarClipPlane)
 
 /* ProbeBlock */
-#    define probes_data probe_block._probes_data
+#    define probes_data probe_block.BLOCK_ATTR(probes_data)
 
 /* GridBlock */
-#    define grids_data grid_block._grids_data
+#    define grids_data grid_block.BLOCK_ATTR(grids_data)
 
 /* PlanarBlock */
-#    define planars_data planar_block._planars_data
+#    define planars_data planar_block.BLOCK_ATTR(planars_data)
 
 /* ShadowBlock */
-#    define shadows_data shadow_block._shadows_data
-#    define shadows_cube_data shadow_block._shadows_cube_data
-#    define shadows_cascade_data shadow_block._shadows_cascade_data
+#    define shadows_data shadow_block.BLOCK_ATTR(shadows_data)
+#    define shadows_cube_data shadow_block.BLOCK_ATTR(shadows_cube_data)
+#    define shadows_cascade_data shadow_block.BLOCK_ATTR(shadows_cascade_data)
 
 /* LightBlock */
-#    define lights_data light_block._lights_data
+#    define lights_data light_block.BLOCK_ATTR(lights_data)
 
 /* RenderpassBlock */
-#    define renderPassDiffuse renderpass_block._renderPassDiffuse
-#    define renderPassDiffuseLight renderpass_block._renderPassDiffuseLight
-#    define renderPassGlossy renderpass_block._renderPassGlossy
-#    define renderPassGlossyLight renderpass_block._renderPassGlossyLight
-#    define renderPassEmit renderpass_block._renderPassEmit
-#    define renderPassSSSColor renderpass_block._renderPassSSSColor
-#    define renderPassEnvironment renderpass_block._renderPassEnvironment
-#    define renderPassAOV renderpass_block._renderPassAOV
-#    define renderPassAOVActive renderpass_block._renderPassAOVActive
+#    define renderPassDiffuse renderpass_block.BLOCK_ATTR(renderPassDiffuse)
+#    define renderPassDiffuseLight renderpass_block.BLOCK_ATTR(renderPassDiffuseLight)
+#    define renderPassGlossy renderpass_block.BLOCK_ATTR(renderPassGlossy)
+#    define renderPassGlossyLight renderpass_block.BLOCK_ATTR(renderPassGlossyLight)
+#    define renderPassEmit renderpass_block.BLOCK_ATTR(renderPassEmit)
+#    define renderPassSSSColor renderpass_block.BLOCK_ATTR(renderPassSSSColor)
+#    define renderPassEnvironment renderpass_block.BLOCK_ATTR(renderPassEnvironment)
+#    define renderPassAOV renderpass_block.BLOCK_ATTR(renderPassAOV)
+#    define renderPassAOVActive renderpass_block.BLOCK_ATTR(renderPassAOVActive)
 
 /* SSSProfileBlock */
 #    define sss_kernel sssProfile._sss_kernel
-#    define radii_max_radius sssProfile._radii_max_radius
-#    define avg_inv_radius sssProfile._avg_inv_radius
-#    define sss_samples sssProfile._sss_samples
+#    define radii_max_radius sssProfile.BLOCK_ATTR(radii_max_radius)
+#    define avg_inv_radius sssProfile.BLOCK_ATTR(avg_inv_radius)
+#    define sss_samples sssProfile.BLOCK_ATTR(sss_samples)
 
 #  endif /* USE_GPU_SHADER_CREATE_INFO */
 
