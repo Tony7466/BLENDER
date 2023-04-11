@@ -1,2 +1,3 @@
 Referenced by issue #98375, GPU: Share GPU Textures when using the same file path.
 Referenced by pull request #106173, Image Editor: Remove drawing artifacts
+Referenced by issue #106092, Regression: Image Editor Speed & Quality Regression
