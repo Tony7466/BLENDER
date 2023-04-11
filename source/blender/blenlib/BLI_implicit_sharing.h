@@ -4,6 +4,8 @@
 
 /** \file
  * \ingroup bli
+ *
+ * This file only exists to forward declare `blender::ImplicitSharingInfo` in C code.
  */
 
 #ifdef __cplusplus
