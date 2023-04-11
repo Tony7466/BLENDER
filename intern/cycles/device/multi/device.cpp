@@ -57,7 +57,7 @@ class MultiDevice : public Device {
       /* Swop the CPU device with the last device to ensure the CPU device is the last */
       {
         int last = devices.size() - 1;
-        if (cpu_device_idx != last) {
+        if ((cpu_device_idx != -1) && (cpu_device_idx != last)) {
           std::swap(devices[last], devices[cpu_device_idx]);
         }
       }
