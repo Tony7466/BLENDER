@@ -7,7 +7,6 @@
 #include <stdlib.h>
 
 #include "bvh/params.h"
-#include "scene/scene.h"
 #include "device/denoise.h"
 #include "device/memory.h"
 
@@ -30,6 +29,7 @@ class Progress;
 class CPUKernels;
 class CPUKernelThreadGlobals;
 class Scene;
+class DeviceScene;
 
 /* Device Types */
 
