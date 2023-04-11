@@ -4,10 +4,10 @@
 #ifndef __UTIL_PROGRESS_H__
 #define __UTIL_PROGRESS_H__
 
-//#define USE_SPINLOCK
+#define USE_SPINLOCK
 #ifdef USE_SPINLOCK
-#define MUTEX              SpinLock
-#define SCOPED_LOCK(mutex) ScopedSpinLock scopedspinlock(mutex)
+#define MUTEX              thread_spin_lock
+#define SCOPED_LOCK(mutex) thread_scoped_spin_lock scopedspinlock(mutex);
 #else
 #define MUTEX              thread_mutex
 #define SCOPED_LOCK(mutex) thread_scoped_lock scopedlock(mutex)
@@ -28,49 +28,10 @@
 
 CCL_NAMESPACE_BEGIN
 
-class SpinLock {
-public:
-  SpinLock()
-  {
-    update_status = true;
-  };
-
-  void lock()
-  {
-    // Busy wait until update status is true
-    bool can_update = true;
-    while (!update_status.compare_exchange_weak(can_update, false)) {
-    };
-  };
-
-  void unlock()
-  {
-    update_status = true;
-  };
-
-private:
-  std::atomic<bool> update_status;
-};
-
-class ScopedSpinLock {
-public:
-  ScopedSpinLock(SpinLock &spinlock) : spinlock_(spinlock)
-  {
-    spinlock_.lock();
-  };
-
-  ~ScopedSpinLock()
-  {
-    spinlock_.unlock();
-  }
-private:
-  SpinLock &spinlock_;
-};
-
 class Progress {
  public:
   using callback_type = function<void()>;
-  
+
   Progress()
   {
     pixel_samples = 0;
@@ -93,8 +54,6 @@ class Progress {
     error_message = "";
     cancel_cb = function_null;
     updates = true;
-    //    update_call = true;
-    //    update_status = true;
   }
 
   Progress(Progress &progress)
@@ -105,14 +64,12 @@ class Progress {
   Progress &operator=(Progress &progress)
   {
     SCOPED_LOCK(progress_mutex);
-    //update_progress([this, &progress]() {
-      progress.get_status(status, substatus);
+    progress.get_status(status, substatus);
 
-      pixel_samples = progress.pixel_samples;
-      total_pixel_samples = progress.total_pixel_samples;
-      current_tile_sample = progress.get_current_sample();
-      //});
-    
+    pixel_samples = progress.pixel_samples;
+    total_pixel_samples = progress.total_pixel_samples;
+    current_tile_sample = progress.get_current_sample();
+
     return *this;
   }
 
@@ -138,19 +95,18 @@ class Progress {
     updates = true;
   }
 
-  void set_updates(bool updates_) {
+  void set_updates(bool updates_)
+  {
     updates = updates_;
-    VLOG_INFO << "Set progress updates " << (updates_? "on" : "off");
+    VLOG_INFO << "Set progress updates " << (updates_ ? "on" : "off");
   }
-  
+
   /* cancel */
   void set_cancel(const string &cancel_message_)
   {
     SCOPED_LOCK(progress_mutex);
-    //update_progress([this, cancel_message_]() {
     cancel_message = cancel_message_;
     cancel = true;
-    //});
   }
 
   bool get_cancel() const
@@ -166,13 +122,9 @@ class Progress {
     return updates;
   }
 
-  string get_cancel_message() //const
+  string get_cancel_message()  // const
   {
     SCOPED_LOCK(progress_mutex);
-    //string msg;
-    //update_progress([this, &msg]() {
-    //msg = cancel_message;
-    //});
     return cancel_message;
   }
 
@@ -185,13 +137,11 @@ class Progress {
   void set_error(const string &error_message_)
   {
     SCOPED_LOCK(progress_mutex);
-    //update_progress([this, error_message_]() {
     error_message = error_message_;
     error = true;
     /* If error happens we also stop rendering. */
     cancel_message = error_message_;
     cancel = true;
-    //});
   }
 
   bool get_error() const
@@ -202,10 +152,6 @@ class Progress {
   string get_error_message()  // const
   {
     SCOPED_LOCK(progress_mutex);
-    //string msg;
-    //update_progress([this, &msg]() {
-    //msg = error_message;
-    //});
     return error_message;
   }
 
@@ -214,26 +160,20 @@ class Progress {
   void set_start_time()
   {
     SCOPED_LOCK(progress_mutex);
-    //update_progress([this]() {
     start_time = time_dt();
     end_time = 0.0;
-    //});
   }
 
   void set_render_start_time()
   {
     SCOPED_LOCK(progress_mutex);
-    //update_progress([this]() {
     render_start_time = time_dt();
-    //});
   }
 
   void set_time_limit(double time_limit_)
   {
     SCOPED_LOCK(progress_mutex);
-    //update_progress([this, time_limit_]() {
     time_limit = time_limit_;
-    //});
   }
 
   void add_skip_time(const scoped_timer &start_timer, bool only_render)
@@ -246,16 +186,14 @@ class Progress {
     }
   }
 
-  void get_time(double &total_time_, double &render_time_) //const
+  void get_time(double &total_time_, double &render_time_)  // const
   {
     SCOPED_LOCK(progress_mutex);
-    //update_progress([this, &total_time_, &render_time_](){
     double et = end_time;
     double time = (et > 0) ? et : time_dt();
 
     total_time_ = time - start_time;
     render_time_ = time - render_start_time;
-    //});
   }
 
   void set_end_time()
@@ -274,25 +212,21 @@ class Progress {
   void set_total_pixel_samples(uint64_t total_pixel_samples_)
   {
     SCOPED_LOCK(progress_mutex);
-    //update_progress([this, total_pixel_samples_](){
     total_pixel_samples = total_pixel_samples_;
-    //});
   }
 
-  double get_progress() //const
+  double get_progress()  // const
   {
     SCOPED_LOCK(progress_mutex);
     double value = 0.0;
-    //update_progress([this, &value]() {
-      if (pixel_samples > 0) {
-        double progress_percent = (double)pixel_samples / (double)total_pixel_samples;
-        if (time_limit != 0.0) {
-          double time_since_render_start = time_dt() - render_start_time;
-          progress_percent = max(progress_percent, time_since_render_start / time_limit);
-        }
-        value = min(1.0, progress_percent);
+    if (pixel_samples > 0) {
+      double progress_percent = (double)pixel_samples / (double)total_pixel_samples;
+      if (time_limit != 0.0) {
+        double time_since_render_start = time_dt() - render_start_time;
+        progress_percent = max(progress_percent, time_since_render_start / time_limit);
       }
-      //});
+      value = min(1.0, progress_percent);
+    }
 
     return value;
   }
@@ -300,10 +234,8 @@ class Progress {
   void add_samples(uint64_t pixel_samples_, int tile_sample)
   {
     SCOPED_LOCK(progress_mutex);
-    //update_progress([this, pixel_samples_, tile_sample]() {
-      pixel_samples += pixel_samples_;
-      current_tile_sample = tile_sample;
-      //});
+    pixel_samples += pixel_samples_;
+    current_tile_sample = tile_sample;
   }
 
   void add_samples_update(uint64_t pixel_samples_, int tile_sample)
@@ -315,45 +247,31 @@ class Progress {
   void add_finished_tile(bool denoised)
   {
     SCOPED_LOCK(progress_mutex);
-    //update_progress([this, denoised]() {
-      if (denoised) {
-	denoised_tiles++;
-      }
-      else {
-	rendered_tiles++;
-      }
-      //});
+    if (denoised) {
+      denoised_tiles++;
+    }
+    else {
+      rendered_tiles++;
+    }
   }
 
-  int get_current_sample() //const
+  int get_current_sample()  // const
   {
     SCOPED_LOCK(progress_mutex);
-    //int sample;
-    //update_progress([this, &sample]() {
     /* Note that the value here always belongs to the last tile that updated,
      * so it's only useful if there is only one active tile. */
-    //sample = current_tile_sample;
-      //});
     return current_tile_sample;
   }
 
-  int get_rendered_tiles() //const
+  int get_rendered_tiles()  // const
   {
     SCOPED_LOCK(progress_mutex);
-    //int tiles;
-    //update_progress([this, &tiles]() {
-    //  tiles = rendered_tiles;
-    //});
     return rendered_tiles;
   }
 
-  int get_denoised_tiles() //const
+  int get_denoised_tiles()  // const
   {
     SCOPED_LOCK(progress_mutex);
-    //int denoised; 
-    //update_progress([this, & denoised]() {
-    //  denoised = denoised_tiles;
-    //});
     return denoised_tiles;
   }
 
@@ -361,12 +279,10 @@ class Progress {
 
   void set_status(const string &status_, const string &substatus_ = "")
   {
-    if(updates) {
+    if (updates) {
       SCOPED_LOCK(progress_mutex);
-      //update_progress([this, status_, substatus_]() {
-        status = status_;
-        substatus = substatus_;
-	//});
+      status = status_;
+      substatus = substatus_;
     }
 
     set_update();
@@ -374,11 +290,9 @@ class Progress {
 
   void set_substatus(const string &substatus_)
   {
-    if(updates) {
+    if (updates) {
       SCOPED_LOCK(progress_mutex);
-      //update_progress([this, substatus_]() {
-	substatus = substatus_;
-	//});
+      substatus = substatus_;
     }
 
     set_update();
@@ -386,12 +300,10 @@ class Progress {
 
   void set_sync_status(const string &status_, const string &substatus_ = "")
   {
-    if(updates) {
+    if (updates) {
       SCOPED_LOCK(progress_mutex);
-      //update_progress([this, status_, substatus_]() {
       sync_status = status_;
       sync_substatus = substatus_;
-      //});
     }
 
     set_update();
@@ -399,29 +311,25 @@ class Progress {
 
   void set_sync_substatus(const string &substatus_)
   {
-    if(updates) {
+    if (updates) {
       SCOPED_LOCK(progress_mutex);
-      //update_progress([this, substatus_]() {
       sync_substatus = substatus_;
-      //});
     }
 
     set_update();
   }
 
-  void get_status(string &status_, string &substatus_) // const
+  void get_status(string &status_, string &substatus_)  // const
   {
     SCOPED_LOCK(progress_mutex);
-    //update_progress([this, &status_, &substatus_]() {
-      if (sync_status != "") {
-	status_ = sync_status;
-	substatus_ = sync_substatus;
-      }
-      else {
-	status_ = status;
-	substatus_ = substatus;
-      }
-      //});
+    if (sync_status != "") {
+      status_ = sync_status;
+      substatus_ = sync_substatus;
+    }
+    else {
+      status_ = status;
+      substatus_ = substatus;
+    }
   }
 
   /* callback */
@@ -430,11 +338,7 @@ class Progress {
   {
     if (updates && update_cb) {
       SCOPED_LOCK(update_mutex);
-      // Busy wait until update status is true
-      //bool can_update = true;
-      //while(!update_call.compare_exchange_weak(can_update, false)) {};
       update_cb();
-      //update_call = true;
     }
   }
 
@@ -443,17 +347,6 @@ class Progress {
     update_cb = function;
   }
 
-  // void update_progress(callback_type cb)
-  // {
-  //   // Busy wait until update status is true
-  //   bool can_update = true;
-  //   while(!update_status.compare_exchange_weak(can_update, false)) {};
-  //   if (cb) {
-  //     cb();
-  //   }
-  //   update_status = true;
-  // }
-  
  protected:
   mutable MUTEX progress_mutex;
   mutable MUTEX update_mutex;
@@ -489,7 +382,7 @@ class Progress {
   volatile bool error;
   string error_message;
 
-  // Used to enable progress updates if true
+  /* Used to enable progress updates if true */
   bool updates;
 };
 
