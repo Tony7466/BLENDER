@@ -251,7 +251,7 @@ void Volumes::begin_sync()
   ps.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z * 3);
 }
 
-void Volumes::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHandle /*res_handle*/)
+void Volumes::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHandle res_handle)
 {
   ::Material *material = BKE_object_material_get(ob, VOLUME_MATERIAL_NR);
   if (material == nullptr) {
@@ -294,7 +294,7 @@ void Volumes::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHand
      */
     enabled_ = true;
     bind_common_resources(ps);
-    ps.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z * 3);
+    ps.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z * 3, -1, res_handle);
   }
 }
 
