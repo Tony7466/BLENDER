@@ -1890,6 +1890,12 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Outline", "Convert stroke to perimeter");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 
+  prop = RNA_def_property(srna, "use_replace_color", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", GP_BRUSH_REPLACE_COLOR);
+  RNA_def_property_boolean_default(prop, false);
+  RNA_def_property_ui_text(prop, "Replace Color", "The brush will only replace Colors that are equal to the Brush's secondary Color");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+
   prop = RNA_def_property(srna, "direction", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_bitflag_sdna(prop, NULL, "sculpt_flag");
   RNA_def_property_enum_items(prop, prop_direction_items);

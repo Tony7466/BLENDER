@@ -1433,6 +1433,10 @@ def brush_basic_gpencil_vertex_settings(layout, _context, brush, *, compact=Fals
         row = layout.row(align=True)
         row.prop(gp_settings, "vertex_mode", text="Mode")
 
+    if brush.gpencil_vertex_tool == 'REPLACE':
+        row = layout.row(align=True)
+        row.prop(gp_settings, "use_replace_color", text="Only Replace Secondary")
+
 
 classes = (
     VIEW3D_MT_tools_projectpaint_clone,

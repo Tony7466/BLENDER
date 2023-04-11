@@ -460,27 +460,52 @@ static bool brush_tint_apply(tGP_BrushVertexpaintData *gso,
   return true;
 }
 
+static bool replace_color(float r_color[3], 
+                          float linear_color[3], 
+                          float check_color[3], 
+                          const bool is_checking_color)
+{
+  if (!is_checking_color) {
+    copy_v3_v3(r_color, linear_color);
+    return true;
+  }
+
+  const float color_threshhold = 0.01f;
+  if (compare_v3v3(r_color, check_color, color_threshhold)) {
+    copy_v3_v3(r_color, linear_color);
+    return true;
+  }
+
+  return false;
+}
+
 /* Replace Brush (Don't use pressure or invert). */
 static bool brush_replace_apply(tGP_BrushVertexpaintData *gso, bGPDstroke *gps, int pt_index)
 {
   Brush *brush = gso->brush;
   bGPDspoint *pt = &gps->points[pt_index];
 
+  bool changed = false;
+  const bool is_checking_color = (brush->gpencil_settings->flag & GP_BRUSH_REPLACE_COLOR);
+  float check_color[3];
+
+  srgb_to_linearrgb_v3_v3(check_color, gso->brush->secondary_rgb);
+
   /* Apply color to Stroke point. */
   if (GPENCIL_TINT_VERTEX_COLOR_STROKE(brush)) {
     if (pt->vert_color[3] > 0.0f) {
-      copy_v3_v3(pt->vert_color, gso->linear_color);
+      changed |= replace_color(pt->vert_color, gso->linear_color, check_color, is_checking_color);
     }
   }
 
   /* Apply color to Fill area (all with same color and factor). */
   if (GPENCIL_TINT_VERTEX_COLOR_FILL(brush)) {
     if (gps->vert_color_fill[3] > 0.0f) {
-      copy_v3_v3(gps->vert_color_fill, gso->linear_color);
+      changed |= replace_color(pt->vert_color, gso->linear_color, check_color, is_checking_color);
     }
   }
 
-  return true;
+  return changed;
 }
 
 /* Get surrounding color. */
