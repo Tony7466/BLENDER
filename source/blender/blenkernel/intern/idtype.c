@@ -222,6 +222,7 @@ uint64_t BKE_idtype_idcode_to_idfilter(const short idcode)
     CASE_IDFILTER(CF);
     CASE_IDFILTER(CU_LEGACY);
     CASE_IDFILTER(GD_LEGACY);
+    CASE_IDFILTER(GP);
     CASE_IDFILTER(GR);
     CASE_IDFILTER(CV);
     CASE_IDFILTER(IM);
@@ -255,7 +256,6 @@ uint64_t BKE_idtype_idcode_to_idfilter(const short idcode)
     CASE_IDFILTER(WM);
     CASE_IDFILTER(WO);
     CASE_IDFILTER(WS);
-    CASE_IDFILTER(GP);
   }
 
   BLI_assert_unreachable();
@@ -281,6 +281,7 @@ short BKE_idtype_idcode_from_idfilter(const uint64_t idfilter)
     CASE_IDFILTER(CF);
     CASE_IDFILTER(CU_LEGACY);
     CASE_IDFILTER(GD_LEGACY);
+    CASE_IDFILTER(GP);
     CASE_IDFILTER(GR);
     CASE_IDFILTER(CV);
     CASE_IDFILTER(IM);
@@ -337,6 +338,7 @@ int BKE_idtype_idcode_to_index(const short idcode)
     CASE_IDINDEX(CF);
     CASE_IDINDEX(CU_LEGACY);
     CASE_IDINDEX(GD_LEGACY);
+    CASE_IDINDEX(GP);
     CASE_IDINDEX(GR);
     CASE_IDINDEX(CV);
     CASE_IDINDEX(IM);
@@ -370,7 +372,6 @@ int BKE_idtype_idcode_to_index(const short idcode)
     CASE_IDINDEX(WM);
     CASE_IDINDEX(WO);
     CASE_IDINDEX(WS);
-    CASE_IDINDEX(GP);
   }
 
   /* Special naughty boy... */
@@ -397,6 +398,7 @@ short BKE_idtype_idcode_from_index(const int index)
     CASE_IDCODE(CF);
     CASE_IDCODE(CU_LEGACY);
     CASE_IDCODE(GD_LEGACY);
+    CASE_IDCODE(GP);
     CASE_IDCODE(GR);
     CASE_IDCODE(CV);
     CASE_IDCODE(IM);
