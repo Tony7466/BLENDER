@@ -672,7 +672,7 @@ static const char *info_statusbar_string(Main *bmain,
     if (info[0]) {
       ofs += BLI_snprintf_rlen(info + ofs, len - ofs, " | ");
     }
-    ofs += BLI_snprintf_rlen(info + ofs, len - ofs, TIP_("%s"), BKE_blender_version_string());
+    ofs += BLI_snprintf_rlen(info + ofs, len - ofs, TIP_("v%s"), BKE_blender_version_string());
   }
 
   return info;
