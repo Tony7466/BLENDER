@@ -42,6 +42,10 @@ class BaseTextureMethod {
   virtual void ensure_gpu_textures_allocation() = 0;
 };
 
+/**
+ * Uses a single texture that covers the area. Every zoom/pan change requires a full
+ * update of the texture.
+ */
 class OneTexture : public BaseTextureMethod {
  public:
   OneTexture(IMAGE_InstanceData *instance_data) : BaseTextureMethod(instance_data) {}
@@ -91,6 +95,8 @@ class OneTexture : public BaseTextureMethod {
 /**
  * \brief Screen space method using a multiple textures covering the region.
  *
+ * This method improves panning speed, but has some drawing artifacts and
+ * therefore isn't selected.
  */
 template<size_t Divisions> class ScreenTileTextures : public BaseTextureMethod {
  public:
