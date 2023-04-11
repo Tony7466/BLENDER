@@ -1181,6 +1181,15 @@ void BKE_ntree_update_tag_interface(bNodeTree *ntree)
   add_tree_tag(ntree, NTREE_CHANGED_INTERFACE);
 }
 
+void BKE_ntree_update_tag_signature_changed(bNodeTree *ntree, bNodeFunctionSignature *sig)
+{
+  /* TODO what needs to happen here for general signatures?
+   * Flag in bNodeFunctionSignature itself (runtime data),
+   * then propagate that to parent tree in BKE_ntree_update_main_tree.
+   */
+  add_tree_tag(ntree, NTREE_CHANGED_INTERFACE);
+}
+
 void BKE_ntree_update_tag_parent_change(bNodeTree *ntree, bNode *node)
 {
   add_node_tag(ntree, node, NTREE_CHANGED_PARENT);

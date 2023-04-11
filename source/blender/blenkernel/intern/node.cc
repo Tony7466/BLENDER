@@ -122,6 +122,209 @@ static void free_localized_node_groups(bNodeTree *ntree);
 static void node_socket_interface_free(bNodeTree * /*ntree*/,
                                        bNodeSocket *sock,
                                        const bool do_id_user);
+static void node_socket_set_typeinfo(bNodeTree *ntree,
+                                     bNodeSocket *sock,
+                                     bNodeSocketType *typeinfo);
+
+/* ************ NODE FUNCTION SIGNATURE *************** */
+
+static bNodeSocket *make_signature_socket(bNodeTree *ntree,
+                                          bNodeFunctionSignature *sig,
+                                          const eNodeSocketInOut in_out,
+                                          const char *idname,
+                                          const char *name)
+{
+  bNodeSocketType *stype = nodeSocketTypeFind(idname);
+  if (stype == nullptr) {
+    return nullptr;
+  }
+
+  bNodeSocket *sock = MEM_cnew<bNodeSocket>("socket template");
+  sock->runtime = MEM_new<bNodeSocketRuntime>(__func__);
+  BLI_strncpy(sock->idname, stype->idname, sizeof(sock->idname));
+  sock->in_out = in_out;
+  sock->type = SOCK_CUSTOM; /* int type undefined by default */
+  node_socket_set_typeinfo(ntree, sock, stype);
+
+  /* assign new unique index */
+  const int own_index = sig->cur_index++;
+  /* use the own_index as socket identifier */
+  if (in_out == SOCK_IN) {
+    BLI_snprintf(sock->identifier, MAX_NAME, "Input_%d", own_index);
+  }
+  else {
+    BLI_snprintf(sock->identifier, MAX_NAME, "Output_%d", own_index);
+  }
+
+  sock->limit = (in_out == SOCK_IN ? 1 : 0xFFF);
+
+  BLI_strncpy(sock->name, name, NODE_MAXSTR);
+  sock->storage = nullptr;
+  sock->flag |= SOCK_COLLAPSED;
+
+  return sock;
+}
+
+bNodeSocket *nodeFunctionSignatureFindSocket(bNodeFunctionSignature *sig,
+                                             const eNodeSocketInOut in_out,
+                                             const char *identifier)
+{
+  ListBase *sockets = (in_out == SOCK_IN) ? &sig->inputs : &sig->outputs;
+  LISTBASE_FOREACH (bNodeSocket *, iosock, sockets) {
+    if (STREQ(iosock->identifier, identifier)) {
+      return iosock;
+    }
+  }
+  return nullptr;
+}
+
+bNodeSocket *nodeFunctionSignatureAddSocket(bNodeTree *ntree,
+                                            bNodeFunctionSignature *sig,
+                                            const eNodeSocketInOut in_out,
+                                            const char *idname,
+                                            const char *name)
+{
+  bNodeSocket *iosock = make_signature_socket(ntree, sig, in_out, idname, name);
+  if (in_out == SOCK_IN) {
+    BLI_addtail(&sig->inputs, iosock);
+  }
+  else if (in_out == SOCK_OUT) {
+    BLI_addtail(&sig->outputs, iosock);
+  }
+  BKE_ntree_update_tag_signature_changed(ntree, sig);
+  return iosock;
+}
+
+bNodeSocket *nodeFunctionSignatureInsertSocket(bNodeTree *ntree,
+                                               bNodeFunctionSignature *sig,
+                                               const eNodeSocketInOut in_out,
+                                               const char *idname,
+                                               bNodeSocket *next_sock,
+                                               const char *name)
+{
+  bNodeSocket *iosock = make_signature_socket(ntree, sig, in_out, idname, name);
+  if (in_out == SOCK_IN) {
+    BLI_insertlinkbefore(&sig->inputs, next_sock, iosock);
+  }
+  else if (in_out == SOCK_OUT) {
+    BLI_insertlinkbefore(&sig->outputs, next_sock, iosock);
+  }
+  BKE_ntree_update_tag_signature_changed(ntree, sig);
+  return iosock;
+}
+
+bNodeSocket *nodeFunctionSignatureCopySocket(bNodeTree *ntree,
+                                             bNodeFunctionSignature *sig,
+                                             const bNode *from_node,
+                                             const bNodeSocket *from_sock)
+{
+  return nodeFunctionSignatureCopySocketEx(
+      ntree, sig, from_node, from_sock, from_sock->idname, from_sock->name);
+}
+
+bNodeSocket *nodeFunctionSignatureCopySocketEx(bNodeTree *ntree,
+                                               bNodeFunctionSignature *sig,
+                                               const bNode *from_node,
+                                               const bNodeSocket *from_sock,
+                                               const char *idname,
+                                               const char *name)
+{
+  bNodeSocket *iosock = nodeFunctionSignatureAddSocket(
+      ntree, sig, static_cast<eNodeSocketInOut>(from_sock->in_out), idname, DATA_(name));
+  if (iosock) {
+    if (iosock->typeinfo->interface_from_socket) {
+      iosock->typeinfo->interface_from_socket(ntree, iosock, from_node, from_sock);
+    }
+  }
+  return iosock;
+}
+
+bNodeSocket *nodeFunctionSignatureCopyInsertSocket(bNodeTree *ntree,
+                                                   bNodeFunctionSignature *sig,
+                                                   bNodeSocket *next_sock,
+                                                   const bNode *from_node,
+                                                   const bNodeSocket *from_sock)
+{
+  bNodeSocket *iosock = nodeFunctionSignatureInsertSocket(
+      ntree,
+      sig,
+      static_cast<eNodeSocketInOut>(from_sock->in_out),
+      from_sock->idname,
+      next_sock,
+      from_sock->name);
+  if (iosock) {
+    if (iosock->typeinfo->interface_from_socket) {
+      iosock->typeinfo->interface_from_socket(ntree, iosock, from_node, from_sock);
+    }
+  }
+  return iosock;
+}
+
+void nodeFunctionSignatureRemoveSocket(bNodeTree *ntree,
+                                       bNodeFunctionSignature *sig,
+                                       bNodeSocket *sock)
+{
+  /* this is fast, this way we don't need an in_out argument */
+  BLI_remlink(&sig->inputs, sock);
+  BLI_remlink(&sig->outputs, sock);
+
+  node_socket_interface_free(ntree, sock, true);
+  MEM_freeN(sock);
+
+  BKE_ntree_update_tag_signature_changed(ntree, sig);
+}
+
+void nodeFunctionSignatureClear(bNodeTree *ntree,
+                                bNodeFunctionSignature *sig,
+                                eNodeSocketInOut in_out)
+{
+  if (in_out == SOCK_IN) {
+    LISTBASE_FOREACH (bNodeSocket *, sock, &sig->inputs) {
+      node_socket_interface_free(ntree, sock, true);
+    }
+    BLI_freelistN(&sig->inputs);
+  }
+  else if (in_out == SOCK_OUT) {
+    LISTBASE_FOREACH (bNodeSocket *, sock, &sig->outputs) {
+      node_socket_interface_free(ntree, sock, true);
+    }
+    BLI_freelistN(&sig->outputs);
+  }
+  BKE_ntree_update_tag_signature_changed(ntree, sig);
+}
+
+void nodeFunctionSignatureMoveSocket(bNodeTree *ntree,
+                                     bNodeFunctionSignature *sig,
+                                     eNodeSocketInOut in_out,
+                                     int from_index,
+                                     int to_index)
+{
+  ListBase *socket_list = (in_out == SOCK_IN) ? &sig->inputs : &sig->outputs;
+
+  if (from_index == to_index) {
+    return;
+  }
+  if (from_index < 0 || to_index < 0) {
+    return;
+  }
+
+  bNodeSocket *sock = (bNodeSocket *)BLI_findlink(socket_list, from_index);
+  if (to_index < from_index) {
+    bNodeSocket *nextsock = (bNodeSocket *)BLI_findlink(socket_list, to_index);
+    if (nextsock) {
+      BLI_remlink(socket_list, sock);
+      BLI_insertlinkbefore(socket_list, nextsock, sock);
+    }
+  }
+  else {
+    bNodeSocket *prevsock = (bNodeSocket *)BLI_findlink(socket_list, to_index);
+    if (prevsock) {
+      BLI_remlink(socket_list, sock);
+      BLI_insertlinkafter(socket_list, prevsock, sock);
+    }
+  }
+  BKE_ntree_update_tag_signature_changed(ntree, sig);
+}
 
 static void ntree_init_data(ID *id)
 {

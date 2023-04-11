@@ -3280,6 +3280,194 @@ static void rna_NodeSocketStandard_value_and_relation_update(struct bContext *C,
   DEG_relations_tag_update(bmain);
 }
 
+/* ******** Node Function Signature ******** */
+
+static int rna_NodeFunctionSignature_active_input_get(PointerRNA *ptr)
+{
+  bNodeFunctionSignature *sig = (bNodeFunctionSignature *)ptr->data;
+  int index = 0;
+  LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, &sig->inputs, index) {
+    if (socket->flag & SELECT) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+static void rna_NodeFunctionSignature_active_input_set(PointerRNA *ptr, int value)
+{
+  bNodeFunctionSignature *sig = (bNodeFunctionSignature *)ptr->data;
+  int index = 0;
+  LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, &sig->inputs, index) {
+    SET_FLAG_FROM_TEST(socket->flag, index == value, SELECT);
+  }
+}
+
+static int rna_NodeFunctionSignature_active_output_get(PointerRNA *ptr)
+{
+  bNodeFunctionSignature *sig = (bNodeFunctionSignature *)ptr->data;
+  int index = 0;
+  LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, &sig->outputs, index) {
+    if (socket->flag & SELECT) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+static void rna_NodeFunctionSignature_active_output_set(PointerRNA *ptr, int value)
+{
+  bNodeFunctionSignature *sig = (bNodeFunctionSignature *)ptr->data;
+  int index = 0;
+  LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, &sig->outputs, index) {
+    SET_FLAG_FROM_TEST(socket->flag, index == value, SELECT);
+  }
+}
+
+static bNodeSocket *rna_NodeFunctionSignature_inputs_new(ID *id,
+                                                         bNodeFunctionSignature *sig,
+                                                         Main *bmain,
+                                                         ReportList *reports,
+                                                         const char *type,
+                                                         const char *name)
+{
+  bNodeTree *ntree = (bNodeTree *)id;
+  if (!rna_NodeTree_check(ntree, reports)) {
+    return NULL;
+  }
+
+  bNodeSocket *sock = nodeFunctionSignatureAddSocket(ntree, sig, SOCK_IN, type, name);
+
+  if (sock == NULL) {
+    BKE_report(reports, RPT_ERROR, "Unable to create socket");
+  }
+  else {
+    ED_node_tree_propagate_change(NULL, bmain, ntree);
+    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+  }
+
+  return sock;
+}
+
+static bNodeSocket *rna_NodeFunctionSignature_outputs_new(ID *id,
+                                                          bNodeFunctionSignature *sig,
+                                                          Main *bmain,
+                                                          ReportList *reports,
+                                                          const char *type,
+                                                          const char *name)
+{
+  bNodeTree *ntree = (bNodeTree *)id;
+  if (!rna_NodeTree_check(ntree, reports)) {
+    return NULL;
+  }
+
+  bNodeSocket *sock = nodeFunctionSignatureAddSocket(ntree, sig, SOCK_OUT, type, name);
+
+  if (sock == NULL) {
+    BKE_report(reports, RPT_ERROR, "Unable to create socket");
+  }
+  else {
+    ED_node_tree_propagate_change(NULL, bmain, ntree);
+    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+  }
+
+  return sock;
+}
+
+static void rna_NodeFunctionSignature_socket_remove(ID *id,
+                                                    bNodeFunctionSignature *sig,
+                                                    Main *bmain,
+                                                    ReportList *reports,
+                                                    bNodeSocket *sock)
+{
+  bNodeTree *ntree = (bNodeTree *)id;
+  if (!rna_NodeTree_check(ntree, reports)) {
+    return;
+  }
+
+  if (BLI_findindex(&sig->inputs, sock) == -1 && BLI_findindex(&sig->outputs, sock) == -1) {
+    BKE_reportf(reports, RPT_ERROR, "Unable to locate socket '%s' in node", sock->identifier);
+  }
+  else {
+    nodeFunctionSignatureRemoveSocket(ntree, sig, sock);
+
+    ED_node_tree_propagate_change(NULL, bmain, ntree);
+    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+  }
+}
+
+static void rna_NodeFunctionSignature_inputs_clear(ID *id,
+                                                   bNodeFunctionSignature *sig,
+                                                   Main *bmain,
+                                                   ReportList *reports)
+{
+  bNodeTree *ntree = (bNodeTree *)id;
+  if (!rna_NodeTree_check(ntree, reports)) {
+    return;
+  }
+
+  nodeFunctionSignatureClear(ntree, sig, SOCK_IN);
+
+  ED_node_tree_propagate_change(NULL, bmain, ntree);
+  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+}
+
+static void rna_NodeFunctionSignature_outputs_clear(ID *id,
+                                                    bNodeFunctionSignature *sig,
+                                                    Main *bmain,
+                                                    ReportList *reports)
+{
+  bNodeTree *ntree = (bNodeTree *)id;
+  if (!rna_NodeTree_check(ntree, reports)) {
+    return;
+  }
+
+  nodeFunctionSignatureClear(ntree, sig, SOCK_OUT);
+
+  ED_node_tree_propagate_change(NULL, bmain, ntree);
+  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+}
+
+static void rna_NodeFunctionSignature_inputs_move(ID *id,
+                                                  bNodeFunctionSignature *sig,
+                                                  Main *bmain,
+                                                  ReportList *reports,
+                                                  int from_index,
+                                                  int to_index)
+{
+  bNodeTree *ntree = (bNodeTree *)id;
+  if (!rna_NodeTree_check(ntree, reports)) {
+    return;
+  }
+
+  nodeFunctionSignatureMoveSocket(ntree, sig, SOCK_IN, from_index, to_index);
+
+  BKE_ntree_update_tag_interface(ntree);
+
+  ED_node_tree_propagate_change(NULL, bmain, ntree);
+  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+}
+
+static void rna_NodeFunctionSignature_outputs_move(ID *id,
+                                                   bNodeFunctionSignature *sig,
+                                                   Main *bmain,
+                                                   ReportList *reports,
+                                                   int from_index,
+                                                   int to_index)
+{
+  bNodeTree *ntree = (bNodeTree *)id;
+  if (!rna_NodeTree_check(ntree, reports)) {
+    return;
+  }
+
+  nodeFunctionSignatureMoveSocket(ntree, sig, SOCK_OUT, from_index, to_index);
+
+  BKE_ntree_update_tag_interface(ntree);
+
+  ED_node_tree_propagate_change(NULL, bmain, ntree);
+  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+}
+
 /* ******** Node Types ******** */
 
 static void rna_NodeInternalSocketTemplate_name_get(PointerRNA *ptr, char *value)
@@ -5258,6 +5446,100 @@ static void def_fn_bind(StructRNA *srna)
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Node Tree", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_FunctionNodeBind_update");
+}
+
+static void rna_def_node_function_signature_api(BlenderRNA *brna, PropertyRNA *cprop, int in_out)
+{
+  StructRNA *srna;
+  PropertyRNA *parm;
+  FunctionRNA *func;
+  const char *structtype = (in_out == SOCK_IN ? "NodeFunctionSignatureInputs" : "NodeFunctionSignatureOutputs");
+  const char *uiname = (in_out == SOCK_IN ? "Node Function Signature Inputs" : "Node Function Signature Outputs");
+  const char *newfunc = (in_out == SOCK_IN ? "rna_NodeFunctionSignature_inputs_new" :
+                                             "rna_NodeFunctionSignature_outputs_new");
+  const char *removefunc = "rna_NodeFunctionSignature_socket_remove";
+  const char *clearfunc = (in_out == SOCK_IN ? "rna_NodeFunctionSignature_inputs_clear" :
+                                               "rna_NodeFunctionSignature_outputs_clear");
+  const char *movefunc = (in_out == SOCK_IN ? "rna_NodeFunctionSignature_inputs_move" :
+                                              "rna_NodeFunctionSignature_outputs_move");
+
+  RNA_def_property_srna(cprop, structtype);
+  srna = RNA_def_struct(brna, structtype, NULL);
+  RNA_def_struct_sdna(srna, "bNodeFunctionSignature");
+  RNA_def_struct_ui_text(srna, uiname, "Collection of Node Socket Declarations");
+
+  func = RNA_def_function(srna, "new", newfunc);
+  RNA_def_function_ui_description(func, "Add a socket to this signature");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
+  parm = RNA_def_string(func, "type", NULL, MAX_NAME, "Type", "Data type");
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_string(func, "name", NULL, MAX_NAME, "Name", "");
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  /* return value */
+  parm = RNA_def_pointer(func, "socket", "NodeSocketInterface", "", "New socket");
+  RNA_def_function_return(func, parm);
+
+  func = RNA_def_function(srna, "remove", removefunc);
+  RNA_def_function_ui_description(func, "Remove a socket from this signature");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
+  parm = RNA_def_pointer(func, "socket", "NodeSocketInterface", "", "The socket to remove");
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+
+  func = RNA_def_function(srna, "clear", clearfunc);
+  RNA_def_function_ui_description(func, "Remove all sockets from this signature");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
+
+  func = RNA_def_function(srna, "move", movefunc);
+  RNA_def_function_ui_description(func, "Move a socket to another position");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
+  parm = RNA_def_int(
+      func, "from_index", -1, 0, INT_MAX, "From Index", "Index of the socket to move", 0, 10000);
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_int(
+      func, "to_index", -1, 0, INT_MAX, "To Index", "Target index for the socket", 0, 10000);
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+}
+
+static void rna_def_node_function_signature(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "NodeFunctionSignature", NULL);
+  RNA_def_struct_ui_text(srna, "Node Function Signature", "Declaration of inputs and outputs of a node function");
+  RNA_def_struct_sdna(srna, "bNodeFunctionSignature");
+
+  prop = RNA_def_property(srna, "inputs", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, NULL, "inputs", NULL);
+  RNA_def_property_struct_type(prop, "NodeSocketInterface");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Inputs", "Function inputs");
+  rna_def_node_function_signature_api(brna, prop, SOCK_IN);
+
+  prop = RNA_def_property(srna, "active_input", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_funcs(prop,
+                             "rna_NodeFunctionSignature_active_input_get",
+                             "rna_NodeFunctionSignature_active_input_set",
+                             NULL);
+  RNA_def_property_ui_text(prop, "Active Input", "Index of the active input");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_NODE, NULL);
+
+  prop = RNA_def_property(srna, "outputs", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, NULL, "outputs", NULL);
+  RNA_def_property_struct_type(prop, "NodeSocketInterface");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Outputs", "Function outputs");
+  rna_def_node_function_signature_api(brna, prop, SOCK_OUT);
+
+  prop = RNA_def_property(srna, "active_output", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_funcs(prop,
+                             "rna_NodeFunctionSignature_active_output_get",
+                             "rna_NodeFunctionSignature_active_output_set",
+                             NULL);
+  RNA_def_property_ui_text(prop, "Active Output", "Index of the active output");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_NODE, NULL);
 }
 
 static void def_fn_evaluate(StructRNA *srna)
@@ -13170,6 +13452,7 @@ void RNA_def_nodetree(BlenderRNA *brna)
 
   rna_def_node_socket(brna);
   rna_def_node_socket_interface(brna);
+  rna_def_node_function_signature(brna);
 
   rna_def_node(brna);
   rna_def_node_link(brna);

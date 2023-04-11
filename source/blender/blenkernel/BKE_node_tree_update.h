@@ -54,6 +54,8 @@ void BKE_ntree_update_tag_active_output_changed(struct bNodeTree *ntree);
 void BKE_ntree_update_tag_missing_runtime_data(struct bNodeTree *ntree);
 /** Used when the interface sockets/values have changed. */
 void BKE_ntree_update_tag_interface(struct bNodeTree *ntree);
+/** Used when a signature is changed. */
+void BKE_ntree_update_tag_signature_changed(struct bNodeTree *ntree, struct bNodeFunctionSignature *sig);
 /** Used when change parent node. */
 void BKE_ntree_update_tag_parent_change(struct bNodeTree *ntree, struct bNode *node);
 /** Used when an id data block changed that might be used by nodes that need to be updated. */

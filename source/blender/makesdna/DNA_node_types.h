@@ -1626,6 +1626,14 @@ typedef struct NodeShaderMix {
   char _pad[3];
 } NodeShaderMix;
 
+typedef struct bNodeFunctionSignature {
+  ListBase inputs;
+  ListBase outputs;
+  /* Unique ID counter */
+  int cur_index;
+  int _pad;
+} bNodeFunctionSignature;
+
 /* script node mode */
 #define NODE_SCRIPT_INTERNAL 0
 #define NODE_SCRIPT_EXTERNAL 1
