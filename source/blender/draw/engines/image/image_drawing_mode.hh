@@ -21,11 +21,78 @@ namespace blender::draw::image_engine {
 
 constexpr float EPSILON_UV_BOUNDS = 0.00001f;
 
+class BaseTextureMethod {
+ protected:
+  IMAGE_InstanceData *instance_data;
+
+ protected:
+  BaseTextureMethod(IMAGE_InstanceData *instance_data) : instance_data(instance_data) {}
+
+ public:
+  /**
+   * \brief Ensure enough texture infos are allocated in `instance_data`.
+   */
+  virtual void ensure_texture_infos() = 0;
+
+  /**
+   * \brief Update the uv and region bounds of all texture_infos of instance_data.
+   */
+  virtual void update_bounds(const ARegion *region) = 0;
+
+  virtual void ensure_gpu_textures_allocation() = 0;
+};
+
+class OneTexture : public BaseTextureMethod {
+ public:
+  OneTexture(IMAGE_InstanceData *instance_data) : BaseTextureMethod(instance_data) {}
+  void ensure_texture_infos() override
+  {
+    instance_data->texture_infos.resize(1);
+  }
+
+  void update_bounds(const ARegion *region) override
+  {
+    float4x4 mat = math::invert(float4x4(instance_data->ss_to_texture));
+    float2 region_uv_min = math::transform_point(mat, float3(0.0f, 0.0f, 0.0f)).xy();
+    float2 region_uv_max = math::transform_point(mat, float3(1.0f, 1.0f, 0.0f)).xy();
+
+    TextureInfo &texture_info = instance_data->texture_infos[0];
+    texture_info.tile_id = int2(0);
+    texture_info.need_full_update = false;
+    rctf new_clipping_uv_bounds;
+    BLI_rctf_init(&new_clipping_uv_bounds,
+                  region_uv_min.x,
+                  region_uv_max.x,
+                  region_uv_min.y,
+                  region_uv_max.y);
+
+    if (memcmp(&new_clipping_uv_bounds, &texture_info.clipping_uv_bounds, sizeof(rctf))) {
+      texture_info.clipping_uv_bounds = new_clipping_uv_bounds;
+      texture_info.need_full_update = true;
+    }
+
+    rcti new_clipping_bounds;
+    BLI_rcti_init(&new_clipping_bounds, 0, region->winx, 0, region->winy);
+    if (memcmp(&new_clipping_bounds, &texture_info.clipping_bounds, sizeof(rcti))) {
+      texture_info.clipping_bounds = new_clipping_bounds;
+      texture_info.need_full_update = true;
+    }
+  }
+
+  void ensure_gpu_textures_allocation() override
+  {
+    TextureInfo &texture_info = instance_data->texture_infos[0];
+    int2 texture_size = int2(BLI_rcti_size_x(&texture_info.clipping_bounds),
+                             BLI_rcti_size_y(&texture_info.clipping_bounds));
+    texture_info.ensure_gpu_texture(texture_size);
+  }
+};
+
 /**
  * \brief Screen space method using a multiple textures covering the region.
  *
  */
-template<size_t Divisions> class ScreenTileTextures {
+template<size_t Divisions> class ScreenTileTextures : public BaseTextureMethod {
  public:
   static const size_t TexturesPerDimension = Divisions + 1;
   static const size_t TexturesRequired = TexturesPerDimension * TexturesPerDimension;
@@ -42,15 +109,13 @@ template<size_t Divisions> class ScreenTileTextures {
     int2 tile_id;
   };
 
-  IMAGE_InstanceData *instance_data;
-
  public:
-  ScreenTileTextures(IMAGE_InstanceData *instance_data) : instance_data(instance_data) {}
+  ScreenTileTextures(IMAGE_InstanceData *instance_data) : BaseTextureMethod(instance_data) {}
 
   /**
    * \brief Ensure enough texture infos are allocated in `instance_data`.
    */
-  void ensure_texture_infos()
+  void ensure_texture_infos() override
   {
     instance_data->texture_infos.resize(TexturesRequired);
   }
@@ -58,7 +123,7 @@ template<size_t Divisions> class ScreenTileTextures {
   /**
    * \brief Update the uv and region bounds of all texture_infos of instance_data.
    */
-  void update_bounds(const ARegion *region)
+  void update_bounds(const ARegion *region) override
   {
     /* determine uv_area of the region. */
     Vector<TextureInfo *> unassigned_textures;
@@ -91,7 +156,7 @@ template<size_t Divisions> class ScreenTileTextures {
     return texture_size;
   }
 
-  void ensure_gpu_textures_allocation()
+  void ensure_gpu_textures_allocation() override
   {
     int2 texture_size = gpu_texture_size();
     for (TextureInfo &info : instance_data->texture_infos) {
