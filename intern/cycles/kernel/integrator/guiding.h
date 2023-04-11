@@ -70,7 +70,8 @@ ccl_device_forceinline void guiding_record_surface_bounce(KernelGlobals kg,
   }
   const float min_roughness = safe_sqrtf(fminf(roughness.x, roughness.y));
   const bool is_delta = (min_roughness == 0.0f);
-  const float3 weight_rgb = spectrum_to_rgb(weight);
+  const float3 weight_rgb = spectrum_to_rgb(
+      kg, state, INTEGRATOR_STATE(state, path, flag), weight);
   const float3 normal = clamp(N, -one_float3(), one_float3());
 
   kernel_assert(state->guiding.path_segment != nullptr);
@@ -97,7 +98,7 @@ ccl_device_forceinline void guiding_record_surface_emission(KernelGlobals kg,
   if (!kernel_data.integrator.train_guiding) {
     return;
   }
-  const float3 Le_rgb = spectrum_to_rgb(Le);
+  const float3 Le_rgb = spectrum_to_rgb(kg, state, INTEGRATOR_STATE(state, path, flag), Le);
 
   openpgl::cpp::SetDirectContribution(state->guiding.path_segment, guiding_vec3f(Le_rgb));
   openpgl::cpp::SetMiWeight(state->guiding.path_segment, mis_weight);
@@ -176,7 +177,8 @@ ccl_device_forceinline void guiding_record_bssrdf_bounce(KernelGlobals kg,
     return;
   }
   const float3 normal = clamp(N, -one_float3(), one_float3());
-  const float3 weight_rgb = spectrum_to_rgb(weight * albedo);
+  const float3 weight_rgb = spectrum_to_rgb(
+      kg, state, INTEGRATOR_STATE(state, path, flag), weight * albedo);
 
   kernel_assert(state->guiding.path_segment != nullptr);
 
@@ -230,7 +232,8 @@ ccl_device_forceinline void guiding_record_volume_bounce(KernelGlobals kg,
   if (!kernel_data.integrator.train_guiding) {
     return;
   }
-  const float3 weight_rgb = spectrum_to_rgb(weight);
+  const float3 weight_rgb = spectrum_to_rgb(
+      kg, state, INTEGRATOR_STATE(state, path, flag), weight);
   const float3 normal = make_float3(0.0f, 0.0f, 1.0f);
 
   kernel_assert(state->guiding.path_segment != nullptr);
@@ -286,7 +289,7 @@ ccl_device_forceinline void guiding_record_volume_emission(KernelGlobals kg,
   }
 
   if (state->guiding.path_segment) {
-    const float3 Le_rgb = spectrum_to_rgb(Le);
+    const float3 Le_rgb = spectrum_to_rgb(kg, state, INTEGRATOR_STATE(state, path, flag), Le);
 
     openpgl::cpp::SetDirectContribution(state->guiding.path_segment, guiding_vec3f(Le_rgb));
     openpgl::cpp::SetMiWeight(state->guiding.path_segment, 1.0f);
@@ -342,7 +345,7 @@ ccl_device_forceinline void guiding_record_background(KernelGlobals kg,
     return;
   }
 
-  const float3 L_rgb = spectrum_to_rgb(L);
+  const float3 L_rgb = spectrum_to_rgb(kg, state, INTEGRATOR_STATE(state, path, flag), L);
   const float3 ray_P = INTEGRATOR_STATE(state, ray, P);
   const float3 ray_D = INTEGRATOR_STATE(state, ray, D);
   const float3 P = ray_P + (1e6f) * ray_D;
@@ -372,7 +375,8 @@ ccl_device_forceinline void guiding_record_direct_light(KernelGlobals kg,
     const Spectrum Lo = safe_divide_color(INTEGRATOR_STATE(state, shadow_path, throughput),
                                           INTEGRATOR_STATE(state, shadow_path, unlit_throughput));
 
-    const float3 Lo_rgb = spectrum_to_rgb(Lo);
+    const float3 Lo_rgb = spectrum_to_rgb(
+        kg, state, INTEGRATOR_STATE(state, shadow_path, flag), Lo);
     openpgl::cpp::AddScatteredContribution(state->shadow_path.path_segment, guiding_vec3f(Lo_rgb));
   }
 #endif

@@ -510,7 +510,7 @@ ccl_device int surface_shader_bsdf_guided_sample_closure(KernelGlobals kg,
       if (sd->num_closure > 1) {
         float sweight = sc->sample_weight;
         *unguided_bsdf_pdf = _surface_shader_bsdf_eval_mis(
-            kg, sd, *wo, sc, bsdf_eval, (*unguided_bsdf_pdf) * sweight, sweight, 0);
+            kg, state, sd, *wo, sc, bsdf_eval, (*unguided_bsdf_pdf) * sweight, sweight, 0);
         kernel_assert(reduce_min(bsdf_eval_sum(bsdf_eval)) >= 0.0f);
       }
       *bsdf_pdf = *unguided_bsdf_pdf;

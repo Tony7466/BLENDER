@@ -1097,12 +1097,16 @@ ccl_device VolumeIntegrateEvent volume_integrate(KernelGlobals kg,
          * contribution will contribute to the position of the current/previous path segment. The
          * unlit_throughput has to be adjusted to include the scattering at the previous segment.
          */
-        float3 scatterEval = one_float3();
+        Spectrum scatter_eval = one_spectrum();
         if (state->guiding.path_segment) {
-          pgl_vec3f scatteringWeight = state->guiding.path_segment->scatteringWeight;
-          scatterEval = make_float3(scatteringWeight.x, scatteringWeight.y, scatteringWeight.z);
+          pgl_vec3f scattering_weight = state->guiding.path_segment->scatteringWeight;
+          scatter_eval = rgb_to_spectrum(
+              kg,
+              state,
+              INTEGRATOR_STATE(state, path, flag),
+              make_float3(scattering_weight.x, scattering_weight.y, scattering_weight.z));
         }
-        unlit_throughput /= scatterEval;
+        unlit_throughput /= scatter_eval;
         unlit_throughput *= continuation_probability;
         rand_phase_guiding = path_state_rng_1D(
             kg, &rng_state, PRNG_VOLUME_PHASE_GUIDING_EQUIANGULAR);
