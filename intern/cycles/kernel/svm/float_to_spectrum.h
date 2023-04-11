@@ -3,7 +3,7 @@
 
 CCL_NAMESPACE_BEGIN
 
-ccl_device void svm_node_float_to_spectrum(float *stack,
+ccl_device void svm_node_float_to_spectrum(ccl_private float *stack,
                                            uint in_float_offset,
                                            uint out_spectrum_offset)
 {

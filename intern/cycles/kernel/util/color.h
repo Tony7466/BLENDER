@@ -96,6 +96,7 @@ rgb_to_spectrum(KernelGlobals kg, ConstIntegratorGenericState state, int32_t pat
 #endif
 }
 
+#ifndef __KERNEL_METAL__
 ccl_device_inline Spectrum rgb_to_spectrum(KernelGlobals kg,
                                            std::nullptr_t state,
                                            int32_t path_flag,
@@ -103,6 +104,7 @@ ccl_device_inline Spectrum rgb_to_spectrum(KernelGlobals kg,
 {
   return zero_spectrum();
 }
+#endif
 
 ccl_device float3 wavelength_to_xyz(KernelGlobals kg, float wavelength)
 {
@@ -157,6 +159,7 @@ spectrum_to_rgb(KernelGlobals kg, ConstIntegratorGenericState state, int32_t pat
 #endif
 }
 
+#ifndef __KERNEL_METAL__
 ccl_device_inline float3 spectrum_to_rgb(KernelGlobals kg,
                                          std::nullptr_t state,
                                          int32_t path_flag,
@@ -164,6 +167,7 @@ ccl_device_inline float3 spectrum_to_rgb(KernelGlobals kg,
 {
   return zero_float3();
 }
+#endif
 
 template<typename ConstIntegratorGenericState>
 ccl_device float spectrum_to_gray(KernelGlobals kg,
