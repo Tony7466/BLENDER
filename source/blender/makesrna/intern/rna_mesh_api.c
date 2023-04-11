@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation. All rights reserved. */
+ * Copyright 2009 Blender Foundation */
 
 /** \file
  * \ingroup RNA
@@ -45,7 +45,7 @@ static const char *rna_Mesh_unit_test_compare(struct Mesh *mesh,
 static void rna_Mesh_create_normals_split(Mesh *mesh)
 {
   if (!CustomData_has_layer(&mesh->ldata, CD_NORMAL)) {
-    CustomData_add_layer(&mesh->ldata, CD_NORMAL, CD_SET_DEFAULT, NULL, mesh->totloop);
+    CustomData_add_layer(&mesh->ldata, CD_NORMAL, CD_SET_DEFAULT, mesh->totloop);
     CustomData_set_layer_flag(&mesh->ldata, CD_NORMAL, CD_FLAG_TEMPORARY);
   }
 }
@@ -65,7 +65,7 @@ static void rna_Mesh_calc_tangents(Mesh *mesh, ReportList *reports, const char *
   }
   else {
     r_looptangents = CustomData_add_layer(
-        &mesh->ldata, CD_MLOOPTANGENT, CD_SET_DEFAULT, NULL, mesh->totloop);
+        &mesh->ldata, CD_MLOOPTANGENT, CD_SET_DEFAULT, mesh->totloop);
     CustomData_set_layer_flag(&mesh->ldata, CD_MLOOPTANGENT, CD_FLAG_TEMPORARY);
   }
 
@@ -96,9 +96,9 @@ static void rna_Mesh_calc_smooth_groups(
   const bool *sharp_faces = (const bool *)CustomData_get_layer_named(
       &mesh->pdata, CD_PROP_BOOL, "sharp_face");
   *r_poly_group = BKE_mesh_calc_smoothgroups(mesh->totedge,
-                                             BKE_mesh_polys(mesh),
+                                             BKE_mesh_poly_offsets(mesh),
                                              mesh->totpoly,
-                                             BKE_mesh_loops(mesh),
+                                             BKE_mesh_corner_edges(mesh),
                                              mesh->totloop,
                                              sharp_edges,
                                              sharp_faces,
@@ -171,17 +171,18 @@ static void rna_Mesh_transform(Mesh *mesh, float mat[16], bool shape_keys)
 
 static void rna_Mesh_flip_normals(Mesh *mesh)
 {
-  BKE_mesh_polys_flip(
-      BKE_mesh_polys(mesh), BKE_mesh_loops_for_write(mesh), &mesh->ldata, mesh->totpoly);
+  BKE_mesh_polys_flip(BKE_mesh_poly_offsets(mesh),
+                      BKE_mesh_corner_verts_for_write(mesh),
+                      BKE_mesh_corner_edges_for_write(mesh),
+                      &mesh->ldata,
+                      mesh->totpoly);
   BKE_mesh_tessface_clear(mesh);
   BKE_mesh_runtime_clear_geometry(mesh);
 
   DEG_id_tag_update(&mesh->id, 0);
 }
 
-static void rna_Mesh_calc_normals(Mesh *UNUSED(mesh))
-{
-}
+static void rna_Mesh_calc_normals(Mesh *UNUSED(mesh)) {}
 
 static void rna_Mesh_split_faces(Mesh *mesh, bool UNUSED(free_loop_normals))
 {

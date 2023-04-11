@@ -24,6 +24,8 @@
 
 #include "DNA_genfile.h"
 
+#include "BLI_fileops.h"
+#include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_system.h"
 #include "BLI_task.h"
@@ -39,7 +41,7 @@
 #include "BKE_context.h"
 #include "BKE_cpp_types.h"
 #include "BKE_global.h"
-#include "BKE_gpencil_modifier.h"
+#include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_idtype.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
@@ -577,9 +579,16 @@ int main(int argc,
     WM_exit(C);
   }
   else {
-    /* When no file is loaded, show the splash screen. */
+    /* When no file is loaded or if there is no userprefs, show the splash screen. */
     const char *blendfile_path = BKE_main_blendfile_path_from_global();
-    if (blendfile_path[0] == '\0') {
+
+    char userpref[FILE_MAX] = {0};
+    const char *const cfgdir = BKE_appdir_folder_id(BLENDER_USER_CONFIG, NULL);
+    if (cfgdir) {
+      BLI_path_join(userpref, sizeof(userpref), cfgdir, BLENDER_USERPREF_FILE);
+    }
+
+    if (blendfile_path[0] == '\0' || !BLI_exists(userpref)) {
       WM_init_splash(C);
     }
     WM_main(C);

@@ -79,7 +79,7 @@ ccl_device void osl_closure_diffuse_setup(KernelGlobals kg,
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = closure->N;
 
   sd->flag |= bsdf_diffuse_setup(bsdf);
 }
@@ -100,7 +100,7 @@ ccl_device void osl_closure_oren_nayar_setup(KernelGlobals kg,
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = closure->N;
   bsdf->roughness = closure->roughness;
 
   sd->flag |= bsdf_oren_nayar_setup(bsdf);
@@ -122,7 +122,7 @@ ccl_device void osl_closure_translucent_setup(KernelGlobals kg,
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = closure->N;
 
   sd->flag |= bsdf_translucent_setup(bsdf);
 }
@@ -143,7 +143,7 @@ ccl_device void osl_closure_reflection_setup(KernelGlobals kg,
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
 
   sd->flag |= bsdf_reflection_setup(bsdf);
 }
@@ -164,7 +164,7 @@ ccl_device void osl_closure_refraction_setup(KernelGlobals kg,
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->ior = closure->ior;
 
   sd->flag |= bsdf_refraction_setup(bsdf);
@@ -205,7 +205,7 @@ ccl_device void osl_closure_dielectric_bsdf_setup(KernelGlobals kg,
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->alpha_x = closure->alpha_x;
   bsdf->alpha_y = closure->alpha_y;
   bsdf->ior = closure->ior;
@@ -267,7 +267,7 @@ ccl_device void osl_closure_conductor_bsdf_setup(KernelGlobals kg,
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->alpha_x = closure->alpha_x;
   bsdf->alpha_y = closure->alpha_y;
   bsdf->ior = 0.0f;
@@ -314,7 +314,7 @@ ccl_device void osl_closure_generalized_schlick_bsdf_setup(
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->alpha_x = closure->alpha_x;
   bsdf->alpha_y = closure->alpha_y;
   bsdf->ior = ior_from_F0(closure->f0);
@@ -376,7 +376,7 @@ ccl_device void osl_closure_microfacet_setup(KernelGlobals kg,
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->alpha_x = closure->alpha_x;
   bsdf->alpha_y = closure->alpha_y;
   bsdf->ior = closure->ior;
@@ -441,7 +441,7 @@ ccl_device void osl_closure_microfacet_ggx_setup(
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->alpha_x = bsdf->alpha_y = closure->alpha_x;
 
   sd->flag |= bsdf_microfacet_ggx_setup(bsdf);
@@ -464,7 +464,7 @@ ccl_device void osl_closure_microfacet_ggx_aniso_setup(
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->alpha_x = closure->alpha_x;
   bsdf->alpha_y = closure->alpha_y;
   bsdf->T = closure->T;
@@ -489,7 +489,7 @@ ccl_device void osl_closure_microfacet_ggx_refraction_setup(
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->alpha_x = closure->alpha_x;
   bsdf->ior = closure->ior;
 
@@ -521,7 +521,7 @@ ccl_device void osl_closure_microfacet_ggx_fresnel_setup(
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->alpha_x = closure->alpha_x;
   bsdf->alpha_y = bsdf->alpha_x;
   bsdf->ior = closure->ior;
@@ -557,7 +557,7 @@ ccl_device void osl_closure_microfacet_ggx_aniso_fresnel_setup(
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->alpha_x = closure->alpha_x;
   bsdf->alpha_y = closure->alpha_y;
   bsdf->ior = closure->ior;
@@ -598,7 +598,7 @@ ccl_device void osl_closure_microfacet_multi_ggx_setup(
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->alpha_x = closure->alpha_x;
   bsdf->alpha_y = bsdf->alpha_x;
   bsdf->ior = 1.0f;
@@ -637,7 +637,7 @@ ccl_device void osl_closure_microfacet_multi_ggx_glass_setup(
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->alpha_x = closure->alpha_x;
   bsdf->alpha_y = bsdf->alpha_x;
   bsdf->ior = closure->ior;
@@ -676,7 +676,7 @@ ccl_device void osl_closure_microfacet_multi_ggx_aniso_setup(
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->alpha_x = closure->alpha_x;
   bsdf->alpha_y = closure->alpha_y;
   bsdf->ior = 1.0f;
@@ -717,7 +717,7 @@ ccl_device void osl_closure_microfacet_multi_ggx_fresnel_setup(
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->alpha_x = closure->alpha_x;
   bsdf->alpha_y = bsdf->alpha_x;
   bsdf->ior = closure->ior;
@@ -757,7 +757,7 @@ ccl_device void osl_closure_microfacet_multi_ggx_glass_fresnel_setup(
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->alpha_x = closure->alpha_x;
   bsdf->alpha_y = bsdf->alpha_x;
   bsdf->ior = closure->ior;
@@ -797,7 +797,7 @@ ccl_device void osl_closure_microfacet_multi_ggx_aniso_fresnel_setup(
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->alpha_x = closure->alpha_x;
   bsdf->alpha_y = closure->alpha_y;
   bsdf->ior = closure->ior;
@@ -830,7 +830,7 @@ ccl_device void osl_closure_microfacet_beckmann_setup(
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->alpha_x = bsdf->alpha_y = closure->alpha_x;
 
   sd->flag |= bsdf_microfacet_beckmann_setup(bsdf);
@@ -853,7 +853,7 @@ ccl_device void osl_closure_microfacet_beckmann_aniso_setup(
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->alpha_x = closure->alpha_x;
   bsdf->alpha_y = closure->alpha_y;
   bsdf->T = closure->T;
@@ -878,7 +878,7 @@ ccl_device void osl_closure_microfacet_beckmann_refraction_setup(
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->alpha_x = closure->alpha_x;
   bsdf->ior = closure->ior;
 
@@ -904,7 +904,7 @@ ccl_device void osl_closure_ashikhmin_velvet_setup(
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->sigma = closure->sigma;
 
   sd->flag |= bsdf_ashikhmin_velvet_setup(bsdf);
@@ -927,7 +927,7 @@ ccl_device void osl_closure_ashikhmin_shirley_setup(
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->alpha_x = closure->alpha_x;
   bsdf->alpha_y = closure->alpha_y;
   bsdf->T = closure->T;
@@ -951,7 +951,7 @@ ccl_device void osl_closure_diffuse_toon_setup(KernelGlobals kg,
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->size = closure->size;
   bsdf->smooth = closure->smooth;
 
@@ -974,7 +974,7 @@ ccl_device void osl_closure_glossy_toon_setup(KernelGlobals kg,
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->size = closure->size;
   bsdf->smooth = closure->smooth;
 
@@ -1000,7 +1000,7 @@ ccl_device void osl_closure_principled_diffuse_setup(
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = closure->N;
   bsdf->roughness = closure->roughness;
 
   sd->flag |= bsdf_principled_diffuse_setup(bsdf);
@@ -1023,7 +1023,7 @@ ccl_device void osl_closure_principled_sheen_setup(
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = closure->N;
   bsdf->avg_value = 0.0f;
 
   sd->flag |= bsdf_principled_sheen_setup(sd, bsdf);
@@ -1043,7 +1043,7 @@ ccl_device void osl_closure_principled_clearcoat_setup(
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->alpha_x = closure->clearcoat_roughness;
   bsdf->alpha_y = closure->clearcoat_roughness;
   bsdf->ior = 1.5f;
@@ -1110,7 +1110,7 @@ ccl_device void osl_closure_diffuse_ramp_setup(KernelGlobals kg,
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = closure->N;
 
   bsdf->colors = (float3 *)closure_alloc_extra(sd, sizeof(float3) * 8);
   if (!bsdf->colors) {
@@ -1135,7 +1135,7 @@ ccl_device void osl_closure_phong_ramp_setup(KernelGlobals kg,
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->exponent = closure->exponent;
 
   bsdf->colors = (float3 *)closure_alloc_extra(sd, sizeof(float3) * 8);
@@ -1186,7 +1186,7 @@ ccl_device void osl_closure_bssrdf_setup(KernelGlobals kg,
 
   /* create one closure per color channel */
   bssrdf->albedo = closure->albedo;
-  bssrdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bssrdf->N = closure->N;
   bssrdf->roughness = closure->roughness;
   bssrdf->anisotropy = clamp(closure->anisotropy, 0.0f, 0.9f);
 
@@ -1211,7 +1211,7 @@ ccl_device void osl_closure_hair_reflection_setup(KernelGlobals kg,
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->T = closure->T;
   bsdf->roughness1 = closure->roughness1;
   bsdf->roughness2 = closure->roughness2;
@@ -1237,7 +1237,7 @@ ccl_device void osl_closure_hair_transmission_setup(
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->T = closure->T;
   bsdf->roughness1 = closure->roughness1;
   bsdf->roughness2 = closure->roughness2;
@@ -1269,7 +1269,7 @@ ccl_device void osl_closure_principled_hair_setup(KernelGlobals kg,
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->sigma = closure->sigma;
   bsdf->v = closure->v;
   bsdf->s = closure->s;
@@ -1306,7 +1306,7 @@ ccl_device void osl_closure_microfacet_hair_setup(KernelGlobals kg,
     return;
   }
 
-  bsdf->N = ensure_valid_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->sigma = closure->sigma;
   bsdf->roughness = closure->roughness;
   bsdf->tilt = closure->tilt;

@@ -460,9 +460,7 @@ AttributeSet::AttributeSet(Geometry *geometry, AttributePrimitive prim)
 {
 }
 
-AttributeSet::~AttributeSet()
-{
-}
+AttributeSet::~AttributeSet() {}
 
 Attribute *AttributeSet::add(ustring name, TypeDesc type, AttributeElement element)
 {
@@ -845,13 +843,9 @@ AttributeRequest::AttributeRequest(AttributeStandard std_)
 
 /* AttributeRequestSet */
 
-AttributeRequestSet::AttributeRequestSet()
-{
-}
+AttributeRequestSet::AttributeRequestSet() {}
 
-AttributeRequestSet::~AttributeRequestSet()
-{
-}
+AttributeRequestSet::~AttributeRequestSet() {}
 
 bool AttributeRequestSet::modified(const AttributeRequestSet &other)
 {

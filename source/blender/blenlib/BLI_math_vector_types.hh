@@ -223,9 +223,7 @@ template<typename T, int Size> struct VecBase : public vec_struct_base<T, Size> 
     unroll<Size>([&](auto i) { (*this)[i] = ptr[i]; });
   }
 
-  VecBase(const T (*ptr)[Size]) : VecBase(static_cast<const T *>(ptr[0]))
-  {
-  }
+  VecBase(const T (*ptr)[Size]) : VecBase(static_cast<const T *>(ptr[0])) {}
 
   /** Conversion from other vector types. */
 
@@ -645,6 +643,7 @@ template<typename T> struct AssertUnitEpsilon {
 
 }  // namespace math
 
+using char2 = blender::VecBase<int8_t, 2>;
 using char3 = blender::VecBase<int8_t, 3>;
 
 using uchar3 = blender::VecBase<uint8_t, 3>;

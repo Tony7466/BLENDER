@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. All rights reserved. */
+ * Copyright 2019 Blender Foundation */
 
 /** \file
  * \ingroup editors
@@ -15,8 +15,8 @@
 
 #include "BKE_context.h"
 #include "BKE_global.h"
-#include "BKE_gpencil.h"
-#include "BKE_gpencil_modifier.h"
+#include "BKE_gpencil_legacy.h"
+#include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
@@ -25,8 +25,8 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_gpencil_modifier_types.h"
-#include "DNA_gpencil_types.h"
 #include "DNA_scene_types.h"
 
 #include "MOD_gpencil_lineart.h"

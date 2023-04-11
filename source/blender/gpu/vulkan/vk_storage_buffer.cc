@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. All rights reserved. */
+ * Copyright 2022 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -23,7 +23,11 @@ void VKStorageBuffer::update(const void *data)
 
 void VKStorageBuffer::allocate(VKContext &context)
 {
-  buffer_.create(context, size_in_bytes_, usage_, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+  buffer_.create(context,
+                 size_in_bytes_,
+                 usage_,
+                 static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                                                    VK_BUFFER_USAGE_TRANSFER_DST_BIT));
 }
 
 void VKStorageBuffer::bind(int slot)
@@ -39,15 +43,17 @@ void VKStorageBuffer::bind(int slot)
   shader->pipeline_get().descriptor_set_get().bind(*this, location);
 }
 
-void VKStorageBuffer::unbind()
+void VKStorageBuffer::unbind() {}
+
+void VKStorageBuffer::clear(uint32_t clear_value)
 {
+  VKContext &context = *VKContext::get();
+  if (!buffer_.is_allocated()) {
+    allocate(context);
+  }
+  buffer_.clear(context, clear_value);
 }
 
-void VKStorageBuffer::clear(eGPUTextureFormat /*internal_format*/,
-                            eGPUDataFormat /*data_format*/,
-                            void * /*data*/)
-{
-}
 void VKStorageBuffer::copy_sub(VertBuf * /*src*/,
                                uint /*dst_offset*/,
                                uint /*src_offset*/,
