@@ -1942,8 +1942,10 @@ static bool surfacedeformBind(Object *ob,
           if ( f != smd_orig->layers->num_of_frames ) 
           {continue;}
           add_frame(smd_orig, smd_eval, smd_orig->layers, curr_gpf); 
+          smd_orig->flags |= GP_MOD_SDEF_WITHHOLD_EVALUATION;
           BKE_scene_frame_set(scene, (float)curr_gpf->framenum);
           BKE_scene_graph_update_for_newframe(depsgraph);
+          smd_orig->flags &= ~GP_MOD_SDEF_WITHHOLD_EVALUATION;
           uint s = 0;
           LISTBASE_FOREACH (bGPDstroke *, curr_gps, &curr_gpf->strokes)
           {
@@ -2177,7 +2179,7 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
 
   
   /* Exit function if bind flag is not set  and free bind data if any. */
-  if (smd->bound_flags == 0 && !(smd->flags & GP_MOD_SDEF_DO_BIND)) { // bound flags should be 0 if none of the flags are set, I guess...
+  if (smd->bound_flags == 0 && !(smd->flags & GP_MOD_SDEF_DO_BIND)) { 
     
     
     if (smd->layers != NULL) {
@@ -2221,7 +2223,7 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
 
     /* Avoid converting edit-mesh data, binding is an exception. */
     BKE_mesh_wrapper_ensure_mdata(target);
-    if (!(gpl->prev == NULL && gpf->prev == NULL && gps->prev == NULL)) // Only execute the bind function on the very first evaluation~ 
+    if (!(gpl->prev == NULL && gps->prev == NULL)) // Only execute the bind function on the very first evaluation~ 
     {return;}
 
 
@@ -2254,11 +2256,21 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   if (!smd->layers)
   {return;}
   printf("real evaluation after bind \n");
+
+  if (gpl->prev == NULL && gps->prev == NULL)
+  {check_bind_situation(smd_orig, depsgraph,DEG_get_evaluated_scene(depsgraph), ob);}
+  smd -> bound_flags = smd_orig -> bound_flags;
+
+  /*Exit evaluation if we are on a frame that is not bound.*/
+  if (smd->layers->frames->blender_frame->framenum != gpf->framenum) 
+  {return;}
+
   /* Strokes count on the deforming Frame. */
   uint tot_strokes_num = BLI_listbase_count(&smd->layers->frames->blender_frame->strokes);
   if (smd->layers->frames->strokes_num != tot_strokes_num) {
     BKE_gpencil_modifier_set_error(
         md, "Strokes changed from %u to %u", smd->layers->frames->strokes_num, tot_strokes_num);
+    //TODO: free_frame
     return;
   } 
 
@@ -2323,9 +2335,7 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   //bGPdata *gpd = ob_orig->data;
  // bGPDlayer *gpl_orig = BKE_gpencil_layer_active_get(gpd);
  // bGPDframe *gpf_orig = BKE_gpencil_frame_retime_get(depsgraph, DEG_get_evaluated_scene(depsgraph), ob, gpl_orig);
-  if (gpl->prev == NULL && gpf->prev == NULL && gps->prev == NULL)
-  {check_bind_situation(smd_orig, depsgraph,DEG_get_evaluated_scene(depsgraph), ob);}
-  smd -> bound_flags = smd_orig -> bound_flags;
+  
   /*If we are on stroke 0, check all the current frames of all the layers in memory with their pointer
   to bGPDframe to find the right one and point to that. */
   if (gps->prev == NULL)
@@ -2416,7 +2426,7 @@ static void deformStroke(GpencilModifierData *md, // every time deform stroke is
                          bGPDstroke *gps)
 {
   SurDeformGpencilModifierData *smd = (SurDeformGpencilModifierData *)md;
-  
+  if (smd->flags & GP_MOD_SDEF_WITHHOLD_EVALUATION) return;
 
 
   /* Update flags to evaluated modifier */
