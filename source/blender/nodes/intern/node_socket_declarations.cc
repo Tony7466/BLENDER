@@ -431,18 +431,48 @@ bNodeSocket &String::update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket 
 /** \name #IDSocketDeclaration
  * \{ */
 
+static void id_socket_fill_value_try(ID *src, bNodeSocket &r_socket)
+{
+  if (src == nullptr) {
+    return;
+  }
+  switch ((ID_Type)GS(src->name)) {
+    case ID_OB: {
+      using TPtr = decltype(r_socket.default_value_typed<bNodeSocketValueObject>()->value);
+      r_socket.default_value_typed<bNodeSocketValueObject>()->value = reinterpret_cast<TPtr>(src);
+    }
+    case ID_MA: {
+      using TPtr = decltype(r_socket.default_value_typed<bNodeSocketValueMaterial>()->value);
+      r_socket.default_value_typed<bNodeSocketValueMaterial>()->value = reinterpret_cast<TPtr>(
+          src);
+    }
+    case ID_IM: {
+      using TPtr = decltype(r_socket.default_value_typed<bNodeSocketValueImage>()->value);
+      r_socket.default_value_typed<bNodeSocketValueImage>()->value = reinterpret_cast<TPtr>(src);
+    }
+    case ID_TE: {
+      using TPtr = decltype(r_socket.default_value_typed<bNodeSocketValueTexture>()->value);
+      r_socket.default_value_typed<bNodeSocketValueTexture>()->value = reinterpret_cast<TPtr>(src);
+    }
+    case ID_CO: {
+      using TPtr = decltype(r_socket.default_value_typed<bNodeSocketValueCollection>()->value);
+      r_socket.default_value_typed<bNodeSocketValueCollection>()->value = reinterpret_cast<TPtr>(
+          src);
+    }
+    default: {
+    }
+  }
+}
+
 bNodeSocket &IDSocketDeclaration::build(bNodeTree &ntree, bNode &node) const
 {
   bNodeSocket &socket = *nodeAddSocket(
       &ntree, &node, this->in_out, this->idname, this->identifier.c_str(), this->name.c_str());
   this->set_common_flags(socket);
-
-  if (const auto *ptr = dynamic_cast<const Object *>(this)) {
-    printf("Start\n");
-    ptr->construct_default_value(node, socket);
-    printf("End\n");
+  if (this->init_socket_value_cd) {
+    ID *scr_socket_value = this->init_socket_value_cd(socket);
+    id_socket_fill_value_try(scr_socket_value, socket);
   }
-
   return socket;
 }
 

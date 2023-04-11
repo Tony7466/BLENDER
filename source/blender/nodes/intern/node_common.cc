@@ -8,6 +8,8 @@
 #include <cstddef>
 #include <cstring>
 
+#include "DNA_collection_types.h"
+#include "DNA_material_types.h"
 #include "DNA_node_types.h"
 
 #include "BLI_listbase.h"
@@ -124,10 +126,42 @@ bool nodeGroupPoll(const bNodeTree *nodetree,
 
 namespace blender::nodes {
 
+static std::function<ID *(const bNodeSocket &socket)> default_node_group_id_value(
+    bNodeTree &node_group, StringRefNull socket_name_p)
+{
+  std::string socket_name = socket_name_p;
+  return [node_group = &node_group,
+          socket_name = std::move(socket_name)](const bNodeSocket & /*socket*/) -> ID * {
+    LISTBASE_FOREACH (bNodeSocket *, input, &node_group->inputs) {
+      if (StringRef(input->name) == StringRef(socket_name)) {
+        switch (input->type) {
+          case SOCK_OBJECT: {
+            return &input->default_value_typed<bNodeSocketValueObject>()->value->id;
+          }
+          case SOCK_IMAGE: {
+            return &input->default_value_typed<bNodeSocketValueImage>()->value->id;
+          }
+          case SOCK_TEXTURE: {
+            return &input->default_value_typed<bNodeSocketValueTexture>()->value->id;
+          }
+          case SOCK_COLLECTION: {
+            return &input->default_value_typed<bNodeSocketValueCollection>()->value->id;
+          }
+          case SOCK_MATERIAL: {
+            return &input->default_value_typed<bNodeSocketValueMaterial>()->value->id;
+          }
+          default:
+            break;
+        }
+      }
+    }
+    return nullptr;
+  };
+}
+
 static SocketDeclarationPtr declaration_for_interface_socket(const bNodeSocket &io_socket,
                                                              const bNodeTree *node_group)
 {
-  printf("= %p;\n", node_group);
   SocketDeclarationPtr dst;
   switch (io_socket.type) {
     case SOCK_FLOAT: {
@@ -188,40 +222,61 @@ static SocketDeclarationPtr declaration_for_interface_socket(const bNodeSocket &
     }
     case SOCK_OBJECT: {
       std::unique_ptr<decl::Object> decl = std::make_unique<decl::Object>();
-      std::string socket_name = io_socket.name;
-      decl->object_cb =
-          [node_group, socket_name = std::move(socket_name)](const bNode * /*node*/) -> Object * {
-        printf(" - %p\n", node_group);
-        printf(" - 1\n");
-        if (node_group == nullptr) {
-          return nullptr;
-        }
-        printf(" - 2\n");
-        LISTBASE_FOREACH (const bNodeSocket *, input, &node_group->inputs) {
-          if (StringRef(input->name) == StringRef(socket_name)) {
-            return const_cast<Object *>(
-                input->default_value_typed<bNodeSocketValueObject>()->value);
-          }
-        }
-        printf(" - 3\n");
-        return nullptr;
-      };
+      if (node_group == nullptr) {
+        dst = std::move(decl);
+        break;
+      }
+      decl->init_socket_value_cd = default_node_group_id_value(
+          *const_cast<bNodeTree *>(node_group), io_socket.name);
       dst = std::move(decl);
-    } break;
-    case SOCK_IMAGE:
-      dst = std::make_unique<decl::Image>();
       break;
+    }
+    case SOCK_IMAGE: {
+      std::unique_ptr<decl::Image> decl = std::make_unique<decl::Image>();
+      if (node_group == nullptr) {
+        dst = std::move(decl);
+        break;
+      }
+      decl->init_socket_value_cd = default_node_group_id_value(
+          *const_cast<bNodeTree *>(node_group), io_socket.name);
+      dst = std::move(decl);
+      break;
+    }
+    case SOCK_COLLECTION: {
+      std::unique_ptr<decl::Collection> decl = std::make_unique<decl::Collection>();
+      if (node_group == nullptr) {
+        dst = std::move(decl);
+        break;
+      }
+      decl->init_socket_value_cd = default_node_group_id_value(
+          *const_cast<bNodeTree *>(node_group), io_socket.name);
+      dst = std::move(decl);
+      break;
+    }
+    case SOCK_TEXTURE: {
+      std::unique_ptr<decl::Texture> decl = std::make_unique<decl::Texture>();
+      if (node_group == nullptr) {
+        dst = std::move(decl);
+        break;
+      }
+      decl->init_socket_value_cd = default_node_group_id_value(
+          *const_cast<bNodeTree *>(node_group), io_socket.name);
+      dst = std::move(decl);
+      break;
+    }
+    case SOCK_MATERIAL: {
+      std::unique_ptr<decl::Material> decl = std::make_unique<decl::Material>();
+      if (node_group == nullptr) {
+        dst = std::move(decl);
+        break;
+      }
+      decl->init_socket_value_cd = default_node_group_id_value(
+          *const_cast<bNodeTree *>(node_group), io_socket.name);
+      dst = std::move(decl);
+      break;
+    }
     case SOCK_GEOMETRY:
       dst = std::make_unique<decl::Geometry>();
-      break;
-    case SOCK_COLLECTION:
-      dst = std::make_unique<decl::Collection>();
-      break;
-    case SOCK_TEXTURE:
-      dst = std::make_unique<decl::Texture>();
-      break;
-    case SOCK_MATERIAL:
-      dst = std::make_unique<decl::Material>();
       break;
     case SOCK_CUSTOM:
       std::unique_ptr<decl::Custom> decl = std::make_unique<decl::Custom>();
