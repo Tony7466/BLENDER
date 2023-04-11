@@ -37,7 +37,7 @@ CCL_NAMESPACE_BEGIN
  * checks the progress for if a cancel has been requested and also
  * the device to see if an error has occurred.
  */
-bool Scene::progressErrorCheck(Progress &progress, Device *device) {
+bool Scene::check_cancel_update(Progress &progress, Device *device) {
   bool status = false;
   if (!background && progress.get_updates()) {
     status = progress.get_cancel();
@@ -299,7 +299,7 @@ void Scene::device_update(Device *device_, Progress &progress)
   progress.set_status("Updating Shaders");
   shader_manager->device_update(device, &dscene, this, progress);
 
-  if(progressErrorCheck(progress, device)) { return; }
+  if(check_cancel_update(progress, device)) { return; }
 
   procedural_manager->update(this, progress);
 
@@ -309,12 +309,12 @@ void Scene::device_update(Device *device_, Progress &progress)
   progress.set_status("Updating Background");
   background->device_update(device, &dscene, this);
 
-  if(progressErrorCheck(progress, device)) { return; }
+  if(check_cancel_update(progress, device)) { return; }
 
   progress.set_status("Updating Camera");
   camera->device_update(device, &dscene, this);
 
-  if(progressErrorCheck(progress, device)) { return; }
+  if(check_cancel_update(progress, device)) { return; }
 
   geometry_manager->device_update_preprocess(device, this, progress);
 
@@ -324,67 +324,67 @@ void Scene::device_update(Device *device_, Progress &progress)
   progress.set_status("Updating Objects");
   object_manager->device_update(device, &dscene, this, progress);
 
-  if(progressErrorCheck(progress, device)) { return; }
+  if(check_cancel_update(progress, device)) { return; }
 
   progress.set_status("Updating Particle Systems");
   particle_system_manager->device_update(device, &dscene, this, progress);
 
-  if(progressErrorCheck(progress, device)) { return; }
+  if(check_cancel_update(progress, device)) { return; }
 
   progress.set_status("Updating Meshes");
   geometry_manager->device_update(device, &dscene, this, progress);
 
-  if(progressErrorCheck(progress, device)) { return; }
+  if(check_cancel_update(progress, device)) { return; }
 
   progress.set_status("Updating Objects Flags");
   object_manager->device_update_flags(device, &dscene, this, progress);
 
-  if(progressErrorCheck(progress, device)) { return; }
+  if(check_cancel_update(progress, device)) { return; }
   
   progress.set_status("Updating Primitive Offsets");
   object_manager->device_update_prim_offsets(device, &dscene, this);
 
-  if(progressErrorCheck(progress, device)) { return; }
+  if(check_cancel_update(progress, device)) { return; }
 
   progress.set_status("Updating Images");
   image_manager->device_update(device, this, progress);
 
-  if(progressErrorCheck(progress, device)) { return; }
+  if(check_cancel_update(progress, device)) { return; }
 
   progress.set_status("Updating Camera Volume");
   camera->device_update_volume(device, &dscene, this);
 
-  if(progressErrorCheck(progress, device)) { return; }
+  if(check_cancel_update(progress, device)) { return; }
 
   progress.set_status("Updating Lookup Tables");
   lookup_tables->device_update(device, &dscene, this);
 
-  if(progressErrorCheck(progress, device)) { return; }
+  if(check_cancel_update(progress, device)) { return; }
 
   progress.set_status("Updating Lights");
   light_manager->device_update(device, &dscene, this, progress);
 
-  if(progressErrorCheck(progress, device)) { return; }
+  if(check_cancel_update(progress, device)) { return; }
 
   progress.set_status("Updating Integrator");
   integrator->device_update(device, &dscene, this);
 
-  if(progressErrorCheck(progress, device)) { return; }
+  if(check_cancel_update(progress, device)) { return; }
 
   progress.set_status("Updating Film");
   film->device_update(device, &dscene, this);
 
-  if(progressErrorCheck(progress, device)) { return; }
+  if(check_cancel_update(progress, device)) { return; }
 
   progress.set_status("Updating Lookup Tables");
   lookup_tables->device_update(device, &dscene, this);
 
-  if(progressErrorCheck(progress, device)) { return; }
+  if(check_cancel_update(progress, device)) { return; }
 
   progress.set_status("Updating Baking");
   bake_manager->device_update(device, &dscene, this, progress);
 
-  if(progressErrorCheck(progress, device)) { return; }
+  if(check_cancel_update(progress, device)) { return; }
 
   if (device->have_error() == false) {
     dscene.data.volume_stack_size = get_volume_stack_size();

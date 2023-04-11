@@ -343,7 +343,7 @@ class Scene : public NodeOwner {
    * checks the progress for if a cancel has been requested and also
    * the device to see if an error has occurred.
    */
-  bool progressErrorCheck(Progress &progress, Device *device);
+  bool check_cancel_update(Progress &progress, Device *device);
   
   /* Check if some heavy data worth logging was updated.
    * Mainly used to suppress extra annoying logging.
