@@ -703,6 +703,17 @@ static void write_node_socket_interface(BlendWriter *writer, bNodeSocket *sock)
   write_node_socket_default_value(writer, sock);
 }
 
+static void write_node_function_signature(BlendWriter *writer, bNodeFunctionSignature *sig)
+{
+  BLO_write_struct(writer, bNodeFunctionSignature, sig);
+  LISTBASE_FOREACH (bNodeSocket *, sock, &sig->inputs) {
+    write_node_socket_interface(writer, sock);
+  }
+  LISTBASE_FOREACH (bNodeSocket *, sock, &sig->outputs) {
+    write_node_socket_interface(writer, sock);
+  }
+}
+
 void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
 {
   BKE_id_blend_write(writer, &ntree->id);
@@ -786,6 +797,11 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
         }
         BLO_write_struct_by_name(writer, node->typeinfo->storagename, storage);
       }
+      else if (node->type == FN_NODE_EVALUATE) {
+        NodeFunctionEvaluate *storage = (NodeFunctionEvaluate *)node->storage;
+        BLO_write_struct_by_name(writer, node->typeinfo->storagename, storage);
+        write_node_function_signature(writer, &storage->signature);
+      }
       else if (node->typeinfo != &NodeTypeUndefined) {
         BLO_write_struct_by_name(writer, node->typeinfo->storagename, node->storage);
       }
@@ -849,6 +865,19 @@ static void direct_link_node_socket(BlendDataReader *reader, bNodeSocket *sock)
   BLO_read_data_address(reader, &sock->default_value);
   BLO_read_data_address(reader, &sock->default_attribute_name);
   sock->runtime = MEM_new<bNodeSocketRuntime>(__func__);
+}
+
+static void direct_link_node_function_signature(BlendDataReader *reader,
+                                                bNodeFunctionSignature *sig)
+{
+  BLO_read_list(reader, &sig->inputs);
+  BLO_read_list(reader, &sig->outputs);
+  LISTBASE_FOREACH (bNodeSocket *, sock, &sig->inputs) {
+    direct_link_node_socket(reader, sock);
+  }
+  LISTBASE_FOREACH (bNodeSocket *, sock, &sig->outputs) {
+    direct_link_node_socket(reader, sock);
+  }
 }
 
 void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
@@ -982,6 +1011,11 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
         case FN_NODE_INPUT_STRING: {
           NodeInputString *storage = static_cast<NodeInputString *>(node->storage);
           BLO_read_data_address(reader, &storage->string);
+          break;
+        }
+        case FN_NODE_EVALUATE: {
+          NodeFunctionEvaluate *storage = (NodeFunctionEvaluate *)node->storage;
+          direct_link_node_function_signature(reader, &storage->signature);
           break;
         }
         default:
