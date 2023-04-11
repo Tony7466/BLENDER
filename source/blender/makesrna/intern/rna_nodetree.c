@@ -5544,6 +5544,14 @@ static void rna_def_node_function_signature(BlenderRNA *brna)
 
 static void def_fn_evaluate(StructRNA *srna)
 {
+  PropertyRNA *prop;
+
+  RNA_def_struct_sdna_from(srna, "NodeFunctionEvaluate", "storage");
+
+  prop = RNA_def_property(srna, "signature", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, NULL, "signature");
+  RNA_def_property_flag(prop, PROP_NEVER_NULL);
+  RNA_def_property_ui_text(prop, "Signature", "Expected signature of the function");
 }
 
 /* -- Shader Nodes ---------------------------------------------------------- */

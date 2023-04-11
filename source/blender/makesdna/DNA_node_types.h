@@ -1634,6 +1634,11 @@ typedef struct bNodeFunctionSignature {
   int _pad;
 } bNodeFunctionSignature;
 
+typedef struct NodeFunctionEvaluate {
+  /* Expected signature of the function. */
+  bNodeFunctionSignature signature;
+} NodeFunctionEvaluate;
+
 /* script node mode */
 #define NODE_SCRIPT_INTERNAL 0
 #define NODE_SCRIPT_EXTERNAL 1

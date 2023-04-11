@@ -18,6 +18,12 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Function>(N_("Function"));
 }
 
+static void node_init(bNodeTree * /*tree*/, bNode *node)
+{
+  NodeFunctionEvaluate *data = MEM_cnew<NodeFunctionEvaluate>(__func__);
+  node->storage = data;
+}
+
 static void node_update(bNodeTree *ntree, bNode *node)
 {
 }
@@ -37,6 +43,9 @@ void register_node_type_fn_evaluate()
   fn_node_type_base(&ntype, FN_NODE_EVALUATE, "Evaluate", NODE_CLASS_GROUP);
   ntype.declare = file_ns::node_declare;
   ntype.draw_buttons = file_ns::node_layout;
+  ntype.initfunc = file_ns::node_init;
   ntype.updatefunc = file_ns::node_update;
+  node_type_storage(
+      &ntype, "NodeFunctionEvaluate", node_free_standard_storage, node_copy_standard_storage);
   nodeRegisterType(&ntype);
 }
