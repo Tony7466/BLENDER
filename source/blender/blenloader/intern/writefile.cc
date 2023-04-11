@@ -1692,6 +1692,15 @@ void BLO_write_string(BlendWriter *writer, const char *data_ptr)
   }
 }
 
+void BLO_write_shared(BlendWriter *writer,
+                      const void *data,
+                      const ImplicitSharingInfoHandle *sharing_info,
+                      blender::FunctionRef<void()> write_cb)
+{
+  UNUSED_VARS(writer, data, sharing_info);
+  write_cb();
+}
+
 bool BLO_write_is_undo(BlendWriter *writer)
 {
   return writer->wd->use_memfile;

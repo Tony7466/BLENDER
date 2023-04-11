@@ -31,6 +31,12 @@
 
 #include "DNA_windowmanager_types.h" /* for eReportType */
 
+#include "BLI_implicit_sharing.h"
+
+#ifdef __cplusplus
+#  include "BLI_function_ref.hh"
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -175,6 +181,13 @@ void BLO_write_string(BlendWriter *writer, const char *data_ptr);
 
 /* Misc. */
 
+#ifdef __cplusplus
+void BLO_write_shared(BlendWriter *writer,
+                      const void *data,
+                      const ImplicitSharingInfoHandle *sharing_info,
+                      blender::FunctionRef<void()> write_cb);
+#endif
+
 /**
  * Sometimes different data is written depending on whether the file is saved to disk or used for
  * undo. This function returns true when the current file-writing is done for undo.
@@ -237,6 +250,12 @@ void BLO_read_double_array(BlendDataReader *reader, int array_size, double **ptr
 void BLO_read_pointer_array(BlendDataReader *reader, void **ptr_p);
 
 /* Misc. */
+
+#ifdef __cplusplus
+const ImplicitSharingInfoHandle *BLO_read_shared(BlendDataReader *reader,
+                                                 void **data_ptr,
+                                                 blender::FunctionRef<void()> read_cb);
+#endif
 
 int BLO_read_fileversion_get(BlendDataReader *reader);
 bool BLO_read_requires_endian_switch(BlendDataReader *reader);
