@@ -387,7 +387,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     if (ELEM(pipeline_type, MAT_PIPE_WORLD_VOLUME, MAT_PIPE_VOLUME)) {
       frag_gen << "Closure nodetree_volume()\n";
       frag_gen << "{\n";
-      /* frag_gen << "  closure_weights_reset();\n"; TODO(Miguel Pozo) */
+      frag_gen << "  closure_weights_reset();\n";
       frag_gen << ((codegen.volume) ? codegen.volume : "return Closure(0);\n");
       frag_gen << "}\n\n";
     }

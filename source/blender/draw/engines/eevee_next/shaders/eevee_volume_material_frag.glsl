@@ -4,11 +4,10 @@
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(common_attribute_lib.glsl)
-#pragma BLENDER_REQUIRE(closure_type_lib.glsl)
-#pragma BLENDER_REQUIRE(closure_eval_volume_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_light_eval_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_attributes_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_nodetree_lib.glsl)
 
 /* Based on Frosbite Unified Volumetric.
  * https://www.ea.com/frostbite/news/physically-based-unified-volumetric-rendering-in-frostbite */
@@ -63,21 +62,27 @@ void main()
 #ifndef NO_ATTRIB_LOAD
   attrib_load();
 #endif
-  Closure cl = nodetree_volume();
+  nodetree_volume();
+
+  vec3 scattering = g_volume_scatter_data.scattering;
+  float anisotropy = g_volume_scatter_data.anisotropy;
+  vec3 absorption = g_volume_absorption_data.absorption;
+  vec3 emission = g_emission;
+
 #ifdef MESH_SHADER
-  cl.scatter *= drw_volume.density_scale;
-  cl.absorption *= drw_volume.density_scale;
-  cl.emission *= drw_volume.density_scale;
+  scattering *= drw_volume.density_scale;
+  absorption *= drw_volume.density_scale;
+  emission *= drw_volume.density_scale;
 #endif
 
-  volumeScattering = vec4(cl.scatter, 1.0);
-  volumeExtinction = vec4(cl.absorption + cl.scatter, 1.0);
-  volumeEmissive = vec4(cl.emission, 1.0);
+  volumeScattering = vec4(scattering, 1.0);
+  volumeExtinction = vec4(scattering + absorption, 1.0);
+  volumeEmissive = vec4(emission, 1.0);
   /* Do not add phase weight if no scattering. */
-  if (all(equal(cl.scatter, vec3(0.0)))) {
+  if (all(equal(scattering, vec3(0.0)))) {
     volumePhase = vec4(0.0);
   }
   else {
-    volumePhase = vec4(cl.anisotropy, vec3(1.0));
+    volumePhase = vec4(anisotropy, vec3(1.0));
   }
 }

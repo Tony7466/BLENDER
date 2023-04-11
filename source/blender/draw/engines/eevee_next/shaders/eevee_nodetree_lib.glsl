@@ -15,10 +15,14 @@ float g_holdout;
 ClosureDiffuse g_diffuse_data;
 ClosureReflection g_reflection_data;
 ClosureRefraction g_refraction_data;
+ClosureVolumeScatter g_volume_scatter_data;
+ClosureVolumeAbsorption g_volume_absorption_data;
 /* Random number per sampled closure type. */
 float g_diffuse_rand;
 float g_reflection_rand;
 float g_refraction_rand;
+float g_volume_scatter_rand;
+float g_volume_absorption_rand;
 
 /**
  * Returns true if the closure is to be selected based on the input weight.
@@ -62,12 +66,22 @@ void closure_weights_reset()
   g_refraction_data.roughness = 0.0;
   g_refraction_data.ior = 0.0;
 
+  g_volume_scatter_data.weight = 0.0;
+  g_volume_scatter_data.scattering = vec3(0.0);
+  g_volume_scatter_data.anisotropy = 0.0;
+
+  g_volume_absorption_data.weight = 0.0;
+  g_volume_absorption_data.absorption = vec3(0.0);
+
 #if defined(GPU_FRAGMENT_SHADER)
   g_diffuse_rand = g_reflection_rand = g_refraction_rand = g_closure_rand;
+  g_volume_scatter_rand = g_volume_absorption_rand = g_closure_rand;
 #else
   g_diffuse_rand = 0.0;
   g_reflection_rand = 0.0;
   g_refraction_rand = 0.0;
+  g_volume_scatter_rand = 0.0;
+  g_volume_absorption_rand = 0.0;
 #endif
 
   g_emission = vec3(0.0);
@@ -115,13 +129,13 @@ Closure closure_eval(ClosureTransparency transparency)
 
 Closure closure_eval(ClosureVolumeScatter volume_scatter)
 {
-  /* TODO */
+  SELECT_CLOSURE(g_volume_scatter_data, g_volume_scatter_rand, volume_scatter);
   return Closure(0);
 }
 
 Closure closure_eval(ClosureVolumeAbsorption volume_absorption)
 {
-  /* TODO */
+  SELECT_CLOSURE(g_volume_absorption_data, g_volume_absorption_rand, volume_absorption);
   return Closure(0);
 }
 
@@ -160,7 +174,9 @@ Closure closure_eval(ClosureVolumeScatter volume_scatter,
                      ClosureVolumeAbsorption volume_absorption,
                      ClosureEmission emission)
 {
-  /* TODO */
+  closure_eval(volume_scatter);
+  closure_eval(volume_absorption);
+  closure_eval(emission);
   return Closure(0);
 }
 
