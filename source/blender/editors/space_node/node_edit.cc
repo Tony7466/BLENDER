@@ -1313,10 +1313,6 @@ static int node_duplicate_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  for (bNode *node : node_map.values()) {
-    nodeDeclarationEnsure(ntree, node);
-  }
-
   /* Copy links between selected nodes. */
   bNodeLink *lastlink = (bNodeLink *)ntree->links.last;
   LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
@@ -1350,6 +1346,10 @@ static int node_duplicate_exec(bContext *C, wmOperator *op)
     if (link == lastlink) {
       break;
     }
+  }
+
+  for (bNode *node : node_map.values()) {
+    nodeDeclarationEnsure(ntree, node);
   }
 
   /* Clear flags for recursive depth-first iteration. */

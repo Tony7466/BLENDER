@@ -521,10 +521,6 @@ static bool node_group_separate_selected(
     nodeRebuildIDVector(&ngroup);
   }
 
-  for (bNode *node : new_nodes) {
-    nodeDeclarationEnsure(&ntree, node);
-  }
-
   /* add internal links to the ntree */
   LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &ngroup.links) {
     const bool fromselect = (link->fromnode && (link->fromnode->flag & NODE_SELECT));
@@ -550,6 +546,10 @@ static bool node_group_separate_selected(
         nodeRemLink(&ngroup, link);
       }
     }
+  }
+
+  for (bNode *node : new_nodes) {
+    nodeDeclarationEnsure(&ntree, node);
   }
 
   /* and copy across the animation,

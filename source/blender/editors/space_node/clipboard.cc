@@ -267,10 +267,6 @@ static int node_clipboard_paste_exec(bContext *C, wmOperator *op)
   }
 
   for (bNode *new_node : node_map.values()) {
-    nodeDeclarationEnsure(&tree, new_node);
-  }
-
-  for (bNode *new_node : node_map.values()) {
     nodeSetSelected(new_node, true);
 
     /* The parent pointer must be redirected to new node. */
@@ -316,6 +312,10 @@ static int node_clipboard_paste_exec(bContext *C, wmOperator *op)
                                         socket_map.lookup(link.tosock));
       new_link->multi_input_socket_index = link.multi_input_socket_index;
     }
+  }
+
+  for (bNode *new_node : node_map.values()) {
+    nodeDeclarationEnsure(&tree, new_node);
   }
 
   remap_pairing(tree, node_map);
