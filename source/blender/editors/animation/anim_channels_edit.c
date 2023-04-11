@@ -3059,8 +3059,46 @@ static void animchannel_select_range(bAnimContext *ac, bAnimListElem *cursor_ele
 
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     bool is_active_elem = false;
+    bool is_selection_allowed = true;
+    const bool is_cursor_elem = (ale->data == cursor_elem->data);
 
     switch (ale->type) {
+      case ANIMTYPE_FILLACTD: /* Action Expander */
+      case ANIMTYPE_DSMAT:    /* Datablock AnimData Expanders */
+      case ANIMTYPE_DSLAM:
+      case ANIMTYPE_DSCAM:
+      case ANIMTYPE_DSCACHEFILE:
+      case ANIMTYPE_DSCUR:
+      case ANIMTYPE_DSSKEY:
+      case ANIMTYPE_DSWOR:
+      case ANIMTYPE_DSPART:
+      case ANIMTYPE_DSMBALL:
+      case ANIMTYPE_DSARM:
+      case ANIMTYPE_DSMESH:
+      case ANIMTYPE_DSNTREE:
+      case ANIMTYPE_DSTEX:
+      case ANIMTYPE_DSLAT:
+      case ANIMTYPE_DSLINESTYLE:
+      case ANIMTYPE_DSSPK:
+      case ANIMTYPE_DSGPENCIL:
+      case ANIMTYPE_DSMCLIP:
+      case ANIMTYPE_DSHAIR:
+      case ANIMTYPE_DSPOINTCLOUD:
+      case ANIMTYPE_DSVOLUME:
+      case ANIMTYPE_NLAACTION:
+      case ANIMTYPE_DSSIMULATION: {
+        if (ale->adt) {
+          is_active_elem = ale->adt->flag & ADT_UI_ACTIVE;
+        }
+        is_selection_allowed = ale->type == cursor_elem->type;
+        break;
+      }
+      case ANIMTYPE_GROUP: {
+        bActionGroup *argp = (bActionGroup *)ale->data;
+        is_active_elem = argp->flag & AGRP_ACTIVE;
+        is_selection_allowed = ale->type == cursor_elem->type;
+        break;
+      }
       case ANIMTYPE_FCURVE:
       case ANIMTYPE_NLACURVE: {
         FCurve *fcu = (FCurve *)ale->data;
@@ -3075,23 +3113,24 @@ static void animchannel_select_range(bAnimContext *ac, bAnimListElem *cursor_ele
       default:
         break;
     }
+    /* Restrict selection when active element is not found and group-channels are excluded from the
+     * selection. */
+    if (is_selection_allowed || is_active_elem) {
+      if (is_active_elem || is_cursor_elem) {
+        /* Select first and last element from the range. Reverse selection status on extremes. */
+        ANIM_channel_setting_set(ac, ale, ACHANNEL_SETTING_SELECT, ACHANNEL_SETFLAG_ADD);
+        in_selection_range = !in_selection_range;
+      }
+      else if (in_selection_range) {
+        /* Select elements between the range. */
+        ANIM_channel_setting_set(ac, ale, ACHANNEL_SETTING_SELECT, ACHANNEL_SETFLAG_ADD);
+      }
 
-    const bool is_cursor_elem = (ale->data == cursor_elem->data);
-
-    if (is_active_elem || is_cursor_elem) {
-      /* Select first and last element from the range. Reverse selection status on extremes. */
-      ANIM_channel_setting_set(ac, ale, ACHANNEL_SETTING_SELECT, ACHANNEL_SETFLAG_ADD);
-      in_selection_range = !in_selection_range;
-    }
-    else if (in_selection_range) {
-      /* Select elements between the range. */
-      ANIM_channel_setting_set(ac, ale, ACHANNEL_SETTING_SELECT, ACHANNEL_SETFLAG_ADD);
-    }
-
-    if (is_active_elem && is_cursor_elem) {
-      /* Selection range is only one element when active channel and clicked channel are same. So
-       * exit out of the loop when this condition is hit. */
-      break;
+      if (is_active_elem && is_cursor_elem) {
+        /* Selection range is only one element when active channel and clicked channel are same. So
+         * exit out of the loop when this condition is hit. */
+        break;
+      }
     }
   }
 
@@ -3121,8 +3160,13 @@ static int click_select_channel_object(bContext *C,
       adt->flag ^= ADT_UI_SELECTED;
     }
   }
+  else if (selectmode == SELECT_EXTEND_RANGE) {
+    animchannel_clear_selection(ac);
+    animchannel_select_range(ac, ale);
+  }
   else {
     /* deselect all */
+    ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_CLEAR);
     BKE_view_layer_synced_ensure(scene, view_layer);
     /* TODO: should this deselect all other types of channels too? */
     LISTBASE_FOREACH (Base *, b, BKE_view_layer_object_bases_get(view_layer)) {
@@ -3145,7 +3189,8 @@ static int click_select_channel_object(bContext *C,
    * to avoid getting stuck there, see: #48747. */
   ED_object_base_activate_with_mode_exit_if_needed(C, base); /* adds notifier */
 
-  if ((adt) && (adt->flag & ADT_UI_SELECTED)) {
+  /* Similar to outliner, do not change active element when selecting elements in range.*/
+  if ((adt) && (adt->flag & ADT_UI_SELECTED) && (selectmode != SELECT_EXTEND_RANGE)) {
     adt->flag |= ADT_UI_ACTIVE;
   }
 
@@ -3165,14 +3210,18 @@ static int click_select_channel_dummy(bAnimContext *ac,
     /* inverse selection status of this AnimData block only */
     ale->adt->flag ^= ADT_UI_SELECTED;
   }
+  else if (selectmode == SELECT_EXTEND_RANGE) {
+    animchannel_clear_selection(ac);
+    animchannel_select_range(ac, ale);
+  }
   else {
     /* select AnimData block by itself */
     ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_CLEAR);
     ale->adt->flag |= ADT_UI_SELECTED;
   }
 
-  /* set active? */
-  if (ale->adt->flag & ADT_UI_SELECTED) {
+  /* Similar to outliner, do not change active element when selecting elements in range. */
+  if ((ale->adt->flag & ADT_UI_SELECTED) && (selectmode != SELECT_EXTEND_RANGE)) {
     ale->adt->flag |= ADT_UI_ACTIVE;
   }
 
@@ -3218,6 +3267,10 @@ static int click_select_channel_group(bAnimContext *ac,
     /* inverse selection status of this group only */
     agrp->flag ^= AGRP_SELECTED;
   }
+  else if (selectmode == SELECT_EXTEND_RANGE) {
+    animchannel_clear_selection(ac);
+    animchannel_select_range(ac, ale);
+  }
   else if (selectmode == -1) {
     /* select all in group (and deselect everything else) */
     FCurve *fcu;
@@ -3244,15 +3297,20 @@ static int click_select_channel_group(bAnimContext *ac,
     agrp->flag |= AGRP_SELECTED;
   }
 
-  /* if group is selected now, make group the 'active' one in the visible list */
+  /* if group is selected now, make group the 'active' one in the visible list.
+   * Similar to outliner, do not change active element when selecting elements in range. */
   if (agrp->flag & AGRP_SELECTED) {
-    ANIM_set_active_channel(ac, ac->data, ac->datatype, filter, agrp, ANIMTYPE_GROUP);
+    if (selectmode != SELECT_EXTEND_RANGE) {
+      ANIM_set_active_channel(ac, ac->data, ac->datatype, filter, agrp, ANIMTYPE_GROUP);
+    }
     if (pchan) {
       ED_pose_bone_select(ob, pchan, true);
     }
   }
   else {
-    ANIM_set_active_channel(ac, ac->data, ac->datatype, filter, NULL, ANIMTYPE_GROUP);
+    if (selectmode != SELECT_EXTEND_RANGE) {
+      ANIM_set_active_channel(ac, ac->data, ac->datatype, filter, NULL, ANIMTYPE_GROUP);
+    }
     if (pchan) {
       ED_pose_bone_select(ob, pchan, false);
     }
