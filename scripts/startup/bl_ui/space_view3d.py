@@ -892,38 +892,38 @@ class VIEW3D_HT_header(Header):
         row = layout.row(align=True)
         row.active = (object_mode == 'EDIT') or (shading.type in {'WIREFRAME', 'SOLID'})
 
-        from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
-        _cls = ToolSelectPanelHelper._tool_class_from_space_type('VIEW_3D')
-
-        if tool_settings.workspace_tool_type == 'FALLBACK':
-            tool = _cls._tool_get_by_id_active(context, _cls.tool_fallback_id)[0].idname
-        else:
-            tool = ToolSelectPanelHelper.tool_active_from_context(context).idname
-
-        if object_mode in 'EDIT':
-            mode_match_auto_xray = tool_settings.auto_xray_edit and tool_settings.auto_xray
-            mode_match_select_through = tool_settings.select_through_edit and tool_settings.select_through
-        elif object_mode in 'OBJECT':
-            mode_match_auto_xray = tool_settings.auto_xray_object and tool_settings.auto_xray
-            mode_match_select_through = tool_settings.select_through_object and tool_settings.select_through
-        else:
-            mode_match_auto_xray = False
-            mode_match_select_through = False
-
-        if tool == "builtin.select_box":
-            depress_auto_xray = mode_match_auto_xray and tool_settings.auto_xray_box
-            depress_select_through = mode_match_select_through and tool_settings.select_through_box
-        elif tool == "builtin.select_lasso":
-            depress_auto_xray = mode_match_auto_xray and tool_settings.auto_xray_lasso
-            depress_select_through = mode_match_select_through and tool_settings.select_through_lasso
-        elif tool == "builtin.select_circle":
-            depress_auto_xray = mode_match_auto_xray and tool_settings.auto_xray_circle
-            depress_select_through = mode_match_select_through and tool_settings.select_through_circle
-        else:
-            depress_auto_xray = False
-            depress_select_through = False
-
         if object_mode in 'EDIT' or object_mode in 'OBJECT':
+            from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
+            _cls = ToolSelectPanelHelper._tool_class_from_space_type('VIEW_3D')
+
+            if tool_settings.workspace_tool_type == 'FALLBACK':
+                tool = _cls._tool_get_by_id_active(context, _cls.tool_fallback_id)[0].idname
+            else:
+                tool = ToolSelectPanelHelper.tool_active_from_context(context).idname
+
+            if object_mode in 'EDIT':
+                mode_match_auto_xray = tool_settings.auto_xray_edit and tool_settings.auto_xray
+                mode_match_select_through = tool_settings.select_through_edit and tool_settings.select_through
+            elif object_mode in 'OBJECT':
+                mode_match_auto_xray = tool_settings.auto_xray_object and tool_settings.auto_xray
+                mode_match_select_through = tool_settings.select_through_object and tool_settings.select_through
+            else:
+                mode_match_auto_xray = False
+                mode_match_select_through = False
+
+            if tool == "builtin.select_box":
+                depress_auto_xray = mode_match_auto_xray and tool_settings.auto_xray_box
+                depress_select_through = mode_match_select_through and tool_settings.select_through_box
+            elif tool == "builtin.select_lasso":
+                depress_auto_xray = mode_match_auto_xray and tool_settings.auto_xray_lasso
+                depress_select_through = mode_match_select_through and tool_settings.select_through_lasso
+            elif tool == "builtin.select_circle":
+                depress_auto_xray = mode_match_auto_xray and tool_settings.auto_xray_circle
+                depress_select_through = mode_match_select_through and tool_settings.select_through_circle
+            else:
+                depress_auto_xray = False
+                depress_select_through = False
+
             if bpy.context.preferences.inputs.drag_select_control == 'USER_DRAG_TOOLSETTING':
                 if tool_settings.auto_xray_button:
                     row.operator("view3d.toggle_auto_xray", text="", icon='AUTO_XRAY', depress=depress_auto_xray)
@@ -6703,6 +6703,21 @@ class VIEW3D_PT_overlay_edit_mesh(Panel):
 
         is_any_solid_shading = not (shading.show_xray or (shading.type == 'WIREFRAME'))
 
+        if shading.type == 'WIREFRAME':
+            xray = shading.show_xray_wireframe and shading.xray_alpha_wireframe < 1.0
+        elif shading.type == 'SOLID':
+            xray = shading.show_xray and shading.xray_alpha < 1.0
+        else:
+            xray = False
+
+        if xray:
+            fdot_draw_depressed = overlay.show_face_center_xray
+        else:
+            fdot_draw_depressed = overlay.show_face_center
+
+        col = layout.column()
+        col.active = display_all
+
         col = layout.column()
         col.active = display_all
 
@@ -6714,8 +6729,7 @@ class VIEW3D_PT_overlay_edit_mesh(Panel):
         sub = split.column()
         sub.prop(overlay, "show_faces", text="Faces")
         sub = split.column()
-        sub.active = is_any_solid_shading
-        sub.prop(overlay, "show_face_center", text="Center")
+        sub.operator("view3d.toggle_facedots", text="Facedots", depress = fdot_draw_depressed)
 
         row = col.row(align=True)
         row.prop(overlay, "show_edge_crease", text="Creases", toggle=True)

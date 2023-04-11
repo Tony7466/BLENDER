@@ -7,7 +7,7 @@
    inkscape:output_extension="org.inkscape.output.svg.inkscape"
    sodipodi:docname="blender_icons.svg"
    version="1.0"
-   inkscape:version="1.2 (dc2aeda, 2022-05-15)"
+   inkscape:version="1.1.1 (3bf5ae0d25, 2021-09-20)"
    sodipodi:version="0.32"
    id="svg2"
    height="640"
@@ -42,19 +42,70 @@
      guidetolerance="10"
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
-     inkscape:window-width="1728"
-     inkscape:window-height="1051"
+     inkscape:window-width="1920"
+     inkscape:window-height="1027"
      id="namedview34335"
      showgrid="false"
-     inkscape:zoom="1.2495612"
-     inkscape:cx="196.46897"
-     inkscape:cy="320.51252"
-     inkscape:window-x="767"
-     inkscape:window-y="120"
-     inkscape:window-maximized="0"
+     inkscape:zoom="22.627417"
+     inkscape:cx="423.44648"
+     inkscape:cy="332.84842"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
      inkscape:current-layer="layer8"
      inkscape:showpageshadow="2"
-     inkscape:deskcolor="#808080" />
+     inkscape:deskcolor="#808080"
+     showguides="true"
+     inkscape:guide-bbox="true">
+    <sodipodi:guide
+       position="403.25,317"
+       orientation="0,-1"
+       id="guide4417" />
+    <sodipodi:guide
+       position="402,314.96875"
+       orientation="1,0"
+       id="guide4419" />
+    <sodipodi:guide
+       position="404.3125,297"
+       orientation="0,-1"
+       id="guide4503" />
+    <sodipodi:guide
+       position="400.59375,314"
+       orientation="0,-1"
+       id="guide4505" />
+    <sodipodi:guide
+       position="398.9629,300.00317"
+       orientation="0,-1"
+       id="guide4507" />
+    <sodipodi:guide
+       position="404.99219,316.74219"
+       orientation="1,0"
+       id="guide4509" />
+    <sodipodi:guide
+       position="447,316.75"
+       orientation="1,0"
+       id="guide4511" />
+    <sodipodi:guide
+       position="419.01562,316"
+       orientation="1,0"
+       id="guide4513" />
+    <sodipodi:guide
+       position="440.01562,315.40625"
+       orientation="1,0"
+       id="guide4515" />
+    <sodipodi:guide
+       position="415.93347,312.98521"
+       orientation="0,-1"
+       id="guide4517" />
+    <sodipodi:guide
+       position="406.1776,312.00189"
+       orientation="0,-1"
+       id="guide4519" />
+    <sodipodi:guide
+       position="425.99219,316.78906"
+       orientation="1,0"
+       id="guide4531" />
+  </sodipodi:namedview>
   <defs
      id="defs4" />
   <g
@@ -19027,6 +19078,108 @@
          id="path19640"
          sodipodi:nodetypes="cc" />
     </g>
+    <path
+       d="m 406.99219,326 h -2 v 2 h 1 v -1 h 1 z"
+       fill="#ffffff"
+       id="path2"
+       style="display:inline;enable-background:new" />
+    <path
+       d="m 408.99219,327 h 2 v -1 h -2 z"
+       fill="#ffffff"
+       id="path4"
+       style="display:inline;enable-background:new" />
+    <path
+       d="m 414.99219,327 h -2 v -1 h 2 z"
+       fill="#ffffff"
+       id="path6"
+       style="display:inline;enable-background:new" />
+    <path
+       d="m 417.68289,327 h -0.6907 v -1 h 2 v 2 h -1 v 0.0287 l -5.0787,3.99043 c 0.051,0.15094 0.0787,0.31266 0.0787,0.48084 0,0.0204 -4e-4,0.0408 -10e-4,0.061 l 5.0012,2.0005 v -0.5615 h 1 v 2 h -1 v -0.3615 l -5.3726,-2.149 c -0.1677,0.1908 -0.383,0.3388 -0.6274,0.4251 v 5.0854 h -1 v -5.0854 c -0.5826,-0.2059 -1,-0.7615 -1,-1.4146 0,-0.82843 0.67157,-1.5 1.5,-1.5 0.2955,0 0.571,0.0855 0.8033,0.23298 z"
+       fill="#ffffff"
+       id="path8"
+       style="display:inline;enable-background:new" />
+    <path
+       d="m 410.99219,339 v 1 h -2 v -1 z"
+       fill="#ffffff"
+       id="path10"
+       style="display:inline;enable-background:new" />
+    <path
+       d="m 417.99219,330 h 1 v 2 h -1 z"
+       fill="#ffffff"
+       id="path12"
+       style="display:inline;enable-background:new" />
+    <path
+       d="m 417.99219,339 v -1 h 1 v 2 h -2 v -1 z"
+       fill="#ffffff"
+       id="path14"
+       style="display:inline;enable-background:new" />
+    <path
+       d="m 404.99219,334 v 2 h 1 v -2 z"
+       fill="#ffffff"
+       id="path16"
+       style="display:inline;enable-background:new" />
+    <path
+       d="m 404.99219,338 h 1 v 1 h 1 v 1 h -2 z"
+       fill="#ffffff"
+       id="path18"
+       style="display:inline;enable-background:new" />
+    <path
+       d="m 404.99219,332 h 1 v -2 h -1 z"
+       fill="#ffffff"
+       id="path20"
+       style="display:inline;enable-background:new" />
+    <path
+       d="m 414.99219,340 h -2 v -1 h 2 z"
+       fill="#ffffff"
+       id="path22"
+       style="display:inline;enable-background:new" />
+    <path
+       d="m 427.99214,326 h -1.99995 v 2 h 1 v -1 h 0.99995 z"
+       fill="#ffffff"
+       id="path2-2"
+       style="display:inline;enable-background:new" />
+    <path
+       d="m 429.99214,327 h 2 v -1 h -2 z"
+       fill="#ffffff"
+       id="path4-7"
+       style="display:inline;enable-background:new" />
+    <path
+       d="m 434.99219,327 h -1.0001 v -1 h 2.0001 v 2 h -1 z"
+       fill="#ffffff"
+       id="path6-2"
+       style="display:inline;enable-background:new" />
+    <path
+       fill-rule="evenodd"
+       clip-rule="evenodd"
+       d="m 439.49219,337 c 0.2761,0 0.5,-0.2239 0.5,-0.5 v -7 c 0,-0.27614 -0.2239,-0.5 -0.5,-0.5 h -6.58535 c -0.20592,-0.5826 -0.76154,-1 -1.41465,-1 -0.82843,0 -1.5,0.67157 -1.5,1.5 0,0.65312 0.4174,1.20873 1,1.41465 v 4.17075 c -0.5826,0.2059 -1,0.76151 -1,1.4146 0,0.8284 0.67157,1.5 1.5,1.5 0.65311,0 1.20873,-0.41739 1.41465,-1 z m -6.58535,-1 h 2.08535 v -2 h 1 v 2 h 3 v -6 h -3 v 2 h -1 v -2 h -2.08535 c -0.15065,0.42622 -0.48844,0.76401 -0.91465,0.91465 v 4.17075 c 0.42621,0.1506 0.764,0.48841 0.91465,0.9146 z"
+       fill="#ffffff"
+       id="path8-7"
+       style="display:inline;enable-background:new" />
+    <path
+       d="m 434.99219,339 v -1 h 1 v 2 h -2.0001 v -1 z"
+       fill="#ffffff"
+       id="path10-5"
+       style="display:inline;enable-background:new" />
+    <path
+       d="m 429.99214,339 h 2 v 1 h -2 z"
+       fill="#ffffff"
+       id="path12-3"
+       style="display:inline;enable-background:new" />
+    <path
+       d="m 426.99219,339 h 0.99995 v 1 h -1.99995 v -2 h 1 z"
+       fill="#ffffff"
+       id="path14-9"
+       style="display:inline;enable-background:new" />
+    <path
+       d="m 426.99219,334 v 2 h -1 v -2 z"
+       fill="#ffffff"
+       id="path16-0"
+       style="display:inline;enable-background:new" />
+    <path
+       d="m 426.99219,330 v 2 h -1 v -2 z"
+       fill="#ffffff"
+       id="path18-9"
+       style="display:inline;enable-background:new" />
   </g>
   <g
      inkscape:groupmode="layer"

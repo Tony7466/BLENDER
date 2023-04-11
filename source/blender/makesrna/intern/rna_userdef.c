@@ -6004,6 +6004,12 @@ static void rna_def_userdef_input(BlenderRNA *brna)
                            "Number of pixels to before the cursor is considered to have moved "
                            "(used for cycling selected items on successive clicks)");
 
+  prop = RNA_def_property(srna, "header_highlight", PROP_INT, PROP_FACTOR);
+  RNA_def_property_range(prop, 0, 10);
+  RNA_def_property_ui_range(prop, 0, 10, 1, -1);
+  RNA_def_property_ui_text(
+      prop, "Header Highlight", "How much brighter the header of the active window is");
+
   /* tablet pressure curve */
   prop = RNA_def_property(srna, "pressure_threshold_max", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_range(prop, 0.0f, 1.0f);

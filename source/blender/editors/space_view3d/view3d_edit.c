@@ -1443,3 +1443,34 @@ void VIEW3D_OT_toggle_select_through(wmOperatorType *ot)
 }
 
 /** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Toggle Facedots
+ * \{ */
+
+static int toggle_facedots_exec(bContext *C, wmOperator *op)
+{
+  ScrArea *area = CTX_wm_area(C);
+  View3D *v3d = CTX_wm_view3d(C);
+  if (!XRAY_FLAG_ENABLED(v3d)) {
+    v3d->overlay.edit_flag ^= V3D_OVERLAY_EDIT_FACE_DOT;
+  }
+  else {
+    v3d->overlay.edit_flag ^= V3D_OVERLAY_EDIT_FACE_DOT_XRAY;
+  }
+  ED_area_tag_redraw(area);
+  return OPERATOR_FINISHED;
+}
+
+void VIEW3D_OT_toggle_facedots(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Toggle Facedots";
+  ot->idname = "VIEW3D_OT_toggle_facedots";
+  ot->description = "Show face center dots in the current shading mode";
+  /* api callbacks */
+  ot->exec = toggle_facedots_exec;
+  ot->poll = ED_operator_view3d_active;
+}
+
+/** \} */

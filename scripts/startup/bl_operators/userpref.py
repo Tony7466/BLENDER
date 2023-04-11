@@ -407,7 +407,7 @@ class PREFERENCES_OT_set_direction_any(Operator):
 
     item_id: IntProperty(
         name="Item Identifier",
-        description="Identifier of the item to remove",
+        description="Identifier of the item to set direction for",
     )
 
     @classmethod
@@ -428,7 +428,7 @@ class PREFERENCES_OT_set_direction_left(Operator):
 
     item_id: IntProperty(
         name="Item Identifier",
-        description="Identifier of the item to remove",
+        description="Identifier of the item to set direction for",
     )
 
     @classmethod
@@ -449,7 +449,7 @@ class PREFERENCES_OT_set_direction_right(Operator):
 
     item_id: IntProperty(
         name="Item Identifier",
-        description="Identifier of the item to remove",
+        description="Identifier of the item to set direction for",
     )
 
     @classmethod
@@ -470,7 +470,7 @@ class PREFERENCES_OT_set_direction_up(Operator):
 
     item_id: IntProperty(
         name="Item Identifier",
-        description="Identifier of the item to remove",
+        description="Identifier of the item to set direction for",
     )
 
     @classmethod
@@ -491,7 +491,7 @@ class PREFERENCES_OT_set_direction_down(Operator):
 
     item_id: IntProperty(
         name="Item Identifier",
-        description="Identifier of the item to remove",
+        description="Identifier of the item to set direction for",
     )
 
     @classmethod

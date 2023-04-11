@@ -800,7 +800,9 @@ typedef struct UserDef {
   char gizmo_size;
   /** Navigate gizmo size. */
   char gizmo_size_navigate_v3d;
-  char _pad3[5];
+  /** Header highlight */
+  char header_highlight;
+  char _pad3[4];
   short edit_studio_light;
   short lookdev_sphere_size;
   short vbotimeout, vbocollectrate;
