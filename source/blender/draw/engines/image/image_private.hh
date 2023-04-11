@@ -51,7 +51,6 @@ class AbstractDrawingMode {
 
 GPUShader *IMAGE_shader_image_get();
 GPUShader *IMAGE_shader_depth_get();
-GPUShader *IMAGE_shader_color_depth_get();
 void IMAGE_shader_free();
 
 }  // namespace blender::draw::image_engine
