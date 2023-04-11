@@ -39,7 +39,7 @@ CCL_NAMESPACE_BEGIN
  */
 bool Scene::check_cancel_update(Progress &progress, Device *device) {
   bool status = false;
-  if (!background && progress.get_updates()) {
+  if (progress.get_updates()) {
     status = progress.get_cancel();
   } 
   return status || ((device != NULL) && device->have_error());
