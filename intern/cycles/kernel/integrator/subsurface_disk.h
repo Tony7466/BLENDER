@@ -33,6 +33,7 @@ ccl_device_inline bool subsurface_disk(KernelGlobals kg,
   const float3 P = INTEGRATOR_STATE(state, ray, P);
   const float ray_dP = INTEGRATOR_STATE(state, ray, dP);
   const float time = INTEGRATOR_STATE(state, ray, time);
+  const Spectrum wavelengths = INTEGRATOR_STATE(state, ray, wavelengths);
   const float3 Ng = INTEGRATOR_STATE(state, subsurface, Ng);
   const int object = INTEGRATOR_STATE(state, isect, object);
   const uint32_t path_flag = INTEGRATOR_STATE(state, path, flag);
@@ -87,6 +88,7 @@ ccl_device_inline bool subsurface_disk(KernelGlobals kg,
   ray.tmax = 2.0f * disk_height;
   ray.dP = ray_dP;
   ray.dD = differential_zero_compact();
+  ray.wavelengths = wavelengths;
   ray.time = time;
   ray.self.object = OBJECT_NONE;
   ray.self.prim = PRIM_NONE;

@@ -335,29 +335,6 @@ ccl_device_inline float path_state_rng_light_termination(KernelGlobals kg,
   return 0.0f;
 }
 
-#ifdef __SPECTRAL_RENDERING__
-ccl_device_inline Spectrum generate_wavelengths(KernelGlobals kg, ConstIntegratorState state)
-{
-  RNGState rng_state;
-  path_state_rng_load(state, &rng_state);
-
-  Spectrum result;
-
-  float initial_offset = mix(
-      0.0f, 1.0f / SPECTRUM_CHANNELS, path_state_rng_1D(kg, &rng_state, PRNG_WAVELENGTH));
-  FOREACH_SPECTRUM_CHANNEL (i) {
-    float current_channel_offset = initial_offset + 1.0f * i / SPECTRUM_CHANNELS;
-    GET_SPECTRUM_CHANNEL(result, i) = lookup_table_read(
-        kg,
-        current_channel_offset,
-        kernel_data.cam.wavelength_importance_cdf_table_offset,
-        WAVELENGTH_CDF_TABLE_SIZE);
-  }
-
-  return result;
-}
-#endif
-
 /* Initialize the rest of the path state needed to continue the path integration. */
 ccl_device_inline void path_state_init_integrator(KernelGlobals kg,
                                                   IntegratorState state,
@@ -413,10 +390,6 @@ ccl_device_inline void path_state_init_integrator(KernelGlobals kg,
     INTEGRATOR_STATE_WRITE(state, path, flag) |= PATH_RAY_DENOISING_FEATURES;
     INTEGRATOR_STATE_WRITE(state, path, denoising_feature_throughput) = one_spectrum();
   }
-#endif
-
-#ifdef __SPECTRAL_RENDERING__
-  INTEGRATOR_STATE_WRITE(state, ray, wavelengths) = generate_wavelengths(kg, state);
 #endif
 }
 

@@ -32,6 +32,8 @@ ccl_device_inline void integrate_camera_sample(KernelGlobals kg,
                                     path_rng_3D(kg, rng_hash, sample, PRNG_LENS_TIME) :
                                     zero_float3();
 
+  const float rand_wavelength = path_rng_1D(kg, rng_hash, sample, PRNG_WAVELENGTH);
+
   /* Generate camera ray. */
   camera_sample(kg,
                 x,
@@ -41,6 +43,7 @@ ccl_device_inline void integrate_camera_sample(KernelGlobals kg,
                 rand_time_lens.y,
                 rand_time_lens.z,
                 rand_time_lens.x,
+                rand_wavelength,
                 ray);
 }
 

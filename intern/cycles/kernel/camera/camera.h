@@ -338,6 +338,25 @@ ccl_device_inline void camera_sample_panorama(ccl_constant KernelCamera *cam,
 
 /* Common */
 
+#ifdef __SPECTRAL_RENDERING__
+ccl_device_inline Spectrum camera_wavelengths(KernelGlobals kg, float wavelength_offset)
+{
+  Spectrum result;
+
+  float initial_offset = mix(0.0f, 1.0f / SPECTRUM_CHANNELS, wavelength_offset);
+  FOREACH_SPECTRUM_CHANNEL (i) {
+    float current_channel_offset = initial_offset + 1.0f * i / SPECTRUM_CHANNELS;
+    GET_SPECTRUM_CHANNEL(result, i) = lookup_table_read(
+        kg,
+        current_channel_offset,
+        kernel_data.cam.wavelength_importance_cdf_table_offset,
+        WAVELENGTH_CDF_TABLE_SIZE);
+  }
+
+  return result;
+}
+#endif
+
 ccl_device_inline void camera_sample(KernelGlobals kg,
                                      int x,
                                      int y,
@@ -346,6 +365,7 @@ ccl_device_inline void camera_sample(KernelGlobals kg,
                                      float lens_u,
                                      float lens_v,
                                      float time,
+                                     float wavelength_offset,
                                      ccl_private Ray *ray)
 {
   /* pixel filter */
@@ -402,6 +422,10 @@ ccl_device_inline void camera_sample(KernelGlobals kg,
     ccl_global const DecomposedTransform *cam_motion = kernel_data_array(camera_motion);
     camera_sample_panorama(&kernel_data.cam, cam_motion, raster_x, raster_y, lens_u, lens_v, ray);
   }
+
+#ifdef __SPECTRAL_RENDERING__
+  ray->wavelengths = camera_wavelengths(kg, wavelength_offset);
+#endif
 }
 
 /* Utilities */

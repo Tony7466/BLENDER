@@ -67,10 +67,6 @@ ccl_device void kernel_background_evaluate(KernelGlobals kg,
   const uint rng_hash = path_rng_hash_init(kg, 0, offset, 0);
   path_state_init_integrator(kg, state, 0, rng_hash);
 
-#ifdef __SPECTRAL_RENDERING__
-  generate_wavelengths(kg, state);
-#endif
-
   /* Evaluate shader.
    * This is being evaluated for all BSDFs, so path flag does not contain a specific type.
    * However, we want to flag the ray visibility to ignore the sun in the background map. */
