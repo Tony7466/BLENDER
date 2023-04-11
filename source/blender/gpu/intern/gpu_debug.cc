@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+ * Copyright 2020 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -112,12 +112,12 @@ void *GPU_debug_capture_scope_create(const char *name)
 {
   /* GPU Frame capture is only enabled when --debug-gpu is specified. */
   if (!(G.debug & G_DEBUG_GPU)) {
-    return NULL;
+    return nullptr;
   }
 
   Context *ctx = Context::get();
   if (!ctx) {
-    return NULL;
+    return nullptr;
   }
   return ctx->debug_capture_scope_create(name);
 }

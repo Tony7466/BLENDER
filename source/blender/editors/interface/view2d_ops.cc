@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup edinterface
@@ -976,8 +976,8 @@ static void view_zoomdrag_apply(bContext *C, wmOperator *op)
   const bool zoom_to_pos = use_cursor_init && vzd->zoom_to_mouse_pos;
 
   /* get amount to move view by */
-  float dx = RNA_float_get(op->ptr, "deltax") / U.dpi_fac;
-  float dy = RNA_float_get(op->ptr, "deltay") / U.dpi_fac;
+  float dx = RNA_float_get(op->ptr, "deltax") / UI_SCALE_FAC;
+  float dy = RNA_float_get(op->ptr, "deltay") / UI_SCALE_FAC;
 
   /* Check if the 'timer' is initialized, as zooming with the trackpad
    * never uses the "Continuous" zoom method, and the 'timer' is not initialized. */
@@ -1353,9 +1353,7 @@ static void VIEW2D_OT_zoom(wmOperatorType *ot)
 
 /* -------------------------------------------------------------------- */
 /** \name Border Zoom Operator
- * \{ */
-
-/**
+ *
  * The user defines a rect using standard box select tools, and we use this rect to
  * define the new zoom-level of the view in the following ways:
  *
@@ -1363,8 +1361,8 @@ static void VIEW2D_OT_zoom(wmOperatorType *ot)
  * -# RIGHTMOUSE - zoom out of view
  *
  * Currently, these key mappings are hardcoded, but it shouldn't be too important to
- * have custom keymappings for this...
- */
+ * have custom keymappings for this.
+ * \{ */
 
 static int view_borderzoom_exec(bContext *C, wmOperator *op)
 {

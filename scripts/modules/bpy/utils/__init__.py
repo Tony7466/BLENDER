@@ -30,7 +30,6 @@ __all__ = (
     "previews",
     "resource_path",
     "script_path_user",
-    "script_path_pref",
     "script_paths",
     "smpte_from_frame",
     "smpte_from_seconds",
@@ -70,7 +69,7 @@ _script_module_dirs = "startup", "modules"
 # Base scripts, this points to the directory containing: "modules" & "startup" (see `_script_module_dirs`).
 # In Blender's code-base this is `./scripts`.
 #
-# NOTE: in virtually all cases this should match `BLENDER_SYSTEM_SCRIPTS` as this script is it's self a system script,
+# NOTE: in virtually all cases this should match `BLENDER_SYSTEM_SCRIPTS` as this script is itself a system script,
 # it must be in the `BLENDER_SYSTEM_SCRIPTS` by definition and there is no need for a look-up from `_bpy_script_paths`.
 _script_base_dir = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(__file__))))
 
@@ -340,10 +339,14 @@ def script_path_user():
     return _os.path.normpath(path) if path else None
 
 
-def script_path_pref():
-    """returns the user preference or None"""
-    path = _preferences.filepaths.script_directory
-    return _os.path.normpath(path) if path else None
+def script_paths_pref():
+    """Returns a list of user preference script directories."""
+    paths = []
+    for script_directory in _preferences.filepaths.script_directories:
+        directory = script_directory.directory
+        if directory:
+            paths.append(_os.path.normpath(directory))
+    return paths
 
 
 def script_paths(*, subdir=None, user_pref=True, check_all=False, use_user=True):
@@ -383,9 +386,6 @@ def script_paths(*, subdir=None, user_pref=True, check_all=False, use_user=True)
     if not check_all:
         if use_user:
             base_paths.append(path_user)
-
-    if user_pref:
-        base_paths.append(script_path_pref())
 
     scripts = []
     for path in base_paths:

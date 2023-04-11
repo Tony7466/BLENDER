@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.5.0 Beta (b'4096bcfb25f6')\n"
+"Project-Id-Version: Blender 3.6.0 Alpha (b'bca2090724a3')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-03-13 11:29:34\n"
+"POT-Creation-Date: 2023-04-11 10:34:35\n"
 "PO-Revision-Date: \n"
 "Last-Translator: Arvid Rudling <arvid.r@gmail.com>\n"
 "Language-Team: \n"
@@ -2442,10 +2442,6 @@ msgstr "Bortre beskärningsgräns i 3D-vyn"
 
 msgid "Lock to Object"
 msgstr "Lås till objekt"
-
-
-msgid "3D region in this space, in case of quad view the camera region"
-msgstr "3D-område i detta rum, kameraområde vid 4-vägsvy"
 
 
 msgid "Texture slot name"

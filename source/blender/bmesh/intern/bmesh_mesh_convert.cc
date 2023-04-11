@@ -118,6 +118,8 @@ bool BM_attribute_stored_in_bmesh_builtin(const StringRef name)
 {
   return ELEM(name,
               "position",
+              ".corner_vert",
+              ".corner_edge",
               ".hide_vert",
               ".hide_edge",
               ".hide_poly",
@@ -131,19 +133,21 @@ bool BM_attribute_stored_in_bmesh_builtin(const StringRef name)
 }
 
 static BMFace *bm_face_create_from_mpoly(BMesh &bm,
-                                         Span<MLoop> loops,
+                                         Span<int> poly_verts,
+                                         Span<int> poly_edges,
                                          Span<BMVert *> vtable,
                                          Span<BMEdge *> etable)
 {
-  Array<BMVert *, BM_DEFAULT_NGON_STACK_SIZE> verts(loops.size());
-  Array<BMEdge *, BM_DEFAULT_NGON_STACK_SIZE> edges(loops.size());
+  const int size = poly_verts.size();
+  Array<BMVert *, BM_DEFAULT_NGON_STACK_SIZE> verts(size);
+  Array<BMEdge *, BM_DEFAULT_NGON_STACK_SIZE> edges(size);
 
-  for (const int i : loops.index_range()) {
-    verts[i] = vtable[loops[i].v];
-    edges[i] = etable[loops[i].e];
+  for (const int i : IndexRange(size)) {
+    verts[i] = vtable[poly_verts[i]];
+    edges[i] = etable[poly_edges[i]];
   }
 
-  return BM_face_create(&bm, verts.data(), edges.data(), loops.size(), nullptr, BM_CREATE_SKIP_CD);
+  return BM_face_create(&bm, verts.data(), edges.data(), size, nullptr, BM_CREATE_SKIP_CD);
 }
 
 struct MeshToBMeshLayerInfo {
@@ -483,8 +487,9 @@ void BM_mesh_bm_from_me(BMesh *bm, const Mesh *me, const struct BMeshFromMeshPar
     bm->elem_index_dirty &= ~BM_EDGE; /* Added in order, clear dirty flag. */
   }
 
-  const Span<MPoly> polys = me->polys();
-  const Span<MLoop> mloop = me->loops();
+  const blender::OffsetIndices polys = me->polys();
+  const Span<int> corner_verts = me->corner_verts();
+  const Span<int> corner_edges = me->corner_edges();
 
   /* Only needed for selection. */
 
@@ -495,8 +500,9 @@ void BM_mesh_bm_from_me(BMesh *bm, const Mesh *me, const struct BMeshFromMeshPar
 
   int totloops = 0;
   for (const int i : polys.index_range()) {
+    const IndexRange poly = polys[i];
     BMFace *f = bm_face_create_from_mpoly(
-        *bm, mloop.slice(polys[i].loopstart, polys[i].totloop), vtable, etable);
+        *bm, corner_verts.slice(poly), corner_edges.slice(poly), vtable, etable);
     if (!ftable.is_empty()) {
       ftable[i] = f;
     }
@@ -530,7 +536,7 @@ void BM_mesh_bm_from_me(BMesh *bm, const Mesh *me, const struct BMeshFromMeshPar
       bm->act_face = f;
     }
 
-    int j = polys[i].loopstart;
+    int j = poly.start();
     BMLoop *l_first = BM_FACE_FIRST_LOOP(f);
     BMLoop *l_iter = l_first;
     do {
@@ -950,6 +956,8 @@ static void assert_bmesh_has_no_mesh_only_attributes(const BMesh &bm)
 {
   (void)bm; /* Unused in the release builds. */
   BLI_assert(CustomData_get_layer_named(&bm.vdata, CD_PROP_FLOAT3, "position") == nullptr);
+  BLI_assert(CustomData_get_layer_named(&bm.ldata, CD_PROP_FLOAT3, ".corner_vert") == nullptr);
+  BLI_assert(CustomData_get_layer_named(&bm.ldata, CD_PROP_FLOAT3, ".corner_edge") == nullptr);
 
   /* The "hide" attributes are stored as flags on #BMesh. */
   BLI_assert(CustomData_get_layer_named(&bm.vdata, CD_PROP_BOOL, ".hide_vert") == nullptr);
@@ -1113,11 +1121,11 @@ static void bm_edge_table_build(BMesh &bm,
     BM_elem_index_set(edge, i); /* set_inline */
     table[i] = edge;
     hflag |= edge->head.hflag;
+    need_sharp_edge |= (edge->head.hflag & BM_ELEM_SMOOTH) == 0;
     BM_CHECK_ELEMENT(edge);
   }
   need_select_edge = (hflag & BM_ELEM_SELECT) != 0;
   need_hide_edge = (hflag & BM_ELEM_HIDDEN) != 0;
-  need_sharp_edge = (hflag & BM_ELEM_SMOOTH) != 0;
   need_uv_seams = (hflag & BM_ELEM_SEAM) != 0;
 }
 
@@ -1318,15 +1326,13 @@ static void bm_to_mesh_faces(const BMesh &bm,
                              MutableSpan<bool> sharp_faces,
                              MutableSpan<int> material_indices)
 {
-  CustomData_add_layer(&mesh.pdata, CD_MPOLY, CD_CONSTRUCT, mesh.totpoly);
+  BKE_mesh_poly_offsets_ensure_alloc(&mesh);
   const Vector<BMeshToMeshLayerInfo> info = bm_to_mesh_copy_info_calc(bm.pdata, mesh.pdata);
-  MutableSpan<MPoly> dst_polys = mesh.polys_for_write();
-  threading::parallel_for(dst_polys.index_range(), 1024, [&](const IndexRange range) {
+  MutableSpan<int> dst_poly_offsets = mesh.poly_offsets_for_write();
+  threading::parallel_for(bm_faces.index_range(), 1024, [&](const IndexRange range) {
     for (const int face_i : range) {
       const BMFace &src_face = *bm_faces[face_i];
-      MPoly &dst_poly = dst_polys[face_i];
-      dst_poly.totloop = src_face.len;
-      dst_poly.loopstart = BM_elem_index_get(BM_FACE_FIRST_LOOP(&src_face));
+      dst_poly_offsets[face_i] = BM_elem_index_get(BM_FACE_FIRST_LOOP(&src_face));
       bmesh_block_copy_to_mesh_attributes(info, face_i, src_face.head.data);
     }
     if (!select_poly.is_empty()) {
@@ -1354,15 +1360,16 @@ static void bm_to_mesh_faces(const BMesh &bm,
 
 static void bm_to_mesh_loops(const BMesh &bm, const Span<const BMLoop *> bm_loops, Mesh &mesh)
 {
-  CustomData_add_layer(&mesh.ldata, CD_MLOOP, CD_SET_DEFAULT, mesh.totloop);
+  CustomData_add_layer_named(&mesh.ldata, CD_PROP_INT32, CD_CONSTRUCT, bm.totloop, ".corner_vert");
+  CustomData_add_layer_named(&mesh.ldata, CD_PROP_INT32, CD_CONSTRUCT, bm.totloop, ".corner_edge");
   const Vector<BMeshToMeshLayerInfo> info = bm_to_mesh_copy_info_calc(bm.ldata, mesh.ldata);
-  MutableSpan<MLoop> dst_loops = mesh.loops_for_write();
-  threading::parallel_for(dst_loops.index_range(), 1024, [&](const IndexRange range) {
+  MutableSpan<int> dst_corner_verts = mesh.corner_verts_for_write();
+  MutableSpan<int> dst_corner_edges = mesh.corner_edges_for_write();
+  threading::parallel_for(dst_corner_verts.index_range(), 1024, [&](const IndexRange range) {
     for (const int loop_i : range) {
       const BMLoop &src_loop = *bm_loops[loop_i];
-      MLoop &dst_loop = dst_loops[loop_i];
-      dst_loop.v = BM_elem_index_get(src_loop.v);
-      dst_loop.e = BM_elem_index_get(src_loop.e);
+      dst_corner_verts[loop_i] = BM_elem_index_get(src_loop.v);
+      dst_corner_edges[loop_i] = BM_elem_index_get(src_loop.e);
       bmesh_block_copy_to_mesh_attributes(info, loop_i, src_loop.head.data);
     }
   });
@@ -1380,6 +1387,7 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
   CustomData_free(&me->fdata, me->totface);
   CustomData_free(&me->ldata, me->totloop);
   CustomData_free(&me->pdata, me->totpoly);
+  MEM_SAFE_FREE(me->poly_offset_indices);
   BKE_mesh_runtime_clear_geometry(me);
 
   me->totvert = bm->totvert;
@@ -1582,10 +1590,11 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
   material_index.finish();
 }
 
-/* NOTE: The function is called from multiple threads with the same input BMesh and different
- * mesh objects. */
 void BM_mesh_bm_to_me_for_eval(BMesh *bm, Mesh *me, const CustomData_MeshMasks *cd_mask_extra)
 {
+  /* NOTE: The function is called from multiple threads with the same input BMesh and different
+   * mesh objects. */
+
   using namespace blender;
   /* Must be an empty mesh. */
   BLI_assert(me->totvert == 0);
