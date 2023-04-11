@@ -8,8 +8,8 @@ void main()
 
   /* Reuse the FREESTYLE flag to determine is GPencil. */
   bool is_gpencil = ((data & EDGE_FREESTYLE) != 0);
-  if ((data & VERT_SELECTED) != 0) {
-    if ((data & VERT_ACTIVE) != 0) {
+  if ((data & VERT_SELECTED) != 0u) {
+    if ((data & VERT_ACTIVE) != 0u) {
       finalColor = colorEditMeshActive;
     }
     else {
@@ -26,7 +26,7 @@ void main()
   view_clipping_distances(world_pos);
 
   bool show_handle = showCurveHandles;
-  if ((curveHandleDisplay == CURVE_HANDLE_SELECTED) && ((data & VERT_SELECTED_BEZT_HANDLE) == 0)) {
+  if ((curveHandleDisplay == CURVE_HANDLE_SELECTED) && ((data & VERT_SELECTED_BEZT_HANDLE) == 0u)) {
     show_handle = false;
   }
 
