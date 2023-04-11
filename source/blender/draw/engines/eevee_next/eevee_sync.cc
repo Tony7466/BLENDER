@@ -108,6 +108,13 @@ void SyncModule::sync_mesh(Object *ob,
                            ResourceHandle res_handle,
                            const ObjectRef &ob_ref)
 {
+  if ((ob->dt < OB_SOLID) && !DRW_state_is_scene_render()) {
+    /* NOTE:
+     * EEVEE doesn't render meshes with bounds or wire display type in the viewport,
+     * but Cycles does. */
+    return;
+  }
+
   bool has_motion = inst_.velocity.step_object_sync(
       ob, ob_handle.object_key, res_handle, ob_handle.recalc);
 
