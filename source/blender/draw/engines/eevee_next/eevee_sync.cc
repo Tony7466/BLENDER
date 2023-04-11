@@ -120,6 +120,12 @@ void SyncModule::sync_mesh(Object *ob,
     return;
   }
 
+  /* Only support single volume material for now. */
+  /* XXX We rely on the previously compiled surface shader
+   * to know if the material has a "volume nodetree".
+   */
+  bool use_volume_material = material_array.gpu_materials[0] &&
+                             GPU_material_has_volume_output(material_array.gpu_materials[0]);
   bool is_shadow_caster = false;
   bool is_alpha_blend = false;
   for (auto i : material_array.gpu_materials.index_range()) {
@@ -127,6 +133,14 @@ void SyncModule::sync_mesh(Object *ob,
     if (geom == nullptr) {
       continue;
     }
+
+    GPUMaterial *gpu_material = material_array.gpu_materials[i];
+    /* Do not render surface if we are rendering a volume object
+     * and do not have a surface closure. */
+    if (use_volume_material && gpu_material && !GPU_material_has_surface_output(gpu_material)) {
+      continue;
+    }
+
     Material &material = material_array.materials[i];
     geometry_call(material.shading.sub_pass, geom, res_handle);
     geometry_call(material.prepass.sub_pass, geom, res_handle);
@@ -135,7 +149,6 @@ void SyncModule::sync_mesh(Object *ob,
     is_shadow_caster = is_shadow_caster || material.shadow.sub_pass != nullptr;
     is_alpha_blend = is_alpha_blend || material.is_alpha_blend_transparent;
 
-    GPUMaterial *gpu_material = material_array.gpu_materials[i];
     ::Material *mat = GPU_material_get_material(gpu_material);
     inst_.cryptomatte.sync_material(mat);
   }
