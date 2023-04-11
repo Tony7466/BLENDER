@@ -674,8 +674,16 @@ void LightManager::device_update_background(Device *device,
         }
 
         /* Determine sun direction from lat/long and texture mapping. */
+
+        /* These operations are applied to `sun_rotation` to ensure it matches the floating point
+         * precision loses found in `sky_texture_precompute_nishita()` */
+        float sun_rotation = fmodf(sky->get_sun_rotation(), M_2PI_F);
+        if (sun_rotation < 0.0f) {
+          sun_rotation += M_2PI_F;
+        }
+
         float latitude = sky->get_sun_elevation();
-        float longitude = M_2PI_F - sky->get_sun_rotation() + M_PI_2_F;
+        float longitude = M_2PI_F - sun_rotation + M_PI_2_F;
         float3 sun_direction = make_float3(
             cosf(latitude) * cosf(longitude), cosf(latitude) * sinf(longitude), sinf(latitude));
         Transform sky_transform = transform_inverse(sky->tex_mapping.compute_transform());
