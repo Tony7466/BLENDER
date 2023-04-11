@@ -1,2 +1,3 @@
 Referenced by commit 11ba8c6ab4d7805c00371801db0af4a98b6abd46, Fix #106622: Various errors filling cone/cylinder primitive faces
 Referenced by issue #106671, [3.5] Mirror does not Mirror properly Data Transfer modifer, and ignores the Modifier Stack.
+Referenced by issue #106783, Regression: Recent MPoly refactor causes crash during FBX import
