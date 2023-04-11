@@ -428,6 +428,7 @@ template<typename T> class device_vector : public device_memory {
   T *alloc(size_t width, size_t height = 0, size_t depth = 0)
   {
     size_t new_size = size(width, height, depth);
+
     if (new_size != data_size) {
       device_free();
       host_free();
@@ -572,6 +573,7 @@ template<typename T> class device_vector : public device_memory {
       device_copy_to(size, offset);
     }
   }
+
   void copy_to_device_if_modified(size_t size = -1, size_t offset = 0)
   {
     if (!modified) {

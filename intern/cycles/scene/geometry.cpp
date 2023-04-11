@@ -698,7 +698,7 @@ void GeometryManager::device_update_volume_images(Device *device, Scene *scene, 
  * geometry that must be rebuilt. It also determines if any displacement
  * or shadow transparancy occurs in the scene.
  */
-void GeometryManager::preTessDispNormalAndVerticesSetup(Device *device,
+void GeometryManager::pretess_disp_normal_and_vertices_setup(Device *device,
                                                         Scene *scene,
                                                         bool &true_displacement_used,
                                                         bool &curve_shadow_transparency_used,
@@ -760,16 +760,16 @@ void GeometryManager::preTessDispNormalAndVerticesSetup(Device *device,
  * Uploads the mesh data to the device and then builds or refits the BVH
  * using the uploaded data.
  */
-void GeometryManager::deviceDataXferAndBVHUpdate(int idx,
-                                                 Scene *scene,
-                                                 DeviceScene *dscene,
-                                                 GeometrySizes &sizes,
-                                                 AttributeSizes &attrib_sizes,
-                                                 const BVHLayout bvh_layout,
-                                                 size_t num_bvh,
-						 bool can_refit,
-						 bool need_update_scene_bvh,
-                                                 Progress &progress)
+void GeometryManager::device_data_xfer_and_bvh_update(int idx,
+                                                      Scene *scene,
+                                                      DeviceScene *dscene,
+                                                      GeometrySizes &sizes,
+                                                      AttributeSizes &attrib_sizes,
+                                                      const BVHLayout bvh_layout,
+                                                      size_t num_bvh,
+                                                      bool can_refit,
+                                                      bool need_update_scene_bvh,
+                                                      Progress &progress)
 {
   auto sub_dscene = scene->dscenes[idx];
   sub_dscene->data.bvh.bvh_layout = BVH_LAYOUT_NONE;
@@ -834,7 +834,7 @@ void GeometryManager::deviceDataXferAndBVHUpdate(int idx,
  * Calculates the bounds for any modified geometry and
  * then updates the objects bounds from the geometry.
  */
-void GeometryManager::updateObjectBounds(Scene *scene)
+void GeometryManager::update_object_bounds(Scene *scene)
 {
   Scene::MotionType need_motion = scene->need_motion();
   bool motion_blur = need_motion == Scene::MOTION_BLUR;
@@ -918,7 +918,7 @@ void GeometryManager::device_update(Device *device,
   bool curve_shadow_transparency_used = false;
   size_t total_tess_needed = 0;
 
-  preTessDispNormalAndVerticesSetup(
+  pretess_disp_normal_and_vertices_setup(
       device, scene, true_displacement_used, curve_shadow_transparency_used, total_tess_needed);
 
   tesselate(scene, total_tess_needed, progress);
@@ -963,7 +963,7 @@ void GeometryManager::device_update(Device *device,
   }
 
   {
-    updateObjectBounds(scene);
+    update_object_bounds(scene);
   }
   /* Update the BVH even when there is no geometry so the kernel's BVH data is still valid,
    * especially when removing all of the objects during interactive renders.
@@ -976,7 +976,7 @@ void GeometryManager::device_update(Device *device,
                                                           device->get_bvh_layout_mask());
   dscene->data.bvh.bvh_layout = bvh_layout;
 
-  size_t num_bvh = createObjectBVHs(device, dscene, scene, bvh_layout, need_update_scene_bvh);
+  size_t num_bvh = create_object_bvhs(device, dscene, scene, bvh_layout, need_update_scene_bvh);
   bool can_refit_scene_bvh = true;
   if(need_update_scene_bvh) {
     can_refit_scene_bvh = device_update_bvh_preprocess(device, dscene, scene, progress);
@@ -984,20 +984,20 @@ void GeometryManager::device_update(Device *device,
   {
     size_t num_scenes = scene->dscenes.size();
     VLOG_INFO << "Rendering using " << num_scenes << " devices";
-    // Parallel upload the geometry data to the devices and
-    // calculate or refit the BVHs
+    /* Parallel upload the geometry data to the devices and
+       calculate or refit the BVHs */
     parallel_for(
         size_t(0), num_scenes, [=, this, &sizes, &attrib_sizes, &progress](const size_t idx) {
-          deviceDataXferAndBVHUpdate(idx,
-                                     scene,
-                                     dscene,
-                                     sizes,
-                                     attrib_sizes,
-                                     bvh_layout,
-                                     num_bvh,
-                                     can_refit_scene_bvh,
-                                     need_update_scene_bvh,
-                                     progress);
+          device_data_xfer_and_bvh_update(idx,
+                                          scene,
+                                          dscene,
+                                          sizes,
+                                          attrib_sizes,
+                                          bvh_layout,
+                                          num_bvh,
+                                          can_refit_scene_bvh,
+                                          need_update_scene_bvh,
+                                          progress);
         });
     if (need_update_scene_bvh) {
       device_update_bvh_postprocess(device, dscene, scene, progress);
@@ -1024,8 +1024,8 @@ void GeometryManager::device_update(Device *device,
     }
   }
 
-  clearGeometryUpdateAndModifiedTags(scene);
-  clearShaderUpdateTags(scene);
+  clear_geometry_update_and_modified_tags(scene);
+  clear_shader_update_tags(scene);
   update_flags = UPDATE_NONE;
   device_scene_clear_modified(dscene);
 }
@@ -1097,7 +1097,7 @@ void GeometryManager::collect_statistics(const Scene *scene, RenderStats *stats)
 /*
  * Clears all tags used to indicate the the shader needs to be updated.
  */
-void GeometryManager::clearShaderUpdateTags(Scene *scene)
+void GeometryManager::clear_shader_update_tags(Scene *scene)
 {
   /* unset flags */
   foreach (Shader *shader, scene->shaders) {
@@ -1111,7 +1111,7 @@ void GeometryManager::clearShaderUpdateTags(Scene *scene)
  * Clears all tags used to indicate the the geometry needs to be updated
  * or has been modified.
  */
-void GeometryManager::clearGeometryUpdateAndModifiedTags(Scene *scene)
+void GeometryManager::clear_geometry_update_and_modified_tags(Scene *scene)
 {
   // Clear update tags
   foreach (Geometry *geom, scene->geometry) {

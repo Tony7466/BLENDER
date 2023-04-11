@@ -27,7 +27,6 @@ bool device_cuda_init()
     return result;
 
   initialized = true;
-
   int cuew_result = cuewInit(CUEW_INIT_CUDA);
   if (cuew_result == CUEW_SUCCESS) {
     VLOG_INFO << "CUEW initialization succeeded";

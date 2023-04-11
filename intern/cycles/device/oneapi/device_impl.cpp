@@ -163,6 +163,7 @@ void OneapiDevice::generic_copy_to(device_memory &mem, size_t size, size_t offse
   /* Copy operation from host shouldn't be requested if there is no memory allocated on host. */
   assert(mem.host_pointer);
   assert(device_queue_);
+  size = ((size == -1) ? mem.memory_size() : size);
   usm_memcpy(device_queue_, reinterpret_cast<unsigned char *>(mem.device_pointer) + offset, reinterpret_cast<unsigned char *>(mem.host_pointer) + offset, size);
 }
 

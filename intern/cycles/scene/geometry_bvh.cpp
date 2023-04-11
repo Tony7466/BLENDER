@@ -265,7 +265,7 @@ bool GeometryManager::device_update_bvh_preprocess(Device *device,
  * it determines if the BVH can be refitted. It also counts
  * the number of BVH that need to be built.
  */
-size_t GeometryManager::createObjectBVHs(Device *device,
+size_t GeometryManager::create_object_bvhs(Device *device,
                                          DeviceScene *dscene,
                                          Scene *scene,
                                          const BVHLayout bvh_layout,
@@ -303,7 +303,7 @@ size_t GeometryManager::createObjectBVHs(Device *device,
  * Prepares scene BVH for building or refitting. Then builds or refits the scene
  * BVH for all the devices.
  */
-void GeometryManager::updateSceneBVHs(Device *device,
+void GeometryManager::update_scene_bvhs(Device *device,
                                       DeviceScene *dscene,
                                       Scene *scene,
                                       Progress &progress)
