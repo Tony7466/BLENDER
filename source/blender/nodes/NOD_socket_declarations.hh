@@ -178,9 +178,6 @@ class IDSocketDeclarationBuilder : public SocketDeclarationBuilder<Declaration> 
 
 class Object : public IDSocketDeclaration {
  public:
-  friend IDSocketDeclarationBuilder<Object>;
-
- public:
   using Builder = IDSocketDeclarationBuilder<Object>;
 
   Object();
