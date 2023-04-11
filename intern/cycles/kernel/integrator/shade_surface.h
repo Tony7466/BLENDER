@@ -541,6 +541,7 @@ ccl_device_forceinline void integrate_surface_ao(KernelGlobals kg,
   ray.self.light_prim = PRIM_NONE;
   ray.dP = differential_zero_compact();
   ray.dD = differential_zero_compact();
+  ray.wavelengths = state->ray.wavelengths;
 
   /* Branch off shadow kernel. */
   IntegratorShadowState shadow_state = integrator_shadow_path_init(
