@@ -108,13 +108,6 @@ void SyncModule::sync_mesh(Object *ob,
                            ResourceHandle res_handle,
                            const ObjectRef &ob_ref)
 {
-  if ((ob->dt < OB_SOLID) && !DRW_state_is_scene_render()) {
-    /* NOTE:
-     * EEVEE doesn't render meshes with bounds or wire display type in the viewport,
-     * but Cycles does. */
-    return;
-  }
-
   bool has_motion = inst_.velocity.step_object_sync(
       ob, ob_handle.object_key, res_handle, ob_handle.recalc);
 
@@ -128,11 +121,19 @@ void SyncModule::sync_mesh(Object *ob,
   }
 
   /* Only support single volume material for now. */
-  /* XXX We rely on the previously compiled surface shader
-   * to know if the material has a "volume nodetree".
-   */
   bool use_volume_material = material_array.gpu_materials[0] &&
                              GPU_material_has_volume_output(material_array.gpu_materials[0]);
+  if (use_volume_material) {
+    inst_.volumes.sync_object(ob, ob_handle, res_handle);
+  }
+
+  if ((ob->dt < OB_SOLID) && !DRW_state_is_scene_render()) {
+    /** NOTE:
+     * EEVEE doesn't render meshes with bounds or wire display type in the viewport,
+     * but Cycles does. */
+    return;
+  }
+
   bool is_shadow_caster = false;
   bool is_alpha_blend = false;
   for (auto i : material_array.gpu_materials.index_range()) {
