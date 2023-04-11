@@ -4108,6 +4108,91 @@ static bool rna_GeometryNodeSimulationInput_pair_with_output(
   return true;
 }
 
+static bNodeSocket *rna_NodeGeometrySimulationOutput_items_new(ID *id,
+                                                               NodeGeometrySimulationOutput *sim,
+                                                               Main *bmain,
+                                                               ReportList *reports,
+                                                               const char *type,
+                                                               const char *name)
+{
+  node_geo_simulation_output_add_item()
+  bNodeSocket *sock = node_geo_simulation_output_find_item(ntree, SOCK_IN, type, name);
+
+  if (sock == NULL) {
+    BKE_report(reports, RPT_ERROR, "Unable to create socket");
+  }
+  else {
+    ED_node_tree_propagate_change(NULL, bmain, ntree);
+    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+  }
+
+  return sock;
+}
+
+static void rna_NodeGeometrySimulationOutput_items_remove(ID *id,
+                                                          NodeGeometrySimulationOutput *sim,
+                                                          Main *bmain,
+                                                          ReportList *reports,
+                                                          bNodeSocket *sock)
+{
+  if (BLI_findindex(&ntree->inputs, sock) == -1 && BLI_findindex(&ntree->outputs, sock) == -1) {
+    BKE_reportf(reports, RPT_ERROR, "Unable to locate socket '%s' in node", sock->identifier);
+  }
+  else {
+    ntreeRemoveSocketInterface(ntree, sock);
+
+    ED_node_tree_propagate_change(NULL, bmain, ntree);
+    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+  }
+}
+
+static void rna_NodeGeometrySimulationOutput_items_clear(ID *id,
+                                                         NodeGeometrySimulationOutput *sim,
+                                                         Main *bmain)
+{
+  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, socket, &ntree->inputs) {
+    ntreeRemoveSocketInterface(ntree, socket);
+  }
+
+  ED_node_tree_propagate_change(NULL, bmain, ntree);
+  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+}
+
+static void rna_NodeGeometrySimulationOutput_items_move(ID *id,
+                                                        NodeGeometrySimulationOutput *sim,
+                                                        Main *bmain,
+                                                        int from_index,
+                                                        int to_index)
+{
+  if (from_index == to_index) {
+    return;
+  }
+  if (from_index < 0 || to_index < 0) {
+    return;
+  }
+
+  bNodeSocket *sock = BLI_findlink(&ntree->inputs, from_index);
+  if (to_index < from_index) {
+    bNodeSocket *nextsock = BLI_findlink(&ntree->inputs, to_index);
+    if (nextsock) {
+      BLI_remlink(&ntree->inputs, sock);
+      BLI_insertlinkbefore(&ntree->inputs, nextsock, sock);
+    }
+  }
+  else {
+    bNodeSocket *prevsock = BLI_findlink(&ntree->inputs, to_index);
+    if (prevsock) {
+      BLI_remlink(&ntree->inputs, sock);
+      BLI_insertlinkafter(&ntree->inputs, prevsock, sock);
+    }
+  }
+
+  BKE_ntree_update_tag_interface(ntree);
+
+  ED_node_tree_propagate_change(NULL, bmain, ntree);
+  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+}
+
 /* ******** Node Socket Types ******** */
 
 static PointerRNA rna_NodeOutputFile_slot_layer_get(CollectionPropertyIterator *iter)
@@ -9786,6 +9871,48 @@ static void rna_def_simulation_state_item(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeSocket_update");
 }
 
+static void rna_def_geo_simulation_output_items(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *parm;
+  FunctionRNA *func;
+
+  srna = RNA_def_struct(brna, "NodeGeometrySimulationOutputItems", NULL);
+  RNA_def_struct_sdna(srna, "NodeGeometrySimulationOutput");
+  RNA_def_struct_ui_text(srna, "State Items", "Collection of simulation state items");
+
+  func = RNA_def_function(srna, "new", "rna_NodeGeometrySimulationOutput_items_new");
+  RNA_def_function_ui_description(func, "Add a state item to this simulation zone");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
+  parm = RNA_def_string(func, "type", NULL, MAX_NAME, "Type", "Data type");
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_string(func, "name", NULL, MAX_NAME, "Name", "");
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  /* return value */
+  parm = RNA_def_pointer(func, "item", "SimulationStateItem", "Item", "New state item");
+  RNA_def_function_return(func, parm);
+
+  func = RNA_def_function(srna, "remove", "rna_NodeGeometrySimulationOutput_items_remove");
+  RNA_def_function_ui_description(func, "Remove a state item from this simulation zone");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
+  parm = RNA_def_pointer(func, "item", "SimulationStateItem", "Item", "The item to remove");
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+
+  func = RNA_def_function(srna, "clear", "rna_NodeGeometrySimulationOutput_items_clear");
+  RNA_def_function_ui_description(func, "Remove all state items from this simulation zone");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
+
+  func = RNA_def_function(srna, "move", "rna_NodeGeometrySimulationOutput_items_move");
+  RNA_def_function_ui_description(func, "Move a state item to another position");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
+  parm = RNA_def_int(
+      func, "from_index", -1, 0, INT_MAX, "From Index", "Index of the item to move", 0, 10000);
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_int(
+      func, "to_index", -1, 0, INT_MAX, "To Index", "Target index for the item", 0, 10000);
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+}
+
 static void def_geo_simulation_output(StructRNA *srna)
 {
   PropertyRNA *prop;
@@ -9796,6 +9923,14 @@ static void def_geo_simulation_output(StructRNA *srna)
   RNA_def_property_collection_sdna(prop, NULL, "items", "items_num");
   RNA_def_property_struct_type(prop, "SimulationStateItem");
   RNA_def_property_ui_text(prop, "Inputs", "");
+  RNA_def_property_srna(prop, "NodeGeometrySimulationOutputItems");
+
+  prop = RNA_def_property(srna, "active_input", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_funcs(
+      prop, "rna_NodeTree_active_input_get", "rna_NodeTree_active_input_set", NULL);
+  RNA_def_property_ui_text(prop, "Active Input", "Index of the active input");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_NODE, NULL);
 }
 
 static void def_geo_curve_handle_type_selection(StructRNA *srna)
@@ -13219,6 +13354,7 @@ void RNA_def_nodetree(BlenderRNA *brna)
   /* special socket types */
   rna_def_cmp_output_file_slot_file(brna);
   rna_def_cmp_output_file_slot_layer(brna);
+  rna_def_geo_simulation_output_items(brna);
 
   rna_def_node_instance_hash(brna);
 }

@@ -1610,7 +1610,7 @@ typedef struct NodeGeometrySimulationInput {
 typedef struct NodeGeometrySimulationOutput {
   NodeSimulationItem *items;
   int items_num;
-  char _pad[4];
+  int active_item;
 } NodeGeometrySimulationOutput;
 
 typedef struct NodeGeometryDistributePointsInVolume {

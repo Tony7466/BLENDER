@@ -22,6 +22,34 @@ bool node_geo_simulation_input_pair_with_output(const bNodeTree *node_tree,
                                                 bNode *simulation_input_node,
                                                 const bNode *simulation_output_node);
 
+/* -------------------------------------------------------------------- */
+/** \name Simulation State Items
+ * \{ */
+
+struct NodeSimulationItem *node_geo_simulation_output_find_item(
+    struct NodeGeometrySimulationOutput *sim, const char *name);
+struct NodeSimulationItem *node_geo_simulation_output_add_item(
+    struct NodeGeometrySimulationOutput *sim, short socket_type, const char *name);
+struct NodeSimulationItem *node_geo_simulation_output_insert_item(
+    struct NodeGeometrySimulationOutput *sim, short socket_type, const char *name, int index);
+struct NodeSimulationItem *node_geo_simulation_output_add_item_from_socket(
+    struct NodeGeometrySimulationOutput *sim,
+    const struct bNode *from_node,
+    const struct bNodeSocket *from_sock);
+struct NodeSimulationItem *node_geo_simulation_output_insert_item_from_socket(
+    struct NodeGeometrySimulationOutput *sim,
+    const struct bNode *from_node,
+    const struct bNodeSocket *from_sock,
+    int index);
+void node_geo_simulation_output_remove_item(struct NodeGeometrySimulationOutput *sim,
+                                            struct NodeSimulationItem *item);
+void node_geo_simulation_output_clear_items(struct NodeGeometrySimulationOutput *sim);
+void node_geo_simulation_output_move_item(struct NodeGeometrySimulationOutput *sim,
+                                          int from_index,
+                                          int to_index);
+
+/** \} */
+
 #ifdef __cplusplus
 }
 #endif
