@@ -124,10 +124,7 @@ Scene::Scene(const SceneParams &params_, Device *device)
 
   /* Stats time logging allocate memory to store times for each device */
   size_t device_count = this->dscenes.size();
-  mesh_times = new double[device_count];
-  attrib_times = new double[device_count];
-  object_bvh_times = new double[device_count];
-  scene_bvh_times = new double[device_count];
+  this->times.resize(device_count);
 
   shader_manager = ShaderManager::create(
       device->info.has_osl ? params.shadingsystem : SHADINGSYSTEM_SVM, device);
@@ -157,12 +154,6 @@ Scene::~Scene()
   foreach (DeviceScene *sub_scene, dscenes) {
     delete sub_scene;
   }
-  
-  /* free stats data */
-  delete[] mesh_times;
-  delete[] attrib_times;
-  delete[] object_bvh_times;
-  delete[] scene_bvh_times;
 
   free_memory(true);
 }

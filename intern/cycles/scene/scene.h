@@ -250,11 +250,14 @@ class Scene : public NodeOwner {
   std::vector<DeviceScene *> dscenes;
 
   /* Stats time logging */
-  double *mesh_times;
-  double *attrib_times;
-  double *object_bvh_times;
-  double *scene_bvh_times;
-
+  struct SceneTimes {
+    double mesh;
+    double attrib;
+    double object_bvh;
+    double scene_bvh;
+  };
+  vector<SceneTimes> times;
+  
   /* parameters */
   SceneParams params;
 

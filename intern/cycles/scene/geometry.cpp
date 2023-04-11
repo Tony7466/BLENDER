@@ -784,7 +784,7 @@ void GeometryManager::deviceDataXferAndBVHUpdate(int idx,
     scoped_callback_timer timer([scene, idx](double time) {
       if (scene->update_stats) {
         // Save copy mesh to device duration for later logging
-        scene->mesh_times[idx] = time;
+        scene->times[idx].mesh = time;
       }
     });
     device_update_mesh(sub_device, sub_dscene, &sizes, progress);
@@ -793,7 +793,7 @@ void GeometryManager::deviceDataXferAndBVHUpdate(int idx,
   {
     scoped_callback_timer timer([scene, idx](double time) {
       if (scene->update_stats) {
-        scene->attrib_times[idx] = time;
+        scene->times[idx].attrib = time;
       }
     });
     device_update_attributes(sub_device, sub_dscene, &attrib_sizes, progress);
@@ -803,7 +803,7 @@ void GeometryManager::deviceDataXferAndBVHUpdate(int idx,
   {
     scoped_callback_timer timer([scene, idx](double time) {
       if (scene->update_stats) {
-        scene->object_bvh_times[idx] = time;
+        scene->times[idx].object_bvh = time;
       }
     });
     size_t i = 0;
@@ -821,7 +821,7 @@ void GeometryManager::deviceDataXferAndBVHUpdate(int idx,
   if(need_update_scene_bvh) {
     scoped_callback_timer timer([scene, idx](double time) {
       if (scene->update_stats) {
-        scene->scene_bvh_times[idx] = time;
+        scene->times[idx].scene_bvh = time;
       }
     });
     /* Build the scene BVH */
@@ -1008,10 +1008,10 @@ void GeometryManager::device_update(Device *device,
       double max_object_bvh_time = 0.0f;
       double max_scene_bvh_time = 0.0f;
       for (size_t i = 0; i < num_scenes; i++) {
-        max_mesh_time = max(max_mesh_time, scene->mesh_times[i]);
-        max_attrib_time = max(max_attrib_time, scene->attrib_times[i]);
-        max_object_bvh_time = max(max_object_bvh_time, scene->object_bvh_times[i]);
-	max_scene_bvh_time = max(max_scene_bvh_time, scene->scene_bvh_times[i]);
+        max_mesh_time = max(max_mesh_time, scene->times[i].mesh);
+        max_attrib_time = max(max_attrib_time, scene->times[i].attrib);
+        max_object_bvh_time = max(max_object_bvh_time, scene->times[i].object_bvh);
+	max_scene_bvh_time = max(max_scene_bvh_time, scene->times[i].scene_bvh);
       }
       scene->update_stats->geometry.times.add_entry(
           {"device_update (copy meshes to device)", max_mesh_time});
