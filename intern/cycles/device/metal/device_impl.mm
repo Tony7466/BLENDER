@@ -835,13 +835,8 @@ void MetalDevice::mem_alloc(device_memory &mem)
 void MetalDevice::mem_copy_to(device_memory &mem, size_t size, size_t offset)
 {
   if (mem.type == MEM_GLOBAL) {
-    if ((mem.device_size < mem.memory_size()) || (!mem.device_pointer)) {
-      global_free(mem);
-      global_alloc(mem);
-    }
-    else {
-      generic_copy_to(mem, size, offset);
-    }
+    global_free(mem);
+    global_alloc(mem);
   }
   else if (mem.type == MEM_TEXTURE) {
     tex_free((device_texture &)mem);
