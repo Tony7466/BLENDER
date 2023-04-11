@@ -1433,11 +1433,7 @@ enum {
   GP_MOD_SDEF_INVERT_VGROUP = (1 << 1),
   /* Only store bind data for nonzero vgroup weights at the time of bind. */
   GP_MOD_SDEF_SPARSE_BIND = (1 << 2),
-   /** Binding progression: at the start and end of the binding process,
- * the value is 0. Only changes during the binding process.
- * The value is 1 if the process has started, but not finished.
- * The value is set to 0 again by the GPENCIL_OT_gpencilsurdeform_bind operator after it has bound.""
- */
+  GP_MOD_SDEF_WITHHOLD_EVALUATION = (1 << 3),
   
 
 };
