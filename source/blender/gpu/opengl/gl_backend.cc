@@ -432,6 +432,9 @@ static void detect_workarounds()
     GCaps.clear_viewport_workaround = true;
   }
 
+  /* Windows with Legacy Intel iGPUs don't support resource aliasing. MacOS/ATI requires resource
+   * aliasing. Enable this work around for MacOS/ATI as be default we don't want to use resource
+   * aliasing. */
   if (GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_MAC, GPU_DRIVER_ANY)) {
     GLContext::resource_aliasing_workaround = true;
   }
