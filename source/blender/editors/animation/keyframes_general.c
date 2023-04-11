@@ -493,17 +493,6 @@ void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor
 
 void scale_average_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
 {
-  const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
-  const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
-
-  const float key_x_range = right_key->vec[1][0] - left_key->vec[1][0];
-
-  /* Happens if there is only 1 key on the FCurve. Needs to be skipped because it
-   * would be a divide by 0. */
-  if (IS_EQF(key_x_range, 0.0f)) {
-    return;
-  }
-
   /* The factor goes from 0 to 1, but for this tool it needs to go from -1 to 1. */
   const float mirrored_factor = factor * 2 - 1;
   float y = 0;
