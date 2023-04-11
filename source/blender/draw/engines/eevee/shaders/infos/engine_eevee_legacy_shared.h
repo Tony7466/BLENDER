@@ -24,8 +24,14 @@ typedef struct CommonUniformBlock CommonUniformBlock;
 #  define DO_SPLIT_CLOSURE_EVAL 1
 #endif
 
+#if (defined(GPU_METAL) && defined(GPU_ATI))
+#define BLOCK_ATTR(name) name
+#else
+#define BLOCK_ATTR(name) _##name
+#endif
+
 struct CommonUniformBlock {
-  mat4 _pastViewProjectionMatrix;
+  mat4 BLOCK_ATTR(pastViewProjectionMatrix);
   vec4 _hizUvScale; /* To correct mip level texel misalignment */
   /* Ambient Occlusion */
   vec4 _aoParameters[2];
@@ -194,7 +200,7 @@ BLI_STATIC_ASSERT_ALIGN(SSSProfileBlock, 16)
 #  if defined(USE_GPU_SHADER_CREATE_INFO)
 
 /* Keep compatibility_with old global scope syntax. */
-#    define pastViewProjectionMatrix common_block._pastViewProjectionMatrix
+#    define pastViewProjectionMatrix common_block.BLOCK_ATTR(pastViewProjectionMatrix)
 #    define hizUvScale common_block._hizUvScale
 #    define aoParameters common_block._aoParameters
 #    define volTexSize common_block._volTexSize
