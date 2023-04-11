@@ -273,7 +273,7 @@ BLI_STATIC_ASSERT_ALIGN(SSSProfileBlock, 16)
 #    define renderPassAOVActive renderpass_block.BLOCK_ATTR(renderPassAOVActive)
 
 /* SSSProfileBlock */
-#    define sss_kernel sssProfile._sss_kernel
+#    define sss_kernel sssProfile.BLOCK_ATTR(sss_kernel)
 #    define radii_max_radius sssProfile.BLOCK_ATTR(radii_max_radius)
 #    define avg_inv_radius sssProfile.BLOCK_ATTR(avg_inv_radius)
 #    define sss_samples sssProfile.BLOCK_ATTR(sss_samples)
