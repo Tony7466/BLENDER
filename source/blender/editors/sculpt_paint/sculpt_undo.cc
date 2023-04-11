@@ -780,7 +780,7 @@ static void sculpt_undo_geometry_restore_data(SculptUndoNodeGeometry *geometry, 
   CustomData_copy(&geometry->edata, &mesh->edata, CD_MASK_MESH.emask, geometry->totedge);
   CustomData_copy(&geometry->ldata, &mesh->ldata, CD_MASK_MESH.lmask, geometry->totloop);
   CustomData_copy(&geometry->pdata, &mesh->pdata, CD_MASK_MESH.pmask, geometry->totpoly);
-  mesh->poly_offset_indices = static_cast<int *>(geometry->poly_offset_indices);
+  mesh->poly_offset_indices = static_cast<int *>(MEM_dupallocN(geometry->poly_offset_indices));
 
   BKE_mesh_runtime_clear_cache(mesh);
 }
