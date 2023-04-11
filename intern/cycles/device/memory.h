@@ -376,24 +376,6 @@ template<typename T> class device_vector : public device_memory {
     assert(data_elements > 0);
   }
 
-  device_vector(Device *device,
-                const char *name,
-                void *p_mem,
-                size_t width,
-                size_t height,
-                size_t depth,
-                MemoryType type)
-      : device_memory(device, name, type)
-  {
-    data_type = device_type_traits<T>::data_type;
-    data_elements = device_type_traits<T>::num_elements;
-    modified = true;
-    need_realloc_ = true;
-    assign_mem(p_mem, width, height, depth);
-
-    assert(data_elements > 0);
-  }
-
   virtual ~device_vector()
   {
     free();
@@ -446,7 +428,7 @@ template<typename T> class device_vector : public device_memory {
   T *alloc(size_t width, size_t height = 0, size_t depth = 0)
   {
     size_t new_size = size(width, height, depth);
-    if (new_size > data_size) {
+    if (new_size != data_size) {
       device_free();
       host_free();
       host_pointer = host_alloc(sizeof(T) * new_size);
