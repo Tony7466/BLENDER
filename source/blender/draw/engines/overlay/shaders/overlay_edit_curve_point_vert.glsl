@@ -30,7 +30,7 @@ void main()
     show_handle = false;
   }
 
-  if (!show_handle && ((data & BEZIER_HANDLE) != 0)) {
+  if (!show_handle && ((data & BEZIER_HANDLE) != 0u)) {
     /* We set the vertex at the camera origin to generate 0 fragments. */
     gl_Position = vec4(0.0, 0.0, -3e36, 0.0);
   }
