@@ -48,7 +48,16 @@ void BLO_memfile_free(MemFile *memfile)
     }
     MEM_freeN(chunk);
   }
+  MEM_delete(memfile->shared_storage);
+  memfile->shared_storage = nullptr;
   memfile->size = 0;
+}
+
+MemFileSharedStorage::~MemFileSharedStorage()
+{
+  for (const blender::ImplicitSharingInfo *sharing_info : map.values()) {
+    sharing_info->remove_user_and_delete_if_last();
+  }
 }
 
 void BLO_memfile_merge(MemFile *first, MemFile *second)

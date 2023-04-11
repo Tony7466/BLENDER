@@ -1697,7 +1697,21 @@ void BLO_write_shared(BlendWriter *writer,
                       const ImplicitSharingInfoHandle *sharing_info,
                       blender::FunctionRef<void()> write_cb)
 {
-  UNUSED_VARS(writer, data, sharing_info);
+  if (data == nullptr) {
+    return;
+  }
+  if (BLO_write_is_undo(writer)) {
+    if (sharing_info != nullptr) {
+      MemFile &memfile = *writer->wd->mem.written_memfile;
+      if (memfile.shared_storage == nullptr) {
+        memfile.shared_storage = MEM_new<MemFileSharedStorage>(__func__);
+      }
+      if (memfile.shared_storage->map.add(data, sharing_info)) {
+        sharing_info->add_user();
+        return;
+      }
+    }
+  }
   write_cb();
 }
 

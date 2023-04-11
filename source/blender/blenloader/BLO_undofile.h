@@ -13,6 +13,20 @@
 struct GHash;
 struct Scene;
 
+#ifdef __cplusplus
+#  include "BLI_implicit_sharing.hh"
+#  include "BLI_map.hh"
+
+struct MemFileSharedStorage {
+  blender::Map<const void *, const blender::ImplicitSharingInfo *> map;
+
+  ~MemFileSharedStorage();
+};
+
+#else
+typedef struct MemFileSharedStorage MemFileSharedStorage;
+#endif
+
 typedef struct {
   void *next, *prev;
   const char *buf;
@@ -32,6 +46,7 @@ typedef struct {
 typedef struct MemFile {
   ListBase chunks;
   size_t size;
+  MemFileSharedStorage *shared_storage;
 } MemFile;
 
 typedef struct MemFileWriteData {
