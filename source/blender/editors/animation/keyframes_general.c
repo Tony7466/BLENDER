@@ -494,13 +494,10 @@ void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor
 void push_pull_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
 {
   const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
-  const float left_x = left_key->vec[1][0];
-  const float left_y = left_key->vec[1][1];
-
   const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
 
-  const float key_x_range = right_key->vec[1][0] - left_x;
-  const float key_y_range = right_key->vec[1][1] - left_y;
+  const float key_x_range = right_key->vec[1][0] - left_key->vec[1][0];
+  const float key_y_range = right_key->vec[1][1] - left_key->vec[1][1];
 
   /* Happens if there is only 1 key on the FCurve. Needs to be skipped because it
    * would be a divide by 0. */
@@ -510,9 +507,9 @@ void push_pull_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float f
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
     /* For easy calculation of the curve, the  values are normalized. */
-    const float normalized_x = (fcu->bezt[i].vec[1][0] - left_x) / key_x_range;
+    const float normalized_x = (fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range;
 
-    const float lineal = left_y + key_y_range * normalized_x;
+    const float lineal = left_key->vec[1][1] + key_y_range * normalized_x;
 
     const float delta = fcu->bezt[i].vec[1][1] - lineal;
 
