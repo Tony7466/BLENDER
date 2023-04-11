@@ -1,1 +1,2 @@
 Referenced by issue #103789, Remove unnecessary mesh position copying
+Referenced by issue #106802, Regression: sculpt with shape keys looses deformation of previous stroke
