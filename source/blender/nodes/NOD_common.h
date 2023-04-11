@@ -29,9 +29,15 @@ struct bNodeSocket *node_group_output_find_socket(struct bNode *node, const char
 
 namespace blender::nodes {
 
+struct FieldInferencingInterface;
+
 void node_group_declare_dynamic(const bNodeTree &node_tree,
                                 const bNode &node,
                                 NodeDeclaration &r_declaration);
+
+void node_function_signature_declare(const bNodeFunctionSignature &sig,
+                                     const FieldInferencingInterface *field_interface,
+                                     NodeDeclaration &r_declaration);
 
 }  // namespace blender::nodes
 

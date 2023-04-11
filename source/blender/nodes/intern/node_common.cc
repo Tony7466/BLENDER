@@ -291,6 +291,27 @@ void node_group_declare_dynamic(const bNodeTree & /*node_tree*/,
   }
 }
 
+void node_function_signature_declare(const bNodeFunctionSignature &sig,
+                                     const FieldInferencingInterface *field_interface,
+                                     NodeDeclaration &r_declaration)
+{
+  int socket_i;
+  LISTBASE_FOREACH_INDEX (const bNodeSocket *, input, &sig.inputs, socket_i) {
+    SocketDeclarationPtr decl = declaration_for_interface_socket(*input);
+    if (field_interface) {
+      decl->input_field_type = field_interface->inputs[socket_i];
+    }
+    r_declaration.inputs.append(std::move(decl));
+  }
+  LISTBASE_FOREACH_INDEX (const bNodeSocket *, output, &sig.outputs, socket_i) {
+    SocketDeclarationPtr decl = declaration_for_interface_socket(*output);
+    if (field_interface) {
+      decl->output_field_dependency = field_interface->outputs[socket_i];
+    }
+    r_declaration.outputs.append(std::move(decl));
+  }
+}
+
 }  // namespace blender::nodes
 
 /** \} */

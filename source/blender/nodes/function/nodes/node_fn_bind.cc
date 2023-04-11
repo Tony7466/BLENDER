@@ -59,10 +59,8 @@ void register_node_type_fn_bind()
   static bNodeType ntype;
 
   fn_node_type_base(&ntype, FN_NODE_BIND, "Bind", NODE_CLASS_GROUP);
-  ntype.poll_instance = node_group_poll_instance;
-
-  node_type_size(&ntype, 140, 60, 400);
   ntype.declare_dynamic = file_ns::node_declare;
+  ntype.poll_instance = node_group_poll_instance;
   ntype.draw_buttons = file_ns::node_layout;
   nodeRegisterType(&ntype);
 }
