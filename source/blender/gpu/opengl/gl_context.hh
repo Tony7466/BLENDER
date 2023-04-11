@@ -73,6 +73,7 @@ class GLContext : public Context {
   static bool unused_fb_slot_workaround;
   static bool generate_mipmap_workaround;
   static float derivative_signs[2];
+  static bool resource_aliasing_workaround;
 
   /** VBO for missing vertex attrib binding. Avoid undefined behavior on some implementation. */
   GLuint default_attr_vbo_;

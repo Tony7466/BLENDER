@@ -388,6 +388,8 @@ static void print_resource(std::ostream &os,
 
   int64_t array_offset;
   StringRef name_no_array;
+  const std::string resource_name_prefix = GLContext::resource_aliasing_workaround ? "" : "_";
+  const std::string attribute_name_prefix = GLContext::resource_aliasing_workaround ? "_" : "";
 
   switch (res.bind_type) {
     case ShaderCreateInfo::Resource::BindType::SAMPLER:
@@ -405,17 +407,43 @@ static void print_resource(std::ostream &os,
       array_offset = res.uniformbuf.name.find_first_of("[");
       name_no_array = (array_offset == -1) ? res.uniformbuf.name :
                                              StringRef(res.uniformbuf.name.c_str(), array_offset);
-      os << "uniform _" << name_no_array << " { " << res.uniformbuf.type_name << " "
-         << res.uniformbuf.name << "; };\n";
+      os << "uniform " << resource_name_prefix << name_no_array << " { "
+         << res.uniformbuf.type_name << " " << attribute_name_prefix << res.uniformbuf.name
+         << "; };\n";
       break;
     case ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER:
       array_offset = res.storagebuf.name.find_first_of("[");
       name_no_array = (array_offset == -1) ? res.storagebuf.name :
                                              StringRef(res.storagebuf.name.c_str(), array_offset);
       print_qualifier(os, res.storagebuf.qualifiers);
-      os << "buffer _";
-      os << name_no_array << " { " << res.storagebuf.type_name << " " << res.storagebuf.name
-         << "; };\n";
+      os << "buffer " << resource_name_prefix;
+      os << name_no_array << " { " << res.storagebuf.type_name << " " << attribute_name_prefix
+         << res.storagebuf.name << "; };\n";
+      break;
+  }
+}
+
+/* AMD on MacOS requires resource aliasing. Other platforms can work without. Resource
+ * aliasing doesn't work on legacy Windows/Intel platforms. */
+static void print_resource_alias(std::ostream &os, const ShaderCreateInfo::Resource &res)
+{
+  int64_t array_offset;
+  StringRef name_no_array;
+
+  switch (res.bind_type) {
+    case ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER:
+      array_offset = res.uniformbuf.name.find_first_of("[");
+      name_no_array = (array_offset == -1) ? res.uniformbuf.name :
+                                             StringRef(res.uniformbuf.name.c_str(), array_offset);
+      os << "#define " << name_no_array << " (_" << name_no_array << ")\n";
+      break;
+    case ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER:
+      array_offset = res.storagebuf.name.find_first_of("[");
+      name_no_array = (array_offset == -1) ? res.storagebuf.name :
+                                             StringRef(res.storagebuf.name.c_str(), array_offset);
+      os << "#define " << name_no_array << " (_" << name_no_array << ")\n";
+      break;
+    default:
       break;
   }
 }
@@ -452,9 +480,19 @@ std::string GLShader::resources_declare(const ShaderCreateInfo &info) const
   for (const ShaderCreateInfo::Resource &res : info.pass_resources_) {
     print_resource(ss, res, info.auto_resource_location_);
   }
+  if (GLContext::resource_aliasing_workaround) {
+    for (const ShaderCreateInfo::Resource &res : info.pass_resources_) {
+      print_resource_alias(ss, res);
+    }
+  }
   ss << "\n/* Batch Resources. */\n";
   for (const ShaderCreateInfo::Resource &res : info.batch_resources_) {
     print_resource(ss, res, info.auto_resource_location_);
+  }
+  if (GLContext::resource_aliasing_workaround) {
+    for (const ShaderCreateInfo::Resource &res : info.batch_resources_) {
+      print_resource_alias(ss, res);
+    }
   }
   ss << "\n/* Push Constants. */\n";
   for (const ShaderCreateInfo::PushConst &uniform : info.push_constants_) {

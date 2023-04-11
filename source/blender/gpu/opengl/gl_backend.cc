@@ -432,6 +432,10 @@ static void detect_workarounds()
     GCaps.clear_viewport_workaround = true;
   }
 
+  if (GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_MAC, GPU_DRIVER_ANY)) {
+    GLContext::resource_aliasing_workaround = true;
+  }
+
   /* Metal-related Workarounds. */
 
   /* Minimum Per-Vertex stride is 1 byte for OpenGL. */
@@ -480,6 +484,7 @@ bool GLContext::vertex_attrib_binding_support = false;
 bool GLContext::debug_layer_workaround = false;
 bool GLContext::unused_fb_slot_workaround = false;
 bool GLContext::generate_mipmap_workaround = false;
+bool GLContext::resource_aliasing_workaround = false;
 float GLContext::derivative_signs[2] = {1.0f, 1.0f};
 
 void GLBackend::capabilities_init()
