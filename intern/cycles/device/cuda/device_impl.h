@@ -71,8 +71,11 @@ class CUDADevice : public GPUDevice {
 
   virtual void transform_host_pointer(void *&device_pointer, void *&shared_pointer) override;
   virtual void copy_host_to_device(void *device_pointer, void *host_pointer, size_t size, size_t offset) override;
+
+#ifdef USE_DEVICE_PINNED_MEMORY
   void *host_mem_alloc(size_t size, int aligment) override;
   void host_mem_free(void *p_mem) override;
+#endif
 
   void mem_alloc(device_memory &mem) override;
 

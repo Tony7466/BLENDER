@@ -547,11 +547,12 @@ void CUDADevice::copy_host_to_device(void *device_pointer, void *host_pointer, s
 {
   const CUDAContextScope scope(this);
 
-  cuda_assert(cuMemcpyHtoD((CUdeviceptr)device_pointer + offset,
+  cuda_assert(cuMemcpyHtoD(reinterpret_cast<CUdeviceptr>(device_pointer) + offset,
                            reinterpret_cast<unsigned char *>(host_pointer) + offset,
                            size));
 }
 
+#ifdef USE_DEVICE_PINNED_MEMORY
 void *CUDADevice::host_mem_alloc(size_t size, int aligment) {
   void *p_mem = NULL;
   CUDAContextScope scope(this);
@@ -570,6 +571,7 @@ void CUDADevice::host_mem_free(void *p_mem) {
   CUDAContextScope scope(this);
   cuMemFreeHost(p_mem);
 }
+#endif
 
 void CUDADevice::mem_alloc(device_memory &mem)
 {
