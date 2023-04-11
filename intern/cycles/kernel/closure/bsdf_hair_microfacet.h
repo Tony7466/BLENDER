@@ -211,9 +211,9 @@ ccl_device_inline float arc_length(float e2, float gamma)
   return e2 == 0 ? 1.0f : sqrtf(1.0f - e2 * sqr(sinf(gamma)));
 }
 
-ccl_device_inline float projected_radius(float e2, float phi)
+ccl_device_inline float projected_radius(float e2, float sin_phi)
 {
-  return e2 == 0 ? 1.0f : sqrtf(1.0f - e2 * sqr(sinf(phi)));
+  return e2 == 0 ? 1.0f : sqrtf(1.0f - e2 * sqr(sin_phi));
 }
 
 /** \} */
@@ -389,7 +389,7 @@ ccl_device float3 bsdf_microfacet_hair_eval_r(ccl_private const ShaderClosure *s
 
   const float F = fresnel_dielectric_cos(dot(wi, wh), eta);
 
-  return make_float3(bsdf->extra->R * 0.125f * F * integral / projected_radius(e2, phi_i));
+  return make_float3(bsdf->extra->R * 0.125f * F * integral / projected_radius(e2, sinf(phi_i)));
 }
 
 template<MicrofacetType m_type>
@@ -575,7 +575,7 @@ ccl_device float3 bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
     }
   }
 
-  return (S_tt + S_trt) / 3.0f * res * sqr(inv_eta) * projected_radius(e2, phi_i);
+  return (S_tt + S_trt) / 3.0f * res * sqr(inv_eta) * projected_radius(e2, sinf(phi_i));
 }
 
 template<MicrofacetType m_type>
@@ -825,7 +825,7 @@ ccl_device Spectrum bsdf_microfacet_hair_eval(KernelGlobals kg,
 
   /* Treat as transparent material if intersection lies outside of the projected radius. */
   const float e2 = 1.0f - sqr(bsdf->aspect_ratio);
-  if (fabsf(bsdf->extra->geom.w) > projected_radius(e2, dir_phi(local_I))) {
+  if (fabsf(bsdf->extra->geom.w) > projected_radius(e2, sin_phi(local_I))) {
     *pdf = 0.0f;
     return zero_spectrum();
   }
