@@ -324,7 +324,6 @@ static int bake_simulation_exec(bContext *C, wmOperator *op)
   scene->r.cfra = old_frame;
   DEG_time_tag_update(bmain);
 
-  std::cout << "Hello\n";
   return OPERATOR_FINISHED;
 }
 
