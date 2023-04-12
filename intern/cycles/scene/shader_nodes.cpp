@@ -3687,13 +3687,13 @@ NODE_DEFINE(MicrofacetHairBsdfNode)
   SOCKET_IN_FLOAT(roughness, "Hair Roughness", 0.3f);
   SOCKET_IN_FLOAT(ior, "IOR", 1.55f);
 
-  SOCKET_IN_FLOAT(R, "R lobe", 1.0f);
-  SOCKET_IN_FLOAT(TT, "TT lobe", 1.0f);
-  SOCKET_IN_FLOAT(TRT, "TRT lobe", 1.0f);
-
   SOCKET_IN_FLOAT(random_roughness, "Random Roughness", 0.0f);
   SOCKET_IN_FLOAT(random_color, "Random Color", 0.0f);
   SOCKET_IN_FLOAT(random, "Random", 0.0f);
+
+  SOCKET_IN_FLOAT(R, "R lobe", 1.0f);
+  SOCKET_IN_FLOAT(TT, "TT lobe", 1.0f);
+  SOCKET_IN_FLOAT(TRT, "TRT lobe", 1.0f);
 
   SOCKET_IN_NORMAL(normal, "Normal", zero_float3(), SocketType::LINK_NORMAL);
   SOCKET_IN_FLOAT(surface_mix_weight, "SurfaceMixWeight", 0.0f, SocketType::SVM_INTERNAL);

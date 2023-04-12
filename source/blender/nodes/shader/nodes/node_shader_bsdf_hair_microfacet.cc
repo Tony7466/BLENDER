@@ -50,31 +50,6 @@ static void node_declare(NodeDeclarationBuilder &b)
       .max(1.0f)
       .subtype(PROP_FACTOR)
       .description("Microfacet roughness");
-  b.add_input<decl::Float>(N_("Reflection"), "R lobe")
-      .default_value(1.0f)
-      .min(0.0f)
-      .max(1.0f)
-      .subtype(PROP_FACTOR)
-      .description(
-          "The first light bounce off the hair surface. The color of this component is always "
-          "white");
-  b.add_input<decl::Float>(N_("Transmission"), "TT lobe")
-      .default_value(1.0f)
-      .min(0.0f)
-      .max(1.0f)
-      .subtype(PROP_FACTOR)
-      .description(
-          "The component that is transmitted through the hair. Picks up the color of the pigment "
-          "inside the hair");
-  b.add_input<decl::Float>(N_("Secondary Reflection"), "TRT lobe")
-      .default_value(1.0f)
-      .min(0.0f)
-      .max(1.0f)
-      .subtype(PROP_FACTOR)
-      .description(
-          "The component that is transmitted into the hair, reflected off the backside of the "
-          "hair and then transmitted out of the hair, oriented approximately around the incoming "
-          "direction. Picks up the color of the pigment inside the hair");
   b.add_input<decl::Float>(N_("IOR")).default_value(1.55f).min(0.0f).max(1000.0f).description(
       "Index of refraction determines how much the ray is bent. At 1.0 rays pass straight through "
       "like in a transparent material; higher values cause larger deflection in angle. Default "
@@ -101,6 +76,32 @@ static void node_declare(NodeDeclarationBuilder &b)
       .description("Vary roughness values for each strand");
   b.add_input<decl::Float>(N_("Random")).hide_value();
   b.add_input<decl::Float>(N_("Weight")).unavailable();
+  b.add_input<decl::Float>(N_("Reflection"), "R lobe")
+      .default_value(1.0f)
+      .min(0.0f)
+      .max(1.0f)
+      .subtype(PROP_FACTOR)
+      .description(
+          "Optional factor for modulating the first light bounce off the hair surface. The color "
+          "of this component is always white. Keep this 1.0 for physical correctness");
+  b.add_input<decl::Float>(N_("Transmission"), "TT lobe")
+      .default_value(1.0f)
+      .min(0.0f)
+      .max(1.0f)
+      .subtype(PROP_FACTOR)
+      .description(
+          "Optional factor for modulating the transmission component. Picks up the color of the "
+          "pigment inside the hair. Keep this 1.0 for physical correctness");
+  b.add_input<decl::Float>(N_("Secondary Reflection"), "TRT lobe")
+      .default_value(1.0f)
+      .min(0.0f)
+      .max(1.0f)
+      .subtype(PROP_FACTOR)
+      .description(
+          "Optional factor for modulating the component which is transmitted into the hair, "
+          "reflected off the backside of the hair and then transmitted out of the hair. This "
+          "component is oriented approximately around the incoming direction, and picks up the "
+          "color of the pigment inside the hair. Keep this 1.0 for physical correctness");
   b.add_output<decl::Shader>(N_("BSDF"));
 }
 
