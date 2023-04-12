@@ -408,9 +408,9 @@ static void um_arraystore_compact_ex(UndoMesh *um, const UndoMesh *um_ref, bool 
             um->store.poly_offset_indices = BLI_array_store_state_add(
                 bs, me->poly_offset_indices, size_t(me->totpoly + 1) * stride, state_reference);
           }
-          me->poly_offsets_sharing_info->remove_user_and_delete_if_last();
+          me->runtime->poly_offsets_sharing_info->remove_user_and_delete_if_last();
           me->poly_offset_indices = nullptr;
-          me->poly_offsets_sharing_info = nullptr;
+          me->runtime->poly_offsets_sharing_info = nullptr;
         }
       },
       [&]() {

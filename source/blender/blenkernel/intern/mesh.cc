@@ -156,10 +156,10 @@ static void mesh_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int 
   CustomData_copy(&mesh_src->edata, &mesh_dst->edata, mask.emask, mesh_dst->totedge);
   CustomData_copy(&mesh_src->ldata, &mesh_dst->ldata, mask.lmask, mesh_dst->totloop);
   CustomData_copy(&mesh_src->pdata, &mesh_dst->pdata, mask.pmask, mesh_dst->totpoly);
-  if (mesh_src->poly_offsets_sharing_info) {
+  if (mesh_src->poly_offset_indices) {
     mesh_dst->poly_offset_indices = mesh_src->poly_offset_indices;
-    mesh_dst->poly_offsets_sharing_info = mesh_src->poly_offsets_sharing_info;
-    mesh_dst->poly_offsets_sharing_info->add_user();
+    mesh_dst->runtime->poly_offsets_sharing_info = mesh_src->runtime->poly_offsets_sharing_info;
+    mesh_dst->runtime->poly_offsets_sharing_info->add_user();
   }
 
   if (do_tessface) {
@@ -257,7 +257,6 @@ static void mesh_blend_write(BlendWriter *writer, ID *id, const void *id_address
     mesh->totpoly = 0;
     memset(&mesh->pdata, 0, sizeof(mesh->pdata));
     mesh->poly_offset_indices = nullptr;
-    mesh->poly_offsets_sharing_info = nullptr;
   }
   else {
     Set<std::string> names_to_skip;
@@ -323,7 +322,6 @@ static void mesh_blend_write(BlendWriter *writer, ID *id, const void *id_address
   }
 
   mesh->runtime = nullptr;
-  mesh->poly_offsets_sharing_info = nullptr;
 
   BLO_write_id_struct(writer, Mesh, id_address, &mesh->id);
   BKE_id_blend_write(writer, &mesh->id);
@@ -381,8 +379,8 @@ static void mesh_blend_read_data(BlendDataReader *reader, ID *id)
 
   if (mesh->poly_offset_indices) {
     BLO_read_int32_array(reader, mesh->totpoly + 1, &mesh->poly_offset_indices);
-    mesh->poly_offsets_sharing_info = MEM_new<MEMFreeImplicitSharing>(__func__,
-                                                                      mesh->poly_offset_indices);
+    mesh->runtime->poly_offsets_sharing_info = MEM_new<blender::MEMFreeImplicitSharing>(
+        __func__, mesh->poly_offset_indices);
   }
 
   CustomData_blend_read(reader, &mesh->vdata, mesh->totvert);
@@ -926,13 +924,10 @@ static void mesh_clear_geometry(Mesh *mesh)
   CustomData_free(&mesh->fdata, mesh->totface);
   CustomData_free(&mesh->ldata, mesh->totloop);
   CustomData_free(&mesh->pdata, mesh->totpoly);
-  if (mesh->poly_offsets_sharing_info) {
-    mesh->poly_offsets_sharing_info->remove_user_and_delete_if_last();
+  if (mesh->poly_offset_indices) {
+    mesh->runtime->poly_offsets_sharing_info->remove_user_and_delete_if_last();
     mesh->poly_offset_indices = nullptr;
-    mesh->poly_offsets_sharing_info = nullptr;
-  }
-  else {
-    MEM_SAFE_FREE(mesh->poly_offset_indices);
+    mesh->runtime->poly_offsets_sharing_info = nullptr;
   }
 
   MEM_SAFE_FREE(mesh->mselect);
@@ -978,19 +973,15 @@ Mesh *BKE_mesh_add(Main *bmain, const char *name)
 void BKE_mesh_poly_offsets_ensure_alloc(Mesh *mesh)
 {
   BLI_assert(mesh->poly_offset_indices == nullptr);
-  if (mesh->poly_offsets_sharing_info) {
-    MEM_freeN(mesh->poly_offsets_sharing_info);
-    MEM_freeN(mesh->poly_offsets_sharing_info);
-  }
-  BLI_assert(mesh->poly_offsets_sharing_info == nullptr);
+  BLI_assert(mesh->runtime->poly_offsets_sharing_info == nullptr);
   if (mesh->totpoly == 0) {
     return;
   }
   if (!mesh->poly_offset_indices) {
     mesh->poly_offset_indices = static_cast<int *>(
         MEM_malloc_arrayN(mesh->totpoly + 1, sizeof(int), __func__));
-    mesh->poly_offsets_sharing_info = MEM_new<MEMFreeImplicitSharing>(__func__,
-                                                                      mesh->poly_offset_indices);
+    mesh->runtime->poly_offsets_sharing_info = MEM_new<blender::MEMFreeImplicitSharing>(
+        __func__, mesh->poly_offset_indices);
   }
 #ifdef DEBUG
   /* Fill offsets with obviously bad values to simplify finding missing initialization. */
@@ -1001,13 +992,15 @@ void BKE_mesh_poly_offsets_ensure_alloc(Mesh *mesh)
 
 int *BKE_mesh_poly_offsets_for_write(Mesh *mesh)
 {
-  if (mesh->poly_offsets_sharing_info) {
-    if (mesh->poly_offsets_sharing_info->is_shared()) {
-      mesh->poly_offset_indices = static_cast<int *>(MEM_dupallocN(mesh->poly_offset_indices));
-      mesh->poly_offsets_sharing_info->remove_user_and_delete_if_last();
-      mesh->poly_offsets_sharing_info = MEM_new<MEMFreeImplicitSharing>(__func__,
-                                                                        mesh->poly_offset_indices);
-    }
+  if (!mesh->poly_offset_indices) {
+    BLI_assert(mesh->totpoly == 0);
+    return nullptr;
+  }
+  if (mesh->runtime->poly_offsets_sharing_info->is_shared()) {
+    mesh->poly_offset_indices = static_cast<int *>(MEM_dupallocN(mesh->poly_offset_indices));
+    mesh->runtime->poly_offsets_sharing_info->remove_user_and_delete_if_last();
+    mesh->runtime->poly_offsets_sharing_info = MEM_new<blender::MEMFreeImplicitSharing>(
+        __func__, mesh->poly_offset_indices);
   }
   return mesh->poly_offset_indices;
 }

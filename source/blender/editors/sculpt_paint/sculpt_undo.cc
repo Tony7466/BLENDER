@@ -750,7 +750,7 @@ static void sculpt_undo_geometry_store_data(SculptUndoNodeGeometry *geometry, Ob
   CustomData_copy(&mesh->ldata, &geometry->ldata, CD_MASK_MESH.lmask, mesh->totloop);
   CustomData_copy(&mesh->pdata, &geometry->pdata, CD_MASK_MESH.pmask, mesh->totpoly);
   geometry->poly_offset_indices = mesh->poly_offset_indices;
-  geometry->poly_offsets_sharing_info = mesh->poly_offsets_sharing_info;
+  geometry->poly_offsets_sharing_info = mesh->runtime->poly_offsets_sharing_info;
   if (geometry->poly_offsets_sharing_info) {
     geometry->poly_offsets_sharing_info->add_user();
   }
@@ -772,7 +772,7 @@ static void sculpt_undo_geometry_restore_data(SculptUndoNodeGeometry *geometry, 
   CustomData_free(&mesh->fdata, mesh->totface);
   CustomData_free(&mesh->ldata, mesh->totloop);
   CustomData_free(&mesh->pdata, mesh->totpoly);
-  if (mesh->poly_offsets_sharing_info) {
+  if (mesh->runtime->poly_offsets_sharing_info) {
     mesh->poly_offsets_sharing_info->remove_user_and_delete_if_last();
   }
 

@@ -7,8 +7,6 @@
 
 #pragma once
 
-#include "BLI_implicit_sharing.h"
-
 #include "DNA_ID.h"
 #include "DNA_customdata_types.h"
 #include "DNA_defs.h"
@@ -80,9 +78,11 @@ typedef struct Mesh {
   /**
    * Array owned by mesh. May be null of there are no polygons. Index of the first corner of each
    * polygon, with the total number of corners at the end. See #Mesh::polys() and #OffsetIndices.
+   *
+   * This data is shared based on the bke::MeshRuntime::poly_offsets_sharing_info.
+   * Avoid accessing directly when possible.
    */
   int *poly_offset_indices;
-  ImplicitSharingInfoHandle *poly_offsets_sharing_info;
 
   CustomData vdata, edata, pdata, ldata;
 

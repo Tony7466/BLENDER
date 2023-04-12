@@ -64,23 +64,6 @@ typedef enum eMeshWrapperType {
 
 #ifdef __cplusplus
 
-class MEMFreeImplicitSharing : public blender::ImplicitSharingInfo {
-  void *data_;
-
- public:
-  MEMFreeImplicitSharing(void *data) : ImplicitSharingInfo(1), data_(data)
-  {
-    BLI_assert(data_ != nullptr);
-  }
-
- private:
-  void delete_self_with_data() override
-  {
-    MEM_freeN(const_cast<void *>(data_));
-    MEM_delete(this);
-  }
-};
-
 namespace blender::bke {
 
 /**
@@ -113,6 +96,8 @@ struct MeshRuntime {
 
   /** Needed to ensure some thread-safety during render data pre-processing. */
   std::mutex render_mutex;
+
+  ImplicitSharingInfoHandle *poly_offsets_sharing_info;
 
   /**
    * A cache of bounds shared between data-blocks with unchanged positions. When changing positions
