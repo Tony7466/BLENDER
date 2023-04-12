@@ -5014,7 +5014,7 @@ static void def_vector_math(StructRNA *srna)
   RNA_def_property_enum_sdna(prop, NULL, "custom1");
   RNA_def_property_enum_items(prop, rna_enum_node_vec_math_items);
   RNA_def_property_ui_text(prop, "Operation", "");
-  RNA_def_struct_translation_context(srna, BLT_I18NCONTEXT_ID_NODETREE);
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_NODETREE);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_ShaderNode_socket_update");
 }
 
@@ -11372,7 +11372,8 @@ static void rna_def_node_socket_interface(BlenderRNA *brna)
   prop = RNA_def_property(srna, "bl_subtype_label", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, NULL, "typeinfo->subtype_label");
   RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
-  RNA_def_property_ui_text(prop, "Subtype Label", "Label to display for the socket subtype in the UI");
+  RNA_def_property_ui_text(
+      prop, "Subtype Label", "Label to display for the socket subtype in the UI");
 
   func = RNA_def_function(srna, "draw", NULL);
   RNA_def_function_ui_description(func, "Draw template settings");
