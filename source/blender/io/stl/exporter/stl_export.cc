@@ -96,12 +96,12 @@ void exporter_main(bContext *C, const STLExportParams &export_params)
     rescale_m4(obmat4x4, scale_vec);
 
     /* Write triangles. */
-    const Span<float3> vertices = mesh->vert_positions();
+    const Span<float3> positions = mesh->vert_positions();
     const blender::Span<int> corner_verts = mesh->corner_verts();
     for (const MLoopTri &loop_tri : mesh->looptris()) {
       Triangle t{};
       for (int i = 0; i < 3; i++) {
-        float3 co = vertices[corner_verts[loop_tri.tri[i]]];
+        float3 co = positions[corner_verts[loop_tri.tri[i]]];
         mul_m4_v3(obmat4x4, co);
         for (int j = 0; j < 3; j++) {
           t.vertices[i][j] = co[j];
