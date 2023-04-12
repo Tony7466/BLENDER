@@ -1626,12 +1626,19 @@ typedef struct NodeShaderMix {
   char _pad[3];
 } NodeShaderMix;
 
+/* Input or output in a bNodeFunctionSignature. */
+typedef struct bNodeFunctionParameter {
+  char name[64]; /* MAX_NAME */
+  char socket_type[64]; /* MAX_NAME */
+} bNodeFunctionParameter;
+
 typedef struct bNodeFunctionSignature {
-  ListBase inputs;
-  ListBase outputs;
-  /* Unique ID counter */
-  int cur_index;
-  int _pad;
+  bNodeFunctionParameter *inputs;
+  bNodeFunctionParameter *outputs;
+  int inputs_num;
+  int outputs_num;
+  int active_input;
+  int active_output;
 } bNodeFunctionSignature;
 
 typedef struct NodeFunctionEvaluate {
