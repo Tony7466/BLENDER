@@ -1,2 +1,3 @@
 Referenced by issue #93953, Translation of “Motion Tracking” is double displayed in Viewport Overlays panel
 Referenced by pull request #105657, UI: Fix disconnected and non-clickable checkbox labels in popovers
+Referenced by commit 2771f53cb70745fd1e8090dc6a357bdfdc9b370f, UI: Fix disconnected and non-clickable checkbox labels in popovers
