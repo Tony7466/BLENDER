@@ -350,6 +350,7 @@ void extract_normalized_words(StringRef str,
   const uint32_t unicode_right_triangle = UI_MENU_ARROW_SEP_UNICODE;
 
   BLI_assert(unicode_space == BLI_str_utf8_as_unicode(" "));
+  BLI_assert(unicode_slash == BLI_str_utf8_as_unicode("/"));
   BLI_assert(unicode_right_triangle == BLI_str_utf8_as_unicode(UI_MENU_ARROW_SEP));
 
   auto is_separator = [&](uint32_t unicode) {
