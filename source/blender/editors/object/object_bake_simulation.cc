@@ -92,73 +92,95 @@ static std::string escape_name(StringRef name)
   return ss.str();
 }
 
+static void load_attributes(const io::serialize::ArrayValue &io_attributes,
+                            bke::MutableAttributeAccessor &attributes,
+                            const StringRefNull bdata_dir)
+{
+  for (const auto &io_attribute_value : io_attributes.elements()) {
+    const auto *io_attribute = io_attribute_value->as_dictionary_value();
+    if (!io_attribute) {
+      continue;
+    }
+    const std::optional<StringRefNull> name = io_attribute->lookup_str("name");
+    const std::optional<StringRefNull> domain_str = io_attribute->lookup_str("domain");
+    const std::optional<StringRefNull> type_str = io_attribute->lookup_str("type");
+    auto io_data = io_attribute->lookup_dict("data");
+    if (!name || !domain_str || !type_str || !io_data) {
+      continue;
+    }
+
+    const eAttrDomain domain = get_domain_from_io_name(*domain_str);
+    const eCustomDataType data_type = get_data_type_from_io_name(*type_str);
+
+    const std::optional<StringRefNull> bdata_name = io_data->lookup_str("name");
+    const std::optional<int64_t> start = io_data->lookup_int("start");
+    const std::optional<int64_t> size = io_data->lookup_int("size");
+    if (!bdata_name || !start || !size) {
+      continue;
+    }
+
+    const StringRefNull endian_str = io_data->lookup_str("endian").value_or("little");
+    const bool is_same_endian = endian_str == get_endian_io_name(ENDIAN_ORDER);
+
+    bke::GSpanAttributeWriter attribute = attributes.lookup_or_add_for_write_only_span(
+        *name, domain, data_type);
+    if (!attribute) {
+      continue;
+    }
+    BLI_assert(*size == attribute.span.size_in_bytes());
+
+    char bdata_path[FILE_MAX];
+    BLI_path_join(bdata_path, sizeof(bdata_path), bdata_dir.c_str(), bdata_name->c_str());
+    {
+      fstream bdata_file{bdata_path, std::ios::in | std::ios::binary};
+      bdata_file.seekg(*start);
+      bdata_file.read(static_cast<char *>(attribute.span.data()), *size);
+    }
+
+    if (!is_same_endian) {
+      switch (data_type) {
+        case CD_PROP_INT32:
+        case CD_PROP_FLOAT:
+        case CD_PROP_FLOAT2:
+        case CD_PROP_FLOAT3:
+        case CD_PROP_COLOR: {
+          BLI_endian_switch_uint32_array(reinterpret_cast<uint32_t *>(attribute.span.data()),
+                                         attribute.span.size_in_bytes() / sizeof(uint32_t));
+          break;
+        }
+        default: {
+          break;
+        }
+      }
+    }
+
+    attribute.finish();
+  }
+}
+
+static PointCloud *try_load_pointcloud(const io::serialize::DictionaryValue &io_geometry,
+                                       const StringRefNull bdata_dir)
+{
+  const io::serialize::DictionaryValue *io_pointcloud = io_geometry.lookup_dict("pointcloud");
+  if (!io_pointcloud) {
+    return nullptr;
+  }
+  const int num_points = io_pointcloud->lookup_int("num_points").value_or(0);
+  const io::serialize::ArrayValue *io_attributes = io_pointcloud->lookup_array("attributes");
+  if (!io_attributes) {
+    return nullptr;
+  }
+  PointCloud *pointcloud = BKE_pointcloud_new_nomain(num_points);
+  bke::MutableAttributeAccessor attributes = pointcloud->attributes_for_write();
+  load_attributes(*io_attributes, attributes, bdata_dir);
+  return pointcloud;
+}
+
 static GeometrySet load_geometry(const io::serialize::DictionaryValue &io_geometry,
                                  const StringRefNull bdata_dir)
 {
   GeometrySet geometry;
-  if (const io::serialize::DictionaryValue *io_pointcloud = io_geometry.lookup_dict(
-          "pointcloud")) {
-    const int num_points = io_pointcloud->lookup_int("num_points").value_or(0);
-    PointCloud *pointcloud = BKE_pointcloud_new_nomain(num_points);
-    const io::serialize::ArrayValue *io_attributes = io_pointcloud->lookup_array("attributes");
-
-    bke::MutableAttributeAccessor attributes = pointcloud->attributes_for_write();
-    for (const auto &io_attribute_value : io_attributes->elements()) {
-      const auto *io_attribute = io_attribute_value->as_dictionary_value();
-      if (!io_attribute) {
-        continue;
-      }
-      const std::optional<StringRefNull> name = io_attribute->lookup_str("name");
-      const std::optional<StringRefNull> domain_str = io_attribute->lookup_str("domain");
-      const std::optional<StringRefNull> type_str = io_attribute->lookup_str("type");
-      auto io_data = io_attribute->lookup_dict("data");
-      if (!name || !domain_str || !type_str || !io_data) {
-        continue;
-      }
-
-      const eAttrDomain domain = get_domain_from_io_name(*domain_str);
-      const eCustomDataType data_type = get_data_type_from_io_name(*type_str);
-
-      const std::optional<StringRefNull> bdata_name = io_data->lookup_str("name");
-      const std::optional<int> start = io_data->lookup_int("start");
-      if (!bdata_name || !start) {
-        continue;
-      }
-      const StringRefNull endian_str = io_data->lookup_str("endian").value_or("little");
-      const bool is_same_endian = endian_str == get_endian_io_name(ENDIAN_ORDER);
-
-      bke::GSpanAttributeWriter attribute = attributes.lookup_or_add_for_write_only_span(
-          *name, domain, data_type);
-
-      char bdata_path[FILE_MAX];
-      BLI_path_join(bdata_path, sizeof(bdata_path), bdata_dir.c_str(), bdata_name->c_str());
-      {
-        fstream bdata_file{bdata_path, std::ios::in | std::ios::binary};
-        bdata_file.seekg(*start);
-        bdata_file.read(static_cast<char *>(attribute.span.data()),
-                        int64_t(num_points) * attribute.span.type().size());
-      }
-
-      if (!is_same_endian) {
-        switch (data_type) {
-          case CD_PROP_INT32:
-          case CD_PROP_FLOAT:
-          case CD_PROP_FLOAT2:
-          case CD_PROP_FLOAT3:
-          case CD_PROP_COLOR: {
-            BLI_endian_switch_uint32_array(reinterpret_cast<uint32_t *>(attribute.span.data()),
-                                           attribute.span.size_in_bytes() / sizeof(uint32_t));
-            break;
-          }
-          default: {
-            break;
-          }
-        }
-      }
-
-      attribute.finish();
-    }
-
+  if (PointCloud *pointcloud = try_load_pointcloud(io_geometry, bdata_dir)) {
     geometry.replace_pointcloud(pointcloud);
   }
   return geometry;
