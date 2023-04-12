@@ -2939,4 +2939,237 @@ void NODE_OT_cryptomatte_layer_remove(wmOperatorType *ot)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Simulation Zone Add Item Operator
+ * \{ */
+
+static bool simulation_zone_poll(struct bContext *C) {
+  if (!ED_operator_node_editable(C)) {
+    return false;
+  }
+
+  SpaceNode *snode = CTX_wm_space_node(C);
+  bNode *active_node = nodeGetActive(snode->edittree);
+  if (!active_node || active_node->type != GEO_NODE_SIMULATION_OUTPUT) {
+    return false;
+  }
+
+  return true;
+}
+
+static int simulation_zone_item_add_exec(bContext *C, wmOperator * /*op*/)
+{
+  SpaceNode *snode = CTX_wm_space_node(C);
+  bNode *node = nodeGetActive(snode->edittree);
+  NodeGeometrySimulationOutput *sim = static_cast<NodeGeometrySimulationOutput *>(node->storage);
+
+  const short default_socket_type = SOCK_GEOMETRY;
+  const char *default_name = DATA_(nodeStaticSocketLabel(default_socket_type, PROP_NONE));
+
+  if (NodeSimulationItem *active_item = node_geo_simulation_output_get_active_item(sim)) {
+    /* Insert a copy of the active item right after it. */
+    node_geo_simulation_output_insert_item(
+        sim, active_item->socket_type, active_item->name, sim->active_index);
+    ++sim->active_index;
+  }
+  else {
+    node_geo_simulation_output_add_item(sim, default_socket_type, default_name);
+    sim->active_index = sim->items_num - 1;
+  }
+
+  ED_node_tree_propagate_change(C, CTX_data_main(C), snode->edittree);
+  WM_event_add_notifier(C, NC_NODE | ND_DISPLAY, nullptr);
+
+  return OPERATOR_FINISHED;
+}
+
+void NODE_OT_simulation_zone_item_add(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Add Simulation Zone Item";
+  ot->description = "Add a simulation zone item";
+  ot->idname = "NODE_OT_simulation_zone_item_add";
+
+  /* api callbacks */
+  ot->exec = simulation_zone_item_add_exec;
+  ot->poll = simulation_zone_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Simulation Zone Remove Item Operator
+ * \{ */
+
+static int simulation_zone_item_remove_exec(bContext *C, wmOperator * /*op*/)
+{
+  SpaceNode *snode = CTX_wm_space_node(C);
+  bNode *node = nodeGetActive(snode->edittree);
+  NodeGeometrySimulationOutput *sim = static_cast<NodeGeometrySimulationOutput *>(node->storage);
+
+  if (NodeSimulationItem *active_item = node_geo_simulation_output_get_active_item(sim)) {
+    node_geo_simulation_output_remove_item(sim, active_item);
+
+    ED_node_tree_propagate_change(C, CTX_data_main(C), snode->edittree);
+    WM_event_add_notifier(C, NC_NODE | ND_DISPLAY, nullptr);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+void NODE_OT_simulation_zone_item_remove(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Remove Simulation Zone Item";
+  ot->description = "Remove a simulation zone item";
+  ot->idname = "NODE_OT_simulation_zone_item_remove";
+
+  /* api callbacks */
+  ot->exec = simulation_zone_item_remove_exec;
+  ot->poll = simulation_zone_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Simulation Zone Change Item Type Operator
+ * \{ */
+
+static int simulation_zone_item_change_type_exec(bContext *C, wmOperator *op)
+{
+  SpaceNode *snode = CTX_wm_space_node(C);
+  bNode *node = nodeGetActive(snode->edittree);
+  NodeGeometrySimulationOutput *sim = static_cast<NodeGeometrySimulationOutput *>(node->storage);
+  const int socket_type = RNA_enum_get(op->ptr, "socket_type");
+
+  if (NodeSimulationItem *active_item = node_geo_simulation_output_get_active_item(sim)) {
+    active_item->socket_type = socket_type;
+
+    ED_node_tree_propagate_change(C, CTX_data_main(C), snode->edittree);
+    WM_event_add_notifier(C, NC_NODE | ND_DISPLAY, nullptr);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+static bool simulation_zone_item_change_type_poll(void *userdata, bNodeSocketType *socket_type)
+{
+  /* Check if the node tree supports the socket type. */
+  bNodeTreeType *ntreetype = (bNodeTreeType *)userdata;
+  if (ntreetype->valid_socket_type && !ntreetype->valid_socket_type(ntreetype, socket_type)) {
+    return false;
+  }
+
+  /* Only use basic socket types for this enum. */
+  if (socket_type->subtype != PROP_NONE) {
+    return false;
+  }
+
+  return true;
+}
+
+static const EnumPropertyItem *simulation_zone_item_change_type_itemf(bContext *C,
+                                                                      PointerRNA * /*ptr*/,
+                                                                      PropertyRNA * /*prop*/,
+                                                                      bool *r_free)
+{
+  if (!C) {
+    return DummyRNA_NULL_items;
+  }
+
+  SpaceNode *snode = CTX_wm_space_node(C);
+  if (!snode || !snode->edittree) {
+    return DummyRNA_NULL_items;
+  }
+
+  return rna_node_socket_type_itemf(snode->edittree->typeinfo, simulation_zone_item_change_type_poll, r_free);
+}
+
+void NODE_OT_simulation_zone_item_change_type(wmOperatorType *ot)
+{
+  PropertyRNA *prop;
+
+  /* identifiers */
+  ot->name = "Change Simulation Zone Item Type";
+  ot->description = "Change the type of a simulation zone item";
+  ot->idname = "NODE_OT_simulation_zone_item_change_type";
+
+  /* api callbacks */
+  ot->invoke = WM_menu_invoke;
+  ot->exec = simulation_zone_item_change_type_exec;
+  ot->poll = simulation_zone_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  prop = RNA_def_enum(ot->srna, "socket_type", DummyRNA_DEFAULT_items, 0, "Socket Type", "");
+  RNA_def_enum_funcs(prop, simulation_zone_item_change_type_itemf);
+  ot->prop = prop;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Simulation Zone Move Item Operator
+ * \{ */
+
+static const EnumPropertyItem simulation_zone_item_move_direction_items[] = {
+    {1, "UP", 0, "Up", ""},
+    {2, "DOWN", 0, "Down", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+    };
+
+static int simulation_zone_item_move_exec(bContext *C, wmOperator *op)
+{
+  SpaceNode *snode = CTX_wm_space_node(C);
+  bNode *node = nodeGetActive(snode->edittree);
+  NodeGeometrySimulationOutput *sim = static_cast<NodeGeometrySimulationOutput *>(node->storage);
+  const int direction = RNA_enum_get(op->ptr, "direction");
+
+  switch (direction) {
+    case 1: { /* up */
+      if (sim->active_index >= 0 && sim->active_index < sim->items_num - 1) {
+        node_geo_simulation_output_move_item(sim, sim->active_index, sim->active_index + 1);
+      }
+      break;
+    }
+    case 2: { /* down */
+      if (sim->active_index >= 1 && sim->active_index < sim->items_num) {
+        node_geo_simulation_output_move_item(sim, sim->active_index, sim->active_index - 1);
+      }
+      break;
+    }
+  }
+
+  ED_node_tree_propagate_change(C, CTX_data_main(C), snode->edittree);
+  WM_event_add_notifier(C, NC_NODE | ND_DISPLAY, nullptr);
+
+  return OPERATOR_FINISHED;
+}
+
+void NODE_OT_simulation_zone_itme_move(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Move Simulation Zone Item";
+  ot->description = "Move a simulation zone item up or down";
+  ot->idname = "NODE_OT_simulation_zone_item_move";
+
+  /* api callbacks */
+  ot->exec = simulation_zone_item_move_exec;
+  ot->poll = simulation_zone_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  RNA_def_enum(ot->srna, "direction", simulation_zone_item_move_direction_items, 1, "Direction", "");
+}
+
+/** \} */
+
 }  // namespace blender::ed::space_node

@@ -4176,6 +4176,23 @@ static void rna_NodeGeometrySimulationOutput_items_move(ID *id,
   WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }
 
+static PointerRNA rna_NodeGeometrySimulationOutput_active_item_get(PointerRNA *ptr)
+{
+  bNode *node = (bNode *)ptr->data;
+  NodeGeometrySimulationOutput *sim = (NodeGeometrySimulationOutput *)node->storage;
+  NodeSimulationItem *item = node_geo_simulation_output_get_active_item(sim);
+  PointerRNA r_ptr;
+  RNA_pointer_create(ptr->owner_id, &RNA_SimulationStateItem, item, &r_ptr);
+  return r_ptr;
+}
+
+static void rna_NodeGeometrySimulationOutput_active_item_set(PointerRNA *ptr, PointerRNA value)
+{
+  bNode *node = (bNode *)ptr->data;
+  NodeGeometrySimulationOutput *sim = (NodeGeometrySimulationOutput *)node->storage;
+  node_geo_simulation_output_set_active_item(sim, (NodeSimulationItem *)value.data);
+}
+
 /* ******** Node Socket Types ******** */
 
 static PointerRNA rna_NodeOutputFile_slot_layer_get(CollectionPropertyIterator *iter)
@@ -9852,6 +9869,11 @@ static void rna_def_simulation_state_item(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Name", "");
   RNA_def_struct_name_property(srna, prop);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeSocket_update");
+
+  prop = RNA_def_property(srna, "socket_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, node_socket_type_items);
+  RNA_def_property_ui_text(prop, "Socket Type", "");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 }
 
 static void rna_def_geo_simulation_output_items(BlenderRNA *brna)
@@ -9905,14 +9927,23 @@ static void def_geo_simulation_output(StructRNA *srna)
   prop = RNA_def_property(srna, "state_items", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, NULL, "items", "items_num");
   RNA_def_property_struct_type(prop, "SimulationStateItem");
-  RNA_def_property_ui_text(prop, "Inputs", "");
+  RNA_def_property_ui_text(prop, "Items", "");
   RNA_def_property_srna(prop, "NodeGeometrySimulationOutputItems");
 
-  prop = RNA_def_property(srna, "active_input", PROP_INT, PROP_UNSIGNED);
-  RNA_def_property_int_funcs(
-      prop, "rna_NodeTree_active_input_get", "rna_NodeTree_active_input_set", NULL);
-  RNA_def_property_ui_text(prop, "Active Input", "Index of the active input");
+  prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_sdna(prop, NULL, "active_index");
+  RNA_def_property_ui_text(prop, "Active Item Index", "Index of the active item");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_NODE, NULL);
+
+  prop = RNA_def_property(srna, "active_item", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "SimulationStateItem");
+  RNA_def_property_pointer_funcs(prop,
+                                 "rna_NodeGeometrySimulationOutput_active_item_get",
+                                 "rna_NodeGeometrySimulationOutput_active_item_set",
+                                 NULL,
+                                 NULL);
+  RNA_def_property_ui_text(prop, "Active Item Index", "Index of the active item");
   RNA_def_property_update(prop, NC_NODE, NULL);
 }
 

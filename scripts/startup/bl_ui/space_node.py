@@ -951,6 +951,86 @@ class NODE_PT_node_tree_interface_outputs(NodeTreeInterfacePanel):
         self.draw_socket_list(context, "OUT", "outputs", "active_output")
 
 
+class NODE_UL_simulation_zone_items(bpy.types.UIList):
+    def draw_item(self, context, layout, _data, item, icon, _active_data, _active_propname, _index):
+        color = (1, 1, 1, 1) # TODO
+
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            row = layout.row(align=True)
+
+            row.template_node_socket(color=color)
+            row.prop(item, "name", text="", emboss=False, icon_value=icon)
+        elif self.layout_type == 'GRID':
+            layout.alignment = 'CENTER'
+            layout.template_node_socket(color=color)
+
+
+class NODE_PT_simulation_zone_items(Panel):
+    bl_space_type = 'NODE_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = "Simulation"
+    bl_label = "State Items"
+
+    @classmethod
+    def poll(cls, context):
+        snode = context.space_data
+        if snode is None:
+            return False
+        node = context.active_node
+        if node is None or node.bl_idname not in ['GeometryNodeSimulationInput', 'GeometryNodeSimulationOutput']:
+            return False
+        return True
+
+    def draw(self, context):
+        layout = self.layout
+
+        snode = context.space_data
+        node = context.active_node
+
+        split = layout.row()
+
+        split.template_list("NODE_UL_simulation_zone_items", "", node, "state_items", node, "active_index")
+
+        ops_col = split.column()
+
+        add_remove_col = ops_col.column(align=True)
+        add_remove_col.operator("node.simulation_zone_item_add", icon='ADD', text="")
+        add_remove_col.operator("node.simulation_zone_item_remove", icon='REMOVE', text="")
+
+        ops_col.separator()
+
+        up_down_col = ops_col.column(align=True)
+        props = up_down_col.operator("node.simulation_zone_item_move", icon='TRIA_UP', text="")
+        props.direction = 'UP'
+        props = up_down_col.operator("node.simulation_zone_item_move", icon='TRIA_DOWN', text="")
+        props.direction = 'DOWN'
+
+        active_item = node.active_item
+        if active_item is not None:
+            # Mimicking property split.
+            layout.use_property_split = False
+            layout.use_property_decorate = False
+            layout_row = layout.row(align=True)
+            layout_split = layout_row.split(factor=0.4, align=True)
+
+            label_column = layout_split.column(align=True)
+            label_column.alignment = 'RIGHT'
+            # Menu to change the socket type.
+            label_column.label(text="Type")
+
+            property_row = layout_split.row(align=True)
+            props = property_row.operator_menu_enum(
+                "node.simulation_zone_item_change_type",
+                "socket_type",
+                text=active_item.socket_type,
+            )
+
+            layout.use_property_split = True
+            layout.use_property_decorate = False
+
+            layout.prop(active_item, "name")
+
+
 # Grease Pencil properties
 class NODE_PT_annotation(AnnotationDataPanel, Panel):
     bl_space_type = 'NODE_EDITOR'
@@ -1015,6 +1095,8 @@ classes = (
     NODE_UL_interface_sockets,
     NODE_PT_node_tree_interface_inputs,
     NODE_PT_node_tree_interface_outputs,
+    NODE_UL_simulation_zone_items,
+    NODE_PT_simulation_zone_items,
 
     node_panel(EEVEE_MATERIAL_PT_settings),
     node_panel(MATERIAL_PT_viewport),

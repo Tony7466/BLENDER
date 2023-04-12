@@ -312,6 +312,23 @@ bool node_geo_simulation_output_contains_item(NodeGeometrySimulationOutput *sim,
   return index >= 0 && index < sim->items_num;
 }
 
+NodeSimulationItem *node_geo_simulation_output_get_active_item(NodeGeometrySimulationOutput *sim)
+{
+  if (sim->active_index >= 0 && sim->active_index < sim->items_num) {
+    return &sim->items[sim->active_index];
+  }
+  return nullptr;
+}
+
+void node_geo_simulation_output_set_active_item(NodeGeometrySimulationOutput *sim,
+                                                NodeSimulationItem *item)
+{
+  const int index = item - sim->items;
+  if (index >= 0 && index < sim->items_num) {
+    sim->active_index = index;
+  }
+}
+
 NodeSimulationItem *node_geo_simulation_output_find_item(NodeGeometrySimulationOutput *sim,
                                                          const char *name)
 {

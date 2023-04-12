@@ -113,6 +113,11 @@ void node_operatortypes()
 
   WM_operatortype_append(NODE_OT_cryptomatte_layer_add);
   WM_operatortype_append(NODE_OT_cryptomatte_layer_remove);
+
+  WM_operatortype_append(NODE_OT_simulation_zone_item_add);
+  WM_operatortype_append(NODE_OT_simulation_zone_item_remove);
+  WM_operatortype_append(NODE_OT_simulation_zone_item_change_type);
+  WM_operatortype_append(NODE_OT_simulation_zone_itme_move);
 }
 
 void node_keymap(wmKeyConfig *keyconf)
