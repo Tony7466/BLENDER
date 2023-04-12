@@ -28,6 +28,7 @@ set(INC_SYS
 )
 
 set(SRC
+  io_utils.cc
   io_alembic.c
   io_cache.c
   io_collada.c
@@ -40,6 +41,7 @@ set(SRC
   io_stl_ops.c
   io_usd.c
 
+  io_utils.hh
   io_alembic.h
   io_cache.h
   io_collada.h
