@@ -18,9 +18,7 @@ class GeometrySimulationStateItem : public SimulationStateItem {
   GeometrySet geometry_;
 
  public:
-  GeometrySimulationStateItem(GeometrySet geometry) : geometry_(std::move(geometry))
-  {
-  }
+  GeometrySimulationStateItem(GeometrySet geometry) : geometry_(std::move(geometry)) {}
 
   const GeometrySet &geometry() const
   {
@@ -49,10 +47,10 @@ struct SimulationZoneID {
 
 class ModifierSimulationState {
  private:
+ public:
   mutable std::mutex mutex_;
   Map<SimulationZoneID, std::unique_ptr<SimulationZoneState>> zone_states_;
 
- public:
   const SimulationZoneState *get_zone_state(const SimulationZoneID &zone_id) const
   {
     std::lock_guard lock{mutex_};
