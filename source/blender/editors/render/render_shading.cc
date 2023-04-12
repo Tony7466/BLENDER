@@ -1334,6 +1334,8 @@ enum {
   LIGHTCACHE_SUBSET_ALL = 0,
   LIGHTCACHE_SUBSET_DIRTY,
   LIGHTCACHE_SUBSET_CUBE,
+  LIGHTCACHE_SUBSET_SELECTED,
+  LIGHTCACHE_SUBSET_ACTIVE,
 };
 
 static void light_cache_bake_tag_cache(Scene *scene, wmOperator *op)
@@ -1349,6 +1351,9 @@ static void light_cache_bake_tag_cache(Scene *scene, wmOperator *op)
         break;
       case LIGHTCACHE_SUBSET_DIRTY:
         /* Leave tag untouched. */
+        break;
+      default:
+        BLI_assert_unreachable();
         break;
     }
   }
@@ -1496,15 +1501,80 @@ void SCENE_OT_light_cache_bake(wmOperatorType *ot)
 
 /* NOTE: New version destined to replace the old lightcache bake operator. */
 
+static void lightprobe_cache_bake_start(bContext *C, wmOperator *op)
+{
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  Scene *scene = CTX_data_scene(C);
+
+  auto is_irradiance_volume = [](Object *ob) -> bool {
+    return ob->type == OB_LIGHTPROBE &&
+           static_cast<LightProbe *>(ob->data)->type == LIGHTPROBE_TYPE_GRID;
+  };
+
+  auto irradiance_volume_setup = [](Object *ob) {
+    std::cout << ob->id.name << std::endl;
+    BKE_lightprobe_grid_caches_free(ob);
+    BKE_lightprobe_grid_caches_create(ob);
+    DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+  };
+
+  int subset = RNA_enum_get(op->ptr, "subset");
+  switch (subset) {
+    case LIGHTCACHE_SUBSET_ALL: {
+      std::cout << "LIGHTCACHE_SUBSET_ALL" << std::endl;
+      FOREACH_OBJECT_BEGIN (scene, view_layer, ob) {
+        if (is_irradiance_volume(ob)) {
+          irradiance_volume_setup(ob);
+        }
+      }
+      FOREACH_OBJECT_END;
+      break;
+    }
+    case LIGHTCACHE_SUBSET_DIRTY: {
+      std::cout << "LIGHTCACHE_SUBSET_DIRTY" << std::endl;
+      FOREACH_OBJECT_BEGIN (scene, view_layer, ob) {
+        if (is_irradiance_volume(ob) && ob->irradiance_caches_dirty) {
+          irradiance_volume_setup(ob);
+        }
+      }
+      FOREACH_OBJECT_END;
+      break;
+    }
+    case LIGHTCACHE_SUBSET_SELECTED: {
+      std::cout << "LIGHTCACHE_SUBSET_SELECTED" << std::endl;
+      uint objects_len = 0;
+      ObjectsInViewLayerParams parameters;
+      parameters.filter_fn = nullptr;
+      parameters.no_dup_data = true;
+      Object **objects = BKE_view_layer_array_selected_objects_params(
+          view_layer, nullptr, &objects_len, &parameters);
+      for (Object *ob : blender::MutableSpan<Object *>(objects, objects_len)) {
+        if (is_irradiance_volume(ob)) {
+          irradiance_volume_setup(ob);
+        }
+      }
+      MEM_freeN(objects);
+      break;
+    }
+    case LIGHTCACHE_SUBSET_ACTIVE: {
+      std::cout << "LIGHTCACHE_SUBSET_ACTIVE" << std::endl;
+      Object *active_ob = CTX_data_active_object(C);
+      if (is_irradiance_volume(active_ob)) {
+        irradiance_volume_setup(active_ob);
+      }
+      break;
+    }
+    default:
+      BLI_assert_unreachable();
+      break;
+  }
+}
+
 static int lightprobe_cache_bake_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   Scene *scene = CTX_data_scene(C);
-  Object *active_ob = CTX_data_active_object(C);
 
-  BKE_lightprobe_grid_caches_free(active_ob);
-  BKE_lightprobe_grid_caches_create(active_ob);
-
-  DEG_id_tag_update(&active_ob->id, ID_RECALC_COPY_ON_WRITE);
+  lightprobe_cache_bake_start(C, op);
 
   WM_event_add_modal_handler(C, op);
 
@@ -1544,14 +1614,32 @@ static void lightprobe_cache_bake_cancel(bContext *C, wmOperator *op)
   WM_jobs_kill_type(wm, scene, WM_JOB_TYPE_LIGHT_BAKE);
 }
 
-/* Executes blocking render. */
-static int lightprobe_cache_bake_exec(bContext * /*C*/, wmOperator * /*op*/)
+/* Executes blocking bake. */
+static int lightprobe_cache_bake_exec(bContext *C, wmOperator *op)
 {
+  lightprobe_cache_bake_start(C, op);
+
   return OPERATOR_FINISHED;
 }
 
 void OBJECT_OT_lightprobe_cache_bake(wmOperatorType *ot)
 {
+  static const EnumPropertyItem light_cache_subset_items[] = {
+      {LIGHTCACHE_SUBSET_ALL, "ALL", 0, "All Light Probes", "Bake all light probes"},
+      {LIGHTCACHE_SUBSET_DIRTY,
+       "DIRTY",
+       0,
+       "Dirty Only",
+       "Only bake light probes that are marked as dirty"},
+      {LIGHTCACHE_SUBSET_SELECTED,
+       "SELECTED",
+       0,
+       "Selected Only",
+       "Only bake selected light probes"},
+      {LIGHTCACHE_SUBSET_ACTIVE, "ACTIVE", 0, "Active Only", "Only bake the active light probe"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   /* identifiers */
   ot->name = "Bake Light Cache";
   ot->idname = "OBJECT_OT_lightprobe_cache_bake";
@@ -1572,6 +1660,10 @@ void OBJECT_OT_lightprobe_cache_bake(wmOperatorType *ot)
                          "Delay in millisecond before baking starts",
                          0,
                          2000);
+  RNA_def_property_flag(ot->prop, PROP_SKIP_SAVE);
+
+  ot->prop = RNA_def_enum(
+      ot->srna, "subset", light_cache_subset_items, 0, "Subset", "Subset of probes to update");
   RNA_def_property_flag(ot->prop, PROP_SKIP_SAVE);
 }
 
