@@ -118,6 +118,11 @@ class VKContext : public Context {
     return debugging_tools_;
   }
 
+  const debug::VKDebuggingTools &debugging_tools_get() const
+  {
+    return debugging_tools_;
+  }
+
  private:
   void init_physical_device_limits();
 
