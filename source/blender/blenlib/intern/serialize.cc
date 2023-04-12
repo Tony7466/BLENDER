@@ -197,6 +197,26 @@ static std::unique_ptr<Value> convert_from_json(const nlohmann::ordered_json &j)
   return std::make_unique<NullValue>();
 }
 
+void ArrayValue::append_int(const int value)
+{
+  this->append(std::make_shared<IntValue>(value));
+}
+
+void ArrayValue::append_str(std::string value)
+{
+  this->append(std::make_shared<StringValue>(std::move(value)));
+}
+
+void DictionaryValue::append_int(std::string key, const int value)
+{
+  this->append(std::move(key), std::make_shared<IntValue>(value));
+}
+
+void DictionaryValue::append_str(std::string key, const std::string value)
+{
+  this->append(std::move(key), std::make_shared<StringValue>(value));
+}
+
 void JsonFormatter::serialize(std::ostream &os, const Value &value)
 {
   nlohmann::ordered_json j;

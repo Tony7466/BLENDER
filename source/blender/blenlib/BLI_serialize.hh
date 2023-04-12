@@ -240,6 +240,9 @@ class ArrayValue : public ContainerValue<Vector<std::shared_ptr<Value>>, eValueT
   {
     this->elements().append(std::move(value));
   }
+
+  void append_int(int value);
+  void append_str(std::string value);
 };
 
 /**
@@ -278,6 +281,9 @@ class DictionaryValue
   {
     this->elements().append({std::move(key), std::move(value)});
   }
+
+  void append_int(std::string key, int value);
+  void append_str(std::string key, std::string value);
 };
 
 /**
