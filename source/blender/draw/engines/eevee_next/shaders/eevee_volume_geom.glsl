@@ -1,7 +1,7 @@
 
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 
-#ifdef MESH_SHADER
+#ifdef MAT_GEOM_VOLUME_OBJECT
 /* TODO: tight slices. */
 void main()
 {

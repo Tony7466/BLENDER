@@ -189,8 +189,7 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow)
 /** \name Volume
  * \{ */
 
-GPU_SHADER_CREATE_INFO(eevee_volume_material)
-    .define("MAT_GEOM_VOLUME")
+GPU_SHADER_CREATE_INFO(eevee_volume_material_common)
     .vertex_source("eevee_volume_material_vert.glsl")
     .fragment_source("eevee_volume_material_frag.glsl")
     .additional_info("eevee_volume_base",
@@ -209,11 +208,13 @@ GPU_SHADER_CREATE_INFO(eevee_volume_material)
                      "eevee_camera",
                      "eevee_utility_texture");
 
-GPU_SHADER_CREATE_INFO(eevee_volume_world).additional_info("eevee_volume_material");
-
 GPU_SHADER_CREATE_INFO(eevee_volume_object)
-    .define("MESH_SHADER")
-    .additional_info("eevee_volume_material");
+    .define("MAT_GEOM_VOLUME_OBJECT")
+    .additional_info("eevee_volume_material_common");
+
+GPU_SHADER_CREATE_INFO(eevee_volume_world)
+    .define("MAT_GEOM_VOLUME_WORLD")
+    .additional_info("eevee_volume_material_common");
 
 #if 0 /* TODO */
 GPU_SHADER_INTERFACE_INFO(eevee_volume_iface, "interp")

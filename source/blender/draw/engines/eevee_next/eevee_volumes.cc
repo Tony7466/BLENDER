@@ -218,7 +218,7 @@ void Volumes::begin_sync()
   if (world && world->use_nodes && world->nodetree &&
       !LOOK_DEV_STUDIO_LIGHT_ENABLED(draw_ctx->v3d)) {
 
-    mat = inst_.shaders.world_shader_get(world, world->nodetree, MAT_PIPE_WORLD_VOLUME);
+    mat = inst_.shaders.world_shader_get(world, world->nodetree, MAT_PIPE_VOLUME);
 
     if (!GPU_material_has_volume_output(mat)) {
       mat = nullptr;
@@ -254,7 +254,7 @@ void Volumes::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHand
   }
 
   MaterialPass material_pass = inst_.materials.material_pass_get(
-      ob, material, MAT_PIPE_VOLUME, MAT_GEOM_VOLUME);
+      ob, material, MAT_PIPE_VOLUME, MAT_GEOM_VOLUME_OBJECT);
 
   float3x3 world_matrix = float3x3(float4x4(ob->object_to_world));
   float3 size = math::to_scale(world_matrix);

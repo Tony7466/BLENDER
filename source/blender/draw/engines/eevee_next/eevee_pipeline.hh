@@ -318,7 +318,6 @@ class PipelineModule {
         return forward.material_opaque_add(blender_mat, gpumat);
 
       case MAT_PIPE_VOLUME:
-      case MAT_PIPE_WORLD_VOLUME:
         /* TODO(fclem) volume pass. */
         return nullptr;
       case MAT_PIPE_SHADOW:

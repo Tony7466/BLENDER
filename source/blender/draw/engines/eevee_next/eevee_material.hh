@@ -33,7 +33,6 @@ enum eMaterialPipeline {
   MAT_PIPE_FORWARD_PREPASS,
   MAT_PIPE_FORWARD_PREPASS_VELOCITY,
   MAT_PIPE_VOLUME,
-  MAT_PIPE_WORLD_VOLUME,
   MAT_PIPE_SHADOW,
 };
 
@@ -41,7 +40,8 @@ enum eMaterialGeometry {
   MAT_GEOM_MESH = 0,
   MAT_GEOM_CURVES,
   MAT_GEOM_GPENCIL,
-  MAT_GEOM_VOLUME,
+  MAT_GEOM_VOLUME_OBJECT,
+  MAT_GEOM_VOLUME_WORLD,
   MAT_GEOM_WORLD,
 };
 
@@ -99,7 +99,7 @@ static inline eMaterialGeometry to_material_geometry(const Object *ob)
     case OB_CURVES:
       return MAT_GEOM_CURVES;
     case OB_VOLUME:
-      return MAT_GEOM_VOLUME;
+      return MAT_GEOM_VOLUME_OBJECT;
     case OB_GPENCIL_LEGACY:
       return MAT_GEOM_GPENCIL;
     default:

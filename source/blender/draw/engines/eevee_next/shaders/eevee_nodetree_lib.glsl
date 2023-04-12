@@ -396,20 +396,24 @@ vec3 coordinate_incoming(vec3 P)
  *
  * \{ */
 
-#if defined(MAT_GEOM_VOLUME)
+#if defined(MAT_GEOM_VOLUME_OBJECT) || defined(MAT_GEOM_VOLUME_WORLD)
 
 float attr_load_temperature_post(float attr)
 {
+#  ifdef MAT_GEOM_VOLUME_OBJECT
   /* Bring the into standard range without having to modify the grid values */
   attr = (attr > 0.01) ? (attr * drw_volume.temperature_mul + drw_volume.temperature_bias) : 0.0;
+#  endif
   return attr;
 }
 vec4 attr_load_color_post(vec4 attr)
 {
+#  ifdef MAT_GEOM_VOLUME_OBJECT
   /* Density is premultiplied for interpolation, divide it out here. */
   attr.rgb *= safe_rcp(attr.a);
   attr.rgb *= drw_volume.color_mul.rgb;
   attr.a = 1.0;
+#  endif
   return attr;
 }
 

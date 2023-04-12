@@ -326,7 +326,8 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
       }
       info.vertex_inputs_.clear();
       break;
-    case MAT_GEOM_VOLUME:
+    case MAT_GEOM_VOLUME_OBJECT:
+    case MAT_GEOM_VOLUME_WORLD:
       /** Volume grid attributes come from 3D textures. Transfer attributes to samplers. */
       /* TODO (Miguel Pozo):
        * (Workaround) Starts binding from the last unit to avoid collisions with node samplers. */
@@ -338,7 +339,8 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
       break;
   }
 
-  const bool do_fragment_attrib_load = ELEM(geometry_type, MAT_GEOM_WORLD, MAT_GEOM_VOLUME);
+  const bool do_fragment_attrib_load = ELEM(
+      geometry_type, MAT_GEOM_WORLD, MAT_GEOM_VOLUME_WORLD, MAT_GEOM_VOLUME_OBJECT);
 
   if (do_fragment_attrib_load && !info.vertex_out_interfaces_.is_empty()) {
     /* Codegen outputs only one interface. */
@@ -384,7 +386,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
   {
     frag_gen << ((codegen.material_functions) ? codegen.material_functions : "\n");
 
-    if (ELEM(pipeline_type, MAT_PIPE_WORLD_VOLUME, MAT_PIPE_VOLUME)) {
+    if (pipeline_type == MAT_PIPE_VOLUME) {
       frag_gen << "Closure nodetree_volume()\n";
       frag_gen << "{\n";
       frag_gen << "  closure_weights_reset();\n";
@@ -418,72 +420,60 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     info.fragment_source_generated = frag_gen.str();
   }
 
-  /* Volumes */
-  if (geometry_type == MAT_GEOM_VOLUME) {
-    switch (pipeline_type) {
-      case MAT_PIPE_WORLD_VOLUME:
-        info.additional_info("eevee_volume_world");
-        break;
-      case MAT_PIPE_VOLUME:
-        info.additional_info("eevee_volume_object");
-        break;
-      default:
-        BLI_assert_unreachable();
-    }
+  /* Geometry Info. */
+  switch (geometry_type) {
+    case MAT_GEOM_WORLD:
+      info.additional_info("eevee_geom_world");
+      break;
+    case MAT_GEOM_VOLUME_WORLD:
+      info.additional_info("eevee_volume_world");
+      break;
+    case MAT_GEOM_VOLUME_OBJECT:
+      info.additional_info("eevee_volume_object");
+      break;
+    case MAT_GEOM_GPENCIL:
+      info.additional_info("eevee_geom_gpencil");
+      break;
+    case MAT_GEOM_CURVES:
+      info.additional_info("eevee_geom_curves");
+      break;
+    case MAT_GEOM_MESH:
+    default:
+      info.additional_info("eevee_geom_mesh");
+      break;
   }
-  else {
-    /* Geometry Info. */
-    switch (geometry_type) {
-      case MAT_GEOM_WORLD:
-        info.additional_info("eevee_geom_world");
-        break;
-      case MAT_GEOM_VOLUME:
-        BLI_assert_unreachable();
-        break;
-      case MAT_GEOM_GPENCIL:
-        info.additional_info("eevee_geom_gpencil");
-        break;
-      case MAT_GEOM_CURVES:
-        info.additional_info("eevee_geom_curves");
-        break;
-      case MAT_GEOM_MESH:
-      default:
-        info.additional_info("eevee_geom_mesh");
-        break;
-    }
-    /* Pipeline Info. */
-    switch (geometry_type) {
-      case MAT_GEOM_WORLD:
-        info.additional_info("eevee_surf_world");
-        break;
-      case MAT_GEOM_VOLUME:
-        BLI_assert_unreachable();
-        break;
-      default:
-        switch (pipeline_type) {
-          case MAT_PIPE_FORWARD_PREPASS_VELOCITY:
-          case MAT_PIPE_DEFERRED_PREPASS_VELOCITY:
-            info.additional_info("eevee_surf_depth", "eevee_velocity_geom");
-            break;
-          case MAT_PIPE_FORWARD_PREPASS:
-          case MAT_PIPE_DEFERRED_PREPASS:
-            info.additional_info("eevee_surf_depth");
-            break;
-          case MAT_PIPE_SHADOW:
-            info.additional_info("eevee_surf_shadow");
-            break;
-          case MAT_PIPE_DEFERRED:
-            info.additional_info("eevee_surf_deferred");
-            break;
-          case MAT_PIPE_FORWARD:
-            info.additional_info("eevee_surf_forward");
-            break;
-          default:
-            BLI_assert(0);
-            break;
-        }
-        break;
-    }
+  /* Pipeline Info. */
+  switch (geometry_type) {
+    case MAT_GEOM_WORLD:
+      info.additional_info("eevee_surf_world");
+      break;
+    case MAT_GEOM_VOLUME_OBJECT:
+    case MAT_GEOM_VOLUME_WORLD:
+      break;
+    default:
+      switch (pipeline_type) {
+        case MAT_PIPE_FORWARD_PREPASS_VELOCITY:
+        case MAT_PIPE_DEFERRED_PREPASS_VELOCITY:
+          info.additional_info("eevee_surf_depth", "eevee_velocity_geom");
+          break;
+        case MAT_PIPE_FORWARD_PREPASS:
+        case MAT_PIPE_DEFERRED_PREPASS:
+          info.additional_info("eevee_surf_depth");
+          break;
+        case MAT_PIPE_SHADOW:
+          info.additional_info("eevee_surf_shadow");
+          break;
+        case MAT_PIPE_DEFERRED:
+          info.additional_info("eevee_surf_deferred");
+          break;
+        case MAT_PIPE_FORWARD:
+          info.additional_info("eevee_surf_forward");
+          break;
+        default:
+          BLI_assert(0);
+          break;
+      }
+      break;
   }
 }
 
@@ -501,7 +491,6 @@ GPUMaterial *ShaderModule::material_shader_get(::Material *blender_mat,
                                                bool deferred_compilation)
 {
   bool is_volume = (pipeline_type == MAT_PIPE_VOLUME);
-  BLI_assert(pipeline_type != MAT_PIPE_WORLD_VOLUME);
 
   uint64_t shader_uuid = shader_uuid_from_material_type(pipeline_type, geometry_type);
 
@@ -513,10 +502,9 @@ GPUMaterial *ShaderModule::world_shader_get(::World *blender_world,
                                             struct bNodeTree *nodetree,
                                             eMaterialPipeline pipeline_type)
 {
-  bool is_volume = (pipeline_type == MAT_PIPE_WORLD_VOLUME);
-  BLI_assert(pipeline_type != MAT_PIPE_VOLUME);
+  bool is_volume = (pipeline_type == MAT_PIPE_VOLUME);
 
-  eMaterialGeometry geometry_type = is_volume ? MAT_GEOM_VOLUME : MAT_GEOM_WORLD;
+  eMaterialGeometry geometry_type = is_volume ? MAT_GEOM_VOLUME_WORLD : MAT_GEOM_WORLD;
 
   uint64_t shader_uuid = shader_uuid_from_material_type(pipeline_type, geometry_type);
 

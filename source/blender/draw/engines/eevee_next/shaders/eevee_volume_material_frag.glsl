@@ -43,7 +43,7 @@ void main()
 
   viewPosition = get_view_space_from_depth(ndc_cell.xy, ndc_cell.z);
   worldPosition = point_view_to_world(viewPosition);
-#ifdef MESH_SHADER
+#ifdef MAT_GEOM_VOLUME_OBJECT
   objectPosition = point_world_to_object(worldPosition);
   g_orco = OrcoTexCoFactors[0].xyz + objectPosition * OrcoTexCoFactors[1].xyz;
 
@@ -69,7 +69,7 @@ void main()
   vec3 absorption = g_volume_absorption_data.absorption;
   vec3 emission = g_emission;
 
-#ifdef MESH_SHADER
+#ifdef MAT_GEOM_VOLUME_OBJECT
   scattering *= drw_volume.density_scale;
   absorption *= drw_volume.density_scale;
   emission *= drw_volume.density_scale;

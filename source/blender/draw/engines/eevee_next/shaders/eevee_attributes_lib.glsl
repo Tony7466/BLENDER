@@ -177,7 +177,7 @@ float attr_load_float(samplerBuffer cd_buf)
 
 /** \} */
 
-#elif defined(MAT_GEOM_VOLUME)
+#elif defined(MAT_GEOM_VOLUME_OBJECT) || defined(MAT_GEOM_VOLUME_WORLD)
 
 /* -------------------------------------------------------------------- */
 /** \name Volume
@@ -199,15 +199,15 @@ vec3 viewNormal = vec3(0.0);
 vec3 g_orco = vec3(0.0);
 int g_attr_id = 0;
 
-/* TODO (Miguel Pozo): Check differences with volumetric_frag.glsl. */
-
 vec3 grid_coordinates()
 {
   vec3 co = g_orco;
+#  ifdef MAT_GEOM_VOLUME_OBJECT
   /* Optional per-grid transform. */
   if (drw_volume.grids_xform[g_attr_id][3][3] != 0.0) {
     co = (drw_volume.grids_xform[g_attr_id] * vec4(objectPosition, 1.0)).xyz;
   }
+#  endif
   g_attr_id += 1;
   return co;
 }
