@@ -1525,6 +1525,8 @@ static int gpencil_surfacedeform_bind_exec(bContext *C, wmOperator *op)
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
 
+  smd->flags &= ~GP_MOD_SDEF_WITHHOLD_EVALUATION;
+
 
   /*printf("smd flag 3 %i\n", smd->flags);
   printf("smd_eval flag 3 %i\n", smd_eval->flags);*/

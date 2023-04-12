@@ -1943,9 +1943,11 @@ static bool surfacedeformBind(Object *ob,
           {continue;}
           add_frame(smd_orig, smd_eval, smd_orig->layers, curr_gpf); 
           smd_orig->flags |= GP_MOD_SDEF_WITHHOLD_EVALUATION;
+          smd_eval->flags |= GP_MOD_SDEF_WITHHOLD_EVALUATION;
           BKE_scene_frame_set(scene, (float)curr_gpf->framenum);
           BKE_scene_graph_update_for_newframe(depsgraph);
           smd_orig->flags &= ~GP_MOD_SDEF_WITHHOLD_EVALUATION;
+          smd_eval->flags &= ~GP_MOD_SDEF_WITHHOLD_EVALUATION;
           uint s = 0;
           LISTBASE_FOREACH (bGPDstroke *, curr_gps, &curr_gpf->strokes)
           {
@@ -2249,12 +2251,16 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
     }
     printf("bind good \n");
     smd_orig->flags &= ~GP_MOD_SDEF_DO_BIND;
+    /*Withhold evaliation for the next strokes, let's reactivate it in the operator*/
+    smd_orig->flags |= GP_MOD_SDEF_WITHHOLD_EVALUATION;
     check_bind_situation(smd_orig, depsgraph,DEG_get_evaluated_scene(depsgraph), ob);
     /* Early abort, this is binding 'call', no need to perform whole evaluation. */
+    smd->flags = smd_orig->flags;
     return;
   }
   if (!smd->layers)
   {return;}
+    
   printf("real evaluation after bind \n");
 
   if (gpl->prev == NULL && gps->prev == NULL)
@@ -2397,7 +2403,8 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
 
     MEM_freeN(data.targetCos);
   }
-  
+
+  BKE_gpencil_stroke_geometry_update(ob->data, gps);
   
   
   
@@ -2427,6 +2434,7 @@ static void deformStroke(GpencilModifierData *md, // every time deform stroke is
 {
   SurDeformGpencilModifierData *smd = (SurDeformGpencilModifierData *)md;
   if (smd->flags & GP_MOD_SDEF_WITHHOLD_EVALUATION) return;
+
 
 
   /* Update flags to evaluated modifier */
@@ -2472,7 +2480,7 @@ static void deformStroke(GpencilModifierData *md, // every time deform stroke is
   }*/
   
 
-  BKE_gpencil_stroke_geometry_update(ob->data, gps);
+  
 
 }
 
