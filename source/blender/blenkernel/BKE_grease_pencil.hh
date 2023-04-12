@@ -34,6 +34,7 @@ class Layer;
 class TreeNode : public ::GreasePencilLayerTreeNode {
   using TreeNodeIterFn = FunctionRef<void(TreeNode &)>;
   using LayerIterFn = FunctionRef<void(Layer &)>;
+  using LayerIndexIterFn = FunctionRef<void(uint64_t, Layer &)>;
 
  protected:
   Vector<std::unique_ptr<TreeNode>> children_;
@@ -146,6 +147,88 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
     }
   };
 
+  class PreOrderIndexRange {
+   public:
+    struct Item {
+      const int64_t index;
+      const TreeNode &node;
+    };
+
+   private:
+    class Iterator {
+      using iterator_category = std::forward_iterator_tag;
+
+     private:
+      int64_t current_index_;
+      Stack<TreeNode *> next_node_;
+
+     public:
+      explicit Iterator(TreeNode *root)
+      {
+        current_index_ = 0;
+        if (root != nullptr) {
+          for (auto it = root->children_.rbegin(); it != root->children_.rend(); it++) {
+            next_node_.push((*it).get());
+          }
+        }
+      }
+
+      Item operator*()
+      {
+        return {current_index_, *next_node_.peek()};
+      }
+
+      Iterator &operator++()
+      {
+        BLI_assert(!next_node_.is_empty());
+        TreeNode &next_node = *next_node_.pop();
+        current_index_++;
+        for (auto it = next_node.children_.rbegin(); it != next_node.children_.rend(); it++) {
+          next_node_.push((*it).get());
+        }
+        return *this;
+      }
+
+      Iterator operator++(int)
+      {
+        Iterator old = *this;
+        operator++();
+        return old;
+      }
+
+      bool operator==(Iterator &other) const
+      {
+        if (next_node_.size() == 0) {
+          return other.next_node_.size() == 0;
+        }
+        return (next_node_.size() == other.next_node_.size()) &&
+               next_node_.peek() == other.next_node_.peek() &&
+               current_index_ == other.current_index_;
+      }
+
+      bool operator!=(Iterator &other) const
+      {
+        return !(*this == other);
+      }
+    };
+
+   private:
+    TreeNode *_root;
+
+   public:
+    explicit PreOrderIndexRange(TreeNode *root) : _root(root) {}
+
+    Iterator begin()
+    {
+      return Iterator(_root);
+    }
+
+    Iterator end()
+    {
+      return Iterator(nullptr);
+    }
+  };
+
  public:
   constexpr bool is_group() const
   {
@@ -159,6 +242,7 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
 
   LayerGroup &as_group();
   Layer &as_layer();
+  const Layer &as_layer() const;
 
   int total_num_children() const
   {
@@ -177,10 +261,8 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
     return total;
   }
 
-  PreOrderRange children_in_pre_order()
-  {
-    return PreOrderRange(this);
-  }
+  PreOrderRange children_in_pre_order();
+  PreOrderIndexRange children_with_index_in_pre_order();
 
   void foreach_children_pre_order(TreeNodeIterFn function)
   {
@@ -272,7 +354,7 @@ class Layer : public TreeNode, ::GreasePencilLayer {
     return this != &other;
   }
 
-  const Map<int, GreasePencilFrame> &frames()
+  const Map<int, GreasePencilFrame> &frames() const
   {
     return frames_;
   }
@@ -307,7 +389,7 @@ class Layer : public TreeNode, ::GreasePencilLayer {
     return frames_for_write().add_overwrite(frame_number, frame);
   }
 
-  Span<int> sorted_keys()
+  Span<int> sorted_keys() const
   {
     sorted_keys_cache_.ensure([&](Vector<int> &r_data) {
       r_data.clear_and_shrink();
@@ -330,7 +412,7 @@ class Layer : public TreeNode, ::GreasePencilLayer {
   /**
    * Return the index of the drawing at frame \a frame or -1 if there is no drawing.
    */
-  int drawing_at(int frame)
+  int drawing_at(int frame) const
   {
     Span<int> sorted_keys = this->sorted_keys();
     /* Before the first drawing, return no drawing. */
@@ -463,6 +545,7 @@ class GreasePencilDrawingRuntime {
 class GreasePencilRuntime {
  private:
   LayerGroup root_group_;
+  const Layer *active_layer_ = nullptr;
 
  public:
   GreasePencilRuntime() {}
@@ -471,6 +554,16 @@ class GreasePencilRuntime {
   LayerGroup &root_group()
   {
     return root_group_;
+  }
+
+  const Layer *active_layer() const
+  {
+    return active_layer_;
+  }
+
+  void set_active_layer(const Layer *new_active_layer)
+  {
+    active_layer_ = new_active_layer;
   }
 
  public:

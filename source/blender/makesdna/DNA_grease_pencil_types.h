@@ -179,7 +179,8 @@ typedef struct GreasePencilLayerTreeStorage {
   /* Array of tree nodes. Pre-order serialization of the layer tree. */
   GreasePencilLayerTreeNode **nodes;
   int nodes_num;
-  char _pad[4];
+  /* Index pointing to the node in the array that is the active layer. */
+  int active_layer_index;
 } GreasePencilLayerTreeStorage;
 
 /**
@@ -236,7 +237,7 @@ typedef struct GreasePencil {
    */
   GreasePencilRuntimeHandle *runtime;
 #ifdef __cplusplus
-  blender::bke::gpencil::Layer *get_active_layer();
+  const blender::bke::gpencil::Layer *active_layer() const;
   blender::bke::gpencil::LayerGroup &root_group();
 #endif
 } GreasePencil;

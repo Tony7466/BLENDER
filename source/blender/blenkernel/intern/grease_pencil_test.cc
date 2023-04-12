@@ -39,6 +39,39 @@ TEST(gpencil, create_grease_pencil_id)
   EXPECT_EQ(grease_pencil.root_group().total_num_children(), 0);
 }
 
+TEST(gpencil, set_active_layer)
+{
+  GreasePencilIDTestContext ctx;
+
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(BKE_id_new(ctx.bmain, ID_GP, "GP"));
+  grease_pencil.add_empty_drawings(3);
+
+  Layer layer1("Layer1");
+  Layer layer2("Layer2");
+
+  Layer *layer1_ref = &grease_pencil.root_group().add_layer(std::move(layer1));
+  Layer *layer2_ref = &grease_pencil.root_group().add_layer(std::move(layer2));
+
+  grease_pencil.runtime->set_active_layer(layer1_ref);
+  EXPECT_EQ(layer1_ref, grease_pencil.active_layer());
+
+  grease_pencil.runtime->set_active_layer(layer2_ref);
+  EXPECT_EQ(layer2_ref, grease_pencil.active_layer());
+
+  /* Save to storage. */
+  grease_pencil.free_layer_tree_storage();
+  grease_pencil.save_layer_tree_to_storage();
+  MEM_delete(grease_pencil.runtime);
+
+  /* Load from storage. */
+  grease_pencil.runtime = MEM_new<blender::bke::GreasePencilRuntime>(__func__);
+  grease_pencil.load_layer_tree_from_storage();
+
+  /* Check if the active layer is still the second one. */
+  EXPECT_NE(grease_pencil.active_layer(), nullptr);
+  EXPECT_STREQ(grease_pencil.active_layer()->name, "Layer2");
+}
+
 /* --------------------------------------------------------------------------------------------- */
 /* Drawing Array Tests. */
 
