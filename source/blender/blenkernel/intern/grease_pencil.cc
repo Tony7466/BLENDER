@@ -496,6 +496,7 @@ void GreasePencil::add_empty_drawings(int n)
         MEM_new<GreasePencilDrawing>(__func__));
     GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(new_drawings[i]);
     new (&drawing->geometry) bke::CurvesGeometry();
+    drawing->runtime = MEM_new<bke::GreasePencilDrawingRuntime>(__func__);
   }
 }
 
