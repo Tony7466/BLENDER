@@ -249,8 +249,9 @@ template<typename T>
 static void blur_on_mesh_exec(const Span<float> neighbor_weights,
                               const Span<Vector<int>> neighbors_map,
                               const int iterations,
-                              MutableSpan<T> main_buffer,
-                              MutableSpan<T> tmp_buffer)
+                              const MutableSpan<T> main_buffer,
+                              const MutableSpan<T> tmp_buffer,
+                              bool &r_tmp_buffer_is_result)
 {
   MutableSpan<T> src = main_buffer;
   MutableSpan<T> dst = tmp_buffer;
@@ -271,13 +272,8 @@ static void blur_on_mesh_exec(const Span<float> neighbor_weights,
     std::swap(src, dst);
   }
 
-  /* The last computed values are in #src now. If the main buffer is #dst, the values have to be
-   * copied once more. */
   if (dst.data() == main_buffer.data()) {
-    threading::parallel_for(dst.index_range(), 1024, [&](const IndexRange range) {
-      initialized_copy_n(
-          src.data() + range.start(), range.size(), main_buffer.data() + range.start());
-    });
+    r_tmp_buffer_is_result = true;
   }
 }
 
@@ -285,8 +281,9 @@ static void blur_on_mesh(const Mesh &mesh,
                          const eAttrDomain domain,
                          const int iterations,
                          const Span<float> neighbor_weights,
-                         GMutableSpan main_buffer,
-                         GMutableSpan tmp_buffer)
+                         const GMutableSpan main_buffer,
+                         const GMutableSpan tmp_buffer,
+                         bool &tmp_buffer_is_result)
 {
   Array<Vector<int>> neighbors_map = create_mesh_map(mesh, domain, neighbor_weights.index_range());
   if (neighbors_map.is_empty()) {
@@ -299,7 +296,8 @@ static void blur_on_mesh(const Mesh &mesh,
                            neighbors_map,
                            iterations,
                            main_buffer.typed<T>(),
-                           tmp_buffer.typed<T>());
+                           tmp_buffer.typed<T>(),
+                           tmp_buffer_is_result);
     }
   });
 }
@@ -308,8 +306,9 @@ template<typename T>
 static void blur_on_curve_exec(const bke::CurvesGeometry &curves,
                                const Span<float> neighbor_weights,
                                const int iterations,
-                               MutableSpan<T> main_buffer,
-                               MutableSpan<T> tmp_buffer)
+                               const MutableSpan<T> main_buffer,
+                               const MutableSpan<T> tmp_buffer,
+                               bool &r_tmp_buffer_is_result)
 {
   MutableSpan<T> src = main_buffer;
   MutableSpan<T> dst = tmp_buffer;
@@ -339,23 +338,19 @@ static void blur_on_curve_exec(const bke::CurvesGeometry &curves,
         const float first_neighbor_weight = neighbor_weights[first_i];
         const int last_i = points.last();
         const float last_neighbor_weight = neighbor_weights[last_i];
+
+        /* First point. */
+        mixer.set(first_i, src[first_i], 1.0f);
+        mixer.mix_in(first_i, src[first_i + 1], first_neighbor_weight);
+        /* Last point. */
+        mixer.set(last_i, src[last_i], 1.0f);
+        mixer.mix_in(last_i, src[last_i - 1], last_neighbor_weight);
+
         if (cyclic[curve_i]) {
           /* First point. */
-          mixer.set(first_i, src[first_i], 1.0f);
-          mixer.mix_in(first_i, src[first_i + 1], first_neighbor_weight);
           mixer.mix_in(first_i, src[last_i], first_neighbor_weight);
           /* Last point. */
-          mixer.set(last_i, src[last_i], 1.0f);
-          mixer.mix_in(last_i, src[last_i - 1], last_neighbor_weight);
           mixer.mix_in(last_i, src[first_i], last_neighbor_weight);
-        }
-        else {
-          /* First point. */
-          mixer.set(first_i, src[first_i], 1.0f);
-          mixer.mix_in(first_i, src[first_i + 1], first_neighbor_weight);
-          /* Last point. */
-          mixer.set(last_i, src[last_i], 1.0f);
-          mixer.mix_in(last_i, src[last_i - 1], last_neighbor_weight);
         }
       }
       mixer.finalize(points_by_curve[range]);
@@ -363,27 +358,27 @@ static void blur_on_curve_exec(const bke::CurvesGeometry &curves,
     std::swap(src, dst);
   }
 
-  /* The last computed values are in #src now. If the main buffer is #dst, the values have to be
-   * copied once more. */
   if (dst.data() == main_buffer.data()) {
-    threading::parallel_for(dst.index_range(), 1024, [&](const IndexRange range) {
-      initialized_copy_n(
-          src.data() + range.start(), range.size(), main_buffer.data() + range.start());
-    });
+    r_tmp_buffer_is_result = true;
   }
 }
 
 static void blur_on_curves(const bke::CurvesGeometry &curves,
                            const int iterations,
                            const Span<float> neighbor_weights,
-                           GMutableSpan main_buffer,
-                           GMutableSpan tmp_buffer)
+                           const GMutableSpan main_buffer,
+                           const GMutableSpan tmp_buffer,
+                           bool &r_tmp_buffer_is_result)
 {
   attribute_math::convert_to_static_type(main_buffer.type(), [&](auto dummy) {
     using T = decltype(dummy);
     if constexpr (!std::is_same_v<T, bool>) {
-      blur_on_curve_exec<T>(
-          curves, neighbor_weights, iterations, main_buffer.typed<T>(), tmp_buffer.typed<T>());
+      blur_on_curve_exec<T>(curves,
+                            neighbor_weights,
+                            iterations,
+                            main_buffer.typed<T>(),
+                            tmp_buffer.typed<T>(),
+                            r_tmp_buffer_is_result);
     }
   });
 }
@@ -428,19 +423,31 @@ class BlurAttributeFieldInput final : public bke::GeometryFieldInput {
     VArraySpan<float> neighbor_weights = evaluator.get_evaluated<float>(1);
     GArray<> tmp_buffer(*type_, domain_size);
 
+    bool tmp_buffer_is_result = false;
+
     switch (context.type()) {
       case GEO_COMPONENT_TYPE_MESH:
         if (ELEM(context.domain(), ATTR_DOMAIN_POINT, ATTR_DOMAIN_EDGE, ATTR_DOMAIN_FACE)) {
           if (const Mesh *mesh = context.mesh()) {
-            blur_on_mesh(
-                *mesh, context.domain(), iterations_, neighbor_weights, main_buffer, tmp_buffer);
+            blur_on_mesh(*mesh,
+                         context.domain(),
+                         iterations_,
+                         neighbor_weights,
+                         main_buffer,
+                         tmp_buffer,
+                         tmp_buffer_is_result);
           }
         }
         break;
       case GEO_COMPONENT_TYPE_CURVE:
         if (context.domain() == ATTR_DOMAIN_POINT) {
           if (const bke::CurvesGeometry *curves = context.curves()) {
-            blur_on_curves(*curves, iterations_, neighbor_weights, main_buffer, tmp_buffer);
+            blur_on_curves(*curves,
+                           iterations_,
+                           neighbor_weights,
+                           main_buffer,
+                           tmp_buffer,
+                           tmp_buffer_is_result);
           }
         }
         break;
@@ -448,6 +455,9 @@ class BlurAttributeFieldInput final : public bke::GeometryFieldInput {
         break;
     }
 
+    if (tmp_buffer_is_result) {
+      return GVArray::ForGArray(std::move(tmp_buffer));
+    }
     return GVArray::ForGArray(std::move(main_buffer));
   }
 
