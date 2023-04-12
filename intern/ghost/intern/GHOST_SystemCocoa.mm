@@ -1402,7 +1402,7 @@ bool GHOST_SystemCocoa::handleOpenDocumentRequest(void *filepathStr)
 
   GHOST_Window *window = m_windowManager->getWindows().empty() ?
                              NULL :
-                             (GHOST_Window *)m_windowManager->getWindows().back();
+                             (GHOST_Window *)m_windowManager->getWindows().front();
 
   if (!window) {
     return NO;
