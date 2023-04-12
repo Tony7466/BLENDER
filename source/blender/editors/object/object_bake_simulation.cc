@@ -4,6 +4,8 @@
 #include <iomanip>
 #include <random>
 
+#include "BLI_endian_defines.h"
+#include "BLI_endian_switch.h"
 #include "BLI_fileops.hh"
 #include "BLI_path_util.h"
 #include "BLI_serialize.hh"
@@ -38,6 +40,15 @@
 #include "object_intern.h"
 
 namespace blender::ed::object::bake_simulation {
+
+static StringRefNull get_endian_io_name(const int endian)
+{
+  if (endian == L_ENDIAN) {
+    return "little";
+  }
+  BLI_assert(endian == B_ENDIAN);
+  return "big";
+}
 
 static StringRefNull get_domain_io_name(const eAttrDomain domain)
 {
@@ -110,8 +121,11 @@ static GeometrySet load_geometry(const io::serialize::DictionaryValue &io_geomet
 
       auto io_data = attribute_io_lookup.lookup("data")->as_dictionary_value();
 
-      const std::string bdata_name = io_data->lookup_linear("name")->as_string_value()->value();
+      const StringRefNull bdata_name = io_data->lookup_linear("name")->as_string_value()->value();
       const int start = io_data->lookup_linear("start")->as_int_value()->value();
+      const StringRefNull endian_str =
+          io_data->lookup_linear("endian")->as_string_value()->value();
+      const bool is_same_endian = endian_str == get_endian_io_name(ENDIAN_ORDER);
 
       char bdata_path[FILE_MAX];
       BLI_path_join(bdata_path, sizeof(bdata_path), bdata_dir.c_str(), bdata_name.c_str());
@@ -122,6 +136,20 @@ static GeometrySet load_geometry(const io::serialize::DictionaryValue &io_geomet
                         int64_t(num_points) * attribute.span.type().size());
       }
 
+      if (!is_same_endian) {
+        switch (data_type) {
+          case CD_PROP_INT32:
+          case CD_PROP_FLOAT:
+          case CD_PROP_FLOAT2:
+          case CD_PROP_FLOAT3:
+          case CD_PROP_COLOR: {
+            BLI_endian_switch_uint32_array(reinterpret_cast<uint32_t *>(attribute.span.data()),
+                                           attribute.span.size_in_bytes() / sizeof(uint32_t));
+            break;
+          }
+        }
+      }
+
       attribute.finish();
     }
 
@@ -130,7 +158,7 @@ static GeometrySet load_geometry(const io::serialize::DictionaryValue &io_geomet
   return geometry;
 }
 
-using WriteBDataFn = FunctionRef<std::shared_ptr<io::serialize::Value>(Span<uint8_t>)>;
+using WriteBDataFn = FunctionRef<std::shared_ptr<io::serialize::DictionaryValue>(Span<uint8_t>)>;
 
 static std::shared_ptr<io::serialize::ArrayValue> serialize_material_slots(
     const Span<const Material *> material_slots)
@@ -171,9 +199,9 @@ static std::shared_ptr<io::serialize::ArrayValue> serialize_attributes(
         const GVArraySpan attribute_span(attribute.varray);
         const int64_t binary_size = attribute_span.size() * attribute_span.type().size();
 
-        /* TODO: Handle endianess. */
         auto io_attribute_data = write_bdata(
             Span<uint8_t>(reinterpret_cast<const uint8_t *>(attribute_span.data()), binary_size));
+        io_attribute_data->append_str("endian", get_endian_io_name(ENDIAN_ORDER));
         io_attribute->append("data", io_attribute_data);
 
         return true;
@@ -195,10 +223,10 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
     io_mesh->append_int("num_corners", mesh.totloop);
 
     if (mesh.totpoly > 0) {
-      /* TODO: Handle endianess. */
       auto io_polygon_indices = write_bdata(
           Span<uint8_t>({reinterpret_cast<const uint8_t *>(mesh.poly_offset_indices),
                          int64_t(sizeof(*mesh.poly_offset_indices)) * mesh.totpoly + 1}));
+      io_polygon_indices->append_str("endian", get_endian_io_name(ENDIAN_ORDER));
       io_mesh->append("poly_offset_indices", io_polygon_indices);
     }
 
@@ -384,6 +412,7 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
                 auto io_data_ref = std::make_shared<io::serialize::DictionaryValue>();
                 io_data_ref->append_str("name", bdata_file_name);
                 io_data_ref->append_int("start", binary_file_offset);
+                io_data_ref->append_int("size", data.size());
                 binary_file_offset += data.size();
                 return io_data_ref;
               });

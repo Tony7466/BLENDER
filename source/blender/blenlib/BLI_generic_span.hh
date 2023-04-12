@@ -186,6 +186,11 @@ class GMutableSpan {
     return size_;
   }
 
+  int64_t size_in_bytes() const
+  {
+    return type_->size() * size_;
+  }
+
   void *data() const
   {
     return data_;
