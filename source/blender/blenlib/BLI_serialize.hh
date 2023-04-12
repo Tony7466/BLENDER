@@ -318,6 +318,14 @@ class DictionaryValue
     return nullptr;
   }
 
+  const ArrayValue *lookup_array(const StringRef key) const
+  {
+    if (const std::shared_ptr<Value> *value = this->lookup_value(key)) {
+      return (*value)->as_array_value();
+    }
+    return nullptr;
+  }
+
   void append(std::string key, std::shared_ptr<Value> value)
   {
     this->elements().append({std::move(key), std::move(value)});

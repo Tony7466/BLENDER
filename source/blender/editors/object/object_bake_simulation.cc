@@ -95,17 +95,15 @@ static std::string escape_name(StringRef name)
 static GeometrySet load_geometry(const io::serialize::DictionaryValue &io_geometry,
                                  const StringRefNull bdata_dir)
 {
-  const auto io_geometry_lookup = io_geometry.create_lookup();
   GeometrySet geometry;
-  if (io_geometry_lookup.contains("pointcloud")) {
-    const auto &io_pointcloud = *io_geometry_lookup.lookup("pointcloud")->as_dictionary_value();
-    const auto io_pointcloud_lookup = io_pointcloud.create_lookup();
-    const int num_points = io_pointcloud_lookup.lookup("num_points")->as_int_value()->value();
+  if (const io::serialize::DictionaryValue *io_pointcloud = io_geometry.lookup_dict(
+          "pointcloud")) {
+    const int num_points = io_pointcloud->lookup_int("num_points").value_or(0);
     PointCloud *pointcloud = BKE_pointcloud_new_nomain(num_points);
-    const auto &io_attributes = *io_pointcloud_lookup.lookup("attributes")->as_array_value();
+    const io::serialize::ArrayValue *io_attributes = io_pointcloud->lookup_array("attributes");
 
     bke::MutableAttributeAccessor attributes = pointcloud->attributes_for_write();
-    for (const auto &io_attribute_value : io_attributes.elements()) {
+    for (const auto &io_attribute_value : io_attributes->elements()) {
       const auto *io_attribute = io_attribute_value->as_dictionary_value();
       if (!io_attribute) {
         continue;
