@@ -1113,7 +1113,7 @@ void BKE_mesh_nomain_to_mesh(Mesh *mesh_src, Mesh *mesh_dst, Object *ob)
     BLI_assert(mesh_dst == ob->data);
   }
 
-  BKE_mesh_clear_geometry(mesh_dst);
+  BKE_mesh_clear_geometry_and_metadata(mesh_dst);
 
   const bool verts_num_changed = mesh_dst->totvert != mesh_src->totvert;
   mesh_dst->totvert = mesh_src->totvert;
