@@ -161,8 +161,6 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
 
     auto io_attributes = serialize_attributes(mesh.attributes(), write_bdata);
     io_mesh->elements().append({"attributes", io_attributes});
-
-    const bke::AttributeAccessor attributes = mesh.attributes();
   }
   if (geometry.has_pointcloud()) {
     const PointCloud &pointcloud = *geometry.get_pointcloud_for_read();
@@ -334,12 +332,12 @@ static int bake_simulation_exec(bContext *C, wmOperator *op)
 
               auto io_geometry = serialize_geometry_set(geometry, [&](const Span<uint8_t> data) {
                 binary_data_file.write(reinterpret_cast<const char *>(data.data()), data.size());
-                binary_file_offset += data.size();
                 auto io_data_ref = std::make_shared<io::serialize::DictionaryValue>();
                 io_data_ref->elements().append(
                     {"name", std::make_shared<io::serialize::StringValue>(bdata_file_name)});
                 io_data_ref->elements().append(
                     {"start", std::make_shared<io::serialize::IntValue>(binary_file_offset)});
+                binary_file_offset += data.size();
                 return io_data_ref;
               });
               io_state_item->elements().append({"data", io_geometry});
