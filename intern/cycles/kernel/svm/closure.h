@@ -873,9 +873,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
         float factor_random_roughness = 1.0f + 2.0f * (random - 0.5f) * random_roughness;
         float roughness = param1 * factor_random_roughness;
 
-        bsdf->distribution_type = clamp(
-            distribution_type, NODE_MICROFACET_HAIR_GGX, NODE_MICROFACET_HAIR_BECKMANN);
-
+        bsdf->distribution_type = distribution_type;
         bsdf->roughness = roughness;
         bsdf->tilt = tilt;
         bsdf->eta = ior;
