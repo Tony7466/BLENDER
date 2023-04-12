@@ -73,22 +73,6 @@
 #include "sequencer_intern.h"
 
 /* -------------------------------------------------------------------- */
-/** \name Structs & Enums
- * \{ */
-
-typedef struct TransSeq {
-  double start;
-  int machine;
-  double startofs, endofs;
-  int anim_startofs, anim_endofs;
-  /* int final_left, final_right; */ /* UNUSED */
-  double len;
-  float content_start;
-} TransSeq;
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Public Context Checks
  * \{ */
 
@@ -363,7 +347,8 @@ static int sequencer_snap_exec(bContext *C, wmOperator *op)
     if (seq->flag & SELECT && !SEQ_transform_is_locked(channels, seq) &&
         SEQ_transform_sequence_can_be_translated(seq)) {
       if ((seq->flag & (SEQ_LEFTSEL + SEQ_RIGHTSEL)) == 0) {
-        SEQ_transform_translate_sequence(scene, seq, (snap_frame - seq->startofs) - seq->start);
+        const int offset = snap_frame - SEQ_time_left_handle_frame_get(scene, seq);
+        SEQ_transform_translate_sequence(scene, seq, offset);
       }
       else {
         if (seq->flag & SEQ_LEFTSEL) {
@@ -462,6 +447,13 @@ void SEQUENCER_OT_snap(struct wmOperatorType *ot)
 /** \name Trim Strips Operator
  * \{ */
 
+typedef struct TransSeq {
+  int start;
+  int left_handle, right_handle;
+  int anim_startofs, anim_endofs;
+  int machine;
+} TransSeq;
+
 typedef struct SlipData {
   int init_mouse[2];
   float init_mouseloc[2];
@@ -474,27 +466,24 @@ typedef struct SlipData {
   NumInput num_input;
 } SlipData;
 
-static void transseq_backup(TransSeq *ts, Sequence *seq)
+static void transseq_backup(TransSeq *ts, const Scene *scene, Sequence *seq)
 {
-  // ts->content_start = SEQ_time_start_frame_get(seq); //XXX
-  ts->start = seq->start;
-  ts->machine = seq->machine;
-  ts->startofs = seq->startofs;
-  ts->endofs = seq->endofs;
+  ts->start = SEQ_time_start_frame_get(scene, seq);
+  ts->left_handle = SEQ_time_left_handle_frame_get(scene, seq);
+  ts->right_handle = SEQ_time_right_handle_frame_get(scene, seq);
   ts->anim_startofs = seq->anim_startofs;
   ts->anim_endofs = seq->anim_endofs;
-  ts->len = seq->len;
+  ts->machine = seq->machine;
 }
 
-static void transseq_restore(TransSeq *ts, Sequence *seq)
+static void transseq_restore(Scene *scene, TransSeq *ts, Sequence *seq)
 {
-  seq->start = ts->start;
-  seq->machine = ts->machine;
-  seq->startofs = ts->startofs;
-  seq->endofs = ts->endofs;
+  SEQ_time_start_frame_set(scene, seq, ts->start);
+  SEQ_time_left_handle_frame_set(scene, seq, ts->left_handle);
+  SEQ_time_right_handle_frame_set(scene, seq, ts->right_handle);
   seq->anim_startofs = ts->anim_startofs;
   seq->anim_endofs = ts->anim_endofs;
-  seq->len = ts->len;
+  seq->machine = ts->machine;
 }
 
 static int slip_add_sequences_recursive(
@@ -570,7 +559,7 @@ static int sequencer_slip_invoke(bContext *C, wmOperator *op, const wmEvent *eve
   slip_add_sequences_recursive(ed->seqbasep, data->seq_array, data->trim, 0, true);
 
   for (int i = 0; i < num_seq; i++) {
-    transseq_backup(data->ts + i, data->seq_array[i]);
+    transseq_backup(data->ts + i, scene, data->seq_array[i]);
   }
 
   UI_view2d_region_to_view(v2d, event->mval[0], event->mval[1], &mouseloc[0], &mouseloc[1]);
@@ -591,13 +580,14 @@ static int sequencer_slip_invoke(bContext *C, wmOperator *op, const wmEvent *eve
 static void sequencer_slip_recursively(Scene *scene, SlipData *data, int offset)
 {
   for (int i = data->num_seq - 1; i >= 0; i--) {
-    Sequence *seq = data->seq_array[i];
-
-    seq->start = data->ts[i].start + offset;
-    if (data->trim[i]) {
-      seq->startofs = data->ts[i].startofs - offset;
-      seq->endofs = data->ts[i].endofs + offset;
+    if (!data->trim[i]) {
+      continue;
     }
+
+    Sequence *seq = data->seq_array[i];
+    SEQ_time_start_frame_set(scene, seq, data->ts[i].start + offset);
+    SEQ_time_left_handle_frame_set(scene, seq, data->ts[i].left_handle);
+    SEQ_time_right_handle_frame_set(scene, seq, data->ts[i].right_handle);
   }
 
   for (int i = data->num_seq - 1; i >= 0; i--) {
@@ -613,7 +603,8 @@ static void sequencer_slip_apply_limits(const Scene *scene, SlipData *data, int 
     if (data->trim[i]) {
       Sequence *seq = data->seq_array[i];
       int seq_content_start = data->ts[i].start + *offset;
-      int seq_content_end = seq_content_start + seq->len + seq->anim_startofs + seq->anim_endofs;
+      int seq_content_end = seq_content_start + SEQ_time_strip_length_get(scene, seq) +
+                            seq->anim_startofs + seq->anim_endofs;
       int diff = 0;
 
       if (seq_content_start >= SEQ_time_right_handle_frame_get(scene, seq)) {
@@ -650,7 +641,7 @@ static int sequencer_slip_exec(bContext *C, wmOperator *op)
   slip_add_sequences_recursive(ed->seqbasep, data->seq_array, data->trim, 0, true);
 
   for (int i = 0; i < num_seq; i++) {
-    transseq_backup(data->ts + i, data->seq_array[i]);
+    transseq_backup(data->ts + i, scene, data->seq_array[i]);
   }
 
   sequencer_slip_apply_limits(scene, data, &offset);
@@ -761,7 +752,7 @@ static int sequencer_slip_modal(bContext *C, wmOperator *op, const wmEvent *even
     case EVT_ESCKEY:
     case RIGHTMOUSE: {
       for (int i = 0; i < data->num_seq; i++) {
-        transseq_restore(data->ts + i, data->seq_array[i]);
+        transseq_restore(scene, data->ts + i, data->seq_array[i]);
       }
 
       for (int i = 0; i < data->num_seq; i++) {
@@ -1261,7 +1252,7 @@ static int sequencer_reassign_inputs_exec(bContext *C, wmOperator *op)
   last_seq->seq2 = seq2;
   last_seq->seq3 = seq3;
 
-  int old_start = last_seq->start;
+  int old_start = SEQ_time_start_frame_get(scene, last_seq);
 
   /* Force time position update for reassigned effects.
    * TODO(Richard): This is because internally startdisp is still used, due to poor performance of
@@ -1270,7 +1261,7 @@ static int sequencer_reassign_inputs_exec(bContext *C, wmOperator *op)
   SEQ_time_left_handle_frame_set(scene, seq1, SEQ_time_left_handle_frame_get(scene, seq1));
 
   SEQ_relations_invalidate_cache_preprocessed(scene, last_seq);
-  SEQ_offset_animdata(scene, last_seq, (last_seq->start - old_start));
+  SEQ_offset_animdata(scene, last_seq, (SEQ_time_start_frame_get(scene, last_seq) - old_start));
 
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
 
@@ -1768,7 +1759,10 @@ static int sequencer_offset_clear_exec(bContext *C, wmOperator *UNUSED(op))
   /* For effects, try to find a replacement input. */
   for (seq = ed->seqbasep->first; seq; seq = seq->next) {
     if ((seq->type & SEQ_TYPE_EFFECT) == 0 && (seq->flag & SELECT)) {
-      seq->startofs = seq->endofs = 0;
+      const int start = SEQ_time_start_frame_get(scene, seq);
+      const int end = start + SEQ_time_strip_length_get(scene, seq);
+      SEQ_time_left_handle_frame_set(scene, seq, start);
+      SEQ_time_right_handle_frame_set(scene, seq, end);
     }
   }
 
@@ -1831,7 +1825,8 @@ static int sequencer_separate_images_exec(bContext *C, wmOperator *op)
   SEQ_prefetch_stop(scene);
 
   while (seq) {
-    if ((seq->flag & SELECT) && (seq->type == SEQ_TYPE_IMAGE) && (seq->len > 1)) {
+    if ((seq->flag & SELECT) && (seq->type == SEQ_TYPE_IMAGE) &&
+        SEQ_transform_single_image_check(seq)) {
       Sequence *seq_next;
 
       /* Remove seq so overlap tests don't conflict,

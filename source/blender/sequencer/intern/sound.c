@@ -46,16 +46,14 @@ static bool sequencer_refresh_sound_length_recursive(Main *bmain, Scene *scene, 
         continue;
       }
 
-      int old = seq->len;
       float fac;
 
+      const int left_handle = SEQ_time_left_handle_frame_get(scene, seq);
+      const int right_handle = SEQ_time_right_handle_frame_get(scene, seq);
       SEQ_time_strip_length_set(
           scene, seq, MAX2(1, round((info.length - seq->sound->offset_time) * FPS)));
-      fac = (float)seq->len / (float)old;
-      old = seq->startofs;
-      seq->startofs *= fac;
-      seq->endofs *= fac;
-      seq->start += (old - seq->startofs); /* So that visual/"real" start frame does not change! */
+      SEQ_time_left_handle_frame_set(scene, seq, left_handle);
+      SEQ_time_right_handle_frame_set(scene, seq, right_handle);
 
       changed = true;
     }
