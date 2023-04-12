@@ -127,13 +127,6 @@ void Volumes::init()
 
   set_jitter(current_sample);
 
-  /* TODO (Miguel Pozo): Check eevee_lights use of effects->volume_light_clamp. */
-  light_clamp_ = scene_eval->eevee.volumetric_light_clamp;
-  /* Disable clamp if equal to 0. */
-  if (light_clamp_ == 0.0) {
-    light_clamp_ = FLT_MAX;
-  }
-
   if ((scene_eval->eevee.flag & SCE_EEVEE_VOLUMETRIC_SHADOWS) == 0) {
     data_.shadow_steps = 0;
   }
@@ -143,6 +136,8 @@ void Volumes::init()
 
   data_.use_lights = (scene_eval->eevee.flag & SCE_EEVEE_VOLUMETRIC_LIGHTS) != 0;
   data_.use_soft_shadows = (scene_eval->eevee.flag & SCE_EEVEE_SHADOW_SOFT) != 0;
+
+  data_.light_clamp = scene_eval->eevee.volumetric_light_clamp;
 }
 
 void Volumes::begin_sync()

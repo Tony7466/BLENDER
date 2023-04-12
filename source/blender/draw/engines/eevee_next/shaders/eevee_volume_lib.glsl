@@ -73,6 +73,22 @@ vec3 light_volume(LightData ld, vec4 l_vector)
 {
   float power = 1.0;
   if (ld.type != LIGHT_SUN) {
+
+    float volume_radius_squared = ld.radius_squared;
+    float light_clamp = volumes_buf.light_clamp;
+    if (light_clamp != 0.0) {
+      /* 0.0 light clamp means it's disabled. */
+      float max_power = max_v3(ld.color) * ld.volume_power;
+      if (max_power > 0.0) {
+        /* The limit of the power attenuation function when the distance to the light goes to 0 is
+         * `2 / r^2` where r is the light radius. We need to find the right radius that emits at
+         * most the volume light upper bound. Inverting the function we get: */
+        float min_radius_squared = 1.0f / (0.5f * light_clamp / max_power);
+        /* Square it here to avoid a multiplication inside the shader. */
+        volume_radius_squared = max(volume_radius_squared, min_radius_squared);
+      }
+    }
+
     /**
      * Using "Point Light Attenuation Without Singularity" from Cem Yuksel
      * http://www.cemyuksel.com/research/pointlightattenuation/pointlightattenuation.pdf
@@ -80,9 +96,8 @@ vec3 light_volume(LightData ld, vec4 l_vector)
      */
     float d = l_vector.w;
     float d_sqr = sqr(d);
-    /* TODO (Miguel Pozo): Not the same! */
-    // float r_sqr = ld.volume_radius;
-    float r_sqr = ld.radius_squared;
+    float r_sqr = volume_radius_squared;
+
     /* Using reformulation that has better numerical precision. */
     power = 2.0 / (d_sqr + r_sqr + d * sqrt(d_sqr + r_sqr));
 
