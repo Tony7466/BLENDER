@@ -42,7 +42,6 @@ static void grease_pencil_init_data(ID *id)
 {
   using namespace blender::bke;
 
-  // printf("grease_pencil_init_data\n");
   GreasePencil *grease_pencil = (GreasePencil *)id;
   grease_pencil->runtime = MEM_new<GreasePencilRuntime>(__func__);
 }
@@ -54,7 +53,6 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
 {
   using namespace blender;
 
-  // printf("grease_pencil_copy_data\n");
   GreasePencil *grease_pencil_dst = (GreasePencil *)id_dst;
   const GreasePencil *grease_pencil_src = (GreasePencil *)id_src;
 
@@ -108,7 +106,6 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
 
 static void grease_pencil_free_data(ID *id)
 {
-  // printf("grease_pencil_free_data\n");
   GreasePencil *grease_pencil = (GreasePencil *)id;
   BKE_animdata_free(&grease_pencil->id, false);
 

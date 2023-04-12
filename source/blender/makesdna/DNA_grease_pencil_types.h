@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later 
+/* SPDX-License-Identifier: GPL-2.0-or-later
  * Copyright 2023 Blender Foundation. */
 
 /** \file
@@ -202,12 +202,6 @@ typedef struct GreasePencil {
   char _pad[4];
 
 #ifdef __cplusplus
-  blender::Span<GreasePencilDrawingOrReference *> drawings() const;
-  blender::MutableSpan<GreasePencilDrawingOrReference *> drawings_for_write();
-  void add_empty_drawings(int n);
-  void remove_drawing(int index);
-  void foreach_visible_drawing(int frame,
-                               blender::FunctionRef<void(GreasePencilDrawing &)> function);
   void read_drawing_array(BlendDataReader *reader);
   void write_drawing_array(BlendWriter *writer);
   void free_drawing_array();
@@ -238,6 +232,12 @@ typedef struct GreasePencil {
    */
   GreasePencilRuntimeHandle *runtime;
 #ifdef __cplusplus
+  blender::Span<GreasePencilDrawingOrReference *> drawings() const;
+  blender::MutableSpan<GreasePencilDrawingOrReference *> drawings_for_write();
+  void add_empty_drawings(int n);
+  void remove_drawing(int index);
+  void foreach_visible_drawing(int frame,
+                               blender::FunctionRef<void(GreasePencilDrawing &)> function);
   const blender::bke::greasepencil::Layer *active_layer() const;
   blender::bke::greasepencil::LayerGroup &root_group();
 #endif
