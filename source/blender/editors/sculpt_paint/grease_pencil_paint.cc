@@ -94,7 +94,6 @@ void PaintOperation::on_stroke_done(const bContext &C)
       grease_pencil_eval.drawings()[index_eval]);
 
   const Span<StrokePoint> stroke_points = drawing_eval.stroke_buffer();
-  std::cout << stroke_points.size() << std::endl;
   CurvesGeometry &curves = drawing_orig.geometry.wrap();
 
   int num_old_curves = curves.curves_num();
