@@ -63,11 +63,11 @@ TEST(gpencil, remove_drawing)
   Layer layer1("Layer1");
   Layer layer2("Layer2");
 
-  layer1.insert_frame(0, 0);
-  layer1.insert_frame(10, 1);
-  layer1.insert_frame(20, 2);
+  layer1.insert_frame(0, GreasePencilFrame{0});
+  layer1.insert_frame(10, GreasePencilFrame{1});
+  layer1.insert_frame(20, GreasePencilFrame{2});
 
-  layer2.insert_frame(0, 1);
+  layer2.insert_frame(0, GreasePencilFrame{1});
 
   grease_pencil.root_group().add_layer(std::move(layer1));
   grease_pencil.root_group().add_layer(std::move(layer2));
@@ -82,7 +82,7 @@ TEST(gpencil, remove_drawing)
     EXPECT_EQ(layer.frames().size(), expected_frames_size[layer_i]);
     if (layer_i == 0) {
       for (const int i : IndexRange(2)) {
-        EXPECT_EQ(layer.frames().lookup(expected_frames_pairs_layer0[i][0]),
+        EXPECT_EQ(layer.frames().lookup(expected_frames_pairs_layer0[i][0]).drawing_index,
                   expected_frames_pairs_layer0[i][1]);
       }
     }

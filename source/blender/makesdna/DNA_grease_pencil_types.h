@@ -92,6 +92,28 @@ typedef struct GreasePencilDrawingReference {
 } GreasePencilDrawingReference;
 
 /**
+ * A GreasePencilFrame is a single keyframe in the timeline.
+ * It references a drawing by index into the drawing array.
+ */
+typedef struct GreasePencilFrame {
+  /**
+   * Index into the GreasePencil->drawings array.
+   */
+  int drawing_index;
+
+  /**
+   * Flag. Used to set e.g. the selection.
+   */
+  uint32_t flag;
+
+  /**
+   * Keyframe type.
+   */
+  uint8_t type;
+  char _pad[3];
+} GreasePencilFrame;
+
+/**
  * Storage for the Map in `blender::bke::gpencil::Layer`.
  * See the description there for more detail.
  */
@@ -99,7 +121,7 @@ typedef struct GreasePencilLayerFramesMapStorage {
   /* Array of `frames` keys (sorted in ascending order). */
   int *keys;
   /* Array of `frames` values (order matches the keys array). */
-  int *values;
+  GreasePencilFrame *values;
   /* Size of the map (number of key-value pairs). */
   int size;
   char _pad[4];

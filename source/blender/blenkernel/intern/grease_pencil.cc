@@ -520,13 +520,13 @@ void GreasePencil::remove_drawing(int index_to_remove)
   if (index_to_remove != last_drawing_index) {
     this->root_group().foreach_layer_pre_order(
         [last_drawing_index, index_to_remove](Layer &layer) {
-          blender::Map<int, int> &frames = layer.frames_for_write();
-          for (auto item : frames.items()) {
-            if (item.value == last_drawing_index) {
-              item.value = index_to_remove;
+          blender::Map<int, GreasePencilFrame> &frames = layer.frames_for_write();
+          for (auto [key, value] : frames.items()) {
+            if (value.drawing_index == last_drawing_index) {
+              value.drawing_index = index_to_remove;
             }
-            else if (item.value == index_to_remove) {
-              item.value = last_drawing_index;
+            else if (value.drawing_index == index_to_remove) {
+              value.drawing_index = last_drawing_index;
             }
           }
         });
@@ -557,8 +557,10 @@ void GreasePencil::remove_drawing(int index_to_remove)
 
   /* Remove any frame that points to the last drawing. */
   this->root_group().foreach_layer_pre_order([last_drawing_index](Layer &layer) {
-    blender::Map<int, int> &frames = layer.frames_for_write();
-    frames.remove_if([last_drawing_index](auto item) { return item.value == last_drawing_index; });
+    blender::Map<int, GreasePencilFrame> &frames = layer.frames_for_write();
+    frames.remove_if([last_drawing_index](auto item) {
+      return item.value.drawing_index == last_drawing_index;
+    });
   });
 
   /* Shrink drawing array. */
@@ -711,10 +713,10 @@ static void save_layer_to_storage(blender::bke::gpencil::Layer &node,
   int frames_size = node.frames().size();
   new_leaf->layer.frames_storage.size = frames_size;
   new_leaf->layer.frames_storage.keys = MEM_cnew_array<int>(frames_size, __func__);
-  new_leaf->layer.frames_storage.values = MEM_cnew_array<int>(frames_size, __func__);
+  new_leaf->layer.frames_storage.values = MEM_cnew_array<GreasePencilFrame>(frames_size, __func__);
 
   MutableSpan<int> keys{new_leaf->layer.frames_storage.keys, frames_size};
-  MutableSpan<int> values{new_leaf->layer.frames_storage.values, frames_size};
+  MutableSpan<GreasePencilFrame> values{new_leaf->layer.frames_storage.values, frames_size};
   keys.copy_from(node.sorted_keys());
   for (int i : keys.index_range()) {
     values[i] = node.frames().lookup(keys[i]);
@@ -820,8 +822,7 @@ void GreasePencil::read_layer_tree_storage(BlendDataReader *reader)
         /* Read layer data. */
         BLO_read_int32_array(
             reader, node_leaf->layer.frames_storage.size, &node_leaf->layer.frames_storage.keys);
-        BLO_read_int32_array(
-            reader, node_leaf->layer.frames_storage.size, &node_leaf->layer.frames_storage.values);
+        BLO_read_data_address(reader, &node_leaf->layer.frames_storage.values);
         break;
       }
       case GREASE_PENCIL_LAYER_TREE_GROUP: {
@@ -847,8 +848,10 @@ void GreasePencil::write_layer_tree_storage(BlendWriter *writer)
         /* Write layer data. */
         BLO_write_int32_array(
             writer, node_leaf->layer.frames_storage.size, node_leaf->layer.frames_storage.keys);
-        BLO_write_int32_array(
-            writer, node_leaf->layer.frames_storage.size, node_leaf->layer.frames_storage.values);
+        BLO_write_struct_array(writer,
+                               GreasePencilFrame,
+                               node_leaf->layer.frames_storage.size,
+                               node_leaf->layer.frames_storage.values);
         break;
       }
       case GREASE_PENCIL_LAYER_TREE_GROUP: {

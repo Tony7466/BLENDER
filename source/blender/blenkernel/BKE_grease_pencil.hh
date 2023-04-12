@@ -223,10 +223,11 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
 class Layer : public TreeNode, ::GreasePencilLayer {
  private:
   /**
-   * This Map maps a scene frame number (key) to an index into GreasePencil->drawings (value). The
-   * frame number indicates the first frame the drawing is shown. The end time is implicitly
-   * defined by the next greater frame number (key) in the map. If the value mapped to (index) is
-   * -1, no drawing is shown at this frame.
+   * This Map maps a scene frame number (key) to a GreasePencilFrame. This struct holds an index
+   * (drawing_index) to the drawing in the GreasePencil->drawings array. The frame number indicates
+   * the first frame the drawing is shown. The end time is implicitly defined by the next greater
+   * frame number (key) in the map. If the value mapped to (index) is -1, no drawing is shown at
+   * this frame.
    *
    *    \example:
    *
@@ -246,7 +247,7 @@ class Layer : public TreeNode, ::GreasePencilLayer {
    * referenced drawings are discarded. If the frame is longer than the number of referenced
    * drawings, then the last referenced drawing is held for the rest of the duration.
    */
-  Map<int, int> frames_;
+  Map<int, GreasePencilFrame> frames_;
   mutable SharedCache<Vector<int>> sorted_keys_cache_;
 
  public:
@@ -271,27 +272,39 @@ class Layer : public TreeNode, ::GreasePencilLayer {
     return this != &other;
   }
 
-  const Map<int, int> &frames()
+  const Map<int, GreasePencilFrame> &frames()
   {
     return frames_;
   }
 
-  Map<int, int> &frames_for_write()
+  Map<int, GreasePencilFrame> &frames_for_write()
   {
     sorted_keys_cache_.tag_dirty();
     return frames_;
   }
 
-  bool insert_frame(int frame_number, int index)
+  bool insert_frame(int frame_number, GreasePencilFrame &frame)
   {
     sorted_keys_cache_.tag_dirty();
-    return frames_for_write().add(frame_number, index);
+    return frames_for_write().add(frame_number, frame);
   }
 
-  bool overwrite_frame(int frame_number, int index)
+  bool insert_frame(int frame_number, GreasePencilFrame &&frame)
   {
     sorted_keys_cache_.tag_dirty();
-    return frames_for_write().add_overwrite(frame_number, index);
+    return frames_for_write().add(frame_number, frame);
+  }
+
+  bool overwrite_frame(int frame_number, GreasePencilFrame &frame)
+  {
+    sorted_keys_cache_.tag_dirty();
+    return frames_for_write().add_overwrite(frame_number, frame);
+  }
+
+  bool overwrite_frame(int frame_number, GreasePencilFrame &&frame)
+  {
+    sorted_keys_cache_.tag_dirty();
+    return frames_for_write().add_overwrite(frame_number, frame);
   }
 
   Span<int> sorted_keys()
@@ -326,14 +339,14 @@ class Layer : public TreeNode, ::GreasePencilLayer {
     }
     /* After or at the last drawing, return the last drawing. */
     if (frame >= sorted_keys.last()) {
-      return frames().lookup(sorted_keys.last());
+      return frames().lookup(sorted_keys.last()).drawing_index;
     }
     /* Search for the drawing. upper_bound will get the drawing just after. */
     auto it = std::upper_bound(sorted_keys.begin(), sorted_keys.end(), frame);
     if (it == sorted_keys.end() || it == sorted_keys.begin()) {
       return -1;
     }
-    return frames().lookup(*std::prev(it));
+    return frames().lookup(*std::prev(it)).drawing_index;
   }
 };
 

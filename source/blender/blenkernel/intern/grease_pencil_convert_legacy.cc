@@ -121,7 +121,11 @@ void legacy_gpencil_to_grease_pencil(GreasePencil &grease_pencil, bGPdata &gpd)
 
       /* Convert the frame to a drawing. */
       legacy_gpencil_frame_to_curves_geometry(drawing, *gpf);
-      new_layer.insert_frame(gpf->framenum, i);
+
+      GreasePencilFrame frame;
+      frame.drawing_index = i;
+      frame.type = gpf->key_type;
+      new_layer.insert_frame(gpf->framenum, std::move(frame));
       i++;
     }
   }
