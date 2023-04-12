@@ -350,16 +350,16 @@ wmKeyMap *WM_keymap_guess_opname(const bContext *C, const char *opname)
     SpaceNode *snode = (SpaceNode *)sl;
 
     if (STRPREFIX(snode->tree_idname, "Shader")) {
-      km = WM_keymap_find_all(wm, "Shader Nodes", sl->spacetype, 0);
+      km = WM_keymap_find_all(wm, "Shader Nodes", sl->spacetype, RGN_TYPE_WINDOW);
     }
     else if (STRPREFIX(snode->tree_idname, "Texture")) {
-      km = WM_keymap_find_all(wm, "Texture Nodes", sl->spacetype, 0);
+      km = WM_keymap_find_all(wm, "Texture Nodes", sl->spacetype, RGN_TYPE_WINDOW);
     }
     else if (STRPREFIX(snode->tree_idname, "Geometry")) {
-      km = WM_keymap_find_all(wm, "Geometry Nodes", sl->spacetype, 0);
+      km = WM_keymap_find_all(wm, "Geometry Nodes", sl->spacetype, RGN_TYPE_WINDOW);
     }
     else if (STRPREFIX(snode->tree_idname, "Compositor")) {
-      km = WM_keymap_find_all(wm, "Compositor Nodes", sl->spacetype, 0);
+      km = WM_keymap_find_all(wm, "Compositor Nodes", sl->spacetype, RGN_TYPE_WINDOW);
     }
     else {
       km = WM_keymap_find_all(wm, "Node Editor", sl->spacetype, 0);

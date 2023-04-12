@@ -46,8 +46,6 @@
 
 using blender::float2;
 
-static char G_tree_idname[64] = {};
-
 /* ******************** tree path ********************* */
 
 void ED_node_tree_start(SpaceNode *snode, bNodeTree *ntree, ID *id, ID *from)
@@ -317,6 +315,8 @@ static void node_free(SpaceLink *sl)
     MEM_delete(snode->runtime);
   }
 }
+
+static char G_tree_idname[64] = {};
 
 /* spacetype; init callback */
 static void node_init(wmWindowManager * /*wm*/, ScrArea *area)
@@ -630,6 +630,34 @@ static void node_cursor(wmWindow *win, ScrArea *area, ARegion *region)
   snode->runtime->cursor[1] /= UI_SCALE_FAC;
 }
 
+static void node_remove_all_private_keymaps(wmWindowManager *wm, ARegion *region)
+{
+  wmKeyMap *keymap;
+  const char *keymap_ids[4]{"Shader Nodes", "Texture Nodes", "Geometry Nodes", "Compositor Nodes"};
+
+  for (int i = 0; i < 4; i++) {
+    keymap = WM_keymap_list_find(
+        &wm->defaultconf->keymaps, keymap_ids[i], SPACE_NODE, RGN_TYPE_WINDOW);
+    if (keymap != NULL) {
+      WM_event_remove_keymap_handler(&region->handlers, keymap);
+    }
+  }
+}
+
+static void node_add_private_keymaps(wmWindowManager *wm, ARegion *region)
+{
+  node_remove_all_private_keymaps(wm, region);
+
+  char spec_keymap_id[64] = {};
+  STRNCPY(spec_keymap_id, G_tree_idname);
+  size_t slen = BLI_strnlen(spec_keymap_id, 64);
+  STR_CONCAT(spec_keymap_id, slen, " Nodes");
+
+  wmKeyMap *keymap = WM_keymap_ensure(
+      wm->defaultconf, spec_keymap_id, SPACE_NODE, RGN_TYPE_WINDOW);
+  WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
+}
+
 /* Initialize main region, setting handlers. */
 static void node_main_region_init(wmWindowManager *wm, ARegion *region)
 {
@@ -645,8 +673,7 @@ static void node_main_region_init(wmWindowManager *wm, ARegion *region)
   keymap = WM_keymap_ensure(wm->defaultconf, "Node Editor", SPACE_NODE, 0);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, strcat(G_tree_idname, " Nodes"), SPACE_NODE, 0);
-  WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
+  node_add_private_keymaps(wm, region);
 
   /* add drop boxes */
   lb = WM_dropboxmap_find("Node Editor", SPACE_NODE, RGN_TYPE_WINDOW);
@@ -1033,6 +1060,8 @@ static void node_space_subtype_set(ScrArea *area, int value)
 {
   SpaceNode *snode = (SpaceNode *)area->spacedata.first;
   ED_node_set_tree_type(snode, rna_node_tree_type_from_enum(value));
+
+  WM_main_add_notifier(NC_SCREEN | NA_EDITED, nullptr);
 }
 
 static void node_space_subtype_item_extend(bContext *C, EnumPropertyItem **item, int *totitem)
