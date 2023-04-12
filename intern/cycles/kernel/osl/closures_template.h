@@ -290,7 +290,6 @@ OSL_CLOSURE_STRUCT_BEGIN(MicrofacetHair, microfacet_hair)
   OSL_CLOSURE_STRUCT_MEMBER(MicrofacetHair, FLOAT, float, reflection, NULL)
   OSL_CLOSURE_STRUCT_MEMBER(MicrofacetHair, FLOAT, float, transmission, NULL)
   OSL_CLOSURE_STRUCT_MEMBER(MicrofacetHair, FLOAT, float, secondary_reflection, NULL)
-  OSL_CLOSURE_STRUCT_MEMBER(MicrofacetHair, VECTOR, packed_float3, major_axis, NULL)
 OSL_CLOSURE_STRUCT_END(MicrofacetHair, microfacet_hair)
 
 OSL_CLOSURE_STRUCT_BEGIN(VolumeAbsorption, absorption)

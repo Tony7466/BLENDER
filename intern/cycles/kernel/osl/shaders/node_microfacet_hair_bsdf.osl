@@ -41,7 +41,6 @@ shader node_microfacet_hair_bsdf(color Color = color(0.017513, 0.005763, 0.00205
                                  float RandomColor = 0.0,
                                  color Tint = 1.0,
                                  color AbsorptionCoefficient = color(0.245531, 0.52, 1.365),
-                                 normal Normal = Ng,
                                  string parametrization = "Direct Coloring",
                                  string distribution_type = "GGX",
                                  float Offset = radians(2),
@@ -103,13 +102,13 @@ shader node_microfacet_hair_bsdf(color Color = color(0.017513, 0.005763, 0.00205
   }
 
   int distribution_type_enum = (distribution_type == "GGX") ? 0 : 1;
-  normal major_axis = 0.0;
 
+  normal major_axis = 0.0;
   if (AspectRatio != 1.0) {
     getattribute("geom:N", major_axis);
   }
 
-  BSDF = microfacet_hair(Normal,
+  BSDF = microfacet_hair(major_axis,
                          sigma,
                          roughness,
                          Offset,
@@ -118,6 +117,5 @@ shader node_microfacet_hair_bsdf(color Color = color(0.017513, 0.005763, 0.00205
                          AspectRatio,
                          Reflection,
                          Transmission,
-                         SecondaryReflection,
-                         major_axis);
+                         SecondaryReflection);
 }

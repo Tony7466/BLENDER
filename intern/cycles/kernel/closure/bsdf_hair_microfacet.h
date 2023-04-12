@@ -15,15 +15,11 @@
 
 CCL_NAMESPACE_BEGIN
 
-typedef struct MicrofacetHairExtra {
-  /* TODO: is this necessary? */
+typedef struct MicrofacetHairLobeFactor {
   float R;
   float TT;
   float TRT;
-
-  /* Geometry data. */
-  float4 geom;
-} MicrofacetHairExtra;
+} MicrofacetHairLobeFactor;
 
 typedef struct MicrofacetHairBSDF {
   SHADER_CLOSURE_BASE;
@@ -43,14 +39,17 @@ typedef struct MicrofacetHairBSDF {
   /* The ratio of the minor axis to the major axis. */
   float aspect_ratio;
 
-  /* Extra closure. */
-  ccl_private MicrofacetHairExtra *extra;
+  /* Azimuthal offset. */
+  float h;
+
+  /* Extra closure for optional modulation factors. */
+  ccl_private MicrofacetHairLobeFactor *factor;
 } MicrofacetHairBSDF;
 
 static_assert(sizeof(ShaderClosure) >= sizeof(MicrofacetHairBSDF),
               "MicrofacetHairBSDF is too large!");
-static_assert(sizeof(ShaderClosure) >= sizeof(MicrofacetHairExtra),
-              "MicrofacetHairExtra is too large!");
+static_assert(sizeof(ShaderClosure) >= sizeof(MicrofacetHairLobeFactor),
+              "MicrofacetHairLobeFactor is too large!");
 
 #ifdef __HAIR__
 /* Set up the hair closure. */
@@ -69,31 +68,26 @@ ccl_device int bsdf_microfacet_hair_setup(ccl_private ShaderData *sd,
 
   /* h -1..0..1 means the rays goes from grazing the hair, to hitting it at the center, to grazing
    * the other edge. This is the cosine of the angle between sd->N and X. */
-  const float h = (sd->type & PRIMITIVE_CURVE_RIBBON) ? -sd->v : -dot(X, sd->N);
+  bsdf->h = (sd->type & PRIMITIVE_CURVE_RIBBON) ? -sd->v : -dot(X, sd->N);
 
-  kernel_assert(fabsf(h) < 1.0f + 1e-4f);
-  kernel_assert(isfinite_safe(X));
-  kernel_assert(isfinite_safe(h));
+  kernel_assert(fabsf(bsdf->h) < 1.0f + 1e-4f);
+  kernel_assert(isfinite_safe(bsdf->h));
 
   if (bsdf->aspect_ratio != 1.0f && !(sd->type & PRIMITIVE_TRIANGLE)) {
     if (bsdf->aspect_ratio > 1.0f) {
       bsdf->aspect_ratio = 1.0f / bsdf->aspect_ratio;
 
       /* Switch major and minor axis. */
-      const float3 minor_axis = safe_normalize(cross(
-          sd->dPdu, make_float3(bsdf->extra->geom.x, bsdf->extra->geom.y, bsdf->extra->geom.z)));
-      const float3 major_axis = safe_normalize(cross(minor_axis, sd->dPdu));
-
-      bsdf->extra->geom = make_float4(major_axis.x, major_axis.y, major_axis.z, h);
-    }
-    else {
-      bsdf->extra->geom.w = h;
+      const float3 minor_axis = safe_normalize(cross(sd->dPdu, bsdf->N));
+      bsdf->N = safe_normalize(cross(minor_axis, sd->dPdu));
     }
   }
   else {
     /* Align local frame with the ray direction so that `phi_i == 0`. */
-    bsdf->extra->geom = make_float4(X.x, X.y, X.z, h);
+    bsdf->N = X;
   }
+
+  kernel_assert(!is_zero(bsdf->N) && isfinite_safe(bsdf->N));
 
   return SD_BSDF | SD_BSDF_HAS_EVAL | SD_BSDF_NEEDS_LCG | SD_BSDF_HAS_TRANSMISSION;
 }
@@ -310,7 +304,7 @@ ccl_device float3 bsdf_microfacet_hair_eval_r(ccl_private const ShaderClosure *s
   const float roughness2 = sqr(roughness);
   const float eta = bsdf->eta;
 
-  if (bsdf->extra->R <= 0.0f) {
+  if (bsdf->factor->R <= 0.0f) {
     return zero_float3();
   }
 
@@ -389,7 +383,7 @@ ccl_device float3 bsdf_microfacet_hair_eval_r(ccl_private const ShaderClosure *s
 
   const float F = fresnel_dielectric_cos(dot(wi, wh), eta);
 
-  return make_float3(bsdf->extra->R * 0.125f * F * integral / projected_radius(e2, sinf(phi_i)));
+  return make_float3(bsdf->factor->R * 0.125f * F * integral / projected_radius(e2, sinf(phi_i)));
 }
 
 template<MicrofacetType m_type>
@@ -405,7 +399,7 @@ ccl_device float3 bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
   const float roughness2 = sqr(roughness);
   const float eta = bsdf->eta;
 
-  if (bsdf->extra->TT <= 0.0f && bsdf->extra->TRT <= 0.0f) {
+  if (bsdf->factor->TT <= 0.0f && bsdf->factor->TRT <= 0.0f) {
     return zero_float3();
   }
 
@@ -487,7 +481,7 @@ ccl_device float3 bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
                                 -len(to_point(gamma_mi, b) - to_point(gamma_mt + M_PI_F, b))));
 
     /* TT */
-    if (bsdf->extra->TT > 0.0f) {
+    if (bsdf->factor->TT > 0.0f) {
       if (dot(wo, wt) >= inv_eta - 1e-5f) { /* Total internal reflection otherwise. */
         float3 wh2 = -wt + inv_eta * wo;
         const float rcp_norm_wh2 = 1.0f / len(wh2);
@@ -507,14 +501,14 @@ ccl_device float3 bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
                                 cos_hi2 * cos_ho2 * sqr(rcp_norm_wh2);
 
           if (isfinite_safe(result)) {
-            S_tt += bsdf->extra->TT * result * arc_length(e2, gamma_mt);
+            S_tt += bsdf->factor->TT * result * arc_length(e2, gamma_mt);
           }
         }
       }
     }
 
     /* TRT */
-    if (bsdf->extra->TRT > 0.0f) {
+    if (bsdf->factor->TRT > 0.0f) {
       /* Sample wh2. */
       const float2 sample2 = make_float2(lcg_step_float(&rng_quadrature),
                                          lcg_step_float(&rng_quadrature));
@@ -570,7 +564,7 @@ ccl_device float3 bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
                             sqr(rcp_norm_wh3);
 
       if (isfinite_safe(result)) {
-        S_trt += bsdf->extra->TRT * result * arc_length(e2, gamma_mtr);
+        S_trt += bsdf->factor->TRT * result * arc_length(e2, gamma_mtr);
       }
     }
   }
@@ -595,7 +589,7 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
   *eta = bsdf->eta;
   const float inv_eta = 1.0f / *eta;
 
-  if (bsdf->extra->R <= 0.0f && bsdf->extra->TT <= 0.0f && bsdf->extra->TRT <= 0.0f) {
+  if (bsdf->factor->R <= 0.0f && bsdf->factor->TT <= 0.0f && bsdf->factor->TRT <= 0.0f) {
     /* Early out for inactive lobe. */
     *pdf = 0.0f;
     return LABEL_NONE;
@@ -605,7 +599,7 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
    * . X major axis.
    * . Y along the fiber tangent.
    * . Z minor axis. */
-  const float3 X = float4_to_float3(bsdf->extra->geom);
+  const float3 X = bsdf->N;
   const float3 Z = safe_normalize(cross(X, sd->dPdu));
   const float3 Y = safe_normalize(cross(Z, X));
 
@@ -624,7 +618,7 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
   const float d_i = projected_radius(e2, sin_phi_i);
 
   /* Treat as transparent material if intersection lies outside of the projected radius. */
-  if (fabsf(bsdf->extra->geom.w) > d_i) {
+  if (fabsf(bsdf->h) > d_i) {
     *wo = -sd->wi;
     *pdf = 1;
     *eval = one_spectrum();
@@ -675,7 +669,7 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
 
   float cos_theta_t1;
   const float R1 = fresnel(dot(wi, wh1), *eta, &cos_theta_t1);
-  const float3 R = make_float3(bsdf->extra->R * R1);
+  const float3 R = make_float3(bsdf->factor->R * R1);
 
   /* Sample TT lobe. */
   const float3 wt = -refract_angle(wi, wh1, cos_theta_t1, inv_eta);
@@ -710,7 +704,7 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
     wtt = -refract_angle(-wt, wh2, cos_theta_t2, *eta);
 
     if (dot(wmt, -wtt) > 0.0f && cos_theta_t2 != 0.0f) {
-      TT = bsdf->extra->TT * T1 * A_t * T2;
+      TT = bsdf->factor->TT * T1 * A_t * T2;
     }
 
     /* Sample TRT lobe. */
@@ -735,7 +729,7 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
                                    2.0f * cos(phi_tr - gamma_mt) :
                                    -len(to_point(gamma_mt, b) - to_point(gamma_mtr, b))));
 
-      TRT = bsdf->extra->TRT * T1 * R2 * T3 * A_t * A_tr;
+      TRT = bsdf->factor->TRT * T1 * R2 * T3 * A_t * A_tr;
     }
   }
 
@@ -815,7 +809,7 @@ ccl_device Spectrum bsdf_microfacet_hair_eval(KernelGlobals kg,
    * . X major axis.
    * . Y along the fiber tangent.
    * . Z minor axis. */
-  const float3 X = float4_to_float3(bsdf->extra->geom);
+  const float3 X = bsdf->N;
   const float3 Z = safe_normalize(cross(X, sd->dPdu));
   const float3 Y = safe_normalize(cross(Z, X));
 
@@ -825,7 +819,7 @@ ccl_device Spectrum bsdf_microfacet_hair_eval(KernelGlobals kg,
 
   /* Treat as transparent material if intersection lies outside of the projected radius. */
   const float e2 = 1.0f - sqr(bsdf->aspect_ratio);
-  if (fabsf(bsdf->extra->geom.w) > projected_radius(e2, sin_phi(local_I))) {
+  if (fabsf(bsdf->h) > projected_radius(e2, sin_phi(local_I))) {
     *pdf = 0.0f;
     return zero_spectrum();
   }

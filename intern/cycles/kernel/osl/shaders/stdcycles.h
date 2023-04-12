@@ -69,8 +69,7 @@ closure color microfacet_hair(normal N,
                               float aspect_ratio,
                               float reflection,
                               float transmission,
-                              float secondary_reflection,
-                              normal major_axis) BUILTIN;
+                              float secondary_reflection) BUILTIN;
 
 // Volume
 closure color henyey_greenstein(float g) BUILTIN;

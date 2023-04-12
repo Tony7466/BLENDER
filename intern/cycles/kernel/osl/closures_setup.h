@@ -1300,13 +1300,13 @@ ccl_device void osl_closure_microfacet_hair_setup(KernelGlobals kg,
     return;
   }
 
-  ccl_private MicrofacetHairExtra *extra = (ccl_private MicrofacetHairExtra *)closure_alloc_extra(
-      sd, sizeof(MicrofacetHairExtra));
-  if (!extra) {
+  ccl_private MicrofacetHairLobeFactor *factor = (ccl_private MicrofacetHairLobeFactor *)
+      closure_alloc_extra(sd, sizeof(MicrofacetHairLobeFactor));
+  if (!factor) {
     return;
   }
 
-  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
+  bsdf->N = closure->N;
   bsdf->sigma = closure->sigma;
   bsdf->roughness = closure->roughness;
   bsdf->tilt = closure->tilt;
@@ -1314,12 +1314,10 @@ ccl_device void osl_closure_microfacet_hair_setup(KernelGlobals kg,
   bsdf->distribution_type = closure->distribution_type;
   bsdf->aspect_ratio = closure->aspect_ratio;
 
-  bsdf->extra = extra;
-  bsdf->extra->R = closure->reflection;
-  bsdf->extra->TT = closure->transmission;
-  bsdf->extra->TRT = closure->secondary_reflection;
-  bsdf->extra->geom = make_float4(
-      closure->major_axis.x, closure->major_axis.y, closure->major_axis.z, 0.0f);
+  bsdf->factor = factor;
+  bsdf->factor->R = closure->reflection;
+  bsdf->factor->TT = closure->transmission;
+  bsdf->factor->TRT = closure->secondary_reflection;
 
   sd->flag |= bsdf_microfacet_hair_setup(sd, bsdf);
 #endif

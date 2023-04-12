@@ -848,26 +848,24 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       ccl_private MicrofacetHairBSDF *bsdf = (ccl_private MicrofacetHairBSDF *)bsdf_alloc(
           sd, sizeof(MicrofacetHairBSDF), weight);
       if (bsdf) {
-        ccl_private MicrofacetHairExtra *extra = (ccl_private MicrofacetHairExtra *)
-            closure_alloc_extra(sd, sizeof(MicrofacetHairExtra));
+        ccl_private MicrofacetHairLobeFactor *factor = (ccl_private MicrofacetHairLobeFactor *)
+            closure_alloc_extra(sd, sizeof(MicrofacetHairLobeFactor));
 
-        if (!extra) {
+        if (!factor) {
           break;
         }
 
-        bsdf->extra = extra;
-        bsdf->extra->R = fmaxf(0.0f, R);
-        bsdf->extra->TT = fmaxf(0.0f, TT);
-        bsdf->extra->TRT = fmaxf(0.0f, TRT);
+        bsdf->factor = factor;
+        bsdf->factor->R = fmaxf(0.0f, R);
+        bsdf->factor->TT = fmaxf(0.0f, TT);
+        bsdf->factor->TRT = fmaxf(0.0f, TRT);
 
         bsdf->aspect_ratio = stack_load_float_default(stack, aspect_ratio_ofs, data_node2.y);
 
         if (bsdf->aspect_ratio != 1.0f) {
-          const AttributeDescriptor attr_descr_normal = find_attribute(kg, sd, attr_normal);
-          const float3 major_axis = curve_attribute_float3(kg, sd, attr_descr_normal, NULL, NULL);
-
           /* Align ellipse major axis with the curve normal direction. */
-          bsdf->extra->geom = make_float4(major_axis.x, major_axis.y, major_axis.z, 0.0f);
+          const AttributeDescriptor attr_descr_normal = find_attribute(kg, sd, attr_normal);
+          bsdf->N = curve_attribute_float3(kg, sd, attr_descr_normal, NULL, NULL);
         }
 
         /* Random factors range: [-randomization/2, +randomization/2]. */
@@ -878,7 +876,6 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
         bsdf->distribution_type = clamp(
             distribution_type, NODE_MICROFACET_HAIR_GGX, NODE_MICROFACET_HAIR_BECKMANN);
 
-        bsdf->N = N;
         bsdf->roughness = roughness;
         bsdf->tilt = tilt;
         bsdf->eta = ior;
