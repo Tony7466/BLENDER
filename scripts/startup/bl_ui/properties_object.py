@@ -236,6 +236,14 @@ class OBJECT_PT_display(ObjectButtonsPanel, Panel):
             row.prop_decorator(obj, "display_bounds_type")
 
 
+class OBJECT_PT_baking(ObjectButtonsPanel, Panel):
+    bl_label = "Baking"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
+        layout.operator("object.bake_simulation")
+
 class OBJECT_PT_instancing(ObjectButtonsPanel, Panel):
     bl_label = "Instancing"
     bl_options = {'DEFAULT_CLOSED'}
@@ -412,6 +420,7 @@ classes = (
     OBJECT_PT_motion_paths,
     OBJECT_PT_motion_paths_display,
     OBJECT_PT_display,
+    OBJECT_PT_baking,
     OBJECT_PT_visibility,
     OBJECT_PT_lineart,
     OBJECT_PT_custom_props,
