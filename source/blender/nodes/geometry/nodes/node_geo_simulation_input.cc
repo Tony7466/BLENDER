@@ -8,6 +8,7 @@
 #include "UI_interface.h"
 #include "UI_resources.h"
 
+#include "NOD_geometry.h"
 #include "NOD_socket.h"
 
 #include "node_geometry_util.hh"
@@ -141,8 +142,8 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
 
   if (link->tonode == node) {
     if (link->tosock->identifier == StringRef("__extend__")) {
-      if (const NodeSimulationItem *item = simulation_item_add_from_socket(storage,
-                                                                           *link->fromsock)) {
+      if (const NodeSimulationItem *item = node_geo_simulation_output_add_item_from_socket(
+              &storage, link->fromnode, link->fromsock)) {
         update_node_declaration_and_sockets(*ntree, *node);
         link->tosock = nodeFindSocket(node, SOCK_IN, item->name);
       }
@@ -154,8 +155,8 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
   else {
     BLI_assert(link->fromnode == node);
     if (link->fromsock->identifier == StringRef("__extend__")) {
-      if (const NodeSimulationItem *item = simulation_item_add_from_socket(storage,
-                                                                           *link->tosock)) {
+      if (const NodeSimulationItem *item = node_geo_simulation_output_add_item_from_socket(
+              &storage, link->tonode, link->tosock)) {
         update_node_declaration_and_sockets(*ntree, *node);
         link->fromsock = nodeFindSocket(node, SOCK_OUT, item->name);
       }

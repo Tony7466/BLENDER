@@ -26,6 +26,8 @@ bool node_geo_simulation_input_pair_with_output(const bNodeTree *node_tree,
 /** \name Simulation State Items
  * \{ */
 
+bool node_geo_simulation_output_contains_item(struct NodeGeometrySimulationOutput *sim,
+                                              struct NodeSimulationItem *item);
 struct NodeSimulationItem *node_geo_simulation_output_find_item(
     struct NodeGeometrySimulationOutput *sim, const char *name);
 struct NodeSimulationItem *node_geo_simulation_output_add_item(

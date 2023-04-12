@@ -4108,39 +4108,41 @@ static bool rna_GeometryNodeSimulationInput_pair_with_output(
   return true;
 }
 
-static bNodeSocket *rna_NodeGeometrySimulationOutput_items_new(ID *id,
-                                                               NodeGeometrySimulationOutput *sim,
-                                                               Main *bmain,
-                                                               ReportList *reports,
-                                                               const char *type,
-                                                               const char *name)
+static NodeSimulationItem *rna_NodeGeometrySimulationOutput_items_new(
+    ID *id,
+    NodeGeometrySimulationOutput *sim,
+    Main *bmain,
+    ReportList *reports,
+    int socket_type,
+    const char *name)
 {
-  node_geo_simulation_output_add_item()
-  bNodeSocket *sock = node_geo_simulation_output_find_item(ntree, SOCK_IN, type, name);
+  NodeSimulationItem *item = node_geo_simulation_output_add_item(sim, (short)socket_type, name);
 
-  if (sock == NULL) {
+  if (item == NULL) {
     BKE_report(reports, RPT_ERROR, "Unable to create socket");
   }
   else {
+    bNodeTree *ntree = (bNodeTree *)id;
     ED_node_tree_propagate_change(NULL, bmain, ntree);
     WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
   }
 
-  return sock;
+  return item;
 }
 
 static void rna_NodeGeometrySimulationOutput_items_remove(ID *id,
                                                           NodeGeometrySimulationOutput *sim,
                                                           Main *bmain,
                                                           ReportList *reports,
-                                                          bNodeSocket *sock)
+                                                          NodeSimulationItem *item)
 {
-  if (BLI_findindex(&ntree->inputs, sock) == -1 && BLI_findindex(&ntree->outputs, sock) == -1) {
-    BKE_reportf(reports, RPT_ERROR, "Unable to locate socket '%s' in node", sock->identifier);
+  if (!node_geo_simulation_output_contains_item(sim, item)) {
+    BKE_reportf(reports, RPT_ERROR, "Unable to locate item '%s' in node", item->name);
   }
   else {
-    ntreeRemoveSocketInterface(ntree, sock);
+    node_geo_simulation_output_remove_item(sim, item);
 
+    bNodeTree *ntree = (bNodeTree *)id;
     ED_node_tree_propagate_change(NULL, bmain, ntree);
     WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
   }
@@ -4150,10 +4152,9 @@ static void rna_NodeGeometrySimulationOutput_items_clear(ID *id,
                                                          NodeGeometrySimulationOutput *sim,
                                                          Main *bmain)
 {
-  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, socket, &ntree->inputs) {
-    ntreeRemoveSocketInterface(ntree, socket);
-  }
+  node_geo_simulation_output_clear_items(sim);
 
+  bNodeTree *ntree = (bNodeTree *)id;
   ED_node_tree_propagate_change(NULL, bmain, ntree);
   WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }
@@ -4164,31 +4165,13 @@ static void rna_NodeGeometrySimulationOutput_items_move(ID *id,
                                                         int from_index,
                                                         int to_index)
 {
-  if (from_index == to_index) {
-    return;
-  }
   if (from_index < 0 || to_index < 0) {
     return;
   }
 
-  bNodeSocket *sock = BLI_findlink(&ntree->inputs, from_index);
-  if (to_index < from_index) {
-    bNodeSocket *nextsock = BLI_findlink(&ntree->inputs, to_index);
-    if (nextsock) {
-      BLI_remlink(&ntree->inputs, sock);
-      BLI_insertlinkbefore(&ntree->inputs, nextsock, sock);
-    }
-  }
-  else {
-    bNodeSocket *prevsock = BLI_findlink(&ntree->inputs, to_index);
-    if (prevsock) {
-      BLI_remlink(&ntree->inputs, sock);
-      BLI_insertlinkafter(&ntree->inputs, prevsock, sock);
-    }
-  }
+  node_geo_simulation_output_move_item(sim, from_index, to_index);
 
-  BKE_ntree_update_tag_interface(ntree);
-
+  bNodeTree *ntree = (bNodeTree *)id;
   ED_node_tree_propagate_change(NULL, bmain, ntree);
   WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }
@@ -9884,7 +9867,7 @@ static void rna_def_geo_simulation_output_items(BlenderRNA *brna)
   func = RNA_def_function(srna, "new", "rna_NodeGeometrySimulationOutput_items_new");
   RNA_def_function_ui_description(func, "Add a state item to this simulation zone");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
-  parm = RNA_def_string(func, "type", NULL, MAX_NAME, "Type", "Data type");
+  parm = RNA_def_enum(func, "socket_type", node_socket_data_type_items, SOCK_GEOMETRY, "Socket Type", "Socket type of the item");
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
   parm = RNA_def_string(func, "name", NULL, MAX_NAME, "Name", "");
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
