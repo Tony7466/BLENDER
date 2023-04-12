@@ -158,7 +158,7 @@ static Volume *create_volume_from_mesh(const Mesh &mesh, GeoNodeExecParams &para
   Volume *volume = reinterpret_cast<Volume *>(BKE_id_new_nomain(ID_VO, nullptr));
 
   /* Convert mesh to grid and add to volume. */
-  VolumeGrid *volumegrid = geometry::volume_grid_add_from_mesh(
+  geometry::volume_grid_add_from_mesh(
       volume, "density", &mesh, mesh_to_volume_space_transform, settings);
 
   return volume;
