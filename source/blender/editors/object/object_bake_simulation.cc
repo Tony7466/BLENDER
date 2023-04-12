@@ -13,6 +13,7 @@
 
 #include "ED_screen.h"
 
+#include "DNA_curves_types.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -21,6 +22,7 @@
 #include "DNA_windowmanager_types.h"
 
 #include "BKE_context.h"
+#include "BKE_curves.hh"
 #include "BKE_main.h"
 #include "BKE_scene.h"
 #include "BKE_simulation_state.hh"
@@ -175,6 +177,22 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
 
     auto io_attributes = serialize_attributes(pointcloud.attributes(), write_bdata);
     io_pointcloud->elements().append({"attributes", io_attributes});
+  }
+  if (geometry.has_curves()) {
+    const Curves &curves = *geometry.get_curves_for_read();
+    auto io_curves = std::make_shared<io::serialize::DictionaryValue>();
+    io_geometry->elements().append({"curves", io_curves});
+
+    io_curves->elements().append(
+        {"num_points", std::make_shared<io::serialize::IntValue>(curves.geometry.point_num)});
+    io_curves->elements().append(
+        {"num_curves", std::make_shared<io::serialize::IntValue>(curves.geometry.curve_num)});
+
+    auto io_materials = serialize_material_slots({curves.mat, curves.totcol});
+    io_curves->elements().append({"materials", io_materials});
+
+    auto io_attributes = serialize_attributes(curves.geometry.wrap().attributes(), write_bdata);
+    io_curves->elements().append({"attributes", io_attributes});
   }
   return io_geometry;
 }
