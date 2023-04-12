@@ -276,8 +276,8 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
 
     if (mesh.totpoly > 0) {
       auto io_polygon_indices = write_bdata(
-          Span<uint8_t>({reinterpret_cast<const uint8_t *>(mesh.poly_offset_indices),
-                         int64_t(sizeof(*mesh.poly_offset_indices)) * mesh.totpoly + 1}));
+          Span<uint8_t>(reinterpret_cast<const uint8_t *>(mesh.poly_offset_indices),
+                        int64_t(sizeof(*mesh.poly_offset_indices)) * mesh.totpoly + 1));
       io_polygon_indices->append_str("endian", get_endian_io_name(ENDIAN_ORDER));
       io_mesh->append("poly_offset_indices", io_polygon_indices);
     }
@@ -306,6 +306,14 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
 
     io_curves->append_int("num_points", curves.geometry.point_num);
     io_curves->append_int("num_curves", curves.geometry.curve_num);
+
+    if (curves.geometry.curve_num > 0) {
+      auto io_curve_indices = write_bdata(Span<uint8_t>(
+          reinterpret_cast<const uint8_t *>(curves.geometry.curve_offsets),
+          int64_t(sizeof(*curves.geometry.curve_offsets)) * curves.geometry.curve_num + 1));
+      io_curve_indices->append_str("endian", get_endian_io_name(ENDIAN_ORDER));
+      io_curves->append("curve_offsets", io_curve_indices);
+    }
 
     auto io_materials = serialize_material_slots({curves.mat, curves.totcol});
     io_curves->append("materials", io_materials);
