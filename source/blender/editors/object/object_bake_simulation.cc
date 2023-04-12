@@ -176,12 +176,36 @@ static PointCloud *try_load_pointcloud(const io::serialize::DictionaryValue &io_
   return pointcloud;
 }
 
+static Curves *try_load_curves(const io::serialize::DictionaryValue &io_geometry,
+                               const StringRefNull bdata_dir)
+{
+  const io::serialize::DictionaryValue *io_curves = io_geometry.lookup_dict("curves");
+  if (!io_curves) {
+    return nullptr;
+  }
+  const int num_points = io_curves->lookup_int("num_points").value_or(0);
+  const int num_curves = io_curves->lookup_int("num_curves").value_or(0);
+  const io::serialize::ArrayValue *io_attributes = io_curves->lookup_array("attributes");
+  if (!io_attributes) {
+    return nullptr;
+  }
+
+  Curves *curves_id = bke::curves_new_nomain(num_points, num_curves);
+  bke::MutableAttributeAccessor attributes = curves_id->geometry.wrap().attributes_for_write();
+  load_attributes(*io_attributes, attributes, bdata_dir);
+
+  return curves_id;
+}
+
 static GeometrySet load_geometry(const io::serialize::DictionaryValue &io_geometry,
                                  const StringRefNull bdata_dir)
 {
   GeometrySet geometry;
   if (PointCloud *pointcloud = try_load_pointcloud(io_geometry, bdata_dir)) {
     geometry.replace_pointcloud(pointcloud);
+  }
+  if (Curves *curves = try_load_curves(io_geometry, bdata_dir)) {
+    geometry.replace_curves(curves);
   }
   return geometry;
 }
