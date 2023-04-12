@@ -65,6 +65,20 @@ static StringRefNull get_data_type_io_name(const eCustomDataType data_type)
   return "unkown";
 }
 
+static std::string escape_name(StringRef name)
+{
+  std::stringstream ss;
+  for (const char c : name) {
+    if (('0' <= c && c <= '9') || ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')) {
+      ss << c;
+    }
+    else {
+      ss << int(c);
+    }
+  }
+  return ss.str();
+}
+
 static bool bake_simulation_poll(bContext *C)
 {
   if (!ED_operator_object_active(C)) {
@@ -89,33 +103,50 @@ static int bake_simulation_exec(bContext *C, wmOperator *op)
 
   StringRefNull blend_file_path = BKE_main_blendfile_path(bmain);
   char blend_directory[FILE_MAX];
-  BLI_split_dir_part(blend_file_path.c_str(), blend_directory, sizeof(blend_directory));
+  char blend_name[FILE_MAX];
+  BLI_split_dirfile(blend_file_path.c_str(),
+                    blend_directory,
+                    blend_name,
+                    sizeof(blend_directory),
+                    sizeof(blend_name));
+  blend_name[StringRef(blend_name).rfind(".")] = '\0';
+  const std::string bake_directory_name = "blendcache_" + StringRef(blend_name);
   char bake_directory[FILE_MAX];
-  BLI_path_join(bake_directory, sizeof(bake_directory), blend_directory, "blend_bake");
+  BLI_path_join(
+      bake_directory, sizeof(bake_directory), blend_directory, bake_directory_name.c_str());
   char bdata_directory[FILE_MAX];
   BLI_path_join(bdata_directory, sizeof(bdata_directory), bake_directory, "bdata");
   char meta_directory[FILE_MAX];
   BLI_path_join(meta_directory, sizeof(meta_directory), bake_directory, "meta");
 
-  std::random_device random_device;
-  std::mt19937 rng(random_device());
-  std::uniform_int_distribution<uint32_t> rng_distribution;
-  const uint32_t bake_id = rng_distribution(rng);
-  const std::string bake_id_str = std::to_string(bake_id);
-
-  char current_meta_directory[FILE_MAX];
-  BLI_path_join(
-      current_meta_directory, sizeof(current_meta_directory), meta_directory, bake_id_str.c_str());
-
-  BLI_dir_create_recursive(bdata_directory);
-  BLI_dir_create_recursive(current_meta_directory);
-
   const int old_frame = scene->r.cfra;
 
+  const std::string object_name_escaped = escape_name(object->id.name + 2);
+
   Vector<NodesModifierData *> modifiers;
+  Vector<std::string> modifier_meta_dirs;
+  Vector<std::string> modifier_bdata_dirs;
   LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
     if (md->type == eModifierType_Nodes) {
       modifiers.append(reinterpret_cast<NodesModifierData *>(md));
+      const std::string id_escaped = object_name_escaped + "_" + escape_name(md->name);
+      char modifier_bake_directory[FILE_MAX];
+      BLI_path_join(modifier_bake_directory,
+                    sizeof(modifier_bake_directory),
+                    bake_directory,
+                    id_escaped.c_str());
+      char modifier_meta_directory[FILE_MAX];
+      BLI_path_join(modifier_meta_directory,
+                    sizeof(modifier_meta_directory),
+                    modifier_bake_directory,
+                    "meta");
+      char modifier_bdata_directory[FILE_MAX];
+      BLI_path_join(modifier_bdata_directory,
+                    sizeof(modifier_bdata_directory),
+                    modifier_bake_directory,
+                    "bdata");
+      modifier_meta_dirs.append(modifier_meta_directory);
+      modifier_bdata_dirs.append(modifier_bdata_directory);
     }
   }
 
@@ -123,22 +154,34 @@ static int bake_simulation_exec(bContext *C, wmOperator *op)
     scene->r.cfra = frame;
     scene->r.subframe = 0.0f;
 
-    std::stringstream bdata_file_name_ss;
-    bdata_file_name_ss << bake_id_str << "_frame_" << std::setfill('0') << std::setw(5) << frame
-                       << ".bdata";
-    const std::string bdata_file_name = bdata_file_name_ss.str();
-    char bdata_path[FILE_MAX];
-    BLI_path_join(bdata_path, sizeof(bdata_path), bdata_directory, bdata_file_name.c_str());
-
-    int64_t binary_file_offset = 0;
-    fstream binary_data_file{bdata_path, std::ios::out | std::ios::binary};
+    std::stringstream frame_ss;
+    frame_ss << std::setfill('0') << std::setw(5) << frame;
+    const std::string frame_str = frame_ss.str();
 
     BKE_scene_graph_update_for_newframe(depsgraph);
 
-    for (NodesModifierData *md : modifiers) {
-      if (md->simulation_cache == nullptr) {
+    for (const int modifier_i : modifiers.index_range()) {
+      NodesModifierData &nmd = *modifiers[modifier_i];
+      if (nmd.simulation_cache == nullptr) {
         continue;
       }
+
+      const std::string bdata_file_name = frame_str + ".bdata";
+
+      char bdata_path[FILE_MAX];
+      BLI_path_join(bdata_path,
+                    sizeof(bdata_path),
+                    modifier_bdata_dirs[modifier_i].c_str(),
+                    bdata_file_name.c_str());
+      char meta_path[FILE_MAX];
+      BLI_path_join(meta_path,
+                    sizeof(meta_path),
+                    modifier_meta_dirs[modifier_i].c_str(),
+                    (frame_str + ".json").c_str());
+
+      int64_t binary_file_offset = 0;
+      BLI_make_existing_file(bdata_path);
+      fstream binary_data_file{bdata_path, std::ios::out | std::ios::binary};
 
       io::serialize::DictionaryValue io_root;
       auto &io_root_elements = io_root.elements();
@@ -146,7 +189,7 @@ static int bake_simulation_exec(bContext *C, wmOperator *op)
       auto io_zones = std::make_shared<io::serialize::ArrayValue>();
       io_root_elements.append({"zones", io_zones});
 
-      ModifierSimulationCache &sim_cache = *md->simulation_cache;
+      ModifierSimulationCache &sim_cache = *nmd.simulation_cache;
       const ModifierSimulationState *sim_state = sim_cache.get_state_at_time(frame);
       if (sim_state == nullptr) {
         continue;
@@ -271,17 +314,9 @@ static int bake_simulation_exec(bContext *C, wmOperator *op)
         }
       }
 
-      /* TODO: Escape modifier name or use different file name. */
-      std::stringstream meta_file_name_ss;
-      meta_file_name_ss << md->modifier.name << "_frame_" << std::setfill('0') << std::setw(5)
-                        << frame << ".json";
-      const std::string meta_file_name = meta_file_name_ss.str();
-      char meta_file_path[FILE_MAX];
-      BLI_path_join(
-          meta_file_path, sizeof(meta_file_path), current_meta_directory, meta_file_name.c_str());
-
+      BLI_make_existing_file(meta_path);
+      fstream meta_file{meta_path, std::ios::out};
       io::serialize::JsonFormatter json_formatter;
-      fstream meta_file{meta_file_path, std::ios::out};
       json_formatter.serialize(meta_file, io_root);
     }
   }
