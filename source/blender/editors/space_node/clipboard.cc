@@ -188,7 +188,7 @@ static void remap_pairing(bNodeTree &dst_tree, const Map<const bNode *, bNode *>
 {
   /* We don't have the old tree for looking up output nodes by ID,
    * so have to build a map first to find copied output nodes in the new tree. */
-  Map<uint32_t, bNode *> dst_output_node_map;
+  Map<int32_t, bNode *> dst_output_node_map;
   for (const auto &item : node_map.items()) {
     if (item.key->type == GEO_NODE_SIMULATION_OUTPUT) {
       dst_output_node_map.add_new(item.key->identifier, item.value);
