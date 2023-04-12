@@ -922,7 +922,6 @@ static void mesh_clear_geometry(Mesh &mesh)
   CustomData_free(&mesh.ldata, mesh.totloop);
   CustomData_free(&mesh.pdata, mesh.totpoly);
   if (mesh.poly_offset_indices) {
-    BLI_assert(mesh.runtime->poly_offsets_sharing_info != nullptr);
     mesh.runtime->poly_offsets_sharing_info->remove_user_and_delete_if_last();
     mesh.poly_offset_indices = nullptr;
     mesh.runtime->poly_offsets_sharing_info = nullptr;

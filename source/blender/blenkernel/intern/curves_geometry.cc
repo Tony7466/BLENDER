@@ -169,10 +169,6 @@ CurvesGeometry::~CurvesGeometry()
   CustomData_free(&this->point_data, this->point_num);
   CustomData_free(&this->curve_data, this->curve_num);
   if (this->curve_offsets) {
-    if (!this->runtime->curve_offsets_sharing_info) {
-      MEM_freeN(this);
-      MEM_freeN(this);
-    }
     this->runtime->curve_offsets_sharing_info->remove_user_and_delete_if_last();
     this->curve_offsets = nullptr;
     this->runtime->curve_offsets_sharing_info = nullptr;

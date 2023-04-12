@@ -9,6 +9,7 @@
 
 #include "BLI_bounds_types.hh"
 #include "BLI_generic_virtual_array.hh"
+#include "BLI_implicit_sharing.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
