@@ -767,14 +767,7 @@ static void sculpt_undo_geometry_restore_data(SculptUndoNodeGeometry *geometry, 
 
   BLI_assert(geometry->is_initialized);
 
-  CustomData_free(&mesh->vdata, mesh->totvert);
-  CustomData_free(&mesh->edata, mesh->totedge);
-  CustomData_free(&mesh->fdata, mesh->totface);
-  CustomData_free(&mesh->ldata, mesh->totloop);
-  CustomData_free(&mesh->pdata, mesh->totpoly);
-  if (mesh->runtime->poly_offsets_sharing_info) {
-    mesh->poly_offsets_sharing_info->remove_user_and_delete_if_last();
-  }
+  BKE_mesh_clear_geometry(mesh);
 
   mesh->totvert = geometry->totvert;
   mesh->totedge = geometry->totedge;
@@ -786,9 +779,10 @@ static void sculpt_undo_geometry_restore_data(SculptUndoNodeGeometry *geometry, 
   CustomData_copy(&geometry->edata, &mesh->edata, CD_MASK_MESH.emask, geometry->totedge);
   CustomData_copy(&geometry->ldata, &mesh->ldata, CD_MASK_MESH.lmask, geometry->totloop);
   CustomData_copy(&geometry->pdata, &mesh->pdata, CD_MASK_MESH.pmask, geometry->totpoly);
-  mesh->poly_offset_indices = geometry->poly_offset_indices;
-  if (mesh->poly_offsets_sharing_info) {
-    mesh->poly_offsets_sharing_info->add_user();
+  if (geometry->poly_offset_indices) {
+    mesh->poly_offset_indices = geometry->poly_offset_indices;
+    mesh->runtime->poly_offsets_sharing_info = geometry->poly_offsets_sharing_info;
+    mesh->runtime->poly_offsets_sharing_info->add_user();
   }
 
   BKE_mesh_runtime_clear_cache(mesh);

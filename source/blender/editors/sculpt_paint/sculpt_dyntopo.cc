@@ -148,14 +148,7 @@ static void SCULPT_dynamic_topology_disable_ex(
 
   if (unode) {
     /* Free all existing custom data. */
-    CustomData_free(&me->vdata, me->totvert);
-    CustomData_free(&me->edata, me->totedge);
-    CustomData_free(&me->fdata, me->totface);
-    CustomData_free(&me->ldata, me->totloop);
-    CustomData_free(&me->pdata, me->totpoly);
-    if (me->poly_offsets_sharing_info) {
-      me->poly_offsets_sharing_info->remove_user_and_delete_if_last();
-    }
+    BKE_mesh_clear_geometry(me);
 
     /* Copy over stored custom data. */
     SculptUndoNodeGeometry *geometry = &unode->geometry_bmesh_enter;
