@@ -243,6 +243,9 @@ class ArrayValue : public ContainerValue<Vector<std::shared_ptr<Value>>, eValueT
 
   void append_int(int value);
   void append_str(std::string value);
+  void append_null();
+  std::shared_ptr<DictionaryValue> append_dict();
+  std::shared_ptr<ArrayValue> append_array();
 };
 
 /**
@@ -284,6 +287,8 @@ class DictionaryValue
 
   void append_int(std::string key, int value);
   void append_str(std::string key, std::string value);
+  std::shared_ptr<DictionaryValue> append_dict(std::string key);
+  std::shared_ptr<ArrayValue> append_array(std::string key);
 };
 
 /**

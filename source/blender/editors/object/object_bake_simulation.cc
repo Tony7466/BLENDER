@@ -79,11 +79,10 @@ static std::shared_ptr<io::serialize::ArrayValue> serialize_material_slots(
   auto io_materials = std::make_shared<io::serialize::ArrayValue>();
   for (const Material *material : material_slots) {
     if (material == nullptr) {
-      io_materials->append(std::make_shared<io::serialize::NullValue>());
+      io_materials->append_null();
     }
     else {
-      auto io_material = std::make_shared<io::serialize::DictionaryValue>();
-      io_materials->append(io_material);
+      auto io_material = io_materials->append_dict();
       io_material->append_str("name", material->id.name + 2);
       if (material->id.lib != nullptr) {
         io_material->append_str("lib_name", material->id.lib->id.name + 2);
@@ -99,8 +98,7 @@ static std::shared_ptr<io::serialize::ArrayValue> serialize_attributes(
   auto io_attributes = std::make_shared<io::serialize::ArrayValue>();
   attributes.for_all(
       [&](const bke::AttributeIDRef &attribute_id, const bke::AttributeMetaData &meta_data) {
-        auto io_attribute = std::make_shared<io::serialize::DictionaryValue>();
-        io_attributes->append(io_attribute);
+        auto io_attribute = io_attributes->append_dict();
 
         io_attribute->append_str("name", attribute_id.name());
 
@@ -130,8 +128,7 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
   auto io_geometry = std::make_shared<io::serialize::DictionaryValue>();
   if (geometry.has_mesh()) {
     const Mesh &mesh = *geometry.get_mesh_for_read();
-    auto io_mesh = std::make_shared<io::serialize::DictionaryValue>();
-    io_geometry->append("mesh", io_mesh);
+    auto io_mesh = io_geometry->append_dict("mesh");
 
     io_mesh->append_int("num_vertices", mesh.totvert);
     io_mesh->append_int("num_edges", mesh.totedge);
@@ -154,8 +151,7 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
   }
   if (geometry.has_pointcloud()) {
     const PointCloud &pointcloud = *geometry.get_pointcloud_for_read();
-    auto io_pointcloud = std::make_shared<io::serialize::DictionaryValue>();
-    io_geometry->append("pointcloud", io_pointcloud);
+    auto io_pointcloud = io_geometry->append_dict("pointcloud");
 
     io_pointcloud->append_int("num_points", pointcloud.totpoint);
 
@@ -167,8 +163,7 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
   }
   if (geometry.has_curves()) {
     const Curves &curves = *geometry.get_curves_for_read();
-    auto io_curves = std::make_shared<io::serialize::DictionaryValue>();
-    io_geometry->append("curves", io_curves);
+    auto io_curves = io_geometry->append_dict("curves");
 
     io_curves->append_int("num_points", curves.geometry.point_num);
     io_curves->append_int("num_curves", curves.geometry.curve_num);
@@ -288,8 +283,7 @@ static int bake_simulation_exec(bContext *C, wmOperator *op)
 
       io::serialize::DictionaryValue io_root;
       io_root.append_int("version", 1);
-      auto io_zones = std::make_shared<io::serialize::ArrayValue>();
-      io_root.append("zones", io_zones);
+      auto io_zones = io_root.append_array("zones");
 
       ModifierSimulationCache &sim_cache = *nmd.simulation_cache;
       const ModifierSimulationState *sim_state = sim_cache.get_state_at_time(frame);
@@ -302,25 +296,21 @@ static int bake_simulation_exec(bContext *C, wmOperator *op)
           const SimulationZoneID &zone_id = item.key;
           const SimulationZoneState &zone_state = *item.value;
 
-          auto io_zone = std::make_shared<io::serialize::DictionaryValue>();
-          io_zones->append(io_zone);
+          auto io_zone = io_zones->append_dict();
 
-          auto io_zone_id = std::make_shared<io::serialize::ArrayValue>();
-          io_zone->append("zone_id", io_zone_id);
+          auto io_zone_id = io_zone->append_array("zone_id");
 
           for (const int node_id : zone_id.node_ids) {
             io_zone_id->append_int(node_id);
           }
 
-          auto io_state_items = std::make_shared<io::serialize::ArrayValue>();
-          io_zone->append("state_items", io_state_items);
+          auto io_state_items = io_zone->append_array("state_items");
           for (const std::unique_ptr<SimulationStateItem> &state_item : zone_state.items) {
             /* TODO: Use better id. */
             const std::string state_item_id = std::to_string(&state_item -
                                                              zone_state.items.begin());
 
-            auto io_state_item = std::make_shared<io::serialize::DictionaryValue>();
-            io_state_items->append(io_state_item);
+            auto io_state_item = io_state_items->append_dict();
 
             io_state_item->append_str("id", state_item_id);
 

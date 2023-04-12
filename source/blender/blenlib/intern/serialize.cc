@@ -207,6 +207,25 @@ void ArrayValue::append_str(std::string value)
   this->append(std::make_shared<StringValue>(std::move(value)));
 }
 
+void ArrayValue::append_null()
+{
+  this->append(std::make_shared<NullValue>());
+}
+
+std::shared_ptr<DictionaryValue> ArrayValue::append_dict()
+{
+  auto value = std::make_shared<DictionaryValue>();
+  this->append(value);
+  return value;
+}
+
+std::shared_ptr<ArrayValue> ArrayValue::append_array()
+{
+  auto value = std::make_shared<ArrayValue>();
+  this->append(value);
+  return value;
+}
+
 void DictionaryValue::append_int(std::string key, const int value)
 {
   this->append(std::move(key), std::make_shared<IntValue>(value));
@@ -215,6 +234,20 @@ void DictionaryValue::append_int(std::string key, const int value)
 void DictionaryValue::append_str(std::string key, const std::string value)
 {
   this->append(std::move(key), std::make_shared<StringValue>(value));
+}
+
+std::shared_ptr<DictionaryValue> DictionaryValue::append_dict(std::string key)
+{
+  auto value = std::make_shared<DictionaryValue>();
+  this->append(std::move(key), value);
+  return value;
+}
+
+std::shared_ptr<ArrayValue> DictionaryValue::append_array(std::string key)
+{
+  auto value = std::make_shared<ArrayValue>();
+  this->append(std::move(key), value);
+  return value;
 }
 
 void JsonFormatter::serialize(std::ostream &os, const Value &value)
