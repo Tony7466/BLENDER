@@ -17,6 +17,7 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
+#include "DNA_pointcloud_types.h"
 #include "DNA_windowmanager_types.h"
 
 #include "BKE_context.h"
@@ -81,6 +82,62 @@ static std::string escape_name(StringRef name)
 
 using WriteBDataFn = FunctionRef<std::shared_ptr<io::serialize::Value>(Span<uint8_t>)>;
 
+static std::shared_ptr<io::serialize::ArrayValue> serialize_material_slots(
+    const Span<const Material *> material_slots)
+{
+  auto io_materials = std::make_shared<io::serialize::ArrayValue>();
+  for (const Material *material : material_slots) {
+    if (material == nullptr) {
+      io_materials->elements().append(std::make_shared<io::serialize::NullValue>());
+    }
+    else {
+      auto io_material = std::make_shared<io::serialize::DictionaryValue>();
+      io_materials->elements().append(io_material);
+      io_material->elements().append(
+          {"name", std::make_shared<io::serialize::StringValue>(material->id.name + 2)});
+      if (material->id.lib != nullptr) {
+        io_material->elements().append(
+            {"lib_name",
+             std::make_shared<io::serialize::StringValue>(material->id.lib->id.name + 2)});
+      }
+    }
+  }
+  return io_materials;
+}
+
+static std::shared_ptr<io::serialize::ArrayValue> serialize_attributes(
+    const bke::AttributeAccessor &attributes, const WriteBDataFn write_bdata)
+{
+  auto io_attributes = std::make_shared<io::serialize::ArrayValue>();
+  attributes.for_all(
+      [&](const bke::AttributeIDRef &attribute_id, const bke::AttributeMetaData &meta_data) {
+        auto io_attribute = std::make_shared<io::serialize::DictionaryValue>();
+        io_attributes->elements().append(io_attribute);
+
+        io_attribute->elements().append(
+            {"name", std::make_shared<io::serialize::StringValue>(attribute_id.name())});
+
+        const StringRefNull domain_name = get_domain_io_name(meta_data.domain);
+        io_attribute->elements().append(
+            {"domain", std::make_shared<io::serialize::StringValue>(domain_name)});
+
+        const StringRefNull type_name = get_data_type_io_name(meta_data.data_type);
+        io_attribute->elements().append(
+            {"type", std::make_shared<io::serialize::StringValue>(type_name)});
+
+        const bke::GAttributeReader attribute = attributes.lookup(attribute_id);
+        const GVArraySpan attribute_span(attribute.varray);
+        const int64_t binary_size = attribute_span.size() * attribute_span.type().size();
+
+        auto io_attribute_data = write_bdata(
+            Span<uint8_t>(reinterpret_cast<const uint8_t *>(attribute_span.data()), binary_size));
+        io_attribute->elements().append({"data", io_attribute_data});
+
+        return true;
+      });
+  return io_attributes;
+}
+
 static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
     const GeometrySet &geometry, const WriteBDataFn write_bdata)
 {
@@ -99,58 +156,27 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
     io_mesh->elements().append(
         {"num_corners", std::make_shared<io::serialize::IntValue>(mesh.totloop)});
 
-    auto io_materials = std::make_shared<io::serialize::ArrayValue>();
+    auto io_materials = serialize_material_slots({mesh.mat, mesh.totcol});
     io_mesh->elements().append({"materials", io_materials});
 
-    for (const int material_index : IndexRange(mesh.totcol)) {
-      const Material *material = mesh.mat[material_index];
-
-      if (material == nullptr) {
-        io_materials->elements().append(std::make_shared<io::serialize::NullValue>());
-      }
-      else {
-        auto io_material = std::make_shared<io::serialize::DictionaryValue>();
-        io_materials->elements().append(io_material);
-        io_material->elements().append(
-            {"name", std::make_shared<io::serialize::StringValue>(material->id.name + 2)});
-        if (material->id.lib != nullptr) {
-          io_material->elements().append(
-              {"lib_name",
-               std::make_shared<io::serialize::StringValue>(material->id.lib->id.name + 2)});
-        }
-      }
-    }
-
-    auto io_attributes = std::make_shared<io::serialize::ArrayValue>();
+    auto io_attributes = serialize_attributes(mesh.attributes(), write_bdata);
     io_mesh->elements().append({"attributes", io_attributes});
 
     const bke::AttributeAccessor attributes = mesh.attributes();
-    attributes.for_all([&](const bke::AttributeIDRef &attribute_id,
-                           const bke::AttributeMetaData &meta_data) {
-      auto io_attribute = std::make_shared<io::serialize::DictionaryValue>();
-      io_attributes->elements().append(io_attribute);
+  }
+  if (geometry.has_pointcloud()) {
+    const PointCloud &pointcloud = *geometry.get_pointcloud_for_read();
+    auto io_pointcloud = std::make_shared<io::serialize::DictionaryValue>();
+    io_geometry->elements().append({"pointcloud", io_pointcloud});
 
-      io_attribute->elements().append(
-          {"name", std::make_shared<io::serialize::StringValue>(attribute_id.name())});
+    io_pointcloud->elements().append(
+        {"num_points", std::make_shared<io::serialize::IntValue>(pointcloud.totpoint)});
 
-      const StringRefNull domain_name = get_domain_io_name(meta_data.domain);
-      io_attribute->elements().append(
-          {"domain", std::make_shared<io::serialize::StringValue>(domain_name)});
+    auto io_materials = serialize_material_slots({pointcloud.mat, pointcloud.totcol});
+    io_pointcloud->elements().append({"materials", io_materials});
 
-      const StringRefNull type_name = get_data_type_io_name(meta_data.data_type);
-      io_attribute->elements().append(
-          {"type", std::make_shared<io::serialize::StringValue>(type_name)});
-
-      const bke::GAttributeReader attribute = attributes.lookup(attribute_id);
-      const GVArraySpan attribute_span(attribute.varray);
-      const int64_t binary_size = attribute_span.size() * attribute_span.type().size();
-
-      auto io_attribute_data = write_bdata(
-          Span<uint8_t>(reinterpret_cast<const uint8_t *>(attribute_span.data()), binary_size));
-      io_attribute->elements().append({"data", io_attribute_data});
-
-      return true;
-    });
+    auto io_attributes = serialize_attributes(pointcloud.attributes(), write_bdata);
+    io_pointcloud->elements().append({"attributes", io_attributes});
   }
   return io_geometry;
 }
