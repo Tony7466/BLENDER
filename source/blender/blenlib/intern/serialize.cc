@@ -226,7 +226,7 @@ std::shared_ptr<ArrayValue> ArrayValue::append_array()
   return value;
 }
 
-void DictionaryValue::append_int(std::string key, const int value)
+void DictionaryValue::append_int(std::string key, const int64_t value)
 {
   this->append(std::move(key), std::make_shared<IntValue>(value));
 }

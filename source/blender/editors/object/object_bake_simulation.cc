@@ -102,36 +102,41 @@ static GeometrySet load_geometry(const io::serialize::DictionaryValue &io_geomet
     const auto io_pointcloud_lookup = io_pointcloud.create_lookup();
     const int num_points = io_pointcloud_lookup.lookup("num_points")->as_int_value()->value();
     PointCloud *pointcloud = BKE_pointcloud_new_nomain(num_points);
-    const auto &attributes_io = *io_pointcloud_lookup.lookup("attributes")->as_array_value();
+    const auto &io_attributes = *io_pointcloud_lookup.lookup("attributes")->as_array_value();
 
     bke::MutableAttributeAccessor attributes = pointcloud->attributes_for_write();
-    for (const auto &attribute_io : attributes_io.elements()) {
-      const auto attribute_io_lookup = attribute_io->as_dictionary_value()->create_lookup();
-      const StringRefNull name = attribute_io_lookup.lookup("name")->as_string_value()->value();
-      const StringRefNull domain_str =
-          attribute_io_lookup.lookup("domain")->as_string_value()->value();
-      const eAttrDomain domain = get_domain_from_io_name(domain_str);
-      const StringRefNull type_str =
-          attribute_io_lookup.lookup("type")->as_string_value()->value();
-      const eCustomDataType data_type = get_data_type_from_io_name(type_str);
+    for (const auto &io_attribute_value : io_attributes.elements()) {
+      const auto *io_attribute = io_attribute_value->as_dictionary_value();
+      if (!io_attribute) {
+        continue;
+      }
+      const std::optional<StringRefNull> name = io_attribute->lookup_str("name");
+      const std::optional<StringRefNull> domain_str = io_attribute->lookup_str("domain");
+      const std::optional<StringRefNull> type_str = io_attribute->lookup_str("type");
+      auto io_data = io_attribute->lookup_dict("data");
+      if (!name || !domain_str || !type_str || !io_data) {
+        continue;
+      }
 
-      std::cout << name << " " << domain_str << " " << type_str << "\n";
-      bke::GSpanAttributeWriter attribute = attributes.lookup_or_add_for_write_only_span(
-          name, domain, data_type);
+      const eAttrDomain domain = get_domain_from_io_name(*domain_str);
+      const eCustomDataType data_type = get_data_type_from_io_name(*type_str);
 
-      auto io_data = attribute_io_lookup.lookup("data")->as_dictionary_value();
-
-      const StringRefNull bdata_name = io_data->lookup_linear("name")->as_string_value()->value();
-      const int start = io_data->lookup_linear("start")->as_int_value()->value();
-      const StringRefNull endian_str =
-          io_data->lookup_linear("endian")->as_string_value()->value();
+      const std::optional<StringRefNull> bdata_name = io_data->lookup_str("name");
+      const std::optional<int> start = io_data->lookup_int("start");
+      if (!bdata_name || !start) {
+        continue;
+      }
+      const StringRefNull endian_str = io_data->lookup_str("endian").value_or("little");
       const bool is_same_endian = endian_str == get_endian_io_name(ENDIAN_ORDER);
 
+      bke::GSpanAttributeWriter attribute = attributes.lookup_or_add_for_write_only_span(
+          *name, domain, data_type);
+
       char bdata_path[FILE_MAX];
-      BLI_path_join(bdata_path, sizeof(bdata_path), bdata_dir.c_str(), bdata_name.c_str());
+      BLI_path_join(bdata_path, sizeof(bdata_path), bdata_dir.c_str(), bdata_name->c_str());
       {
         fstream bdata_file{bdata_path, std::ios::in | std::ios::binary};
-        bdata_file.seekg(start);
+        bdata_file.seekg(*start);
         bdata_file.read(static_cast<char *>(attribute.span.data()),
                         int64_t(num_points) * attribute.span.type().size());
       }
@@ -145,6 +150,9 @@ static GeometrySet load_geometry(const io::serialize::DictionaryValue &io_geomet
           case CD_PROP_COLOR: {
             BLI_endian_switch_uint32_array(reinterpret_cast<uint32_t *>(attribute.span.data()),
                                            attribute.span.size_in_bytes() / sizeof(uint32_t));
+            break;
+          }
+          default: {
             break;
           }
         }

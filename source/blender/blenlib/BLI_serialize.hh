@@ -280,14 +280,42 @@ class DictionaryValue
     return result;
   }
 
-  std::shared_ptr<Value> lookup_linear(const StringRef key) const
+  const std::shared_ptr<Value> *lookup_value(const StringRef key) const
   {
     for (const auto &item : this->elements()) {
       if (item.first == key) {
-        return item.second;
+        return &item.second;
       }
     }
-    return {};
+    return nullptr;
+  }
+
+  std::optional<StringRefNull> lookup_str(const StringRef key) const
+  {
+    if (const std::shared_ptr<Value> *value = this->lookup_value(key)) {
+      if (const StringValue *str_value = (*value)->as_string_value()) {
+        return StringRefNull(str_value->value());
+      }
+    }
+    return std::nullopt;
+  }
+
+  std::optional<int64_t> lookup_int(const StringRef key) const
+  {
+    if (const std::shared_ptr<Value> *value = this->lookup_value(key)) {
+      if (const IntValue *int_value = (*value)->as_int_value()) {
+        return int_value->value();
+      }
+    }
+    return std::nullopt;
+  }
+
+  const DictionaryValue *lookup_dict(const StringRef key) const
+  {
+    if (const std::shared_ptr<Value> *value = this->lookup_value(key)) {
+      return (*value)->as_dictionary_value();
+    }
+    return nullptr;
   }
 
   void append(std::string key, std::shared_ptr<Value> value)
@@ -295,7 +323,7 @@ class DictionaryValue
     this->elements().append({std::move(key), std::move(value)});
   }
 
-  void append_int(std::string key, int value);
+  void append_int(std::string key, int64_t value);
   void append_str(std::string key, std::string value);
   std::shared_ptr<DictionaryValue> append_dict(std::string key);
   std::shared_ptr<ArrayValue> append_array(std::string key);
