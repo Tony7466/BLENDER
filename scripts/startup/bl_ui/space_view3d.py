@@ -1961,8 +1961,8 @@ class VIEW3D_MT_paint_gpencil(Menu):
         layout.separator()
         layout.operator("gpencil.vertex_color_invert", text="Invert")
         layout.operator("gpencil.vertex_color_levels", text="Levels")
-        layout.operator("gpencil.vertex_color_hsv", text="Hue Saturation Value")
-        layout.operator("gpencil.vertex_color_brightness_contrast", text="Bright/Contrast")
+        layout.operator("gpencil.vertex_color_hsv", text="Hue/Saturation/Value")
+        layout.operator("gpencil.vertex_color_brightness_contrast", text="Brightness/Contrast")
 
 
 class VIEW3D_MT_select_gpencil(Menu):
@@ -3059,8 +3059,8 @@ class VIEW3D_MT_paint_vertex(Menu):
 
         layout.operator("paint.vertex_color_invert", text="Invert")
         layout.operator("paint.vertex_color_levels", text="Levels")
-        layout.operator("paint.vertex_color_hsv", text="Hue Saturation Value")
-        layout.operator("paint.vertex_color_brightness_contrast", text="Bright/Contrast")
+        layout.operator("paint.vertex_color_hsv", text="Hue/Saturation/Value")
+        layout.operator("paint.vertex_color_brightness_contrast", text="Brightness/Contrast")
 
 
 class VIEW3D_MT_hook(Menu):
