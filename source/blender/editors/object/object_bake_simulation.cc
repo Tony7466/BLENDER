@@ -131,6 +131,7 @@ static std::shared_ptr<io::serialize::ArrayValue> serialize_attributes(
         const GVArraySpan attribute_span(attribute.varray);
         const int64_t binary_size = attribute_span.size() * attribute_span.type().size();
 
+        /* TODO: Handle endianess. */
         auto io_attribute_data = write_bdata(
             Span<uint8_t>(reinterpret_cast<const uint8_t *>(attribute_span.data()), binary_size));
         io_attribute->elements().append({"data", io_attribute_data});
@@ -157,6 +158,14 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
         {"num_polygons", std::make_shared<io::serialize::IntValue>(mesh.totpoly)});
     io_mesh->elements().append(
         {"num_corners", std::make_shared<io::serialize::IntValue>(mesh.totloop)});
+
+    if (mesh.totpoly > 0) {
+      /* TODO: Handle endianess. */
+      auto io_polygon_indices = write_bdata(
+          Span<uint8_t>({reinterpret_cast<const uint8_t *>(mesh.poly_offset_indices),
+                         sizeof(*mesh.poly_offset_indices) * mesh.totpoly + 1}));
+      io_mesh->elements().append({"poly_offset_indices", io_polygon_indices});
+    }
 
     auto io_materials = serialize_material_slots({mesh.mat, mesh.totcol});
     io_mesh->elements().append({"materials", io_materials});
