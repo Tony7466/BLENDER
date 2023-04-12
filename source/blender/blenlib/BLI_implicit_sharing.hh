@@ -102,21 +102,6 @@ class ImplicitSharingMixin : public ImplicitSharingInfo {
   virtual void delete_self() = 0;
 };
 
-class MEMFreeImplicitSharing : public ImplicitSharingInfo {
-  void *data_;
-
- public:
-  MEMFreeImplicitSharing(void *data) : ImplicitSharingInfo(1), data_(data)
-  {
-    BLI_assert(data_ != nullptr);
-  }
-
- private:
-  void delete_self_with_data() override
-  {
-    MEM_freeN(const_cast<void *>(data_));
-    MEM_delete(this);
-  }
-};
+ImplicitSharingInfo *sharing_info_for_mem_free(void *data);
 
 }  // namespace blender

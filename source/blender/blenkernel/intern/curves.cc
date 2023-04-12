@@ -64,14 +64,11 @@ static void curves_init_data(ID *id)
 
 static void curves_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int /*flag*/)
 {
-  using namespace blender;
-
   Curves *curves_dst = (Curves *)id_dst;
   const Curves *curves_src = (const Curves *)id_src;
   curves_dst->mat = static_cast<Material **>(MEM_dupallocN(curves_src->mat));
 
-  new (&curves_dst->geometry) bke::CurvesGeometry(curves_src->geometry.wrap());
-  BLI_assert(curves_dst->geometry.runtime->curve_offset_indices->is_shared());
+  new (&curves_dst->geometry) blender::bke::CurvesGeometry(curves_src->geometry.wrap());
 
   if (curves_src->surface_uv_map != nullptr) {
     curves_dst->surface_uv_map = BLI_strdup(curves_src->surface_uv_map);

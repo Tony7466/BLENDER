@@ -376,8 +376,8 @@ static void mesh_blend_read_data(BlendDataReader *reader, ID *id)
 
   if (mesh->poly_offset_indices) {
     BLO_read_int32_array(reader, mesh->totpoly + 1, &mesh->poly_offset_indices);
-    mesh->runtime->poly_offsets_sharing_info = MEM_new<blender::MEMFreeImplicitSharing>(
-        __func__, mesh->poly_offset_indices);
+    mesh->runtime->poly_offsets_sharing_info = blender::sharing_info_for_mem_free(
+        mesh->poly_offset_indices);
   }
 
   CustomData_blend_read(reader, &mesh->vdata, mesh->totvert);
@@ -922,6 +922,7 @@ static void mesh_clear_geometry(Mesh &mesh)
   CustomData_free(&mesh.ldata, mesh.totloop);
   CustomData_free(&mesh.pdata, mesh.totpoly);
   if (mesh.poly_offset_indices) {
+    BLI_assert(mesh.runtime->poly_offsets_sharing_info != nullptr);
     mesh.runtime->poly_offsets_sharing_info->remove_user_and_delete_if_last();
     mesh.poly_offset_indices = nullptr;
     mesh.runtime->poly_offsets_sharing_info = nullptr;
@@ -977,6 +978,14 @@ Mesh *BKE_mesh_add(Main *bmain, const char *name)
   return me;
 }
 
+static int *allocate_offsets(const int curves_num)
+{
+  if (curves_num == 0) {
+    return nullptr;
+  }
+  return static_cast<int *>(MEM_malloc_arrayN(curves_num + 1, sizeof(int), __func__));
+}
+
 void BKE_mesh_poly_offsets_ensure_alloc(Mesh *mesh)
 {
   BLI_assert(mesh->poly_offset_indices == nullptr);
@@ -984,17 +993,51 @@ void BKE_mesh_poly_offsets_ensure_alloc(Mesh *mesh)
   if (mesh->totpoly == 0) {
     return;
   }
-  if (!mesh->poly_offset_indices) {
-    mesh->poly_offset_indices = static_cast<int *>(
-        MEM_malloc_arrayN(mesh->totpoly + 1, sizeof(int), __func__));
-    mesh->runtime->poly_offsets_sharing_info = MEM_new<blender::MEMFreeImplicitSharing>(
-        __func__, mesh->poly_offset_indices);
-  }
+  mesh->poly_offset_indices = allocate_offsets(mesh->totpoly);
+  mesh->runtime->poly_offsets_sharing_info = blender::sharing_info_for_mem_free(
+      mesh->poly_offset_indices);
+
 #ifdef DEBUG
   /* Fill offsets with obviously bad values to simplify finding missing initialization. */
   mesh->poly_offsets_for_write().fill(-1);
 #endif
+  mesh->poly_offset_indices[0] = 0;
   mesh->poly_offsets_for_write().last() = mesh->totloop;
+}
+
+void BKE_mesh_poly_offsets_resize(Mesh *mesh, const int new_polys_num)
+{
+  if (new_polys_num == 0) {
+    if (mesh->runtime->poly_offsets_sharing_info) {
+      mesh->runtime->poly_offsets_sharing_info->remove_user_and_delete_if_last();
+    }
+    mesh->poly_offset_indices = nullptr;
+  }
+  else if (!mesh->poly_offset_indices) {
+    mesh->poly_offset_indices = allocate_offsets(new_polys_num);
+    mesh->poly_offset_indices[0] = 0;
+  }
+  else if (mesh->runtime->poly_offsets_sharing_info->is_mutable()) {
+    mesh->poly_offset_indices = static_cast<int *>(
+        MEM_reallocN(mesh->poly_offset_indices, sizeof(int) * (new_polys_num + 1)));
+    MEM_delete(mesh->runtime->poly_offsets_sharing_info);
+  }
+  else {
+    int *new_offsets = allocate_offsets(new_polys_num);
+    memcpy(new_offsets,
+           mesh->poly_offset_indices,
+           sizeof(int) * std::min(mesh->totpoly, new_polys_num));
+    mesh->runtime->poly_offsets_sharing_info->remove_user_and_delete_if_last();
+    mesh->poly_offset_indices = new_offsets;
+  }
+
+  if (mesh->poly_offset_indices) {
+    mesh->runtime->poly_offsets_sharing_info = blender::sharing_info_for_mem_free(
+        mesh->poly_offset_indices);
+  }
+  else {
+    mesh->runtime->poly_offsets_sharing_info = nullptr;
+  }
 }
 
 int *BKE_mesh_poly_offsets_for_write(Mesh *mesh)
@@ -1006,8 +1049,8 @@ int *BKE_mesh_poly_offsets_for_write(Mesh *mesh)
   if (mesh->runtime->poly_offsets_sharing_info->is_shared()) {
     mesh->poly_offset_indices = static_cast<int *>(MEM_dupallocN(mesh->poly_offset_indices));
     mesh->runtime->poly_offsets_sharing_info->remove_user_and_delete_if_last();
-    mesh->runtime->poly_offsets_sharing_info = MEM_new<blender::MEMFreeImplicitSharing>(
-        __func__, mesh->poly_offset_indices);
+    mesh->runtime->poly_offsets_sharing_info = blender::sharing_info_for_mem_free(
+        mesh->poly_offset_indices);
   }
   return mesh->poly_offset_indices;
 }

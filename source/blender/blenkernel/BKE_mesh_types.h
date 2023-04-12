@@ -97,6 +97,7 @@ struct MeshRuntime {
   /** Needed to ensure some thread-safety during render data pre-processing. */
   std::mutex render_mutex;
 
+  /** Implicit sharing user count for #Mesh::poly_offset_indices. */
   ImplicitSharingInfoHandle *poly_offsets_sharing_info;
 
   /**

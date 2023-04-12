@@ -583,8 +583,8 @@ int ED_mesh_join_objects_exec(bContext *C, wmOperator *op)
       &ldata, CD_PROP_INT32, CD_CONSTRUCT, totloop, ".corner_vert");
   int *corner_edges = (int *)CustomData_add_layer_named(
       &ldata, CD_PROP_INT32, CD_CONSTRUCT, totloop, ".corner_edge");
-  int *poly_offsets = static_cast<int *>(MEM_malloc_arrayN(totpoly + 1, sizeof(int), __func__));
-  poly_offsets[totpoly] = totloop;
+  blender::Array<int> poly_offsets(totpoly + 1);
+  poly_offsets.last() = totloop;
 
   vertofs = 0;
   edgeofs = 0;
@@ -610,7 +610,7 @@ int ED_mesh_join_objects_exec(bContext *C, wmOperator *op)
                    &edge,
                    &corner_verts,
                    &corner_edges,
-                   poly_offsets,
+                   poly_offsets.data(),
                    &vdata,
                    &edata,
                    &ldata,
@@ -645,7 +645,7 @@ int ED_mesh_join_objects_exec(bContext *C, wmOperator *op)
                        &edge,
                        &corner_verts,
                        &corner_edges,
-                       poly_offsets,
+                       poly_offsets.data(),
                        &vdata,
                        &edata,
                        &ldata,
@@ -676,23 +676,18 @@ int ED_mesh_join_objects_exec(bContext *C, wmOperator *op)
   me = static_cast<Mesh *>(ob->data);
 
   BKE_mesh_clear_geometry(me);
-
-  me->poly_offset_indices = poly_offsets;
+  BKE_mesh_poly_offsets_resize(me, totpoly);
 
   me->totvert = totvert;
   me->totedge = totedge;
   me->totloop = totloop;
   me->totpoly = totpoly;
 
-  if (me->totpoly) {
-    BKE_mesh_poly_offsets_ensure_alloc(me);
-    me->poly_offsets_for_write().copy_from({poly_offsets, me->totpoly});
-  }
-
   me->vdata = vdata;
   me->edata = edata;
   me->ldata = ldata;
   me->pdata = pdata;
+  me->poly_offsets_for_write().copy_from(poly_offsets);
 
   /* old material array */
   for (a = 1; a <= ob->totcol; a++) {

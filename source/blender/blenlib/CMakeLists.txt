@@ -84,6 +84,7 @@ set(SRC
   intern/hash_mm2a.c
   intern/hash_mm3.c
   intern/index_mask.cc
+  intern/implicit_sharing.cc
   intern/jitter_2d.c
   intern/kdtree_1d.c
   intern/kdtree_2d.c

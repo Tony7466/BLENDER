@@ -1251,8 +1251,7 @@ static void mesh_add_polys(Mesh *mesh, int len)
   CustomData_copy_layout(&mesh->pdata, &pdata, CD_MASK_MESH.pmask, CD_SET_DEFAULT, totpoly);
   CustomData_copy_data(&mesh->pdata, &pdata, 0, 0, mesh->totpoly);
 
-  mesh->poly_offset_indices = static_cast<int *>(
-      MEM_reallocN(mesh->poly_offset_indices, sizeof(int) * (totpoly + 1)));
+  BKE_mesh_poly_offsets_resize(mesh, totpoly);
 
   CustomData_free(&mesh->pdata, mesh->totpoly);
   mesh->pdata = pdata;

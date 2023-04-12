@@ -749,9 +749,9 @@ static void sculpt_undo_geometry_store_data(SculptUndoNodeGeometry *geometry, Ob
   CustomData_copy(&mesh->edata, &geometry->edata, CD_MASK_MESH.emask, mesh->totedge);
   CustomData_copy(&mesh->ldata, &geometry->ldata, CD_MASK_MESH.lmask, mesh->totloop);
   CustomData_copy(&mesh->pdata, &geometry->pdata, CD_MASK_MESH.pmask, mesh->totpoly);
-  geometry->poly_offset_indices = mesh->poly_offset_indices;
-  geometry->poly_offsets_sharing_info = mesh->runtime->poly_offsets_sharing_info;
-  if (geometry->poly_offsets_sharing_info) {
+  if (mesh->poly_offset_indices) {
+    geometry->poly_offset_indices = mesh->poly_offset_indices;
+    geometry->poly_offsets_sharing_info = mesh->runtime->poly_offsets_sharing_info;
     geometry->poly_offsets_sharing_info->add_user();
   }
 
@@ -784,8 +784,6 @@ static void sculpt_undo_geometry_restore_data(SculptUndoNodeGeometry *geometry, 
     mesh->runtime->poly_offsets_sharing_info = geometry->poly_offsets_sharing_info;
     mesh->runtime->poly_offsets_sharing_info->add_user();
   }
-
-  BKE_mesh_runtime_clear_cache(mesh);
 }
 
 static void sculpt_undo_geometry_free_data(SculptUndoNodeGeometry *geometry)
@@ -804,6 +802,8 @@ static void sculpt_undo_geometry_free_data(SculptUndoNodeGeometry *geometry)
   }
   if (geometry->poly_offsets_sharing_info) {
     geometry->poly_offsets_sharing_info->remove_user_and_delete_if_last();
+    geometry->poly_offset_indices = nullptr;
+    geometry->poly_offsets_sharing_info = nullptr;
   }
 }
 

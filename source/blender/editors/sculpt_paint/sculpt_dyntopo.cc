@@ -161,9 +161,11 @@ static void SCULPT_dynamic_topology_disable_ex(
     CustomData_copy(&geometry->edata, &me->edata, CD_MASK_MESH.emask, geometry->totedge);
     CustomData_copy(&geometry->ldata, &me->ldata, CD_MASK_MESH.lmask, geometry->totloop);
     CustomData_copy(&geometry->pdata, &me->pdata, CD_MASK_MESH.pmask, geometry->totpoly);
-    me->poly_offset_indices = geometry->poly_offset_indices;
-    me->poly_offsets_sharing_info = geometry->poly_offsets_sharing_info;
-    me->poly_offsets_sharing_info->add_user();
+    if (geometry->poly_offset_indices) {
+      me->poly_offset_indices = geometry->poly_offset_indices;
+      me->runtime->poly_offsets_sharing_info = geometry->poly_offsets_sharing_info;
+      me->runtime->poly_offsets_sharing_info->add_user();
+    }
   }
   else {
     BKE_sculptsession_bm_to_me(ob, true);

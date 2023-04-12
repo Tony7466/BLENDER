@@ -578,6 +578,8 @@ static void um_arraystore_expand(UndoMesh *um)
     size_t state_len;
     me->poly_offset_indices = static_cast<int *>(
         BLI_array_store_state_data_get_alloc(state, &state_len));
+    me->runtime->poly_offsets_sharing_info = blender::sharing_info_for_mem_free(
+        me->poly_offset_indices);
     BLI_assert((me->totpoly + 1) == (state_len / stride));
     UNUSED_VARS_NDEBUG(stride);
   }

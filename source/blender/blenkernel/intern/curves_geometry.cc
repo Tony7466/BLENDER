@@ -48,6 +48,19 @@ static const std::string ATTR_SURFACE_UV_COORDINATE = "surface_uv_coordinate";
 /** \name Constructors/Destructor
  * \{ */
 
+static int *allocate_offsets(const int curves_num)
+{
+  if (curves_num == 0) {
+    return nullptr;
+  }
+  return static_cast<int *>(MEM_malloc_arrayN(curves_num + 1, sizeof(int), __func__));
+}
+
+static void create_offsets_sharing_info(CurvesGeometry &curves)
+{
+  curves.runtime->curve_offsets_sharing_info = sharing_info_for_mem_free(curves.curve_offsets);
+}
+
 CurvesGeometry::CurvesGeometry() : CurvesGeometry(0, 0) {}
 
 CurvesGeometry::CurvesGeometry(const int point_num, const int curve_num)
@@ -63,11 +76,15 @@ CurvesGeometry::CurvesGeometry(const int point_num, const int curve_num)
   this->runtime = MEM_new<CurvesGeometryRuntime>(__func__);
 
   if (curve_num > 0) {
-    this->runtime->curve_offset_indices = new SharedVector<int>(this->curve_num + 1);
+    this->curve_offsets = allocate_offsets(this->curve_num);
+    create_offsets_sharing_info(*this);
 #ifdef DEBUG
     this->offsets_for_write().fill(-1);
 #endif
     this->offsets_for_write().first() = 0;
+  }
+  else {
+    this->curve_offsets = nullptr;
   }
 
   /* Fill the type counts with the default so they're in a valid state. */
@@ -86,7 +103,9 @@ static void copy_curves_geometry(CurvesGeometry &dst, const CurvesGeometry &src)
   CustomData_copy(&src.point_data, &dst.point_data, CD_MASK_ALL, dst.point_num);
   CustomData_copy(&src.curve_data, &dst.curve_data, CD_MASK_ALL, dst.curve_num);
 
-  dst.runtime->curve_offset_indices = src.runtime->curve_offset_indices;
+  dst.curve_offsets = src.curve_offsets;
+  dst.runtime->curve_offsets_sharing_info = src.runtime->curve_offsets_sharing_info;
+  dst.runtime->curve_offsets_sharing_info->add_user();
 
   dst.tag_topology_changed();
 
@@ -127,6 +146,8 @@ static void move_curves_geometry(CurvesGeometry &dst, CurvesGeometry &src)
   CustomData_free(&src.curve_data, src.curve_num);
   src.curve_num = 0;
 
+  std::swap(dst.curve_offsets, src.curve_offsets);
+
   std::swap(dst.runtime, src.runtime);
 }
 
@@ -147,6 +168,15 @@ CurvesGeometry::~CurvesGeometry()
 {
   CustomData_free(&this->point_data, this->point_num);
   CustomData_free(&this->curve_data, this->curve_num);
+  if (this->curve_offsets) {
+    if (!this->runtime->curve_offsets_sharing_info) {
+      MEM_freeN(this);
+      MEM_freeN(this);
+    }
+    this->runtime->curve_offsets_sharing_info->remove_user_and_delete_if_last();
+    this->curve_offsets = nullptr;
+    this->runtime->curve_offsets_sharing_info = nullptr;
+  }
   MEM_delete(this->runtime);
   this->runtime = nullptr;
 }
@@ -319,19 +349,20 @@ MutableSpan<float3> CurvesGeometry::positions_for_write()
 
 Span<int> CurvesGeometry::offsets() const
 {
-  return this->runtime->curve_offset_indices->as_span();
+  return {this->curve_offsets, this->curve_num + 1};
 }
-
 MutableSpan<int> CurvesGeometry::offsets_for_write()
 {
-  if (!this->runtime->curve_offset_indices) {
+  if (!this->curve_offsets) {
+    BLI_assert(this->curve_num == 0);
     return {};
   }
-  if (this->runtime->curve_offset_indices->is_shared()) {
-    SharedVector<int> *data = new SharedVector<int>(this->runtime->curve_offset_indices);
-    this->runtime->curve_offset_indices = data;
+  if (this->runtime->curve_offsets_sharing_info->is_shared()) {
+    this->curve_offsets = static_cast<int *>(MEM_dupallocN(this->curve_offsets));
+    this->runtime->curve_offsets_sharing_info->remove_user_and_delete_if_last();
+    create_offsets_sharing_info(*this);
   }
-  return this->runtime->curve_offset_indices->as_mutable_span();
+  return {this->curve_offsets, this->curve_num + 1};
 }
 
 VArray<bool> CurvesGeometry::cyclic() const
@@ -953,22 +984,38 @@ void CurvesGeometry::resize(const int points_num, const int curves_num)
   }
   if (curves_num != this->curve_num) {
     CustomData_realloc(&this->curve_data, this->curves_num(), curves_num);
-    if (!this->runtime->curve_offset_indices) {
-      this->runtime->curve_offset_indices = new SharedVector<int>(curves_num + 1);
-      this->runtime->curve_offset_indices->first() = 0;
-      this->runtime->curve_offset_indices->last() = points_num;
+
+    /* NOTE: Logic duplicate of #BKE_mesh_poly_offsets_resize. */
+    if (curves_num == 0) {
+      if (this->runtime->curve_offsets_sharing_info) {
+        this->runtime->curve_offsets_sharing_info->remove_user_and_delete_if_last();
+      }
+      this->curve_offsets = nullptr;
     }
-    else if (this->runtime->curve_offset_indices->is_mutable()) {
-      this->runtime->curve_offset_indices->resize(curves_num + 1);
-      this->runtime->curve_offset_indices->last() = points_num;
+    else if (!this->curve_offsets) {
+      this->curve_offsets = allocate_offsets(curves_num);
+      this->curve_offsets[0] = 0;
+    }
+    else if (this->runtime->curve_offsets_sharing_info->is_mutable()) {
+      this->curve_offsets = static_cast<int *>(
+          MEM_reallocN(this->curve_offsets, sizeof(int) * (curves_num + 1)));
+      MEM_delete(this->runtime->curve_offsets_sharing_info);
     }
     else {
-      SharedVector<int> *new_offsets = new SharedVector<int>(curves_num + 1);
-      new_offsets->as_mutable_span()
-          .take_front(this->curve_num + 1)
-          .copy_from({this->curve_offsets, this->curve_num + 1});
-      this->runtime->curve_offset_indices = new_offsets;
+      int *new_offsets = allocate_offsets(curves_num);
+      memcpy(
+          new_offsets, this->curve_offsets, sizeof(int) * std::min(this->curve_num, curves_num));
+      this->runtime->curve_offsets_sharing_info->remove_user_and_delete_if_last();
+      this->curve_offsets = new_offsets;
     }
+
+    if (this->curve_offsets) {
+      create_offsets_sharing_info(*this);
+    }
+    else {
+      this->runtime->curve_offsets_sharing_info = nullptr;
+    }
+
     this->curve_num = curves_num;
   }
   this->tag_topology_changed();
@@ -1605,10 +1652,10 @@ void CurvesGeometry::blend_read(BlendDataReader &reader)
 
   this->runtime = MEM_new<blender::bke::CurvesGeometryRuntime>(__func__);
 
-  BLO_read_int32_array(&reader, this->curve_num + 1, &this->curve_offsets);
-  SharedVector<int> *vector = new SharedVector<int>({this->curve_offsets, this->curve_num + 1});
-  this->runtime->curve_offset_indices = ImplicitSharingPtr(vector);
-  MEM_SAFE_FREE(this->curve_offsets);
+  if (this->curve_offsets) {
+    BLO_read_int32_array(&reader, this->curve_num + 1, &this->curve_offsets);
+    create_offsets_sharing_info(*this);
+  }
 
   /* Recalculate curve type count cache that isn't saved in files. */
   this->update_curve_types();
@@ -1626,7 +1673,6 @@ void CurvesGeometry::blend_write(BlendWriter &writer, ID &id)
   CustomData_blend_write(
       &writer, &this->curve_data, curve_layers, this->curve_num, CD_MASK_ALL, &id);
 
-  this->curve_offsets = this->runtime->curve_offset_indices->data();
   BLO_write_int32_array(&writer, this->curve_num + 1, this->curve_offsets);
 }
 
