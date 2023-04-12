@@ -908,7 +908,7 @@ static void export_hair_curves(Scene *scene,
   float *attr_length = NULL;
 
   if (hair->need_attribute(scene, ATTR_STD_VERTEX_NORMAL)) {
-    /* Compute geometry normals. */
+    /* Get geometry normals. */
     float3 *attr_normal = hair->attributes.add(ATTR_STD_VERTEX_NORMAL)->data_float3();
     int i = 0;
     for (BL::FloatVectorValueReadOnly &normal : b_curves.normals) {

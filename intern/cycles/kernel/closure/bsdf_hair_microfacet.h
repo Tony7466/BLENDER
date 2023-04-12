@@ -7,6 +7,7 @@
 
 #pragma once
 
+/* TODO: what does this do? */
 #ifndef __KERNEL_GPU__
 #  include <fenv.h>
 #endif
