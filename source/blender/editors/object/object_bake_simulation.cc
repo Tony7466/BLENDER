@@ -37,24 +37,13 @@ namespace blender::ed::object::bake_simulation {
 
 static StringRefNull get_domain_io_name(const eAttrDomain domain)
 {
-  switch (domain) {
-    case ATTR_DOMAIN_POINT:
-      return "point";
-    case ATTR_DOMAIN_EDGE:
-      return "edge";
-    case ATTR_DOMAIN_FACE:
-      return "face";
-    case ATTR_DOMAIN_CORNER:
-      return "corner";
-    case ATTR_DOMAIN_CURVE:
-      return "curve";
-    case ATTR_DOMAIN_INSTANCE:
-      return "instance";
-    case ATTR_DOMAIN_AUTO:
-      break;
+  for (const EnumPropertyItem *item = rna_enum_attribute_domain_items; item->identifier != nullptr;
+       item++) {
+    if (item->value == domain) {
+      return item->identifier;
+    }
   }
-  BLI_assert_unreachable();
-  return "";
+  return "unknown";
 }
 
 static StringRefNull get_data_type_io_name(const eCustomDataType data_type)
