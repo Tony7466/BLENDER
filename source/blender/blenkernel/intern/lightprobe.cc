@@ -132,108 +132,106 @@ void *BKE_lightprobe_add(Main *bmain, const char *name)
   return probe;
 }
 
-void BKE_lightprobe_grid_cache_blend_write(BlendWriter *writer,
-                                           LightProbeGridCache **grid_caches,
-                                           int grid_caches_len)
+static void lightprobe_grid_cache_frame_blend_write(BlendWriter *writer,
+                                                    const LightProbeGridCacheFrame *cache)
 {
-  blender::Span<const LightProbeGridCache *> caches(grid_caches, grid_caches_len);
-  for (const LightProbeGridCache *cache : caches) {
-    if (cache == nullptr) {
-      continue;
-    }
+  BLO_write_struct(writer, LightProbeGridCacheFrame, cache);
 
-    BLO_write_struct(writer, LightProbeGridCache, cache);
+  if (cache->block_infos != nullptr) {
+    BLO_write_struct_array(writer, LightProbeGridCacheFrame, cache->block_len, cache->block_infos);
+  }
 
-    if (cache->block_infos != nullptr) {
-      BLO_write_struct_array(writer, LightProbeGridCache, cache->block_len, cache->block_infos);
-    }
+  int64_t sample_count = BKE_lightprobe_grid_cache_frame_sample_count(cache);
 
-    int64_t sample_count = BKE_lightprobe_grid_cache_sample_count(cache);
+  if (cache->irradiance.L0 != nullptr) {
+    BLO_write_float3_array(writer, sample_count, (float *)cache->irradiance.L0);
+  }
+  if (cache->irradiance.L1_a != nullptr) {
+    BLO_write_float3_array(writer, sample_count, (float *)cache->irradiance.L1_a);
+  }
+  if (cache->irradiance.L1_b != nullptr) {
+    BLO_write_float3_array(writer, sample_count, (float *)cache->irradiance.L1_b);
+  }
+  if (cache->irradiance.L1_c != nullptr) {
+    BLO_write_float3_array(writer, sample_count, (float *)cache->irradiance.L1_c);
+  }
 
-    if (cache->irradiance.L0 != nullptr) {
-      BLO_write_float3_array(writer, sample_count, (float *)cache->irradiance.L0);
-    }
-    if (cache->irradiance.L1_a != nullptr) {
-      BLO_write_float3_array(writer, sample_count, (float *)cache->irradiance.L1_a);
-    }
-    if (cache->irradiance.L1_b != nullptr) {
-      BLO_write_float3_array(writer, sample_count, (float *)cache->irradiance.L1_b);
-    }
-    if (cache->irradiance.L1_c != nullptr) {
-      BLO_write_float3_array(writer, sample_count, (float *)cache->irradiance.L1_c);
-    }
+  if (cache->visibility.L0 != nullptr) {
+    BLO_write_int8_array(writer, sample_count, (int8_t *)cache->visibility.L0);
+  }
+  if (cache->visibility.L1_a != nullptr) {
+    BLO_write_int8_array(writer, sample_count, (int8_t *)cache->visibility.L1_a);
+  }
+  if (cache->visibility.L1_b != nullptr) {
+    BLO_write_int8_array(writer, sample_count, (int8_t *)cache->visibility.L1_b);
+  }
+  if (cache->visibility.L1_c != nullptr) {
+    BLO_write_int8_array(writer, sample_count, (int8_t *)cache->visibility.L1_c);
+  }
 
-    if (cache->visibility.L0 != nullptr) {
-      BLO_write_int8_array(writer, sample_count, (int8_t *)cache->visibility.L0);
-    }
-    if (cache->visibility.L1_a != nullptr) {
-      BLO_write_int8_array(writer, sample_count, (int8_t *)cache->visibility.L1_a);
-    }
-    if (cache->visibility.L1_b != nullptr) {
-      BLO_write_int8_array(writer, sample_count, (int8_t *)cache->visibility.L1_b);
-    }
-    if (cache->visibility.L1_c != nullptr) {
-      BLO_write_int8_array(writer, sample_count, (int8_t *)cache->visibility.L1_c);
-    }
-
-    if (cache->connectivity.bitmask != nullptr) {
-      BLO_write_struct_array(
-          writer, LightProbeGridCache, sample_count, cache->connectivity.bitmask);
-    }
+  if (cache->connectivity.bitmask != nullptr) {
+    BLO_write_struct_array(
+        writer, LightProbeGridCacheFrame, sample_count, cache->connectivity.bitmask);
   }
 }
 
-void BKE_lightprobe_grid_cache_blend_read(BlendDataReader *reader,
-                                          LightProbeGridCache **grid_caches,
-                                          int grid_caches_len)
+static void lightprobe_grid_cache_frame_blend_read(BlendDataReader *reader,
+                                                   LightProbeGridCacheFrame *cache)
 {
-  blender::MutableSpan<LightProbeGridCache *> caches(grid_caches, grid_caches_len);
-  for (LightProbeGridCache *&cache : caches) {
-    if (cache == nullptr) {
-      continue;
-    }
+  if (cache->block_infos != nullptr) {
+    BLO_read_data_address(reader, &cache->block_infos);
+  }
 
-    BLO_read_data_address(reader, &cache);
+  /* Baking data is not stored. */
+  cache->baking.L0 = nullptr;
+  cache->baking.L1_a = nullptr;
+  cache->baking.L1_b = nullptr;
+  cache->baking.L1_c = nullptr;
 
-    if (cache->block_infos != nullptr) {
-      BLO_read_data_address(reader, &cache->block_infos);
-    }
+  if (cache->irradiance.L0 != nullptr) {
+    BLO_read_data_address(reader, &cache->irradiance.L0);
+  }
+  if (cache->irradiance.L1_a != nullptr) {
+    BLO_read_data_address(reader, &cache->irradiance.L1_a);
+  }
+  if (cache->irradiance.L1_b != nullptr) {
+    BLO_read_data_address(reader, &cache->irradiance.L1_b);
+  }
+  if (cache->irradiance.L1_c != nullptr) {
+    BLO_read_data_address(reader, &cache->irradiance.L1_c);
+  }
 
-    /* Baking data is not stored. */
-    cache->baking.L0 = nullptr;
-    cache->baking.L1_a = nullptr;
-    cache->baking.L1_b = nullptr;
-    cache->baking.L1_c = nullptr;
+  if (cache->visibility.L0 != nullptr) {
+    BLO_read_data_address(reader, &cache->visibility.L0);
+  }
+  if (cache->visibility.L1_a != nullptr) {
+    BLO_read_data_address(reader, &cache->visibility.L1_a);
+  }
+  if (cache->visibility.L1_b != nullptr) {
+    BLO_read_data_address(reader, &cache->visibility.L1_b);
+  }
+  if (cache->visibility.L1_c != nullptr) {
+    BLO_read_data_address(reader, &cache->visibility.L1_c);
+  }
 
-    if (cache->irradiance.L0 != nullptr) {
-      BLO_read_data_address(reader, &cache->irradiance.L0);
-    }
-    if (cache->irradiance.L1_a != nullptr) {
-      BLO_read_data_address(reader, &cache->irradiance.L1_a);
-    }
-    if (cache->irradiance.L1_b != nullptr) {
-      BLO_read_data_address(reader, &cache->irradiance.L1_b);
-    }
-    if (cache->irradiance.L1_c != nullptr) {
-      BLO_read_data_address(reader, &cache->irradiance.L1_c);
-    }
+  if (cache->connectivity.bitmask != nullptr) {
+    BLO_read_data_address(reader, &cache->connectivity.bitmask);
+  }
+}
 
-    if (cache->visibility.L0 != nullptr) {
-      BLO_read_data_address(reader, &cache->visibility.L0);
-    }
-    if (cache->visibility.L1_a != nullptr) {
-      BLO_read_data_address(reader, &cache->visibility.L1_a);
-    }
-    if (cache->visibility.L1_b != nullptr) {
-      BLO_read_data_address(reader, &cache->visibility.L1_b);
-    }
-    if (cache->visibility.L1_c != nullptr) {
-      BLO_read_data_address(reader, &cache->visibility.L1_c);
-    }
+void BKE_lightprobe_cache_blend_write(BlendWriter *writer, LightProbeObjectCache *cache)
+{
+  if (cache->grid_static_cache != nullptr) {
+    BLO_write_struct(writer, LightProbeGridCacheFrame, cache->grid_static_cache);
+    lightprobe_grid_cache_frame_blend_write(writer, cache->grid_static_cache);
+  }
+}
 
-    if (cache->connectivity.bitmask != nullptr) {
-      BLO_read_data_address(reader, &cache->connectivity.bitmask);
-    }
+void BKE_lightprobe_cache_blend_read(BlendDataReader *reader, LightProbeObjectCache *cache)
+{
+  if (cache->grid_static_cache != nullptr) {
+    BLO_read_data_address(reader, &cache->grid_static_cache);
+    lightprobe_grid_cache_frame_blend_read(reader, cache->grid_static_cache);
   }
 }
 
@@ -245,16 +243,14 @@ template<typename T> static void spherical_harmonic_free(T &data)
   MEM_SAFE_FREE(data.L1_c);
 }
 
-LightProbeGridCache *BKE_lightprobe_grid_cache_create()
+LightProbeGridCacheFrame *BKE_lightprobe_grid_cache_frame_create()
 {
-  LightProbeGridCache *cache = static_cast<LightProbeGridCache *>(
-      MEM_callocN(sizeof(LightProbeGridCache), "LightProbeGridCache"));
-  cache->cache_type = LIGHTPROBE_CACHE_TYPE_NONE;
-  cache->data_layout = LIGHTPROBE_CACHE_UNIFORM_GRID;
+  LightProbeGridCacheFrame *cache = static_cast<LightProbeGridCacheFrame *>(
+      MEM_callocN(sizeof(LightProbeGridCacheFrame), "LightProbeGridCacheFrame"));
   return cache;
 }
 
-void BKE_lightprobe_grid_cache_free(LightProbeGridCache *cache)
+void BKE_lightprobe_grid_cache_frame_free(LightProbeGridCacheFrame *cache)
 {
   MEM_SAFE_FREE(cache->block_infos);
   spherical_harmonic_free(cache->baking);
@@ -265,38 +261,34 @@ void BKE_lightprobe_grid_cache_free(LightProbeGridCache *cache)
   MEM_SAFE_FREE(cache);
 }
 
-void BKE_lightprobe_grid_caches_create(Object *object)
+void BKE_lightprobe_cache_create(Object *object)
 {
-  BLI_assert(object->irradiance_caches == nullptr);
+  BLI_assert(object->lightprobe_cache == nullptr);
 
-  /* Single cache for now. */
-  const int grid_caches_len = 1;
-  LightProbeGridCache **grid_caches = static_cast<LightProbeGridCache **>(
-      MEM_callocN(sizeof(LightProbeGridCache *) * grid_caches_len, "irradiance_caches"));
-  object->irradiance_caches = grid_caches;
-  object->irradiance_caches_len = grid_caches_len;
+  object->lightprobe_cache = static_cast<LightProbeObjectCache *>(
+      MEM_callocN(sizeof(LightProbeObjectCache), "LightProbeObjectCache"));
 }
 
-void BKE_lightprobe_grid_caches_free(Object *object)
+void BKE_lightprobe_cache_free(Object *object)
 {
-  if (object->irradiance_caches == nullptr) {
+  if (object->lightprobe_cache == nullptr) {
     return;
   }
 
-  blender::MutableSpan<LightProbeGridCache *> caches(object->irradiance_caches,
-                                                     object->irradiance_caches_len);
-  for (LightProbeGridCache *cache : caches) {
-    if (cache != nullptr) {
-      BKE_lightprobe_grid_cache_free(cache);
+  LightProbeObjectCache *cache = object->lightprobe_cache;
+
+  if (cache->shared == false) {
+    if (cache->grid_static_cache != nullptr) {
+      BKE_lightprobe_grid_cache_frame_free(cache->grid_static_cache);
     }
   }
-  MEM_SAFE_FREE(object->irradiance_caches);
-  object->irradiance_caches_len = 0;
+
+  MEM_SAFE_FREE(object->lightprobe_cache);
 }
 
-int64_t BKE_lightprobe_grid_cache_sample_count(const LightProbeGridCache *cache)
+int64_t BKE_lightprobe_grid_cache_frame_sample_count(const LightProbeGridCacheFrame *cache)
 {
-  if (cache->cache_type == LIGHTPROBE_CACHE_ADAPTIVE_RESOLUTION) {
+  if (cache->data_layout == LIGHTPROBE_CACHE_ADAPTIVE_RESOLUTION) {
     return cache->block_len * cube_i(cache->block_size);
   }
   /* LIGHTPROBE_CACHE_UNIFORM_GRID */

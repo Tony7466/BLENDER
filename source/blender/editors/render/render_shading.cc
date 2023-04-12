@@ -1512,16 +1512,14 @@ static void lightprobe_cache_bake_start(bContext *C, wmOperator *op)
   };
 
   auto irradiance_volume_setup = [](Object *ob) {
-    std::cout << ob->id.name << std::endl;
-    BKE_lightprobe_grid_caches_free(ob);
-    BKE_lightprobe_grid_caches_create(ob);
+    BKE_lightprobe_cache_free(ob);
+    BKE_lightprobe_cache_create(ob);
     DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
   };
 
   int subset = RNA_enum_get(op->ptr, "subset");
   switch (subset) {
     case LIGHTCACHE_SUBSET_ALL: {
-      std::cout << "LIGHTCACHE_SUBSET_ALL" << std::endl;
       FOREACH_OBJECT_BEGIN (scene, view_layer, ob) {
         if (is_irradiance_volume(ob)) {
           irradiance_volume_setup(ob);
@@ -1531,9 +1529,8 @@ static void lightprobe_cache_bake_start(bContext *C, wmOperator *op)
       break;
     }
     case LIGHTCACHE_SUBSET_DIRTY: {
-      std::cout << "LIGHTCACHE_SUBSET_DIRTY" << std::endl;
       FOREACH_OBJECT_BEGIN (scene, view_layer, ob) {
-        if (is_irradiance_volume(ob) && ob->irradiance_caches_dirty) {
+        if (is_irradiance_volume(ob) && ob->lightprobe_cache && ob->lightprobe_cache->dirty) {
           irradiance_volume_setup(ob);
         }
       }
@@ -1541,7 +1538,6 @@ static void lightprobe_cache_bake_start(bContext *C, wmOperator *op)
       break;
     }
     case LIGHTCACHE_SUBSET_SELECTED: {
-      std::cout << "LIGHTCACHE_SUBSET_SELECTED" << std::endl;
       uint objects_len = 0;
       ObjectsInViewLayerParams parameters;
       parameters.filter_fn = nullptr;
@@ -1557,7 +1553,6 @@ static void lightprobe_cache_bake_start(bContext *C, wmOperator *op)
       break;
     }
     case LIGHTCACHE_SUBSET_ACTIVE: {
-      std::cout << "LIGHTCACHE_SUBSET_ACTIVE" << std::endl;
       Object *active_ob = CTX_data_active_object(C);
       if (is_irradiance_volume(active_ob)) {
         irradiance_volume_setup(active_ob);
@@ -1722,7 +1717,7 @@ static bool lightprobe_cache_free_poll(bContext *C)
 {
   Object *object = CTX_data_active_object(C);
 
-  return object && object->irradiance_caches != nullptr;
+  return object && object->lightprobe_cache != nullptr;
 }
 
 static int lightprobe_cache_free_exec(bContext *C, wmOperator * /*op*/)
@@ -1734,11 +1729,11 @@ static int lightprobe_cache_free_exec(bContext *C, wmOperator * /*op*/)
   wmWindowManager *wm = CTX_wm_manager(C);
   WM_jobs_kill_type(wm, scene, WM_JOB_TYPE_LIGHT_BAKE);
 
-  if (object->irradiance_caches == nullptr) {
+  if (object->lightprobe_cache == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
-  BKE_lightprobe_grid_caches_free(object);
+  BKE_lightprobe_cache_free(object);
 
   DEG_id_tag_update(&object->id, ID_RECALC_COPY_ON_WRITE);
 
