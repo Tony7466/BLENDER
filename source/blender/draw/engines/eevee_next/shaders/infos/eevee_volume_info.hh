@@ -7,10 +7,9 @@
 GPU_SHADER_CREATE_INFO(eevee_volume_lib)
     .additional_info("eevee_shared")
     .additional_info("draw_view")
-    .uniform_buf(VOLUMES_BUF_SLOT, "VolumesData", "volumes_buf")
     .additional_info("eevee_light_data")
-    //.additional_info("eevee_legacy_lightprobe_lib")
-    //.additional_info("eevee_legacy_irradiance_lib")
+    .additional_info("eevee_shadow_data")
+    .uniform_buf(VOLUMES_BUF_SLOT, "VolumesData", "volumes_buf")
     .sampler(VOLUME_SCATTERING_TEX_SLOT, ImageType::FLOAT_3D, "inScattering")
     .sampler(VOLUME_TRANSMITTANCE_TEX_SLOT, ImageType::FLOAT_3D, "inTransmittance");
 

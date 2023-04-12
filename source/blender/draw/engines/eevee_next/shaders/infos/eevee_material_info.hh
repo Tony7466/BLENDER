@@ -195,12 +195,11 @@ GPU_SHADER_CREATE_INFO(eevee_volume_material)
     .fragment_source("eevee_volume_material_frag.glsl")
     .additional_info("eevee_volume_base",
                      "draw_object_infos_new",
-                     "draw_volume_infos", /*TODO (Miguel Pozo): Check eevee_shaders_extra.cc */
+                     "draw_volume_infos",
                      "draw_modelmat_new",
                      "draw_resource_id_varying",
                      "draw_view",
                      "eevee_shared",
-                     /* TODO (Miguel Pozo): Cleanup. */
                      "eevee_light_data",
                      "eevee_shadow_data",
                      "eevee_sampling_data",

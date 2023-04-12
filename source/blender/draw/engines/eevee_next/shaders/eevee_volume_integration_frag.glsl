@@ -77,10 +77,4 @@ void main()
     imageStore(finalTransmittance_img, coord, vec4(finalTransmittance, 0.0));
 #endif
   }
-
-  /* TODO(Miguel Pozo): Remove, just for testing. */
-  /*
-  finalScattering = vec3(1, 0, 0);
-  finalTransmittance = vec3(0, 1, 0);
-  //*/
 }

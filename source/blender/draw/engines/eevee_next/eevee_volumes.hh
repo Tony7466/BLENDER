@@ -57,22 +57,7 @@ class Volumes {
   {
     ps.bind_ubo("volumes_buf", data_);
     inst_.lights.bind_resources(&ps);
-#if 0
-  /* TODO (Miguel Pozo) */
-  DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
-  /* TODO(fclem): remove those (need to clean the GLSL files). */
-  DRW_shgroup_uniform_block(grp, "grid_block", sldata->grid_ubo);
-  DRW_shgroup_uniform_block(grp, "probe_block", sldata->probe_ubo);
-  DRW_shgroup_uniform_block(grp, "planar_block", sldata->planar_ubo);
-  DRW_shgroup_uniform_block(grp, "light_block", sldata->light_ubo);
-  DRW_shgroup_uniform_block(grp, "shadow_block", sldata->shadow_ubo);
-  DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
-
-  /* Should this go here? */
-  ps.bind_texture("irradianceGrid", &lcache->grid_tx.tex);
-  ps.bind_texture("shadowCubeTexture", &sldata->shadow_cube_pool);
-  ps.bind_texture("shadowCascadeTexture", &sldata->shadow_cascade_pool);
-#endif
+    inst_.shadows.bind_resources(&ps);
   }
 
  public:

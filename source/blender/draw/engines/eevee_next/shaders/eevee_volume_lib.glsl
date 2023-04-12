@@ -43,7 +43,7 @@ vec3 volume_to_ndc(vec3 cos)
 {
   cos.z = volume_z_to_view_z(cos.z);
   cos.z = get_depth_from_view_z(cos.z);
-  cos.xy /= volumes_buf.coord_scale_a;
+  cos.xy /= volumes_buf.coord_scale;
   return cos;
 }
 
@@ -51,7 +51,7 @@ vec3 ndc_to_volume(vec3 cos)
 {
   cos.z = get_view_z_from_depth(cos.z);
   cos.z = view_z_to_volume_z(cos.z);
-  cos.xy *= volumes_buf.coord_scale_a;
+  cos.xy *= volumes_buf.coord_scale;
   return cos;
 }
 

@@ -81,8 +81,8 @@ void Volumes::init()
   BLI_assert(tex_size == math::min(tex_size, max_size));
   tex_size = math::min(tex_size, max_size);
 
-  data_.coord_scale_a = float2(viewport_size) / float2(tile_size * tex_size);
-  data_.coord_scale_b = 1.0f / float2(viewport_size);
+  data_.coord_scale = float2(viewport_size) / float2(tile_size * tex_size);
+  data_.viewport_size_inv = 1.0f / float2(viewport_size);
 
   /* TODO: compute snap to maxZBuffer for clustered rendering. */
   if (data_.tex_size != tex_size) {
@@ -97,8 +97,6 @@ void Volumes::init()
   }
 
   bool do_taa = inst_.sampling.sample_count() > 1;
-  /* TODO (Miguel Pozo): Confirm this is equivalent to:
-   * ((effects->enabled_effects & EFFECT_TAA) != 0) */
 
   if (draw_ctx->evil_C != nullptr) {
     struct wmWindowManager *wm = CTX_wm_manager(draw_ctx->evil_C);
@@ -106,7 +104,8 @@ void Volumes::init()
   }
 
   /* Temporal Super sampling jitter */
-  /* TODO (Miguel Pozo): Double check current_sample and current_sample_ logic. */
+  /* TODO (Miguel Pozo): Double check current_sample and current_sample_ logic.
+   * Why image render doesn't use the regular taa samples? */
   uint current_sample = 0;
 
   if (do_taa) {
@@ -222,7 +221,6 @@ void Volumes::begin_sync()
     mat = inst_.shaders.world_shader_get(world, world->nodetree, MAT_PIPE_WORLD_VOLUME);
 
     if (!GPU_material_has_volume_output(mat)) {
-      /* TODO (Miguel Pozo): This should never happen ? */
       mat = nullptr;
     }
   }
@@ -231,9 +229,6 @@ void Volumes::begin_sync()
   if (mat) {
     ps.material_set(*inst_.manager, mat);
     if (volume_sub_pass(ps, nullptr, nullptr, mat)) {
-      /* TODO (Miguel Pozo):
-       * effects->enabled_effects |= (EFFECT_VOLUMETRIC | EFFECT_POST_BUFFER);
-       */
       enabled_ = true;
     }
   }
@@ -284,9 +279,6 @@ void Volumes::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHand
   PassMain::Sub &ps = objects_ps_.sub(ob->id.name);
   ps.material_set(*inst_.manager, material_pass.gpumat);
   if (volume_sub_pass(ps, inst_.scene, ob, material_pass.gpumat)) {
-    /* TODO (Miguel Pozo):
-     * effects->enabled_effects |= (EFFECT_VOLUMETRIC | EFFECT_POST_BUFFER);
-     */
     enabled_ = true;
     bind_common_resources(ps);
     ps.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z * 3, -1, res_handle);
