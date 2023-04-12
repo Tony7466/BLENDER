@@ -24,12 +24,16 @@
 #include "BKE_context.h"
 #include "BKE_curves.hh"
 #include "BKE_main.h"
+#include "BKE_object.h"
+#include "BKE_pointcloud.h"
 #include "BKE_scene.h"
 #include "BKE_simulation_state.hh"
 
+#include "RNA_access.h"
 #include "RNA_enum_types.h"
 
 #include "DEG_depsgraph.h"
+#include "DEG_depsgraph_build.h"
 
 #include "object_intern.h"
 
@@ -37,24 +41,30 @@ namespace blender::ed::object::bake_simulation {
 
 static StringRefNull get_domain_io_name(const eAttrDomain domain)
 {
-  for (const EnumPropertyItem *item = rna_enum_attribute_domain_items; item->identifier != nullptr;
-       item++) {
-    if (item->value == domain) {
-      return item->identifier;
-    }
-  }
-  return "unknown";
+  const char *io_name = "unknown";
+  RNA_enum_id_from_value(rna_enum_attribute_domain_items, domain, &io_name);
+  return io_name;
 }
 
 static StringRefNull get_data_type_io_name(const eCustomDataType data_type)
 {
-  for (const EnumPropertyItem *item = rna_enum_attribute_type_items; item->identifier != nullptr;
-       item++) {
-    if (item->value == data_type) {
-      return item->identifier;
-    }
-  }
-  return "unkown";
+  const char *io_name = "unknown";
+  RNA_enum_id_from_value(rna_enum_attribute_type_items, data_type, &io_name);
+  return io_name;
+}
+
+static eAttrDomain get_domain_from_io_name(const StringRefNull io_name)
+{
+  int domain;
+  RNA_enum_value_from_identifier(rna_enum_attribute_domain_items, io_name.c_str(), &domain);
+  return eAttrDomain(domain);
+}
+
+static eCustomDataType get_data_type_from_io_name(const StringRefNull io_name)
+{
+  int domain;
+  RNA_enum_value_from_identifier(rna_enum_attribute_type_items, io_name.c_str(), &domain);
+  return eCustomDataType(domain);
 }
 
 static std::string escape_name(StringRef name)
@@ -69,6 +79,55 @@ static std::string escape_name(StringRef name)
     }
   }
   return ss.str();
+}
+
+static GeometrySet load_geometry(const io::serialize::DictionaryValue &io_geometry,
+                                 const StringRefNull bdata_dir)
+{
+  const auto io_geometry_lookup = io_geometry.create_lookup();
+  GeometrySet geometry;
+  if (io_geometry_lookup.contains("pointcloud")) {
+    const auto &io_pointcloud = *io_geometry_lookup.lookup("pointcloud")->as_dictionary_value();
+    const auto io_pointcloud_lookup = io_pointcloud.create_lookup();
+    const int num_points = io_pointcloud_lookup.lookup("num_points")->as_int_value()->value();
+    PointCloud *pointcloud = BKE_pointcloud_new_nomain(num_points);
+    const auto &attributes_io = *io_pointcloud_lookup.lookup("attributes")->as_array_value();
+
+    bke::MutableAttributeAccessor attributes = pointcloud->attributes_for_write();
+    for (const auto &attribute_io : attributes_io.elements()) {
+      const auto attribute_io_lookup = attribute_io->as_dictionary_value()->create_lookup();
+      const StringRefNull name = attribute_io_lookup.lookup("name")->as_string_value()->value();
+      const StringRefNull domain_str =
+          attribute_io_lookup.lookup("domain")->as_string_value()->value();
+      const eAttrDomain domain = get_domain_from_io_name(domain_str);
+      const StringRefNull type_str =
+          attribute_io_lookup.lookup("type")->as_string_value()->value();
+      const eCustomDataType data_type = get_data_type_from_io_name(type_str);
+
+      std::cout << name << " " << domain_str << " " << type_str << "\n";
+      bke::GSpanAttributeWriter attribute = attributes.lookup_or_add_for_write_only_span(
+          name, domain, data_type);
+
+      auto io_data = attribute_io_lookup.lookup("data")->as_dictionary_value();
+
+      const std::string bdata_name = io_data->lookup_linear("name")->as_string_value()->value();
+      const int start = io_data->lookup_linear("start")->as_int_value()->value();
+
+      char bdata_path[FILE_MAX];
+      BLI_path_join(bdata_path, sizeof(bdata_path), bdata_dir.c_str(), bdata_name.c_str());
+      {
+        fstream bdata_file{bdata_path, std::ios::in | std::ios::binary};
+        bdata_file.seekg(start);
+        bdata_file.read(static_cast<char *>(attribute.span.data()),
+                        int64_t(num_points) * attribute.span.type().size());
+      }
+
+      attribute.finish();
+    }
+
+    geometry.replace_pointcloud(pointcloud);
+  }
+  return geometry;
 }
 
 using WriteBDataFn = FunctionRef<std::shared_ptr<io::serialize::Value>(Span<uint8_t>)>;
@@ -190,7 +249,7 @@ static bool bake_simulation_poll(bContext *C)
   return true;
 }
 
-static int bake_simulation_exec(bContext *C, wmOperator *op)
+static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
 {
   using namespace bke::sim;
 

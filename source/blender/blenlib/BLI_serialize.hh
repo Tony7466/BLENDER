@@ -280,6 +280,16 @@ class DictionaryValue
     return result;
   }
 
+  std::shared_ptr<Value> lookup_linear(const StringRef key) const
+  {
+    for (const auto &item : this->elements()) {
+      if (item.first == key) {
+        return item.second;
+      }
+    }
+    return {};
+  }
+
   void append(std::string key, std::shared_ptr<Value> value)
   {
     this->elements().append({std::move(key), std::move(value)});
