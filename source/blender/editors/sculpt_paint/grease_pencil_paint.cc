@@ -16,7 +16,7 @@
 
 #include "grease_pencil_intern.hh"
 
-namespace blender::ed::sculpt_paint::gpencil {
+namespace blender::ed::sculpt_paint::greasepencil {
 
 class PaintOperation : public GreasePencilStrokeOperation {
 
@@ -33,9 +33,11 @@ class PaintOperation : public GreasePencilStrokeOperation {
  */
 struct PaintOperationExecutor {
 
-  PaintOperationExecutor(const bContext &C) {}
+  PaintOperationExecutor(const bContext & /*C*/) {}
 
-  void execute(PaintOperation &self, const bContext &C, const StrokeExtension &stroke_extension)
+  void execute(PaintOperation & /*self*/,
+               const bContext &C,
+               const StrokeExtension &stroke_extension)
   {
     using namespace blender::bke;
     Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
@@ -45,7 +47,7 @@ struct PaintOperationExecutor {
     Object *ob_eval = DEG_get_evaluated_object(depsgraph, obact);
 
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob_eval->data);
-    const bke::gpencil::Layer *active_layer = grease_pencil.active_layer();
+    const bke::greasepencil::Layer *active_layer = grease_pencil.active_layer();
     BLI_assert(active_layer != nullptr);
     int index = active_layer->drawing_at(scene->r.cfra);
     BLI_assert(index != -1);
@@ -81,8 +83,8 @@ void PaintOperation::on_stroke_done(const bContext &C)
 
   GreasePencil &grease_pencil_orig = *static_cast<GreasePencil *>(obact->data);
   GreasePencil &grease_pencil_eval = *static_cast<GreasePencil *>(ob_eval->data);
-  const bke::gpencil::Layer *active_layer_orig = grease_pencil_orig.active_layer();
-  const bke::gpencil::Layer *active_layer_eval = grease_pencil_eval.active_layer();
+  const bke::greasepencil::Layer *active_layer_orig = grease_pencil_orig.active_layer();
+  const bke::greasepencil::Layer *active_layer_eval = grease_pencil_eval.active_layer();
   BLI_assert(active_layer_orig != nullptr && active_layer_eval != nullptr);
   int index_orig = active_layer_orig->drawing_at(scene->r.cfra);
   int index_eval = active_layer_eval->drawing_at(scene->r.cfra);
@@ -161,4 +163,4 @@ std::unique_ptr<GreasePencilStrokeOperation> new_paint_operation()
   return std::make_unique<PaintOperation>();
 }
 
-}  // namespace blender::ed::sculpt_paint::gpencil
+}  // namespace blender::ed::sculpt_paint::greasepencil

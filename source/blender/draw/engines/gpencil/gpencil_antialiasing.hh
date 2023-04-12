@@ -19,7 +19,7 @@
 
 #include "BLI_smaa_textures.h"
 
-namespace blender::gpencil {
+namespace blender::greasepencil {
 
 using namespace draw;
 
@@ -67,7 +67,7 @@ class AntiAliasing {
     }
 
     luma_weight_ = scene->grease_pencil_settings.smaa_threshold;
-    anti_aliasing_enabled_ = true;//GPENCIL_SIMPLIFY_AA(scene);
+    anti_aliasing_enabled_ = true;  // GPENCIL_SIMPLIFY_AA(scene);
   }
 
   void begin_sync(TextureFromPool &color_tx, TextureFromPool &reveal_tx)
@@ -151,4 +151,4 @@ class AntiAliasing {
   }
 };
 
-}  // namespace blender::gpencil
+}  // namespace blender::greasepencil

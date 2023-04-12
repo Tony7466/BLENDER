@@ -1,4 +1,5 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2023 Blender Foundation. */
 
 /** \file
  * \ingroup bke
@@ -168,7 +169,7 @@ static void grease_pencil_blend_write(BlendWriter *writer, ID *id, const void *i
 
 static void grease_pencil_blend_read_data(BlendDataReader *reader, ID *id)
 {
-  using namespace blender::bke::gpencil;
+  using namespace blender::bke::greasepencil;
   GreasePencil *grease_pencil = (GreasePencil *)id;
 
   /* Read animation data. */
@@ -250,7 +251,7 @@ IDTypeInfo IDType_ID_GP = {
     /*lib_override_apply_post*/ nullptr,
 };
 
-namespace blender::bke::gpencil {
+namespace blender::bke::greasepencil {
 
 TreeNode::PreOrderRange TreeNode::children_in_pre_order()
 {
@@ -277,7 +278,7 @@ const Layer &TreeNode::as_layer() const
   return *static_cast<const Layer *>(this);
 }
 
-}  // namespace blender::bke::gpencil
+}  // namespace blender::bke::greasepencil
 
 void *BKE_grease_pencil_add(Main *bmain, const char *name)
 {
@@ -517,7 +518,7 @@ void GreasePencil::add_empty_drawings(int n)
 
 void GreasePencil::remove_drawing(int index_to_remove)
 {
-  using namespace blender::bke::gpencil;
+  using namespace blender::bke::greasepencil;
   /* In order to not change the indices of the drawings, we do the following to the drawing to be
    * removed:
    *  - If the drawing (A) is not the last one:
@@ -585,7 +586,7 @@ void GreasePencil::remove_drawing(int index_to_remove)
 void GreasePencil::foreach_visible_drawing(
     int frame, blender::FunctionRef<void(GreasePencilDrawing &)> function)
 {
-  using namespace blender::bke::gpencil;
+  using namespace blender::bke::greasepencil;
 
   blender::Span<GreasePencilDrawingOrReference *> drawings = this->drawings();
   for (TreeNode &node : this->root_group().children_in_pre_order()) {
@@ -608,12 +609,12 @@ void GreasePencil::foreach_visible_drawing(
   }
 }
 
-const blender::bke::gpencil::Layer *GreasePencil::active_layer() const
+const blender::bke::greasepencil::Layer *GreasePencil::active_layer() const
 {
   return this->runtime->active_layer();
 }
 
-blender::bke::gpencil::LayerGroup &GreasePencil::root_group()
+blender::bke::greasepencil::LayerGroup &GreasePencil::root_group()
 {
   BLI_assert(this->runtime != nullptr);
   return this->runtime->root_group();
@@ -697,7 +698,7 @@ void GreasePencil::free_drawing_array()
   this->drawing_array_size = 0;
 }
 
-static void save_tree_node_to_storage(blender::bke::gpencil::TreeNode &node,
+static void save_tree_node_to_storage(blender::bke::greasepencil::TreeNode &node,
                                       GreasePencilLayerTreeNode *dst)
 {
   dst->type = node.type;
@@ -708,7 +709,7 @@ static void save_tree_node_to_storage(blender::bke::gpencil::TreeNode &node,
   }
 }
 
-static void save_layer_to_storage(blender::bke::gpencil::Layer &node,
+static void save_layer_to_storage(blender::bke::greasepencil::Layer &node,
                                   GreasePencilLayerTreeNode **dst)
 {
   using namespace blender;
@@ -735,7 +736,7 @@ static void save_layer_to_storage(blender::bke::gpencil::Layer &node,
   *dst = reinterpret_cast<GreasePencilLayerTreeNode *>(new_leaf);
 }
 
-static void save_layer_group_to_storage(blender::bke::gpencil::LayerGroup &node,
+static void save_layer_group_to_storage(blender::bke::greasepencil::LayerGroup &node,
                                         GreasePencilLayerTreeNode **dst)
 {
   GreasePencilLayerTreeGroup *new_group = MEM_cnew<GreasePencilLayerTreeGroup>(__func__);
@@ -751,7 +752,7 @@ static void save_layer_group_to_storage(blender::bke::gpencil::LayerGroup &node,
 
 void GreasePencil::save_layer_tree_to_storage()
 {
-  using namespace blender::bke::gpencil;
+  using namespace blender::bke::greasepencil;
   /* We always store the root group, so we have to add one here. */
   int num_tree_nodes = this->root_group().total_num_children() + 1;
   this->layer_tree_storage.nodes_num = num_tree_nodes;
@@ -781,11 +782,11 @@ void GreasePencil::save_layer_tree_to_storage()
   }
 }
 
-static void read_layer_node_recursive(blender::bke::gpencil::LayerGroup &current_group,
+static void read_layer_node_recursive(blender::bke::greasepencil::LayerGroup &current_group,
                                       GreasePencilLayerTreeNode **nodes,
                                       int index)
 {
-  using namespace blender::bke::gpencil;
+  using namespace blender::bke::greasepencil;
   GreasePencilLayerTreeNode *node = nodes[index];
   switch (node->type) {
     case GREASE_PENCIL_LAYER_TREE_LEAF: {
@@ -812,7 +813,7 @@ static void read_layer_node_recursive(blender::bke::gpencil::LayerGroup &current
 
 void GreasePencil::load_layer_tree_from_storage()
 {
-  using namespace blender::bke::gpencil;
+  using namespace blender::bke::greasepencil;
   if (this->layer_tree_storage.nodes_num == 0 || !this->layer_tree_storage.nodes) {
     return;
   }

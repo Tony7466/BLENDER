@@ -31,14 +31,10 @@ struct GreasePencilBatchCache {
   /** Instancing Data */
   GPUVertBuf *vbo;
   GPUVertBuf *vbo_col;
-  /** Indices in material order, then stroke order with fill first.
-   * Strokes can be individually rendered using `gps->runtime.stroke_start` and
-   * `gps->runtime.fill_start`. */
+  /** Indices in material order, then stroke order with fill first. */
   GPUIndexBuf *ibo;
   /** Batches */
   GPUBatch *geom_batch;
-  /** Stroke lines only */
-  GPUBatch *lines_batch;
 
   /** Cache is dirty. */
   bool is_dirty;
@@ -130,7 +126,6 @@ static void grease_pencil_batch_cache_clear(GreasePencil &grease_pencil)
     return;
   }
 
-  GPU_BATCH_DISCARD_SAFE(cache->lines_batch);
   GPU_BATCH_DISCARD_SAFE(cache->geom_batch);
   GPU_VERTBUF_DISCARD_SAFE(cache->vbo);
   GPU_VERTBUF_DISCARD_SAFE(cache->vbo_col);

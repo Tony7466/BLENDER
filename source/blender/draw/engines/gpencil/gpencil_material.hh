@@ -15,7 +15,7 @@
 #include "draw_manager.hh"
 #include "draw_pass.hh"
 
-namespace blender::gpencil {
+namespace blender::greasepencil {
 
 using namespace draw;
 
@@ -317,4 +317,4 @@ class MaterialModule {
   }
 };
 
-}  // namespace blender::gpencil
+}  // namespace blender::greasepencil

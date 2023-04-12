@@ -1580,7 +1580,6 @@ GVArray CurvesGeometry::adapt_domain(const GVArray &varray,
 /** \name File reading/writing.
  * \{ */
 
-
 void CurvesGeometry::blend_read(BlendDataReader &reader)
 {
   CustomData_blend_read(&reader, &this->point_data, this->point_num);

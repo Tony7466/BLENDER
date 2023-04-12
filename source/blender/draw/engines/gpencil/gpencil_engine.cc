@@ -31,7 +31,7 @@
 #include "gpencil_shader_shared.h"
 #include "gpencil_vfx.hh"
 
-namespace blender::gpencil {
+namespace blender::greasepencil {
 
 using namespace draw;
 
@@ -192,7 +192,7 @@ class Instance {
   }
 };
 
-}  // namespace blender::gpencil
+}  // namespace blender::greasepencil
 
 /* -------------------------------------------------------------------- */
 /** \name Interface with legacy C DRW manager
@@ -206,7 +206,7 @@ struct GPENCIL_NEXT_Data {
   DRWViewportEmptyList *txl;
   DRWViewportEmptyList *psl;
   DRWViewportEmptyList *stl;
-  gpencil::Instance *instance;
+  greasepencil::Instance *instance;
 
   char info[GPU_INFO_SIZE];
 };
@@ -220,7 +220,7 @@ static void gpencil_engine_init(void *vedata)
 
   GPENCIL_NEXT_Data *ved = reinterpret_cast<GPENCIL_NEXT_Data *>(vedata);
   if (ved->instance == nullptr) {
-    ved->instance = new gpencil::Instance();
+    ved->instance = new greasepencil::Instance();
   }
 
   const DRWContextState *ctx_state = DRW_context_state_get();
@@ -283,12 +283,12 @@ static void gpencil_instance_free(void *instance)
   if (!GPU_shader_storage_buffer_objects_support()) {
     return;
   }
-  delete reinterpret_cast<gpencil::Instance *>(instance);
+  delete reinterpret_cast<greasepencil::Instance *>(instance);
 }
 
 static void gpencil_engine_free()
 {
-  blender::gpencil::ShaderModule::module_free();
+  blender::greasepencil::ShaderModule::module_free();
 }
 
 static void gpencil_render_to_image(void *vedata,

@@ -650,7 +650,7 @@ ListBase *which_libbase(Main *bmain, short type)
     case ID_SIM:
       return &(bmain->simulations);
     case ID_GP:
-      return &(bmain->greasepencils);
+      return &(bmain->grease_pencils);
   }
   return NULL;
 }
@@ -716,7 +716,7 @@ int set_listbasepointers(Main *bmain, ListBase *lb[/*INDEX_ID_MAX*/])
   lb[INDEX_ID_WM] = &(bmain->wm);
   lb[INDEX_ID_MSK] = &(bmain->masks);
   lb[INDEX_ID_SIM] = &(bmain->simulations);
-  lb[INDEX_ID_GP] = &(bmain->greasepencils);
+  lb[INDEX_ID_GP] = &(bmain->grease_pencils);
 
   lb[INDEX_ID_NULL] = NULL;
 

@@ -22,10 +22,10 @@ class GreasePencilStrokeOperation {
   virtual void on_stroke_done(const bContext &C) = 0;
 };
 
-namespace gpencil {
+namespace greasepencil {
 
 std::unique_ptr<GreasePencilStrokeOperation> new_paint_operation();
 
-}  // namespace gpencil
+}  // namespace greasepencil
 
 }  // namespace blender::ed::sculpt_paint

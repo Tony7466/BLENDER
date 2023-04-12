@@ -31,11 +31,11 @@ namespace blender::ed::sculpt_paint {
  * \{ */
 
 static bool start_brush_operation(bContext &C,
-                                  wmOperator &op,
+                                  wmOperator & /*op*/,
                                   PaintStroke *paint_stroke,
-                                  const StrokeExtension &stroke_start)
+                                  const StrokeExtension & /*stroke_start*/)
 {
-  const BrushStrokeMode mode = static_cast<BrushStrokeMode>(RNA_enum_get(op.ptr, "mode"));
+  // const BrushStrokeMode mode = static_cast<BrushStrokeMode>(RNA_enum_get(op.ptr, "mode"));
 
   const Scene &scene = *CTX_data_scene(&C);
   const GpPaint &gp_paint = *scene.toolsettings->gp_paint;
@@ -44,7 +44,7 @@ static bool start_brush_operation(bContext &C,
   switch (brush.gpencil_tool) {
     case GPAINT_TOOL_DRAW:
       /* FIXME: Somehow store the unique_ptr in the PaintStroke. */
-      operation = gpencil::new_paint_operation().release();
+      operation = greasepencil::new_paint_operation().release();
       break;
     default:
       BLI_assert_unreachable();
@@ -85,7 +85,7 @@ static bool stroke_test_start(bContext *C, struct wmOperator *op, const float mo
 }
 
 static void stroke_update_step(bContext *C,
-                               wmOperator *op,
+                               wmOperator * /*op*/,
                                PaintStroke *stroke,
                                PointerRNA *stroke_element)
 {
@@ -187,12 +187,12 @@ static void grease_pencil_draw_mode_enter(bContext *C)
 
   Object *ob = CTX_data_active_object(C);
   BKE_paint_ensure(scene->toolsettings, (Paint **)&scene->toolsettings->gp_paint);
-  GpPaint *grease_pencil_paint = scene->toolsettings->gp_paint;
+  // GpPaint *grease_pencil_paint = scene->toolsettings->gp_paint;
 
   ob->mode = OB_MODE_PAINT_GPENCIL;
 
   /* Setup cursor color. BKE_paint_init() could be used, but creates an additional brush. */
-  Paint *paint = BKE_paint_get_active_from_paintmode(scene, PAINT_MODE_GPENCIL);
+  // Paint *paint = BKE_paint_get_active_from_paintmode(scene, PAINT_MODE_GPENCIL);
   // copy_v3_v3_uchar(paint->paint_cursor_col, PAINT_CURSOR_GREASE_PENCIL);
   // paint->paint_cursor_col[3] = 128;
 

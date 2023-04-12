@@ -1,4 +1,5 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later 
+ * Copyright 2023 Blender Foundation. */
 
 /** \file
  * \ingroup bke
@@ -14,9 +15,9 @@
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_grease_pencil_types.h"
 
-namespace blender::bke::gpencil::convert {
+namespace blender::bke::greasepencil::convert {
 
-void legacy_gpencil_frame_to_curves_geometry(GreasePencilDrawing &drawing, bGPDframe &gpf)
+void legacy_gpencil_frame_to_grease_pencil_drawing(GreasePencilDrawing &drawing, bGPDframe &gpf)
 {
   /* Get the number of points, number of strokes and the offsets for each stroke. */
   Vector<int> offsets;
@@ -94,7 +95,7 @@ void legacy_gpencil_frame_to_curves_geometry(GreasePencilDrawing &drawing, bGPDf
 
 void legacy_gpencil_to_grease_pencil(GreasePencil &grease_pencil, bGPdata &gpd)
 {
-  using namespace blender::bke::gpencil;
+  using namespace blender::bke::greasepencil;
 
   int num_layers = 0;
   int num_drawings = 0;
@@ -120,7 +121,7 @@ void legacy_gpencil_to_grease_pencil(GreasePencil &grease_pencil, bGPdata &gpd)
       /* TODO: copy flag. */
 
       /* Convert the frame to a drawing. */
-      legacy_gpencil_frame_to_curves_geometry(drawing, *gpf);
+      legacy_gpencil_frame_to_grease_pencil_drawing(drawing, *gpf);
 
       GreasePencilFrame frame;
       frame.drawing_index = i;
@@ -131,4 +132,4 @@ void legacy_gpencil_to_grease_pencil(GreasePencil &grease_pencil, bGPdata &gpd)
   }
 }
 
-}  // namespace blender::bke::gpencil::convert
+}  // namespace blender::bke::greasepencil::convert

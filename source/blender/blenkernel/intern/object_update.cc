@@ -320,7 +320,6 @@ void BKE_object_batch_cache_dirty_tag(Object *ob)
       BKE_volume_batch_cache_dirty_tag((struct Volume *)ob->data, BKE_VOLUME_BATCH_DIRTY_ALL);
       break;
     case OB_GREASE_PENCIL:
-      /* TODO: tag batches. */
       BKE_grease_pencil_batch_cache_dirty_tag((struct GreasePencil *)ob->data,
                                               BKE_GREASEPENCIL_BATCH_DIRTY_ALL);
       break;

@@ -17,7 +17,7 @@
 #include "gpencil_shader.hh"
 #include "gpencil_shader_shared.h"
 
-namespace blender::gpencil {
+namespace blender::greasepencil {
 
 using namespace draw;
 
@@ -331,4 +331,4 @@ class VfxModule {
   }
 };
 
-}  // namespace blender::gpencil
+}  // namespace blender::greasepencil

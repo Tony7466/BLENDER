@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. */
+ * Copyright 2023 Blender Foundation. */
 
 #include "testing/testing.h"
 
@@ -9,9 +9,9 @@
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 
-using namespace blender::bke::gpencil;
+using namespace blender::bke::greasepencil;
 
-namespace blender::bke::gpencil::tests {
+namespace blender::bke::greasepencil::tests {
 
 /* --------------------------------------------------------------------------------------------- */
 /* Grease Pencil ID Tests. */
@@ -30,7 +30,7 @@ struct GreasePencilIDTestContext {
   }
 };
 
-TEST(gpencil, create_grease_pencil_id)
+TEST(greasepencil, create_grease_pencil_id)
 {
   GreasePencilIDTestContext ctx;
 
@@ -39,7 +39,7 @@ TEST(gpencil, create_grease_pencil_id)
   EXPECT_EQ(grease_pencil.root_group().total_num_children(), 0);
 }
 
-TEST(gpencil, set_active_layer)
+TEST(greasepencil, set_active_layer)
 {
   GreasePencilIDTestContext ctx;
 
@@ -75,7 +75,7 @@ TEST(gpencil, set_active_layer)
 /* --------------------------------------------------------------------------------------------- */
 /* Drawing Array Tests. */
 
-TEST(gpencil, add_empty_drawings)
+TEST(greasepencil, add_empty_drawings)
 {
   GreasePencilIDTestContext ctx;
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(BKE_id_new(ctx.bmain, ID_GP, "GP"));
@@ -83,7 +83,7 @@ TEST(gpencil, add_empty_drawings)
   EXPECT_EQ(grease_pencil.drawings().size(), 3);
 }
 
-TEST(gpencil, remove_drawing)
+TEST(greasepencil, remove_drawing)
 {
   GreasePencilIDTestContext ctx;
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(BKE_id_new(ctx.bmain, ID_GP, "GP"));
@@ -126,12 +126,12 @@ TEST(gpencil, remove_drawing)
 /* --------------------------------------------------------------------------------------------- */
 /* Layer Tree Tests. */
 
-TEST(gpencil, layer_tree_empty)
+TEST(greasepencil, layer_tree_empty)
 {
   LayerGroup root{};
 }
 
-TEST(gpencil, layer_tree_build_simple)
+TEST(greasepencil, layer_tree_build_simple)
 {
   LayerGroup root{};
 
@@ -162,7 +162,7 @@ struct GreasePencilLayerTreeExample {
   }
 };
 
-TEST(gpencil, layer_tree_pre_order_iteration_callback)
+TEST(greasepencil, layer_tree_pre_order_iteration_callback)
 {
   GreasePencilLayerTreeExample ex;
   int i = 0;
@@ -170,7 +170,7 @@ TEST(gpencil, layer_tree_pre_order_iteration_callback)
       [&](TreeNode &child) { EXPECT_EQ(child.name, ex.names[i++]); });
 }
 
-TEST(gpencil, layer_tree_pre_order_iteration_loop)
+TEST(greasepencil, layer_tree_pre_order_iteration_loop)
 {
   GreasePencilLayerTreeExample ex;
   int i = 0;
@@ -179,13 +179,13 @@ TEST(gpencil, layer_tree_pre_order_iteration_loop)
   }
 }
 
-TEST(gpencil, layer_tree_total_size)
+TEST(greasepencil, layer_tree_total_size)
 {
   GreasePencilLayerTreeExample ex;
   EXPECT_EQ(ex.root.total_num_children(), 7);
 }
 
-TEST(gpencil, layer_tree_node_types)
+TEST(greasepencil, layer_tree_node_types)
 {
   GreasePencilLayerTreeExample ex;
   int i = 0;
@@ -196,4 +196,4 @@ TEST(gpencil, layer_tree_node_types)
   }
 }
 
-}  // namespace blender::bke::gpencil::tests
+}  // namespace blender::bke::greasepencil::tests

@@ -333,7 +333,7 @@ void RNA_def_main(BlenderRNA *brna)
        "GreasePencil",
        "rna_Main_gpencils_begin",
        "Grease Pencil (legacy)",
-       "Grease Pencil data-blocks",
+       "Grease Pencil (legacy) data-blocks",
        RNA_def_main_gpencil},
       {"movieclips",
        "MovieClip",

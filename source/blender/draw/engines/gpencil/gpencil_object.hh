@@ -19,7 +19,7 @@
 #include "gpencil_material.hh"
 #include "gpencil_shader.hh"
 
-namespace blender::gpencil {
+namespace blender::greasepencil {
 
 using namespace draw;
 
@@ -104,7 +104,7 @@ class ObjectModule {
                           Framebuffer &main_fb,
                           PassSortable &main_ps)
   {
-    using namespace blender::bke::gpencil;
+    using namespace blender::bke::greasepencil;
 
     Object *object = object_ref.object;
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
@@ -270,4 +270,4 @@ class ObjectModule {
   // }
 };
 
-}  // namespace blender::gpencil
+}  // namespace blender::greasepencil

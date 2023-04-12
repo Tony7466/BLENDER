@@ -1,4 +1,5 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later 
+ * Copyright 2023 Blender Foundation. */
 
 /** \file
  * \ingroup DNA
@@ -18,10 +19,10 @@ namespace blender::bke {
 class GreasePencilRuntime;
 class GreasePencilDrawingRuntime;
 struct StrokePoint;
-namespace gpencil {
+namespace greasepencil {
 class Layer;
 class LayerGroup;
-}  // namespace gpencil
+}  // namespace greasepencil
 }  // namespace blender::bke
 using GreasePencilRuntimeHandle = blender::bke::GreasePencilRuntime;
 using GreasePencilDrawingRuntimeHandle = blender::bke::GreasePencilDrawingRuntime;
@@ -114,7 +115,7 @@ typedef struct GreasePencilFrame {
 } GreasePencilFrame;
 
 /**
- * Storage for the Map in `blender::bke::gpencil::Layer`.
+ * Storage for the Map in `blender::bke::greasepencil::Layer`.
  * See the description there for more detail.
  */
 typedef struct GreasePencilLayerFramesMapStorage {
@@ -237,8 +238,8 @@ typedef struct GreasePencil {
    */
   GreasePencilRuntimeHandle *runtime;
 #ifdef __cplusplus
-  const blender::bke::gpencil::Layer *active_layer() const;
-  blender::bke::gpencil::LayerGroup &root_group();
+  const blender::bke::greasepencil::Layer *active_layer() const;
+  blender::bke::greasepencil::LayerGroup &root_group();
 #endif
 } GreasePencil;
 

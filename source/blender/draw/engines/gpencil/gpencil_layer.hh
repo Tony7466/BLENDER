@@ -15,7 +15,7 @@
 #include "draw_manager.hh"
 #include "draw_pass.hh"
 
-namespace blender::gpencil {
+namespace blender::greasepencil {
 
 using namespace draw;
 
@@ -30,7 +30,7 @@ class LayerModule {
     layers_buf_.clear();
   }
 
-  void sync(const Object *object, const bke::gpencil::Layer &layer, bool &do_layer_blending)
+  void sync(const Object *object, const bke::greasepencil::Layer &layer, bool &do_layer_blending)
   {
     UNUSED_VARS(object, layer);
     /* TODO(fclem): All of this is placeholder. */
@@ -62,4 +62,4 @@ class LayerModule {
   }
 };
 
-}  // namespace blender::gpencil
+}  // namespace blender::greasepencil

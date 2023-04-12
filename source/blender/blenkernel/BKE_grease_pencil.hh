@@ -1,4 +1,5 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2023 Blender Foundation. */
 
 #pragma once
 
@@ -20,7 +21,7 @@
 
 namespace blender::bke {
 
-namespace gpencil {
+namespace greasepencil {
 
 class LayerGroup;
 class Layer;
@@ -513,15 +514,15 @@ class LayerGroup : public TreeNode {
 
 namespace convert {
 
-void legacy_gpencil_frame_to_curves_geometry(GreasePencilDrawing &drawing, bGPDframe &gpf);
+void legacy_gpencil_frame_to_grease_pencil_drawing(GreasePencilDrawing &drawing, bGPDframe &gpf);
 
 void legacy_gpencil_to_grease_pencil(GreasePencil &grease_pencil, bGPdata &gpd);
 
 }  // namespace convert
 
-}  // namespace gpencil
+}  // namespace greasepencil
 
-using namespace blender::bke::gpencil;
+using namespace blender::bke::greasepencil;
 
 struct StrokePoint {
   float3 position;

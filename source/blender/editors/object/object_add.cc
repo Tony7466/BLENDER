@@ -3087,7 +3087,7 @@ static int object_convert_exec(bContext *C, wmOperator *op)
       newob->data = new_grease_pencil;
       newob->type = OB_GREASE_PENCIL;
 
-      bke::gpencil::convert::legacy_gpencil_to_grease_pencil(*new_grease_pencil, *gpd);
+      bke::greasepencil::convert::legacy_gpencil_to_grease_pencil(*new_grease_pencil, *gpd);
 
       BKE_id_materials_copy(bmain, &gpd->id, &new_grease_pencil->id);
 
