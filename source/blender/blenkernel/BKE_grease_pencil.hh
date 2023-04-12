@@ -297,6 +297,7 @@ class Layer : public TreeNode, ::GreasePencilLayer {
   Span<int> sorted_keys()
   {
     sorted_keys_cache_.ensure([&](Vector<int> &r_data) {
+      r_data.clear_and_shrink();
       r_data.reserve(frames().size());
       for (int64_t key : frames().keys()) {
         r_data.append(key);
