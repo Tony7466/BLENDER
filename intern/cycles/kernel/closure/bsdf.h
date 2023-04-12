@@ -502,11 +502,13 @@ ccl_device_inline int bsdf_label(const KernelGlobals kg,
       label = LABEL_TRANSMIT | LABEL_GLOSSY;
       break;
     case CLOSURE_BSDF_HAIR_PRINCIPLED_ID:
-    case CLOSURE_BSDF_HAIR_MICROFACET_ID:
       if (bsdf_is_transmission(sc, wo))
         label = LABEL_TRANSMIT | LABEL_GLOSSY;
       else
         label = LABEL_REFLECT | LABEL_GLOSSY;
+      break;
+    case CLOSURE_BSDF_HAIR_MICROFACET_ID:
+      label = LABEL_REFLECT | LABEL_GLOSSY;
       break;
     case CLOSURE_BSDF_PRINCIPLED_DIFFUSE_ID:
       label = LABEL_REFLECT | LABEL_DIFFUSE;

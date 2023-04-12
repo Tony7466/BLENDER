@@ -89,7 +89,7 @@ ccl_device int bsdf_microfacet_hair_setup(ccl_private ShaderData *sd,
 
   kernel_assert(!is_zero(bsdf->N) && isfinite_safe(bsdf->N));
 
-  return SD_BSDF | SD_BSDF_HAS_EVAL | SD_BSDF_NEEDS_LCG | SD_BSDF_HAS_TRANSMISSION;
+  return SD_BSDF | SD_BSDF_HAS_EVAL | SD_BSDF_NEEDS_LCG;
 }
 
 #endif /* __HAIR__ */
@@ -756,8 +756,6 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
     if (microfacet_visible(wi, wr, wmi_, wh1)) {
       visibility = bsdf_G<m_type>(roughness2, dot(wmi, wr));
     }
-
-    label |= LABEL_REFLECT;
   }
   else if (sample_lobe < (r + tt)) {
     local_O = wtt;
@@ -767,8 +765,6 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
       visibility = bsdf_G<m_type>(roughness2, dot(wmi, -wt)) *
                    bsdf_G<m_type>(roughness2, dot(wmt, -wtt));
     }
-
-    label |= LABEL_TRANSMIT;
   }
   else { /* if (sample_lobe >= (r + tt)) */
     local_O = wtrt;
@@ -779,9 +775,8 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
                    bsdf_G<m_type>(roughness2, dot(wmt, -wtr)) *
                    bsdf_G<m_type>(roughness2, dot(wmtr, -wtrt));
     }
-
-    label |= LABEL_TRANSMIT;
   }
+  label |= LABEL_REFLECT;
 
   *eval *= visibility;
   *wo = local_O.x * X + local_O.y * Y + local_O.z * Z;
