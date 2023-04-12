@@ -87,12 +87,7 @@ template<typename T, eValueType V> class PrimitiveValue;
 using IntValue = PrimitiveValue<int64_t, eValueType::Int>;
 using DoubleValue = PrimitiveValue<double, eValueType::Double>;
 using BooleanValue = PrimitiveValue<bool, eValueType::Boolean>;
-
-template<typename Container, eValueType V, typename ContainerItem = typename Container::value_type>
-class ContainerValue;
-/* ArrayValue stores its items as shared pointer as it shares data with a lookup table that can
- * be created by calling `create_lookup`. */
-using ArrayValue = ContainerValue<Vector<std::shared_ptr<Value>>, eValueType::Array>;
+class ArrayValue;
 
 /**
  * Class containing a (de)serializable value.
@@ -214,7 +209,7 @@ template<
     eValueType V,
 
     /** Type of the data inside the container. */
-    typename ContainerItem>
+    typename ContainerItem = typename Container::value_type>
 class ContainerValue : public Value {
  public:
   using Items = Container;
@@ -234,6 +229,16 @@ class ContainerValue : public Value {
   Container &elements()
   {
     return inner_value_;
+  }
+};
+
+/* ArrayValue stores its items as shared pointer as it shares data with a lookup table that can
+ * be created by calling `create_lookup`. */
+class ArrayValue : public ContainerValue<Vector<std::shared_ptr<Value>>, eValueType::Array> {
+ public:
+  void append(std::shared_ptr<Value> value)
+  {
+    this->elements().append(std::move(value));
   }
 };
 
@@ -267,6 +272,11 @@ class DictionaryValue
       result.add_as(item.first, item.second);
     }
     return result;
+  }
+
+  void append(std::string key, std::shared_ptr<Value> value)
+  {
+    this->elements().append({std::move(key), std::move(value)});
   }
 };
 

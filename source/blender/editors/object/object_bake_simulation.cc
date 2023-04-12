@@ -79,17 +79,17 @@ static std::shared_ptr<io::serialize::ArrayValue> serialize_material_slots(
   auto io_materials = std::make_shared<io::serialize::ArrayValue>();
   for (const Material *material : material_slots) {
     if (material == nullptr) {
-      io_materials->elements().append(std::make_shared<io::serialize::NullValue>());
+      io_materials->append(std::make_shared<io::serialize::NullValue>());
     }
     else {
       auto io_material = std::make_shared<io::serialize::DictionaryValue>();
-      io_materials->elements().append(io_material);
-      io_material->elements().append(
-          {"name", std::make_shared<io::serialize::StringValue>(material->id.name + 2)});
+      io_materials->append(io_material);
+      io_material->append("name",
+                          std::make_shared<io::serialize::StringValue>(material->id.name + 2));
       if (material->id.lib != nullptr) {
-        io_material->elements().append(
-            {"lib_name",
-             std::make_shared<io::serialize::StringValue>(material->id.lib->id.name + 2)});
+        io_material->append(
+            "lib_name",
+            std::make_shared<io::serialize::StringValue>(material->id.lib->id.name + 2));
       }
     }
   }
@@ -103,18 +103,16 @@ static std::shared_ptr<io::serialize::ArrayValue> serialize_attributes(
   attributes.for_all(
       [&](const bke::AttributeIDRef &attribute_id, const bke::AttributeMetaData &meta_data) {
         auto io_attribute = std::make_shared<io::serialize::DictionaryValue>();
-        io_attributes->elements().append(io_attribute);
+        io_attributes->append(io_attribute);
 
-        io_attribute->elements().append(
-            {"name", std::make_shared<io::serialize::StringValue>(attribute_id.name())});
+        io_attribute->append("name",
+                             std::make_shared<io::serialize::StringValue>(attribute_id.name()));
 
         const StringRefNull domain_name = get_domain_io_name(meta_data.domain);
-        io_attribute->elements().append(
-            {"domain", std::make_shared<io::serialize::StringValue>(domain_name)});
+        io_attribute->append("domain", std::make_shared<io::serialize::StringValue>(domain_name));
 
         const StringRefNull type_name = get_data_type_io_name(meta_data.data_type);
-        io_attribute->elements().append(
-            {"type", std::make_shared<io::serialize::StringValue>(type_name)});
+        io_attribute->append("type", std::make_shared<io::serialize::StringValue>(type_name));
 
         const bke::GAttributeReader attribute = attributes.lookup(attribute_id);
         const GVArraySpan attribute_span(attribute.varray);
@@ -123,7 +121,7 @@ static std::shared_ptr<io::serialize::ArrayValue> serialize_attributes(
         /* TODO: Handle endianess. */
         auto io_attribute_data = write_bdata(
             Span<uint8_t>(reinterpret_cast<const uint8_t *>(attribute_span.data()), binary_size));
-        io_attribute->elements().append({"data", io_attribute_data});
+        io_attribute->append("data", io_attribute_data);
 
         return true;
       });
@@ -137,60 +135,56 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
   if (geometry.has_mesh()) {
     const Mesh &mesh = *geometry.get_mesh_for_read();
     auto io_mesh = std::make_shared<io::serialize::DictionaryValue>();
-    io_geometry->elements().append({"mesh", io_mesh});
+    io_geometry->append("mesh", io_mesh);
 
-    io_mesh->elements().append(
-        {"num_vertices", std::make_shared<io::serialize::IntValue>(mesh.totvert)});
-    io_mesh->elements().append(
-        {"num_edges", std::make_shared<io::serialize::IntValue>(mesh.totedge)});
-    io_mesh->elements().append(
-        {"num_polygons", std::make_shared<io::serialize::IntValue>(mesh.totpoly)});
-    io_mesh->elements().append(
-        {"num_corners", std::make_shared<io::serialize::IntValue>(mesh.totloop)});
+    io_mesh->append("num_vertices", std::make_shared<io::serialize::IntValue>(mesh.totvert));
+    io_mesh->append("num_edges", std::make_shared<io::serialize::IntValue>(mesh.totedge));
+    io_mesh->append("num_polygons", std::make_shared<io::serialize::IntValue>(mesh.totpoly));
+    io_mesh->append("num_corners", std::make_shared<io::serialize::IntValue>(mesh.totloop));
 
     if (mesh.totpoly > 0) {
       /* TODO: Handle endianess. */
       auto io_polygon_indices = write_bdata(
           Span<uint8_t>({reinterpret_cast<const uint8_t *>(mesh.poly_offset_indices),
-                         sizeof(*mesh.poly_offset_indices) * mesh.totpoly + 1}));
-      io_mesh->elements().append({"poly_offset_indices", io_polygon_indices});
+                         int64_t(sizeof(*mesh.poly_offset_indices)) * mesh.totpoly + 1}));
+      io_mesh->append("poly_offset_indices", io_polygon_indices);
     }
 
     auto io_materials = serialize_material_slots({mesh.mat, mesh.totcol});
-    io_mesh->elements().append({"materials", io_materials});
+    io_mesh->append("materials", io_materials);
 
     auto io_attributes = serialize_attributes(mesh.attributes(), write_bdata);
-    io_mesh->elements().append({"attributes", io_attributes});
+    io_mesh->append("attributes", io_attributes);
   }
   if (geometry.has_pointcloud()) {
     const PointCloud &pointcloud = *geometry.get_pointcloud_for_read();
     auto io_pointcloud = std::make_shared<io::serialize::DictionaryValue>();
-    io_geometry->elements().append({"pointcloud", io_pointcloud});
+    io_geometry->append("pointcloud", io_pointcloud);
 
-    io_pointcloud->elements().append(
-        {"num_points", std::make_shared<io::serialize::IntValue>(pointcloud.totpoint)});
+    io_pointcloud->append("num_points",
+                          std::make_shared<io::serialize::IntValue>(pointcloud.totpoint));
 
     auto io_materials = serialize_material_slots({pointcloud.mat, pointcloud.totcol});
-    io_pointcloud->elements().append({"materials", io_materials});
+    io_pointcloud->append("materials", io_materials);
 
     auto io_attributes = serialize_attributes(pointcloud.attributes(), write_bdata);
-    io_pointcloud->elements().append({"attributes", io_attributes});
+    io_pointcloud->append("attributes", io_attributes);
   }
   if (geometry.has_curves()) {
     const Curves &curves = *geometry.get_curves_for_read();
     auto io_curves = std::make_shared<io::serialize::DictionaryValue>();
-    io_geometry->elements().append({"curves", io_curves});
+    io_geometry->append("curves", io_curves);
 
-    io_curves->elements().append(
-        {"num_points", std::make_shared<io::serialize::IntValue>(curves.geometry.point_num)});
-    io_curves->elements().append(
-        {"num_curves", std::make_shared<io::serialize::IntValue>(curves.geometry.curve_num)});
+    io_curves->append("num_points",
+                      std::make_shared<io::serialize::IntValue>(curves.geometry.point_num));
+    io_curves->append("num_curves",
+                      std::make_shared<io::serialize::IntValue>(curves.geometry.curve_num));
 
     auto io_materials = serialize_material_slots({curves.mat, curves.totcol});
-    io_curves->elements().append({"materials", io_materials});
+    io_curves->append("materials", io_materials);
 
     auto io_attributes = serialize_attributes(curves.geometry.wrap().attributes(), write_bdata);
-    io_curves->elements().append({"attributes", io_attributes});
+    io_curves->append("attributes", io_attributes);
   }
   return io_geometry;
 }
@@ -317,46 +311,46 @@ static int bake_simulation_exec(bContext *C, wmOperator *op)
           const SimulationZoneState &zone_state = *item.value;
 
           auto io_zone = std::make_shared<io::serialize::DictionaryValue>();
-          io_zones->elements().append(io_zone);
+          io_zones->append(io_zone);
 
           auto io_zone_id = std::make_shared<io::serialize::ArrayValue>();
-          io_zone->elements().append({"zone_id", io_zone_id});
+          io_zone->append("zone_id", io_zone_id);
 
           for (const int node_id : zone_id.node_ids) {
-            io_zone_id->elements().append(std::make_shared<io::serialize::IntValue>(node_id));
+            io_zone_id->append(std::make_shared<io::serialize::IntValue>(node_id));
           }
 
           auto io_state_items = std::make_shared<io::serialize::ArrayValue>();
-          io_zone->elements().append({"state_items", io_state_items});
+          io_zone->append("state_items", io_state_items);
           for (const std::unique_ptr<SimulationStateItem> &state_item : zone_state.items) {
             /* TODO: Use better id. */
             const std::string state_item_id = std::to_string(&state_item -
                                                              zone_state.items.begin());
 
             auto io_state_item = std::make_shared<io::serialize::DictionaryValue>();
-            io_state_items->elements().append(io_state_item);
+            io_state_items->append(io_state_item);
 
-            io_state_item->elements().append(
-                {"id", std::make_shared<io::serialize::StringValue>(state_item_id)});
+            io_state_item->append("id",
+                                  std::make_shared<io::serialize::StringValue>(state_item_id));
 
             if (const GeometrySimulationStateItem *geometry_state_item =
                     dynamic_cast<const GeometrySimulationStateItem *>(state_item.get())) {
-              io_state_item->elements().append(
-                  {"type", std::make_shared<io::serialize::StringValue>("geometry")});
+              io_state_item->append("type",
+                                    std::make_shared<io::serialize::StringValue>("geometry"));
 
               const GeometrySet &geometry = geometry_state_item->geometry();
 
               auto io_geometry = serialize_geometry_set(geometry, [&](const Span<uint8_t> data) {
                 binary_data_file.write(reinterpret_cast<const char *>(data.data()), data.size());
                 auto io_data_ref = std::make_shared<io::serialize::DictionaryValue>();
-                io_data_ref->elements().append(
-                    {"name", std::make_shared<io::serialize::StringValue>(bdata_file_name)});
-                io_data_ref->elements().append(
-                    {"start", std::make_shared<io::serialize::IntValue>(binary_file_offset)});
+                io_data_ref->append("name",
+                                    std::make_shared<io::serialize::StringValue>(bdata_file_name));
+                io_data_ref->append("start",
+                                    std::make_shared<io::serialize::IntValue>(binary_file_offset));
                 binary_file_offset += data.size();
                 return io_data_ref;
               });
-              io_state_item->elements().append({"data", io_geometry});
+              io_state_item->append("data", io_geometry);
             }
           }
         }
