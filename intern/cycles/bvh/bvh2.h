@@ -33,7 +33,7 @@ struct BVHStackEntry {
  */
 class BVH2 : public BVH {
  public:
-    /* The BVH2 needs to be build only once these
+    /* The BVH2 needs to be built only once these
      are used to ensure that it the case.       */
   thread_mutex build_mutex;
   thread_condition_variable build_cv;

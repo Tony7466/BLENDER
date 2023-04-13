@@ -102,14 +102,11 @@ void GeometryManager::device_update_bvh_postprocess(Device *device,
 
   const bool has_bvh2_layout = (bvh->params.bvh_layout == BVH_LAYOUT_BVH2);
 
-  //PackedBVH pack;
   if (has_bvh2_layout) {
     BVH2 *bvh2 = static_cast<BVH2 *>(scene->bvh);
-    //pack = std::move(static_cast<BVH2 *>(bvh)->pack);
     dscene->data.bvh.root = bvh2->pack.root_index;
   }
   else {
-    //pack.root_index = -1;
     dscene->data.bvh.root = -1;
   }
 
@@ -186,8 +183,6 @@ void GeometryManager::device_update_sub_bvh(Device *device,
     // Don't redo the setup if this is not a sub-bvh
     if (sub_bvh != bvh) {
       sub_bvh->replace_geometry(bvh->geometry, bvh->objects);
-      // sub_bvh->geometry = bvh->geometry;
-      // sub_bvh->objects = bvh->objects;
     }
   }
   else {
