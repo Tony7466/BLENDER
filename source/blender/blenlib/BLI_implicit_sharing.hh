@@ -37,11 +37,18 @@ namespace blender {
  */
 class ImplicitSharingInfo : NonCopyable, NonMovable {
  private:
-  mutable std::atomic<int> users_;
+  /**
+   * Number of users that want to own the shared data.
+   */
+  mutable std::atomic<int> strong_users_ = 1;
+  /**
+   * Number of users that only keep a reference to the `ImplicitSharingInfo` but don't need to own
+   * the shared data. One additional weak user is added as long as there is at least one strong
+   * user.
+   */
+  mutable std::atomic<int> weak_users_ = 1;
 
  public:
-  ImplicitSharingInfo(const int initial_users) : users_(initial_users) {}
-
   virtual ~ImplicitSharingInfo()
   {
     BLI_assert(this->is_mutable());
@@ -50,7 +57,7 @@ class ImplicitSharingInfo : NonCopyable, NonMovable {
   /** True if there are other const references to the resource, meaning it cannot be modified. */
   bool is_shared() const
   {
-    return users_.load(std::memory_order_relaxed) >= 2;
+    return strong_users_.load(std::memory_order_relaxed) >= 2;
   }
 
   /** Whether the resource can be modified without a copy because there is only one owner. */
@@ -59,10 +66,20 @@ class ImplicitSharingInfo : NonCopyable, NonMovable {
     return !this->is_shared();
   }
 
+  bool expired() const
+  {
+    return strong_users_.load(std::memory_order_acquire) == 0;
+  }
+
   /** Call when a the data has a new additional owner. */
   void add_user() const
   {
-    users_.fetch_add(1, std::memory_order_relaxed);
+    strong_users_.fetch_add(1, std::memory_order_relaxed);
+  }
+
+  void add_weak_user() const
+  {
+    weak_users_.fetch_add(1, std::memory_order_relaxed);
   }
 
   /**
@@ -71,10 +88,27 @@ class ImplicitSharingInfo : NonCopyable, NonMovable {
    */
   void remove_user_and_delete_if_last() const
   {
-    const int old_user_count = users_.fetch_sub(1, std::memory_order_acq_rel);
+    const int old_user_count = strong_users_.fetch_sub(1, std::memory_order_acq_rel);
     BLI_assert(old_user_count >= 1);
     const bool was_last_user = old_user_count == 1;
     if (was_last_user) {
+      const int old_weak_user_count = weak_users_.load(std::memory_order_acquire);
+      if (old_weak_user_count == 1) {
+        const_cast<ImplicitSharingInfo *>(this)->delete_self_with_data();
+      }
+      else {
+        const_cast<ImplicitSharingInfo *>(this)->delete_data_only();
+        this->remove_weak_user_and_delete_if_last();
+      }
+    }
+  }
+
+  void remove_weak_user_and_delete_if_last() const
+  {
+    const int old_weak_user_count = weak_users_.fetch_sub(1, std::memory_order_acq_rel);
+    BLI_assert(old_weak_user_count >= 1);
+    const bool was_last_weak_user = old_weak_user_count == 1;
+    if (was_last_weak_user) {
       const_cast<ImplicitSharingInfo *>(this)->delete_self_with_data();
     }
   }
@@ -82,6 +116,8 @@ class ImplicitSharingInfo : NonCopyable, NonMovable {
  private:
   /** Has to free the #ImplicitSharingInfo and the referenced data. */
   virtual void delete_self_with_data() = 0;
+
+  virtual void delete_data_only() {}
 };
 
 /**
@@ -90,7 +126,7 @@ class ImplicitSharingInfo : NonCopyable, NonMovable {
  */
 class ImplicitSharingMixin : public ImplicitSharingInfo {
  public:
-  ImplicitSharingMixin() : ImplicitSharingInfo(1) {}
+  ImplicitSharingMixin() {}
 
  private:
   void delete_self_with_data() override

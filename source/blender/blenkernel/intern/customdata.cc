@@ -2363,7 +2363,7 @@ class CustomDataLayerImplicitSharing : public ImplicitSharingInfo {
 
  public:
   CustomDataLayerImplicitSharing(const void *data, const int totelem, const eCustomDataType type)
-      : ImplicitSharingInfo(1), data_(data), totelem_(totelem), type_(type)
+      : ImplicitSharingInfo(), data_(data), totelem_(totelem), type_(type)
   {
   }
 
