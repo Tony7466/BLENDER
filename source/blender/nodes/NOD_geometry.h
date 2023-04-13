@@ -38,7 +38,7 @@ bool node_geo_simulation_input_pair_with_output(const struct bNodeTree *node_tre
  */
 bool node_geo_simulation_output_item_set_unique_name(struct NodeGeometrySimulationOutput *sim,
                                                      struct NodeSimulationItem *item,
-                                                     const char *name);
+                                                     const char *name, const char *defname);
 
 /** Find the node owning this simulation output data. */
 bNode *node_geo_simulation_output_find_node_by_data(

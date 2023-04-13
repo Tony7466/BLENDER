@@ -4104,7 +4104,8 @@ static void rna_SimulationStateItem_name_set(PointerRNA *ptr, const char *value)
   bNode *node = node_geo_simulation_output_find_node_by_item(ntree, item);
   NodeGeometrySimulationOutput *sim = (NodeGeometrySimulationOutput *)node->storage;
 
-  node_geo_simulation_output_item_set_unique_name(sim, item, value);
+  const char *defname = nodeStaticSocketLabel(item->socket_type, 0);
+  node_geo_simulation_output_item_set_unique_name(sim, item, value, defname);
 }
 
 static PointerRNA rna_NodeGeometrySimulationInput_paired_output_get(PointerRNA *ptr)

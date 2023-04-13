@@ -337,10 +337,9 @@ bNode *node_geo_simulation_output_find_node_by_item(bNodeTree *ntree,
 
 bool node_geo_simulation_output_item_set_unique_name(NodeGeometrySimulationOutput *sim,
                                                      NodeSimulationItem *item,
-                                                     const char *name)
+                                                     const char *name,
+                                                     const char *defname)
 {
-  const char *defname = nodeStaticSocketLabel(item->socket_type, 0);
-
   char unique_name[MAX_NAME + 4];
   BLI_strncpy(unique_name, name, sizeof(unique_name));
 
@@ -413,8 +412,9 @@ NodeSimulationItem *node_geo_simulation_output_insert_item(NodeGeometrySimulatio
     sim->items[i + 1].socket_type = old_items[i].socket_type;
   }
 
+  const char *defname = nodeStaticSocketLabel(socket_type, 0);
   NodeSimulationItem &added_item = sim->items[index];
-  node_geo_simulation_output_item_set_unique_name(sim, &added_item, name);
+  node_geo_simulation_output_item_set_unique_name(sim, &added_item, name, defname);
   added_item.socket_type = socket_type;
 
   sim->items_num++;
