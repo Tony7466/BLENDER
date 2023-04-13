@@ -111,8 +111,8 @@ void GeometryManager::device_update_mesh_preprocess(
                            &tri_patch[mesh->prim_offset],
                            &tri_patch_uv[mesh->vert_offset]);
         }
-        // if (progress.get_cancel())
-        //   return;
+        if (progress.get_cancel())
+          return;
       }
     }
   }
@@ -145,8 +145,8 @@ void GeometryManager::device_update_mesh_preprocess(
                           &curve_keys[hair->curve_key_offset],
                           &curves[hair->prim_offset],
                           &curve_segments[hair->curve_segment_offset]);
-        // if (progress.get_cancel())
-        //   return;
+        if (progress.get_cancel())
+          return;
       }
     }
   }
@@ -162,8 +162,8 @@ void GeometryManager::device_update_mesh_preprocess(
         PointCloud *pointcloud = static_cast<PointCloud *>(geom);
         pointcloud->pack(
             scene, &points[pointcloud->prim_offset], &points_shader[pointcloud->prim_offset]);
-        // if (progress.get_cancel())
-        //   return;
+        if (progress.get_cancel())
+          return;
       }
     }
   }
@@ -182,8 +182,8 @@ void GeometryManager::device_update_mesh_preprocess(
                                                     mesh->patch_table_offset);
         }
 
-        // if (progress.get_cancel())
-        //   return;
+        if (progress.get_cancel())
+          return;
       }
     }
   }
