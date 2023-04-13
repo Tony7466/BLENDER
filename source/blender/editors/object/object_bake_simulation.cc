@@ -271,7 +271,7 @@ static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_simple_gspan(
   if (type.size() == 1 || type.is<ColorGeometry4b>()) {
     return read_bdata_raw_bytes(bdata_reader, io_data, r_data.size_in_bytes(), r_data.data());
   }
-  if (type.is_any<int16_t, uint16_t, int32_t, uint32_t, int64_t, uint64_t, float, double>()) {
+  if (type.is_any<int16_t, uint16_t, int32_t, uint32_t, int64_t, uint64_t, float>()) {
     return read_bdata_raw_data_with_endian(
         bdata_reader, io_data, type.size(), r_data.size(), r_data.data());
   }
