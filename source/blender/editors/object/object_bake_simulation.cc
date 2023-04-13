@@ -441,6 +441,87 @@ static GeometrySet load_geometry(const io::serialize::DictionaryValue &io_geomet
   return geometry;
 }
 
+void load_simulation_state(const StringRefNull meta_path,
+                           const StringRefNull bdata_dir,
+                           bke::sim::ModifierSimulationState &r_state);
+void load_simulation_state(const StringRefNull meta_path,
+                           const StringRefNull bdata_dir,
+                           bke::sim::ModifierSimulationState &r_state)
+{
+  const BDataReader bdata_reader{bdata_dir};
+
+  std::unique_ptr<io::serialize::Value> io_root_value;
+  {
+    io::serialize::JsonFormatter formatter;
+    fstream meta_file{meta_path.c_str(), std::ios::in};
+    io_root_value = formatter.deserialize(meta_file);
+  }
+  if (!io_root_value) {
+    return;
+  }
+  const io::serialize::DictionaryValue *io_root = io_root_value->as_dictionary_value();
+  if (!io_root) {
+    return;
+  }
+  const std::optional<int> version = io_root->lookup_int("version");
+  if (!version) {
+    return;
+  }
+  if (*version != 1) {
+    return;
+  }
+  const io::serialize::ArrayValue *io_zones = io_root->lookup_array("zones");
+  if (!io_zones) {
+    return;
+  }
+  for (const auto &io_zone_value : io_zones->elements()) {
+    const io::serialize::DictionaryValue *io_zone = io_zone_value->as_dictionary_value();
+    if (!io_zone) {
+      continue;
+    }
+    const io::serialize::ArrayValue *io_zone_id = io_zone->lookup_array("zone_id");
+    bke::sim::SimulationZoneID zone_id;
+    for (const auto &io_zone_id_element : io_zone_id->elements()) {
+      const io::serialize::IntValue *io_node_id = io_zone_id_element->as_int_value();
+      if (!io_node_id) {
+        continue;
+      }
+      zone_id.node_ids.append(io_node_id->value());
+    }
+
+    const io::serialize::ArrayValue *io_state_items = io_zone->lookup_array("state_items");
+    if (!io_state_items) {
+      continue;
+    }
+
+    auto zone_state = std::make_unique<bke::sim::SimulationZoneState>();
+
+    for (const auto &io_state_item_value : io_state_items->elements()) {
+      const io::serialize::DictionaryValue *io_state_item =
+          io_state_item_value->as_dictionary_value();
+      if (!io_state_item) {
+        continue;
+      }
+      const std::optional<StringRefNull> state_item_type = io_state_item->lookup_str("type");
+      if (!state_item_type) {
+        continue;
+      }
+      if (*state_item_type == "geometry") {
+        const io::serialize::DictionaryValue *io_geometry = io_state_item->lookup_dict("data");
+        if (!io_geometry) {
+          continue;
+        }
+        GeometrySet geometry = load_geometry(*io_geometry, bdata_reader);
+        auto state_item = std::make_unique<bke::sim::GeometrySimulationStateItem>(
+            std::move(geometry));
+        zone_state->items.append(std::move(state_item));
+      }
+    }
+
+    r_state.zone_states_.add_overwrite(zone_id, std::move(zone_state));
+  }
+}
+
 static std::shared_ptr<io::serialize::ArrayValue> serialize_material_slots(
     const Span<const Material *> material_slots)
 {
@@ -613,7 +694,7 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
     }
   }
 
-  for (float frame_f = 1.0f; frame_f < 10.f; frame_f += 0.5f) {
+  for (float frame_f = 1.0f; frame_f <= 100.f; frame_f += 0.5f) {
     const SubFrame frame{frame_f};
 
     scene->r.cfra = frame.frame();

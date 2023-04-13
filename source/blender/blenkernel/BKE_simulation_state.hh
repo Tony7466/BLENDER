@@ -141,6 +141,11 @@ struct SubFrame {
   {
     return a.frame_ >= b.frame_ || (a.frame_ == b.frame_ && a.subframe_ >= b.subframe_);
   }
+
+  friend std::ostream &operator<<(std::ostream &stream, const SubFrame &a)
+  {
+    return stream << float(a);
+  }
 };
 
 struct ModifierSimulationStateAtFrame {
@@ -154,6 +159,8 @@ class ModifierSimulationCache {
   bool invalid_ = false;
 
  public:
+  void load_baked_states(StringRefNull meta_dir, StringRefNull bdata_dir);
+
   bool has_state_at_frame(const SubFrame &frame) const
   {
     for (const ModifierSimulationStateAtFrame &item : states_at_frames_) {

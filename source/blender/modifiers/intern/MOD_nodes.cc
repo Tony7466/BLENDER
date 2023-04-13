@@ -1212,6 +1212,11 @@ static GeometrySet compute_geometry(const bNodeTree &btree,
     if (nmd_orig->simulation_cache->is_invalid() && current_frame == start_frame) {
       nmd_orig->simulation_cache->reset();
     }
+    if (current_frame.frame() == 150) {
+      nmd_orig->simulation_cache->load_baked_states(
+          "/home/jacques/Downloads/blendcache_mesh_deform_sim/Cube_GeometryNodes/meta",
+          "/home/jacques/Downloads/blendcache_mesh_deform_sim/Cube_GeometryNodes/bdata");
+    }
     const bke::sim::ModifierSimulationStateAtFrame *prev_sim_state =
         nmd_orig->simulation_cache->try_get_last_state_before_frame(current_frame);
     if (prev_sim_state != nullptr) {

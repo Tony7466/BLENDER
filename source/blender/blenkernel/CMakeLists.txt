@@ -266,6 +266,7 @@ set(SRC
   intern/shader_fx.c
   intern/shrinkwrap.cc
   intern/simulation.cc
+  intern/simulation_state.cc
   intern/softbody.c
   intern/sound.c
   intern/speaker.c
