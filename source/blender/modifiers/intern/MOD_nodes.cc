@@ -1209,13 +1209,14 @@ static GeometrySet compute_geometry(const bNodeTree &btree,
     if (nmd_orig->simulation_cache == nullptr) {
       nmd_orig->simulation_cache = MEM_new<blender::bke::sim::ModifierSimulationCache>(__func__);
     }
-    if (nmd_orig->simulation_cache->is_invalid() && current_frame == start_frame) {
-      nmd_orig->simulation_cache->reset();
-    }
     if (current_frame.frame() == 150) {
       nmd_orig->simulation_cache->load_baked_states(
           "/home/jacques/Downloads/blendcache_mesh_deform_sim/Cube_GeometryNodes/meta",
           "/home/jacques/Downloads/blendcache_mesh_deform_sim/Cube_GeometryNodes/bdata");
+    }
+    const bke::sim::CacheState last_cache_state = nmd_orig->simulation_cache->cache_state();
+    if (last_cache_state == bke::sim::CacheState::Invalid && current_frame == start_frame) {
+      nmd_orig->simulation_cache->reset();
     }
     const bke::sim::ModifierSimulationStateAtFrame *prev_sim_state =
         nmd_orig->simulation_cache->try_get_last_state_before_frame(current_frame);
@@ -1223,14 +1224,20 @@ static GeometrySet compute_geometry(const bNodeTree &btree,
       geo_nodes_modifier_data.prev_simulation_state = prev_sim_state->state.get();
       const float frame_diff = float(current_frame) - float(prev_sim_state->frame);
       geo_nodes_modifier_data.simulation_time_delta = frame_diff / FPS;
-      if (geo_nodes_modifier_data.simulation_time_delta > 1.0f) {
+      if (frame_diff > 1.0f && last_cache_state != bke::sim::CacheState::Baked) {
         nmd_orig->simulation_cache->invalidate();
       }
     }
-    geo_nodes_modifier_data.current_simulation_state_for_write =
-        &nmd_orig->simulation_cache->get_state_at_frame_for_write(current_frame);
-    geo_nodes_modifier_data.current_simulation_state =
-        geo_nodes_modifier_data.current_simulation_state_for_write;
+    if (last_cache_state == bke::sim::CacheState::Baked) {
+      geo_nodes_modifier_data.current_simulation_state =
+          nmd_orig->simulation_cache->get_state_at_exact_frame(current_frame);
+    }
+    else {
+      geo_nodes_modifier_data.current_simulation_state_for_write =
+          &nmd_orig->simulation_cache->get_state_at_frame_for_write(current_frame);
+      geo_nodes_modifier_data.current_simulation_state =
+          geo_nodes_modifier_data.current_simulation_state_for_write;
+    }
   }
   else {
     /* TODO: Should probably only access baked data that is not modified in the original data

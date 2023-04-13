@@ -153,10 +153,16 @@ struct ModifierSimulationStateAtFrame {
   std::unique_ptr<ModifierSimulationState> state;
 };
 
+enum class CacheState {
+  Valid,
+  Invalid,
+  Baked,
+};
+
 class ModifierSimulationCache {
  private:
   Vector<ModifierSimulationStateAtFrame> states_at_frames_;
-  bool invalid_ = false;
+  CacheState cache_state_ = CacheState::Valid;
 
  public:
   void load_baked_states(StringRefNull meta_dir, StringRefNull bdata_dir);
@@ -208,18 +214,18 @@ class ModifierSimulationCache {
 
   void invalidate()
   {
-    invalid_ = true;
+    cache_state_ = CacheState::Invalid;
   }
 
-  bool is_invalid() const
+  CacheState cache_state() const
   {
-    return invalid_;
+    return cache_state_;
   }
 
   void reset()
   {
     states_at_frames_.clear();
-    invalid_ = false;
+    cache_state_ = CacheState::Valid;
   }
 };
 

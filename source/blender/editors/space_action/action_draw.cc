@@ -688,10 +688,21 @@ static void timeline_cache_draw_simulation_nodes(
   GPU_matrix_scale_2f(1.0, height);
 
   float color[4];
-  copy_v4_fl4(color, 0.8, 0.8, 0.2, 1.0);
-  if (cache.is_invalid()) {
-    color[3] = 0.3f;
+  switch (cache.cache_state()) {
+    case blender::bke::sim::CacheState::Invalid: {
+      copy_v4_fl4(color, 0.8, 0.8, 0.2, 0.3);
+      break;
+    }
+    case blender::bke::sim::CacheState::Valid: {
+      copy_v4_fl4(color, 0.8, 0.8, 0.2, 1.0);
+      break;
+    }
+    case blender::bke::sim::CacheState::Baked: {
+      copy_v4_fl4(color, 1.0, 0.6, 0.2, 1.0);
+      break;
+    }
   }
+
   immUniformColor4fv(color);
 
   const int start_frame = scene->r.sfra;

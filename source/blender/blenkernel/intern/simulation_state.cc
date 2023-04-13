@@ -39,6 +39,8 @@ void ModifierSimulationCache::load_baked_states(const StringRefNull meta_dir,
         dir_entry.path, bdata_dir, *new_state.state);
     states_at_frames_.append(std::move(new_state));
   }
+
+  cache_state_ = CacheState::Baked;
 }
 
 }  // namespace blender::bke::sim
