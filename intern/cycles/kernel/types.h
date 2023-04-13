@@ -1370,7 +1370,7 @@ using BoundingCone = struct BoundingCone {
   float theta_e;
 };
 
-using LightTreeNodeType = enum LightTreeNodeType {
+enum LightTreeNodeType : uint8_t {
   LIGHT_TREE_INSTANCE = (1 << 0),
   LIGHT_TREE_INNER = (1 << 1),
   LIGHT_TREE_LEAF = (1 << 2),
@@ -1393,9 +1393,15 @@ typedef struct KernelLightTreeNode {
   int num_emitters;
 
   union {
-    int first_emitter; /* Leaf node stores the index of the first emitter. */
-    int right_child;   /* Inner node stores the index of the right child. */
-    int reference;     /* Instance node refers to the node with the subtree. */
+    struct {
+      int first_emitter; /* The index of the first emitter. */
+    } leaf;
+    struct {
+      int right_child; /* The index of the right child. */
+    } inner;
+    struct {
+      int reference; /* A reference to the node with the subtree. */
+    } instance;
   };
 
   /* Bit trail. */
@@ -1413,16 +1419,18 @@ typedef struct KernelLightTreeEmitter {
 
   union {
     struct {
-      int prim_id; /* The location in the triangles array. */
+      int id; /* The location in the triangles array. */
       EmissionSampling emission_sampling;
-    }; /* Emissive triangle. */
+    } triangle;
 
-    int lamp_id; /* The location in the lamps array. */
+    struct {
+      int id; /* The location in the lights array. */
+    } light;
 
     struct {
       int object_id;
       int node_id;
-    }; /* Mesh Light. */
+    } mesh;
   };
 
   MeshLight mesh_light;

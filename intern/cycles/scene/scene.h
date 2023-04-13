@@ -114,8 +114,8 @@ class DeviceScene {
   /* light tree */
   device_vector<KernelLightTreeNode> light_tree_nodes;
   device_vector<KernelLightTreeEmitter> light_tree_emitters;
-  device_vector<uint> lamp_to_tree;
-  device_vector<uint> mesh_to_tree;
+  device_vector<uint> light_to_tree;
+  device_vector<uint> object_to_tree;
   device_vector<uint> object_lookup_offset;
   device_vector<uint> triangle_to_tree;
 

@@ -305,7 +305,7 @@ ccl_device_forceinline bool triangle_light_tree_parameters(
   cos_theta_u = FLT_MAX;
 
   float3 vertices[3];
-  triangle_vertices(kg, kemitter->prim_id, vertices);
+  triangle_vertices(kg, kemitter->triangle.id, vertices);
 
   bool shape_above_surface = false;
   for (int i = 0; i < 3; i++) {

@@ -453,8 +453,8 @@ void LightManager::device_update_tree(Device *,
 
   /* We want to create separate arrays corresponding to triangles and lights,
    * which will be used to index back into the light tree for PDF calculations. */
-  uint *lamp_array = dscene->lamp_to_tree.alloc(kintegrator->num_lights);
-  uint *mesh_light_array = dscene->mesh_to_tree.alloc(scene->objects.size());
+  uint *light_array = dscene->light_to_tree.alloc(kintegrator->num_lights);
+  uint *mesh_array = dscene->object_to_tree.alloc(scene->objects.size());
   uint *triangle_array = dscene->triangle_to_tree.alloc(light_tree.num_triangles);
 
   /* First initialize the light tree's nodes. */
@@ -488,20 +488,20 @@ void LightManager::device_update_tree(Device *,
 
   for (int node_index = 0; node_index < light_tree.num_nodes; node_index++) {
     if (node->is_instance()) {
-      KernelLightTreeEmitter *mesh_light = &light_tree_emitters[mesh_light_array[node->object_id]];
-      mesh_light->node_id = node_index;
+      KernelLightTreeEmitter *mesh_light = &light_tree_emitters[mesh_array[node->object_id]];
+      mesh_light->mesh.node_id = node_index;
       node->bit_trail = light_tree_nodes[mesh_light->parent_index].bit_trail;
       LightTreeNode *reference = node->get_reference();
 
       auto map_it = processed_mesh.find(reference);
       if (map_it != processed_mesh.end()) {
-        light_tree_nodes[node_index].reference = map_it->second;
+        light_tree_nodes[node_index].instance.reference = map_it->second;
       }
       else {
         if (node != reference) {
           /* Flatten the node with the subtree first so the subsequent instances know the index. */
           std::swap(node->type, reference->type);
-          std::swap(node->children, reference->children);
+          std::swap(node->inner.children, reference->inner.children);
         }
         node->type &= ~LIGHT_TREE_INSTANCE;
         processed_mesh[reference] = node_index;
@@ -524,16 +524,16 @@ void LightManager::device_update_tree(Device *,
       light_tree_nodes[node_index].num_emitters = -1;
       /* Fill in the stacks. */
       left_indices.push(node_index);
-      right_nodes.push(node->children[LightTree::right].get());
-      node = node->children[LightTree::left].get();
+      right_nodes.push(node->inner.children[LightTree::right].get());
+      node = node->inner.children[LightTree::left].get();
       continue;
     }
     if (node->is_leaf() || node->is_distant()) {
-      light_tree_nodes[node_index].num_emitters = node->num_emitters;
-      light_tree_nodes[node_index].first_emitter = node->first_emitter_index;
+      light_tree_nodes[node_index].num_emitters = node->leaf.num_emitters;
+      light_tree_nodes[node_index].leaf.first_emitter = node->leaf.first_emitter_index;
 
-      for (int i = 0; i < node->num_emitters; i++) {
-        int emitter_index = i + node->first_emitter_index;
+      for (int i = 0; i < node->leaf.num_emitters; i++) {
+        int emitter_index = i + node->leaf.first_emitter_index;
         const LightTreeEmitter &emitter = light_tree.get_emitter(emitter_index);
 
         light_tree_emitters[emitter_index].energy = emitter.measure.energy;
@@ -567,25 +567,26 @@ void LightManager::device_update_tree(Device *,
             shader_flag |= SHADER_EXCLUDE_SHADOW_CATCHER;
           }
 
-          light_tree_emitters[emitter_index].prim_id = emitter.prim_id + mesh->prim_offset;
+          light_tree_emitters[emitter_index].triangle.id = emitter.prim_id + mesh->prim_offset;
           light_tree_emitters[emitter_index].mesh_light.shader_flag = shader_flag;
           light_tree_emitters[emitter_index].mesh_light.object_id = emitter.object_id;
-          light_tree_emitters[emitter_index].emission_sampling = shader->emission_sampling;
+          light_tree_emitters[emitter_index].triangle.emission_sampling =
+              shader->emission_sampling;
           triangle_array[emitter.prim_id + dscene->object_lookup_offset[emitter.object_id]] =
               emitter_index;
         }
-        else if (emitter.is_lamp()) {
-          light_tree_emitters[emitter_index].lamp_id = emitter.lamp_id;
+        else if (emitter.is_light()) {
+          light_tree_emitters[emitter_index].light.id = emitter.light_id;
           light_tree_emitters[emitter_index].mesh_light.shader_flag = 0;
           light_tree_emitters[emitter_index].mesh_light.object_id = OBJECT_NONE;
-          lamp_array[~emitter.lamp_id] = emitter_index;
+          light_array[~emitter.light_id] = emitter_index;
         }
         else {
           assert(emitter.is_mesh());
-          light_tree_emitters[emitter_index].object_id = emitter.object_id;
+          light_tree_emitters[emitter_index].mesh.object_id = emitter.object_id;
           light_tree_emitters[emitter_index].mesh_light.shader_flag = 0;
           light_tree_emitters[emitter_index].mesh_light.object_id = OBJECT_NONE;
-          mesh_light_array[emitter.object_id] = emitter_index;
+          mesh_array[emitter.object_id] = emitter_index;
           mesh_light_nodes.push(emitter.root.get());
           top_level_stack_size = left_indices.size();
         }
@@ -608,7 +609,7 @@ void LightManager::device_update_tree(Device *,
     }
 
     /* Retrieve from the stacks. */
-    light_tree_nodes[left_indices.top()].right_child = node_index + 1;
+    light_tree_nodes[left_indices.top()].inner.right_child = node_index + 1;
     node = right_nodes.top();
 
     left_indices.pop();
@@ -618,8 +619,8 @@ void LightManager::device_update_tree(Device *,
   /* Copy arrays to device. */
   dscene->light_tree_nodes.copy_to_device();
   dscene->light_tree_emitters.copy_to_device();
-  dscene->lamp_to_tree.copy_to_device();
-  dscene->mesh_to_tree.copy_to_device();
+  dscene->light_to_tree.copy_to_device();
+  dscene->object_to_tree.copy_to_device();
   dscene->object_lookup_offset.copy_to_device();
   dscene->triangle_to_tree.copy_to_device();
 }
@@ -1160,8 +1161,8 @@ void LightManager::device_free(Device *, DeviceScene *dscene, const bool free_ba
 {
   dscene->light_tree_nodes.free();
   dscene->light_tree_emitters.free();
-  dscene->lamp_to_tree.free();
-  dscene->mesh_to_tree.free();
+  dscene->light_to_tree.free();
+  dscene->object_to_tree.free();
   dscene->object_lookup_offset.free();
   dscene->triangle_to_tree.free();
 

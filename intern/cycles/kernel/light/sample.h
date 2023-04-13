@@ -464,7 +464,7 @@ ccl_device_inline float light_sample_mis_weight_forward_lamp(KernelGlobals kg,
 #ifdef __LIGHT_TREE__
   if (kernel_data.integrator.use_light_tree) {
     const float3 N = INTEGRATOR_STATE(state, path, mis_origin_n);
-    pdf *= light_tree_pdf(kg, P, N, path_flag, 0, kernel_data_fetch(lamp_to_tree, ls->lamp));
+    pdf *= light_tree_pdf(kg, P, N, path_flag, 0, kernel_data_fetch(light_to_tree, ls->lamp));
   }
   else
 #endif
@@ -498,8 +498,8 @@ ccl_device_inline float light_sample_mis_weight_forward_background(KernelGlobals
 #ifdef __LIGHT_TREE__
   if (kernel_data.integrator.use_light_tree) {
     const float3 N = INTEGRATOR_STATE(state, path, mis_origin_n);
-    uint lamp = kernel_data_fetch(lamp_to_tree, kernel_data.background.light_index);
-    pdf *= light_tree_pdf(kg, ray_P, N, path_flag, 0, lamp);
+    uint light = kernel_data_fetch(light_to_tree, kernel_data.background.light_index);
+    pdf *= light_tree_pdf(kg, ray_P, N, path_flag, 0, light);
   }
   else
 #endif

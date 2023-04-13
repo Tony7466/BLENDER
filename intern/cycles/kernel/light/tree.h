@@ -69,19 +69,19 @@ ccl_device float3 compute_v(
                                                     cos_phi0 * o0 + dot_o1_a * inv_len * o1;
 }
 
-ccl_device_inline bool is_lamp(const ccl_global KernelLightTreeEmitter *kemitter)
+ccl_device_inline bool is_light(const ccl_global KernelLightTreeEmitter *kemitter)
 {
-  return kemitter->prim_id < 0;
+  return kemitter->light.id < 0;
 }
 
 ccl_device_inline bool is_mesh(const ccl_global KernelLightTreeEmitter *kemitter)
 {
-  return kemitter->prim_id >= 0 && kemitter->mesh_light.object_id == OBJECT_NONE;
+  return !is_light(kemitter) && kemitter->mesh_light.object_id == OBJECT_NONE;
 }
 
 ccl_device_inline bool is_triangle(const ccl_global KernelLightTreeEmitter *kemitter)
 {
-  return kemitter->prim_id >= 0 && kemitter->mesh_light.object_id != OBJECT_NONE;
+  return !is_light(kemitter) && kemitter->mesh_light.object_id != OBJECT_NONE;
 }
 
 ccl_device_inline bool is_leaf(const ccl_global KernelLightTreeNode *knode)
@@ -237,8 +237,8 @@ ccl_device bool compute_emitter_centroid_and_dir(KernelGlobals kg,
                                                  ccl_private float3 &centroid,
                                                  ccl_private packed_float3 &dir)
 {
-  if (is_lamp(kemitter)) {
-    const ccl_global KernelLight *klight = &kernel_data_fetch(lights, ~(kemitter->lamp_id));
+  if (is_light(kemitter)) {
+    const ccl_global KernelLight *klight = &kernel_data_fetch(lights, ~(kemitter->light.id));
     centroid = klight->co;
 
     switch (klight->type) {
@@ -268,11 +268,11 @@ ccl_device bool compute_emitter_centroid_and_dir(KernelGlobals kg,
     kernel_assert(is_triangle(kemitter));
     const int object = kemitter->mesh_light.object_id;
     float3 vertices[3];
-    triangle_vertices(kg, kemitter->prim_id, vertices);
+    triangle_vertices(kg, kemitter->triangle.id, vertices);
     centroid = (vertices[0] + vertices[1] + vertices[2]) / 3.0f;
 
-    const bool is_front_only = (kemitter->emission_sampling == EMISSION_SAMPLING_FRONT);
-    const bool is_back_only = (kemitter->emission_sampling == EMISSION_SAMPLING_BACK);
+    const bool is_front_only = (kemitter->triangle.emission_sampling == EMISSION_SAMPLING_FRONT);
+    const bool is_back_only = (kemitter->triangle.emission_sampling == EMISSION_SAMPLING_BACK);
     if (is_front_only || is_back_only) {
       dir = safe_normalize(cross(vertices[1] - vertices[0], vertices[2] - vertices[0]));
       if (is_back_only) {
@@ -379,7 +379,7 @@ ccl_device void light_tree_emitter_importance(KernelGlobals kg,
 
   if (is_mesh(kemitter)) {
     const ccl_global KernelLightTreeNode *knode = &kernel_data_fetch(light_tree_nodes,
-                                                                     kemitter->node_id);
+                                                                     kemitter->mesh.node_id);
 
     light_tree_node_importance<in_volume_segment>(
         kg, P, N_or_D, t, has_transmission, knode, max_importance, min_importance);
@@ -418,8 +418,8 @@ ccl_device void light_tree_emitter_importance(KernelGlobals kg,
         kg, kemitter, centroid, P_c, N_or_D, bcone, cos_theta_u, distance, point_to_centroid);
   }
   else {
-    kernel_assert(is_lamp(kemitter));
-    const ccl_global KernelLight *klight = &kernel_data_fetch(lights, ~(kemitter->lamp_id));
+    kernel_assert(is_light(kemitter));
+    const ccl_global KernelLight *klight = &kernel_data_fetch(lights, ~(kemitter->light.id));
     switch (klight->type) {
       /* Function templates only modifies cos_theta_u when in_volume_segment = true. */
       case LIGHT_SPOT:
@@ -480,8 +480,14 @@ ccl_device void light_tree_child_importance(KernelGlobals kg,
   min_importance = 0.0f;
 
   if (knode->num_emitters == 1) {
-    light_tree_emitter_importance<in_volume_segment>(
-        kg, P, N_or_D, t, has_transmission, knode->first_emitter, max_importance, min_importance);
+    light_tree_emitter_importance<in_volume_segment>(kg,
+                                                     P,
+                                                     N_or_D,
+                                                     t,
+                                                     has_transmission,
+                                                     knode->leaf.first_emitter,
+                                                     max_importance,
+                                                     min_importance);
   }
   else if (knode->num_emitters != 0) {
     light_tree_node_importance<in_volume_segment>(
@@ -541,7 +547,7 @@ ccl_device int light_tree_cluster_select_emitter(KernelGlobals kg,
   }
 
   for (int i = 0; i < knode->num_emitters; i++) {
-    int current_index = knode->first_emitter + i;
+    int current_index = knode->leaf.first_emitter + i;
     /* maximum importance = importance[0], minimum importance = importance[1] */
     float importance[2];
     light_tree_emitter_importance<in_volume_segment>(
@@ -574,7 +580,7 @@ ccl_device int light_tree_cluster_select_emitter(KernelGlobals kg,
     else {
       selected_index = -1;
       for (int i = 0; i < knode->num_emitters; i++) {
-        int current_index = knode->right_child + i;
+        int current_index = knode->inner.right_child + i;
         sample_resevoir(current_index,
                         float(has_importance & 1),
                         selected_index,
@@ -598,14 +604,14 @@ ccl_device int light_tree_cluster_select_emitter(KernelGlobals kg,
 
   if (is_mesh(kemitter)) {
     /* Transform ray from world to local space. */
-    light_tree_to_local_space<in_volume_segment>(kg, kemitter->object_id, P, N_or_D, t);
+    light_tree_to_local_space<in_volume_segment>(kg, kemitter->mesh.object_id, P, N_or_D, t);
 
-    *node_index = kemitter->node_id;
+    *node_index = kemitter->mesh.node_id;
     const ccl_global KernelLightTreeNode *knode = &kernel_data_fetch(light_tree_nodes,
                                                                      *node_index);
     if (knode->type == LIGHT_TREE_INSTANCE) {
       /* Switch to the node with the subtree. */
-      *node_index = knode->reference;
+      *node_index = knode->instance.reference;
     }
   }
 
@@ -690,7 +696,7 @@ ccl_device_noinline bool light_tree_sample(KernelGlobals kg,
       }
       else {
         /* Continue with the picked mesh light. */
-        object = kernel_data_fetch(light_tree_emitters, selected_emitter).object_id;
+        object = kernel_data_fetch(light_tree_emitters, selected_emitter).mesh.object_id;
         continue;
       }
     }
@@ -698,7 +704,7 @@ ccl_device_noinline bool light_tree_sample(KernelGlobals kg,
     /* At an interior node, the left child is directly after the parent, while the right child is
      * stored as the child index. */
     const int left_index = node_index + 1;
-    const int right_index = knode->right_child;
+    const int right_index = knode->inner.right_child;
 
     float left_prob;
     if (!get_left_probability<in_volume_segment>(
@@ -737,16 +743,16 @@ ccl_device float light_tree_pdf(
   if (is_triangle(kemitter)) {
     /* If the target is an emissive triangle, first traverse the top level tree to find the mesh
      * light emitter, then traverse the subtree. */
-    target_emitter = kernel_data_fetch(mesh_to_tree, object);
+    target_emitter = kernel_data_fetch(object_to_tree, object);
     ccl_global const KernelLightTreeEmitter *kmesh = &kernel_data_fetch(light_tree_emitters,
                                                                         target_emitter);
     target_leaf = kmesh->parent_index;
-    root_index = kmesh->node_id;
+    root_index = kmesh->mesh.node_id;
     ccl_global const KernelLightTreeNode *kroot = &kernel_data_fetch(light_tree_nodes, root_index);
     bit_trail = kroot->bit_trail;
 
     if (kroot->type == LIGHT_TREE_INSTANCE) {
-      root_index = kroot->reference;
+      root_index = kroot->instance.reference;
     }
   }
   else {
@@ -775,7 +781,7 @@ ccl_device float light_tree_pdf(
       float total_min_importance = 0.0f;
       int num_has_importance = 0;
       for (int i = 0; i < kleaf->num_emitters; i++) {
-        const int emitter = kleaf->first_emitter + i;
+        const int emitter = kleaf->leaf.first_emitter + i;
         float max_importance, min_importance;
         light_tree_emitter_importance<false>(
             kg, P, N, 0, has_transmission, emitter, max_importance, min_importance);
@@ -817,7 +823,7 @@ ccl_device float light_tree_pdf(
 
     /* Interior node. */
     const int left_index = node_index + 1;
-    const int right_index = knode->right_child;
+    const int right_index = knode->inner.right_child;
 
     float left_prob;
     if (!get_left_probability<false>(

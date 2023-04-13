@@ -139,7 +139,7 @@ LightTreeEmitter::LightTreeEmitter(Scene *scene,
     }
   }
   else {
-    assert(is_lamp());
+    assert(is_light());
     Light *lamp = scene->lights[object_id];
     LightType type = lamp->get_light_type();
     const float size = lamp->get_size();
@@ -375,11 +375,11 @@ LightTreeNode *LightTree::build(Scene *scene, DeviceScene *dscene)
   task_pool.wait_work();
 
   /* All distant lights are grouped to the right child as a leaf node. */
-  root_->children[right] = create_node(LightTreeMeasure::empty, 1);
+  root_->inner.children[right] = create_node(LightTreeMeasure::empty, 1);
   for (int i = 0; i < num_distant_lights; i++) {
-    root_->children[right]->add(distant_lights_[i]);
+    root_->inner.children[right]->add(distant_lights_[i]);
   }
-  root_->children[right]->make_distant(num_local_lights, num_distant_lights);
+  root_->inner.children[right]->make_distant(num_local_lights, num_distant_lights);
   std::move(distant_lights_.begin(), distant_lights_.end(), std::back_inserter(emitters_));
 
   return root_.get();
@@ -403,8 +403,8 @@ void LightTree::recursive_build(const Child child,
     node = inner;
   }
   else {
-    inner->children[child] = create_node(LightTreeMeasure::empty, bit_trail);
-    node = inner->children[child].get();
+    inner->inner.children[child] = create_node(LightTreeMeasure::empty, bit_trail);
+    node = inner->inner.children[child].get();
   }
 
   /* Find the best place to split the emitters into 2 nodes.

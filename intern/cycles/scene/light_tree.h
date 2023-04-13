@@ -126,14 +126,14 @@ LightTreeMeasure operator+(const LightTreeMeasure &a, const LightTreeMeasure &b)
 struct LightTreeNode;
 
 /* Light Tree Emitter
- * An emitter is a lamp, a mesh light, or a triangle. */
+ * An emitter is a built-in light, an emissive mesh, or an emissive triangle. */
 struct LightTreeEmitter {
-  /* If the emitter is a mesh light, point to the root node of its subtree. */
+  /* If the emitter is a mesh, point to the root node of its subtree. */
   unique_ptr<LightTreeNode> root;
 
   union {
-    int lamp_id; /* Index into device lights array. */
-    int prim_id; /* Index into an object's local triangle index. */
+    int light_id; /* Index into device lights array. */
+    int prim_id;  /* Index into an object's local triangle index. */
   };
 
   int object_id;
@@ -154,9 +154,9 @@ struct LightTreeEmitter {
     return !is_mesh() && prim_id >= 0;
   };
 
-  __forceinline bool is_lamp() const
+  __forceinline bool is_light() const
   {
-    return !is_mesh() && lamp_id < 0;
+    return !is_mesh() && light_id < 0;
   };
 };
 
@@ -187,26 +187,34 @@ LightTreeBucket operator+(const LightTreeBucket &a, const LightTreeBucket &b);
 struct LightTreeNode {
   LightTreeMeasure measure;
   uint bit_trail;
-  int type = LIGHT_TREE_INNER;
-
   int object_id;
 
+  /* A bitmask of `LightTreeNodeType`, as in the building process an instance node can also be a
+   * leaf or an inner node. */
+  int type = LIGHT_TREE_INNER;
+
   union {
-    LightTreeNode *reference; /* Instanced node refers to the root node of the subtree. */
-
-    unique_ptr<LightTreeNode> children[2] = {nullptr, nullptr}; /* Inner node has two children. */
-
     struct {
       int num_emitters;        /* The number of emitters a leaf node stores. */
-      int first_emitter_index; /* Leaf nodes contain an index to first emitter. */
-    };
+      int first_emitter_index; /* Index to first emitter. */
+    } leaf;
+
+    struct {
+      /* Inner node has two children. */
+      unique_ptr<LightTreeNode> children[2] = {nullptr, nullptr};
+    } inner;
+
+    struct {
+      /* A reference to the root node of the subtree. */
+      LightTreeNode *reference;
+    } instance;
   };
 
   ~LightTreeNode()
   {
     if (is_inner()) {
-      children[0] = nullptr;
-      children[1] = nullptr;
+      inner.children[0] = nullptr;
+      inner.children[1] = nullptr;
     }
   }
 
@@ -222,21 +230,21 @@ struct LightTreeNode {
 
   void make_leaf(const int &first_emitter_index, const int &num_emitters)
   {
-    this->first_emitter_index = first_emitter_index;
-    this->num_emitters = num_emitters;
+    this->leaf.first_emitter_index = first_emitter_index;
+    this->leaf.num_emitters = num_emitters;
     type = LIGHT_TREE_LEAF;
   }
 
   void make_distant(const int &first_emitter_index, const int &num_emitters)
   {
-    this->first_emitter_index = first_emitter_index;
-    this->num_emitters = num_emitters;
+    this->leaf.first_emitter_index = first_emitter_index;
+    this->leaf.num_emitters = num_emitters;
     type = LIGHT_TREE_DISTANT;
   }
 
   void make_instance(LightTreeNode *reference, const int &object_id)
   {
-    this->reference = reference;
+    this->instance.reference = reference;
     this->object_id = object_id;
     this->measure = reference->measure;
     type = LIGHT_TREE_INSTANCE;
@@ -246,12 +254,11 @@ struct LightTreeNode {
   {
     assert(is_instance());
     if (type == LIGHT_TREE_INSTANCE) {
-      return reference;
+      return instance.reference;
     }
     return this;
   }
 
-  /* An instance node can also be a leaf or an inner node. */
   __forceinline bool is_instance() const
   {
     return type & LIGHT_TREE_INSTANCE;
