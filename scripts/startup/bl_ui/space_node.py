@@ -953,16 +953,14 @@ class NODE_PT_node_tree_interface_outputs(NodeTreeInterfacePanel):
 
 class NODE_UL_simulation_zone_items(bpy.types.UIList):
     def draw_item(self, context, layout, _data, item, icon, _active_data, _active_propname, _index):
-        color = (1, 1, 1, 1) # TODO
-
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             row = layout.row(align=True)
 
-            row.template_node_socket(color=color)
+            row.template_node_socket(color=item.color)
             row.prop(item, "name", text="", emboss=False, icon_value=icon)
         elif self.layout_type == 'GRID':
             layout.alignment = 'CENTER'
-            layout.template_node_socket(color=color)
+            layout.template_node_socket(color=item.color)
 
 
 class NODE_PT_simulation_zone_items(Panel):

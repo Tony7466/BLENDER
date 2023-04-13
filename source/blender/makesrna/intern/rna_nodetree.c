@@ -52,6 +52,7 @@
 #include "RE_texture.h"
 
 #include "NOD_composite.h"
+#include "NOD_socket.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -4106,6 +4107,15 @@ static void rna_SimulationStateItem_name_set(PointerRNA *ptr, const char *value)
 
   const char *defname = nodeStaticSocketLabel(item->socket_type, 0);
   node_geo_simulation_output_item_set_unique_name(sim, item, value, defname);
+}
+
+static void rna_SimulationStateItem_color_get(PointerRNA *ptr, float *values)
+{
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
+  NodeSimulationItem *item = (NodeSimulationItem *)ptr->data;
+
+  const char *socket_type_idname = nodeStaticSocketType(item->socket_type, 0);
+  node_type_draw_color(socket_type_idname, values);
 }
 
 static PointerRNA rna_NodeGeometrySimulationInput_paired_output_get(PointerRNA *ptr)
@@ -9925,6 +9935,12 @@ static void rna_def_simulation_state_item(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, node_socket_type_items);
   RNA_def_property_ui_text(prop, "Socket Type", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_SimulationStateItem_update");
+
+  prop = RNA_def_property(srna, "color", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_float_funcs(prop, "rna_SimulationStateItem_color_get", NULL, NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Color", "Socket color");
 }
 
 static void rna_def_geo_simulation_output_items(BlenderRNA *brna)
