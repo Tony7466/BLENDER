@@ -76,7 +76,6 @@ Vector<PBVHNode *> SCULPT_cloth_brush_affected_nodes_gather(SculptSession *ss, B
 {
   BLI_assert(ss->cache);
   BLI_assert(brush->sculpt_tool == SCULPT_TOOL_CLOTH);
-  Vector<PBVHNode *> nodes;
 
   switch (brush->cloth_simulation_area_type) {
     case BRUSH_CLOTH_SIMULATION_AREA_LOCAL: {
@@ -86,11 +85,10 @@ Vector<PBVHNode *> SCULPT_cloth_brush_affected_nodes_gather(SculptSession *ss, B
       data.original = false;
       data.ignore_fully_ineffective = false;
       data.center = ss->cache->initial_location;
-      nodes = blender::bke::pbvh::search_gather(ss->pbvh, SCULPT_search_sphere_cb, &data);
-    } break;
+      return blender::bke::pbvh::search_gather(ss->pbvh, SCULPT_search_sphere_cb, &data);
+    }
     case BRUSH_CLOTH_SIMULATION_AREA_GLOBAL:
-      nodes = blender::bke::pbvh::search_gather(ss->pbvh, nullptr, nullptr);
-      break;
+      return blender::bke::pbvh::search_gather(ss->pbvh, nullptr, nullptr);
     case BRUSH_CLOTH_SIMULATION_AREA_DYNAMIC: {
       SculptSearchSphereData data{};
       data.ss = ss;
@@ -98,11 +96,12 @@ Vector<PBVHNode *> SCULPT_cloth_brush_affected_nodes_gather(SculptSession *ss, B
       data.original = false;
       data.ignore_fully_ineffective = false;
       data.center = ss->cache->location;
-      nodes = blender::bke::pbvh::search_gather(ss->pbvh, SCULPT_search_sphere_cb, &data);
-    } break;
+      return blender::bke::pbvh::search_gather(ss->pbvh, SCULPT_search_sphere_cb, &data);
+    }
   }
 
-  return nodes;
+  BLI_assert_unreachable();
+  return Vector<PBVHNode *>();
 }
 
 static float cloth_brush_simulation_falloff_get(const Brush *brush,
