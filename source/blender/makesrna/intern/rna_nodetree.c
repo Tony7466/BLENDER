@@ -4191,11 +4191,12 @@ static void rna_NodeGeometrySimulationOutput_items_move(ID *id,
                                                         int from_index,
                                                         int to_index)
 {
-  if (from_index < 0 || to_index < 0) {
+  NodeGeometrySimulationOutput *sim = (NodeGeometrySimulationOutput *)node->storage;
+
+  if (from_index < 0 || from_index >= sim->items_num || to_index < 0 || to_index >= sim->items_num) {
     return;
   }
 
-  NodeGeometrySimulationOutput *sim = (NodeGeometrySimulationOutput *)node->storage;
   node_geo_simulation_output_move_item(sim, from_index, to_index);
 
   bNodeTree *ntree = (bNodeTree *)id;
@@ -9930,7 +9931,7 @@ static void rna_def_geo_simulation_output_items(BlenderRNA *brna)
   RNA_def_function_ui_description(func, "Remove a state item from this simulation zone");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
   parm = RNA_def_pointer(func, "item", "SimulationStateItem", "Item", "The item to remove");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 
   func = RNA_def_function(srna, "clear", "rna_NodeGeometrySimulationOutput_items_clear");
   RNA_def_function_ui_description(func, "Remove all state items from this simulation zone");
