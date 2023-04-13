@@ -65,4 +65,68 @@ static void test_blend_alpha()
 }
 GPU_TEST(blend_alpha)
 
+static void test_blend_alpha_premult()
+{
+  blend_test<GPU_BLEND_ALPHA_PREMULT>(float4(1.0f, 0.0f, 1.0f, 1.0f),
+                                      float4(0.0f, 1.0f, 0.0f, 0.5f),
+                                      float4(0.5f, 1.0f, 0.5f, 1.0f));
+}
+GPU_TEST(blend_alpha_premult)
+
+static void test_blend_additive()
+{
+  blend_test<GPU_BLEND_ADDITIVE>(float4(1.0f, 0.0f, 1.0f, 1.0f),
+                                 float4(0.0f, 1.0f, 0.0f, 0.5f),
+                                 float4(1.0f, 0.5f, 1.0f, 1.0f));
+}
+GPU_TEST(blend_additive)
+
+static void test_blend_additive_premult()
+{
+  blend_test<GPU_BLEND_ADDITIVE_PREMULT>(float4(1.0f, 0.0f, 1.0f, 1.0f),
+                                         float4(0.0f, 1.0f, 0.0f, 0.5f),
+                                         float4(1.0f, 1.0f, 1.0f, 1.5f));
+}
+GPU_TEST(blend_additive_premult)
+
+static void test_blend_multiply()
+{
+  blend_test<GPU_BLEND_MULTIPLY>(float4(1.0f, 0.0f, 1.0f, 1.0f),
+                                 float4(0.0f, 1.0f, 0.0f, 0.5f),
+                                 float4(0.0f, 0.0f, 0.0f, 0.5f));
+}
+GPU_TEST(blend_multiply)
+
+static void test_blend_subtract()
+{
+  blend_test<GPU_BLEND_SUBTRACT>(float4(1.0f, 1.0f, 1.0f, 1.0f),
+                                 float4(0.0f, 1.0f, 0.0f, 0.5f),
+                                 float4(1.0f, 0.0f, 1.0f, 0.5f));
+}
+GPU_TEST(blend_subtract)
+
+static void test_blend_invert()
+{
+  blend_test<GPU_BLEND_INVERT>(float4(1.0f, 1.0f, 1.0f, 1.0f),
+                               float4(0.0f, 1.0f, 0.0f, 0.5f),
+                               float4(0.0f, 0.0f, 0.0f, 1.0f));
+}
+GPU_TEST(blend_invert)
+
+static void test_blend_oit()
+{
+  blend_test<GPU_BLEND_OIT>(float4(1.0f, 1.0f, 1.0f, 1.0f),
+                            float4(0.0f, 1.0f, 0.0f, 0.5f),
+                            float4(1.0f, 2.0f, 1.0f, 0.5f));
+}
+GPU_TEST(blend_oit)
+
+static void test_blend_background()
+{
+  blend_test<GPU_BLEND_BACKGROUND>(float4(1.0f, 1.0f, 1.0f, 1.0f),
+                                   float4(0.0f, 1.0f, 0.0f, 0.5f),
+                                   float4(0.5f, 0.5f, 0.5f, 0.5f));
+}
+GPU_TEST(blend_background)
+
 }  // namespace blender::gpu::tests
