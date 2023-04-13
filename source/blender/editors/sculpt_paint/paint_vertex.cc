@@ -2962,7 +2962,7 @@ static void do_vpaint_brush_blur_loops(bContext *C,
   const blender::VArray<bool> select_poly = me->attributes().lookup_or_default<bool>(
       ".select_poly", ATTR_DOMAIN_FACE, false);
 
-  blender::threading::parallel_for(IndexRange(nodes.size()), 1LL, [&](IndexRange range) {
+  blender::threading::parallel_for(nodes.index_range(), 1LL, [&](IndexRange range) {
     for (int n : range) {
       const PBVHType pbvh_type = BKE_pbvh_type(ss->pbvh);
       const bool has_grids = (pbvh_type == PBVH_GRIDS);
@@ -3105,7 +3105,7 @@ static void do_vpaint_brush_blur_verts(bContext *C,
   const blender::VArray<bool> select_poly = me->attributes().lookup_or_default<bool>(
       ".select_poly", ATTR_DOMAIN_FACE, false);
 
-  blender::threading::parallel_for(IndexRange(nodes.size()), 1LL, [&](IndexRange range) {
+  blender::threading::parallel_for(nodes.index_range(), 1LL, [&](IndexRange range) {
     for (int n : range) {
       const PBVHType pbvh_type = BKE_pbvh_type(ss->pbvh);
       const bool has_grids = (pbvh_type == PBVH_GRIDS);
@@ -3253,7 +3253,7 @@ static void do_vpaint_brush_smear(bContext *C,
   const blender::VArray<bool> select_poly = me->attributes().lookup_or_default<bool>(
       ".select_poly", ATTR_DOMAIN_FACE, false);
 
-  blender::threading::parallel_for(IndexRange(nodes.size()), 1LL, [&](IndexRange range) {
+  blender::threading::parallel_for(nodes.index_range(), 1LL, [&](IndexRange range) {
     for (int n : range) {
       float brush_size_pressure, brush_alpha_value, brush_alpha_pressure;
 
@@ -3420,7 +3420,7 @@ static void calculate_average_color(VPaintData<Color, Traits, domain> *vpd,
 
   VPaintAverageAccum<Blend> *accum = (VPaintAverageAccum<Blend> *)MEM_mallocN(
       sizeof(*accum) * nodes.size(), __func__);
-  blender::threading::parallel_for(IndexRange(nodes.size()), 1LL, [&](IndexRange range) {
+  blender::threading::parallel_for(nodes.index_range(), 1LL, [&](IndexRange range) {
     for (int n : range) {
       SculptSession *ss = ob->sculpt;
       const PBVHType pbvh_type = BKE_pbvh_type(ss->pbvh);
@@ -3537,7 +3537,7 @@ static void vpaint_do_draw(bContext *C,
   const blender::VArray<bool> select_poly = me->attributes().lookup_or_default<bool>(
       ".select_poly", ATTR_DOMAIN_FACE, false);
 
-  blender::threading::parallel_for(IndexRange(nodes.size()), 1LL, [&](IndexRange range) {
+  blender::threading::parallel_for(nodes.index_range(), 1LL, [&](IndexRange range) {
     for (int n : range) {
       const bool has_grids = (pbvh_type == PBVH_GRIDS);
       const SculptVertexPaintGeomMap *gmap = &ss->mode.vpaint.gmap;
