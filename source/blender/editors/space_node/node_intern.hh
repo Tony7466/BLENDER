@@ -373,7 +373,6 @@ void NODE_OT_cryptomatte_layer_remove(wmOperatorType *ot);
 
 void NODE_OT_simulation_zone_item_add(wmOperatorType *ot);
 void NODE_OT_simulation_zone_item_remove(wmOperatorType *ot);
-void NODE_OT_simulation_zone_item_change_type(wmOperatorType *ot);
 void NODE_OT_simulation_zone_itme_move(wmOperatorType *ot);
 
 /* node_gizmo.cc */

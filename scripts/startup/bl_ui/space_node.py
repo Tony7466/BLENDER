@@ -1007,27 +1007,7 @@ class NODE_PT_simulation_zone_items(Panel):
 
         active_item = node.active_item
         if active_item is not None:
-            # Mimicking property split.
-            layout.use_property_split = False
-            layout.use_property_decorate = False
-            layout_row = layout.row(align=True)
-            layout_split = layout_row.split(factor=0.4, align=True)
-
-            label_column = layout_split.column(align=True)
-            label_column.alignment = 'RIGHT'
-            # Menu to change the socket type.
-            label_column.label(text="Type")
-
-            property_row = layout_split.row(align=True)
-            props = property_row.operator_menu_enum(
-                "node.simulation_zone_item_change_type",
-                "socket_type",
-                text=active_item.socket_type,
-            )
-
-            layout.use_property_split = True
-            layout.use_property_decorate = False
-
+            layout.prop(active_item, "socket_type")
             layout.prop(active_item, "name")
 
 

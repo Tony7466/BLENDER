@@ -25,15 +25,15 @@ void socket_declarations_for_simulation_items(const Span<NodeSimulationItem> ite
       case SOCK_GEOMETRY: {
         {
           std::unique_ptr<decl::Geometry> decl = std::make_unique<decl::Geometry>();
-          decl->name = item.name;
-          decl->identifier = item.name;
+          decl->name = item.name ? item.name : "";
+          decl->identifier = item.name ? item.name : "";
           decl->in_out = SOCK_IN;
           r_declaration.inputs.append(std::move(decl));
         }
         {
           std::unique_ptr<decl::Geometry> decl = std::make_unique<decl::Geometry>();
-          decl->name = item.name;
-          decl->identifier = item.name;
+          decl->name = item.name ? item.name : "";
+          decl->identifier = item.name ? item.name : "";
           decl->in_out = SOCK_OUT;
           r_declaration.outputs.append(std::move(decl));
         }
@@ -47,13 +47,20 @@ void socket_declarations_for_simulation_items(const Span<NodeSimulationItem> ite
   r_declaration.outputs.append(decl::create_extend_declaration(SOCK_OUT));
 }
 
+struct SimulationItemsUniqueNameArgs {
+  NodeGeometrySimulationOutput *sim;
+  const NodeSimulationItem *item;
+};
+
 static bool simulation_items_unique_name_check(void *arg, const char *name)
 {
-  const NodeGeometrySimulationOutput &storage = *static_cast<const NodeGeometrySimulationOutput *>(
+  const SimulationItemsUniqueNameArgs &args = *static_cast<const SimulationItemsUniqueNameArgs *>(
       arg);
-  for (const NodeSimulationItem &item : Span(storage.items, storage.items_num)) {
-    if (STREQ(item.name, name)) {
-      return true;
+  for (const NodeSimulationItem &item : Span(args.sim->items, args.sim->items_num)) {
+    if (&item != args.item) {
+      if (STREQ(item.name, name)) {
+        return true;
+      }
     }
   }
   if (STREQ(name, "Delta Time")) {
@@ -305,8 +312,51 @@ void register_node_type_geo_simulation_output()
   nodeRegisterType(&ntype);
 }
 
+bNode *node_geo_simulation_output_find_node_by_data(bNodeTree *ntree,
+                                                    const NodeGeometrySimulationOutput *sim)
+{
+  for (bNode *node : ntree->nodes_by_type("GeometryNodeSimulationOutput")) {
+    if (node->storage == sim) {
+      return node;
+    }
+  }
+  return nullptr;
+}
+
+bNode *node_geo_simulation_output_find_node_by_item(bNodeTree *ntree,
+                                                    const NodeSimulationItem *item)
+{
+  for (bNode *node : ntree->nodes_by_type("GeometryNodeSimulationOutput")) {
+    NodeGeometrySimulationOutput *sim = static_cast<NodeGeometrySimulationOutput *>(node->storage);
+    if (node_geo_simulation_output_contains_item(sim, item)) {
+      return node;
+    }
+  }
+  return nullptr;
+}
+
+bool node_geo_simulation_output_item_set_unique_name(NodeGeometrySimulationOutput *sim,
+                                                     NodeSimulationItem *item,
+                                                     const char *name)
+{
+  const char *defname = nodeStaticSocketLabel(item->socket_type, 0);
+
+  char unique_name[MAX_NAME + 4];
+  BLI_strncpy(unique_name, name, sizeof(unique_name));
+
+  blender::nodes::SimulationItemsUniqueNameArgs args{sim, item};
+  const bool name_changed = BLI_uniquename_cb(blender::nodes::simulation_items_unique_name_check,
+                                              &args,
+                                              defname,
+                                              '.',
+                                              unique_name,
+                                              ARRAY_SIZE(unique_name));
+  item->name = BLI_strdup(unique_name);
+  return name_changed;
+}
+
 bool node_geo_simulation_output_contains_item(NodeGeometrySimulationOutput *sim,
-                                              NodeSimulationItem *item)
+                                              const NodeSimulationItem *item)
 {
   const int index = item - sim->items;
   return index >= 0 && index < sim->items_num;
@@ -352,14 +402,6 @@ NodeSimulationItem *node_geo_simulation_output_insert_item(NodeGeometrySimulatio
                                                            const char *name,
                                                            int index)
 {
-  char unique_name[MAX_NAME + 4] = "";
-  BLI_uniquename_cb(blender::nodes::simulation_items_unique_name_check,
-                    sim,
-                    name,
-                    '.',
-                    unique_name,
-                    ARRAY_SIZE(unique_name));
-
   NodeSimulationItem *old_items = sim->items;
   sim->items = MEM_cnew_array<NodeSimulationItem>(sim->items_num + 1, __func__);
   for (const int i : blender::IndexRange(0, index)) {
@@ -372,7 +414,7 @@ NodeSimulationItem *node_geo_simulation_output_insert_item(NodeGeometrySimulatio
   }
 
   NodeSimulationItem &added_item = sim->items[index];
-  added_item.name = BLI_strdup(unique_name);
+  node_geo_simulation_output_item_set_unique_name(sim, &added_item, name);
   added_item.socket_type = socket_type;
 
   sim->items_num++;

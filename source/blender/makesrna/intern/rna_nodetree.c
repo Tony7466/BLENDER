@@ -4087,6 +4087,26 @@ static void rna_NodeCryptomatte_update_remove(Main *bmain, Scene *scene, Pointer
   rna_Node_update(bmain, scene, ptr);
 }
 
+static void rna_SimulationStateItem_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
+{
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
+  NodeSimulationItem *item = (NodeSimulationItem *)ptr->data;
+  bNode *node = node_geo_simulation_output_find_node_by_item(ntree, item);
+
+  BKE_ntree_update_tag_node_property(ntree, node);
+  ED_node_tree_propagate_change(NULL, bmain, ntree);
+}
+
+static void rna_SimulationStateItem_name_set(PointerRNA *ptr, const char *value)
+{
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
+  NodeSimulationItem *item = (NodeSimulationItem *)ptr->data;
+  bNode *node = node_geo_simulation_output_find_node_by_item(ntree, item);
+  NodeGeometrySimulationOutput *sim = (NodeGeometrySimulationOutput *)node->storage;
+
+  node_geo_simulation_output_item_set_unique_name(sim, item, value);
+}
+
 static bool rna_GeometryNodeSimulationInput_pair_with_output(
     ID *id, bNode *node, bContext *C, ReportList *reports, bNode *output_node)
 {
@@ -4123,6 +4143,8 @@ static NodeSimulationItem *rna_NodeGeometrySimulationOutput_items_new(
   }
   else {
     bNodeTree *ntree = (bNodeTree *)id;
+    bNode *node = node_geo_simulation_output_find_node_by_item(ntree, item);
+    BKE_ntree_update_tag_node_property(ntree, node);
     ED_node_tree_propagate_change(NULL, bmain, ntree);
     WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
   }
@@ -4143,6 +4165,8 @@ static void rna_NodeGeometrySimulationOutput_items_remove(ID *id,
     node_geo_simulation_output_remove_item(sim, item);
 
     bNodeTree *ntree = (bNodeTree *)id;
+    bNode *node = node_geo_simulation_output_find_node_by_item(ntree, item);
+    BKE_ntree_update_tag_node_property(ntree, node);
     ED_node_tree_propagate_change(NULL, bmain, ntree);
     WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
   }
@@ -4155,6 +4179,8 @@ static void rna_NodeGeometrySimulationOutput_items_clear(ID *id,
   node_geo_simulation_output_clear_items(sim);
 
   bNodeTree *ntree = (bNodeTree *)id;
+  bNode *node = node_geo_simulation_output_find_node_by_data(ntree, sim);
+  BKE_ntree_update_tag_node_property(ntree, node);
   ED_node_tree_propagate_change(NULL, bmain, ntree);
   WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }
@@ -4172,6 +4198,8 @@ static void rna_NodeGeometrySimulationOutput_items_move(ID *id,
   node_geo_simulation_output_move_item(sim, from_index, to_index);
 
   bNodeTree *ntree = (bNodeTree *)id;
+  bNode *node = node_geo_simulation_output_find_node_by_data(ntree, sim);
+  BKE_ntree_update_tag_node_property(ntree, node);
   ED_node_tree_propagate_change(NULL, bmain, ntree);
   WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }
@@ -9866,14 +9894,15 @@ static void rna_def_simulation_state_item(BlenderRNA *brna)
   PropertyRNA *prop;
 
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_funcs(prop, NULL, NULL, "rna_SimulationStateItem_name_set");
   RNA_def_property_ui_text(prop, "Name", "");
   RNA_def_struct_name_property(srna, prop);
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeSocket_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_SimulationStateItem_update");
 
   prop = RNA_def_property(srna, "socket_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, node_socket_type_items);
   RNA_def_property_ui_text(prop, "Socket Type", "");
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_SimulationStateItem_update");
 }
 
 static void rna_def_geo_simulation_output_items(BlenderRNA *brna)

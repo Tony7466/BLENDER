@@ -26,8 +26,22 @@ bool node_geo_simulation_input_pair_with_output(const bNodeTree *node_tree,
 /** \name Simulation State Items
  * \{ */
 
+/** Set a unique item name.
+ * @return True if the unique name differs from the original name.
+ */
+bool node_geo_simulation_output_item_set_unique_name(struct NodeGeometrySimulationOutput *sim,
+                                                     struct NodeSimulationItem *item,
+                                                     const char *name);
+
+/** Find the node owning this simulation output data. */
+bNode *node_geo_simulation_output_find_node_by_data(
+    struct bNodeTree *ntree, const struct NodeGeometrySimulationOutput *sim);
+/** Find the node owning this simulation state item. */
+bNode *node_geo_simulation_output_find_node_by_item(struct bNodeTree *ntree,
+                                                    const struct NodeSimulationItem *item);
+
 bool node_geo_simulation_output_contains_item(struct NodeGeometrySimulationOutput *sim,
-                                              struct NodeSimulationItem *item);
+                                              const struct NodeSimulationItem *item);
 struct NodeSimulationItem *node_geo_simulation_output_get_active_item(
     struct NodeGeometrySimulationOutput *sim);
 void node_geo_simulation_output_set_active_item(struct NodeGeometrySimulationOutput *sim,
