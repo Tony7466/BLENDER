@@ -138,7 +138,7 @@ ccl_device float3 sky_radiance_nishita(KernelGlobals kg,
     /* definitions */
     float3 sun_dir = float4_to_float3(kernel_data.background.sun);
     float sun_dir_angle = precise_angle(dir, sun_dir);
-    float half_angular = angular_diameter / 2.0f;
+    float half_angular = angular_diameter * 0.5f;
     float dir_elevation = M_PI_2_F - direction.x;
 
     /* if ray inside sun disc render it, otherwise render sky.
