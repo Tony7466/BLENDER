@@ -55,9 +55,9 @@ ccl_device_forceinline void film_write_denoising_features_surface(KernelGlobals 
     }
 
     /* All closures contribute to the normal feature, but only diffuse-like ones to the albedo. */
-    if (sc->type != CLOSURE_BSDF_HAIR_MICROFACET_ID) {
-      normal += sc->N * sc->sample_weight;
-    }
+    /* If far-field hair, use fiber tangent as feature instead of normal. */
+    normal += (sc->type == CLOSURE_BSDF_HAIR_MICROFACET_ID ? safe_normalize(sd->dPdu) : sc->N) *
+              sc->sample_weight;
     sum_weight += sc->sample_weight;
 
     if (sc->type == CLOSURE_BSDF_PRINCIPLED_DIFFUSE_ID) {
@@ -68,25 +68,16 @@ ccl_device_forceinline void film_write_denoising_features_surface(KernelGlobals 
         continue;
       }
     }
-    else if (sc->type == CLOSURE_BSDF_HAIR_MICROFACET_ID) {
-      /* If hair, use fiber tangent as feature instead of normal. */
-      normal += safe_normalize(sd->dPdu);
-    }
 
     Spectrum closure_albedo = bsdf_albedo(sd, sc);
-    if (sc->type == CLOSURE_BSDF_HAIR_MICROFACET_ID) {
+    if (bsdf_get_specular_roughness_squared(sc) > sqr(0.075f) ||
+        sc->type == CLOSURE_BSDF_HAIR_MICROFACET_ID) {
       /* Hair far field models "count" as diffuse. */
       diffuse_albedo += closure_albedo;
       sum_nonspecular_weight += sc->sample_weight;
     }
     else {
-      if (bsdf_get_specular_roughness_squared(sc) > sqr(0.075f)) {
-        diffuse_albedo += closure_albedo;
-        sum_nonspecular_weight += sc->sample_weight;
-      }
-      else {
-        specular_albedo += closure_albedo;
-      }
+      specular_albedo += closure_albedo;
     }
   }
 

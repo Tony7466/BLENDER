@@ -168,7 +168,7 @@ static int node_shader_gpu_hair_microfacet(GPUMaterial *mat,
 
 }  // namespace blender::nodes::node_shader_bsdf_hair_microfacet_cc
 
-/* node type definition */
+/* Node type definition. */
 void register_node_type_sh_bsdf_hair_microfacet()
 {
   namespace file_ns = blender::nodes::node_shader_bsdf_hair_microfacet_cc;
