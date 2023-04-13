@@ -232,7 +232,7 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
 
 void SCULPT_mask_filter_smooth_apply(Sculpt *sd,
                                      Object *ob,
-                                     Vector<PBVHNode *> &nodes,
+                                     Span<PBVHNode *> nodes,
                                      const int smooth_iterations)
 {
   SculptThreadedTaskData data{};

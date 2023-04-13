@@ -580,7 +580,7 @@ bool SCULPT_use_image_paint_brush(PaintModeSettings *settings, Object *ob)
 void SCULPT_do_paint_brush_image(PaintModeSettings *paint_mode_settings,
                                  Sculpt *sd,
                                  Object *ob,
-                                 Vector<PBVHNode *> &texnodes)
+                                 Span<PBVHNode *> texnodes)
 {
   Brush *brush = BKE_paint_brush(&sd->paint);
 

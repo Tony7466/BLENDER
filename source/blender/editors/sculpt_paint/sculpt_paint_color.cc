@@ -255,8 +255,8 @@ static void sample_wet_paint_reduce(const void *__restrict /*userdata*/,
 void SCULPT_do_paint_brush(PaintModeSettings *paint_mode_settings,
                            Sculpt *sd,
                            Object *ob,
-                           Vector<PBVHNode *> &nodes,
-                           Vector<PBVHNode *> &texnodes)
+                           Span<PBVHNode *> nodes,
+                           Span<PBVHNode *> texnodes)
 {
   if (SCULPT_use_image_paint_brush(paint_mode_settings, ob)) {
     SCULPT_do_paint_brush_image(paint_mode_settings, sd, ob, texnodes);
@@ -527,7 +527,7 @@ static void do_smear_store_prev_colors_task_cb_exec(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_smear_brush(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+void SCULPT_do_smear_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   Brush *brush = BKE_paint_brush(&sd->paint);
   SculptSession *ss = ob->sculpt;

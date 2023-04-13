@@ -13,6 +13,7 @@
 #include "BLI_math.h"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
+#include "BLI_span.hh"
 
 #include "DNA_brush_types.h"
 #include "DNA_customdata_types.h"
@@ -38,6 +39,8 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+
+using blender::Span;
 
 /* -------------------------------------------------------------------- */
 /** \name SculptProjectVector
@@ -86,7 +89,7 @@ static void sculpt_project_v3(const SculptProjectVector *spvc, const float vec[3
 }
 
 static void calc_sculpt_plane(
-    Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes, float r_area_no[3], float r_area_co[3])
+    Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float r_area_no[3], float r_area_co[3])
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
@@ -302,7 +305,7 @@ static void do_draw_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_draw_brush(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+void SCULPT_do_draw_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
@@ -406,7 +409,7 @@ static void do_fill_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_fill_brush(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+void SCULPT_do_fill_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
@@ -510,7 +513,7 @@ static void do_scrape_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_scrape_brush(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+void SCULPT_do_scrape_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
@@ -643,7 +646,7 @@ float SCULPT_clay_thumb_get_stabilized_pressure(StrokeCache *cache)
   return final_pressure / SCULPT_CLAY_STABILIZER_LEN;
 }
 
-void SCULPT_do_clay_thumb_brush(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+void SCULPT_do_clay_thumb_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
@@ -796,7 +799,7 @@ static void do_flatten_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_flatten_brush(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+void SCULPT_do_flatten_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
@@ -958,7 +961,7 @@ static void do_clay_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_clay_brush(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+void SCULPT_do_clay_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
@@ -1090,7 +1093,7 @@ static void do_clay_strips_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_clay_strips_brush(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+void SCULPT_do_clay_strips_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
@@ -1298,7 +1301,7 @@ static void do_snake_hook_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_snake_hook_brush(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+void SCULPT_do_snake_hook_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
@@ -1390,7 +1393,7 @@ static void do_thumb_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_thumb_brush(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+void SCULPT_do_thumb_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
@@ -1475,7 +1478,7 @@ static void do_rotate_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_rotate_brush(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+void SCULPT_do_rotate_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
@@ -1598,7 +1601,7 @@ static void do_layer_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_layer_brush(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+void SCULPT_do_layer_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
@@ -1677,7 +1680,7 @@ static void do_inflate_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_inflate_brush(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+void SCULPT_do_inflate_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   Brush *brush = BKE_paint_brush(&sd->paint);
 
@@ -1742,7 +1745,7 @@ static void do_nudge_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_nudge_brush(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+void SCULPT_do_nudge_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
@@ -1842,7 +1845,7 @@ static void do_crease_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_crease_brush(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+void SCULPT_do_crease_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   const Scene *scene = ss->cache->vc->scene;
@@ -1967,7 +1970,7 @@ static void do_pinch_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_pinch_brush(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+void SCULPT_do_pinch_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
@@ -2082,7 +2085,7 @@ static void do_grab_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_grab_brush(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+void SCULPT_do_grab_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
@@ -2196,7 +2199,7 @@ static void do_elastic_deform_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_elastic_deform_brush(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+void SCULPT_do_elastic_deform_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
@@ -2280,7 +2283,7 @@ static void do_draw_sharp_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_draw_sharp_brush(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+void SCULPT_do_draw_sharp_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
@@ -2532,7 +2535,7 @@ static void do_topology_relax_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_slide_relax_brush(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+void SCULPT_do_slide_relax_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
@@ -2619,7 +2622,7 @@ static void do_displacement_eraser_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_displacement_eraser_brush(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+void SCULPT_do_displacement_eraser_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   Brush *brush = BKE_paint_brush(&sd->paint);
   BKE_curvemapping_init(brush->curve);
@@ -2753,7 +2756,7 @@ static void do_displacement_smear_store_prev_disp_task_cb_ex(
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_displacement_smear_brush(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+void SCULPT_do_displacement_smear_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   Brush *brush = BKE_paint_brush(&sd->paint);
   SculptSession *ss = ob->sculpt;
@@ -2867,7 +2870,7 @@ static void do_topology_rake_bmesh_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_bmesh_topology_rake(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes, float bstrength)
+void SCULPT_bmesh_topology_rake(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float bstrength)
 {
   Brush *brush = BKE_paint_brush(&sd->paint);
   const float strength = clamp_f(bstrength, 0.0f, 1.0f);
@@ -2949,7 +2952,7 @@ static void do_mask_brush_draw_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_mask_brush_draw(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+void SCULPT_do_mask_brush_draw(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   Brush *brush = BKE_paint_brush(&sd->paint);
 
@@ -2965,7 +2968,7 @@ void SCULPT_do_mask_brush_draw(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes
   BLI_task_parallel_range(0, nodes.size(), &data, do_mask_brush_draw_task_cb_ex, &settings);
 }
 
-void SCULPT_do_mask_brush(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+void SCULPT_do_mask_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);

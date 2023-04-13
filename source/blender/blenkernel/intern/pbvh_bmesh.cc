@@ -11,8 +11,8 @@
 #include "BLI_heap_simple.h"
 #include "BLI_math.h"
 #include "BLI_memarena.h"
+#include "BLI_span.hh"
 #include "BLI_utildefines.h"
-#include "BLI_vector.hh"
 
 #include "BKE_DerivedMesh.h"
 #include "BKE_ccg.h"
@@ -23,7 +23,7 @@
 #include "bmesh.h"
 #include "pbvh_intern.hh"
 
-using blender::Vector;
+using blender::Span;
 
 /* Avoid skinny faces */
 #define USE_EDGEQUEUE_EVEN_SUBDIV
@@ -1662,7 +1662,7 @@ bool pbvh_bmesh_node_nearest_to_ray(PBVHNode *node,
   return hit;
 }
 
-void pbvh_bmesh_normals_update(Vector<PBVHNode *> &nodes)
+void pbvh_bmesh_normals_update(Span<PBVHNode *> nodes)
 {
   for (PBVHNode *node : nodes) {
     if (node->flag & PBVH_UpdateNormals) {

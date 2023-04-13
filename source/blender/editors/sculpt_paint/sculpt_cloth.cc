@@ -931,7 +931,7 @@ void SCULPT_cloth_brush_do_simulation_step(Sculpt *sd,
                           &settings);
 }
 
-static void cloth_brush_apply_brush_foces(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+static void cloth_brush_apply_brush_foces(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
@@ -1159,7 +1159,7 @@ void SCULPT_cloth_sim_activate_nodes(SculptClothSimulation *cloth_sim, Span<PBVH
 
 static void sculpt_cloth_ensure_constraints_in_simulation_area(Sculpt *sd,
                                                                Object *ob,
-                                                               Vector<PBVHNode *> &nodes)
+                                                               Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
@@ -1171,7 +1171,7 @@ static void sculpt_cloth_ensure_constraints_in_simulation_area(Sculpt *sd,
       sd, ob, nodes, ss->cache->cloth_sim, sim_location, limit);
 }
 
-void SCULPT_do_cloth_brush(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+void SCULPT_do_cloth_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);

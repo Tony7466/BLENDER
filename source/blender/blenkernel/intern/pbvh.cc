@@ -3845,10 +3845,10 @@ void BKE_pbvh_sync_visibility_from_verts(PBVH *pbvh, Mesh *mesh)
 }
 
 namespace blender::pbvh {
-Vector<PBVHNode *> search_gather_ex(PBVH *pbvh,
-                                    BKE_pbvh_SearchCallback scb,
-                                    void *search_data,
-                                    PBVHNodeFlags leaf_flag)
+Vector<PBVHNode *> search_gather(PBVH *pbvh,
+                                 BKE_pbvh_SearchCallback scb,
+                                 void *search_data,
+                                 PBVHNodeFlags leaf_flag)
 {
   PBVHIter iter;
   Vector<PBVHNode *> nodes;
@@ -3864,11 +3864,6 @@ Vector<PBVHNode *> search_gather_ex(PBVH *pbvh,
 
   pbvh_iter_end(&iter);
   return nodes;
-}
-
-Vector<PBVHNode *> search_gather(PBVH *pbvh, BKE_pbvh_SearchCallback scb, void *search_data)
-{
-  return search_gather_ex(pbvh, scb, search_data, PBVH_Leaf);
 }
 
 Vector<PBVHNode *> gather_proxies(PBVH *pbvh)

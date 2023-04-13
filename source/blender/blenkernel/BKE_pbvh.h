@@ -829,11 +829,10 @@ int BKE_pbvh_debug_draw_gen_get(PBVHNode *node);
 }
 
 namespace blender::pbvh {
-Vector<PBVHNode *> search_gather(PBVH *pbvh, BKE_pbvh_SearchCallback scb, void *search_data);
-Vector<PBVHNode *> search_gather_ex(PBVH *pbvh,
-                                    BKE_pbvh_SearchCallback scb,
-                                    void *search_data,
-                                    PBVHNodeFlags leaf_flag);
+Vector<PBVHNode *> search_gather(PBVH *pbvh,
+                                 BKE_pbvh_SearchCallback scb,
+                                 void *search_data,
+                                 PBVHNodeFlags leaf_flag = PBVH_Leaf);
 Vector<PBVHNode *> gather_proxies(PBVH *pbvh);
 
 }  // namespace blender::pbvh

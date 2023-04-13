@@ -2255,7 +2255,7 @@ static void do_wpaint_brush_calc_average_weight_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-static void calculate_average_weight(SculptThreadedTaskData *data, Vector<PBVHNode *> &nodes)
+static void calculate_average_weight(SculptThreadedTaskData *data, Span<PBVHNode *> nodes)
 {
   WPaintAverageAccum *accum = (WPaintAverageAccum *)MEM_mallocN(sizeof(*accum) * nodes.size(),
                                                                 __func__);
@@ -2287,7 +2287,7 @@ static void wpaint_paint_leaves(bContext *C,
                                 WPaintData *wpd,
                                 WeightPaintInfo *wpi,
                                 Mesh *me,
-                                Vector<PBVHNode *> &nodes)
+                                Span<PBVHNode *> nodes)
 {
   Scene *scene = CTX_data_scene(C);
   const Brush *brush = ob->sculpt->cache->brush;
@@ -2945,7 +2945,7 @@ static void do_vpaint_brush_blur_loops(bContext *C,
                                        VPaintData<Color, Traits, ATTR_DOMAIN_CORNER> *vpd,
                                        Object *ob,
                                        Mesh *me,
-                                       Vector<PBVHNode *> &nodes,
+                                       Span<PBVHNode *> nodes,
                                        Color *lcol)
 {
   using Blend = typename Traits::BlendType;
@@ -3088,7 +3088,7 @@ static void do_vpaint_brush_blur_verts(bContext *C,
                                        VPaintData<Color, Traits, ATTR_DOMAIN_POINT> *vpd,
                                        Object *ob,
                                        Mesh *me,
-                                       Vector<PBVHNode *> &nodes,
+                                       Span<PBVHNode *> nodes,
                                        Color *lcol)
 {
   using Blend = typename Traits::BlendType;
@@ -3232,7 +3232,7 @@ static void do_vpaint_brush_smear(bContext *C,
                                   VPaintData<Color, Traits, domain> *vpd,
                                   Object *ob,
                                   Mesh *me,
-                                  Vector<PBVHNode *> &nodes,
+                                  Span<PBVHNode *> nodes,
                                   Color *lcol)
 {
   SculptSession *ss = ob->sculpt;
@@ -3411,7 +3411,7 @@ static void calculate_average_color(VPaintData<Color, Traits, domain> *vpd,
                                     Mesh *me,
                                     const Brush *brush,
                                     Color *lcol,
-                                    Vector<PBVHNode *> &nodes)
+                                    Span<PBVHNode *> nodes)
 {
   using Blend = typename Traits::BlendType;
 
@@ -3521,7 +3521,7 @@ static void vpaint_do_draw(bContext *C,
                            VPaintData<Color, Traits, domain> *vpd,
                            Object *ob,
                            Mesh *me,
-                           Vector<PBVHNode *> &nodes,
+                           Span<PBVHNode *> nodes,
                            Color *lcol)
 {
   SculptSession *ss = ob->sculpt;
@@ -3663,7 +3663,7 @@ static void vpaint_do_blur(bContext *C,
                            VPaintData<Color, Traits, domain> *vpd,
                            Object *ob,
                            Mesh *me,
-                           Vector<PBVHNode *> &nodes,
+                           Span<PBVHNode *> nodes,
                            Color *lcol)
 {
   if constexpr (domain == ATTR_DOMAIN_POINT) {
@@ -3682,7 +3682,7 @@ static void vpaint_paint_leaves(bContext *C,
                                 Object *ob,
                                 Mesh *me,
                                 Color *lcol,
-                                Vector<PBVHNode *> &nodes)
+                                Span<PBVHNode *> nodes)
 {
 
   for (PBVHNode *node : nodes) {

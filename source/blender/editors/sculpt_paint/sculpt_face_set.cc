@@ -254,7 +254,7 @@ static void do_relax_face_sets_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_draw_face_sets_brush(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+void SCULPT_do_draw_face_sets_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
@@ -1340,7 +1340,7 @@ static void sculpt_face_set_edit_modify_geometry(bContext *C,
   WM_event_add_notifier(C, NC_GEOM | ND_DATA, mesh);
 }
 
-static void face_set_edit_do_post_visibility_updates(Object *ob, Vector<PBVHNode *> &nodes)
+static void face_set_edit_do_post_visibility_updates(Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   PBVH *pbvh = ss->pbvh;

@@ -284,7 +284,7 @@ bool pbvh_bmesh_node_nearest_to_ray(PBVHNode *node,
                                     float *dist_sq,
                                     bool use_original);
 
-void pbvh_bmesh_normals_update(blender::Vector<PBVHNode *> &nodes);
+void pbvh_bmesh_normals_update(blender::Span<PBVHNode *> nodes);
 
 /* pbvh_pixels.hh */
 

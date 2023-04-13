@@ -79,6 +79,7 @@
 using blender::float3;
 using blender::MutableSpan;
 using blender::Set;
+using blender::Span;
 using blender::Vector;
 
 static float sculpt_calc_radius(ViewContext *vc,
@@ -2242,7 +2243,7 @@ static void calc_area_normal_and_center_reduce(const void *__restrict /*userdata
   add_v2_v2_int(join->count_co, anctd->count_co);
 }
 
-void SCULPT_calc_area_center(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes, float r_area_co[3])
+void SCULPT_calc_area_center(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float r_area_co[3])
 {
   const Brush *brush = BKE_paint_brush(&sd->paint);
   SculptSession *ss = ob->sculpt;
@@ -2288,17 +2289,14 @@ void SCULPT_calc_area_center(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes, 
   }
 }
 
-void SCULPT_calc_area_normal(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes, float r_area_no[3])
+void SCULPT_calc_area_normal(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float r_area_no[3])
 {
   const Brush *brush = BKE_paint_brush(&sd->paint);
   SCULPT_pbvh_calc_area_normal(brush, ob, nodes, true, r_area_no);
 }
 
-bool SCULPT_pbvh_calc_area_normal(const Brush *brush,
-                                  Object *ob,
-                                  Vector<PBVHNode *> &nodes,
-                                  bool use_threading,
-                                  float r_area_no[3])
+bool SCULPT_pbvh_calc_area_normal(
+    const Brush *brush, Object *ob, Span<PBVHNode *> nodes, bool use_threading, float r_area_no[3])
 {
   SculptSession *ss = ob->sculpt;
   const bool has_bm_orco = ss->bm && SCULPT_stroke_is_dynamic_topology(ss, brush);
@@ -2333,7 +2331,7 @@ bool SCULPT_pbvh_calc_area_normal(const Brush *brush,
 }
 
 void SCULPT_calc_area_normal_and_center(
-    Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes, float r_area_no[3], float r_area_co[3])
+    Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float r_area_no[3], float r_area_co[3])
 {
   const Brush *brush = BKE_paint_brush(&sd->paint);
   SculptSession *ss = ob->sculpt;
@@ -2878,7 +2876,7 @@ static Vector<PBVHNode *> sculpt_pbvh_gather_generic_intern(Object *ob,
     data.original = use_original;
     data.ignore_fully_ineffective = brush->sculpt_tool != SCULPT_TOOL_MASK;
     data.center = nullptr;
-    nodes = blender::pbvh::search_gather_ex(ss->pbvh, SCULPT_search_sphere_cb, &data, leaf_flag);
+    nodes = blender::pbvh::search_gather(ss->pbvh, SCULPT_search_sphere_cb, &data, leaf_flag);
   }
   else {
     DistRayAABB_Precalc dist_ray_to_aabb_precalc;
@@ -2892,7 +2890,7 @@ static Vector<PBVHNode *> sculpt_pbvh_gather_generic_intern(Object *ob,
     data.original = use_original;
     data.dist_ray_to_aabb_precalc = &dist_ray_to_aabb_precalc;
     data.ignore_fully_ineffective = brush->sculpt_tool != SCULPT_TOOL_MASK;
-    nodes = blender::pbvh::search_gather_ex(ss->pbvh, SCULPT_search_circle_cb, &data, leaf_flag);
+    nodes = blender::pbvh::search_gather(ss->pbvh, SCULPT_search_circle_cb, &data, leaf_flag);
   }
 
   return nodes;
@@ -2912,10 +2910,7 @@ static Vector<PBVHNode *> sculpt_pbvh_gather_texpaint(
 }
 
 /* Calculate primary direction of movement for many brushes. */
-static void calc_sculpt_normal(Sculpt *sd,
-                               Object *ob,
-                               Vector<PBVHNode *> &nodes,
-                               float r_area_no[3])
+static void calc_sculpt_normal(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float r_area_no[3])
 {
   const Brush *brush = BKE_paint_brush(&sd->paint);
   const SculptSession *ss = ob->sculpt;
@@ -2946,7 +2941,7 @@ static void calc_sculpt_normal(Sculpt *sd,
   }
 }
 
-static void update_sculpt_normal(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes)
+static void update_sculpt_normal(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   const Brush *brush = BKE_paint_brush(&sd->paint);
   StrokeCache *cache = ob->sculpt->cache;
@@ -3198,7 +3193,7 @@ void SCULPT_flip_quat_by_symm_area(float quat[4],
 }
 
 void SCULPT_calc_brush_plane(
-    Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes, float r_area_no[3], float r_area_co[3])
+    Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float r_area_no[3], float r_area_co[3])
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
@@ -3360,7 +3355,7 @@ static void do_gravity_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-static void do_gravity(Sculpt *sd, Object *ob, Vector<PBVHNode *> &nodes, float bstrength)
+static void do_gravity(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float bstrength)
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
