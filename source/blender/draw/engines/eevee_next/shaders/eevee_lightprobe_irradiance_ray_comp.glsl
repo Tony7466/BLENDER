@@ -17,7 +17,7 @@
 void irradiance_capture(vec3 L, vec3 irradiance, inout SphericalHarmonicL1 sh)
 {
   spherical_harmonics_encode_signal_sample(
-      L, irradiance * capture_info_buf.irradiance_sample_solid_angle, sh);
+      L, vec4(irradiance, 1.0) * capture_info_buf.irradiance_sample_solid_angle, sh);
 }
 
 void irradiance_capture(Surfel surfel_emitter, vec3 P, inout SphericalHarmonicL1 sh)
@@ -59,10 +59,11 @@ void main()
 
   vec3 sky_L = cameraVec(P);
 
-  SphericalHarmonicL1 sh = spherical_harmonics_unpack(
-      imageLoad(irradiance_L0_L1_a_img, grid_coord),
-      imageLoad(irradiance_L0_L1_b_img, grid_coord),
-      imageLoad(irradiance_L0_L1_c_img, grid_coord));
+  SphericalHarmonicL1 sh;
+  sh.L0.M0 = imageLoad(irradiance_L0_img, grid_coord);
+  sh.L1.Mn1 = imageLoad(irradiance_L1_a_img, grid_coord);
+  sh.L1.M0 = imageLoad(irradiance_L1_b_img, grid_coord);
+  sh.L1.Mp1 = imageLoad(irradiance_L1_c_img, grid_coord);
 
   if (surfel_next > -1) {
     irradiance_capture(surfel_buf[surfel_next], P, sh);
@@ -80,9 +81,8 @@ void main()
     irradiance_capture(-sky_L, vec3(0.0), sh);
   }
 
-  vec4 sh_a, sh_b, sh_c;
-  spherical_harmonics_pack(sh, sh_a, sh_b, sh_c);
-  imageStore(irradiance_L0_L1_a_img, grid_coord, sh_a);
-  imageStore(irradiance_L0_L1_b_img, grid_coord, sh_b);
-  imageStore(irradiance_L0_L1_c_img, grid_coord, sh_c);
+  imageStore(irradiance_L0_img, grid_coord, sh.L0.M0);
+  imageStore(irradiance_L1_a_img, grid_coord, sh.L1.Mn1);
+  imageStore(irradiance_L1_b_img, grid_coord, sh.L1.M0);
+  imageStore(irradiance_L1_c_img, grid_coord, sh.L1.Mp1);
 }

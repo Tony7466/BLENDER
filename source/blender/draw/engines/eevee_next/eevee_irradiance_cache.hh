@@ -77,9 +77,10 @@ class IrradianceBake {
   int3 dispatch_per_grid_sample_ = int3(1);
 
   /** Irradiance textures for baking. Only represents one grid in there. */
-  Texture irradiance_L0_L1_a_tx_ = {"irradiance_L0_L1_a_tx_"};
-  Texture irradiance_L0_L1_b_tx_ = {"irradiance_L0_L1_b_tx_"};
-  Texture irradiance_L0_L1_c_tx_ = {"irradiance_L0_L1_c_tx_"};
+  Texture irradiance_L0_tx_ = {"irradiance_L0_tx_"};
+  Texture irradiance_L1_a_tx_ = {"irradiance_L1_a_tx_"};
+  Texture irradiance_L1_b_tx_ = {"irradiance_L1_b_tx_"};
+  Texture irradiance_L1_c_tx_ = {"irradiance_L1_c_tx_"};
 
   /* Orientation of the irradiance grid being baked. */
   math::Quaternion grid_orientation_;
@@ -96,9 +97,9 @@ class IrradianceBake {
   void sync();
 
   /** Create the views used to rasterize the scene into surfel representation. */
-  void surfel_raster_views_sync(const IrradianceGrid &grid);
-  /** Create a surfel representation of the scene from the \a grid using the capture pipeline. */
-  void surfels_create(const IrradianceGrid &grid);
+  void surfel_raster_views_sync(const Object &probe_object);
+  /** Create a surfel representation of the scene from the probe using the capture pipeline. */
+  void surfels_create(const Object &probe_object);
   /** Evaluate direct lighting (and also clear the surfels radiance). */
   void surfels_lights_eval();
   /** Propagate light from surfel to surfel in a random direction over the sphere. */
@@ -106,8 +107,14 @@ class IrradianceBake {
   /** Accumulate light inside `surfel.radiance_bounce` to `surfel.radiance`. */
   void accumulate_bounce();
 
-  /** Read grid final irradiance back to CPU into \a light_cache_grid . */
-  void read_result(LightCacheIrradianceGrid &light_cache_grid);
+  /** Read grid unpacked irradiance back to CPU and returns as a #LightProbeGridCacheFrame. */
+  LightProbeGridCacheFrame *read_result_unpacked();
+  /** Read grid packed irradiance back to CPU and returns as a #LightProbeGridCacheFrame. */
+  LightProbeGridCacheFrame *read_result_packed();
+
+ private:
+  /** Read surfel data back to CPU into \a cache_frame . */
+  void read_surfels(LightProbeGridCacheFrame *cache_frame);
 };
 
 /**
@@ -121,10 +128,12 @@ class IrradianceCache {
  private:
   Instance &inst_;
 
+  /** Display surfel debug data. */
   PassSimple debug_surfels_ps_ = {"IrradianceCache.Debug"};
   /** Debug surfel elements copied from the light cache. */
-  draw::StorageVectorBuffer<Surfel> surfels_buf_;
+  draw::StorageArrayBuffer<Surfel> debug_surfels_buf_;
 
+  /** Display grid cache data. */
   bool display_grids_enabled_ = false;
   PassSimple display_grids_ps_ = {"IrradianceCache.Display Grids"};
 
@@ -137,9 +146,7 @@ class IrradianceCache {
   void viewport_draw(View &view, GPUFrameBuffer *view_fb);
 
  private:
-  void debug_pass_sync();
   void debug_pass_draw(View &view, GPUFrameBuffer *view_fb);
-  void display_pass_sync();
   void display_pass_draw(View &view, GPUFrameBuffer *view_fb);
 };
 

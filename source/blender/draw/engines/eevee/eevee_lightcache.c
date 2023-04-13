@@ -24,7 +24,6 @@
 
 #include "PIL_time.h"
 
-#include "../eevee_next/eevee_lightcache.h"
 #include "eevee_lightcache.h"
 #include "eevee_private.h"
 
@@ -502,11 +501,6 @@ static void eevee_lightbake_readback_reflections(LightCache *lcache)
 
 void EEVEE_lightcache_free(LightCache *lcache)
 {
-  if (lcache->version == LIGHTCACHE_NEXT_STATIC_VERSION) {
-    EEVEE_NEXT_lightcache_free(lcache);
-    return;
-  }
-
   DRW_TEXTURE_FREE_SAFE(lcache->cube_tx.tex);
   MEM_SAFE_FREE(lcache->cube_tx.data);
   DRW_TEXTURE_FREE_SAFE(lcache->grid_tx.tex);
@@ -545,10 +539,6 @@ static void write_lightcache_texture(BlendWriter *writer, LightCacheTexture *tex
 
 void EEVEE_lightcache_blend_write(BlendWriter *writer, LightCache *cache)
 {
-  if (cache->version == LIGHTCACHE_NEXT_STATIC_VERSION) {
-    EEVEE_NEXT_lightcache_blend_write(writer, cache);
-  }
-
   write_lightcache_texture(writer, &cache->grid_tx);
   write_lightcache_texture(writer, &cache->cube_tx);
 
@@ -589,10 +579,6 @@ static void direct_link_lightcache_texture(BlendDataReader *reader, LightCacheTe
 
 void EEVEE_lightcache_blend_read_data(BlendDataReader *reader, LightCache *cache)
 {
-  if (cache->version == LIGHTCACHE_NEXT_STATIC_VERSION) {
-    EEVEE_NEXT_lightcache_blend_read_data(reader, cache);
-  }
-
   cache->flag &= ~LIGHTCACHE_NOT_USABLE;
   direct_link_lightcache_texture(reader, &cache->cube_tx);
   direct_link_lightcache_texture(reader, &cache->grid_tx);

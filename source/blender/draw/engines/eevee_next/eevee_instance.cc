@@ -21,7 +21,6 @@
 
 #include "eevee_engine.h"
 #include "eevee_instance.hh"
-#include "eevee_lightcache.h"
 
 namespace blender::eevee {
 
@@ -334,51 +333,6 @@ void Instance::render_read_result(RenderLayer *render_layer, const char *view_na
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Light Bake
- * \{ */
-
-LightCache *Instance::light_cache_create(Vector<IrradianceGrid> grids,
-                                         Vector<ReflectionCube> cubes)
-{
-  LightCache *light_cache = EEVEE_NEXT_lightcache_create();
-  light_cache->flag = LIGHTCACHE_BAKING;
-
-  light_cache->grid_len = grids.size();
-  light_cache->grids = MEM_cnew_array<LightCacheIrradianceGrid>(grids.size(),
-                                                                "LightCacheIrradianceGrid");
-
-  for (const auto i : grids.index_range()) {
-    const IrradianceGrid &grid = grids[i];
-    size_t sample_count = grid.resolution.x * grid.resolution.y * grid.resolution.z;
-    size_t grid_texture_sample_size = sizeof(uint16_t) * 4;
-    if (sample_count * grid_texture_sample_size > INT_MAX) {
-      /* The size of the texture doesn't fit on a 32bit system. */
-      light_cache->flag |= LIGHTCACHE_INVALID;
-      info = "Scene contains an irradiance grid with too many samples points";
-      return nullptr;
-    }
-    LightCacheIrradianceGrid &irradiance_grid = light_cache->grids[i];
-    float4x4 world_to_grid = math::invert(grid.transform);
-    copy_m4_m4(irradiance_grid.world_to_grid, world_to_grid.ptr());
-    irradiance_grid.resolution[0] = grid.resolution.x;
-    irradiance_grid.resolution[1] = grid.resolution.y;
-    irradiance_grid.resolution[2] = grid.resolution.z;
-  }
-
-  light_cache->cube_len = cubes.size();
-  // light_cache->cubes = MEM_cnew_array<LightCacheIrradianceGrid>(cubes.size(),
-  //                                                               "LightCacheIrradianceGrid");
-
-  // for (const auto i : cubes.index_range()) {
-  /* TODO */
-  // }
-
-  return light_cache;
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Interface
  * \{ */
 
@@ -498,12 +452,12 @@ void Instance::update_passes(RenderEngine *engine, Scene *scene, ViewLayer *view
                               EEVEE_RENDER_PASS_CRYPTOMATTE_MATERIAL);
 }
 
-void Instance::light_bake_irradiance(LightCache *&r_light_cache,
+void Instance::light_bake_irradiance(Object &probe,
                                      std::function<void()> context_enable,
-                                     std::function<void()> context_disable)
+                                     std::function<void()> context_disable,
+                                     std::function<void(LightProbeGridCacheFrame *)> result_update)
 {
   BLI_assert(is_baking());
-  BLI_assert(r_light_cache == nullptr);
 
   auto custom_pipeline_wrapper = [&](std::function<void()> callback) {
     context_enable();
@@ -519,67 +473,47 @@ void Instance::light_bake_irradiance(LightCache *&r_light_cache,
     context_disable();
   };
 
-  /* Count probes. */
-  /* TODO(fclem): Ideally, this should only iterate the despgraph and not do a full sync. */
   custom_pipeline_wrapper([&]() {
+    GPU_debug_capture_begin();
+    irradiance_cache.bake.surfel_raster_views_sync(probe);
+    /* TODO: lightprobe visibility group option. */
     manager->begin_sync();
     render_sync();
     manager->end_sync();
+
+    irradiance_cache.bake.surfels_create(probe);
+    irradiance_cache.bake.surfels_lights_eval();
+    GPU_debug_capture_end();
   });
-  /* Allocate CPU storage. */
-  r_light_cache = this->light_cache_create(light_probes.grids, light_probes.cubes);
 
-  if (r_light_cache->flag & LIGHTCACHE_INVALID) {
-    /* Something happened and the light cache couldn't be created. */
-    // stop = true;
-    // do_update = true;
-    r_light_cache->flag &= ~LIGHTCACHE_BAKING;
-    return;
-  }
+  int bounce_len = scene->eevee.gi_diffuse_bounces;
+  /* Start at bounce 1 as 0 bounce is no indirect lighting. */
+  for (int bounce = 1; bounce <= bounce_len; bounce++) {
+    sampling.init(scene);
+    while (!sampling.finished()) {
+      context_wrapper([&]() {
+        /* Batch ray cast by pack of 16 to avoid too much overhead of
+         * the update function & context switch. */
+        for (int i = 0; i < 16 && !sampling.finished(); i++) {
+          sampling.step();
+          irradiance_cache.bake.propagate_light_sample();
+        }
+        if (sampling.finished()) {
+          irradiance_cache.bake.accumulate_bounce();
+        }
 
-  for (auto i : light_probes.grids.index_range()) {
-    custom_pipeline_wrapper([&]() {
-      GPU_debug_capture_begin();
-      irradiance_cache.bake.surfel_raster_views_sync(light_probes.grids[i]);
-      /* TODO: lightprobe visibility group option. */
-      manager->begin_sync();
-      render_sync();
-      manager->end_sync();
-
-      irradiance_cache.bake.surfels_create(light_probes.grids[i]);
-      irradiance_cache.bake.surfels_lights_eval();
-      GPU_debug_capture_end();
-    });
-
-    int bounce_len = scene->eevee.gi_diffuse_bounces;
-    /* Start at bounce 1 as 0 bounce is no indirect lighting. */
-    for (int bounce = 1; bounce <= bounce_len; bounce++) {
-      sampling.init(scene);
-      while (!sampling.finished()) {
-        context_wrapper([&]() {
-          /* Batch ray cast by pack of 16 to avoid too much overhead of
-           * the update function & context switch. */
-          for (int i = 0; i < 16 && !sampling.finished(); i++) {
-            sampling.step();
-            irradiance_cache.bake.propagate_light_sample();
-          }
-          if (sampling.finished()) {
-            irradiance_cache.bake.accumulate_bounce();
-          }
-          irradiance_cache.bake.read_result(r_light_cache->grids[i]);
-        });
-        // do_update = true;
-      }
-    }
-
-    if (bounce_len == 0) {
-      /* Still read result for debugging surfel direct lighting. */
-      context_wrapper([&]() { irradiance_cache.bake.read_result(r_light_cache->grids[i]); });
+        LightProbeGridCacheFrame *cache_frame;
+        if (bounce != bounce_len) {
+          /* TODO(fclem): Only do this read-back if needed. But it might be tricky to know when. */
+          cache_frame = irradiance_cache.bake.read_result_unpacked();
+        }
+        else {
+          cache_frame = irradiance_cache.bake.read_result_packed();
+        }
+        result_update(cache_frame);
+      });
     }
   }
-
-  r_light_cache->flag |= LIGHTCACHE_BAKED;
-  r_light_cache->flag &= ~LIGHTCACHE_BAKING;
 }
 
 /** \} */

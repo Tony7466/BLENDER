@@ -85,7 +85,7 @@
 #include "RE_pipeline.h"
 
 #include "engines/eevee/eevee_lightcache.h"
-#include "engines/eevee_next/eevee_lightcache.h"
+#include "engines/eevee_next/eevee_lightcache.hh"
 
 #include "render_intern.hh" /* own include */
 
@@ -1401,23 +1401,17 @@ static int light_cache_bake_exec(bContext *C, wmOperator *op)
 
   G.is_break = false;
 
-  RenderEngineType *engine_type = RE_engines_find(scene->r.engine);
-  bool use_eevee_next = STREQ(engine_type->idname, "BLENDER_EEVEE_NEXT");
-
   /* TODO: abort if selected engine is not eevee. */
-  void *rj = ((use_eevee_next) ?
-                  EEVEE_NEXT_lightbake_job_data_alloc :
-                  EEVEE_lightbake_job_data_alloc)(bmain, view_layer, scene, false, scene->r.cfra);
+  void *rj = EEVEE_lightbake_job_data_alloc(bmain, view_layer, scene, false, scene->r.cfra);
 
   light_cache_bake_tag_cache(scene, op);
 
   bool stop = false, do_update;
   float progress; /* Not actually used. */
   /* Do the job. */
-  ((use_eevee_next) ? EEVEE_NEXT_lightbake_job :
-                      EEVEE_lightbake_job)(rj, &stop, &do_update, &progress);
+  EEVEE_lightbake_job(rj, &stop, &do_update, &progress);
   /* Free baking data. Result is already stored in the scene data. */
-  ((use_eevee_next) ? EEVEE_NEXT_lightbake_job_data_free : EEVEE_lightbake_job_data_free)(rj);
+  EEVEE_lightbake_job_data_free(rj);
 
   /* No redraw needed, we leave state as we entered it. */
   ED_update_for_newframe(bmain, CTX_data_depsgraph_pointer(C));
@@ -1436,11 +1430,7 @@ static int light_cache_bake_invoke(bContext *C, wmOperator *op, const wmEvent * 
   Scene *scene = CTX_data_scene(C);
   int delay = RNA_int_get(op->ptr, "delay");
 
-  RenderEngineType *engine_type = RE_engines_find(scene->r.engine);
-  bool use_eevee_next = STREQ(engine_type->idname, "BLENDER_EEVEE_NEXT");
-
-  wmJob *wm_job = ((use_eevee_next) ? EEVEE_NEXT_lightbake_job_create :
-                                      EEVEE_lightbake_job_create)(
+  wmJob *wm_job = EEVEE_lightbake_job_create(
       wm, win, bmain, view_layer, scene, delay, scene->r.cfra);
 
   if (!wm_job) {
@@ -1514,7 +1504,7 @@ void SCENE_OT_light_cache_bake(wmOperatorType *ot)
 
 /* NOTE: New version destined to replace the old lightcache bake operator. */
 
-static void lightprobe_cache_bake_start(bContext *C, wmOperator *op)
+static blender::Vector<Object *> lightprobe_cache_bake_start(bContext *C, wmOperator *op)
 {
   ViewLayer *view_layer = CTX_data_view_layer(C);
   Scene *scene = CTX_data_scene(C);
@@ -1524,10 +1514,13 @@ static void lightprobe_cache_bake_start(bContext *C, wmOperator *op)
            static_cast<LightProbe *>(ob->data)->type == LIGHTPROBE_TYPE_GRID;
   };
 
-  auto irradiance_volume_setup = [](Object *ob) {
+  blender::Vector<Object *> probes;
+
+  auto irradiance_volume_setup = [&](Object *ob) {
     BKE_lightprobe_cache_free(ob);
     BKE_lightprobe_cache_create(ob);
     DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+    probes.append(ob);
   };
 
   int subset = RNA_enum_get(op->ptr, "subset");
@@ -1576,20 +1569,36 @@ static void lightprobe_cache_bake_start(bContext *C, wmOperator *op)
       BLI_assert_unreachable();
       break;
   }
+
+  return probes;
 }
 
 static int lightprobe_cache_bake_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
+  wmWindowManager *wm = CTX_wm_manager(C);
+  wmWindow *win = CTX_wm_window(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
+  int delay = RNA_int_get(op->ptr, "delay");
 
-  lightprobe_cache_bake_start(C, op);
+  blender::Vector<Object *> probes = lightprobe_cache_bake_start(C, op);
+
+  if (probes.is_empty()) {
+    return OPERATOR_CANCELLED;
+  }
+
+  wmJob *wm_job = EEVEE_NEXT_lightbake_job_create(
+      wm, win, bmain, view_layer, scene, probes, scene->r.cfra, delay);
 
   WM_event_add_modal_handler(C, op);
 
-  /* store actual owner of job, so modal operator could check for it,
+  /* Store actual owner of job, so modal operator could check for it,
    * the reason of this is that active scene could change when rendering
    * several layers from compositor #31800. */
   op->customdata = scene;
+
+  WM_jobs_start(wm, wm_job);
 
   WM_cursor_wait(false);
 
@@ -1625,7 +1634,18 @@ static void lightprobe_cache_bake_cancel(bContext *C, wmOperator *op)
 /* Executes blocking bake. */
 static int lightprobe_cache_bake_exec(bContext *C, wmOperator *op)
 {
-  lightprobe_cache_bake_start(C, op);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  Main *bmain = CTX_data_main(C);
+  Scene *scene = CTX_data_scene(C);
+
+  blender::Vector<Object *> probes = lightprobe_cache_bake_start(C, op);
+
+  /* TODO: abort if selected engine is not eevee. */
+  void *rj = EEVEE_NEXT_lightbake_job_data_alloc(bmain, view_layer, scene, probes, scene->r.cfra);
+  /* Do the job. */
+  EEVEE_NEXT_lightbake_job(rj, nullptr, nullptr, nullptr);
+  /* Free baking data. Result is already stored in the scene data. */
+  EEVEE_NEXT_lightbake_job_data_free(rj);
 
   return OPERATOR_FINISHED;
 }
@@ -1703,11 +1723,7 @@ static int light_cache_free_exec(bContext *C, wmOperator * /*op*/)
   EEVEE_lightcache_free(scene->eevee.light_cache_data);
   scene->eevee.light_cache_data = nullptr;
 
-  RenderEngineType *engine_type = RE_engines_find(scene->r.engine);
-  bool use_eevee_next = STREQ(engine_type->idname, "BLENDER_EEVEE_NEXT");
-
-  ((use_eevee_next) ? EEVEE_NEXT_lightcache_info_update :
-                      EEVEE_lightcache_info_update)(&scene->eevee);
+  EEVEE_lightcache_info_update(&scene->eevee);
 
   DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
 

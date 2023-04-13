@@ -146,9 +146,10 @@ class Instance {
   /* Light bake. */
 
   void init_light_bake(Depsgraph *depsgraph, draw::Manager *manager);
-  void light_bake_irradiance(LightCache *&r_light_cache,
+  void light_bake_irradiance(Object &probe,
                              std::function<void()> context_enable,
-                             std::function<void()> context_disable);
+                             std::function<void()> context_disable,
+                             std::function<void(LightProbeGridCacheFrame *)> result_update);
 
   static void update_passes(RenderEngine *engine, Scene *scene, ViewLayer *view_layer);
 
@@ -195,13 +196,6 @@ class Instance {
 
   void scene_sync();
   void mesh_sync(Object *ob, ObjectHandle &ob_handle);
-
-  /**
-   * Create a light cache big enough to fit all light-probes inside.
-   * IMPORTANT: Can return nullptr on failure, in which case, the `Instance::info` will be set
-   * to an error message.
-   */
-  LightCache *light_cache_create(Vector<IrradianceGrid> grids, Vector<ReflectionCube> cubes);
 
   void update_eval_members();
 

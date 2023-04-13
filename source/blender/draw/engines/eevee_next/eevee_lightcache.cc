@@ -9,8 +9,10 @@
 #include "DRW_render.h"
 
 #include "BKE_global.h"
+#include "BKE_lightprobe.h"
 
-#include "BLI_endian_switch.h"
+#include "DNA_lightprobe_types.h"
+
 #include "BLI_threads.h"
 
 #include "DEG_depsgraph_build.h"
@@ -24,14 +26,12 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
-#include "BLO_read_write.h"
-
 #include "wm_window.h"
 
 #include "eevee_engine.h"
 #include "eevee_instance.hh"
 
-#include "eevee_lightcache.h"
+#include "eevee_lightcache.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Light Probe Baking
@@ -64,18 +64,29 @@ class LightBake {
   /** Manager used for command submission. Created and freed in the worker thread. */
   draw::Manager *manager_ = nullptr;
 
+  /** Lightprobe original objects to bake. */
+  Vector<Object *> original_probes_;
+  /** Frame to copy to original objects during update. This is needed to avoid race conditions. */
+  Vector<LightProbeGridCacheFrame *> bake_result_;
+  std::mutex result_mutex_;
+
  public:
   LightBake(struct Main *bmain,
             struct ViewLayer *view_layer,
             struct Scene *scene,
+            Span<Object *> probes,
             bool run_as_job,
             int frame,
             int delay_ms = 0)
       : depsgraph_(DEG_graph_new(bmain, scene, view_layer, DAG_EVAL_RENDER)),
         frame_(frame),
-        delay_ms_(delay_ms)
+        delay_ms_(delay_ms),
+        original_probes_(probes)
   {
     BLI_assert(BLI_thread_is_main());
+    bake_result_.resize(probes.size());
+    bake_result_.fill(nullptr);
+
     if (run_as_job && !GPU_use_main_context_workaround()) {
       /* This needs to happen in main thread. */
       gl_context_ = WM_opengl_context_create();
@@ -98,20 +109,28 @@ class LightBake {
   void update()
   {
     BLI_assert(BLI_thread_is_main());
-    Scene *original_scene = DEG_get_input_scene(depsgraph_);
-    LightCache *&scene_light_cache = original_scene->eevee.light_cache_data;
 
-    if (scene_light_cache != light_cache_) {
-      if (scene_light_cache != nullptr) {
-        /* Delete old data if existing. */
-        EEVEE_NEXT_lightcache_free(scene_light_cache);
+    for (auto i : bake_result_.index_range()) {
+      if (bake_result_[i] == nullptr) {
+        continue;
       }
-      scene_light_cache = light_cache_;
+      Object *orig_ob = original_probes_[i];
+
+      {
+        std::scoped_lock lock(result_mutex_);
+
+        LightProbeObjectCache *cache = orig_ob->lightprobe_cache;
+        /* Delete any existing cache. */
+        if (cache->grid_static_cache != nullptr) {
+          BKE_lightprobe_grid_cache_frame_free(cache->grid_static_cache);
+        }
+        /* Pass ownership to original object. */
+        cache->grid_static_cache = bake_result_[i];
+        bake_result_[i] = nullptr;
+      }
+      /* Propagate the cache to evaluated object. */
+      DEG_id_tag_update(&orig_ob->id, ID_RECALC_COPY_ON_WRITE);
     }
-
-    EEVEE_NEXT_lightcache_info_update(&original_scene->eevee);
-
-    DEG_id_tag_update(&original_scene->id, ID_RECALC_COPY_ON_WRITE);
   }
 
   /**
@@ -124,18 +143,36 @@ class LightBake {
     DEG_graph_relations_update(depsgraph_);
     DEG_evaluate_on_framechange(depsgraph_, frame_);
 
+    if (delay_ms_ > 0) {
+      PIL_sleep_ms(delay_ms_);
+    }
+
     context_enable();
     manager_ = new draw::Manager();
     instance_ = new eevee::Instance();
     instance_->init_light_bake(depsgraph_, manager_);
     context_disable();
 
-    if (delay_ms_ > 0) {
-      PIL_sleep_ms(delay_ms_);
-    }
+    for (auto i : original_probes_.index_range()) {
+      Object *eval_ob = DEG_get_evaluated_object(depsgraph_, original_probes_[i]);
 
-    instance_->light_bake_irradiance(
-        light_cache_, [this]() { context_enable(); }, [this]() { context_disable(); });
+      instance_->light_bake_irradiance(
+          *eval_ob,
+          [this]() { context_enable(); },
+          [this]() { context_disable(); },
+          [&](LightProbeGridCacheFrame *cache_frame) {
+            {
+              std::scoped_lock lock(result_mutex_);
+              /* Delete any existing cache that wasn't transferred to the original object. */
+              if (bake_result_[i] != nullptr) {
+                BKE_lightprobe_grid_cache_frame_free(bake_result_[i]);
+              }
+              bake_result_[i] = cache_frame;
+            }
+            *do_update = true;
+            /* TODO: Update progress. */
+          });
+    }
 
     delete_resources();
   }
@@ -226,8 +263,6 @@ class LightBake {
 
 }  // namespace blender::eevee
 
-extern "C" {
-
 using namespace blender::eevee;
 
 /* -------------------------------------------------------------------- */
@@ -239,6 +274,7 @@ wmJob *EEVEE_NEXT_lightbake_job_create(struct wmWindowManager *wm,
                                        struct Main *bmain,
                                        struct ViewLayer *view_layer,
                                        struct Scene *scene,
+                                       blender::Vector<struct Object *> original_probes,
                                        int delay_ms,
                                        int frame)
 {
@@ -257,7 +293,8 @@ wmJob *EEVEE_NEXT_lightbake_job_create(struct wmWindowManager *wm,
                               WM_JOB_EXCL_RENDER | WM_JOB_PRIORITY | WM_JOB_PROGRESS,
                               WM_JOB_TYPE_LIGHT_BAKE);
 
-  LightBake *bake = new LightBake(bmain, view_layer, scene, true, frame, delay_ms);
+  LightBake *bake = new LightBake(
+      bmain, view_layer, scene, original_probes, true, frame, delay_ms);
 
   WM_jobs_customdata_set(wm_job, bake, EEVEE_NEXT_lightbake_job_data_free);
   WM_jobs_timer(wm_job, 0.4, NC_SCENE | NA_EDITED, 0);
@@ -275,12 +312,10 @@ wmJob *EEVEE_NEXT_lightbake_job_create(struct wmWindowManager *wm,
 void *EEVEE_NEXT_lightbake_job_data_alloc(struct Main *bmain,
                                           struct ViewLayer *view_layer,
                                           struct Scene *scene,
-                                          bool run_as_job,
+                                          blender::Vector<struct Object *> original_probes,
                                           int frame)
 {
-  /* This should only be used for exec job. Eventually, remove `run_as_job` parameter later. */
-  BLI_assert(run_as_job == false);
-  LightBake *bake = new LightBake(bmain, view_layer, scene, run_as_job, frame);
+  LightBake *bake = new LightBake(bmain, view_layer, scene, original_probes, false, frame);
   /* TODO(fclem): Can remove this cast once we remove the previous EEVEE light cache. */
   return reinterpret_cast<void *>(bake);
 }
@@ -298,187 +333,6 @@ void EEVEE_NEXT_lightbake_update(void *job_data)
 void EEVEE_NEXT_lightbake_job(void *job_data, bool *stop, bool *do_update, float *progress)
 {
   reinterpret_cast<LightBake *>(job_data)->run(stop, do_update, progress);
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Light Cache Create / Delete
- * \{ */
-
-LightCache *EEVEE_NEXT_lightcache_create()
-{
-  LightCache *light_cache = (LightCache *)MEM_callocN(sizeof(LightCache), "LightCache");
-
-  light_cache->version = LIGHTCACHE_NEXT_STATIC_VERSION;
-  light_cache->type = LIGHTCACHE_TYPE_STATIC;
-
-  return light_cache;
-}
-
-void EEVEE_NEXT_lightcache_free(LightCache *light_cache)
-{
-  if (light_cache->version < LIGHTCACHE_NEXT_STATIC_VERSION) {
-    /* Allow deleting old EEVEE cache. */
-    DRW_TEXTURE_FREE_SAFE(light_cache->cube_tx.tex);
-    MEM_SAFE_FREE(light_cache->cube_tx.data);
-    DRW_TEXTURE_FREE_SAFE(light_cache->grid_tx.tex);
-    MEM_SAFE_FREE(light_cache->grid_tx.data);
-    if (light_cache->cube_mips) {
-      for (int i = 0; i < light_cache->mips_len; i++) {
-        MEM_SAFE_FREE(light_cache->cube_mips[i].data);
-      }
-      MEM_SAFE_FREE(light_cache->cube_mips);
-    }
-    MEM_SAFE_FREE(light_cache->cube_data);
-    MEM_SAFE_FREE(light_cache->grid_data);
-  }
-  else {
-    for (int i = 0; i < light_cache->grid_len; i++) {
-      MEM_SAFE_FREE(light_cache->grids[i].surfels);
-      MEM_SAFE_FREE(light_cache->grids[i].irradiance_L0_L1_a.data);
-      MEM_SAFE_FREE(light_cache->grids[i].irradiance_L0_L1_b.data);
-      MEM_SAFE_FREE(light_cache->grids[i].irradiance_L0_L1_c.data);
-      DRW_TEXTURE_FREE_SAFE(light_cache->grids[i].irradiance_L0_L1_a.tex);
-      DRW_TEXTURE_FREE_SAFE(light_cache->grids[i].irradiance_L0_L1_b.tex);
-      DRW_TEXTURE_FREE_SAFE(light_cache->grids[i].irradiance_L0_L1_c.tex);
-    }
-    MEM_SAFE_FREE(light_cache->grids);
-  }
-  MEM_freeN(light_cache);
-}
-
-void EEVEE_NEXT_lightcache_info_update(SceneEEVEE *eevee)
-{
-  LightCache *light_cache = eevee->light_cache_data;
-
-  if (light_cache == nullptr) {
-    BLI_strncpy(eevee->light_cache_info,
-                TIP_("No light cache in this scene"),
-                sizeof(eevee->light_cache_info));
-    return;
-  }
-
-  if (light_cache->version != LIGHTCACHE_NEXT_STATIC_VERSION) {
-    BLI_strncpy(eevee->light_cache_info,
-                TIP_("Incompatible Light cache version, please bake again"),
-                sizeof(eevee->light_cache_info));
-    return;
-  }
-
-  if (light_cache->flag & LIGHTCACHE_INVALID) {
-    BLI_strncpy(eevee->light_cache_info,
-                TIP_("Error: Light cache dimensions not supported by the GPU"),
-                sizeof(eevee->light_cache_info));
-    return;
-  }
-
-  if (light_cache->flag & LIGHTCACHE_BAKING) {
-    BLI_strncpy(
-        eevee->light_cache_info, TIP_("Baking light cache"), sizeof(eevee->light_cache_info));
-    return;
-  }
-
-  int irradiance_sample_len = 0;
-  for (const LightCacheIrradianceGrid &grid :
-       blender::Span<LightCacheIrradianceGrid>(light_cache->grids, light_cache->grid_len)) {
-    irradiance_sample_len += grid.resolution[0] * grid.resolution[1] * grid.resolution[2];
-  }
-
-  size_t size_in_bytes = irradiance_sample_len * sizeof(uint16_t) * 4 * 3;
-
-  char formatted_mem[BLI_STR_FORMAT_INT64_BYTE_UNIT_SIZE];
-  BLI_str_format_byte_unit(formatted_mem, size_in_bytes, false);
-
-  BLI_snprintf(eevee->light_cache_info,
-               sizeof(eevee->light_cache_info),
-               TIP_("%d Ref. Cubemaps, %d Irr. Samples (%s in memory)"),
-               light_cache->cube_len,
-               irradiance_sample_len,
-               formatted_mem);
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Light Cache Read/Write to file
- * \{ */
-
-void EEVEE_NEXT_lightcache_blend_write(BlendWriter *writer, LightCache *light_cache)
-{
-  auto write_lightcache_texture = [&](LightCacheTexture &tex) {
-    if (tex.data) {
-      size_t data_size = tex.components * tex.tex_size[0] * tex.tex_size[1] * tex.tex_size[2];
-      if (tex.data_type == LIGHTCACHETEX_FLOAT) {
-        data_size *= sizeof(float);
-      }
-      else if (tex.data_type == LIGHTCACHETEX_UINT) {
-        data_size *= sizeof(uint);
-      }
-
-      /* FIXME: We can't save more than what 32bit systems can handle.
-       * The solution would be to split the texture but it is too late for 2.90. (see #78529) */
-      if (data_size < INT_MAX) {
-        BLO_write_raw(writer, data_size, tex.data);
-      }
-    }
-  };
-
-  BLO_write_struct_array(
-      writer, LightCacheIrradianceGrid, light_cache->grid_len, light_cache->grids);
-
-  for (int i = 0; i < light_cache->grid_len; i++) {
-    LightCacheIrradianceGrid &grid = light_cache->grids[i];
-    /* Surfels are runtime data. Not stored in the blend file. */
-    write_lightcache_texture(grid.irradiance_L0_L1_a);
-    write_lightcache_texture(grid.irradiance_L0_L1_b);
-    write_lightcache_texture(grid.irradiance_L0_L1_c);
-  }
-}
-
-void EEVEE_NEXT_lightcache_blend_read_data(BlendDataReader *reader, LightCache *light_cache)
-{
-
-  if (light_cache->grids) {
-    BLO_read_data_address(reader, &light_cache->grids);
-
-    auto direct_link_lightcache_texture = [&](LightCacheTexture &lctex) {
-      /* Runtime data. Not stored in the blend file. */
-      lctex.tex = nullptr;
-
-      if (lctex.data) {
-        BLO_read_data_address(reader, &lctex.data);
-        if (lctex.data && BLO_read_requires_endian_switch(reader)) {
-          int data_size = lctex.components * lctex.tex_size[0] * lctex.tex_size[1] *
-                          lctex.tex_size[2];
-
-          if (lctex.data_type == LIGHTCACHETEX_FLOAT) {
-            BLI_endian_switch_float_array((float *)lctex.data, data_size * sizeof(float));
-          }
-          else if (lctex.data_type == LIGHTCACHETEX_UINT) {
-            BLI_endian_switch_uint32_array((uint *)lctex.data, data_size * sizeof(uint));
-          }
-        }
-      }
-
-      if (lctex.data == nullptr) {
-        zero_v3_int(lctex.tex_size);
-      }
-    };
-
-    for (int i = 0; i < light_cache->grid_len; i++) {
-      LightCacheIrradianceGrid &grid = light_cache->grids[i];
-      /* Runtime data. Not stored in the blend file. */
-      grid.surfels_len = 0;
-      grid.surfels = nullptr;
-      direct_link_lightcache_texture(grid.irradiance_L0_L1_a);
-      direct_link_lightcache_texture(grid.irradiance_L0_L1_b);
-      direct_link_lightcache_texture(grid.irradiance_L0_L1_c);
-    }
-  }
-}
-
-/** \} */
 }
 
 /** \} */

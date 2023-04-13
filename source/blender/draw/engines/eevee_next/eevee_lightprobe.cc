@@ -19,39 +19,27 @@ void LightProbeModule::begin_sync()
 {
   auto_bake_enabled_ = inst_.is_viewport() &&
                        (inst_.scene->eevee.flag & SCE_EEVEE_GI_AUTOBAKE) != 0;
-  grid_update_ = false;
-  cube_update_ = false;
-
-  grids.clear();
-  cubes.clear();
 }
 
 void LightProbeModule::sync_grid(const Object *ob, ObjectHandle &handle)
 {
-  LightProbe &grid = grid_map_.lookup_or_add_default(handle.object_key);
+  IrradianceGrid &grid = grid_map_.lookup_or_add_default(handle.object_key);
   grid.used = true;
   if (handle.recalc != 0 || grid.initialized == false) {
     grid.initialized = true;
-    grid_update_ = true;
-  }
-
-  if (inst_.is_baking()) {
-    const ::LightProbe *light_probe = (const ::LightProbe *)ob->data;
-    grids.append({float4x4(ob->object_to_world), &light_probe->grid_resolution_x});
+    grid.updated = true;
+    grid.object_to_world = float4x4(ob->object_to_world);
+    grid.cache = ob->lightprobe_cache;
   }
 }
 
 void LightProbeModule::sync_cube(ObjectHandle &handle)
 {
-  LightProbe &cube = cube_map_.lookup_or_add_default(handle.object_key);
+  ReflectionCube &cube = cube_map_.lookup_or_add_default(handle.object_key);
   cube.used = true;
   if (handle.recalc != 0 || cube.initialized == false) {
     cube.initialized = true;
     cube_update_ = true;
-  }
-
-  if (inst_.is_baking()) {
-    cubes.append({});
   }
 }
 
@@ -75,10 +63,14 @@ void LightProbeModule::sync_probe(const Object *ob, ObjectHandle &handle)
 void LightProbeModule::end_sync()
 {
   {
-    /* Check for deleted grid. */
+    /* Check for deleted or updated grid. */
+    grid_update_ = false;
     auto it_end = grid_map_.items().end();
     for (auto it = grid_map_.items().begin(); it != it_end; ++it) {
-      LightProbe &grid = (*it).value;
+      IrradianceGrid &grid = (*it).value;
+      if (grid.updated) {
+        grid_update_ = true;
+      }
       if (!grid.used) {
         grid_map_.remove(it);
         grid_update_ = true;
@@ -89,10 +81,14 @@ void LightProbeModule::end_sync()
     }
   }
   {
-    /* Check for deleted cube. */
+    /* Check for deleted or updated cube. */
+    cube_update_ = false;
     auto it_end = cube_map_.items().end();
     for (auto it = cube_map_.items().begin(); it != it_end; ++it) {
-      LightProbe &cube = (*it).value;
+      ReflectionCube &cube = (*it).value;
+      if (cube.updated) {
+        cube_update_ = true;
+      }
       if (!cube.used) {
         cube_map_.remove(it);
         cube_update_ = true;

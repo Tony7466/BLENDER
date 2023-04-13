@@ -16,30 +16,37 @@
 namespace blender::eevee {
 
 class Instance;
-
-struct IrradianceGrid {
-  float4x4 transform;
-  int3 resolution;
-};
-
-struct ReflectionCube {};
+class IrradianceCache;
 
 struct LightProbe {
   bool used = false;
   bool initialized = false;
+  bool updated = false;
 };
 
+struct IrradianceGrid : public LightProbe {
+  /** Reference to the light-cache data. Should be refreshed every sync. */
+  float4x4 object_to_world;
+  /**
+   * Reference to the light-cache data.
+   * Do not try to dereference it before LightProbeModule::end_sync() as the grid could
+   * already have been freed (along with its cache). It is only safe to dereference after the
+   * pruning have been done.
+   */
+  const struct LightProbeObjectCache *cache = nullptr;
+};
+
+struct ReflectionCube : public LightProbe {};
+
 class LightProbeModule {
- public:
-  /** Synced probe data. Only valid if the `eevee::Instance` is a baking instance. */
-  Vector<IrradianceGrid> grids;
-  Vector<ReflectionCube> cubes;
+  friend class IrradianceCache;
 
  private:
   Instance &inst_;
 
-  /** Light Probe map to detect deletion. */
-  Map<ObjectKey, LightProbe> grid_map_, cube_map_;
+  /** Light Probe map to detect deletion and store associated data. */
+  Map<ObjectKey, IrradianceGrid> grid_map_;
+  Map<ObjectKey, ReflectionCube> cube_map_;
   /** True if a grid update was detected. It will trigger a bake if auto bake is enabled. */
   bool grid_update_;
   /** True if a grid update was detected. It will trigger a bake if auto bake is enabled. */

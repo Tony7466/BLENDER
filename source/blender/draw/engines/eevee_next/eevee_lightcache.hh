@@ -6,9 +6,15 @@
 
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "BLI_vector.hh"
+
+struct wmWindowManager;
+struct wmWindow;
+struct Main;
+struct ViewLayer;
+struct Scene;
+struct Object;
+struct wmJob;
 
 /** Opaque type hiding eevee::LightBake. */
 typedef struct EEVEE_NEXT_LightBake EEVEE_NEXT_LightBake;
@@ -21,7 +27,6 @@ typedef struct EEVEE_NEXT_LightBake EEVEE_NEXT_LightBake;
  * Create the job description.
  * This is called for async (modal) bake operator.
  * The actual work will be done by `EEVEE_NEXT_lightbake_job()`.
- * Will internally call `EEVEE_NEXT_lightbake_job_data_alloc()`.
  * IMPORTANT: Must run on the main thread because of potential GPUContext creation.
  */
 struct wmJob *EEVEE_NEXT_lightbake_job_create(struct wmWindowManager *wm,
@@ -29,6 +34,7 @@ struct wmJob *EEVEE_NEXT_lightbake_job_create(struct wmWindowManager *wm,
                                               struct Main *bmain,
                                               struct ViewLayer *view_layer,
                                               struct Scene *scene,
+                                              blender::Vector<struct Object *> original_probes,
                                               int delay_ms,
                                               int frame);
 
@@ -43,7 +49,7 @@ struct wmJob *EEVEE_NEXT_lightbake_job_create(struct wmWindowManager *wm,
 void *EEVEE_NEXT_lightbake_job_data_alloc(struct Main *bmain,
                                           struct ViewLayer *view_layer,
                                           struct Scene *scene,
-                                          bool run_as_job,
+                                          blender::Vector<struct Object *> original_probes,
                                           int frame);
 
 /**
@@ -69,38 +75,3 @@ void EEVEE_NEXT_lightbake_job(void *job_data /* EEVEE_NEXT_LightBake */,
                               float *progress);
 
 /** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Light Cache Create / Delete
- * \{ */
-
-/**
- * Create an empty light-cache.
- */
-struct LightCache *EEVEE_NEXT_lightcache_create(void);
-
-/**
- * Free a light-cache and its associated data.
- */
-void EEVEE_NEXT_lightcache_free(struct LightCache *lcache);
-
-/**
- * Update the UI message in the render panel about the state of the cache.
- */
-void EEVEE_NEXT_lightcache_info_update(struct SceneEEVEE *eevee);
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Light Cache Read/Write to file
- * \{ */
-
-void EEVEE_NEXT_lightcache_blend_write(struct BlendWriter *writer, struct LightCache *light_cache);
-void EEVEE_NEXT_lightcache_blend_read_data(struct BlendDataReader *reader,
-                                           struct LightCache *light_cache);
-
-/** \} */
-
-#ifdef __cplusplus
-}
-#endif

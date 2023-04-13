@@ -78,9 +78,7 @@ void Camera::sync()
 
   CameraData &data = data_;
 
-  /* WORKAROUND(fclem): This is an abomination that should be remove ASAP. */
-  bool is_first_baking_sync = inst_.light_probes.grids.size() == 0;
-  if (inst_.is_baking() && !is_first_baking_sync) {
+  if (inst_.is_baking()) {
     /* Any view so that shadows and light culling works during irradiance bake. */
     draw::View &view = inst_.irradiance_cache.bake.view_z_;
     data.viewmat = view.viewmat();

@@ -64,21 +64,21 @@ float spherical_harmonics_L2_Mp2(vec3 v)
  * \{ */
 
 struct SphericalHarmonicBandL0 {
-  vec3 M0;
+  vec4 M0;
 };
 
 struct SphericalHarmonicBandL1 {
-  vec3 Mn1;
-  vec3 M0;
-  vec3 Mp1;
+  vec4 Mn1;
+  vec4 M0;
+  vec4 Mp1;
 };
 
 struct SphericalHarmonicBandL2 {
-  vec3 Mn2;
-  vec3 Mn1;
-  vec3 M0;
-  vec3 Mp1;
-  vec3 Mp2;
+  vec4 Mn2;
+  vec4 Mn1;
+  vec4 M0;
+  vec4 Mp1;
+  vec4 Mp2;
 };
 
 struct SphericalHarmonicL0 {
@@ -106,14 +106,14 @@ struct SphericalHarmonicL2 {
  * \{ */
 
 void spherical_harmonics_L0_encode_signal_sample(vec3 direction,
-                                                 vec3 amplitude,
+                                                 vec4 amplitude,
                                                  inout SphericalHarmonicBandL0 r_L0)
 {
   r_L0.M0 += spherical_harmonics_L0_M0(direction) * amplitude;
 }
 
 void spherical_harmonics_L1_encode_signal_sample(vec3 direction,
-                                                 vec3 amplitude,
+                                                 vec4 amplitude,
                                                  inout SphericalHarmonicBandL1 r_L1)
 {
   r_L1.Mn1 += spherical_harmonics_L1_Mn1(direction) * amplitude;
@@ -122,7 +122,7 @@ void spherical_harmonics_L1_encode_signal_sample(vec3 direction,
 }
 
 void spherical_harmonics_L2_encode_signal_sample(vec3 direction,
-                                                 vec3 amplitude,
+                                                 vec4 amplitude,
                                                  inout SphericalHarmonicBandL2 r_L2)
 {
   r_L2.Mn2 += spherical_harmonics_L2_Mn2(direction) * amplitude;
@@ -133,14 +133,14 @@ void spherical_harmonics_L2_encode_signal_sample(vec3 direction,
 }
 
 void spherical_harmonics_encode_signal_sample(vec3 direction,
-                                              vec3 amplitude,
+                                              vec4 amplitude,
                                               inout SphericalHarmonicL0 sh)
 {
   spherical_harmonics_L0_encode_signal_sample(direction, amplitude, sh.L0);
 }
 
 void spherical_harmonics_encode_signal_sample(vec3 direction,
-                                              vec3 amplitude,
+                                              vec4 amplitude,
                                               inout SphericalHarmonicL1 sh)
 {
   spherical_harmonics_L0_encode_signal_sample(direction, amplitude, sh.L0);
@@ -148,7 +148,7 @@ void spherical_harmonics_encode_signal_sample(vec3 direction,
 }
 
 void spherical_harmonics_encode_signal_sample(vec3 direction,
-                                              vec3 amplitude,
+                                              vec4 amplitude,
                                               inout SphericalHarmonicL2 sh)
 {
   spherical_harmonics_L0_encode_signal_sample(direction, amplitude, sh.L0);
@@ -164,19 +164,19 @@ void spherical_harmonics_encode_signal_sample(vec3 direction,
  * Evaluate an encoded signal in a given unit vector direction.
  * \{ */
 
-vec3 spherical_harmonics_L0_evaluate(vec3 direction, SphericalHarmonicBandL0 L0)
+vec4 spherical_harmonics_L0_evaluate(vec3 direction, SphericalHarmonicBandL0 L0)
 {
   return spherical_harmonics_L0_M0(direction) * L0.M0;
 }
 
-vec3 spherical_harmonics_L1_evaluate(vec3 direction, SphericalHarmonicBandL1 L1)
+vec4 spherical_harmonics_L1_evaluate(vec3 direction, SphericalHarmonicBandL1 L1)
 {
   return spherical_harmonics_L1_Mn1(direction) * L1.Mn1 +
          spherical_harmonics_L1_M0(direction) * L1.M0 +
          spherical_harmonics_L1_Mp1(direction) * L1.Mp1;
 }
 
-vec3 spherical_harmonics_L2_evaluate(vec3 direction, SphericalHarmonicBandL2 L2)
+vec4 spherical_harmonics_L2_evaluate(vec3 direction, SphericalHarmonicBandL2 L2)
 {
   return spherical_harmonics_L2_Mn2(direction) * L2.Mn2 +
          spherical_harmonics_L2_Mn1(direction) * L2.Mn1 +
@@ -197,16 +197,16 @@ vec3 spherical_harmonics_L2_evaluate(vec3 direction, SphericalHarmonicBandL2 L2)
  * 2/3 and 1/4. See this reference for more explanation:
  * https://seblagarde.wordpress.com/2012/01/08/pi-or-not-to-pi-in-game-lighting-equation/
  */
-vec3 spherical_harmonics_evaluate_lambert(vec3 N, SphericalHarmonicL0 sh)
+vec4 spherical_harmonics_evaluate_lambert(vec3 N, SphericalHarmonicL0 sh)
 {
   return spherical_harmonics_L0_evaluate(N, sh.L0);
 }
-vec3 spherical_harmonics_evaluate_lambert(vec3 N, SphericalHarmonicL1 sh)
+vec4 spherical_harmonics_evaluate_lambert(vec3 N, SphericalHarmonicL1 sh)
 {
   return spherical_harmonics_L0_evaluate(N, sh.L0) +
          spherical_harmonics_L1_evaluate(N, sh.L1) * (2.0 / 3.0);
 }
-vec3 spherical_harmonics_evaluate_lambert(vec3 N, SphericalHarmonicL2 sh)
+vec4 spherical_harmonics_evaluate_lambert(vec3 N, SphericalHarmonicL2 sh)
 {
   return spherical_harmonics_L0_evaluate(N, sh.L0) +
          spherical_harmonics_L1_evaluate(N, sh.L1) * (2.0 / 3.0) +
@@ -221,27 +221,36 @@ vec3 spherical_harmonics_evaluate_lambert(vec3 N, SphericalHarmonicL2 sh)
  * This section define the compression scheme of spherical harmonic data.
  * \{ */
 
-SphericalHarmonicL1 spherical_harmonics_unpack(vec4 L0_L1_a, vec4 L0_L1_b, vec4 L0_L1_c)
+SphericalHarmonicL1 spherical_harmonics_unpack(vec4 L0_L1_a,
+                                               vec4 L0_L1_b,
+                                               vec4 L0_L1_c,
+                                               vec4 L0_L1_vis)
 {
   SphericalHarmonicL1 sh;
-  sh.L0.M0 = L0_L1_a.xyz;
-  sh.L1.Mn1 = L0_L1_b.xyz;
-  sh.L1.M0 = L0_L1_c.xyz;
-  sh.L1.Mp1 = vec3(L0_L1_a.w, L0_L1_b.w, L0_L1_c.w);
+  sh.L0.M0.xyz = L0_L1_a.xyz;
+  sh.L1.Mn1.xyz = L0_L1_b.xyz;
+  sh.L1.M0.xyz = L0_L1_c.xyz;
+  sh.L1.Mp1.xyz = vec3(L0_L1_a.w, L0_L1_b.w, L0_L1_c.w);
+  sh.L0.M0.w = L0_L1_vis.x;
+  sh.L1.Mn1.w = L0_L1_vis.y;
+  sh.L1.M0.w = L0_L1_vis.z;
+  sh.L1.Mp1.w = L0_L1_vis.w;
   return sh;
 }
 
 void spherical_harmonics_pack(SphericalHarmonicL1 sh,
                               out vec4 L0_L1_a,
                               out vec4 L0_L1_b,
-                              out vec4 L0_L1_c)
+                              out vec4 L0_L1_c,
+                              out vec4 L0_L1_vis)
 {
-  L0_L1_a.xyz = sh.L0.M0;
-  L0_L1_b.xyz = sh.L1.Mn1;
-  L0_L1_c.xyz = sh.L1.M0;
+  L0_L1_a.xyz = sh.L0.M0.xyz;
+  L0_L1_b.xyz = sh.L1.Mn1.xyz;
+  L0_L1_c.xyz = sh.L1.M0.xyz;
   L0_L1_a.w = sh.L1.Mp1.x;
   L0_L1_b.w = sh.L1.Mp1.y;
   L0_L1_c.w = sh.L1.Mp1.z;
+  L0_L1_vis = vec4(sh.L0.M0.w, sh.L1.Mn1.w, sh.L1.M0.w, sh.L1.Mp1.w);
 }
 
 /** \} */
