@@ -62,7 +62,7 @@ static void curves_init_data(ID *id)
   new (&curves->geometry) blender::bke::CurvesGeometry();
 }
 
-static void curves_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int flag)
+static void curves_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int /*flag*/)
 {
   using namespace blender;
 
@@ -80,9 +80,8 @@ static void curves_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, con
   dst.point_num = src.point_num;
   dst.curve_num = src.curve_num;
 
-  const eCDAllocType alloc_type = (flag & LIB_ID_COPY_CD_REFERENCE) ? CD_REFERENCE : CD_DUPLICATE;
-  CustomData_copy(&src.point_data, &dst.point_data, CD_MASK_ALL, alloc_type, dst.point_num);
-  CustomData_copy(&src.curve_data, &dst.curve_data, CD_MASK_ALL, alloc_type, dst.curve_num);
+  CustomData_copy(&src.point_data, &dst.point_data, CD_MASK_ALL, dst.point_num);
+  CustomData_copy(&src.curve_data, &dst.curve_data, CD_MASK_ALL, dst.curve_num);
 
   dst.curve_offsets = static_cast<int *>(MEM_dupallocN(src.curve_offsets));
 
@@ -155,11 +154,6 @@ static void curves_blend_read_data(BlendDataReader *reader, ID *id)
   curves->geometry.wrap().blend_read(*reader);
 
   BLO_read_data_address(reader, &curves->surface_uv_map);
-
-  curves->geometry.runtime = MEM_new<blender::bke::CurvesGeometryRuntime>(__func__);
-
-  /* Recalculate curve type count cache that isn't saved in files. */
-  curves->geometry.wrap().update_curve_types();
 
   /* Materials */
   BLO_read_pointer_array(reader, (void **)&curves->mat);
