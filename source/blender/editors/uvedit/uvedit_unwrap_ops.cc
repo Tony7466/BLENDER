@@ -621,7 +621,7 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
 
   const float(*subsurfedPositions)[3] = BKE_mesh_vert_positions(subdiv_mesh);
   const blender::Span<MEdge> subsurf_edges = subdiv_mesh->edges();
-  const blender::Span<MPoly> subsurf_polys = subdiv_mesh->polys();
+  const blender::OffsetIndices subsurf_polys = subdiv_mesh->polys();
   const blender::Span<int> subsurf_corner_verts = subdiv_mesh->corner_verts();
 
   const int *origVertIndices = static_cast<const int *>(
@@ -654,8 +654,7 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
   }
 
   /* Prepare and feed faces to the solver. */
-  for (const int64_t i : subsurf_polys.index_range()) {
-    const MPoly &poly = subsurf_polys[i];
+  for (const int i : subsurf_polys.index_range()) {
     ParamKey key, vkeys[4];
     bool pin[4], select[4];
     const float *co[4];
@@ -674,10 +673,10 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
       }
     }
 
-    const int *poly_corner_verts = &subsurf_corner_verts[poly.loopstart];
+    const blender::Span<int> poly_corner_verts = subsurf_corner_verts.slice(subsurf_polys[i]);
 
     /* We will not check for v4 here. Sub-surface faces always have 4 vertices. */
-    BLI_assert(poly.totloop == 4);
+    BLI_assert(poly_corner_verts.size() == 4);
     key = (ParamKey)i;
     vkeys[0] = (ParamKey)poly_corner_verts[0];
     vkeys[1] = (ParamKey)poly_corner_verts[1];
@@ -1052,24 +1051,6 @@ static void island_uv_transform(FaceIsland *island,
   }
 }
 
-static void bm_face_array_calc_bounds(BMFace **faces,
-                                      const int faces_len,
-                                      const int cd_loop_uv_offset,
-                                      rctf *r_bounds_rect)
-{
-  BLI_assert(cd_loop_uv_offset >= 0);
-  float bounds_min[2], bounds_max[2];
-  INIT_MINMAX2(bounds_min, bounds_max);
-  for (int i = 0; i < faces_len; i++) {
-    BMFace *f = faces[i];
-    BM_face_uv_minmax(f, bounds_min, bounds_max, cd_loop_uv_offset);
-  }
-  r_bounds_rect->xmin = bounds_min[0];
-  r_bounds_rect->ymin = bounds_min[1];
-  r_bounds_rect->xmax = bounds_max[0];
-  r_bounds_rect->ymax = bounds_max[1];
-}
-
 /**
  * Return an array of un-ordered UV coordinates,
  * without duplicating coordinates for loops that share a vertex.
@@ -1368,9 +1349,6 @@ static void uvedit_pack_islands_multi(const Scene *scene,
     if (params->rotate) {
       face_island_uv_rotate_fit_aabb(island);
     }
-
-    bm_face_array_calc_bounds(
-        island->faces, island->faces_len, island->offsets.uv, &island->bounds_rect);
   }
 
   /* Center of bounding box containing all selected UVs. */
@@ -1417,7 +1395,6 @@ static void uvedit_pack_islands_multi(const Scene *scene,
 
       BLI_memarena_clear(arena);
     }
-    pack_island->finalize_geometry(*params, arena, heap);
   }
   BLI_heap_free(heap, nullptr);
   BLI_memarena_free(arena);

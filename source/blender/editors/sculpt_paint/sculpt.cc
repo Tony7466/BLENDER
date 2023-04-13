@@ -725,9 +725,9 @@ static bool sculpt_check_unique_face_set_for_edge_in_base_mesh(SculptSession *ss
   const MeshElemMap *vert_map = &ss->pmap[v1];
   int p1 = -1, p2 = -1;
   for (int i = 0; i < vert_map->count; i++) {
-    const MPoly &poly = ss->polys[vert_map->indices[i]];
-    for (int l = 0; l < poly.totloop; l++) {
-      if (ss->corner_verts[poly.loopstart + l] == v2) {
+    const int poly_i = vert_map->indices[i];
+    for (const int corner : ss->polys[poly_i]) {
+      if (ss->corner_verts[corner] == v2) {
         if (p1 == -1) {
           p1 = vert_map->indices[i];
           break;
@@ -768,13 +768,7 @@ bool SCULPT_vertex_has_unique_face_set(SculptSession *ss, PBVHVertRef vertex)
       coord.y = vertex_index / key->grid_size;
       int v1, v2;
       const SubdivCCGAdjacencyType adjacency = BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(
-          ss->subdiv_ccg,
-          &coord,
-          ss->corner_verts.data(),
-          ss->corner_verts.size(),
-          ss->polys.data(),
-          &v1,
-          &v2);
+          ss->subdiv_ccg, &coord, ss->corner_verts, ss->polys, &v1, &v2);
       switch (adjacency) {
         case SUBDIV_CCG_ADJACENT_VERTEX:
           return sculpt_check_unique_face_set_in_base_mesh(ss, v1);
@@ -893,7 +887,7 @@ static void sculpt_vertex_neighbors_get_faces(SculptSession *ss,
       /* Skip connectivity from hidden faces. */
       continue;
     }
-    const MPoly &poly = ss->polys[vert_map->indices[i]];
+    const blender::IndexRange poly = ss->polys[vert_map->indices[i]];
     const blender::int2 f_adj_v = blender::bke::mesh::poly_find_adjecent_verts(
         poly, ss->corner_verts, vertex.i);
     for (int j = 0; j < 2; j++) {
@@ -1008,13 +1002,7 @@ bool SCULPT_vertex_is_boundary(const SculptSession *ss, const PBVHVertRef vertex
       coord.y = vertex_index / key->grid_size;
       int v1, v2;
       const SubdivCCGAdjacencyType adjacency = BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(
-          ss->subdiv_ccg,
-          &coord,
-          ss->corner_verts.data(),
-          ss->corner_verts.size(),
-          ss->polys.data(),
-          &v1,
-          &v2);
+          ss->subdiv_ccg, &coord, ss->corner_verts, ss->polys, &v1, &v2);
       switch (adjacency) {
         case SUBDIV_CCG_ADJACENT_VERTEX:
           return sculpt_check_boundary_vertex_in_base_mesh(ss, v1);
@@ -1319,12 +1307,6 @@ void SCULPT_floodfill_free(SculptFloodFill *flood)
 
 /** \} */
 
-static bool sculpt_tool_has_cube_tip(const char sculpt_tool)
-{
-  return ELEM(
-      sculpt_tool, SCULPT_TOOL_CLAY_STRIPS, SCULPT_TOOL_PAINT, SCULPT_TOOL_MULTIPLANE_SCRAPE);
-}
-
 /* -------------------------------------------------------------------- */
 /** \name Tool Capabilities
  *
@@ -1388,7 +1370,8 @@ static int sculpt_brush_needs_normal(const SculptSession *ss, Sculpt *sd, const 
                SCULPT_TOOL_THUMB) ||
 
           (mask_tex->brush_map_mode == MTEX_MAP_MODE_AREA)) ||
-         sculpt_brush_use_topology_rake(ss, brush);
+         sculpt_brush_use_topology_rake(ss, brush) ||
+         BKE_brush_has_cube_tip(brush, PAINT_MODE_SCULPT);
 }
 
 static bool sculpt_brush_needs_rake_rotation(const Brush *brush)
@@ -3030,7 +3013,7 @@ static void calc_local_y(ViewContext *vc, const float center[3], float y[3])
   mul_m4_v3(ob->world_to_object, y);
 }
 
-static void calc_brush_local_mat(const MTex *mtex,
+static void calc_brush_local_mat(const float rotation,
                                  Object *ob,
                                  float local_mat[4][4],
                                  float local_mat_inv[4][4])
@@ -3057,7 +3040,7 @@ static void calc_brush_local_mat(const MTex *mtex,
   /* Calculate the X axis of the local matrix. */
   cross_v3_v3v3(v, up, cache->sculpt_normal);
   /* Apply rotation (user angle, rake, etc.) to X axis. */
-  angle = mtex->rot - cache->special_rotation;
+  angle = rotation - cache->special_rotation;
   rotate_v3_v3v3fl(mat[0], v, cache->sculpt_normal, angle);
 
   /* Get other axes. */
@@ -3071,7 +3054,7 @@ static void calc_brush_local_mat(const MTex *mtex,
   float radius = cache->radius;
 
   /* Square tips should scale by square root of 2. */
-  if (sculpt_tool_has_cube_tip(cache->brush->sculpt_tool)) {
+  if (BKE_brush_has_cube_tip(cache->brush, PAINT_MODE_SCULPT)) {
     radius += (radius * M_SQRT2 - radius) * (1.0f - cache->brush->tip_roundness);
   }
 
@@ -3115,7 +3098,7 @@ static void update_brush_local_mat(Sculpt *sd, Object *ob)
   if (cache->mirror_symmetry_pass == 0 && cache->radial_symmetry_pass == 0) {
     const Brush *brush = BKE_paint_brush(&sd->paint);
     const MTex *mask_tex = BKE_brush_mask_texture_get(brush, OB_MODE_SCULPT);
-    calc_brush_local_mat(mask_tex, ob, cache->brush_local_mat, cache->brush_local_mat_inv);
+    calc_brush_local_mat(mask_tex->rot, ob, cache->brush_local_mat, cache->brush_local_mat_inv);
   }
 }
 
@@ -3626,7 +3609,7 @@ static void do_brush_action(Sculpt *sd,
     float radius_scale = 1.0f;
 
     /* Corners of square brushes can go outside the brush radius. */
-    if (sculpt_tool_has_cube_tip(brush->sculpt_tool)) {
+    if (BKE_brush_has_cube_tip(brush, PAINT_MODE_SCULPT)) {
       radius_scale = M_SQRT2;
     }
 
@@ -3698,10 +3681,7 @@ static void do_brush_action(Sculpt *sd,
     update_sculpt_normal(sd, ob, nodes, totnode);
   }
 
-  const MTex *mask_tex = BKE_brush_mask_texture_get(brush, static_cast<eObjectMode>(ob->mode));
-  if (mask_tex->brush_map_mode == MTEX_MAP_MODE_AREA) {
-    update_brush_local_mat(sd, ob);
-  }
+  update_brush_local_mat(sd, ob);
 
   if (brush->sculpt_tool == SCULPT_TOOL_POSE && SCULPT_stroke_is_first_brush_step(ss->cache)) {
     SCULPT_pose_brush_init(sd, ob, ss, brush);
@@ -6212,18 +6192,16 @@ void SCULPT_boundary_info_ensure(Object *object)
 
   Mesh *base_mesh = BKE_mesh_from_object(object);
   const blender::Span<MEdge> edges = base_mesh->edges();
-  const blender::Span<MPoly> polys = base_mesh->polys();
+  const OffsetIndices polys = base_mesh->polys();
   const Span<int> corner_edges = base_mesh->corner_edges();
 
   ss->vertex_info.boundary = BLI_BITMAP_NEW(base_mesh->totvert, "Boundary info");
   int *adjacent_faces_edge_count = static_cast<int *>(
       MEM_calloc_arrayN(base_mesh->totedge, sizeof(int), "Adjacent face edge count"));
 
-  for (const int p : polys.index_range()) {
-    const MPoly &poly = polys[p];
-    for (int l = 0; l < poly.totloop; l++) {
-      const int edge_i = corner_edges[poly.loopstart + l];
-      adjacent_faces_edge_count[edge_i]++;
+  for (const int i : polys.index_range()) {
+    for (const int edge : corner_edges.slice(polys[i])) {
+      adjacent_faces_edge_count[edge]++;
     }
   }
 
@@ -6469,5 +6447,28 @@ void SCULPT_topology_islands_ensure(Object *ob)
   }
 
   ss->islands_valid = true;
+}
+
+void SCULPT_cube_tip_init(Sculpt * /*sd*/, Object *ob, Brush *brush, float mat[4][4])
+{
+  SculptSession *ss = ob->sculpt;
+  float scale[4][4];
+  float tmat[4][4];
+  float unused[4][4];
+
+  zero_m4(mat);
+  calc_brush_local_mat(0.0, ob, unused, mat);
+
+  /* Note: we ignore the radius scaling done inside of calc_brush_local_mat to
+   * duplicate prior behavior.
+   *
+   * TODO: try disabling this and check that all edge cases work properly.
+   */
+  normalize_m4(mat);
+
+  scale_m4_fl(scale, ss->cache->radius);
+  mul_m4_m4m4(tmat, mat, scale);
+  mul_v3_fl(tmat[1], brush->tip_scale_x);
+  invert_m4_m4(mat, tmat);
 }
 /** \} */
