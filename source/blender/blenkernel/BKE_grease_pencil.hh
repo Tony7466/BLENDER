@@ -403,13 +403,6 @@ class Layer : public TreeNode, ::GreasePencilLayer {
     return sorted_keys_cache_.data().as_span();
   }
 
-  void load_from_storage(GreasePencilLayer &node)
-  {
-    for (int i = 0; i < node.frames_storage.size; i++) {
-      this->frames_.add(node.frames_storage.keys[i], node.frames_storage.values[i]);
-    }
-  }
-
   /**
    * Return the index of the drawing at frame \a frame or -1 if there is no drawing.
    */

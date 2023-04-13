@@ -42,7 +42,7 @@ struct BlendWriter;
 typedef enum GreasePencilDrawingType {
   GREASE_PENCIL_DRAWING = 0,
   GREASE_PENCIL_DRAWING_REFERENCE = 1,
-} GreasePencilLayerType;
+} GreasePencilDrawingType;
 
 typedef struct GreasePencilDrawingOrReference {
   /**
@@ -67,19 +67,22 @@ typedef struct GreasePencilDrawing {
    * The stroke data for this drawing.
    */
   CurvesGeometry geometry;
+  /**
+   * Runtime data on the drawing.
+   */
+  GreasePencilDrawingRuntimeHandle *runtime;
 #ifdef __cplusplus
   /**
    * The triangles for all the fills in the geometry.
    */
   blender::Span<blender::uint3> triangles() const;
   void tag_positions_changed();
-  bool has_stroke_buffer();
-  blender::Span<blender::bke::StrokePoint> stroke_buffer();
-#endif
   /**
-   * Runtime data on the drawing.
+   * A buffer for a single stroke while drawing.
    */
-  GreasePencilDrawingRuntimeHandle *runtime;
+  blender::Span<blender::bke::StrokePoint> stroke_buffer();
+  bool has_stroke_buffer();
+#endif
 } GreasePencilDrawing;
 
 typedef struct GreasePencilDrawingReference {
