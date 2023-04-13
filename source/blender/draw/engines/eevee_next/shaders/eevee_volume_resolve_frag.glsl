@@ -14,10 +14,6 @@ void main()
   vec3 transmittance, scattering;
   volumetric_resolve(uvs, scene_depth, transmittance, scattering);
 
-  /* Approximate volume alpha by using a monochromatic transmittance
-   * and adding it to the scene alpha. */
-  float alpha = dot(transmittance, vec3(1.0 / 3.0));
-
-  FragColor0 = vec4(scattering, 1.0 - alpha);
-  FragColor1 = vec4(transmittance, alpha);
+  out_radiance = vec4(scattering, 0.0);
+  out_transmittance = vec4(transmittance, saturate(avg(transmittance)));
 }

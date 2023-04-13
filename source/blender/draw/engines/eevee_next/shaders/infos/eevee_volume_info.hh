@@ -163,22 +163,22 @@ GPU_SHADER_CREATE_INFO(eevee_volume_resolve_common)
 
 GPU_SHADER_CREATE_INFO(eevee_volume_resolve)
     .additional_info("eevee_volume_resolve_common")
-    .fragment_out(0, Type::VEC4, "FragColor0", DualBlend::SRC_0)
-    .fragment_out(0, Type::VEC4, "FragColor1", DualBlend::SRC_1)
+    .fragment_out(0, Type::VEC4, "out_radiance", DualBlend::SRC_0)
+    .fragment_out(0, Type::VEC4, "out_transmittance", DualBlend::SRC_1)
     .do_static_compilation(true);
 
 GPU_SHADER_CREATE_INFO(eevee_volume_resolve_accum)
     .define("VOLUMETRICS_ACCUM")
     .additional_info("eevee_volume_resolve_common")
-    .fragment_out(0, Type::VEC4, "FragColor0")
-    .fragment_out(1, Type::VEC4, "FragColor1")
+    .fragment_out(0, Type::VEC4, "out_radiance")
+    .fragment_out(1, Type::VEC4, "out_transmittance")
     .do_static_compilation(true);
 
 /* EEVEE_shaders_volumes_accum_sh_get */
 GPU_SHADER_CREATE_INFO(eevee_volume_accum)
     .additional_info("draw_fullscreen")
     .additional_info("eevee_volume_lib")
-    .fragment_out(0, Type::VEC4, "FragColor0")
-    .fragment_out(1, Type::VEC4, "FragColor1")
+    .fragment_out(0, Type::VEC4, "out_radiance")
+    .fragment_out(1, Type::VEC4, "out_transmittance")
     .fragment_source("eevee_volume_accum_frag.glsl")
     .do_static_compilation(true);

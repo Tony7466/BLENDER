@@ -3,6 +3,6 @@
  * so it looks similar (transmittance = 1, scattering = 0) */
 void main()
 {
-  FragColor0 = vec4(0.0);
-  FragColor1 = vec4(1.0);
+  out_radiance = vec4(0.0);
+  out_transmittance = vec4(1.0);
 }
