@@ -122,7 +122,7 @@ class Progress {
     return updates;
   }
 
-  string get_cancel_message()  // const
+  string get_cancel_message()  const
   {
     SCOPED_LOCK(progress_mutex);
     return cancel_message;
@@ -149,7 +149,7 @@ class Progress {
     return error;
   }
 
-  string get_error_message()  // const
+  string get_error_message()  const
   {
     SCOPED_LOCK(progress_mutex);
     return error_message;
@@ -186,7 +186,7 @@ class Progress {
     }
   }
 
-  void get_time(double &total_time_, double &render_time_)  // const
+  void get_time(double &total_time_, double &render_time_)  const
   {
     SCOPED_LOCK(progress_mutex);
     double et = end_time;
@@ -215,7 +215,7 @@ class Progress {
     total_pixel_samples = total_pixel_samples_;
   }
 
-  double get_progress()  // const
+  double get_progress()  const
   {
     SCOPED_LOCK(progress_mutex);
     double value = 0.0;
@@ -255,7 +255,7 @@ class Progress {
     }
   }
 
-  int get_current_sample()  // const
+  int get_current_sample() const
   {
     SCOPED_LOCK(progress_mutex);
     /* Note that the value here always belongs to the last tile that updated,
@@ -263,13 +263,13 @@ class Progress {
     return current_tile_sample;
   }
 
-  int get_rendered_tiles()  // const
+  int get_rendered_tiles() const
   {
     SCOPED_LOCK(progress_mutex);
     return rendered_tiles;
   }
 
-  int get_denoised_tiles()  // const
+  int get_denoised_tiles() const
   {
     SCOPED_LOCK(progress_mutex);
     return denoised_tiles;
@@ -319,7 +319,7 @@ class Progress {
     set_update();
   }
 
-  void get_status(string &status_, string &substatus_)  // const
+  void get_status(string &status_, string &substatus_) const
   {
     SCOPED_LOCK(progress_mutex);
     if (sync_status != "") {
