@@ -1629,7 +1629,7 @@ typedef struct NodeShaderMix {
 /* Input or output in a bNodeFunctionSignature. */
 typedef struct bNodeFunctionParameter {
   char name[64]; /* MAX_NAME */
-  char socket_type[64]; /* MAX_NAME */
+  int socket_type;
 } bNodeFunctionParameter;
 
 typedef struct bNodeFunctionSignature {

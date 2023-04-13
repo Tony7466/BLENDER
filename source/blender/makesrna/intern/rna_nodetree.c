@@ -3282,48 +3282,6 @@ static void rna_NodeSocketStandard_value_and_relation_update(struct bContext *C,
 
 /* ******** Node Function Signature ******** */
 
-static int rna_NodeFunctionSignature_active_input_get(PointerRNA *ptr)
-{
-  bNodeFunctionSignature *sig = (bNodeFunctionSignature *)ptr->data;
-  int index = 0;
-  LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, &sig->inputs, index) {
-    if (socket->flag & SELECT) {
-      return index;
-    }
-  }
-  return -1;
-}
-
-static void rna_NodeFunctionSignature_active_input_set(PointerRNA *ptr, int value)
-{
-  bNodeFunctionSignature *sig = (bNodeFunctionSignature *)ptr->data;
-  int index = 0;
-  LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, &sig->inputs, index) {
-    SET_FLAG_FROM_TEST(socket->flag, index == value, SELECT);
-  }
-}
-
-static int rna_NodeFunctionSignature_active_output_get(PointerRNA *ptr)
-{
-  bNodeFunctionSignature *sig = (bNodeFunctionSignature *)ptr->data;
-  int index = 0;
-  LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, &sig->outputs, index) {
-    if (socket->flag & SELECT) {
-      return index;
-    }
-  }
-  return -1;
-}
-
-static void rna_NodeFunctionSignature_active_output_set(PointerRNA *ptr, int value)
-{
-  bNodeFunctionSignature *sig = (bNodeFunctionSignature *)ptr->data;
-  int index = 0;
-  LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, &sig->outputs, index) {
-    SET_FLAG_FROM_TEST(socket->flag, index == value, SELECT);
-  }
-}
-
 static bNodeSocket *rna_NodeFunctionSignature_inputs_new(ID *id,
                                                          bNodeFunctionSignature *sig,
                                                          Main *bmain,

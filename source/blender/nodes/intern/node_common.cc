@@ -291,20 +291,77 @@ void node_group_declare_dynamic(const bNodeTree & /*node_tree*/,
   }
 }
 
+SocketDeclarationPtr declaration_for_signature_parameter(const bNodeFunctionParameter &param,
+                                                         eNodeSocketInOut in_out)
+{
+  SocketDeclarationPtr dst;
+  switch (param.socket_type) {
+    case SOCK_FLOAT:
+      dst = std::make_unique<decl::Float>();
+      break;
+    case SOCK_VECTOR:
+      dst = std::make_unique<decl::Vector>();
+      break;
+    case SOCK_RGBA:
+      dst = std::make_unique<decl::Color>();
+      break;
+    case SOCK_SHADER:
+      dst = std::make_unique<decl::Shader>();
+      break;
+    case SOCK_BOOLEAN:
+      dst = std::make_unique<decl::Bool>();
+      break;
+    case SOCK_INT:
+      dst = std::make_unique<decl::Int>();
+      break;
+    case SOCK_STRING:
+      dst = std::make_unique<decl::String>();
+      break;
+    case SOCK_OBJECT:
+      dst = std::make_unique<decl::Object>();
+      break;
+    case SOCK_IMAGE:
+      dst = std::make_unique<decl::Image>();
+      break;
+    case SOCK_GEOMETRY:
+      dst = std::make_unique<decl::Geometry>();
+      break;
+    case SOCK_COLLECTION:
+      dst = std::make_unique<decl::Collection>();
+      break;
+    case SOCK_TEXTURE:
+      dst = std::make_unique<decl::Texture>();
+      break;
+    case SOCK_MATERIAL:
+      dst = std::make_unique<decl::Material>();
+      break;
+    case SOCK_FUNCTION:
+      dst = std::make_unique<decl::Function>();
+      break;
+    case SOCK_CUSTOM:
+      dst = std::make_unique<decl::Custom>();
+      break;
+  }
+  dst->name = param.name;
+  dst->in_out = in_out;
+  dst->hide_value = true;
+  dst->compact = false;
+  return dst;
+}
+
 void node_function_signature_declare(const bNodeFunctionSignature &sig,
                                      const FieldInferencingInterface *field_interface,
                                      NodeDeclaration &r_declaration)
 {
-  int socket_i;
-  LISTBASE_FOREACH_INDEX (const bNodeSocket *, input, &sig.inputs, socket_i) {
-    SocketDeclarationPtr decl = declaration_for_interface_socket(*input);
+  for (const int socket_i : IndexRange(sig.inputs_num)) {
+    SocketDeclarationPtr decl = declaration_for_signature_parameter(sig.inputs[socket_i], SOCK_IN);
     if (field_interface) {
       decl->input_field_type = field_interface->inputs[socket_i];
     }
     r_declaration.inputs.append(std::move(decl));
   }
-  LISTBASE_FOREACH_INDEX (const bNodeSocket *, output, &sig.outputs, socket_i) {
-    SocketDeclarationPtr decl = declaration_for_interface_socket(*output);
+  for (const int socket_i : IndexRange(sig.outputs_num)) {
+    SocketDeclarationPtr decl = declaration_for_signature_parameter(sig.outputs[socket_i], SOCK_OUT);
     if (field_interface) {
       decl->output_field_dependency = field_interface->outputs[socket_i];
     }

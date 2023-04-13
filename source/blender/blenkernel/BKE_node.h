@@ -228,38 +228,42 @@ typedef int (*NodeGPUExecFunction)(struct GPUMaterial *mat,
 /** \name Node Function Signature
  * \{ */
 
-struct bNodeSocket *nodeFunctionSignatureFindSocket(struct bNodeFunctionSignature *sig,
-                                                    eNodeSocketInOut in_out,
-                                                    const char *identifier);
-struct bNodeSocket *nodeFunctionSignatureAddSocket(struct bNodeTree *ntree,
-                                                   struct bNodeFunctionSignature *sig,
-                                                   eNodeSocketInOut in_out,
-                                                   const char *idname,
-                                                   const char *name);
-struct bNodeSocket *nodeFunctionSignatureInsertSocket(struct bNodeTree *ntree,
-                                                      struct bNodeFunctionSignature *sig,
-                                                      eNodeSocketInOut in_out,
-                                                      const char *idname,
-                                                      struct bNodeSocket *next_sock,
-                                                      const char *name);
-struct bNodeSocket *nodeFunctionSignatureCopySocket(struct bNodeTree *ntree,
-                                                    struct bNodeFunctionSignature *sig,
-                                                    const struct bNode *from_node,
-                                                    const struct bNodeSocket *from_sock);
-struct bNodeSocket *nodeFunctionSignatureCopySocketEx(struct bNodeTree *ntree,
-                                                      struct bNodeFunctionSignature *sig,
-                                                      const struct bNode *from_node,
-                                                      const struct bNodeSocket *from_sock,
-                                                      const char *idname,
-                                                      const char *name);
-struct bNodeSocket *nodeFunctionSignatureCopyInsertSocket(struct bNodeTree *ntree,
-                                                          struct bNodeFunctionSignature *sig,
-                                                          struct bNodeSocket *next_sock,
-                                                          const struct bNode *from_node,
-                                                          const struct bNodeSocket *from_sock);
+struct bNodeFunctionParameter *nodeFunctionSignatureFindSocket(struct bNodeFunctionSignature *sig,
+                                                               eNodeSocketInOut in_out,
+                                                               const char *identifier);
+struct bNodeFunctionParameter *nodeFunctionSignatureAddSocket(struct bNodeTree *ntree,
+                                                              struct bNodeFunctionSignature *sig,
+                                                              eNodeSocketInOut in_out,
+                                                              const char *name,
+                                                              eNodeSocketDatatype socket_type);
+struct bNodeFunctionParameter *nodeFunctionSignatureInsertSocket(
+    struct bNodeTree *ntree,
+    struct bNodeFunctionSignature *sig,
+    eNodeSocketInOut in_out,
+    const struct bNodeFunctionParameter *next_sock,
+    const char *name,
+    eNodeSocketDatatype socket_type);
+struct bNodeFunctionParameter *nodeFunctionSignatureCopySocket(
+    struct bNodeTree *ntree,
+    struct bNodeFunctionSignature *sig,
+    const struct bNode *from_node,
+    const struct bNodeSocket *from_sock);
+struct bNodeFunctionParameter *nodeFunctionSignatureCopySocketEx(
+    struct bNodeTree *ntree,
+    struct bNodeFunctionSignature *sig,
+    const struct bNode *from_node,
+    const struct bNodeSocket *from_sock,
+    const char *idname,
+    const char *name);
+struct bNodeFunctionParameter *nodeFunctionSignatureCopyInsertSocket(
+    struct bNodeTree *ntree,
+    struct bNodeFunctionSignature *sig,
+    struct bNodeSocket *next_sock,
+    const struct bNode *from_node,
+    const struct bNodeSocket *from_sock);
 void nodeFunctionSignatureRemoveSocket(struct bNodeTree *ntree,
                                        struct bNodeFunctionSignature *sig,
-                                       struct bNodeSocket *sock);
+                                       struct bNodeFunctionParameter *param);
 void nodeFunctionSignatureClear(struct bNodeTree *ntree,
                                 struct bNodeFunctionSignature *sig,
                                 eNodeSocketInOut in_out);

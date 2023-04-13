@@ -128,64 +128,52 @@ static void node_socket_set_typeinfo(bNodeTree *ntree,
 
 /* ************ NODE FUNCTION SIGNATURE *************** */
 
-static bNodeSocket *make_signature_socket(bNodeTree *ntree,
-                                          bNodeFunctionSignature *sig,
-                                          const eNodeSocketInOut in_out,
-                                          const char *idname,
-                                          const char *name)
+static Span<bNodeFunctionParameter> nodeFunctionSignatureGetParams(
+    const bNodeFunctionSignature *sig, const eNodeSocketInOut in_out)
 {
-  bNodeSocketType *stype = nodeSocketTypeFind(idname);
-  if (stype == nullptr) {
-    return nullptr;
-  }
-
-  bNodeSocket *sock = MEM_cnew<bNodeSocket>("socket template");
-  sock->runtime = MEM_new<bNodeSocketRuntime>(__func__);
-  BLI_strncpy(sock->idname, stype->idname, sizeof(sock->idname));
-  sock->in_out = in_out;
-  sock->type = SOCK_CUSTOM; /* int type undefined by default */
-  node_socket_set_typeinfo(ntree, sock, stype);
-
-  /* assign new unique index */
-  const int own_index = sig->cur_index++;
-  /* use the own_index as socket identifier */
   if (in_out == SOCK_IN) {
-    BLI_snprintf(sock->identifier, MAX_NAME, "Input_%d", own_index);
+    return Span<bNodeFunctionParameter>(sig->inputs, sig->inputs_num);
   }
   else {
-    BLI_snprintf(sock->identifier, MAX_NAME, "Output_%d", own_index);
+    return Span<bNodeFunctionParameter>(sig->outputs, sig->outputs_num);
   }
-
-  sock->limit = (in_out == SOCK_IN ? 1 : 0xFFF);
-
-  BLI_strncpy(sock->name, name, NODE_MAXSTR);
-  sock->storage = nullptr;
-  sock->flag |= SOCK_COLLAPSED;
-
-  return sock;
 }
 
-bNodeSocket *nodeFunctionSignatureFindSocket(bNodeFunctionSignature *sig,
-                                             const eNodeSocketInOut in_out,
-                                             const char *identifier)
+static MutableSpan<bNodeFunctionParameter> nodeFunctionSignatureGetParams(
+    bNodeFunctionSignature *sig, const eNodeSocketInOut in_out)
 {
-  ListBase *sockets = (in_out == SOCK_IN) ? &sig->inputs : &sig->outputs;
-  LISTBASE_FOREACH (bNodeSocket *, iosock, sockets) {
-    if (STREQ(iosock->identifier, identifier)) {
-      return iosock;
+  if (in_out == SOCK_IN) {
+    return MutableSpan<bNodeFunctionParameter>(sig->inputs, sig->inputs_num);
+  }
+  else {
+    return MutableSpan<bNodeFunctionParameter>(sig->outputs, sig->outputs_num);
+  }
+}
+
+bNodeFunctionParameter *nodeFunctionSignatureFindSocket(bNodeFunctionSignature *sig,
+                                                        const eNodeSocketInOut in_out,
+                                                        const char *name)
+{
+  for (bNodeFunctionParameter &param : nodeFunctionSignatureGetParams(sig, in_out)) {
+    if (STREQ(param.name, name)) {
+      return &param;
     }
   }
   return nullptr;
 }
 
-bNodeSocket *nodeFunctionSignatureAddSocket(bNodeTree *ntree,
-                                            bNodeFunctionSignature *sig,
-                                            const eNodeSocketInOut in_out,
-                                            const char *idname,
-                                            const char *name)
+bNodeFunctionParameter *nodeFunctionSignatureAddSocket(bNodeTree *ntree,
+                                                       bNodeFunctionSignature *sig,
+                                                       const eNodeSocketInOut in_out,
+                                                       const char *name,
+                                                       eNodeSocketDatatype socket_type)
 {
-  bNodeSocket *iosock = make_signature_socket(ntree, sig, in_out, idname, name);
+  bNodeFunctionParameter param;
+  BLI_strncpy(param.name, name, sizeof(param.name));
+  param.socket_type = socket_type;
+
   if (in_out == SOCK_IN) {
+
     BLI_addtail(&sig->inputs, iosock);
   }
   else if (in_out == SOCK_OUT) {
@@ -195,16 +183,21 @@ bNodeSocket *nodeFunctionSignatureAddSocket(bNodeTree *ntree,
   return iosock;
 }
 
-bNodeSocket *nodeFunctionSignatureInsertSocket(bNodeTree *ntree,
-                                               bNodeFunctionSignature *sig,
-                                               const eNodeSocketInOut in_out,
-                                               const char *idname,
-                                               bNodeSocket *next_sock,
-                                               const char *name)
+bNodeFunctionParameter *nodeFunctionSignatureInsertSocket(bNodeTree *ntree,
+                                                          bNodeFunctionSignature *sig,
+                                                          const eNodeSocketInOut in_out,
+                                                          const bNodeFunctionParameter *next_sock,
+                                                          const char *name,
+                                                          eNodeSocketDatatype socket_type)
 {
-  bNodeSocket *iosock = make_signature_socket(ntree, sig, in_out, idname, name);
+  bNodeFunctionParameter param;
+  BLI_strncpy(param.name, name, sizeof(param.name));
+  param.socket_type = socket_type;
+
   if (in_out == SOCK_IN) {
-    BLI_insertlinkbefore(&sig->inputs, next_sock, iosock);
+    bNodeFunctionParameter *old_params = sig->inputs;
+    sig->inputs = MEM_cnew_array<bNodeFunctionParameter>(sig->inputs_num + 1, __func__);
+    
   }
   else if (in_out == SOCK_OUT) {
     BLI_insertlinkbefore(&sig->outputs, next_sock, iosock);

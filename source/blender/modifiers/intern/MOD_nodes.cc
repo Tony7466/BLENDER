@@ -625,7 +625,7 @@ static void update_input_properties_from_node_tree(const bNodeTree &tree,
     if (new_prop == nullptr) {
       /* Out of the set of supported input sockets, only
        * geometry sockets aren't added to the modifier. */
-      BLI_assert(socket.type == SOCK_GEOMETRY);
+      BLI_assert(ELEM(socket.type, SOCK_GEOMETRY, SOCK_FUNCTION));
       continue;
     }
 
