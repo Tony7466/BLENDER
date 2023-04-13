@@ -150,10 +150,17 @@ class BDataWriter {
   int64_t current_offset_;
 
  public:
-  BDataWriter(std::string bdata_name, std::ostream &bdata_file, const int64_t current_offset)
+  Map<const ImplicitSharingInfo *, std::shared_ptr<io::serialize::DictionaryValue>> &shared_data_;
+
+  BDataWriter(std::string bdata_name,
+              std::ostream &bdata_file,
+              const int64_t current_offset,
+              Map<const ImplicitSharingInfo *, std::shared_ptr<io::serialize::DictionaryValue>>
+                  &shared_data)
       : bdata_name_(std::move(bdata_name)),
         bdata_file_(bdata_file),
-        current_offset_(current_offset)
+        current_offset_(current_offset),
+        shared_data_(shared_data)
   {
   }
 
@@ -165,6 +172,20 @@ class BDataWriter {
     return {bdata_name_, {old_offset, size}};
   }
 };
+
+static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_shared(
+    BDataWriter &bdata_writer,
+    const ImplicitSharingInfo *sharing_info,
+    const FunctionRef<std::shared_ptr<io::serialize::DictionaryValue>()> write_fn)
+{
+  if (sharing_info == nullptr) {
+    return write_fn();
+  }
+  return bdata_writer.shared_data_.lookup_or_add_cb(sharing_info, [&]() {
+    sharing_info->add_user();
+    return write_fn();
+  });
+}
 
 static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_raw_data_with_endian(
     BDataWriter &bdata_writer, const void *data, const int64_t size_in_bytes)
@@ -559,7 +580,10 @@ static std::shared_ptr<io::serialize::ArrayValue> serialize_attributes(
 
         const bke::GAttributeReader attribute = attributes.lookup(attribute_id);
         const GVArraySpan attribute_span(attribute.varray);
-        io_attribute->append("data", write_bdata_simple_gspan(bdata_writer, attribute_span));
+        auto io_attribute_data = write_bdata_shared(bdata_writer, attribute.sharing_info, [&]() {
+          return write_bdata_simple_gspan(bdata_writer, attribute_span);
+        });
+        io_attribute->append("data", io_attribute_data);
 
         return true;
       });
@@ -694,6 +718,14 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
     }
   }
 
+  Map<const ImplicitSharingInfo *, std::shared_ptr<io::serialize::DictionaryValue>> shared_data;
+  auto free_shared_data = [&]() {
+    for (const ImplicitSharingInfo *sharing_info : shared_data.keys()) {
+      sharing_info->remove_user_and_delete_if_last();
+    };
+  };
+  BLI_SCOPED_DEFER(free_shared_data);
+
   for (float frame_f = 1.0f; frame_f <= 100.f; frame_f += 0.5f) {
     const SubFrame frame{frame_f};
 
@@ -728,7 +760,7 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
 
       BLI_make_existing_file(bdata_path);
       fstream bdata_file{bdata_path, std::ios::out | std::ios::binary};
-      BDataWriter bdata_writer{bdata_file_name, bdata_file, 0};
+      BDataWriter bdata_writer{bdata_file_name, bdata_file, 0, shared_data};
 
       io::serialize::DictionaryValue io_root;
       io_root.append_int("version", 1);

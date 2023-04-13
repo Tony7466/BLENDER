@@ -309,7 +309,7 @@ bool BuiltinCustomDataLayerProvider::layer_exists(const CustomData &custom_data)
   return CustomData_has_layer(&custom_data, stored_type_);
 }
 
-GVArray BuiltinCustomDataLayerProvider::try_get_for_read(const void *owner) const
+GAttributeReader BuiltinCustomDataLayerProvider::try_get_for_read(const void *owner) const
 {
   const CustomData *custom_data = custom_data_access_.get_const_custom_data(owner);
   if (custom_data == nullptr) {
@@ -320,22 +320,27 @@ GVArray BuiltinCustomDataLayerProvider::try_get_for_read(const void *owner) cons
   const int element_num = custom_data_access_.get_element_num(owner);
   if (element_num == 0) {
     if (this->layer_exists(*custom_data)) {
-      return as_read_attribute_(nullptr, 0);
+      return {as_read_attribute_(nullptr, 0), domain_};
     }
     return {};
   }
 
-  const void *data = nullptr;
+  int layer_index = -1;
   if (stored_as_named_attribute_) {
-    data = CustomData_get_layer_named(custom_data, stored_type_, name_.c_str());
+    layer_index = CustomData_get_named_layer_index(custom_data, stored_type_, name_.c_str());
   }
   else {
-    data = CustomData_get_layer(custom_data, stored_type_);
+    layer_index = CustomData_get_layer_index(custom_data, stored_type_);
   }
+  if (layer_index == -1) {
+    return {};
+  }
+  const CustomDataLayer &layer = custom_data->layers[layer_index];
+  const void *data = layer.data;
   if (data == nullptr) {
     return {};
   }
-  return as_read_attribute_(data, element_num);
+  return {as_read_attribute_(data, element_num), domain_, layer.sharing_info};
 }
 
 GAttributeWriter BuiltinCustomDataLayerProvider::try_get_for_write(void *owner) const
@@ -465,7 +470,7 @@ GAttributeReader CustomDataAttributeProvider::try_get_for_read(
       continue;
     }
     GSpan data{*type, layer.data, element_num};
-    return {GVArray::ForSpan(data), domain_};
+    return {GVArray::ForSpan(data), domain_, layer.sharing_info};
   }
   return {};
 }

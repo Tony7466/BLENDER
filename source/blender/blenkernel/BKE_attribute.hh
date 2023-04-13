@@ -270,6 +270,7 @@ template<typename T> struct SpanAttributeWriter {
 struct GAttributeReader {
   GVArray varray;
   eAttrDomain domain;
+  const ImplicitSharingInfo *sharing_info = nullptr;
 
   operator bool() const
   {
