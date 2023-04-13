@@ -778,7 +778,9 @@ static bool vfont_to_curve(Object *ob,
                            const char32_t **r_text,
                            int *r_text_len,
                            bool *r_text_free,
-                           struct CharTrans **r_chartransdata)
+                           struct CharTrans **r_chartransdata,
+                           float cursor_location[2],
+                           int *r_caret_pos)
 {
   EditFont *ef = cu->editfont;
   EditFontSelBox *selboxes = NULL;
@@ -911,6 +913,13 @@ static bool vfont_to_curve(Object *ob,
   }
 
   i = 0;
+
+  int caret_pos = -1;
+  float caret_pos_min_dist = 0;
+  if (cursor_location && ef != NULL && ob != NULL) {
+    caret_pos_min_dist = len_squared_v2(cursor_location);
+  }
+
   while (i <= slen) {
     /* Characters in the list */
     info = &custrinfo[i];
@@ -1125,7 +1134,37 @@ static bool vfont_to_curve(Object *ob,
       }
     }
     ct++;
+
+    BLI_assert((cursor_location == NULL) || (ob && ef));
+
+    if (cursor_location) {
+      float offset_loc[2] = {cursor_location[0] - xof, cursor_location[1] - yof};
+      float di = len_squared_v2(offset_loc);
+      float di2 = len_squared_v2(cursor_location);
+      if (di2 <= caret_pos_min_dist && di2 < di) {
+        caret_pos_min_dist = di2;
+        caret_pos = -1;
+      }
+      else if (di < caret_pos_min_dist) {
+        caret_pos_min_dist = di;
+        caret_pos = i;
+      }
+    }
+
     i++;
+  }
+
+  if (cursor_location && r_caret_pos) {
+    if (caret_pos == -1) {
+      caret_pos++;
+      if (r_caret_pos)
+        *r_caret_pos = caret_pos;
+    }
+    else if (caret_pos >= 0 && caret_pos <= ef->len - 1) {
+      caret_pos++;
+      if (r_caret_pos)
+        *r_caret_pos = caret_pos;
+    }
   }
 
   current_line_length += xof + twidth - MARGIN_X_MIN;
@@ -1731,10 +1770,42 @@ bool BKE_vfont_to_curve_ex(Object *ob,
 
   do {
     data.ok &= vfont_to_curve(
-        ob, cu, mode, &data, r_nubase, r_text, r_text_len, r_text_free, r_chartransdata);
+        ob, cu, mode, &data, r_nubase, r_text, r_text_len, r_text_free, r_chartransdata, NULL, NULL);
   } while (data.ok && ELEM(data.status, VFONT_TO_CURVE_SCALE_ONCE, VFONT_TO_CURVE_BISECT));
 
   return data.ok;
+}
+
+int BKE_vfont_cursor_to_caret_pos(Object *ob, float cursor_location[2])
+{
+  Curve *cu = (Curve *)ob->data;
+  ListBase *r_nubase = &cu->nurb;
+  int caret_pos = 0;
+
+  /* TODO: iterating to calculate the scale can be avoided. */
+
+  VFontToCurveIter data = {
+      .iteraction = cu->totbox * FONT_TO_CURVE_SCALE_ITERATIONS,
+      .scale_to_fit = 1.0f,
+      .word_wrap = true,
+      .ok = true,
+      .status = VFONT_TO_CURVE_INIT,
+  };
+
+  do {
+    data.ok &= vfont_to_curve(ob,
+                              cu,
+                              FO_CURS,
+                              &data,
+                              r_nubase,
+                              NULL,
+                              NULL,
+                              NULL,
+                              NULL,
+                              cursor_location, &caret_pos);
+  } while (data.ok && ELEM(data.status, VFONT_TO_CURVE_SCALE_ONCE, VFONT_TO_CURVE_BISECT));
+
+  return caret_pos;
 }
 
 #undef FONT_TO_CURVE_SCALE_ITERATIONS
