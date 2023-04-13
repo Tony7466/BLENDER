@@ -1,0 +1,33 @@
+﻿{
+  "configurations": [
+    {
+      "name": "x64-Debug-Lite",
+      "generator": "Ninja",
+      "configurationType": "Debug",
+      "inheritEnvironments": [ "msvc_x64_x64" ],
+      "cmakeCommandArgs": "\"-C ${projectDir}/build_files/cmake/config/blender_lite.cmake\"",
+      "variables": [
+        {
+          "name": "WITH_COMPILER_ASAN",
+          "value": "False",
+          "type": "BOOL"
+        }
+      ],
+      "buildRoot": "C:/Users/Betti/Documents/blenderprojects/GPsurdef/Blender_3.5_debug_lite"
+    },
+    {
+      "name": "x64-Debug",
+      "generator": "Ninja",
+      "configurationType": "Debug",
+      "buildRoot": "C:/Users/Betti/Documents/blenderprojects/GPsurdef/Blender_3.5_debug",
+      "inheritEnvironments": [ "msvc_x64_x64" ],
+      "variables": [
+        {
+          "name": "WITH_COMPILER_ASAN",
+          "value": "False",
+          "type": "BOOL"
+        }
+      ]
+    }
+  ]
+}

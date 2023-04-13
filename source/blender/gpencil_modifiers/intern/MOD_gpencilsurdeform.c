@@ -2159,7 +2159,20 @@ static void deformVert(void *__restrict userdata,
   }
 }
 
-
+static void end_stroke_evaluation(SurDeformGpencilModifierData *smd, bGPDstroke *gps)
+{
+  if (gps->next == NULL) /*If we are on the last stroke...*/
+  {
+    /* ...Go back to the start of the stroke array. */
+    uint target_idx = smd->layers->frames->strokes->stroke_idx;
+    for (int idx = 0; idx < target_idx; idx++) {
+      (smd->layers->frames->strokes)--;
+    }
+  }
+  else { /*Else increase the pointer */
+    (smd->layers->frames->strokes)++;
+  }
+}
 
 static void surfacedeformModifier_do(GpencilModifierData *md,
                                      SurDeformGpencilModifierData *smd,
@@ -2178,7 +2191,11 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   uint strokes_num = BLI_listbase_count(&gpf->strokes);
   SurDeformGpencilModifierData *smd_orig = get_original_modifier(ob, smd, md);
 
-
+  /*Only on the first evaluation, check bind situation*/
+  if (gpl->prev == NULL && gps->prev == NULL) {
+    check_bind_situation(smd_orig, depsgraph, DEG_get_evaluated_scene(depsgraph), ob);
+  }
+  smd->bound_flags = smd_orig->bound_flags;
   
   /* Exit function if bind flag is not set  and free bind data if any. */
   if (smd->bound_flags == 0 && !(smd->flags & GP_MOD_SDEF_DO_BIND)) { 
@@ -2210,7 +2227,7 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   target_polys_num = BKE_mesh_wrapper_poly_len(target);
   
   /* If not bound, execute bind. */
-  if (smd->flags & GP_MOD_SDEF_DO_BIND ) 
+  if (0 ) 
   {
     if (!DEG_is_active(depsgraph)) {
       BKE_gpencil_modifier_set_error(md,  "Attempt to unbind from inactive dependency graph");
@@ -2263,13 +2280,14 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
     
   printf("real evaluation after bind \n");
 
-  if (gpl->prev == NULL && gps->prev == NULL)
-  {check_bind_situation(smd_orig, depsgraph,DEG_get_evaluated_scene(depsgraph), ob);}
-  smd -> bound_flags = smd_orig -> bound_flags;
+  
 
   /*Exit evaluation if we are on a frame that is not bound.*/
   if (smd->layers->frames->blender_frame->framenum != gpf->framenum) 
-  {return;}
+  {
+    end_stroke_evaluation(smd, gps);
+    return;
+  }
 
   /* Strokes count on the deforming Frame. */
   uint tot_strokes_num = BLI_listbase_count(&smd->layers->frames->blender_frame->strokes);
@@ -2359,6 +2377,7 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
 
     if (!curr_layer) /* If layer or frame not found, retun and pass onto the next evaluation */
     {
+      end_stroke_evaluation(smd, gps);
       return;
     }
 
@@ -2374,6 +2393,7 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
     }
     if (!curr_frame) /* If layer or frame not found, retun and pass onto the next evaluation */
     {
+      end_stroke_evaluation(smd, gps);
       return;
     }
     smd->layers->frames = curr_frame;
@@ -2406,23 +2426,13 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
 
   BKE_gpencil_stroke_geometry_update(ob->data, gps);
   
+  end_stroke_evaluation(smd, gps);
   
   
-  if (gps->next == NULL) /*If we are on the last stroke...*/
-  {
-    /* ...Go back to the start of the stroke array. */
-    uint target_idx = smd->layers->frames->strokes->stroke_idx;
-    for (int idx = 0; idx < target_idx; idx++) {
-      (smd->layers->frames->strokes)--;
-    }
-
-  }
-  else { /*Else increase the pointer */
-    (smd->layers->frames->strokes)++;
- 
-  }
 }
-/* END MOD_surfacedeform.c FUNCTIONS */
+
+
+    /* END MOD_surfacedeform.c FUNCTIONS */
 
 /* uses evaluated modifer */
 static void deformStroke(GpencilModifierData *md, // every time deform stroke is ran, increases stroke, frame, layer. in a similar way
@@ -2442,36 +2452,7 @@ static void deformStroke(GpencilModifierData *md, // every time deform stroke is
 
   smd->flags = smd_orig->flags;
 
-  /*make surface deform modifier sruff */
-  /*Mesh *mesh_src = NULL;
-
-  if (smd->defgrp_name[0] != '\0') {
-    /Only need to use mesh_src when a vgroup is used.
-    mesh_src = MOD_deform_mesh_eval_get(ctx->object, NULL, mesh, NULL, verts_num, false, false);
-  }*/
-
-  /*for (int i = 0; i < gps->totpoints; i++) {
-  bGPDspoint *pt = &gps->points[i];
-  MDeformVert *dvert = gps->dvert != NULL ? &gps->dvert[i] : NULL;
-  bGPdata *gpd = ob->data;
-  float mat[4][4] = {1, 2, 1, 1};
-  mul_m4_v3(mat, &pt->x);
-  BKE_gpencil_stroke_geometry_update(gpd, gps);}*/
-
-
-
-
-  /*fill vertex cos with gp points coordinates
-  float vertex_cos_array [1000][3];
-  float (*vertexCos)[3] = vertex_cos_array;
-
-  for (int i = 0; i < gps->totpoints; i++) {
-  bGPDspoint *pt = &gps->points[i];
-  MDeformVert *dvert = gps->dvert != NULL ? &gps->dvert[i] : NULL;
-  vertex_cos_array[i][0] = pt->x;
-  vertex_cos_array[i][1] = pt->y;
-  vertex_cos_array[i][2] = pt->z;
-  }*/
+ 
   
   surfacedeformModifier_do(md, smd, depsgraph, gps, gpf, gpl, ob, NULL /*, mesh_src*/);
  
