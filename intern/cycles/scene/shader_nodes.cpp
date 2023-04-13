@@ -3695,9 +3695,6 @@ NODE_DEFINE(MicrofacetHairBsdfNode)
   SOCKET_IN_FLOAT(TT, "TT lobe", 1.0f);
   SOCKET_IN_FLOAT(TRT, "TRT lobe", 1.0f);
 
-  SOCKET_IN_NORMAL(normal, "Normal", zero_float3(), SocketType::LINK_NORMAL);
-  SOCKET_IN_FLOAT(surface_mix_weight, "SurfaceMixWeight", 0.0f, SocketType::SVM_INTERNAL);
-
   SOCKET_OUT_CLOSURE(BSDF, "BSDF");
 
   return type;
@@ -3708,21 +3705,20 @@ MicrofacetHairBsdfNode::MicrofacetHairBsdfNode() : BsdfBaseNode(get_node_type())
   closure = CLOSURE_BSDF_HAIR_MICROFACET_ID;
 }
 
-/* Enable retrieving Hair Info -> Random if Random isn't linked. */
 void MicrofacetHairBsdfNode::attributes(Shader *shader, AttributeRequestSet *attributes)
 {
-  /* Make sure we have the normal for elliptical cross section tracking */
+  /* Make sure we have the normal for elliptical cross section tracking. */
   if (aspect_ratio != 1.0f) {
     attributes->add(ATTR_STD_VERTEX_NORMAL);
   }
 
+  /* Enable retrieving Hair Info -> Random if Random isn't linked. */
   if (!input("Random")->link) {
     attributes->add(ATTR_STD_CURVE_RANDOM);
   }
   ShaderNode::attributes(shader, attributes);
 }
 
-/* Prepares the input data for the SVM shader. */
 void MicrofacetHairBsdfNode::compile(SVMCompiler &compiler)
 {
   compiler.add_node(NODE_CLOSURE_SET_WEIGHT, one_float3());
@@ -3748,7 +3744,6 @@ void MicrofacetHairBsdfNode::compile(SVMCompiler &compiler)
 
   int roughness_ofs = compiler.stack_assign_if_linked(roughness_in);
 
-  int normal_ofs = compiler.stack_assign_if_linked(input("Normal"));
   int offset_ofs = compiler.stack_assign_if_linked(offset_in);
   int ior_ofs = compiler.stack_assign_if_linked(ior_in);
 
@@ -3774,7 +3769,7 @@ void MicrofacetHairBsdfNode::compile(SVMCompiler &compiler)
       __float_as_uint(random_roughness));
 
   /* data node */
-  compiler.add_node(normal_ofs,
+  compiler.add_node(SVM_STACK_INVALID,
                     compiler.encode_uchar4(offset_ofs, ior_ofs, color_ofs, parametrization),
                     __float_as_uint(offset),
                     __float_as_uint(ior));
@@ -3806,7 +3801,6 @@ void MicrofacetHairBsdfNode::compile(SVMCompiler &compiler)
                     __float_as_uint(TRT));
 }
 
-/* Prepares the input data for the OSL shader. */
 void MicrofacetHairBsdfNode::compile(OSLCompiler &compiler)
 {
   compiler.parameter(this, "parametrization");

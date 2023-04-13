@@ -895,7 +895,6 @@ class MicrofacetHairBsdfNode : public BsdfBaseNode {
   NODE_SOCKET_API(float, ior)
   /* Cuticle tilt angle. */
   NODE_SOCKET_API(float, offset)
-
   /* Direct coloring's color. */
   NODE_SOCKET_API(float3, color)
   /* Melanin concentration. */
@@ -908,16 +907,14 @@ class MicrofacetHairBsdfNode : public BsdfBaseNode {
   NODE_SOCKET_API(float, random_color)
   /* Absorption coefficient (unfiltered). */
   NODE_SOCKET_API(float3, absorption_coefficient)
-
   /* Aspect Ratio. */
   NODE_SOCKET_API(float, aspect_ratio)
 
+  /* Optional modulation factors for the lobes. */
   NODE_SOCKET_API(float, R)
   NODE_SOCKET_API(float, TT)
   NODE_SOCKET_API(float, TRT)
 
-  NODE_SOCKET_API(float3, normal)
-  NODE_SOCKET_API(float, surface_mix_weight)
   /* If linked, here will be the given random number. */
   NODE_SOCKET_API(float, random)
   /* Selected coloring parametrization. */

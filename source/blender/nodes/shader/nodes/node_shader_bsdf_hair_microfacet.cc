@@ -42,8 +42,9 @@ static void node_declare(NodeDeclarationBuilder &b)
       .subtype(PROP_FACTOR)
       .description(
           "For elliptical hair cross-section, the aspect ratio is the ratio of the minor axis to "
-          "the major axis. Recommended values are 0.8~1 for Asian hair, 0.65~0.9 for Caucasian "
-          "hair, 0.5~0.65 for African hair. Set this to 1 for circular cross-section");
+          "the major axis (the major axis is aligned with the curve normal). Recommended values "
+          "are 0.8~1 for Asian hair, 0.65~0.9 for Caucasian hair, 0.5~0.65 for African hair. Set "
+          "this to 1 for circular cross-section");
   b.add_input<decl::Float>(N_("Roughness"), "Hair Roughness")
       .default_value(0.3f)
       .min(0.0f)
