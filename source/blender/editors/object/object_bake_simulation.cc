@@ -26,6 +26,7 @@
 #include "BKE_context.h"
 #include "BKE_curves.hh"
 #include "BKE_main.h"
+#include "BKE_mesh.hh"
 #include "BKE_object.h"
 #include "BKE_pointcloud.h"
 #include "BKE_scene.h"
@@ -163,6 +164,39 @@ class BDataWriter {
   }
 };
 
+static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_raw_data_with_endian(
+    BDataWriter &bdata_writer, const void *data, const int64_t size_in_bytes)
+{
+  auto io_data = bdata_writer.write(data, size_in_bytes).serialize();
+  if (ENDIAN_ORDER == B_ENDIAN) {
+    io_data->append_str("endian", "big");
+  }
+  return io_data;
+}
+
+static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_raw_bytes(
+    BDataWriter &bdata_writer, const void *data, const int64_t size_in_bytes)
+{
+  return bdata_writer.write(data, size_in_bytes).serialize();
+}
+
+static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_int_array(
+    BDataWriter &bdata_writer, const Span<int> data)
+{
+  return write_bdata_raw_data_with_endian(bdata_writer, data.data(), data.size_in_bytes());
+}
+
+static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_simple_gspan(
+    BDataWriter &bdata_writer, const GSpan data)
+{
+  const CPPType &type = data.type();
+  BLI_assert(type.is_trivial());
+  if (type.size() == 1) {
+    return write_bdata_raw_bytes(bdata_writer, data.data(), data.size_in_bytes());
+  }
+  return write_bdata_raw_data_with_endian(bdata_writer, data.data(), data.size_in_bytes());
+}
+
 static void load_attributes(const io::serialize::ArrayValue &io_attributes,
                             bke::MutableAttributeAccessor &attributes,
                             const BDataReader &bdata_reader)
@@ -296,28 +330,24 @@ static std::shared_ptr<io::serialize::ArrayValue> serialize_attributes(
     const bke::AttributeAccessor &attributes, BDataWriter &bdata_writer)
 {
   auto io_attributes = std::make_shared<io::serialize::ArrayValue>();
-  attributes.for_all([&](const bke::AttributeIDRef &attribute_id,
-                         const bke::AttributeMetaData &meta_data) {
-    auto io_attribute = io_attributes->append_dict();
+  attributes.for_all(
+      [&](const bke::AttributeIDRef &attribute_id, const bke::AttributeMetaData &meta_data) {
+        auto io_attribute = io_attributes->append_dict();
 
-    io_attribute->append_str("name", attribute_id.name());
+        io_attribute->append_str("name", attribute_id.name());
 
-    const StringRefNull domain_name = get_domain_io_name(meta_data.domain);
-    io_attribute->append_str("domain", domain_name);
+        const StringRefNull domain_name = get_domain_io_name(meta_data.domain);
+        io_attribute->append_str("domain", domain_name);
 
-    const StringRefNull type_name = get_data_type_io_name(meta_data.data_type);
-    io_attribute->append_str("type", type_name);
+        const StringRefNull type_name = get_data_type_io_name(meta_data.data_type);
+        io_attribute->append_str("type", type_name);
 
-    const bke::GAttributeReader attribute = attributes.lookup(attribute_id);
-    const GVArraySpan attribute_span(attribute.varray);
-    const int64_t binary_size = attribute_span.size() * attribute_span.type().size();
+        const bke::GAttributeReader attribute = attributes.lookup(attribute_id);
+        const GVArraySpan attribute_span(attribute.varray);
+        io_attribute->append("data", write_bdata_simple_gspan(bdata_writer, attribute_span));
 
-    auto io_attribute_data = bdata_writer.write(attribute_span.data(), binary_size).serialize();
-    io_attribute_data->append_str("endian", get_endian_io_name(ENDIAN_ORDER));
-    io_attribute->append("data", io_attribute_data);
-
-    return true;
-  });
+        return true;
+      });
   return io_attributes;
 }
 
@@ -335,12 +365,8 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
     io_mesh->append_int("num_corners", mesh.totloop);
 
     if (mesh.totpoly > 0) {
-      auto io_polygon_indices = bdata_writer
-                                    .write(mesh.poly_offset_indices,
-                                           int64_t(sizeof(int)) * mesh.totpoly + 1)
-                                    .serialize();
-      io_polygon_indices->append_str("endian", get_endian_io_name(ENDIAN_ORDER));
-      io_mesh->append("poly_offset_indices", io_polygon_indices);
+      io_mesh->append("poly_offset_indices",
+                      write_bdata_int_array(bdata_writer, mesh.poly_offsets()));
     }
 
     auto io_materials = serialize_material_slots({mesh.mat, mesh.totcol});
@@ -362,25 +388,22 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
     io_pointcloud->append("attributes", io_attributes);
   }
   if (geometry.has_curves()) {
-    const Curves &curves = *geometry.get_curves_for_read();
+    const Curves &curves_id = *geometry.get_curves_for_read();
+    const bke::CurvesGeometry &curves = curves_id.geometry.wrap();
+
     auto io_curves = io_geometry->append_dict("curves");
 
-    io_curves->append_int("num_points", curves.geometry.point_num);
-    io_curves->append_int("num_curves", curves.geometry.curve_num);
+    io_curves->append_int("num_points", curves.point_num);
+    io_curves->append_int("num_curves", curves.curve_num);
 
-    if (curves.geometry.curve_num > 0) {
-      auto io_curve_indices = bdata_writer
-                                  .write(curves.geometry.curve_offsets,
-                                         int64_t(sizeof(int)) * curves.geometry.curve_num + 1)
-                                  .serialize();
-      io_curve_indices->append_str("endian", get_endian_io_name(ENDIAN_ORDER));
-      io_curves->append("curve_offsets", io_curve_indices);
+    if (curves.curve_num > 0) {
+      io_curves->append("curve_offsets", write_bdata_int_array(bdata_writer, curves.offsets()));
     }
 
-    auto io_materials = serialize_material_slots({curves.mat, curves.totcol});
+    auto io_materials = serialize_material_slots({curves_id.mat, curves_id.totcol});
     io_curves->append("materials", io_materials);
 
-    auto io_attributes = serialize_attributes(curves.geometry.wrap().attributes(), bdata_writer);
+    auto io_attributes = serialize_attributes(curves.attributes(), bdata_writer);
     io_curves->append("attributes", io_attributes);
   }
   return io_geometry;
