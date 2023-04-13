@@ -7,11 +7,6 @@
 
 #pragma once
 
-/* TODO: what does this do? */
-#ifndef __KERNEL_GPU__
-#  include <fenv.h>
-#endif
-
 #include "kernel/util/color.h"
 
 CCL_NAMESPACE_BEGIN
@@ -74,7 +69,7 @@ ccl_device int bsdf_microfacet_hair_setup(ccl_private ShaderData *sd,
   kernel_assert(fabsf(bsdf->h) < 1.0f + 1e-4f);
   kernel_assert(isfinite_safe(bsdf->h));
 
-  if (bsdf->aspect_ratio != 1.0f && !(sd->type & PRIMITIVE_TRIANGLE)) {
+  if (bsdf->aspect_ratio != 1.0f && (sd->type & PRIMITIVE_CURVE)) {
     if (bsdf->aspect_ratio > 1.0f) {
       bsdf->aspect_ratio = 1.0f / bsdf->aspect_ratio;
 
