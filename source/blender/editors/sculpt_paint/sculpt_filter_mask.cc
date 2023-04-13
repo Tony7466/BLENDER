@@ -180,7 +180,7 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
 
   int num_verts = SCULPT_vertex_count_get(ss);
 
-  Vector<PBVHNode *> nodes = blender::pbvh::search_gather(pbvh, nullptr, nullptr);
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(pbvh, nullptr, nullptr);
   SCULPT_undo_push_begin(ob, op);
 
   for (PBVHNode *node : nodes) {

@@ -319,7 +319,7 @@ static Vector<PBVHNode *> get_pbvh_nodes(PBVH *pbvh, float clip_planes[4][4], Pa
   PBVHFrustumPlanes frustum{};
   frustum.planes = clip_planes;
   frustum.num_planes = 4;
-  return blender::pbvh::search_gather(pbvh, cb, &frustum);
+  return blender::bke::pbvh::search_gather(pbvh, cb, &frustum);
 }
 
 static int hide_show_exec(bContext *C, wmOperator *op)

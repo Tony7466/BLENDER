@@ -86,10 +86,10 @@ Vector<PBVHNode *> SCULPT_cloth_brush_affected_nodes_gather(SculptSession *ss, B
       data.original = false;
       data.ignore_fully_ineffective = false;
       data.center = ss->cache->initial_location;
-      nodes = blender::pbvh::search_gather(ss->pbvh, SCULPT_search_sphere_cb, &data);
+      nodes = blender::bke::pbvh::search_gather(ss->pbvh, SCULPT_search_sphere_cb, &data);
     } break;
     case BRUSH_CLOTH_SIMULATION_AREA_GLOBAL:
-      nodes = blender::pbvh::search_gather(ss->pbvh, nullptr, nullptr);
+      nodes = blender::bke::pbvh::search_gather(ss->pbvh, nullptr, nullptr);
       break;
     case BRUSH_CLOTH_SIMULATION_AREA_DYNAMIC: {
       SculptSearchSphereData data{};
@@ -98,7 +98,7 @@ Vector<PBVHNode *> SCULPT_cloth_brush_affected_nodes_gather(SculptSession *ss, B
       data.original = false;
       data.ignore_fully_ineffective = false;
       data.center = ss->cache->location;
-      nodes = blender::pbvh::search_gather(ss->pbvh, SCULPT_search_sphere_cb, &data);
+      nodes = blender::bke::pbvh::search_gather(ss->pbvh, SCULPT_search_sphere_cb, &data);
     } break;
   }
 
@@ -1019,7 +1019,7 @@ static void cloth_brush_apply_brush_foces(Sculpt *sd, Object *ob, Span<PBVHNode 
 static void cloth_sim_initialize_default_node_state(SculptSession *ss,
                                                     SculptClothSimulation *cloth_sim)
 {
-  Vector<PBVHNode *> nodes = blender::pbvh::search_gather(ss->pbvh, nullptr, nullptr);
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, nullptr, nullptr);
 
   cloth_sim->node_state = static_cast<eSculptClothNodeSimState *>(
       MEM_malloc_arrayN(nodes.size(), sizeof(eSculptClothNodeSimState), "node sim state"));

@@ -1367,7 +1367,7 @@ static bool update_search_cb(PBVHNode *node, void *data_v)
 
 struct PBVHUpdateData {
   PBVH *pbvh;
-  Vector<PBVHNode *> &nodes;
+  Span<PBVHNode *> nodes;
 
   float (*vert_normals)[3] = nullptr;
   int flag = 0;
@@ -1375,7 +1375,7 @@ struct PBVHUpdateData {
   PBVHAttrReq *attrs = nullptr;
   int attrs_num = 0;
 
-  PBVHUpdateData(PBVH *pbvh_, Vector<PBVHNode *> &nodes_) : pbvh(pbvh_), nodes(nodes_) {}
+  PBVHUpdateData(PBVH *pbvh_, Span<PBVHNode *> nodes_) : pbvh(pbvh_), nodes(nodes_) {}
 };
 
 static void pbvh_update_normals_clear_task_cb(void *__restrict userdata,
@@ -1479,7 +1479,7 @@ static void pbvh_update_normals_store_task_cb(void *__restrict userdata,
   }
 }
 
-static void pbvh_faces_update_normals(PBVH *pbvh, Vector<PBVHNode *> &nodes)
+static void pbvh_faces_update_normals(PBVH *pbvh, Span<PBVHNode *> nodes)
 {
   /* subtle assumptions:
    * - We know that for all edited vertices, the nodes with faces
@@ -1541,7 +1541,7 @@ static void pbvh_update_mask_redraw_task_cb(void *__restrict userdata,
   }
 }
 
-static void pbvh_update_mask_redraw(PBVH *pbvh, Vector<PBVHNode *> &nodes, int flag)
+static void pbvh_update_mask_redraw(PBVH *pbvh, Span<PBVHNode *> nodes, int flag)
 {
   PBVHUpdateData data(pbvh, nodes);
   data.pbvh = pbvh;
@@ -1577,7 +1577,7 @@ static void pbvh_update_visibility_redraw_task_cb(void *__restrict userdata,
   }
 }
 
-static void pbvh_update_visibility_redraw(PBVH *pbvh, Vector<PBVHNode *> &nodes, int flag)
+static void pbvh_update_visibility_redraw(PBVH *pbvh, Span<PBVHNode *> nodes, int flag)
 {
   PBVHUpdateData data(pbvh, nodes);
   data.pbvh = pbvh;
@@ -1614,7 +1614,7 @@ static void pbvh_update_BB_redraw_task_cb(void *__restrict userdata,
   }
 }
 
-void pbvh_update_BB_redraw(PBVH *pbvh, Vector<PBVHNode *> &nodes, int flag)
+void pbvh_update_BB_redraw(PBVH *pbvh, Span<PBVHNode *> nodes, int flag)
 {
   /* update BB, redraw flag */
   PBVHUpdateData data(pbvh, nodes);
@@ -1687,7 +1687,7 @@ void pbvh_free_draw_buffers(PBVH * /*pbvh*/, PBVHNode *node)
   }
 }
 
-static void pbvh_update_draw_buffers(PBVH *pbvh, Vector<PBVHNode *> &nodes, int update_flag)
+static void pbvh_update_draw_buffers(PBVH *pbvh, Span<PBVHNode *> nodes, int update_flag)
 {
   const CustomData *vdata;
 
@@ -1782,7 +1782,7 @@ void BKE_pbvh_update_bounds(PBVH *pbvh, int flag)
     return;
   }
 
-  Vector<PBVHNode *> nodes = blender::pbvh::search_gather(
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(
       pbvh, update_search_cb, POINTER_FROM_INT(flag));
 
   if (flag & (PBVH_UpdateBB | PBVH_UpdateOriginalBB | PBVH_UpdateRedraw)) {
@@ -1800,7 +1800,7 @@ void BKE_pbvh_update_vertex_data(PBVH *pbvh, int flag)
     return;
   }
 
-  Vector<PBVHNode *> nodes = blender::pbvh::search_gather(
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(
       pbvh, update_search_cb, POINTER_FROM_INT(flag));
 
   if (flag & (PBVH_UpdateMask)) {
@@ -1921,7 +1921,7 @@ static void pbvh_update_visibility_task_cb(void *__restrict userdata,
   }
 }
 
-static void pbvh_update_visibility(PBVH *pbvh, Vector<PBVHNode *> &nodes)
+static void pbvh_update_visibility(PBVH *pbvh, Span<PBVHNode *> nodes)
 {
   PBVHUpdateData data(pbvh, nodes);
   data.pbvh = pbvh;
@@ -1937,7 +1937,7 @@ void BKE_pbvh_update_visibility(PBVH *pbvh)
     return;
   }
 
-  Vector<PBVHNode *> nodes = blender::pbvh::search_gather(
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(
       pbvh, update_search_cb, POINTER_FROM_INT(PBVH_UpdateVisibility));
 
   pbvh_update_visibility(pbvh, nodes);
@@ -3036,10 +3036,10 @@ bool BKE_pbvh_node_frustum_exclude_AABB(PBVHNode *node, void *data)
 void BKE_pbvh_update_normals(PBVH *pbvh, SubdivCCG *subdiv_ccg)
 {
   /* Update normals */
-  Vector<PBVHNode *> nodes = blender::pbvh::search_gather(
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(
       pbvh, update_search_cb, POINTER_FROM_INT(PBVH_UpdateNormals));
 
-  if (nodes.size() > 0) {
+  if (!nodes.is_empty()) {
     if (pbvh->header.type == PBVH_BMESH) {
       pbvh_bmesh_normals_update(nodes);
     }
@@ -3109,18 +3109,19 @@ void BKE_pbvh_draw_cb(PBVH *pbvh,
     data.accum_update_flag = 0;
     data.attrs = attrs;
     data.attrs_num = attrs_num;
-    nodes = blender::pbvh::search_gather(pbvh, pbvh_draw_search_cb, &data);
+    nodes = blender::bke::pbvh::search_gather(pbvh, pbvh_draw_search_cb, &data);
     update_flag = data.accum_update_flag;
   }
   else {
     /* Get all nodes with draw updates, also those outside the view. */
     const int search_flag = PBVH_RebuildDrawBuffers | PBVH_UpdateDrawBuffers;
-    nodes = blender::pbvh::search_gather(pbvh, update_search_cb, POINTER_FROM_INT(search_flag));
+    nodes = blender::bke::pbvh::search_gather(
+        pbvh, update_search_cb, POINTER_FROM_INT(search_flag));
     update_flag = PBVH_RebuildDrawBuffers | PBVH_UpdateDrawBuffers;
   }
 
   /* Update draw buffers. */
-  if (nodes.size() != 0 && (update_flag & (PBVH_RebuildDrawBuffers | PBVH_UpdateDrawBuffers))) {
+  if (!nodes.is_empty() && (update_flag & (PBVH_RebuildDrawBuffers | PBVH_UpdateDrawBuffers))) {
     pbvh_update_draw_buffers(pbvh, nodes, update_flag);
   }
 
@@ -3128,7 +3129,7 @@ void BKE_pbvh_draw_cb(PBVH *pbvh,
   PBVHDrawSearchData draw_data{};
   draw_data.frustum = draw_frustum;
   draw_data.accum_update_flag = 0;
-  nodes = blender::pbvh::search_gather(pbvh, pbvh_draw_search_cb, &draw_data);
+  nodes = blender::bke::pbvh::search_gather(pbvh, pbvh_draw_search_cb, &draw_data);
 
   PBVH_GPU_Args args;
 
@@ -3299,7 +3300,7 @@ PBVHColorBufferNode *BKE_pbvh_node_color_buffer_get(PBVHNode *node)
 
 void BKE_pbvh_node_color_buffer_free(PBVH *pbvh)
 {
-  Vector<PBVHNode *> nodes = blender::pbvh::search_gather(pbvh, nullptr, nullptr);
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(pbvh, nullptr, nullptr);
 
   for (PBVHNode *node : nodes) {
     MEM_SAFE_FREE(node->color_buffer.color);
@@ -3844,7 +3845,7 @@ void BKE_pbvh_sync_visibility_from_verts(PBVH *pbvh, Mesh *mesh)
   }
 }
 
-namespace blender::pbvh {
+namespace blender::bke::pbvh {
 Vector<PBVHNode *> search_gather(PBVH *pbvh,
                                  BKE_pbvh_SearchCallback scb,
                                  void *search_data,
@@ -3880,4 +3881,4 @@ Vector<PBVHNode *> gather_proxies(PBVH *pbvh)
 
   return array;
 }
-}  // namespace blender::pbvh
+}  // namespace blender::bke::pbvh

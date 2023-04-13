@@ -1110,8 +1110,8 @@ PBVHVertRef SCULPT_nearest_vertex_get(
   data.original = use_original;
   data.center = co;
 
-  nodes = blender::pbvh::search_gather(ss->pbvh, SCULPT_search_sphere_cb, &data);
-  if (nodes.size() == 0) {
+  nodes = blender::bke::pbvh::search_gather(ss->pbvh, SCULPT_search_sphere_cb, &data);
+  if (nodes.is_empty()) {
     return BKE_pbvh_make_vref(PBVH_REF_NONE);
   }
 
@@ -1618,7 +1618,7 @@ static void paint_mesh_restore_co(Sculpt *sd, Object *ob)
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
-  Vector<PBVHNode *> nodes = blender::pbvh::search_gather(ss->pbvh, nullptr, nullptr);
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, nullptr, nullptr);
 
   /**
    * Disable multi-threading when dynamic-topology is enabled. Otherwise,
@@ -2848,7 +2848,7 @@ static Vector<PBVHNode *> sculpt_pbvh_gather_cursor_update(Object *ob,
   data.ignore_fully_ineffective = false;
   data.center = nullptr;
 
-  return blender::pbvh::search_gather(ss->pbvh, SCULPT_search_sphere_cb, &data);
+  return blender::bke::pbvh::search_gather(ss->pbvh, SCULPT_search_sphere_cb, &data);
 }
 
 static Vector<PBVHNode *> sculpt_pbvh_gather_generic_intern(Object *ob,
@@ -2876,7 +2876,7 @@ static Vector<PBVHNode *> sculpt_pbvh_gather_generic_intern(Object *ob,
     data.original = use_original;
     data.ignore_fully_ineffective = brush->sculpt_tool != SCULPT_TOOL_MASK;
     data.center = nullptr;
-    nodes = blender::pbvh::search_gather(ss->pbvh, SCULPT_search_sphere_cb, &data, leaf_flag);
+    nodes = blender::bke::pbvh::search_gather(ss->pbvh, SCULPT_search_sphere_cb, &data, leaf_flag);
   }
   else {
     DistRayAABB_Precalc dist_ray_to_aabb_precalc;
@@ -2890,7 +2890,7 @@ static Vector<PBVHNode *> sculpt_pbvh_gather_generic_intern(Object *ob,
     data.original = use_original;
     data.dist_ray_to_aabb_precalc = &dist_ray_to_aabb_precalc;
     data.ignore_fully_ineffective = brush->sculpt_tool != SCULPT_TOOL_MASK;
-    nodes = blender::pbvh::search_gather(ss->pbvh, SCULPT_search_circle_cb, &data, leaf_flag);
+    nodes = blender::bke::pbvh::search_gather(ss->pbvh, SCULPT_search_circle_cb, &data, leaf_flag);
   }
 
   return nodes;
@@ -3441,7 +3441,7 @@ static void sculpt_topology_update(Sculpt *sd,
   Vector<PBVHNode *> nodes = sculpt_pbvh_gather_generic(ob, sd, brush, use_original, radius_scale);
 
   /* Only act if some verts are inside the brush area. */
-  if (nodes.size() == 0) {
+  if (nodes.is_empty()) {
     return;
   }
 
@@ -3555,7 +3555,7 @@ static void do_brush_action(Sculpt *sd,
 
     texnodes = sculpt_pbvh_gather_texpaint(ob, sd, brush, use_original, 1.0f);
 
-    if (!texnodes.size()) {
+    if (texnodes.is_empty()) {
       return;
     }
   }
@@ -3564,7 +3564,7 @@ static void do_brush_action(Sculpt *sd,
 
   if (SCULPT_tool_needs_all_pbvh_nodes(brush)) {
     /* These brushes need to update all nodes as they are not constrained by the brush radius */
-    nodes = blender::pbvh::search_gather(ss->pbvh, nullptr, nullptr);
+    nodes = blender::bke::pbvh::search_gather(ss->pbvh, nullptr, nullptr);
   }
   else if (brush->sculpt_tool == SCULPT_TOOL_CLOTH) {
     nodes = SCULPT_cloth_brush_affected_nodes_gather(ss, brush);
@@ -3603,7 +3603,7 @@ static void do_brush_action(Sculpt *sd,
 
   /* For anchored brushes with spherical falloff, we start off with zero radius, thus we have no
    * PBVH nodes on the first brush step. */
-  if (nodes.size() ||
+  if (!nodes.is_empty() ||
       ((brush->falloff_shape == PAINT_FALLOFF_SHAPE_SPHERE) && (brush->flag & BRUSH_ANCHORED))) {
     if (SCULPT_stroke_is_first_brush_step(ss->cache)) {
       /* Initialize auto-masking cache. */
@@ -3623,7 +3623,7 @@ static void do_brush_action(Sculpt *sd,
   }
 
   /* Only act if some verts are inside the brush area. */
-  if (nodes.size() == 0) {
+  if (nodes.is_empty()) {
     return;
   }
   float location[3];
@@ -3910,7 +3910,7 @@ static void sculpt_combine_proxies(Sculpt *sd, Object *ob)
                              SCULPT_TOOL_BOUNDARY,
                              SCULPT_TOOL_POSE);
 
-  Vector<PBVHNode *> nodes = blender::pbvh::gather_proxies(ss->pbvh);
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::gather_proxies(ss->pbvh);
 
   threading::parallel_for(IndexRange(nodes.size()), 1, [&](IndexRange range) {
     for (const int i : range) {
@@ -3924,7 +3924,7 @@ void SCULPT_combine_transform_proxies(Sculpt *sd, Object *ob)
   using namespace blender;
   SculptSession *ss = ob->sculpt;
 
-  Vector<PBVHNode *> nodes = blender::pbvh::gather_proxies(ss->pbvh);
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::gather_proxies(ss->pbvh);
 
   threading::parallel_for(IndexRange(nodes.size()), 1, [&](IndexRange range) {
     for (const int i : range) {
@@ -3983,7 +3983,7 @@ void SCULPT_flush_stroke_deform(Sculpt * /*sd*/, Object *ob, bool is_proxy_used)
       memcpy(vertCos, ss->orig_cos, sizeof(*vertCos) * me->totvert);
     }
 
-    nodes = blender::pbvh::search_gather(ss->pbvh, nullptr, nullptr);
+    nodes = blender::bke::pbvh::search_gather(ss->pbvh, nullptr, nullptr);
 
     MutableSpan<float3> positions = me->vert_positions_for_write();
 
@@ -5204,7 +5204,7 @@ bool SCULPT_cursor_geometry_info_update(bContext *C,
   Vector<PBVHNode *> nodes = sculpt_pbvh_gather_cursor_update(ob, sd, original);
 
   /* In case there are no nodes under the cursor, return the face normal. */
-  if (!nodes.size()) {
+  if (nodes.is_empty()) {
     copy_v3_v3(out->normal, srd.face_normal);
     return true;
   }
@@ -6092,9 +6092,9 @@ static PBVHVertRef SCULPT_fake_neighbor_search(Sculpt *sd,
   data.original = false;
   data.center = SCULPT_vertex_co_get(ss, vertex);
 
-  nodes = blender::pbvh::search_gather(ss->pbvh, SCULPT_search_sphere_cb, &data);
+  nodes = blender::bke::pbvh::search_gather(ss->pbvh, SCULPT_search_sphere_cb, &data);
 
-  if (nodes.size() == 0) {
+  if (nodes.is_empty()) {
     return BKE_pbvh_make_vref(PBVH_REF_NONE);
   }
 

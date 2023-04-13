@@ -321,7 +321,7 @@ void BKE_pbvh_free(PBVH *pbvh);
 
 /* Hierarchical Search in the BVH, two methods:
  * - For each hit calling a callback.
- * - Gather nodes in an array (easy to multi-thread) see blender::pbvh::search_gather.
+ * - Gather nodes in an array (easy to multi-thread) see blender::bke::pbvh::search_gather.
  */
 
 void BKE_pbvh_search_callback(PBVH *pbvh,
@@ -828,12 +828,12 @@ int BKE_pbvh_debug_draw_gen_get(PBVHNode *node);
 #ifdef __cplusplus
 }
 
-namespace blender::pbvh {
+namespace blender::bke::pbvh {
 Vector<PBVHNode *> search_gather(PBVH *pbvh,
                                  BKE_pbvh_SearchCallback scb,
                                  void *search_data,
                                  PBVHNodeFlags leaf_flag = PBVH_Leaf);
 Vector<PBVHNode *> gather_proxies(PBVH *pbvh);
 
-}  // namespace blender::pbvh
+}  // namespace blender::bke::pbvh
 #endif
