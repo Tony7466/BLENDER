@@ -61,7 +61,7 @@ static void test_blend_alpha()
 {
   blend_test<GPU_BLEND_ALPHA>(float4(1.0f, 0.0f, 1.0f, 1.0f),
                               float4(0.0f, 1.0f, 0.0f, 0.5f),
-                              float4(0.5f, 0.5f, 0.5f, 0.5f));
+                              float4(0.5f, 0.5f, 0.5f, 1.0f));
 }
 GPU_TEST(blend_alpha)
 

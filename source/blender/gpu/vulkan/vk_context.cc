@@ -115,30 +115,12 @@ void VKContext::end_frame()
 
 void VKContext::flush()
 {
-  VKFrameBuffer *previous_framebuffer = active_framebuffer_get();
-  if (has_active_framebuffer()) {
-    deactivate_framebuffer();
-  }
-
   command_buffer_.submit();
-
-  if (previous_framebuffer != nullptr) {
-    activate_framebuffer(*previous_framebuffer);
-  }
 }
 
 void VKContext::finish()
 {
-  VKFrameBuffer *previous_framebuffer = active_framebuffer_get();
-  if (has_active_framebuffer()) {
-    deactivate_framebuffer();
-  }
-
   command_buffer_.submit();
-
-  if (previous_framebuffer != nullptr) {
-    activate_framebuffer(*previous_framebuffer);
-  }
 }
 
 void VKContext::memory_statistics_get(int * /*total_mem*/, int * /*free_mem*/) {}
