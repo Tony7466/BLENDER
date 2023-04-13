@@ -114,7 +114,7 @@ ccl_device void light_tree_to_local_space(KernelGlobals kg,
 
       t *= scale;
     }
-    else {
+    else if (!is_zero(N_or_D)) {
       /* Transform normal. */
       const Transform tfm = object_fetch_transform(kg, object_id, OBJECT_TRANSFORM);
       N_or_D = normalize(transform_direction_transposed(&tfm, N_or_D));
