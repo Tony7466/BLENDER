@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 import bpy
+from bl_ui_utils.layout import operator_context
 from bpy.types import (
     Header,
     Menu,
@@ -1960,8 +1961,8 @@ class VIEW3D_MT_paint_gpencil(Menu):
         layout.separator()
         layout.operator("gpencil.vertex_color_invert", text="Invert")
         layout.operator("gpencil.vertex_color_levels", text="Levels")
-        layout.operator("gpencil.vertex_color_hsv", text="Hue Saturation Value")
-        layout.operator("gpencil.vertex_color_brightness_contrast", text="Bright/Contrast")
+        layout.operator("gpencil.vertex_color_hsv", text="Hue/Saturation/Value")
+        layout.operator("gpencil.vertex_color_brightness_contrast", text="Brightness/Contrast")
 
 
 class VIEW3D_MT_select_gpencil(Menu):
@@ -2831,17 +2832,15 @@ class VIEW3D_MT_object_parent(Menu):
 
     def draw(self, _context):
         layout = self.layout
-        operator_context_default = layout.operator_context
 
         layout.operator_enum("object.parent_set", "type")
 
         layout.separator()
 
-        layout.operator_context = 'EXEC_REGION_WIN'
-        layout.operator("object.parent_no_inverse_set").keep_transform = False
-        props = layout.operator("object.parent_no_inverse_set", text="Make Parent without Inverse (Keep Transform)")
-        props.keep_transform = True
-        layout.operator_context = operator_context_default
+        with operator_context(layout, 'EXEC_REGION_WIN'):
+            layout.operator("object.parent_no_inverse_set").keep_transform = False
+            props = layout.operator("object.parent_no_inverse_set", text="Make Parent without Inverse (Keep Transform)")
+            props.keep_transform = True
 
         layout.separator()
 
@@ -3060,8 +3059,8 @@ class VIEW3D_MT_paint_vertex(Menu):
 
         layout.operator("paint.vertex_color_invert", text="Invert")
         layout.operator("paint.vertex_color_levels", text="Levels")
-        layout.operator("paint.vertex_color_hsv", text="Hue Saturation Value")
-        layout.operator("paint.vertex_color_brightness_contrast", text="Bright/Contrast")
+        layout.operator("paint.vertex_color_hsv", text="Hue/Saturation/Value")
+        layout.operator("paint.vertex_color_brightness_contrast", text="Brightness/Contrast")
 
 
 class VIEW3D_MT_hook(Menu):

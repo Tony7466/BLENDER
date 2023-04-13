@@ -164,7 +164,7 @@ get_blender_version()
 # Declare Options
 
 # Blender internal features
-option(WITH_BLENDER "Build blender (disable to build only the blender player)" ON)
+option(WITH_BLENDER "Build blender (disable to build only Cycles stand-alone)." ON)
 mark_as_advanced(WITH_BLENDER)
 
 if(WIN32)
@@ -693,8 +693,10 @@ if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang")
       else()
         string(APPEND _asan_defaults " -fsanitize=object-size")
       endif()
-    else()
+    elseif(CMAKE_COMPILER_IS_GNUCC)
       string(APPEND _asan_defaults " -fsanitize=leak -fsanitize=object-size")
+    else()
+      string(APPEND _asan_defaults " -fsanitize=leak")
     endif()
 
     set(COMPILER_ASAN_CFLAGS "${_asan_defaults}" CACHE STRING "C flags for address sanitizer")
@@ -711,6 +713,7 @@ if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang")
         [HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\LLVM\\LLVM;]/lib/clang/7.0.0/lib/windows
         [HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\LLVM\\LLVM;]/lib/clang/6.0.0/lib/windows
       )
+      mark_as_advanced(COMPILER_ASAN_LIBRARY)
     elseif(APPLE)
       execute_process(COMMAND ${CMAKE_CXX_COMPILER}
         -print-file-name=lib
@@ -725,13 +728,14 @@ if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang")
           "${CLANG_LIB_DIR}/darwin/"
       )
       unset(CLANG_LIB_DIR)
-    else()
+      mark_as_advanced(COMPILER_ASAN_LIBRARY)
+    elseif(CMAKE_COMPILER_IS_GNUCC)
       find_library(
         COMPILER_ASAN_LIBRARY asan ${CMAKE_C_IMPLICIT_LINK_DIRECTORIES}
       )
+      mark_as_advanced(COMPILER_ASAN_LIBRARY)
     endif()
 
-    mark_as_advanced(COMPILER_ASAN_LIBRARY)
   endif()
 endif()
 
@@ -886,8 +890,11 @@ set_and_warn_dependency(WITH_TBB WITH_MOD_FLUID         OFF)
 # NanoVDB requires OpenVDB to convert the data structure
 set_and_warn_dependency(WITH_OPENVDB WITH_NANOVDB       OFF)
 
-# OpenVDB and OpenColorIO uses 'half' type from OpenEXR
+# OpenVDB, Alembic and Vulkan, OSL uses 'half' or 'imath' from OpenEXR
 set_and_warn_dependency(WITH_IMAGE_OPENEXR WITH_OPENVDB OFF)
+set_and_warn_dependency(WITH_IMAGE_OPENEXR WITH_ALEMBIC OFF)
+set_and_warn_dependency(WITH_IMAGE_OPENEXR WITH_VULKAN_BACKEND OFF)
+set_and_warn_dependency(WITH_IMAGE_OPENEXR WITH_CYCLES_OSL OFF)
 
 # Haru needs `TIFFFaxBlackCodes` & `TIFFFaxWhiteCodes` symbols from TIFF.
 set_and_warn_dependency(WITH_IMAGE_TIFF WITH_HARU       OFF)
