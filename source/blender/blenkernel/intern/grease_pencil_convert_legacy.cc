@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later 
+/* SPDX-License-Identifier: GPL-2.0-or-later
  * Copyright 2023 Blender Foundation. */
 
 /** \file
@@ -108,9 +108,13 @@ void legacy_gpencil_to_grease_pencil(GreasePencil &grease_pencil, bGPdata &gpd)
   grease_pencil.drawing_array = reinterpret_cast<GreasePencilDrawingOrReference **>(
       MEM_cnew_array<GreasePencilDrawing *>(num_drawings, __func__));
 
-  int i = 0;
-  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd.layers) {
+  int i = 0, layer_idx = 0;
+  int active_layer_index = 0;
+  LISTBASE_FOREACH_INDEX (bGPDlayer *, gpl, &gpd.layers, layer_idx) {
     Layer &new_layer = grease_pencil.root_group().add_layer(Layer(gpl->info));
+    if ((gpl->flag & GP_LAYER_ACTIVE) != 0) {
+      active_layer_index = layer_idx;
+    }
     LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
       grease_pencil.drawing_array[i] = reinterpret_cast<GreasePencilDrawingOrReference *>(
           MEM_new<GreasePencilDrawing>(__func__));
@@ -130,6 +134,8 @@ void legacy_gpencil_to_grease_pencil(GreasePencil &grease_pencil, bGPdata &gpd)
       i++;
     }
   }
+
+  grease_pencil.runtime->set_active_layer(active_layer_index);
 }
 
 }  // namespace blender::bke::greasepencil::convert

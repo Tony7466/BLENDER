@@ -606,11 +606,6 @@ void GreasePencil::foreach_visible_drawing(
   }
 }
 
-const blender::bke::greasepencil::Layer *GreasePencil::active_layer() const
-{
-  return this->runtime->active_layer();
-}
-
 blender::bke::greasepencil::LayerGroup &GreasePencil::root_group()
 {
   BLI_assert(this->runtime != nullptr);
@@ -771,12 +766,7 @@ void GreasePencil::save_layer_tree_to_storage()
     i++;
   }
 
-  for (auto item : this->root_group().children_with_index_in_pre_order()) {
-    if (&item.node == this->runtime->active_layer()) {
-      this->layer_tree_storage.active_layer_index = item.index;
-      break;
-    }
-  }
+  this->layer_tree_storage.active_layer_index = this->runtime->active_layer_index();
 }
 
 static void read_layer_node_recursive(blender::bke::greasepencil::LayerGroup &current_group,
@@ -822,12 +812,7 @@ void GreasePencil::load_layer_tree_from_storage()
     read_layer_node_recursive(this->runtime->root_group(), this->layer_tree_storage.nodes, i + 1);
   }
 
-  for (auto item : this->root_group().children_with_index_in_pre_order()) {
-    if (item.index == this->layer_tree_storage.active_layer_index) {
-      this->runtime->set_active_layer(&item.node.as_layer());
-      break;
-    }
-  }
+  this->runtime->set_active_layer(this->layer_tree_storage.active_layer_index);
 }
 
 void GreasePencil::read_layer_tree_storage(BlendDataReader *reader)

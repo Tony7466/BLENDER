@@ -47,9 +47,12 @@ struct PaintOperationExecutor {
     Object *ob_eval = DEG_get_evaluated_object(depsgraph, obact);
 
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob_eval->data);
-    const bke::greasepencil::Layer *active_layer = grease_pencil.active_layer();
-    BLI_assert(active_layer != nullptr);
-    int index = active_layer->drawing_at(scene->r.cfra);
+    if (!grease_pencil.runtime->has_active_layer()) {
+      /* TODO: create a new layer. */
+      grease_pencil.runtime->set_active_layer(0);
+    }
+    const bke::greasepencil::Layer &active_layer = grease_pencil.runtime->active_layer();
+    int index = active_layer.drawing_at(scene->r.cfra);
     BLI_assert(index != -1);
 
     GreasePencilDrawing &drawing = *reinterpret_cast<GreasePencilDrawing *>(
@@ -83,11 +86,12 @@ void PaintOperation::on_stroke_done(const bContext &C)
 
   GreasePencil &grease_pencil_orig = *static_cast<GreasePencil *>(obact->data);
   GreasePencil &grease_pencil_eval = *static_cast<GreasePencil *>(ob_eval->data);
-  const bke::greasepencil::Layer *active_layer_orig = grease_pencil_orig.active_layer();
-  const bke::greasepencil::Layer *active_layer_eval = grease_pencil_eval.active_layer();
-  BLI_assert(active_layer_orig != nullptr && active_layer_eval != nullptr);
-  int index_orig = active_layer_orig->drawing_at(scene->r.cfra);
-  int index_eval = active_layer_eval->drawing_at(scene->r.cfra);
+  BLI_assert(grease_pencil_orig.runtime->has_active_layer() &&
+             grease_pencil_eval.runtime->has_active_layer());
+  const bke::greasepencil::Layer &active_layer_orig = grease_pencil_orig.runtime->active_layer();
+  const bke::greasepencil::Layer &active_layer_eval = grease_pencil_eval.runtime->active_layer();
+  int index_orig = active_layer_orig.drawing_at(scene->r.cfra);
+  int index_eval = active_layer_eval.drawing_at(scene->r.cfra);
   BLI_assert(index_orig != -1 && index_eval != -1);
 
   GreasePencilDrawing &drawing_orig = *reinterpret_cast<GreasePencilDrawing *>(

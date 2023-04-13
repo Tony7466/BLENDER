@@ -152,7 +152,7 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
    public:
     struct Item {
       const int64_t index;
-      const TreeNode &node;
+      TreeNode &node;
     };
 
    private:
@@ -546,29 +546,69 @@ class GreasePencilDrawingRuntime {
 class GreasePencilRuntime {
  private:
   LayerGroup root_group_;
-  const Layer *active_layer_ = nullptr;
+
+  int active_layer_index_ = -1;
+  Layer *active_layer_ = nullptr;
 
  public:
   GreasePencilRuntime() {}
-  GreasePencilRuntime(const GreasePencilRuntime &other) : root_group_(other.root_group_) {}
+  GreasePencilRuntime(const GreasePencilRuntime &other)
+      : root_group_(other.root_group_), active_layer_index_(other.active_layer_index_)
+  {
+    active_layer_ = get_active_layer_from_index(other.active_layer_index_);
+  }
 
+  /* TODO: There should be a const version of this for reads and a mutable version of this for
+   * writes. */
   LayerGroup &root_group()
   {
     return root_group_;
   }
 
-  const Layer *active_layer() const
+  bool has_active_layer() const
   {
-    return active_layer_;
+    return active_layer_ != nullptr;
   }
 
-  void set_active_layer(const Layer *new_active_layer)
+  const Layer &active_layer() const
   {
-    active_layer_ = new_active_layer;
+    BLI_assert(active_layer_ != nullptr);
+    return *active_layer_;
+  }
+
+  Layer &active_layer_for_write() const
+  {
+    BLI_assert(active_layer_ != nullptr);
+    return *active_layer_;
+  }
+
+  void set_active_layer(int index)
+  {
+    active_layer_index_ = index;
+    active_layer_ = get_active_layer_from_index(index);
+  }
+
+  int active_layer_index() const
+  {
+    return active_layer_index_;
   }
 
  public:
   void *batch_cache = nullptr;
+
+ private:
+  Layer *get_active_layer_from_index(int index)
+  {
+    if (index < 0) {
+      return nullptr;
+    }
+    for (auto item : this->root_group().children_with_index_in_pre_order()) {
+      if (item.node.is_layer() && item.index == index) {
+        return &item.node.as_layer();
+      }
+    }
+    return nullptr;
+  }
 };
 
 }  // namespace blender::bke

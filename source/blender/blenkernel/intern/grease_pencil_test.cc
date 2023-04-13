@@ -49,14 +49,16 @@ TEST(greasepencil, set_active_layer)
   Layer layer1("Layer1");
   Layer layer2("Layer2");
 
-  Layer *layer1_ref = &grease_pencil.root_group().add_layer(std::move(layer1));
-  Layer *layer2_ref = &grease_pencil.root_group().add_layer(std::move(layer2));
+  const Layer &layer1_ref = grease_pencil.root_group().add_layer(std::move(layer1));
+  const Layer &layer2_ref = grease_pencil.root_group().add_layer(std::move(layer2));
 
-  grease_pencil.runtime->set_active_layer(layer1_ref);
-  EXPECT_EQ(layer1_ref, grease_pencil.active_layer());
+  grease_pencil.runtime->set_active_layer(0);
+  EXPECT_TRUE(grease_pencil.runtime->has_active_layer());
+  EXPECT_EQ(layer1_ref, grease_pencil.runtime->active_layer());
 
-  grease_pencil.runtime->set_active_layer(layer2_ref);
-  EXPECT_EQ(layer2_ref, grease_pencil.active_layer());
+  grease_pencil.runtime->set_active_layer(1);
+  EXPECT_TRUE(grease_pencil.runtime->has_active_layer());
+  EXPECT_EQ(layer2_ref, grease_pencil.runtime->active_layer());
 
   /* Save to storage. */
   grease_pencil.free_layer_tree_storage();
@@ -68,8 +70,8 @@ TEST(greasepencil, set_active_layer)
   grease_pencil.load_layer_tree_from_storage();
 
   /* Check if the active layer is still the second one. */
-  EXPECT_NE(grease_pencil.active_layer(), nullptr);
-  EXPECT_STREQ(grease_pencil.active_layer()->name, "Layer2");
+  EXPECT_TRUE(grease_pencil.runtime->has_active_layer());
+  EXPECT_STREQ(grease_pencil.runtime->active_layer().name, "Layer2");
 }
 
 /* --------------------------------------------------------------------------------------------- */

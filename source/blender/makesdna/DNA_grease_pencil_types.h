@@ -238,7 +238,6 @@ typedef struct GreasePencil {
   void remove_drawing(int index);
   void foreach_visible_drawing(int frame,
                                blender::FunctionRef<void(GreasePencilDrawing &)> function);
-  const blender::bke::greasepencil::Layer *active_layer() const;
   blender::bke::greasepencil::LayerGroup &root_group();
 #endif
 } GreasePencil;
