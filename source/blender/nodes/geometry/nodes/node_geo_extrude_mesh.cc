@@ -119,7 +119,7 @@ static void expand_mesh(Mesh &mesh,
   }
 }
 
-static CustomData &get_customdata(Mesh &mesh, const eAttrDomain domain)
+static CustomData &mesh_custom_data_for_domain(Mesh &mesh, const eAttrDomain domain)
 {
   switch (domain) {
     case ATTR_DOMAIN_POINT:
@@ -142,7 +142,7 @@ static CustomData &get_customdata(Mesh &mesh, const eAttrDomain domain)
 static MutableSpan<int> get_orig_index_layer(Mesh &mesh, const eAttrDomain domain)
 {
   const bke::AttributeAccessor attributes = mesh.attributes();
-  CustomData &custom_data = get_customdata(mesh, domain);
+  CustomData &custom_data = mesh_custom_data_for_domain(mesh, domain);
   if (int *orig_indices = static_cast<int *>(CustomData_get_layer_for_write(
           &custom_data, CD_ORIGINDEX, attributes.domain_size(domain)))) {
     return {orig_indices, attributes.domain_size(domain)};
@@ -775,8 +775,10 @@ static void extrude_mesh_face_regions(Mesh &mesh,
   MutableSpan<int> new_corner_edges = corner_edges.slice(side_loop_range);
 
   /* Initialize the new side polygons. */
-  new_poly_offsets.fill(4);
-  offset_indices::accumulate_counts_to_offsets(new_poly_offsets, orig_loop_size);
+  if (!new_poly_offsets.is_empty()) {
+    new_poly_offsets.fill(4);
+    offset_indices::accumulate_counts_to_offsets(new_poly_offsets, orig_loop_size);
+  }
   const OffsetIndices polys = mesh.polys();
 
   /* Initialize the edges that form the sides of the extrusion. */
