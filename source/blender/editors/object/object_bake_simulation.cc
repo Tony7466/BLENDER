@@ -25,6 +25,7 @@
 
 #include "BKE_context.h"
 #include "BKE_curves.hh"
+#include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_mesh.hh"
 #include "BKE_object.h"
@@ -126,10 +127,10 @@ class BDataReader {
  public:
   BDataReader(std::string bdata_dir) : bdata_dir_(std::move(bdata_dir)) {}
 
-  void read(const BDataSlice &slice, void *r_data) const
+  [[nodiscard]] bool read(const BDataSlice &slice, void *r_data) const
   {
     if (slice.range.is_empty()) {
-      return;
+      return true;
     }
 
     char bdata_path[FILE_MAX];
@@ -138,6 +139,7 @@ class BDataReader {
     fstream bdata_file{bdata_path, std::ios::in | std::ios::binary};
     bdata_file.seekg(slice.range.start());
     bdata_file.read(static_cast<char *>(r_data), slice.range.size());
+    return true;
   }
 };
 
@@ -169,9 +171,49 @@ static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_raw_data_with
 {
   auto io_data = bdata_writer.write(data, size_in_bytes).serialize();
   if (ENDIAN_ORDER == B_ENDIAN) {
-    io_data->append_str("endian", "big");
+    io_data->append_str("endian", get_endian_io_name(ENDIAN_ORDER));
   }
   return io_data;
+}
+
+[[nodiscard]] static bool read_bdata_raw_data_with_endian(
+    const BDataReader &bdata_reader,
+    const io::serialize::DictionaryValue &io_data,
+    const int64_t element_size,
+    const int64_t elements_num,
+    void *r_data)
+{
+  const std::optional<BDataSlice> slice = BDataSlice::deserialize(io_data);
+  if (!slice) {
+    return false;
+  }
+  if (slice->range.size() != element_size * elements_num) {
+    return false;
+  }
+  if (!bdata_reader.read(*slice, r_data)) {
+    return false;
+  }
+  const StringRefNull stored_endian = io_data.lookup_str("endian").value_or("little");
+  const StringRefNull current_endian = get_endian_io_name(ENDIAN_ORDER);
+  const bool need_endian_switch = stored_endian != current_endian;
+  if (need_endian_switch) {
+    switch (element_size) {
+      case 1:
+        break;
+      case 2:
+        BLI_endian_switch_uint16_array(static_cast<uint16_t *>(r_data), elements_num);
+        break;
+      case 4:
+        BLI_endian_switch_uint32_array(static_cast<uint32_t *>(r_data), elements_num);
+        break;
+      case 8:
+        BLI_endian_switch_uint64_array(static_cast<uint64_t *>(r_data), elements_num);
+        break;
+      default:
+        return false;
+    }
+  }
+  return true;
 }
 
 static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_raw_bytes(
@@ -180,10 +222,33 @@ static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_raw_bytes(
   return bdata_writer.write(data, size_in_bytes).serialize();
 }
 
+[[nodiscard]] static bool read_bdata_raw_bytes(const BDataReader &bdata_reader,
+                                               const io::serialize::DictionaryValue &io_data,
+                                               const int64_t bytes_num,
+                                               void *r_data)
+{
+  const std::optional<BDataSlice> slice = BDataSlice::deserialize(io_data);
+  if (!slice) {
+    return false;
+  }
+  if (slice->range.size() != bytes_num) {
+    return false;
+  }
+  return bdata_reader.read(*slice, r_data);
+}
+
 static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_int_array(
     BDataWriter &bdata_writer, const Span<int> data)
 {
   return write_bdata_raw_data_with_endian(bdata_writer, data.data(), data.size_in_bytes());
+}
+
+[[nodiscard]] static bool read_bdata_int_array(const BDataReader &bdata_reader,
+                                               const io::serialize::DictionaryValue &io_data,
+                                               MutableSpan<int> r_data)
+{
+  return read_bdata_raw_data_with_endian(
+      bdata_reader, io_data, sizeof(int), r_data.size(), r_data.data());
 }
 
 static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_simple_gspan(
@@ -191,10 +256,42 @@ static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_simple_gspan(
 {
   const CPPType &type = data.type();
   BLI_assert(type.is_trivial());
-  if (type.size() == 1) {
+  if (type.size() == 1 || type.is<ColorGeometry4b>()) {
     return write_bdata_raw_bytes(bdata_writer, data.data(), data.size_in_bytes());
   }
   return write_bdata_raw_data_with_endian(bdata_writer, data.data(), data.size_in_bytes());
+}
+
+[[nodiscard]] static bool read_bdata_simple_gspan(const BDataReader &bdata_reader,
+                                                  const io::serialize::DictionaryValue &io_data,
+                                                  GMutableSpan r_data)
+{
+  const CPPType &type = r_data.type();
+  BLI_assert(type.is_trivial());
+  if (type.size() == 1 || type.is<ColorGeometry4b>()) {
+    return read_bdata_raw_bytes(bdata_reader, io_data, r_data.size_in_bytes(), r_data.data());
+  }
+  if (type.is_any<int16_t, uint16_t, int32_t, uint32_t, int64_t, uint64_t, float, double>()) {
+    return read_bdata_raw_data_with_endian(
+        bdata_reader, io_data, type.size(), r_data.size(), r_data.data());
+  }
+  if (type.is<float2>()) {
+    return read_bdata_raw_data_with_endian(
+        bdata_reader, io_data, sizeof(float), r_data.size() * 2, r_data.data());
+  }
+  if (type.is<float3>()) {
+    return read_bdata_raw_data_with_endian(
+        bdata_reader, io_data, sizeof(float), r_data.size() * 3, r_data.data());
+  }
+  if (type.is<float4x4>()) {
+    return read_bdata_raw_data_with_endian(
+        bdata_reader, io_data, sizeof(float), r_data.size() * 16, r_data.data());
+  }
+  if (type.is<ColorGeometry4f>()) {
+    return read_bdata_raw_data_with_endian(
+        bdata_reader, io_data, sizeof(float), r_data.size() * 4, r_data.data());
+  }
+  return false;
 }
 
 static void load_attributes(const io::serialize::ArrayValue &io_attributes,
@@ -217,38 +314,14 @@ static void load_attributes(const io::serialize::ArrayValue &io_attributes,
     const eAttrDomain domain = get_domain_from_io_name(*domain_str);
     const eCustomDataType data_type = get_data_type_from_io_name(*type_str);
 
-    std::optional<BDataSlice> bdata_slice = BDataSlice::deserialize(*io_data);
-    if (!bdata_slice) {
-      continue;
-    }
-
-    const StringRefNull endian_str = io_data->lookup_str("endian").value_or("little");
-    const bool is_same_endian = endian_str == get_endian_io_name(ENDIAN_ORDER);
-
     bke::GSpanAttributeWriter attribute = attributes.lookup_or_add_for_write_only_span(
         *name, domain, data_type);
     if (!attribute) {
       continue;
     }
-    BLI_assert(bdata_slice->range.size() == attribute.span.size_in_bytes());
-
-    bdata_reader.read(*bdata_slice, attribute.span.data());
-
-    if (!is_same_endian) {
-      switch (data_type) {
-        case CD_PROP_INT32:
-        case CD_PROP_FLOAT:
-        case CD_PROP_FLOAT2:
-        case CD_PROP_FLOAT3:
-        case CD_PROP_COLOR: {
-          BLI_endian_switch_uint32_array(reinterpret_cast<uint32_t *>(attribute.span.data()),
-                                         attribute.span.size_in_bytes() / sizeof(uint32_t));
-          break;
-        }
-        default: {
-          break;
-        }
-      }
+    const CPPType &cpp_type = attribute.span.type();
+    if (!read_bdata_simple_gspan(bdata_reader, *io_data, attribute.span)) {
+      cpp_type.value_initialize_n(attribute.span.data(), attribute.span.size());
     }
 
     attribute.finish();
@@ -286,9 +359,22 @@ static Curves *try_load_curves(const io::serialize::DictionaryValue &io_geometry
   if (!io_attributes) {
     return nullptr;
   }
+  const auto io_curve_offsets = io_curves->lookup_dict("curve_offsets");
+  if (!io_curve_offsets && num_curves > 0) {
+    return nullptr;
+  }
 
   Curves *curves_id = bke::curves_new_nomain(num_points, num_curves);
-  bke::MutableAttributeAccessor attributes = curves_id->geometry.wrap().attributes_for_write();
+  bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+
+  if (num_curves > 0) {
+    if (!read_bdata_int_array(bdata_reader, *io_curve_offsets, curves.offsets_for_write())) {
+      BKE_id_free(nullptr, curves_id);
+      return nullptr;
+    }
+  }
+
+  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   load_attributes(*io_attributes, attributes, bdata_reader);
 
   return curves_id;
