@@ -4130,12 +4130,13 @@ static bool rna_GeometryNodeSimulationInput_pair_with_output(
 
 static NodeSimulationItem *rna_NodeGeometrySimulationOutput_items_new(
     ID *id,
-    NodeGeometrySimulationOutput *sim,
+    bNode *node,
     Main *bmain,
     ReportList *reports,
     int socket_type,
     const char *name)
 {
+  NodeGeometrySimulationOutput *sim = (NodeGeometrySimulationOutput *)node->storage;
   NodeSimulationItem *item = node_geo_simulation_output_add_item(sim, (short)socket_type, name);
 
   if (item == NULL) {
@@ -4143,7 +4144,6 @@ static NodeSimulationItem *rna_NodeGeometrySimulationOutput_items_new(
   }
   else {
     bNodeTree *ntree = (bNodeTree *)id;
-    bNode *node = node_geo_simulation_output_find_node_by_item(ntree, item);
     BKE_ntree_update_tag_node_property(ntree, node);
     ED_node_tree_propagate_change(NULL, bmain, ntree);
     WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
@@ -4153,11 +4153,12 @@ static NodeSimulationItem *rna_NodeGeometrySimulationOutput_items_new(
 }
 
 static void rna_NodeGeometrySimulationOutput_items_remove(ID *id,
-                                                          NodeGeometrySimulationOutput *sim,
+                                                          bNode *node,
                                                           Main *bmain,
                                                           ReportList *reports,
                                                           NodeSimulationItem *item)
 {
+  NodeGeometrySimulationOutput *sim = (NodeGeometrySimulationOutput *)node->storage;
   if (!node_geo_simulation_output_contains_item(sim, item)) {
     BKE_reportf(reports, RPT_ERROR, "Unable to locate item '%s' in node", item->name);
   }
@@ -4165,7 +4166,6 @@ static void rna_NodeGeometrySimulationOutput_items_remove(ID *id,
     node_geo_simulation_output_remove_item(sim, item);
 
     bNodeTree *ntree = (bNodeTree *)id;
-    bNode *node = node_geo_simulation_output_find_node_by_item(ntree, item);
     BKE_ntree_update_tag_node_property(ntree, node);
     ED_node_tree_propagate_change(NULL, bmain, ntree);
     WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
@@ -4173,20 +4173,20 @@ static void rna_NodeGeometrySimulationOutput_items_remove(ID *id,
 }
 
 static void rna_NodeGeometrySimulationOutput_items_clear(ID *id,
-                                                         NodeGeometrySimulationOutput *sim,
+                                                         bNode *node,
                                                          Main *bmain)
 {
+  NodeGeometrySimulationOutput *sim = (NodeGeometrySimulationOutput *)node->storage;
   node_geo_simulation_output_clear_items(sim);
 
   bNodeTree *ntree = (bNodeTree *)id;
-  bNode *node = node_geo_simulation_output_find_node_by_data(ntree, sim);
   BKE_ntree_update_tag_node_property(ntree, node);
   ED_node_tree_propagate_change(NULL, bmain, ntree);
   WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }
 
 static void rna_NodeGeometrySimulationOutput_items_move(ID *id,
-                                                        NodeGeometrySimulationOutput *sim,
+                                                        bNode *node,
                                                         Main *bmain,
                                                         int from_index,
                                                         int to_index)
@@ -4195,10 +4195,10 @@ static void rna_NodeGeometrySimulationOutput_items_move(ID *id,
     return;
   }
 
+  NodeGeometrySimulationOutput *sim = (NodeGeometrySimulationOutput *)node->storage;
   node_geo_simulation_output_move_item(sim, from_index, to_index);
 
   bNodeTree *ntree = (bNodeTree *)id;
-  bNode *node = node_geo_simulation_output_find_node_by_data(ntree, sim);
   BKE_ntree_update_tag_node_property(ntree, node);
   ED_node_tree_propagate_change(NULL, bmain, ntree);
   WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
@@ -9912,7 +9912,7 @@ static void rna_def_geo_simulation_output_items(BlenderRNA *brna)
   FunctionRNA *func;
 
   srna = RNA_def_struct(brna, "NodeGeometrySimulationOutputItems", NULL);
-  RNA_def_struct_sdna(srna, "NodeGeometrySimulationOutput");
+  RNA_def_struct_sdna(srna, "bNode");
   RNA_def_struct_ui_text(srna, "State Items", "Collection of simulation state items");
 
   func = RNA_def_function(srna, "new", "rna_NodeGeometrySimulationOutput_items_new");
