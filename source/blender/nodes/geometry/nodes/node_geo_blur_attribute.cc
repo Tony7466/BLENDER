@@ -249,11 +249,11 @@ template<typename T>
 static Span<T> blur_on_mesh_exec(const Span<float> neighbor_weights,
                                  const Span<Vector<int>> neighbors_map,
                                  const int iterations,
-                                 const MutableSpan<T> main_buffer,
-                                 const MutableSpan<T> tmp_buffer)
+                                 const MutableSpan<T> buffer_a,
+                                 const MutableSpan<T> buffer_b)
 {
-  MutableSpan<T> src = tmp_buffer;
-  MutableSpan<T> dst = main_buffer;
+  MutableSpan<T> src = buffer_b;
+  MutableSpan<T> dst = buffer_a;
 
   for ([[maybe_unused]] const int64_t iteration : IndexRange(iterations)) {
     std::swap(src, dst);
@@ -278,22 +278,19 @@ static GSpan blur_on_mesh(const Mesh &mesh,
                           const eAttrDomain domain,
                           const int iterations,
                           const Span<float> neighbor_weights,
-                          const GMutableSpan main_buffer,
-                          const GMutableSpan tmp_buffer)
+                          const GMutableSpan buffer_a,
+                          const GMutableSpan buffer_b)
 {
   Array<Vector<int>> neighbors_map = create_mesh_map(mesh, domain, neighbor_weights.index_range());
   if (neighbors_map.is_empty()) {
-    return main_buffer;
+    return buffer_a;
   }
   GSpan result_buffer;
-  attribute_math::convert_to_static_type(main_buffer.type(), [&](auto dummy) {
+  attribute_math::convert_to_static_type(buffer_a.type(), [&](auto dummy) {
     using T = decltype(dummy);
     if constexpr (!std::is_same_v<T, bool>) {
-      result_buffer = blur_on_mesh_exec<T>(neighbor_weights,
-                                           neighbors_map,
-                                           iterations,
-                                           main_buffer.typed<T>(),
-                                           tmp_buffer.typed<T>());
+      result_buffer = blur_on_mesh_exec<T>(
+          neighbor_weights, neighbors_map, iterations, buffer_a.typed<T>(), buffer_b.typed<T>());
     }
   });
   return result_buffer;
@@ -303,11 +300,11 @@ template<typename T>
 static Span<T> blur_on_curve_exec(const bke::CurvesGeometry &curves,
                                   const Span<float> neighbor_weights,
                                   const int iterations,
-                                  const MutableSpan<T> main_buffer,
-                                  const MutableSpan<T> tmp_buffer)
+                                  const MutableSpan<T> buffer_a,
+                                  const MutableSpan<T> buffer_b)
 {
-  MutableSpan<T> src = tmp_buffer;
-  MutableSpan<T> dst = main_buffer;
+  MutableSpan<T> src = buffer_b;
+  MutableSpan<T> dst = buffer_a;
 
   const OffsetIndices points_by_curve = curves.points_by_curve();
   const VArray<bool> cyclic = curves.cyclic();
@@ -360,15 +357,15 @@ static Span<T> blur_on_curve_exec(const bke::CurvesGeometry &curves,
 static GSpan blur_on_curves(const bke::CurvesGeometry &curves,
                             const int iterations,
                             const Span<float> neighbor_weights,
-                            const GMutableSpan main_buffer,
-                            const GMutableSpan tmp_buffer)
+                            const GMutableSpan buffer_a,
+                            const GMutableSpan buffer_b)
 {
   GSpan result_buffer;
-  attribute_math::convert_to_static_type(main_buffer.type(), [&](auto dummy) {
+  attribute_math::convert_to_static_type(buffer_a.type(), [&](auto dummy) {
     using T = decltype(dummy);
     if constexpr (!std::is_same_v<T, bool>) {
       result_buffer = blur_on_curve_exec<T>(
-          curves, neighbor_weights, iterations, main_buffer.typed<T>(), tmp_buffer.typed<T>());
+          curves, neighbor_weights, iterations, buffer_a.typed<T>(), buffer_b.typed<T>());
     }
   });
   return result_buffer;
@@ -394,25 +391,25 @@ class BlurAttributeFieldInput final : public bke::GeometryFieldInput {
   {
     const int64_t domain_size = context.attributes()->domain_size(context.domain());
 
-    GArray<> main_buffer(*type_, domain_size);
+    GArray<> buffer_a(*type_, domain_size);
 
     FieldEvaluator evaluator(context, domain_size);
 
-    evaluator.add_with_destination(value_field_, main_buffer.as_mutable_span());
+    evaluator.add_with_destination(value_field_, buffer_a.as_mutable_span());
     evaluator.add(weight_field_);
     evaluator.evaluate();
 
     /* Blurring does not make sense with a less than 2 elements. */
     if (domain_size <= 1) {
-      return GVArray::ForGArray(std::move(main_buffer));
+      return GVArray::ForGArray(std::move(buffer_a));
     }
 
     if (iterations_ <= 0) {
-      return GVArray::ForGArray(std::move(main_buffer));
+      return GVArray::ForGArray(std::move(buffer_a));
     }
 
     VArraySpan<float> neighbor_weights = evaluator.get_evaluated<float>(1);
-    GArray<> tmp_buffer(*type_, domain_size);
+    GArray<> buffer_b(*type_, domain_size);
 
     GSpan result_buffer;
     switch (context.type()) {
@@ -420,7 +417,7 @@ class BlurAttributeFieldInput final : public bke::GeometryFieldInput {
         if (ELEM(context.domain(), ATTR_DOMAIN_POINT, ATTR_DOMAIN_EDGE, ATTR_DOMAIN_FACE)) {
           if (const Mesh *mesh = context.mesh()) {
             result_buffer = blur_on_mesh(
-                *mesh, context.domain(), iterations_, neighbor_weights, main_buffer, tmp_buffer);
+                *mesh, context.domain(), iterations_, neighbor_weights, buffer_a, buffer_b);
           }
         }
         break;
@@ -428,7 +425,7 @@ class BlurAttributeFieldInput final : public bke::GeometryFieldInput {
         if (context.domain() == ATTR_DOMAIN_POINT) {
           if (const bke::CurvesGeometry *curves = context.curves()) {
             result_buffer = blur_on_curves(
-                *curves, iterations_, neighbor_weights, main_buffer, tmp_buffer);
+                *curves, iterations_, neighbor_weights, buffer_a, buffer_b);
           }
         }
         break;
@@ -436,11 +433,11 @@ class BlurAttributeFieldInput final : public bke::GeometryFieldInput {
         break;
     }
 
-    BLI_assert(ELEM(result_buffer.data(), tmp_buffer.data(), main_buffer.data()));
-    if (result_buffer.data() == main_buffer.data()) {
-      return GVArray::ForGArray(std::move(main_buffer));
+    BLI_assert(ELEM(result_buffer.data(), buffer_a.data(), buffer_b.data()));
+    if (result_buffer.data() == buffer_a.data()) {
+      return GVArray::ForGArray(std::move(buffer_a));
     }
-    return GVArray::ForGArray(std::move(tmp_buffer));
+    return GVArray::ForGArray(std::move(buffer_b));
   }
 
   void for_each_field_input_recursive(FunctionRef<void(const FieldInput &)> fn) const override
