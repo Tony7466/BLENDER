@@ -556,13 +556,7 @@ void CUDADevice::copy_host_to_device(void *device_pointer, void *host_pointer, s
 void *CUDADevice::host_mem_alloc(size_t size, int aligment) {
   void *p_mem = NULL;
   CUDAContextScope scope(this);
-  CUresult result = cuMemAllocHost(&p_mem, size);
-  if(result != CUDA_SUCCESS) {
-    char const * err_msg = NULL;
-    cuGetErrorString(result, &err_msg);
-    fprintf(stderr, "CUDA Runtime Error: %s\n", err_msg);
-    assert("unable to allocate memory.");
-  }
+  cuda_assert(cuMemAllocHost(&p_mem, size));
 
   return p_mem;
 }
