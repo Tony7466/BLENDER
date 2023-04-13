@@ -54,11 +54,11 @@ TEST(greasepencil, set_active_layer)
 
   grease_pencil.runtime->set_active_layer(0);
   EXPECT_TRUE(grease_pencil.runtime->has_active_layer());
-  EXPECT_EQ(layer1_ref, grease_pencil.runtime->active_layer());
+  EXPECT_STREQ(layer1_ref.name, grease_pencil.runtime->active_layer().name);
 
   grease_pencil.runtime->set_active_layer(1);
   EXPECT_TRUE(grease_pencil.runtime->has_active_layer());
-  EXPECT_EQ(layer2_ref, grease_pencil.runtime->active_layer());
+  EXPECT_STREQ(layer2_ref.name, grease_pencil.runtime->active_layer().name);
 
   /* Save to storage. */
   grease_pencil.free_layer_tree_storage();

@@ -15,6 +15,7 @@
 #include "BLI_shared_cache.hh"
 #include "BLI_stack.hh"
 #include "BLI_string.h"
+#include "BLI_utility_mixins.hh"
 
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_grease_pencil_types.h"
@@ -32,7 +33,7 @@ class Layer;
  * children if it is a group.
  * This class is mainly used for iteration over the layer tree.
  */
-class TreeNode : public ::GreasePencilLayerTreeNode {
+class TreeNode : public ::GreasePencilLayerTreeNode, NonMovable {
   using TreeNodeIterFn = FunctionRef<void(TreeNode &)>;
   using LayerIterFn = FunctionRef<void(Layer &)>;
   using LayerIndexIterFn = FunctionRef<void(uint64_t, Layer &)>;
@@ -57,13 +58,7 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
       this->name = BLI_strdup(other.name);
     }
   }
-  TreeNode(TreeNode &&other)
-  {
-    this->name = other.name;
-    other.name = nullptr;
-  }
   TreeNode &operator=(const TreeNode &other) = delete;
-  TreeNode &operator=(TreeNode &&other) = delete;
   virtual ~TreeNode()
   {
     if (this->name) {
@@ -340,20 +335,6 @@ class Layer : public TreeNode, ::GreasePencilLayer {
   {
     frames_ = other.frames_;
   }
-  Layer(Layer &&other) : TreeNode(std::move(other))
-  {
-    frames_ = std::move(other.frames_);
-  }
-  ~Layer() {}
-
-  bool operator==(const Layer &other) const
-  {
-    return this == &other;
-  }
-  bool operator!=(const Layer &other) const
-  {
-    return this != &other;
-  }
 
   const Map<int, GreasePencilFrame> &frames() const
   {
@@ -415,14 +396,14 @@ class Layer : public TreeNode, ::GreasePencilLayer {
     }
     /* After or at the last drawing, return the last drawing. */
     if (frame >= sorted_keys.last()) {
-      return frames().lookup(sorted_keys.last()).drawing_index;
+      return this->frames().lookup(sorted_keys.last()).drawing_index;
     }
     /* Search for the drawing. upper_bound will get the drawing just after. */
     auto it = std::upper_bound(sorted_keys.begin(), sorted_keys.end(), frame);
     if (it == sorted_keys.end() || it == sorted_keys.begin()) {
       return -1;
     }
-    return frames().lookup(*std::prev(it)).drawing_index;
+    return this->frames().lookup(*std::prev(it)).drawing_index;
   }
 };
 
@@ -432,7 +413,7 @@ class Layer : public TreeNode, ::GreasePencilLayer {
 class LayerGroup : public TreeNode {
  public:
   LayerGroup() : TreeNode(GREASE_PENCIL_LAYER_TREE_GROUP) {}
-  LayerGroup(StringRefNull name) : TreeNode(GREASE_PENCIL_LAYER_TREE_GROUP, name) {}
+  explicit LayerGroup(const StringRefNull name) : TreeNode(GREASE_PENCIL_LAYER_TREE_GROUP, name) {}
   LayerGroup(const LayerGroup &other) : TreeNode(other)
   {
     children_.reserve(other.children_.size());
@@ -445,32 +426,8 @@ class LayerGroup : public TreeNode {
       }
     }
   }
-  LayerGroup(LayerGroup &&other) : TreeNode(std::move(other))
-  {
-    /* TODO! */
-    // children_.reserve(other.children_.size());
-    // for (const std::unique_ptr<TreeNode> &elem : other.children_) {
-    //   if (elem.get()->is_group()) {
-    //     children_.append_as(std::move(*elem));
-    //   }
-    //   else if (elem.get()->is_layer()) {
-    //     children_.append_as(std::move(*elem));
-    //   }
-    // }
-    // other.children_.clear();
-  }
-  ~LayerGroup() {}
 
  public:
-  bool operator==(const LayerGroup &other) const
-  {
-    return this == &other;
-  }
-  bool operator!=(const LayerGroup &other) const
-  {
-    return this != &other;
-  }
-
   void add_group(LayerGroup &group)
   {
     children_.append(std::make_unique<LayerGroup>(group));
