@@ -457,6 +457,7 @@ void USDMeshReader::read_color_data_all_primvars(Mesh *mesh, const double motion
   }
 
   if (!active_color_name.IsEmpty()) {
+    BKE_id_attributes_default_color_set(&mesh->id, active_color_name.GetText());
     BKE_id_attributes_active_color_set(&mesh->id, active_color_name.GetText());
   }
 }
