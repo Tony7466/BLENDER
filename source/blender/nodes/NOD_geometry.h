@@ -12,18 +12,25 @@ extern struct bNodeTreeType *ntreeType_Geometry;
 
 void register_node_type_geo_custom_group(bNodeType *ntype);
 
-/* Simulation Input Node API */
+/* -------------------------------------------------------------------- */
+/** \name Simulation Input Node
+ * \{ */
+
+struct bNode *node_geo_simulation_input_get_paired_output(
+    struct bNodeTree *node_tree, const struct bNode *simulation_input_node);
 
 /**
  * Pair a simulation input node with an output node.
  * @return True if pairing the node was successful.
  */
-bool node_geo_simulation_input_pair_with_output(const bNodeTree *node_tree,
-                                                bNode *simulation_input_node,
-                                                const bNode *simulation_output_node);
+bool node_geo_simulation_input_pair_with_output(const struct bNodeTree *node_tree,
+                                                struct bNode *simulation_input_node,
+                                                const struct bNode *simulation_output_node);
+
+/** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Simulation State Items
+/** \name Simulation Output Node
  * \{ */
 
 /** Set a unique item name.

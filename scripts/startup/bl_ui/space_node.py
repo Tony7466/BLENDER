@@ -971,25 +971,37 @@ class NODE_PT_simulation_zone_items(Panel):
     bl_category = "Simulation"
     bl_label = "State Items"
 
+    input_node_type = 'GeometryNodeSimulationInput'
+    output_node_type = 'GeometryNodeSimulationOutput'
+
+    @classmethod
+    def get_output_node(cls, context):
+        node = context.active_node
+        if node.bl_idname == cls.input_node_type:
+            return node.paired_output
+        if node.bl_idname == cls.output_node_type:
+            return node
+
     @classmethod
     def poll(cls, context):
         snode = context.space_data
         if snode is None:
             return False
         node = context.active_node
-        if node is None or node.bl_idname not in ['GeometryNodeSimulationInput', 'GeometryNodeSimulationOutput']:
+        if node is None or node.bl_idname not in [cls.input_node_type, cls.output_node_type]:
+            return False
+        if cls.get_output_node(context) is None:
             return False
         return True
 
     def draw(self, context):
         layout = self.layout
 
-        snode = context.space_data
-        node = context.active_node
+        output_node = self.get_output_node(context)
 
         split = layout.row()
 
-        split.template_list("NODE_UL_simulation_zone_items", "", node, "state_items", node, "active_index")
+        split.template_list("NODE_UL_simulation_zone_items", "", output_node, "state_items", output_node, "active_index")
 
         ops_col = split.column()
 
@@ -1005,7 +1017,7 @@ class NODE_PT_simulation_zone_items(Panel):
         props = up_down_col.operator("node.simulation_zone_item_move", icon='TRIA_DOWN', text="")
         props.direction = 'DOWN'
 
-        active_item = node.active_item
+        active_item = output_node.active_item
         if active_item is not None:
             layout.prop(active_item, "socket_type")
             layout.prop(active_item, "name")

@@ -4107,6 +4107,16 @@ static void rna_SimulationStateItem_name_set(PointerRNA *ptr, const char *value)
   node_geo_simulation_output_item_set_unique_name(sim, item, value);
 }
 
+static PointerRNA rna_NodeGeometrySimulationInput_paired_output_get(PointerRNA *ptr)
+{
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
+  bNode *node = (bNode *)ptr->data;
+  bNode *output_node = node_geo_simulation_input_get_paired_output(ntree, node);
+  PointerRNA r_ptr;
+  RNA_pointer_create(&ntree->id, &RNA_Node, output_node, &r_ptr);
+  return r_ptr;
+}
+
 static bool rna_GeometryNodeSimulationInput_pair_with_output(
     ID *id, bNode *node, bContext *C, ReportList *reports, bNode *output_node)
 {
@@ -9873,8 +9883,18 @@ static void def_geo_set_curve_normal(StructRNA *srna)
 
 static void def_geo_simulation_input(StructRNA *srna)
 {
+  PropertyRNA *prop;
   FunctionRNA *func;
   PropertyRNA *parm;
+
+  RNA_def_struct_sdna_from(srna, "NodeGeometrySimulationInput", "storage");
+
+  prop = RNA_def_property(srna, "paired_output", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "Node");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_pointer_funcs(
+      prop, "rna_NodeGeometrySimulationInput_paired_output_get", NULL, NULL, NULL);
+  RNA_def_property_ui_text(prop, "Paired Output", "Simulation output node that this input node is paired with");
 
   func = RNA_def_function(srna, "pair_with_output", "rna_GeometryNodeSimulationInput_pair_with_output");
   RNA_def_function_ui_description(func, "Pair a simulation input node with an output node.");

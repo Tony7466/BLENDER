@@ -195,6 +195,17 @@ class NODE_OT_add_simulation_zone(NodeAddOperator, Operator):
 
 
 class SimulationZoneOperator():
+    input_node_type = 'GeometryNodeSimulationInput'
+    output_node_type = 'GeometryNodeSimulationOutput'
+
+    @classmethod
+    def get_output_node(cls, context):
+        node = context.active_node
+        if node.bl_idname == cls.input_node_type:
+            return node.paired_output
+        if node.bl_idname == cls.output_node_type:
+            return node
+
     @classmethod
     def poll(cls, context):
         space = context.space_data
@@ -202,7 +213,9 @@ class SimulationZoneOperator():
         if not space or space.type != 'NODE_EDITOR' or not space.edit_tree or space.edit_tree.library:
             return False
         node = context.active_node
-        if not node or node.bl_idname not in ['GeometryNodeSimulationOutput']:
+        if node is None or node.bl_idname not in [cls.input_node_type, cls.output_node_type]:
+            return False
+        if cls.get_output_node(context) is None:
             return False
         return True
 
@@ -216,7 +229,7 @@ class NODE_OT_simulation_zone_item_add(SimulationZoneOperator, Operator):
     default_socket_type = 'GEOMETRY'
 
     def execute(self, context):
-        node = context.active_node
+        node = self.get_output_node(context)
         state_items = node.state_items
 
         # Remember index to move the item
@@ -236,7 +249,7 @@ class NODE_OT_simulation_zone_item_remove(SimulationZoneOperator, Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        node = context.active_node
+        node = self.get_output_node(context)
         state_items = node.state_items
 
         if node.active_item:
@@ -259,7 +272,7 @@ class NODE_OT_simulation_zone_item_move(SimulationZoneOperator, Operator):
     )
 
     def execute(self, context):
-        node = context.active_node
+        node = self.get_output_node(context)
         state_items = node.state_items
 
         if self.direction == 'UP' and node.active_index > 0:

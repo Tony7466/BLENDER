@@ -186,6 +186,15 @@ void register_node_type_geo_simulation_input()
   nodeRegisterType(&ntype);
 }
 
+bNode *node_geo_simulation_input_get_paired_output(bNodeTree *node_tree,
+                                                   const bNode *simulation_input_node)
+{
+  namespace file_ns = blender::nodes::node_geo_simulation_input_cc;
+
+  const NodeGeometrySimulationInput &data = file_ns::node_storage(*simulation_input_node);
+  return node_tree->node_by_id(data.output_node_id);
+}
+
 bool node_geo_simulation_input_pair_with_output(const bNodeTree *node_tree,
                                                 bNode *simulation_input_node,
                                                 const bNode *simulation_output_node)
