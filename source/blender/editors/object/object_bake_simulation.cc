@@ -613,15 +613,16 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
     }
   }
 
-  for (const int frame_i : IndexRange(1, 10)) {
-    const SubFrame frame{frame_i, 0.0f};
+  for (float frame_f = 1.0f; frame_f < 10.f; frame_f += 0.5f) {
+    const SubFrame frame{frame_f};
 
     scene->r.cfra = frame.frame();
     scene->r.subframe = frame.subframe();
 
-    std::stringstream frame_ss;
-    frame_ss << std::setfill('0') << std::setw(5) << std::setprecision(5) << double(frame);
-    const std::string frame_str = frame_ss.str();
+    char frame_file_c_str[64];
+    BLI_snprintf(frame_file_c_str, sizeof(frame_file_c_str), "%011.5f", double(frame));
+    BLI_str_replace_char(frame_file_c_str, '.', '_');
+    const StringRefNull frame_file_str = frame_file_c_str;
 
     BKE_scene_graph_update_for_newframe(depsgraph);
 
@@ -631,7 +632,7 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
         continue;
       }
 
-      const std::string bdata_file_name = frame_str + ".bdata";
+      const std::string bdata_file_name = frame_file_str + ".bdata";
 
       char bdata_path[FILE_MAX];
       BLI_path_join(bdata_path,
@@ -642,7 +643,7 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
       BLI_path_join(meta_path,
                     sizeof(meta_path),
                     modifier_meta_dirs[modifier_i].c_str(),
-                    (frame_str + ".json").c_str());
+                    (frame_file_str + ".json").c_str());
 
       BLI_make_existing_file(bdata_path);
       fstream bdata_file{bdata_path, std::ios::out | std::ios::binary};
