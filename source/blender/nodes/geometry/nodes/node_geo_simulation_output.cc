@@ -482,8 +482,8 @@ void node_geo_simulation_output_move_item(NodeGeometrySimulationOutput *sim,
                                           int from_index,
                                           int to_index)
 {
-  BLI_assert(from_index > 0 && from_index <= sim->items_num);
-  BLI_assert(to_index > 0 && to_index <= sim->items_num);
+  BLI_assert(from_index >= 0 && from_index < sim->items_num);
+  BLI_assert(to_index >= 0 && to_index < sim->items_num);
   if (from_index == to_index) {
     return;
   }
