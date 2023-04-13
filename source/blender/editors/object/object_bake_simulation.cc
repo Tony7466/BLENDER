@@ -355,22 +355,27 @@ static Curves *try_load_curves(const io::serialize::DictionaryValue &io_geometry
   }
   const int num_points = io_curves->lookup_int("num_points").value_or(0);
   const int num_curves = io_curves->lookup_int("num_curves").value_or(0);
+
   const io::serialize::ArrayValue *io_attributes = io_curves->lookup_array("attributes");
   if (!io_attributes) {
-    return nullptr;
-  }
-  const auto io_curve_offsets = io_curves->lookup_dict("curve_offsets");
-  if (!io_curve_offsets && num_curves > 0) {
     return nullptr;
   }
 
   Curves *curves_id = bke::curves_new_nomain(num_points, num_curves);
   bke::CurvesGeometry &curves = curves_id->geometry.wrap();
 
+  auto cancel = [&]() {
+    BKE_id_free(nullptr, curves_id);
+    return nullptr;
+  };
+
   if (num_curves > 0) {
+    const auto io_curve_offsets = io_curves->lookup_dict("curve_offsets");
+    if (!io_curve_offsets) {
+      return cancel();
+    }
     if (!read_bdata_int_array(bdata_reader, *io_curve_offsets, curves.offsets_for_write())) {
-      BKE_id_free(nullptr, curves_id);
-      return nullptr;
+      return cancel();
     }
   }
 
@@ -380,10 +385,53 @@ static Curves *try_load_curves(const io::serialize::DictionaryValue &io_geometry
   return curves_id;
 }
 
+static Mesh *try_load_mesh(const io::serialize::DictionaryValue &io_geometry,
+                           const BDataReader &bdata_reader)
+{
+  const io::serialize::DictionaryValue *io_mesh = io_geometry.lookup_dict("mesh");
+  if (!io_mesh) {
+    return nullptr;
+  }
+  const int num_verts = io_mesh->lookup_int("num_vertices").value_or(0);
+  const int num_edges = io_mesh->lookup_int("num_edges").value_or(0);
+  const int num_polys = io_mesh->lookup_int("num_polygons").value_or(0);
+  const int num_corners = io_mesh->lookup_int("num_corners").value_or(0);
+
+  const io::serialize::ArrayValue *io_attributes = io_mesh->lookup_array("attributes");
+  if (!io_attributes) {
+    return nullptr;
+  }
+
+  Mesh *mesh = BKE_mesh_new_nomain(num_verts, num_edges, num_corners, num_polys);
+
+  auto cancel = [&]() {
+    BKE_id_free(nullptr, mesh);
+    return nullptr;
+  };
+
+  if (num_polys > 0) {
+    const auto io_poly_offsets = io_mesh->lookup_dict("poly_offsets");
+    if (!io_poly_offsets) {
+      return cancel();
+    }
+    if (!read_bdata_int_array(bdata_reader, *io_poly_offsets, mesh->poly_offsets_for_write())) {
+      return cancel();
+    }
+  }
+
+  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
+  load_attributes(*io_attributes, attributes, bdata_reader);
+
+  return mesh;
+}
+
 static GeometrySet load_geometry(const io::serialize::DictionaryValue &io_geometry,
                                  const BDataReader &bdata_reader)
 {
   GeometrySet geometry;
+  if (Mesh *mesh = try_load_mesh(io_geometry, bdata_reader)) {
+    geometry.replace_mesh(mesh);
+  }
   if (PointCloud *pointcloud = try_load_pointcloud(io_geometry, bdata_reader)) {
     geometry.replace_pointcloud(pointcloud);
   }
@@ -451,8 +499,7 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
     io_mesh->append_int("num_corners", mesh.totloop);
 
     if (mesh.totpoly > 0) {
-      io_mesh->append("poly_offset_indices",
-                      write_bdata_int_array(bdata_writer, mesh.poly_offsets()));
+      io_mesh->append("poly_offsets", write_bdata_int_array(bdata_writer, mesh.poly_offsets()));
     }
 
     auto io_materials = serialize_material_slots({mesh.mat, mesh.totcol});
