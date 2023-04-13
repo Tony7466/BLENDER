@@ -1027,7 +1027,6 @@ static MDefBoundIsect *meshdeform_ray_tree_intersect(MeshDeformBind *mdb,
                               &data,
                               BVH_RAYCAST_WATERTIGHT) != -1) {
     const blender::Span<int> corner_verts = mdb->cagemesh_cache.corner_verts;
-    const MLoopTri *lt = &mdb->cagemesh_cache.looptris[hit.index];
     const int poly_i = mdb->cagemesh_cache.looptri_polys[hit.index];
     const blender::IndexRange poly = mdb->cagemesh_cache.polys[poly_i];
     const float(*cagecos)[3] = mdb->cagecos;
