@@ -12,6 +12,7 @@
 #include "BLI_ghash.h"
 #ifdef __cplusplus
 #  include "BLI_offset_indices.hh"
+#  include "BLI_vector.hh"
 #endif
 
 #include "bmesh.h"
@@ -320,7 +321,8 @@ void BKE_pbvh_free(PBVH *pbvh);
 
 /* Hierarchical Search in the BVH, two methods:
  * - For each hit calling a callback.
- * - Gather nodes in an array (easy to multi-thread). */
+ * - Gather nodes in an array (easy to multi-thread) see blender::pbvh::search_gather.
+ */
 
 void BKE_pbvh_search_callback(PBVH *pbvh,
                               BKE_pbvh_SearchCallback scb,
@@ -328,14 +330,6 @@ void BKE_pbvh_search_callback(PBVH *pbvh,
                               BKE_pbvh_HitCallback hcb,
                               void *hit_data);
 
-void BKE_pbvh_search_gather(
-    PBVH *pbvh, BKE_pbvh_SearchCallback scb, void *search_data, PBVHNode ***array, int *tot);
-void BKE_pbvh_search_gather_ex(PBVH *pbvh,
-                               BKE_pbvh_SearchCallback scb,
-                               void *search_data,
-                               PBVHNode ***r_array,
-                               int *r_tot,
-                               PBVHNodeFlags leaf_flag);
 /* Ray-cast
  * the hit callback is called for all leaf nodes intersecting the ray;
  * it's up to the callback to find the primitive within the leaves that is
@@ -756,7 +750,6 @@ void BKE_pbvh_face_iter_finish(PBVHFaceIter *fd);
 void BKE_pbvh_node_get_proxies(PBVHNode *node, PBVHProxyNode **proxies, int *proxy_count);
 void BKE_pbvh_node_free_proxies(PBVHNode *node);
 PBVHProxyNode *BKE_pbvh_node_add_proxy(PBVH *pbvh, PBVHNode *node);
-void BKE_pbvh_gather_proxies(PBVH *pbvh, PBVHNode ***r_array, int *r_tot);
 void BKE_pbvh_node_get_bm_orco_data(PBVHNode *node,
                                     int (**r_orco_tris)[3],
                                     int *r_orco_tris_num,
@@ -834,4 +827,14 @@ int BKE_pbvh_debug_draw_gen_get(PBVHNode *node);
 
 #ifdef __cplusplus
 }
+
+namespace blender::pbvh {
+Vector<PBVHNode *> search_gather(PBVH *pbvh, BKE_pbvh_SearchCallback scb, void *search_data);
+Vector<PBVHNode *> search_gather_ex(PBVH *pbvh,
+                                    BKE_pbvh_SearchCallback scb,
+                                    void *search_data,
+                                    PBVHNodeFlags leaf_flag);
+Vector<PBVHNode *> gather_proxies(PBVH *pbvh);
+
+}  // namespace blender::pbvh
 #endif

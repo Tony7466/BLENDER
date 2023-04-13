@@ -12,6 +12,7 @@
 #include "BLI_math.h"
 #include "BLI_memarena.h"
 #include "BLI_utildefines.h"
+#include "BLI_vector.hh"
 
 #include "BKE_DerivedMesh.h"
 #include "BKE_ccg.h"
@@ -21,6 +22,8 @@
 
 #include "bmesh.h"
 #include "pbvh_intern.hh"
+
+using blender::Vector;
 
 /* Avoid skinny faces */
 #define USE_EDGEQUEUE_EVEN_SUBDIV
@@ -1659,11 +1662,9 @@ bool pbvh_bmesh_node_nearest_to_ray(PBVHNode *node,
   return hit;
 }
 
-void pbvh_bmesh_normals_update(PBVHNode **nodes, int totnode)
+void pbvh_bmesh_normals_update(Vector<PBVHNode *> &nodes)
 {
-  for (int n = 0; n < totnode; n++) {
-    PBVHNode *node = nodes[n];
-
+  for (PBVHNode *node : nodes) {
     if (node->flag & PBVH_UpdateNormals) {
       GSetIterator gs_iter;
 
