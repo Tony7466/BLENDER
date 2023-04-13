@@ -12,6 +12,8 @@
 #include "DNA_lightprobe_types.h"
 #include "DNA_object_types.h"
 
+#include "BLI_math_base.h"
+#include "BLI_span.hh"
 #include "BLI_utildefines.h"
 
 #include "BKE_anim_data.h"
@@ -128,4 +130,167 @@ void *BKE_lightprobe_add(Main *bmain, const char *name)
   probe = static_cast<LightProbe *>(BKE_id_new(bmain, ID_LP, name));
 
   return probe;
+}
+
+static void lightprobe_grid_cache_frame_blend_write(BlendWriter *writer,
+                                                    const LightProbeGridCacheFrame *cache)
+{
+  if (cache->block_infos != nullptr) {
+    BLO_write_struct_array(writer, LightProbeGridCacheFrame, cache->block_len, cache->block_infos);
+  }
+
+  int64_t sample_count = BKE_lightprobe_grid_cache_frame_sample_count(cache);
+
+  if (cache->irradiance.L0 != nullptr) {
+    BLO_write_float3_array(writer, sample_count, (float *)cache->irradiance.L0);
+  }
+  if (cache->irradiance.L1_a != nullptr) {
+    BLO_write_float3_array(writer, sample_count, (float *)cache->irradiance.L1_a);
+  }
+  if (cache->irradiance.L1_b != nullptr) {
+    BLO_write_float3_array(writer, sample_count, (float *)cache->irradiance.L1_b);
+  }
+  if (cache->irradiance.L1_c != nullptr) {
+    BLO_write_float3_array(writer, sample_count, (float *)cache->irradiance.L1_c);
+  }
+
+  if (cache->visibility.L0 != nullptr) {
+    BLO_write_int8_array(writer, sample_count, (int8_t *)cache->visibility.L0);
+  }
+  if (cache->visibility.L1_a != nullptr) {
+    BLO_write_int8_array(writer, sample_count, (int8_t *)cache->visibility.L1_a);
+  }
+  if (cache->visibility.L1_b != nullptr) {
+    BLO_write_int8_array(writer, sample_count, (int8_t *)cache->visibility.L1_b);
+  }
+  if (cache->visibility.L1_c != nullptr) {
+    BLO_write_int8_array(writer, sample_count, (int8_t *)cache->visibility.L1_c);
+  }
+
+  if (cache->connectivity.bitmask != nullptr) {
+    BLO_write_struct_array(
+        writer, LightProbeGridCacheFrame, sample_count, cache->connectivity.bitmask);
+  }
+}
+
+static void lightprobe_grid_cache_frame_blend_read(BlendDataReader *reader,
+                                                   LightProbeGridCacheFrame *cache)
+{
+  if (cache->block_infos != nullptr) {
+    BLO_read_data_address(reader, &cache->block_infos);
+  }
+
+  int64_t sample_count = BKE_lightprobe_grid_cache_frame_sample_count(cache);
+
+  /* Baking data is not stored. */
+  cache->baking.L0 = nullptr;
+  cache->baking.L1_a = nullptr;
+  cache->baking.L1_b = nullptr;
+  cache->baking.L1_c = nullptr;
+
+  if (cache->irradiance.L0 != nullptr) {
+    BLO_read_float3_array(reader, sample_count, (float **)&cache->irradiance.L0);
+  }
+  if (cache->irradiance.L1_a != nullptr) {
+    BLO_read_float3_array(reader, sample_count, (float **)&cache->irradiance.L1_a);
+  }
+  if (cache->irradiance.L1_b != nullptr) {
+    BLO_read_float3_array(reader, sample_count, (float **)&cache->irradiance.L1_b);
+  }
+  if (cache->irradiance.L1_c != nullptr) {
+    BLO_read_float3_array(reader, sample_count, (float **)&cache->irradiance.L1_c);
+  }
+
+  if (cache->visibility.L0 != nullptr) {
+    BLO_read_int8_array(reader, sample_count, (int8_t **)&cache->visibility.L0);
+  }
+  if (cache->visibility.L1_a != nullptr) {
+    BLO_read_int8_array(reader, sample_count, (int8_t **)&cache->visibility.L1_a);
+  }
+  if (cache->visibility.L1_b != nullptr) {
+    BLO_read_int8_array(reader, sample_count, (int8_t **)&cache->visibility.L1_b);
+  }
+  if (cache->visibility.L1_c != nullptr) {
+    BLO_read_int8_array(reader, sample_count, (int8_t **)&cache->visibility.L1_c);
+  }
+
+  if (cache->connectivity.bitmask != nullptr) {
+    BLO_read_data_address(reader, &cache->connectivity.bitmask);
+  }
+}
+
+void BKE_lightprobe_cache_blend_write(BlendWriter *writer, LightProbeObjectCache *cache)
+{
+  if (cache->grid_static_cache != nullptr) {
+    BLO_write_struct(writer, LightProbeGridCacheFrame, cache->grid_static_cache);
+    lightprobe_grid_cache_frame_blend_write(writer, cache->grid_static_cache);
+  }
+}
+
+void BKE_lightprobe_cache_blend_read(BlendDataReader *reader, LightProbeObjectCache *cache)
+{
+  if (cache->grid_static_cache != nullptr) {
+    BLO_read_data_address(reader, &cache->grid_static_cache);
+    lightprobe_grid_cache_frame_blend_read(reader, cache->grid_static_cache);
+  }
+}
+
+template<typename T> static void spherical_harmonic_free(T &data)
+{
+  MEM_SAFE_FREE(data.L0);
+  MEM_SAFE_FREE(data.L1_a);
+  MEM_SAFE_FREE(data.L1_b);
+  MEM_SAFE_FREE(data.L1_c);
+}
+
+LightProbeGridCacheFrame *BKE_lightprobe_grid_cache_frame_create()
+{
+  LightProbeGridCacheFrame *cache = static_cast<LightProbeGridCacheFrame *>(
+      MEM_callocN(sizeof(LightProbeGridCacheFrame), "LightProbeGridCacheFrame"));
+  return cache;
+}
+
+void BKE_lightprobe_grid_cache_frame_free(LightProbeGridCacheFrame *cache)
+{
+  MEM_SAFE_FREE(cache->block_infos);
+  spherical_harmonic_free(cache->baking);
+  spherical_harmonic_free(cache->irradiance);
+  spherical_harmonic_free(cache->visibility);
+  MEM_SAFE_FREE(cache->connectivity.bitmask);
+
+  MEM_SAFE_FREE(cache);
+}
+
+void BKE_lightprobe_cache_create(Object *object)
+{
+  BLI_assert(object->lightprobe_cache == nullptr);
+
+  object->lightprobe_cache = static_cast<LightProbeObjectCache *>(
+      MEM_callocN(sizeof(LightProbeObjectCache), "LightProbeObjectCache"));
+}
+
+void BKE_lightprobe_cache_free(Object *object)
+{
+  if (object->lightprobe_cache == nullptr) {
+    return;
+  }
+
+  LightProbeObjectCache *cache = object->lightprobe_cache;
+
+  if (cache->shared == false) {
+    if (cache->grid_static_cache != nullptr) {
+      BKE_lightprobe_grid_cache_frame_free(cache->grid_static_cache);
+    }
+  }
+
+  MEM_SAFE_FREE(object->lightprobe_cache);
+}
+
+int64_t BKE_lightprobe_grid_cache_frame_sample_count(const LightProbeGridCacheFrame *cache)
+{
+  if (cache->data_layout == LIGHTPROBE_CACHE_ADAPTIVE_RESOLUTION) {
+    return cache->block_len * cube_i(cache->block_size);
+  }
+  /* LIGHTPROBE_CACHE_UNIFORM_GRID */
+  return cache->size[0] * cache->size[1] * cache->size[2];
 }
