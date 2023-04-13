@@ -306,36 +306,47 @@ LightTreeNode *LightTree::build(Scene *scene, DeviceScene *dscene)
   int num_local_lights = local_lights_.size() + num_mesh_lights;
   const int num_distant_lights = distant_lights_.size();
 
-  /* Build a subtree for each unique mesh light. */
-  std::unordered_map<Mesh *, LightTreeNode *> processed_mesh;
+  /* Create a node for each mesh light, and keep track of unique mesh lights. */
+  std::unordered_map<Mesh *, std::tuple<LightTreeNode *, int, int>> unique_mesh;
   uint *object_offsets = dscene->object_lookup_offset.alloc(scene->objects.size());
   emitters_.reserve(num_triangles + num_local_lights + num_distant_lights);
-
   for (LightTreeEmitter &emitter : mesh_lights_) {
     Object *object = scene->objects[emitter.object_id];
     Mesh *mesh = static_cast<Mesh *>(object->get_geometry());
     emitter.root = create_node(LightTreeMeasure::empty, 0);
 
-    auto map_it = processed_mesh.find(mesh);
-    if (map_it == processed_mesh.end()) {
+    auto map_it = unique_mesh.find(mesh);
+    if (map_it == unique_mesh.end()) {
       const int start = emitters_.size();
       add_mesh(scene, mesh, emitter.object_id);
       const int end = emitters_.size();
 
-      LightTreeNode *reference = emitter.root.get();
-      processed_mesh[mesh] = reference;
-
-      recursive_build(self, reference, start, end, emitters_.data(), 0, 0);
-
-      reference->type |= LIGHT_TREE_INSTANCE;
+      unique_mesh[mesh] = std::make_tuple(emitter.root.get(), start, end);
       emitter.root->object_id = emitter.object_id;
     }
     else {
-      emitter.root->make_instance(map_it->second, emitter.object_id);
+      emitter.root->make_instance(std::get<0>(map_it->second), emitter.object_id);
     }
     object_offsets[emitter.object_id] = offset_map_[mesh];
+  }
 
-    emitter.measure = emitter.root->measure;
+  /* Build a subtree for each unique mesh light. */
+  parallel_for_each(unique_mesh, [this](auto &map_it) {
+    LightTreeNode *node = std::get<0>(map_it.second);
+    int start = std::get<1>(map_it.second);
+    int end = std::get<2>(map_it.second);
+    recursive_build(self, node, start, end, emitters_.data(), 0, 0);
+    node->type |= LIGHT_TREE_INSTANCE;
+  });
+  task_pool.wait_work();
+
+  /* Update measure. */
+  parallel_for_each(mesh_lights_, [&](LightTreeEmitter &emitter) {
+    Object *object = scene->objects[emitter.object_id];
+    Mesh *mesh = static_cast<Mesh *>(object->get_geometry());
+
+    LightTreeNode *reference = std::get<0>(unique_mesh.find(mesh)->second);
+    emitter.measure = emitter.root->measure = reference->measure;
 
     /* Transform measure. The measure is only directly transformable if the transformation has
      * uniform scaling, otherwise recount all the triangles in the mesh with transformation. */
@@ -353,8 +364,7 @@ LightTreeNode *LightTree::build(Scene *scene, DeviceScene *dscene)
         }
       }
     }
-  }
-  task_pool.wait_work();
+  });
 
   for (LightTreeEmitter &emitter : mesh_lights_) {
     emitter.root->measure = emitter.measure;

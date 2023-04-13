@@ -246,7 +246,6 @@ struct LightTreeNode {
   {
     this->instance.reference = reference;
     this->object_id = object_id;
-    this->measure = reference->measure;
     type = LIGHT_TREE_INSTANCE;
   }
 
