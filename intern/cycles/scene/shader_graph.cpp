@@ -1140,7 +1140,7 @@ int ShaderGraph::get_num_closures()
     }
     else if (closure_type == CLOSURE_BSDF_HAIR_PRINCIPLED_ID ||
              closure_type == CLOSURE_BSDF_HAIR_MICROFACET_ID) {
-      num_closures += 4;
+      num_closures += 2;
     }
     else {
       ++num_closures;
