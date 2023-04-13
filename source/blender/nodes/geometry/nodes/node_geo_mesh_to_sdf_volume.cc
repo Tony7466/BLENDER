@@ -44,6 +44,9 @@ static void node_declare(NodeDeclarationBuilder &b)
       .default_value(3)
       .min(1)
       .max(10);
+  b.add_input<decl::Bool>(N_("Fill Interior"))
+      .default_value(false)
+      .description(N_("Initialize signed distances for every voxel inside the enclosed volume"));
   b.add_output<decl::Geometry>(CTX_N_(BLT_I18NCONTEXT_ID_ID, "Volume"))
       .translation_context(BLT_I18NCONTEXT_ID_ID);
 }
@@ -124,13 +127,15 @@ static Volume *create_volume_from_mesh(const Mesh &mesh, GeoNodeExecParams &para
     return nullptr;
   }
 
+  bool fill_interior = params.get_input<bool>("Fill Interior");
+
   geometry::MeshToVolumeSettings settings{/* voxels */ 0,
                                           /* voxel_size */ 0.0f,
                                           /* interior_band_width */ half_band_width,
                                           /* exterior_band_width */ half_band_width,
                                           /* density */ 0.0f,
                                           /* simplify */ volume_simplify,
-                                          /* fill_volume */ false,
+                                          /* fill_volume */ fill_interior,
                                           /* use_world_space_units */ unit_mode ==
                                               MESH_TO_VOLUME_UNIT_LOCAL,
                                           /* convert_to_fog */ false,
