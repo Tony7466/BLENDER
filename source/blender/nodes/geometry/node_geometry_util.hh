@@ -81,6 +81,13 @@ Bounds<float3> calculate_bounds_radial_primitive(float radius_top,
                                                  float height);
 
 /**
+ * Add a layer to \a dst, sharing the data from \a src with its implicit sharing info if available.
+ * Assumes that the layer exists in the source and doesn't exist in the destination.
+ */
+void share_custom_data_layer(
+    const CustomData &src, CustomData &dst, AttributeIDRef id, eCustomDataType type, int size);
+
+/**
  * Returns the parts of the geometry that are on the selection for the given domain. If the domain
  * is not applicable for the component, e.g. face domain for point cloud, nothing happens to that
  * component. If no component can work with the domain, then `error_message` is set to true.

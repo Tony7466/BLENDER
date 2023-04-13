@@ -9,6 +9,29 @@
 
 #include "node_geometry_util.hh"
 
+namespace blender::nodes {
+
+void share_custom_data_layer(const CustomData &src,
+                             CustomData &dst,
+                             const AttributeIDRef id,
+                             const eCustomDataType type,
+                             const int size)
+{
+  const std::string name = id.name();
+  const int index = CustomData_get_named_layer_index(&src, type, name.c_str());
+  const CustomDataLayer &src_layer = src.layers[index];
+  if (id.is_anonymous()) {
+    CustomData_add_layer_anonymous_with_data(
+        &dst, type, &id.anonymous_id(), size, src_layer.data, src_layer.sharing_info);
+  }
+  else {
+    CustomData_add_layer_named_with_data(
+        &dst, type, src_layer.data, size, name.c_str(), src_layer.sharing_info);
+  }
+}
+
+}  // namespace blender::nodes
+
 namespace blender::nodes::node_geo_points_to_vertices_cc {
 
 using blender::Array;
@@ -20,7 +43,6 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Geometry>(N_("Mesh")).propagate_all();
 }
 
-/* One improvement would be to move the attribute arrays directly to the mesh when possible. */
 static void geometry_set_points_to_vertices(
     GeometrySet &geometry_set,
     Field<bool> &selection_field,
@@ -49,25 +71,37 @@ static void geometry_set_points_to_vertices(
                                                  propagation_info,
                                                  attributes);
 
-  Mesh *mesh = BKE_mesh_new_nomain(selection.size(), 0, 0, 0);
-  geometry_set.replace_mesh(mesh);
+  if (selection.size() == points->totpoint) {
+    /* Create an empty mesh so the positions can be easily shared with a generic utility. */
+    Mesh *mesh = BKE_mesh_new_nomain(0, 0, 0, 0);
+    geometry_set.replace_mesh(mesh);
+    mesh->totvert = points->totpoint;
+    CustomData_free_layer_named(&mesh->vdata, "position", mesh->totvert);
 
-  const AttributeAccessor src_attributes = points->attributes();
-  MutableAttributeAccessor dst_attributes = mesh->attributes_for_write();
-
-  for (Map<AttributeIDRef, AttributeKind>::Item entry : attributes.items()) {
-    const AttributeIDRef attribute_id = entry.key;
-    const eCustomDataType data_type = entry.value.data_type;
-    GVArray src = src_attributes.lookup_or_default(attribute_id, ATTR_DOMAIN_POINT, data_type);
-    GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-        attribute_id, ATTR_DOMAIN_POINT, data_type);
-    if (dst && src) {
-      src.materialize_compressed_to_uninitialized(selection, dst.span.data());
-      dst.finish();
+    for (Map<AttributeIDRef, AttributeKind>::Item entry : attributes.items()) {
+      share_custom_data_layer(
+          points->pdata, mesh->vdata, entry.key, entry.value.data_type, mesh->totvert);
     }
   }
+  else {
+    Mesh *mesh = BKE_mesh_new_nomain(selection.size(), 0, 0, 0);
+    geometry_set.replace_mesh(mesh);
 
-  mesh->loose_edges_tag_none();
+    const AttributeAccessor src_attributes = points->attributes();
+    MutableAttributeAccessor dst_attributes = mesh->attributes_for_write();
+
+    for (Map<AttributeIDRef, AttributeKind>::Item entry : attributes.items()) {
+      const AttributeIDRef attribute_id = entry.key;
+      const eCustomDataType data_type = entry.value.data_type;
+      GVArray src = src_attributes.lookup_or_default(attribute_id, ATTR_DOMAIN_POINT, data_type);
+      GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
+          attribute_id, ATTR_DOMAIN_POINT, data_type);
+      if (dst && src) {
+        src.materialize_compressed_to_uninitialized(selection, dst.span.data());
+        dst.finish();
+      }
+    }
+  }
 
   geometry_set.keep_only_during_modify({GEO_COMPONENT_TYPE_MESH});
 }
