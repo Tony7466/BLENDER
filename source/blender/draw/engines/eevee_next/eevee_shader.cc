@@ -329,8 +329,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     case MAT_GEOM_VOLUME_OBJECT:
     case MAT_GEOM_VOLUME_WORLD:
       /** Volume grid attributes come from 3D textures. Transfer attributes to samplers. */
-      /* TODO (Miguel Pozo):
-       * (Workaround) Starts binding from the last unit to avoid collisions with node samplers. */
+      /** WORKAROUND: Starts binding from the last unit to avoid collisions with node samplers. */
       int bind_unit = 31;
       for (auto &input : info.vertex_inputs_) {
         info.sampler(bind_unit--, ImageType::FLOAT_3D, input.name, Frequency::BATCH);

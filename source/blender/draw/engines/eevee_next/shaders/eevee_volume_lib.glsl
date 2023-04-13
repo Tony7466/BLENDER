@@ -2,12 +2,6 @@
 #pragma BLENDER_REQUIRE(eevee_light_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_shadow_lib.glsl)
 
-/*
-(lights_lib.glsl)
-(lightprobe_lib.glsl)
-(irradiance_lib.glsl)
-*/
-
 /* Based on Frosbite Unified Volumetric.
  * https://www.ea.com/frostbite/news/physically-based-unified-volumetric-rendering-in-frostbite */
 

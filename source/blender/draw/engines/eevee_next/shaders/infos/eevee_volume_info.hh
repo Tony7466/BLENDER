@@ -41,7 +41,7 @@ GPU_SHADER_CREATE_INFO(eevee_volume_clear)
     .fragment_source("eevee_volume_clear_frag.glsl")
     .do_static_compilation(true);
 
-/* TODO (Miguel Pozo) */
+/* TODO (Miguel Pozo): Shouldn't be needed if using compute shaders. */
 #ifdef WITH_METAL_BACKEND
 /* Non-geometry shader equivalent for multilayered rendering.
  * NOTE: Layer selection can be done in vertex shader, and thus
@@ -131,10 +131,6 @@ GPU_SHADER_CREATE_INFO(eevee_volume_integration_common)
     .vertex_out(eevee_volume_vert_geom_iface)
     .vertex_source("eevee_volume_vert.glsl")
     .fragment_source("eevee_volume_integration_frag.glsl")
-    /*
-    .image(0, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "finalScattering_img")
-    .image(1, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "finalTransmittance_img")
-    */
     .fragment_out(0, Type::VEC3, "finalScattering")
     .fragment_out(1, Type::VEC3, "finalTransmittance");
 
@@ -174,7 +170,6 @@ GPU_SHADER_CREATE_INFO(eevee_volume_resolve_accum)
     .fragment_out(1, Type::VEC4, "out_transmittance")
     .do_static_compilation(true);
 
-/* EEVEE_shaders_volumes_accum_sh_get */
 GPU_SHADER_CREATE_INFO(eevee_volume_accum)
     .additional_info("draw_fullscreen")
     .additional_info("eevee_volume_lib")

@@ -104,8 +104,7 @@ void Volumes::init()
   }
 
   /* Temporal Super sampling jitter */
-  /* TODO (Miguel Pozo): Double check current_sample and current_sample_ logic.
-   * Why image render doesn't use the regular taa samples? */
+  /* TODO (Miguel Pozo): Why image render doesn't use the regular taa samples? */
   uint current_sample = 0;
 
   if (do_taa) {
@@ -204,7 +203,6 @@ void Volumes::begin_sync()
    *   work for alpha blended materials.
    */
 
-  /* World pass is not additive as it also clear the buffer. */
   world_ps_.init();
   world_ps_.state_set(DRW_STATE_WRITE_COLOR);
 
@@ -321,10 +319,9 @@ void Volumes::end_sync()
   transmit_tx_.previous().ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
 
 #if 0
-    /* TODO */
+    /* TODO (Miguel Pozo): These ones were used for transparency. */
     float4 scatter = float4(0.0f);
     float4 transmit = float4(1.0f);
-    /* TODO (Miguel Pozo): DRW_TEX_WRAP ? */
     dummy_scatter_tx_.ensure_3d(GPU_RGBA8, int3(1), GPU_TEXTURE_USAGE_SHADER_READ, scatter);
     dummy_transmit_tx_.ensure_3d(GPU_RGBA8, int3(1), GPU_TEXTURE_USAGE_SHADER_READ, transmit);
     effects->volume_scatter = dummy_scatter_tx_;
@@ -343,12 +340,6 @@ void Volumes::end_sync()
   scatter_ps_.bind_texture("volumePhase", &prop_phase_tx_);
   scatter_ps_.bind_texture("historyScattering", &scatter_tx_.previous());
   scatter_ps_.bind_texture("historyTransmittance", &transmit_tx_.previous());
-#if 0
-    /* TODO */
-    scatter_ps_.bind_texture("irradianceGrid", &lcache->grid_tx.tex);
-    scatter_ps_.bind_texture("shadowCubeTexture", &sldata->shadow_cube_pool);
-    scatter_ps_.bind_texture("shadowCascadeTexture", &sldata->shadow_cascade_pool);
-#endif
   scatter_ps_.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z * 3);
 
   integration_ps_.init();
@@ -357,11 +348,6 @@ void Volumes::end_sync()
   bind_common_resources(integration_ps_);
   integration_ps_.bind_texture("volumeScattering", &scatter_tx_.current());
   integration_ps_.bind_texture("volumeExtinction", &transmit_tx_.current());
-  /*
-  integration_ps_.bind_image("finalScattering_img", &scatter_tx_.previous());
-  integration_ps_.bind_image("finalTransmittance_img", &transmit_tx_.previous());
-  integration_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
-  */
   integration_ps_.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z * 3);
 
   resolve_ps_.init();
@@ -381,14 +367,6 @@ void Volumes::draw_compute(View &view)
   }
 
   DRW_stats_group_start("Volumes");
-
-  /* We sample the shadow-maps using shadow sampler. We need to enable Comparison mode.
-   * TODO(fclem): avoid this by using sampler objects. */
-#if 0
-    /* TODO */
-    GPU_texture_compare_mode(sldata->shadow_cube_pool, true);
-    GPU_texture_compare_mode(sldata->shadow_cascade_pool, true);
-#endif
 
   volumetric_fb_.ensure(GPU_ATTACHMENT_NONE,
                         GPU_ATTACHMENT_TEXTURE(prop_scattering_tx_),
@@ -415,9 +393,7 @@ void Volumes::draw_compute(View &view)
   inst_.manager->submit(integration_ps_, view);
 
 #if 0
-    /* Not needed? */
-    SWAP(struct GPUFrameBuffer *, fbl->scatter_fb_, fbl->integration_fb_);
-
+    /* TODO (Miguel Pozo): These ones were used for transparency. */
     effects->volume_scatter = scatter_tx_.current();
     effects->volume_transmit = transmit_tx_.current();
 #endif
@@ -430,8 +406,6 @@ void Volumes::draw_resolve(View &view)
   if (!enabled_) {
     return;
   }
-
-  // GPU_memory_barrier(GPU_BARRIER_TEXTURE_FETCH);
 
   resolve_fb_.ensure(GPU_ATTACHMENT_NONE,
                      GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.combined_tx));
