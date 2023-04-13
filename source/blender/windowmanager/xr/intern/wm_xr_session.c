@@ -1387,8 +1387,13 @@ bool wm_xr_session_surface_offscreen_ensure(wmXrSurfaceData *surface_data,
   }
   BLI_assert(format != GPU_R8);
 
-  offscreen = vp->offscreen = GPU_offscreen_create(
-      draw_view->width, draw_view->height, true, format, err_out);
+  offscreen = vp->offscreen = GPU_offscreen_create(draw_view->width,
+                                                   draw_view->height,
+                                                   true,
+                                                   format,
+                                                   GPU_TEXTURE_USAGE_SHADER_READ |
+                                                       GPU_TEXTURE_USAGE_ATTACHMENT,
+                                                   err_out);
   if (offscreen) {
     viewport = vp->viewport = GPU_viewport_create();
     if (!viewport) {
