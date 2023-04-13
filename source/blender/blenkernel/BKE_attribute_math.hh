@@ -129,7 +129,7 @@ template<> inline int mix3(const float3 &weights, const int &v0, const int &v1, 
 
 template<> inline int2 mix3(const float3 &weights, const int2 &v0, const int2 &v1, const int2 &v2)
 {
-  return weights.x * v0 + weights.y * v1 + weights.z * v2;
+  return int2(weights.x * float2(v0) + weights.y * float2(v1) + weights.z * float2(v2));
 }
 
 template<>

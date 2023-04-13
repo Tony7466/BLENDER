@@ -179,11 +179,11 @@ static bool int2_to_bool(const int2 &a)
 }
 static float2 int2_to_float2(const int2 &a)
 {
-  return float2(float(a.x), float(a.y));
+  return float2(a);
 }
 static int int2_to_int(const int2 &a)
 {
-  return float2_to_int(int2_to_float2(a));
+  return (a.x + a.y) / 2;
 }
 static int8_t int2_to_int8(const int2 &a)
 {
