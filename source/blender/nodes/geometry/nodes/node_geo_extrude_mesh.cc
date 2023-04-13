@@ -106,15 +106,20 @@ static void expand_mesh(Mesh &mesh,
   }
   if (poly_expand != 0) {
     const int old_polys_num = mesh.totpoly;
-    BKE_mesh_poly_offsets_resize(&mesh, mesh.totpoly + poly_expand);
     mesh.totpoly += poly_expand;
     CustomData_realloc(&mesh.pdata, old_polys_num, mesh.totpoly);
+    resize_trivial_array(&mesh.poly_offset_indices,
+                         &mesh.runtime->poly_offsets_sharing_info,
+                         old_polys_num == 0 ? 0 : (old_polys_num + 1),
+                         mesh.totpoly + 1);
+    /* Set common values for convenience. */
+    mesh.poly_offset_indices[0] = 0;
+    mesh.poly_offset_indices[mesh.totpoly] = mesh.totloop + loop_expand;
   }
   if (loop_expand != 0) {
     const int old_loops_num = mesh.totloop;
     mesh.totloop += loop_expand;
     CustomData_realloc(&mesh.ldata, old_loops_num, mesh.totloop);
-    mesh.poly_offsets_for_write().last() = mesh.totloop;
   }
 }
 

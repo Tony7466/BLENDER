@@ -102,10 +102,60 @@ class ImplicitSharingMixin : public ImplicitSharingInfo {
   virtual void delete_self() = 0;
 };
 
+namespace detail {
+
+void *resize_trivial_array_impl(void *old_data,
+                                int64_t old_size,
+                                int64_t new_size,
+                                int64_t alignment,
+                                ImplicitSharingInfo **sharing_info);
+void *make_trivial_data_mutable_impl(void *old_data,
+                                     int64_t size,
+                                     int64_t alignment,
+                                     ImplicitSharingInfo **sharing_info);
+
+}  // namespace detail
+
 /**
  * Create an implicit sharing object that takes ownership of the data, allowing it to be shared.
  * When it is no longer used, the data is freed with #MEM_freeN, so it must be a trivial type.
  */
 ImplicitSharingInfo *sharing_info_for_mem_free(void *data);
+
+/**
+ * Remove this reference to the shared data and remove dangling pointers.
+ */
+template<typename T> void free_shared_data(T **data, ImplicitSharingInfo **sharing_info)
+{
+  if (*sharing_info) {
+    (*sharing_info)->remove_user_and_delete_if_last();
+  }
+  *data = nullptr;
+  *sharing_info = nullptr;
+}
+
+/**
+ * Make data mutable (single-user) if it is shared. For trivially-copiable data only.
+ */
+template<typename T>
+void make_trivial_data_mutable(T **data, ImplicitSharingInfo **sharing_info, const int64_t size)
+{
+  *data = static_cast<T *>(
+      detail::make_trivial_data_mutable_impl(*data, sizeof(T) * size, alignof(T), sharing_info));
+}
+
+/**
+ * Resize an array of shared data. For trivially-copiable data only. Any new values are not
+ * initialized.
+ */
+template<typename T>
+void resize_trivial_array(T **data,
+                          ImplicitSharingInfo **sharing_info,
+                          int64_t old_size,
+                          int64_t new_size)
+{
+  *data = static_cast<T *>(detail::resize_trivial_array_impl(
+      *data, sizeof(T) * old_size, sizeof(T) * new_size, alignof(T), sharing_info));
+}
 
 }  // namespace blender

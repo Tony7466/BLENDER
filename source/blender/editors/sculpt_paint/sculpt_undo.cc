@@ -800,11 +800,7 @@ static void sculpt_undo_geometry_free_data(SculptUndoNodeGeometry *geometry)
   if (geometry->totpoly) {
     CustomData_free(&geometry->pdata, geometry->totpoly);
   }
-  if (geometry->poly_offsets_sharing_info) {
-    geometry->poly_offsets_sharing_info->remove_user_and_delete_if_last();
-    geometry->poly_offset_indices = nullptr;
-    geometry->poly_offsets_sharing_info = nullptr;
-  }
+  blender::free_shared_data(&geometry->poly_offset_indices, &geometry->poly_offsets_sharing_info);
 }
 
 static void sculpt_undo_geometry_restore(SculptUndoNode *unode, Object *object)
