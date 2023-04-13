@@ -217,13 +217,14 @@ class NODE_OT_simulation_zone_item_add(SimulationZoneOperator, Operator):
 
     def execute(self, context):
         node = context.active_node
+        state_items = node.state_items
 
         # Remember index to move the item
-        index = node.active_index
+        dst_index = min(node.active_index + 1, len(state_items))
         # Empty name so it is based on the type only
-        node.state_items.new(self.default_socket_type, "")
-        node.state_items.move(len(node.state_items) - 1, index + 1)
-        node.active_index = index + 1
+        state_items.new(self.default_socket_type, "")
+        state_items.move(len(state_items) - 1, dst_index)
+        node.active_index = dst_index
 
         return {'FINISHED'}
 
@@ -236,10 +237,11 @@ class NODE_OT_simulation_zone_item_remove(SimulationZoneOperator, Operator):
 
     def execute(self, context):
         node = context.active_node
+        state_items = node.state_items
 
         if node.active_item:
-            node.state_items.remove(node.active_item)
-            node.active_index = min(node.active_index, len(node.state_items) - 1)
+            state_items.remove(node.active_item)
+            node.active_index = min(node.active_index, len(state_items) - 1)
 
         return {'FINISHED'}
 
@@ -258,10 +260,14 @@ class NODE_OT_simulation_zone_item_move(SimulationZoneOperator, Operator):
 
     def execute(self, context):
         node = context.active_node
+        state_items = node.state_items
 
-        new_index = node.active_index - 1 if self.direction == 'UP' else node.active_index + 1
-        node.state_items.move(node.active_index, new_index)
-        node.active_index = new_index
+        if self.direction == 'UP' and node.active_index > 0:
+            state_items.move(node.active_index, node.active_index - 1)
+            node.active_index = node.active_index - 1
+        elif self.direction == 'DOWN' and node.active_index < len(state_items) - 1:
+            state_items.move(node.active_index, node.active_index + 1)
+            node.active_index = node.active_index + 1
 
         return {'FINISHED'}
 
