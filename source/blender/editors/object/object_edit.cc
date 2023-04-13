@@ -879,9 +879,9 @@ bool ED_object_editmode_enter_ex(Main *bmain, Scene *scene, Object *ob, int flag
     ok = true;
     WM_main_add_notifier(NC_SCENE | ND_MODE | NS_EDITMODE_CURVES, scene);
   }
-  else if (ob->type == OB_CURVES) {
+  else if (ob->type == OB_GREASE_PENCIL) {
     ok = true;
-    /* TODO: Add NS_EDITMODE_GREASE_PENCIL for WM_main_add_notifier. */
+    WM_main_add_notifier(NC_SCENE | ND_MODE | NS_EDITMODE_GREASE_PENCIL, scene);
   }
 
   if (ok) {

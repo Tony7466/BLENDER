@@ -143,7 +143,12 @@ static bool gpencil_stroke_paintmode_draw_poll(bContext *C)
     if (object == NULL || object->type != OB_GREASE_PENCIL) {
       return false;
     }
-    return true;
+    ToolSettings *ts = CTX_data_tool_settings(C);
+    if (!ts || !ts->gp_paint) {
+      return false;
+    }
+    const Brush *brush = BKE_paint_brush_for_read(&ts->gp_paint->paint);
+    return WM_toolsystem_active_tool_is_brush(C) && brush->gpencil_tool == GPAINT_TOOL_DRAW;
   }
   return gpencil_stroke_paintmode_poll_with_tool(C, GPAINT_TOOL_DRAW);
 }

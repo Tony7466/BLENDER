@@ -2001,6 +2001,10 @@ char *BKE_object_data_editmode_flush_ptr_get(struct ID *id)
       /* Curves have no edit mode data. */
       return nullptr;
     }
+    case ID_GP: {
+      /* Grease Pencil has no edit mode data. */
+      return nullptr;
+    }
     default:
       BLI_assert_unreachable();
       return nullptr;
