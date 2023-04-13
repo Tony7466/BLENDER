@@ -306,6 +306,8 @@ BoundBox *BKE_grease_pencil_boundbox_get(Object *ob)
     float3 min(FLT_MAX);
     float3 max(-FLT_MAX);
 
+    /* FIXME: this should somehow go through the visible drawings. We don't have access to the
+     * scene time here, so we probably need to cache the visible drawing for each layer somehow. */
     for (int i = 0; i < grease_pencil->drawing_array_size; i++) {
       GreasePencilDrawingOrReference *drawing_or_ref = grease_pencil->drawing_array[i];
       switch (drawing_or_ref->type) {
@@ -314,8 +316,8 @@ BoundBox *BKE_grease_pencil_boundbox_get(Object *ob)
           const blender::bke::CurvesGeometry &curves = drawing->geometry.wrap();
 
           if (!curves.bounds_min_max(min, max)) {
-            min = float3(-1);
-            max = float3(1);
+            blender::math::min_max(float3(-1), min, max);
+            blender::math::min_max(float3(1), min, max);
           }
           break;
         }
