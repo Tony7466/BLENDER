@@ -566,27 +566,26 @@ static std::shared_ptr<io::serialize::ArrayValue> serialize_attributes(
     const bke::AttributeAccessor &attributes, BDataWriter &bdata_writer)
 {
   auto io_attributes = std::make_shared<io::serialize::ArrayValue>();
-  attributes.for_all(
-      [&](const bke::AttributeIDRef &attribute_id, const bke::AttributeMetaData &meta_data) {
-        auto io_attribute = io_attributes->append_dict();
+  attributes.for_all([&](const bke::AttributeIDRef &attribute_id,
+                         const bke::AttributeMetaData &meta_data) {
+    auto io_attribute = io_attributes->append_dict();
 
-        io_attribute->append_str("name", attribute_id.name());
+    io_attribute->append_str("name", attribute_id.name());
 
-        const StringRefNull domain_name = get_domain_io_name(meta_data.domain);
-        io_attribute->append_str("domain", domain_name);
+    const StringRefNull domain_name = get_domain_io_name(meta_data.domain);
+    io_attribute->append_str("domain", domain_name);
 
-        const StringRefNull type_name = get_data_type_io_name(meta_data.data_type);
-        io_attribute->append_str("type", type_name);
+    const StringRefNull type_name = get_data_type_io_name(meta_data.data_type);
+    io_attribute->append_str("type", type_name);
 
-        const bke::GAttributeReader attribute = attributes.lookup(attribute_id);
-        const GVArraySpan attribute_span(attribute.varray);
-        auto io_attribute_data = write_bdata_shared(bdata_writer, attribute.sharing_info, [&]() {
-          return write_bdata_simple_gspan(bdata_writer, attribute_span);
-        });
-        io_attribute->append("data", io_attribute_data);
+    const bke::GAttributeReader attribute = attributes.lookup(attribute_id);
+    const GVArraySpan attribute_span(attribute.varray);
+    io_attribute->append("data", write_bdata_shared(bdata_writer, attribute.sharing_info, [&]() {
+                           return write_bdata_simple_gspan(bdata_writer, attribute_span);
+                         }));
 
-        return true;
-      });
+    return true;
+  });
   return io_attributes;
 }
 
