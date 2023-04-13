@@ -2358,7 +2358,7 @@ CustomData CustomData_shallow_copy_remove_non_bmesh_attributes(const CustomData 
 class CustomDataLayerImplicitSharing : public ImplicitSharingInfo {
  private:
   const void *data_;
-  const int totelem_;
+  int totelem_;
   const eCustomDataType type_;
 
  public:
@@ -2372,6 +2372,13 @@ class CustomDataLayerImplicitSharing : public ImplicitSharingInfo {
   {
     free_layer_data(type_, data_, totelem_);
     MEM_delete(this);
+  }
+
+  void delete_data_only() override
+  {
+    free_layer_data(type_, data_, totelem_);
+    data_ = nullptr;
+    totelem_ = 0;
   }
 };
 

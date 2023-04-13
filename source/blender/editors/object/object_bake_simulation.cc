@@ -182,7 +182,7 @@ static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_shared(
     return write_fn();
   }
   return bdata_writer.shared_data_.lookup_or_add_cb(sharing_info, [&]() {
-    sharing_info->add_user();
+    sharing_info->add_weak_user();
     return write_fn();
   });
 }
@@ -720,7 +720,7 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
   Map<const ImplicitSharingInfo *, std::shared_ptr<io::serialize::DictionaryValue>> shared_data;
   auto free_shared_data = [&]() {
     for (const ImplicitSharingInfo *sharing_info : shared_data.keys()) {
-      sharing_info->remove_user_and_delete_if_last();
+      sharing_info->remove_weak_user_and_delete_if_last();
     };
   };
   BLI_SCOPED_DEFER(free_shared_data);
