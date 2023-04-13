@@ -684,13 +684,8 @@ static void wm_draw_region_buffer_create(ARegion *region, bool stereo, bool use_
       /* Allocate offscreen buffer if it does not exist. This one has no
        * depth or multisample buffers. 3D view creates own buffers with
        * the data it needs. */
-      GPUOffScreen *offscreen = GPU_offscreen_create(region->winx,
-                                                     region->winy,
-                                                     false,
-                                                     GPU_RGBA8,
-                                                     GPU_TEXTURE_USAGE_SHADER_READ |
-                                                         GPU_TEXTURE_USAGE_ATTACHMENT,
-                                                     NULL);
+      GPUOffScreen *offscreen = GPU_offscreen_create(
+          region->winx, region->winy, false, GPU_RGBA8, GPU_TEXTURE_USAGE_SHADER_READ, NULL);
       if (!offscreen) {
         WM_report(RPT_ERROR, "Region could not be drawn!");
         return;
@@ -1156,13 +1151,8 @@ static void wm_draw_window(bContext *C, wmWindow *win)
      * stereo methods, but it's less efficient than drawing directly. */
     const int width = WM_window_pixels_x(win);
     const int height = WM_window_pixels_y(win);
-    GPUOffScreen *offscreen = GPU_offscreen_create(width,
-                                                   height,
-                                                   false,
-                                                   GPU_RGBA8,
-                                                   GPU_TEXTURE_USAGE_SHADER_READ |
-                                                       GPU_TEXTURE_USAGE_ATTACHMENT,
-                                                   NULL);
+    GPUOffScreen *offscreen = GPU_offscreen_create(
+        width, height, false, GPU_RGBA8, GPU_TEXTURE_USAGE_SHADER_READ, NULL);
 
     if (offscreen) {
       GPUTexture *texture = GPU_offscreen_color_texture(offscreen);
@@ -1237,13 +1227,8 @@ uint *WM_window_pixels_read_offscreen(bContext *C, wmWindow *win, int r_size[2])
   r_size[0] = WM_window_pixels_x(win);
   r_size[1] = WM_window_pixels_y(win);
 
-  GPUOffScreen *offscreen = GPU_offscreen_create(r_size[0],
-                                                 r_size[1],
-                                                 false,
-                                                 GPU_RGBA8,
-                                                 GPU_TEXTURE_USAGE_SHADER_READ |
-                                                     GPU_TEXTURE_USAGE_ATTACHMENT,
-                                                 NULL);
+  GPUOffScreen *offscreen = GPU_offscreen_create(
+      r_size[0], r_size[1], false, GPU_RGBA8, GPU_TEXTURE_USAGE_SHADER_READ, NULL);
   if (UNLIKELY(!offscreen)) {
     return NULL;
   }

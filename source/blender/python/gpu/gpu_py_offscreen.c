@@ -236,8 +236,7 @@ static PyObject *pygpu_offscreen__tp_new(PyTypeObject *UNUSED(self),
                                height,
                                true,
                                pygpu_textureformat.value_found,
-                               GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT |
-                                   GPU_TEXTURE_USAGE_HOST_READ,
+                               GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_HOST_READ,
                                err_out);
   }
   else {
