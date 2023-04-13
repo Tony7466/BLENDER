@@ -656,7 +656,7 @@ GPUOffScreen *GPU_offscreen_create(int width,
                                    int height,
                                    bool depth,
                                    eGPUTextureFormat format,
-                                   eGPUTextureUsage usage,
+                                   const eGPUTextureUsage usage_,
                                    char err_out[256])
 {
   GPUOffScreen *ofs = MEM_cnew<GPUOffScreen>(__func__);
@@ -666,6 +666,7 @@ GPUOffScreen *GPU_offscreen_create(int width,
   height = max_ii(1, height);
   width = max_ii(1, width);
 
+  const eGPUTextureUsage usage = usage_ | GPU_TEXTURE_USAGE_ATTACHMENT;
   ofs->color = GPU_texture_create_2d("ofs_color", width, height, 1, format, usage, nullptr);
 
   if (depth) {
