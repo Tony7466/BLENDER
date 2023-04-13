@@ -484,11 +484,22 @@ void node_geo_simulation_output_move_item(NodeGeometrySimulationOutput *sim,
 {
   BLI_assert(from_index >= 0 && from_index < sim->items_num);
   BLI_assert(to_index >= 0 && to_index < sim->items_num);
+
   if (from_index == to_index) {
     return;
   }
-
-  NodeSimulationItem tmp = sim->items[from_index];
-  sim->items[from_index] = sim->items[to_index];
-  sim->items[to_index] = tmp;
+  else if (from_index < to_index) {
+    const NodeSimulationItem tmp = sim->items[from_index];
+    for (int i = from_index; i < to_index; ++i) {
+      sim->items[i] = sim->items[i + 1];
+    }
+    sim->items[to_index] = tmp;
+  }
+  else /* from_index > to_index */ {
+    const NodeSimulationItem tmp = sim->items[from_index];
+    for (int i = from_index; i > to_index; --i) {
+      sim->items[i] = sim->items[i - 1];
+    }
+    sim->items[to_index] = tmp;
+  }
 }
