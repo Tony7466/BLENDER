@@ -250,7 +250,7 @@ void *CustomData_add_layer(struct CustomData *data,
 
 /**
  * Adds a layer of the given type to the #CustomData object. The new layer takes ownership of the
- * passed in `layer_data`. If a #ImplicitSharingInfoHandle is passed in, it's user count is
+ * passed in `layer_data`. If a #ImplicitSharingInfoHandle is passed in, its user count is
  * increased.
  */
 const void *CustomData_add_layer_with_data(struct CustomData *data,
