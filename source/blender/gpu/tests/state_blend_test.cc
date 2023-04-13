@@ -18,7 +18,13 @@ namespace blender::gpu::tests {
 template<eGPUBlend blend_type>
 void blend_test(float4 source_a, float4 source_b, float4 expected_result)
 {
-  GPUOffScreen *offscreen = GPU_offscreen_create(1, 1, false, GPU_RGBA16F, nullptr);
+  GPUOffScreen *offscreen = GPU_offscreen_create(1,
+                                                 1,
+                                                 false,
+                                                 GPU_RGBA16F,
+                                                 GPU_TEXTURE_USAGE_ATTACHMENT |
+                                                     GPU_TEXTURE_USAGE_HOST_READ,
+                                                 nullptr);
   BLI_assert(offscreen != nullptr);
   GPU_offscreen_bind(offscreen, false);
   GPUTexture *color_texture = GPU_offscreen_color_texture(offscreen);
