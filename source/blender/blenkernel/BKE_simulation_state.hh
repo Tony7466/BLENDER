@@ -68,43 +68,135 @@ class ModifierSimulationState {
   }
 };
 
+struct SubFrame {
+ private:
+  int frame_;
+  float subframe_;
+
+ public:
+  SubFrame(const int frame = 0, float subframe = 0.0f) : frame_(frame), subframe_(subframe)
+  {
+    BLI_assert(subframe >= 0.0f);
+    BLI_assert(subframe < 1.0f);
+  }
+
+  SubFrame(const float frame) : SubFrame(int(floorf(frame)), fractf(frame)) {}
+
+  int frame() const
+  {
+    return frame_;
+  }
+
+  float subframe() const
+  {
+    return subframe_;
+  }
+
+  explicit operator float() const
+  {
+    return float(frame_) + float(subframe_);
+  }
+
+  explicit operator double() const
+  {
+    return double(frame_) + double(subframe_);
+  }
+
+  static SubFrame min()
+  {
+    return {INT32_MIN, 0.0f};
+  }
+
+  static SubFrame max()
+  {
+    return {INT32_MAX, std::nexttowardf(1.0f, 0.0)};
+  }
+
+  friend bool operator==(const SubFrame &a, const SubFrame &b)
+  {
+    return a.frame_ == b.frame_ && a.subframe_ == b.subframe_;
+  }
+
+  friend bool operator!=(const SubFrame &a, const SubFrame &b)
+  {
+    return !(a == b);
+  }
+
+  friend bool operator<(const SubFrame &a, const SubFrame &b)
+  {
+    return a.frame_ < b.frame_ || (a.frame_ == b.frame_ && a.subframe_ < b.subframe_);
+  }
+
+  friend bool operator<=(const SubFrame &a, const SubFrame &b)
+  {
+    return a.frame_ <= b.frame_ || (a.frame_ == b.frame_ && a.subframe_ <= b.subframe_);
+  }
+
+  friend bool operator>(const SubFrame &a, const SubFrame &b)
+  {
+    return a.frame_ > b.frame_ || (a.frame_ == b.frame_ && a.subframe_ > b.subframe_);
+  }
+
+  friend bool operator>=(const SubFrame &a, const SubFrame &b)
+  {
+    return a.frame_ >= b.frame_ || (a.frame_ == b.frame_ && a.subframe_ >= b.subframe_);
+  }
+};
+
+struct ModifierSimulationStateAtFrame {
+  SubFrame frame;
+  std::unique_ptr<ModifierSimulationState> state;
+};
+
 class ModifierSimulationCache {
  private:
-  Map<float, std::unique_ptr<ModifierSimulationState>> states_by_time_;
+  Vector<ModifierSimulationStateAtFrame> states_at_frames_;
   bool invalid_ = false;
 
  public:
-  bool has_state_at_time(const float time) const
+  bool has_state_at_frame(const SubFrame &frame) const
   {
-    return states_by_time_.contains(time);
+    for (const ModifierSimulationStateAtFrame &item : states_at_frames_) {
+      if (item.frame == frame) {
+        return true;
+      }
+    }
+    return false;
   }
 
-  const ModifierSimulationState *get_state_at_time(const float time) const
+  const ModifierSimulationState *get_state_at_exact_frame(const SubFrame &frame) const
   {
-    if (auto *ptr = states_by_time_.lookup_ptr(time)) {
-      return ptr->get();
+    for (const ModifierSimulationStateAtFrame &item : states_at_frames_) {
+      if (item.frame == frame) {
+        return item.state.get();
+      }
     }
     return nullptr;
   }
 
-  ModifierSimulationState &get_state_for_write(const float time)
+  ModifierSimulationState &get_state_at_frame_for_write(const SubFrame &frame)
   {
-    return *states_by_time_.lookup_or_add_cb(
-        time, []() { return std::make_unique<ModifierSimulationState>(); });
-  }
-
-  std::pair<float, const ModifierSimulationState *> try_get_last_state_before(
-      const float time) const
-  {
-    float last_time = -FLT_MAX;
-    const ModifierSimulationState *last_state = nullptr;
-    for (const auto &item : states_by_time_.items()) {
-      if (item.key < time && item.key > last_time) {
-        last_time = item.key;
-        last_state = item.value.get();
+    for (const ModifierSimulationStateAtFrame &item : states_at_frames_) {
+      if (item.frame == frame) {
+        return *item.state.get();
       }
     }
-    return {last_time, last_state};
+    states_at_frames_.append({frame, std::make_unique<ModifierSimulationState>()});
+    return *states_at_frames_.last().state;
+  }
+
+  const ModifierSimulationStateAtFrame *try_get_last_state_before_frame(
+      const SubFrame &frame) const
+  {
+    SubFrame last_frame = SubFrame::min();
+    const ModifierSimulationStateAtFrame *last_item = nullptr;
+    for (const auto &item : states_at_frames_) {
+      if (item.frame < frame && item.frame > last_frame) {
+        last_frame = item.frame;
+        last_item = &item;
+      }
+    }
+    return last_item;
   }
 
   void invalidate()
@@ -119,7 +211,7 @@ class ModifierSimulationCache {
 
   void reset()
   {
-    states_by_time_.clear();
+    states_at_frames_.clear();
     invalid_ = false;
   }
 };

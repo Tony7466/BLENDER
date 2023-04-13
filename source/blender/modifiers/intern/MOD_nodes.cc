@@ -96,6 +96,7 @@
 
 namespace lf = blender::fn::lazy_function;
 namespace geo_log = blender::nodes::geo_eval_log;
+using blender::bke::sim::SubFrame;
 
 namespace blender {
 
@@ -1200,28 +1201,29 @@ static GeometrySet compute_geometry(const bNodeTree &btree,
   geo_nodes_modifier_data.self_object = ctx->object;
   auto eval_log = std::make_unique<geo_log::GeoModifierLog>();
 
-  const float current_time = DEG_get_ctime(ctx->depsgraph);
+  const SubFrame current_frame = DEG_get_ctime(ctx->depsgraph);
   if (DEG_is_active(ctx->depsgraph)) {
     const Scene *scene = DEG_get_input_scene(ctx->depsgraph);
-    const int start_frame = scene->r.sfra;
+    const SubFrame start_frame = scene->r.sfra;
 
     if (nmd_orig->simulation_cache == nullptr) {
       nmd_orig->simulation_cache = MEM_new<blender::bke::sim::ModifierSimulationCache>(__func__);
     }
-    if (nmd_orig->simulation_cache->is_invalid() && current_time == start_frame) {
+    if (nmd_orig->simulation_cache->is_invalid() && current_frame == start_frame) {
       nmd_orig->simulation_cache->reset();
     }
-    std::pair<float, const blender::bke::sim::ModifierSimulationState *> prev_sim_state =
-        nmd_orig->simulation_cache->try_get_last_state_before(current_time);
-    if (prev_sim_state.second != nullptr) {
-      geo_nodes_modifier_data.prev_simulation_state = prev_sim_state.second;
-      geo_nodes_modifier_data.simulation_time_delta = current_time - prev_sim_state.first;
+    const bke::sim::ModifierSimulationStateAtFrame *prev_sim_state =
+        nmd_orig->simulation_cache->try_get_last_state_before_frame(current_frame);
+    if (prev_sim_state != nullptr) {
+      geo_nodes_modifier_data.prev_simulation_state = prev_sim_state->state.get();
+      const float frame_diff = float(current_frame) - float(prev_sim_state->frame);
+      geo_nodes_modifier_data.simulation_time_delta = frame_diff / FPS;
       if (geo_nodes_modifier_data.simulation_time_delta > 1.0f) {
         nmd_orig->simulation_cache->invalidate();
       }
     }
     geo_nodes_modifier_data.current_simulation_state_for_write =
-        &nmd_orig->simulation_cache->get_state_for_write(current_time);
+        &nmd_orig->simulation_cache->get_state_at_frame_for_write(current_frame);
     geo_nodes_modifier_data.current_simulation_state =
         geo_nodes_modifier_data.current_simulation_state_for_write;
   }
@@ -1230,7 +1232,7 @@ static GeometrySet compute_geometry(const bNodeTree &btree,
      * anymore. */
     if (nmd_orig->simulation_cache != nullptr) {
       geo_nodes_modifier_data.current_simulation_state =
-          nmd_orig->simulation_cache->get_state_at_time(current_time);
+          nmd_orig->simulation_cache->get_state_at_exact_frame(current_frame);
     }
   }
 

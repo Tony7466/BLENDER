@@ -613,12 +613,14 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
     }
   }
 
-  for (const int frame : IndexRange(1, 10)) {
-    scene->r.cfra = frame;
-    scene->r.subframe = 0.0f;
+  for (const int frame_i : IndexRange(1, 10)) {
+    const SubFrame frame{frame_i, 0.0f};
+
+    scene->r.cfra = frame.frame();
+    scene->r.subframe = frame.subframe();
 
     std::stringstream frame_ss;
-    frame_ss << std::setfill('0') << std::setw(5) << frame;
+    frame_ss << std::setfill('0') << std::setw(5) << std::setprecision(5) << double(frame);
     const std::string frame_str = frame_ss.str();
 
     BKE_scene_graph_update_for_newframe(depsgraph);
@@ -651,7 +653,7 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
       auto io_zones = io_root.append_array("zones");
 
       ModifierSimulationCache &sim_cache = *nmd.simulation_cache;
-      const ModifierSimulationState *sim_state = sim_cache.get_state_at_time(frame);
+      const ModifierSimulationState *sim_state = sim_cache.get_state_at_exact_frame(frame);
       if (sim_state == nullptr) {
         continue;
       }

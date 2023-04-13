@@ -701,7 +701,7 @@ static void timeline_cache_draw_simulation_nodes(
 
   immBeginAtMost(GPU_PRIM_TRIS, frames_num * 6);
   for (const int frame : frames_range) {
-    if (cache.has_state_at_time(float(frame))) {
+    if (cache.has_state_at_frame(frame)) {
       immRectf_fast(pos_id, frame - 0.5f, 0, frame + 0.5f, 1.0f);
     }
   }
