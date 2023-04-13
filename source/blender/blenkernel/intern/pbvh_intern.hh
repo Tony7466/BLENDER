@@ -8,7 +8,6 @@
 
 struct PBVHGPUFormat;
 struct MLoopTri;
-struct MPoly;
 struct MeshElemMap;
 
 /* Axis-aligned bounding box */
@@ -156,11 +155,11 @@ struct PBVH {
   float (*vert_normals)[3];
   bool *hide_vert;
   float (*vert_positions)[3];
-  const MPoly *polys;
+  blender::OffsetIndices<int> polys;
   bool *hide_poly;
-  /** Material indices. Only valid for polygon meshes. */
-  const int *material_indices;
+  /** Only valid for polygon meshes. */
   const int *corner_verts;
+  /* Owned by the #PBVH, because after deformations they have to be recomputed. */
   const MLoopTri *looptri;
   CustomData *vdata;
   CustomData *ldata;
@@ -188,7 +187,6 @@ struct PBVH {
 
   /* flag are verts/faces deformed */
   bool deformed;
-  bool respect_hide;
 
   /* Dynamic topology */
   float bm_max_edge_len;

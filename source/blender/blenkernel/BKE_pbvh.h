@@ -10,6 +10,9 @@
 #include "BLI_bitmap.h"
 #include "BLI_compiler_compat.h"
 #include "BLI_ghash.h"
+#ifdef __cplusplus
+#  include "BLI_offset_indices.hh"
+#endif
 
 #include "bmesh.h"
 
@@ -30,7 +33,6 @@ struct CustomData;
 struct DMFlagMat;
 struct IsectRayPrecalc;
 struct MLoopTri;
-struct MPoly;
 struct Mesh;
 struct MeshElemMap;
 struct PBVH;
@@ -280,23 +282,12 @@ typedef void (*BKE_pbvh_SearchNearestCallback)(PBVHNode *node, void *data, float
 /* Building */
 
 PBVH *BKE_pbvh_new(PBVHType type);
+
 /**
  * Do a full rebuild with on Mesh data structure.
- *
- * \note Unlike mpoly/corner_verts/verts, looptri is *totally owned* by PBVH
- * (which means it may rewrite it if needed, see #BKE_pbvh_vert_coords_apply().
  */
-void BKE_pbvh_build_mesh(PBVH *pbvh,
-                         struct Mesh *mesh,
-                         const struct MPoly *polys,
-                         const int *corner_verts,
-                         float (*vert_positions)[3],
-                         int totvert,
-                         struct CustomData *vdata,
-                         struct CustomData *ldata,
-                         struct CustomData *pdata,
-                         const struct MLoopTri *looptri,
-                         int looptri_num);
+void BKE_pbvh_build_mesh(PBVH *pbvh, struct Mesh *mesh);
+void BKE_pbvh_update_mesh_pointers(PBVH *pbvh, struct Mesh *mesh);
 /**
  * Do a full rebuild with on Grids data structure.
  */
@@ -571,8 +562,6 @@ void BKE_pbvh_update_hide_attributes_from_mesh(PBVH *pbvh);
 
 void BKE_pbvh_face_sets_color_set(PBVH *pbvh, int seed, int color_default);
 
-void BKE_pbvh_respect_hide_set(PBVH *pbvh, bool respect_hide);
-
 /* Vertex Deformer. */
 
 float (*BKE_pbvh_vert_coords_alloc(struct PBVH *pbvh))[3];
@@ -600,7 +589,6 @@ typedef struct PBVHVertexIter {
   int i;
   int index;
   PBVHVertRef vertex;
-  bool respect_hide;
 
   /* grid */
   struct CCGKey key;
@@ -673,14 +661,9 @@ void pbvh_vertex_iter_init(PBVH *pbvh, PBVHNode *node, PBVHVertexIter *vi, int m
           } \
         } \
         else if (vi.vert_positions) { \
-          if (vi.respect_hide) { \
-            vi.visible = !(vi.hide_vert && vi.hide_vert[vi.vert_indices[vi.gx]]); \
-            if (mode == PBVH_ITER_UNIQUE && !vi.visible) { \
-              continue; \
-            } \
-          } \
-          else { \
-            BLI_assert(vi.visible); \
+          vi.visible = !(vi.hide_vert && vi.hide_vert[vi.vert_indices[vi.gx]]); \
+          if (mode == PBVH_ITER_UNIQUE && !vi.visible) { \
+            continue; \
           } \
           vi.co = vi.vert_positions[vi.vert_indices[vi.gx]]; \
           vi.no = vi.vert_normals[vi.vert_indices[vi.gx]]; \
@@ -735,7 +718,7 @@ typedef struct PBVHFaceIter {
   int cd_hide_poly_, cd_face_set_;
   bool *hide_poly_;
   int *face_sets_;
-  const struct MPoly *polys_;
+  const int *poly_offsets_;
   const struct MLoopTri *looptri_;
   const int *corner_verts_;
   int prim_index_;

@@ -444,10 +444,11 @@ static void uv_parametrizer_scale_x(ParamHandle *phandle, const float scale_x)
     return; /* Identity transform. */
   }
 
+  /* Scale every chart. */
   for (int i = 0; i < phandle->ncharts; i++) {
     PChart *chart = phandle->charts[i];
     for (PVert *v = chart->verts; v; v = v->nextlink) {
-      v->uv[0] *= scale_x;
+      v->uv[0] *= scale_x; /* Only scale x axis. */
     }
   }
 }
@@ -4143,18 +4144,11 @@ void uv_parametrizer_pack(ParamHandle *handle, float margin, bool do_rotate, boo
   params.margin = margin;
   params.margin_method = ED_UVPACK_MARGIN_SCALED;
 
-  MemArena *arena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __func__);
-  Heap *heap = BLI_heap_new();
-
-  int unpacked = 0;
   for (int i = 0; i < handle->ncharts; i++) {
     PChart *chart = handle->charts[i];
-
     if (ignore_pinned && chart->has_pins) {
-      unpacked++;
       continue;
     }
-    (void)unpacked; /* Quiet set-but-unused warning (may be removed). */
 
     geometry::PackIsland *pack_island = new geometry::PackIsland();
     pack_island->caller_index = i;
@@ -4167,12 +4161,9 @@ void uv_parametrizer_pack(ParamHandle *handle, float margin, bool do_rotate, boo
       PVert *v2 = f->edge->next->next->vert;
       pack_island->add_triangle(v0->uv, v1->uv, v2->uv);
     }
-    pack_island->finalize_geometry(params, arena, heap);
 
     pack_island_vector.append(pack_island);
   }
-  BLI_heap_free(heap, nullptr);
-  BLI_memarena_free(arena);
 
   float scale[2] = {1.0f, 1.0f};
   pack_islands(pack_island_vector, params, scale);
@@ -4182,17 +4173,9 @@ void uv_parametrizer_pack(ParamHandle *handle, float margin, bool do_rotate, boo
     PChart *chart = handle->charts[pack_island->caller_index];
 
     float matrix[2][2];
-    float b[2];
-    const float cos_angle = cosf(pack_island->angle);
-    const float sin_angle = sinf(pack_island->angle);
-    matrix[0][0] = cos_angle * scale[0];
-    matrix[0][1] = -sin_angle * scale[0] * pack_island->aspect_y;
-    matrix[1][0] = sin_angle * scale[1] / pack_island->aspect_y;
-    matrix[1][1] = cos_angle * scale[1];
-    b[0] = pack_island->pre_translate.x;
-    b[1] = pack_island->pre_translate.y;
+    pack_island->build_transformation(scale[0], pack_island->angle, matrix);
     for (PVert *v = chart->verts; v; v = v->nextlink) {
-      blender::geometry::mul_v2_m2_add_v2v2(v->uv, matrix, v->uv, b);
+      blender::geometry::mul_v2_m2_add_v2v2(v->uv, matrix, v->uv, pack_island->pre_translate);
     }
 
     pack_island_vector[i] = nullptr;
