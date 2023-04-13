@@ -92,9 +92,80 @@ static std::string escape_name(StringRef name)
   return ss.str();
 }
 
+struct BDataSlice {
+  std::string name;
+  IndexRange range;
+
+  std::shared_ptr<io::serialize::DictionaryValue> serialize() const
+  {
+    auto io_slice = std::make_shared<io::serialize::DictionaryValue>();
+    io_slice->append_str("name", this->name);
+    io_slice->append_int("start", range.start());
+    io_slice->append_int("size", range.size());
+    return io_slice;
+  }
+
+  static std::optional<BDataSlice> deserialize(const io::serialize::DictionaryValue &io_slice)
+  {
+    const std::optional<StringRefNull> name = io_slice.lookup_str("name");
+    const std::optional<int64_t> start = io_slice.lookup_int("start");
+    const std::optional<int64_t> size = io_slice.lookup_int("size");
+    if (!name || !start || !size) {
+      return std::nullopt;
+    }
+
+    return BDataSlice{*name, {*start, *size}};
+  }
+};
+
+class BDataReader {
+ private:
+  std::string bdata_dir_;
+
+ public:
+  BDataReader(std::string bdata_dir) : bdata_dir_(std::move(bdata_dir)) {}
+
+  void read(const BDataSlice &slice, void *r_data) const
+  {
+    if (slice.range.is_empty()) {
+      return;
+    }
+
+    char bdata_path[FILE_MAX];
+    BLI_path_join(bdata_path, sizeof(bdata_path), bdata_dir_.c_str(), slice.name.c_str());
+
+    fstream bdata_file{bdata_path, std::ios::in | std::ios::binary};
+    bdata_file.seekg(slice.range.start());
+    bdata_file.read(static_cast<char *>(r_data), slice.range.size());
+  }
+};
+
+class BDataWriter {
+ private:
+  std::string bdata_name_;
+  std::ostream &bdata_file_;
+  int64_t current_offset_;
+
+ public:
+  BDataWriter(std::string bdata_name, std::ostream &bdata_file, const int64_t current_offset)
+      : bdata_name_(std::move(bdata_name)),
+        bdata_file_(bdata_file),
+        current_offset_(current_offset)
+  {
+  }
+
+  BDataSlice write(const void *data, const int64_t size)
+  {
+    const int64_t old_offset = current_offset_;
+    bdata_file_.write(static_cast<const char *>(data), size);
+    current_offset_ += size;
+    return {bdata_name_, {old_offset, size}};
+  }
+};
+
 static void load_attributes(const io::serialize::ArrayValue &io_attributes,
                             bke::MutableAttributeAccessor &attributes,
-                            const StringRefNull bdata_dir)
+                            const BDataReader &bdata_reader)
 {
   for (const auto &io_attribute_value : io_attributes.elements()) {
     const auto *io_attribute = io_attribute_value->as_dictionary_value();
@@ -112,10 +183,8 @@ static void load_attributes(const io::serialize::ArrayValue &io_attributes,
     const eAttrDomain domain = get_domain_from_io_name(*domain_str);
     const eCustomDataType data_type = get_data_type_from_io_name(*type_str);
 
-    const std::optional<StringRefNull> bdata_name = io_data->lookup_str("name");
-    const std::optional<int64_t> start = io_data->lookup_int("start");
-    const std::optional<int64_t> size = io_data->lookup_int("size");
-    if (!bdata_name || !start || !size) {
+    std::optional<BDataSlice> bdata_slice = BDataSlice::deserialize(*io_data);
+    if (!bdata_slice) {
       continue;
     }
 
@@ -127,15 +196,9 @@ static void load_attributes(const io::serialize::ArrayValue &io_attributes,
     if (!attribute) {
       continue;
     }
-    BLI_assert(*size == attribute.span.size_in_bytes());
+    BLI_assert(bdata_slice->range.size() == attribute.span.size_in_bytes());
 
-    char bdata_path[FILE_MAX];
-    BLI_path_join(bdata_path, sizeof(bdata_path), bdata_dir.c_str(), bdata_name->c_str());
-    {
-      fstream bdata_file{bdata_path, std::ios::in | std::ios::binary};
-      bdata_file.seekg(*start);
-      bdata_file.read(static_cast<char *>(attribute.span.data()), *size);
-    }
+    bdata_reader.read(*bdata_slice, attribute.span.data());
 
     if (!is_same_endian) {
       switch (data_type) {
@@ -159,7 +222,7 @@ static void load_attributes(const io::serialize::ArrayValue &io_attributes,
 }
 
 static PointCloud *try_load_pointcloud(const io::serialize::DictionaryValue &io_geometry,
-                                       const StringRefNull bdata_dir)
+                                       const BDataReader &bdata_reader)
 {
   const io::serialize::DictionaryValue *io_pointcloud = io_geometry.lookup_dict("pointcloud");
   if (!io_pointcloud) {
@@ -172,12 +235,12 @@ static PointCloud *try_load_pointcloud(const io::serialize::DictionaryValue &io_
   }
   PointCloud *pointcloud = BKE_pointcloud_new_nomain(num_points);
   bke::MutableAttributeAccessor attributes = pointcloud->attributes_for_write();
-  load_attributes(*io_attributes, attributes, bdata_dir);
+  load_attributes(*io_attributes, attributes, bdata_reader);
   return pointcloud;
 }
 
 static Curves *try_load_curves(const io::serialize::DictionaryValue &io_geometry,
-                               const StringRefNull bdata_dir)
+                               const BDataReader &bdata_reader)
 {
   const io::serialize::DictionaryValue *io_curves = io_geometry.lookup_dict("curves");
   if (!io_curves) {
@@ -192,25 +255,23 @@ static Curves *try_load_curves(const io::serialize::DictionaryValue &io_geometry
 
   Curves *curves_id = bke::curves_new_nomain(num_points, num_curves);
   bke::MutableAttributeAccessor attributes = curves_id->geometry.wrap().attributes_for_write();
-  load_attributes(*io_attributes, attributes, bdata_dir);
+  load_attributes(*io_attributes, attributes, bdata_reader);
 
   return curves_id;
 }
 
 static GeometrySet load_geometry(const io::serialize::DictionaryValue &io_geometry,
-                                 const StringRefNull bdata_dir)
+                                 const BDataReader &bdata_reader)
 {
   GeometrySet geometry;
-  if (PointCloud *pointcloud = try_load_pointcloud(io_geometry, bdata_dir)) {
+  if (PointCloud *pointcloud = try_load_pointcloud(io_geometry, bdata_reader)) {
     geometry.replace_pointcloud(pointcloud);
   }
-  if (Curves *curves = try_load_curves(io_geometry, bdata_dir)) {
+  if (Curves *curves = try_load_curves(io_geometry, bdata_reader)) {
     geometry.replace_curves(curves);
   }
   return geometry;
 }
-
-using WriteBDataFn = FunctionRef<std::shared_ptr<io::serialize::DictionaryValue>(Span<uint8_t>)>;
 
 static std::shared_ptr<io::serialize::ArrayValue> serialize_material_slots(
     const Span<const Material *> material_slots)
@@ -232,37 +293,36 @@ static std::shared_ptr<io::serialize::ArrayValue> serialize_material_slots(
 }
 
 static std::shared_ptr<io::serialize::ArrayValue> serialize_attributes(
-    const bke::AttributeAccessor &attributes, const WriteBDataFn write_bdata)
+    const bke::AttributeAccessor &attributes, BDataWriter &bdata_writer)
 {
   auto io_attributes = std::make_shared<io::serialize::ArrayValue>();
-  attributes.for_all(
-      [&](const bke::AttributeIDRef &attribute_id, const bke::AttributeMetaData &meta_data) {
-        auto io_attribute = io_attributes->append_dict();
+  attributes.for_all([&](const bke::AttributeIDRef &attribute_id,
+                         const bke::AttributeMetaData &meta_data) {
+    auto io_attribute = io_attributes->append_dict();
 
-        io_attribute->append_str("name", attribute_id.name());
+    io_attribute->append_str("name", attribute_id.name());
 
-        const StringRefNull domain_name = get_domain_io_name(meta_data.domain);
-        io_attribute->append_str("domain", domain_name);
+    const StringRefNull domain_name = get_domain_io_name(meta_data.domain);
+    io_attribute->append_str("domain", domain_name);
 
-        const StringRefNull type_name = get_data_type_io_name(meta_data.data_type);
-        io_attribute->append_str("type", type_name);
+    const StringRefNull type_name = get_data_type_io_name(meta_data.data_type);
+    io_attribute->append_str("type", type_name);
 
-        const bke::GAttributeReader attribute = attributes.lookup(attribute_id);
-        const GVArraySpan attribute_span(attribute.varray);
-        const int64_t binary_size = attribute_span.size() * attribute_span.type().size();
+    const bke::GAttributeReader attribute = attributes.lookup(attribute_id);
+    const GVArraySpan attribute_span(attribute.varray);
+    const int64_t binary_size = attribute_span.size() * attribute_span.type().size();
 
-        auto io_attribute_data = write_bdata(
-            Span<uint8_t>(reinterpret_cast<const uint8_t *>(attribute_span.data()), binary_size));
-        io_attribute_data->append_str("endian", get_endian_io_name(ENDIAN_ORDER));
-        io_attribute->append("data", io_attribute_data);
+    auto io_attribute_data = bdata_writer.write(attribute_span.data(), binary_size).serialize();
+    io_attribute_data->append_str("endian", get_endian_io_name(ENDIAN_ORDER));
+    io_attribute->append("data", io_attribute_data);
 
-        return true;
-      });
+    return true;
+  });
   return io_attributes;
 }
 
 static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
-    const GeometrySet &geometry, const WriteBDataFn write_bdata)
+    const GeometrySet &geometry, BDataWriter &bdata_writer)
 {
   auto io_geometry = std::make_shared<io::serialize::DictionaryValue>();
   if (geometry.has_mesh()) {
@@ -275,9 +335,10 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
     io_mesh->append_int("num_corners", mesh.totloop);
 
     if (mesh.totpoly > 0) {
-      auto io_polygon_indices = write_bdata(
-          Span<uint8_t>(reinterpret_cast<const uint8_t *>(mesh.poly_offset_indices),
-                        int64_t(sizeof(*mesh.poly_offset_indices)) * mesh.totpoly + 1));
+      auto io_polygon_indices = bdata_writer
+                                    .write(mesh.poly_offset_indices,
+                                           int64_t(sizeof(int)) * mesh.totpoly + 1)
+                                    .serialize();
       io_polygon_indices->append_str("endian", get_endian_io_name(ENDIAN_ORDER));
       io_mesh->append("poly_offset_indices", io_polygon_indices);
     }
@@ -285,7 +346,7 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
     auto io_materials = serialize_material_slots({mesh.mat, mesh.totcol});
     io_mesh->append("materials", io_materials);
 
-    auto io_attributes = serialize_attributes(mesh.attributes(), write_bdata);
+    auto io_attributes = serialize_attributes(mesh.attributes(), bdata_writer);
     io_mesh->append("attributes", io_attributes);
   }
   if (geometry.has_pointcloud()) {
@@ -297,7 +358,7 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
     auto io_materials = serialize_material_slots({pointcloud.mat, pointcloud.totcol});
     io_pointcloud->append("materials", io_materials);
 
-    auto io_attributes = serialize_attributes(pointcloud.attributes(), write_bdata);
+    auto io_attributes = serialize_attributes(pointcloud.attributes(), bdata_writer);
     io_pointcloud->append("attributes", io_attributes);
   }
   if (geometry.has_curves()) {
@@ -308,9 +369,10 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
     io_curves->append_int("num_curves", curves.geometry.curve_num);
 
     if (curves.geometry.curve_num > 0) {
-      auto io_curve_indices = write_bdata(Span<uint8_t>(
-          reinterpret_cast<const uint8_t *>(curves.geometry.curve_offsets),
-          int64_t(sizeof(*curves.geometry.curve_offsets)) * curves.geometry.curve_num + 1));
+      auto io_curve_indices = bdata_writer
+                                  .write(curves.geometry.curve_offsets,
+                                         int64_t(sizeof(int)) * curves.geometry.curve_num + 1)
+                                  .serialize();
       io_curve_indices->append_str("endian", get_endian_io_name(ENDIAN_ORDER));
       io_curves->append("curve_offsets", io_curve_indices);
     }
@@ -318,7 +380,7 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
     auto io_materials = serialize_material_slots({curves.mat, curves.totcol});
     io_curves->append("materials", io_materials);
 
-    auto io_attributes = serialize_attributes(curves.geometry.wrap().attributes(), write_bdata);
+    auto io_attributes = serialize_attributes(curves.geometry.wrap().attributes(), bdata_writer);
     io_curves->append("attributes", io_attributes);
   }
   return io_geometry;
@@ -424,9 +486,9 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
                     modifier_meta_dirs[modifier_i].c_str(),
                     (frame_str + ".json").c_str());
 
-      int64_t binary_file_offset = 0;
       BLI_make_existing_file(bdata_path);
-      fstream binary_data_file{bdata_path, std::ios::out | std::ios::binary};
+      fstream bdata_file{bdata_path, std::ios::out | std::ios::binary};
+      BDataWriter bdata_writer{bdata_file_name, bdata_file, 0};
 
       io::serialize::DictionaryValue io_root;
       io_root.append_int("version", 1);
@@ -467,15 +529,7 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
 
               const GeometrySet &geometry = geometry_state_item->geometry();
 
-              auto io_geometry = serialize_geometry_set(geometry, [&](const Span<uint8_t> data) {
-                binary_data_file.write(reinterpret_cast<const char *>(data.data()), data.size());
-                auto io_data_ref = std::make_shared<io::serialize::DictionaryValue>();
-                io_data_ref->append_str("name", bdata_file_name);
-                io_data_ref->append_int("start", binary_file_offset);
-                io_data_ref->append_int("size", data.size());
-                binary_file_offset += data.size();
-                return io_data_ref;
-              });
+              auto io_geometry = serialize_geometry_set(geometry, bdata_writer);
               io_state_item->append("data", io_geometry);
             }
           }
