@@ -425,12 +425,24 @@ void blend_to_neighbor_fcurve_segment(struct FCurve *fcu,
                                       struct FCurveSegment *segment,
                                       float factor);
 void breakdown_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
+
 /**
  * Get a 1D gauss kernel. Since the kernel is symmetrical, only calculates the positive side.
  * \param sigma: The shape of the gauss distribution.
  * \param kernel_size: How long the kernel array is.
  */
 void ED_ANIM_get_1d_gauss_kernel(const float sigma, int kernel_size, double *r_kernel);
+/**
+ * Get butterworth coefficients.
+ */
+void ED_anim_get_butterworth_coefficients(float cutoff,
+                                          int filter_order,
+                                          double *coeff_filtered,
+                                          double *coeff_samples);
+void butterworth_smooth_fcurve_segment(struct FCurve *fcu,
+                                       struct FCurveSegment *segment,
+                                       float factor,
+                                       float smoothing_power);
 void smooth_fcurve_segment(struct FCurve *fcu,
                            struct FCurveSegment *segment,
                            float *samples,

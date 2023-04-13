@@ -1315,3 +1315,83 @@ void GRAPH_OT_gaussian_smooth(wmOperatorType *ot)
               32);
 }
 /** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Butterworth Operator
+ * \{ */
+
+static void btw_smooth_graph_keys(bAnimContext *ac, const float factor, const float f_cutoff_fac)
+{
+  ListBase anim_data = {NULL, NULL};
+  ANIM_animdata_filter(ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, ac->datatype);
+
+  bAnimListElem *ale;
+
+  for (ale = anim_data.first; ale; ale = ale->next) {
+    FCurve *fcu = (FCurve *)ale->key_data;
+    ListBase segments = find_fcurve_segments(fcu);
+    LISTBASE_FOREACH (FCurveSegment *, segment, &segments) {
+      butterworth_smooth_fcurve_segment(fcu, segment, factor, f_cutoff_fac);
+    }
+    BLI_freelistN(&segments);
+    ale->update |= ANIM_UPDATE_DEFAULT;
+  }
+
+  ANIM_animdata_update(ac, &anim_data);
+  ANIM_animdata_freelist(&anim_data);
+}
+
+static int btw_exec(bContext *C, wmOperator *op)
+{
+  bAnimContext ac;
+
+  if (ANIM_animdata_get_context(C, &ac) == 0) {
+    return OPERATOR_CANCELLED;
+  }
+  const float factor = RNA_float_get(op->ptr, "factor");
+  const float freq_cutoff = RNA_float_get(op->ptr, "frequency_cutoff");
+  btw_smooth_graph_keys(&ac, factor, freq_cutoff);
+
+  /* Set notifier that keyframes have changed. */
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+
+  return OPERATOR_FINISHED;
+}
+
+void GRAPH_OT_butterworth_smooth(wmOperatorType *ot)
+{
+  /* Identifiers. */
+  ot->name = "Butterworth Smooth";
+  ot->idname = "GRAPH_OT_butterworth_smooth";
+  ot->description = "Smooth an F-Curve while maintaining the general shape of the curve";
+
+  /* API callbacks. */
+  /* ot->invoke = fft_invoke; */
+  /* ot->modal = fft_modal; */
+  ot->exec = btw_exec;
+  ot->poll = graphop_editable_keyframes_poll;
+
+  /* Flags. */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  RNA_def_float_factor(ot->srna,
+                       "factor",
+                       1.0f / 3.0f,
+                       0,
+                       FLT_MAX,
+                       "Factor",
+                       "How much to blend to the default value",
+                       0.0f,
+                       2.0f);
+
+  RNA_def_float_factor(ot->srna,
+                       "frequency_cutoff",
+                       2.0f / 3.0f,
+                       0.0001f,
+                       1,
+                       "Frquency Cutoff",
+                       "At which frquency the factor should be applied",
+                       0.0001f,
+                       1.0f);
+}
+/** \} */

@@ -397,6 +397,102 @@ void blend_to_default_fcurve(PointerRNA *id_ptr, FCurve *fcu, const float factor
     move_key(&fcu->bezt[i], key_y_value);
   }
 }
+
+/* ---------------- */
+
+void ED_anim_get_butterworth_coefficients(const float cutoff,
+                                          const int filter_order,
+                                          double *coeff_filtered,
+                                          double *coeff_samples)
+{
+  const double ita = 1.0 / tan(M_PI * cutoff);
+
+  coeff_samples[0] = 1.0 / (1.0 + M_SQRT2 * ita + ita * ita);
+  coeff_samples[1] = 2 * coeff_samples[0];
+  coeff_samples[2] = coeff_samples[0];
+
+  coeff_filtered[1] = 2.0 * (ita * ita - 1.0) * coeff_samples[0];
+  coeff_filtered[2] = -(1.0 - M_SQRT2 * ita + ita * ita) * coeff_samples[0];
+
+  double s = 1.0f;
+  const double a = tan(M_PI * cutoff / s);
+  const double a2 = a * a;
+  const int n = filter_order;
+  double *A = (double *)malloc(n * sizeof(double));
+  double *d1 = (double *)malloc(n * sizeof(double));
+  double *d2 = (double *)malloc(n * sizeof(double));
+
+  for (int i = 0; i < filter_order; i++) {
+    double r = sin(M_PI * (2.0 * i + 1.0) / (4.0 * filter_order));
+    s = a2 + 2.0 * a * r + 1.0;
+    A[i] = a2 / s;
+    d1[i] = 2.0 * (1 - a2) / s;
+    d2[i] = -(a2 - 2.0 * a * r + 1.0) / s;
+  }
+
+  MEM_freeN(A);
+  MEM_freeN(d1);
+  MEM_freeN(d2);
+}
+
+void butterworth_smooth_fcurve_segment(FCurve *fcu,
+                                       FCurveSegment *segment,
+                                       const float factor,
+                                       const float smoothing_power)
+{
+  BezTriple left_bezt = fcu->bezt[segment->start_index];
+  BezTriple right_bezt = fcu->bezt[segment->start_index + segment->length - 1];
+
+  const int filter_order = 3;
+  const int sample_count = (int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) + filter_order * 2;
+  float *samples = MEM_callocN(sizeof(float) * sample_count, "Smooth FCurve Op Samples");
+  float *fwd_filtered_values = MEM_callocN(sizeof(float) * sample_count,
+                                           "Filtered forward FCurve Values");
+  float *bwd_filtered_values = MEM_callocN(sizeof(float) * sample_count,
+                                           "Filtered backwards FCurve Values");
+  sample_fcurve_segment(fcu, left_bezt.vec[1][0] - filter_order, samples, sample_count);
+
+  double coeff_filtered[3];
+  double coeff_samples[3];
+
+  ED_anim_get_butterworth_coefficients(
+      smoothing_power / 2, filter_order, coeff_filtered, coeff_samples);
+
+  for (int i = filter_order; i <= sample_count - filter_order; i++) {
+    for (int j = 0; j < filter_order; j++) {
+      /* code */
+    }
+
+    const float bezt_y = coeff_samples[0] * samples[i] + coeff_samples[1] * samples[i - 1] +
+                         coeff_samples[2] * samples[i - 2] +
+                         coeff_filtered[1] * fwd_filtered_values[i - 1] +
+                         coeff_filtered[2] * fwd_filtered_values[i - 2];
+    fwd_filtered_values[i] = bezt_y;
+  }
+
+  for (int i = sample_count - filter_order; i >= filter_order; i--) {
+    const float bezt_y = coeff_samples[0] * samples[i] + coeff_samples[1] * samples[i + 1] +
+                         coeff_samples[2] * samples[i + 2] +
+                         coeff_filtered[1] * bwd_filtered_values[i + 1] +
+                         coeff_filtered[2] * bwd_filtered_values[i + 2];
+    bwd_filtered_values[i] = bezt_y;
+  }
+
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+    const int filter_index = (int)(fcu->bezt[i].vec[1][0] -
+                                   fcu->bezt[segment->start_index].vec[1][0]) +
+                             filter_order;
+    const float filter_value = (fwd_filtered_values[filter_index] +
+                                bwd_filtered_values[filter_index]) /
+                               2;
+    fcu->bezt[i].vec[1][1] = interpf(filter_value, samples[filter_index], factor);
+  }
+
+  MEM_freeN(fwd_filtered_values);
+  MEM_freeN(bwd_filtered_values);
+  MEM_freeN(samples);
+}
+
 /* ---------------- */
 
 void ED_ANIM_get_1d_gauss_kernel(const float sigma, const int kernel_size, double *r_kernel)

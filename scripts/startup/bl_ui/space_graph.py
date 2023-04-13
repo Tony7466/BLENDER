@@ -331,6 +331,7 @@ class GRAPH_MT_slider(Menu):
         layout.operator("graph.blend_to_default", text="Blend to Default Value")
         layout.operator("graph.ease", text="Ease")
         layout.operator("graph.gaussian_smooth", text="Smooth")
+        layout.operator("graph.butterworth_smooth")
 
 
 class GRAPH_MT_view_pie(Menu):
