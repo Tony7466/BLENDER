@@ -503,4 +503,28 @@ void DeferredPipeline::render(View &view,
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Volume Pipeline
+ *
+ * \{ */
+
+void VolumePipeline::sync()
+{
+  volume_ps_.init();
+  volume_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ADD);
+  inst_.volumes.bind_common_resources(volume_ps_);
+}
+
+PassMain::Sub *VolumePipeline::volume_material_add(GPUMaterial *gpumat)
+{
+  return &volume_ps_.sub(GPU_material_get_name(gpumat));
+}
+
+void VolumePipeline::render(View &view)
+{
+  inst_.manager->submit(volume_ps_, view);
+}
+
+/** \} */
+
 }  // namespace blender::eevee

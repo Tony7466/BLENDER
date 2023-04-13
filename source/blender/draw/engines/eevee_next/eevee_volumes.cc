@@ -206,9 +206,6 @@ void Volumes::begin_sync()
   world_ps_.init();
   world_ps_.state_set(DRW_STATE_WRITE_COLOR);
 
-  objects_ps_.init();
-  objects_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ADD);
-
   GPUMaterial *mat = nullptr;
 
   /* World Volumetric */
@@ -251,9 +248,6 @@ void Volumes::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHand
     }
   }
 
-  MaterialPass material_pass = inst_.materials.material_pass_get(
-      ob, material, MAT_PIPE_VOLUME, MAT_GEOM_VOLUME_OBJECT);
-
   float3x3 world_matrix = float3x3(float4x4(ob->object_to_world));
   float3 size = math::to_scale(world_matrix);
   /* Check if any of the axes have 0 length. (see #69070) */
@@ -261,6 +255,9 @@ void Volumes::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHand
   if (size.x < epsilon || size.y < epsilon || size.z < epsilon) {
     return;
   }
+
+  MaterialPass material_pass = inst_.materials.material_pass_get(
+      ob, material, MAT_PIPE_VOLUME, MAT_GEOM_VOLUME_OBJECT);
 
   /* If shader failed to compile or is currently compiling. */
   if (material_pass.gpumat == nullptr) {
@@ -272,13 +269,9 @@ void Volumes::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHand
     return;
   }
 
-  /* TODO (Miguel Pozo): Fix material sub passes for volume materials. */
-  // PassMain::Sub &ps = material_pass.sub_pass->sub(ob->id.name);
-  PassMain::Sub &ps = objects_ps_.sub(ob->id.name);
-  ps.material_set(*inst_.manager, material_pass.gpumat);
+  PassMain::Sub &ps = material_pass.sub_pass->sub(ob->id.name);
   if (volume_sub_pass(ps, inst_.scene, ob, material_pass.gpumat)) {
     enabled_ = true;
-    bind_common_resources(ps);
     ps.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z * 3, -1, res_handle);
   }
 }
@@ -376,7 +369,7 @@ void Volumes::draw_compute(View &view)
 
   volumetric_fb_.bind();
   inst_.manager->submit(world_ps_, view);
-  inst_.manager->submit(objects_ps_, view);
+  inst_.pipelines.volume.render(view);
 
   scatter_fb_.ensure(GPU_ATTACHMENT_NONE,
                      GPU_ATTACHMENT_TEXTURE(scatter_tx_.current()),

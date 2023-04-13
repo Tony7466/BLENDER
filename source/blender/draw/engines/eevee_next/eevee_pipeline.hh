@@ -183,6 +183,28 @@ class DeferredPipeline {
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Volume Pass
+ *
+ * \{ */
+
+class VolumePipeline {
+ private:
+  Instance &inst_;
+
+  PassMain volume_ps_ = {"Volume.Objects"};
+
+ public:
+  VolumePipeline(Instance &inst) : inst_(inst){};
+
+  PassMain::Sub *volume_material_add(GPUMaterial *gpumat);
+
+  void sync();
+  void render(View &view);
+};
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Utility texture
  *
  * 64x64 2D array texture containing LUT tables and blue noises.
@@ -269,17 +291,20 @@ class PipelineModule {
   DeferredPipeline deferred;
   ForwardPipeline forward;
   ShadowPipeline shadow;
+  VolumePipeline volume;
 
   UtilityTexture utility_tx;
 
  public:
-  PipelineModule(Instance &inst) : world(inst), deferred(inst), forward(inst), shadow(inst){};
+  PipelineModule(Instance &inst)
+      : world(inst), deferred(inst), forward(inst), shadow(inst), volume(inst){};
 
   void begin_sync()
   {
     deferred.begin_sync();
     forward.sync();
     shadow.sync();
+    volume.sync();
   }
 
   void end_sync()
@@ -316,10 +341,8 @@ class PipelineModule {
           return forward.material_transparent_add(ob, blender_mat, gpumat);
         }
         return forward.material_opaque_add(blender_mat, gpumat);
-
       case MAT_PIPE_VOLUME:
-        /* TODO(fclem) volume pass. */
-        return nullptr;
+        return volume.volume_material_add(gpumat);
       case MAT_PIPE_SHADOW:
         return shadow.surface_material_add(gpumat);
     }

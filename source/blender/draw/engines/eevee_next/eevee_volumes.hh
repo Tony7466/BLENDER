@@ -29,7 +29,6 @@ class Volumes {
   Framebuffer resolve_fb_;
 
   PassSimple world_ps_ = {"Volumes.World"};
-  PassMain objects_ps_ = {"Volumes.Objects"};
   PassSimple scatter_ps_ = {"Volumes.Scatter"};
   PassSimple integration_ps_ = {"Volumes.Integration"};
   PassSimple resolve_ps_ = {"Volumes.Resolve"};
@@ -38,14 +37,14 @@ class Volumes {
   int current_sample_;
   float4x4 prev_view_projection_matrix;
 
+ public:
   template<typename PassType> void bind_common_resources(PassType &ps)
   {
-    ps.bind_ubo("volumes_buf", data_);
+    ps.bind_ubo(VOLUMES_BUF_SLOT, data_);
     inst_.lights.bind_resources(&ps);
     inst_.shadows.bind_resources(&ps);
   }
 
- public:
   Volumes(Instance &inst) : inst_(inst){};
 
   ~Volumes(){};
