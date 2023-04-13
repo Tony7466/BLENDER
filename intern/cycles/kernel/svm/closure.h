@@ -696,7 +696,8 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       break;
     }
 #ifdef __HAIR__
-    case CLOSURE_BSDF_HAIR_PRINCIPLED_ID: {
+    case CLOSURE_BSDF_HAIR_PRINCIPLED_ID:
+    case CLOSURE_BSDF_HAIR_MICROFACET_ID: {
       uint4 data_node2 = read_node(kg, &offset);
       uint4 data_node3 = read_node(kg, &offset);
       uint4 data_node4 = read_node(kg, &offset);
@@ -708,127 +709,16 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       float alpha = stack_load_float_default(stack, offset_ofs, data_node.z);
       float ior = stack_load_float_default(stack, ior_ofs, data_node.w);
 
-      uint coat_ofs, melanin_ofs, melanin_redness_ofs, absorption_coefficient_ofs;
+      uint shared_ofs1, melanin_ofs, melanin_redness_ofs, absorption_coefficient_ofs;
       svm_unpack_node_uchar4(data_node2.x,
-                             &coat_ofs,
+                             &shared_ofs1,
                              &melanin_ofs,
                              &melanin_redness_ofs,
                              &absorption_coefficient_ofs);
 
-      uint tint_ofs, random_ofs, random_color_ofs, random_roughness_ofs;
+      uint tint_ofs, random_ofs, random_color_ofs, shared_ofs2;
       svm_unpack_node_uchar4(
-          data_node3.x, &tint_ofs, &random_ofs, &random_color_ofs, &random_roughness_ofs);
-
-      const AttributeDescriptor attr_descr_random = find_attribute(kg, sd, data_node4.y);
-      float random = 0.0f;
-      if (attr_descr_random.offset != ATTR_STD_NOT_FOUND) {
-        random = primitive_surface_attribute_float(kg, sd, attr_descr_random, NULL, NULL);
-      }
-      else {
-        random = stack_load_float_default(stack, random_ofs, data_node3.y);
-      }
-
-      ccl_private PrincipledHairBSDF *bsdf = (ccl_private PrincipledHairBSDF *)bsdf_alloc(
-          sd, sizeof(PrincipledHairBSDF), weight);
-      if (bsdf) {
-        ccl_private PrincipledHairExtra *extra = (ccl_private PrincipledHairExtra *)
-            closure_alloc_extra(sd, sizeof(PrincipledHairExtra));
-
-        if (!extra)
-          break;
-
-        /* Random factors range: [-randomization/2, +randomization/2]. */
-        float random_roughness = stack_load_float_default(
-            stack, random_roughness_ofs, data_node3.w);
-        float factor_random_roughness = 1.0f + 2.0f * (random - 0.5f) * random_roughness;
-        float roughness = param1 * factor_random_roughness;
-        float radial_roughness = param2 * factor_random_roughness;
-
-        /* Remap Coat value to [0, 100]% of Roughness. */
-        float coat = stack_load_float_default(stack, coat_ofs, data_node2.y);
-        float m0_roughness = 1.0f - clamp(coat, 0.0f, 1.0f);
-
-        bsdf->N = maybe_ensure_valid_specular_reflection(sd, N);
-        bsdf->v = roughness;
-        bsdf->s = radial_roughness;
-        bsdf->m0_roughness = m0_roughness;
-        bsdf->alpha = alpha;
-        bsdf->eta = ior;
-        bsdf->extra = extra;
-
-        switch (parametrization) {
-          case NODE_PRINCIPLED_HAIR_DIRECT_ABSORPTION: {
-            float3 absorption_coefficient = stack_load_float3(stack, absorption_coefficient_ofs);
-            bsdf->sigma = rgb_to_spectrum(absorption_coefficient);
-            break;
-          }
-          case NODE_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION: {
-            float melanin = stack_load_float_default(stack, melanin_ofs, data_node2.z);
-            float melanin_redness = stack_load_float_default(
-                stack, melanin_redness_ofs, data_node2.w);
-
-            /* Randomize melanin. */
-            float random_color = stack_load_float_default(stack, random_color_ofs, data_node3.z);
-            random_color = clamp(random_color, 0.0f, 1.0f);
-            float factor_random_color = 1.0f + 2.0f * (random - 0.5f) * random_color;
-            melanin *= factor_random_color;
-
-            /* Map melanin 0..inf from more perceptually linear 0..1. */
-            melanin = -logf(fmaxf(1.0f - melanin, 0.0001f));
-
-            /* Benedikt Bitterli's melanin ratio remapping. */
-            float eumelanin = melanin * (1.0f - melanin_redness);
-            float pheomelanin = melanin * melanin_redness;
-            Spectrum melanin_sigma = bsdf_hair_sigma_from_concentration(eumelanin, pheomelanin);
-
-            /* Optional tint. */
-            float3 tint = stack_load_float3(stack, tint_ofs);
-            Spectrum tint_sigma = bsdf_hair_sigma_from_reflectance(rgb_to_spectrum(tint),
-                                                                   radial_roughness);
-
-            bsdf->sigma = melanin_sigma + tint_sigma;
-            break;
-          }
-          case NODE_PRINCIPLED_HAIR_REFLECTANCE: {
-            float3 color = stack_load_float3(stack, color_ofs);
-            bsdf->sigma = bsdf_hair_sigma_from_reflectance(rgb_to_spectrum(color),
-                                                           radial_roughness);
-            break;
-          }
-          default: {
-            /* Fallback to brownish hair, same as defaults for melanin. */
-            kernel_assert(!"Invalid Principled Hair parametrization!");
-            bsdf->sigma = bsdf_hair_sigma_from_concentration(0.0f, 0.8054375f);
-            break;
-          }
-        }
-
-        sd->flag |= bsdf_principled_hair_setup(sd, bsdf);
-      }
-      break;
-    }
-    case CLOSURE_BSDF_HAIR_MICROFACET_ID: {
-      uint4 data_node2 = read_node(kg, &offset);
-      uint4 data_node3 = read_node(kg, &offset);
-      uint4 data_node4 = read_node(kg, &offset);
-
-      Spectrum weight = sd->svm_closure_weight * mix_weight;
-
-      uint offset_ofs, ior_ofs, color_ofs, parametrization;
-      svm_unpack_node_uchar4(data_node.y, &offset_ofs, &ior_ofs, &color_ofs, &parametrization);
-      float tilt = stack_load_float_default(stack, offset_ofs, data_node.z);
-      float ior = stack_load_float_default(stack, ior_ofs, data_node.w);
-
-      uint aspect_ratio_ofs, melanin_ofs, melanin_redness_ofs, absorption_coefficient_ofs;
-      svm_unpack_node_uchar4(data_node2.x,
-                             &aspect_ratio_ofs,
-                             &melanin_ofs,
-                             &melanin_redness_ofs,
-                             &absorption_coefficient_ofs);
-
-      uint tint_ofs, random_ofs, random_color_ofs, attr_normal;
-      svm_unpack_node_uchar4(
-          data_node3.x, &tint_ofs, &random_ofs, &random_color_ofs, &attr_normal);
+          data_node3.x, &tint_ofs, &random_ofs, &random_color_ofs, &shared_ofs2);
 
       const AttributeDescriptor attr_descr_random = find_attribute(kg, sd, data_node3.w);
       float random = 0.0f;
@@ -839,92 +729,126 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
         random = stack_load_float_default(stack, random_ofs, data_node3.y);
       }
 
-      uint R_ofs, TT_ofs, TRT_ofs, distribution_type;
-      svm_unpack_node_uchar4(data_node4.x, &R_ofs, &TT_ofs, &TRT_ofs, &distribution_type);
-      float R = stack_load_float_default(stack, R_ofs, data_node4.y);
-      float TT = stack_load_float_default(stack, TT_ofs, data_node4.z);
-      float TRT = stack_load_float_default(stack, TRT_ofs, data_node4.w);
+      /* Random factors range: [-randomization/2, +randomization/2]. */
+      float random_roughness = param2;
+      float factor_random_roughness = 1.0f + 2.0f * (random - 0.5f) * random_roughness;
+      float roughness = param1 * factor_random_roughness;
+      float radial_roughness = (type == CLOSURE_BSDF_HAIR_PRINCIPLED_ID) ?
+                                   stack_load_float_default(stack, shared_ofs2, data_node4.y) *
+                                       factor_random_roughness :
+                                   roughness;
 
-      ccl_private MicrofacetHairBSDF *bsdf = (ccl_private MicrofacetHairBSDF *)bsdf_alloc(
-          sd, sizeof(MicrofacetHairBSDF), weight);
-      if (bsdf) {
-        ccl_private MicrofacetHairLobeFactor *factor = (ccl_private MicrofacetHairLobeFactor *)
-            closure_alloc_extra(sd, sizeof(MicrofacetHairLobeFactor));
-
-        if (!factor) {
+      Spectrum sigma;
+      switch (parametrization) {
+        case NODE_HAIR_DIRECT_ABSORPTION: {
+          float3 absorption_coefficient = stack_load_float3(stack, absorption_coefficient_ofs);
+          sigma = rgb_to_spectrum(absorption_coefficient);
           break;
         }
+        case NODE_HAIR_PIGMENT_CONCENTRATION: {
+          float melanin = stack_load_float_default(stack, melanin_ofs, data_node2.z);
+          float melanin_redness = stack_load_float_default(
+              stack, melanin_redness_ofs, data_node2.w);
 
-        bsdf->factor = factor;
-        bsdf->factor->R = fmaxf(0.0f, R);
-        bsdf->factor->TT = fmaxf(0.0f, TT);
-        bsdf->factor->TRT = fmaxf(0.0f, TRT);
+          /* Randomize melanin. */
+          float random_color = stack_load_float_default(stack, random_color_ofs, data_node3.z);
+          random_color = clamp(random_color, 0.0f, 1.0f);
+          float factor_random_color = 1.0f + 2.0f * (random - 0.5f) * random_color;
+          melanin *= factor_random_color;
 
-        bsdf->aspect_ratio = stack_load_float_default(stack, aspect_ratio_ofs, data_node2.y);
+          /* Map melanin 0..inf from more perceptually linear 0..1. */
+          melanin = -logf(fmaxf(1.0f - melanin, 0.0001f));
 
-        if (bsdf->aspect_ratio != 1.0f) {
-          /* Align ellipse major axis with the curve normal direction. */
-          const AttributeDescriptor attr_descr_normal = find_attribute(kg, sd, attr_normal);
-          bsdf->N = curve_attribute_float3(kg, sd, attr_descr_normal, NULL, NULL);
+          /* Benedikt Bitterli's melanin ratio remapping. */
+          float eumelanin = melanin * (1.0f - melanin_redness);
+          float pheomelanin = melanin * melanin_redness;
+          Spectrum melanin_sigma = bsdf_hair_sigma_from_concentration(eumelanin, pheomelanin);
+
+          /* Optional tint. */
+          float3 tint = stack_load_float3(stack, tint_ofs);
+          Spectrum tint_sigma = bsdf_hair_sigma_from_reflectance(rgb_to_spectrum(tint),
+                                                                 radial_roughness);
+
+          sigma = melanin_sigma + tint_sigma;
+          break;
         }
-
-        /* Random factors range: [-randomization/2, +randomization/2]. */
-        float random_roughness = param2;
-        float factor_random_roughness = 1.0f + 2.0f * (random - 0.5f) * random_roughness;
-        float roughness = param1 * factor_random_roughness;
-
-        bsdf->distribution_type = distribution_type;
-        bsdf->roughness = roughness;
-        bsdf->tilt = tilt;
-        bsdf->eta = ior;
-
-        switch (parametrization) {
-          case NODE_MICROFACET_HAIR_DIRECT_ABSORPTION: {
-            float3 absorption_coefficient = stack_load_float3(stack, absorption_coefficient_ofs);
-            bsdf->sigma = rgb_to_spectrum(absorption_coefficient);
-            break;
-          }
-          case NODE_MICROFACET_HAIR_PIGMENT_CONCENTRATION: {
-            float melanin = stack_load_float_default(stack, melanin_ofs, data_node2.z);
-            float melanin_redness = stack_load_float_default(
-                stack, melanin_redness_ofs, data_node2.w);
-
-            /* Randomize melanin. */
-            float random_color = stack_load_float_default(stack, random_color_ofs, data_node3.z);
-            random_color = clamp(random_color, 0.0f, 1.0f);
-            float factor_random_color = 1.0f + 2.0f * (random - 0.5f) * random_color;
-            melanin *= factor_random_color;
-
-            /* Map melanin 0..inf from more perceptually linear 0..1. */
-            melanin = -logf(fmaxf(1.0f - melanin, 0.0001f));
-
-            /* Benedikt Bitterli's melanin ratio remapping. */
-            float eumelanin = melanin * (1.0f - melanin_redness);
-            float pheomelanin = melanin * melanin_redness;
-            Spectrum melanin_sigma = bsdf_hair_sigma_from_concentration(eumelanin, pheomelanin);
-
-            /* Optional tint. */
-            float3 tint = stack_load_float3(stack, tint_ofs);
-            Spectrum tint_sigma = bsdf_hair_sigma_from_reflectance(rgb_to_spectrum(tint),
-                                                                   roughness);
-
-            bsdf->sigma = melanin_sigma + tint_sigma;
-            break;
-          }
-          case NODE_MICROFACET_HAIR_REFLECTANCE: {
-            float3 color = stack_load_float3(stack, color_ofs);
-            bsdf->sigma = bsdf_hair_sigma_from_reflectance(rgb_to_spectrum(color), roughness);
-            break;
-          }
-          default: {
-            /* Fallback to brownish hair, same as defaults for melanin. */
-            kernel_assert(!"Invalid Microfacet Hair parametrization!");
-            bsdf->sigma = bsdf_hair_sigma_from_concentration(0.0f, 0.8054375f);
-            break;
-          }
+        case NODE_HAIR_REFLECTANCE: {
+          float3 color = stack_load_float3(stack, color_ofs);
+          sigma = bsdf_hair_sigma_from_reflectance(rgb_to_spectrum(color), radial_roughness);
+          break;
         }
+        default: {
+          /* Fallback to brownish hair, same as defaults for melanin. */
+          kernel_assert(!"Invalid Hair parametrization!");
+          sigma = bsdf_hair_sigma_from_concentration(0.0f, 0.8054375f);
+          break;
+        }
+      }
 
-        sd->flag |= bsdf_microfacet_hair_setup(sd, bsdf);
+      if (type == CLOSURE_BSDF_HAIR_PRINCIPLED_ID) {
+        ccl_private PrincipledHairBSDF *bsdf = (ccl_private PrincipledHairBSDF *)bsdf_alloc(
+            sd, sizeof(PrincipledHairBSDF), weight);
+        if (bsdf) {
+          ccl_private PrincipledHairExtra *extra = (ccl_private PrincipledHairExtra *)
+              closure_alloc_extra(sd, sizeof(PrincipledHairExtra));
+
+          if (!extra) {
+            break;
+          }
+
+          /* Remap Coat value to [0, 100]% of Roughness. */
+          float coat = stack_load_float_default(stack, shared_ofs1, data_node2.y);
+          float m0_roughness = 1.0f - clamp(coat, 0.0f, 1.0f);
+
+          bsdf->N = maybe_ensure_valid_specular_reflection(sd, N);
+          bsdf->v = roughness;
+          bsdf->s = radial_roughness;
+          bsdf->m0_roughness = m0_roughness;
+          bsdf->alpha = alpha;
+          bsdf->eta = ior;
+          bsdf->extra = extra;
+          bsdf->sigma = sigma;
+
+          sd->flag |= bsdf_principled_hair_setup(sd, bsdf);
+        }
+      }
+      else {
+        ccl_private MicrofacetHairBSDF *bsdf = (ccl_private MicrofacetHairBSDF *)bsdf_alloc(
+            sd, sizeof(MicrofacetHairBSDF), weight);
+        if (bsdf) {
+          ccl_private MicrofacetHairLobeFactor *factor = (ccl_private MicrofacetHairLobeFactor *)
+              closure_alloc_extra(sd, sizeof(MicrofacetHairLobeFactor));
+
+          if (!factor) {
+            break;
+          }
+
+          uint R_ofs, TT_ofs, TRT_ofs, distribution_type;
+          svm_unpack_node_uchar4(data_node4.x, &R_ofs, &TT_ofs, &TRT_ofs, &distribution_type);
+          float R = stack_load_float_default(stack, R_ofs, data_node4.y);
+          float TT = stack_load_float_default(stack, TT_ofs, data_node4.z);
+          float TRT = stack_load_float_default(stack, TRT_ofs, data_node4.w);
+
+          bsdf->factor = factor;
+          bsdf->factor->R = fmaxf(0.0f, R);
+          bsdf->factor->TT = fmaxf(0.0f, TT);
+          bsdf->factor->TRT = fmaxf(0.0f, TRT);
+
+          bsdf->aspect_ratio = stack_load_float_default(stack, shared_ofs1, data_node2.y);
+          if (bsdf->aspect_ratio != 1.0f) {
+            /* Align ellipse major axis with the curve normal direction. */
+            const AttributeDescriptor attr_descr_normal = find_attribute(kg, sd, shared_ofs2);
+            bsdf->N = curve_attribute_float3(kg, sd, attr_descr_normal, NULL, NULL);
+          }
+
+          bsdf->distribution_type = distribution_type;
+          bsdf->roughness = roughness;
+          bsdf->tilt = alpha;
+          bsdf->eta = ior;
+          bsdf->sigma = sigma;
+
+          sd->flag |= bsdf_microfacet_hair_setup(sd, bsdf);
+        }
       }
       break;
     }

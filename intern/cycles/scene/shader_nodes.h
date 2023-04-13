@@ -878,7 +878,7 @@ class PrincipledHairBsdfNode : public BsdfBaseNode {
   /* If linked, here will be the given random number. */
   NODE_SOCKET_API(float, random)
   /* Selected coloring parametrization. */
-  NODE_SOCKET_API(NodePrincipledHairParametrization, parametrization)
+  NODE_SOCKET_API(NodeHairParametrization, parametrization)
 };
 
 /* Interface between the I/O sockets and the SVM/OSL backend. */
@@ -921,7 +921,7 @@ class MicrofacetHairBsdfNode : public BsdfBaseNode {
   /* If linked, here will be the given random number. */
   NODE_SOCKET_API(float, random)
   /* Selected coloring parametrization. */
-  NODE_SOCKET_API(NodeMicrofacetHairParametrization, parametrization)
+  NODE_SOCKET_API(NodeHairParametrization, parametrization)
   /* Selected microfacet distribution type. */
   NODE_SOCKET_API(NodeMicrofacetHairDistributionType, distribution_type)
 };

@@ -388,19 +388,12 @@ typedef enum ShaderType {
   SHADER_TYPE_BUMP,
 } ShaderType;
 
-typedef enum NodePrincipledHairParametrization {
-  NODE_PRINCIPLED_HAIR_REFLECTANCE = 0,
-  NODE_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION = 1,
-  NODE_PRINCIPLED_HAIR_DIRECT_ABSORPTION = 2,
-  NODE_PRINCIPLED_HAIR_NUM,
-} NodePrincipledHairParametrization;
-
-typedef enum NodeMicrofacetHairParametrization {
-  NODE_MICROFACET_HAIR_REFLECTANCE = 0,
-  NODE_MICROFACET_HAIR_PIGMENT_CONCENTRATION = 1,
-  NODE_MICROFACET_HAIR_DIRECT_ABSORPTION = 2,
-  NODE_MICROFACET_HAIR_NUM,
-} NodeMicrofacetHairParametrization;
+typedef enum NodeHairParametrization {
+  NODE_HAIR_REFLECTANCE = 0,
+  NODE_HAIR_PIGMENT_CONCENTRATION = 1,
+  NODE_HAIR_DIRECT_ABSORPTION = 2,
+  NODE_HAIR_NUM,
+} NodeHairParametrization;
 
 typedef enum NodeMicrofacetHairDistributionType {
   NODE_MICROFACET_HAIR_GGX = 0,

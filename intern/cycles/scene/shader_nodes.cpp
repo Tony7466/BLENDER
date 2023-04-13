@@ -3520,11 +3520,10 @@ NODE_DEFINE(PrincipledHairBsdfNode)
 
   /* Color parametrization specified as enum. */
   static NodeEnum parametrization_enum;
-  parametrization_enum.insert("Direct coloring", NODE_PRINCIPLED_HAIR_REFLECTANCE);
-  parametrization_enum.insert("Melanin concentration", NODE_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION);
-  parametrization_enum.insert("Absorption coefficient", NODE_PRINCIPLED_HAIR_DIRECT_ABSORPTION);
-  SOCKET_ENUM(
-      parametrization, "Parametrization", parametrization_enum, NODE_PRINCIPLED_HAIR_REFLECTANCE);
+  parametrization_enum.insert("Direct coloring", NODE_HAIR_REFLECTANCE);
+  parametrization_enum.insert("Melanin concentration", NODE_HAIR_PIGMENT_CONCENTRATION);
+  parametrization_enum.insert("Absorption coefficient", NODE_HAIR_DIRECT_ABSORPTION);
+  SOCKET_ENUM(parametrization, "Parametrization", parametrization_enum, NODE_HAIR_REFLECTANCE);
 
   /* Initialize sockets to their default values. */
   SOCKET_IN_COLOR(color, "Color", make_float3(0.017513f, 0.005763f, 0.002059f));
@@ -3611,15 +3610,17 @@ void PrincipledHairBsdfNode::compile(SVMCompiler &compiler)
       NODE_CLOSURE_BSDF,
       /* Socket IDs can be packed 4 at a time into a single data packet */
       compiler.encode_uchar4(
-          closure, roughness_ofs, radial_roughness_ofs, compiler.closure_mix_weight_offset()),
+          closure, roughness_ofs, random_roughness_ofs, compiler.closure_mix_weight_offset()),
       /* The rest are stored as unsigned integers */
       __float_as_uint(roughness),
-      __float_as_uint(radial_roughness));
+      __float_as_uint(random_roughness));
+
   /* data node */
   compiler.add_node(normal_ofs,
                     compiler.encode_uchar4(offset_ofs, ior_ofs, color_ofs, parametrization),
                     __float_as_uint(offset),
                     __float_as_uint(ior));
+
   /* data node 2 */
   compiler.add_node(compiler.encode_uchar4(
                         coat_ofs, melanin_ofs, melanin_redness_ofs, absorption_coefficient_ofs),
@@ -3629,16 +3630,16 @@ void PrincipledHairBsdfNode::compile(SVMCompiler &compiler)
 
   /* data node 3 */
   compiler.add_node(
-      compiler.encode_uchar4(tint_ofs, random_in_ofs, random_color_ofs, random_roughness_ofs),
+      compiler.encode_uchar4(tint_ofs, random_in_ofs, random_color_ofs, radial_roughness_ofs),
       __float_as_uint(random),
       __float_as_uint(random_color),
-      __float_as_uint(random_roughness));
+      attr_random);
 
   /* data node 4 */
   compiler.add_node(
       compiler.encode_uchar4(
           SVM_STACK_INVALID, SVM_STACK_INVALID, SVM_STACK_INVALID, SVM_STACK_INVALID),
-      attr_random,
+      __float_as_uint(radial_roughness),
       SVM_STACK_INVALID,
       SVM_STACK_INVALID);
 }
@@ -3658,11 +3659,10 @@ NODE_DEFINE(MicrofacetHairBsdfNode)
 
   /* Color parametrization specified as enum. */
   static NodeEnum parametrization_enum;
-  parametrization_enum.insert("Direct coloring", NODE_MICROFACET_HAIR_REFLECTANCE);
-  parametrization_enum.insert("Melanin concentration", NODE_MICROFACET_HAIR_PIGMENT_CONCENTRATION);
-  parametrization_enum.insert("Absorption coefficient", NODE_MICROFACET_HAIR_DIRECT_ABSORPTION);
-  SOCKET_ENUM(
-      parametrization, "Parametrization", parametrization_enum, NODE_MICROFACET_HAIR_REFLECTANCE);
+  parametrization_enum.insert("Direct coloring", NODE_HAIR_REFLECTANCE);
+  parametrization_enum.insert("Melanin concentration", NODE_HAIR_PIGMENT_CONCENTRATION);
+  parametrization_enum.insert("Absorption coefficient", NODE_HAIR_DIRECT_ABSORPTION);
+  SOCKET_ENUM(parametrization, "Parametrization", parametrization_enum, NODE_HAIR_REFLECTANCE);
 
   /* Hair microfacet normal distribution mode specified as enum. */
   static NodeEnum distribution_type_enum;
