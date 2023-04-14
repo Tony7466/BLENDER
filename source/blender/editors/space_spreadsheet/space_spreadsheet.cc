@@ -335,8 +335,8 @@ static float get_default_column_width(const ColumnValues &values)
       return float_width;
     case SPREADSHEET_VALUE_TYPE_FLOAT:
       return float_width;
-    case SPREADSHEET_VALUE_TYPE_FLOAT2:
     case SPREADSHEET_VALUE_TYPE_INT32_2D:
+    case SPREADSHEET_VALUE_TYPE_FLOAT2:
       return 2.0f * float_width;
     case SPREADSHEET_VALUE_TYPE_FLOAT3:
       return 3.0f * float_width;

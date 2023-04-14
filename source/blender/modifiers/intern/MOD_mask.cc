@@ -50,9 +50,9 @@
 #include "BLI_vector.hh"
 
 using blender::Array;
-using blender::int2;
 using blender::float3;
 using blender::IndexRange;
+using blender::int2;
 using blender::ListBaseWrapper;
 using blender::MutableSpan;
 using blender::Span;
@@ -427,13 +427,9 @@ static void copy_masked_edges_to_new_mesh(const Mesh &src_mesh,
       continue;
     }
 
-    const int2 &e_src = src_edges[i_src];
-    int2 &e_dst = dst_edges[i_dst];
-
     CustomData_copy_data(&src_mesh.edata, &dst_mesh.edata, i_src, i_dst, 1);
-    e_dst = e_src;
-    e_dst[0] = vertex_map[e_src[0]];
-    e_dst[1] = vertex_map[e_src[1]];
+    dst_edges[i_dst][0] = vertex_map[src_edges[i_src][0]];
+    dst_edges[i_dst][1] = vertex_map[src_edges[i_src][1]];
   }
 }
 

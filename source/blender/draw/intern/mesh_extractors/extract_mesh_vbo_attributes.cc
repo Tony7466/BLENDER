@@ -88,13 +88,6 @@ template<> struct AttributeTypeConverter<ColorGeometry4b, gpuMeshCol> {
   }
 };
 
-template<> struct AttributeTypeConverter<int2, int3> {
-  static int3 convert_value(int2 value)
-  {
-    return {value[0], value[1], 0};
-  }
-};
-
 /* Return the number of component for the attribute's value type, or 0 if is it unsupported. */
 static uint gpu_component_size_for_attribute_type(eCustomDataType type)
 {
@@ -137,8 +130,8 @@ static GPUVertCompType get_comp_type_for_type(eCustomDataType type)
 {
   switch (type) {
     case CD_PROP_INT8:
-    case CD_PROP_INT32:
     case CD_PROP_INT32_2D:
+    case CD_PROP_INT32:
       return GPU_COMP_I32;
     case CD_PROP_BYTE_COLOR:
       /* This should be u8,
@@ -305,9 +298,6 @@ static void extract_attr(const MeshRenderData *mr,
       break;
     case CD_PROP_INT8:
       extract_attr_generic<int8_t, int3>(mr, vbo, request);
-      break;
-    case CD_PROP_INT32_2D:
-      extract_attr_generic<int2, int3>(mr, vbo, request);
       break;
     case CD_PROP_INT32:
       extract_attr_generic<int32_t, int3>(mr, vbo, request);

@@ -674,7 +674,7 @@ bool ED_object_modifier_convert_psys_to_mesh(ReportList * /*reports*/,
     for (int k = 0; k <= kmax; k++, key++, cvert++, vert_index++) {
       positions[vert_index] = key->co;
       if (k) {
-        edges[edge_index] = {cvert - 1, cvert};
+        edges[edge_index] = int2(cvert - 1, cvert);
         edge_index++;
       }
       else {
@@ -691,7 +691,7 @@ bool ED_object_modifier_convert_psys_to_mesh(ReportList * /*reports*/,
     for (int k = 0; k <= kmax; k++, key++, cvert++, vert_index++) {
       copy_v3_v3(positions[vert_index], key->co);
       if (k) {
-        edges[edge_index] = {cvert - 1, cvert};
+        edges[edge_index] = int2(cvert - 1, cvert);
         edge_index++;
       }
       else {
@@ -2898,7 +2898,7 @@ static void skin_armature_bone_create(Object *skin_ob,
     }
     BLI_BITMAP_ENABLE(edges_visited, endx);
 
-    int v = (edge[0] == parent_v ? edge[1] : edge[0]);
+    int v = blender::bke::mesh::edge_other_vert(edge, parent_v);
 
     EditBone *bone = ED_armature_ebone_add(arm, "Bone");
 

@@ -2028,14 +2028,14 @@ static const char *LAYERTYPENAMES[CD_NUMTYPES] = {
 
 const CustomData_MeshMasks CD_MASK_BAREMESH = {
     /*vmask*/ CD_MASK_PROP_FLOAT3,
-    /*emask*/ CD_MASK_PROP_INT2,
+    /*emask*/ CD_MASK_PROP_INT32_2D,
     /*fmask*/ 0,
     /*pmask*/ CD_MASK_FACEMAP,
     /*lmask*/ CD_MASK_PROP_INT32,
 };
 const CustomData_MeshMasks CD_MASK_BAREMESH_ORIGINDEX = {
     /*vmask*/ CD_MASK_PROP_FLOAT3 | CD_MASK_ORIGINDEX,
-    /*emask*/ CD_MASK_PROP_INT2 | CD_MASK_ORIGINDEX,
+    /*emask*/ CD_MASK_PROP_INT32_2D | CD_MASK_ORIGINDEX,
     /*fmask*/ 0,
     /*pmask*/ CD_MASK_FACEMAP | CD_MASK_ORIGINDEX,
     /*lmask*/ CD_MASK_PROP_INT32,
@@ -5368,8 +5368,6 @@ const blender::CPPType *custom_data_type_to_cpp_type(const eCustomDataType type)
       return &CPPType::get<bool>();
     case CD_PROP_INT8:
       return &CPPType::get<int8_t>();
-    case CD_PROP_INT32_2D:
-      return &CPPType::get<int2>();
     case CD_PROP_BYTE_COLOR:
       return &CPPType::get<ColorGeometry4b>();
     case CD_PROP_STRING:
@@ -5404,9 +5402,6 @@ eCustomDataType cpp_type_to_custom_data_type(const blender::CPPType &type)
   }
   if (type.is<int8_t>()) {
     return CD_PROP_INT8;
-  }
-  if (type.is<int2>()) {
-    return CD_PROP_INT32_2D;
   }
   if (type.is<ColorGeometry4b>()) {
     return CD_PROP_BYTE_COLOR;

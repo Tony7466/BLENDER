@@ -111,8 +111,7 @@ static VArray<float3> construct_uv_gvarray(const Mesh &mesh,
                                        mp_select.data());
   }
   for (const int i : seam) {
-    const int2 &edge = edges[i];
-    geometry::ParamKey vkeys[2]{uint(edge[0]), uint(edge[1])};
+    geometry::ParamKey vkeys[2]{uint(edges[i][0]), uint(edges[i][1])};
     geometry::uv_parametrizer_edge_set_seam(handle, vkeys);
   }
   /* TODO: once field input nodes are able to emit warnings (#94039), emit a

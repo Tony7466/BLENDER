@@ -2062,7 +2062,6 @@ MEdge *BKE_mesh_legacy_convert_edges_to_medge(
     blender::Vector<CustomDataLayer, 16> &edge_layers_to_write)
 {
   using namespace blender;
-
   const Span<int2> edges = mesh->edges();
 
   CustomDataLayer medge_layer{};

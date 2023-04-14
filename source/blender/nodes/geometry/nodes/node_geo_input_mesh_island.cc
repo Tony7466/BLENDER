@@ -38,7 +38,7 @@ class IslandFieldInput final : public bke::MeshFieldInput {
 
     AtomicDisjointSet islands(mesh.totvert);
     threading::parallel_for(edges.index_range(), 1024, [&](const IndexRange range) {
-      for (const  int2 &edge : edges.slice(range)) {
+      for (const int2 &edge : edges.slice(range)) {
         islands.join(edge[0], edge[1]);
       }
     });
@@ -82,7 +82,7 @@ class IslandCountFieldInput final : public bke::MeshFieldInput {
 
     AtomicDisjointSet islands(mesh.totvert);
     threading::parallel_for(edges.index_range(), 1024, [&](const IndexRange range) {
-      for (const  int2 &edge : edges.slice(range)) {
+      for (const int2 &edge : edges.slice(range)) {
         islands.join(edge[0], edge[1]);
       }
     });

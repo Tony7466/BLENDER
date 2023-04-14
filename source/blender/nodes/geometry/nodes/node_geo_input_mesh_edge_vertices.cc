@@ -34,10 +34,9 @@ static VArray<int> construct_edge_verts_gvarray(const Mesh &mesh,
   const Span<int2> edges = mesh.edges();
   if (domain == ATTR_DOMAIN_EDGE) {
     if (vertex == VertNumber::V1) {
-      return VArray<int>::ForFunc(edges.size(),
-                                  [edges](const int i) -> int { return edges[i][0]; });
+      return VArray<int>::ForFunc(edges.size(), [edges](const int i) { return edges[i][0]; });
     }
-    return VArray<int>::ForFunc(edges.size(), [edges](const int i) -> int { return edges[i][1]; });
+    return VArray<int>::ForFunc(edges.size(), [edges](const int i) { return edges[i][1]; });
   }
   return {};
 }

@@ -516,12 +516,9 @@ static void add_edge(const Span<int2> src_edges,
                      Vector<int2> &new_edges,
                      Vector<int> &loop_edges)
 {
-  int2 new_edge = src_edges[old_edge_i];
-  new_edge[0] = v1;
-  new_edge[1] = v2;
   const int new_edge_i = new_edges.size();
   new_to_old_edges_map.append(old_edge_i);
-  new_edges.append(new_edge);
+  new_edges.append({v1, v2});
   loop_edges.append(new_edge_i);
 }
 
@@ -566,29 +563,24 @@ static void dissolve_redundant_verts(const Span<int2> edges,
     bool edge_created = false;
     for (const int edge_i : corner_edges.slice(polys[first_poly_index])) {
       const int2 &edge = edges[edge_i];
-      const int v1 = edge[0];
-      const int v2 = edge[1];
       bool mark_edge = false;
       if (vertex_needs_dissolving(
-              v1, first_poly_index, second_poly_index, vertex_types, vert_to_poly_map)) {
+              edge[0], first_poly_index, second_poly_index, vertex_types, vert_to_poly_map)) {
         /* This vertex is now 'removed' and should be ignored elsewhere. */
-        vertex_types[v1] = VertexType::Loose;
+        vertex_types[edge[0]] = VertexType::Loose;
         mark_edge = true;
       }
       if (vertex_needs_dissolving(
-              v2, first_poly_index, second_poly_index, vertex_types, vert_to_poly_map)) {
+              edge[1], first_poly_index, second_poly_index, vertex_types, vert_to_poly_map)) {
         /* This vertex is now 'removed' and should be ignored elsewhere. */
-        vertex_types[v2] = VertexType::Loose;
+        vertex_types[edge[1]] = VertexType::Loose;
         mark_edge = true;
       }
       if (mark_edge) {
         if (!edge_created) {
-          int2 new_edge = int2(edge);
           /* The vertex indices in the dual mesh are the polygon indices of the input mesh. */
-          new_edge[0] = first_poly_index;
-          new_edge[1] = second_poly_index;
           new_to_old_edges_map.append(edge_i);
-          new_edges.append(new_edge);
+          new_edges.append({first_poly_index, second_poly_index});
           edge_created = true;
         }
         old_to_new_edges_map[edge_i] = new_edge_index;
@@ -749,12 +741,9 @@ static Mesh *calc_dual_mesh(const Mesh &src_mesh,
         const int old_edge_i = shared_edges[i];
         if (old_to_new_edges_map[old_edge_i] == -1) {
           /* This edge has not been created yet. */
-          int2 new_edge = src_edges[old_edge_i];
-          new_edge[0] = loop_indices[i];
-          new_edge[1] = loop_indices[(i + 1) % loop_indices.size()];
           new_to_old_edges_map.append(old_edge_i);
           old_to_new_edges_map[old_edge_i] = new_edges.size();
-          new_edges.append(new_edge);
+          new_edges.append({loop_indices[i], loop_indices[(i + 1) % loop_indices.size()]});
         }
         loop_edges.append(old_to_new_edges_map[old_edge_i]);
       }
@@ -791,12 +780,9 @@ static Mesh *calc_dual_mesh(const Mesh &src_mesh,
         const int old_edge_i = shared_edges[i];
         if (old_to_new_edges_map[old_edge_i] == -1) {
           /* This edge has not been created yet. */
-          int2 new_edge = src_edges[old_edge_i];
-          new_edge[0] = loop_indices[i];
-          new_edge[1] = loop_indices[i + 1];
           new_to_old_edges_map.append(old_edge_i);
           old_to_new_edges_map[old_edge_i] = new_edges.size();
-          new_edges.append(new_edge);
+          new_edges.append({loop_indices[i], loop_indices[i + 1]});
         }
         loop_edges.append(old_to_new_edges_map[old_edge_i]);
       }

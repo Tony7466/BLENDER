@@ -242,10 +242,7 @@ class MeshFairingContext : public FairingContext {
   int other_vertex_index_from_loop(const int loop, const uint v) override
   {
     const blender::int2 &edge = edges_[corner_edges_[loop]];
-    if (edge[0] == v) {
-      return edge[1];
-    }
-    return edge[0];
+    return blender::bke::mesh::edge_other_vert(edge, v);
   }
 
  protected:

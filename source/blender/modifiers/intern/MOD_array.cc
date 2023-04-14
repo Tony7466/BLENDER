@@ -318,8 +318,7 @@ static void mesh_merge_transform(Mesh *result,
   /* adjust cap edge vertex indices */
   edge = &result_edges[cap_edges_index];
   for (i = 0; i < cap_nedges; i++, edge++) {
-    (*edge)[0] += cap_verts_index;
-    (*edge)[1] += cap_verts_index;
+    (*edge) += cap_verts_index;
   }
 
   /* Adjust cap poly loop-start indices. */
@@ -614,8 +613,7 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
     /* adjust edge vertex indices */
     edge = &result_edges[c * chunk_nedges];
     for (i = 0; i < chunk_nedges; i++, edge++) {
-      (*edge)[0] += c * chunk_nverts;
-      (*edge)[1] += c * chunk_nverts;
+      (*edge) += c * chunk_nverts;
     }
 
     for (i = 0; i < chunk_npolys; i++) {
