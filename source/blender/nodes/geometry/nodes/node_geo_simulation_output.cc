@@ -8,7 +8,6 @@
 #include "DEG_depsgraph_query.h"
 
 #include "UI_interface.h"
-#include "UI_resources.h"
 
 #include "NOD_common.h"
 #include "NOD_socket.h"
@@ -20,20 +19,23 @@ namespace blender::nodes {
 void socket_declarations_for_simulation_items(const Span<NodeSimulationItem> items,
                                               NodeDeclaration &r_declaration)
 {
+  char buf[MAX_NAME];
+
   for (const NodeSimulationItem &item : items) {
     switch (eNodeSocketDatatype(item.socket_type)) {
       case SOCK_GEOMETRY: {
+        BLI_snprintf(buf, sizeof(buf), "Item_%d", item.identifier);
         {
           std::unique_ptr<decl::Geometry> decl = std::make_unique<decl::Geometry>();
           decl->name = item.name ? item.name : "";
-          decl->identifier = item.name ? item.name : "";
+          decl->identifier = buf;
           decl->in_out = SOCK_IN;
           r_declaration.inputs.append(std::move(decl));
         }
         {
           std::unique_ptr<decl::Geometry> decl = std::make_unique<decl::Geometry>();
           decl->name = item.name ? item.name : "";
-          decl->identifier = item.name ? item.name : "";
+          decl->identifier = buf;
           decl->in_out = SOCK_OUT;
           r_declaration.outputs.append(std::move(decl));
         }
@@ -224,10 +226,15 @@ static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeGeometrySimulationOutput *data = MEM_cnew<NodeGeometrySimulationOutput>(__func__);
+
+  data->next_identifier = 0;
+
   data->items = MEM_cnew_array<NodeSimulationItem>(1, __func__);
   data->items[0].name = BLI_strdup(DATA_("Geometry"));
   data->items[0].socket_type = SOCK_GEOMETRY;
+  data->items[0].identifier = data->next_identifier++;
   data->items_num = 1;
+
   node->storage = data;
 }
 
@@ -251,8 +258,11 @@ static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const b
 
   dst_storage->items = MEM_cnew_array<NodeSimulationItem>(src_storage.items_num, __func__);
   dst_storage->items_num = src_storage.items_num;
+  dst_storage->active_index = src_storage.active_index;
+  dst_storage->next_identifier = src_storage.next_identifier;
   for (const int i : IndexRange(src_storage.items_num)) {
     if (char *name = src_storage.items[i].name) {
+      dst_storage->items[i].identifier = src_storage.items[i].identifier;
       dst_storage->items[i].name = BLI_strdup(name);
       dst_storage->items[i].socket_type = src_storage.items[i].socket_type;
     }
@@ -404,16 +414,15 @@ NodeSimulationItem *node_geo_simulation_output_insert_item(NodeGeometrySimulatio
   NodeSimulationItem *old_items = sim->items;
   sim->items = MEM_cnew_array<NodeSimulationItem>(sim->items_num + 1, __func__);
   for (const int i : blender::IndexRange(0, index)) {
-    sim->items[i].name = old_items[i].name;
-    sim->items[i].socket_type = old_items[i].socket_type;
+    sim->items[i] = old_items[i];
   }
   for (const int i : blender::IndexRange(index, sim->items_num - index)) {
-    sim->items[i + 1].name = old_items[i].name;
-    sim->items[i + 1].socket_type = old_items[i].socket_type;
+    sim->items[i + 1] = old_items[i];
   }
 
   const char *defname = nodeStaticSocketLabel(socket_type, 0);
   NodeSimulationItem &added_item = sim->items[index];
+  added_item.identifier = sim->next_identifier++;
   node_geo_simulation_output_item_set_unique_name(sim, &added_item, name, defname);
   added_item.socket_type = socket_type;
 
@@ -454,12 +463,10 @@ void node_geo_simulation_output_remove_item(NodeGeometrySimulationOutput *sim,
   NodeSimulationItem *old_items = sim->items;
   sim->items = MEM_cnew_array<NodeSimulationItem>(sim->items_num - 1, __func__);
   for (const int i : blender::IndexRange(0, index)) {
-    sim->items[i].name = old_items[i].name;
-    sim->items[i].socket_type = old_items[i].socket_type;
+    sim->items[i] = old_items[i];
   }
   for (const int i : blender::IndexRange(index, sim->items_num - index).drop_front(1)) {
-    sim->items[i - 1].name = old_items[i].name;
-    sim->items[i - 1].socket_type = old_items[i].socket_type;
+    sim->items[i - 1] = old_items[i];
   }
 
   MEM_SAFE_FREE(old_items[index].name);

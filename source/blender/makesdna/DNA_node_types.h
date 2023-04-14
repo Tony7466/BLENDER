@@ -1600,7 +1600,9 @@ typedef struct NodeSimulationItem {
   /* #eNodeSocketDatatype. */
   /* TODO: Use a different enum instead to support Byte colors, etc. */
   short socket_type;
-  char _pad[6];
+  short _pad;
+  /* Generates unique identifier for sockets. */
+  int identifier;
 } NodeSimulationItem;
 
 typedef struct NodeGeometrySimulationInput {
@@ -1611,6 +1613,9 @@ typedef struct NodeGeometrySimulationOutput {
   NodeSimulationItem *items;
   int items_num;
   int active_index;
+  /* Number to give unique IDs to state items. */
+  int next_identifier;
+  int _pad;
 } NodeGeometrySimulationOutput;
 
 typedef struct NodeGeometryDistributePointsInVolume {
