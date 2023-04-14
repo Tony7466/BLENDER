@@ -9,9 +9,7 @@ from bpy.types import (
 from bpy.props import (
     BoolProperty,
     CollectionProperty,
-    EnumProperty,
     FloatVectorProperty,
-    IntProperty,
     StringProperty,
 )
 from mathutils import (
@@ -58,7 +56,7 @@ class NodeAddOperator:
         else:
             space.cursor_location = tree.view_center
 
-    # Deselect all nodes in the tree
+    # Deselect all nodes in the tree.
     @staticmethod
     def deselect_nodes(context):
         space = context.space_data
@@ -122,7 +120,7 @@ class NodeAddOperator:
         return result
 
 
-# Simple basic operator for adding a node
+# Simple basic operator for adding a node.
 class NODE_OT_add_node(NodeAddOperator, Operator):
     '''Add a node to the active tree'''
     bl_idname = "node.add_node"
@@ -134,7 +132,7 @@ class NODE_OT_add_node(NodeAddOperator, Operator):
         description="Node type",
     )
 
-    # Default execute simply adds a node
+    # Default execute simply adds a node.
     def execute(self, context):
         if self.properties.is_property_set("type"):
             self.deselect_nodes(context)
@@ -179,7 +177,7 @@ class NODE_OT_add_simulation_zone(NodeAddOperator, Operator):
         output_node = self.create_node(context, self.output_node_type)
         if input_node is None or output_node is None:
             return {'CANCELLED'}
-    
+
         # Simulation input must be paired with the output.
         input_node.pair_with_output(output_node)
 

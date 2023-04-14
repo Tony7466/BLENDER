@@ -21,7 +21,7 @@ struct bNode *node_geo_simulation_input_get_paired_output(
 
 /**
  * Pair a simulation input node with an output node.
- * @return True if pairing the node was successful.
+ * \return True if pairing the node was successful.
  */
 bool node_geo_simulation_input_pair_with_output(const struct bNodeTree *node_tree,
                                                 struct bNode *simulation_input_node,
