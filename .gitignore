@@ -11,9 +11,6 @@ __pycache__/
 *.swo
 *#
 
-# CLion cmake folders
-cmake-*
-
 # Indexes for emacs, vi & others
 TAGS
 tags
