@@ -2327,20 +2327,18 @@ typedef struct MeshToVolumeModifierData {
 
   /** MeshToVolumeModifierResolutionMode */
   int resolution_mode;
+  /** MeshToVolumeModifierBandUnits */
+  int band_units;
   /** Size of a voxel in object space. */
   float voxel_size;
   /** The desired amount of voxels along one axis. The actual amount of voxels might be slightly
    * different. */
   int voxel_amount;
 
-  /** If true, every cell in the enclosed volume gets a density. Otherwise, the interior_band_width
-   * is used. */
-  char fill_volume;
-  char _pad1[3];
-
-  /** Band widths are in object space. */
+  /** Band width in object space. */
   float interior_band_width;
-  float exterior_band_width;
+  /** Band width in voxels. */
+  int interior_band_voxels;
 
   float density;
   char _pad2[4];
@@ -2353,10 +2351,10 @@ typedef enum MeshToVolumeModifierResolutionMode {
   MESH_TO_VOLUME_RESOLUTION_MODE_VOXEL_SIZE = 1,
 } MeshToVolumeModifierResolutionMode;
 
-typedef enum MeshToVolumeModifierUnits {
+typedef enum MeshToVolumeModifierBandUnits {
   MESH_TO_VOLUME_UNIT_LOCAL = 0,
   MESH_TO_VOLUME_UNIT_VOXELS = 1,
-} MeshToVolumeModifierUnits;
+} MeshToVolumeModifierBandUnits;
 
 typedef struct VolumeDisplaceModifierData {
   ModifierData modifier;

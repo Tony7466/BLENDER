@@ -52,14 +52,14 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
   uiItemR(layout, ptr, "resolution_mode", 0, IFACE_("Resolution"), ICON_NONE);
-  uiItemR(layout, ptr, "units", 0, IFACE_("Units"), ICON_NONE);
+  uiItemR(layout, ptr, "band_units", 0, IFACE_("Units"), ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeGeometryMeshToVolume *data = MEM_cnew<NodeGeometryMeshToVolume>(__func__);
   data->resolution_mode = MESH_TO_VOLUME_RESOLUTION_MODE_VOXEL_AMOUNT;
-  data->units = MESH_TO_VOLUME_UNIT_LOCAL;
+  data->band_units = MESH_TO_VOLUME_UNIT_LOCAL;
   node->storage = data;
 }
 
@@ -77,8 +77,10 @@ static void node_update(bNodeTree *ntree, bNode *node)
 
   bNodeSocket *unit_local_socket = nodeFindSocket(node, SOCK_IN, "Interior Band Width");
   bNodeSocket *unit_voxels_socket = nodeFindSocket(node, SOCK_IN, "Interior Band Voxels");
-  nodeSetSocketAvailability(ntree, unit_local_socket, data.units == MESH_TO_VOLUME_UNIT_LOCAL);
-  nodeSetSocketAvailability(ntree, unit_voxels_socket, data.units == MESH_TO_VOLUME_UNIT_VOXELS);
+  nodeSetSocketAvailability(
+      ntree, unit_local_socket, data.band_units == MESH_TO_VOLUME_UNIT_LOCAL);
+  nodeSetSocketAvailability(
+      ntree, unit_voxels_socket, data.band_units == MESH_TO_VOLUME_UNIT_VOXELS);
 }
 
 #ifdef WITH_OPENVDB
@@ -90,21 +92,25 @@ static Volume *create_volume_from_mesh(const Mesh &mesh, GeoNodeExecParams &para
 
   const float density = params.get_input<float>("Density");
 
-  auto unit_mode = (MeshToVolumeModifierUnits)storage.units;
+  if (mesh.totpoly == 0) {
+    return nullptr;
+  }
+
+  auto unit_mode = (MeshToVolumeModifierBandUnits)storage.band_units;
   float interior_band_width;
 
   if (unit_mode == MESH_TO_VOLUME_UNIT_LOCAL) {
     interior_band_width = params.get_input<float>("Interior Band Width");
-    if (interior_band_width <= 1e-5f) {
+    if (interior_band_width < 1e-5f) {
       return nullptr;
     }
   }
   else {
-    int voxels = params.get_input<int>("Interior Band Voxels");
+    const int voxels = params.get_input<int>("Interior Band Voxels");
     if (voxels < 1) {
       return nullptr;
     }
-    interior_band_width = (float)voxels;
+    interior_band_width = float(voxels);
   }
 
   const float4x4 mesh_to_volume_space_transform = float4x4::identity();
@@ -148,10 +154,6 @@ static Volume *create_volume_from_mesh(const Mesh &mesh, GeoNodeExecParams &para
 
   if (settings.voxel_size < 1e-5f) {
     /* The voxel size is too small. */
-    return nullptr;
-  }
-
-  if (mesh.totpoly == 0) {
     return nullptr;
   }
 

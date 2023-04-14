@@ -49,11 +49,11 @@ static void initData(ModifierData *md)
   MeshToVolumeModifierData *mvmd = reinterpret_cast<MeshToVolumeModifierData *>(md);
   mvmd->object = nullptr;
   mvmd->resolution_mode = MESH_TO_VOLUME_RESOLUTION_MODE_VOXEL_AMOUNT;
+  mvmd->band_units = MESH_TO_VOLUME_UNIT_LOCAL;
   mvmd->voxel_size = 0.1f;
   mvmd->voxel_amount = 32;
-  mvmd->fill_volume = true;
   mvmd->interior_band_width = 0.1f;
-  mvmd->exterior_band_width = 0.1f;
+  mvmd->interior_band_voxels = 3;
   mvmd->density = 1.0f;
 }
 
@@ -89,15 +89,6 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
   {
     uiLayout *col = uiLayoutColumn(layout, false);
-    uiItemR(col, ptr, "use_fill_volume", 0, nullptr, ICON_NONE);
-    uiItemR(col, ptr, "exterior_band_width", 0, nullptr, ICON_NONE);
-
-    uiLayout *subcol = uiLayoutColumn(col, false);
-    uiLayoutSetActive(subcol, !mvmd->fill_volume);
-    uiItemR(subcol, ptr, "interior_band_width", 0, nullptr, ICON_NONE);
-  }
-  {
-    uiLayout *col = uiLayoutColumn(layout, false);
     uiItemR(col, ptr, "resolution_mode", 0, nullptr, ICON_NONE);
     if (mvmd->resolution_mode == MESH_TO_VOLUME_RESOLUTION_MODE_VOXEL_AMOUNT) {
       uiItemR(col, ptr, "voxel_amount", 0, nullptr, ICON_NONE);
@@ -106,7 +97,16 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
       uiItemR(col, ptr, "voxel_size", 0, nullptr, ICON_NONE);
     }
   }
-
+  {
+    uiLayout *col = uiLayoutColumn(layout, false);
+    uiItemR(col, ptr, "band_units", 0, nullptr, ICON_NONE);
+    if (mvmd->band_units == MESH_TO_VOLUME_UNIT_LOCAL) {
+      uiItemR(col, ptr, "interior_band_width", 0, nullptr, ICON_NONE);
+    }
+    else {
+      uiItemR(col, ptr, "interior_band_voxels", 0, nullptr, ICON_NONE);
+    }
+  }
   modifier_panel_end(layout, ptr);
 }
 
@@ -141,14 +141,32 @@ static Volume *mesh_to_volume(ModifierData *md,
     return input_volume;
   }
 
+  auto unit_mode = (MeshToVolumeModifierBandUnits)mvmd->band_units;
+  float interior_band_width;
+
+  if (unit_mode == MESH_TO_VOLUME_UNIT_LOCAL) {
+    interior_band_width = mvmd->interior_band_width;
+    if (interior_band_width < 1e-5f) {
+      return input_volume;
+    }
+  }
+  else {
+    const int voxels = mvmd->interior_band_voxels;
+    if (voxels < 1) {
+      return input_volume;
+    }
+    interior_band_width = float(voxels);
+  }
+
   geometry::MeshToVolumeSettings settings{/* voxels */ 0,
                                           /* voxel_size */ 0.0f,
-                                          /* interior_band_width */ mvmd->interior_band_width,
-                                          /* exterior_band_width */ mvmd->exterior_band_width,
-                                          /* density */ 0.0f,
+                                          /* interior_band_width */ interior_band_width,
+                                          /* exterior_band_width */ 0.0f,
+                                          /* density */ mvmd->density,
                                           /* simplify */ volume_simplify,
-                                          /* fill_volume */ (bool)(mvmd->fill_volume),
-                                          /* use_world_space_units */ true,
+                                          /* fill_volume */ false,
+                                          /* use_world_space_units */ unit_mode ==
+                                              MESH_TO_VOLUME_UNIT_LOCAL,
                                           /* convert_to_fog */ true,
                                           /* unsigned_distance */ false};
 

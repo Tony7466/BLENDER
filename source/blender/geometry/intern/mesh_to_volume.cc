@@ -85,16 +85,16 @@ float volume_compute_voxel_size(const MeshToVolumeSettings &settings,
                                         math::transform_point(transform, bb_min));
 
   if (settings.use_world_space_units) {
-    return (diagonal + settings.exterior_band_width * 2.0f) / (float)settings.voxels;
+    return (diagonal + settings.exterior_band_width * 2.0f) / float(settings.voxels);
   }
-  return diagonal / std::max(1.0f, (float)settings.voxels - 2.0f * settings.exterior_band_width);
+  return diagonal / std::max(1.0f, float(settings.voxels) - 2.0f * settings.exterior_band_width);
 }
 
 static openvdb::FloatGrid::Ptr mesh_to_volume_grid(const Mesh *mesh,
                                                    const float4x4 &mesh_to_volume_space_transform,
                                                    const MeshToVolumeSettings &settings)
 {
-  if (settings.voxel_size == 0.0f) {
+  if (settings.voxel_size < 1e-5f) {
     return nullptr;
   }
 
@@ -111,12 +111,12 @@ static openvdb::FloatGrid::Ptr mesh_to_volume_grid(const Mesh *mesh,
   float interior;
 
   if (settings.use_world_space_units) {
-    exterior = std::max(0.001f, settings.exterior_band_width / settings.voxel_size);
-    interior = std::max(0.001f, settings.interior_band_width / settings.voxel_size);
+    exterior = std::max(1.0f, settings.exterior_band_width / settings.voxel_size);
+    interior = std::max(1.0f, settings.interior_band_width / settings.voxel_size);
   }
   else {
-    exterior = std::max(0.001f, settings.exterior_band_width);
-    interior = std::max(0.001f, settings.interior_band_width);
+    exterior = std::max(1.0f, settings.exterior_band_width);
+    interior = std::max(1.0f, settings.interior_band_width);
   }
 
   openvdb::math::Transform::Ptr transform = openvdb::math::Transform::createLinearTransform(
