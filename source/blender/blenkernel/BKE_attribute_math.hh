@@ -209,7 +209,8 @@ template<>
 inline int2 mix4(
     const float4 &weights, const int2 &v0, const int2 &v1, const int2 &v2, const int2 &v3)
 {
-  return weights.x * v0 + weights.y * v1 + weights.z * v2 + weights.w * v3;
+  return int2(weights.x * float2(v0) + weights.y * float2(v1) + weights.z * float2(v2) +
+              weights.w * float2(v3));
 }
 
 template<>
