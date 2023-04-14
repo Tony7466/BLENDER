@@ -190,7 +190,7 @@ ccl_device_inline float3 sphg_dir(float theta, float gamma, float b)
   else {
     float tan_gamma = sin_gamma / cos_gamma;
     float tan_phi = b * tan_gamma;
-    cos_phi = signf(cos_gamma) / sqrtf(sqr(tan_phi) + 1.0f);
+    cos_phi = signf(cos_gamma) * inversesqrtf(sqr(tan_phi) + 1.0f);
     sin_phi = cos_phi * tan_phi;
   }
   return make_float3(sin_phi * cos_theta, sin_theta, cos_phi * cos_theta);
@@ -638,7 +638,8 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
   const float gamma_mi = is_circular ?
                              asinf(h) :
                              atan2f(cos_phi_i, -b * sin_phi_i) -
-                                 acosf(h * d_i / sqrtf(sqr(cos_phi_i) + sqr(b * sin_phi_i)));
+                                 acosf(h * d_i *
+                                       inversesqrtf(sqr(cos_phi_i) + sqr(b * sin_phi_i)));
 
   const float3 wmi_ = sphg_dir(0, gamma_mi, b); /* Macronormal. */
 
@@ -816,22 +817,22 @@ ccl_device Spectrum bsdf_microfacet_hair_eval(KernelGlobals kg,
   }
 
   /* Evaluate. */
-  float3 R;
+  float3 eval;
   if (bsdf->distribution_type == NODE_MICROFACET_HAIR_BECKMANN) {
-    R = bsdf_microfacet_hair_eval_r<MicrofacetType::BECKMANN>(sc, local_I, local_O) +
-        bsdf_microfacet_hair_eval_tt_trt<MicrofacetType::BECKMANN>(
-            kg, sc, local_I, local_O, sd->lcg_state);
+    eval = bsdf_microfacet_hair_eval_r<MicrofacetType::BECKMANN>(sc, local_I, local_O) +
+           bsdf_microfacet_hair_eval_tt_trt<MicrofacetType::BECKMANN>(
+               kg, sc, local_I, local_O, sd->lcg_state);
   }
   else {
-    R = bsdf_microfacet_hair_eval_r<MicrofacetType::GGX>(sc, local_I, local_O) +
-        bsdf_microfacet_hair_eval_tt_trt<MicrofacetType::GGX>(
-            kg, sc, local_I, local_O, sd->lcg_state);
+    eval = bsdf_microfacet_hair_eval_r<MicrofacetType::GGX>(sc, local_I, local_O) +
+           bsdf_microfacet_hair_eval_tt_trt<MicrofacetType::GGX>(
+               kg, sc, local_I, local_O, sd->lcg_state);
   }
 
   /* TODO: better estimation of the pdf */
   *pdf = 1.0f;
 
-  return rgb_to_spectrum(R / cos_theta(local_I));
+  return rgb_to_spectrum(eval / cos_theta(local_I));
 }
 
 ccl_device int bsdf_microfacet_hair_sample(KernelGlobals kg,
