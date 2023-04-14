@@ -252,6 +252,8 @@ static Span<T> blur_on_mesh_exec(const Span<float> neighbor_weights,
                                  const MutableSpan<T> buffer_a,
                                  const MutableSpan<T> buffer_b)
 {
+  /* Source is set to buffer_b even though it is actually in buffer_a because the loop below starts
+   * with swapping both. */
   MutableSpan<T> src = buffer_b;
   MutableSpan<T> dst = buffer_a;
 
