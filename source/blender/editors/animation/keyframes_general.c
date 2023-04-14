@@ -509,12 +509,12 @@ void push_pull_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float f
     /* For easy calculation of the curve, the  values are normalized. */
     const float normalized_x = (fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range;
 
-    const float lineal = left_key->vec[1][1] + key_y_range * normalized_x;
+    const float linear = left_key->vec[1][1] + key_y_range * normalized_x;
 
-    const float delta = fcu->bezt[i].vec[1][1] - lineal;
+    const float delta = fcu->bezt[i].vec[1][1] - linear;
 
     /* The factor is multiplied by 2 just to increase the effect. */
-    const float key_y_value = lineal + delta * factor * 2;
+    const float key_y_value = linear + delta * factor * 2;
     move_key(&fcu->bezt[i], key_y_value);
   }
 }
