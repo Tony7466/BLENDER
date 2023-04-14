@@ -675,12 +675,10 @@ ccl_device_noinline bool light_tree_sample(KernelGlobals kg,
   float pdf_leaf = 1.0f;
   float pdf_selection = 1.0f;
   int selected_emitter = -1;
-
+  int object = 0;
   int node_index = 0; /* Root node. */
 
   float3 local_P = P;
-
-  int object;
 
   /* Traverse the light tree until a leaf node is reached. */
   while (true) {
