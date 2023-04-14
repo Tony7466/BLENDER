@@ -191,7 +191,7 @@ static int8_t int2_to_int8(const int2 &a)
 }
 static float int2_to_float(const int2 &a)
 {
-  return float2_to_float(int2_to_float2(a));
+  return float2_to_float(float2(a));
 }
 static float3 int2_to_float3(const int2 &a)
 {
