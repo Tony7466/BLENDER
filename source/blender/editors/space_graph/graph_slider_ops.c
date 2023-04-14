@@ -1402,7 +1402,7 @@ void GRAPH_OT_butterworth_smooth(wmOperatorType *ot)
 
   RNA_def_float_factor(ot->srna,
                        "frequency_cutoff",
-                       1.0f,
+                       0.5f,
                        0.0001f,
                        1.0f,
                        "Frquency Cutoff",
@@ -1413,11 +1413,11 @@ void GRAPH_OT_butterworth_smooth(wmOperatorType *ot)
   RNA_def_int(ot->srna,
               "filter_order",
               4,
-              2,
+              1,
               32,
               "Filter Order",
               "Higher values produce a harder frequency cutoff",
-              2,
+              1,
               16);
 }
 /** \} */
