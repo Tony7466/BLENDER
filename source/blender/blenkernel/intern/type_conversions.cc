@@ -175,7 +175,7 @@ static ColorGeometry4b int_to_byte_color(const int32_t &a)
 
 static bool int2_to_bool(const int2 &a)
 {
-  return math::is_zero(a);
+  return !math::is_zero(a);
 }
 static float2 int2_to_float2(const int2 &a)
 {
