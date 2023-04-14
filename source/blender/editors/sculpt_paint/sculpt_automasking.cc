@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+ * Copyright 2020 Blender Foundation */
 
 /** \file
  * \ingroup edsculpt
@@ -179,6 +179,10 @@ static float sculpt_automasking_normal_calc(SculptSession *ss,
 
 static bool sculpt_automasking_is_constrained_by_radius(const Brush *br)
 {
+  if (br == nullptr) {
+    return false;
+  }
+
   /* 2D falloff is not constrained by radius. */
   if (br->falloff_shape == PAINT_FALLOFF_SHAPE_TUBE) {
     return false;

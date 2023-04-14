@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+ * Copyright 2020 Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -34,9 +34,8 @@ void multires_reshape_apply_base_update_mesh_coords(MultiresReshapeContext *resh
   /* Update the context in case the vertices were duplicated. */
   reshape_context->base_positions = base_positions;
 
-  const blender::Span<MLoop> loops = reshape_context->base_loops;
-  for (const int loop_index : loops.index_range()) {
-    const MLoop *loop = &loops[loop_index];
+  const blender::Span<int> corner_verts = reshape_context->base_corner_verts;
+  for (const int loop_index : corner_verts.index_range()) {
 
     GridCoord grid_coord;
     grid_coord.grid_index = loop_index;
@@ -52,7 +51,7 @@ void multires_reshape_apply_base_update_mesh_coords(MultiresReshapeContext *resh
     float D[3];
     mul_v3_m3v3(D, tangent_matrix, grid_element.displacement);
 
-    add_v3_v3v3(base_positions[loop->v], P, D);
+    add_v3_v3v3(base_positions[corner_verts[loop_index]], P, D);
   }
 }
 
@@ -75,11 +74,9 @@ void multires_reshape_apply_base_refit_base_mesh(MultiresReshapeContext *reshape
   int *pmap_mem;
   BKE_mesh_vert_poly_map_create(&pmap,
                                 &pmap_mem,
-                                reshape_context->base_polys.data(),
-                                reshape_context->base_loops.data(),
-                                base_mesh->totvert,
-                                base_mesh->totpoly,
-                                base_mesh->totloop);
+                                reshape_context->base_polys,
+                                reshape_context->base_corner_verts.data(),
+                                base_mesh->totvert);
 
   float(*origco)[3] = static_cast<float(*)[3]>(
       MEM_calloc_arrayN(base_mesh->totvert, sizeof(float[3]), __func__));
@@ -98,11 +95,11 @@ void multires_reshape_apply_base_refit_base_mesh(MultiresReshapeContext *reshape
     /* Find center. */
     int tot = 0;
     for (int j = 0; j < pmap[i].count; j++) {
-      const MPoly &poly = reshape_context->base_polys[pmap[i].indices[j]];
+      const blender::IndexRange poly = reshape_context->base_polys[pmap[i].indices[j]];
 
       /* This double counts, not sure if that's bad or good. */
-      for (int k = 0; k < poly.totloop; k++) {
-        const int vndx = reshape_context->base_loops[poly.loopstart + k].v;
+      for (const int corner : poly) {
+        const int vndx = reshape_context->base_corner_verts[corner];
         if (vndx != i) {
           add_v3_v3(center, origco[vndx]);
           tot++;
@@ -113,16 +110,16 @@ void multires_reshape_apply_base_refit_base_mesh(MultiresReshapeContext *reshape
 
     /* Find normal. */
     for (int j = 0; j < pmap[i].count; j++) {
-      const MPoly &poly = reshape_context->base_polys[pmap[i].indices[j]];
+      const blender::IndexRange poly = reshape_context->base_polys[pmap[i].indices[j]];
 
       /* Set up poly, loops, and coords in order to call #bke::mesh::poly_normal_calc(). */
-      blender::Array<MLoop> fake_loops(poly.totloop);
-      blender::Array<blender::float3> fake_co(poly.totloop);
+      blender::Array<int> poly_verts(poly.size());
+      blender::Array<blender::float3> fake_co(poly.size());
 
-      for (int k = 0; k < poly.totloop; k++) {
-        const int vndx = reshape_context->base_loops[poly.loopstart + k].v;
+      for (int k = 0; k < poly.size(); k++) {
+        const int vndx = reshape_context->base_corner_verts[poly[k]];
 
-        fake_loops[k].v = k;
+        poly_verts[k] = k;
 
         if (vndx == i) {
           copy_v3_v3(fake_co[k], center);
@@ -132,7 +129,7 @@ void multires_reshape_apply_base_refit_base_mesh(MultiresReshapeContext *reshape
         }
       }
 
-      const blender::float3 no = blender::bke::mesh::poly_normal_calc(fake_co, fake_loops);
+      const blender::float3 no = blender::bke::mesh::poly_normal_calc(fake_co, poly_verts);
       add_v3_v3(avg_no, no);
     }
     normalize_v3(avg_no);

@@ -113,6 +113,8 @@
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf.h"
 
+#include "DRW_engine.h"
+
 #include "bmesh.h"
 
 CurveMapping *BKE_sculpt_default_cavity_curve()
@@ -380,9 +382,10 @@ static void scene_free_markers(Scene *scene, bool do_id_user)
 
 static void scene_free_data(ID *id)
 {
-
   Scene *scene = (Scene *)id;
   const bool do_id_user = false;
+
+  DRW_drawdata_free(id);
 
   SEQ_editing_free(scene, do_id_user);
 
@@ -760,7 +763,7 @@ static void scene_foreach_layer_collection(LibraryForeachIDData *data, ListBase 
      * anyway... */
     const int cb_flag = (lc->collection != nullptr &&
                          (lc->collection->id.flag & LIB_EMBEDDED_DATA) != 0) ?
-                            IDWALK_CB_EMBEDDED :
+                            IDWALK_CB_EMBEDDED_NOT_OWNING :
                             IDWALK_CB_NOP;
     BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, lc->collection, cb_flag | IDWALK_CB_DIRECT_WEAK_LINK);
     scene_foreach_layer_collection(data, &lc->layer_collections);

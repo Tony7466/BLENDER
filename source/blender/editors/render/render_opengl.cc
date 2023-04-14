@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup render
@@ -51,7 +51,7 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
-#include "ED_gpencil.h"
+#include "ED_gpencil_legacy.h"
 #include "ED_screen.h"
 #include "ED_view3d.h"
 #include "ED_view3d_offscreen.h"

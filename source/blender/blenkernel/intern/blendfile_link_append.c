@@ -923,8 +923,8 @@ static int foreach_libblock_link_append_callback(LibraryIDLinkCallbackData *cb_d
 {
   /* NOTE: It is important to also skip liboverride references here, as those should never be made
    * local. */
-  if (cb_data->cb_flag & (IDWALK_CB_EMBEDDED | IDWALK_CB_INTERNAL | IDWALK_CB_LOOPBACK |
-                          IDWALK_CB_OVERRIDE_LIBRARY_REFERENCE)) {
+  if (cb_data->cb_flag & (IDWALK_CB_EMBEDDED | IDWALK_CB_EMBEDDED_NOT_OWNING | IDWALK_CB_INTERNAL |
+                          IDWALK_CB_LOOPBACK | IDWALK_CB_OVERRIDE_LIBRARY_REFERENCE)) {
     return IDWALK_RET_NOP;
   }
 
@@ -1294,6 +1294,7 @@ void BKE_blendfile_link(BlendfileLinkAppendContext *lapp_context, ReportList *re
     BLO_library_link_end(mainl, &blo_handle, lapp_context->params);
     link_append_context_library_blohandle_release(lapp_context, lib_context);
   }
+  (void)item_idx; /* Quiet set-but-unused warning (may be removed). */
 
   /* Instantiate newly linked IDs as needed, if no append is scheduled. */
   if ((lapp_context->params->flag & FILE_LINK) != 0 &&
@@ -1688,6 +1689,7 @@ void BKE_blendfile_library_relocate(BlendfileLinkAppendContext *lapp_context,
     /* Should not be needed, all tagged IDs should have been deleted above, just 'in case'. */
     BKE_main_id_tag_all(bmain, LIB_TAG_DOIT, false);
   }
+  (void)item_idx; /* Quiet set-but-unused warning (may be removed). */
 
   /* Some datablocks can get reloaded/replaced 'silently' because they are not linkable
    * (shape keys e.g.), so we need another loop here to clear old ones if possible. */

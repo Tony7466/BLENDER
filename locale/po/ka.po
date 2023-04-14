@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.5.0 Beta (b'4096bcfb25f6')\n"
+"Project-Id-Version: Blender 3.6.0 Alpha (b'bca2090724a3')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-03-13 11:29:34\n"
+"POT-Creation-Date: 2023-04-11 10:34:35\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Tamar Mebonia <tammebonia@gmail.com>, 2023\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -2123,6 +2123,10 @@ msgstr "ფორმების სოლები"
 
 msgid "Shape Key data-blocks"
 msgstr "ფორმების სოლების მონაცემთა ბლოკები"
+
+
+msgid "Simulations"
+msgstr "სიმულაციები"
 
 
 msgid "Sounds"
@@ -12462,10 +12466,6 @@ msgid "Show Scene data-blocks"
 msgstr "აჩვენე სცენის მონაცემთა ბლოკები"
 
 
-msgid "Simulations"
-msgstr "სიმულაციები"
-
-
 msgid "Show Simulation data-blocks"
 msgstr "აჩვენე სიმულაციის მონაცემთა ბლოკები"
 
@@ -12933,10 +12933,6 @@ msgstr "აჩვენე 3გ მოცულობის ფაილებ�
 
 msgid "Library Browser"
 msgstr "ბიბლიოთეკის ბრაუზერი"
-
-
-msgid "Whether we may browse blender files' content or not"
-msgstr "არის თუ არა ნებადართული ბლენდერის ფაილების შიგთავსის დათვალიერება"
 
 
 msgid "Reverse Sorting"
@@ -16331,10 +16327,6 @@ msgstr "გიზმო ჯგუფის შემავალი თვის
 
 msgid "Gizmo Properties"
 msgstr "გიზმოს თვისებები"
-
-
-msgid "Input properties of an Gizmo"
-msgstr "გიზმოს შემავალი თვისებები"
 
 
 msgid "Modifier affecting the Grease Pencil object"
@@ -23947,24 +23939,12 @@ msgid "Resolution X"
 msgstr "გარჩევადობა X"
 
 
-msgid "Number of sample along the x axis of the volume"
-msgstr "სემპლების რაოდენობა ამ მოცულობის x ღერძის გაყოლებაზე"
-
-
 msgid "Resolution Y"
 msgstr "გარჩევადობა Y"
 
 
-msgid "Number of sample along the y axis of the volume"
-msgstr "სემპლების რაოდენობა ამ მოცულობის y ღერძის გაყოლებაზე"
-
-
 msgid "Resolution Z"
 msgstr "გარჩევადობა Z"
-
-
-msgid "Number of sample along the z axis of the volume"
-msgstr "სემპლების რაოდენობა ამ მოცულობის z ღერძის გაყოლებაზე"
 
 
 msgid "Influence Distance"
@@ -31639,6 +31619,10 @@ msgid "Curve Context Menu"
 msgstr "წირის კონტექსტური მენიუ"
 
 
+msgid "Select More/Less"
+msgstr "მეტის/ნაკლების მონიშნვა"
+
+
 msgid "Special Characters"
 msgstr "სპეციალური სიმბოლოები"
 
@@ -31677,10 +31661,6 @@ msgstr "მარყუჟების მონიშნვა"
 
 msgid "Mesh Select Mode"
 msgstr "მეშის მონიშვნის რეჟიმი"
-
-
-msgid "Select More/Less"
-msgstr "მეტის/ნაკლების მონიშნვა"
 
 
 msgid "Select Similar"
@@ -36909,10 +36889,6 @@ msgstr "მონიშნე შაბლონით"
 
 msgid "Select objects matching a naming pattern"
 msgstr "მონიშნე ობიექტები, რომლებიც სახელწოდების შაბლონს ერგება"
-
-
-msgid "Set select on random visible objects"
-msgstr "დააყენე მონიშვნა შემთხვევით ხილულ ობიექტებზე"
 
 
 msgctxt "Operator"
@@ -44369,6 +44345,11 @@ msgstr "ჩართე-გამორთე არეალი სრულ �
 
 
 msgctxt "Operator"
+msgid "Online Manual"
+msgstr "ონლაინ სახელმძღვანელო"
+
+
+msgctxt "Operator"
 msgid "Make"
 msgstr "გააკეთე"
 
@@ -45429,11 +45410,6 @@ msgstr "დააკვანტირე"
 msgctxt "Operator"
 msgid "Limit Total"
 msgstr "შეზღუდე ჯამი"
-
-
-msgctxt "Operator"
-msgid "Fix Deforms"
-msgstr "შეასწორე დეფორმირებები"
 
 
 msgid "Locks"
@@ -46854,11 +46830,6 @@ msgstr "წაშალე მალსახმობი"
 
 
 msgctxt "Operator"
-msgid "Online Manual"
-msgstr "ონლაინ სახელმძღვანელო"
-
-
-msgctxt "Operator"
 msgid "Online Python Reference"
 msgstr "Python-ის ონლაინ ცნობარი"
 
@@ -47341,14 +47312,6 @@ msgstr "აქტიური მეშის ობიექტი არ ა�
 
 msgid "Object has no vertex groups"
 msgstr "ობიექტს წვეროთა ჯგუფი არა აქვს"
-
-
-msgid "Only mesh objects are supported"
-msgstr "მხოლოდ მეშის ობიექტებს აქვს მხარდაჭერა"
-
-
-msgid "The active mesh object has no vertex group data"
-msgstr "აქტიურ მეშ ობიექტის არა აქვს წვეროების ჯგუფის მონაცემები"
 
 
 msgid "Acrylic"
@@ -48223,22 +48186,6 @@ msgstr "კონტექსტური ფანჯარა დაყენ�
 
 msgid "Unable to save an unsaved file with an empty or unset \"filepath\" property"
 msgstr "ცარიელი, ან დაუყენებელი \"filepath\" თვისების მქონე შეუნახავი ფაილის შენახვა შეუძლებელია"
-
-
-msgid "Unknown error loading '%s'"
-msgstr "უცნობი შეცდომა '%s'-ის ჩატვირთვისას"
-
-
-msgid "Application Template '%s' not found"
-msgstr "აპლიკაციის შაბლონი '%s' ნაპოვნი არაა"
-
-
-msgid "Could not read '%s'"
-msgstr "'%s'-ის წაკითხვა ვერ მოხერხდა"
-
-
-msgid "Cannot save blend file, path '%s' is not writable"
-msgstr "blend ფაილის შენახვა შეუძლებელია, მისამართი '%s' ჩაუწერადია"
 
 
 msgid "Not a library"

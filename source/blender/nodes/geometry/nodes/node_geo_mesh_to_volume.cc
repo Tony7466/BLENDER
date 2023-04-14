@@ -47,7 +47,8 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Bool>(N_("Fill Volume"))
       .default_value(true)
       .description(N_("Initialize the density grid in every cell inside the enclosed volume"));
-  b.add_output<decl::Geometry>(N_("Volume"));
+  b.add_output<decl::Geometry>(CTX_N_(BLT_I18NCONTEXT_ID_ID, "Volume"))
+      .translation_context(BLT_I18NCONTEXT_ID_ID);
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -127,15 +128,15 @@ static Volume *create_volume_from_mesh(const Mesh &mesh, GeoNodeExecParams &para
   Volume *volume = reinterpret_cast<Volume *>(BKE_id_new_nomain(ID_VO, nullptr));
 
   /* Convert mesh to grid and add to volume. */
-  geometry::volume_grid_add_from_mesh(volume,
-                                      "density",
-                                      &mesh,
-                                      mesh_to_volume_space_transform,
-                                      voxel_size,
-                                      fill_volume,
-                                      exterior_band_width,
-                                      interior_band_width,
-                                      density);
+  geometry::fog_volume_grid_add_from_mesh(volume,
+                                          "density",
+                                          &mesh,
+                                          mesh_to_volume_space_transform,
+                                          voxel_size,
+                                          fill_volume,
+                                          exterior_band_width,
+                                          interior_band_width,
+                                          density);
 
   return volume;
 }

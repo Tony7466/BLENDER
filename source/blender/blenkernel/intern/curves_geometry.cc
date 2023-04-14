@@ -48,9 +48,7 @@ static const std::string ATTR_SURFACE_UV_COORDINATE = "surface_uv_coordinate";
 /** \name Constructors/Destructor
  * \{ */
 
-CurvesGeometry::CurvesGeometry() : CurvesGeometry(0, 0)
-{
-}
+CurvesGeometry::CurvesGeometry() : CurvesGeometry(0, 0) {}
 
 CurvesGeometry::CurvesGeometry(const int point_num, const int curve_num)
 {
@@ -59,12 +57,8 @@ CurvesGeometry::CurvesGeometry(const int point_num, const int curve_num)
   CustomData_reset(&this->point_data);
   CustomData_reset(&this->curve_data);
 
-  CustomData_add_layer_named(&this->point_data,
-                             CD_PROP_FLOAT3,
-                             CD_CONSTRUCT,
-                             nullptr,
-                             this->point_num,
-                             ATTR_POSITION.c_str());
+  CustomData_add_layer_named(
+      &this->point_data, CD_PROP_FLOAT3, CD_CONSTRUCT, this->point_num, ATTR_POSITION.c_str());
 
   this->curve_offsets = (int *)MEM_malloc_arrayN(this->curve_num + 1, sizeof(int), __func__);
 #ifdef DEBUG
@@ -86,8 +80,8 @@ static void copy_curves_geometry(CurvesGeometry &dst, const CurvesGeometry &src)
   CustomData_free(&dst.curve_data, dst.curve_num);
   dst.point_num = src.point_num;
   dst.curve_num = src.curve_num;
-  CustomData_copy(&src.point_data, &dst.point_data, CD_MASK_ALL, CD_DUPLICATE, dst.point_num);
-  CustomData_copy(&src.curve_data, &dst.curve_data, CD_MASK_ALL, CD_DUPLICATE, dst.curve_num);
+  CustomData_copy(&src.point_data, &dst.point_data, CD_MASK_ALL, dst.point_num);
+  CustomData_copy(&src.curve_data, &dst.curve_data, CD_MASK_ALL, dst.curve_num);
 
   MEM_SAFE_FREE(dst.curve_offsets);
   dst.curve_offsets = (int *)MEM_malloc_arrayN(dst.point_num + 1, sizeof(int), __func__);
@@ -106,8 +100,7 @@ static void copy_curves_geometry(CurvesGeometry &dst, const CurvesGeometry &src)
   dst.runtime->evaluated_normal_cache = src.runtime->evaluated_normal_cache;
 }
 
-CurvesGeometry::CurvesGeometry(const CurvesGeometry &other)
-    : CurvesGeometry(other.point_num, other.curve_num)
+CurvesGeometry::CurvesGeometry(const CurvesGeometry &other) : CurvesGeometry()
 {
   copy_curves_geometry(*this, other);
 }
@@ -139,8 +132,7 @@ static void move_curves_geometry(CurvesGeometry &dst, CurvesGeometry &src)
   std::swap(dst.runtime, src.runtime);
 }
 
-CurvesGeometry::CurvesGeometry(CurvesGeometry &&other)
-    : CurvesGeometry(other.point_num, other.curve_num)
+CurvesGeometry::CurvesGeometry(CurvesGeometry &&other) : CurvesGeometry()
 {
   move_curves_geometry(*this, other);
 }
@@ -230,8 +222,7 @@ static MutableSpan<T> get_mutable_attribute(CurvesGeometry &curves,
   if (data != nullptr) {
     return {data, num};
   }
-  data = (T *)CustomData_add_layer_named(
-      &custom_data, type, CD_SET_DEFAULT, nullptr, num, name.c_str());
+  data = (T *)CustomData_add_layer_named(&custom_data, type, CD_SET_DEFAULT, num, name.c_str());
   MutableSpan<T> span = {data, num};
   if (num > 0 && span.first() != default_value) {
     span.fill(default_value);
@@ -556,13 +547,8 @@ IndexMask CurvesGeometry::indices_for_curve_type(const CurveType type,
 
 Array<int> CurvesGeometry::point_to_curve_map() const
 {
-  const OffsetIndices points_by_curve = this->points_by_curve();
   Array<int> map(this->points_num());
-  threading::parallel_for(this->curves_range(), 1024, [&](const IndexRange range) {
-    for (const int i_curve : range) {
-      map.as_mutable_span().slice(points_by_curve[i_curve]).fill(i_curve);
-    }
-  });
+  offset_indices::build_reverse_map(this->points_by_curve(), map);
   return map;
 }
 
@@ -869,7 +855,7 @@ void CurvesGeometry::interpolate_to_evaluated(const int curve_index,
   const OffsetIndices points_by_curve = this->points_by_curve();
   const IndexRange points = points_by_curve[curve_index];
   BLI_assert(src.size() == points.size());
-  BLI_assert(dst.size() == this->evaluated_points_by_curve().size(curve_index));
+  BLI_assert(dst.size() == this->evaluated_points_by_curve()[curve_index].size());
   evaluate_generic_data_for_curve(curve_index,
                                   points,
                                   this->curve_types(),
@@ -986,9 +972,7 @@ void CurvesGeometry::tag_normals_changed()
 {
   this->runtime->evaluated_normal_cache.tag_dirty();
 }
-void CurvesGeometry::tag_radii_changed()
-{
-}
+void CurvesGeometry::tag_radii_changed() {}
 
 static void translate_positions(MutableSpan<float3> positions, const float3 &translation)
 {
@@ -1042,6 +1026,15 @@ void CurvesGeometry::calculate_bezier_auto_handles()
 
 void CurvesGeometry::translate(const float3 &translation)
 {
+  if (math::is_zero(translation)) {
+    return;
+  }
+
+  std::optional<Bounds<float3>> bounds;
+  if (this->runtime->bounds_cache.is_cached()) {
+    bounds = this->runtime->bounds_cache.data();
+  }
+
   translate_positions(this->positions_for_write(), translation);
   if (!this->handle_positions_left().is_empty()) {
     translate_positions(this->handle_positions_left_for_write(), translation);
@@ -1050,6 +1043,12 @@ void CurvesGeometry::translate(const float3 &translation)
     translate_positions(this->handle_positions_right_for_write(), translation);
   }
   this->tag_positions_changed();
+
+  if (bounds) {
+    bounds->min += translation;
+    bounds->max += translation;
+    this->runtime->bounds_cache.ensure([&](blender::Bounds<float3> &r_data) { r_data = *bounds; });
+  }
 }
 
 void CurvesGeometry::transform(const float4x4 &matrix)
@@ -1581,10 +1580,15 @@ GVArray CurvesGeometry::adapt_domain(const GVArray &varray,
 
 void CurvesGeometry::blend_read(BlendDataReader &reader)
 {
+  this->runtime = MEM_new<blender::bke::CurvesGeometryRuntime>(__func__);
+
   CustomData_blend_read(&reader, &this->point_data, this->point_num);
   CustomData_blend_read(&reader, &this->curve_data, this->curve_num);
 
   BLO_read_int32_array(&reader, this->curve_num + 1, &this->curve_offsets);
+
+  /* Recalculate curve type count cache that isn't saved in files. */
+  this->update_curve_types();
 }
 
 void CurvesGeometry::blend_write(BlendWriter &writer, ID &id)

@@ -191,7 +191,7 @@ void BKE_gpencil_blend_read_data(BlendDataReader *reader, bGPdata *gpd)
   BLO_read_data_address(reader, &gpd->adt);
   BKE_animdata_blend_read_data(reader, gpd->adt);
 
-  /* Ensure full objectmode for linked grease pencil. */
+  /* Ensure full object-mode for linked grease pencil. */
   if (ID_IS_LINKED(gpd)) {
     gpd->flag &= ~GP_DATA_STROKE_PAINTMODE;
     gpd->flag &= ~GP_DATA_STROKE_EDITMODE;
@@ -1364,9 +1364,9 @@ bGPDframe *BKE_gpencil_layer_frame_get(bGPDlayer *gpl, int cframe, eGP_GetFrame_
         gpl->actframe = gpl->frames.first;
       }
       else {
-        /* unresolved errogenous situation! */
+        /* Unresolved erogenous situation! */
         CLOG_STR_ERROR(&LOG, "cannot find appropriate gp-frame");
-        /* gpl->actframe should still be NULL */
+        /* `gpl->actframe` should still be NULL. */
       }
     }
   }
@@ -1818,6 +1818,7 @@ Material *BKE_gpencil_object_material_ensure_active(Object *ob)
 }
 
 /* ************************************************** */
+
 bool BKE_gpencil_stroke_select_check(const bGPDstroke *gps)
 {
   const bGPDspoint *pt;
@@ -2324,7 +2325,7 @@ bool BKE_gpencil_from_image(
           pt->strength = 1.0f - color[3];
         }
 
-        /* Selet Alpha points. */
+        /* Select Alpha points. */
         if (pt->strength < 0.03f) {
           gps->flag |= GP_STROKE_SELECT;
           pt->flag |= GP_SPOINT_SELECT;
@@ -2649,11 +2650,6 @@ void BKE_gpencil_frame_original_pointers_update(const struct bGPDframe *gpf_orig
   }
 }
 
-/**
- * Update original pointers in evaluated layer.
- * \param gpl_orig: Original grease-pencil layer.
- * \param gpl_eval: Evaluated grease pencil layer.
- */
 void BKE_gpencil_layer_original_pointers_update(const struct bGPDlayer *gpl_orig,
                                                 const struct bGPDlayer *gpl_eval)
 {
@@ -2686,11 +2682,6 @@ void BKE_gpencil_data_update_orig_pointers(const bGPdata *gpd_orig, const bGPdat
   }
 }
 
-/**
- * Update pointers of eval data to original data to keep references.
- * \param ob_orig: Original grease pencil object
- * \param ob_eval: Evaluated grease pencil object
- */
 void BKE_gpencil_update_orig_pointers(const Object *ob_orig, const Object *ob_eval)
 {
   BKE_gpencil_data_update_orig_pointers((bGPdata *)ob_orig->data, (bGPdata *)ob_eval->data);
@@ -3014,12 +3005,6 @@ static bool gpencil_update_on_write_stroke_cb(GPencilUpdateCache *gps_cache, voi
   return false;
 }
 
-/**
- * Update the geometry of the evaluated bGPdata.
- * This function will:
- *    1) Copy the original data over to the evaluated object.
- *    2) Update the original pointers in the runtime structs.
- */
 void BKE_gpencil_update_on_write(bGPdata *gpd_orig, bGPdata *gpd_eval)
 {
   GPencilUpdateCache *update_cache = gpd_orig->runtime.update_cache;

@@ -404,7 +404,7 @@ static int lib_id_expand_local_cb(LibraryIDLinkCallbackData *cb_data)
     return IDWALK_RET_NOP;
   }
 
-  if (cb_flag & IDWALK_CB_EMBEDDED) {
+  if (cb_flag & (IDWALK_CB_EMBEDDED | IDWALK_CB_EMBEDDED_NOT_OWNING)) {
     /* Embedded data-blocks need to be made fully local as well.
      * Note however that in some cases (when owner ID had to be duplicated instead of being made
      * local directly), its embedded IDs should also have already been duplicated, and hence be
@@ -821,7 +821,7 @@ bool id_single_user(bContext *C, ID *id, PointerRNA *ptr, PropertyRNA *prop)
   ID *newid = NULL;
   PointerRNA idptr;
 
-  if (id) {
+  if (id && (ID_REAL_USERS(id) > 1)) {
     /* If property isn't editable,
      * we're going to have an extra block hanging around until we save. */
     if (RNA_property_editable(ptr, prop)) {
@@ -1494,12 +1494,11 @@ bool BKE_id_new_name_validate(
     return result;
   }
 
-  /* if no name given, use name of current ID
-   * else make a copy (tname args can be const) */
+  /* If no name given, use name of current ID. */
   if (tname == NULL) {
     tname = id->name + 2;
   }
-
+  /* Make a copy of given name (tname args can be const). */
   BLI_strncpy(name, tname, sizeof(name));
 
   if (name[0] == '\0') {

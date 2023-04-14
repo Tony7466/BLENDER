@@ -221,14 +221,12 @@ static void external_cache_populate(void *vedata, Object *ob)
   }
   struct GPUBatch *geom = DRW_cache_object_surface_get(ob);
   if (geom) {
-    /* Depth Prepass */
+    /* Depth Pre-pass. */
     DRW_shgroup_call(stl->g_data->depth_shgrp, geom, ob);
   }
 }
 
-static void external_cache_finish(void *UNUSED(vedata))
-{
-}
+static void external_cache_finish(void *UNUSED(vedata)) {}
 
 static void external_draw_scene_do_v3d(void *vedata)
 {

@@ -649,7 +649,7 @@ bool BKE_gpencil_stroke_stretch(bGPDstroke *gps,
   if (!isfinite(used_percent_length)) {
     /* #used_percent_length must always be finite, otherwise a segfault occurs.
      * Since this function should never segfault, set #used_percent_length to a safe fallback. */
-    /* NOTE: This fallback is used if gps->totpoints == 2, see MOD_gpencillength.c */
+    /* NOTE: This fallback is used if gps->totpoints == 2, see MOD_gpencil_legacy_length.c */
     used_percent_length = 0.1f;
   }
 
@@ -2102,6 +2102,7 @@ void BKE_gpencil_stroke_simplify_adaptive(bGPdata *gpd, bGPDstroke *gps, float e
       le = ls + 1;
     }
   }
+  (void)totmarked; /* Quiet set-but-unused warning (may be removed). */
 
   /* adding points marked */
   MDeformVert *old_dvert = nullptr;
@@ -2504,7 +2505,7 @@ static void gpencil_generate_edgeloops(Object *ob,
   const Span<float3> vert_positions = me->vert_positions();
   const Span<MEdge> edges = me->edges();
   const Span<MDeformVert> dverts = me->deform_verts();
-  const float(*vert_normals)[3] = BKE_mesh_vert_normals_ensure(me);
+  const blender::Span<blender::float3> vert_normals = me->vert_normals();
   const bke::AttributeAccessor attributes = me->attributes();
   const VArray<bool> uv_seams = attributes.lookup_or_default<bool>(
       ".uv_seam", ATTR_DOMAIN_EDGE, false);
@@ -2714,8 +2715,8 @@ bool BKE_gpencil_convert_mesh(Main *bmain,
   Object *ob_eval = (Object *)DEG_get_evaluated_object(depsgraph, ob_mesh);
   const Mesh *me_eval = BKE_object_get_evaluated_mesh(ob_eval);
   const Span<float3> positions = me_eval->vert_positions();
-  const Span<MPoly> polys = me_eval->polys();
-  const Span<MLoop> loops = me_eval->loops();
+  const OffsetIndices polys = me_eval->polys();
+  const Span<int> corner_verts = me_eval->corner_verts();
   int polys_len = me_eval->totpoly;
   char element_name[200];
 
@@ -2755,7 +2756,7 @@ bool BKE_gpencil_convert_mesh(Main *bmain,
     const VArray<int> mesh_material_indices = me_eval->attributes().lookup_or_default<int>(
         "material_index", ATTR_DOMAIN_FACE, 0);
     for (i = 0; i < polys_len; i++) {
-      const MPoly &poly = polys[i];
+      const IndexRange poly = polys[i];
 
       /* Find material. */
       int mat_idx = 0;
@@ -2775,22 +2776,22 @@ bool BKE_gpencil_convert_mesh(Main *bmain,
         gpencil_add_material(bmain, ob_gp, element_name, color, false, true, &mat_idx);
       }
 
-      bGPDstroke *gps_fill = BKE_gpencil_stroke_add(gpf_fill, mat_idx, poly.totloop, 10, false);
+      bGPDstroke *gps_fill = BKE_gpencil_stroke_add(gpf_fill, mat_idx, poly.size(), 10, false);
       gps_fill->flag |= GP_STROKE_CYCLIC;
 
       /* Create dvert data. */
       const Span<MDeformVert> dverts = me_eval->deform_verts();
       if (use_vgroups && !dverts.is_empty()) {
-        gps_fill->dvert = (MDeformVert *)MEM_callocN(sizeof(MDeformVert) * poly.totloop,
+        gps_fill->dvert = (MDeformVert *)MEM_callocN(sizeof(MDeformVert) * poly.size(),
                                                      "gp_fill_dverts");
       }
 
       /* Add points to strokes. */
-      for (int j = 0; j < poly.totloop; j++) {
-        const MLoop *ml = &loops[poly.loopstart + j];
+      for (int j = 0; j < poly.size(); j++) {
+        const int vert = corner_verts[poly[j]];
 
         bGPDspoint *pt = &gps_fill->points[j];
-        copy_v3_v3(&pt->x, positions[ml->v]);
+        copy_v3_v3(&pt->x, positions[vert]);
         mul_m4_v3(matrix, &pt->x);
         pt->pressure = 1.0f;
         pt->strength = 1.0f;
@@ -2798,7 +2799,7 @@ bool BKE_gpencil_convert_mesh(Main *bmain,
         /* Copy vertex groups from mesh. Assuming they already exist in the same order. */
         if (use_vgroups && !dverts.is_empty()) {
           MDeformVert *dv = &gps_fill->dvert[j];
-          const MDeformVert *src_dv = &dverts[ml->v];
+          const MDeformVert *src_dv = &dverts[vert];
           dv->totweight = src_dv->totweight;
           dv->dw = (MDeformWeight *)MEM_callocN(sizeof(MDeformWeight) * dv->totweight,
                                                 "gp_fill_dverts_dw");
@@ -2809,7 +2810,7 @@ bool BKE_gpencil_convert_mesh(Main *bmain,
         }
       }
       /* If has only 3 points subdivide. */
-      if (poly.totloop == 3) {
+      if (poly.size() == 3) {
         BKE_gpencil_stroke_subdivide(gpd, gps_fill, 1, GP_SUBDIV_SIMPLE);
       }
 

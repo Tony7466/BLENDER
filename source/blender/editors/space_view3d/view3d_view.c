@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup spview3d
@@ -179,7 +179,8 @@ static void sync_viewport_camera_smoothview(bContext *C,
           if (other_v3d->camera == ob) {
             continue;
           }
-          if (v3d->scenelock) {
+          /* Checking the other view is needed to prevent local cameras being modified. */
+          if (v3d->scenelock && other_v3d->scenelock) {
             ListBase *lb = (space_link == area->spacedata.first) ? &area->regionbase :
                                                                    &space_link->regionbase;
             for (ARegion *other_region = lb->first; other_region != NULL;
@@ -675,7 +676,7 @@ int view3d_opengl_select_ex(ViewContext *vc,
     GPU_depth_test(GPU_DEPTH_LESS_EQUAL);
   }
 
-  /* If in xray mode, we select the wires in priority. */
+  /* If in X-ray mode, we select the wires in priority. */
   if (XRAY_ACTIVE(v3d) && use_nearest) {
     /* We need to call "GPU_select_*" API's inside DRW_draw_select_loop
      * because the OpenGL context created & destroyed inside this function. */

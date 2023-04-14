@@ -1660,7 +1660,9 @@ void BKE_object_link_modifiers(Object *ob_dst, const Object *ob_src)
 /**
  * Copy CCG related data. Used to sync copy of mesh with reshaped original mesh.
  */
-static void copy_ccg_data(Mesh *mesh_destination, Mesh *mesh_source, int layer_type)
+static void copy_ccg_data(Mesh *mesh_destination,
+                          Mesh *mesh_source,
+                          const eCustomDataType layer_type)
 {
   BLI_assert(mesh_destination->totloop == mesh_source->totloop);
   CustomData *data_destination = &mesh_destination->ldata;
@@ -1672,7 +1674,8 @@ static void copy_ccg_data(Mesh *mesh_destination, Mesh *mesh_source, int layer_t
   const int layer_index = CustomData_get_layer_index(data_destination, layer_type);
   CustomData_free_layer(data_destination, layer_type, num_elements, layer_index);
   BLI_assert(!CustomData_has_layer(data_destination, layer_type));
-  CustomData_add_layer(data_destination, layer_type, CD_SET_DEFAULT, nullptr, num_elements);
+  CustomData_add_layer(
+      data_destination, eCustomDataType(layer_type), CD_SET_DEFAULT, num_elements);
   BLI_assert(CustomData_has_layer(data_destination, layer_type));
   CustomData_copy_layer_type_data(data_source, data_destination, layer_type, 0, 0, num_elements);
 }
@@ -2128,16 +2131,16 @@ static const char *get_obdata_defname(int type)
     case OB_POINTCLOUD:
       return DATA_("PointCloud");
     case OB_VOLUME:
-      return DATA_("Volume");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_ID, "Volume");
     case OB_EMPTY:
-      return DATA_("Empty");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_ID, "Empty");
     case OB_GPENCIL_LEGACY:
       return DATA_("GPencil");
     case OB_LIGHTPROBE:
       return DATA_("LightProbe");
     default:
       CLOG_ERROR(&LOG, "Internal error, bad type: %d", type);
-      return DATA_("Empty");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_ID, "Empty");
   }
 }
 
@@ -4356,7 +4359,7 @@ void BKE_object_handle_update(Depsgraph *depsgraph, Scene *scene, Object *ob)
 void BKE_object_sculpt_data_create(Object *ob)
 {
   BLI_assert((ob->sculpt == nullptr) && (ob->mode & OB_MODE_ALL_SCULPT));
-  ob->sculpt = MEM_cnew<SculptSession>(__func__);
+  ob->sculpt = MEM_new<SculptSession>(__func__);
   ob->sculpt->mode_type = (eObjectMode)ob->mode;
 }
 
