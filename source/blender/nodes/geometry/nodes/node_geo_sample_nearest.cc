@@ -149,7 +149,11 @@ static void get_closest_mesh_polys(const Mesh &mesh,
   Array<int> looptri_indices(positions.size());
   get_closest_mesh_looptris(mesh, positions, mask, looptri_indices, r_distances_sq, r_positions);
 
-  array_utils::gather(mesh.looptri_polys(), looptri_indices.as_span(), r_poly_indices);
+  const Span<int> looptri_polys = mesh.looptri_polys();
+
+  for (const int i : mask) {
+    r_poly_indices[i] = looptri_polys[looptri_indices[i]];
+  }
 }
 
 /* The closest corner is defined to be the closest corner on the closest face. */
