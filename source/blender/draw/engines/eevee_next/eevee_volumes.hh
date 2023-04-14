@@ -34,20 +34,22 @@ class Volumes {
   PassSimple resolve_ps_ = {"Volumes.Resolve"};
   PassSimple accum_ps_ = {"Volumes.Accum"};
 
-  int current_sample_;
-  float4x4 prev_view_projection_matrix;
-
  public:
-  template<typename PassType> void bind_common_resources(PassType &ps)
+  Volumes(Instance &inst) : inst_(inst){};
+
+  ~Volumes(){};
+
+  template<typename PassType> void bind_resources(PassType &ps)
+  {
+    ps.bind_ubo(VOLUMES_BUF_SLOT, data_);
+  }
+
+  template<typename PassType> void bind_volume_pass_resources(PassType &ps)
   {
     ps.bind_ubo(VOLUMES_BUF_SLOT, data_);
     inst_.lights.bind_resources(&ps);
     inst_.shadows.bind_resources(&ps);
   }
-
-  Volumes(Instance &inst) : inst_(inst){};
-
-  ~Volumes(){};
 
   void set_jitter(uint current_sample);
 

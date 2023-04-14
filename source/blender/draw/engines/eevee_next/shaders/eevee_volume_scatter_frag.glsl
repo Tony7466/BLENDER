@@ -79,22 +79,6 @@ void main()
 
 #endif
 
-  /* Temporal supersampling */
-  /* Note : this uses the cell non-jittered position (texel center). */
-  vec3 curr_ndc = volume_to_ndc(vec3(gl_FragCoord.xy, float(volume_geom_iface.slice) + 0.5) *
-                                volumes_buf.inv_tex_size);
-  vec3 wpos = get_world_space_from_depth(curr_ndc.xy, curr_ndc.z);
-  vec3 prev_ndc = project_point(volumes_buf.prev_view_projection_matrix, wpos);
-  vec3 prev_volume = ndc_to_volume(prev_ndc * 0.5 + 0.5);
-
-  if ((volumes_buf.history_alpha > 0.0) && all(greaterThan(prev_volume, vec3(0.0))) &&
-      all(lessThan(prev_volume, vec3(1.0)))) {
-    vec4 h_Scattering = texture(historyScattering, prev_volume);
-    vec4 h_Transmittance = texture(historyTransmittance, prev_volume);
-    outScattering = mix(outScattering, h_Scattering, volumes_buf.history_alpha);
-    outTransmittance = mix(outTransmittance, h_Transmittance, volumes_buf.history_alpha);
-  }
-
   /* Catch NaNs */
   if (any(isnan(outScattering)) || any(isnan(outTransmittance))) {
     outScattering = vec4(0.0);

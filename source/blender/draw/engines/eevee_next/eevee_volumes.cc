@@ -4,6 +4,29 @@
  * \ingroup draw_engine
  *
  * Volumetric effects rendering using frostbite approach.
+ *
+ * The rendering is separated in 4 stages:
+ *
+ * - Material Parameters : we collect volume properties of
+ *   all participating media in the scene and store them in
+ *   a 3D texture aligned with the 3D frustum.
+ *   This is done in 2 passes, one that clear the texture
+ *   and/or evaluate the world volumes, and the 2nd one that
+ *   additively render object volumes.
+ *
+ * - Light Scattering : the volume properties then are sampled
+ *   and light scattering is evaluated for each cell of the
+ *   volume texture. Temporal super-sampling (if enabled) occurs here.
+ *
+ * - Volume Integration : the scattered light and extinction is
+ *   integrated (accumulated) along the view-rays. The result is stored
+ *   for every cell in another texture.
+ *
+ * - Full-screen Resolve : From the previous stage, we get two
+ *   3D textures that contains integrated scattered light and extinction
+ *   for "every" positions in the frustum. We only need to sample
+ *   them and blend the scene color with those factors. This also
+ *   work for alpha blended materials.
  */
 
 #pragma once
@@ -88,42 +111,9 @@ void Volumes::init()
   if (data_.tex_size != tex_size) {
     data_.tex_size = tex_size;
     data_.inv_tex_size = 1.0f / float3(tex_size);
-    data_.history_alpha = 0.0f;
-    prev_view_projection_matrix = float4x4::identity();
-  }
-  else {
-    /* Like frostbite's paper, 5% blend of the new frame. */
-    data_.history_alpha = 0.95f;
   }
 
-  bool do_taa = inst_.sampling.sample_count() > 1;
-
-  if (draw_ctx->evil_C != nullptr) {
-    struct wmWindowManager *wm = CTX_wm_manager(draw_ctx->evil_C);
-    do_taa = do_taa && (ED_screen_animation_no_scrub(wm) == nullptr);
-  }
-
-  /* Temporal Super sampling jitter */
-  /* TODO (Miguel Pozo): Why image render doesn't use the regular taa samples? */
-  uint current_sample = 0;
-
-  if (do_taa) {
-    /* If TAA is in use do not use the history buffer. */
-    data_.history_alpha = 0.0f;
-    current_sample = inst_.sampling.current_sample() - 1;
-    current_sample_ = -1;
-  }
-  else if (DRW_state_is_image_render()) {
-    uint3 ht_primes = {3, 7, 2};
-    const uint max_sample = ht_primes[0] * ht_primes[1] * ht_primes[2];
-    current_sample = current_sample_ = (current_sample_ + 1) % max_sample;
-    if (current_sample != max_sample - 1) {
-      /* TODO (Miguel Pozo): This shouldn't be done here ? */
-      DRW_viewport_request_redraw();
-    }
-  }
-
-  set_jitter(current_sample);
+  set_jitter(inst_.sampling.current_sample() - 1);
 
   if ((scene_eval->eevee.flag & SCE_EEVEE_VOLUMETRIC_SHADOWS) == 0) {
     data_.shadow_steps = 0;
@@ -149,13 +139,17 @@ void Volumes::begin_sync()
 
   /* TODO (Miguel Pozo): Done here since it needs to run after camera sync.
    * Is this the way to go? */
+
+  /* Negate clip values (View matrix forward vector is -Z). */
+  const float clip_start = -inst_.camera.data_get().clip_near;
+  const float clip_end = -inst_.camera.data_get().clip_far;
   float integration_start = scene_eval->eevee.volumetric_start;
   float integration_end = scene_eval->eevee.volumetric_end;
+
   if (inst_.camera.is_perspective()) {
     float sample_distribution = scene_eval->eevee.volumetric_sample_distribution;
     sample_distribution = 4.0f * std::max(1.0f - sample_distribution, 1e-2f);
-    /* Negate clip values (View matrix forward vector is -Z). */
-    const float clip_start = -inst_.camera.data_get().clip_near;
+
     float near = integration_start = std::min(-integration_start, clip_start - 1e-4f);
     float far = integration_end = std::min(-integration_end, near - 1e-4f);
 
@@ -164,9 +158,6 @@ void Volumes::begin_sync()
     data_.depth_param[2] = sample_distribution;
   }
   else {
-    /* Negate clip values (View matrix forward vector is -Z). */
-    const float clip_start = -inst_.camera.data_get().clip_near;
-    const float clip_end = -inst_.camera.data_get().clip_far;
     integration_start = std::min(integration_end, clip_start);
     integration_end = std::max(-integration_end, clip_end);
 
@@ -177,62 +168,37 @@ void Volumes::begin_sync()
 
   data_.push_update();
 
-  /* Quick breakdown of the Volumetric rendering:
-   *
-   * The rendering is separated in 4 stages:
-   *
-   * - Material Parameters : we collect volume properties of
-   *   all participating media in the scene and store them in
-   *   a 3D texture aligned with the 3D frustum.
-   *   This is done in 2 passes, one that clear the texture
-   *   and/or evaluate the world volumes, and the 2nd one that
-   *   additively render object volumes.
-   *
-   * - Light Scattering : the volume properties then are sampled
-   *   and light scattering is evaluated for each cell of the
-   *   volume texture. Temporal super-sampling (if enabled) occurs here.
-   *
-   * - Volume Integration : the scattered light and extinction is
-   *   integrated (accumulated) along the view-rays. The result is stored
-   *   for every cell in another texture.
-   *
-   * - Full-screen Resolve : From the previous stage, we get two
-   *   3D textures that contains integrated scattered light and extinction
-   *   for "every" positions in the frustum. We only need to sample
-   *   them and blend the scene color with those factors. This also
-   *   work for alpha blended materials.
-   */
+  /* World Volume Pass */
 
   world_ps_.init();
   world_ps_.state_set(DRW_STATE_WRITE_COLOR);
+  bind_volume_pass_resources(world_ps_);
 
-  GPUMaterial *mat = nullptr;
+  GPUMaterial *material = nullptr;
 
-  /* World Volumetric */
   ::World *world = scene->world;
   if (world && world->use_nodes && world->nodetree &&
       !LOOK_DEV_STUDIO_LIGHT_ENABLED(draw_ctx->v3d)) {
 
-    mat = inst_.shaders.world_shader_get(world, world->nodetree, MAT_PIPE_VOLUME);
+    material = inst_.shaders.world_shader_get(world, world->nodetree, MAT_PIPE_VOLUME);
 
-    if (!GPU_material_has_volume_output(mat)) {
-      mat = nullptr;
+    if (!GPU_material_has_volume_output(material)) {
+      material = nullptr;
     }
   }
 
   PassSimple::Sub &ps = world_ps_.sub("World Volume");
-  if (mat) {
-    ps.material_set(*inst_.manager, mat);
-    if (volume_sub_pass(ps, nullptr, nullptr, mat)) {
+  if (material) {
+    ps.material_set(*inst_.manager, material);
+    if (volume_sub_pass(ps, nullptr, nullptr, material)) {
       enabled_ = true;
     }
   }
   else {
-    /* If no world or volume material is present just clear the buffer with this drawcall */
+    /* If no world or volume material is present just clear the buffer. */
     ps.shader_set(inst_.shaders.static_shader_get(VOLUME_CLEAR));
   }
 
-  bind_common_resources(ps);
   ps.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z * 3);
 }
 
@@ -325,7 +291,7 @@ void Volumes::end_sync()
   scatter_ps_.state_set(DRW_STATE_WRITE_COLOR);
   scatter_ps_.shader_set(inst_.shaders.static_shader_get(
       data_.use_lights ? VOLUME_SCATTER_WITH_LIGHTS : VOLUME_SCATTER));
-  bind_common_resources(scatter_ps_);
+  bind_volume_pass_resources(scatter_ps_);
 
   scatter_ps_.bind_texture("volumeScattering", &prop_scattering_tx_);
   scatter_ps_.bind_texture("volumeExtinction", &prop_extinction_tx_);
@@ -338,7 +304,7 @@ void Volumes::end_sync()
   integration_ps_.init();
   integration_ps_.state_set(DRW_STATE_WRITE_COLOR);
   integration_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_INTEGRATION));
-  bind_common_resources(integration_ps_);
+  bind_volume_pass_resources(integration_ps_);
   integration_ps_.bind_texture("volumeScattering", &scatter_tx_.current());
   integration_ps_.bind_texture("volumeExtinction", &transmit_tx_.current());
   integration_ps_.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z * 3);
@@ -346,7 +312,7 @@ void Volumes::end_sync()
   resolve_ps_.init();
   resolve_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
   resolve_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_RESOLVE));
-  bind_common_resources(resolve_ps_);
+  bind_volume_pass_resources(resolve_ps_);
   resolve_ps_.bind_texture("inScattering", &scatter_tx_.next());
   resolve_ps_.bind_texture("inTransmittance", &transmit_tx_.next());
   resolve_ps_.bind_texture("inSceneDepth", &inst_.render_buffers.depth_tx);
@@ -404,79 +370,8 @@ void Volumes::draw_resolve(View &view)
                      GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.combined_tx));
   resolve_fb_.bind();
   inst_.manager->submit(resolve_ps_, view);
-
-  /* TODO(Miguel Pozo): This should be stored per view. */
-  data_.prev_view_projection_matrix = (view.winmat() * view.viewmat());
 }
 
-/* -------------------------------------------------------------------- */
-/** \name Render Passes
- * \{ */
-
-#if 0
-  void EEVEE_volumes_output_init(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata, uint tot_samples)
-  {
-    EEVEE_FramebufferList *fbl = vedata->fbl;
-    EEVEE_TextureList *txl = vedata->txl;
-    EEVEE_StorageList *stl = vedata->stl;
-    EEVEE_PassList *psl = vedata->psl;
-    EEVEE_EffectsInfo *effects = stl->effects;
-
-    /* Create FrameBuffer. */
-
-    /* Should be enough precision for many samples. */
-    const eGPUTextureFormat texture_format_accum = (tot_samples > 128) ? GPU_RGBA32F : GPU_RGBA16F;
-    DRW_texture_ensure_fullscreen_2d(&scatter_accum_tx_, texture_format_accum, 0);
-    DRW_texture_ensure_fullscreen_2d(&transmittance_accum_tx_, texture_format_accum, 0);
-
-    GPU_framebuffer_ensure_config(&fbl->volumetric_accum_fb,
-                                  {GPU_ATTACHMENT_NONE,
-                                   GPU_ATTACHMENT_TEXTURE(scatter_accum_tx_),
-                                   GPU_ATTACHMENT_TEXTURE(transmittance_accum_tx_)});
-
-    /* Create Pass and shgroup. */
-    DRW_PASS_CREATE(psl->volumetric_accum_ps, DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ADD_FULL);
-    DRWShadingGroup *grp = nullptr;
-    if ((effects->enabled_effects & EFFECT_VOLUMETRIC) != 0) {
-      grp = DRW_shgroup_create(EEVEE_shaders_volumes_resolve_sh_get(true),
-                               psl->volumetric_accum_ps);
-      DRW_shgroup_uniform_texture_ref(grp, "inScattering", &scatter_tx_.current());
-      DRW_shgroup_uniform_texture_ref(grp, "inTransmittance", &transmit_tx_.current());
-      DRW_shgroup_uniform_texture_ref(grp, "inSceneDepth", &e_data.depth_src);
-      DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
-      DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
-    }
-    else {
-      /* There is no volumetrics in the scene. Use a shader to fill the accum textures with a
-       * default value. */
-      grp = DRW_shgroup_create(EEVEE_shaders_volumes_accum_sh_get(), psl->volumetric_accum_ps);
-    }
-    DRW_shgroup_call(grp, DRW_cache_fullscreen_quad_get(), nullptr);
-  }
-
-  void EEVEE_volumes_output_accumulate(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
-  {
-    EEVEE_FramebufferList *fbl = vedata->fbl;
-    EEVEE_PassList *psl = vedata->psl;
-    EEVEE_EffectsInfo *effects = vedata->stl->effects;
-
-    if (fbl->volumetric_accum_fb != nullptr) {
-      /* Accum pass */
-      GPU_framebuffer_bind(fbl->volumetric_accum_fb);
-
-      /* Clear texture. */
-      if (effects->taa_current_sample == 1) {
-        const float clear[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-        GPU_framebuffer_clear_color(fbl->volumetric_accum_fb, clear);
-      }
-
-      DRW_draw_pass(psl->volumetric_accum_ps);
-
-      /* Restore */
-      GPU_framebuffer_bind(fbl->main_fb);
-    }
-  }
-#endif
 }  // namespace blender::eevee
 
 /** \} */
