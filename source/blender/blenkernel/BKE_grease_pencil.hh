@@ -225,6 +225,9 @@ void legacy_gpencil_to_grease_pencil(GreasePencil &grease_pencil, bGPdata &gpd);
 
 }  // namespace greasepencil
 
+/**
+ * A single point for a stroke that is currently being drawn.
+ */
 struct StrokePoint {
   float3 position;
   float radius;
@@ -232,16 +235,30 @@ struct StrokePoint {
   float4 color;
 };
 
+/**
+ * Stroke cache for a stroke that is currently being drawn.
+ */
+struct StrokeCache {
+  Vector<StrokePoint> points = {};
+  Vector<uint3> triangles = {};
+  int mat = 0;
+
+  void clear()
+  {
+    this->points.clear_and_shrink();
+    this->triangles.clear_and_shrink();
+    this->mat = 0;
+  }
+};
+
 class GreasePencilDrawingRuntime {
  public:
+  /**
+   * Triangle cache for all the strokes in the drawing.
+   */
   mutable SharedCache<Vector<uint3>> triangles_cache;
 
-  /**
-   * Stroke cache for a stroke that is currently being drawn.
-   */
-  Vector<StrokePoint> stroke_cache = {};
-  Vector<uint3> stroke_triangle_cache = {};
-  int stroke_mat = 0;
+  StrokeCache stroke_cache;
 };
 
 class GreasePencilRuntime {

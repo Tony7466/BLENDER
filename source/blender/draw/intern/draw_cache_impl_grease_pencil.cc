@@ -363,7 +363,7 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
       IndexRange verts_range = IndexRange(verts_start_offset, num_verts);
       MutableSpan<GreasePencilStrokeVert> verts_slice = verts.slice(verts_range);
       MutableSpan<GreasePencilColorVert> cols_slice = cols.slice(verts_range);
-      const int material_nr = drawing.runtime->stroke_mat;
+      const int material_nr = drawing.runtime->stroke_cache.mat;
 
       verts_slice.first().mat = -1;
       for (const int i : IndexRange(points.size())) {

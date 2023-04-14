@@ -64,7 +64,7 @@ struct PaintOperationExecutor {
 
     StrokePoint new_point{proj_pos, stroke_extension.pressure * 100.0f, 1.0f, float4(1.0f)};
 
-    drawing.runtime->stroke_cache.append(std::move(new_point));
+    drawing.runtime->stroke_cache.points.append(std::move(new_point));
 
     BKE_grease_pencil_batch_cache_dirty_tag(&grease_pencil, BKE_GREASEPENCIL_BATCH_DIRTY_ALL);
   }
@@ -151,7 +151,7 @@ void PaintOperation::on_stroke_done(const bContext &C)
         return true;
       });
 
-  drawing_eval.runtime->stroke_cache.clear_and_shrink();
+  drawing_eval.runtime->stroke_cache.clear();
   drawing_orig.tag_positions_changed();
 
   radii.finish();

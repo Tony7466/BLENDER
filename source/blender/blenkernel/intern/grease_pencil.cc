@@ -740,12 +740,12 @@ void GreasePencilDrawing::tag_positions_changed()
 
 bool GreasePencilDrawing::has_stroke_buffer()
 {
-  return this->runtime->stroke_cache.size() > 0;
+  return this->runtime->stroke_cache.points.size() > 0;
 }
 
 blender::Span<blender::bke::StrokePoint> GreasePencilDrawing::stroke_buffer()
 {
-  return this->runtime->stroke_cache.as_span();
+  return this->runtime->stroke_cache.points.as_span();
 }
 
 /** \} */
