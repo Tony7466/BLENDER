@@ -400,10 +400,14 @@ void blend_to_default_fcurve(PointerRNA *id_ptr, FCurve *fcu, const float factor
 
 /* ---------------- */
 
-void ED_anim_get_butterworth_coefficients(
-    const float cutoff_frequency, const int filter_order, double *A, double *d1, double *d2)
+void ED_anim_get_butterworth_coefficients(const float cutoff_frequency,
+                                          const float sampling_frequency,
+                                          const int filter_order,
+                                          double *A,
+                                          double *d1,
+                                          double *d2)
 {
-  double s = 24.0;
+  double s = (double)sampling_frequency;
   const double a = tan(M_PI * cutoff_frequency / s);
   const double a2 = a * a;
   double r;
@@ -419,7 +423,8 @@ void ED_anim_get_butterworth_coefficients(
 void butterworth_smooth_fcurve_segment(FCurve *fcu,
                                        FCurveSegment *segment,
                                        const float factor,
-                                       const float smoothing_power,
+                                       const float smoothing_factor,
+                                       const float sampling_frequency,
                                        const int filter_order)
 {
   BezTriple left_bezt = fcu->bezt[segment->start_index];
@@ -441,7 +446,10 @@ void butterworth_smooth_fcurve_segment(FCurve *fcu,
   double *w1 = MEM_callocN(sizeof(double) * filter_order, "w1");
   double *w2 = MEM_callocN(sizeof(double) * filter_order, "w2");
 
-  ED_anim_get_butterworth_coefficients(smoothing_power, filter_order, A, d1, d2);
+  /* Ensure that cutoff frequency never exceeds half of sampling_frequency. */
+  const float cutoff_frequency = smoothing_factor * (sampling_frequency / 2);
+  ED_anim_get_butterworth_coefficients(
+      cutoff_frequency, sampling_frequency, filter_order, A, d1, d2);
 
   for (int i = 0; i < sample_count; i++) {
     double x = (double)samples[i];

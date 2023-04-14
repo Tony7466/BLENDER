@@ -436,11 +436,12 @@ void ED_ANIM_get_1d_gauss_kernel(const float sigma, int kernel_size, double *r_k
  * Get butterworth coefficients.
  */
 void ED_anim_get_butterworth_coefficients(
-    float cutoff, int filter_order, double *A, double *d1, double *d2);
+    float cutoff, float sampling_frequency, int filter_order, double *A, double *d1, double *d2);
 void butterworth_smooth_fcurve_segment(struct FCurve *fcu,
                                        struct FCurveSegment *segment,
                                        float factor,
-                                       float smoothing_power,
+                                       float smoothing_factor,
+                                       float sampling_frequency,
                                        int filter_order);
 void smooth_fcurve_segment(struct FCurve *fcu,
                            struct FCurveSegment *segment,

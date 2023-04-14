@@ -1322,19 +1322,21 @@ void GRAPH_OT_gaussian_smooth(wmOperatorType *ot)
 
 static void btw_smooth_graph_keys(bAnimContext *ac,
                                   const float factor,
-                                  const float f_cutoff_fac,
+                                  const float frequency_cutoff,
                                   const int filter_order)
 {
   ListBase anim_data = {NULL, NULL};
   ANIM_animdata_filter(ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, ac->datatype);
 
   bAnimListElem *ale;
+  const float frame_rate = (float)(ac->scene->r.frs_sec) / ac->scene->r.frs_sec_base;
 
   for (ale = anim_data.first; ale; ale = ale->next) {
     FCurve *fcu = (FCurve *)ale->key_data;
     ListBase segments = find_fcurve_segments(fcu);
     LISTBASE_FOREACH (FCurveSegment *, segment, &segments) {
-      butterworth_smooth_fcurve_segment(fcu, segment, factor, f_cutoff_fac, filter_order);
+      butterworth_smooth_fcurve_segment(
+          fcu, segment, factor, frequency_cutoff, frame_rate, filter_order);
     }
     BLI_freelistN(&segments);
     ale->update |= ANIM_UPDATE_DEFAULT;
@@ -1392,11 +1394,11 @@ void GRAPH_OT_butterworth_smooth(wmOperatorType *ot)
                        "frequency_cutoff",
                        1.0f,
                        0.0001f,
-                       100.0f,
+                       1.0f,
                        "Frquency Cutoff",
                        "At which frquency the factor should be applied",
                        0.0001f,
-                       100.0f);
+                       1.0f);
 
   RNA_def_int(ot->srna,
               "filter_order",
