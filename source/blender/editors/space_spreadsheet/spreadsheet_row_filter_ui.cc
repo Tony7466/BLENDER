@@ -68,7 +68,7 @@ static std::string value_string(const SpreadsheetRowFilter &row_filter,
       result << std::fixed << row_filter.value_float;
       return result.str();
     }
-    case SPREADSHEET_VALUE_TYPE_INT2: {
+    case SPREADSHEET_VALUE_TYPE_INT32_2D: {
       std::ostringstream result;
       result << "(" << row_filter.value_int2[0] << ", " << row_filter.value_int2[1] << ")";
       return result.str();
@@ -203,7 +203,7 @@ static void spreadsheet_filter_panel_draw(const bContext *C, Panel *panel)
       uiItemR(layout, filter_ptr, "operation", 0, nullptr, ICON_NONE);
       uiItemR(layout, filter_ptr, "value_int", 0, IFACE_("Value"), ICON_NONE);
       break;
-    case SPREADSHEET_VALUE_TYPE_INT2:
+    case SPREADSHEET_VALUE_TYPE_INT32_2D:
       uiItemR(layout, filter_ptr, "operation", 0, nullptr, ICON_NONE);
       uiItemR(layout, filter_ptr, "value_int2", 0, IFACE_("Value"), ICON_NONE);
       break;

@@ -278,7 +278,8 @@ int ED_mesh_uv_add(
           CD_PROP_FLOAT2,
           MEM_dupallocN(CustomData_get_layer(&me->ldata, CD_PROP_FLOAT2)),
           me->totloop,
-          unique_name);
+          unique_name,
+          nullptr);
 
       is_init = true;
     }
@@ -1143,7 +1144,7 @@ static void mesh_add_verts(Mesh *mesh, int len)
 
   int totvert = mesh->totvert + len;
   CustomData vdata;
-  CustomData_copy(&mesh->vdata, &vdata, CD_MASK_MESH.vmask, CD_SET_DEFAULT, totvert);
+  CustomData_copy_layout(&mesh->vdata, &vdata, CD_MASK_MESH.vmask, CD_SET_DEFAULT, totvert);
   CustomData_copy_data(&mesh->vdata, &vdata, 0, 0, mesh->totvert);
 
   if (!CustomData_get_layer_named(&vdata, CD_PROP_FLOAT3, "position")) {
@@ -1177,11 +1178,11 @@ static void mesh_add_edges(Mesh *mesh, int len)
   totedge = mesh->totedge + len;
 
   /* Update custom-data. */
-  CustomData_copy(&mesh->edata, &edata, CD_MASK_MESH.emask, CD_SET_DEFAULT, totedge);
+  CustomData_copy_layout(&mesh->edata, &edata, CD_MASK_MESH.emask, CD_SET_DEFAULT, totedge);
   CustomData_copy_data(&mesh->edata, &edata, 0, 0, mesh->totedge);
 
-  if (!CustomData_get_layer_named(&edata, CD_PROP_INT2, ".edge_verts")) {
-    CustomData_add_layer_named(&edata, CD_PROP_INT2, CD_CONSTRUCT, totedge, ".edge_verts");
+  if (!CustomData_get_layer_named(&edata, CD_PROP_INT32_2D, ".edge_verts")) {
+    CustomData_add_layer_named(&edata, CD_PROP_INT32_2D, CD_CONSTRUCT, totedge, ".edge_verts");
   }
 
   CustomData_free(&mesh->edata, mesh->totedge);
@@ -1210,7 +1211,7 @@ static void mesh_add_loops(Mesh *mesh, int len)
   totloop = mesh->totloop + len; /* new face count */
 
   /* update customdata */
-  CustomData_copy(&mesh->ldata, &ldata, CD_MASK_MESH.lmask, CD_SET_DEFAULT, totloop);
+  CustomData_copy_layout(&mesh->ldata, &ldata, CD_MASK_MESH.lmask, CD_SET_DEFAULT, totloop);
   CustomData_copy_data(&mesh->ldata, &ldata, 0, 0, mesh->totloop);
 
   if (!CustomData_get_layer_named(&ldata, CD_PROP_INT32, ".corner_vert")) {
@@ -1247,7 +1248,7 @@ static void mesh_add_polys(Mesh *mesh, int len)
   totpoly = mesh->totpoly + len; /* new face count */
 
   /* update customdata */
-  CustomData_copy(&mesh->pdata, &pdata, CD_MASK_MESH.pmask, CD_SET_DEFAULT, totpoly);
+  CustomData_copy_layout(&mesh->pdata, &pdata, CD_MASK_MESH.pmask, CD_SET_DEFAULT, totpoly);
   CustomData_copy_data(&mesh->pdata, &pdata, 0, 0, mesh->totpoly);
 
   mesh->poly_offset_indices = static_cast<int *>(

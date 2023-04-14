@@ -31,7 +31,7 @@ Mesh *convert_ply_to_mesh(PlyData &data, Mesh *mesh, const PLYImportParams &para
   if (!data.edges.is_empty()) {
     mesh->totedge = int(data.edges.size());
     CustomData_add_layer_named(
-        &mesh->edata, CD_PROP_INT2, CD_CONSTRUCT, mesh->totedge, ".edge_verts");
+        &mesh->edata, CD_PROP_INT32_2D, CD_CONSTRUCT, mesh->totedge, ".edge_verts");
     MutableSpan<int2> edges = mesh->edges_for_write();
     for (int i = 0; i < mesh->totedge; i++) {
       int32_t v1 = data.edges[i].first;

@@ -585,7 +585,7 @@ void BlenderStrokeRenderer::GenerateStrokeMesh(StrokeGroup *group, bool hasTex)
   float3 *vert_positions = (float3 *)CustomData_add_layer_named(
       &mesh->vdata, CD_PROP_FLOAT3, CD_SET_DEFAULT, mesh->totvert, "position");
   blender::int2 *edges = (blender::int2 *)CustomData_add_layer_named(
-      &mesh->edata, CD_PROP_INT2, CD_CONSTRUCT, mesh->totedge, ".edge_verts");
+      &mesh->edata, CD_PROP_INT32_2D, CD_CONSTRUCT, mesh->totedge, ".edge_verts");
   blender::MutableSpan<int> poly_offsets = mesh->poly_offsets_for_write();
   int *corner_verts = (int *)CustomData_add_layer_named(
       &mesh->ldata, CD_PROP_INT32, CD_SET_DEFAULT, mesh->totloop, ".corner_vert");

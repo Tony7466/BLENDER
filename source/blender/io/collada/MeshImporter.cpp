@@ -550,11 +550,11 @@ void MeshImporter::mesh_add_edges(Mesh *mesh, int len)
   totedge = mesh->totedge + len;
 
   /* Update custom-data. */
-  CustomData_copy(&mesh->edata, &edata, CD_MASK_MESH.emask, CD_SET_DEFAULT, totedge);
+  CustomData_copy_layout(&mesh->edata, &edata, CD_MASK_MESH.emask, CD_SET_DEFAULT, totedge);
   CustomData_copy_data(&mesh->edata, &edata, 0, 0, mesh->totedge);
 
-  if (!CustomData_get_layer_named(&edata, CD_PROP_INT2, ".edge_verts")) {
-    CustomData_add_layer_named(&edata, CD_PROP_INT2, CD_CONSTRUCT, totedge, ".edge_verts");
+  if (!CustomData_get_layer_named(&edata, CD_PROP_INT32_2D, ".edge_verts")) {
+    CustomData_add_layer_named(&edata, CD_PROP_INT32_2D, CD_CONSTRUCT, totedge, ".edge_verts");
   }
 
   CustomData_free(&mesh->edata, mesh->totedge);

@@ -376,7 +376,7 @@ static int rna_MeshEdge_index_get(PointerRNA *ptr)
 {
   const Mesh *mesh = rna_mesh(ptr);
   const vec2i *edge = (vec2i *)ptr->data;
-  const vec2i *edges = CustomData_get_layer_named(&mesh->edata, CD_PROP_INT2, ".edge_verts");
+  const vec2i *edges = CustomData_get_layer_named(&mesh->edata, CD_PROP_INT32_2D, ".edge_verts");
   const int index = (int)(edge - edges);
   BLI_assert(index >= 0);
   BLI_assert(index < mesh->totedge);
@@ -2004,7 +2004,7 @@ static void rna_Mesh_edges_begin(CollectionPropertyIterator *iter, PointerRNA *p
 {
   Mesh *mesh = rna_mesh(ptr);
   vec2i *edges = CustomData_get_layer_named_for_write(
-      &mesh->edata, CD_PROP_INT2, ".edge_verts", mesh->totedge);
+      &mesh->edata, CD_PROP_INT32_2D, ".edge_verts", mesh->totedge);
   rna_iterator_array_begin(iter, edges, sizeof(vec2i), mesh->totedge, false, NULL);
 }
 static int rna_Mesh_edges_length(PointerRNA *ptr)
@@ -2019,7 +2019,7 @@ int rna_Mesh_edges_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
     return false;
   }
   vec2i *edges = CustomData_get_layer_named_for_write(
-      &mesh->edata, CD_PROP_INT2, ".edge_verts", mesh->totedge);
+      &mesh->edata, CD_PROP_INT32_2D, ".edge_verts", mesh->totedge);
   r_ptr->owner_id = &mesh->id;
   r_ptr->type = &RNA_MeshEdge;
   r_ptr->data = &edges[index];

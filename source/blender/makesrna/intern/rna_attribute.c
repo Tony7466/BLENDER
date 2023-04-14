@@ -39,7 +39,7 @@ const EnumPropertyItem rna_enum_attribute_type_items[] = {
     {CD_PROP_BOOL, "BOOLEAN", 0, "Boolean", "True or false"},
     {CD_PROP_FLOAT2, "FLOAT2", 0, "2D Vector", "2D vector with floating-point values"},
     {CD_PROP_INT8, "INT8", 0, "8-Bit Integer", "Smaller integer with a range from -128 to 127"},
-    {CD_PROP_INT2, "INT2", 0, "2D Integer Vector", "32-bit signed integer vector"},
+    {CD_PROP_INT32_2D, "INT32_2D", 0, "2D Integer Vector", "32-bit signed integer vector"},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -67,7 +67,7 @@ const EnumPropertyItem rna_enum_attribute_type_with_auto_items[] = {
     {CD_PROP_BOOL, "BOOLEAN", 0, "Boolean", "True or false"},
     {CD_PROP_FLOAT2, "FLOAT2", 0, "2D Vector", "2D vector with floating-point values"},
     {CD_PROP_FLOAT2, "FLOAT2", 0, "2D Vector", "2D vector with floating-point values"},
-    {CD_PROP_INT2, "INT2", 0, "2D Integer Vector", "32-bit signed integer vector"},
+    {CD_PROP_INT32_2D, "INT32_2D", 0, "2D Integer Vector", "32-bit signed integer vector"},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -164,7 +164,7 @@ static StructRNA *srna_by_custom_data_layer_type(const eCustomDataType type)
       return &RNA_Float2Attribute;
     case CD_PROP_INT8:
       return &RNA_ByteIntAttribute;
-    case CD_PROP_INT2:
+    case CD_PROP_INT32_2D:
       return &RNA_Int2Attribute;
     default:
       return NULL;
@@ -296,7 +296,7 @@ static void rna_Attribute_data_begin(CollectionPropertyIterator *iter, PointerRN
     case CD_PROP_INT8:
       struct_size = sizeof(int8_t);
       break;
-    case CD_PROP_INT2:
+    case CD_PROP_INT32_2D:
       struct_size = sizeof(int[2]);
       break;
     default:

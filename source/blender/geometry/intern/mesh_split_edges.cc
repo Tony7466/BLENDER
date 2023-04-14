@@ -28,6 +28,11 @@ static void copy_to_new_verts(MutableSpan<T> data, const Span<int> new_to_old_ve
 
 static void add_new_vertices(Mesh &mesh, const Span<int> new_to_old_verts_map)
 {
+  /* These types aren't supported for interpolation below. */
+  CustomData_free_layers(&mesh.vdata, CD_BWEIGHT, mesh.totvert);
+  CustomData_free_layers(&mesh.vdata, CD_SHAPEKEY, mesh.totvert);
+  CustomData_free_layers(&mesh.vdata, CD_CLOTH_ORCO, mesh.totvert);
+  CustomData_free_layers(&mesh.vdata, CD_MVERT_SKIN, mesh.totvert);
   CustomData_realloc(&mesh.vdata, mesh.totvert, mesh.totvert + new_to_old_verts_map.size());
   mesh.totvert += new_to_old_verts_map.size();
 
@@ -136,11 +141,13 @@ static void add_new_edges(Mesh &mesh,
 
   CustomData_free(&mesh.edata, mesh.totedge);
   mesh.totedge = new_edges.size();
-  CustomData_add_layer_named(&mesh.edata, CD_PROP_INT2, CD_CONSTRUCT, mesh.totedge, ".edge_verts");
+  CustomData_add_layer_named(
+      &mesh.edata, CD_PROP_INT32_2D, CD_CONSTRUCT, mesh.totedge, ".edge_verts");
   mesh.edges_for_write().copy_from(new_edges);
 
   if (new_orig_indices != nullptr) {
-    CustomData_add_layer_with_data(&mesh.edata, CD_ORIGINDEX, new_orig_indices, mesh.totedge);
+    CustomData_add_layer_with_data(
+        &mesh.edata, CD_ORIGINDEX, new_orig_indices, mesh.totedge, nullptr);
   }
 
   for (NewAttributeData &new_data : dst_attributes) {

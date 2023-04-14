@@ -229,13 +229,13 @@ inline blender::MutableSpan<blender::float3> Mesh::vert_positions_for_write()
 inline blender::Span<blender::int2> Mesh::edges() const
 {
   return {static_cast<const blender::int2 *>(
-              CustomData_get_layer_named(&this->edata, CD_PROP_INT2, ".edge_verts")),
+              CustomData_get_layer_named(&this->edata, CD_PROP_INT32_2D, ".edge_verts")),
           this->totedge};
 }
 inline blender::MutableSpan<blender::int2> Mesh::edges_for_write()
 {
   return {static_cast<blender::int2 *>(CustomData_get_layer_named_for_write(
-              &this->edata, CD_PROP_INT2, ".edge_verts", this->totedge)),
+              &this->edata, CD_PROP_INT32_2D, ".edge_verts", this->totedge)),
           this->totedge};
 }
 

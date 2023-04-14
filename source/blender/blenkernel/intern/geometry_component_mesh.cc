@@ -1184,8 +1184,8 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
       mf::build::exec_presets::AllSpanOrSingle());
   static BuiltinCustomDataLayerProvider edge_verts(".edge_verts",
                                                    ATTR_DOMAIN_EDGE,
-                                                   CD_PROP_INT2,
-                                                   CD_PROP_INT2,
+                                                   CD_PROP_INT32_2D,
+                                                   CD_PROP_INT32_2D,
                                                    BuiltinAttributeProvider::NonCreatable,
                                                    BuiltinAttributeProvider::NonDeletable,
                                                    edge_access,

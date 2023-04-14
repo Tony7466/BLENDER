@@ -652,7 +652,8 @@ bool ED_object_modifier_convert_psys_to_mesh(ReportList * /*reports*/,
   me->totedge = edges_num;
 
   CustomData_add_layer_named(&me->vdata, CD_PROP_FLOAT3, CD_CONSTRUCT, verts_num, "position");
-  CustomData_add_layer_named(&me->edata, CD_PROP_INT2, CD_CONSTRUCT, me->totedge, ".edge_verts");
+  CustomData_add_layer_named(
+      &me->edata, CD_PROP_INT32_2D, CD_CONSTRUCT, me->totedge, ".edge_verts");
   CustomData_add_layer(&me->fdata, CD_MFACE, CD_SET_DEFAULT, 0);
 
   blender::MutableSpan<float3> positions = me->vert_positions_for_write();
@@ -730,7 +731,7 @@ static void add_shapekey_layers(Mesh &mesh_dest, const Mesh &mesh_src)
     }
 
     CustomData_add_layer_named_with_data(
-        &mesh_dest.vdata, CD_SHAPEKEY, array, mesh_dest.totvert, kb->name);
+        &mesh_dest.vdata, CD_SHAPEKEY, array, mesh_dest.totvert, kb->name, nullptr);
     const int ci = CustomData_get_layer_index_n(&mesh_dest.vdata, CD_SHAPEKEY, i);
 
     mesh_dest.vdata.layers[ci].uid = kb->uid;

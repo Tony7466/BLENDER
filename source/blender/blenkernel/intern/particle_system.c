@@ -3321,7 +3321,7 @@ static void hair_create_input_mesh(ParticleSimulationData *sim,
   }
   float(*positions)[3] = BKE_mesh_vert_positions_for_write(mesh);
   vec2i *edge = CustomData_get_layer_named_for_write(
-      &mesh->edata, CD_PROP_INT2, ".edge_verts", mesh->totedge);
+      &mesh->edata, CD_PROP_INT32_2D, ".edge_verts", mesh->totedge);
   dvert = BKE_mesh_deform_verts_for_write(mesh);
 
   if (psys->clmd->hairdata == NULL) {
