@@ -458,6 +458,28 @@ MutableSpan<float2> CurvesGeometry::surface_uv_coords_for_write()
   return get_mutable_attribute<float2>(*this, ATTR_DOMAIN_CURVE, ATTR_SURFACE_UV_COORDINATE);
 }
 
+Span<MDeformVert> CurvesGeometry::deform_verts() const
+{
+  const MDeformVert *dverts = (const MDeformVert *)CustomData_get_layer(&this->point_data,
+                                                                        CD_MDEFORMVERT);
+  if (dverts == nullptr) {
+    return {};
+  }
+  return {dverts, this->point_num};
+}
+
+MutableSpan<MDeformVert> CurvesGeometry::deform_verts_for_write()
+{
+  MDeformVert *dvert = (MDeformVert *)CustomData_get_layer_for_write(
+      &this->point_data, CD_MDEFORMVERT, this->point_num);
+  if (dvert != nullptr) {
+    return {dvert, this->point_num};
+  }
+  return {(MDeformVert *)CustomData_add_layer(
+              &this->point_data, CD_MDEFORMVERT, CD_SET_DEFAULT, this->point_num),
+          this->point_num};
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
