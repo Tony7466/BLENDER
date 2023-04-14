@@ -504,7 +504,7 @@ void time_offset_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float
   float delta_y;
 
   /* If we operate directly on the fcurve there will be a feedback loop
-   * so we need to capture the "y" values on an array to then apply them on a second loop*/
+   * so we need to capture the "y" values on an array to then apply them on a second loop. */
   float y_values[segment->length];
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
