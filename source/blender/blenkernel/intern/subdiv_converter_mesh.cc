@@ -354,7 +354,6 @@ static void initialize_manifold_indices(ConverterStorage *storage)
 {
   using namespace blender;
   const Mesh *mesh = storage->mesh;
-  const blender::Span<MEdge> edges = storage->edges;
   const bke::LooseVertCache &loose_verts = mesh->loose_verts_face();
   const bke::LooseEdgeCache &loose_edges = mesh->loose_edges();
   initialize_manifold_index_array(loose_verts.is_loose_bits,
@@ -369,6 +368,7 @@ static void initialize_manifold_indices(ConverterStorage *storage)
                                   &storage->num_manifold_edges);
   /* Initialize infinite sharp mapping. */
   if (loose_edges.count > 0) {
+    const blender::Span<MEdge> edges = storage->edges;
     storage->infinite_sharp_vertices_map = BLI_BITMAP_NEW(mesh->totvert, "vert used map");
     for (int edge_index = 0; edge_index < mesh->totedge; edge_index++) {
       if (loose_edges.is_loose_bits[edge_index]) {
