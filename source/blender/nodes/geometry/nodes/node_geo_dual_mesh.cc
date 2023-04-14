@@ -508,8 +508,7 @@ static void boundary_edges_on_poly(const IndexRange poly,
   }
 }
 
-static void add_edge(const Span<int2> src_edges,
-                     const int old_edge_i,
+static void add_edge(const int old_edge_i,
                      const int v1,
                      const int v2,
                      Vector<int> &new_to_old_edges_map,
@@ -824,13 +823,8 @@ static Mesh *calc_dual_mesh(const Mesh &src_mesh,
       new_to_old_face_corners_map.append(sorted_corners.last());
       const int first_midpoint = loop_indices.last();
       if (old_to_new_edges_map[edge1] == -1) {
-        add_edge(src_edges,
-                 edge1,
-                 last_face_center,
-                 first_midpoint,
-                 new_to_old_edges_map,
-                 new_edges,
-                 loop_edges);
+        add_edge(
+            edge1, last_face_center, first_midpoint, new_to_old_edges_map, new_edges, loop_edges);
         old_to_new_edges_map[edge1] = new_edges.size() - 1;
         boundary_vertex_to_relevant_face_map.append(std::pair(first_midpoint, last_face_center));
       }
@@ -844,29 +838,18 @@ static Mesh *calc_dual_mesh(const Mesh &src_mesh,
           std::pair(loop_indices.last(), last_face_center));
       vert_positions.append(src_positions[i]);
       const int boundary_vertex = loop_indices.last();
-      add_edge(src_edges,
-               edge1,
-               first_midpoint,
-               boundary_vertex,
-               new_to_old_edges_map,
-               new_edges,
-               loop_edges);
+      add_edge(
+          edge1, first_midpoint, boundary_vertex, new_to_old_edges_map, new_edges, loop_edges);
 
       loop_indices.append(boundary_edge_midpoint_index[edge2]);
       new_to_old_face_corners_map.append(sorted_corners.first());
       const int second_midpoint = loop_indices.last();
-      add_edge(src_edges,
-               edge2,
-               boundary_vertex,
-               second_midpoint,
-               new_to_old_edges_map,
-               new_edges,
-               loop_edges);
+      add_edge(
+          edge2, boundary_vertex, second_midpoint, new_to_old_edges_map, new_edges, loop_edges);
 
       if (old_to_new_edges_map[edge2] == -1) {
         const int first_face_center = loop_indices.first();
-        add_edge(src_edges,
-                 edge2,
+        add_edge(edge2,
                  second_midpoint,
                  first_face_center,
                  new_to_old_edges_map,
