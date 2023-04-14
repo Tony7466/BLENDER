@@ -12,6 +12,8 @@
 #include "util/types.h"
 #include "util/vector.h"
 
+#include <variant>
+
 CCL_NAMESPACE_BEGIN
 
 /* Orientation Bounds
