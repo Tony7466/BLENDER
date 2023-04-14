@@ -497,18 +497,18 @@ static float s_curve(float x, float slope, float width, float height, float xshi
    * or horizontaly. The range of the curve used is from 0 to 1 on "x" and "y" so we can scale it
    * (width and height) and move it (xshift and y yshift) to crop the part of the curve we need.
    * Slope determins how curvy the shape is */
-  float curve = height * pow((x - xshift), slope) /
-                    (pow((x - xshift), slope) + pow((width - (x - xshift)), slope)) +
-                yshift;
+  float y = height * pow((x - xshift), slope) /
+                (pow((x - xshift), slope) + pow((width - (x - xshift)), slope)) +
+            yshift;
 
   /* The curve has some noise beyond our margins so we clamp the values */
   if (x > xshift + width) {
-    curve = height + yshift;
+    y = height + yshift;
   }
   else if (x < xshift) {
-    curve = yshift;
+    y = yshift;
   }
-  return curve;
+  return y;
 }
 
 void blend_to_ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
@@ -525,9 +525,6 @@ void blend_to_ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const flo
     return;
   }
 
-  /* The calculation needs diferent values for each side of the slider. */
-  const bool slider_right_side = factor > 0.5;
-
   /* The factor goes from 0 to 1, but for this tool it needs to go from -1 to 1. */
   const float long_factor = factor * 2 - 1;
 
@@ -537,7 +534,7 @@ void blend_to_ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const flo
     /* For easy calculation of the curve, the  values are normalized. */
     const float normalized_x = (fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range;
 
-    if (slider_right_side) {
+    if (factor > 0.5) {
       const float ease = s_curve(normalized_x, 3, 2.0, 2.0, -1.0, -1.0);
       const float base = left_key->vec[1][1] + key_y_range * ease;
       y_delta = base - fcu->bezt[i].vec[1][1];
