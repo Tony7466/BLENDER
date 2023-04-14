@@ -2087,8 +2087,21 @@ ImBuf *WM_clipboard_image_get(void)
 
 bool WM_clipboard_image_set(ImBuf *ibuf)
 {
-  IMB_rect_from_float(ibuf);
-  return (bool)GHOST_putClipboardImage(ibuf->rect, ibuf->x, ibuf->y);
+  bool free_byte_buffer = false;
+  if (ibuf->rect == NULL) {
+    /* Add a byte buffer if it does not have one. */
+    IMB_rect_from_float(ibuf);
+    free_byte_buffer = true;
+  }
+
+  bool success = (bool)GHOST_putClipboardImage(ibuf->rect, ibuf->x, ibuf->y);
+
+  if (free_byte_buffer) {
+    /* Remove the byte buffer if we added it. */
+    imb_freerectImBuf(ibuf);
+  }
+
+  return success;
 }
 
 /** \} */

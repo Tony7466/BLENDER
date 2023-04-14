@@ -2332,8 +2332,9 @@ static uint *getClipboardImageDibV5(int *r_width, int *r_height)
 
   int offset = bitmapV5Header->bV5Size + bitmapV5Header->bV5ClrUsed * sizeof(RGBQUAD);
 
-  if (bitmapV5Header->bV5Compression == BI_BITFIELDS)
+  if (bitmapV5Header->bV5Compression == BI_BITFIELDS) {
     offset += 12;
+  }
   BYTE *buffer = (BYTE *)bitmapV5Header + offset;
   int bitcount = bitmapV5Header->bV5BitCount;
   int width = bitmapV5Header->bV5Width;
