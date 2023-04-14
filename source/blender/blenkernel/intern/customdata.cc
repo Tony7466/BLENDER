@@ -2851,6 +2851,24 @@ static CustomDataLayer *customData_add_layer__internal(CustomData *data,
     new_layer.active_rnd = data->layers[index - 1].active_rnd;
     new_layer.active_clone = data->layers[index - 1].active_clone;
     new_layer.active_mask = data->layers[index - 1].active_mask;
+
+    /* Even though the typemap is invalidated for all types larger than the current type
+     * it's still valid for the current, because the layers are sorted by type. */
+    int first_layer_of_type = data->typemap[type];
+    /* If the previous active layer is an anonymous layer make the new one the active one.
+     * and analogous for the render,clone and mask layers */
+    if (data->layers[first_layer_of_type + new_layer.active].anonymous_id) {
+      new_layer.active = index - first_layer_of_type;
+    }
+    if (data->layers[first_layer_of_type + new_layer.active_rnd].anonymous_id) {
+      new_layer.active_rnd = index - first_layer_of_type;
+    }
+    if (data->layers[first_layer_of_type + new_layer.active_clone].anonymous_id) {
+      new_layer.active_clone = index - first_layer_of_type;
+    }
+    if (data->layers[first_layer_of_type + new_layer.active_mask].anonymous_id) {
+      new_layer.active_mask = index - first_layer_of_type;
+    }
   }
   else {
     new_layer.active = 0;
