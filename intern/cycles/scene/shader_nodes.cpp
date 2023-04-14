@@ -759,7 +759,6 @@ static void sky_texture_precompute_nishita(SunSky *sunsky,
   SKY_nishita_skymodel_precompute_sun(
       sun_elevation, sun_size, altitude, air_density, dust_density, pixel_bottom, pixel_top);
 
-  sun_rotation = M_2PI_F - sun_rotation;
   /* send data to svm_sky */
   sunsky->nishita_data[0] = pixel_bottom[0];
   sunsky->nishita_data[1] = pixel_bottom[1];
@@ -884,6 +883,35 @@ void SkyTextureNode::compile(SVMCompiler &compiler)
      * Below 1m causes numerical issues and above 60km is space. */
     float clamped_altitude = clamp(altitude, 1.0f, 59999.0f);
 
+    /* Patch sun position so users are able to animate the daylight cycle while keeping the shading
+     * code simple. If the code pertaining to modifying `sun_rotation` and `sun_elevation` is
+     * updated, make sure the same code in `device_update_background()` is updated. */
+    float elevation = sun_elevation;
+    float rotation = sun_rotation;
+
+    /* Wrap `sun_elevation` into [-2PI..2PI] range. */
+    elevation = fmodf(elevation, M_2PI_F);
+    /* Wrap `elevation` into [-PI..PI] range. */
+    if (fabsf(elevation) >= M_PI_F) {
+      elevation -= copysignf(2.0f, elevation) * M_PI_F;
+    }
+    /* Wrap `elevation` into [-PI/2..PI/2] range while keeping the same absolute position. */
+    if (elevation >= M_PI_2_F || elevation <= -M_PI_2_F) {
+      elevation = copysignf(M_PI_F, elevation) - elevation;
+      rotation += M_PI_F;
+    }
+
+    /* Wrap `rotation` into [-2PI..2PI] range. */
+    rotation = fmodf(rotation, M_2PI_F);
+    /* Wrap `rotation` into [0..2PI] range. */
+    if (rotation < 0.0f) {
+      rotation += M_2PI_F;
+    }
+    rotation = M_2PI_F - sun_rotation;
+
+    sun_elevation = elevation;
+    sun_rotation = rotation;
+
     sky_texture_precompute_nishita(&sunsky,
                                    sun_disc,
                                    get_sun_size(),
@@ -979,6 +1007,35 @@ void SkyTextureNode::compile(OSLCompiler &compiler)
     /* Clamp altitude to reasonable values.
      * Below 1m causes numerical issues and above 60km is space. */
     float clamped_altitude = clamp(altitude, 1.0f, 59999.0f);
+
+    /* Patch sun position so users are able to animate the daylight cycle while keeping the shading
+     * code simple. If the code pertaining to modifying `sun_rotation` and `sun_elevation` is
+     * updated, make sure the same code in `device_update_background()` is updated. */
+    float elevation = sun_elevation;
+    float rotation = sun_rotation;
+
+    /* Wrap `sun_elevation` into [-2PI..2PI] range. */
+    elevation = fmodf(elevation, M_2PI_F);
+    /* Wrap `elevation` into [-PI..PI] range. */
+    if (fabsf(elevation) >= M_PI_F) {
+      elevation -= copysignf(2.0f, elevation) * M_PI_F;
+    }
+    /* Wrap `elevation` into [-PI/2..PI/2] range while keeping the same absolute position. */
+    if (elevation >= M_PI_2_F || elevation <= -M_PI_2_F) {
+      elevation = copysignf(M_PI_F, elevation) - elevation;
+      rotation += M_PI_F;
+    }
+
+    /* Wrap `rotation` into [-2PI..2PI] range. */
+    rotation = fmodf(rotation, M_2PI_F);
+    /* Wrap `rotation` into [0..2PI] range. */
+    if (rotation < 0.0f) {
+      rotation += M_2PI_F;
+    }
+    rotation = M_2PI_F - sun_rotation;
+
+    sun_elevation = elevation;
+    sun_rotation = rotation;
 
     sky_texture_precompute_nishita(&sunsky,
                                    sun_disc,
