@@ -20,8 +20,12 @@ class Volumes {
   Texture prop_extinction_tx_;
   Texture prop_emission_tx_;
   Texture prop_phase_tx_;
-  SwapChain<Texture, 2> scatter_tx_;
-  SwapChain<Texture, 2> transmit_tx_;
+  Texture scatter_tx_;
+  Texture transmit_tx_;
+  Texture integrated_scatter_tx_;
+  Texture integrated_transmit_tx_;
+  Texture dummy_scatter_tx_;
+  Texture dummy_transmit_tx_;
 
   Framebuffer volumetric_fb_;
   Framebuffer scatter_fb_;

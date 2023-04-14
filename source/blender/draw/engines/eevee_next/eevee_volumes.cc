@@ -130,9 +130,6 @@ void Volumes::init()
 
 void Volumes::begin_sync()
 {
-  scatter_tx_.swap();
-  transmit_tx_.swap();
-
   const DRWContextState *draw_ctx = DRW_context_state_get();
   Scene *scene = draw_ctx->scene;
   const Scene *scene_eval = DEG_get_evaluated_scene(draw_ctx->depsgraph);
@@ -249,10 +246,16 @@ void Volumes::end_sync()
     prop_extinction_tx_.free();
     prop_emission_tx_.free();
     prop_phase_tx_.free();
-    scatter_tx_.current().free();
-    scatter_tx_.previous().free();
-    transmit_tx_.current().free();
-    transmit_tx_.previous().free();
+    scatter_tx_.free();
+    transmit_tx_.free();
+    integrated_scatter_tx_.free();
+    integrated_transmit_tx_.free();
+
+    float4 scatter = float4(0.0f);
+    float4 transmit = float4(1.0f);
+    dummy_scatter_tx_.ensure_3d(GPU_RGBA8, int3(1), GPU_TEXTURE_USAGE_SHADER_READ, scatter);
+    dummy_transmit_tx_.ensure_3d(GPU_RGBA8, int3(1), GPU_TEXTURE_USAGE_SHADER_READ, transmit);
+
     return;
   }
 
@@ -267,25 +270,15 @@ void Volumes::end_sync()
   /* Volume scattering: We compute for each froxel the
    * Scattered light towards the view. We also resolve temporal
    * super sampling during this stage. */
-  scatter_tx_.current().ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
-  transmit_tx_.current().ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
+  scatter_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
+  transmit_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
 
   /* Final integration: We compute for each froxel the
    * amount of scattered light and extinction coef at this
    * given depth. We use these textures as double buffer
    * for the volumetric history. */
-  scatter_tx_.previous().ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
-  transmit_tx_.previous().ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
-
-#if 0
-    /* TODO (Miguel Pozo): These ones were used for transparency. */
-    float4 scatter = float4(0.0f);
-    float4 transmit = float4(1.0f);
-    dummy_scatter_tx_.ensure_3d(GPU_RGBA8, int3(1), GPU_TEXTURE_USAGE_SHADER_READ, scatter);
-    dummy_transmit_tx_.ensure_3d(GPU_RGBA8, int3(1), GPU_TEXTURE_USAGE_SHADER_READ, transmit);
-    effects->volume_scatter = dummy_scatter_tx_;
-    effects->volume_scatter = dummy_transmit_tx_;
-#endif
+  integrated_scatter_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
+  integrated_transmit_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
 
   scatter_ps_.init();
   scatter_ps_.state_set(DRW_STATE_WRITE_COLOR);
@@ -297,24 +290,22 @@ void Volumes::end_sync()
   scatter_ps_.bind_texture("volumeExtinction", &prop_extinction_tx_);
   scatter_ps_.bind_texture("volumeEmission", &prop_emission_tx_);
   scatter_ps_.bind_texture("volumePhase", &prop_phase_tx_);
-  scatter_ps_.bind_texture("historyScattering", &scatter_tx_.previous());
-  scatter_ps_.bind_texture("historyTransmittance", &transmit_tx_.previous());
   scatter_ps_.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z * 3);
 
   integration_ps_.init();
   integration_ps_.state_set(DRW_STATE_WRITE_COLOR);
   integration_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_INTEGRATION));
   bind_volume_pass_resources(integration_ps_);
-  integration_ps_.bind_texture("volumeScattering", &scatter_tx_.current());
-  integration_ps_.bind_texture("volumeExtinction", &transmit_tx_.current());
+  integration_ps_.bind_texture("volumeScattering", &scatter_tx_);
+  integration_ps_.bind_texture("volumeExtinction", &transmit_tx_);
   integration_ps_.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z * 3);
 
   resolve_ps_.init();
   resolve_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
   resolve_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_RESOLVE));
   bind_volume_pass_resources(resolve_ps_);
-  resolve_ps_.bind_texture("inScattering", &scatter_tx_.next());
-  resolve_ps_.bind_texture("inTransmittance", &transmit_tx_.next());
+  resolve_ps_.bind_texture("inScattering", &integrated_scatter_tx_);
+  resolve_ps_.bind_texture("inTransmittance", &integrated_transmit_tx_);
   resolve_ps_.bind_texture("inSceneDepth", &inst_.render_buffers.depth_tx);
   resolve_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
 }
@@ -338,24 +329,18 @@ void Volumes::draw_compute(View &view)
   inst_.pipelines.volume.render(view);
 
   scatter_fb_.ensure(GPU_ATTACHMENT_NONE,
-                     GPU_ATTACHMENT_TEXTURE(scatter_tx_.current()),
-                     GPU_ATTACHMENT_TEXTURE(transmit_tx_.current()));
+                     GPU_ATTACHMENT_TEXTURE(scatter_tx_),
+                     GPU_ATTACHMENT_TEXTURE(transmit_tx_));
 
   scatter_fb_.bind();
   inst_.manager->submit(scatter_ps_, view);
 
   integration_fb_.ensure(GPU_ATTACHMENT_NONE,
-                         GPU_ATTACHMENT_TEXTURE(scatter_tx_.next()),
-                         GPU_ATTACHMENT_TEXTURE(transmit_tx_.next()));
+                         GPU_ATTACHMENT_TEXTURE(integrated_scatter_tx_),
+                         GPU_ATTACHMENT_TEXTURE(integrated_transmit_tx_));
 
   integration_fb_.bind();
   inst_.manager->submit(integration_ps_, view);
-
-#if 0
-    /* TODO (Miguel Pozo): These ones were used for transparency. */
-    effects->volume_scatter = scatter_tx_.current();
-    effects->volume_transmit = transmit_tx_.current();
-#endif
 
   DRW_stats_group_end();
 }
