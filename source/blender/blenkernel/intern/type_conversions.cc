@@ -183,7 +183,7 @@ static float2 int2_to_float2(const int2 &a)
 }
 static int int2_to_int(const int2 &a)
 {
-  return (a.x + a.y) / 2;
+  return math::midpoint(a.x, a.y);
 }
 static int8_t int2_to_int8(const int2 &a)
 {
