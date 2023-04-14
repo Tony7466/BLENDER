@@ -211,10 +211,6 @@ struct GeometrySizes {
   size_t patch_size;
   size_t face_size;
   size_t corner_size;
-
-  size_t *num_geometries;
-  size_t *vert_offsets;
-  size_t *motion_vert_offsets;
 };
 
 /* Attribute Sizes */
