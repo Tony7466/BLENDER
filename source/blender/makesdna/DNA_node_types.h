@@ -1630,6 +1630,8 @@ typedef struct NodeShaderMix {
 typedef struct bNodeFunctionParameter {
   char name[64]; /* MAX_NAME */
   int socket_type;
+  int identifier;
+  int _pad;
 } bNodeFunctionParameter;
 
 typedef struct bNodeFunctionSignature {
@@ -1639,6 +1641,8 @@ typedef struct bNodeFunctionSignature {
   int outputs_num;
   int active_input;
   int active_output;
+  int next_identifier;
+  int _pad;
 } bNodeFunctionSignature;
 
 typedef struct NodeFunctionEvaluate {

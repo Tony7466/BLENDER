@@ -228,50 +228,52 @@ typedef int (*NodeGPUExecFunction)(struct GPUMaterial *mat,
 /** \name Node Function Signature
  * \{ */
 
-struct bNodeFunctionParameter *nodeFunctionSignatureFindSocket(struct bNodeFunctionSignature *sig,
-                                                               eNodeSocketInOut in_out,
-                                                               const char *identifier);
-struct bNodeFunctionParameter *nodeFunctionSignatureAddSocket(struct bNodeTree *ntree,
-                                                              struct bNodeFunctionSignature *sig,
-                                                              eNodeSocketInOut in_out,
-                                                              const char *name,
-                                                              eNodeSocketDatatype socket_type);
-struct bNodeFunctionParameter *nodeFunctionSignatureInsertSocket(
-    struct bNodeTree *ntree,
+enum eNodeFunctionParameterType {
+  NODE_FUNC_PARAM_IN,
+  NODE_FUNC_PARAM_OUT,
+  };
+
+/** Set a unique parameter name.
+ * @return True if the unique name differs from the original name.
+ */
+bool nodeFunctionParameterSetUniqueName(struct bNodeFunctionSignature *sig,
+                                        struct bNodeFunctionParameter *param,
+                                        const char *name,
+                                        const char *defname);
+/** Find the node owning this parameter. */
+struct bNode *nodeFunctionParameterFindNode(struct bNodeTree *ntree,
+                                            const struct bNodeFunctionParameter *param);
+
+/** Find the node owning this signature. */
+struct bNode *nodeFunctionSignatureFindNode(struct bNodeTree *ntree,
+                                            const struct bNodeFunctionSignature *sig);
+bool nodeFunctionSignatureContainsParameter(const struct bNodeFunctionSignature *sig,
+                                            const struct bNodeFunctionParameter *param);
+struct bNodeFunctionParameter *nodeFunctionSignatureGetActiveParameter(
+    struct bNodeFunctionSignature *sig, eNodeFunctionParameterType param_type);
+void nodeFunctionSignatureSetActiveParameter(struct bNodeFunctionSignature *sig,
+                                             eNodeFunctionParameterType param_type,
+                                             struct bNodeFunctionParameter *param);
+struct bNodeFunctionParameter *nodeFunctionSignatureFindParameterByName(
+    struct bNodeFunctionSignature *sig, eNodeFunctionParameterType param_type, const char *name);
+struct bNodeFunctionParameter *nodeFunctionSignatureAddParameter(
     struct bNodeFunctionSignature *sig,
-    eNodeSocketInOut in_out,
-    const struct bNodeFunctionParameter *next_sock,
-    const char *name,
-    eNodeSocketDatatype socket_type);
-struct bNodeFunctionParameter *nodeFunctionSignatureCopySocket(
-    struct bNodeTree *ntree,
-    struct bNodeFunctionSignature *sig,
-    const struct bNode *from_node,
-    const struct bNodeSocket *from_sock);
-struct bNodeFunctionParameter *nodeFunctionSignatureCopySocketEx(
-    struct bNodeTree *ntree,
-    struct bNodeFunctionSignature *sig,
-    const struct bNode *from_node,
-    const struct bNodeSocket *from_sock,
-    const char *idname,
+    eNodeFunctionParameterType param_type,
+    short socket_type,
     const char *name);
-struct bNodeFunctionParameter *nodeFunctionSignatureCopyInsertSocket(
-    struct bNodeTree *ntree,
+struct bNodeFunctionParameter *nodeFunctionSignatureInsertParameter(
     struct bNodeFunctionSignature *sig,
-    struct bNodeSocket *next_sock,
-    const struct bNode *from_node,
-    const struct bNodeSocket *from_sock);
-void nodeFunctionSignatureRemoveSocket(struct bNodeTree *ntree,
-                                       struct bNodeFunctionSignature *sig,
-                                       struct bNodeFunctionParameter *param);
-void nodeFunctionSignatureClear(struct bNodeTree *ntree,
-                                struct bNodeFunctionSignature *sig,
-                                eNodeSocketInOut in_out);
-void nodeFunctionSignatureMoveSocket(struct bNodeTree *ntree,
-                                     struct bNodeFunctionSignature *sig,
-                                     eNodeSocketInOut in_out,
-                                     int from_index,
-                                     int to_index);
+    eNodeFunctionParameterType param_type,
+    short socket_type,
+    const char *name,
+    int index);
+void nodeFunctionSignatureRemoveParameter(struct bNodeFunctionSignature *sig,
+                                          struct bNodeFunctionParameter *item);
+void nodeFunctionSignatureClearParameters(struct bNodeFunctionSignature *sig);
+void nodeFunctionSignatureMoveParameter(struct bNodeFunctionSignature *sig,
+                                        eNodeFunctionParameterType param_type,
+                                        int from_index,
+                                        int to_index);
 
 /** \} */
 

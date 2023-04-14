@@ -128,10 +128,12 @@ static void node_socket_set_typeinfo(bNodeTree *ntree,
 
 /* ************ NODE FUNCTION SIGNATURE *************** */
 
+namespace blender::nodes {
+
 static Span<bNodeFunctionParameter> nodeFunctionSignatureGetParams(
-    const bNodeFunctionSignature *sig, const eNodeSocketInOut in_out)
+    const bNodeFunctionSignature *sig, const eNodeFunctionParameterType param_type)
 {
-  if (in_out == SOCK_IN) {
+  if (param_type == NODE_FUNC_PARAM_IN) {
     return Span<bNodeFunctionParameter>(sig->inputs, sig->inputs_num);
   }
   else {
@@ -140,9 +142,9 @@ static Span<bNodeFunctionParameter> nodeFunctionSignatureGetParams(
 }
 
 static MutableSpan<bNodeFunctionParameter> nodeFunctionSignatureGetParams(
-    bNodeFunctionSignature *sig, const eNodeSocketInOut in_out)
+    bNodeFunctionSignature *sig, const eNodeFunctionParameterType param_type)
 {
-  if (in_out == SOCK_IN) {
+  if (param_type == NODE_FUNC_PARAM_IN) {
     return MutableSpan<bNodeFunctionParameter>(sig->inputs, sig->inputs_num);
   }
   else {
@@ -150,173 +152,188 @@ static MutableSpan<bNodeFunctionParameter> nodeFunctionSignatureGetParams(
   }
 }
 
-bNodeFunctionParameter *nodeFunctionSignatureFindSocket(bNodeFunctionSignature *sig,
-                                                        const eNodeSocketInOut in_out,
-                                                        const char *name)
+struct NodeFunctionSignatureUniqueNameArgs {
+  Span<bNodeFunctionParameter> params_span;
+  const bNodeFunctionParameter *param;
+};
+
+static bool function_signature_unique_name_check(void *arg, const char *name)
 {
-  for (bNodeFunctionParameter &param : nodeFunctionSignatureGetParams(sig, in_out)) {
-    if (STREQ(param.name, name)) {
-      return &param;
+  const NodeFunctionSignatureUniqueNameArgs &args =
+      *static_cast<const NodeFunctionSignatureUniqueNameArgs *>(arg);
+  for (const bNodeFunctionParameter &param : args.params_span) {
+    if (&param != args.param) {
+      if (STREQ(param.name, name)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+}  // namespace blender::nodes
+
+bNode *nodeFunctionParameterFindNode(bNodeTree *ntree, const bNodeFunctionParameter *param)
+{
+  /** TODO */
+  return nullptr;
+}
+
+bool nodeFunctionParameterSetUniqueName(bNodeFunctionSignature *sig,
+                                        bNodeFunctionParameter *param,
+                                        const char *name,
+                                        const char *defname)
+{
+  char unique_name[MAX_NAME + 4];
+  BLI_strncpy(unique_name, name, sizeof(unique_name));
+
+  blender::nodes::SimulationItemsUniqueNameArgs args{sim, item};
+  const bool name_changed = BLI_uniquename_cb(blender::nodes::simulation_items_unique_name_check,
+                                              &args,
+                                              defname,
+                                              '.',
+                                              unique_name,
+                                              ARRAY_SIZE(unique_name));
+  item->name = BLI_strdup(unique_name);
+  return name_changed;
+}
+
+bNode *nodeFunctionSignatureFindNode(bNodeTree *ntree, const bNodeFunctionSignature *sig)
+{
+  /** TODO */
+  return nullptr;
+}
+
+bool nodeFunctionSignatureContainsParameter(const bNodeFunctionSignature *sig,
+                                            const bNodeFunctionParameter *param)
+{
+  const int index = item - sim->items;
+  return index >= 0 && index < sim->items_num;
+}
+
+bNodeFunctionParameter *nodeFunctionSignatureGetActiveParameter(
+    bNodeFunctionSignature *sig, eNodeFunctionParameterType param_type)
+{
+  if (sim->active_index >= 0 && sim->active_index < sim->items_num) {
+    return &sim->items[sim->active_index];
+  }
+  return nullptr;
+}
+
+void nodeFunctionSignatureSetActiveParameter(bNodeFunctionSignature *sig,
+                                             eNodeFunctionParameterType param_type,
+                                             bNodeFunctionParameter *param)
+{
+  const int index = item - sim->items;
+  if (index >= 0 && index < sim->items_num) {
+    sim->active_index = index;
+  }
+}
+
+bNodeFunctionParameter *nodeFunctionSignatureFindParameterByName(
+    bNodeFunctionSignature *sig, eNodeFunctionParameterType param_type, const char *name)
+{
+  for (const int i : blender::IndexRange(sim->items_num)) {
+    if (STREQ(sim->items[i].name, name)) {
+      return &sim->items[i];
     }
   }
   return nullptr;
 }
 
-bNodeFunctionParameter *nodeFunctionSignatureAddSocket(bNodeTree *ntree,
-                                                       bNodeFunctionSignature *sig,
-                                                       const eNodeSocketInOut in_out,
-                                                       const char *name,
-                                                       eNodeSocketDatatype socket_type)
+bNodeFunctionParameter *nodeFunctionSignatureAddParameter(bNodeFunctionSignature *sig,
+                                                          eNodeFunctionParameterType param_type,
+                                                          short socket_type,
+                                                          const char *name)
 {
-  bNodeFunctionParameter param;
-  BLI_strncpy(param.name, name, sizeof(param.name));
-  param.socket_type = socket_type;
-
-  if (in_out == SOCK_IN) {
-
-    BLI_addtail(&sig->inputs, iosock);
-  }
-  else if (in_out == SOCK_OUT) {
-    BLI_addtail(&sig->outputs, iosock);
-  }
-  BKE_ntree_update_tag_signature_changed(ntree, sig);
-  return iosock;
+  return NOD_geometry_simulation_output_insert_item(sim, socket_type, name, sim->items_num);
 }
 
-bNodeFunctionParameter *nodeFunctionSignatureInsertSocket(bNodeTree *ntree,
-                                                          bNodeFunctionSignature *sig,
-                                                          const eNodeSocketInOut in_out,
-                                                          const bNodeFunctionParameter *next_sock,
-                                                          const char *name,
-                                                          eNodeSocketDatatype socket_type)
+bNodeFunctionParameter *nodeFunctionSignatureInsertParameter(bNodeFunctionSignature *sig,
+                                                             eNodeFunctionParameterType param_type,
+                                                             short socket_type,
+                                                             const char *name,
+                                                             int index)
 {
-  bNodeFunctionParameter param;
-  BLI_strncpy(param.name, name, sizeof(param.name));
-  param.socket_type = socket_type;
+  NodeSimulationItem *old_items = sim->items;
+  sim->items = MEM_cnew_array<NodeSimulationItem>(sim->items_num + 1, __func__);
+  for (const int i : blender::IndexRange(0, index)) {
+    sim->items[i] = old_items[i];
+  }
+  for (const int i : blender::IndexRange(index, sim->items_num - index)) {
+    sim->items[i + 1] = old_items[i];
+  }
 
-  if (in_out == SOCK_IN) {
-    bNodeFunctionParameter *old_params = sig->inputs;
-    sig->inputs = MEM_cnew_array<bNodeFunctionParameter>(sig->inputs_num + 1, __func__);
-    
-  }
-  else if (in_out == SOCK_OUT) {
-    BLI_insertlinkbefore(&sig->outputs, next_sock, iosock);
-  }
-  BKE_ntree_update_tag_signature_changed(ntree, sig);
-  return iosock;
+  const char *defname = nodeStaticSocketLabel(socket_type, 0);
+  NodeSimulationItem &added_item = sim->items[index];
+  added_item.identifier = sim->next_identifier++;
+  NOD_geometry_simulation_output_item_set_unique_name(sim, &added_item, name, defname);
+  added_item.socket_type = socket_type;
+
+  sim->items_num++;
+  MEM_SAFE_FREE(old_items);
+
+  return &added_item;
 }
 
-bNodeSocket *nodeFunctionSignatureCopySocket(bNodeTree *ntree,
-                                             bNodeFunctionSignature *sig,
-                                             const bNode *from_node,
-                                             const bNodeSocket *from_sock)
+void nodeFunctionSignatureRemoveParameter(bNodeFunctionSignature *sig,
+                                          bNodeFunctionParameter *item)
 {
-  return nodeFunctionSignatureCopySocketEx(
-      ntree, sig, from_node, from_sock, from_sock->idname, from_sock->name);
-}
-
-bNodeSocket *nodeFunctionSignatureCopySocketEx(bNodeTree *ntree,
-                                               bNodeFunctionSignature *sig,
-                                               const bNode *from_node,
-                                               const bNodeSocket *from_sock,
-                                               const char *idname,
-                                               const char *name)
-{
-  bNodeSocket *iosock = nodeFunctionSignatureAddSocket(
-      ntree, sig, static_cast<eNodeSocketInOut>(from_sock->in_out), idname, DATA_(name));
-  if (iosock) {
-    if (iosock->typeinfo->interface_from_socket) {
-      iosock->typeinfo->interface_from_socket(ntree, iosock, from_node, from_sock);
-    }
+  const int index = item - sim->items;
+  if (index < 0 || index >= sim->items_num) {
+    return;
   }
-  return iosock;
-}
 
-bNodeSocket *nodeFunctionSignatureCopyInsertSocket(bNodeTree *ntree,
-                                                   bNodeFunctionSignature *sig,
-                                                   bNodeSocket *next_sock,
-                                                   const bNode *from_node,
-                                                   const bNodeSocket *from_sock)
-{
-  bNodeSocket *iosock = nodeFunctionSignatureInsertSocket(
-      ntree,
-      sig,
-      static_cast<eNodeSocketInOut>(from_sock->in_out),
-      from_sock->idname,
-      next_sock,
-      from_sock->name);
-  if (iosock) {
-    if (iosock->typeinfo->interface_from_socket) {
-      iosock->typeinfo->interface_from_socket(ntree, iosock, from_node, from_sock);
-    }
+  NodeSimulationItem *old_items = sim->items;
+  sim->items = MEM_cnew_array<NodeSimulationItem>(sim->items_num - 1, __func__);
+  for (const int i : blender::IndexRange(0, index)) {
+    sim->items[i] = old_items[i];
   }
-  return iosock;
-}
-
-void nodeFunctionSignatureRemoveSocket(bNodeTree *ntree,
-                                       bNodeFunctionSignature *sig,
-                                       bNodeSocket *sock)
-{
-  /* this is fast, this way we don't need an in_out argument */
-  BLI_remlink(&sig->inputs, sock);
-  BLI_remlink(&sig->outputs, sock);
-
-  node_socket_interface_free(ntree, sock, true);
-  MEM_freeN(sock);
-
-  BKE_ntree_update_tag_signature_changed(ntree, sig);
-}
-
-void nodeFunctionSignatureClear(bNodeTree *ntree,
-                                bNodeFunctionSignature *sig,
-                                eNodeSocketInOut in_out)
-{
-  if (in_out == SOCK_IN) {
-    LISTBASE_FOREACH (bNodeSocket *, sock, &sig->inputs) {
-      node_socket_interface_free(ntree, sock, true);
-    }
-    BLI_freelistN(&sig->inputs);
+  for (const int i : blender::IndexRange(index, sim->items_num - index).drop_front(1)) {
+    sim->items[i - 1] = old_items[i];
   }
-  else if (in_out == SOCK_OUT) {
-    LISTBASE_FOREACH (bNodeSocket *, sock, &sig->outputs) {
-      node_socket_interface_free(ntree, sock, true);
-    }
-    BLI_freelistN(&sig->outputs);
-  }
-  BKE_ntree_update_tag_signature_changed(ntree, sig);
+
+  MEM_SAFE_FREE(old_items[index].name);
+
+  sim->items_num--;
+  MEM_SAFE_FREE(old_items);
 }
 
-void nodeFunctionSignatureMoveSocket(bNodeTree *ntree,
-                                     bNodeFunctionSignature *sig,
-                                     eNodeSocketInOut in_out,
-                                     int from_index,
-                                     int to_index)
+void nodeFunctionSignatureClearParameters(bNodeFunctionSignature *sig)
 {
-  ListBase *socket_list = (in_out == SOCK_IN) ? &sig->inputs : &sig->outputs;
+  for (NodeSimulationItem &item : blender::MutableSpan(sim->items, sim->items_num)) {
+    MEM_SAFE_FREE(item.name);
+  }
+  MEM_SAFE_FREE(sim->items);
+  sim->items = nullptr;
+  sim->items_num = 0;
+}
+
+void nodeFunctionSignatureMoveParameter(bNodeFunctionSignature *sig,
+                                        eNodeFunctionParameterType param_type,
+                                        int from_index,
+                                        int to_index)
+{
+  BLI_assert(from_index >= 0 && from_index < sim->items_num);
+  BLI_assert(to_index >= 0 && to_index < sim->items_num);
 
   if (from_index == to_index) {
     return;
   }
-  if (from_index < 0 || to_index < 0) {
-    return;
-  }
-
-  bNodeSocket *sock = (bNodeSocket *)BLI_findlink(socket_list, from_index);
-  if (to_index < from_index) {
-    bNodeSocket *nextsock = (bNodeSocket *)BLI_findlink(socket_list, to_index);
-    if (nextsock) {
-      BLI_remlink(socket_list, sock);
-      BLI_insertlinkbefore(socket_list, nextsock, sock);
+  else if (from_index < to_index) {
+    const NodeSimulationItem tmp = sim->items[from_index];
+    for (int i = from_index; i < to_index; ++i) {
+      sim->items[i] = sim->items[i + 1];
     }
+    sim->items[to_index] = tmp;
   }
-  else {
-    bNodeSocket *prevsock = (bNodeSocket *)BLI_findlink(socket_list, to_index);
-    if (prevsock) {
-      BLI_remlink(socket_list, sock);
-      BLI_insertlinkafter(socket_list, prevsock, sock);
+  else /* from_index > to_index */ {
+    const NodeSimulationItem tmp = sim->items[from_index];
+    for (int i = from_index; i > to_index; --i) {
+      sim->items[i] = sim->items[i - 1];
     }
+    sim->items[to_index] = tmp;
   }
-  BKE_ntree_update_tag_signature_changed(ntree, sig);
 }
 
 static void ntree_init_data(ID *id)

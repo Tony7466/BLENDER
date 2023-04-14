@@ -10,6 +10,7 @@ struct ID;
 struct ImageUser;
 struct Main;
 struct bNode;
+struct bNodeFunctionSignature;
 struct bNodeLink;
 struct bNodeSocket;
 struct bNodeTree;
