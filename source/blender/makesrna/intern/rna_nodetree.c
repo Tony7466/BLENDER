@@ -4092,7 +4092,7 @@ static void rna_SimulationStateItem_update(Main *bmain, Scene *UNUSED(scene), Po
 {
   bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   NodeSimulationItem *item = (NodeSimulationItem *)ptr->data;
-  bNode *node = node_geo_simulation_output_find_node_by_item(ntree, item);
+  bNode *node = NOD_geometry_simulation_output_find_node_by_item(ntree, item);
 
   BKE_ntree_update_tag_node_property(ntree, node);
   ED_node_tree_propagate_change(NULL, bmain, ntree);
@@ -4102,11 +4102,11 @@ static void rna_SimulationStateItem_name_set(PointerRNA *ptr, const char *value)
 {
   bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   NodeSimulationItem *item = (NodeSimulationItem *)ptr->data;
-  bNode *node = node_geo_simulation_output_find_node_by_item(ntree, item);
+  bNode *node = NOD_geometry_simulation_output_find_node_by_item(ntree, item);
   NodeGeometrySimulationOutput *sim = (NodeGeometrySimulationOutput *)node->storage;
 
   const char *defname = nodeStaticSocketLabel(item->socket_type, 0);
-  node_geo_simulation_output_item_set_unique_name(sim, item, value, defname);
+  NOD_geometry_simulation_output_item_set_unique_name(sim, item, value, defname);
 }
 
 static void rna_SimulationStateItem_color_get(PointerRNA *ptr, float *values)
@@ -4122,7 +4122,7 @@ static PointerRNA rna_NodeGeometrySimulationInput_paired_output_get(PointerRNA *
 {
   bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   bNode *node = (bNode *)ptr->data;
-  bNode *output_node = node_geo_simulation_input_get_paired_output(ntree, node);
+  bNode *output_node = NOD_geometry_simulation_input_get_paired_output(ntree, node);
   PointerRNA r_ptr;
   RNA_pointer_create(&ntree->id, &RNA_Node, output_node, &r_ptr);
   return r_ptr;
@@ -4158,7 +4158,7 @@ static NodeSimulationItem *rna_NodeGeometrySimulationOutput_items_new(
     const char *name)
 {
   NodeGeometrySimulationOutput *sim = (NodeGeometrySimulationOutput *)node->storage;
-  NodeSimulationItem *item = node_geo_simulation_output_add_item(sim, (short)socket_type, name);
+  NodeSimulationItem *item = NOD_geometry_simulation_output_add_item(sim, (short)socket_type, name);
 
   if (item == NULL) {
     BKE_report(reports, RPT_ERROR, "Unable to create socket");
@@ -4180,11 +4180,11 @@ static void rna_NodeGeometrySimulationOutput_items_remove(ID *id,
                                                           NodeSimulationItem *item)
 {
   NodeGeometrySimulationOutput *sim = (NodeGeometrySimulationOutput *)node->storage;
-  if (!node_geo_simulation_output_contains_item(sim, item)) {
+  if (!NOD_geometry_simulation_output_contains_item(sim, item)) {
     BKE_reportf(reports, RPT_ERROR, "Unable to locate item '%s' in node", item->name);
   }
   else {
-    node_geo_simulation_output_remove_item(sim, item);
+    NOD_geometry_simulation_output_remove_item(sim, item);
 
     bNodeTree *ntree = (bNodeTree *)id;
     BKE_ntree_update_tag_node_property(ntree, node);
@@ -4198,7 +4198,7 @@ static void rna_NodeGeometrySimulationOutput_items_clear(ID *id,
                                                          Main *bmain)
 {
   NodeGeometrySimulationOutput *sim = (NodeGeometrySimulationOutput *)node->storage;
-  node_geo_simulation_output_clear_items(sim);
+  NOD_geometry_simulation_output_clear_items(sim);
 
   bNodeTree *ntree = (bNodeTree *)id;
   BKE_ntree_update_tag_node_property(ntree, node);
@@ -4218,7 +4218,7 @@ static void rna_NodeGeometrySimulationOutput_items_move(ID *id,
     return;
   }
 
-  node_geo_simulation_output_move_item(sim, from_index, to_index);
+  NOD_geometry_simulation_output_move_item(sim, from_index, to_index);
 
   bNodeTree *ntree = (bNodeTree *)id;
   BKE_ntree_update_tag_node_property(ntree, node);
@@ -4230,7 +4230,7 @@ static PointerRNA rna_NodeGeometrySimulationOutput_active_item_get(PointerRNA *p
 {
   bNode *node = (bNode *)ptr->data;
   NodeGeometrySimulationOutput *sim = (NodeGeometrySimulationOutput *)node->storage;
-  NodeSimulationItem *item = node_geo_simulation_output_get_active_item(sim);
+  NodeSimulationItem *item = NOD_geometry_simulation_output_get_active_item(sim);
   PointerRNA r_ptr;
   RNA_pointer_create(ptr->owner_id, &RNA_SimulationStateItem, item, &r_ptr);
   return r_ptr;
@@ -4240,7 +4240,7 @@ static void rna_NodeGeometrySimulationOutput_active_item_set(PointerRNA *ptr, Po
 {
   bNode *node = (bNode *)ptr->data;
   NodeGeometrySimulationOutput *sim = (NodeGeometrySimulationOutput *)node->storage;
-  node_geo_simulation_output_set_active_item(sim, (NodeSimulationItem *)value.data);
+  NOD_geometry_simulation_output_set_active_item(sim, (NodeSimulationItem *)value.data);
 }
 
 /* ******** Node Socket Types ******** */

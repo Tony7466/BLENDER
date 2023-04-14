@@ -142,7 +142,7 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
 
   if (link->tonode == node) {
     if (link->tosock->identifier == StringRef("__extend__")) {
-      if (const NodeSimulationItem *item = node_geo_simulation_output_add_item_from_socket(
+      if (const NodeSimulationItem *item = NOD_geometry_simulation_output_add_item_from_socket(
               &storage, link->fromnode, link->fromsock)) {
         update_node_declaration_and_sockets(*ntree, *node);
         link->tosock = nodeFindSocket(node, SOCK_IN, item->name);
@@ -155,7 +155,7 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
   else {
     BLI_assert(link->fromnode == node);
     if (link->fromsock->identifier == StringRef("__extend__")) {
-      if (const NodeSimulationItem *item = node_geo_simulation_output_add_item_from_socket(
+      if (const NodeSimulationItem *item = NOD_geometry_simulation_output_add_item_from_socket(
               &storage, link->tonode, link->tosock)) {
         update_node_declaration_and_sockets(*ntree, *node);
         link->fromsock = nodeFindSocket(node, SOCK_OUT, item->name);
@@ -186,8 +186,8 @@ void register_node_type_geo_simulation_input()
   nodeRegisterType(&ntype);
 }
 
-bNode *node_geo_simulation_input_get_paired_output(bNodeTree *node_tree,
-                                                   const bNode *simulation_input_node)
+bNode *NOD_geometry_simulation_input_get_paired_output(bNodeTree *node_tree,
+                                                       const bNode *simulation_input_node)
 {
   namespace file_ns = blender::nodes::node_geo_simulation_input_cc;
 
