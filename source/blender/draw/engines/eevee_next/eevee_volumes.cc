@@ -255,6 +255,8 @@ void Volumes::end_sync()
     float4 transmit = float4(1.0f);
     dummy_scatter_tx_.ensure_3d(GPU_RGBA8, int3(1), GPU_TEXTURE_USAGE_SHADER_READ, scatter);
     dummy_transmit_tx_.ensure_3d(GPU_RGBA8, int3(1), GPU_TEXTURE_USAGE_SHADER_READ, transmit);
+    transparent_pass_scatter_tx_ = dummy_scatter_tx_;
+    transparent_pass_transmit_tx_ = dummy_transmit_tx_;
 
     return;
   }
@@ -279,6 +281,9 @@ void Volumes::end_sync()
    * for the volumetric history. */
   integrated_scatter_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
   integrated_transmit_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
+
+  transparent_pass_scatter_tx_ = integrated_scatter_tx_;
+  transparent_pass_transmit_tx_ = integrated_transmit_tx_;
 
   scatter_ps_.init();
   scatter_ps_.state_set(DRW_STATE_WRITE_COLOR);

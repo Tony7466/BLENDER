@@ -12,6 +12,7 @@
 #pragma BLENDER_REQUIRE(eevee_nodetree_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_surf_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_volume_lib.glsl)
 
 vec4 closure_to_rgba(Closure cl)
 {
@@ -112,6 +113,21 @@ void main()
   imageStore(rp_cryptomatte_img,
              out_texel,
              vec4(cryptomatte_object_buf[resource_id], node_tree.crypto_hash, 0.0));
+#endif
+
+#ifdef MAT_TRANSPARENT
+  /* Volumes Integration */
+  vec2 uvs = gl_FragCoord.xy * volumes_buf.viewport_size_inv;
+  vec3 vol_transmit, vol_scatter;
+  volumetric_resolve(uvs, gl_FragCoord.z, vol_transmit, vol_scatter);
+
+  /* Removes the part of the volume scattering that has
+   * already been added to the destination pixels.
+   * Since we do that using the blending pipeline we need to account for material transmittance.
+   */
+  vol_scatter -= vol_scatter * g_transmittance;
+
+  out_radiance.rgb = out_radiance.rgb * vol_transmit + vol_scatter;
 #endif
 
   out_radiance.rgb *= 1.0 - g_holdout;

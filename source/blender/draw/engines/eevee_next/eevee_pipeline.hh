@@ -105,10 +105,12 @@ class ForwardPipeline {
                                           ::Material *blender_mat,
                                           GPUMaterial *gpumat);
 
-  void render(View &view,
-              Framebuffer &prepass_fb,
-              Framebuffer &combined_fb,
-              GPUTexture *combined_tx);
+  void render_opaque(View &view,
+                     Framebuffer &prepass_fb,
+                     Framebuffer &combined_fb,
+                     GPUTexture *combined_tx);
+
+  void render_transparent(View &view, Framebuffer &combined_fb, GPUTexture *combined_tx);
 };
 
 /** \} */

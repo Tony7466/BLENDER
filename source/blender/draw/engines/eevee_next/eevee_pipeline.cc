@@ -185,6 +185,7 @@ void ForwardPipeline::sync()
 
     inst_.lights.bind_resources(&sub);
     inst_.shadows.bind_resources(&sub);
+    inst_.volumes.bind_resources(sub);
     inst_.sampling.bind_resources(&sub);
   }
 }
@@ -241,16 +242,14 @@ PassMain::Sub *ForwardPipeline::material_transparent_add(const Object *ob,
   return pass;
 }
 
-void ForwardPipeline::render(View &view,
-                             Framebuffer &prepass_fb,
-                             Framebuffer &combined_fb,
-                             GPUTexture * /*combined_tx*/)
+void ForwardPipeline::render_opaque(View &view,
+                                    Framebuffer &prepass_fb,
+                                    Framebuffer &combined_fb,
+                                    GPUTexture * /*combined_tx*/)
 {
-  UNUSED_VARS(view);
-
   DRW_stats_group_start("Forward.Opaque");
 
-  GPU_framebuffer_bind(prepass_fb);
+  prepass_fb.bind();
   inst_.manager->submit(prepass_ps_, view);
 
   // if (!DRW_pass_is_empty(prepass_ps_)) {
@@ -264,11 +263,19 @@ void ForwardPipeline::render(View &view,
 
   inst_.shadows.set_view(view);
 
-  GPU_framebuffer_bind(combined_fb);
+  combined_fb.bind();
   inst_.manager->submit(opaque_ps_, view);
 
   DRW_stats_group_end();
+}
 
+void ForwardPipeline::render_transparent(View &view,
+                                         Framebuffer &combined_fb,
+                                         GPUTexture * /*combined_tx*/)
+{
+  inst_.shadows.set_view(view);
+
+  combined_fb.bind();
   inst_.manager->submit(transparent_ps_, view);
 
   // if (inst_.raytracing.enabled()) {

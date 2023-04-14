@@ -106,9 +106,9 @@ void Instance::begin_sync()
   velocity.begin_sync(); /* NOTE: Also syncs camera. */
   lights.begin_sync();
   shadows.begin_sync();
+  volumes.begin_sync();
   pipelines.begin_sync();
   cryptomatte.begin_sync();
-  volumes.begin_sync();
 
   gpencil_engine_enabled = false;
 
