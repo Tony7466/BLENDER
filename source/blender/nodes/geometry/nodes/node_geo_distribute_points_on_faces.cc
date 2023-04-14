@@ -332,16 +332,15 @@ static void compute_normal_outputs(const Mesh &mesh,
                                    const Span<int> looptri_indices,
                                    MutableSpan<float3> r_normals)
 {
-  /* TODO: Normalization. */
   switch (mesh.normal_domain_all_info()) {
     case ATTR_DOMAIN_POINT: {
-      const Span<float3> vert_normals = mesh.vert_normals();
-      bke::mesh_surface_sample::sample_point_attribute(mesh,
-                                                       looptri_indices,
-                                                       bary_coords,
-                                                       VArray<float3>::ForSpan(vert_normals),
-                                                       IndexMask(looptri_indices.index_range()),
-                                                       r_normals);
+      bke::mesh_surface_sample::sample_point_normals(mesh.corner_verts(),
+                                                     mesh.looptris(),
+                                                     looptri_indices,
+                                                     bary_coords,
+                                                     mesh.vert_normals(),
+                                                     IndexMask(looptri_indices.index_range()),
+                                                     r_normals);
 
       break;
     }
@@ -355,13 +354,12 @@ static void compute_normal_outputs(const Mesh &mesh,
       break;
     }
     case ATTR_DOMAIN_CORNER: {
-      const Span<float3> corner_normals = mesh.corner_normals();
-      bke::mesh_surface_sample::sample_corner_attribute(mesh,
-                                                        looptri_indices,
-                                                        bary_coords,
-                                                        VArray<float3>::ForSpan(corner_normals),
-                                                        IndexMask(looptri_indices.index_range()),
-                                                        r_normals);
+      bke::mesh_surface_sample::sample_corner_normals(mesh.looptris(),
+                                                      looptri_indices,
+                                                      bary_coords,
+                                                      mesh.corner_normals(),
+                                                      IndexMask(looptri_indices.index_range()),
+                                                      r_normals);
       break;
     }
     default:

@@ -13,8 +13,28 @@
 
 namespace blender::bke::mesh_surface_sample {
 
+void sample_point_normals(const Span<int> corner_verts,
+                          const Span<MLoopTri> looptris,
+                          const Span<int> looptri_indices,
+                          const Span<float3> bary_coords,
+                          const Span<float3> src,
+                          const IndexMask mask,
+                          const MutableSpan<float3> dst)
+{
+  for (const int i : mask) {
+    const MLoopTri &tri = looptris[looptri_indices[i]];
+    const float3 &bary_coord = bary_coords[i];
+    const float3 value = attribute_math::mix3(bary_coord,
+                                              src[corner_verts[tri.tri[0]]],
+                                              src[corner_verts[tri.tri[1]]],
+                                              src[corner_verts[tri.tri[2]]]);
+    dst[i] = math::normalize(value);
+  }
+}
+
 template<typename T>
-BLI_NOINLINE static void sample_point_attribute(const Mesh &mesh,
+BLI_NOINLINE static void sample_point_attribute(const Span<int> corner_verts,
+                                                const Span<MLoopTri> looptris,
                                                 const Span<int> looptri_indices,
                                                 const Span<float3> bary_coords,
                                                 const VArray<T> &src,
@@ -25,20 +45,12 @@ BLI_NOINLINE static void sample_point_attribute(const Mesh &mesh,
   const Span<MLoopTri> looptris = mesh.looptris();
 
   for (const int i : mask) {
-    const int looptri_index = looptri_indices[i];
-    const MLoopTri &looptri = looptris[looptri_index];
+    const MLoopTri &tri = looptris[looptri_indices[i]];
     const float3 &bary_coord = bary_coords[i];
-
-    const int v0_index = corner_verts[looptri.tri[0]];
-    const int v1_index = corner_verts[looptri.tri[1]];
-    const int v2_index = corner_verts[looptri.tri[2]];
-
-    const T v0 = src[v0_index];
-    const T v1 = src[v1_index];
-    const T v2 = src[v2_index];
-
-    const T interpolated_value = attribute_math::mix3(bary_coord, v0, v1, v2);
-    dst[i] = interpolated_value;
+    dst[i] = attribute_math::mix3(bary_coord,
+                                  src[corner_verts[tri.tri[0]]],
+                                  src[corner_verts[tri.tri[1]]],
+                                  src[corner_verts[tri.tri[2]]]);
   }
 }
 
@@ -55,36 +67,46 @@ void sample_point_attribute(const Mesh &mesh,
   const CPPType &type = src.type();
   attribute_math::convert_to_static_type(type, [&](auto dummy) {
     using T = decltype(dummy);
-    sample_point_attribute<T>(
-        mesh, looptri_indices, bary_coords, src.typed<T>(), mask, dst.typed<T>());
+    sample_point_attribute<T>(mesh.corner_verts(),
+                              mesh.looptris(),
+                              looptri_indices,
+                              bary_coords,
+                              src.typed<T>(),
+                              mask,
+                              dst.typed<T>());
   });
 }
 
 template<typename T>
-BLI_NOINLINE static void sample_corner_attribute(const Mesh &mesh,
+BLI_NOINLINE static void sample_corner_attribute(const Span<MLoopTri> looptris,
                                                  const Span<int> looptri_indices,
                                                  const Span<float3> bary_coords,
                                                  const VArray<T> &src,
                                                  const IndexMask mask,
                                                  const MutableSpan<T> dst)
 {
-  const Span<MLoopTri> looptris = mesh.looptris();
-
   for (const int i : mask) {
     const int looptri_index = looptri_indices[i];
-    const MLoopTri &looptri = looptris[looptri_index];
+    const MLoopTri &tri = looptris[looptri_index];
     const float3 &bary_coord = bary_coords[i];
+    dst[i] = attribute_math::mix3(bary_coord, src[tri.tri[0]], src[tri.tri[1]], src[tri.tri[2]]);
+  }
+}
 
-    const int loop_index_0 = looptri.tri[0];
-    const int loop_index_1 = looptri.tri[1];
-    const int loop_index_2 = looptri.tri[2];
-
-    const T v0 = src[loop_index_0];
-    const T v1 = src[loop_index_1];
-    const T v2 = src[loop_index_2];
-
-    const T interpolated_value = attribute_math::mix3(bary_coord, v0, v1, v2);
-    dst[i] = interpolated_value;
+void sample_corner_normals(const Span<MLoopTri> looptris,
+                           const Span<int> looptri_indices,
+                           const Span<float3> bary_coords,
+                           const Span<float3> src,
+                           const IndexMask mask,
+                           const MutableSpan<float3> dst)
+{
+  for (const int i : mask) {
+    const int looptri_index = looptri_indices[i];
+    const MLoopTri &tri = looptris[looptri_index];
+    const float3 &bary_coord = bary_coords[i];
+    const float3 value = attribute_math::mix3(
+        bary_coord, src[tri.tri[0]], src[tri.tri[1]], src[tri.tri[2]]);
+    dst[i] = math::normalize(value);
   }
 }
 
