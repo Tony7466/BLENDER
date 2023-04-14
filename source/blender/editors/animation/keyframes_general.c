@@ -413,26 +413,6 @@ void ED_anim_get_butterworth_coefficients(const float cutoff,
 
   coeff_filtered[1] = 2.0 * (ita * ita - 1.0) * coeff_samples[0];
   coeff_filtered[2] = -(1.0 - M_SQRT2 * ita + ita * ita) * coeff_samples[0];
-
-  double s = 1.0f;
-  const double a = tan(M_PI * cutoff / s);
-  const double a2 = a * a;
-  const int n = filter_order;
-  double *A = (double *)malloc(n * sizeof(double));
-  double *d1 = (double *)malloc(n * sizeof(double));
-  double *d2 = (double *)malloc(n * sizeof(double));
-
-  for (int i = 0; i < filter_order; i++) {
-    double r = sin(M_PI * (2.0 * i + 1.0) / (4.0 * filter_order));
-    s = a2 + 2.0 * a * r + 1.0;
-    A[i] = a2 / s;
-    d1[i] = 2.0 * (1 - a2) / s;
-    d2[i] = -(a2 - 2.0 * a * r + 1.0) / s;
-  }
-
-  MEM_freeN(A);
-  MEM_freeN(d1);
-  MEM_freeN(d2);
 }
 
 void butterworth_smooth_fcurve_segment(FCurve *fcu,
