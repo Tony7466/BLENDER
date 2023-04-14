@@ -8,6 +8,7 @@
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
 
+#include "BLI_color.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_vector.hh"
@@ -45,6 +46,12 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(GreasePencilDrawing &drawing,
       "radius", ATTR_DOMAIN_POINT);
   SpanAttributeWriter<float> opacities = attributes.lookup_or_add_for_write_span<float>(
       "opacity", ATTR_DOMAIN_POINT);
+  SpanAttributeWriter<float> deltatimes = attributes.lookup_or_add_for_write_span<float>(
+      "deltatime", ATTR_DOMAIN_POINT);
+  SpanAttributeWriter<float> rotations = attributes.lookup_or_add_for_write_span<float>(
+      "rotation", ATTR_DOMAIN_POINT);
+  SpanAttributeWriter<ColorGeometry4f> vertex_colors =
+      attributes.lookup_or_add_for_write_span<ColorGeometry4f>("vertex_color", ATTR_DOMAIN_POINT);
   SpanAttributeWriter<bool> selection = attributes.lookup_or_add_for_write_span<bool>(
       ".selection", ATTR_DOMAIN_POINT);
 
@@ -54,35 +61,62 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(GreasePencilDrawing &drawing,
   SpanAttributeWriter<int> curve_materials = attributes.lookup_or_add_for_write_span<int>(
       "material_index", ATTR_DOMAIN_CURVE);
 
-  int i = 0;
-  LISTBASE_FOREACH_INDEX (bGPDstroke *, gps, &gpf.strokes, i) {
+  int stroke_i = 0;
+  LISTBASE_FOREACH_INDEX (bGPDstroke *, gps, &gpf.strokes, stroke_i) {
     /* TODO: check if gps->editcurve is not nullptr and parse bezier curve instead. */
 
     /* Write curve attributes. */
-    curve_cyclic.span[i] = (gps->flag & GP_STROKE_CYCLIC) != 0;
-    curve_materials.span[i] = gps->mat_nr;
+    curve_cyclic.span[stroke_i] = (gps->flag & GP_STROKE_CYCLIC) != 0;
+    curve_materials.span[stroke_i] = gps->mat_nr;
 
     /* Write point attributes. */
-    IndexRange curve_points = points_by_curve[i];
+    IndexRange stroke_points_range = points_by_curve[stroke_i];
+    if (stroke_points_range.size() == 0) {
+      continue;
+    }
+
     Span<bGPDspoint> stroke_points{gps->points, gps->totpoints};
+    MutableSpan<float3> stroke_positions = positions.slice(stroke_points_range);
+    MutableSpan<float> stroke_radii = radii.span.slice(stroke_points_range);
+    MutableSpan<float> stroke_opacities = opacities.span.slice(stroke_points_range);
+    MutableSpan<float> stroke_deltatimes = deltatimes.span.slice(stroke_points_range);
+    MutableSpan<float> stroke_rotations = rotations.span.slice(stroke_points_range);
+    MutableSpan<ColorGeometry4f> stroke_vertex_colors = vertex_colors.span.slice(
+        stroke_points_range);
+    MutableSpan<bool> stroke_selections = selection.span.slice(stroke_points_range);
 
-    MutableSpan<float3> curve_positions = positions.slice(curve_points);
-    MutableSpan<float> curve_radii = radii.span.slice(curve_points);
-    MutableSpan<float> curve_opacities = opacities.span.slice(curve_points);
-    MutableSpan<bool> curve_selections = selection.span.slice(curve_points);
+    /* Do first point. */
+    const bGPDspoint &first_pt = stroke_points.first();
+    stroke_positions.first() = float3(first_pt.x, first_pt.y, first_pt.z);
+    /* Store the actual radius of the stroke (without layer adjustment). */
+    stroke_radii.first() = gps->thickness * first_pt.pressure;
+    stroke_opacities.first() = first_pt.strength;
+    stroke_deltatimes.first() = 0;
+    stroke_rotations.first() = first_pt.uv_rot;
+    stroke_vertex_colors.first() = ColorGeometry4f(first_pt.vert_color);
+    stroke_selections.first() = (first_pt.flag & GP_SPOINT_SELECT) != 0;
 
-    for (const int j : stroke_points.index_range()) {
-      const bGPDspoint &pt = stroke_points[j];
-      curve_positions[j] = float3(pt.x, pt.y, pt.z);
-      /* For now, store the actual radius of the stroke (without layer adjustment). */
-      curve_radii[j] = gps->thickness * pt.pressure;
-      curve_opacities[j] = pt.strength;
-      curve_selections[j] = (pt.flag & GP_SPOINT_SELECT) != 0;
+    /* Do the rest of the points. */
+    for (const int i : stroke_points.index_range().drop_back(1)) {
+      const int point_i = i + 1;
+      const bGPDspoint &pt_prev = stroke_points[point_i - 1];
+      const bGPDspoint &pt = stroke_points[point_i];
+      stroke_positions[point_i] = float3(pt.x, pt.y, pt.z);
+      /* Store the actual radius of the stroke (without layer adjustment). */
+      stroke_radii[point_i] = gps->thickness * pt.pressure;
+      stroke_opacities[point_i] = pt.strength;
+      stroke_deltatimes[point_i] = pt.time - pt_prev.time;
+      stroke_rotations[point_i] = pt.uv_rot;
+      stroke_vertex_colors[point_i] = ColorGeometry4f(pt.vert_color);
+      stroke_selections[point_i] = (pt.flag & GP_SPOINT_SELECT) != 0;
     }
   }
 
   radii.finish();
   opacities.finish();
+  deltatimes.finish();
+  rotations.finish();
+  vertex_colors.finish();
   selection.finish();
 
   curve_cyclic.finish();
@@ -91,6 +125,7 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(GreasePencilDrawing &drawing,
   curves.tag_topology_changed();
 
   drawing.geometry.wrap() = std::move(curves);
+#undef POINT_ATTRIBUTE
 }
 
 void legacy_gpencil_to_grease_pencil(GreasePencil &grease_pencil, bGPdata &gpd)
