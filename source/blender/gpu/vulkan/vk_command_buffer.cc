@@ -21,7 +21,6 @@ namespace blender::gpu {
 
 VKCommandBuffer::~VKCommandBuffer()
 {
-  validate_framebuffer_not_exists();
   if (vk_device_ != VK_NULL_HANDLE) {
     VK_ALLOCATION_CALLBACKS;
     vkDestroyFence(vk_device_, vk_fence_, vk_allocation_callbacks);
@@ -45,7 +44,6 @@ void VKCommandBuffer::init(const VkDevice vk_device,
     fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
     vkCreateFence(vk_device_, &fenceInfo, vk_allocation_callbacks, &vk_fence_);
   }
-  validate_framebuffer_not_exists();
 }
 
 void VKCommandBuffer::begin_recording()
