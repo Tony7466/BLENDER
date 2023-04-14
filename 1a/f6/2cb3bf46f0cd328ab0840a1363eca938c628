@@ -9,3 +9,4 @@ Referenced by commit d1b6f16906f5c0c08705b7dc02ad102fba58c366, Fix #104980: Appl
 Referenced by commit b37111c574eda8ef047a5bf7d6e858c84d678df7, Cleanup: Use consistent "vert" term for mesh normals
 Referenced by commit c3d803c2ef423168c6f26264f4c7449b55053afb, Cleanup: Use consistent "positions" term for mesh update tag functions
 Referenced by issue #106288, Blender Crash when trying to open 3.4 autosave blend file
+Referenced by issue #106926, Geometry Nodes Extrude producing weird normals when Mesh has Custom Normals
