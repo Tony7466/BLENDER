@@ -254,28 +254,28 @@ class GeometryManager {
   void collect_statistics(const Scene *scene, RenderStats *stats);
 
   size_t create_object_bvhs(Device *device,
-                          DeviceScene *dscene,
-                          Scene *scene,
-                          const BVHLayout bvh_layout,
-                          bool &need_update_scene_bvh);
+                            DeviceScene *dscene,
+                            Scene *scene,
+                            const BVHLayout bvh_layout,
+                            bool &need_update_scene_bvh);
   void update_scene_bvhs(Device *device, DeviceScene *dscene, Scene *scene, Progress &progress);
   void clear_shader_update_tags(Scene *scene);
   void clear_geometry_update_and_modified_tags(Scene *scene);
   void device_data_xfer_and_bvh_update(int idx,
-                                  Scene *scene,
-                                  DeviceScene *dscene,
-                                  const BVHLayout bvh_layout,
-                                  size_t num_bvh,
-				  bool can_refit,
-				  bool need_update_scene_bvh,
-                                  Progress &progress);
+                                       Scene *scene,
+                                       DeviceScene *dscene,
+                                       const BVHLayout bvh_layout,
+                                       size_t num_bvh,
+                                       bool can_refit,
+                                       bool need_update_scene_bvh,
+                                       Progress &progress);
   void update_object_bounds(Scene *scene);
   void tesselate(Scene *scene, size_t total_tess_needed, Progress &progress);
   void pretess_disp_normal_and_vertices_setup(Device *device,
-                                         Scene *scene,
-                                         bool &true_displacement_used,
-                                         bool &curve_shadow_transparency_used,
-                                         size_t &total_tess_needed);
+                                              Scene *scene,
+                                              bool &true_displacement_used,
+                                              bool &curve_shadow_transparency_used,
+                                              size_t &total_tess_needed);
   static void device_update_sub_bvh(Device *device,
                                     DeviceScene *dscene,
                                     BVH *bvh,
@@ -308,7 +308,6 @@ class GeometryManager {
 
   void device_update_mesh_preprocess(
 				     Device *device, DeviceScene *dscene, Scene *scene, Progress &progress);
-  void device_update_bvh2(Device *device, DeviceScene *dscene, Scene *scene, Progress &progress);
   bool displacement_and_curve_shadow_transparency(Scene *scene,
                                                   Device *device,
                                                   DeviceScene *dscene,

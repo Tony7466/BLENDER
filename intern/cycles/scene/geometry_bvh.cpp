@@ -46,53 +46,6 @@ void GeometryManager::device_update_bvh(Device *device,
       device, dscene, bvh, sub_bvh, can_refit, n, total, &progress);
 }
 
-void GeometryManager::device_update_bvh2(Device *device,
-                                         DeviceScene *dscene,
-                                         Scene *scene,
-                                         Progress &progress)
-{
-  BVH *bvh = scene->bvh;
-  if (bvh->params.bvh_layout == BVH_LAYOUT_BVH2) {
-    BVH2 *bvh2 = static_cast<BVH2 *>(bvh);
-
-    /* When using BVH2, we always have to copy/update the data as its layout is dependent on
-     * the BVH's leaf nodes which may be different when the objects or vertices move. */
-
-    if (bvh2->pack.nodes.size()) {
-      dscene->bvh_nodes.assign_mem(bvh2->pack.nodes);
-      dscene->bvh_nodes.copy_to_device();
-    }
-    if (bvh2->pack.leaf_nodes.size()) {
-      dscene->bvh_leaf_nodes.assign_mem(bvh2->pack.leaf_nodes);
-      dscene->bvh_leaf_nodes.copy_to_device();
-    }
-    if (bvh2->pack.object_node.size()) {
-      dscene->object_node.assign_mem(bvh2->pack.object_node);
-      dscene->object_node.copy_to_device();
-    }
-    if (bvh2->pack.prim_type.size()) {
-      dscene->prim_type.assign_mem(bvh2->pack.prim_type);
-      dscene->prim_type.copy_to_device();
-    }
-    if (bvh2->pack.prim_visibility.size()) {
-      dscene->prim_visibility.assign_mem(bvh2->pack.prim_visibility);
-      dscene->prim_visibility.copy_to_device();
-    }
-    if (bvh2->pack.prim_index.size()) {
-      dscene->prim_index.assign_mem(bvh2->pack.prim_index);
-      dscene->prim_index.copy_to_device();
-    }
-    if (bvh2->pack.prim_object.size()) {
-      dscene->prim_object.assign_mem(bvh2->pack.prim_object);
-      dscene->prim_object.copy_to_device();
-    }
-    if (bvh2->pack.prim_time.size()) {
-      dscene->prim_time.assign_mem(bvh2->pack.prim_time);
-      dscene->prim_time.copy_to_device();
-    }
-  }
-}
-
 void GeometryManager::device_update_bvh_postprocess(Device *device,
                                                     DeviceScene *dscene,
                                                     Scene *scene,

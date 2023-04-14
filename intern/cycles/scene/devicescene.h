@@ -4,14 +4,20 @@
 #ifndef __DEVICESCENE_H__
 #define __DEVICESCENE_H__
 
+#include "bvh/bvh.h"
+#include "bvh/bvh2.h"
+
 #include "device/memory.h"
+
+#include "kernel/types.h"
+
+#include "util/progress.h"
 #include "util/types.h"
 #include "util/vector.h"
-#include "util/progress.h"
-#include "kernel/types.h"
+
 CCL_NAMESPACE_BEGIN
 
-
+class BVH;
 struct GeometrySizes;
 struct AttributeSizes;
 
@@ -104,13 +110,10 @@ class DeviceScene {
   void device_update_host_pointers(Device *device,
                                    DeviceScene *dscene,
                                    const GeometrySizes *p_sizes);
-  void device_update_mesh(Device *device,
-			  const GeometrySizes *p_sizes,
-			  Progress &progress);
-  
-  void device_update_attributes(Device *device,
-                                const AttributeSizes *sizes,
-                                Progress &progress);
+  void device_update_mesh(Device *device, const GeometrySizes *p_sizes, Progress &progress);
+
+  void device_update_attributes(Device *device, const AttributeSizes *sizes, Progress &progress);
+  void device_update_bvh2(Device *device, BVH *bvh, Progress &progress);
 };
 
 CCL_NAMESPACE_END
