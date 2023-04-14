@@ -1890,9 +1890,36 @@ void FONT_OT_selection_set(struct wmOperatorType *ot)
   ot->name = "Set Selection";
   ot->idname = "FONT_OT_selection_set";
   ot->description = "Set cursor selection";
+
   /* api callbacks */
   ot->invoke = font_selection_set_invoke;
   ot->modal = font_selection_set_modal;
+  ot->poll = ED_operator_editfont;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Select Word Operator
+* \{ */
+
+static int font_select_word_exec(bContext *C, wmOperator *UNUSED(op))
+{
+  move_cursor(C, NEXT_CHAR, false);
+  move_cursor(C, PREV_WORD, false);
+  move_cursor(C, NEXT_WORD, true);
+  return OPERATOR_FINISHED;
+}
+
+void FONT_OT_select_word(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Select Word";
+  ot->idname = "FONT_OT_select_word";
+  ot->description = "Select word under cursor";
+
+  /* api callbacks */
+  ot->exec = font_select_word_exec;
   ot->poll = ED_operator_editfont;
 }
 
