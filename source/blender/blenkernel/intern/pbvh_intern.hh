@@ -188,7 +188,6 @@ struct PBVH {
 
   /* flag are verts/faces deformed */
   bool deformed;
-  bool respect_hide;
 
   /* Dynamic topology */
   float bm_max_edge_len;
