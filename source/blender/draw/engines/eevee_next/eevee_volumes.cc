@@ -154,9 +154,8 @@ void Volumes::begin_sync()
   if (inst_.camera.is_perspective()) {
     float sample_distribution = scene_eval->eevee.volumetric_sample_distribution;
     sample_distribution = 4.0f * std::max(1.0f - sample_distribution, 1e-2f);
-
-    const float clip_start = inst_.camera.data_get().clip_near;
-    /* Negate */
+    /* Negate clip values (View matrix forward vector is -Z). */
+    const float clip_start = -inst_.camera.data_get().clip_near;
     float near = integration_start = std::min(-integration_start, clip_start - 1e-4f);
     float far = integration_end = std::min(-integration_end, near - 1e-4f);
 
@@ -165,8 +164,9 @@ void Volumes::begin_sync()
     data_.depth_param[2] = sample_distribution;
   }
   else {
-    const float clip_start = inst_.camera.data_get().clip_near;
-    const float clip_end = inst_.camera.data_get().clip_far;
+    /* Negate clip values (View matrix forward vector is -Z). */
+    const float clip_start = -inst_.camera.data_get().clip_near;
+    const float clip_end = -inst_.camera.data_get().clip_far;
     integration_start = std::min(integration_end, clip_start);
     integration_end = std::max(-integration_end, clip_end);
 
