@@ -423,9 +423,10 @@ void ED_anim_get_butterworth_coefficients(const float cutoff_frequency,
 void butterworth_smooth_fcurve_segment(FCurve *fcu,
                                        FCurveSegment *segment,
                                        const float factor,
-                                       const float smoothing_factor,
-                                       const float sampling_frequency,
-                                       const int filter_order)
+                                       const int filter_order,
+                                       double *A,
+                                       double *d1,
+                                       double *d2)
 {
   BezTriple left_bezt = fcu->bezt[segment->start_index];
   BezTriple right_bezt = fcu->bezt[segment->start_index + segment->length - 1];
@@ -438,18 +439,9 @@ void butterworth_smooth_fcurve_segment(FCurve *fcu,
                                            "Filtered backwards FCurve Values");
   sample_fcurve_segment(fcu, left_bezt.vec[1][0] - filter_order, samples, sample_count);
 
-  double *d1 = MEM_callocN(sizeof(double) * filter_order, "coeff filtered");
-  double *d2 = MEM_callocN(sizeof(double) * filter_order, "coeff samples");
-  double *A = MEM_callocN(sizeof(double) * filter_order, "Butterworth A");
-
   double *w0 = MEM_callocN(sizeof(double) * filter_order, "w0");
   double *w1 = MEM_callocN(sizeof(double) * filter_order, "w1");
   double *w2 = MEM_callocN(sizeof(double) * filter_order, "w2");
-
-  /* Ensure that cutoff frequency never exceeds half of sampling_frequency. */
-  const float cutoff_frequency = smoothing_factor * (sampling_frequency / 2);
-  ED_anim_get_butterworth_coefficients(
-      cutoff_frequency, sampling_frequency, filter_order, A, d1, d2);
 
   for (int i = 0; i < sample_count; i++) {
     double x = (double)samples[i];
@@ -483,8 +475,8 @@ void butterworth_smooth_fcurve_segment(FCurve *fcu,
     const int filter_index = (int)(fcu->bezt[i].vec[1][0] -
                                    fcu->bezt[segment->start_index].vec[1][0]) +
                              filter_order;
-    const float filter_value = (fwd_filtered_values[filter_index] +
-                                bwd_filtered_values[filter_index]) /
+    const float filter_value = (float)(fwd_filtered_values[filter_index] +
+                                       bwd_filtered_values[filter_index]) /
                                2;
     move_key(&fcu->bezt[i], interpf(filter_value, samples[filter_index], factor));
   }
@@ -492,9 +484,6 @@ void butterworth_smooth_fcurve_segment(FCurve *fcu,
   MEM_freeN(fwd_filtered_values);
   MEM_freeN(bwd_filtered_values);
   MEM_freeN(samples);
-  MEM_freeN(d1);
-  MEM_freeN(d2);
-  MEM_freeN(A);
   MEM_freeN(w0);
   MEM_freeN(w1);
   MEM_freeN(w2);

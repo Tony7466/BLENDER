@@ -440,9 +440,10 @@ void ED_anim_get_butterworth_coefficients(
 void butterworth_smooth_fcurve_segment(struct FCurve *fcu,
                                        struct FCurveSegment *segment,
                                        float factor,
-                                       float smoothing_factor,
-                                       float sampling_frequency,
-                                       int filter_order);
+                                       int filter_order,
+                                       double *A,
+                                       double *d1,
+                                       double *d2);
 void smooth_fcurve_segment(struct FCurve *fcu,
                            struct FCurveSegment *segment,
                            float *samples,
