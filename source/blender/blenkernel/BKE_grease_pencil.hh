@@ -31,267 +31,58 @@ class Layer;
  * A TreeNode represents one node in the layer tree.
  * It can either be a layer or a group. The node has zero children if it is a layer or zero or more
  * children if it is a group.
- * This class is mainly used for iteration over the layer tree.
  */
 class TreeNode : public ::GreasePencilLayerTreeNode, NonMovable {
-  using TreeNodeIterFn = FunctionRef<void(TreeNode &)>;
-  using LayerIterFn = FunctionRef<void(Layer &)>;
-  using LayerIndexIterFn = FunctionRef<void(uint64_t, Layer &)>;
-
- protected:
-  Vector<std::unique_ptr<TreeNode>> children_;
-
  public:
-  TreeNode(GreasePencilLayerTreeNodeType type)
-  {
-    this->type = type;
-    this->name = nullptr;
-  }
-  TreeNode(GreasePencilLayerTreeNodeType type, StringRefNull name)
-  {
-    this->type = type;
-    this->name = BLI_strdup(name.c_str());
-  }
-  TreeNode(const TreeNode &other) : TreeNode(GreasePencilLayerTreeNodeType(other.type))
-  {
-    if (other.name) {
-      this->name = BLI_strdup(other.name);
-    }
-  }
+  explicit TreeNode(GreasePencilLayerTreeNodeType type);
+  explicit TreeNode(GreasePencilLayerTreeNodeType type, StringRefNull name);
+  TreeNode(const TreeNode &other);
   TreeNode &operator=(const TreeNode &other) = delete;
-  virtual ~TreeNode()
-  {
-    if (this->name) {
-      MEM_freeN(this->name);
-    }
-  }
+  virtual ~TreeNode();
 
  public:
-  class PreOrderRange {
-    class Iterator {
-      using iterator_category = std::forward_iterator_tag;
-
-     private:
-      Stack<TreeNode *> next_node_;
-
-     public:
-      explicit Iterator(TreeNode *root)
-      {
-        if (root != nullptr) {
-          for (auto it = root->children_.rbegin(); it != root->children_.rend(); it++) {
-            next_node_.push((*it).get());
-          }
-        }
-      }
-
-      TreeNode &operator*()
-      {
-        return *next_node_.peek();
-      }
-
-      const TreeNode &operator*() const
-      {
-        return *next_node_.peek();
-      }
-
-      Iterator &operator++()
-      {
-        BLI_assert(!next_node_.is_empty());
-        TreeNode &next_node = *next_node_.pop();
-        for (auto it = next_node.children_.rbegin(); it != next_node.children_.rend(); it++) {
-          next_node_.push((*it).get());
-        }
-        return *this;
-      }
-
-      Iterator operator++(int)
-      {
-        Iterator old = *this;
-        operator++();
-        return old;
-      }
-
-      bool operator==(Iterator &other) const
-      {
-        if (next_node_.size() == 0) {
-          return other.next_node_.size() == 0;
-        }
-        return (next_node_.size() == other.next_node_.size()) &&
-               next_node_.peek() == other.next_node_.peek();
-      }
-
-      bool operator!=(Iterator &other) const
-      {
-        return !(*this == other);
-      }
-    };
-
-   private:
-    TreeNode *_root;
-
-   public:
-    explicit PreOrderRange(TreeNode *root) : _root(root) {}
-
-    Iterator begin()
-    {
-      return Iterator(_root);
-    }
-
-    Iterator end()
-    {
-      return Iterator(nullptr);
-    }
-  };
-
-  class PreOrderIndexRange {
-   public:
-    struct Item {
-      const int64_t index;
-      TreeNode &node;
-    };
-
-   private:
-    class Iterator {
-      using iterator_category = std::forward_iterator_tag;
-
-     private:
-      int64_t current_index_;
-      Stack<TreeNode *> next_node_;
-
-     public:
-      explicit Iterator(TreeNode *root)
-      {
-        current_index_ = 0;
-        if (root != nullptr) {
-          for (auto it = root->children_.rbegin(); it != root->children_.rend(); it++) {
-            next_node_.push((*it).get());
-          }
-        }
-      }
-
-      Item operator*()
-      {
-        return {current_index_, *next_node_.peek()};
-      }
-
-      Iterator &operator++()
-      {
-        BLI_assert(!next_node_.is_empty());
-        TreeNode &next_node = *next_node_.pop();
-        current_index_++;
-        for (auto it = next_node.children_.rbegin(); it != next_node.children_.rend(); it++) {
-          next_node_.push((*it).get());
-        }
-        return *this;
-      }
-
-      Iterator operator++(int)
-      {
-        Iterator old = *this;
-        operator++();
-        return old;
-      }
-
-      bool operator==(Iterator &other) const
-      {
-        if (next_node_.size() == 0) {
-          return other.next_node_.size() == 0;
-        }
-        return (next_node_.size() == other.next_node_.size()) &&
-               next_node_.peek() == other.next_node_.peek() &&
-               current_index_ == other.current_index_;
-      }
-
-      bool operator!=(Iterator &other) const
-      {
-        return !(*this == other);
-      }
-    };
-
-   private:
-    TreeNode *_root;
-
-   public:
-    explicit PreOrderIndexRange(TreeNode *root) : _root(root) {}
-
-    Iterator begin()
-    {
-      return Iterator(_root);
-    }
-
-    Iterator end()
-    {
-      return Iterator(nullptr);
-    }
-  };
+  Vector<std::unique_ptr<TreeNode>> children;
 
  public:
+  /**
+   * \returns true if this node is a LayerGroup.
+   */
   constexpr bool is_group() const
   {
     return this->type == GREASE_PENCIL_LAYER_TREE_GROUP;
   }
 
+  /**
+   * \returns true if this node is a Layer.
+   */
   constexpr bool is_layer() const
   {
     return this->type == GREASE_PENCIL_LAYER_TREE_LEAF;
   }
 
-  LayerGroup &as_group();
-  Layer &as_layer();
+  /**
+   * \returns this tree node as a LayerGroup.
+   * \note This results in undefined behavior if the node is not a LayerGroup.
+   */
+  const LayerGroup &as_group() const;
+
+  /**
+   * \returns this tree node as a Layer.
+   * \note This results in undefined behavior if the node is not a Layer.
+   */
   const Layer &as_layer() const;
 
-  int total_num_children() const
-  {
-    int total = 0;
-    Stack<TreeNode *> stack;
-    for (auto it = this->children_.rbegin(); it != this->children_.rend(); it++) {
-      stack.push((*it).get());
-    }
-    while (!stack.is_empty()) {
-      TreeNode &next_node = *stack.pop();
-      total++;
-      for (auto it = next_node.children_.rbegin(); it != next_node.children_.rend(); it++) {
-        stack.push((*it).get());
-      }
-    }
-    return total;
-  }
+  /**
+   * \returns this tree node as a mutable LayerGroup.
+   * \note This results in undefined behavior if the node is not a LayerGroup.
+   */
+  LayerGroup &as_group_for_write();
 
-  PreOrderRange children_in_pre_order();
-  PreOrderIndexRange children_with_index_in_pre_order();
-
-  void foreach_children_pre_order(TreeNodeIterFn function)
-  {
-    for (auto &child : children_) {
-      child->foreach_children_pre_order_recursive_(function);
-    }
-  }
-
-  void foreach_layer_pre_order(LayerIterFn function)
-  {
-    for (auto &child : children_) {
-      child->foreach_layer_pre_order_recursive_(function);
-    }
-  }
-
- private:
-  void foreach_children_pre_order_recursive_(TreeNodeIterFn function)
-  {
-    function(*this);
-    for (auto &child : children_) {
-      child->foreach_children_pre_order_recursive_(function);
-    }
-  }
-
-  void foreach_layer_pre_order_recursive_(LayerIterFn function)
-  {
-    if (this->is_layer()) {
-      function(this->as_layer());
-    }
-    for (auto &child : children_) {
-      child->foreach_layer_pre_order_recursive_(function);
-    }
-  }
+  /**
+   * \returns this tree node as a mutable Layer.
+   * \note This results in undefined behavior if the node is not a Layer.
+   */
+  Layer &as_layer_for_write();
 };
 
 /**
@@ -330,149 +121,109 @@ class Layer : public TreeNode, ::GreasePencilLayer {
 
  public:
   Layer() : TreeNode(GREASE_PENCIL_LAYER_TREE_LEAF), frames_() {}
-  Layer(StringRefNull name) : TreeNode(GREASE_PENCIL_LAYER_TREE_LEAF, name), frames_() {}
-  Layer(const Layer &other) : TreeNode(other)
-  {
-    frames_ = other.frames_;
-  }
-
-  const Map<int, GreasePencilFrame> &frames() const
-  {
-    return frames_;
-  }
-
-  Map<int, GreasePencilFrame> &frames_for_write()
-  {
-    sorted_keys_cache_.tag_dirty();
-    return frames_;
-  }
-
-  bool insert_frame(int frame_number, GreasePencilFrame &frame)
-  {
-    sorted_keys_cache_.tag_dirty();
-    return frames_for_write().add(frame_number, frame);
-  }
-
-  bool insert_frame(int frame_number, GreasePencilFrame &&frame)
-  {
-    sorted_keys_cache_.tag_dirty();
-    return frames_for_write().add(frame_number, frame);
-  }
-
-  bool overwrite_frame(int frame_number, GreasePencilFrame &frame)
-  {
-    sorted_keys_cache_.tag_dirty();
-    return frames_for_write().add_overwrite(frame_number, frame);
-  }
-
-  bool overwrite_frame(int frame_number, GreasePencilFrame &&frame)
-  {
-    sorted_keys_cache_.tag_dirty();
-    return frames_for_write().add_overwrite(frame_number, frame);
-  }
-
-  Span<int> sorted_keys() const
-  {
-    sorted_keys_cache_.ensure([&](Vector<int> &r_data) {
-      r_data.clear_and_shrink();
-      r_data.reserve(frames().size());
-      for (int64_t key : frames().keys()) {
-        r_data.append(key);
-      }
-      std::sort(r_data.begin(), r_data.end());
-    });
-    return sorted_keys_cache_.data().as_span();
-  }
+  explicit Layer(StringRefNull name) : TreeNode(GREASE_PENCIL_LAYER_TREE_LEAF, name), frames_() {}
+  Layer(const Layer &other);
 
   /**
-   * Return the index of the drawing at frame \a frame or -1 if there is no drawing.
+   * \returns the frames mapping.
    */
-  int drawing_at(int frame) const
-  {
-    Span<int> sorted_keys = this->sorted_keys();
-    /* Before the first drawing, return no drawing. */
-    if (frame < sorted_keys.first()) {
-      return -1;
-    }
-    /* After or at the last drawing, return the last drawing. */
-    if (frame >= sorted_keys.last()) {
-      return this->frames().lookup(sorted_keys.last()).drawing_index;
-    }
-    /* Search for the drawing. upper_bound will get the drawing just after. */
-    auto it = std::upper_bound(sorted_keys.begin(), sorted_keys.end(), frame);
-    if (it == sorted_keys.end() || it == sorted_keys.begin()) {
-      return -1;
-    }
-    return this->frames().lookup(*std::prev(it)).drawing_index;
-  }
+  const Map<int, GreasePencilFrame> &frames() const;
+  Map<int, GreasePencilFrame> &frames_for_write();
+
+  /**
+   * Inserts the frame into the layer. Fails if there exists a frame at \a frame_number already.
+   * \returns true on success.
+   */
+  bool insert_frame(int frame_number, GreasePencilFrame &frame);
+  bool insert_frame(int frame_number, GreasePencilFrame &&frame);
+
+  /**
+   * Inserts the frame into the layer. If there exists a frame at \a frame_number already, it is
+   * overwritten.
+   * \returns true on success.
+   */
+  bool overwrite_frame(int frame_number, GreasePencilFrame &frame);
+  bool overwrite_frame(int frame_number, GreasePencilFrame &&frame);
+
+  /**
+   * Returns the sorted (start) frame numbers of the frames of this layer.
+   * \note This will cache the keys lazily.
+   */
+  Span<int> sorted_keys() const;
+
+  /**
+   * \returns the index of the drawing at frame \a frame or -1 if there is no drawing.
+   */
+  int drawing_index_at(int frame) const;
 };
 
 /**
  * A LayerGroup is a grouping of zero or more Layers.
  */
 class LayerGroup : public TreeNode {
+  using TreeNodeIterFn = FunctionRef<void(TreeNode &)>;
+  using TreeNodeIndexIterFn = FunctionRef<void(int64_t, TreeNode &)>;
+  using LayerIterFn = FunctionRef<void(Layer &)>;
+  using LayerIndexIterFn = FunctionRef<void(int64_t, Layer &)>;
+
  public:
   LayerGroup() : TreeNode(GREASE_PENCIL_LAYER_TREE_GROUP) {}
   explicit LayerGroup(const StringRefNull name) : TreeNode(GREASE_PENCIL_LAYER_TREE_GROUP, name) {}
-  LayerGroup(const LayerGroup &other) : TreeNode(other)
-  {
-    children_.reserve(other.children_.size());
-    for (const std::unique_ptr<TreeNode> &elem : other.children_) {
-      if (elem.get()->is_group()) {
-        children_.append(std::make_unique<LayerGroup>(elem.get()->as_group()));
-      }
-      else if (elem.get()->is_layer()) {
-        children_.append(std::make_unique<Layer>(elem.get()->as_layer()));
-      }
-    }
-  }
+  LayerGroup(const LayerGroup &other);
 
  public:
-  void add_group(LayerGroup &group)
-  {
-    children_.append(std::make_unique<LayerGroup>(group));
-  }
+  /**
+   * Adds a group at the end of this group.
+   */
+  void add_group(LayerGroup &group);
+  void add_group(LayerGroup &&group);
 
-  void add_group(LayerGroup &&group)
-  {
-    children_.append(std::make_unique<LayerGroup>(group));
-  }
+  /**
+   * Adds a layer at the end of this group and returns it.
+   */
+  Layer &add_layer(Layer &layer);
+  Layer &add_layer(Layer &&layer);
 
-  Layer &add_layer(Layer &layer)
-  {
-    int64_t index = children_.append_and_get_index(std::make_unique<Layer>(layer));
-    return children_[index].get()->as_layer();
-  }
+  /**
+   * Returns the number of direct children in this group.
+   */
+  int64_t num_direct_children() const;
 
-  Layer &add_layer(Layer &&layer)
-  {
-    int64_t index = children_.append_and_get_index(std::make_unique<Layer>(layer));
-    return children_[index].get()->as_layer();
-  }
+  /**
+   * Returns the total number of children in this group.
+   */
+  int64_t num_children_total() const;
 
-  int num_children() const
-  {
-    return children_.size();
-  }
+  /**
+   * Removes a child from the group by index.
+   */
+  void remove_child(int64_t index);
 
-  void remove_child(int64_t index)
-  {
-    BLI_assert(index >= 0 && index < children_.size());
-    children_.remove(index);
-  }
+  /**
+   * Calls \a function on every `TreeNode` in this group.
+   */
+  void foreach_children_pre_order(TreeNodeIterFn function);
+  void foreach_children_with_index_pre_order(TreeNodeIndexIterFn function);
+
+  /**
+   * Returns a `Vector` of pointers to all the `TreeNode`s in this group.
+   */
+  Vector<TreeNode *> children_in_pre_order() const;
+
+  /**
+   * Returns a `Vector` of pointers to all the `Layers`s in this group.
+   */
+  Vector<Layer *> layers_in_pre_order() const;
 };
 
 namespace convert {
 
 void legacy_gpencil_frame_to_grease_pencil_drawing(GreasePencilDrawing &drawing, bGPDframe &gpf);
-
 void legacy_gpencil_to_grease_pencil(GreasePencil &grease_pencil, bGPdata &gpd);
 
 }  // namespace convert
 
 }  // namespace greasepencil
-
-using namespace blender::bke::greasepencil;
 
 struct StrokePoint {
   float3 position;
@@ -494,71 +245,34 @@ class GreasePencilDrawingRuntime {
 };
 
 class GreasePencilRuntime {
- private:
-  LayerGroup root_group_;
+ public:
+  mutable SharedCache<Vector<greasepencil::Layer *>> layer_cache_;
 
+ private:
+  greasepencil::LayerGroup root_group_;
   int active_layer_index_ = -1;
-  Layer *active_layer_ = nullptr;
 
  public:
   GreasePencilRuntime() {}
-  GreasePencilRuntime(const GreasePencilRuntime &other)
-      : root_group_(other.root_group_), active_layer_index_(other.active_layer_index_)
-  {
-    active_layer_ = get_active_layer_from_index(other.active_layer_index_);
-  }
+  GreasePencilRuntime(const GreasePencilRuntime &other);
 
-  /* TODO: There should be a const version of this for reads and a mutable version of this for
-   * writes. */
-  LayerGroup &root_group()
-  {
-    return root_group_;
-  }
+ public:
+  const greasepencil::LayerGroup &root_group() const;
+  greasepencil::LayerGroup &root_group_for_write();
 
-  bool has_active_layer() const
-  {
-    return active_layer_ != nullptr;
-  }
+  bool has_active_layer() const;
+  const greasepencil::Layer &active_layer() const;
+  greasepencil::Layer &active_layer_for_write() const;
+  void set_active_layer_index(int index);
+  int active_layer_index() const;
 
-  const Layer &active_layer() const
-  {
-    BLI_assert(active_layer_ != nullptr);
-    return *active_layer_;
-  }
-
-  Layer &active_layer_for_write() const
-  {
-    BLI_assert(active_layer_ != nullptr);
-    return *active_layer_;
-  }
-
-  void set_active_layer(int index)
-  {
-    active_layer_index_ = index;
-    active_layer_ = get_active_layer_from_index(index);
-  }
-
-  int active_layer_index() const
-  {
-    return active_layer_index_;
-  }
+  void ensure_layer_cache() const;
 
  public:
   void *batch_cache = nullptr;
 
  private:
-  Layer *get_active_layer_from_index(int index)
-  {
-    if (index < 0) {
-      return nullptr;
-    }
-    for (auto item : this->root_group().children_with_index_in_pre_order()) {
-      if (item.node.is_layer() && item.index == index) {
-        return &item.node.as_layer();
-      }
-    }
-    return nullptr;
-  }
+  greasepencil::Layer *get_active_layer_from_index(int index) const;
 };
 
 }  // namespace blender::bke

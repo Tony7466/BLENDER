@@ -36,10 +36,10 @@ TEST(greasepencil, create_grease_pencil_id)
 
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(BKE_id_new(ctx.bmain, ID_GP, "GP"));
   EXPECT_EQ(grease_pencil.drawings().size(), 0);
-  EXPECT_EQ(grease_pencil.root_group().total_num_children(), 0);
+  EXPECT_EQ(grease_pencil.root_group().num_children_total(), 0);
 }
 
-TEST(greasepencil, set_active_layer)
+TEST(greasepencil, set_active_layer_index)
 {
   GreasePencilIDTestContext ctx;
 
@@ -49,14 +49,14 @@ TEST(greasepencil, set_active_layer)
   Layer layer1("Layer1");
   Layer layer2("Layer2");
 
-  const Layer &layer1_ref = grease_pencil.root_group().add_layer(std::move(layer1));
-  const Layer &layer2_ref = grease_pencil.root_group().add_layer(std::move(layer2));
+  const Layer &layer1_ref = grease_pencil.root_group_for_write().add_layer(std::move(layer1));
+  const Layer &layer2_ref = grease_pencil.root_group_for_write().add_layer(std::move(layer2));
 
-  grease_pencil.runtime->set_active_layer(0);
+  grease_pencil.runtime->set_active_layer_index(0);
   EXPECT_TRUE(grease_pencil.runtime->has_active_layer());
   EXPECT_STREQ(layer1_ref.name, grease_pencil.runtime->active_layer().name);
 
-  grease_pencil.runtime->set_active_layer(1);
+  grease_pencil.runtime->set_active_layer_index(1);
   EXPECT_TRUE(grease_pencil.runtime->has_active_layer());
   EXPECT_STREQ(layer2_ref.name, grease_pencil.runtime->active_layer().name);
 
@@ -104,16 +104,16 @@ TEST(greasepencil, remove_drawing)
 
   layer2.insert_frame(0, GreasePencilFrame{1});
 
-  grease_pencil.root_group().add_layer(std::move(layer1));
-  grease_pencil.root_group().add_layer(std::move(layer2));
+  grease_pencil.root_group_for_write().add_layer(std::move(layer1));
+  grease_pencil.root_group_for_write().add_layer(std::move(layer2));
 
   grease_pencil.remove_drawing(1);
   EXPECT_EQ(grease_pencil.drawings().size(), 2);
 
   static int expected_frames_size[] = {2, 0};
   static int expected_frames_pairs_layer0[][2] = {{0, 0}, {20, 1}};
-  int layer_i = 0;
-  grease_pencil.root_group().foreach_layer_pre_order([&](Layer &layer) {
+  for (const int layer_i : IndexRange(grease_pencil.layers().size())) {
+    const Layer &layer = *grease_pencil.layers()[layer_i];
     EXPECT_EQ(layer.frames().size(), expected_frames_size[layer_i]);
     if (layer_i == 0) {
       for (const int i : IndexRange(2)) {
@@ -121,8 +121,7 @@ TEST(greasepencil, remove_drawing)
                   expected_frames_pairs_layer0[i][1]);
       }
     }
-    layer_i++;
-  });
+  }
 }
 
 /* --------------------------------------------------------------------------------------------- */
@@ -167,35 +166,23 @@ struct GreasePencilLayerTreeExample {
 TEST(greasepencil, layer_tree_pre_order_iteration_callback)
 {
   GreasePencilLayerTreeExample ex;
-  int i = 0;
-  ex.root.foreach_children_pre_order(
-      [&](TreeNode &child) { EXPECT_EQ(child.name, ex.names[i++]); });
-}
-
-TEST(greasepencil, layer_tree_pre_order_iteration_loop)
-{
-  GreasePencilLayerTreeExample ex;
-  int i = 0;
-  for (TreeNode &child : ex.root.children_in_pre_order()) {
-    EXPECT_EQ(child.name, ex.names[i++]);
-  }
+  ex.root.foreach_children_with_index_pre_order(
+      [&](uint64_t i, TreeNode &child) { EXPECT_EQ(child.name, ex.names[i]); });
 }
 
 TEST(greasepencil, layer_tree_total_size)
 {
   GreasePencilLayerTreeExample ex;
-  EXPECT_EQ(ex.root.total_num_children(), 7);
+  EXPECT_EQ(ex.root.num_children_total(), 7);
 }
 
 TEST(greasepencil, layer_tree_node_types)
 {
   GreasePencilLayerTreeExample ex;
-  int i = 0;
-  for (TreeNode &child : ex.root.children_in_pre_order()) {
+  ex.root.foreach_children_with_index_pre_order([&](uint64_t i, TreeNode &child) {
     EXPECT_EQ(child.is_layer(), ex.is_layer[i]);
     EXPECT_EQ(child.is_group(), !ex.is_layer[i]);
-    i++;
-  }
+  });
 }
 
 }  // namespace blender::bke::greasepencil::tests

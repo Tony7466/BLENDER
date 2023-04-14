@@ -203,7 +203,6 @@ typedef struct GreasePencil {
   GreasePencilDrawingOrReference **drawing_array;
   int drawing_array_size;
   char _pad[4];
-
 #ifdef __cplusplus
   void read_drawing_array(BlendDataReader *reader);
   void write_drawing_array(BlendWriter *writer);
@@ -241,7 +240,11 @@ typedef struct GreasePencil {
   void remove_drawing(int index);
   void foreach_visible_drawing(int frame,
                                blender::FunctionRef<void(GreasePencilDrawing &)> function);
-  blender::bke::greasepencil::LayerGroup &root_group();
+  const blender::bke::greasepencil::LayerGroup &root_group() const;
+  blender::bke::greasepencil::LayerGroup &root_group_for_write();
+  blender::Span<const blender::bke::greasepencil::Layer *> layers() const;
+  blender::Span<blender::bke::greasepencil::Layer *> layers_for_write();
+  void tag_layer_tree_changed();
 #endif
 } GreasePencil;
 

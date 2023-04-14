@@ -124,8 +124,9 @@ class ObjectModule {
     }
 
     uint layer_offset = layers_.object_offset_get();
-    grease_pencil.root_group().foreach_layer_pre_order(
-        [&](Layer &layer) { layers_.sync(object, layer, do_layer_blending); });
+    for (const Layer *layer : grease_pencil.layers()) {
+      layers_.sync(object, *layer, do_layer_blending);
+    }
 
     /* Order rendering using camera Z distance. */
     float3 position = float3(object->object_to_world[3]);

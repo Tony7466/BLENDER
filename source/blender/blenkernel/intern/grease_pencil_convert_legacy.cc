@@ -111,7 +111,7 @@ void legacy_gpencil_to_grease_pencil(GreasePencil &grease_pencil, bGPdata &gpd)
   int i = 0, layer_idx = 0;
   int active_layer_index = 0;
   LISTBASE_FOREACH_INDEX (bGPDlayer *, gpl, &gpd.layers, layer_idx) {
-    Layer &new_layer = grease_pencil.root_group().add_layer(Layer(gpl->info));
+    Layer &new_layer = grease_pencil.root_group_for_write().add_layer(Layer(gpl->info));
     if ((gpl->flag & GP_LAYER_ACTIVE) != 0) {
       active_layer_index = layer_idx;
     }
@@ -135,7 +135,7 @@ void legacy_gpencil_to_grease_pencil(GreasePencil &grease_pencil, bGPdata &gpd)
     }
   }
 
-  grease_pencil.runtime->set_active_layer(active_layer_index);
+  grease_pencil.runtime->set_active_layer_index(active_layer_index);
 }
 
 }  // namespace blender::bke::greasepencil::convert
