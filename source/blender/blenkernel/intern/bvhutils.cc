@@ -1142,28 +1142,12 @@ BVHTree *bvhtree_from_mesh_looptri_ex(BVHTreeFromMesh *data,
   return tree;
 }
 
-static BitVector<> loose_verts_map_get(const Span<MEdge> edges,
-                                       int verts_num,
-                                       int *r_loose_vert_num)
+static BitVector<> loose_verts_map_get(const Mesh &mesh, int *r_loose_vert_num)
 {
-  BitVector<> loose_verts_mask(verts_num, true);
-
-  int num_linked_verts = 0;
-  for (const int64_t i : edges.index_range()) {
-    const MEdge &edge = edges[i];
-    if (loose_verts_mask[edge.v1]) {
-      loose_verts_mask[edge.v1].reset();
-      num_linked_verts++;
-    }
-    if (loose_verts_mask[edge.v2]) {
-      loose_verts_mask[edge.v2].reset();
-      num_linked_verts++;
-    }
-  }
-
-  *r_loose_vert_num = verts_num - num_linked_verts;
-
-  return loose_verts_mask;
+  using namespace blender::bke;
+  const LooseVertCache &loose_verts = mesh.loose_verts_edge();
+  *r_loose_vert_num = loose_verts.count;
+  return loose_verts.is_loose_bits;
 }
 
 static BitVector<> loose_edges_map_get(const Mesh &mesh, int *r_loose_edge_len)
@@ -1248,7 +1232,7 @@ BVHTree *BKE_bvhtree_from_mesh_get(struct BVHTreeFromMesh *data,
 
   switch (bvh_cache_type) {
     case BVHTREE_FROM_LOOSEVERTS:
-      mask = loose_verts_map_get(edges, mesh->totvert, &mask_bits_act_len);
+      mask = loose_verts_map_get(*mesh, &mask_bits_act_len);
       ATTR_FALLTHROUGH;
     case BVHTREE_FROM_VERTS:
       data->tree = bvhtree_from_mesh_verts_create_tree(
