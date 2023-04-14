@@ -884,8 +884,7 @@ void SkyTextureNode::compile(SVMCompiler &compiler)
     float clamped_altitude = clamp(altitude, 1.0f, 59999.0f);
 
     /* Patch sun position so users are able to animate the daylight cycle while keeping the shading
-     * code simple. If the code pertaining to modifying `sun_rotation` and `sun_elevation` is
-     * updated, make sure the same code in `device_update_background()` is updated. */
+     * code simple. */
     float elevation = sun_elevation;
     float rotation = sun_rotation;
 
@@ -1009,8 +1008,7 @@ void SkyTextureNode::compile(OSLCompiler &compiler)
     float clamped_altitude = clamp(altitude, 1.0f, 59999.0f);
 
     /* Patch sun position so users are able to animate the daylight cycle while keeping the shading
-     * code simple. If the code pertaining to modifying `sun_rotation` and `sun_elevation` is
-     * updated, make sure the same code in `device_update_background()` is updated. */
+     * code simple. */
     float elevation = sun_elevation;
     float rotation = sun_rotation;
 
