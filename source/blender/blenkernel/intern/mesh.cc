@@ -155,12 +155,10 @@ static void mesh_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int 
   CustomData_copy(&mesh_src->edata, &mesh_dst->edata, mask.emask, mesh_dst->totedge);
   CustomData_copy(&mesh_src->ldata, &mesh_dst->ldata, mask.lmask, mesh_dst->totloop);
   CustomData_copy(&mesh_src->pdata, &mesh_dst->pdata, mask.pmask, mesh_dst->totpoly);
-  if (mesh_src->poly_offset_indices) {
-    mesh_dst->poly_offset_indices = mesh_src->poly_offset_indices;
-    mesh_dst->runtime->poly_offsets_sharing_info = mesh_src->runtime->poly_offsets_sharing_info;
-    mesh_dst->runtime->poly_offsets_sharing_info->add_user();
-  }
-
+  blender::implicit_sharing::copy_shared_pointer(mesh_src->poly_offset_indices,
+                                                 mesh_src->runtime->poly_offsets_sharing_info,
+                                                 &mesh_dst->poly_offset_indices,
+                                                 &mesh_dst->runtime->poly_offsets_sharing_info);
   if (do_tessface) {
     CustomData_copy(&mesh_src->fdata, &mesh_dst->fdata, mask.fmask, mesh_dst->totface);
   }
@@ -394,7 +392,7 @@ static void mesh_blend_read_data(BlendDataReader *reader, ID *id)
 
   if (mesh->poly_offset_indices) {
     BLO_read_int32_array(reader, mesh->totpoly + 1, &mesh->poly_offset_indices);
-    mesh->runtime->poly_offsets_sharing_info = blender::sharing_info_for_mem_free(
+    mesh->runtime->poly_offsets_sharing_info = blender::implicit_sharing::info_for_mem_free(
         mesh->poly_offset_indices);
   }
 
@@ -922,7 +920,8 @@ static void mesh_clear_geometry(Mesh &mesh)
   CustomData_free(&mesh.ldata, mesh.totloop);
   CustomData_free(&mesh.pdata, mesh.totpoly);
   if (mesh.poly_offset_indices) {
-    free_shared_data(&mesh.poly_offset_indices, &mesh.runtime->poly_offsets_sharing_info);
+    blender::implicit_sharing::free_shared_data(&mesh.poly_offset_indices,
+                                                &mesh.runtime->poly_offsets_sharing_info);
   }
   MEM_SAFE_FREE(mesh.mselect);
 
@@ -983,7 +982,7 @@ void BKE_mesh_poly_offsets_ensure_alloc(Mesh *mesh)
   }
   mesh->poly_offset_indices = static_cast<int *>(
       MEM_malloc_arrayN(mesh->totpoly + 1, sizeof(int), __func__));
-  mesh->runtime->poly_offsets_sharing_info = blender::sharing_info_for_mem_free(
+  mesh->runtime->poly_offsets_sharing_info = blender::implicit_sharing::info_for_mem_free(
       mesh->poly_offset_indices);
 
 #ifdef DEBUG
@@ -997,7 +996,7 @@ void BKE_mesh_poly_offsets_ensure_alloc(Mesh *mesh)
 
 int *BKE_mesh_poly_offsets_for_write(Mesh *mesh)
 {
-  make_trivial_data_mutable(
+  blender::implicit_sharing::make_trivial_data_mutable(
       &mesh->poly_offset_indices, &mesh->runtime->poly_offsets_sharing_info, mesh->totpoly + 1);
   return mesh->poly_offset_indices;
 }

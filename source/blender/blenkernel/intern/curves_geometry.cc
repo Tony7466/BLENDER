@@ -65,7 +65,8 @@ CurvesGeometry::CurvesGeometry(const int point_num, const int curve_num)
   if (curve_num > 0) {
     this->curve_offsets = static_cast<int *>(
         MEM_malloc_arrayN(this->curve_num + 1, sizeof(int), __func__));
-    this->runtime->curve_offsets_sharing_info = sharing_info_for_mem_free(this->curve_offsets);
+    this->runtime->curve_offsets_sharing_info = implicit_sharing::info_for_mem_free(
+        this->curve_offsets);
 #ifdef DEBUG
     this->offsets_for_write().fill(-1);
 #endif
@@ -93,9 +94,10 @@ static void copy_curves_geometry(CurvesGeometry &dst, const CurvesGeometry &src)
   CustomData_copy(&src.point_data, &dst.point_data, CD_MASK_ALL, dst.point_num);
   CustomData_copy(&src.curve_data, &dst.curve_data, CD_MASK_ALL, dst.curve_num);
 
-  dst.curve_offsets = src.curve_offsets;
-  dst.runtime->curve_offsets_sharing_info = src.runtime->curve_offsets_sharing_info;
-  dst.runtime->curve_offsets_sharing_info->add_user();
+  implicit_sharing::copy_shared_pointer(src.curve_offsets,
+                                        src.runtime->curve_offsets_sharing_info,
+                                        &dst.curve_offsets,
+                                        &dst.runtime->curve_offsets_sharing_info);
 
   dst.tag_topology_changed();
 
@@ -158,7 +160,8 @@ CurvesGeometry::~CurvesGeometry()
 {
   CustomData_free(&this->point_data, this->point_num);
   CustomData_free(&this->curve_data, this->curve_num);
-  free_shared_data(&this->curve_offsets, &this->runtime->curve_offsets_sharing_info);
+  implicit_sharing::free_shared_data(&this->curve_offsets,
+                                     &this->runtime->curve_offsets_sharing_info);
   MEM_delete(this->runtime);
   this->runtime = nullptr;
 }
@@ -335,7 +338,7 @@ Span<int> CurvesGeometry::offsets() const
 }
 MutableSpan<int> CurvesGeometry::offsets_for_write()
 {
-  make_trivial_data_mutable(
+  implicit_sharing::make_trivial_data_mutable(
       &this->curve_offsets, &this->runtime->curve_offsets_sharing_info, this->curve_num + 1);
   return {this->curve_offsets, this->curve_num + 1};
 }
@@ -959,10 +962,10 @@ void CurvesGeometry::resize(const int points_num, const int curves_num)
   }
   if (curves_num != this->curve_num) {
     CustomData_realloc(&this->curve_data, this->curves_num(), curves_num);
-    resize_trivial_array(&this->curve_offsets,
-                         &this->runtime->curve_offsets_sharing_info,
-                         this->curve_num == 0 ? 0 : (this->curve_num + 1),
-                         curves_num + 1);
+    implicit_sharing::resize_trivial_array(&this->curve_offsets,
+                                           &this->runtime->curve_offsets_sharing_info,
+                                           this->curve_num == 0 ? 0 : (this->curve_num + 1),
+                                           curves_num + 1);
     /* Set common values for convenience. */
     this->curve_offsets[0] = 0;
     this->curve_offsets[curves_num] = this->point_num;
@@ -1604,7 +1607,8 @@ void CurvesGeometry::blend_read(BlendDataReader &reader)
 
   if (this->curve_offsets) {
     BLO_read_int32_array(&reader, this->curve_num + 1, &this->curve_offsets);
-    this->runtime->curve_offsets_sharing_info = sharing_info_for_mem_free(this->curve_offsets);
+    this->runtime->curve_offsets_sharing_info = implicit_sharing::info_for_mem_free(
+        this->curve_offsets);
   }
 
   /* Recalculate curve type count cache that isn't saved in files. */

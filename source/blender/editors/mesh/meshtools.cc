@@ -679,7 +679,8 @@ int ED_mesh_join_objects_exec(bContext *C, wmOperator *op)
 
   if (totpoly) {
     me->poly_offset_indices = poly_offsets;
-    me->runtime->poly_offsets_sharing_info = blender::sharing_info_for_mem_free(poly_offsets);
+    me->runtime->poly_offsets_sharing_info = blender::implicit_sharing::info_for_mem_free(
+        poly_offsets);
   }
 
   me->totvert = totvert;

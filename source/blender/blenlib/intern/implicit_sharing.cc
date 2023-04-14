@@ -7,7 +7,7 @@
 
 #include "BLI_implicit_sharing.hh"
 
-namespace blender {
+namespace blender::implicit_sharing {
 
 class MEMFreeImplicitSharing : public ImplicitSharingInfo {
  public:
@@ -26,7 +26,7 @@ class MEMFreeImplicitSharing : public ImplicitSharingInfo {
   }
 };
 
-ImplicitSharingInfo *sharing_info_for_mem_free(void *data)
+ImplicitSharingInfo *info_for_mem_free(void *data)
 {
   return MEM_new<MEMFreeImplicitSharing>(__func__, data);
 }
@@ -43,12 +43,12 @@ void *make_trivial_data_mutable_impl(void *old_data,
     return nullptr;
   }
 
-  BLI_assert(sharing_info != nullptr);
+  BLI_assert(*sharing_info != nullptr);
   if ((*sharing_info)->is_shared()) {
     void *new_data = MEM_mallocN_aligned(size, alignment, __func__);
     memcpy(new_data, old_data, size);
     (*sharing_info)->remove_user_and_delete_if_last();
-    *sharing_info = sharing_info_for_mem_free(new_data);
+    *sharing_info = info_for_mem_free(new_data);
     return new_data;
   }
 
@@ -62,7 +62,10 @@ void *resize_trivial_array_impl(void *old_data,
                                 ImplicitSharingInfo **sharing_info)
 {
   if (new_size == 0) {
-    *sharing_info = nullptr;
+    if (*sharing_info) {
+      (*sharing_info)->remove_user_and_delete_if_last();
+      *sharing_info = nullptr;
+    }
     return nullptr;
   }
 
@@ -70,7 +73,7 @@ void *resize_trivial_array_impl(void *old_data,
     BLI_assert(old_size == 0);
     BLI_assert(*sharing_info == nullptr);
     void *new_data = MEM_mallocN_aligned(new_size, alignment, __func__);
-    *sharing_info = sharing_info_for_mem_free(new_data);
+    *sharing_info = info_for_mem_free(new_data);
     return new_data;
   }
 
@@ -88,10 +91,10 @@ void *resize_trivial_array_impl(void *old_data,
   void *new_data = MEM_mallocN_aligned(new_size, alignment, __func__);
   memcpy(new_data, old_data, std::min(old_size, new_size));
   (*sharing_info)->remove_user_and_delete_if_last();
-  *sharing_info = sharing_info_for_mem_free(new_data);
+  *sharing_info = info_for_mem_free(new_data);
   return new_data;
 }
 
 }  // namespace detail
 
-}  // namespace blender
+}  // namespace blender::implicit_sharing
