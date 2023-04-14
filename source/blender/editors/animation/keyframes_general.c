@@ -511,7 +511,7 @@ void blend_to_infinity_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const
       return;
     }
     const BezTriple *beyond_right_key = fcurve_segment_end_get(
-      fcu, segment->start_index + segment->length + 1);
+        fcu, segment->start_index + segment->length + 1);
 
     y_delta = beyond_right_key->vec[1][1] - right_key->vec[1][1];
     x_delta = beyond_right_key->vec[1][0] - right_key->vec[1][0];
@@ -550,7 +550,7 @@ void blend_to_infinity_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const
     }
 
     /* We use compound rule of 3 to find the "Y" delta we are missing using the other deltas we
-    * know. */
+     * know. */
     new_y_delta = new_x_delta * y_delta / x_delta;
 
     const float delta = reference_key->vec[1][1] + new_y_delta - fcu->bezt[i].vec[1][1];
