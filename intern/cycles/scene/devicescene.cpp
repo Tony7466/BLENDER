@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
-#include "scene/scene.h"
 #include "scene/devicescene.h"
+#include "scene/scene.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -229,8 +229,8 @@ void DeviceScene::device_update_host_pointers(Device *device,
  * This copies the data to the devices if they have been modified
  */
 void DeviceScene::device_update_mesh(Device *device,
-                                         const GeometrySizes *p_sizes,
-                                         Progress &progress)
+                                     const GeometrySizes *p_sizes,
+                                     Progress &progress)
 {
   progress.set_status("Updating Mesh", "Copying Mesh to device");
   if (p_sizes->tri_size != 0) {
@@ -262,8 +262,8 @@ void DeviceScene::device_update_mesh(Device *device,
  * Copies the attribute buffer data to the devices
  */
 void DeviceScene::device_update_attributes(Device *device,
-					   const AttributeSizes *sizes,
-					   Progress &progress)
+                                           const AttributeSizes *sizes,
+                                           Progress &progress)
 {
   progress.set_status("Updating Mesh", "Copying Attributes to device");
   /* copy svm attributes to device */
@@ -275,4 +275,50 @@ void DeviceScene::device_update_attributes(Device *device,
   attributes_uchar4.copy_to_device_if_modified(sizes->attr_uchar4_size, 0);
   objects.copy_to_device_if_modified();
 }
+
+void DeviceScene::device_update_bvh2(Device *device,
+                                     BVH *bvh,
+                                     Progress &progress)
+{
+  if (bvh->params.bvh_layout == BVH_LAYOUT_BVH2) {
+    BVH2 *bvh2 = static_cast<BVH2 *>(bvh);
+
+    /* When using BVH2, we always have to copy/update the data as its layout is dependent on
+     * the BVH's leaf nodes which may be different when the objects or vertices move. */
+
+    if (bvh2->pack.nodes.size()) {
+      bvh_nodes.assign_mem(bvh2->pack.nodes);
+      bvh_nodes.copy_to_device();
+    }
+    if (bvh2->pack.leaf_nodes.size()) {
+      bvh_leaf_nodes.assign_mem(bvh2->pack.leaf_nodes);
+      bvh_leaf_nodes.copy_to_device();
+    }
+    if (bvh2->pack.object_node.size()) {
+      object_node.assign_mem(bvh2->pack.object_node);
+      object_node.copy_to_device();
+    }
+    if (bvh2->pack.prim_type.size()) {
+      prim_type.assign_mem(bvh2->pack.prim_type);
+      prim_type.copy_to_device();
+    }
+    if (bvh2->pack.prim_visibility.size()) {
+      prim_visibility.assign_mem(bvh2->pack.prim_visibility);
+      prim_visibility.copy_to_device();
+    }
+    if (bvh2->pack.prim_index.size()) {
+      prim_index.assign_mem(bvh2->pack.prim_index);
+      prim_index.copy_to_device();
+    }
+    if (bvh2->pack.prim_object.size()) {
+      prim_object.assign_mem(bvh2->pack.prim_object);
+      prim_object.copy_to_device();
+    }
+    if (bvh2->pack.prim_time.size()) {
+      prim_time.assign_mem(bvh2->pack.prim_time);
+      prim_time.copy_to_device();
+    }
+  }
+}
+
 CCL_NAMESPACE_END

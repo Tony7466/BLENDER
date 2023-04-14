@@ -824,7 +824,7 @@ void GeometryManager::device_data_xfer_and_bvh_update(int idx,
     });
     /* Build the scene BVH */
     device_update_bvh(sub_device, sub_dscene, scene, can_refit, 1, 1, progress);
-    device_update_bvh2(sub_device, sub_dscene, scene, progress);
+    sub_dscene->device_update_bvh2(sub_device, scene->bvh, progress);
   }
 }
 
