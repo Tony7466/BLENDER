@@ -64,7 +64,7 @@ class VKContext : public Context {
   void deactivate_framebuffer();
   VKFrameBuffer *active_framebuffer_get() const;
 
-  void bind_graphics_pipeline(const VKBatch &batch,
+  void bind_graphics_pipeline(const GPUPrimType prim_type,
                               const VKVertexAttributeObject &vertex_attribute_object);
 
   static VKContext *get(void)

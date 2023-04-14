@@ -94,7 +94,7 @@ void VKPipeline::finalize(VKContext &context,
                           VkShaderModule vertex_module,
                           VkShaderModule fragment_module,
                           VkPipelineLayout &pipeline_layout,
-                          const VKBatch &batch,
+                          const GPUPrimType prim_type,
                           const VKVertexAttributeObject &vertex_attribute_object)
 {
   BLI_assert(vertex_module != VK_NULL_HANDLE);
@@ -141,7 +141,7 @@ void VKPipeline::finalize(VKContext &context,
   /* Input assembly state. */
   VkPipelineInputAssemblyStateCreateInfo pipeline_input_assembly = {};
   pipeline_input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-  pipeline_input_assembly.topology = to_vk_primitive_topology(batch.prim_type);
+  pipeline_input_assembly.topology = to_vk_primitive_topology(prim_type);
   pipeline_create_info.pInputAssemblyState = &pipeline_input_assembly;
 
   /* Viewport state. */

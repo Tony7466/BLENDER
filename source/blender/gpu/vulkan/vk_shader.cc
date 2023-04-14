@@ -933,12 +933,16 @@ bool VKShader::transform_feedback_enable(GPUVertBuf *)
 void VKShader::transform_feedback_disable() {}
 
 void VKShader::update_graphics_pipeline(VKContext &context,
-                                        const VKBatch &batch,
+                                        const GPUPrimType prim_type,
                                         const VKVertexAttributeObject &vertex_attribute_object)
 {
   BLI_assert(is_graphics_shader());
-  pipeline_get().finalize(
-      context, vertex_module_, fragment_module_, pipeline_layout_, batch, vertex_attribute_object);
+  pipeline_get().finalize(context,
+                          vertex_module_,
+                          fragment_module_,
+                          pipeline_layout_,
+                          prim_type,
+                          vertex_attribute_object);
 }
 
 void VKShader::bind()

@@ -85,7 +85,7 @@ class VKPipeline : NonCopyable {
                 VkShaderModule vertex_module,
                 VkShaderModule fragment_module,
                 VkPipelineLayout &pipeline_layout,
-                const VKBatch &batch,
+                const GPUPrimType prim_type,
                 const VKVertexAttributeObject &vertex_attribute_object);
 };
 

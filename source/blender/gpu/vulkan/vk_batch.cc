@@ -24,7 +24,7 @@ void VKBatch::draw(int v_first, int v_count, int i_first, int i_count)
   context.state_manager->apply_state();
   VKVertexAttributeObject &vao = vao_cache_.vao_get(this);
   vao.update_bindings(context, *this);
-  context.bind_graphics_pipeline(*this, vao);
+  context.bind_graphics_pipeline(prim_type, vao);
   vao.bind(context);
 
   VKIndexBuffer *index_buffer = index_buffer_get();

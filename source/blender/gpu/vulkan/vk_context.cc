@@ -9,6 +9,7 @@
 
 #include "vk_backend.hh"
 #include "vk_framebuffer.hh"
+#include "vk_immediate.hh"
 #include "vk_memory.hh"
 #include "vk_shader.hh"
 #include "vk_state_manager.hh"
@@ -48,6 +49,7 @@ VKContext::VKContext(void *ghost_window, void *ghost_context)
   descriptor_pools_.init(vk_device_);
 
   state_manager = new VKStateManager();
+  imm = new VKImmediate();
 
   VKBackend::capabilities_init(*this);
 
@@ -57,6 +59,10 @@ VKContext::VKContext(void *ghost_window, void *ghost_context)
 
 VKContext::~VKContext()
 {
+  /* IMM owns a buffer that should be freed before the memory allocator is freed. */
+  /* TODO: Introduce a buffer pool for temporary buffers. */
+  delete imm;
+  imm = nullptr;
   vmaDestroyAllocator(mem_allocator_);
 }
 
@@ -91,9 +97,14 @@ void VKContext::activate()
     back_left = framebuffer;
     framebuffer->bind(false);
   }
+
+  immActivate();
 }
 
-void VKContext::deactivate() {}
+void VKContext::deactivate()
+{
+  immDeactivate();
+}
 
 void VKContext::begin_frame()
 {
@@ -175,12 +186,12 @@ void VKContext::deactivate_framebuffer()
 /** \name Graphics pipeline
  * \{ */
 
-void VKContext::bind_graphics_pipeline(const VKBatch &batch,
+void VKContext::bind_graphics_pipeline(const GPUPrimType prim_type,
                                        const VKVertexAttributeObject &vertex_attribute_object)
 {
   VKShader *shader = unwrap(this->shader);
   BLI_assert(shader);
-  shader->update_graphics_pipeline(*this, batch, vertex_attribute_object);
+  shader->update_graphics_pipeline(*this, prim_type, vertex_attribute_object);
   command_buffer_get().bind(shader->pipeline_get(), VK_PIPELINE_BIND_POINT_GRAPHICS);
   shader->pipeline_get().push_constants_get().update(*this);
 }

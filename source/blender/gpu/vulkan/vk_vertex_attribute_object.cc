@@ -5,6 +5,7 @@
 
 #include "vk_batch.hh"
 #include "vk_context.hh"
+#include "vk_immediate.hh"
 #include "vk_shader.hh"
 #include "vk_shader_interface.hh"
 #include "vk_vertex_buffer.hh"
@@ -24,6 +25,7 @@ void VKVertexAttributeObject::clear()
   bindings.clear();
   attributes.clear();
   vbos.clear();
+  buffers.clear();
 }
 
 VKVertexAttributeObject &VKVertexAttributeObject::operator=(const VKVertexAttributeObject &other)
@@ -40,6 +42,8 @@ VKVertexAttributeObject &VKVertexAttributeObject::operator=(const VKVertexAttrib
   attributes.extend(other.attributes);
   vbos.clear();
   vbos.extend(other.vbos);
+  buffers.clear();
+  buffers.extend(other.buffers);
   return *this;
 }
 
@@ -53,10 +57,21 @@ void VKVertexAttributeObject::bind(VKContext &context)
       continue;
     }
     visited_bindings[attribute.binding] = true;
-    BLI_assert(vbos[attribute.binding]);
-    VKVertexBuffer &vbo = *vbos[attribute.binding];
-    vbo.upload();
-    context.command_buffer_get().bind(attribute.binding, vbo, 0);
+
+    /* Bind VBOS from batches. */
+    if (attribute.binding < vbos.size()) {
+      BLI_assert(vbos[attribute.binding]);
+      VKVertexBuffer &vbo = *vbos[attribute.binding];
+      vbo.upload();
+      context.command_buffer_get().bind(attribute.binding, vbo, 0);
+    }
+
+    /* Bind dynamic buffers from immediate mode. */
+    if (attribute.binding < buffers.size()) {
+      BLI_assert(buffers[attribute.binding]);
+      VKBuffer &buffer = *buffers[attribute.binding];
+      context.command_buffer_get().bind(attribute.binding, buffer.vk_handle(), 0);
+    }
   }
 }
 
@@ -69,14 +84,16 @@ void VKVertexAttributeObject::update_bindings(const VKContext &context, VKBatch 
   for (int v = 0; v < GPU_BATCH_VBO_MAX_LEN; v++) {
     VKVertexBuffer *vbo = batch.vertex_buffer_get(v);
     if (vbo) {
-      update_bindings(*vbo, interface, occupied_attributes, false);
+      update_bindings(
+          vbo->format, vbo, nullptr, vbo->vertex_len, interface, occupied_attributes, false);
     }
   }
 
   for (int v = 0; v < GPU_BATCH_INST_VBO_MAX_LEN; v++) {
     VKVertexBuffer *vbo = batch.instance_buffer_get(v);
     if (vbo) {
-      update_bindings(*vbo, interface, occupied_attributes, false);
+      update_bindings(
+          vbo->format, vbo, nullptr, vbo->vertex_len, interface, occupied_attributes, false);
     }
   }
 
@@ -85,25 +102,46 @@ void VKVertexAttributeObject::update_bindings(const VKContext &context, VKBatch 
   BLI_assert(interface.enabled_attr_mask_ == occupied_attributes);
 }
 
-void VKVertexAttributeObject::update_bindings(VKVertexBuffer &vertex_buffer,
+void VKVertexAttributeObject::update_bindings(VKImmediate &immediate)
+{
+  clear();
+  const VKShaderInterface &interface = unwrap(unwrap(immediate.shader))->interface_get();
+  AttributeMask occupied_attributes = 0;
+
+  update_bindings(immediate.vertex_format,
+                  nullptr,
+                  &immediate.buffer_,
+                  immediate.vertex_len,
+                  interface,
+                  occupied_attributes,
+                  false);
+  is_valid = true;
+  BLI_assert(interface.enabled_attr_mask_ == occupied_attributes);
+}
+
+void VKVertexAttributeObject::update_bindings(const GPUVertFormat &vertex_format,
+                                              VKVertexBuffer *vertex_buffer,
+                                              VKBuffer *immediate_vertex_buffer,
+                                              const int64_t vertex_len,
                                               const VKShaderInterface &interface,
                                               AttributeMask &r_occupied_attributes,
                                               const bool use_instancing)
 {
-  const GPUVertFormat &format = vertex_buffer.format;
+  BLI_assert(vertex_buffer || immediate_vertex_buffer);
+  BLI_assert(!(vertex_buffer && immediate_vertex_buffer));
 
-  if (format.attr_len <= 0) {
+  if (vertex_format.attr_len <= 0) {
     return;
   }
 
   uint32_t offset = 0;
-  uint32_t stride = format.stride;
+  uint32_t stride = vertex_format.stride;
 
-  for (uint32_t attribute_index = 0; attribute_index < format.attr_len; attribute_index++) {
-    const GPUVertAttr &attribute = format.attrs[attribute_index];
-    if (format.deinterleaved) {
-      offset += ((attribute_index == 0) ? 0 : format.attrs[attribute_index - 1].size) *
-                vertex_buffer.vertex_len;
+  for (uint32_t attribute_index = 0; attribute_index < vertex_format.attr_len; attribute_index++) {
+    const GPUVertAttr &attribute = vertex_format.attrs[attribute_index];
+    if (vertex_format.deinterleaved) {
+      offset += ((attribute_index == 0) ? 0 : vertex_format.attrs[attribute_index - 1].size) *
+                vertex_len;
       stride = attribute.size;
     }
     else {
@@ -114,7 +152,7 @@ void VKVertexAttributeObject::update_bindings(VKVertexBuffer &vertex_buffer,
 
     bool attribute_used_by_shader = false;
     for (uint32_t name_index = 0; name_index < attribute.name_len; name_index++) {
-      const char *name = GPU_vertformat_attr_name_get(&format, &attribute, name_index);
+      const char *name = GPU_vertformat_attr_name_get(&vertex_format, &attribute, name_index);
       const ShaderInput *shader_input = interface.attr_get(name);
       if (shader_input == nullptr || shader_input->location == -1) {
         continue;
@@ -144,7 +182,12 @@ void VKVertexAttributeObject::update_bindings(VKVertexBuffer &vertex_buffer,
       vk_binding_descriptor.inputRate = use_instancing ? VK_VERTEX_INPUT_RATE_INSTANCE :
                                                          VK_VERTEX_INPUT_RATE_VERTEX;
       bindings.append(vk_binding_descriptor);
-      vbos.append(&vertex_buffer);
+      if (vertex_buffer) {
+        vbos.append(vertex_buffer);
+      }
+      if (immediate_vertex_buffer) {
+        buffers.append(immediate_vertex_buffer);
+      }
     }
   }
 }

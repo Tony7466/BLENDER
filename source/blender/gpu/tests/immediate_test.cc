@@ -28,11 +28,11 @@ static void test_immediate_crosshair()
   GPUVertFormat *format = immVertexFormat();
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
 
-  immBindBuiltinProgram(GPU_SHADER_3D_POLYLINE_UNIFORM_COLOR);
+  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
   float2 viewport_size(Size);
   float4 color(1.0, 0.5, 0.25, 1.0);
-  immUniform2fv("viewportSize", viewport_size);
-  immUniform1f("lineWidth", 1.0f);
+  // immUniform2fv("viewportSize", viewport_size);
+  // immUniform1f("lineWidth", 1.0f);
   immUniformColor4fv(color);
 
   immBegin(GPU_PRIM_LINES, 4);
