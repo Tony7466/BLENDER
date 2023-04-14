@@ -4,8 +4,13 @@
 #pragma once
 
 #if !defined(__KERNEL_GPU__) && defined(WITH_EMBREE)
-#  include <embree3/rtcore.h>
-#  include <embree3/rtcore_scene.h>
+#  if EMBREE_MAJOR_VERSION >= 4
+#    include <embree4/rtcore.h>
+#    include <embree4/rtcore_scene.h>
+#  else
+#    include <embree3/rtcore.h>
+#    include <embree3/rtcore_scene.h>
+#  endif
 #  define __EMBREE__
 #endif
 
@@ -829,7 +834,7 @@ enum ShaderDataFlag {
   SD_NEED_VOLUME_ATTRIBUTES = (1 << 28),
   /* Shader has emission */
   SD_HAS_EMISSION = (1 << 29),
-  /* Shader has raytracing */
+  /* Shader has ray-tracing. */
   SD_HAS_RAYTRACE = (1 << 30),
   /* Use back side for direct light sampling. */
   SD_MIS_BACK = (1 << 31),

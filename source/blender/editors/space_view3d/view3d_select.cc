@@ -71,7 +71,7 @@
 #include "ED_armature.h"
 #include "ED_curve.h"
 #include "ED_curves.h"
-#include "ED_gpencil.h"
+#include "ED_gpencil_legacy.h"
 #include "ED_lattice.h"
 #include "ED_mball.h"
 #include "ED_mesh.h"
@@ -3664,8 +3664,7 @@ static bool do_mesh_box_select(ViewContext *vc,
   }
   if (ts->selectmode & SCE_SELECT_EDGE) {
     /* Does both use_zbuf and non-use_zbuf versions (need screen cos for both) */
-    struct BoxSelectUserData_ForMeshEdge cb_data {
-    };
+    struct BoxSelectUserData_ForMeshEdge cb_data {};
     cb_data.data = &data;
     cb_data.esel = use_zbuf ? esel : nullptr;
     cb_data.backbuf_offset = use_zbuf ? DRW_select_buffer_context_offset_for_object_elem(
@@ -3948,13 +3947,12 @@ static bool do_pose_box_select(bContext *C,
   const int hits = view3d_opengl_select(
       vc, buffer, (totobj + MAXPICKELEMS), rect, VIEW3D_SELECT_ALL, select_filter);
   /*
-   * LOGIC NOTES (theeth):
-   * The buffer and ListBase have the same relative order, which makes the selection
+   * NOTE(@theeth): Regarding the logic use here.
+   * The buffer and #ListBase have the same relative order, which makes the selection
    * very simple. Loop through both data sets at the same time, if the color
    * is the same as the object, we have a hit and can move to the next color
    * and object pair, if not, just move to the next object,
-   * keeping the same color until we have a hit.
-   */
+   * keeping the same color until we have a hit. */
 
   if (hits > 0) {
     /* no need to loop if there's no hit */
