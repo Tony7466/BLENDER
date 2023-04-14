@@ -1320,7 +1320,10 @@ void GRAPH_OT_gaussian_smooth(wmOperatorType *ot)
 /** \name Butterworth Operator
  * \{ */
 
-static void btw_smooth_graph_keys(bAnimContext *ac, const float factor, const float f_cutoff_fac)
+static void btw_smooth_graph_keys(bAnimContext *ac,
+                                  const float factor,
+                                  const float f_cutoff_fac,
+                                  const int filter_order)
 {
   ListBase anim_data = {NULL, NULL};
   ANIM_animdata_filter(ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, ac->datatype);
@@ -1331,7 +1334,7 @@ static void btw_smooth_graph_keys(bAnimContext *ac, const float factor, const fl
     FCurve *fcu = (FCurve *)ale->key_data;
     ListBase segments = find_fcurve_segments(fcu);
     LISTBASE_FOREACH (FCurveSegment *, segment, &segments) {
-      butterworth_smooth_fcurve_segment(fcu, segment, factor, f_cutoff_fac);
+      butterworth_smooth_fcurve_segment(fcu, segment, factor, f_cutoff_fac, filter_order);
     }
     BLI_freelistN(&segments);
     ale->update |= ANIM_UPDATE_DEFAULT;
@@ -1350,7 +1353,8 @@ static int btw_exec(bContext *C, wmOperator *op)
   }
   const float factor = RNA_float_get(op->ptr, "factor");
   const float freq_cutoff = RNA_float_get(op->ptr, "frequency_cutoff");
-  btw_smooth_graph_keys(&ac, factor, freq_cutoff);
+  const int filter_order = RNA_int_get(op->ptr, "filter_order");
+  btw_smooth_graph_keys(&ac, factor, freq_cutoff, filter_order);
 
   /* Set notifier that keyframes have changed. */
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
@@ -1376,7 +1380,7 @@ void GRAPH_OT_butterworth_smooth(wmOperatorType *ot)
 
   RNA_def_float_factor(ot->srna,
                        "factor",
-                       1.0f / 3.0f,
+                       1.0f,
                        0,
                        FLT_MAX,
                        "Factor",
@@ -1386,12 +1390,22 @@ void GRAPH_OT_butterworth_smooth(wmOperatorType *ot)
 
   RNA_def_float_factor(ot->srna,
                        "frequency_cutoff",
-                       2.0f / 3.0f,
+                       1.0f,
                        0.0001f,
-                       1,
+                       100.0f,
                        "Frquency Cutoff",
                        "At which frquency the factor should be applied",
                        0.0001f,
-                       1.0f);
+                       100.0f);
+
+  RNA_def_int(ot->srna,
+              "filter_order",
+              4,
+              2,
+              32,
+              "Filter Order",
+              "Higher values produce a harder frequency cutoff",
+              2,
+              16);
 }
 /** \} */
