@@ -592,13 +592,8 @@ static void handle_armature_parent_orientation(const Scene *scene,
 
   // Check if target bone is a child.
   if (active_pchan->parent) {
-    // If Child bone has "Local Location" on, use local location orientation.
-    if (!(active_pchan->bone->flag & BONE_NO_LOCAL_LOCATION)) {
-      ED_getTransformOrientationMatrix(scene, view_layer, v3d, ob, obedit, pivot_point, r_mat);
-      return;
-    }
 
-    // If Child bone doesn't have "Local Location" use parent space.
+    // For child, show parent local regardless if "local location" is set for parent bone
     transform_orientations_create_from_axis(r_mat, UNPACK3(active_pchan->parent->pose_mat));
     return;
   }
