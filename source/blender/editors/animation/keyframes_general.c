@@ -496,28 +496,24 @@ void blend_offset_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const floa
   const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
   const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
 
-  const BezTriple *segment_first_key = fcurve_segment_start_get(fcu, segment->start_index + 1);
-  const BezTriple *segment_last_key = fcurve_segment_end_get(
-      fcu, segment->start_index + segment->length - 1);
-
-  /* The calculation needs diferent values for each side of the slider. */
-  const bool slider_right_side = factor > 0.5;
+  const BezTriple segment_first_key = fcu->bezt[segment->start_index];
+  const BezTriple segment_last_key = fcu->bezt[segment->start_index + segment->length - 1];
 
   /* For this tool the calculations are made easier if each side of the slider goes from 0 to
-   * porisive 1. */
-  const float ping_pong_factor = fabs(factor * 2 - 1);
+   * positive 1. */
+  const float bidirectional_factor = fabs(factor * 2 - 1);
 
   float y_delta;
 
-  if (slider_right_side) {
-    y_delta = right_key->vec[1][1] - segment_last_key->vec[1][1];
+  if (factor > 0.5) {
+    y_delta = right_key->vec[1][1] - segment_last_key.vec[1][1];
   }
   else {
-    y_delta = left_key->vec[1][1] - segment_first_key->vec[1][1];
+    y_delta = left_key->vec[1][1] - segment_first_key.vec[1][1];
   }
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
-    const float key_y_value = fcu->bezt[i].vec[1][1] + y_delta * ping_pong_factor;
+    const float key_y_value = fcu->bezt[i].vec[1][1] + y_delta * bidirectional_factor;
     move_key(&fcu->bezt[i], key_y_value);
   }
 }
