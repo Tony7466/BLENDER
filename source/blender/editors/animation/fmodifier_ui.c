@@ -308,11 +308,12 @@ static void fmodifier_panel_header(const bContext *C, Panel *panel)
   uiItemR(sub, ptr, "active", UI_ITEM_R_ICON_ONLY, "", ICON_NONE);
 
   /* Name. */
-  if (fmi && fcm->name[0] == '\0') {
-    BLI_strncpy(fcm->name, fmi->name, sizeof(fmi->name));
+  if (fmi) {
+    uiItemR(sub, ptr, "name", 0, "", ICON_NONE);
   }
-  uiItemR(sub, ptr, "name", 0, "", ICON_NONE);
-
+  else {
+    uiItemL(sub, IFACE_("<Unknown Modifier>"), ICON_NONE);
+  }
   /* Right align. */
   sub = uiLayoutRow(layout, true);
   uiLayoutSetAlignment(sub, UI_LAYOUT_ALIGN_RIGHT);

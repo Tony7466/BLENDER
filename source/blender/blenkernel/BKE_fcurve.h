@@ -240,6 +240,8 @@ void BKE_fcurves_free(ListBase *list);
  */
 void BKE_fcurves_copy(ListBase *dst, ListBase *src);
 
+void BKE_fmodifier_unique_name_set(struct FModifier *fcm);
+
 /**
  * Callback used by lib_query to walk over all ID usages
  * (mimics `foreach_id` callback of #IDTypeInfo structure).

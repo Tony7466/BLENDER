@@ -15,8 +15,6 @@
 
 #include "BLT_translation.h"
 
-#include "BLI_string_utils.h"
-
 #include "BKE_action.h"
 
 #include "RNA_access.h"
@@ -846,9 +844,7 @@ static void rna_fModifier_name_set(PointerRNA *ptr, const char *value)
   BLI_strncpy(fcm->name, value, sizeof(fcm->name));
 
   /* Check unique name. */
-  const FModifierTypeInfo *fmi = get_fmodifier_typeinfo(fcm->type);
-  ListBase list = BLI_listbase_from_link((Link *)fcm);
-  BLI_uniquename(&list, fcm, fmi->name, '.', offsetof(FModifier, name), sizeof(fcm->name));
+  BKE_fmodifier_unique_name_set(fcm);
 }
 
 static void rna_FModifier_verify_data_update(Main *bmain, Scene *scene, PointerRNA *ptr)
