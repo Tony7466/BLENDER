@@ -906,7 +906,7 @@ void SkyTextureNode::compile(SVMCompiler &compiler)
     if (rotation < 0.0f) {
       rotation += M_2PI_F;
     }
-    rotation = M_2PI_F - sun_rotation;
+    rotation = M_2PI_F - rotation;
 
     sun_elevation = elevation;
     sun_rotation = rotation;
@@ -1030,7 +1030,7 @@ void SkyTextureNode::compile(OSLCompiler &compiler)
     if (rotation < 0.0f) {
       rotation += M_2PI_F;
     }
-    rotation = M_2PI_F - sun_rotation;
+    rotation = M_2PI_F - rotation;
 
     sun_elevation = elevation;
     sun_rotation = rotation;
