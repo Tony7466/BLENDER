@@ -1771,10 +1771,10 @@ bool file_draw_check_exists(SpaceFile *sfile)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Operations that OS can perform on files
+/** \name External operations that can performed on files.
  * \{ */
 
-  static const EnumPropertyItem shell_execute_operation[] = {
+  static const EnumPropertyItem file_external_operation[] = {
     {FILE_EXTERNAL_OPERATION_OPEN, "OPEN", 0, "Open", "Open the file"},
     {FILE_EXTERNAL_OPERATION_FOLDER_OPEN, "FOLDER_OPEN", 0, "Open Folder", "Open the folder"},
     {FILE_EXTERNAL_OPERATION_EDIT, "EDIT", 0, "Edit", "Edit the file"},
@@ -1804,7 +1804,7 @@ bool file_draw_check_exists(SpaceFile *sfile)
      "Open a command prompt here"},
     {0, NULL, 0, NULL, NULL}};
 
-static int file_shell_execute_exec(bContext *C, wmOperator *op)
+static int file_external_operation_exec(bContext *C, wmOperator *op)
   {
   PropertyRNA *prop = RNA_struct_find_property(op->ptr, "filepath");
   char filepath[FILE_MAX];
@@ -1821,43 +1821,45 @@ static int file_shell_execute_exec(bContext *C, wmOperator *op)
     WM_cursor_set(CTX_wm_window(C), WM_CURSOR_DEFAULT);
     return OPERATOR_FINISHED;
   }
-  WM_cursor_set(CTX_wm_window(C), WM_CURSOR_DEFAULT);
 
+  BKE_reportf(
+      op->reports, RPT_ERROR, "Failure to perform exernal file operation on \"%s\"", filepath);
+  WM_cursor_set(CTX_wm_window(C), WM_CURSOR_DEFAULT);
   return OPERATOR_CANCELLED;
   }
 
-static char *file_shell_execute_description(struct bContext *UNUSED(C),
+static char *file_external_operation_description(struct bContext *UNUSED(C),
                                           struct wmOperatorType *UNUSED(ot),
                                           struct PointerRNA *ptr)
 {
   const char *description = "";
-  RNA_enum_description(shell_execute_operation, RNA_enum_get(ptr, "operation"), &description);
+  RNA_enum_description(file_external_operation, RNA_enum_get(ptr, "operation"), &description);
   return BLI_strdup(description);
 }
 
-void FILE_OT_shell_execute(wmOperatorType *ot)
+void FILE_OT_external_operation(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
   /* identifiers */
-  ot->name = "Shell Execute";
-  ot->idname = "FILE_OT_shell_execute";
-  ot->description = "Perform operation on a file or folder";
+  ot->name = "Exernal File Operation";
+  ot->idname = "FILE_OT_external_operation";
+  ot->description = "Perform external operation on a file or folder";
 
   /* api callbacks */
-  ot->exec = file_shell_execute_exec;
-  ot->get_description = file_shell_execute_description;
+  ot->exec = file_external_operation_exec;
+  ot->get_description = file_external_operation_description;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER; /* No undo! */
 
   /* properties */
-  prop = RNA_def_string(ot->srna, "filepath", NULL, FILE_MAXDIR, "File or folder path", "");
+  prop = RNA_def_string(ot->srna, "filepath", NULL, FILE_MAX, "File or folder path", "");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
   RNA_def_enum(ot->srna,
                "operation",
-               shell_execute_operation,
+               file_external_operation,
                0,
                "Operation",
                "Operation to perform on the file or path");
@@ -1873,7 +1875,7 @@ static void file_os_operations_menu_item(uiLayout *layout,
   }
 
   const char *title = "";
-  RNA_enum_name(shell_execute_operation, operation, &title);
+  RNA_enum_name(file_external_operation, operation, &title);
 
   PointerRNA props_ptr;
   uiItemFullO_ptr(layout, ot, title, ICON_NONE, NULL, WM_OP_INVOKE_DEFAULT, 0, &props_ptr);
@@ -1883,20 +1885,38 @@ static void file_os_operations_menu_item(uiLayout *layout,
   }
 }
 
-static void file_os_operations_menu_draw(const bContext *C, Menu *menu)
+static void file_os_operations_menu_draw(const bContext *C_const, Menu *menu)
 {
+  bContext *C = (bContext *)C_const;
+
+  /* File browsing only operator (not asset browsing). */
+  if (!ED_operator_file_browsing_active(C)) {
+    return;
+  }
+
   SpaceFile *sfile = CTX_wm_space_file(C);
+  FileSelectParams *params = ED_fileselect_get_active_params(sfile);
+  if (!sfile || !params) {
+    return;
+  }
+
+  char dir[FILE_MAX_LIBEXTRA];
+  if (filelist_islibrary(sfile->files, dir, NULL)) {
+    return;
+  }
+
   int numfiles = filelist_files_ensure(sfile->files);
   FileDirEntry *fileentry = NULL;
+  int num_selected = 0;
 
   for (int i = 0; i < numfiles; i++) {
     if (filelist_entry_select_index_get(sfile->files, i, CHECK_ALL)) {
       fileentry = filelist_file(sfile->files, i);
-      break;
+      num_selected++;
     }
   }
 
-  if (!fileentry) {
+  if (!fileentry || num_selected > 1) {
     return;
   }
 
@@ -1914,7 +1934,7 @@ static void file_os_operations_menu_draw(const bContext *C, Menu *menu)
     file_os_operations_menu_item(layout, ot, root, FILE_EXTERNAL_OPERATION_FOLDER_OPEN);
   }
 #else
-  wmOperatorType *ot = WM_operatortype_find("FILE_OT_shell_execute", true);
+  wmOperatorType *ot = WM_operatortype_find("FILE_OT_external_operation", true);
   if (fileentry->typeflag & FILE_TYPE_DIR) {
     file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_FOLDER_OPEN);
     file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_FOLDER_CMD);
@@ -1966,7 +1986,7 @@ static bool file_os_operations_menu_poll(const bContext *C_const, MenuType *UNUS
     if (num_selected > 1) {
       CTX_wm_operator_poll_msg_set(C, "More than one item is selected");
     }
-    if (num_selected < 1) {
+    else if (num_selected < 1) {
       CTX_wm_operator_poll_msg_set(C, "No items are selected");
     }
     else {
@@ -1978,7 +1998,7 @@ static bool file_os_operations_menu_poll(const bContext *C_const, MenuType *UNUS
 }
 
 
-void file_os_operations_menu_register(void)
+void file_external_operations_menu_register(void)
 {
   MenuType *mt;
 
