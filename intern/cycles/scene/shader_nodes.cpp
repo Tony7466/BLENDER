@@ -5779,7 +5779,7 @@ void SeparateHSVNode::compile(OSLCompiler &compiler)
   compiler.add(this, "node_separate_hsv");
 }
 
-/* Hue Saturation Value */
+/* Hue/Saturation/Value */
 
 NODE_DEFINE(HSVNode)
 {
