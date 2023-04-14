@@ -354,6 +354,7 @@ DefNode(GeometryNode, GEO_NODE_INPUT_SPLINE_RESOLUTION, 0, "INPUT_SPLINE_RESOLUT
 DefNode(GeometryNode, GEO_NODE_INPUT_TANGENT, 0, "INPUT_TANGENT", InputTangent, "Curve Tangent", "Retrieve the direction of curves at each control point")
 DefNode(GeometryNode, GEO_NODE_INSTANCE_ON_POINTS, 0, "INSTANCE_ON_POINTS", InstanceOnPoints, "Instance on Points", "Generate a reference to geometry at each of the input points, without duplicating its underlying data")
 DefNode(GeometryNode, GEO_NODE_INSTANCES_TO_POINTS, 0, "INSTANCES_TO_POINTS",InstancesToPoints, "Instances to Points","Generate points at the origins of instances.\nNote: Nested instances are not affected by this node")
+DefNode(GeometryNode, GEO_NODE_IS_EDIT_MODE, 0, "IS_EDIT_MODE", IsEditMode, "Is Edit Mode", "Retrieve whether the nodes are being evaluated within edit mode")
 DefNode(GeometryNode, GEO_NODE_IS_VIEWPORT, 0, "IS_VIEWPORT", IsViewport, "Is Viewport", "Retrieve whether the nodes are being evaluated for the viewport rather than the final render")
 DefNode(GeometryNode, GEO_NODE_JOIN_GEOMETRY, 0, "JOIN_GEOMETRY", JoinGeometry, "Join Geometry", "Merge separately generated geometries into a single one")
 DefNode(GeometryNode, GEO_NODE_MATERIAL_SELECTION, 0, "MATERIAL_SELECTION", MaterialSelection, "Material Selection", "Provide a selection of faces that use the specified material")
