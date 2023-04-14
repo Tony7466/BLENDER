@@ -10,6 +10,7 @@
 
 #  include "util/progress.h"
 
+#  include "device/device.h"
 #  include "device/metal/bvh.h"
 #  include "device/metal/util.h"
 
