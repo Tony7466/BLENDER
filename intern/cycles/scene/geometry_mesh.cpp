@@ -71,9 +71,10 @@ void GeometryManager::device_update_mesh(Device *device,
  * the geometry buffers
  */
 void GeometryManager::device_update_mesh_preprocess(
-    Device *device, DeviceScene *dscene, Scene *scene, GeometrySizes *p_sizes, Progress &progress)
+    Device *device, DeviceScene *dscene, Scene *scene, Progress &progress)
 {
   /* Fill in all the arrays. */
+  GeometrySizes *p_sizes = &(scene->geom_sizes);
   if (p_sizes->tri_size != 0) {
     /* normals */
     progress.set_status("Updating Mesh", "Computing mesh");

@@ -405,7 +405,6 @@ bool GeometryManager::device_update_attributes_preprocess(
     vector<AttributeRequestSet> &geom_attributes,
     vector<AttributeRequestSet> &object_attributes,
     vector<AttributeSet> &object_attribute_values,
-    AttributeSizes *sizes,
     Progress &progress)
 {
   bool update_obj_offsets = false;
@@ -413,11 +412,14 @@ bool GeometryManager::device_update_attributes_preprocess(
   progress.set_status("Updating Mesh", "Computing attributes");
 
   // SHOULD NOT ALLOC ONLY ALLOC IF MORE SPACE IS NEEDED
-  dscene->attributes_float.alloc(sizes->attr_float_size);
-  dscene->attributes_float2.alloc(sizes->attr_float2_size);
-  dscene->attributes_float3.alloc(sizes->attr_float3_size);
-  dscene->attributes_float4.alloc(sizes->attr_float4_size);
-  dscene->attributes_uchar4.alloc(sizes->attr_uchar4_size);
+  {
+    AttributeSizes *sizes = &(scene->attrib_sizes);
+    dscene->attributes_float.alloc(sizes->attr_float_size);
+    dscene->attributes_float2.alloc(sizes->attr_float2_size);
+    dscene->attributes_float3.alloc(sizes->attr_float3_size);
+    dscene->attributes_float4.alloc(sizes->attr_float4_size);
+    dscene->attributes_uchar4.alloc(sizes->attr_uchar4_size);
+  }
 
   /* The order of those flags needs to match that of AttrKernelDataType. */
   const bool attributes_need_realloc[AttrKernelDataType::NUM] = {
@@ -584,11 +586,11 @@ static void update_attribute_element_size(Geometry *geom,
  * Records all the attribute buffer sizes for all the attribute buffers for later use
  */
 void GeometryManager::attrib_calc_sizes(Scene *scene,
-                                        AttributeSizes *p_sizes,
                                         vector<AttributeRequestSet> &geom_attributes,
                                         vector<AttributeRequestSet> &object_attributes,
                                         vector<AttributeSet> &object_attribute_values)
 {
+  AttributeSizes *p_sizes = &(scene->attrib_sizes);
   p_sizes->attr_float_size = 0;
   p_sizes->attr_float2_size = 0;
   p_sizes->attr_float3_size = 0;
@@ -648,8 +650,7 @@ void GeometryManager::attrib_calc_sizes(Scene *scene,
 void GeometryManager::gather_attributes(Scene *scene,
                                         vector<AttributeRequestSet> &geom_attributes,
                                         vector<AttributeRequestSet> &object_attributes,
-                                        vector<AttributeSet> &object_attribute_values,
-                                        AttributeSizes *sizes)
+                                        vector<AttributeSet> &object_attribute_values)
 {
   geom_attributes.clear();
   object_attributes.clear();
@@ -710,7 +711,7 @@ void GeometryManager::gather_attributes(Scene *scene,
   /* Geometry attributes are stored in a single array per data type. Here determine the
    * sizes of those buffers.
    */
-  attrib_calc_sizes(scene, sizes, geom_attributes, object_attributes, object_attribute_values);
+  attrib_calc_sizes(scene, geom_attributes, object_attributes, object_attribute_values);
 }
 
 CCL_NAMESPACE_END

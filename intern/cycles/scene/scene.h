@@ -139,6 +139,31 @@ class DeviceScene {
   DeviceScene(Device *device);
 };
 
+/* Geometry Sizes */
+struct GeometrySizes {
+  size_t vert_size;
+  size_t tri_size;
+
+  size_t curve_size;
+  size_t curve_key_size;
+  size_t curve_segment_size;
+
+  size_t point_size;
+
+  size_t patch_size;
+  size_t face_size;
+  size_t corner_size;
+};
+
+/* Attribute Sizes */
+struct AttributeSizes {
+  size_t attr_float_size;
+  size_t attr_float2_size;
+  size_t attr_float3_size;
+  size_t attr_float4_size;
+  size_t attr_uchar4_size;
+};
+
 /* Scene Parameters */
 
 class SceneParams {
@@ -245,6 +270,8 @@ class Scene : public NodeOwner {
   /* device */
   Device *device;
   DeviceScene dscene;
+  GeometrySizes geom_sizes;
+  AttributeSizes attrib_sizes;
 
   /* Stores a DeviceScene for each sub-device */
   std::vector<DeviceScene *> dscenes;

@@ -763,8 +763,6 @@ void GeometryManager::pretess_disp_normal_and_vertices_setup(Device *device,
 void GeometryManager::device_data_xfer_and_bvh_update(int idx,
                                                       Scene *scene,
                                                       DeviceScene *dscene,
-                                                      GeometrySizes &sizes,
-                                                      AttributeSizes &attrib_sizes,
                                                       const BVHLayout bvh_layout,
                                                       size_t num_bvh,
                                                       bool can_refit,
@@ -777,7 +775,7 @@ void GeometryManager::device_data_xfer_and_bvh_update(int idx,
   Device *sub_device = sub_dscene->tri_verts.device;
   // Assign the host_pointers to the sub_dscene so that they access
   // the correct data
-  device_update_host_pointers(sub_device, dscene, sub_dscene, &sizes);
+  device_update_host_pointers(sub_device, dscene, sub_dscene, &(scene->geom_sizes));
 
   /* Upload geometry and attribute buffers to the device */
   {
@@ -787,7 +785,7 @@ void GeometryManager::device_data_xfer_and_bvh_update(int idx,
         scene->times[idx].mesh = time;
       }
     });
-    device_update_mesh(sub_device, sub_dscene, &sizes, progress);
+    device_update_mesh(sub_device, sub_dscene, &(scene->geom_sizes), progress);
   }
 
   {
@@ -796,7 +794,7 @@ void GeometryManager::device_data_xfer_and_bvh_update(int idx,
         scene->times[idx].attrib = time;
       }
     });
-    device_update_attributes(sub_device, sub_dscene, &attrib_sizes, progress);
+    device_update_attributes(sub_device, sub_dscene, &(scene->attrib_sizes), progress);
   }
 
   device_scene_clear_modified(sub_dscene);
@@ -923,18 +921,16 @@ void GeometryManager::device_update(Device *device,
 
   tesselate(scene, total_tess_needed, progress);
 
-  GeometrySizes sizes;
-  geom_calc_offset(scene, &sizes);
+  geom_calc_offset(scene);
 
   // Gather the requests attributes for filling out the attribute and geometry buffers
   vector<AttributeRequestSet> geom_attributes(scene->geometry.size());
   vector<AttributeRequestSet> object_attributes(scene->objects.size());
   vector<AttributeSet> object_attribute_values;
-  AttributeSizes attrib_sizes;
 
   progress.set_status("Updating Mesh", "Computing attributes");
   gather_attributes(
-      scene, geom_attributes, object_attributes, object_attribute_values, &attrib_sizes);
+		    scene, geom_attributes, object_attributes, object_attribute_values);
   /* Device update. */
   device_free(device, dscene, false);
 
@@ -944,9 +940,8 @@ void GeometryManager::device_update(Device *device,
                                       geom_attributes,
                                       object_attributes,
                                       object_attribute_values,
-                                      &attrib_sizes,
                                       progress);
-  device_update_mesh_preprocess(device, dscene, scene, &sizes, progress);
+  device_update_mesh_preprocess(device, dscene, scene, progress);
 
   /* Update displacement and hair shadow transparency. */
   if (curve_shadow_transparency_used || true_displacement_used) {
@@ -954,8 +949,6 @@ void GeometryManager::device_update(Device *device,
         scene,
         device,
         dscene,
-        &sizes,
-        &attrib_sizes,
         geom_attributes,
         object_attributes,
         object_attribute_values,
@@ -987,12 +980,10 @@ void GeometryManager::device_update(Device *device,
     /* Parallel upload the geometry data to the devices and
        calculate or refit the BVHs */
     parallel_for(
-        size_t(0), num_scenes, [=, this, &sizes, &attrib_sizes, &progress](const size_t idx) {
+        size_t(0), num_scenes, [=, this, &progress](const size_t idx) {
           device_data_xfer_and_bvh_update(idx,
                                           scene,
                                           dscene,
-                                          sizes,
-                                          attrib_sizes,
                                           bvh_layout,
                                           num_bvh,
                                           can_refit_scene_bvh,
@@ -1177,7 +1168,7 @@ void GeometryManager::device_scene_clear_modified(DeviceScene *dscene)
 void GeometryManager::device_update_host_pointers(Device *device,
                                                   DeviceScene *dscene,
                                                   DeviceScene *sub_dscene,
-                                                  GeometrySizes *p_sizes)
+                                                  const GeometrySizes *p_sizes)
 {
   if (p_sizes->tri_size != 0) {
     if (dscene->tri_verts.is_modified()) {
@@ -1279,9 +1270,10 @@ void GeometryManager::device_update_host_pointers(Device *device,
 /*
  * Records all the geometry buffer sizes for later use
  */
-void GeometryManager::geom_calc_offset(Scene *scene, GeometrySizes *p_sizes)
+void GeometryManager::geom_calc_offset(Scene *scene)
 {
   // Zero sizes
+  GeometrySizes *p_sizes = &(scene->geom_sizes);
   p_sizes->vert_size = 0;
   p_sizes->tri_size = 0;
 
@@ -1366,8 +1358,6 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
     Scene *scene,
     Device *device,
     DeviceScene *dscene,
-    GeometrySizes *sizes,
-    AttributeSizes *attrib_sizes,
     vector<AttributeRequestSet> &geom_attributes,
     vector<AttributeRequestSet> &object_attributes,
     vector<AttributeSet> &object_attribute_values,
@@ -1400,9 +1390,9 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
                 {"device_update (displacement: copy meshes to device)", time});
           }
         });
-        device_update_host_pointers(sub_device, dscene, sub_dscene, sizes);
-        device_update_attributes(sub_device, sub_dscene, attrib_sizes, progress);
-        device_update_mesh(sub_device, sub_dscene, sizes, progress);
+        device_update_host_pointers(sub_device, dscene, sub_dscene, &(scene->geom_sizes));
+        device_update_attributes(sub_device, sub_dscene, &(scene->attrib_sizes), progress);
+        device_update_mesh(sub_device, sub_dscene, &(scene->geom_sizes), progress);
       }
         /* Copy constant data needed by shader evaluation. */
         sub_device->const_copy_to("data", &dscene->data, sizeof(dscene->data));
@@ -1449,9 +1439,9 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
 
       // Need to redo host side filling out the attribute and mesh buffers as these may have
       // changed. Hair adds a new attribute buffer and displace updates the mesh.
-      geom_calc_offset(scene, sizes);
+      geom_calc_offset(scene);
       gather_attributes(
-          scene, geom_attributes, object_attributes, object_attribute_values, attrib_sizes);
+          scene, geom_attributes, object_attributes, object_attribute_values);
       device_free(device, dscene, false);
       device_update_attributes_preprocess(device,
                                           dscene,
@@ -1459,9 +1449,8 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
                                           geom_attributes,
                                           object_attributes,
                                           object_attribute_values,
-                                          attrib_sizes,
                                           progress);
-      device_update_mesh_preprocess(device, dscene, scene, sizes, progress);
+      device_update_mesh_preprocess(device, dscene, scene, progress);
     }
   }
 

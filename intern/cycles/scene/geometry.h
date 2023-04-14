@@ -25,6 +25,8 @@ class Mesh;
 class Progress;
 class RenderStats;
 class Scene;
+struct GeometrySizes;
+struct AttributeSizes;
 class SceneParams;
 class Shader;
 class Volume;
@@ -197,31 +199,6 @@ class Geometry : public Node {
   void tag_bvh_update(bool rebuild);
 };
 
-/* Geometry Sizes */
-struct GeometrySizes {
-  size_t vert_size;
-  size_t tri_size;
-
-  size_t curve_size;
-  size_t curve_key_size;
-  size_t curve_segment_size;
-
-  size_t point_size;
-
-  size_t patch_size;
-  size_t face_size;
-  size_t corner_size;
-};
-
-/* Attribute Sizes */
-struct AttributeSizes {
-  size_t attr_float_size;
-  size_t attr_float2_size;
-  size_t attr_float3_size;
-  size_t attr_float4_size;
-  size_t attr_uchar4_size;
-};
-
 /* Geometry Manager */
 
 class GeometryManager {
@@ -288,8 +265,6 @@ class GeometryManager {
   void device_data_xfer_and_bvh_update(int idx,
                                   Scene *scene,
                                   DeviceScene *dscene,
-                                  GeometrySizes &sizes,
-                                  AttributeSizes &attrib_sizes,
                                   const BVHLayout bvh_layout,
                                   size_t num_bvh,
 				  bool can_refit,
@@ -324,9 +299,8 @@ class GeometryManager {
                              vector<AttributeRequestSet> &object_attributes);
 
   /* Compute verts/triangles/curves offsets in global arrays. */
-  void geom_calc_offset(Scene *scene, GeometrySizes *sizes);
+  void geom_calc_offset(Scene *scene);
   void attrib_calc_sizes(Scene *scene,
-                         AttributeSizes *p_sizes,
                          vector<AttributeRequestSet> &geom_attributes,
                          vector<AttributeRequestSet> &object_attributes,
                          vector<AttributeSet> &object_attribute_values);
@@ -334,21 +308,19 @@ class GeometryManager {
   void device_update_object(Device *device, DeviceScene *dscene, Scene *scene, Progress &progress);
 
   void device_update_mesh_preprocess(
-      Device *device, DeviceScene *dscene, Scene *scene, GeometrySizes *sizes, Progress &progress);
+				     Device *device, DeviceScene *dscene, Scene *scene, Progress &progress);
   void device_update_mesh(Device *device,
                           DeviceScene *dscene,
-                          /*Scene *scene,*/ const GeometrySizes *sizes,
+                          const GeometrySizes *sizes,
                           Progress &progress);
   void device_update_bvh2(Device *device, DeviceScene *dscene, Scene *scene, Progress &progress);
   void device_update_host_pointers(Device *device,
                                    DeviceScene *dscene,
                                    DeviceScene *sub_dscene,
-                                   GeometrySizes *p_sizes);
+                                   const GeometrySizes *p_sizes);
   bool displacement_and_curve_shadow_transparency(Scene *scene,
                                                   Device *device,
                                                   DeviceScene *dscene,
-                                                  GeometrySizes *sizes,
-                                                  AttributeSizes *attrib_sizes,
                                                   vector<AttributeRequestSet> &geom_attributes,
                                                   vector<AttributeRequestSet> &object_attributes,
                                                   vector<AttributeSet> &object_attribute_values,
@@ -357,15 +329,13 @@ class GeometryManager {
   void gather_attributes(Scene *scene,
                          vector<AttributeRequestSet> &geom_attributes,
                          vector<AttributeRequestSet> &object_attributes,
-                         vector<AttributeSet> &object_attribute_values,
-                         AttributeSizes *sizes);
+                         vector<AttributeSet> &object_attribute_values);
   bool device_update_attributes_preprocess(Device *device,
                                            DeviceScene *dscene,
                                            Scene *scene,
                                            vector<AttributeRequestSet> &geom_attributes,
                                            vector<AttributeRequestSet> &object_attributes,
                                            vector<AttributeSet> &object_attribute_values,
-                                           AttributeSizes *sizes,
                                            Progress &progress);
   void device_update_attributes(Device *device,
                                 DeviceScene *dscene,
