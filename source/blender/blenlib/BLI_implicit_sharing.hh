@@ -120,6 +120,7 @@ void *make_trivial_data_mutable_impl(void *old_data,
 
 /**
  * Copy shared data from the source to the destination, adding a user count.
+ * \note Does not free any existing data in the destination.
  */
 template<typename T>
 void copy_shared_pointer(T *src_ptr,
@@ -127,14 +128,10 @@ void copy_shared_pointer(T *src_ptr,
                          T **r_dst_ptr,
                          ImplicitSharingInfo **r_dst_sharing_info)
 {
-  if (*r_dst_sharing_info) {
-    BLI_assert(*r_dst_ptr != nullptr);
-    (*r_dst_sharing_info)->remove_user_and_delete_if_last();
-  }
   *r_dst_ptr = src_ptr;
   *r_dst_sharing_info = src_sharing_info;
   if (*r_dst_ptr) {
-    BLI_assert(src_ptr != nullptr);
+    BLI_assert(*r_dst_sharing_info != nullptr);
     (*r_dst_sharing_info)->add_user();
   }
 }
