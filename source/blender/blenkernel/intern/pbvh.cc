@@ -1614,7 +1614,7 @@ static void pbvh_update_BB_redraw_task_cb(void *__restrict userdata,
   }
 }
 
-void pbvh_update_BB_redraw(PBVH *pbvh, Span<PBVHNode *> nodes, int flag)
+static void pbvh_update_BB_redraw(PBVH *pbvh, Span<PBVHNode *> nodes, int flag)
 {
   /* update BB, redraw flag */
   PBVHUpdateData data(pbvh, nodes);

@@ -3912,7 +3912,7 @@ static void sculpt_combine_proxies(Sculpt *sd, Object *ob)
 
   Vector<PBVHNode *> nodes = blender::bke::pbvh::gather_proxies(ss->pbvh);
 
-  threading::parallel_for(IndexRange(nodes.size()), 1, [&](IndexRange range) {
+  threading::parallel_for(nodes.index_range(), 1, [&](IndexRange range) {
     for (const int i : range) {
       sculpt_combine_proxies_node(*ob, *sd, use_orco, *nodes[i]);
     }
@@ -3926,7 +3926,7 @@ void SCULPT_combine_transform_proxies(Sculpt *sd, Object *ob)
 
   Vector<PBVHNode *> nodes = blender::bke::pbvh::gather_proxies(ss->pbvh);
 
-  threading::parallel_for(IndexRange(nodes.size()), 1, [&](IndexRange range) {
+  threading::parallel_for(nodes.index_range(), 1, [&](IndexRange range) {
     for (const int i : range) {
       sculpt_combine_proxies_node(*ob, *sd, false, *nodes[i]);
     }
@@ -3987,7 +3987,7 @@ void SCULPT_flush_stroke_deform(Sculpt * /*sd*/, Object *ob, bool is_proxy_used)
 
     MutableSpan<float3> positions = me->vert_positions_for_write();
 
-    threading::parallel_for(IndexRange(nodes.size()), 1, [&](IndexRange range) {
+    threading::parallel_for(nodes.index_range(), 1, [&](IndexRange range) {
       for (const int i : range) {
         PBVHVertexIter vd;
         BKE_pbvh_vertex_iter_begin (ss->pbvh, nodes[i], vd, PBVH_ITER_UNIQUE) {

@@ -270,7 +270,8 @@ static int sculpt_mask_expand_modal(bContext *C, wmOperator *op, const wmEvent *
 
     TaskParallelSettings settings;
     BKE_pbvh_parallel_range_settings(&settings, true, ss->filter_cache->nodes.size());
-    BLI_task_parallel_range(0, ss->filter_cache->nodes.size(), &data, sculpt_expand_task_cb, &settings);
+    BLI_task_parallel_range(
+        0, ss->filter_cache->nodes.size(), &data, sculpt_expand_task_cb, &settings);
     ss->filter_cache->mask_update_current_it = mask_expand_update_it;
   }
 
