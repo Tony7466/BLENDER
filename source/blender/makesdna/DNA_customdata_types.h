@@ -11,6 +11,8 @@
 
 #include "DNA_defs.h"
 
+#include "BLI_implicit_sharing.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -41,7 +43,7 @@ typedef struct CustomDataLayer {
   int active_clone;
   /** Number of the layer to render. */
   int active_mask;
-  /** Shape keyblock unique id reference. */
+  /** Shape key-block unique id reference. */
   int uid;
   /** Layer name, MAX_CUSTOMDATA_LAYER_NAME. */
   char name[68];
@@ -53,6 +55,11 @@ typedef struct CustomDataLayer {
    * attribute was created.
    */
   const AnonymousAttributeIDHandle *anonymous_id;
+  /**
+   * Run-time data that allows sharing `data` with other entities (mostly custom data layers on
+   * other geometries).
+   */
+  const ImplicitSharingInfoHandle *sharing_info;
 } CustomDataLayer;
 
 #define MAX_CUSTOMDATA_LAYER_NAME 68
@@ -84,7 +91,7 @@ typedef struct CustomData {
   int totsize;
   /** (BMesh Only): Memory pool for allocation of blocks. */
   struct BLI_mempool *pool;
-  /** External file storing customdata layers. */
+  /** External file storing custom-data layers. */
   CustomDataExternal *external;
 } CustomData;
 
@@ -190,8 +197,6 @@ typedef enum eCustomDataType {
 #define CD_MASK_CLOTH_ORCO (1 << CD_CLOTH_ORCO)
 // #define CD_MASK_RECAST (1 << CD_RECAST)  /* DEPRECATED */
 
-#define CD_MASK_MPOLY (1 << CD_MPOLY)
-#define CD_MASK_MLOOP (1 << CD_MLOOP)
 #define CD_MASK_SHAPE_KEYINDEX (1 << CD_SHAPE_KEYINDEX)
 #define CD_MASK_SHAPEKEY (1 << CD_SHAPEKEY)
 #define CD_MASK_BWEIGHT (1 << CD_BWEIGHT)
@@ -243,8 +248,7 @@ typedef struct CustomData_MeshMasks {
 enum {
   /* Indicates layer should not be copied by CustomData_from_template or CustomData_copy_data */
   CD_FLAG_NOCOPY = (1 << 0),
-  /* Indicates layer should not be freed (for layers backed by external data) */
-  CD_FLAG_NOFREE = (1 << 1),
+  CD_FLAG_UNUSED = (1 << 1),
   /* Indicates the layer is only temporary, also implies no copy */
   CD_FLAG_TEMPORARY = ((1 << 2) | CD_FLAG_NOCOPY),
   /* Indicates the layer is stored in an external file */

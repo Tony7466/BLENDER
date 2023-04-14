@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup spnode
@@ -727,7 +727,7 @@ static void get_min_max_of_nodes(const Span<bNode *> nodes,
 }
 
 /**
- * Skip reroute nodes when finding the the socket to use as an example for a new group interface
+ * Skip reroute nodes when finding the socket to use as an example for a new group interface
  * item. This moves "inward" into nodes selected for grouping to find properties like whether a
  * connected socket has a hidden value. It only works in trivial situations-- a single line of
  * connected reroutes with no branching.
@@ -993,7 +993,9 @@ static void node_group_make_insert_selected(const bContext &C,
     }
   }
 
-  bke::node_field_inferencing::update_field_inferencing(group);
+  if (group.type == NTREE_GEOMETRY) {
+    bke::node_field_inferencing::update_field_inferencing(group);
+  }
   nodes::update_node_declaration_and_sockets(ntree, *gnode);
 
   /* Add new links to inputs outside of the group. */

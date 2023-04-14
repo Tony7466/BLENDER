@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation. All rights reserved.
+# Copyright 2006 Blender Foundation
 
 # -----------------------------------------------------------------------------
 # Early Initialization
@@ -164,7 +164,7 @@ get_blender_version()
 # Declare Options
 
 # Blender internal features
-option(WITH_BLENDER "Build blender (disable to build only the blender player)" ON)
+option(WITH_BLENDER "Build blender (disable to build only Cycles stand-alone)." ON)
 mark_as_advanced(WITH_BLENDER)
 
 if(WIN32)
@@ -331,13 +331,9 @@ option(WITH_MOD_REMESH          "Enable Remesh Modifier" ON)
 option(WITH_MOD_OCEANSIM        "Enable Ocean Modifier" ON)
 
 # Image format support
-option(WITH_OPENIMAGEIO         "Enable OpenImageIO Support (http://www.openimageio.org)" ON)
 option(WITH_IMAGE_OPENEXR       "Enable OpenEXR Support (http://www.openexr.com)" ON)
 option(WITH_IMAGE_OPENJPEG      "Enable OpenJpeg Support (http://www.openjpeg.org)" ON)
-option(WITH_IMAGE_TIFF          "Enable LibTIFF Support" ON)
-option(WITH_IMAGE_DDS           "Enable DDS Image Support" ON)
 option(WITH_IMAGE_CINEON        "Enable CINEON and DPX Image Support" ON)
-option(WITH_IMAGE_HDR           "Enable HDR Image Support" ON)
 option(WITH_IMAGE_WEBP          "Enable WebP Image Support" ON)
 
 # Audio/Video format support
@@ -358,6 +354,7 @@ option(WITH_MATERIALX           "Enable MaterialX Support" OFF)
 # Disable opencollada when we don't have precompiled libs
 option(WITH_OPENCOLLADA   "Enable OpenCollada Support (http://www.opencollada.org)" ON)
 option(WITH_IO_WAVEFRONT_OBJ  "Enable Wavefront-OBJ 3D file format support (*.obj)" ON)
+option(WITH_IO_PLY            "Enable PLY 3D file format support (*.ply)" ON)
 option(WITH_IO_STL            "Enable STL 3D file format support (*.stl)" ON)
 option(WITH_IO_GPENCIL        "Enable grease-pencil file format IO (*.svg, *.pdf)" ON)
 
@@ -617,10 +614,12 @@ endif()
 
 option(WITH_OPENGL "When off limits visibility of the opengl headers to just bf_gpu and gawain (temporary option for development purposes)" ON)
 option(WITH_GPU_BUILDTIME_SHADER_BUILDER "Shader builder is a developer option enabling linting on GLSL during compilation" OFF)
+option(WITH_RENDERDOC "Use Renderdoc API to capture frames" OFF)
 
 mark_as_advanced(
   WITH_OPENGL
   WITH_GPU_BUILDTIME_SHADER_BUILDER
+  WITH_RENDERDOC
 )
 
 # Vulkan
@@ -646,15 +645,15 @@ if(WIN32)
 endif()
 
 # Compiler tool-chain.
-if(UNIX AND NOT APPLE)
+if(UNIX)
   if(CMAKE_COMPILER_IS_GNUCC)
     option(WITH_LINKER_GOLD "Use ld.gold linker which is usually faster than ld.bfd" ON)
     mark_as_advanced(WITH_LINKER_GOLD)
-    option(WITH_LINKER_LLD "Use ld.lld linker which is usually faster than ld.gold" OFF)
-    mark_as_advanced(WITH_LINKER_LLD)
   endif()
   if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang")
-    option(WITH_LINKER_MOLD "Use ld.mold linker which is usually faster than ld.gold & ld.lld." OFF)
+    option(WITH_LINKER_LLD "Use ld.lld linker which is usually faster than ld.gold" OFF)
+    mark_as_advanced(WITH_LINKER_LLD)
+    option(WITH_LINKER_MOLD "Use ld.mold linker which is usually faster than ld.gold & ld.lld. Needs \"sold\" subscription on macOS." OFF)
     mark_as_advanced(WITH_LINKER_MOLD)
   endif()
 endif()
@@ -691,8 +690,10 @@ if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang")
       else()
         string(APPEND _asan_defaults " -fsanitize=object-size")
       endif()
-    else()
+    elseif(CMAKE_COMPILER_IS_GNUCC)
       string(APPEND _asan_defaults " -fsanitize=leak -fsanitize=object-size")
+    else()
+      string(APPEND _asan_defaults " -fsanitize=leak")
     endif()
 
     set(COMPILER_ASAN_CFLAGS "${_asan_defaults}" CACHE STRING "C flags for address sanitizer")
@@ -709,6 +710,7 @@ if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang")
         [HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\LLVM\\LLVM;]/lib/clang/7.0.0/lib/windows
         [HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\LLVM\\LLVM;]/lib/clang/6.0.0/lib/windows
       )
+      mark_as_advanced(COMPILER_ASAN_LIBRARY)
     elseif(APPLE)
       execute_process(COMMAND ${CMAKE_CXX_COMPILER}
         -print-file-name=lib
@@ -723,13 +725,14 @@ if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang")
           "${CLANG_LIB_DIR}/darwin/"
       )
       unset(CLANG_LIB_DIR)
-    else()
+      mark_as_advanced(COMPILER_ASAN_LIBRARY)
+    elseif(CMAKE_COMPILER_IS_GNUCC)
       find_library(
         COMPILER_ASAN_LIBRARY asan ${CMAKE_C_IMPLICIT_LINK_DIRECTORIES}
       )
+      mark_as_advanced(COMPILER_ASAN_LIBRARY)
     endif()
 
-    mark_as_advanced(COMPILER_ASAN_LIBRARY)
   endif()
 endif()
 
@@ -884,16 +887,14 @@ set_and_warn_dependency(WITH_TBB WITH_MOD_FLUID         OFF)
 # NanoVDB requires OpenVDB to convert the data structure
 set_and_warn_dependency(WITH_OPENVDB WITH_NANOVDB       OFF)
 
-# OpenVDB and OpenColorIO uses 'half' type from OpenEXR
+# OpenVDB, Alembic and Vulkan, OSL uses 'half' or 'imath' from OpenEXR
 set_and_warn_dependency(WITH_IMAGE_OPENEXR WITH_OPENVDB OFF)
-
-# Haru needs `TIFFFaxBlackCodes` & `TIFFFaxWhiteCodes` symbols from TIFF.
-set_and_warn_dependency(WITH_IMAGE_TIFF WITH_HARU       OFF)
+set_and_warn_dependency(WITH_IMAGE_OPENEXR WITH_ALEMBIC OFF)
+set_and_warn_dependency(WITH_IMAGE_OPENEXR WITH_VULKAN_BACKEND OFF)
+set_and_warn_dependency(WITH_IMAGE_OPENEXR WITH_CYCLES_OSL OFF)
 
 # auto enable openimageio for cycles
 if(WITH_CYCLES)
-  set(WITH_OPENIMAGEIO ON)
-
   # auto enable llvm for cycles_osl
   if(WITH_CYCLES_OSL)
     set(WITH_LLVM ON CACHE BOOL "" FORCE)
@@ -954,21 +955,6 @@ endif()
 # -----------------------------------------------------------------------------
 # Check if Sub-modules are Cloned
 
-if(WITH_INTERNATIONAL)
-  file(GLOB RESULT "${CMAKE_SOURCE_DIR}/release/datafiles/locale")
-  list(LENGTH RESULT DIR_LEN)
-  if(DIR_LEN EQUAL 0)
-    message(
-      WARNING
-      "Translation path '${CMAKE_SOURCE_DIR}/release/datafiles/locale' is missing, "
-      "This is a 'git submodule', which are known not to work with bridges to other version "
-      "control systems."
-    )
-    set(TRANSLATIONS_FOUND OFF)
-    set_and_warn_library_found("Translations" TRANSLATIONS_FOUND WITH_INTERNATIONAL)
-  endif()
-endif()
-
 if(WITH_PYTHON)
   # While we have this as an '#error' in 'bpy_capi_utils.h',
   # upgrading Python tends to cause confusion for users who build.
@@ -984,14 +970,14 @@ if(WITH_PYTHON)
     )
   endif()
 
-  file(GLOB RESULT "${CMAKE_SOURCE_DIR}/release/scripts/addons")
+  file(GLOB RESULT "${CMAKE_SOURCE_DIR}/scripts/addons")
   list(LENGTH RESULT DIR_LEN)
   if(DIR_LEN EQUAL 0)
     message(
       WARNING
-      "Addons path '${CMAKE_SOURCE_DIR}/release/scripts/addons' is missing, "
-      "This is a 'git submodule', which are known not to work with bridges to other version "
-      "control systems: * CONTINUING WITHOUT ADDONS *"
+      "Addons path '${CMAKE_SOURCE_DIR}/scripts/addons' is missing. "
+      "This is an external repository which needs to be checked out. Use `make update` to do so. "
+      "* CONTINUING WITHOUT ADDONS *"
     )
   endif()
 endif()
@@ -1100,13 +1086,6 @@ if(NOT WITH_FFTW3 AND WITH_MOD_OCEANSIM)
 endif()
 
 if(WITH_CYCLES)
-  if(NOT WITH_OPENIMAGEIO)
-    message(
-      FATAL_ERROR
-      "Cycles requires WITH_OPENIMAGEIO, the library may not have been found. "
-      "Configure OIIO or disable WITH_CYCLES"
-    )
-  endif()
   if(WITH_CYCLES_OSL)
     if(NOT WITH_LLVM)
       message(
@@ -1579,6 +1558,9 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
   # add_check_c_compiler_flag(C_WARNINGS C_WARN_UNUSED_MACROS      -Wunused-macros)
   # add_check_cxx_compiler_flag(CXX_WARNINGS CXX_WARN_UNUSED_MACROS          -Wunused-macros)
 
+  add_check_c_compiler_flag(C_WARNINGS C_WARN_ERROR_UNGUARDED_AVAILABILITY_NEW -Werror=unguarded-availability-new)
+  add_check_c_compiler_flag(CXX_WARNINGS CXX_WARN_ERROR_UNGUARDED_AVAILABILITY_NEW -Werror=unguarded-availability-new)
+
   # ---------------------
   # Suppress Strict Flags
 
@@ -1631,6 +1613,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
     # warning level:
     "/W3"
     "/w34062"  # switch statement contains 'default' but no 'case' labels
+    "/w34100"  # 'identifier' : unreferenced formal parameter
     "/w34115"  # 'type' : named type definition in parentheses
     "/w34189"  # local variable is initialized but not referenced
     # see https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/c5038?view=vs-2017
@@ -1952,12 +1935,8 @@ if(FIRST_RUN)
 
   info_cfg_text("Image Formats:")
   info_cfg_option(WITH_IMAGE_CINEON)
-  info_cfg_option(WITH_IMAGE_DDS)
-  info_cfg_option(WITH_IMAGE_HDR)
   info_cfg_option(WITH_IMAGE_OPENEXR)
   info_cfg_option(WITH_IMAGE_OPENJPEG)
-  info_cfg_option(WITH_IMAGE_TIFF)
-  info_cfg_option(WITH_OPENIMAGEIO)
 
   info_cfg_text("Audio:")
   info_cfg_option(WITH_CODEC_AVI)
