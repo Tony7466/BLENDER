@@ -501,7 +501,7 @@ void LightManager::device_update_tree(Device *,
         if (node != reference) {
           /* Flatten the node with the subtree first so the subsequent instances know the index. */
           std::swap(node->type, reference->type);
-          std::swap(node->inner.children, reference->inner.children);
+          std::swap(node->variant_type, reference->variant_type);
         }
         node->type &= ~LIGHT_TREE_INSTANCE;
         processed_mesh[reference] = node_index;
@@ -524,16 +524,16 @@ void LightManager::device_update_tree(Device *,
       light_tree_nodes[node_index].num_emitters = -1;
       /* Fill in the stacks. */
       left_indices.push(node_index);
-      right_nodes.push(node->inner.children[LightTree::right].get());
-      node = node->inner.children[LightTree::left].get();
+      right_nodes.push(node->get_inner().children[LightTree::right].get());
+      node = node->get_inner().children[LightTree::left].get();
       continue;
     }
     if (node->is_leaf() || node->is_distant()) {
-      light_tree_nodes[node_index].num_emitters = node->leaf.num_emitters;
-      light_tree_nodes[node_index].leaf.first_emitter = node->leaf.first_emitter_index;
+      light_tree_nodes[node_index].num_emitters = node->get_leaf().num_emitters;
+      light_tree_nodes[node_index].leaf.first_emitter = node->get_leaf().first_emitter_index;
 
-      for (int i = 0; i < node->leaf.num_emitters; i++) {
-        int emitter_index = i + node->leaf.first_emitter_index;
+      for (int i = 0; i < node->get_leaf().num_emitters; i++) {
+        int emitter_index = i + node->get_leaf().first_emitter_index;
         const LightTreeEmitter &emitter = light_tree.get_emitter(emitter_index);
 
         light_tree_emitters[emitter_index].energy = emitter.measure.energy;

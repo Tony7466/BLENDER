@@ -191,60 +191,80 @@ struct LightTreeNode {
 
   /* A bitmask of `LightTreeNodeType`, as in the building process an instance node can also be a
    * leaf or an inner node. */
-  int type = LIGHT_TREE_INNER;
+  int type;
 
-  union {
-    struct {
-      int num_emitters;        /* The number of emitters a leaf node stores. */
-      int first_emitter_index; /* Index to first emitter. */
-    } leaf;
-
-    struct {
-      /* Inner node has two children. */
-      unique_ptr<LightTreeNode> children[2] = {nullptr, nullptr};
-    } inner;
-
-    struct {
-      /* A reference to the root node of the subtree. */
-      LightTreeNode *reference;
-    } instance;
+  struct Leaf {
+    /* The number of emitters a leaf node stores. */
+    int num_emitters = -1;
+    /* Index to first emitter. */
+    int first_emitter_index = -1;
   };
 
-  ~LightTreeNode()
-  {
-    if (is_inner()) {
-      inner.children[0] = nullptr;
-      inner.children[1] = nullptr;
-    }
-  }
+  struct Inner {
+    /* Inner node has two children. */
+    unique_ptr<LightTreeNode> children[2];
+  };
+
+  struct Instance {
+    LightTreeNode *reference = nullptr;
+  };
+
+  std::variant<Leaf, Inner, Instance> variant_type;
 
   LightTreeNode(const LightTreeMeasure &measure, const uint &bit_trial)
-      : measure(measure), bit_trail(bit_trial)
+      : measure(measure), bit_trail(bit_trial), variant_type(Inner())
   {
+    type = LIGHT_TREE_INNER;
   }
+
+  ~LightTreeNode() = default;
 
   __forceinline void add(const LightTreeEmitter &emitter)
   {
     measure.add(emitter.measure);
   }
 
+  __forceinline Leaf &get_leaf()
+  {
+    return std::get<Leaf>(variant_type);
+  }
+
+  __forceinline Inner &get_inner()
+  {
+    return std::get<Inner>(variant_type);
+  }
+
+  __forceinline Instance &get_instance()
+  {
+    return std::get<Instance>(variant_type);
+  }
+
   void make_leaf(const int &first_emitter_index, const int &num_emitters)
   {
-    this->leaf.first_emitter_index = first_emitter_index;
-    this->leaf.num_emitters = num_emitters;
+    variant_type = Leaf();
+    Leaf &leaf = get_leaf();
+
+    leaf.first_emitter_index = first_emitter_index;
+    leaf.num_emitters = num_emitters;
     type = LIGHT_TREE_LEAF;
   }
 
   void make_distant(const int &first_emitter_index, const int &num_emitters)
   {
-    this->leaf.first_emitter_index = first_emitter_index;
-    this->leaf.num_emitters = num_emitters;
+    variant_type = Leaf();
+    Leaf &leaf = get_leaf();
+
+    leaf.first_emitter_index = first_emitter_index;
+    leaf.num_emitters = num_emitters;
     type = LIGHT_TREE_DISTANT;
   }
 
   void make_instance(LightTreeNode *reference, const int &object_id)
   {
-    this->instance.reference = reference;
+    variant_type = Instance();
+    Instance &instance = get_instance();
+
+    instance.reference = reference;
     this->object_id = object_id;
     type = LIGHT_TREE_INSTANCE;
   }
@@ -253,7 +273,7 @@ struct LightTreeNode {
   {
     assert(is_instance());
     if (type == LIGHT_TREE_INSTANCE) {
-      return instance.reference;
+      return get_instance().reference;
     }
     return this;
   }
