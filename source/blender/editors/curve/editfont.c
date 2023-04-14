@@ -1824,7 +1824,11 @@ static void font_cursor_set_apply(bContext *C, const wmEvent *event)
   ef = cu->editfont;
   BLI_assert(ef->len >= 0);
 
-  cur_loc_pos = BKE_vfont_cursor_to_caret_pos(ob, curs_loc);
+  cur_loc_pos = BKE_vfont_cursor_to_string_offset(ob, curs_loc);
+
+  if (cur_loc_pos > ef->len || cur_loc_pos < 0 || ef->selend == cur_loc_pos) {
+    return;
+  }
 
   cu->curinfo = ef->textbufinfo[ef->pos ? ef->pos - 1 : 0];
 
@@ -1835,18 +1839,16 @@ static void font_cursor_set_apply(bContext *C, const wmEvent *event)
     }
   }
 
-  if (cur_loc_pos <= ef->len && cur_loc_pos >=0) {
-    if (!ef->selboxes && (ef->selstart == 0)) {
-      if (ef->pos == 0) {
-        ef->selstart = ef->selend = 1;
-      }
-      else {
-        ef->selstart = ef->selend = cur_loc_pos + 1;
-      }
+  if (!ef->selboxes && (ef->selstart == 0)) {
+    if (ef->pos == 0) {
+      ef->selstart = ef->selend = 1;
     }
-    ef->selend = cur_loc_pos;
-    ef->pos = cur_loc_pos;
+    else {
+      ef->selstart = ef->selend = cur_loc_pos + 1;
+    }
   }
+  ef->selend = cur_loc_pos;
+  ef->pos = cur_loc_pos;
 
   DEG_id_tag_update(obedit->data, ID_RECALC_SELECT);
   WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);

@@ -73,7 +73,7 @@ bool BKE_vfont_to_curve_ex(struct Object *ob,
                            struct CharTrans **r_chartransdata);
 bool BKE_vfont_to_curve_nubase(struct Object *ob, int mode, struct ListBase *r_nubase);
 
-int BKE_vfont_cursor_to_caret_pos(struct Object *ob, float cursor_location[2]);
+int BKE_vfont_cursor_to_string_offset(struct Object *ob, float cursor_location[2]);
 
 /**
  * \warning Expects to have access to evaluated data (i.e. passed object should be evaluated one).
