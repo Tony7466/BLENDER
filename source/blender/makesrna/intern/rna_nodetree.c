@@ -9919,11 +9919,16 @@ static void def_geo_simulation_input(StructRNA *srna)
 
 static void rna_def_simulation_state_item(BlenderRNA *brna)
 {
+  static const EnumPropertyItem socket_type_items[] = {
+      {SOCK_GEOMETRY, "GEOMETRY", 0, "Geometry", ""},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  PropertyRNA *prop;
+
   StructRNA *srna = RNA_def_struct(brna, "SimulationStateItem", NULL);
   RNA_def_struct_ui_text(srna, "Simulation Sate Item", "");
   RNA_def_struct_sdna(srna, "NodeSimulationItem");
-
-  PropertyRNA *prop;
 
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_property_string_funcs(prop, NULL, NULL, "rna_SimulationStateItem_name_set");
@@ -9932,7 +9937,7 @@ static void rna_def_simulation_state_item(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_SimulationStateItem_update");
 
   prop = RNA_def_property(srna, "socket_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, node_socket_type_items);
+  RNA_def_property_enum_items(prop, socket_type_items);
   RNA_def_property_ui_text(prop, "Socket Type", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_SimulationStateItem_update");
 
