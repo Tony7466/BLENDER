@@ -376,25 +376,6 @@ void GeometryManager::update_attribute_element_offset(Geometry *geom,
 }
 
 /*
- * Copies the attribute buffer data to the devices
- */
-void GeometryManager::device_update_attributes(Device *device,
-                                               DeviceScene *dscene,
-                                               const AttributeSizes *sizes,
-                                               Progress &progress)
-{
-  progress.set_status("Updating Mesh", "Copying Attributes to device");
-  /* copy svm attributes to device */
-  dscene->attributes_map.copy_to_device_if_modified();
-  dscene->attributes_float.copy_to_device_if_modified(sizes->attr_float_size, 0);
-  dscene->attributes_float2.copy_to_device_if_modified(sizes->attr_float2_size, 0);
-  dscene->attributes_float3.copy_to_device_if_modified(sizes->attr_float3_size, 0);
-  dscene->attributes_float4.copy_to_device_if_modified(sizes->attr_float4_size, 0);
-  dscene->attributes_uchar4.copy_to_device_if_modified(sizes->attr_uchar4_size, 0);
-  dscene->objects.copy_to_device_if_modified();
-}
-
-/*
  * Packs the attribute buffers and records the sizes and offsets using
  * the attribute sets
  */

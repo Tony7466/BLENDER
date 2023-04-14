@@ -15,6 +15,7 @@ set(SRC
   camera.cpp
   colorspace.cpp
   constant_fold.cpp
+  devicescene.cpp
   film.cpp
   geometry.cpp
   geometry_mesh.cpp
@@ -58,6 +59,7 @@ set(SRC_HEADERS
   camera.h
   colorspace.h
   constant_fold.h
+  devicescene.h
   film.h
   geometry.h
   hair.h

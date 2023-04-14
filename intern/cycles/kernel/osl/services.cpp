@@ -46,6 +46,10 @@
 
 #include "kernel/util/color.h"
 
+#ifdef WITH_OPTIX
+#include "device/device.h"
+#endif
+
 CCL_NAMESPACE_BEGIN
 
 /* RenderServices implementation */

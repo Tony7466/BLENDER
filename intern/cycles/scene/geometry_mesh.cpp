@@ -33,40 +33,6 @@
 CCL_NAMESPACE_BEGIN
 
 /**
- * This copies the data to the devices if they have been modified
- */
-void GeometryManager::device_update_mesh(Device *device,
-                                         DeviceScene *dscene,
-                                         const GeometrySizes *p_sizes,
-                                         Progress &progress)
-{
-  progress.set_status("Updating Mesh", "Copying Mesh to device");
-  if (p_sizes->tri_size != 0) {
-    dscene->tri_verts.copy_to_device_if_modified(p_sizes->vert_size, 0);
-    dscene->tri_shader.copy_to_device_if_modified(p_sizes->tri_size, 0);
-    dscene->tri_vnormal.copy_to_device_if_modified(p_sizes->vert_size, 0);
-    dscene->tri_vindex.copy_to_device_if_modified(p_sizes->tri_size, 0);
-    dscene->tri_patch.copy_to_device_if_modified(p_sizes->tri_size, 0);
-    dscene->tri_patch_uv.copy_to_device_if_modified(p_sizes->vert_size, 0);
-  }
-
-  if (p_sizes->curve_segment_size != 0) {
-    dscene->curve_keys.copy_to_device_if_modified(p_sizes->curve_key_size, 0);
-    dscene->curves.copy_to_device_if_modified(p_sizes->curve_size, 0);
-    dscene->curve_segments.copy_to_device_if_modified(p_sizes->curve_segment_size, 0);
-  }
-
-  if (p_sizes->point_size != 0) {
-    dscene->points.copy_to_device(p_sizes->point_size, 0);
-    dscene->points_shader.copy_to_device(p_sizes->point_size, 0);
-  }
-
-  if (p_sizes->patch_size != 0 && dscene->patches.need_realloc()) {
-    dscene->patches.copy_to_device(p_sizes->patch_size, 0);
-  }
-}
-
-/**
  * Packs the geometry data into the device scene. That is it fills out
  * the geometry buffers
  */

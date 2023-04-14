@@ -249,7 +249,6 @@ class GeometryManager {
   void tag_update(Scene *scene, uint32_t flag);
 
   bool need_update() const;
-  void device_scene_clear_modified(DeviceScene *dscene);
 
   /* Statistics */
   void collect_statistics(const Scene *scene, RenderStats *stats);
@@ -309,15 +308,7 @@ class GeometryManager {
 
   void device_update_mesh_preprocess(
 				     Device *device, DeviceScene *dscene, Scene *scene, Progress &progress);
-  void device_update_mesh(Device *device,
-                          DeviceScene *dscene,
-                          const GeometrySizes *sizes,
-                          Progress &progress);
   void device_update_bvh2(Device *device, DeviceScene *dscene, Scene *scene, Progress &progress);
-  void device_update_host_pointers(Device *device,
-                                   DeviceScene *dscene,
-                                   DeviceScene *sub_dscene,
-                                   const GeometrySizes *p_sizes);
   bool displacement_and_curve_shadow_transparency(Scene *scene,
                                                   Device *device,
                                                   DeviceScene *dscene,
@@ -337,11 +328,6 @@ class GeometryManager {
                                            vector<AttributeRequestSet> &object_attributes,
                                            vector<AttributeSet> &object_attribute_values,
                                            Progress &progress);
-  void device_update_attributes(Device *device,
-                                DeviceScene *dscene,
-                                const AttributeSizes *sizes,
-                                Progress &progress);
-
   bool device_update_bvh_preprocess(Device *device,
                                     DeviceScene *dscene,
                                     Scene *scene,
