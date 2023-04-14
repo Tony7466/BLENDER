@@ -498,64 +498,64 @@ void blend_to_infinity_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const
 
   /* The factor goes from 0 to 1, but for this tool it needs to go from 0 to 1 on each side of the
    * slider. */
-  const float ping_pong_factor = fabs(factor * 2 - 1);
+  const float bidirectional_factor = fabs(factor * 2 - 1);
 
   float x_delta = 1;
   float y_delta = 1;
+  BezTriple beyond_key;
+  const BezTriple *reference_key;
 
   /* This delta values are used to get the relationship between the bookend keys and the
    * reference keys beyong those. */
   if (factor >= 0.5) {
+
     /* Stop the function if there is no key beyond the the right neighboring one. */
-    if (segment->start_index + segment->length == fcu->totvert) {
+    if (segment->start_index + segment->length >= fcu->totvert - 1) {
       return;
     }
-    const BezTriple *beyond_right_key = fcurve_segment_end_get(
-        fcu, segment->start_index + segment->length + 1);
 
-    y_delta = beyond_right_key->vec[1][1] - right_key->vec[1][1];
-    x_delta = beyond_right_key->vec[1][0] - right_key->vec[1][0];
+    reference_key = right_key;
+    beyond_key = fcu->bezt[segment->start_index + segment->length + 1];
   }
   else {
+
     /* Stop the function if there is no key beyond the left neighboring one. */
-    if (segment->start_index == 0) {
+    if (segment->start_index <= 1) {
       return;
     }
-    const BezTriple *beyond_left_key = fcurve_segment_start_get(fcu, segment->start_index - 1);
 
-    y_delta = beyond_left_key->vec[1][1] - left_key->vec[1][1];
-    x_delta = beyond_left_key->vec[1][0] - left_key->vec[1][0];
+    reference_key = left_key;
+    beyond_key = fcu->bezt[segment->start_index - 2];
   }
+
+  y_delta = beyond_key.vec[1][1] - reference_key->vec[1][1];
+  x_delta = beyond_key.vec[1][0] - reference_key->vec[1][0];
 
   /* Avoids dividing by 0. */
   if (x_delta == 0) {
     return;
   }
 
-  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+  float new_x_delta;
+  float new_y_delta;
 
-    float new_x_delta;
-    float new_y_delta;
-    const BezTriple *reference_key;
+  if (factor >= 0.5) {
+    reference_key = right_key;
+  }
+  else {
+    reference_key = left_key;
+  }
+
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
 
     /* These new deltas are used to determine the relationship between the current key and the
      * bookend ones. */
-    if (factor >= 0.5) {
-      new_x_delta = fcu->bezt[i].vec[1][0] - right_key->vec[1][0];
-      reference_key = right_key;
-    }
-    else {
-      new_x_delta = fcu->bezt[i].vec[1][0] - left_key->vec[1][0];
-      reference_key = left_key;
-    }
-
-    /* We use compound rule of 3 to find the "Y" delta we are missing using the other deltas we
-     * know. */
+    new_x_delta = fcu->bezt[i].vec[1][0] - reference_key->vec[1][0];
     new_y_delta = new_x_delta * y_delta / x_delta;
 
     const float delta = reference_key->vec[1][1] + new_y_delta - fcu->bezt[i].vec[1][1];
 
-    const float key_y_value = fcu->bezt[i].vec[1][1] + delta * ping_pong_factor;
+    const float key_y_value = fcu->bezt[i].vec[1][1] + delta * bidirectional_factor;
     move_key(&fcu->bezt[i], key_y_value);
   }
 }
