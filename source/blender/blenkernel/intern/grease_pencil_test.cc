@@ -112,8 +112,9 @@ TEST(greasepencil, remove_drawing)
 
   static int expected_frames_size[] = {2, 0};
   static int expected_frames_pairs_layer0[][2] = {{0, 0}, {20, 1}};
-  for (const int layer_i : IndexRange(grease_pencil.layers().size())) {
-    const Layer &layer = *grease_pencil.layers()[layer_i];
+  Span<const Layer *> layers = grease_pencil.layers();
+  for (const int layer_i : IndexRange(layers.size())) {
+    const Layer &layer = *layers[layer_i];
     EXPECT_EQ(layer.frames().size(), expected_frames_size[layer_i]);
     if (layer_i == 0) {
       for (const int i : IndexRange(2)) {
