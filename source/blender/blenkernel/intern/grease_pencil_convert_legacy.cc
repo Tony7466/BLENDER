@@ -46,8 +46,8 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(GreasePencilDrawing &drawing,
       "radius", ATTR_DOMAIN_POINT);
   SpanAttributeWriter<float> opacities = attributes.lookup_or_add_for_write_span<float>(
       "opacity", ATTR_DOMAIN_POINT);
-  SpanAttributeWriter<float> deltatimes = attributes.lookup_or_add_for_write_span<float>(
-      "deltatime", ATTR_DOMAIN_POINT);
+  SpanAttributeWriter<float> delta_times = attributes.lookup_or_add_for_write_span<float>(
+      "delta_time", ATTR_DOMAIN_POINT);
   SpanAttributeWriter<float> rotations = attributes.lookup_or_add_for_write_span<float>(
       "rotation", ATTR_DOMAIN_POINT);
   SpanAttributeWriter<ColorGeometry4f> vertex_colors =
@@ -56,9 +56,28 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(GreasePencilDrawing &drawing,
       ".selection", ATTR_DOMAIN_POINT);
 
   /* Curve Attributes. */
-  SpanAttributeWriter<bool> curve_cyclic = attributes.lookup_or_add_for_write_span<bool>(
+  SpanAttributeWriter<bool> stroke_cyclic = attributes.lookup_or_add_for_write_span<bool>(
       "cyclic", ATTR_DOMAIN_CURVE);
-  SpanAttributeWriter<int> curve_materials = attributes.lookup_or_add_for_write_span<int>(
+  /* TODO: This should be a `double` attribute. */
+  SpanAttributeWriter<float> stroke_init_times = attributes.lookup_or_add_for_write_span<float>(
+      "init_time", ATTR_DOMAIN_CURVE);
+  SpanAttributeWriter<int8_t> stroke_start_caps = attributes.lookup_or_add_for_write_span<int8_t>(
+      "start_cap", ATTR_DOMAIN_CURVE);
+  SpanAttributeWriter<int8_t> stroke_end_caps = attributes.lookup_or_add_for_write_span<int8_t>(
+      "end_cap", ATTR_DOMAIN_CURVE);
+  SpanAttributeWriter<float> stroke_hardnesses = attributes.lookup_or_add_for_write_span<float>(
+      "hardness", ATTR_DOMAIN_CURVE);
+  SpanAttributeWriter<float> stroke_point_aspect_ratios =
+      attributes.lookup_or_add_for_write_span<float>("point_aspect_ratio", ATTR_DOMAIN_CURVE);
+  SpanAttributeWriter<float2> stroke_fill_translations =
+      attributes.lookup_or_add_for_write_span<float2>("fill_translation", ATTR_DOMAIN_CURVE);
+  SpanAttributeWriter<float> stroke_fill_rotations =
+      attributes.lookup_or_add_for_write_span<float>("fill_rotation", ATTR_DOMAIN_CURVE);
+  SpanAttributeWriter<float2> stroke_fill_scales = attributes.lookup_or_add_for_write_span<float2>(
+      "fill_scale", ATTR_DOMAIN_CURVE);
+  SpanAttributeWriter<ColorGeometry4f> stroke_fill_colors =
+      attributes.lookup_or_add_for_write_span<ColorGeometry4f>("fill_color", ATTR_DOMAIN_CURVE);
+  SpanAttributeWriter<int> stroke_materials = attributes.lookup_or_add_for_write_span<int>(
       "material_index", ATTR_DOMAIN_CURVE);
 
   int stroke_i = 0;
@@ -66,8 +85,19 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(GreasePencilDrawing &drawing,
     /* TODO: check if gps->editcurve is not nullptr and parse bezier curve instead. */
 
     /* Write curve attributes. */
-    curve_cyclic.span[stroke_i] = (gps->flag & GP_STROKE_CYCLIC) != 0;
-    curve_materials.span[stroke_i] = gps->mat_nr;
+    stroke_cyclic.span[stroke_i] = (gps->flag & GP_STROKE_CYCLIC) != 0;
+    /* TODO: This should be a `double` attribute. */
+    stroke_init_times.span[stroke_i] = static_cast<float>(gps->inittime);
+    stroke_start_caps.span[stroke_i] = static_cast<int8_t>(gps->caps[0]);
+    stroke_end_caps.span[stroke_i] = static_cast<int8_t>(gps->caps[1]);
+    stroke_hardnesses.span[stroke_i] = gps->hardeness;
+    stroke_point_aspect_ratios.span[stroke_i] = gps->aspect_ratio[0] /
+                                                max_ff(gps->aspect_ratio[1], 1e-8);
+    stroke_fill_translations.span[stroke_i] = float2(gps->uv_translation);
+    stroke_fill_rotations.span[stroke_i] = gps->uv_rotation;
+    stroke_fill_scales.span[stroke_i] = float2(gps->uv_scale);
+    stroke_fill_colors.span[stroke_i] = ColorGeometry4f(gps->vert_color_fill);
+    stroke_materials.span[stroke_i] = gps->mat_nr;
 
     /* Write point attributes. */
     IndexRange stroke_points_range = points_by_curve[stroke_i];
@@ -79,7 +109,7 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(GreasePencilDrawing &drawing,
     MutableSpan<float3> stroke_positions = positions.slice(stroke_points_range);
     MutableSpan<float> stroke_radii = radii.span.slice(stroke_points_range);
     MutableSpan<float> stroke_opacities = opacities.span.slice(stroke_points_range);
-    MutableSpan<float> stroke_deltatimes = deltatimes.span.slice(stroke_points_range);
+    MutableSpan<float> stroke_deltatimes = delta_times.span.slice(stroke_points_range);
     MutableSpan<float> stroke_rotations = rotations.span.slice(stroke_points_range);
     MutableSpan<ColorGeometry4f> stroke_vertex_colors = vertex_colors.span.slice(
         stroke_points_range);
@@ -114,13 +144,22 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(GreasePencilDrawing &drawing,
 
   radii.finish();
   opacities.finish();
-  deltatimes.finish();
+  delta_times.finish();
   rotations.finish();
   vertex_colors.finish();
   selection.finish();
 
-  curve_cyclic.finish();
-  curve_materials.finish();
+  stroke_cyclic.finish();
+  stroke_init_times.finish();
+  stroke_start_caps.finish();
+  stroke_end_caps.finish();
+  stroke_hardnesses.finish();
+  stroke_point_aspect_ratios.finish();
+  stroke_fill_translations.finish();
+  stroke_fill_rotations.finish();
+  stroke_fill_scales.finish();
+  stroke_fill_colors.finish();
+  stroke_materials.finish();
 
   curves.tag_topology_changed();
 

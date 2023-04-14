@@ -275,6 +275,10 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
         "radius", ATTR_DOMAIN_POINT, 1.0f);
     const VArray<float> opacities = attributes.lookup_or_default<float>(
         "opacity", ATTR_DOMAIN_POINT, 1.0f);
+    const VArray<int8_t> start_caps = attributes.lookup_or_default<int8_t>(
+        "start_cap", ATTR_DOMAIN_CURVE, 0);
+    const VArray<int8_t> end_caps = attributes.lookup_or_default<int8_t>(
+        "end_cap", ATTR_DOMAIN_CURVE, 0);
     const VArray<int> materials = attributes.lookup_or_default<int>(
         "material_index", ATTR_DOMAIN_CURVE, -1);
     const Span<uint3> triangles = drawing.triangles();
@@ -285,13 +289,16 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
 
     auto populate_point = [&](IndexRange verts_range,
                               int curve_i,
+                              int8_t start_cap,
+                              int8_t end_cap,
                               int point_i,
                               int idx,
                               GreasePencilStrokeVert &s_vert,
                               GreasePencilColorVert &c_vert) {
       copy_v3_v3(s_vert.pos, positions[point_i]);
-      s_vert.radius = radii[point_i];
-      s_vert.opacity = opacities[point_i];
+      s_vert.radius = radii[point_i] * ((end_cap == GP_STROKE_CAP_TYPE_ROUND) ? 1.0f : -1.0f);
+      s_vert.opacity = opacities[point_i] *
+                       ((start_cap == GP_STROKE_CAP_TYPE_ROUND) ? 1.0f : -1.0f);
       s_vert.point_id = verts_range[idx];
       s_vert.stroke_id = verts_range.first();
       s_vert.mat = materials[curve_i] % GPENCIL_MATERIAL_BUFFER_LEN;
@@ -306,8 +313,6 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
       /* TODO */
       copy_v4_v4(c_vert.vcol, float4(0.0f, 0.0f, 0.0f, 0.0f));
       copy_v4_v4(c_vert.fcol, float4(0.0f, 0.0f, 0.0f, 0.0f));
-
-      /* TODO */
       c_vert.fcol[3] = (int(c_vert.fcol[3] * 10000.0f) * 10.0f) + 1.0f;
 
       int v_mat = (verts_range[idx] << GP_VERTEX_ID_SHIFT) | GP_IS_STROKE_VERTEX_BIT;
@@ -343,12 +348,26 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
         /* Write all the point attributes to the vertex buffers. Create a quad for each point. */
         for (const int i : IndexRange(points.size())) {
           const int idx = i + 1;
-          populate_point(verts_range, curve_i, points[i], idx, verts_slice[idx], cols_slice[idx]);
+          populate_point(verts_range,
+                         curve_i,
+                         start_caps[curve_i],
+                         end_caps[curve_i],
+                         points[i],
+                         idx,
+                         verts_slice[idx],
+                         cols_slice[idx]);
         }
 
         if (is_cyclic) {
           const int idx = points.size() + 1;
-          populate_point(verts_range, curve_i, points[0], idx, verts_slice[idx], cols_slice[idx]);
+          populate_point(verts_range,
+                         curve_i,
+                         start_caps[curve_i],
+                         end_caps[curve_i],
+                         points[0],
+                         idx,
+                         verts_slice[idx],
+                         cols_slice[idx]);
         }
 
         /* Last vertex is not drawn. */

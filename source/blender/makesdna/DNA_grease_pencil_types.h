@@ -39,6 +39,13 @@ struct GreasePencil;
 struct BlendDataReader;
 struct BlendWriter;
 
+typedef enum GreasePencilStrokeCapType {
+  GP_STROKE_CAP_TYPE_ROUND = 0,
+  GP_STROKE_CAP_TYPE_FLAT = 1,
+  /* Keep last. */
+  GP_STROKE_CAP_TYPE_MAX,
+} GreasePencilStrokeCapType;
+
 typedef enum GreasePencilDrawingType {
   GREASE_PENCIL_DRAWING = 0,
   GREASE_PENCIL_DRAWING_REFERENCE = 1,
