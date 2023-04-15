@@ -1507,6 +1507,10 @@ struct GeometryNodesLazyFunctionGraphBuilder {
           this->handle_switch_node(*bnode);
           break;
         }
+        case GEO_NODE_BIND_FUNCTION: {
+          this->handle_bind_function_node(*bnode);
+          break;
+        }
         default: {
           if (node_type->geometry_node_execute) {
             this->handle_geometry_node(*bnode);
@@ -1803,6 +1807,51 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         break;
       }
     }
+  }
+
+  void handle_bind_function_node(const bNode &bnode)
+  {
+    const bNodeTree *group_btree = reinterpret_cast<bNodeTree *>(bnode.id);
+    if (group_btree == nullptr) {
+      return;
+    }
+    const GeometryNodesLazyFunctionGraphInfo *group_lf_graph_info =
+        ensure_geometry_nodes_lazy_function_graph(*group_btree);
+    if (group_lf_graph_info == nullptr) {
+      return;
+    }
+
+    //auto lazy_function = std::make_unique<LazyFunctionForGroupNode>(bnode, *group_lf_graph_info);
+    //lf::FunctionNode &lf_node = lf_graph_->add_function(*lazy_function);
+
+    //for (const int i : bnode.input_sockets().index_range()) {
+    //  const bNodeSocket &bsocket = bnode.input_socket(i);
+    //  BLI_assert(!bsocket.is_multi_input());
+    //  lf::InputSocket &lf_socket = lf_node.input(i);
+    //  input_socket_map_.add(&bsocket, &lf_socket);
+    //  mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
+    //}
+    //for (const int i : bnode.output_sockets().index_range()) {
+    //  const bNodeSocket &bsocket = bnode.output_socket(i);
+    //  lf::OutputSocket &lf_socket = lf_node.output(i);
+    //  output_socket_map_.add_new(&bsocket, &lf_socket);
+    //  mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
+    //}
+    //mapping_->group_node_map.add(&bnode, &lf_node);
+    //lf_graph_info_->num_inline_nodes_approximate +=
+    //    group_lf_graph_info->num_inline_nodes_approximate;
+    //static const bool static_false = false;
+    //for (const int i : lazy_function->lf_input_for_output_bsocket_usage_.values()) {
+    //  lf_node.input(i).set_default_value(&static_false);
+    //  socket_usage_inputs_.add(&lf_node.input(i));
+    //}
+    ///* Keep track of attribute set inputs that need to be populated later. */
+    //for (const auto [output_index, lf_input_index] :
+    //     lazy_function->lf_input_for_attribute_propagation_to_output_.items()) {
+    //  attribute_set_propagation_map_.add(&bnode.output_socket(output_index),
+    //                                     &lf_node.input(lf_input_index));
+    //}
+    //lf_graph_info_->functions.append(std::move(lazy_function));
   }
 
   void handle_undefined_node(const bNode &bnode)

@@ -8,19 +8,20 @@
 
 #include "BLI_cpp_type.hh"
 
-#include "FN_lazy_function.hh"
-#include "FN_lazy_function_graph_executor.hh"
-
 namespace blender::fn {
+
+namespace lazy_function {
+class Graph;
+}
 
 class Closure {
  private:
-  std::shared_ptr<lf::GraphExecutor> function_;
+  const lazy_function::Graph *graph_;
 
  public:
   Closure() = default;
   Closure(const Closure &other) = default;
-  explicit Closure(const lf::GraphExecutor &function);
+  explicit Closure(const lazy_function::Graph &graph);
   ~Closure() = default;
 
   Closure &operator=(const Closure &other) = default;

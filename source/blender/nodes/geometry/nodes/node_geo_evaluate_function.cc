@@ -4,6 +4,8 @@
 #include "BLI_math_vector.h"
 #include "BLI_string.h"
 
+#include "FN_closure.hh"
+
 #include "RNA_enum_types.h"
 
 #include "UI_interface.h"

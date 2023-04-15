@@ -6,10 +6,12 @@
 
 #include "FN_closure.hh"
 
+#include "FN_lazy_function_graph.hh"
+
 namespace blender::fn {
 
-Closure::Closure(const lf::GraphExecutor &function)
-    : function_(std::make_shared<lf::GraphExecutor>(function))
+Closure::Closure(const lf::Graph &graph)
+    : graph_(&graph)
 {
 }
 

@@ -4,6 +4,9 @@
 
 #include "BKE_node_runtime.hh"
 
+#include "FN_closure.hh"
+#include "FN_lazy_function_graph.hh"
+
 #include "UI_interface.h"
 #include "UI_resources.h"
 
@@ -51,15 +54,17 @@ static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  //GeometrySet geometry_set = params.extract_input<GeometrySet>("Curve");
+  if (params.node().id) {
+    const bNodeTree &bind_tree = *reinterpret_cast<bNodeTree *>(params.node().id);
+    const std::unique_ptr<GeometryNodesLazyFunctionGraphInfo> &lf_graph_info_ptr =
+        bind_tree.runtime->geometry_nodes_lazy_function_graph_info;
+    BLI_assert(lf_graph_info_ptr);
 
-  //const NodeGeometryCurveFill &storage = node_storage(params.node());
-  //const GeometryNodeCurveFillMode mode = (GeometryNodeCurveFillMode)storage.mode;
+    fn::Closure closure(lf_graph_info_ptr->graph);
+    params.set_output("Function", std::move(closure));
+  }
 
-  //geometry_set.modify_geometry_sets(
-  //    [&](GeometrySet &geometry_set) { curve_fill_calculate(geometry_set, mode); });
-
-  //params.set_output("Mesh", std::move(geometry_set));
+  params.set_default_remaining_outputs();
 }
 
 }  // namespace blender::nodes::node_geo_bind_function_cc
