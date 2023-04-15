@@ -40,23 +40,7 @@ struct VoronoiParamsBase {
 
   VoronoiParamsBase() = default;
 
-  VoronoiParamsBase(const VoronoiParamsBase &vpb)
-      : scale(vpb.scale),
-        detail(vpb.detail),
-        roughness(vpb.roughness),
-        lacunarity(vpb.lacunarity),
-        smoothness(vpb.smoothness),
-        exponent(vpb.exponent),
-        randomness(vpb.randomness),
-        max_amplitude(vpb.max_amplitude),
-        max_distance(vpb.max_distance),
-        metric(vpb.metric),
-        octave_scale(vpb.octave_scale),
-        octave_amplitude(vpb.octave_amplitude),
-        octave_distance(vpb.octave_distance),
-        octave_color(vpb.octave_color)
-  {
-  }
+  VoronoiParamsBase(const VoronoiParamsBase &) = default;
 };
 
 template<typename T> struct VoronoiParams : public VoronoiParamsBase {
@@ -73,10 +57,7 @@ struct VoronoiOutputBase {
 
   VoronoiOutputBase() = default;
 
-  VoronoiOutputBase(const VoronoiOutputBase &vob)
-      : distance_out(vob.distance_out), radius_out(vob.radius_out), color_out(vob.color_out)
-  {
-  }
+  VoronoiOutputBase(const VoronoiOutputBase &) = default;
 };
 
 template<typename T> struct VoronoiOutput : public VoronoiOutputBase {
