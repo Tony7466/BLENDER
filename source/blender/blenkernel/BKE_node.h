@@ -228,11 +228,6 @@ typedef int (*NodeGPUExecFunction)(struct GPUMaterial *mat,
 /** \name Node Function Signature
  * \{ */
 
-enum eNodeFunctionParameterType {
-  NODE_FUNC_PARAM_IN,
-  NODE_FUNC_PARAM_OUT,
-  };
-
 /** Set a unique parameter name.
  * @return True if the unique name differs from the original name.
  */
@@ -248,7 +243,8 @@ struct bNode *nodeFunctionParameterFindNode(struct bNodeTree *ntree,
 struct bNode *nodeFunctionSignatureFindNode(struct bNodeTree *ntree,
                                             const struct bNodeFunctionSignature *sig);
 bool nodeFunctionSignatureContainsParameter(const struct bNodeFunctionSignature *sig,
-                                            const struct bNodeFunctionParameter *param);
+                                            const struct bNodeFunctionParameter *param,
+                                            eNodeFunctionParameterType *r_param_type);
 struct bNodeFunctionParameter *nodeFunctionSignatureGetActiveParameter(
     struct bNodeFunctionSignature *sig, eNodeFunctionParameterType param_type);
 void nodeFunctionSignatureSetActiveParameter(struct bNodeFunctionSignature *sig,
@@ -268,7 +264,7 @@ struct bNodeFunctionParameter *nodeFunctionSignatureInsertParameter(
     const char *name,
     int index);
 void nodeFunctionSignatureRemoveParameter(struct bNodeFunctionSignature *sig,
-                                          struct bNodeFunctionParameter *item);
+                                          struct bNodeFunctionParameter *param);
 void nodeFunctionSignatureClearParameters(struct bNodeFunctionSignature *sig);
 void nodeFunctionSignatureMoveParameter(struct bNodeFunctionSignature *sig,
                                         eNodeFunctionParameterType param_type,

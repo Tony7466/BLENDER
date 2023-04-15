@@ -128,36 +128,80 @@ static void node_socket_set_typeinfo(bNodeTree *ntree,
 
 /* ************ NODE FUNCTION SIGNATURE *************** */
 
+blender::Span<bNodeFunctionParameter> bNodeFunctionSignature::inputs_span() const
+{
+  return blender::Span<bNodeFunctionParameter>(inputs, inputs_num);
+}
+
+blender::MutableSpan<bNodeFunctionParameter> bNodeFunctionSignature::inputs_span()
+{
+  return blender::MutableSpan<bNodeFunctionParameter>(inputs, inputs_num);
+}
+
+blender::IndexRange bNodeFunctionSignature::inputs_range() const
+{
+  return blender::IndexRange(inputs_num);
+}
+
+blender::Span<bNodeFunctionParameter> bNodeFunctionSignature::outputs_span() const
+{
+  return blender::Span<bNodeFunctionParameter>(outputs, outputs_num);
+}
+
+blender::MutableSpan<bNodeFunctionParameter> bNodeFunctionSignature::outputs_span()
+{
+  return blender::MutableSpan<bNodeFunctionParameter>(outputs, outputs_num);
+}
+
+blender::IndexRange bNodeFunctionSignature::outputs_range() const
+{
+  return blender::IndexRange(outputs_num);
+}
+
+blender::Span<bNodeFunctionParameter> bNodeFunctionSignature::params_span(
+    eNodeFunctionParameterType param_type) const
+{
+  switch (param_type) {
+    case NODE_FUNC_PARAM_IN:
+      return inputs_span();
+    case NODE_FUNC_PARAM_OUT:
+      return outputs_span();
+  }
+  return {};
+}
+
+blender::MutableSpan<bNodeFunctionParameter> bNodeFunctionSignature::params_span(
+    eNodeFunctionParameterType param_type)
+{
+  switch (param_type) {
+    case NODE_FUNC_PARAM_IN:
+      return inputs_span();
+    case NODE_FUNC_PARAM_OUT:
+      return outputs_span();
+  }
+  return {};
+}
+
+blender::IndexRange bNodeFunctionSignature::params_range(
+    eNodeFunctionParameterType param_type) const
+{
+  switch (param_type) {
+    case NODE_FUNC_PARAM_IN:
+      return inputs_range();
+    case NODE_FUNC_PARAM_OUT:
+      return outputs_range();
+  }
+  return {};
+}
+
 namespace blender::nodes {
-
-static Span<bNodeFunctionParameter> nodeFunctionSignatureGetParams(
-    const bNodeFunctionSignature *sig, const eNodeFunctionParameterType param_type)
-{
-  if (param_type == NODE_FUNC_PARAM_IN) {
-    return Span<bNodeFunctionParameter>(sig->inputs, sig->inputs_num);
-  }
-  else {
-    return Span<bNodeFunctionParameter>(sig->outputs, sig->outputs_num);
-  }
-}
-
-static MutableSpan<bNodeFunctionParameter> nodeFunctionSignatureGetParams(
-    bNodeFunctionSignature *sig, const eNodeFunctionParameterType param_type)
-{
-  if (param_type == NODE_FUNC_PARAM_IN) {
-    return MutableSpan<bNodeFunctionParameter>(sig->inputs, sig->inputs_num);
-  }
-  else {
-    return MutableSpan<bNodeFunctionParameter>(sig->outputs, sig->outputs_num);
-  }
-}
 
 struct NodeFunctionSignatureUniqueNameArgs {
   Span<bNodeFunctionParameter> params_span;
   const bNodeFunctionParameter *param;
 };
 
-static bool function_signature_unique_name_check(void *arg, const char *name)
+static bool nodeFunctionSignatureUniqueNameCheck(void *arg, const char *name)
 {
   const NodeFunctionSignatureUniqueNameArgs &args =
       *static_cast<const NodeFunctionSignatureUniqueNameArgs *>(arg);
@@ -175,7 +219,14 @@ static bool function_signature_unique_name_check(void *arg, const char *name)
 
 bNode *nodeFunctionParameterFindNode(bNodeTree *ntree, const bNodeFunctionParameter *param)
 {
-  /** TODO */
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (node->type == FN_NODE_EVALUATE) {
+      NodeFunctionEvaluate *data = static_cast<NodeFunctionEvaluate *>(node->storage);
+      if (nodeFunctionSignatureContainsParameter(&data->signature, param, nullptr)) {
+        return node;
+      }
+    }
+  }
   return nullptr;
 }
 
@@ -186,36 +237,66 @@ bool nodeFunctionParameterSetUniqueName(bNodeFunctionSignature *sig,
 {
   char unique_name[MAX_NAME + 4];
   BLI_strncpy(unique_name, name, sizeof(unique_name));
+  bool name_changed = false;
 
-  blender::nodes::SimulationItemsUniqueNameArgs args{sim, item};
-  const bool name_changed = BLI_uniquename_cb(blender::nodes::simulation_items_unique_name_check,
-                                              &args,
-                                              defname,
-                                              '.',
-                                              unique_name,
-                                              ARRAY_SIZE(unique_name));
-  item->name = BLI_strdup(unique_name);
+  eNodeFunctionParameterType param_type;
+  if (nodeFunctionSignatureContainsParameter(sig, param, &param_type)) {
+    blender::nodes::NodeFunctionSignatureUniqueNameArgs args{sig->params_span(param_type), param};
+    name_changed = BLI_uniquename_cb(blender::nodes::nodeFunctionSignatureUniqueNameCheck,
+                                     &args,
+                                     defname,
+                                     '.',
+                                     unique_name,
+                                     ARRAY_SIZE(unique_name));
+  }
+  param->name = BLI_strdup(unique_name);
   return name_changed;
 }
 
 bNode *nodeFunctionSignatureFindNode(bNodeTree *ntree, const bNodeFunctionSignature *sig)
 {
-  /** TODO */
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (node->type == FN_NODE_EVALUATE) {
+      NodeFunctionEvaluate *data = static_cast<NodeFunctionEvaluate *>(node->storage);
+      if (sig == &data->signature) {
+        return node;
+      }
+    }
+  }
   return nullptr;
 }
 
 bool nodeFunctionSignatureContainsParameter(const bNodeFunctionSignature *sig,
-                                            const bNodeFunctionParameter *param)
+                                            const bNodeFunctionParameter *param,
+                                            eNodeFunctionParameterType *r_param_type)
 {
-  const int index = item - sim->items;
-  return index >= 0 && index < sim->items_num;
+  if (sig->inputs_span().contains_ptr(param)) {
+    if (r_param_type) {
+      *r_param_type = NODE_FUNC_PARAM_IN;
+    }
+    return true;
+  }
+  if (sig->outputs_span().contains_ptr(param)) {
+    if (r_param_type) {
+      *r_param_type = NODE_FUNC_PARAM_OUT;
+    }
+    return true;
+  }
+  return false;
 }
 
 bNodeFunctionParameter *nodeFunctionSignatureGetActiveParameter(
     bNodeFunctionSignature *sig, eNodeFunctionParameterType param_type)
 {
-  if (sim->active_index >= 0 && sim->active_index < sim->items_num) {
-    return &sim->items[sim->active_index];
+  switch (param_type) {
+    case NODE_FUNC_PARAM_IN:
+      if (sig->inputs_range().contains(sig->active_input)) {
+        return &sig->inputs[sig->active_input];
+      }
+    case NODE_FUNC_PARAM_OUT:
+      if (sig->outputs_range().contains(sig->active_output)) {
+        return &sig->outputs[sig->active_output];
+      }
   }
   return nullptr;
 }
@@ -224,18 +305,28 @@ void nodeFunctionSignatureSetActiveParameter(bNodeFunctionSignature *sig,
                                              eNodeFunctionParameterType param_type,
                                              bNodeFunctionParameter *param)
 {
-  const int index = item - sim->items;
-  if (index >= 0 && index < sim->items_num) {
-    sim->active_index = index;
+  switch (param_type) {
+    case NODE_FUNC_PARAM_IN: {
+      const int index = param - sig->inputs;
+      if (sig->inputs_range().contains(index)) {
+        sig->active_input = index;
+      }
+    }
+    case NODE_FUNC_PARAM_OUT: {
+      const int index = param - sig->outputs;
+      if (sig->outputs_range().contains(index)) {
+        sig->active_output = index;
+      }
+    }
   }
 }
 
 bNodeFunctionParameter *nodeFunctionSignatureFindParameterByName(
     bNodeFunctionSignature *sig, eNodeFunctionParameterType param_type, const char *name)
 {
-  for (const int i : blender::IndexRange(sim->items_num)) {
-    if (STREQ(sim->items[i].name, name)) {
-      return &sim->items[i];
+  for (bNodeFunctionParameter &param : sig->params_span(param_type)) {
+    if (STREQ(param.name, name)) {
+      return &param;
     }
   }
   return nullptr;
@@ -246,7 +337,7 @@ bNodeFunctionParameter *nodeFunctionSignatureAddParameter(bNodeFunctionSignature
                                                           short socket_type,
                                                           const char *name)
 {
-  return NOD_geometry_simulation_output_insert_item(sim, socket_type, name, sim->items_num);
+  return nodeFunctionSignatureInsertParameter(sig, param_type, socket_type, name, sig->params_range(param_type).size());
 }
 
 bNodeFunctionParameter *nodeFunctionSignatureInsertParameter(bNodeFunctionSignature *sig,
@@ -255,58 +346,94 @@ bNodeFunctionParameter *nodeFunctionSignatureInsertParameter(bNodeFunctionSignat
                                                              const char *name,
                                                              int index)
 {
-  NodeSimulationItem *old_items = sim->items;
-  sim->items = MEM_cnew_array<NodeSimulationItem>(sim->items_num + 1, __func__);
-  for (const int i : blender::IndexRange(0, index)) {
-    sim->items[i] = old_items[i];
+  const Span<bNodeFunctionParameter> old_params = sig->params_span(param_type);
+  bNodeFunctionParameter *new_params = MEM_cnew_array<bNodeFunctionParameter>(
+      old_params.size() + 1, __func__);
+  for (const int i : old_params.index_range().take_front(index)) {
+    new_params[i] = old_params[i];
   }
-  for (const int i : blender::IndexRange(index, sim->items_num - index)) {
-    sim->items[i + 1] = old_items[i];
+  for (const int i : old_params.index_range().drop_front(index)) {
+    new_params[i + 1] = old_params[i];
   }
 
   const char *defname = nodeStaticSocketLabel(socket_type, 0);
-  NodeSimulationItem &added_item = sim->items[index];
-  added_item.identifier = sim->next_identifier++;
-  NOD_geometry_simulation_output_item_set_unique_name(sim, &added_item, name, defname);
-  added_item.socket_type = socket_type;
+  bNodeFunctionParameter &added_param = new_params[index];
+  added_param.identifier = sig->next_identifier++;
+  nodeFunctionParameterSetUniqueName(sig, &added_param, name, defname);
+  added_param.socket_type = socket_type;
 
-  sim->items_num++;
-  MEM_SAFE_FREE(old_items);
+  switch (param_type) {
+    case NODE_FUNC_PARAM_IN: {
+      MEM_SAFE_FREE(sig->inputs);
+      sig->inputs = new_params;
+      sig->inputs_num++;
+    }
+    case NODE_FUNC_PARAM_OUT: {
+      MEM_SAFE_FREE(sig->outputs);
+      sig->outputs = new_params;
+      sig->outputs_num++;
+    }
+  }
 
-  return &added_item;
+  return &added_param;
+}
+
+static void nodeFunctionSignatureRemoveParameter(bNodeFunctionSignature *sig,
+                                                 eNodeFunctionParameterType param_type,
+                                                 bNodeFunctionParameter *param)
+{
+  const Span<bNodeFunctionParameter> old_params = sig->params_span(param_type);
+  if (!old_params.contains_ptr(param)) {
+    return;
+  }
+  const int index = param - old_params.data();
+
+  bNodeFunctionParameter *new_params = MEM_cnew_array<bNodeFunctionParameter>(
+      old_params.size() - 1, __func__);
+  for (const int i : old_params.index_range().take_front(index)) {
+    new_params[i] = old_params[i];
+  }
+  for (const int i : old_params.index_range().drop_front(index + 1)) {
+    new_params[i - 1] = old_params[i];
+  }
+
+  MEM_SAFE_FREE(old_params[index].name);
+
+  switch (param_type) {
+    case NODE_FUNC_PARAM_IN: {
+      MEM_SAFE_FREE(sig->inputs);
+      sig->inputs = new_params;
+      sig->inputs_num--;
+    }
+    case NODE_FUNC_PARAM_OUT: {
+      MEM_SAFE_FREE(sig->outputs);
+      sig->outputs = new_params;
+      sig->outputs_num--;
+    }
+  }
 }
 
 void nodeFunctionSignatureRemoveParameter(bNodeFunctionSignature *sig,
-                                          bNodeFunctionParameter *item)
+                                          bNodeFunctionParameter *param)
 {
-  const int index = item - sim->items;
-  if (index < 0 || index >= sim->items_num) {
-    return;
-  }
-
-  NodeSimulationItem *old_items = sim->items;
-  sim->items = MEM_cnew_array<NodeSimulationItem>(sim->items_num - 1, __func__);
-  for (const int i : blender::IndexRange(0, index)) {
-    sim->items[i] = old_items[i];
-  }
-  for (const int i : blender::IndexRange(index, sim->items_num - index).drop_front(1)) {
-    sim->items[i - 1] = old_items[i];
-  }
-
-  MEM_SAFE_FREE(old_items[index].name);
-
-  sim->items_num--;
-  MEM_SAFE_FREE(old_items);
+  nodeFunctionSignatureRemoveParameter(sig, NODE_FUNC_PARAM_IN, param);
+  nodeFunctionSignatureRemoveParameter(sig, NODE_FUNC_PARAM_OUT, param);
 }
 
 void nodeFunctionSignatureClearParameters(bNodeFunctionSignature *sig)
 {
-  for (NodeSimulationItem &item : blender::MutableSpan(sim->items, sim->items_num)) {
-    MEM_SAFE_FREE(item.name);
+  for (bNodeFunctionParameter &param : sig->params_span(NODE_FUNC_PARAM_IN)) {
+    MEM_SAFE_FREE(param.name);
   }
-  MEM_SAFE_FREE(sim->items);
-  sim->items = nullptr;
-  sim->items_num = 0;
+  for (bNodeFunctionParameter &param : sig->params_span(NODE_FUNC_PARAM_OUT)) {
+    MEM_SAFE_FREE(param.name);
+  }
+  MEM_SAFE_FREE(sig->inputs);
+  MEM_SAFE_FREE(sig->outputs);
+  sig->inputs = nullptr;
+  sig->outputs = nullptr;
+  sig->inputs_num = 0;
+  sig->outputs_num = 0;
 }
 
 void nodeFunctionSignatureMoveParameter(bNodeFunctionSignature *sig,
@@ -314,25 +441,26 @@ void nodeFunctionSignatureMoveParameter(bNodeFunctionSignature *sig,
                                         int from_index,
                                         int to_index)
 {
-  BLI_assert(from_index >= 0 && from_index < sim->items_num);
-  BLI_assert(to_index >= 0 && to_index < sim->items_num);
+  const MutableSpan<bNodeFunctionParameter> params = sig->params_span(param_type);
+  BLI_assert(params.index_range().contains(from_index));
+  BLI_assert(params.index_range().contains(to_index));
 
   if (from_index == to_index) {
     return;
   }
   else if (from_index < to_index) {
-    const NodeSimulationItem tmp = sim->items[from_index];
+    const bNodeFunctionParameter tmp = params[from_index];
     for (int i = from_index; i < to_index; ++i) {
-      sim->items[i] = sim->items[i + 1];
+      params[i] = params[i + 1];
     }
-    sim->items[to_index] = tmp;
+    params[to_index] = tmp;
   }
   else /* from_index > to_index */ {
-    const NodeSimulationItem tmp = sim->items[from_index];
+    const bNodeFunctionParameter tmp = params[from_index];
     for (int i = from_index; i > to_index; --i) {
-      sim->items[i] = sim->items[i - 1];
+      params[i] = params[i - 1];
     }
-    sim->items[to_index] = tmp;
+    params[to_index] = tmp;
   }
 }
 

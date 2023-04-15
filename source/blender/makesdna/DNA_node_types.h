@@ -16,6 +16,8 @@
 #ifdef __cplusplus
 namespace blender {
 template<typename T> class Span;
+template<typename T> class MutableSpan;
+class IndexRange;
 class StringRef;
 class StringRefNull;
 }  // namespace blender
@@ -1628,11 +1630,16 @@ typedef struct NodeShaderMix {
 
 /* Input or output in a bNodeFunctionSignature. */
 typedef struct bNodeFunctionParameter {
-  char name[64]; /* MAX_NAME */
+  char *name;
   int socket_type;
   int identifier;
   int _pad;
 } bNodeFunctionParameter;
+
+enum eNodeFunctionParameterType {
+  NODE_FUNC_PARAM_IN,
+  NODE_FUNC_PARAM_OUT,
+};
 
 typedef struct bNodeFunctionSignature {
   bNodeFunctionParameter *inputs;
@@ -1643,6 +1650,20 @@ typedef struct bNodeFunctionSignature {
   int active_output;
   int next_identifier;
   int _pad;
+
+#ifdef __cplusplus
+  blender::Span<bNodeFunctionParameter> inputs_span() const;
+  blender::MutableSpan<bNodeFunctionParameter> inputs_span();
+  blender::IndexRange inputs_range() const;
+
+  blender::Span<bNodeFunctionParameter> outputs_span() const;
+  blender::MutableSpan<bNodeFunctionParameter> outputs_span();
+  blender::IndexRange outputs_range() const;
+
+  blender::Span<bNodeFunctionParameter> params_span(eNodeFunctionParameterType param_type) const;
+  blender::MutableSpan<bNodeFunctionParameter> params_span(eNodeFunctionParameterType param_type);
+  blender::IndexRange params_range(eNodeFunctionParameterType param_type) const;
+#endif
 } bNodeFunctionSignature;
 
 typedef struct NodeFunctionEvaluate {
