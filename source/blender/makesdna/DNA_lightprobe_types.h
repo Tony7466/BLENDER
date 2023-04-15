@@ -231,10 +231,10 @@ typedef struct LightProbeIrradianceData {
  * Normalized visibility of distant light. Used for compositing grids together.
  */
 typedef struct LightProbeVisibilityData {
-  uint8_t *L0;
-  uint8_t *L1_a;
-  uint8_t *L1_b;
-  uint8_t *L1_c;
+  float *L0;
+  float *L1_a;
+  float *L1_b;
+  float *L1_c;
 } LightProbeVisibilityData;
 
 /**
