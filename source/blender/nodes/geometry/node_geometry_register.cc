@@ -82,6 +82,7 @@ void register_geometry_nodes()
   register_node_type_geo_input_normal();
   register_node_type_geo_input_position();
   register_node_type_geo_input_radius();
+  register_node_type_geo_input_rna();
   register_node_type_geo_input_scene_time();
   register_node_type_geo_input_shade_smooth();
   register_node_type_geo_input_shortest_edge_paths();

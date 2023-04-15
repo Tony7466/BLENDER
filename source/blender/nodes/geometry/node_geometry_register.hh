@@ -79,6 +79,7 @@ void register_node_type_geo_input_named_attribute();
 void register_node_type_geo_input_normal();
 void register_node_type_geo_input_position();
 void register_node_type_geo_input_radius();
+void register_node_type_geo_input_rna();
 void register_node_type_geo_input_scene_time();
 void register_node_type_geo_input_shade_smooth();
 void register_node_type_geo_input_shortest_edge_paths();

@@ -1331,6 +1331,13 @@ typedef struct NodeInputColor {
   float color[4];
 } NodeInputColor;
 
+typedef struct NodeInputRna {
+  ID *id_ptr;        // ID datablock for the driver target
+  int id_type;       // ID type for the driver target
+  char rna_path[64]; // RNA path to the property used for the driver
+  char _pad[12];     //ensure padding for memory alignment
+} NodeInputRna;
+
 typedef struct NodeInputString {
   char *string;
 } NodeInputString;

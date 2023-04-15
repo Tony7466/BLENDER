@@ -345,6 +345,7 @@ DefNode(GeometryNode, GEO_NODE_INPUT_NAMED_ATTRIBUTE, def_geo_input_named_attrib
 DefNode(GeometryNode, GEO_NODE_INPUT_NORMAL, 0, "INPUT_NORMAL", InputNormal, "Normal", "Retrieve a unit length vector indicating the direction pointing away from the geometry at each element")
 DefNode(GeometryNode, GEO_NODE_INPUT_POSITION, 0, "POSITION", InputPosition, "Position", "Retrieve a vector indicating the location of each element")
 DefNode(GeometryNode, GEO_NODE_INPUT_RADIUS, 0, "INPUT_RADIUS", InputRadius, "Radius", "Retrieve the radius at each point on curve or point cloud geometry")
+DefNode(GeometryNode, GEO_NODE_INPUT_RNA, def_geo_input_rna, "INPUT_RNA", InputRna, "Rna", "Retrieve the value of the given datablock path")
 DefNode(GeometryNode, GEO_NODE_INPUT_SCENE_TIME, 0, "INPUT_SCENE_TIME", InputSceneTime, "Scene Time", "Retrieve the current time in the scene's animation in units of seconds or frames")
 DefNode(GeometryNode, GEO_NODE_INPUT_SHADE_SMOOTH, 0, "INPUT_SHADE_SMOOTH", InputShadeSmooth, "Is Shade Smooth", "Retrieve whether each face is marked for smooth shading")
 DefNode(GeometryNode, GEO_NODE_INPUT_SHORTEST_EDGE_PATHS, 0, "SHORTEST_EDGE_PATHS", InputShortestEdgePaths, "Shortest Edge Paths", "")

@@ -4541,6 +4541,32 @@ static const EnumPropertyItem *rna_NodeConvertColorSpace_color_space_itemf(
   return items;
 }
 
+//functions related to NodeinputRna id property
+
+static int rna_NodeInputRna_id_editable(PointerRNA *ptr, const char **UNUSED(r_info))
+{
+  NodeInputRna *input_rna = (NodeInputRna *)ptr->data;
+  return (input_rna->id_type) ? PROP_EDITABLE : 0;
+}
+
+static void rna_NodeInputRna_id_set(PointerRNA *ptr, PointerRNA value, struct ReportList *UNUSED(reports))
+{
+  NodeInputRna *input_rna = (NodeInputRna *)ptr->data;
+  input_rna->id_ptr = value.data;
+}
+
+static StructRNA *rna_NodeInputRna_id_typef(PointerRNA *ptr)
+{
+  NodeInputRna *input_rna = (NodeInputRna *)ptr->data;
+  return ID_code_to_RNA_type(input_rna->id_type);
+}
+
+static void rna_NodeInputRna_update_data(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+  // Update the data related to the NodeInputRna when the ID or ID type properties change.
+  // The exact implementation depends on the context in which NodeInputRna is used.
+}
+
 #else
 
 static const EnumPropertyItem prop_image_layer_items[] = {
@@ -10612,6 +10638,38 @@ static void def_geo_raycast(StructRNA *srna)
   RNA_def_property_enum_default(prop, CD_PROP_FLOAT);
   RNA_def_property_ui_text(prop, "Data Type", "Type of data stored in attribute");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNode_socket_update");
+}
+
+static void def_geo_input_rna(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  RNA_def_struct_sdna_from(srna, "NodeInputRna", "storage");
+
+  // ID property for the target (similar to from rna_fcurve.c)
+  prop = RNA_def_property(srna, "id_ptr", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, NULL, "id_ptr");
+  RNA_def_property_struct_type(prop, "ID");
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  // RNA_def_property_editable_func(prop, "rna_NodeInputRna_id_editable");
+  // RNA_def_property_pointer_funcs(
+  //     prop, NULL, "rna_NodeInputRna_id_set", "rna_NodeInputRna_id_typef", NULL);
+  RNA_def_property_ui_text(prop, "ID", "ID datablock");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update"); //rna_NodeInputRna_update_data
+
+  prop = RNA_def_property(srna, "id_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "id_type");
+  RNA_def_property_enum_items(prop, rna_enum_id_type_items);
+  RNA_def_property_ui_text(prop, "ID Type", "ID type of the datablock");
+  // RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_ID);
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "rna_path", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, NULL, "rna_path");
+  RNA_def_property_ui_text(prop, "Data Path", "RNA path to the property used for the driver");
+  RNA_def_property_update(prop, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, "rna_Node_update");
+
 }
 
 static void def_geo_curve_fill(StructRNA *srna)
