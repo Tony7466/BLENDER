@@ -22,6 +22,69 @@ CCL_NAMESPACE_BEGIN
  * as explained in https://www.shadertoy.com/view/llG3zy.
  */
 
+struct VoronoiParamsBase {
+  float scale;
+  float detail;
+  float roughness;
+  float lacunarity;
+  float smoothness;
+  float exponent;
+  float randomness;
+  float max_amplitude;
+  float max_distance;
+  NodeVoronoiDistanceMetric metric;
+  float octave_scale;
+  float octave_amplitude;
+  float octave_distance;
+  float3 octave_color;
+
+  VoronoiParamsBase() = default;
+
+  VoronoiParamsBase(const VoronoiParamsBase &vpb)
+      : scale(vpb.scale),
+        detail(vpb.detail),
+        roughness(vpb.roughness),
+        lacunarity(vpb.lacunarity),
+        smoothness(vpb.smoothness),
+        exponent(vpb.exponent),
+        randomness(vpb.randomness),
+        max_amplitude(vpb.max_amplitude),
+        max_distance(vpb.max_distance),
+        metric(vpb.metric),
+        octave_scale(vpb.octave_scale),
+        octave_amplitude(vpb.octave_amplitude),
+        octave_distance(vpb.octave_distance),
+        octave_color(vpb.octave_color)
+  {
+  }
+};
+
+template<typename T> struct VoronoiParams : public VoronoiParamsBase {
+  T octave_coord;
+  T octave_postion;
+
+  VoronoiParams(const VoronoiParamsBase &vpb) : VoronoiParamsBase(vpb) {}
+};
+
+struct VoronoiOutputBase {
+  float distance_out;
+  float radius_out;
+  float3 color_out;
+
+  VoronoiOutputBase() = default;
+
+  VoronoiOutputBase(const VoronoiOutputBase &vob)
+      : distance_out(vob.distance_out), radius_out(vob.radius_out), color_out(vob.color_out)
+  {
+  }
+};
+
+template<typename T> struct VoronoiOutput : public VoronoiOutputBase {
+  T position_out;
+
+  VoronoiOutput(const VoronoiOutputBase &vob) : VoronoiOutputBase(vob) {}
+};
+
 /* **** 1D Voronoi **** */
 
 /* The "float exponent" and "NodeVoronoiDistanceMetric metric" function parameters are unused in
@@ -44,8 +107,8 @@ ccl_device void voronoi_f1(float w,
                            float exponent,
                            float randomness,
                            NodeVoronoiDistanceMetric metric,
-                           ccl_private float *outDistance,
-                           ccl_private float3 *outColor,
+                           ccl_private float *distance_out,
+                           ccl_private float3 *color_out,
                            ccl_private float *outW)
 {
   /* Supress compiler warnings */
@@ -68,8 +131,8 @@ ccl_device void voronoi_f1(float w,
       targetPosition = pointPosition;
     }
   }
-  *outDistance = minDistance;
-  *outColor = hash_float_to_float3(cellPosition + targetOffset);
+  *distance_out = minDistance;
+  *color_out = hash_float_to_float3(cellPosition + targetOffset);
   *outW = targetPosition + cellPosition;
 }
 
@@ -80,8 +143,8 @@ ccl_device void voronoi_smooth_f1(float w,
                                   float exponent,
                                   float randomness,
                                   NodeVoronoiDistanceMetric metric,
-                                  ccl_private float *outDistance,
-                                  ccl_private float3 *outColor,
+                                  ccl_private float *distance_out,
+                                  ccl_private float3 *color_out,
                                   ccl_private float *outW)
 {
   /* Supress compiler warnings */
@@ -107,8 +170,8 @@ ccl_device void voronoi_smooth_f1(float w,
     smoothColor = mix(smoothColor, cellColor, h) - correctionFactor;
     smoothPosition = mix(smoothPosition, pointPosition, h) - correctionFactor;
   }
-  *outDistance = smoothDistance;
-  *outColor = smoothColor;
+  *distance_out = smoothDistance;
+  *color_out = smoothColor;
   *outW = cellPosition + smoothPosition;
 }
 
@@ -118,8 +181,8 @@ ccl_device void voronoi_f2(float w,
                            float exponent,
                            float randomness,
                            NodeVoronoiDistanceMetric metric,
-                           ccl_private float *outDistance,
-                           ccl_private float3 *outColor,
+                           ccl_private float *distance_out,
+                           ccl_private float3 *color_out,
                            ccl_private float *outW)
 {
   /* Supress compiler warnings */
@@ -153,12 +216,12 @@ ccl_device void voronoi_f2(float w,
       positionF2 = pointPosition;
     }
   }
-  *outDistance = distanceF2;
-  *outColor = hash_float_to_float3(cellPosition + offsetF2);
+  *distance_out = distanceF2;
+  *color_out = hash_float_to_float3(cellPosition + offsetF2);
   *outW = positionF2 + cellPosition;
 }
 
-ccl_device void voronoi_distance_to_edge(float w, float randomness, ccl_private float *outDistance)
+ccl_device void voronoi_distance_to_edge(float w, float randomness, ccl_private float *distance_out)
 {
   float cellPosition = floorf(w);
   float localPosition = w - cellPosition;
@@ -169,10 +232,10 @@ ccl_device void voronoi_distance_to_edge(float w, float randomness, ccl_private 
   float distanceToMidLeft = fabsf((midPointPosition + leftPointPosition) / 2.0f - localPosition);
   float distanceToMidRight = fabsf((midPointPosition + rightPointPosition) / 2.0f - localPosition);
 
-  *outDistance = min(distanceToMidLeft, distanceToMidRight);
+  *distance_out = min(distanceToMidLeft, distanceToMidRight);
 }
 
-ccl_device void voronoi_n_sphere_radius_1d(float w, float randomness, ccl_private float *outRadius)
+ccl_device void voronoi_n_sphere_radius_1d(float w, float randomness, ccl_private float *radius_out)
 {
   float cellPosition = floorf(w);
   float localPosition = w - cellPosition;
@@ -205,7 +268,7 @@ ccl_device void voronoi_n_sphere_radius_1d(float w, float randomness, ccl_privat
       closestPointToClosestPoint = pointPosition;
     }
   }
-  *outRadius = fabsf(closestPointToClosestPoint - closestPoint) / 2.0f;
+  *radius_out = fabsf(closestPointToClosestPoint - closestPoint) / 2.0f;
 }
 
 /* **** 2D Voronoi **** */
@@ -237,9 +300,9 @@ ccl_device void voronoi_f1(float2 coord,
                            float exponent,
                            float randomness,
                            NodeVoronoiDistanceMetric metric,
-                           ccl_private float *outDistance,
-                           ccl_private float3 *outColor,
-                           ccl_private float2 *outPosition)
+                           ccl_private float *distance_out,
+                           ccl_private float3 *color_out,
+                           ccl_private float2 *position_out)
 {
   float2 cellPosition = floor(coord);
   float2 localPosition = coord - cellPosition;
@@ -260,9 +323,9 @@ ccl_device void voronoi_f1(float2 coord,
       }
     }
   }
-  *outDistance = minDistance;
-  *outColor = hash_float2_to_float3(cellPosition + targetOffset);
-  *outPosition = targetPosition + cellPosition;
+  *distance_out = minDistance;
+  *color_out = hash_float2_to_float3(cellPosition + targetOffset);
+  *position_out = targetPosition + cellPosition;
 }
 
 ccl_device void voronoi_smooth_f1(float2 coord,
@@ -270,9 +333,9 @@ ccl_device void voronoi_smooth_f1(float2 coord,
                                   float exponent,
                                   float randomness,
                                   NodeVoronoiDistanceMetric metric,
-                                  ccl_private float *outDistance,
-                                  ccl_private float3 *outColor,
-                                  ccl_private float2 *outPosition)
+                                  ccl_private float *distance_out,
+                                  ccl_private float3 *color_out,
+                                  ccl_private float2 *position_out)
 {
   float2 cellPosition = floor(coord);
   float2 localPosition = coord - cellPosition;
@@ -296,18 +359,18 @@ ccl_device void voronoi_smooth_f1(float2 coord,
       smoothPosition = mix(smoothPosition, pointPosition, h) - correctionFactor;
     }
   }
-  *outDistance = smoothDistance;
-  *outColor = smoothColor;
-  *outPosition = cellPosition + smoothPosition;
+  *distance_out = smoothDistance;
+  *color_out = smoothColor;
+  *position_out = cellPosition + smoothPosition;
 }
 
 ccl_device void voronoi_f2(float2 coord,
                            float exponent,
                            float randomness,
                            NodeVoronoiDistanceMetric metric,
-                           ccl_private float *outDistance,
-                           ccl_private float3 *outColor,
-                           ccl_private float2 *outPosition)
+                           ccl_private float *distance_out,
+                           ccl_private float3 *color_out,
+                           ccl_private float2 *position_out)
 {
   float2 cellPosition = floor(coord);
   float2 localPosition = coord - cellPosition;
@@ -339,14 +402,14 @@ ccl_device void voronoi_f2(float2 coord,
       }
     }
   }
-  *outDistance = distanceF2;
-  *outColor = hash_float2_to_float3(cellPosition + offsetF2);
-  *outPosition = positionF2 + cellPosition;
+  *distance_out = distanceF2;
+  *color_out = hash_float2_to_float3(cellPosition + offsetF2);
+  *position_out = positionF2 + cellPosition;
 }
 
 ccl_device void voronoi_distance_to_edge(float2 coord,
                                          float randomness,
-                                         ccl_private float *outDistance)
+                                         ccl_private float *distance_out)
 {
   float2 cellPosition = floor(coord);
   float2 localPosition = coord - cellPosition;
@@ -382,12 +445,12 @@ ccl_device void voronoi_distance_to_edge(float2 coord,
       }
     }
   }
-  *outDistance = minDistance;
+  *distance_out = minDistance;
 }
 
 ccl_device void voronoi_n_sphere_radius_2d(float2 coord,
                                            float randomness,
-                                           ccl_private float *outRadius)
+                                           ccl_private float *radius_out)
 {
   float2 cellPosition = floor(coord);
   float2 localPosition = coord - cellPosition;
@@ -426,7 +489,7 @@ ccl_device void voronoi_n_sphere_radius_2d(float2 coord,
       }
     }
   }
-  *outRadius = distance(closestPointToClosestPoint, closestPoint) / 2.0f;
+  *radius_out = distance(closestPointToClosestPoint, closestPoint) / 2.0f;
 }
 
 /* **** 3D Voronoi **** */
@@ -455,16 +518,10 @@ ccl_device float voronoi_distance_3d(float3 a,
   }
 }
 
-ccl_device void voronoi_f1(float3 coord,
-                           float exponent,
-                           float randomness,
-                           NodeVoronoiDistanceMetric metric,
-                           ccl_private float *outDistance,
-                           ccl_private float3 *outColor,
-                           ccl_private float3 *outPosition)
+ccl_device void voronoi_f1_3d(VoronoiParams<float3> &vp)
 {
-  float3 cellPosition = floor(coord);
-  float3 localPosition = coord - cellPosition;
+  float3 cellPosition = floor(vp.octave_coord);
+  float3 localPosition = vp.octave_coord - cellPosition;
 
   float minDistance = 8.0f;
   float3 targetOffset = make_float3(0.0f, 0.0f, 0.0f);
@@ -474,9 +531,9 @@ ccl_device void voronoi_f1(float3 coord,
       for (int i = -1; i <= 1; i++) {
         float3 cellOffset = make_float3(i, j, k);
         float3 pointPosition = cellOffset +
-                               hash_float3_to_float3(cellPosition + cellOffset) * randomness;
+                               hash_float3_to_float3(cellPosition + cellOffset) * vp.randomness;
         float distanceToPoint = voronoi_distance_3d(
-            pointPosition, localPosition, metric, exponent);
+            pointPosition, localPosition, vp.metric, vp.exponent);
         if (distanceToPoint < minDistance) {
           targetOffset = cellOffset;
           minDistance = distanceToPoint;
@@ -485,9 +542,9 @@ ccl_device void voronoi_f1(float3 coord,
       }
     }
   }
-  *outDistance = minDistance;
-  *outColor = hash_float3_to_float3(cellPosition + targetOffset);
-  *outPosition = targetPosition + cellPosition;
+  vp.octave_distance = minDistance;
+  vp.octave_color = hash_float3_to_float3(cellPosition + targetOffset);
+  vp.octave_postion = targetPosition + cellPosition;
 }
 
 ccl_device void voronoi_smooth_f1(float3 coord,
@@ -495,9 +552,9 @@ ccl_device void voronoi_smooth_f1(float3 coord,
                                   float exponent,
                                   float randomness,
                                   NodeVoronoiDistanceMetric metric,
-                                  ccl_private float *outDistance,
-                                  ccl_private float3 *outColor,
-                                  ccl_private float3 *outPosition)
+                                  ccl_private float *distance_out,
+                                  ccl_private float3 *color_out,
+                                  ccl_private float3 *position_out)
 {
   float3 cellPosition = floor(coord);
   float3 localPosition = coord - cellPosition;
@@ -524,18 +581,18 @@ ccl_device void voronoi_smooth_f1(float3 coord,
       }
     }
   }
-  *outDistance = smoothDistance;
-  *outColor = smoothColor;
-  *outPosition = cellPosition + smoothPosition;
+  *distance_out = smoothDistance;
+  *color_out = smoothColor;
+  *position_out = cellPosition + smoothPosition;
 }
 
 ccl_device void voronoi_f2(float3 coord,
                            float exponent,
                            float randomness,
                            NodeVoronoiDistanceMetric metric,
-                           ccl_private float *outDistance,
-                           ccl_private float3 *outColor,
-                           ccl_private float3 *outPosition)
+                           ccl_private float *distance_out,
+                           ccl_private float3 *color_out,
+                           ccl_private float3 *position_out)
 {
   float3 cellPosition = floor(coord);
   float3 localPosition = coord - cellPosition;
@@ -570,14 +627,14 @@ ccl_device void voronoi_f2(float3 coord,
       }
     }
   }
-  *outDistance = distanceF2;
-  *outColor = hash_float3_to_float3(cellPosition + offsetF2);
-  *outPosition = positionF2 + cellPosition;
+  *distance_out = distanceF2;
+  *color_out = hash_float3_to_float3(cellPosition + offsetF2);
+  *position_out = positionF2 + cellPosition;
 }
 
 ccl_device void voronoi_distance_to_edge(float3 coord,
                                          float randomness,
-                                         ccl_private float *outDistance)
+                                         ccl_private float *distance_out)
 {
   float3 cellPosition = floor(coord);
   float3 localPosition = coord - cellPosition;
@@ -617,12 +674,12 @@ ccl_device void voronoi_distance_to_edge(float3 coord,
       }
     }
   }
-  *outDistance = minDistance;
+  *distance_out = minDistance;
 }
 
 ccl_device void voronoi_n_sphere_radius_3d(float3 coord,
                                            float randomness,
-                                           ccl_private float *outRadius)
+                                           ccl_private float *radius_out)
 {
   float3 cellPosition = floor(coord);
   float3 localPosition = coord - cellPosition;
@@ -665,7 +722,7 @@ ccl_device void voronoi_n_sphere_radius_3d(float3 coord,
       }
     }
   }
-  *outRadius = distance(closestPointToClosestPoint, closestPoint) / 2.0f;
+  *radius_out = distance(closestPointToClosestPoint, closestPoint) / 2.0f;
 }
 
 /* **** 4D Voronoi **** */
@@ -698,9 +755,9 @@ ccl_device void voronoi_f1(float4 coord,
                            float exponent,
                            float randomness,
                            NodeVoronoiDistanceMetric metric,
-                           ccl_private float *outDistance,
-                           ccl_private float3 *outColor,
-                           ccl_private float4 *outPosition)
+                           ccl_private float *distance_out,
+                           ccl_private float3 *color_out,
+                           ccl_private float4 *position_out)
 {
   float4 cellPosition = floor(coord);
   float4 localPosition = coord - cellPosition;
@@ -727,9 +784,9 @@ ccl_device void voronoi_f1(float4 coord,
       }
     }
   }
-  *outDistance = minDistance;
-  *outColor = hash_float4_to_float3(cellPosition + targetOffset);
-  *outPosition = targetPosition + cellPosition;
+  *distance_out = minDistance;
+  *color_out = hash_float4_to_float3(cellPosition + targetOffset);
+  *position_out = targetPosition + cellPosition;
 }
 
 ccl_device void voronoi_smooth_f1(float4 coord,
@@ -737,9 +794,9 @@ ccl_device void voronoi_smooth_f1(float4 coord,
                                   float exponent,
                                   float randomness,
                                   NodeVoronoiDistanceMetric metric,
-                                  ccl_private float *outDistance,
-                                  ccl_private float3 *outColor,
-                                  ccl_private float4 *outPosition)
+                                  ccl_private float *distance_out,
+                                  ccl_private float3 *color_out,
+                                  ccl_private float4 *position_out)
 {
   float4 cellPosition = floor(coord);
   float4 localPosition = coord - cellPosition;
@@ -769,18 +826,18 @@ ccl_device void voronoi_smooth_f1(float4 coord,
       }
     }
   }
-  *outDistance = smoothDistance;
-  *outColor = smoothColor;
-  *outPosition = cellPosition + smoothPosition;
+  *distance_out = smoothDistance;
+  *color_out = smoothColor;
+  *position_out = cellPosition + smoothPosition;
 }
 
 ccl_device void voronoi_f2(float4 coord,
                            float exponent,
                            float randomness,
                            NodeVoronoiDistanceMetric metric,
-                           ccl_private float *outDistance,
-                           ccl_private float3 *outColor,
-                           ccl_private float4 *outPosition)
+                           ccl_private float *distance_out,
+                           ccl_private float3 *color_out,
+                           ccl_private float4 *position_out)
 {
   float4 cellPosition = floor(coord);
   float4 localPosition = coord - cellPosition;
@@ -818,14 +875,14 @@ ccl_device void voronoi_f2(float4 coord,
       }
     }
   }
-  *outDistance = distanceF2;
-  *outColor = hash_float4_to_float3(cellPosition + offsetF2);
-  *outPosition = positionF2 + cellPosition;
+  *distance_out = distanceF2;
+  *color_out = hash_float4_to_float3(cellPosition + offsetF2);
+  *position_out = positionF2 + cellPosition;
 }
 
 ccl_device void voronoi_distance_to_edge(float4 coord,
                                          float randomness,
-                                         ccl_private float *outDistance)
+                                         ccl_private float *distance_out)
 {
   float4 cellPosition = floor(coord);
   float4 localPosition = coord - cellPosition;
@@ -871,12 +928,12 @@ ccl_device void voronoi_distance_to_edge(float4 coord,
       }
     }
   }
-  *outDistance = minDistance;
+  *distance_out = minDistance;
 }
 
 ccl_device void voronoi_n_sphere_radius_4d(float4 coord,
                                            float randomness,
-                                           ccl_private float *outRadius)
+                                           ccl_private float *radius_out)
 {
   float4 cellPosition = floor(coord);
   float4 localPosition = coord - cellPosition;
@@ -925,185 +982,55 @@ ccl_device void voronoi_n_sphere_radius_4d(float4 coord,
       }
     }
   }
-  *outRadius = distance(closestPointToClosestPoint, closestPoint) / 2.0f;
+  *radius_out = distance(closestPointToClosestPoint, closestPoint) / 2.0f;
 }
 
 /* **** Fractal Voronoi **** */
 
 template<typename T>
-ccl_device void fractal_voronoi_f1(T coord,
-                                   float detail,
-                                   float roughness,
-                                   float lacunarity,
-                                   float exponent,
-                                   float randomness,
-                                   NodeVoronoiDistanceMetric metric,
-                                   ccl_private float *max_amplitude,
-                                   ccl_private float *outDistance,
-                                   ccl_private float3 *outColor,
-                                   ccl_private T *outPosition)
+ccl_device void fractal_voronoi_fx(VoronoiParams<T> &vp,
+                                   VoronoiOutput<T> &vo,
+                                   void (*voronoi_fx)(VoronoiParams<T> &))
 {
-  float octave_scale = 1.0f;
-  float octave_amplitude = 1.0f;
-  float octave_distance = 0.0f;
-  float3 octave_color{};
-  T octave_postion{};
+  vp.octave_scale = 1.0f;
+  vp.octave_amplitude = 1.0f;
+  vp.octave_distance = 0.0f;
+  vp.octave_color;
+  vp.octave_postion;
 
-  *max_amplitude = 0.0f;
-  *outDistance = 0.0f;
-  for (int i = 0; i <= ceilf(detail); ++i) {
-    voronoi_f1(coord * octave_scale,
-               exponent,
-               randomness,
-               metric,
-               &octave_distance,
-               &octave_color,
-               &octave_postion);
-    if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
-      *max_amplitude = 1.0f;
-      *outDistance = octave_distance;
-      *outColor = octave_color;
-      *outPosition = octave_postion;
+  T voronoi_coord = vp.octave_coord;
+  for (int i = 0; i <= ceilf(vp.detail); ++i) {
+    vp.octave_coord = voronoi_coord * vp.octave_scale;
+    voronoi_fx(vp);
+    if (vp.detail == 0.0f || vp.roughness == 0.0f || vp.lacunarity == 0.0f) {
+      vp.max_amplitude = 1.0f;
+      vo.distance_out = vp.octave_distance;
+      vo.color_out = vp.octave_color;
+      vo.position_out = vp.octave_postion;
       return;
     }
-    else if (i <= detail) {
-      *max_amplitude += octave_amplitude;
-      *outDistance += octave_distance * octave_amplitude;
-      *outColor += octave_color * octave_amplitude;
-      *outPosition = lerp(*outPosition, octave_postion / octave_scale, octave_amplitude);
-      octave_scale *= lacunarity;
-      octave_amplitude *= roughness;
+    else if (i <= vp.detail) {
+      vp.max_amplitude += vp.octave_amplitude;
+      vo.distance_out += vp.octave_distance * vp.octave_amplitude;
+      vo.color_out += vp.octave_color * vp.octave_amplitude;
+      vo.position_out = lerp(
+          vo.position_out, vp.octave_postion / vp.octave_scale, vp.octave_amplitude);
+      vp.octave_scale *= vp.lacunarity;
+      vp.octave_amplitude *= vp.roughness;
     }
     else {
-      float remainder = detail - floorf(detail);
+      float remainder = vp.detail - floorf(vp.detail);
       if (remainder != 0.0f) {
-        *max_amplitude = lerp(*max_amplitude, *max_amplitude + octave_amplitude, remainder);
-        *outDistance = lerp(
-            *outDistance, *outDistance + octave_distance * octave_amplitude, remainder);
-        *outColor = lerp(*outColor, *outColor + octave_color * octave_amplitude, remainder);
-        *outPosition = lerp(*outPosition,
-                            lerp(*outPosition, octave_postion / octave_scale, octave_amplitude),
-                            remainder);
-      }
-    }
-  }
-}
-
-template<typename T>
-ccl_device void fractal_voronoi_smooth_f1(T coord,
-                                          float detail,
-                                          float roughness,
-                                          float lacunarity,
-                                          float smoothness,
-                                          float exponent,
-                                          float randomness,
-                                          NodeVoronoiDistanceMetric metric,
-                                          ccl_private float *max_amplitude,
-                                          ccl_private float *outDistance,
-                                          ccl_private float3 *outColor,
-                                          ccl_private T *outPosition)
-{
-  float octave_scale = 1.0f;
-  float octave_amplitude = 1.0f;
-  float octave_distance = 0.0f;
-  float3 octave_color{};
-  T octave_postion{};
-
-  *max_amplitude = 0.0f;
-  *outDistance = 0.0f;
-  for (int i = 0; i <= ceilf(detail); ++i) {
-    voronoi_smooth_f1(coord * octave_scale,
-                      smoothness,
-                      exponent,
-                      randomness,
-                      metric,
-                      &octave_distance,
-                      &octave_color,
-                      &octave_postion);
-    if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
-      *max_amplitude = 1.0f;
-      *outDistance = octave_distance;
-      *outColor = octave_color;
-      *outPosition = octave_postion;
-      return;
-    }
-    else if (i <= detail) {
-      *max_amplitude += octave_amplitude;
-      *outDistance += octave_distance * octave_amplitude;
-      *outColor += octave_color * octave_amplitude;
-      *outPosition = lerp(*outPosition, octave_postion / octave_scale, octave_amplitude);
-      octave_scale *= lacunarity;
-      octave_amplitude *= roughness;
-    }
-    else {
-      float remainder = detail - floorf(detail);
-      if (remainder != 0.0f) {
-        *max_amplitude = lerp(*max_amplitude, *max_amplitude + octave_amplitude, remainder);
-        *outDistance = lerp(
-            *outDistance, *outDistance + octave_distance * octave_amplitude, remainder);
-        *outColor = lerp(*outColor, *outColor + octave_color * octave_amplitude, remainder);
-        *outPosition = lerp(*outPosition,
-                            lerp(*outPosition, octave_postion / octave_scale, octave_amplitude),
-                            remainder);
-      }
-    }
-  }
-}
-
-template<typename T>
-ccl_device void fractal_voronoi_f2(T coord,
-                                   float detail,
-                                   float roughness,
-                                   float lacunarity,
-                                   float exponent,
-                                   float randomness,
-                                   NodeVoronoiDistanceMetric metric,
-                                   ccl_private float *max_amplitude,
-                                   ccl_private float *outDistance,
-                                   ccl_private float3 *outColor,
-                                   ccl_private T *outPosition)
-{
-  float octave_scale = 1.0f;
-  float octave_amplitude = 1.0f;
-  float octave_distance = 0.0f;
-  float3 octave_color{};
-  T octave_postion{};
-
-  *max_amplitude = 0.0f;
-  *outDistance = 0.0f;
-  for (int i = 0; i <= ceilf(detail); ++i) {
-    voronoi_f2(coord * octave_scale,
-               exponent,
-               randomness,
-               metric,
-               &octave_distance,
-               &octave_color,
-               &octave_postion);
-    if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
-      *max_amplitude = 1.0f;
-      *outDistance = octave_distance;
-      *outColor = octave_color;
-      *outPosition = octave_postion;
-      return;
-    }
-    else if (i <= detail) {
-      *max_amplitude += octave_amplitude;
-      *outDistance += octave_distance * octave_amplitude;
-      *outColor += octave_color * octave_amplitude;
-      *outPosition = lerp(*outPosition, octave_postion / octave_scale, octave_amplitude);
-      octave_scale *= lacunarity;
-      octave_amplitude *= roughness;
-    }
-    else {
-      float remainder = detail - floorf(detail);
-      if (remainder != 0.0f) {
-        *max_amplitude = lerp(*max_amplitude, *max_amplitude + octave_amplitude, remainder);
-        *outDistance = lerp(
-            *outDistance, *outDistance + octave_distance * octave_amplitude, remainder);
-        *outColor = lerp(*outColor, *outColor + octave_color * octave_amplitude, remainder);
-        *outPosition = lerp(*outPosition,
-                            lerp(*outPosition, octave_postion / octave_scale, octave_amplitude),
-                            remainder);
+        vp.max_amplitude = lerp(
+            vp.max_amplitude, vp.max_amplitude + vp.octave_amplitude, remainder);
+        vo.distance_out = lerp(
+            vo.distance_out, vo.distance_out + vp.octave_distance * vp.octave_amplitude, remainder);
+        vo.color_out = lerp(
+            vo.color_out, vo.color_out + vp.octave_color * vp.octave_amplitude, remainder);
+        vo.position_out = lerp(
+            vo.position_out,
+            lerp(vo.position_out, vp.octave_postion / vp.octave_scale, vp.octave_amplitude),
+            remainder);
       }
     }
   }
@@ -1116,24 +1043,24 @@ ccl_device void fractal_voronoi_distance_to_edge(T coord,
                                                  float lacunarity,
                                                  float randomness,
                                                  ccl_private float *max_amplitude,
-                                                 ccl_private float *outDistance)
+                                                 ccl_private float *distance_out)
 {
   float octave_scale = 1.0f;
   float octave_amplitude = 1.0f;
   float octave_distance = 0.0f;
 
   *max_amplitude = 2.0f - randomness;
-  *outDistance = 8.0f;
+  *distance_out = 8.0f;
   for (int i = 0; i <= ceilf(detail); ++i) {
     voronoi_distance_to_edge(coord * octave_scale, randomness, &octave_distance);
     if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
-      *outDistance = octave_distance;
+      *distance_out = octave_distance;
       return;
     }
     else if (i <= detail) {
       *max_amplitude = lerp(*max_amplitude, (2.0f - randomness) * octave_scale, octave_amplitude);
-      *outDistance = lerp(
-          *outDistance, min(*outDistance, octave_distance / octave_scale), octave_amplitude);
+      *distance_out = lerp(
+          *distance_out, min(*distance_out, octave_distance / octave_scale), octave_amplitude);
       octave_scale *= lacunarity;
       octave_amplitude *= roughness;
     }
@@ -1144,8 +1071,8 @@ ccl_device void fractal_voronoi_distance_to_edge(T coord,
             *max_amplitude, (2.0f - randomness) * octave_scale, octave_amplitude);
         *max_amplitude = lerp(*max_amplitude, lerp_amplitude, remainder);
         float lerp_distance = lerp(
-            *outDistance, min(*outDistance, octave_distance / octave_scale), octave_amplitude);
-        *outDistance = lerp(*outDistance, min(*outDistance, lerp_distance), remainder);
+            *distance_out, min(*distance_out, octave_distance / octave_scale), octave_amplitude);
+        *distance_out = lerp(*distance_out, min(*distance_out, lerp_distance), remainder);
       }
     }
   }
@@ -1189,458 +1116,474 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
   svm_unpack_node_uchar3(
       stack_offsets.w, &w_out_stack_offset, &radius_out_stack_offset, &normalize);
 
-  float3 coord = stack_load_float3(stack, coord_stack_offset);
-  float w = stack_load_float_default(stack, w_stack_offset, defaults1.x);
-  float scale = stack_load_float_default(stack, scale_stack_offset, defaults1.y);
-  float detail = stack_load_float_default(stack, detail_stack_offset, defaults1.z);
-  float roughness = stack_load_float_default(stack, roughness_stack_offset, defaults1.w);
-  float lacunarity = stack_load_float_default(stack, smoothness_stack_offset, defaults2.x);
-  float smoothness = stack_load_float_default(stack, smoothness_stack_offset, defaults2.y);
-  float exponent = stack_load_float_default(stack, exponent_stack_offset, defaults2.z);
-  float randomness = stack_load_float_default(stack, randomness_stack_offset, defaults2.w);
+  VoronoiParamsBase vpb;
+
+  float3 voronoi_coord = stack_load_float3(stack, coord_stack_offset);
+  float voronoi_w = stack_load_float_default(stack, w_stack_offset, defaults1.x);
+  vpb.scale = stack_load_float_default(stack, scale_stack_offset, defaults1.y);
+  vpb.detail = stack_load_float_default(stack, detail_stack_offset, defaults1.z);
+  vpb.roughness = stack_load_float_default(stack, roughness_stack_offset, defaults1.w);
+  vpb.lacunarity = stack_load_float_default(stack, smoothness_stack_offset, defaults2.x);
+  vpb.smoothness = stack_load_float_default(stack, smoothness_stack_offset, defaults2.y);
+  vpb.exponent = stack_load_float_default(stack, exponent_stack_offset, defaults2.z);
+  vpb.randomness = stack_load_float_default(stack, randomness_stack_offset, defaults2.w);
+  vpb.max_amplitude = 0.0f;
 
   NodeVoronoiFeature voronoi_feature = (NodeVoronoiFeature)feature;
-  NodeVoronoiDistanceMetric voronoi_metric = (NodeVoronoiDistanceMetric)metric;
+  vpb.metric = (NodeVoronoiDistanceMetric)metric;
 
-  float distance_out = 0.0f, w_out = 0.0f, radius_out = 0.0f;
-  float3 color_out = make_float3(0.0f, 0.0f, 0.0f);
-  float3 position_out = make_float3(0.0f, 0.0f, 0.0f);
-  float max_amplitude = 0.0f;
+  VoronoiOutputBase vob;
 
-  detail = clamp(detail, 0.0f, 15.0f);
-  roughness = clamp(roughness, 0.0f, 1.0f);
-  randomness = clamp(randomness, 0.0f, 1.0f);
-  smoothness = clamp(smoothness / 2.0f, 0.0f, 0.5f);
+  vob.distance_out = 0.0f;
+  float voronoi_w_out = 0.0f;
+  vob.radius_out = 0.0f;
+  vob.color_out = make_float3(0.0f, 0.0f, 0.0f);
+  float3 voronoi_position_out = make_float3(0.0f, 0.0f, 0.0f);
 
-  w *= scale;
-  coord *= scale;
+  vpb.detail = clamp(vpb.detail, 0.0f, 15.0f);
+  vpb.roughness = clamp(vpb.roughness, 0.0f, 1.0f);
+  vpb.randomness = clamp(vpb.randomness, 0.0f, 1.0f);
+  vpb.smoothness = clamp(vpb.smoothness / 2.0f, 0.0f, 0.5f);
 
-  switch (dimensions) {
-    case 1: {
-      switch (voronoi_feature) {
-        case NODE_VORONOI_F1: {
-          fractal_voronoi_f1<float>(w,
-                                    detail,
-                                    roughness,
-                                    lacunarity,
-                                    exponent,
-                                    randomness,
-                                    voronoi_metric,
-                                    &max_amplitude,
-                                    &distance_out,
-                                    &color_out,
-                                    &w_out);
-          if (normalize) {
-            distance_out /= (0.5f + 0.5f * randomness) * max_amplitude;
-            color_out /= max_amplitude;
-          }
-          break;
-        }
-        case NODE_VORONOI_SMOOTH_F1: {
-          fractal_voronoi_smooth_f1<float>(w,
-                                           detail,
-                                           roughness,
-                                           lacunarity,
-                                           smoothness,
-                                           exponent,
-                                           randomness,
-                                           voronoi_metric,
-                                           &max_amplitude,
-                                           &distance_out,
-                                           &color_out,
-                                           &w_out);
-          if (normalize) {
-            distance_out /= (0.5f + 0.5f * randomness) * max_amplitude;
-            color_out /= max_amplitude;
-          }
-          break;
-        }
-        case NODE_VORONOI_F2: {
-          fractal_voronoi_f2<float>(w,
-                                    detail,
-                                    roughness,
-                                    lacunarity,
-                                    exponent,
-                                    randomness,
-                                    voronoi_metric,
-                                    &max_amplitude,
-                                    &distance_out,
-                                    &color_out,
-                                    &w_out);
-          if (normalize) {
-            if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
-              distance_out /= (1.0f - randomness) + randomness * max_amplitude;
-            }
-            else {
-              distance_out /= (1.0f - randomness) * ceilf(detail + 1.0f) +
-                              randomness * max_amplitude;
-            }
-            color_out /= max_amplitude;
-          }
-          break;
-        }
-        case NODE_VORONOI_DISTANCE_TO_EDGE: {
-          fractal_voronoi_distance_to_edge<float>(
-              w, detail, roughness, lacunarity, randomness, &max_amplitude, &distance_out);
-          if (normalize) {
-            /* max_amplitude is used here to keep the code consistent, however it has a different
-             * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude, it
-             * represents an abstract factor needed to cancel out the amplitude attenuation caused
-             * by the higher layers. */
-            distance_out *= max_amplitude;
-          }
-          break;
-        }
-        case NODE_VORONOI_N_SPHERE_RADIUS:
-          voronoi_n_sphere_radius_1d(w, randomness, &radius_out);
-          break;
-        default:
-          kernel_assert(0);
-      }
-      w_out = safe_divide(w_out, scale);
-      break;
-    }
-    case 2: {
-      float2 coord_2d = make_float2(coord.x, coord.y);
-      float2 position_out_2d = zero_float2();
+  voronoi_coord *= vpb.scale;
+  voronoi_w *= vpb.scale;
 
-      switch (voronoi_feature) {
-        case NODE_VORONOI_F1: {
-          fractal_voronoi_f1<float2>(coord_2d,
-                                     detail,
-                                     roughness,
-                                     lacunarity,
-                                     exponent,
-                                     randomness,
-                                     voronoi_metric,
-                                     &max_amplitude,
-                                     &distance_out,
-                                     &color_out,
-                                     &position_out_2d);
-          if (normalize) {
-            distance_out /= (0.5f + 0.5f * randomness) * max_amplitude *
-                            voronoi_distance_2d(make_float2(1.0f, 1.0f),
-                                                make_float2(0.0f, 0.0f),
-                                                voronoi_metric,
-                                                exponent);
-            color_out /= max_amplitude;
-          }
-          break;
-        }
-        case NODE_VORONOI_SMOOTH_F1:
-          IF_KERNEL_NODES_FEATURE(VORONOI_EXTRA)
-          {
-            fractal_voronoi_smooth_f1<float2>(coord_2d,
-                                              detail,
-                                              roughness,
-                                              lacunarity,
-                                              smoothness,
-                                              exponent,
-                                              randomness,
-                                              voronoi_metric,
-                                              &max_amplitude,
-                                              &distance_out,
-                                              &color_out,
-                                              &position_out_2d);
-            if (normalize) {
-              distance_out /= (0.5f + 0.5f * randomness) * max_amplitude *
-                              voronoi_distance_2d(make_float2(1.0f, 1.0f),
-                                                  make_float2(0.0f, 0.0f),
-                                                  voronoi_metric,
-                                                  exponent);
-              color_out /= max_amplitude;
-            }
-            break;
-          }
-          break;
-        case NODE_VORONOI_F2: {
-          fractal_voronoi_f2<float2>(coord_2d,
-                                     detail,
-                                     roughness,
-                                     lacunarity,
-                                     exponent,
-                                     randomness,
-                                     voronoi_metric,
-                                     &max_amplitude,
-                                     &distance_out,
-                                     &color_out,
-                                     &position_out_2d);
-          if (normalize) {
-            if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
-              distance_out /= (1.0f - randomness) +
-                              randomness * max_amplitude *
-                                  voronoi_distance_2d(make_float2(1.0f, 1.0f),
-                                                      make_float2(0.0f, 0.0f),
-                                                      voronoi_metric,
-                                                      exponent);
-            }
-            else {
-              distance_out /= (1.0f - randomness) * ceilf(detail + 1.0f) +
-                              randomness * max_amplitude *
-                                  voronoi_distance_2d(make_float2(1.0f, 1.0f),
-                                                      make_float2(0.0f, 0.0f),
-                                                      voronoi_metric,
-                                                      exponent);
-            }
-            color_out /= max_amplitude;
-          }
-          break;
-        }
-        case NODE_VORONOI_DISTANCE_TO_EDGE: {
-          fractal_voronoi_distance_to_edge<float2>(
-              coord_2d, detail, roughness, lacunarity, randomness, &max_amplitude, &distance_out);
-          if (normalize) {
-            /* max_amplitude is used here to keep the code consistent, however it has a different
-             * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude, it
-             * represents an abstract factor needed to cancel out the amplitude attenuation caused
-             * by the higher layers. */
-            distance_out *= max_amplitude;
-          }
-          break;
-        }
-        case NODE_VORONOI_N_SPHERE_RADIUS:
-          voronoi_n_sphere_radius_2d(coord_2d, randomness, &radius_out);
-          break;
-        default:
-          kernel_assert(0);
-      }
-      position_out_2d = safe_divide_float2_float(position_out_2d, scale);
-      position_out = make_float3(position_out_2d.x, position_out_2d.y, 0.0f);
-      break;
-    }
-    case 3: {
-      switch (voronoi_feature) {
-        case NODE_VORONOI_F1: {
-          fractal_voronoi_f1<float3>(coord,
-                                     detail,
-                                     roughness,
-                                     lacunarity,
-                                     exponent,
-                                     randomness,
-                                     voronoi_metric,
-                                     &max_amplitude,
-                                     &distance_out,
-                                     &color_out,
-                                     &position_out);
-          if (normalize) {
-            distance_out /= (0.5f + 0.5f * randomness) * max_amplitude *
-                            voronoi_distance_3d(make_float3(1.0f, 1.0f, 1.0f),
-                                                make_float3(0.0f, 0.0f, 0.0f),
-                                                voronoi_metric,
-                                                exponent);
-            color_out /= max_amplitude;
-          }
-          break;
-        }
-        case NODE_VORONOI_SMOOTH_F1:
-          IF_KERNEL_NODES_FEATURE(VORONOI_EXTRA)
-          {
-            fractal_voronoi_smooth_f1<float3>(coord,
-                                              detail,
-                                              roughness,
-                                              lacunarity,
-                                              smoothness,
-                                              exponent,
-                                              randomness,
-                                              voronoi_metric,
-                                              &max_amplitude,
-                                              &distance_out,
-                                              &color_out,
-                                              &position_out);
-            if (normalize) {
-              distance_out /= (0.5f + 0.5f * randomness) * max_amplitude *
-                              voronoi_distance_3d(make_float3(1.0f, 1.0f, 1.0f),
-                                                  make_float3(0.0f, 0.0f, 0.0f),
-                                                  voronoi_metric,
-                                                  exponent);
-              color_out /= max_amplitude;
-            }
-            break;
-          }
-          break;
-        case NODE_VORONOI_F2: {
-          fractal_voronoi_f2<float3>(coord,
-                                     detail,
-                                     roughness,
-                                     lacunarity,
-                                     exponent,
-                                     randomness,
-                                     voronoi_metric,
-                                     &max_amplitude,
-                                     &distance_out,
-                                     &color_out,
-                                     &position_out);
-          if (normalize) {
-            if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
-              distance_out /= (1.0f - randomness) +
-                              randomness * max_amplitude *
-                                  voronoi_distance_3d(make_float3(1.0f, 1.0f, 1.0f),
-                                                      make_float3(0.0f, 0.0f, 0.0f),
-                                                      voronoi_metric,
-                                                      exponent);
-            }
-            else {
-              distance_out /= (1.0f - randomness) * ceilf(detail + 1.0f) +
-                              randomness * max_amplitude *
-                                  voronoi_distance_3d(make_float3(1.0f, 1.0f, 1.0f),
-                                                      make_float3(0.0f, 0.0f, 0.0f),
-                                                      voronoi_metric,
-                                                      exponent);
-            }
-            color_out /= max_amplitude;
-          }
-          break;
-        }
-        case NODE_VORONOI_DISTANCE_TO_EDGE: {
-          fractal_voronoi_distance_to_edge<float3>(
-              coord, detail, roughness, lacunarity, randomness, &max_amplitude, &distance_out);
-          if (normalize) {
-            /* max_amplitude is used here to keep the code consistent, however it has a different
-             * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude, it
-             * represents an abstract factor needed to cancel out the amplitude attenuation caused
-             * by the higher layers. */
-            distance_out *= max_amplitude;
-          }
-          break;
-        }
-        case NODE_VORONOI_N_SPHERE_RADIUS:
-          voronoi_n_sphere_radius_3d(coord, randomness, &radius_out);
-          break;
-        default:
-          kernel_assert(0);
-      }
-      position_out = safe_divide(position_out, scale);
-      break;
-    }
+  // switch (dimensions) {
+  //   case 1: {
+  //     switch (voronoi_feature) {
+  //       case NODE_VORONOI_F1: {
+  //         fractal_voronoi_f1<float>(w,
+  //                                   detail,
+  //                                   roughness,
+  //                                   lacunarity,
+  //                                   exponent,
+  //                                   randomness,
+  //                                   voronoi_metric,
+  //                                   &max_amplitude,
+  //                                   &distance_out,
+  //                                   &color_out,
+  //                                   &w_out);
+  //         if (normalize) {
+  //           distance_out /= (0.5f + 0.5f * randomness) * max_amplitude;
+  //           color_out /= max_amplitude;
+  //         }
+  //         break;
+  //       }
+  //       case NODE_VORONOI_SMOOTH_F1: {
+  //         fractal_voronoi_smooth_f1<float>(w,
+  //                                          detail,
+  //                                          roughness,
+  //                                          lacunarity,
+  //                                          smoothness,
+  //                                          exponent,
+  //                                          randomness,
+  //                                          voronoi_metric,
+  //                                          &max_amplitude,
+  //                                          &distance_out,
+  //                                          &color_out,
+  //                                          &w_out);
+  //         if (normalize) {
+  //           distance_out /= (0.5f + 0.5f * randomness) * max_amplitude;
+  //           color_out /= max_amplitude;
+  //         }
+  //         break;
+  //       }
+  //       case NODE_VORONOI_F2: {
+  //         fractal_voronoi_f2<float>(w,
+  //                                   detail,
+  //                                   roughness,
+  //                                   lacunarity,
+  //                                   exponent,
+  //                                   randomness,
+  //                                   voronoi_metric,
+  //                                   &max_amplitude,
+  //                                   &distance_out,
+  //                                   &color_out,
+  //                                   &w_out);
+  //         if (normalize) {
+  //           if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
+  //             distance_out /= (1.0f - randomness) + randomness * max_amplitude;
+  //           }
+  //           else {
+  //             distance_out /= (1.0f - randomness) * ceilf(detail + 1.0f) +
+  //                             randomness * max_amplitude;
+  //           }
+  //           color_out /= max_amplitude;
+  //         }
+  //         break;
+  //       }
+  //       case NODE_VORONOI_DISTANCE_TO_EDGE: {
+  //         fractal_voronoi_distance_to_edge<float>(
+  //             w, detail, roughness, lacunarity, randomness, &max_amplitude, &distance_out);
+  //         if (normalize) {
+  //           /* max_amplitude is used here to keep the code consistent, however it has a
+  //           different
+  //            * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude,
+  //            it
+  //            * represents an abstract factor needed to cancel out the amplitude attenuation
+  //            caused
+  //            * by the higher layers. */
+  //           distance_out *= max_amplitude;
+  //         }
+  //         break;
+  //       }
+  //       case NODE_VORONOI_N_SPHERE_RADIUS:
+  //         voronoi_n_sphere_radius_1d(w, randomness, &radius_out);
+  //         break;
+  //       default:
+  //         kernel_assert(0);
+  //     }
+  //     w_out = safe_divide(w_out, scale);
+  //     break;
+  //   }
+  //   case 2: {
+  //     float2 coord_2d = make_float2(coord.x, coord.y);
+  //     float2 position_out_2d = zero_float2();
 
-    case 4: {
-      IF_KERNEL_NODES_FEATURE(VORONOI_EXTRA)
-      {
-        float4 coord_4d = make_float4(coord.x, coord.y, coord.z, w);
-        float4 position_out_4d;
+  //    switch (voronoi_feature) {
+  //      case NODE_VORONOI_F1: {
+  //        fractal_voronoi_f1<float2>(coord_2d,
+  //                                   detail,
+  //                                   roughness,
+  //                                   lacunarity,
+  //                                   exponent,
+  //                                   randomness,
+  //                                   voronoi_metric,
+  //                                   &max_amplitude,
+  //                                   &distance_out,
+  //                                   &color_out,
+  //                                   &position_out_2d);
+  //        if (normalize) {
+  //          distance_out /= (0.5f + 0.5f * randomness) * max_amplitude *
+  //                          voronoi_distance_2d(make_float2(1.0f, 1.0f),
+  //                                              make_float2(0.0f, 0.0f),
+  //                                              voronoi_metric,
+  //                                              exponent);
+  //          color_out /= max_amplitude;
+  //        }
+  //        break;
+  //      }
+  //      case NODE_VORONOI_SMOOTH_F1:
+  //        IF_KERNEL_NODES_FEATURE(VORONOI_EXTRA)
+  //        {
+  //          fractal_voronoi_smooth_f1<float2>(coord_2d,
+  //                                            detail,
+  //                                            roughness,
+  //                                            lacunarity,
+  //                                            smoothness,
+  //                                            exponent,
+  //                                            randomness,
+  //                                            voronoi_metric,
+  //                                            &max_amplitude,
+  //                                            &distance_out,
+  //                                            &color_out,
+  //                                            &position_out_2d);
+  //          if (normalize) {
+  //            distance_out /= (0.5f + 0.5f * randomness) * max_amplitude *
+  //                            voronoi_distance_2d(make_float2(1.0f, 1.0f),
+  //                                                make_float2(0.0f, 0.0f),
+  //                                                voronoi_metric,
+  //                                                exponent);
+  //            color_out /= max_amplitude;
+  //          }
+  //          break;
+  //        }
+  //        break;
+  //      case NODE_VORONOI_F2: {
+  //        fractal_voronoi_f2<float2>(coord_2d,
+  //                                   detail,
+  //                                   roughness,
+  //                                   lacunarity,
+  //                                   exponent,
+  //                                   randomness,
+  //                                   voronoi_metric,
+  //                                   &max_amplitude,
+  //                                   &distance_out,
+  //                                   &color_out,
+  //                                   &position_out_2d);
+  //        if (normalize) {
+  //          if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
+  //            distance_out /= (1.0f - randomness) +
+  //                            randomness * max_amplitude *
+  //                                voronoi_distance_2d(make_float2(1.0f, 1.0f),
+  //                                                    make_float2(0.0f, 0.0f),
+  //                                                    voronoi_metric,
+  //                                                    exponent);
+  //          }
+  //          else {
+  //            distance_out /= (1.0f - randomness) * ceilf(detail + 1.0f) +
+  //                            randomness * max_amplitude *
+  //                                voronoi_distance_2d(make_float2(1.0f, 1.0f),
+  //                                                    make_float2(0.0f, 0.0f),
+  //                                                    voronoi_metric,
+  //                                                    exponent);
+  //          }
+  //          color_out /= max_amplitude;
+  //        }
+  //        break;
+  //      }
+  //      case NODE_VORONOI_DISTANCE_TO_EDGE: {
+  //        fractal_voronoi_distance_to_edge<float2>(
+  //            coord_2d, detail, roughness, lacunarity, randomness, &max_amplitude,
+  //            &distance_out);
+  //        if (normalize) {
+  //          /* max_amplitude is used here to keep the code consistent, however it has a different
+  //           * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude,
+  //           it
+  //           * represents an abstract factor needed to cancel out the amplitude attenuation
+  //           caused
+  //           * by the higher layers. */
+  //          distance_out *= max_amplitude;
+  //        }
+  //        break;
+  //      }
+  //      case NODE_VORONOI_N_SPHERE_RADIUS:
+  //        voronoi_n_sphere_radius_2d(coord_2d, randomness, &radius_out);
+  //        break;
+  //      default:
+  //        kernel_assert(0);
+  //    }
+  //    position_out_2d = safe_divide_float2_float(position_out_2d, scale);
+  //    position_out = make_float3(position_out_2d.x, position_out_2d.y, 0.0f);
+  //    break;
+  //  }
+  //  case 3: {
+  VoronoiParams<float3> vp{vpb};
+  vp.octave_coord = voronoi_coord;
+  vp.max_distance = voronoi_distance_3d(zero_float3(), one_float3(), vp.metric, vp.exponent);
+  VoronoiOutput<float3> vo{vob};
+  vo.position_out = zero_float3();
+  //    switch (voronoi_feature) {
+  //   case NODE_VORONOI_F1: {
+  fractal_voronoi_fx<float3>(vp, vo, voronoi_f1_3d);
+  vob = vo;
+  voronoi_position_out = vo.position_out;
+  voronoi_w_out = 0.0f;
+  // if (normalize) {
+  //   distance_out /= (0.5f + 0.5f * randomness) * max_amplitude *
+  //                   voronoi_distance_3d(make_float3(1.0f, 1.0f, 1.0f),
+  //                                       make_float3(0.0f, 0.0f, 0.0f),
+  //                                       voronoi_metric,
+  //                                       exponent);
+  //   color_out /= max_amplitude;
+  // }
+  //         break;
+  //       }
+  //       case NODE_VORONOI_SMOOTH_F1:
+  //         IF_KERNEL_NODES_FEATURE(VORONOI_EXTRA)
+  //         {
+  //           fractal_voronoi_smooth_f1<float3>(coord,
+  //                                             detail,
+  //                                             roughness,
+  //                                             lacunarity,
+  //                                             smoothness,
+  //                                             exponent,
+  //                                             randomness,
+  //                                             voronoi_metric,
+  //                                             &max_amplitude,
+  //                                             &distance_out,
+  //                                             &color_out,
+  //                                             &position_out);
+  //           if (normalize) {
+  //             distance_out /= (0.5f + 0.5f * randomness) * max_amplitude *
+  //                             voronoi_distance_3d(make_float3(1.0f, 1.0f, 1.0f),
+  //                                                 make_float3(0.0f, 0.0f, 0.0f),
+  //                                                 voronoi_metric,
+  //                                                 exponent);
+  //             color_out /= max_amplitude;
+  //           }
+  //           break;
+  //         }
+  //         break;
+  //       case NODE_VORONOI_F2: {
+  //         fractal_voronoi_f2<float3>(coord,
+  //                                    detail,
+  //                                    roughness,
+  //                                    lacunarity,
+  //                                    exponent,
+  //                                    randomness,
+  //                                    voronoi_metric,
+  //                                    &max_amplitude,
+  //                                    &distance_out,
+  //                                    &color_out,
+  //                                    &position_out);
+  //         if (normalize) {
+  //           if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
+  //             distance_out /= (1.0f - randomness) +
+  //                             randomness * max_amplitude *
+  //                                 voronoi_distance_3d(make_float3(1.0f, 1.0f, 1.0f),
+  //                                                     make_float3(0.0f, 0.0f, 0.0f),
+  //                                                     voronoi_metric,
+  //                                                     exponent);
+  //           }
+  //           else {
+  //             distance_out /= (1.0f - randomness) * ceilf(detail + 1.0f) +
+  //                             randomness * max_amplitude *
+  //                                 voronoi_distance_3d(make_float3(1.0f, 1.0f, 1.0f),
+  //                                                     make_float3(0.0f, 0.0f, 0.0f),
+  //                                                     voronoi_metric,
+  //                                                     exponent);
+  //           }
+  //           color_out /= max_amplitude;
+  //         }
+  //         break;
+  //       }
+  //       case NODE_VORONOI_DISTANCE_TO_EDGE: {
+  //         fractal_voronoi_distance_to_edge<float3>(
+  //             coord, detail, roughness, lacunarity, randomness, &max_amplitude, &distance_out);
+  //         if (normalize) {
+  //           /* max_amplitude is used here to keep the code consistent, however it has a
+  //           different
+  //            * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude,
+  //            it
+  //            * represents an abstract factor needed to cancel out the amplitude attenuation
+  //            caused
+  //            * by the higher layers. */
+  //           distance_out *= max_amplitude;
+  //         }
+  //         break;
+  //       }
+  //       case NODE_VORONOI_N_SPHERE_RADIUS:
+  //         voronoi_n_sphere_radius_3d(coord, randomness, &radius_out);
+  //         break;
+  //       default:
+  //         kernel_assert(0);
+  //     }
+  //     position_out = safe_divide(position_out, scale);
+  //     break;
+  //   }
 
-        switch (voronoi_feature) {
-          case NODE_VORONOI_F1: {
-            fractal_voronoi_f1<float4>(coord_4d,
-                                       detail,
-                                       roughness,
-                                       lacunarity,
-                                       exponent,
-                                       randomness,
-                                       voronoi_metric,
-                                       &max_amplitude,
-                                       &distance_out,
-                                       &color_out,
-                                       &position_out_4d);
-            if (normalize) {
-              distance_out /= (0.5f + 0.5f * randomness) * max_amplitude *
-                              voronoi_distance_4d(make_float4(1.0f, 1.0f, 1.0f, 1.0f),
-                                                  make_float4(0.0f, 0.0f, 0.0f, 0.0f),
-                                                  voronoi_metric,
-                                                  exponent);
-              color_out /= max_amplitude;
-            }
-            break;
-          }
-          case NODE_VORONOI_SMOOTH_F1: {
-            fractal_voronoi_smooth_f1<float4>(coord_4d,
-                                              detail,
-                                              roughness,
-                                              lacunarity,
-                                              smoothness,
-                                              exponent,
-                                              randomness,
-                                              voronoi_metric,
-                                              &max_amplitude,
-                                              &distance_out,
-                                              &color_out,
-                                              &position_out_4d);
-            if (normalize) {
-              distance_out /= (0.5f + 0.5f * randomness) * max_amplitude *
-                              voronoi_distance_4d(make_float4(1.0f, 1.0f, 1.0f, 1.0f),
-                                                  make_float4(0.0f, 0.0f, 0.0f, 0.0f),
-                                                  voronoi_metric,
-                                                  exponent);
-              color_out /= max_amplitude;
-            }
-            break;
-          }
-          case NODE_VORONOI_F2: {
-            fractal_voronoi_f2<float4>(coord_4d,
-                                       detail,
-                                       roughness,
-                                       lacunarity,
-                                       exponent,
-                                       randomness,
-                                       voronoi_metric,
-                                       &max_amplitude,
-                                       &distance_out,
-                                       &color_out,
-                                       &position_out_4d);
-            if (normalize) {
-              if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
-                distance_out /= (1.0f - randomness) +
-                                randomness * max_amplitude *
-                                    voronoi_distance_4d(make_float4(1.0f, 1.0f, 1.0f, 1.0f),
-                                                        make_float4(0.0f, 0.0f, 0.0f, 0.0f),
-                                                        voronoi_metric,
-                                                        exponent);
-              }
-              else {
-                distance_out /= (1.0f - randomness) * ceilf(detail + 1.0f) +
-                                randomness * max_amplitude *
-                                    voronoi_distance_4d(make_float4(1.0f, 1.0f, 1.0f, 1.0f),
-                                                        make_float4(0.0f, 0.0f, 0.0f, 0.0f),
-                                                        voronoi_metric,
-                                                        exponent);
-              }
-              color_out /= max_amplitude;
-            }
-            break;
-          }
-          case NODE_VORONOI_DISTANCE_TO_EDGE: {
-            fractal_voronoi_distance_to_edge<float4>(coord_4d,
-                                                     detail,
-                                                     roughness,
-                                                     lacunarity,
-                                                     randomness,
-                                                     &max_amplitude,
-                                                     &distance_out);
-            if (normalize) {
-              /* max_amplitude is used here to keep the code consistent, however it has a different
-               * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude,
-               * it represents an abstract factor needed to cancel out the amplitude attenuation
-               * caused by the higher layers. */
-              distance_out *= max_amplitude;
-            }
-            break;
-          }
-          case NODE_VORONOI_N_SPHERE_RADIUS:
-            voronoi_n_sphere_radius_4d(coord_4d, randomness, &radius_out);
-            break;
-          default:
-            kernel_assert(0);
-        }
-        position_out_4d = safe_divide(position_out_4d, scale);
-        position_out = make_float3(position_out_4d.x, position_out_4d.y, position_out_4d.z);
-        w_out = position_out_4d.w;
-      }
-      break;
-    }
-    default:
-      kernel_assert(0);
-  }
+  //  case 4: {
+  //    IF_KERNEL_NODES_FEATURE(VORONOI_EXTRA)
+  //    {
+  //      float4 coord_4d = make_float4(coord.x, coord.y, coord.z, w);
+  //      float4 position_out_4d;
 
-  if (stack_valid(distance_out_stack_offset))
-    stack_store_float(stack, distance_out_stack_offset, distance_out);
-  if (stack_valid(color_out_stack_offset))
-    stack_store_float3(stack, color_out_stack_offset, color_out);
-  if (stack_valid(position_out_stack_offset))
-    stack_store_float3(stack, position_out_stack_offset, position_out);
-  if (stack_valid(w_out_stack_offset))
-    stack_store_float(stack, w_out_stack_offset, w_out);
-  if (stack_valid(radius_out_stack_offset))
-    stack_store_float(stack, radius_out_stack_offset, radius_out);
+  //      switch (voronoi_feature) {
+  //        case NODE_VORONOI_F1: {
+  //          fractal_voronoi_f1<float4>(coord_4d,
+  //                                     detail,
+  //                                     roughness,
+  //                                     lacunarity,
+  //                                     exponent,
+  //                                     randomness,
+  //                                     voronoi_metric,
+  //                                     &max_amplitude,
+  //                                     &distance_out,
+  //                                     &color_out,
+  //                                     &position_out_4d);
+  //          if (normalize) {
+  //            distance_out /= (0.5f + 0.5f * randomness) * max_amplitude *
+  //                            voronoi_distance_4d(make_float4(1.0f, 1.0f, 1.0f, 1.0f),
+  //                                                make_float4(0.0f, 0.0f, 0.0f, 0.0f),
+  //                                                voronoi_metric,
+  //                                                exponent);
+  //            color_out /= max_amplitude;
+  //          }
+  //          break;
+  //        }
+  //        case NODE_VORONOI_SMOOTH_F1: {
+  //          fractal_voronoi_smooth_f1<float4>(coord_4d,
+  //                                            detail,
+  //                                            roughness,
+  //                                            lacunarity,
+  //                                            smoothness,
+  //                                            exponent,
+  //                                            randomness,
+  //                                            voronoi_metric,
+  //                                            &max_amplitude,
+  //                                            &distance_out,
+  //                                            &color_out,
+  //                                            &position_out_4d);
+  //          if (normalize) {
+  //            distance_out /= (0.5f + 0.5f * randomness) * max_amplitude *
+  //                            voronoi_distance_4d(make_float4(1.0f, 1.0f, 1.0f, 1.0f),
+  //                                                make_float4(0.0f, 0.0f, 0.0f, 0.0f),
+  //                                                voronoi_metric,
+  //                                                exponent);
+  //            color_out /= max_amplitude;
+  //          }
+  //          break;
+  //        }
+  //        case NODE_VORONOI_F2: {
+  //          fractal_voronoi_f2<float4>(coord_4d,
+  //                                     detail,
+  //                                     roughness,
+  //                                     lacunarity,
+  //                                     exponent,
+  //                                     randomness,
+  //                                     voronoi_metric,
+  //                                     &max_amplitude,
+  //                                     &distance_out,
+  //                                     &color_out,
+  //                                     &position_out_4d);
+  //          if (normalize) {
+  //            if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
+  //              distance_out /= (1.0f - randomness) +
+  //                              randomness * max_amplitude *
+  //                                  voronoi_distance_4d(make_float4(1.0f, 1.0f, 1.0f, 1.0f),
+  //                                                      make_float4(0.0f, 0.0f, 0.0f, 0.0f),
+  //                                                      voronoi_metric,
+  //                                                      exponent);
+  //            }
+  //            else {
+  //              distance_out /= (1.0f - randomness) * ceilf(detail + 1.0f) +
+  //                              randomness * max_amplitude *
+  //                                  voronoi_distance_4d(make_float4(1.0f, 1.0f, 1.0f, 1.0f),
+  //                                                      make_float4(0.0f, 0.0f, 0.0f, 0.0f),
+  //                                                      voronoi_metric,
+  //                                                      exponent);
+  //            }
+  //            color_out /= max_amplitude;
+  //          }
+  //          break;
+  //        }
+  //        case NODE_VORONOI_DISTANCE_TO_EDGE: {
+  //          fractal_voronoi_distance_to_edge<float4>(coord_4d,
+  //                                                   detail,
+  //                                                   roughness,
+  //                                                   lacunarity,
+  //                                                   randomness,
+  //                                                   &max_amplitude,
+  //                                                   &distance_out);
+  //          if (normalize) {
+  //            /* max_amplitude is used here to keep the code consistent, however it has a
+  //            different
+  //             * meaning than in F1, Smooth F1 and F2. Instead of the highest possible
+  //             amplitude,
+  //             * it represents an abstract factor needed to cancel out the amplitude
+  //             attenuation
+  //             * caused by the higher layers. */
+  //            distance_out *= max_amplitude;
+  //          }
+  //          break;
+  //        }
+  //        case NODE_VORONOI_N_SPHERE_RADIUS:
+  //          voronoi_n_sphere_radius_4d(coord_4d, randomness, &radius_out);
+  //          break;
+  //        default:
+  //          kernel_assert(0);
+  //      }
+  //      position_out_4d = safe_divide(position_out_4d, scale);
+  //      position_out = make_float3(position_out_4d.x, position_out_4d.y, position_out_4d.z);
+  //      w_out = position_out_4d.w;
+  //    }
+  //    break;
+  //  }
+  //  default:
+  //    kernel_assert(0);
+  //}
+
+   if (stack_valid(distance_out_stack_offset))
+     stack_store_float(stack, distance_out_stack_offset, vob.distance_out);
+   if (stack_valid(color_out_stack_offset))
+     stack_store_float3(stack, color_out_stack_offset, vob.color_out);
+   if (stack_valid(position_out_stack_offset))
+     stack_store_float3(stack, position_out_stack_offset, voronoi_position_out);
+   if (stack_valid(w_out_stack_offset))
+     stack_store_float(stack, w_out_stack_offset, voronoi_w_out);
+   if (stack_valid(radius_out_stack_offset))
+     stack_store_float(stack, radius_out_stack_offset, vob.radius_out);
   return offset;
 }
 
