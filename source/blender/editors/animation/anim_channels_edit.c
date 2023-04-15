@@ -3027,6 +3027,72 @@ static int click_select_channel_scene(bAnimListElem *ale,
   return (ND_ANIMCHAN | NA_SELECTED);
 }
 
+/* Before selecting the range, check if any active element is present. */
+static bool animchannel_active_check(bAnimContext *ac, eAnim_ChannelType type)
+{
+  ListBase anim_data = anim_channels_for_selection(ac);
+  bool is_active_found = false;
+
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    if (ale->type != type) {
+      continue;
+    }
+
+    switch (ale->type) {
+      case ANIMTYPE_FILLACTD: /* Action Expander */
+      case ANIMTYPE_DSMAT:    /* Datablock AnimData Expanders */
+      case ANIMTYPE_DSLAM:
+      case ANIMTYPE_DSCAM:
+      case ANIMTYPE_DSCACHEFILE:
+      case ANIMTYPE_DSCUR:
+      case ANIMTYPE_DSSKEY:
+      case ANIMTYPE_DSWOR:
+      case ANIMTYPE_DSPART:
+      case ANIMTYPE_DSMBALL:
+      case ANIMTYPE_DSARM:
+      case ANIMTYPE_DSMESH:
+      case ANIMTYPE_DSNTREE:
+      case ANIMTYPE_DSTEX:
+      case ANIMTYPE_DSLAT:
+      case ANIMTYPE_DSLINESTYLE:
+      case ANIMTYPE_DSSPK:
+      case ANIMTYPE_DSGPENCIL:
+      case ANIMTYPE_DSMCLIP:
+      case ANIMTYPE_DSHAIR:
+      case ANIMTYPE_DSPOINTCLOUD:
+      case ANIMTYPE_DSVOLUME:
+      case ANIMTYPE_NLAACTION:
+      case ANIMTYPE_DSSIMULATION: {
+        if (ale->adt) {
+          is_active_found |= ale->adt->flag & ADT_UI_ACTIVE;
+        }
+        break;
+      }
+      case ANIMTYPE_GROUP: {
+        bActionGroup *argp = (bActionGroup *)ale->data;
+        is_active_found |= argp->flag & AGRP_ACTIVE;
+        break;
+      }
+      case ANIMTYPE_FCURVE:
+      case ANIMTYPE_NLACURVE: {
+        FCurve *fcu = (FCurve *)ale->data;
+        is_active_found |= fcu->flag & FCURVE_ACTIVE;
+        break;
+      }
+      case ANIMTYPE_GPLAYER: {
+        bGPDlayer *gpl = (bGPDlayer *)ale->data;
+        is_active_found |= gpl->flag & GP_LAYER_ACTIVE;
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  ANIM_animdata_freelist(&anim_data);
+  return is_active_found;
+}
+
 static void animchannel_clear_selection(bAnimContext *ac)
 {
   ListBase anim_data = anim_channels_for_selection(ac);
@@ -3059,8 +3125,13 @@ static void animchannel_select_range(bAnimContext *ac, bAnimListElem *cursor_ele
 
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     bool is_active_elem = false;
-    bool is_selection_allowed = true;
+    bool is_selection_allowed = ale->type == cursor_elem->type;
     const bool is_cursor_elem = (ale->data == cursor_elem->data);
+
+    /* Allow selection when active and clicked channel has same type. */
+    if (!is_selection_allowed) {
+      continue;
+    }
 
     switch (ale->type) {
       case ANIMTYPE_FILLACTD: /* Action Expander */
@@ -3090,13 +3161,11 @@ static void animchannel_select_range(bAnimContext *ac, bAnimListElem *cursor_ele
         if (ale->adt) {
           is_active_elem = ale->adt->flag & ADT_UI_ACTIVE;
         }
-        is_selection_allowed = ale->type == cursor_elem->type;
         break;
       }
       case ANIMTYPE_GROUP: {
         bActionGroup *argp = (bActionGroup *)ale->data;
         is_active_elem = argp->flag & AGRP_ACTIVE;
-        is_selection_allowed = ale->type == cursor_elem->type;
         break;
       }
       case ANIMTYPE_FCURVE:
@@ -3115,7 +3184,6 @@ static void animchannel_select_range(bAnimContext *ac, bAnimListElem *cursor_ele
     }
     /* Restrict selection when active element is not found and group-channels are excluded from the
      * selection. */
-    if (is_selection_allowed || is_active_elem) {
       if (is_active_elem || is_cursor_elem) {
         /* Select first and last element from the range. Reverse selection status on extremes. */
         ANIM_channel_setting_set(ac, ale, ACHANNEL_SETTING_SELECT, ACHANNEL_SETFLAG_ADD);
@@ -3131,7 +3199,6 @@ static void animchannel_select_range(bAnimContext *ac, bAnimListElem *cursor_ele
          * exit out of the loop when this condition is hit. */
         break;
       }
-    }
   }
 
   ANIM_animdata_freelist(&anim_data);
@@ -3472,7 +3539,7 @@ static int click_select_channel_masklayer(bAnimContext *ac,
 static int mouse_anim_channels(bContext *C,
                                bAnimContext *ac,
                                const int channel_index,
-                               const short /* eEditKeyframes_Select or -1 */ selectmode)
+                               short /* eEditKeyframes_Select or -1 */ selectmode)
 {
   ListBase anim_data = {NULL, NULL};
   bAnimListElem *ale;
@@ -3508,6 +3575,11 @@ static int mouse_anim_channels(bContext *C,
     /* normal channels should not behave normally in this case */
     ANIM_animdata_freelist(&anim_data);
     return 0;
+  }
+
+  /* Change selection mode to single when no active element is found. */
+  if ((selectmode == SELECT_EXTEND_RANGE) && !animchannel_active_check(ac, ale->type)) {
+    selectmode = SELECT_INVERT;
   }
 
   /* action to take depends on what channel we've got */
