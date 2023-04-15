@@ -218,7 +218,7 @@ typedef struct LightProbeBakingData {
 } LightProbeBakingData;
 
 /**
- * Irradiance stored as RGB triple using scene referred color space.
+ * Irradiance stored as RGB triple using scene linear color space.
  */
 typedef struct LightProbeIrradianceData {
   float (*L0)[3];
