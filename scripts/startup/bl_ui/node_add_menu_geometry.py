@@ -246,10 +246,12 @@ class NODE_MT_geometry_node_GEO_INPUT_CONSTANT(Menu):
     def draw(self, _context):
         layout = self.layout
         node_add_menu.add_node_type(layout, "FunctionNodeInputBool")
+        node_add_menu.add_node_type(layout, "FunctionNodeInputColection")
         node_add_menu.add_node_type(layout, "FunctionNodeInputColor")
         node_add_menu.add_node_type(layout, "GeometryNodeInputImage")
         node_add_menu.add_node_type(layout, "FunctionNodeInputInt")
         node_add_menu.add_node_type(layout, "GeometryNodeInputMaterial")
+        node_add_menu.add_node_type(layout, "FunctionNodeInputObject")
         node_add_menu.add_node_type(layout, "FunctionNodeInputString")
         node_add_menu.add_node_type(layout, "ShaderNodeValue")
         node_add_menu.add_node_type(layout, "FunctionNodeInputVector")

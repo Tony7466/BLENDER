@@ -78,6 +78,7 @@ set(SRC
   nodes/node_geo_image.cc
   nodes/node_geo_image_info.cc
   nodes/node_geo_image_texture.cc
+  nodes/node_geo_input_collection.cc
   nodes/node_geo_input_curve_handles.cc
   nodes/node_geo_input_curve_tilt.cc
   nodes/node_geo_input_id.cc
@@ -96,6 +97,7 @@ set(SRC
   nodes/node_geo_input_mesh_vertex_neighbors.cc
   nodes/node_geo_input_named_attribute.cc
   nodes/node_geo_input_normal.cc
+  nodes/node_geo_input_object.cc
   nodes/node_geo_input_position.cc
   nodes/node_geo_input_radius.cc
   nodes/node_geo_input_scene_time.cc

@@ -62,6 +62,7 @@ void register_geometry_nodes()
   register_node_type_geo_image_info();
   register_node_type_geo_image_texture();
   register_node_type_geo_image();
+  register_node_type_geo_input_collection();
   register_node_type_geo_input_curve_handles();
   register_node_type_geo_input_curve_tilt();
   register_node_type_geo_input_id();
@@ -80,6 +81,7 @@ void register_geometry_nodes()
   register_node_type_geo_input_mesh_vertex_neighbors();
   register_node_type_geo_input_named_attribute();
   register_node_type_geo_input_normal();
+  register_node_type_geo_input_object();
   register_node_type_geo_input_position();
   register_node_type_geo_input_radius();
   register_node_type_geo_input_scene_time();
