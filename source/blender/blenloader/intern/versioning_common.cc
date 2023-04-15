@@ -299,6 +299,101 @@ namespace replace_legacy_instances {
 
 using namespace blender;
 
+class bNodeTreeBuilder {
+ private:
+  bNodeTree &node_tree_;
+
+  // TODO: Cache for lookup node sockets
+  // Alias structure on created nodes. Add methods on it
+
+ public:
+  bNodeTreeBuilder(bNodeTree &tree) : node_tree_(tree) {}
+  bNodeTreeBuilder(const StringRefNull type, const StringRefNull name, Main *bmain)
+      : bNodeTreeBuilder(*ntreeAddTree(bmain, type.data(), name.data()))
+  {
+  }
+
+  bNode &tree_socket(const eNodeSocketInOut in_out,
+                     const StringRefNull type,
+                     const StringRefNull name)
+  {
+    ntreeAddSocketInterface(&node_tree_, in_out, type.data(), name.data());
+  }
+
+  bNode &new_node(const int type)
+  {
+    return *nodeAddStaticNode(nullptr, &node_tree_, type);
+  }
+
+  template<typename NodeCustomData, typename Func>
+  bNode &new_node(const int type, Func for_storage)
+  {
+    bNode &node = this->new_node(type);
+    NodeCustomData &data = *reinterpret_cast<NodeCustomData *>(node.storage);
+    for_storage(data);
+    this->node_update(node);
+  }
+
+  void node_update(bNode &node)
+  {
+    node.typeinfo->updatefunc(&node_tree_, &node);
+  }
+
+  void node_refresh(bNode &node)
+  {
+    bke::node_field_inferencing::update_field_inferencing(node_tree_);
+    nodes::update_node_declaration_and_sockets(node_tree_, node);
+  }
+
+  bNodeSocket &node_input_by_name(const StringRefNull name, bNode &node)
+  {
+    LISTBASE_FOREACH (bNodeSocket *, socket, &node.inputs) {
+      if (!socket->is_available()) {
+        continue;
+      }
+      if (StringRefNull(socket->name) == name) {
+        return *socket;
+      }
+    }
+    BLI_assert_unreachable();
+    return *reinterpret_cast<bNodeSocket *>(node.inputs.first);
+  }
+
+  bNodeSocket &node_output_by_name(const StringRefNull name, bNode &node)
+  {
+    LISTBASE_FOREACH (bNodeSocket *, socket, &node.outputs) {
+      if (!socket->is_available()) {
+        continue;
+      }
+      if (StringRefNull(socket->name) == name) {
+        return *socket;
+      }
+    }
+    BLI_assert_unreachable();
+    return *reinterpret_cast<bNodeSocket *>(node.outputs.first);
+  }
+
+  void connect(bNode &node_out,
+               const StringRefNull name_out,
+               bNode &node_in,
+               const StringRefNull name_in)
+  {
+    bNodeSocket &out = node_output_by_name(name_out, node_out);
+    bNodeSocket &in = node_input_by_name(name_in, node_in);
+    nodeAddLink(&node_tree_, &node_out, &out, &node_in, &in);
+  }
+
+  void node_offsets()
+  {
+    // TODO
+  }
+
+  void hide_all_unuseds()
+  {
+    // TODO
+  }
+};
+
 static bNodeSocket &node_input_by_name(const StringRefNull name, bNode *node)
 {
   LISTBASE_FOREACH (bNodeSocket *, socket, &node->inputs) {
@@ -337,14 +432,8 @@ struct RegularNodeTrees {
   bNodeTree *face_aling = nullptr;
 };
 
-static bNodeTree *builtin_instancing_node_group(Main *bmain,
-                                                const bool /*on_vertices*/,
-                                                RegularNodeTrees &cached_node_trees)
+static bNodeTree *builtin_instances_on_points(Main *bmain)
 {
-  if (cached_node_trees.instances_on_points != nullptr) {
-    return cached_node_trees.instances_on_points;
-  }
-
   bNodeTree *node_tree = ntreeAddTree(bmain, "Legacy Point Instances", "GeometryNodeTree");
 
   ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketGeometry", "Instance");
@@ -399,8 +488,60 @@ static bNodeTree *builtin_instancing_node_group(Main *bmain,
   bke::node_field_inferencing::update_field_inferencing(*node_tree);
 
   bke::node_field_inferencing::update_field_inferencing(*node_tree);
-  cached_node_trees.instances_on_points = node_tree;
   return node_tree;
+}
+
+static bNodeTree *builtin_instances_on_faces(Main *bmain)
+{
+  bNodeTree *node_tree = ntreeAddTree(bmain, "Legacy Point Instances", "GeometryNodeTree");
+
+  ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketGeometry", "Instance");
+  ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketGeometry", "Instancer");
+  ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketBool", "Aling to Vertex Normal");
+
+  ntreeAddSocketInterface(node_tree, SOCK_OUT, "NodeSocketGeometry", "Instances");
+
+  const auto connect = [node_tree](bNode *node_out,
+                                   const StringRefNull name_out,
+                                   bNode *node_in,
+                                   const StringRefNull name_in) {
+    bNodeSocket &out = node_output_by_name(name_out, node_out);
+    bNodeSocket &in = node_input_by_name(name_in, node_in);
+    nodeAddLink(node_tree, node_out, &out, node_in, &in);
+  };
+
+  const auto add_node_group = [node_tree](bNodeTree *tree) -> bNode * {
+    bNode *group = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP);
+    group->id = &tree->id;
+    bke::node_field_inferencing::update_field_inferencing(*node_tree);
+    nodes::update_node_declaration_and_sockets(*node_tree, *group);
+    return group;
+  };
+
+  return node_tree;
+}
+
+static bNodeTree *builtin_instancing_node_group(Main *bmain,
+                                                const bool on_vertices,
+                                                RegularNodeTrees &cached_node_trees)
+{
+  if (on_vertices) {
+    if (cached_node_trees.instances_on_points != nullptr) {
+      return cached_node_trees.instances_on_points;
+    }
+    cached_node_trees.instances_on_points = builtin_instances_on_points(bmain);
+    return cached_node_trees.instances_on_points;
+  }
+
+  {
+    if (cached_node_trees.instances_on_faces != nullptr) {
+      return cached_node_trees.instances_on_faces;
+    }
+    cached_node_trees.instances_on_faces = builtin_instances_on_faces(bmain);
+    return cached_node_trees.instances_on_faces;
+  }
+
+  return nullptr;
 }
 
 static bNodeTree *builtin_view_geometry_group(Main *bmain, RegularNodeTrees &cached_node_trees)
