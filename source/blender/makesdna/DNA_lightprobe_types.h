@@ -279,11 +279,19 @@ typedef struct LightProbeGridCacheFrame {
   /** Sparse or adaptive layout only: specify the blocks positions. */
   LightProbeBlockData *block_infos;
 
-  /** Baked data. */
+  /** In-progress baked data. Not stored in file. */
   LightProbeBakingData baking;
+  /** Baked data. */
   LightProbeIrradianceData irradiance;
   LightProbeVisibilityData visibility;
   LightProbeConnectivityData connectivity;
+
+  char _pad[4];
+
+  /** Number of debug surfels. */
+  int surfels_len;
+  /** Debug surfels used to visualize the baking process. Not stored in file. */
+  void *surfels;
 } LightProbeGridCacheFrame;
 
 /** #LightProbeGridCacheFrame.data_layout (int) */

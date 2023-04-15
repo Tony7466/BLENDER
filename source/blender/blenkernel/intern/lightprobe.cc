@@ -187,6 +187,8 @@ static void lightprobe_grid_cache_frame_blend_read(BlendDataReader *reader,
   cache->baking.L1_a = nullptr;
   cache->baking.L1_b = nullptr;
   cache->baking.L1_c = nullptr;
+  cache->surfels = nullptr;
+  cache->surfels_len = 0;
 
   if (cache->irradiance.L0 != nullptr) {
     BLO_read_float3_array(reader, sample_count, (float **)&cache->irradiance.L0);
@@ -257,6 +259,7 @@ void BKE_lightprobe_grid_cache_frame_free(LightProbeGridCacheFrame *cache)
   spherical_harmonic_free(cache->irradiance);
   spherical_harmonic_free(cache->visibility);
   MEM_SAFE_FREE(cache->connectivity.bitmask);
+  MEM_SAFE_FREE(cache->surfels);
 
   MEM_SAFE_FREE(cache);
 }
