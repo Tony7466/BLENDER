@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_scene.h"
-#include "DNA_sound_types.h" //Bsound
 #include "DEG_depsgraph_query.h" //DEG_get_input_scene
+#include "BKE_scene.h" // BKE_scene_object_sounds_iterate
+#include "BKE_sound.h" // BKE_sound_scene_playing
 
 #include "node_geometry_util.hh"
 
@@ -23,8 +23,8 @@ static void node_exec(GeoNodeExecParams params)
     params.set_output("Volume", sound->volume);
     params.set_output("Pitch", sound->pitch);
   } else {
-    params.set_output("Volume", 69.420f);
-    params.set_output("Pitch", 69.420f);
+    params.set_output("Volume", 0.0f);
+    params.set_output("Pitch", 0.0f);
   }
 }
 
