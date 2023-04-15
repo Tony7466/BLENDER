@@ -9,6 +9,7 @@ from bpy.types import (
 from bpy.props import (
     BoolProperty,
     CollectionProperty,
+    EnumProperty,
     StringProperty,
 )
 
@@ -198,10 +199,109 @@ class NODE_OT_tree_path_parent(Operator):
         return {'FINISHED'}
 
 
+class NodeFunctionSignatureOperator():
+    # Dictionary of node types with methods to get the signature
+    signature_nodes = {
+        'FunctionNodeEvaluate' : lambda node: node.signature,
+    }
+
+    param_type: EnumProperty(
+        name = "Parameter Type",
+        items = [
+            ('INPUT', "Input", ""),
+            ('OUTPUT', "Output", ""),
+        ]
+    )
+
+    def params_get(self, signature):
+        return signature.inputs if self.param_type == 'INPUT' else signature.outputs 
+
+    @classmethod
+    def poll(cls, context):
+        snode = context.space_data
+        if snode is None:
+            return False
+        node = context.active_node
+        if node is None or node.bl_idname not in cls.signature_nodes:
+            return False
+        return True
+
+
+class NODE_OT_function_parameter_add(NodeFunctionSignatureOperator, Operator):
+    '''Add a parameter to the function signature'''
+    bl_idname = "node.function_parameter_add"
+    bl_label = "Add Parameter"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    default_socket_type = 'FLOAT'
+
+    def execute(self, context):
+        node = context.active_node
+        signature = self.signature_nodes[node.bl_idname](node)
+        params = self.params_get(signature)
+
+        # Remember index to move the item
+        dst_index = min(params.active_index + 1, len(params))
+        # Empty name so it is based on the type only
+        params.new(self.default_socket_type, "")
+        params.move(len(params) - 1, dst_index)
+        params.active_index = dst_index
+
+        return {'FINISHED'}
+
+
+class NODE_OT_function_parameter_remove(NodeFunctionSignatureOperator, Operator):
+    '''Remove a parameter from the function signature'''
+    bl_idname = "node.function_parameter_remove"
+    bl_label = "Remove Parameter"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        node = context.active_node
+        signature = self.signature_nodes[node.bl_idname](node)
+        params = self.params_get(signature)
+
+        if params.active:
+            params.remove(params.active)
+            params.active_index = min(params.active_index, len(params) - 1)
+
+        return {'FINISHED'}
+
+
+class NODE_OT_function_parameter_move(NodeFunctionSignatureOperator, Operator):
+    '''Move a parameter item up or down in the signature'''
+    bl_idname = "node.function_parameter_move"
+    bl_label = "Move Parameter"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    direction: EnumProperty(
+        name="Direction",
+        items=[('UP', "Up", ""), ('DOWN', "Down", "")],
+        default = 'UP',
+    )
+
+    def execute(self, context):
+        node = context.active_node
+        signature = self.signature_nodes[node.bl_idname](node)
+        params = self.params_get(signature)
+
+        if self.direction == 'UP' and params.active_index > 0:
+            params.move(params.active_index, params.active_index - 1)
+            params.active_index -= 1
+        elif self.direction == 'DOWN' and params.active_index < len(params) - 1:
+            params.move(params.active_index, params.active_index + 1)
+            params.active_index += 1
+
+        return {'FINISHED'}
+
+
 classes = (
     NodeSetting,
 
     NODE_OT_add_node,
     NODE_OT_collapse_hide_unused_toggle,
     NODE_OT_tree_path_parent,
+    NODE_OT_function_parameter_add,
+    NODE_OT_function_parameter_remove,
+    NODE_OT_function_parameter_move,
 )

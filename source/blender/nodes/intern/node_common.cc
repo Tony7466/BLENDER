@@ -342,7 +342,9 @@ SocketDeclarationPtr declaration_for_signature_parameter(const bNodeFunctionPara
       dst = std::make_unique<decl::Custom>();
       break;
   }
-  dst->name = param.name;
+  dst->name = param.name ? param.name : "";
+  char buf[MAX_NAME];
+  dst->identifier = BLI_snprintf(buf, sizeof(buf), "Item_%d", param.identifier);
   dst->in_out = in_out;
   dst->hide_value = true;
   dst->compact = false;

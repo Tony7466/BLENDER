@@ -258,6 +258,10 @@ bool nodeFunctionParameterSetUniqueName(bNodeFunctionSignature *sig,
                                      unique_name,
                                      ARRAY_SIZE(unique_name));
   }
+  else if (unique_name[0] == '\0') {
+    /* Should use default if name is empty, same as BLI_uniquename_cb behavior. */
+    BLI_strncpy(unique_name, defname, sizeof(unique_name));
+  }
   param->name = BLI_strdup(unique_name);
   return name_changed;
 }

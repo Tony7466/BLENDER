@@ -955,6 +955,98 @@ class NODE_PT_node_tree_interface_outputs(NodeTreeInterfacePanel):
         self.draw_socket_list(context, "OUT", "outputs", "active_output")
 
 
+class NODE_UL_function_parameters(bpy.types.UIList):
+    def draw_item(self, context, layout, _data, item, icon, _active_data, _active_propname, _index):
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            row = layout.row(align=True)
+
+            row.template_node_socket(color=item.color)
+            row.prop(item, "name", text="", emboss=False, icon_value=icon)
+        elif self.layout_type == 'GRID':
+            layout.alignment = 'CENTER'
+            layout.template_node_socket(color=item.color)
+
+
+class FunctionSignaturePanel():
+    # Must be defined by subclasses
+    param_type = None
+    params_prop = None
+
+    # Dictionary of node types with methods to get the signature
+    signature_nodes = {
+        'FunctionNodeEvaluate' : lambda node: node.signature,
+    }
+
+    @classmethod
+    def poll(cls, context):
+        snode = context.space_data
+        if snode is None:
+            return False
+        node = context.active_node
+        if node is None or node.bl_idname not in cls.signature_nodes:
+            return False
+        return True
+
+    def draw(self, context):
+        layout = self.layout
+        node = context.active_node
+        signature = self.signature_nodes[node.bl_idname](node)
+        params = getattr(signature, self.params_prop)
+
+        split = layout.row()
+
+        split.template_list(
+            "NODE_UL_function_parameters",
+            self.params_prop,
+            signature,
+            self.params_prop,
+            params,
+            "active_index")
+
+        ops_col = split.column()
+
+        add_remove_col = ops_col.column(align=True)
+        props = add_remove_col.operator("node.function_parameter_add", icon='ADD', text="")
+        props.param_type = self.param_type
+        props = add_remove_col.operator("node.function_parameter_remove", icon='REMOVE', text="")
+        props.param_type = self.param_type
+
+        ops_col.separator()
+
+        up_down_col = ops_col.column(align=True)
+        props = up_down_col.operator("node.function_parameter_move", icon='TRIA_UP', text="")
+        props.param_type = self.param_type
+        props.direction = 'UP'
+        props = up_down_col.operator("node.function_parameter_move", icon='TRIA_DOWN', text="")
+        props.param_type = self.param_type
+        props.direction = 'DOWN'
+
+        active_param = params.active
+        if active_param is not None:
+            layout.prop(active_param, "socket_type")
+            layout.prop(active_param, "name")
+
+
+class NODE_PT_function_signature_inputs(FunctionSignaturePanel, Panel):
+    bl_space_type = 'NODE_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = "Node"
+    bl_label = "Function Signature Inputs"
+
+    param_type = 'INPUT'
+    params_prop = "inputs"
+
+
+class NODE_PT_function_signature_outputs(FunctionSignaturePanel, Panel):
+    bl_space_type = 'NODE_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = "Node"
+    bl_label = "Function Signature Outputs"
+
+    param_type = 'OUTPUT'
+    params_prop = "outputs"
+
+
 # Grease Pencil properties
 class NODE_PT_annotation(AnnotationDataPanel, Panel):
     bl_space_type = 'NODE_EDITOR'
@@ -1019,6 +1111,9 @@ classes = (
     NODE_UL_interface_sockets,
     NODE_PT_node_tree_interface_inputs,
     NODE_PT_node_tree_interface_outputs,
+    NODE_UL_function_parameters,
+    NODE_PT_function_signature_inputs,
+    NODE_PT_function_signature_outputs,
 
     node_panel(EEVEE_MATERIAL_PT_settings),
     node_panel(MATERIAL_PT_viewport),
