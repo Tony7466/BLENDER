@@ -1192,6 +1192,39 @@ void wm_window_reset_drawable(void)
   }
 }
 
+void update_mouse_position_from_draganddrop(wmWindowManager *wm,
+                                            wmWindow *win,
+                                            wmEvent *event,
+                                            GHOST_TEventDragnDropData *ddd)
+{
+  /* Ensure the event state matches modifiers (window was inactive). */
+  wm_window_update_eventstate_modifiers(wm, win);
+  /* Entering window, update mouse position (without sending an event). */
+  wm_window_update_eventstate(win);
+
+  wm_event_init_from_window(win, event); /* copy last state, like mouse coords */
+
+  /* activate region */
+  event->type = MOUSEMOVE;
+  event->val = KM_NOTHING;
+  copy_v2_v2_int(event->prev_xy, event->xy);
+
+  wm_cursor_position_from_ghost_screen_coords(win, &ddd->x, &ddd->y);
+  event->xy[0] = ddd->x;
+  event->xy[1] = ddd->y;
+
+  /* The values from #wm_window_update_eventstate may not match (under WAYLAND they don't)
+   * Write this into the event state. */
+  copy_v2_v2_int(win->eventstate->xy, event->xy);
+
+  event->flag = 0;
+
+  /* No context change! `C->wm->windrawable` is drawable, or for area queues. */
+  wm->winactive = win;
+  win->active = 1;
+  wm_event_add(win, event);
+}
+
 /**
  * Called by ghost, here we handle events for windows themselves or send to event system.
  *
@@ -1439,51 +1472,15 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_pt
         }
         break;
       }
-      case GHOST_kEventDraggingDropDone: {
+      case GHOST_kEventDraggingEntered: {
+        WM_drag_free_list(&wm->drags);
+        wm_drags_exit(wm, win);
         GHOST_TEventDragnDropData *ddd = GHOST_GetEventData(evt);
 
-        /* Ensure the event state matches modifiers (window was inactive). */
-        wm_window_update_eventstate_modifiers(wm, win);
-        /* Entering window, update mouse position (without sending an event). */
-        wm_window_update_eventstate(win);
-
         wmEvent event;
-        wm_event_init_from_window(win, &event); /* copy last state, like mouse coords */
-
-        /* activate region */
-        event.type = MOUSEMOVE;
-        event.val = KM_NOTHING;
-        copy_v2_v2_int(event.prev_xy, event.xy);
-
-        wm_cursor_position_from_ghost_screen_coords(win, &ddd->x, &ddd->y);
-        event.xy[0] = ddd->x;
-        event.xy[1] = ddd->y;
-
-        /* The values from #wm_window_update_eventstate may not match (under WAYLAND they don't)
-         * Write this into the event state. */
-        copy_v2_v2_int(win->eventstate->xy, event.xy);
-
-        event.flag = 0;
-
-        /* No context change! `C->wm->windrawable` is drawable, or for area queues. */
-        wm->winactive = win;
-        win->active = 1;
-
-        wm_event_add(win, &event);
-
-        /* make blender drop event with custom data pointing to wm drags */
-        event.type = EVT_DROP;
-        event.val = KM_RELEASE;
-        event.custom = EVT_DATA_DRAGDROP;
-        event.customdata = &wm->drags;
-        event.customdata_free = true;
-
-        wm_event_add(win, &event);
-
-        // printf("Drop detected\n");
+        update_mouse_position_from_draganddrop(wm, win, &event, ddd);
 
         /* add drag data to wm for paths: */
-
         if (ddd->dataType == GHOST_kDragnDropTypeFilenames) {
           GHOST_TStringArray *stra = ddd->data;
 
@@ -1496,9 +1493,51 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_pt
             break; /* only one drop element supported now */
           }
         }
-
         break;
       }
+      case GHOST_kEventDraggingUpdated: {
+        GHOST_TEventDragnDropData *ddd = GHOST_GetEventData(evt);
+        wmEvent event;
+        update_mouse_position_from_draganddrop(wm, win, &event, ddd);
+        break;
+      }
+      case GHOST_kEventDraggingDropDone: {
+        GHOST_TEventDragnDropData *ddd = GHOST_GetEventData(evt);
+
+        wmEvent event;
+        update_mouse_position_from_draganddrop(wm, win, &event, ddd);
+
+        /* make blender drop event with custom data pointing to wm drags */
+        event.type = EVT_DROP;
+        event.val = KM_RELEASE;
+        event.custom = EVT_DATA_DRAGDROP;
+        event.customdata = &wm->drags;
+        event.customdata_free = true;
+
+        wm_event_add(win, &event);
+        if (wm->drags.first != NULL && ddd->dataType == GHOST_kDragnDropTypeFilenames) {
+          GHOST_TStringArray *stra = ddd->data;
+
+          if (stra->count > 0) {
+            /* try to get icon type from extension */
+            int icon = ED_file_extension_icon((char *)stra->strings[0]);
+            wmDragPath *path_data = WM_drag_create_path_data((char **)stra->strings, stra->count);
+            WM_event_start_drag(C, icon, WM_DRAG_PATH, path_data, 0.0, WM_DRAG_NOP);
+            /* void poin should point to string, it makes a copy */
+            break; /* only one drop element supported now */
+          }
+        }
+        break;
+      }
+      case GHOST_kEventDraggingExited: {
+        WM_drag_free_list(&wm->drags);
+        wm_drags_exit(wm, win);
+        GHOST_TEventDragnDropData *ddd = GHOST_GetEventData(evt);
+        wmEvent event;
+        update_mouse_position_from_draganddrop(wm, win, &event, ddd);
+        break;
+      }
+
       case GHOST_kEventNativeResolutionChange: {
         /* Only update if the actual pixel size changes. */
         float prev_pixelsize = U.pixelsize;

@@ -16,7 +16,7 @@
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
    02111-1307, USA.
  */
-
+#include "../../intern/ghost/GHOST_Types.h"
 #ifndef _X_DND_H
 #define _X_DND_H
 
@@ -208,7 +208,7 @@ Atom xdnd_drag (DndClass * dnd, Window from, Atom action, Atom * typelist);
 libraries main event loop and be called if the event type is
 ClientMessage or SelectionNotify */
 int xdnd_handle_drop_events (DndClass * dnd, XEvent * xevent);
-Atom xdnd_get_drop (Display * display, XEvent * xevent, Atom * typelist, Atom * actionlist,
+GHOST_TEventType xdnd_handle_event (Display * display, XEvent * xevent, Atom * typelist, Atom * actionlist,
                     unsigned char **data, int *length, Atom * type, int *x, int *y);
 
 

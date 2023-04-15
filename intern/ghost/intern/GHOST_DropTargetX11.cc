@@ -202,24 +202,25 @@ bool GHOST_DropTargetX11::GHOST_HandleClientMessage(XEvent *event)
   uchar *dropBuffer;
   int dropBufferSize, dropX, dropY;
 
-  if (xdnd_get_drop(m_system->getXDisplay(),
-                    event,
-                    m_dndTypes,
-                    m_dndActions,
-                    &dropBuffer,
-                    &dropBufferSize,
-                    &dropType,
-                    &dropX,
-                    &dropY)) {
-    void *data = getGhostData(dropType, dropBuffer, dropBufferSize);
+  GHOST_TEventType event_type = xdnd_handle_event(m_system->getXDisplay(),
+                                                  event,
+                                                  m_dndTypes,
+                                                  m_dndActions,
+                                                  &dropBuffer,
+                                                  &dropBufferSize,
+                                                  &dropType,
+                                                  &dropX,
+                                                  &dropY);
+  if (event_type > 0) {
 
-    if (data) {
-      m_system->pushDragDropEvent(
-          GHOST_kEventDraggingDropDone, m_draggedObjectType, m_window, dropX, dropY, data);
+    void *data = nullptr;
+    if (dropBufferSize > 0) {
+      data = getGhostData(dropType, dropBuffer, dropBufferSize);
     }
-
-    free(dropBuffer);
-
+    m_system->pushDragDropEvent(event_type, m_draggedObjectType, m_window, dropX, dropY, data);
+    if (dropBufferSize > 0) {
+      free(dropBuffer);
+    }
     m_draggedObjectType = GHOST_kDragnDropTypeUnknown;
 
     return true;

@@ -627,7 +627,7 @@ static void xdnd_send_status (DndClass * dnd, Window window, Window from, int wi
     xevent.xany.display = dnd->display;
     xevent.xclient.window = window;
     xevent.xclient.message_type = dnd->XdndStatus;
-    xevent.xclient.format = 32;
+    xevent.xclient.format = 32;     
 
     XDND_STATUS_TARGET_WIN (&xevent) = from;
     XDND_STATUS_WILL_ACCEPT_SET (&xevent, will_accept);
@@ -1254,183 +1254,6 @@ Atom xdnd_drag (DndClass * dnd, Window from, Atom action, Atom * typelist)
     return result;
 }
 
-/* returns non-zero if event is handled */
-int xdnd_handle_drop_events (DndClass * dnd, XEvent * xevent)
-{
-    int result = 0;
-    if (xevent->type == SelectionNotify) {
-        dnd_debug1 ("got SelectionNotify");
-        if (xevent->xselection.property == dnd->Xdnd_NON_PROTOCOL_ATOM && dnd->stage == XDND_DROP_STAGE_CONVERTING) {
-            int error;
-            dnd_debug1 ("  property is Xdnd_NON_PROTOCOL_ATOM - getting selection");
-            error = xdnd_get_selection (dnd, dnd->dragger_window, xevent->xselection.property, xevent->xany.window);
-/* error is not actually used, i think future versions of the protocol maybe should return 
-   an error status to the calling window with the XdndFinished client message */
-            if (dnd_version_at_least (dnd->dragging_version, 2)) {
-#if XDND_VERSION >= 3
-                xdnd_send_finished (dnd, dnd->dragger_window, dnd->dropper_toplevel, error);
-#else
-                xdnd_send_finished (dnd, dnd->dragger_window, dnd->dropper_window, error);
-#endif
-                dnd_debug1 ("    sending finished");
-            }
-            xdnd_xfree (dnd->dragger_typelist);
-            xdnd_reset (dnd);
-            dnd->stage = XDND_DROP_STAGE_IDLE;
-            result = 1;
-        } else {
-            dnd_debug1 ("  property is not Xdnd_NON_PROTOCOL_ATOM - ignoring");
-        }
-    } else if (xevent->type == ClientMessage) {
-        dnd_debug2 ("got ClientMessage to xevent->xany.window = %ld", xevent->xany.window);
-        if (xevent->xclient.message_type == dnd->XdndEnter) {
-            dnd_debug2 ("  message_type is XdndEnter, version = %ld", XDND_ENTER_VERSION (xevent));
-#if XDND_VERSION >= 3
-            if (XDND_ENTER_VERSION (xevent) < 3)
-                return 0;
-#endif
-            xdnd_reset (dnd);
-            dnd->dragger_window = XDND_ENTER_SOURCE_WIN (xevent);
-#if XDND_VERSION >= 3
-            dnd->dropper_toplevel = xevent->xany.window;
-            dnd->dropper_window = 0;     /* enter goes to the top level window only,
-                                            so we don't really know what the
-                                            sub window is yet */
-#else
-            dnd->dropper_window = xevent->xany.window;
-#endif
-            xdnd_xfree (dnd->dragger_typelist);
-            if (XDND_ENTER_THREE_TYPES (xevent)) {
-                dnd_debug1 ("    three types only");
-                xdnd_get_three_types (dnd, xevent, &dnd->dragger_typelist);
-            } else {
-                dnd_debug1 ("    more than three types - getting list");
-                xdnd_get_type_list (dnd, dnd->dragger_window, &dnd->dragger_typelist);
-            }
-            if (dnd->dragger_typelist)
-                dnd->stage = XDND_DROP_STAGE_ENTERED;
-            else
-                dnd_debug1 ("      typelist returned as zero!");
-            dnd->dragging_version = XDND_ENTER_VERSION (xevent);
-            result = 1;
-        } else if (xevent->xclient.message_type == dnd->XdndLeave) {
-#if XDND_VERSION >= 3
-            if (xevent->xany.window == dnd->dropper_toplevel && dnd->dropper_window)
-                xevent->xany.window = dnd->dropper_window;
-#endif
-            dnd_debug1 ("  message_type is XdndLeave");
-            if (dnd->dragger_window == XDND_LEAVE_SOURCE_WIN (xevent) && dnd->stage == XDND_DROP_STAGE_ENTERED) {
-                dnd_debug1 ("    leaving");
-                if (dnd->widget_apply_leave)
-                    (*dnd->widget_apply_leave) (dnd, xevent->xany.window);
-                dnd->stage = XDND_DROP_STAGE_IDLE;
-                xdnd_xfree (dnd->dragger_typelist);
-                result = 1;
-                dnd->dropper_toplevel = dnd->dropper_window = 0;
-            } else {
-                dnd_debug1 ("    wrong stage or from wrong window");
-            }
-        } else if (xevent->xclient.message_type == dnd->XdndPosition) {
-            dnd_debug2 ("  message_type is XdndPosition to %ld", xevent->xany.window);
-            if (dnd->dragger_window == XDND_POSITION_SOURCE_WIN (xevent) && dnd->stage == XDND_DROP_STAGE_ENTERED) {
-                int want_position;
-                Atom action;
-                XRectangle rectangle;
-                Window last_window;
-                last_window = dnd->dropper_window;
-#if XDND_VERSION >= 3
-/* version 3 gives us the top-level window only. WE have to find the child that the pointer is over: */
-                if (1 || xevent->xany.window != dnd->dropper_toplevel || !dnd->dropper_window) {
-                    Window parent, child, new_child = 0;
-                    dnd->dropper_toplevel = xevent->xany.window;
-                    parent = dnd->root_window;
-                    child = dnd->dropper_toplevel;
-                    for (;;) {
-                        int xd, yd;
-                        new_child = 0;
-                        if (!XTranslateCoordinates (dnd->display, parent, child, 
-                                    XDND_POSITION_ROOT_X (xevent), XDND_POSITION_ROOT_Y (xevent),
-                                    &xd, &yd, &new_child))
-                            break;
-                        if (!new_child)
-                            break;
-                        child = new_child;
-                    }
-                    dnd->dropper_window = xevent->xany.window = child;
-                    dnd_debug2 ("   child window translates to %ld", dnd->dropper_window);
-                } else if (xevent->xany.window == dnd->dropper_toplevel && dnd->dropper_window) {
-                    xevent->xany.window = dnd->dropper_window;
-                    dnd_debug2 ("   child window previously found: %ld", dnd->dropper_window);
-                }
-#endif
-                action = dnd->XdndActionCopy;
-                dnd->supported_action = dnd->XdndActionCopy;
-                dnd->x = XDND_POSITION_ROOT_X (xevent);
-                dnd->y = XDND_POSITION_ROOT_Y (xevent);
-                dnd->time = CurrentTime;
-                if (dnd_version_at_least (dnd->dragging_version, 1))
-                    dnd->time = XDND_POSITION_TIME (xevent);
-                if (dnd_version_at_least (dnd->dragging_version, 1))
-                    action = XDND_POSITION_ACTION (xevent);
-#if XDND_VERSION >= 3
-                if (last_window && last_window != xevent->xany.window)
-                    if (dnd->widget_apply_leave)
-                        (*dnd->widget_apply_leave) (dnd, last_window);
-#endif
-                dnd->will_accept = (*dnd->widget_apply_position) (dnd, xevent->xany.window, dnd->dragger_window,
-                action, dnd->x, dnd->y, dnd->time, dnd->dragger_typelist,
-                                                                  &want_position, &dnd->supported_action, &dnd->desired_type, &rectangle);
-                dnd_debug2 ("    will accept = %d", dnd->will_accept);
-#if XDND_VERSION >= 3
-                dnd_debug2 ("    sending status of %ld", dnd->dropper_toplevel);
-                xdnd_send_status (dnd, dnd->dragger_window, dnd->dropper_toplevel, dnd->will_accept,
-                                  want_position, rectangle.x, rectangle.y, rectangle.width, rectangle.height, dnd->supported_action);
-#else
-                dnd_debug2 ("    sending status of %ld", xevent->xany.window);
-                xdnd_send_status (dnd, dnd->dragger_window, xevent->xany.window, dnd->will_accept,
-                                  want_position, rectangle.x, rectangle.y, rectangle.width, rectangle.height, dnd->supported_action);
-#endif
-                result = 1;
-            } else {
-                dnd_debug1 ("    wrong stage or from wrong window");
-            }
-        } else if (xevent->xclient.message_type == dnd->XdndDrop) {
-#if XDND_VERSION >= 3
-            if (xevent->xany.window == dnd->dropper_toplevel && dnd->dropper_window)
-                xevent->xany.window = dnd->dropper_window;
-#endif
-            dnd_debug1 ("  message_type is XdndDrop");
-            if (dnd->dragger_window == XDND_DROP_SOURCE_WIN (xevent) && dnd->stage == XDND_DROP_STAGE_ENTERED) {
-                dnd->time = CurrentTime;
-                if (dnd_version_at_least (dnd->dragging_version, 1))
-                    dnd->time = XDND_DROP_TIME (xevent);
-                if (dnd->will_accept) {
-                    dnd_debug1 ("    will_accept is true - converting selectiong");
-                    dnd_debug2 ("      my window is %ld", dnd->dropper_window);
-                    dnd_debug2 ("        source window is %ld", dnd->dragger_window);
-                    xdnd_convert_selection (dnd, dnd->dragger_window, dnd->dropper_window, dnd->desired_type);
-                    dnd->stage = XDND_DROP_STAGE_CONVERTING;
-                } else {
-                    dnd_debug1 ("    will_accept is false - sending finished");
-                    if (dnd_version_at_least (dnd->dragging_version, 2)) {
-#if XDND_VERSION >= 3
-                        xdnd_send_finished (dnd, dnd->dragger_window, dnd->dropper_toplevel, 1);
-#else
-                        xdnd_send_finished (dnd, dnd->dragger_window, xevent->xany.window, 1);
-#endif
-                    }
-                    xdnd_xfree (dnd->dragger_typelist);
-                    xdnd_reset (dnd);
-                    dnd->stage = XDND_DROP_STAGE_IDLE;
-                }
-                result = 1;
-            } else {
-                dnd_debug1 ("    wrong stage or from wrong window");
-            }
-        }
-    }
-    return result;
-}
 
 /*
    Following here is a sample implementation: Suppose we want a window
@@ -1550,50 +1373,241 @@ static int widget_apply_position (DndClass * dnd, Window widgets_window, Window 
     return 1;
 }
 
-Atom xdnd_get_drop (Display * display, XEvent * xevent, Atom * typelist, Atom * actionlist,
+void handle_update(DndClass * dnd, XEvent * xevent){
+    dnd_debug2 ("  message_type is XdndPosition to %ld", xevent->xany.window);
+    if (dnd->dragger_window == XDND_POSITION_SOURCE_WIN (xevent)) {
+        int want_position;
+        Atom action;
+        XRectangle rectangle;
+        Window last_window;
+        last_window = dnd->dropper_window;
+#if XDND_VERSION >= 3
+/* version 3 gives us the top-level window only. WE have to find the child that the pointer is over: */
+        if (1 || xevent->xany.window != dnd->dropper_toplevel || !dnd->dropper_window) {
+            Window parent, child, new_child = 0;
+            dnd->dropper_toplevel = xevent->xany.window;
+            parent = dnd->root_window;
+            child = dnd->dropper_toplevel;
+            for (;;) {
+                int xd, yd;
+                new_child = 0;
+                if (!XTranslateCoordinates (dnd->display, parent, child, 
+                            XDND_POSITION_ROOT_X (xevent), XDND_POSITION_ROOT_Y (xevent),
+                            &xd, &yd, &new_child))
+                    break;
+                if (!new_child)
+                    break;
+                child = new_child;
+            }
+            dnd->dropper_window = xevent->xany.window = child;
+            dnd_debug2 ("   child window translates to %ld", dnd->dropper_window);
+        } else if (xevent->xany.window == dnd->dropper_toplevel && dnd->dropper_window) {
+            xevent->xany.window = dnd->dropper_window;
+            dnd_debug2 ("   child window previously found: %ld", dnd->dropper_window);
+        }
+#endif
+        action = dnd->XdndActionCopy;
+        dnd->supported_action = dnd->XdndActionCopy;
+        dnd->x = XDND_POSITION_ROOT_X (xevent);
+        dnd->y = XDND_POSITION_ROOT_Y (xevent);
+        dnd->time = CurrentTime;
+        if (dnd_version_at_least (dnd->dragging_version, 1))
+            dnd->time = XDND_POSITION_TIME (xevent);
+        if (dnd_version_at_least (dnd->dragging_version, 1))
+            action = XDND_POSITION_ACTION (xevent);
+#if XDND_VERSION >= 3
+        if (last_window && last_window != xevent->xany.window)
+            if (dnd->widget_apply_leave)
+                (*dnd->widget_apply_leave) (dnd, last_window);
+#endif
+        dnd->will_accept = (*dnd->widget_apply_position) (dnd, xevent->xany.window, dnd->dragger_window,
+        action, dnd->x, dnd->y, dnd->time, dnd->dragger_typelist,
+                                                            &want_position, &dnd->supported_action, &dnd->desired_type, &rectangle);
+        dnd_debug2 ("    will accept = %d", dnd->will_accept);
+#if XDND_VERSION >= 3
+        dnd_debug2 ("    sending status of %ld", dnd->dropper_toplevel);
+        xdnd_send_status (dnd, dnd->dragger_window, dnd->dropper_toplevel, dnd->will_accept,
+                            want_position, rectangle.x, rectangle.y, rectangle.width, rectangle.height, dnd->supported_action);
+#else
+        dnd_debug2 ("    sending status of %ld", xevent->xany.window);
+        xdnd_send_status (dnd, dnd->dragger_window, xevent->xany.window, dnd->will_accept,
+                            want_position, rectangle.x, rectangle.y, rectangle.width, rectangle.height, dnd->supported_action);
+#endif
+    } else {
+        dnd_debug1 ("    wrong stage or from wrong window");
+    }
+}
+
+void handle_enter(DndClass * dnd, XEvent * xevent){
+    dnd_debug2 ("  message_type is XdndEnter, version = %ld", XDND_ENTER_VERSION (xevent));
+#if XDND_VERSION >= 3
+    if (XDND_ENTER_VERSION (xevent) < 3)
+        return;
+#endif
+    xdnd_reset (dnd);
+    dnd->dragger_window = XDND_ENTER_SOURCE_WIN (xevent);
+#if XDND_VERSION >= 3
+    dnd->dropper_toplevel = xevent->xany.window;
+    dnd->dropper_window = 0;     /* enter goes to the top level window only,
+                                    so we don't really know what the
+                                    sub window is yet */
+#else
+    dnd->dropper_window = xevent->xany.window;
+#endif
+    xdnd_xfree (dnd->dragger_typelist);
+    if (XDND_ENTER_THREE_TYPES (xevent)) {
+        dnd_debug1 ("    three types only");
+        xdnd_get_three_types (dnd, xevent, &dnd->dragger_typelist);
+    } else {
+        dnd_debug1 ("    more than three types - getting list");
+        xdnd_get_type_list (dnd, dnd->dragger_window, &dnd->dragger_typelist);
+    }
+    dnd->dragging_version = XDND_ENTER_VERSION (xevent);
+    if (!dnd->dragger_typelist){
+        return;
+    }
+    for (;xevent->xclient.message_type != dnd->XdndPosition;)
+    {
+        XNextEvent(dnd->display, xevent);
+    }
+    handle_update(dnd, xevent);
+    /* Send request for obtain selection data. */
+    xdnd_convert_selection (dnd, dnd->dragger_window, dnd->dropper_window, dnd->desired_type);
+    /* Wait to receive selection. */
+    for (;xevent->type != SelectionNotify;)
+    {
+        XNextEvent(dnd->display, xevent);
+    }    
+    if (xevent->xselection.property == dnd->Xdnd_NON_PROTOCOL_ATOM ) {
+        xdnd_get_selection (dnd, dnd->dragger_window, xevent->xselection.property, xevent->xany.window);
+    }
+}
+
+void handle_exit(DndClass * dnd, XEvent * xevent){
+#if XDND_VERSION >= 3
+    if (xevent->xany.window == dnd->dropper_toplevel && dnd->dropper_window)
+        xevent->xany.window = dnd->dropper_window;
+#endif
+    dnd_debug1 ("  message_type is XdndLeave");
+    if (dnd->dragger_window == XDND_LEAVE_SOURCE_WIN (xevent) ) {
+        dnd_debug1 ("    leaving");
+        if (dnd->widget_apply_leave)
+            (*dnd->widget_apply_leave) (dnd, xevent->xany.window);
+        xdnd_xfree (dnd->dragger_typelist);
+        dnd->dropper_toplevel = dnd->dropper_window = 0;
+    } else {
+        dnd_debug1 ("    wrong stage or from wrong window");
+    }
+}
+
+void handle_drop(DndClass * dnd, XEvent * xevent){
+#if XDND_VERSION >= 3
+    if (xevent->xany.window == dnd->dropper_toplevel && dnd->dropper_window)
+        xevent->xany.window = dnd->dropper_window;
+#endif
+    dnd_debug1 ("  message_type is XdndDrop");
+    if (dnd->dragger_window == XDND_DROP_SOURCE_WIN (xevent)) {
+        dnd->time = CurrentTime;
+        if (dnd_version_at_least (dnd->dragging_version, 1))
+            dnd->time = XDND_DROP_TIME (xevent);
+        if (dnd->will_accept) {
+            dnd_debug1 ("    will_accept is true - converting selectiong");
+            dnd_debug2 ("      my window is %ld", dnd->dropper_window);
+            dnd_debug2 ("        source window is %ld", dnd->dragger_window);
+            xdnd_convert_selection (dnd, dnd->dragger_window, dnd->dropper_window, dnd->desired_type);
+        } else {
+            dnd_debug1 ("    will_accept is false - sending finished");
+            if (dnd_version_at_least (dnd->dragging_version, 2)) {
+#if XDND_VERSION >= 3
+                xdnd_send_finished (dnd, dnd->dragger_window, dnd->dropper_toplevel, 1);
+#else
+                xdnd_send_finished (dnd, dnd->dragger_window, xevent->xany.window, 1);
+#endif
+            }
+            xdnd_xfree (dnd->dragger_typelist);
+            xdnd_reset (dnd);
+        }
+    } else {
+        dnd_debug1 ("    wrong stage or from wrong window");
+    }
+    /* Wait to receive selection. */
+    for (;xevent->type != SelectionNotify;)
+    {
+        XNextEvent(dnd->display, xevent);
+    }
+    if (xevent->xselection.property == dnd->Xdnd_NON_PROTOCOL_ATOM ) {
+        int error;
+        dnd_debug1 ("  property is Xdnd_NON_PROTOCOL_ATOM - getting selection");
+        error = xdnd_get_selection (dnd, dnd->dragger_window, xevent->xselection.property, xevent->xany.window);
+/* error is not actually used, i think future versions of the protocol maybe should return 
+an error status to the calling window with the XdndFinished client message */
+        if (dnd_version_at_least (dnd->dragging_version, 2)) {
+#if XDND_VERSION >= 3
+            xdnd_send_finished (dnd, dnd->dragger_window, dnd->dropper_toplevel, error);
+#else
+            xdnd_send_finished (dnd, dnd->dragger_window, dnd->dropper_window, error);
+#endif
+            dnd_debug1 ("    sending finished");
+        }
+        xdnd_xfree (dnd->dragger_typelist);
+        xdnd_reset (dnd);
+    }
+}
+
+GHOST_TEventType xdnd_handle_event (Display * display, XEvent * xevent, Atom * typelist, Atom * actionlist,
           unsigned char **data, int *length, Atom * type, int *x, int *y)
 {
-    Atom action = 0;
+    GHOST_TEventType event_type = 0;
     static int initialised = 0;
     static DndClass dnd;
-    if (!initialised) {
-        xdnd_init (&dnd, display);
+    if (!initialised)
+    {
+        xdnd_init(&dnd, display);
         initialised = 1;
     }
-    if (xevent->type != ClientMessage || xevent->xclient.message_type != dnd.XdndEnter) {
+    if (xevent->type != ClientMessage)
+    {
         return 0;
-    } else {
-        struct xdnd_get_drop_info i;
-
-/* setup user structure */
-        memset (&i, 0, sizeof (i));
+    }
+    static struct xdnd_get_drop_info i;
+    if (xevent->xclient.message_type == dnd.XdndEnter)
+    {
+        /* setup user structure */
+        memset(&i, 0, sizeof(i));
         i.actionlist = actionlist;
         i.typelist = typelist;
         dnd.user_hook1 = &i;
 
-/* setup methods */
+        /* setup methods */
         dnd.widget_insert_drop = widget_insert_drop;
         dnd.widget_apply_position = widget_apply_position;
 
-/* main loop */
-        for (;;) {
-            xdnd_handle_drop_events (&dnd, xevent);
-            if (dnd.stage == XDND_DROP_STAGE_IDLE)
-                break;
-            XNextEvent (dnd.display, xevent);
-        }
-
-/* return results */
-        if (i.drop_data) {
-            *length = i.drop_data_length;
-            *data = i.drop_data;
-            action = i.return_action;
-            *type = i.return_type;
-            *x = i.x;
-            *y = i.y;
-        }
+        event_type = GHOST_kEventDraggingEntered;
+        handle_enter(&dnd, xevent);
     }
-    return action;
+    else if (xevent->xclient.message_type == dnd.XdndPosition)
+    {
+        event_type = GHOST_kEventDraggingUpdated;
+        handle_update(&dnd, xevent);
+    }
+    else if (xevent->xclient.message_type == dnd.XdndDrop)
+    {
+        event_type = GHOST_kEventDraggingDropDone;
+        handle_drop(&dnd, xevent);
+    }
+    else if (xevent->xclient.message_type == dnd.XdndLeave)
+    {
+        event_type = GHOST_kEventDraggingExited;
+        handle_exit(&dnd, xevent);
+    }
+    /* return results */
+    *length = i.drop_data_length;
+    i.drop_data_length=0;
+    *data = i.drop_data;
+    /* data wil be free outside */
+    i.drop_data=NULL;
+    *type = i.return_type;
+    *x = i.x;
+    *y = i.y;
+    return event_type;
 }
-
-

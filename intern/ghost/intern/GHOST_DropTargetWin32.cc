@@ -81,12 +81,13 @@ HRESULT __stdcall GHOST_DropTargetWin32::DragEnter(IDataObject *p_data_object,
                                                    DWORD *pdw_effect)
 {
   /* We accept all drop by default. */
+  void *data = getGhostData(p_data_object);
   m_window->setAcceptDragOperation(true);
   *pdw_effect = DROPEFFECT_NONE;
 
   m_draggedObjectType = getGhostType(p_data_object);
   m_system->pushDragDropEvent(
-      GHOST_kEventDraggingEntered, m_draggedObjectType, m_window, pt.x, pt.y, NULL);
+      GHOST_kEventDraggingEntered, m_draggedObjectType, m_window, pt.x, pt.y, data);
   return S_OK;
 }
 
