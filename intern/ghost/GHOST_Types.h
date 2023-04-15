@@ -248,6 +248,8 @@ typedef enum {
   GHOST_kEventNDOFButton,
 #endif
 
+  GHOST_kEventTouch,
+
   /**
    * Keyboard up/down events.
    *
@@ -630,6 +632,23 @@ typedef struct {
   short button;
 } GHOST_TEventNDOFButtonData;
 #endif  // WITH_INPUT_NDOF
+
+typedef enum {
+  GHOST_kTouchDown,
+  GHOST_kTouchMove,
+  GHOST_kTouchUp,
+} GHOST_TTouchPhase;
+
+typedef struct {
+  /** Identifier to track touch pointers, may be reused for another pointer once released. */
+  int32_t id;
+  /** The x-coordinate of the touch position. */
+  int32_t x;
+  /** The y-coordinate of the touch position. */
+  int32_t y;
+  /** Phase in touch event lifecycle: down, moving, up. */
+  GHOST_TTouchPhase phase;
+} GHOST_TEventTouchData;
 
 typedef struct {
   /** The key code. */

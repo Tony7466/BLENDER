@@ -38,6 +38,7 @@ struct GHOST_PointerInfoWin32 {
   POINT pixelLocation;
   uint64_t time;
   GHOST_TabletData tabletData;
+  int32_t isTouch;
 };
 
 typedef enum {

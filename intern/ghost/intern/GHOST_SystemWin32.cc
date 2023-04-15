@@ -33,6 +33,7 @@
 #include "GHOST_EventButton.hh"
 #include "GHOST_EventCursor.hh"
 #include "GHOST_EventKey.hh"
+#include "GHOST_EventTouch.hh"
 #include "GHOST_EventWheel.hh"
 #include "GHOST_TimerManager.hh"
 #include "GHOST_TimerTask.hh"
@@ -990,16 +991,16 @@ void GHOST_SystemWin32::processWintabEvent(GHOST_WindowWin32 *window)
 void GHOST_SystemWin32::processPointerEvent(
     uint type, GHOST_WindowWin32 *window, WPARAM wParam, LPARAM lParam, bool &eventHandled)
 {
-  /* Pointer events might fire when changing windows for a device which is set to use Wintab,
-   * even when Wintab is left enabled but set to the bottom of Wintab overlap order. */
-  if (!window->usingTabletAPI(GHOST_kTabletWinPointer)) {
-    return;
-  }
-
   GHOST_SystemWin32 *system = (GHOST_SystemWin32 *)getSystem();
   std::vector<GHOST_PointerInfoWin32> pointerInfo;
 
   if (window->getPointerInfo(pointerInfo, wParam, lParam) != GHOST_kSuccess) {
+    return;
+  }
+
+  /* Pointer events might fire when changing windows for a device which is set to use Wintab,
+   * even when Wintab is left enabled but set to the bottom of Wintab overlap order. */
+  if (!window->usingTabletAPI(GHOST_kTabletWinPointer) && !pointerInfo[0].isTouch) {
     return;
   }
 
@@ -1008,12 +1009,23 @@ void GHOST_SystemWin32::processPointerEvent(
       /* Coalesced pointer events are reverse chronological order, reorder chronologically.
        * Only contiguous move events are coalesced. */
       for (uint32_t i = pointerInfo.size(); i-- > 0;) {
-        system->pushEvent(new GHOST_EventCursor(pointerInfo[i].time,
-                                                GHOST_kEventCursorMove,
-                                                window,
-                                                pointerInfo[i].pixelLocation.x,
-                                                pointerInfo[i].pixelLocation.y,
-                                                pointerInfo[i].tabletData));
+        if (pointerInfo[i].isTouch) {
+          system->pushEvent(new GHOST_EventTouch(system->getMilliSeconds(),
+                                                 GHOST_kEventTouch,
+                                                 window,
+                                                 pointerInfo[i].pointerId,
+                                                 pointerInfo[i].pixelLocation.x,
+                                                 pointerInfo[i].pixelLocation.y,
+                                                 GHOST_kTouchMove));
+        }
+        else {
+          system->pushEvent(new GHOST_EventCursor(pointerInfo[i].time,
+                                                  GHOST_kEventCursorMove,
+                                                  window,
+                                                  pointerInfo[i].pixelLocation.x,
+                                                  pointerInfo[i].pixelLocation.y,
+                                                  pointerInfo[i].tabletData));
+        }
       }
 
       /* Leave event unhandled so that system cursor is moved. */
@@ -1021,19 +1033,30 @@ void GHOST_SystemWin32::processPointerEvent(
       break;
     }
     case WM_POINTERDOWN: {
-      /* Move cursor to point of contact because GHOST_EventButton does not include position. */
-      system->pushEvent(new GHOST_EventCursor(pointerInfo[0].time,
-                                              GHOST_kEventCursorMove,
-                                              window,
-                                              pointerInfo[0].pixelLocation.x,
-                                              pointerInfo[0].pixelLocation.y,
-                                              pointerInfo[0].tabletData));
-      system->pushEvent(new GHOST_EventButton(pointerInfo[0].time,
-                                              GHOST_kEventButtonDown,
-                                              window,
-                                              pointerInfo[0].buttonMask,
-                                              pointerInfo[0].tabletData));
-      window->updateMouseCapture(MousePressed);
+      if (pointerInfo[0].isTouch) {
+        system->pushEvent(new GHOST_EventTouch(pointerInfo[0].time,
+                                               GHOST_kEventTouch,
+                                               window,
+                                               pointerInfo[0].pointerId,
+                                               pointerInfo[0].pixelLocation.x,
+                                               pointerInfo[0].pixelLocation.y,
+                                               GHOST_kTouchDown));
+      }
+      else {
+        /* Move cursor to point of contact because GHOST_EventButton does not include position. */
+        system->pushEvent(new GHOST_EventCursor(pointerInfo[0].time,
+                                                GHOST_kEventCursorMove,
+                                                window,
+                                                pointerInfo[0].pixelLocation.x,
+                                                pointerInfo[0].pixelLocation.y,
+                                                pointerInfo[0].tabletData));
+        system->pushEvent(new GHOST_EventButton(pointerInfo[0].time,
+                                                GHOST_kEventButtonDown,
+                                                window,
+                                                pointerInfo[0].buttonMask,
+                                                pointerInfo[0].tabletData));
+        window->updateMouseCapture(MousePressed);
+      }
 
       /* Mark event handled so that mouse button events are not generated. */
       eventHandled = true;
@@ -1041,12 +1064,23 @@ void GHOST_SystemWin32::processPointerEvent(
       break;
     }
     case WM_POINTERUP: {
-      system->pushEvent(new GHOST_EventButton(pointerInfo[0].time,
-                                              GHOST_kEventButtonUp,
-                                              window,
-                                              pointerInfo[0].buttonMask,
-                                              pointerInfo[0].tabletData));
-      window->updateMouseCapture(MouseReleased);
+      if (pointerInfo[0].isTouch) {
+        system->pushEvent(new GHOST_EventTouch(pointerInfo[0].time,
+                                               GHOST_kEventTouch,
+                                               window,
+                                               pointerInfo[0].pointerId,
+                                               pointerInfo[0].pixelLocation.x,
+                                               pointerInfo[0].pixelLocation.y,
+                                               GHOST_kTouchUp));
+      }
+      else {
+        system->pushEvent(new GHOST_EventButton(pointerInfo[0].time,
+                                                GHOST_kEventButtonUp,
+                                                window,
+                                                pointerInfo[0].buttonMask,
+                                                pointerInfo[0].tabletData));
+        window->updateMouseCapture(MouseReleased);
+      }
 
       /* Mark event handled so that mouse button events are not generated. */
       eventHandled = true;

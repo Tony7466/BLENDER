@@ -903,79 +903,102 @@ GHOST_TSuccess GHOST_WindowWin32::getPointerInfo(
   int32_t pointerId = GET_POINTERID_WPARAM(wParam);
   int32_t isPrimary = IS_POINTER_PRIMARY_WPARAM(wParam);
   GHOST_SystemWin32 *system = (GHOST_SystemWin32 *)GHOST_System::getSystem();
-  uint32_t outCount = 0;
 
-  if (!(GetPointerPenInfoHistory(pointerId, &outCount, NULL))) {
+  POINTER_INFO pointerApiInfo;
+  if (!GetPointerInfo(pointerId, &pointerApiInfo) || pointerApiInfo.historyCount <= 0) {
     return GHOST_kFailure;
   }
 
-  std::vector<POINTER_PEN_INFO> pointerPenInfo(outCount);
-  outPointerInfo.resize(outCount);
+  outPointerInfo.resize(pointerApiInfo.historyCount);
 
-  if (!(GetPointerPenInfoHistory(pointerId, &outCount, pointerPenInfo.data()))) {
-    return GHOST_kFailure;
+  switch (pointerApiInfo.pointerType) {
+    case PT_PEN: {
+      if (!usingTabletAPI(GHOST_kTabletWinPointer)) {
+        return GHOST_kFailure;
+      }
+
+      auto pointerPenInfo = std::vector<POINTER_PEN_INFO>(pointerApiInfo.historyCount);
+
+      if (!GetPointerPenInfoHistory(
+              pointerId, &pointerApiInfo.historyCount, pointerPenInfo.data())) {
+        return GHOST_kFailure;
+      }
+
+      for (uint32_t i = 0; i < pointerApiInfo.historyCount; i++) {
+        POINTER_INFO pointerApiInfo = pointerPenInfo[i].pointerInfo;
+        /* Obtain the basic information from the event. */
+        outPointerInfo[i].pointerId = pointerId;
+        outPointerInfo[i].isPrimary = isPrimary;
+
+        switch (pointerApiInfo.ButtonChangeType) {
+          case POINTER_CHANGE_FIRSTBUTTON_DOWN:
+          case POINTER_CHANGE_FIRSTBUTTON_UP:
+            outPointerInfo[i].buttonMask = GHOST_kButtonMaskLeft;
+            break;
+          case POINTER_CHANGE_SECONDBUTTON_DOWN:
+          case POINTER_CHANGE_SECONDBUTTON_UP:
+            outPointerInfo[i].buttonMask = GHOST_kButtonMaskRight;
+            break;
+          case POINTER_CHANGE_THIRDBUTTON_DOWN:
+          case POINTER_CHANGE_THIRDBUTTON_UP:
+            outPointerInfo[i].buttonMask = GHOST_kButtonMaskMiddle;
+            break;
+          case POINTER_CHANGE_FOURTHBUTTON_DOWN:
+          case POINTER_CHANGE_FOURTHBUTTON_UP:
+            outPointerInfo[i].buttonMask = GHOST_kButtonMaskButton4;
+            break;
+          case POINTER_CHANGE_FIFTHBUTTON_DOWN:
+          case POINTER_CHANGE_FIFTHBUTTON_UP:
+            outPointerInfo[i].buttonMask = GHOST_kButtonMaskButton5;
+            break;
+          default:
+            break;
+        }
+
+        outPointerInfo[i].pixelLocation = pointerApiInfo.ptPixelLocation;
+        outPointerInfo[i].tabletData.Active = GHOST_kTabletModeStylus;
+        outPointerInfo[i].tabletData.Pressure = 1.0f;
+        outPointerInfo[i].tabletData.Xtilt = 0.0f;
+        outPointerInfo[i].tabletData.Ytilt = 0.0f;
+        outPointerInfo[i].time = system->performanceCounterToMillis(
+            pointerApiInfo.PerformanceCount);
+        outPointerInfo[i].isTouch = 0;
+
+        if (pointerPenInfo[i].penMask & PEN_MASK_PRESSURE) {
+          outPointerInfo[i].tabletData.Pressure = pointerPenInfo[i].pressure / 1024.0f;
+        }
+
+        if (pointerPenInfo[i].penFlags & PEN_FLAG_ERASER) {
+          outPointerInfo[i].tabletData.Active = GHOST_kTabletModeEraser;
+        }
+
+        if (pointerPenInfo[i].penMask & PEN_MASK_TILT_X) {
+          outPointerInfo[i].tabletData.Xtilt = fmin(fabs(pointerPenInfo[i].tiltX / 90.0f), 1.0f);
+        }
+
+        if (pointerPenInfo[i].penMask & PEN_MASK_TILT_Y) {
+          outPointerInfo[i].tabletData.Ytilt = fmin(fabs(pointerPenInfo[i].tiltY / 90.0f), 1.0f);
+        }
+      }
+
+      if (!outPointerInfo.empty()) {
+        m_lastPointerTabletData = outPointerInfo.back().tabletData;
+      }
+
+      return GHOST_kSuccess;
+    }
+    case PT_TOUCH:
+      for (uint32_t i = 0; i < pointerApiInfo.historyCount; i++) {
+        outPointerInfo[i].pixelLocation = pointerApiInfo.ptPixelLocation;
+        outPointerInfo[i].pointerId = pointerApiInfo.pointerId;
+        outPointerInfo[i].time = system->performanceCounterToMillis(
+            pointerApiInfo.PerformanceCount);
+        outPointerInfo[i].isTouch = 1;
+      }
+      return GHOST_kSuccess;
+    default:
+      return GHOST_kFailure;
   }
-
-  for (uint32_t i = 0; i < outCount; i++) {
-    POINTER_INFO pointerApiInfo = pointerPenInfo[i].pointerInfo;
-    /* Obtain the basic information from the event. */
-    outPointerInfo[i].pointerId = pointerId;
-    outPointerInfo[i].isPrimary = isPrimary;
-
-    switch (pointerApiInfo.ButtonChangeType) {
-      case POINTER_CHANGE_FIRSTBUTTON_DOWN:
-      case POINTER_CHANGE_FIRSTBUTTON_UP:
-        outPointerInfo[i].buttonMask = GHOST_kButtonMaskLeft;
-        break;
-      case POINTER_CHANGE_SECONDBUTTON_DOWN:
-      case POINTER_CHANGE_SECONDBUTTON_UP:
-        outPointerInfo[i].buttonMask = GHOST_kButtonMaskRight;
-        break;
-      case POINTER_CHANGE_THIRDBUTTON_DOWN:
-      case POINTER_CHANGE_THIRDBUTTON_UP:
-        outPointerInfo[i].buttonMask = GHOST_kButtonMaskMiddle;
-        break;
-      case POINTER_CHANGE_FOURTHBUTTON_DOWN:
-      case POINTER_CHANGE_FOURTHBUTTON_UP:
-        outPointerInfo[i].buttonMask = GHOST_kButtonMaskButton4;
-        break;
-      case POINTER_CHANGE_FIFTHBUTTON_DOWN:
-      case POINTER_CHANGE_FIFTHBUTTON_UP:
-        outPointerInfo[i].buttonMask = GHOST_kButtonMaskButton5;
-        break;
-      default:
-        break;
-    }
-
-    outPointerInfo[i].pixelLocation = pointerApiInfo.ptPixelLocation;
-    outPointerInfo[i].tabletData.Active = GHOST_kTabletModeStylus;
-    outPointerInfo[i].tabletData.Pressure = 1.0f;
-    outPointerInfo[i].tabletData.Xtilt = 0.0f;
-    outPointerInfo[i].tabletData.Ytilt = 0.0f;
-    outPointerInfo[i].time = system->performanceCounterToMillis(pointerApiInfo.PerformanceCount);
-
-    if (pointerPenInfo[i].penMask & PEN_MASK_PRESSURE) {
-      outPointerInfo[i].tabletData.Pressure = pointerPenInfo[i].pressure / 1024.0f;
-    }
-
-    if (pointerPenInfo[i].penFlags & PEN_FLAG_ERASER) {
-      outPointerInfo[i].tabletData.Active = GHOST_kTabletModeEraser;
-    }
-
-    if (pointerPenInfo[i].penMask & PEN_MASK_TILT_X) {
-      outPointerInfo[i].tabletData.Xtilt = fmin(fabs(pointerPenInfo[i].tiltX / 90.0f), 1.0f);
-    }
-
-    if (pointerPenInfo[i].penMask & PEN_MASK_TILT_Y) {
-      outPointerInfo[i].tabletData.Ytilt = fmin(fabs(pointerPenInfo[i].tiltY / 90.0f), 1.0f);
-    }
-  }
-
-  if (!outPointerInfo.empty()) {
-    m_lastPointerTabletData = outPointerInfo.back().tabletData;
-  }
-
-  return GHOST_kSuccess;
 }
 
 void GHOST_WindowWin32::resetPointerPenInfo()
