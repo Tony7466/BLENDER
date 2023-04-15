@@ -974,7 +974,7 @@ class FunctionSignaturePanel():
 
     # Dictionary of node types with methods to get the signature
     signature_nodes = {
-        'FunctionNodeEvaluate' : lambda node: node.signature,
+        'GeometryNodeEvaluateFunction' : lambda node: node.signature,
     }
 
     @classmethod

@@ -202,7 +202,7 @@ class NODE_OT_tree_path_parent(Operator):
 class NodeFunctionSignatureOperator():
     # Dictionary of node types with methods to get the signature
     signature_nodes = {
-        'FunctionNodeEvaluate' : lambda node: node.signature,
+        'GeometryNodeEvaluateFunction' : lambda node: node.signature,
     }
 
     param_type: EnumProperty(

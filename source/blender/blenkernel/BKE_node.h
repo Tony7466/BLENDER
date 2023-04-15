@@ -1635,6 +1635,9 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define GEO_NODE_MEAN_FILTER_SDF_VOLUME 1197
 #define GEO_NODE_OFFSET_SDF_VOLUME 1198
 #define GEO_NODE_INDEX_OF_NEAREST 1199
+/* 1199 is last valid geometry node type ID, continuing at 11000. */
+#define GEO_NODE_BIND_FUNCTION 11000
+#define GEO_NODE_EVALUATE_FUNCTION 11001
 
 /** \} */
 
@@ -1661,8 +1664,6 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define FN_NODE_INPUT_INT 1220
 #define FN_NODE_SEPARATE_COLOR 1221
 #define FN_NODE_COMBINE_COLOR 1222
-#define FN_NODE_BIND 1223
-#define FN_NODE_EVALUATE 1224
 
 /** \} */
 

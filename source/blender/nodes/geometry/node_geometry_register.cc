@@ -14,6 +14,7 @@ void register_geometry_nodes()
   register_node_type_geo_attribute_capture();
   register_node_type_geo_attribute_domain_size();
   register_node_type_geo_attribute_statistic();
+  register_node_type_geo_bind_function();
   register_node_type_geo_blur_attribute();
   register_node_type_geo_boolean();
   register_node_type_geo_bounding_box();
@@ -55,6 +56,7 @@ void register_geometry_nodes()
   register_node_type_geo_edge_split();
   register_node_type_geo_edges_to_face_groups();
   register_node_type_geo_evaluate_at_index();
+  register_node_type_geo_evaluate_function();
   register_node_type_geo_evaluate_on_domain();
   register_node_type_geo_extrude_mesh();
   register_node_type_geo_flip_faces();

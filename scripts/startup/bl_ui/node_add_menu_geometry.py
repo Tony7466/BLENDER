@@ -623,8 +623,8 @@ class NODE_MT_category_GEO_FUNCTION(Menu):
 
     def draw(self, context):
         layout = self.layout
-        node_add_menu.add_node_type(layout, "FunctionNodeBind")
-        node_add_menu.add_node_type(layout, "FunctionNodeEvaluate")
+        node_add_menu.add_node_type(layout, "GeometryNodeBindFunction")
+        node_add_menu.add_node_type(layout, "GeometryNodeEvaluateFunction")
 
 
 class NODE_MT_category_GEO_LAYOUT(Menu):

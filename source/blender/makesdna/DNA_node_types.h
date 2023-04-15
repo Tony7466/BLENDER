@@ -1665,10 +1665,10 @@ typedef struct bNodeFunctionSignature {
 #endif
 } bNodeFunctionSignature;
 
-typedef struct NodeFunctionEvaluate {
+typedef struct NodeGeometryEvaluateFunction {
   /* Expected signature of the function. */
   bNodeFunctionSignature signature;
-} NodeFunctionEvaluate;
+} NodeGeometryEvaluateFunction;
 
 /* script node mode */
 #define NODE_SCRIPT_INTERNAL 0

@@ -5449,7 +5449,7 @@ static void def_fn_combsep_color(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 
-static void def_fn_bind(StructRNA *srna)
+static void def_geo_bind_function(StructRNA *srna)
 {
   PropertyRNA *prop;
 
@@ -5464,140 +5464,11 @@ static void def_fn_bind(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_FunctionNodeBind_update");
 }
 
-static void rna_def_node_function_parameter(BlenderRNA *brna)
+static void def_geo_evaluate_function(StructRNA *srna)
 {
   PropertyRNA *prop;
 
-  StructRNA *srna = RNA_def_struct(brna, "NodeFunctionParameter", NULL);
-  RNA_def_struct_ui_text(srna, "Node Function Parameter", "Input or output declaration of a node function");
-  RNA_def_struct_sdna(srna, "bNodeFunctionParameter");
-
-  prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_funcs(prop, NULL, NULL, "rna_NodeFunctionParameter_name_set");
-  RNA_def_property_ui_text(prop, "Name", "");
-  RNA_def_struct_name_property(srna, prop);
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeFunctionParameter_update");
-
-  prop = RNA_def_property(srna, "socket_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, node_socket_data_type_items);
-  RNA_def_property_ui_text(prop, "Socket Type", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeFunctionParameter_update");
-
-  prop = RNA_def_property(srna, "color", PROP_FLOAT, PROP_COLOR_GAMMA);
-  RNA_def_property_array(prop, 4);
-  RNA_def_property_float_funcs(prop, "rna_NodeFunctionParameter_color_get", NULL, NULL);
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(prop, "Color", "Socket color");
-}
-
-static void rna_def_node_function_signature_api(BlenderRNA *brna, PropertyRNA *cprop, eNodeFunctionParameterType param_type)
-{
-  StructRNA *srna;
-  PropertyRNA *prop;
-  PropertyRNA *parm;
-  FunctionRNA *func;
-  const char *structtype = (param_type == NODE_FUNC_PARAM_IN ? "NodeFunctionSignatureInputs" :
-                                                    "NodeFunctionSignatureOutputs");
-  const char *uiname = (param_type == NODE_FUNC_PARAM_IN ? "Node Function Signature Inputs" :
-                                                           "Node Function Signature Outputs");
-  const char *active_index_sdna = (param_type == NODE_FUNC_PARAM_IN ? "active_input" :
-                                                                      "active_output");
-  const char *active_param_get = (param_type == NODE_FUNC_PARAM_IN ?
-                                      "rna_NodeFunctionSignature_active_input_get" :
-                                      "rna_NodeFunctionSignature_active_output_get");
-  const char *active_param_set = (param_type == NODE_FUNC_PARAM_IN ?
-                                      "rna_NodeFunctionSignature_active_input_set" :
-                                      "rna_NodeFunctionSignature_active_output_set");
-  const char *newfunc = (param_type == NODE_FUNC_PARAM_IN ?
-                             "rna_NodeFunctionSignature_inputs_new" :
-                             "rna_NodeFunctionSignature_outputs_new");
-  const char *removefunc = "rna_NodeFunctionSignature_params_remove";
-  const char *clearfunc = (param_type == NODE_FUNC_PARAM_IN ?
-                               "rna_NodeFunctionSignature_inputs_clear" :
-                               "rna_NodeFunctionSignature_outputs_clear");
-  const char *movefunc = (param_type == NODE_FUNC_PARAM_IN ?
-                              "rna_NodeFunctionSignature_inputs_move" :
-                              "rna_NodeFunctionSignature_outputs_move");
-
-  RNA_def_property_srna(cprop, structtype);
-  srna = RNA_def_struct(brna, structtype, NULL);
-  RNA_def_struct_sdna(srna, "bNodeFunctionSignature");
-  RNA_def_struct_ui_text(srna, uiname, "Collection of node function parameters");
-
-  prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_UNSIGNED);
-  RNA_def_property_int_sdna(prop, NULL, active_index_sdna);
-  RNA_def_property_ui_text(prop, "Active Index", "Index of the active parameter");
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_NODE, NULL);
-
-  prop = RNA_def_property(srna, "active", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "NodeFunctionParameter");
-  RNA_def_property_pointer_funcs(prop, active_param_get, active_param_set, NULL, NULL);
-  RNA_def_property_ui_text(prop, "Active", "Active parameter");
-  RNA_def_property_update(prop, NC_NODE, NULL);
-
-  func = RNA_def_function(srna, "new", newfunc);
-  RNA_def_function_ui_description(func, "Add a parameter to this signature");
-  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
-  parm = RNA_def_enum(
-      func, "socket_type", node_socket_data_type_items, SOCK_FLOAT, "Type", "Data type");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
-  parm = RNA_def_string(func, "name", NULL, MAX_NAME, "Name", "");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
-  /* return value */
-  parm = RNA_def_pointer(func, "param", "NodeFunctionParameter", "", "New parameter");
-  RNA_def_function_return(func, parm);
-
-  func = RNA_def_function(srna, "remove", removefunc);
-  RNA_def_function_ui_description(func, "Remove a parameter from this signature");
-  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
-  parm = RNA_def_pointer(func, "param", "NodeFunctionParameter", "", "The parameter to remove");
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
-
-  func = RNA_def_function(srna, "clear", clearfunc);
-  RNA_def_function_ui_description(func, "Remove all parameters from this collection");
-  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
-
-  func = RNA_def_function(srna, "move", movefunc);
-  RNA_def_function_ui_description(func, "Move a parameter to another position");
-  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
-  parm = RNA_def_int(
-      func, "from_index", -1, 0, INT_MAX, "From Index", "Index of the parameter to move", 0, 10000);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
-  parm = RNA_def_int(
-      func, "to_index", -1, 0, INT_MAX, "To Index", "Target index for the parameter", 0, 10000);
-  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
-}
-
-static void rna_def_node_function_signature(BlenderRNA *brna)
-{
-  StructRNA *srna;
-  PropertyRNA *prop;
-
-  srna = RNA_def_struct(brna, "NodeFunctionSignature", NULL);
-  RNA_def_struct_ui_text(srna, "Node Function Signature", "Declaration of inputs and outputs of a node function");
-  RNA_def_struct_sdna(srna, "bNodeFunctionSignature");
-
-  prop = RNA_def_property(srna, "inputs", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_collection_sdna(prop, NULL, "inputs", "inputs_num");
-  RNA_def_property_struct_type(prop, "NodeFunctionParameter");
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(prop, "Inputs", "Function inputs");
-  rna_def_node_function_signature_api(brna, prop, NODE_FUNC_PARAM_IN);
-
-  prop = RNA_def_property(srna, "outputs", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_collection_sdna(prop, NULL, "outputs", "outputs_num");
-  RNA_def_property_struct_type(prop, "NodeFunctionParameter");
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(prop, "Outputs", "Function outputs");
-  rna_def_node_function_signature_api(brna, prop, NODE_FUNC_PARAM_OUT);
-}
-
-static void def_fn_evaluate(StructRNA *srna)
-{
-  PropertyRNA *prop;
-
-  RNA_def_struct_sdna_from(srna, "NodeFunctionEvaluate", "storage");
+  RNA_def_struct_sdna_from(srna, "NodeGeometryEvaluateFunction", "storage");
 
   prop = RNA_def_property(srna, "signature", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "signature");
@@ -11790,6 +11661,146 @@ static void rna_def_node_socket_interface(BlenderRNA *brna)
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
   parm = RNA_def_pointer(func, "socket", "NodeSocket", "Socket", "Original socket");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+}
+
+static void rna_def_node_function_parameter(BlenderRNA *brna)
+{
+  PropertyRNA *prop;
+
+  StructRNA *srna = RNA_def_struct(brna, "NodeFunctionParameter", NULL);
+  RNA_def_struct_ui_text(
+      srna, "Node Function Parameter", "Input or output declaration of a node function");
+  RNA_def_struct_sdna(srna, "bNodeFunctionParameter");
+
+  prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_funcs(prop, NULL, NULL, "rna_NodeFunctionParameter_name_set");
+  RNA_def_property_ui_text(prop, "Name", "");
+  RNA_def_struct_name_property(srna, prop);
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeFunctionParameter_update");
+
+  prop = RNA_def_property(srna, "socket_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, node_socket_data_type_items);
+  RNA_def_property_ui_text(prop, "Socket Type", "");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeFunctionParameter_update");
+
+  prop = RNA_def_property(srna, "color", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_float_funcs(prop, "rna_NodeFunctionParameter_color_get", NULL, NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Color", "Socket color");
+}
+
+static void rna_def_node_function_signature_api(BlenderRNA *brna,
+                                                PropertyRNA *cprop,
+                                                eNodeFunctionParameterType param_type)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+  PropertyRNA *parm;
+  FunctionRNA *func;
+  const char *structtype = (param_type == NODE_FUNC_PARAM_IN ? "NodeFunctionSignatureInputs" :
+                                                               "NodeFunctionSignatureOutputs");
+  const char *uiname = (param_type == NODE_FUNC_PARAM_IN ? "Node Function Signature Inputs" :
+                                                           "Node Function Signature Outputs");
+  const char *active_index_sdna = (param_type == NODE_FUNC_PARAM_IN ? "active_input" :
+                                                                      "active_output");
+  const char *active_param_get = (param_type == NODE_FUNC_PARAM_IN ?
+                                      "rna_NodeFunctionSignature_active_input_get" :
+                                      "rna_NodeFunctionSignature_active_output_get");
+  const char *active_param_set = (param_type == NODE_FUNC_PARAM_IN ?
+                                      "rna_NodeFunctionSignature_active_input_set" :
+                                      "rna_NodeFunctionSignature_active_output_set");
+  const char *newfunc = (param_type == NODE_FUNC_PARAM_IN ?
+                             "rna_NodeFunctionSignature_inputs_new" :
+                             "rna_NodeFunctionSignature_outputs_new");
+  const char *removefunc = "rna_NodeFunctionSignature_params_remove";
+  const char *clearfunc = (param_type == NODE_FUNC_PARAM_IN ?
+                               "rna_NodeFunctionSignature_inputs_clear" :
+                               "rna_NodeFunctionSignature_outputs_clear");
+  const char *movefunc = (param_type == NODE_FUNC_PARAM_IN ?
+                              "rna_NodeFunctionSignature_inputs_move" :
+                              "rna_NodeFunctionSignature_outputs_move");
+
+  RNA_def_property_srna(cprop, structtype);
+  srna = RNA_def_struct(brna, structtype, NULL);
+  RNA_def_struct_sdna(srna, "bNodeFunctionSignature");
+  RNA_def_struct_ui_text(srna, uiname, "Collection of node function parameters");
+
+  prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_sdna(prop, NULL, active_index_sdna);
+  RNA_def_property_ui_text(prop, "Active Index", "Index of the active parameter");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_NODE, NULL);
+
+  prop = RNA_def_property(srna, "active", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "NodeFunctionParameter");
+  RNA_def_property_pointer_funcs(prop, active_param_get, active_param_set, NULL, NULL);
+  RNA_def_property_ui_text(prop, "Active", "Active parameter");
+  RNA_def_property_update(prop, NC_NODE, NULL);
+
+  func = RNA_def_function(srna, "new", newfunc);
+  RNA_def_function_ui_description(func, "Add a parameter to this signature");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
+  parm = RNA_def_enum(
+      func, "socket_type", node_socket_data_type_items, SOCK_FLOAT, "Type", "Data type");
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_string(func, "name", NULL, MAX_NAME, "Name", "");
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  /* return value */
+  parm = RNA_def_pointer(func, "param", "NodeFunctionParameter", "", "New parameter");
+  RNA_def_function_return(func, parm);
+
+  func = RNA_def_function(srna, "remove", removefunc);
+  RNA_def_function_ui_description(func, "Remove a parameter from this signature");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
+  parm = RNA_def_pointer(func, "param", "NodeFunctionParameter", "", "The parameter to remove");
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+
+  func = RNA_def_function(srna, "clear", clearfunc);
+  RNA_def_function_ui_description(func, "Remove all parameters from this collection");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
+
+  func = RNA_def_function(srna, "move", movefunc);
+  RNA_def_function_ui_description(func, "Move a parameter to another position");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
+  parm = RNA_def_int(func,
+                     "from_index",
+                     -1,
+                     0,
+                     INT_MAX,
+                     "From Index",
+                     "Index of the parameter to move",
+                     0,
+                     10000);
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  parm = RNA_def_int(
+      func, "to_index", -1, 0, INT_MAX, "To Index", "Target index for the parameter", 0, 10000);
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+}
+
+static void rna_def_node_function_signature(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "NodeFunctionSignature", NULL);
+  RNA_def_struct_ui_text(
+      srna, "Node Function Signature", "Declaration of inputs and outputs of a node function");
+  RNA_def_struct_sdna(srna, "bNodeFunctionSignature");
+
+  prop = RNA_def_property(srna, "inputs", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, NULL, "inputs", "inputs_num");
+  RNA_def_property_struct_type(prop, "NodeFunctionParameter");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Inputs", "Function inputs");
+  rna_def_node_function_signature_api(brna, prop, NODE_FUNC_PARAM_IN);
+
+  prop = RNA_def_property(srna, "outputs", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, NULL, "outputs", "outputs_num");
+  RNA_def_property_struct_type(prop, "NodeFunctionParameter");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Outputs", "Function outputs");
+  rna_def_node_function_signature_api(brna, prop, NODE_FUNC_PARAM_OUT);
 }
 
 static void rna_def_node_socket_float(BlenderRNA *brna,

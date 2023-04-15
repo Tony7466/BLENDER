@@ -11,10 +11,9 @@
 #include "NOD_node_declaration.hh"
 
 #include "node_common.h"
-#include "node_function_util.hh"
-#include "node_function_util.hh"
+#include "node_geometry_util.hh"
 
-namespace blender::nodes::node_fn_bind_cc {
+namespace blender::nodes::node_geo_bind_function_cc {
 
 static void node_declare(const bNodeTree &node_tree,
                          const bNode &node,
@@ -50,17 +49,31 @@ static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
       layout, C, ptr, "node_tree", nullptr, nullptr, nullptr, UI_TEMPLATE_ID_FILTER_ALL, nullptr);
 }
 
-}  // namespace blender::nodes::node_fn_bind_cc
-
-void register_node_type_fn_bind()
+static void node_geo_exec(GeoNodeExecParams params)
 {
-  namespace file_ns = blender::nodes::node_fn_bind_cc;
+  //GeometrySet geometry_set = params.extract_input<GeometrySet>("Curve");
+
+  //const NodeGeometryCurveFill &storage = node_storage(params.node());
+  //const GeometryNodeCurveFillMode mode = (GeometryNodeCurveFillMode)storage.mode;
+
+  //geometry_set.modify_geometry_sets(
+  //    [&](GeometrySet &geometry_set) { curve_fill_calculate(geometry_set, mode); });
+
+  //params.set_output("Mesh", std::move(geometry_set));
+}
+
+}  // namespace blender::nodes::node_geo_bind_function_cc
+
+void register_node_type_geo_bind_function()
+{
+  namespace file_ns = blender::nodes::node_geo_bind_function_cc;
 
   static bNodeType ntype;
 
-  fn_node_type_base(&ntype, FN_NODE_BIND, "Bind", NODE_CLASS_GROUP);
+  geo_node_type_base(&ntype, GEO_NODE_BIND_FUNCTION, "Bind Function", NODE_CLASS_GROUP);
   ntype.declare_dynamic = file_ns::node_declare;
   ntype.poll_instance = node_group_poll_instance;
   ntype.draw_buttons = file_ns::node_layout;
+  ntype.geometry_node_execute = file_ns::node_geo_exec;
   nodeRegisterType(&ntype);
 }

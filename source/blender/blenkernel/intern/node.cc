@@ -223,8 +223,8 @@ bool nodeFunctionParameterFindNode(bNodeTree *ntree,
                                    bNodeFunctionSignature **r_sig)
 {
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-    if (node->type == FN_NODE_EVALUATE) {
-      NodeFunctionEvaluate *data = static_cast<NodeFunctionEvaluate *>(node->storage);
+    if (node->type == GEO_NODE_EVALUATE_FUNCTION) {
+      NodeGeometryEvaluateFunction *data = static_cast<NodeGeometryEvaluateFunction *>(node->storage);
       if (nodeFunctionSignatureContainsParameter(&data->signature, param, nullptr)) {
         if (r_node) {
           *r_node = node;
@@ -271,8 +271,8 @@ bool nodeFunctionSignatureFindNode(bNodeTree *ntree,
                                    bNode **r_node)
 {
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-    if (node->type == FN_NODE_EVALUATE) {
-      NodeFunctionEvaluate *data = static_cast<NodeFunctionEvaluate *>(node->storage);
+    if (node->type == GEO_NODE_EVALUATE_FUNCTION) {
+      NodeGeometryEvaluateFunction *data = static_cast<NodeGeometryEvaluateFunction *>(node->storage);
       if (sig == &data->signature) {
         if (r_node) {
           *r_node = node;
@@ -970,8 +970,8 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
         }
         BLO_write_struct_by_name(writer, node->typeinfo->storagename, storage);
       }
-      else if (node->type == FN_NODE_EVALUATE) {
-        NodeFunctionEvaluate *storage = (NodeFunctionEvaluate *)node->storage;
+      else if (node->type == GEO_NODE_EVALUATE_FUNCTION) {
+        NodeGeometryEvaluateFunction *storage = (NodeGeometryEvaluateFunction *)node->storage;
         BLO_write_struct_by_name(writer, node->typeinfo->storagename, storage);
         write_node_function_signature(writer, &storage->signature);
       }
@@ -1186,8 +1186,8 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
           BLO_read_data_address(reader, &storage->string);
           break;
         }
-        case FN_NODE_EVALUATE: {
-          NodeFunctionEvaluate *storage = (NodeFunctionEvaluate *)node->storage;
+        case GEO_NODE_EVALUATE_FUNCTION: {
+          NodeGeometryEvaluateFunction *storage = (NodeGeometryEvaluateFunction *)node->storage;
           direct_link_node_function_signature(reader, &storage->signature);
           break;
         }
