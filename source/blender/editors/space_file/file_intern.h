@@ -67,6 +67,25 @@ void FILE_OT_reset_recent(wmOperatorType *ot);
 void FILE_OT_hidedot(struct wmOperatorType *ot);
 void FILE_OT_execute(struct wmOperatorType *ot);
 
+typedef enum FileExternalOperation {
+  FILE_EXTERNAL_OPERATION_OPEN = 0,
+  FILE_EXTERNAL_OPERATION_FOLDER_OPEN,
+  /* Following are Windows-only: */
+  FILE_EXTERNAL_OPERATION_EDIT,
+  FILE_EXTERNAL_OPERATION_NEW,
+  FILE_EXTERNAL_OPERATION_FIND,
+  FILE_EXTERNAL_OPERATION_SHOW,
+  FILE_EXTERNAL_OPERATION_PLAY,
+  FILE_EXTERNAL_OPERATION_BROWSE,
+  FILE_EXTERNAL_OPERATION_PREVIEW,
+  FILE_EXTERNAL_OPERATION_PRINT,
+  FILE_EXTERNAL_OPERATION_INSTALL,
+  FILE_EXTERNAL_OPERATION_RUNAS,
+  FILE_EXTERNAL_OPERATION_PROPERTIES,
+  FILE_EXTERNAL_OPERATION_FOLDER_FIND,
+  FILE_EXTERNAL_OPERATION_FOLDER_CMD,
+} FileExternalOperation;
+
 void FILE_OT_external_operation(struct wmOperatorType *ot);
 void file_external_operations_menu_register(void);
 
