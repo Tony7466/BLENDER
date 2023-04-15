@@ -1633,13 +1633,12 @@ typedef struct bNodeFunctionParameter {
   char *name;
   int socket_type;
   int identifier;
-  int _pad;
 } bNodeFunctionParameter;
 
-enum eNodeFunctionParameterType {
+typedef enum eNodeFunctionParameterType {
   NODE_FUNC_PARAM_IN,
   NODE_FUNC_PARAM_OUT,
-};
+} eNodeFunctionParameterType;
 
 typedef struct bNodeFunctionSignature {
   bNodeFunctionParameter *inputs;

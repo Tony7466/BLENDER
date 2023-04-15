@@ -236,12 +236,15 @@ bool nodeFunctionParameterSetUniqueName(struct bNodeFunctionSignature *sig,
                                         const char *name,
                                         const char *defname);
 /** Find the node owning this parameter. */
-struct bNode *nodeFunctionParameterFindNode(struct bNodeTree *ntree,
-                                            const struct bNodeFunctionParameter *param);
+bool nodeFunctionParameterFindNode(struct bNodeTree *ntree,
+                                   const struct bNodeFunctionParameter *param,
+                                   struct bNode **r_node,
+                                   struct bNodeFunctionSignature **r_sig);
 
 /** Find the node owning this signature. */
-struct bNode *nodeFunctionSignatureFindNode(struct bNodeTree *ntree,
-                                            const struct bNodeFunctionSignature *sig);
+bool nodeFunctionSignatureFindNode(struct bNodeTree *ntree,
+                                   const struct bNodeFunctionSignature *sig,
+                                   struct bNode **r_node);
 bool nodeFunctionSignatureContainsParameter(const struct bNodeFunctionSignature *sig,
                                             const struct bNodeFunctionParameter *param,
                                             eNodeFunctionParameterType *r_param_type);
@@ -265,7 +268,8 @@ struct bNodeFunctionParameter *nodeFunctionSignatureInsertParameter(
     int index);
 void nodeFunctionSignatureRemoveParameter(struct bNodeFunctionSignature *sig,
                                           struct bNodeFunctionParameter *param);
-void nodeFunctionSignatureClearParameters(struct bNodeFunctionSignature *sig);
+void nodeFunctionSignatureClearParameters(struct bNodeFunctionSignature *sig,
+                                          eNodeFunctionParameterType param_type);
 void nodeFunctionSignatureMoveParameter(struct bNodeFunctionSignature *sig,
                                         eNodeFunctionParameterType param_type,
                                         int from_index,

@@ -217,17 +217,26 @@ static bool nodeFunctionSignatureUniqueNameCheck(void *arg, const char *name)
 
 }  // namespace blender::nodes
 
-bNode *nodeFunctionParameterFindNode(bNodeTree *ntree, const bNodeFunctionParameter *param)
+bool nodeFunctionParameterFindNode(bNodeTree *ntree,
+                                   const bNodeFunctionParameter *param,
+                                   bNode **r_node,
+                                   bNodeFunctionSignature **r_sig)
 {
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     if (node->type == FN_NODE_EVALUATE) {
       NodeFunctionEvaluate *data = static_cast<NodeFunctionEvaluate *>(node->storage);
       if (nodeFunctionSignatureContainsParameter(&data->signature, param, nullptr)) {
-        return node;
+        if (r_node) {
+          *r_node = node;
+        }
+        if (r_sig) {
+          *r_sig = &data->signature;
+        }
+        return true;
       }
     }
   }
-  return nullptr;
+  return false;
 }
 
 bool nodeFunctionParameterSetUniqueName(bNodeFunctionSignature *sig,
@@ -253,17 +262,22 @@ bool nodeFunctionParameterSetUniqueName(bNodeFunctionSignature *sig,
   return name_changed;
 }
 
-bNode *nodeFunctionSignatureFindNode(bNodeTree *ntree, const bNodeFunctionSignature *sig)
+bool nodeFunctionSignatureFindNode(bNodeTree *ntree,
+                                   const bNodeFunctionSignature *sig,
+                                   bNode **r_node)
 {
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     if (node->type == FN_NODE_EVALUATE) {
       NodeFunctionEvaluate *data = static_cast<NodeFunctionEvaluate *>(node->storage);
       if (sig == &data->signature) {
-        return node;
+        if (r_node) {
+          *r_node = node;
+        }
+        return true;
       }
     }
   }
-  return nullptr;
+  return false;
 }
 
 bool nodeFunctionSignatureContainsParameter(const bNodeFunctionSignature *sig,
@@ -293,10 +307,12 @@ bNodeFunctionParameter *nodeFunctionSignatureGetActiveParameter(
       if (sig->inputs_range().contains(sig->active_input)) {
         return &sig->inputs[sig->active_input];
       }
+      break;
     case NODE_FUNC_PARAM_OUT:
       if (sig->outputs_range().contains(sig->active_output)) {
         return &sig->outputs[sig->active_output];
       }
+      break;
   }
   return nullptr;
 }
@@ -311,12 +327,14 @@ void nodeFunctionSignatureSetActiveParameter(bNodeFunctionSignature *sig,
       if (sig->inputs_range().contains(index)) {
         sig->active_input = index;
       }
+      break;
     }
     case NODE_FUNC_PARAM_OUT: {
       const int index = param - sig->outputs;
       if (sig->outputs_range().contains(index)) {
         sig->active_output = index;
       }
+      break;
     }
   }
 }
@@ -367,11 +385,13 @@ bNodeFunctionParameter *nodeFunctionSignatureInsertParameter(bNodeFunctionSignat
       MEM_SAFE_FREE(sig->inputs);
       sig->inputs = new_params;
       sig->inputs_num++;
+      break;
     }
     case NODE_FUNC_PARAM_OUT: {
       MEM_SAFE_FREE(sig->outputs);
       sig->outputs = new_params;
       sig->outputs_num++;
+      break;
     }
   }
 
@@ -404,11 +424,13 @@ static void nodeFunctionSignatureRemoveParameter(bNodeFunctionSignature *sig,
       MEM_SAFE_FREE(sig->inputs);
       sig->inputs = new_params;
       sig->inputs_num--;
+      break;
     }
     case NODE_FUNC_PARAM_OUT: {
       MEM_SAFE_FREE(sig->outputs);
       sig->outputs = new_params;
       sig->outputs_num--;
+      break;
     }
   }
 }
@@ -420,20 +442,27 @@ void nodeFunctionSignatureRemoveParameter(bNodeFunctionSignature *sig,
   nodeFunctionSignatureRemoveParameter(sig, NODE_FUNC_PARAM_OUT, param);
 }
 
-void nodeFunctionSignatureClearParameters(bNodeFunctionSignature *sig)
+void nodeFunctionSignatureClearParameters(bNodeFunctionSignature *sig,
+                                          eNodeFunctionParameterType param_type)
 {
-  for (bNodeFunctionParameter &param : sig->params_span(NODE_FUNC_PARAM_IN)) {
-    MEM_SAFE_FREE(param.name);
+  switch (param_type) {
+    case NODE_FUNC_PARAM_IN:
+      for (bNodeFunctionParameter &param : sig->inputs_span()) {
+        MEM_SAFE_FREE(param.name);
+      }
+      MEM_SAFE_FREE(sig->inputs);
+      sig->inputs = nullptr;
+      sig->inputs_num = 0;
+      break;
+    case NODE_FUNC_PARAM_OUT:
+      for (bNodeFunctionParameter &param : sig->outputs_span()) {
+        MEM_SAFE_FREE(param.name);
+      }
+      MEM_SAFE_FREE(sig->outputs);
+      sig->outputs = nullptr;
+      sig->outputs_num = 0;
+      break;
   }
-  for (bNodeFunctionParameter &param : sig->params_span(NODE_FUNC_PARAM_OUT)) {
-    MEM_SAFE_FREE(param.name);
-  }
-  MEM_SAFE_FREE(sig->inputs);
-  MEM_SAFE_FREE(sig->outputs);
-  sig->inputs = nullptr;
-  sig->outputs = nullptr;
-  sig->inputs_num = 0;
-  sig->outputs_num = 0;
 }
 
 void nodeFunctionSignatureMoveParameter(bNodeFunctionSignature *sig,
@@ -844,11 +873,13 @@ static void write_node_socket_interface(BlendWriter *writer, bNodeSocket *sock)
 static void write_node_function_signature(BlendWriter *writer, bNodeFunctionSignature *sig)
 {
   BLO_write_struct(writer, bNodeFunctionSignature, sig);
-  LISTBASE_FOREACH (bNodeSocket *, sock, &sig->inputs) {
-    write_node_socket_interface(writer, sock);
+  BLO_write_struct_array(writer, bNodeFunctionParameter, sig->inputs_num, sig->inputs);
+  BLO_write_struct_array(writer, bNodeFunctionParameter, sig->outputs_num, sig->outputs);
+  for (const bNodeFunctionParameter &param : sig->inputs_span()) {
+    BLO_write_string(writer, param.name);
   }
-  LISTBASE_FOREACH (bNodeSocket *, sock, &sig->outputs) {
-    write_node_socket_interface(writer, sock);
+  for (const bNodeFunctionParameter &param : sig->outputs_span()) {
+    BLO_write_string(writer, param.name);
   }
 }
 
@@ -1008,13 +1039,13 @@ static void direct_link_node_socket(BlendDataReader *reader, bNodeSocket *sock)
 static void direct_link_node_function_signature(BlendDataReader *reader,
                                                 bNodeFunctionSignature *sig)
 {
-  BLO_read_list(reader, &sig->inputs);
-  BLO_read_list(reader, &sig->outputs);
-  LISTBASE_FOREACH (bNodeSocket *, sock, &sig->inputs) {
-    direct_link_node_socket(reader, sock);
+  BLO_read_data_address(reader, &sig->inputs);
+  BLO_read_data_address(reader, &sig->outputs);
+  for (bNodeFunctionParameter &param : sig->inputs_span()) {
+    BLO_read_data_address(reader, &param.name);
   }
-  LISTBASE_FOREACH (bNodeSocket *, sock, &sig->outputs) {
-    direct_link_node_socket(reader, sock);
+  for (bNodeFunctionParameter &param : sig->outputs_span()) {
+    BLO_read_data_address(reader, &param.name);
   }
 }
 
@@ -2110,6 +2141,7 @@ void nodeModifySocketType(bNodeTree *ntree,
         case SOCK_COLLECTION:
         case SOCK_TEXTURE:
         case SOCK_MATERIAL:
+        case SOCK_FUNCTION:
           break;
       }
     }
