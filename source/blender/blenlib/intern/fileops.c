@@ -24,7 +24,6 @@
 #  include "utfconv.h"
 #  include <io.h>
 #  include <shellapi.h>
-#  include <shlwapi.h>
 #  include <shobjidl.h>
 #  include <windows.h>
 #else
@@ -46,119 +45,6 @@
 #include "BLI_string.h"
 #include "BLI_sys_types.h" /* for intptr_t support */
 #include "BLI_utildefines.h"
-
-#ifdef WIN32
-
-/* Text string used as the "verb" for Windows shell operations. */
-static char *windows_operation_string(FileExternalOperation operation)
-{
-  switch (operation) {
-    case FILE_EXTERNAL_OPERATION_OPEN:
-      return "open";
-    case FILE_EXTERNAL_OPERATION_FOLDER_OPEN:
-      return "open";
-    case FILE_EXTERNAL_OPERATION_EDIT:
-      return "edit";
-    case FILE_EXTERNAL_OPERATION_NEW:
-      return "new";
-    case FILE_EXTERNAL_OPERATION_FIND:
-      return "find";
-    case FILE_EXTERNAL_OPERATION_SHOW:
-      return "show";
-    case FILE_EXTERNAL_OPERATION_PLAY:
-      return "play";
-    case FILE_EXTERNAL_OPERATION_BROWSE:
-      return "browse";
-    case FILE_EXTERNAL_OPERATION_PREVIEW:
-      return "preview";
-    case FILE_EXTERNAL_OPERATION_PRINT:
-      return "print";
-    case FILE_EXTERNAL_OPERATION_INSTALL:
-      return "install";
-    case FILE_EXTERNAL_OPERATION_RUNAS:
-      return "runas";
-    case FILE_EXTERNAL_OPERATION_PROPERTIES:
-      return "properties";
-    case FILE_EXTERNAL_OPERATION_FOLDER_FIND:
-      return "find";
-    case FILE_EXTERNAL_OPERATION_FOLDER_CMD:
-      return "cmd";
-    default:
-      BLI_assert_unreachable();
-      return "";
-  }
-}
-
-/* Check the registry to see if there is an operation association to a file
- * extension. Extension *should almost always contain a dot like ".txt",
- * but this does allow querying non - extensions *like "Directory", "Drive",
- * "AllProtocols", etc - anything in Classes with a "shell" branch.
- */
-static bool BLI_windows_file_operation_is_registered(const char *extension,
-                                                     FileExternalOperation operation)
-{
-  const char *opstring = windows_operation_string(operation);
-  HKEY hKey;
-  HRESULT hr = AssocQueryKey(ASSOCF_INIT_IGNOREUNKNOWN,
-                             ASSOCKEY_SHELLEXECCLASS,
-                             (LPCTSTR)extension,
-                             (LPCTSTR)opstring,
-                             &hKey);
-  if (SUCCEEDED(hr)) {
-    RegCloseKey(hKey);
-    return true;
-  }
-  return false;
-}
-#endif
-
-bool BLI_file_external_operation_supported(const char *filepath, FileExternalOperation operation)
-{
-#ifdef WIN32
-  const char *extension = BLI_path_extension(filepath);
-
-  if (ELEM(operation, FILE_EXTERNAL_OPERATION_FOLDER_OPEN, FILE_EXTERNAL_OPERATION_PROPERTIES)) {
-    return true;
-  }
-  else if (ELEM(operation,
-                FILE_EXTERNAL_OPERATION_FOLDER_FIND,
-                FILE_EXTERNAL_OPERATION_FOLDER_CMD)) {
-    return BLI_windows_file_operation_is_registered("Directory", operation);
-  }
-  else {
-    return BLI_windows_file_operation_is_registered(extension, operation);
-  }
-#else
-  return (ELEM(operation, FILE_EXTERNAL_OPERATION_OPEN, FILE_EXTERNAL_OPERATION_FOLDER_OPEN));
-#endif
-}
-
-bool BLI_file_external_operation_execute(const char *filepath, FileExternalOperation operation)
-{
-#ifdef WIN32
-  WCHAR wpath[FILE_MAX];
-  if (conv_utf_8_to_16(filepath, wpath, ARRAY_SIZE(wpath)) != 0) {
-    return false;
-  }
-
-  const char *op = windows_operation_string(operation);
-  WCHAR woperation[FILE_MAX];
-  if (conv_utf_8_to_16(op, woperation, ARRAY_SIZE(woperation)) != 0) {
-    return false;
-  }
-
-  SHELLEXECUTEINFOW shellinfo = {0};
-  shellinfo.cbSize = sizeof(SHELLEXECUTEINFO);
-  shellinfo.fMask = SEE_MASK_INVOKEIDLIST;
-  shellinfo.lpVerb = woperation;
-  shellinfo.lpFile = wpath;
-  shellinfo.nShow = SW_SHOW;
-
-  return ShellExecuteExW(&shellinfo);
-#else
-  return false;
-#endif
-}
 
 size_t BLI_file_zstd_from_mem_at_pos(
     void *buf, size_t len, FILE *file, size_t file_offset, int compression_level)

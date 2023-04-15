@@ -1774,7 +1774,7 @@ bool file_draw_check_exists(SpaceFile *sfile)
 /** \name External operations that can performed on files.
  * \{ */
 
-  static const EnumPropertyItem file_external_operation[] = {
+static const EnumPropertyItem file_external_operation[] = {
     {FILE_EXTERNAL_OPERATION_OPEN, "OPEN", 0, "Open", "Open the file"},
     {FILE_EXTERNAL_OPERATION_FOLDER_OPEN, "FOLDER_OPEN", 0, "Open Folder", "Open the folder"},
     {FILE_EXTERNAL_OPERATION_EDIT, "EDIT", 0, "Edit", "Edit the file"},
@@ -1804,29 +1804,85 @@ bool file_draw_check_exists(SpaceFile *sfile)
      "Open a command prompt here"},
     {0, NULL, 0, NULL, NULL}};
 
+
+#ifdef WIN32
+/* Text string used as the "verb" for Windows shell operations. */
+static char *windows_operation_string(FileExternalOperation operation)
+{
+  switch (operation) {
+    case FILE_EXTERNAL_OPERATION_OPEN:
+      return "open";
+    case FILE_EXTERNAL_OPERATION_FOLDER_OPEN:
+      return "open";
+    case FILE_EXTERNAL_OPERATION_EDIT:
+      return "edit";
+    case FILE_EXTERNAL_OPERATION_NEW:
+      return "new";
+    case FILE_EXTERNAL_OPERATION_FIND:
+      return "find";
+    case FILE_EXTERNAL_OPERATION_SHOW:
+      return "show";
+    case FILE_EXTERNAL_OPERATION_PLAY:
+      return "play";
+    case FILE_EXTERNAL_OPERATION_BROWSE:
+      return "browse";
+    case FILE_EXTERNAL_OPERATION_PREVIEW:
+      return "preview";
+    case FILE_EXTERNAL_OPERATION_PRINT:
+      return "print";
+    case FILE_EXTERNAL_OPERATION_INSTALL:
+      return "install";
+    case FILE_EXTERNAL_OPERATION_RUNAS:
+      return "runas";
+    case FILE_EXTERNAL_OPERATION_PROPERTIES:
+      return "properties";
+    case FILE_EXTERNAL_OPERATION_FOLDER_FIND:
+      return "find";
+    case FILE_EXTERNAL_OPERATION_FOLDER_CMD:
+      return "cmd";
+    default:
+      BLI_assert_unreachable();
+      return "";
+  }
+}
+#endif
+
 static int file_external_operation_exec(bContext *C, wmOperator *op)
-  {
+{
   PropertyRNA *prop = RNA_struct_find_property(op->ptr, "filepath");
   char filepath[FILE_MAX];
   RNA_property_string_get(op->ptr, prop, filepath);
 
-  const int operation = RNA_enum_get(op->ptr, "operation");
+  const FileExternalOperation operation = (FileExternalOperation)RNA_enum_get(op->ptr,
+                                                                              "operation");
+  WM_cursor_set(CTX_wm_window(C), WM_CURSOR_WAIT);
 
-  if (!BLI_file_external_operation_supported(filepath, operation)) {
+#ifdef WIN32
+  char *opstring = windows_operation_string(operation);
+  if (!BLI_windows_external_operation_supported(filepath, opstring)) {
     return OPERATOR_CANCELLED;
   }
-
-  WM_cursor_set(CTX_wm_window(C), WM_CURSOR_WAIT);
-  if (BLI_file_external_operation_execute(filepath, operation)) {
+  if (BLI_windows_external_operation_execute(filepath, opstring)) {
     WM_cursor_set(CTX_wm_window(C), WM_CURSOR_DEFAULT);
     return OPERATOR_FINISHED;
   }
+#else
+  wmOperatorType *ot = WM_operatortype_find("WM_OT_path_open", true);
+  PointerRNA op_props;
+  WM_operator_properties_create_ptr(&op_props, ot);
+  RNA_string_set(&op_props, "filepath", filepath);
+  if (WM_operator_name_call_ptr(C, ot, WM_OP_INVOKE_DEFAULT, &op_props, NULL) ==
+      OPERATOR_FINISHED) {
+    WM_cursor_set(CTX_wm_window(C), WM_CURSOR_DEFAULT);
+    return OPERATOR_FINISHED;
+  }
+#endif
 
   BKE_reportf(
       op->reports, RPT_ERROR, "Failure to perform exernal file operation on \"%s\"", filepath);
   WM_cursor_set(CTX_wm_window(C), WM_CURSOR_DEFAULT);
   return OPERATOR_CANCELLED;
-  }
+}
 
 static char *file_external_operation_description(struct bContext *UNUSED(C),
                                           struct wmOperatorType *UNUSED(ot),
@@ -1870,9 +1926,16 @@ static void file_os_operations_menu_item(uiLayout *layout,
                                          const char *path,
                                          FileExternalOperation operation)
 {
-  if (!BLI_file_external_operation_supported(path, operation)) {
+#ifdef WIN32
+  char *opstring = windows_operation_string(operation);
+  if (!BLI_windows_external_operation_supported(path, opstring)) {
     return;
   }
+#else
+  if (!ELEM(operation, FILE_EXTERNAL_OPERATION_OPEN, FILE_EXTERNAL_OPERATION_FOLDER_OPEN)) {
+    return;
+  }
+#endif
 
   const char *title = "";
   RNA_enum_name(file_external_operation, operation, &title);
@@ -1926,15 +1989,8 @@ static void file_os_operations_menu_draw(const bContext *C_const, Menu *menu)
 
   uiLayout *layout = menu->layout;
   uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
-
-#ifndef WIN32
-  wmOperatorType *ot = WM_operatortype_find("WM_OT_path_open", true);
-  file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_OPEN);
-  if (!(fileentry->typeflag & FILE_TYPE_DIR)) {
-    file_os_operations_menu_item(layout, ot, root, FILE_EXTERNAL_OPERATION_FOLDER_OPEN);
-  }
-#else
   wmOperatorType *ot = WM_operatortype_find("FILE_OT_external_operation", true);
+
   if (fileentry->typeflag & FILE_TYPE_DIR) {
     file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_FOLDER_OPEN);
     file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_FOLDER_CMD);
@@ -1943,18 +1999,19 @@ static void file_os_operations_menu_draw(const bContext *C_const, Menu *menu)
   else {
     file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_OPEN);
     file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_EDIT);
-    file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_PLAY);
-    file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_PREVIEW);
-    file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_SHOW);
-    file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_FIND);
-    file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_BROWSE);
     file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_NEW);
+    file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_FIND);
+    file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_SHOW);
+    file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_PLAY);
+    file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_BROWSE);
+    file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_PREVIEW);
+    file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_PRINT);
     file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_INSTALL);
     file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_RUNAS);
     file_os_operations_menu_item(layout, ot, root, FILE_EXTERNAL_OPERATION_FOLDER_OPEN);
+    file_os_operations_menu_item(layout, ot, root, FILE_EXTERNAL_OPERATION_FOLDER_CMD);
     file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_PROPERTIES);
   }
-#endif
 }
 
 static bool file_os_operations_menu_poll(const bContext *C_const, MenuType *UNUSED(mt))
