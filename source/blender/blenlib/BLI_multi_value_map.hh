@@ -114,6 +114,11 @@ template<typename Key, typename Value> class MultiValueMap {
     return {};
   }
 
+  bool is_empty() const
+  {
+    return map_.is_empty();
+  }
+
   /**
    * Get the number of keys.
    */
