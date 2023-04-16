@@ -1325,6 +1325,7 @@ typedef struct NodeInputInt {
 
 typedef struct NodeInputVector {
   float vector[3];
+  int subtype;
 } NodeInputVector;
 
 typedef struct NodeInputColor {

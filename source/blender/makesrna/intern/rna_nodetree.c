@@ -7,6 +7,7 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
@@ -5163,15 +5164,41 @@ static void def_fn_input_int(StructRNA *srna)
 
 static void def_fn_input_vector(StructRNA *srna)
 {
+  const EnumPropertyItem *rna_input_vector_subtype = rna_enum_property_subtype_number_array_items;
+
   PropertyRNA *prop;
 
   RNA_def_struct_sdna_from(srna, "NodeInputVector", "storage");
 
-  prop = RNA_def_property(srna, "vector", PROP_FLOAT, PROP_XYZ);
-  RNA_def_property_array(prop, 3);
-  RNA_def_property_float_sdna(prop, NULL, "vector");
-  RNA_def_property_ui_text(prop, "Vector", "");
+  prop = RNA_def_property(srna, "subtype", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "subtype");
+  RNA_def_property_enum_items(prop, rna_input_vector_subtype);
+  RNA_def_property_ui_text(prop, "Subtype", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+
+  static char prop_names[20][30];
+
+  int prop_ind = 0;
+  for (const EnumPropertyItem *item = rna_input_vector_subtype; item->identifier != NULL; item++) {
+    char *prop_name = prop_names[prop_ind++];
+    strcpy(prop_name, "vector_");
+    int i;
+    const char *identifier = item->identifier;
+    for (i = 0; i < strlen(identifier); i++) {
+      if (isalpha(identifier[i]))
+        prop_name[7 + i] = tolower(identifier[i]);
+      else
+        prop_name[7 + i] = '_';
+    }
+    prop_name[7 + i] = '\0';
+
+    prop = RNA_def_property(srna, prop_name, PROP_FLOAT, item->value);
+    RNA_def_property_array(prop, 3);
+    RNA_def_property_float_sdna(prop, NULL, "vector");
+    RNA_def_property_ui_text(prop, "Vector", "");
+    RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  }
 }
 
 static void def_fn_input_string(StructRNA *srna)
