@@ -3100,6 +3100,41 @@ static void animchannel_clear_selection(bAnimContext *ac)
 
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     switch (ale->type) {
+      case ANIMTYPE_FILLACTD: /* Action Expander */
+      case ANIMTYPE_DSMAT:    /* Datablock AnimData Expanders */
+      case ANIMTYPE_DSLAM:
+      case ANIMTYPE_DSCAM:
+      case ANIMTYPE_DSCACHEFILE:
+      case ANIMTYPE_DSCUR:
+      case ANIMTYPE_DSSKEY:
+      case ANIMTYPE_DSWOR:
+      case ANIMTYPE_DSPART:
+      case ANIMTYPE_DSMBALL:
+      case ANIMTYPE_DSARM:
+      case ANIMTYPE_DSMESH:
+      case ANIMTYPE_DSNTREE:
+      case ANIMTYPE_DSTEX:
+      case ANIMTYPE_DSLAT:
+      case ANIMTYPE_DSLINESTYLE:
+      case ANIMTYPE_DSSPK:
+      case ANIMTYPE_DSGPENCIL:
+      case ANIMTYPE_DSMCLIP:
+      case ANIMTYPE_DSHAIR:
+      case ANIMTYPE_DSPOINTCLOUD:
+      case ANIMTYPE_DSVOLUME:
+      case ANIMTYPE_NLAACTION:
+      case ANIMTYPE_DSSIMULATION: {
+        if (ale->adt) {
+          ale->adt->flag &= ~ADT_UI_SELECTED;
+        }
+        break;
+      }
+      case ANIMTYPE_GROUP: {
+        bActionGroup *agrp = (bActionGroup *)ale->data;
+          agrp->flag &= ~AGRP_SELECTED;
+          select_pchan_for_action_group(ac, agrp, ale, false);
+        break;
+      }
       case ANIMTYPE_FCURVE: {
         FCurve *fcu = (FCurve *)ale->data;
         fcu->flag &= ~FCURVE_SELECTED;
