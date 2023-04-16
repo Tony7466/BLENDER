@@ -1,4 +1,5 @@
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
+#pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_spherical_harmonics_lib.glsl)
 
 void main()
@@ -19,7 +20,8 @@ void main()
 
   vec3 vN = vec3(lP, sqrt(max(0.0, 1.0 - dist_sqr)));
   vec3 N = normal_view_to_world(vN);
+  vec3 lN = transform_direction(world_to_grid, N);
 
-  vec4 irradiance = spherical_harmonics_evaluate_lambert(N, sh);
+  vec4 irradiance = spherical_harmonics_evaluate_lambert(lN, sh);
   out_color = vec4(irradiance.rgb, 0.0);
 }

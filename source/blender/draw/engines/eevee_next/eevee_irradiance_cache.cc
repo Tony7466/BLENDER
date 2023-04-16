@@ -137,6 +137,7 @@ void IrradianceCache::display_pass_draw(View &view, GPUFrameBuffer *view_fb)
     display_grids_ps_.push_constant("sphere_radius", 0.3f); /* TODO property */
     display_grids_ps_.push_constant("grid_resolution", grid_size);
     display_grids_ps_.push_constant("grid_to_world", grid.object_to_world);
+    display_grids_ps_.push_constant("world_to_grid", grid.world_to_object);
 
     display_grids_ps_.bind_texture("irradiance_a_tx", &irradiance_a_tx_);
     display_grids_ps_.bind_texture("irradiance_b_tx", &irradiance_b_tx_);
@@ -281,6 +282,8 @@ void IrradianceBake::surfels_create(const Object &probe_object)
   dispatch_per_grid_sample_ = math::divide_ceil(grid_resolution, int3(IRRADIANCE_GRID_GROUP_SIZE));
   capture_info_buf_.irradiance_grid_size = grid_resolution;
   capture_info_buf_.irradiance_grid_local_to_world = grid_local_to_world;
+  capture_info_buf_.irradiance_grid_world_to_local_rotation = float4x4(
+      (invert(normalize(float3x3(grid_local_to_world)))));
   capture_info_buf_.irradiance_accum_solid_angle = 0.0f;
   /* Divide by twice the sample count because each ray is evaluated in both directions. */
   capture_info_buf_.irradiance_sample_solid_angle = 4.0f * float(M_PI) /

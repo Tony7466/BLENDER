@@ -876,6 +876,9 @@ struct CaptureInfoData {
   float irradiance_accum_solid_angle;
   /** Transform of the lightprobe object. */
   float4x4 irradiance_grid_local_to_world;
+  /** Transform vectors from world space to local space. Does not have location component. */
+  /** TODO(fclem): This could be a float3x4 or a float3x3 if padded correctly. */
+  float4x4 irradiance_grid_world_to_local_rotation;
 };
 BLI_STATIC_ASSERT_ALIGN(CaptureInfoData, 16)
 

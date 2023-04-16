@@ -25,8 +25,10 @@ struct LightProbe {
 };
 
 struct IrradianceGrid : public LightProbe {
-  /** Reference to the light-cache data. Should be refreshed every sync. */
+  /** Copy of the transform matrix. */
   float4x4 object_to_world;
+  /** Precomputed inverse transform with normalized axes. No position. Used for rotating SH. */
+  float4x4 world_to_object;
   /**
    * Reference to the light-cache data.
    * Do not try to dereference it before LightProbeModule::end_sync() as the grid could

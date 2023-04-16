@@ -29,6 +29,8 @@ void LightProbeModule::sync_grid(const Object *ob, ObjectHandle &handle)
     grid.initialized = true;
     grid.updated = true;
     grid.object_to_world = float4x4(ob->object_to_world);
+    grid.world_to_object = float4x4(
+        math::normalize(math::transpose(float3x3(grid.object_to_world))));
     grid.cache = ob->lightprobe_cache;
   }
 }

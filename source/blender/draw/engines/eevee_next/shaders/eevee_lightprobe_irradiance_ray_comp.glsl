@@ -16,8 +16,10 @@
 
 void irradiance_capture(vec3 L, vec3 irradiance, inout SphericalHarmonicL1 sh)
 {
+  vec3 lL = transform_direction(capture_info_buf.irradiance_grid_world_to_local_rotation, L);
+
   spherical_harmonics_encode_signal_sample(
-      L, vec4(irradiance, 1.0) * capture_info_buf.irradiance_sample_solid_angle, sh);
+      lL, vec4(irradiance, 1.0) * capture_info_buf.irradiance_sample_solid_angle, sh);
 }
 
 void irradiance_capture(Surfel surfel_emitter, vec3 P, inout SphericalHarmonicL1 sh)
