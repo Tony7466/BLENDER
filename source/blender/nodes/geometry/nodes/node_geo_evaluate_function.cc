@@ -49,6 +49,11 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
 }
 
+static void node_geo_exec(GeoNodeExecParams params)
+{
+  params.set_default_remaining_outputs();
+}
+
 }  // namespace blender::nodes::node_geo_evaluate_function_cc
 
 void register_node_type_geo_evaluate_function()
@@ -64,5 +69,6 @@ void register_node_type_geo_evaluate_function()
   ntype.updatefunc = file_ns::node_update;
   node_type_storage(
       &ntype, "NodeGeometryEvaluateFunction", node_free_standard_storage, node_copy_standard_storage);
+  ntype.geometry_node_execute = file_ns::node_geo_exec;
   nodeRegisterType(&ntype);
 }
