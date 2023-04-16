@@ -3485,8 +3485,6 @@ class VIEW3D_MT_face_sets(Menu):
         props = layout.operator("sculpt.face_set_edit", text="Delete Face Set")
         props.mode = 'DELETE_GEOMETRY'
 
-        props = layout.operator("sculpt.face_sets_randomize_colors", text="Randomize Colors")
-
 class VIEW3D_MT_paint(Menu):
     bl_label = "Paint"
 
