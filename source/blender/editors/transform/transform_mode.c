@@ -10,7 +10,7 @@
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
 #include "DNA_constraint_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_windowmanager_types.h"
 
 #include "BLI_listbase.h"
@@ -72,7 +72,8 @@ bool transform_mode_is_changeable(const int mode)
               TFM_TRACKBALL,
               TFM_TRANSLATION,
               TFM_EDGE_SLIDE,
-              TFM_VERT_SLIDE);
+              TFM_VERT_SLIDE,
+              TFM_NORMAL_ROTATION);
 }
 
 /* -------------------------------------------------------------------- */

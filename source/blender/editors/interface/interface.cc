@@ -280,7 +280,7 @@ static void ui_update_flexible_spacing(const ARegion *region, uiBlock *block)
   rcti rect;
   ui_but_to_pixelrect(&rect, region, block, static_cast<const uiBut *>(block->buttons.last));
   const float buttons_width = float(rect.xmax) + UI_HEADER_OFFSET;
-  const float region_width = float(region->sizex) * U.dpi_fac;
+  const float region_width = float(region->sizex) * UI_SCALE_FAC;
 
   if (region_width <= buttons_width) {
     return;
@@ -469,7 +469,7 @@ void ui_block_bounds_calc(uiBlock *block)
 
   /* hardcoded exception... but that one is annoying with larger safety */
   uiBut *bt = static_cast<uiBut *>(block->buttons.first);
-  const int xof = ((bt && STRPREFIX(bt->str, "ERROR")) ? 10 : 40) * U.dpi_fac;
+  const int xof = ((bt && STRPREFIX(bt->str, "ERROR")) ? 10 : 40) * UI_SCALE_FAC;
 
   block->safety.xmin = block->rect.xmin - xof;
   block->safety.ymin = block->rect.ymin - xof;
@@ -1540,7 +1540,9 @@ static bool ui_but_event_property_operator_string(const bContext *C,
 
 /** \} */
 
-/**
+/* -------------------------------------------------------------------- */
+/** \name Pie Menu Direction
+ *
  * This goes in a seemingly weird pattern:
  *
  * <pre>
@@ -1564,7 +1566,8 @@ static bool ui_but_event_property_operator_string(const bContext *C,
  * subdividing the rest of the angles for the last 4 items.
  *
  * --Matt 07/2006
- */
+ * \{ */
+
 const char ui_radial_dir_order[8] = {
     UI_RADIAL_W,
     UI_RADIAL_E,
@@ -1584,6 +1587,8 @@ static void ui_but_pie_direction_string(uiBut *but, char *buf, int size)
   BLI_assert(but->pie_dir < ARRAY_SIZE(ui_radial_dir_to_numpad));
   BLI_snprintf(buf, size, "%d", ui_radial_dir_to_numpad[but->pie_dir]);
 }
+
+/** \} */
 
 static void ui_menu_block_set_keymaps(const bContext *C, uiBlock *block)
 {
@@ -2012,6 +2017,12 @@ void UI_block_end_ex(const bContext *C, uiBlock *block, const int xy[2], int r_x
     case UI_BLOCK_BOUNDS_POPUP_MENU:
       ui_block_bounds_calc_popup(window, block, block->bounds_type, xy, r_xy);
       break;
+  }
+
+  /* Update bounds of all views in this block. If this block is a panel, this will be done later in
+   * #UI_panels_end(), because buttons are offset there. */
+  if (!block->panel) {
+    ui_block_views_bounds_calc(block);
   }
 
   if (block->rect.xmin == 0.0f && block->rect.xmax == 0.0f) {
@@ -4993,7 +5004,7 @@ int UI_preview_tile_size_x(void)
 int UI_preview_tile_size_y(void)
 {
   const uiStyle *style = UI_style_get();
-  const float font_height = style->widget.points * UI_DPI_FAC;
+  const float font_height = style->widget.points * UI_SCALE_FAC;
   const float pad = PREVIEW_TILE_PAD;
 
   return round_fl_to_int(UI_preview_tile_size_y_no_label() + font_height +

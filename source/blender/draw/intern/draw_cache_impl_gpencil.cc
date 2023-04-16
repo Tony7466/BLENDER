@@ -6,18 +6,18 @@
  */
 
 #include "DNA_curve_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_screen_types.h"
 
 #include "BKE_deform.h"
-#include "BKE_gpencil.h"
-#include "BKE_gpencil_geom.h"
+#include "BKE_gpencil_geom_legacy.h"
+#include "BKE_gpencil_legacy.h"
 
 #include "DRW_engine.h"
 #include "DRW_render.h"
 
-#include "ED_gpencil.h"
+#include "ED_gpencil_legacy.h"
 #include "GPU_batch.h"
 
 #include "DEG_depsgraph_query.h"

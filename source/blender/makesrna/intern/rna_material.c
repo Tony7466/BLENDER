@@ -57,7 +57,7 @@ const EnumPropertyItem rna_enum_ramp_blend_items[] = {
 
 #  include "MEM_guardedalloc.h"
 
-#  include "DNA_gpencil_types.h"
+#  include "DNA_gpencil_legacy_types.h"
 #  include "DNA_node_types.h"
 #  include "DNA_object_types.h"
 #  include "DNA_screen_types.h"
@@ -65,7 +65,7 @@ const EnumPropertyItem rna_enum_ramp_blend_items[] = {
 
 #  include "BKE_colorband.h"
 #  include "BKE_context.h"
-#  include "BKE_gpencil.h"
+#  include "BKE_gpencil_legacy.h"
 #  include "BKE_main.h"
 #  include "BKE_material.h"
 #  include "BKE_node.h"
@@ -77,7 +77,7 @@ const EnumPropertyItem rna_enum_ramp_blend_items[] = {
 #  include "DEG_depsgraph.h"
 #  include "DEG_depsgraph_build.h"
 
-#  include "ED_gpencil.h"
+#  include "ED_gpencil_legacy.h"
 #  include "ED_image.h"
 #  include "ED_node.h"
 #  include "ED_screen.h"

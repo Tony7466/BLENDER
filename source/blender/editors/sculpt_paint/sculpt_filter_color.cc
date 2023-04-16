@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+ * Copyright 2020 Blender Foundation */
 
 /** \file
  * \ingroup edsculpt
@@ -333,8 +333,9 @@ static void sculpt_color_filter_apply(bContext *C, wmOperator *op, Object *ob)
   TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
 
-  BKE_pbvh_parallel_range_settings(&settings, true, ss->filter_cache->totnode);
-  BLI_task_parallel_range(0, ss->filter_cache->totnode, &data, color_filter_task_cb, &settings);
+  BKE_pbvh_parallel_range_settings(&settings, true, ss->filter_cache->nodes.size());
+  BLI_task_parallel_range(
+      0, ss->filter_cache->nodes.size(), &data, color_filter_task_cb, &settings);
 
   SCULPT_flush_update_step(C, SCULPT_UPDATE_COLOR);
 }

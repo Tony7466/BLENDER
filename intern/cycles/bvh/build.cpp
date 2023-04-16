@@ -49,9 +49,7 @@ BVHBuild::BVHBuild(const vector<Object *> &objects_,
   spatial_min_overlap = 0.0f;
 }
 
-BVHBuild::~BVHBuild()
-{
-}
+BVHBuild::~BVHBuild() {}
 
 /* Adding References */
 
@@ -1169,8 +1167,8 @@ BVHNode *BVHBuild::create_leaf_node(const BVHRange &range, const vector<BVHRefer
 
 void BVHBuild::rotate(BVHNode *node, int max_depth, int iterations)
 {
-  /* in tested scenes, this resulted in slightly slower raytracing, so disabled
-   * it for now. could be implementation bug, or depend on the scene */
+  /* In tested scenes, this resulted in slightly slower ray-tracing, so disabled
+   * it for now. could be implementation bug, or depend on the scene. */
   if (node)
     for (int i = 0; i < iterations; i++)
       rotate(node, max_depth);

@@ -581,6 +581,11 @@ void MetalDevice::compile_and_load(int device_id, MetalPipelineType pso_type)
     thread_scoped_lock lock(existing_devices_mutex);
     if (MetalDevice *instance = get_device_by_ID(device_id, lock)) {
       if (mtlLibrary) {
+        if (error && [error localizedDescription]) {
+          VLOG_WARNING << "MSL compilation messages: "
+                       << [[error localizedDescription] UTF8String];
+        }
+
         instance->mtlLibrary[pso_type] = mtlLibrary;
 
         starttime = time_dt();
@@ -804,6 +809,7 @@ void MetalDevice::generic_free(device_memory &mem)
       mem.shared_pointer = 0;
 
       /* Free device memory. */
+      delayed_free_list.push_back(mmem.mtlBuffer);
       mmem.mtlBuffer = nil;
     }
 
