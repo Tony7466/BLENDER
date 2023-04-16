@@ -265,7 +265,7 @@ bool WM_event_is_mouse_drag_or_press(const wmEvent *event)
          (ISMOUSE_BUTTON(event->type) && (event->val == KM_PRESS));
 }
 
-int WM_event_drag_direction(const wmEvent *event, ToolSettings *ts)
+int WM_event_drag_direction(const wmEvent *event)
 {
   const int delta[2] = {
       event->xy[0] - event->prev_press_xy[0],
@@ -307,28 +307,6 @@ int WM_event_drag_direction(const wmEvent *event, ToolSettings *ts)
     }
     else if (theta == -3) {
       val = KM_DIRECTION_SW;
-    }
-  }
-
-  if (U.drag_select_control < 1) {
-    int box = ts->box_drag_direction;
-    int lasso = ts->lasso_drag_direction;
-
-    if (box > 1) {
-      ts->box_direction_upright = false;
-      theta = box == 2 ? round_fl_to_int(atan2f(0.0f, (float)delta[0]) / (float)M_PI) :
-                         round_fl_to_int(atan2f(0.0f, (float)delta[1]) / (float)M_PI);
-      if (theta == 0) {
-        ts->box_direction_upright = true;
-      }
-    }
-    if (lasso > 1) {
-      ts->lasso_direction_upright = false;
-      theta = lasso == 2 ? round_fl_to_int(atan2f(0.0f, (float)delta[0]) / (float)M_PI) :
-                            round_fl_to_int(atan2f(0.0f, (float)delta[1]) / (float)M_PI);
-      if (theta == 0) {
-        ts->lasso_direction_upright = true;
-      }
     }
   }
 

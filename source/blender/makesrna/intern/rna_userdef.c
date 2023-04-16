@@ -5808,20 +5808,6 @@ static void rna_def_userdef_input(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
-  static const EnumPropertyItem drag_select_control_types[] = {
-      {USER_DRAG_SELECT_TOOLSETTING,
-       "USER_DRAG_TOOLSETTING",
-       0,
-       "Toolsetting",
-       "Use toolsettings to control selection options for box, lasso, and circle select"},
-      {USER_DRAG_SELECT_KEYMAP,
-       "USER_DRAG_KEYMAP",
-       0,
-       "Keymap",
-       "Use the keymap to control selection options for box, lasso, and circle selection"},
-      {0, NULL, 0, NULL, NULL},
-  };
-
   static const EnumPropertyItem view_zoom_styles[] = {
       {USER_ZOOM_CONTINUE,
        "CONTINUE",
@@ -5932,13 +5918,6 @@ static void rna_def_userdef_input(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, click_drag_direction_types);
   RNA_def_property_ui_text(
       prop, "Keymap Drag Directions", "Style of click-drag direction the keymap will use");
-
-  prop = RNA_def_property(srna, "drag_select_control", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, drag_select_control_types);
-  RNA_def_property_ui_text(prop,
-                           "Drag Select Control",
-                           "Use either the keymap or toolsettings to control selection options "
-                           "for box, lasso, and circle select");
 
   prop = RNA_def_property(srna, "use_numeric_input_advanced", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", USER_FLAG_NUMINPUT_ADVANCED);

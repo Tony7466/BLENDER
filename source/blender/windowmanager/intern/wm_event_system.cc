@@ -3437,8 +3437,7 @@ static eHandlerActionFlag wm_handlers_do(bContext *C, wmEvent *event, ListBase *
         if ((event->flag & WM_EVENT_FORCE_DRAG_THRESHOLD) ||
             WM_event_drag_test(event, event->prev_press_xy)) {
           win->event_queue_check_drag_handled = true;
-          ToolSettings *ts = CTX_data_tool_settings(C);
-          const int direction = WM_event_drag_direction(event, ts);
+          const int direction = WM_event_drag_direction(event);
 
           /* Intentionally leave `event->xy` as-is, event users are expected to use
            * `event->prev_press_xy` if they need to access the drag start location. */

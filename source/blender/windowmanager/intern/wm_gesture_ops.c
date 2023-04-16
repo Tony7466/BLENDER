@@ -183,16 +183,9 @@ int WM_gesture_box_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   const bool wait_for_input = !WM_event_is_mouse_drag_or_press(event) &&
                               RNA_boolean_get(op->ptr, "wait_for_input");
   
-  bool auto_xray = false;
-  if (U.drag_select_control & USER_DRAG_SELECT_KEYMAP) {
-    const int auto_xray_int = RNA_enum_get(op->ptr, "auto_xray");
-    auto_xray = obedit ? auto_xray_int > 2 : auto_xray_int == 2 || auto_xray_int == 8;
-  }
-  else {
-    auto_xray = ts->auto_xray && ts->auto_xray_box ?
-                    obedit ? ts->auto_xray_edit : ts->auto_xray_object :
-                    false;
-  }
+  const bool auto_xray = ts->auto_xray && ts->auto_xray_box ?
+                             obedit ? ts->auto_xray_edit : ts->auto_xray_object :
+                             false;
 
   if (ts->auto_xray_reset) {
     ts->auto_xray_reset ^= true;
@@ -340,16 +333,9 @@ int WM_gesture_circle_invoke(bContext *C, wmOperator *op, const wmEvent *event)
                               RNA_boolean_get(op->ptr, "wait_for_input");
   Object *obedit = CTX_data_edit_object(C);
   ToolSettings *ts = win->scene->toolsettings;
-  bool auto_xray = false;
-  if (U.drag_select_control & USER_DRAG_SELECT_KEYMAP) {
-    const int auto_xray_int = RNA_enum_get(op->ptr, "auto_xray");
-    auto_xray = obedit ? auto_xray_int > 2 : auto_xray_int == 2 || auto_xray_int == 8;
-  }
-  else {
-    auto_xray = ts->auto_xray && ts->auto_xray_circle ?
-                    obedit ? ts->auto_xray_edit : ts->auto_xray_object :
-                    false;
-  }
+  const bool auto_xray = ts->auto_xray && ts->auto_xray_circle ?
+                             obedit ? ts->auto_xray_edit : ts->auto_xray_object :
+                             false;
 
   if (ts->auto_xray_reset) {
     ts->auto_xray_reset ^= true;
@@ -560,16 +546,9 @@ int WM_gesture_lasso_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   Object *obedit = CTX_data_edit_object(C);
   ToolSettings *ts = win->scene->toolsettings;
 
-  bool auto_xray = false;
-  if (U.drag_select_control & USER_DRAG_SELECT_KEYMAP) {
-    const int auto_xray_int = RNA_enum_get(op->ptr, "auto_xray");
-    auto_xray = obedit ? auto_xray_int > 2 : auto_xray_int == 2 || auto_xray_int == 8;
-  }
-  else {
-    auto_xray = ts->auto_xray && ts->auto_xray_lasso ?
-                    obedit ? ts->auto_xray_edit : ts->auto_xray_object :
-                    false;
-  }
+  const bool auto_xray = ts->auto_xray && ts->auto_xray_lasso ?
+                             obedit ? ts->auto_xray_edit : ts->auto_xray_object :
+                             false;
 
   if (ts->auto_xray_reset) {
     ts->auto_xray_reset ^= true;

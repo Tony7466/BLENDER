@@ -164,17 +164,14 @@ void view3d_operatortypes(void)
   WM_operatortype_append(VIEW3D_OT_view_center_lock);
   WM_operatortype_append(VIEW3D_OT_select);
   WM_operatortype_append(VIEW3D_OT_select_box);
-  WM_operatortype_append(VIEW3D_OT_select_box_toolsetting);
   WM_operatortype_append(VIEW3D_OT_clip_border);
   WM_operatortype_append(VIEW3D_OT_select_circle);
-  WM_operatortype_append(VIEW3D_OT_select_circle_toolsetting);
   WM_operatortype_append(VIEW3D_OT_smoothview);
   WM_operatortype_append(VIEW3D_OT_render_border);
   WM_operatortype_append(VIEW3D_OT_clear_render_border);
   WM_operatortype_append(VIEW3D_OT_zoom_border);
   WM_operatortype_append(VIEW3D_OT_cursor3d);
   WM_operatortype_append(VIEW3D_OT_select_lasso);
-  WM_operatortype_append(VIEW3D_OT_select_lasso_toolsetting);
   WM_operatortype_append(VIEW3D_OT_select_menu);
   WM_operatortype_append(VIEW3D_OT_bone_select_menu);
   WM_operatortype_append(VIEW3D_OT_camera_to_view);

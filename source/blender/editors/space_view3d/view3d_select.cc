@@ -457,73 +457,6 @@ bool edbm_facing_viewport(ViewContext *vc, BMVert *eve, BMEdge *eed, BMFace *efa
   return mesh_facing;
 }
 
-int edbm_select_style(ToolSettings *ts, int style[2], const bool box, const bool lasso, wmOperator *op)
-{
-  if (U.drag_select_control & USER_DRAG_SELECT_KEYMAP) {
-    style[0] = RNA_enum_get(op->ptr, "edge_type");
-    style[1] = RNA_enum_get(op->ptr, "face_type");
-  }
-  else {
-    if (box) {
-      if (ts->box_drag_direction > 1) {
-        if (ts->box_drag_direction == 2) {
-          if (ts->box_direction_upright) {
-            style[0] = ts->box_edge_right;
-            style[1] = ts->box_face_right;
-          }
-          else {
-            style[0] = ts->box_edge_left;
-            style[1] = ts->box_face_left;
-          }
-        }
-        else if (ts->box_direction_upright) {
-          style[0] = ts->box_edge_up;
-          style[1] = ts->box_face_up;
-        }
-        else {
-          style[0] = ts->box_edge_down;
-          style[1] = ts->box_face_down;
-        }
-      }
-      else {
-        style[0] = ts->box_edge;
-        style[1] = ts->box_face;
-      }
-    }
-    else if (lasso) {
-      if (ts->lasso_drag_direction > 1) {
-        if (ts->lasso_drag_direction == 2) {
-          if (ts->lasso_direction_upright) {
-            style[0] = ts->lasso_edge_right;
-            style[1] = ts->lasso_face_right;
-          }
-          else {
-            style[0] = ts->lasso_edge_left;
-            style[1] = ts->lasso_face_left;
-          }
-        }
-        else if (ts->lasso_direction_upright) {
-          style[0] = ts->lasso_edge_up;
-          style[1] = ts->lasso_face_up;
-        }
-        else {
-          style[0] = ts->lasso_edge_down;
-          style[1] = ts->lasso_face_down;
-        }
-      }
-      else {
-        style[0] = ts->lasso_edge;
-        style[1] = ts->lasso_face;
-      }
-    }
-    else {
-      style[0] = ts->circle_edge;
-      style[1] = ts->circle_face;
-    }
-  }
-  return style[2];
-}
-
 bool edbm_circle_enclose_mesh(BMEdge *eed, BMFace *efa, struct CircleSelectUserData *data)
 {
   BMVert *eve;
@@ -1070,9 +1003,7 @@ static bool do_lasso_select_objects(ViewContext *vc,
   ToolSettings *ts = vc->scene->toolsettings;
 
   const int select_through_int = RNA_enum_get(op->ptr, "select_through");
-  const bool select_through = U.drag_select_control & USER_DRAG_SELECT_KEYMAP ?
-                                  select_through_int == 2 || select_through_int == 8 :
-                              circle_data == NULL ?
+  const bool select_through = circle_data == NULL ?
                                   ts->select_through && ts->select_through_object &&
                                       ts->select_through_lasso :
                                   ts->select_through && ts->select_through_object &&
@@ -1212,7 +1143,7 @@ static bool do_lasso_select_objects(ViewContext *vc,
         }
         else {
           is_inside = base->object->id.tag & LIB_TAG_DOIT ?
-                          ts->select_origin_circle ?
+                          RNA_boolean_get(op->ptr, "select_origin_circle") ?
                           (ED_view3d_project_float_global(vc->region,
                                                           base->object->object_to_world[3],
                                                           region_co,
@@ -1555,17 +1486,14 @@ static bool do_lasso_select_mesh(ViewContext *vc,
   LassoSelectUserData data;
   ToolSettings *ts = vc->scene->toolsettings;
   rcti rect;
-  int select_style[2] = {0, 0};
 
   /* set editmesh */
   vc->em = BKE_editmesh_from_object(vc->obedit);
 
   BLI_lasso_boundbox(&rect, mcoords, mcoords_len);
 
-  edbm_select_style(ts, select_style, false, true, op);
-
   view3d_userdata_lassoselect_init(
-      &data, vc, &rect, mcoords, mcoords_len, sel_op, select_style[0], select_style[1]);
+      &data, vc, &rect, mcoords, mcoords_len, sel_op, RNA_enum_get(op->ptr, "edge_type"), RNA_enum_get(op->ptr, "face_type"));
 
   if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
     if (vc->em->bm->totvertsel) {
@@ -1579,11 +1507,8 @@ static bool do_lasso_select_mesh(ViewContext *vc,
 
   GPU_matrix_set(vc->rv3d->viewmat);
 
-  const int select_through_int = RNA_enum_get(op->ptr, "select_through");
-  const bool select_through = U.drag_select_control & USER_DRAG_SELECT_KEYMAP ?
-                                  select_through_int > 2 :
-                                  ts->select_through && ts->select_through_edit &&
-                                      ts->select_through_lasso;
+  const bool select_through = ts->select_through && ts->select_through_edit &&
+                              ts->select_through_lasso;
   const bool use_zbuf = !XRAY_FLAG_ENABLED(vc->v3d) && !select_through;
 
   EditSelectBuf_Cache *esel = static_cast<EditSelectBuf_Cache *>(wm_userdata->data);
@@ -2248,26 +2173,6 @@ void VIEW3D_OT_select_lasso(wmOperatorType *ot)
 
   /* properties */
   WM_operator_properties_gesture_lasso(ot);
-  WM_operator_properties_select_operation(ot);
-}
-
-void VIEW3D_OT_select_lasso_toolsetting(wmOperatorType *ot)
-{
-  ot->name = "Lasso Select";
-  ot->description = "Select items using lasso selection";
-  ot->idname = "VIEW3D_OT_select_lasso_toolsetting";
-
-  ot->invoke = WM_gesture_lasso_invoke;
-  ot->modal = WM_gesture_lasso_modal;
-  ot->exec = view3d_lasso_select_exec;
-  ot->poll = view3d_selectable_data;
-  ot->cancel = WM_gesture_lasso_cancel;
-
-  /* flags */
-  ot->flag = OPTYPE_UNDO | OPTYPE_DEPENDS_ON_CURSOR;
-
-  /* properties */
-  WM_operator_properties_gesture_lasso_toolsetting(ot);
   WM_operator_properties_select_operation(ot);
 }
 
@@ -4497,11 +4402,13 @@ static bool do_mesh_box_select(ViewContext *vc,
 {
   BoxSelectUserData data;
   ToolSettings *ts = vc->scene->toolsettings;
-  int select_style[2] = {0, 0};
 
-  edbm_select_style(ts, select_style, true, false, op);
-
-  view3d_userdata_boxselect_init(&data, vc, rect, sel_op, select_style[0], select_style[1]);
+  view3d_userdata_boxselect_init(&data,
+                                 vc,
+                                 rect,
+                                 sel_op,
+                                 RNA_enum_get(op->ptr, "edge_type"),
+                                 RNA_enum_get(op->ptr, "face_type"));
 
   if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
     if (vc->em->bm->totvertsel) {
@@ -4515,11 +4422,8 @@ static bool do_mesh_box_select(ViewContext *vc,
 
   GPU_matrix_set(vc->rv3d->viewmat);
 
-  const int select_through_int = RNA_enum_get(op->ptr, "select_through");
-  const bool select_through = U.drag_select_control & USER_DRAG_SELECT_KEYMAP ?
-                                  select_through_int > 2 :
-                                  ts->select_through && ts->select_through_edit &&
-                                      ts->select_through_box;
+  const bool select_through = ts->select_through && ts->select_through_edit &&
+                              ts->select_through_box;
   const bool use_zbuf = !XRAY_FLAG_ENABLED(vc->v3d) && !select_through;
 
   EditSelectBuf_Cache *esel = static_cast<EditSelectBuf_Cache *>(wm_userdata->data);
@@ -4782,14 +4686,9 @@ static bool do_object_box_select(
       MEM_mallocN((totobj + MAXPICKELEMS) * sizeof(GPUSelectResult), __func__));
   const eV3DSelectObjectFilter select_filter = ED_view3d_select_filter_from_mode(vc->scene,
                                                                                  vc->obact);
-  const bool select_origin = U.drag_select_control & USER_DRAG_SELECT_KEYMAP ?
-                                 RNA_boolean_get(op->ptr, "select_origin_box") :
-                                 ts->select_origin_box;
-  const bool select_through_int = RNA_enum_get(op->ptr, "select_through");
-  const bool select_through = U.drag_select_control & USER_DRAG_SELECT_KEYMAP ?
-                                  select_through_int == 2 || select_through_int == 8 :
-                                  ts->select_through && ts->select_through_object &&
-                                      ts->select_through_box;
+  const bool select_origin = RNA_boolean_get(op->ptr, "select_origin_box");
+  const bool select_through = ts->select_through && ts->select_through_object &&
+                              ts->select_through_box;
   int hits = 0;
   if (XRAY_FLAG_ENABLED(vc->v3d) || select_through) {
     hits = view3d_opengl_select(
@@ -5083,28 +4982,6 @@ void VIEW3D_OT_select_box(wmOperatorType *ot)
   WM_operator_properties_select_operation(ot);
 }
 
-void VIEW3D_OT_select_box_toolsetting(wmOperatorType *ot)
-{
-  /* identifiers */
-  ot->name = "Box Select";
-  ot->description = "Select items using box selection";
-  ot->idname = "VIEW3D_OT_select_box_toolsetting";
-
-  /* api callbacks */
-  ot->invoke = WM_gesture_box_invoke;
-  ot->exec = view3d_box_select_exec;
-  ot->modal = WM_gesture_box_modal;
-  ot->poll = view3d_selectable_data;
-  ot->cancel = WM_gesture_box_cancel;
-
-  /* flags */
-  ot->flag = OPTYPE_UNDO;
-
-  /* rna */
-  WM_operator_properties_gesture_box_toolsetting(ot);
-  WM_operator_properties_select_operation(ot);
-}
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -5262,7 +5139,6 @@ static bool mesh_circle_select(ViewContext *vc,
 {
   ToolSettings *ts = vc->scene->toolsettings;
   CircleSelectUserData data;
-  int select_style[2] = {0, 0};
   vc->em = BKE_editmesh_from_object(vc->obedit);
 
   bool changed = false;
@@ -5279,15 +5155,16 @@ static bool mesh_circle_select(ViewContext *vc,
 
   ED_view3d_init_mats_rv3d(vc->obedit, vc->rv3d); /* for foreach's screen/vert projection */
 
-  edbm_select_style(ts, select_style, false, false, op);
+  view3d_userdata_circleselect_init(&data,
+                                    vc,
+                                    select,
+                                    mval,
+                                    rad,
+                                    RNA_enum_get(op->ptr, "edge_type"),
+                                    RNA_enum_get(op->ptr, "face_type"));
 
-  view3d_userdata_circleselect_init(&data, vc, select, mval, rad, select_style[0], select_style[1]);
-
-  const int select_through_int = RNA_enum_get(op->ptr, "select_through");
-  const bool select_through = U.drag_select_control & USER_DRAG_SELECT_KEYMAP ?
-                                  select_through_int > 2 :
-                                  ts->select_through && ts->select_through_edit &&
-                                      ts->select_through_circle;
+  const bool select_through = ts->select_through && ts->select_through_edit &&
+                              ts->select_through_circle;
   const bool use_zbuf = !XRAY_FLAG_ENABLED(vc->v3d) && !select_through;
 
   if (use_zbuf) {
@@ -6074,14 +5951,9 @@ static int view3d_circle_select_exec(bContext *C, wmOperator *op)
   }
   else {
     ToolSettings *ts = vc.scene->toolsettings;
-    const int select_through_int = RNA_enum_get(op->ptr, "select_through");
-    const bool default_object_select = U.drag_select_control & USER_DRAG_SELECT_KEYMAP ?
-                                           RNA_boolean_get(op->ptr, "select_origin_circle") &&
-                                               (select_through_int == 2 ||
-                                                select_through_int == 8) :
-                                           ts->select_through && ts->select_through_object &&
-                                               ts->select_through_circle &&
-                                               ts->select_origin_circle;
+    const bool default_object_select = RNA_boolean_get(op->ptr, "select_origin_circle") &&
+                                       ts->select_through && ts->select_through_object &&
+                                       ts->select_through_circle;
     if (default_object_select) {
       if (object_circle_select(&vc, sel_op, mval, float(radius))) {
         DEG_id_tag_update(&vc.scene->id, ID_RECALC_SELECT);
@@ -6130,27 +6002,6 @@ void VIEW3D_OT_select_circle(wmOperatorType *ot)
 
   /* properties */
   WM_operator_properties_gesture_circle(ot);
-  WM_operator_properties_select_operation_simple(ot);
-}
-
-void VIEW3D_OT_select_circle_toolsetting(wmOperatorType *ot)
-{
-  ot->name = "Circle Select";
-  ot->description = "Select items using circle selection";
-  ot->idname = "VIEW3D_OT_select_circle_toolsetting";
-
-  ot->invoke = WM_gesture_circle_invoke;
-  ot->modal = view3d_circle_select_modal;
-  ot->exec = view3d_circle_select_exec;
-  ot->poll = view3d_selectable_data;
-  ot->cancel = view3d_circle_select_cancel;
-  ot->get_name = ED_select_circle_get_name;
-
-  /* flags */
-  ot->flag = OPTYPE_UNDO;
-
-  /* properties */
-  WM_operator_properties_gesture_circle_toolsetting(ot);
   WM_operator_properties_select_operation_simple(ot);
 }
 

@@ -93,11 +93,8 @@ float view3d_depth_near(struct ViewDepths *d);
 
 void VIEW3D_OT_select(struct wmOperatorType *ot);
 void VIEW3D_OT_select_circle(struct wmOperatorType *ot);
-void VIEW3D_OT_select_circle_toolsetting(struct wmOperatorType *ot);
 void VIEW3D_OT_select_box(struct wmOperatorType *ot);
-void VIEW3D_OT_select_box_toolsetting(struct wmOperatorType *ot);
 void VIEW3D_OT_select_lasso(struct wmOperatorType *ot);
-void VIEW3D_OT_select_lasso_toolsetting(struct wmOperatorType *ot);
 void VIEW3D_OT_select_menu(struct wmOperatorType *ot);
 void VIEW3D_OT_bone_select_menu(struct wmOperatorType *ot);
 

@@ -828,66 +828,7 @@ class ToolSelectPanelHelper:
             row.context_pointer_set("tool", tool)
             row.popover(panel="TOPBAR_PT_tool_fallback", text=iface_(label, "Operator"))
 
-            if idname_fallback == "builtin.select_box":
-                if context.mode == 'OBJECT' and bpy.context.preferences.inputs.drag_select_control == 'USER_DRAG_TOOLSETTING':
-                    layout.prop(tool_settings, "select_origin_box")
-                if context.mode == 'EDIT_MESH' and bpy.context.preferences.inputs.drag_select_control == 'USER_DRAG_TOOLSETTING':
-                    layout.prop(tool_settings, "show_box_options", toggle=True)
-                    if tool_settings.show_box_options:
-                        row = layout.row(align=True)
-                        row.prop(tool_settings, "box_drag_direction")
-                        row = layout.row(align=True)
-                        if tool_settings.box_drag_direction == 'MESH_DIRECTION_ANY':
-                            row.prop(tool_settings, "box_edge")
-                            row = layout.row(align=True)
-                            row.prop(tool_settings, "box_face")
-                        elif tool_settings.box_drag_direction == 'MESH_DIRECTION_LEFT_RIGHT':
-                            row.prop(tool_settings, "box_edge_left", icon='TRIA_LEFT')
-                            row.prop(tool_settings, "box_edge_right", text="", icon='TRIA_RIGHT')
-                            row = layout.row(align=True)
-                            row.prop(tool_settings, "box_face_left", icon='TRIA_LEFT')
-                            row.prop(tool_settings, "box_face_right", text="", icon='TRIA_RIGHT')
-                        else:
-                            row.prop(tool_settings, "box_edge_up", icon='TRIA_UP')
-                            row.prop(tool_settings, "box_edge_down", text="", icon='TRIA_DOWN')
-                            row = layout.row(align=True)
-                            row.prop(tool_settings, "box_face_up", icon='TRIA_UP')
-                            row.prop(tool_settings, "box_face_down", text="", icon='TRIA_DOWN')
-            elif idname_fallback == "builtin.select_lasso":
-                if context.mode == 'EDIT_MESH' and bpy.context.preferences.inputs.drag_select_control == 'USER_DRAG_TOOLSETTING':
-                    layout.prop(tool_settings, "show_lasso_options", toggle=True)
-                    if tool_settings.show_lasso_options:
-                        row = layout.row(align=True)
-                        row.prop(tool_settings, "lasso_drag_direction")
-                        row = layout.row(align=True)
-                        if tool_settings.lasso_drag_direction == 'MESH_DIRECTION_ANY':
-                            row.prop(tool_settings, "lasso_edge")
-                            row = layout.row(align=True)
-                            row.prop(tool_settings, "lasso_face")
-                        elif tool_settings.lasso_drag_direction == 'MESH_DIRECTION_LEFT_RIGHT':
-                            row.prop(tool_settings, "lasso_edge_left", icon='TRIA_LEFT')
-                            row.prop(tool_settings, "lasso_edge_right", text="", icon='TRIA_RIGHT')
-                            row = layout.row(align=True)
-                            row.prop(tool_settings, "lasso_face_left", icon='TRIA_LEFT')
-                            row.prop(tool_settings, "lasso_face_right", text="", icon='TRIA_RIGHT')
-                        else:
-                            row.prop(tool_settings, "lasso_edge_up", icon='TRIA_UP')
-                            row.prop(tool_settings, "lasso_edge_down", text="", icon='TRIA_DOWN')
-                            row = layout.row(align=True)
-                            row.prop(tool_settings, "lasso_face_up", icon='TRIA_UP')
-                            row.prop(tool_settings, "lasso_face_down", text="", icon='TRIA_DOWN')
-            elif idname_fallback == "builtin.select_circle":
-                if context.mode == 'OBJECT' and bpy.context.preferences.inputs.drag_select_control == 'USER_DRAG_TOOLSETTING':
-                    layout.prop(tool_settings, "select_origin_circle")
-                if context.mode == 'EDIT_MESH' and bpy.context.preferences.inputs.drag_select_control == 'USER_DRAG_TOOLSETTING':
-                    layout.prop(tool_settings, "show_circle_options", toggle=True)
-                    if tool_settings.show_circle_options:
-                        row = layout.row(align=True)
-                        row.prop(tool_settings, "circle_edge")
-                        row = layout.row(align=True)
-                        row.prop(tool_settings, "circle_face")
-
-        return tool
+            return tool
 
     # Show a list of tools in the popover.
     @staticmethod

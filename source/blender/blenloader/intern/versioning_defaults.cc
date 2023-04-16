@@ -376,32 +376,6 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
     IDP_ClearProperty(idprop);
   }
 
-  /* Mesh select. */
-  ts->box_drag_direction = 1;
-  ts->lasso_drag_direction = 1;
-  ts->box_edge = 1;
-  ts->box_edge_left = 1;
-  ts->box_edge_right = 1;
-  ts->box_edge_up = 1;
-  ts->box_edge_down = 1;
-  ts->box_face = 1;
-  ts->box_face_left = 1;
-  ts->box_face_right = 1;
-  ts->box_face_up = 1;
-  ts->box_face_down = 1;
-  ts->lasso_edge = 1;
-  ts->lasso_edge_left = 1;
-  ts->lasso_edge_right = 1;
-  ts->lasso_edge_up = 1;
-  ts->lasso_edge_down = 1;
-  ts->lasso_face = 1;
-  ts->lasso_face_left = 1;
-  ts->lasso_face_right = 1;
-  ts->lasso_face_up = 1;
-  ts->lasso_face_down = 1;
-  ts->circle_edge = 2;
-  ts->circle_face = 1;
-
   /* X-Ray. */
   ts->xray_button = true;
   ts->auto_xray_object = true;
@@ -420,9 +394,6 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
   ts->viewport_facing_select_vert = 1;
   ts->viewport_facing_select_edge = 1;
   ts->viewport_facing_select_face = 1;
-
-  /* Object Origin Select */
-  ts->select_origin_circle = true;
 }
 
 void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)

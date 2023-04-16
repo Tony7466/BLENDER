@@ -269,7 +269,6 @@ class _defs_transform:
         def draw_settings(context, layout, _tool):
             _defs_transform.draw_transform_sculpt_tool_settings(context, layout)
             _template_widget.VIEW3D_GGT_xform_gizmo.draw_settings_with_index(context, layout, 1)
-
         return dict(
             idname="builtin.move",
             label="Move",
@@ -387,37 +386,10 @@ class _defs_view3d_select:
     @ToolDef.from_fn
     def box():
         def draw_settings(_context, layout, tool):
-            tool_settings = _context.tool_settings
             props = tool.operator_properties("view3d.select_box")
             row = layout.row()
             row.use_property_split = False
             row.prop(props, "mode", text="", expand=True, icon_only=True)
-
-            if _context.mode == 'OBJECT' and bpy.context.preferences.inputs.drag_select_control == 'USER_DRAG_TOOLSETTING':
-                layout.prop(tool_settings, "select_origin_box")
-            if _context.mode == 'EDIT_MESH' and bpy.context.preferences.inputs.drag_select_control == 'USER_DRAG_TOOLSETTING':
-                layout.prop(tool_settings, "show_box_options", toggle=True)
-                if tool_settings.show_box_options:
-                    row = layout.row(align=True)
-                    row.prop(tool_settings, "box_drag_direction")
-                    row = layout.row(align=True)
-                    if tool_settings.box_drag_direction == 'MESH_DIRECTION_ANY':
-                        row.prop(tool_settings, "box_edge")
-                        row = layout.row(align=True)
-                        row.prop(tool_settings, "box_face")
-                    elif tool_settings.box_drag_direction == 'MESH_DIRECTION_LEFT_RIGHT':
-                        row.prop(tool_settings, "box_edge_left", icon='TRIA_LEFT')
-                        row.prop(tool_settings, "box_edge_right", text="", icon='TRIA_RIGHT')
-                        row = layout.row(align=True)
-                        row.prop(tool_settings, "box_face_left", icon='TRIA_LEFT')
-                        row.prop(tool_settings, "box_face_right", text="", icon='TRIA_RIGHT')
-                    else:
-                        row.prop(tool_settings, "box_edge_up", icon='TRIA_UP')
-                        row.prop(tool_settings, "box_edge_down", text="", icon='TRIA_DOWN')
-                        row = layout.row(align=True)
-                        row.prop(tool_settings, "box_face_up", icon='TRIA_UP')
-                        row.prop(tool_settings, "box_face_down", text="", icon='TRIA_DOWN')
-
         return dict(
             idname="builtin.select_box",
             label="Select Box",
@@ -430,33 +402,10 @@ class _defs_view3d_select:
     @ToolDef.from_fn
     def lasso():
         def draw_settings(_context, layout, tool):
-            tool_settings = _context.tool_settings
             props = tool.operator_properties("view3d.select_lasso")
             row = layout.row()
             row.use_property_split = False
             row.prop(props, "mode", text="", expand=True, icon_only=True)
-            if _context.mode == 'EDIT_MESH' and bpy.context.preferences.inputs.drag_select_control == 'USER_DRAG_TOOLSETTING':
-                layout.prop(tool_settings, "show_lasso_options", toggle=True)
-                if tool_settings.show_lasso_options:
-                    row = layout.row(align=True)
-                    row.prop(tool_settings, "lasso_drag_direction")
-                    row = layout.row(align=True)
-                    if tool_settings.lasso_drag_direction == 'MESH_DIRECTION_ANY':
-                        row.prop(tool_settings, "lasso_edge")
-                        row = layout.row(align=True)
-                        row.prop(tool_settings, "lasso_face")
-                    elif tool_settings.lasso_drag_direction == 'MESH_DIRECTION_LEFT_RIGHT':
-                        row.prop(tool_settings, "lasso_edge_left", icon='TRIA_LEFT')
-                        row.prop(tool_settings, "lasso_edge_right", text="", icon='TRIA_RIGHT')
-                        row = layout.row(align=True)
-                        row.prop(tool_settings, "lasso_face_left", icon='TRIA_LEFT')
-                        row.prop(tool_settings, "lasso_face_right", text="", icon='TRIA_RIGHT')
-                    else:
-                        row.prop(tool_settings, "lasso_edge_up", icon='TRIA_UP')
-                        row.prop(tool_settings, "lasso_edge_down", text="", icon='TRIA_DOWN')
-                        row = layout.row(align=True)
-                        row.prop(tool_settings, "lasso_face_up", icon='TRIA_UP')
-                        row.prop(tool_settings, "lasso_face_down", text="", icon='TRIA_DOWN')
         return dict(
             idname="builtin.select_lasso",
             label="Select Lasso",
@@ -469,22 +418,11 @@ class _defs_view3d_select:
     @ToolDef.from_fn
     def circle():
         def draw_settings(_context, layout, tool):
-            tool_settings = _context.tool_settings
             props = tool.operator_properties("view3d.select_circle")
             row = layout.row()
             row.use_property_split = False
             row.prop(props, "mode", text="", expand=True, icon_only=True)
             layout.prop(props, "radius")
-
-            if _context.mode == 'OBJECT' and bpy.context.preferences.inputs.drag_select_control == 'USER_DRAG_TOOLSETTING':
-                layout.prop(tool_settings, "select_origin_circle")
-            if _context.mode == 'EDIT_MESH' and bpy.context.preferences.inputs.drag_select_control == 'USER_DRAG_TOOLSETTING':
-                layout.prop(tool_settings, "show_circle_options", toggle=True)
-                if tool_settings.show_circle_options:
-                    row = layout.row(align=True)
-                    row.prop(tool_settings, "circle_edge")
-                    row = layout.row(align=True)
-                    row.prop(tool_settings, "circle_face")
 
         def draw_cursor(_context, tool, xy):
             from gpu_extras.presets import draw_circle_2d

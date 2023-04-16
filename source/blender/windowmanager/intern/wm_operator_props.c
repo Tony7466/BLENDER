@@ -407,7 +407,7 @@ void WM_operator_properties_border_to_rctf(struct wmOperator *op, rctf *rect)
   BLI_rctf_rcti_copy(rect, &rect_i);
 }
 
-void WM_operator_properties_gesture_box_ex(wmOperatorType *ot, bool deselect, bool extend, bool keymap)
+void WM_operator_properties_gesture_box_ex(wmOperatorType *ot, bool deselect, bool extend)
 {
   PropertyRNA *prop;
 
@@ -456,48 +456,14 @@ void WM_operator_properties_gesture_box_ex(wmOperatorType *ot, bool deselect, bo
       {0, NULL, 0, NULL, NULL},
   };
 
-  static const EnumPropertyItem auto_xray_items[] = {
-      {AUTO_XRAY_DISABLE, "AUTO_XRAY_DISABLE", 0, "Disable", "Disable Automatic X-Ray"},
-      {AUTO_XRAY_OBJECT,
-       "AUTO_XRAY_OBJECT",
-       0,
-       "Object",
-       "Enable X-Ray during box select in object mode"},
-      {AUTO_XRAY_EDIT, "AUTO_XRAY_EDIT", 0, "Edit", "Enable X-Ray during box select in edit mode"},
-      {AUTO_XRAY_BOTH,
-       "AUTO_XRAY_BOTH",
-       0,
-       "Both",
-       "Enable X-Ray during box select in object and edit mode"},
-      {0, NULL, 0, NULL, NULL},
-  };
-
-  static const EnumPropertyItem select_through_items[] = {
-      {SELECT_THROUGH_OBJECT, "SELECT_THROUGH_OBJECT", 0, "Object", "Select occluded objects"},
-      {SELECT_THROUGH_EDIT, "SELECT_THROUGH_EDIT", 0, "Edit", "Select occluded mesh elements"},
-      {SELECT_THROUGH_BOTH,
-       "SELECT_THROUGH_BOTH",
-       0,
-       "Both",
-       "Select occluded objects and mesh elements"},
-      {SELECT_THROUGH_DISABLE, "SELECT_THROUGH_DISABLE", 0, "Disable", "Disable Select Through"},
-      {0, NULL, 0, NULL, NULL},
-  };
-
   WM_operator_properties_border(ot);
 
-  if (keymap) {
-    prop = RNA_def_boolean(ot->srna, "select_origin_box", false, "Select Object Origin", "");
-    RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-    prop = RNA_def_enum(ot->srna, "face_type", face_select_items, 0, "Face Select", "");
-    RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-    prop = RNA_def_enum(ot->srna, "edge_type", edge_select_items, 0, "Edge Select", "");
-    RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-    prop = RNA_def_enum(ot->srna, "auto_xray", auto_xray_items, 0, "Automatic X-Ray", "");
-    RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-    prop = RNA_def_enum(ot->srna, "select_through", select_through_items, 0, "Select Through", "");
-    RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-  }
+  prop = RNA_def_boolean(ot->srna, "select_origin_box", false, "Select Object Origin", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_enum(ot->srna, "face_type", face_select_items, 0, "Face Select", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_enum(ot->srna, "edge_type", edge_select_items, 0, "Edge Select", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
   if (deselect) {
     prop = RNA_def_boolean(
@@ -527,15 +493,11 @@ void WM_operator_properties_use_cursor_init(wmOperatorType *ot)
 void WM_operator_properties_gesture_box_select(wmOperatorType *ot)
 {
   WM_operator_properties_gesture_box_ex(
-      ot, true, true, false);
+      ot, true, true);
 }
 void WM_operator_properties_gesture_box(wmOperatorType *ot)
 {
-  WM_operator_properties_gesture_box_ex(ot, false, false, true);
-}
-void WM_operator_properties_gesture_box_toolsetting(wmOperatorType *ot)
-{
-  WM_operator_properties_gesture_box_ex(ot, false, false, false);
+  WM_operator_properties_gesture_box_ex(ot, false, false);
 }
 
 void WM_operator_properties_select_operation(wmOperatorType *ot)
@@ -609,16 +571,6 @@ void WM_operator_properties_gesture_box_zoom(wmOperatorType *ot)
 
 void WM_operator_properties_gesture_lasso(wmOperatorType *ot)
 {
-  WM_operator_properties_gesture_lasso_ex(ot, true);
-}
-
-void WM_operator_properties_gesture_lasso_toolsetting(wmOperatorType *ot)
-{
-  WM_operator_properties_gesture_lasso_ex(ot, false);
-}
-
-void WM_operator_properties_gesture_lasso_ex(wmOperatorType *ot, bool keymap)
-{
   PropertyRNA *prop;
   static const EnumPropertyItem face_select_items[] = {
       {FACE_AUTO,
@@ -665,50 +617,12 @@ void WM_operator_properties_gesture_lasso_ex(wmOperatorType *ot, bool keymap)
       {0, NULL, 0, NULL, NULL},
   };
 
-  static const EnumPropertyItem auto_xray_items[] = {
-      {AUTO_XRAY_DISABLE, "AUTO_XRAY_DISABLE", 0, "Disable", "Disable Automatic X-Ray"},
-      {AUTO_XRAY_OBJECT,
-       "AUTO_XRAY_OBJECT",
-       0,
-       "Object",
-       "Enable X-Ray during lasso select in object mode"},
-      {AUTO_XRAY_EDIT,
-       "AUTO_XRAY_EDIT",
-       0,
-       "Edit",
-       "Enable X-Ray during lasso select in edit mode"},
-      {AUTO_XRAY_BOTH,
-       "AUTO_XRAY_BOTH",
-       0,
-       "Both",
-       "Enable X-Ray during lasso select in object and edit mode"},
-      {0, NULL, 0, NULL, NULL},
-  };
-
-  static const EnumPropertyItem select_through_items[] = {
-      {SELECT_THROUGH_OBJECT, "SELECT_THROUGH_OBJECT", 0, "Object", "Select occluded objects"},
-      {SELECT_THROUGH_EDIT, "SELECT_THROUGH_EDIT", 0, "Edit", "Select occluded mesh elements"},
-      {SELECT_THROUGH_BOTH,
-       "SELECT_THROUGH_BOTH",
-       0,
-       "Both",
-       "Select occluded objects and mesh elements"},
-      {SELECT_THROUGH_DISABLE, "SELECT_THROUGH_DISABLE", 0, "Disable", "Disable Select Through"},
-      {0, NULL, 0, NULL, NULL},
-  };
-
   WM_operator_properties_border(ot);
-
-  if (keymap) {
-    prop = RNA_def_enum(ot->srna, "face_type", face_select_items, 0, "Face Select", "");
-    RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-    prop = RNA_def_enum(ot->srna, "edge_type", edge_select_items, 0, "Edge Select", "");
-    RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-    prop = RNA_def_enum(ot->srna, "auto_xray", auto_xray_items, 0, "Automatic X-Ray", "");
-    RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-    prop = RNA_def_enum(ot->srna, "select_through", select_through_items, 0, "Select Through", "");
-    RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-  }
+  
+  prop = RNA_def_enum(ot->srna, "face_type", face_select_items, 0, "Face Select", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_enum(ot->srna, "edge_type", edge_select_items, 0, "Edge Select", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
   prop = RNA_def_collection_runtime(ot->srna, "path", &RNA_OperatorMousePath, "Path", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
@@ -743,16 +657,6 @@ void WM_operator_properties_gesture_straightline(wmOperatorType *ot, int cursor)
 }
 
 void WM_operator_properties_gesture_circle(wmOperatorType *ot)
-{
-  WM_operator_properties_gesture_circle_ex(ot, true);
-}
-
-void WM_operator_properties_gesture_circle_toolsetting(wmOperatorType *ot)
-{
-  WM_operator_properties_gesture_circle_ex(ot, false);
-}
-
-void WM_operator_properties_gesture_circle_ex(wmOperatorType *ot, bool keymap)
 {
   PropertyRNA *prop;
   const int radius_default = 25;
@@ -796,42 +700,6 @@ void WM_operator_properties_gesture_circle_ex(wmOperatorType *ot, bool keymap)
       {0, NULL, 0, NULL, NULL},
   };
 
-  static const EnumPropertyItem auto_xray_items[] = {
-      {AUTO_XRAY_DISABLE, "AUTO_XRAY_DISABLE", 0, "Disable", "Disable Automatic X-Ray"},
-      {AUTO_XRAY_OBJECT,
-       "AUTO_XRAY_OBJECT",
-       0,
-       "Object",
-       "Enable X-Ray during circle select in object mode"},
-      {AUTO_XRAY_EDIT, "AUTO_XRAY_EDIT", 0, "Edit", "Enable X-Ray during circle select in edit mode"},
-      {AUTO_XRAY_BOTH,
-       "AUTO_XRAY_BOTH",
-       0,
-       "Both",
-       "Enable X-Ray during circle select in object and edit mode"},
-      {0, NULL, 0, NULL, NULL},
-  };
-
-  static const EnumPropertyItem select_through_items[] = {
-      {SELECT_THROUGH_OBJECT,
-       "SELECT_THROUGH_OBJECT",
-       0,
-       "Object",
-       "Select occluded objects"},
-      {SELECT_THROUGH_EDIT,
-       "SELECT_THROUGH_EDIT",
-       0,
-       "Edit",
-       "Select occluded mesh elements"},
-      {SELECT_THROUGH_BOTH,
-       "SELECT_THROUGH_BOTH",
-       0,
-       "Both",
-       "Select occluded objects and mesh elements"},
-      {SELECT_THROUGH_DISABLE, "SELECT_THROUGH_DISABLE", 0, "Disable", "Disable Select Through"},
-      {0, NULL, 0, NULL, NULL},
-  };
-
   prop = RNA_def_int(ot->srna, "x", 0, INT_MIN, INT_MAX, "X", "", INT_MIN, INT_MAX);
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
   prop = RNA_def_int(ot->srna, "y", 0, INT_MIN, INT_MAX, "Y", "", INT_MIN, INT_MAX);
@@ -841,18 +709,12 @@ void WM_operator_properties_gesture_circle_ex(wmOperatorType *ot, bool keymap)
   prop = RNA_def_boolean(ot->srna, "wait_for_input", true, "Wait for Input", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
-  if (keymap) {
-    prop = RNA_def_boolean(ot->srna, "select_origin_circle", true, "Select Object Origin", "");
-    RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-    prop = RNA_def_enum(ot->srna, "face_type", face_select_items, 0, "Face Select", "");
-    RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-    prop = RNA_def_enum(ot->srna, "edge_type", edge_select_items, 0, "Edge Select", "");
-    RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-    prop = RNA_def_enum(ot->srna, "auto_xray", auto_xray_items, 0, "Automatic X-Ray", "");
-    RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-    prop = RNA_def_enum(ot->srna, "select_through", select_through_items, 0, "Select Through", "");
-    RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-  }
+  prop = RNA_def_boolean(ot->srna, "select_origin_circle", true, "Select Object Origin", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_enum(ot->srna, "face_type", face_select_items, 0, "Face Select", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_enum(ot->srna, "edge_type", edge_select_items, 0, "Edge Select", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
 void WM_operator_properties_mouse_select(wmOperatorType *ot)

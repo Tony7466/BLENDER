@@ -924,11 +924,10 @@ class VIEW3D_HT_header(Header):
                 depress_auto_xray = False
                 depress_select_through = False
 
-            if bpy.context.preferences.inputs.drag_select_control == 'USER_DRAG_TOOLSETTING':
-                if tool_settings.auto_xray_button:
-                    row.operator("view3d.toggle_auto_xray", text="", icon='AUTO_XRAY', depress=depress_auto_xray)
-                if tool_settings.select_through_button:
-                    row.operator("view3d.toggle_select_through", text="", icon='SELECT_THROUGH', depress=depress_select_through)
+            if tool_settings.auto_xray_button:
+                row.operator("view3d.toggle_auto_xray", text="", icon='AUTO_XRAY', depress=depress_auto_xray)
+            if tool_settings.select_through_button:
+                row.operator("view3d.toggle_select_through", text="", icon='SELECT_THROUGH', depress=depress_select_through)
 
         # While exposing `shading.show_xray(_wireframe)` is correct.
         # this hides the key shortcut from users: #70433.
@@ -939,12 +938,7 @@ class VIEW3D_HT_header(Header):
         else:
             draw_depressed = shading.show_xray
 
-        if bpy.context.preferences.inputs.drag_select_control == 'USER_DRAG_TOOLSETTING':
-            if tool_settings.xray_button:
-                row.operator("view3d.toggle_xray", text="", icon='XRAY', depress=draw_depressed)
-            elif not tool_settings.auto_xray_button and not tool_settings.select_through_button:
-                row.operator("view3d.toggle_xray", text="", icon='XRAY', depress=draw_depressed)
-        else:
+        if tool_settings.xray_button or not tool_settings.auto_xray_button and not tool_settings.select_through_button:
             row.operator("view3d.toggle_xray", text="", icon='XRAY', depress=draw_depressed)
         row.popover(panel="VIEW3D_PT_xray", text="")
 
@@ -6428,57 +6422,75 @@ class VIEW3D_PT_xray(Panel):
             sub.active = shading.show_xray
             sub.prop(shading, "xray_alpha", text="X-Ray Solid")
 
-        if bpy.context.preferences.inputs.drag_select_control == 'USER_DRAG_TOOLSETTING':
-            tool_settings = context.tool_settings
-            
-            row = layout.row(align=True)
-            row = layout.row(align=True)
-            row = layout.row(align=True)
 
-            row = layout.row(heading="Automatic X-Ray")
-            row.prop(tool_settings, "ui_prop", text="", emboss=False)
-            row = layout.row(align=True)
-            row.prop(tool_settings, "auto_xray", text="Enable")
-            sub = row.row(align=True)
-            sub.active = tool_settings.auto_xray
-            sub.prop(tool_settings, "auto_xray_object", text="Object")
-            sub.prop(tool_settings, "auto_xray_edit", text="Edit")
-            row = layout.row(align=True)
-            sub = row.row(align=True)
-            sub.active = tool_settings.auto_xray
-            sub.prop(tool_settings, "auto_xray_box", text="Box", toggle=True)
-            sub.prop(tool_settings, "auto_xray_lasso", text="Lasso", toggle=True)
-            sub.prop(tool_settings, "auto_xray_circle", text="Circle", toggle=True)
+class VIEW3D_PT_auto_xray(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
+    bl_label = "Automatic X-Ray"
+    bl_parent_id = 'VIEW3D_PT_xray'
 
-            row = layout.row(align=True)
-            row = layout.row(align=True)
-            row = layout.row(align=True)
+    def draw(self, context):
+        layout = self.layout
+        tool_settings = context.tool_settings
+        #layout.label(text="X-Ray Settings")
+        col = layout.column()
+        row = col.row(align=True)
+        row = layout.row(align=True)
+        row.prop(tool_settings, "auto_xray", text="Enable")
+        sub = row.row(align=True)
+        sub.active = tool_settings.auto_xray
+        sub.prop(tool_settings, "auto_xray_object", text="Object")
+        sub.prop(tool_settings, "auto_xray_edit", text="Edit")
+        row = layout.row(align=True)
+        sub = row.row(align=True)
+        sub.active = tool_settings.auto_xray
+        sub.prop(tool_settings, "auto_xray_box", text="Box", toggle=True)
+        sub.prop(tool_settings, "auto_xray_lasso", text="Lasso", toggle=True)
+        sub.prop(tool_settings, "auto_xray_circle", text="Circle", toggle=True)
 
-            row = layout.row(heading="Select Through")
-            row.prop(tool_settings, "ui_prop", text="", emboss=False)
-            row = layout.row(align=True)
-            row.prop(tool_settings, "select_through", text="Enable")
-            sub = row.row(align=True)
-            sub.active = tool_settings.select_through
-            sub.prop(tool_settings, "select_through_object", text="Object")
-            sub.prop(tool_settings, "select_through_edit", text="Edit")
-            row = layout.row(align=True)
-            sub = row.row(align=True)
-            sub.active = tool_settings.select_through
-            sub.prop(tool_settings, "select_through_box", text="Box", toggle=True)
-            sub.prop(tool_settings, "select_through_lasso", text="Lasso", toggle=True)
-            sub.prop(tool_settings, "select_through_circle", text="Circle", toggle=True)
 
-            row = layout.row(align=True)
-            row = layout.row(align=True)
-            row = layout.row(align=True)
+class VIEW3D_PT_select_through(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
+    bl_label = "Select Through"
+    bl_parent_id = 'VIEW3D_PT_xray'
 
-            row = layout.row(heading="Header Buttons")
-            row.prop(tool_settings, "ui_prop", text="", emboss=False)
-            row = layout.row(align=True)
-            row.prop(tool_settings, "auto_xray_button", text="Auto X-Ray", toggle=True)
-            row.prop(tool_settings, "select_through_button", text="Select Through", toggle=True)
-            row.prop(tool_settings, "xray_button", text="X-Ray", toggle=True)
+    def draw(self, context):
+        layout = self.layout
+        tool_settings = context.tool_settings
+        #layout.label(text="X-Ray Settings")
+        col = layout.column()
+        row = col.row(align=True)
+        row = layout.row(align=True)
+        row.prop(tool_settings, "select_through", text="Enable")
+        sub = row.row(align=True)
+        sub.active = tool_settings.select_through
+        sub.prop(tool_settings, "select_through_object", text="Object")
+        sub.prop(tool_settings, "select_through_edit", text="Edit")
+        row = layout.row(align=True)
+        sub = row.row(align=True)
+        sub.active = tool_settings.select_through
+        sub.prop(tool_settings, "select_through_box", text="Box", toggle=True)
+        sub.prop(tool_settings, "select_through_lasso", text="Lasso", toggle=True)
+        sub.prop(tool_settings, "select_through_circle", text="Circle", toggle=True)
+
+
+class VIEW3D_PT_xray_buttons(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
+    bl_label = "Header Buttons"
+    bl_parent_id = 'VIEW3D_PT_xray'
+
+    def draw(self, context):
+        layout = self.layout
+        tool_settings = context.tool_settings
+        #layout.label(text="X-Ray Settings")
+        col = layout.column()
+        row = col.row(align=True)
+        row = layout.row(align=True)
+        row.prop(tool_settings, "auto_xray_button", text="Auto X-Ray", toggle=True)
+        row.prop(tool_settings, "select_through_button", text="Select Through", toggle=True)
+        row.prop(tool_settings, "xray_button", text="X-Ray", toggle=True)
 
 
 class VIEW3D_PT_overlay(Panel):
@@ -8447,6 +8459,9 @@ classes = (
     VIEW3D_PT_shading_compositor,
     VIEW3D_PT_gizmo_display,
     VIEW3D_PT_xray,
+    VIEW3D_PT_auto_xray,
+    VIEW3D_PT_select_through,
+    VIEW3D_PT_xray_buttons,
     VIEW3D_PT_overlay,
     VIEW3D_PT_overlay_guides,
     VIEW3D_PT_overlay_object,

@@ -1558,8 +1558,13 @@ typedef struct ToolSettings {
   /** General 2D Editor. */
   char gpencil_v2d_align;
 
-  /* Give the UI an empty prop to expand formatting */
-  char ui_prop;
+  /* Mesh Normal Direction Select */
+  char viewport_facing_select;
+  char viewport_facing_select_mode;
+  char viewport_facing_select_vert;
+  float viewport_facing_select_threshold;
+  char viewport_facing_select_edge;
+  char viewport_facing_select_face;
 
   /* X-Ray Options */
   char xray_button;
@@ -1579,18 +1584,8 @@ typedef struct ToolSettings {
   char select_through_lasso;
   char select_through_circle;
 
-  /* Mesh Normal Direction Select */
-  char viewport_facing_select;
-  char viewport_facing_select_mode;
-  float viewport_facing_select_threshold;
-  char viewport_facing_select_vert;
-  char viewport_facing_select_edge;
-  char viewport_facing_select_face;
-
-  /* object origin select */
-  char select_origin_box;
-  char select_origin_circle;
-  char _pad0[6];
+  /* Combine shading and xray header buttons */
+  char shrink_shading_header;
 
   /* Annotations. */
   /** Stroke placement settings - 3D View. */
@@ -1715,41 +1710,7 @@ typedef struct ToolSettings {
 
   /** Normal Editing. */
   float normal_vector[3];
-
-  /** Mesh Select Options. */
-  char box_drag_direction;
-  char lasso_drag_direction;
-  char box_direction_upright;
-  char lasso_direction_upright;
-  char box_edge;
-  char box_edge_left;
-  char box_edge_right;
-  char box_edge_up;
-  char box_edge_down;
-  char box_face;
-  char box_face_left;
-  char box_face_right;
-  char box_face_up;
-  char box_face_down;
-  char lasso_edge;
-  char lasso_edge_left;
-  char lasso_edge_right;
-  char lasso_edge_up;
-  char lasso_edge_down;
-  char lasso_face;
-  char lasso_face_left;
-  char lasso_face_right;
-  char lasso_face_up;
-  char lasso_face_down;
-  char circle_edge;
-  char circle_face;
-  char show_box_options;
-  char show_lasso_options;
-  char show_circle_options;
-
-  /* Combine shading and xray header buttons */
-  char shrink_shading_header;
-  char _pad6[6];
+  char _pad6[4];
 
   /**
    * Custom Curve Profile for bevel tool:
@@ -2398,14 +2359,14 @@ typedef enum eSnapTransformMode {
   SCE_SNAP_TRANSFORM_MODE_SCALE = (1 << 2),
 } eSnapTransformMode;
 
-/** #ToolSettings.viewport_facing_mode */
+/** #Viewport-facing select mode */
 enum {
   VIEWPORT_FACING_SELECT_BOTH = (1 << 0),
   VIEWPORT_FACING_SELECT_NEAR = (1 << 1),
   VIEWPORT_FACING_SELECT_XRAY = (1 << 2),
 };
 
-/** #ToolSettings.viewport_facing_select_vert */
+/** #Viewport-facing select vert */
 enum {
   VIEWPORT_FACING_SELECT_FRONT_VERTS = (1 << 0),
   VIEWPORT_FACING_SELECT_FRONT_VERTS_FACE = (1 << 1),
@@ -2414,7 +2375,7 @@ enum {
   VIEWPORT_FACING_SELECT_ALL_VERTS = (1 << 4),
 };
 
-/** #ToolSettings.viewport_facing_select_edge */
+/** #Viewport-facing select edge */
 enum {
   VIEWPORT_FACING_SELECT_FRONT_EDGES = (1 << 0),
   VIEWPORT_FACING_SELECT_FRONT_EDGES_FACE = (1 << 1),
@@ -2423,7 +2384,7 @@ enum {
   VIEWPORT_FACING_SELECT_ALL_EDGES = (1 << 4),
 };
 
-/** #ToolSettings.viewport_facing_select_face */
+/** #Viewport-facing select face */
 enum {
   VIEWPORT_FACING_SELECT_FRONT_FACES = (1 << 0),
   VIEWPORT_FACING_SELECT_FRONT_FACES_VERT = (1 << 1),
@@ -2432,7 +2393,7 @@ enum {
   VIEWPORT_FACING_SELECT_ALL_FACES = (1 << 4),
 };
 
-/** #ToolSettings.face_select */
+/** #Face select style */
 enum {
   FACE_AUTO = (1 << 0),
   FACE_TOUCH = (1 << 1),
@@ -2440,21 +2401,14 @@ enum {
   FACE_CENTER = (1 << 3),
 };
 
-/** #ToolSettings.edge_select */
+/** #Edge select style */
 enum {
   EDGE_HYBRID = (1 << 0),
   EDGE_TOUCH = (1 << 1),
   EDGE_ENCLOSE = (1 << 2),
 };
 
-/** #ToolSettings.mesh_drag_direction */
-enum {
-  MESH_DIRECTION_ANY = (1 << 0),
-  MESH_DIRECTION_LEFT_RIGHT = (1 << 1),
-  MESH_DIRECTION_UP_DOWN = (1 << 2),
-};
-
-/** #ToolSettings.auto_xray_mode */
+/** #Auto X-Ray mode */
 enum {
   AUTO_XRAY_DISABLE = (1 << 0),
   AUTO_XRAY_OBJECT = (1 << 1),
@@ -2462,7 +2416,7 @@ enum {
   AUTO_XRAY_BOTH = (1 << 3),
 };
 
-/** #ToolSettings.select_through_mode */
+/** #Select through mode */
 enum {
   SELECT_THROUGH_DISABLE = (1 << 0),
   SELECT_THROUGH_OBJECT = (1 << 1),
