@@ -13,6 +13,25 @@
 
 namespace blender::bke::mesh_surface_sample {
 
+template<typename T>
+BLI_NOINLINE static void sample_point_attribute(const Span<int> corner_verts,
+                                                const Span<MLoopTri> looptris,
+                                                const Span<int> looptri_indices,
+                                                const Span<float3> bary_coords,
+                                                const VArray<T> &src,
+                                                const IndexMask mask,
+                                                const MutableSpan<T> dst)
+{
+  for (const int i : mask) {
+    const MLoopTri &tri = looptris[looptri_indices[i]];
+    const float3 &bary_coord = bary_coords[i];
+    dst[i] = attribute_math::mix3(bary_coord,
+                                  src[corner_verts[tri.tri[0]]],
+                                  src[corner_verts[tri.tri[1]]],
+                                  src[corner_verts[tri.tri[2]]]);
+  }
+}
+
 void sample_point_normals(const Span<int> corner_verts,
                           const Span<MLoopTri> looptris,
                           const Span<int> looptri_indices,
@@ -29,28 +48,6 @@ void sample_point_normals(const Span<int> corner_verts,
                                               src[corner_verts[tri.tri[1]]],
                                               src[corner_verts[tri.tri[2]]]);
     dst[i] = math::normalize(value);
-  }
-}
-
-template<typename T>
-BLI_NOINLINE static void sample_point_attribute(const Span<int> corner_verts,
-                                                const Span<MLoopTri> looptris,
-                                                const Span<int> looptri_indices,
-                                                const Span<float3> bary_coords,
-                                                const VArray<T> &src,
-                                                const IndexMask mask,
-                                                const MutableSpan<T> dst)
-{
-  const Span<int> corner_verts = mesh.corner_verts();
-  const Span<MLoopTri> looptris = mesh.looptris();
-
-  for (const int i : mask) {
-    const MLoopTri &tri = looptris[looptri_indices[i]];
-    const float3 &bary_coord = bary_coords[i];
-    dst[i] = attribute_math::mix3(bary_coord,
-                                  src[corner_verts[tri.tri[0]]],
-                                  src[corner_verts[tri.tri[1]]],
-                                  src[corner_verts[tri.tri[2]]]);
   }
 }
 
@@ -124,19 +121,17 @@ void sample_corner_attribute(const Mesh &mesh,
   attribute_math::convert_to_static_type(type, [&](auto dummy) {
     using T = decltype(dummy);
     sample_corner_attribute<T>(
-        mesh, looptri_indices, bary_coords, src.typed<T>(), mask, dst.typed<T>());
+        mesh.looptris(), looptri_indices, bary_coords, src.typed<T>(), mask, dst.typed<T>());
   });
 }
 
 template<typename T>
-void sample_face_attribute(const Mesh &mesh,
+void sample_face_attribute(const Span<MLoopTri> looptris,
                            const Span<int> looptri_indices,
                            const VArray<T> &src,
                            const IndexMask mask,
                            const MutableSpan<T> dst)
 {
-  const Span<MLoopTri> looptris = mesh.looptris();
-
   for (const int i : mask) {
     const int looptri_index = looptri_indices[i];
     const MLoopTri &looptri = looptris[looptri_index];
@@ -157,7 +152,8 @@ void sample_face_attribute(const Mesh &mesh,
   const CPPType &type = src.type();
   attribute_math::convert_to_static_type(type, [&](auto dummy) {
     using T = decltype(dummy);
-    sample_face_attribute<T>(mesh, looptri_indices, src.typed<T>(), mask, dst.typed<T>());
+    sample_face_attribute<T>(
+        mesh.looptris(), looptri_indices, src.typed<T>(), mask, dst.typed<T>());
   });
 }
 
