@@ -1340,9 +1340,7 @@ void ntreeBlendReadLib(BlendLibReader *reader, bNodeTree *ntree)
    * to match the static layout. */
   if (!BLO_read_lib_is_undo(reader)) {
     LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-      /* Don't update node groups here because they may depend on other node groups which are not
-       * fully versioned yet and don't have `typeinfo` pointers set. */
-      if (!node->is_group()) {
+      if (node->can_verify_sockets_on_read()) {
         node_verify_sockets(ntree, node, false);
       }
     }

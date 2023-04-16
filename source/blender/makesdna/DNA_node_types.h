@@ -383,6 +383,7 @@ typedef struct bNode {
   bool is_group() const;
   bool is_group_input() const;
   bool is_group_output() const;
+  bool can_verify_sockets_on_read() const;
   const blender::nodes::NodeDeclaration *declaration() const;
   /** A span containing all internal links when the node is muted. */
   blender::Span<bNodeLink> internal_links() const;

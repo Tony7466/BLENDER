@@ -634,6 +634,13 @@ inline bool bNode::is_group_output() const
   return this->type == NODE_GROUP_OUTPUT;
 }
 
+inline bool bNode::can_verify_sockets_on_read() const
+{
+  /* Don't update node groups here because they may depend on other node groups which are not
+   * fully versioned yet and don't have `typeinfo` pointers set. */
+  return !is_group() && !ELEM(this->type, GEO_NODE_BIND_FUNCTION);
+}
+
 inline blender::Span<bNodeLink> bNode::internal_links() const
 {
   return this->runtime->internal_links;
