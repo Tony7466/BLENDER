@@ -21,6 +21,10 @@ set(SRC
   src/blendthumb_png.cc
 )
 
+set(LIB
+  bf_blenlib
+)
+
 if(WIN32)
   # -----------------------------------------------------------------------------
   # Build `BlendThumb.dll`
@@ -36,10 +40,14 @@ if(WIN32)
 
   add_library(BlendThumb SHARED ${SRC} ${SRC_WIN32})
 
-  target_link_libraries(BlendThumb bf_blenlib dbghelp.lib Version.lib)
+  list(APPEND LIB
+    dbghelp.lib
+    Version.lib
+  )
+  target_link_libraries(BlendThumb ${LIB})
   set_target_properties(BlendThumb PROPERTIES LINK_FLAGS_DEBUG "/NODEFAULTLIB:msvcrt")
-
-else()
+endif()
+if(UNIX AND NOT APPLE)
   # -----------------------------------------------------------------------------
   # Build `blender-thumbnailer` executable
 
@@ -49,7 +57,41 @@ else()
 
   add_executable(blender-thumbnailer ${SRC} ${SRC_CMD})
   setup_platform_linker_flags(blender-thumbnailer)
-  target_link_libraries(blender-thumbnailer bf_blenlib)
+  target_link_libraries(blender-thumbnailer ${LIB})
+  if(DEFINED PTHREADS_LIBRARIES)
+    target_link_libraries(blender-thumbnailer ${PTHREADS_LIBRARIES})
+  endif()
+endif()
+if(APPLE)
+  # -----------------------------------------------------------------------------
+  # Build `blender-thumbnailer` appex
+
+  set(SRC_CMD
+    src/ThumbnailProvider.mm
+    src/ThumbnailProvider.h
+    src/Info.plist
+  )
+
+  add_executable(blender-thumbnailer MACOSX_BUNDLE ${SRC} ${SRC_CMD})
+  set_target_properties(blender-thumbnailer PROPERTIES
+    MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/src/Info.plist
+    MACOSX_FRAMEWORK_IDENTIFIER org.blenderfoundation.blender.thumbnailer)
+  set_target_properties(blender-thumbnailer PROPERTIES
+    XIB_RESOURCE "${CMAKE_CURRENT_SOURCE_DIR}/src/Base.lproj")
+  # Doesn't affect other generators. So need to specify extension for others.
+  set_target_properties(blender-thumbnailer PROPERTIES
+    XCODE_PRODUCT_TYPE com.apple.product-type.app-extension)
+  set_target_properties(blender-thumbnailer PROPERTIES
+    BUNDLE_EXTENSION appex)
+  setup_platform_linker_flags(blender-thumbnailer)
+  set_target_properties(blender-thumbnailer PROPERTIES BUILD_WITH_INSTALL_RPATH true)
+  list(APPEND LIB
+    "-framework QuickLookThumbnailing"
+    "-fobjc-link-runtime"
+    "-fapplication-extension"
+    "-e _NSExtensionMain"
+  )
+  target_link_libraries(blender-thumbnailer ${LIB})
   if(DEFINED PTHREADS_LIBRARIES)
     target_link_libraries(blender-thumbnailer ${PTHREADS_LIBRARIES})
   endif()
