@@ -1884,9 +1884,9 @@ static int file_external_operation_exec(bContext *C, wmOperator *op)
   return OPERATOR_CANCELLED;
 }
 
-static char *file_external_operation_description(struct bContext *UNUSED(C),
-                                          struct wmOperatorType *UNUSED(ot),
-                                          struct PointerRNA *ptr)
+static char *file_external_operation_description(bContext *UNUSED(C),
+                                                 wmOperatorType *UNUSED(ot),
+                                                 PointerRNA *ptr)
 {
   const char *description = "";
   RNA_enum_description(file_external_operation, RNA_enum_get(ptr, "operation"), &description);
@@ -1898,7 +1898,7 @@ void FILE_OT_external_operation(wmOperatorType *ot)
   PropertyRNA *prop;
 
   /* identifiers */
-  ot->name = "Exernal File Operation";
+  ot->name = "External File Operation";
   ot->idname = "FILE_OT_external_operation";
   ot->description = "Perform external operation on a file or folder";
 
