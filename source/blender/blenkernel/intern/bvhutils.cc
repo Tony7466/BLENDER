@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright Blender Foundation. All rights reserved. */
+ * Copyright Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -26,6 +26,7 @@
 #include "BKE_editmesh.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.h"
+#include "BKE_pointcloud.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -1173,7 +1174,7 @@ static BitVector<> loose_edges_map_get(const Mesh &mesh, int *r_loose_edge_len)
   return loose_edges.is_loose_bits;
 }
 
-static BitVector<> looptri_no_hidden_map_get(const Span<MPoly> polys,
+static BitVector<> looptri_no_hidden_map_get(const blender::OffsetIndices<int> polys,
                                              const VArray<bool> &hide_poly,
                                              const int looptri_len,
                                              int *r_looptri_active_len)
@@ -1186,7 +1187,7 @@ static BitVector<> looptri_no_hidden_map_get(const Span<MPoly> polys,
   int looptri_no_hidden_len = 0;
   int looptri_index = 0;
   for (const int64_t i : polys.index_range()) {
-    const int triangles_num = ME_POLY_TRI_TOT(&polys[i]);
+    const int triangles_num = ME_POLY_TRI_TOT(polys[i].size());
     if (hide_poly[i]) {
       looptri_index += triangles_num;
     }
@@ -1425,10 +1426,7 @@ BVHTree *BKE_bvhtree_from_pointcloud_get(BVHTreeFromPointCloud *data,
     return nullptr;
   }
 
-  blender::bke::AttributeAccessor attributes = pointcloud->attributes();
-  blender::VArraySpan<blender::float3> positions = attributes.lookup_or_default<blender::float3>(
-      "position", ATTR_DOMAIN_POINT, blender::float3(0));
-
+  const Span<float3> positions = pointcloud->positions();
   for (const int i : positions.index_range()) {
     BLI_bvhtree_insert(tree, i, positions[i], 1);
   }

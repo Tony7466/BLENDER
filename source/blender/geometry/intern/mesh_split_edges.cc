@@ -28,6 +28,11 @@ static void copy_to_new_verts(MutableSpan<T> data, const Span<int> new_to_old_ve
 
 static void add_new_vertices(Mesh &mesh, const Span<int> new_to_old_verts_map)
 {
+  /* These types aren't supported for interpolation below. */
+  CustomData_free_layers(&mesh.vdata, CD_BWEIGHT, mesh.totvert);
+  CustomData_free_layers(&mesh.vdata, CD_SHAPEKEY, mesh.totvert);
+  CustomData_free_layers(&mesh.vdata, CD_CLOTH_ORCO, mesh.totvert);
+  CustomData_free_layers(&mesh.vdata, CD_MVERT_SKIN, mesh.totvert);
   CustomData_realloc(&mesh.vdata, mesh.totvert, mesh.totvert + new_to_old_verts_map.size());
   mesh.totvert += new_to_old_verts_map.size();
 
@@ -138,7 +143,8 @@ static void add_new_edges(Mesh &mesh,
   mesh.edges_for_write().copy_from(new_edges);
 
   if (new_orig_indices != nullptr) {
-    CustomData_add_layer_with_data(&mesh.edata, CD_ORIGINDEX, new_orig_indices, mesh.totedge);
+    CustomData_add_layer_with_data(
+        &mesh.edata, CD_ORIGINDEX, new_orig_indices, mesh.totedge, nullptr);
   }
 
   for (NewAttributeData &new_data : dst_attributes) {
@@ -246,7 +252,7 @@ static void split_vertex_per_fan(const int vertex,
 static int adjacent_edge(const Span<int> corner_verts,
                          const Span<int> corner_edges,
                          const int loop_i,
-                         const MPoly &poly,
+                         const IndexRange poly,
                          const int vertex)
 {
   const int adjacent_loop_i = (corner_verts[loop_i] == vertex) ?
@@ -264,7 +270,7 @@ static int adjacent_edge(const Span<int> corner_verts,
 static void calc_vertex_fans(const int vertex,
                              const Span<int> new_corner_verts,
                              const Span<int> new_corner_edges,
-                             const Span<MPoly> polys,
+                             const OffsetIndices<int> polys,
                              const Span<Vector<int>> edge_to_loop_map,
                              const Span<int> loop_to_poly_map,
                              MutableSpan<int> connected_edges,
@@ -373,8 +379,7 @@ void split_edges(Mesh &mesh,
                                                                                    mesh.totvert);
   Vector<Vector<int>> edge_to_loop_map = bke::mesh_topology::build_edge_to_loop_map_resizable(
       mesh.corner_edges(), mesh.totedge);
-  Array<int> loop_to_poly_map = bke::mesh_topology::build_loop_to_poly_map(mesh.polys(),
-                                                                           mesh.totloop);
+  Array<int> loop_to_poly_map = bke::mesh_topology::build_loop_to_poly_map(mesh.polys());
 
   /* Store offsets, so we can split edges in parallel. */
   Array<int> edge_offsets(edges.size());
@@ -389,7 +394,7 @@ void split_edges(Mesh &mesh,
     num_edge_duplicates[edge] = num_duplicates;
   }
 
-  const Span<MPoly> polys = mesh.polys();
+  const OffsetIndices polys = mesh.polys();
 
   MutableSpan<int> corner_verts = mesh.corner_verts_for_write();
   MutableSpan<int> corner_edges = mesh.corner_edges_for_write();
