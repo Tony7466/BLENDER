@@ -1,8 +1,15 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "DEG_depsgraph_query.h" //DEG_get_input_scene
-#include "BKE_scene.h" // BKE_scene_object_sounds_iterate
-#include "BKE_sound.h" // BKE_sound_scene_playing
+#include "BKE_main.h"
+#include "BKE_scene.h"
+#include "BKE_sound.h"
+
+#include "DNA_sound_types.h"
+#include "DNA_sequence_types.h"
+#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.h"
+
+#include "SEQ_sequencer.h"
 
 #include "node_geometry_util.hh"
 
@@ -16,16 +23,26 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_exec(GeoNodeExecParams params)
 {
-  Scene *scene = DEG_get_input_scene(params.depsgraph());
-  bSound *sound = static_cast<bSound*>(scene->sound_scene);
+  const Scene *scene = DEG_get_input_scene(params.depsgraph());
+  const float scene_ctime = BKE_scene_ctime_get(scene);
 
-  if (sound != nullptr) {
-    params.set_output("Volume", sound->volume);
-    params.set_output("Pitch", sound->pitch);
-  } else {
-    params.set_output("Volume", 0.0f);
-    params.set_output("Pitch", 0.0f);
+  Editing *ed = static_cast<Editing *>(SEQ_editing_get(scene)); // scene->ed ?? 
+  float volume = 0.0f;
+  float pitch = 0.0f;
+
+  if (ed) {
+    Sequence *seq;
+    for (seq = static_cast<Sequence *>(ed->seqbasep->first); seq; seq = seq->next) {
+      if (seq->type == SEQ_TYPE_SOUND_RAM && seq->start <= scene_ctime && seq->start + seq->len > scene_ctime) {
+        // TODO: does sound accumulate like that? 
+        volume += seq->sound->volume;
+        pitch += seq->sound->pitch;
+      }
+    }
   }
+
+  params.set_output("Volume", volume);
+  params.set_output("Pitch", pitch);
 }
 
 }  // namespace blender::nodes::node_geo_input_scene_sound_cc

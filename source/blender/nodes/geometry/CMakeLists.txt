@@ -18,6 +18,7 @@ set(INC
   ../../makesrna
   ../../render
   ../../windowmanager
+  ../../sequencer
   ../../../../intern/guardedalloc
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
