@@ -7,7 +7,7 @@
  * actual mode switching logic is per-object type.
  */
 
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_workspace_types.h"
@@ -21,7 +21,7 @@
 #include "BLT_translation.h"
 
 #include "BKE_context.h"
-#include "BKE_gpencil_modifier.h"
+#include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_modifier.h"
@@ -41,7 +41,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include "ED_armature.h"
-#include "ED_gpencil.h"
+#include "ED_gpencil_legacy.h"
 #include "ED_screen.h"
 #include "ED_transform_snap_object_context.h"
 #include "ED_undo.h"

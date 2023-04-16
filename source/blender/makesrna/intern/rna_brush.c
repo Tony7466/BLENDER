@@ -7,7 +7,7 @@
 #include <stdlib.h>
 
 #include "DNA_brush_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_material_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -248,7 +248,7 @@ const EnumPropertyItem rna_enum_brush_gpencil_sculpt_types_items[] = {
      "CLONE",
      ICON_GPBRUSH_CLONE,
      "Clone",
-     "Paste copies of the strokes stored on the clipboard"},
+     "Paste copies of the strokes stored on the internal clipboard"},
     {0, NULL, 0, NULL, NULL}};
 
 const EnumPropertyItem rna_enum_brush_gpencil_weight_types_items[] = {
@@ -262,16 +262,18 @@ const EnumPropertyItem rna_enum_brush_gpencil_weight_types_items[] = {
 
 /* clang-format off */
 const EnumPropertyItem rna_enum_brush_curves_sculpt_tool_items[] = {
-    {CURVES_SCULPT_TOOL_COMB, "COMB", ICON_BRUSH_CURVES_COMB, "Comb Curves", ""},
-    {CURVES_SCULPT_TOOL_DELETE, "DELETE", ICON_BRUSH_CURVES_DELETE, "Delete Curves", ""},
-    {CURVES_SCULPT_TOOL_SNAKE_HOOK, "SNAKE_HOOK", ICON_BRUSH_CURVES_SNAKE_HOOK, "Curves Snake Hook", ""},
-    {CURVES_SCULPT_TOOL_ADD, "ADD", ICON_BRUSH_CURVES_ADD, "Add Curves", ""},
-    {CURVES_SCULPT_TOOL_GROW_SHRINK, "GROW_SHRINK", ICON_BRUSH_CURVES_GROW_SHRINK, "Grow / Shrink Curves", ""},
     {CURVES_SCULPT_TOOL_SELECTION_PAINT, "SELECTION_PAINT", ICON_BRUSH_PAINT_SELECT, "Paint Selection", ""},
-    {CURVES_SCULPT_TOOL_PINCH, "PINCH", ICON_BRUSH_CURVES_PINCH, "Pinch Curves", ""},
-    {CURVES_SCULPT_TOOL_SMOOTH, "SMOOTH", ICON_BRUSH_CURVES_SMOOTH, "Smooth Curves", ""},
-    {CURVES_SCULPT_TOOL_PUFF, "PUFF", ICON_BRUSH_CURVES_PUFF, "Puff Curves", ""},
+    RNA_ENUM_ITEM_SEPR,
+    {CURVES_SCULPT_TOOL_ADD, "ADD", ICON_BRUSH_CURVES_ADD, "Add Curves", ""},
+    {CURVES_SCULPT_TOOL_DELETE, "DELETE", ICON_BRUSH_CURVES_DELETE, "Delete Curves", ""},
     {CURVES_SCULPT_TOOL_DENSITY, "DENSITY", ICON_BRUSH_CURVES_DENSITY, "Density Curves", ""},
+    RNA_ENUM_ITEM_SEPR,
+    {CURVES_SCULPT_TOOL_COMB, "COMB", ICON_BRUSH_CURVES_COMB, "Comb Curves", ""},
+    {CURVES_SCULPT_TOOL_SNAKE_HOOK, "SNAKE_HOOK", ICON_BRUSH_CURVES_SNAKE_HOOK, "Curves Snake Hook", ""},
+    {CURVES_SCULPT_TOOL_GROW_SHRINK, "GROW_SHRINK", ICON_BRUSH_CURVES_GROW_SHRINK, "Grow / Shrink Curves", ""},
+    {CURVES_SCULPT_TOOL_PINCH, "PINCH", ICON_BRUSH_CURVES_PINCH, "Pinch Curves", ""},
+    {CURVES_SCULPT_TOOL_PUFF, "PUFF", ICON_BRUSH_CURVES_PUFF, "Puff Curves", ""},
+    {CURVES_SCULPT_TOOL_SMOOTH, "SMOOTH", ICON_BRUSH_CURVES_SMOOTH, "Smooth Curves", ""},
     {CURVES_SCULPT_TOOL_SLIDE, "SLIDE", ICON_BRUSH_CURVES_SLIDE, "Slide Curves", ""},
     {0, NULL, 0, NULL, NULL},
 };
@@ -376,7 +378,7 @@ static EnumPropertyItem rna_enum_gpencil_brush_vertex_icons_items[] = {
 
 #  include "BKE_brush.h"
 #  include "BKE_colorband.h"
-#  include "BKE_gpencil.h"
+#  include "BKE_gpencil_legacy.h"
 #  include "BKE_icons.h"
 #  include "BKE_material.h"
 #  include "BKE_paint.h"

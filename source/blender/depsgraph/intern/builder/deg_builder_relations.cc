@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation. All rights reserved. */
+ * Copyright 2013 Blender Foundation */
 
 /** \file
  * \ingroup depsgraph
@@ -29,7 +29,7 @@
 #include "DNA_curve_types.h"
 #include "DNA_curves_types.h"
 #include "DNA_effect_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_key_types.h"
 #include "DNA_light_types.h"
 #include "DNA_lightprobe_types.h"
@@ -63,7 +63,7 @@
 #include "BKE_curve.h"
 #include "BKE_effect.h"
 #include "BKE_fcurve_driver.h"
-#include "BKE_gpencil_modifier.h"
+#include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_idprop.h"
 #include "BKE_image.h"
 #include "BKE_key.h"
@@ -481,9 +481,7 @@ Depsgraph *DepsgraphRelationBuilder::getGraph()
 
 /* **** Functions to build relations between entities  **** */
 
-void DepsgraphRelationBuilder::begin_build()
-{
-}
+void DepsgraphRelationBuilder::begin_build() {}
 
 void DepsgraphRelationBuilder::build_id(ID *id)
 {
@@ -1164,13 +1162,19 @@ void DepsgraphRelationBuilder::build_object_pointcache(Object *object)
       OperationKey transform_key(
           &object->id, NodeType::TRANSFORM, OperationCode::TRANSFORM_SIMULATION_INIT);
       add_relation(point_cache_key, transform_key, "Point Cache -> Rigid Body");
-      /* Manual changes to effectors need to invalidate simulation. */
-      OperationKey rigidbody_rebuild_key(
-          &scene_->id, NodeType::TRANSFORM, OperationCode::RIGIDBODY_REBUILD);
-      add_relation(rigidbody_rebuild_key,
-                   point_cache_key,
-                   "Rigid Body Rebuild -> Point Cache Reset",
-                   RELATION_FLAG_FLUSH_USER_EDIT_ONLY);
+      /* Manual changes to effectors need to invalidate simulation.
+       *
+       * Don't add this relation for the render pipeline dependency graph as it does not contain
+       * rigid body simulation. Good thing is that there are no user edits in such dependency
+       * graph, so the relation is not really needed in it. */
+      if (!graph_->is_render_pipeline_depsgraph) {
+        OperationKey rigidbody_rebuild_key(
+            &scene_->id, NodeType::TRANSFORM, OperationCode::RIGIDBODY_REBUILD);
+        add_relation(rigidbody_rebuild_key,
+                     point_cache_key,
+                     "Rigid Body Rebuild -> Point Cache Reset",
+                     RELATION_FLAG_FLUSH_USER_EDIT_ONLY);
+      }
     }
     else {
       flag = FLAG_GEOMETRY;
@@ -2050,6 +2054,9 @@ void DepsgraphRelationBuilder::build_rigidbody(Scene *scene)
                      object_transform_final_key,
                      "Rigidbody Sync -> Transform Final");
       }
+
+      /* Relations between colliders and force fields, needed for force field absorption. */
+      build_collision_relations(graph_, nullptr, eModifierType_Collision);
     }
     FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
   }

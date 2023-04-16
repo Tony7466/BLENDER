@@ -16,7 +16,7 @@
 #include "DNA_camera_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_constraint_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_key_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_light_types.h"
@@ -51,7 +51,7 @@
 #include "BKE_displist.h"
 #include "BKE_editmesh.h"
 #include "BKE_fcurve.h"
-#include "BKE_gpencil.h"
+#include "BKE_gpencil_legacy.h"
 #include "BKE_idprop.h"
 #include "BKE_idtype.h"
 #include "BKE_lattice.h"
@@ -92,7 +92,7 @@
 
 #include "ED_armature.h"
 #include "ED_curve.h"
-#include "ED_gpencil.h"
+#include "ED_gpencil_legacy.h"
 #include "ED_keyframing.h"
 #include "ED_mesh.h"
 #include "ED_object.h"
@@ -483,7 +483,6 @@ void ED_object_parent(Object *ob, Object *par, const int type, const char *subst
   BLI_strncpy(ob->parsubstr, substr, sizeof(ob->parsubstr));
 }
 
-/* Operator Property */
 EnumPropertyItem prop_make_parent_types[] = {
     {PAR_OBJECT, "OBJECT", 0, "Object", ""},
     {PAR_ARMATURE, "ARMATURE", 0, "Armature Deform", ""},

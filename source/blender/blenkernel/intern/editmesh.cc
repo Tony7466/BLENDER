@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -19,7 +19,7 @@
 #include "BKE_editmesh.h"
 #include "BKE_editmesh_cache.h"
 #include "BKE_lib_id.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_iterators.h"
 #include "BKE_mesh_wrapper.h"
 #include "BKE_object.h"
@@ -111,17 +111,6 @@ static void editmesh_tessface_calc_intern(BMEditMesh *em,
 void BKE_editmesh_looptri_calc_ex(BMEditMesh *em, const BMeshCalcTessellation_Params *params)
 {
   editmesh_tessface_calc_intern(em, params);
-
-  /* commented because editbmesh_build_data() ensures we get tessfaces */
-#if 0
-  if (em->mesh_eval_final && em->mesh_eval_final == em->mesh_eval_cage) {
-    BKE_mesh_runtime_looptri_ensure(em->mesh_eval_final);
-  }
-  else if (em->mesh_eval_final) {
-    BKE_mesh_runtime_looptri_ensure(em->mesh_eval_final);
-    BKE_mesh_runtime_looptri_ensure(em->mesh_eval_cage);
-  }
-#endif
 }
 
 void BKE_editmesh_looptri_calc(BMEditMesh *em)

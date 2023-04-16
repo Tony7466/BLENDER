@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+ * Copyright 2020 Blender Foundation */
 
 /** \file
  * \ingroup edsculpt
@@ -11,6 +11,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_array.hh"
 #include "BLI_bit_vector.hh"
 #include "BLI_function_ref.hh"
 #include "BLI_hash.h"
@@ -34,7 +35,7 @@
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_customdata.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_fair.h"
 #include "BKE_mesh_mapping.h"
 #include "BKE_object.h"
@@ -55,6 +56,7 @@
 
 #include "bmesh.h"
 
+using blender::Array;
 using blender::float3;
 using blender::Vector;
 
@@ -113,6 +115,7 @@ static void do_draw_face_sets_brush_task_cb_ex(void *__restrict userdata,
                                                const int n,
                                                const TaskParallelTLS *__restrict tls)
 {
+  using namespace blender;
   SculptThreadedTaskData *data = static_cast<SculptThreadedTaskData *>(userdata);
   SculptSession *ss = data->ob->sculpt;
   const Brush *brush = data->brush;
@@ -125,7 +128,9 @@ static void do_draw_face_sets_brush_task_cb_ex(void *__restrict userdata,
       ss, &test, data->brush->falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(tls);
 
-  const float(*positions)[3] = SCULPT_mesh_deformed_positions_get(ss);
+  const Span<float3> positions(
+      reinterpret_cast<const float3 *>(SCULPT_mesh_deformed_positions_get(ss)),
+      SCULPT_vertex_count_get(ss));
   AutomaskingNodeData automask_data;
   SCULPT_automasking_node_begin(
       data->ob, ss, ss->cache->automasking, &automask_data, data->nodes[n]);
@@ -137,10 +142,10 @@ static void do_draw_face_sets_brush_task_cb_ex(void *__restrict userdata,
     if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES) {
       MeshElemMap *vert_map = &ss->pmap[vd.index];
       for (int j = 0; j < ss->pmap[vd.index].count; j++) {
-        const MPoly &poly = ss->polys[vert_map->indices[j]];
+        const blender::IndexRange poly = ss->polys[vert_map->indices[j]];
 
-        float poly_center[3];
-        BKE_mesh_calc_poly_center(&poly, &ss->mloop[poly.loopstart], positions, poly_center);
+        const float3 poly_center = bke::mesh::poly_center_calc(positions,
+                                                               ss->corner_verts.slice(poly));
 
         if (!sculpt_brush_test_sq_fn(&test, poly_center)) {
           continue;
@@ -249,7 +254,7 @@ static void do_relax_face_sets_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_draw_face_sets_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode)
+void SCULPT_do_draw_face_sets_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
@@ -270,16 +275,17 @@ void SCULPT_do_draw_face_sets_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, in
   data.nodes = nodes;
 
   TaskParallelSettings settings;
-  BKE_pbvh_parallel_range_settings(&settings, true, totnode);
+  BKE_pbvh_parallel_range_settings(&settings, true, nodes.size());
   if (ss->cache->alt_smooth) {
     SCULPT_boundary_info_ensure(ob);
     for (int i = 0; i < 4; i++) {
       data.iteration = i;
-      BLI_task_parallel_range(0, totnode, &data, do_relax_face_sets_brush_task_cb_ex, &settings);
+      BLI_task_parallel_range(
+          0, nodes.size(), &data, do_relax_face_sets_brush_task_cb_ex, &settings);
     }
   }
   else {
-    BLI_task_parallel_range(0, totnode, &data, do_draw_face_sets_brush_task_cb_ex, &settings);
+    BLI_task_parallel_range(0, nodes.size(), &data, do_draw_face_sets_brush_task_cb_ex, &settings);
   }
 }
 
@@ -347,17 +353,15 @@ static int sculpt_face_set_create_exec(bContext *C, wmOperator *op)
   float threshold = 0.5f;
 
   PBVH *pbvh = ob->sculpt->pbvh;
-  PBVHNode **nodes;
-  int totnode;
-  BKE_pbvh_search_gather(pbvh, nullptr, nullptr, &nodes, &totnode);
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(pbvh, nullptr, nullptr);
 
-  if (!nodes) {
+  if (nodes.is_empty()) {
     return OPERATOR_CANCELLED;
   }
 
   SCULPT_undo_push_begin(ob, op);
-  for (const int i : blender::IndexRange(totnode)) {
-    SCULPT_undo_push_node(ob, nodes[i], SCULPT_UNDO_FACE_SETS);
+  for (PBVHNode *node : nodes) {
+    SCULPT_undo_push_node(ob, node, SCULPT_UNDO_FACE_SETS);
   }
 
   const int next_face_set = SCULPT_face_set_next_available_get(ss);
@@ -424,11 +428,9 @@ static int sculpt_face_set_create_exec(bContext *C, wmOperator *op)
     });
   }
 
-  for (int i = 0; i < totnode; i++) {
-    BKE_pbvh_node_mark_redraw(nodes[i]);
+  for (PBVHNode *node : nodes) {
+    BKE_pbvh_node_mark_redraw(node);
   }
-
-  MEM_SAFE_FREE(nodes);
 
   SCULPT_undo_push_end(ob);
 
@@ -547,17 +549,12 @@ static void sculpt_face_sets_init_flood_fill(Object *ob, const FaceSetsFloodFill
   int *face_sets = ss->face_sets;
 
   const Span<MEdge> edges = mesh->edges();
-  const Span<MPoly> polys = mesh->polys();
-  const Span<MLoop> loops = mesh->loops();
+  const OffsetIndices polys = mesh->polys();
+  const Span<int> corner_edges = mesh->corner_edges();
 
   if (!ss->epmap) {
-    BKE_mesh_edge_poly_map_create(&ss->epmap,
-                                  &ss->epmap_mem,
-                                  edges.size(),
-                                  polys.data(),
-                                  polys.size(),
-                                  loops.data(),
-                                  loops.size());
+    BKE_mesh_edge_poly_map_create(
+        &ss->epmap, &ss->epmap_mem, edges.size(), polys, corner_edges.data(), corner_edges.size());
   }
 
   int next_face_set = 1;
@@ -574,11 +571,9 @@ static void sculpt_face_sets_init_flood_fill(Object *ob, const FaceSetsFloodFill
 
     while (!queue.empty()) {
       const int poly_i = queue.front();
-      const MPoly &poly = polys[poly_i];
       queue.pop();
 
-      for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
-        const int edge_i = loop.e;
+      for (const int edge_i : corner_edges.slice(polys[poly_i])) {
         const Span<int> neighbor_polys(ss->epmap[edge_i].indices, ss->epmap[edge_i].count);
         for (const int neighbor_i : neighbor_polys) {
           if (neighbor_i == poly_i) {
@@ -642,17 +637,15 @@ static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
   }
 
   PBVH *pbvh = ob->sculpt->pbvh;
-  PBVHNode **nodes;
-  int totnode;
-  BKE_pbvh_search_gather(pbvh, nullptr, nullptr, &nodes, &totnode);
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(pbvh, nullptr, nullptr);
 
-  if (!nodes) {
+  if (nodes.is_empty()) {
     return OPERATOR_CANCELLED;
   }
 
   SCULPT_undo_push_begin(ob, op);
-  for (const int i : blender::IndexRange(totnode)) {
-    SCULPT_undo_push_node(ob, nodes[i], SCULPT_UNDO_FACE_SETS);
+  for (PBVHNode *node : nodes) {
+    SCULPT_undo_push_node(ob, node, SCULPT_UNDO_FACE_SETS);
   }
 
   const float threshold = RNA_float_get(op->ptr, "threshold");
@@ -676,8 +669,7 @@ static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
       break;
     }
     case SCULPT_FACE_SETS_FROM_NORMALS: {
-      const Span<float3> poly_normals(
-          reinterpret_cast<const float3 *>(BKE_mesh_poly_normals_ensure(mesh)), mesh->totpoly);
+      const Span<float3> poly_normals = mesh->poly_normals();
       sculpt_face_sets_init_flood_fill(
           ob, [&](const int from_face, const int /*edge*/, const int to_face) -> bool {
             return std::abs(math::dot(poly_normals[from_face], poly_normals[to_face])) > threshold;
@@ -739,13 +731,11 @@ static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
   /* Sync face sets visibility and vertex visibility as now all Face Sets are visible. */
   SCULPT_visibility_sync_all_from_faces(ob);
 
-  for (int i = 0; i < totnode; i++) {
-    BKE_pbvh_node_mark_update_visibility(nodes[i]);
+  for (PBVHNode *node : nodes) {
+    BKE_pbvh_node_mark_update_visibility(node);
   }
 
   BKE_pbvh_update_vertex_data(ss->pbvh, PBVH_UpdateVisibility);
-
-  MEM_SAFE_FREE(nodes);
 
   if (BKE_pbvh_type(pbvh) == PBVH_FACES) {
     BKE_mesh_flush_hidden_from_verts(mesh);
@@ -841,21 +831,17 @@ static int sculpt_face_sets_change_visibility_exec(bContext *C, wmOperator *op)
   const int tot_vert = SCULPT_vertex_count_get(ss);
 
   PBVH *pbvh = ob->sculpt->pbvh;
-  PBVHNode **nodes;
-  int totnode;
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(pbvh, nullptr, nullptr);
 
-  BKE_pbvh_search_gather(pbvh, nullptr, nullptr, &nodes, &totnode);
-
-  if (totnode == 0) {
-    MEM_SAFE_FREE(nodes);
+  if (nodes.is_empty()) {
     return OPERATOR_CANCELLED;
   }
 
   const int active_face_set = SCULPT_active_face_set_get(ss);
 
   SCULPT_undo_push_begin(ob, op);
-  for (int i = 0; i < totnode; i++) {
-    SCULPT_undo_push_node(ob, nodes[i], SCULPT_UNDO_HIDDEN);
+  for (PBVHNode *node : nodes) {
+    SCULPT_undo_push_node(ob, node, SCULPT_UNDO_HIDDEN);
   }
 
   switch (mode) {
@@ -945,13 +931,11 @@ static int sculpt_face_sets_change_visibility_exec(bContext *C, wmOperator *op)
   SCULPT_visibility_sync_all_from_faces(ob);
 
   SCULPT_undo_push_end(ob);
-  for (int i = 0; i < totnode; i++) {
-    BKE_pbvh_node_mark_update_visibility(nodes[i]);
+  for (PBVHNode *node : nodes) {
+    BKE_pbvh_node_mark_update_visibility(node);
   }
 
   BKE_pbvh_update_vertex_data(ss->pbvh, PBVH_UpdateVisibility);
-
-  MEM_SAFE_FREE(nodes);
 
   SCULPT_tag_update_overlays(C);
 
@@ -1013,8 +997,6 @@ static int sculpt_face_sets_randomize_colors_exec(bContext *C, wmOperator * /*op
   }
 
   PBVH *pbvh = ob->sculpt->pbvh;
-  PBVHNode **nodes;
-  int totnode;
   Mesh *mesh = static_cast<Mesh *>(ob->data);
 
   mesh->face_sets_color_seed += 1;
@@ -1026,12 +1008,10 @@ static int sculpt_face_sets_randomize_colors_exec(bContext *C, wmOperator * /*op
   }
   BKE_pbvh_face_sets_color_set(pbvh, mesh->face_sets_color_seed, mesh->face_sets_color_default);
 
-  BKE_pbvh_search_gather(pbvh, nullptr, nullptr, &nodes, &totnode);
-  for (int i = 0; i < totnode; i++) {
-    BKE_pbvh_node_mark_redraw(nodes[i]);
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(pbvh, nullptr, nullptr);
+  for (PBVHNode *node : nodes) {
+    BKE_pbvh_node_mark_redraw(node);
   }
-
-  MEM_SAFE_FREE(nodes);
 
   SCULPT_tag_update_overlays(C);
 
@@ -1107,18 +1087,17 @@ static void sculpt_face_set_grow(Object *ob,
                                  const int active_face_set_id,
                                  const bool modify_hidden)
 {
+  using namespace blender;
   Mesh *mesh = BKE_mesh_from_object(ob);
-  const blender::Span<MPoly> polys = mesh->polys();
-  const blender::Span<MLoop> loops = mesh->loops();
+  const OffsetIndices polys = mesh->polys();
+  const Span<int> corner_verts = mesh->corner_verts();
 
   for (const int p : polys.index_range()) {
     if (!modify_hidden && prev_face_sets[p] <= 0) {
       continue;
     }
-    const MPoly &c_poly = polys[p];
-    for (int l = 0; l < c_poly.totloop; l++) {
-      const MLoop *c_loop = &loops[c_poly.loopstart + l];
-      const MeshElemMap *vert_map = &ss->pmap[c_loop->v];
+    for (const int vert : corner_verts.slice(polys[p])) {
+      const MeshElemMap *vert_map = &ss->pmap[vert];
       for (int i = 0; i < vert_map->count; i++) {
         const int neighbor_face_index = vert_map->indices[i];
         if (neighbor_face_index == p) {
@@ -1138,18 +1117,17 @@ static void sculpt_face_set_shrink(Object *ob,
                                    const int active_face_set_id,
                                    const bool modify_hidden)
 {
+  using namespace blender;
   Mesh *mesh = BKE_mesh_from_object(ob);
-  const blender::Span<MPoly> polys = mesh->polys();
-  const blender::Span<MLoop> loops = mesh->loops();
+  const OffsetIndices polys = mesh->polys();
+  const Span<int> corner_verts = mesh->corner_verts();
   for (const int p : polys.index_range()) {
     if (!modify_hidden && prev_face_sets[p] <= 0) {
       continue;
     }
     if (abs(prev_face_sets[p]) == active_face_set_id) {
-      const MPoly &c_poly = polys[p];
-      for (int l = 0; l < c_poly.totloop; l++) {
-        const MLoop *c_loop = &loops[c_poly.loopstart + l];
-        const MeshElemMap *vert_map = &ss->pmap[c_loop->v];
+      for (const int vert_i : corner_verts.slice(polys[p])) {
+        const MeshElemMap *vert_map = &ss->pmap[vert_i];
         for (int i = 0; i < vert_map->count; i++) {
           const int neighbor_face_index = vert_map->indices[i];
           if (neighbor_face_index == p) {
@@ -1362,7 +1340,7 @@ static void sculpt_face_set_edit_modify_geometry(bContext *C,
   WM_event_add_notifier(C, NC_GEOM | ND_DATA, mesh);
 }
 
-static void face_set_edit_do_post_visibility_updates(Object *ob, PBVHNode **nodes, int totnode)
+static void face_set_edit_do_post_visibility_updates(Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
   PBVH *pbvh = ss->pbvh;
@@ -1371,8 +1349,8 @@ static void face_set_edit_do_post_visibility_updates(Object *ob, PBVHNode **node
   /* Sync face sets visibility and vertex visibility as now all Face Sets are visible. */
   SCULPT_visibility_sync_all_from_faces(ob);
 
-  for (int i = 0; i < totnode; i++) {
-    BKE_pbvh_node_mark_update_visibility(nodes[i]);
+  for (PBVHNode *node : nodes) {
+    BKE_pbvh_node_mark_update_visibility(node);
   }
 
   BKE_pbvh_update_vertex_data(ss->pbvh, PBVH_UpdateVisibility);
@@ -1389,21 +1367,18 @@ static void sculpt_face_set_edit_modify_face_sets(Object *ob,
                                                   wmOperator *op)
 {
   PBVH *pbvh = ob->sculpt->pbvh;
-  PBVHNode **nodes;
-  int totnode;
-  BKE_pbvh_search_gather(pbvh, nullptr, nullptr, &nodes, &totnode);
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(pbvh, nullptr, nullptr);
 
-  if (!nodes) {
+  if (nodes.is_empty()) {
     return;
   }
   SCULPT_undo_push_begin(ob, op);
-  for (const int i : blender::IndexRange(totnode)) {
-    SCULPT_undo_push_node(ob, nodes[i], SCULPT_UNDO_FACE_SETS);
+  for (PBVHNode *node : nodes) {
+    SCULPT_undo_push_node(ob, node, SCULPT_UNDO_FACE_SETS);
   }
   sculpt_face_set_apply_edit(ob, abs(active_face_set), mode, modify_hidden);
   SCULPT_undo_push_end(ob);
-  face_set_edit_do_post_visibility_updates(ob, nodes, totnode);
-  MEM_freeN(nodes);
+  face_set_edit_do_post_visibility_updates(ob, nodes);
 }
 
 static void sculpt_face_set_edit_modify_coordinates(bContext *C,
@@ -1415,17 +1390,15 @@ static void sculpt_face_set_edit_modify_coordinates(bContext *C,
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
   SculptSession *ss = ob->sculpt;
   PBVH *pbvh = ss->pbvh;
-  PBVHNode **nodes;
-  int totnode;
 
-  BKE_pbvh_search_gather(pbvh, nullptr, nullptr, &nodes, &totnode);
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(pbvh, nullptr, nullptr);
 
   const float strength = RNA_float_get(op->ptr, "strength");
 
   SCULPT_undo_push_begin(ob, op);
-  for (int i = 0; i < totnode; i++) {
-    BKE_pbvh_node_mark_update(nodes[i]);
-    SCULPT_undo_push_node(ob, nodes[i], SCULPT_UNDO_COORDS);
+  for (PBVHNode *node : nodes) {
+    BKE_pbvh_node_mark_update(node);
+    SCULPT_undo_push_node(ob, node, SCULPT_UNDO_COORDS);
   }
   sculpt_face_set_apply_edit(ob, abs(active_face_set), mode, false, strength);
 
@@ -1435,7 +1408,6 @@ static void sculpt_face_set_edit_modify_coordinates(bContext *C,
   SCULPT_flush_update_step(C, SCULPT_UPDATE_COORDS);
   SCULPT_flush_update_done(C, ob, SCULPT_UPDATE_COORDS);
   SCULPT_undo_push_end(ob);
-  MEM_freeN(nodes);
 }
 
 static bool sculpt_face_set_edit_init(bContext *C, wmOperator *op)

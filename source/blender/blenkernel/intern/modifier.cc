@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -49,12 +49,12 @@
 #include "BKE_effect.h"
 #include "BKE_fluid.h"
 #include "BKE_global.h"
-#include "BKE_gpencil_modifier.h"
+#include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_idtype.h"
 #include "BKE_key.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.h"
 #include "BKE_multires.h"
 #include "BKE_object.h"
