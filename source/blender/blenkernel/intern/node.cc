@@ -3758,10 +3758,7 @@ int nodeSocketLinkLimit(const bNodeSocket *sock)
   if (!stype.use_link_limits_of_type) {
     return sock->limit;
   }
-  if (sock->in_out == SOCK_IN) {
-    return stype.input_link_limit;
-  }
-  return stype.output_link_limit;
+  return sock->in_out == SOCK_IN ? stype.input_link_limit : stype.output_link_limit;
 }
 
 static void update_socket_declarations(ListBase *sockets,
