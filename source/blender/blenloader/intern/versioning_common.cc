@@ -310,6 +310,14 @@ static bNodeSocket &node_input_by_name(const StringRefNull name, bNode *node)
       return *socket;
     }
   }
+  LISTBASE_FOREACH (bNodeSocket *, socket, &node->inputs) {
+    if (!socket->is_available()) {
+      continue;
+    }
+    if (StringRefNull(socket->identifier) == name) {
+      return *socket;
+    }
+  }
   BLI_assert_unreachable();
   return *reinterpret_cast<bNodeSocket *>(node->inputs.first);
 }
@@ -321,6 +329,14 @@ static bNodeSocket &node_output_by_name(const StringRefNull name, bNode *node)
       continue;
     }
     if (StringRefNull(socket->name) == name) {
+      return *socket;
+    }
+  }
+  LISTBASE_FOREACH (bNodeSocket *, socket, &node->outputs) {
+    if (!socket->is_available()) {
+      continue;
+    }
+    if (StringRefNull(socket->identifier) == name) {
       return *socket;
     }
   }
@@ -521,12 +537,12 @@ static bNodeTree *face_aling_tree(Main *bmain, RegularNodeTrees &cached_node_tre
     return cached_node_trees.face_aling;
   }
 
-  bNodeTree *node_tree = ntreeAddTree(bmain, "Legacy Face Instances", "GeometryNodeTree");
+  bNodeTree *node_tree = ntreeAddTree(bmain, "Face Aling", "GeometryNodeTree");
 
-  ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketGeometry", "Instance");
-  ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketGeometry", "Instancer");
+  ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketGeometry", "Geometry");
 
-  ntreeAddSocketInterface(node_tree, SOCK_OUT, "NodeSocketGeometry", "Instances");
+  ntreeAddSocketInterface(node_tree, SOCK_OUT, "NodeSocketGeometry", "Geometry");
+  ntreeAddSocketInterface(node_tree, SOCK_OUT, "NodeSocketVector", "Rotation");
 
   const auto connect = [node_tree](bNode *node_out,
                                    const StringRefNull name_out,
@@ -574,8 +590,52 @@ static bNodeTree *face_aling_tree(Main *bmain, RegularNodeTrees &cached_node_tre
   bNode *vector_substruct_1 = nodeAddStaticNode(nullptr, node_tree, SH_NODE_VECTOR_MATH);
   vector_substruct_1->custom1 = NODE_VECTOR_MATH_SUBTRACT;
   vector_substruct_1->typeinfo->updatefunc(node_tree, vector_substruct_1);
-  // connect(at_index_2, "Value", at_index_3, "Index");
-  // connect(at_index_3, "Value", at_index_3, "Index");
+  connect(at_index_2, "Value", vector_substruct_1, "Vector_001");
+  connect(at_index_3, "Value", vector_substruct_1, "Vector");
+
+  bNode *vector_substruct_2 = nodeAddStaticNode(nullptr, node_tree, SH_NODE_VECTOR_MATH);
+  vector_substruct_2->custom1 = NODE_VECTOR_MATH_SUBTRACT;
+  vector_substruct_2->typeinfo->updatefunc(node_tree, vector_substruct_2);
+  connect(at_index_1, "Value", vector_substruct_2, "Vector_001");
+  connect(at_index_2, "Value", vector_substruct_2, "Vector");
+
+  bNode *vector_cros_prod_1 = nodeAddStaticNode(nullptr, node_tree, SH_NODE_VECTOR_MATH);
+  vector_cros_prod_1->custom1 = NODE_VECTOR_MATH_CROSS_PRODUCT;
+  vector_cros_prod_1->typeinfo->updatefunc(node_tree, vector_cros_prod_1);
+  connect(vector_substruct_2, "Vector", vector_cros_prod_1, "Vector");
+  connect(vector_substruct_1, "Vector", vector_cros_prod_1, "Vector_001");
+
+  bNode *vector_cros_prod_2 = nodeAddStaticNode(nullptr, node_tree, SH_NODE_VECTOR_MATH);
+  vector_cros_prod_2->custom1 = NODE_VECTOR_MATH_CROSS_PRODUCT;
+  vector_cros_prod_2->typeinfo->updatefunc(node_tree, vector_cros_prod_2);
+  connect(vector_cros_prod_1, "Vector", vector_cros_prod_2, "Vector");
+  connect(vector_substruct_2, "Vector", vector_cros_prod_2, "Vector_001");
+
+  bNode *aling_z_auto = nodeAddStaticNode(nullptr, node_tree, FN_NODE_ALIGN_EULER_TO_VECTOR);
+  aling_z_auto->custom1 = FN_NODE_ALIGN_EULER_TO_VECTOR_AXIS_Z;
+  aling_z_auto->custom2 = FN_NODE_ALIGN_EULER_TO_VECTOR_PIVOT_AXIS_AUTO;
+  connect(vector_cros_prod_1, "Vector", aling_z_auto, "Vector");
+
+  bNode *aling_y_auto = nodeAddStaticNode(nullptr, node_tree, FN_NODE_ALIGN_EULER_TO_VECTOR);
+  aling_y_auto->custom1 = FN_NODE_ALIGN_EULER_TO_VECTOR_AXIS_Y;
+  aling_y_auto->custom2 = FN_NODE_ALIGN_EULER_TO_VECTOR_PIVOT_AXIS_AUTO;
+  connect(aling_z_auto, "Rotation", aling_y_auto, "Rotation");
+  connect(vector_cros_prod_2, "Vector", aling_y_auto, "Vector");
+
+  bNode *in = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
+
+  bNode *capture_result = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_CAPTURE_ATTRIBUTE);
+  NodeGeometryAttributeCapture &capture_storage =
+      *reinterpret_cast<NodeGeometryAttributeCapture *>(capture_result->storage);
+  capture_storage.domain = ATTR_DOMAIN_FACE;
+  capture_storage.data_type = CD_PROP_FLOAT3;
+  capture_result->typeinfo->updatefunc(node_tree, capture_result);
+  connect(in, "Geometry", capture_result, "Geometry");
+  connect(aling_y_auto, "Rotation", capture_result, "Value");
+
+  bNode *out = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_OUTPUT);
+  connect(capture_result, "Geometry", out, "Geometry");
+  connect(capture_result, "Attribute", out, "Rotation");
 
   bke::node_field_inferencing::update_field_inferencing(*node_tree);
   cached_node_trees.face_aling = node_tree;
@@ -588,12 +648,12 @@ static bNodeTree *faces_scale_tree(Main *bmain, RegularNodeTrees &cached_node_tr
     return cached_node_trees.face_scale;
   }
 
-  bNodeTree *node_tree = ntreeAddTree(bmain, "Legacy Face Instances", "GeometryNodeTree");
+  bNodeTree *node_tree = ntreeAddTree(bmain, "Face Size", "GeometryNodeTree");
 
-  ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketGeometry", "Instance");
-  ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketGeometry", "Instancer");
+  ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketGeometry", "Geometry");
 
-  ntreeAddSocketInterface(node_tree, SOCK_OUT, "NodeSocketGeometry", "Instances");
+  ntreeAddSocketInterface(node_tree, SOCK_OUT, "NodeSocketGeometry", "Geometry");
+  ntreeAddSocketInterface(node_tree, SOCK_OUT, "NodeSocketFloat", "Size");
 
   const auto connect = [node_tree](bNode *node_out,
                                    const StringRefNull name_out,
@@ -603,6 +663,28 @@ static bNodeTree *faces_scale_tree(Main *bmain, RegularNodeTrees &cached_node_tr
     bNodeSocket &in = node_input_by_name(name_in, node_in);
     nodeAddLink(node_tree, node_out, &out, node_in, &in);
   };
+
+  bNode *face_area_input = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_INPUT_MESH_FACE_AREA);
+
+  bNode *math_sqrt = nodeAddStaticNode(nullptr, node_tree, SH_NODE_MATH);
+  math_sqrt->custom1 = NODE_MATH_SQRT;
+  math_sqrt->typeinfo->updatefunc(node_tree, math_sqrt);
+  connect(face_area_input, "Area", math_sqrt, "Value");
+
+  bNode *in = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
+
+  bNode *capture_result = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_CAPTURE_ATTRIBUTE);
+  NodeGeometryAttributeCapture &capture_storage =
+      *reinterpret_cast<NodeGeometryAttributeCapture *>(capture_result->storage);
+  capture_storage.domain = ATTR_DOMAIN_FACE;
+  capture_storage.data_type = CD_PROP_FLOAT;
+  capture_result->typeinfo->updatefunc(node_tree, capture_result);
+  connect(in, "Geometry", capture_result, "Geometry");
+  connect(math_sqrt, "Value", capture_result, "Value");
+
+  bNode *out = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_OUTPUT);
+  connect(capture_result, "Geometry", out, "Geometry");
+  connect(capture_result, "Attribute", out, "Size");
 
   bke::node_field_inferencing::update_field_inferencing(*node_tree);
   cached_node_trees.face_scale = node_tree;
@@ -639,7 +721,30 @@ static bNodeTree *instances_on_faces_tree(Main *bmain, RegularNodeTrees &cached_
     return group;
   };
 
-  bNode *triangle_indices_group = add_node_group(face_aling_tree(bmain, cached_node_trees));
+  bNode *instancer_in = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
+
+  bNode *face_size_group = add_node_group(faces_scale_tree(bmain, cached_node_trees));
+  connect(instancer_in, "Instancer", face_size_group, "Geometry");
+
+  bNode *face_aling_group = add_node_group(face_aling_tree(bmain, cached_node_trees));
+  connect(face_size_group, "Geometry", face_aling_group, "Geometry");
+
+  bNode *mesh_to_points = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_MESH_TO_POINTS);
+  NodeGeometryMeshToPoints &points_storage = *reinterpret_cast<NodeGeometryMeshToPoints *>(
+      mesh_to_points->storage);
+  points_storage.mode = GEO_NODE_MESH_TO_POINTS_FACES;
+  connect(face_aling_group, "Geometry", mesh_to_points, "Mesh");
+
+  bNode *instance_in = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
+
+  bNode *instance_on_points = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_INSTANCE_ON_POINTS);
+  connect(mesh_to_points, "Points", instance_on_points, "Points");
+  connect(instance_in, "Instance", instance_on_points, "Instance");
+  connect(face_aling_group, "Rotation", instance_on_points, "Rotation");
+  connect(face_size_group, "Size", instance_on_points, "Scale");
+
+  bNode *out = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_OUTPUT);
+  connect(instance_on_points, "Instances", out, "Instances");
 
   bke::node_field_inferencing::update_field_inferencing(*node_tree);
   cached_node_trees.instances_on_faces = node_tree;
