@@ -6432,21 +6432,19 @@ class VIEW3D_PT_auto_xray(Panel):
     def draw(self, context):
         layout = self.layout
         tool_settings = context.tool_settings
-        #layout.label(text="X-Ray Settings")
-        col = layout.column()
-        row = col.row(align=True)
+
         row = layout.row(align=True)
-        row.prop(tool_settings, "auto_xray", text="Enable")
+        row.prop(tool_settings, "auto_xray")
         sub = row.row(align=True)
         sub.active = tool_settings.auto_xray
-        sub.prop(tool_settings, "auto_xray_object", text="Object")
-        sub.prop(tool_settings, "auto_xray_edit", text="Edit")
+        sub.prop(tool_settings, "auto_xray_object")
+        sub.prop(tool_settings, "auto_xray_edit")
         row = layout.row(align=True)
         sub = row.row(align=True)
         sub.active = tool_settings.auto_xray
-        sub.prop(tool_settings, "auto_xray_box", text="Box", toggle=True)
-        sub.prop(tool_settings, "auto_xray_lasso", text="Lasso", toggle=True)
-        sub.prop(tool_settings, "auto_xray_circle", text="Circle", toggle=True)
+        sub.prop(tool_settings, "auto_xray_box", toggle=True)
+        sub.prop(tool_settings, "auto_xray_lasso", toggle=True)
+        sub.prop(tool_settings, "auto_xray_circle", toggle=True)
 
 
 class VIEW3D_PT_select_through(Panel):
@@ -6458,21 +6456,19 @@ class VIEW3D_PT_select_through(Panel):
     def draw(self, context):
         layout = self.layout
         tool_settings = context.tool_settings
-        #layout.label(text="X-Ray Settings")
-        col = layout.column()
-        row = col.row(align=True)
+
         row = layout.row(align=True)
-        row.prop(tool_settings, "select_through", text="Enable")
+        row.prop(tool_settings, "select_through")
         sub = row.row(align=True)
         sub.active = tool_settings.select_through
-        sub.prop(tool_settings, "select_through_object", text="Object")
-        sub.prop(tool_settings, "select_through_edit", text="Edit")
+        sub.prop(tool_settings, "select_through_object")
+        sub.prop(tool_settings, "select_through_edit")
         row = layout.row(align=True)
         sub = row.row(align=True)
         sub.active = tool_settings.select_through
-        sub.prop(tool_settings, "select_through_box", text="Box", toggle=True)
-        sub.prop(tool_settings, "select_through_lasso", text="Lasso", toggle=True)
-        sub.prop(tool_settings, "select_through_circle", text="Circle", toggle=True)
+        sub.prop(tool_settings, "select_through_box", toggle=True)
+        sub.prop(tool_settings, "select_through_lasso", toggle=True)
+        sub.prop(tool_settings, "select_through_circle", toggle=True)
 
 
 class VIEW3D_PT_xray_buttons(Panel):
@@ -6484,13 +6480,11 @@ class VIEW3D_PT_xray_buttons(Panel):
     def draw(self, context):
         layout = self.layout
         tool_settings = context.tool_settings
-        #layout.label(text="X-Ray Settings")
-        col = layout.column()
-        row = col.row(align=True)
+
         row = layout.row(align=True)
-        row.prop(tool_settings, "auto_xray_button", text="Auto X-Ray", toggle=True)
-        row.prop(tool_settings, "select_through_button", text="Select Through", toggle=True)
-        row.prop(tool_settings, "xray_button", text="X-Ray", toggle=True)
+        row.prop(tool_settings, "auto_xray_button", toggle=True)
+        row.prop(tool_settings, "select_through_button", toggle=True)
+        row.prop(tool_settings, "xray_button", toggle=True)
 
 
 class VIEW3D_PT_overlay(Panel):

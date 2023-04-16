@@ -3870,7 +3870,7 @@ static int repeat_tool_exec(bContext *C, wmOperator *UNUSED(op))
         lastop = lastop->prev;
       }
       else {
-         printf(lastop->idname, "\n");
+        //printf(lastop->idname, "\n");
         break;
       }
     }

@@ -5313,7 +5313,7 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
   prop = RNA_def_property(srna, "adjustable_click_select", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", USER_ADJUSTABLE_CLICK_SELECT);
   RNA_def_property_ui_text(
-      prop, "Adjustable Click-Select", "Use additional options for single-click select");
+      prop, "Enable", "Use additional options for single-click select");
 
   prop = RNA_def_property(srna, "select_unbiased", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", USER_SELECT_UNBIASED);
@@ -5340,11 +5340,11 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "alternate_cursor", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", USER_ALTERNATE_CURSOR);
-  RNA_def_property_ui_text(prop, "Alternate Cursor", "Alternate edit mode crosshair");
+  RNA_def_property_ui_text(prop, "Enable", "Alternate edit mode crosshair");
 
   prop = RNA_def_property(srna, "alternate_cursor_large", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", USER_ALTERNATE_CURSOR_LARGE);
-  RNA_def_property_ui_text(prop, "Large Cursor", "Supersize the alternate edit mode crosshair");
+  RNA_def_property_ui_text(prop, "Larger", "Bigger version of the alternate crosshair");
 }
 
 static void rna_def_userdef_system(BlenderRNA *brna)

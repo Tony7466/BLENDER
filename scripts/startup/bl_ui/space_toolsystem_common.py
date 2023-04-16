@@ -828,7 +828,7 @@ class ToolSelectPanelHelper:
             row.context_pointer_set("tool", tool)
             row.popover(panel="TOPBAR_PT_tool_fallback", text=iface_(label, "Operator"))
 
-            return tool
+        return tool
 
     # Show a list of tools in the popover.
     @staticmethod

@@ -272,8 +272,8 @@ int WM_event_drag_direction(const wmEvent *event)
       event->xy[1] - event->prev_press_xy[1],
   };
 
-  bool left_right = U.click_drag_direction & USER_CLICK_DRAG_DIRECTION_LEFT_RIGHT;
-  bool up_down = U.click_drag_direction & USER_CLICK_DRAG_DIRECTION_UP_DOWN;
+  const bool left_right = U.click_drag_direction & USER_CLICK_DRAG_DIRECTION_LEFT_RIGHT;
+  const bool up_down = U.click_drag_direction & USER_CLICK_DRAG_DIRECTION_UP_DOWN;
   int theta = left_right ?
                   round_fl_to_int(atan2f(0.0f, (float)delta[0]) / (float)M_PI) :
               up_down ?

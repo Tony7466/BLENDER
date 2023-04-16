@@ -492,8 +492,7 @@ void WM_operator_properties_use_cursor_init(wmOperatorType *ot)
 
 void WM_operator_properties_gesture_box_select(wmOperatorType *ot)
 {
-  WM_operator_properties_gesture_box_ex(
-      ot, true, true);
+  WM_operator_properties_gesture_box_ex(ot, true, true);
 }
 void WM_operator_properties_gesture_box(wmOperatorType *ot)
 {
