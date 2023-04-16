@@ -76,7 +76,7 @@
 #endif
 
 #include "GHOST_C-api.h"
-#include "GHOST_Path-api.h"
+#include "GHOST_Path-api.hh"
 
 #include "RNA_define.h"
 
@@ -95,7 +95,7 @@
 #include "ED_anim_api.h"
 #include "ED_armature.h"
 #include "ED_asset.h"
-#include "ED_gpencil.h"
+#include "ED_gpencil_legacy.h"
 #include "ED_keyframes_edit.h"
 #include "ED_keyframing.h"
 #include "ED_node.h"
