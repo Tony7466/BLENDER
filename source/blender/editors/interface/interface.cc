@@ -280,7 +280,7 @@ static void ui_update_flexible_spacing(const ARegion *region, uiBlock *block)
   rcti rect;
   ui_but_to_pixelrect(&rect, region, block, static_cast<const uiBut *>(block->buttons.last));
   const float buttons_width = float(rect.xmax) + UI_HEADER_OFFSET;
-  const float region_width = float(region->sizex) * U.dpi_fac;
+  const float region_width = float(region->sizex) * UI_SCALE_FAC;
 
   if (region_width <= buttons_width) {
     return;
@@ -469,7 +469,7 @@ void ui_block_bounds_calc(uiBlock *block)
 
   /* hardcoded exception... but that one is annoying with larger safety */
   uiBut *bt = static_cast<uiBut *>(block->buttons.first);
-  const int xof = ((bt && STRPREFIX(bt->str, "ERROR")) ? 10 : 40) * U.dpi_fac;
+  const int xof = ((bt && STRPREFIX(bt->str, "ERROR")) ? 10 : 40) * UI_SCALE_FAC;
 
   block->safety.xmin = block->rect.xmin - xof;
   block->safety.ymin = block->rect.ymin - xof;
@@ -996,9 +996,9 @@ static bool ui_but_update_from_old_block(const bContext *C,
   else {
     int flag_copy = UI_BUT_DRAG_MULTI;
 
-    /* Stupid special case: The active button may be inside (as in, overlapped on top) a view-item
+    /* Stupid special case: The active button may be inside (as in, overlapped on top) a row
      * button which we also want to keep highlighted then. */
-    if (but->type == UI_BTYPE_VIEW_ITEM) {
+    if (ELEM(but->type, UI_BTYPE_VIEW_ITEM, UI_BTYPE_LISTROW)) {
       flag_copy |= UI_ACTIVE;
     }
 
@@ -1540,7 +1540,9 @@ static bool ui_but_event_property_operator_string(const bContext *C,
 
 /** \} */
 
-/**
+/* -------------------------------------------------------------------- */
+/** \name Pie Menu Direction
+ *
  * This goes in a seemingly weird pattern:
  *
  * <pre>
@@ -1564,7 +1566,8 @@ static bool ui_but_event_property_operator_string(const bContext *C,
  * subdividing the rest of the angles for the last 4 items.
  *
  * --Matt 07/2006
- */
+ * \{ */
+
 const char ui_radial_dir_order[8] = {
     UI_RADIAL_W,
     UI_RADIAL_E,
@@ -1584,6 +1587,8 @@ static void ui_but_pie_direction_string(uiBut *but, char *buf, int size)
   BLI_assert(but->pie_dir < ARRAY_SIZE(ui_radial_dir_to_numpad));
   BLI_snprintf(buf, size, "%d", ui_radial_dir_to_numpad[but->pie_dir]);
 }
+
+/** \} */
 
 static void ui_menu_block_set_keymaps(const bContext *C, uiBlock *block)
 {
@@ -2012,6 +2017,12 @@ void UI_block_end_ex(const bContext *C, uiBlock *block, const int xy[2], int r_x
     case UI_BLOCK_BOUNDS_POPUP_MENU:
       ui_block_bounds_calc_popup(window, block, block->bounds_type, xy, r_xy);
       break;
+  }
+
+  /* Update bounds of all views in this block. If this block is a panel, this will be done later in
+   * #UI_panels_end(), because buttons are offset there. */
+  if (!block->panel) {
+    ui_block_views_bounds_calc(block);
   }
 
   if (block->rect.xmin == 0.0f && block->rect.xmax == 0.0f) {
@@ -3877,7 +3888,7 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
     case UI_BTYPE_KEY_EVENT: {
       const char *str;
       if (but->flag & UI_SELECT) {
-        str = "Press a key";
+        str = IFACE_("Press a key");
       }
       else {
         UI_GET_BUT_VALUE_INIT(but, value);
@@ -3910,7 +3921,7 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
           (void)str; /* UNUSED */
         }
         else {
-          BLI_strncpy(but->drawstr, "Press a key", UI_MAX_DRAW_STR);
+          BLI_strncpy(but->drawstr, IFACE_("Press a key"), UI_MAX_DRAW_STR);
         }
       }
       else {
@@ -4224,6 +4235,10 @@ static uiBut *ui_def_but(uiBlock *block,
     but->flag |= UI_BUT_UNDO;
   }
 
+  if (ELEM(but->type, UI_BTYPE_COLOR)) {
+    but->dragflag |= UI_BUT_DRAG_FULL_BUT;
+  }
+
   BLI_addtail(&block->buttons, but);
 
   if (block->curlayout) {
@@ -4287,6 +4302,7 @@ static void ui_def_but_rna__menu(bContext * /*C*/, uiLayout *layout, void *but_p
   int totitems = 0;
   int categories = 0;
   int entries_nosepr_count = 0;
+  bool has_item_with_icon = false;
   for (const EnumPropertyItem *item = item_array; item->identifier; item++, totitems++) {
     if (!item->identifier[0]) {
       /* inconsistent, but menus with categories do not look good flipped */
@@ -4297,6 +4313,9 @@ static void ui_def_but_rna__menu(bContext * /*C*/, uiLayout *layout, void *but_p
       }
       /* We do not want simple separators in `entries_nosepr_count`. */
       continue;
+    }
+    if (item->icon) {
+      has_item_with_icon = true;
     }
     entries_nosepr_count++;
   }
@@ -4402,11 +4421,18 @@ static void ui_def_but_rna__menu(bContext * /*C*/, uiLayout *layout, void *but_p
       uiItemS(column);
     }
     else {
-      if (item->icon) {
+      int icon = item->icon;
+      /* Use blank icon if there is none for this item (but for some other one) to make sure labels
+       * align. */
+      if (icon == ICON_NONE && has_item_with_icon) {
+        icon = ICON_BLANK1;
+      }
+
+      if (icon) {
         uiDefIconTextButI(block,
                           UI_BTYPE_BUT_MENU,
                           B_NOP,
-                          item->icon,
+                          icon,
                           item->name,
                           0,
                           0,
@@ -4978,7 +5004,7 @@ int UI_preview_tile_size_x(void)
 int UI_preview_tile_size_y(void)
 {
   const uiStyle *style = UI_style_get();
-  const float font_height = style->widget.points * UI_DPI_FAC;
+  const float font_height = style->widget.points * UI_SCALE_FAC;
   const float pad = PREVIEW_TILE_PAD;
 
   return round_fl_to_int(UI_preview_tile_size_y_no_label() + font_height +
@@ -5879,6 +5905,16 @@ void UI_but_drawflag_disable(uiBut *but, int flag)
   but->drawflag &= ~flag;
 }
 
+void UI_but_dragflag_enable(uiBut *but, int flag)
+{
+  but->dragflag |= flag;
+}
+
+void UI_but_dragflag_disable(uiBut *but, int flag)
+{
+  but->dragflag &= ~flag;
+}
+
 void UI_but_disable(uiBut *but, const char *disabled_hint)
 {
   UI_but_flag_enable(but, UI_BUT_DISABLED);
@@ -6507,6 +6543,8 @@ void UI_but_string_info_get(bContext *C, uiBut *but, ...)
   va_list args;
   uiStringInfo *si;
 
+  PointerRNA *opptr = UI_but_operator_ptr_get(but);
+
   const EnumPropertyItem *items = nullptr, *item = nullptr;
   int totitems;
   bool free_items = false;
@@ -6585,10 +6623,13 @@ void UI_but_string_info_get(bContext *C, uiBut *but, ...)
       }
       else if (but->optype) {
         if (type == BUT_GET_RNA_LABEL) {
-          tmp = BLI_strdup(WM_operatortype_name(but->optype, but->opptr));
+          tmp = BLI_strdup(WM_operatortype_name(but->optype, opptr));
         }
         else {
-          tmp = WM_operatortype_description(C, but->optype, but->opptr);
+          bContextStore *previous_ctx = CTX_store_get(C);
+          CTX_store_set(C, but->context);
+          tmp = WM_operatortype_description(C, but->optype, opptr);
+          CTX_store_set(C, previous_ctx);
         }
       }
       else if (ELEM(but->type, UI_BTYPE_MENU, UI_BTYPE_PULLDOWN, UI_BTYPE_POPOVER)) {
@@ -6671,7 +6712,6 @@ void UI_but_string_info_get(bContext *C, uiBut *but, ...)
                                                               int(ui_but_value_get(but));
       }
       else if (but->optype) {
-        PointerRNA *opptr = UI_but_operator_ptr_get(but);
         wmOperatorType *ot = but->optype;
 
         /* So the context is passed to `itemf` functions. */

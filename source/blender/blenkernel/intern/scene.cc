@@ -18,7 +18,7 @@
 #include "DNA_collection_types.h"
 #include "DNA_curveprofile_types.h"
 #include "DNA_defaults.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_linestyle_types.h"
 #include "DNA_mask_types.h"
 #include "DNA_material_types.h"
@@ -65,7 +65,7 @@
 #include "BKE_effect.h"
 #include "BKE_fcurve.h"
 #include "BKE_freestyle.h"
-#include "BKE_gpencil.h"
+#include "BKE_gpencil_legacy.h"
 #include "BKE_icons.h"
 #include "BKE_idprop.h"
 #include "BKE_idtype.h"
@@ -112,6 +112,8 @@
 
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf.h"
+
+#include "DRW_engine.h"
 
 #include "bmesh.h"
 
@@ -380,9 +382,10 @@ static void scene_free_markers(Scene *scene, bool do_id_user)
 
 static void scene_free_data(ID *id)
 {
-
   Scene *scene = (Scene *)id;
   const bool do_id_user = false;
+
+  DRW_drawdata_free(id);
 
   SEQ_editing_free(scene, do_id_user);
 
@@ -760,7 +763,7 @@ static void scene_foreach_layer_collection(LibraryForeachIDData *data, ListBase 
      * anyway... */
     const int cb_flag = (lc->collection != nullptr &&
                          (lc->collection->id.flag & LIB_EMBEDDED_DATA) != 0) ?
-                            IDWALK_CB_EMBEDDED :
+                            IDWALK_CB_EMBEDDED_NOT_OWNING :
                             IDWALK_CB_NOP;
     BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, lc->collection, cb_flag | IDWALK_CB_DIRECT_WEAK_LINK);
     scene_foreach_layer_collection(data, &lc->layer_collections);
@@ -944,6 +947,8 @@ static void scene_blend_write(BlendWriter *writer, ID *id, const void *id_addres
 {
   Scene *sce = (Scene *)id;
 
+  BLO_Write_IDBuffer *temp_embedded_id_buffer = BLO_write_allocate_id_buffer();
+
   if (BLO_write_is_undo(writer)) {
     /* Clean up, important in undo case to reduce false detection of changed data-blocks. */
     /* XXX This UI data should not be stored in Scene at all... */
@@ -1071,8 +1076,15 @@ static void scene_blend_write(BlendWriter *writer, ID *id, const void *id_addres
   }
 
   if (sce->nodetree) {
-    BLO_write_struct(writer, bNodeTree, sce->nodetree);
-    ntreeBlendWrite(writer, sce->nodetree);
+    BLO_write_init_id_buffer_from_id(
+        temp_embedded_id_buffer, &sce->nodetree->id, BLO_write_is_undo(writer));
+    BLO_write_struct_at_address(writer,
+                                bNodeTree,
+                                sce->nodetree,
+                                BLO_write_get_id_buffer_temp_id(temp_embedded_id_buffer));
+    ntreeBlendWrite(
+        writer,
+        reinterpret_cast<bNodeTree *>(BLO_write_get_id_buffer_temp_id(temp_embedded_id_buffer)));
   }
 
   BKE_color_managed_view_settings_blend_write(writer, &sce->view_settings);
@@ -1099,8 +1111,15 @@ static void scene_blend_write(BlendWriter *writer, ID *id, const void *id_addres
   }
 
   if (sce->master_collection) {
-    BLO_write_struct(writer, Collection, sce->master_collection);
-    BKE_collection_blend_write_nolib(writer, sce->master_collection);
+    BLO_write_init_id_buffer_from_id(
+        temp_embedded_id_buffer, &sce->master_collection->id, BLO_write_is_undo(writer));
+    BLO_write_struct_at_address(writer,
+                                Collection,
+                                sce->master_collection,
+                                BLO_write_get_id_buffer_temp_id(temp_embedded_id_buffer));
+    BKE_collection_blend_write_nolib(
+        writer,
+        reinterpret_cast<Collection *>(BLO_write_get_id_buffer_temp_id(temp_embedded_id_buffer)));
   }
 
   /* Eevee Light-cache */
@@ -1113,6 +1132,8 @@ static void scene_blend_write(BlendWriter *writer, ID *id, const void *id_addres
 
   /* Freed on `do_versions()`. */
   BLI_assert(sce->layer_properties == nullptr);
+
+  BLO_write_destroy_id_buffer(&temp_embedded_id_buffer);
 }
 
 static void direct_link_paint_helper(BlendDataReader *reader, const Scene *scene, Paint **paint)

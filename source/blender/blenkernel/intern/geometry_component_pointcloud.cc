@@ -12,9 +12,7 @@
 /** \name Geometry Component Implementation
  * \{ */
 
-PointCloudComponent::PointCloudComponent() : GeometryComponent(GEO_COMPONENT_TYPE_POINT_CLOUD)
-{
-}
+PointCloudComponent::PointCloudComponent() : GeometryComponent(GEO_COMPONENT_TYPE_POINT_CLOUD) {}
 
 PointCloudComponent::~PointCloudComponent()
 {
@@ -142,7 +140,6 @@ static ComponentAttributeProviders create_attribute_providers_for_point_cloud()
                                                  CD_PROP_FLOAT3,
                                                  CD_PROP_FLOAT3,
                                                  BuiltinAttributeProvider::NonCreatable,
-                                                 BuiltinAttributeProvider::Writable,
                                                  BuiltinAttributeProvider::NonDeletable,
                                                  point_access,
                                                  make_array_read_attribute<float3>,
@@ -153,7 +150,6 @@ static ComponentAttributeProviders create_attribute_providers_for_point_cloud()
                                                CD_PROP_FLOAT,
                                                CD_PROP_FLOAT,
                                                BuiltinAttributeProvider::Creatable,
-                                               BuiltinAttributeProvider::Writable,
                                                BuiltinAttributeProvider::Deletable,
                                                point_access,
                                                make_array_read_attribute<float>,
@@ -164,7 +160,6 @@ static ComponentAttributeProviders create_attribute_providers_for_point_cloud()
                                            CD_PROP_INT32,
                                            CD_PROP_INT32,
                                            BuiltinAttributeProvider::Creatable,
-                                           BuiltinAttributeProvider::Writable,
                                            BuiltinAttributeProvider::Deletable,
                                            point_access,
                                            make_array_read_attribute<int>,

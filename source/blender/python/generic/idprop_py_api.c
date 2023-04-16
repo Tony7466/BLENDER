@@ -54,7 +54,7 @@ static PyObject *idprop_py_from_idp_string(const IDProperty *prop)
   }
 
 #ifdef USE_STRING_COERCE
-  return PyC_UnicodeFromByteAndSize(IDP_Array(prop), prop->len - 1);
+  return PyC_UnicodeFromBytesAndSize(IDP_Array(prop), prop->len - 1);
 #else
   return PyUnicode_FromStringAndSize(IDP_String(prop), prop->len - 1);
 #endif
@@ -192,7 +192,7 @@ static int BPy_IDGroup_SetData(BPy_IDProperty *self, IDProperty *prop, PyObject 
         int alloc_len;
         PyObject *value_coerce = NULL;
 
-        st = (char *)PyC_UnicodeAsByte(value, &value_coerce);
+        st = (char *)PyC_UnicodeAsBytes(value, &value_coerce);
         alloc_len = strlen(st) + 1;
 
         st = PyUnicode_AsUTF8(value);
@@ -433,7 +433,7 @@ static IDProperty *idp_from_PyUnicode(const char *name, PyObject *ob)
 #ifdef USE_STRING_COERCE
   Py_ssize_t value_size;
   PyObject *value_coerce = NULL;
-  val.string.str = PyC_UnicodeAsByteAndSize(ob, &value_size, &value_coerce);
+  val.string.str = PyC_UnicodeAsBytesAndSize(ob, &value_size, &value_coerce);
   val.string.len = (int)value_size + 1;
   val.string.subtype = IDP_STRING_SUB_UTF8;
   prop = IDP_New(IDP_STRING, &val, name);
@@ -746,7 +746,13 @@ bool BPy_IDProperty_Map_ValidateAndCreate(PyObject *name_obj, IDProperty *group,
       MEM_freeN(prop);
     }
     else {
+      const bool overridable = prop_exist ?
+                                   (prop_exist->flag & IDP_FLAG_OVERRIDABLE_LIBRARY) != 0 :
+                                   false;
       IDP_ReplaceInGroup_ex(group, prop, prop_exist);
+      if (overridable) {
+        prop->flag |= IDP_FLAG_OVERRIDABLE_LIBRARY;
+      }
     }
   }
 
@@ -1614,7 +1620,7 @@ static PySequenceMethods BPy_IDGroup_Seq = {
 };
 
 static PyMappingMethods BPy_IDGroup_Mapping = {
-    /*mp_len*/ (lenfunc)BPy_IDGroup_Map_Len,
+    /*mp_length*/ (lenfunc)BPy_IDGroup_Map_Len,
     /*mp_subscript*/ (binaryfunc)BPy_IDGroup_Map_GetItem,
     /*mp_ass_subscript*/ (objobjargproc)BPy_IDGroup_Map_SetItem,
 };
@@ -1988,7 +1994,7 @@ static int BPy_IDArray_ass_subscript(BPy_IDArray *self, PyObject *item, PyObject
 }
 
 static PyMappingMethods BPy_IDArray_AsMapping = {
-    /*mp_len*/ (lenfunc)BPy_IDArray_Len,
+    /*mp_length*/ (lenfunc)BPy_IDArray_Len,
     /*mp_subscript*/ (binaryfunc)BPy_IDArray_subscript,
     /*mp_ass_subscript*/ (objobjargproc)BPy_IDArray_ass_subscript,
 };

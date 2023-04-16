@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2017 Blender Foundation. All rights reserved. */
+ * Copyright 2017 Blender Foundation */
 
 /** \file
  * \ingroup draw
@@ -26,7 +26,7 @@
 #include "DRW_render.h"
 
 #include "draw_cache_impl.h"
-#include "draw_curves_private.h"
+#include "draw_curves_private.hh"
 #include "draw_hair_private.h"
 #include "draw_manager.h"
 #include "draw_shader.h"

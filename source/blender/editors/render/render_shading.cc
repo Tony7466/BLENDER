@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation. All rights reserved. */
+ * Copyright 2009 Blender Foundation */
 
 /** \file
  * \ingroup edrend
@@ -758,7 +758,7 @@ static int new_material_exec(bContext *C, wmOperator * /*op*/)
   }
   else {
     const char *name = DATA_("Material");
-    if (!(ob != nullptr && ob->type == OB_GPENCIL)) {
+    if (!(ob != nullptr && ob->type == OB_GPENCIL_LEGACY)) {
       ma = BKE_material_add(bmain, name);
     }
     else {
@@ -1829,7 +1829,7 @@ void SCENE_OT_freestyle_lineset_copy(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Copy Line Set";
   ot->idname = "SCENE_OT_freestyle_lineset_copy";
-  ot->description = "Copy the active line set to a buffer";
+  ot->description = "Copy the active line set to the internal clipboard";
 
   /* api callbacks */
   ot->exec = freestyle_lineset_copy_exec;
@@ -1863,7 +1863,7 @@ void SCENE_OT_freestyle_lineset_paste(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Paste Line Set";
   ot->idname = "SCENE_OT_freestyle_lineset_paste";
-  ot->description = "Paste the buffer content to the active line set";
+  ot->description = "Paste the internal clipboard content to the active line set";
 
   /* api callbacks */
   ot->exec = freestyle_lineset_paste_exec;

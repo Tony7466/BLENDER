@@ -4,6 +4,8 @@
 
 /** \file
  * \ingroup bke
+ *
+ * This header encapsulates necessary code to build a BVH.
  */
 
 #include "BLI_kdopbvh.h"
@@ -18,10 +20,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/**
- * This header encapsulates necessary code to build a BVH
- */
 
 struct BMEditMesh;
 struct MFace;
@@ -61,7 +59,7 @@ typedef struct BVHTreeFromMesh {
   const float (*vert_positions)[3];
   const struct MEdge *edge;
   const struct MFace *face;
-  const struct MLoop *loop;
+  const int *corner_verts;
   const struct MLoopTri *looptri;
 
   /* Private data */
@@ -108,7 +106,7 @@ BVHTree *bvhtree_from_editmesh_verts(
  */
 BVHTree *bvhtree_from_editmesh_verts_ex(BVHTreeFromEditMesh *data,
                                         struct BMEditMesh *em,
-                                        const blender::BitVector<> &mask,
+                                        blender::BitSpan mask,
                                         int verts_num_active,
                                         float epsilon,
                                         int tree_type,
@@ -124,7 +122,7 @@ BVHTree *bvhtree_from_editmesh_verts_ex(BVHTreeFromEditMesh *data,
 BVHTree *bvhtree_from_mesh_verts_ex(struct BVHTreeFromMesh *data,
                                     const float (*vert_positions)[3],
                                     int verts_num,
-                                    const blender::BitVector<> &verts_mask,
+                                    blender::BitSpan verts_mask,
                                     int verts_num_active,
                                     float epsilon,
                                     int tree_type,
@@ -138,7 +136,7 @@ BVHTree *bvhtree_from_editmesh_edges(
  */
 BVHTree *bvhtree_from_editmesh_edges_ex(BVHTreeFromEditMesh *data,
                                         struct BMEditMesh *em,
-                                        const blender::BitVector<> &edges_mask,
+                                        blender::BitSpan edges_mask,
                                         int edges_num_active,
                                         float epsilon,
                                         int tree_type,
@@ -156,7 +154,7 @@ BVHTree *bvhtree_from_mesh_edges_ex(struct BVHTreeFromMesh *data,
                                     const float (*vert_positions)[3],
                                     const struct MEdge *edge,
                                     int edges_num,
-                                    const blender::BitVector<> &edges_mask,
+                                    blender::BitSpan edges_mask,
                                     int edges_num_active,
                                     float epsilon,
                                     int tree_type,
@@ -170,7 +168,7 @@ BVHTree *bvhtree_from_editmesh_looptri(
  */
 BVHTree *bvhtree_from_editmesh_looptri_ex(BVHTreeFromEditMesh *data,
                                           struct BMEditMesh *em,
-                                          const blender::BitVector<> &mask,
+                                          blender::BitSpan mask,
                                           int looptri_num_active,
                                           float epsilon,
                                           int tree_type,
@@ -181,10 +179,10 @@ BVHTree *bvhtree_from_editmesh_looptri_ex(BVHTreeFromEditMesh *data,
  */
 BVHTree *bvhtree_from_mesh_looptri_ex(struct BVHTreeFromMesh *data,
                                       const float (*vert_positions)[3],
-                                      const struct MLoop *mloop,
+                                      const int *corner_verts,
                                       const struct MLoopTri *looptri,
                                       int looptri_num,
-                                      const blender::BitVector<> &mask,
+                                      blender::BitSpan mask,
                                       int looptri_num_active,
                                       float epsilon,
                                       int tree_type,

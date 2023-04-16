@@ -530,16 +530,16 @@ id<MTLRenderCommandEncoder> MTLBatch::bind(uint v_first, uint v_count, uint i_fi
     /* Set SSBO-fetch-mode status uniforms. */
     BLI_assert(active_shader_->uni_ssbo_input_prim_type_loc != -1);
     BLI_assert(active_shader_->uni_ssbo_input_vert_count_loc != -1);
-    GPU_shader_uniform_vector_int(reinterpret_cast<GPUShader *>(wrap(active_shader_)),
-                                  active_shader_->uni_ssbo_input_prim_type_loc,
-                                  1,
-                                  1,
-                                  (const int *)(&final_prim_type));
-    GPU_shader_uniform_vector_int(reinterpret_cast<GPUShader *>(wrap(active_shader_)),
-                                  active_shader_->uni_ssbo_input_vert_count_loc,
-                                  1,
-                                  1,
-                                  (const int *)(&v_count));
+    GPU_shader_uniform_int_ex(reinterpret_cast<GPUShader *>(wrap(active_shader_)),
+                              active_shader_->uni_ssbo_input_prim_type_loc,
+                              1,
+                              1,
+                              (const int *)(&final_prim_type));
+    GPU_shader_uniform_int_ex(reinterpret_cast<GPUShader *>(wrap(active_shader_)),
+                              active_shader_->uni_ssbo_input_vert_count_loc,
+                              1,
+                              1,
+                              (const int *)(&v_count));
   }
 
   /* Ensure Context Render Pipeline State is fully setup and ready to execute the draw.
@@ -583,9 +583,7 @@ id<MTLRenderCommandEncoder> MTLBatch::bind(uint v_first, uint v_count, uint i_fi
   return rec;
 }
 
-void MTLBatch::unbind()
-{
-}
+void MTLBatch::unbind() {}
 
 void MTLBatch::prepare_vertex_descriptor_and_bindings(
     MTLVertBuf **buffers, int &num_buffers, int v_first, int v_count, int i_first, int i_count)
@@ -619,7 +617,7 @@ void MTLBatch::prepare_vertex_descriptor_and_bindings(
    * Vertex Descriptors are required to generate a pipeline state, based on the current Batch's
    * buffer bindings. These bindings are a unique matching, depending on what input attributes a
    * batch has in its buffers, and those which are supported by the shader interface.
-
+   *
    * We iterate through the buffers and resolve which attributes satisfy the requirements of the
    * currently bound shader. We cache this data, for a given Batch<->ShderInterface pairing in a
    * VAO cache to avoid the need to recalculate this data. */

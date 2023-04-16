@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+ * Copyright 2020 Blender Foundation */
 
 #pragma once
 
@@ -16,9 +16,11 @@
 #  include "BLI_array.hh"
 #  include "BLI_bit_vector.hh"
 #  include "BLI_bounds_types.hh"
+#  include "BLI_implicit_sharing.hh"
 #  include "BLI_math_vector_types.hh"
 #  include "BLI_shared_cache.hh"
 #  include "BLI_span.hh"
+#  include "BLI_vector.hh"
 
 #  include "DNA_customdata_types.h"
 #  include "DNA_meshdata_types.h"
@@ -48,7 +50,7 @@ typedef enum eMeshBatchDirtyMode {
 
 /** #MeshRuntime.wrapper_type */
 typedef enum eMeshWrapperType {
-  /** Use mesh data (#Mesh.vert_positions(), #Mesh.medge, #Mesh.mloop, #Mesh.mpoly). */
+  /** Use mesh data (#Mesh.vert_positions(), #Mesh.medge, #Mesh.corner_verts(), #Mesh.mpoly). */
   ME_WRAPPER_TYPE_MDATA = 0,
   /** Use edit-mesh data (#Mesh.edit_mesh, #MeshRuntime.edit_data). */
   ME_WRAPPER_TYPE_BMESH = 1,
@@ -94,6 +96,9 @@ struct MeshRuntime {
 
   /** Needed to ensure some thread-safety during render data pre-processing. */
   std::mutex render_mutex;
+
+  /** Implicit sharing user count for #Mesh::poly_offset_indices. */
+  ImplicitSharingInfoHandle *poly_offsets_sharing_info;
 
   /**
    * A cache of bounds shared between data-blocks with unchanged positions. When changing positions
@@ -158,8 +163,8 @@ struct MeshRuntime {
    */
   bool vert_normals_dirty = true;
   bool poly_normals_dirty = true;
-  float (*vert_normals)[3] = nullptr;
-  float (*poly_normals)[3] = nullptr;
+  mutable Vector<float3> vert_normals;
+  mutable Vector<float3> poly_normals;
 
   /**
    * A cache of data about the loose edges. Can be shared with other data-blocks with unchanged

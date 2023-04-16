@@ -71,7 +71,7 @@ void solve_length_and_collision_constraints(const OffsetIndices<int> points_by_c
   BKE_bvhtree_from_mesh_get(&surface_bvh, &surface, BVHTREE_FROM_LOOPTRI, 2);
   BLI_SCOPED_DEFER([&]() { free_bvhtree_from_mesh(&surface_bvh); });
 
-  const float radius = 0.001f;
+  const float radius = 0.005f;
   const int max_collisions = 5;
 
   threading::parallel_for(curve_selection.index_range(), 64, [&](const IndexRange range) {
@@ -146,12 +146,22 @@ void solve_length_and_collision_constraints(const OffsetIndices<int> points_by_c
           float slide_direction_length_cu;
           const float3 normalized_slide_direction_cu = math::normalize_and_get_length(
               slide_direction_cu, slide_direction_length_cu);
+          const float slide_normal_length_sq_cu = math::length_squared(slide_normal_cu);
 
-          /* Use pythagorian theorem to determine how far to slide. */
-          const float slide_distance_cu = std::sqrt(pow2f(goal_segment_length_cu) -
-                                                    math::length_squared(slide_normal_cu)) -
-                                          slide_direction_length_cu;
-          positions_cu[point_i] = plane_pos_cu + normalized_slide_direction_cu * slide_distance_cu;
+          if (pow2f(goal_segment_length_cu) > slide_normal_length_sq_cu) {
+            /* Use pythagorian theorem to determine how far to slide. */
+            const float slide_distance_cu = std::sqrt(pow2f(goal_segment_length_cu) -
+                                                      slide_normal_length_sq_cu) -
+                                            slide_direction_length_cu;
+            positions_cu[point_i] = plane_pos_cu +
+                                    normalized_slide_direction_cu * slide_distance_cu;
+          }
+          else {
+            /* Minimum distance is larger than allowed segment length.
+             * The unilateral collision constraint is satisfied by just clamping segment length. */
+            positions_cu[point_i] = prev_pos_cu + math::normalize(old_pos_su - prev_pos_cu) *
+                                                      goal_segment_length_cu;
+          }
         }
         if (used_iterations == max_collisions) {
           revert_curve = true;

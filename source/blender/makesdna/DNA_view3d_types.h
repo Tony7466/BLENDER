@@ -214,7 +214,6 @@ typedef struct View3DOverlay {
   /** Armature edit/pose mode settings. */
   float xray_alpha_bone;
   float bone_wire_alpha;
-  char _pad1[4];
 
   /** Darken Inactive. */
   float fade_alpha;
@@ -222,6 +221,7 @@ typedef struct View3DOverlay {
   /** Other settings. */
   float wireframe_threshold;
   float wireframe_opacity;
+  float retopology_offset;
 
   /** Grease pencil settings. */
   float gpencil_paper_opacity;
@@ -232,6 +232,10 @@ typedef struct View3DOverlay {
   float gpencil_vertex_paint_opacity;
   /** Handles display type for curves. */
   int handle_display;
+
+  /** Curves sculpt mode settings. */
+  float sculpt_curves_cage_opacity;
+  char _pad[4];
 } View3DOverlay;
 
 /** #View3DOverlay.handle_display */
@@ -547,6 +551,8 @@ enum {
   V3D_OVERLAY_VIEWER_ATTRIBUTE = (1 << 13),
   V3D_OVERLAY_SCULPT_SHOW_MASK = (1 << 14),
   V3D_OVERLAY_SCULPT_SHOW_FACE_SETS = (1 << 15),
+  V3D_OVERLAY_SCULPT_CURVES_CAGE = (1 << 16),
+  V3D_OVERLAY_SHOW_LIGHT_COLORS = (1 << 17),
 };
 
 /** #View3DOverlay.edit_flag */
@@ -555,7 +561,7 @@ enum {
   V3D_OVERLAY_EDIT_LOOP_NORMALS = (1 << 1),
   V3D_OVERLAY_EDIT_FACE_NORMALS = (1 << 2),
 
-  V3D_OVERLAY_EDIT_OCCLUDE_WIRE = (1 << 3),
+  V3D_OVERLAY_EDIT_RETOPOLOGY = (1 << 3),
 
   V3D_OVERLAY_EDIT_WEIGHT = (1 << 4),
 

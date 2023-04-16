@@ -53,6 +53,7 @@ static void eevee_engine_init(void *ved)
   stl->g_data->valid_double_buffer = (txl->color_double_buffer != NULL);
   stl->g_data->valid_taa_history = (txl->taa_history != NULL);
   stl->g_data->queued_shaders_count = 0;
+  stl->g_data->queued_optimise_shaders_count = 0;
   stl->g_data->render_timesteps = 1;
   stl->g_data->disable_ligthprobes = v3d &&
                                      (v3d->object_type_exclude_viewport & (1 << OB_LIGHTPROBE));
@@ -178,6 +179,11 @@ static void eevee_cache_finish(void *vedata)
   if (g_data->queued_shaders_count > 0) {
     SNPRINTF(ved->info, TIP_("Compiling Shaders (%d remaining)"), g_data->queued_shaders_count);
   }
+  else if (g_data->queued_optimise_shaders_count > 0) {
+    SNPRINTF(ved->info,
+             TIP_("Optimizing Shaders (%d remaining)"),
+             g_data->queued_optimise_shaders_count);
+  }
 }
 
 /* As renders in an HDR off-screen buffer, we need draw everything once
@@ -274,7 +280,7 @@ static void eevee_draw_scene(void *vedata)
     SET_FLAG_FROM_TEST(clear_bits, (stl->effects->enabled_effects & EFFECT_SSS), GPU_STENCIL_BIT);
     GPU_framebuffer_clear(fbl->main_fb, clear_bits, clear_col, clear_depth, clear_stencil);
 
-    /* Depth prepass */
+    /* Depth pre-pass. */
     DRW_stats_group_start("Prepass");
     DRW_draw_pass(psl->depth_ps);
     DRW_stats_group_end();

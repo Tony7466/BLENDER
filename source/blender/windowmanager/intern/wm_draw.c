@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 Blender Foundation. All rights reserved. */
+ * Copyright 2007 Blender Foundation */
 
 /** \file
  * \ingroup wm
@@ -179,7 +179,7 @@ struct GrabState {
 static bool wm_software_cursor_needed(void)
 {
   if (UNLIKELY(g_software_cursor.enabled == -1)) {
-    g_software_cursor.enabled = !GHOST_SupportsCursorWarp();
+    g_software_cursor.enabled = !(WM_capabilities_flag() & WM_CAPABILITY_CURSOR_WARP);
   }
   return g_software_cursor.enabled;
 }
@@ -231,8 +231,9 @@ static void wm_software_cursor_draw_bitmap(const int event_xy[2],
   GPU_blend(GPU_BLEND_ALPHA);
 
   float gl_matrix[4][4];
+  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_GENERAL;
   GPUTexture *texture = GPU_texture_create_2d(
-      "softeare_cursor", bitmap->data_size[0], bitmap->data_size[1], 1, GPU_RGBA8, NULL);
+      "softeare_cursor", bitmap->data_size[0], bitmap->data_size[1], 1, GPU_RGBA8, usage, NULL);
   GPU_texture_update(texture, GPU_DATA_UBYTE, bitmap->data);
   GPU_texture_filter_mode(texture, false);
 
@@ -290,7 +291,7 @@ static void wm_software_cursor_draw_crosshair(const int event_xy[2])
   /* Draw a primitive cross-hair cursor.
    * NOTE: the `win->cursor` could be used for drawing although it's complicated as some cursors
    * are set by the operating-system, where the pixel information isn't easily available. */
-  const float unit = max_ff(U.dpi_fac, 1.0f);
+  const float unit = max_ff(UI_SCALE_FAC, 1.0f);
   uint pos = GPU_vertformat_attr_add(
       immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
@@ -684,7 +685,7 @@ static void wm_draw_region_buffer_create(ARegion *region, bool stereo, bool use_
        * depth or multisample buffers. 3D view creates own buffers with
        * the data it needs. */
       GPUOffScreen *offscreen = GPU_offscreen_create(
-          region->winx, region->winy, false, GPU_RGBA8, NULL);
+          region->winx, region->winy, false, GPU_RGBA8, GPU_TEXTURE_USAGE_SHADER_READ, NULL);
       if (!offscreen) {
         WM_report(RPT_ERROR, "Region could not be drawn!");
         return;
@@ -842,13 +843,13 @@ void wm_draw_region_blend(ARegion *region, int view, bool blend)
   int color_loc = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_COLOR);
   int rect_tex_loc = GPU_shader_get_uniform(shader, "rect_icon");
   int rect_geo_loc = GPU_shader_get_uniform(shader, "rect_geom");
-  int texture_bind_loc = GPU_shader_get_texture_binding(shader, "image");
+  int texture_bind_loc = GPU_shader_get_sampler_binding(shader, "image");
 
   GPU_texture_bind(texture, texture_bind_loc);
 
-  GPU_shader_uniform_vector(shader, rect_tex_loc, 4, 1, rectt);
-  GPU_shader_uniform_vector(shader, rect_geo_loc, 4, 1, rectg);
-  GPU_shader_uniform_vector(shader, color_loc, 4, 1, (const float[4]){1, 1, 1, 1});
+  GPU_shader_uniform_float_ex(shader, rect_tex_loc, 4, 1, rectt);
+  GPU_shader_uniform_float_ex(shader, rect_geo_loc, 4, 1, rectg);
+  GPU_shader_uniform_float_ex(shader, color_loc, 4, 1, (const float[4]){1, 1, 1, 1});
 
   GPUBatch *quad = GPU_batch_preset_quad();
   GPU_batch_set_shader(quad, shader);
@@ -894,6 +895,9 @@ static void wm_draw_window_offscreen(bContext *C, wmWindow *win, bool stereo)
 
     /* Compute UI layouts for dynamically size regions. */
     LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
+      if (region->flag & RGN_FLAG_POLL_FAILED) {
+        continue;
+      }
       /* Dynamic region may have been flagged as too small because their size on init is 0.
        * ARegion.visible is false then, as expected. The layout should still be created then, so
        * the region size can be updated (it may turn out to be not too small then). */
@@ -1147,7 +1151,8 @@ static void wm_draw_window(bContext *C, wmWindow *win)
      * stereo methods, but it's less efficient than drawing directly. */
     const int width = WM_window_pixels_x(win);
     const int height = WM_window_pixels_y(win);
-    GPUOffScreen *offscreen = GPU_offscreen_create(width, height, false, GPU_RGBA8, NULL);
+    GPUOffScreen *offscreen = GPU_offscreen_create(
+        width, height, false, GPU_RGBA8, GPU_TEXTURE_USAGE_SHADER_READ, NULL);
 
     if (offscreen) {
       GPUTexture *texture = GPU_offscreen_color_texture(offscreen);
@@ -1222,7 +1227,8 @@ uint *WM_window_pixels_read_offscreen(bContext *C, wmWindow *win, int r_size[2])
   r_size[0] = WM_window_pixels_x(win);
   r_size[1] = WM_window_pixels_y(win);
 
-  GPUOffScreen *offscreen = GPU_offscreen_create(r_size[0], r_size[1], false, GPU_RGBA8, NULL);
+  GPUOffScreen *offscreen = GPU_offscreen_create(
+      r_size[0], r_size[1], false, GPU_RGBA8, GPU_TEXTURE_USAGE_SHADER_READ, NULL);
   if (UNLIKELY(!offscreen)) {
     return NULL;
   }
@@ -1379,7 +1385,7 @@ void wm_draw_update(bContext *C)
       wm_window_make_drawable(wm, win);
 
       /* notifiers for screen redraw */
-      ED_screen_ensure_updated(wm, win, screen);
+      ED_screen_ensure_updated(C, wm, win, screen);
 
       wm_draw_window(C, win);
       wm_draw_update_clear_window(C, win);

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation. All rights reserved. */
+ * Copyright 2006 Blender Foundation */
 
 /** \file
  * \ingroup cmpnodes
@@ -516,6 +516,7 @@ class ImageOperation : public NodeOperation {
     }
 
     ImageUser image_user = compute_image_user_for_output(identifier);
+    BKE_image_ensure_gpu_texture(get_image(), &image_user);
     GPUTexture *image_texture = BKE_image_get_gpu_texture(get_image(), &image_user, nullptr);
 
     const int2 size = int2(GPU_texture_width(image_texture), GPU_texture_height(image_texture));
@@ -525,7 +526,7 @@ class ImageOperation : public NodeOperation {
     GPUShader *shader = shader_manager().get(get_shader_name(identifier));
     GPU_shader_bind(shader);
 
-    const int input_unit = GPU_shader_get_texture_binding(shader, "input_tx");
+    const int input_unit = GPU_shader_get_sampler_binding(shader, "input_tx");
     GPU_texture_bind(image_texture, input_unit);
 
     result.bind_as_image(shader, "output_img");
@@ -859,7 +860,7 @@ class RenderLayerOperation : public NodeOperation {
     const int2 lower_bound = int2(compositing_region.xmin, compositing_region.ymin);
     GPU_shader_uniform_2iv(shader, "compositing_region_lower_bound", lower_bound);
 
-    const int input_unit = GPU_shader_get_texture_binding(shader, "input_tx");
+    const int input_unit = GPU_shader_get_sampler_binding(shader, "input_tx");
     GPU_texture_bind(pass_texture, input_unit);
 
     const int2 compositing_region_size = context().get_compositing_region_size();
@@ -889,7 +890,7 @@ class RenderLayerOperation : public NodeOperation {
     const int2 lower_bound = int2(compositing_region.xmin, compositing_region.ymin);
     GPU_shader_uniform_2iv(shader, "compositing_region_lower_bound", lower_bound);
 
-    const int input_unit = GPU_shader_get_texture_binding(shader, "input_tx");
+    const int input_unit = GPU_shader_get_sampler_binding(shader, "input_tx");
     GPU_texture_bind(pass_texture, input_unit);
 
     const int2 compositing_region_size = context().get_compositing_region_size();

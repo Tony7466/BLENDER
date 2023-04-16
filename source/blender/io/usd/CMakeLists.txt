@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2019 Blender Foundation. All rights reserved.
+# Copyright 2019 Blender Foundation
 
 # This suppresses the warning "This file includes at least one deprecated or antiquated
 # header which may be removed without further notice at a future date", which is caused
@@ -33,6 +33,13 @@ find_file(
 
 if(USD_IMAGING_HEADERS)
   add_definitions(-DUSD_HAS_IMAGING)
+endif()
+
+if(WIN32)
+  # Some USD library headers trigger the "unreferenced formal parameter"
+  # warning alert.
+  # Silence them by restore warn C4100 back to w4
+  remove_cc_flag(/w34100)
 endif()
 
 set(INC
@@ -83,6 +90,7 @@ set(SRC
   intern/usd_reader_mesh.cc
   intern/usd_reader_nurbs.cc
   intern/usd_reader_prim.cc
+  intern/usd_reader_shape.cc
   intern/usd_reader_stage.cc
   intern/usd_reader_volume.cc
   intern/usd_reader_xform.cc
@@ -111,6 +119,7 @@ set(SRC
   intern/usd_reader_mesh.h
   intern/usd_reader_nurbs.h
   intern/usd_reader_prim.h
+  intern/usd_reader_shape.h
   intern/usd_reader_stage.h
   intern/usd_reader_volume.h
   intern/usd_reader_xform.h
@@ -145,11 +154,11 @@ blender_add_lib(bf_usd "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
 if(WITH_GTESTS)
   set(TEST_SRC
-    tests/usd_stage_creation_test.cc
     tests/usd_export_test.cc
+    tests/usd_stage_creation_test.cc
     tests/usd_tests_common.cc
     tests/usd_tests_common.h
-
+    tests/usd_usdz_export_test.cc
     intern/usd_writer_material.h
   )
   if(USD_IMAGING_HEADERS)

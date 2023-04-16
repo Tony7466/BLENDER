@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation. All rights reserved.
+# Copyright 2006 Blender Foundation
 
 set(INC
   .
@@ -16,19 +16,25 @@ set(INC
 
 set(INC_SYS
   ${JPEG_INCLUDE_DIR}
-  ${PNG_INCLUDE_DIRS}
   ${ZLIB_INCLUDE_DIRS}
+  ${OPENIMAGEIO_INCLUDE_DIRS}
 )
 
 set(SRC
   intern/allocimbuf.c
   intern/anim_movie.c
-  intern/bmp.c
   intern/colormanagement.c
   intern/colormanagement_inline.c
   intern/divers.c
   intern/filetype.c
   intern/filter.c
+  intern/format_bmp.cc
+  intern/format_dds.cc
+  intern/format_hdr.cc
+  intern/format_png.cc
+  intern/format_psd.cc
+  intern/format_targa.cc
+  intern/format_tiff.cc
   intern/imageprocess.c
   intern/indexer.c
   intern/iris.c
@@ -36,13 +42,11 @@ set(SRC
   intern/metadata.c
   intern/module.c
   intern/moviecache.cc
-  intern/png.c
   intern/readimage.c
   intern/rectop.c
   intern/rotate.c
   intern/scaling.c
   intern/stereoimbuf.c
-  intern/targa.c
   intern/thumbs.c
   intern/thumbs_blend.c
   intern/thumbs_font.c
@@ -74,11 +78,11 @@ set(LIB
   bf_blenkernel
   bf_blenlib
   bf_blenloader
+  bf_imbuf_openimageio
   bf_intern_guardedalloc
   bf_intern_memutil
   bf_intern_opencolorio
 
-  ${PNG_LIBRARIES}
   ${JPEG_LIBRARIES}
 )
 
@@ -91,27 +95,6 @@ else()
   list(APPEND SRC
     intern/openexr/openexr_stub.cpp
   )
-endif()
-
-if(WITH_IMAGE_TIFF)
-  list(APPEND INC_SYS
-    ${TIFF_INCLUDE_DIR}
-  )
-  list(APPEND SRC
-    intern/tiff.c
-  )
-  list(APPEND LIB
-    ${TIFF_LIBRARY}
-  )
-  add_definitions(-DWITH_TIFF)
-endif()
-
-
-if(WITH_OPENIMAGEIO)
-  list(APPEND LIB
-    bf_imbuf_openimageio
-  )
-  add_definitions(-DWITH_OPENIMAGEIO)
 endif()
 
 if(WITH_IMAGE_OPENJPEG)
@@ -152,25 +135,14 @@ if(WITH_CODEC_FFMPEG)
   add_definitions(-DWITH_FFMPEG)
 endif()
 
-if(WITH_IMAGE_DDS)
-  list(APPEND LIB
-    bf_imbuf_dds
-  )
-  add_definitions(-DWITH_DDS)
-endif()
-
 if(WITH_IMAGE_CINEON)
+  list(APPEND SRC
+    intern/format_dpx.cc
+  )
   list(APPEND LIB
     bf_imbuf_cineon
   )
   add_definitions(-DWITH_CINEON)
-endif()
-
-if(WITH_IMAGE_HDR)
-  list(APPEND SRC
-    intern/radiance_hdr.c
-  )
-  add_definitions(-DWITH_HDR)
 endif()
 
 if(WITH_IMAGE_WEBP)

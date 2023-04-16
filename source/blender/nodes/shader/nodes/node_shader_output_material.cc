@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+ * Copyright 2005 Blender Foundation */
 
 #include "node_shader_util.hh"
 
@@ -10,7 +10,8 @@ namespace blender::nodes::node_shader_output_material_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Shader>(N_("Surface"));
-  b.add_input<decl::Shader>(N_("Volume"));
+  b.add_input<decl::Shader>(CTX_N_(BLT_I18NCONTEXT_ID_ID, "Volume"))
+      .translation_context(BLT_I18NCONTEXT_ID_ID);
   b.add_input<decl::Vector>(N_("Displacement")).hide_value();
   b.add_input<decl::Float>(N_("Thickness")).hide_value().unavailable(); /* Not used for now. */
 }

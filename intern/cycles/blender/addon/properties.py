@@ -403,7 +403,7 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
 
     time_limit: FloatProperty(
         name="Time Limit",
-        description="Limit the render time (excluding synchronization time)."
+        description="Limit the render time (excluding synchronization time). "
         "Zero disables the limit",
         min=0.0,
         default=0.0,
@@ -1673,20 +1673,23 @@ class CyclesPreferences(bpy.types.AddonPreferences):
                 driver_version = "470"
                 col.label(text=iface_("Requires NVIDIA GPU with compute capability %s") % compute_capability,
                           icon='BLANK1', translate=False)
-                col.label(text="and NVIDIA driver version %s or newer" % driver_version,
+                col.label(text=iface_("and NVIDIA driver version %s or newer") % driver_version,
                           icon='BLANK1', translate=False)
             elif device_type == 'HIP':
-                import sys
-                if sys.platform[:3] == "win":
-                    driver_version = "21.Q4"
-                    col.label(text="Requires AMD GPU with RDNA architecture", icon='BLANK1')
-                    col.label(text=iface_("and AMD Radeon Pro %s driver or newer") % driver_version,
-                              icon='BLANK1', translate=False)
-                elif sys.platform.startswith("linux"):
-                    driver_version = "22.10"
-                    col.label(text="Requires AMD GPU with RDNA architecture", icon='BLANK1')
-                    col.label(text=iface_("and AMD driver version %s or newer") % driver_version, icon='BLANK1',
-                              translate=False)
+                if True:
+                    col.label(text="HIP temporarily disabled due to compiler bugs", icon='BLANK1')
+                else:
+                    import sys
+                    if sys.platform[:3] == "win":
+                        driver_version = "21.Q4"
+                        col.label(text="Requires AMD GPU with Vega or RDNA architecture", icon='BLANK1')
+                        col.label(text=iface_("and AMD Radeon Pro %s driver or newer") % driver_version,
+                                  icon='BLANK1', translate=False)
+                    elif sys.platform.startswith("linux"):
+                        driver_version = "22.10"
+                        col.label(text="Requires AMD GPU with Vega or RDNA architecture", icon='BLANK1')
+                        col.label(text=iface_("and AMD driver version %s or newer") % driver_version, icon='BLANK1',
+                                  translate=False)
             elif device_type == 'ONEAPI':
                 import sys
                 if sys.platform.startswith("win"):
@@ -1716,7 +1719,8 @@ class CyclesPreferences(bpy.types.AddonPreferences):
                 .replace('(TM)', unicodedata.lookup('TRADE MARK SIGN'))
                 .replace('(tm)', unicodedata.lookup('TRADE MARK SIGN'))
                 .replace('(R)', unicodedata.lookup('REGISTERED SIGN'))
-                .replace('(C)', unicodedata.lookup('COPYRIGHT SIGN'))
+                .replace('(C)', unicodedata.lookup('COPYRIGHT SIGN')),
+                translate=False
             )
 
     def draw_impl(self, layout, context):

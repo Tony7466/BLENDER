@@ -80,7 +80,6 @@ static const char *imb_gpu_get_swizzle(const ImBuf *ibuf)
 }
 
 /* Return false if no suitable format was found. */
-#ifdef WITH_DDS
 static bool IMB_gpu_get_compressed_format(const ImBuf *ibuf, eGPUTextureFormat *r_texture_format)
 {
   /* For DDS we only support data, scene linear and sRGB. Converting to
@@ -102,7 +101,6 @@ static bool IMB_gpu_get_compressed_format(const ImBuf *ibuf, eGPUTextureFormat *
   }
   return true;
 }
-#endif
 
 /**
  * Apply colormanagement and scale buffer if needed.
@@ -252,25 +250,24 @@ GPUTexture *IMB_touch_gpu_texture(const char *name,
 
   GPUTexture *tex;
   if (layers > 0) {
-    tex = GPU_texture_create_2d_array_ex(name,
-                                         w,
-                                         h,
-                                         layers,
-                                         9999,
-                                         tex_format,
-                                         GPU_TEXTURE_USAGE_SHADER_READ |
-                                             GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
-                                         NULL);
+    tex = GPU_texture_create_2d_array(name,
+                                      w,
+                                      h,
+                                      layers,
+                                      9999,
+                                      tex_format,
+                                      GPU_TEXTURE_USAGE_SHADER_READ |
+                                          GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
+                                      NULL);
   }
   else {
-    tex = GPU_texture_create_2d_ex(name,
-                                   w,
-                                   h,
-                                   9999,
-                                   tex_format,
-                                   GPU_TEXTURE_USAGE_SHADER_READ |
-                                       GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
-                                   NULL);
+    tex = GPU_texture_create_2d(name,
+                                w,
+                                h,
+                                9999,
+                                tex_format,
+                                GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
+                                NULL);
   }
 
   GPU_texture_swizzle_set(tex, imb_gpu_get_swizzle(ibuf));
@@ -327,7 +324,6 @@ GPUTexture *IMB_create_gpu_texture(const char *name,
     }
   }
 
-#ifdef WITH_DDS
   if (ibuf->ftype == IMB_FTYPE_DDS) {
     eGPUTextureFormat compressed_format;
     if (!IMB_gpu_get_compressed_format(ibuf, &compressed_format)) {
@@ -345,6 +341,7 @@ GPUTexture *IMB_create_gpu_texture(const char *name,
                                              ibuf->y,
                                              ibuf->dds_data.nummipmaps,
                                              compressed_format,
+                                             GPU_TEXTURE_USAGE_GENERAL,
                                              ibuf->dds_data.data);
 
       if (tex != NULL) {
@@ -356,7 +353,6 @@ GPUTexture *IMB_create_gpu_texture(const char *name,
     /* Fallback to uncompressed texture. */
     fprintf(stderr, " falling back to uncompressed.\n");
   }
-#endif
 
   eGPUDataFormat data_format;
   eGPUTextureFormat tex_format;
@@ -365,23 +361,21 @@ GPUTexture *IMB_create_gpu_texture(const char *name,
   bool freebuf = false;
 
   /* Create Texture. */
-  tex = GPU_texture_create_2d_ex(name,
-                                 UNPACK2(size),
-                                 9999,
-                                 tex_format,
-                                 GPU_TEXTURE_USAGE_SHADER_READ |
-                                     GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
-                                 NULL);
+  tex = GPU_texture_create_2d(name,
+                              UNPACK2(size),
+                              9999,
+                              tex_format,
+                              GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
+                              NULL);
   if (tex == NULL) {
     size[0] = max_ii(1, size[0] / 2);
     size[1] = max_ii(1, size[1] / 2);
-    tex = GPU_texture_create_2d_ex(name,
-                                   UNPACK2(size),
-                                   9999,
-                                   tex_format,
-                                   GPU_TEXTURE_USAGE_SHADER_READ |
-                                       GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
-                                   NULL);
+    tex = GPU_texture_create_2d(name,
+                                UNPACK2(size),
+                                9999,
+                                tex_format,
+                                GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
+                                NULL);
     do_rescale = true;
   }
   BLI_assert(tex != NULL);

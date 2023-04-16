@@ -22,9 +22,7 @@ using blender::GVArray;
 /** \name Geometry Component Implementation
  * \{ */
 
-CurveComponent::CurveComponent() : GeometryComponent(GEO_COMPONENT_TYPE_CURVE)
-{
-}
+CurveComponent::CurveComponent() : GeometryComponent(GEO_COMPONENT_TYPE_CURVE) {}
 
 CurveComponent::~CurveComponent()
 {
@@ -375,7 +373,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
                                                  CD_PROP_FLOAT3,
                                                  CD_PROP_FLOAT3,
                                                  BuiltinAttributeProvider::NonCreatable,
-                                                 BuiltinAttributeProvider::Writable,
                                                  BuiltinAttributeProvider::NonDeletable,
                                                  point_access,
                                                  make_array_read_attribute<float3>,
@@ -387,7 +384,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
                                                CD_PROP_FLOAT,
                                                CD_PROP_FLOAT,
                                                BuiltinAttributeProvider::Creatable,
-                                               BuiltinAttributeProvider::Writable,
                                                BuiltinAttributeProvider::Deletable,
                                                point_access,
                                                make_array_read_attribute<float>,
@@ -399,7 +395,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
                                            CD_PROP_INT32,
                                            CD_PROP_INT32,
                                            BuiltinAttributeProvider::Creatable,
-                                           BuiltinAttributeProvider::Writable,
                                            BuiltinAttributeProvider::Deletable,
                                            point_access,
                                            make_array_read_attribute<int>,
@@ -411,7 +406,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
                                              CD_PROP_FLOAT,
                                              CD_PROP_FLOAT,
                                              BuiltinAttributeProvider::Creatable,
-                                             BuiltinAttributeProvider::Writable,
                                              BuiltinAttributeProvider::Deletable,
                                              point_access,
                                              make_array_read_attribute<float>,
@@ -423,7 +417,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
                                                      CD_PROP_FLOAT3,
                                                      CD_PROP_FLOAT3,
                                                      BuiltinAttributeProvider::Creatable,
-                                                     BuiltinAttributeProvider::Writable,
                                                      BuiltinAttributeProvider::Deletable,
                                                      point_access,
                                                      make_array_read_attribute<float3>,
@@ -435,7 +428,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
                                                     CD_PROP_FLOAT3,
                                                     CD_PROP_FLOAT3,
                                                     BuiltinAttributeProvider::Creatable,
-                                                    BuiltinAttributeProvider::Writable,
                                                     BuiltinAttributeProvider::Deletable,
                                                     point_access,
                                                     make_array_read_attribute<float3>,
@@ -453,7 +445,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
                                                           CD_PROP_INT8,
                                                           CD_PROP_INT8,
                                                           BuiltinAttributeProvider::Creatable,
-                                                          BuiltinAttributeProvider::Writable,
                                                           BuiltinAttributeProvider::Deletable,
                                                           point_access,
                                                           make_array_read_attribute<int8_t>,
@@ -466,7 +457,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
                                                          CD_PROP_INT8,
                                                          CD_PROP_INT8,
                                                          BuiltinAttributeProvider::Creatable,
-                                                         BuiltinAttributeProvider::Writable,
                                                          BuiltinAttributeProvider::Deletable,
                                                          point_access,
                                                          make_array_read_attribute<int8_t>,
@@ -479,7 +469,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
                                                      CD_PROP_FLOAT,
                                                      CD_PROP_FLOAT,
                                                      BuiltinAttributeProvider::Creatable,
-                                                     BuiltinAttributeProvider::Writable,
                                                      BuiltinAttributeProvider::Deletable,
                                                      point_access,
                                                      make_array_read_attribute<float>,
@@ -495,7 +484,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
                                                     CD_PROP_INT8,
                                                     CD_PROP_INT8,
                                                     BuiltinAttributeProvider::Creatable,
-                                                    BuiltinAttributeProvider::Writable,
                                                     BuiltinAttributeProvider::Deletable,
                                                     curve_access,
                                                     make_array_read_attribute<int8_t>,
@@ -514,7 +502,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
                                                     CD_PROP_INT8,
                                                     CD_PROP_INT8,
                                                     BuiltinAttributeProvider::Creatable,
-                                                    BuiltinAttributeProvider::Writable,
                                                     BuiltinAttributeProvider::Deletable,
                                                     curve_access,
                                                     make_array_read_attribute<int8_t>,
@@ -533,7 +520,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
                                                          CD_PROP_INT8,
                                                          CD_PROP_INT8,
                                                          BuiltinAttributeProvider::Creatable,
-                                                         BuiltinAttributeProvider::Writable,
                                                          BuiltinAttributeProvider::Deletable,
                                                          curve_access,
                                                          make_array_read_attribute<int8_t>,
@@ -552,7 +538,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
                                                    CD_PROP_INT8,
                                                    CD_PROP_INT8,
                                                    BuiltinAttributeProvider::Creatable,
-                                                   BuiltinAttributeProvider::Writable,
                                                    BuiltinAttributeProvider::Deletable,
                                                    curve_access,
                                                    make_array_read_attribute<int8_t>,
@@ -569,7 +554,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
                                                    CD_PROP_INT32,
                                                    CD_PROP_INT32,
                                                    BuiltinAttributeProvider::Creatable,
-                                                   BuiltinAttributeProvider::Writable,
                                                    BuiltinAttributeProvider::Deletable,
                                                    curve_access,
                                                    make_array_read_attribute<int>,
@@ -582,7 +566,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
                                                CD_PROP_BOOL,
                                                CD_PROP_BOOL,
                                                BuiltinAttributeProvider::Creatable,
-                                               BuiltinAttributeProvider::Writable,
                                                BuiltinAttributeProvider::Deletable,
                                                curve_access,
                                                make_array_read_attribute<bool>,

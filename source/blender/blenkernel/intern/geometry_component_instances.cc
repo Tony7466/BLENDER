@@ -37,9 +37,7 @@ using blender::bke::Instances;
 /** \name Geometry Component Implementation
  * \{ */
 
-InstancesComponent::InstancesComponent() : GeometryComponent(GEO_COMPONENT_TYPE_INSTANCES)
-{
-}
+InstancesComponent::InstancesComponent() : GeometryComponent(GEO_COMPONENT_TYPE_INSTANCES) {}
 
 InstancesComponent::~InstancesComponent()
 {
@@ -129,7 +127,7 @@ class InstancePositionAttributeProvider final : public BuiltinAttributeProvider 
  public:
   InstancePositionAttributeProvider()
       : BuiltinAttributeProvider(
-            "position", ATTR_DOMAIN_INSTANCE, CD_PROP_FLOAT3, NonCreatable, Writable, NonDeletable)
+            "position", ATTR_DOMAIN_INSTANCE, CD_PROP_FLOAT3, NonCreatable, NonDeletable)
   {
   }
 
@@ -200,7 +198,6 @@ static ComponentAttributeProviders create_attribute_providers_for_instances()
                                            CD_PROP_INT32,
                                            CD_PROP_INT32,
                                            BuiltinAttributeProvider::Creatable,
-                                           BuiltinAttributeProvider::Writable,
                                            BuiltinAttributeProvider::Deletable,
                                            instance_custom_data_access,
                                            make_array_read_attribute<int>,

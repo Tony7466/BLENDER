@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. All rights reserved. */
+ * Copyright 2019 Blender Foundation */
 
 /** \file
  * \ingroup editor/io
@@ -75,7 +75,7 @@ const EnumPropertyItem rna_enum_usd_mtl_name_collision_mode_items[] = {
 const EnumPropertyItem rna_enum_usd_tex_import_mode_items[] = {
     {USD_TEX_IMPORT_NONE, "IMPORT_NONE", 0, "None", "Don't import textures"},
     {USD_TEX_IMPORT_PACK, "IMPORT_PACK", 0, "Packed", "Import textures as packed data"},
-    {USD_TEX_IMPORT_COPY, "IMPORT_COPY", 0, "Copy", "Copy files to Textures Directory"},
+    {USD_TEX_IMPORT_COPY, "IMPORT_COPY", 0, "Copy", "Copy files to textures directory"},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -226,7 +226,7 @@ static bool wm_usd_export_check(bContext *UNUSED(C), wmOperator *op)
   char filepath[FILE_MAX];
   RNA_string_get(op->ptr, "filepath", filepath);
 
-  if (!BLI_path_extension_check_n(filepath, ".usd", ".usda", ".usdc", NULL)) {
+  if (!BLI_path_extension_check_n(filepath, ".usd", ".usda", ".usdc", ".usdz", NULL)) {
     BLI_path_extension_ensure(filepath, FILE_MAX, ".usdc");
     RNA_string_set(op->ptr, "filepath", filepath);
     return true;
@@ -326,7 +326,7 @@ void WM_OT_usd_export(struct wmOperatorType *ot)
                   "overwrite_textures",
                   false,
                   "Overwrite Textures",
-                  "Allow overwriting existing texture files when exporting textures");
+                  "Overwrite existing files when exporting textures");
 
   RNA_def_boolean(ot->srna,
                   "relative_paths",
@@ -382,6 +382,7 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
   const bool import_materials = RNA_boolean_get(op->ptr, "import_materials");
   const bool import_meshes = RNA_boolean_get(op->ptr, "import_meshes");
   const bool import_volumes = RNA_boolean_get(op->ptr, "import_volumes");
+  const bool import_shapes = RNA_boolean_get(op->ptr, "import_shapes");
 
   const bool import_subdiv = RNA_boolean_get(op->ptr, "import_subdiv");
 
@@ -443,6 +444,7 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
                                    .import_materials = import_materials,
                                    .import_meshes = import_meshes,
                                    .import_volumes = import_volumes,
+                                   .import_shapes = import_shapes,
                                    .import_subdiv = import_subdiv,
                                    .import_instance_proxies = import_instance_proxies,
                                    .create_collection = create_collection,
@@ -488,6 +490,7 @@ static void wm_usd_import_draw(bContext *UNUSED(C), wmOperator *op)
   uiItemR(col, ptr, "import_materials", 0, NULL, ICON_NONE);
   uiItemR(col, ptr, "import_meshes", 0, NULL, ICON_NONE);
   uiItemR(col, ptr, "import_volumes", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "import_shapes", 0, NULL, ICON_NONE);
   uiItemR(box, ptr, "prim_path_mask", 0, NULL, ICON_NONE);
   uiItemR(box, ptr, "scale", 0, NULL, ICON_NONE);
 
@@ -577,6 +580,7 @@ void WM_OT_usd_import(struct wmOperatorType *ot)
   RNA_def_boolean(ot->srna, "import_materials", true, "Materials", "");
   RNA_def_boolean(ot->srna, "import_meshes", true, "Meshes", "");
   RNA_def_boolean(ot->srna, "import_volumes", true, "Volumes", "");
+  RNA_def_boolean(ot->srna, "import_shapes", true, "Shapes", "");
 
   RNA_def_boolean(ot->srna,
                   "import_subdiv",
@@ -608,7 +612,7 @@ void WM_OT_usd_import(struct wmOperatorType *ot)
   RNA_def_boolean(ot->srna, "read_mesh_uvs", true, "UV Coordinates", "Read mesh UV coordinates");
 
   RNA_def_boolean(
-      ot->srna, "read_mesh_colors", false, "Color Attributes", "Read mesh color attributes");
+      ot->srna, "read_mesh_colors", true, "Color Attributes", "Read mesh color attributes");
 
   RNA_def_string(ot->srna,
                  "prim_path_mask",
@@ -675,7 +679,7 @@ void WM_OT_usd_import(struct wmOperatorType *ot)
                  "//textures/",
                  FILE_MAXDIR,
                  "Textures Directory",
-                 "Path to the directory where imported textures will be copied ");
+                 "Path to the directory where imported textures will be copied");
 
   RNA_def_enum(
       ot->srna,

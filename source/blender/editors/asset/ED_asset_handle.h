@@ -13,6 +13,7 @@
 #pragma once
 
 #include "DNA_ID_enums.h"
+#include "DNA_asset_types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,6 +21,7 @@ extern "C" {
 
 struct AssetHandle;
 
+struct AssetRepresentation *ED_asset_handle_get_representation(const struct AssetHandle *asset);
 const char *ED_asset_handle_get_name(const struct AssetHandle *asset);
 struct AssetMetaData *ED_asset_handle_get_metadata(const struct AssetHandle *asset);
 struct ID *ED_asset_handle_get_local_id(const struct AssetHandle *asset);
@@ -37,11 +39,11 @@ void ED_asset_handle_get_full_library_path(
 
 #ifdef __cplusplus
 
-namespace blender::ed::asset {
+#  include <optional>
 
-/** If the ID already exists in the database, return it, otherwise add it. */
-ID *get_local_id_from_asset_or_append_and_reuse(Main &bmain, AssetHandle asset);
-
-}  // namespace blender::ed::asset
+/** The asset library may have an import method (e.g. append vs. link) defined to use. If so, this
+ * returns it. Otherwise a reasonable method should be used, usually "Append (Reuse Data)". */
+std::optional<eAssetImportMethod> ED_asset_handle_get_import_method(
+    const struct AssetHandle *asset);
 
 #endif
