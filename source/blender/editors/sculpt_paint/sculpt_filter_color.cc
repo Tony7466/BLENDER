@@ -71,10 +71,7 @@ static EnumPropertyItem prop_color_filter_types[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-enum {
-  FILTER_COLOR_MODAL_CANCEL = 1,
-  FILTER_COLOR_MODAL_CONFIRM
-};
+enum { FILTER_COLOR_MODAL_CANCEL = 1, FILTER_COLOR_MODAL_CONFIRM };
 
 static void color_filter_task_cb(void *__restrict userdata,
                                  const int n,
@@ -234,22 +231,19 @@ static void sculpt_color_filter_cancel(bContext *C, wmOperator * /*op*/)
 {
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
-  PBVHNode **nodes;
-  int nodes_num;
 
   if (!ss || !ss->pbvh) {
     return;
   }
 
   /* Gather all PBVH leaf nodes. */
-  BKE_pbvh_search_gather(ss->pbvh, nullptr, nullptr, &nodes, &nodes_num);
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, nullptr, nullptr);
 
-  for (int i : blender::IndexRange(nodes_num)) {
-    PBVHNode *node = nodes[i];
+  for (PBVHNode *node : nodes) {
     PBVHVertexIter vd;
 
     SculptOrigVertData orig_data;
-    SCULPT_orig_vert_data_init(&orig_data, ob, nodes[i], SCULPT_UNDO_COLOR);
+    SCULPT_orig_vert_data_init(&orig_data, ob, node, SCULPT_UNDO_COLOR);
 
     BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
       SCULPT_orig_vert_data_update(&orig_data, &vd);
@@ -261,7 +255,6 @@ static void sculpt_color_filter_cancel(bContext *C, wmOperator * /*op*/)
     BKE_pbvh_node_mark_update(node);
   }
 
-  MEM_SAFE_FREE(nodes);
   BKE_pbvh_update_bounds(ss->pbvh, PBVH_UpdateBB);
 }
 
@@ -370,24 +363,22 @@ wmKeyMap *filter_color_modal_keymap(wmKeyConfig *keyconf)
   return keymap;
 }
 
-static void sculpt_filter_color_update_status_bar(bContext* C, wmOperator* op) {
+static void sculpt_filter_color_update_status_bar(bContext *C, wmOperator *op)
+{
   char header[UI_MAX_DRAW_STR];
   char buf[UI_MAX_DRAW_STR];
   int available_len = sizeof(buf);
 
-
-  char* p = buf;
+  char *p = buf;
 #define WM_MODALKEY(_id) \
   WM_modalkeymap_operator_items_to_string_buf( \
       op->type, (_id), true, UI_MAX_SHORTCUT_STR, &available_len, &p)
 
-  BLI_snprintf(
-      header,
-      sizeof(header),
-      TIP_("%s: Confirm, %s: Cancel"),
-      WM_MODALKEY(FILTER_COLOR_MODAL_CONFIRM),
-      WM_MODALKEY(FILTER_COLOR_MODAL_CANCEL)
-  );
+  BLI_snprintf(header,
+               sizeof(header),
+               TIP_("%s: Confirm, %s: Cancel"),
+               WM_MODALKEY(FILTER_COLOR_MODAL_CONFIRM),
+               WM_MODALKEY(FILTER_COLOR_MODAL_CANCEL));
 
 #undef WM_MODALKEY
 
@@ -412,15 +403,14 @@ static int sculpt_color_filter_modal(bContext *C, wmOperator *op, const wmEvent 
         ret = OPERATOR_CANCELLED;
         break;
 
-      case FILTER_COLOR_MODAL_CONFIRM: 
+      case FILTER_COLOR_MODAL_CONFIRM:
         SCULPT_undo_push_end_ex(ob, false);
         ret = OPERATOR_FINISHED;
         break;
     }
 
-
     sculpt_color_filter_end(C, ob);
-    ED_workspace_status_text(C, nullptr); 
+    ED_workspace_status_text(C, nullptr);
     WM_cursor_modal_restore(CTX_wm_window(C));
     return ret;
   }
