@@ -65,13 +65,13 @@ void KuwaharaOperation::update_memory_buffer(MemoryBuffer *output,
   const int bwidth = area.xmax - area.xmin;
   const int bheight = area.ymax - area.ymin;
 
-//  for (int y = 0; y < bheight; y++)
-//  {
-//    for (int x = 0; x < bwidth; x++)
-//    {
-//      output->get_value(x, y, 3) = 1;
-//    }
-//  }
+  for (int y = 0; y < bheight; y++)
+  {
+    for (int x = 0; x < bwidth; x++)
+    {
+      output->get_value(x, y, 3) = 1;
+    }
+  }
 
   for (int ch = 0; ch < 3; ch++)
   {
@@ -135,12 +135,6 @@ void KuwaharaOperation::update_memory_buffer(MemoryBuffer *output,
         }
 
         sort(vec.begin(), vec.end());
-        std::cout << "x: " << x << " y: " << y << std::endl;
-        for (int i = 0; i < 4; i++)
-        {
-          std::cout << "\t" << vec[i].first << " " << vec[i].second << std::endl;
-        }
-        //out.at<float>(y, x * dim + c) = static_cast<float>(sum[vec[0].second]);
         float res = static_cast<float>(sum[vec[0].second]);
 
         output->get_value(x, y, ch) = res;
