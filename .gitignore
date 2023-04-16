@@ -50,7 +50,6 @@ waveletNoiseTile.bin
 # testing environment
 /Testing/
 
-
 # Translations.
 /locale/user-config.py
 
