@@ -155,11 +155,11 @@ struct BLI_mempool {
 static void mempool_poison(BLI_mempool *pool)
 {
 #ifdef WITH_ASAN
-  BLI_mutex_unlock(&pool->mutex);
-
   char *ptr = (char *)pool;
   size_t offset = offsetof(BLI_mempool, mutex) + sizeof(ThreadMutex);
   BLI_asan_poison(ptr + offset, sizeof(*pool) - offset);
+
+  BLI_mutex_unlock(&pool->mutex);
 #endif
 }
 
