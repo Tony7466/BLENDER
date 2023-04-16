@@ -155,10 +155,8 @@ struct BLI_mempool {
 static void mempool_poison(BLI_mempool *pool)
 {
 #ifdef WITH_ASAN
-  char *ptr = (char *)pool;
   size_t offset = offsetof(BLI_mempool, mutex) + sizeof(ThreadMutex);
-  BLI_asan_poison(ptr + offset, sizeof(*pool) - offset);
-
+  BLI_asan_poison(POINTER_OFFSET(pool, offset), sizeof(*pool) - offset);
   BLI_mutex_unlock(&pool->mutex);
 #endif
 }
@@ -166,9 +164,8 @@ static void mempool_poison(BLI_mempool *pool)
 static void mempool_poison_no_unlock(BLI_mempool *pool)
 {
 #ifdef WITH_ASAN
-  char *ptr = (char *)pool;
   size_t offset = offsetof(BLI_mempool, mutex) + sizeof(ThreadMutex);
-  BLI_asan_poison(ptr + offset, sizeof(*pool) - offset);
+  BLI_asan_poison(POINTER_OFFSET(pool, offset), sizeof(*pool) - offset);
 #endif
 }
 
@@ -176,10 +173,8 @@ static void mempool_unpoison(BLI_mempool *pool)
 {
 #ifdef WITH_ASAN
   BLI_mutex_lock(&pool->mutex);
-
-  char *ptr = (char *)pool;
   size_t offset = offsetof(BLI_mempool, mutex) + sizeof(ThreadMutex);
-  BLI_asan_unpoison(ptr + offset, sizeof(*pool) - offset);
+  BLI_asan_unpoison(POINTER_OFFSET(pool, offset), sizeof(*pool) - offset);
 #endif
 }
 
