@@ -8,7 +8,7 @@
 
 #include "DNA_brush_types.h"
 #include "DNA_defaults.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_material_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -23,7 +23,7 @@
 #include "BKE_brush.h"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
-#include "BKE_gpencil.h"
+#include "BKE_gpencil_legacy.h"
 #include "BKE_icons.h"
 #include "BKE_idtype.h"
 #include "BKE_lib_id.h"
@@ -2575,4 +2575,27 @@ struct ImBuf *BKE_brush_gen_radial_control_imbuf(Brush *br, bool secondary, bool
   }
 
   return im;
+}
+
+bool BKE_brush_has_cube_tip(const Brush *brush, ePaintMode paint_mode)
+{
+  switch (paint_mode) {
+    case PAINT_MODE_SCULPT: {
+      if (brush->sculpt_tool == SCULPT_TOOL_MULTIPLANE_SCRAPE) {
+        return true;
+      }
+
+      if (ELEM(brush->sculpt_tool, SCULPT_TOOL_CLAY_STRIPS, SCULPT_TOOL_PAINT) &&
+          brush->tip_roundness < 1.0f) {
+        return true;
+      }
+
+      break;
+    }
+    default: {
+      break;
+    }
+  }
+
+  return false;
 }

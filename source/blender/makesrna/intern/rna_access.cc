@@ -752,7 +752,6 @@ PropertyRNA *RNA_struct_find_property(PointerRNA *ptr, const char *identifier)
   return nullptr;
 }
 
-/* Find the property which uses the given nested struct */
 PropertyRNA *rna_struct_find_nested(PointerRNA *ptr, StructRNA *srna)
 {
   PropertyRNA *prop = nullptr;
@@ -2390,7 +2389,7 @@ void RNA_property_boolean_set_array(PointerRNA *ptr, PropertyRNA *prop, const bo
       }
       else if (idprop->subtype == IDP_INT) {
         /* Support writing to integer and boolean IDProperties, since boolean
-        RNA properties used to be stored with integer IDProperties. */
+         * RNA properties used to be stored with integer IDProperties. */
         int *values_dst = static_cast<int *>(IDP_Array(idprop));
         for (uint i = 0; i < idprop->len; i++) {
           values_dst[i] = int(values[i]);
@@ -4893,9 +4892,7 @@ void *rna_iterator_listbase_get(CollectionPropertyIterator *iter)
   return internal->link;
 }
 
-void rna_iterator_listbase_end(CollectionPropertyIterator * /*iter*/)
-{
-}
+void rna_iterator_listbase_end(CollectionPropertyIterator * /*iter*/) {}
 
 PointerRNA rna_listbase_lookup_int(PointerRNA *ptr, StructRNA *type, ListBase *lb, int index)
 {

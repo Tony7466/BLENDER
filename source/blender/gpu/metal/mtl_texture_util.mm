@@ -176,7 +176,7 @@ MTLPixelFormat gpu_texture_format_to_metal(eGPUTextureFormat tex_format)
       return MTLPixelFormatDepth32Float;
     case GPU_DEPTH_COMPONENT24:
       /* This formal is not supported on Metal.
-       * Use 32Float depth instead with some conversion steps for download and upload.  */
+       * Use 32Float depth instead with some conversion steps for download and upload. */
       return MTLPixelFormatDepth32Float;
     case GPU_DEPTH_COMPONENT16:
       return MTLPixelFormatDepth16Unorm;
@@ -402,9 +402,13 @@ id<MTLComputePipelineState> gpu::MTLTexture::mtl_texture_update_impl(
                                                          options:options
                                                            error:&error] autorelease];
     if (error) {
-      NSLog(@"Compile Error - Metal Shader Library error %@ ", error);
-      BLI_assert(false);
-      return nullptr;
+      /* Only exit out if genuine error and not warning. */
+      if ([[error localizedDescription] rangeOfString:@"Compilation succeeded"].location ==
+          NSNotFound) {
+        NSLog(@"Compile Error - Metal Shader Library error %@ ", error);
+        BLI_assert(false);
+        return nil;
+      }
     }
 
     /* Fetch compute function. */
@@ -582,7 +586,7 @@ void gpu::MTLTexture::update_sub_depth_2d(
                                                       GPU_TEXTURE_USAGE_ATTACHMENT,
                                                   nullptr);
   GPU_texture_filter_mode(r32_tex_tmp, false);
-  GPU_texture_wrap_mode(r32_tex_tmp, false, true);
+  GPU_texture_extend_mode(r32_tex_tmp, GPU_SAMPLER_EXTEND_MODE_EXTEND);
   gpu::MTLTexture *mtl_tex = static_cast<gpu::MTLTexture *>(unwrap(r32_tex_tmp));
   mtl_tex->update_sub(mip, offset, extent, type, data);
 
@@ -718,9 +722,13 @@ id<MTLComputePipelineState> gpu::MTLTexture::mtl_texture_read_impl(
                                                          options:options
                                                            error:&error] autorelease];
     if (error) {
-      NSLog(@"Compile Error - Metal Shader Library error %@ ", error);
-      BLI_assert(false);
-      return nil;
+      /* Only exit out if genuine error and not warning. */
+      if ([[error localizedDescription] rangeOfString:@"Compilation succeeded"].location ==
+          NSNotFound) {
+        NSLog(@"Compile Error - Metal Shader Library error %@ ", error);
+        BLI_assert(false);
+        return nil;
+      }
     }
 
     /* Fetch compute function. */

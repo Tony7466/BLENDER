@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+ * Copyright 2020 Blender Foundation */
 
 /** \file
  * \ingroup edsculpt
@@ -21,9 +21,9 @@
 
 #include "BKE_brush.h"
 #include "BKE_context.h"
+#include "BKE_modifier.h"
 #include "BKE_paint.h"
 #include "BKE_pbvh.h"
-#include "BKE_modifier.h"
 
 #include "DEG_depsgraph.h"
 
@@ -31,9 +31,8 @@
 #include "WM_types.h"
 
 #include "ED_screen.h"
-#include "ED_view3d.h"
 #include "ED_util.h"
-#include "ED_screen.h"
+#include "ED_view3d.h"
 
 #include "paint_intern.h"
 #include "sculpt_intern.hh"
@@ -118,7 +117,7 @@ void SCULPT_filter_cache_init(bContext *C,
   SculptSession *ss = ob->sculpt;
   PBVH *pbvh = ob->sculpt->pbvh;
 
-  ss->filter_cache = MEM_cnew<FilterCache>(__func__);
+  ss->filter_cache = MEM_new<FilterCache>(__func__);
   ss->filter_cache->start_filter_strength = start_strength;
   ss->filter_cache->random_seed = rand();
 
@@ -133,14 +132,11 @@ void SCULPT_filter_cache_init(bContext *C,
   search_data.radius_squared = FLT_MAX;
   search_data.ignore_fully_ineffective = true;
 
-  BKE_pbvh_search_gather(pbvh,
-                         SCULPT_search_sphere_cb,
-                         &search_data,
-                         &ss->filter_cache->nodes,
-                         &ss->filter_cache->totnode);
+  ss->filter_cache->nodes = blender::bke::pbvh::search_gather(
+      pbvh, SCULPT_search_sphere_cb, &search_data);
 
-  for (int i = 0; i < ss->filter_cache->totnode; i++) {
-    BKE_pbvh_node_mark_normals_update(ss->filter_cache->nodes[i]);
+  for (PBVHNode *node : ss->filter_cache->nodes) {
+    BKE_pbvh_node_mark_normals_update(node);
   }
 
   /* `mesh->runtime.subdiv_ccg` is not available. Updating of the normals is done during drawing.
@@ -156,9 +152,9 @@ void SCULPT_filter_cache_init(bContext *C,
   data.filter_undo_type = undo_type;
 
   TaskParallelSettings settings;
-  BKE_pbvh_parallel_range_settings(&settings, true, ss->filter_cache->totnode);
+  BKE_pbvh_parallel_range_settings(&settings, true, ss->filter_cache->nodes.size());
   BLI_task_parallel_range(
-      0, ss->filter_cache->totnode, &data, filter_cache_init_task_cb, &settings);
+      0, ss->filter_cache->nodes.size(), &data, filter_cache_init_task_cb, &settings);
 
   /* Setup orientation matrices. */
   copy_m4_m4(ss->filter_cache->obmat, ob->object_to_world);
@@ -181,8 +177,7 @@ void SCULPT_filter_cache_init(bContext *C,
   float mval_fl[2] = {float(mval[0]), float(mval[1])};
 
   if (vc.rv3d && SCULPT_stroke_get_location(C, co, mval_fl, false)) {
-    PBVHNode **nodes;
-    int totnode;
+    Vector<PBVHNode *> nodes;
 
     /* Get radius from brush. */
     Brush *brush = BKE_paint_brush(&sd->paint);
@@ -207,18 +202,15 @@ void SCULPT_filter_cache_init(bContext *C,
     search_data2.radius_squared = radius * radius;
     search_data2.ignore_fully_ineffective = true;
 
-    BKE_pbvh_search_gather(pbvh, SCULPT_search_sphere_cb, &search_data2, &nodes, &totnode);
+    nodes = blender::bke::pbvh::search_gather(pbvh, SCULPT_search_sphere_cb, &search_data2);
 
     if (BKE_paint_brush(&sd->paint) &&
-        SCULPT_pbvh_calc_area_normal(
-            brush, ob, nodes, totnode, true, ss->filter_cache->initial_normal)) {
+        SCULPT_pbvh_calc_area_normal(brush, ob, nodes, true, ss->filter_cache->initial_normal)) {
       copy_v3_v3(ss->last_normal, ss->filter_cache->initial_normal);
     }
     else {
       copy_v3_v3(ss->filter_cache->initial_normal, ss->last_normal);
     }
-
-    MEM_SAFE_FREE(nodes);
 
     /* Update last stroke location */
 
@@ -258,7 +250,6 @@ void SCULPT_filter_cache_free(SculptSession *ss)
   if (ss->filter_cache->automasking) {
     SCULPT_automasking_cache_free(ss->filter_cache->automasking);
   }
-  MEM_SAFE_FREE(ss->filter_cache->nodes);
   MEM_SAFE_FREE(ss->filter_cache->mask_update_it);
   MEM_SAFE_FREE(ss->filter_cache->prev_mask);
   MEM_SAFE_FREE(ss->filter_cache->normal_factor);
@@ -268,7 +259,7 @@ void SCULPT_filter_cache_free(SculptSession *ss)
   MEM_SAFE_FREE(ss->filter_cache->detail_directions);
   MEM_SAFE_FREE(ss->filter_cache->limit_surface_co);
   MEM_SAFE_FREE(ss->filter_cache->pre_smoothed_color);
-  MEM_SAFE_FREE(ss->filter_cache);
+  MEM_delete<FilterCache>(ss->filter_cache);
 }
 
 typedef enum eSculptMeshFilterType {
@@ -739,24 +730,22 @@ wmKeyMap *filter_mesh_modal_keymap(wmKeyConfig *keyconf)
   return keymap;
 }
 
-static void sculpt_mesh_update_status_bar(bContext* C, wmOperator* op) {
+static void sculpt_mesh_update_status_bar(bContext *C, wmOperator *op)
+{
   char header[UI_MAX_DRAW_STR];
   char buf[UI_MAX_DRAW_STR];
   int available_len = sizeof(buf);
 
-
-  char* p = buf;
+  char *p = buf;
 #define WM_MODALKEY(_id) \
   WM_modalkeymap_operator_items_to_string_buf( \
       op->type, (_id), true, UI_MAX_SHORTCUT_STR, &available_len, &p)
 
-  BLI_snprintf(
-      header,
-      sizeof(header),
-      TIP_("%s: Confirm, %s: Cancel"),
-      WM_MODALKEY(FILTER_MESH_MODAL_CONFIRM),
-      WM_MODALKEY(FILTER_MESH_MODAL_CANCEL)
-  );
+  BLI_snprintf(header,
+               sizeof(header),
+               TIP_("%s: Confirm, %s: Cancel"),
+               WM_MODALKEY(FILTER_MESH_MODAL_CONFIRM),
+               WM_MODALKEY(FILTER_MESH_MODAL_CANCEL));
 
 #undef WM_MODALKEY
 
@@ -781,12 +770,13 @@ static void sculpt_mesh_filter_apply(bContext *C, wmOperator *op)
   data.filter_strength = filter_strength;
 
   TaskParallelSettings settings;
-  BKE_pbvh_parallel_range_settings(&settings, true, ss->filter_cache->totnode);
-  BLI_task_parallel_range(0, ss->filter_cache->totnode, &data, mesh_filter_task_cb, &settings);
+  BKE_pbvh_parallel_range_settings(&settings, true, ss->filter_cache->nodes.size());
+  BLI_task_parallel_range(
+      0, ss->filter_cache->nodes.size(), &data, mesh_filter_task_cb, &settings);
 
   if (filter_type == MESH_FILTER_SURFACE_SMOOTH) {
     BLI_task_parallel_range(0,
-                            ss->filter_cache->totnode,
+                            ss->filter_cache->nodes.size(),
                             &data,
                             mesh_filter_surface_smooth_displace_task_cb,
                             &settings);
@@ -813,7 +803,7 @@ static void sculpt_mesh_update_strength(wmOperator *op,
 {
   const float len = prev_press_mouse[0] - mouse[0];
 
-  float filter_strength = ss->filter_cache->start_filter_strength * -len * 0.001f * UI_DPI_FAC;
+  float filter_strength = ss->filter_cache->start_filter_strength * -len * 0.001f * UI_SCALE_FAC;
   RNA_float_set(op->ptr, "strength", filter_strength);
 }
 static void sculpt_mesh_filter_apply_with_history(bContext *C, wmOperator *op)
@@ -857,37 +847,37 @@ static void sculpt_mesh_filter_end(bContext *C)
   SCULPT_flush_update_done(C, ob, SCULPT_UPDATE_COORDS);
 }
 
-static int sculpt_mesh_filter_confirm(SculptSession *ss, wmOperator* op, const eSculptMeshFilterType filter_type) {
+static int sculpt_mesh_filter_confirm(SculptSession *ss,
+                                      wmOperator *op,
+                                      const eSculptMeshFilterType filter_type)
+{
 
-    float initial_strength = ss->filter_cache->start_filter_strength;
-    /* Don't update strength property if we're storing an event history. */
-    if (sculpt_mesh_filter_is_continuous(filter_type)) {
-      RNA_float_set(op->ptr, "strength", initial_strength);
-    }
+  float initial_strength = ss->filter_cache->start_filter_strength;
+  /* Don't update strength property if we're storing an event history. */
+  if (sculpt_mesh_filter_is_continuous(filter_type)) {
+    RNA_float_set(op->ptr, "strength", initial_strength);
+  }
 
-    return OPERATOR_FINISHED;
+  return OPERATOR_FINISHED;
 }
 
 static void sculpt_mesh_filter_cancel(bContext *C, wmOperator * /*op*/)
 {
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
-  PBVHNode **nodes;
-  int nodes_num;
 
   if (!ss || !ss->pbvh) {
     return;
   }
 
   /* Gather all PBVH leaf nodes. */
-  BKE_pbvh_search_gather(ss->pbvh, nullptr, nullptr, &nodes, &nodes_num);
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, nullptr, nullptr);
 
-  for (int i : IndexRange(nodes_num)) {
-    PBVHNode *node = nodes[i];
+  for (PBVHNode *node : nodes) {
     PBVHVertexIter vd;
 
     SculptOrigVertData orig_data;
-    SCULPT_orig_vert_data_init(&orig_data, ob, nodes[i], SCULPT_UNDO_COORDS);
+    SCULPT_orig_vert_data_init(&orig_data, ob, node, SCULPT_UNDO_COORDS);
 
     BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
       SCULPT_orig_vert_data_update(&orig_data, &vd);
@@ -899,7 +889,6 @@ static void sculpt_mesh_filter_cancel(bContext *C, wmOperator * /*op*/)
     BKE_pbvh_node_mark_update(node);
   }
 
-  MEM_SAFE_FREE(nodes);
   BKE_pbvh_update_bounds(ss->pbvh, PBVH_UpdateBB);
 }
 
@@ -912,7 +901,7 @@ static int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *
 
   WM_cursor_modal_set(CTX_wm_window(C), WM_CURSOR_EW_SCROLL);
   sculpt_mesh_update_status_bar(C, op);
-    
+
   if (event->type == EVT_MODAL_MAP) {
     int ret = OPERATOR_FINISHED;
     switch (event->val) {
@@ -922,14 +911,14 @@ static int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *
         ret = OPERATOR_CANCELLED;
         break;
 
-      case FILTER_MESH_MODAL_CONFIRM: 
+      case FILTER_MESH_MODAL_CONFIRM:
         ret = sculpt_mesh_filter_confirm(ss, op, filter_type);
         SCULPT_undo_push_end_ex(ob, false);
         break;
     }
 
     sculpt_mesh_filter_end(C);
-    ED_workspace_status_text(C, nullptr);  /* Clear status bar */
+    ED_workspace_status_text(C, nullptr); /* Clear status bar */
     WM_cursor_modal_restore(CTX_wm_window(C));
 
     return ret;
@@ -974,7 +963,9 @@ static int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *
   return OPERATOR_RUNNING_MODAL;
 }
 
-static void sculpt_filter_specific_init(const eSculptMeshFilterType filter_type, wmOperator* op, SculptSession* ss)
+static void sculpt_filter_specific_init(const eSculptMeshFilterType filter_type,
+                                        wmOperator *op,
+                                        SculptSession *ss)
 {
   switch (filter_type) {
     case MESH_FILTER_SURFACE_SMOOTH: {
@@ -1175,10 +1166,11 @@ void SCULPT_OT_mesh_filter(wmOperatorType *ot)
   ot->ui = sculpt_mesh_ui_exec;
 
   /* Doesn't seem to actually be called?
-     Check `sculpt_mesh_filter_modal` to see where it's really called. */
-  ot->cancel = sculpt_mesh_filter_cancel; 
+   * Check `sculpt_mesh_filter_modal` to see where it's really called. */
+  ot->cancel = sculpt_mesh_filter_cancel;
 
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_GRAB_CURSOR_X | OPTYPE_BLOCKING | OPTYPE_DEPENDS_ON_CURSOR;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_GRAB_CURSOR_X | OPTYPE_BLOCKING |
+             OPTYPE_DEPENDS_ON_CURSOR;
 
   /* RNA. */
   SCULPT_mesh_filter_properties(ot);
