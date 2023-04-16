@@ -9242,6 +9242,31 @@ static void def_cmp_denoise(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
+static void def_cmp_kuwahara(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  RNA_def_struct_sdna_from(srna, "NodeKuwaharaData", "storage");
+
+  static const EnumPropertyItem variation_items[] = {
+      {0, "CLASSIC", 0, "Classic", "Fast but less accurate variation"},
+      {1, "ANISOTROPIC", 0, "Anisotropic", "Accurate but slower variation"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  prop = RNA_def_property(srna, "kernel_size", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, NULL, "kernel_size");
+  RNA_def_property_ui_text(
+      prop, "Kernel Size", "Kernel size of filter. The larger the stronger the effect");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "variation", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "variation");
+  RNA_def_property_enum_items(prop, variation_items);
+  RNA_def_property_ui_text(prop, "", "Variation of Kuwahara filter to use.");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
 static void def_cmp_antialiasing(StructRNA *srna)
 {
   PropertyRNA *prop;

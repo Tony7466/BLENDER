@@ -61,6 +61,7 @@
 #include "COM_InvertNode.h"
 #include "COM_KeyingNode.h"
 #include "COM_KeyingScreenNode.h"
+#include "COM_KuwaharaNode.h"
 #include "COM_LensDistortionNode.h"
 #include "COM_LuminanceMatteNode.h"
 #include "COM_MapRangeNode.h"
@@ -434,6 +435,9 @@ Node *COM_convert_bnode(bNode *b_node)
       break;
     case CMP_NODE_COMBINE_XYZ:
       node = new CombineXYZNode(b_node);
+      break;
+    case CMP_NODE_KUWAHARA:
+      node = new KuwaharaNode(b_node);
       break;
   }
   return node;

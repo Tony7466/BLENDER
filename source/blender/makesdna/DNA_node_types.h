@@ -876,6 +876,12 @@ typedef struct NodeBilateralBlurData {
   char _pad[2];
 } NodeBilateralBlurData;
 
+typedef struct NodeKuwaharaData {
+  short kernel_size;
+  short variation;
+  char _pad[4];
+} NodeKuwaharaData;
+
 typedef struct NodeAntiAliasingData {
   float threshold;
   float contrast_limit;

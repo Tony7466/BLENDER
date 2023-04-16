@@ -336,6 +336,7 @@ compositor_node_categories = [
         NodeItem("CompositorNodeSunBeams"),
         NodeItem("CompositorNodeDenoise"),
         NodeItem("CompositorNodeAntiAliasing"),
+        NodeItem("CompositorNodeKuwahara"),
     ]),
     CompositorNodeCategory("CMP_OP_VECTOR", "Vector", items=[
         NodeItem("CompositorNodeNormal"),
