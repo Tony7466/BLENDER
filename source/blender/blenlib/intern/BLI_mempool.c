@@ -24,11 +24,7 @@
 #include "BLI_mempool.h"         /* own include */
 #include "BLI_mempool_private.h" /* own include */
 
-#if !defined(WITH_DNA_GHASH) && (defined(__SANITIZE_ADDRESS__) || __has_feature(address_sanitizer))
-#  define HAVE_ASAN_AND_THREADS
-#endif
-
-#ifdef HAVE_ASAN_AND_THREADS
+#ifdef WITH_ASAN
 #  include "BLI_threads.h"
 #endif
 
@@ -40,7 +36,7 @@
 #  include "valgrind/memcheck.h"
 #endif
 
-#if (defined(__SANITIZE_ADDRESS__) || __has_feature(address_sanitizer))
+#ifdef WITH_ASAN
 #  define POISON_REDZONE_SIZE 32
 #  define HAVE_MEMPOOL_ASAN
 #else
@@ -111,8 +107,8 @@ typedef struct BLI_mempool_chunk {
  * The mempool, stores and tracks memory \a chunks and elements within those chunks \a free.
  */
 struct BLI_mempool {
-  /* Add a lock if address sanitizer is on but not when compiling makesdna. */
-#ifdef HAVE_ASAN_AND_THREADS
+  /* Serialize access to mempools when debugging wih ASAN. */
+#ifdef WITH_ASAN
   ThreadMutex mutex;
 #endif
   /** Single linked list of allocated chunks. */
@@ -158,49 +154,32 @@ struct BLI_mempool {
 
 static void mempool_poison(BLI_mempool *pool)
 {
-#if (defined(__SANITIZE_ADDRESS__) || __has_feature(address_sanitizer))
-#  ifndef WITH_DNA_GHASH
+#ifdef WITH_ASAN
   BLI_mutex_unlock(&pool->mutex);
-#  endif
 
-#  ifndef WITH_DNA_GHASH
   char *ptr = (char *)pool;
   size_t offset = offsetof(BLI_mempool, mutex) + sizeof(ThreadMutex);
   BLI_asan_poison(ptr + offset, sizeof(*pool) - offset);
-#  else
-  BLI_asan_poison(pool, sizeof(*pool));
-#  endif
 #endif
 }
 
 static void mempool_poison_no_unlock(BLI_mempool *pool)
 {
-#if (defined(__SANITIZE_ADDRESS__) || __has_feature(address_sanitizer))
-
-#  ifndef WITH_DNA_GHASH
+#ifdef WITH_ASAN
   char *ptr = (char *)pool;
   size_t offset = offsetof(BLI_mempool, mutex) + sizeof(ThreadMutex);
   BLI_asan_poison(ptr + offset, sizeof(*pool) - offset);
-#  else
-  BLI_asan_poison(pool, sizeof(*pool));
-#  endif
 #endif
 }
 
 static void mempool_unpoison(BLI_mempool *pool)
 {
-#if (defined(__SANITIZE_ADDRESS__) || __has_feature(address_sanitizer))
-#  ifndef WITH_DNA_GHASH
+#ifdef WITH_ASAN
   BLI_mutex_lock(&pool->mutex);
-#  endif
 
-#  ifndef WITH_DNA_GHASH
   char *ptr = (char *)pool;
   size_t offset = offsetof(BLI_mempool, mutex) + sizeof(ThreadMutex);
   BLI_asan_unpoison(ptr + offset, sizeof(*pool) - offset);
-#  else
-  BLI_asan_unpoison(pool, sizeof(*pool));
-#  endif
 #endif
 }
 
@@ -353,7 +332,7 @@ BLI_mempool *BLI_mempool_create(uint esize, uint elem_num, uint pchunk, uint fla
   /* allocate the pool structure */
   pool = MEM_mallocN(sizeof(BLI_mempool), "memory pool");
 
-#if !defined(WITH_DNA_GHASH) && (defined(__SANITIZE_ADDRESS__) || __has_feature(address_sanitizer))
+#ifdef WITH_ASAN
   BLI_mutex_init(&pool->mutex);
 #endif
 
