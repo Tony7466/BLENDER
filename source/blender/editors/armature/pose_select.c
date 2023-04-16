@@ -92,7 +92,7 @@ void ED_pose_bone_select_tag_update(Object *ob)
   DEG_id_tag_update(&arm->id, ID_RECALC_SELECT);
 }
 
-void ED_pose_bone_select(Object *ob, bPoseChannel *pchan, bool select)
+void ED_pose_bone_select(Object *ob, bPoseChannel *pchan, bool select, const bool change_active)
 {
   bArmature *arm;
 
@@ -109,7 +109,7 @@ void ED_pose_bone_select(Object *ob, bPoseChannel *pchan, bool select)
     /* change selection state - activate too if selected */
     if (select) {
       pchan->bone->flag |= BONE_SELECTED;
-      arm->act_bone = pchan->bone;
+      arm->act_bone = change_active ? pchan->bone : arm->act_bone;
     }
     else {
       pchan->bone->flag &= ~BONE_SELECTED;

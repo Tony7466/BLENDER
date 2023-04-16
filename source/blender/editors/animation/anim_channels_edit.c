@@ -214,7 +214,7 @@ void ANIM_set_active_channel(bAnimContext *ac,
   ANIM_animdata_freelist(&anim_data);
 }
 
-static void select_pchan_for_action_group(bAnimContext *ac, bActionGroup *agrp, bAnimListElem *ale)
+static void select_pchan_for_action_group(bAnimContext *ac, bActionGroup *agrp, bAnimListElem *ale, const bool change_active)
 {
   /* Armatures-Specific Feature:
    * See mouse_anim_channels() -> ANIMTYPE_GROUP case for more details (#38737)
@@ -230,11 +230,12 @@ static void select_pchan_for_action_group(bAnimContext *ac, bActionGroup *agrp, 
          * TODO: check the first F-Curve or so to be sure...
          */
         bPoseChannel *pchan = BKE_pose_channel_find_name(ob->pose, agrp->name);
+
         if (agrp->flag & AGRP_SELECTED) {
-          ED_pose_bone_select(ob, pchan, true);
+          ED_pose_bone_select(ob, pchan, true, change_active);
         }
         else {
-          ED_pose_bone_select(ob, pchan, false);
+          ED_pose_bone_select(ob, pchan, false, change_active);
         }
       }
     }
@@ -372,7 +373,7 @@ static void anim_channels_select_set(bAnimContext *ac,
       case ANIMTYPE_GROUP: {
         bActionGroup *agrp = (bActionGroup *)ale->data;
         ACHANNEL_SET_FLAG(agrp, sel, AGRP_SELECTED);
-        select_pchan_for_action_group(ac, agrp, ale);
+        select_pchan_for_action_group(ac, agrp, ale, true);
         agrp->flag &= ~AGRP_ACTIVE;
         break;
       }
@@ -2747,7 +2748,7 @@ static void box_select_anim_channels(bAnimContext *ac, rcti *rect, short selectm
       switch (ale->type) {
         case ANIMTYPE_GROUP: {
           bActionGroup *agrp = (bActionGroup *)ale->data;
-          select_pchan_for_action_group(ac, agrp, ale);
+          select_pchan_for_action_group(ac, agrp, ale, true);
           /* always clear active flag after doing this */
           agrp->flag &= ~AGRP_ACTIVE;
           break;
@@ -3184,21 +3185,27 @@ static void animchannel_select_range(bAnimContext *ac, bAnimListElem *cursor_ele
     }
     /* Restrict selection when active element is not found and group-channels are excluded from the
      * selection. */
-      if (is_active_elem || is_cursor_elem) {
-        /* Select first and last element from the range. Reverse selection status on extremes. */
-        ANIM_channel_setting_set(ac, ale, ACHANNEL_SETTING_SELECT, ACHANNEL_SETFLAG_ADD);
-        in_selection_range = !in_selection_range;
+    if (is_active_elem || is_cursor_elem) {
+      /* Select first and last element from the range. Reverse selection status on extremes. */
+      ANIM_channel_setting_set(ac, ale, ACHANNEL_SETTING_SELECT, ACHANNEL_SETFLAG_ADD);
+      in_selection_range = !in_selection_range;
+      if (ale->type == ANIMTYPE_GROUP) {
+        select_pchan_for_action_group(ac, (bActionGroup *)ale->data, ale, false);
       }
-      else if (in_selection_range) {
-        /* Select elements between the range. */
-        ANIM_channel_setting_set(ac, ale, ACHANNEL_SETTING_SELECT, ACHANNEL_SETFLAG_ADD);
+    }
+    else if (in_selection_range) {
+      /* Select elements between the range. */
+      ANIM_channel_setting_set(ac, ale, ACHANNEL_SETTING_SELECT, ACHANNEL_SETFLAG_ADD);
+      if (ale->type == ANIMTYPE_GROUP) {
+        select_pchan_for_action_group(ac, (bActionGroup *)ale->data, ale, false);
       }
+    }
 
-      if (is_active_elem && is_cursor_elem) {
-        /* Selection range is only one element when active channel and clicked channel are same. So
-         * exit out of the loop when this condition is hit. */
-        break;
-      }
+    if (is_active_elem && is_cursor_elem) {
+      /* Selection range is only one element when active channel and clicked channel are same. So
+       * exit out of the loop when this condition is hit. */
+      break;
+    }
   }
 
   ANIM_animdata_freelist(&anim_data);
@@ -3369,17 +3376,17 @@ static int click_select_channel_group(bAnimContext *ac,
   if (agrp->flag & AGRP_SELECTED) {
     if (selectmode != SELECT_EXTEND_RANGE) {
       ANIM_set_active_channel(ac, ac->data, ac->datatype, filter, agrp, ANIMTYPE_GROUP);
-    }
-    if (pchan) {
-      ED_pose_bone_select(ob, pchan, true);
+      if (pchan) {
+        ED_pose_bone_select(ob, pchan, true, true);
+      }
     }
   }
   else {
     if (selectmode != SELECT_EXTEND_RANGE) {
       ANIM_set_active_channel(ac, ac->data, ac->datatype, filter, NULL, ANIMTYPE_GROUP);
-    }
-    if (pchan) {
-      ED_pose_bone_select(ob, pchan, false);
+      if (pchan) {
+        ED_pose_bone_select(ob, pchan, false, true);
+      }
     }
   }
 

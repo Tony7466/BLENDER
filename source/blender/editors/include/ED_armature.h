@@ -357,7 +357,7 @@ void ED_pose_bone_select_tag_update(struct Object *ob);
 /**
  * Utility method for changing the selection status of a bone.
  */
-void ED_pose_bone_select(struct Object *ob, struct bPoseChannel *pchan, bool select);
+void ED_pose_bone_select(struct Object *ob, struct bPoseChannel *pchan, bool select, const bool change_active);
 
 /* meshlaplacian.cc */
 
