@@ -219,7 +219,7 @@ class LayerGroup : public TreeNode {
 namespace convert {
 
 void legacy_gpencil_frame_to_grease_pencil_drawing(GreasePencilDrawing &drawing, bGPDframe &gpf);
-void legacy_gpencil_to_grease_pencil(GreasePencil &grease_pencil, bGPdata &gpd);
+void legacy_gpencil_to_grease_pencil(Main &main, GreasePencil &grease_pencil, bGPdata &gpd);
 
 }  // namespace convert
 

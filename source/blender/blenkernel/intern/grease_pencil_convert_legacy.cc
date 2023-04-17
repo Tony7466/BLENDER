@@ -7,6 +7,7 @@
 
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
+#include "BKE_material.h"
 
 #include "BLI_color.hh"
 #include "BLI_listbase.h"
@@ -167,7 +168,7 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(GreasePencilDrawing &drawing,
 #undef POINT_ATTRIBUTE
 }
 
-void legacy_gpencil_to_grease_pencil(GreasePencil &grease_pencil, bGPdata &gpd)
+void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, bGPdata &gpd)
 {
   using namespace blender::bke::greasepencil;
 
@@ -210,6 +211,8 @@ void legacy_gpencil_to_grease_pencil(GreasePencil &grease_pencil, bGPdata &gpd)
   }
 
   grease_pencil.runtime->set_active_layer_index(active_layer_index);
+
+  BKE_id_materials_copy(&bmain, &gpd.id, &grease_pencil.id);
 }
 
 }  // namespace blender::bke::greasepencil::convert
