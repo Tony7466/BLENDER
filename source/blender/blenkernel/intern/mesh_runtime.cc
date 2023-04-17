@@ -117,13 +117,9 @@ const blender::bke::LooseVertCache &Mesh::loose_verts_edge() const
     loose_verts.resize(this->totvert, true);
 
     int count = this->totvert;
-    for (const MEdge &edge : this->edges()) {
-      if (loose_verts[edge.v1]) {
-        loose_verts[edge.v1].reset();
-        count--;
-      }
-      if (loose_verts[edge.v2]) {
-        loose_verts[edge.v2].reset();
+    for (const int vert : this->edges().cast<int>()) {
+      if (loose_verts[vert]) {
+        loose_verts[vert].reset();
         count--;
       }
     }
