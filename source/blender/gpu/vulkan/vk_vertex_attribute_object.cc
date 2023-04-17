@@ -68,9 +68,8 @@ void VKVertexAttributeObject::bind(VKContext &context)
 
     /* Bind dynamic buffers from immediate mode. */
     if (attribute.binding < buffers.size()) {
-      BLI_assert(buffers[attribute.binding]);
-      VKBuffer &buffer = *buffers[attribute.binding];
-      context.command_buffer_get().bind(attribute.binding, buffer.vk_handle(), 0);
+      VKBufferWithOffset &buffer = buffers[attribute.binding];
+      context.command_buffer_get().bind(attribute.binding, buffer);
     }
   }
 }
@@ -108,9 +107,11 @@ void VKVertexAttributeObject::update_bindings(VKImmediate &immediate)
   const VKShaderInterface &interface = unwrap(unwrap(immediate.shader))->interface_get();
   AttributeMask occupied_attributes = 0;
 
+  VKBufferWithOffset immediate_buffer = {immediate.buffer_, immediate.subbuffer_offset_get()};
+
   update_bindings(immediate.vertex_format,
                   nullptr,
-                  &immediate.buffer_,
+                  &immediate_buffer,
                   immediate.vertex_len,
                   interface,
                   occupied_attributes,
@@ -121,7 +122,7 @@ void VKVertexAttributeObject::update_bindings(VKImmediate &immediate)
 
 void VKVertexAttributeObject::update_bindings(const GPUVertFormat &vertex_format,
                                               VKVertexBuffer *vertex_buffer,
-                                              VKBuffer *immediate_vertex_buffer,
+                                              VKBufferWithOffset *immediate_vertex_buffer,
                                               const int64_t vertex_len,
                                               const VKShaderInterface &interface,
                                               AttributeMask &r_occupied_attributes,
@@ -186,7 +187,7 @@ void VKVertexAttributeObject::update_bindings(const GPUVertFormat &vertex_format
         vbos.append(vertex_buffer);
       }
       if (immediate_vertex_buffer) {
-        buffers.append(immediate_vertex_buffer);
+        buffers.append(*immediate_vertex_buffer);
       }
     }
   }

@@ -5,6 +5,7 @@
  * \ingroup gpu
  */
 
+#include "vk_buffer_types.hh"
 #include "vk_common.hh"
 
 #include "BLI_vector.hh"
@@ -32,7 +33,7 @@ struct VKVertexAttributeObject {
   /* Used for batches. */
   Vector<VKVertexBuffer *> vbos;
   /* Used for immediate mode. */
-  Vector<VKBuffer *> buffers;
+  Vector<VKBufferWithOffset> buffers;
 
   VKVertexAttributeObject();
   void clear();
@@ -48,7 +49,7 @@ struct VKVertexAttributeObject {
  private:
   void update_bindings(const GPUVertFormat &vertex_format,
                        VKVertexBuffer *vertex_buffer,
-                       VKBuffer *immediate_vertex_buffer,
+                       VKBufferWithOffset *immediate_vertex_buffer,
                        const int64_t vertex_len,
                        const VKShaderInterface &interface,
                        AttributeMask &r_occupied_attributes,

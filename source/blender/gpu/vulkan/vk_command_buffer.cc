@@ -83,13 +83,18 @@ void VKCommandBuffer::bind(const uint32_t binding,
   bind(binding, vertex_buffer.vk_handle(), offset);
 }
 
+void VKCommandBuffer::bind(const uint32_t binding, const VKBufferWithOffset &vertex_buffer)
+{
+  bind(binding, vertex_buffer.buffer.vk_handle(), vertex_buffer.offset);
+}
+
 void VKCommandBuffer::bind(const uint32_t binding,
-                           const VkBuffer &vk_buffer,
+                           const VkBuffer &vk_vertex_buffer,
                            const VkDeviceSize offset)
 {
   validate_framebuffer_exists();
   ensure_active_framebuffer();
-  vkCmdBindVertexBuffers(vk_command_buffer_, binding, 1, &vk_buffer, &offset);
+  vkCmdBindVertexBuffers(vk_command_buffer_, binding, 1, &vk_vertex_buffer, &offset);
 }
 
 void VKCommandBuffer::bind(const VKIndexBuffer &index_buffer, VkIndexType index_type)

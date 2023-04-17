@@ -16,23 +16,37 @@ namespace blender::gpu {
 VKImmediate::VKImmediate() {}
 VKImmediate::~VKImmediate() {}
 
+static VkDeviceSize new_buffer_size(size_t sub_buffer_size)
+{
+  return max_ii(sub_buffer_size, DEFAULT_INTERNAL_BUFFER_SIZE);
+}
+
 uchar *VKImmediate::begin()
 {
   VKContext &context = *VKContext::get();
   const size_t bytes_needed = vertex_buffer_size(&vertex_format, vertex_len);
-  if (!buffer_.is_allocated()) {
+  const bool new_buffer_needed = !buffer_.is_allocated() || buffer_bytes_free() < bytes_needed;
+  if (new_buffer_needed) {
+    /* TODO: get buffer from context.reusable_buffers. */
+    BLI_assert(!buffer_.is_allocated());
     buffer_.create(context,
-                   DEFAULT_INTERNAL_BUFFER_SIZE,
+                   new_buffer_size(bytes_needed),
                    GPU_USAGE_DYNAMIC,
                    static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
                                                       VK_BUFFER_USAGE_TRANSFER_DST_BIT));
+    buffer_offset_ = 0;
+    current_subbuffer_len_ = 0;
   }
 
-  /* TODO: Resize buffer when more is needed. Currently assert as we haven't implemented it yet. */
-  BLI_assert(bytes_needed < DEFAULT_INTERNAL_BUFFER_SIZE);
+  if (bytes_needed <= buffer_bytes_free()) {
+    current_subbuffer_len_ = bytes_needed;
+  }
+  else {
+    /* TODO allocate new buffer. */
+  }
 
   uchar *data = static_cast<uchar *>(buffer_.mapped_memory_get());
-  return data;
+  return data + subbuffer_offset_get();
 }
 
 void VKImmediate::end()
@@ -50,6 +64,18 @@ void VKImmediate::end()
   vertex_attributes_.bind(context);
 
   context.command_buffer_get().draw(0, vertex_len, 0, 1);
+  buffer_offset_ += current_subbuffer_len_;
+  current_subbuffer_len_ = 0;
+}
+
+VkDeviceSize VKImmediate::subbuffer_offset_get()
+{
+  return buffer_offset_;
+}
+
+VkDeviceSize VKImmediate::buffer_bytes_free()
+{
+  return buffer_.size_in_bytes() - subbuffer_offset_get();
 }
 
 /** \} */

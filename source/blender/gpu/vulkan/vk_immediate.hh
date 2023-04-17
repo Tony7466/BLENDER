@@ -28,6 +28,9 @@ class VKImmediate : public Immediate {
   VKBuffer buffer_;
   VKVertexAttributeObject vertex_attributes_;
 
+  VkDeviceSize buffer_offset_ = 0;
+  VkDeviceSize current_subbuffer_len_ = 0;
+
  public:
   VKImmediate();
   virtual ~VKImmediate();
@@ -36,6 +39,10 @@ class VKImmediate : public Immediate {
   void end(void) override;
 
   friend class VKVertexAttributeObject;
+
+ private:
+  VkDeviceSize subbuffer_offset_get();
+  VkDeviceSize buffer_bytes_free();
 };
 
 }  // namespace blender::gpu

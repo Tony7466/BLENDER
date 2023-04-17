@@ -234,6 +234,7 @@ set(VULKAN_SRC
 
   vulkan/vk_backend.hh
   vulkan/vk_batch.hh
+  vulkan/vk_buffer_types.hh
   vulkan/vk_buffer.hh
   vulkan/vk_command_buffer.hh
   vulkan/vk_common.hh

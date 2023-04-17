@@ -33,7 +33,10 @@ class VKBatch;
  *   use late construction for compute pipelines.
  */
 class VKPipeline : NonCopyable {
+  /* Active pipeline handle. */
   VkPipeline vk_pipeline_ = VK_NULL_HANDLE;
+  /** Keep track of all pipelines as they can still be in flight. */
+  Vector<VkPipeline> vk_pipelines_;
   VKDescriptorSetTracker descriptor_set_;
   VKPushConstants push_constants_;
   VKPipelineStateManager state_manager_;
@@ -52,6 +55,8 @@ class VKPipeline : NonCopyable {
     other.vk_pipeline_ = VK_NULL_HANDLE;
     descriptor_set_ = std::move(other.descriptor_set_);
     push_constants_ = std::move(other.push_constants_);
+    vk_pipelines_ = std::move(other.vk_pipelines_);
+    other.vk_pipelines_.clear();
     return *this;
   }
 

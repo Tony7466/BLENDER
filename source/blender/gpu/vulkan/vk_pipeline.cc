@@ -36,8 +36,8 @@ VKPipeline::~VKPipeline()
 {
   VK_ALLOCATION_CALLBACKS
   VkDevice vk_device = VKContext::get()->device_get();
-  if (vk_pipeline_ != VK_NULL_HANDLE) {
-    vkDestroyPipeline(vk_device, vk_pipeline_, vk_allocation_callbacks);
+  for (VkPipeline vk_pipeline : vk_pipelines_) {
+    vkDestroyPipeline(vk_device, vk_pipeline, vk_allocation_callbacks);
   }
 }
 
@@ -171,6 +171,10 @@ void VKPipeline::finalize(VKContext &context,
   VkDevice vk_device = context.device_get();
   vkCreateGraphicsPipelines(
       vk_device, VK_NULL_HANDLE, 1, &pipeline_create_info, vk_allocation_callbacks, &vk_pipeline_);
+  /* TODO: we should cache several pipeline instances and detect pipelines we can reuse. This might
+   * also be done using a VkPipelineCache. For now we just destroy any available pipeline so it
+   * won't be overwritten by the newly created one. */
+  vk_pipelines_.append(vk_pipeline_);
 }
 
 }  // namespace blender::gpu
