@@ -43,8 +43,6 @@ static constexpr sycl::specialization_id<RTCFeatureFlags> oneapi_embree_features
 #  define IF_NOT_USING_EMBREE
 #endif
 
-#define __BVH2__
-
 CCL_NAMESPACE_BEGIN
 
 #ifdef __BVH2__
