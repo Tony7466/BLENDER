@@ -11,6 +11,7 @@
 #include "BLI_serialize.hh"
 #include "BLI_vector.hh"
 
+#include "WM_api.h"
 #include "WM_types.h"
 
 #include "ED_screen.h"
@@ -824,6 +825,7 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
 
   scene->r.cfra = old_frame;
   DEG_time_tag_update(bmain);
+  WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, nullptr);
 
   return OPERATOR_FINISHED;
 }
