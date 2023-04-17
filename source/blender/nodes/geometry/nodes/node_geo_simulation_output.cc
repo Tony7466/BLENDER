@@ -17,31 +17,63 @@
 
 namespace blender::nodes {
 
+static std::unique_ptr<SocketDeclaration> socket_declaration_for_simulation_item(
+    const NodeSimulationItem &item, eNodeSocketInOut in_out)
+{
+  std::unique_ptr<SocketDeclaration> decl;
+  switch (eNodeSocketDatatype(item.socket_type)) {
+    case SOCK_FLOAT:
+      decl = std::make_unique<decl::Float>();
+      break;
+    case SOCK_VECTOR:
+      decl = std::make_unique<decl::Vector>();
+      break;
+    case SOCK_RGBA:
+      decl = std::make_unique<decl::Color>();
+      break;
+    case SOCK_BOOLEAN:
+      decl = std::make_unique<decl::Bool>();
+      break;
+    case SOCK_INT:
+      decl = std::make_unique<decl::Int>();
+      break;
+    case SOCK_STRING:
+      decl = std::make_unique<decl::String>();
+      break;
+    case SOCK_OBJECT:
+      decl = std::make_unique<decl::Object>();
+      break;
+    case SOCK_GEOMETRY:
+      decl = std::make_unique<decl::Geometry>();
+      break;
+    case SOCK_COLLECTION:
+      decl = std::make_unique<decl::Collection>();
+      break;
+    case SOCK_TEXTURE:
+      decl = std::make_unique<decl::Texture>();
+      break;
+    case SOCK_IMAGE:
+      decl = std::make_unique<decl::Image>();
+      break;
+    case SOCK_MATERIAL:
+      decl = std::make_unique<decl::Material>();
+      break;
+    default:
+      BLI_assert_unreachable();
+  }
+
+  decl->name = item.name;
+  decl->identifier = item.name;
+  decl->in_out = in_out;
+  return decl;
+}
+
 void socket_declarations_for_simulation_items(const Span<NodeSimulationItem> items,
                                               NodeDeclaration &r_declaration)
 {
   for (const NodeSimulationItem &item : items) {
-    switch (eNodeSocketDatatype(item.socket_type)) {
-      case SOCK_GEOMETRY: {
-        {
-          std::unique_ptr<decl::Geometry> decl = std::make_unique<decl::Geometry>();
-          decl->name = item.name;
-          decl->identifier = item.name;
-          decl->in_out = SOCK_IN;
-          r_declaration.inputs.append(std::move(decl));
-        }
-        {
-          std::unique_ptr<decl::Geometry> decl = std::make_unique<decl::Geometry>();
-          decl->name = item.name;
-          decl->identifier = item.name;
-          decl->in_out = SOCK_OUT;
-          r_declaration.outputs.append(std::move(decl));
-        }
-        break;
-      }
-      default:
-        BLI_assert_unreachable();
-    }
+    r_declaration.inputs.append(socket_declaration_for_simulation_item(item, SOCK_IN));
+    r_declaration.outputs.append(socket_declaration_for_simulation_item(item, SOCK_OUT));
   }
   r_declaration.inputs.append(decl::create_extend_declaration(SOCK_IN));
   r_declaration.outputs.append(decl::create_extend_declaration(SOCK_OUT));
@@ -65,9 +97,6 @@ static bool simulation_items_unique_name_check(void *arg, const char *name)
 NodeSimulationItem *simulation_item_add_from_socket(NodeGeometrySimulationOutput &storage,
                                                     const bNodeSocket &socket)
 {
-  if (socket.type != SOCK_GEOMETRY) {
-    return nullptr;
-  }
   char unique_name[MAX_NAME + 4] = "";
   BLI_uniquename_cb(simulation_items_unique_name_check,
                     &storage,
@@ -96,8 +125,30 @@ NodeSimulationItem *simulation_item_add_from_socket(NodeGeometrySimulationOutput
 const CPPType &get_simulation_item_cpp_type(const NodeSimulationItem &item)
 {
   switch (item.socket_type) {
+    case SOCK_FLOAT:
+      return CPPType::get<ValueOrField<float>>();
+    case SOCK_VECTOR:
+      return CPPType::get<ValueOrField<float3>>();
+    case SOCK_RGBA:
+      return CPPType::get<ValueOrField<ColorGeometry4f>>();
+    case SOCK_BOOLEAN:
+      return CPPType::get<ValueOrField<bool>>();
+    case SOCK_INT:
+      return CPPType::get<ValueOrField<int>>();
+    case SOCK_STRING:
+      return CPPType::get<ValueOrField<std::string>>();
+    case SOCK_OBJECT:
+      return CPPType::get<Object *>();
     case SOCK_GEOMETRY:
       return CPPType::get<GeometrySet>();
+    case SOCK_COLLECTION:
+      return CPPType::get<Collection *>();
+    case SOCK_TEXTURE:
+      return CPPType::get<Tex *>();
+    case SOCK_IMAGE:
+      return CPPType::get<Image *>();
+    case SOCK_MATERIAL:
+      return CPPType::get<Material *>();
     default:
       BLI_assert_unreachable();
       return CPPType::get<GeometrySet>();
