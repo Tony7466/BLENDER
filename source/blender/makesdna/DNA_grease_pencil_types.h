@@ -120,6 +120,13 @@ typedef struct GreasePencilDrawingReference {
 } GreasePencilDrawingReference;
 
 /**
+ * Flag for grease pencil frames. #GreasePencilFrame.flag
+ */
+typedef enum GreasePencilFrameFlag {
+  GP_FRAME_SELECTED = (1 << 0),
+} GreasePencilFrameFlag;
+
+/**
  * A GreasePencilFrame is a single keyframe in the timeline.
  * It references a drawing by index into the drawing array.
  */
@@ -128,14 +135,12 @@ typedef struct GreasePencilFrame {
    * Index into the GreasePencil->drawings array.
    */
   int drawing_index;
-
   /**
    * Flag. Used to set e.g. the selection.
    */
   uint32_t flag;
-
   /**
-   * Keyframe type.
+   * Keyframe type. See `eBezTriple_KeyframeType`.
    */
   int8_t type;
   char _pad[3];
@@ -235,7 +240,7 @@ typedef struct GreasePencilLayer {
    */
   char *viewlayer_name;
   /**
-   * List of `GreasePencilLayerMask`.
+   * List of `GreasePencilLayerMask`. Only used for storage in the .blend file.
    */
   ListBase masks_storage;
   /**
@@ -281,18 +286,15 @@ typedef struct GreasePencilLayerTreeNode {
    * Indicates the type of struct this element is.
    */
   int8_t type;
-
   /**
    * Color tag.
    */
   uint8_t color[3];
-
   /**
    * Flag. Used to set e.g. the selection, visibility, ... status.
    * See `GreasePencilLayerTreeNodeFlag`.
    */
   uint32_t flag;
-
   /**
    * Name of the layer/group. Dynamic length.
    */

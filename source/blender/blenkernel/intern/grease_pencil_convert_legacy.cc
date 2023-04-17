@@ -25,7 +25,6 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(GreasePencilDrawing &drawing,
   new (&drawing.geometry) CurvesGeometry();
   drawing.base.type = GP_DRAWING;
   drawing.runtime = MEM_new<bke::GreasePencilDrawingRuntime>(__func__);
-  /* TODO: set flag. */
 
   /* Get the number of points, number of strokes and the offsets for each stroke. */
   Vector<int> offsets;
@@ -244,10 +243,11 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
       /* Convert the frame to a drawing. */
       legacy_gpencil_frame_to_grease_pencil_drawing(drawing, *gpf);
 
-      GreasePencilFrame frame;
-      frame.drawing_index = i;
-      frame.type = gpf->key_type;
-      new_layer.insert_frame(gpf->framenum, std::move(frame));
+      GreasePencilFrame new_frame;
+      new_frame.drawing_index = i;
+      new_frame.type = gpf->key_type;
+      SET_FLAG_FROM_TEST(new_frame.flag, (gpf->flag & GP_FRAME_SELECT), GP_FRAME_SELECTED);
+      new_layer.insert_frame(gpf->framenum, std::move(new_frame));
       i++;
     }
   }
