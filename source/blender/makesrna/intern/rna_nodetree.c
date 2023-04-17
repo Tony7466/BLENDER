@@ -4092,7 +4092,7 @@ static bool rna_GeometryNodeSimulationInput_pair_with_output(
 {
   bNodeTree *ntree = (bNodeTree *)id;
 
-  if (!node_geo_simulation_input_pair_with_output(ntree, node, output_node)) {
+  if (!NOD_geometry_simulation_input_pair_with_output(ntree, node, output_node)) {
     BKE_reportf(reports,
                 RPT_ERROR,
                 "Failed to pair simulation input node %s with output node %s",
@@ -5035,7 +5035,7 @@ static void def_vector_math(StructRNA *srna)
   RNA_def_property_enum_sdna(prop, NULL, "custom1");
   RNA_def_property_enum_items(prop, rna_enum_node_vec_math_items);
   RNA_def_property_ui_text(prop, "Operation", "");
-  RNA_def_struct_translation_context(srna, BLT_I18NCONTEXT_ID_NODETREE);
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_NODETREE);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_ShaderNode_socket_update");
 }
 
@@ -9762,13 +9762,16 @@ static void def_geo_simulation_input(StructRNA *srna)
   FunctionRNA *func;
   PropertyRNA *parm;
 
-  func = RNA_def_function(srna, "pair_with_output", "rna_GeometryNodeSimulationInput_pair_with_output");
+  func = RNA_def_function(
+      srna, "pair_with_output", "rna_GeometryNodeSimulationInput_pair_with_output");
   RNA_def_function_ui_description(func, "Pair a simulation input node with an output node.");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_REPORTS | FUNC_USE_CONTEXT);
-  parm = RNA_def_pointer(func, "output_node", "GeometryNode", "Output Node", "Simulation output node to pair with");
+  parm = RNA_def_pointer(
+      func, "output_node", "GeometryNode", "Output Node", "Simulation output node to pair with");
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
   /* return value */
-  parm = RNA_def_boolean(func, "result", false, "Result", "True if pairing the node was successful");
+  parm = RNA_def_boolean(
+      func, "result", false, "Result", "True if pairing the node was successful");
   RNA_def_function_return(func, parm);
 }
 
