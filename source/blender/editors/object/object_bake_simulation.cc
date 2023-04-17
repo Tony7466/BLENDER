@@ -726,6 +726,12 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
     }
   }
 
+  for (NodesModifierData *nmd : modifiers) {
+    if (nmd->simulation_cache != nullptr) {
+      nmd->simulation_cache->reset();
+    }
+  }
+
   Map<const ImplicitSharingInfo *, std::shared_ptr<io::serialize::DictionaryValue>> shared_data;
   auto free_shared_data = [&]() {
     for (const ImplicitSharingInfo *sharing_info : shared_data.keys()) {
