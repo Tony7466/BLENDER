@@ -603,7 +603,11 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
     io_mesh->append_int("num_corners", mesh.totloop);
 
     if (mesh.totpoly > 0) {
-      io_mesh->append("poly_offsets", write_bdata_int_array(bdata_writer, mesh.poly_offsets()));
+      io_mesh->append(
+          "poly_offsets",
+          write_bdata_shared(bdata_writer, mesh.runtime->poly_offsets_sharing_info, [&]() {
+            return write_bdata_int_array(bdata_writer, mesh.poly_offsets());
+          }));
     }
 
     auto io_materials = serialize_material_slots({mesh.mat, mesh.totcol});
@@ -634,7 +638,11 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
     io_curves->append_int("num_curves", curves.curve_num);
 
     if (curves.curve_num > 0) {
-      io_curves->append("curve_offsets", write_bdata_int_array(bdata_writer, curves.offsets()));
+      io_curves->append(
+          "curve_offsets",
+          write_bdata_shared(bdata_writer, curves.runtime->curve_offsets_sharing_info, [&]() {
+            return write_bdata_int_array(bdata_writer, curves.offsets());
+          }));
     }
 
     auto io_materials = serialize_material_slots({curves_id.mat, curves_id.totcol});
