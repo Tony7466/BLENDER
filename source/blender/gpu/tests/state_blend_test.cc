@@ -42,7 +42,7 @@ void blend_test(float4 source_a, float4 source_b, float4 expected_result)
 
   float4 read_back;
   GPU_memory_barrier(GPU_BARRIER_TEXTURE_FETCH);
-  GPU_offscreen_read_pixels(offscreen, GPU_DATA_FLOAT, &read_back);
+  GPU_offscreen_read_color(offscreen, GPU_DATA_FLOAT, &read_back);
   EXPECT_EQ(read_back, expected_result);
 
   GPU_offscreen_free(offscreen);
