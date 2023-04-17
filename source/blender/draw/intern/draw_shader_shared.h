@@ -21,6 +21,8 @@ typedef struct DispatchCommand DispatchCommand;
 typedef struct DRWDebugPrintBuffer DRWDebugPrintBuffer;
 typedef struct DRWDebugVert DRWDebugVert;
 typedef struct DRWDebugDrawBuffer DRWDebugDrawBuffer;
+typedef struct FrustumCorners FrustumCorners;
+typedef struct FrustumPlanes FrustumPlanes;
 
 /* __cplusplus is true when compiling with MSL. */
 #  if defined(__cplusplus) && !defined(GPU_SHADER)
