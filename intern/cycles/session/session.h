@@ -137,7 +137,7 @@ class Session {
   void set_output_driver(unique_ptr<OutputDriver> driver);
   void set_display_driver(unique_ptr<DisplayDriver> driver);
 
-  double get_estimated_remaining_time(); // const;
+  double get_estimated_remaining_time() const;
 
   void device_free();
 

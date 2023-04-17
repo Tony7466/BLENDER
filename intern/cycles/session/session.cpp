@@ -629,7 +629,7 @@ void Session::set_display_driver(unique_ptr<DisplayDriver> driver)
   path_trace_->set_display_driver(move(driver));
 }
 
-double Session::get_estimated_remaining_time() //const
+double Session::get_estimated_remaining_time() const
 {
   const double completed = progress.get_progress();
   if (completed == 0.0) {
