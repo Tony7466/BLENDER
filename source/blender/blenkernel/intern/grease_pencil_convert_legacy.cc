@@ -21,6 +21,12 @@ namespace blender::bke::greasepencil::convert {
 
 void legacy_gpencil_frame_to_grease_pencil_drawing(GreasePencilDrawing &drawing, bGPDframe &gpf)
 {
+  /* Construct an empty CurvesGeometry in-place. */
+  new (&drawing.geometry) CurvesGeometry();
+  drawing.base.type = GP_DRAWING;
+  drawing.runtime = MEM_new<bke::GreasePencilDrawingRuntime>(__func__);
+  /* TODO: set flag. */
+
   /* Get the number of points, number of strokes and the offsets for each stroke. */
   Vector<int> offsets;
   offsets.append(0);
@@ -32,8 +38,9 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(GreasePencilDrawing &drawing,
     num_strokes++;
   }
 
-  /* Create a new CurvesGeometry. */
-  CurvesGeometry curves{num_points, num_strokes};
+  /* Resize the CurvesGeometry. */
+  CurvesGeometry &curves = drawing.geometry.wrap();
+  curves.resize(num_points, num_strokes);
   curves.offsets_for_write().copy_from(offsets);
   OffsetIndices<int> points_by_curve = curves.points_by_curve();
   MutableAttributeAccessor attributes = curves.attributes_for_write();
@@ -161,10 +168,6 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(GreasePencilDrawing &drawing,
   stroke_fill_scales.finish();
   stroke_fill_colors.finish();
   stroke_materials.finish();
-
-  curves.tag_topology_changed();
-
-  drawing.geometry.wrap() = std::move(curves);
 }
 
 void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, bGPdata &gpd)
@@ -225,9 +228,6 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
           MEM_new<GreasePencilDrawing>(__func__));
       GreasePencilDrawing &drawing = *reinterpret_cast<GreasePencilDrawing *>(
           grease_pencil.drawing_array[i]);
-      drawing.base.type = GP_DRAWING;
-      drawing.runtime = MEM_new<bke::GreasePencilDrawingRuntime>(__func__);
-      /* TODO: set flag. */
 
       /* Convert the frame to a drawing. */
       legacy_gpencil_frame_to_grease_pencil_drawing(drawing, *gpf);
