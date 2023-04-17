@@ -35,6 +35,7 @@
 #include "BKE_type_conversions.hh"
 
 #include "FN_field_cpp_type.hh"
+#include "FN_lazy_function_execute.hh"
 #include "FN_lazy_function_graph_executor.hh"
 
 #include "DEG_depsgraph_query.h"
@@ -1148,9 +1149,6 @@ class LazyFunctionForEvaluateFunctionNode : public LazyFunction {
  private:
   const bNode &eval_node_;
   //bool has_many_nodes_ = false;
-  std::optional<GeometryNodesLazyFunctionLogger> lf_logger_;
-  std::optional<GeometryNodesLazyFunctionSideEffectProvider> lf_side_effect_provider_;
-  std::optional<lf::GraphExecutor> graph_executor_;
 
   struct Storage {
     void *graph_executor_storage = nullptr;
@@ -1228,19 +1226,18 @@ class LazyFunctionForEvaluateFunctionNode : public LazyFunction {
       const InputUsageHint &input_usage_hint = lf_graph_info.mapping.group_input_usage_hints[i];
       if (input_usage_hint.type == InputUsageHintType::DynamicSocket) {
         const lf::InputSocket *lf_socket = lf_graph_info.mapping.group_input_usage_sockets[i];
-        lf_output_for_input_bsocket_usage.add_new(i,
-                                                   graph_outputs.append_and_get_index(lf_socket));
+        lf_output_for_input_bsocket_usage.add_new(i, graph_outputs.append_and_get_index(lf_socket));
         //outputs_.append_as("Input is Used", CPPType::get<bool>());
       }
     }
 
-    lf_logger_.emplace(lf_graph_info);
-    lf_side_effect_provider_.emplace();
-    graph_executor_.emplace(lf_graph_info.graph,
-                            std::move(graph_inputs),
-                            std::move(graph_outputs),
-                            &*lf_logger_,
-                            &*lf_side_effect_provider_);
+    GeometryNodesLazyFunctionLogger lf_logger(lf_graph_info);
+    GeometryNodesLazyFunctionSideEffectProvider lf_side_effect_provider;
+    lf::GraphExecutor graph_executor(lf_graph_info.graph,
+                                     std::move(graph_inputs),
+                                     std::move(graph_outputs),
+                                     &lf_logger,
+                                     &lf_side_effect_provider);
 
     GeoNodesLFUserData *user_data = dynamic_cast<GeoNodesLFUserData *>(context.user_data);
     BLI_assert(user_data != nullptr);
@@ -1265,11 +1262,16 @@ class LazyFunctionForEvaluateFunctionNode : public LazyFunction {
           compute_context.hash());
     }
 
-    lf::Context group_context = context;
-    group_context.user_data = &group_user_data;
-    group_context.storage = storage->graph_executor_storage;
-
-    graph_executor_->execute(params, group_context);
+    lf::Context func_context = context;
+    func_context.user_data = &group_user_data;
+    func_context.storage = storage->graph_executor_storage;
+    lf::BasicParams func_params{graph_executor,
+                                param_inputs,
+                                param_outputs,
+                                param_input_usages,
+                                param_output_usages,
+                                param_set_outputs};
+    graph_executor->execute(params, func_context);
   }
 
   void *init_storage(LinearAllocator<> &allocator) const override
@@ -1286,52 +1288,52 @@ class LazyFunctionForEvaluateFunctionNode : public LazyFunction {
     std::destroy_at(s);
   }
 
-  std::string name() const override
-  {
-    std::stringstream ss;
-    ss << "Group '" << (group_node_.id->name + 2) << "' (" << group_node_.name << ")";
-    return ss.str();
-  }
+//  std::string name() const override
+//  {
+//    std::stringstream ss;
+//    ss << "Group '" << (group_node_.id->name + 2) << "' (" << group_node_.name << ")";
+//    return ss.str();
+//  }
 
-  std::string input_name(const int i) const override
-  {
-    if (i < group_node_.input_sockets().size()) {
-      return group_node_.input_socket(i).name;
-    }
-    for (const auto [bsocket_index, lf_socket_index] :
-         lf_input_for_output_bsocket_usage_.items()) {
-      if (i == lf_socket_index) {
-        std::stringstream ss;
-        ss << "'" << group_node_.output_socket(bsocket_index).name << "' output is used";
-        return ss.str();
-      }
-    }
-    for (const auto [bsocket_index, lf_index] :
-         lf_input_for_attribute_propagation_to_output_.items()) {
-      if (i == lf_index) {
-        std::stringstream ss;
-        ss << "Propagate to '" << group_node_.output_socket(bsocket_index).name << "'";
-        return ss.str();
-      }
-    }
-    return inputs_[i].debug_name;
-  }
+//  std::string input_name(const int i) const override
+//  {
+//    if (i < group_node_.input_sockets().size()) {
+//      return group_node_.input_socket(i).name;
+//    }
+//    for (const auto [bsocket_index, lf_socket_index] :
+//         lf_input_for_output_bsocket_usage_.items()) {
+//      if (i == lf_socket_index) {
+//        std::stringstream ss;
+//        ss << "'" << group_node_.output_socket(bsocket_index).name << "' output is used";
+//        return ss.str();
+//      }
+//    }
+//    for (const auto [bsocket_index, lf_index] :
+//         lf_input_for_attribute_propagation_to_output_.items()) {
+//      if (i == lf_index) {
+//        std::stringstream ss;
+//        ss << "Propagate to '" << group_node_.output_socket(bsocket_index).name << "'";
+//        return ss.str();
+//      }
+//    }
+//    return inputs_[i].debug_name;
+//  }
 
-  std::string output_name(const int i) const override
-  {
-    if (i < group_node_.output_sockets().size()) {
-      return group_node_.output_socket(i).name;
-    }
-    for (const auto [bsocket_index, lf_socket_index] :
-         lf_output_for_input_bsocket_usage_.items()) {
-      if (i == lf_socket_index) {
-        std::stringstream ss;
-        ss << "'" << group_node_.input_socket(bsocket_index).name << "' input is used";
-        return ss.str();
-      }
-    }
-    return outputs_[i].debug_name;
-  }
+//  std::string output_name(const int i) const override
+//  {
+//    if (i < group_node_.output_sockets().size()) {
+//      return group_node_.output_socket(i).name;
+//    }
+//    for (const auto [bsocket_index, lf_socket_index] :
+//         lf_output_for_input_bsocket_usage_.items()) {
+//      if (i == lf_socket_index) {
+//        std::stringstream ss;
+//        ss << "'" << group_node_.input_socket(bsocket_index).name << "' input is used";
+//        return ss.str();
+//      }
+//    }
+//    return outputs_[i].debug_name;
+//  }
 };
 
 /**
