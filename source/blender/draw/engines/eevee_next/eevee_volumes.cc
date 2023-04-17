@@ -190,13 +190,18 @@ void Volumes::begin_sync()
     if (volume_sub_pass(ps, nullptr, nullptr, material)) {
       enabled_ = true;
     }
+    ps.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z * 3);
   }
   else {
     /* If no world or volume material is present just clear the buffer. */
     ps.shader_set(inst_.shaders.static_shader_get(VOLUME_CLEAR));
+    ps.bind_image("out_scattering", &prop_scattering_tx_);
+    ps.bind_image("out_extinction", &prop_extinction_tx_);
+    ps.bind_image("out_emissive", &prop_emission_tx_);
+    ps.bind_image("out_phase", &prop_phase_tx_);
+    ps.dispatch(math::divide_ceil(data_.tex_size, int3(VOLUME_GROUP_SIZE)));
+    ps.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
-
-  ps.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z * 3);
 }
 
 void Volumes::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHandle res_handle)
@@ -329,8 +334,8 @@ void Volumes::draw_compute(View &view)
                         GPU_ATTACHMENT_TEXTURE(prop_emission_tx_),
                         GPU_ATTACHMENT_TEXTURE(prop_phase_tx_));
 
-  volumetric_fb_.bind();
   inst_.manager->submit(world_ps_, view);
+  volumetric_fb_.bind();
   inst_.pipelines.volume.render(view);
 
   scatter_fb_.ensure(GPU_ATTACHMENT_NONE,

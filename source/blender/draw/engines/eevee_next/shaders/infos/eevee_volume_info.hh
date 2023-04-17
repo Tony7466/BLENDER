@@ -32,39 +32,21 @@ GPU_SHADER_CREATE_INFO(eevee_volume_base)
     .fragment_out(2, Type::VEC4, "volumeEmissive")
     .fragment_out(3, Type::VEC4, "volumePhase");
 
-GPU_SHADER_CREATE_INFO(eevee_volume_common)
-    .additional_info("eevee_volume_base")
-    .vertex_source("eevee_volume_vert.glsl");
+GPU_SHADER_CREATE_INFO(eevee_volume_base_comp)
+    .additional_info("eevee_volume_lib")
+    .define("STANDALONE")
+    .define("VOLUMETRICS");
 
 GPU_SHADER_CREATE_INFO(eevee_volume_clear)
-    .additional_info("eevee_volume_common")
-    .fragment_source("eevee_volume_clear_frag.glsl")
+    .additional_info("eevee_shared")
+    .uniform_buf(VOLUMES_BUF_SLOT, "VolumesData", "volumes_buf")
+    .compute_source("eevee_volume_clear_comp.glsl")
+    .local_group_size(VOLUME_GROUP_SIZE, VOLUME_GROUP_SIZE, VOLUME_GROUP_SIZE)
+    .image(0, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_scattering")
+    .image(1, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_extinction")
+    .image(2, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_emissive")
+    .image(3, GPU_RG16F, Qualifier::WRITE, ImageType::FLOAT_2D, "out_phase")
     .do_static_compilation(true);
-
-/* TODO (Miguel Pozo): Shouldn't be needed if using compute shaders. */
-#ifdef WITH_METAL_BACKEND
-/* Non-geometry shader equivalent for multilayered rendering.
- * NOTE: Layer selection can be done in vertex shader, and thus
- * vertex shader emits both vertex and geometry shader output
- * interfaces. */
-GPU_SHADER_CREATE_INFO(eevee_volume_clear_no_geom)
-    .define("STANDALONE")
-    .define("VOLUMETRICS")
-    .define("CLEAR")
-    .additional_info("draw_resource_id_varying")
-    .additional_info("eevee_volume_lib")
-    .vertex_source("eevee_volume_vert.glsl")
-    .fragment_source("eevee_volume_frag.glsl")
-    .vertex_out(eevee_volume_vert_geom_iface)
-    .vertex_out(eevee_volume_geom_frag_iface)
-    .fragment_out(0, Type::VEC4, "volumeScattering")
-    .fragment_out(1, Type::VEC4, "volumeExtinction")
-    .fragment_out(2, Type::VEC4, "volumeEmissive")
-    .fragment_out(3, Type::VEC4, "volumePhase")
-    .metal_backend_only(true)
-    .do_static_compilation(true)
-    .auto_resource_location(true);
-#endif
 
 GPU_SHADER_CREATE_INFO(eevee_volume_scatter_common)
     .define("STANDALONE")
