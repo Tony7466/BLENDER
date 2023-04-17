@@ -1383,8 +1383,8 @@ void BKE_mesh_legacy_bevel_weight_to_layers(Mesh *mesh)
     }
   }
 
-  const Span<MEdge> edges(mesh->medge, mesh->totedge);
-  if (!CustomData_has_layer(&mesh->edata, CD_BWEIGHT)) {
+  if (mesh->medge && !CustomData_has_layer(&mesh->edata, CD_BWEIGHT)) {
+    const Span<MEdge> edges(mesh->medge, mesh->totedge);
     if (mesh->cd_flag & ME_CDFLAG_EDGE_BWEIGHT) {
       float *weights = static_cast<float *>(
           CustomData_add_layer(&mesh->edata, CD_BWEIGHT, CD_CONSTRUCT, edges.size()));
@@ -1463,6 +1463,9 @@ void BKE_mesh_legacy_sharp_edges_from_flags(Mesh *mesh)
 {
   using namespace blender;
   using namespace blender::bke;
+  if (!mesh->medge) {
+    return;
+  }
   const Span<MEdge> edges(mesh->medge, mesh->totedge);
   MutableAttributeAccessor attributes = mesh->attributes_for_write();
   if (attributes.contains("sharp_edge")) {
@@ -1511,6 +1514,9 @@ void BKE_mesh_legacy_uv_seam_from_flags(Mesh *mesh)
 {
   using namespace blender;
   using namespace blender::bke;
+  if (!mesh->medge) {
+    return;
+  }
   MutableSpan<MEdge> edges(mesh->medge, mesh->totedge);
   MutableAttributeAccessor attributes = mesh->attributes_for_write();
   if (attributes.contains(".uv_seam")) {
@@ -1593,18 +1599,20 @@ void BKE_mesh_legacy_convert_flags_to_hide_layers(Mesh *mesh)
     hide_vert.finish();
   }
 
-  const Span<MEdge> edges(mesh->medge, mesh->totedge);
-  if (std::any_of(edges.begin(), edges.end(), [](const MEdge &edge) {
-        return edge.flag_legacy & ME_HIDE;
-      })) {
-    SpanAttributeWriter<bool> hide_edge = attributes.lookup_or_add_for_write_only_span<bool>(
-        ".hide_edge", ATTR_DOMAIN_EDGE);
-    threading::parallel_for(edges.index_range(), 4096, [&](IndexRange range) {
-      for (const int i : range) {
-        hide_edge.span[i] = edges[i].flag_legacy & ME_HIDE;
-      }
-    });
-    hide_edge.finish();
+  if (mesh->medge) {
+    const Span<MEdge> edges(mesh->medge, mesh->totedge);
+    if (std::any_of(edges.begin(), edges.end(), [](const MEdge &edge) {
+          return edge.flag_legacy & ME_HIDE;
+        })) {
+      SpanAttributeWriter<bool> hide_edge = attributes.lookup_or_add_for_write_only_span<bool>(
+          ".hide_edge", ATTR_DOMAIN_EDGE);
+      threading::parallel_for(edges.index_range(), 4096, [&](IndexRange range) {
+        for (const int i : range) {
+          hide_edge.span[i] = edges[i].flag_legacy & ME_HIDE;
+        }
+      });
+      hide_edge.finish();
+    }
   }
 
   const Span<MPoly> polys(static_cast<const MPoly *>(CustomData_get_layer(&mesh->pdata, CD_MPOLY)),
@@ -1939,18 +1947,20 @@ void BKE_mesh_legacy_convert_flags_to_selection_layers(Mesh *mesh)
     select_vert.finish();
   }
 
-  const Span<MEdge> edges(mesh->medge, mesh->totedge);
-  if (std::any_of(edges.begin(), edges.end(), [](const MEdge &edge) {
-        return edge.flag_legacy & SELECT;
-      })) {
-    SpanAttributeWriter<bool> select_edge = attributes.lookup_or_add_for_write_only_span<bool>(
-        ".select_edge", ATTR_DOMAIN_EDGE);
-    threading::parallel_for(edges.index_range(), 4096, [&](IndexRange range) {
-      for (const int i : range) {
-        select_edge.span[i] = edges[i].flag_legacy & SELECT;
-      }
-    });
-    select_edge.finish();
+  if (mesh->medge) {
+    const Span<MEdge> edges(mesh->medge, mesh->totedge);
+    if (std::any_of(edges.begin(), edges.end(), [](const MEdge &edge) {
+          return edge.flag_legacy & SELECT;
+        })) {
+      SpanAttributeWriter<bool> select_edge = attributes.lookup_or_add_for_write_only_span<bool>(
+          ".select_edge", ATTR_DOMAIN_EDGE);
+      threading::parallel_for(edges.index_range(), 4096, [&](IndexRange range) {
+        for (const int i : range) {
+          select_edge.span[i] = edges[i].flag_legacy & SELECT;
+        }
+      });
+      select_edge.finish();
+    }
   }
 
   const Span<MPoly> polys(static_cast<const MPoly *>(CustomData_get_layer(&mesh->pdata, CD_MPOLY)),
