@@ -133,12 +133,12 @@ VArray<float3> mesh_normals_varray(const Mesh &mesh,
        * instead of the GeometryComponent API to avoid calculating unnecessary values and to
        * allow normalizing the result more simply. */
       Span<float3> vert_normals = mesh.vert_normals();
-      const Span<MEdge> edges = mesh.edges();
+      const Span<int2> edges = mesh.edges();
       Array<float3> edge_normals(mask.min_array_size());
       for (const int i : mask) {
-        const MEdge &edge = edges[i];
+        const int2 &edge = edges[i];
         edge_normals[i] = math::normalize(
-            math::interpolate(vert_normals[edge.v1], vert_normals[edge.v2], 0.5f));
+            math::interpolate(vert_normals[edge[0]], vert_normals[edge[1]], 0.5f));
       }
 
       return VArray<float3>::ForContainer(std::move(edge_normals));
@@ -250,7 +250,7 @@ static GVArray adapt_mesh_domain_point_to_corner(const Mesh &mesh, const GVArray
 
 static GVArray adapt_mesh_domain_corner_to_face(const Mesh &mesh, const GVArray &varray)
 {
-  const Span<MPoly> polys = mesh.polys();
+  const OffsetIndices polys = mesh.polys();
 
   GVArray new_varray;
   attribute_math::convert_to_static_type(varray.type(), [&](auto dummy) {
@@ -260,8 +260,7 @@ static GVArray adapt_mesh_domain_corner_to_face(const Mesh &mesh, const GVArray 
         new_varray = VArray<T>::ForFunc(
             polys.size(), [polys, varray = varray.typed<bool>()](const int face_index) {
               /* A face is selected if all of its corners were selected. */
-              const MPoly &poly = polys[face_index];
-              for (const int loop_index : IndexRange(poly.loopstart, poly.totloop)) {
+              for (const int loop_index : polys[face_index]) {
                 if (!varray[loop_index]) {
                   return false;
                 }
@@ -274,8 +273,7 @@ static GVArray adapt_mesh_domain_corner_to_face(const Mesh &mesh, const GVArray 
             polys.size(), [polys, varray = varray.typed<T>()](const int face_index) {
               T return_value;
               attribute_math::DefaultMixer<T> mixer({&return_value, 1});
-              const MPoly &poly = polys[face_index];
-              for (const int loop_index : IndexRange(poly.loopstart, poly.totloop)) {
+              for (const int loop_index : polys[face_index]) {
                 const T value = varray[loop_index];
                 mixer.mix_in(0, value);
               }
@@ -294,19 +292,19 @@ static void adapt_mesh_domain_corner_to_edge_impl(const Mesh &mesh,
                                                   MutableSpan<T> r_values)
 {
   BLI_assert(r_values.size() == mesh.totedge);
-  const Span<MPoly> polys = mesh.polys();
+  const OffsetIndices polys = mesh.polys();
   const Span<int> corner_edges = mesh.corner_edges();
 
   attribute_math::DefaultMixer<T> mixer(r_values);
 
   for (const int poly_index : polys.index_range()) {
-    const MPoly &poly = polys[poly_index];
+    const IndexRange poly = polys[poly_index];
 
     /* For every edge, mix values from the two adjacent corners (the current and next corner). */
-    for (const int i : IndexRange(poly.totloop)) {
-      const int next_i = (i + 1) % poly.totloop;
-      const int loop_i = poly.loopstart + i;
-      const int next_loop_i = poly.loopstart + next_i;
+    for (const int i : IndexRange(poly.size())) {
+      const int next_i = (i + 1) % poly.size();
+      const int loop_i = poly.start() + i;
+      const int next_loop_i = poly.start() + next_i;
       const int edge_index = corner_edges[loop_i];
       mixer.mix_in(edge_index, old_values[loop_i]);
       mixer.mix_in(edge_index, old_values[next_loop_i]);
@@ -323,17 +321,17 @@ void adapt_mesh_domain_corner_to_edge_impl(const Mesh &mesh,
                                            MutableSpan<bool> r_values)
 {
   BLI_assert(r_values.size() == mesh.totedge);
-  const Span<MPoly> polys = mesh.polys();
+  const OffsetIndices polys = mesh.polys();
   const Span<int> corner_edges = mesh.corner_edges();
 
   r_values.fill(true);
   for (const int poly_index : polys.index_range()) {
-    const MPoly &poly = polys[poly_index];
+    const IndexRange poly = polys[poly_index];
 
-    for (const int i : IndexRange(poly.totloop)) {
-      const int next_i = (i + 1) % poly.totloop;
-      const int loop_i = poly.loopstart + i;
-      const int next_loop_i = poly.loopstart + next_i;
+    for (const int i : IndexRange(poly.size())) {
+      const int next_i = (i + 1) % poly.size();
+      const int loop_i = poly[i];
+      const int next_loop_i = poly[next_i];
       const int edge_index = corner_edges[loop_i];
 
       if (!old_values[loop_i] || !old_values[next_loop_i]) {
@@ -374,15 +372,14 @@ void adapt_mesh_domain_face_to_point_impl(const Mesh &mesh,
                                           MutableSpan<T> r_values)
 {
   BLI_assert(r_values.size() == mesh.totvert);
-  const Span<MPoly> polys = mesh.polys();
+  const OffsetIndices polys = mesh.polys();
   const Span<int> corner_verts = mesh.corner_verts();
 
   attribute_math::DefaultMixer<T> mixer(r_values);
 
   for (const int poly_index : polys.index_range()) {
-    const MPoly &poly = polys[poly_index];
     const T value = old_values[poly_index];
-    for (const int vert : corner_verts.slice(poly.loopstart, poly.totloop)) {
+    for (const int vert : corner_verts.slice(polys[poly_index])) {
       mixer.mix_in(vert, value);
     }
   }
@@ -397,15 +394,14 @@ void adapt_mesh_domain_face_to_point_impl(const Mesh &mesh,
                                           MutableSpan<bool> r_values)
 {
   BLI_assert(r_values.size() == mesh.totvert);
-  const Span<MPoly> polys = mesh.polys();
+  const OffsetIndices polys = mesh.polys();
   const Span<int> corner_verts = mesh.corner_verts();
 
   r_values.fill(false);
   threading::parallel_for(polys.index_range(), 2048, [&](const IndexRange range) {
     for (const int poly_index : range) {
       if (old_values[poly_index]) {
-        const MPoly &poly = polys[poly_index];
-        for (const int vert : corner_verts.slice(poly.loopstart, poly.totloop)) {
+        for (const int vert : corner_verts.slice(polys[poly_index])) {
           r_values[vert] = true;
         }
       }
@@ -433,12 +429,11 @@ void adapt_mesh_domain_face_to_corner_impl(const Mesh &mesh,
                                            MutableSpan<T> r_values)
 {
   BLI_assert(r_values.size() == mesh.totloop);
-  const Span<MPoly> polys = mesh.polys();
+  const OffsetIndices polys = mesh.polys();
 
   threading::parallel_for(polys.index_range(), 1024, [&](const IndexRange range) {
     for (const int poly_index : range) {
-      const MPoly &poly = polys[poly_index];
-      MutableSpan<T> poly_corner_values = r_values.slice(poly.loopstart, poly.totloop);
+      MutableSpan<T> poly_corner_values = r_values.slice(polys[poly_index]);
       poly_corner_values.fill(old_values[poly_index]);
     }
   });
@@ -463,15 +458,14 @@ void adapt_mesh_domain_face_to_edge_impl(const Mesh &mesh,
                                          MutableSpan<T> r_values)
 {
   BLI_assert(r_values.size() == mesh.totedge);
-  const Span<MPoly> polys = mesh.polys();
+  const OffsetIndices polys = mesh.polys();
   const Span<int> corner_edges = mesh.corner_edges();
 
   attribute_math::DefaultMixer<T> mixer(r_values);
 
   for (const int poly_index : polys.index_range()) {
-    const MPoly &poly = polys[poly_index];
     const T value = old_values[poly_index];
-    for (const int edge : corner_edges.slice(poly.loopstart, poly.totloop)) {
+    for (const int edge : corner_edges.slice(polys[poly_index])) {
       mixer.mix_in(edge, value);
     }
   }
@@ -485,15 +479,14 @@ void adapt_mesh_domain_face_to_edge_impl(const Mesh &mesh,
                                          MutableSpan<bool> r_values)
 {
   BLI_assert(r_values.size() == mesh.totedge);
-  const Span<MPoly> polys = mesh.polys();
+  const OffsetIndices polys = mesh.polys();
   const Span<int> corner_edges = mesh.corner_edges();
 
   r_values.fill(false);
   threading::parallel_for(polys.index_range(), 2048, [&](const IndexRange range) {
     for (const int poly_index : range) {
       if (old_values[poly_index]) {
-        const MPoly &poly = polys[poly_index];
-        for (const int edge : corner_edges.slice(poly.loopstart, poly.totloop)) {
+        for (const int edge : corner_edges.slice(polys[poly_index])) {
           r_values[edge] = true;
         }
       }
@@ -516,7 +509,7 @@ static GVArray adapt_mesh_domain_face_to_edge(const Mesh &mesh, const GVArray &v
 
 static GVArray adapt_mesh_domain_point_to_face(const Mesh &mesh, const GVArray &varray)
 {
-  const Span<MPoly> polys = mesh.polys();
+  const OffsetIndices polys = mesh.polys();
   const Span<int> corner_verts = mesh.corner_verts();
 
   GVArray new_varray;
@@ -528,8 +521,7 @@ static GVArray adapt_mesh_domain_point_to_face(const Mesh &mesh, const GVArray &
             mesh.totpoly,
             [corner_verts, polys, varray = varray.typed<bool>()](const int face_index) {
               /* A face is selected if all of its vertices were selected. */
-              const MPoly &poly = polys[face_index];
-              for (const int vert : corner_verts.slice(poly.loopstart, poly.totloop)) {
+              for (const int vert : corner_verts.slice(polys[face_index])) {
                 if (!varray[vert]) {
                   return false;
                 }
@@ -542,8 +534,7 @@ static GVArray adapt_mesh_domain_point_to_face(const Mesh &mesh, const GVArray &
             mesh.totpoly, [corner_verts, polys, varray = varray.typed<T>()](const int face_index) {
               T return_value;
               attribute_math::DefaultMixer<T> mixer({&return_value, 1});
-              const MPoly &poly = polys[face_index];
-              for (const int vert : corner_verts.slice(poly.loopstart, poly.totloop)) {
+              for (const int vert : corner_verts.slice(polys[face_index])) {
                 mixer.mix_in(0, varray[vert]);
               }
               mixer.finalize();
@@ -557,7 +548,7 @@ static GVArray adapt_mesh_domain_point_to_face(const Mesh &mesh, const GVArray &
 
 static GVArray adapt_mesh_domain_point_to_edge(const Mesh &mesh, const GVArray &varray)
 {
-  const Span<MEdge> edges = mesh.edges();
+  const Span<int2> edges = mesh.edges();
 
   GVArray new_varray;
   attribute_math::convert_to_static_type(varray.type(), [&](auto dummy) {
@@ -567,8 +558,8 @@ static GVArray adapt_mesh_domain_point_to_edge(const Mesh &mesh, const GVArray &
         /* An edge is selected if both of its vertices were selected. */
         new_varray = VArray<bool>::ForFunc(
             edges.size(), [edges, varray = varray.typed<bool>()](const int edge_index) {
-              const MEdge &edge = edges[edge_index];
-              return varray[edge.v1] && varray[edge.v2];
+              const int2 &edge = edges[edge_index];
+              return varray[edge[0]] && varray[edge[1]];
             });
       }
       else {
@@ -576,9 +567,9 @@ static GVArray adapt_mesh_domain_point_to_edge(const Mesh &mesh, const GVArray &
             edges.size(), [edges, varray = varray.typed<T>()](const int edge_index) {
               T return_value;
               attribute_math::DefaultMixer<T> mixer({&return_value, 1});
-              const MEdge &edge = edges[edge_index];
-              mixer.mix_in(0, varray[edge.v1]);
-              mixer.mix_in(0, varray[edge.v2]);
+              const int2 &edge = edges[edge_index];
+              mixer.mix_in(0, varray[edge[0]]);
+              mixer.mix_in(0, varray[edge[1]]);
               mixer.finalize();
               return return_value;
             });
@@ -594,16 +585,16 @@ void adapt_mesh_domain_edge_to_corner_impl(const Mesh &mesh,
                                            MutableSpan<T> r_values)
 {
   BLI_assert(r_values.size() == mesh.totloop);
-  const Span<MPoly> polys = mesh.polys();
+  const OffsetIndices polys = mesh.polys();
   const Span<int> corner_edges = mesh.corner_edges();
 
   attribute_math::DefaultMixer<T> mixer(r_values);
 
   for (const int poly_index : polys.index_range()) {
-    const MPoly &poly = polys[poly_index];
+    const IndexRange poly = polys[poly_index];
 
     /* For every corner, mix the values from the adjacent edges on the face. */
-    for (const int loop_index : IndexRange(poly.loopstart, poly.totloop)) {
+    for (const int loop_index : poly) {
       const int loop_index_prev = mesh::poly_corner_prev(poly, loop_index);
       const int edge = corner_edges[loop_index];
       const int edge_prev = corner_edges[loop_index_prev];
@@ -622,15 +613,15 @@ void adapt_mesh_domain_edge_to_corner_impl(const Mesh &mesh,
                                            MutableSpan<bool> r_values)
 {
   BLI_assert(r_values.size() == mesh.totloop);
-  const Span<MPoly> polys = mesh.polys();
+  const OffsetIndices polys = mesh.polys();
   const Span<int> corner_edges = mesh.corner_edges();
 
   r_values.fill(false);
 
   threading::parallel_for(polys.index_range(), 2048, [&](const IndexRange range) {
     for (const int poly_index : range) {
-      const MPoly &poly = polys[poly_index];
-      for (const int loop_index : IndexRange(poly.loopstart, poly.totloop)) {
+      const IndexRange poly = polys[poly_index];
+      for (const int loop_index : poly) {
         const int loop_index_prev = mesh::poly_corner_prev(poly, loop_index);
         const int edge = corner_edges[loop_index];
         const int edge_prev = corner_edges[loop_index_prev];
@@ -661,15 +652,15 @@ static void adapt_mesh_domain_edge_to_point_impl(const Mesh &mesh,
                                                  MutableSpan<T> r_values)
 {
   BLI_assert(r_values.size() == mesh.totvert);
-  const Span<MEdge> edges = mesh.edges();
+  const Span<int2> edges = mesh.edges();
 
   attribute_math::DefaultMixer<T> mixer(r_values);
 
   for (const int edge_index : IndexRange(mesh.totedge)) {
-    const MEdge &edge = edges[edge_index];
+    const int2 &edge = edges[edge_index];
     const T value = old_values[edge_index];
-    mixer.mix_in(edge.v1, value);
-    mixer.mix_in(edge.v2, value);
+    mixer.mix_in(edge[0], value);
+    mixer.mix_in(edge[1], value);
   }
 
   mixer.finalize();
@@ -682,7 +673,7 @@ void adapt_mesh_domain_edge_to_point_impl(const Mesh &mesh,
                                           MutableSpan<bool> r_values)
 {
   BLI_assert(r_values.size() == mesh.totvert);
-  const Span<MEdge> edges = mesh.edges();
+  const Span<int2> edges = mesh.edges();
 
   /* Multiple threads can write to the same index here, but they are only
    * writing true, and writing to single bytes is expected to be threadsafe. */
@@ -690,9 +681,9 @@ void adapt_mesh_domain_edge_to_point_impl(const Mesh &mesh,
   threading::parallel_for(edges.index_range(), 4096, [&](const IndexRange range) {
     for (const int edge_index : range) {
       if (old_values[edge_index]) {
-        const MEdge &edge = edges[edge_index];
-        r_values[edge.v1] = true;
-        r_values[edge.v2] = true;
+        const int2 &edge = edges[edge_index];
+        r_values[edge[0]] = true;
+        r_values[edge[1]] = true;
       }
     }
   });
@@ -713,7 +704,7 @@ static GVArray adapt_mesh_domain_edge_to_point(const Mesh &mesh, const GVArray &
 
 static GVArray adapt_mesh_domain_edge_to_face(const Mesh &mesh, const GVArray &varray)
 {
-  const Span<MPoly> polys = mesh.polys();
+  const OffsetIndices polys = mesh.polys();
   const Span<int> corner_edges = mesh.corner_edges();
 
   GVArray new_varray;
@@ -724,8 +715,7 @@ static GVArray adapt_mesh_domain_edge_to_face(const Mesh &mesh, const GVArray &v
         /* A face is selected if all of its edges are selected. */
         new_varray = VArray<bool>::ForFunc(
             polys.size(), [corner_edges, polys, varray = varray.typed<T>()](const int face_index) {
-              const MPoly &poly = polys[face_index];
-              for (const int edge : corner_edges.slice(poly.loopstart, poly.totloop)) {
+              for (const int edge : corner_edges.slice(polys[face_index])) {
                 if (!varray[edge]) {
                   return false;
                 }
@@ -738,8 +728,7 @@ static GVArray adapt_mesh_domain_edge_to_face(const Mesh &mesh, const GVArray &v
             polys.size(), [corner_edges, polys, varray = varray.typed<T>()](const int face_index) {
               T return_value;
               attribute_math::DefaultMixer<T> mixer({&return_value, 1});
-              const MPoly &poly = polys[face_index];
-              for (const int edge : corner_edges.slice(poly.loopstart, poly.totloop)) {
+              for (const int edge : corner_edges.slice(polys[face_index])) {
                 mixer.mix_in(0, varray[edge]);
               }
               mixer.finalize();
@@ -1189,6 +1178,22 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
                                                        nullptr,
                                                        AttributeValidator{&material_index_clamp});
 
+  static const auto int2_index_clamp = mf::build::SI1_SO<int2, int2>(
+      "Index Validate",
+      [](int2 value) { return math::max(value, int2(0)); },
+      mf::build::exec_presets::AllSpanOrSingle());
+  static BuiltinCustomDataLayerProvider edge_verts(".edge_verts",
+                                                   ATTR_DOMAIN_EDGE,
+                                                   CD_PROP_INT32_2D,
+                                                   CD_PROP_INT32_2D,
+                                                   BuiltinAttributeProvider::NonCreatable,
+                                                   BuiltinAttributeProvider::NonDeletable,
+                                                   edge_access,
+                                                   make_array_read_attribute<int2>,
+                                                   make_array_write_attribute<int2>,
+                                                   nullptr,
+                                                   AttributeValidator{&int2_index_clamp});
+
   /* Note: This clamping is more of a last resort, since it's quite easy to make an
    * invalid mesh that will crash Blender by arbitrarily editing this attribute. */
   static const auto int_index_clamp = mf::build::SI1_SO<int, int>(
@@ -1259,6 +1264,7 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
   static CustomDataAttributeProvider face_custom_data(ATTR_DOMAIN_FACE, face_access);
 
   return ComponentAttributeProviders({&position,
+                                      &edge_verts,
                                       &corner_vert,
                                       &corner_edge,
                                       &id,

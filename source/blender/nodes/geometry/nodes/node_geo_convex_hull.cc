@@ -72,7 +72,7 @@ static Mesh *hull_from_bullet(const Mesh *mesh, Span<float3> coords)
   Array<int> corner_verts(loops_num);
   Array<int> corner_edges(loops_num);
   uint edge_index = 0;
-  MutableSpan<MEdge> edges = result->edges_for_write();
+  MutableSpan<int2> edges = result->edges_for_write();
 
   for (const int i : IndexRange(loops_num)) {
     int v_from;
@@ -82,9 +82,7 @@ static Mesh *hull_from_bullet(const Mesh *mesh, Span<float3> coords)
     corner_verts[i] = v_from;
     /* Add edges for ascending order loops only. */
     if (v_from < v_to) {
-      MEdge &edge = edges[edge_index];
-      edge.v1 = v_from;
-      edge.v2 = v_to;
+      edges[edge_index] = int2(v_from, v_to);
 
       /* Write edge index into both loops that have it. */
       int reverse_index = plConvexHullGetReversedLoopIndex(hull, i);
@@ -95,9 +93,7 @@ static Mesh *hull_from_bullet(const Mesh *mesh, Span<float3> coords)
   }
   if (edges_num == 1) {
     /* In this case there are no loops. */
-    MEdge &edge = edges[0];
-    edge.v1 = 0;
-    edge.v2 = 1;
+    edges[0] = int2(0, 1);
     edge_index++;
   }
   BLI_assert(edge_index == edges_num);
@@ -105,7 +101,7 @@ static Mesh *hull_from_bullet(const Mesh *mesh, Span<float3> coords)
   /* Copy faces. */
   Array<int> loops;
   int j = 0;
-  MutableSpan<MPoly> polys = result->polys_for_write();
+  MutableSpan<int> poly_offsets = result->poly_offsets_for_write();
   MutableSpan<int> mesh_corner_verts = result->corner_verts_for_write();
   MutableSpan<int> mesh_corner_edges = result->corner_edges_for_write();
   int dst_corner = 0;
@@ -119,9 +115,7 @@ static Mesh *hull_from_bullet(const Mesh *mesh, Span<float3> coords)
     loops.reinitialize(len);
     plConvexHullGetFaceLoops(hull, i, loops.data());
 
-    MPoly &face = polys[i];
-    face.loopstart = j;
-    face.totloop = len;
+    poly_offsets[i] = j;
     for (const int k : IndexRange(len)) {
       mesh_corner_verts[dst_corner] = corner_verts[loops[k]];
       mesh_corner_edges[dst_corner] = corner_edges[loops[k]];
