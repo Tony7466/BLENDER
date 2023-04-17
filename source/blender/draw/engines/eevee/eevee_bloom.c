@@ -107,7 +107,6 @@ int EEVEE_bloom_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data *vedata)
                                         GPU_TEXTURE_USAGE_ATTACHMENT |
                                         GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW;
 
-      eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
       effects->bloom_upsample[i] = DRW_texture_pool_query_2d_ex(
           texsize[0], texsize[1], GPU_R11F_G11F_B10F, upsample_usage, &draw_engine_eevee_type);
       GPU_framebuffer_ensure_config(
