@@ -65,7 +65,8 @@ class BVH {
   BVHParams params;
   vector<Geometry *> geometry;
   vector<Object *> objects;
-  bool built;
+  bool built = false;
+  
   static BVH *create(const BVHParams &params,
                      const vector<Geometry *> &geometry,
                      const vector<Object *> &objects,
