@@ -68,7 +68,7 @@ if(APPLE)
 
   set(SRC_CMD
     src/ThumbnailProvider.mm
-    src/ThumbnailProvider.h
+    src/ThumbnailProvider.hh
     src/Info.plist
   )
 

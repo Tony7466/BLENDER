@@ -6,7 +6,7 @@
 #import <QuickLook/QLBase.h>
 #import <QuickLook/QuickLook.h>
 
-#import "ThumbnailProvider.h"
+#import "ThumbnailProvider.hh"
 
 #include "BLI_fileops.h"
 #include "BLI_filereader.h"
@@ -71,7 +71,6 @@ static eThumbStatus creator_impl(const char *src_blend_path)
                       // the Info.plist of the
     // extension.
 
-    std::cout << "Hello World from blender Blender thumbnailer" << std::endl;
     NSLog(@"hello world from blender");
     NSURL *foo = [[NSURL alloc]
         initFileURLWithFileSystemRepresentation:"/Users/ankitkumar/Pictures/IMG_3158.JPG"
@@ -81,63 +80,6 @@ static eThumbStatus creator_impl(const char *src_blend_path)
 
     handler(reply, nil);
   }
-}
-
-@end
-
-@implementation PreviewViewController
-
-- (NSString *)nibName
-{
-  return @"PreviewViewController";
-}
-
-- (void)loadView
-{
-  [super loadView];
-  // Do any additional setup after loading the view.
-}
-
-/*
- * Implement this method and set QLSupportsSearchableItems to YES in the Info.plist of the
-extension if you support CoreSpotlight.
- *
-- (void)preparePreviewOfSearchableItemWithIdentifier:(NSString *)identifier queryString:(NSString
-*)queryString completionHandler:(void (^)(NSError * _Nullable))handler {
-
-    // Perform any setup necessary in order to prepare the view.
-
-    // Call the completion handler so Quick Look knows that the preview is fully loaded.
-    // Quick Look will display a loading spinner while the completion handler is not called.
-
-    handler(nil);
-}
-*/
-
-- (void)preparePreviewOfFileAtURL:(NSURL *)url
-                completionHandler:(void (^)(NSError *_Nullable))handler
-{
-
-  // Add the supported content types to the QLSupportedContentTypes array in the Info.plist of the
-  // extension.
-
-  // Perform any setup necessary in order to prepare the view.
-
-  // Call the completion handler so Quick Look knows that the preview is fully loaded.
-  // Quick Look will display a loading spinner while the completion handler is not called.
-
-  NSLog(@"blender preparePreviewOfFileAtURL: %@", url);
-  std::ofstream file("/Users/ankitkumar/blender-build/build_darwin_debug_lite/foobar.txt",
-                     std::ios::out | std::ios::trunc | std::ios::binary);
-  file << "Hello World";
-  file.close();
-  std::cout << "Hello World" << std::endl;
-  // set image to file path /Users/ankit.kumar/Desktop/Screenshot 2021-09-02 at 1.59.47 PM.png
-  [[[self view] imageRepresentation]
-      setFileURL:[NSURL fileURLWithPath:@"/Users/ankitkumar/Pictures/IMG_3158.JPG"
-                            isDirectory:NO]];
-  [[self view] display];
-  handler(nil);
 }
 
 @end
