@@ -11,7 +11,6 @@ set(INC_SYS
 )
 
 set(SRC
-  intern/closure.cc
   intern/cpp_types.cc
   intern/field.cc
   intern/field_cpp_type.cc
@@ -27,7 +26,6 @@ set(SRC
   intern/multi_function_procedure_executor.cc
   intern/multi_function_procedure_optimization.cc
 
-  FN_closure.hh
   FN_field.hh
   FN_field_cpp_type.hh
   FN_field_cpp_type_make.hh

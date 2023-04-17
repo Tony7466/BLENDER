@@ -30,10 +30,10 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "NOD_closure.hh"
 #include "NOD_node_declaration.hh"
 #include "NOD_socket.h"
 
-#include "FN_closure.hh"
 #include "FN_field.hh"
 
 using namespace blender;

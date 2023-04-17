@@ -40,6 +40,7 @@ set(INC
 
 set(SRC
   intern/add_node_search.cc
+  intern/closure.cc
   intern/derived_node_tree.cc
   intern/geometry_nodes_lazy_function.cc
   intern/geometry_nodes_log.cc
@@ -56,6 +57,7 @@ set(SRC
   intern/socket_search_link.cc
 
   NOD_add_node_search.hh
+  NOD_closure.hh
   NOD_common.h
   NOD_composite.h
   NOD_derived_node_tree.hh

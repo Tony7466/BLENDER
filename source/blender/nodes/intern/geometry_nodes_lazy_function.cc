@@ -13,6 +13,7 @@
  * complexity. So far, this does not seem to be a performance issue.
  */
 
+#include "NOD_closure.hh"
 #include "NOD_geometry_exec.hh"
 #include "NOD_geometry_nodes_lazy_function.hh"
 #include "NOD_multi_function.hh"
@@ -1158,21 +1159,6 @@ class LazyFunctionForEvaluateFunctionNode : public LazyFunction {
   };
 
  public:
-  /**
-   * For every input bsocket there is a corresponding boolean output that indicates whether that
-   * input is used.
-   */
-  Map<int, int> lf_output_for_input_bsocket_usage_;
-  /**
-   * For every output bsocket there is a corresponding boolean input that indicates whether the
-   * output is used.
-   */
-  Map<int, int> lf_input_for_output_bsocket_usage_;
-  /**
-   * For every geometry output that can propagate attributes from an input, there is an attribute
-   * set input. It indicates which attributes should be propagated to the output.
-   */
-  Map<int, int> lf_input_for_attribute_propagation_to_output_;
 
   LazyFunctionForEvaluateFunctionNode(const bNode &eval_node) : eval_node_(eval_node)
   {
@@ -1186,6 +1172,11 @@ class LazyFunctionForEvaluateFunctionNode : public LazyFunction {
 
   void execute_impl(lf::Params &params, const lf::Context &context) const override
   {
+    const Closure *closure = params.get_input<Closure *>(0);
+    if (!closure->lf_graph_info()) {
+      return;
+    }
+    const GeometryNodesLazyFunctionGraphInfo &lf_graph_info = *closure->lf_graph_info();
 
     // has_many_nodes_ = lf_graph_info.num_inline_nodes_approximate > 1000;
 
@@ -1193,12 +1184,29 @@ class LazyFunctionForEvaluateFunctionNode : public LazyFunction {
     /* Add inputs that also exist on the bnode. */
     graph_inputs.extend(lf_graph_info.mapping.group_input_sockets);
 
+    /**
+     * For every input bsocket there is a corresponding boolean output that indicates whether that
+     * input is used.
+     */
+    Map<int, int> lf_output_for_input_bsocket_usage;
+    /**
+     * For every output bsocket there is a corresponding boolean input that indicates whether the
+     * output is used.
+     */
+    Map<int, int> lf_input_for_output_bsocket_usage;
+    /**
+     * For every geometry output that can propagate attributes from an input, there is an attribute
+     * set input. It indicates which attributes should be propagated to the output.
+     */
+    Map<int, int> lf_input_for_attribute_propagation_to_output;
+
     /* Add a boolean input for every output bsocket that indicates whether that socket is used. */
-    for (const int i : group_node.output_sockets().index_range()) {
-      lf_input_for_output_bsocket_usage_.add_new(
+    //const NodeGeometryEvaluateFunction &node_data = params.
+    for (const int i :  group_node.output_sockets().index_range()) {
+      lf_input_for_output_bsocket_usage.add_new(
           i,
           graph_inputs.append_and_get_index(lf_graph_info.mapping.group_output_used_sockets[i]));
-      inputs_.append_as("Output is Used", CPPType::get<bool>(), lf::ValueUsage::Maybe);
+      //inputs_.append_as("Output is Used", CPPType::get<bool>(), lf::ValueUsage::Maybe);
     }
     graph_inputs.extend(lf_graph_info.mapping.group_output_used_sockets);
 
@@ -1209,7 +1217,7 @@ class LazyFunctionForEvaluateFunctionNode : public LazyFunction {
       const int lf_index = inputs_.append_and_get_index_as(
           "Attribute Set", CPPType::get<bke::AnonymousAttributeSet>(), lf::ValueUsage::Maybe);
       graph_inputs.append(lf_socket);
-      lf_input_for_attribute_propagation_to_output_.add(output_index, lf_index);
+      lf_input_for_attribute_propagation_to_output.add(output_index, lf_index);
     }
 
     Vector<const lf::InputSocket *> graph_outputs;
@@ -1220,9 +1228,9 @@ class LazyFunctionForEvaluateFunctionNode : public LazyFunction {
       const InputUsageHint &input_usage_hint = lf_graph_info.mapping.group_input_usage_hints[i];
       if (input_usage_hint.type == InputUsageHintType::DynamicSocket) {
         const lf::InputSocket *lf_socket = lf_graph_info.mapping.group_input_usage_sockets[i];
-        lf_output_for_input_bsocket_usage_.add_new(i,
+        lf_output_for_input_bsocket_usage.add_new(i,
                                                    graph_outputs.append_and_get_index(lf_socket));
-        outputs_.append_as("Input is Used", CPPType::get<bool>());
+        //outputs_.append_as("Input is Used", CPPType::get<bool>());
       }
     }
 
