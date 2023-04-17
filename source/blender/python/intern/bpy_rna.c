@@ -3252,13 +3252,13 @@ static int pyrna_prop_array_ass_subscript(BPy_PropertyArrayRNA *self,
 
 /* For slice only. */
 static PyMappingMethods pyrna_prop_array_as_mapping = {
-    /*mp_len*/ (lenfunc)pyrna_prop_array_length,
+    /*mp_length*/ (lenfunc)pyrna_prop_array_length,
     /*mp_subscript*/ (binaryfunc)pyrna_prop_array_subscript,
     /*mp_ass_subscript*/ (objobjargproc)pyrna_prop_array_ass_subscript,
 };
 
 static PyMappingMethods pyrna_prop_collection_as_mapping = {
-    /*mp_len*/ (lenfunc)pyrna_prop_collection_length,
+    /*mp_length*/ (lenfunc)pyrna_prop_collection_length,
     /*mp_subscript*/ (binaryfunc)pyrna_prop_collection_subscript,
     /*mp_ass_subscript*/ (objobjargproc)pyrna_prop_collection_ass_subscript,
 };
@@ -5344,18 +5344,23 @@ static PyObject *foreach_getset(BPy_PropertyRNA *self, PyObject *args, int set)
     buffer_is_compat = false;
     if (PyObject_CheckBuffer(seq)) {
       Py_buffer buf;
-      PyObject_GetBuffer(seq, &buf, PyBUF_SIMPLE | PyBUF_FORMAT);
-
-      /* Check if the buffer matches. */
-
-      buffer_is_compat = foreach_compat_buffer(raw_type, attr_signed, buf.format);
-
-      if (buffer_is_compat) {
-        ok = RNA_property_collection_raw_set(
-            NULL, &self->ptr, self->prop, attr, buf.buf, raw_type, tot);
+      if (PyObject_GetBuffer(seq, &buf, PyBUF_SIMPLE | PyBUF_FORMAT) == -1) {
+        /* Request failed. A `PyExc_BufferError` will have been raised,
+         * so clear it to silently fall back to accessing as a sequence. */
+        PyErr_Clear();
       }
+      else {
+        /* Check if the buffer matches. */
 
-      PyBuffer_Release(&buf);
+        buffer_is_compat = foreach_compat_buffer(raw_type, attr_signed, buf.format);
+
+        if (buffer_is_compat) {
+          ok = RNA_property_collection_raw_set(
+              NULL, &self->ptr, self->prop, attr, buf.buf, raw_type, tot);
+        }
+
+        PyBuffer_Release(&buf);
+      }
     }
 
     /* Could not use the buffer, fallback to sequence. */
@@ -5400,18 +5405,23 @@ static PyObject *foreach_getset(BPy_PropertyRNA *self, PyObject *args, int set)
     buffer_is_compat = false;
     if (PyObject_CheckBuffer(seq)) {
       Py_buffer buf;
-      PyObject_GetBuffer(seq, &buf, PyBUF_SIMPLE | PyBUF_FORMAT);
-
-      /* Check if the buffer matches, TODO: signed/unsigned types. */
-
-      buffer_is_compat = foreach_compat_buffer(raw_type, attr_signed, buf.format);
-
-      if (buffer_is_compat) {
-        ok = RNA_property_collection_raw_get(
-            NULL, &self->ptr, self->prop, attr, buf.buf, raw_type, tot);
+      if (PyObject_GetBuffer(seq, &buf, PyBUF_SIMPLE | PyBUF_FORMAT) == -1) {
+        /* Request failed. A `PyExc_BufferError` will have been raised,
+         * so clear it to silently fall back to accessing as a sequence. */
+        PyErr_Clear();
       }
+      else {
+        /* Check if the buffer matches. */
 
-      PyBuffer_Release(&buf);
+        buffer_is_compat = foreach_compat_buffer(raw_type, attr_signed, buf.format);
+
+        if (buffer_is_compat) {
+          ok = RNA_property_collection_raw_get(
+              NULL, &self->ptr, self->prop, attr, buf.buf, raw_type, tot);
+        }
+
+        PyBuffer_Release(&buf);
+      }
     }
 
     /* Could not use the buffer, fallback to sequence. */
