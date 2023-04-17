@@ -216,13 +216,19 @@ struct Instance {
     {
       select_output_buf.resize(ceil_to_multiple_u(select_id_map.size(), 4));
       select_output_buf.push_update();
-      select_output_buf.clear_to_zero();
+      if (info_buf.mode == SelectType::SELECT_ALL) {
+        /* This mode uses atomicOr and store result as a bitmap. Clear to 0 (no selection). */
+        GPU_storagebuf_clear(select_output_buf, 0);
+      }
+      else {
+        /* Other modes use atomicMin. Clear to UINT_MAX. */
+        GPU_storagebuf_clear(select_output_buf, 0xFFFFFFFFu);
+      }
     }
 
     void read_result()
     {
-      /* TODO right barrier. */
-      GPU_finish();
+      GPU_memory_barrier(GPU_BARRIER_BUFFER_UPDATE);
       select_output_buf.read();
 
       Vector<GPUSelectResult> result;
@@ -240,7 +246,7 @@ struct Instance {
         case SelectType::SELECT_PICK_ALL:
         case SelectType::SELECT_PICK_NEAREST:
           for (auto i : IndexRange(select_id_map.size())) {
-            if (select_output_buf[i] != 0) {
+            if (select_output_buf[i] != 0xFFFFFFFFu) {
               /* NOTE: For `SELECT_PICK_NEAREST`, `select_output_buf` also contains the screen
                * distance to cursor in the lowest bits. */
               result.append({select_id_map[i], select_output_buf[i]});
