@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2017 Blender Foundation. All rights reserved. */
+ * Copyright 2017 Blender Foundation */
 
 /** \file
  * \ingroup draw
@@ -250,7 +250,7 @@ static void pointcloud_extract_position_and_radius(const PointCloud &pointcloud,
   using namespace blender;
 
   const bke::AttributeAccessor attributes = pointcloud.attributes();
-  const VArraySpan<float3> positions = attributes.lookup<float3>("position", ATTR_DOMAIN_POINT);
+  const Span<float3> positions = pointcloud.positions();
   const VArray<float> radii = attributes.lookup<float>("radius", ATTR_DOMAIN_POINT);
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {

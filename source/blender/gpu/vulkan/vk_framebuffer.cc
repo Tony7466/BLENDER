@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. All rights reserved. */
+ * Copyright 2022 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -241,15 +241,16 @@ void VKFrameBuffer::render_pass_create()
 
   VK_ALLOCATION_CALLBACKS
 
-  /* Track first attachment for size.*/
+  /* Track first attachment for size. */
   GPUAttachmentType first_attachment = GPU_FB_MAX_ATTACHMENT;
 
   std::array<VkAttachmentDescription, GPU_FB_MAX_ATTACHMENT> attachment_descriptions;
   std::array<VkImageView, GPU_FB_MAX_ATTACHMENT> image_views;
   std::array<VkAttachmentReference, GPU_FB_MAX_ATTACHMENT> attachment_references;
-  /*Vector<VkAttachmentReference> color_attachments;
+#if 0
+  Vector<VkAttachmentReference> color_attachments;
   VkAttachmentReference depth_attachment = {};
-  */
+#endif
   bool has_depth_attachment = false;
   bool found_attachment = false;
   int depth_location = -1;
@@ -276,7 +277,7 @@ void VKFrameBuffer::render_pass_create()
                                                                  depth_location;
 
     if (attachment.tex) {
-      /* Ensure texture is allocated to ensure the image view.*/
+      /* Ensure texture is allocated to ensure the image view. */
       VKTexture &texture = *static_cast<VKTexture *>(unwrap(attachment.tex));
       texture.ensure_allocated();
       image_views[attachment_location] = texture.vk_image_view_handle();
@@ -330,7 +331,7 @@ void VKFrameBuffer::render_pass_create()
   VkSubpassDescription subpass = {};
   subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
   subpass.colorAttachmentCount = color_attachment_len;
-  subpass.pColorAttachments = attachment_references.begin();
+  subpass.pColorAttachments = attachment_references.data();
   if (has_depth_attachment) {
     subpass.pDepthStencilAttachment = &attachment_references[depth_location];
   }
@@ -346,12 +347,12 @@ void VKFrameBuffer::render_pass_create()
   vkCreateRenderPass(
       context.device_get(), &render_pass_info, vk_allocation_callbacks, &vk_render_pass_);
 
-  /* We might want to split framebuffer and render pass....*/
+  /* We might want to split frame-buffer and render pass. */
   VkFramebufferCreateInfo framebuffer_create_info = {};
   framebuffer_create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
   framebuffer_create_info.renderPass = vk_render_pass_;
   framebuffer_create_info.attachmentCount = attachment_len;
-  framebuffer_create_info.pAttachments = image_views.begin();
+  framebuffer_create_info.pAttachments = image_views.data();
   framebuffer_create_info.width = width_;
   framebuffer_create_info.height = height_;
   framebuffer_create_info.layers = 1;

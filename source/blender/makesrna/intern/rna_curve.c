@@ -61,10 +61,9 @@ const EnumPropertyItem rna_enum_keyframe_handle_type_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
-/**
- * \note this is a near exact duplicate of `gpencil_interpolation_type_items`,
- * Changes here will likely apply there too.
- */
+/* NOTE: this is a near exact duplicate of `gpencil_interpolation_type_items`,
+ * Changes here will likely apply there too. */
+
 const EnumPropertyItem rna_enum_beztriple_interpolation_mode_items[] = {
     /* Interpolation. */
     RNA_ENUM_ITEM_HEADING(CTX_N_(BLT_I18NCONTEXT_ID_ACTION, "Interpolation"),
@@ -1366,8 +1365,8 @@ static void rna_def_charinfo(BlenderRNA *brna)
                              "rna_Curve_material_index_range");
   RNA_def_property_update(prop, 0, "rna_Curve_update_data");
 
-  prop = RNA_def_property(srna, "kerning", PROP_INT, PROP_UNSIGNED);
-  RNA_def_property_int_sdna(prop, NULL, "kern");
+  prop = RNA_def_property(srna, "kerning", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "kern");
   RNA_def_property_ui_text(prop, "Kerning", "Spacing between characters");
   RNA_def_property_update(prop, 0, "rna_Curve_update_data");
 }
@@ -2008,7 +2007,7 @@ static void rna_def_curve_nurb(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "flagv", CU_NURB_ENDPOINT);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(
-      prop, "Endpoint V", "Make this nurbs surface meet the endpoints in the V direction ");
+      prop, "Endpoint V", "Make this nurbs surface meet the endpoints in the V direction");
   RNA_def_property_update(prop, 0, "rna_Nurb_update_knot_v");
 
   prop = RNA_def_property(srna, "use_bezier_u", PROP_BOOLEAN, PROP_NONE);
