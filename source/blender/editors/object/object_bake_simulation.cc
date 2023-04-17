@@ -26,6 +26,7 @@
 
 #include "BKE_context.h"
 #include "BKE_curves.hh"
+#include "BKE_instances.hh"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_mesh.hh"
@@ -365,6 +366,21 @@ static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_simple_gspan(
   return false;
 }
 
+template<typename T>
+static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_simple_span(
+    BDataWriter &bdata_writer, const Span<T> data)
+{
+  return write_bdata_simple_gspan(bdata_writer, data);
+}
+
+template<typename T>
+[[nodiscard]] static bool read_bdata_simple_span(const BDataReader &bdata_reader,
+                                                 const io::serialize::DictionaryValue &io_data,
+                                                 MutableSpan<T> r_data)
+{
+  return read_bdata_simple_gspan(bdata_reader, io_data, r_data);
+}
+
 static void load_attributes(const io::serialize::ArrayValue &io_attributes,
                             bke::MutableAttributeAccessor &attributes,
                             const BDataReader &bdata_reader)
@@ -497,6 +513,68 @@ static Mesh *try_load_mesh(const io::serialize::DictionaryValue &io_geometry,
 }
 
 static GeometrySet load_geometry(const io::serialize::DictionaryValue &io_geometry,
+                                 const BDataReader &bdata_reader);
+
+static bke::Instances *try_load_instances(const io::serialize::DictionaryValue &io_geometry,
+                                          const BDataReader &bdata_reader)
+{
+  const io::serialize::DictionaryValue *io_instances = io_geometry.lookup_dict("instances");
+  if (!io_instances) {
+    return nullptr;
+  }
+  const int num_instances = io_instances->lookup_int("num_instances").value_or(0);
+  if (num_instances == 0) {
+    return nullptr;
+  }
+  const io::serialize::ArrayValue *io_attributes = io_instances->lookup_array("attributes");
+  if (!io_attributes) {
+    return nullptr;
+  }
+  const io::serialize::ArrayValue *io_references = io_instances->lookup_array("references");
+  if (!io_references) {
+    return nullptr;
+  }
+
+  bke::Instances *instances = new bke::Instances();
+  instances->resize(num_instances);
+
+  const auto cancel = [&]() {
+    delete instances;
+    return nullptr;
+  };
+
+  for (const auto &io_reference_value : io_references->elements()) {
+    const io::serialize::DictionaryValue *io_reference = io_reference_value->as_dictionary_value();
+    GeometrySet reference_geometry;
+    if (io_reference) {
+      reference_geometry = load_geometry(*io_reference, bdata_reader);
+    }
+    instances->add_reference(std::move(reference_geometry));
+  }
+
+  const auto io_transforms = io_instances->lookup_dict("transforms");
+  if (!io_transforms) {
+    return cancel();
+  }
+  if (!read_bdata_simple_span(bdata_reader, *io_transforms, instances->transforms())) {
+    return cancel();
+  }
+
+  const auto io_handles = io_instances->lookup_dict("handles");
+  if (!io_handles) {
+    return cancel();
+  }
+  if (!read_bdata_simple_span(bdata_reader, *io_handles, instances->reference_handles())) {
+    return cancel();
+  }
+
+  bke::MutableAttributeAccessor attributes = instances->attributes_for_write();
+  load_attributes(*io_attributes, attributes, bdata_reader);
+
+  return instances;
+}
+
+static GeometrySet load_geometry(const io::serialize::DictionaryValue &io_geometry,
                                  const BDataReader &bdata_reader)
 {
   GeometrySet geometry;
@@ -508,6 +586,9 @@ static GeometrySet load_geometry(const io::serialize::DictionaryValue &io_geomet
   }
   if (Curves *curves = try_load_curves(io_geometry, bdata_reader)) {
     geometry.replace_curves(curves);
+  }
+  if (bke::Instances *instances = try_load_instances(io_geometry, bdata_reader)) {
+    geometry.replace_instances(instances);
   }
   return geometry;
 }
@@ -613,11 +694,17 @@ static std::shared_ptr<io::serialize::ArrayValue> serialize_material_slots(
 }
 
 static std::shared_ptr<io::serialize::ArrayValue> serialize_attributes(
-    const bke::AttributeAccessor &attributes, BDataWriter &bdata_writer)
+    const bke::AttributeAccessor &attributes,
+    BDataWriter &bdata_writer,
+    const Set<std::string> &attributes_to_ignore)
 {
   auto io_attributes = std::make_shared<io::serialize::ArrayValue>();
   attributes.for_all([&](const bke::AttributeIDRef &attribute_id,
                          const bke::AttributeMetaData &meta_data) {
+    if (attributes_to_ignore.contains_as(attribute_id.name())) {
+      return true;
+    }
+
     auto io_attribute = io_attributes->append_dict();
 
     io_attribute->append_str("name", attribute_id.name());
@@ -663,7 +750,7 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
     auto io_materials = serialize_material_slots({mesh.mat, mesh.totcol});
     io_mesh->append("materials", io_materials);
 
-    auto io_attributes = serialize_attributes(mesh.attributes(), bdata_writer);
+    auto io_attributes = serialize_attributes(mesh.attributes(), bdata_writer, {});
     io_mesh->append("attributes", io_attributes);
   }
   if (geometry.has_pointcloud()) {
@@ -675,7 +762,7 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
     auto io_materials = serialize_material_slots({pointcloud.mat, pointcloud.totcol});
     io_pointcloud->append("materials", io_materials);
 
-    auto io_attributes = serialize_attributes(pointcloud.attributes(), bdata_writer);
+    auto io_attributes = serialize_attributes(pointcloud.attributes(), bdata_writer, {});
     io_pointcloud->append("attributes", io_attributes);
   }
   if (geometry.has_curves()) {
@@ -698,8 +785,28 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
     auto io_materials = serialize_material_slots({curves_id.mat, curves_id.totcol});
     io_curves->append("materials", io_materials);
 
-    auto io_attributes = serialize_attributes(curves.attributes(), bdata_writer);
+    auto io_attributes = serialize_attributes(curves.attributes(), bdata_writer, {});
     io_curves->append("attributes", io_attributes);
+  }
+  if (geometry.has_instances()) {
+    const bke::Instances &instances = *geometry.get_instances_for_read();
+    auto io_instances = io_geometry->append_dict("instances");
+
+    io_instances->append_int("num_instances", instances.instances_num());
+
+    auto io_references = io_instances->append_array("references");
+    for (const bke::InstanceReference &reference : instances.references()) {
+      BLI_assert(reference.type() == bke::InstanceReference::Type::GeometrySet);
+      io_references->append(serialize_geometry_set(reference.geometry_set(), bdata_writer));
+    }
+
+    io_instances->append("transforms",
+                         write_bdata_simple_span(bdata_writer, instances.transforms()));
+    io_instances->append("handles",
+                         write_bdata_simple_span(bdata_writer, instances.reference_handles()));
+
+    auto io_attributes = serialize_attributes(instances.attributes(), bdata_writer, {"position"});
+    io_instances->append("attributes", io_attributes);
   }
   return io_geometry;
 }
