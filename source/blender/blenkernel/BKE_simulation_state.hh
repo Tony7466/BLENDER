@@ -47,9 +47,13 @@ struct SimulationZoneID {
 
 class ModifierSimulationState {
  private:
+  mutable bool bake_loaded_;
+
  public:
   mutable std::mutex mutex_;
   Map<SimulationZoneID, std::unique_ptr<SimulationZoneState>> zone_states_;
+  std::optional<std::string> meta_path_;
+  std::optional<std::string> bdata_dir_;
 
   const SimulationZoneState *get_zone_state(const SimulationZoneID &zone_id) const
   {
@@ -66,6 +70,8 @@ class ModifierSimulationState {
     return *zone_states_.lookup_or_add_cb(
         zone_id, []() { return std::make_unique<SimulationZoneState>(); });
   }
+
+  void ensure_bake_loaded() const;
 };
 
 struct SubFrame {

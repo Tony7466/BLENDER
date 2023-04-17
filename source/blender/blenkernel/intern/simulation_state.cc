@@ -36,12 +36,22 @@ void ModifierSimulationCache::load_baked_states(const StringRefNull meta_dir,
 
     auto new_state_at_frame = std::make_unique<ModifierSimulationStateAtFrame>();
     new_state_at_frame->frame = frame;
-    ed::object::bake_simulation::load_simulation_state(
-        dir_entry.path, bdata_dir, new_state_at_frame->state);
+    new_state_at_frame->state.bdata_dir_ = bdata_dir;
+    new_state_at_frame->state.meta_path_ = dir_entry.path;
     states_at_frames_.append(std::move(new_state_at_frame));
   }
 
   cache_state_ = CacheState::Baked;
+}
+
+void ModifierSimulationState::ensure_bake_loaded() const
+{
+  std::scoped_lock lock{mutex_};
+  if (!bake_loaded_) {
+    ed::object::bake_simulation::load_simulation_state(
+        *meta_path_, *bdata_dir_, const_cast<ModifierSimulationState &>(*this));
+    bake_loaded_ = true;
+  }
 }
 
 }  // namespace blender::bke::sim
