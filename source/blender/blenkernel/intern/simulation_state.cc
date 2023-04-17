@@ -13,14 +13,23 @@ void load_simulation_state(const StringRefNull meta_path,
 
 namespace blender::bke::sim {
 
-void ModifierSimulationCache::load_baked_states(const StringRefNull meta_dir,
+void ModifierSimulationCache::try_discover_bake(const StringRefNull meta_dir,
                                                 const StringRefNull bdata_dir)
 {
-  this->reset();
+  if (failed_finding_bake_) {
+    return;
+  }
 
   direntry *dir_entries = nullptr;
   const int dir_entries_num = BLI_filelist_dir_contents(meta_dir.c_str(), &dir_entries);
   BLI_SCOPED_DEFER([&]() { BLI_filelist_free(dir_entries, dir_entries_num); });
+
+  if (dir_entries_num == 0) {
+    failed_finding_bake_ = true;
+    return;
+  }
+
+  this->reset();
 
   for (const int i : IndexRange(dir_entries_num)) {
     const direntry &dir_entry = dir_entries[i];
@@ -47,10 +56,12 @@ void ModifierSimulationCache::load_baked_states(const StringRefNull meta_dir,
 void ModifierSimulationState::ensure_bake_loaded() const
 {
   std::scoped_lock lock{mutex_};
-  if (!bake_loaded_) {
-    ed::object::bake_simulation::load_simulation_state(
-        *meta_path_, *bdata_dir_, const_cast<ModifierSimulationState &>(*this));
-    bake_loaded_ = true;
+  if (meta_path_ && bdata_dir_) {
+    if (!bake_loaded_) {
+      ed::object::bake_simulation::load_simulation_state(
+          *meta_path_, *bdata_dir_, const_cast<ModifierSimulationState &>(*this));
+      bake_loaded_ = true;
+    }
   }
 }
 

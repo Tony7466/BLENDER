@@ -174,10 +174,12 @@ struct StatesAroundFrame {
 class ModifierSimulationCache {
  private:
   Vector<std::unique_ptr<ModifierSimulationStateAtFrame>> states_at_frames_;
-  CacheState cache_state_ = CacheState::Valid;
 
  public:
-  void load_baked_states(StringRefNull meta_dir, StringRefNull bdata_dir);
+  CacheState cache_state_ = CacheState::Valid;
+  bool failed_finding_bake_ = false;
+
+  void try_discover_bake(StringRefNull meta_dir, StringRefNull bdata_dir);
 
   bool has_state_at_frame(const SubFrame &frame) const
   {

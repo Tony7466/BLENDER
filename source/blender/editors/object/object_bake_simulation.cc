@@ -862,6 +862,12 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
     }
   }
 
+  for (NodesModifierData *nmd : modifiers) {
+    if (nmd->simulation_cache) {
+      nmd->simulation_cache->cache_state_ = CacheState::Baked;
+    }
+  }
+
   scene->r.cfra = old_frame;
   DEG_time_tag_update(bmain);
   WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, nullptr);

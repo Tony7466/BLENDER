@@ -1216,11 +1216,13 @@ static GeometrySet compute_geometry(const bNodeTree &btree,
     if (nmd_orig->simulation_cache == nullptr) {
       nmd_orig->simulation_cache = MEM_new<bke::sim::ModifierSimulationCache>(__func__);
     }
-    if (current_frame.frame() == 150) {
-      nmd_orig->simulation_cache->load_baked_states(
+
+    if (nmd_orig->simulation_cache->cache_state() != bke::sim::CacheState::Baked) {
+      nmd_orig->simulation_cache->try_discover_bake(
           ed::object::bake_simulation::get_meta_directory(*bmain, *ctx->object, nmd->modifier),
           ed::object::bake_simulation::get_bdata_directory(*bmain, *ctx->object, nmd->modifier));
     }
+
     if (nmd_orig->simulation_cache->cache_state() == bke::sim::CacheState::Invalid &&
         current_frame == start_frame) {
       nmd_orig->simulation_cache->reset();
