@@ -163,7 +163,9 @@ template<typename T> void Instance<T>::draw(Manager &manager)
 
     resources.overlay_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_tx));
     resources.overlay_line_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_tx));
-    resources.overlay_color_only_fb.ensure(GPU_ATTACHMENT_NONE);
+    /* Create it but shouldn't even be used. */
+    resources.overlay_color_only_fb.ensure(GPU_ATTACHMENT_NONE,
+                                           GPU_ATTACHMENT_TEXTURE(resources.color_overlay_tx));
   }
   else {
     resources.line_tx.acquire(render_size, GPU_RGBA8);
