@@ -82,7 +82,8 @@ if(APPLE)
   set_target_properties(blender-thumbnailer PROPERTIES
     XCODE_PRODUCT_TYPE com.apple.product-type.app-extension)
   set_target_properties(blender-thumbnailer PROPERTIES
-    BUNDLE_EXTENSION appex)
+    BUNDLE_EXTENSION appex
+    BL_CODESIGN_ENTITLEMENTS ${CMAKE_CURRENT_SOURCE_DIR}/src/ThumbnailExtensionMacOS.entitlements)
   setup_platform_linker_flags(blender-thumbnailer)
   set_target_properties(blender-thumbnailer PROPERTIES BUILD_WITH_INSTALL_RPATH true)
   list(APPEND LIB
