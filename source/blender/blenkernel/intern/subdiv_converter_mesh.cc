@@ -35,7 +35,7 @@ struct ConverterStorage {
   SubdivSettings settings;
   const Mesh *mesh;
   const float (*vert_positions)[3];
-  blender::Span<MEdge> edges;
+  blender::Span<blender::int2> edges;
   blender::OffsetIndices<int> polys;
   blender::Span<int> corner_verts;
   blender::Span<int> corner_edges;
@@ -148,9 +148,9 @@ static void get_edge_vertices(const OpenSubdiv_Converter *converter,
 {
   ConverterStorage *storage = static_cast<ConverterStorage *>(converter->user_data);
   const int edge_index = storage->manifold_edge_index_reverse[manifold_edge_index];
-  const MEdge *edge = &storage->edges[edge_index];
-  manifold_edge_vertices[0] = storage->manifold_vertex_index[edge->v1];
-  manifold_edge_vertices[1] = storage->manifold_vertex_index[edge->v2];
+  const blender::int2 &edge = storage->edges[edge_index];
+  manifold_edge_vertices[0] = storage->manifold_vertex_index[edge[0]];
+  manifold_edge_vertices[1] = storage->manifold_vertex_index[edge[1]];
 }
 
 static float get_edge_sharpness(const OpenSubdiv_Converter *converter, int manifold_edge_index)
@@ -368,13 +368,13 @@ static void initialize_manifold_indices(ConverterStorage *storage)
                                   &storage->num_manifold_edges);
   /* Initialize infinite sharp mapping. */
   if (loose_edges.count > 0) {
-    const blender::Span<MEdge> edges = storage->edges;
+    const Span<int2> edges = storage->edges;
     storage->infinite_sharp_vertices_map = BLI_BITMAP_NEW(mesh->totvert, "vert used map");
     for (int edge_index = 0; edge_index < mesh->totedge; edge_index++) {
       if (loose_edges.is_loose_bits[edge_index]) {
-        const MEdge *edge = &edges[edge_index];
-        BLI_BITMAP_ENABLE(storage->infinite_sharp_vertices_map, edge->v1);
-        BLI_BITMAP_ENABLE(storage->infinite_sharp_vertices_map, edge->v2);
+        const int2 edge = edges[edge_index];
+        BLI_BITMAP_ENABLE(storage->infinite_sharp_vertices_map, edge[0]);
+        BLI_BITMAP_ENABLE(storage->infinite_sharp_vertices_map, edge[1]);
       }
     }
   }

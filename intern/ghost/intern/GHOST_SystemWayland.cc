@@ -6764,8 +6764,19 @@ GHOST_TCapabilityFlag GHOST_SystemWayland::getCapabilities() const
            * this is an intentional choice, forcing us to use a software cursor in this case. */
           GHOST_kCapabilityCursorWarp |
           /* Some drivers don't support front-buffer reading, see: #98462 & #106264.
-           * We could inspect the graphics card driver - for now just disable on WAYLAND. */
-          GHOST_kCapabilityGPUReadFrontBuffer));
+           *
+           * NOTE(@ideasman42): the EGL flag `EGL_BUFFER_PRESERVED` is intended request support for
+           * front-buffer reading however in my tests requesting the flag didn't work with AMD,
+           * and it's not even requirement - so we can't rely on this feature being supported.
+           *
+           * Instead of assuming this is not supported, the graphics card driver could be inspected
+           * (enable for NVIDIA for e.g.), but the advantage in supporting this is minimal.
+           * In practice it means an off-screen buffer is used to redraw the window for the
+           * screen-shot and eye-dropper sampling logic, both operations where the overhead
+           * is negligible. */
+          GHOST_kCapabilityGPUReadFrontBuffer |
+          /* This WAYLAND back-end has not yet implemented image copy/paste. */
+          GHOST_kCapabilityClipboardImages));
 }
 
 bool GHOST_SystemWayland::cursor_grab_use_software_display_get(const GHOST_TGrabCursorMode mode)
