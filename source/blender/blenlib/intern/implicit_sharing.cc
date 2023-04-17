@@ -13,7 +13,7 @@ class MEMFreeImplicitSharing : public ImplicitSharingInfo {
  public:
   void *data;
 
-  MEMFreeImplicitSharing(void *data) : ImplicitSharingInfo(1), data(data)
+  MEMFreeImplicitSharing(void *data) : data(data)
   {
     BLI_assert(data != nullptr);
   }
