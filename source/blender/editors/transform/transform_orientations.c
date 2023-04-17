@@ -580,13 +580,7 @@ void ED_transform_calc_orientation_from_type(const bContext *C, float r_mat[3][3
       scene, view_layer, v3d, rv3d, ob, obedit, orient_index, pivot_point, r_mat);
 }
 
-static void handle_armature_parent_orientation(const Scene *scene,
-                                               ViewLayer *view_layer,
-                                               const View3D *v3d,
-                                               Object *ob,
-                                               Object *obedit,
-                                               const int pivot_point,
-                                               float r_mat[3][3])
+static void handle_armature_parent_orientation(Object *ob, float r_mat[3][3])
 {
   bPoseChannel *active_pchan = BKE_pose_channel_active(ob, false);
 
@@ -598,15 +592,8 @@ static void handle_armature_parent_orientation(const Scene *scene,
     return;
   }
 
-  // If root, and "Local Location" isn't set, use local transform of armature object.
-  if (active_pchan->bone->flag & BONE_NO_LOCAL_LOCATION) {
-    transform_orientations_create_from_axis(r_mat, UNPACK3(ob->object_to_world));
-    return;
-  }
-
-  // If root has "Local Location" set, use bone local.
-  ED_getTransformOrientationMatrix(scene, view_layer, v3d, ob, obedit, pivot_point, r_mat);
-  return;
+  // For root, use local transform of armature object.
+  transform_orientations_create_from_axis(r_mat, UNPACK3(ob->object_to_world));
 }
 
 static void handle_object_parent_orientation(Object *ob, float r_mat[3][3])
@@ -653,8 +640,7 @@ short ED_transform_calc_orientation_from_type_ex(const Scene *scene,
     case V3D_ORIENT_PARENT: {
       if (ob) {
         if (ob->mode & OB_MODE_POSE) {
-          handle_armature_parent_orientation(
-              scene, view_layer, v3d, ob, obedit, pivot_point, r_mat);
+          handle_armature_parent_orientation(ob, r_mat);
           break;
         }
         else {
