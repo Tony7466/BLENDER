@@ -183,6 +183,9 @@ ccl_device int bsdf_microfacet_hair_setup(ccl_private ShaderData *sd,
 
   bsdf->roughness = clamp(bsdf->roughness, 0.001f, 1.0f);
 
+  /* Negate to keep it consistent with principled hair BSDF. */
+  bsdf->tilt = -bsdf->tilt;
+
   /* Compute local frame. The Y axis is aligned with the curve tangent; the X axis is perpendicular
    to the ray direction for circular cross-sections, or aligned with the major axis for elliptical
    cross-sections. */
@@ -329,8 +332,7 @@ ccl_device float3 bsdf_microfacet_hair_eval_r(ccl_private const ShaderClosure *s
 
   /* Compute visible azimuthal range from incoming and outgoing directions. */
   /* dot(wi, wmi) > 0 */
-  const float tilt = -bsdf->tilt;
-  const float tan_tilt = tanf(tilt);
+  const float tan_tilt = tanf(bsdf->tilt);
   float phi_m_max1 = acosf(fmaxf(-tan_tilt * tan_theta(wi), 0.0f)) + phi_i;
   if (isnan_safe(phi_m_max1)) {
     return zero_float3();
@@ -385,7 +387,7 @@ ccl_device float3 bsdf_microfacet_hair_eval_r(ccl_private const ShaderClosure *s
   float integral = 0.0f;
   for (size_t i = 0; i <= intervals; i++) {
     const float gamma_m = gamma_m_min + i * res;
-    const float3 wm = sphg_dir(tilt, gamma_m, b);
+    const float3 wm = sphg_dir(bsdf->tilt, gamma_m, b);
 
     if (microfacet_visible(wi, wo, make_float3(wm.x, 0.0f, wm.z), wh)) {
       const float weight = (i == 0 || i == intervals) ? 0.5f : (i % 2 + 1);
@@ -425,8 +427,7 @@ ccl_device float3 bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
   const float phi_i = is_circular ? 0.0f : dir_phi(wi);
 
   /* Compute visible azimuthal range from the incoming direction. */
-  const float tilt = -bsdf->tilt;
-  const float tan_tilt = tanf(tilt);
+  const float tan_tilt = tanf(bsdf->tilt);
   const float phi_m_max = acosf(fmaxf(-tan_tilt * tan_theta(wi), 0.0f)) + phi_i;
   if (isnan_safe(phi_m_max)) {
     /* Early detection of dot(wi, wmi) < 0. */
@@ -462,7 +463,7 @@ ccl_device float3 bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
 
     const float gamma_mi = gamma_m_min + i * res;
 
-    const float3 wmi = sphg_dir(tilt, gamma_mi, b);
+    const float3 wmi = sphg_dir(bsdf->tilt, gamma_mi, b);
     const float3 wmi_ = sphg_dir(0.0f, gamma_mi, b);
 
     /* Sample wh1. */
@@ -482,7 +483,7 @@ ccl_device float3 bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
     const float3 wt = -refract_angle(wi, wh1, cos_theta_t1, inv_eta);
     const float phi_t = dir_phi(wt);
     const float gamma_mt = 2.0f * to_phi(phi_t, b) - gamma_mi;
-    const float3 wmt = sphg_dir(-tilt, gamma_mt, b);
+    const float3 wmt = sphg_dir(-bsdf->tilt, gamma_mt, b);
     const float3 wmt_ = sphg_dir(0.0f, gamma_mt, b);
 
     const float cos_mi1 = dot(wi, wmi);
@@ -551,7 +552,7 @@ ccl_device float3 bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
 
       const float phi_tr = dir_phi(wtr);
       const float gamma_mtr = gamma_mi - 2.0f * (to_phi(phi_t, b) - to_phi(phi_tr, b)) + M_PI_F;
-      const float3 wmtr = sphg_dir(-tilt, gamma_mtr, b);
+      const float3 wmtr = sphg_dir(-bsdf->tilt, gamma_mtr, b);
       const float3 wmtr_ = sphg_dir(0.0f, gamma_mtr, b);
 
       float3 wh3 = wtr + inv_eta * wo;
@@ -655,9 +656,8 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
   const float3 wmi_ = sphg_dir(0, gamma_mi, b);
 
   /* Mesonormal. */
-  const float tilt = -bsdf->tilt;
   float st, ct;
-  fast_sincosf(tilt, &st, &ct);
+  fast_sincosf(bsdf->tilt, &st, &ct);
   const float3 wmi = make_float3(wmi_.x * ct, st, wmi_.z * ct);
 
   if (dot(wmi, wi) < 0.0f || dot(wmi_, wi) < 0.0f) {
@@ -687,7 +687,7 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
   const float phi_t = dir_phi(wt);
 
   const float gamma_mt = 2.0f * to_phi(phi_t, b) - gamma_mi;
-  const float3 wmt = sphg_dir(-tilt, gamma_mt, b);
+  const float3 wmt = sphg_dir(-bsdf->tilt, gamma_mt, b);
   const float3 wmt_ = sphg_dir(0.0f, gamma_mt, b);
 
   const float3 wh2 = sample_wh<m_type>(kg, roughness, -wt, wmt, sample_h2);
@@ -721,7 +721,7 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
     /* Sample TRT lobe. */
     const float phi_tr = dir_phi(wtr);
     const float gamma_mtr = gamma_mi - 2.0f * (to_phi(phi_t, b) - to_phi(phi_tr, b)) + M_PI_F;
-    wmtr = sphg_dir(-tilt, gamma_mtr, b);
+    wmtr = sphg_dir(-bsdf->tilt, gamma_mtr, b);
 
     wh3 = sample_wh<m_type>(kg, roughness, wtr, wmtr, sample_h3);
 
