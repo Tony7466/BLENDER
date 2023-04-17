@@ -9,43 +9,21 @@
 
 #include "vk_immediate.hh"
 
-#include "gpu_vertex_format_private.h"
-
 namespace blender::gpu {
 
 VKImmediate::VKImmediate() {}
 VKImmediate::~VKImmediate() {}
 
-static VkDeviceSize new_buffer_size(size_t sub_buffer_size)
-{
-  return max_ii(sub_buffer_size, DEFAULT_INTERNAL_BUFFER_SIZE);
-}
-
 uchar *VKImmediate::begin()
 {
   VKContext &context = *VKContext::get();
   const size_t bytes_needed = vertex_buffer_size(&vertex_format, vertex_len);
-  const bool new_buffer_needed = !buffer_.is_allocated() || buffer_bytes_free() < bytes_needed;
-  if (new_buffer_needed) {
-    /* TODO: get buffer from context.reusable_buffers. */
-    BLI_assert(!buffer_.is_allocated());
-    buffer_.create(context,
-                   new_buffer_size(bytes_needed),
-                   GPU_USAGE_DYNAMIC,
-                   static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
-                                                      VK_BUFFER_USAGE_TRANSFER_DST_BIT));
-    buffer_offset_ = 0;
-    current_subbuffer_len_ = 0;
-  }
+  const bool new_buffer_needed = !has_active_resource() || buffer_bytes_free() < bytes_needed;
 
-  if (bytes_needed <= buffer_bytes_free()) {
-    current_subbuffer_len_ = bytes_needed;
-  }
-  else {
-    /* TODO allocate new buffer. */
-  }
+  std::unique_ptr<VKBuffer> &buffer = tracked_resource_for(context, new_buffer_needed);
+  current_subbuffer_len_ = bytes_needed;
 
-  uchar *data = static_cast<uchar *>(buffer_.mapped_memory_get());
+  uchar *data = static_cast<uchar *>(buffer->mapped_memory_get());
   return data + subbuffer_offset_get();
 }
 
@@ -75,9 +53,25 @@ VkDeviceSize VKImmediate::subbuffer_offset_get()
 
 VkDeviceSize VKImmediate::buffer_bytes_free()
 {
-  return buffer_.size_in_bytes() - subbuffer_offset_get();
+  return active_resource()->size_in_bytes() - subbuffer_offset_get();
 }
 
-/** \} */
+static VkDeviceSize new_buffer_size(size_t sub_buffer_size)
+{
+  return max_ii(sub_buffer_size, DEFAULT_INTERNAL_BUFFER_SIZE);
+}
+
+std::unique_ptr<VKBuffer> VKImmediate::create_resource(VKContext &context)
+{
+  const size_t bytes_needed = vertex_buffer_size(&vertex_format, vertex_len);
+  std::unique_ptr<VKBuffer> result = std::make_unique<VKBuffer>();
+  result->create(context,
+                 new_buffer_size(bytes_needed),
+                 GPU_USAGE_DYNAMIC,
+                 static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+                                                    VK_BUFFER_USAGE_TRANSFER_DST_BIT));
+  buffer_offset_ = 0;
+  return result;
+}
 
 }  // namespace blender::gpu

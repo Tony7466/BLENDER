@@ -12,10 +12,12 @@
 #include "MEM_guardedalloc.h"
 
 #include "gpu_immediate_private.hh"
+#include "gpu_vertex_format_private.h"
 
 #include "vk_buffer.hh"
 #include "vk_context.hh"
 #include "vk_mem_alloc.h"
+#include "vk_resource_tracker.hh"
 #include "vk_vertex_attribute_object.hh"
 
 namespace blender::gpu {
@@ -23,9 +25,8 @@ namespace blender::gpu {
 /* Size of internal buffer. */
 constexpr size_t DEFAULT_INTERNAL_BUFFER_SIZE = (4 * 1024 * 1024);
 
-class VKImmediate : public Immediate {
+class VKImmediate : public Immediate, VKResourceTracker<VKBuffer> {
  private:
-  VKBuffer buffer_;
   VKVertexAttributeObject vertex_attributes_;
 
   VkDeviceSize buffer_offset_ = 0;
@@ -43,6 +44,8 @@ class VKImmediate : public Immediate {
  private:
   VkDeviceSize subbuffer_offset_get();
   VkDeviceSize buffer_bytes_free();
+
+  std::unique_ptr<VKBuffer> create_resource(VKContext &context) override;
 };
 
 }  // namespace blender::gpu

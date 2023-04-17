@@ -11,7 +11,7 @@
 
 namespace blender::gpu::tests {
 
-static constexpr int Size = 10;
+static constexpr int Size = 256;
 
 static void test_immediate_crosshair()
 {
@@ -45,6 +45,44 @@ static void test_immediate_crosshair()
   GPU_offscreen_free(offscreen);
 }
 GPU_TEST(immediate_crosshair)
+
+/**
+ * This test overflows the default immediate buffer and a second one would be allocated.
+ */
+static void test_immediate_arrow()
+{
+  GPUOffScreen *offscreen = GPU_offscreen_create(Size,
+                                                 Size,
+                                                 false,
+                                                 GPU_RGBA16F,
+                                                 GPU_TEXTURE_USAGE_ATTACHMENT |
+                                                     GPU_TEXTURE_USAGE_HOST_READ,
+                                                 nullptr);
+  BLI_assert(offscreen != nullptr);
+  GPU_offscreen_bind(offscreen, false);
+  GPU_depth_test(GPU_DEPTH_GREATER);
+
+  GPUVertFormat *format = immVertexFormat();
+  uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+
+  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+
+  /* Creates an immediate buffer and fill a part of the buffer. */
+  float4 color(1.0, 0.5, 0.25, 1.0);
+  immUniformColor4fv(color);
+  imm_draw_circle_fill_3d(pos, 0.0, 0.0, 0.8f, 256);
+
+  /* The cylinder doesn't fit in the immediate buffer and a new one will be constructed. */
+  float4 color2(1.0, 0.0, 0.0, 1.0);
+  immUniformColor4fv(color2);
+  imm_draw_cylinder_fill_3d(pos, 1.0f, 0.0, 1.0f, 256, 256);
+
+  GPU_offscreen_unbind(offscreen, false);
+  GPU_flush();
+
+  GPU_offscreen_free(offscreen);
+}
+GPU_TEST(immediate_arrow)
 
 static void test_immediate_one_plane()
 {
