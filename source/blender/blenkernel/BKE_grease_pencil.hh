@@ -10,11 +10,8 @@
 
 #include "BLI_function_ref.hh"
 #include "BLI_map.hh"
-#include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_shared_cache.hh"
-#include "BLI_stack.hh"
-#include "BLI_string.h"
 #include "BLI_utility_mixins.hh"
 
 #include "DNA_gpencil_legacy_types.h"
@@ -49,7 +46,7 @@ class TreeNode : public ::GreasePencilLayerTreeNode, NonMovable {
    */
   constexpr bool is_group() const
   {
-    return this->type == GREASE_PENCIL_LAYER_TREE_GROUP;
+    return this->type == GP_LAYER_TREE_GROUP;
   }
 
   /**
@@ -57,7 +54,7 @@ class TreeNode : public ::GreasePencilLayerTreeNode, NonMovable {
    */
   constexpr bool is_layer() const
   {
-    return this->type == GREASE_PENCIL_LAYER_TREE_LEAF;
+    return this->type == GP_LAYER_TREE_LEAF;
   }
 
   /**
@@ -89,7 +86,7 @@ class TreeNode : public ::GreasePencilLayerTreeNode, NonMovable {
  * A layer maps drawings to scene frames. It can be thought of as one independent channel in the
  * timeline.
  */
-class Layer : public TreeNode, ::GreasePencilLayer {
+class Layer : public TreeNode, public ::GreasePencilLayer {
  private:
   /**
    * This Map maps a scene frame number (key) to a GreasePencilFrame. This struct holds an index
@@ -120,9 +117,10 @@ class Layer : public TreeNode, ::GreasePencilLayer {
   mutable SharedCache<Vector<int>> sorted_keys_cache_;
 
  public:
-  Layer() : TreeNode(GREASE_PENCIL_LAYER_TREE_LEAF), frames_() {}
-  explicit Layer(StringRefNull name) : TreeNode(GREASE_PENCIL_LAYER_TREE_LEAF, name), frames_() {}
+  Layer();
+  explicit Layer(StringRefNull name);
   Layer(const Layer &other);
+  ~Layer();
 
   /**
    * \returns the frames mapping.
@@ -167,8 +165,8 @@ class LayerGroup : public TreeNode {
   using LayerIndexIterFn = FunctionRef<void(int64_t, Layer &)>;
 
  public:
-  LayerGroup() : TreeNode(GREASE_PENCIL_LAYER_TREE_GROUP) {}
-  explicit LayerGroup(const StringRefNull name) : TreeNode(GREASE_PENCIL_LAYER_TREE_GROUP, name) {}
+  LayerGroup() : TreeNode(GP_LAYER_TREE_GROUP) {}
+  explicit LayerGroup(const StringRefNull name) : TreeNode(GP_LAYER_TREE_GROUP, name) {}
   LayerGroup(const LayerGroup &other);
 
  public:

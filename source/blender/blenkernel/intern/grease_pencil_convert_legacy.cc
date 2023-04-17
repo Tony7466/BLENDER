@@ -186,18 +186,47 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
   int i = 0, layer_idx = 0;
   int active_layer_index = 0;
   LISTBASE_FOREACH_INDEX (bGPDlayer *, gpl, &gpd.layers, layer_idx) {
-    Layer &new_layer = grease_pencil.root_group_for_write().add_layer(Layer(gpl->info));
     if ((gpl->flag & GP_LAYER_ACTIVE) != 0) {
       active_layer_index = layer_idx;
     }
+
+    Layer &new_layer = grease_pencil.root_group_for_write().add_layer(Layer(gpl->info));
+
+    /* Flags. */
+    SET_FLAG_FROM_TEST(new_layer.flag, (gpl->flag & GP_LAYER_HIDE), GP_LAYER_TREE_NODE_HIDE);
+    SET_FLAG_FROM_TEST(new_layer.flag, (gpl->flag & GP_LAYER_LOCKED), GP_LAYER_TREE_NODE_LOCKED);
+    SET_FLAG_FROM_TEST(new_layer.flag, (gpl->flag & GP_LAYER_SELECT), GP_LAYER_TREE_NODE_SELECT);
+    SET_FLAG_FROM_TEST(new_layer.flag, (gpl->flag & GP_LAYER_FRAMELOCK), GP_LAYER_TREE_NODE_MUTE);
+    SET_FLAG_FROM_TEST(
+        new_layer.flag, (gpl->flag & GP_LAYER_USE_LIGHTS), GP_LAYER_TREE_NODE_USE_LIGHTS);
+
+    new_layer.parent_type = static_cast<int8_t>(gpl->partype);
+    new_layer.blend_mode = static_cast<int8_t>(gpl->blend_mode);
+    new_layer.thickness_adjustment = static_cast<int16_t>(gpl->line_change);
+    /* Copy the pointer to the parent. */
+    new_layer.parent = gpl->parent;
+    size_t parsubstr_len = BLI_strnlen(gpl->parsubstr, MAX_ID_NAME - 2);
+    if (parsubstr_len > 0) {
+      new_layer.parsubstr = BLI_strdupn(gpl->parsubstr, parsubstr_len);
+    }
+    size_t viewlayername_len = BLI_strnlen(gpl->viewlayername, MAX_ID_NAME - 2);
+    if (viewlayername_len > 0) {
+      new_layer.viewlayer_name = BLI_strdupn(gpl->viewlayername, viewlayername_len);
+    }
+    new_layer.opacity = gpl->opacity;
+    copy_v4_v4(new_layer.tint_color, gpl->tintcolor);
+    copy_v3_v3(new_layer.location, gpl->location);
+    copy_v3_v3(new_layer.rotation, gpl->rotation);
+    copy_v3_v3(new_layer.scale, gpl->scale);
+
     LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
       grease_pencil.drawing_array[i] = reinterpret_cast<GreasePencilDrawingOrReference *>(
           MEM_new<GreasePencilDrawing>(__func__));
       GreasePencilDrawing &drawing = *reinterpret_cast<GreasePencilDrawing *>(
           grease_pencil.drawing_array[i]);
-      drawing.base.type = GREASE_PENCIL_DRAWING;
+      drawing.base.type = GP_DRAWING;
       drawing.runtime = MEM_new<bke::GreasePencilDrawingRuntime>(__func__);
-      /* TODO: copy flag. */
+      /* TODO: set flag. */
 
       /* Convert the frame to a drawing. */
       legacy_gpencil_frame_to_grease_pencil_drawing(drawing, *gpf);

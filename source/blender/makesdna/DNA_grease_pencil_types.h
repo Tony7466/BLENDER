@@ -38,6 +38,7 @@ extern "C" {
 struct GreasePencil;
 struct BlendDataReader;
 struct BlendWriter;
+struct Object;
 
 typedef enum GreasePencilStrokeCapType {
   GP_STROKE_CAP_TYPE_ROUND = 0,
@@ -47,8 +48,8 @@ typedef enum GreasePencilStrokeCapType {
 } GreasePencilStrokeCapType;
 
 typedef enum GreasePencilDrawingType {
-  GREASE_PENCIL_DRAWING = 0,
-  GREASE_PENCIL_DRAWING_REFERENCE = 1,
+  GP_DRAWING = 0,
+  GP_DRAWING_REFERENCE = 1,
 } GreasePencilDrawingType;
 
 typedef struct GreasePencilDrawingOrReference {
@@ -56,7 +57,7 @@ typedef struct GreasePencilDrawingOrReference {
    * One of `GreasePencilDrawingType`.
    * Indicates if this is an actual drawing or a drawing referenced from another object.
    */
-  uint8_t type;
+  int8_t type;
   char _pad[3];
   /**
    * Flag. Used to set e.g. the selection status.
@@ -120,7 +121,7 @@ typedef struct GreasePencilFrame {
   /**
    * Keyframe type.
    */
-  uint8_t type;
+  int8_t type;
   char _pad[3];
 } GreasePencilFrame;
 
@@ -139,24 +140,96 @@ typedef struct GreasePencilLayerFramesMapStorage {
 } GreasePencilLayerFramesMapStorage;
 
 /**
+ * Type of parent of a layer. #GreasePencilLayer.parent_type
+ */
+typedef enum GreasePencilLayerParentType {
+  GP_LAYER_PARENT_OBJECT = 0,
+  GP_LAYER_PARENT_BONE = 1,
+} GreasePencilLayerParentType;
+
+/**
+ * Layer blending modes. #GreasePencilLayer.blend_mode
+ */
+typedef enum GreasePencilLayerBlendMode {
+  GP_LAYER_BLEND_NONE = 0,
+  GP_LAYER_BLEND_HARDLIGHT = 1,
+  GP_LAYER_BLEND_ADD = 2,
+  GP_LAYER_BLEND_SUBTRACT = 3,
+  GP_LAYER_BLEND_MULTIPLY = 4,
+  GP_LAYER_BLEND_DIVIDE = 5,
+} GreasePencilLayerBlendMode;
+
+/**
  * A grease pencil layer is a collection of drawings mapped to a specific time on the timeline.
  */
 typedef struct GreasePencilLayer {
   /* Only used for storage in the .blend file. */
   GreasePencilLayerFramesMapStorage frames_storage;
+  /**
+   * Layer parent type. See `GreasePencilLayerParentType`.
+   */
+  int8_t parent_type;
+  /**
+   * Layer blend mode. See `GreasePencilLayerBlendMode`.
+   */
+  int8_t blend_mode;
+  /**
+   * Thickness adjustment of all strokes in this layer.
+   */
+  int16_t thickness_adjustment;
+  char _pad[4];
+  /**
+   * Parent object. Can be nullptr.
+   */
+  struct Object *parent;
+  /**
+   * Parent sub-object info. E.g. the name of a bone if the parent is an armature.
+   * \note Null-terminated.
+   */
+  char *parsubstr;
+  /**
+   * Name of a view layer. If used, the layer is only rendered on the specified view layer. Not
+   * used for viewport rendering.
+   * \note Null-terminated.
+   */
+  char *viewlayer_name;
+  /**
+   * Opacity of the layer.
+   */
+  float opacity;
+  /**
+   * Color used to tint the layer. Alpha value is used as a factor.
+   */
+  float tint_color[4];
+  /**
+   * Layer transfrom.
+   * \note rotation is in euler format.
+   */
+  float location[3], rotation[3], scale[3];
 } GreasePencilLayer;
 
 typedef enum GreasePencilLayerTreeNodeType {
-  GREASE_PENCIL_LAYER_TREE_LEAF = 0,
-  GREASE_PENCIL_LAYER_TREE_GROUP = 1,
+  GP_LAYER_TREE_LEAF = 0,
+  GP_LAYER_TREE_GROUP = 1,
 } GreasePencilLayerTreeNodeType;
+
+/**
+ * Flags for layer tree nodes. #GreasePencilLayerTreeNode.flag
+ */
+typedef enum GreasePencilLayerTreeNodeFlag {
+  GP_LAYER_TREE_NODE_HIDE = (1 << 0),
+  GP_LAYER_TREE_NODE_LOCKED = (1 << 1),
+  GP_LAYER_TREE_NODE_SELECT = (1 << 2),
+  GP_LAYER_TREE_NODE_MUTE = (1 << 3),
+  GP_LAYER_TREE_NODE_USE_LIGHTS = (1 << 4),
+} GreasePencilLayerTreeNodeFlag;
 
 typedef struct GreasePencilLayerTreeNode {
   /**
    * One of `GreasePencilLayerTreeNodeType`.
    * Indicates the type of struct this element is.
    */
-  uint8_t type;
+  int8_t type;
 
   /**
    * Color tag.
@@ -165,6 +238,7 @@ typedef struct GreasePencilLayerTreeNode {
 
   /**
    * Flag. Used to set e.g. the selection, visibility, ... status.
+   * See `GreasePencilLayerTreeNodeFlag`.
    */
   uint32_t flag;
 
