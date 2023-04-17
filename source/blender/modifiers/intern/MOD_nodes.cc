@@ -1212,11 +1212,6 @@ static GeometrySet compute_geometry(const bNodeTree &btree,
   const SubFrame start_frame = scene->r.sfra;
   const bool is_start_frame = current_frame == start_frame;
 
-  bke::sim::StatesAroundFrame sim_states;
-  if (nmd_orig->simulation_cache != nullptr) {
-    sim_states = nmd_orig->simulation_cache->get_states_around_frame(current_frame);
-  }
-
   if (DEG_is_active(ctx->depsgraph)) {
     if (nmd_orig->simulation_cache == nullptr) {
       nmd_orig->simulation_cache = MEM_new<bke::sim::ModifierSimulationCache>(__func__);
@@ -1230,6 +1225,8 @@ static GeometrySet compute_geometry(const bNodeTree &btree,
         current_frame == start_frame) {
       nmd_orig->simulation_cache->reset();
     }
+    const bke::sim::StatesAroundFrame sim_states =
+        nmd_orig->simulation_cache->get_states_around_frame(current_frame);
     if (nmd_orig->simulation_cache->cache_state() != bke::sim::CacheState::Baked) {
       if (sim_states.current == nullptr) {
         if (is_start_frame) {
@@ -1251,7 +1248,8 @@ static GeometrySet compute_geometry(const bNodeTree &btree,
       }
     }
   }
-
+  const bke::sim::StatesAroundFrame sim_states =
+      nmd_orig->simulation_cache->get_states_around_frame(current_frame);
   if (sim_states.current) {
     geo_nodes_modifier_data.current_simulation_state = &sim_states.current->state;
   }

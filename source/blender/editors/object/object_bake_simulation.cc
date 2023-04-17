@@ -869,6 +869,32 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
+static int delete_baked_simulation_exec(bContext *C, wmOperator * /*op*/)
+{
+  Object *object = CTX_data_active_object(C);
+  Main *bmain = CTX_data_main(C);
+
+  LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
+    if (md->type == eModifierType_Nodes) {
+      NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
+      char bake_directory[FILE_MAX];
+      BLI_path_join(bake_directory,
+                    sizeof(bake_directory),
+                    get_blendcache_directory(*bmain).c_str(),
+                    get_modifier_sim_name(*object, *md).c_str());
+      BLI_delete(bake_directory, true, true);
+      if (nmd->simulation_cache != nullptr) {
+        nmd->simulation_cache->reset();
+      }
+    }
+  }
+
+  DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, nullptr);
+
+  return OPERATOR_FINISHED;
+}
+
 }  // namespace blender::ed::object::bake_simulation
 
 void OBJECT_OT_bake_simulation(wmOperatorType *ot)
@@ -880,5 +906,17 @@ void OBJECT_OT_bake_simulation(wmOperatorType *ot)
   ot->idname = __func__;
 
   ot->exec = bake_simulation_exec;
+  ot->poll = bake_simulation_poll;
+}
+
+void OBJECT_OT_delete_baked_simulation(wmOperatorType *ot)
+{
+  using namespace blender::ed::object::bake_simulation;
+
+  ot->name = "Delete Baked Simulation";
+  ot->description = "Delete baked simulation";
+  ot->idname = __func__;
+
+  ot->exec = delete_baked_simulation_exec;
   ot->poll = bake_simulation_poll;
 }
