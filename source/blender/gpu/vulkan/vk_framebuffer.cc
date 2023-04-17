@@ -148,6 +148,9 @@ void VKFrameBuffer::build_clear_attachments_color(const float (*clear_colors)[4]
 
 void VKFrameBuffer::clear(const Vector<VkClearAttachment> &attachments) const
 {
+  if (attachments.is_empty()) {
+    return;
+  }
   VkClearRect clear_rect = {};
   clear_rect.rect = vk_render_area_get();
   clear_rect.baseArrayLayer = 0;
