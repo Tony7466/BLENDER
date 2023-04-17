@@ -1136,7 +1136,7 @@ static void store_computed_output_attributes(
     if (attributes.add(store.name,
                        store.domain,
                        bke::cpp_type_to_custom_data_type(store.data.type()),
-                       bke::AttributeInitMoveArray(store.data.data()))) {
+                       bke::AttributeInitMoveArray(store.data.data(), nullptr))) {
       continue;
     }
 

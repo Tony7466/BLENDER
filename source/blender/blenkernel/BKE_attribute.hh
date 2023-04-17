@@ -128,9 +128,13 @@ struct AttributeInitVArray : public AttributeInit {
  * can't be used directly, and that is generally how Blender expects custom data to be allocated.
  */
 struct AttributeInitMoveArray : public AttributeInit {
-  void *data = nullptr;
+  const void *data = nullptr;
+  ImplicitSharingInfo *sharing_info = nullptr;
 
-  AttributeInitMoveArray(void *data) : AttributeInit(Type::MoveArray), data(data) {}
+  AttributeInitMoveArray(const void *data, ImplicitSharingInfo *sharing_info)
+      : AttributeInit(Type::MoveArray), data(data), sharing_info(sharing_info)
+  {
+  }
 };
 
 /* Returns false when the iteration should be stopped. */

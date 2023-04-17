@@ -474,7 +474,8 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
   }
 
   attributes.remove(attribute_id);
-  if (attributes.add(attribute_id, domain, data_type, bke::AttributeInitMoveArray{buffer})) {
+  if (attributes.add(
+          attribute_id, domain, data_type, bke::AttributeInitMoveArray{buffer, nullptr})) {
     return true;
   }
 

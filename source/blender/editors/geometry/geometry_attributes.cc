@@ -709,7 +709,7 @@ bool ED_geometry_attribute_convert(Mesh *mesh,
   void *new_data = MEM_malloc_arrayN(varray.size(), cpp_type.size(), __func__);
   varray.materialize_to_uninitialized(new_data);
   attributes.remove(name_copy);
-  attributes.add(name_copy, dst_domain, dst_type, bke::AttributeInitMoveArray(new_data));
+  attributes.add(name_copy, dst_domain, dst_type, bke::AttributeInitMoveArray(new_data, nullptr));
 
   return true;
 }
