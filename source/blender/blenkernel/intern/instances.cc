@@ -330,4 +330,14 @@ Span<int> Instances::almost_unique_ids() const
   return almost_unique_ids_;
 }
 
+void Instances::set_color_attribute_metadata(const char *default_color_attribute, const char *active_color_attribute)
+{
+  if (default_color_attribute) {
+    default_color_attribute_ = default_color_attribute;
+  }
+  if (active_color_attribute) {
+    active_color_attribute_ = active_color_attribute;
+  }
+}
+
 }  // namespace blender::bke

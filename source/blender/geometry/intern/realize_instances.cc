@@ -1558,6 +1558,17 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
     new_geometry_set.add(*gather_info.r_tasks.first_edit_data);
   }
 
+  if (new_geometry_set.has_mesh())
+  {
+    Mesh *dst_mesh = new_geometry_set.get_mesh_for_write();
+    if (geometry_set.get_instances_for_read()->default_color_attribute_name().size()) {
+      BKE_id_attributes_default_color_set(&dst_mesh->id, geometry_set.get_instances_for_read()->default_color_attribute_name().c_str());
+    }
+    if (geometry_set.get_instances_for_read()->active_color_attribute_name().size()) {
+      BKE_id_attributes_active_color_set(&dst_mesh->id, geometry_set.get_instances_for_read()->active_color_attribute_name().c_str());
+    }
+  }
+
   return new_geometry_set;
 }
 

@@ -103,7 +103,8 @@ class Instances {
   mutable blender::Array<int> almost_unique_ids_;
 
   CustomDataAttributes attributes_;
-
+  std::string default_color_attribute_;
+  std::string active_color_attribute_;
  public:
   Instances() = default;
   Instances(const Instances &other);
@@ -176,6 +177,10 @@ class Instances {
 
   bool owns_direct_data() const;
   void ensure_owns_direct_data();
+
+  void set_color_attribute_metadata(const char *default_color_attribute, const char *active_color_attribute);
+  const std::string &default_color_attribute_name() const { return default_color_attribute_; }
+  const std::string &active_color_attribute_name() const { return active_color_attribute_; }
 };
 
 /* -------------------------------------------------------------------- */

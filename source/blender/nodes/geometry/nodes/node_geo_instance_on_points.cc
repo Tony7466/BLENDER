@@ -14,6 +14,7 @@
 
 #include "BKE_attribute_math.hh"
 #include "BKE_instances.hh"
+#include "BKE_mesh.h"
 
 #include "node_geometry_util.hh"
 
@@ -218,6 +219,10 @@ static void node_geo_exec(GeoNodeExecParams params)
                                      instance,
                                      params,
                                      attributes_to_propagate);
+        if (type == GEO_COMPONENT_TYPE_MESH) {
+          const Mesh *src_mesh = ((MeshComponent *)geometry_set.get_component_for_read(type))->get_for_read();
+          dst_instances->set_color_attribute_metadata(src_mesh->default_color_attribute, src_mesh->active_color_attribute);
+        }
       }
     }
     geometry_set.remove_geometry_during_modify();
