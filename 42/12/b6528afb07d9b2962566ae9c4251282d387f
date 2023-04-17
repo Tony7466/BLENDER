@@ -7,4 +7,4 @@ Referenced by issue #83187, Linked meshes: Unselected UVs stay orange instead of
 Referenced by issue #82591, Performance regression when rendering at very high resolution
 Referenced by issue #82460, Color Management Use Curves do not update when UV Editor is presented
 Referenced by issue #80800, UVs are not drawn correctly after joining objects
-Referenced by issue #106987, Turning off "Update Automatically" in Image Editor breaks painting in that editor
+Referenced by issue #106987, Regression: Turning off "Update Automatically" in Image Editor breaks painting in that editor
