@@ -76,8 +76,8 @@ if(APPLE)
   set_target_properties(blender-thumbnailer PROPERTIES
     MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/src/Info.plist
     MACOSX_FRAMEWORK_IDENTIFIER org.blenderfoundation.blender.thumbnailer)
-  set_target_properties(blender-thumbnailer PROPERTIES
-    XIB_RESOURCE "${CMAKE_CURRENT_SOURCE_DIR}/src/Base.lproj")
+  # set_target_properties(blender-thumbnailer PROPERTIES
+  #   XIB_RESOURCE "${CMAKE_CURRENT_SOURCE_DIR}/src/Base.lproj")
   # Doesn't affect other generators. So need to specify extension for others.
   set_target_properties(blender-thumbnailer PROPERTIES
     XCODE_PRODUCT_TYPE com.apple.product-type.app-extension)

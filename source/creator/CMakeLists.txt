@@ -1354,12 +1354,11 @@ elseif(APPLE)
       TARGETS blender-thumbnailer
       DESTINATION Blender.app/Contents/Plugins
     )
-    get_target_property(XIB_RESOURCE blender-thumbnailer XIB_RESOURCE)
-    install_dir(
-      ${XIB_RESOURCE}
-       Blender.app/Contents/Plugins/blender-thumbnailer.appex/Contents/Resources
-    )
-
+    # get_target_property(XIB_RESOURCE blender-thumbnailer XIB_RESOURCE)
+    # install_dir(
+    #   ${XIB_RESOURCE}
+    #    Blender.app/Contents/Plugins/blender-thumbnailer.appex/Contents/Resources
+    # )
   endif()
 
   if(PLATFORM_BUNDLED_LIBRARIES AND TARGETDIR_LIB)

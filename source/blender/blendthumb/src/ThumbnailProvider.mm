@@ -61,6 +61,30 @@ static eThumbStatus creator_impl(const char *src_blend_path)
   return err;
 }
 
+@implementation ThumbnailProvider
+
+- (void)provideThumbnailForFileRequest:(QLFileThumbnailRequest *)request
+                     completionHandler:(void (^)(QLThumbnailReply *_Nullable reply,
+                                                 NSError *_Nullable error))handler
+{
+  @autoreleasepool {  // Add the supported content types to the QLSupportedContentTypes array in
+                      // the Info.plist of the
+    // extension.
+
+    std::cout << "Hello World from blender Blender thumbnailer" << std::endl;
+    NSLog(@"hello world from blender");
+    NSURL *foo = [[NSURL alloc]
+        initFileURLWithFileSystemRepresentation:"/Users/ankitkumar/Pictures/IMG_3158.JPG"
+                                    isDirectory:NO
+                                  relativeToURL:nil];
+    QLThumbnailReply *reply = [QLThumbnailReply replyWithImageFileURL:foo];
+
+    handler(reply, nil);
+  }
+}
+
+@end
+
 @implementation PreviewViewController
 
 - (NSString *)nibName
@@ -103,14 +127,14 @@ extension if you support CoreSpotlight.
   // Quick Look will display a loading spinner while the completion handler is not called.
 
   NSLog(@"blender preparePreviewOfFileAtURL: %@", url);
-  std::ofstream file("/Users/ankit.kumar/apps/build_xcode/foobar.txt",
+  std::ofstream file("/Users/ankitkumar/blender-build/build_darwin_debug_lite/foobar.txt",
                      std::ios::out | std::ios::trunc | std::ios::binary);
   file << "Hello World";
   file.close();
   std::cout << "Hello World" << std::endl;
   // set image to file path /Users/ankit.kumar/Desktop/Screenshot 2021-09-02 at 1.59.47 PM.png
   [[[self view] imageRepresentation]
-      setFileURL:[NSURL fileURLWithPath:@"file:///Users/ankit.kumar/Desktop/Screenshot.png"
+      setFileURL:[NSURL fileURLWithPath:@"/Users/ankitkumar/Pictures/IMG_3158.JPG"
                             isDirectory:NO]];
   [[self view] display];
   handler(nil);

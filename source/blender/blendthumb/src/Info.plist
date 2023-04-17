@@ -34,13 +34,11 @@
 				<array>
 					<string>org.blenderfoundation.blender.file</string>
 				</array>
-				<key>QLThumbnailMinimumDimension</key>
-				<integer>0</integer>
 			</dict>
 			<key>NSExtensionPointIdentifier</key>
-			<string>com.apple.quicklook.preview</string>
-			<key>NSExtensionPrincipalClass</key>
-			<string>PreviewProvider</string>
+			<string>com.apple.quicklook.thumbnail</string>
+			<key>com.apple.showsInExtensionsManager</key>
+			<true/>
 		</dict>
 	</dict>
 </plist>
