@@ -20,8 +20,6 @@
 #define device
 #define threadgroup
 #define OUT(type, name, array_len) out type name[array_len]
-#define DEVICE_OUT_ARRAY(type, name, array_len) out type name[array_len]
-#define DEVICE_OUT(type, name) out type
 
 /* Backend Functions. */
 #define select(A, B, mask) mix(A, B, mask)

@@ -7,14 +7,15 @@
 
 struct AABB {
   vec3 min, max;
-
-#ifdef GPU_METAL
-  inline AABB() = default;
-  inline AABB(vec3 _min, vec3 _max) : min(_min), max(_max)
-  {
-  }
-#endif
 };
+
+AABB shape_aabb(vec3 min, vec3 max)
+{
+  AABB aabb;
+  aabb.min = min;
+  aabb.max = max;
+  return aabb;
+}
 
 AABB aabb_init_min_max()
 {

@@ -14,18 +14,14 @@
 struct Circle {
   vec2 center;
   float radius;
-
-#ifdef GPU_METAL
-  inline Circle() = default;
-  inline Circle(vec2 in_center, float in_radius) : center(in_center), radius(in_radius)
-  {
-  }
-#endif
 };
 
 Circle shape_circle(vec2 center, float radius)
 {
-  return Circle(center, radius);
+  Circle circle;
+  circle.center = center;
+  circle.radius = radius;
+  return circle;
 }
 
 /** \} */
@@ -37,18 +33,14 @@ Circle shape_circle(vec2 center, float radius)
 struct Sphere {
   vec3 center;
   float radius;
-
-#ifdef GPU_METAL
-  inline Sphere() = default;
-  inline Sphere(vec3 in_center, float in_radius) : center(in_center), radius(in_radius)
-  {
-  }
-#endif
 };
 
 Sphere shape_sphere(vec3 center, float radius)
 {
-  return Sphere(center, radius);
+  Sphere sphere;
+  sphere.center = center;
+  sphere.radius = radius;
+  return sphere;
 }
 
 /** \} */

@@ -65,7 +65,7 @@ void main()
   }
 
   AABB aabb_tag;
-  AABB aabb_map = AABB(vec3(-0.99999), vec3(0.99999));
+  AABB aabb_map = shape_aabb(vec3(-0.99999), vec3(0.99999));
 
   /* Directionnal winmat have no correct near/far in the Z dimension at this point.
    * Do not clip in this dimension. */

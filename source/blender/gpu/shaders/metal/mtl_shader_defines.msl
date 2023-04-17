@@ -203,9 +203,6 @@ template<typename T> T atomicXor(device T &mem, T data)
  * shortened to avoid expanding the glsl source string. */
 #define THD thread
 #define OUT(type, name, array) thread type(&name)[array]
-#define THREADGROUP_OUT_ARRAY(type, name, array) threadgroup type(&name)[array]
-#define DEVICE_OUT_ARRAY(type, name, array) device type(&name)[array]
-#define DEVICE_OUT(type, name) device type &name
 
 /* Generate wrapper structs for combined texture and sampler type. */
 #ifdef USE_ARGUMENT_BUFFER_FOR_SAMPLERS
