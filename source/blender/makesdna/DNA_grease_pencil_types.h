@@ -47,12 +47,28 @@ typedef enum GreasePencilStrokeCapType {
   GP_STROKE_CAP_TYPE_MAX,
 } GreasePencilStrokeCapType;
 
+/**
+ * Type of drawing data.
+ * If `GP_DRAWING` the node is a `GreasePencilDrawing`,
+ * if `GP_DRAWING_REFERENCE` the node is a `GreasePencilDrawingReference`.
+ */
 typedef enum GreasePencilDrawingType {
   GP_DRAWING = 0,
   GP_DRAWING_REFERENCE = 1,
 } GreasePencilDrawingType;
 
-typedef struct GreasePencilDrawingOrReference {
+/**
+ * Flag for drawings and drawing references. #GreasePencilDrawingBase.flag
+ */
+typedef enum GreasePencilDrawingBaseFlag {
+  /* TODO */
+  GreasePencilDrawingBaseFlag_TODO
+} GreasePencilDrawingBaseFlag;
+
+/**
+ * Base class for drawings and drawing references (drawings from other objects).
+ */
+typedef struct GreasePencilDrawingBase {
   /**
    * One of `GreasePencilDrawingType`.
    * Indicates if this is an actual drawing or a drawing referenced from another object.
@@ -60,17 +76,17 @@ typedef struct GreasePencilDrawingOrReference {
   int8_t type;
   char _pad[3];
   /**
-   * Flag. Used to set e.g. the selection status.
+   * Flag. Used to set e.g. the selection status. See `GreasePencilDrawingBaseFlag`.
    */
   uint32_t flag;
-} GreasePencilDrawingOrReference;
+} GreasePencilDrawingBase;
 
 /**
  * A grease pencil drawing is a set of strokes. The data is stored using the `CurvesGeometry` data
  * structure and the custom attributes within it.
  */
 typedef struct GreasePencilDrawing {
-  GreasePencilDrawingOrReference base;
+  GreasePencilDrawingBase base;
   /**
    * The stroke data for this drawing.
    */
@@ -94,7 +110,7 @@ typedef struct GreasePencilDrawing {
 } GreasePencilDrawing;
 
 typedef struct GreasePencilDrawingReference {
-  GreasePencilDrawingOrReference base;
+  GreasePencilDrawingBase base;
   /**
    * A reference to another GreasePencil data-block.
    * If the data-block has multiple drawings, this drawing references all of them sequentially.
@@ -237,6 +253,11 @@ typedef struct GreasePencilLayer {
   float location[3], rotation[3], scale[3];
 } GreasePencilLayer;
 
+/**
+ * Type of layer node.
+ * If `GP_LAYER_TREE_LEAF` the node is a `GreasePencilLayerTreeLeaf`,
+ * if `GP_LAYER_TREE_GROUP` the node is a `GreasePencilLayerTreeGroup`.
+ */
 typedef enum GreasePencilLayerTreeNodeType {
   GP_LAYER_TREE_LEAF = 0,
   GP_LAYER_TREE_GROUP = 1,
@@ -251,6 +272,7 @@ typedef enum GreasePencilLayerTreeNodeFlag {
   GP_LAYER_TREE_NODE_SELECT = (1 << 2),
   GP_LAYER_TREE_NODE_MUTE = (1 << 3),
   GP_LAYER_TREE_NODE_USE_LIGHTS = (1 << 4),
+  GP_LAYER_TREE_NODE_USE_ONION_SKINNING = (1 << 5),
 } GreasePencilLayerTreeNodeFlag;
 
 typedef struct GreasePencilLayerTreeNode {
@@ -298,6 +320,77 @@ typedef struct GreasePencilLayerTreeStorage {
 } GreasePencilLayerTreeStorage;
 
 /**
+ * Flag for the grease pencil data-block. #GreasePencil.flag
+ */
+typedef enum GreasePencilFlag {
+  /* TODO */
+  GreasePencilFlag_TODO
+} GreasePencilFlag;
+
+/**
+ * Onion skinning mode. #GreasePencilOnionSkinningSettings.mode
+ */
+typedef enum GreasePencilOnionSkinningMode {
+  GP_ONION_SKINNING_MODE_ABSOLUTE = 0,
+  GP_ONION_SKINNING_MODE_RELATIVE = 1,
+  GP_ONION_SKINNING_MODE_SELECTED = 2,
+} GreasePencilOnionSkinningMode;
+
+/**
+ * Flag for filtering the onion skinning per keyframe type.
+ * #GreasePencilOnionSkinningSettings.filter
+ * \note needs to match order of `eBezTriple_KeyframeType`.
+ */
+typedef enum GreasePencilOnionSkinningFilter {
+  GP_ONION_SKINNING_FILTER_KEYTYPE_KEYFRAME = (1 << 0),
+  GP_ONION_SKINNING_FILTER_KEYTYPE_EXTREME = (1 << 1),
+  GP_ONION_SKINNING_FILTER_KEYTYPE_BREAKDOWN = (1 << 2),
+  GP_ONION_SKINNING_FILTER_KEYTYPE_JITTER = (1 << 3),
+  GP_ONION_SKINNING_FILTER_KEYTYPE_MOVEHOLD = (1 << 4),
+} GreasePencilOnionSkinningFilter;
+
+#define GREASE_PENCIL_ONION_SKINNING_FILTER_ALL \
+  (GP_ONION_SKINNING_FILTER_KEYTYPE_KEYFRAME | GP_ONION_SKINNING_FILTER_KEYTYPE_EXTREME | \
+   GP_ONION_SKINNING_FILTER_KEYTYPE_BREAKDOWN | GP_ONION_SKINNING_FILTER_KEYTYPE_JITTER | \
+   GP_ONION_SKINNING_FILTER_KEYTYPE_MOVEHOLD)
+
+/**
+ * Per data-block Grease Pencil onion skinning settings.
+ */
+typedef struct GreasePencilOnionSkinningSettings {
+  /**
+   * Opacity for the ghost frames.
+   */
+  float opacity;
+  /**
+   * Onion skinning mode. See `GreasePencilOnionSkinningMode`.
+   */
+  int8_t mode;
+  /**
+   * Onion skinning filtering flag. See `GreasePencilOnionSkinningFilter`.
+   */
+  uint8_t filter;
+  char _pad[2];
+  /**
+   * Number of ghost frames shown before.
+   */
+  int16_t num_frames_before;
+  /**
+   * Number of ghost frames shown after.
+   */
+  int16_t num_frames_after;
+  /**
+   * Color of the ghost frames before.
+   */
+  float color_before[3];
+  /**
+   * Color of the ghost frames after.
+   */
+  float color_after[3];
+  char _pad2[4];
+} GreasePencilOnionSkinningSettings;
+
+/**
  * The grease pencil data-block.
  */
 typedef struct GreasePencil {
@@ -310,7 +403,7 @@ typedef struct GreasePencil {
    * data-block. Note that the order of this array is arbitrary. The mapping of drawings to frames
    * is done by the layers. See the `Layer` class in `BKE_grease_pencil.hh`.
    */
-  GreasePencilDrawingOrReference **drawing_array;
+  GreasePencilDrawingBase **drawing_array;
   int drawing_array_size;
   char _pad[4];
 #ifdef __cplusplus
@@ -333,19 +426,21 @@ typedef struct GreasePencil {
   struct Material **material_array;
   short material_array_size;
   char _pad2[2];
-
   /**
    * Global flag on the data-block.
    */
   uint32_t flag;
-
+  /**
+   * Onion skinning settings.
+   */
+  GreasePencilOnionSkinningSettings onion_skinning_settings;
   /**
    * Runtime struct pointer.
    */
   GreasePencilRuntimeHandle *runtime;
 #ifdef __cplusplus
-  blender::Span<GreasePencilDrawingOrReference *> drawings() const;
-  blender::MutableSpan<GreasePencilDrawingOrReference *> drawings_for_write();
+  blender::Span<GreasePencilDrawingBase *> drawings() const;
+  blender::MutableSpan<GreasePencilDrawingBase *> drawings_for_write();
   void add_empty_drawings(int n);
   void remove_drawing(int index);
   void foreach_visible_drawing(int frame,

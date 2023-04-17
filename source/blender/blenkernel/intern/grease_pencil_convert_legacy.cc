@@ -184,7 +184,7 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
   }
 
   grease_pencil.drawing_array_size = num_drawings;
-  grease_pencil.drawing_array = reinterpret_cast<GreasePencilDrawingOrReference **>(
+  grease_pencil.drawing_array = reinterpret_cast<GreasePencilDrawingBase **>(
       MEM_cnew_array<GreasePencilDrawing *>(num_drawings, __func__));
 
   int i = 0, layer_idx = 0;
@@ -205,6 +205,9 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
     SET_FLAG_FROM_TEST(new_layer.flag, (gpl->flag & GP_LAYER_FRAMELOCK), GP_LAYER_TREE_NODE_MUTE);
     SET_FLAG_FROM_TEST(
         new_layer.flag, (gpl->flag & GP_LAYER_USE_LIGHTS), GP_LAYER_TREE_NODE_USE_LIGHTS);
+    SET_FLAG_FROM_TEST(new_layer.flag,
+                       (gpl->onion_flag & GP_LAYER_ONIONSKIN),
+                       GP_LAYER_TREE_NODE_USE_ONION_SKINNING);
 
     new_layer.parent_type = static_cast<int8_t>(gpl->partype);
     new_layer.blend_mode = static_cast<int8_t>(gpl->blend_mode);
@@ -233,7 +236,7 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
     copy_v3_v3(new_layer.scale, gpl->scale);
 
     LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
-      grease_pencil.drawing_array[i] = reinterpret_cast<GreasePencilDrawingOrReference *>(
+      grease_pencil.drawing_array[i] = reinterpret_cast<GreasePencilDrawingBase *>(
           MEM_new<GreasePencilDrawing>(__func__));
       GreasePencilDrawing &drawing = *reinterpret_cast<GreasePencilDrawing *>(
           grease_pencil.drawing_array[i]);
@@ -248,6 +251,20 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
       i++;
     }
   }
+
+  /* Convert the onion skinning settings. */
+  grease_pencil.onion_skinning_settings.opacity = gpd.onion_factor;
+  grease_pencil.onion_skinning_settings.mode = gpd.onion_mode;
+  if (gpd.onion_keytype == -1) {
+    grease_pencil.onion_skinning_settings.filter = GREASE_PENCIL_ONION_SKINNING_FILTER_ALL;
+  }
+  else {
+    grease_pencil.onion_skinning_settings.filter = (1 << gpd.onion_keytype);
+  }
+  grease_pencil.onion_skinning_settings.num_frames_before = gpd.gstep;
+  grease_pencil.onion_skinning_settings.num_frames_after = gpd.gstep_next;
+  copy_v3_v3(grease_pencil.onion_skinning_settings.color_before, gpd.gcolor_prev);
+  copy_v3_v3(grease_pencil.onion_skinning_settings.color_after, gpd.gcolor_next);
 
   grease_pencil.runtime->set_active_layer_index(active_layer_index);
 

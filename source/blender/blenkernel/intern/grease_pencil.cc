@@ -63,15 +63,15 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
 
   /* Duplicate drawing array. */
   grease_pencil_dst->drawing_array_size = grease_pencil_src->drawing_array_size;
-  grease_pencil_dst->drawing_array = MEM_cnew_array<GreasePencilDrawingOrReference *>(
+  grease_pencil_dst->drawing_array = MEM_cnew_array<GreasePencilDrawingBase *>(
       grease_pencil_src->drawing_array_size, __func__);
   for (int i = 0; i < grease_pencil_src->drawing_array_size; i++) {
-    const GreasePencilDrawingOrReference *src_drawing_or_ref = grease_pencil_src->drawing_array[i];
-    switch (src_drawing_or_ref->type) {
+    const GreasePencilDrawingBase *src_drawing_base = grease_pencil_src->drawing_array[i];
+    switch (src_drawing_base->type) {
       case GP_DRAWING: {
         const GreasePencilDrawing *src_drawing = reinterpret_cast<const GreasePencilDrawing *>(
-            src_drawing_or_ref);
-        grease_pencil_dst->drawing_array[i] = reinterpret_cast<GreasePencilDrawingOrReference *>(
+            src_drawing_base);
+        grease_pencil_dst->drawing_array[i] = reinterpret_cast<GreasePencilDrawingBase *>(
             MEM_cnew<GreasePencilDrawing>(__func__));
         GreasePencilDrawing *dst_drawing = reinterpret_cast<GreasePencilDrawing *>(
             grease_pencil_dst->drawing_array[i]);
@@ -86,8 +86,8 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
       }
       case GP_DRAWING_REFERENCE: {
         const GreasePencilDrawingReference *src_drawing_reference =
-            reinterpret_cast<const GreasePencilDrawingReference *>(src_drawing_or_ref);
-        grease_pencil_dst->drawing_array[i] = reinterpret_cast<GreasePencilDrawingOrReference *>(
+            reinterpret_cast<const GreasePencilDrawingReference *>(src_drawing_base);
+        grease_pencil_dst->drawing_array[i] = reinterpret_cast<GreasePencilDrawingBase *>(
             MEM_dupallocN(src_drawing_reference));
         break;
       }
@@ -128,10 +128,10 @@ static void grease_pencil_foreach_id(ID *id, LibraryForeachIDData *data)
     BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, grease_pencil->material_array[i], IDWALK_CB_USER);
   }
   for (int i = 0; i < grease_pencil->drawing_array_size; i++) {
-    GreasePencilDrawingOrReference *drawing_or_ref = grease_pencil->drawing_array[i];
-    if (drawing_or_ref->type == GP_DRAWING_REFERENCE) {
+    GreasePencilDrawingBase *drawing_base = grease_pencil->drawing_array[i];
+    if (drawing_base->type == GP_DRAWING_REFERENCE) {
       GreasePencilDrawingReference *drawing_reference =
-          reinterpret_cast<GreasePencilDrawingReference *>(drawing_or_ref);
+          reinterpret_cast<GreasePencilDrawingReference *>(drawing_base);
       BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, drawing_reference->id_reference, IDWALK_CB_USER);
     }
   }
@@ -194,10 +194,10 @@ static void grease_pencil_blend_read_lib(BlendLibReader *reader, ID *id)
     BLO_read_id_address(reader, grease_pencil->id.lib, &grease_pencil->material_array[i]);
   }
   for (int i = 0; i < grease_pencil->drawing_array_size; i++) {
-    GreasePencilDrawingOrReference *drawing_or_ref = grease_pencil->drawing_array[i];
-    if (drawing_or_ref->type == GP_DRAWING_REFERENCE) {
+    GreasePencilDrawingBase *drawing_base = grease_pencil->drawing_array[i];
+    if (drawing_base->type == GP_DRAWING_REFERENCE) {
       GreasePencilDrawingReference *drawing_reference =
-          reinterpret_cast<GreasePencilDrawingReference *>(drawing_or_ref);
+          reinterpret_cast<GreasePencilDrawingReference *>(drawing_base);
       BLO_read_id_address(reader, grease_pencil->id.lib, &drawing_reference->id_reference);
     }
   }
@@ -210,10 +210,10 @@ static void grease_pencil_blend_read_expand(BlendExpander *expander, ID *id)
     BLO_expand(expander, grease_pencil->material_array[i]);
   }
   for (int i = 0; i < grease_pencil->drawing_array_size; i++) {
-    GreasePencilDrawingOrReference *drawing_or_ref = grease_pencil->drawing_array[i];
-    if (drawing_or_ref->type == GP_DRAWING_REFERENCE) {
+    GreasePencilDrawingBase *drawing_base = grease_pencil->drawing_array[i];
+    if (drawing_base->type == GP_DRAWING_REFERENCE) {
       GreasePencilDrawingReference *drawing_reference =
-          reinterpret_cast<GreasePencilDrawingReference *>(drawing_or_ref);
+          reinterpret_cast<GreasePencilDrawingReference *>(drawing_base);
       BLO_expand(expander, drawing_reference->id_reference);
     }
   }
@@ -661,10 +661,10 @@ BoundBox *BKE_grease_pencil_boundbox_get(Object *ob)
     /* FIXME: this should somehow go through the visible drawings. We don't have access to the
      * scene time here, so we probably need to cache the visible drawing for each layer somehow. */
     for (int i = 0; i < grease_pencil->drawing_array_size; i++) {
-      GreasePencilDrawingOrReference *drawing_or_ref = grease_pencil->drawing_array[i];
-      switch (drawing_or_ref->type) {
+      GreasePencilDrawingBase *drawing_base = grease_pencil->drawing_array[i];
+      switch (drawing_base->type) {
         case GP_DRAWING: {
-          GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_or_ref);
+          GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
           const blender::bke::CurvesGeometry &curves = drawing->geometry.wrap();
 
           if (!curves.bounds_min_max(min, max)) {
@@ -824,9 +824,8 @@ static void grease_pencil_grow_drawing_array_by(GreasePencil &self, const int ad
 {
   BLI_assert(add_capacity > 0);
   const int new_drawing_array_size = self.drawing_array_size + add_capacity;
-  GreasePencilDrawingOrReference **new_drawing_array =
-      reinterpret_cast<GreasePencilDrawingOrReference **>(
-          MEM_cnew_array<GreasePencilDrawingOrReference *>(new_drawing_array_size, __func__));
+  GreasePencilDrawingBase **new_drawing_array = reinterpret_cast<GreasePencilDrawingBase **>(
+      MEM_cnew_array<GreasePencilDrawingBase *>(new_drawing_array_size, __func__));
 
   blender::uninitialized_relocate_n(
       self.drawing_array, self.drawing_array_size, new_drawing_array);
@@ -839,9 +838,8 @@ static void grease_pencil_shrink_drawing_array_by(GreasePencil &self, const int 
 {
   BLI_assert(remove_capacity > 0);
   const int new_drawing_array_size = self.drawing_array_size - remove_capacity;
-  GreasePencilDrawingOrReference **new_drawing_array =
-      reinterpret_cast<GreasePencilDrawingOrReference **>(
-          MEM_cnew_array<GreasePencilDrawingOrReference *>(new_drawing_array_size, __func__));
+  GreasePencilDrawingBase **new_drawing_array = reinterpret_cast<GreasePencilDrawingBase **>(
+      MEM_cnew_array<GreasePencilDrawingBase *>(new_drawing_array_size, __func__));
 
   blender::uninitialized_move_n(self.drawing_array, new_drawing_array_size, new_drawing_array);
   MEM_freeN(self.drawing_array);
@@ -850,16 +848,15 @@ static void grease_pencil_shrink_drawing_array_by(GreasePencil &self, const int 
   self.drawing_array_size = new_drawing_array_size;
 }
 
-blender::Span<GreasePencilDrawingOrReference *> GreasePencil::drawings() const
+blender::Span<GreasePencilDrawingBase *> GreasePencil::drawings() const
 {
-  return blender::Span<GreasePencilDrawingOrReference *>{this->drawing_array,
-                                                         this->drawing_array_size};
+  return blender::Span<GreasePencilDrawingBase *>{this->drawing_array, this->drawing_array_size};
 }
 
-blender::MutableSpan<GreasePencilDrawingOrReference *> GreasePencil::drawings_for_write()
+blender::MutableSpan<GreasePencilDrawingBase *> GreasePencil::drawings_for_write()
 {
-  return blender::MutableSpan<GreasePencilDrawingOrReference *>{this->drawing_array,
-                                                                this->drawing_array_size};
+  return blender::MutableSpan<GreasePencilDrawingBase *>{this->drawing_array,
+                                                         this->drawing_array_size};
 }
 
 void GreasePencil::add_empty_drawings(int n)
@@ -868,10 +865,10 @@ void GreasePencil::add_empty_drawings(int n)
   BLI_assert(n > 0);
   const int prev_size = this->drawings().size();
   grease_pencil_grow_drawing_array_by(*this, n);
-  MutableSpan<GreasePencilDrawingOrReference *> new_drawings =
-      this->drawings_for_write().drop_front(prev_size);
+  MutableSpan<GreasePencilDrawingBase *> new_drawings = this->drawings_for_write().drop_front(
+      prev_size);
   for (const int i : IndexRange(new_drawings.size())) {
-    new_drawings[i] = reinterpret_cast<GreasePencilDrawingOrReference *>(
+    new_drawings[i] = reinterpret_cast<GreasePencilDrawingBase *>(
         MEM_new<GreasePencilDrawing>(__func__));
     GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(new_drawings[i]);
     new (&drawing->geometry) bke::CurvesGeometry();
@@ -913,12 +910,11 @@ void GreasePencil::remove_drawing(int index_to_remove)
   }
 
   /* Delete the last drawing. */
-  GreasePencilDrawingOrReference *drawing_or_ref_to_remove =
-      this->drawings_for_write()[last_drawing_index];
-  switch (drawing_or_ref_to_remove->type) {
+  GreasePencilDrawingBase *drawing_base_to_remove = this->drawings_for_write()[last_drawing_index];
+  switch (drawing_base_to_remove->type) {
     case GP_DRAWING: {
       GreasePencilDrawing *drawing_to_remove = reinterpret_cast<GreasePencilDrawing *>(
-          drawing_or_ref_to_remove);
+          drawing_base_to_remove);
       drawing_to_remove->geometry.wrap().~CurvesGeometry();
       MEM_delete(drawing_to_remove->runtime);
       drawing_to_remove->runtime = nullptr;
@@ -927,7 +923,7 @@ void GreasePencil::remove_drawing(int index_to_remove)
     }
     case GP_DRAWING_REFERENCE: {
       GreasePencilDrawingReference *drawing_reference_to_remove =
-          reinterpret_cast<GreasePencilDrawingReference *>(drawing_or_ref_to_remove);
+          reinterpret_cast<GreasePencilDrawingReference *>(drawing_base_to_remove);
       MEM_freeN(drawing_reference_to_remove);
       break;
     }
@@ -950,18 +946,18 @@ void GreasePencil::foreach_visible_drawing(
 {
   using namespace blender::bke::greasepencil;
 
-  blender::Span<GreasePencilDrawingOrReference *> drawings = this->drawings();
+  blender::Span<GreasePencilDrawingBase *> drawings = this->drawings();
   for (const Layer *layer : this->layers()) {
     int index = layer->drawing_index_at(frame);
     if (index == -1) {
       continue;
     }
-    GreasePencilDrawingOrReference *drawing_or_reference = drawings[index];
-    if (drawing_or_reference->type == GP_DRAWING) {
-      GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_or_reference);
+    GreasePencilDrawingBase *drawing_baseerence = drawings[index];
+    if (drawing_baseerence->type == GP_DRAWING) {
+      GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_baseerence);
       function(*drawing);
     }
-    else if (drawing_or_reference->type == GP_DRAWING_REFERENCE) {
+    else if (drawing_baseerence->type == GP_DRAWING_REFERENCE) {
       /* TODO */
     }
   }
@@ -1007,10 +1003,10 @@ void GreasePencil::read_drawing_array(BlendDataReader *reader)
   BLO_read_pointer_array(reader, (void **)&this->drawing_array);
   for (int i = 0; i < this->drawing_array_size; i++) {
     BLO_read_data_address(reader, &this->drawing_array[i]);
-    GreasePencilDrawingOrReference *drawing_or_ref = this->drawing_array[i];
-    switch (drawing_or_ref->type) {
+    GreasePencilDrawingBase *drawing_base = this->drawing_array[i];
+    switch (drawing_base->type) {
       case GP_DRAWING: {
-        GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_or_ref);
+        GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
         drawing->geometry.wrap().blend_read(*reader);
         /* Initialize runtime data. */
         drawing->geometry.runtime = MEM_new<blender::bke::CurvesGeometryRuntime>(__func__);
@@ -1021,7 +1017,7 @@ void GreasePencil::read_drawing_array(BlendDataReader *reader)
       }
       case GP_DRAWING_REFERENCE: {
         GreasePencilDrawingReference *drawing_reference =
-            reinterpret_cast<GreasePencilDrawingReference *>(drawing_or_ref);
+            reinterpret_cast<GreasePencilDrawingReference *>(drawing_base);
         BLO_read_data_address(reader, &drawing_reference->id_reference);
         break;
       }
@@ -1033,17 +1029,17 @@ void GreasePencil::write_drawing_array(BlendWriter *writer)
 {
   BLO_write_pointer_array(writer, this->drawing_array_size, this->drawing_array);
   for (int i = 0; i < this->drawing_array_size; i++) {
-    GreasePencilDrawingOrReference *drawing_or_ref = this->drawing_array[i];
-    switch (drawing_or_ref->type) {
+    GreasePencilDrawingBase *drawing_base = this->drawing_array[i];
+    switch (drawing_base->type) {
       case GP_DRAWING: {
-        GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_or_ref);
+        GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
         BLO_write_struct(writer, GreasePencilDrawing, drawing);
         drawing->geometry.wrap().blend_write(*writer, this->id);
         break;
       }
       case GP_DRAWING_REFERENCE: {
         GreasePencilDrawingReference *drawing_reference =
-            reinterpret_cast<GreasePencilDrawingReference *>(drawing_or_ref);
+            reinterpret_cast<GreasePencilDrawingReference *>(drawing_base);
         BLO_write_struct(writer, GreasePencilDrawingReference, drawing_reference);
         break;
       }
@@ -1057,10 +1053,10 @@ void GreasePencil::free_drawing_array()
     return;
   }
   for (int i = 0; i < this->drawing_array_size; i++) {
-    GreasePencilDrawingOrReference *drawing_or_ref = this->drawing_array[i];
-    switch (drawing_or_ref->type) {
+    GreasePencilDrawingBase *drawing_base = this->drawing_array[i];
+    switch (drawing_base->type) {
       case GP_DRAWING: {
-        GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_or_ref);
+        GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
         drawing->geometry.wrap().~CurvesGeometry();
         MEM_delete(drawing->runtime);
         drawing->runtime = nullptr;
@@ -1069,7 +1065,7 @@ void GreasePencil::free_drawing_array()
       }
       case GP_DRAWING_REFERENCE: {
         GreasePencilDrawingReference *drawing_reference =
-            reinterpret_cast<GreasePencilDrawingReference *>(drawing_or_ref);
+            reinterpret_cast<GreasePencilDrawingReference *>(drawing_base);
         MEM_freeN(drawing_reference);
         break;
       }
