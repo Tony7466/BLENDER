@@ -85,7 +85,7 @@ static std::string escape_name(StringRef name)
 {
   std::stringstream ss;
   for (const char c : name) {
-    if (('0' <= c && c <= '9') || ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')) {
+    if (('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')) {
       ss << c;
     }
     else {
@@ -710,7 +710,7 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
       BLI_path_join(modifier_bake_directory,
                     sizeof(modifier_bake_directory),
                     bake_directory,
-                    id_escaped.c_str());
+                    ("sim_" + id_escaped).c_str());
       char modifier_meta_directory[FILE_MAX];
       BLI_path_join(modifier_meta_directory,
                     sizeof(modifier_meta_directory),
