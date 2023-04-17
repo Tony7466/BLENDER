@@ -23,7 +23,7 @@
 #include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_lib_query.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_modifier.h"
 #include "BKE_screen.h"
 
@@ -80,8 +80,8 @@ static void matrix_from_obj_pchan(float mat[4][4], Object *ob, const char *bonen
 }
 
 struct UVWarpData {
-  blender::Span<MPoly> polys;
-  blender::Span<MLoop> loops;
+  blender::OffsetIndices<int> polys;
+  blender::Span<int> corner_verts;
   float (*mloopuv)[2];
 
   const MDeformVert *dvert;
@@ -96,10 +96,10 @@ static void uv_warp_compute(void *__restrict userdata,
                             const TaskParallelTLS *__restrict /*tls*/)
 {
   const UVWarpData *data = static_cast<const UVWarpData *>(userdata);
+  const blender::IndexRange poly = data->polys[i];
+  const blender::Span<int> poly_verts = data->corner_verts.slice(poly);
 
-  const MPoly *mp = &data->polys[i];
-  const MLoop *ml = &data->loops[mp->loopstart];
-  float(*mluv)[2] = &data->mloopuv[mp->loopstart];
+  float(*mluv)[2] = &data->mloopuv[poly.start()];
 
   const MDeformVert *dvert = data->dvert;
   const int defgrp_index = data->defgrp_index;
@@ -109,18 +109,19 @@ static void uv_warp_compute(void *__restrict userdata,
   int l;
 
   if (dvert) {
-    for (l = 0; l < mp->totloop; l++, ml++, mluv++) {
+    for (l = 0; l < poly.size(); l++, mluv++) {
+      const int vert_i = poly_verts[l];
       float uv[2];
       const float weight = data->invert_vgroup ?
-                               1.0f - BKE_defvert_find_weight(&dvert[ml->v], defgrp_index) :
-                               BKE_defvert_find_weight(&dvert[ml->v], defgrp_index);
+                               1.0f - BKE_defvert_find_weight(&dvert[vert_i], defgrp_index) :
+                               BKE_defvert_find_weight(&dvert[vert_i], defgrp_index);
 
       uv_warp_from_mat4_pair(uv, (*mluv), warp_mat);
       interp_v2_v2v2((*mluv), (*mluv), uv, weight);
     }
   }
   else {
-    for (l = 0; l < mp->totloop; l++, mluv++) {
+    for (l = 0; l < poly.size(); l++, mluv++) {
       uv_warp_from_mat4_pair(*mluv, *mluv, warp_mat);
     }
   }
@@ -191,16 +192,16 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   /* make sure we're using an existing layer */
   CustomData_validate_layer_name(&mesh->ldata, CD_PROP_FLOAT2, umd->uvlayer_name, uvname);
 
-  const blender::Span<MPoly> polys = mesh->polys();
-  const blender::Span<MLoop> loops = mesh->loops();
+  const blender::OffsetIndices polys = mesh->polys();
+  const blender::Span<int> corner_verts = mesh->corner_verts();
 
-  float(*mloopuv)[2] = static_cast<float(*)[2]>(
-      CustomData_get_layer_named_for_write(&mesh->ldata, CD_PROP_FLOAT2, uvname, loops.size()));
+  float(*mloopuv)[2] = static_cast<float(*)[2]>(CustomData_get_layer_named_for_write(
+      &mesh->ldata, CD_PROP_FLOAT2, uvname, corner_verts.size()));
   MOD_get_vgroup(ctx->object, mesh, umd->vgroup_name, &dvert, &defgrp_index);
 
   UVWarpData data{};
   data.polys = polys;
-  data.loops = loops;
+  data.corner_verts = corner_verts;
   data.mloopuv = mloopuv;
   data.dvert = dvert;
   data.defgrp_index = defgrp_index;

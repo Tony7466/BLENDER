@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. All rights reserved. */
+ * Copyright 2022 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -11,9 +11,7 @@
 
 namespace blender::gpu {
 
-void VKIndexBuffer::upload_data()
-{
-}
+void VKIndexBuffer::upload_data() {}
 
 void VKIndexBuffer::bind_as_ssbo(uint binding)
 {
@@ -35,20 +33,12 @@ void VKIndexBuffer::read(uint32_t *data) const
   VKCommandBuffer &command_buffer = context.command_buffer_get();
   command_buffer.submit();
 
-  void *mapped_memory;
-  if (buffer_.map(context, &mapped_memory)) {
-    memcpy(data, mapped_memory, size_get());
-    buffer_.unmap(context);
-  }
+  buffer_.read(data);
 }
 
-void VKIndexBuffer::update_sub(uint /*start*/, uint /*len*/, const void * /*data*/)
-{
-}
+void VKIndexBuffer::update_sub(uint /*start*/, uint /*len*/, const void * /*data*/) {}
 
-void VKIndexBuffer::strip_restart_indices()
-{
-}
+void VKIndexBuffer::strip_restart_indices() {}
 
 void VKIndexBuffer::allocate(VKContext &context)
 {

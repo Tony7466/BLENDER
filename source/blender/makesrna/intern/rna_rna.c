@@ -23,11 +23,13 @@
  * \{ */
 
 /* Reuse for dynamic types. */
+
 const EnumPropertyItem DummyRNA_NULL_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
-/* Reuse for dynamic types with default value */
+/* Reuse for dynamic types with default value. */
+
 const EnumPropertyItem DummyRNA_DEFAULT_items[] = {
     {0, "DEFAULT", 0, "Default", ""},
     {0, NULL, 0, NULL, NULL},
@@ -1011,21 +1013,33 @@ static int rna_enum_check_separator(CollectionPropertyIterator *UNUSED(iter), vo
   return (item->identifier[0] == 0);
 }
 
-static void rna_EnumProperty_items_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
+static void rna_EnumProperty_items_begin_impl(CollectionPropertyIterator *iter,
+                                              PointerRNA *ptr,
+                                              IteratorSkipFunc skip_fn)
 {
   PropertyRNA *prop = (PropertyRNA *)ptr->data;
-  /* EnumPropertyRNA *eprop; */ /* UNUSED */
+  // EnumPropertyRNA *eprop; /* UNUSED */
   const EnumPropertyItem *item = NULL;
   int totitem;
   bool free;
 
   prop = rna_ensure_property(prop);
-  /* eprop = (EnumPropertyRNA *)prop; */
+  // eprop = (EnumPropertyRNA *)prop;
 
   RNA_property_enum_items_ex(
       NULL, ptr, prop, STREQ(iter->prop->identifier, "enum_items_static"), &item, &totitem, &free);
-  rna_iterator_array_begin(
-      iter, (void *)item, sizeof(EnumPropertyItem), totitem, free, rna_enum_check_separator);
+  rna_iterator_array_begin(iter, (void *)item, sizeof(EnumPropertyItem), totitem, free, skip_fn);
+}
+
+static void rna_EnumProperty_items_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
+{
+  rna_EnumProperty_items_begin_impl(iter, ptr, rna_enum_check_separator);
+}
+
+static void rna_EnumProperty_items_ui_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
+{
+  /* No skip-function, include all "UI" items. */
+  rna_EnumProperty_items_begin_impl(iter, ptr, NULL);
 }
 
 static void rna_EnumPropertyItem_identifier_get(PointerRNA *ptr, char *value)
@@ -2775,6 +2789,52 @@ bool rna_property_override_apply_default(Main *bmain,
 #  undef RNA_PROPERTY_GET_SINGLE
 #  undef RNA_PROPERTY_SET_SINGLE
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Primitive Values
+ * \{ */
+
+/* Primitive String. */
+
+static void rna_PrimitiveString_value_get(PointerRNA *ptr, char *result)
+{
+  const PrimitiveStringRNA *data = ptr->data;
+  strcpy(result, data->value ? data->value : "");
+}
+
+static int rna_PrimitiveString_value_length(PointerRNA *ptr)
+{
+  const PrimitiveStringRNA *data = ptr->data;
+  return data->value ? strlen(data->value) : 0;
+}
+
+/* Primitive Int. */
+
+static int rna_PrimitiveInt_value_get(PointerRNA *ptr)
+{
+  const PrimitiveIntRNA *data = ptr->data;
+  return data->value;
+}
+
+/* Primitive Float. */
+
+static float rna_PrimitiveFloat_value_get(PointerRNA *ptr)
+{
+  const PrimitiveFloatRNA *data = ptr->data;
+  return data->value;
+}
+
+/* Primitive Boolean. */
+
+static bool rna_PrimitiveBoolean_value_get(PointerRNA *ptr)
+{
+  const PrimitiveBooleanRNA *data = ptr->data;
+  return data->value;
+}
+
+/** \} */
+
 #else
 
 static void rna_def_struct(BlenderRNA *brna)
@@ -3312,6 +3372,26 @@ static void rna_def_enum_property(BlenderRNA *brna, StructRNA *srna)
       "Static Items",
       "Possible values for the property (never calls optional dynamic generation of those)");
 
+  /* Expose a UI version of `enum_items_static` to allow separator & title access,
+   * needed for the tool-system to access separators from brush enums. */
+  prop = RNA_def_property(srna, "enum_items_static_ui", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_struct_type(prop, "EnumPropertyItem");
+  RNA_def_property_collection_funcs(prop,
+                                    "rna_EnumProperty_items_ui_begin",
+                                    "rna_iterator_array_next",
+                                    "rna_iterator_array_end",
+                                    "rna_iterator_array_get",
+                                    NULL,
+                                    NULL,
+                                    NULL,
+                                    NULL);
+  RNA_def_property_ui_text(
+      prop,
+      "Static Items with UI Elements",
+      "Possible values for the property (never calls optional dynamic generation of those). "
+      "Includes UI elements (separators and section headings)");
+
   srna = RNA_def_struct(brna, "EnumPropertyItem", NULL);
   RNA_def_struct_ui_text(
       srna, "Enum Item Definition", "Definition of a choice in an RNA enum property");
@@ -3365,6 +3445,40 @@ static void rna_def_pointer_property(StructRNA *srna, PropertyType type)
         prop, "rna_CollectionProperty_fixed_type_get", NULL, NULL, NULL);
   }
   RNA_def_property_ui_text(prop, "Pointer Type", "Fixed pointer type, empty if variable type");
+}
+
+static void rna_def_rna_primitive(BlenderRNA *brna)
+{
+  /* Primitive Values, use when passing #PointerRNA is used for primitive types.
+   * For the rare cases we want to pass a value as RNA which wraps a primitive data. */
+
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "PrimitiveString", NULL);
+  RNA_def_struct_ui_text(srna, "String Value", "RNA wrapped string");
+  prop = RNA_def_property(srna, "value", PROP_STRING, PROP_BYTESTRING);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_string_funcs(
+      prop, "rna_PrimitiveString_value_get", "rna_PrimitiveString_value_length", NULL);
+
+  srna = RNA_def_struct(brna, "PrimitiveInt", NULL);
+  RNA_def_struct_ui_text(srna, "Primitive Int", "RNA wrapped int");
+  prop = RNA_def_property(srna, "value", PROP_INT, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_int_funcs(prop, "rna_PrimitiveInt_value_get", NULL, NULL);
+
+  srna = RNA_def_struct(brna, "PrimitiveFloat", NULL);
+  RNA_def_struct_ui_text(srna, "Primitive Float", "RNA wrapped float");
+  prop = RNA_def_property(srna, "value", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_float_funcs(prop, "rna_PrimitiveFloat_value_get", NULL, NULL);
+
+  srna = RNA_def_struct(brna, "PrimitiveBoolean", NULL);
+  RNA_def_struct_ui_text(srna, "Primitive Boolean", "RNA wrapped boolean");
+  prop = RNA_def_property(srna, "value", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_boolean_funcs(prop, "rna_PrimitiveBoolean_value_get", NULL);
 }
 
 void RNA_def_rna(BlenderRNA *brna)
@@ -3451,6 +3565,8 @@ void RNA_def_rna(BlenderRNA *brna)
 #  endif
 
   RNA_def_property_ui_text(prop, "Structs", "");
+
+  rna_def_rna_primitive(brna);
 }
 
 #endif

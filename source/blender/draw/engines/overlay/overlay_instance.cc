@@ -125,7 +125,7 @@ template<typename T> void Instance<T>::object_sync(ObjectRef &ob_ref, Manager &m
           metaballs.object_sync(ob_ref, resources, state);
         }
         break;
-      case OB_GPENCIL:
+      case OB_GPENCIL_LEGACY:
         break;
     }
   }

@@ -76,6 +76,12 @@ void BKE_view_layer_free(struct ViewLayer *view_layer);
 void BKE_view_layer_free_ex(struct ViewLayer *view_layer, bool do_id_user);
 
 /**
+ * Free the bases of this #ViewLayer, and what they reference.
+ * This includes baseact, object_bases, object_bases_hash, and layer_collections.
+ */
+void BKE_view_layer_free_object_content(struct ViewLayer *view_layer);
+
+/**
  * Tag all the selected objects of a render-layer.
  */
 void BKE_view_layer_selected_objects_tag(const struct Scene *scene,
@@ -513,10 +519,6 @@ struct Object **BKE_view_layer_array_selected_objects_params(
 struct Object *BKE_view_layer_non_active_selected_object(const struct Scene *scene,
                                                          struct ViewLayer *view_layer,
                                                          const struct View3D *v3d);
-
-#define BKE_view_layer_array_selected_objects(view_layer, v3d, r_len, ...) \
-  BKE_view_layer_array_selected_objects_params( \
-      view_layer, v3d, r_len, &(const struct ObjectsInViewLayerParams)__VA_ARGS__)
 
 struct ObjectsInModeParams {
   int object_mode;

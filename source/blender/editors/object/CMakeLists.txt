@@ -9,7 +9,7 @@ set(INC
   ../../bmesh
   ../../depsgraph
   ../../functions
-  ../../gpencil_modifiers
+  ../../gpencil_modifiers_legacy
   ../../gpu
   ../../ikplugin
   ../../imbuf
@@ -39,8 +39,8 @@ set(SRC
   object_collection.c
   object_constraint.c
   object_data_transfer.c
-  object_data_transform.c
-  object_edit.c
+  object_data_transform.cc
+  object_edit.cc
   object_facemap_ops.c
   object_gpencil_modifier.c
   object_hook.c

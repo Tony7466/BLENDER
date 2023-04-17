@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.5.0 Beta (b'c5bbc5db6faa')\n"
+"Project-Id-Version: Blender 3.6.0 Alpha (b'dfa42c614fb4')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-02-27 15:19:45\n"
+"POT-Creation-Date: 2023-04-17 09:43:08\n"
 "PO-Revision-Date: 2015-03-03 16:21+0530\n"
 "Last-Translator: Roshan Lal Gumasta <roshan@anisecrets.com>\n"
 "Language-Team: Hindi <www.anisecrets.com>\n"
@@ -453,10 +453,6 @@ msgstr "भार"
 
 msgid "Brushes"
 msgstr "तूलिका"
-
-
-msgid "Grease Pencil"
-msgstr "तैलीय पेंसिल"
 
 
 msgid "Images"
@@ -1445,6 +1441,10 @@ msgid "Fonts"
 msgstr "मुद्र्"
 
 
+msgid "Grease Pencil"
+msgstr "तैलीय पेंसिल"
+
+
 msgid "Save"
 msgstr "सहेजें"
 
@@ -1539,10 +1539,6 @@ msgstr "समाप्तिम"
 
 msgid "Time"
 msgstr "समय"
-
-
-msgid "Number"
-msgstr "संख्या"
 
 
 msgid "Delete"
@@ -1852,14 +1848,6 @@ msgstr "गतिकी"
 
 msgid "Add Color"
 msgstr "रंग जोड़ें"
-
-
-msgid "Root"
-msgstr "मूल"
-
-
-msgid "Sharp"
-msgstr "पैना"
 
 
 msgid "Repeat"
@@ -2478,6 +2466,10 @@ msgid "Roughness 2"
 msgstr "खुरदरापन २"
 
 
+msgid "Number"
+msgstr "संख्या"
+
+
 msgid "Show particle number"
 msgstr "कण संख्या दिखाएँ"
 
@@ -2563,14 +2555,6 @@ msgid "Memory"
 msgstr "स्मृति"
 
 
-msgid "Modified"
-msgstr "संशोधित"
-
-
-msgid "Lines"
-msgstr "लाइनों"
-
-
 msgid "Register"
 msgstr "पंजीकृत करें"
 
@@ -2621,6 +2605,10 @@ msgstr "पारदर्शिता सरणि जानकारी मे
 
 msgid "Calculate Alpha"
 msgstr "पारदर्शिता गणना"
+
+
+msgid "Sharp"
+msgstr "पैना"
 
 
 msgid "Sin"
@@ -3025,6 +3013,10 @@ msgid "Seam"
 msgstr "सीवन"
 
 
+msgid "Root"
+msgstr "मूल"
+
+
 msgid "Ball"
 msgstr "गेंद"
 
@@ -3144,6 +3136,10 @@ msgstr "यादृच्छिक"
 
 msgid "Use distance between affected object's vertices and target object, or target object's geometry"
 msgstr "प्रभावित ऑब्जेक्ट सकें और लक्ष्य ऑब्जेक्ट के बीच दूरी का उपयोग करें, या लक्ष्य वस्तु की ज्यामिति"
+
+
+msgid "Lines"
+msgstr "लाइनों"
 
 
 msgid "Tracks"
@@ -3384,10 +3380,6 @@ msgstr "प्रक्षेपण"
 
 msgid "Air"
 msgstr "वायु"
-
-
-msgid "Wrap"
-msgstr "आच्छादन"
 
 
 msgid "At"
@@ -3845,6 +3837,10 @@ msgstr "सीमा"
 
 msgid "Modifier"
 msgstr "संशोधक"
+
+
+msgid "Sigma"
+msgstr "सिग्मा"
 
 
 msgid "Create a new image"
@@ -4490,6 +4486,10 @@ msgid "Cylinder Projection"
 msgstr "बेलन प्रक्षेपण"
 
 
+msgid "Modified"
+msgstr "संशोधित"
+
+
 msgctxt "Operator"
 msgid "Pin"
 msgstr "कील"
@@ -4545,6 +4545,10 @@ msgstr "बाएँ पैन करें"
 
 msgid "Pan Right"
 msgstr "दाएँ पैन करें"
+
+
+msgid "Wrap"
+msgstr "आच्छादन"
 
 
 msgctxt "Operator"
@@ -4693,10 +4697,6 @@ msgid "Color Presets"
 msgstr "पूर्वनिश्चित रंग"
 
 
-msgid "Lens"
-msgstr "केन्द्रण-वीक्ष"
-
-
 msgid "Cloth Presets"
 msgstr "पूर्वनिश्चित कपड़ा"
 
@@ -4784,11 +4784,6 @@ msgstr "रेखा"
 msgctxt "Operator"
 msgid "Circle"
 msgstr "चक्र"
-
-
-msgctxt "Operator"
-msgid "Slide"
-msgstr "सरकाएँ"
 
 
 msgid "Default tools for particle mode"
@@ -5211,6 +5206,10 @@ msgid "Replace Text"
 msgstr "पाठ बदलें"
 
 
+msgid "Lens"
+msgstr "केन्द्रण-वीक्ष"
+
+
 msgid "Lock Camera to View"
 msgstr "प्रतिबिंबक की तालाबंदी देखने के लिए"
 
@@ -5542,10 +5541,6 @@ msgid "Update Trunk"
 msgstr "अद्यतन ट्रंक"
 
 
-msgid "[{}]: \"{}\" ({})"
-msgstr "[{}]: \"{}\" ({})"
-
-
 msgctxt "Operator"
 msgid "New"
 msgstr "नई"
@@ -5686,10 +5681,6 @@ msgid "All"
 msgstr "सभी"
 
 
-msgid "Old"
-msgstr "पुराने"
-
-
 msgid "Date"
 msgstr "दिनांक"
 
@@ -5698,16 +5689,16 @@ msgid "Roughness End"
 msgstr "खुरदरापन समाप्त"
 
 
+msgid "Use Timing"
+msgstr "समय का उपयोग करें"
+
+
 msgid "Spacing: %g"
 msgstr "रिक्ति: %g"
 
 
 msgid "%d fluid particles for this frame"
 msgstr "इस गठन के लिए %d तरल पदार्थ कणों"
-
-
-msgid "Use Timing"
-msgstr "समय का उपयोग करें"
 
 
 msgid "Structural"
@@ -5813,6 +5804,11 @@ msgstr "स्नैप"
 msgctxt "Operator"
 msgid "Extend"
 msgstr "विस्तृत करें"
+
+
+msgctxt "Operator"
+msgid "Slide"
+msgstr "सरकाएँ"
 
 
 msgctxt "Operator"
@@ -6019,10 +6015,6 @@ msgstr "संचिका:"
 
 msgid "Author:"
 msgstr "लेखक:"
-
-
-msgid "author"
-msgstr "लेखक"
 
 
 msgid "Version:"
@@ -6235,10 +6227,6 @@ msgstr "गति पथ गठन विस्तार के लिए अम
 
 msgid "Loading failed: "
 msgstr "उद्भरण में विफल: "
-
-
-msgid "Loading '%s' failed: "
-msgstr "उद्भरण में  '%s' विफल: "
 
 
 msgid "Not enough free memory"
@@ -7066,6 +7054,10 @@ msgid "Dot"
 msgstr "बिन्दु"
 
 
+msgid "Old"
+msgstr "पुराने"
+
+
 msgid "AO"
 msgstr "ए ओ"
 
@@ -7076,10 +7068,6 @@ msgstr "बीएसडीएफ़"
 
 msgid "IOR"
 msgstr "आईओआर"
-
-
-msgid "Sigma"
-msgstr "सिग्मा"
 
 
 msgid "W1"

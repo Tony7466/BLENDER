@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup modifiers
@@ -23,7 +23,7 @@
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
 #include "BKE_lib_id.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.h"
 #include "BKE_particle.h"
 #include "BKE_screen.h"
@@ -79,13 +79,13 @@ static void smoothModifier_do(
   }
 
   float(*accumulated_vecs)[3] = static_cast<float(*)[3]>(
-      MEM_calloc_arrayN((size_t)verts_num, sizeof(*accumulated_vecs), __func__));
+      MEM_calloc_arrayN(size_t(verts_num), sizeof(*accumulated_vecs), __func__));
   if (!accumulated_vecs) {
     return;
   }
 
   uint *accumulated_vecs_count = static_cast<uint *>(
-      MEM_calloc_arrayN((size_t)verts_num, sizeof(*accumulated_vecs_count), __func__));
+      MEM_calloc_arrayN(size_t(verts_num), sizeof(*accumulated_vecs_count), __func__));
   if (!accumulated_vecs_count) {
     MEM_freeN(accumulated_vecs);
     return;
@@ -95,8 +95,7 @@ static void smoothModifier_do(
   const float fac_orig = 1.0f - fac_new;
   const bool invert_vgroup = (smd->flag & MOD_SMOOTH_INVERT_VGROUP) != 0;
 
-  const MEdge *medges = BKE_mesh_edges(mesh);
-  const int edges_num = mesh->totedge;
+  const blender::Span<blender::int2> edges = mesh->edges();
 
   const MDeformVert *dvert;
   int defgrp_index;
@@ -104,14 +103,14 @@ static void smoothModifier_do(
 
   for (int j = 0; j < smd->repeat; j++) {
     if (j != 0) {
-      memset(accumulated_vecs, 0, sizeof(*accumulated_vecs) * (size_t)verts_num);
-      memset(accumulated_vecs_count, 0, sizeof(*accumulated_vecs_count) * (size_t)verts_num);
+      memset(accumulated_vecs, 0, sizeof(*accumulated_vecs) * size_t(verts_num));
+      memset(accumulated_vecs_count, 0, sizeof(*accumulated_vecs_count) * size_t(verts_num));
     }
 
-    for (int i = 0; i < edges_num; i++) {
+    for (const int i : edges.index_range()) {
       float fvec[3];
-      const uint idx1 = medges[i].v1;
-      const uint idx2 = medges[i].v2;
+      const uint idx1 = edges[i][0];
+      const uint idx2 = edges[i][1];
 
       mid_v3_v3v3(fvec, vertexCos[idx1], vertexCos[idx2]);
 

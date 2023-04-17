@@ -9,7 +9,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_blender_version.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 
 #include "BLI_color.hh"
 #include "BLI_enumerable_thread_specific.hh"
@@ -348,7 +348,7 @@ void OBJWriter::write_poly_elements(FormatHandler &fh,
     int prev_i = obj_mesh_data.remap_poly_index(idx - 1);
     int i = obj_mesh_data.remap_poly_index(idx);
 
-    Vector<int> poly_vertex_indices = obj_mesh_data.calc_poly_vertex_indices(i);
+    Span<int> poly_vertex_indices = obj_mesh_data.calc_poly_vertex_indices(i);
     Span<int> poly_uv_indices = obj_mesh_data.calc_poly_uv_indices(i);
     Vector<int> poly_normal_indices = obj_mesh_data.calc_poly_normal_indices(i);
 
@@ -418,11 +418,11 @@ void OBJWriter::write_edges_indices(FormatHandler &fh,
     return;
   }
 
-  const Span<MEdge> edges = mesh.edges();
+  const Span<int2> edges = mesh.edges();
   for (const int64_t i : edges.index_range()) {
     if (loose_edges.is_loose_bits[i]) {
-      const MEdge &edge = edges[i];
-      fh.write_obj_edge(edge.v1 + offsets.vertex_offset + 1, edge.v2 + offsets.vertex_offset + 1);
+      const int2 obj_edge = edges[i] + offsets.vertex_offset + 1;
+      fh.write_obj_edge(obj_edge[0], obj_edge[1]);
     }
   }
 }

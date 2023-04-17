@@ -318,6 +318,9 @@ typedef struct OVERLAY_ExtraCallBuffers {
 
   DRWCallBuffer *groundline;
 
+  DRWCallBuffer *light_icon_inner;
+  DRWCallBuffer *light_icon_outer;
+  DRWCallBuffer *light_icon_sun_rays;
   DRWCallBuffer *light_point;
   DRWCallBuffer *light_sun;
   DRWCallBuffer *light_spot;
@@ -871,6 +874,7 @@ GPUShader *OVERLAY_shader_edit_gpencil_wire(void);
 GPUShader *OVERLAY_shader_edit_lattice_point(void);
 GPUShader *OVERLAY_shader_edit_lattice_wire(void);
 GPUShader *OVERLAY_shader_edit_mesh_analysis(void);
+GPUShader *OVERLAY_shader_edit_mesh_depth(void);
 GPUShader *OVERLAY_shader_edit_mesh_edge(bool use_flat_interp);
 GPUShader *OVERLAY_shader_edit_mesh_face(void);
 GPUShader *OVERLAY_shader_edit_mesh_facedot(void);

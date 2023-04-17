@@ -337,7 +337,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
                                 OB_CURVES_LEGACY,
                                 OB_SURF,
                                 OB_FONT,
-                                OB_GPENCIL,
+                                OB_GPENCIL_LEGACY,
                                 OB_CURVES,
                                 OB_POINTCLOUD,
                                 OB_VOLUME);
@@ -475,7 +475,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
           OVERLAY_metaball_cache_populate(data, ob);
         }
         break;
-      case OB_GPENCIL:
+      case OB_GPENCIL_LEGACY:
         OVERLAY_gpencil_cache_populate(data, ob);
         break;
     }
