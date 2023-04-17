@@ -17,13 +17,13 @@
 		<key>CFBundlePackageType</key>
 		<string>XPC!</string>
 		<key>CFBundleShortVersionString</key>
-		<string>1.0</string>
+		<string>3.6.0</string>
 		<key>CFBundleSupportedPlatforms</key>
 		<array>
 			<string>MacOSX</string>
 		</array>
 		<key>CFBundleVersion</key>
-		<string>1</string>
+		<string>3.6.0 2023-04-18</string>
 		<key>LSMinimumSystemVersion</key>
 		<string>11.3</string>
 		<key>NSExtension</key>
@@ -34,9 +34,13 @@
 				<array>
 					<string>org.blenderfoundation.blender.file</string>
 				</array>
+				<key>QLThumbnailMinimumDimension</key>
+				<integer>0</integer>
 			</dict>
 			<key>NSExtensionPointIdentifier</key>
 			<string>com.apple.quicklook.thumbnail</string>
+			<key>NSExtensionPrincipalClass</key>
+			<string>ThumbnailProvider</string>
 			<key>com.apple.showsInExtensionsManager</key>
 			<true/>
 		</dict>

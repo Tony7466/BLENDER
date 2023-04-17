@@ -67,11 +67,12 @@ static eThumbStatus creator_impl(const char *src_blend_path)
                      completionHandler:(void (^)(QLThumbnailReply *_Nullable reply,
                                                  NSError *_Nullable error))handler
 {
-  @autoreleasepool {  // Add the supported content types to the QLSupportedContentTypes array in
+   // Add the supported content types to the QLSupportedContentTypes array in
                       // the Info.plist of the
     // extension.
 
     NSLog(@"hello world from blender");
+    // NSLog(@"%s", request.fileURL.path.UTF8String);
     NSURL *foo = [[NSURL alloc]
         initFileURLWithFileSystemRepresentation:"/Users/ankitkumar/Pictures/IMG_3158.JPG"
                                     isDirectory:NO
@@ -79,7 +80,6 @@ static eThumbStatus creator_impl(const char *src_blend_path)
     QLThumbnailReply *reply = [QLThumbnailReply replyWithImageFileURL:foo];
 
     handler(reply, nil);
-  }
 }
 
 @end
