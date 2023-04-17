@@ -258,6 +258,8 @@ void WM_OT_usd_export(struct wmOperatorType *ot)
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
 
+  RNA_def_string(ot->srna, "filter_glob", "*.usd", 0, "", "");
+
   RNA_def_boolean(ot->srna,
                   "selected_objects_only",
                   false,
@@ -556,6 +558,8 @@ void WM_OT_usd_import(struct wmOperatorType *ot)
                                  WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH | WM_FILESEL_SHOW_PROPS,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
+
+  RNA_def_string(ot->srna, "filter_glob", "*.usd", 0, "", "");
 
   RNA_def_float(
       ot->srna,
