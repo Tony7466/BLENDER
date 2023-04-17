@@ -41,7 +41,9 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(GreasePencilDrawing &drawing,
   /* Resize the CurvesGeometry. */
   CurvesGeometry &curves = drawing.geometry.wrap();
   curves.resize(num_points, num_strokes);
-  curves.offsets_for_write().copy_from(offsets);
+  if (num_strokes > 0) {
+    curves.offsets_for_write().copy_from(offsets);
+  }
   OffsetIndices<int> points_by_curve = curves.points_by_curve();
   MutableAttributeAccessor attributes = curves.attributes_for_write();
 
