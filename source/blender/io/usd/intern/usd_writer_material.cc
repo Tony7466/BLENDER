@@ -53,6 +53,7 @@ static const pxr::TfToken rgb("rgb", pxr::TfToken::Immortal);
 static const pxr::TfToken r("r", pxr::TfToken::Immortal);
 static const pxr::TfToken g("g", pxr::TfToken::Immortal);
 static const pxr::TfToken b("b", pxr::TfToken::Immortal);
+static const pxr::TfToken a("a", pxr::TfToken::Immortal);
 static const pxr::TfToken st("st", pxr::TfToken::Immortal);
 static const pxr::TfToken result("result", pxr::TfToken::Immortal);
 static const pxr::TfToken varname("varname", pxr::TfToken::Immortal);
@@ -271,7 +272,7 @@ static InputSpecMap &preview_surface_input_map()
       {"Roughness", {usdtokens::roughness, pxr::SdfValueTypeNames->Float, usdtokens::r, true}},
       {"Metallic", {usdtokens::metallic, pxr::SdfValueTypeNames->Float, usdtokens::r, true}},
       {"Specular", {usdtokens::specular, pxr::SdfValueTypeNames->Float, usdtokens::r, true}},
-      {"Alpha", {usdtokens::opacity, pxr::SdfValueTypeNames->Float, usdtokens::r, true}},
+      {"Alpha", {usdtokens::opacity, pxr::SdfValueTypeNames->Float, usdtokens::a, true}},
       {"IOR", {usdtokens::ior, pxr::SdfValueTypeNames->Float, usdtokens::r, true}},
       /* Note that for the Normal input set_default_value is false. */
       {"Normal", {usdtokens::normal, pxr::SdfValueTypeNames->Float3, usdtokens::rgb, false}},
