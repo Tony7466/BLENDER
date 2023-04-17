@@ -16,7 +16,9 @@ namespace blender::gpu {
 class VKVertexBuffer;
 class VKContext;
 class VKBatch;
+class VKBuffer;
 class VKShaderInterface;
+class VKImmediate;
 
 using AttributeMask = uint16_t;
 
@@ -27,7 +29,10 @@ struct VKVertexAttributeObject {
 
   Vector<VkVertexInputBindingDescription> bindings;
   Vector<VkVertexInputAttributeDescription> attributes;
+  /* Used for batches. */
   Vector<VKVertexBuffer *> vbos;
+  /* Used for immediate mode. */
+  Vector<VKBuffer *> buffers;
 
   VKVertexAttributeObject();
   void clear();
@@ -38,12 +43,16 @@ struct VKVertexAttributeObject {
   VKVertexAttributeObject &operator=(const VKVertexAttributeObject &other);
 
   void update_bindings(const VKContext &context, VKBatch &batch);
+  void update_bindings(VKImmediate &immediate);
 
  private:
-  void update_bindings(VKVertexBuffer &vertex_buffer,
-                                const VKShaderInterface &interface,
-                                AttributeMask &r_occupied_attributes,
-                                const bool use_instancing);
+  void update_bindings(const GPUVertFormat &vertex_format,
+                       VKVertexBuffer *vertex_buffer,
+                       VKBuffer *immediate_vertex_buffer,
+                       const int64_t vertex_len,
+                       const VKShaderInterface &interface,
+                       AttributeMask &r_occupied_attributes,
+                       const bool use_instancing);
 };
 
 }  // namespace blender::gpu

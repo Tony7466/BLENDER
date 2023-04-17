@@ -80,9 +80,15 @@ void VKCommandBuffer::bind(const uint32_t binding,
                            const VKVertexBuffer &vertex_buffer,
                            const VkDeviceSize offset)
 {
+  bind(binding, vertex_buffer.vk_handle(), offset);
+}
+
+void VKCommandBuffer::bind(const uint32_t binding,
+                           const VkBuffer &vk_buffer,
+                           const VkDeviceSize offset)
+{
   validate_framebuffer_exists();
   ensure_active_framebuffer();
-  VkBuffer vk_buffer = vertex_buffer.vk_handle();
   vkCmdBindVertexBuffers(vk_command_buffer_, binding, 1, &vk_buffer, &offset);
 }
 

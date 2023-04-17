@@ -211,6 +211,7 @@ set(VULKAN_SRC
   vulkan/vk_drawlist.cc
   vulkan/vk_fence.cc
   vulkan/vk_framebuffer.cc
+  vulkan/vk_immediate.cc
   vulkan/vk_index_buffer.cc
   vulkan/vk_memory.cc
   vulkan/vk_memory_layout.cc
@@ -243,6 +244,7 @@ set(VULKAN_SRC
   vulkan/vk_drawlist.hh
   vulkan/vk_fence.hh
   vulkan/vk_framebuffer.hh
+  vulkan/vk_immediate.hh
   vulkan/vk_index_buffer.hh
   vulkan/vk_memory.hh
   vulkan/vk_memory_layout.hh
@@ -835,6 +837,7 @@ if(WITH_GTESTS)
 
       tests/state_blend_test.cc
       tests/framebuffer_test.cc
+      tests/immediate_test.cc
       tests/index_buffer_test.cc
       tests/offscreen_test.cc
       tests/push_constants_test.cc

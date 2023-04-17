@@ -81,6 +81,8 @@ class VKCommandBuffer : NonCopyable, NonMovable {
   void bind(const uint32_t binding,
             const VKVertexBuffer &vertex_buffer,
             const VkDeviceSize offset);
+  /* Bind the given buffer as a vertex buffer. */
+  void bind(const uint32_t binding, const VkBuffer &buffer, const VkDeviceSize offset);
   void bind(const VKIndexBuffer &index_buffer, VkIndexType index_type);
   void begin_render_pass(const VKFrameBuffer &framebuffer);
   void end_render_pass(const VKFrameBuffer &framebuffer);
