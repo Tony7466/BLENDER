@@ -15,6 +15,13 @@
 #  include "kernel/device/oneapi/globals.h"
 #  include "kernel/device/oneapi/kernel.h"
 
+#  if defined(WITH_EMBREE_GPU) && defined(EMBREE_SYCL_SUPPORT) && !defined(SYCL_LANGUAGE_VERSION)
+/* These declarations are missing from embree headers when compiling from a compiler that doesn't
+ * support SYCL. */
+extern "C" RTCDevice rtcNewSYCLDevice(sycl::context context, const char *config);
+extern "C" bool rtcIsSYCLDeviceSupported(const sycl::device sycl_device);
+#  endif
+
 CCL_NAMESPACE_BEGIN
 
 static void queue_error_cb(const char *message, void *user_ptr)
@@ -37,26 +44,18 @@ OneapiDevice::OneapiDevice(const DeviceInfo &info, Stats &stats, Profiler &profi
       kg_memory_size_(0)
 {
   need_texture_info_ = false;
-  use_hwrt = info.use_hwrt;
+  use_hardware_raytracing = info.use_hardware_raytracing;
 
   oneapi_set_error_cb(queue_error_cb, &oneapi_error_string_);
 
-  if (use_hwrt)
-    VLOG_INFO
-        << "oneAPI will try to use Hardware Raytracing capabilities for intersection acceleration";
   bool is_finished_ok = create_queue(device_queue_,
                                      info.num,
 #  ifdef WITH_EMBREE_GPU
-                                     use_hwrt ? &embree_device : nullptr
+                                     use_hardware_raytracing ? &embree_device : nullptr
 #  else
                                      nullptr
 #  endif
   );
-#  ifdef WITH_EMBREE_GPU
-  use_hwrt = use_hwrt && (embree_device != nullptr);
-#  else
-  use_hwrt = false;
-#  endif
 
   if (is_finished_ok == false) {
     set_error("oneAPI queue initialization error: got runtime exception \"" +
@@ -66,6 +65,16 @@ OneapiDevice::OneapiDevice(const DeviceInfo &info, Stats &stats, Profiler &profi
     VLOG_DEBUG << "oneAPI queue has been successfully created for the device \""
                << info.description << "\"";
     assert(device_queue_);
+  }
+
+#  ifdef WITH_EMBREE_GPU
+  use_hardware_raytracing = use_hardware_raytracing && (embree_device != nullptr);
+#  else
+  use_hardware_raytracing = false;
+#  endif
+
+  if (use_hardware_raytracing) {
+    VLOG_INFO << "oneAPI will use hardware ray tracing for intersection acceleration.";
   }
 
   size_t globals_segment_size;
@@ -111,19 +120,18 @@ bool OneapiDevice::check_peer_access(Device * /*peer_device*/)
   return false;
 }
 
-bool OneapiDevice::can_use_hwrt_for_features(uint kernel_features) const
+bool OneapiDevice::can_use_hardware_raytracing_for_features(uint requested_features) const
 {
   /* MNEE and Raytrace kernels currently don't work correctly with HWRT. */
-  if ((kernel_features & KERNEL_FEATURE_MNEE || kernel_features & KERNEL_FEATURE_NODE_RAYTRACE)) {
-    return false;
-  }
-  return true;
+  return !(requested_features & (KERNEL_FEATURE_MNEE | KERNEL_FEATURE_NODE_RAYTRACE));
 }
 
-BVHLayoutMask OneapiDevice::get_bvh_layout_mask(uint kernel_features) const
+BVHLayoutMask OneapiDevice::get_bvh_layout_mask(uint requested_features) const
 {
-  return (use_hwrt && can_use_hwrt_for_features(kernel_features)) ? BVH_LAYOUT_EMBREE :
-                                                                    BVH_LAYOUT_BVH2;
+  return (use_hardware_raytracing &&
+          can_use_hardware_raytracing_for_features(requested_features)) ?
+             BVH_LAYOUT_EMBREE :
+             BVH_LAYOUT_BVH2;
 }
 
 #  ifdef WITH_EMBREE_GPU
@@ -137,14 +145,9 @@ void OneapiDevice::build_bvh(BVH *bvh, Progress &progress, bool refit)
     else {
       bvh_embree->build(progress, &stats, embree_device);
     }
-
     if (bvh->params.top_level) {
       embree_scene = bvh_embree->scene;
     }
-    /* NOTE(sirgienko) We need to have an accumulative logic here, because Embree supports
-     * instancing, so BVH/scene can be placed inside another BVH/scene, and because of this we need
-     * to remember if any of used scenes have curves inside them. */
-    with_hair_in_bvh |= bvh_embree->with_curve_features();
   }
   else {
     Device::build_bvh(bvh, progress, refit);
@@ -155,6 +158,8 @@ void OneapiDevice::build_bvh(BVH *bvh, Progress &progress, bool refit)
 bool OneapiDevice::load_kernels(const uint requested_features)
 {
   assert(device_queue_);
+
+  kernel_features = requested_features;
 
   bool is_finished_ok = oneapi_run_test_kernel(device_queue_);
   if (is_finished_ok == false) {
@@ -167,14 +172,14 @@ bool OneapiDevice::load_kernels(const uint requested_features)
     assert(device_queue_);
   }
 
-  if (use_hwrt && !can_use_hwrt_for_features(requested_features)) {
-    VLOG_INFO << "Requested features don't work properly together with Hardware Raytracing yet "
-                 "in oneAPI backend. Hardware Raytracing is now disabled.";
-    use_hwrt = false;
+  if (use_hardware_raytracing && !can_use_hardware_raytracing_for_features(requested_features)) {
+    VLOG_INFO
+        << "Hardware ray tracing disabled, not supported yet by oneAPI for requested features.";
+    use_hardware_raytracing = false;
   }
 
   is_finished_ok = oneapi_load_kernels(
-      device_queue_, (const unsigned int)requested_features, use_hwrt);
+      device_queue_, (const unsigned int)requested_features, use_hardware_raytracing);
   if (is_finished_ok == false) {
     set_error("oneAPI kernels loading: got a runtime exception \"" + oneapi_error_string_ + "\"");
   }
@@ -530,13 +535,6 @@ void OneapiDevice::check_usm(SyclQueue *queue_, const void *usm_ptr, bool allow_
 #  endif
 }
 
-#  if defined(WITH_EMBREE_GPU) && defined(EMBREE_SYCL_SUPPORT) && !defined(SYCL_LANGUAGE_VERSION)
-/* These declarations are missing from embree headers when compiling from a compiler that doesn't
- * support SYCL. */
-extern "C" RTCDevice rtcNewSYCLDevice(sycl::context context, const char *config);
-extern "C" bool rtcIsSYCLDeviceSupported(const sycl::device sycl_device);
-#  endif
-
 bool OneapiDevice::create_queue(SyclQueue *&external_queue,
                                 int device_index,
                                 void *embree_device_pointer)
@@ -724,7 +722,7 @@ bool OneapiDevice::enqueue_kernel(KernelContext *kernel_context,
                                   void **args)
 {
   return oneapi_enqueue_kernel(
-      kernel_context, kernel, global_size, use_hwrt, with_hair_in_bvh, args);
+      kernel_context, kernel, global_size, kernel_features, use_hardware_raytracing, args);
 }
 
 /* Compute-runtime (ie. NEO) version is what gets returned by sycl/L0 on Windows

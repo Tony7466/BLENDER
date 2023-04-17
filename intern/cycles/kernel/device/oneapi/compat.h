@@ -11,10 +11,6 @@
 #  define __KERNEL_GPU_RAYTRACING__
 #endif
 
-#ifndef RTC_SYCL_KERNEL
-#  define RTC_SYCL_KERNEL
-#endif
-
 #define CCL_NAMESPACE_BEGIN
 #define CCL_NAMESPACE_END
 

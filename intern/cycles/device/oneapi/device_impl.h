@@ -35,8 +35,8 @@ class OneapiDevice : public Device {
   size_t kg_memory_size_ = (size_t)0;
   size_t max_memory_on_device_ = (size_t)0;
   std::string oneapi_error_string_;
-  bool use_hwrt = false;
-  bool with_hair_in_bvh = false;
+  bool use_hardware_raytracing = false;
+  unsigned int kernel_features = 0;
 
  public:
   virtual BVHLayoutMask get_bvh_layout_mask(uint kernel_features) const override;
@@ -49,7 +49,7 @@ class OneapiDevice : public Device {
 #  endif
   bool check_peer_access(Device *peer_device) override;
 
-  bool load_kernels(const uint requested_features) override;
+  bool load_kernels(const uint kernel_features) override;
 
   void load_texture_info();
 
@@ -118,7 +118,7 @@ class OneapiDevice : public Device {
   SyclQueue *sycl_queue();
 
  protected:
-  bool can_use_hwrt_for_features(uint kernel_features) const;
+  bool can_use_hardware_raytracing_for_features(uint kernel_features) const;
   void check_usm(SyclQueue *queue, const void *usm_ptr, bool allow_host);
   bool create_queue(SyclQueue *&external_queue, int device_index, void *embree_device);
   void free_queue(SyclQueue *queue);

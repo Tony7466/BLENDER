@@ -1545,9 +1545,10 @@ class CyclesPreferences(bpy.types.AddonPreferences):
     )
 
     use_oneapirt: BoolProperty(
-        name="Embree on GPU (Experimental)",
-        description="Embree GPU execution will allow to use HW RT for ray tracing on Intel GPUs, which will provide better performance. However this support is experimental and some scenes may render incorrectly",
-        default=True,
+        name="Hardware Ray Tracing",
+        description="Embree GPU execution will allow to use hardware ray tracing on Intel GPUs, which will provide better performance. "
+                    "However this support is experimental and some scenes may render incorrectly",
+        default=False,
     )
 
     kernel_optimization_level: EnumProperty(

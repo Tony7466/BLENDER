@@ -16,6 +16,8 @@
 
 #  include "kernel/device/gpu/kernel.h"
 
+#  include "device/kernel.cpp"
+
 static OneAPIErrorCallback s_error_cb = nullptr;
 static void *s_error_user_ptr = nullptr;
 
@@ -154,16 +156,19 @@ size_t oneapi_kernel_preferred_local_size(SyclQueue *queue,
 }
 
 bool oneapi_kernel_is_required_for_features(const std::string &kernel_name,
-                                            const uint requested_features)
+                                            const uint kernel_features)
 {
-  if ((requested_features & KERNEL_FEATURE_NODE_RAYTRACE) == 0 &&
-      kernel_name.find("oneapi_kernel_integrator_shade_surface_raytrace") != std::string::npos)
+  if ((kernel_features & KERNEL_FEATURE_NODE_RAYTRACE) == 0 &&
+      kernel_name.find(device_kernel_as_string(DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE)) !=
+          std::string::npos)
     return false;
-  if ((requested_features & KERNEL_FEATURE_MNEE) == 0 &&
-      kernel_name.find("oneapi_kernel_integrator_shade_surface_mnee") != std::string::npos)
+  if ((kernel_features & KERNEL_FEATURE_MNEE) == 0 &&
+      kernel_name.find(device_kernel_as_string(DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_MNEE)) !=
+          std::string::npos)
     return false;
-  if ((requested_features & KERNEL_FEATURE_VOLUME) == 0 &&
-      kernel_name.find("oneapi_kernel_integrator_intersect_volume_stack") != std::string::npos)
+  if ((kernel_features & KERNEL_FEATURE_VOLUME) == 0 &&
+      kernel_name.find(device_kernel_as_string(DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK)) !=
+          std::string::npos)
     return false;
 
   return true;
@@ -172,35 +177,30 @@ bool oneapi_kernel_is_required_for_features(const std::string &kernel_name,
 bool oneapi_kernel_is_using_embree(const std::string &kernel_name)
 {
 #  ifdef WITH_EMBREE_GPU
-  if (kernel_name.find("_intersect_") != std::string::npos)
-    return true;
   /* MNEE and Raytrace kernels aren't yet enabled to use Embree. */
-  if (kernel_name.find("oneapi_kernel_integrator_shade_surface_raytrace") != std::string::npos)
-    return false;
-  if (kernel_name.find("oneapi_kernel_integrator_shade_surface_mnee") != std::string::npos)
-    return false;
+  for (int i = 0; i < (int)DEVICE_KERNEL_NUM; i++) {
+    DeviceKernel kernel = (DeviceKernel)i;
+    if (device_kernel_has_intersection(kernel)) {
+      if (kernel_name.find(device_kernel_as_string(kernel)) != std::string::npos) {
+        return !(kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE ||
+                 kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_MNEE);
+      }
+    }
+  }
 #  endif
   return false;
 }
 
-bool oneapi_kernel_does_rt(::DeviceKernel device_kernel)
-{
-  return device_kernel == DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST ||
-         device_kernel == DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW ||
-         device_kernel == DEVICE_KERNEL_INTEGRATOR_INTERSECT_SUBSURFACE ||
-         device_kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_MNEE ||
-         device_kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE ||
-         device_kernel == DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK;
-}
-
-bool oneapi_load_kernels(SyclQueue *queue_, const uint requested_features, bool with_hwrt)
+bool oneapi_load_kernels(SyclQueue *queue_,
+                         const uint kernel_features,
+                         bool use_hardware_raytracing)
 {
   assert(queue_);
   sycl::queue *queue = reinterpret_cast<sycl::queue *>(queue_);
 
 #  ifdef WITH_EMBREE_GPU
   /* For best performance, we always JIT compile the kernels that are using Embree. */
-  if (with_hwrt) {
+  if (use_hardware_raytracing) {
     try {
       sycl::kernel_bundle<sycl::bundle_state::input> all_kernels_bundle =
           sycl::get_kernel_bundle<sycl::bundle_state::input>(queue->get_context(),
@@ -209,7 +209,7 @@ bool oneapi_load_kernels(SyclQueue *queue_, const uint requested_features, bool 
       for (const sycl::kernel_id &kernel_id : all_kernels_bundle.get_kernel_ids()) {
         const std::string &kernel_name = kernel_id.get_name();
 
-        if (!oneapi_kernel_is_required_for_features(kernel_name, requested_features) ||
+        if (!oneapi_kernel_is_required_for_features(kernel_name, kernel_features) ||
             !oneapi_kernel_is_using_embree(kernel_name)) {
           continue;
         }
@@ -217,16 +217,19 @@ bool oneapi_load_kernels(SyclQueue *queue_, const uint requested_features, bool 
         sycl::kernel_bundle<sycl::bundle_state::input> one_kernel_bundle_input =
             sycl::get_kernel_bundle<sycl::bundle_state::input>(queue->get_context(), {kernel_id});
 
-        /* We only know which Embree features are needed after BVH is built and this happens
-         * after loading kernels, so here we compile with both possible options.*/
-        one_kernel_bundle_input
-            .set_specialization_constant<ONEAPIKernelContext::oneapi_embree_features>(
-                CYCLES_ONEAPI_EMBREE_BASIC_FEATURES);
-        sycl::build(one_kernel_bundle_input);
-        one_kernel_bundle_input
-            .set_specialization_constant<ONEAPIKernelContext::oneapi_embree_features>(
-                CYCLES_ONEAPI_EMBREE_ALL_FEATURES);
-        sycl::build(one_kernel_bundle_input);
+        /* Hair requires embree curves support. */
+        if (kernel_features & KERNEL_FEATURE_HAIR) {
+          one_kernel_bundle_input
+              .set_specialization_constant<ONEAPIKernelContext::oneapi_embree_features>(
+                  CYCLES_ONEAPI_EMBREE_ALL_FEATURES);
+          sycl::build(one_kernel_bundle_input);
+        }
+        else {
+          one_kernel_bundle_input
+              .set_specialization_constant<ONEAPIKernelContext::oneapi_embree_features>(
+                  CYCLES_ONEAPI_EMBREE_BASIC_FEATURES);
+          sycl::build(one_kernel_bundle_input);
+        }
       }
     }
     catch (sycl::exception const &e) {
@@ -240,7 +243,7 @@ bool oneapi_load_kernels(SyclQueue *queue_, const uint requested_features, bool 
 
 #  ifdef WITH_CYCLES_ONEAPI_BINARIES
   (void)queue_;
-  (void)requested_features;
+  (void)kernel_features;
 #  else
   try {
     sycl::kernel_bundle<sycl::bundle_state::input> all_kernels_bundle =
@@ -252,8 +255,8 @@ bool oneapi_load_kernels(SyclQueue *queue_, const uint requested_features, bool 
 
       /* In case HWRT is on, compilation of kernels using Embree is already handled in previous
        * block. */
-      if (!oneapi_kernel_is_required_for_features(kernel_name, requested_features) ||
-          (with_hwrt && oneapi_kernel_is_using_embree(kernel_name))) {
+      if (!oneapi_kernel_is_required_for_features(kernel_name, kernel_features) ||
+          (use_hardware_raytracing && oneapi_kernel_is_using_embree(kernel_name))) {
         continue;
       }
 
@@ -284,8 +287,8 @@ bool oneapi_load_kernels(SyclQueue *queue_, const uint requested_features, bool 
 bool oneapi_enqueue_kernel(KernelContext *kernel_context,
                            int kernel,
                            size_t global_size,
-                           bool with_hwrt,
-                           bool with_curve_features,
+                           const uint kernel_features,
+                           bool use_hardware_raytracing,
                            void **args)
 {
   bool success = true;
@@ -342,15 +345,17 @@ bool oneapi_enqueue_kernel(KernelContext *kernel_context,
 #  ifdef WITH_EMBREE_GPU
       /* Spec says it has no effect if the called kernel doesn't support the below specialization
        * constant but it can still trigger a recompilation, so we set it only if needed. */
-      if (oneapi_kernel_does_rt(device_kernel)) {
-        const RTCFeatureFlags used_embree_features = !with_hwrt ?
+      if (device_kernel_has_intersection(device_kernel)) {
+        const RTCFeatureFlags used_embree_features = !use_hardware_raytracing ?
                                                          RTC_FEATURE_FLAG_NONE :
-                                                     !with_curve_features ?
+                                                     !(kernel_features & KERNEL_FEATURE_HAIR) ?
                                                          CYCLES_ONEAPI_EMBREE_BASIC_FEATURES :
                                                          CYCLES_ONEAPI_EMBREE_ALL_FEATURES;
         cgh.set_specialization_constant<ONEAPIKernelContext::oneapi_embree_features>(
             used_embree_features);
       }
+#  else
+      (void)kernel_features;
 #  endif
       switch (device_kernel) {
         case DEVICE_KERNEL_INTEGRATOR_RESET: {
@@ -653,4 +658,5 @@ bool oneapi_enqueue_kernel(KernelContext *kernel_context,
 #  endif
   return success;
 }
+
 #endif /* WITH_ONEAPI */
