@@ -280,7 +280,8 @@ void WM_OT_alembic_export(wmOperatorType *ot)
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
 
-  RNA_def_string(ot->srna, "filter_glob", "*.abc", 0, "", "");
+  PropertyRNA *prop = RNA_def_string(ot->srna, "filter_glob", "*.abc", 0, "", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN);
 
   RNA_def_int(ot->srna,
               "start",
@@ -675,7 +676,8 @@ void WM_OT_alembic_import(wmOperatorType *ot)
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
 
-  RNA_def_string(ot->srna, "filter_glob", "*.abc", 0, "", "");
+  PropertyRNA *prop = RNA_def_string(ot->srna, "filter_glob", "*.abc", 0, "", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN);
 
   RNA_def_float(
       ot->srna,
