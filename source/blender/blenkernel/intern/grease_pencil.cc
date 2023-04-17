@@ -298,19 +298,45 @@ Layer &TreeNode::as_layer_for_write()
   return *static_cast<Layer *>(this);
 }
 
-Layer::Layer() : TreeNode::TreeNode(GP_LAYER_TREE_LEAF), frames_()
+LayerMask::LayerMask()
+{
+  this->layer_name = nullptr;
+}
+
+LayerMask::LayerMask(StringRefNull name)
+{
+  this->layer_name = BLI_strdup(name.c_str());
+}
+
+LayerMask::LayerMask(const LayerMask &other) : LayerMask()
+{
+  if (other.layer_name) {
+    this->layer_name = BLI_strdup(other.layer_name);
+  }
+}
+
+LayerMask::~LayerMask()
+{
+  if (this->layer_name) {
+    MEM_freeN(this->layer_name);
+  }
+}
+
+Layer::Layer() : TreeNode::TreeNode(GP_LAYER_TREE_LEAF), frames_(), masks_()
 {
   this->parsubstr = nullptr;
   this->viewlayer_name = nullptr;
 }
 
-Layer::Layer(StringRefNull name) : TreeNode::TreeNode(GP_LAYER_TREE_LEAF, name), frames_()
+Layer::Layer(StringRefNull name)
+    : TreeNode::TreeNode(GP_LAYER_TREE_LEAF, name), frames_(), masks_()
 {
   this->parsubstr = nullptr;
   this->viewlayer_name = nullptr;
 }
 
-Layer::Layer(const Layer &other) : TreeNode::TreeNode(other), frames_(other.frames_)
+Layer::Layer(const Layer &other)
+    : TreeNode::TreeNode(other), frames_(other.frames_), masks_(other.masks_)
 {
   this->parsubstr = nullptr;
   this->viewlayer_name = nullptr;
@@ -341,6 +367,16 @@ Map<int, GreasePencilFrame> &Layer::frames_for_write()
 {
   this->sorted_keys_cache_.tag_dirty();
   return this->frames_;
+}
+
+const Vector<LayerMask> &Layer::masks() const
+{
+  return this->masks_;
+}
+
+Vector<LayerMask> &Layer::masks_for_write()
+{
+  return this->masks_;
 }
 
 bool Layer::insert_frame(int frame_number, GreasePencilFrame &frame)
@@ -1094,6 +1130,13 @@ static void save_layer_to_storage(const blender::bke::greasepencil::Layer &node,
   if (node.viewlayer_name) {
     new_leaf->layer.viewlayer_name = BLI_strdup(node.viewlayer_name);
   }
+  BLI_listbase_clear(&new_leaf->layer.masks_storage);
+  for (const bke::greasepencil::LayerMask &mask : node.masks()) {
+    GreasePencilLayerMask *new_mask = MEM_cnew<GreasePencilLayerMask>(__func__);
+    new_mask->layer_name = BLI_strdup(mask.layer_name);
+    new_mask->flag = mask.flag;
+    BLI_addtail(&new_leaf->layer.masks_storage, new_mask);
+  }
   new_leaf->layer.opacity = node.opacity;
   copy_v4_v4(new_leaf->layer.tint_color, node.tint_color);
   copy_v3_v3(new_leaf->layer.location, node.location);
@@ -1161,6 +1204,12 @@ static void read_layer_from_storage(blender::bke::greasepencil::LayerGroup &curr
   }
   if (node_leaf->layer.viewlayer_name) {
     new_layer.viewlayer_name = BLI_strdup(node_leaf->layer.viewlayer_name);
+  }
+  Vector<LayerMask> masks = new_layer.masks_for_write();
+  LISTBASE_FOREACH (bGPDlayer_Mask *, mask, &node_leaf->layer.masks_storage) {
+    LayerMask new_mask = LayerMask(mask->name);
+    new_mask.flag = mask->flag;
+    masks.append(std::move(new_mask));
   }
   new_layer.opacity = node_leaf->layer.opacity;
   copy_v4_v4(new_layer.tint_color, node_leaf->layer.tint_color);
@@ -1236,6 +1285,10 @@ void GreasePencil::read_layer_tree_storage(BlendDataReader *reader)
         BLO_read_data_address(reader, &node_leaf->layer.frames_storage.values);
         BLO_read_data_address(reader, &node_leaf->layer.parsubstr);
         BLO_read_data_address(reader, &node_leaf->layer.viewlayer_name);
+        BLO_read_list(reader, &node_leaf->layer.masks_storage);
+        LISTBASE_FOREACH (GreasePencilLayerMask *, mask, &node_leaf->layer.masks_storage) {
+          BLO_read_data_address(reader, &mask->layer_name);
+        }
         break;
       }
       case GP_LAYER_TREE_GROUP: {
@@ -1267,6 +1320,10 @@ void GreasePencil::write_layer_tree_storage(BlendWriter *writer)
                                node_leaf->layer.frames_storage.values);
         BLO_write_string(writer, node_leaf->layer.parsubstr);
         BLO_write_string(writer, node_leaf->layer.viewlayer_name);
+        BLO_write_struct_list(writer, GreasePencilLayerMask, &node_leaf->layer.masks_storage);
+        LISTBASE_FOREACH (GreasePencilLayerMask *, mask, &node_leaf->layer.masks_storage) {
+          BLO_write_string(writer, mask->layer_name);
+        }
         break;
       }
       case GP_LAYER_TREE_GROUP: {
@@ -1301,6 +1358,12 @@ void GreasePencil::free_layer_tree_storage()
         }
         if (node_leaf->layer.viewlayer_name) {
           MEM_freeN(node_leaf->layer.viewlayer_name);
+        }
+        LISTBASE_FOREACH_MUTABLE (GreasePencilLayerMask *, mask, &node_leaf->layer.masks_storage) {
+          if (mask->layer_name) {
+            MEM_freeN(mask->layer_name);
+          }
+          MEM_freeN(mask);
         }
         MEM_freeN(node_leaf);
         break;

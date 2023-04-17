@@ -140,6 +140,31 @@ typedef struct GreasePencilLayerFramesMapStorage {
 } GreasePencilLayerFramesMapStorage;
 
 /**
+ * Flag for layer masks. #GreasePencilLayerMask.flag
+ */
+typedef enum GreasePencilLayerMaskFlag {
+  GP_LAYER_MASK_HIDE = (1 << 0),
+  GP_LAYER_MASK_INVERT = (1 << 1),
+} GreasePencilLayerMaskFlag;
+
+/**
+ * A grease pencil layer mask stores the name of a layer that is the mask.
+ */
+typedef struct GreasePencilLayerMask {
+  struct GreasePencilLayerMask *next, *prev;
+  /**
+   * The name of the layer that is the mask.
+   * \note Null-terminated.
+   */
+  char *layer_name;
+  /**
+   * Layer mask flag. See `GreasePencilLayerMaskFlag`.
+   */
+  uint16_t flag;
+  char _pad[6];
+} GreasePencilLayerMask;
+
+/**
  * Type of parent of a layer. #GreasePencilLayer.parent_type
  */
 typedef enum GreasePencilLayerParentType {
@@ -193,6 +218,10 @@ typedef struct GreasePencilLayer {
    * \note Null-terminated.
    */
   char *viewlayer_name;
+  /**
+   * List of `GreasePencilLayerMask`.
+   */
+  ListBase masks_storage;
   /**
    * Opacity of the layer.
    */

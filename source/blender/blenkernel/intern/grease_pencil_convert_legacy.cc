@@ -219,6 +219,13 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
     if (viewlayername_len > 0) {
       new_layer.viewlayer_name = BLI_strdupn(gpl->viewlayername, viewlayername_len);
     }
+    /* Convert the layer masks. */
+    Vector<LayerMask> masks = new_layer.masks_for_write();
+    LISTBASE_FOREACH (bGPDlayer_Mask *, mask, &gpl->mask_layers) {
+      LayerMask new_mask = LayerMask(mask->name);
+      new_mask.flag = mask->flag;
+      masks.append(std::move(new_mask));
+    }
     new_layer.opacity = gpl->opacity;
     copy_v4_v4(new_layer.tint_color, gpl->tintcolor);
     copy_v3_v3(new_layer.location, gpl->location);

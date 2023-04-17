@@ -83,6 +83,17 @@ class TreeNode : public ::GreasePencilLayerTreeNode, NonMovable {
 };
 
 /**
+ * A layer mask stores a reference to a layer that will mask other layers.
+ */
+class LayerMask : public ::GreasePencilLayerMask {
+ public:
+  LayerMask();
+  explicit LayerMask(StringRefNull name);
+  LayerMask(const LayerMask &other);
+  ~LayerMask();
+};
+
+/**
  * A layer maps drawings to scene frames. It can be thought of as one independent channel in the
  * timeline.
  */
@@ -114,7 +125,15 @@ class Layer : public TreeNode, public ::GreasePencilLayer {
    * drawings, then the last referenced drawing is held for the rest of the duration.
    */
   Map<int, GreasePencilFrame> frames_;
+  /**
+   * Caches a sorted vector of the keys of `frames_`.
+   */
   mutable SharedCache<Vector<int>> sorted_keys_cache_;
+  /**
+   * A vector of LayerMask. This layer will be masked by the layers referenced in the masks.
+   * A layer can have zero or more layer masks.
+   */
+  Vector<LayerMask> masks_;
 
  public:
   Layer();
@@ -127,6 +146,12 @@ class Layer : public TreeNode, public ::GreasePencilLayer {
    */
   const Map<int, GreasePencilFrame> &frames() const;
   Map<int, GreasePencilFrame> &frames_for_write();
+
+  /**
+   * \returns the layer masks.
+   */
+  const Vector<LayerMask> &masks() const;
+  Vector<LayerMask> &masks_for_write();
 
   /**
    * Inserts the frame into the layer. Fails if there exists a frame at \a frame_number already.
