@@ -1804,49 +1804,6 @@ static const EnumPropertyItem file_external_operation[] = {
      "Open a command prompt here"},
     {0, NULL, 0, NULL, NULL}};
 
-
-#ifdef WIN32
-/* Text string used as the "verb" for Windows shell operations. */
-static char *windows_operation_string(FileExternalOperation operation)
-{
-  switch (operation) {
-    case FILE_EXTERNAL_OPERATION_OPEN:
-      return "open";
-    case FILE_EXTERNAL_OPERATION_FOLDER_OPEN:
-      return "open";
-    case FILE_EXTERNAL_OPERATION_EDIT:
-      return "edit";
-    case FILE_EXTERNAL_OPERATION_NEW:
-      return "new";
-    case FILE_EXTERNAL_OPERATION_FIND:
-      return "find";
-    case FILE_EXTERNAL_OPERATION_SHOW:
-      return "show";
-    case FILE_EXTERNAL_OPERATION_PLAY:
-      return "play";
-    case FILE_EXTERNAL_OPERATION_BROWSE:
-      return "browse";
-    case FILE_EXTERNAL_OPERATION_PREVIEW:
-      return "preview";
-    case FILE_EXTERNAL_OPERATION_PRINT:
-      return "print";
-    case FILE_EXTERNAL_OPERATION_INSTALL:
-      return "install";
-    case FILE_EXTERNAL_OPERATION_RUNAS:
-      return "runas";
-    case FILE_EXTERNAL_OPERATION_PROPERTIES:
-      return "properties";
-    case FILE_EXTERNAL_OPERATION_FOLDER_FIND:
-      return "find";
-    case FILE_EXTERNAL_OPERATION_FOLDER_CMD:
-      return "cmd";
-    default:
-      BLI_assert_unreachable();
-      return "";
-  }
-}
-#endif
-
 static int file_external_operation_exec(bContext *C, wmOperator *op)
 {
   PropertyRNA *prop = RNA_struct_find_property(op->ptr, "filepath");
@@ -1858,11 +1815,7 @@ static int file_external_operation_exec(bContext *C, wmOperator *op)
   WM_cursor_set(CTX_wm_window(C), WM_CURSOR_WAIT);
 
 #ifdef WIN32
-  char *opstring = windows_operation_string(operation);
-  if (!BLI_windows_external_operation_supported(filepath, opstring)) {
-    return OPERATOR_CANCELLED;
-  }
-  if (BLI_windows_external_operation_execute(filepath, opstring)) {
+  if (BLI_file_external_operation_execute(filepath, operation)) {
     WM_cursor_set(CTX_wm_window(C), WM_CURSOR_DEFAULT);
     return OPERATOR_FINISHED;
   }
@@ -1927,8 +1880,7 @@ static void file_os_operations_menu_item(uiLayout *layout,
                                          FileExternalOperation operation)
 {
 #ifdef WIN32
-  char *opstring = windows_operation_string(operation);
-  if (!BLI_windows_external_operation_supported(path, opstring)) {
+  if (!BLI_file_external_operation_supported(path, operation)) {
     return;
   }
 #else
