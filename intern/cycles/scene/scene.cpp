@@ -46,8 +46,6 @@ bool Scene::check_cancel_update(Progress &progress, Device *device) {
   return status || ((device != NULL) && device->have_error());
 }
 
-
-
 Scene::Scene(const SceneParams &params_, Device *device)
     : name("Scene"),
       bvh(NULL),
