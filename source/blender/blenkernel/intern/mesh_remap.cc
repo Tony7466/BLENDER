@@ -528,8 +528,8 @@ void BKE_mesh_remap_calc_verts_from_mesh(const int mode,
         if (mesh_remap_bvhtree_query_nearest(
                 &treedata, &nearest, tmp_co, max_dist_sq, &hit_dist)) {
           const blender::int2 &edge = edges_src[nearest.index];
-          const float *v1cos = positions_src[edge.v1];
-          const float *v2cos = positions_src[edge.v2];
+          const float *v1cos = positions_src[edge[0]];
+          const float *v2cos = positions_src[edge[1]];
 
           if (mode == MREMAP_MODE_VERT_EDGE_NEAREST) {
             const float dist_v1 = len_squared_v3v3(tmp_co, v1cos);
