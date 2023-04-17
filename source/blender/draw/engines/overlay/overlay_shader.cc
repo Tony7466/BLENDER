@@ -150,16 +150,6 @@ GPUShader *OVERLAY_shader_depth_only(void)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
   if (!sh_data->depth_only) {
-    if (U.experimental.enable_overlay_next) {
-      using namespace blender::gpu::shader;
-      ShaderCreateInfo &info = const_cast<ShaderCreateInfo &>(
-          *reinterpret_cast<const ShaderCreateInfo *>(
-              GPU_shader_create_info_get("overlay_depth_only")));
-
-      info.additional_infos_.clear();
-      info.additional_info("draw_view", "draw_modelmat_new", "draw_resource_handle_new");
-    }
-
     sh_data->depth_only = GPU_shader_create_from_info_name(
         (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) ? "overlay_depth_only_clipped" :
                                                        "overlay_depth_only");
@@ -211,17 +201,6 @@ GPUShader *OVERLAY_shader_armature_sphere(bool use_outline)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
   if (use_outline && !sh_data->armature_sphere_outline) {
-    using namespace blender::gpu::shader;
-    ShaderCreateInfo &info = const_cast<ShaderCreateInfo &>(
-        *reinterpret_cast<const ShaderCreateInfo *>(
-            GPU_shader_create_info_get("overlay_armature_sphere_outline")));
-
-    if (U.experimental.enable_overlay_next) {
-      info.storage_buf(0, Qualifier::READ, "mat4", "data_buf[]");
-      info.define("inst_obmat", "data_buf[gl_InstanceID]");
-      info.vertex_inputs_.pop_last();
-    }
-
     sh_data->armature_sphere_outline = GPU_shader_create_from_info_name(
         (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) ? "overlay_armature_sphere_outline_clipped" :
                                                        "overlay_armature_sphere_outline");
@@ -515,18 +494,6 @@ GPUShader *OVERLAY_shader_extra(bool is_select)
   OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
   GPUShader **sh = (is_select) ? &sh_data->extra_select : &sh_data->extra;
   if (!*sh) {
-    using namespace blender::gpu::shader;
-    ShaderCreateInfo &info = const_cast<ShaderCreateInfo &>(
-        *reinterpret_cast<const ShaderCreateInfo *>(GPU_shader_create_info_get("overlay_extra")));
-
-    if (U.experimental.enable_overlay_next) {
-      info.storage_buf(0, Qualifier::READ, "ExtraInstanceData", "data_buf[]");
-      info.define("color", "data_buf[gl_InstanceID].color_");
-      info.define("inst_obmat", "data_buf[gl_InstanceID].object_to_world_");
-      info.vertex_inputs_.pop_last();
-      info.vertex_inputs_.pop_last();
-    }
-
     *sh = GPU_shader_create_from_info_name(
         (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) ?
             (is_select ? "overlay_extra_select_clipped" : "overlay_extra_clipped") :
