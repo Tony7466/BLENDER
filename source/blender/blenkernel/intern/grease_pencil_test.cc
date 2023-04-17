@@ -39,6 +39,38 @@ TEST(greasepencil, create_grease_pencil_id)
   EXPECT_EQ(grease_pencil.root_group().num_children_total(), 0);
 }
 
+TEST(greasepencil, save_layer_tree_to_storage)
+{
+  GreasePencilIDTestContext ctx;
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(BKE_id_new(ctx.bmain, ID_GP, "GP"));
+
+  StringRefNull names[7] = {"Group1", "Layer1", "Layer2", "Group2", "Layer3", "Layer4", "Layer5"};
+
+  LayerGroup group(names[0]);
+  group.add_layer(Layer(names[1]));
+  group.add_layer(Layer(names[2]));
+
+  LayerGroup group2(names[3]);
+  group2.add_layer(Layer(names[4]));
+  group2.add_layer(Layer(names[5]));
+
+  group.add_group(std::move(group2));
+  grease_pencil.root_group_for_write().add_group(std::move(group));
+  grease_pencil.root_group_for_write().add_layer(Layer(names[6]));
+
+  /* Save to storage. */
+  grease_pencil.free_layer_tree_storage();
+  grease_pencil.save_layer_tree_to_storage();
+  MEM_delete(grease_pencil.runtime);
+
+  /* Load from storage. */
+  grease_pencil.runtime = MEM_new<blender::bke::GreasePencilRuntime>(__func__);
+  grease_pencil.load_layer_tree_from_storage();
+
+  grease_pencil.root_group_for_write().foreach_children_with_index_pre_order(
+      [&](uint64_t i, TreeNode &child) { EXPECT_STREQ(child.name, names[i].data()); });
+}
+
 TEST(greasepencil, set_active_layer_index)
 {
   GreasePencilIDTestContext ctx;
