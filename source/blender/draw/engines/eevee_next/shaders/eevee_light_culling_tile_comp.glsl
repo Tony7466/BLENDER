@@ -175,7 +175,8 @@ void main()
         vec3 v001 = v000 - v_back * radius;
         Box bbox = shape_box(v000, v100, v010, v001);
         intersect_tile = intersect_tile && intersect(tile, bbox);
-      } break;
+        break;
+      }
       default:
         break;
     }
