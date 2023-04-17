@@ -82,6 +82,22 @@ class ImplicitSharingInfo : NonCopyable, NonMovable {
     weak_users_.fetch_add(1, std::memory_order_relaxed);
   }
 
+  bool add_user_if_not_expired() const
+  {
+    int old_user_count = strong_users_.load(std::memory_order_relaxed);
+    while (true) {
+      if (old_user_count == 0) {
+        /* The shared data has expired. */
+        return false;
+      }
+      if (strong_users_.compare_exchange_weak(
+              old_user_count, old_user_count + 1, std::memory_order_relaxed)) {
+        /* Strong user count is incremented and never reached zero in the meantime. */
+        return true;
+      }
+    }
+  }
+
   /**
    * Call when the data is no longer needed. This might just decrement the user count, or it might
    * also delete the data if this was the last user.

@@ -176,7 +176,13 @@ class BDataReader {
   std::string bdata_dir_;
 
  public:
-  BDataReader(std::string bdata_dir) : bdata_dir_(std::move(bdata_dir)) {}
+  Map<std::string, std::pair<const ImplicitSharingInfo *, const void *>> &shared_data_;
+
+  BDataReader(std::string bdata_dir,
+              Map<std::string, std::pair<const ImplicitSharingInfo *, const void *>> &shared_data)
+      : bdata_dir_(std::move(bdata_dir)), shared_data_(shared_data)
+  {
+  }
 
   [[nodiscard]] bool read(const BDataSlice &slice, void *r_data) const
   {
@@ -236,6 +242,34 @@ static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_shared(
     sharing_info->add_weak_user();
     return write_fn();
   });
+}
+
+static std::optional<std::pair<const ImplicitSharingInfo *, const void *>> read_bdata_shared(
+    BDataReader &bdata_reader,
+    const io::serialize::DictionaryValue &io_data,
+    const FunctionRef<std::optional<std::pair<const ImplicitSharingInfo *, const void *>>()>
+        read_fn)
+{
+  io::serialize::JsonFormatter formatter;
+  std::stringstream ss;
+  formatter.serialize(ss, io_data);
+  const std::string key = ss.str();
+  if (const auto *value_ptr = bdata_reader.shared_data_.lookup_ptr_as(key)) {
+    if (value_ptr->first->add_user_if_not_expired()) {
+      return *value_ptr;
+    }
+    return std::nullopt;
+  }
+  std::optional<std::pair<const ImplicitSharingInfo *, const void *>> data = read_fn();
+  if (!data) {
+    return std::nullopt;
+  }
+  BLI_assert(data->first != nullptr || data->second == nullptr);
+  if (data->first != nullptr) {
+    data->first->add_weak_user();
+  }
+  bdata_reader.shared_data_.add_new(key, *data);
+  return *data;
 }
 
 static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_raw_data_with_endian(
@@ -600,7 +634,8 @@ void load_simulation_state(const StringRefNull meta_path,
                            const StringRefNull bdata_dir,
                            bke::sim::ModifierSimulationState &r_state)
 {
-  const BDataReader bdata_reader{bdata_dir};
+  Map<std::string, std::pair<const ImplicitSharingInfo *, const void *>> shared_data;
+  const BDataReader bdata_reader{bdata_dir, shared_data};
 
   std::unique_ptr<io::serialize::Value> io_root_value;
   {
