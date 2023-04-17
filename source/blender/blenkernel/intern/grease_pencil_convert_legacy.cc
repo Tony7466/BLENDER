@@ -190,7 +190,9 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
       active_layer_index = layer_idx;
     }
 
-    Layer &new_layer = grease_pencil.root_group_for_write().add_layer(Layer(gpl->info));
+    /* Create a new layer. */
+    Layer &new_layer = grease_pencil.root_group_for_write().add_layer(
+        Layer(StringRefNull(gpl->info, BLI_strnlen(gpl->info, 128))));
 
     /* Flags. */
     SET_FLAG_FROM_TEST(new_layer.flag, (gpl->flag & GP_LAYER_HIDE), GP_LAYER_TREE_NODE_HIDE);
