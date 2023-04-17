@@ -565,7 +565,7 @@ ccl_device float3 bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
     }
   }
 
-  return (S_tt + S_trt) / 3.0f * res * sqr(inv_eta) * projected_radius(e2, sinf(phi_i));
+  return (S_tt + S_trt) * res * sqr(inv_eta) / (3.0f * projected_radius(e2, sinf(phi_i)));
 }
 
 template<MicrofacetType m_type>
