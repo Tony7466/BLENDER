@@ -88,6 +88,7 @@
 
 /* Volumes */
 #define VOLUME_GROUP_SIZE 4
+#define VOLUME_2D_GROUP_SIZE 8
 
 /* Resource bindings. */
 

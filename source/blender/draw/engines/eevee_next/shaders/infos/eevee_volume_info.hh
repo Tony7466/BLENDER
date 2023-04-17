@@ -21,7 +21,6 @@ GPU_SHADER_INTERFACE_INFO(eevee_volume_geom_frag_iface, "volume_geom_iface")
 
 GPU_SHADER_CREATE_INFO(eevee_volume_base)
     .additional_info("draw_resource_id_varying", "eevee_volume_lib")
-    .define("STANDALONE")
     .define("VOLUMETRICS")
     .geometry_source("eevee_volume_geom.glsl")
     .vertex_out(eevee_volume_vert_geom_iface)
@@ -49,9 +48,8 @@ GPU_SHADER_CREATE_INFO(eevee_volume_scatter)
     .compute_source("eevee_volume_scatter_comp.glsl")
     .local_group_size(VOLUME_GROUP_SIZE, VOLUME_GROUP_SIZE, VOLUME_GROUP_SIZE)
     .define("VOLUME_SHADOW")
-    /* NOTE: Unique sampler IDs assigned for consistency between library includes,
-     * and to avoid unique assignment collision validation error.
-     * However, resources will be auto assigned locations within shader usage. */
+    /** NOTE: Unique sampler IDs assigned for consistency between library includes,
+     * and to avoid unique assignment collision validation error. */
     .sampler(17, ImageType::FLOAT_3D, "scattering_tx")
     .sampler(18, ImageType::FLOAT_3D, "extinction_tx")
     .sampler(19, ImageType::FLOAT_3D, "emission_tx")
@@ -65,37 +63,17 @@ GPU_SHADER_CREATE_INFO(eevee_volume_scatter_with_lights)
     .define("VOLUME_LIGHTING")
     .do_static_compilation(true);
 
-GPU_SHADER_CREATE_INFO(eevee_volume_integration_common)
-    .define("STANDALONE")
-    .additional_info("eevee_volume_lib")
-    .additional_info("draw_resource_id_varying")
-    /* NOTE: Unique sampler IDs assigned for consistency between library includes,
-     * and to avoid unique assignment collision validation error.
-     * However, resources will be auto assigned locations within shader usage. */
-    .sampler(20, ImageType::FLOAT_3D, "volumeScattering")
-    .sampler(21, ImageType::FLOAT_3D, "volumeExtinction")
-    .vertex_out(eevee_volume_vert_geom_iface)
-    .vertex_source("eevee_volume_vert.glsl")
-    .fragment_source("eevee_volume_integration_frag.glsl")
-    .fragment_out(0, Type::VEC3, "finalScattering")
-    .fragment_out(1, Type::VEC3, "finalTransmittance");
-
 GPU_SHADER_CREATE_INFO(eevee_volume_integration)
-    .additional_info("eevee_volume_integration_common")
-    .geometry_source("eevee_volume_geom.glsl")
-    .geometry_out(eevee_volume_geom_frag_iface)
-    .geometry_layout(PrimitiveIn::TRIANGLES, PrimitiveOut::TRIANGLE_STRIP, 3)
+    .additional_info("eevee_volume_lib")
+    .compute_source("eevee_volume_integration_comp.glsl")
+    .local_group_size(VOLUME_2D_GROUP_SIZE, VOLUME_2D_GROUP_SIZE, 1)
+    /** NOTE: Unique sampler IDs assigned for consistency between library includes,
+     * and to avoid unique assignment collision validation error. */
+    .sampler(17, ImageType::FLOAT_3D, "scattering_tx")
+    .sampler(18, ImageType::FLOAT_3D, "extinction_tx")
+    .image(0, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_scattering")
+    .image(1, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_transmittance")
     .do_static_compilation(true);
-
-#ifdef WITH_METAL_BACKEND
-GPU_SHADER_CREATE_INFO(eevee_volume_integration_no_geom)
-    .additional_info("eevee_volume_integration_common_no_geom")
-    .additional_info("eevee_volume_integration_common")
-    .vertex_out(eevee_volume_geom_frag_iface)
-    .metal_backend_only(true)
-    .do_static_compilation(true)
-    .auto_resource_location(true);
-#endif
 
 GPU_SHADER_CREATE_INFO(eevee_volume_resolve_common)
     .additional_info("draw_fullscreen")
