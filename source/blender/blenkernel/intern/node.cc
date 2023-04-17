@@ -1515,7 +1515,7 @@ bNodeSocket *node_find_enabled_socket(bNode &node,
 {
   ListBase *sockets = (in_out == SOCK_IN) ? &node.inputs : &node.outputs;
   LISTBASE_FOREACH (bNodeSocket *, socket, sockets) {
-    if (socket->name == name && socket->is_available()) {
+    if (socket->is_available() && socket->name == name) {
       return socket;
     }
   }
