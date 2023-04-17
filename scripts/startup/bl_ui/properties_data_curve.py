@@ -364,10 +364,10 @@ class DATA_PT_font(CurveButtonsPanelText, Panel):
             layout.separator()
 
             row = layout.row(align=True)
-            row.prop(char, "use_bold", toggle=True)
-            row.prop(char, "use_italic", toggle=True)
-            row.prop(char, "use_underline", toggle=True)
-            row.prop(char, "use_small_caps", toggle=True)
+            row.operator("font.style_toggle", text="Bold", icon='BOLD' , depress = char.use_bold).style = 'BOLD'
+            row.operator("font.style_toggle", text="Italic", icon='ITALIC' , depress = char.use_italic).style = 'ITALIC'
+            row.operator("font.style_toggle", text="Underline", icon='UNDERLINE' , depress = char.use_underline).style = 'UNDERLINE'
+            row.operator("font.style_toggle", text="Small Caps", icon='SMALL_CAPS' , depress = char.use_small_caps).style = 'SMALL_CAPS'
 
 
 class DATA_PT_font_transform(CurveButtonsPanelText, Panel):
