@@ -816,10 +816,10 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
         ccl_private MicrofacetHairBSDF *bsdf = (ccl_private MicrofacetHairBSDF *)bsdf_alloc(
             sd, sizeof(MicrofacetHairBSDF), weight);
         if (bsdf) {
-          ccl_private MicrofacetHairLobeFactor *factor = (ccl_private MicrofacetHairLobeFactor *)
-              closure_alloc_extra(sd, sizeof(MicrofacetHairLobeFactor));
+          ccl_private MicrofacetHairExtra *extra = (ccl_private MicrofacetHairExtra *)
+              closure_alloc_extra(sd, sizeof(MicrofacetHairExtra));
 
-          if (!factor) {
+          if (!extra) {
             break;
           }
 
@@ -829,10 +829,10 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           float TT = stack_load_float_default(stack, TT_ofs, data_node4.z);
           float TRT = stack_load_float_default(stack, TRT_ofs, data_node4.w);
 
-          bsdf->factor = factor;
-          bsdf->factor->R = fmaxf(0.0f, R);
-          bsdf->factor->TT = fmaxf(0.0f, TT);
-          bsdf->factor->TRT = fmaxf(0.0f, TRT);
+          bsdf->extra = extra;
+          bsdf->extra->R = fmaxf(0.0f, R);
+          bsdf->extra->TT = fmaxf(0.0f, TT);
+          bsdf->extra->TRT = fmaxf(0.0f, TRT);
 
           bsdf->aspect_ratio = stack_load_float_default(stack, shared_ofs1, data_node2.y);
           if (bsdf->aspect_ratio != 1.0f) {

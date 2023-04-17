@@ -706,9 +706,11 @@ ccl_device_inline Spectrum bsdf_albedo(ccl_private const ShaderData *sd,
   else if (sc->type == CLOSURE_BSDF_PRINCIPLED_SHEEN_ID) {
     albedo *= ((ccl_private const PrincipledSheenBsdf *)sc)->avg_value;
   }
-  else if (sc->type == CLOSURE_BSDF_HAIR_PRINCIPLED_ID ||
-           sc->type == CLOSURE_BSDF_HAIR_MICROFACET_ID) {
-    albedo *= bsdf_hair_albedo(sd, sc);
+  else if (sc->type == CLOSURE_BSDF_HAIR_PRINCIPLED_ID) {
+    albedo *= bsdf_principled_hair_albedo(sd, sc);
+  }
+  else if (sc->type == CLOSURE_BSDF_HAIR_MICROFACET_ID) {
+    albedo *= bsdf_microfacet_hair_albedo(sd, sc);
   }
 #endif
   return albedo;

@@ -472,8 +472,8 @@ ccl_device_inline float bsdf_hair_albedo_roughness_scale(const float azimuthal_r
   return (((((0.245f * x) + 5.574f) * x - 10.73f) * x + 2.532f) * x - 0.215f) * x + 5.969f;
 }
 
-ccl_device Spectrum bsdf_hair_albedo(ccl_private const ShaderData *sd,
-                                     ccl_private const ShaderClosure *sc)
+ccl_device Spectrum bsdf_principled_hair_albedo(ccl_private const ShaderData *sd,
+                                                ccl_private const ShaderClosure *sc)
 {
   ccl_private PrincipledHairBSDF *bsdf = (ccl_private PrincipledHairBSDF *)sc;
 

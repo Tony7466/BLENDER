@@ -11,22 +11,36 @@
 
 CCL_NAMESPACE_BEGIN
 
-typedef struct MicrofacetHairLobeFactor {
-  float R;
-  float TT;
-  float TRT;
-} MicrofacetHairLobeFactor;
+typedef struct MicrofacetHairExtra {
+  /* Optional modulation factors. */
+  float R, TT, TRT;
+
+  /* Local coordinate system. X is stored is `bsdf->N`.*/
+  float3 Y, Z;
+
+  /* Incident direction in local coordinate system. */
+  float3 wi;
+
+  /* Projected radius from the view direction. */
+  float radius;
+
+  /* Squared Eccentricity. */
+  float e2;
+} MicrofacetHairExtra;
 
 typedef struct MicrofacetHairBSDF {
   SHADER_CLOSURE_BASE;
 
   /* Absorption coefficient. */
   Spectrum sigma;
+
   /* Microfacet distribution roughness. */
   float roughness;
+
   /* Cuticle tilt angle. */
   float tilt;
-  /* IOR. */
+
+  /* Index of refraction. */
   float eta;
 
   /* GGX/Beckmann. */
@@ -38,57 +52,14 @@ typedef struct MicrofacetHairBSDF {
   /* Azimuthal offset. */
   float h;
 
-  /* Extra closure for optional modulation factors. */
-  ccl_private MicrofacetHairLobeFactor *factor;
+  /* Extra closure for optional modulation factors and local coordinate system. */
+  ccl_private MicrofacetHairExtra *extra;
 } MicrofacetHairBSDF;
 
 static_assert(sizeof(ShaderClosure) >= sizeof(MicrofacetHairBSDF),
               "MicrofacetHairBSDF is too large!");
-static_assert(sizeof(ShaderClosure) >= sizeof(MicrofacetHairLobeFactor),
-              "MicrofacetHairLobeFactor is too large!");
-
-#ifdef __HAIR__
-/* Set up the hair closure. */
-ccl_device int bsdf_microfacet_hair_setup(ccl_private ShaderData *sd,
-                                          ccl_private MicrofacetHairBSDF *bsdf)
-{
-  bsdf->type = CLOSURE_BSDF_HAIR_MICROFACET_ID;
-
-  bsdf->roughness = clamp(bsdf->roughness, 0.001f, 1.0f);
-
-  /* Compute local frame. The Y axis is aligned with the curve tangent; the X axis is perpendicular
-   to the ray direction for circular cross-sections, or aligned with the major axis for elliptical
-   cross-sections. */
-  const float3 Y = safe_normalize(sd->dPdu);
-  const float3 X = safe_normalize(cross(Y, sd->wi));
-
-  /* h -1..0..1 means the rays goes from grazing the hair, to hitting it at the center, to grazing
-   * the other edge. This is the cosine of the angle between sd->N and X. */
-  bsdf->h = (sd->type & PRIMITIVE_CURVE_RIBBON) ? -sd->v : -dot(X, sd->N);
-
-  kernel_assert(fabsf(bsdf->h) < 1.0f + 1e-4f);
-  kernel_assert(isfinite_safe(bsdf->h));
-
-  if (bsdf->aspect_ratio != 1.0f && (sd->type & PRIMITIVE_CURVE)) {
-    if (bsdf->aspect_ratio > 1.0f) {
-      bsdf->aspect_ratio = 1.0f / bsdf->aspect_ratio;
-
-      /* Switch major and minor axis. */
-      const float3 minor_axis = safe_normalize(cross(sd->dPdu, bsdf->N));
-      bsdf->N = safe_normalize(cross(minor_axis, sd->dPdu));
-    }
-  }
-  else {
-    /* Align local frame with the ray direction so that `phi_i == 0`. */
-    bsdf->N = X;
-  }
-
-  kernel_assert(!is_zero(bsdf->N) && isfinite_safe(bsdf->N));
-
-  return SD_BSDF | SD_BSDF_HAS_EVAL | SD_BSDF_NEEDS_LCG;
-}
-
-#endif /* __HAIR__ */
+static_assert(sizeof(ShaderClosure) >= sizeof(MicrofacetHairExtra),
+              "MicrofacetHairExtra is too large!");
 
 /* -------------------------------------------------------------------- */
 /** \name Hair coordinate system utils.
@@ -201,12 +172,61 @@ ccl_device_inline float arc_length(float e2, float gamma)
   return e2 == 0 ? 1.0f : sqrtf(1.0f - e2 * sqr(sinf(gamma)));
 }
 
-ccl_device_inline float projected_radius(float e2, float sin_phi)
+/** \} */
+
+#ifdef __HAIR__
+/* Set up the hair closure. */
+ccl_device int bsdf_microfacet_hair_setup(ccl_private ShaderData *sd,
+                                          ccl_private MicrofacetHairBSDF *bsdf)
 {
-  return e2 == 0 ? 1.0f : sqrtf(1.0f - e2 * sqr(sin_phi));
+  bsdf->type = CLOSURE_BSDF_HAIR_MICROFACET_ID;
+
+  bsdf->roughness = clamp(bsdf->roughness, 0.001f, 1.0f);
+
+  /* Compute local frame. The Y axis is aligned with the curve tangent; the X axis is perpendicular
+   to the ray direction for circular cross-sections, or aligned with the major axis for elliptical
+   cross-sections. */
+  const float3 Y = safe_normalize(sd->dPdu);
+  const float3 X = safe_normalize(cross(Y, sd->wi));
+
+  /* h -1..0..1 means the rays goes from grazing the hair, to hitting it at the center, to grazing
+   * the other edge. This is the cosine of the angle between sd->N and X. */
+  bsdf->h = (sd->type & PRIMITIVE_CURVE_RIBBON) ? -sd->v : -dot(X, sd->N);
+
+  kernel_assert(fabsf(bsdf->h) < 1.0f + 1e-4f);
+  kernel_assert(isfinite_safe(bsdf->h));
+
+  if (bsdf->aspect_ratio != 1.0f && (sd->type & PRIMITIVE_CURVE)) {
+    /* Align local frame with the curve normal. */
+    if (bsdf->aspect_ratio > 1.0f) {
+      /* Switch major and minor axis. */
+      bsdf->aspect_ratio = 1.0f / bsdf->aspect_ratio;
+      const float3 minor_axis = safe_normalize(cross(sd->dPdu, bsdf->N));
+      bsdf->N = safe_normalize(cross(minor_axis, sd->dPdu));
+    }
+  }
+  else {
+    /* Align local frame with the ray direction so that `phi_i == 0`. */
+    bsdf->N = X;
+  }
+  kernel_assert(!is_zero(bsdf->N) && isfinite_safe(bsdf->N));
+
+  /* Fill extra closure. */
+  bsdf->extra->Z = safe_normalize(cross(bsdf->N, sd->dPdu));
+  bsdf->extra->Y = safe_normalize(cross(bsdf->extra->Z, bsdf->N));
+
+  const float3 I = make_float3(
+      dot(sd->wi, bsdf->N), dot(sd->wi, bsdf->extra->Y), dot(sd->wi, bsdf->extra->Z));
+  bsdf->extra->wi = I;
+  bsdf->extra->e2 = 1.0f - sqr(bsdf->aspect_ratio);
+  bsdf->extra->radius = bsdf->extra->e2 == 0 ?
+                            1.0f :
+                            sqrtf(1.0f - bsdf->extra->e2 * sqr(I.x) / (sqr(I.x) + sqr(I.z)));
+
+  return SD_BSDF | SD_BSDF_HAS_EVAL | SD_BSDF_NEEDS_LCG;
 }
 
-/** \} */
+#endif /* __HAIR__ */
 
 /* Sample microfacets from a tilted mesonormal. */
 template<MicrofacetType m_type>
@@ -295,25 +315,21 @@ ccl_device float3 bsdf_microfacet_hair_eval_r(ccl_private const ShaderClosure *s
                                               const float3 wo)
 {
   ccl_private MicrofacetHairBSDF *bsdf = (ccl_private MicrofacetHairBSDF *)sc;
-  const float tilt = -bsdf->tilt;
-  const float roughness = bsdf->roughness;
-  const float roughness2 = sqr(roughness);
-  const float eta = bsdf->eta;
 
-  if (bsdf->factor->R <= 0.0f) {
+  if (bsdf->extra->R <= 0.0f) {
     return zero_float3();
   }
 
-  /* Get elliptical cross section characteristic. Assuming major axis is 1. */
+  /* Get minor axis, assuming major axis is 1. */
   const float b = bsdf->aspect_ratio;
-  const float e2 = 1.0f - sqr(b); /* Squared Eccentricity. */
   const bool is_circular = (b == 1.0f);
 
   const float phi_i = is_circular ? 0.0f : dir_phi(wi);
   const float phi_o = dir_phi(wo);
-  const float3 wh = normalize(wi + wo);
 
+  /* Compute visible azimuthal range from incoming and outgoing directions. */
   /* dot(wi, wmi) > 0 */
+  const float tilt = -bsdf->tilt;
   const float tan_tilt = tanf(tilt);
   float phi_m_max1 = acosf(fmaxf(-tan_tilt * tan_theta(wi), 0.0f)) + phi_i;
   if (isnan_safe(phi_m_max1)) {
@@ -352,6 +368,11 @@ ccl_device float3 bsdf_microfacet_hair_eval_r(ccl_private const ShaderClosure *s
     gamma_m_max += M_2PI_F;
   }
 
+  const float3 wh = normalize(wi + wo);
+
+  const float roughness = bsdf->roughness;
+  const float roughness2 = sqr(roughness);
+
   /* Maximal sample resolution. */
   float res = roughness * 0.7f;
   /* Number of intervals should be even. */
@@ -371,17 +392,19 @@ ccl_device float3 bsdf_microfacet_hair_eval_r(ccl_private const ShaderClosure *s
       /* NOTE: using separable masking and shadowing as one factor cancels out in `sample()`. */
       const float G = bsdf_G<m_type>(roughness2, dot(wm, wi)) *
                       bsdf_G<m_type>(roughness2, dot(wm, wo));
-      integral += weight * bsdf_D<m_type>(roughness2, dot(wm, wh)) * G * arc_length(e2, gamma_m);
+      integral += weight * bsdf_D<m_type>(roughness2, dot(wm, wh)) * G *
+                  arc_length(bsdf->extra->e2, gamma_m);
     }
   }
 
   integral *= (2.0f / 3.0f * res);
 
-  const float F = fresnel_dielectric_cos(dot(wi, wh), eta);
+  const float F = fresnel_dielectric_cos(dot(wi, wh), bsdf->eta);
 
-  return make_float3(bsdf->factor->R * 0.125f * F * integral / projected_radius(e2, sinf(phi_i)));
+  return make_float3(bsdf->extra->R * 0.125f * F * integral / bsdf->extra->radius);
 }
 
+/* Evaluate TT and TRT components using combined Monte Carlo-Simpson integration. */
 template<MicrofacetType m_type>
 ccl_device float3 bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
                                                    ccl_private const ShaderClosure *sc,
@@ -390,22 +413,19 @@ ccl_device float3 bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
                                                    uint rng_quadrature)
 {
   ccl_private MicrofacetHairBSDF *bsdf = (ccl_private MicrofacetHairBSDF *)sc;
-  const float tilt = -bsdf->tilt;
-  const float roughness = bsdf->roughness;
-  const float roughness2 = sqr(roughness);
-  const float eta = bsdf->eta;
 
-  if (bsdf->factor->TT <= 0.0f && bsdf->factor->TRT <= 0.0f) {
+  if (bsdf->extra->TT <= 0.0f && bsdf->extra->TRT <= 0.0f) {
     return zero_float3();
   }
 
-  /* Get elliptical cross section characteristic. Assuming major axis is 1. */
+  /* Get minor axis, assuming major axis is 1. */
   const float b = bsdf->aspect_ratio;
-  const float e2 = 1.0f - sqr(b); /* Squared Eccentricity. */
   const bool is_circular = (b == 1.0f);
 
   const float phi_i = is_circular ? 0.0f : dir_phi(wi);
 
+  /* Compute visible azimuthal range from the incoming direction. */
+  const float tilt = -bsdf->tilt;
   const float tan_tilt = tanf(tilt);
   const float phi_m_max = acosf(fmaxf(-tan_tilt * tan_theta(wi), 0.0f)) + phi_i;
   if (isnan_safe(phi_m_max)) {
@@ -420,6 +440,7 @@ ccl_device float3 bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
   }
 
   const float3 mu_a = bsdf->sigma;
+  const float eta = bsdf->eta;
   const float inv_eta = 1.0f / eta;
 
   const float gamma_m_min = to_gamma(phi_m_min, b) + 1e-3f;
@@ -427,6 +448,9 @@ ccl_device float3 bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
   if (gamma_m_max < gamma_m_min) {
     gamma_m_max += M_2PI_F;
   }
+
+  const float roughness = bsdf->roughness;
+  const float roughness2 = sqr(roughness);
 
   float res = roughness * 0.8f;
   const size_t intervals = 2 * (size_t)ceilf((gamma_m_max - gamma_m_min) / res * 0.5f);
@@ -477,7 +501,7 @@ ccl_device float3 bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
                                 -len(to_point(gamma_mi, b) - to_point(gamma_mt + M_PI_F, b))));
 
     /* TT */
-    if (bsdf->factor->TT > 0.0f) {
+    if (bsdf->extra->TT > 0.0f) {
       if (dot(wo, wt) >= inv_eta - 1e-5f) { /* Total internal reflection otherwise. */
         float3 wh2 = -wt + inv_eta * wo;
         const float rcp_norm_wh2 = 1.0f / len(wh2);
@@ -497,14 +521,14 @@ ccl_device float3 bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
                                 cos_hi2 * cos_ho2 * sqr(rcp_norm_wh2);
 
           if (isfinite_safe(result)) {
-            S_tt += bsdf->factor->TT * result * arc_length(e2, gamma_mt);
+            S_tt += bsdf->extra->TT * result * arc_length(bsdf->extra->e2, gamma_mt);
           }
         }
       }
     }
 
     /* TRT */
-    if (bsdf->factor->TRT > 0.0f) {
+    if (bsdf->extra->TRT > 0.0f) {
       /* Sample wh2. */
       const float2 sample2 = make_float2(lcg_step_float(&rng_quadrature),
                                          lcg_step_float(&rng_quadrature));
@@ -560,12 +584,12 @@ ccl_device float3 bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
                             sqr(rcp_norm_wh3);
 
       if (isfinite_safe(result)) {
-        S_trt += bsdf->factor->TRT * result * arc_length(e2, gamma_mtr);
+        S_trt += bsdf->extra->TRT * result * arc_length(bsdf->extra->e2, gamma_mtr);
       }
     }
   }
 
-  return (S_tt + S_trt) * res * sqr(inv_eta) / (3.0f * projected_radius(e2, sinf(phi_i)));
+  return (S_tt + S_trt) * res * sqr(inv_eta) / (3.0f * bsdf->extra->radius);
 }
 
 template<MicrofacetType m_type>
@@ -581,49 +605,24 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
 {
   ccl_private MicrofacetHairBSDF *bsdf = (ccl_private MicrofacetHairBSDF *)sc;
 
-  *sampled_roughness = make_float2(bsdf->roughness, bsdf->roughness);
+  const float roughness = bsdf->roughness;
+  *sampled_roughness = make_float2(roughness, roughness);
   *eta = bsdf->eta;
-  const float inv_eta = 1.0f / *eta;
 
-  if (bsdf->factor->R <= 0.0f && bsdf->factor->TT <= 0.0f && bsdf->factor->TRT <= 0.0f) {
+  /* Treat as transparent material if intersection lies outside of the projected radius. */
+  if (fabsf(bsdf->h) > bsdf->extra->radius) {
+    *wo = -sd->wi;
+    *pdf = 1.0f;
+    *eval = one_spectrum();
+    *eta = 1.0f;
+    return LABEL_TRANSMIT | LABEL_TRANSPARENT;
+  }
+
+  if (bsdf->extra->R <= 0.0f && bsdf->extra->TT <= 0.0f && bsdf->extra->TRT <= 0.0f) {
     /* Early out for inactive lobe. */
     *pdf = 0.0f;
     return LABEL_NONE;
   }
-
-  /* Get local coordinate system:
-   * . X major axis.
-   * . Y along the fiber tangent.
-   * . Z minor axis. */
-  const float3 X = bsdf->N;
-  const float3 Z = safe_normalize(cross(X, sd->dPdu));
-  const float3 Y = safe_normalize(cross(Z, X));
-
-  /* Transform wi from global coordinate system to local. */
-  const float3 wi = make_float3(dot(sd->wi, X), dot(sd->wi, Y), dot(sd->wi, Z));
-
-  /* Get elliptical cross section characteristic. Assuming major axis is 1. */
-  const float b = bsdf->aspect_ratio;
-  const float e2 = 1.0f - sqr(b); /* Squared Eccentricity. */
-  const bool is_circular = (b == 1.0f);
-
-  /* Macronormal. */
-  const float2 sincos_phi_i = sincos_phi(wi);
-  const float sin_phi_i = sincos_phi_i.x;
-  const float cos_phi_i = sincos_phi_i.y;
-  const float d_i = projected_radius(e2, sin_phi_i);
-
-  /* Treat as transparent material if intersection lies outside of the projected radius. */
-  if (fabsf(bsdf->h) > d_i) {
-    *wo = -sd->wi;
-    *pdf = 1;
-    *eval = one_spectrum();
-    return LABEL_TRANSMIT | LABEL_TRANSPARENT;
-  }
-
-  const float tilt = -bsdf->tilt;
-  const float roughness = bsdf->roughness;
-  const float roughness2 = sqr(roughness);
 
   /* Generate samples. */
   float sample_lobe = rand.x;
@@ -634,16 +633,29 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
   const float2 sample_h3 = make_float2(lcg_step_float(&sd->lcg_state),
                                        lcg_step_float(&sd->lcg_state));
 
+  /* Get `wi` in local coordinate. */
+  const float3 wi = bsdf->extra->wi;
+
+  const float2 sincos_phi_i = sincos_phi(wi);
+  const float sin_phi_i = sincos_phi_i.x;
+  const float cos_phi_i = sincos_phi_i.y;
+
+  /* Get minor axis, assuming major axis is 1. */
+  const float b = bsdf->aspect_ratio;
+  const bool is_circular = (b == 1.0f);
+
   const float h = sample_h * 2.0f - 1.0f;
   const float gamma_mi = is_circular ?
                              asinf(h) :
                              atan2f(cos_phi_i, -b * sin_phi_i) -
-                                 acosf(h * d_i *
+                                 acosf(h * bsdf->extra->radius *
                                        inversesqrtf(sqr(cos_phi_i) + sqr(b * sin_phi_i)));
 
-  const float3 wmi_ = sphg_dir(0, gamma_mi, b); /* Macronormal. */
+  /* Macronormal. */
+  const float3 wmi_ = sphg_dir(0, gamma_mi, b);
 
   /* Mesonormal. */
+  const float tilt = -bsdf->tilt;
   float st, ct;
   fast_sincosf(tilt, &st, &ct);
   const float3 wmi = make_float3(wmi_.x * ct, st, wmi_.z * ct);
@@ -655,6 +667,7 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
   }
 
   /* Sample R lobe. */
+  const float roughness2 = sqr(roughness);
   const float3 wh1 = sample_wh<m_type>(kg, roughness, wi, wmi, sample_h1);
   const float3 wr = -reflect(wi, wh1);
 
@@ -666,9 +679,10 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
 
   float cos_theta_t1;
   const float R1 = fresnel(dot(wi, wh1), *eta, &cos_theta_t1);
-  const float3 R = make_float3(bsdf->factor->R * R1);
+  const float3 R = make_float3(bsdf->extra->R * R1);
 
   /* Sample TT lobe. */
+  const float inv_eta = 1.0f / bsdf->eta;
   const float3 wt = -refract_angle(wi, wh1, cos_theta_t1, inv_eta);
   const float phi_t = dir_phi(wt);
 
@@ -701,7 +715,7 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
     wtt = -refract_angle(-wt, wh2, cos_theta_t2, *eta);
 
     if (dot(wmt, -wtt) > 0.0f && cos_theta_t2 != 0.0f) {
-      TT = bsdf->factor->TT * T1 * A_t * T2;
+      TT = bsdf->extra->TT * T1 * A_t * T2;
     }
 
     /* Sample TRT lobe. */
@@ -726,7 +740,7 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
                                    2.0f * cos(phi_tr - gamma_mt) :
                                    -len(to_point(gamma_mt, b) - to_point(gamma_mtr, b))));
 
-      TRT = bsdf->factor->TRT * T1 * R2 * T3 * A_t * A_tr;
+      TRT = bsdf->extra->TRT * T1 * R2 * T3 * A_t * A_tr;
     }
   }
 
@@ -776,6 +790,13 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
   label |= LABEL_REFLECT;
 
   *eval *= visibility;
+
+  /* Get local coordinate system. */
+  const float3 X = bsdf->N;
+  const float3 Y = bsdf->extra->Y;
+  const float3 Z = bsdf->extra->Z;
+
+  /* Transform `wo` to global coordinate system. */
   *wo = local_O.x * X + local_O.y * Y + local_O.z * Z;
 
   /* Ensure the same pdf is returned for BSDF and emitter sampling. The importance sampling pdf is
@@ -797,24 +818,20 @@ ccl_device Spectrum bsdf_microfacet_hair_eval(KernelGlobals kg,
 {
   ccl_private MicrofacetHairBSDF *bsdf = (ccl_private MicrofacetHairBSDF *)sc;
 
-  /* Get local coordinate system:
-   * . X major axis.
-   * . Y along the fiber tangent.
-   * . Z minor axis. */
-  const float3 X = bsdf->N;
-  const float3 Z = safe_normalize(cross(X, sd->dPdu));
-  const float3 Y = safe_normalize(cross(Z, X));
-
-  /* Transform wi/wo from global coordinate system to local. */
-  const float3 local_I = make_float3(dot(sd->wi, X), dot(sd->wi, Y), dot(sd->wi, Z));
-  const float3 local_O = make_float3(dot(wo, X), dot(wo, Y), dot(wo, Z));
-
   /* Treat as transparent material if intersection lies outside of the projected radius. */
-  const float e2 = 1.0f - sqr(bsdf->aspect_ratio);
-  if (fabsf(bsdf->h) > projected_radius(e2, sin_phi(local_I))) {
+  if (fabsf(bsdf->h) > bsdf->extra->radius) {
     *pdf = 0.0f;
     return zero_spectrum();
   }
+
+  /* Get local coordinate system. */
+  const float3 X = bsdf->N;
+  const float3 Y = bsdf->extra->Y;
+  const float3 Z = bsdf->extra->Z;
+
+  /* Transform wi/wo from global coordinate system to local. */
+  const float3 local_I = bsdf->extra->wi;
+  const float3 local_O = make_float3(dot(wo, X), dot(wo, Y), dot(wo, Z));
 
   /* Evaluate. */
   float3 eval;
@@ -864,10 +881,15 @@ ccl_device void bsdf_microfacet_hair_blur(ccl_private ShaderClosure *sc, float r
 }
 
 /* Hair Albedo. */
-ccl_device float3 bsdf_microfacet_hair_albedo(ccl_private const ShaderClosure *sc)
+ccl_device Spectrum bsdf_microfacet_hair_albedo(ccl_private const ShaderData *sd,
+                                                ccl_private const ShaderClosure *sc)
 {
   ccl_private MicrofacetHairBSDF *bsdf = (ccl_private MicrofacetHairBSDF *)sc;
-  return exp(-sqrt(bsdf->sigma) * bsdf_hair_albedo_roughness_scale(bsdf->roughness));
+
+  const float f = fresnel_dielectric_cos(dot(sd->N, sd->wi), bsdf->eta);
+
+  return exp(-sqrt(bsdf->sigma) * bsdf_hair_albedo_roughness_scale(bsdf->roughness)) +
+         make_spectrum(f);
 }
 
 CCL_NAMESPACE_END
