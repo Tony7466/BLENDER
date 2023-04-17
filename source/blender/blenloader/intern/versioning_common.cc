@@ -26,8 +26,13 @@
 
 #include "NOD_socket.h"
 
+#include "MOD_nodes.h"
+
+#include "DEG_depsgraph.h"
+
 #include "BKE_animsys.h"
 #include "BKE_attribute.h"
+#include "BKE_idprop.hh"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_main_namemap.h"
@@ -908,21 +913,35 @@ static void object_push_instances_modifier(const StringRefNull name,
                                            bNodeTree &node_tree)
 {
   /* TODO: Move setings from object properties in modifier panel. */
-  ModifierData *new_modifier = BKE_modifier_new(eModifierType_Nodes);
-  NodesModifierData &node_modifier = *reinterpret_cast<NodesModifierData *>(new_modifier);
+  ModifierData *md = BKE_modifier_new(eModifierType_Nodes);
+  NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
 
-  node_modifier.node_group = &node_tree;
+  nmd.node_group = &node_tree;
   id_us_plus(&node_tree.id);
 
-  STRNCPY(node_modifier.modifier.name, name.c_str());
-  BKE_modifier_unique_name(&object.modifiers, new_modifier);
+  STRNCPY(nmd.modifier.name, name.c_str());
+  BKE_modifier_unique_name(&object.modifiers, md);
 
-  BLI_addtail(&object.modifiers, new_modifier);
-  BKE_object_modifier_set_active(&object, new_modifier);
+  BLI_addtail(&object.modifiers, md);
+  BKE_object_modifier_set_active(&object, md);
+
+  MOD_nodes_update_interface(&object, &nmd);
+
+  int index = 0;
+  LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, &node_tree.inputs, index) {
+    if (index == 0) {
+      continue;
+    }
+    /* TODO */
+    // IDProperty *new_prop = IDP_GetPropertyFromGroup(nmd.settings.properties,
+    // socket->identifier); BLI_assert(old_prop != nullptr); IDP_CopyPropertyContent(new_prop,
+    // old_prop);
+  }
 }
 
 }  //  namespace replace_legacy_instances
 
+/* TODO: objects in parent object space or in global? */
 void remove_legacy_instances_on(Main *bmain, ListBase &lb_objects)
 {
   using namespace blender;
@@ -978,6 +997,8 @@ void remove_legacy_instances_on(Main *bmain, ListBase &lb_objects)
     object_push_instances_modifier(modifier_name, *parent, *instances_node_tree);
 
     parent->transflag = 0;
+
+    DEG_id_tag_update(&parent->id, ID_RECALC_GEOMETRY);
   }
 
   printf("HELLO!\n");

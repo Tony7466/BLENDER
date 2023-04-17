@@ -15,6 +15,7 @@ set(INC
   ../makesdna
   ../makesrna
   ../nodes
+  ../modifiers
   ../render
   ../sequencer
   ../windowmanager
