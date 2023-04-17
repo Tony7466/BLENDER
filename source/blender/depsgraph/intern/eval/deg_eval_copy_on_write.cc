@@ -353,18 +353,6 @@ ViewLayer *get_original_view_layer(const Depsgraph *depsgraph, const IDNode *id_
   return nullptr;
 }
 
-/**
- * Clear all bases from the view layer.
- *
- * This is used when the view layer needs to stick around, for example when it's
- * used in the compositor or when it has drivers, but the objects in that view
- * layer are irrelevant.
- */
-static void view_layer_unassign_bases(ViewLayer *view_layer)
-{
-  view_layer->basact = nullptr;
-}
-
 /* Remove all bases from all view layers except the input one. */
 void scene_minimize_unused_view_layers(const Depsgraph *depsgraph,
                                        const IDNode *id_node,
@@ -381,7 +369,7 @@ void scene_minimize_unused_view_layers(const Depsgraph *depsgraph,
      * NOTE: Need to keep view layers for all scenes, even indirect ones. This is because of
      * render layer node possibly pointing to another scene. */
     LISTBASE_FOREACH (ViewLayer *, view_layer, &scene_cow->view_layers) {
-      view_layer_unassign_bases(view_layer);
+      BKE_view_layer_free_object_content(view_layer);
     }
     return;
   }
@@ -399,7 +387,7 @@ void scene_minimize_unused_view_layers(const Depsgraph *depsgraph,
       view_layer_eval = view_layer_cow;
     }
     else {
-      view_layer_unassign_bases(view_layer_cow);
+      BKE_view_layer_free_object_content(view_layer_cow);
     }
   }
 
