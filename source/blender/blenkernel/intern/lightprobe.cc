@@ -135,50 +135,28 @@ void *BKE_lightprobe_add(Main *bmain, const char *name)
 static void lightprobe_grid_cache_frame_blend_write(BlendWriter *writer,
                                                     const LightProbeGridCacheFrame *cache)
 {
-  if (cache->block_infos != nullptr) {
-    BLO_write_struct_array(writer, LightProbeGridCacheFrame, cache->block_len, cache->block_infos);
-  }
+  BLO_write_struct_array(writer, LightProbeGridCacheFrame, cache->block_len, cache->block_infos);
 
   int64_t sample_count = BKE_lightprobe_grid_cache_frame_sample_count(cache);
 
-  if (cache->irradiance.L0 != nullptr) {
-    BLO_write_float3_array(writer, sample_count, (float *)cache->irradiance.L0);
-  }
-  if (cache->irradiance.L1_a != nullptr) {
-    BLO_write_float3_array(writer, sample_count, (float *)cache->irradiance.L1_a);
-  }
-  if (cache->irradiance.L1_b != nullptr) {
-    BLO_write_float3_array(writer, sample_count, (float *)cache->irradiance.L1_b);
-  }
-  if (cache->irradiance.L1_c != nullptr) {
-    BLO_write_float3_array(writer, sample_count, (float *)cache->irradiance.L1_c);
-  }
+  BLO_write_float3_array(writer, sample_count, (float *)cache->irradiance.L0);
+  BLO_write_float3_array(writer, sample_count, (float *)cache->irradiance.L1_a);
+  BLO_write_float3_array(writer, sample_count, (float *)cache->irradiance.L1_b);
+  BLO_write_float3_array(writer, sample_count, (float *)cache->irradiance.L1_c);
 
-  if (cache->visibility.L0 != nullptr) {
-    BLO_write_int8_array(writer, sample_count, (int8_t *)cache->visibility.L0);
-  }
-  if (cache->visibility.L1_a != nullptr) {
-    BLO_write_int8_array(writer, sample_count, (int8_t *)cache->visibility.L1_a);
-  }
-  if (cache->visibility.L1_b != nullptr) {
-    BLO_write_int8_array(writer, sample_count, (int8_t *)cache->visibility.L1_b);
-  }
-  if (cache->visibility.L1_c != nullptr) {
-    BLO_write_int8_array(writer, sample_count, (int8_t *)cache->visibility.L1_c);
-  }
+  BLO_write_float_array(writer, sample_count, cache->visibility.L0);
+  BLO_write_float_array(writer, sample_count, cache->visibility.L1_a);
+  BLO_write_float_array(writer, sample_count, cache->visibility.L1_b);
+  BLO_write_float_array(writer, sample_count, cache->visibility.L1_c);
 
-  if (cache->connectivity.bitmask != nullptr) {
-    BLO_write_struct_array(
-        writer, LightProbeGridCacheFrame, sample_count, cache->connectivity.bitmask);
-  }
+  BLO_write_struct_array(
+      writer, LightProbeGridCacheFrame, sample_count, cache->connectivity.bitmask);
 }
 
 static void lightprobe_grid_cache_frame_blend_read(BlendDataReader *reader,
                                                    LightProbeGridCacheFrame *cache)
 {
-  if (cache->block_infos != nullptr) {
-    BLO_read_data_address(reader, &cache->block_infos);
-  }
+  BLO_read_data_address(reader, &cache->block_infos);
 
   int64_t sample_count = BKE_lightprobe_grid_cache_frame_sample_count(cache);
 
@@ -190,35 +168,17 @@ static void lightprobe_grid_cache_frame_blend_read(BlendDataReader *reader,
   cache->surfels = nullptr;
   cache->surfels_len = 0;
 
-  if (cache->irradiance.L0 != nullptr) {
-    BLO_read_float3_array(reader, sample_count, (float **)&cache->irradiance.L0);
-  }
-  if (cache->irradiance.L1_a != nullptr) {
-    BLO_read_float3_array(reader, sample_count, (float **)&cache->irradiance.L1_a);
-  }
-  if (cache->irradiance.L1_b != nullptr) {
-    BLO_read_float3_array(reader, sample_count, (float **)&cache->irradiance.L1_b);
-  }
-  if (cache->irradiance.L1_c != nullptr) {
-    BLO_read_float3_array(reader, sample_count, (float **)&cache->irradiance.L1_c);
-  }
+  BLO_read_float3_array(reader, sample_count, (float **)&cache->irradiance.L0);
+  BLO_read_float3_array(reader, sample_count, (float **)&cache->irradiance.L1_a);
+  BLO_read_float3_array(reader, sample_count, (float **)&cache->irradiance.L1_b);
+  BLO_read_float3_array(reader, sample_count, (float **)&cache->irradiance.L1_c);
 
-  if (cache->visibility.L0 != nullptr) {
-    BLO_read_int8_array(reader, sample_count, (int8_t **)&cache->visibility.L0);
-  }
-  if (cache->visibility.L1_a != nullptr) {
-    BLO_read_int8_array(reader, sample_count, (int8_t **)&cache->visibility.L1_a);
-  }
-  if (cache->visibility.L1_b != nullptr) {
-    BLO_read_int8_array(reader, sample_count, (int8_t **)&cache->visibility.L1_b);
-  }
-  if (cache->visibility.L1_c != nullptr) {
-    BLO_read_int8_array(reader, sample_count, (int8_t **)&cache->visibility.L1_c);
-  }
+  BLO_read_float_array(reader, sample_count, &cache->visibility.L0);
+  BLO_read_float_array(reader, sample_count, &cache->visibility.L1_a);
+  BLO_read_float_array(reader, sample_count, &cache->visibility.L1_b);
+  BLO_read_float_array(reader, sample_count, &cache->visibility.L1_c);
 
-  if (cache->connectivity.bitmask != nullptr) {
-    BLO_read_data_address(reader, &cache->connectivity.bitmask);
-  }
+  BLO_read_data_address(reader, &cache->connectivity.bitmask);
 }
 
 void BKE_lightprobe_cache_blend_write(BlendWriter *writer, LightProbeObjectCache *cache)
