@@ -165,7 +165,6 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(GreasePencilDrawing &drawing,
   curves.tag_topology_changed();
 
   drawing.geometry.wrap() = std::move(curves);
-#undef POINT_ATTRIBUTE
 }
 
 void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, bGPdata &gpd)
