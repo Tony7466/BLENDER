@@ -3164,8 +3164,10 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
         immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
     immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
-    GPU_blend(GPU_BLEND_ALPHA);
-    immUniformThemeColor(TH_NODE_ZONE_SIMULATION);
+    float zone_color[4];
+    UI_GetThemeColor4fv(TH_NODE_ZONE_SIMULATION, zone_color);
+    immUniformThemeColorBlend(TH_BACK, TH_NODE_ZONE_SIMULATION, zone_color[3]);
+
     immBegin(GPU_PRIM_TRI_FAN, fillet_boundary_positions.size() + 1);
     for (const float3 &p : fillet_boundary_positions) {
       immVertex3fv(pos, p);
@@ -3181,7 +3183,6 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
     immEnd();
 
     immUnbindProgram();
-    GPU_blend(GPU_BLEND_NONE);
   }
 }
 
