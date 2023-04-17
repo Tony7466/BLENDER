@@ -44,6 +44,69 @@
 
 namespace blender::ed::object::bake_simulation {
 
+static std::string escape_name(StringRef name)
+{
+  std::stringstream ss;
+  for (const char c : name) {
+    if (('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')) {
+      ss << c;
+    }
+    else {
+      ss << int(c);
+    }
+  }
+  return ss.str();
+}
+
+static std::string get_blendcache_directory(const Main &bmain)
+{
+  StringRefNull blend_file_path = BKE_main_blendfile_path(&bmain);
+  char blend_directory[FILE_MAX];
+  char blend_name[FILE_MAX];
+  BLI_split_dirfile(blend_file_path.c_str(),
+                    blend_directory,
+                    blend_name,
+                    sizeof(blend_directory),
+                    sizeof(blend_name));
+  blend_name[StringRef(blend_name).rfind(".")] = '\0';
+  const std::string blendcache_name = "blendcache_" + StringRef(blend_name);
+
+  char blendcache_dir[FILE_MAX];
+  BLI_path_join(blendcache_dir, sizeof(blendcache_dir), blend_directory, blendcache_name.c_str());
+  return blendcache_dir;
+}
+
+static std::string get_modifier_sim_name(const Object &ob, const ModifierData &md)
+{
+  const std::string object_name_escaped = escape_name(ob.id.name + 2);
+  const std::string modifier_name_escaped = escape_name(md.name);
+  return "sim_" + object_name_escaped + "_" + modifier_name_escaped;
+}
+
+std::string get_bdata_directory(const Main &bmain, const Object &ob, const ModifierData &md);
+std::string get_bdata_directory(const Main &bmain, const Object &ob, const ModifierData &md)
+{
+  char bdata_dir[FILE_MAX];
+  BLI_path_join(bdata_dir,
+                sizeof(bdata_dir),
+                get_blendcache_directory(bmain).c_str(),
+                get_modifier_sim_name(ob, md).c_str(),
+                "bdata");
+  return bdata_dir;
+}
+
+std::string get_meta_directory(const Main &bmain, const Object &ob, const ModifierData &md);
+std::string get_meta_directory(const Main &bmain, const Object &ob, const ModifierData &md)
+{
+  char meta_dir[FILE_MAX];
+  BLI_path_join(meta_dir,
+                sizeof(meta_dir),
+                get_blendcache_directory(bmain).c_str(),
+                get_modifier_sim_name(ob, md).c_str(),
+                "meta");
+  return meta_dir;
+}
+
 static StringRefNull get_endian_io_name(const int endian)
 {
   if (endian == L_ENDIAN) {
@@ -79,20 +142,6 @@ static eCustomDataType get_data_type_from_io_name(const StringRefNull io_name)
   int domain;
   RNA_enum_value_from_identifier(rna_enum_attribute_type_items, io_name.c_str(), &domain);
   return eCustomDataType(domain);
-}
-
-static std::string escape_name(StringRef name)
-{
-  std::stringstream ss;
-  for (const char c : name) {
-    if (('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')) {
-      ss << c;
-    }
-    else {
-      ss << int(c);
-    }
-  }
-  return ss.str();
 }
 
 struct BDataSlice {
@@ -705,24 +754,8 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
   LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
     if (md->type == eModifierType_Nodes) {
       modifiers.append(reinterpret_cast<NodesModifierData *>(md));
-      const std::string id_escaped = object_name_escaped + "_" + escape_name(md->name);
-      char modifier_bake_directory[FILE_MAX];
-      BLI_path_join(modifier_bake_directory,
-                    sizeof(modifier_bake_directory),
-                    bake_directory,
-                    ("sim_" + id_escaped).c_str());
-      char modifier_meta_directory[FILE_MAX];
-      BLI_path_join(modifier_meta_directory,
-                    sizeof(modifier_meta_directory),
-                    modifier_bake_directory,
-                    "meta");
-      char modifier_bdata_directory[FILE_MAX];
-      BLI_path_join(modifier_bdata_directory,
-                    sizeof(modifier_bdata_directory),
-                    modifier_bake_directory,
-                    "bdata");
-      modifier_meta_dirs.append(modifier_meta_directory);
-      modifier_bdata_dirs.append(modifier_bdata_directory);
+      modifier_meta_dirs.append(get_meta_directory(*bmain, *object, *md));
+      modifier_bdata_dirs.append(get_bdata_directory(*bmain, *object, *md));
     }
   }
 

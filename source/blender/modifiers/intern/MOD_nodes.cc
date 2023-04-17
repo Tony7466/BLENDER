@@ -98,6 +98,11 @@ namespace lf = blender::fn::lazy_function;
 namespace geo_log = blender::nodes::geo_eval_log;
 using blender::bke::sim::SubFrame;
 
+namespace blender::ed::object::bake_simulation {
+std::string get_bdata_directory(const Main &bmain, const Object &ob, const ModifierData &md);
+std::string get_meta_directory(const Main &bmain, const Object &ob, const ModifierData &md);
+}  // namespace blender::ed::object::bake_simulation
+
 namespace blender {
 
 static void initData(ModifierData *md)
@@ -1201,6 +1206,7 @@ static GeometrySet compute_geometry(const bNodeTree &btree,
   geo_nodes_modifier_data.self_object = ctx->object;
   auto eval_log = std::make_unique<geo_log::GeoModifierLog>();
 
+  const Main *bmain = DEG_get_bmain(ctx->depsgraph);
   const SubFrame current_frame = DEG_get_ctime(ctx->depsgraph);
   const Scene *scene = DEG_get_input_scene(ctx->depsgraph);
   const SubFrame start_frame = scene->r.sfra;
@@ -1217,8 +1223,8 @@ static GeometrySet compute_geometry(const bNodeTree &btree,
     }
     if (current_frame.frame() == 150) {
       nmd_orig->simulation_cache->load_baked_states(
-          "/home/jacques/Downloads/blendcache_simple_particle_sim/particles_GeometryNodes/meta",
-          "/home/jacques/Downloads/blendcache_simple_particle_sim/particles_GeometryNodes/bdata");
+          ed::object::bake_simulation::get_meta_directory(*bmain, *ctx->object, nmd->modifier),
+          ed::object::bake_simulation::get_bdata_directory(*bmain, *ctx->object, nmd->modifier));
     }
     if (nmd_orig->simulation_cache->cache_state() == bke::sim::CacheState::Invalid &&
         current_frame == start_frame) {
