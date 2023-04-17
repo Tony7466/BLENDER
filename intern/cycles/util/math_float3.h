@@ -495,6 +495,13 @@ ccl_device_inline float3 load_float3(ccl_private const float *v)
   return make_float3(v[0], v[1], v[2]);
 }
 
+#ifdef __KERNEL_METAL__
+ccl_device_inline float3 load_float3(ccl_private const float v[3])
+{
+  return make_float3(v[0], v[1], v[2]);
+}
+#endif
+
 CCL_NAMESPACE_END
 
 #endif /* __UTIL_MATH_FLOAT3_H__ */

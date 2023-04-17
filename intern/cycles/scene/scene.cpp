@@ -618,6 +618,8 @@ static void log_kernel_features(const uint features)
             << string_from_bool(features & KERNEL_FEATURE_PATCH_EVALUATION) << "\n";
   VLOG_INFO << "Use Shadow Catcher " << string_from_bool(features & KERNEL_FEATURE_SHADOW_CATCHER)
             << "\n";
+  VLOG_INFO << "Use Spectral Rendering "
+            << string_from_bool(features & KERNEL_FEATURE_SPECTRAL_RENDERING) << "\n";
 }
 
 bool Scene::load_kernels(Progress &progress)

@@ -745,7 +745,12 @@ if(WITH_CYCLES_DEVICE_ONEAPI)
   if(WITH_CYCLES_ONEAPI_BINARIES)
     message(STATUS "${SYCL_OFFLINE_COMPILER_PARALLEL_JOBS} instance(s) of oneAPI offline compiler will be used.")
   endif()
+
   # SYCL_CPP_FLAGS is a variable that the user can set to pass extra compiler options
+  if(WITH_CYCLES_SPECTRAL_RENDERING)
+    set(SYCL_CPP_FLAGS ${SYCL_CPP_FLAGS} -D__SPECTRAL_RENDERING__)
+  endif()
+  
   set(sycl_compiler_flags
     ${CMAKE_CURRENT_SOURCE_DIR}/${SRC_KERNEL_DEVICE_ONEAPI}
     -fsycl

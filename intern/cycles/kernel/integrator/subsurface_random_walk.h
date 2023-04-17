@@ -173,7 +173,9 @@ ccl_device_inline bool subsurface_random_walk(KernelGlobals kg,
   const float3 N = INTEGRATOR_STATE(state, ray, D);
   const float ray_dP = INTEGRATOR_STATE(state, ray, dP);
   const float time = INTEGRATOR_STATE(state, ray, time);
+#ifdef __SPECTRAL_RENDERING__
   const Spectrum wavelengths = INTEGRATOR_STATE(state, ray, wavelengths);
+#endif
   const float3 Ng = INTEGRATOR_STATE(state, subsurface, Ng);
   const int object = INTEGRATOR_STATE(state, isect, object);
   const int prim = INTEGRATOR_STATE(state, isect, prim);
@@ -194,7 +196,9 @@ ccl_device_inline bool subsurface_random_walk(KernelGlobals kg,
   ray.time = time;
   ray.dP = ray_dP;
   ray.dD = differential_zero_compact();
+#ifdef __SPECTRAL_RENDERING__
   ray.wavelengths = wavelengths;
+#endif
   ray.self.object = object;
   ray.self.prim = prim;
   ray.self.light_object = OBJECT_NONE;

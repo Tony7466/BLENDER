@@ -7,8 +7,8 @@ template<typename ConstIntegratorGenericState>
 ccl_device void svm_node_rgb_to_spectrum(KernelGlobals kg,
                                          ConstIntegratorGenericState state,
                                          uint32_t path_flag,
-                                         ShaderData *sd,
-                                         float *stack,
+                                         ccl_private ShaderData *sd,
+                                         ccl_private float *stack,
                                          uint in_color_offset,
                                          uint out_spectrum_offset)
 {
