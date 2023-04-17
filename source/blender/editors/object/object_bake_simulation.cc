@@ -773,7 +773,7 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
   };
   BLI_SCOPED_DEFER(free_shared_data);
 
-  for (float frame_f = 1.0f; frame_f <= 100.f; frame_f += 0.5f) {
+  for (float frame_f = scene->r.sfra; frame_f <= scene->r.efra; frame_f += 1.0f) {
     const SubFrame frame{frame_f};
 
     scene->r.cfra = frame.frame();
