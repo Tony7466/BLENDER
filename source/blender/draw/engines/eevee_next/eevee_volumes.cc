@@ -291,16 +291,19 @@ void Volumes::end_sync()
   transparent_pass_transmit_tx_ = integrated_transmit_tx_;
 
   scatter_ps_.init();
-  scatter_ps_.state_set(DRW_STATE_WRITE_COLOR);
   scatter_ps_.shader_set(inst_.shaders.static_shader_get(
       data_.use_lights ? VOLUME_SCATTER_WITH_LIGHTS : VOLUME_SCATTER));
   bind_volume_pass_resources(scatter_ps_);
 
-  scatter_ps_.bind_texture("volumeScattering", &prop_scattering_tx_);
-  scatter_ps_.bind_texture("volumeExtinction", &prop_extinction_tx_);
-  scatter_ps_.bind_texture("volumeEmission", &prop_emission_tx_);
-  scatter_ps_.bind_texture("volumePhase", &prop_phase_tx_);
-  scatter_ps_.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z * 3);
+  scatter_ps_.bind_texture("scattering_tx", &prop_scattering_tx_);
+  scatter_ps_.bind_texture("extinction_tx", &prop_extinction_tx_);
+  scatter_ps_.bind_texture("emission_tx", &prop_emission_tx_);
+  scatter_ps_.bind_texture("phase_tx", &prop_phase_tx_);
+  scatter_ps_.bind_image("out_scattering", &scatter_tx_);
+  scatter_ps_.bind_image("out_transmittance", &transmit_tx_);
+
+  scatter_ps_.dispatch(math::divide_ceil(data_.tex_size, int3(VOLUME_GROUP_SIZE)));
+  scatter_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
 
   integration_ps_.init();
   integration_ps_.state_set(DRW_STATE_WRITE_COLOR);
@@ -328,13 +331,13 @@ void Volumes::draw_compute(View &view)
 
   DRW_stats_group_start("Volumes");
 
+  inst_.manager->submit(world_ps_, view);
+
   volumetric_fb_.ensure(GPU_ATTACHMENT_NONE,
                         GPU_ATTACHMENT_TEXTURE(prop_scattering_tx_),
                         GPU_ATTACHMENT_TEXTURE(prop_extinction_tx_),
                         GPU_ATTACHMENT_TEXTURE(prop_emission_tx_),
                         GPU_ATTACHMENT_TEXTURE(prop_phase_tx_));
-
-  inst_.manager->submit(world_ps_, view);
   volumetric_fb_.bind();
   inst_.pipelines.volume.render(view);
 

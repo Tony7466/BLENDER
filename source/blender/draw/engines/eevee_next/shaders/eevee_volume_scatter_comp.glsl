@@ -37,7 +37,7 @@ vec3 volume_scatter_light_eval(vec3 P, vec3 V, uint l_idx, float s_anisotropy)
     return vec3(0);
   }
 
-  vec3 Li = light_volume(ld, l_vector) * light_volume_shadow(ld, P, l_vector, volumeExtinction);
+  vec3 Li = light_volume(ld, l_vector) * light_volume_shadow(ld, P, l_vector, extinction_tx);
 
   return Li * vis * phase_function(-V, l_vector.xyz / l_vector.w, s_anisotropy);
 }
@@ -46,42 +46,52 @@ vec3 volume_scatter_light_eval(vec3 P, vec3 V, uint l_idx, float s_anisotropy)
 
 void main()
 {
-  ivec3 volume_cell = ivec3(ivec2(gl_FragCoord.xy), volume_geom_iface.slice);
+  ivec3 froxel = ivec3(gl_GlobalInvocationID);
+
+  if (any(greaterThanEqual(froxel, volumes_buf.tex_size))) {
+    return;
+  }
 
   /* Emission */
-  outScattering = texelFetch(volumeEmission, volume_cell, 0);
-  outTransmittance = texelFetch(volumeExtinction, volume_cell, 0);
-  vec3 s_scattering = texelFetch(volumeScattering, volume_cell, 0).rgb;
-  vec3 volume_ndc = volume_to_ndc((vec3(volume_cell) + volumes_buf.jitter) *
-                                  volumes_buf.inv_tex_size);
+  vec3 scattering = texelFetch(emission_tx, froxel, 0).rgb;
+  vec3 transmittance = texelFetch(extinction_tx, froxel, 0).rgb;
+  vec3 s_scattering = texelFetch(scattering_tx, froxel, 0).rgb;
+
+  vec3 volume_ndc = volume_to_ndc((vec3(froxel) + volumes_buf.jitter) * volumes_buf.inv_tex_size);
   vec3 vP = get_view_space_from_depth(volume_ndc.xy, volume_ndc.z);
   vec3 P = point_view_to_world(vP);
   vec3 V = cameraVec(P);
 
-  vec2 phase = texelFetch(volumePhase, volume_cell, 0).rg;
+  vec2 phase = texelFetch(phase_tx, froxel, 0).rg;
   float s_anisotropy = phase.x / max(1.0, phase.y);
 
   /* Environment : Average color. */
-  outScattering.rgb += irradiance_volumetric(P) * s_scattering * phase_function_isotropic();
+  scattering += irradiance_volumetric(P) * s_scattering * phase_function_isotropic();
 
 #ifdef VOLUME_LIGHTING
 
   LIGHT_FOREACH_BEGIN_DIRECTIONAL (light_cull_buf, l_idx) {
-    outScattering.rgb += volume_scatter_light_eval(P, V, l_idx, s_anisotropy) * s_scattering;
+    scattering += volume_scatter_light_eval(P, V, l_idx, s_anisotropy) * s_scattering;
   }
   LIGHT_FOREACH_END
 
-  LIGHT_FOREACH_BEGIN_LOCAL (
-      light_cull_buf, light_zbin_buf, light_tile_buf, gl_FragCoord.xy, vP.z, l_idx) {
-    outScattering.rgb += volume_scatter_light_eval(P, V, l_idx, s_anisotropy) * s_scattering;
+  /* TODO (Miguel Pozo): Simplify computation. Fix coord_scale first. */
+  vec2 pixel = (vec2(froxel.xy) + vec2(0.5)) / vec2(volumes_buf.tex_size.xy) /
+               volumes_buf.viewport_size_inv;
+
+  LIGHT_FOREACH_BEGIN_LOCAL (light_cull_buf, light_zbin_buf, light_tile_buf, pixel, vP.z, l_idx) {
+    scattering += volume_scatter_light_eval(P, V, l_idx, s_anisotropy) * s_scattering;
   }
   LIGHT_FOREACH_END
 
 #endif
 
   /* Catch NaNs */
-  if (any(isnan(outScattering)) || any(isnan(outTransmittance))) {
-    outScattering = vec4(0.0);
-    outTransmittance = vec4(1.0);
+  if (any(isnan(scattering)) || any(isnan(transmittance))) {
+    scattering = vec3(0.0);
+    transmittance = vec3(1.0);
   }
+
+  imageStore(out_scattering, froxel, vec4(scattering, 1.0));
+  imageStore(out_transmittance, froxel, vec4(transmittance, 1.0));
 }

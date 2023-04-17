@@ -507,7 +507,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_volume_material_frag.glsl
   engines/eevee_next/shaders/eevee_volume_material_vert.glsl
   engines/eevee_next/shaders/eevee_volume_resolve_frag.glsl
-  engines/eevee_next/shaders/eevee_volume_scatter_frag.glsl
+  engines/eevee_next/shaders/eevee_volume_scatter_comp.glsl
   engines/eevee_next/shaders/eevee_volume_vert.glsl
 
   engines/eevee_next/eevee_defines.hh
