@@ -534,7 +534,7 @@ void HIPDevice::mem_alloc(device_memory &mem)
 void HIPDevice::mem_copy_to(device_memory &mem, size_t size, size_t offset)
 {
   if (mem.type == MEM_GLOBAL) {
-    if ((mem.device_size < mem.memory_size()) || (!mem.device_pointer)) {
+    if ((mem.device_size != mem.memory_size()) || (!mem.device_pointer)) {
       global_free(mem);
       global_alloc(mem);
     }
