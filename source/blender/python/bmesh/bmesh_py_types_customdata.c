@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation. All rights reserved. */
+ * Copyright 2012 Blender Foundation */
 
 /** \file
  * \ingroup pybmesh
@@ -899,7 +899,7 @@ static PySequenceMethods bpy_bmlayercollection_as_sequence = {
 };
 
 static PyMappingMethods bpy_bmlayercollection_as_mapping = {
-    /*mp_len*/ (lenfunc)bpy_bmlayercollection_length,
+    /*mp_length*/ (lenfunc)bpy_bmlayercollection_length,
     /*mp_subscript*/ (binaryfunc)bpy_bmlayercollection_subscript,
     /*mp_ass_subscript*/ (objobjargproc)NULL,
 };
@@ -1149,7 +1149,7 @@ PyObject *BPy_BMLayerItem_GetItem(BPy_BMElem *py_ele, BPy_BMLayerItem *py_layer)
         PyErr_SetString(PyExc_ValueError, "BMElem[layer]: layer is from another mesh");
         return NULL;
       }
-      ret = BPy_BMLoopUV_CreatePyObject(py_ele->bm, (BMLoop *)py_ele->ele);
+      ret = BPy_BMLoopUV_CreatePyObject(py_ele->bm, (BMLoop *)py_ele->ele, py_layer->index);
       break;
     }
     case CD_PROP_BYTE_COLOR: {

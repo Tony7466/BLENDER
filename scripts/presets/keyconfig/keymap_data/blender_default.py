@@ -4410,6 +4410,8 @@ def km_face_mask(params):
          {"properties": [("deselect", False)]}),
         ("paint.face_select_linked_pick", {"type": 'L', "value": 'PRESS', "shift": True},
          {"properties": [("deselect", True)]}),
+        ("paint.face_select_more", {"type": 'NUMPAD_PLUS', "value": 'PRESS', "ctrl": True}, None),
+        ("paint.face_select_less", {"type": 'NUMPAD_MINUS', "value": 'PRESS', "ctrl": True}, None),
     ])
 
     return keymap
@@ -4437,6 +4439,8 @@ def km_weight_paint_vertex_selection(params):
          {"properties": [("select", True)]}),
         ("paint.vert_select_linked_pick", {"type": 'L', "value": 'PRESS', "shift": True},
          {"properties": [("select", False)]}),
+        ("paint.vert_select_more", {"type": 'NUMPAD_PLUS', "value": 'PRESS', "ctrl": True}, None),
+        ("paint.vert_select_less", {"type": 'NUMPAD_MINUS', "value": 'PRESS', "ctrl": True}, None),
     ])
 
     return keymap
@@ -5596,9 +5600,13 @@ def km_font(params):
         ("font.move_select", {"type": 'PAGE_DOWN', "value": 'PRESS', "shift": True, "repeat": True},
          {"properties": [("type", 'NEXT_PAGE')]}),
         ("font.change_spacing", {"type": 'LEFT_ARROW', "value": 'PRESS', "alt": True, "repeat": True},
-         {"properties": [("delta", -1)]}),
+         {"properties": [("delta", -1.0)]}),
         ("font.change_spacing", {"type": 'RIGHT_ARROW', "value": 'PRESS', "alt": True, "repeat": True},
-         {"properties": [("delta", 1)]}),
+         {"properties": [("delta", 1.0)]}),
+        ("font.change_spacing", {"type": 'LEFT_ARROW', "value": 'PRESS', "shift": True, "alt": True, "repeat": True},
+         {"properties": [("delta", -0.1)]}),
+        ("font.change_spacing", {"type": 'RIGHT_ARROW', "value": 'PRESS', "shift": True, "alt": True, "repeat": True},
+         {"properties": [("delta", 0.1)]}),
         ("font.change_character", {"type": 'UP_ARROW', "value": 'PRESS', "alt": True, "repeat": True},
          {"properties": [("delta", 1)]}),
         ("font.change_character", {"type": 'DOWN_ARROW', "value": 'PRESS', "alt": True, "repeat": True},

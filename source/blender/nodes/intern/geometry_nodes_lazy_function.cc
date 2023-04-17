@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
-/**
+/** \file
+ * \ingroup nodes
+ *
  * This file mainly converts a #bNodeTree into a lazy-function graph. This generally works by
  * creating a lazy-function for every node, which is then put into the lazy-function graph. Then
  * the nodes in the new graph are linked based on links in the original #bNodeTree. Some additional
@@ -412,6 +414,9 @@ class LazyFunctionForMutedNode : public LazyFunction {
   {
     for (const int output_i : outputs_.index_range()) {
       if (params.output_was_set(output_i)) {
+        continue;
+      }
+      if (params.get_output_usage(output_i) != lf::ValueUsage::Used) {
         continue;
       }
       const CPPType &output_type = *outputs_[output_i].type;
