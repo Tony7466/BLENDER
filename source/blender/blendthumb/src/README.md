@@ -38,3 +38,5 @@ Don't access files outside sandbox or kernel denies:
 default	03:07:03.525360+0530	blender-thumbnailer	hello world from blender
 error	03:07:03.527837+0530	blender-thumbnailer	Couldn't issue file extension for url: <private>
 error	03:07:03.531152+0530	kernel	Sandbox: com.apple.quickl(476) deny(1) file-read-data /Users/ankitkumar/Pictures/IMG_3158.JPG
+
+restart ?
