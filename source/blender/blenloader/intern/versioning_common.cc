@@ -22,6 +22,8 @@
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 
+#include "BLT_translation.h"
+
 #include "NOD_socket.h"
 
 #include "BKE_animsys.h"
@@ -32,6 +34,7 @@
 #include "BKE_modifier.h"
 #include "BKE_node.h"
 #include "BKE_node_runtime.hh"
+#include "BKE_object.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -556,6 +559,7 @@ static bNodeTree *face_aling_tree(Main *bmain, RegularNodeTrees &cached_node_tre
   const auto add_node_group = [node_tree](bNodeTree *tree) -> bNode * {
     bNode *group = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP);
     group->id = &tree->id;
+    id_us_plus(&tree->id);
     bke::node_field_inferencing::update_field_inferencing(*node_tree);
     nodes::update_node_declaration_and_sockets(*node_tree, *group);
     return group;
@@ -716,6 +720,7 @@ static bNodeTree *instances_on_faces_tree(Main *bmain, RegularNodeTrees &cached_
   const auto add_node_group = [node_tree](bNodeTree *tree) -> bNode * {
     bNode *group = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP);
     group->id = &tree->id;
+    id_us_plus(&tree->id);
     bke::node_field_inferencing::update_field_inferencing(*node_tree);
     nodes::update_node_declaration_and_sockets(*node_tree, *group);
     return group;
@@ -775,8 +780,8 @@ static bNodeTree *instances_on_points(const Span<Object *> objects,
                                       Main *bmain,
                                       RegularNodeTrees &cached_node_trees)
 {
-  const std::string tree_name = std::string(name) + std::string("_childrens");
-  bNodeTree *node_tree = ntreeAddTree(bmain, tree_name.c_str(), "GeometryNodeTree");
+  bNodeTree *node_tree = ntreeAddTree(bmain, name.c_str(), "GeometryNodeTree");
+
   ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketGeometry", "Geometry");
   ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketBool", "Viewport");
   ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketBool", "Render");
@@ -796,6 +801,7 @@ static bNodeTree *instances_on_points(const Span<Object *> objects,
   const auto add_node_group = [node_tree](bNodeTree *tree) -> bNode * {
     bNode *group = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP);
     group->id = &tree->id;
+    id_us_plus(&tree->id);
     bke::node_field_inferencing::update_field_inferencing(*node_tree);
     nodes::update_node_declaration_and_sockets(*node_tree, *group);
     return group;
@@ -835,8 +841,8 @@ static bNodeTree *instances_on_faces(const Span<Object *> objects,
                                      Main *bmain,
                                      RegularNodeTrees &cached_node_trees)
 {
-  const std::string tree_name = std::string(name) + std::string("_childrens");
-  bNodeTree *node_tree = ntreeAddTree(bmain, tree_name.c_str(), "GeometryNodeTree");
+  bNodeTree *node_tree = ntreeAddTree(bmain, name.c_str(), "GeometryNodeTree");
+
   ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketGeometry", "Geometry");
   ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketBool", "Viewport");
   ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketBool", "Render");
@@ -857,6 +863,7 @@ static bNodeTree *instances_on_faces(const Span<Object *> objects,
   const auto add_node_group = [node_tree](bNodeTree *tree) -> bNode * {
     bNode *group = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP);
     group->id = &tree->id;
+    id_us_plus(&tree->id);
     bke::node_field_inferencing::update_field_inferencing(*node_tree);
     nodes::update_node_declaration_and_sockets(*node_tree, *group);
     return group;
@@ -896,13 +903,22 @@ static bNodeTree *instances_on_faces(const Span<Object *> objects,
   return node_tree;
 }
 
-static void object_push_instances_modifier(Main * /*bmain*/, Object *object, bNodeTree *node_tree)
+static void object_push_instances_modifier(const StringRefNull name,
+                                           Object &object,
+                                           bNodeTree &node_tree)
 {
   /* TODO: Move setings from object properties in modifier panel. */
   ModifierData *new_modifier = BKE_modifier_new(eModifierType_Nodes);
   NodesModifierData &node_modifier = *reinterpret_cast<NodesModifierData *>(new_modifier);
-  node_modifier.node_group = node_tree;
-  BLI_addtail(&object->modifiers, new_modifier);
+
+  node_modifier.node_group = &node_tree;
+  id_us_plus(&node_tree.id);
+
+  STRNCPY(node_modifier.modifier.name, name.c_str());
+  BKE_modifier_unique_name(&object.modifiers, new_modifier);
+
+  BLI_addtail(&object.modifiers, new_modifier);
+  BKE_object_modifier_set_active(&object, new_modifier);
 }
 
 }  //  namespace replace_legacy_instances
@@ -938,16 +954,28 @@ void remove_legacy_instances_on(Main *bmain, ListBase &lb_objects)
     const bool on_vertices = (parent->transflag & OB_DUPLIVERTS) != 0;
 
     const StringRefNull parent_name(parent->id.name + 2);
+    const StringRefNull domain_name = on_vertices ? TIP_("Points") : TIP_("Faces");
+
+    char tree_name[64];
+    BLI_snprintf(tree_name,
+                 sizeof(tree_name),
+                 TIP_("Instances on %s of %s"),
+                 domain_name.c_str(),
+                 parent_name.c_str());
+
+    char modifier_name[64];
+    BLI_snprintf(
+        modifier_name, sizeof(modifier_name), TIP_("Instances on %s 3.6"), domain_name.c_str());
 
     using namespace replace_legacy_instances;
     bNodeTree *instances_node_tree;
     if (on_vertices) {
-      instances_node_tree = instances_on_points(objects, parent_name, bmain, cached_node_trees);
+      instances_node_tree = instances_on_points(objects, tree_name, bmain, cached_node_trees);
     }
     else {
-      instances_node_tree = instances_on_faces(objects, parent_name, bmain, cached_node_trees);
+      instances_node_tree = instances_on_faces(objects, tree_name, bmain, cached_node_trees);
     }
-    object_push_instances_modifier(bmain, parent, instances_node_tree);
+    object_push_instances_modifier(modifier_name, *parent, *instances_node_tree);
 
     parent->transflag = 0;
   }
