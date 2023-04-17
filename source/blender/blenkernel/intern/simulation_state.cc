@@ -34,10 +34,11 @@ void ModifierSimulationCache::load_baked_states(const StringRefNull meta_dir,
 
     const SubFrame frame = std::stof(modified_file_name);
 
-    ModifierSimulationStateAtFrame new_state{frame, std::make_unique<ModifierSimulationState>()};
+    auto new_state_at_frame = std::make_unique<ModifierSimulationStateAtFrame>();
+    new_state_at_frame->frame = frame;
     ed::object::bake_simulation::load_simulation_state(
-        dir_entry.path, bdata_dir, *new_state.state);
-    states_at_frames_.append(std::move(new_state));
+        dir_entry.path, bdata_dir, new_state_at_frame->state);
+    states_at_frames_.append(std::move(new_state_at_frame));
   }
 
   cache_state_ = CacheState::Baked;

@@ -150,7 +150,7 @@ struct SubFrame {
 
 struct ModifierSimulationStateAtFrame {
   SubFrame frame;
-  std::unique_ptr<ModifierSimulationState> state;
+  ModifierSimulationState state;
 };
 
 enum class CacheState {
@@ -159,9 +159,15 @@ enum class CacheState {
   Baked,
 };
 
+struct StatesAroundFrame {
+  const ModifierSimulationStateAtFrame *prev = nullptr;
+  const ModifierSimulationStateAtFrame *current = nullptr;
+  const ModifierSimulationStateAtFrame *next = nullptr;
+};
+
 class ModifierSimulationCache {
  private:
-  Vector<ModifierSimulationStateAtFrame> states_at_frames_;
+  Vector<std::unique_ptr<ModifierSimulationStateAtFrame>> states_at_frames_;
   CacheState cache_state_ = CacheState::Valid;
 
  public:
@@ -169,8 +175,8 @@ class ModifierSimulationCache {
 
   bool has_state_at_frame(const SubFrame &frame) const
   {
-    for (const ModifierSimulationStateAtFrame &item : states_at_frames_) {
-      if (item.frame == frame) {
+    for (const auto &item : states_at_frames_) {
+      if (item->frame == frame) {
         return true;
       }
     }
@@ -179,9 +185,9 @@ class ModifierSimulationCache {
 
   const ModifierSimulationState *get_state_at_exact_frame(const SubFrame &frame) const
   {
-    for (const ModifierSimulationStateAtFrame &item : states_at_frames_) {
-      if (item.frame == frame) {
-        return item.state.get();
+    for (const auto &item : states_at_frames_) {
+      if (item->frame == frame) {
+        return &item->state;
       }
     }
     return nullptr;
@@ -189,27 +195,37 @@ class ModifierSimulationCache {
 
   ModifierSimulationState &get_state_at_frame_for_write(const SubFrame &frame)
   {
-    for (const ModifierSimulationStateAtFrame &item : states_at_frames_) {
-      if (item.frame == frame) {
-        return *item.state.get();
+    for (const auto &item : states_at_frames_) {
+      if (item->frame == frame) {
+        return item->state;
       }
     }
-    states_at_frames_.append({frame, std::make_unique<ModifierSimulationState>()});
-    return *states_at_frames_.last().state;
+    states_at_frames_.append(std::make_unique<ModifierSimulationStateAtFrame>());
+    states_at_frames_.last()->frame = frame;
+    return states_at_frames_.last()->state;
   }
 
-  const ModifierSimulationStateAtFrame *try_get_last_state_before_frame(
-      const SubFrame &frame) const
+  StatesAroundFrame get_states_around_frame(const SubFrame &frame) const
   {
-    SubFrame last_frame = SubFrame::min();
-    const ModifierSimulationStateAtFrame *last_item = nullptr;
+    StatesAroundFrame states_around_frame;
     for (const auto &item : states_at_frames_) {
-      if (item.frame < frame && item.frame > last_frame) {
-        last_frame = item.frame;
-        last_item = &item;
+      if (item->frame < frame) {
+        if (states_around_frame.prev == nullptr || item->frame > states_around_frame.prev->frame) {
+          states_around_frame.prev = item.get();
+        }
+      }
+      if (item->frame == frame) {
+        if (states_around_frame.current == nullptr) {
+          states_around_frame.current = item.get();
+        }
+      }
+      if (item->frame > frame) {
+        if (states_around_frame.next == nullptr || item->frame < states_around_frame.next->frame) {
+          states_around_frame.next = item.get();
+        }
       }
     }
-    return last_item;
+    return states_around_frame;
   }
 
   void invalidate()

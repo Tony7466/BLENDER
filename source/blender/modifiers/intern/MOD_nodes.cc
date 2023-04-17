@@ -1202,49 +1202,60 @@ static GeometrySet compute_geometry(const bNodeTree &btree,
   auto eval_log = std::make_unique<geo_log::GeoModifierLog>();
 
   const SubFrame current_frame = DEG_get_ctime(ctx->depsgraph);
-  if (DEG_is_active(ctx->depsgraph)) {
-    const Scene *scene = DEG_get_input_scene(ctx->depsgraph);
-    const SubFrame start_frame = scene->r.sfra;
+  const Scene *scene = DEG_get_input_scene(ctx->depsgraph);
+  const SubFrame start_frame = scene->r.sfra;
+  const bool is_start_frame = current_frame == start_frame;
 
+  bke::sim::StatesAroundFrame sim_states;
+  if (nmd_orig->simulation_cache != nullptr) {
+    sim_states = nmd_orig->simulation_cache->get_states_around_frame(current_frame);
+  }
+
+  if (DEG_is_active(ctx->depsgraph)) {
     if (nmd_orig->simulation_cache == nullptr) {
-      nmd_orig->simulation_cache = MEM_new<blender::bke::sim::ModifierSimulationCache>(__func__);
+      nmd_orig->simulation_cache = MEM_new<bke::sim::ModifierSimulationCache>(__func__);
     }
     if (current_frame.frame() == 150) {
       nmd_orig->simulation_cache->load_baked_states(
-          "/home/jacques/Downloads/blendcache_mesh_deform_sim/Cube_GeometryNodes/meta",
-          "/home/jacques/Downloads/blendcache_mesh_deform_sim/Cube_GeometryNodes/bdata");
+          "/home/jacques/Downloads/blendcache_simple_particle_sim/particles_GeometryNodes/meta",
+          "/home/jacques/Downloads/blendcache_simple_particle_sim/particles_GeometryNodes/bdata");
     }
-    const bke::sim::CacheState last_cache_state = nmd_orig->simulation_cache->cache_state();
-    if (last_cache_state == bke::sim::CacheState::Invalid && current_frame == start_frame) {
+    if (nmd_orig->simulation_cache->cache_state() == bke::sim::CacheState::Invalid &&
+        current_frame == start_frame) {
       nmd_orig->simulation_cache->reset();
     }
-    const bke::sim::ModifierSimulationStateAtFrame *prev_sim_state =
-        nmd_orig->simulation_cache->try_get_last_state_before_frame(current_frame);
-    if (prev_sim_state != nullptr) {
-      geo_nodes_modifier_data.prev_simulation_state = prev_sim_state->state.get();
-      const float frame_diff = float(current_frame) - float(prev_sim_state->frame);
-      geo_nodes_modifier_data.simulation_time_delta = frame_diff / FPS;
-      if (frame_diff > 1.0f && last_cache_state != bke::sim::CacheState::Baked) {
-        nmd_orig->simulation_cache->invalidate();
+    if (nmd_orig->simulation_cache->cache_state() != bke::sim::CacheState::Baked) {
+      if (sim_states.current == nullptr) {
+        if (is_start_frame) {
+          bke::sim::ModifierSimulationState &current_sim_state =
+              nmd_orig->simulation_cache->get_state_at_frame_for_write(current_frame);
+          geo_nodes_modifier_data.current_simulation_state_for_write = &current_sim_state;
+          geo_nodes_modifier_data.simulation_time_delta = 0.0f;
+        }
+        else if (sim_states.prev != nullptr && sim_states.next == nullptr) {
+          const float delta_frames = float(current_frame) - float(sim_states.prev->frame);
+          if (delta_frames <= 1.0f) {
+            bke::sim::ModifierSimulationState &current_sim_state =
+                nmd_orig->simulation_cache->get_state_at_frame_for_write(current_frame);
+            geo_nodes_modifier_data.current_simulation_state_for_write = &current_sim_state;
+            const float delta_seconds = delta_frames / FPS;
+            geo_nodes_modifier_data.simulation_time_delta = delta_seconds;
+          }
+        }
       }
     }
-    if (last_cache_state == bke::sim::CacheState::Baked) {
-      geo_nodes_modifier_data.current_simulation_state =
-          nmd_orig->simulation_cache->get_state_at_exact_frame(current_frame);
-    }
-    else {
-      geo_nodes_modifier_data.current_simulation_state_for_write =
-          &nmd_orig->simulation_cache->get_state_at_frame_for_write(current_frame);
-      geo_nodes_modifier_data.current_simulation_state =
-          geo_nodes_modifier_data.current_simulation_state_for_write;
-    }
   }
-  else {
-    /* TODO: Should probably only access baked data that is not modified in the original data
-     * anymore. */
-    if (nmd_orig->simulation_cache != nullptr) {
-      geo_nodes_modifier_data.current_simulation_state =
-          nmd_orig->simulation_cache->get_state_at_exact_frame(current_frame);
+
+  if (sim_states.current) {
+    geo_nodes_modifier_data.current_simulation_state = &sim_states.current->state;
+  }
+  if (sim_states.prev) {
+    geo_nodes_modifier_data.prev_simulation_state = &sim_states.prev->state;
+    if (sim_states.next) {
+      geo_nodes_modifier_data.next_simulation_state = &sim_states.next->state;
+      geo_nodes_modifier_data.simulation_state_mix_factor =
+          (float(current_frame) - float(sim_states.prev->frame)) /
+          (float(sim_states.next->frame) - float(sim_states.prev->frame));
     }
   }
 
