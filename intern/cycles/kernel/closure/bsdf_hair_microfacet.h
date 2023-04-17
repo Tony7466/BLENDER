@@ -226,7 +226,7 @@ ccl_device int bsdf_microfacet_hair_setup(ccl_private ShaderData *sd,
                             1.0f :
                             sqrtf(1.0f - bsdf->extra->e2 * sqr(I.x) / (sqr(I.x) + sqr(I.z)));
 
-  return SD_BSDF | SD_BSDF_HAS_EVAL | SD_BSDF_NEEDS_LCG;
+  return SD_BSDF | SD_BSDF_HAS_EVAL | SD_BSDF_NEEDS_LCG | SD_BSDF_HAS_TRANSMISSION;
 }
 
 #endif /* __HAIR__ */
