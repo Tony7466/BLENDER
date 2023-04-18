@@ -36,31 +36,42 @@ void VKCommandBuffer::init(const VkDevice vk_device,
   vk_queue_ = vk_queue;
   vk_command_buffer_ = vk_command_buffer;
   submission_id_.reset();
+  state.stage = Stage::Initial;
 
   if (vk_fence_ == VK_NULL_HANDLE) {
     VK_ALLOCATION_CALLBACKS;
     VkFenceCreateInfo fenceInfo{};
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
     vkCreateFence(vk_device_, &fenceInfo, vk_allocation_callbacks, &vk_fence_);
+  }
+  else {
+    vkResetFences(vk_device_, 1, &vk_fence_);
   }
 }
 
 void VKCommandBuffer::begin_recording()
 {
-  vkWaitForFences(vk_device_, 1, &vk_fence_, VK_TRUE, UINT64_MAX);
-  vkResetFences(vk_device_, 1, &vk_fence_);
-  vkResetCommandBuffer(vk_command_buffer_, 0);
+  if (is_in_stage(Stage::Submitted)) {
+    vkWaitForFences(vk_device_, 1, &vk_fence_, VK_TRUE, FenceTimeout);
+    vkResetFences(vk_device_, 1, &vk_fence_);
+    stage_transfer(Stage::Submitted, Stage::Executed);
+  }
+  if (is_in_stage(Stage::Executed)) {
+    vkResetCommandBuffer(vk_command_buffer_, 0);
+    stage_transfer(Stage::Executed, Stage::Initial);
+  }
 
   VkCommandBufferBeginInfo begin_info = {};
   begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   vkBeginCommandBuffer(vk_command_buffer_, &begin_info);
+  stage_transfer(Stage::Initial, Stage::Recording);
 }
 
 void VKCommandBuffer::end_recording()
 {
   ensure_no_active_framebuffer();
   vkEndCommandBuffer(vk_command_buffer_);
+  stage_transfer(Stage::Recording, Stage::BetweenRecordingAndSubmitting);
 }
 
 void VKCommandBuffer::bind(const VKPipeline &pipeline, VkPipelineBindPoint bind_point)
@@ -259,6 +270,7 @@ void VKCommandBuffer::submit_encoded_commands()
 
   vkQueueSubmit(vk_queue_, 1, &submit_info, vk_fence_);
   submission_id_.next();
+  stage_transfer(Stage::BetweenRecordingAndSubmitting, Stage::Submitted);
 }
 
 /* -------------------------------------------------------------------- */

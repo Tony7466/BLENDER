@@ -1548,7 +1548,7 @@ static void view3d_draw_view(const bContext *C, ARegion *region)
                             nullptr);
 
   /* Only 100% compliant on new spec goes below */
-  DRW_draw_view(C);
+  // TODO(jbakker): DRW_draw_view(C);
 }
 
 RenderEngineType *ED_view3d_engine_type(const Scene *scene, int drawtype)

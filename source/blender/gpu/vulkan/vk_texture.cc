@@ -94,8 +94,12 @@ void *VKTexture::read(int mip, eGPUDataFormat format)
 }
 
 void VKTexture::update_sub(
-    int mip, int offset[3], int extent[3], eGPUDataFormat format, const void *data)
+    int mip, int offset[3], int extent_[3], eGPUDataFormat format, const void *data)
 {
+  /* TODO: Add support for mip levels. */
+  if (mip != 0) {
+    return;
+  }
   if (!is_allocated()) {
     allocate();
   }
@@ -103,7 +107,8 @@ void VKTexture::update_sub(
   /* Vulkan images cannot be directly mapped to host memory and requires a staging buffer. */
   VKContext &context = *VKContext::get();
   VKBuffer staging_buffer;
-  size_t sample_len = extent[0] * extent[1] * extent[2];
+  int3 extent = int3(extent_[0], max_ii(extent_[1], 1), max_ii(extent_[2], 1));
+  size_t sample_len = extent.x * extent.y * extent.z;
   size_t device_memory_size = sample_len * to_bytesize(format_);
 
   staging_buffer.create(
@@ -111,9 +116,9 @@ void VKTexture::update_sub(
   convert_host_to_device(staging_buffer.mapped_memory_get(), data, sample_len, format, format_);
 
   VkBufferImageCopy region = {};
-  region.imageExtent.width = extent[0];
-  region.imageExtent.height = extent[1];
-  region.imageExtent.depth = extent[2];
+  region.imageExtent.width = extent.x;
+  region.imageExtent.height = extent.y;
+  region.imageExtent.depth = extent.z;
   region.imageOffset.x = offset[0];
   region.imageOffset.y = offset[1];
   region.imageOffset.z = offset[2];

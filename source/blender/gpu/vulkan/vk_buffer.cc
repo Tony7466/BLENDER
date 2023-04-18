@@ -25,9 +25,8 @@ static VmaAllocationCreateFlagBits vma_allocation_flags(GPUUsageType usage)
 {
   switch (usage) {
     case GPU_USAGE_STATIC:
-      return static_cast<VmaAllocationCreateFlagBits>(
-          VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
     case GPU_USAGE_DYNAMIC:
+    case GPU_USAGE_STREAM:
       return static_cast<VmaAllocationCreateFlagBits>(
           VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
     case GPU_USAGE_DEVICE_ONLY:
@@ -35,7 +34,6 @@ static VmaAllocationCreateFlagBits vma_allocation_flags(GPUUsageType usage)
           VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT |
           VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
     case GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY:
-    case GPU_USAGE_STREAM:
       break;
   }
   BLI_assert_msg(false, "Unimplemented GPUUsageType");

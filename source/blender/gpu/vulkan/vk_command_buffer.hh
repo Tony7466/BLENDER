@@ -7,8 +7,8 @@
 
 #pragma once
 
-#include "vk_common.hh"
 #include "vk_buffer_types.hh"
+#include "vk_common.hh"
 #include "vk_resource_tracker.hh"
 
 #include "BLI_utility_mixins.hh"
@@ -25,16 +25,30 @@ class VKVertexBuffer;
 
 /** Command buffer to keep track of the life-time of a command buffer. */
 class VKCommandBuffer : NonCopyable, NonMovable {
-  /** None owning handle to the command buffer and device. Handle is owned by `GHOST_ContextVK`. */
+  /** Not owning handle to the command buffer and device. Handle is owned by `GHOST_ContextVK`. */
   VkDevice vk_device_ = VK_NULL_HANDLE;
   VkCommandBuffer vk_command_buffer_ = VK_NULL_HANDLE;
   VkQueue vk_queue_ = VK_NULL_HANDLE;
 
+  /**
+   * Timeout to use when waiting for fences in nanoseconds.
+   *
+   * Currently added as the fence will halt when there are no commands in the command buffer for
+   * the second time. This should be solved and this timeout should be removed.
+   */
+  static constexpr uint64_t FenceTimeout = UINT64_MAX;
   /** Owning handles */
   VkFence vk_fence_ = VK_NULL_HANDLE;
   VKSubmissionID submission_id_;
 
  private:
+  enum class Stage {
+    Initial,
+    Recording,
+    BetweenRecordingAndSubmitting,
+    Submitted,
+    Executed,
+  };
   /*
    * Some vulkan command require an active frame buffer. Others require no active frame-buffer. As
    * our current API does not provide a solution for this we need to keep track of the actual state
@@ -68,7 +82,45 @@ class VKCommandBuffer : NonCopyable, NonMovable {
     uint64_t checks_ = 0;
     /* Amount of times a check required to change the render pass. */
     uint64_t switches_ = 0;
+
+    /**
+     * Current stage of the command buffer to keep track of inconsistencies & incorrect usage.
+     */
+    Stage stage = Stage::Initial;
+
   } state;
+  bool is_in_stage(Stage stage)
+  {
+    return state.stage == stage;
+  }
+  void stage_set(Stage stage)
+  {
+    state.stage = stage;
+  }
+  std::string to_string(Stage stage)
+  {
+    switch (stage) {
+      case Stage::Initial:
+        return "INITIAL";
+      case Stage::Recording:
+        return "RECORDING";
+      case Stage::BetweenRecordingAndSubmitting:
+        return "BEFORE_SUBMIT";
+      case Stage::Submitted:
+        return "SUBMITTED";
+      case Stage::Executed:
+        return "EXECUTED";
+    }
+    return "UNKNOWN";
+  }
+  void stage_transfer(Stage stage_from, Stage stage_to)
+  {
+    BLI_assert(is_in_stage(stage_from));
+    printf(" *** Transfer stage from %s to %s\n",
+           to_string(stage_from).c_str(),
+           to_string(stage_to).c_str());
+    stage_set(stage_to);
+  }
 
  public:
   virtual ~VKCommandBuffer();
