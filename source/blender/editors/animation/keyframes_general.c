@@ -505,16 +505,13 @@ void shear_left_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float 
     return;
   }
 
-  /* The factor goes from 0 to 1, but for this tool it needs to go from -1 to 1. */
-  const float long_factor = factor * 2 - 1;
-
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
     /* For easy calculation of the curve, the  values are normalized. */
     const float normalized_x = (fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range;
 
     const float lineal = key_y_range * normalized_x;
 
-    const float key_y_value = fcu->bezt[i].vec[1][1] + lineal * long_factor;
+    const float key_y_value = fcu->bezt[i].vec[1][1] + lineal * factor;
     move_key(&fcu->bezt[i], key_y_value);
   }
 }

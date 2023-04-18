@@ -1134,6 +1134,8 @@ static int shear_left_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   gso->modal_update = shear_left_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   shear_left_draw_status_header(C, gso);
+  ED_slider_is_bidirectional_set(gso->slider, true);
+  ED_slider_factor_set(gso->slider, 0.0f);
 
   return invoke_result;
 }
@@ -1177,7 +1179,7 @@ void GRAPH_OT_shear_left(wmOperatorType *ot)
 
   RNA_def_float_factor(ot->srna,
                        "factor",
-                       0.5f,
+                       0.0f,
                        -FLT_MAX,
                        FLT_MAX,
                        "Curve Bend",
