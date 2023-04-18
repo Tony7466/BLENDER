@@ -1074,7 +1074,7 @@ static void blend_to_infinity_graph_keys(bAnimContext *ac, const float factor)
     ListBase segments = find_fcurve_segments(fcu);
 
     LISTBASE_FOREACH (FCurveSegment *, segment, &segments) {
-      if (factor >= 0.5){
+      if (factor >= 0){
         if (segment->start_index + segment->length >= fcu->totvert - 1) {
         WM_report(RPT_WARNING, "You need at least 2 keys to the right side of the selection.");
         continue;
@@ -1146,6 +1146,9 @@ static int blend_to_infinity_invoke(bContext *C, wmOperator *op, const wmEvent *
   gso->modal_update = blend_to_infinity_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   blend_to_infinity_draw_status_header(C, gso);
+  ED_slider_allow_overshoot_set(gso->slider, false);
+  ED_slider_is_bidirectional_set(gso->slider, true);
+  ED_slider_factor_set(gso->slider, 0.0f);
 
   return invoke_result;
 }
