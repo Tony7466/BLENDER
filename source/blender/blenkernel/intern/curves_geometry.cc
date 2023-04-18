@@ -28,6 +28,7 @@
 #include "BKE_curves.hh"
 #include "BKE_curves_utils.hh"
 #include "BKE_customdata.h"
+#include "BKE_deform.h"
 
 namespace blender::bke {
 
@@ -81,6 +82,8 @@ CurvesGeometry::CurvesGeometry(const int point_num, const int curve_num)
     this->curve_offsets = nullptr;
   }
 
+  BLI_listbase_clear(&this->vertex_group_names);
+
   /* Fill the type counts with the default so they're in a valid state. */
   this->runtime->type_counts[CURVE_TYPE_CATMULL_ROM] = curve_num;
 }
@@ -96,6 +99,9 @@ static void copy_curves_geometry(CurvesGeometry &dst, const CurvesGeometry &src)
   dst.curve_num = src.curve_num;
   CustomData_copy(&src.point_data, &dst.point_data, CD_MASK_ALL, dst.point_num);
   CustomData_copy(&src.curve_data, &dst.curve_data, CD_MASK_ALL, dst.curve_num);
+
+  dst.vertex_group_active_index = src.vertex_group_active_index;
+  BKE_defgroup_copy_list(&dst.vertex_group_names, &src.vertex_group_names);
 
   implicit_sharing::copy_shared_pointer(src.curve_offsets,
                                         src.runtime->curve_offsets_sharing_info,
@@ -143,6 +149,11 @@ static void move_curves_geometry(CurvesGeometry &dst, CurvesGeometry &src)
 
   std::swap(dst.curve_offsets, src.curve_offsets);
 
+  dst.vertex_group_active_index = src.vertex_group_active_index;
+  std::swap(dst.vertex_group_names.first, src.vertex_group_names.first);
+  std::swap(dst.vertex_group_names.last, src.vertex_group_names.last);
+  src.vertex_group_active_index = 0;
+
   std::swap(dst.runtime, src.runtime);
 }
 
@@ -165,6 +176,7 @@ CurvesGeometry::~CurvesGeometry()
   CustomData_free(&this->curve_data, this->curve_num);
   implicit_sharing::free_shared_data(&this->curve_offsets,
                                      &this->runtime->curve_offsets_sharing_info);
+  BLI_freelistN(&this->vertex_group_names);
   MEM_delete(this->runtime);
   this->runtime = nullptr;
 }
@@ -1495,6 +1507,8 @@ void CurvesGeometry::blend_read(BlendDataReader &reader)
         this->curve_offsets);
   }
 
+  BLO_read_list(&reader, &this->vertex_group_names);
+
   /* Recalculate curve type count cache that isn't saved in files. */
   this->update_curve_types();
 }
@@ -1517,6 +1531,8 @@ void CurvesGeometry::blend_write(BlendWriter &writer,
       &writer, &this->curve_data, write_data.curve_layers, this->curve_num, CD_MASK_ALL, &id);
 
   BLO_write_int32_array(&writer, this->curve_num + 1, this->curve_offsets);
+
+  BKE_defbase_blend_write(&writer, &this->vertex_group_names);
 }
 
 /** \} */
