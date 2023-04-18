@@ -155,6 +155,112 @@ const CPPType &get_simulation_item_cpp_type(const NodeSimulationItem &item)
   }
 }
 
+template <typename T>
+static std::unique_ptr<bke::sim::TypedSimulationStateItem<T>> make_typed_simulation_state_item(lf::Params &params, int index)
+{
+  using bke::sim::TypedSimulationStateItem;
+
+  if (const T *data = params.try_get_input_data_ptr_or_request<T>(index)) {
+    return std::make_unique<TypedSimulationStateItem<T>>(*data);
+  }
+
+  return std::make_unique<TypedSimulationStateItem<T>>();
+}
+
+static std::unique_ptr<bke::sim::SimulationStateItem> make_simulation_state_item(
+    lf::Params &params, int index, short socket_type)
+{
+  switch (socket_type) {
+    case SOCK_FLOAT:
+      return make_typed_simulation_state_item<ValueOrField<float>>(params, index);
+    case SOCK_VECTOR:
+      return make_typed_simulation_state_item<ValueOrField<float3>>(params, index);
+    case SOCK_RGBA:
+      return make_typed_simulation_state_item<ValueOrField<ColorGeometry4f>>(params, index);
+    case SOCK_BOOLEAN:
+      return make_typed_simulation_state_item<ValueOrField<bool>>(params, index);
+    case SOCK_INT:
+      return make_typed_simulation_state_item<ValueOrField<int>>(params, index);
+    case SOCK_STRING:
+      return make_typed_simulation_state_item<ValueOrField<std::string>>(params, index);
+    case SOCK_OBJECT:
+      return make_typed_simulation_state_item<Object *>(params, index);
+    case SOCK_GEOMETRY:
+      return make_typed_simulation_state_item<GeometrySet>(params, index);
+    case SOCK_COLLECTION:
+      return make_typed_simulation_state_item<Collection *>(params, index);
+    case SOCK_TEXTURE:
+      return make_typed_simulation_state_item<Tex *>(params, index);
+    case SOCK_IMAGE:
+      return make_typed_simulation_state_item<Image *>(params, index);
+    case SOCK_MATERIAL:
+      return make_typed_simulation_state_item<Material *>(params, index);
+    default:
+      BLI_assert_unreachable();
+      return make_typed_simulation_state_item<GeometrySet>(params, index);
+  }
+}
+
+template <typename T>
+static void copy_typed_simulation_state_output(lf::Params &params, int index, const bke::sim::SimulationStateItem &state_item)
+{
+  using bke::sim::TypedSimulationStateItem;
+
+  if (auto *typed_state_item = dynamic_cast<const bke::sim::TypedSimulationStateItem<T> *>(&state_item)) {
+    params.set_output(index, typed_state_item->data());
+  }
+}
+
+static void copy_simulation_state_output(
+    lf::Params &params,
+    int index,
+    short socket_type,
+    const bke::sim::SimulationStateItem &state_item)
+{
+  switch (socket_type) {
+    case SOCK_FLOAT:
+      copy_typed_simulation_state_output<ValueOrField<float>>(params, index, state_item);
+      break;
+    case SOCK_VECTOR:
+      copy_typed_simulation_state_output<ValueOrField<float3>>(params, index, state_item);
+      break;
+    case SOCK_RGBA:
+      copy_typed_simulation_state_output<ValueOrField<ColorGeometry4f>>(params, index, state_item);
+      break;
+    case SOCK_BOOLEAN:
+      copy_typed_simulation_state_output<ValueOrField<bool>>(params, index, state_item);
+      break;
+    case SOCK_INT:
+      copy_typed_simulation_state_output<ValueOrField<int>>(params, index, state_item);
+      break;
+    case SOCK_STRING:
+      copy_typed_simulation_state_output<ValueOrField<std::string>>(params, index, state_item);
+      break;
+    case SOCK_OBJECT:
+      copy_typed_simulation_state_output<Object *>(params, index, state_item);
+      break;
+    case SOCK_GEOMETRY:
+      copy_typed_simulation_state_output<GeometrySet>(params, index, state_item);
+      break;
+    case SOCK_COLLECTION:
+      copy_typed_simulation_state_output<Collection *>(params, index, state_item);
+      break;
+    case SOCK_TEXTURE:
+      copy_typed_simulation_state_output<Tex *>(params, index, state_item);
+      break;
+    case SOCK_IMAGE:
+      copy_typed_simulation_state_output<Image *>(params, index, state_item);
+      break;
+    case SOCK_MATERIAL:
+      copy_typed_simulation_state_output<Material *>(params, index, state_item);
+      break;
+    default:
+      BLI_assert_unreachable();
+      copy_typed_simulation_state_output<GeometrySet>(params, index, state_item);
+      break;
+  }
+}
+
 }  // namespace blender::nodes
 
 namespace blender::nodes::node_geo_simulation_output_cc {
@@ -224,14 +330,15 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
 
     bool all_available = true;
     for (const int i : simulation_items_.index_range()) {
-      GeometrySet *input_geometry = params.try_get_input_data_ptr_or_request<GeometrySet>(i);
-      if (input_geometry == nullptr) {
+      const NodeSimulationItem &item = simulation_items_[i];
+
+      void *input_data = params.try_get_input_data_ptr_or_request(i);
+      if (input_data == nullptr) {
         all_available = false;
         continue;
       }
-      input_geometry->ensure_owns_direct_data();
-      new_zone_state.items[i] = std::make_unique<bke::sim::GeometrySimulationStateItem>(
-          std::move(*input_geometry));
+
+      new_zone_state.items[i] = make_simulation_state_item(params, i, item.socket_type);
     }
 
     if (all_available) {
@@ -242,17 +349,16 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
   void output_cached_state(lf::Params &params, const bke::sim::SimulationZoneState &state) const
   {
     for (const int i : simulation_items_.index_range()) {
+      const NodeSimulationItem &item = simulation_items_[i];
+
       if (i >= state.items.size()) {
         continue;
       }
-      const bke::sim::SimulationStateItem *item = state.items[i].get();
-      if (item == nullptr) {
+      const bke::sim::SimulationStateItem *state_item = state.items[i].get();
+      if (state_item == nullptr) {
         continue;
       }
-      if (auto *geometry_item = dynamic_cast<const bke::sim::GeometrySimulationStateItem *>(
-              item)) {
-        params.set_output(i, geometry_item->geometry());
-      }
+      copy_simulation_state_output(params, i, item.socket_type, *state_item);
     }
     params.set_default_remaining_outputs();
   }
