@@ -493,8 +493,6 @@ void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor
 
 void scale_average_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
 {
-  /* The factor goes from 0 to 1, but for this tool it needs to go from -1 to 1. */
-  const float long_factor = factor * 2 - 1;
   float y = 0;
 
   /* Find first the average of the y values to then use it in the final calculation. */
@@ -506,7 +504,7 @@ void scale_average_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const flo
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
     const float delta = fcu->bezt[i].vec[1][1] - y_average;
-    const float key_y_value = fcu->bezt[i].vec[1][1] + delta * long_factor;
+    const float key_y_value = fcu->bezt[i].vec[1][1] + delta * factor;
     move_key(&fcu->bezt[i], key_y_value);
   }
 }

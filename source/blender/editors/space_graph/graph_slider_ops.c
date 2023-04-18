@@ -1134,6 +1134,8 @@ static int scale_average_invoke(bContext *C, wmOperator *op, const wmEvent *even
   gso->modal_update = scale_average_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   scale_average_draw_status_header(C, gso);
+  ED_slider_is_bidirectional_set(gso->slider, true);
+  ED_slider_factor_set(gso->slider, 0.0f);
 
   return invoke_result;
 }
