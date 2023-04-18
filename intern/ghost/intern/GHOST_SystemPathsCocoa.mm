@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2010 Blender Foundation. All rights reserved. */
+ * Copyright 2010 Blender Foundation */
 
 #import <Foundation/Foundation.h>
 
-#include "GHOST_Debug.h"
-#include "GHOST_SystemPathsCocoa.h"
+#include "GHOST_Debug.hh"
+#include "GHOST_SystemPathsCocoa.hh"
 
 #pragma mark initialization/finalization
 
