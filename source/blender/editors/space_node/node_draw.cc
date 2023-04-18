@@ -3132,6 +3132,8 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
   }
 
   Array<Vector<float2>> bounds_by_zone(zones->zones.size());
+  Array<bke::CurvesGeometry> fillet_curve_by_zone(zones->zones.size());
+
   for (const int zone_i : zones->zones.index_range()) {
     const TreeZone &zone = *zones->zones[zone_i];
 
@@ -3152,18 +3154,25 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
     }
     boundary_curve.tag_topology_changed();
 
-    bke::CurvesGeometry fillet_curve = geometry::fillet_curves_poly(
+    fillet_curve_by_zone[zone_i] = geometry::fillet_curves_poly(
         boundary_curve,
         IndexRange(1),
         VArray<float>::ForSingle(UI_UNIT_X / 2, boundary_positions_num),
         VArray<int>::ForSingle(5, boundary_positions_num),
         true,
         {});
-    const Span<float3> fillet_boundary_positions = fillet_curve.positions();
+  }
 
-    const uint pos = GPU_vertformat_attr_add(
-        immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+  const uint pos = GPU_vertformat_attr_add(
+      immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
 
+  /**
+   * Draw all the countour lines after to prevent them from getting hidden.
+   * Once we support other zones (e.g., for loops) we will need to sort them in a smarter way.
+  */
+
+  for (const int zone_i : zones->zones.index_range()) {
+    const Span<float3> fillet_boundary_positions = fillet_curve_by_zone[zone_i].positions();
     /* Draw the background. */
     immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
     float zone_color[4];
@@ -3176,7 +3185,10 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
     }
     immVertex3fv(pos, fillet_boundary_positions[0]);
     immEnd();
+  }
 
+  for (const int zone_i : zones->zones.index_range()) {
+    const Span<float3> fillet_boundary_positions = fillet_curve_by_zone[zone_i].positions();
     /* Draw the countour lines. */
     immBindBuiltinProgram(GPU_SHADER_3D_POLYLINE_UNIFORM_COLOR);
     float scale;
