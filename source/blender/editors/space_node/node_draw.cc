@@ -3163,20 +3163,29 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
         {});
   }
 
+  const View2D &v2d = region.v2d;
+  float scale;
+  UI_view2d_scale_get(&v2d, &scale, nullptr);
+  float line_width = 1.0f * scale;
+  float viewport[4] = {};
+  GPU_viewport_size_get_f(viewport);
+  float zone_color[4];
+  UI_GetThemeColor4fv(TH_NODE_ZONE_SIMULATION, zone_color);
+
   const uint pos = GPU_vertformat_attr_add(
       immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
 
   /**
    * Draw all the countour lines after to prevent them from getting hidden.
    * Once we support other zones (e.g., for loops) we will need to sort them in a smarter way.
-  */
-
+   */
   for (const int zone_i : zones->zones.index_range()) {
+    if (zone_color[3] == 0.0f) {
+      break;
+    }
     const Span<float3> fillet_boundary_positions = fillet_curve_by_zone[zone_i].positions();
     /* Draw the background. */
     immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-    float zone_color[4];
-    UI_GetThemeColor4fv(TH_NODE_ZONE_SIMULATION, zone_color);
     immUniformThemeColorBlend(TH_BACK, TH_NODE_ZONE_SIMULATION, zone_color[3]);
 
     immBegin(GPU_PRIM_TRI_FAN, fillet_boundary_positions.size() + 1);
@@ -3191,13 +3200,6 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
     const Span<float3> fillet_boundary_positions = fillet_curve_by_zone[zone_i].positions();
     /* Draw the countour lines. */
     immBindBuiltinProgram(GPU_SHADER_3D_POLYLINE_UNIFORM_COLOR);
-    float scale;
-    const View2D &v2d = region.v2d;
-    UI_view2d_scale_get(&v2d, &scale, nullptr);
-    float line_width = 1.0f * scale;
-
-    float viewport[4] = {};
-    GPU_viewport_size_get_f(viewport);
 
     immUniform2fv("viewportSize", &viewport[2]);
     immUniform1f("lineWidth", line_width * U.pixelsize);
