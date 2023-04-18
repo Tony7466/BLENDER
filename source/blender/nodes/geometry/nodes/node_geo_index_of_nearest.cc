@@ -18,7 +18,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Int>(N_("Nearest Group ID")).supports_field().hide_value().default_value(0);
 
   b.add_output<decl::Int>(N_("Index")).field_source().description(N_("Index of nearest element"));
-  b.add_output<decl::Bool>(N_("Valid")).field_source();
+  b.add_output<decl::Bool>(N_("Has Neighbor")).field_source();
 }
 
 class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
@@ -28,9 +28,9 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
   const Field<int> search_group_field_;
 
  public:
-  IndexOfNearestFieldInput(const Field<float3> positions_field,
-                           const Field<int> group_field,
-                           const Field<int> search_group_field)
+  IndexOfNearestFieldInput(Field<float3> positions_field,
+                           Field<int> group_field,
+                           Field<int> search_group_field)
       : bke::GeometryFieldInput(CPPType::get<int>(), "Nearest to"),
         positions_field_(std::move(positions_field)),
         group_field_(std::move(group_field)),
@@ -107,7 +107,7 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
   }
 
  protected:
-  int kdtree_find_neighboard(KDTree_3d *tree, const float3 &position, const int index) const
+  int kdtree_find_neighboard(KDTree_3d *tree, const float3 &position, const int &index) const
   {
     return BLI_kdtree_3d_find_nearest_cb_cpp(
         tree,
@@ -171,14 +171,14 @@ static void node_geo_exec(GeoNodeExecParams params)
     params.set_output("Index", Field<int>(clamp_op, 0));
   }
 
-  if (params.output_is_required("Valid")) {
+  if (params.output_is_required("Has Neighbor")) {
     static auto valid_fn = mf::build::SI1_SO<int, bool>(
         "Index Validating",
         [](const int index) { return index != -1; },
         mf::build::exec_presets::Materialized());
     auto valid_op = std::make_shared<FieldOperation>(
         FieldOperation(std::move(valid_fn), {std::move(index_of_nearest_field)}));
-    params.set_output("Valid", Field<bool>(valid_op, 0));
+    params.set_output("Has Neighbor", Field<bool>(valid_op, 0));
   }
 }
 
