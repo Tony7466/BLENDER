@@ -115,6 +115,11 @@ static void geometry_set_mesh_to_points(GeometrySet &geometry_set,
     const AttributeIDRef attribute_id = entry.key;
     const eCustomDataType data_type = entry.value.data_type;
     const bke::GAttributeReader src = src_attributes.lookup(attribute_id, domain, data_type);
+    if (!src) {
+      /* Domain interpolation can fail if the source domain is empty. */
+      continue;
+    }
+
     if (share_arrays && src.domain == domain && src.sharing_info) {
       const bke::AttributeInitShared init(src.varray.get_internal_span().data(),
                                           *src.sharing_info);
