@@ -460,8 +460,8 @@ MutableSpan<float2> CurvesGeometry::surface_uv_coords_for_write()
 
 Span<MDeformVert> CurvesGeometry::deform_verts() const
 {
-  const MDeformVert *dverts = (const MDeformVert *)CustomData_get_layer(&this->point_data,
-                                                                        CD_MDEFORMVERT);
+  const MDeformVert *dverts = static_cast<const MDeformVert *>(
+      CustomData_get_layer(&this->point_data, CD_MDEFORMVERT));
   if (dverts == nullptr) {
     return {};
   }
@@ -470,8 +470,8 @@ Span<MDeformVert> CurvesGeometry::deform_verts() const
 
 MutableSpan<MDeformVert> CurvesGeometry::deform_verts_for_write()
 {
-  MDeformVert *dvert = (MDeformVert *)CustomData_get_layer_for_write(
-      &this->point_data, CD_MDEFORMVERT, this->point_num);
+  MDeformVert *dvert = static_cast<MDeformVert *>(
+      CustomData_get_layer_for_write(&this->point_data, CD_MDEFORMVERT, this->point_num));
   if (dvert != nullptr) {
     return {dvert, this->point_num};
   }
