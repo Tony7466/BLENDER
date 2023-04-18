@@ -182,7 +182,7 @@ class Layer : public TreeNode, public ::GreasePencilLayer {
   /**
    * Should be called whenever the keys in the frames map have changed.
    */
-  void tag_frame_times_changed();
+  void tag_frames_map_keys_changed();
 };
 
 /**

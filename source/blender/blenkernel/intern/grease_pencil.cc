@@ -434,7 +434,7 @@ int Layer::drawing_index_at(int frame) const
   return this->frames().lookup(*std::prev(it)).drawing_index;
 }
 
-void Layer::tag_frame_times_changed()
+void Layer::tag_frames_map_keys_changed()
 {
   this->sorted_keys_cache_.tag_dirty();
 }
@@ -1122,11 +1122,11 @@ void GreasePencil::remove_drawing(int index_to_remove)
   /* Remove any frame that points to the last drawing. */
   for (Layer *layer : this->layers_for_write()) {
     blender::Map<int, GreasePencilFrame> &frames = layer->frames_for_write();
-    int64_t removed = frames.remove_if([last_drawing_index](auto item) {
+    int64_t frames_removed = frames.remove_if([last_drawing_index](auto item) {
       return item.value.drawing_index == last_drawing_index;
     });
-    if (removed > 0) {
-      layer->tag_frame_times_changed();
+    if (frames_removed > 0) {
+      layer->tag_frames_map_keys_changed();
     }
   }
 
