@@ -363,11 +363,18 @@ class DATA_PT_font(CurveButtonsPanelText, Panel):
         if mode == 'EDIT_TEXT':
             layout.separator()
 
-            row = layout.row(align=True)
-            row.operator("font.style_toggle", text="Bold", icon='BOLD' , depress = char.use_bold).style = 'BOLD'
-            row.operator("font.style_toggle", text="Italic", icon='ITALIC' , depress = char.use_italic).style = 'ITALIC'
-            row.operator("font.style_toggle", text="Underline", icon='UNDERLINE' , depress = char.use_underline).style = 'UNDERLINE'
-            row.operator("font.style_toggle", text="Small Caps", icon='SMALL_CAPS' , depress = char.use_small_caps).style = 'SMALL_CAPS'
+            if text.is_selected == False :
+                row = layout.row(align=True)
+                row.prop(char, "use_bold", toggle=True)
+                row.prop(char, "use_italic", toggle=True)
+                row.prop(char, "use_underline", toggle=True)
+                row.prop(char, "use_small_caps", toggle=True)
+            else:
+                row = layout.row(align=True)
+                row.operator("font.style_toggle", text="Bold", icon='BOLD' , depress = text.select_is_bold).style = 'BOLD'
+                row.operator("font.style_toggle", text="Italic", icon='ITALIC' , depress = text.select_is_italic).style = 'ITALIC'
+                row.operator("font.style_toggle", text="Underline", icon='UNDERLINE' , depress = text.select_is_underline).style = 'UNDERLINE'
+                row.operator("font.style_toggle", text="Small Caps", icon='SMALL_CAPS' , depress = text.select_is_smallcaps).style = 'SMALL_CAPS'
 
 
 class DATA_PT_font_transform(CurveButtonsPanelText, Panel):
