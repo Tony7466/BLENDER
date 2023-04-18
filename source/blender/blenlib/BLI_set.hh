@@ -489,21 +489,25 @@ class Set {
   }
 
   /**
-   * Remove all values for which the given predicate is true.
+   * Remove all values for which the given predicate is true and return the number of removed
+   * values.
    *
    * This is similar to std::erase_if.
    */
-  template<typename Predicate> void remove_if(Predicate &&predicate)
+  template<typename Predicate> int64_t remove_if(Predicate &&predicate)
   {
+    int64_t removed_values = 0;
     for (Slot &slot : slots_) {
       if (slot.is_occupied()) {
         const Key &key = *slot.key();
         if (predicate(key)) {
           slot.remove();
           removed_slots_++;
+          removed_values++;
         }
       }
     }
+    return removed_values;
   }
 
   /**

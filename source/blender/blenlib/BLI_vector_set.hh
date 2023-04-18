@@ -347,22 +347,25 @@ class VectorSet {
   }
 
   /**
-   * Remove all values for which the given predicate is true. This may change the order of elements
-   * in the vector.
+   * Remove all values for which the given predicate is true and return the number or values
+   * removed. This may change the order of elements in the vector.
    *
    * This is similar to std::erase_if.
    */
-  template<typename Predicate> void remove_if(Predicate &&predicate)
+  template<typename Predicate> int64_t remove_if(Predicate &&predicate)
   {
+    int64_t removed_values = 0;
     for (Slot &slot : slots_) {
       if (slot.is_occupied()) {
         const int64_t index = slot.index();
         const Key &key = keys_[index];
         if (predicate(key)) {
           this->remove_key_internal(slot);
+          removed_values++;
         }
       }
     }
+    return removed_values;
   }
 
   /**

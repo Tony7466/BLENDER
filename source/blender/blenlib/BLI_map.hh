@@ -885,12 +885,14 @@ class Map {
   }
 
   /**
-   * Remove all key-value-pairs for that the given predicate is true.
+   * Remove all key-value-pairs for that the given predicate is true and return the number of
+   * removed pairs.
    *
    * This is similar to std::erase_if.
    */
-  template<typename Predicate> void remove_if(Predicate &&predicate)
+  template<typename Predicate> int64_t remove_if(Predicate &&predicate)
   {
+    int64_t removed_pairs = 0;
     for (Slot &slot : slots_) {
       if (slot.is_occupied()) {
         const Key &key = *slot.key();
@@ -898,9 +900,11 @@ class Map {
         if (predicate(MutableItem{key, value})) {
           slot.remove();
           removed_slots_++;
+          removed_pairs++;
         }
       }
     }
+    return removed_pairs;
   }
 
   /**
