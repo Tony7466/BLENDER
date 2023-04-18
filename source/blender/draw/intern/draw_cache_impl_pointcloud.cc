@@ -48,8 +48,8 @@ struct PointCloudEvalCache {
   /* Triangles indices to draw the points. */
   GPUIndexBuf *geom_indices;
 
-  /* Position and radius. */
-  GPUVertBuf *pos_rad;
+  GPUVertBuf *position;
+  GPUVertBuf *radius;
   /* Active attribute in 3D view. */
   GPUVertBuf *attr_viewer;
   /* Requested attributes */
@@ -157,7 +157,8 @@ static void pointcloud_batch_cache_clear(PointCloud &pointcloud)
 
   GPU_BATCH_DISCARD_SAFE(cache->eval_cache.dots);
   GPU_BATCH_DISCARD_SAFE(cache->eval_cache.surface);
-  GPU_VERTBUF_DISCARD_SAFE(cache->eval_cache.pos_rad);
+  GPU_VERTBUF_DISCARD_SAFE(cache->eval_cache.position);
+  GPU_VERTBUF_DISCARD_SAFE(cache->eval_cache.radius);
   GPU_VERTBUF_DISCARD_SAFE(cache->eval_cache.attr_viewer);
   GPU_INDEXBUF_DISCARD_SAFE(cache->eval_cache.geom_indices);
 
@@ -244,47 +245,43 @@ static void pointcloud_extract_indices(const PointCloud &pointcloud, PointCloudB
   GPU_indexbuf_build_in_place(&builder, cache.eval_cache.geom_indices);
 }
 
-static void pointcloud_extract_position_and_radius(const PointCloud &pointcloud,
-                                                   PointCloudBatchCache &cache)
+static void pointcloud_extract_position(const PointCloud &pointcloud, PointCloudBatchCache &cache)
 {
   using namespace blender;
-
   const bke::AttributeAccessor attributes = pointcloud.attributes();
-  const Span<float3> positions = pointcloud.positions();
-  const VArray<float> radii = *attributes.lookup<float>("radius");
+  const bke::AttributeReader positions = attributes.lookup<float3>("position");
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
-    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
   }
 
   GPUUsageType usage_flag = GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY;
-  GPU_vertbuf_init_with_format_ex(cache.eval_cache.pos_rad, &format, usage_flag);
+  GPU_vertbuf_init_with_format_ex(cache.eval_cache.position, &format, usage_flag);
 
-  GPU_vertbuf_data_alloc(cache.eval_cache.pos_rad, positions.size());
-  MutableSpan<float4> vbo_data{
-      static_cast<float4 *>(GPU_vertbuf_get_data(cache.eval_cache.pos_rad)), pointcloud.totpoint};
-  if (radii) {
-    const VArraySpan<float> radii_span(radii);
-    threading::parallel_for(vbo_data.index_range(), 4096, [&](IndexRange range) {
-      for (const int i : range) {
-        vbo_data[i].x = positions[i].x;
-        vbo_data[i].y = positions[i].y;
-        vbo_data[i].z = positions[i].z;
-        /* TODO(fclem): remove multiplication. Here only for keeping the size correct for now. */
-        vbo_data[i].w = radii_span[i] * 100.0f;
-      }
-    });
+  GPU_vertbuf_data_set_shared(cache.eval_cache.position,
+                              *positions.sharing_info,
+                              positions.varray.get_internal_span().data(),
+                              positions.varray.size());
+}
+
+static void pointcloud_extract_radius(const PointCloud &pointcloud, PointCloudBatchCache &cache)
+{
+  using namespace blender;
+  const bke::AttributeAccessor attributes = pointcloud.attributes();
+  const bke::AttributeReader radius = attributes.lookup_or_default<float>(
+      "radius", ATTR_DOMAIN_POINT, 0.01f);
+  static GPUVertFormat format = {0};
+  if (format.attr_len == 0) {
+    GPU_vertformat_attr_add(&format, "radius", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
   }
-  else {
-    threading::parallel_for(vbo_data.index_range(), 4096, [&](IndexRange range) {
-      for (const int i : range) {
-        vbo_data[i].x = positions[i].x;
-        vbo_data[i].y = positions[i].y;
-        vbo_data[i].z = positions[i].z;
-        vbo_data[i].w = 1.0f;
-      }
-    });
-  }
+
+  GPUUsageType usage_flag = GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY;
+  GPU_vertbuf_init_with_format_ex(cache.eval_cache.radius, &format, usage_flag);
+
+  GPU_vertbuf_data_set_shared(cache.eval_cache.radius,
+                              *radius.sharing_info,
+                              radius.varray.get_internal_span().data(),
+                              radius.varray.size());
 }
 
 static void pointcloud_extract_attribute(const PointCloud &pointcloud,
@@ -325,11 +322,18 @@ static void pointcloud_extract_attribute(const PointCloud &pointcloud,
 /** \name Private API
  * \{ */
 
-GPUVertBuf *pointcloud_position_and_radius_get(PointCloud *pointcloud)
+GPUVertBuf *pointcloud_position_get(PointCloud *pointcloud)
 {
   PointCloudBatchCache *cache = pointcloud_batch_cache_get(*pointcloud);
-  DRW_vbo_request(nullptr, &cache->eval_cache.pos_rad);
-  return cache->eval_cache.pos_rad;
+  DRW_vbo_request(nullptr, &cache->eval_cache.position);
+  return cache->eval_cache.position;
+}
+
+GPUVertBuf *pointcloud_radius_get(PointCloud *pointcloud)
+{
+  PointCloudBatchCache *cache = pointcloud_batch_cache_get(*pointcloud);
+  DRW_vbo_request(nullptr, &cache->eval_cache.radius);
+  return cache->eval_cache.radius;
 }
 
 GPUBatch **pointcloud_surface_shaded_get(PointCloud *pointcloud,
@@ -425,12 +429,14 @@ void DRW_pointcloud_batch_cache_create_requested(Object *ob)
   PointCloudBatchCache &cache = *pointcloud_batch_cache_get(*pointcloud);
 
   if (DRW_batch_requested(cache.eval_cache.dots, GPU_PRIM_POINTS)) {
-    DRW_vbo_request(cache.eval_cache.dots, &cache.eval_cache.pos_rad);
+    DRW_vbo_request(cache.eval_cache.dots, &cache.eval_cache.position);
+    DRW_vbo_request(cache.eval_cache.dots, &cache.eval_cache.radius);
   }
 
   if (DRW_batch_requested(cache.eval_cache.surface, GPU_PRIM_TRIS)) {
     DRW_ibo_request(cache.eval_cache.surface, &cache.eval_cache.geom_indices);
-    DRW_vbo_request(cache.eval_cache.surface, &cache.eval_cache.pos_rad);
+    DRW_vbo_request(cache.eval_cache.surface, &cache.eval_cache.position);
+    DRW_vbo_request(cache.eval_cache.surface, &cache.eval_cache.radius);
   }
   for (int i = 0; i < cache.eval_cache.mat_len; i++) {
     if (DRW_batch_requested(cache.eval_cache.surface_per_mat[i], GPU_PRIM_TRIS)) {
@@ -450,8 +456,11 @@ void DRW_pointcloud_batch_cache_create_requested(Object *ob)
     pointcloud_extract_indices(*pointcloud, cache);
   }
 
-  if (DRW_vbo_requested(cache.eval_cache.pos_rad)) {
-    pointcloud_extract_position_and_radius(*pointcloud, cache);
+  if (DRW_vbo_requested(cache.eval_cache.position)) {
+    pointcloud_extract_position(*pointcloud, cache);
+  }
+  if (DRW_vbo_requested(cache.eval_cache.radius)) {
+    pointcloud_extract_radius(*pointcloud, cache);
   }
 }
 

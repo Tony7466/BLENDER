@@ -116,7 +116,8 @@ GPU_SHADER_CREATE_INFO(draw_hair)
     .additional_info("draw_modelmat", "draw_resource_id");
 
 GPU_SHADER_CREATE_INFO(draw_pointcloud)
-    .sampler(0, ImageType::FLOAT_BUFFER, "ptcloud_pos_rad_tx", Frequency::BATCH)
+    .sampler(0, ImageType::FLOAT_BUFFER, "pointcloud_position_tx", Frequency::BATCH)
+    .sampler(0, ImageType::FLOAT_BUFFER, "pointcloud_radius_tx", Frequency::BATCH)
     .define("POINTCLOUD_SHADER")
     .define("DRW_POINTCLOUD_INFO")
     .vertex_in(0, Type::VEC4, "pos")

@@ -12,7 +12,8 @@ struct GPUBatch;
 struct GPUVertBuf;
 struct GPUMaterial;
 
-GPUVertBuf *pointcloud_position_and_radius_get(PointCloud *pointcloud);
+GPUVertBuf *pointcloud_position_get(PointCloud *pointcloud);
+GPUVertBuf *pointcloud_radius_get(PointCloud *pointcloud);
 GPUBatch **pointcloud_surface_shaded_get(PointCloud *pointcloud,
                                          GPUMaterial **gpu_materials,
                                          int mat_len);

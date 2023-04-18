@@ -60,8 +60,10 @@ DRWShadingGroup *DRW_shgroup_pointcloud_create_sub(Object *object,
   DRW_shgroup_buffer_texture(shgrp, "c", g_dummy_vbo);
   DRW_shgroup_buffer_texture(shgrp, "ac", g_dummy_vbo);
 
-  GPUVertBuf *pos_rad_buf = pointcloud_position_and_radius_get(&pointcloud);
-  DRW_shgroup_buffer_texture(shgrp, "ptcloud_pos_rad_tx", pos_rad_buf);
+  GPUVertBuf *position_buf = pointcloud_position_get(&pointcloud);
+  GPUVertBuf *radius_buf = pointcloud_radius_get(&pointcloud);
+  DRW_shgroup_buffer_texture(shgrp, "pointcloud_position_tx", position_buf);
+  DRW_shgroup_buffer_texture(shgrp, "pointcloud_radius_tx", radius_buf);
 
   if (gpu_material != nullptr) {
 
