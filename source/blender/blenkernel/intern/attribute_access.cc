@@ -338,12 +338,11 @@ GAttributeReader BuiltinCustomDataLayerProvider::try_get_for_read(const void *ow
   }
 
   /* When the number of elements is zero, layers might have null data but still exist. */
+  const CPPType &type = *custom_data_type_to_cpp_type(data_type_);
   const int element_num = custom_data_access_.get_element_num(owner);
   if (element_num == 0) {
     if (this->layer_exists(*custom_data)) {
-      return {GVArray::ForSingle(*custom_data_type_to_cpp_type(data_type_), 0, nullptr),
-              domain_,
-              nullptr};
+      return {GVArray::ForSpan({type, nullptr, 0}), domain_, nullptr};
     }
     return {};
   }
@@ -359,9 +358,7 @@ GAttributeReader BuiltinCustomDataLayerProvider::try_get_for_read(const void *ow
     return {};
   }
   const CustomDataLayer &layer = custom_data->layers[index];
-  return {GVArray::ForSpan({*custom_data_type_to_cpp_type(data_type_), layer.data, element_num}),
-          domain_,
-          layer.sharing_info};
+  return {GVArray::ForSpan({type, layer.data, element_num}), domain_, layer.sharing_info};
 }
 
 GAttributeWriter BuiltinCustomDataLayerProvider::try_get_for_write(void *owner) const
@@ -386,21 +383,18 @@ GAttributeWriter BuiltinCustomDataLayerProvider::try_get_for_write(void *owner) 
     return {};
   }
 
-  int index;
+  void *data = nullptr;
   if (stored_as_named_attribute_) {
-    index = CustomData_get_named_layer_index(custom_data, stored_type_, name_.c_str());
+    data = CustomData_get_layer_named_for_write(
+        custom_data, stored_type_, name_.c_str(), element_num);
   }
   else {
-    index = CustomData_get_layer_index(custom_data, stored_type_);
+    data = CustomData_get_layer_for_write(custom_data, stored_type_, element_num);
   }
-  if (index == -1) {
+  if (data == nullptr) {
     return {};
   }
-  CustomDataLayer &layer = custom_data->layers[index];
-
-  return {GVMutableArray::ForSpan({type, layer.data, element_num}),
-          domain_,
-          std::move(tag_modified_fn)};
+  return {GVMutableArray::ForSpan({type, data, element_num}), domain_, std::move(tag_modified_fn)};
 }
 
 bool BuiltinCustomDataLayerProvider::try_delete(void *owner) const

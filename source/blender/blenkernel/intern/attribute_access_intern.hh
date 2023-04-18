@@ -171,8 +171,6 @@ class CustomDataAttributeProvider final : public DynamicAttributesProvider {
  * if the stored type is the same as the attribute type.
  */
 class BuiltinCustomDataLayerProvider final : public BuiltinAttributeProvider {
-  using AsReadAttribute = GAttributeReader (*)(const void *data, int element_num);
-  using AsWriteAttribute = GVMutableArray (*)(void *data, int element_num);
   using UpdateOnRead = void (*)(const void *owner);
   using UpdateOnChange = void (*)(void *owner);
   const eCustomDataType stored_type_;
