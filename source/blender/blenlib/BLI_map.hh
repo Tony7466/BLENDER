@@ -892,7 +892,7 @@ class Map {
    */
   template<typename Predicate> int64_t remove_if(Predicate &&predicate)
   {
-    int64_t removed_pairs = 0;
+    int64_t prev_size = this->size();
     for (Slot &slot : slots_) {
       if (slot.is_occupied()) {
         const Key &key = *slot.key();
@@ -900,11 +900,10 @@ class Map {
         if (predicate(MutableItem{key, value})) {
           slot.remove();
           removed_slots_++;
-          removed_pairs++;
         }
       }
     }
-    return removed_pairs;
+    return prev_size - this->size();
   }
 
   /**
