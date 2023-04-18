@@ -852,7 +852,8 @@ static bool bake_simulation_poll(bContext *C)
     return false;
   }
   Main *bmain = CTX_data_main(C);
-  if (BKE_main_blendfile_path(bmain) == nullptr) {
+  const char *path = BKE_main_blendfile_path(bmain);
+  if (path == nullptr || path[0] == '\0') {
     CTX_wm_operator_poll_msg_set(C, "File has to be saved");
     return false;
   }
