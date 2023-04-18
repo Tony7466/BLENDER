@@ -10,7 +10,7 @@
 #include "DNA_object_types.h"
 
 #include "BKE_attribute_math.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_lib_id.h"
@@ -951,10 +951,20 @@ class VArrayImpl_For_VertexWeights final : public VMutableArrayImpl<float> {
   }
 };
 
+static float get_crease(const float &crease)
+{
+  return crease;
+}
+
+static void set_crease(float &crease, const float value)
+{
+  crease = std::clamp(value, 0.0f, 1.0f);
+}
+
 /**
  * This provider makes vertex groups available as float attributes.
  */
-class VertexGroupsAttributeProvider final : public DynamicAttributesProvider {
+class MeshVertexGroupsAttributeProvider final : public DynamicAttributesProvider {
  public:
   GAttributeReader try_get_for_read(const void *owner,
                                     const AttributeIDRef &attribute_id) const final
@@ -1190,6 +1200,18 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
                                                    BuiltinAttributeProvider::Deletable,
                                                    edge_access,
                                                    nullptr);
+
+  static BuiltinCustomDataLayerProvider crease(
+      "crease",
+      ATTR_DOMAIN_EDGE,
+      CD_PROP_FLOAT,
+      CD_CREASE,
+      BuiltinAttributeProvider::Creatable,
+      BuiltinAttributeProvider::Deletable,
+      edge_access,
+      make_array_read_attribute<float>,
+      make_derived_write_attribute<float, float, get_crease, set_crease>,
+      nullptr);
 
   static VertexGroupsAttributeProvider vertex_groups;
   static CustomDataAttributeProvider corner_custom_data(ATTR_DOMAIN_CORNER, corner_access);

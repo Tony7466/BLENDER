@@ -516,15 +516,14 @@ int BKE_id_defgroup_name_index(const ID *id, const char *name)
   return index;
 }
 
-bool BKE_id_defgroup_name_find(const ID *id,
-                               const char *name,
-                               int *r_index,
-                               bDeformGroup **r_group)
+bool BKE_defgroup_listbase_name_find(const ListBase *defbase,
+                                     const char *name,
+                                     int *r_index,
+                                     bDeformGroup **r_group)
 {
   if (name == nullptr || name[0] == '\0') {
     return false;
   }
-  const ListBase *defbase = BKE_id_defgroup_list_get(id);
   int index;
   LISTBASE_FOREACH_INDEX (bDeformGroup *, group, defbase, index) {
     if (STREQ(name, group->name)) {
@@ -538,6 +537,14 @@ bool BKE_id_defgroup_name_find(const ID *id,
     }
   }
   return false;
+}
+
+bool BKE_id_defgroup_name_find(const ID *id,
+                               const char *name,
+                               int *r_index,
+                               bDeformGroup **r_group)
+{
+  return BKE_defgroup_listbase_name_find(BKE_id_defgroup_list_get(id), name, r_index, r_group);
 }
 
 const ListBase *BKE_object_defgroup_list(const Object *ob)
