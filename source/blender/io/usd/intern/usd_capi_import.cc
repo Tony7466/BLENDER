@@ -390,7 +390,7 @@ static void import_endjob(void *customdata)
       break;
   }
 
-  MEM_freeN(data->params.prim_path_mask);
+  MEM_SAFE_FREE(data->params.prim_path_mask);
 
   WM_main_add_notifier(NC_SCENE | ND_FRAME, data->scene);
   report_job_duration(data);
