@@ -11,7 +11,13 @@
 
 namespace blender::render::hydra {
 
-bool ObjectData::supported(Object *object)
+ObjectData::ObjectData(BlenderSceneDelegate *scene_delegate, Object *object)
+    : IdData(scene_delegate, (ID *)object), visible(true)
+{
+  p_id_ = prim_id(scene_delegate, object);
+}
+
+bool ObjectData::is_supported(Object *object)
 {
   switch (object->type) {
     case OB_MESH:
@@ -65,15 +71,9 @@ pxr::SdfPath ObjectData::prim_id(BlenderSceneDelegate *scene_delegate, Object *o
   return scene_delegate->GetDelegateID().AppendElementString(str);
 }
 
-ObjectData::ObjectData(BlenderSceneDelegate *scene_delegate, Object *object)
-    : IdData(scene_delegate, (ID *)object), visible(true)
-{
-  p_id = prim_id(scene_delegate, object);
-}
-
 pxr::GfMatrix4d ObjectData::transform()
 {
-  return gf_matrix_from_transform(((Object *)id)->object_to_world);
+  return gf_matrix_from_transform(((Object *)id_)->object_to_world);
 }
 
 bool ObjectData::update_visibility(View3D *view3d)
@@ -83,7 +83,7 @@ bool ObjectData::update_visibility(View3D *view3d)
   }
 
   bool prev_visible = visible;
-  visible = BKE_object_is_visible_in_viewport(view3d, (Object *)id);
+  visible = BKE_object_is_visible_in_viewport(view3d, (Object *)id_);
   return visible != prev_visible;
 }
 

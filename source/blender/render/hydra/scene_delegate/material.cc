@@ -20,6 +20,13 @@
 
 namespace blender::render::hydra {
 
+MaterialData::MaterialData(BlenderSceneDelegate *scene_delegate, Material *material)
+    : IdData(scene_delegate, (ID *)material)
+{
+  p_id_ = prim_id(scene_delegate, material);
+  CLOG_INFO(LOG_BSD, 2, "%s, id=%s", id_->name, p_id_.GetText());
+}
+
 std::unique_ptr<MaterialData> MaterialData::create(BlenderSceneDelegate *scene_delegate,
                                                    Material *material)
 {
@@ -38,18 +45,11 @@ pxr::SdfPath MaterialData::prim_id(BlenderSceneDelegate *scene_delegate, Materia
   return scene_delegate->GetDelegateID().AppendElementString(str);
 }
 
-MaterialData::MaterialData(BlenderSceneDelegate *scene_delegate, Material *material)
-    : IdData(scene_delegate, (ID *)material)
-{
-  p_id = prim_id(scene_delegate, material);
-  CLOG_INFO(LOG_BSD, 2, "%s, id=%s", id->name, p_id.GetText());
-}
-
 void MaterialData::init()
 {
-  CLOG_INFO(LOG_BSD, 2, "%s", id->name);
+  CLOG_INFO(LOG_BSD, 2, "%s", id_->name);
 
-  material_network_map = pxr::VtValue();
+  material_network_map_ = pxr::VtValue();
 
   /* Call of python function hydra.export_mtlx() */
 
@@ -62,7 +62,7 @@ void MaterialData::init()
   func = PyDict_GetItemString(dict, "export_mtlx");
 
   PointerRNA materialptr;
-  RNA_pointer_create(NULL, &RNA_Material, id, &materialptr);
+  RNA_pointer_create(NULL, &RNA_Material, id_, &materialptr);
   PyObject *material = pyrna_struct_CreatePyObject(&materialptr);
 
   result = PyObject_CallFunction(func, "O", material);
@@ -76,67 +76,68 @@ void MaterialData::init()
     Py_DECREF(result);
   }
   else {
-    CLOG_ERROR(LOG_BSD, "Export error for %s", id->name);
+    CLOG_ERROR(LOG_BSD, "Export error for %s", id_->name);
     PyErr_Print();
   }
   Py_DECREF(module);
 
   PyGILState_Release(gstate);
 
-  mtlx_path = pxr::SdfAssetPath(path, path);
-  CLOG_INFO(LOG_BSD, 2, "Export: %s, mtlx=%s", id->name, mtlx_path.GetResolvedPath().c_str());
+  mtlx_path_ = pxr::SdfAssetPath(path, path);
+  CLOG_INFO(LOG_BSD, 2, "Export: %s, mtlx=%s", id_->name, mtlx_path_.GetResolvedPath().c_str());
+}
+
+void MaterialData::insert()
+{
+  CLOG_INFO(LOG_BSD, 2, "%s", id_->name);
+  scene_delegate_->GetRenderIndex().InsertSprim(
+      pxr::HdPrimTypeTokens->material, scene_delegate_, p_id_);
+}
+
+void MaterialData::remove()
+{
+  CLOG_INFO(LOG_BSD, 2, "%s", id_->name);
+  scene_delegate_->GetRenderIndex().RemoveSprim(pxr::HdPrimTypeTokens->material, p_id_);
+}
+
+void MaterialData::update()
+{
+  CLOG_INFO(LOG_BSD, 2, "%s", id_->name);
+  init();
+  scene_delegate_->GetRenderIndex().GetChangeTracker().MarkSprimDirty(p_id_,
+                                                                      pxr::HdMaterial::AllDirty);
 }
 
 pxr::VtValue MaterialData::get_data(pxr::TfToken const &key) const
 {
   pxr::VtValue ret;
   if (key.GetString() == "MaterialXFilename") {
-    if (!mtlx_path.GetResolvedPath().empty()) {
-      ret = mtlx_path;
+    if (!mtlx_path_.GetResolvedPath().empty()) {
+      ret = mtlx_path_;
     }
     CLOG_INFO(LOG_BSD, 3, "%s", key.GetText());
   }
   return ret;
 }
 
-pxr::VtValue MaterialData::material_resource()
+pxr::VtValue MaterialData::get_material_resource()
 {
-  if (material_network_map.IsEmpty()) {
-    const std::string &path = mtlx_path.GetResolvedPath();
+  if (material_network_map_.IsEmpty()) {
+    const std::string &path = mtlx_path_.GetResolvedPath();
     if (!path.empty()) {
       pxr::HdRenderDelegate *render_delegate =
-          scene_delegate->GetRenderIndex().GetRenderDelegate();
+          scene_delegate_->GetRenderIndex().GetRenderDelegate();
       pxr::TfTokenVector shader_source_types = render_delegate->GetShaderSourceTypes();
       pxr::TfTokenVector render_contexts = render_delegate->GetMaterialRenderContexts();
 
       pxr::HdMaterialNetworkMap network_map;
-      HdMtlxConvertToMaterialNetworkMap(path, shader_source_types, render_contexts, &network_map);
+      hdmtlx_convert_to_materialnetworkmap(
+          path, shader_source_types, render_contexts, &network_map);
 
-      material_network_map = network_map;
+      material_network_map_ = network_map;
     }
   }
-  return material_network_map;
-}
-
-void MaterialData::insert()
-{
-  CLOG_INFO(LOG_BSD, 2, "%s", id->name);
-  scene_delegate->GetRenderIndex().InsertSprim(
-      pxr::HdPrimTypeTokens->material, scene_delegate, p_id);
-}
-
-void MaterialData::remove()
-{
-  CLOG_INFO(LOG_BSD, 2, "%s", id->name);
-  scene_delegate->GetRenderIndex().RemoveSprim(pxr::HdPrimTypeTokens->material, p_id);
-}
-
-void MaterialData::update()
-{
-  CLOG_INFO(LOG_BSD, 2, "%s", id->name);
-  init();
-  scene_delegate->GetRenderIndex().GetChangeTracker().MarkSprimDirty(p_id,
-                                                                     pxr::HdMaterial::AllDirty);
+  return material_network_map_;
 }
 
 }  // namespace blender::render::hydra

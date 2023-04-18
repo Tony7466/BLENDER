@@ -27,7 +27,7 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
  public:
   enum class EngineType { VIEWPORT = 1, FINAL, PREVIEW };
 
-  BlenderSceneDelegate(pxr::HdRenderIndex *render_index,
+  BlenderSceneDelegate(pxr::HdRenderIndex *parent_index,
                        pxr::SdfPath const &delegate_id,
                        BlenderSceneDelegate::EngineType engine_type);
   ~BlenderSceneDelegate() override = default;
@@ -35,7 +35,7 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
   void populate(Depsgraph *depsgraph, bContext *context);
   void clear();
 
-  // delegate methods
+  /* Delegate methods */
   pxr::HdMeshTopology GetMeshTopology(pxr::SdfPath const &id) override;
   pxr::GfMatrix4d GetTransform(pxr::SdfPath const &id) override;
   pxr::VtValue Get(pxr::SdfPath const &id, pxr::TfToken const &key) override;
@@ -66,15 +66,14 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
   void update_world();
   void update_collection(bool remove, bool visibility);
 
- private:
-  Depsgraph *depsgraph;
-  bContext *context;
-  Scene *scene;
-  View3D *view3d;
+  Depsgraph *depsgraph_ = nullptr;
+  bContext *context_ = nullptr;
+  View3D *view3d_ = nullptr;
+  Scene *scene_ = nullptr;
 
-  ObjectDataMap objects;
-  MaterialDataMap materials;
-  std::unique_ptr<WorldData> world_data;
+  ObjectDataMap objects_;
+  MaterialDataMap materials_;
+  std::unique_ptr<WorldData> world_data_;
 };
 
 }  // namespace blender::render::hydra

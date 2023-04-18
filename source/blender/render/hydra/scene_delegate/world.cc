@@ -28,6 +28,13 @@
 
 namespace blender::render::hydra {
 
+WorldData::WorldData(BlenderSceneDelegate *scene_delegate, World *world, bContext *context)
+    : IdData(scene_delegate, (ID *)world), context_(context)
+{
+  p_id_ = prim_id(scene_delegate);
+  CLOG_INFO(LOG_BSD, 2, "%s, id=%s", id_->name, p_id_.GetText());
+}
+
 std::unique_ptr<WorldData> WorldData::create(BlenderSceneDelegate *scene_delegate,
                                              World *world,
                                              bContext *context)
@@ -43,21 +50,14 @@ pxr::SdfPath WorldData::prim_id(BlenderSceneDelegate *scene_delegate)
   return scene_delegate->GetDelegateID().AppendElementString("World");
 }
 
-WorldData::WorldData(BlenderSceneDelegate *scene_delegate, World *world, bContext *context)
-    : IdData(scene_delegate, (ID *)world), context(context)
-{
-  p_id = prim_id(scene_delegate);
-  CLOG_INFO(LOG_BSD, 2, "%s, id=%s", id->name, p_id.GetText());
-}
-
 void WorldData::init()
 {
-  CLOG_INFO(LOG_BSD, 2, "%s", id->name);
+  CLOG_INFO(LOG_BSD, 2, "%s", id_->name);
 
-  World *world = (World *)id;
-  data.clear();
+  World *world = (World *)id_;
+  data_.clear();
 
-  data[pxr::UsdLuxTokens->orientToStageUpAxis] = true;
+  data_[pxr::UsdLuxTokens->orientToStageUpAxis] = true;
 
   if (world->use_nodes) {
     /* TODO: Create nodes parsing system */
@@ -90,9 +90,9 @@ void WorldData::init()
 
     float const *strength = strength_input.default_value_typed<float>();
     float const *color = color_input.default_value_typed<float>();
-    data[pxr::HdLightTokens->intensity] = strength[1];
-    data[pxr::HdLightTokens->exposure] = 1.0f;
-    data[pxr::HdLightTokens->color] = pxr::GfVec3f(color[0], color[1], color[2]);
+    data_[pxr::HdLightTokens->intensity] = strength[1];
+    data_[pxr::HdLightTokens->exposure] = 1.0f;
+    data_[pxr::HdLightTokens->color] = pxr::GfVec3f(color[0], color[1], color[2]);
 
     if (!color_input.directly_linked_links().is_empty()) {
       bNode *color_input_node = color_input.directly_linked_links()[0]->fromnode;
@@ -101,8 +101,8 @@ void WorldData::init()
         Image *image = (Image *)color_input_node->id;
 
         if (image) {
-          Main *bmain = CTX_data_main(context);
-          Scene *scene = CTX_data_scene(context);
+          Main *bmain = CTX_data_main(context_);
+          Scene *scene = CTX_data_scene(context_);
 
           ReportList reports;
           ImageSaveOptions opts;
@@ -110,17 +110,44 @@ void WorldData::init()
 
           std::string image_path = cache_image(bmain, scene, image, &tex->iuser, &opts, &reports);
           if (!image_path.empty()) {
-            data[pxr::HdLightTokens->textureFile] = pxr::SdfAssetPath(image_path, image_path);
+            data_[pxr::HdLightTokens->textureFile] = pxr::SdfAssetPath(image_path, image_path);
           }
         }
       }
     }
   }
   else {
-    data[pxr::HdLightTokens->intensity] = 1.0f;
-    data[pxr::HdLightTokens->exposure] = world->exposure;
-    data[pxr::HdLightTokens->color] = pxr::GfVec3f(world->horr, world->horg, world->horb);
+    data_[pxr::HdLightTokens->intensity] = 1.0f;
+    data_[pxr::HdLightTokens->exposure] = world->exposure;
+    data_[pxr::HdLightTokens->color] = pxr::GfVec3f(world->horr, world->horg, world->horb);
   }
+}
+
+void WorldData::insert()
+{
+  CLOG_INFO(LOG_BSD, 2, "%s", id_->name);
+  scene_delegate_->GetRenderIndex().InsertSprim(
+      pxr::HdPrimTypeTokens->domeLight, scene_delegate_, p_id_);
+}
+
+void WorldData::remove()
+{
+  CLOG_INFO(LOG_BSD, 2, "%s", id_->name);
+  scene_delegate_->GetRenderIndex().RemoveSprim(pxr::HdPrimTypeTokens->domeLight, p_id_);
+}
+
+void WorldData::update()
+{
+  CLOG_INFO(LOG_BSD, 2, "%s", id_->name);
+  init();
+  scene_delegate_->GetRenderIndex().GetChangeTracker().MarkSprimDirty(p_id_,
+                                                                      pxr::HdLight::AllDirty);
+}
+
+void WorldData::update(World *world)
+{
+  id_ = (ID *)world;
+  update();
 }
 
 pxr::GfMatrix4d WorldData::transform()
@@ -129,7 +156,7 @@ pxr::GfMatrix4d WorldData::transform()
                                               pxr::GfVec3d());
 
   /* TODO : do this check via RenderSettings*/
-  if (scene_delegate->GetRenderIndex().GetRenderDelegate()->GetRendererDisplayName() == "RPR") {
+  if (scene_delegate_->GetRenderIndex().GetRenderDelegate()->GetRendererDisplayName() == "RPR") {
     transform *= pxr::GfMatrix4d(pxr::GfRotation(pxr::GfVec3d(1.0, 0.0, 0.0), -180),
                                  pxr::GfVec3d());
     transform *= pxr::GfMatrix4d(pxr::GfRotation(pxr::GfVec3d(0.0, 0.0, 1.0), 90.0),
@@ -141,37 +168,11 @@ pxr::GfMatrix4d WorldData::transform()
 pxr::VtValue WorldData::get_data(pxr::TfToken const &key) const
 {
   pxr::VtValue ret;
-  auto it = data.find(key);
-  if (it != data.end()) {
+  auto it = data_.find(key);
+  if (it != data_.end()) {
     ret = it->second;
   }
   return ret;
-}
-
-void WorldData::insert()
-{
-  CLOG_INFO(LOG_BSD, 2, "%s", id->name);
-  scene_delegate->GetRenderIndex().InsertSprim(
-      pxr::HdPrimTypeTokens->domeLight, scene_delegate, p_id);
-}
-
-void WorldData::remove()
-{
-  CLOG_INFO(LOG_BSD, 2, "%s", id->name);
-  scene_delegate->GetRenderIndex().RemoveSprim(pxr::HdPrimTypeTokens->domeLight, p_id);
-}
-
-void WorldData::update()
-{
-  CLOG_INFO(LOG_BSD, 2, "%s", id->name);
-  init();
-  scene_delegate->GetRenderIndex().GetChangeTracker().MarkSprimDirty(p_id, pxr::HdLight::AllDirty);
-}
-
-void WorldData::update(World *world)
-{
-  id = (ID *)world;
-  update();
 }
 
 }  // namespace blender::render::hydra

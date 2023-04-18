@@ -16,11 +16,11 @@ namespace blender::render::hydra {
 
 class ObjectData : public IdData {
  public:
-  static bool supported(Object *object);
+  ObjectData(BlenderSceneDelegate *scene_delegate, Object *object);
+
+  static bool is_supported(Object *object);
   static std::unique_ptr<ObjectData> create(BlenderSceneDelegate *scene_delegate, Object *object);
   static pxr::SdfPath prim_id(BlenderSceneDelegate *scene_delegate, Object *object);
-
-  ObjectData(BlenderSceneDelegate *scene_delegate, Object *object);
 
   virtual pxr::GfMatrix4d transform();
   virtual bool update_visibility(View3D *view3d);

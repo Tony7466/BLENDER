@@ -21,6 +21,7 @@ class MeshData : public ObjectData {
   void insert() override;
   void remove() override;
   void update() override;
+
   pxr::VtValue get_data(pxr::TfToken const &key) const override;
   bool update_visibility(View3D *view3d) override;
 
@@ -29,18 +30,19 @@ class MeshData : public ObjectData {
   pxr::SdfPath material_id();
 
  protected:
-  void set_mesh(Mesh *mesh);
-  void set_material();
+  void write_mesh(Mesh *mesh);
+  void write_material();
+  void write_uv_maps(Mesh *mesh);
+  void write_normals(Mesh *mesh);
 
-  pxr::VtIntArray face_vertex_counts;
-  pxr::VtIntArray face_vertex_indices;
-  pxr::VtVec3fArray vertices;
-  pxr::VtVec3fArray normals;
-  pxr::VtVec2fArray uvs;
+  pxr::VtIntArray face_vertex_counts_;
+  pxr::VtIntArray face_vertex_indices_;
+  pxr::VtVec3fArray vertices_;
+  pxr::VtVec2fArray uvs_;
+  pxr::VtVec3fArray normals_;
+  pxr::VtMatrix4dArray instances_;
 
-  pxr::VtMatrix4dArray instances;
-
-  MaterialData *mat_data;
+  MaterialData *mat_data_;
 };
 
 }  // namespace blender::render::hydra

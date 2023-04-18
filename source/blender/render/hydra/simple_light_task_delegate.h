@@ -18,10 +18,11 @@ class SimpleLightTaskDelegate : public pxr::HdSceneDelegate {
   pxr::HdTaskSharedPtr get_task();
   void set_camera_path(pxr::SdfPath const &);
 
+  /* Delegate methods */
   pxr::VtValue Get(pxr::SdfPath const &id, pxr::TfToken const &key) override;
 
  private:
-  pxr::HdxSimpleLightTaskParams task_params;
+  pxr::HdxSimpleLightTaskParams task_params_;
 };
 
 }  // namespace blender::render::hydra

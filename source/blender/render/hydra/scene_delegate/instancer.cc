@@ -9,7 +9,16 @@
 
 namespace blender::render::hydra {
 
-bool InstancerData::supported(Object *object)
+InstancerData::InstancerData(BlenderSceneDelegate *scene_delegate, Object *object)
+    : MeshData(scene_delegate, object), parent_obj_(object)
+{
+  id_ = nullptr;
+  p_id_ = prim_id(scene_delegate, object);
+  instancer_id = p_id_.AppendElementString("Instancer");
+  CLOG_INFO(LOG_BSD, 2, "%s, instancer_id=%s", ((ID *)parent_obj_)->name, instancer_id.GetText());
+}
+
+bool InstancerData::is_supported(Object *object)
 {
   switch (object->type) {
     case OB_MESH:
@@ -43,21 +52,73 @@ pxr::SdfPath InstancerData::prim_id(BlenderSceneDelegate *scene_delegate, Object
   return scene_delegate->GetDelegateID().AppendElementString(str);
 }
 
-InstancerData::InstancerData(BlenderSceneDelegate *scene_delegate, Object *object)
-    : MeshData(scene_delegate, object), parent_obj(object)
-{
-  id = nullptr;
-  p_id = prim_id(scene_delegate, object);
-  instancer_id = p_id.AppendElementString("Instancer");
-  CLOG_INFO(LOG_BSD, 2, "%s, instancer_id=%s", ((ID *)parent_obj)->name, instancer_id.GetText());
-}
-
 void InstancerData::init()
 {
-  CLOG_INFO(LOG_BSD, 2, "%s", ((ID *)parent_obj)->name);
+  CLOG_INFO(LOG_BSD, 2, "%s", ((ID *)parent_obj_)->name);
 
   set_instances();
   MeshData::init();
+}
+
+void InstancerData::insert()
+{
+  CLOG_INFO(LOG_BSD, 2, "%s", ((ID *)parent_obj_)->name);
+  MeshData::insert();
+
+  if (face_vertex_counts_.empty()) {
+    return;
+  }
+  scene_delegate_->GetRenderIndex().InsertInstancer(scene_delegate_, instancer_id);
+}
+
+void InstancerData::remove()
+{
+  CLOG_INFO(LOG_BSD, 2, "%s", ((ID *)parent_obj_)->name);
+
+  if (!scene_delegate_->GetRenderIndex().HasInstancer(instancer_id)) {
+    return;
+  }
+  scene_delegate_->GetRenderIndex().RemoveInstancer(instancer_id);
+
+  MeshData::remove();
+}
+
+void InstancerData::update()
+{
+  CLOG_INFO(LOG_BSD, 2, "%s", ((ID *)parent_obj_)->name);
+
+  pxr::HdDirtyBits bits = pxr::HdChangeTracker::Clean;
+  unsigned int recalc = ((ID *)parent_obj_)->recalc;
+
+  Object *object = (Object *)id_;
+  if ((id_->recalc & ID_RECALC_GEOMETRY) || (((ID *)object->data)->recalc & ID_RECALC_GEOMETRY)) {
+    init();
+    scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(
+        p_id_, pxr::HdChangeTracker::AllDirty);
+    return;
+  }
+
+  if ((recalc & ID_RECALC_GEOMETRY) || (((ID *)parent_obj_->data)->recalc & ID_RECALC_GEOMETRY)) {
+    init();
+    bits |= pxr::HdChangeTracker::AllDirty;
+  }
+  else if (recalc & ID_RECALC_TRANSFORM || id_->recalc & ID_RECALC_TRANSFORM) {
+    set_instances();
+    bits |= pxr::HdChangeTracker::DirtyTransform;
+  }
+  if (bits != pxr::HdChangeTracker::Clean) {
+    scene_delegate_->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(instancer_id, bits);
+  }
+}
+
+pxr::VtValue InstancerData::get_data(pxr::TfToken const &key) const
+{
+  CLOG_INFO(LOG_BSD, 3, "%s [%s]", id_->name, key.GetText());
+
+  if (key == pxr::HdInstancerTokens->instanceTransform) {
+    return pxr::VtValue(transforms_);
+  }
+  return MeshData::get_data(key);
 }
 
 pxr::GfMatrix4d InstancerData::transform()
@@ -72,23 +133,13 @@ bool InstancerData::update_visibility(View3D *view3d)
   }
 
   bool prev_visible = visible;
-  visible = BKE_object_is_visible_in_viewport(view3d, parent_obj);
+  visible = BKE_object_is_visible_in_viewport(view3d, parent_obj_);
   bool ret = visible != prev_visible;
   if (ret) {
-    scene_delegate->GetRenderIndex().GetChangeTracker().MarkRprimDirty(
-        p_id, pxr::HdChangeTracker::DirtyVisibility);
+    scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(
+        p_id_, pxr::HdChangeTracker::DirtyVisibility);
   }
   return ret;
-}
-
-pxr::VtValue InstancerData::get_data(pxr::TfToken const &key) const
-{
-  CLOG_INFO(LOG_BSD, 3, "%s [%s]", id->name, key.GetText());
-
-  if (key == pxr::HdInstancerTokens->instanceTransform) {
-    return pxr::VtValue(transforms);
-  }
-  return MeshData::get_data(key);
 }
 
 pxr::HdPrimvarDescriptorVector InstancerData::instancer_primvar_descriptors(
@@ -104,7 +155,7 @@ pxr::HdPrimvarDescriptorVector InstancerData::instancer_primvar_descriptors(
 
 pxr::VtIntArray InstancerData::instance_indices()
 {
-  pxr::VtIntArray ret(transforms.size());
+  pxr::VtIntArray ret(transforms_.size());
   for (size_t i = 0; i < ret.size(); ++i) {
     ret[i] = i;
   }
@@ -113,82 +164,32 @@ pxr::VtIntArray InstancerData::instance_indices()
 
 bool InstancerData::is_base(Object *object) const
 {
-  return (ID *)object == id;
+  return (ID *)object == id_;
 }
 
 bool InstancerData::set_instances()
 {
-  ID *prev_id = id;
-  id = nullptr;
-  transforms.clear();
-  ListBase *lb = object_duplilist(scene_delegate->depsgraph, scene_delegate->scene, parent_obj);
+  ID *prev_id = id_;
+  id_ = nullptr;
+  transforms_.clear();
+  ListBase *lb = object_duplilist(
+      scene_delegate_->depsgraph_, scene_delegate_->scene_, parent_obj_);
   LISTBASE_FOREACH (DupliObject *, dupli, lb) {
-    if (!id) {
+    if (!id_) {
       /* TODO: We create instances only for object in first dupli.
          Instances should be created for all objects */
-      id = (ID *)dupli->ob;
+      id_ = (ID *)dupli->ob;
     }
-    if (id != (ID *)dupli->ob) {
+    if (id_ != (ID *)dupli->ob) {
       continue;
     }
-    transforms.push_back(gf_matrix_from_transform(dupli->mat));
+    transforms_.push_back(gf_matrix_from_transform(dupli->mat));
     CLOG_INFO(
-        LOG_BSD, 2, "Instance %s (%s) %d", id->name, ((ID *)dupli->ob)->name, dupli->random_id);
+        LOG_BSD, 2, "Instance %s (%s) %d", id_->name, ((ID *)dupli->ob)->name, dupli->random_id);
   }
   free_object_duplilist(lb);
 
-  return id != prev_id;
-}
-
-void InstancerData::insert()
-{
-  CLOG_INFO(LOG_BSD, 2, "%s", ((ID *)parent_obj)->name);
-  MeshData::insert();
-
-  if (face_vertex_counts.empty()) {
-    return;
-  }
-  scene_delegate->GetRenderIndex().InsertInstancer(scene_delegate, instancer_id);
-}
-
-void InstancerData::remove()
-{
-  CLOG_INFO(LOG_BSD, 2, "%s", ((ID *)parent_obj)->name);
-
-  if (!scene_delegate->GetRenderIndex().HasInstancer(instancer_id)) {
-    return;
-  }
-  scene_delegate->GetRenderIndex().RemoveInstancer(instancer_id);
-
-  MeshData::remove();
-}
-
-void InstancerData::update()
-{
-  CLOG_INFO(LOG_BSD, 2, "%s", ((ID *)parent_obj)->name);
-
-  pxr::HdDirtyBits bits = pxr::HdChangeTracker::Clean;
-  unsigned int recalc = ((ID *)parent_obj)->recalc;
-
-  Object *object = (Object *)id;
-  if ((id->recalc & ID_RECALC_GEOMETRY) || (((ID *)object->data)->recalc & ID_RECALC_GEOMETRY)) {
-    init();
-    scene_delegate->GetRenderIndex().GetChangeTracker().MarkRprimDirty(
-        p_id, pxr::HdChangeTracker::AllDirty);
-    return;
-  }
-
-  if ((recalc & ID_RECALC_GEOMETRY) || (((ID *)parent_obj->data)->recalc & ID_RECALC_GEOMETRY)) {
-    init();
-    bits |= pxr::HdChangeTracker::AllDirty;
-  }
-  else if (recalc & ID_RECALC_TRANSFORM || id->recalc & ID_RECALC_TRANSFORM) {
-    set_instances();
-    bits |= pxr::HdChangeTracker::DirtyTransform;
-  }
-  if (bits != pxr::HdChangeTracker::Clean) {
-    scene_delegate->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(instancer_id, bits);
-  }
+  return id_ != prev_id;
 }
 
 }  // namespace blender::render::hydra

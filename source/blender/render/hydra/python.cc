@@ -236,8 +236,8 @@ static PyMethodDef methods[] = {
 
     {"engine_create", engine_create_func, METH_VARARGS, ""},
     {"engine_free", engine_free_func, METH_VARARGS, ""},
-    {"engine_render", engine_render_func, METH_VARARGS, ""},
     {"engine_sync", engine_sync_func, METH_VARARGS, ""},
+    {"engine_render", engine_render_func, METH_VARARGS, ""},
     {"engine_view_draw", engine_view_draw_func, METH_VARARGS, ""},
 
     {NULL, NULL, 0, NULL},

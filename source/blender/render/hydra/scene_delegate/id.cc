@@ -9,7 +9,7 @@
 namespace blender::render::hydra {
 
 IdData::IdData(BlenderSceneDelegate *scene_delegate, ID *id)
-    : scene_delegate(scene_delegate), id(id)
+    : scene_delegate_(scene_delegate), id_(id)
 {
 }
 

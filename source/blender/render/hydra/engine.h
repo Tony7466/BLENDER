@@ -5,8 +5,6 @@
 
 #include <chrono>
 
-#include <Python.h>
-
 #include <pxr/imaging/hd/driver.h>
 #include <pxr/imaging/hd/engine.h>
 #include <pxr/imaging/hd/pluginRenderDelegateUniqueHandle.h>
@@ -28,7 +26,7 @@ extern struct CLG_LogRef *LOG_EN; /* EN - Engine */
 class Engine {
  public:
   Engine(RenderEngine *bl_engine, const std::string &render_delegate_id);
-  virtual ~Engine();
+  virtual ~Engine() = default;
 
   virtual void sync(Depsgraph *depsgraph,
                     bContext *context,
@@ -38,19 +36,19 @@ class Engine {
  protected:
   float renderer_percent_done();
 
- protected:
-  RenderEngine *bl_engine;
+  RenderEngine *bl_engine_;
 
-  pxr::HdPluginRenderDelegateUniqueHandle render_delegate;
-  std::unique_ptr<pxr::HdRenderIndex> render_index;
-  std::unique_ptr<BlenderSceneDelegate> scene_delegate;
-  std::unique_ptr<RenderTaskDelegate> render_task_delegate;
-  std::unique_ptr<pxr::HdxFreeCameraSceneDelegate> free_camera_delegate;
-  std::unique_ptr<SimpleLightTaskDelegate> simple_light_task_delegate;
-  std::unique_ptr<pxr::HdEngine> engine;
+  /* The order is important due to deletion order */
+  pxr::HdPluginRenderDelegateUniqueHandle render_delegate_;
+  std::unique_ptr<pxr::HdRenderIndex> render_index_;
+  std::unique_ptr<BlenderSceneDelegate> scene_delegate_;
+  std::unique_ptr<RenderTaskDelegate> render_task_delegate_;
+  std::unique_ptr<pxr::HdxFreeCameraSceneDelegate> free_camera_delegate_;
+  std::unique_ptr<SimpleLightTaskDelegate> simple_light_task_delegate_;
+  std::unique_ptr<pxr::HdEngine> engine_;
 
-  pxr::HgiUniquePtr hgi;
-  pxr::HdDriver hgi_driver;
+  pxr::HgiUniquePtr hgi_;
+  pxr::HdDriver hgi_driver_;
 };
 
 }  // namespace blender::render::hydra

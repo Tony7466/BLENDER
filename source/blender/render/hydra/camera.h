@@ -23,14 +23,14 @@ class CameraData {
   pxr::GfCamera gf_camera(pxr::GfVec4f tile);
 
  private:
-  int mode;
-  pxr::GfRange1f clip_range;
-  float focal_length;
-  pxr::GfVec2f sensor_size;
-  pxr::GfMatrix4d transform;
-  pxr::GfVec2f lens_shift;
-  pxr::GfVec2f ortho_size;
-  std::tuple<float, float, int> dof_data;
+  int mode_;
+  pxr::GfRange1f clip_range_;
+  float focal_length_;
+  pxr::GfVec2f sensor_size_;
+  pxr::GfMatrix4d transform_;
+  pxr::GfVec2f lens_shift_;
+  pxr::GfVec2f ortho_size_;
+  std::tuple<float, float, int> dof_data_;
 };
 
 }  // namespace blender::render::hydra

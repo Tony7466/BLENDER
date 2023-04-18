@@ -27,9 +27,9 @@ class IdData {
   template<class T> const T get_data(pxr::TfToken const &key) const;
 
  protected:
-  BlenderSceneDelegate *scene_delegate;
-  ID *id;
-  pxr::SdfPath p_id;
+  BlenderSceneDelegate *scene_delegate_;
+  ID *id_;
+  pxr::SdfPath p_id_;
 };
 
 template<class T> const T IdData::get_data(pxr::TfToken const &key) const

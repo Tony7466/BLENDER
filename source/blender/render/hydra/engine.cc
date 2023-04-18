@@ -14,51 +14,39 @@ namespace blender::render::hydra {
 
 CLG_LOGREF_DECLARE_GLOBAL(LOG_EN, "rhd.en");
 
-Engine::Engine(RenderEngine *bl_engine, const std::string &delegate_id) : bl_engine(bl_engine)
+Engine::Engine(RenderEngine *bl_engine, const std::string &delegate_id) : bl_engine_(bl_engine)
 {
   pxr::HdRendererPluginRegistry &registry = pxr::HdRendererPluginRegistry::GetInstance();
 
   pxr::TF_PY_ALLOW_THREADS_IN_SCOPE();
-  render_delegate = registry.CreateRenderDelegate(pxr::TfToken(delegate_id));
+  render_delegate_ = registry.CreateRenderDelegate(pxr::TfToken(delegate_id));
 
   pxr::HdDriverVector hd_drivers;
   if (bl_engine->type->flag & RE_USE_GPU_CONTEXT) {
-    hgi = pxr::Hgi::CreatePlatformDefaultHgi();
-    hgi_driver.name = pxr::HgiTokens->renderDriver;
-    hgi_driver.driver = pxr::VtValue(hgi.get());
+    hgi_ = pxr::Hgi::CreatePlatformDefaultHgi();
+    hgi_driver_.name = pxr::HgiTokens->renderDriver;
+    hgi_driver_.driver = pxr::VtValue(hgi_.get());
 
-    hd_drivers.push_back(&hgi_driver);
+    hd_drivers.push_back(&hgi_driver_);
   }
 
-  render_index.reset(pxr::HdRenderIndex::New(render_delegate.Get(), hd_drivers));
-  free_camera_delegate = std::make_unique<pxr::HdxFreeCameraSceneDelegate>(
-      render_index.get(), pxr::SdfPath::AbsoluteRootPath().AppendElementString("freeCamera"));
-  render_task_delegate = std::make_unique<RenderTaskDelegate>(
-      render_index.get(), pxr::SdfPath::AbsoluteRootPath().AppendElementString("renderTask"));
-  if (render_delegate->GetRendererDisplayName() == "GL") {
-    simple_light_task_delegate = std::make_unique<SimpleLightTaskDelegate>(
-        render_index.get(),
+  render_index_.reset(pxr::HdRenderIndex::New(render_delegate_.Get(), hd_drivers));
+  free_camera_delegate_ = std::make_unique<pxr::HdxFreeCameraSceneDelegate>(
+      render_index_.get(), pxr::SdfPath::AbsoluteRootPath().AppendElementString("freeCamera"));
+  render_task_delegate_ = std::make_unique<RenderTaskDelegate>(
+      render_index_.get(), pxr::SdfPath::AbsoluteRootPath().AppendElementString("renderTask"));
+  if (render_delegate_->GetRendererDisplayName() == "GL") {
+    simple_light_task_delegate_ = std::make_unique<SimpleLightTaskDelegate>(
+        render_index_.get(),
         pxr::SdfPath::AbsoluteRootPath().AppendElementString("simpleLightTask"));
   }
 
-  engine = std::make_unique<pxr::HdEngine>();
-}
-
-Engine::~Engine()
-{
-  scene_delegate = nullptr;
-  render_task_delegate = nullptr;
-  free_camera_delegate = nullptr;
-  simple_light_task_delegate = nullptr;
-  render_index = nullptr;
-  render_delegate = nullptr;
-  engine = nullptr;
-  hgi = nullptr;
+  engine_ = std::make_unique<pxr::HdEngine>();
 }
 
 float Engine::renderer_percent_done()
 {
-  pxr::VtDictionary render_stats = render_delegate->GetRenderStats();
+  pxr::VtDictionary render_stats = render_delegate_->GetRenderStats();
   auto it = render_stats.find("percentDone");
   if (it == render_stats.end()) {
     return 0.0;

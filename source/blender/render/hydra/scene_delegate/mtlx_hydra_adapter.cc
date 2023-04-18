@@ -22,10 +22,10 @@
 
 namespace mx = MaterialX;
 
-void HdMtlxConvertToMaterialNetworkMap(std::string const &mtlx_path,
-                                       pxr::TfTokenVector const &shader_source_types,
-                                       pxr::TfTokenVector const &render_contexts,
-                                       pxr::HdMaterialNetworkMap *out)
+void hdmtlx_convert_to_materialnetworkmap(std::string const &mtlx_path,
+                                          pxr::TfTokenVector const &shader_source_types,
+                                          pxr::TfTokenVector const &render_contexts,
+                                          pxr::HdMaterialNetworkMap *out)
 {
   if (mtlx_path.empty()) {
     return;

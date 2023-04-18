@@ -19,24 +19,23 @@ class MaterialData : IdData {
   friend MeshData;
 
  public:
+  MaterialData(BlenderSceneDelegate *scene_delegate, Material *material);
+
   static std::unique_ptr<MaterialData> create(BlenderSceneDelegate *scene_delegate,
                                               Material *material);
   static pxr::SdfPath prim_id(BlenderSceneDelegate *scene_delegate, Material *material);
-
-  MaterialData(BlenderSceneDelegate *scene_delegate, Material *material);
 
   void init() override;
   void insert() override;
   void remove() override;
   void update() override;
-  pxr::VtValue get_data(pxr::TfToken const &key) const override;
 
-  pxr::VtValue material_resource();
-  void export_mtlx();
+  pxr::VtValue get_data(pxr::TfToken const &key) const override;
+  pxr::VtValue get_material_resource();
 
  private:
-  pxr::SdfAssetPath mtlx_path;
-  pxr::VtValue material_network_map;
+  pxr::SdfAssetPath mtlx_path_;
+  pxr::VtValue material_network_map_;
 };
 
 using MaterialDataMap =

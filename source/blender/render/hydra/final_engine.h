@@ -12,6 +12,7 @@ namespace blender::render::hydra {
 class FinalEngine : public Engine {
  public:
   using Engine::Engine;
+
   virtual void sync(Depsgraph *depsgraph,
                     bContext *context,
                     pxr::HdRenderSettingsMap &render_settings) override;
@@ -25,13 +26,13 @@ class FinalEngine : public Engine {
                             int height);
   void notify_status(float progress, const std::string &title, const std::string &info);
 
- protected:
-  pxr::HdRenderSettingsMap render_settings;
+  pxr::HdRenderSettingsMap render_settings_;
 };
 
 class FinalEngineGL : public FinalEngine {
  public:
   using FinalEngine::FinalEngine;
+
   void render(Depsgraph *depsgraph) override;
 };
 

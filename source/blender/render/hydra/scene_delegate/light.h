@@ -21,13 +21,15 @@ class LightData : public ObjectData {
   void insert() override;
   void remove() override;
   void update() override;
+
   pxr::VtValue get_data(pxr::TfToken const &key) const override;
   bool update_visibility(View3D *view3d) override;
 
  private:
-  std::map<pxr::TfToken, pxr::VtValue> data;
-  pxr::TfToken p_type;
   pxr::TfToken prim_type(Light *light);
+
+  std::map<pxr::TfToken, pxr::VtValue> data_;
+  pxr::TfToken p_type_;
 };
 
 }  // namespace blender::render::hydra

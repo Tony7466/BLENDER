@@ -19,6 +19,7 @@ class DrawTexture {
  public:
   DrawTexture();
   ~DrawTexture();
+
   void set_buffer(pxr::HdRenderBuffer *buffer);
   void draw(GPUShader *shader, float x, float y);
 
@@ -26,14 +27,15 @@ class DrawTexture {
   void create(pxr::HdRenderBuffer *buffer);
   void free();
 
-  GPUTexture *texture;
-  GPUBatch *batch;
-  int width, height, channels;
+  GPUTexture *texture_;
+  GPUBatch *batch_;
+  int width_, height_, channels_;
 };
 
 class ViewportEngine : public Engine {
  public:
   using Engine::Engine;
+
   void sync(Depsgraph *depsgraph,
             bContext *context,
             pxr::HdRenderSettingsMap &render_settings) override;
@@ -44,9 +46,9 @@ class ViewportEngine : public Engine {
   void notify_status(const std::string &title, const std::string &info);
 
  private:
-  std::chrono::time_point<std::chrono::steady_clock> time_begin;
+  std::chrono::time_point<std::chrono::steady_clock> time_begin_;
 
-  DrawTexture draw_texture;
+  DrawTexture draw_texture_;
 };
 
 }  // namespace blender::render::hydra
