@@ -120,7 +120,7 @@ static void geometry_set_mesh_to_points(GeometrySet &geometry_set,
       continue;
     }
 
-    if (share_arrays && src.domain == domain && src.sharing_info) {
+    if (share_arrays && src.domain == domain && src.sharing_info && src.varray.is_span()) {
       const bke::AttributeInitShared init(src.varray.get_internal_span().data(),
                                           *src.sharing_info);
       dst_attributes.add(attribute_id, ATTR_DOMAIN_POINT, data_type, init);

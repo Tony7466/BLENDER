@@ -579,8 +579,15 @@ static void interpolate_curve_attributes(bke::CurvesGeometry &child_curves,
     }
 
     const GAttributeReader src = point_attributes.lookup(id);
-    const bke::AttributeInitShared init(src.varray.get_internal_span().data(), *src.sharing_info);
-    children_attributes.add(id, ATTR_DOMAIN_CURVE, meta_data.data_type, init);
+    if (src.sharing_info && src.varray.is_span()) {
+      const bke::AttributeInitShared init(src.varray.get_internal_span().data(),
+                                          *src.sharing_info);
+      children_attributes.add(id, ATTR_DOMAIN_CURVE, meta_data.data_type, init);
+    }
+    else {
+      children_attributes.add(
+          id, ATTR_DOMAIN_CURVE, meta_data.data_type, bke::AttributeInitVArray(src.varray));
+    }
     return true;
   });
 }
