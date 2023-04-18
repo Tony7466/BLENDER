@@ -281,7 +281,7 @@ static void library_foreach_node_socket(LibraryForeachIDData *data, bNodeSocket 
       IDP_foreach_property(
           sock->prop, IDP_TYPE_FILTER_ID, BKE_lib_query_idpropertiesForeachIDLink_callback, data));
 
-  switch (static_cast<eNodeSocketDatatype>(sock->type)) {
+  switch (eNodeSocketDatatype(sock->type)) {
     case SOCK_OBJECT: {
       bNodeSocketValueObject &default_value = *sock->default_value_typed<bNodeSocketValueObject>();
       BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, default_value.value, IDWALK_CB_USER);
@@ -425,7 +425,7 @@ static void write_node_socket_default_value(BlendWriter *writer, bNodeSocket *so
     return;
   }
 
-  switch (static_cast<eNodeSocketDatatype>(sock->type)) {
+  switch (eNodeSocketDatatype(sock->type)) {
     case SOCK_FLOAT:
       BLO_write_struct(writer, bNodeSocketValueFloat, sock->default_value);
       break;
@@ -854,7 +854,7 @@ static void lib_link_node_socket(BlendLibReader *reader, Library *lib, bNodeSock
     return;
   }
 
-  switch (static_cast<eNodeSocketDatatype>(sock->type)) {
+  switch (eNodeSocketDatatype(sock->type)) {
     case SOCK_OBJECT: {
       BLO_read_id_address(
           reader, lib, &sock->default_value_typed<bNodeSocketValueObject>()->value);
@@ -953,7 +953,7 @@ static void expand_node_socket(BlendExpander *expander, bNodeSocket *sock)
     return;
   }
 
-  switch (static_cast<eNodeSocketDatatype>(sock->type)) {
+  switch (eNodeSocketDatatype(sock->type)) {
     case SOCK_OBJECT: {
       BLO_expand(expander, &sock->default_value_typed<bNodeSocketValueObject>()->value);
       break;
@@ -1591,7 +1591,7 @@ static bNodeSocket *make_socket(bNodeTree *ntree,
 
 static void socket_id_user_increment(bNodeSocket *sock)
 {
-  switch (static_cast<eNodeSocketDatatype>(sock->type)) {
+  switch (eNodeSocketDatatype(sock->type)) {
     case SOCK_OBJECT: {
       bNodeSocketValueObject &default_value = *sock->default_value_typed<bNodeSocketValueObject>();
       id_us_plus(reinterpret_cast<ID *>(default_value.value));
@@ -1637,7 +1637,7 @@ static void socket_id_user_increment(bNodeSocket *sock)
 /** \return True if the socket had an ID default value. */
 static bool socket_id_user_decrement(bNodeSocket *sock)
 {
-  switch (static_cast<eNodeSocketDatatype>(sock->type)) {
+  switch (eNodeSocketDatatype(sock->type)) {
     case SOCK_OBJECT: {
       bNodeSocketValueObject &socket_value = *sock->default_value_typed<bNodeSocketValueObject>();
       id_us_min(reinterpret_cast<ID *>(socket_value.value));
@@ -1704,7 +1704,7 @@ void nodeModifySocketType(bNodeTree *ntree,
     }
     else {
       /* Update the socket subtype when the storage isn't freed and recreated. */
-      switch (static_cast<eNodeSocketDatatype>(sock->type)) {
+      switch (eNodeSocketDatatype(sock->type)) {
         case SOCK_FLOAT: {
           sock->default_value_typed<bNodeSocketValueFloat>()->subtype = socktype->subtype;
           break;
@@ -1787,9 +1787,9 @@ bool nodeIsStaticSocketType(const bNodeSocketType *stype)
 
 const char *nodeStaticSocketType(const int type, const int subtype)
 {
-  switch (static_cast<eNodeSocketDatatype>(type)) {
+  switch (eNodeSocketDatatype(type)) {
     case SOCK_FLOAT:
-      switch (static_cast<PropertySubType>(subtype)) {
+      switch (PropertySubType(subtype)) {
         case PROP_UNSIGNED:
           return "NodeSocketFloatUnsigned";
         case PROP_PERCENTAGE:
@@ -1809,7 +1809,7 @@ const char *nodeStaticSocketType(const int type, const int subtype)
           return "NodeSocketFloat";
       }
     case SOCK_INT:
-      switch (static_cast<PropertySubType>(subtype)) {
+      switch (PropertySubType(subtype)) {
         case PROP_UNSIGNED:
           return "NodeSocketIntUnsigned";
         case PROP_PERCENTAGE:
@@ -1823,7 +1823,7 @@ const char *nodeStaticSocketType(const int type, const int subtype)
     case SOCK_BOOLEAN:
       return "NodeSocketBool";
     case SOCK_VECTOR:
-      switch (static_cast<PropertySubType>(subtype)) {
+      switch (PropertySubType(subtype)) {
         case PROP_TRANSLATION:
           return "NodeSocketVectorTranslation";
         case PROP_DIRECTION:
@@ -1866,9 +1866,9 @@ const char *nodeStaticSocketType(const int type, const int subtype)
 
 const char *nodeStaticSocketInterfaceType(const int type, const int subtype)
 {
-  switch (static_cast<eNodeSocketDatatype>(type)) {
+  switch (eNodeSocketDatatype(type)) {
     case SOCK_FLOAT:
-      switch (static_cast<PropertySubType>(subtype)) {
+      switch (PropertySubType(subtype)) {
         case PROP_UNSIGNED:
           return "NodeSocketInterfaceFloatUnsigned";
         case PROP_PERCENTAGE:
@@ -1888,7 +1888,7 @@ const char *nodeStaticSocketInterfaceType(const int type, const int subtype)
           return "NodeSocketInterfaceFloat";
       }
     case SOCK_INT:
-      switch (static_cast<PropertySubType>(subtype)) {
+      switch (PropertySubType(subtype)) {
         case PROP_UNSIGNED:
           return "NodeSocketInterfaceIntUnsigned";
         case PROP_PERCENTAGE:
@@ -1902,7 +1902,7 @@ const char *nodeStaticSocketInterfaceType(const int type, const int subtype)
     case SOCK_BOOLEAN:
       return "NodeSocketInterfaceBool";
     case SOCK_VECTOR:
-      switch (static_cast<PropertySubType>(subtype)) {
+      switch (PropertySubType(subtype)) {
         case PROP_TRANSLATION:
           return "NodeSocketInterfaceVectorTranslation";
         case PROP_DIRECTION:
@@ -1945,7 +1945,7 @@ const char *nodeStaticSocketInterfaceType(const int type, const int subtype)
 
 const char *nodeStaticSocketLabel(const int type, const int /*subtype*/)
 {
-  switch (static_cast<eNodeSocketDatatype>(type)) {
+  switch (eNodeSocketDatatype(type)) {
     case SOCK_FLOAT:
       return "Float";
     case SOCK_INT:
@@ -2555,8 +2555,8 @@ bNodeLink *nodeAddLink(
   BLI_assert(ntree->all_nodes().contains(tonode));
 
   bNodeLink *link = nullptr;
-  if (static_cast<eNodeSocketInOut>(fromsock->in_out) == SOCK_OUT &&
-      static_cast<eNodeSocketInOut>(tosock->in_out) == SOCK_IN) {
+  if (eNodeSocketInOut(fromsock->in_out) == SOCK_OUT &&
+      eNodeSocketInOut(tosock->in_out) == SOCK_IN) {
     link = MEM_cnew<bNodeLink>("link");
     if (ntree) {
       BLI_addtail(&ntree->links, link);
@@ -2566,8 +2566,8 @@ bNodeLink *nodeAddLink(
     link->tonode = tonode;
     link->tosock = tosock;
   }
-  else if (static_cast<eNodeSocketInOut>(fromsock->in_out) == SOCK_IN &&
-           static_cast<eNodeSocketInOut>(tosock->in_out) == SOCK_OUT) {
+  else if (eNodeSocketInOut(fromsock->in_out) == SOCK_IN &&
+           eNodeSocketInOut(tosock->in_out) == SOCK_OUT) {
     /* OK but flip */
     link = MEM_cnew<bNodeLink>("link");
     if (ntree) {
@@ -2782,7 +2782,7 @@ void nodePositionRelative(bNode *from_node,
   int tot_sock_idx;
 
   /* Socket to plug into. */
-  if (static_cast<eNodeSocketInOut>(to_sock->in_out) == SOCK_IN) {
+  if (eNodeSocketInOut(to_sock->in_out) == SOCK_IN) {
     offset_x = -(from_node->typeinfo->width + 50);
     tot_sock_idx = BLI_listbase_count(&to_node->outputs);
     tot_sock_idx += BLI_findindex(&to_node->inputs, to_sock);
@@ -2798,7 +2798,7 @@ void nodePositionRelative(bNode *from_node,
 
   /* Output socket. */
   if (from_sock) {
-    if (static_cast<eNodeSocketInOut>(from_sock->in_out) == SOCK_IN) {
+    if (eNodeSocketInOut(from_sock->in_out) == SOCK_IN) {
       tot_sock_idx = BLI_listbase_count(&from_node->outputs);
       tot_sock_idx += BLI_findindex(&from_node->inputs, from_sock);
     }
