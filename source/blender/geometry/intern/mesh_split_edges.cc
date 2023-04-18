@@ -154,7 +154,7 @@ static void add_new_edges(Mesh &mesh,
     attributes.add(new_data.local_id,
                    ATTR_DOMAIN_EDGE,
                    bke::cpp_type_to_custom_data_type(new_data.type),
-                   bke::AttributeInitData(new_data.array, nullptr));
+                   bke::AttributeInitMoveArray(new_data.array));
   }
 }
 

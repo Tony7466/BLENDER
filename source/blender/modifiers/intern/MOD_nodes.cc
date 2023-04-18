@@ -1086,10 +1086,8 @@ static void store_computed_output_attributes(
 
     /* Try to create the attribute reusing the stored buffer. This will only succeed if the
      * attribute didn't exist before, or if it existed but was removed above. */
-    if (attributes.add(store.name,
-                       store.domain,
-                       data_type,
-                       bke::AttributeInitData(store.data.data(), nullptr))) {
+    if (attributes.add(
+            store.name, store.domain, data_type, bke::AttributeInitMoveArray(store.data.data()))) {
       continue;
     }
 

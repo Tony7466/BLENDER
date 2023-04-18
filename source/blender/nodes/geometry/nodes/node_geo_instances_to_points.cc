@@ -71,12 +71,11 @@ static void convert_instances_to_points(GeometrySet &geometry_set,
     const AttributeIDRef &id = item.key;
     const eCustomDataType type = item.value.data_type;
 
-    const GAttributeReader src = src_attributes.lookup_or_default(id, ATTR_DOMAIN_INSTANCE, type);
-    if (selection.size() == instances.instances_num()) {
-      dst_attributes.add(id,
-                         ATTR_DOMAIN_POINT,
-                         type,
-                         bke::AttributeInitData(src.varray.common_info().data, src.sharing_info));
+    const GAttributeReader src = src_attributes.lookup(id);
+    if (selection.size() == instances.instances_num() && src.sharing_info) {
+      const bke::AttributeInitShared init(src.varray.get_internal_span().data(),
+                                          *src.sharing_info);
+      dst_attributes.add(id, ATTR_DOMAIN_POINT, type, init);
     }
     else {
       GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(

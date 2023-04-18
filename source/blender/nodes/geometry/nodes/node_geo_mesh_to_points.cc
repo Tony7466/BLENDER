@@ -83,15 +83,13 @@ static void geometry_set_mesh_to_points(GeometrySet &geometry_set,
 
   PointCloud *pointcloud;
   if (share_position) {
-    /* Create an empty point cloud so the positions can be easily shared with a generic utility. */
+    /* Create an empty point cloud so the positions can be shared. */
     pointcloud = BKE_pointcloud_new_nomain(0);
     CustomData_free_layer_named(&pointcloud->pdata, "position", pointcloud->totpoint);
     pointcloud->totpoint = mesh->totvert;
     const bke::AttributeReader src = src_attributes.lookup<float3>("position");
-    pointcloud->attributes_for_write().add<float3>(
-        "position",
-        ATTR_DOMAIN_POINT,
-        bke::AttributeInitData(src.varray.common_info().data, src.sharing_info));
+    const bke::AttributeInitShared init(src.varray.get_internal_span().data(), *src.sharing_info);
+    pointcloud->attributes_for_write().add<float3>("position", ATTR_DOMAIN_POINT, init);
   }
   else {
     pointcloud = BKE_pointcloud_new_nomain(selection.size());
@@ -117,11 +115,10 @@ static void geometry_set_mesh_to_points(GeometrySet &geometry_set,
     const AttributeIDRef attribute_id = entry.key;
     const eCustomDataType data_type = entry.value.data_type;
     const bke::GAttributeReader src = src_attributes.lookup(attribute_id, domain, data_type);
-    if (share_arrays && src.domain == domain) {
-      dst_attributes.add(attribute_id,
-                         ATTR_DOMAIN_POINT,
-                         data_type,
-                         bke::AttributeInitData(src.varray.common_info().data, src.sharing_info));
+    if (share_arrays && src.domain == domain && src.sharing_info) {
+      const bke::AttributeInitShared init(src.varray.get_internal_span().data(),
+                                          *src.sharing_info);
+      dst_attributes.add(attribute_id, ATTR_DOMAIN_POINT, data_type, init);
     }
     else {
       GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(

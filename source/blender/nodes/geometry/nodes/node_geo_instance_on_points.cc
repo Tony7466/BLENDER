@@ -161,15 +161,13 @@ static void add_instances_from_component(
   bke::MutableAttributeAccessor dst_attributes = dst_component.attributes_for_write();
   for (const auto item : attributes_to_propagate.items()) {
     const AttributeIDRef &id = item.key;
-    const eCustomDataType type = item.value.data_type;
 
-    const bke::GAttributeReader src = src_attributes.lookup_or_default(
-        id, ATTR_DOMAIN_POINT, type);
-    if (src.varray.size() == dst_component.instances_num()) {
-      dst_attributes.add(id,
-                         ATTR_DOMAIN_INSTANCE,
-                         type,
-                         bke::AttributeInitData(src.varray.common_info().data, src.sharing_info));
+    const bke::GAttributeReader src = src_attributes.lookup(id, ATTR_DOMAIN_POINT);
+    const eCustomDataType type = bke::cpp_type_to_custom_data_type(src.varray.type());
+    if (src.varray.size() == dst_component.instances_num() && src.sharing_info) {
+      const bke::AttributeInitShared init(src.varray.get_internal_span().data(),
+                                          *src.sharing_info);
+      dst_attributes.add(id, ATTR_DOMAIN_INSTANCE, type, init);
     }
     else {
       GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(

@@ -574,17 +574,13 @@ static void interpolate_curve_attributes(bke::CurvesGeometry &child_curves,
     if (id.is_anonymous() && !propagation_info.propagate(id.anonymous_id())) {
       return true;
     }
-    const eCustomDataType type = meta_data.data_type;
-    if (type == CD_PROP_STRING) {
+    if (meta_data.data_type == CD_PROP_STRING) {
       return true;
     }
 
-    const GAttributeReader src = point_attributes.lookup(id, ATTR_DOMAIN_POINT, type);
-    children_attributes.add(
-        id,
-        ATTR_DOMAIN_CURVE,
-        type,
-        bke::AttributeInitData(src.varray.common_info().data, src.sharing_info));
+    const GAttributeReader src = point_attributes.lookup(id);
+    const bke::AttributeInitShared init(src.varray.get_internal_span().data(), *src.sharing_info);
+    children_attributes.add(id, ATTR_DOMAIN_CURVE, meta_data.data_type, init);
     return true;
   });
 }

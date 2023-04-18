@@ -658,12 +658,12 @@ static void mesh_calc_modifiers(struct Depsgraph *depsgraph,
       ASSERT_IS_VALID_MESH(mesh_final);
     }
     MutableAttributeAccessor attributes = mesh_final->attributes_for_write();
-    const AttributeReader<float3> positions = attributes.lookup<float3>("position");
+    const AttributeReader positions = attributes.lookup<float3>("position");
     if (positions) {
       attributes.add<float3>(
           "rest_position",
           ATTR_DOMAIN_POINT,
-          AttributeInitData(positions.varray.common_info().data, positions.sharing_info));
+          AttributeInitShared(positions.varray.common_info().data, *positions.sharing_info));
     }
   }
 

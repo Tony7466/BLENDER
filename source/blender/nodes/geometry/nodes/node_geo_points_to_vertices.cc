@@ -51,6 +51,7 @@ static void geometry_set_points_to_vertices(
 
   Mesh *mesh;
   if (selection.size() == points->totpoint) {
+    /* Create a mesh without positions so the attribute can be shared. */
     mesh = BKE_mesh_new_nomain(0, 0, 0, 0);
     CustomData_free_layer_named(&mesh->vdata, "position", mesh->totvert);
     mesh->totvert = selection.size();
@@ -66,11 +67,10 @@ static void geometry_set_points_to_vertices(
     const AttributeIDRef id = entry.key;
     const eCustomDataType data_type = entry.value.data_type;
     const GAttributeReader src = src_attributes.lookup(id);
-    if (selection.size() == points->totpoint) {
-      dst_attributes.add(id,
-                         ATTR_DOMAIN_POINT,
-                         data_type,
-                         bke::AttributeInitData(src.varray.common_info().data, src.sharing_info));
+    if (selection.size() == points->totpoint && src.sharing_info) {
+      const bke::AttributeInitShared init(src.varray.get_internal_span().data(),
+                                          *src.sharing_info);
+      dst_attributes.add(id, ATTR_DOMAIN_POINT, data_type, init);
     }
     else {
       GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(

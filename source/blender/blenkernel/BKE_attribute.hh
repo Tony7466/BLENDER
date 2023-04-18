@@ -84,8 +84,10 @@ struct AttributeInit {
     DefaultValue,
     /** #AttributeInitVArray. */
     VArray,
-    /** #AttributeInitData. */
+    /** #AttributeInitMoveArray. */
     MoveArray,
+    /** #AttributeInitShared. */
+    Shared,
   };
   Type type;
   AttributeInit(const Type type) : type(type) {}
@@ -121,15 +123,25 @@ struct AttributeInitVArray : public AttributeInit {
  * Sometimes data is created before a geometry component is available. In that case, it's
  * preferable to move data directly to the created attribute to avoid a new allocation and a copy.
  *
- * Implicit sharing info can be provided if the array is shared. In that case the sharing info
- * has ownership of the provided array.
+ * The array must be allocated with MEM_*, since `attribute_try_create` will free the array if it
+ * can't be used directly, and that is generally how Blender expects custom data to be allocated.
  */
-struct AttributeInitData : public AttributeInit {
+struct AttributeInitMoveArray : public AttributeInit {
+  void *data = nullptr;
+
+  AttributeInitMoveArray(void *data) : AttributeInit(Type::MoveArray), data(data) {}
+};
+
+/**
+ * Create a shared attribute by adding a user to a shared data array.
+ * The sharing info has ownership of the provided contiguous array.
+ */
+struct AttributeInitShared : public AttributeInit {
   const void *data = nullptr;
   const ImplicitSharingInfo *sharing_info = nullptr;
 
-  AttributeInitData(const void *data, const ImplicitSharingInfo *sharing_info)
-      : AttributeInit(Type::MoveArray), data(data), sharing_info(sharing_info)
+  AttributeInitShared(const void *data, const ImplicitSharingInfo &sharing_info)
+      : AttributeInit(Type::Shared), data(data), sharing_info(&sharing_info)
   {
   }
 };
