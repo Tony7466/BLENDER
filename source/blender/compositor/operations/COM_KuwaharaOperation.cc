@@ -55,99 +55,82 @@ int KuwaharaOperation::get_variation()
   return variation_;
 }
 
-
-void KuwaharaOperation::update_memory_buffer(MemoryBuffer *output,
-                                             const rcti &area,
-                                             Span<MemoryBuffer *> inputs)
+void KuwaharaOperation::update_memory_buffer_partial(MemoryBuffer *output,
+                                                     const rcti &area,
+                                                     Span<MemoryBuffer *> inputs)
 {
   MemoryBuffer *image = inputs[0];
 
-  const int bwidth = area.xmax - area.xmin;
-  const int bheight = area.ymax - area.ymin;
+  for (BuffersIterator<float> it = output->iterate_with(inputs, area); !it.is_end(); ++it) {
+    const int x = it.x;
+    const int y = it.y;
+    it.out[3] = image->get_value(x, y, 3);
 
-  for (int y = 0; y < bheight; y++)
-  {
-    for (int x = 0; x < bwidth; x++)
-    {
-      output->get_value(x, y, 3) = 1;
-    }
-  }
 
-  for (int ch = 0; ch < 3; ch++)
-  {
-    for (int y = 0; y < bheight; y++)
+    for(int ch = 0; ch < 3; ch++)
     {
-      for (int x = 0; x < bwidth; x++)
+      float sum[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+      float var[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+      int cnt[4] = {0, 0, 0, 0};
+
+      for (int dy = -kernel_size_; dy <= kernel_size_; dy++)
       {
-        float sum[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-        float var[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-        int cnt[4] = {0, 0, 0, 0};
-        for (int dy = -kernel_size_; dy <= kernel_size_; dy++)
+        for (int dx = -kernel_size_; dx <= kernel_size_; dx++)
         {
-          for (int dx = -kernel_size_; dx <= kernel_size_; dx++)
+
+          int xx = x + dx;
+          int yy = y + dy;
+          if (xx >= 0 && yy >= 0 && xx < area.xmax && yy < area.ymax)
           {
-            int xx = x + dx;
-            int yy = y + dy;
-            if (xx >= 0 && yy >= 0 && xx < area.xmax && yy < area.ymax)
+            float v;
+            v = image->get_value(xx, yy, ch);
+
+            if (dx <= 0 && dy <= 0)
             {
-              //double v = temp.at<float>(yy, xx * dim + c);
-              float v;
-              v = image->get_value(xx, yy, ch);
+              sum[0] += v;
+              var[0] += v * v;
+              cnt[0]++;
+            }
 
-              if (dx <= 0 && dy <= 0)
-              {
-                sum[0] += v;
-                var[0] += v * v;
-                cnt[0]++;
-              }
+            if (dx >= 0 && dy <= 0)
+            {
+              sum[1] += v;
+              var[1] += v * v;
+              cnt[1]++;
+            }
 
-              if (dx >= 0 && dy <= 0)
-              {
-                sum[1] += v;
-                var[1] += v * v;
-                cnt[1]++;
-              }
+            if (dx <= 0 && dy >= 0)
+            {
+              sum[2] += v;
+              var[2] += v * v;
+              cnt[2]++;
+            }
 
-              if (dx <= 0 && dy >= 0)
-              {
-                sum[2] += v;
-                var[2] += v * v;
-                cnt[2]++;
-              }
-
-              if (dx >= 0 && dy >= 0)
-              {
-                sum[3] += v;
-                var[3] += v * v;
-                cnt[3]++;
-              }
+            if (dx >= 0 && dy >= 0)
+            {
+              sum[3] += v;
+              var[3] += v * v;
+              cnt[3]++;
             }
           }
         }
-
-        std::vector<std::pair<double, int>> vec;
-        for (int i = 0; i < 4; i++)
-        {
-          sum[i] = cnt[i] != 0 ? sum[i] / cnt[i] : 0.0f;
-          var[i] = cnt[i] != 0 ? var[i] / cnt[i] : 0.0f;
-          var[i] = sqrt(var[i] - sum[i] * sum[i]);
-          vec.push_back(std::make_pair(var[i], i));
-        }
-
-        sort(vec.begin(), vec.end());
-        float res = static_cast<float>(sum[vec[0].second]);
-
-        output->get_value(x, y, ch) = res;
       }
+
+      std::vector<std::pair<double, int>> vec;
+      for (int i = 0; i < 4; i++)
+      {
+        sum[i] = cnt[i] != 0 ? sum[i] / cnt[i] : 0.0f;
+        var[i] = cnt[i] != 0 ? var[i] / cnt[i] : 0.0f;
+        var[i] = sqrt(var[i] - sum[i] * sum[i]);
+        vec.push_back(std::make_pair(var[i], i));
+      }
+
+      sort(vec.begin(), vec.end());
+      float res = static_cast<float>(sum[vec[0].second]);
+
+      output->get_value(x, y, ch) = res;
     }
   }
-}
-
-void KuwaharaOperation::get_area_of_interest(const int /*input_idx*/,
-                                               const rcti & /*output_area*/,
-                                               rcti &r_input_area)
-{
-  r_input_area = this->get_canvas();
 }
 
 }  // namespace blender::compositor

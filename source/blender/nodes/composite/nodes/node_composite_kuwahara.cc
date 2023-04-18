@@ -30,7 +30,7 @@ static void node_composit_init_kuwahara(bNodeTree * /*ntree*/, bNode *node)
   NodeKuwaharaData *data = MEM_cnew<NodeKuwaharaData>(__func__);
   node->storage = data;
 
-  data->kernel_size = 4.1f;
+  data->kernel_size = 4;
 }
 
 static void node_composit_buts_kuwahara(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)

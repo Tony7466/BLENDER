@@ -3,11 +3,11 @@
 
 #pragma once
 
-#include "COM_NodeOperation.h"
+#include "COM_MultiThreadedOperation.h"
 
 namespace blender::compositor {
 
-class KuwaharaOperation : public NodeOperation {
+class KuwaharaOperation : public MultiThreadedOperation {
   SocketReader *image_reader_;
 
   int kernel_size_;
@@ -26,21 +26,9 @@ class KuwaharaOperation : public NodeOperation {
   void set_variation(int variation);
   int get_variation();
 
-  void update_memory_buffer(MemoryBuffer *output,
-                            const rcti &area,
-                            Span<MemoryBuffer *> inputs) override;
-  
-  void get_area_of_interest(const int input_idx,
-                            const rcti & output_area,
-                            rcti &r_input_area) override;
-//
-//  bool determine_depending_area_of_interest(rcti *input,
-//                                            ReadBufferOperation *read_operation,
-//                                            rcti *output) override;
-//
-//  void update_memory_buffer_partial(MemoryBuffer *output,
-//                                    const rcti &area,
-//                                    Span<MemoryBuffer *> inputs) override;
+  void update_memory_buffer_partial(MemoryBuffer *output,
+                                    const rcti &area,
+                                    Span<MemoryBuffer *> inputs) override;
 
 };
 
