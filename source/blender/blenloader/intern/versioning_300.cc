@@ -4252,7 +4252,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-if (!MAIN_VERSION_ATLEAST(bmain, 306, 5)) {
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 5)) {
     /* Some regions used to be added/removed dynamically. Ensure they are always there, there is a
      * `ARegionType.poll()` now. */
     LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
