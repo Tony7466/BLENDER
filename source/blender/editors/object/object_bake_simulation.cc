@@ -381,7 +381,7 @@ static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_simple_gspan(
     return read_bdata_raw_data_with_endian(
         bdata_reader, io_data, type.size(), r_data.size(), r_data.data());
   }
-  if (type.is<float2>()) {
+  if (type.is_any<float2, int2>()) {
     return read_bdata_raw_data_with_endian(
         bdata_reader, io_data, sizeof(float), r_data.size() * 2, r_data.data());
   }
