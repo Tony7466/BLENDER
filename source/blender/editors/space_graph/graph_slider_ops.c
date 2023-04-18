@@ -1134,6 +1134,9 @@ static int blend_to_ease_invoke(bContext *C, wmOperator *op, const wmEvent *even
   gso->modal_update = blend_to_ease_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   blend_to_ease_draw_status_header(C, gso);
+  ED_slider_allow_overshoot_set(gso->slider, false);
+  ED_slider_is_bidirectional_set(gso->slider, true);
+  ED_slider_factor_set(gso->slider, 0.0f);
 
   return invoke_result;
 }
