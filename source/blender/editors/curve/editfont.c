@@ -1805,18 +1805,19 @@ static void font_cursor_set_apply(bContext *C, const wmEvent *event)
   Object *obedit = CTX_data_active_object(C);
   Curve *cu = obedit->data;
   EditFont *ef = cu->editfont;
-  ARegion *region = CTX_wm_region(C);
-  int cur_loc_pos;
-  float rout[3];
-  float mal_fl[2] = {(float)event->mval[0], (float)event->mval[1]};
 
-  const float *co = obedit->object_to_world[3];
-  const float *no = obedit->object_to_world[2];
+  /* Calculate a plane from the text object's orientation. */
   float plane[4];
-  plane_from_point_normal_v3(plane, co, no);
-  ED_view3d_win_to_3d_on_plane(region, plane, mal_fl, true, rout);
-  mul_m4_v3(obedit->world_to_object, rout);
-  float curs_loc[2] = {rout[0] / cu->fsize, rout[1] / cu->fsize};
+  plane_from_point_normal_v3(plane, obedit->object_to_world[3], obedit->object_to_world[2]);
+
+  /* Convert Mouse location in region to 3D location in world space. */
+  float mal_fl[2] = {(float)event->mval[0], (float)event->mval[1]};
+  float mouse_loc[3];
+  ED_view3d_win_to_3d_on_plane(CTX_wm_region(C), plane, mal_fl, true, mouse_loc);
+
+  /* Convert to object space and scale by font size. */
+  mul_m4_v3(obedit->world_to_object, mouse_loc);
+  float curs_loc[2] = {mouse_loc[0] / cu->fsize, mouse_loc[1] / cu->fsize};
 
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object *ob = DEG_get_evaluated_object(depsgraph, obedit);
@@ -1824,9 +1825,9 @@ static void font_cursor_set_apply(bContext *C, const wmEvent *event)
   ef = cu->editfont;
   BLI_assert(ef->len >= 0);
 
-  cur_loc_pos = BKE_vfont_cursor_to_string_offset(ob, curs_loc);
+  const int string_offset = BKE_vfont_cursor_to_string_offset(ob, curs_loc);
 
-  if (cur_loc_pos > ef->len || cur_loc_pos < 0 || ef->selend == cur_loc_pos) {
+  if (string_offset > ef->len || string_offset < 0 || ef->selend == string_offset) {
     return;
   }
 
@@ -1844,11 +1845,11 @@ static void font_cursor_set_apply(bContext *C, const wmEvent *event)
       ef->selstart = ef->selend = 1;
     }
     else {
-      ef->selstart = ef->selend = cur_loc_pos + 1;
+      ef->selstart = ef->selend = string_offset + 1;
     }
   }
-  ef->selend = cur_loc_pos;
-  ef->pos = cur_loc_pos;
+  ef->selend = string_offset;
+  ef->pos = string_offset;
 
   DEG_id_tag_update(obedit->data, ID_RECALC_SELECT);
   WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
@@ -1871,9 +1872,12 @@ static int font_selection_set_invoke(bContext *C, wmOperator *op, const wmEvent 
 static int font_selection_set_modal(bContext *C, wmOperator *UNUSED(op), const wmEvent *event)
 {
   switch (event->type) {
-    case LEFTMOUSE: // release
-      font_cursor_set_apply(C, event);
-      return OPERATOR_FINISHED;
+    case LEFTMOUSE:
+      if (event->val == KM_RELEASE) {
+        font_cursor_set_apply(C, event);
+        return OPERATOR_FINISHED;
+      }
+      break;
     case MIDDLEMOUSE:
     case RIGHTMOUSE:
       return OPERATOR_FINISHED;

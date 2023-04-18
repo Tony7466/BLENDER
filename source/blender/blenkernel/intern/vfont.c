@@ -734,11 +734,19 @@ typedef struct VFontToCurveIter {
   int status;
 } VFontToCurveIter;
 
+
+/* -------------------------------------------------------------------- */
+/** \name VFont Mouse Cursor to Text Offset
+ *
+ * This is an optional argument to `vfont_to_curve` for getting the text
+ * offset into the string at a mouse cursor location. Used for getting
+ * text cursor (caret) position or selection range.
+ * \{ */
 /* Used when translating a mouse cursor location to a position within the string. */
 typedef struct VFontCursor_Params {
-  /* Mouse cursor location as input. */
+  /* Mouse cursor location in Object coordinate space as input. */
   float cursor_location[2];
-  /* string character position as output. */
+  /* Character position within EditFont::textbuf as output. */
   int r_string_offset;
 } VFontCursor_Params;
 
@@ -782,12 +790,12 @@ static bool vfont_to_curve(Object *ob,
                            Curve *cu,
                            int mode,
                            VFontToCurveIter *iter_data,
+                           struct VFontCursor_Params *cursor_params,
                            ListBase *r_nubase,
                            const char32_t **r_text,
                            int *r_text_len,
                            bool *r_text_free,
-                           struct CharTrans **r_chartransdata,
-                           struct VFontCursor_Params *cursor_params)
+                           struct CharTrans **r_chartransdata)
 {
   EditFont *ef = cu->editfont;
   EditFontSelBox *selboxes = NULL;
@@ -1770,8 +1778,17 @@ bool BKE_vfont_to_curve_ex(Object *ob,
   };
 
   do {
-    data.ok &= vfont_to_curve(
-        ob, cu, mode, &data, r_nubase, r_text, r_text_len, r_text_free, r_chartransdata, NULL, NULL);
+    data.ok &= vfont_to_curve(ob,
+                              cu,
+                              mode,
+                              &data,
+                              NULL,
+                              r_nubase,
+                              r_text,
+                              r_text_len,
+                              r_text_free,
+                              r_chartransdata,
+                              NULL);
   } while (data.ok && ELEM(data.status, VFONT_TO_CURVE_SCALE_ONCE, VFONT_TO_CURVE_BISECT));
 
   return data.ok;
@@ -1799,7 +1816,7 @@ int BKE_vfont_cursor_to_string_offset(Object *ob, float cursor_location[2])
 
   do {
     data.ok &= vfont_to_curve(
-        ob, cu, FO_CURS, &data, r_nubase, NULL, NULL, NULL, NULL, &cursor_params);
+        ob, cu, FO_CURS, &data, &cursor_params, r_nubase, NULL, NULL, NULL, NULL);
   } while (data.ok && ELEM(data.status, VFONT_TO_CURVE_SCALE_ONCE, VFONT_TO_CURVE_BISECT));
 
   return cursor_params.r_string_offset;
