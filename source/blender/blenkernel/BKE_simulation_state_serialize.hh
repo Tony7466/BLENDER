@@ -10,11 +10,14 @@ struct ModifierData;
 
 namespace blender::bke::sim {
 
+using DictionaryValue = io::serialize::DictionaryValue;
+using DictionaryValuePtr = std::shared_ptr<DictionaryValue>;
+
 struct BDataSlice {
   std::string name;
   IndexRange range;
 
-  std::shared_ptr<io::serialize::DictionaryValue> serialize() const;
+  DictionaryValuePtr serialize() const;
   static std::optional<BDataSlice> deserialize(const io::serialize::DictionaryValue &io_slice);
 };
 
@@ -25,11 +28,39 @@ class BDataReader {
 
 class BDataWriter {
  public:
-  virtual BDataSlice write(const void *data, const int64_t size) = 0;
+  virtual BDataSlice write(const void *data, int64_t size) = 0;
 
-  virtual std::shared_ptr<io::serialize::DictionaryValue> write_shared(
-      const ImplicitSharingInfo *sharing_info,
-      const FunctionRef<std::shared_ptr<io::serialize::DictionaryValue>()> write_fn) = 0;
+  virtual DictionaryValuePtr write_shared(const ImplicitSharingInfo *sharing_info,
+                                          FunctionRef<DictionaryValuePtr()> write_fn) = 0;
+};
+
+class DiskBDataReader : public BDataReader {
+ private:
+  const std::string bdata_dir_;
+
+ public:
+  DiskBDataReader(std::string bdata_dir);
+  [[nodiscard]] bool read(const BDataSlice &slice, void *r_data) const override;
+};
+
+class DiskBDataWriter : public BDataWriter {
+ private:
+  std::string bdata_name_;
+  std::ostream &bdata_file_;
+  int64_t current_offset_;
+  Map<const ImplicitSharingInfo *, DictionaryValuePtr> &shared_data_;
+
+ public:
+  DiskBDataWriter(std::string bdata_name,
+                  std::ostream &bdata_file,
+                  int64_t current_offset,
+                  Map<const ImplicitSharingInfo *, std::shared_ptr<io::serialize::DictionaryValue>>
+                      &shared_data);
+
+  BDataSlice write(const void *data, int64_t size) override;
+
+  DictionaryValuePtr write_shared(const ImplicitSharingInfo *sharing_info,
+                                  FunctionRef<DictionaryValuePtr()> write_fn) override;
 };
 
 std::string get_bake_directory(const Main &bmain, const Object &object, const ModifierData &md);
@@ -38,8 +69,8 @@ std::string get_meta_directory(const Main &bmain, const Object &object, const Mo
 
 void serialize_modifier_simulation_state(const ModifierSimulationState &state,
                                          BDataWriter &bdata_writer,
-                                         io::serialize::DictionaryValue &r_io_root);
-void deserialize_modifier_simulation_state(const io::serialize::DictionaryValue &io_root,
+                                         DictionaryValue &r_io_root);
+void deserialize_modifier_simulation_state(const DictionaryValue &io_root,
                                            const BDataReader &bdata_reader,
                                            ModifierSimulationState &r_state);
 

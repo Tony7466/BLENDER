@@ -14,6 +14,7 @@
 
 #include "BLI_endian_defines.h"
 #include "BLI_endian_switch.h"
+#include "BLI_fileops.hh"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_path_util.h"
 
@@ -738,6 +739,55 @@ void deserialize_modifier_simulation_state(const io::serialize::DictionaryValue 
 
     r_state.zone_states_.add_overwrite(zone_id, std::move(zone_state));
   }
+}
+
+DiskBDataReader::DiskBDataReader(std::string bdata_dir) : bdata_dir_(std::move(bdata_dir)) {}
+
+[[nodiscard]] bool DiskBDataReader::read(const BDataSlice &slice, void *r_data) const
+{
+  if (slice.range.is_empty()) {
+    return true;
+  }
+
+  char bdata_path[FILE_MAX];
+  BLI_path_join(bdata_path, sizeof(bdata_path), bdata_dir_.c_str(), slice.name.c_str());
+
+  fstream bdata_file{bdata_path, std::ios::in | std::ios::binary};
+  bdata_file.seekg(slice.range.start());
+  bdata_file.read(static_cast<char *>(r_data), slice.range.size());
+  return true;
+}
+
+DiskBDataWriter::DiskBDataWriter(
+    std::string bdata_name,
+    std::ostream &bdata_file,
+    const int64_t current_offset,
+    Map<const ImplicitSharingInfo *, std::shared_ptr<io::serialize::DictionaryValue>> &shared_data)
+    : bdata_name_(std::move(bdata_name)),
+      bdata_file_(bdata_file),
+      current_offset_(current_offset),
+      shared_data_(shared_data)
+{
+}
+
+BDataSlice DiskBDataWriter::write(const void *data, const int64_t size)
+{
+  const int64_t old_offset = current_offset_;
+  bdata_file_.write(static_cast<const char *>(data), size);
+  current_offset_ += size;
+  return {bdata_name_, {old_offset, size}};
+}
+
+DictionaryValuePtr DiskBDataWriter::write_shared(const ImplicitSharingInfo *sharing_info,
+                                                 const FunctionRef<DictionaryValuePtr()> write_fn)
+{
+  if (sharing_info == nullptr) {
+    return write_fn();
+  }
+  return shared_data_.lookup_or_add_cb(sharing_info, [&]() {
+    sharing_info->add_weak_user();
+    return write_fn();
+  });
 }
 
 }  // namespace blender::bke::sim

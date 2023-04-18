@@ -46,71 +46,6 @@
 
 namespace blender::ed::object::bake_simulation {
 
-class MyBDataReader : public bke::sim::BDataReader {
- private:
-  std::string bdata_dir_;
-
- public:
-  MyBDataReader(std::string bdata_dir) : bdata_dir_(std::move(bdata_dir)) {}
-
-  [[nodiscard]] bool read(const bke::sim::BDataSlice &slice, void *r_data) const override
-  {
-    if (slice.range.is_empty()) {
-      return true;
-    }
-
-    char bdata_path[FILE_MAX];
-    BLI_path_join(bdata_path, sizeof(bdata_path), bdata_dir_.c_str(), slice.name.c_str());
-
-    fstream bdata_file{bdata_path, std::ios::in | std::ios::binary};
-    bdata_file.seekg(slice.range.start());
-    bdata_file.read(static_cast<char *>(r_data), slice.range.size());
-    return true;
-  }
-};
-
-class MyBDataWriter : public bke::sim::BDataWriter {
- private:
-  std::string bdata_name_;
-  std::ostream &bdata_file_;
-  int64_t current_offset_;
-  Map<const ImplicitSharingInfo *, std::shared_ptr<io::serialize::DictionaryValue>> &shared_data_;
-
- public:
-  MyBDataWriter(std::string bdata_name,
-                std::ostream &bdata_file,
-                const int64_t current_offset,
-                Map<const ImplicitSharingInfo *, std::shared_ptr<io::serialize::DictionaryValue>>
-                    &shared_data)
-      : bdata_name_(std::move(bdata_name)),
-        bdata_file_(bdata_file),
-        current_offset_(current_offset),
-        shared_data_(shared_data)
-  {
-  }
-
-  bke::sim::BDataSlice write(const void *data, const int64_t size) override
-  {
-    const int64_t old_offset = current_offset_;
-    bdata_file_.write(static_cast<const char *>(data), size);
-    current_offset_ += size;
-    return {bdata_name_, {old_offset, size}};
-  }
-
-  std::shared_ptr<io::serialize::DictionaryValue> write_shared(
-      const ImplicitSharingInfo *sharing_info,
-      const FunctionRef<std::shared_ptr<io::serialize::DictionaryValue>()> write_fn) override
-  {
-    if (sharing_info == nullptr) {
-      return write_fn();
-    }
-    return shared_data_.lookup_or_add_cb(sharing_info, [&]() {
-      sharing_info->add_weak_user();
-      return write_fn();
-    });
-  }
-};
-
 void load_simulation_state(const StringRefNull meta_path,
                            const StringRefNull bdata_dir,
                            bke::sim::ModifierSimulationState &r_state);
@@ -118,7 +53,7 @@ void load_simulation_state(const StringRefNull meta_path,
                            const StringRefNull bdata_dir,
                            bke::sim::ModifierSimulationState &r_state)
 {
-  const MyBDataReader bdata_reader{bdata_dir};
+  const bke::sim::DiskBDataReader bdata_reader{bdata_dir};
   fstream meta_file{meta_path.c_str(), std::ios::in};
   io::serialize::JsonFormatter formatter;
   std::shared_ptr<io::serialize::Value> io_root_value = formatter.deserialize(meta_file);
@@ -237,7 +172,8 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
 
         BLI_make_existing_file(bdata_path);
         fstream bdata_file{bdata_path, std::ios::out | std::ios::binary};
-        MyBDataWriter bdata_writer{bdata_file_name, bdata_file, 0, modifier_bake_data.shared_data};
+        bke::sim::DiskBDataWriter bdata_writer{
+            bdata_file_name, bdata_file, 0, modifier_bake_data.shared_data};
 
         io::serialize::DictionaryValue io_root;
         bke::sim::serialize_modifier_simulation_state(*sim_state, bdata_writer, io_root);
