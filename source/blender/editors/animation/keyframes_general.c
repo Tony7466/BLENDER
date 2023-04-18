@@ -505,7 +505,8 @@ void time_offset_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float
 
   /* If we operate directly on the fcurve there will be a feedback loop
    * so we need to capture the "y" values on an array to then apply them on a second loop. */
-  float y_values[segment->length];
+  float *y_values = MEM_callocN(sizeof(float) * segment->length, "Time Offset Samples");
+  y_values[segment->length];
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
 
@@ -537,6 +538,7 @@ void time_offset_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float
     const int index_from_zero = i - segment->start_index;
     move_key(&fcu->bezt[i], y_values[index_from_zero]);
   }
+  MEM_freeN(y_values);
 }
 
 /* ---------------- */
