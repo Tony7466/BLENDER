@@ -1137,9 +1137,9 @@ static int blend_to_frame_invoke(bContext *C, wmOperator *op, const wmEvent *eve
   tGraphSliderOp *gso = op->customdata;
   gso->modal_update = blend_to_frame_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
+  blend_to_frame_draw_status_header(C, gso);
   ED_slider_allow_overshoot_set(gso->slider, false);
   ED_slider_factor_set(gso->slider, 0.0f);
-  blend_to_frame_draw_status_header(C, gso);
 
   return invoke_result;
 }
