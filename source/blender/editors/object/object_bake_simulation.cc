@@ -52,8 +52,8 @@ static bool bake_simulation_poll(bContext *C)
     return false;
   }
   Main *bmain = CTX_data_main(C);
-  const char *path = BKE_main_blendfile_path(bmain);
-  if (path == nullptr || path[0] == '\0') {
+  const StringRefNull path = BKE_main_blendfile_path(bmain);
+  if (path.is_empty()) {
     CTX_wm_operator_poll_msg_set(C, "File has to be saved");
     return false;
   }
@@ -221,5 +221,5 @@ void OBJECT_OT_delete_baked_simulation(wmOperatorType *ot)
   ot->idname = __func__;
 
   ot->exec = delete_baked_simulation_exec;
-  ot->poll = bake_simulation_poll;
+  ot->poll = ED_operator_object_active;
 }
