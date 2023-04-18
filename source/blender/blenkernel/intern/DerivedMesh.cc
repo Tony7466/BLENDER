@@ -658,11 +658,12 @@ static void mesh_calc_modifiers(struct Depsgraph *depsgraph,
       ASSERT_IS_VALID_MESH(mesh_final);
     }
     MutableAttributeAccessor attributes = mesh_final->attributes_for_write();
-    SpanAttributeWriter<float3> rest_positions =
-        attributes.lookup_or_add_for_write_only_span<float3>("rest_position", ATTR_DOMAIN_POINT);
-    if (rest_positions && attributes.domain_size(ATTR_DOMAIN_POINT) > 0) {
-      attributes.lookup<float3>("position").materialize(rest_positions.span);
-      rest_positions.finish();
+    const AttributeReader<float3> positions = attributes.lookup<float3>("position");
+    if (positions) {
+      attributes.add<float3>(
+          "rest_position",
+          ATTR_DOMAIN_POINT,
+          AttributeInitData(positions.varray.common_info().data, positions.sharing_info));
     }
   }
 

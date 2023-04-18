@@ -1088,8 +1088,8 @@ static void store_computed_output_attributes(
      * attribute didn't exist before, or if it existed but was removed above. */
     if (attributes.add(store.name,
                        store.domain,
-                       bke::cpp_type_to_custom_data_type(store.data.type()),
-                       bke::AttributeInitMoveArray(store.data.data()))) {
+                       data_type,
+                       bke::AttributeInitData(store.data.data(), nullptr))) {
       continue;
     }
 
