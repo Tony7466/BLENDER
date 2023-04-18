@@ -129,44 +129,37 @@ void DeviceScene::device_update_host_pointers(Device *device,
                                               DeviceScene *dscene,
                                               const GeometrySizes *p_sizes)
 {
-  if (p_sizes->tri_size != 0) {
-    if (dscene->tri_verts.is_modified()) {
-      tri_verts.assign_mem(dscene->tri_verts);
-      tri_verts.tag_modified();
+  if (dscene->tri_verts.size() > 0) {
+    tri_verts.assign_mem(dscene->tri_verts);
+    tri_verts.tag_modified();
+
+    if (dscene->tri_shader.is_modified()) {
+      tri_shader.assign_mem(dscene->tri_shader);
+      tri_shader.tag_modified();
     }
-    {
-      if (dscene->tri_shader.is_modified()) {
-        tri_shader.assign_mem(dscene->tri_shader);
-        tri_shader.tag_modified();
-      }
+
+    if (dscene->tri_vnormal.is_modified()) {
+      tri_vnormal.assign_mem(dscene->tri_vnormal);
+      tri_vnormal.tag_modified();
     }
-    {
-      if (dscene->tri_vnormal.is_modified()) {
-        tri_vnormal.assign_mem(dscene->tri_vnormal);
-        tri_vnormal.tag_modified();
-      }
+
+    if (dscene->tri_vindex.is_modified()) {
+      tri_vindex.assign_mem(dscene->tri_vindex);
+      tri_vindex.tag_modified();
     }
-    {
-      if (dscene->tri_vindex.is_modified()) {
-        tri_vindex.assign_mem(dscene->tri_vindex);
-        tri_vindex.tag_modified();
-      }
+
+    if (dscene->tri_patch.is_modified()) {
+      tri_patch.assign_mem(dscene->tri_patch);
+      tri_patch.tag_modified();
     }
-    {
-      if (dscene->tri_patch.is_modified()) {
-        tri_patch.assign_mem(dscene->tri_patch);
-        tri_patch.tag_modified();
-      }
-    }
-    {
-      if (dscene->tri_patch_uv.is_modified()) {
-        tri_patch_uv.assign_mem(dscene->tri_patch_uv);
-        tri_patch_uv.tag_modified();
-      }
+
+    if (dscene->tri_patch_uv.is_modified()) {
+      tri_patch_uv.assign_mem(dscene->tri_patch_uv);
+      tri_patch_uv.tag_modified();
     }
   }
 
-  if (p_sizes->curve_segment_size != 0) {
+  if (dscene->curve_segments.size() > 0) {
     if (dscene->curve_keys.is_modified()) {
       curve_keys.assign_mem(dscene->curve_keys);
       curve_keys.tag_modified();
@@ -179,20 +172,21 @@ void DeviceScene::device_update_host_pointers(Device *device,
 
     if (dscene->curve_segments.is_modified()) {
       curve_segments.assign_mem(dscene->curve_segments);
+      curve_segments.tag_modified();
     }
   }
 
-  if (p_sizes->point_size != 0) {
-    // TODO: Why does this not check the modified tag?
+  if (dscene->points.size() > 0) {
     points.assign_mem(dscene->points);
-    // sub_dscene->points.tag_modified();
+    points.tag_modified();
 
     points_shader.assign_mem(dscene->points_shader);
-    // sub_dscene->points_shader.tag_modified();
+    points_shader.tag_modified();
   }
 
-  if (p_sizes->patch_size != 0 && dscene->patches.need_realloc()) {
+  if (dscene->patches.is_modified()) {
     patches.assign_mem(dscene->patches);
+    patches.tag_modified();
   }
 
   // Update the Attributes
@@ -234,7 +228,7 @@ void DeviceScene::device_update_mesh(Device *device,
                                      Progress &progress)
 {
   progress.set_status("Updating Mesh", "Copying Mesh to device");
-  if (p_sizes->tri_size != 0) {
+  if (tri_verts.size() > 0) {
     tri_verts.copy_to_device_if_modified(p_sizes->vert_size, 0);
     tri_shader.copy_to_device_if_modified(p_sizes->tri_size, 0);
     tri_vnormal.copy_to_device_if_modified(p_sizes->vert_size, 0);
@@ -243,20 +237,18 @@ void DeviceScene::device_update_mesh(Device *device,
     tri_patch_uv.copy_to_device_if_modified(p_sizes->vert_size, 0);
   }
 
-  if (p_sizes->curve_segment_size != 0) {
+  if (curve_segments.size() > 0) {
     curve_keys.copy_to_device_if_modified(p_sizes->curve_key_size, 0);
     curves.copy_to_device_if_modified(p_sizes->curve_size, 0);
     curve_segments.copy_to_device_if_modified(p_sizes->curve_segment_size, 0);
   }
 
-  if (p_sizes->point_size != 0) {
-    points.copy_to_device(p_sizes->point_size, 0);
-    points_shader.copy_to_device(p_sizes->point_size, 0);
+  if (points.size() > 0) {
+    points.copy_to_device_if_modified(p_sizes->point_size, 0);
+    points_shader.copy_to_device_if_modified(p_sizes->point_size, 0);
   }
 
-  if (p_sizes->patch_size != 0 && patches.need_realloc()) {
-    patches.copy_to_device(p_sizes->patch_size, 0);
-  }
+  patches.copy_to_device_if_modified(p_sizes->patch_size, 0);
 }
 
 /*
