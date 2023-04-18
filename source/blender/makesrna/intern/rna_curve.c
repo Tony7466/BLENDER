@@ -838,7 +838,7 @@ static bool rna_Curve_is_editmode_get(PointerRNA *ptr)
   }
 }
 
-static bool rna_Curve_is_selected(PointerRNA *ptr)
+static bool rna_TextCurve_has_selection_get(PointerRNA *ptr)
 {
   Curve *cu = (Curve *)ptr->owner_id;
   if (cu->editfont != NULL)
@@ -1283,27 +1283,27 @@ static void rna_def_font(BlenderRNA *UNUSED(brna), StructRNA *srna)
   RNA_def_property_update(prop, 0, "rna_Curve_update_data");
 
   prop = RNA_def_property(srna, "select_is_underline", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "editfont->selected_flag", CU_CHINFO_UNDERLINE);
+  RNA_def_property_boolean_sdna(prop, NULL, "editfont->select_char_info_flag", CU_CHINFO_UNDERLINE);
   RNA_def_property_ui_text(prop, "Selected Underline", "Whether the selected text is underlined");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
   prop = RNA_def_property(srna, "select_is_bold", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "editfont->selected_flag", CU_CHINFO_BOLD);
+  RNA_def_property_boolean_sdna(prop, NULL, "editfont->select_char_info_flag", CU_CHINFO_BOLD);
   RNA_def_property_ui_text(prop, "Selected Bold", "Whether the selected text is bold");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
   prop = RNA_def_property(srna, "select_is_italic", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "editfont->selected_flag", CU_CHINFO_ITALIC);
+  RNA_def_property_boolean_sdna(prop, NULL, "editfont->select_char_info_flag", CU_CHINFO_ITALIC);
   RNA_def_property_ui_text(prop, "Selected Italic", "Whether the selected text is italics");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
   prop = RNA_def_property(srna, "select_is_smallcaps", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "editfont->selected_flag", CU_CHINFO_SMALLCAPS);
+  RNA_def_property_boolean_sdna(prop, NULL, "editfont->select_char_info_flag", CU_CHINFO_SMALLCAPS);
   RNA_def_property_ui_text(prop, "Selected Smallcaps", "Whether the selected text is small caps");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
-  prop = RNA_def_property(srna, "is_selected", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_funcs(prop, "rna_Curve_is_selected", NULL);
+  prop = RNA_def_property(srna, "has_selection", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(prop, "rna_TextCurve_has_selection_get", NULL);
   RNA_def_property_ui_text(prop, "Text Selected", "Whether there is any text selected");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 }

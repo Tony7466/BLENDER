@@ -44,7 +44,7 @@ typedef struct EditFont {
 
   /* Combined styles (#CharInfo.flag) for selected string. A flag will be
    * set only if ALL characters in the selected string have it. */
-  int selected_flag;
+  int select_char_info_flag;
 
   /**
    * ID data is older than edit-mode data.

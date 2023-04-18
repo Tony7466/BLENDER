@@ -363,7 +363,7 @@ class DATA_PT_font(CurveButtonsPanelText, Panel):
         if mode == 'EDIT_TEXT':
             layout.separator()
 
-            if text.is_selected == False :
+            if not text.has_selection:
                 row = layout.row(align=True)
                 row.prop(char, "use_bold", toggle=True)
                 row.prop(char, "use_italic", toggle=True)
