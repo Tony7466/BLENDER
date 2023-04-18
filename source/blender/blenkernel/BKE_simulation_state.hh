@@ -191,6 +191,11 @@ class ModifierSimulationCache {
     return false;
   }
 
+  bool has_states() const
+  {
+    return !states_at_frames_.is_empty();
+  }
+
   const ModifierSimulationState *get_state_at_exact_frame(const SubFrame &frame) const
   {
     for (const auto &item : states_at_frames_) {

@@ -1213,25 +1213,39 @@ static GeometrySet compute_geometry(const bNodeTree &btree,
       nmd_orig->simulation_cache = MEM_new<bke::sim::ModifierSimulationCache>(__func__);
     }
 
-    if (nmd_orig->simulation_cache->cache_state() != bke::sim::CacheState::Baked) {
-      nmd_orig->simulation_cache->try_discover_bake(
-          bke::sim::get_meta_directory(*bmain, *ctx->object, nmd->modifier),
-          bke::sim::get_bdata_directory(*bmain, *ctx->object, nmd->modifier));
+    {
+      /* Try to use baked data. */
+      if (nmd_orig->simulation_cache->cache_state() != bke::sim::CacheState::Baked) {
+        nmd_orig->simulation_cache->try_discover_bake(
+            bke::sim::get_meta_directory(*bmain, *ctx->object, nmd->modifier),
+            bke::sim::get_bdata_directory(*bmain, *ctx->object, nmd->modifier));
+      }
     }
 
-    if (nmd_orig->simulation_cache->cache_state() == bke::sim::CacheState::Invalid &&
-        current_frame == start_frame) {
-      nmd_orig->simulation_cache->reset();
+    {
+      /* Reset cached data if necessary. */
+      const bke::sim::StatesAroundFrame sim_states =
+          nmd_orig->simulation_cache->get_states_around_frame(current_frame);
+      if (nmd_orig->simulation_cache->cache_state() == bke::sim::CacheState::Invalid &&
+          (current_frame == start_frame ||
+           (sim_states.current == nullptr && sim_states.prev == nullptr &&
+            sim_states.next != nullptr))) {
+        nmd_orig->simulation_cache->reset();
+      }
     }
+    /* Decide of a new simulation state should be created in this evaluation. */
     const bke::sim::StatesAroundFrame sim_states =
         nmd_orig->simulation_cache->get_states_around_frame(current_frame);
     if (nmd_orig->simulation_cache->cache_state() != bke::sim::CacheState::Baked) {
       if (sim_states.current == nullptr) {
-        if (is_start_frame) {
+        if (is_start_frame || !nmd_orig->simulation_cache->has_states()) {
           bke::sim::ModifierSimulationState &current_sim_state =
               nmd_orig->simulation_cache->get_state_at_frame_for_write(current_frame);
           geo_nodes_modifier_data.current_simulation_state_for_write = &current_sim_state;
           geo_nodes_modifier_data.simulation_time_delta = 0.0f;
+          if (!is_start_frame) {
+            nmd_orig->simulation_cache->invalidate();
+          }
         }
         else if (sim_states.prev != nullptr && sim_states.next == nullptr) {
           const float delta_frames = float(current_frame) - float(sim_states.prev->frame);
@@ -1246,6 +1260,7 @@ static GeometrySet compute_geometry(const bNodeTree &btree,
       }
     }
   }
+  /* Load read-only states to give nodes access to cached data. */
   const bke::sim::StatesAroundFrame sim_states =
       nmd_orig->simulation_cache->get_states_around_frame(current_frame);
   if (sim_states.current) {
