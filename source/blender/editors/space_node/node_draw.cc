@@ -3122,6 +3122,7 @@ static void find_bounds_by_zone_recursive(const SpaceNode &snode,
 }
 
 static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
+                            const ARegion &region,
                             const SpaceNode &snode,
                             const bNodeTree &ntree)
 {
@@ -3162,8 +3163,9 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
 
     const uint pos = GPU_vertformat_attr_add(
         immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
+    /* Draw the background. */
+    immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
     float zone_color[4];
     UI_GetThemeColor4fv(TH_NODE_ZONE_SIMULATION, zone_color);
     immUniformThemeColorBlend(TH_BACK, TH_NODE_ZONE_SIMULATION, zone_color[3]);
@@ -3174,6 +3176,20 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
     }
     immVertex3fv(pos, fillet_boundary_positions[0]);
     immEnd();
+
+    /* Draw the countour lines. */
+    immBindBuiltinProgram(GPU_SHADER_3D_POLYLINE_UNIFORM_COLOR);
+    float scale;
+    const View2D &v2d = region.v2d;
+    UI_view2d_scale_get(&v2d, &scale, nullptr);
+    float line_width = 1.0f * scale;
+
+    float viewport[4] = {};
+    GPU_viewport_size_get_f(viewport);
+
+    immUniform2fv("viewportSize", &viewport[2]);
+    immUniform1f("lineWidth", line_width * U.pixelsize);
+
     immUniformThemeColorAlpha(TH_NODE_ZONE_SIMULATION, 1.0f);
     immBegin(GPU_PRIM_LINE_STRIP, fillet_boundary_positions.size() + 1);
     for (const float3 &p : fillet_boundary_positions) {
@@ -3353,7 +3369,7 @@ static void draw_nodetree(const bContext &C,
   }
 
   node_update_nodetree(C, tree_draw_ctx, ntree, nodes, blocks);
-  node_draw_zones(tree_draw_ctx, *snode, ntree);
+  node_draw_zones(tree_draw_ctx, region, *snode, ntree);
   node_draw_nodetree(C, tree_draw_ctx, region, *snode, ntree, nodes, blocks, parent_key);
 }
 
