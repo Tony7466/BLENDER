@@ -157,7 +157,7 @@ static void ntree_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, cons
   /* copy links */
   BLI_listbase_clear(&ntree_dst->links);
   LISTBASE_FOREACH (const bNodeLink *, src_link, &ntree_src->links) {
-    bNodeLink *dst_link = reinterpret_cast<bNodeLink *>(MEM_dupallocN(src_link));
+    bNodeLink *dst_link = static_cast<bNodeLink *>(MEM_dupallocN(src_link));
     dst_link->fromnode = dst_runtime.nodes_by_id.lookup_key_as(src_link->fromnode->identifier);
     dst_link->fromsock = socket_map.lookup(src_link->fromsock);
     dst_link->tonode = dst_runtime.nodes_by_id.lookup_key_as(src_link->tonode->identifier);
@@ -177,13 +177,13 @@ static void ntree_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, cons
   /* copy interface sockets */
   BLI_listbase_clear(&ntree_dst->inputs);
   LISTBASE_FOREACH (const bNodeSocket *, src_socket, &ntree_src->inputs) {
-    bNodeSocket *dst_socket = reinterpret_cast<bNodeSocket *>(MEM_dupallocN(src_socket));
+    bNodeSocket *dst_socket = static_cast<bNodeSocket *>(MEM_dupallocN(src_socket));
     node_socket_copy(dst_socket, src_socket, flag_subdata);
     BLI_addtail(&ntree_dst->inputs, dst_socket);
   }
   BLI_listbase_clear(&ntree_dst->outputs);
   LISTBASE_FOREACH (const bNodeSocket *, src_socket, &ntree_src->outputs) {
-    bNodeSocket *dst_socket = reinterpret_cast<bNodeSocket *>(MEM_dupallocN(src_socket));
+    bNodeSocket *dst_socket = static_cast<bNodeSocket *>(MEM_dupallocN(src_socket));
     node_socket_copy(dst_socket, src_socket, flag_subdata);
     BLI_addtail(&ntree_dst->outputs, dst_socket);
   }
@@ -368,14 +368,14 @@ static void node_foreach_cache(ID *id,
 
   /* TODO: see also `direct_link_nodetree()` in readfile.c. */
 #if 0
-  function_callback(id, &key, reinterpret_cast<void **>(&nodetree->previews), 0, user_data);
+  function_callback(id, &key, static_cast<void **>(&nodetree->previews), 0, user_data);
 #endif
 
   if (nodetree->type == NTREE_COMPOSIT) {
     for (bNode *node : nodetree->all_nodes()) {
       if (node->type == CMP_NODE_MOVIEDISTORTION) {
         key.offset_in_ID = size_t(BLI_ghashutil_strhash_p(node->name));
-        function_callback(id, &key, reinterpret_cast<void **>(&node->storage), 0, user_data);
+        function_callback(id, &key, static_cast<void **>(&node->storage), 0, user_data);
       }
     }
   }
@@ -1027,7 +1027,7 @@ namespace blender::bke {
 
 static void node_tree_asset_pre_save(void *asset_ptr, AssetMetaData *asset_data)
 {
-  bNodeTree &node_tree = *reinterpret_cast<bNodeTree *>(asset_ptr);
+  bNodeTree &node_tree = *static_cast<bNodeTree *>(asset_ptr);
 
   BKE_asset_metadata_idprop_ensure(asset_data, idprop::create("type", node_tree.type).release());
   auto inputs = idprop::create_group("inputs");
@@ -1329,7 +1329,7 @@ void ntreeTypeAdd(bNodeTreeType *nt)
 
 static void ntree_free_type(void *treetype_v)
 {
-  bNodeTreeType *treetype = reinterpret_cast<bNodeTreeType *>(treetype_v);
+  bNodeTreeType *treetype = static_cast<bNodeTreeType *>(treetype_v);
   /* XXX pass Main to unregister function? */
   /* Probably not. It is pretty much expected we want to update G_MAIN here I think -
    * or we'd want to update *all* active Mains, which we cannot do anyway currently. */
@@ -1366,7 +1366,7 @@ bNodeType *nodeTypeFind(const char *idname)
 
 static void node_free_type(void *nodetype_v)
 {
-  bNodeType *nodetype = reinterpret_cast<bNodeType *>(nodetype_v);
+  bNodeType *nodetype = static_cast<bNodeType *>(nodetype_v);
   /* XXX pass Main to unregister function? */
   /* Probably not. It is pretty much expected we want to update G_MAIN here I think -
    * or we'd want to update *all* active Mains, which we cannot do anyway currently. */
@@ -1448,7 +1448,7 @@ bNodeSocketType *nodeSocketTypeFind(const char *idname)
 
 static void node_free_socket_type(void *socktype_v)
 {
-  bNodeSocketType *socktype = reinterpret_cast<bNodeSocketType *>(socktype_v);
+  bNodeSocketType *socktype = static_cast<bNodeSocketType *>(socktype_v);
   /* XXX pass Main to unregister function? */
   /* Probably not. It is pretty much expected we want to update G_MAIN here I think -
    * or we'd want to update *all* active Mains, which we cannot do anyway currently. */
@@ -1541,7 +1541,7 @@ bNodeSocket *node_find_enabled_output_socket(bNode &node, const StringRef name)
 
 static bool unique_identifier_check(void *arg, const char *identifier)
 {
-  const ListBase *lb = reinterpret_cast<const ListBase *>(arg);
+  const ListBase *lb = static_cast<const ListBase *>(arg);
   LISTBASE_FOREACH (bNodeSocket *, sock, lb) {
     if (STREQ(sock->identifier, identifier)) {
       return true;
@@ -2345,7 +2345,7 @@ static void node_socket_copy(bNodeSocket *sock_dst, const bNodeSocket *sock_src,
     }
   }
 
-  sock_dst->default_attribute_name = reinterpret_cast<char *>(
+  sock_dst->default_attribute_name = static_cast<char *>(
       MEM_dupallocN(sock_src->default_attribute_name));
 
   sock_dst->stack_index = 0;
@@ -2359,7 +2359,7 @@ bNode *node_copy_with_mapping(bNodeTree *dst_tree,
                               const bool use_unique,
                               Map<const bNodeSocket *, bNodeSocket *> &socket_map)
 {
-  bNode *node_dst = reinterpret_cast<bNode *>(MEM_mallocN(sizeof(bNode), __func__));
+  bNode *node_dst = static_cast<bNode *>(MEM_mallocN(sizeof(bNode), __func__));
   *node_dst = node_src;
 
   node_dst->runtime = MEM_new<bNodeRuntime>(__func__);
@@ -2375,7 +2375,7 @@ bNode *node_copy_with_mapping(bNodeTree *dst_tree,
 
   BLI_listbase_clear(&node_dst->inputs);
   LISTBASE_FOREACH (const bNodeSocket *, src_socket, &node_src.inputs) {
-    bNodeSocket *dst_socket = reinterpret_cast<bNodeSocket *>(MEM_dupallocN(src_socket));
+    bNodeSocket *dst_socket = static_cast<bNodeSocket *>(MEM_dupallocN(src_socket));
     node_socket_copy(dst_socket, src_socket, flag);
     BLI_addtail(&node_dst->inputs, dst_socket);
     socket_map.add_new(src_socket, dst_socket);
@@ -2383,7 +2383,7 @@ bNode *node_copy_with_mapping(bNodeTree *dst_tree,
 
   BLI_listbase_clear(&node_dst->outputs);
   LISTBASE_FOREACH (const bNodeSocket *, src_socket, &node_src.outputs) {
-    bNodeSocket *dst_socket = reinterpret_cast<bNodeSocket *>(MEM_dupallocN(src_socket));
+    bNodeSocket *dst_socket = static_cast<bNodeSocket *>(MEM_dupallocN(src_socket));
     node_socket_copy(dst_socket, src_socket, flag);
     BLI_addtail(&node_dst->outputs, dst_socket);
     socket_map.add_new(src_socket, dst_socket);
@@ -2940,9 +2940,9 @@ bNodePreview *BKE_node_preview_verify(bNodeInstanceHash *previews,
 
 bNodePreview *BKE_node_preview_copy(bNodePreview *preview)
 {
-  bNodePreview *new_preview = reinterpret_cast<bNodePreview *>(MEM_dupallocN(preview));
+  bNodePreview *new_preview = static_cast<bNodePreview *>(MEM_dupallocN(preview));
   if (preview->rect) {
-    new_preview->rect = reinterpret_cast<uchar *>(MEM_dupallocN(preview->rect));
+    new_preview->rect = static_cast<uchar *>(MEM_dupallocN(preview->rect));
   }
   return new_preview;
 }
@@ -3884,20 +3884,20 @@ bNodeInstanceKey BKE_node_instance_key(bNodeInstanceKey parent_key,
 
 static uint node_instance_hash_key(const void *key)
 {
-  return reinterpret_cast<const bNodeInstanceKey *>(key)->value;
+  return static_cast<const bNodeInstanceKey *>(key)->value;
 }
 
 static bool node_instance_hash_key_cmp(const void *a, const void *b)
 {
-  uint value_a = reinterpret_cast<const bNodeInstanceKey *>(a)->value;
-  uint value_b = reinterpret_cast<const bNodeInstanceKey *>(b)->value;
+  uint value_a = static_cast<const bNodeInstanceKey *>(a)->value;
+  uint value_b = static_cast<const bNodeInstanceKey *>(b)->value;
 
   return (value_a != value_b);
 }
 
 bNodeInstanceHash *BKE_node_instance_hash_new(const char *info)
 {
-  bNodeInstanceHash *hash = reinterpret_cast<bNodeInstanceHash *>(
+  bNodeInstanceHash *hash = static_cast<bNodeInstanceHash *>(
       MEM_mallocN(sizeof(bNodeInstanceHash), info));
   hash->ghash = BLI_ghash_new(
       node_instance_hash_key, node_instance_hash_key_cmp, "node instance hash ghash");
@@ -3912,7 +3912,7 @@ void BKE_node_instance_hash_free(bNodeInstanceHash *hash, bNodeInstanceValueFP v
 
 void BKE_node_instance_hash_insert(bNodeInstanceHash *hash, bNodeInstanceKey key, void *value)
 {
-  bNodeInstanceHashEntry *entry = reinterpret_cast<bNodeInstanceHashEntry *>(value);
+  bNodeInstanceHashEntry *entry = static_cast<bNodeInstanceHashEntry *>(value);
   entry->key = key;
   entry->tag = 0;
   BLI_ghash_insert(hash->ghash, &entry->key, value);
@@ -3964,7 +3964,7 @@ void BKE_node_instance_hash_clear_tags(bNodeInstanceHash *hash)
 
 void BKE_node_instance_hash_tag(bNodeInstanceHash * /*hash*/, void *value)
 {
-  bNodeInstanceHashEntry *entry = reinterpret_cast<bNodeInstanceHashEntry *>(value);
+  bNodeInstanceHashEntry *entry = static_cast<bNodeInstanceHashEntry *>(value);
   entry->tag = 1;
 }
 
@@ -3987,7 +3987,7 @@ void BKE_node_instance_hash_remove_untagged(bNodeInstanceHash *hash,
   /* NOTE: Hash must not be mutated during iterating!
    * Store tagged entries in a separate list and remove items afterward.
    */
-  bNodeInstanceKey *untagged = reinterpret_cast<bNodeInstanceKey *>(
+  bNodeInstanceKey *untagged = static_cast<bNodeInstanceKey *>(
       MEM_mallocN(sizeof(bNodeInstanceKey) * BKE_node_instance_hash_size(hash),
                   "temporary node instance key list"));
   bNodeInstanceHashIterator iter;
@@ -4154,7 +4154,7 @@ struct SocketTemplateIdentifierCallbackData {
 static bool unique_socket_template_identifier_check(void *arg, const char *name)
 {
   const SocketTemplateIdentifierCallbackData *data =
-      reinterpret_cast<const SocketTemplateIdentifierCallbackData *>(arg);
+      static_cast<const SocketTemplateIdentifierCallbackData *>(arg);
 
   for (bNodeSocketTemplate *ntemp = data->list; ntemp->type >= 0; ntemp++) {
     if (ntemp != data->ntemp) {
