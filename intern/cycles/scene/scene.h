@@ -6,10 +6,10 @@
 
 #include "bvh/params.h"
 
+#include "scene/devicescene.h"
 #include "scene/film.h"
 #include "scene/image.h"
 #include "scene/shader.h"
-#include "scene/devicescene.h"
 
 #include "util/param.h"
 #include "util/string.h"
@@ -49,7 +49,6 @@ class BakeData;
 class RenderStats;
 class SceneUpdateStats;
 class Volume;
-class DeviceScene;
 
 /* Scene Parameters */
 
