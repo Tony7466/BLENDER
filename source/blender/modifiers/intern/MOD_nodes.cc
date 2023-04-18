@@ -1215,7 +1215,9 @@ static GeometrySet compute_geometry(const bNodeTree &btree,
 
     {
       /* Try to use baked data. */
-      if (nmd_orig->simulation_cache->cache_state() != bke::sim::CacheState::Baked) {
+      const StringRefNull bmain_path = BKE_main_blendfile_path(bmain);
+      if (nmd_orig->simulation_cache->cache_state() != bke::sim::CacheState::Baked &&
+          !bmain_path.is_empty()) {
         nmd_orig->simulation_cache->try_discover_bake(
             bke::sim::get_meta_directory(*bmain, *ctx->object, nmd->modifier),
             bke::sim::get_bdata_directory(*bmain, *ctx->object, nmd->modifier));
