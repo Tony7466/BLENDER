@@ -3,20 +3,88 @@
 #include "BKE_curves.hh"
 #include "BKE_instances.hh"
 #include "BKE_lib_id.h"
+#include "BKE_main.h"
 #include "BKE_mesh.hh"
 #include "BKE_pointcloud.h"
 #include "BKE_simulation_state_serialize.hh"
 
 #include "DNA_material_types.h"
+#include "DNA_modifier_types.h"
+#include "DNA_object_types.h"
 
 #include "BLI_endian_defines.h"
 #include "BLI_endian_switch.h"
 #include "BLI_math_matrix_types.hh"
+#include "BLI_path_util.h"
 
 #include "RNA_access.h"
 #include "RNA_enum_types.h"
 
 namespace blender::bke::sim {
+
+static std::string escape_name(StringRef name)
+{
+  std::stringstream ss;
+  for (const char c : name) {
+    if (('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')) {
+      ss << c;
+    }
+    else {
+      ss << int(c);
+    }
+  }
+  return ss.str();
+}
+
+static std::string get_blendcache_directory(const Main &bmain)
+{
+  StringRefNull blend_file_path = BKE_main_blendfile_path(&bmain);
+  char blend_directory[FILE_MAX];
+  char blend_name[FILE_MAX];
+  BLI_split_dirfile(blend_file_path.c_str(),
+                    blend_directory,
+                    blend_name,
+                    sizeof(blend_directory),
+                    sizeof(blend_name));
+  blend_name[StringRef(blend_name).rfind(".")] = '\0';
+  const std::string blendcache_name = "blendcache_" + StringRef(blend_name);
+
+  char blendcache_dir[FILE_MAX];
+  BLI_path_join(blendcache_dir, sizeof(blendcache_dir), blend_directory, blendcache_name.c_str());
+  return blendcache_dir;
+}
+
+static std::string get_modifier_sim_name(const Object &object, const ModifierData &md)
+{
+  const std::string object_name_escaped = escape_name(object.id.name + 2);
+  const std::string modifier_name_escaped = escape_name(md.name);
+  return "sim_" + object_name_escaped + "_" + modifier_name_escaped;
+}
+
+std::string get_bake_directory(const Main &bmain, const Object &object, const ModifierData &md)
+{
+  char bdata_dir[FILE_MAX];
+  BLI_path_join(bdata_dir,
+                sizeof(bdata_dir),
+                get_blendcache_directory(bmain).c_str(),
+                get_modifier_sim_name(object, md).c_str());
+  return bdata_dir;
+}
+
+std::string get_bdata_directory(const Main &bmain, const Object &object, const ModifierData &md)
+{
+  char bdata_dir[FILE_MAX];
+  BLI_path_join(
+      bdata_dir, sizeof(bdata_dir), get_bake_directory(bmain, object, md).c_str(), "bdata");
+  return bdata_dir;
+}
+
+std::string get_meta_directory(const Main &bmain, const Object &object, const ModifierData &md)
+{
+  char meta_dir[FILE_MAX];
+  BLI_path_join(meta_dir, sizeof(meta_dir), get_bake_directory(bmain, object, md).c_str(), "meta");
+  return meta_dir;
+}
 
 std::shared_ptr<io::serialize::DictionaryValue> BDataSlice::serialize() const
 {

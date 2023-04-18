@@ -55,6 +55,7 @@
 #include "BKE_screen.h"
 #include "BKE_simulation.h"
 #include "BKE_simulation_state.hh"
+#include "BKE_simulation_state_serialize.hh"
 #include "BKE_workspace.h"
 
 #include "BLO_read_write.h"
@@ -97,11 +98,6 @@
 namespace lf = blender::fn::lazy_function;
 namespace geo_log = blender::nodes::geo_eval_log;
 using blender::bke::sim::SubFrame;
-
-namespace blender::ed::object::bake_simulation {
-std::string get_bdata_directory(const Main &bmain, const Object &ob, const ModifierData &md);
-std::string get_meta_directory(const Main &bmain, const Object &ob, const ModifierData &md);
-}  // namespace blender::ed::object::bake_simulation
 
 namespace blender {
 
@@ -1219,8 +1215,8 @@ static GeometrySet compute_geometry(const bNodeTree &btree,
 
     if (nmd_orig->simulation_cache->cache_state() != bke::sim::CacheState::Baked) {
       nmd_orig->simulation_cache->try_discover_bake(
-          ed::object::bake_simulation::get_meta_directory(*bmain, *ctx->object, nmd->modifier),
-          ed::object::bake_simulation::get_bdata_directory(*bmain, *ctx->object, nmd->modifier));
+          bke::sim::get_meta_directory(*bmain, *ctx->object, nmd->modifier),
+          bke::sim::get_bdata_directory(*bmain, *ctx->object, nmd->modifier));
     }
 
     if (nmd_orig->simulation_cache->cache_state() == bke::sim::CacheState::Invalid &&

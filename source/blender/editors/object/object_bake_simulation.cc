@@ -46,69 +46,6 @@
 
 namespace blender::ed::object::bake_simulation {
 
-static std::string escape_name(StringRef name)
-{
-  std::stringstream ss;
-  for (const char c : name) {
-    if (('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')) {
-      ss << c;
-    }
-    else {
-      ss << int(c);
-    }
-  }
-  return ss.str();
-}
-
-static std::string get_blendcache_directory(const Main &bmain)
-{
-  StringRefNull blend_file_path = BKE_main_blendfile_path(&bmain);
-  char blend_directory[FILE_MAX];
-  char blend_name[FILE_MAX];
-  BLI_split_dirfile(blend_file_path.c_str(),
-                    blend_directory,
-                    blend_name,
-                    sizeof(blend_directory),
-                    sizeof(blend_name));
-  blend_name[StringRef(blend_name).rfind(".")] = '\0';
-  const std::string blendcache_name = "blendcache_" + StringRef(blend_name);
-
-  char blendcache_dir[FILE_MAX];
-  BLI_path_join(blendcache_dir, sizeof(blendcache_dir), blend_directory, blendcache_name.c_str());
-  return blendcache_dir;
-}
-
-static std::string get_modifier_sim_name(const Object &ob, const ModifierData &md)
-{
-  const std::string object_name_escaped = escape_name(ob.id.name + 2);
-  const std::string modifier_name_escaped = escape_name(md.name);
-  return "sim_" + object_name_escaped + "_" + modifier_name_escaped;
-}
-
-std::string get_bdata_directory(const Main &bmain, const Object &ob, const ModifierData &md);
-std::string get_bdata_directory(const Main &bmain, const Object &ob, const ModifierData &md)
-{
-  char bdata_dir[FILE_MAX];
-  BLI_path_join(bdata_dir,
-                sizeof(bdata_dir),
-                get_blendcache_directory(bmain).c_str(),
-                get_modifier_sim_name(ob, md).c_str(),
-                "bdata");
-  return bdata_dir;
-}
-
-std::string get_meta_directory(const Main &bmain, const Object &ob, const ModifierData &md);
-std::string get_meta_directory(const Main &bmain, const Object &ob, const ModifierData &md)
-{
-  char meta_dir[FILE_MAX];
-  BLI_path_join(meta_dir,
-                sizeof(meta_dir),
-                get_blendcache_directory(bmain).c_str(),
-                get_modifier_sim_name(ob, md).c_str(),
-                "meta");
-  return meta_dir;
-}
-
 class MyBDataReader : public bke::sim::BDataReader {
  private:
   std::string bdata_dir_;
@@ -250,8 +187,8 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
           nmd->simulation_cache->reset();
         }
         bake_data.modifiers.append({nmd,
-                                    get_meta_directory(*bmain, *object, *md),
-                                    get_bdata_directory(*bmain, *object, *md)});
+                                    bke::sim::get_meta_directory(*bmain, *object, *md),
+                                    bke::sim::get_bdata_directory(*bmain, *object, *md)});
       }
     }
     objects_to_bake.append(std::move(bake_data));
@@ -338,12 +275,8 @@ static int delete_baked_simulation_exec(bContext *C, wmOperator * /*op*/)
     LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
       if (md->type == eModifierType_Nodes) {
         NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-        char bake_directory[FILE_MAX];
-        BLI_path_join(bake_directory,
-                      sizeof(bake_directory),
-                      get_blendcache_directory(*bmain).c_str(),
-                      get_modifier_sim_name(*object, *md).c_str());
-        BLI_delete(bake_directory, true, true);
+        const std::string bake_directory = bke::sim::get_bake_directory(*bmain, *object, *md);
+        BLI_delete(bake_directory.c_str(), true, true);
         if (nmd->simulation_cache != nullptr) {
           nmd->simulation_cache->reset();
         }

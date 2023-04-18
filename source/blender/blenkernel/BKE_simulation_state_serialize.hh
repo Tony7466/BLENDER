@@ -6,6 +6,8 @@
 
 #include "BLI_serialize.hh"
 
+struct ModifierData;
+
 namespace blender::bke::sim {
 
 struct BDataSlice {
@@ -29,6 +31,10 @@ class BDataWriter {
       const ImplicitSharingInfo *sharing_info,
       const FunctionRef<std::shared_ptr<io::serialize::DictionaryValue>()> write_fn) = 0;
 };
+
+std::string get_bake_directory(const Main &bmain, const Object &object, const ModifierData &md);
+std::string get_bdata_directory(const Main &bmain, const Object &object, const ModifierData &md);
+std::string get_meta_directory(const Main &bmain, const Object &object, const ModifierData &md);
 
 void serialize_modifier_simulation_state(const ModifierSimulationState &state,
                                          BDataWriter &bdata_writer,
