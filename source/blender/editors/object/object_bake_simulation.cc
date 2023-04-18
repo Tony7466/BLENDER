@@ -205,10 +205,9 @@ class BDataWriter {
   std::string bdata_name_;
   std::ostream &bdata_file_;
   int64_t current_offset_;
-
- public:
   Map<const ImplicitSharingInfo *, std::shared_ptr<io::serialize::DictionaryValue>> &shared_data_;
 
+ public:
   BDataWriter(std::string bdata_name,
               std::ostream &bdata_file,
               const int64_t current_offset,
@@ -228,21 +227,20 @@ class BDataWriter {
     current_offset_ += size;
     return {bdata_name_, {old_offset, size}};
   }
-};
 
-static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_shared(
-    BDataWriter &bdata_writer,
-    const ImplicitSharingInfo *sharing_info,
-    const FunctionRef<std::shared_ptr<io::serialize::DictionaryValue>()> write_fn)
-{
-  if (sharing_info == nullptr) {
-    return write_fn();
+  std::shared_ptr<io::serialize::DictionaryValue> write_shared(
+      const ImplicitSharingInfo *sharing_info,
+      const FunctionRef<std::shared_ptr<io::serialize::DictionaryValue>()> write_fn)
+  {
+    if (sharing_info == nullptr) {
+      return write_fn();
+    }
+    return shared_data_.lookup_or_add_cb(sharing_info, [&]() {
+      sharing_info->add_weak_user();
+      return write_fn();
+    });
   }
-  return bdata_writer.shared_data_.lookup_or_add_cb(sharing_info, [&]() {
-    sharing_info->add_weak_user();
-    return write_fn();
-  });
-}
+};
 
 static std::optional<std::pair<const ImplicitSharingInfo *, const void *>> read_bdata_shared(
     BDataReader &bdata_reader,
@@ -734,30 +732,30 @@ static std::shared_ptr<io::serialize::ArrayValue> serialize_attributes(
     const Set<std::string> &attributes_to_ignore)
 {
   auto io_attributes = std::make_shared<io::serialize::ArrayValue>();
-  attributes.for_all([&](const bke::AttributeIDRef &attribute_id,
-                         const bke::AttributeMetaData &meta_data) {
-    if (attributes_to_ignore.contains_as(attribute_id.name())) {
-      return true;
-    }
+  attributes.for_all(
+      [&](const bke::AttributeIDRef &attribute_id, const bke::AttributeMetaData &meta_data) {
+        if (attributes_to_ignore.contains_as(attribute_id.name())) {
+          return true;
+        }
 
-    auto io_attribute = io_attributes->append_dict();
+        auto io_attribute = io_attributes->append_dict();
 
-    io_attribute->append_str("name", attribute_id.name());
+        io_attribute->append_str("name", attribute_id.name());
 
-    const StringRefNull domain_name = get_domain_io_name(meta_data.domain);
-    io_attribute->append_str("domain", domain_name);
+        const StringRefNull domain_name = get_domain_io_name(meta_data.domain);
+        io_attribute->append_str("domain", domain_name);
 
-    const StringRefNull type_name = get_data_type_io_name(meta_data.data_type);
-    io_attribute->append_str("type", type_name);
+        const StringRefNull type_name = get_data_type_io_name(meta_data.data_type);
+        io_attribute->append_str("type", type_name);
 
-    const bke::GAttributeReader attribute = attributes.lookup(attribute_id);
-    const GVArraySpan attribute_span(attribute.varray);
-    io_attribute->append("data", write_bdata_shared(bdata_writer, attribute.sharing_info, [&]() {
-                           return write_bdata_simple_gspan(bdata_writer, attribute_span);
-                         }));
+        const bke::GAttributeReader attribute = attributes.lookup(attribute_id);
+        const GVArraySpan attribute_span(attribute.varray);
+        io_attribute->append("data", bdata_writer.write_shared(attribute.sharing_info, [&]() {
+          return write_bdata_simple_gspan(bdata_writer, attribute_span);
+        }));
 
-    return true;
-  });
+        return true;
+      });
   return io_attributes;
 }
 
@@ -775,11 +773,10 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
     io_mesh->append_int("num_corners", mesh.totloop);
 
     if (mesh.totpoly > 0) {
-      io_mesh->append(
-          "poly_offsets",
-          write_bdata_shared(bdata_writer, mesh.runtime->poly_offsets_sharing_info, [&]() {
-            return write_bdata_int_array(bdata_writer, mesh.poly_offsets());
-          }));
+      io_mesh->append("poly_offsets",
+                      bdata_writer.write_shared(mesh.runtime->poly_offsets_sharing_info, [&]() {
+                        return write_bdata_int_array(bdata_writer, mesh.poly_offsets());
+                      }));
     }
 
     auto io_materials = serialize_material_slots({mesh.mat, mesh.totcol});
@@ -812,7 +809,7 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
     if (curves.curve_num > 0) {
       io_curves->append(
           "curve_offsets",
-          write_bdata_shared(bdata_writer, curves.runtime->curve_offsets_sharing_info, [&]() {
+          bdata_writer.write_shared(curves.runtime->curve_offsets_sharing_info, [&]() {
             return write_bdata_int_array(bdata_writer, curves.offsets());
           }));
     }
