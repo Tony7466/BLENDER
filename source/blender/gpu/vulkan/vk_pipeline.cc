@@ -17,7 +17,7 @@ namespace blender::gpu {
 
 VKPipeline::VKPipeline(VkDescriptorSetLayout vk_descriptor_set_layout,
                        VKPushConstants &&push_constants)
-    : vk_pipeline_(VK_NULL_HANDLE),
+    : active_vk_pipeline_(VK_NULL_HANDLE),
       descriptor_set_(vk_descriptor_set_layout),
       push_constants_(std::move(push_constants))
 {
@@ -26,10 +26,11 @@ VKPipeline::VKPipeline(VkDescriptorSetLayout vk_descriptor_set_layout,
 VKPipeline::VKPipeline(VkPipeline vk_pipeline,
                        VkDescriptorSetLayout vk_descriptor_set_layout,
                        VKPushConstants &&push_constants)
-    : vk_pipeline_(vk_pipeline),
+    : active_vk_pipeline_(vk_pipeline),
       descriptor_set_(vk_descriptor_set_layout),
       push_constants_(std::move(push_constants))
 {
+  vk_pipelines_.append(vk_pipeline);
 }
 
 VKPipeline::~VKPipeline()
@@ -82,12 +83,12 @@ VKPipeline VKPipeline::create_graphics_pipeline(
 
 VkPipeline VKPipeline::vk_handle() const
 {
-  return vk_pipeline_;
+  return active_vk_pipeline_;
 }
 
 bool VKPipeline::is_valid() const
 {
-  return vk_pipeline_ != VK_NULL_HANDLE;
+  return active_vk_pipeline_ != VK_NULL_HANDLE;
 }
 
 void VKPipeline::finalize(VKContext &context,
@@ -169,12 +170,16 @@ void VKPipeline::finalize(VKContext &context,
   pipeline_create_info.pDepthStencilState = &state_manager.depth_stencil_state;
 
   VkDevice vk_device = context.device_get();
-  vkCreateGraphicsPipelines(
-      vk_device, VK_NULL_HANDLE, 1, &pipeline_create_info, vk_allocation_callbacks, &vk_pipeline_);
+  vkCreateGraphicsPipelines(vk_device,
+                            VK_NULL_HANDLE,
+                            1,
+                            &pipeline_create_info,
+                            vk_allocation_callbacks,
+                            &active_vk_pipeline_);
   /* TODO: we should cache several pipeline instances and detect pipelines we can reuse. This might
    * also be done using a VkPipelineCache. For now we just destroy any available pipeline so it
    * won't be overwritten by the newly created one. */
-  vk_pipelines_.append(vk_pipeline_);
+  vk_pipelines_.append(active_vk_pipeline_);
 }
 
 }  // namespace blender::gpu

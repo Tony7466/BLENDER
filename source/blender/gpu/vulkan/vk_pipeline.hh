@@ -34,7 +34,7 @@ class VKBatch;
  */
 class VKPipeline : NonCopyable {
   /* Active pipeline handle. */
-  VkPipeline vk_pipeline_ = VK_NULL_HANDLE;
+  VkPipeline active_vk_pipeline_ = VK_NULL_HANDLE;
   /** Keep track of all pipelines as they can still be in flight. */
   Vector<VkPipeline> vk_pipelines_;
   VKDescriptorSetTracker descriptor_set_;
@@ -51,8 +51,8 @@ class VKPipeline : NonCopyable {
              VKPushConstants &&push_constants);
   VKPipeline &operator=(VKPipeline &&other)
   {
-    vk_pipeline_ = other.vk_pipeline_;
-    other.vk_pipeline_ = VK_NULL_HANDLE;
+    active_vk_pipeline_ = other.active_vk_pipeline_;
+    other.active_vk_pipeline_ = VK_NULL_HANDLE;
     descriptor_set_ = std::move(other.descriptor_set_);
     push_constants_ = std::move(other.push_constants_);
     vk_pipelines_ = std::move(other.vk_pipelines_);

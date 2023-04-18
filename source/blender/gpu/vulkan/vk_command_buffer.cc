@@ -59,6 +59,7 @@ void VKCommandBuffer::begin_recording()
 
 void VKCommandBuffer::end_recording()
 {
+  ensure_no_active_framebuffer();
   vkEndCommandBuffer(vk_command_buffer_);
 }
 

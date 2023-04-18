@@ -54,7 +54,9 @@ VKContext::VKContext(void *ghost_window, void *ghost_context)
   VKBackend::capabilities_init(*this);
 
   /* For off-screen contexts. Default frame-buffer is empty. */
-  back_left = new VKFrameBuffer("back_left");
+  VKFrameBuffer *framebuffer = new VKFrameBuffer("back_left");
+  back_left = framebuffer;
+  active_fb = framebuffer;
 }
 
 VKContext::~VKContext()
@@ -76,6 +78,11 @@ void VKContext::init_physical_device_limits()
 
 void VKContext::activate()
 {
+  /* Make sure no other context is already bound to this thread. */
+  BLI_assert(is_active_ == false);
+
+  is_active_ = true;
+
   if (ghost_window_) {
     VkImage image; /* TODO will be used for reading later... */
     VkFramebuffer vk_framebuffer;
@@ -96,6 +103,7 @@ void VKContext::activate()
         "back_left", vk_framebuffer, render_pass, extent);
     back_left = framebuffer;
     framebuffer->bind(false);
+    active_fb = back_left;
   }
 
   immActivate();
@@ -104,6 +112,7 @@ void VKContext::activate()
 void VKContext::deactivate()
 {
   immDeactivate();
+  is_active_ = false;
 }
 
 void VKContext::begin_frame()
@@ -118,9 +127,6 @@ void VKContext::begin_frame()
 
 void VKContext::end_frame()
 {
-  if (has_active_framebuffer()) {
-    deactivate_framebuffer();
-  }
   command_buffer_.end_recording();
 }
 
@@ -176,7 +182,9 @@ void VKContext::deactivate_framebuffer()
 {
   VKFrameBuffer *framebuffer = active_framebuffer_get();
   BLI_assert(framebuffer != nullptr);
-  command_buffer_.end_render_pass(*framebuffer);
+  if (framebuffer->is_valid()) {
+    command_buffer_.end_render_pass(*framebuffer);
+  }
   active_fb = nullptr;
 }
 

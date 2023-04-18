@@ -76,6 +76,11 @@ class VKFrameBuffer : public FrameBuffer {
                int dst_offset_x,
                int dst_offset_y) override;
 
+  bool is_valid() const
+  {
+    return vk_framebuffer_ != VK_NULL_HANDLE;
+  }
+
   VkFramebuffer vk_framebuffer_get() const
   {
     BLI_assert(vk_framebuffer_ != VK_NULL_HANDLE);
