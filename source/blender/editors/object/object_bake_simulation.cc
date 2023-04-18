@@ -85,14 +85,7 @@ struct ModifierBakeData {
   NodesModifierData *nmd;
   std::string meta_dir;
   std::string bdata_dir;
-  Map<const ImplicitSharingInfo *, std::shared_ptr<io::serialize::DictionaryValue>> shared_data;
-
-  ~ModifierBakeData()
-  {
-    for (const ImplicitSharingInfo *sharing_info : shared_data.keys()) {
-      sharing_info->remove_weak_user_and_delete_if_last();
-    };
-  }
+  bke::sim::BDataSharing bdata_sharing;
 };
 
 struct ObjectBakeData {
@@ -172,11 +165,11 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
 
         BLI_make_existing_file(bdata_path);
         fstream bdata_file{bdata_path, std::ios::out | std::ios::binary};
-        bke::sim::DiskBDataWriter bdata_writer{
-            bdata_file_name, bdata_file, 0, modifier_bake_data.shared_data};
+        bke::sim::DiskBDataWriter bdata_writer{bdata_file_name, bdata_file, 0};
 
         io::serialize::DictionaryValue io_root;
-        bke::sim::serialize_modifier_simulation_state(*sim_state, bdata_writer, io_root);
+        bke::sim::serialize_modifier_simulation_state(
+            *sim_state, bdata_writer, modifier_bake_data.bdata_sharing, io_root);
 
         BLI_make_existing_file(meta_path);
         fstream meta_file{meta_path, std::ios::out};

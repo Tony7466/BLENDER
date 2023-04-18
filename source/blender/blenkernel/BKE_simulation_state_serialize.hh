@@ -29,9 +29,17 @@ class BDataReader {
 class BDataWriter {
  public:
   virtual BDataSlice write(const void *data, int64_t size) = 0;
+};
 
-  virtual DictionaryValuePtr write_shared(const ImplicitSharingInfo *sharing_info,
-                                          FunctionRef<DictionaryValuePtr()> write_fn) = 0;
+class BDataSharing {
+ private:
+  Map<const ImplicitSharingInfo *, DictionaryValuePtr> map_;
+
+ public:
+  ~BDataSharing();
+
+  DictionaryValuePtr write_shared(const ImplicitSharingInfo *sharing_info,
+                                  FunctionRef<DictionaryValuePtr()> write_fn);
 };
 
 class DiskBDataReader : public BDataReader {
@@ -48,19 +56,11 @@ class DiskBDataWriter : public BDataWriter {
   std::string bdata_name_;
   std::ostream &bdata_file_;
   int64_t current_offset_;
-  Map<const ImplicitSharingInfo *, DictionaryValuePtr> &shared_data_;
 
  public:
-  DiskBDataWriter(std::string bdata_name,
-                  std::ostream &bdata_file,
-                  int64_t current_offset,
-                  Map<const ImplicitSharingInfo *, std::shared_ptr<io::serialize::DictionaryValue>>
-                      &shared_data);
+  DiskBDataWriter(std::string bdata_name, std::ostream &bdata_file, int64_t current_offset);
 
   BDataSlice write(const void *data, int64_t size) override;
-
-  DictionaryValuePtr write_shared(const ImplicitSharingInfo *sharing_info,
-                                  FunctionRef<DictionaryValuePtr()> write_fn) override;
 };
 
 std::string get_bake_directory(const Main &bmain, const Object &object, const ModifierData &md);
@@ -69,6 +69,7 @@ std::string get_meta_directory(const Main &bmain, const Object &object, const Mo
 
 void serialize_modifier_simulation_state(const ModifierSimulationState &state,
                                          BDataWriter &bdata_writer,
+                                         BDataSharing &bdata_sharing,
                                          DictionaryValue &r_io_root);
 void deserialize_modifier_simulation_state(const DictionaryValue &io_root,
                                            const BDataReader &bdata_reader,

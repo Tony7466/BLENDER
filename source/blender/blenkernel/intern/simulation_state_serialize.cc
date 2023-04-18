@@ -522,6 +522,7 @@ static std::shared_ptr<io::serialize::ArrayValue> serialize_material_slots(
 static std::shared_ptr<io::serialize::ArrayValue> serialize_attributes(
     const bke::AttributeAccessor &attributes,
     BDataWriter &bdata_writer,
+    BDataSharing &bdata_sharing,
     const Set<std::string> &attributes_to_ignore)
 {
   auto io_attributes = std::make_shared<io::serialize::ArrayValue>();
@@ -543,7 +544,7 @@ static std::shared_ptr<io::serialize::ArrayValue> serialize_attributes(
 
         const bke::GAttributeReader attribute = attributes.lookup(attribute_id);
         const GVArraySpan attribute_span(attribute.varray);
-        io_attribute->append("data", bdata_writer.write_shared(attribute.sharing_info, [&]() {
+        io_attribute->append("data", bdata_sharing.write_shared(attribute.sharing_info, [&]() {
           return write_bdata_simple_gspan(bdata_writer, attribute_span);
         }));
 
@@ -553,7 +554,7 @@ static std::shared_ptr<io::serialize::ArrayValue> serialize_attributes(
 }
 
 static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
-    const GeometrySet &geometry, BDataWriter &bdata_writer)
+    const GeometrySet &geometry, BDataWriter &bdata_writer, BDataSharing &bdata_sharing)
 {
   auto io_geometry = std::make_shared<io::serialize::DictionaryValue>();
   if (geometry.has_mesh()) {
@@ -567,7 +568,7 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
 
     if (mesh.totpoly > 0) {
       io_mesh->append("poly_offsets",
-                      bdata_writer.write_shared(mesh.runtime->poly_offsets_sharing_info, [&]() {
+                      bdata_sharing.write_shared(mesh.runtime->poly_offsets_sharing_info, [&]() {
                         return write_bdata_int_array(bdata_writer, mesh.poly_offsets());
                       }));
     }
@@ -575,7 +576,7 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
     auto io_materials = serialize_material_slots({mesh.mat, mesh.totcol});
     io_mesh->append("materials", io_materials);
 
-    auto io_attributes = serialize_attributes(mesh.attributes(), bdata_writer, {});
+    auto io_attributes = serialize_attributes(mesh.attributes(), bdata_writer, bdata_sharing, {});
     io_mesh->append("attributes", io_attributes);
   }
   if (geometry.has_pointcloud()) {
@@ -587,7 +588,8 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
     auto io_materials = serialize_material_slots({pointcloud.mat, pointcloud.totcol});
     io_pointcloud->append("materials", io_materials);
 
-    auto io_attributes = serialize_attributes(pointcloud.attributes(), bdata_writer, {});
+    auto io_attributes = serialize_attributes(
+        pointcloud.attributes(), bdata_writer, bdata_sharing, {});
     io_pointcloud->append("attributes", io_attributes);
   }
   if (geometry.has_curves()) {
@@ -602,7 +604,7 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
     if (curves.curve_num > 0) {
       io_curves->append(
           "curve_offsets",
-          bdata_writer.write_shared(curves.runtime->curve_offsets_sharing_info, [&]() {
+          bdata_sharing.write_shared(curves.runtime->curve_offsets_sharing_info, [&]() {
             return write_bdata_int_array(bdata_writer, curves.offsets());
           }));
     }
@@ -610,7 +612,8 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
     auto io_materials = serialize_material_slots({curves_id.mat, curves_id.totcol});
     io_curves->append("materials", io_materials);
 
-    auto io_attributes = serialize_attributes(curves.attributes(), bdata_writer, {});
+    auto io_attributes = serialize_attributes(
+        curves.attributes(), bdata_writer, bdata_sharing, {});
     io_curves->append("attributes", io_attributes);
   }
   if (geometry.has_instances()) {
@@ -622,7 +625,8 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
     auto io_references = io_instances->append_array("references");
     for (const bke::InstanceReference &reference : instances.references()) {
       BLI_assert(reference.type() == bke::InstanceReference::Type::GeometrySet);
-      io_references->append(serialize_geometry_set(reference.geometry_set(), bdata_writer));
+      io_references->append(
+          serialize_geometry_set(reference.geometry_set(), bdata_writer, bdata_sharing));
     }
 
     io_instances->append("transforms",
@@ -630,7 +634,8 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
     io_instances->append("handles",
                          write_bdata_simple_span(bdata_writer, instances.reference_handles()));
 
-    auto io_attributes = serialize_attributes(instances.attributes(), bdata_writer, {"position"});
+    auto io_attributes = serialize_attributes(
+        instances.attributes(), bdata_writer, bdata_sharing, {"position"});
     io_instances->append("attributes", io_attributes);
   }
   return io_geometry;
@@ -638,6 +643,7 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
 
 void serialize_modifier_simulation_state(const ModifierSimulationState &state,
                                          BDataWriter &bdata_writer,
+                                         BDataSharing &bdata_sharing,
                                          io::serialize::DictionaryValue &r_io_root)
 {
   r_io_root.append_int("version", 1);
@@ -670,7 +676,7 @@ void serialize_modifier_simulation_state(const ModifierSimulationState &state,
 
         const GeometrySet &geometry = geometry_state_item->geometry();
 
-        auto io_geometry = serialize_geometry_set(geometry, bdata_writer);
+        auto io_geometry = serialize_geometry_set(geometry, bdata_writer, bdata_sharing);
         io_state_item->append("data", io_geometry);
       }
     }
@@ -758,15 +764,10 @@ DiskBDataReader::DiskBDataReader(std::string bdata_dir) : bdata_dir_(std::move(b
   return true;
 }
 
-DiskBDataWriter::DiskBDataWriter(
-    std::string bdata_name,
-    std::ostream &bdata_file,
-    const int64_t current_offset,
-    Map<const ImplicitSharingInfo *, std::shared_ptr<io::serialize::DictionaryValue>> &shared_data)
-    : bdata_name_(std::move(bdata_name)),
-      bdata_file_(bdata_file),
-      current_offset_(current_offset),
-      shared_data_(shared_data)
+DiskBDataWriter::DiskBDataWriter(std::string bdata_name,
+                                 std::ostream &bdata_file,
+                                 const int64_t current_offset)
+    : bdata_name_(std::move(bdata_name)), bdata_file_(bdata_file), current_offset_(current_offset)
 {
 }
 
@@ -778,13 +779,20 @@ BDataSlice DiskBDataWriter::write(const void *data, const int64_t size)
   return {bdata_name_, {old_offset, size}};
 }
 
-DictionaryValuePtr DiskBDataWriter::write_shared(const ImplicitSharingInfo *sharing_info,
-                                                 const FunctionRef<DictionaryValuePtr()> write_fn)
+BDataSharing::~BDataSharing()
+{
+  for (const ImplicitSharingInfo *sharing_info : map_.keys()) {
+    sharing_info->remove_weak_user_and_delete_if_last();
+  }
+}
+
+DictionaryValuePtr BDataSharing::write_shared(const ImplicitSharingInfo *sharing_info,
+                                              FunctionRef<DictionaryValuePtr()> write_fn)
 {
   if (sharing_info == nullptr) {
     return write_fn();
   }
-  return shared_data_.lookup_or_add_cb(sharing_info, [&]() {
+  return map_.lookup_or_add_cb(sharing_info, [&]() {
     sharing_info->add_weak_user();
     return write_fn();
   });
