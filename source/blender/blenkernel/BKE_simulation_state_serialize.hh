@@ -32,8 +32,8 @@ class BDataWriter {
 
 void serialize_modifier_simulation_state(const ModifierSimulationState &state,
                                          BDataWriter &bdata_writer,
-                                         std::ostream &stream);
-void deserialize_modifier_simulation_state(std::istream &stream,
+                                         io::serialize::DictionaryValue &r_io_root);
+void deserialize_modifier_simulation_state(const io::serialize::DictionaryValue &io_root,
                                            const BDataReader &bdata_reader,
                                            ModifierSimulationState &r_state);
 

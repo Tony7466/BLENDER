@@ -569,11 +569,10 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
 
 void serialize_modifier_simulation_state(const ModifierSimulationState &state,
                                          BDataWriter &bdata_writer,
-                                         std::ostream &stream)
+                                         io::serialize::DictionaryValue &r_io_root)
 {
-  io::serialize::DictionaryValue io_root;
-  io_root.append_int("version", 1);
-  auto io_zones = io_root.append_array("zones");
+  r_io_root.append_int("version", 1);
+  auto io_zones = r_io_root.append_array("zones");
 
   for (const auto item : state.zone_states_.items()) {
     const SimulationZoneID &zone_id = item.key;
@@ -607,32 +606,21 @@ void serialize_modifier_simulation_state(const ModifierSimulationState &state,
       }
     }
   }
-
-  io::serialize::JsonFormatter json_formatter;
-  json_formatter.serialize(stream, io_root);
 }
 
-void deserialize_modifier_simulation_state(std::istream &stream,
+void deserialize_modifier_simulation_state(const io::serialize::DictionaryValue &io_root,
                                            const BDataReader &bdata_reader,
                                            ModifierSimulationState &r_state)
 {
   io::serialize::JsonFormatter formatter;
-  std::unique_ptr<io::serialize::Value> io_root_value = formatter.deserialize(stream);
-  if (!io_root_value) {
-    return;
-  }
-  const io::serialize::DictionaryValue *io_root = io_root_value->as_dictionary_value();
-  if (!io_root) {
-    return;
-  }
-  const std::optional<int> version = io_root->lookup_int("version");
+  const std::optional<int> version = io_root.lookup_int("version");
   if (!version) {
     return;
   }
   if (*version != 1) {
     return;
   }
-  const io::serialize::ArrayValue *io_zones = io_root->lookup_array("zones");
+  const io::serialize::ArrayValue *io_zones = io_root.lookup_array("zones");
   if (!io_zones) {
     return;
   }

@@ -183,7 +183,16 @@ void load_simulation_state(const StringRefNull meta_path,
 {
   const MyBDataReader bdata_reader{bdata_dir};
   fstream meta_file{meta_path.c_str(), std::ios::in};
-  bke::sim::deserialize_modifier_simulation_state(meta_file, bdata_reader, r_state);
+  io::serialize::JsonFormatter formatter;
+  std::shared_ptr<io::serialize::Value> io_root_value = formatter.deserialize(meta_file);
+  if (!io_root_value) {
+    return;
+  }
+  const io::serialize::DictionaryValue *io_root = io_root_value->as_dictionary_value();
+  if (!io_root) {
+    return;
+  }
+  bke::sim::deserialize_modifier_simulation_state(*io_root, bdata_reader, r_state);
 }
 
 static bool bake_simulation_poll(bContext *C)
@@ -293,9 +302,13 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
         fstream bdata_file{bdata_path, std::ios::out | std::ios::binary};
         MyBDataWriter bdata_writer{bdata_file_name, bdata_file, 0, modifier_bake_data.shared_data};
 
+        io::serialize::DictionaryValue io_root;
+        bke::sim::serialize_modifier_simulation_state(*sim_state, bdata_writer, io_root);
+
         BLI_make_existing_file(meta_path);
         fstream meta_file{meta_path, std::ios::out};
-        bke::sim::serialize_modifier_simulation_state(*sim_state, bdata_writer, meta_file);
+        io::serialize::JsonFormatter formatter;
+        formatter.serialize(meta_file, io_root);
       }
     }
   }
