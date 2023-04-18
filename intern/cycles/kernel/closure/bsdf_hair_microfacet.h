@@ -694,9 +694,7 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
 
   const float3 wtr = -reflect(wt, wh2);
 
-  float3 wh3;
-  float3 wtt, wtrt;
-  float3 wmtr, wmtr_;
+  float3 wh3, wtt, wtrt, wmtr;
   float3 TT = zero_float3();
   float3 TRT = zero_float3();
 
