@@ -511,7 +511,6 @@ static float brush_influence_calc(tGP_BrushWeightpaintData *gso, const int radiu
   int mouse_i[2];
   round_v2i_v2fl(mouse_i, gso->mouse);
   float distance = (float)len_v2v2_int(mouse_i, co);
-  influence *= 1.0f - (distance / max_ff(radius, 1e-8));
 
   /* Apply Brush curve. */
   float brush_falloff = BKE_brush_curve_strength(brush, distance, (float)radius);
