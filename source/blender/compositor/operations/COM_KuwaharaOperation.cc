@@ -24,7 +24,10 @@ void KuwaharaOperation::deinit_execution()
   image_reader_ = nullptr;
 }
 
-void KuwaharaOperation::execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler)
+void KuwaharaOperation::execute_pixel_sampled(float output[4],
+                                              float x,
+                                              float y,
+                                              PixelSampler sampler)
 {
   float input_value[4];
   image_reader_->read_sampled(input_value, x, y, sampler);
@@ -66,48 +69,40 @@ void KuwaharaOperation::update_memory_buffer_partial(MemoryBuffer *output,
     const int y = it.y;
     it.out[3] = image->get_value(x, y, 3);
 
-
-    for(int ch = 0; ch < 3; ch++)
-    {
+    for (int ch = 0; ch < 3; ch++) {
       float sum[4] = {0.0f, 0.0f, 0.0f, 0.0f};
       float var[4] = {0.0f, 0.0f, 0.0f, 0.0f};
       int cnt[4] = {0, 0, 0, 0};
 
-      for (int dy = -kernel_size_; dy <= kernel_size_; dy++)
-      {
-        for (int dx = -kernel_size_; dx <= kernel_size_; dx++)
-        {
+      /* Split surroundings of */
+      for (int dy = -kernel_size_; dy <= kernel_size_; dy++) {
+        for (int dx = -kernel_size_; dx <= kernel_size_; dx++) {
 
           int xx = x + dx;
           int yy = y + dy;
-          if (xx >= 0 && yy >= 0 && xx < area.xmax && yy < area.ymax)
-          {
+          if (xx >= 0 && yy >= 0 && xx < area.xmax && yy < area.ymax) {
             float v;
             v = image->get_value(xx, yy, ch);
 
-            if (dx <= 0 && dy <= 0)
-            {
+            if (dx <= 0 && dy <= 0) {
               sum[0] += v;
               var[0] += v * v;
               cnt[0]++;
             }
 
-            if (dx >= 0 && dy <= 0)
-            {
+            if (dx >= 0 && dy <= 0) {
               sum[1] += v;
               var[1] += v * v;
               cnt[1]++;
             }
 
-            if (dx <= 0 && dy >= 0)
-            {
+            if (dx <= 0 && dy >= 0) {
               sum[2] += v;
               var[2] += v * v;
               cnt[2]++;
             }
 
-            if (dx >= 0 && dy >= 0)
-            {
+            if (dx >= 0 && dy >= 0) {
               sum[3] += v;
               var[3] += v * v;
               cnt[3]++;
@@ -116,19 +111,24 @@ void KuwaharaOperation::update_memory_buffer_partial(MemoryBuffer *output,
         }
       }
 
-      std::vector<std::pair<double, int>> vec;
-      for (int i = 0; i < 4; i++)
-      {
+      /* Compute region variances */
+      for (int i = 0; i < 4; i++) {
         sum[i] = cnt[i] != 0 ? sum[i] / cnt[i] : 0.0f;
         var[i] = cnt[i] != 0 ? var[i] / cnt[i] : 0.0f;
-        var[i] = sqrt(var[i] - sum[i] * sum[i]);
-        vec.push_back(std::make_pair(var[i], i));
+        const float temp = sum[i] * sum[i];
+        var[i] = var[i] > temp ? sqrt(var[i] - temp) : 0.0f;
       }
 
-      sort(vec.begin(), vec.end());
-      float res = static_cast<float>(sum[vec[0].second]);
-
-      output->get_value(x, y, ch) = res;
+      /* Choose the region with lowest variance */
+      float min_var = FLT_MAX;
+      int min_index = 0;
+      for (int i = 0; i < 4; i++) {
+        if (var[i] < min_var) {
+          min_var = var[i];
+          min_index = i;
+        }
+      }
+      output->get_value(x, y, ch) = sum[min_index];
     }
   }
 }

@@ -22,14 +22,13 @@ class KuwaharaOperation : public MultiThreadedOperation {
 
   void set_kernel_size(int kernel_size);
   int get_kernel_size();
-  
+
   void set_variation(int variation);
   int get_variation();
 
   void update_memory_buffer_partial(MemoryBuffer *output,
                                     const rcti &area,
                                     Span<MemoryBuffer *> inputs) override;
-
 };
 
 }  // namespace blender::compositor

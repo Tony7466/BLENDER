@@ -5,7 +5,6 @@
  * \ingroup cmpnodes
  */
 
-
 //#include "COM_shader_node.hh"
 #include "COM_node_operation.hh"
 
@@ -43,40 +42,6 @@ static void node_composit_buts_kuwahara(uiLayout *layout, bContext * /*C*/, Poin
   uiItemR(col, ptr, "kernel_size", 0, nullptr, ICON_NONE);
 }
 
-
-
-//using namespace blender::realtime_compositor;
-//
-//class KuwaharaShaderNode : public NodeOperation {
-// public:
-//  using NodeOperation::NodeOperation;
-//
-//  void execute() override
-//  {
-//    get_input("Image").pass_through(get_result("Image"));
-//    context().set_info_message("Viewport compositor setup not fully supported");
-//  }
-//  using ShaderNode::ShaderNode;
-//
-//  void compile(GPUMaterial *material) override
-//  {
-//    GPUNodeStack *inputs = get_inputs_array();
-//    GPUNodeStack *outputs = get_outputs_array();
-//
-//    GPU_stack_link(material, &bnode(), "node_composite_kuwahara", inputs, outputs);
-//  }
-//};
-//
-//static NodeOperation *get_compositor_operation(Context *context, DNode node)
-//{
-//  return new KuwaharaOperation(context, node);
-//}
-
-//static ShaderNode *get_compositor_shader_node(DNode node)
-//{
-//  return new KuwaharaShaderNode(node);
-//}
-
 }  // namespace blender::nodes::node_composite_kuwahara_cc
 
 void register_node_type_cmp_kuwahara()
@@ -91,7 +56,7 @@ void register_node_type_cmp_kuwahara()
   ntype.initfunc = file_ns::node_composit_init_kuwahara;
   node_type_storage(
       &ntype, "NodeKuwaharaData", node_free_standard_storage, node_copy_standard_storage);
-//  ntype.get_compositor_shader_node = file_ns::get_compositor_shader_node;
+  //  ntype.get_compositor_shader_node = file_ns::get_compositor_shader_node;
 
   nodeRegisterType(&ntype);
 }
