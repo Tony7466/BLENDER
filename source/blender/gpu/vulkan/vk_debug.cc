@@ -60,7 +60,7 @@ void VKContext::debug_capture_scope_end(void * /*scope*/) {}
 
 namespace blender::gpu::debug {
 
-static void vulkan_dynamic_debug_functions(VKContext *context, PFN_vkGetInstanceProcAddr instload)
+static void load_dynamic_functions(VKContext *context, PFN_vkGetInstanceProcAddr instload)
 {
   VKDebuggingTools &tools = context->debugging_tools_get();
   VkInstance instance = context->instance_get();
@@ -113,7 +113,7 @@ static void vulkan_dynamic_debug_functions(VKContext *context, PFN_vkGetInstance
 bool init_callbacks(VKContext *context, PFN_vkGetInstanceProcAddr instload)
 {
   if (instload) {
-    vulkan_dynamic_debug_functions(context, instload);
+    load_dynamic_functions(context, instload);
     return true;
   };
   return false;
@@ -123,26 +123,29 @@ void destroy_callbacks(VKContext *context)
 {
   VKDebuggingTools &tools = context->debugging_tools_get();
   if (tools.enabled) {
-    vulkan_dynamic_debug_functions(context, nullptr);
+    load_dynamic_functions(context, nullptr);
   }
 }
 
-void object_label(VKContext *context, VkObjectType objType, uint64_t obj, const char *name)
+void object_label(VKContext *context,
+                  VkObjectType vk_object_type,
+                  uint64_t object_handle,
+                  const char *name)
 {
   if (G.debug & G_DEBUG_GPU) {
     const VKDebuggingTools &tools = context->debugging_tools_get();
     if (tools.enabled) {
       VkDebugUtilsObjectNameInfoEXT info = {};
       info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
-      info.objectType = objType;
-      info.objectHandle = obj;
+      info.objectType = vk_object_type;
+      info.objectHandle = object_handle;
       info.pObjectName = name;
       tools.vkSetDebugUtilsObjectNameEXT_r(context->device_get(), &info);
     }
   }
 }
 
-void push_marker(VKContext *context, VkCommandBuffer cmd, const char *name)
+void push_marker(VKContext *context, VkCommandBuffer vk_command_buffer, const char *name)
 {
   if (G.debug & G_DEBUG_GPU) {
     const VKDebuggingTools &tools = context->debugging_tools_get();
@@ -150,12 +153,12 @@ void push_marker(VKContext *context, VkCommandBuffer cmd, const char *name)
       VkDebugUtilsLabelEXT info = {};
       info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
       info.pLabelName = name;
-      tools.vkCmdBeginDebugUtilsLabelEXT_r(cmd, &info);
+      tools.vkCmdBeginDebugUtilsLabelEXT_r(vk_command_buffer, &info);
     }
   }
 }
 
-void set_marker(VKContext *context, VkCommandBuffer cmd, const char *name)
+void set_marker(VKContext *context, VkCommandBuffer vk_command_buffer, const char *name)
 {
   if (G.debug & G_DEBUG_GPU) {
     const VKDebuggingTools &tools = context->debugging_tools_get();
@@ -163,35 +166,22 @@ void set_marker(VKContext *context, VkCommandBuffer cmd, const char *name)
       VkDebugUtilsLabelEXT info = {};
       info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
       info.pLabelName = name;
-      tools.vkCmdInsertDebugUtilsLabelEXT_r(cmd, &info);
+      tools.vkCmdInsertDebugUtilsLabelEXT_r(vk_command_buffer, &info);
     }
   }
 }
 
-void pop_marker(VKContext *context, VkCommandBuffer cmd)
+void pop_marker(VKContext *context, VkCommandBuffer vk_command_buffer)
 {
   if (G.debug & G_DEBUG_GPU) {
     const VKDebuggingTools &tools = context->debugging_tools_get();
     if (tools.enabled) {
-      tools.vkCmdEndDebugUtilsLabelEXT_r(cmd);
+      tools.vkCmdEndDebugUtilsLabelEXT_r(vk_command_buffer);
     }
   }
 }
 
-void push_marker(VKContext *context, VkQueue queue, const char *name)
-{
-  if (G.debug & G_DEBUG_GPU) {
-    VKDebuggingTools tools = context->debugging_tools_get();
-    if (tools.enabled) {
-      VkDebugUtilsLabelEXT info = {};
-      info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
-      info.pLabelName = name;
-      tools.vkQueueBeginDebugUtilsLabelEXT_r(queue, &info);
-    }
-  }
-}
-
-void set_marker(VKContext *context, VkQueue queue, const char *name)
+void push_marker(VKContext *context, VkQueue vk_queue, const char *name)
 {
   if (G.debug & G_DEBUG_GPU) {
     const VKDebuggingTools &tools = context->debugging_tools_get();
@@ -199,17 +189,30 @@ void set_marker(VKContext *context, VkQueue queue, const char *name)
       VkDebugUtilsLabelEXT info = {};
       info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
       info.pLabelName = name;
-      tools.vkQueueInsertDebugUtilsLabelEXT_r(queue, &info);
+      tools.vkQueueBeginDebugUtilsLabelEXT_r(vk_queue, &info);
     }
   }
 }
 
-void pop_marker(VKContext *context, VkQueue queue)
+void set_marker(VKContext *context, VkQueue vk_queue, const char *name)
 {
   if (G.debug & G_DEBUG_GPU) {
     const VKDebuggingTools &tools = context->debugging_tools_get();
     if (tools.enabled) {
-      tools.vkQueueEndDebugUtilsLabelEXT_r(queue);
+      VkDebugUtilsLabelEXT info = {};
+      info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+      info.pLabelName = name;
+      tools.vkQueueInsertDebugUtilsLabelEXT_r(vk_queue, &info);
+    }
+  }
+}
+
+void pop_marker(VKContext *context, VkQueue vk_queue)
+{
+  if (G.debug & G_DEBUG_GPU) {
+    const VKDebuggingTools &tools = context->debugging_tools_get();
+    if (tools.enabled) {
+      tools.vkQueueEndDebugUtilsLabelEXT_r(vk_queue);
     }
   }
 }
