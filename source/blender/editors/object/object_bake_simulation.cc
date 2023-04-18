@@ -860,61 +860,56 @@ static bool bake_simulation_poll(bContext *C)
   return true;
 }
 
+struct ModifierBakeData {
+  NodesModifierData *nmd;
+  std::string meta_dir;
+  std::string bdata_dir;
+  Map<const ImplicitSharingInfo *, std::shared_ptr<io::serialize::DictionaryValue>> shared_data;
+
+  ~ModifierBakeData()
+  {
+    for (const ImplicitSharingInfo *sharing_info : shared_data.keys()) {
+      sharing_info->remove_weak_user_and_delete_if_last();
+    };
+  }
+};
+
+struct ObjectBakeData {
+  Object *object;
+  Vector<ModifierBakeData> modifiers;
+};
+
 static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
 {
   using namespace bke::sim;
 
-  Object *object = CTX_data_active_object(C);
   Scene *scene = CTX_data_scene(C);
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Main *bmain = CTX_data_main(C);
 
-  StringRefNull blend_file_path = BKE_main_blendfile_path(bmain);
-  char blend_directory[FILE_MAX];
-  char blend_name[FILE_MAX];
-  BLI_split_dirfile(blend_file_path.c_str(),
-                    blend_directory,
-                    blend_name,
-                    sizeof(blend_directory),
-                    sizeof(blend_name));
-  blend_name[StringRef(blend_name).rfind(".")] = '\0';
-  const std::string bake_directory_name = "blendcache_" + StringRef(blend_name);
-  char bake_directory[FILE_MAX];
-  BLI_path_join(
-      bake_directory, sizeof(bake_directory), blend_directory, bake_directory_name.c_str());
-  char bdata_directory[FILE_MAX];
-  BLI_path_join(bdata_directory, sizeof(bdata_directory), bake_directory, "bdata");
-  char meta_directory[FILE_MAX];
-  BLI_path_join(meta_directory, sizeof(meta_directory), bake_directory, "meta");
+  Vector<ObjectBakeData> objects_to_bake;
+  CTX_DATA_BEGIN (C, Object *, object, selected_objects) {
+    if (!BKE_id_is_editable(bmain, &object->id)) {
+      continue;
+    }
+    ObjectBakeData bake_data;
+    bake_data.object = object;
+    LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
+      if (md->type == eModifierType_Nodes) {
+        NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
+        if (nmd->simulation_cache != nullptr) {
+          nmd->simulation_cache->reset();
+        }
+        bake_data.modifiers.append({nmd,
+                                    get_meta_directory(*bmain, *object, *md),
+                                    get_bdata_directory(*bmain, *object, *md)});
+      }
+    }
+    objects_to_bake.append(std::move(bake_data));
+  }
+  CTX_DATA_END;
 
   const int old_frame = scene->r.cfra;
-
-  const std::string object_name_escaped = escape_name(object->id.name + 2);
-
-  Vector<NodesModifierData *> modifiers;
-  Vector<std::string> modifier_meta_dirs;
-  Vector<std::string> modifier_bdata_dirs;
-  LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
-    if (md->type == eModifierType_Nodes) {
-      modifiers.append(reinterpret_cast<NodesModifierData *>(md));
-      modifier_meta_dirs.append(get_meta_directory(*bmain, *object, *md));
-      modifier_bdata_dirs.append(get_bdata_directory(*bmain, *object, *md));
-    }
-  }
-
-  for (NodesModifierData *nmd : modifiers) {
-    if (nmd->simulation_cache != nullptr) {
-      nmd->simulation_cache->reset();
-    }
-  }
-
-  Map<const ImplicitSharingInfo *, std::shared_ptr<io::serialize::DictionaryValue>> shared_data;
-  auto free_shared_data = [&]() {
-    for (const ImplicitSharingInfo *sharing_info : shared_data.keys()) {
-      sharing_info->remove_weak_user_and_delete_if_last();
-    };
-  };
-  BLI_SCOPED_DEFER(free_shared_data);
 
   for (float frame_f = scene->r.sfra; frame_f <= scene->r.efra; frame_f += 1.0f) {
     const SubFrame frame{frame_f};
@@ -929,86 +924,92 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
 
     BKE_scene_graph_update_for_newframe(depsgraph);
 
-    for (const int modifier_i : modifiers.index_range()) {
-      NodesModifierData &nmd = *modifiers[modifier_i];
-      if (nmd.simulation_cache == nullptr) {
-        continue;
-      }
+    for (ObjectBakeData &object_bake_data : objects_to_bake) {
+      for (ModifierBakeData &modifier_bake_data : object_bake_data.modifiers) {
+        NodesModifierData &nmd = *modifier_bake_data.nmd;
+        if (nmd.simulation_cache == nullptr) {
+          continue;
+        }
 
-      const std::string bdata_file_name = frame_file_str + ".bdata";
+        const std::string bdata_file_name = frame_file_str + ".bdata";
 
-      char bdata_path[FILE_MAX];
-      BLI_path_join(bdata_path,
-                    sizeof(bdata_path),
-                    modifier_bdata_dirs[modifier_i].c_str(),
-                    bdata_file_name.c_str());
-      char meta_path[FILE_MAX];
-      BLI_path_join(meta_path,
-                    sizeof(meta_path),
-                    modifier_meta_dirs[modifier_i].c_str(),
-                    (frame_file_str + ".json").c_str());
+        char bdata_path[FILE_MAX];
+        BLI_path_join(bdata_path,
+                      sizeof(bdata_path),
+                      modifier_bake_data.bdata_dir.c_str(),
+                      bdata_file_name.c_str());
+        char meta_path[FILE_MAX];
+        BLI_path_join(meta_path,
+                      sizeof(meta_path),
+                      modifier_bake_data.meta_dir.c_str(),
+                      (frame_file_str + ".json").c_str());
 
-      BLI_make_existing_file(bdata_path);
-      fstream bdata_file{bdata_path, std::ios::out | std::ios::binary};
-      BDataWriter bdata_writer{bdata_file_name, bdata_file, 0, shared_data};
+        BLI_make_existing_file(bdata_path);
+        fstream bdata_file{bdata_path, std::ios::out | std::ios::binary};
+        BDataWriter bdata_writer{bdata_file_name, bdata_file, 0, modifier_bake_data.shared_data};
 
-      io::serialize::DictionaryValue io_root;
-      io_root.append_int("version", 1);
-      auto io_zones = io_root.append_array("zones");
+        io::serialize::DictionaryValue io_root;
+        io_root.append_int("version", 1);
+        auto io_zones = io_root.append_array("zones");
 
-      ModifierSimulationCache &sim_cache = *nmd.simulation_cache;
-      const ModifierSimulationState *sim_state = sim_cache.get_state_at_exact_frame(frame);
-      if (sim_state == nullptr) {
-        continue;
-      }
-      {
-        std::lock_guard lock{sim_state->mutex_};
-        for (const auto item : sim_state->zone_states_.items()) {
-          const SimulationZoneID &zone_id = item.key;
-          const SimulationZoneState &zone_state = *item.value;
+        ModifierSimulationCache &sim_cache = *nmd.simulation_cache;
+        const ModifierSimulationState *sim_state = sim_cache.get_state_at_exact_frame(frame);
+        if (sim_state == nullptr) {
+          continue;
+        }
+        {
+          std::lock_guard lock{sim_state->mutex_};
+          for (const auto item : sim_state->zone_states_.items()) {
+            const SimulationZoneID &zone_id = item.key;
+            const SimulationZoneState &zone_state = *item.value;
 
-          auto io_zone = io_zones->append_dict();
+            auto io_zone = io_zones->append_dict();
 
-          auto io_zone_id = io_zone->append_array("zone_id");
+            auto io_zone_id = io_zone->append_array("zone_id");
 
-          for (const int node_id : zone_id.node_ids) {
-            io_zone_id->append_int(node_id);
-          }
+            for (const int node_id : zone_id.node_ids) {
+              io_zone_id->append_int(node_id);
+            }
 
-          auto io_state_items = io_zone->append_array("state_items");
-          for (const std::unique_ptr<SimulationStateItem> &state_item : zone_state.items) {
-            /* TODO: Use better id. */
-            const std::string state_item_id = std::to_string(&state_item -
-                                                             zone_state.items.begin());
+            auto io_state_items = io_zone->append_array("state_items");
+            for (const std::unique_ptr<SimulationStateItem> &state_item : zone_state.items) {
+              /* TODO: Use better id. */
+              const std::string state_item_id = std::to_string(&state_item -
+                                                               zone_state.items.begin());
 
-            auto io_state_item = io_state_items->append_dict();
+              auto io_state_item = io_state_items->append_dict();
 
-            io_state_item->append_str("id", state_item_id);
+              io_state_item->append_str("id", state_item_id);
 
-            if (const GeometrySimulationStateItem *geometry_state_item =
-                    dynamic_cast<const GeometrySimulationStateItem *>(state_item.get())) {
-              io_state_item->append_str("type", "geometry");
+              if (const GeometrySimulationStateItem *geometry_state_item =
+                      dynamic_cast<const GeometrySimulationStateItem *>(state_item.get())) {
+                io_state_item->append_str("type", "geometry");
 
-              const GeometrySet &geometry = geometry_state_item->geometry();
+                const GeometrySet &geometry = geometry_state_item->geometry();
 
-              auto io_geometry = serialize_geometry_set(geometry, bdata_writer);
-              io_state_item->append("data", io_geometry);
+                auto io_geometry = serialize_geometry_set(geometry, bdata_writer);
+                io_state_item->append("data", io_geometry);
+              }
             }
           }
         }
-      }
 
-      BLI_make_existing_file(meta_path);
-      fstream meta_file{meta_path, std::ios::out};
-      io::serialize::JsonFormatter json_formatter;
-      json_formatter.serialize(meta_file, io_root);
+        BLI_make_existing_file(meta_path);
+        fstream meta_file{meta_path, std::ios::out};
+        io::serialize::JsonFormatter json_formatter;
+        json_formatter.serialize(meta_file, io_root);
+      }
     }
   }
 
-  for (NodesModifierData *nmd : modifiers) {
-    if (nmd->simulation_cache) {
-      nmd->simulation_cache->cache_state_ = CacheState::Baked;
+  for (ObjectBakeData &object_bake_data : objects_to_bake) {
+    for (ModifierBakeData &modifier_bake_data : object_bake_data.modifiers) {
+      NodesModifierData &nmd = *modifier_bake_data.nmd;
+      if (nmd.simulation_cache) {
+        nmd.simulation_cache->cache_state_ = CacheState::Baked;
+      }
     }
+    DEG_id_tag_update(&object_bake_data.object->id, ID_RECALC_GEOMETRY);
   }
 
   scene->r.cfra = old_frame;
@@ -1020,25 +1021,28 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
 
 static int delete_baked_simulation_exec(bContext *C, wmOperator * /*op*/)
 {
-  Object *object = CTX_data_active_object(C);
   Main *bmain = CTX_data_main(C);
 
-  LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
-    if (md->type == eModifierType_Nodes) {
-      NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-      char bake_directory[FILE_MAX];
-      BLI_path_join(bake_directory,
-                    sizeof(bake_directory),
-                    get_blendcache_directory(*bmain).c_str(),
-                    get_modifier_sim_name(*object, *md).c_str());
-      BLI_delete(bake_directory, true, true);
-      if (nmd->simulation_cache != nullptr) {
-        nmd->simulation_cache->reset();
+  CTX_DATA_BEGIN (C, Object *, object, selected_objects) {
+    LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
+      if (md->type == eModifierType_Nodes) {
+        NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
+        char bake_directory[FILE_MAX];
+        BLI_path_join(bake_directory,
+                      sizeof(bake_directory),
+                      get_blendcache_directory(*bmain).c_str(),
+                      get_modifier_sim_name(*object, *md).c_str());
+        BLI_delete(bake_directory, true, true);
+        if (nmd->simulation_cache != nullptr) {
+          nmd->simulation_cache->reset();
+        }
       }
     }
-  }
 
-  DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
+    DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
+  }
+  CTX_DATA_END;
+
   WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, nullptr);
 
   return OPERATOR_FINISHED;
