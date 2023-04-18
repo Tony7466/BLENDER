@@ -538,8 +538,7 @@ static void ss_sync_ccg_from_derivedmesh(CCGSubSurf *ss,
   float creaseFactor = float(ccgSubSurf_getSubdivisionLevels(ss));
   blender::Vector<CCGVertHDL, 16> fverts;
   float(*positions)[3] = (float(*)[3])dm->getVertArray(dm);
-  MEdge *edges = dm->getEdgeArray(dm);
-  MEdge *edge;
+  const blender::int2 *edges = reinterpret_cast<const blender::int2 *>(dm->getEdgeArray(dm));
   int *corner_verts = dm->getCornerVertArray(dm);
   const blender::OffsetIndices polys(blender::Span(dm->getPolyArray(dm), dm->getNumPolys(dm) + 1));
   int totvert = dm->getNumVerts(dm);
@@ -563,10 +562,9 @@ static void ss_sync_ccg_from_derivedmesh(CCGSubSurf *ss,
     ((int *)ccgSubSurf_getVertUserData(ss, v))[1] = (index) ? *index++ : i;
   }
 
-  edge = edges;
   index = (int *)dm->getEdgeDataArray(dm, CD_ORIGINDEX);
   const float *creases = (const float *)dm->getEdgeDataArray(dm, CD_CREASE);
-  for (i = 0; i < totedge; i++, edge++) {
+  for (i = 0; i < totedge; i++) {
     CCGEdge *e;
     float crease;
 
@@ -574,8 +572,8 @@ static void ss_sync_ccg_from_derivedmesh(CCGSubSurf *ss,
 
     ccgSubSurf_syncEdge(ss,
                         POINTER_FROM_INT(i),
-                        POINTER_FROM_UINT(edge->v1),
-                        POINTER_FROM_UINT(edge->v2),
+                        POINTER_FROM_UINT(edges[i][0]),
+                        POINTER_FROM_UINT(edges[i][1]),
                         crease,
                         &e);
 
@@ -816,13 +814,13 @@ static void ccgDM_copyFinalVertArray(DerivedMesh *dm, float (*r_positions)[3])
 }
 
 /* utility function */
-BLI_INLINE void ccgDM_to_MEdge(MEdge *edge, const int v1, const int v2)
+BLI_INLINE void ccgDM_to_MEdge(vec2i *edge, const int v1, const int v2)
 {
-  edge->v1 = v1;
-  edge->v2 = v2;
+  edge->x = v1;
+  edge->y = v2;
 }
 
-static void ccgDM_copyFinalEdgeArray(DerivedMesh *dm, MEdge *edges)
+static void ccgDM_copyFinalEdgeArray(DerivedMesh *dm, vec2i *edges)
 {
   CCGDerivedMesh *ccgdm = (CCGDerivedMesh *)dm;
   CCGSubSurf *ss = ccgdm->ss;
@@ -874,7 +872,6 @@ struct CopyFinalLoopArrayData {
   int grid_size;
   int *grid_offset;
   int edge_size;
-  size_t mloop_index;
 };
 
 static void copyFinalLoopArray_task_cb(void *__restrict userdata,
@@ -926,24 +923,6 @@ static void ccgDM_copyFinalCornerVertArray(DerivedMesh *dm, int *r_corner_verts)
   CCGDerivedMesh *ccgdm = (CCGDerivedMesh *)dm;
   CCGSubSurf *ss = ccgdm->ss;
 
-  if (!ccgdm->ehash) {
-    BLI_mutex_lock(&ccgdm->loops_cache_lock);
-    if (!ccgdm->ehash) {
-      MEdge *edges;
-      EdgeHash *ehash;
-
-      ehash = BLI_edgehash_new_ex(__func__, ccgdm->dm.numEdgeData);
-      edges = ccgdm->dm.getEdgeArray((DerivedMesh *)ccgdm);
-
-      for (int i = 0; i < ccgdm->dm.numEdgeData; i++) {
-        BLI_edgehash_insert(ehash, edges[i].v1, edges[i].v2, POINTER_FROM_INT(i));
-      }
-
-      atomic_cas_ptr((void **)&ccgdm->ehash, ccgdm->ehash, ehash);
-    }
-    BLI_mutex_unlock(&ccgdm->loops_cache_lock);
-  }
-
   CopyFinalLoopArrayData data;
   data.ccgdm = ccgdm;
   data.corner_verts = r_corner_verts;
@@ -951,12 +930,6 @@ static void ccgDM_copyFinalCornerVertArray(DerivedMesh *dm, int *r_corner_verts)
   data.grid_size = ccgSubSurf_getGridSize(ss);
   data.grid_offset = dm->getGridOffset(dm);
   data.edge_size = ccgSubSurf_getEdgeSize(ss);
-
-  /* NOTE: For a dense subdivision we've got enough work for each face and
-   * hence can dedicate whole thread to single face. For less dense
-   * subdivision we handle multiple faces per thread.
-   */
-  data.mloop_index = data.grid_size >= 5 ? 1 : 8;
 
   TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
@@ -974,14 +947,15 @@ static void ccgDM_copyFinalCornerEdgeArray(DerivedMesh *dm, int *r_corner_edges)
   if (!ccgdm->ehash) {
     BLI_mutex_lock(&ccgdm->loops_cache_lock);
     if (!ccgdm->ehash) {
-      MEdge *medge;
+      const blender::int2 *medge;
       EdgeHash *ehash;
 
       ehash = BLI_edgehash_new_ex(__func__, ccgdm->dm.numEdgeData);
-      medge = ccgdm->dm.getEdgeArray((DerivedMesh *)ccgdm);
+      medge = reinterpret_cast<const blender::int2 *>(
+          ccgdm->dm.getEdgeArray((DerivedMesh *)ccgdm));
 
       for (int i = 0; i < ccgdm->dm.numEdgeData; i++) {
-        BLI_edgehash_insert(ehash, medge[i].v1, medge[i].v2, POINTER_FROM_INT(i));
+        BLI_edgehash_insert(ehash, medge[i][0], medge[i][1], POINTER_FROM_INT(i));
       }
 
       atomic_cas_ptr((void **)&ccgdm->ehash, ccgdm->ehash, ehash);
@@ -996,12 +970,6 @@ static void ccgDM_copyFinalCornerEdgeArray(DerivedMesh *dm, int *r_corner_edges)
   data.grid_size = ccgSubSurf_getGridSize(ss);
   data.grid_offset = dm->getGridOffset(dm);
   data.edge_size = ccgSubSurf_getEdgeSize(ss);
-
-  /* NOTE: For a dense subdivision we've got enough work for each face and
-   * hence can dedicate whole thread to single face. For less dense
-   * subdivision we handle multiple faces per thread.
-   */
-  data.mloop_index = data.grid_size >= 5 ? 1 : 8;
 
   TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
