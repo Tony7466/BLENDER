@@ -338,10 +338,10 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
       break;
   }
 
-  const bool do_fragment_attrib_load = ELEM(
+  const bool do_vertex_attrib_load = !ELEM(
       geometry_type, MAT_GEOM_WORLD, MAT_GEOM_VOLUME_WORLD, MAT_GEOM_VOLUME_OBJECT);
 
-  if (do_fragment_attrib_load && !info.vertex_out_interfaces_.is_empty()) {
+  if (!do_vertex_attrib_load && !info.vertex_out_interfaces_.is_empty()) {
     /* Codegen outputs only one interface. */
     const StageInterfaceInfo &iface = *info.vertex_out_interfaces_.first();
     /* Globals the attrib_load() can write to when it is in the fragment shader. */
@@ -361,16 +361,31 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
   attr_load << ((codegen.attr_load) ? codegen.attr_load : "");
   attr_load << "}\n\n";
 
-  std::stringstream vert_gen, frag_gen;
+  std::stringstream vert_gen, frag_gen, comp_gen;
 
-  if (do_fragment_attrib_load) {
+  if (do_vertex_attrib_load) {
+    vert_gen << global_vars.str() << attr_load.str();
+  }
+  else if (pipeline_type != MAT_PIPE_VOLUME) {
     frag_gen << global_vars.str() << attr_load.str();
   }
   else {
-    vert_gen << global_vars.str() << attr_load.str();
+    comp_gen << global_vars.str() << attr_load.str();
   }
 
-  {
+  if (pipeline_type == MAT_PIPE_VOLUME) {
+    comp_gen << ((codegen.material_functions) ? codegen.material_functions : "\n");
+
+    comp_gen << "Closure nodetree_volume()\n";
+    comp_gen << "{\n";
+    comp_gen << "  closure_weights_reset();\n";
+    comp_gen << ((codegen.volume) ? codegen.volume : "return Closure(0);\n");
+    comp_gen << "}\n\n";
+
+    info.compute_source_generated = comp_gen.str();
+  }
+  else {
+    /* Vert Gen. */
     /* Only mesh and curves support vertex displacement for now. */
     if (ELEM(geometry_type, MAT_GEOM_MESH, MAT_GEOM_CURVES, MAT_GEOM_GPENCIL)) {
       vert_gen << "vec3 nodetree_displacement()\n";
@@ -380,41 +395,31 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     }
 
     info.vertex_source_generated = vert_gen.str();
-  }
 
-  {
+    /* Frag Gen. */
     frag_gen << ((codegen.material_functions) ? codegen.material_functions : "\n");
 
-    if (pipeline_type == MAT_PIPE_VOLUME) {
-      frag_gen << "Closure nodetree_volume()\n";
+    if (codegen.displacement) {
+      /* Bump displacement. Needed to recompute normals after displacement. */
+      info.define("MAT_DISPLACEMENT_BUMP");
+
+      frag_gen << "vec3 nodetree_displacement()\n";
       frag_gen << "{\n";
-      frag_gen << "  closure_weights_reset();\n";
-      frag_gen << ((codegen.volume) ? codegen.volume : "return Closure(0);\n");
+      frag_gen << codegen.displacement;
       frag_gen << "}\n\n";
     }
-    else {
-      if (codegen.displacement) {
-        /* Bump displacement. Needed to recompute normals after displacement. */
-        info.define("MAT_DISPLACEMENT_BUMP");
 
-        frag_gen << "vec3 nodetree_displacement()\n";
-        frag_gen << "{\n";
-        frag_gen << codegen.displacement;
-        frag_gen << "}\n\n";
-      }
+    frag_gen << "Closure nodetree_surface()\n";
+    frag_gen << "{\n";
+    frag_gen << "  closure_weights_reset();\n";
+    frag_gen << ((codegen.surface) ? codegen.surface : "return Closure(0);\n");
+    frag_gen << "}\n\n";
 
-      frag_gen << "Closure nodetree_surface()\n";
-      frag_gen << "{\n";
-      frag_gen << "  closure_weights_reset();\n";
-      frag_gen << ((codegen.surface) ? codegen.surface : "return Closure(0);\n");
-      frag_gen << "}\n\n";
-
-      frag_gen << "float nodetree_thickness()\n";
-      frag_gen << "{\n";
-      /* TODO(fclem): Better default. */
-      frag_gen << ((codegen.thickness) ? codegen.thickness : "return 0.1;\n");
-      frag_gen << "}\n\n";
-    }
+    frag_gen << "float nodetree_thickness()\n";
+    frag_gen << "{\n";
+    /* TODO(fclem): Better default. */
+    frag_gen << ((codegen.thickness) ? codegen.thickness : "return 0.1;\n");
+    frag_gen << "}\n\n";
 
     info.fragment_source_generated = frag_gen.str();
   }

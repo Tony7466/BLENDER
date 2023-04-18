@@ -501,14 +501,11 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_velocity_lib.glsl
   engines/eevee_next/shaders/eevee_volume_accum_frag.glsl
   engines/eevee_next/shaders/eevee_volume_clear_comp.glsl
-  engines/eevee_next/shaders/eevee_volume_geom.glsl
   engines/eevee_next/shaders/eevee_volume_integration_comp.glsl
   engines/eevee_next/shaders/eevee_volume_lib.glsl
-  engines/eevee_next/shaders/eevee_volume_material_frag.glsl
-  engines/eevee_next/shaders/eevee_volume_material_vert.glsl
+  engines/eevee_next/shaders/eevee_volume_material_comp.glsl
   engines/eevee_next/shaders/eevee_volume_resolve_frag.glsl
   engines/eevee_next/shaders/eevee_volume_scatter_comp.glsl
-  engines/eevee_next/shaders/eevee_volume_vert.glsl
 
   engines/eevee_next/eevee_defines.hh
   engines/eevee_next/eevee_shader_shared.hh

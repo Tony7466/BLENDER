@@ -12,5 +12,5 @@ void main()
   imageStore(out_scattering, froxel, clear);
   imageStore(out_extinction, froxel, clear);
   imageStore(out_emissive, froxel, clear);
-  imageStore(out_phase, froxel.xy, clear);
+  imageStore(out_phase, froxel, clear);
 }

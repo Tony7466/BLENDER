@@ -4,7 +4,6 @@
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(common_attribute_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_light_eval_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_attributes_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_nodetree_lib.glsl)
@@ -37,9 +36,13 @@ void attrib_load();
 
 void main()
 {
-  ivec3 volume_cell = ivec3(ivec2(gl_FragCoord.xy), volume_geom_iface.slice);
-  vec3 ndc_cell = volume_to_ndc((vec3(volume_cell) + volumes_buf.jitter) *
-                                volumes_buf.inv_tex_size);
+  ivec3 froxel = ivec3(gl_GlobalInvocationID);
+
+  if (any(greaterThanEqual(froxel, volumes_buf.tex_size))) {
+    return;
+  }
+
+  vec3 ndc_cell = volume_to_ndc((vec3(froxel) + volumes_buf.jitter) * volumes_buf.inv_tex_size);
 
   viewPosition = get_view_space_from_depth(ndc_cell.xy, ndc_cell.z);
   worldPosition = point_view_to_world(viewPosition);
@@ -48,10 +51,6 @@ void main()
   g_orco = OrcoTexCoFactors[0].xyz + objectPosition * OrcoTexCoFactors[1].xyz;
 
   if (any(lessThan(g_orco, vec3(0.0))) || any(greaterThan(g_orco, vec3(1.0)))) {
-    /* NOTE: Discard is not an explicit return in Metal prior to versions 2.3.
-     * adding return after discard ensures consistent behavior and avoids GPU
-     * side-effects where control flow continues with undefined values. */
-    discard;
     return;
   }
 #else /* WORLD_SHADER */
@@ -75,14 +74,24 @@ void main()
   emission *= drw_volume.density_scale;
 #endif
 
-  volumeScattering = vec4(scattering, 1.0);
-  volumeExtinction = vec4(scattering + absorption, 1.0);
-  volumeEmissive = vec4(emission, 1.0);
-  /* Do not add phase weight if no scattering. */
+  vec3 extinction = scattering + absorption;
+
+  /* Do not add phase weight if there's no scattering. */
   if (all(equal(scattering, vec3(0.0)))) {
-    volumePhase = vec4(0.0);
+    anisotropy = 0.0;
   }
-  else {
-    volumePhase = vec4(anisotropy, vec3(1.0));
-  }
+
+#ifdef MAT_GEOM_VOLUME_OBJECT
+  /* Additive Blending.
+   * No race condition since each invocation only handles its own froxel. */
+  scattering += imageLoad(out_scattering, froxel).rgb;
+  extinction += imageLoad(out_extinction, froxel).rgb;
+  emission += imageLoad(out_emissive, froxel).rgb;
+  anisotropy += imageLoad(out_phase, froxel).r;
+#endif
+
+  imageStore(out_scattering, froxel, vec4(scattering, 1.0));
+  imageStore(out_extinction, froxel, vec4(extinction, 1.0));
+  imageStore(out_emissive, froxel, vec4(emission, 1.0));
+  imageStore(out_phase, froxel, vec4(anisotropy, vec3(1.0)));
 }

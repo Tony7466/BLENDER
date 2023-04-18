@@ -13,24 +13,6 @@ GPU_SHADER_CREATE_INFO(eevee_volume_lib)
     .sampler(VOLUME_SCATTERING_TEX_SLOT, ImageType::FLOAT_3D, "inScattering")
     .sampler(VOLUME_TRANSMITTANCE_TEX_SLOT, ImageType::FLOAT_3D, "inTransmittance");
 
-GPU_SHADER_INTERFACE_INFO(eevee_volume_vert_geom_iface, "volume_vert_iface")
-    .smooth(Type::VEC4, "vPos");
-
-GPU_SHADER_INTERFACE_INFO(eevee_volume_geom_frag_iface, "volume_geom_iface")
-    .flat(Type::INT, "slice");
-
-GPU_SHADER_CREATE_INFO(eevee_volume_base)
-    .additional_info("draw_resource_id_varying", "eevee_volume_lib")
-    .define("VOLUMETRICS")
-    .geometry_source("eevee_volume_geom.glsl")
-    .vertex_out(eevee_volume_vert_geom_iface)
-    .geometry_out(eevee_volume_geom_frag_iface)
-    .geometry_layout(PrimitiveIn::TRIANGLES, PrimitiveOut::TRIANGLE_STRIP, 3)
-    .fragment_out(0, Type::VEC4, "volumeScattering")
-    .fragment_out(1, Type::VEC4, "volumeExtinction")
-    .fragment_out(2, Type::VEC4, "volumeEmissive")
-    .fragment_out(3, Type::VEC4, "volumePhase");
-
 GPU_SHADER_CREATE_INFO(eevee_volume_clear)
     .additional_info("eevee_shared")
     .uniform_buf(VOLUMES_BUF_SLOT, "VolumesData", "volumes_buf")
@@ -39,7 +21,7 @@ GPU_SHADER_CREATE_INFO(eevee_volume_clear)
     .image(0, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_scattering")
     .image(1, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_extinction")
     .image(2, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_emissive")
-    .image(3, GPU_RG16F, Qualifier::WRITE, ImageType::FLOAT_2D, "out_phase")
+    .image(3, GPU_RG16F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_phase")
     .do_static_compilation(true);
 
 GPU_SHADER_CREATE_INFO(eevee_volume_scatter)

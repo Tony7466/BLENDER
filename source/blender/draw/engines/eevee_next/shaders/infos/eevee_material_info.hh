@@ -191,29 +191,38 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow)
  * \{ */
 
 GPU_SHADER_CREATE_INFO(eevee_volume_material_common)
-    .vertex_source("eevee_volume_material_vert.glsl")
-    .fragment_source("eevee_volume_material_frag.glsl")
-    .additional_info("eevee_volume_base",
+    .compute_source("eevee_volume_material_comp.glsl")
+    .local_group_size(VOLUME_GROUP_SIZE, VOLUME_GROUP_SIZE, VOLUME_GROUP_SIZE)
+    .define("VOLUMETRICS")
+    .additional_info("eevee_volume_lib",
+                     "draw_resource_id_uniform",
                      "draw_object_infos_new",
                      "draw_volume_infos",
-                     "draw_modelmat_new",
-                     "draw_resource_id_varying",
+                     "draw_modelmat_new_common",
                      "draw_view",
                      "eevee_shared",
                      "eevee_light_data",
                      "eevee_shadow_data",
                      "eevee_sampling_data",
-                     "eevee_aov_out",
-                     "eevee_cryptomatte_out",
-                     "eevee_render_pass_out",
+                     //"eevee_aov_out",
+                     //"eevee_cryptomatte_out",
+                     //"eevee_render_pass_out",
                      "eevee_camera",
                      "eevee_utility_texture");
 
 GPU_SHADER_CREATE_INFO(eevee_volume_object)
     .define("MAT_GEOM_VOLUME_OBJECT")
+    .image(0, GPU_R11F_G11F_B10F, Qualifier::READ_WRITE, ImageType::FLOAT_3D, "out_scattering")
+    .image(1, GPU_R11F_G11F_B10F, Qualifier::READ_WRITE, ImageType::FLOAT_3D, "out_extinction")
+    .image(2, GPU_R11F_G11F_B10F, Qualifier::READ_WRITE, ImageType::FLOAT_3D, "out_emissive")
+    .image(3, GPU_RG16F, Qualifier::READ_WRITE, ImageType::FLOAT_3D, "out_phase")
     .additional_info("eevee_volume_material_common");
 
 GPU_SHADER_CREATE_INFO(eevee_volume_world)
+    .image(0, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_scattering")
+    .image(1, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_extinction")
+    .image(2, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_emissive")
+    .image(3, GPU_RG16F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_phase")
     .define("MAT_GEOM_VOLUME_WORLD")
     .additional_info("eevee_volume_material_common");
 
