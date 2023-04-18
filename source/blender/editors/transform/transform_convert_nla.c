@@ -236,10 +236,12 @@ static bool transdata_get_track_shuffle_offset(ListBase *trans_datas, int *r_tra
  * \{ */
 
 /** \} */
-nlatrack_truncate_temporary_tracks()
+static void nlatrack_truncate_temporary_tracks(bAnimContext *ac)
 {
-  filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_ANIMDATA);
-  ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
+  short filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_ANIMDATA);
+  ListBase anim_data = {NULL, NULL};
+  bAnimListElem *ale;
+  ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
 
   for (ale = anim_data.first; ale; ale = ale->next) {
     ListBase *nla_tracks = &ale->adt->nla_tracks;
@@ -779,7 +781,7 @@ static void recalcData_nla(TransInfo *t)
       /* Move strip from old_track to dst_track. */
       if (dst_track != old_track) {
         BKE_nlatrack_remove_strip(old_track, strip);
-        BKE_nlastrips_add_strip(&dst_track->strips, strip);
+        BKE_nlastrips_add_strip_unsafe(&dst_track->strips, strip);
 
         tdn->nlt = dst_track;
         tdn->signed_track_index += delta;
@@ -871,16 +873,36 @@ static void nlastrip_shuffle_transformed(TransDataContainer *tc, TransDataNla *f
 
       LISTBASE_FOREACH (LinkData *, link, trans_datas) {
         TransDataNla *trans_data = (TransDataNla *)link->data;
+        NlaTrack *dst_track = BLI_findlink(tracks, trans_data->trackIndex + minimum_track_offset);
 
-        trans_data->trackIndex = trans_data->trackIndex + minimum_track_offset;
-        NlaTrack *dst_track = BLI_findlink(tracks, trans_data->trackIndex);
+        // trans_data->trackIndex = trans_data->trackIndex + minimum_track_offset;
+        // NlaTrack *dst_track = BLI_findlink(tracks, trans_data->trackIndex);
 
-        NlaStrip *strip = trans_data->strip;
-        BKE_nlatrack_remove_strip(trans_data->nlt, strip);
-        // Should this be false? Should we short circuit the loop
-        BKE_nlatrack_add_strip(dst_track, strip, false);
+        if ((dst_track->flag & NLATRACK_PROTECTED) != 0) {
 
-        trans_data->nlt = dst_track;
+          printf("this track isn't protected \n");
+          NlaStrip *strip = trans_data->strip;
+          BKE_nlatrack_remove_strip(trans_data->nlt, strip);
+          // Should this be false? Should we short circuit the loop
+          BKE_nlatrack_add_strip(dst_track, strip, false);
+
+          trans_data->nlt = dst_track;
+        }
+        else {
+          printf("this track is protected. Adding in back track \n");
+          printf("target track index: %i \n", trans_data->trackIndex);
+          printf("old track index: %i \n\n", trans_data->oldTrack->index);
+
+          NlaStrip *strip = trans_data->strip;
+          NlaTrack *old_track = BLI_findlink(tracks, trans_data->oldTrack->index);
+
+          BKE_nlatrack_remove_strip(trans_data->nlt, strip);
+          // Should this be false? Should we short circuit the loop
+          // BKE_nlatrack_add_strip(old_track, strip, false);
+          BKE_nlastrips_add_strip_unsafe(&old_track->strips, strip);
+
+          trans_data->nlt = old_track;
+        }
       }
     }
 
@@ -935,7 +957,6 @@ static void special_aftertrans_update__nla(bContext *C, TransInfo *t)
   }
 
   ListBase anim_data = {NULL, NULL};
-  bAnimListElem *ale;
   short filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_FOREDIT | ANIMFILTER_FCURVESONLY);
 
   /* get channels to work on */
@@ -962,7 +983,7 @@ static void special_aftertrans_update__nla(bContext *C, TransInfo *t)
 
   /* Truncate temporarily added tracks. */
   // TODO move this into a method
-  nlatrack_truncate_temporary_tracks();
+  nlatrack_truncate_temporary_tracks(&ac);
 
   /* Perform after-transform validation. */
   ED_nla_postop_refresh(&ac);
