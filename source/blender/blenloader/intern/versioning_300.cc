@@ -4283,6 +4283,17 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  /* Set fcurve modifier name and check their uniqueness when opening old files. Otherwise
+   * modifiers would have empty name field. */
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 6)) {
+    LISTBASE_FOREACH (bAction *, act, &bmain->actions) {
+      LISTBASE_FOREACH (FCurve *, fcu, &act->curves) {
+        LISTBASE_FOREACH (FModifier *, fcm, &fcu->modifiers) {
+          BKE_fmodifier_name_set(fcm, "");
+        }
+      }
+    }
+  }
   /**
    * Versioning code until next subversion bump goes here.
    *
