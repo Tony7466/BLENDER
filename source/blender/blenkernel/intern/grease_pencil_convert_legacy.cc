@@ -250,6 +250,8 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
       new_layer.insert_frame(gpf->framenum, std::move(new_frame));
       i++;
     }
+
+    new_layer.tag_frame_times_changed();
   }
 
   /* Convert the onion skinning settings. */

@@ -365,7 +365,6 @@ const Map<int, GreasePencilFrame> &Layer::frames() const
 
 Map<int, GreasePencilFrame> &Layer::frames_for_write()
 {
-  this->sorted_keys_cache_.tag_dirty();
   return this->frames_;
 }
 
@@ -381,25 +380,21 @@ Vector<LayerMask> &Layer::masks_for_write()
 
 bool Layer::insert_frame(int frame_number, GreasePencilFrame &frame)
 {
-  this->sorted_keys_cache_.tag_dirty();
   return this->frames_for_write().add(frame_number, frame);
 }
 
 bool Layer::insert_frame(int frame_number, GreasePencilFrame &&frame)
 {
-  this->sorted_keys_cache_.tag_dirty();
   return this->frames_for_write().add(frame_number, frame);
 }
 
 bool Layer::overwrite_frame(int frame_number, GreasePencilFrame &frame)
 {
-  this->sorted_keys_cache_.tag_dirty();
   return this->frames_for_write().add_overwrite(frame_number, frame);
 }
 
 bool Layer::overwrite_frame(int frame_number, GreasePencilFrame &&frame)
 {
-  this->sorted_keys_cache_.tag_dirty();
   return this->frames_for_write().add_overwrite(frame_number, frame);
 }
 
@@ -437,6 +432,11 @@ int Layer::drawing_index_at(int frame) const
     return -1;
   }
   return this->frames().lookup(*std::prev(it)).drawing_index;
+}
+
+void Layer::tag_frame_times_changed()
+{
+  this->sorted_keys_cache_.tag_dirty();
 }
 
 LayerGroup::LayerGroup(const LayerGroup &other) : TreeNode(other)

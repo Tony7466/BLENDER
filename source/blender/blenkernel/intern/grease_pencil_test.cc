@@ -135,8 +135,10 @@ TEST(greasepencil, remove_drawing)
   layer1.insert_frame(0, GreasePencilFrame{0});
   layer1.insert_frame(10, GreasePencilFrame{1});
   layer1.insert_frame(20, GreasePencilFrame{2});
+  layer1.tag_frame_times_changed();
 
   layer2.insert_frame(0, GreasePencilFrame{1});
+  layer2.tag_frame_times_changed();
 
   grease_pencil.root_group_for_write().add_layer(std::move(layer1));
   grease_pencil.root_group_for_write().add_layer(std::move(layer2));

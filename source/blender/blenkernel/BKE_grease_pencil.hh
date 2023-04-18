@@ -178,6 +178,11 @@ class Layer : public TreeNode, public ::GreasePencilLayer {
    * \returns the index of the drawing at frame \a frame or -1 if there is no drawing.
    */
   int drawing_index_at(int frame) const;
+
+  /**
+   * Should be called whenever the keys in the frames map have changed.
+   */
+  void tag_frame_times_changed();
 };
 
 /**
