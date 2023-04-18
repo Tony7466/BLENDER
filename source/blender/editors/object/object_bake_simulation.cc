@@ -46,27 +46,6 @@
 
 namespace blender::ed::object::bake_simulation {
 
-void load_simulation_state(const StringRefNull meta_path,
-                           const StringRefNull bdata_dir,
-                           bke::sim::ModifierSimulationState &r_state);
-void load_simulation_state(const StringRefNull meta_path,
-                           const StringRefNull bdata_dir,
-                           bke::sim::ModifierSimulationState &r_state)
-{
-  const bke::sim::DiskBDataReader bdata_reader{bdata_dir};
-  fstream meta_file{meta_path.c_str(), std::ios::in};
-  io::serialize::JsonFormatter formatter;
-  std::shared_ptr<io::serialize::Value> io_root_value = formatter.deserialize(meta_file);
-  if (!io_root_value) {
-    return;
-  }
-  const io::serialize::DictionaryValue *io_root = io_root_value->as_dictionary_value();
-  if (!io_root) {
-    return;
-  }
-  bke::sim::deserialize_modifier_simulation_state(*io_root, bdata_reader, r_state);
-}
-
 static bool bake_simulation_poll(bContext *C)
 {
   if (!ED_operator_object_active(C)) {
@@ -172,9 +151,7 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
             *sim_state, bdata_writer, modifier_bake_data.bdata_sharing, io_root);
 
         BLI_make_existing_file(meta_path);
-        fstream meta_file{meta_path, std::ios::out};
-        io::serialize::JsonFormatter formatter;
-        formatter.serialize(meta_file, io_root);
+        io::serialize::write_json_file(meta_path, io_root);
       }
     }
   }

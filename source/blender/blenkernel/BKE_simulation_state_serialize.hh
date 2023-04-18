@@ -6,6 +6,7 @@
 
 #include "BLI_serialize.hh"
 
+struct Main;
 struct ModifierData;
 
 namespace blender::bke::sim {

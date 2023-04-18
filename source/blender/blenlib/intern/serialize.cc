@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_fileops.hh"
 #include "BLI_serialize.hh"
 
 #include "json.hpp"
@@ -267,6 +268,20 @@ std::unique_ptr<Value> JsonFormatter::deserialize(std::istream &is)
   nlohmann::ordered_json j;
   is >> j;
   return convert_from_json(j);
+}
+
+void write_json_file(const StringRef path, const Value &value)
+{
+  JsonFormatter formatter;
+  fstream stream(path, std::ios::out);
+  formatter.serialize(stream, value);
+}
+
+std::shared_ptr<Value> read_json_file(const StringRef path)
+{
+  JsonFormatter formatter;
+  fstream stream(path, std::ios::in);
+  return formatter.deserialize(stream);
 }
 
 }  // namespace blender::io::serialize

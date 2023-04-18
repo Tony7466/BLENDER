@@ -367,4 +367,7 @@ class JsonFormatter : public Formatter {
   std::unique_ptr<Value> deserialize(std::istream &is) override;
 };
 
+void write_json_file(StringRef path, const Value &value);
+[[nodiscard]] std::shared_ptr<Value> read_json_file(StringRef path);
+
 }  // namespace blender::io::serialize

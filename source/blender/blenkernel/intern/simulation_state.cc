@@ -1,15 +1,10 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_simulation_state.hh"
+#include "BKE_simulation_state_serialize.hh"
 
 #include "BLI_fileops.hh"
 #include "BLI_path_util.h"
-
-namespace blender::ed::object::bake_simulation {
-void load_simulation_state(const StringRefNull meta_path,
-                           const StringRefNull bdata_dir,
-                           bke::sim::ModifierSimulationState &r_state);
-}
 
 namespace blender::bke::sim {
 
@@ -56,13 +51,27 @@ void ModifierSimulationCache::try_discover_bake(const StringRefNull meta_dir,
 void ModifierSimulationState::ensure_bake_loaded() const
 {
   std::scoped_lock lock{mutex_};
-  if (meta_path_ && bdata_dir_) {
-    if (!bake_loaded_) {
-      ed::object::bake_simulation::load_simulation_state(
-          *meta_path_, *bdata_dir_, const_cast<ModifierSimulationState &>(*this));
-      bake_loaded_ = true;
-    }
+  if (bake_loaded_) {
+    return;
   }
+  if (!meta_path_ || !bdata_dir_) {
+    return;
+  }
+
+  const std::shared_ptr<io::serialize::Value> io_root_value = io::serialize::read_json_file(
+      *meta_path_);
+  if (!io_root_value) {
+    return;
+  }
+  const DictionaryValue *io_root = io_root_value->as_dictionary_value();
+  if (!io_root) {
+    return;
+  }
+
+  const DiskBDataReader bdata_reader{*bdata_dir_};
+  deserialize_modifier_simulation_state(
+      *io_root, bdata_reader, const_cast<ModifierSimulationState &>(*this));
+  bake_loaded_ = true;
 }
 
 }  // namespace blender::bke::sim
