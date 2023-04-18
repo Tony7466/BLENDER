@@ -3157,7 +3157,7 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
     fillet_curve_by_zone[zone_i] = geometry::fillet_curves_poly(
         boundary_curve,
         IndexRange(1),
-        VArray<float>::ForSingle(UI_UNIT_X / 2, boundary_positions_num),
+        VArray<float>::ForSingle(BASIS_RAD, boundary_positions_num),
         VArray<int>::ForSingle(5, boundary_positions_num),
         true,
         {});
