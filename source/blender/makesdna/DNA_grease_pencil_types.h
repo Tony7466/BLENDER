@@ -451,7 +451,7 @@ typedef struct GreasePencil {
   blender::bke::greasepencil::LayerGroup &root_group_for_write();
   blender::Span<const blender::bke::greasepencil::Layer *> layers() const;
   blender::Span<blender::bke::greasepencil::Layer *> layers_for_write();
-  void tag_layer_tree_changed();
+  void tag_layer_tree_topology_changed();
 #endif
 } GreasePencil;
 

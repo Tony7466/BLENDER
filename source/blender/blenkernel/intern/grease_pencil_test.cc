@@ -57,6 +57,7 @@ TEST(greasepencil, save_layer_tree_to_storage)
   group.add_group(std::move(group2));
   grease_pencil.root_group_for_write().add_group(std::move(group));
   grease_pencil.root_group_for_write().add_layer(Layer(names[6]));
+  grease_pencil.tag_layer_tree_topology_changed();
 
   /* Save to storage. */
   grease_pencil.free_layer_tree_storage();
@@ -83,6 +84,7 @@ TEST(greasepencil, set_active_layer_index)
 
   const Layer &layer1_ref = grease_pencil.root_group_for_write().add_layer(std::move(layer1));
   const Layer &layer2_ref = grease_pencil.root_group_for_write().add_layer(std::move(layer2));
+  grease_pencil.tag_layer_tree_topology_changed();
 
   grease_pencil.runtime->set_active_layer_index(0);
   EXPECT_TRUE(grease_pencil.runtime->has_active_layer());
@@ -138,6 +140,7 @@ TEST(greasepencil, remove_drawing)
 
   grease_pencil.root_group_for_write().add_layer(std::move(layer1));
   grease_pencil.root_group_for_write().add_layer(std::move(layer2));
+  grease_pencil.tag_layer_tree_topology_changed();
 
   grease_pencil.remove_drawing(1);
   EXPECT_EQ(grease_pencil.drawings().size(), 2);

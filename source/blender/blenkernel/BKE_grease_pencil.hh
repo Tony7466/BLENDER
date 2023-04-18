@@ -308,6 +308,11 @@ class GreasePencilRuntime {
 
   void ensure_layer_cache() const;
 
+  void load_layer_tree_from_storage(GreasePencilLayerTreeStorage &storage);
+  void save_layer_tree_to_storage(GreasePencilLayerTreeStorage &storage);
+
+  void tag_layer_tree_topology_changed();
+
  public:
   void *batch_cache = nullptr;
 
