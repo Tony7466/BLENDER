@@ -1134,6 +1134,8 @@ static int scale_left_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   gso->modal_update = scale_left_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   scale_left_draw_status_header(C, gso);
+  ED_slider_is_bidirectional_set(gso->slider, true);
+  ED_slider_factor_set(gso->slider, 0.0f);
 
   return invoke_result;
 }
