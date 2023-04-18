@@ -419,6 +419,10 @@ Span<int> Layer::sorted_keys() const
 int Layer::drawing_index_at(int frame) const
 {
   Span<int> sorted_keys = this->sorted_keys();
+  /* No keyframes, return no drawing. */
+  if (sorted_keys.size() == 0) {
+    return -1;
+  }
   /* Before the first drawing, return no drawing. */
   if (frame < sorted_keys.first()) {
     return -1;
