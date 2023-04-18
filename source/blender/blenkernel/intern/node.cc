@@ -1110,6 +1110,7 @@ static void node_add_sockets_from_type(bNodeTree *ntree, bNode *node, bNodeType 
  */
 static void node_init(const bContext *C, bNodeTree *ntree, bNode *node)
 {
+  BLI_assert(ntree != nullptr);
   bNodeType *ntype = node->typeinfo;
   if (ntype == &NodeTypeUndefined) {
     return;
@@ -1639,32 +1640,32 @@ static bool socket_id_user_decrement(bNodeSocket *sock)
 {
   switch (eNodeSocketDatatype(sock->type)) {
     case SOCK_OBJECT: {
-      bNodeSocketValueObject &socket_value = *sock->default_value_typed<bNodeSocketValueObject>();
-      id_us_min(reinterpret_cast<ID *>(socket_value.value));
-      return socket_value.value != nullptr;
+      bNodeSocketValueObject &default_value = *sock->default_value_typed<bNodeSocketValueObject>();
+      id_us_min(reinterpret_cast<ID *>(default_value.value));
+      return default_value.value != nullptr;
     }
     case SOCK_IMAGE: {
-      bNodeSocketValueImage &socket_value = *sock->default_value_typed<bNodeSocketValueImage>();
-      id_us_min(reinterpret_cast<ID *>(socket_value.value));
-      return socket_value.value != nullptr;
+      bNodeSocketValueImage &default_value = *sock->default_value_typed<bNodeSocketValueImage>();
+      id_us_min(reinterpret_cast<ID *>(default_value.value));
+      return default_value.value != nullptr;
     }
     case SOCK_COLLECTION: {
-      bNodeSocketValueCollection &socket_value =
+      bNodeSocketValueCollection &default_value =
           *sock->default_value_typed<bNodeSocketValueCollection>();
-      id_us_min(reinterpret_cast<ID *>(socket_value.value));
-      return socket_value.value != nullptr;
+      id_us_min(reinterpret_cast<ID *>(default_value.value));
+      return default_value.value != nullptr;
     }
     case SOCK_TEXTURE: {
-      bNodeSocketValueTexture &socket_value =
+      bNodeSocketValueTexture &default_value =
           *sock->default_value_typed<bNodeSocketValueTexture>();
-      id_us_min(reinterpret_cast<ID *>(socket_value.value));
-      return socket_value.value != nullptr;
+      id_us_min(reinterpret_cast<ID *>(default_value.value));
+      return default_value.value != nullptr;
     }
     case SOCK_MATERIAL: {
-      bNodeSocketValueMaterial &socket_value =
+      bNodeSocketValueMaterial &default_value =
           *sock->default_value_typed<bNodeSocketValueMaterial>();
-      id_us_min(reinterpret_cast<ID *>(socket_value.value));
-      return socket_value.value != nullptr;
+      id_us_min(reinterpret_cast<ID *>(default_value.value));
+      return default_value.value != nullptr;
     }
     case SOCK_FLOAT:
     case SOCK_VECTOR:
@@ -4382,7 +4383,7 @@ void BKE_nodetree_remove_layer_n(bNodeTree *ntree, Scene *scene, const int layer
   BLI_assert(layer_index != -1);
   BLI_assert(scene != nullptr);
   for (bNode *node : ntree->all_nodes()) {
-    if (node->type != CMP_NODE_R_LAYERS && node->id == &scene->id) {
+    if (node->type == CMP_NODE_R_LAYERS && node->id == &scene->id) {
       if (node->custom1 == layer_index) {
         node->custom1 = 0;
       }
