@@ -841,10 +841,7 @@ static void rna_FModifier_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *
 static void rna_fModifier_name_set(PointerRNA *ptr, const char *value)
 {
   FModifier *fcm = (FModifier *)ptr->data;
-  BLI_strncpy(fcm->name, value, sizeof(fcm->name));
-
-  /* Check unique name. */
-  BKE_fmodifier_unique_name_set(fcm);
+  BKE_fmodifier_name_set(fcm, value);
 }
 
 static void rna_FModifier_verify_data_update(Main *bmain, Scene *scene, PointerRNA *ptr)

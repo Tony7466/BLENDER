@@ -240,7 +240,8 @@ void BKE_fcurves_free(ListBase *list);
  */
 void BKE_fcurves_copy(ListBase *dst, ListBase *src);
 
-void BKE_fmodifier_unique_name_set(struct FModifier *fcm);
+/* Set fcurve modifier name and check uniqueness. */
+void BKE_fmodifier_name_set(struct FModifier *fcm, const char *name);
 
 /**
  * Callback used by lib_query to walk over all ID usages

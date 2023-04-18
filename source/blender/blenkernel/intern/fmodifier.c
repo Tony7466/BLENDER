@@ -1109,11 +1109,8 @@ FModifier *add_fmodifier(ListBase *modifiers, int type, FCurve *owner_fcu)
   fcm->influence = 1.0f;
   BLI_addtail(modifiers, fcm);
 
-  /* Copy Modifier name. */
-  BLI_strncpy(fcm->name, fmi->name, sizeof(fcm->name));
-
-  /* Check unique name. */
-  BKE_fmodifier_unique_name_set(fcm);
+  /* Set modifier name. */
+  BKE_fmodifier_name_set(fcm, fmi->name);
 
   /* tag modifier as "active" if no other modifiers exist in the stack yet */
   if (BLI_listbase_is_single(modifiers)) {
