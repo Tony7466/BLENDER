@@ -1074,9 +1074,17 @@ static void blend_to_infinity_graph_keys(bAnimContext *ac, const float factor)
     ListBase segments = find_fcurve_segments(fcu);
 
     LISTBASE_FOREACH (FCurveSegment *, segment, &segments) {
-      if (segment->start_index + segment->length >= fcu->totvert - 1 ||
-          segment->start_index <= 1) {
-        WM_report(RPT_WARNING, "You need at least 2 keys to eider side of the selection.");
+      if (factor >= 0.5){
+        if (segment->start_index + segment->length >= fcu->totvert - 1) {
+        WM_report(RPT_WARNING, "You need at least 2 keys to the right side of the selection.");
+        continue;
+        }
+      }
+      else {
+        if (segment->start_index <= 1) {
+        WM_report(RPT_WARNING, "You need at least 2 keys to the left side of the selection.");
+        continue;
+        }
       }
       blend_to_infinity_fcurve_segment(fcu, segment, factor);
     }

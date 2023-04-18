@@ -500,8 +500,6 @@ void blend_to_infinity_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const
    * slider. */
   const float bidirectional_factor = fabs(factor * 2 - 1);
 
-  float x_delta = 1;
-  float y_delta = 1;
   BezTriple beyond_key;
   const BezTriple *reference_key;
 
@@ -510,7 +508,7 @@ void blend_to_infinity_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const
   if (factor >= 0.5) {
 
     /* Stop the function if there is no key beyond the the right neighboring one. */
-    if (segment->start_index + segment->length >= fcu->totvert - 1) {
+    if (segment->start_index + segment->length > fcu->totvert - 1) {
       return;
     }
 
@@ -520,7 +518,7 @@ void blend_to_infinity_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const
   else {
 
     /* Stop the function if there is no key beyond the left neighboring one. */
-    if (segment->start_index <= 1) {
+    if (segment->start_index == 1) {
       return;
     }
 
@@ -528,16 +526,13 @@ void blend_to_infinity_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const
     beyond_key = fcu->bezt[segment->start_index - 2];
   }
 
-  y_delta = beyond_key.vec[1][1] - reference_key->vec[1][1];
-  x_delta = beyond_key.vec[1][0] - reference_key->vec[1][0];
+  const float y_delta = beyond_key.vec[1][1] - reference_key->vec[1][1];
+  const float x_delta = beyond_key.vec[1][0] - reference_key->vec[1][0];
 
   /* Avoids dividing by 0. */
   if (x_delta == 0) {
     return;
   }
-
-  float new_x_delta;
-  float new_y_delta;
 
   if (factor >= 0.5) {
     reference_key = right_key;
@@ -550,8 +545,8 @@ void blend_to_infinity_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const
 
     /* These new deltas are used to determine the relationship between the current key and the
      * bookend ones. */
-    new_x_delta = fcu->bezt[i].vec[1][0] - reference_key->vec[1][0];
-    new_y_delta = new_x_delta * y_delta / x_delta;
+    const float new_x_delta = fcu->bezt[i].vec[1][0] - reference_key->vec[1][0];
+    const float new_y_delta = new_x_delta * y_delta / x_delta;
 
     const float delta = reference_key->vec[1][1] + new_y_delta - fcu->bezt[i].vec[1][1];
 
