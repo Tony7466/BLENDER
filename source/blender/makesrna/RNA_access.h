@@ -358,6 +358,7 @@ char *RNA_property_string_get_alloc(
     PointerRNA *ptr, PropertyRNA *prop, char *fixedbuf, int fixedlen, int *r_len);
 void RNA_property_string_set(PointerRNA *ptr, PropertyRNA *prop, const char *value);
 void RNA_property_string_set_bytes(PointerRNA *ptr, PropertyRNA *prop, const char *value, int len);
+void RNA_property_subtype_set(struct ID* id, void* data, const char *propname, PropertySubType value);
 
 eStringPropertySearchFlag RNA_property_string_search_flag(PropertyRNA *prop);
 /**

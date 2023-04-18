@@ -3,8 +3,8 @@
 #include "node_function_util.hh"
 
 #include "BLI_hash.h"
-#include "RNA_types.h"
-#include "RNA_enum_types.h"
+
+#include "RNA_access.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -18,23 +18,10 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Vector>(N_("Vector"));
 }
 
-static void node_layout_share(uiLayout* layout, bContext* /*C*/, PointerRNA* ptr)
+static void node_layout_share(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  const NodeInputVector &data = node_storage(*static_cast<const bNode *>(ptr->data));
-
   uiLayout *col = uiLayoutColumn(layout, true);
-  std::string prop_name;
-  for (const EnumPropertyItem *item = rna_enum_property_subtype_number_array_items;
-       item->identifier != NULL;
-       item++) {
-    if (item->value == data.subtype) {
-      std::string identifier(item->identifier);
-      transform(identifier.begin(), identifier.end(), identifier.begin(), std::tolower);
-      prop_name = "vector_" + identifier;
-      break;
-    }
-  }
-  uiItemR(col, ptr, prop_name.c_str(), UI_ITEM_R_EXPAND, "", ICON_NONE);
+  uiItemR(col, ptr, "vector", UI_ITEM_R_EXPAND, "", ICON_NONE);
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -42,10 +29,16 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   node_layout_share(layout, nullptr, ptr);
 }
 
-static void node_layout_ex(uiLayout* layout, bContext* /*C*/, PointerRNA* ptr)
+static void node_layout_ex(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiItemR(layout, ptr, "subtype", UI_ITEM_R_SPLIT_EMPTY_NAME, IFACE_("Subtype"), ICON_NONE);
   node_layout_share(layout, nullptr, ptr);
+}
+
+static void node_update(bNodeTree *ntree, bNode *node) {
+  NodeInputVector *data = static_cast<NodeInputVector *>(node->storage);
+
+  RNA_property_subtype_set(&ntree->id, node, "vector", static_cast<PropertySubType>(data->subtype));
 }
 
 static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
@@ -79,5 +72,6 @@ void register_node_type_fn_input_vector()
   ntype.build_multi_function = file_ns::node_build_multi_function;
   ntype.draw_buttons = file_ns::node_layout;
   ntype.draw_buttons_ex = file_ns::node_layout_ex;
+  ntype.updatefunc = file_ns::node_update;
   nodeRegisterType(&ntype);
 }
