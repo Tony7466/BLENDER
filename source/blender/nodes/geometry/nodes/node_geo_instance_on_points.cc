@@ -14,7 +14,8 @@
 
 #include "BKE_attribute_math.hh"
 #include "BKE_instances.hh"
-#include "BKE_mesh.h"
+
+#include "DNA_mesh_types.h"
 
 #include "node_geometry_util.hh"
 
