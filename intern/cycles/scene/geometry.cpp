@@ -192,8 +192,8 @@ void Geometry::compute_bvh(Device *device,
   if (progress->get_cancel())
      return;
 
-  const BVHLayout bvh_layout = BVHParams::best_bvh_layout(params->bvh_layout,
-                                                          device->get_bvh_layout_mask());
+  const BVHLayout bvh_layout = BVHParams::best_bvh_layout(
+      params->bvh_layout, device->get_bvh_layout_mask(dscene->data.kernel_features));
   if (need_build_bvh(bvh_layout)) {
     BVH *sub_bvh = bvh->get_device_bvh(device);
     GeometryManager::device_update_sub_bvh(
@@ -710,8 +710,8 @@ void GeometryManager::pretess_disp_normal_and_vertices_setup(Device *device,
     }
   });
 
-  const BVHLayout bvh_layout = BVHParams::best_bvh_layout(scene->params.bvh_layout,
-                                                          device->get_bvh_layout_mask());
+  const BVHLayout bvh_layout = BVHParams::best_bvh_layout(
+      scene->params.bvh_layout, device->get_bvh_layout_mask(scene->dscene.data.kernel_features));
 
   // Calculate and/or gather mesh vertex normals and undisplaced vertices
   // also determines if tesselation, displacement or shadow transparency is needed.
@@ -798,6 +798,7 @@ void GeometryManager::device_data_xfer_and_bvh_update(int idx,
   }
 
   sub_dscene->device_scene_clear_modified();
+
   {
     scoped_callback_timer timer([scene, idx](double time) {
       if (scene->update_stats) {
@@ -965,8 +966,8 @@ void GeometryManager::device_update(Device *device,
    * change. */
   bool need_update_scene_bvh = (scene->bvh == nullptr ||
                                 (update_flags & (TRANSFORM_MODIFIED | VISIBILITY_MODIFIED)) != 0);
-  const BVHLayout bvh_layout = BVHParams::best_bvh_layout(scene->params.bvh_layout,
-                                                          device->get_bvh_layout_mask());
+  const BVHLayout bvh_layout = BVHParams::best_bvh_layout(
+      scene->params.bvh_layout, device->get_bvh_layout_mask(dscene->data.kernel_features));
   dscene->data.bvh.bvh_layout = bvh_layout;
 
   size_t num_bvh = create_object_bvhs(device, dscene, scene, bvh_layout, need_update_scene_bvh);
