@@ -34,18 +34,34 @@ class BDataWriter {
 
 class BDataSharing {
  private:
-  struct StoredValue {
+  struct StoredByRuntimeValue {
     int64_t sharing_info_version;
     DictionaryValuePtr io_data;
   };
 
-  Map<const ImplicitSharingInfo *, StoredValue> map_;
+  struct RuntimeByStoredValue {
+    const ImplicitSharingInfo *sharing_info;
+    int64_t sharing_info_version;
+    const void *data;
+  };
+
+  /** The #ImplicitSharingInfo pointer is a weak user. */
+  Map<const ImplicitSharingInfo *, StoredByRuntimeValue> stored_by_runtime_;
+  Map<std::string, RuntimeByStoredValue> runtime_by_stored_;
 
  public:
   ~BDataSharing();
 
   DictionaryValuePtr write_shared(const ImplicitSharingInfo *sharing_info,
                                   FunctionRef<DictionaryValuePtr()> write_fn);
+
+  struct SharingInfoWithData {
+    const ImplicitSharingInfo *sharing_info;
+    const void *data;
+  };
+
+  SharingInfoWithData read_shared(const DictionaryValue &io_data,
+                                  FunctionRef<SharingInfoWithData()> read_fn);
 };
 
 class DiskBDataReader : public BDataReader {

@@ -53,7 +53,7 @@ class ImplicitSharingInfo : NonCopyable, NonMovable {
    * incremented whenever the referenced data is about to be changed. This allows weak users to
    * detect if the data has changed since the weak user was created.
    */
-  mutable int64_t version_ = 0;
+  mutable std::atomic<int64_t> version_ = 0;
 
  public:
   virtual ~ImplicitSharingInfo()
@@ -126,7 +126,7 @@ class ImplicitSharingInfo : NonCopyable, NonMovable {
     BLI_assert(this->is_mutable());
     /* Does not need an atomic increment, because if the data is mutable, there is only a single
      * owner that may call this at a time. */
-    version_++;
+    version_.fetch_add(1, std::memory_order_acq_rel);
   }
 
   /**
@@ -136,7 +136,7 @@ class ImplicitSharingInfo : NonCopyable, NonMovable {
    */
   int64_t version() const
   {
-    return version_;
+    return version_.load(std::memory_order_acquire);
   }
 
   /**

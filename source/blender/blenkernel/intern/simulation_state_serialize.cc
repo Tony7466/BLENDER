@@ -781,8 +781,13 @@ BDataSlice DiskBDataWriter::write(const void *data, const int64_t size)
 
 BDataSharing::~BDataSharing()
 {
-  for (const ImplicitSharingInfo *sharing_info : map_.keys()) {
+  for (const ImplicitSharingInfo *sharing_info : stored_by_runtime_.keys()) {
     sharing_info->remove_weak_user_and_delete_if_last();
+  }
+  for (const RuntimeByStoredValue &value : runtime_by_stored_.values()) {
+    if (value.sharing_info) {
+      value.sharing_info->remove_weak_user_and_delete_if_last();
+    }
   }
 }
 
@@ -792,18 +797,18 @@ DictionaryValuePtr BDataSharing::write_shared(const ImplicitSharingInfo *sharing
   if (sharing_info == nullptr) {
     return write_fn();
   }
-  return map_.add_or_modify(
+  return stored_by_runtime_.add_or_modify(
       sharing_info,
       /* Create new value. */
-      [&](StoredValue *value) {
-        new (value) StoredValue();
+      [&](StoredByRuntimeValue *value) {
+        new (value) StoredByRuntimeValue();
         value->io_data = write_fn();
         value->sharing_info_version = sharing_info->version();
         sharing_info->add_weak_user();
         return value->io_data;
       },
       /* Potentially modify existing value. */
-      [&](StoredValue *value) {
+      [&](StoredByRuntimeValue *value) {
         const int64_t new_version = sharing_info->version();
         BLI_assert(value->sharing_info_version <= new_version);
         if (value->sharing_info_version < new_version) {
@@ -811,6 +816,52 @@ DictionaryValuePtr BDataSharing::write_shared(const ImplicitSharingInfo *sharing
           value->sharing_info_version = new_version;
         }
         return value->io_data;
+      });
+}
+
+BDataSharing::SharingInfoWithData BDataSharing::read_shared(
+    const DictionaryValue &io_data, FunctionRef<SharingInfoWithData()> read_fn)
+{
+  io::serialize::JsonFormatter formatter;
+  std::stringstream ss;
+  formatter.serialize(ss, io_data);
+  const std::string key = ss.str();
+
+  return runtime_by_stored_.add_or_modify_as(
+      key,
+      [&](RuntimeByStoredValue *value) {
+        new (value) RuntimeByStoredValue();
+        const SharingInfoWithData data = read_fn();
+        value->sharing_info = data.sharing_info;
+        if (value->sharing_info != nullptr) {
+          value->sharing_info->add_weak_user();
+          value->sharing_info_version = value->sharing_info->version();
+        }
+        value->data = data.data;
+        return data;
+      },
+      [&](RuntimeByStoredValue *value) {
+        /* Try to use existing data. */
+        if (value->sharing_info) {
+          if (value->sharing_info->add_user_if_not_expired()) {
+            if (value->sharing_info_version == value->sharing_info->version()) {
+              return SharingInfoWithData{value->sharing_info, value->data};
+            }
+            value->sharing_info->remove_user_and_delete_if_last();
+          }
+          value->sharing_info->remove_weak_user_and_delete_if_last();
+          value->sharing_info = nullptr;
+        }
+
+        /* Can't use existing data, load again. */
+        const SharingInfoWithData data = read_fn();
+        value->sharing_info = data.sharing_info;
+        if (value->sharing_info) {
+          value->sharing_info->add_weak_user();
+          value->sharing_info_version = value->sharing_info->version();
+        }
+        value->data = data.data;
+        return data;
       });
 }
 
