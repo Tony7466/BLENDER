@@ -131,17 +131,21 @@ static StringRefNull get_data_type_io_name(const eCustomDataType data_type)
   return io_name;
 }
 
-static eAttrDomain get_domain_from_io_name(const StringRefNull io_name)
+static std::optional<eAttrDomain> get_domain_from_io_name(const StringRefNull io_name)
 {
   int domain;
-  RNA_enum_value_from_identifier(rna_enum_attribute_domain_items, io_name.c_str(), &domain);
+  if (!RNA_enum_value_from_identifier(rna_enum_attribute_domain_items, io_name.c_str(), &domain)) {
+    return std::nullopt;
+  }
   return eAttrDomain(domain);
 }
 
-static eCustomDataType get_data_type_from_io_name(const StringRefNull io_name)
+static std::optional<eCustomDataType> get_data_type_from_io_name(const StringRefNull io_name)
 {
   int domain;
-  RNA_enum_value_from_identifier(rna_enum_attribute_type_items, io_name.c_str(), &domain);
+  if (!RNA_enum_value_from_identifier(rna_enum_attribute_type_items, io_name.c_str(), &domain)) {
+    return std::nullopt;
+  }
   return eCustomDataType(domain);
 }
 
@@ -333,13 +337,16 @@ static void load_attributes(const io::serialize::ArrayValue &io_attributes,
       continue;
     }
 
-    const eAttrDomain domain = get_domain_from_io_name(*domain_str);
-    const eCustomDataType data_type = get_data_type_from_io_name(*type_str);
-    const CPPType *cpp_type = custom_data_type_to_cpp_type(data_type);
+    const std::optional<eAttrDomain> domain = get_domain_from_io_name(*domain_str);
+    const std::optional<eCustomDataType> data_type = get_data_type_from_io_name(*type_str);
+    if (!domain || !data_type) {
+      continue;
+    }
+    const CPPType *cpp_type = custom_data_type_to_cpp_type(*data_type);
     if (!cpp_type) {
       continue;
     }
-    const int domain_size = attributes.domain_size(domain);
+    const int domain_size = attributes.domain_size(*domain);
     const void *attribute_data;
     const ImplicitSharingInfo *attribute_sharing_info;
     if (!read_bdata_shared_simple_gspan(*io_data,
@@ -355,7 +362,7 @@ static void load_attributes(const io::serialize::ArrayValue &io_attributes,
 
     if (attributes.contains(*name)) {
       bke::GSpanAttributeWriter attribute = attributes.lookup_or_add_for_write_only_span(
-          *name, domain, data_type);
+          *name, *domain, *data_type);
       if (!attribute) {
         continue;
       }
@@ -363,8 +370,10 @@ static void load_attributes(const io::serialize::ArrayValue &io_attributes,
       attribute.finish();
     }
     else {
-      attributes.add(
-          *name, domain, data_type, AttributeInitShared(attribute_data, *attribute_sharing_info));
+      attributes.add(*name,
+                     *domain,
+                     *data_type,
+                     AttributeInitShared(attribute_data, *attribute_sharing_info));
     }
   }
 }
