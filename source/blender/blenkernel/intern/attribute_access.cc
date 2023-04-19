@@ -206,23 +206,14 @@ static bool add_builtin_type_custom_data_layer_from_init(CustomData &custom_data
       return true;
     }
     case AttributeInit::Type::MoveArray: {
-      const AttributeInitMoveArray &init_move = static_cast<const AttributeInitMoveArray &>(
-          initializer);
-      const void *stored_data = CustomData_add_layer_with_data(&custom_data,
-                                                               data_type,
-                                                               const_cast<void *>(init_move.data),
-                                                               domain_num,
-                                                               init_move.sharing_info);
+      void *src_data = static_cast<const AttributeInitMoveArray &>(initializer).data;
+      const void *stored_data = CustomData_add_layer_with_data(
+          &custom_data, data_type, src_data, domain_num, nullptr);
       if (stored_data == nullptr) {
         return false;
       }
-      if (stored_data != init_move.data) {
-        if (init_move.sharing_info) {
-          init_move.sharing_info->remove_user_and_delete_if_last();
-        }
-        else {
-          MEM_freeN(const_cast<void *>(init_move.data));
-        }
+      if (stored_data != src_data) {
+        MEM_freeN(src_data);
         return true;
       }
       return true;
@@ -303,14 +294,9 @@ static bool add_custom_data_layer_from_attribute_init(const AttributeIDRef &attr
       break;
     }
     case AttributeInit::Type::MoveArray: {
-      const AttributeInitMoveArray &init_move = static_cast<const AttributeInitMoveArray &>(
-          initializer);
-      add_generic_custom_data_layer_with_existing_data(custom_data,
-                                                       data_type,
-                                                       attribute_id,
-                                                       domain_num,
-                                                       const_cast<void *>(init_move.data),
-                                                       init_move.sharing_info);
+      void *data = static_cast<const AttributeInitMoveArray &>(initializer).data;
+      add_generic_custom_data_layer_with_existing_data(
+          custom_data, data_type, attribute_id, domain_num, data, nullptr);
       break;
     }
     case AttributeInit::Type::Shared: {

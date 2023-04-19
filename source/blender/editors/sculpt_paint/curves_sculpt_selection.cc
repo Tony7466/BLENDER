@@ -24,10 +24,8 @@ bke::SpanAttributeWriter<float> float_selection_ensure(Curves &curves_id)
       selection.materialize({dst, selection.size()});
 
       attributes.remove(".selection");
-      attributes.add(".selection",
-                     meta_data->domain,
-                     CD_PROP_FLOAT,
-                     bke::AttributeInitMoveArray(dst, nullptr));
+      attributes.add(
+          ".selection", meta_data->domain, CD_PROP_FLOAT, bke::AttributeInitMoveArray(dst));
     }
   }
   else {

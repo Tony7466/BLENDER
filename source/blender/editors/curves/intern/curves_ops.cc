@@ -803,7 +803,7 @@ static int curves_set_selection_domain_exec(bContext *C, wmOperator *op)
       if (!attributes.add(".selection",
                           domain,
                           bke::cpp_type_to_custom_data_type(type),
-                          bke::AttributeInitMoveArray(dst, nullptr))) {
+                          bke::AttributeInitMoveArray(dst))) {
         MEM_freeN(dst);
       }
     }
