@@ -18,24 +18,34 @@
 namespace blender::nodes {
 
 static std::unique_ptr<SocketDeclaration> socket_declaration_for_simulation_item(
-    const NodeSimulationItem &item, eNodeSocketInOut in_out)
+    const NodeSimulationItem &item, eNodeSocketInOut in_out, int index)
 {
   std::unique_ptr<SocketDeclaration> decl;
   switch (eNodeSocketDatatype(item.socket_type)) {
     case SOCK_FLOAT:
       decl = std::make_unique<decl::Float>();
+      decl->input_field_type = InputSocketFieldType::IsSupported;
+      decl->output_field_dependency = OutputFieldDependency::ForPartiallyDependentField({index});
       break;
     case SOCK_VECTOR:
       decl = std::make_unique<decl::Vector>();
+      decl->input_field_type = InputSocketFieldType::IsSupported;
+      decl->output_field_dependency = OutputFieldDependency::ForPartiallyDependentField({index});
       break;
     case SOCK_RGBA:
       decl = std::make_unique<decl::Color>();
+      decl->input_field_type = InputSocketFieldType::IsSupported;
+      decl->output_field_dependency = OutputFieldDependency::ForPartiallyDependentField({index});
       break;
     case SOCK_BOOLEAN:
       decl = std::make_unique<decl::Bool>();
+      decl->input_field_type = InputSocketFieldType::IsSupported;
+      decl->output_field_dependency = OutputFieldDependency::ForPartiallyDependentField({index});
       break;
     case SOCK_INT:
       decl = std::make_unique<decl::Int>();
+      decl->input_field_type = InputSocketFieldType::IsSupported;
+      decl->output_field_dependency = OutputFieldDependency::ForPartiallyDependentField({index});
       break;
     case SOCK_STRING:
       decl = std::make_unique<decl::String>();
@@ -71,9 +81,10 @@ static std::unique_ptr<SocketDeclaration> socket_declaration_for_simulation_item
 void socket_declarations_for_simulation_items(const Span<NodeSimulationItem> items,
                                               NodeDeclaration &r_declaration)
 {
-  for (const NodeSimulationItem &item : items) {
-    r_declaration.inputs.append(socket_declaration_for_simulation_item(item, SOCK_IN));
-    r_declaration.outputs.append(socket_declaration_for_simulation_item(item, SOCK_OUT));
+  for (const int i : items.index_range()) {
+    const NodeSimulationItem &item = items[i];
+    r_declaration.inputs.append(socket_declaration_for_simulation_item(item, SOCK_IN, i));
+    r_declaration.outputs.append(socket_declaration_for_simulation_item(item, SOCK_OUT, i));
   }
   r_declaration.inputs.append(decl::create_extend_declaration(SOCK_IN));
   r_declaration.outputs.append(decl::create_extend_declaration(SOCK_OUT));
