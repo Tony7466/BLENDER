@@ -1382,7 +1382,7 @@ class WM_OT_properties_edit(Operator):
     bl_label = "Edit Property"
     # register only because invoke_props_popup requires.
     bl_options = {'REGISTER', 'INTERNAL'}
-    
+
     def subtype_items_cb(self, context):
         subtype_items = [
             ('NONE', "Plain Data", "Data values without special behavior")
