@@ -308,8 +308,8 @@ class RetimingRangeData {
       for (const RetimingRange &rhs_range : rhs.ranges) {
         RetimingRange range = RetimingRange(rhs_range.start, rhs_range.end, rhs_range.speed);
         ranges.append(range);
-        return *this;
       }
+      return *this;
     }
 
     for (int i = 0; i < ranges.size(); i++) {
