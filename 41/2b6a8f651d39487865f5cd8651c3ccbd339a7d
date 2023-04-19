@@ -1,3 +1,4 @@
 Referenced by issue #106258, 3.5: Candidates for corrective releases
 Referenced by issue #106628, Regression: UV editing using data of wrong UV layer
 Referenced by commit 26aa1b13679c8bf1212786361983239971f563a6, Cleanup: correct doc-string & naming for BMUVOffsets access function
+Referenced by issue #107122, After converting bmesh to bpy-Mesh mesh has incorrect uv coordinates
