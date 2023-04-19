@@ -525,20 +525,29 @@ void blend_to_ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const flo
     return;
   }
 
+  const float slope = 3.0;
+  const float width = 2.0;
+  const float height = 2.0;
+  float xy_shift;
   float y_delta;
 
+  if (factor > 0) {
+    xy_shift = -1.0;
+  }
+  else {
+    xy_shift = 0.0;
+  }
+
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
-    /* For easy calculation of the curve, the  values are normalized. */
-    const float normalized_x = (fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range;
+    
+    const float x = (fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range;
+    const float ease = s_curve(x, slope, width, height, xy_shift, xy_shift);
+    const float base = left_key->vec[1][1] + key_y_range * ease;
 
     if (factor > 0) {
-      const float ease = s_curve(normalized_x, 3, 2.0, 2.0, -1.0, -1.0);
-      const float base = left_key->vec[1][1] + key_y_range * ease;
       y_delta = base - fcu->bezt[i].vec[1][1];
     }
     else {
-      const float ease = s_curve(normalized_x, 3, 2.0, 2.0, 0.0, 0.0);
-      const float base = left_key->vec[1][1] + key_y_range * ease;
       y_delta = fcu->bezt[i].vec[1][1] - base;
     }
 
