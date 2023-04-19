@@ -915,6 +915,8 @@ std::optional<ImplicitSharingInfoAndData> BDataSharing::read_shared(
     const DictionaryValue &io_data,
     FunctionRef<std::optional<ImplicitSharingInfoAndData>()> read_fn) const
 {
+  std::lock_guard lock{mutex_};
+
   io::serialize::JsonFormatter formatter;
   std::stringstream ss;
   formatter.serialize(ss, io_data);

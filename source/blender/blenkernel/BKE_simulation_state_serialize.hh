@@ -39,9 +39,10 @@ class BDataSharing {
     DictionaryValuePtr io_data;
   };
 
+  mutable std::mutex mutex_;
+
   /** The #ImplicitSharingInfo pointer is a weak user. */
   Map<const ImplicitSharingInfo *, StoredByRuntimeValue> stored_by_runtime_;
-  /* TODO: Protect by mutex. */
   mutable Map<std::string, ImplicitSharingInfoAndData> runtime_by_stored_;
 
  public:

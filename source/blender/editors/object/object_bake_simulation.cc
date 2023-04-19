@@ -68,7 +68,7 @@ struct ModifierBakeData {
   NodesModifierData *nmd;
   std::string meta_dir;
   std::string bdata_dir;
-  bke::sim::BDataSharing bdata_sharing;
+  std::unique_ptr<bke::sim::BDataSharing> bdata_sharing;
 };
 
 struct ObjectBakeData {
@@ -111,7 +111,8 @@ static void bake_simulation_job_startjob(void *customdata,
         }
         bake_data.modifiers.append({nmd,
                                     bke::sim::get_meta_directory(*job.bmain, *object, *md),
-                                    bke::sim::get_bdata_directory(*job.bmain, *object, *md)});
+                                    bke::sim::get_bdata_directory(*job.bmain, *object, *md),
+                                    std::make_unique<BDataSharing>()});
       }
     }
     objects_to_bake.append(std::move(bake_data));
@@ -174,7 +175,7 @@ static void bake_simulation_job_startjob(void *customdata,
 
         io::serialize::DictionaryValue io_root;
         bke::sim::serialize_modifier_simulation_state(
-            *sim_state, bdata_writer, modifier_bake_data.bdata_sharing, io_root);
+            *sim_state, bdata_writer, *modifier_bake_data.bdata_sharing, io_root);
 
         BLI_make_existing_file(meta_path);
         io::serialize::write_json_file(meta_path, io_root);
