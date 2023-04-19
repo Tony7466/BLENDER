@@ -44,9 +44,16 @@ class ImplicitSharingInfo : NonCopyable, NonMovable {
   /**
    * Number of users that only keep a reference to the `ImplicitSharingInfo` but don't need to own
    * the shared data. One additional weak user is added as long as there is at least one strong
-   * user.
+   * user. Together with the version below this adds an efficient way to detect if data has been
+   * changed.
    */
   mutable std::atomic<int> weak_users_ = 1;
+  /**
+   * The data referenced by an #ImplicitSharingInfo can change over time. This version is
+   * incremented whenever the referenced data is about to be changed. This allows weak users to
+   * detect if the data has changed since the weak user was created.
+   */
+  mutable int64_t version_ = 0;
 
  public:
   virtual ~ImplicitSharingInfo()
@@ -66,6 +73,10 @@ class ImplicitSharingInfo : NonCopyable, NonMovable {
     return !this->is_shared();
   }
 
+  /**
+   * Weak users don't protect the referenced data from being freed. If the data is freed while
+   * there is still a weak referenced, this returns true.
+   */
   bool expired() const
   {
     return strong_users_.load(std::memory_order_acquire) == 0;
@@ -77,12 +88,19 @@ class ImplicitSharingInfo : NonCopyable, NonMovable {
     strong_users_.fetch_add(1, std::memory_order_relaxed);
   }
 
+  /** Adding a weak owner prevents the #ImplicitSharingInfo from being freed but not the referenced
+   * data. */
   void add_weak_user() const
   {
     weak_users_.fetch_add(1, std::memory_order_relaxed);
   }
 
-  bool add_user_if_not_expired() const
+  /**
+   * This is used to create a strong reference from a weak reference. This is only possible when
+   * the strong user count never reached zero in the meantime.
+   * \return True on success.
+   */
+  [[nodiscard]] bool add_user_if_not_expired() const
   {
     int old_user_count = strong_users_.load(std::memory_order_relaxed);
     while (true) {
@@ -96,6 +114,29 @@ class ImplicitSharingInfo : NonCopyable, NonMovable {
         return true;
       }
     }
+  }
+
+  /**
+   * Call this when making sure that the referenced data is mutable, which also implies that it is
+   * about to be modified. This allows other code to detect whether data has not been changed very
+   * efficiently.
+   */
+  void tag_ensured_mutable() const
+  {
+    BLI_assert(this->is_mutable());
+    /* Does not need an atomic increment, because if the data is mutable, there is only a single
+     * owner that may call this at a time. */
+    version_++;
+  }
+
+  /**
+   * Get a version number that is increased when the data is modified. If the version is the same
+   * at two points in time on the same #ImplicitSharingInfo, one can be sure that the referenced
+   * data has not been modified.
+   */
+  int64_t version() const
+  {
+    return version_;
   }
 
   /**
@@ -119,6 +160,10 @@ class ImplicitSharingInfo : NonCopyable, NonMovable {
     }
   }
 
+  /**
+   * This might just decrement the weak user count or might delete the data. Should be used in
+   * conjunction with #add_weak_user.
+   */
   void remove_weak_user_and_delete_if_last() const
   {
     const int old_weak_user_count = weak_users_.fetch_sub(1, std::memory_order_acq_rel);

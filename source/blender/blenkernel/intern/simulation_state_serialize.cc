@@ -792,10 +792,26 @@ DictionaryValuePtr BDataSharing::write_shared(const ImplicitSharingInfo *sharing
   if (sharing_info == nullptr) {
     return write_fn();
   }
-  return map_.lookup_or_add_cb(sharing_info, [&]() {
-    sharing_info->add_weak_user();
-    return write_fn();
-  });
+  return map_.add_or_modify(
+      sharing_info,
+      /* Create new value. */
+      [&](StoredValue *value) {
+        new (value) StoredValue();
+        value->io_data = write_fn();
+        value->sharing_info_version = sharing_info->version();
+        sharing_info->add_weak_user();
+        return value->io_data;
+      },
+      /* Potentially modify existing value. */
+      [&](StoredValue *value) {
+        const int64_t new_version = sharing_info->version();
+        BLI_assert(value->sharing_info_version <= new_version);
+        if (value->sharing_info_version < new_version) {
+          value->io_data = write_fn();
+          value->sharing_info_version = new_version;
+        }
+        return value->io_data;
+      });
 }
 
 }  // namespace blender::bke::sim

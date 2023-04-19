@@ -34,7 +34,12 @@ class BDataWriter {
 
 class BDataSharing {
  private:
-  Map<const ImplicitSharingInfo *, DictionaryValuePtr> map_;
+  struct StoredValue {
+    int64_t sharing_info_version;
+    DictionaryValuePtr io_data;
+  };
+
+  Map<const ImplicitSharingInfo *, StoredValue> map_;
 
  public:
   ~BDataSharing();
