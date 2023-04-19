@@ -242,8 +242,10 @@ class OBJECT_PT_baking(ObjectButtonsPanel, Panel):
 
     def draw(self, context):
         layout = self.layout
-        layout.operator("object.bake_simulation")
-        layout.operator("object.delete_baked_simulation")
+        col = layout.column()
+        col.label(text="Simulation Nodes Cache:")
+        col.operator("object.simulation_nodes_cache_bake", text="Bake")
+        col.operator("object.simulation_nodes_cache_delete", text="Delete")
 
 class OBJECT_PT_instancing(ObjectButtonsPanel, Panel):
     bl_label = "Instancing"

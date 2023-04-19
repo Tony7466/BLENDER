@@ -200,7 +200,7 @@ static int delete_baked_simulation_exec(bContext *C, wmOperator * /*op*/)
 
 }  // namespace blender::ed::object::bake_simulation
 
-void OBJECT_OT_bake_simulation(wmOperatorType *ot)
+void OBJECT_OT_simulation_nodes_cache_bake(wmOperatorType *ot)
 {
   using namespace blender::ed::object::bake_simulation;
 
@@ -212,12 +212,12 @@ void OBJECT_OT_bake_simulation(wmOperatorType *ot)
   ot->poll = bake_simulation_poll;
 }
 
-void OBJECT_OT_delete_baked_simulation(wmOperatorType *ot)
+void OBJECT_OT_simulation_nodes_cache_delete(wmOperatorType *ot)
 {
   using namespace blender::ed::object::bake_simulation;
 
-  ot->name = "Delete Baked Simulation";
-  ot->description = "Delete baked simulation";
+  ot->name = "Delete Cached Simulation";
+  ot->description = "Delete cached/baked simulations in geometry nodes modifiers";
   ot->idname = __func__;
 
   ot->exec = delete_baked_simulation_exec;

@@ -340,8 +340,8 @@ void OBJECT_OT_bake(wmOperatorType *ot);
 
 /* object_bake_simulation.cc */
 
-void OBJECT_OT_bake_simulation(wmOperatorType *ot);
-void OBJECT_OT_delete_baked_simulation(wmOperatorType *ot);
+void OBJECT_OT_simulation_nodes_cache_bake(wmOperatorType *ot);
+void OBJECT_OT_simulation_nodes_cache_delete(wmOperatorType *ot);
 
 /* object_random.c */
 
