@@ -389,11 +389,11 @@ static void node_foreach_path(ID *id, BPathForeachPathData *bpath_data)
     case NTREE_SHADER: {
       for (bNode *node : ntree->all_nodes()) {
         if (node->type == SH_NODE_SCRIPT) {
-          NodeShaderScript *nss = reinterpret_cast<NodeShaderScript *>(node->storage);
+          NodeShaderScript *nss = static_cast<NodeShaderScript *>(node->storage);
           BKE_bpath_foreach_path_fixed_process(bpath_data, nss->filepath);
         }
         else if (node->type == SH_NODE_TEX_IES) {
-          NodeShaderTexIES *ies = reinterpret_cast<NodeShaderTexIES *>(node->storage);
+          NodeShaderTexIES *ies = static_cast<NodeShaderTexIES *>(node->storage);
           BKE_bpath_foreach_path_fixed_process(bpath_data, ies->filepath);
         }
       }
@@ -522,11 +522,10 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
     if (node->storage) {
       if (ELEM(ntree->type, NTREE_SHADER, NTREE_GEOMETRY) &&
           ELEM(node->type, SH_NODE_CURVE_VEC, SH_NODE_CURVE_RGB, SH_NODE_CURVE_FLOAT)) {
-        BKE_curvemapping_blend_write(writer,
-                                     reinterpret_cast<const CurveMapping *>(node->storage));
+        BKE_curvemapping_blend_write(writer, static_cast<const CurveMapping *>(node->storage));
       }
       else if (ntree->type == NTREE_SHADER && (node->type == SH_NODE_SCRIPT)) {
-        NodeShaderScript *nss = reinterpret_cast<NodeShaderScript *>(node->storage);
+        NodeShaderScript *nss = static_cast<NodeShaderScript *>(node->storage);
         if (nss->bytecode) {
           BLO_write_string(writer, nss->bytecode);
         }
@@ -537,13 +536,11 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
                                                        CMP_NODE_CURVE_VEC,
                                                        CMP_NODE_CURVE_RGB,
                                                        CMP_NODE_HUECORRECT)) {
-        BKE_curvemapping_blend_write(writer,
-                                     reinterpret_cast<const CurveMapping *>(node->storage));
+        BKE_curvemapping_blend_write(writer, static_cast<const CurveMapping *>(node->storage));
       }
       else if ((ntree->type == NTREE_TEXTURE) &&
                ELEM(node->type, TEX_NODE_CURVE_RGB, TEX_NODE_CURVE_TIME)) {
-        BKE_curvemapping_blend_write(writer,
-                                     reinterpret_cast<const CurveMapping *>(node->storage));
+        BKE_curvemapping_blend_write(writer, static_cast<const CurveMapping *>(node->storage));
       }
       else if ((ntree->type == NTREE_COMPOSIT) && (node->type == CMP_NODE_MOVIEDISTORTION)) {
         /* pass */
@@ -551,7 +548,7 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
       else if ((ntree->type == NTREE_COMPOSIT) && (node->type == CMP_NODE_GLARE)) {
         /* Simple forward compatibility for fix for #50736.
          * Not ideal (there is no ideal solution here), but should do for now. */
-        NodeGlare *ndg = reinterpret_cast<NodeGlare *>(node->storage);
+        NodeGlare *ndg = static_cast<NodeGlare *>(node->storage);
         /* Not in undo case. */
         if (!BLO_write_is_undo(writer)) {
           switch (ndg->type) {
@@ -569,7 +566,7 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
       }
       else if ((ntree->type == NTREE_COMPOSIT) &&
                ELEM(node->type, CMP_NODE_CRYPTOMATTE, CMP_NODE_CRYPTOMATTE_LEGACY)) {
-        NodeCryptomatte *nc = reinterpret_cast<NodeCryptomatte *>(node->storage);
+        NodeCryptomatte *nc = static_cast<NodeCryptomatte *>(node->storage);
         BLO_write_string(writer, nc->matte_id);
         LISTBASE_FOREACH (CryptomatteEntry *, entry, &nc->entries) {
           BLO_write_struct(writer, CryptomatteEntry, entry);
@@ -577,7 +574,7 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
         BLO_write_struct_by_name(writer, node->typeinfo->storagename, node->storage);
       }
       else if (node->type == FN_NODE_INPUT_STRING) {
-        NodeInputString *storage = reinterpret_cast<NodeInputString *>(node->storage);
+        NodeInputString *storage = static_cast<NodeInputString *>(node->storage);
         if (storage->string) {
           BLO_write_string(writer, storage->string);
         }
@@ -594,7 +591,7 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
       BKE_image_format_blend_write(writer, &nimf->format);
 
       LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
-        NodeImageMultiFileSocket *sockdata = reinterpret_cast<NodeImageMultiFileSocket *>(
+        NodeImageMultiFileSocket *sockdata = static_cast<NodeImageMultiFileSocket *>(
             sock->storage);
         BLO_write_struct(writer, NodeImageMultiFileSocket, sockdata);
         BKE_image_format_blend_write(writer, &sockdata->format);
@@ -727,27 +724,26 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
         case CMP_NODE_HUECORRECT:
         case TEX_NODE_CURVE_RGB:
         case TEX_NODE_CURVE_TIME: {
-          BKE_curvemapping_blend_read(reader, reinterpret_cast<CurveMapping *>(node->storage));
+          BKE_curvemapping_blend_read(reader, static_cast<CurveMapping *>(node->storage));
           break;
         }
         case SH_NODE_SCRIPT: {
-          NodeShaderScript *nss = reinterpret_cast<NodeShaderScript *>(node->storage);
+          NodeShaderScript *nss = static_cast<NodeShaderScript *>(node->storage);
           BLO_read_data_address(reader, &nss->bytecode);
           break;
         }
         case SH_NODE_TEX_POINTDENSITY: {
-          NodeShaderTexPointDensity *npd = reinterpret_cast<NodeShaderTexPointDensity *>(
-              node->storage);
+          NodeShaderTexPointDensity *npd = static_cast<NodeShaderTexPointDensity *>(node->storage);
           npd->pd = blender::dna::shallow_zero_initialize();
           break;
         }
         case SH_NODE_TEX_IMAGE: {
-          NodeTexImage *tex = reinterpret_cast<NodeTexImage *>(node->storage);
+          NodeTexImage *tex = static_cast<NodeTexImage *>(node->storage);
           tex->iuser.scene = nullptr;
           break;
         }
         case SH_NODE_TEX_ENVIRONMENT: {
-          NodeTexEnvironment *tex = reinterpret_cast<NodeTexEnvironment *>(node->storage);
+          NodeTexEnvironment *tex = static_cast<NodeTexEnvironment *>(node->storage);
           tex->iuser.scene = nullptr;
           break;
         }
@@ -755,30 +751,30 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
         case CMP_NODE_R_LAYERS:
         case CMP_NODE_VIEWER:
         case CMP_NODE_SPLITVIEWER: {
-          ImageUser *iuser = reinterpret_cast<ImageUser *>(node->storage);
+          ImageUser *iuser = static_cast<ImageUser *>(node->storage);
           iuser->scene = nullptr;
           break;
         }
         case CMP_NODE_CRYPTOMATTE_LEGACY:
         case CMP_NODE_CRYPTOMATTE: {
-          NodeCryptomatte *nc = reinterpret_cast<NodeCryptomatte *>(node->storage);
+          NodeCryptomatte *nc = static_cast<NodeCryptomatte *>(node->storage);
           BLO_read_data_address(reader, &nc->matte_id);
           BLO_read_list(reader, &nc->entries);
           BLI_listbase_clear(&nc->runtime.layers);
           break;
         }
         case TEX_NODE_IMAGE: {
-          ImageUser *iuser = reinterpret_cast<ImageUser *>(node->storage);
+          ImageUser *iuser = static_cast<ImageUser *>(node->storage);
           iuser->scene = nullptr;
           break;
         }
         case CMP_NODE_OUTPUT_FILE: {
-          NodeImageMultiFile *nimf = reinterpret_cast<NodeImageMultiFile *>(node->storage);
+          NodeImageMultiFile *nimf = static_cast<NodeImageMultiFile *>(node->storage);
           BKE_image_format_blend_read_data(reader, &nimf->format);
           break;
         }
         case FN_NODE_INPUT_STRING: {
-          NodeInputString *storage = reinterpret_cast<NodeInputString *>(node->storage);
+          NodeInputString *storage = static_cast<NodeInputString *>(node->storage);
           BLO_read_data_address(reader, &storage->string);
           break;
         }
@@ -804,7 +800,7 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
     /* Socket storage. */
     if (node->type == CMP_NODE_OUTPUT_FILE) {
       LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
-        NodeImageMultiFileSocket *sockdata = reinterpret_cast<NodeImageMultiFileSocket *>(
+        NodeImageMultiFileSocket *sockdata = static_cast<NodeImageMultiFileSocket *>(
             sock->storage);
         BKE_image_format_blend_read_data(reader, &sockdata->format);
       }
@@ -1308,8 +1304,7 @@ static GHash *nodesockettypes_hash = nullptr;
 bNodeTreeType *ntreeTypeFind(const char *idname)
 {
   if (idname[0]) {
-    bNodeTreeType *nt = reinterpret_cast<bNodeTreeType *>(
-        BLI_ghash_lookup(nodetreetypes_hash, idname));
+    bNodeTreeType *nt = static_cast<bNodeTreeType *>(BLI_ghash_lookup(nodetreetypes_hash, idname));
     if (nt) {
       return nt;
     }
@@ -1355,7 +1350,7 @@ GHashIterator *ntreeTypeGetIterator()
 bNodeType *nodeTypeFind(const char *idname)
 {
   if (idname[0]) {
-    bNodeType *nt = reinterpret_cast<bNodeType *>(BLI_ghash_lookup(nodetypes_hash, idname));
+    bNodeType *nt = static_cast<bNodeType *>(BLI_ghash_lookup(nodetypes_hash, idname));
     if (nt) {
       return nt;
     }
@@ -1436,7 +1431,7 @@ GHashIterator *nodeTypeGetIterator()
 bNodeSocketType *nodeSocketTypeFind(const char *idname)
 {
   if (idname[0]) {
-    bNodeSocketType *st = reinterpret_cast<bNodeSocketType *>(
+    bNodeSocketType *st = static_cast<bNodeSocketType *>(
         BLI_ghash_lookup(nodesockettypes_hash, idname));
     if (st) {
       return st;
@@ -1459,7 +1454,7 @@ static void node_free_socket_type(void *socktype_v)
 
 void nodeRegisterSocketType(bNodeSocketType *st)
 {
-  BLI_ghash_insert(nodesockettypes_hash, reinterpret_cast<void *>(st->idname), st);
+  BLI_ghash_insert(nodesockettypes_hash, st->idname, st);
   /* XXX pass Main to register function? */
   /* Probably not. It is pretty much expected we want to update G_MAIN here I think -
    * or we'd want to update *all* active Mains, which we cannot do anyway currently. */
