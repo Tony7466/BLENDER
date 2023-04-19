@@ -312,38 +312,37 @@ static void load_attributes(const io::serialize::ArrayValue &io_attributes,
     if (!cpp_type) {
       continue;
     }
+    const int domain_size = attributes.domain_size(domain);
+    const std::optional<BDataSharing::SharingInfoWithData> attribute_data =
+        bdata_sharing.read_shared(*io_data, [&]() {
+          void *data_mem = MEM_mallocN_aligned(
+              domain_size * cpp_type->size(), cpp_type->alignment(), __func__);
+          if (!read_bdata_simple_gspan(
+                  bdata_reader, *io_data, {*cpp_type, data_mem, domain_size})) {
+            cpp_type->value_initialize_n(data_mem, domain_size);
+          }
+          return BDataSharing::SharingInfoWithData{implicit_sharing::info_for_mem_free(data_mem),
+                                                   data_mem};
+        });
+    if (!attribute_data) {
+      continue;
+    }
+    BLI_SCOPED_DEFER([&]() { attribute_data->sharing_info->remove_user_and_delete_if_last(); });
+
     if (attributes.contains(*name)) {
       bke::GSpanAttributeWriter attribute = attributes.lookup_or_add_for_write_only_span(
           *name, domain, data_type);
       if (!attribute) {
         continue;
       }
-
-      if (!read_bdata_simple_gspan(bdata_reader, *io_data, attribute.span)) {
-        cpp_type->value_initialize_n(attribute.span.data(), attribute.span.size());
-      }
-
+      cpp_type->copy_assign_n(attribute_data->data, attribute.span.data(), domain_size);
       attribute.finish();
     }
     else {
-      const int domain_size = attributes.domain_size(domain);
-      const std::optional<BDataSharing::SharingInfoWithData> data = bdata_sharing.read_shared(
-          *io_data, [&]() {
-            void *data_mem = MEM_mallocN_aligned(
-                domain_size * cpp_type->size(), cpp_type->alignment(), __func__);
-            if (!read_bdata_simple_gspan(
-                    bdata_reader, *io_data, {*cpp_type, data_mem, domain_size})) {
-              cpp_type->value_initialize_n(data_mem, domain_size);
-            }
-            return BDataSharing::SharingInfoWithData{implicit_sharing::info_for_mem_free(data_mem),
-                                                     data_mem};
-          });
-      if (!data) {
-        continue;
-      }
-      attributes.add(
-          *name, domain, data_type, AttributeInitShared(data->data, *data->sharing_info));
-      data->sharing_info->remove_user_and_delete_if_last();
+      attributes.add(*name,
+                     domain,
+                     data_type,
+                     AttributeInitShared(attribute_data->data, *attribute_data->sharing_info));
     }
   }
 }
