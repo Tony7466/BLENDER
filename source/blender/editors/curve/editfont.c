@@ -1827,7 +1827,7 @@ static void font_cursor_set_apply(bContext *C, const wmEvent *event)
 
   const int string_offset = BKE_vfont_cursor_to_string_offset(ob, curs_loc);
 
-  if (string_offset > ef->len || string_offset < 0 || ef->selend == string_offset) {
+  if (string_offset > ef->len || string_offset < 0) {
     return;
   }
 

@@ -929,12 +929,11 @@ static bool vfont_to_curve(Object *ob,
 
   i = 0;
 
-  float cursor_min_dist = 0;
-  float cursor_sq_dist = 0;
+  float cursor_sq_dist_best = FLT_MAX;
+  float cursor_sq_dist_test = 0;
   if (cursor_params) {
     cursor_params->r_string_offset = -1;
-    cursor_sq_dist = len_squared_v2(cursor_params->cursor_location);
-    cursor_min_dist = cursor_sq_dist;
+    cursor_sq_dist_test = len_squared_v2(cursor_params->cursor_location);
   }
 
   while (i <= slen) {
@@ -1156,13 +1155,14 @@ static bool vfont_to_curve(Object *ob,
       float offset_loc[2] = {cursor_params->cursor_location[0] - xof,
                              cursor_params->cursor_location[1] - yof};
       float cursor_sq_offset = len_squared_v2(offset_loc);
-      if (cursor_sq_dist <= cursor_min_dist && cursor_sq_dist < cursor_sq_offset) {
-        cursor_min_dist = cursor_sq_dist;
-        cursor_params->r_string_offset = -1;
-      }
-      else if (cursor_sq_offset < cursor_min_dist) {
-        cursor_min_dist = cursor_sq_offset;
+      if (cursor_sq_offset < cursor_sq_dist_best) {
+        /* Closest character so far. */
+        cursor_sq_dist_best = cursor_sq_offset;
         cursor_params->r_string_offset = i;
+      }
+      else if (cursor_sq_dist_test < cursor_sq_dist_best) {
+        /* Left of text, including left-side of first character. */
+        cursor_params->r_string_offset = -1;
       }
     }
 
