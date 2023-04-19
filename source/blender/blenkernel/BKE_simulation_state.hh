@@ -28,12 +28,14 @@ class TypedSimulationStateItem : public SimulationStateItem {
     data_ = std::move(data);
   }
   TypedSimulationStateItem(T &&data)
+  {
     data_ = std::move(data);
   }
   template <typename U>
   TypedSimulationStateItem(const U &data)
   {
     data_ = data;
+  }
 
   TypedSimulationStateItem(const TypedSimulationStateItem &) = delete;
   TypedSimulationStateItem(TypedSimulationStateItem &&) = delete;
