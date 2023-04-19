@@ -305,14 +305,15 @@ static int sync_field_states(SocketFieldState &a, SocketFieldState &b)
     }
   }
   else if (!a.is_always_single) {
-    /* Can be single value without always being one. */
+    /* Can be single value without always being one.
+     * Field (non-single) is preferred in this case. */
     if (a.is_single != b.is_single) {
-      if (a.is_single) {
-        b.is_single = true;
+      if (!a.is_single) {
+        b.is_single = false;
         res |= eFieldStateSyncResult::CHANGED_B;
       }
       else {
-        a.is_single = true;
+        a.is_single = false;
         res |= eFieldStateSyncResult::CHANGED_A;
       }
     }
@@ -399,10 +400,7 @@ static void propagate_data_requirements_from_right_to_left(
   const Span<const bNode *> toposort_result = tree.toposort_right_to_left();
 
   while (true) {
-    /* Node updates may require sevaral passes due to cyclic dependencies.
-     * Specifically, a simulation input node may change simulation output node field state,
-     * which requires re-running the update starting at the output node (doing full passes for simplicity).
-     * This can happen at most once per simulation zone. */
+    /* Node updates may require sevaral passes due to cyclic dependencies. */
     bool need_update = false;
 
     for (const bNode *node : toposort_result) {
@@ -535,68 +533,83 @@ static void propagate_field_status_from_left_to_right(
 {
   const Span<const bNode *> toposort_result = tree.toposort_left_to_right();
 
-  for (const bNode *node : toposort_result) {
-    if (node->type == NODE_GROUP_INPUT) {
-      continue;
-    }
+  while (true) {
+    /* Node updates may require sevaral passes due to cyclic dependencies. */
+    bool need_update = false;
 
-    const FieldInferencingInterface &inferencing_interface = *interface_by_node[node->index()];
-
-    /* Update field state of input sockets, also taking into account linked origin sockets. */
-    for (const bNodeSocket *input_socket : node->input_sockets()) {
-      SocketFieldState &state = field_state_by_socket_id[input_socket->index_in_tree()];
-      if (state.is_always_single) {
-        state.is_single = true;
+    for (const bNode *node : toposort_result) {
+      if (node->type == NODE_GROUP_INPUT) {
         continue;
       }
-      state.is_single = true;
-      if (!input_socket->is_directly_linked()) {
-        if (inferencing_interface.inputs[input_socket->index()] ==
-            InputSocketFieldType::Implicit) {
-          state.is_single = false;
+
+      const FieldInferencingInterface &inferencing_interface = *interface_by_node[node->index()];
+
+      /* Update field state of input sockets, also taking into account linked origin sockets. */
+      for (const bNodeSocket *input_socket : node->input_sockets()) {
+        SocketFieldState &state = field_state_by_socket_id[input_socket->index_in_tree()];
+        if (state.is_always_single) {
+          state.is_single = true;
+          continue;
         }
-      }
-      else {
-        for (const bNodeSocket *origin_socket : input_socket->directly_linked_sockets()) {
-          if (!field_state_by_socket_id[origin_socket->index_in_tree()].is_single) {
+        state.is_single = true;
+        if (!input_socket->is_directly_linked()) {
+          if (inferencing_interface.inputs[input_socket->index()] ==
+              InputSocketFieldType::Implicit) {
             state.is_single = false;
-            break;
           }
         }
-      }
-    }
-
-    /* Update field state of output sockets, also taking into account input sockets. */
-    for (const bNodeSocket *output_socket : node->output_sockets()) {
-      SocketFieldState &state = field_state_by_socket_id[output_socket->index_in_tree()];
-      const OutputFieldDependency &field_dependency =
-          inferencing_interface.outputs[output_socket->index()];
-
-      switch (field_dependency.field_type()) {
-        case OutputSocketFieldType::None: {
-          state.is_single = true;
-          break;
-        }
-        case OutputSocketFieldType::FieldSource: {
-          state.is_single = false;
-          state.is_field_source = true;
-          break;
-        }
-        case OutputSocketFieldType::PartiallyDependent:
-        case OutputSocketFieldType::DependentField: {
-          for (const bNodeSocket *input_socket :
-               gather_input_socket_dependencies(field_dependency, *node)) {
-            if (!input_socket->is_available()) {
-              continue;
-            }
-            if (!field_state_by_socket_id[input_socket->index_in_tree()].is_single) {
+        else {
+          for (const bNodeSocket *origin_socket : input_socket->directly_linked_sockets()) {
+            if (!field_state_by_socket_id[origin_socket->index_in_tree()].is_single) {
               state.is_single = false;
               break;
             }
           }
-          break;
         }
       }
+
+      /* Update field state of output sockets, also taking into account input sockets. */
+      for (const bNodeSocket *output_socket : node->output_sockets()) {
+        SocketFieldState &state = field_state_by_socket_id[output_socket->index_in_tree()];
+        const OutputFieldDependency &field_dependency =
+            inferencing_interface.outputs[output_socket->index()];
+
+        switch (field_dependency.field_type()) {
+          case OutputSocketFieldType::None: {
+            state.is_single = true;
+            break;
+          }
+          case OutputSocketFieldType::FieldSource: {
+            state.is_single = false;
+            state.is_field_source = true;
+            break;
+          }
+          case OutputSocketFieldType::PartiallyDependent:
+          case OutputSocketFieldType::DependentField: {
+            for (const bNodeSocket *input_socket :
+                 gather_input_socket_dependencies(field_dependency, *node)) {
+              if (!input_socket->is_available()) {
+                continue;
+              }
+              if (!field_state_by_socket_id[input_socket->index_in_tree()].is_single) {
+                state.is_single = false;
+                break;
+              }
+            }
+            break;
+          }
+        }
+      }
+
+      /* Find reverse dependencies and resolve conflicts, which may require another pass. */
+      if (propagate_special_data_requirements(tree, *node, field_state_by_socket_id))
+      {
+        need_update = true;
+      }
+    }
+
+    if (!need_update) {
+      break;
     }
   }
 }
