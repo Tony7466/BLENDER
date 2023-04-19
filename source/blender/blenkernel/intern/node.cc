@@ -196,7 +196,8 @@ static void ntree_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, cons
 
     NODE_INSTANCE_HASH_ITER (iter, ntree_src->previews) {
       bNodeInstanceKey key = BKE_node_instance_hash_iterator_get_key(&iter);
-      bNodePreview *preview = (bNodePreview *)BKE_node_instance_hash_iterator_get_value(&iter);
+      bNodePreview *preview = static_cast<bNodePreview *>(
+          BKE_node_instance_hash_iterator_get_value(&iter));
       BKE_node_instance_hash_insert(ntree_dst->previews, key, BKE_node_preview_copy(preview));
     }
   }
@@ -2897,7 +2898,7 @@ bNodePreview *BKE_node_preview_verify(bNodeInstanceHash *previews,
                                       const int ysize,
                                       const bool create)
 {
-  bNodePreview *preview = reinterpret_cast<bNodePreview *>(
+  bNodePreview *preview = static_cast<bNodePreview *>(
       BKE_node_instance_hash_lookup(previews, key));
   if (!preview) {
     if (create) {
@@ -3033,7 +3034,7 @@ void BKE_node_preview_clear_tree(bNodeTree *ntree)
 
   bNodeInstanceHashIterator iter;
   NODE_INSTANCE_HASH_ITER (iter, ntree->previews) {
-    bNodePreview *preview = reinterpret_cast<bNodePreview *>(
+    bNodePreview *preview = static_cast<bNodePreview *>(
         BKE_node_instance_hash_iterator_get_value(&iter));
     BKE_node_preview_clear(preview);
   }
@@ -3060,7 +3061,7 @@ void BKE_node_preview_merge_tree(bNodeTree *to_ntree, bNodeTree *from_ntree, boo
       bNodeInstanceHashIterator iter;
       NODE_INSTANCE_HASH_ITER (iter, from_ntree->previews) {
         bNodeInstanceKey key = BKE_node_instance_hash_iterator_get_key(&iter);
-        bNodePreview *preview = reinterpret_cast<bNodePreview *>(
+        bNodePreview *preview = static_cast<bNodePreview *>(
             BKE_node_instance_hash_iterator_get_value(&iter));
 
         /* replace existing previews */
@@ -3950,7 +3951,7 @@ void BKE_node_instance_hash_clear_tags(bNodeInstanceHash *hash)
   bNodeInstanceHashIterator iter;
 
   NODE_INSTANCE_HASH_ITER (iter, hash) {
-    bNodeInstanceHashEntry *value = reinterpret_cast<bNodeInstanceHashEntry *>(
+    bNodeInstanceHashEntry *value = static_cast<bNodeInstanceHashEntry *>(
         BKE_node_instance_hash_iterator_get_value(&iter));
 
     value->tag = 0;
@@ -3965,7 +3966,7 @@ void BKE_node_instance_hash_tag(bNodeInstanceHash * /*hash*/, void *value)
 
 bool BKE_node_instance_hash_tag_key(bNodeInstanceHash *hash, bNodeInstanceKey key)
 {
-  bNodeInstanceHashEntry *entry = reinterpret_cast<bNodeInstanceHashEntry *>(
+  bNodeInstanceHashEntry *entry = static_cast<bNodeInstanceHashEntry *>(
       BKE_node_instance_hash_lookup(hash, key));
 
   if (entry) {
@@ -3988,7 +3989,7 @@ void BKE_node_instance_hash_remove_untagged(bNodeInstanceHash *hash,
   bNodeInstanceHashIterator iter;
   int num_untagged = 0;
   NODE_INSTANCE_HASH_ITER (iter, hash) {
-    bNodeInstanceHashEntry *value = reinterpret_cast<bNodeInstanceHashEntry *>(
+    bNodeInstanceHashEntry *value = static_cast<bNodeInstanceHashEntry *>(
         BKE_node_instance_hash_iterator_get_value(&iter));
 
     if (!value->tag) {
