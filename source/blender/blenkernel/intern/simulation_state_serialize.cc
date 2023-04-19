@@ -784,9 +784,9 @@ BDataSharing::~BDataSharing()
   for (const ImplicitSharingInfo *sharing_info : stored_by_runtime_.keys()) {
     sharing_info->remove_weak_user_and_delete_if_last();
   }
-  for (const RuntimeByStoredValue &value : runtime_by_stored_.values()) {
+  for (const SharingInfoWithData &value : runtime_by_stored_.values()) {
     if (value.sharing_info) {
-      value.sharing_info->remove_weak_user_and_delete_if_last();
+      value.sharing_info->remove_user_and_delete_if_last();
     }
   }
 }
@@ -827,42 +827,16 @@ BDataSharing::SharingInfoWithData BDataSharing::read_shared(
   formatter.serialize(ss, io_data);
   const std::string key = ss.str();
 
-  return runtime_by_stored_.add_or_modify_as(
-      key,
-      [&](RuntimeByStoredValue *value) {
-        new (value) RuntimeByStoredValue();
-        const SharingInfoWithData data = read_fn();
-        value->sharing_info = data.sharing_info;
-        if (value->sharing_info != nullptr) {
-          value->sharing_info->add_weak_user();
-          value->sharing_info_version = value->sharing_info->version();
-        }
-        value->data = data.data;
-        return data;
-      },
-      [&](RuntimeByStoredValue *value) {
-        /* Try to use existing data. */
-        if (value->sharing_info) {
-          if (value->sharing_info->add_user_if_not_expired()) {
-            if (value->sharing_info_version == value->sharing_info->version()) {
-              return SharingInfoWithData{value->sharing_info, value->data};
-            }
-            value->sharing_info->remove_user_and_delete_if_last();
-          }
-          value->sharing_info->remove_weak_user_and_delete_if_last();
-          value->sharing_info = nullptr;
-        }
-
-        /* Can't use existing data, load again. */
-        const SharingInfoWithData data = read_fn();
-        value->sharing_info = data.sharing_info;
-        if (value->sharing_info) {
-          value->sharing_info->add_weak_user();
-          value->sharing_info_version = value->sharing_info->version();
-        }
-        value->data = data.data;
-        return data;
-      });
+  if (const SharingInfoWithData *shared_data = runtime_by_stored_.lookup_ptr(key)) {
+    shared_data->sharing_info->add_user();
+    return *shared_data;
+  }
+  SharingInfoWithData data = read_fn();
+  if (data.sharing_info != nullptr) {
+    data.sharing_info->add_user();
+    runtime_by_stored_.add_new(key, data);
+  }
+  return data;
 }
 
 }  // namespace blender::bke::sim

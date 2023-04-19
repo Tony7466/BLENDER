@@ -88,32 +88,17 @@ class ImplicitSharingInfo : NonCopyable, NonMovable {
     strong_users_.fetch_add(1, std::memory_order_relaxed);
   }
 
-  /** Adding a weak owner prevents the #ImplicitSharingInfo from being freed but not the referenced
-   * data. */
+  /**
+   * Adding a weak owner prevents the #ImplicitSharingInfo from being freed but not the referenced
+   * data.
+   *
+   * \note Other than with std::shared_ptr a weak user cannot be turned into a strong user. This is
+   * because some code might change the referenced data assuming that there is only one strong user
+   * while a new strong user is added by another thread.
+   */
   void add_weak_user() const
   {
     weak_users_.fetch_add(1, std::memory_order_relaxed);
-  }
-
-  /**
-   * This is used to create a strong reference from a weak reference. This is only possible when
-   * the strong user count never reached zero in the meantime.
-   * \return True on success.
-   */
-  [[nodiscard]] bool add_user_if_not_expired() const
-  {
-    int old_user_count = strong_users_.load(std::memory_order_relaxed);
-    while (true) {
-      if (old_user_count == 0) {
-        /* The shared data has expired. */
-        return false;
-      }
-      if (strong_users_.compare_exchange_weak(
-              old_user_count, old_user_count + 1, std::memory_order_relaxed)) {
-        /* Strong user count is incremented and never reached zero in the meantime. */
-        return true;
-      }
-    }
   }
 
   /**
