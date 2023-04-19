@@ -83,4 +83,11 @@ void ModifierSimulationState::ensure_bake_loaded() const
   bake_loaded_ = true;
 }
 
+void ModifierSimulationCache::reset()
+{
+  states_at_frames_.clear();
+  bdata_sharing_.reset();
+  cache_state_ = CacheState::Valid;
+}
+
 }  // namespace blender::bke::sim

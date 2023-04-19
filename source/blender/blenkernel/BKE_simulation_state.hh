@@ -259,11 +259,7 @@ class ModifierSimulationCache {
     return cache_state_;
   }
 
-  void reset()
-  {
-    states_at_frames_.clear();
-    cache_state_ = CacheState::Valid;
-  }
+  void reset();
 };
 
 }  // namespace blender::bke::sim
