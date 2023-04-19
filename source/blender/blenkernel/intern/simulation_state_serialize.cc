@@ -87,16 +87,16 @@ std::string get_meta_directory(const Main &bmain, const Object &object, const Mo
   return meta_dir;
 }
 
-std::shared_ptr<io::serialize::DictionaryValue> BDataSlice::serialize() const
+std::shared_ptr<DictionaryValue> BDataSlice::serialize() const
 {
-  auto io_slice = std::make_shared<io::serialize::DictionaryValue>();
+  auto io_slice = std::make_shared<DictionaryValue>();
   io_slice->append_str("name", this->name);
   io_slice->append_int("start", range.start());
   io_slice->append_int("size", range.size());
   return io_slice;
 }
 
-std::optional<BDataSlice> BDataSlice::deserialize(const io::serialize::DictionaryValue &io_slice)
+std::optional<BDataSlice> BDataSlice::deserialize(const DictionaryValue &io_slice)
 {
   const std::optional<StringRefNull> name = io_slice.lookup_str("name");
   const std::optional<int64_t> start = io_slice.lookup_int("start");
@@ -145,7 +145,7 @@ static eCustomDataType get_data_type_from_io_name(const StringRefNull io_name)
   return eCustomDataType(domain);
 }
 
-static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_raw_data_with_endian(
+static std::shared_ptr<DictionaryValue> write_bdata_raw_data_with_endian(
     BDataWriter &bdata_writer, const void *data, const int64_t size_in_bytes)
 {
   auto io_data = bdata_writer.write(data, size_in_bytes).serialize();
@@ -155,12 +155,11 @@ static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_raw_data_with
   return io_data;
 }
 
-[[nodiscard]] static bool read_bdata_raw_data_with_endian(
-    const BDataReader &bdata_reader,
-    const io::serialize::DictionaryValue &io_data,
-    const int64_t element_size,
-    const int64_t elements_num,
-    void *r_data)
+[[nodiscard]] static bool read_bdata_raw_data_with_endian(const BDataReader &bdata_reader,
+                                                          const DictionaryValue &io_data,
+                                                          const int64_t element_size,
+                                                          const int64_t elements_num,
+                                                          void *r_data)
 {
   const std::optional<BDataSlice> slice = BDataSlice::deserialize(io_data);
   if (!slice) {
@@ -195,14 +194,15 @@ static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_raw_data_with
   return true;
 }
 
-static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_raw_bytes(
-    BDataWriter &bdata_writer, const void *data, const int64_t size_in_bytes)
+static std::shared_ptr<DictionaryValue> write_bdata_raw_bytes(BDataWriter &bdata_writer,
+                                                              const void *data,
+                                                              const int64_t size_in_bytes)
 {
   return bdata_writer.write(data, size_in_bytes).serialize();
 }
 
 [[nodiscard]] static bool read_bdata_raw_bytes(const BDataReader &bdata_reader,
-                                               const io::serialize::DictionaryValue &io_data,
+                                               const DictionaryValue &io_data,
                                                const int64_t bytes_num,
                                                void *r_data)
 {
@@ -216,8 +216,8 @@ static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_raw_bytes(
   return bdata_reader.read(*slice, r_data);
 }
 
-static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_simple_gspan(
-    BDataWriter &bdata_writer, const GSpan data)
+static std::shared_ptr<DictionaryValue> write_bdata_simple_gspan(BDataWriter &bdata_writer,
+                                                                 const GSpan data)
 {
   const CPPType &type = data.type();
   BLI_assert(type.is_trivial());
@@ -228,7 +228,7 @@ static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_simple_gspan(
 }
 
 [[nodiscard]] static bool read_bdata_simple_gspan(const BDataReader &bdata_reader,
-                                                  const io::serialize::DictionaryValue &io_data,
+                                                  const DictionaryValue &io_data,
                                                   GMutableSpan r_data)
 {
   const CPPType &type = r_data.type();
@@ -259,7 +259,7 @@ static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_simple_gspan(
   return false;
 }
 
-static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_shared_simple_gspan(
+static std::shared_ptr<DictionaryValue> write_bdata_shared_simple_gspan(
     BDataWriter &bdata_writer,
     BDataSharing &bdata_sharing,
     const GSpan data,
@@ -328,11 +328,11 @@ static void load_attributes(const io::serialize::ArrayValue &io_attributes,
   }
 }
 
-static PointCloud *try_load_pointcloud(const io::serialize::DictionaryValue &io_geometry,
+static PointCloud *try_load_pointcloud(const DictionaryValue &io_geometry,
                                        const BDataReader &bdata_reader,
                                        const BDataSharing &bdata_sharing)
 {
-  const io::serialize::DictionaryValue *io_pointcloud = io_geometry.lookup_dict("pointcloud");
+  const DictionaryValue *io_pointcloud = io_geometry.lookup_dict("pointcloud");
   if (!io_pointcloud) {
     return nullptr;
   }
@@ -347,11 +347,11 @@ static PointCloud *try_load_pointcloud(const io::serialize::DictionaryValue &io_
   return pointcloud;
 }
 
-static Curves *try_load_curves(const io::serialize::DictionaryValue &io_geometry,
+static Curves *try_load_curves(const DictionaryValue &io_geometry,
                                const BDataReader &bdata_reader,
                                const BDataSharing &bdata_sharing)
 {
-  const io::serialize::DictionaryValue *io_curves = io_geometry.lookup_dict("curves");
+  const DictionaryValue *io_curves = io_geometry.lookup_dict("curves");
   if (!io_curves) {
     return nullptr;
   }
@@ -387,11 +387,11 @@ static Curves *try_load_curves(const io::serialize::DictionaryValue &io_geometry
   return curves_id;
 }
 
-static Mesh *try_load_mesh(const io::serialize::DictionaryValue &io_geometry,
+static Mesh *try_load_mesh(const DictionaryValue &io_geometry,
                            const BDataReader &bdata_reader,
                            const BDataSharing &bdata_sharing)
 {
-  const io::serialize::DictionaryValue *io_mesh = io_geometry.lookup_dict("mesh");
+  const DictionaryValue *io_mesh = io_geometry.lookup_dict("mesh");
   if (!io_mesh) {
     return nullptr;
   }
@@ -428,15 +428,15 @@ static Mesh *try_load_mesh(const io::serialize::DictionaryValue &io_geometry,
   return mesh;
 }
 
-static GeometrySet load_geometry(const io::serialize::DictionaryValue &io_geometry,
+static GeometrySet load_geometry(const DictionaryValue &io_geometry,
                                  const BDataReader &bdata_reader,
                                  const BDataSharing &bdata_sharing);
 
-static bke::Instances *try_load_instances(const io::serialize::DictionaryValue &io_geometry,
+static bke::Instances *try_load_instances(const DictionaryValue &io_geometry,
                                           const BDataReader &bdata_reader,
                                           const BDataSharing &bdata_sharing)
 {
-  const io::serialize::DictionaryValue *io_instances = io_geometry.lookup_dict("instances");
+  const DictionaryValue *io_instances = io_geometry.lookup_dict("instances");
   if (!io_instances) {
     return nullptr;
   }
@@ -462,7 +462,7 @@ static bke::Instances *try_load_instances(const io::serialize::DictionaryValue &
   };
 
   for (const auto &io_reference_value : io_references->elements()) {
-    const io::serialize::DictionaryValue *io_reference = io_reference_value->as_dictionary_value();
+    const DictionaryValue *io_reference = io_reference_value->as_dictionary_value();
     GeometrySet reference_geometry;
     if (io_reference) {
       reference_geometry = load_geometry(*io_reference, bdata_reader, bdata_sharing);
@@ -492,7 +492,7 @@ static bke::Instances *try_load_instances(const io::serialize::DictionaryValue &
   return instances;
 }
 
-static GeometrySet load_geometry(const io::serialize::DictionaryValue &io_geometry,
+static GeometrySet load_geometry(const DictionaryValue &io_geometry,
                                  const BDataReader &bdata_reader,
                                  const BDataSharing &bdata_sharing)
 {
@@ -567,10 +567,11 @@ static std::shared_ptr<io::serialize::ArrayValue> serialize_attributes(
   return io_attributes;
 }
 
-static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
-    const GeometrySet &geometry, BDataWriter &bdata_writer, BDataSharing &bdata_sharing)
+static std::shared_ptr<DictionaryValue> serialize_geometry_set(const GeometrySet &geometry,
+                                                               BDataWriter &bdata_writer,
+                                                               BDataSharing &bdata_sharing)
 {
-  auto io_geometry = std::make_shared<io::serialize::DictionaryValue>();
+  auto io_geometry = std::make_shared<DictionaryValue>();
   if (geometry.has_mesh()) {
     const Mesh &mesh = *geometry.get_mesh_for_read();
     auto io_mesh = io_geometry->append_dict("mesh");
@@ -660,7 +661,7 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
 void serialize_modifier_simulation_state(const ModifierSimulationState &state,
                                          BDataWriter &bdata_writer,
                                          BDataSharing &bdata_sharing,
-                                         io::serialize::DictionaryValue &r_io_root)
+                                         DictionaryValue &r_io_root)
 {
   r_io_root.append_int("version", 1);
   auto io_zones = r_io_root.append_array("zones");
@@ -699,7 +700,7 @@ void serialize_modifier_simulation_state(const ModifierSimulationState &state,
   }
 }
 
-void deserialize_modifier_simulation_state(const io::serialize::DictionaryValue &io_root,
+void deserialize_modifier_simulation_state(const DictionaryValue &io_root,
                                            const BDataReader &bdata_reader,
                                            const BDataSharing &bdata_sharing,
                                            ModifierSimulationState &r_state)
@@ -717,7 +718,7 @@ void deserialize_modifier_simulation_state(const io::serialize::DictionaryValue 
     return;
   }
   for (const auto &io_zone_value : io_zones->elements()) {
-    const io::serialize::DictionaryValue *io_zone = io_zone_value->as_dictionary_value();
+    const DictionaryValue *io_zone = io_zone_value->as_dictionary_value();
     if (!io_zone) {
       continue;
     }
@@ -739,8 +740,7 @@ void deserialize_modifier_simulation_state(const io::serialize::DictionaryValue 
     auto zone_state = std::make_unique<bke::sim::SimulationZoneState>();
 
     for (const auto &io_state_item_value : io_state_items->elements()) {
-      const io::serialize::DictionaryValue *io_state_item =
-          io_state_item_value->as_dictionary_value();
+      const DictionaryValue *io_state_item = io_state_item_value->as_dictionary_value();
       if (!io_state_item) {
         continue;
       }
@@ -749,7 +749,7 @@ void deserialize_modifier_simulation_state(const io::serialize::DictionaryValue 
         continue;
       }
       if (*state_item_type == StringRef("geometry")) {
-        const io::serialize::DictionaryValue *io_geometry = io_state_item->lookup_dict("data");
+        const DictionaryValue *io_geometry = io_state_item->lookup_dict("data");
         if (!io_geometry) {
           continue;
         }
