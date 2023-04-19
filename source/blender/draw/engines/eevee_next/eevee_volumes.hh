@@ -56,6 +56,10 @@ class Volumes {
   template<typename PassType> void bind_volume_pass_resources(PassType &ps)
   {
     ps.bind_ubo(VOLUMES_BUF_SLOT, data_);
+    ps.bind_image(0, &prop_scattering_tx_);
+    ps.bind_image(1, &prop_extinction_tx_);
+    ps.bind_image(2, &prop_emission_tx_);
+    ps.bind_image(3, &prop_phase_tx_);
     inst_.lights.bind_resources(&ps);
     inst_.shadows.bind_resources(&ps);
   }

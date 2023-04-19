@@ -212,6 +212,7 @@ GPU_SHADER_CREATE_INFO(eevee_volume_material_common)
 
 GPU_SHADER_CREATE_INFO(eevee_volume_object)
     .define("MAT_GEOM_VOLUME_OBJECT")
+    .push_constant(Type::IVEC3, "grid_coords_min")
     .image(0, GPU_R11F_G11F_B10F, Qualifier::READ_WRITE, ImageType::FLOAT_3D, "out_scattering")
     .image(1, GPU_R11F_G11F_B10F, Qualifier::READ_WRITE, ImageType::FLOAT_3D, "out_extinction")
     .image(2, GPU_R11F_G11F_B10F, Qualifier::READ_WRITE, ImageType::FLOAT_3D, "out_emissive")

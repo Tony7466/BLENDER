@@ -37,6 +37,9 @@ void attrib_load();
 void main()
 {
   ivec3 froxel = ivec3(gl_GlobalInvocationID);
+#ifdef MAT_GEOM_VOLUME_OBJECT
+  froxel += grid_coords_min;
+#endif
 
   if (any(greaterThanEqual(froxel, volumes_buf.tex_size))) {
     return;

@@ -42,6 +42,7 @@
 #include "DNA_volume_types.h"
 #include "DNA_world_types.h"
 
+#include "BKE_attribute_math.hh"
 #include "BKE_fluid.h"
 #include "BKE_global.h"
 #include "BKE_mesh.h"
@@ -195,10 +196,6 @@ void Volumes::begin_sync()
     /* If no world or volume material is present just clear the buffer. */
     ps.shader_set(inst_.shaders.static_shader_get(VOLUME_CLEAR));
   }
-  ps.bind_image("out_scattering", &prop_scattering_tx_);
-  ps.bind_image("out_extinction", &prop_extinction_tx_);
-  ps.bind_image("out_emissive", &prop_emission_tx_);
-  ps.bind_image("out_phase", &prop_phase_tx_);
   ps.dispatch(math::divide_ceil(data_.tex_size, int3(VOLUME_GROUP_SIZE)));
   ps.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
 }
@@ -236,16 +233,62 @@ void Volumes::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHand
     return;
   }
 
+  auto to_grid_coords = [&](float3 wP) -> int3 {
+    const float4x4 &view_matrix = inst_.camera.data_get().viewmat;
+    const float4x4 &perspective_matrix = inst_.camera.data_get().winmat * view_matrix;
+
+    float view_z = (view_matrix * float4(wP, 1.0)).z;
+
+    float volume_z;
+    float3 depth_params = data_.depth_param;
+    if (inst_.camera.is_orthographic()) {
+      volume_z = (view_z - depth_params.x) * depth_params.z;
+    }
+    else {
+      volume_z = depth_params.z * log2(view_z * depth_params.y + depth_params.x);
+    }
+
+    float4 grid_coords = perspective_matrix * float4(wP, 1.0);
+    grid_coords /= grid_coords.w;
+    grid_coords = (grid_coords * 0.5f) + float4(0.5f);
+
+    grid_coords.x *= data_.coord_scale.x;
+    grid_coords.y *= data_.coord_scale.y;
+    grid_coords.z = volume_z;
+
+    return int3(grid_coords.xyz() * float3(data_.tex_size));
+  };
+
+  const BoundBox &bbox = *BKE_object_boundbox_get(ob);
+  int3 grid_coords_min = int3(INT32_MAX);
+  int3 grid_coords_max = int3(INT32_MIN);
+
+  for (float3 corner : bbox.vec) {
+    corner = (float4x4(ob->object_to_world) * float4(corner, 1.0)).xyz();
+    int3 grid_coord = to_grid_coords(corner);
+    grid_coords_min = math::min(grid_coords_min, grid_coord);
+    grid_coords_max = math::max(grid_coords_max, grid_coord);
+  }
+
+  bool is_visible = false;
+  for (int i : IndexRange(3)) {
+    is_visible = is_visible || (grid_coords_min[i] >= 0 && grid_coords_min[i] < data_.tex_size[i]);
+    is_visible = is_visible || (grid_coords_max[i] >= 0 && grid_coords_max[i] < data_.tex_size[i]);
+  }
+  if (!is_visible) {
+    return;
+  }
+
+  grid_coords_min = math::clamp(grid_coords_min, int3(0), data_.tex_size);
+  grid_coords_max = math::clamp(grid_coords_max, int3(0), data_.tex_size);
+  int3 grid_size = grid_coords_max - grid_coords_min + int3(1);
+
   PassMain::Sub &ps = material_pass.sub_pass->sub(ob->id.name);
   if (volume_sub_pass(ps, inst_.scene, ob, material_pass.gpumat)) {
     enabled_ = true;
-
-    ps.bind_image("out_scattering", &prop_scattering_tx_);
-    ps.bind_image("out_extinction", &prop_extinction_tx_);
-    ps.bind_image("out_emissive", &prop_emission_tx_);
-    ps.bind_image("out_phase", &prop_phase_tx_);
     ps.push_constant("drw_ResourceID", int(res_handle.resource_index()));
-    ps.dispatch(math::divide_ceil(data_.tex_size, int3(VOLUME_GROUP_SIZE)));
+    ps.push_constant("grid_coords_min", grid_coords_min);
+    ps.dispatch(math::divide_ceil(grid_size, int3(VOLUME_GROUP_SIZE)));
     ps.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
 }
