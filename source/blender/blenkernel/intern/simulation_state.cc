@@ -14,6 +14,10 @@ void ModifierSimulationCache::try_discover_bake(const StringRefNull meta_dir,
   if (failed_finding_bake_) {
     return;
   }
+  if (!BLI_is_dir(meta_dir.c_str()) || !BLI_is_dir(bdata_dir.c_str())) {
+    failed_finding_bake_ = true;
+    return;
+  }
 
   direntry *dir_entries = nullptr;
   const int dir_entries_num = BLI_filelist_dir_contents(meta_dir.c_str(), &dir_entries);
