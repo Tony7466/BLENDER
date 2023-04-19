@@ -23,10 +23,15 @@
 
 namespace blender::bke::sim {
 
-static std::string escape_name(StringRef name)
+/**
+ * Turn the name into something that can be used as file name. It does not necessarily have to be
+ * human readible, but it can help if it is at least partially readible.
+ */
+static std::string escape_name(const StringRef name)
 {
   std::stringstream ss;
   for (const char c : name) {
+    /* Only some letters allowed. Digits are not because they could lead to name collisions. */
     if (('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')) {
       ss << c;
     }
@@ -149,6 +154,9 @@ static std::optional<eCustomDataType> get_data_type_from_io_name(const StringRef
   return eCustomDataType(domain);
 }
 
+/**
+ * Write the data and remember which endianness the data had.
+ */
 static std::shared_ptr<DictionaryValue> write_bdata_raw_data_with_endian(
     BDataWriter &bdata_writer, const void *data, const int64_t size_in_bytes)
 {
@@ -159,6 +167,9 @@ static std::shared_ptr<DictionaryValue> write_bdata_raw_data_with_endian(
   return io_data;
 }
 
+/**
+ * Read data of an into an array and optionally perform an endian switch if necessary.
+ */
 [[nodiscard]] static bool read_bdata_raw_data_with_endian(const BDataReader &bdata_reader,
                                                           const DictionaryValue &io_data,
                                                           const int64_t element_size,
