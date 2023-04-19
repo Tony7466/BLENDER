@@ -4,12 +4,8 @@
 #ifndef __DEVICESCENE_H__
 #define __DEVICESCENE_H__
 
-#include "bvh/bvh.h"
-#include "bvh/bvh2.h"
-
+#include "device/device.h"
 #include "device/memory.h"
-
-#include "kernel/types.h"
 
 #include "util/progress.h"
 #include "util/types.h"

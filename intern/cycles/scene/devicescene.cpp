@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
+#include "bvh/bvh2.h"
+
 #include "scene/devicescene.h"
 #include "scene/scene.h"
 

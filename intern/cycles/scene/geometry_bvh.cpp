@@ -32,6 +32,25 @@
 
 CCL_NAMESPACE_BEGIN
 
+void Geometry::compute_bvh(Device *device,
+                           DeviceScene *dscene,
+                           SceneParams *params,
+                           Progress *progress,
+                           size_t n,
+                           size_t total)
+{
+  if (progress->get_cancel())
+     return;
+
+  const BVHLayout bvh_layout = BVHParams::best_bvh_layout(
+      params->bvh_layout, device->get_bvh_layout_mask(dscene->data.kernel_features));
+  if (need_build_bvh(bvh_layout)) {
+    BVH *sub_bvh = bvh->get_device_bvh(device);
+    GeometryManager::device_update_sub_bvh(
+        device, dscene, bvh, sub_bvh, !need_update_rebuild, n, total, progress);
+  }
+}
+
 void GeometryManager::device_init_update_bvh(Scene *scene)
 {
   if (scene->bvh->params.bvh_layout == BVH_LAYOUT_BVH2) {

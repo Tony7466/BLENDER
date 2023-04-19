@@ -18,9 +18,9 @@ set(SRC
   devicescene.cpp
   film.cpp
   geometry.cpp
-  geometry_mesh.cpp
-  geometry_bvh.cpp
   geometry_attributes.cpp
+  geometry_bvh.cpp
+  geometry_mesh.cpp
   hair.cpp
   image.cpp
   image_oiio.cpp

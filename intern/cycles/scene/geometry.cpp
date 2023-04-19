@@ -84,49 +84,6 @@ void Geometry::clear(bool preserve_shaders)
   tag_modified();
 }
 
-bool Geometry::need_attribute(Scene *scene, AttributeStandard std)
-{
-  if (std == ATTR_STD_NONE)
-    return false;
-
-  if (scene->need_global_attribute(std))
-    return true;
-
-  foreach (Node *node, used_shaders) {
-    Shader *shader = static_cast<Shader *>(node);
-    if (shader->attributes.find(std))
-      return true;
-  }
-
-  return false;
-}
-
-bool Geometry::need_attribute(Scene * /*scene*/, ustring name)
-{
-  if (name == ustring())
-    return false;
-
-  foreach (Node *node, used_shaders) {
-    Shader *shader = static_cast<Shader *>(node);
-    if (shader->attributes.find(name))
-      return true;
-  }
-
-  return false;
-}
-
-AttributeRequestSet Geometry::needed_attributes()
-{
-  AttributeRequestSet result;
-
-  foreach (Node *node, used_shaders) {
-    Shader *shader = static_cast<Shader *>(node);
-    result.add(shader->attributes);
-  }
-
-  return result;
-}
-
 float Geometry::motion_time(int step) const
 {
   return (motion_steps > 1) ? 2.0f * step / (motion_steps - 1) - 1.0f : 0.0f;
@@ -182,39 +139,9 @@ bool Geometry::has_true_displacement() const
   return false;
 }
 
-void Geometry::compute_bvh(Device *device,
-                           DeviceScene *dscene,
-                           SceneParams *params,
-                           Progress *progress,
-                           size_t n,
-                           size_t total)
-{
-  if (progress->get_cancel())
-     return;
-
-  const BVHLayout bvh_layout = BVHParams::best_bvh_layout(
-      params->bvh_layout, device->get_bvh_layout_mask(dscene->data.kernel_features));
-  if (need_build_bvh(bvh_layout)) {
-    BVH *sub_bvh = bvh->get_device_bvh(device);
-    GeometryManager::device_update_sub_bvh(
-        device, dscene, bvh, sub_bvh, !need_update_rebuild, n, total, progress);
-  }
-}
-
 bool Geometry::has_motion_blur() const
 {
   return (use_motion_blur && attributes.find(ATTR_STD_MOTION_VERTEX_POSITION));
-}
-
-bool Geometry::has_voxel_attributes() const
-{
-  foreach (const Attribute &attr, attributes.attributes) {
-    if (attr.element == ATTR_ELEMENT_VOXEL) {
-      return true;
-    }
-  }
-
-  return false;
 }
 
 void Geometry::tag_update(Scene *scene, bool rebuild)
@@ -279,7 +206,6 @@ void GeometryManager::update_osl_globals(Device *device, Scene *scene)
   (void)scene;
 #endif
 }
-
 
 static void update_attribute_realloc_flags(uint32_t &device_update_flags,
                                            const AttributeSet &attributes)

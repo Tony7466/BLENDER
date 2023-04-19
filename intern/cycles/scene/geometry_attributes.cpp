@@ -32,6 +32,60 @@
 
 CCL_NAMESPACE_BEGIN
 
+bool Geometry::need_attribute(Scene *scene, AttributeStandard std)
+{
+  if (std == ATTR_STD_NONE)
+    return false;
+
+  if (scene->need_global_attribute(std))
+    return true;
+
+  foreach (Node *node, used_shaders) {
+    Shader *shader = static_cast<Shader *>(node);
+    if (shader->attributes.find(std))
+      return true;
+  }
+
+  return false;
+}
+
+bool Geometry::need_attribute(Scene * /*scene*/, ustring name)
+{
+  if (name == ustring())
+    return false;
+
+  foreach (Node *node, used_shaders) {
+    Shader *shader = static_cast<Shader *>(node);
+    if (shader->attributes.find(name))
+      return true;
+  }
+
+  return false;
+}
+
+AttributeRequestSet Geometry::needed_attributes()
+{
+  AttributeRequestSet result;
+
+  foreach (Node *node, used_shaders) {
+    Shader *shader = static_cast<Shader *>(node);
+    result.add(shader->attributes);
+  }
+
+  return result;
+}
+
+bool Geometry::has_voxel_attributes() const
+{
+  foreach (const Attribute &attr, attributes.attributes) {
+    if (attr.element == ATTR_ELEMENT_VOXEL) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 /* Generate a normal attribute map entry from an attribute descriptor. */
 static void emit_attribute_map_entry(AttributeMap *attr_map,
                                      size_t index,
@@ -376,6 +430,45 @@ void GeometryManager::update_attribute_element_offset(Geometry *geom,
 }
 
 /*
+ * Records the sizes of the attribute buffers
+ */
+static void update_attribute_element_size(Geometry *geom,
+                                          Attribute *mattr,
+                                          AttributePrimitive prim,
+                                          size_t *attr_float_size,
+                                          size_t *attr_float2_size,
+                                          size_t *attr_float3_size,
+                                          size_t *attr_float4_size,
+                                          size_t *attr_uchar4_size)
+{
+  if (mattr) {
+    size_t size = mattr->element_size(geom, prim);
+
+    if (mattr->element == ATTR_ELEMENT_VOXEL) {
+      /* pass */
+    }
+    else if (mattr->element == ATTR_ELEMENT_CORNER_BYTE) {
+      *attr_uchar4_size += size;
+    }
+    else if (mattr->type == TypeDesc::TypeFloat) {
+      *attr_float_size += size;
+    }
+    else if (mattr->type == TypeFloat2) {
+      *attr_float2_size += size;
+    }
+    else if (mattr->type == TypeDesc::TypeMatrix) {
+      *attr_float4_size += size * 4;
+    }
+    else if (mattr->type == TypeFloat4 || mattr->type == TypeRGBA) {
+      *attr_float4_size += size;
+    }
+    else {
+      *attr_float3_size += size;
+    }
+  }
+}
+
+/*
  * Packs the attribute buffers and records the sizes and offsets using
  * the attribute sets
  */
@@ -522,45 +615,6 @@ bool GeometryManager::device_update_attributes_preprocess(
   update_obj_offsets = scene->object_manager->device_update_geom_offsets(device, dscene, scene);
 
   return update_obj_offsets;
-}
-
-/*
- * Records the sizes of the attribute buffers
- */
-static void update_attribute_element_size(Geometry *geom,
-                                          Attribute *mattr,
-                                          AttributePrimitive prim,
-                                          size_t *attr_float_size,
-                                          size_t *attr_float2_size,
-                                          size_t *attr_float3_size,
-                                          size_t *attr_float4_size,
-                                          size_t *attr_uchar4_size)
-{
-  if (mattr) {
-    size_t size = mattr->element_size(geom, prim);
-
-    if (mattr->element == ATTR_ELEMENT_VOXEL) {
-      /* pass */
-    }
-    else if (mattr->element == ATTR_ELEMENT_CORNER_BYTE) {
-      *attr_uchar4_size += size;
-    }
-    else if (mattr->type == TypeDesc::TypeFloat) {
-      *attr_float_size += size;
-    }
-    else if (mattr->type == TypeFloat2) {
-      *attr_float2_size += size;
-    }
-    else if (mattr->type == TypeDesc::TypeMatrix) {
-      *attr_float4_size += size * 4;
-    }
-    else if (mattr->type == TypeFloat4 || mattr->type == TypeRGBA) {
-      *attr_float4_size += size;
-    }
-    else {
-      *attr_float3_size += size;
-    }
-  }
 }
 
 /*
