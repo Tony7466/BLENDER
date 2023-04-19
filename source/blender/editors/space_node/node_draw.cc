@@ -3047,9 +3047,6 @@ static void add_rect_corner_positions(Vector<float2> &positions, const rctf &rec
   positions.append({rect.xmax, rect.ymax});
 }
 
-std::array<float2, 4> node_link_bezier_points_dragged(const SpaceNode &snode,
-                                                      const bNodeLink &link);
-
 static void find_bounds_by_zone_recursive(const SpaceNode &snode,
                                           const TreeZone &zone,
                                           const Span<int> parent_zone_by_node,
@@ -3122,6 +3119,7 @@ static void find_bounds_by_zone_recursive(const SpaceNode &snode,
 }
 
 static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
+                            const ARegion &region,
                             const SpaceNode &snode,
                             const bNodeTree &ntree)
 {
@@ -3131,6 +3129,8 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
   }
 
   Array<Vector<float2>> bounds_by_zone(zones->zones.size());
+  Array<bke::CurvesGeometry> fillet_curve_by_zone(zones->zones.size());
+
   for (const int zone_i : zones->zones.index_range()) {
     const TreeZone &zone = *zones->zones[zone_i];
 
@@ -3143,35 +3143,60 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
     boundary_curve.cyclic_for_write().first() = true;
     boundary_curve.fill_curve_types(CURVE_TYPE_POLY);
     MutableSpan<float3> boundary_curve_positions = boundary_curve.positions_for_write();
-    MutableSpan<int> boundary_curve_offsets = boundary_curve.offsets_for_write();
-    boundary_curve_offsets[0] = 0;
-    boundary_curve_offsets[1] = boundary_positions_num;
+    boundary_curve.offsets_for_write().copy_from({0, boundary_positions_num});
     for (const int i : boundary_positions.index_range()) {
       boundary_curve_positions[i] = float3(boundary_positions[i], 0.0f);
     }
-    boundary_curve.tag_topology_changed();
 
-    bke::CurvesGeometry fillet_curve = geometry::fillet_curves_poly(
+    fillet_curve_by_zone[zone_i] = geometry::fillet_curves_poly(
         boundary_curve,
         IndexRange(1),
-        VArray<float>::ForSingle(UI_UNIT_X / 2, boundary_positions_num),
+        VArray<float>::ForSingle(BASIS_RAD, boundary_positions_num),
         VArray<int>::ForSingle(5, boundary_positions_num),
         true,
         {});
-    const Span<float3> fillet_boundary_positions = fillet_curve.positions();
+  }
 
-    const uint pos = GPU_vertformat_attr_add(
-        immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+  const View2D &v2d = region.v2d;
+  float scale;
+  UI_view2d_scale_get(&v2d, &scale, nullptr);
+  float line_width = 1.0f * scale;
+  float viewport[4] = {};
+  GPU_viewport_size_get_f(viewport);
+  float zone_color[4];
+  UI_GetThemeColor4fv(TH_NODE_ZONE_SIMULATION, zone_color);
+
+  const uint pos = GPU_vertformat_attr_add(
+      immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+
+  /* Draw all the contour lines after to prevent them from getting hidden by overlapping zones. */
+  for (const int zone_i : zones->zones.index_range()) {
+    if (zone_color[3] == 0.0f) {
+      break;
+    }
+    const Span<float3> fillet_boundary_positions = fillet_curve_by_zone[zone_i].positions();
+    /* Draw the background. */
     immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+    immUniformThemeColorBlend(TH_BACK, TH_NODE_ZONE_SIMULATION, zone_color[3]);
 
-    GPU_blend(GPU_BLEND_ALPHA);
-    immUniformThemeColor(TH_NODE_ZONE_SIMULATION);
     immBegin(GPU_PRIM_TRI_FAN, fillet_boundary_positions.size() + 1);
     for (const float3 &p : fillet_boundary_positions) {
       immVertex3fv(pos, p);
     }
     immVertex3fv(pos, fillet_boundary_positions[0]);
     immEnd();
+
+    immUnbindProgram();
+  }
+
+  for (const int zone_i : zones->zones.index_range()) {
+    const Span<float3> fillet_boundary_positions = fillet_curve_by_zone[zone_i].positions();
+    /* Draw the contour lines. */
+    immBindBuiltinProgram(GPU_SHADER_3D_POLYLINE_UNIFORM_COLOR);
+
+    immUniform2fv("viewportSize", &viewport[2]);
+    immUniform1f("lineWidth", line_width * U.pixelsize);
+
     immUniformThemeColorAlpha(TH_NODE_ZONE_SIMULATION, 1.0f);
     immBegin(GPU_PRIM_LINE_STRIP, fillet_boundary_positions.size() + 1);
     for (const float3 &p : fillet_boundary_positions) {
@@ -3181,7 +3206,6 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
     immEnd();
 
     immUnbindProgram();
-    GPU_blend(GPU_BLEND_NONE);
   }
 }
 
@@ -3352,7 +3376,7 @@ static void draw_nodetree(const bContext &C,
   }
 
   node_update_nodetree(C, tree_draw_ctx, ntree, nodes, blocks);
-  node_draw_zones(tree_draw_ctx, *snode, ntree);
+  node_draw_zones(tree_draw_ctx, region, *snode, ntree);
   node_draw_nodetree(C, tree_draw_ctx, region, *snode, ntree, nodes, blocks, parent_key);
 }
 

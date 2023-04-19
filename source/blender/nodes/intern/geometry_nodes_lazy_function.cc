@@ -416,6 +416,9 @@ class LazyFunctionForMutedNode : public LazyFunction {
       if (params.output_was_set(output_i)) {
         continue;
       }
+      if (params.get_output_usage(output_i) != lf::ValueUsage::Used) {
+        continue;
+      }
       const CPPType &output_type = *outputs_[output_i].type;
       void *output_value = params.get_output_data_ptr(output_i);
       const int input_i = input_by_output_index_[output_i];
@@ -1585,7 +1588,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
   void handle_simulation_input_node(const bNodeTree &node_tree, const bNode &bnode)
   {
-    const NodeGeometrySimulationInput *storage = static_cast<const NodeGeometrySimulationInput *>(bnode.storage);
+    const NodeGeometrySimulationInput *storage = static_cast<const NodeGeometrySimulationInput *>(
+        bnode.storage);
     if (node_tree.node_by_id(storage->output_node_id) == nullptr) {
       return;
     }
