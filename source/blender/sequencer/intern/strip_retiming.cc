@@ -126,28 +126,99 @@ bool SEQ_retiming_is_allowed(const Sequence *seq)
               SEQ_TYPE_MASK);
 }
 
-float seq_retiming_evaluate(const Sequence *seq, const int frame_index)
+static int seq_retiming_segment_length_get(const SeqRetimingHandle *start_handle)
 {
-  const SeqRetimingHandle *previous_handle = retiming_find_segment_start_handle(seq, frame_index);
-  const SeqRetimingHandle *next_handle = previous_handle + 1;
-  const int previous_handle_index = previous_handle - seq->retiming_handles;
-
-  BLI_assert(previous_handle_index < seq->retiming_handle_num);
-  UNUSED_VARS_NDEBUG(previous_handle_index);
-
-  if (next_handle == nullptr) {
-    return 1.0f;
-  }
-
-  const int segment_length = next_handle->strip_frame_index - previous_handle->strip_frame_index;
-  const int segment_frame_index = frame_index - previous_handle->strip_frame_index;
-  const float segment_fac = segment_frame_index / float(segment_length);
-
-  const float target_diff = next_handle->retiming_factor - previous_handle->retiming_factor;
-  return previous_handle->retiming_factor + (target_diff * segment_fac);
+  const SeqRetimingHandle *end_handle = start_handle + 1;
+  return end_handle->strip_frame_index - start_handle->strip_frame_index;
 }
 
-SeqRetimingHandle *SEQ_retiming_add_handle(Scene *scene, Sequence *seq, const int timeline_frame)
+static float seq_retiming_segment_step_get(const SeqRetimingHandle *start_handle)
+{
+  const SeqRetimingHandle *end_handle = start_handle + 1;
+  const int segment_length = seq_retiming_segment_length_get(start_handle);
+  const float segment_fac_diff = end_handle->retiming_factor - start_handle->retiming_factor;
+  return segment_fac_diff / segment_length;
+}
+
+static void seq_retiming_segment_as_line_segment(const SeqRetimingHandle *start_handle,
+                                                 double r_v1[2],
+                                                 double r_v2[2])
+{
+  const SeqRetimingHandle *end_handle = start_handle + 1;
+  r_v1[0] = start_handle->strip_frame_index;
+  r_v1[1] = start_handle->retiming_factor;
+  r_v2[0] = end_handle->strip_frame_index;
+  r_v2[1] = end_handle->retiming_factor;
+}
+
+static void seq_retiming_line_segments_tangent_circle(const SeqRetimingHandle *start_handle,
+                                                      double r_center[2],
+                                                      double *radius)
+{
+  double s1_1[2], s1_2[2], s2_1[2], s2_2[2], p1_2[2];
+
+  /* Get 2 segments. */
+  seq_retiming_segment_as_line_segment(start_handle - 1, s1_1, s1_2);
+  seq_retiming_segment_as_line_segment(start_handle + 1, s2_1, s2_2);
+  /* Backup first segment end point - needed to calculate arc radius. */
+  copy_v2_v2_db(p1_2, s1_2);
+  /* Convert segments to vectors. */
+  double v1[2], v2[2];
+  sub_v2_v2v2_db(v1, s1_1, s1_2);
+  sub_v2_v2v2_db(v2, s2_1, s2_2);
+  /* Rotate segments by 90 degrees around seg. 1 end and start seg. 2 start point. */
+  SWAP(float, v1[0], v1[1]);
+  SWAP(float, v2[0], v2[1]);
+  v1[0] *= -1;
+  v2[0] *= -1;
+  copy_v2_v2_db(s1_1, s1_2);
+  add_v2_v2_db(s1_2, v1);
+  copy_v2_v2_db(s2_2, s2_1);
+  add_v2_v2_db(s2_2, v2);
+  /* Get center and radius of arc segment between 2 linear segments. */
+  double lambda, mu;
+  int res = isect_seg_seg_v2_lambda_mu_db(
+      s1_1, s1_2, s2_1, s2_2, &lambda, &mu);  // XXX may be colinear!
+  r_center[0] = s1_1[0] + lambda * (s1_2[0] - s1_1[0]);
+  r_center[1] = s1_1[1] + lambda * (s1_2[1] - s1_1[1]);
+  *radius = len_v2v2_db(p1_2, r_center);
+}
+
+static void seq_retiming_evalualte_eased_segment()
+{
+  //
+}
+
+float seq_retiming_evaluate(const Sequence *seq, const int frame_index)
+{
+  const SeqRetimingHandle *start_handle = retiming_find_segment_start_handle(seq, frame_index);
+
+  const int start_handle_index = start_handle - seq->retiming_handles;
+  BLI_assert(start_handle_index < seq->retiming_handle_num);
+
+  const int segment_frame_index = frame_index - start_handle->strip_frame_index;
+
+  if (start_handle->flag != 1) {
+    const float segment_step = seq_retiming_segment_step_get(start_handle);
+    return start_handle->retiming_factor + segment_step * segment_frame_index;
+  }
+
+  /* Gradual speed change. */
+  BLI_assert(start_handle_index > 0);
+  BLI_assert(start_handle_index < seq->retiming_handle_num - 1);
+  UNUSED_VARS_NDEBUG(start_handle_index);
+
+  double c[2], r;
+  seq_retiming_line_segments_tangent_circle(start_handle, c, &r);
+
+  const int side = c[1] > start_handle->retiming_factor ? -1 : 1;
+  const float y = c[1] + side * sqrt(pow(r, 2) - pow((frame_index - c[0]), 2));
+  return y;
+}
+
+SeqRetimingHandle *SEQ_retiming_add_handle(const Scene *scene,
+                                           Sequence *seq,
+                                           const int timeline_frame)
 {
   float frame_index = (timeline_frame - SEQ_time_start_frame_get(seq)) *
                       seq_time_media_playback_rate_factor_get(scene, seq);
@@ -203,7 +274,7 @@ void SEQ_retiming_offset_handle(const Scene *scene,
   seq_time_update_effects_strip_range(scene, seq_sequence_lookup_effects_by_seq(scene, seq));
 }
 
-void SEQ_retiming_remove_handle(Sequence *seq, SeqRetimingHandle *handle)
+static void seq_retiming_remove_handle_ex(Sequence *seq, SeqRetimingHandle *handle)
 {
   SeqRetimingHandle *last_handle = SEQ_retiming_last_handle_get(seq);
   if (handle->strip_frame_index == 0 || handle == last_handle) {
@@ -222,6 +293,61 @@ void SEQ_retiming_remove_handle(Sequence *seq, SeqRetimingHandle *handle)
   MEM_freeN(seq->retiming_handles);
   seq->retiming_handles = handles;
   seq->retiming_handle_num--;
+}
+
+/* This function removes gradual segment and creates retiming handle where it originally was.
+ */
+static void seq_retiming_remove_gradient(const Scene *scene,
+                                         Sequence *seq,
+                                         SeqRetimingHandle *handle)
+{
+  double s1_1[2], s1_2[2], s2_1[2], s2_2[2];
+
+  /* Get 2 segments. */
+  seq_retiming_segment_as_line_segment(handle - 1, s1_1, s1_2);
+  seq_retiming_segment_as_line_segment(handle + 1, s2_1, s2_2);
+  /* Find frame where handle originally was. */
+  double lambda, mu;
+  // XXX may be colinear - in that case the handle should be in middle of s1 and s2.
+  int res = isect_seg_seg_v2_lambda_mu_db(s1_1, s1_2, s2_1, s2_2, &lambda, &mu);
+  double new_handle_frame = s1_1[0] + lambda * (s1_2[0] - s1_1[0]) + SEQ_time_start_frame_get(seq);
+  /* Create original linear handle. */
+  SeqRetimingHandle *orig_handle = SEQ_retiming_add_handle(scene, seq, new_handle_frame);
+  orig_handle->retiming_factor = s1_1[1] + lambda * (s1_2[1] - s1_1[1]);
+  /* Remove handle to the left (gradual) and to the right (linear). */
+  int orig_handle_index = SEQ_retiming_handle_index_get(seq, orig_handle);
+
+  seq_retiming_remove_handle_ex(seq, seq->retiming_handles + orig_handle_index - 1);
+  seq_retiming_remove_handle_ex(seq, seq->retiming_handles + orig_handle_index);
+}
+
+void SEQ_retiming_remove_handle(const Scene *scene, Sequence *seq, SeqRetimingHandle *handle)
+{
+  if ((handle->flag & 1) != 0) {
+    seq_retiming_remove_gradient(scene, seq, handle);
+    return;
+  }
+  SeqRetimingHandle *previous_handle = handle - 1;
+  if ((previous_handle->flag & 1) != 0) {
+    seq_retiming_remove_gradient(scene, seq, previous_handle);
+    return;
+  }
+  seq_retiming_remove_handle_ex(seq, handle);
+}
+
+SeqRetimingHandle *SEQ_retiming_add_gradient(const Scene *scene,
+                                             Sequence *seq,
+                                             SeqRetimingHandle *handle,
+                                             const int offset)
+{
+  int orig_handle_index = SEQ_retiming_handle_index_get(seq, handle);
+  int orig_timeline_frame = SEQ_retiming_handle_timeline_frame_get(scene, seq, handle);
+  SeqRetimingHandle *new_handle = SEQ_retiming_add_handle(
+      scene, seq, orig_timeline_frame - offset);
+  new_handle->flag |= 1;
+  SEQ_retiming_add_handle(scene, seq, orig_timeline_frame + offset);
+  seq_retiming_remove_handle_ex(seq, &SEQ_retiming_handles_get(seq)[orig_handle_index + 1]);
+  return new_handle;
 }
 
 float SEQ_retiming_handle_speed_get(const Sequence *seq, const SeqRetimingHandle *handle)

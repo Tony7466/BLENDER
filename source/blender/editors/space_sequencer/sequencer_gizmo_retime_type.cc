@@ -317,6 +317,17 @@ typedef struct RetimeHandleMoveGizmo {
   int mouse_over_handle_x;
 } RetimeHandleMoveGizmo;
 
+static void seq_retiming_segment_as_line_segment(const SeqRetimingHandle *start_handle,
+                                                 double r_v1[2],
+                                                 double r_v2[2])
+{
+  const SeqRetimingHandle *end_handle = start_handle + 1;
+  r_v1[0] = start_handle->strip_frame_index;
+  r_v1[1] = start_handle->retiming_factor;
+  r_v2[0] = end_handle->strip_frame_index;
+  r_v2[1] = end_handle->retiming_factor;
+}
+
 static void retime_handle_draw(const bContext *C,
                                const RetimeHandleMoveGizmo *gizmo,
                                uint pos,
@@ -327,7 +338,7 @@ static void retime_handle_draw(const bContext *C,
   const float handle_x = handle_x_get(scene, seq, handle);
 
   if (handle_x == SEQ_time_left_handle_frame_get(scene, seq)) {
-    return;
+    // return;
   }
   if (handle_x == SEQ_time_right_handle_frame_get(scene, seq)) {
     return;
@@ -344,11 +355,13 @@ static void retime_handle_draw(const bContext *C,
   const float top = UI_view2d_view_to_region_y(v2d, strip_y_rescale(seq, 1.0f)) - 2;
   const float handle_position = UI_view2d_view_to_region_x(v2d, handle_x);
 
+  const float nongreen = handle->flag ? 0.0f : 1.0f;
+
   if (seq == gizmo->mouse_over_seq && handle_x == gizmo->mouse_over_handle_x) {
-    immUniformColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+    immUniformColor4f(1.0f * nongreen, 1.0f, 1.0f * nongreen, 1.0f);
   }
   else {
-    immUniformColor4f(0.65f, 0.65f, 0.65f, 1.0f);
+    immUniformColor4f(0.65f * nongreen, 0.65f, 0.65f * nongreen, 1.0f);
   }
 
   immBegin(GPU_PRIM_TRI_FAN, 3);
@@ -426,7 +439,7 @@ static void gizmo_retime_handle_draw(const bContext *C, wmGizmo *gz)
     retime_speed_text_draw(C, seq, &handle);
 
     if (&handle == handles.begin()) {
-      continue; /* Ignore first handle. */
+      // continue; /* Ignore first handle. */
     }
     retime_handle_draw(C, gizmo, pos, seq, &handle);
   }

@@ -122,7 +122,8 @@ typedef struct Strip {
 
 typedef struct SeqRetimingHandle {
   int strip_frame_index;
-  int _pad0[2];
+  int flag;
+  int _pad0;
   float retiming_factor; /* Value between 0-1 mapped to original content range. */
 } SeqRetimingHandle;
 
