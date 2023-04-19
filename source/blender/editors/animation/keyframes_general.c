@@ -525,22 +525,21 @@ void ease_ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float f
     return;
   }
 
+  /* these ease values use the entire curve to get the "S" shape. The value 2.0 on the slope
+   * makes it a bit sharper. */
   const float slope = 2.0;
   const float width = 1.0;
   const float height = 1.0;
+  /* Using the factor on the xshift we are basicaly moving the curve horizontaly. */
   const float xshift = -factor;
   const float yshift = 0.0;
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
-    /* For easy calculation of the curve, the  values are normalized. */
-    const float normalized_x = (fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range;
+    
+    const float x = (fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range;
+    const float ease = s_curve(x, slope, width, height, xshift, yshift);
 
-    /* these ease values use the entire curve to get the "S" shape. The value 2.0 on the slope
-     * makes it a bit sharper. By using the factor on the xshift we are basicaly moving the
-     * curve horizontaly. */
-    const float ease = s_curve(normalized_x, slope, width, height, xshift, yshift);
-
-    /* The ease variable basicaly as a mask to molde the shape of the curve. */
+    /* The ease variable basicaly act as a mask to molde the shape of the curve. */
     const float key_y_value = left_key->vec[1][1] + key_y_range * ease;
     move_key(&fcu->bezt[i], key_y_value);
   }
