@@ -298,6 +298,23 @@ static std::shared_ptr<DictionaryValue> write_bdata_shared_simple_gspan(
   return true;
 }
 
+template<typename T>
+[[nodiscard]] static bool read_bdata_shared_simple_span(const DictionaryValue &io_data,
+                                                        const BDataReader &bdata_reader,
+                                                        const BDataSharing &bdata_sharing,
+                                                        const int size,
+                                                        T **r_data,
+                                                        ImplicitSharingInfo **r_sharing_info)
+{
+  return read_bdata_shared_simple_gspan(io_data,
+                                        bdata_reader,
+                                        bdata_sharing,
+                                        CPPType::get<T>(),
+                                        size,
+                                        (const void **)r_data,
+                                        (const ImplicitSharingInfo **)r_sharing_info);
+}
+
 static void load_attributes(const io::serialize::ArrayValue &io_attributes,
                             bke::MutableAttributeAccessor &attributes,
                             const BDataReader &bdata_reader,
@@ -441,7 +458,14 @@ static Mesh *try_load_mesh(const DictionaryValue &io_geometry,
     if (!io_poly_offsets) {
       return cancel();
     }
-    if (!read_bdata_simple_gspan(bdata_reader, *io_poly_offsets, mesh->poly_offsets_for_write())) {
+    implicit_sharing::free_shared_data(&mesh->poly_offset_indices,
+                                       &mesh->runtime->poly_offsets_sharing_info);
+    if (!read_bdata_shared_simple_span(*io_poly_offsets,
+                                       bdata_reader,
+                                       bdata_sharing,
+                                       num_polys + 1,
+                                       &mesh->poly_offset_indices,
+                                       &mesh->runtime->poly_offsets_sharing_info)) {
       return cancel();
     }
   }
