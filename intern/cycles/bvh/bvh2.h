@@ -12,6 +12,8 @@
 #include "util/vector.h"
 #include "util/thread.h"
 
+#include <atomic>
+
 CCL_NAMESPACE_BEGIN
 
 #define BVH_NODE_SIZE 4
@@ -37,6 +39,7 @@ class BVH2 : public BVH {
      are used to ensure that it the case.       */
   thread_mutex build_mutex;
   thread_condition_variable build_cv;
+  std::atomic<int> building{0};
   
   void build(Progress &progress, Stats *stats);
   void refit(Progress &progress);

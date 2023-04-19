@@ -51,22 +51,25 @@ void Device::build_bvh(BVH *bvh, DeviceScene *dscene, Progress &progress, bool r
 {
   assert(bvh->params.bvh_layout == BVH_LAYOUT_BVH2);
   BVH2 *const bvh2 = static_cast<BVH2 *>(bvh);
-  static std::atomic<int> building{0};
   /* Top level BVH2 build must wait on all other BVH2 builds to finish
      otherwise the top level BVH2 will not have all the correct data
    */
   if(bvh2->params.top_level) {
+    /*
+      This is used to make sure all workers have reached this point.
+      device_init_update_bvh increments the counter.
+     */
+    bvh2->building--;
     thread_scoped_lock build_wait_lock(bvh2->build_mutex);
     /* Wait for other BVH2 builds to complete before proceeding */
     VLOG_INFO << std::this_thread::get_id() << ":" << bvh2 << " Waiting on other BVH2 builds.";
-    bvh2->build_cv.wait(build_wait_lock, [=]() { return (building == 0); });
+    bvh2->build_cv.wait(build_wait_lock, [=]() { return (bvh2->building == 0); });
     VLOG_INFO << std::this_thread::get_id() << ":" << bvh2 << " Done waiting on other BVH2 builds";
   }
   thread_scoped_lock build_lock(bvh2->build_mutex, std::try_to_lock);
   if (build_lock) {
     /* Has the BVH already been built? */
     if (!bvh->built) {
-      building++;
       /* Build the BVH */
       VLOG_INFO << std::this_thread::get_id() << ":" << bvh2 << " Performing BVH2 build.";
       if (refit) {
@@ -77,7 +80,6 @@ void Device::build_bvh(BVH *bvh, DeviceScene *dscene, Progress &progress, bool r
       }
       bvh->built = true;
       VLOG_INFO << std::this_thread::get_id() << ":" << bvh2 << " Done building BVH2";
-      building--;
     }
     else {
       VLOG_INFO << std::this_thread::get_id() << ":" << bvh2 << " BVH2 Already built";

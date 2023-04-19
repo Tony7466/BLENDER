@@ -331,6 +331,7 @@ class GeometryManager {
                                     DeviceScene *dscene,
                                     Scene *scene,
                                     Progress &progress);
+  void device_init_update_bvh(Scene *scene);
   void device_update_bvh(Device *device,
                          DeviceScene *dscene,
                          Scene *scene,

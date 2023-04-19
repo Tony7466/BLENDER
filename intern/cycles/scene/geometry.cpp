@@ -798,7 +798,7 @@ void GeometryManager::device_data_xfer_and_bvh_update(int idx,
   }
 
   sub_dscene->device_scene_clear_modified();
-
+  device_init_update_bvh(scene);
   {
     scoped_callback_timer timer([scene, idx](double time) {
       if (scene->update_stats) {

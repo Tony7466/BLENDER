@@ -32,6 +32,15 @@
 
 CCL_NAMESPACE_BEGIN
 
+void GeometryManager::device_init_update_bvh(Scene *scene)
+{
+  if (scene->bvh->params.bvh_layout == BVH_LAYOUT_BVH2) {
+    /* To ensure that only 1 BVH2 scene is built a count of workers is used */
+    BVH2 *const bvh2 = static_cast<BVH2 *>(scene->bvh);
+    bvh2->building++;
+  }
+}
+
 void GeometryManager::device_update_bvh(Device *device,
                                         DeviceScene *dscene,
                                         Scene *scene,
