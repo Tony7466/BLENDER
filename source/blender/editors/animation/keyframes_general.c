@@ -528,8 +528,8 @@ void ease_ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float f
   const float slope = 2.0;
   const float width = 1.0;
   const float height = 1.0;
-  const float yshift = 0.0;
   const float xshift = -factor;
+  const float yshift = 0.0;
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
     /* For easy calculation of the curve, the  values are normalized. */
