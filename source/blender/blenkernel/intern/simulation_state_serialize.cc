@@ -417,7 +417,14 @@ static Curves *try_load_curves(const DictionaryValue &io_geometry,
     if (!io_curve_offsets) {
       return cancel();
     }
-    if (!read_bdata_simple_gspan(bdata_reader, *io_curve_offsets, curves.offsets_for_write())) {
+    implicit_sharing::free_shared_data(&curves.curve_offsets,
+                                       &curves.runtime->curve_offsets_sharing_info);
+    if (!read_bdata_shared_simple_span(*io_curve_offsets,
+                                       bdata_reader,
+                                       bdata_sharing,
+                                       num_curves + 1,
+                                       &curves.curve_offsets,
+                                       &curves.runtime->curve_offsets_sharing_info)) {
       return cancel();
     }
   }
