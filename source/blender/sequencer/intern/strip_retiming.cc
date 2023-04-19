@@ -13,6 +13,7 @@
 #include "BLI_listbase.h"
 #include "BLI_math.h"
 #include "BLI_span.hh"
+#include "BLI_vector.hh"
 
 #include "BKE_fcurve.h"
 #include "BKE_movieclip.h"
@@ -283,7 +284,7 @@ class RetimingRange {
 
 class RetimingRangeData {
  public:
-  std::vector<RetimingRange> ranges;
+  blender::Vector<RetimingRange> ranges;
   RetimingRangeData(const Sequence *seq)
   {
     MutableSpan handles = SEQ_retiming_handles_get(seq);
@@ -297,50 +298,48 @@ class RetimingRangeData {
       int frame_end = SEQ_time_start_frame_get(seq) + handle.strip_frame_index;
 
       RetimingRange range = RetimingRange(frame_start, frame_end, speed);
-      ranges.push_back(range);
+      ranges.append(range);
     }
   }
 
   RetimingRangeData &operator*=(const RetimingRangeData rhs)
   {
-    if (ranges.size() == 0) {
+    if (ranges.is_empty()) {
       for (const RetimingRange &rhs_range : rhs.ranges) {
         RetimingRange range = RetimingRange(rhs_range.start, rhs_range.end, rhs_range.speed);
-        ranges.push_back(range);
+        ranges.append(range);
+        return *this;
       }
     }
-    else {
-      for (int i = 0; i < ranges.size(); i++) {
-        RetimingRange &range = ranges[i];
-        for (const RetimingRange &rhs_range : rhs.ranges) {
-          if (range.intersect_type(rhs_range) == range.NONE) {
-            continue;
-          }
-          else if (range.intersect_type(rhs_range) == range.FULL) {
-            range.speed *= rhs_range.speed;
-          }
-          else if (range.intersect_type(rhs_range) == range.PARTIAL_START) {
-            RetimingRange range_left = RetimingRange(
-                range.start, rhs_range.end, range.speed * rhs_range.speed);
-            range.start = rhs_range.end + 1;
-            ranges.insert(ranges.begin() + i, range_left);
-          }
-          else if (range.intersect_type(rhs_range) == range.PARTIAL_END) {
-            RetimingRange range_left = RetimingRange(
-                range.start, rhs_range.start - 1, range.speed);
-            range.start = rhs_range.start;
-            ranges.insert(ranges.begin() + i, range_left);
-          }
-          else if (range.intersect_type(rhs_range) == range.INSIDE) {
-            RetimingRange range_left = RetimingRange(
-                range.start, rhs_range.start - 1, range.speed);
-            RetimingRange range_mid = RetimingRange(
-                rhs_range.start, rhs_range.start, rhs_range.speed * range.speed);
-            range.start = rhs_range.end + 1;
-            ranges.insert(ranges.begin() + i, range_left);
-            ranges.insert(ranges.begin() + i, range_mid);
-            break;
-          }
+
+    for (int i = 0; i < ranges.size(); i++) {
+      RetimingRange &range = ranges[i];
+      for (const RetimingRange &rhs_range : rhs.ranges) {
+        if (range.intersect_type(rhs_range) == range.NONE) {
+          continue;
+        }
+        else if (range.intersect_type(rhs_range) == range.FULL) {
+          range.speed *= rhs_range.speed;
+        }
+        else if (range.intersect_type(rhs_range) == range.PARTIAL_START) {
+          RetimingRange range_left = RetimingRange(
+              range.start, rhs_range.end, range.speed * rhs_range.speed);
+          range.start = rhs_range.end + 1;
+          ranges.insert(i, range_left);
+        }
+        else if (range.intersect_type(rhs_range) == range.PARTIAL_END) {
+          RetimingRange range_left = RetimingRange(range.start, rhs_range.start - 1, range.speed);
+          range.start = rhs_range.start;
+          ranges.insert(i, range_left);
+        }
+        else if (range.intersect_type(rhs_range) == range.INSIDE) {
+          RetimingRange range_left = RetimingRange(range.start, rhs_range.start - 1, range.speed);
+          RetimingRange range_mid = RetimingRange(
+              rhs_range.start, rhs_range.start, rhs_range.speed * range.speed);
+          range.start = rhs_range.end + 1;
+          ranges.insert(i, range_left);
+          ranges.insert(i, range_mid);
+          break;
         }
       }
     }
