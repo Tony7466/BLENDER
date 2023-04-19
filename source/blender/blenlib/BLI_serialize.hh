@@ -232,8 +232,6 @@ class ContainerValue : public Value {
   }
 };
 
-/* ArrayValue stores its items as shared pointer as it shares data with a lookup table that can
- * be created by calling `create_lookup`. */
 class ArrayValue : public ContainerValue<Vector<std::shared_ptr<Value>>, eValueType::Array> {
  public:
   void append(std::shared_ptr<Value> value)

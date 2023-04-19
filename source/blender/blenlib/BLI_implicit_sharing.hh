@@ -162,7 +162,7 @@ class ImplicitSharingInfo : NonCopyable, NonMovable {
  private:
   /** Has to free the #ImplicitSharingInfo and the referenced data. */
   virtual void delete_self_with_data() = 0;
-
+  /** Can free the referenced data but the #ImplicitSharingInfo still has to be kept alive. */
   virtual void delete_data_only() {}
 };
 
@@ -171,8 +171,6 @@ class ImplicitSharingInfo : NonCopyable, NonMovable {
  * class can be used with #ImplicitSharingPtr.
  */
 class ImplicitSharingMixin : public ImplicitSharingInfo {
- public:
-  ImplicitSharingMixin() {}
 
  private:
   void delete_self_with_data() override
@@ -184,6 +182,9 @@ class ImplicitSharingMixin : public ImplicitSharingInfo {
   virtual void delete_self() = 0;
 };
 
+/**
+ * Utility that contains sharing information and the data that is shared.
+ */
 struct ImplicitSharingInfoAndData {
   const ImplicitSharingInfo *sharing_info = nullptr;
   const void *data = nullptr;

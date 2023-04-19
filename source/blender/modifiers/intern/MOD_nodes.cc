@@ -1243,6 +1243,8 @@ static GeometrySet compute_geometry(const bNodeTree &btree,
           geo_nodes_modifier_data.current_simulation_state_for_write = &current_sim_state;
           geo_nodes_modifier_data.simulation_time_delta = 0.0f;
           if (!is_start_frame) {
+            /* When starting a new simulation at another frame than the start frame, it can't match
+             * what would be baked, so invalidate it immediately. */
             nmd_orig->simulation_cache->invalidate();
           }
         }

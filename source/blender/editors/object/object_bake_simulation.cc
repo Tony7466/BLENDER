@@ -157,6 +157,7 @@ static void bake_simulation_job_startjob(void *customdata,
         }
 
         const std::string bdata_file_name = frame_file_str + ".bdata";
+        const std::string meta_file_name = frame_file_str + ".json";
 
         char bdata_path[FILE_MAX];
         BLI_path_join(bdata_path,
@@ -167,7 +168,7 @@ static void bake_simulation_job_startjob(void *customdata,
         BLI_path_join(meta_path,
                       sizeof(meta_path),
                       modifier_bake_data.meta_dir.c_str(),
-                      (frame_file_str + ".json").c_str());
+                      meta_file_name.c_str());
 
         BLI_make_existing_file(bdata_path);
         fstream bdata_file{bdata_path, std::ios::out | std::ios::binary};
@@ -190,6 +191,7 @@ static void bake_simulation_job_startjob(void *customdata,
     for (ModifierBakeData &modifier_bake_data : object_bake_data.modifiers) {
       NodesModifierData &nmd = *modifier_bake_data.nmd;
       if (nmd.simulation_cache) {
+        /* Tag the caches as being baked so that they are not changed anymore. */
         nmd.simulation_cache->cache_state_ = CacheState::Baked;
       }
     }
