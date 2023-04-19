@@ -33,13 +33,6 @@ class BDataWriter {
 };
 
 class BDataSharing {
- public:
-  struct SharingInfoWithData {
-    /* Strong user. */
-    const ImplicitSharingInfo *sharing_info;
-    const void *data;
-  };
-
  private:
   struct StoredByRuntimeValue {
     int64_t sharing_info_version;
@@ -49,7 +42,7 @@ class BDataSharing {
   /** The #ImplicitSharingInfo pointer is a weak user. */
   Map<const ImplicitSharingInfo *, StoredByRuntimeValue> stored_by_runtime_;
   /* TODO: Protect by mutex. */
-  mutable Map<std::string, SharingInfoWithData> runtime_by_stored_;
+  mutable Map<std::string, ImplicitSharingInfoAndData> runtime_by_stored_;
 
  public:
   ~BDataSharing();
@@ -57,9 +50,9 @@ class BDataSharing {
   [[nodiscard]] DictionaryValuePtr write_shared(const ImplicitSharingInfo *sharing_info,
                                                 FunctionRef<DictionaryValuePtr()> write_fn);
 
-  [[nodiscard]] std::optional<SharingInfoWithData> read_shared(
+  [[nodiscard]] std::optional<ImplicitSharingInfoAndData> read_shared(
       const DictionaryValue &io_data,
-      FunctionRef<std::optional<SharingInfoWithData>()> read_fn) const;
+      FunctionRef<std::optional<ImplicitSharingInfoAndData>()> read_fn) const;
 };
 
 class DiskBDataReader : public BDataReader {

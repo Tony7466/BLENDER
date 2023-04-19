@@ -299,16 +299,16 @@ static void load_attributes(const io::serialize::ArrayValue &io_attributes,
       continue;
     }
     const int domain_size = attributes.domain_size(domain);
-    const std::optional<BDataSharing::SharingInfoWithData> attribute_data =
-        bdata_sharing.read_shared(*io_data, [&]() {
+    const std::optional<ImplicitSharingInfoAndData> attribute_data = bdata_sharing.read_shared(
+        *io_data, [&]() {
           void *data_mem = MEM_mallocN_aligned(
               domain_size * cpp_type->size(), cpp_type->alignment(), __func__);
           if (!read_bdata_simple_gspan(
                   bdata_reader, *io_data, {*cpp_type, data_mem, domain_size})) {
             cpp_type->value_initialize_n(data_mem, domain_size);
           }
-          return BDataSharing::SharingInfoWithData{implicit_sharing::info_for_mem_free(data_mem),
-                                                   data_mem};
+          return ImplicitSharingInfoAndData{implicit_sharing::info_for_mem_free(data_mem),
+                                            data_mem};
         });
     if (!attribute_data) {
       continue;
@@ -802,7 +802,7 @@ BDataSharing::~BDataSharing()
   for (const ImplicitSharingInfo *sharing_info : stored_by_runtime_.keys()) {
     sharing_info->remove_weak_user_and_delete_if_last();
   }
-  for (const SharingInfoWithData &value : runtime_by_stored_.values()) {
+  for (const ImplicitSharingInfoAndData &value : runtime_by_stored_.values()) {
     if (value.sharing_info) {
       value.sharing_info->remove_user_and_delete_if_last();
     }
@@ -837,20 +837,20 @@ DictionaryValuePtr BDataSharing::write_shared(const ImplicitSharingInfo *sharing
       });
 }
 
-std::optional<BDataSharing::SharingInfoWithData> BDataSharing::read_shared(
+std::optional<ImplicitSharingInfoAndData> BDataSharing::read_shared(
     const DictionaryValue &io_data,
-    FunctionRef<std::optional<SharingInfoWithData>()> read_fn) const
+    FunctionRef<std::optional<ImplicitSharingInfoAndData>()> read_fn) const
 {
   io::serialize::JsonFormatter formatter;
   std::stringstream ss;
   formatter.serialize(ss, io_data);
   const std::string key = ss.str();
 
-  if (const SharingInfoWithData *shared_data = runtime_by_stored_.lookup_ptr(key)) {
+  if (const ImplicitSharingInfoAndData *shared_data = runtime_by_stored_.lookup_ptr(key)) {
     shared_data->sharing_info->add_user();
     return *shared_data;
   }
-  std::optional<SharingInfoWithData> data = read_fn();
+  std::optional<ImplicitSharingInfoAndData> data = read_fn();
   if (!data) {
     return std::nullopt;
   }
