@@ -1189,9 +1189,7 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
       }
 
       /* Set temp pointer to mirrored ebones */
-      if (ebone) {
-        ebone_iter->temp.ebone = ebone;
-      }
+      ebone_iter->temp.ebone = ebone;
     }
 
     /* Find the selected bones and duplicate them as needed, with mirrored name. */
