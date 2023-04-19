@@ -209,6 +209,7 @@ static std::shared_ptr<DictionaryValue> write_bdata_raw_data_with_endian(
   return true;
 }
 
+/** Write bytes ignoring endianness. */
 static std::shared_ptr<DictionaryValue> write_bdata_raw_bytes(BDataWriter &bdata_writer,
                                                               const void *data,
                                                               const int64_t size_in_bytes)
@@ -216,6 +217,7 @@ static std::shared_ptr<DictionaryValue> write_bdata_raw_bytes(BDataWriter &bdata
   return bdata_writer.write(data, size_in_bytes).serialize();
 }
 
+/** Read bytes ignoring endianness. */
 [[nodiscard]] static bool read_bdata_raw_bytes(const BDataReader &bdata_reader,
                                                const DictionaryValue &io_data,
                                                const int64_t bytes_num,
@@ -372,6 +374,7 @@ static void load_attributes(const io::serialize::ArrayValue &io_attributes,
     BLI_SCOPED_DEFER([&]() { attribute_sharing_info->remove_user_and_delete_if_last(); });
 
     if (attributes.contains(*name)) {
+      /* If the attribute exists already, copy the values over to the existing array. */
       bke::GSpanAttributeWriter attribute = attributes.lookup_or_add_for_write_only_span(
           *name, *domain, *data_type);
       if (!attribute) {
@@ -381,6 +384,7 @@ static void load_attributes(const io::serialize::ArrayValue &io_attributes,
       attribute.finish();
     }
     else {
+      /* Add a new attribute that shares the data. */
       attributes.add(*name,
                      *domain,
                      *data_type,
@@ -850,9 +854,12 @@ DiskBDataReader::DiskBDataReader(std::string bdata_dir) : bdata_dir_(std::move(b
   char bdata_path[FILE_MAX];
   BLI_path_join(bdata_path, sizeof(bdata_path), bdata_dir_.c_str(), slice.name.c_str());
 
-  fstream bdata_file{bdata_path, std::ios::in | std::ios::binary};
-  bdata_file.seekg(slice.range.start());
-  bdata_file.read(static_cast<char *>(r_data), slice.range.size());
+  std::lock_guard lock{mutex_};
+  std::unique_ptr<fstream> &bdata_file = open_input_streams_.lookup_or_add_cb_as(
+      bdata_path,
+      [&]() { return std::make_unique<fstream>(bdata_path, std::ios::in | std::ios::binary); });
+  bdata_file->seekg(slice.range.start());
+  bdata_file->read(static_cast<char *>(r_data), slice.range.size());
   return true;
 }
 
