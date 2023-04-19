@@ -5,3 +5,4 @@ Referenced by issue #106387, Regression: Rendering (F12 in 3D Viewport) with Fre
 Referenced by issue #106469, Regression: Cycles: unstable triangulation of mesh in viewport
 Referenced by commit 85bd64ece468bb6fff097d96c44033074dba13dc, Fix: Crash and broken multires baking
 Referenced by issue #106926, Geometry Nodes Extrude producing weird normals when Mesh has Custom Normals
+Referenced by issue #107095, Multires: Spikes on base mesh verts when sculpting on lower levels
