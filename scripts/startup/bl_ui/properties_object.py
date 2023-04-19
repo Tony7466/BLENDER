@@ -244,8 +244,12 @@ class OBJECT_PT_baking(ObjectButtonsPanel, Panel):
         layout = self.layout
         col = layout.column()
         col.label(text="Simulation Nodes Cache:")
-        col.operator("object.simulation_nodes_cache_bake", text="Bake")
-        col.operator("object.simulation_nodes_cache_delete", text="Delete")
+        row = col.row(align=True)
+        row.operator("object.simulation_nodes_cache_bake", text="Bake Active")
+        row.operator("object.simulation_nodes_cache_bake", text="Selected").selected = True
+        row = col.row(align=True)
+        row.operator("object.simulation_nodes_cache_delete", text="Delete Active")
+        row.operator("object.simulation_nodes_cache_delete", text="Selected").selected = True
 
 class OBJECT_PT_instancing(ObjectButtonsPanel, Panel):
     bl_label = "Instancing"

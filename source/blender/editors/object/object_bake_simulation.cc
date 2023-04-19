@@ -37,6 +37,7 @@
 #include "BKE_simulation_state_serialize.hh"
 
 #include "RNA_access.h"
+#include "RNA_define.h"
 #include "RNA_enum_types.h"
 
 #include "DEG_depsgraph.h"
@@ -72,7 +73,7 @@ struct ObjectBakeData {
   Vector<ModifierBakeData> modifiers;
 };
 
-static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
+static int bake_simulation_exec(bContext *C, wmOperator *op)
 {
   using namespace bke::sim;
 
@@ -80,8 +81,21 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Main *bmain = CTX_data_main(C);
 
+  Vector<Object *> objects;
+  if (RNA_boolean_get(op->ptr, "selected")) {
+    CTX_DATA_BEGIN (C, Object *, object, selected_objects) {
+      objects.append(object);
+    }
+    CTX_DATA_END;
+  }
+  else {
+    if (Object *object = CTX_data_active_object(C)) {
+      objects.append(object);
+    }
+  }
+
   Vector<ObjectBakeData> objects_to_bake;
-  CTX_DATA_BEGIN (C, Object *, object, selected_objects) {
+  for (Object *object : objects) {
     if (!BKE_id_is_editable(bmain, &object->id)) {
       continue;
     }
@@ -100,7 +114,6 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
     }
     objects_to_bake.append(std::move(bake_data));
   }
-  CTX_DATA_END;
 
   const int old_frame = scene->r.cfra;
 
@@ -173,11 +186,24 @@ static int bake_simulation_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
-static int delete_baked_simulation_exec(bContext *C, wmOperator * /*op*/)
+static int delete_baked_simulation_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
 
-  CTX_DATA_BEGIN (C, Object *, object, selected_objects) {
+  Vector<Object *> objects;
+  if (RNA_boolean_get(op->ptr, "selected")) {
+    CTX_DATA_BEGIN (C, Object *, object, selected_objects) {
+      objects.append(object);
+    }
+    CTX_DATA_END;
+  }
+  else {
+    if (Object *object = CTX_data_active_object(C)) {
+      objects.append(object);
+    }
+  }
+
+  for (Object *object : objects) {
     LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
       if (md->type == eModifierType_Nodes) {
         NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
@@ -191,7 +217,6 @@ static int delete_baked_simulation_exec(bContext *C, wmOperator * /*op*/)
 
     DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
   }
-  CTX_DATA_END;
 
   WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, nullptr);
 
@@ -210,6 +235,8 @@ void OBJECT_OT_simulation_nodes_cache_bake(wmOperatorType *ot)
 
   ot->exec = bake_simulation_exec;
   ot->poll = bake_simulation_poll;
+
+  RNA_def_boolean(ot->srna, "selected", false, "Selected", "Bake cache on all selected objects");
 }
 
 void OBJECT_OT_simulation_nodes_cache_delete(wmOperatorType *ot)
@@ -222,4 +249,6 @@ void OBJECT_OT_simulation_nodes_cache_delete(wmOperatorType *ot)
 
   ot->exec = delete_baked_simulation_exec;
   ot->poll = ED_operator_object_active;
+
+  RNA_def_boolean(ot->srna, "selected", false, "Selected", "Delete cache on all selected objects");
 }
