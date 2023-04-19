@@ -503,10 +503,6 @@ bool SEQ_time_has_still_frames(const Scene *scene, const Sequence *seq)
 
 int SEQ_time_strip_length_get(const Scene *scene, const Sequence *seq)
 {
-  if (seq->type == SEQ_TYPE_SOUND_RAM) {
-    return seq->len;
-  }
-
   if (SEQ_retiming_is_active(seq)) {
     SeqRetimingHandle *handle_start = seq->retiming_handles;
     SeqRetimingHandle *handle_end = seq->retiming_handles + (SEQ_retiming_handles_count(seq) - 1);
