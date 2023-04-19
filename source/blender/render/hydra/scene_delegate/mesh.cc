@@ -18,7 +18,7 @@ namespace blender::render::hydra {
 MeshData::MeshData(BlenderSceneDelegate *scene_delegate, Object *object)
     : ObjectData(scene_delegate, object), mat_data_(nullptr)
 {
-  CLOG_INFO(LOG_BSD, 2, "%s, id=%s", id_->name, p_id_.GetText());
+  ID_LOG(2, "");
 }
 
 void MeshData::init()

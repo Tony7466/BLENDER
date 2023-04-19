@@ -12,8 +12,11 @@
 namespace blender::render::hydra {
 
 class BlenderSceneDelegate;
+class InstancerData;
 
 class IdData {
+  friend InstancerData;
+
  public:
   IdData(BlenderSceneDelegate *scene_delegate, ID *id);
   virtual ~IdData() = default;
@@ -36,5 +39,8 @@ template<class T> const T IdData::get_data(pxr::TfToken const &key) const
 {
   return get_data(key).Get<T>();
 }
+
+#define ID_LOG(level, msg, ...) \
+  CLOG_INFO(LOG_BSD, level, "%s (%s): " msg, p_id_.GetText(), id_->name, __VA_ARGS__);
 
 }  // namespace blender::render::hydra

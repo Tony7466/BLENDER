@@ -32,7 +32,7 @@ WorldData::WorldData(BlenderSceneDelegate *scene_delegate, World *world, bContex
     : IdData(scene_delegate, (ID *)world), context_(context)
 {
   p_id_ = prim_id(scene_delegate);
-  CLOG_INFO(LOG_BSD, 2, "%s, id=%s", id_->name, p_id_.GetText());
+  ID_LOG(2, "");
 }
 
 std::unique_ptr<WorldData> WorldData::create(BlenderSceneDelegate *scene_delegate,
@@ -52,7 +52,7 @@ pxr::SdfPath WorldData::prim_id(BlenderSceneDelegate *scene_delegate)
 
 void WorldData::init()
 {
-  CLOG_INFO(LOG_BSD, 2, "%s", id_->name);
+  ID_LOG(2, "");
 
   World *world = (World *)id_;
   data_.clear();
@@ -125,7 +125,7 @@ void WorldData::init()
 
 void WorldData::insert()
 {
-  CLOG_INFO(LOG_BSD, 2, "%s", id_->name);
+  ID_LOG(2, "");
   scene_delegate_->GetRenderIndex().InsertSprim(
       pxr::HdPrimTypeTokens->domeLight, scene_delegate_, p_id_);
 }
@@ -138,7 +138,7 @@ void WorldData::remove()
 
 void WorldData::update()
 {
-  CLOG_INFO(LOG_BSD, 2, "%s", id_->name);
+  ID_LOG(2, "");
   init();
   scene_delegate_->GetRenderIndex().GetChangeTracker().MarkSprimDirty(p_id_,
                                                                       pxr::HdLight::AllDirty);

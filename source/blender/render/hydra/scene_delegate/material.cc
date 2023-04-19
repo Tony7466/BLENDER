@@ -24,7 +24,7 @@ MaterialData::MaterialData(BlenderSceneDelegate *scene_delegate, Material *mater
     : IdData(scene_delegate, (ID *)material)
 {
   p_id_ = prim_id(scene_delegate, material);
-  CLOG_INFO(LOG_BSD, 2, "%s, id=%s", id_->name, p_id_.GetText());
+  ID_LOG(2, "");
 }
 
 std::unique_ptr<MaterialData> MaterialData::create(BlenderSceneDelegate *scene_delegate,
@@ -47,7 +47,7 @@ pxr::SdfPath MaterialData::prim_id(BlenderSceneDelegate *scene_delegate, Materia
 
 void MaterialData::init()
 {
-  CLOG_INFO(LOG_BSD, 2, "%s", id_->name);
+  ID_LOG(2, "");
 
   material_network_map_ = pxr::VtValue();
 
@@ -84,7 +84,7 @@ void MaterialData::init()
   PyGILState_Release(gstate);
 
   mtlx_path_ = pxr::SdfAssetPath(path, path);
-  CLOG_INFO(LOG_BSD, 2, "Export: %s, mtlx=%s", id_->name, mtlx_path_.GetResolvedPath().c_str());
+  ID_LOG(2, "mtlx=%s", mtlx_path_.GetResolvedPath().c_str());
 }
 
 void MaterialData::insert()
@@ -115,7 +115,7 @@ pxr::VtValue MaterialData::get_data(pxr::TfToken const &key) const
     if (!mtlx_path_.GetResolvedPath().empty()) {
       ret = mtlx_path_;
     }
-    CLOG_INFO(LOG_BSD, 3, "%s", key.GetText());
+    ID_LOG(3, "%s", key.GetText());
   }
   return ret;
 }

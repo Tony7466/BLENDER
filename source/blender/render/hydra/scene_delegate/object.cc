@@ -84,7 +84,11 @@ bool ObjectData::update_visibility(View3D *view3d)
 
   bool prev_visible = visible;
   visible = BKE_object_is_visible_in_viewport(view3d, (Object *)id_);
-  return visible != prev_visible;
+  bool ret = visible != prev_visible;
+  if (ret) {
+    ID_LOG(2, "");
+  }
+  return ret;
 }
 
 }  // namespace blender::render::hydra

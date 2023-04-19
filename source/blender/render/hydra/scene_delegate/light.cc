@@ -17,12 +17,12 @@ namespace blender::render::hydra {
 LightData::LightData(BlenderSceneDelegate *scene_delegate, Object *object)
     : ObjectData(scene_delegate, object)
 {
-  CLOG_INFO(LOG_BSD, 2, "%s id=%s", id_->name, p_id_.GetText());
+  ID_LOG(2, "");
 }
 
 void LightData::init()
 {
-  CLOG_INFO(LOG_BSD, 2, "%s", id_->name);
+  ID_LOG(2, "");
 
   Light *light = (Light *)((Object *)id_)->data;
   data_.clear();

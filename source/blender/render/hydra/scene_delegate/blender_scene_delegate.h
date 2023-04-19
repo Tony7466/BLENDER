@@ -32,9 +32,6 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
                        BlenderSceneDelegate::EngineType engine_type);
   ~BlenderSceneDelegate() override = default;
 
-  void populate(Depsgraph *depsgraph, bContext *context);
-  void clear();
-
   /* Delegate methods */
   pxr::HdMeshTopology GetMeshTopology(pxr::SdfPath const &id) override;
   pxr::GfMatrix4d GetTransform(pxr::SdfPath const &id) override;
@@ -51,6 +48,9 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
                                      pxr::SdfPath const &prototype_id) override;
   pxr::GfMatrix4d GetInstancerTransform(pxr::SdfPath const &instancer_id) override;
 
+  void populate(Depsgraph *depsgraph, bContext *context);
+  void clear();
+
   EngineType engine_type;
 
  private:
@@ -58,13 +58,15 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
   MeshData *mesh_data(pxr::SdfPath const &id);
   LightData *light_data(pxr::SdfPath const &id);
   MaterialData *material_data(pxr::SdfPath const &id);
-  InstancerData *instancer_data(pxr::SdfPath const &id, bool base_prim = false);
-  InstancerData *instancer_data(Object *object);
+  InstancerData *instancer_data(pxr::SdfPath const &id);
 
-  void add_update_object(Object *object);
-  void add_update_instancer(Object *object);
+  void update_objects(Object *object);
+  void update_instancers(Object *object);
   void update_world();
-  void update_collection(bool remove, bool visibility);
+  void check_updates();
+  void add_new_objects();
+  void remove_unused_objects();
+  void update_visibility();
 
   Depsgraph *depsgraph_ = nullptr;
   bContext *context_ = nullptr;
@@ -73,6 +75,7 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
 
   ObjectDataMap objects_;
   MaterialDataMap materials_;
+  InstancerDataMap instancers_;
   std::unique_ptr<WorldData> world_data_;
 };
 
