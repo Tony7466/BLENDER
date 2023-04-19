@@ -138,7 +138,9 @@ class InstancePositionAttributeProvider final : public BuiltinAttributeProvider 
       return {};
     }
     Span<float4x4> transforms = instances->transforms();
-    return {VArray<float3>::ForDerivedSpan<float4x4, get_transform_position>(transforms), domain_};
+    return {VArray<float3>::ForDerivedSpan<float4x4, get_transform_position>(transforms),
+            domain_,
+            nullptr};
   }
 
   GAttributeWriter try_get_for_write(void *owner) const final
