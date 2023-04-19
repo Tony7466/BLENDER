@@ -8,6 +8,9 @@
 
 namespace blender::bke::sim {
 
+class BDataSharing;
+class ModifierSimulationCache;
+
 class SimulationStateItem {
  public:
   virtual ~SimulationStateItem() = default;
@@ -50,6 +53,7 @@ class ModifierSimulationState {
   mutable bool bake_loaded_;
 
  public:
+  ModifierSimulationCache *owner_;
   mutable std::mutex mutex_;
   Map<SimulationZoneID, std::unique_ptr<SimulationZoneState>> zone_states_;
   std::optional<std::string> meta_path_;
@@ -174,6 +178,9 @@ struct StatesAroundFrame {
 class ModifierSimulationCache {
  private:
   Vector<std::unique_ptr<ModifierSimulationStateAtFrame>> states_at_frames_;
+  std::unique_ptr<BDataSharing> bdata_sharing_;
+
+  friend ModifierSimulationState;
 
  public:
   CacheState cache_state_ = CacheState::Valid;
@@ -215,6 +222,7 @@ class ModifierSimulationCache {
     }
     states_at_frames_.append(std::make_unique<ModifierSimulationStateAtFrame>());
     states_at_frames_.last()->frame = frame;
+    states_at_frames_.last()->state.owner_ = this;
     return states_at_frames_.last()->state;
   }
 

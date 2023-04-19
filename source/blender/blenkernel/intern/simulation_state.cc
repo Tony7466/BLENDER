@@ -46,8 +46,11 @@ void ModifierSimulationCache::try_discover_bake(const StringRefNull meta_dir,
     new_state_at_frame->frame = frame;
     new_state_at_frame->state.bdata_dir_ = bdata_dir;
     new_state_at_frame->state.meta_path_ = dir_entry.path;
+    new_state_at_frame->state.owner_ = this;
     states_at_frames_.append(std::move(new_state_at_frame));
   }
+
+  bdata_sharing_ = std::make_unique<BDataSharing>();
 
   cache_state_ = CacheState::Baked;
 }
@@ -73,9 +76,10 @@ void ModifierSimulationState::ensure_bake_loaded() const
   }
 
   const DiskBDataReader bdata_reader{*bdata_dir_};
-  const BDataSharing bdata_sharing;
-  deserialize_modifier_simulation_state(
-      *io_root, bdata_reader, bdata_sharing, const_cast<ModifierSimulationState &>(*this));
+  deserialize_modifier_simulation_state(*io_root,
+                                        bdata_reader,
+                                        *owner_->bdata_sharing_,
+                                        const_cast<ModifierSimulationState &>(*this));
   bake_loaded_ = true;
 }
 
