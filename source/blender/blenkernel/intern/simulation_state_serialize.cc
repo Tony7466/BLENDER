@@ -290,7 +290,8 @@ template<typename T>
 
 static void load_attributes(const io::serialize::ArrayValue &io_attributes,
                             bke::MutableAttributeAccessor &attributes,
-                            const BDataReader &bdata_reader)
+                            const BDataReader &bdata_reader,
+                            const BDataSharing &bdata_sharing)
 {
   for (const auto &io_attribute_value : io_attributes.elements()) {
     const auto *io_attribute = io_attribute_value->as_dictionary_value();
@@ -314,6 +315,7 @@ static void load_attributes(const io::serialize::ArrayValue &io_attributes,
       continue;
     }
     const CPPType &cpp_type = attribute.span.type();
+
     if (!read_bdata_simple_gspan(bdata_reader, *io_data, attribute.span)) {
       cpp_type.value_initialize_n(attribute.span.data(), attribute.span.size());
     }
@@ -323,7 +325,8 @@ static void load_attributes(const io::serialize::ArrayValue &io_attributes,
 }
 
 static PointCloud *try_load_pointcloud(const io::serialize::DictionaryValue &io_geometry,
-                                       const BDataReader &bdata_reader)
+                                       const BDataReader &bdata_reader,
+                                       const BDataSharing &bdata_sharing)
 {
   const io::serialize::DictionaryValue *io_pointcloud = io_geometry.lookup_dict("pointcloud");
   if (!io_pointcloud) {
@@ -336,12 +339,13 @@ static PointCloud *try_load_pointcloud(const io::serialize::DictionaryValue &io_
   }
   PointCloud *pointcloud = BKE_pointcloud_new_nomain(num_points);
   bke::MutableAttributeAccessor attributes = pointcloud->attributes_for_write();
-  load_attributes(*io_attributes, attributes, bdata_reader);
+  load_attributes(*io_attributes, attributes, bdata_reader, bdata_sharing);
   return pointcloud;
 }
 
 static Curves *try_load_curves(const io::serialize::DictionaryValue &io_geometry,
-                               const BDataReader &bdata_reader)
+                               const BDataReader &bdata_reader,
+                               const BDataSharing &bdata_sharing)
 {
   const io::serialize::DictionaryValue *io_curves = io_geometry.lookup_dict("curves");
   if (!io_curves) {
@@ -374,13 +378,14 @@ static Curves *try_load_curves(const io::serialize::DictionaryValue &io_geometry
   }
 
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-  load_attributes(*io_attributes, attributes, bdata_reader);
+  load_attributes(*io_attributes, attributes, bdata_reader, bdata_sharing);
 
   return curves_id;
 }
 
 static Mesh *try_load_mesh(const io::serialize::DictionaryValue &io_geometry,
-                           const BDataReader &bdata_reader)
+                           const BDataReader &bdata_reader,
+                           const BDataSharing &bdata_sharing)
 {
   const io::serialize::DictionaryValue *io_mesh = io_geometry.lookup_dict("mesh");
   if (!io_mesh) {
@@ -414,16 +419,18 @@ static Mesh *try_load_mesh(const io::serialize::DictionaryValue &io_geometry,
   }
 
   bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
-  load_attributes(*io_attributes, attributes, bdata_reader);
+  load_attributes(*io_attributes, attributes, bdata_reader, bdata_sharing);
 
   return mesh;
 }
 
 static GeometrySet load_geometry(const io::serialize::DictionaryValue &io_geometry,
-                                 const BDataReader &bdata_reader);
+                                 const BDataReader &bdata_reader,
+                                 const BDataSharing &bdata_sharing);
 
 static bke::Instances *try_load_instances(const io::serialize::DictionaryValue &io_geometry,
-                                          const BDataReader &bdata_reader)
+                                          const BDataReader &bdata_reader,
+                                          const BDataSharing &bdata_sharing)
 {
   const io::serialize::DictionaryValue *io_instances = io_geometry.lookup_dict("instances");
   if (!io_instances) {
@@ -454,7 +461,7 @@ static bke::Instances *try_load_instances(const io::serialize::DictionaryValue &
     const io::serialize::DictionaryValue *io_reference = io_reference_value->as_dictionary_value();
     GeometrySet reference_geometry;
     if (io_reference) {
-      reference_geometry = load_geometry(*io_reference, bdata_reader);
+      reference_geometry = load_geometry(*io_reference, bdata_reader, bdata_sharing);
     }
     instances->add_reference(std::move(reference_geometry));
   }
@@ -476,25 +483,26 @@ static bke::Instances *try_load_instances(const io::serialize::DictionaryValue &
   }
 
   bke::MutableAttributeAccessor attributes = instances->attributes_for_write();
-  load_attributes(*io_attributes, attributes, bdata_reader);
+  load_attributes(*io_attributes, attributes, bdata_reader, bdata_sharing);
 
   return instances;
 }
 
 static GeometrySet load_geometry(const io::serialize::DictionaryValue &io_geometry,
-                                 const BDataReader &bdata_reader)
+                                 const BDataReader &bdata_reader,
+                                 const BDataSharing &bdata_sharing)
 {
   GeometrySet geometry;
-  if (Mesh *mesh = try_load_mesh(io_geometry, bdata_reader)) {
+  if (Mesh *mesh = try_load_mesh(io_geometry, bdata_reader, bdata_sharing)) {
     geometry.replace_mesh(mesh);
   }
-  if (PointCloud *pointcloud = try_load_pointcloud(io_geometry, bdata_reader)) {
+  if (PointCloud *pointcloud = try_load_pointcloud(io_geometry, bdata_reader, bdata_sharing)) {
     geometry.replace_pointcloud(pointcloud);
   }
-  if (Curves *curves = try_load_curves(io_geometry, bdata_reader)) {
+  if (Curves *curves = try_load_curves(io_geometry, bdata_reader, bdata_sharing)) {
     geometry.replace_curves(curves);
   }
-  if (bke::Instances *instances = try_load_instances(io_geometry, bdata_reader)) {
+  if (bke::Instances *instances = try_load_instances(io_geometry, bdata_reader, bdata_sharing)) {
     geometry.replace_instances(instances);
   }
   return geometry;
@@ -685,6 +693,7 @@ void serialize_modifier_simulation_state(const ModifierSimulationState &state,
 
 void deserialize_modifier_simulation_state(const io::serialize::DictionaryValue &io_root,
                                            const BDataReader &bdata_reader,
+                                           const BDataSharing &bdata_sharing,
                                            ModifierSimulationState &r_state)
 {
   io::serialize::JsonFormatter formatter;
@@ -736,7 +745,7 @@ void deserialize_modifier_simulation_state(const io::serialize::DictionaryValue 
         if (!io_geometry) {
           continue;
         }
-        GeometrySet geometry = load_geometry(*io_geometry, bdata_reader);
+        GeometrySet geometry = load_geometry(*io_geometry, bdata_reader, bdata_sharing);
         auto state_item = std::make_unique<bke::sim::GeometrySimulationStateItem>(
             std::move(geometry));
         zone_state->items.append(std::move(state_item));
@@ -819,8 +828,9 @@ DictionaryValuePtr BDataSharing::write_shared(const ImplicitSharingInfo *sharing
       });
 }
 
-BDataSharing::SharingInfoWithData BDataSharing::read_shared(
-    const DictionaryValue &io_data, FunctionRef<SharingInfoWithData()> read_fn)
+std::optional<BDataSharing::SharingInfoWithData> BDataSharing::read_shared(
+    const DictionaryValue &io_data,
+    FunctionRef<std::optional<SharingInfoWithData>()> read_fn) const
 {
   io::serialize::JsonFormatter formatter;
   std::stringstream ss;
@@ -831,10 +841,13 @@ BDataSharing::SharingInfoWithData BDataSharing::read_shared(
     shared_data->sharing_info->add_user();
     return *shared_data;
   }
-  SharingInfoWithData data = read_fn();
-  if (data.sharing_info != nullptr) {
-    data.sharing_info->add_user();
-    runtime_by_stored_.add_new(key, data);
+  std::optional<SharingInfoWithData> data = read_fn();
+  if (!data) {
+    return std::nullopt;
+  }
+  if (data->sharing_info != nullptr) {
+    data->sharing_info->add_user();
+    runtime_by_stored_.add_new(key, *data);
   }
   return data;
 }

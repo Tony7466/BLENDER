@@ -73,8 +73,9 @@ void ModifierSimulationState::ensure_bake_loaded() const
   }
 
   const DiskBDataReader bdata_reader{*bdata_dir_};
+  const BDataSharing bdata_sharing;
   deserialize_modifier_simulation_state(
-      *io_root, bdata_reader, const_cast<ModifierSimulationState &>(*this));
+      *io_root, bdata_reader, bdata_sharing, const_cast<ModifierSimulationState &>(*this));
   bake_loaded_ = true;
 }
 

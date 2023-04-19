@@ -48,16 +48,18 @@ class BDataSharing {
 
   /** The #ImplicitSharingInfo pointer is a weak user. */
   Map<const ImplicitSharingInfo *, StoredByRuntimeValue> stored_by_runtime_;
-  Map<std::string, SharingInfoWithData> runtime_by_stored_;
+  /* TODO: Protect by mutex. */
+  mutable Map<std::string, SharingInfoWithData> runtime_by_stored_;
 
  public:
   ~BDataSharing();
 
-  DictionaryValuePtr write_shared(const ImplicitSharingInfo *sharing_info,
-                                  FunctionRef<DictionaryValuePtr()> write_fn);
+  [[nodiscard]] DictionaryValuePtr write_shared(const ImplicitSharingInfo *sharing_info,
+                                                FunctionRef<DictionaryValuePtr()> write_fn);
 
-  SharingInfoWithData read_shared(const DictionaryValue &io_data,
-                                  FunctionRef<SharingInfoWithData()> read_fn);
+  [[nodiscard]] std::optional<SharingInfoWithData> read_shared(
+      const DictionaryValue &io_data,
+      FunctionRef<std::optional<SharingInfoWithData>()> read_fn) const;
 };
 
 class DiskBDataReader : public BDataReader {
@@ -91,6 +93,7 @@ void serialize_modifier_simulation_state(const ModifierSimulationState &state,
                                          DictionaryValue &r_io_root);
 void deserialize_modifier_simulation_state(const DictionaryValue &io_root,
                                            const BDataReader &bdata_reader,
+                                           const BDataSharing &bdata_sharing,
                                            ModifierSimulationState &r_state);
 
 }  // namespace blender::bke::sim
