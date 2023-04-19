@@ -75,3 +75,8 @@ elseif(HIP_HIPCC_EXECUTABLE)
 else()
   set(HIP_FOUND FALSE)
 endif()
+
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(HIP
+    REQUIRED_VARS HIP_HIPCC_EXECUTABLE
+    VERSION_VAR HIP_VERSION)
