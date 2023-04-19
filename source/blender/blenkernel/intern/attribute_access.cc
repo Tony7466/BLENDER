@@ -336,10 +336,11 @@ GAttributeReader BuiltinCustomDataLayerProvider::try_get_for_read(const void *ow
   }
 
   /* When the number of elements is zero, layers might have null data but still exist. */
+  const CPPType &type = *custom_data_type_to_cpp_type(data_type_);
   const int element_num = custom_data_access_.get_element_num(owner);
   if (element_num == 0) {
     if (this->layer_exists(*custom_data)) {
-      return {as_read_attribute_(nullptr, 0), domain_};
+      return {GVArray::ForSpan({type, nullptr, 0}), domain_};
     }
     return {};
   }
@@ -359,7 +360,7 @@ GAttributeReader BuiltinCustomDataLayerProvider::try_get_for_read(const void *ow
   if (data == nullptr) {
     return {};
   }
-  return {as_read_attribute_(data, element_num), domain_, layer.sharing_info};
+  return {GVArray::ForSpan({type, data, element_num}), domain_, layer.sharing_info};
 }
 
 GAttributeWriter BuiltinCustomDataLayerProvider::try_get_for_write(void *owner) const
@@ -375,10 +376,11 @@ GAttributeWriter BuiltinCustomDataLayerProvider::try_get_for_write(void *owner) 
   }
 
   /* When the number of elements is zero, layers might have null data but still exist. */
+  const CPPType &type = *custom_data_type_to_cpp_type(data_type_);
   const int element_num = custom_data_access_.get_element_num(owner);
   if (element_num == 0) {
     if (this->layer_exists(*custom_data)) {
-      return {as_write_attribute_(nullptr, 0), domain_, std::move(tag_modified_fn)};
+      return {GVMutableArray::ForSpan({type, nullptr, 0}), domain_, std::move(tag_modified_fn)};
     }
     return {};
   }
@@ -394,7 +396,7 @@ GAttributeWriter BuiltinCustomDataLayerProvider::try_get_for_write(void *owner) 
   if (data == nullptr) {
     return {};
   }
-  return {as_write_attribute_(data, element_num), domain_, std::move(tag_modified_fn)};
+  return {GVMutableArray::ForSpan({type, data, element_num}), domain_, std::move(tag_modified_fn)};
 }
 
 bool BuiltinCustomDataLayerProvider::try_delete(void *owner) const
@@ -950,6 +952,6 @@ Vector<AttributeTransferData> retrieve_attributes_for_transfer(
   return attributes;
 }
 
-}  // namespace blender::bke
-
 /** \} */
+
+}  // namespace blender::bke
