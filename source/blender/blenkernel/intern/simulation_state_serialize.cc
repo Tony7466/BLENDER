@@ -216,20 +216,6 @@ static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_raw_bytes(
   return bdata_reader.read(*slice, r_data);
 }
 
-static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_int_array(
-    BDataWriter &bdata_writer, const Span<int> data)
-{
-  return write_bdata_raw_data_with_endian(bdata_writer, data.data(), data.size_in_bytes());
-}
-
-[[nodiscard]] static bool read_bdata_int_array(const BDataReader &bdata_reader,
-                                               const io::serialize::DictionaryValue &io_data,
-                                               MutableSpan<int> r_data)
-{
-  return read_bdata_raw_data_with_endian(
-      bdata_reader, io_data, sizeof(int), r_data.size(), r_data.data());
-}
-
 static std::shared_ptr<io::serialize::DictionaryValue> write_bdata_simple_gspan(
     BDataWriter &bdata_writer, const GSpan data)
 {
@@ -395,7 +381,7 @@ static Curves *try_load_curves(const io::serialize::DictionaryValue &io_geometry
     if (!io_curve_offsets) {
       return cancel();
     }
-    if (!read_bdata_int_array(bdata_reader, *io_curve_offsets, curves.offsets_for_write())) {
+    if (!read_bdata_simple_span(bdata_reader, *io_curve_offsets, curves.offsets_for_write())) {
       return cancel();
     }
   }
@@ -436,7 +422,7 @@ static Mesh *try_load_mesh(const io::serialize::DictionaryValue &io_geometry,
     if (!io_poly_offsets) {
       return cancel();
     }
-    if (!read_bdata_int_array(bdata_reader, *io_poly_offsets, mesh->poly_offsets_for_write())) {
+    if (!read_bdata_simple_span(bdata_reader, *io_poly_offsets, mesh->poly_offsets_for_write())) {
       return cancel();
     }
   }
@@ -600,7 +586,7 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
     if (mesh.totpoly > 0) {
       io_mesh->append("poly_offsets",
                       bdata_sharing.write_shared(mesh.runtime->poly_offsets_sharing_info, [&]() {
-                        return write_bdata_int_array(bdata_writer, mesh.poly_offsets());
+                        return write_bdata_simple_span(bdata_writer, mesh.poly_offsets());
                       }));
     }
 
@@ -636,7 +622,7 @@ static std::shared_ptr<io::serialize::DictionaryValue> serialize_geometry_set(
       io_curves->append(
           "curve_offsets",
           bdata_sharing.write_shared(curves.runtime->curve_offsets_sharing_info, [&]() {
-            return write_bdata_int_array(bdata_writer, curves.offsets());
+            return write_bdata_simple_span(bdata_writer, curves.offsets());
           }));
     }
 
