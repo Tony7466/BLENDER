@@ -5,6 +5,7 @@
 #include "BKE_geometry_set.hh"
 
 #include "BLI_map.hh"
+#include "BLI_sub_frame.hh"
 
 namespace blender::bke::sim {
 
@@ -76,86 +77,6 @@ class ModifierSimulationState {
   }
 
   void ensure_bake_loaded() const;
-};
-
-struct SubFrame {
- private:
-  int frame_;
-  float subframe_;
-
- public:
-  SubFrame(const int frame = 0, float subframe = 0.0f) : frame_(frame), subframe_(subframe)
-  {
-    BLI_assert(subframe >= 0.0f);
-    BLI_assert(subframe < 1.0f);
-  }
-
-  SubFrame(const float frame) : SubFrame(int(floorf(frame)), fractf(frame)) {}
-
-  int frame() const
-  {
-    return frame_;
-  }
-
-  float subframe() const
-  {
-    return subframe_;
-  }
-
-  explicit operator float() const
-  {
-    return float(frame_) + float(subframe_);
-  }
-
-  explicit operator double() const
-  {
-    return double(frame_) + double(subframe_);
-  }
-
-  static SubFrame min()
-  {
-    return {INT32_MIN, 0.0f};
-  }
-
-  static SubFrame max()
-  {
-    return {INT32_MAX, std::nexttowardf(1.0f, 0.0)};
-  }
-
-  friend bool operator==(const SubFrame &a, const SubFrame &b)
-  {
-    return a.frame_ == b.frame_ && a.subframe_ == b.subframe_;
-  }
-
-  friend bool operator!=(const SubFrame &a, const SubFrame &b)
-  {
-    return !(a == b);
-  }
-
-  friend bool operator<(const SubFrame &a, const SubFrame &b)
-  {
-    return a.frame_ < b.frame_ || (a.frame_ == b.frame_ && a.subframe_ < b.subframe_);
-  }
-
-  friend bool operator<=(const SubFrame &a, const SubFrame &b)
-  {
-    return a.frame_ <= b.frame_ || (a.frame_ == b.frame_ && a.subframe_ <= b.subframe_);
-  }
-
-  friend bool operator>(const SubFrame &a, const SubFrame &b)
-  {
-    return a.frame_ > b.frame_ || (a.frame_ == b.frame_ && a.subframe_ > b.subframe_);
-  }
-
-  friend bool operator>=(const SubFrame &a, const SubFrame &b)
-  {
-    return a.frame_ >= b.frame_ || (a.frame_ == b.frame_ && a.subframe_ >= b.subframe_);
-  }
-
-  friend std::ostream &operator<<(std::ostream &stream, const SubFrame &a)
-  {
-    return stream << float(a);
-  }
 };
 
 struct ModifierSimulationStateAtFrame {

@@ -97,7 +97,6 @@
 
 namespace lf = blender::fn::lazy_function;
 namespace geo_log = blender::nodes::geo_eval_log;
-using blender::bke::sim::SubFrame;
 
 namespace blender {
 
