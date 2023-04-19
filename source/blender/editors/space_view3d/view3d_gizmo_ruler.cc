@@ -125,7 +125,7 @@ enum {
 
 struct RulerItem;
 
-typedef struct RulerInfo {
+struct RulerInfo {
   struct RulerItem *item_active;
   int flag;
   int snap_flag;
@@ -153,13 +153,12 @@ typedef struct RulerInfo {
     wmGizmo *gizmo;
     PropertyRNA *prop_prevpoint;
   } snap_data;
-
-} RulerInfo;
+};
 
 /* -------------------------------------------------------------------- */
 /* Ruler Item (two or three points) */
 
-typedef struct RulerItem {
+struct RulerItem {
   wmGizmo gz;
 
   /** World-space coords, middle being optional. */
@@ -167,13 +166,13 @@ typedef struct RulerItem {
 
   int flag;
   int raycast_dir; /* RULER_DIRECTION_* */
-} RulerItem;
+};
 
-typedef struct RulerInteraction {
+struct RulerInteraction {
   /* selected coord */
   char co_index; /* 0 -> 2 */
   float3 drag_start_co;
-} RulerInteraction;
+};
 
 /* -------------------------------------------------------------------- */
 /** \name Internal Ruler Utilities
@@ -360,7 +359,7 @@ static bool view3d_ruler_item_mousemove(const bContext *C,
       Scene *scene = DEG_get_input_scene(depsgraph);
       View3D *v3d = static_cast<View3D *>(ruler_info->area->spacedata.first);
       SnapObjectContext *snap_context = ED_gizmotypes_snap_3d_context_ensure(scene, snap_gizmo);
-      const float2 mval_fl = {(float)mval[0], (float)mval[1]};
+      const float2 mval_fl = {float(mval[0]), float(mval[1])};
       float3 ray_normal;
       float3 ray_start;
       float3 &co_other = ruler_item->co[inter->co_index == 0 ? 2 : 0];
@@ -659,7 +658,7 @@ static void gizmo_ruler_draw(const bContext *C, wmGizmo *gz)
   UI_GetThemeColor3ubv(TH_WIRE, color_wire);
 
   /* Avoid white on white text. (TODO: Fix by using theme). */
-  if ((int)color_text[0] + (int)color_text[1] + (int)color_text[2] > 127 * 3 * 0.6f) {
+  if (int(color_text[0]) + int(color_text[1]) + int(color_text[2]) > 127 * 3 * 0.6f) {
     copy_v3_fl(color_back, 0.0f);
   }
 
@@ -967,7 +966,7 @@ static void gizmo_ruler_draw(const bContext *C, wmGizmo *gz)
 static int gizmo_ruler_test_select(bContext *, wmGizmo *gz, const int mval[2])
 {
   RulerItem *ruler_item_pick = (RulerItem *)gz;
-  const float mval_fl[2] = {(float)mval[0], (float)mval[1]};
+  const float mval_fl[2] = {float(mval[0]), float(mval[1])};
   int co_index;
 
   /* select and drag */
