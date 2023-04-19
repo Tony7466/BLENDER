@@ -269,6 +269,35 @@ static std::shared_ptr<DictionaryValue> write_bdata_shared_simple_gspan(
       sharing_info, [&]() { return write_bdata_simple_gspan(bdata_writer, data); });
 }
 
+[[nodiscard]] static bool read_bdata_shared_simple_gspan(
+    const DictionaryValue &io_data,
+    const BDataReader &bdata_reader,
+    const BDataSharing &bdata_sharing,
+    const CPPType &cpp_type,
+    const int size,
+    const void **r_data,
+    const ImplicitSharingInfo **r_sharing_info)
+{
+  const std::optional<ImplicitSharingInfoAndData> sharing_info_and_data =
+      bdata_sharing.read_shared(io_data, [&]() -> std::optional<ImplicitSharingInfoAndData> {
+        void *data_mem = MEM_mallocN_aligned(
+            size * cpp_type.size(), cpp_type.alignment(), __func__);
+        if (!read_bdata_simple_gspan(bdata_reader, io_data, {cpp_type, data_mem, size})) {
+          MEM_freeN(data_mem);
+          return std::nullopt;
+        }
+        return ImplicitSharingInfoAndData{implicit_sharing::info_for_mem_free(data_mem), data_mem};
+      });
+  if (!sharing_info_and_data) {
+    *r_data = nullptr;
+    *r_sharing_info = nullptr;
+    return false;
+  }
+  *r_data = sharing_info_and_data->data;
+  *r_sharing_info = sharing_info_and_data->sharing_info;
+  return true;
+}
+
 static void load_attributes(const io::serialize::ArrayValue &io_attributes,
                             bke::MutableAttributeAccessor &attributes,
                             const BDataReader &bdata_reader,
@@ -294,21 +323,18 @@ static void load_attributes(const io::serialize::ArrayValue &io_attributes,
       continue;
     }
     const int domain_size = attributes.domain_size(domain);
-    const std::optional<ImplicitSharingInfoAndData> attribute_data = bdata_sharing.read_shared(
-        *io_data, [&]() {
-          void *data_mem = MEM_mallocN_aligned(
-              domain_size * cpp_type->size(), cpp_type->alignment(), __func__);
-          if (!read_bdata_simple_gspan(
-                  bdata_reader, *io_data, {*cpp_type, data_mem, domain_size})) {
-            cpp_type->value_initialize_n(data_mem, domain_size);
-          }
-          return ImplicitSharingInfoAndData{implicit_sharing::info_for_mem_free(data_mem),
-                                            data_mem};
-        });
-    if (!attribute_data) {
+    const void *attribute_data;
+    const ImplicitSharingInfo *attribute_sharing_info;
+    if (!read_bdata_shared_simple_gspan(*io_data,
+                                        bdata_reader,
+                                        bdata_sharing,
+                                        *cpp_type,
+                                        domain_size,
+                                        &attribute_data,
+                                        &attribute_sharing_info)) {
       continue;
     }
-    BLI_SCOPED_DEFER([&]() { attribute_data->sharing_info->remove_user_and_delete_if_last(); });
+    BLI_SCOPED_DEFER([&]() { attribute_sharing_info->remove_user_and_delete_if_last(); });
 
     if (attributes.contains(*name)) {
       bke::GSpanAttributeWriter attribute = attributes.lookup_or_add_for_write_only_span(
@@ -316,14 +342,12 @@ static void load_attributes(const io::serialize::ArrayValue &io_attributes,
       if (!attribute) {
         continue;
       }
-      cpp_type->copy_assign_n(attribute_data->data, attribute.span.data(), domain_size);
+      cpp_type->copy_assign_n(attribute_data, attribute.span.data(), domain_size);
       attribute.finish();
     }
     else {
-      attributes.add(*name,
-                     domain,
-                     data_type,
-                     AttributeInitShared(attribute_data->data, *attribute_data->sharing_info));
+      attributes.add(
+          *name, domain, data_type, AttributeInitShared(attribute_data, *attribute_sharing_info));
     }
   }
 }
