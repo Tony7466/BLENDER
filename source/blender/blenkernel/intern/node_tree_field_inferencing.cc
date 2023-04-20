@@ -156,18 +156,6 @@ struct SocketFieldState {
    * supports this socket to be a single value, or because a node afterwards requires this to be a
    * single value. */
   bool requires_single = false;
-
-  bool operator==(const SocketFieldState &other)
-  {
-    return this->is_field_source == other.is_field_source &&
-           this->is_always_single == other.is_always_single &&
-           this->is_single == other.is_single && this->requires_single == other.requires_single;
-  }
-
-  bool operator!=(const SocketFieldState &other)
-  {
-    return !(*this == other);
-  }
 };
 
 static Vector<const bNodeSocket *> gather_input_socket_dependencies(
