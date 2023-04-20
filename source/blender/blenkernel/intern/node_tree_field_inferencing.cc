@@ -156,6 +156,18 @@ struct SocketFieldState {
    * supports this socket to be a single value, or because a node afterwards requires this to be a
    * single value. */
   bool requires_single = false;
+
+  bool operator==(const SocketFieldState &other)
+  {
+    return this->is_field_source == other.is_field_source &&
+           this->is_always_single == other.is_always_single &&
+           this->is_single == other.is_single && this->requires_single == other.requires_single;
+  }
+
+  bool operator!=(const SocketFieldState &other)
+  {
+    return !(*this == other);
+  }
 };
 
 static Vector<const bNodeSocket *> gather_input_socket_dependencies(
@@ -271,57 +283,19 @@ enum eFieldStateSyncResult {
  */
 static int sync_field_states(SocketFieldState &a, SocketFieldState &b)
 {
+  const bool requires_single = a.requires_single || b.requires_single;
+
   int res = 0;
-  if (a.is_field_source != b.is_field_source) {
-    if (a.is_field_source) {
-      b.is_field_source = true;
-      res |= eFieldStateSyncResult::CHANGED_B;
-    }
-    else {
-      a.is_field_source = true;
-      res |= eFieldStateSyncResult::CHANGED_A;
-    }
+  if (a.requires_single != requires_single) {
+    res |= eFieldStateSyncResult::CHANGED_A;
   }
-  if (a.requires_single != b.requires_single) {
-    if (a.requires_single) {
-      b.requires_single = true;
-      res |= eFieldStateSyncResult::CHANGED_B;
-    }
-    else {
-      a.requires_single = true;
-      res |= eFieldStateSyncResult::CHANGED_A;
-    }
+  if (b.requires_single != requires_single) {
+    res |= eFieldStateSyncResult::CHANGED_B;
   }
-  if (a.is_always_single != b.is_always_single) {
-    if (a.is_always_single) {
-      b.is_always_single = true;
-      b.is_single = true;
-      res |= eFieldStateSyncResult::CHANGED_B;
-    }
-    else {
-      a.is_always_single = true;
-      a.is_single = true;
-      res |= eFieldStateSyncResult::CHANGED_A;
-    }
-  }
-  else if (!a.is_always_single) {
-    /* Can be single value without always being one.
-     * Field (non-single) is preferred in this case. */
-    if (a.is_single != b.is_single) {
-      if (!a.is_single) {
-        b.is_single = false;
-        res |= eFieldStateSyncResult::CHANGED_B;
-      }
-      else {
-        a.is_single = false;
-        res |= eFieldStateSyncResult::CHANGED_A;
-      }
-    }
-  }
-  else {
-    BLI_assert(a.is_single);
-    BLI_assert(b.is_single);
-  }
+
+  a.requires_single = requires_single;
+  b.requires_single = requires_single;
+
   return res;
 }
 
