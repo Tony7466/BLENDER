@@ -1178,12 +1178,12 @@ void GRAPH_OT_blend_to_ease(wmOperatorType *ot)
 
   RNA_def_float_factor(ot->srna,
                        "factor",
-                       0.5f,
+                       0.0f,
                        -FLT_MAX,
                        FLT_MAX,
                        "Curve Bend",
                        "Control the bend of the curve",
-                       0.0f,
+                       -1.0f,
                        1.0f);
 }
 
