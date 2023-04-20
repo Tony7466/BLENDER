@@ -143,16 +143,29 @@ const CPPType &get_simulation_item_cpp_type(const NodeSimulationItem &item)
 }
 
 template<typename T>
-static std::unique_ptr<bke::sim::TypedSimulationStateItem<T>> make_typed_simulation_state_item(
+static std::unique_ptr<bke::sim::SimulationStateItem> make_data_simulation_state_item(
     lf::Params &params, const int index)
 {
-  using bke::sim::TypedSimulationStateItem;
+  using bke::sim::DataSimulationStateItem;
 
   if (const T *data = params.try_get_input_data_ptr_or_request<T>(index)) {
-    return std::make_unique<TypedSimulationStateItem<T>>(*data);
+    return std::make_unique<DataSimulationStateItem<T>>(*data);
   }
 
-  return std::make_unique<TypedSimulationStateItem<T>>();
+  return nullptr;
+}
+
+static std::unique_ptr<bke::sim::SimulationStateItem> make_geometry_simulation_state_item(
+    lf::Params &params, const int index)
+{
+  using bke::sim::GeometrySimulationStateItem;
+
+  if (GeometrySet *data = params.try_get_input_data_ptr_or_request<GeometrySet>(index)) {
+    data->ensure_owns_direct_data();
+    return std::make_unique<GeometrySimulationStateItem>(*data);
+  }
+
+  return nullptr;
 }
 
 static std::unique_ptr<bke::sim::SimulationStateItem> make_simulation_state_item(
@@ -160,32 +173,22 @@ static std::unique_ptr<bke::sim::SimulationStateItem> make_simulation_state_item
 {
   switch (socket_type) {
     case SOCK_FLOAT:
-      return make_typed_simulation_state_item<ValueOrField<float>>(params, index);
+      return make_data_simulation_state_item<ValueOrField<float>>(params, index);
     case SOCK_VECTOR:
-      return make_typed_simulation_state_item<ValueOrField<float3>>(params, index);
+      return make_data_simulation_state_item<ValueOrField<float3>>(params, index);
     case SOCK_RGBA:
-      return make_typed_simulation_state_item<ValueOrField<ColorGeometry4f>>(params, index);
+      return make_data_simulation_state_item<ValueOrField<ColorGeometry4f>>(params, index);
     case SOCK_BOOLEAN:
-      return make_typed_simulation_state_item<ValueOrField<bool>>(params, index);
+      return make_data_simulation_state_item<ValueOrField<bool>>(params, index);
     case SOCK_INT:
-      return make_typed_simulation_state_item<ValueOrField<int>>(params, index);
+      return make_data_simulation_state_item<ValueOrField<int>>(params, index);
     case SOCK_STRING:
-      return make_typed_simulation_state_item<ValueOrField<std::string>>(params, index);
-    case SOCK_OBJECT:
-      return make_typed_simulation_state_item<Object *>(params, index);
+      return make_data_simulation_state_item<ValueOrField<std::string>>(params, index);
     case SOCK_GEOMETRY:
-      return make_typed_simulation_state_item<GeometrySet>(params, index);
-    case SOCK_COLLECTION:
-      return make_typed_simulation_state_item<Collection *>(params, index);
-    case SOCK_TEXTURE:
-      return make_typed_simulation_state_item<Tex *>(params, index);
-    case SOCK_IMAGE:
-      return make_typed_simulation_state_item<Image *>(params, index);
-    case SOCK_MATERIAL:
-      return make_typed_simulation_state_item<Material *>(params, index);
+      return make_geometry_simulation_state_item(params, index);
     default:
       BLI_assert_unreachable();
-      return make_typed_simulation_state_item<GeometrySet>(params, index);
+      return nullptr;
   }
 }
 

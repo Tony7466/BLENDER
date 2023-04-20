@@ -8,12 +8,12 @@
 
 namespace blender::bke::sim {
 
-class SimulationStateItem {
+class SimulationStateItem : public NonCopyable, public NonMovable {
  public:
   virtual ~SimulationStateItem() = default;
 };
 
-template<typename T> class TypedSimulationStateItem : public SimulationStateItem {
+template<typename T> class DataSimulationStateItem : public SimulationStateItem {
  public:
   using DataType = T;
 
@@ -21,71 +21,32 @@ template<typename T> class TypedSimulationStateItem : public SimulationStateItem
   T data_;
 
  public:
-  TypedSimulationStateItem() = default;
-  TypedSimulationStateItem(const T &data)
+  DataSimulationStateItem() = default;
+  DataSimulationStateItem(DataType data)
   {
     data_ = std::move(data);
   }
-  TypedSimulationStateItem(T &&data)
-  {
-    data_ = std::move(data);
-  }
-  template<typename U> TypedSimulationStateItem(const U &data)
-  {
-    data_ = data;
-  }
 
-  TypedSimulationStateItem(const TypedSimulationStateItem &) = delete;
-  TypedSimulationStateItem(TypedSimulationStateItem &&) = delete;
-
-  virtual ~TypedSimulationStateItem() {}
-
-  TypedSimulationStateItem &operator=(const TypedSimulationStateItem &) = delete;
-  TypedSimulationStateItem &operator=(TypedSimulationStateItem &&) = delete;
-
-  const T &data() const
+  const DataType &data() const
   {
     return data_;
   }
 };
 
-/** Specialization for GeometrySet which ensures the state owns the geometry data. */
-template<> class TypedSimulationStateItem<GeometrySet> : public SimulationStateItem {
- public:
-  using DataType = GeometrySet;
-
+class GeometrySimulationStateItem : public SimulationStateItem {
  private:
-  GeometrySet data_;
+  GeometrySet geometry_;
 
  public:
-  TypedSimulationStateItem() = default;
-  TypedSimulationStateItem(const GeometrySet &data)
+  GeometrySimulationStateItem() = default;
+  GeometrySimulationStateItem(GeometrySet geometry)
   {
-    data_ = std::move(data);
-    data_.ensure_owns_direct_data();
-  }
-  TypedSimulationStateItem(GeometrySet &&data)
-  {
-    data_ = std::move(data);
-    data_.ensure_owns_direct_data();
-  }
-  template<typename U> TypedSimulationStateItem(const U &data)
-  {
-    data_ = data;
-    data_.ensure_owns_direct_data();
+    geometry_ = std::move(geometry);
   }
 
-  TypedSimulationStateItem(const TypedSimulationStateItem &) = delete;
-  TypedSimulationStateItem(TypedSimulationStateItem &&) = delete;
-
-  virtual ~TypedSimulationStateItem() {}
-
-  TypedSimulationStateItem &operator=(const TypedSimulationStateItem &) = delete;
-  TypedSimulationStateItem &operator=(TypedSimulationStateItem &&) = delete;
-
-  const GeometrySet &data() const
+  const GeometrySet &geometry() const
   {
-    return data_;
+    return geometry_;
   }
 };
 
