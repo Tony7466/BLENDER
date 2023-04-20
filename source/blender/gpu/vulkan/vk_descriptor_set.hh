@@ -118,7 +118,7 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
     VkBuffer vk_buffer = VK_NULL_HANDLE;
     VkDeviceSize buffer_size = 0;
 
-    VkImageView vk_image_view = VK_NULL_HANDLE;
+    VKTexture *texture = nullptr;
     VkSampler vk_sampler = VK_NULL_HANDLE;
 
     Binding()

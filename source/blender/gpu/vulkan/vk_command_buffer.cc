@@ -203,6 +203,10 @@ void VKCommandBuffer::draw(int v_first, int v_count, int i_first, int i_count)
 {
   validate_framebuffer_exists();
   ensure_active_framebuffer();
+  if (state.draw_counts == 113) {
+    printf("BREAK\n");
+  }
+  printf("%s: %ld\n", __func__, state.draw_counts);
   vkCmdDraw(vk_command_buffer_, v_count, i_count, v_first, i_first);
   state.draw_counts++;
 }

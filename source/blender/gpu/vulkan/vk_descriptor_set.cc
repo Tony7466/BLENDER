@@ -81,7 +81,7 @@ void VKDescriptorSetTracker::image_bind(VKTexture &texture,
 {
   Binding &binding = ensure_location(location);
   binding.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-  binding.vk_image_view = texture.vk_image_view_handle();
+  binding.texture = &texture;
 }
 
 void VKDescriptorSetTracker::bind(VKTexture &texture,
@@ -90,7 +90,7 @@ void VKDescriptorSetTracker::bind(VKTexture &texture,
 {
   Binding &binding = ensure_location(location);
   binding.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-  binding.vk_image_view = texture.vk_image_view_handle();
+  binding.texture = &texture;
   binding.vk_sampler = sampler.vk_handle();
 }
 
@@ -145,9 +145,9 @@ void VKDescriptorSetTracker::update(VKContext &context)
     }
     VkDescriptorImageInfo image_info = {};
     image_info.sampler = binding.vk_sampler;
-    image_info.imageView = binding.vk_image_view;
+    image_info.imageView = binding.texture->vk_image_view_handle();
     /* TODO: use the correct one from the texture. */
-    image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+    image_info.imageLayout = binding.texture->current_layout_get();
     image_infos.append(image_info);
 
     VkWriteDescriptorSet write_descriptor = {};

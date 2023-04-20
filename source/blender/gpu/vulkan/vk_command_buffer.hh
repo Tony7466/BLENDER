@@ -119,9 +119,11 @@ class VKCommandBuffer : NonCopyable, NonMovable {
   void stage_transfer(Stage stage_from, Stage stage_to)
   {
     BLI_assert(is_in_stage(stage_from));
+#if 0
     printf(" *** Transfer stage from %s to %s\n",
            to_string(stage_from).c_str(),
            to_string(stage_to).c_str());
+#endif
     stage_set(stage_to);
   }
 

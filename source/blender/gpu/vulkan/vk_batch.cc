@@ -36,6 +36,7 @@ void VKBatch::draw(int v_first, int v_count, int i_first, int i_count)
   }
 
   context.command_buffer_get().draw(v_first, v_count, i_first, i_count);
+  context.command_buffer_get().submit();
 }
 
 void VKBatch::draw_indirect(GPUStorageBuf * /*indirect_buf*/, intptr_t /*offset*/) {}
