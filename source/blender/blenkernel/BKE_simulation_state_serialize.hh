@@ -72,15 +72,15 @@ class BDataSharing {
   };
 
   /**
-   * Map that is used to detect when a some data has been written previously. For that it keeps a
-   * weak reference to the #ImplicitSharingInfo. This allows it to check for equality of two arrays
-   * just by comparing their implicit sharing info and their version.
+   * Map used to detect when some data has already been written. It keeps a weak reference to
+   * #ImplicitSharingInfo, allowing it to check for equality of two arrays just by comparing the
+   * sharing info's pointer and version.
    */
   Map<const ImplicitSharingInfo *, StoredByRuntimeValue> stored_by_runtime_;
 
   mutable std::mutex mutex_;
   /**
-   * Map that is used to detect when some data has been previously loaded. This keeps strong
+   * Map used to detect when some data has been previously loaded. This keeps strong
    * references to #ImplicitSharingInfo.
    */
   mutable Map<std::string, ImplicitSharingInfoAndData> runtime_by_stored_;
