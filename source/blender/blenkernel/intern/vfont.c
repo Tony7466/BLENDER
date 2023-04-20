@@ -1145,7 +1145,6 @@ static bool vfont_to_curve(Object *ob,
       }
     }
     ct++;
-
     i++;
   }
 
