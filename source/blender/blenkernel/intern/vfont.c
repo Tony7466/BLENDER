@@ -1493,9 +1493,9 @@ static bool vfont_to_curve(Object *ob,
     float geom[2][2];
     angle_to_mat2(geom, -ct->rot);
 
-    const float width = 0.05f * font_size / 2.0f;
-    const float top_point = font_size * 0.8f;
-    const float bottom_point = -font_size * 0.2;
+    const float width = 0.05f / 2.0f;
+    const float top_point = 0.8f;
+    const float bottom_point = -0.2;
 
     /* Bottom left corner point. */
     (*points)[0][0] = width;
@@ -1514,8 +1514,10 @@ static bool vfont_to_curve(Object *ob,
     (*points)[3][1] = top_point;
 
     for (int i = 0; i < 4; i++) {
-      mul_m2_v2(geom, (*points)[i]);
-      add_v2_v2((*points)[i], &ct->xof);
+      float(*point)[2] = &(*points)[i];
+      mul_m2_v2(geom, *point);
+      add_v2_v2(*point, &ct->xof);
+      mul_v2_fl(*point, font_size);
     }
   }
 
