@@ -18,7 +18,7 @@
 namespace blender::nodes {
 
 static std::unique_ptr<SocketDeclaration> socket_declaration_for_simulation_item(
-    const NodeSimulationItem &item, eNodeSocketInOut in_out, int index)
+    const NodeSimulationItem &item, const eNodeSocketInOut in_out, const int index)
 {
   std::unique_ptr<SocketDeclaration> decl;
   switch (eNodeSocketDatatype(item.socket_type)) {
@@ -168,7 +168,7 @@ const CPPType &get_simulation_item_cpp_type(const NodeSimulationItem &item)
 
 template<typename T>
 static std::unique_ptr<bke::sim::TypedSimulationStateItem<T>> make_typed_simulation_state_item(
-    lf::Params &params, int index)
+    lf::Params &params, const int index)
 {
   using bke::sim::TypedSimulationStateItem;
 
@@ -180,7 +180,7 @@ static std::unique_ptr<bke::sim::TypedSimulationStateItem<T>> make_typed_simulat
 }
 
 static std::unique_ptr<bke::sim::SimulationStateItem> make_simulation_state_item(
-    lf::Params &params, int index, short socket_type)
+    lf::Params &params, const int index, const eNodeSocketDatatype socket_type)
 {
   switch (socket_type) {
     case SOCK_FLOAT:
@@ -215,7 +215,7 @@ static std::unique_ptr<bke::sim::SimulationStateItem> make_simulation_state_item
 
 template<typename T>
 static void copy_typed_simulation_state_output(lf::Params &params,
-                                               int index,
+                                               const int index,
                                                const bke::sim::SimulationStateItem &state_item)
 {
   using bke::sim::TypedSimulationStateItem;
@@ -227,8 +227,8 @@ static void copy_typed_simulation_state_output(lf::Params &params,
 }
 
 static void copy_simulation_state_output(lf::Params &params,
-                                         int index,
-                                         short socket_type,
+                                         const int index,
+                                         const eNodeSocketDatatype socket_type,
                                          const bke::sim::SimulationStateItem &state_item)
 {
   switch (socket_type) {
@@ -352,7 +352,8 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
         continue;
       }
 
-      new_zone_state.items[i] = make_simulation_state_item(params, i, item.socket_type);
+      new_zone_state.items[i] = make_simulation_state_item(
+          params, i, static_cast<eNodeSocketDatatype>(item.socket_type));
     }
 
     if (all_available) {
@@ -372,7 +373,8 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
       if (state_item == nullptr) {
         continue;
       }
-      copy_simulation_state_output(params, i, item.socket_type, *state_item);
+      copy_simulation_state_output(
+          params, i, static_cast<eNodeSocketDatatype>(item.socket_type), *state_item);
     }
     params.set_default_remaining_outputs();
   }

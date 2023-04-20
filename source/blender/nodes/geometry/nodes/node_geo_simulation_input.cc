@@ -14,7 +14,8 @@
 
 namespace blender::nodes {
 
-template<typename T> static void copy_typed_initial_simulation_state(lf::Params &params, int index)
+template<typename T>
+static void copy_typed_initial_simulation_state(lf::Params &params, const int index)
 {
   T *data = params.try_get_input_data_ptr_or_request<T>(index);
   if (data != nullptr) {
@@ -23,7 +24,9 @@ template<typename T> static void copy_typed_initial_simulation_state(lf::Params 
   }
 }
 
-static void copy_initial_simulation_state(lf::Params &params, int index, short socket_type)
+static void copy_initial_simulation_state(lf::Params &params,
+                                          const int index,
+                                          const eNodeSocketDatatype socket_type)
 {
   switch (socket_type) {
     case SOCK_FLOAT:
@@ -71,18 +74,19 @@ static void copy_initial_simulation_state(lf::Params &params, int index, short s
 
 template<typename T>
 static void copy_typed_next_simulation_state(lf::Params &params,
-                                             int index,
+                                             const int index,
                                              const bke::sim::SimulationStateItem &state_item)
 {
-  if (auto *typed_state_item = dynamic_cast<const bke::sim::TypedSimulationStateItem<T> *>(
+  if (const auto *typed_state_item = dynamic_cast<const bke::sim::TypedSimulationStateItem<T> *>(
           &state_item)) {
+    /* First output parameter is "Delta Time", state item parameters start at index 1. */
     params.set_output(index + 1, typed_state_item->data());
   }
 }
 
 static void copy_next_simulation_state(lf::Params &params,
-                                       int index,
-                                       short socket_type,
+                                       const int index,
+                                       const eNodeSocketDatatype socket_type,
                                        const bke::sim::SimulationStateItem &state_item)
 {
   switch (socket_type) {
@@ -182,7 +186,8 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
         if (params.output_was_set(i + 1)) {
           continue;
         }
-        copy_initial_simulation_state(params, i, simulation_items_[i].socket_type);
+        copy_initial_simulation_state(
+            params, i, static_cast<eNodeSocketDatatype>(simulation_items_[i].socket_type));
       }
     }
     else {
@@ -193,7 +198,11 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
         }
         const bke::sim::SimulationStateItem *state_item = prev_zone_state->items[i].get();
         if (state_item != nullptr) {
-          copy_next_simulation_state(params, i, simulation_items_[i].socket_type, *state_item);
+          copy_next_simulation_state(
+              params,
+              i,
+              static_cast<eNodeSocketDatatype>(simulation_items_[i].socket_type),
+              *state_item);
         }
       }
     }
