@@ -332,32 +332,32 @@ template<typename T>
                                         (const ImplicitSharingInfo **)r_sharing_info);
 }
 
-static void load_attributes(const io::serialize::ArrayValue &io_attributes,
-                            bke::MutableAttributeAccessor &attributes,
-                            const BDataReader &bdata_reader,
-                            const BDataSharing &bdata_sharing)
+[[nodiscard]] static bool load_attributes(const io::serialize::ArrayValue &io_attributes,
+                                          bke::MutableAttributeAccessor &attributes,
+                                          const BDataReader &bdata_reader,
+                                          const BDataSharing &bdata_sharing)
 {
   for (const auto &io_attribute_value : io_attributes.elements()) {
     const auto *io_attribute = io_attribute_value->as_dictionary_value();
     if (!io_attribute) {
-      continue;
+      return false;
     }
     const std::optional<StringRefNull> name = io_attribute->lookup_str("name");
     const std::optional<StringRefNull> domain_str = io_attribute->lookup_str("domain");
     const std::optional<StringRefNull> type_str = io_attribute->lookup_str("type");
     auto io_data = io_attribute->lookup_dict("data");
     if (!name || !domain_str || !type_str || !io_data) {
-      continue;
+      return false;
     }
 
     const std::optional<eAttrDomain> domain = get_domain_from_io_name(*domain_str);
     const std::optional<eCustomDataType> data_type = get_data_type_from_io_name(*type_str);
     if (!domain || !data_type) {
-      continue;
+      return false;
     }
     const CPPType *cpp_type = custom_data_type_to_cpp_type(*data_type);
     if (!cpp_type) {
-      continue;
+      return false;
     }
     const int domain_size = attributes.domain_size(*domain);
     const void *attribute_data;
@@ -369,7 +369,7 @@ static void load_attributes(const io::serialize::ArrayValue &io_attributes,
                                         domain_size,
                                         &attribute_data,
                                         &attribute_sharing_info)) {
-      continue;
+      return false;
     }
     BLI_SCOPED_DEFER([&]() { attribute_sharing_info->remove_user_and_delete_if_last(); });
 
@@ -378,19 +378,22 @@ static void load_attributes(const io::serialize::ArrayValue &io_attributes,
       bke::GSpanAttributeWriter attribute = attributes.lookup_or_add_for_write_only_span(
           *name, *domain, *data_type);
       if (!attribute) {
-        continue;
+        return false;
       }
       cpp_type->copy_assign_n(attribute_data, attribute.span.data(), domain_size);
       attribute.finish();
     }
     else {
       /* Add a new attribute that shares the data. */
-      attributes.add(*name,
-                     *domain,
-                     *data_type,
-                     AttributeInitShared(attribute_data, *attribute_sharing_info));
+      if (!attributes.add(*name,
+                          *domain,
+                          *data_type,
+                          AttributeInitShared(attribute_data, *attribute_sharing_info))) {
+        return false;
+      }
     }
   }
+  return true;
 }
 
 static PointCloud *try_load_pointcloud(const DictionaryValue &io_geometry,
@@ -409,8 +412,15 @@ static PointCloud *try_load_pointcloud(const DictionaryValue &io_geometry,
   CustomData_free_layer_named(&pointcloud->pdata, "position", 0);
   pointcloud->totpoint = io_pointcloud->lookup_int("num_points").value_or(0);
 
+  auto cancel = [&]() {
+    BKE_id_free(nullptr, pointcloud);
+    return nullptr;
+  };
+
   bke::MutableAttributeAccessor attributes = pointcloud->attributes_for_write();
-  load_attributes(*io_attributes, attributes, bdata_reader, bdata_sharing);
+  if (!load_attributes(*io_attributes, attributes, bdata_reader, bdata_sharing)) {
+    return cancel();
+  }
   return pointcloud;
 }
 
@@ -455,7 +465,9 @@ static Curves *try_load_curves(const DictionaryValue &io_geometry,
   }
 
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-  load_attributes(*io_attributes, attributes, bdata_reader, bdata_sharing);
+  if (!load_attributes(*io_attributes, attributes, bdata_reader, bdata_sharing)) {
+    return cancel();
+  }
 
   return curves_id;
 }
@@ -505,7 +517,9 @@ static Mesh *try_load_mesh(const DictionaryValue &io_geometry,
   }
 
   bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
-  load_attributes(*io_attributes, attributes, bdata_reader, bdata_sharing);
+  if (!load_attributes(*io_attributes, attributes, bdata_reader, bdata_sharing)) {
+    return cancel();
+  }
 
   return mesh;
 }
@@ -564,7 +578,9 @@ static std::unique_ptr<bke::Instances> try_load_instances(const DictionaryValue 
   }
 
   bke::MutableAttributeAccessor attributes = instances->attributes_for_write();
-  load_attributes(*io_attributes, attributes, bdata_reader, bdata_sharing);
+  if (!load_attributes(*io_attributes, attributes, bdata_reader, bdata_sharing)) {
+    return {};
+  }
 
   return instances;
 }
@@ -851,6 +867,9 @@ DiskBDataReader::DiskBDataReader(std::string bdata_dir) : bdata_dir_(std::move(b
       [&]() { return std::make_unique<fstream>(bdata_path, std::ios::in | std::ios::binary); });
   bdata_file->seekg(slice.range.start());
   bdata_file->read(static_cast<char *>(r_data), slice.range.size());
+  if (bdata_file->gcount() != slice.range.size()) {
+    return false;
+  }
   return true;
 }
 
