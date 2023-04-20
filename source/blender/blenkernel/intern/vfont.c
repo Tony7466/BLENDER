@@ -790,7 +790,7 @@ static bool vfont_to_curve(Object *ob,
   VChar *che;
   struct CharTrans *chartransdata = NULL, *ct;
   struct TempLineInfo *lineinfo;
-  float *f, xof, yof, xtrax, linedist;
+  float xof, yof, xtrax, linedist;
   float twidth = 0, maxlen = 0;
   int i, slen, j;
   int curbox;
@@ -1485,27 +1485,38 @@ static bool vfont_to_curve(Object *ob,
     }
   }
 
-  /* Cursor first. */
+  /* Rectangle shape of first cursor. */
   if (ef) {
-    float si, co;
-
     ct = &chartransdata[ef->pos];
-    si = sinf(ct->rot);
-    co = cosf(ct->rot);
+    float(*points)[4][2] = &ef->textcurs;
 
-    f = ef->textcurs[0];
+    float geom[2][2];
+    angle_to_mat2(geom, -ct->rot);
 
-    f[0] = font_size * (-0.02f * co + ct->xof);
-    f[1] = font_size * (0.1f * si - (0.25f * co) + ct->yof);
+    const float width = 0.05f * font_size / 2.0f;
+    const float top_point = font_size * 0.8f;
+    const float bottom_point = -font_size * 0.2;
 
-    f[2] = font_size * (0.02f * co + ct->xof);
-    f[3] = font_size * (-0.1f * si - (0.25f * co) + ct->yof);
+    /* Bottom left corner point. */
+    (*points)[0][0] = width;
+    (*points)[0][1] = bottom_point;
 
-    f[4] = font_size * (0.02f * co + 0.8f * si + ct->xof);
-    f[5] = font_size * (-0.1f * si + 0.75f * co + ct->yof);
+    /* Bottom right corner point. */
+    (*points)[1][0] = -width;
+    (*points)[1][1] = bottom_point;
 
-    f[6] = font_size * (-0.02f * co + 0.8f * si + ct->xof);
-    f[7] = font_size * (0.1f * si + 0.75f * co + ct->yof);
+    /* Top right corner point. */
+    (*points)[2][0] = -width;
+    (*points)[2][1] = top_point;
+
+    /* Top left corner point. */
+    (*points)[3][0] = width;
+    (*points)[3][1] = top_point;
+
+    for (int i = 0; i < 4; i++) {
+      mul_m2_v2(geom, (*points)[i]);
+      add_v2_v2((*points)[i], &ct->xof);
+    }
   }
 
   if (mode == FO_SELCHANGE) {
