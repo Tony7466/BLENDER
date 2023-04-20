@@ -35,6 +35,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_object.h"
 #include "BKE_pointcloud.h"
+#include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_simulation_state.hh"
 #include "BKE_simulation_state_serialize.hh"
@@ -290,7 +291,14 @@ static int delete_baked_simulation_exec(bContext *C, wmOperator *op)
       if (md->type == eModifierType_Nodes) {
         NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
         const std::string bake_directory = bke::sim::get_bake_directory(*bmain, *object, *md);
-        BLI_delete(bake_directory.c_str(), true, true);
+        if (BLI_exists(bake_directory.c_str())) {
+          if (BLI_delete(bake_directory.c_str(), true, true)) {
+            BKE_reportf(op->reports,
+                        RPT_ERROR,
+                        "Failed to remove bake directory %s",
+                        bake_directory.c_str());
+          }
+        }
         if (nmd->simulation_cache != nullptr) {
           nmd->simulation_cache->reset();
         }
