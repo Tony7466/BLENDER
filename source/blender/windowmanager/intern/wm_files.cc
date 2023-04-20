@@ -1584,7 +1584,7 @@ static void wm_history_file_update(void)
     /* Write current file to #BLENDER_HISTORY_FILE. */
     wm_history_file_write();
 
-    /* also update most recent files on System */
+    /* Also update most recent files on system. */
     GHOST_addToSystemRecentFiles(blendfile_path);
   }
 }
@@ -2778,6 +2778,7 @@ static int wm_open_mainfile__open(bContext *C, wmOperator *op)
       ED_outliner_select_sync_from_all_tag(C);
     }
     ED_view3d_local_collections_reset(C, (G.fileflags & G_FILE_NO_UI) != 0);
+    GHOST_addToSystemRecentFiles(filepath);
     return OPERATOR_FINISHED;
   }
   return OPERATOR_CANCELLED;
