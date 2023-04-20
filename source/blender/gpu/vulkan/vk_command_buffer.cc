@@ -203,7 +203,12 @@ void VKCommandBuffer::draw(int v_first, int v_count, int i_first, int i_count)
 {
   validate_framebuffer_exists();
   ensure_active_framebuffer();
+  static int count = 0;
+  if (count == 12) {
+    printf("BREAK\n");
+  }
   vkCmdDraw(vk_command_buffer_, v_count, i_count, v_first, i_first);
+  count++;
 }
 
 void VKCommandBuffer::pipeline_barrier(VkPipelineStageFlags source_stages,
