@@ -632,6 +632,8 @@ static int blend_to_neighbor_invoke(bContext *C, wmOperator *op, const wmEvent *
   gso->modal_update = blend_to_neighbor_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   blend_to_neighbor_draw_status_header(C, gso);
+  ED_slider_is_bidirectional_set(gso->slider, true);
+  ED_slider_factor_set(gso->slider, 0.0f);
 
   return invoke_result;
 }
@@ -672,12 +674,12 @@ void GRAPH_OT_blend_to_neighbor(wmOperatorType *ot)
 
   RNA_def_float_factor(ot->srna,
                        "factor",
-                       1.0f / 3.0f,
+                       0.0f,
                        -FLT_MAX,
                        FLT_MAX,
                        "Blend",
-                       "The blend factor with 0.5 being the current frame",
-                       0.0f,
+                       "The blend factor with 0 being the current frame",
+                       -1.0f,
                        1.0f);
 }
 
@@ -757,6 +759,8 @@ static int breakdown_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   gso->modal_update = breakdown_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   breakdown_draw_status_header(C, gso);
+  ED_slider_is_bidirectional_set(gso->slider, true);
+  ED_slider_factor_set(gso->slider, 0.0f);
 
   return invoke_result;
 }
@@ -797,12 +801,12 @@ void GRAPH_OT_breakdown(wmOperatorType *ot)
 
   RNA_def_float_factor(ot->srna,
                        "factor",
-                       1.0f / 3.0f,
+                       0.0f,
                        -FLT_MAX,
                        FLT_MAX,
                        "Factor",
                        "Favor either the left or the right key",
-                       0.0f,
+                       -1.0f,
                        1.0f);
 }
 
@@ -886,6 +890,8 @@ static int blend_to_default_invoke(bContext *C, wmOperator *op, const wmEvent *e
   gso->modal_update = blend_to_default_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   blend_to_default_draw_status_header(C, gso);
+  ED_slider_is_bidirectional_set(gso->slider, true);
+  ED_slider_factor_set(gso->slider, 0.0f);
 
   return invoke_result;
 }
@@ -1010,6 +1016,8 @@ static int ease_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   gso->modal_update = ease_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   ease_draw_status_header(C, gso);
+  ED_slider_is_bidirectional_set(gso->slider, true);
+  ED_slider_factor_set(gso->slider, 0.0f);
 
   return invoke_result;
 }
