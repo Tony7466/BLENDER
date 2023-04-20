@@ -889,10 +889,6 @@ static void nlastrip_shuffle_transformed(TransDataContainer *tc, TransDataNla *f
           trans_data->nlt = dst_track;
         }
         else {
-          printf("this track is protected. Adding in back track \n");
-          printf("target track index: %i \n", trans_data->trackIndex);
-          printf("old track index: %i \n\n", trans_data->oldTrack->index);
-
           NlaStrip *strip = trans_data->strip;
           NlaTrack *old_track = BLI_findlink(tracks, trans_data->oldTrack->index);
 
