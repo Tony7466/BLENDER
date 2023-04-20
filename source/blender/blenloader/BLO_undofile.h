@@ -18,6 +18,9 @@ struct Scene;
 #  include "BLI_map.hh"
 
 struct MemFileSharedStorage {
+  /**
+   * Maps the data pointer to the sharing info that it is owned by.
+   */
   blender::Map<const void *, const blender::ImplicitSharingInfo *> map;
 
   ~MemFileSharedStorage();
@@ -46,6 +49,10 @@ typedef struct {
 typedef struct MemFile {
   ListBase chunks;
   size_t size;
+  /**
+   * Some data is not serialized into a new buffer because the undo-step can take ownership of it
+   * without making a copy. This is faster and requires less memory.
+   */
   MemFileSharedStorage *shared_storage;
 } MemFile;
 

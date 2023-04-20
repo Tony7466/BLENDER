@@ -1758,6 +1758,7 @@ void BLO_write_shared(BlendWriter *writer,
         memfile.shared_storage = MEM_new<MemFileSharedStorage>(__func__);
       }
       if (memfile.shared_storage->map.add(data, sharing_info)) {
+        /* The undo-step takes (shared) ownership of the data, which also makes it immutable. */
         sharing_info->add_user();
         return;
       }

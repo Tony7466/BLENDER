@@ -5142,8 +5142,10 @@ const blender::ImplicitSharingInfo *BLO_read_shared(BlendDataReader *reader,
       UndoReader *undo_reader = reinterpret_cast<UndoReader *>(reader->fd->file);
       MemFile &memfile = *undo_reader->memfile;
       if (memfile.shared_storage) {
+        /* Check if the data was saved with sharing-info. */
         if (const blender::ImplicitSharingInfo *sharing_info =
                 memfile.shared_storage->map.lookup_default(*data_ptr, nullptr)) {
+          /* Add a new owner of the data that is passed to the caller. */
           sharing_info->add_user();
           return sharing_info;
         }

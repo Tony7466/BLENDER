@@ -56,6 +56,8 @@ void BLO_memfile_free(MemFile *memfile)
 MemFileSharedStorage::~MemFileSharedStorage()
 {
   for (const blender::ImplicitSharingInfo *sharing_info : map.values()) {
+    /* Removing the user makes sure that the shared data is freed when the undo step was the last
+     * owner of it. */
     sharing_info->remove_user_and_delete_if_last();
   }
 }
