@@ -9,9 +9,6 @@
 
 //#define WIN32_COMPOSITING
 
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-
 #include "GHOST_Context.hh"
 
 #include <epoxy/wgl.h>
