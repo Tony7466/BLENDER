@@ -279,7 +279,7 @@ enum eFieldStateSyncResult {
 /**
  * Compare both field states and select the most compatible.
  * Afterwards both field states will be the same.
- * @return eFieldStateSyncResult flags indicating which field states have changed.
+ * \return eFieldStateSyncResult flags indicating which field states have changed.
  */
 static int sync_field_states(SocketFieldState &a, SocketFieldState &b)
 {
@@ -302,7 +302,7 @@ static int sync_field_states(SocketFieldState &a, SocketFieldState &b)
 /**
  * Compare field states of simulation nodes sockets and select the most compatible.
  * Afterwards all field states will be the same.
- * @return eFieldStateSyncResult flags indicating which field states have changed.
+ * \return eFieldStateSyncResult flags indicating which field states have changed.
  */
 static int simulation_nodes_field_state_sync(
     const bNode &input_node,
