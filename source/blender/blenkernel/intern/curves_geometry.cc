@@ -52,31 +52,14 @@ CurvesGeometry::CurvesGeometry() : CurvesGeometry(0, 0) {}
 
 CurvesGeometry::CurvesGeometry(const int point_num, const int curve_num)
 {
-  this->point_num = point_num;
-  this->curve_num = curve_num;
+  this->point_num = 0;
+  this->curve_num = 0;
   CustomData_reset(&this->point_data);
   CustomData_reset(&this->curve_data);
-
-  CustomData_add_layer_named(
-      &this->point_data, CD_PROP_FLOAT3, CD_CONSTRUCT, this->point_num, ATTR_POSITION.c_str());
+  this->curve_offsets = nullptr;
 
   this->runtime = MEM_new<CurvesGeometryRuntime>(__func__);
-
-  if (curve_num > 0) {
-    this->curve_offsets = static_cast<int *>(
-        MEM_malloc_arrayN(this->curve_num + 1, sizeof(int), __func__));
-    this->runtime->curve_offsets_sharing_info = implicit_sharing::info_for_mem_free(
-        this->curve_offsets);
-#ifdef DEBUG
-    this->offsets_for_write().fill(-1);
-#endif
-    /* Set common values for convenience. */
-    this->curve_offsets[0] = 0;
-    this->curve_offsets[this->curve_num] = this->point_num;
-  }
-  else {
-    this->curve_offsets = nullptr;
-  }
+  this->resize(point_num, curve_num);
 
   /* Fill the type counts with the default so they're in a valid state. */
   this->runtime->type_counts[CURVE_TYPE_CATMULL_ROM] = curve_num;
@@ -973,19 +956,27 @@ void CurvesGeometry::ensure_can_interpolate_to_evaluated() const
 void CurvesGeometry::resize(const int points_num, const int curves_num)
 {
   if (points_num != this->point_num) {
-    CustomData_realloc(&this->point_data, this->points_num(), points_num);
+    const int old_point_num = this->point_num;
     this->point_num = points_num;
+    CustomData_realloc(&this->point_data, old_point_num, this->point_num);
+    if (old_point_num == 0 && this->point_num > 0) {
+      this->attributes_for_write().add<float3>(
+          "position", ATTR_DOMAIN_POINT, AttributeInitConstruct());
+    }
   }
   if (curves_num != this->curve_num) {
-    CustomData_realloc(&this->curve_data, this->curves_num(), curves_num);
+    const int old_curves_num = this->curve_num;
+    this->curve_num = curves_num;
+    CustomData_realloc(&this->curve_data, old_curves_num, this->curve_num);
     implicit_sharing::resize_trivial_array(&this->curve_offsets,
                                            &this->runtime->curve_offsets_sharing_info,
-                                           this->curve_num == 0 ? 0 : (this->curve_num + 1),
-                                           curves_num + 1);
-    /* Set common values for convenience. */
-    this->curve_offsets[0] = 0;
-    this->curve_offsets[curves_num] = this->point_num;
-    this->curve_num = curves_num;
+                                           old_curves_num == 0 ? 0 : (old_curves_num + 1),
+                                           this->curve_num == 0 ? 0 : (this->curve_num + 1));
+    if (this->curve_num > 0) {
+      /* Set common values for convenience. */
+      this->curve_offsets[0] = 0;
+      this->curve_offsets[this->curve_num] = this->point_num;
+    }
   }
   this->tag_topology_changed();
 }

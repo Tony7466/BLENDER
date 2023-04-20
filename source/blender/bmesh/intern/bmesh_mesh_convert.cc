@@ -1259,7 +1259,7 @@ static void bm_to_mesh_verts(const BMesh &bm,
                              MutableSpan<bool> select_vert,
                              MutableSpan<bool> hide_vert)
 {
-  CustomData_add_layer_named(&mesh.vdata, CD_PROP_FLOAT3, CD_CONSTRUCT, mesh.totvert, "position");
+  bke::mesh_verts_create(mesh, bm.totvert);
   const Vector<BMeshToMeshLayerInfo> info = bm_to_mesh_copy_info_calc(bm.vdata, mesh.vdata);
   MutableSpan<float3> dst_vert_positions = mesh.vert_positions_for_write();
   threading::parallel_for(dst_vert_positions.index_range(), 1024, [&](const IndexRange range) {
@@ -1289,8 +1289,7 @@ static void bm_to_mesh_edges(const BMesh &bm,
                              MutableSpan<bool> sharp_edge,
                              MutableSpan<bool> uv_seams)
 {
-  CustomData_add_layer_named(
-      &mesh.edata, CD_PROP_INT32_2D, CD_CONSTRUCT, mesh.totedge, ".edge_verts");
+  bke::mesh_edges_create(mesh, bm.totedge);
   const Vector<BMeshToMeshLayerInfo> info = bm_to_mesh_copy_info_calc(bm.edata, mesh.edata);
   MutableSpan<int2> dst_edges = mesh.edges_for_write();
   threading::parallel_for(dst_edges.index_range(), 512, [&](const IndexRange range) {
@@ -1330,7 +1329,10 @@ static void bm_to_mesh_faces(const BMesh &bm,
                              MutableSpan<bool> sharp_faces,
                              MutableSpan<int> material_indices)
 {
-  BKE_mesh_poly_offsets_ensure_alloc(&mesh);
+  if (bm.totface == 0) {
+    return;
+  }
+  bke::mesh_polys_create(mesh, bm.totface);
   const Vector<BMeshToMeshLayerInfo> info = bm_to_mesh_copy_info_calc(bm.pdata, mesh.pdata);
   MutableSpan<int> dst_poly_offsets = mesh.poly_offsets_for_write();
   threading::parallel_for(bm_faces.index_range(), 1024, [&](const IndexRange range) {
@@ -1360,12 +1362,12 @@ static void bm_to_mesh_faces(const BMesh &bm,
       }
     }
   });
+  dst_poly_offsets.last() = bm.totloop;
 }
 
 static void bm_to_mesh_loops(const BMesh &bm, const Span<const BMLoop *> bm_loops, Mesh &mesh)
 {
-  CustomData_add_layer_named(&mesh.ldata, CD_PROP_INT32, CD_CONSTRUCT, bm.totloop, ".corner_vert");
-  CustomData_add_layer_named(&mesh.ldata, CD_PROP_INT32, CD_CONSTRUCT, bm.totloop, ".corner_edge");
+  bke::mesh_corners_create(mesh, bm.totloop);
   const Vector<BMeshToMeshLayerInfo> info = bm_to_mesh_copy_info_calc(bm.ldata, mesh.ldata);
   MutableSpan<int> dst_corner_verts = mesh.corner_verts_for_write();
   MutableSpan<int> dst_corner_edges = mesh.corner_edges_for_write();

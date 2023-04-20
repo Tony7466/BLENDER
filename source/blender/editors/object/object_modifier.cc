@@ -648,12 +648,8 @@ bool ED_object_modifier_convert_psys_to_mesh(ReportList * /*reports*/,
   Object *obn = BKE_object_add(bmain, scene, view_layer, OB_MESH, nullptr);
   Mesh *me = static_cast<Mesh *>(obn->data);
 
-  me->totvert = verts_num;
-  me->totedge = edges_num;
-
-  CustomData_add_layer_named(&me->vdata, CD_PROP_FLOAT3, CD_CONSTRUCT, verts_num, "position");
-  CustomData_add_layer_named(
-      &me->edata, CD_PROP_INT32_2D, CD_CONSTRUCT, me->totedge, ".edge_verts");
+  blender::bke::mesh_verts_create(*me, verts_num);
+  blender::bke::mesh_edges_create(*me, edges_num);
   CustomData_add_layer(&me->fdata, CD_MFACE, CD_SET_DEFAULT, 0);
 
   blender::MutableSpan<float3> positions = me->vert_positions_for_write();

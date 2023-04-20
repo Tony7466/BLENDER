@@ -72,7 +72,7 @@ Mesh *STLMeshHelper::to_mesh()
               << std::endl;
   }
 
-  Mesh *mesh = BKE_mesh_new_nomain(verts_.size(), 0, tris_.size(), tris_.size() * 3);
+  Mesh *mesh = bke::mesh_new_nomain_no_edges(verts_.size(), tris_.size(), tris_.size() * 3);
 
   mesh->vert_positions_for_write().copy_from(verts_);
 

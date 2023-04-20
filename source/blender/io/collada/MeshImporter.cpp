@@ -346,8 +346,7 @@ void MeshImporter::read_vertices(COLLADAFW::Mesh *mesh, Mesh *me)
     stride = 3;
   }
 
-  me->totvert = pos.getFloatValues()->getCount() / stride;
-  CustomData_add_layer_named(&me->vdata, CD_PROP_FLOAT3, CD_CONSTRUCT, me->totvert, "position");
+  blender::bke::mesh_verts_create(*me, pos.getFloatValues()->getCount() / stride);
   MutableSpan<float3> positions = me->vert_positions_for_write();
   for (const int i : positions.index_range()) {
     get_vector(positions[i], pos, i, stride);
@@ -449,11 +448,9 @@ void MeshImporter::allocate_poly_data(COLLADAFW::Mesh *collada_mesh, Mesh *me)
 
   /* Add the data containers */
   if (total_poly_count > 0) {
-    me->totpoly = total_poly_count;
-    me->totloop = total_loop_count;
-    BKE_mesh_poly_offsets_ensure_alloc(me);
-    CustomData_add_layer_named(
-        &me->ldata, CD_PROP_INT32, CD_SET_DEFAULT, me->totloop, ".corner_vert");
+    blender::bke::mesh_polys_create(*me, total_poly_count);
+    blender::bke::mesh_corners_create(*me, total_loop_count);
+    me->poly_offsets_for_write().last() = me->totloop;
 
     uint totuvset = collada_mesh->getUVCoords().getInputInfosArray().getCount();
     for (int i = 0; i < totuvset; i++) {

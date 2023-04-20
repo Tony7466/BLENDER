@@ -575,22 +575,20 @@ void BlenderStrokeRenderer::GenerateStrokeMesh(StrokeGroup *group, bool hasTex)
 #endif
   Mesh *mesh = (Mesh *)object_mesh->data;
 
-  mesh->totvert = group->totvert;
-  mesh->totedge = group->totedge;
-  mesh->totpoly = group->totpoly;
-  mesh->totloop = group->totloop;
-  mesh->totcol = group->materials.size();
-  BKE_mesh_poly_offsets_ensure_alloc(mesh);
+  blender::bke::mesh_verts_create(*mesh, group->totvert);
+  blender::bke::mesh_edges_create(*mesh, group->totedge);
+  blender::bke::mesh_polys_create(*mesh, group->totpoly);
+  blender::bke::mesh_corners_create(*mesh, group->totloop);
 
-  float3 *vert_positions = (float3 *)CustomData_add_layer_named(
-      &mesh->vdata, CD_PROP_FLOAT3, CD_SET_DEFAULT, mesh->totvert, "position");
-  blender::int2 *edges = (blender::int2 *)CustomData_add_layer_named(
-      &mesh->edata, CD_PROP_INT32_2D, CD_CONSTRUCT, mesh->totedge, ".edge_verts");
+  blender::MutableSpan<float3> vert_positions = mesh->vert_positions_for_write();
+  blender::MutableSpan<blender::int2> edges = mesh->edges_for_write();
   blender::MutableSpan<int> poly_offsets = mesh->poly_offsets_for_write();
-  int *corner_verts = (int *)CustomData_add_layer_named(
-      &mesh->ldata, CD_PROP_INT32, CD_SET_DEFAULT, mesh->totloop, ".corner_vert");
-  int *corner_edges = (int *)CustomData_add_layer_named(
-      &mesh->ldata, CD_PROP_INT32, CD_SET_DEFAULT, mesh->totloop, ".corner_edge");
+  int *corner_verts = mesh->corner_verts_for_write().data();
+  int *corner_edges = mesh->corner_edges_for_write().data();
+  if (!poly_offsets.is_empty()) {
+    poly_offsets.last() = mesh->totloop;
+  }
+
   int *material_indices = (int *)CustomData_add_layer_named(
       &mesh->pdata, CD_PROP_INT32, CD_SET_DEFAULT, mesh->totpoly, "material_index");
   blender::float2 *loopsuv[2] = {nullptr};
@@ -615,6 +613,7 @@ void BlenderStrokeRenderer::GenerateStrokeMesh(StrokeGroup *group, bool hasTex)
   BKE_id_attributes_active_color_set(
       &mesh->id, CustomData_get_layer_name(&mesh->ldata, CD_PROP_BYTE_COLOR, 0));
 
+  mesh->totcol = group->materials.size();
   mesh->mat = (Material **)MEM_mallocN(sizeof(Material *) * mesh->totcol, "MaterialList");
   for (const auto item : group->materials.items()) {
     Material *material = item.key;

@@ -212,6 +212,35 @@ inline int edge_other_vert(const int2 &edge, const int vert)
 
 }  // namespace blender::bke::mesh
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Mesh Creation Utilities
+ * \{ */
+
+namespace blender::bke {
+
+/** Create a new mesh outside of the main data-base with the specified data array lengths. */
+Mesh *mesh_new_nomain(int verts_num, int edges_num, int polys_num, int loops_num);
+/**
+ * Create a mesh with the specified data array lengths, but no edges.
+ * Edges are commonly calculated later with #BKE_mesh_calc_edges.
+ */
+Mesh *mesh_new_nomain_no_edges(int verts_num, int polys_num, int loops_num);
+
+/** Add the position attribute to an empty mesh. */
+void mesh_verts_create(Mesh &mesh, int verts_num);
+/** Add the ".edge_verts" attribute to an empty mesh. */
+void mesh_edges_create(Mesh &mesh, int edges_num);
+/** Add poly offsets to an empty mesh. */
+void mesh_polys_create(Mesh &mesh, int polys_num);
+/** Add corner vert and corner edge attributes to an empty mesh. */
+void mesh_corners_create(Mesh &mesh, int corners_num);
+
+}  // namespace blender::bke
+
+/** \} */
+
 /* -------------------------------------------------------------------- */
 /** \name Inline Mesh Data Access
  * \{ */

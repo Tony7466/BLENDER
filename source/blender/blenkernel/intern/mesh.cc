@@ -765,7 +765,10 @@ static int customdata_compare(
     }
     if (!found_corresponding_layer) {
       if ((uint64_t(1) << l1->type) & CD_MASK_PROP_ALL) {
-        return MESHCMP_CDLAYERS_MISMATCH;
+        if (!ELEM(
+                StringRef(l1->name), ".corner_vert", ".corner_edge", "position", ".edge_verts")) {
+          return MESHCMP_CDLAYERS_MISMATCH;
+        }
       }
     }
   }
@@ -984,25 +987,94 @@ Mesh *BKE_mesh_add(Main *bmain, const char *name)
   return me;
 }
 
-void BKE_mesh_poly_offsets_ensure_alloc(Mesh *mesh)
+namespace blender::bke {
+
+void mesh_verts_create(Mesh &mesh, const int verts_num)
 {
-  BLI_assert(mesh->poly_offset_indices == nullptr);
-  BLI_assert(mesh->runtime->poly_offsets_sharing_info == nullptr);
-  if (mesh->totpoly == 0) {
+  mesh.totvert = verts_num;
+  BLI_assert(!mesh.attributes().contains("position"));
+  if (mesh.totvert == 0) {
     return;
   }
-  mesh->poly_offset_indices = static_cast<int *>(
-      MEM_malloc_arrayN(mesh->totpoly + 1, sizeof(int), __func__));
-  mesh->runtime->poly_offsets_sharing_info = blender::implicit_sharing::info_for_mem_free(
-      mesh->poly_offset_indices);
+  mesh.attributes_for_write().add<float3>("position", ATTR_DOMAIN_POINT, AttributeInitConstruct());
+}
+
+void mesh_edges_create(Mesh &mesh, int edges_num)
+{
+  mesh.totedge = edges_num;
+  BLI_assert(!mesh.attributes().contains(".edge_verts"));
+  if (mesh.totedge == 0) {
+    return;
+  }
+  mesh.attributes_for_write().add<int2>(".edge_verts", ATTR_DOMAIN_EDGE, AttributeInitConstruct());
+}
+
+void mesh_polys_create(Mesh &mesh, const int polys_num)
+{
+  BLI_assert(mesh.poly_offset_indices == nullptr);
+  BLI_assert(mesh.runtime->poly_offsets_sharing_info == nullptr);
+  mesh.totpoly = polys_num;
+  if (mesh.totpoly == 0) {
+    return;
+  }
+  mesh.poly_offset_indices = static_cast<int *>(
+      MEM_malloc_arrayN(mesh.totpoly + 1, sizeof(int), __func__));
+  mesh.runtime->poly_offsets_sharing_info = blender::implicit_sharing::info_for_mem_free(
+      mesh.poly_offset_indices);
 
 #ifdef DEBUG
   /* Fill offsets with obviously bad values to simplify finding missing initialization. */
-  mesh->poly_offsets_for_write().fill(-1);
+  mesh.poly_offsets_for_write().fill(-1);
 #endif
-  /* Set common values for convenience. */
-  mesh->poly_offset_indices[0] = 0;
-  mesh->poly_offset_indices[mesh->totpoly] = mesh->totloop;
+}
+
+void mesh_corners_create(Mesh &mesh, const int corners_num)
+{
+  mesh.totloop = corners_num;
+  if (mesh.totloop == 0) {
+    return;
+  }
+  MutableAttributeAccessor attributes = mesh.attributes_for_write();
+  BLI_assert(!attributes.contains(".corner_vert"));
+  BLI_assert(!attributes.contains(".corner_edge"));
+  attributes.add<int>(".corner_vert", ATTR_DOMAIN_CORNER, AttributeInitConstruct());
+  attributes.add<int>(".corner_edge", ATTR_DOMAIN_CORNER, AttributeInitConstruct());
+}
+
+Mesh *mesh_new_nomain(const int verts_num,
+                      const int edges_num,
+                      const int polys_num,
+                      const int corners_num)
+{
+  using namespace blender::bke;
+  Mesh *mesh = static_cast<Mesh *>(BKE_libblock_alloc(
+      nullptr, ID_ME, BKE_idtype_idcode_to_name(ID_ME), LIB_ID_CREATE_LOCALIZE));
+  BKE_libblock_init_empty(&mesh->id);
+
+  mesh_verts_create(*mesh, verts_num);
+  mesh_edges_create(*mesh, edges_num);
+  mesh_polys_create(*mesh, polys_num);
+  mesh_corners_create(*mesh, corners_num);
+  if (mesh->totpoly > 0) {
+    mesh->poly_offsets_for_write().last() = mesh->totloop;
+  }
+
+  return mesh;
+}
+
+Mesh *mesh_new_nomain_no_edges(int verts_num, int polys_num, int corners_num)
+{
+  return mesh_new_nomain(verts_num, 0, polys_num, corners_num);
+}
+
+}  // namespace blender::bke
+
+Mesh *BKE_mesh_new_nomain(const int verts_num,
+                          const int edges_num,
+                          const int polys_num,
+                          const int loops_num)
+{
+  return blender::bke::mesh_new_nomain(verts_num, edges_num, polys_num, loops_num);
 }
 
 int *BKE_mesh_poly_offsets_for_write(Mesh *mesh)
@@ -1010,46 +1082,6 @@ int *BKE_mesh_poly_offsets_for_write(Mesh *mesh)
   blender::implicit_sharing::make_trivial_data_mutable(
       &mesh->poly_offset_indices, &mesh->runtime->poly_offsets_sharing_info, mesh->totpoly + 1);
   return mesh->poly_offset_indices;
-}
-
-static void mesh_ensure_cdlayers_primary(Mesh &mesh)
-{
-  if (!CustomData_get_layer_named(&mesh.vdata, CD_PROP_FLOAT3, "position")) {
-    CustomData_add_layer_named(
-        &mesh.vdata, CD_PROP_FLOAT3, CD_CONSTRUCT, mesh.totvert, "position");
-  }
-  if (!CustomData_get_layer_named(&mesh.edata, CD_PROP_INT32_2D, ".edge_verts")) {
-    CustomData_add_layer_named(
-        &mesh.edata, CD_PROP_INT32_2D, CD_CONSTRUCT, mesh.totedge, ".edge_verts");
-  }
-  if (!CustomData_get_layer_named(&mesh.ldata, CD_PROP_INT32, ".corner_vert")) {
-    CustomData_add_layer_named(
-        &mesh.ldata, CD_PROP_INT32, CD_CONSTRUCT, mesh.totloop, ".corner_vert");
-  }
-  if (!CustomData_get_layer_named(&mesh.ldata, CD_PROP_INT32, ".corner_edge")) {
-    CustomData_add_layer_named(
-        &mesh.ldata, CD_PROP_INT32, CD_CONSTRUCT, mesh.totloop, ".corner_edge");
-  }
-}
-
-Mesh *BKE_mesh_new_nomain(const int verts_num,
-                          const int edges_num,
-                          const int polys_num,
-                          const int loops_num)
-{
-  Mesh *mesh = static_cast<Mesh *>(BKE_libblock_alloc(
-      nullptr, ID_ME, BKE_idtype_idcode_to_name(ID_ME), LIB_ID_CREATE_LOCALIZE));
-  BKE_libblock_init_empty(&mesh->id);
-
-  mesh->totvert = verts_num;
-  mesh->totedge = edges_num;
-  mesh->totpoly = polys_num;
-  mesh->totloop = loops_num;
-
-  mesh_ensure_cdlayers_primary(*mesh);
-  BKE_mesh_poly_offsets_ensure_alloc(mesh);
-
-  return mesh;
 }
 
 static void copy_attribute_names(const Mesh &mesh_src, Mesh &mesh_dst)
@@ -1115,18 +1147,13 @@ Mesh *BKE_mesh_new_nomain_from_template_ex(const Mesh *me_src,
                                            const int loops_num,
                                            const CustomData_MeshMasks mask)
 {
+  using namespace blender::bke;
   /* Only do tessface if we are creating tessfaces or copying from mesh with only tessfaces. */
   const bool do_tessface = (tessface_num || ((me_src->totface != 0) && (me_src->totpoly == 0)));
 
   Mesh *me_dst = (Mesh *)BKE_id_new_nomain(ID_ME, nullptr);
 
   me_dst->mselect = (MSelect *)MEM_dupallocN(me_src->mselect);
-
-  me_dst->totvert = verts_num;
-  me_dst->totedge = edges_num;
-  me_dst->totpoly = polys_num;
-  me_dst->totloop = loops_num;
-  me_dst->totface = tessface_num;
 
   BKE_mesh_copy_parameters_for_eval(me_dst, me_src);
 
@@ -1142,10 +1169,15 @@ Mesh *BKE_mesh_new_nomain_from_template_ex(const Mesh *me_src,
     mesh_tessface_clear_intern(me_dst, false);
   }
 
-  /* The destination mesh should at least have valid primary CD layers,
-   * even in cases where the source mesh does not. */
-  mesh_ensure_cdlayers_primary(*me_dst);
-  BKE_mesh_poly_offsets_ensure_alloc(me_dst);
+  mesh_verts_create(*me_dst, verts_num);
+  mesh_edges_create(*me_dst, edges_num);
+  mesh_polys_create(*me_dst, polys_num);
+  mesh_corners_create(*me_dst, loops_num);
+  if (me_dst->totpoly > 0) {
+    me_dst->poly_offsets_for_write().last() = me_dst->totloop;
+  }
+
+  me_dst->totface = tessface_num;
   if (do_tessface && !CustomData_get_layer(&me_dst->fdata, CD_MFACE)) {
     CustomData_add_layer(&me_dst->fdata, CD_MFACE, CD_SET_DEFAULT, me_dst->totface);
   }

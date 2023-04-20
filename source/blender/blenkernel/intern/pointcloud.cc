@@ -62,11 +62,6 @@ static void pointcloud_init_data(ID *id)
   MEMCPY_STRUCT_AFTER(pointcloud, DNA_struct_default_get(PointCloud), id);
 
   CustomData_reset(&pointcloud->pdata);
-  CustomData_add_layer_named(&pointcloud->pdata,
-                             CD_PROP_FLOAT3,
-                             CD_CONSTRUCT,
-                             pointcloud->totpoint,
-                             POINTCLOUD_ATTR_POSITION);
 
   pointcloud->runtime = new blender::bke::PointCloudRuntime();
 }
@@ -197,7 +192,8 @@ static void pointcloud_random(PointCloud *pointcloud)
 {
   BLI_assert(pointcloud->totpoint == 0);
   pointcloud->totpoint = 400;
-  CustomData_realloc(&pointcloud->pdata, 0, pointcloud->totpoint);
+  pointcloud->attributes_for_write().add<float3>(
+      POINTCLOUD_ATTR_POSITION, ATTR_DOMAIN_POINT, blender::bke::AttributeInitConstruct());
 
   RNG *rng = BLI_rng_new(0);
 
@@ -243,8 +239,11 @@ PointCloud *BKE_pointcloud_new_nomain(const int totpoint)
 
   pointcloud_init_data(&pointcloud->id);
 
-  CustomData_realloc(&pointcloud->pdata, 0, totpoint);
   pointcloud->totpoint = totpoint;
+  if (pointcloud->totpoint > 0) {
+    pointcloud->attributes_for_write().add<float3>(
+        POINTCLOUD_ATTR_POSITION, ATTR_DOMAIN_POINT, blender::bke::AttributeInitConstruct());
+  }
 
   return pointcloud;
 }

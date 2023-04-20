@@ -2348,9 +2348,12 @@ void BKE_mesh_legacy_convert_polys_to_offsets(Mesh *mesh)
   }
   const Span<MPoly> polys(static_cast<const MPoly *>(CustomData_get_layer(&mesh->pdata, CD_MPOLY)),
                           mesh->totpoly);
-
-  BKE_mesh_poly_offsets_ensure_alloc(mesh);
+  if (polys.is_empty()) {
+    return;
+  }
+  bke::mesh_polys_create(*mesh, mesh->totpoly);
   MutableSpan<int> offsets = mesh->poly_offsets_for_write();
+  offsets.last() = mesh->totloop;
 
   if (poly_loops_orders_match(polys)) {
     for (const int i : polys.index_range()) {

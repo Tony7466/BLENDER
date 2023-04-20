@@ -111,6 +111,9 @@ static void expand_mesh(Mesh &mesh,
     const int old_edges_num = mesh.totedge;
     mesh.totedge += edge_expand;
     CustomData_realloc(&mesh.edata, old_edges_num, mesh.totedge);
+    if (old_edges_num == 0) {
+      bke::mesh_edges_create(mesh, mesh.totedge);
+    }
   }
   if (poly_expand != 0) {
     CustomData_free_layers(&mesh.pdata, CD_FACEMAP, mesh.totpoly);
@@ -137,6 +140,9 @@ static void expand_mesh(Mesh &mesh,
     const int old_loops_num = mesh.totloop;
     mesh.totloop += loop_expand;
     CustomData_realloc(&mesh.ldata, old_loops_num, mesh.totloop);
+    if (old_loops_num == 0) {
+      bke::mesh_corners_create(mesh, mesh.totloop);
+    }
   }
 }
 

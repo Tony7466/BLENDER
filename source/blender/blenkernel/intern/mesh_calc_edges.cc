@@ -231,13 +231,12 @@ void BKE_mesh_calc_edges(Mesh *mesh, bool keep_existing_edges, const bool select
   }
 
   /* Create new edges. */
-  if (!CustomData_get_layer_named(&mesh->ldata, CD_PROP_INT32, ".corner_edge")) {
-    CustomData_add_layer_named(
-        &mesh->ldata, CD_PROP_INT32, CD_CONSTRUCT, mesh->totloop, ".corner_edge");
-  }
   MutableSpan<int2> new_edges{
       static_cast<int2 *>(MEM_calloc_arrayN(new_totedge, sizeof(int2), __func__)), new_totedge};
   calc_edges::serialize_and_initialize_deduplicated_edges(edge_maps, new_edges);
+
+  mesh->attributes_for_write().add<int>(
+      ".corner_edge", ATTR_DOMAIN_CORNER, AttributeInitConstruct());
   calc_edges::update_edge_indices_in_poly_loops(mesh->polys(),
                                                 mesh->corner_verts(),
                                                 edge_maps,

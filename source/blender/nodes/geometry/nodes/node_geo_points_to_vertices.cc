@@ -52,12 +52,11 @@ static void geometry_set_points_to_vertices(
   Mesh *mesh;
   if (selection.size() == points->totpoint) {
     /* Create a mesh without positions so the attribute can be shared. */
-    mesh = BKE_mesh_new_nomain(0, 0, 0, 0);
-    CustomData_free_layer_named(&mesh->vdata, "position", mesh->totvert);
+    mesh = bke::mesh_new_nomain(0, 0, 0, 0);
     mesh->totvert = selection.size();
   }
   else {
-    mesh = BKE_mesh_new_nomain(selection.size(), 0, 0, 0);
+    mesh = bke::mesh_new_nomain(selection.size(), 0, 0, 0);
   }
 
   const AttributeAccessor src_attributes = points->attributes();
