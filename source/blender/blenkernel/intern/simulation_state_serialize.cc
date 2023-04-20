@@ -401,12 +401,14 @@ static PointCloud *try_load_pointcloud(const DictionaryValue &io_geometry,
   if (!io_pointcloud) {
     return nullptr;
   }
-  const int num_points = io_pointcloud->lookup_int("num_points").value_or(0);
   const io::serialize::ArrayValue *io_attributes = io_pointcloud->lookup_array("attributes");
   if (!io_attributes) {
     return nullptr;
   }
-  PointCloud *pointcloud = BKE_pointcloud_new_nomain(num_points);
+  PointCloud *pointcloud = BKE_pointcloud_new_nomain(0);
+  CustomData_free_layer_named(&pointcloud->pdata, "position", 0);
+  pointcloud->totpoint = io_pointcloud->lookup_int("num_points").value_or(0);
+
   bke::MutableAttributeAccessor attributes = pointcloud->attributes_for_write();
   load_attributes(*io_attributes, attributes, bdata_reader, bdata_sharing);
   return pointcloud;
@@ -420,33 +422,32 @@ static Curves *try_load_curves(const DictionaryValue &io_geometry,
   if (!io_curves) {
     return nullptr;
   }
-  const int num_points = io_curves->lookup_int("num_points").value_or(0);
-  const int num_curves = io_curves->lookup_int("num_curves").value_or(0);
 
   const io::serialize::ArrayValue *io_attributes = io_curves->lookup_array("attributes");
   if (!io_attributes) {
     return nullptr;
   }
 
-  Curves *curves_id = bke::curves_new_nomain(num_points, num_curves);
+  Curves *curves_id = bke::curves_new_nomain(0, 0);
   bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+  CustomData_free_layer_named(&curves.point_data, "position", 0);
+  curves.point_num = io_curves->lookup_int("num_points").value_or(0);
+  curves.curve_num = io_curves->lookup_int("num_curves").value_or(0);
 
   auto cancel = [&]() {
     BKE_id_free(nullptr, curves_id);
     return nullptr;
   };
 
-  if (num_curves > 0) {
+  if (curves.curves_num() > 0) {
     const auto io_curve_offsets = io_curves->lookup_dict("curve_offsets");
     if (!io_curve_offsets) {
       return cancel();
     }
-    implicit_sharing::free_shared_data(&curves.curve_offsets,
-                                       &curves.runtime->curve_offsets_sharing_info);
     if (!read_bdata_shared_simple_span(*io_curve_offsets,
                                        bdata_reader,
                                        bdata_sharing,
-                                       num_curves + 1,
+                                       curves.curves_num() + 1,
                                        &curves.curve_offsets,
                                        &curves.runtime->curve_offsets_sharing_info)) {
       return cancel();
@@ -467,34 +468,36 @@ static Mesh *try_load_mesh(const DictionaryValue &io_geometry,
   if (!io_mesh) {
     return nullptr;
   }
-  const int num_verts = io_mesh->lookup_int("num_vertices").value_or(0);
-  const int num_edges = io_mesh->lookup_int("num_edges").value_or(0);
-  const int num_polys = io_mesh->lookup_int("num_polygons").value_or(0);
-  const int num_corners = io_mesh->lookup_int("num_corners").value_or(0);
 
   const io::serialize::ArrayValue *io_attributes = io_mesh->lookup_array("attributes");
   if (!io_attributes) {
     return nullptr;
   }
 
-  Mesh *mesh = BKE_mesh_new_nomain(num_verts, num_edges, num_polys, num_corners);
+  Mesh *mesh = BKE_mesh_new_nomain(0, 0, 0, 0);
+  CustomData_free_layer_named(&mesh->vdata, "position", 0);
+  CustomData_free_layer_named(&mesh->edata, ".edge_verts", 0);
+  CustomData_free_layer_named(&mesh->ldata, ".corner_vert", 0);
+  CustomData_free_layer_named(&mesh->ldata, ".corner_edge", 0);
+  mesh->totvert = io_mesh->lookup_int("num_vertices").value_or(0);
+  mesh->totedge = io_mesh->lookup_int("num_edges").value_or(0);
+  mesh->totpoly = io_mesh->lookup_int("num_polygons").value_or(0);
+  mesh->totloop = io_mesh->lookup_int("num_corners").value_or(0);
 
   auto cancel = [&]() {
     BKE_id_free(nullptr, mesh);
     return nullptr;
   };
 
-  if (num_polys > 0) {
+  if (mesh->totpoly > 0) {
     const auto io_poly_offsets = io_mesh->lookup_dict("poly_offsets");
     if (!io_poly_offsets) {
       return cancel();
     }
-    implicit_sharing::free_shared_data(&mesh->poly_offset_indices,
-                                       &mesh->runtime->poly_offsets_sharing_info);
     if (!read_bdata_shared_simple_span(*io_poly_offsets,
                                        bdata_reader,
                                        bdata_sharing,
-                                       num_polys + 1,
+                                       mesh->totpoly + 1,
                                        &mesh->poly_offset_indices,
                                        &mesh->runtime->poly_offsets_sharing_info)) {
       return cancel();
