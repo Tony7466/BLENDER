@@ -440,7 +440,7 @@ bNodeSocket &IDSocketDeclaration::build(bNodeTree &ntree, bNode &node) const
     ID *id = this->default_value_fn(node);
     /* Assumes that all ID sockets like #bNodeSocketValueObject and #bNodeSocketValueImage have the
      * ID pointer at the start of the struct. */
-    *(ID **)socket.default_value = id;
+    *static_cast<ID **>(socket.default_value) = id;
     id_us_plus(id);
   }
   this->set_common_flags(socket);
