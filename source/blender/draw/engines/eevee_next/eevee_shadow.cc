@@ -146,7 +146,8 @@ ShadowTileMapPool::ShadowTileMapPool()
   extent.x = min_ii(SHADOW_MAX_TILEMAP, maps_per_row) * ShadowTileMap::tile_map_resolution;
   extent.y = (SHADOW_MAX_TILEMAP / maps_per_row) * ShadowTileMap::tile_map_resolution;
 
-  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
+  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE |
+                           GPU_TEXTURE_USAGE_ATTACHMENT;
   tilemap_tx.ensure_2d(GPU_R32UI, extent, usage);
   tilemap_tx.clear(uint4(0));
 }
@@ -1102,8 +1103,15 @@ void ShadowModule::set_view(View &view)
                                                int2(std::exp2(usage_tag_fb_lod_)));
   usage_tag_fb.ensure(usage_tag_fb_resolution_);
 
-  render_fb_.ensure(int2(SHADOW_TILEMAP_RES * shadow_page_size_));
-
+  if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
+    /* TODO(Metal): Temporary hack to avoid crashing until attachment-less framebuffers are
+     * supported in the Metal backend. */
+    tmp_render_fb_tx_.ensure_2d(GPU_R16F, int2(SHADOW_TILEMAP_RES * shadow_page_size_));
+    render_fb_.ensure(GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(tmp_render_fb_tx_));
+  }
+  else {
+    render_fb_.ensure(int2(SHADOW_TILEMAP_RES * shadow_page_size_));
+  }
   inst_.hiz_buffer.update();
 
   bool tile_update_remains = true;
