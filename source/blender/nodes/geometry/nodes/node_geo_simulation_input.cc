@@ -18,6 +18,7 @@ template<typename T> static void copy_typed_initial_simulation_state(lf::Params 
 {
   T *data = params.try_get_input_data_ptr_or_request<T>(index);
   if (data != nullptr) {
+    /* First output parameter is "Delta Time", state item parameters start at index 1. */
     params.set_output(index + 1, std::move(*data));
   }
 }
