@@ -579,18 +579,10 @@ static GeometrySet load_geometry(const DictionaryValue &io_geometry,
                                  const BDataSharing &bdata_sharing)
 {
   GeometrySet geometry;
-  if (Mesh *mesh = try_load_mesh(io_geometry, bdata_reader, bdata_sharing)) {
-    geometry.replace_mesh(mesh);
-  }
-  if (PointCloud *pointcloud = try_load_pointcloud(io_geometry, bdata_reader, bdata_sharing)) {
-    geometry.replace_pointcloud(pointcloud);
-  }
-  if (Curves *curves = try_load_curves(io_geometry, bdata_reader, bdata_sharing)) {
-    geometry.replace_curves(curves);
-  }
-  if (bke::Instances *instances = try_load_instances(io_geometry, bdata_reader, bdata_sharing)) {
-    geometry.replace_instances(instances);
-  }
+  geometry.replace_mesh(try_load_mesh(io_geometry, bdata_reader, bdata_sharing));
+  geometry.replace_pointcloud(try_load_pointcloud(io_geometry, bdata_reader, bdata_sharing));
+  geometry.replace_curves(try_load_curves(io_geometry, bdata_reader, bdata_sharing));
+  geometry.replace_instances(try_load_instances(io_geometry, bdata_reader, bdata_sharing));
   return geometry;
 }
 
