@@ -734,6 +734,7 @@ typedef struct VFontToCurveIter {
   int status;
 } VFontToCurveIter;
 
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name VFont Mouse Cursor to Text Offset
@@ -749,6 +750,8 @@ typedef struct VFontCursor_Params {
   /* Character position within EditFont::textbuf as output. */
   int r_string_offset;
 } VFontCursor_Params;
+
+/** \} */
 
 enum {
   VFONT_TO_CURVE_INIT = 0,
@@ -928,7 +931,6 @@ static bool vfont_to_curve(Object *ob,
   }
 
   i = 0;
-
   while (i <= slen) {
     /* Characters in the list */
     info = &custrinfo[i];
@@ -1134,33 +1136,15 @@ static bool vfont_to_curve(Object *ob,
       }
 
       /* Set the width of the character. */
-      twidth = (char_width(cu, che, info) * wsfac * (1.0f + (info->kern / 40.0f))) + xtrax;
+      twidth = char_width(cu, che, info);
 
-      xof += twidth;
+      xof += (twidth * wsfac * (1.0f + (info->kern / 40.0f))) + xtrax;
 
       if (sb) {
         sb->w = (xof * font_size) - sb->w;
       }
     }
     ct++;
-
-    if (cursor_params) {
-      float midw = (twidth / 2.0f);
-      if (cursor_params->cursor_location[1] >= yof - (0.25f * linedist) &&
-          cursor_params->cursor_location[1] <= (yof + (0.75f * linedist))) {
-        /* On this row. */
-        if (cursor_params->cursor_location[0] >= (xof - twidth) &&
-            cursor_params->cursor_location[0] <= (xof - midw)) {
-          /* Left half of preceding character. */
-          cursor_params->r_string_offset = i;
-        }
-        else if (cursor_params->cursor_location[0] >= (xof - midw) &&
-                 cursor_params->cursor_location[0] <= (xof)) {
-          /* Right half of preceding character. */
-          cursor_params->r_string_offset = i + 1;
-        }
-      }
-    }
 
     i++;
   }
@@ -1466,6 +1450,35 @@ static bool vfont_to_curve(Object *ob,
         selboxes[i - selstart].x = ct->xof * font_size;
         selboxes[i - selstart].y = (ct->yof - 0.25f) * font_size;
         selboxes[i - selstart].h = font_size;
+      }
+    }
+  }
+
+  if (cursor_params) {
+    cursor_params->r_string_offset = -1;
+    for (i = 0; i <= slen; i++, ct++) {
+      info = &custrinfo[i];
+      ascii = mem[i];
+      if (info->flag & CU_CHINFO_SMALLCAPS_CHECK) {
+        ascii = towupper(ascii);
+      }
+      ct = &chartransdata[i];
+      che = find_vfont_char(vfd, ascii);
+      float charwidth = char_width(cu, che, info);
+      float charhalf = (charwidth / 2.0f);
+      if (cursor_params->cursor_location[1] >= ct->yof - (0.25f * linedist) &&
+          cursor_params->cursor_location[1] <= (ct->yof + (0.75f * linedist))) {
+        /* On this row. */
+        if (cursor_params->cursor_location[0] >= (ct->xof) &&
+            cursor_params->cursor_location[0] <= (ct->xof + charhalf)) {
+          /* Left half of character. */
+          cursor_params->r_string_offset = i;
+        }
+        else if (cursor_params->cursor_location[0] >= (ct->xof + charhalf) &&
+                 cursor_params->cursor_location[0] <= (ct->xof + charwidth)) {
+          /* Right half of character. */
+          cursor_params->r_string_offset = i + 1;
+        }
       }
     }
   }

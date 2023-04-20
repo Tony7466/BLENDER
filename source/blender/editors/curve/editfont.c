@@ -1796,10 +1796,11 @@ void FONT_OT_text_insert(wmOperatorType *ot)
 
 /** \} */
 
-static void font_cursor_text_index_from_event(bContext *C,
-                                              Object *obedit,
-                                              const wmEvent *event,
-                                              float r_curs_loc[2])
+/* -------------------------------------------------------------------- */
+/** \name Font Selection Operator
+ * \{ */
+
+static int font_cursor_text_index_from_event(bContext *C, Object *obedit, const wmEvent *event)
 {
   Curve *cu = obedit->data;
   EditFont *ef = cu->editfont;
@@ -1816,13 +1817,9 @@ static void font_cursor_text_index_from_event(bContext *C,
   /* Convert to object space and scale by font size. */
   mul_m4_v3(obedit->world_to_object, mouse_loc);
 
-  r_curs_loc[0] = mouse_loc[0] / cu->fsize;
-  r_curs_loc[1] = mouse_loc[1] / cu->fsize;
+  float curs_loc[2] = {mouse_loc[0] / cu->fsize, mouse_loc[1] / cu->fsize};
+  return BKE_vfont_cursor_to_text_index(obedit, curs_loc);
 }
-
-/* -------------------------------------------------------------------- */
-/** \name Font Selection Operator
- * \{ */
 
 static void font_cursor_set_apply(bContext *C, const wmEvent *event)
 {
@@ -1832,9 +1829,7 @@ static void font_cursor_set_apply(bContext *C, const wmEvent *event)
   EditFont *ef = cu->editfont;
   BLI_assert(ef->len >= 0);
 
-  float curs_loc[2];
-  font_cursor_text_index_from_event(C, ob, event, curs_loc);
-  const int string_offset = BKE_vfont_cursor_to_text_index(ob, curs_loc);
+  const int string_offset = font_cursor_text_index_from_event(C, ob, event);
 
   if (string_offset > ef->len || string_offset < 0) {
     return;
