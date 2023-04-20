@@ -1622,9 +1622,11 @@ void CurvesGeometry::blend_read(BlendDataReader &reader)
   CustomData_blend_read(&reader, &this->curve_data, this->curve_num);
 
   if (this->curve_offsets) {
-    BLO_read_int32_array(&reader, this->curve_num + 1, &this->curve_offsets);
-    this->runtime->curve_offsets_sharing_info = implicit_sharing::info_for_mem_free(
-        this->curve_offsets);
+    this->runtime->curve_offsets_sharing_info = BLO_read_shared(
+        &reader, (void **)&this->curve_offsets, [&]() {
+          BLO_read_int32_array(&reader, this->curve_num + 1, &this->curve_offsets);
+          return implicit_sharing::info_for_mem_free(this->curve_offsets);
+        });
   }
 
   /* Recalculate curve type count cache that isn't saved in files. */
@@ -1643,7 +1645,12 @@ void CurvesGeometry::blend_write(BlendWriter &writer, ID &id)
   CustomData_blend_write(
       &writer, &this->curve_data, curve_layers, this->curve_num, CD_MASK_ALL, &id);
 
-  BLO_write_int32_array(&writer, this->curve_num + 1, this->curve_offsets);
+  if (this->curve_offsets) {
+    BLO_write_shared(
+        &writer, this->curve_offsets, this->runtime->curve_offsets_sharing_info, [&]() {
+          BLO_write_int32_array(&writer, this->curve_num + 1, this->curve_offsets);
+        });
+  }
 }
 
 /** \} */

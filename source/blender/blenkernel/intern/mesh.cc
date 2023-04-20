@@ -397,7 +397,7 @@ static void mesh_blend_read_data(BlendDataReader *reader, ID *id)
   mesh->runtime = new blender::bke::MeshRuntime();
 
   if (mesh->poly_offset_indices) {
-    mesh->runtime->poly_offsets_sharing_info = (blender::ImplicitSharingInfo *)BLO_read_shared(
+    mesh->runtime->poly_offsets_sharing_info = BLO_read_shared(
         reader, (void **)&mesh->poly_offset_indices, [&]() {
           BLO_read_int32_array(reader, mesh->totpoly + 1, &mesh->poly_offset_indices);
           return blender::implicit_sharing::info_for_mem_free(mesh->poly_offset_indices);
