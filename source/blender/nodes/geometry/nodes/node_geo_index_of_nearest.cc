@@ -20,9 +20,8 @@ static void node_declare(NodeDeclarationBuilder &b)
 static KDTree_3d *build_kdtree(const Span<float3> &positions, const IndexMask mask)
 {
   KDTree_3d *tree = BLI_kdtree_3d_new(mask.size());
-  for (const int i : mask) {
-    BLI_kdtree_3d_insert(tree, i, positions[i]);
-  }
+  mask.foreach_index(
+      [tree, positions](const int index) { BLI_kdtree_3d_insert(tree, i, positions[i]); });
   BLI_kdtree_3d_balance(tree);
   return tree;
 }
@@ -41,9 +40,9 @@ static void find_neighbors(const KDTree_3d &tree,
                            MutableSpan<int> indices)
 {
   threading::parallel_for(mask.index_range(), 1024, [&](const IndexRange range) {
-    for (const int i : mask.slice(range)) {
+    mask.foreach_index([tree, positions](const int index) {
       indices[i] = find_nearest_non_self(tree, positions[i], i);
-    }
+    });
   });
 }
 
@@ -58,12 +57,6 @@ static Vector<IndexMask> masks_from_group_ids(const Span<int> group_ids,
     masks.append(indices);
   }
   return masks;
-}
-
-static Vector<IndexMask> masks_from_group_ids(const Span<int> group_ids,
-                                              MultiValueMap<int, int64_t> &storage)
-{
-  return masks_from_group_ids(group_ids, group_ids.index_range(), storage);
 }
 
 class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
@@ -100,42 +93,42 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
       KDTree_3d *tree = build_kdtree(positions, full_mask);
       find_neighbors(*tree, positions, mask, result);
       BLI_kdtree_3d_free(tree);
+      return VArray<int>::ForContainer(std::move(result));
     }
-    else {
-      /* The goal is to build each tree and use it immediately, rather than building all trees and
-       * sampling them later. That should help to keep the tree in caches before balancing and when
-       * sampling many points. */
-      const VArraySpan<int> group_ids(group);
-      MultiValueMap<int, int64_t> group_mask_storage;
-      const Vector<IndexMask> tree_masks = masks_from_group_ids(group_ids, group_mask_storage);
 
-      MultiValueMap<int, int64_t> evaluate_masks_storage;
-      Vector<IndexMask> evaluate_masks;
-      if (mask.size() < domain_size) {
-        /* Separate masks for evaluation are only necessary if the mask mask
-         * for field input evaluation doesn't have every element selected. */
-        evaluate_masks = masks_from_group_ids(group_ids, mask, evaluate_masks_storage);
-      }
+    /* The goal is to build each tree and use it immediately, rather than building all trees and
+     * sampling them later. That should help to keep the tree in caches before balancing and when
+     * sampling many points. */
+    const VArraySpan<int> group_ids(group);
+    MultiValueMap<int, int64_t> group_mask_storage;
+    const Vector<IndexMask> tree_masks = masks_from_group_ids(
+        group_ids, group_ids.index_mask(), group_mask_storage);
 
-      /* The grain size should be larger as each tree gets smaller. */
-      const int avg_tree_size = group_ids.size() / group_mask_storage.size();
-      const int grain_size = std::max(8192 / avg_tree_size, 1);
-      threading::parallel_for(tree_masks.index_range(), grain_size, [&](const IndexRange range) {
-        for (const int i : range) {
-          const IndexMask tree_mask = tree_masks[i];
-          const IndexMask evaluate_mask = evaluate_masks.is_empty() ? tree_mask :
-                                                                      evaluate_masks[i];
-          if (tree_masks[i].size() < 2) {
-            result.as_mutable_span().fill_indices(evaluate_mask.indices(), 0);
-          }
-          else {
-            KDTree_3d *tree = build_kdtree(positions, tree_mask);
-            find_neighbors(*tree, positions, evaluate_mask, result);
-            BLI_kdtree_3d_free(tree);
-          }
+    MultiValueMap<int, int64_t> evaluate_masks_storage;
+    Vector<IndexMask> evaluate_masks;
+    if (mask.size() < domain_size) {
+      /* Separate masks for evaluation are only necessary if the mask mask
+       * for field input evaluation doesn't have every element selected. */
+      evaluate_masks = masks_from_group_ids(group_ids, mask, evaluate_masks_storage);
+    }
+
+    /* The grain size should be larger as each tree gets smaller. */
+    const int avg_tree_size = group_ids.size() / group_mask_storage.size();
+    const int grain_size = std::max(8192 / avg_tree_size, 1);
+    threading::parallel_for(tree_masks.index_range(), grain_size, [&](const IndexRange range) {
+      for (const int i : range) {
+        const IndexMask tree_mask = tree_masks[i];
+        const IndexMask evaluate_mask = evaluate_masks.is_empty() ? tree_mask : evaluate_masks[i];
+        if (tree_masks[i].size() < 2) {
+          result.as_mutable_span().fill_indices(evaluate_mask.indices(), 0);
         }
-      });
-    }
+        else {
+          KDTree_3d *tree = build_kdtree(positions, tree_mask);
+          find_neighbors(*tree, positions, evaluate_mask, result);
+          BLI_kdtree_3d_free(tree);
+        }
+      }
+    });
     return VArray<int>::ForContainer(std::move(result));
   }
 
