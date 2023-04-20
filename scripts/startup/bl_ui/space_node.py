@@ -967,7 +967,7 @@ class NODE_PT_simulation_zone_items(Panel):
     bl_space_type = 'NODE_EDITOR'
     bl_region_type = 'UI'
     bl_category = "Node"
-    bl_label = "State Items"
+    bl_label = "Simulation State"
 
     input_node_type = 'GeometryNodeSimulationInput'
     output_node_type = 'GeometryNodeSimulationOutput'
