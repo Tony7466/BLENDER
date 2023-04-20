@@ -221,7 +221,7 @@ static void node_geo_exec(GeoNodeExecParams params)
                                      params,
                                      attributes_to_propagate);
         if (type == GEO_COMPONENT_TYPE_MESH) {
-          const Mesh *src_mesh = ((MeshComponent *)geometry_set.get_component_for_read(type))->get_for_read();
+          const Mesh *src_mesh = geometry_set.get_mesh_for_read();
           dst_instances->set_color_attribute_metadata(src_mesh->default_color_attribute, src_mesh->active_color_attribute);
         }
       }
