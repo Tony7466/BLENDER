@@ -197,7 +197,7 @@ void Volumes::begin_sync()
     ps.shader_set(inst_.shaders.static_shader_get(VOLUME_CLEAR));
   }
   ps.dispatch(math::divide_ceil(data_.tex_size, int3(VOLUME_GROUP_SIZE)));
-  ps.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
+  ps.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
 }
 
 void Volumes::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHandle res_handle)
@@ -289,7 +289,7 @@ void Volumes::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHand
     ps.push_constant("drw_ResourceID", int(res_handle.resource_index()));
     ps.push_constant("grid_coords_min", grid_coords_min);
     ps.dispatch(math::divide_ceil(grid_size, int3(VOLUME_GROUP_SIZE)));
-    ps.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
+    ps.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
 }
 
@@ -351,8 +351,9 @@ void Volumes::end_sync()
   /* TODO (Miguel Pozo): The naming is wrong ? Is should be extinction ? */
   scatter_ps_.bind_image("out_transmittance", &transmit_tx_);
 
+  scatter_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH);
   scatter_ps_.dispatch(math::divide_ceil(data_.tex_size, int3(VOLUME_GROUP_SIZE)));
-  scatter_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
+  scatter_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH);
 
   integration_ps_.init();
   integration_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_INTEGRATION));
@@ -363,7 +364,7 @@ void Volumes::end_sync()
   integration_ps_.bind_image("out_transmittance", &integrated_transmit_tx_);
 
   integration_ps_.dispatch(math::divide_ceil(int2(data_.tex_size), int2(VOLUME_2D_GROUP_SIZE)));
-  integration_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
+  integration_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH);
 
   resolve_ps_.init();
   resolve_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
@@ -372,6 +373,7 @@ void Volumes::end_sync()
   resolve_ps_.bind_texture("inScattering", &integrated_scatter_tx_);
   resolve_ps_.bind_texture("inTransmittance", &integrated_transmit_tx_);
   resolve_ps_.bind_texture("inSceneDepth", &inst_.render_buffers.depth_tx);
+
   resolve_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
 }
 
