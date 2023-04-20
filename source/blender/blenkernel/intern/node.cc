@@ -2589,8 +2589,29 @@ bNodeLink *nodeAddLink(
   return link;
 }
 
+/* Adjust the indices of links connected to the given multi input socket after deleting the link at
+ * `deleted_index`. This function also works if the link has not yet been deleted. */
+static void adjust_multi_input_indices_after_removed_link(bNodeTree *ntree,
+                                                          const bNodeSocket *sock,
+                                                          const int deleted_index)
+{
+  LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
+    /* We only need to adjust those with a greater index, because the others will have the same
+     * index. */
+    if (link->tosock != sock || link->multi_input_socket_index <= deleted_index) {
+      continue;
+    }
+    link->multi_input_socket_index -= 1;
+  }
+}
+
 void nodeRemLink(bNodeTree *ntree, bNodeLink *link)
 {
+  if (link->tosock->is_multi_input()) {
+    adjust_multi_input_indices_after_removed_link(
+        ntree, link->tosock, link->multi_input_socket_index);
+  }
+
   /* Can be called for links outside a node tree (e.g. clipboard). */
   if (ntree) {
     BLI_remlink(&ntree->links, link);
@@ -2634,22 +2655,6 @@ bool nodeLinkIsSelected(const bNodeLink *link)
   return (link->fromnode->flag & NODE_SELECT) || (link->tonode->flag & NODE_SELECT);
 }
 
-/* Adjust the indices of links connected to the given multi input socket after deleting the link at
- * `deleted_index`. This function also works if the link has not yet been deleted. */
-static void adjust_multi_input_indices_after_removed_link(bNodeTree *ntree,
-                                                          const bNodeSocket *sock,
-                                                          const int deleted_index)
-{
-  LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
-    /* We only need to adjust those with a greater index, because the others will have the same
-     * index. */
-    if (link->tosock != sock || link->multi_input_socket_index <= deleted_index) {
-      continue;
-    }
-    link->multi_input_socket_index -= 1;
-  }
-}
-
 void nodeInternalRelink(bNodeTree *ntree, bNode *node)
 {
   /* store link pointers in output sockets, for efficient lookup */
@@ -2670,10 +2675,6 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node)
     bNodeLink *fromlink = internal_link ? internal_link->fromsock->link : nullptr;
 
     if (fromlink == nullptr) {
-      if (link->tosock->is_multi_input()) {
-        adjust_multi_input_indices_after_removed_link(
-            ntree, link->tosock, link->multi_input_socket_index);
-      }
       nodeRemLink(ntree, link);
       continue;
     }
@@ -2683,8 +2684,6 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node)
       LISTBASE_FOREACH_MUTABLE (bNodeLink *, link_to_compare, &ntree->links) {
         if (link_to_compare->fromsock == fromlink->fromsock &&
             link_to_compare->tosock == link->tosock) {
-          adjust_multi_input_indices_after_removed_link(
-              ntree, link_to_compare->tosock, link_to_compare->multi_input_socket_index);
           duplicate_links_to_remove.append_non_duplicates(link_to_compare);
         }
       }
