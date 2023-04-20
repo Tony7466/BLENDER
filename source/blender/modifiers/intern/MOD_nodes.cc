@@ -1161,44 +1161,12 @@ static void store_output_attributes(GeometrySet &geometry,
   store_computed_output_attributes(geometry, attributes_to_store);
 }
 
-/**
- * Evaluate a node group to compute the output geometry.
- */
-static GeometrySet compute_geometry(const bNodeTree &btree,
-                                    const nodes::GeometryNodesLazyFunctionGraphInfo &lf_graph_info,
-                                    const bNode &output_node,
-                                    GeometrySet input_geometry_set,
-                                    NodesModifierData *nmd,
-                                    const ModifierEvalContext *ctx)
+static void prepare_simulation_states_for_evaluation(
+    NodesModifierData *nmd,
+    NodesModifierData *nmd_orig,
+    const ModifierEvalContext *ctx,
+    nodes::GeoNodesModifierData &geo_nodes_modifier_data)
 {
-  NodesModifierData *nmd_orig = reinterpret_cast<NodesModifierData *>(
-      BKE_modifier_get_original(ctx->object, &nmd->modifier));
-
-  const blender::nodes::GeometryNodeLazyFunctionGraphMapping &mapping = lf_graph_info.mapping;
-
-  Vector<const lf::OutputSocket *> graph_inputs = mapping.group_input_sockets;
-  graph_inputs.extend(mapping.group_output_used_sockets);
-  graph_inputs.extend(mapping.attribute_set_by_geometry_output.values().begin(),
-                      mapping.attribute_set_by_geometry_output.values().end());
-  Vector<const lf::InputSocket *> graph_outputs = mapping.standard_group_output_sockets;
-
-  Array<GMutablePointer> param_inputs(graph_inputs.size());
-  Array<GMutablePointer> param_outputs(graph_outputs.size());
-  Array<std::optional<lf::ValueUsage>> param_input_usages(graph_inputs.size());
-  Array<lf::ValueUsage> param_output_usages(graph_outputs.size(), lf::ValueUsage::Used);
-  Array<bool> param_set_outputs(graph_outputs.size(), false);
-
-  nodes::GeometryNodesLazyFunctionLogger lf_logger(lf_graph_info);
-  nodes::GeometryNodesLazyFunctionSideEffectProvider lf_side_effect_provider;
-
-  lf::GraphExecutor graph_executor{
-      lf_graph_info.graph, graph_inputs, graph_outputs, &lf_logger, &lf_side_effect_provider};
-
-  nodes::GeoNodesModifierData geo_nodes_modifier_data;
-  geo_nodes_modifier_data.depsgraph = ctx->depsgraph;
-  geo_nodes_modifier_data.self_object = ctx->object;
-  auto eval_log = std::make_unique<geo_log::GeoModifierLog>();
-
   const Main *bmain = DEG_get_bmain(ctx->depsgraph);
   const SubFrame current_frame = DEG_get_ctime(ctx->depsgraph);
   const Scene *scene = DEG_get_input_scene(ctx->depsgraph);
@@ -1279,6 +1247,47 @@ static GeometrySet compute_geometry(const bNodeTree &btree,
           (float(sim_states.next->frame) - float(sim_states.prev->frame));
     }
   }
+}
+
+/**
+ * Evaluate a node group to compute the output geometry.
+ */
+static GeometrySet compute_geometry(const bNodeTree &btree,
+                                    const nodes::GeometryNodesLazyFunctionGraphInfo &lf_graph_info,
+                                    const bNode &output_node,
+                                    GeometrySet input_geometry_set,
+                                    NodesModifierData *nmd,
+                                    const ModifierEvalContext *ctx)
+{
+  NodesModifierData *nmd_orig = reinterpret_cast<NodesModifierData *>(
+      BKE_modifier_get_original(ctx->object, &nmd->modifier));
+
+  const blender::nodes::GeometryNodeLazyFunctionGraphMapping &mapping = lf_graph_info.mapping;
+
+  Vector<const lf::OutputSocket *> graph_inputs = mapping.group_input_sockets;
+  graph_inputs.extend(mapping.group_output_used_sockets);
+  graph_inputs.extend(mapping.attribute_set_by_geometry_output.values().begin(),
+                      mapping.attribute_set_by_geometry_output.values().end());
+  Vector<const lf::InputSocket *> graph_outputs = mapping.standard_group_output_sockets;
+
+  Array<GMutablePointer> param_inputs(graph_inputs.size());
+  Array<GMutablePointer> param_outputs(graph_outputs.size());
+  Array<std::optional<lf::ValueUsage>> param_input_usages(graph_inputs.size());
+  Array<lf::ValueUsage> param_output_usages(graph_outputs.size(), lf::ValueUsage::Used);
+  Array<bool> param_set_outputs(graph_outputs.size(), false);
+
+  nodes::GeometryNodesLazyFunctionLogger lf_logger(lf_graph_info);
+  nodes::GeometryNodesLazyFunctionSideEffectProvider lf_side_effect_provider;
+
+  lf::GraphExecutor graph_executor{
+      lf_graph_info.graph, graph_inputs, graph_outputs, &lf_logger, &lf_side_effect_provider};
+
+  nodes::GeoNodesModifierData geo_nodes_modifier_data;
+  geo_nodes_modifier_data.depsgraph = ctx->depsgraph;
+  geo_nodes_modifier_data.self_object = ctx->object;
+  auto eval_log = std::make_unique<geo_log::GeoModifierLog>();
+
+  prepare_simulation_states_for_evaluation(nmd, nmd_orig, ctx, geo_nodes_modifier_data);
 
   Set<blender::ComputeContextHash> socket_log_contexts;
   if (logging_enabled(ctx)) {
