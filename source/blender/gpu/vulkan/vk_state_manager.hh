@@ -9,9 +9,16 @@
 
 #include "gpu_state_private.hh"
 
+#include "vk_sampler.hh"
+
 namespace blender::gpu {
 class VKStateManager : public StateManager {
+  /* Dummy sampler for now.*/
+  VKSampler sampler_;
+
  public:
+  VKStateManager(VKContext &context);
+
   void apply_state() override;
   void force_state() override;
 

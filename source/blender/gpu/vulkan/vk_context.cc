@@ -48,7 +48,7 @@ VKContext::VKContext(void *ghost_window, void *ghost_context)
   vmaCreateAllocator(&info, &mem_allocator_);
   descriptor_pools_.init(vk_device_);
 
-  state_manager = new VKStateManager();
+  state_manager = new VKStateManager(*this);
   imm = new VKImmediate();
 
   VKBackend::capabilities_init(*this);

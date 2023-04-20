@@ -25,6 +25,7 @@ class VKTexture;
 class VKUniformBuffer;
 class VKVertexBuffer;
 class VKDescriptorSetTracker;
+class VKSampler;
 
 /**
  * In vulkan shader resources (images and buffers) are grouped in descriptor sets.
@@ -118,6 +119,7 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
     VkDeviceSize buffer_size = 0;
 
     VkImageView vk_image_view = VK_NULL_HANDLE;
+    VkSampler vk_sampler = VK_NULL_HANDLE;
 
     Binding()
     {
@@ -131,7 +133,8 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
 
     bool is_image() const
     {
-      return ELEM(type, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+      return ELEM(
+          type, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
     }
   };
 
@@ -149,7 +152,9 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
   void bind_as_ssbo(VKIndexBuffer &buffer, VKDescriptorSet::Location location);
   void bind(VKStorageBuffer &buffer, VKDescriptorSet::Location location);
   void bind(VKUniformBuffer &buffer, VKDescriptorSet::Location location);
+  /* TODO: bind as image */
   void image_bind(VKTexture &texture, VKDescriptorSet::Location location);
+  void bind(VKTexture &texture, VKDescriptorSet::Location location, VKSampler &sampler);
 
   /**
    * Some shaders don't need any descriptor sets so we don't need to bind them.

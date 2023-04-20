@@ -285,6 +285,20 @@ bool VKTexture::allocate()
   return result == VK_SUCCESS;
 }
 
+void VKTexture::bind(int unit, VKSampler &sampler)
+{
+  if (!is_allocated()) {
+    allocate();
+  }
+  VKContext &context = *VKContext::get();
+  VKShader *shader = static_cast<VKShader *>(context.shader);
+  const VKShaderInterface &shader_interface = shader->interface_get();
+  const VKDescriptorSet::Location location = shader_interface.descriptor_set_location(
+      shader::ShaderCreateInfo::Resource::BindType::SAMPLER, unit);
+  VKDescriptorSetTracker &descriptor_set = shader->pipeline_get().descriptor_set_get();
+  descriptor_set.bind(*this, location, sampler);
+}
+
 void VKTexture::image_bind(int binding)
 {
   if (!is_allocated()) {

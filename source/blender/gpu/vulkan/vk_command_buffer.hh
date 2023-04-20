@@ -83,6 +83,9 @@ class VKCommandBuffer : NonCopyable, NonMovable {
     /* Amount of times a check required to change the render pass. */
     uint64_t switches_ = 0;
 
+    /* Number of times a vkDraw command has been recorded. */
+    uint64_t draw_counts = 0;
+
     /**
      * Current stage of the command buffer to keep track of inconsistencies & incorrect usage.
      */

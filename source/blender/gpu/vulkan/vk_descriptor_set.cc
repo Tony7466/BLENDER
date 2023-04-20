@@ -7,6 +7,7 @@
 
 #include "vk_descriptor_set.hh"
 #include "vk_index_buffer.hh"
+#include "vk_sampler.hh"
 #include "vk_shader.hh"
 #include "vk_storage_buffer.hh"
 #include "vk_texture.hh"
@@ -83,6 +84,16 @@ void VKDescriptorSetTracker::image_bind(VKTexture &texture,
   binding.vk_image_view = texture.vk_image_view_handle();
 }
 
+void VKDescriptorSetTracker::bind(VKTexture &texture,
+                                  const VKDescriptorSet::Location location,
+                                  VKSampler &sampler)
+{
+  Binding &binding = ensure_location(location);
+  binding.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  binding.vk_image_view = texture.vk_image_view_handle();
+  binding.vk_sampler = sampler.vk_handle();
+}
+
 VKDescriptorSetTracker::Binding &VKDescriptorSetTracker::ensure_location(
     const VKDescriptorSet::Location location)
 {
@@ -133,7 +144,9 @@ void VKDescriptorSetTracker::update(VKContext &context)
       continue;
     }
     VkDescriptorImageInfo image_info = {};
+    image_info.sampler = binding.vk_sampler;
     image_info.imageView = binding.vk_image_view;
+    /* TODO: use the correct one from the texture. */
     image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
     image_infos.append(image_info);
 
