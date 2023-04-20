@@ -939,8 +939,8 @@ static AllMeshesInfo preprocess_meshes(const GeometrySet &geometry_set,
         mesh_info.stored_vertex_ids = ids_attribute.varray.get_internal_span().typed<int>();
       }
     }
-    mesh_info.material_indices =*
-        attributes.lookup_or_default<int>("material_index", ATTR_DOMAIN_FACE, 0);
+    mesh_info.material_indices = *attributes.lookup_or_default<int>(
+        "material_index", ATTR_DOMAIN_FACE, 0);
   }
 
   info.no_loose_edges_hint = std::all_of(
@@ -1081,7 +1081,7 @@ static void execute_realize_mesh_tasks(const RealizeInstancesOptions &options,
   const int tot_loops = last_task.start_indices.loop + last_mesh.totloop;
   const int tot_poly = last_task.start_indices.poly + last_mesh.totpoly;
 
-  Mesh *dst_mesh = BKE_mesh_new_nomain(tot_vertices, tot_edges, tot_loops, tot_poly);
+  Mesh *dst_mesh = BKE_mesh_new_nomain(tot_vertices, tot_edges, tot_poly, tot_loops);
   MeshComponent &dst_component = r_realized_geometry.get_component_for_write<MeshComponent>();
   dst_component.replace(dst_mesh);
   bke::MutableAttributeAccessor dst_attributes = dst_mesh->attributes_for_write();
