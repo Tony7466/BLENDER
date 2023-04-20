@@ -1796,13 +1796,11 @@ void FONT_OT_text_insert(wmOperatorType *ot)
 
 /** \} */
 
-/* -------------------------------------------------------------------- */
-/** \name Font Selection Operator
- * \{ */
-
-static void font_cursor_set_apply(bContext *C, const wmEvent *event)
+static void font_cursor_text_index_from_event(bContext *C,
+                                              Object *obedit,
+                                              const wmEvent *event,
+                                              float r_curs_loc[2])
 {
-  Object *obedit = CTX_data_active_object(C);
   Curve *cu = obedit->data;
   EditFont *ef = cu->editfont;
 
@@ -1817,15 +1815,26 @@ static void font_cursor_set_apply(bContext *C, const wmEvent *event)
 
   /* Convert to object space and scale by font size. */
   mul_m4_v3(obedit->world_to_object, mouse_loc);
-  float curs_loc[2] = {mouse_loc[0] / cu->fsize, mouse_loc[1] / cu->fsize};
 
+  r_curs_loc[0] = mouse_loc[0] / cu->fsize;
+  r_curs_loc[1] = mouse_loc[1] / cu->fsize;
+}
+
+/* -------------------------------------------------------------------- */
+/** \name Font Selection Operator
+ * \{ */
+
+static void font_cursor_set_apply(bContext *C, const wmEvent *event)
+{
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  Object *ob = DEG_get_evaluated_object(depsgraph, obedit);
-  cu = ob->data;
-  ef = cu->editfont;
+  Object *ob = DEG_get_evaluated_object(depsgraph, CTX_data_active_object(C));
+  Curve *cu = ob->data;
+  EditFont *ef = cu->editfont;
   BLI_assert(ef->len >= 0);
 
-  const int string_offset = BKE_vfont_cursor_to_string_offset(ob, curs_loc);
+  float curs_loc[2];
+  font_cursor_text_index_from_event(C, ob, event, curs_loc);
+  const int string_offset = BKE_vfont_cursor_to_text_index(ob, curs_loc);
 
   if (string_offset > ef->len || string_offset < 0) {
     return;
@@ -1833,10 +1842,10 @@ static void font_cursor_set_apply(bContext *C, const wmEvent *event)
 
   cu->curinfo = ef->textbufinfo[ef->pos ? ef->pos - 1 : 0];
 
-  if (obedit->totcol > 0) {
-    obedit->actcol = cu->curinfo.mat_nr;
-    if (obedit->actcol < 1) {
-      obedit->actcol = 1;
+  if (ob->totcol > 0) {
+    ob->actcol = cu->curinfo.mat_nr;
+    if (ob->actcol < 1) {
+      ob->actcol = 1;
     }
   }
 
@@ -1851,8 +1860,8 @@ static void font_cursor_set_apply(bContext *C, const wmEvent *event)
   ef->selend = string_offset;
   ef->pos = string_offset;
 
-  DEG_id_tag_update(obedit->data, ID_RECALC_SELECT);
-  WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
+  DEG_id_tag_update(ob->data, ID_RECALC_SELECT);
+  WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
 }
 
 static int font_selection_set_invoke(bContext *C, wmOperator *op, const wmEvent *event)

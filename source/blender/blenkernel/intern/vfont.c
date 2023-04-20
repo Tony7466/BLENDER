@@ -929,13 +929,6 @@ static bool vfont_to_curve(Object *ob,
 
   i = 0;
 
-  float cursor_sq_dist_best = FLT_MAX;
-  float cursor_sq_dist_test = 0;
-  if (cursor_params) {
-    cursor_params->r_string_offset = -1;
-    cursor_sq_dist_test = len_squared_v2(cursor_params->cursor_location);
-  }
-
   while (i <= slen) {
     /* Characters in the list */
     info = &custrinfo[i];
@@ -1141,9 +1134,9 @@ static bool vfont_to_curve(Object *ob,
       }
 
       /* Set the width of the character. */
-      twidth = char_width(cu, che, info);
+      twidth = (char_width(cu, che, info) * wsfac * (1.0f + (info->kern / 40.0f))) + xtrax;
 
-      xof += (twidth * wsfac * (1.0f + (info->kern / 40.0f))) + xtrax;
+      xof += twidth;
 
       if (sb) {
         sb->w = (xof * font_size) - sb->w;
@@ -1152,28 +1145,24 @@ static bool vfont_to_curve(Object *ob,
     ct++;
 
     if (cursor_params) {
-      float offset_loc[2] = {cursor_params->cursor_location[0] - xof,
-                             cursor_params->cursor_location[1] - yof};
-      float cursor_sq_offset = len_squared_v2(offset_loc);
-      if (cursor_sq_offset < cursor_sq_dist_best) {
-        /* Closest character so far. */
-        cursor_sq_dist_best = cursor_sq_offset;
-        cursor_params->r_string_offset = i;
-      }
-      else if (cursor_sq_dist_test < cursor_sq_dist_best) {
-        /* Left of text, including left-side of first character. */
-        cursor_params->r_string_offset = -1;
+      float midw = (twidth / 2.0f);
+      if (cursor_params->cursor_location[1] >= yof - (0.25f * linedist) &&
+          cursor_params->cursor_location[1] <= (yof + (0.75f * linedist))) {
+        /* On this row. */
+        if (cursor_params->cursor_location[0] >= (xof - twidth) &&
+            cursor_params->cursor_location[0] <= (xof - midw)) {
+          /* Left half of preceding character. */
+          cursor_params->r_string_offset = i;
+        }
+        else if (cursor_params->cursor_location[0] >= (xof - midw) &&
+                 cursor_params->cursor_location[0] <= (xof)) {
+          /* Right half of preceding character. */
+          cursor_params->r_string_offset = i + 1;
+        }
       }
     }
 
     i++;
-  }
-
-  if (cursor_params) {
-    if (cursor_params->r_string_offset == -1 ||
-        (cursor_params->r_string_offset >= 0 && cursor_params->r_string_offset <= ef->len - 1)) {
-      cursor_params->r_string_offset++;
-    }
   }
 
   current_line_length += xof + twidth - MARGIN_X_MIN;
@@ -1794,7 +1783,7 @@ bool BKE_vfont_to_curve_ex(Object *ob,
   return data.ok;
 }
 
-int BKE_vfont_cursor_to_string_offset(Object *ob, float cursor_location[2])
+int BKE_vfont_cursor_to_text_index(Object *ob, float cursor_location[2])
 {
   Curve *cu = (Curve *)ob->data;
   ListBase *r_nubase = &cu->nurb;
@@ -1811,7 +1800,7 @@ int BKE_vfont_cursor_to_string_offset(Object *ob, float cursor_location[2])
 
   VFontCursor_Params cursor_params = {
       .cursor_location = {cursor_location[0], cursor_location[1]},
-      .r_string_offset = 0,
+      .r_string_offset = -1,
   };
 
   do {
