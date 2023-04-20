@@ -20,13 +20,17 @@ if(WIN32)
     ExternalProject_Add_Step(external_zlib after_install
       COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/zlib/lib/zlibstatic${LIBEXT} ${HARVEST_TARGET}/zlib/lib/libz_st${LIBEXT}
       COMMAND ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/zlib/include/ ${HARVEST_TARGET}/zlib/include/
-      COMMAND ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/zlib/bin/ ${HARVEST_TARGET}/zlib/bin/
+      COMMAND ${CMAKE_COMMAND} -E rm -f ${LIBDIR}/zlib/bin/zlib.dll
+      COMMAND ${CMAKE_COMMAND} -E rm -f ${LIBDIR}/zlib/lib/zlib.lib
+	    COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/zlib/lib/zlibstatic${LIBEXT} ${LIBDIR}/zlib/lib/zlib${LIBEXT}
       DEPENDEES install
     )
   endif()
   if(BUILD_MODE STREQUAL Debug)
     ExternalProject_Add_Step(external_zlib after_install
     COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/zlib/lib/zlibstaticd${LIBEXT} ${HARVEST_TARGET}/zlib/lib/libz_st_d${LIBEXT}
+    COMMAND ${CMAKE_COMMAND} -E rm -f ${LIBDIR}/zlib/bin/zlib.dll
+    COMMAND ${CMAKE_COMMAND} -E rm -f ${LIBDIR}/zlib/lib/zlib.lib
     DEPENDEES install
     )
   endif()
