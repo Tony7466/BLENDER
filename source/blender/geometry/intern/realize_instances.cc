@@ -206,6 +206,8 @@ struct AllMeshesInfo {
   /** True if we know that there are no loose edges in any of the input meshes. */
   bool no_loose_edges_hint = false;
   bool no_loose_verts_hint = false;
+  char const *active_color_attribute = nullptr;
+  char const *default_color_attribute = nullptr;
 };
 
 struct AllCurvesInfo {
@@ -902,6 +904,13 @@ static AllMeshesInfo preprocess_meshes(const bke::GeometrySet &geometry_set,
         info.materials.add(material);
       }
     }
+    if (info.default_color_attribute == nullptr) {
+      info.default_color_attribute = mesh->default_color_attribute;
+    }
+    if (info.active_color_attribute == nullptr) {
+      info.active_color_attribute = mesh->active_color_attribute;
+    }
+
   }
   info.create_material_index_attribute |= info.materials.size() > 1;
   info.realize_info.reinitialize(info.order.size());
@@ -1561,11 +1570,17 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
   if (new_geometry_set.has_mesh())
   {
     Mesh *dst_mesh = new_geometry_set.get_mesh_for_write();
-    if (geometry_set.get_instances_for_read()->default_color_attribute_name().size()) {
-      BKE_id_attributes_default_color_set(&dst_mesh->id, geometry_set.get_instances_for_read()->default_color_attribute_name().c_str());
+
+    /* Get the default color attribute from the instance domain, this
+     * corresponds to the default specified on the instancer. */
+    const std::string &default_color_attribute = geometry_set.get_instances_for_read()->default_color_attribute_name();
+    if (default_color_attribute.size()) {
+      BKE_id_attributes_default_color_set(&dst_mesh->id, default_color_attribute.c_str());
     }
-    if (geometry_set.get_instances_for_read()->active_color_attribute_name().size()) {
-      BKE_id_attributes_active_color_set(&dst_mesh->id, geometry_set.get_instances_for_read()->active_color_attribute_name().c_str());
+
+    const std::string &active_color_attribute = geometry_set.get_instances_for_read()->active_color_attribute_name();
+    if (active_color_attribute.size()) {
+      BKE_id_attributes_active_color_set(&dst_mesh->id, active_color_attribute.c_str());
     }
   }
 
