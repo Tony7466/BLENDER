@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_kdtree.h"
-#include "BLI_multi_value_map.hh"
+#include "BLI_map.hh"
 #include "BLI_task.hh"
+#include "BLI_vector.hh"
 
 #include "node_geometry_util.hh"
 
@@ -17,11 +18,22 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Bool>(N_("Has Neighbor")).field_source();
 }
 
-static KDTree_3d *build_kdtree(const Span<float3> &positions, const IndexMask mask)
+static KDTree_3d *build_kdtree(const Span<float3> &positions, const Span<int> indices)
 {
-  KDTree_3d *tree = BLI_kdtree_3d_new(mask.size());
-  mask.foreach_index(
-      [tree, positions](const int index) { BLI_kdtree_3d_insert(tree, i, positions[i]); });
+  KDTree_3d *tree = BLI_kdtree_3d_new(indices.size());
+  for (const int index : indices) {
+    BLI_kdtree_3d_insert(tree, index, positions[index]);
+  }
+  BLI_kdtree_3d_balance(tree);
+  return tree;
+}
+
+static KDTree_3d *build_kdtree(const Span<float3> &positions, const IndexRange range)
+{
+  KDTree_3d *tree = BLI_kdtree_3d_new(range.size());
+  for (const int index : range) {
+    BLI_kdtree_3d_insert(tree, index, positions[index]);
+  }
   BLI_kdtree_3d_balance(tree);
   return tree;
 }
@@ -36,27 +48,25 @@ static int find_nearest_non_self(const KDTree_3d &tree, const float3 &position, 
 
 static void find_neighbors(const KDTree_3d &tree,
                            const Span<float3> positions,
-                           const IndexMask mask,
-                           MutableSpan<int> indices)
+                           const Span<int> mask,
+                           MutableSpan<int> r_indices)
 {
-  threading::parallel_for(mask.index_range(), 1024, [&](const IndexRange range) {
-    mask.foreach_index([tree, positions](const int index) {
-      indices[i] = find_nearest_non_self(tree, positions[i], i);
-    });
+  threading::parallel_for(mask.index_range(), 512, [&](const IndexRange range) {
+    for (const int index : mask.slice(range)) {
+      r_indices[index] = find_nearest_non_self(tree, positions[index], index);
+    }
   });
 }
-
-static Vector<IndexMask> masks_from_group_ids(const Span<int> group_ids,
-                                              const IndexMask mask,
-                                              MultiValueMap<int, int64_t> &storage)
+static void find_neighbors(const KDTree_3d &tree,
+                           const Span<float3> positions,
+                           const IndexMask mask,
+                           MutableSpan<int> r_indices)
 {
-  mask.foreach_index([&](const int i) { storage.add(group_ids[i], i); });
-  Vector<IndexMask> masks;
-  masks.reserve(storage.size());
-  for (const Span<int64_t> indices : storage.values()) {
-    masks.append(indices);
-  }
-  return masks;
+  threading::parallel_for(mask.index_range(), 512, [&](const IndexRange range) {
+    mask.slice(range).foreach_index([&tree, positions, r_indices](const int index) {
+      r_indices[index] = find_nearest_non_self(tree, positions[index], index);
+    });
+  });
 }
 
 class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
@@ -89,46 +99,53 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
     Array<int> result(mask.min_array_size());
 
     if (group.is_single()) {
-      const IndexMask full_mask = positions.index_range();
-      KDTree_3d *tree = build_kdtree(positions, full_mask);
+      KDTree_3d *tree = build_kdtree(positions, IndexRange(domain_size));
       find_neighbors(*tree, positions, mask, result);
       BLI_kdtree_3d_free(tree);
       return VArray<int>::ForContainer(std::move(result));
     }
 
-    /* The goal is to build each tree and use it immediately, rather than building all trees and
-     * sampling them later. That should help to keep the tree in caches before balancing and when
-     * sampling many points. */
-    const VArraySpan<int> group_ids(group);
-    MultiValueMap<int, int64_t> group_mask_storage;
-    const Vector<IndexMask> tree_masks = masks_from_group_ids(
-        group_ids, group_ids.index_mask(), group_mask_storage);
+    VectorSet<int> group_indexing;
+    Vector<Vector<int>> mask_indices;
+    Vector<Vector<int>> tree_indices;
+    Vector<KDTree_3d *> forest;
 
-    MultiValueMap<int, int64_t> evaluate_masks_storage;
-    Vector<IndexMask> evaluate_masks;
-    if (mask.size() < domain_size) {
-      /* Separate masks for evaluation are only necessary if the mask mask
-       * for field input evaluation doesn't have every element selected. */
-      evaluate_masks = masks_from_group_ids(group_ids, mask, evaluate_masks_storage);
+    for (const int index : mask) {
+      const int group_id = group[index];
+      const int index_of_group = group_indexing.index_of_or_add(group_id);
+      if (index_of_group == mask_indices.size()) {
+        mask_indices.append({});
+      }
+      mask_indices[index_of_group].append(index);
     }
 
-    /* The grain size should be larger as each tree gets smaller. */
-    const int avg_tree_size = group_ids.size() / group_mask_storage.size();
-    const int grain_size = std::max(8192 / avg_tree_size, 1);
-    threading::parallel_for(tree_masks.index_range(), grain_size, [&](const IndexRange range) {
-      for (const int i : range) {
-        const IndexMask tree_mask = tree_masks[i];
-        const IndexMask evaluate_mask = evaluate_masks.is_empty() ? tree_mask : evaluate_masks[i];
-        if (tree_masks[i].size() < 2) {
-          result.as_mutable_span().fill_indices(evaluate_mask.indices(), 0);
-        }
-        else {
-          KDTree_3d *tree = build_kdtree(positions, tree_mask);
-          find_neighbors(*tree, positions, evaluate_mask, result);
-          BLI_kdtree_3d_free(tree);
-        }
+    tree_indices.resize(group_indexing.size());
+    forest.resize(group_indexing.size());
+
+    for (const int index : IndexMask(domain_size)) {
+      const int group_id = group[index];
+      const int index_of_group = group_indexing.index_of_try(group_id);
+      if (index_of_group != -1) {
+        tree_indices[index_of_group].append(index);
+      }
+    }
+
+    threading::parallel_for(group_indexing.index_range(), 8, [&](const IndexRange range) {
+      for (const int index : range) {
+        const Span<int> mask_of_tree = tree_indices[index];
+        forest[index] = build_kdtree(positions, mask_of_tree);
       }
     });
+
+    threading::parallel_for(group_indexing.index_range(), 1024, [&](const IndexRange range) {
+      for (const int index : range) {
+        KDTree_3d &tree = *forest[index];
+        const Span<int> mask = mask_indices[index];
+        find_neighbors(tree, positions, mask, result);
+        BLI_kdtree_3d_free(&tree);
+      }
+    });
+
     return VArray<int>::ForContainer(std::move(result));
   }
 
@@ -158,7 +175,7 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
     return bke::try_detect_field_domain(component, positions_field_);
   }
 };
-
+/*
 class HasNeighborFieldInput final : public bke::GeometryFieldInput {
  private:
   const Field<int> group_field_;
@@ -186,7 +203,7 @@ class HasNeighborFieldInput final : public bke::GeometryFieldInput {
       return VArray<bool>::ForSingle(true, mask.min_array_size());
     }
 
-    /* When a group ID is contained in the set, it means there is only one element with that ID. */
+    /* When a group ID is contained in the set, it means there is only one element with that ID. *//*
     Map<int, int> counts;
     const VArraySpan<int> group_span(group);
     mask.foreach_index([&](const int i) {
@@ -222,6 +239,7 @@ class HasNeighborFieldInput final : public bke::GeometryFieldInput {
     return bke::try_detect_field_domain(component, group_field_);
   }
 };
+*/
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
@@ -233,12 +251,12 @@ static void node_geo_exec(GeoNodeExecParams params)
                       Field<int>(std::make_shared<IndexOfNearestFieldInput>(
                           std::move(position_field), group_field)));
   }
-
-  if (params.output_is_required("Has Neighbor")) {
-    params.set_output(
-        "Has Neighbor",
-        Field<bool>(std::make_shared<HasNeighborFieldInput>(std::move(group_field))));
-  }
+  /*
+    if (params.output_is_required("Has Neighbor")) {
+      params.set_output(
+          "Has Neighbor",
+          Field<bool>(std::make_shared<HasNeighborFieldInput>(std::move(group_field))));
+    }*/
 }
 
 }  // namespace blender::nodes::node_geo_index_of_nearest_cc
