@@ -17,9 +17,24 @@
 
 namespace blender::nodes {
 
+bool is_simulation_item_type_supported(const eNodeSocketDatatype socket_type)
+{
+  return ELEM(socket_type,
+              SOCK_FLOAT,
+              SOCK_VECTOR,
+              SOCK_RGBA,
+              SOCK_BOOLEAN,
+              SOCK_INT,
+              SOCK_STRING,
+              SOCK_GEOMETRY);
+}
+
 static std::unique_ptr<SocketDeclaration> socket_declaration_for_simulation_item(
     const NodeSimulationItem &item, const eNodeSocketInOut in_out, const int index)
 {
+  BLI_assert(
+      is_simulation_item_type_supported(static_cast<eNodeSocketDatatype>(item.socket_type)));
+
   std::unique_ptr<SocketDeclaration> decl;
   switch (eNodeSocketDatatype(item.socket_type)) {
     case SOCK_FLOAT:
@@ -50,23 +65,8 @@ static std::unique_ptr<SocketDeclaration> socket_declaration_for_simulation_item
     case SOCK_STRING:
       decl = std::make_unique<decl::String>();
       break;
-    case SOCK_OBJECT:
-      decl = std::make_unique<decl::Object>();
-      break;
     case SOCK_GEOMETRY:
       decl = std::make_unique<decl::Geometry>();
-      break;
-    case SOCK_COLLECTION:
-      decl = std::make_unique<decl::Collection>();
-      break;
-    case SOCK_TEXTURE:
-      decl = std::make_unique<decl::Texture>();
-      break;
-    case SOCK_IMAGE:
-      decl = std::make_unique<decl::Image>();
-      break;
-    case SOCK_MATERIAL:
-      decl = std::make_unique<decl::Material>();
       break;
     default:
       BLI_assert_unreachable();
@@ -108,6 +108,10 @@ static bool simulation_items_unique_name_check(void *arg, const char *name)
 NodeSimulationItem *simulation_item_add_from_socket(NodeGeometrySimulationOutput &storage,
                                                     const bNodeSocket &socket)
 {
+  if (!is_simulation_item_type_supported(static_cast<eNodeSocketDatatype>(socket.type))) {
+    return nullptr;
+  }
+
   char unique_name[MAX_NAME + 4] = "";
   BLI_uniquename_cb(simulation_items_unique_name_check,
                     &storage,

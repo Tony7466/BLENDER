@@ -133,6 +133,8 @@ class FieldAtIndexInput final : public bke::GeometryFieldInput {
   }
 };
 
+bool is_simulation_item_type_supported(eNodeSocketDatatype socket_type);
+
 void socket_declarations_for_simulation_items(Span<NodeSimulationItem> items,
                                               NodeDeclaration &r_declaration);
 const CPPType &get_simulation_item_cpp_type(eNodeSocketDatatype socket_type);
