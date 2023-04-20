@@ -170,7 +170,7 @@ void Volumes::begin_sync()
 
   world_ps_.init();
   world_ps_.state_set(DRW_STATE_WRITE_COLOR);
-  bind_volume_pass_resources(world_ps_);
+  bind_volume_pass_resources(world_ps_, true);
 
   GPUMaterial *material = nullptr;
 

@@ -53,13 +53,16 @@ class Volumes {
     ps.bind_texture(VOLUME_TRANSMITTANCE_TEX_SLOT, &transparent_pass_transmit_tx_);
   }
 
-  template<typename PassType> void bind_volume_pass_resources(PassType &ps)
+  template<typename PassType>
+  void bind_volume_pass_resources(PassType &ps, bool is_material_pass = false)
   {
     ps.bind_ubo(VOLUMES_BUF_SLOT, data_);
-    ps.bind_image(0, &prop_scattering_tx_);
-    ps.bind_image(1, &prop_extinction_tx_);
-    ps.bind_image(2, &prop_emission_tx_);
-    ps.bind_image(3, &prop_phase_tx_);
+    if (is_material_pass) {
+      ps.bind_image(0, &prop_scattering_tx_);
+      ps.bind_image(1, &prop_extinction_tx_);
+      ps.bind_image(2, &prop_emission_tx_);
+      ps.bind_image(3, &prop_phase_tx_);
+    }
     inst_.lights.bind_resources(&ps);
     inst_.shadows.bind_resources(&ps);
   }
