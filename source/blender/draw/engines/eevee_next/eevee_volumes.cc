@@ -75,6 +75,67 @@
 
 namespace blender::eevee {
 
+bool Volumes::GridAABB::init(Object *ob, const Camera &camera, const VolumesDataBuf &data)
+{
+  auto to_global_grid_coords = [&](float3 wP) -> int3 {
+    const float4x4 &view_matrix = camera.data_get().viewmat;
+    const float4x4 &perspective_matrix = camera.data_get().winmat * view_matrix;
+
+    /** NOTE: Keep in sync with ndc_to_volume. */
+    float view_z = (view_matrix * float4(wP, 1.0)).z;
+
+    float volume_z;
+    if (camera.is_orthographic()) {
+      volume_z = (view_z - data.depth_near) * data.depth_distribution;
+    }
+    else {
+      volume_z = data.depth_distribution * log2(view_z * data.depth_far + data.depth_near);
+    }
+
+    float4 grid_coords = perspective_matrix * float4(wP, 1.0);
+    grid_coords /= grid_coords.w;
+    grid_coords = (grid_coords * 0.5f) + float4(0.5f);
+
+    grid_coords.x *= data.coord_scale.x;
+    grid_coords.y *= data.coord_scale.y;
+    grid_coords.z = volume_z;
+
+    return int3(grid_coords.xyz() * float3(data.tex_size));
+  };
+
+  const BoundBox &bbox = *BKE_object_boundbox_get(ob);
+  min = int3(INT32_MAX);
+  max = int3(INT32_MIN);
+
+  for (float3 corner : bbox.vec) {
+    corner = (float4x4(ob->object_to_world) * float4(corner, 1.0)).xyz();
+    int3 grid_coord = to_global_grid_coords(corner);
+    min = math::min(min, grid_coord);
+    max = math::max(max, grid_coord);
+  }
+
+  bool is_visible = false;
+  for (int i : IndexRange(3)) {
+    is_visible = is_visible || (min[i] >= 0 && min[i] < data.tex_size[i]);
+    is_visible = is_visible || (max[i] >= 0 && max[i] < data.tex_size[i]);
+  }
+
+  min = math::clamp(min, int3(0), data.tex_size);
+  max = math::clamp(max, int3(0), data.tex_size);
+
+  return is_visible;
+}
+
+bool Volumes::GridAABB::overlaps(const GridAABB &aabb)
+{
+  for (int i : IndexRange(3)) {
+    if (min[i] > aabb.max[i] || max[i] < aabb.min[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
 void Volumes::set_jitter(uint current_sample)
 {
   double ht_point[3];
@@ -89,6 +150,7 @@ void Volumes::set_jitter(uint current_sample)
 void Volumes::init()
 {
   enabled_ = false;
+  subpass_aabbs_.clear();
 
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const Scene *scene_eval = DEG_get_evaluated_scene(draw_ctx->depsgraph);
@@ -233,63 +295,37 @@ void Volumes::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHand
     return;
   }
 
-  auto to_global_grid_coords = [&](float3 wP) -> int3 {
-    const float4x4 &view_matrix = inst_.camera.data_get().viewmat;
-    const float4x4 &perspective_matrix = inst_.camera.data_get().winmat * view_matrix;
-
-    /** NOTE: Keep in sync with ndc_to_volume. */
-    float view_z = (view_matrix * float4(wP, 1.0)).z;
-
-    float volume_z;
-    if (inst_.camera.is_orthographic()) {
-      volume_z = (view_z - data_.depth_near) * data_.depth_distribution;
-    }
-    else {
-      volume_z = data_.depth_distribution * log2(view_z * data_.depth_far + data_.depth_near);
-    }
-
-    float4 grid_coords = perspective_matrix * float4(wP, 1.0);
-    grid_coords /= grid_coords.w;
-    grid_coords = (grid_coords * 0.5f) + float4(0.5f);
-
-    grid_coords.x *= data_.coord_scale.x;
-    grid_coords.y *= data_.coord_scale.y;
-    grid_coords.z = volume_z;
-
-    return int3(grid_coords.xyz() * float3(data_.tex_size));
-  };
-
-  const BoundBox &bbox = *BKE_object_boundbox_get(ob);
-  int3 grid_coords_min = int3(INT32_MAX);
-  int3 grid_coords_max = int3(INT32_MIN);
-
-  for (float3 corner : bbox.vec) {
-    corner = (float4x4(ob->object_to_world) * float4(corner, 1.0)).xyz();
-    int3 grid_coord = to_global_grid_coords(corner);
-    grid_coords_min = math::min(grid_coords_min, grid_coord);
-    grid_coords_max = math::max(grid_coords_max, grid_coord);
-  }
-
-  bool is_visible = false;
-  for (int i : IndexRange(3)) {
-    is_visible = is_visible || (grid_coords_min[i] >= 0 && grid_coords_min[i] < data_.tex_size[i]);
-    is_visible = is_visible || (grid_coords_max[i] >= 0 && grid_coords_max[i] < data_.tex_size[i]);
-  }
-  if (!is_visible) {
+  GridAABB aabb;
+  if (!aabb.init(ob, inst_.camera, data_)) {
     return;
   }
 
-  grid_coords_min = math::clamp(grid_coords_min, int3(0), data_.tex_size);
-  grid_coords_max = math::clamp(grid_coords_max, int3(0), data_.tex_size);
-  int3 grid_size = grid_coords_max - grid_coords_min + int3(1);
-
-  PassMain::Sub &ps = material_pass.sub_pass->sub(ob->id.name);
+  PassMain::Sub &ps = *material_pass.sub_pass;
   if (volume_sub_pass(ps, inst_.scene, ob, material_pass.gpumat)) {
     enabled_ = true;
+
+    /* Add a barrier at the start of a subpass or when 2 volumes overlaps. */
+    if (!subpass_aabbs_.contains_as(shader)) {
+      ps.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
+      subpass_aabbs_.add(shader, {aabb});
+    }
+    else {
+      Vector<GridAABB> &aabbs = subpass_aabbs_.lookup(shader);
+      for (GridAABB &_aabb : aabbs) {
+        if (aabb.overlaps(_aabb)) {
+          ps.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
+          aabbs.clear();
+          break;
+        }
+      }
+      aabbs.append(aabb);
+    }
+
+    int3 grid_size = aabb.max - aabb.min + int3(1);
+
     ps.push_constant("drw_ResourceID", int(res_handle.resource_index()));
-    ps.push_constant("grid_coords_min", grid_coords_min);
+    ps.push_constant("grid_coords_min", aabb.min);
     ps.dispatch(math::divide_ceil(grid_size, int3(VOLUME_GROUP_SIZE)));
-    ps.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
 }
 

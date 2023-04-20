@@ -41,6 +41,16 @@ class Volumes {
   PassSimple resolve_ps_ = {"Volumes.Resolve"};
   PassSimple accum_ps_ = {"Volumes.Accum"};
 
+  struct GridAABB {
+    int3 min, max;
+
+    /* Returns true if visible */
+    bool init(Object *ob, const Camera &camera, const VolumesDataBuf &data);
+
+    bool overlaps(const GridAABB &aabb);
+  };
+  Map<GPUShader *, Vector<GridAABB>> subpass_aabbs_;
+
  public:
   Volumes(Instance &inst) : inst_(inst){};
 
