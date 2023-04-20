@@ -135,35 +135,11 @@ NodeSimulationItem *simulation_item_add_from_socket(NodeGeometrySimulationOutput
 
 const CPPType &get_simulation_item_cpp_type(const NodeSimulationItem &item)
 {
-  switch (item.socket_type) {
-    case SOCK_FLOAT:
-      return CPPType::get<ValueOrField<float>>();
-    case SOCK_VECTOR:
-      return CPPType::get<ValueOrField<float3>>();
-    case SOCK_RGBA:
-      return CPPType::get<ValueOrField<ColorGeometry4f>>();
-    case SOCK_BOOLEAN:
-      return CPPType::get<ValueOrField<bool>>();
-    case SOCK_INT:
-      return CPPType::get<ValueOrField<int>>();
-    case SOCK_STRING:
-      return CPPType::get<ValueOrField<std::string>>();
-    case SOCK_OBJECT:
-      return CPPType::get<Object *>();
-    case SOCK_GEOMETRY:
-      return CPPType::get<GeometrySet>();
-    case SOCK_COLLECTION:
-      return CPPType::get<Collection *>();
-    case SOCK_TEXTURE:
-      return CPPType::get<Tex *>();
-    case SOCK_IMAGE:
-      return CPPType::get<Image *>();
-    case SOCK_MATERIAL:
-      return CPPType::get<Material *>();
-    default:
-      BLI_assert_unreachable();
-      return CPPType::get<GeometrySet>();
-  }
+  const char *socket_idname = nodeStaticSocketType(item.socket_type, 0);
+  const bNodeSocketType *typeinfo = nodeSocketTypeFind(socket_idname);
+  BLI_assert(typeinfo);
+  BLI_assert(typeinfo->geometry_nodes_cpp_type);
+  return *typeinfo->geometry_nodes_cpp_type;
 }
 
 template<typename T>
