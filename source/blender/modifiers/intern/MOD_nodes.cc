@@ -1232,7 +1232,7 @@ static GeometrySet compute_geometry(const bNodeTree &btree,
         nmd_orig->simulation_cache->reset();
       }
     }
-    /* Decide of a new simulation state should be created in this evaluation. */
+    /* Decide if a new simulation state should be created in this evaluation. */
     const bke::sim::StatesAroundFrame sim_states =
         nmd_orig->simulation_cache->get_states_around_frame(current_frame);
     if (nmd_orig->simulation_cache->cache_state() != bke::sim::CacheState::Baked) {
