@@ -233,10 +233,11 @@ void Volumes::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHand
     return;
   }
 
-  auto to_grid_coords = [&](float3 wP) -> int3 {
+  auto to_global_grid_coords = [&](float3 wP) -> int3 {
     const float4x4 &view_matrix = inst_.camera.data_get().viewmat;
     const float4x4 &perspective_matrix = inst_.camera.data_get().winmat * view_matrix;
 
+    /** NOTE: Keep in sync with ndc_to_volume. */
     float view_z = (view_matrix * float4(wP, 1.0)).z;
 
     float volume_z;
@@ -265,7 +266,7 @@ void Volumes::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHand
 
   for (float3 corner : bbox.vec) {
     corner = (float4x4(ob->object_to_world) * float4(corner, 1.0)).xyz();
-    int3 grid_coord = to_grid_coords(corner);
+    int3 grid_coord = to_global_grid_coords(corner);
     grid_coords_min = math::min(grid_coords_min, grid_coord);
     grid_coords_max = math::max(grid_coords_max, grid_coord);
   }

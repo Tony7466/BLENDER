@@ -33,20 +33,21 @@ float view_z_to_volume_z(float depth)
 }
 
 /* Volume texture normalized coordinates to NDC (special range [0, 1]). */
-vec3 volume_to_ndc(vec3 cos)
+vec3 volume_to_ndc(vec3 coord)
 {
-  cos.z = volume_z_to_view_z(cos.z);
-  cos.z = get_depth_from_view_z(cos.z);
-  cos.xy /= volumes_buf.coord_scale;
-  return cos;
+  coord.z = volume_z_to_view_z(coord.z);
+  coord.z = get_depth_from_view_z(coord.z);
+  coord.xy /= volumes_buf.coord_scale;
+  return coord;
 }
 
-vec3 ndc_to_volume(vec3 cos)
+vec3 ndc_to_volume(vec3 coord)
 {
-  cos.z = get_view_z_from_depth(cos.z);
-  cos.z = view_z_to_volume_z(cos.z);
-  cos.xy *= volumes_buf.coord_scale;
-  return cos;
+  /** NOTE: Keep in sync with to_global_grid_coords. */
+  coord.z = get_view_z_from_depth(coord.z);
+  coord.z = view_z_to_volume_z(coord.z);
+  coord.xy *= volumes_buf.coord_scale;
+  return coord;
 }
 
 float phase_function_isotropic()
@@ -210,8 +211,8 @@ void volumetric_resolve(vec2 frag_uvs,
                         out vec3 transmittance,
                         out vec3 scattering)
 {
-  vec3 volume_cos = ndc_to_volume(vec3(frag_uvs, frag_depth));
+  vec3 coord = ndc_to_volume(vec3(frag_uvs, frag_depth));
 
-  scattering = texture(inScattering, volume_cos).rgb;
-  transmittance = texture(inTransmittance, volume_cos).rgb;
+  scattering = texture(inScattering, coord).rgb;
+  transmittance = texture(inTransmittance, coord).rgb;
 }

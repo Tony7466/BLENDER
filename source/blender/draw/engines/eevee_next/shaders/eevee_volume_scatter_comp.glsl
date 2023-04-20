@@ -75,7 +75,6 @@ void main()
   }
   LIGHT_FOREACH_END
 
-  /* TODO (Miguel Pozo): Simplify computation. */
   vec2 pixel = (vec2(froxel.xy) + vec2(0.5)) / vec2(volumes_buf.tex_size.xy) /
                volumes_buf.viewport_size_inv;
 
@@ -93,7 +92,5 @@ void main()
   }
 
   imageStore(out_scattering, froxel, vec4(scattering, 1.0));
-  /* TODO(Miguel Pozo): Redundant without TAA. This is just a copy of the extinction_tx.
-   * NaN could be handled in the material. */
   imageStore(out_extinction, froxel, vec4(transmittance, 1.0));
 }
