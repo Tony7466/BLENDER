@@ -2778,7 +2778,6 @@ static int wm_open_mainfile__open(bContext *C, wmOperator *op)
       ED_outliner_select_sync_from_all_tag(C);
     }
     ED_view3d_local_collections_reset(C, (G.fileflags & G_FILE_NO_UI) != 0);
-    GHOST_addToSystemRecentFiles(filepath);
     return OPERATOR_FINISHED;
   }
   return OPERATOR_CANCELLED;
