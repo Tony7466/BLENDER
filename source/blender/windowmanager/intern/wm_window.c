@@ -150,7 +150,7 @@ enum ModSide {
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Window Open & Close
+/** \name Window Open
  * \{ */
 
 static void wm_window_set_drawable(wmWindowManager *wm, wmWindow *win, bool activate);
@@ -359,7 +359,7 @@ wmWindow *wm_window_copy_test(bContext *C,
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Quit Confirmation Dialog
+/** \name Window Quit Confirmation Dialog
  * \{ */
 
 static void wm_save_file_on_quit_dialog_callback(bContext *C, void *UNUSED(user_data))
@@ -405,6 +405,10 @@ void wm_quit_with_optional_confirmation_prompt(bContext *C, wmWindow *win)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Window Close
+ * \{ */
+
 void wm_window_close(bContext *C, wmWindowManager *wm, wmWindow *win)
 {
   wmWindow *win_other;
@@ -436,6 +440,7 @@ void wm_window_close(bContext *C, wmWindowManager *wm, wmWindow *win)
 
   CTX_wm_window_set(C, win); /* needed by handlers */
   WM_event_remove_handlers(C, &win->handlers);
+
   WM_event_remove_handlers(C, &win->modalhandlers);
 
   /* for regular use this will _never_ be NULL,
@@ -1645,6 +1650,8 @@ void wm_window_process_events(const bContext *C)
   }
 }
 
+/** \} */
+
 /* -------------------------------------------------------------------- */
 /** \name Ghost Init/Exit
  * \{ */
@@ -1851,6 +1858,9 @@ eWM_CapabilitiesFlag WM_capabilities_flag(void)
   }
   if (ghost_flag & GHOST_kCapabilityGPUReadFrontBuffer) {
     flag |= WM_CAPABILITY_GPU_FRONT_BUFFER_READ;
+  }
+  if (ghost_flag & GHOST_kCapabilityClipboardImages) {
+    flag |= WM_CAPABILITY_CLIPBOARD_IMAGES;
   }
 
   return flag;
@@ -2218,75 +2228,6 @@ wmWindow *WM_window_find_by_area(wmWindowManager *wm, const struct ScrArea *area
     }
   }
   return NULL;
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Window Screen Shot Utility
- *
- * Include here since it can involve low level buffer switching.
- *
- * \{ */
-
-uint *WM_window_pixels_read(wmWindowManager *wm, wmWindow *win, int r_size[2])
-{
-  BLI_assert(WM_capabilities_flag() & WM_CAPABILITY_GPU_FRONT_BUFFER_READ);
-
-  /* WARNING: Reading from the front-buffer immediately after drawing may fail,
-   * for a slower but more reliable version of this function #WM_window_pixels_read_offscreen
-   * should be preferred. See it's comments for details on why it's needed, see also #98462. */
-  bool setup_context = wm->windrawable != win;
-
-  if (setup_context) {
-    GHOST_ActivateWindowDrawingContext(win->ghostwin);
-    GPU_context_active_set(win->gpuctx);
-  }
-
-  r_size[0] = WM_window_pixels_x(win);
-  r_size[1] = WM_window_pixels_y(win);
-  const uint rect_len = r_size[0] * r_size[1];
-  uint *rect = MEM_mallocN(sizeof(*rect) * rect_len, __func__);
-
-  GPU_frontbuffer_read_color(0, 0, r_size[0], r_size[1], 4, GPU_DATA_UBYTE, rect);
-
-  if (setup_context) {
-    if (wm->windrawable) {
-      GHOST_ActivateWindowDrawingContext(wm->windrawable->ghostwin);
-      GPU_context_active_set(wm->windrawable->gpuctx);
-    }
-  }
-
-  /* Clear alpha, it is not set to a meaningful value in OpenGL. */
-  uchar *cp = (uchar *)rect;
-  uint i;
-  for (i = 0, cp += 3; i < rect_len; i++, cp += 4) {
-    *cp = 0xff;
-  }
-  return (uint *)rect;
-}
-
-void WM_window_pixels_read_sample(const wmWindowManager *wm,
-                                  const wmWindow *win,
-                                  const int pos[2],
-                                  float r_col[3])
-{
-  BLI_assert(WM_capabilities_flag() & WM_CAPABILITY_GPU_FRONT_BUFFER_READ);
-  bool setup_context = wm->windrawable != win;
-
-  if (setup_context) {
-    GHOST_ActivateWindowDrawingContext(win->ghostwin);
-    GPU_context_active_set(win->gpuctx);
-  }
-
-  GPU_frontbuffer_read_color(pos[0], pos[1], 1, 1, 3, GPU_DATA_FLOAT, r_col);
-
-  if (setup_context) {
-    if (wm->windrawable) {
-      GHOST_ActivateWindowDrawingContext(wm->windrawable->ghostwin);
-      GPU_context_active_set(wm->windrawable->gpuctx);
-    }
-  }
 }
 
 /** \} */
