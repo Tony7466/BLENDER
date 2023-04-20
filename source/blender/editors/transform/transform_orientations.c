@@ -584,26 +584,25 @@ static void handle_armature_parent_orientation(Object *ob, float r_mat[3][3])
 {
   bPoseChannel *active_pchan = BKE_pose_channel_active(ob, false);
 
-  // Check if target bone is a child.
+  /* Check if target bone is a child. */
   if (active_pchan->parent) {
-
-    // For child, show parent local regardless if "local location" is set for parent bone
+    /* For child, show parent local regardless if "local location" is set for parent bone. */
     transform_orientations_create_from_axis(r_mat, UNPACK3(active_pchan->parent->pose_mat));
     return;
   }
 
-  // For root, use local transform of armature object.
+  /* For root, use local transform of armature object. */
   transform_orientations_create_from_axis(r_mat, UNPACK3(ob->object_to_world));
 }
 
 static void handle_object_parent_orientation(Object *ob, float r_mat[3][3])
 {
-  // If object has parent, then orient to parent.
+  /* If object has parent, then orient to parent. */
   if (ob->parent) {
     transform_orientations_create_from_axis(r_mat, UNPACK3(ob->parent->object_to_world));
   }
   else {
-    // If object doesn't have parent, then orient to world.
+    /* If object doesn't have parent, then orient to world. */
     unit_m3(r_mat);
   }
 }
