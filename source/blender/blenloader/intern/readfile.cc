@@ -5136,7 +5136,7 @@ void BLO_read_pointer_array(BlendDataReader *reader, void **ptr_p)
 const blender::ImplicitSharingInfo *BLO_read_shared_impl(
     BlendDataReader *reader,
     void **data_ptr,
-    blender::FunctionRef<const blender::ImplicitSharingInfo *()> read_cb)
+    const blender::FunctionRef<const blender::ImplicitSharingInfo *()> read_fn)
 {
   if (BLO_read_data_is_undo(reader)) {
     if (reader->fd->flags & FD_FLAGS_IS_MEMFILE) {
@@ -5153,7 +5153,7 @@ const blender::ImplicitSharingInfo *BLO_read_shared_impl(
       }
     }
   }
-  return read_cb();
+  return read_fn();
 }
 
 bool BLO_read_data_is_undo(BlendDataReader *reader)

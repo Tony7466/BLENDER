@@ -1746,7 +1746,7 @@ void BLO_write_string(BlendWriter *writer, const char *data_ptr)
 void BLO_write_shared(BlendWriter *writer,
                       const void *data,
                       const ImplicitSharingInfoHandle *sharing_info,
-                      blender::FunctionRef<void()> write_cb)
+                      const blender::FunctionRef<void()> write_fn)
 {
   if (data == nullptr) {
     return;
@@ -1764,7 +1764,7 @@ void BLO_write_shared(BlendWriter *writer,
       }
     }
   }
-  write_cb();
+  write_fn();
 }
 
 bool BLO_write_is_undo(BlendWriter *writer)

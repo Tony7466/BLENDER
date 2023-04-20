@@ -198,10 +198,15 @@ void BLO_write_string(BlendWriter *writer, const char *data_ptr);
 /* Misc. */
 
 #ifdef __cplusplus
+/**
+ * Check if the data can be written more efficiently by making use of implicit-sharing. If yes, the
+ * user count of the sharing-info is increased making the data immutable. The provided callback
+ * should serialize the potentially shared data. It is only called when necessary.
+ */
 void BLO_write_shared(BlendWriter *writer,
                       const void *data,
                       const blender::ImplicitSharingInfo *sharing_info,
-                      blender::FunctionRef<void()> write_cb);
+                      blender::FunctionRef<void()> write_fn);
 #endif
 
 /**
@@ -268,12 +273,16 @@ void BLO_read_pointer_array(BlendDataReader *reader, void **ptr_p);
 /* Misc. */
 
 #ifdef __cplusplus
+/**
+ * Check if there is any shared data for the given data pointer. If yes, return the existing
+ * sharing-info. If not, call the provided function to actually read the data now.
+ */
 const blender::ImplicitSharingInfo *BLO_read_shared_impl(
     BlendDataReader *reader,
     void **data_ptr,
-    blender::FunctionRef<const blender::ImplicitSharingInfo *()> read_cb);
-#  define BLO_read_shared(reader, ptr_p, read_cb) \
-    BLO_read_shared_impl(reader, (void **)ptr_p, read_cb)
+    blender::FunctionRef<const blender::ImplicitSharingInfo *()> read_fn);
+#  define BLO_read_shared(reader, ptr_p, read_fn) \
+    BLO_read_shared_impl(reader, (void **)ptr_p, read_fn)
 #endif
 
 int BLO_read_fileversion_get(BlendDataReader *reader);
