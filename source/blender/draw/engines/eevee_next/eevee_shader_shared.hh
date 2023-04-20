@@ -436,8 +436,10 @@ struct VolumesData {
   float shadow_steps;
   packed_float3 jitter;
   int use_lights;
-  packed_float3 depth_param;
   int use_soft_shadows;
+  float depth_near;
+  float depth_far;
+  float depth_distribution;
 };
 BLI_STATIC_ASSERT_ALIGN(VolumesData, 16)
 

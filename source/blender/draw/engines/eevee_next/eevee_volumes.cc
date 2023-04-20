@@ -151,17 +151,17 @@ void Volumes::begin_sync()
     float near = integration_start = std::min(-integration_start, clip_start - 1e-4f);
     float far = integration_end = std::min(-integration_end, near - 1e-4f);
 
-    data_.depth_param[0] = (far - near * exp2(1.0f / sample_distribution)) / (far - near);
-    data_.depth_param[1] = (1.0f - data_.depth_param[0]) / near;
-    data_.depth_param[2] = sample_distribution;
+    data_.depth_near = (far - near * exp2(1.0f / sample_distribution)) / (far - near);
+    data_.depth_far = (1.0f - data_.depth_near) / near;
+    data_.depth_distribution = sample_distribution;
   }
   else {
     integration_start = std::min(integration_end, clip_start);
     integration_end = std::max(-integration_end, clip_end);
 
-    data_.depth_param[0] = integration_start;
-    data_.depth_param[1] = integration_end;
-    data_.depth_param[2] = 1.0f / (integration_end - integration_start);
+    data_.depth_near = integration_start;
+    data_.depth_far = integration_end;
+    data_.depth_distribution = 1.0f / (integration_end - integration_start);
   }
 
   data_.push_update();
@@ -241,12 +241,11 @@ void Volumes::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHand
     float view_z = (view_matrix * float4(wP, 1.0)).z;
 
     float volume_z;
-    float3 depth_params = data_.depth_param;
     if (inst_.camera.is_orthographic()) {
-      volume_z = (view_z - depth_params.x) * depth_params.z;
+      volume_z = (view_z - data_.depth_near) * data_.depth_distribution;
     }
     else {
-      volume_z = depth_params.z * log2(view_z * depth_params.y + depth_params.x);
+      volume_z = data_.depth_distribution * log2(view_z * data_.depth_far + data_.depth_near);
     }
 
     float4 grid_coords = perspective_matrix * float4(wP, 1.0);

@@ -8,27 +8,33 @@
 /* Volume slice to view space depth. */
 float volume_z_to_view_z(float z)
 {
-  float3 depth_params = volumes_buf.depth_param;
+  float near = volumes_buf.depth_near;
+  float far = volumes_buf.depth_far;
+  float distribution = volumes_buf.depth_distribution;
+
   if (ProjectionMatrix[3][3] == 0.0) {
     /* Exponential distribution */
-    return (exp2(z / depth_params.z) - depth_params.x) / depth_params.y;
+    return (exp2(z / distribution) - near) / far;
   }
   else {
     /* Linear distribution */
-    return mix(depth_params.x, depth_params.y, z);
+    return mix(near, far, z);
   }
 }
 
 float view_z_to_volume_z(float depth)
 {
-  float3 depth_params = volumes_buf.depth_param;
+  float near = volumes_buf.depth_near;
+  float far = volumes_buf.depth_far;
+  float distribution = volumes_buf.depth_distribution;
+
   if (ProjectionMatrix[3][3] == 0.0) {
     /* Exponential distribution */
-    return depth_params.z * log2(depth * depth_params.y + depth_params.x);
+    return distribution * log2(depth * far + near);
   }
   else {
     /* Linear distribution */
-    return (depth - depth_params.x) * depth_params.z;
+    return (depth - near) * distribution;
   }
 }
 
