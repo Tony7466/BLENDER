@@ -52,6 +52,7 @@
 #include "RE_texture.h"
 
 #include "NOD_composite.h"
+#include "NOD_geometry.h"
 #include "NOD_socket.h"
 
 #include "DEG_depsgraph.h"
@@ -4096,6 +4097,20 @@ static void rna_SimulationStateItem_update(Main *bmain, Scene *UNUSED(scene), Po
 
   BKE_ntree_update_tag_node_property(ntree, node);
   ED_node_tree_propagate_change(NULL, bmain, ntree);
+}
+
+static bool rna_SimulationStateItem_socket_type_supported(const EnumPropertyItem *item)
+{
+  return NOD_geometry_simulation_output_item_socket_type_supported((eNodeSocketDatatype)item->value);
+}
+
+static const EnumPropertyItem *rna_SimulationStateItem_socket_type_itemf(bContext *UNUSED(C),
+                                                                         PointerRNA *UNUSED(ptr),
+                                                                         PropertyRNA *UNUSED(prop),
+                                                                         bool *r_free)
+{
+  *r_free = true;
+  return itemf_function_check(node_socket_data_type_items, rna_SimulationStateItem_socket_type_supported);
 }
 
 static void rna_SimulationStateItem_name_set(PointerRNA *ptr, const char *value)
@@ -9922,11 +9937,6 @@ static void def_geo_simulation_input(StructRNA *srna)
 
 static void rna_def_simulation_state_item(BlenderRNA *brna)
 {
-  static const EnumPropertyItem socket_type_items[] = {
-      {SOCK_GEOMETRY, "GEOMETRY", 0, "Geometry", ""},
-      {0, NULL, 0, NULL, NULL},
-  };
-
   PropertyRNA *prop;
 
   StructRNA *srna = RNA_def_struct(brna, "SimulationStateItem", NULL);
@@ -9940,7 +9950,8 @@ static void rna_def_simulation_state_item(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_SimulationStateItem_update");
 
   prop = RNA_def_property(srna, "socket_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, socket_type_items);
+  RNA_def_property_enum_items(prop, node_socket_data_type_items);
+  RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_SimulationStateItem_socket_type_itemf");
   RNA_def_property_ui_text(prop, "Socket Type", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_SimulationStateItem_update");
 

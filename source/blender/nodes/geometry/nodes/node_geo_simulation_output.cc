@@ -322,6 +322,10 @@ void register_node_type_geo_simulation_output()
   nodeRegisterType(&ntype);
 }
 
+bool NOD_geometry_simulation_output_item_socket_type_supported(const eNodeSocketDatatype socket_type) {
+  return ELEM(socket_type, SOCK_GEOMETRY);
+}
+
 bNode *NOD_geometry_simulation_output_find_node_by_data(bNodeTree *ntree,
                                                         const NodeGeometrySimulationOutput *sim)
 {
