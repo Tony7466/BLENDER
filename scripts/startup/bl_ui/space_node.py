@@ -966,7 +966,7 @@ class NODE_UL_simulation_zone_items(bpy.types.UIList):
 class NODE_PT_simulation_zone_items(Panel):
     bl_space_type = 'NODE_EDITOR'
     bl_region_type = 'UI'
-    bl_category = "Simulation"
+    bl_category = "Node"
     bl_label = "State Items"
 
     input_node_type = 'GeometryNodeSimulationInput'
