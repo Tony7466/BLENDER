@@ -21,7 +21,7 @@ class Volumes {
   Texture prop_emission_tx_;
   Texture prop_phase_tx_;
   Texture scatter_tx_;
-  Texture transmit_tx_;
+  Texture extinction_tx_;
   Texture integrated_scatter_tx_;
   Texture integrated_transmit_tx_;
   Texture dummy_scatter_tx_;

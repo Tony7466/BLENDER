@@ -37,7 +37,7 @@ GPU_SHADER_CREATE_INFO(eevee_volume_scatter)
     .sampler(19, ImageType::FLOAT_3D, "emission_tx")
     .sampler(20, ImageType::FLOAT_3D, "phase_tx")
     .image(0, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_scattering")
-    .image(1, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_transmittance")
+    .image(1, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_extinction")
     .do_static_compilation(true);
 
 GPU_SHADER_CREATE_INFO(eevee_volume_scatter_with_lights)

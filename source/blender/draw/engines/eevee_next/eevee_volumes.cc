@@ -301,7 +301,7 @@ void Volumes::end_sync()
     prop_emission_tx_.free();
     prop_phase_tx_.free();
     scatter_tx_.free();
-    transmit_tx_.free();
+    extinction_tx_.free();
     integrated_scatter_tx_.free();
     integrated_transmit_tx_.free();
 
@@ -327,7 +327,7 @@ void Volumes::end_sync()
    * Scattered light towards the view. We also resolve temporal
    * super sampling during this stage. */
   scatter_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
-  transmit_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
+  extinction_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
 
   /* Final integration: We compute for each froxel the
    * amount of scattered light and extinction coef at this
@@ -348,8 +348,7 @@ void Volumes::end_sync()
   scatter_ps_.bind_texture("emission_tx", &prop_emission_tx_);
   scatter_ps_.bind_texture("phase_tx", &prop_phase_tx_);
   scatter_ps_.bind_image("out_scattering", &scatter_tx_);
-  /* TODO (Miguel Pozo): The naming is wrong ? Is should be extinction ? */
-  scatter_ps_.bind_image("out_transmittance", &transmit_tx_);
+  scatter_ps_.bind_image("out_extinction", &extinction_tx_);
 
   scatter_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH);
   scatter_ps_.dispatch(math::divide_ceil(data_.tex_size, int3(VOLUME_GROUP_SIZE)));
@@ -359,7 +358,7 @@ void Volumes::end_sync()
   integration_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_INTEGRATION));
   bind_volume_pass_resources(integration_ps_);
   integration_ps_.bind_texture("scattering_tx", &scatter_tx_);
-  integration_ps_.bind_texture("extinction_tx", &transmit_tx_);
+  integration_ps_.bind_texture("extinction_tx", &extinction_tx_);
   integration_ps_.bind_image("out_scattering", &integrated_scatter_tx_);
   integration_ps_.bind_image("out_transmittance", &integrated_transmit_tx_);
 
