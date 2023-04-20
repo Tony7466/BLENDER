@@ -19,23 +19,20 @@ namespace blender::nodes {
 void socket_declarations_for_simulation_items(const Span<NodeSimulationItem> items,
                                               NodeDeclaration &r_declaration)
 {
-  char buf[MAX_NAME];
-
   for (const NodeSimulationItem &item : items) {
     switch (eNodeSocketDatatype(item.socket_type)) {
       case SOCK_GEOMETRY: {
-        BLI_snprintf(buf, sizeof(buf), "Item_%d", item.identifier);
         {
           std::unique_ptr<decl::Geometry> decl = std::make_unique<decl::Geometry>();
           decl->name = item.name ? item.name : "";
-          decl->identifier = buf;
+          decl->identifier = "Item_" + std::to_string(item.identifier);
           decl->in_out = SOCK_IN;
           r_declaration.inputs.append(std::move(decl));
         }
         {
           std::unique_ptr<decl::Geometry> decl = std::make_unique<decl::Geometry>();
           decl->name = item.name ? item.name : "";
-          decl->identifier = buf;
+          decl->identifier = "Item_" + std::to_string(item.identifier);
           decl->in_out = SOCK_OUT;
           r_declaration.outputs.append(std::move(decl));
         }
