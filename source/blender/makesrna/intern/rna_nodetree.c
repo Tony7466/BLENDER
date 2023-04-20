@@ -4109,9 +4109,12 @@ static void rna_SimulationStateItem_name_set(PointerRNA *ptr, const char *value)
   NOD_geometry_simulation_output_item_set_unique_name(sim, item, value, defname);
 }
 
-static void rna_SimulationStateItem_color(int socket_type, float *values)
+static void rna_SimulationStateItem_color_get(PointerRNA *ptr, float *values)
 {
-  const char *socket_type_idname = nodeStaticSocketType(socket_type, 0);
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
+  NodeSimulationItem *item = (NodeSimulationItem *)ptr->data;
+
+  const char *socket_type_idname = nodeStaticSocketType(item->socket_type, 0);
   node_type_draw_color(socket_type_idname, values);
 }
 
@@ -9923,11 +9926,8 @@ static void rna_def_simulation_state_item(BlenderRNA *brna)
       {SOCK_GEOMETRY, "GEOMETRY", 0, "Geometry", ""},
       {0, NULL, 0, NULL, NULL},
   };
-  static float default_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
 
   PropertyRNA *prop;
-  FunctionRNA *func;
-  PropertyRNA *parm;
 
   StructRNA *srna = RNA_def_struct(brna, "SimulationStateItem", NULL);
   RNA_def_struct_ui_text(srna, "Simulation Sate Item", "");
@@ -9944,12 +9944,11 @@ static void rna_def_simulation_state_item(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Socket Type", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_SimulationStateItem_update");
 
-  func = RNA_def_function(srna, "color", "rna_SimulationStateItem_color");
-  RNA_def_function_ui_description(func, "Socket color");
-  RNA_def_function_flag(func, FUNC_NO_SELF);
-  RNA_def_enum(func, "socket_type", socket_type_items, SOCK_GEOMETRY, "Socket Type", "");
-  parm = RNA_def_float_array(func, "color", 4, default_color, 0.0f, 1.0f, "Color", "", 0.0f, 1.0f);
-  RNA_def_function_output(func, parm);
+  prop = RNA_def_property(srna, "color", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_float_funcs(prop, "rna_SimulationStateItem_color_get", NULL, NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Color", "Socket color");
 }
 
 static void rna_def_geo_simulation_output_items(BlenderRNA *brna)
