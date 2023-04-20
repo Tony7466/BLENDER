@@ -477,7 +477,7 @@ static Mesh *try_load_mesh(const DictionaryValue &io_geometry,
     return nullptr;
   }
 
-  Mesh *mesh = BKE_mesh_new_nomain(num_verts, num_edges, num_corners, num_polys);
+  Mesh *mesh = BKE_mesh_new_nomain(num_verts, num_edges, num_polys, num_corners);
 
   auto cancel = [&]() {
     BKE_id_free(nullptr, mesh);
