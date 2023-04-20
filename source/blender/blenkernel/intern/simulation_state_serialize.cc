@@ -259,7 +259,7 @@ static std::shared_ptr<DictionaryValue> write_bdata_simple_gspan(BDataWriter &bd
   }
   if (type.is_any<float2, int2>()) {
     return read_bdata_raw_data_with_endian(
-        bdata_reader, io_data, sizeof(float), r_data.size() * 2, r_data.data());
+        bdata_reader, io_data, sizeof(int32_t), r_data.size() * 2, r_data.data());
   }
   if (type.is<float3>()) {
     return read_bdata_raw_data_with_endian(
