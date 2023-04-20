@@ -18,7 +18,7 @@ class VKVertexAttributeObject;
 class VKBatch;
 class VKStateManager;
 
-class VKContext : public Context {
+class VKContext : public Context, NonCopyable {
  private:
   /** Copies of the handles owned by the GHOST context. */
   VkInstance vk_instance_ = VK_NULL_HANDLE;

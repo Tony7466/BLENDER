@@ -88,6 +88,7 @@ class VKPipeline : NonCopyable {
 
   void finalize(VKContext &context,
                 VkShaderModule vertex_module,
+                VkShaderModule geometry_module,
                 VkShaderModule fragment_module,
                 VkPipelineLayout &pipeline_layout,
                 const GPUPrimType prim_type,

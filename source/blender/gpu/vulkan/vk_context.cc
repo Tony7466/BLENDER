@@ -201,7 +201,19 @@ void VKContext::bind_graphics_pipeline(const GPUPrimType prim_type,
   BLI_assert(shader);
   shader->update_graphics_pipeline(*this, prim_type, vertex_attribute_object);
   command_buffer_get().bind(shader->pipeline_get(), VK_PIPELINE_BIND_POINT_GRAPHICS);
-  shader->pipeline_get().push_constants_get().update(*this);
+
+  VKPipeline &pipeline = shader->pipeline_get();
+  VKDescriptorSetTracker &descriptor_set = pipeline.descriptor_set_get();
+  VKPushConstants &push_constants = pipeline.push_constants_get();
+
+  /* TODO move into pipeline. See VKBackend::compute_dispatch. */
+  push_constants.update(*this);
+  if (descriptor_set.has_layout()) {
+    descriptor_set.update(*this);
+    command_buffer_.bind(*descriptor_set.active_descriptor_set(),
+                         shader->vk_pipeline_layout_get(),
+                         VK_PIPELINE_BIND_POINT_GRAPHICS);
+  }
 }
 
 /** \} */

@@ -13,6 +13,40 @@ namespace blender::gpu::tests {
 
 static constexpr int Size = 256;
 
+static void test_immediate_polyline()
+{
+  GPUOffScreen *offscreen = GPU_offscreen_create(Size,
+                                                 Size,
+                                                 false,
+                                                 GPU_RGBA16F,
+                                                 GPU_TEXTURE_USAGE_ATTACHMENT |
+                                                     GPU_TEXTURE_USAGE_HOST_READ,
+                                                 nullptr);
+  BLI_assert(offscreen != nullptr);
+  GPU_offscreen_bind(offscreen, false);
+
+  GPUVertFormat *format = immVertexFormat();
+  uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+
+  immBindBuiltinProgram(GPU_SHADER_3D_POLYLINE_UNIFORM_COLOR);
+  float4 color(1.0f, 0.5f, 0.25f, 1.0f);
+  immUniform1f("lineWidth", 5.0f);
+  immUniform2f("viewportSize", Size, Size);
+  immUniformColor4fv(color);
+  immBegin(GPU_PRIM_LINES, 4);
+  immVertex3f(pos, -1.0f, -1.0f, 0.0f);
+  immVertex3f(pos, 1.0f, 1.0f, 0.0f);
+  immVertex3f(pos, -1.0f, 1.0f, 0.0f);
+  immVertex3f(pos, 1.0f, -1.0f, 0.0f);
+  immEnd();
+
+  GPU_offscreen_unbind(offscreen, false);
+  GPU_flush();
+
+  GPU_offscreen_free(offscreen);
+}
+GPU_TEST(immediate_polyline)
+
 static void test_immediate_crosshair()
 {
   GPUOffScreen *offscreen = GPU_offscreen_create(Size,

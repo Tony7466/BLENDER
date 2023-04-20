@@ -65,11 +65,14 @@ void VKBackend::compute_dispatch(int groups_x_len, int groups_y_len, int groups_
   VKDescriptorSetTracker &descriptor_set = pipeline.descriptor_set_get();
   VKPushConstants &push_constants = pipeline.push_constants_get();
 
+  /* TODO move into pipeline. See VKContext::bind_graphics_pipeline. */
   push_constants.update(context);
-  descriptor_set.update(context);
-  command_buffer.bind(*descriptor_set.active_descriptor_set(),
-                      shader->vk_pipeline_layout_get(),
-                      VK_PIPELINE_BIND_POINT_COMPUTE);
+  if (descriptor_set.has_layout()) {
+    descriptor_set.update(context);
+    command_buffer.bind(*descriptor_set.active_descriptor_set(),
+                        shader->vk_pipeline_layout_get(),
+                        VK_PIPELINE_BIND_POINT_COMPUTE);
+  }
   command_buffer.dispatch(groups_x_len, groups_y_len, groups_z_len);
 }
 

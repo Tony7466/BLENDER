@@ -100,6 +100,9 @@ VKDescriptorSetTracker::Binding &VKDescriptorSetTracker::ensure_location(
 
 void VKDescriptorSetTracker::update(VKContext &context)
 {
+  if (layout_ == VK_NULL_HANDLE) {
+    return;
+  }
   tracked_resource_for(context, !bindings_.is_empty());
   std::unique_ptr<VKDescriptorSet> &descriptor_set = active_descriptor_set();
   VkDescriptorSet vk_descriptor_set = descriptor_set->vk_handle();

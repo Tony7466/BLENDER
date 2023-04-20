@@ -189,7 +189,7 @@ static VkImageUsageFlagBits to_vk_image_usage(const eGPUTextureUsage usage,
     result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_STORAGE_BIT);
   }
   if (usage & GPU_TEXTURE_USAGE_ATTACHMENT) {
-    if (format_flag & (GPU_FORMAT_NORMALIZED_INTEGER | GPU_FORMAT_COMPRESSED)) {
+    if (format_flag & (GPU_FORMAT_COMPRESSED)) {
       /* These formats aren't supported as an attachment. When using GPU_TEXTURE_USAGE_DEFAULT they
        * are still being evaluated to be attachable. So we need to skip them. */
     }

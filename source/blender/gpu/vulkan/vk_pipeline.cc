@@ -93,6 +93,7 @@ bool VKPipeline::is_valid() const
 
 void VKPipeline::finalize(VKContext &context,
                           VkShaderModule vertex_module,
+                          VkShaderModule geometry_module,
                           VkShaderModule fragment_module,
                           VkPipelineLayout &pipeline_layout,
                           const GPUPrimType prim_type,
@@ -109,6 +110,15 @@ void VKPipeline::finalize(VKContext &context,
   vertex_stage_info.module = vertex_module;
   vertex_stage_info.pName = "main";
   pipeline_stages.append(vertex_stage_info);
+
+  if (geometry_module != VK_NULL_HANDLE) {
+    VkPipelineShaderStageCreateInfo geometry_stage_info = {};
+    geometry_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    geometry_stage_info.stage = VK_SHADER_STAGE_GEOMETRY_BIT;
+    geometry_stage_info.module = geometry_module;
+    geometry_stage_info.pName = "main";
+    pipeline_stages.append(geometry_stage_info);
+  }
 
   if (fragment_module != VK_NULL_HANDLE) {
     VkPipelineShaderStageCreateInfo fragment_stage_info = {};
@@ -132,7 +142,6 @@ void VKPipeline::finalize(VKContext &context,
   /* Vertex input state. */
   VkPipelineVertexInputStateCreateInfo vertex_input_state = {};
   vertex_input_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-  vertex_input_state.vertexBindingDescriptionCount = 0;
   vertex_input_state.vertexBindingDescriptionCount = vertex_attribute_object.bindings.size();
   vertex_input_state.pVertexBindingDescriptions = vertex_attribute_object.bindings.data();
   vertex_input_state.vertexAttributeDescriptionCount = vertex_attribute_object.attributes.size();
