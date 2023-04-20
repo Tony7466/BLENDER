@@ -268,10 +268,12 @@ void BLO_read_pointer_array(BlendDataReader *reader, void **ptr_p);
 /* Misc. */
 
 #ifdef __cplusplus
-const blender::ImplicitSharingInfo *BLO_read_shared(
+const blender::ImplicitSharingInfo *BLO_read_shared_impl(
     BlendDataReader *reader,
     void **data_ptr,
     blender::FunctionRef<const blender::ImplicitSharingInfo *()> read_cb);
+#  define BLO_read_shared(reader, ptr_p, read_cb) \
+    BLO_read_shared_impl(reader, (void **)ptr_p, read_cb)
 #endif
 
 int BLO_read_fileversion_get(BlendDataReader *reader);

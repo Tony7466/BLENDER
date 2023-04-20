@@ -5133,7 +5133,7 @@ void BLO_read_pointer_array(BlendDataReader *reader, void **ptr_p)
   *ptr_p = final_array;
 }
 
-const blender::ImplicitSharingInfo *BLO_read_shared(
+const blender::ImplicitSharingInfo *BLO_read_shared_impl(
     BlendDataReader *reader,
     void **data_ptr,
     blender::FunctionRef<const blender::ImplicitSharingInfo *()> read_cb)
