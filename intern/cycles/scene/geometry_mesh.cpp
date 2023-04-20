@@ -13,6 +13,7 @@
 #include "scene/light.h"
 #include "scene/mesh.h"
 #include "scene/object.h"
+#include "scene/osl.h"
 #include "scene/pointcloud.h"
 #include "scene/scene.h"
 #include "scene/shader.h"
@@ -23,7 +24,9 @@
 #include "subd/patch_table.h"
 #include "subd/split.h"
 
-#include "kernel/osl/globals.h"
+#ifdef WITH_OSL
+#  include "kernel/osl/globals.h"
+#endif
 
 #include "util/foreach.h"
 #include "util/log.h"
@@ -139,6 +142,7 @@ void GeometryManager::device_update_mesh_preprocess(
     progress.set_status("Updating Mesh", "Computing patches");
 
     uint *patch_data = dscene->patches.alloc(p_sizes->patch_size);
+
     foreach (Geometry *geom, scene->geometry) {
       if (geom->is_mesh()) {
         Mesh *mesh = static_cast<Mesh *>(geom);

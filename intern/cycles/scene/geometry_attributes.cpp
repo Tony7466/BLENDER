@@ -566,9 +566,6 @@ bool GeometryManager::device_update_attributes_preprocess(
                                         req.subd_type,
                                         req.subd_desc);
       }
-
-      // if (progress.get_cancel())
-      //   return update_obj_offsets;
     }
   }
 

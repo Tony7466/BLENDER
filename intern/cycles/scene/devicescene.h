@@ -7,7 +7,6 @@
 #include "device/device.h"
 #include "device/memory.h"
 
-#include "util/progress.h"
 #include "util/types.h"
 #include "util/vector.h"
 

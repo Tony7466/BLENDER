@@ -5,6 +5,10 @@
 
 #include "scene/devicescene.h"
 #include "scene/scene.h"
+#include "device/device.h"
+#include "device/memory.h"
+
+#include "util/progress.h"
 
 CCL_NAMESPACE_BEGIN
 

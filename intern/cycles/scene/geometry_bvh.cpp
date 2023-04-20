@@ -40,7 +40,7 @@ void Geometry::compute_bvh(Device *device,
                            size_t total)
 {
   if (progress->get_cancel())
-     return;
+    return;
 
   const BVHLayout bvh_layout = BVHParams::best_bvh_layout(
       params->bvh_layout, device->get_bvh_layout_mask(dscene->data.kernel_features));
@@ -115,6 +115,7 @@ bool Geometry::create_new_bvh_if_needed(Object *object,
     vector<Geometry *> geometry;
     geometry.push_back(this);
     vector<Object *> objects;
+
     objects.push_back(object);
 
     if (bvh && !need_update_rebuild) {
@@ -136,6 +137,7 @@ bool Geometry::create_new_bvh_if_needed(Object *object,
       bparams.num_motion_point_steps = params->num_bvh_time_steps;
       bparams.bvh_type = params->bvh_type;
       bparams.curve_subdivisions = params->curve_subdivisions();
+
       bvh = BVH::create(bparams, geometry, objects, device);
       need_update_rebuild = true;
     }
@@ -229,6 +231,7 @@ bool GeometryManager::device_update_bvh_preprocess(Device *device,
   if (!scene->bvh) {
     bvh = scene->bvh = BVH::create(bparams, scene->geometry, scene->objects, device);
   }
+
   /* Mark BVH as having not been built yet */
   bvh->built = false;
   return can_refit;
