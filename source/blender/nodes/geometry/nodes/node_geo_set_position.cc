@@ -26,18 +26,10 @@ static void node_declare(NodeDeclarationBuilder &b)
 static void set_computed_position_and_offset(GeometryComponent &component,
                                              const VArray<float3> &in_positions,
                                              const VArray<float3> &in_offsets,
+                                             const bool positions_are_original,
                                              const IndexMask selection)
 {
   MutableAttributeAccessor attributes = *component.attributes_for_write();
-
-  /* Optimize the case when `in_positions` references the original positions array. */
-  const bke::AttributeReader positions_read_only = attributes.lookup<float3>("position");
-  bool positions_are_original = false;
-  if (positions_read_only.varray.is_span() && in_positions.is_span()) {
-    positions_are_original = positions_read_only.varray.get_internal_span().data() ==
-                             in_positions.get_internal_span().data();
-  }
-
   if (positions_are_original) {
     if (const std::optional<float3> offset = in_offsets.get_if_single()) {
       if (math::is_zero(*offset)) {
@@ -116,6 +108,15 @@ static void set_computed_position_and_offset(GeometryComponent &component,
   }
 }
 
+static bool field_is_positions(const Field<float3> &field)
+{
+  const auto *attribute_field = dynamic_cast<const bke::AttributeFieldInput *>(&field.node());
+  if (!attribute_field) {
+    return false;
+  }
+  return attribute_field->attribute_name() == "position";
+}
+
 static void set_position_in_component(GeometrySet &geometry,
                                       GeometryComponentType component_type,
                                       const Field<bool> &selection_field,
@@ -143,10 +144,13 @@ static void set_position_in_component(GeometrySet &geometry,
     return;
   }
 
+  const bool positions_are_original = field_is_positions(position_field);
+
   GeometryComponent &mutable_component = geometry.get_component_for_write(component_type);
   const VArray<float3> positions_input = evaluator.get_evaluated<float3>(0);
   const VArray<float3> offsets_input = evaluator.get_evaluated<float3>(1);
-  set_computed_position_and_offset(mutable_component, positions_input, offsets_input, selection);
+  set_computed_position_and_offset(
+      mutable_component, positions_input, offsets_input, positions_are_original, selection);
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
