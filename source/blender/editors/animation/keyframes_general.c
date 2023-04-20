@@ -491,7 +491,7 @@ void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor
 
 /* ---------------- */
 
-void blend_to_infinity_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+bool blend_to_infinity_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
 {
   const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
   const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
@@ -502,7 +502,7 @@ void blend_to_infinity_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const
   if (factor >= 0) {
     /* Stop the function if there is no key beyond the the right neighboring one. */
     if (segment->start_index + segment->length >= fcu->totvert - 1) {
-      return;
+      return false;
     }
     reference_key = right_key;
     beyond_key = fcu->bezt[segment->start_index + segment->length + 1];
@@ -510,7 +510,7 @@ void blend_to_infinity_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const
   else {
     /* Stop the function if there is no key beyond the left neighboring one. */
     if (segment->start_index <= 1) {
-      return;
+      return false;
     }
     reference_key = left_key;
     beyond_key = fcu->bezt[segment->start_index - 2];
@@ -523,7 +523,7 @@ void blend_to_infinity_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const
 
   /* Avoids dividing by 0. */
   if (x_delta == 0) {
-    return;
+    return true;
   }
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
@@ -538,6 +538,7 @@ void blend_to_infinity_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const
     const float key_y_value = fcu->bezt[i].vec[1][1] + delta * fabs(factor);
     move_key(&fcu->bezt[i], key_y_value);
   }
+  return true;
 }
 
 /* ---------------- */

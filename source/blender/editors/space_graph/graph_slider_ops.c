@@ -1068,31 +1068,30 @@ static void blend_to_infinity_graph_keys(bAnimContext *ac, const float factor)
 {
   ListBase anim_data = {NULL, NULL};
 
+  bool all_segments_valid = true;
+
   ANIM_animdata_filter(ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, ac->datatype);
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     FCurve *fcu = (FCurve *)ale->key_data;
     ListBase segments = find_fcurve_segments(fcu);
 
     LISTBASE_FOREACH (FCurveSegment *, segment, &segments) {
-      if (factor >= 0){
-        if (segment->start_index + segment->length >= fcu->totvert - 1) {
-        WM_report(RPT_WARNING, "You need at least 2 keys to the right side of the selection.");
-        continue;
-        }
-      }
-      else {
-        if (segment->start_index <= 1) {
-        WM_report(RPT_WARNING, "You need at least 2 keys to the left side of the selection.");
-        continue;
-        }
-      }
-      blend_to_infinity_fcurve_segment(fcu, segment, factor);
+      all_segments_valid = blend_to_infinity_fcurve_segment(fcu, segment, factor);
     }
 
     ale->update |= ANIM_UPDATE_DEFAULT;
     BLI_freelistN(&segments);
   }
 
+  if(!all_segments_valid) {
+    if (factor >= 0){
+      WM_report(RPT_WARNING, "You need at least 2 keys to the right side of the selection.");
+    }
+    else {
+      WM_report(RPT_WARNING, "You need at least 2 keys to the left side of the selection.");
+    }
+  }
+  
   ANIM_animdata_update(ac, &anim_data);
   ANIM_animdata_freelist(&anim_data);
 }
@@ -1190,12 +1189,12 @@ void GRAPH_OT_blend_to_infinity(wmOperatorType *ot)
 
   RNA_def_float_factor(ot->srna,
                        "factor",
-                       0.5f,
+                       0.0f,
                        -FLT_MAX,
                        FLT_MAX,
                        "Curve Bend",
                        "Control the bend of the curve",
-                       0.0f,
+                       -1.0f,
                        1.0f);
 }
 
