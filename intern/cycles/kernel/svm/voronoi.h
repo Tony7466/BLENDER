@@ -38,16 +38,16 @@ struct VoronoiParamsBase {
   float octave_distance;
   float3 octave_color;
 
-  VoronoiParamsBase() = default;
+  ccl_device_inline_method VoronoiParamsBase() = default;
 
-  VoronoiParamsBase(const VoronoiParamsBase &) = default;
+  ccl_device_inline_method VoronoiParamsBase(const VoronoiParamsBase &) = default;
 };
 
 template<typename T> struct VoronoiParams : public VoronoiParamsBase {
   T octave_coord;
   T octave_postion;
 
-  VoronoiParams(const VoronoiParamsBase &vpb) : VoronoiParamsBase(vpb) {}
+  ccl_device_inline_method VoronoiParams(const VoronoiParamsBase &vpb) : VoronoiParamsBase(vpb) {}
 };
 
 struct VoronoiOutputBase {
@@ -55,15 +55,15 @@ struct VoronoiOutputBase {
   float radius_out;
   float3 color_out;
 
-  VoronoiOutputBase() = default;
+  ccl_device_inline_method VoronoiOutputBase() = default;
 
-  VoronoiOutputBase(const VoronoiOutputBase &) = default;
+  ccl_device_inline_method VoronoiOutputBase(const VoronoiOutputBase &) = default;
 };
 
 template<typename T> struct VoronoiOutput : public VoronoiOutputBase {
   T position_out;
 
-  VoronoiOutput(const VoronoiOutputBase &vob) : VoronoiOutputBase(vob) {}
+  ccl_device_inline_method VoronoiOutput(const VoronoiOutputBase &vob) : VoronoiOutputBase(vob) {}
 };
 
 /* **** 1D Voronoi **** */
@@ -84,13 +84,13 @@ ccl_device float voronoi_distance_1d(float a,
 
 /* The "float exponent" and "NodeVoronoiDistanceMetric metric" function parameters are unused in
  * the 1D Voronoi calculations but needed for overload resolution to work */
-ccl_device void voronoi_f1(float w,
-                           float exponent,
-                           float randomness,
-                           NodeVoronoiDistanceMetric metric,
-                           ccl_private float *distance_out,
-                           ccl_private float3 *color_out,
-                           ccl_private float *outW)
+ccl_device void voronoi_f1_1d(float w,
+                              float exponent,
+                              float randomness,
+                              NodeVoronoiDistanceMetric metric,
+                              ccl_private float *distance_out,
+                              ccl_private float3 *color_out,
+                              ccl_private float *outW)
 {
   /* Supress compiler warnings */
   (void)exponent;
@@ -119,14 +119,14 @@ ccl_device void voronoi_f1(float w,
 
 /* The "float exponent" and "NodeVoronoiDistanceMetric metric" function parameters are unused in
  * the 1D Voronoi calculations but needed for overload resolution to work */
-ccl_device void voronoi_smooth_f1(float w,
-                                  float smoothness,
-                                  float exponent,
-                                  float randomness,
-                                  NodeVoronoiDistanceMetric metric,
-                                  ccl_private float *distance_out,
-                                  ccl_private float3 *color_out,
-                                  ccl_private float *outW)
+ccl_device void voronoi_smooth_f1_1d(float w,
+                                     float smoothness,
+                                     float exponent,
+                                     float randomness,
+                                     NodeVoronoiDistanceMetric metric,
+                                     ccl_private float *distance_out,
+                                     ccl_private float3 *color_out,
+                                     ccl_private float *outW)
 {
   /* Supress compiler warnings */
   (void)exponent;
@@ -158,13 +158,13 @@ ccl_device void voronoi_smooth_f1(float w,
 
 /* The "float exponent" and "NodeVoronoiDistanceMetric metric" function parameters are unused in
  * the 1D Voronoi calculations but needed for overload resolution to work */
-ccl_device void voronoi_f2(float w,
-                           float exponent,
-                           float randomness,
-                           NodeVoronoiDistanceMetric metric,
-                           ccl_private float *distance_out,
-                           ccl_private float3 *color_out,
-                           ccl_private float *outW)
+ccl_device void voronoi_f2_1d(float w,
+                              float exponent,
+                              float randomness,
+                              NodeVoronoiDistanceMetric metric,
+                              ccl_private float *distance_out,
+                              ccl_private float3 *color_out,
+                              ccl_private float *outW)
 {
   /* Supress compiler warnings */
   (void)exponent;
@@ -202,7 +202,9 @@ ccl_device void voronoi_f2(float w,
   *outW = positionF2 + cellPosition;
 }
 
-ccl_device void voronoi_distance_to_edge(float w, float randomness, ccl_private float *distance_out)
+ccl_device void voronoi_distance_to_edge_1d(float w,
+                                            float randomness,
+                                            ccl_private float *distance_out)
 {
   float cellPosition = floorf(w);
   float localPosition = w - cellPosition;
@@ -216,7 +218,9 @@ ccl_device void voronoi_distance_to_edge(float w, float randomness, ccl_private 
   *distance_out = min(distanceToMidLeft, distanceToMidRight);
 }
 
-ccl_device void voronoi_n_sphere_radius_1d(float w, float randomness, ccl_private float *radius_out)
+ccl_device void voronoi_n_sphere_radius_1d(float w,
+                                           float randomness,
+                                           ccl_private float *radius_out)
 {
   float cellPosition = floorf(w);
   float localPosition = w - cellPosition;
@@ -277,13 +281,13 @@ ccl_device float voronoi_distance_2d(float2 a,
   }
 }
 
-ccl_device void voronoi_f1(float2 coord,
-                           float exponent,
-                           float randomness,
-                           NodeVoronoiDistanceMetric metric,
-                           ccl_private float *distance_out,
-                           ccl_private float3 *color_out,
-                           ccl_private float2 *position_out)
+ccl_device void voronoi_f1_2d(float2 coord,
+                              float exponent,
+                              float randomness,
+                              NodeVoronoiDistanceMetric metric,
+                              ccl_private float *distance_out,
+                              ccl_private float3 *color_out,
+                              ccl_private float2 *position_out)
 {
   float2 cellPosition = floor(coord);
   float2 localPosition = coord - cellPosition;
@@ -309,14 +313,14 @@ ccl_device void voronoi_f1(float2 coord,
   *position_out = targetPosition + cellPosition;
 }
 
-ccl_device void voronoi_smooth_f1(float2 coord,
-                                  float smoothness,
-                                  float exponent,
-                                  float randomness,
-                                  NodeVoronoiDistanceMetric metric,
-                                  ccl_private float *distance_out,
-                                  ccl_private float3 *color_out,
-                                  ccl_private float2 *position_out)
+ccl_device void voronoi_smooth_f1_2d(float2 coord,
+                                     float smoothness,
+                                     float exponent,
+                                     float randomness,
+                                     NodeVoronoiDistanceMetric metric,
+                                     ccl_private float *distance_out,
+                                     ccl_private float3 *color_out,
+                                     ccl_private float2 *position_out)
 {
   float2 cellPosition = floor(coord);
   float2 localPosition = coord - cellPosition;
@@ -345,13 +349,13 @@ ccl_device void voronoi_smooth_f1(float2 coord,
   *position_out = cellPosition + smoothPosition;
 }
 
-ccl_device void voronoi_f2(float2 coord,
-                           float exponent,
-                           float randomness,
-                           NodeVoronoiDistanceMetric metric,
-                           ccl_private float *distance_out,
-                           ccl_private float3 *color_out,
-                           ccl_private float2 *position_out)
+ccl_device void voronoi_f2_2d(float2 coord,
+                              float exponent,
+                              float randomness,
+                              NodeVoronoiDistanceMetric metric,
+                              ccl_private float *distance_out,
+                              ccl_private float3 *color_out,
+                              ccl_private float2 *position_out)
 {
   float2 cellPosition = floor(coord);
   float2 localPosition = coord - cellPosition;
@@ -388,9 +392,9 @@ ccl_device void voronoi_f2(float2 coord,
   *position_out = positionF2 + cellPosition;
 }
 
-ccl_device void voronoi_distance_to_edge(float2 coord,
-                                         float randomness,
-                                         ccl_private float *distance_out)
+ccl_device void voronoi_distance_to_edge_2d(float2 coord,
+                                            float randomness,
+                                            ccl_private float *distance_out)
 {
   float2 cellPosition = floor(coord);
   float2 localPosition = coord - cellPosition;
@@ -528,14 +532,14 @@ ccl_device void voronoi_f1_3d(VoronoiParams<float3> &vp)
   vp.octave_postion = targetPosition + cellPosition;
 }
 
-ccl_device void voronoi_smooth_f1(float3 coord,
-                                  float smoothness,
-                                  float exponent,
-                                  float randomness,
-                                  NodeVoronoiDistanceMetric metric,
-                                  ccl_private float *distance_out,
-                                  ccl_private float3 *color_out,
-                                  ccl_private float3 *position_out)
+ccl_device void voronoi_smooth_f1_3d(float3 coord,
+                                     float smoothness,
+                                     float exponent,
+                                     float randomness,
+                                     NodeVoronoiDistanceMetric metric,
+                                     ccl_private float *distance_out,
+                                     ccl_private float3 *color_out,
+                                     ccl_private float3 *position_out)
 {
   float3 cellPosition = floor(coord);
   float3 localPosition = coord - cellPosition;
@@ -567,13 +571,13 @@ ccl_device void voronoi_smooth_f1(float3 coord,
   *position_out = cellPosition + smoothPosition;
 }
 
-ccl_device void voronoi_f2(float3 coord,
-                           float exponent,
-                           float randomness,
-                           NodeVoronoiDistanceMetric metric,
-                           ccl_private float *distance_out,
-                           ccl_private float3 *color_out,
-                           ccl_private float3 *position_out)
+ccl_device void voronoi_f2_3d(float3 coord,
+                              float exponent,
+                              float randomness,
+                              NodeVoronoiDistanceMetric metric,
+                              ccl_private float *distance_out,
+                              ccl_private float3 *color_out,
+                              ccl_private float3 *position_out)
 {
   float3 cellPosition = floor(coord);
   float3 localPosition = coord - cellPosition;
@@ -613,9 +617,9 @@ ccl_device void voronoi_f2(float3 coord,
   *position_out = positionF2 + cellPosition;
 }
 
-ccl_device void voronoi_distance_to_edge(float3 coord,
-                                         float randomness,
-                                         ccl_private float *distance_out)
+ccl_device void voronoi_distance_to_edge_3d(float3 coord,
+                                            float randomness,
+                                            ccl_private float *distance_out)
 {
   float3 cellPosition = floor(coord);
   float3 localPosition = coord - cellPosition;
@@ -732,13 +736,13 @@ ccl_device float voronoi_distance_4d(float4 a,
   }
 }
 
-ccl_device void voronoi_f1(float4 coord,
-                           float exponent,
-                           float randomness,
-                           NodeVoronoiDistanceMetric metric,
-                           ccl_private float *distance_out,
-                           ccl_private float3 *color_out,
-                           ccl_private float4 *position_out)
+ccl_device void voronoi_f1_4d(float4 coord,
+                              float exponent,
+                              float randomness,
+                              NodeVoronoiDistanceMetric metric,
+                              ccl_private float *distance_out,
+                              ccl_private float3 *color_out,
+                              ccl_private float4 *position_out)
 {
   float4 cellPosition = floor(coord);
   float4 localPosition = coord - cellPosition;
@@ -770,14 +774,14 @@ ccl_device void voronoi_f1(float4 coord,
   *position_out = targetPosition + cellPosition;
 }
 
-ccl_device void voronoi_smooth_f1(float4 coord,
-                                  float smoothness,
-                                  float exponent,
-                                  float randomness,
-                                  NodeVoronoiDistanceMetric metric,
-                                  ccl_private float *distance_out,
-                                  ccl_private float3 *color_out,
-                                  ccl_private float4 *position_out)
+ccl_device void voronoi_smooth_f1_4d(float4 coord,
+                                     float smoothness,
+                                     float exponent,
+                                     float randomness,
+                                     NodeVoronoiDistanceMetric metric,
+                                     ccl_private float *distance_out,
+                                     ccl_private float3 *color_out,
+                                     ccl_private float4 *position_out)
 {
   float4 cellPosition = floor(coord);
   float4 localPosition = coord - cellPosition;
@@ -812,13 +816,13 @@ ccl_device void voronoi_smooth_f1(float4 coord,
   *position_out = cellPosition + smoothPosition;
 }
 
-ccl_device void voronoi_f2(float4 coord,
-                           float exponent,
-                           float randomness,
-                           NodeVoronoiDistanceMetric metric,
-                           ccl_private float *distance_out,
-                           ccl_private float3 *color_out,
-                           ccl_private float4 *position_out)
+ccl_device void voronoi_f2_4d(float4 coord,
+                              float exponent,
+                              float randomness,
+                              NodeVoronoiDistanceMetric metric,
+                              ccl_private float *distance_out,
+                              ccl_private float3 *color_out,
+                              ccl_private float4 *position_out)
 {
   float4 cellPosition = floor(coord);
   float4 localPosition = coord - cellPosition;
@@ -861,9 +865,9 @@ ccl_device void voronoi_f2(float4 coord,
   *position_out = positionF2 + cellPosition;
 }
 
-ccl_device void voronoi_distance_to_edge(float4 coord,
-                                         float randomness,
-                                         ccl_private float *distance_out)
+ccl_device void voronoi_distance_to_edge_4d(float4 coord,
+                                            float randomness,
+                                            ccl_private float *distance_out)
 {
   float4 cellPosition = floor(coord);
   float4 localPosition = coord - cellPosition;
@@ -969,9 +973,9 @@ ccl_device void voronoi_n_sphere_radius_4d(float4 coord,
 /* **** Fractal Voronoi **** */
 
 template<typename T>
-ccl_device void fractal_voronoi_fx(VoronoiParams<T> &vp,
-                                   VoronoiOutput<T> &vo,
-                                   void (*voronoi_fx)(VoronoiParams<T> &))
+ccl_device void fractal_voronoi_x_fx(VoronoiParams<T> &vp,
+                                     VoronoiOutput<T> &vo,
+                                     void (*voronoi_x_fx)(VoronoiParams<T> &))
 {
   vp.octave_scale = 1.0f;
   vp.octave_amplitude = 1.0f;
@@ -982,7 +986,7 @@ ccl_device void fractal_voronoi_fx(VoronoiParams<T> &vp,
   T voronoi_coord = vp.octave_coord;
   for (int i = 0; i <= ceilf(vp.detail); ++i) {
     vp.octave_coord = voronoi_coord * vp.octave_scale;
-    voronoi_fx(vp);
+    voronoi_x_fx(vp);
     if (vp.detail == 0.0f || vp.roughness == 0.0f || vp.lacunarity == 0.0f) {
       vp.max_amplitude = 1.0f;
       vo.distance_out = vp.octave_distance;
@@ -1004,8 +1008,9 @@ ccl_device void fractal_voronoi_fx(VoronoiParams<T> &vp,
       if (remainder != 0.0f) {
         vp.max_amplitude = lerp(
             vp.max_amplitude, vp.max_amplitude + vp.octave_amplitude, remainder);
-        vo.distance_out = lerp(
-            vo.distance_out, vo.distance_out + vp.octave_distance * vp.octave_amplitude, remainder);
+        vo.distance_out = lerp(vo.distance_out,
+                               vo.distance_out + vp.octave_distance * vp.octave_amplitude,
+                               remainder);
         vo.color_out = lerp(
             vo.color_out, vo.color_out + vp.octave_color * vp.octave_amplitude, remainder);
         vo.position_out = lerp(
@@ -1128,6 +1133,16 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
 
   voronoi_coord *= vpb.scale;
   voronoi_w *= vpb.scale;
+
+  VoronoiParams<float3> vp{vpb};
+  vp.octave_coord = voronoi_coord;
+  vp.max_distance = voronoi_distance_3d(zero_float3(), one_float3(), vp.metric, vp.exponent);
+  VoronoiOutput<float3> vo{vob};
+  vo.position_out = zero_float3();
+  fractal_voronoi_x_fx<float3>(vp, vo, voronoi_f1_3d);
+  vob = vo;
+  voronoi_position_out = vo.position_out;
+  voronoi_w_out = 0.0f;
 
   // switch (dimensions) {
   //   case 1: {
@@ -1329,17 +1344,8 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
   //    break;
   //  }
   //  case 3: {
-  VoronoiParams<float3> vp{vpb};
-  vp.octave_coord = voronoi_coord;
-  vp.max_distance = voronoi_distance_3d(zero_float3(), one_float3(), vp.metric, vp.exponent);
-  VoronoiOutput<float3> vo{vob};
-  vo.position_out = zero_float3();
   //    switch (voronoi_feature) {
   //   case NODE_VORONOI_F1: {
-  fractal_voronoi_fx<float3>(vp, vo, voronoi_f1_3d);
-  vob = vo;
-  voronoi_position_out = vo.position_out;
-  voronoi_w_out = 0.0f;
   // if (normalize) {
   //   distance_out /= (0.5f + 0.5f * randomness) * max_amplitude *
   //                   voronoi_distance_3d(make_float3(1.0f, 1.0f, 1.0f),
@@ -1555,16 +1561,16 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
   //    kernel_assert(0);
   //}
 
-   if (stack_valid(distance_out_stack_offset))
-     stack_store_float(stack, distance_out_stack_offset, vob.distance_out);
-   if (stack_valid(color_out_stack_offset))
-     stack_store_float3(stack, color_out_stack_offset, vob.color_out);
-   if (stack_valid(position_out_stack_offset))
-     stack_store_float3(stack, position_out_stack_offset, voronoi_position_out);
-   if (stack_valid(w_out_stack_offset))
-     stack_store_float(stack, w_out_stack_offset, voronoi_w_out);
-   if (stack_valid(radius_out_stack_offset))
-     stack_store_float(stack, radius_out_stack_offset, vob.radius_out);
+  if (stack_valid(distance_out_stack_offset))
+    stack_store_float(stack, distance_out_stack_offset, vob.distance_out);
+  if (stack_valid(color_out_stack_offset))
+    stack_store_float3(stack, color_out_stack_offset, vob.color_out);
+  if (stack_valid(position_out_stack_offset))
+    stack_store_float3(stack, position_out_stack_offset, voronoi_position_out);
+  if (stack_valid(w_out_stack_offset))
+    stack_store_float(stack, w_out_stack_offset, voronoi_w_out);
+  if (stack_valid(radius_out_stack_offset))
+    stack_store_float(stack, radius_out_stack_offset, vob.radius_out);
   return offset;
 }
 
