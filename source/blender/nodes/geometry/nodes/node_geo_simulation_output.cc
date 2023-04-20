@@ -152,12 +152,18 @@ const CPPType &get_simulation_item_cpp_type(const NodeSimulationItem &item)
 }
 
 static std::unique_ptr<bke::sim::SimulationStateItem> make_simulation_state_item(
-    lf::Params &params, const int index, const eNodeSocketDatatype socket_type)
+    const eNodeSocketDatatype socket_type, void *input_data)
 {
   /* TODO */
-  UNUSED_VARS(params, index, socket_type);
-  GeometrySet geometry;
-  return std::make_unique<bke::sim::GeometrySimulationStateItem>(geometry);
+  if (socket_type == SOCK_GEOMETRY) {
+    GeometrySet *input_geometry = static_cast<GeometrySet *>(input_data);
+    input_geometry->ensure_owns_direct_data();
+    return std::make_unique<bke::sim::GeometrySimulationStateItem>(*input_geometry);
+  }
+  else {
+    GeometrySet geometry;
+    return std::make_unique<bke::sim::GeometrySimulationStateItem>(geometry);
+  }
 }
 
 static void copy_simulation_state_output(lf::Params &params,
@@ -167,12 +173,18 @@ static void copy_simulation_state_output(lf::Params &params,
 {
   const CPPType &cpptype = get_simulation_item_cpp_type(socket_type);
 
-  /* TODO */
-  UNUSED_VARS(params, index, socket_type, state_item);
-  if (const void *src = cpptype.default_value()) {
-    void *dst = params.get_output_data_ptr(index);
-    cpptype.copy_construct(src, dst);
-    params.output_set(index);
+  if (socket_type == SOCK_GEOMETRY) {
+    const bke::sim::GeometrySimulationStateItem &geo_state_item =
+        static_cast<const bke::sim::GeometrySimulationStateItem &>(state_item);
+    params.set_output(index, geo_state_item.geometry());
+  }
+  else {
+    /* TODO */
+    if (const void *src = cpptype.default_value()) {
+      void *dst = params.get_output_data_ptr(index);
+      cpptype.copy_construct(src, dst);
+      params.output_set(index);
+    }
   }
 }
 
@@ -254,7 +266,7 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
       }
 
       new_zone_state.items[i] = make_simulation_state_item(
-          params, i, static_cast<eNodeSocketDatatype>(item.socket_type));
+          static_cast<eNodeSocketDatatype>(item.socket_type), input_data);
     }
 
     if (all_available) {

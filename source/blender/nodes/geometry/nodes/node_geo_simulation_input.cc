@@ -37,13 +37,20 @@ static void copy_next_simulation_state(lf::Params &params,
   const CPPType &cpptype = get_simulation_item_cpp_type(socket_type);
 
   /* TODO */
-  UNUSED_VARS(state_item);
-//  if (const void *src = state_item.data()) {
-  if (const void *src = cpptype.default_value()) {
+  if (socket_type == SOCK_GEOMETRY) {
+    const bke::sim::GeometrySimulationStateItem &geo_state_item = static_cast<const bke::sim::GeometrySimulationStateItem &>(state_item);
+    const GeometrySet &src = geo_state_item.geometry();
     /* First output parameter is "Delta Time", state item parameters start at index 1. */
-    void *dst = params.get_output_data_ptr(index + 1);
-    cpptype.copy_construct(src, dst);
-    params.output_set(index + 1);
+    params.set_output(index + 1, src);
+  }
+  else {
+    //  if (const void *src = state_item.data()) {
+    if (const void *src = cpptype.default_value()) {
+      /* First output parameter is "Delta Time", state item parameters start at index 1. */
+      void *dst = params.get_output_data_ptr(index + 1);
+      cpptype.copy_construct(src, dst);
+      params.output_set(index + 1);
+    }
   }
 }
 
