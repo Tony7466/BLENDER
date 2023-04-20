@@ -1,2 +1,2 @@
-Referenced by issue #107156, UV: Cylinder/Sphere Projection does not execute after executing some UV operators
+Referenced by issue #107156, Regression: UV: Cylinder/Sphere Projection does not execute after executing some UV operators
 Referenced by pull request #107161, Fix #107156: UV Cylinder/Sphere Projection fails after other operators
