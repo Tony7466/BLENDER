@@ -133,76 +133,27 @@ NodeSimulationItem *simulation_item_add_from_socket(NodeGeometrySimulationOutput
   return &added_item;
 }
 
-const CPPType &get_simulation_item_cpp_type(const NodeSimulationItem &item)
+const CPPType &get_simulation_item_cpp_type(const eNodeSocketDatatype socket_type)
 {
-  const char *socket_idname = nodeStaticSocketType(item.socket_type, 0);
+  const char *socket_idname = nodeStaticSocketType(socket_type, 0);
   const bNodeSocketType *typeinfo = nodeSocketTypeFind(socket_idname);
   BLI_assert(typeinfo);
   BLI_assert(typeinfo->geometry_nodes_cpp_type);
   return *typeinfo->geometry_nodes_cpp_type;
 }
 
-template<typename T>
-static std::unique_ptr<bke::sim::SimulationStateItem> make_data_simulation_state_item(
-    lf::Params &params, const int index)
+const CPPType &get_simulation_item_cpp_type(const NodeSimulationItem &item)
 {
-  using bke::sim::DataSimulationStateItem;
-
-  if (const T *data = params.try_get_input_data_ptr_or_request<T>(index)) {
-    return std::make_unique<DataSimulationStateItem<T>>(*data);
-  }
-
-  return nullptr;
-}
-
-static std::unique_ptr<bke::sim::SimulationStateItem> make_geometry_simulation_state_item(
-    lf::Params &params, const int index)
-{
-  using bke::sim::GeometrySimulationStateItem;
-
-  if (GeometrySet *data = params.try_get_input_data_ptr_or_request<GeometrySet>(index)) {
-    data->ensure_owns_direct_data();
-    return std::make_unique<GeometrySimulationStateItem>(*data);
-  }
-
-  return nullptr;
+  return get_simulation_item_cpp_type(static_cast<eNodeSocketDatatype>(item.socket_type));
 }
 
 static std::unique_ptr<bke::sim::SimulationStateItem> make_simulation_state_item(
     lf::Params &params, const int index, const eNodeSocketDatatype socket_type)
 {
-  switch (socket_type) {
-    case SOCK_FLOAT:
-      return make_data_simulation_state_item<ValueOrField<float>>(params, index);
-    case SOCK_VECTOR:
-      return make_data_simulation_state_item<ValueOrField<float3>>(params, index);
-    case SOCK_RGBA:
-      return make_data_simulation_state_item<ValueOrField<ColorGeometry4f>>(params, index);
-    case SOCK_BOOLEAN:
-      return make_data_simulation_state_item<ValueOrField<bool>>(params, index);
-    case SOCK_INT:
-      return make_data_simulation_state_item<ValueOrField<int>>(params, index);
-    case SOCK_STRING:
-      return make_data_simulation_state_item<ValueOrField<std::string>>(params, index);
-    case SOCK_GEOMETRY:
-      return make_geometry_simulation_state_item(params, index);
-    default:
-      BLI_assert_unreachable();
-      return nullptr;
-  }
-}
-
-template<typename T>
-static void copy_typed_simulation_state_output(lf::Params &params,
-                                               const int index,
-                                               const bke::sim::SimulationStateItem &state_item)
-{
-  using bke::sim::TypedSimulationStateItem;
-
-  if (auto *typed_state_item = dynamic_cast<const bke::sim::TypedSimulationStateItem<T> *>(
-          &state_item)) {
-    params.set_output(index, typed_state_item->data());
-  }
+  /* TODO */
+  UNUSED_VARS(params, index, socket_type);
+  GeometrySet geometry;
+  return std::make_unique<bke::sim::GeometrySimulationStateItem>(geometry);
 }
 
 static void copy_simulation_state_output(lf::Params &params,
@@ -210,47 +161,14 @@ static void copy_simulation_state_output(lf::Params &params,
                                          const eNodeSocketDatatype socket_type,
                                          const bke::sim::SimulationStateItem &state_item)
 {
-  switch (socket_type) {
-    case SOCK_FLOAT:
-      copy_typed_simulation_state_output<ValueOrField<float>>(params, index, state_item);
-      break;
-    case SOCK_VECTOR:
-      copy_typed_simulation_state_output<ValueOrField<float3>>(params, index, state_item);
-      break;
-    case SOCK_RGBA:
-      copy_typed_simulation_state_output<ValueOrField<ColorGeometry4f>>(params, index, state_item);
-      break;
-    case SOCK_BOOLEAN:
-      copy_typed_simulation_state_output<ValueOrField<bool>>(params, index, state_item);
-      break;
-    case SOCK_INT:
-      copy_typed_simulation_state_output<ValueOrField<int>>(params, index, state_item);
-      break;
-    case SOCK_STRING:
-      copy_typed_simulation_state_output<ValueOrField<std::string>>(params, index, state_item);
-      break;
-    case SOCK_OBJECT:
-      copy_typed_simulation_state_output<Object *>(params, index, state_item);
-      break;
-    case SOCK_GEOMETRY:
-      copy_typed_simulation_state_output<GeometrySet>(params, index, state_item);
-      break;
-    case SOCK_COLLECTION:
-      copy_typed_simulation_state_output<Collection *>(params, index, state_item);
-      break;
-    case SOCK_TEXTURE:
-      copy_typed_simulation_state_output<Tex *>(params, index, state_item);
-      break;
-    case SOCK_IMAGE:
-      copy_typed_simulation_state_output<Image *>(params, index, state_item);
-      break;
-    case SOCK_MATERIAL:
-      copy_typed_simulation_state_output<Material *>(params, index, state_item);
-      break;
-    default:
-      BLI_assert_unreachable();
-      copy_typed_simulation_state_output<GeometrySet>(params, index, state_item);
-      break;
+  const CPPType &cpptype = get_simulation_item_cpp_type(socket_type);
+
+  /* TODO */
+  UNUSED_VARS(params, index, socket_type, state_item);
+  if (const void *src = cpptype.default_value()) {
+    void *dst = params.get_output_data_ptr(index);
+    cpptype.copy_construct(src, dst);
+    params.output_set(index);
   }
 }
 

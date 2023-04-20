@@ -8,29 +8,9 @@
 
 namespace blender::bke::sim {
 
-class SimulationStateItem : public NonCopyable, public NonMovable {
+class SimulationStateItem {
  public:
   virtual ~SimulationStateItem() = default;
-};
-
-template<typename T> class DataSimulationStateItem : public SimulationStateItem {
- public:
-  using DataType = T;
-
- private:
-  T data_;
-
- public:
-  DataSimulationStateItem() = default;
-  DataSimulationStateItem(DataType data)
-  {
-    data_ = std::move(data);
-  }
-
-  const DataType &data() const
-  {
-    return data_;
-  }
 };
 
 class GeometrySimulationStateItem : public SimulationStateItem {
@@ -38,11 +18,7 @@ class GeometrySimulationStateItem : public SimulationStateItem {
   GeometrySet geometry_;
 
  public:
-  GeometrySimulationStateItem() = default;
-  GeometrySimulationStateItem(GeometrySet geometry)
-  {
-    geometry_ = std::move(geometry);
-  }
+  GeometrySimulationStateItem(GeometrySet geometry) : geometry_(std::move(geometry)) {}
 
   const GeometrySet &geometry() const
   {

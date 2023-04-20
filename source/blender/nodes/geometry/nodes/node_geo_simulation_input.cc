@@ -14,73 +14,18 @@
 
 namespace blender::nodes {
 
-template<typename T>
-static void copy_typed_initial_simulation_state(lf::Params &params, const int index)
-{
-  T *data = params.try_get_input_data_ptr_or_request<T>(index);
-  if (data != nullptr) {
-    /* First output parameter is "Delta Time", state item parameters start at index 1. */
-    params.set_output(index + 1, std::move(*data));
-  }
-}
-
 static void copy_initial_simulation_state(lf::Params &params,
                                           const int index,
                                           const eNodeSocketDatatype socket_type)
 {
-  switch (socket_type) {
-    case SOCK_FLOAT:
-      copy_typed_initial_simulation_state<ValueOrField<float>>(params, index);
-      break;
-    case SOCK_VECTOR:
-      copy_typed_initial_simulation_state<ValueOrField<float3>>(params, index);
-      break;
-    case SOCK_RGBA:
-      copy_typed_initial_simulation_state<ValueOrField<ColorGeometry4f>>(params, index);
-      break;
-    case SOCK_BOOLEAN:
-      copy_typed_initial_simulation_state<ValueOrField<bool>>(params, index);
-      break;
-    case SOCK_INT:
-      copy_typed_initial_simulation_state<ValueOrField<int>>(params, index);
-      break;
-    case SOCK_STRING:
-      copy_typed_initial_simulation_state<ValueOrField<std::string>>(params, index);
-      break;
-    case SOCK_OBJECT:
-      copy_typed_initial_simulation_state<Object *>(params, index);
-      break;
-    case SOCK_GEOMETRY:
-      copy_typed_initial_simulation_state<GeometrySet>(params, index);
-      break;
-    case SOCK_COLLECTION:
-      copy_typed_initial_simulation_state<Collection *>(params, index);
-      break;
-    case SOCK_TEXTURE:
-      copy_typed_initial_simulation_state<Tex *>(params, index);
-      break;
-    case SOCK_IMAGE:
-      copy_typed_initial_simulation_state<Image *>(params, index);
-      break;
-    case SOCK_MATERIAL:
-      copy_typed_initial_simulation_state<Material *>(params, index);
-      break;
-    default:
-      BLI_assert_unreachable();
-      copy_typed_initial_simulation_state<GeometrySet>(params, index);
-      break;
-  }
-}
+  const CPPType &cpptype = get_simulation_item_cpp_type(socket_type);
 
-template<typename T>
-static void copy_typed_next_simulation_state(lf::Params &params,
-                                             const int index,
-                                             const bke::sim::SimulationStateItem &state_item)
-{
-  if (const auto *typed_state_item = dynamic_cast<const bke::sim::TypedSimulationStateItem<T> *>(
-          &state_item)) {
+  void *src = params.try_get_input_data_ptr_or_request(index);
+  if (src != nullptr) {
     /* First output parameter is "Delta Time", state item parameters start at index 1. */
-    params.set_output(index + 1, typed_state_item->data());
+    void *dst = params.get_output_data_ptr(index + 1);
+    cpptype.move_construct(src, dst);
+    params.output_set(index + 1);
   }
 }
 
@@ -89,47 +34,16 @@ static void copy_next_simulation_state(lf::Params &params,
                                        const eNodeSocketDatatype socket_type,
                                        const bke::sim::SimulationStateItem &state_item)
 {
-  switch (socket_type) {
-    case SOCK_FLOAT:
-      copy_typed_next_simulation_state<ValueOrField<float>>(params, index, state_item);
-      break;
-    case SOCK_VECTOR:
-      copy_typed_next_simulation_state<ValueOrField<float3>>(params, index, state_item);
-      break;
-    case SOCK_RGBA:
-      copy_typed_next_simulation_state<ValueOrField<ColorGeometry4f>>(params, index, state_item);
-      break;
-    case SOCK_BOOLEAN:
-      copy_typed_next_simulation_state<ValueOrField<bool>>(params, index, state_item);
-      break;
-    case SOCK_INT:
-      copy_typed_next_simulation_state<ValueOrField<int>>(params, index, state_item);
-      break;
-    case SOCK_STRING:
-      copy_typed_next_simulation_state<ValueOrField<std::string>>(params, index, state_item);
-      break;
-    case SOCK_OBJECT:
-      copy_typed_next_simulation_state<Object *>(params, index, state_item);
-      break;
-    case SOCK_GEOMETRY:
-      copy_typed_next_simulation_state<GeometrySet>(params, index, state_item);
-      break;
-    case SOCK_COLLECTION:
-      copy_typed_next_simulation_state<Collection *>(params, index, state_item);
-      break;
-    case SOCK_TEXTURE:
-      copy_typed_next_simulation_state<Tex *>(params, index, state_item);
-      break;
-    case SOCK_IMAGE:
-      copy_typed_next_simulation_state<Image *>(params, index, state_item);
-      break;
-    case SOCK_MATERIAL:
-      copy_typed_next_simulation_state<Material *>(params, index, state_item);
-      break;
-    default:
-      BLI_assert_unreachable();
-      copy_typed_next_simulation_state<GeometrySet>(params, index, state_item);
-      break;
+  const CPPType &cpptype = get_simulation_item_cpp_type(socket_type);
+
+  /* TODO */
+  UNUSED_VARS(state_item);
+//  if (const void *src = state_item.data()) {
+  if (const void *src = cpptype.default_value()) {
+    /* First output parameter is "Delta Time", state item parameters start at index 1. */
+    void *dst = params.get_output_data_ptr(index + 1);
+    cpptype.copy_construct(src, dst);
+    params.output_set(index + 1);
   }
 }
 
