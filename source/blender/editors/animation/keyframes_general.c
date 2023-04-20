@@ -445,7 +445,6 @@ void butterworth_smooth_fcurve_segment(FCurve *fcu,
   double *w2 = MEM_callocN(sizeof(double) * filter_order, "w2");
 
   const float fwd_offset = samples[0];
-  const float bwd_offset = samples[sample_count - 1];
 
   for (int i = 0; i < sample_count; i++) {
     double x = (double)(samples[i] - fwd_offset);
@@ -455,7 +454,7 @@ void butterworth_smooth_fcurve_segment(FCurve *fcu,
       w2[j] = w1[j];
       w1[j] = w0[j];
     }
-    fwd_filtered_values[i] = x;
+    fwd_filtered_values[i] = x + fwd_offset;
   }
 
   for (int i = 0; i < filter_order; i++) {
@@ -464,24 +463,24 @@ void butterworth_smooth_fcurve_segment(FCurve *fcu,
     w2[i] = 0;
   }
 
+  const float bwd_offset = fwd_filtered_values[sample_count - 1];
+
   for (int i = sample_count - 1; i > 0; i--) {
-    double x = (double)(samples[i] - bwd_offset);
+    double x = (double)(fwd_filtered_values[i] - bwd_offset);
     for (int j = 0; j < filter_order; j++) {
       w0[j] = d1[j] * w1[j] + d2[j] * w2[j] + x;
       x = A[j] * (w0[j] + 2.0 * w1[j] + w2[j]);
       w2[j] = w1[j];
       w1[j] = w0[j];
     }
-    bwd_filtered_values[i] = x;
+    bwd_filtered_values[i] = x + bwd_offset;
   }
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
     const int filter_index = (int)(fcu->bezt[i].vec[1][0] -
                                    fcu->bezt[segment->start_index].vec[1][0]) +
                              filter_order;
-    const float filter_value = (float)((fwd_filtered_values[filter_index] + fwd_offset) +
-                                       (bwd_filtered_values[filter_index] + bwd_offset)) /
-                               2;
+    const float filter_value = bwd_filtered_values[filter_index];
     move_key(&fcu->bezt[i], interpf(filter_value, samples[filter_index], factor));
   }
 
