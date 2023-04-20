@@ -350,7 +350,7 @@ struct DRWDebugVert {
 };
 BLI_STATIC_ASSERT_ALIGN(DRWDebugVert, 16)
 
-DRWDebugVert debug_vert_make(uint in_pos0, uint in_pos1, uint in_pos2, uint in_vert_color)
+inline DRWDebugVert debug_vert_make(uint in_pos0, uint in_pos1, uint in_pos2, uint in_vert_color)
 {
   DRWDebugVert debug_vert;
   debug_vert.pos0 = in_pos0;
