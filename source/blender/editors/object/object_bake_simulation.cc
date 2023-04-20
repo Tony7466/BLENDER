@@ -281,6 +281,10 @@ static int delete_baked_simulation_exec(bContext *C, wmOperator *op)
     }
   }
 
+  if (objects.is_empty()) {
+    return OPERATOR_CANCELLED;
+  }
+
   for (Object *object : objects) {
     LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
       if (md->type == eModifierType_Nodes) {
