@@ -68,18 +68,3 @@ GPU_SHADER_CREATE_INFO(eevee_volume_resolve)
     .fragment_out(0, Type::VEC4, "out_radiance", DualBlend::SRC_0)
     .fragment_out(0, Type::VEC4, "out_transmittance", DualBlend::SRC_1)
     .do_static_compilation(true);
-
-GPU_SHADER_CREATE_INFO(eevee_volume_resolve_accum)
-    .define("VOLUMETRICS_ACCUM")
-    .additional_info("eevee_volume_resolve_common")
-    .fragment_out(0, Type::VEC4, "out_radiance")
-    .fragment_out(1, Type::VEC4, "out_transmittance")
-    .do_static_compilation(true);
-
-GPU_SHADER_CREATE_INFO(eevee_volume_accum)
-    .additional_info("draw_fullscreen")
-    .additional_info("eevee_volume_lib")
-    .fragment_out(0, Type::VEC4, "out_radiance")
-    .fragment_out(1, Type::VEC4, "out_transmittance")
-    .fragment_source("eevee_volume_accum_frag.glsl")
-    .do_static_compilation(true);

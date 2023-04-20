@@ -518,7 +518,6 @@ void DeferredPipeline::render(View &view,
 void VolumePipeline::sync()
 {
   volume_ps_.init();
-  volume_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ADD);
   inst_.volumes.bind_volume_pass_resources(volume_ps_, true);
 }
 
