@@ -273,17 +273,20 @@ ENUM_OPERATORS(eFieldStateSyncResult, CHANGED_B)
 static eFieldStateSyncResult sync_field_states(SocketFieldState &a, SocketFieldState &b)
 {
   const bool requires_single = a.requires_single || b.requires_single;
+  const bool is_single = a.is_single && b.is_single;
 
   eFieldStateSyncResult res = static_cast<eFieldStateSyncResult>(0);
-  if (a.requires_single != requires_single) {
+  if (a.requires_single != requires_single || a.is_single != is_single) {
     res |= eFieldStateSyncResult::CHANGED_A;
   }
-  if (b.requires_single != requires_single) {
+  if (b.requires_single != requires_single || b.is_single != is_single) {
     res |= eFieldStateSyncResult::CHANGED_B;
   }
 
   a.requires_single = requires_single;
   b.requires_single = requires_single;
+  a.is_single = is_single;
+  b.is_single = is_single;
 
   return res;
 }
