@@ -3057,7 +3057,7 @@ static void rna_def_userdef_theme_space_node(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Attribute Node", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
-  prop = RNA_def_property(srna, "simulation_region", PROP_FLOAT, PROP_COLOR_GAMMA);
+  prop = RNA_def_property(srna, "simulation_zone", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_float_sdna(prop, NULL, "node_zone_simulation");
   RNA_def_property_array(prop, 4);
   RNA_def_property_ui_text(prop, "Simulation Zone", "");
@@ -4927,7 +4927,7 @@ static void rna_def_userdef_view(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop,
       "Timecode Style",
-      "Format of timecodes displayed when not displaying timing in terms of frames");
+      "Format of timecode displayed when not displaying timing in terms of frames");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 
   prop = RNA_def_property(srna, "view_frame_type", PROP_ENUM, PROP_NONE);
