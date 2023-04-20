@@ -166,8 +166,9 @@ const CPPType &get_simulation_item_cpp_type(const NodeSimulationItem &item)
   }
 }
 
-template <typename T>
-static std::unique_ptr<bke::sim::TypedSimulationStateItem<T>> make_typed_simulation_state_item(lf::Params &params, int index)
+template<typename T>
+static std::unique_ptr<bke::sim::TypedSimulationStateItem<T>> make_typed_simulation_state_item(
+    lf::Params &params, int index)
 {
   using bke::sim::TypedSimulationStateItem;
 
@@ -212,21 +213,23 @@ static std::unique_ptr<bke::sim::SimulationStateItem> make_simulation_state_item
   }
 }
 
-template <typename T>
-static void copy_typed_simulation_state_output(lf::Params &params, int index, const bke::sim::SimulationStateItem &state_item)
+template<typename T>
+static void copy_typed_simulation_state_output(lf::Params &params,
+                                               int index,
+                                               const bke::sim::SimulationStateItem &state_item)
 {
   using bke::sim::TypedSimulationStateItem;
 
-  if (auto *typed_state_item = dynamic_cast<const bke::sim::TypedSimulationStateItem<T> *>(&state_item)) {
+  if (auto *typed_state_item = dynamic_cast<const bke::sim::TypedSimulationStateItem<T> *>(
+          &state_item)) {
     params.set_output(index, typed_state_item->data());
   }
 }
 
-static void copy_simulation_state_output(
-    lf::Params &params,
-    int index,
-    short socket_type,
-    const bke::sim::SimulationStateItem &state_item)
+static void copy_simulation_state_output(lf::Params &params,
+                                         int index,
+                                         short socket_type,
+                                         const bke::sim::SimulationStateItem &state_item)
 {
   switch (socket_type) {
     case SOCK_FLOAT:

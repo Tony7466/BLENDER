@@ -13,8 +13,7 @@ class SimulationStateItem {
   virtual ~SimulationStateItem() = default;
 };
 
-template <typename T>
-class TypedSimulationStateItem : public SimulationStateItem {
+template<typename T> class TypedSimulationStateItem : public SimulationStateItem {
  public:
   using DataType = T;
 
@@ -31,8 +30,7 @@ class TypedSimulationStateItem : public SimulationStateItem {
   {
     data_ = std::move(data);
   }
-  template <typename U>
-  TypedSimulationStateItem(const U &data)
+  template<typename U> TypedSimulationStateItem(const U &data)
   {
     data_ = data;
   }
@@ -40,8 +38,7 @@ class TypedSimulationStateItem : public SimulationStateItem {
   TypedSimulationStateItem(const TypedSimulationStateItem &) = delete;
   TypedSimulationStateItem(TypedSimulationStateItem &&) = delete;
 
-  virtual ~TypedSimulationStateItem() {
-  }
+  virtual ~TypedSimulationStateItem() {}
 
   TypedSimulationStateItem &operator=(const TypedSimulationStateItem &) = delete;
   TypedSimulationStateItem &operator=(TypedSimulationStateItem &&) = delete;
@@ -53,8 +50,7 @@ class TypedSimulationStateItem : public SimulationStateItem {
 };
 
 /** Specialization for GeometrySet which ensures the state owns the geometry data. */
-template <>
-class TypedSimulationStateItem<GeometrySet> : public SimulationStateItem {
+template<> class TypedSimulationStateItem<GeometrySet> : public SimulationStateItem {
  public:
   using DataType = GeometrySet;
 
@@ -73,8 +69,7 @@ class TypedSimulationStateItem<GeometrySet> : public SimulationStateItem {
     data_ = std::move(data);
     data_.ensure_owns_direct_data();
   }
-  template <typename U>
-  TypedSimulationStateItem(const U &data)
+  template<typename U> TypedSimulationStateItem(const U &data)
   {
     data_ = data;
     data_.ensure_owns_direct_data();
@@ -83,8 +78,7 @@ class TypedSimulationStateItem<GeometrySet> : public SimulationStateItem {
   TypedSimulationStateItem(const TypedSimulationStateItem &) = delete;
   TypedSimulationStateItem(TypedSimulationStateItem &&) = delete;
 
-  virtual ~TypedSimulationStateItem() {
-  }
+  virtual ~TypedSimulationStateItem() {}
 
   TypedSimulationStateItem &operator=(const TypedSimulationStateItem &) = delete;
   TypedSimulationStateItem &operator=(TypedSimulationStateItem &&) = delete;
@@ -94,7 +88,6 @@ class TypedSimulationStateItem<GeometrySet> : public SimulationStateItem {
     return data_;
   }
 };
-
 
 class SimulationZoneState {
  public:

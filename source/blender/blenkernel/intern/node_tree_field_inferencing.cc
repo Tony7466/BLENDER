@@ -445,8 +445,7 @@ static void propagate_data_requirements_from_right_to_left(
       }
 
       /* Find reverse dependencies and resolve conflicts, which may require another pass. */
-      if (propagate_special_data_requirements(tree, *node, field_state_by_socket_id))
-      {
+      if (propagate_special_data_requirements(tree, *node, field_state_by_socket_id)) {
         need_update = true;
       }
     }
@@ -577,8 +576,7 @@ static void propagate_field_status_from_left_to_right(
       }
 
       /* Find reverse dependencies and resolve conflicts, which may require another pass. */
-      if (propagate_special_data_requirements(tree, *node, field_state_by_socket_id))
-      {
+      if (propagate_special_data_requirements(tree, *node, field_state_by_socket_id)) {
         need_update = true;
       }
     }

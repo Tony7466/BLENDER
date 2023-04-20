@@ -14,8 +14,7 @@
 
 namespace blender::nodes {
 
-template <typename T>
-static void copy_typed_initial_simulation_state(lf::Params &params, int index)
+template<typename T> static void copy_typed_initial_simulation_state(lf::Params &params, int index)
 {
   T *data = params.try_get_input_data_ptr_or_request<T>(index);
   if (data != nullptr) {
@@ -23,10 +22,7 @@ static void copy_typed_initial_simulation_state(lf::Params &params, int index)
   }
 }
 
-static void copy_initial_simulation_state(
-    lf::Params &params,
-    int index,
-    short socket_type)
+static void copy_initial_simulation_state(lf::Params &params, int index, short socket_type)
 {
   switch (socket_type) {
     case SOCK_FLOAT:
@@ -132,7 +128,7 @@ static void copy_next_simulation_state(lf::Params &params,
   }
 }
 
-}
+}  // namespace blender::nodes
 
 namespace blender::nodes::node_geo_simulation_input_cc {
 
