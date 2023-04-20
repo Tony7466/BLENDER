@@ -225,6 +225,7 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
                                  const bke::sim::SimulationZoneState &next_state,
                                  const float mix_factor) const
   {
+    /* TODO: Implement subframe mixing. */
     this->output_cached_state(params, prev_state);
     UNUSED_VARS(next_state, mix_factor);
   }
