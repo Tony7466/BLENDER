@@ -5133,9 +5133,10 @@ void BLO_read_pointer_array(BlendDataReader *reader, void **ptr_p)
   *ptr_p = final_array;
 }
 
-const blender::ImplicitSharingInfo *BLO_read_shared(BlendDataReader *reader,
-                                                    void **data_ptr,
-                                                    blender::FunctionRef<void()> read_cb)
+const blender::ImplicitSharingInfo *BLO_read_shared(
+    BlendDataReader *reader,
+    void **data_ptr,
+    blender::FunctionRef<const blender::ImplicitSharingInfo *()> read_cb)
 {
   if (BLO_read_data_is_undo(reader)) {
     if (reader->fd->flags & FD_FLAGS_IS_MEMFILE) {
@@ -5152,8 +5153,7 @@ const blender::ImplicitSharingInfo *BLO_read_shared(BlendDataReader *reader,
       }
     }
   }
-  read_cb();
-  return nullptr;
+  return read_cb();
 }
 
 bool BLO_read_data_is_undo(BlendDataReader *reader)

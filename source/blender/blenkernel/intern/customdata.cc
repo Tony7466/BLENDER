@@ -5293,12 +5293,10 @@ void CustomData_blend_read(BlendDataReader *reader, CustomData *data, const int 
         else if (layer->type == CD_MDEFORMVERT) {
           BKE_defvert_blend_read(reader, count, static_cast<MDeformVert *>(layer->data));
         }
+        return layer->data ? make_implicit_sharing_info_for_layer(
+                                 eCustomDataType(layer->type), layer->data, count) :
+                             nullptr;
       });
-      if (layer->data != nullptr && layer->sharing_info == nullptr) {
-        /* Make layer data shareable. */
-        layer->sharing_info = make_implicit_sharing_info_for_layer(
-            eCustomDataType(layer->type), layer->data, count);
-      }
       i++;
     }
   }
