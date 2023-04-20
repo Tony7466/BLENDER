@@ -66,7 +66,8 @@ class BDataSharing {
      */
     int64_t sharing_info_version;
     /**
-     * Identifier of the stored data.
+     * Identifier of the stored data. This includes information for where the data is stored (a
+     * #BDataSlice) and optionally information for how it is loaded (e.g. endian information).
      */
     DictionaryValuePtr io_data;
   };
@@ -78,6 +79,9 @@ class BDataSharing {
    */
   Map<const ImplicitSharingInfo *, StoredByRuntimeValue> stored_by_runtime_;
 
+  /**
+   * Use a mutex so that #read_shared can be implemented in a thread-safe way.
+   */
   mutable std::mutex mutex_;
   /**
    * Map used to detect when some data has been previously loaded. This keeps strong
