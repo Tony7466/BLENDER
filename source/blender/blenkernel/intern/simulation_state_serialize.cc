@@ -514,9 +514,9 @@ static GeometrySet load_geometry(const DictionaryValue &io_geometry,
                                  const BDataReader &bdata_reader,
                                  const BDataSharing &bdata_sharing);
 
-static bke::Instances *try_load_instances(const DictionaryValue &io_geometry,
-                                          const BDataReader &bdata_reader,
-                                          const BDataSharing &bdata_sharing)
+static std::unique_ptr<bke::Instances> try_load_instances(const DictionaryValue &io_geometry,
+                                                          const BDataReader &bdata_reader,
+                                                          const BDataSharing &bdata_sharing)
 {
   const DictionaryValue *io_instances = io_geometry.lookup_dict("instances");
   if (!io_instances) {
@@ -535,13 +535,8 @@ static bke::Instances *try_load_instances(const DictionaryValue &io_geometry,
     return nullptr;
   }
 
-  bke::Instances *instances = new bke::Instances();
+  std::unique_ptr<bke::Instances> instances = std::make_unique<bke::Instances>();
   instances->resize(num_instances);
-
-  const auto cancel = [&]() {
-    delete instances;
-    return nullptr;
-  };
 
   for (const auto &io_reference_value : io_references->elements()) {
     const DictionaryValue *io_reference = io_reference_value->as_dictionary_value();
@@ -554,18 +549,18 @@ static bke::Instances *try_load_instances(const DictionaryValue &io_geometry,
 
   const auto io_transforms = io_instances->lookup_dict("transforms");
   if (!io_transforms) {
-    return cancel();
+    return {};
   }
   if (!read_bdata_simple_gspan(bdata_reader, *io_transforms, instances->transforms())) {
-    return cancel();
+    return {};
   }
 
   const auto io_handles = io_instances->lookup_dict("handles");
   if (!io_handles) {
-    return cancel();
+    return {};
   }
   if (!read_bdata_simple_gspan(bdata_reader, *io_handles, instances->reference_handles())) {
-    return cancel();
+    return {};
   }
 
   bke::MutableAttributeAccessor attributes = instances->attributes_for_write();
@@ -582,7 +577,8 @@ static GeometrySet load_geometry(const DictionaryValue &io_geometry,
   geometry.replace_mesh(try_load_mesh(io_geometry, bdata_reader, bdata_sharing));
   geometry.replace_pointcloud(try_load_pointcloud(io_geometry, bdata_reader, bdata_sharing));
   geometry.replace_curves(try_load_curves(io_geometry, bdata_reader, bdata_sharing));
-  geometry.replace_instances(try_load_instances(io_geometry, bdata_reader, bdata_sharing));
+  geometry.replace_instances(
+      try_load_instances(io_geometry, bdata_reader, bdata_sharing).release());
   return geometry;
 }
 
