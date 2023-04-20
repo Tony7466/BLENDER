@@ -112,12 +112,6 @@ extern void BLO_memfile_clear_future(MemFile *memfile);
 extern struct Main *BLO_memfile_main_get(struct MemFile *memfile,
                                          struct Main *bmain,
                                          struct Scene **r_scene);
-/**
- * Saves .blend using undo buffer.
- *
- * \return success.
- */
-extern bool BLO_memfile_write_file(struct MemFile *memfile, const char *filepath);
 
 FileReader *BLO_memfile_new_filereader(MemFile *memfile, int undo_direction);
 
