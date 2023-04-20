@@ -286,13 +286,12 @@ static std::shared_ptr<DictionaryValue> write_bdata_shared_simple_gspan(
       sharing_info, [&]() { return write_bdata_simple_gspan(bdata_writer, data); });
 }
 
-[[nodiscard]] static bool read_bdata_shared_simple_gspan(
+[[nodiscard]] static const void *read_bdata_shared_simple_gspan(
     const DictionaryValue &io_data,
     const BDataReader &bdata_reader,
     const BDataSharing &bdata_sharing,
     const CPPType &cpp_type,
     const int size,
-    const void **r_data,
     const ImplicitSharingInfo **r_sharing_info)
 {
   const std::optional<ImplicitSharingInfoAndData> sharing_info_and_data =
@@ -306,13 +305,11 @@ static std::shared_ptr<DictionaryValue> write_bdata_shared_simple_gspan(
         return ImplicitSharingInfoAndData{implicit_sharing::info_for_mem_free(data_mem), data_mem};
       });
   if (!sharing_info_and_data) {
-    *r_data = nullptr;
     *r_sharing_info = nullptr;
-    return false;
+    return nullptr;
   }
-  *r_data = sharing_info_and_data->data;
   *r_sharing_info = sharing_info_and_data->sharing_info;
-  return true;
+  return sharing_info_and_data->data;
 }
 
 template<typename T>
@@ -323,13 +320,14 @@ template<typename T>
                                                         T **r_data,
                                                         ImplicitSharingInfo **r_sharing_info)
 {
-  return read_bdata_shared_simple_gspan(io_data,
-                                        bdata_reader,
-                                        bdata_sharing,
-                                        CPPType::get<T>(),
-                                        size,
-                                        (const void **)r_data,
-                                        (const ImplicitSharingInfo **)r_sharing_info);
+  *r_data = const_cast<T *>(static_cast<const T *>(
+      read_bdata_shared_simple_gspan(io_data,
+                                     bdata_reader,
+                                     bdata_sharing,
+                                     CPPType::get<T>(),
+                                     size,
+                                     (const ImplicitSharingInfo **)r_sharing_info)));
+  return *r_data != nullptr;
 }
 
 [[nodiscard]] static bool load_attributes(const io::serialize::ArrayValue &io_attributes,
@@ -360,15 +358,10 @@ template<typename T>
       return false;
     }
     const int domain_size = attributes.domain_size(*domain);
-    const void *attribute_data;
     const ImplicitSharingInfo *attribute_sharing_info;
-    if (!read_bdata_shared_simple_gspan(*io_data,
-                                        bdata_reader,
-                                        bdata_sharing,
-                                        *cpp_type,
-                                        domain_size,
-                                        &attribute_data,
-                                        &attribute_sharing_info)) {
+    const void *attribute_data = read_bdata_shared_simple_gspan(
+        *io_data, bdata_reader, bdata_sharing, *cpp_type, domain_size, &attribute_sharing_info);
+    if (!attribute_data) {
       return false;
     }
     BLI_SCOPED_DEFER([&]() { attribute_sharing_info->remove_user_and_delete_if_last(); });
