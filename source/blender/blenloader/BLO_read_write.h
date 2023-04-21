@@ -273,16 +273,16 @@ void BLO_read_pointer_array(BlendDataReader *reader, void **ptr_p);
 /* Misc. */
 
 #ifdef __cplusplus
+
 /**
  * Check if there is any shared data for the given data pointer. If yes, return the existing
  * sharing-info. If not, call the provided function to actually read the data now.
  */
-const blender::ImplicitSharingInfo *BLO_read_shared_impl(
+const blender::ImplicitSharingInfo *BLO_read_shared(
     BlendDataReader *reader,
-    void **data_ptr,
+    void *data,
     blender::FunctionRef<const blender::ImplicitSharingInfo *()> read_fn);
-#  define BLO_read_shared(reader, ptr_p, read_fn) \
-    BLO_read_shared_impl(reader, (void **)ptr_p, read_fn)
+
 #endif
 
 int BLO_read_fileversion_get(BlendDataReader *reader);

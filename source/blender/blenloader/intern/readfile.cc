@@ -5133,23 +5133,21 @@ void BLO_read_pointer_array(BlendDataReader *reader, void **ptr_p)
   *ptr_p = final_array;
 }
 
-const blender::ImplicitSharingInfo *BLO_read_shared_impl(
+const blender::ImplicitSharingInfo *BLO_read_shared(
     BlendDataReader *reader,
-    void **data_ptr,
-    const blender::FunctionRef<const blender::ImplicitSharingInfo *()> read_fn)
+    void *data,
+    blender::FunctionRef<const blender::ImplicitSharingInfo *()> read_fn)
 {
   if (BLO_read_data_is_undo(reader)) {
     if (reader->fd->flags & FD_FLAGS_IS_MEMFILE) {
       UndoReader *undo_reader = reinterpret_cast<UndoReader *>(reader->fd->file);
       MemFile &memfile = *undo_reader->memfile;
-      if (memfile.shared_storage) {
-        /* Check if the data was saved with sharing-info. */
-        if (const blender::ImplicitSharingInfo *sharing_info =
-                memfile.shared_storage->map.lookup_default(*data_ptr, nullptr)) {
-          /* Add a new owner of the data that is passed to the caller. */
-          sharing_info->add_user();
-          return sharing_info;
-        }
+      /* Check if the data was saved with sharing-info. */
+      if (const blender::ImplicitSharingInfo *sharing_info =
+              memfile.shared_storage->map.lookup_default(data, nullptr)) {
+        /* Add a new owner of the data that is passed to the caller. */
+        sharing_info->add_user();
+        return sharing_info;
       }
     }
   }
