@@ -410,14 +410,6 @@ typedef struct FCurveSegment {
   int start_index, length;
 } FCurveSegment;
 
-typedef struct ButterworthCoefficients {
-  double *A, *d1, *d2;
-  int filter_order;
-} ButterworthCoefficients;
-
-ButterworthCoefficients *ED_anim_allocate_butterworth_coefficients(const int filter_order);
-void ED_anim_free_butterworth_coefficients(struct ButterworthCoefficients *bw_coeff);
-
 /**
  * Return a list of #FCurveSegment with a start index and a length.
  * A segment is a continuous selection of keyframes.
@@ -440,12 +432,17 @@ void breakdown_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment,
  * \param kernel_size: How long the kernel array is.
  */
 void ED_ANIM_get_1d_gauss_kernel(const float sigma, int kernel_size, double *r_kernel);
-/**
- * Get butterworth coefficients.
- */
-void ED_anim_get_butterworth_coefficients(float cutoff,
-                                          float sampling_frequency,
-                                          struct ButterworthCoefficients *bw_coeff);
+
+typedef struct ButterworthCoefficients {
+  double *A, *d1, *d2;
+  int filter_order;
+} ButterworthCoefficients;
+
+ButterworthCoefficients *ED_anim_allocate_butterworth_coefficients(const int filter_order);
+void ED_anim_free_butterworth_coefficients(struct ButterworthCoefficients *bw_coeff);
+void ED_anim_calculate_butterworth_coefficients(float cutoff,
+                                                float sampling_frequency,
+                                                struct ButterworthCoefficients *bw_coeff);
 void butterworth_smooth_fcurve_segment(struct FCurve *fcu,
                                        struct FCurveSegment *segment,
                                        float factor,

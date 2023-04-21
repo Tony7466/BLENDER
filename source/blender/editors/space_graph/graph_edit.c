@@ -2760,7 +2760,7 @@ static void btw_smooth_graph_keys(bAnimContext *ac,
 
   /* Ensure that cutoff frequency never exceeds half of sampling_frequency. */
   const float cutoff_frequency = smoothing_factor * (frame_rate / 2);
-  ED_anim_get_butterworth_coefficients(cutoff_frequency, frame_rate, bw_coeff);
+  ED_anim_calculate_butterworth_coefficients(cutoff_frequency, frame_rate, bw_coeff);
 
   for (ale = anim_data.first; ale; ale = ale->next) {
     FCurve *fcu = (FCurve *)ale->key_data;

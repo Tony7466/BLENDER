@@ -419,9 +419,9 @@ void ED_anim_free_butterworth_coefficients(ButterworthCoefficients *bw_coeff)
   MEM_freeN(bw_coeff);
 }
 
-void ED_anim_get_butterworth_coefficients(const float cutoff_frequency,
-                                          const float sampling_frequency,
-                                          ButterworthCoefficients *bw_coeff)
+void ED_anim_calculate_butterworth_coefficients(const float cutoff_frequency,
+                                                const float sampling_frequency,
+                                                ButterworthCoefficients *bw_coeff)
 {
   double s = (double)sampling_frequency;
   const double a = tan(M_PI * cutoff_frequency / s);
