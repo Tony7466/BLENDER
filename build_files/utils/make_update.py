@@ -487,6 +487,8 @@ if __name__ == "__main__":
         branch = 'main'
         release_version = None
 
+    release_version = "3.5"
+
     if not args.no_libraries:
         svn_update(args, release_version)
     if not args.no_blender:

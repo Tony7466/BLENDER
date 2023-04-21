@@ -653,7 +653,7 @@ endif()
 
 # HIP RT module
 
-if(WITH_CYCLES_HIPRT_BINARIES AND WITH_CYCLES_DEVICE_HIPRT)
+if(WITH_CYCLES_HIP_BINARIES AND WITH_CYCLES_DEVICE_HIPRT)
   set(hiprt_sources device/hiprt/kernel.cpp
     ${SRC_KERNEL_HEADERS}
     ${SRC_KERNEL_DEVICE_GPU_HEADERS}
@@ -709,8 +709,8 @@ if(WITH_CYCLES_HIPRT_BINARIES AND WITH_CYCLES_DEVICE_HIPRT)
   if(WIN32)
     set(hiprt_link_command ${CMAKE_COMMAND})
     set(hiprt_link_flags   -E env "HIP_PATH=${HIP_ROOT_DIR}"
-      clang++)
-    set(hiprt_bitcode ${HIPRT_INCLUDE_DIR}/hiprt${HIPRT_VERSION}_amd_lib_win.bc)
+      ${HIP_LINKER_EXECUTABLE})
+    set(hiprt_bitcode ${HIPRT_INCLUDE_DIR}/hiprt/win/hiprt${HIPRT_VERSION}_amd_lib_win.bc)
   else()
     # not implemented yet
   endif()

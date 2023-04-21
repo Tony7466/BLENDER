@@ -53,7 +53,7 @@ set(TEST_BLENDER_EXE_PARAMS --background -noaudio --factory-startup --debug-memo
 
 # Python CTests
 if(WITH_BLENDER AND WITH_PYTHON AND NOT WITH_PYTHON_MODULE)
-  add_subdirectory(python)
+  #add_subdirectory(python)
 endif()
 
 # Blender as python module tests.

@@ -27,6 +27,21 @@ find_program(HIP_HIPCC_EXECUTABLE
     bin
 )
 
+if(WIN32)
+  # Needed for HIP-RT on Windows.
+  find_program(HIP_LINKER_EXECUTABLE
+    NAMES
+      clang++
+    HINTS
+      ${_hip_SEARCH_DIRS}
+    PATH_SUFFIXES
+      bin
+    NO_DEFAULT_PATH
+    NO_CMAKE_PATH
+  )
+endif()
+
+
 if(HIP_HIPCC_EXECUTABLE AND NOT EXISTS ${HIP_HIPCC_EXECUTABLE})
   message(WARNING "Cached or directly specified hipcc executable does not exist.")
   set(HIP_FOUND FALSE)
