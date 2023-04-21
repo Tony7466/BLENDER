@@ -7,7 +7,7 @@
 #include "BKE_bvhutils.h"
 #include "BKE_context.h"
 #include "BKE_geometry_set.hh"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.h"
 #include "BKE_mesh_sample.hh"
 #include "BKE_modifier.h"
@@ -91,9 +91,7 @@ struct DensityAddOperationExecutor {
 
   CurvesSurfaceTransforms transforms_;
 
-  DensityAddOperationExecutor(const bContext &C) : ctx_(C)
-  {
-  }
+  DensityAddOperationExecutor(const bContext &C) : ctx_(C) {}
 
   void execute(DensityAddOperation &self,
                const bContext &C,
@@ -136,9 +134,9 @@ struct DensityAddOperationExecutor {
     /* Find UV map. */
     VArraySpan<float2> surface_uv_map;
     if (curves_id_orig_->surface_uv_map != nullptr) {
-      surface_uv_map = surface_orig_->attributes().lookup<float2>(curves_id_orig_->surface_uv_map,
-                                                                  ATTR_DOMAIN_CORNER);
-      surface_uv_map_eval_ = surface_eval_->attributes().lookup<float2>(
+      surface_uv_map = *surface_orig_->attributes().lookup<float2>(curves_id_orig_->surface_uv_map,
+                                                                   ATTR_DOMAIN_CORNER);
+      surface_uv_map_eval_ = *surface_eval_->attributes().lookup<float2>(
           curves_id_orig_->surface_uv_map, ATTR_DOMAIN_CORNER);
     }
     if (surface_uv_map.is_empty()) {
@@ -530,9 +528,7 @@ struct DensitySubtractOperationExecutor {
 
   KDTree_3d *root_points_kdtree_;
 
-  DensitySubtractOperationExecutor(const bContext &C) : ctx_(C)
-  {
-  }
+  DensitySubtractOperationExecutor(const bContext &C) : ctx_(C) {}
 
   void execute(DensitySubtractOperation &self,
                const bContext &C,

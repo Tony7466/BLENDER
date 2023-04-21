@@ -420,7 +420,12 @@ VFont *BKE_vfont_builtin_get(void)
     }
   }
 
-  return BKE_vfont_load(G_MAIN, FO_BUILTIN_NAME);
+  /* Newly loaded ID's have a user by default, in this case the caller is responsible
+   * for assigning a user, otherwise an additional user would be added, see: #100819. */
+  vfont = BKE_vfont_load(G_MAIN, FO_BUILTIN_NAME);
+  id_us_min(&vfont->id);
+  BLI_assert(vfont->id.us == 0);
+  return vfont;
 }
 
 static VChar *find_vfont_char(VFontData *vfd, uint character)
@@ -1135,7 +1140,15 @@ static bool vfont_to_curve(Object *ob,
     }
   }
 
-  /* Line-data is now: width of line. */
+  if (ef && ef->selboxes) {
+    /* Set combined style flags for the selected string. Start with all styles then
+     * remove one if ANY characters do not have it. Break out if we've removed them all. */
+    ef->select_char_info_flag = CU_CHINFO_STYLE_ALL;
+    for (int k = selstart; k <= selend && ef->select_char_info_flag; k++) {
+      info = &custrinfo[k];
+      ef->select_char_info_flag &= info->flag;
+    }
+  }
 
   if (cu->spacemode != CU_ALIGN_X_LEFT) {
     ct = chartransdata;

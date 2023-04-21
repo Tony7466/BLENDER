@@ -243,7 +243,7 @@ class OBJECT_PT_instancing(ObjectButtonsPanel, Panel):
     @classmethod
     def poll(cls, context):
         ob = context.object
-        # FONT objects need (vertex) instancing for the 'Object Font' feature
+        # FONT objects need (vertex) instancing for the "Object Font" feature.
         return (ob.type in {'MESH', 'EMPTY', 'FONT'})
 
     def draw(self, context):
@@ -325,7 +325,7 @@ class OBJECT_PT_lineart(ObjectButtonsPanel, Panel):
 
 
 class OBJECT_PT_motion_paths(MotionPathButtonsPanel, Panel):
-    #bl_label = "Object Motion Paths"
+    # bl_label = "Object Motion Paths"
     bl_context = "object"
     bl_options = {'DEFAULT_CLOSED'}
 
@@ -344,7 +344,7 @@ class OBJECT_PT_motion_paths(MotionPathButtonsPanel, Panel):
 
 
 class OBJECT_PT_motion_paths_display(MotionPathButtonsPanel_display, Panel):
-    #bl_label = "Object Motion Paths"
+    # bl_label = "Object Motion Paths"
     bl_context = "object"
     bl_parent_id = "OBJECT_PT_motion_paths"
     bl_options = {'DEFAULT_CLOSED'}

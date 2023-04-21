@@ -425,6 +425,49 @@ static void txtfmt_py_format_line(SpaceText *st, TextLine *line, const bool do_n
         }
         *fmt = FMT_TYPE_STRING;
       }
+      else if (ELEM(*str, 'f', 'F', 'r', 'R', 'u', 'U') && ELEM(*(str + 1), '"', '\'')) {
+        /* Strings with single letter prefixes (f-strings, raw strings, and unicode strings).
+         * Format the prefix as part of the string. */
+        *fmt = FMT_TYPE_STRING;
+        fmt++;
+        str++;
+        find = *str;
+        cont = (*str == '"') ? FMT_CONT_QUOTEDOUBLE : FMT_CONT_QUOTESINGLE;
+        if (*(str + 1) == find && *(str + 2) == find) {
+          *fmt = FMT_TYPE_STRING;
+          fmt++;
+          str++;
+          *fmt = FMT_TYPE_STRING;
+          fmt++;
+          str++;
+          cont |= FMT_CONT_TRIPLE;
+        }
+        *fmt = FMT_TYPE_STRING;
+      }
+      else if (((ELEM(*str, 'f', 'F') && ELEM(*(str + 1), 'r', 'R')) ||
+                (ELEM(*str, 'r', 'R') && ELEM(*(str + 1), 'f', 'F'))) &&
+               ELEM(*(str + 2), '"', '\'')) {
+        /* Strings with two letter prefixes (raw f-strings).
+         * Format the prefix as part of the string. */
+        *fmt = FMT_TYPE_STRING;
+        fmt++;
+        str++;
+        *fmt = FMT_TYPE_STRING;
+        fmt++;
+        str++;
+        find = *str;
+        cont = (*str == '"') ? FMT_CONT_QUOTEDOUBLE : FMT_CONT_QUOTESINGLE;
+        if (*(str + 1) == find && *(str + 2) == find) {
+          *fmt = FMT_TYPE_STRING;
+          fmt++;
+          str++;
+          *fmt = FMT_TYPE_STRING;
+          fmt++;
+          str++;
+          cont |= FMT_CONT_TRIPLE;
+        }
+        *fmt = FMT_TYPE_STRING;
+      }
       /* White-space (all white-space has been converted to spaces). */
       else if (*str == ' ') {
         *fmt = FMT_TYPE_WHITESPACE;
@@ -507,6 +550,7 @@ void ED_text_format_register_py(void)
   tft.format_identifier = txtfmt_py_format_identifier;
   tft.format_line = txtfmt_py_format_line;
   tft.ext = ext;
+  tft.comment_line = "#";
 
   ED_text_format_register(&tft);
 }

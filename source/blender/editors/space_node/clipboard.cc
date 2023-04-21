@@ -167,7 +167,7 @@ static int node_clipboard_copy_exec(bContext *C, wmOperator * /*op*/)
 void NODE_OT_clipboard_copy(wmOperatorType *ot)
 {
   ot->name = "Copy to Clipboard";
-  ot->description = "Copies selected nodes to the clipboard";
+  ot->description = "Copy the selected nodes to the internal clipboard";
   ot->idname = "NODE_OT_clipboard_copy";
 
   ot->exec = node_clipboard_copy_exec;
@@ -191,7 +191,7 @@ static int node_clipboard_paste_exec(bContext *C, wmOperator *op)
   const bool is_valid = clipboard.validate();
 
   if (clipboard.nodes.is_empty()) {
-    BKE_report(op->reports, RPT_ERROR, "Clipboard is empty");
+    BKE_report(op->reports, RPT_ERROR, "The internal clipboard is empty");
     return OPERATOR_CANCELLED;
   }
 
@@ -260,11 +260,14 @@ static int node_clipboard_paste_exec(bContext *C, wmOperator *op)
 
     float2 mouse_location;
     RNA_property_float_get_array(op->ptr, offset_prop, mouse_location);
-    const float2 offset = (mouse_location - center) / UI_DPI_FAC;
+    const float2 offset = (mouse_location - center) / UI_SCALE_FAC;
 
     for (bNode *new_node : node_map.values()) {
-      new_node->locx += offset.x;
-      new_node->locy += offset.y;
+      /* Skip the offset for parented nodes since the location is in parent space. */
+      if (new_node->parent == nullptr) {
+        new_node->locx += offset.x;
+        new_node->locy += offset.y;
+      }
     }
   }
 
@@ -308,7 +311,7 @@ static int node_clipboard_paste_invoke(bContext *C, wmOperator *op, const wmEven
 void NODE_OT_clipboard_paste(wmOperatorType *ot)
 {
   ot->name = "Paste from Clipboard";
-  ot->description = "Pastes nodes from the clipboard to the active node tree";
+  ot->description = "Paste nodes from the internal clipboard to the active node tree";
   ot->idname = "NODE_OT_clipboard_paste";
 
   ot->invoke = node_clipboard_paste_invoke;

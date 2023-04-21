@@ -94,9 +94,9 @@ static void retrieve_attribute_spans(const Span<bke::AttributeIDRef> ids,
                                      Vector<GMutableSpan> &dst,
                                      Vector<bke::GSpanAttributeWriter> &dst_attributes)
 {
+  const bke::AttributeAccessor src_attributes = src_curves.attributes();
   for (const int i : ids.index_range()) {
-    GVArray src_attribute = src_curves.attributes().lookup(ids[i], ATTR_DOMAIN_POINT);
-    BLI_assert(src_attribute);
+    const GVArray src_attribute = *src_attributes.lookup(ids[i], ATTR_DOMAIN_POINT);
     src.append(src_attribute.get_internal_span());
 
     const eCustomDataType data_type = bke::cpp_type_to_custom_data_type(src_attribute.type());
@@ -334,7 +334,7 @@ static CurvesGeometry resample_to_uniform(const CurvesGeometry &src_curves,
                                              dst.slice(dst_points));
           }
           else {
-            evaluated_buffer.reinitialize(sizeof(T) * evaluated_points_by_curve.size(i_curve));
+            evaluated_buffer.reinitialize(sizeof(T) * evaluated_points_by_curve[i_curve].size());
             MutableSpan<T> evaluated = evaluated_buffer.as_mutable_span().cast<T>();
             src_curves.interpolate_to_evaluated(i_curve, src.slice(src_points), evaluated);
 

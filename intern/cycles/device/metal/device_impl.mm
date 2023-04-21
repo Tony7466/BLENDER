@@ -39,7 +39,7 @@ bool MetalDevice::is_device_cancelled(int ID)
   return get_device_by_ID(ID, lock) == nullptr;
 }
 
-BVHLayoutMask MetalDevice::get_bvh_layout_mask() const
+BVHLayoutMask MetalDevice::get_bvh_layout_mask(uint /*kernel_features*/) const
 {
   return use_metalrt ? BVH_LAYOUT_METAL : BVH_LAYOUT_BVH2;
 }
@@ -100,12 +100,12 @@ MetalDevice::MetalDevice(const DeviceInfo &info, Stats &stats, Profiler &profile
     }
     case METAL_GPU_AMD: {
       max_threads_per_threadgroup = 128;
-      use_metalrt = info.use_metalrt;
+      use_metalrt = info.use_hardware_raytracing;
       break;
     }
     case METAL_GPU_APPLE: {
       max_threads_per_threadgroup = 512;
-      use_metalrt = info.use_metalrt;
+      use_metalrt = info.use_hardware_raytracing;
       break;
     }
   }
@@ -490,6 +490,9 @@ bool MetalDevice::make_source_and_check_if_compile_needed(MetalPipelineType pso_
   MD5Hash md5;
   md5.append(constant_values);
   md5.append(source[pso_type]);
+  if (use_metalrt) {
+    md5.append(string_printf("metalrt_features=%d", kernel_features & METALRT_FEATURE_MASK));
+  }
   kernels_md5[pso_type] = md5.get_hex();
 
   return MetalDeviceKernels::should_load_kernels(this, pso_type);
@@ -578,6 +581,11 @@ void MetalDevice::compile_and_load(int device_id, MetalPipelineType pso_type)
     thread_scoped_lock lock(existing_devices_mutex);
     if (MetalDevice *instance = get_device_by_ID(device_id, lock)) {
       if (mtlLibrary) {
+        if (error && [error localizedDescription]) {
+          VLOG_WARNING << "MSL compilation messages: "
+                       << [[error localizedDescription] UTF8String];
+        }
+
         instance->mtlLibrary[pso_type] = mtlLibrary;
 
         starttime = time_dt();
@@ -801,6 +809,7 @@ void MetalDevice::generic_free(device_memory &mem)
       mem.shared_pointer = 0;
 
       /* Free device memory. */
+      delayed_free_list.push_back(mmem.mtlBuffer);
       mmem.mtlBuffer = nil;
     }
 
@@ -934,6 +943,17 @@ bool MetalDevice::is_ready(string &status) const
                            DEVICE_KERNEL_NUM);
     return false;
   }
+
+  if (int num_requests = MetalDeviceKernels::num_incomplete_specialization_requests()) {
+    status = string_printf("%d kernels to optimize", num_requests);
+  }
+  else if (kernel_specialization_level == PSO_SPECIALIZED_INTERSECT) {
+    status = "Using optimized intersection kernels";
+  }
+  else if (kernel_specialization_level == PSO_SPECIALIZED_SHADE) {
+    status = "Using optimized kernels";
+  }
+
   metal_printf("MetalDevice::is_ready(...) --> true\n");
   return true;
 }
@@ -970,7 +990,7 @@ void MetalDevice::optimize_for_scene(Scene *scene)
   }
 
   if (specialize_in_background) {
-    if (!MetalDeviceKernels::any_specialization_happening_now()) {
+    if (MetalDeviceKernels::num_incomplete_specialization_requests() == 0) {
       dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
                      specialize_kernels_fn);
     }

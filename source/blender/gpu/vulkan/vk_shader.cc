@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. All rights reserved. */
+ * Copyright 2022 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -14,6 +14,8 @@
 
 #include "BLI_string_utils.h"
 #include "BLI_vector.hh"
+
+#include "BKE_global.h"
 
 using namespace blender::gpu::shader;
 
@@ -360,7 +362,7 @@ static void print_resource(std::ostream &os,
       array_offset = res.uniformbuf.name.find_first_of("[");
       name_no_array = (array_offset == -1) ? res.uniformbuf.name :
                                              StringRef(res.uniformbuf.name.c_str(), array_offset);
-      os << "uniform " << name_no_array << " { " << res.uniformbuf.type_name << " _"
+      os << "uniform _" << name_no_array << " { " << res.uniformbuf.type_name << " "
          << res.uniformbuf.name << "; };\n";
       break;
     case ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER:
@@ -368,8 +370,8 @@ static void print_resource(std::ostream &os,
       name_no_array = (array_offset == -1) ? res.storagebuf.name :
                                              StringRef(res.storagebuf.name.c_str(), array_offset);
       print_qualifier(os, res.storagebuf.qualifiers);
-      os << "buffer ";
-      os << name_no_array << " { " << res.storagebuf.type_name << " _" << res.storagebuf.name
+      os << "buffer _";
+      os << name_no_array << " { " << res.storagebuf.type_name << " " << res.storagebuf.name
          << "; };\n";
       break;
   }
@@ -381,29 +383,6 @@ static void print_resource(std::ostream &os,
 {
   const VKDescriptorSet::Location location = shader_interface.descriptor_set_location(res);
   print_resource(os, location, res);
-}
-
-static void print_resource_alias(std::ostream &os, const ShaderCreateInfo::Resource &res)
-{
-  int64_t array_offset;
-  StringRef name_no_array;
-
-  switch (res.bind_type) {
-    case ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER:
-      array_offset = res.uniformbuf.name.find_first_of("[");
-      name_no_array = (array_offset == -1) ? res.uniformbuf.name :
-                                             StringRef(res.uniformbuf.name.c_str(), array_offset);
-      os << "#define " << name_no_array << " (_" << name_no_array << ")\n";
-      break;
-    case ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER:
-      array_offset = res.storagebuf.name.find_first_of("[");
-      name_no_array = (array_offset == -1) ? res.storagebuf.name :
-                                             StringRef(res.storagebuf.name.c_str(), array_offset);
-      os << "#define " << name_no_array << " (_" << name_no_array << ")\n";
-      break;
-    default:
-      break;
-  }
 }
 
 inline int get_location_count(const Type &type)
@@ -542,10 +521,14 @@ Vector<uint32_t> VKShader::compile_glsl_to_spirv(Span<const char *> sources,
                                                  shaderc_shader_kind stage)
 {
   std::string combined_sources = combine_sources(sources);
-  VKBackend &backend = static_cast<VKBackend &>(*VKBackend::get());
+  VKBackend &backend = VKBackend::get();
   shaderc::Compiler &compiler = backend.get_shaderc_compiler();
   shaderc::CompileOptions options;
   options.SetOptimizationLevel(shaderc_optimization_level_performance);
+  if (G.debug & G_DEBUG_GPU_RENDERDOC) {
+    options.SetOptimizationLevel(shaderc_optimization_level_zero);
+    options.SetGenerateDebugInfo();
+  }
 
   shaderc::SpvCompilationResult module = compiler.CompileGlslToSpv(
       combined_sources, stage, name, options);
@@ -659,9 +642,7 @@ void VKShader::compute_shader_from_glsl(MutableSpan<const char *> sources)
   build_shader_module(sources, shaderc_compute_shader, &compute_module_);
 }
 
-void VKShader::warm_cache(int /*limit*/)
-{
-}
+void VKShader::warm_cache(int /*limit*/) {}
 
 bool VKShader::finalize(const shader::ShaderCreateInfo *info)
 {
@@ -676,7 +657,7 @@ bool VKShader::finalize(const shader::ShaderCreateInfo *info)
   if (!finalize_descriptor_set_layouts(vk_device, *vk_interface, *info)) {
     return false;
   }
-  if (!finalize_pipeline_layout(vk_device, *info)) {
+  if (!finalize_pipeline_layout(vk_device, *vk_interface)) {
     return false;
   }
 
@@ -695,7 +676,11 @@ bool VKShader::finalize(const shader::ShaderCreateInfo *info)
     BLI_assert(fragment_module_ == VK_NULL_HANDLE);
     BLI_assert(compute_module_ != VK_NULL_HANDLE);
     compute_pipeline_ = VKPipeline::create_compute_pipeline(
-        *context_, compute_module_, layout_, pipeline_layout_);
+        *context_,
+        compute_module_,
+        layout_,
+        pipeline_layout_,
+        vk_interface->push_constants_layout_get());
     result = compute_pipeline_.is_valid();
   }
 
@@ -739,16 +724,28 @@ bool VKShader::finalize_graphics_pipeline(VkDevice /*vk_device */)
 }
 
 bool VKShader::finalize_pipeline_layout(VkDevice vk_device,
-                                        const shader::ShaderCreateInfo & /*info*/)
+                                        const VKShaderInterface &shader_interface)
 {
   VK_ALLOCATION_CALLBACKS
 
   const uint32_t layout_count = layout_ == VK_NULL_HANDLE ? 0 : 1;
   VkPipelineLayoutCreateInfo pipeline_info = {};
+  VkPushConstantRange push_constant_range = {};
   pipeline_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
   pipeline_info.flags = 0;
   pipeline_info.setLayoutCount = layout_count;
   pipeline_info.pSetLayouts = &layout_;
+
+  /* Setup push constants. */
+  const VKPushConstants::Layout &push_constants_layout =
+      shader_interface.push_constants_layout_get();
+  if (push_constants_layout.storage_type_get() == VKPushConstants::StorageType::PUSH_CONSTANTS) {
+    push_constant_range.offset = 0;
+    push_constant_range.size = push_constants_layout.size_in_bytes();
+    push_constant_range.stageFlags = VK_SHADER_STAGE_ALL;
+    pipeline_info.pushConstantRangeCount = 1;
+    pipeline_info.pPushConstantRanges = &push_constant_range;
+  }
 
   if (vkCreatePipelineLayout(
           vk_device, &pipeline_info, vk_allocation_callbacks, &pipeline_layout_) != VK_SUCCESS) {
@@ -868,6 +865,21 @@ static VkDescriptorSetLayoutBinding create_descriptor_set_layout_binding(
   return binding;
 }
 
+static VkDescriptorSetLayoutBinding create_descriptor_set_layout_binding(
+    const VKPushConstants::Layout &push_constants_layout)
+{
+  BLI_assert(push_constants_layout.storage_type_get() ==
+             VKPushConstants::StorageType::UNIFORM_BUFFER);
+  VkDescriptorSetLayoutBinding binding = {};
+  binding.binding = push_constants_layout.descriptor_set_location_get();
+  binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  binding.descriptorCount = 1;
+  binding.stageFlags = VK_SHADER_STAGE_ALL;
+  binding.pImmutableSamplers = nullptr;
+
+  return binding;
+}
+
 static void add_descriptor_set_layout_bindings(
     const VKShaderInterface &interface,
     const Vector<shader::ShaderCreateInfo::Resource> &resources,
@@ -876,6 +888,12 @@ static void add_descriptor_set_layout_bindings(
   for (const shader::ShaderCreateInfo::Resource &resource : resources) {
     const VKDescriptorSet::Location location = interface.descriptor_set_location(resource);
     r_bindings.append(create_descriptor_set_layout_binding(location, resource));
+  }
+
+  /* Add push constants to the descriptor when push constants are stored in an uniform buffer. */
+  const VKPushConstants::Layout &push_constants_layout = interface.push_constants_layout_get();
+  if (push_constants_layout.storage_type_get() == VKPushConstants::StorageType::UNIFORM_BUFFER) {
+    r_bindings.append(create_descriptor_set_layout_binding(push_constants_layout));
   }
 }
 
@@ -894,11 +912,19 @@ static VkDescriptorSetLayoutCreateInfo create_descriptor_set_layout(
   return set_info;
 }
 
+static bool descriptor_sets_needed(const VKShaderInterface &shader_interface,
+                                   const shader::ShaderCreateInfo &info)
+{
+  return !info.pass_resources_.is_empty() || !info.batch_resources_.is_empty() ||
+         shader_interface.push_constants_layout_get().storage_type_get() ==
+             VKPushConstants::StorageType::UNIFORM_BUFFER;
+}
+
 bool VKShader::finalize_descriptor_set_layouts(VkDevice vk_device,
                                                const VKShaderInterface &shader_interface,
                                                const shader::ShaderCreateInfo &info)
 {
-  if (info.pass_resources_.is_empty() && info.batch_resources_.is_empty()) {
+  if (!descriptor_sets_needed(shader_interface, info)) {
     return true;
   }
 
@@ -933,9 +959,7 @@ bool VKShader::transform_feedback_enable(GPUVertBuf *)
   return false;
 }
 
-void VKShader::transform_feedback_disable()
-{
-}
+void VKShader::transform_feedback_disable() {}
 
 void VKShader::bind()
 {
@@ -958,17 +982,14 @@ void VKShader::unbind()
   }
 }
 
-void VKShader::uniform_float(int /*location*/,
-                             int /*comp_len*/,
-                             int /*array_size*/,
-                             const float * /*data*/)
+void VKShader::uniform_float(int location, int comp_len, int array_size, const float *data)
 {
+  pipeline_get().push_constants_get().push_constant_set(location, comp_len, array_size, data);
 }
-void VKShader::uniform_int(int /*location*/,
-                           int /*comp_len*/,
-                           int /*array_size*/,
-                           const int * /*data*/)
+
+void VKShader::uniform_int(int location, int comp_len, int array_size, const int *data)
 {
+  pipeline_get().push_constants_get().push_constant_set(location, comp_len, array_size, data);
 }
 
 std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) const
@@ -981,21 +1002,25 @@ std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) co
   for (const ShaderCreateInfo::Resource &res : info.pass_resources_) {
     print_resource(ss, interface, res);
   }
-  for (const ShaderCreateInfo::Resource &res : info.pass_resources_) {
-    print_resource_alias(ss, res);
-  }
 
   ss << "\n/* Batch Resources. */\n";
   for (const ShaderCreateInfo::Resource &res : info.batch_resources_) {
     print_resource(ss, interface, res);
   }
-  for (const ShaderCreateInfo::Resource &res : info.batch_resources_) {
-    print_resource_alias(ss, res);
-  }
 
-  if (!info.push_constants_.is_empty()) {
+  /* Push constants. */
+  const VKPushConstants::Layout &push_constants_layout = interface.push_constants_layout_get();
+  const VKPushConstants::StorageType push_constants_storage =
+      push_constants_layout.storage_type_get();
+  if (push_constants_storage != VKPushConstants::StorageType::NONE) {
     ss << "\n/* Push Constants. */\n";
-    ss << "layout(push_constant) uniform constants\n";
+    if (push_constants_storage == VKPushConstants::StorageType::PUSH_CONSTANTS) {
+      ss << "layout(push_constant) uniform constants\n";
+    }
+    else if (push_constants_storage == VKPushConstants::StorageType::UNIFORM_BUFFER) {
+      ss << "layout(binding = " << push_constants_layout.descriptor_set_location_get()
+         << ", std140) uniform constants\n";
+    }
     ss << "{\n";
     for (const ShaderCreateInfo::PushConst &uniform : info.push_constants_) {
       ss << "  " << to_string(uniform.type) << " pc_" << uniform.name;
