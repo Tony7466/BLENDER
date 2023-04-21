@@ -117,6 +117,7 @@ void VKContext::deactivate()
 
 void VKContext::begin_frame()
 {
+  printf("[%s]\n", __func__);
   VkCommandBuffer command_buffer = VK_NULL_HANDLE;
   GHOST_GetVulkanCommandBuffer(static_cast<GHOST_ContextHandle>(ghost_context_), &command_buffer);
   command_buffer_.init(vk_device_, vk_queue_, command_buffer);

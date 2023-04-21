@@ -23,6 +23,7 @@ void GPU_debug_group_begin(const char *name)
   if (!(G.debug & G_DEBUG_GPU)) {
     return;
   }
+  printf("[%s]: %s\n", __func__, name);
   Context *ctx = Context::get();
   DebugStack &stack = ctx->debug_stack;
   stack.append(StringRef(name));
@@ -34,6 +35,7 @@ void GPU_debug_group_end()
   if (!(G.debug & G_DEBUG_GPU)) {
     return;
   }
+  printf("[%s]\n", __func__);
   Context *ctx = Context::get();
   ctx->debug_stack.pop_last();
   ctx->debug_group_end();

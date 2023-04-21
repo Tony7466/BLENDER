@@ -1547,8 +1547,11 @@ static void view3d_draw_view(const bContext *C, ARegion *region)
                             nullptr,
                             nullptr);
 
-  /* Only 100% compliant on new spec goes below */
-  // TODO(jbakker): DRW_draw_view(C);
+/* Only 100% compliant on new spec goes below */
+#if 0
+  /* Currently disabled for vulkan. */
+  DRW_draw_view(C);
+#endif
 }
 
 RenderEngineType *ED_view3d_engine_type(const Scene *scene, int drawtype)

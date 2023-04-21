@@ -3725,7 +3725,10 @@ static void outliner_draw_tree(bContext *C,
   /* Draw highlights before hierarchy. */
   starty = int(region->v2d.tot.ymax) - UI_UNIT_Y - OL_Y_OFFSET;
   startx = 0;
+#if 0
+  /* This uses a 3d shader with 2d vbo. */
   outliner_draw_highlights(region, space_outliner, startx, &starty);
+#endif
 
   /* Set scissor so tree elements or lines can't overlap restriction icons. */
   int scissor[4] = {0};
