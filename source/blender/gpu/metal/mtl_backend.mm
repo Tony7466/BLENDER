@@ -286,6 +286,14 @@ bool MTLBackend::metal_is_supported()
 
   NSOperatingSystemVersion version = [[NSProcessInfo processInfo] operatingSystemVersion];
 
+  /* Environment variable override to force Metal enablement for testing on temporarily unsupported
+   * configs. */
+  static const char *enable_metal_str = getenv("METAL_FORCE_ENABLE");
+  bool enable_metal_override = enable_metal_str ? (atoi(enable_metal_str) != 0) : false;
+  if (enable_metal_override) {
+    return true;
+  }
+
   /* Metal Viewport requires macOS Version 10.15 onward. */
   bool supported_os_version = version.majorVersion >= 11 ||
                               (version.majorVersion == 10 ? version.minorVersion >= 15 : false);
@@ -311,6 +319,26 @@ bool MTLBackend::metal_is_supported()
         if (_device.lowPower) {
           device = _device;
         }
+      }
+    }
+
+    /* TOOD(Metal): Temporarily disable Metal backend on AMD GPUs until known issues (#106551) are
+     * resolved. */
+    const char *device_name = [[device name] UTF8String];
+    if ((strstr(device_name, "AMD") != nullptr)) {
+      printf("[Metal] Metal backend temporarily disabled by default on AMD configurations.\n");
+      return false;
+    }
+
+    /* TODO(Metal): Only support Metal on Intel configurations running macOS 13.0 and onwards until
+     * known issues (#106905) are resolved. */
+    if ((strstr(device_name, "Intel") || strstr(device_name, "INTEL"))) {
+      if (@available(macOS 13.00, *)) {
+        /* Passthrough - @available checks cannot be negated. */
+      }
+      else {
+        printf("[Metal] Metal backend requires macOS 13.0+ on Intel platforms.\n");
+        return false;
       }
     }
 
