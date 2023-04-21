@@ -1,1 +1,2 @@
 Referenced by commit 34615cd269a, Fix grayed out preview generation button for light objects
+Referenced by pull request #107214, Fix #107186: Curve assets don't generate preview images
