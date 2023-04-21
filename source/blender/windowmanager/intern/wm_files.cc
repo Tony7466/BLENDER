@@ -2058,17 +2058,29 @@ void wm_autosave_timer(Main *bmain, wmWindowManager *wm, wmTimer * /*wt*/)
 {
   wm_autosave_timer_end(wm);
 
+  /* Time to wait until the next attempt to autosave if it is disabled right now. */
+  const double try_again_time_step = 0.01;
+
   /* If a modal operator is running, don't autosave because we might not be in
-   * a valid state to save. But try again in 10ms. */
+   * a valid state to save. */
   LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
     LISTBASE_FOREACH (wmEventHandler *, handler_base, &win->modalhandlers) {
       if (handler_base->type == WM_HANDLER_TYPE_OP) {
         wmEventHandler_Op *handler = (wmEventHandler_Op *)handler_base;
         if (handler->op) {
-          wm_autosave_timer_begin_ex(wm, 0.01);
+          wm_autosave_timer_begin_ex(wm, try_again_time_step);
           return;
         }
       }
+    }
+  }
+
+  LISTBASE_FOREACH (Object *, object, &bmain->objects) {
+    if (object->type == OB_MESH && object->mode & (OB_MODE_EDIT | OB_MODE_SCULPT)) {
+      /* Don't autosave in modes that require #ED_editors_flush_edits to be called because this can
+       * potentially be very slow. */
+      wm_autosave_timer_begin_ex(wm, try_again_time_step);
+      return;
     }
   }
 
