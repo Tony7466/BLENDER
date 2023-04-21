@@ -259,9 +259,6 @@ static void get_nearest_fcurve_verts_list(bAnimContext *ac, const int mval[2], L
 /* helper for find_nearest_fcurve_vert() - get the best match to use */
 static tNearestVertInfo *get_best_nearest_fcurve_vert(ListBase *matches)
 {
-  tNearestVertInfo *nvi = NULL;
-  short found = 0;
-
   /* abort if list is empty */
   if (BLI_listbase_is_empty(matches)) {
     return NULL;
@@ -273,26 +270,45 @@ static tNearestVertInfo *get_best_nearest_fcurve_vert(ListBase *matches)
     return BLI_pophead(matches);
   }
 
-  /* try to find the first selected F-Curve vert, then take the one after it */
-  for (nvi = matches->first; nvi; nvi = nvi->next) {
-    /* which mode of search are we in: find first selected, or find vert? */
-    if (found) {
-      /* Just take this vert now that we've found the selected one
-       * - We'll need to remove this from the list
-       *   so that it can be returned to the original caller.
-       */
-      BLI_remlink(matches, nvi);
-      return nvi;
-    }
+  /* The goal of the remaining code below is to prioritize selecting verts on
+   * selected fcurves, but to still cycle through the vertices in `matches` if
+   * a selected-fcurve vertex is already selected. */
 
-    /* if vert is selected, we've got what we want... */
+  /* Find the first selected vert in `matches` if one exists. */
+  tNearestVertInfo *nvi_first_selected = NULL;
+  for (tNearestVertInfo *nvi = matches->first; nvi; nvi = nvi->next) {
     if (nvi->sel) {
-      found = 1;
+      nvi_first_selected = nvi;
+      break;
     }
   }
 
-  /* if we're still here, this means that we failed to find anything appropriate in the first pass,
-   * so just take the first item now...
+  /* Rotate `matches` to put the already-selected vert last.  This makes it easy to
+   * scan the verts in the order we need. */
+  if (nvi_first_selected) {
+    BLI_listbase_rotate_last(matches, nvi_first_selected);
+  }
+
+  /* Try to find the next vert that's on the active fcurve, falling back to the next
+   * vert on any selected fcurve if that's not found. */
+  tNearestVertInfo *nvi_to_select = NULL;
+  for (tNearestVertInfo *nvi = matches->first; nvi != nvi_first_selected; nvi = nvi->next) {
+    if (nvi->fcu->flag & FCURVE_ACTIVE) {
+      nvi_to_select = nvi;
+      break;
+    } else if (nvi->fcu->flag & FCURVE_SELECTED && !nvi_to_select) {
+      nvi_to_select = nvi;
+    }
+  }
+
+  /* If we found a vert on a selected fcurve, return it. */
+  if (nvi_to_select) {
+    BLI_remlink(matches, nvi_to_select);
+    return nvi_to_select;
+  }
+
+  /* If we're still here, that means we didn't find any verts on selected fcurves.
+   * So return the first item, which was the next item after `nvi_first_selected`.
    */
   return BLI_pophead(matches);
 }
