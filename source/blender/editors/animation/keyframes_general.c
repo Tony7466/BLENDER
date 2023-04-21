@@ -491,7 +491,7 @@ void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor
 
 /* ---------------- */
 
-void scale_left_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+void scale_from_left_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
 {
   const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
 

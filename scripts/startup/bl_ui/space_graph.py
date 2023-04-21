@@ -330,7 +330,7 @@ class GRAPH_MT_slider(Menu):
         layout.operator("graph.blend_to_neighbor", text="Blend to Neighbor")
         layout.operator("graph.blend_to_default", text="Blend to Default Value")
         layout.operator("graph.ease", text="Ease")
-        layout.operator("graph.scale_left", text="Scale Left")
+        layout.operator("graph.scale_from_left", text="Scale from Left")
         layout.operator("graph.gaussian_smooth", text="Smooth")
 
 
