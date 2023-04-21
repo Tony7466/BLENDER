@@ -273,16 +273,32 @@ void BLO_read_pointer_array(BlendDataReader *reader, void **ptr_p);
 /* Misc. */
 
 #ifdef __cplusplus
+}
+
 /**
  * Check if there is any shared data for the given data pointer. If yes, return the existing
  * sharing-info. If not, call the provided function to actually read the data now.
  */
-const blender::ImplicitSharingInfo *BLO_read_shared_impl(
+void BLO_read_shared_impl(BlendDataReader *reader,
+                          void *data,
+                          const blender::ImplicitSharingInfo **r_sharing_info,
+                          blender::FunctionRef<const blender::ImplicitSharingInfo *()> read_fn);
+
+template<typename T>
+const blender::ImplicitSharingInfo *BLO_read_shared(
     BlendDataReader *reader,
-    void **data_ptr,
-    blender::FunctionRef<const blender::ImplicitSharingInfo *()> read_fn);
-#  define BLO_read_shared(reader, ptr_p, read_fn) \
-    BLO_read_shared_impl(reader, (void **)ptr_p, read_fn)
+    T **data_ptr,
+    blender::FunctionRef<const blender::ImplicitSharingInfo *()> read_fn)
+{
+  const blender::ImplicitSharingInfo *sharing_info;
+  BLO_read_shared_impl(reader, *data_ptr, &sharing_info, read_fn);
+  return sharing_info;
+}
+
+#  ifdef __cplusplus
+extern "C" {
+#  endif
+
 #endif
 
 int BLO_read_fileversion_get(BlendDataReader *reader);
@@ -317,8 +333,8 @@ struct BlendFileReadReport *BLO_read_lib_reports(BlendLibReader *reader);
 /* -------------------------------------------------------------------- */
 /** \name Blend Expand API
  *
- * BLO_expand has to be called for every data block that should be loaded. If the data block is in
- * a separate `.blend` file, it will be pulled from there.
+ * BLO_expand has to be called for every data block that should be loaded. If the data block is
+ * in a separate `.blend` file, it will be pulled from there.
  * \{ */
 
 void BLO_expand_id(BlendExpander *expander, struct ID *id);
