@@ -79,6 +79,11 @@ typedef struct UndoStep {
   bool use_old_bmain_data;
   /** For use by undo systems that accumulate changes (mesh-sculpt & image-painting). */
   bool is_applied;
+  /**
+   * Hints for dealing with the user interface interactions
+   * doesn't impact behavior of undo, see #eUndoHintFlag.
+   */
+  int hint_flag;
   /* Over alloc 'type->struct_size'. */
 } UndoStep;
 

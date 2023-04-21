@@ -97,7 +97,7 @@ void ED_undo_group_end(bContext *C)
   BKE_undosys_stack_group_end(wm->undo_stack);
 }
 
-void ED_undo_push(bContext *C, const char *str)
+void ED_undo_push_ex(bContext *C, const char *str, const eUndoHintFlag hints)
 {
   CLOG_INFO(&LOG, 1, "name='%s'", str);
   WM_file_tag_modified();
@@ -135,7 +135,18 @@ void ED_undo_push(bContext *C, const char *str)
     BKE_undosys_stack_limit_steps_and_memory(wm->undo_stack, steps - 1, 0);
   }
 
+  UndoStep *step_active_prev = wm->undo_stack->step_active;
+
   push_retval = BKE_undosys_step_push(wm->undo_stack, C, str);
+
+  /* Mark all new steps with the hint. */
+  if (wm->undo_stack->step_active && (wm->undo_stack->step_active != step_active_prev)) {
+    UndoStep *step = wm->undo_stack->step_active;
+    while (step && (step != step_active_prev)) {
+      step->hint_flag = hints;
+      step = step->prev;
+    }
+  }
 
   if (U.undomemory != 0) {
     const size_t memory_limit = size_t(U.undomemory) * 1024 * 1024;
@@ -149,6 +160,11 @@ void ED_undo_push(bContext *C, const char *str)
   if (push_retval & UNDO_PUSH_RET_OVERRIDE_CHANGED) {
     WM_main_add_notifier(NC_WM | ND_LIB_OVERRIDE_CHANGED, nullptr);
   }
+}
+
+void ED_undo_push(bContext *C, const char *str)
+{
+  ED_undo_push_ex(C, str, UNDO_HINT_DEFAULT);
 }
 
 /**
@@ -376,7 +392,7 @@ static int ed_undo_step_by_index(bContext *C, const int undo_index, ReportList *
   return OPERATOR_FINISHED;
 }
 
-void ED_undo_grouped_push(bContext *C, const char *str)
+void ED_undo_grouped_push_ex(bContext *C, const char *str, const eUndoHintFlag hint_flag)
 {
   /* do nothing if previous undo task is the same as this one (or from the same undo group) */
   wmWindowManager *wm = CTX_wm_manager(C);
@@ -386,7 +402,11 @@ void ED_undo_grouped_push(bContext *C, const char *str)
   }
 
   /* push as usual */
-  ED_undo_push(C, str);
+  ED_undo_push_ex(C, str, hint_flag);
+}
+void ED_undo_grouped_push(bContext *C, const char *str)
+{
+  ED_undo_grouped_push_ex(C, str, UNDO_HINT_DEFAULT);
 }
 
 void ED_undo_pop(bContext *C)
@@ -398,20 +418,28 @@ void ED_undo_redo(bContext *C)
   ed_undo_step_direction(C, STEP_REDO, nullptr);
 }
 
-void ED_undo_push_op(bContext *C, wmOperator *op)
+void ED_undo_push_op_ex(bContext *C, wmOperator *op, const eUndoHintFlag hints)
 {
   /* in future, get undo string info? */
-  ED_undo_push(C, op->type->name);
+  ED_undo_push_ex(C, op->type->name, hints);
+}
+void ED_undo_push_op(bContext *C, wmOperator *op)
+{
+  return ED_undo_push_op_ex(C, op, UNDO_HINT_DEFAULT);
 }
 
-void ED_undo_grouped_push_op(bContext *C, wmOperator *op)
+void ED_undo_grouped_push_op_ex(bContext *C, wmOperator *op, const eUndoHintFlag hints)
 {
   if (op->type->undo_group[0] != '\0') {
-    ED_undo_grouped_push(C, op->type->undo_group);
+    ED_undo_grouped_push_ex(C, op->type->undo_group, hints);
   }
   else {
-    ED_undo_grouped_push(C, op->type->name);
+    ED_undo_grouped_push_ex(C, op->type->name, hints);
   }
+}
+void ED_undo_grouped_push_op(bContext *C, wmOperator *op)
+{
+  ED_undo_grouped_push_op_ex(C, op, UNDO_HINT_DEFAULT);
 }
 
 void ED_undo_pop_op(bContext *C, wmOperator *op)

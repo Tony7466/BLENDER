@@ -24,6 +24,23 @@ struct wmOperatorType;
 
 /* undo.c */
 
+typedef enum eUndoHintFlag {
+  /**
+   * Don't clear the previously registered redo-panel even though an undo step was added.
+   * This means the redo panel will undo this step as well as it's self.
+   *
+   * Typically this is something to avoid as undoing both actions isn't correct.
+   * Make an exception for some viewport operations that control the camera, see: #106292.
+   */
+  UNDO_HINT_KEEP_PREVIOUS_REPEAT_UI = (1 << 0),
+} eUndoHintFlag;
+#define UNDO_HINT_DEFAULT ((eUndoHintFlag)0)
+
+void ED_undo_push_ex(bContext *C, const char *str, eUndoHintFlag hints);
+void ED_undo_grouped_push_ex(bContext *C, const char *str, eUndoHintFlag hints);
+void ED_undo_push_op_ex(bContext *C, struct wmOperator *op, eUndoHintFlag hints);
+void ED_undo_grouped_push_op_ex(bContext *C, struct wmOperator *op, eUndoHintFlag hints);
+
 /**
  * Run from the main event loop, basic checks that undo is left in a correct state.
  */

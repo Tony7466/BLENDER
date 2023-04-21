@@ -960,7 +960,11 @@ void WM_reportf(eReportType type, const char *format, ...)
 static intptr_t wm_operator_undo_active_id(const wmWindowManager *wm)
 {
   if (wm->undo_stack) {
-    return intptr_t(wm->undo_stack->step_active);
+    UndoStep *us = wm->undo_stack->step_active;
+    while (us && (us->hint_flag & UNDO_HINT_KEEP_PREVIOUS_REPEAT_UI)) {
+      us = us->prev;
+    }
+    return intptr_t(us);
   }
   return -1;
 }

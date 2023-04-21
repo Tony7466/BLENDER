@@ -717,11 +717,13 @@ static bool view3d_camera_lock_undo_ex(const char *str,
                                        const bool undo_group)
 {
   if (ED_view3d_camera_lock_undo_test(v3d, rv3d, C)) {
+    /* View actions should not replace existing scene actions. */
+    const eUndoHintFlag hints = UNDO_HINT_DEFAULT | UNDO_HINT_KEEP_PREVIOUS_REPEAT_UI;
     if (undo_group) {
-      ED_undo_grouped_push(C, str);
+      ED_undo_grouped_push_ex(C, str, hints);
     }
     else {
-      ED_undo_push(C, str);
+      ED_undo_push_ex(C, str, hints);
     }
     return true;
   }
