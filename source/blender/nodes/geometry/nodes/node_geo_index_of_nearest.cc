@@ -75,9 +75,10 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
     const VArraySpan<float3> positions = evaluator.get_evaluated<float3>(0);
     const VArray<int> group = evaluator.get_evaluated<int>(1);
 
-    Array<int> result(mask.min_array_size());
+    Array<int> result;
 
     if (group.is_single()) {
+      result.reinitialize(mask.min_array_size());
       KDTree_3d *tree = build_kdtree(positions, IndexRange(domain_size));
       find_neighbors(*tree, positions, mask, result);
       BLI_kdtree_3d_free(tree);
@@ -91,12 +92,17 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
       group_indexing.add(group_id);
     }
 
-    const bool mask_is_cheap = mask.size() < domain_size / 2;
+    const bool use_cheap_mask = mask.size() < domain_size / 2;
 
     Array<Vector<int64_t>> tree_indices(group_indexing.size());
     Array<Vector<int64_t>> mask_indices;
-    if (mask_is_cheap) {
+
+    if (use_cheap_mask) {
+      result.reinitialize(mask.min_array_size());
       mask_indices.reinitialize(group_indexing.size());
+    }
+    else {
+      result.reinitialize(domain_size);
     }
 
     const auto build_group_masks = [&](const IndexMask mask,
@@ -111,9 +117,9 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
     };
 
     threading::parallel_invoke(
-        domain_size > 1024 && mask_is_cheap,
+        domain_size > 1024 && use_cheap_mask,
         [&]() {
-          if (mask_is_cheap) {
+          if (use_cheap_mask) {
             build_group_masks(mask, mask_indices);
           }
         },
@@ -123,7 +129,7 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
       for (const int index : range) {
         const Span<int64_t> mask_of_tree = tree_indices[index];
         KDTree_3d &tree = *build_kdtree(positions, mask_of_tree);
-        const Span<int64_t> mask = mask_is_cheap ? mask_indices[index].as_span() : mask_of_tree;
+        const Span<int64_t> mask = use_cheap_mask ? mask_indices[index].as_span() : mask_of_tree;
         find_neighbors(tree, positions, mask, result);
         BLI_kdtree_3d_free(&tree);
       }
