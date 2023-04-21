@@ -261,11 +261,12 @@ bool view3d_orbit_calc_center(bContext *C, float r_dyn_ofs[3])
     Curve *cu = static_cast<Curve *>(ob_act_eval->data);
     EditFont *ef = cu->editfont;
 
+    float geom[2][2];
+    angle_to_mat2(geom, ef->curs_angle);
     zero_v3(lastofs);
-    for (int i = 0; i < 4; i++) {
-      add_v2_v2(lastofs, ef->textcurs[i]);
-    }
-    mul_v2_fl(lastofs, 1.0f / 4.0f);
+    lastofs[1] = ef->curs_size[1] / 2.0f;
+    mul_m2_v2(geom, lastofs);
+    add_v2_v2(lastofs, ef->curs_location);
 
     mul_m4_v3(ob_act_eval->object_to_world, lastofs);
 

@@ -24,7 +24,8 @@ struct CharTrans {
 };
 
 typedef struct EditFontSelBox {
-  float x, y, w, h;
+  float loc[2];
+  float size[2];
   float rot;
 } EditFontSelBox;
 
@@ -37,8 +38,11 @@ typedef struct EditFont {
   /** Text style info (aligned with `textbuf`). */
   struct CharInfo *textbufinfo;
 
-  /** Array of rectangles & rotation. */
-  float textcurs[4][2];
+  /* Location is centre of box.*/
+  float curs_location[2];
+  float curs_size[2];
+  float curs_angle;
+  /** Array of location & rotation. */
   EditFontSelBox *selboxes;
   int selboxes_len;
 

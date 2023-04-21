@@ -1122,9 +1122,9 @@ static bool vfont_to_curve(Object *ob,
 
       if (selboxes && (i >= selstart) && (i <= selend)) {
         sb = &selboxes[i - selstart];
-        sb->y = yof * font_size - linedist * font_size * 0.1f;
-        sb->h = linedist * font_size;
-        sb->w = xof * font_size;
+        sb->loc[1] = yof * font_size - linedist * font_size * 0.1f;
+        const float size[2] = {linedist * font_size, xof * font_size};
+        copy_v2_v2(sb->size, size);
       }
 
       if (ascii == ' ') { /* Space character. */
@@ -1141,7 +1141,7 @@ static bool vfont_to_curve(Object *ob,
       xof += (twidth * wsfac * (1.0f + (info->kern / 40.0f))) + xtrax;
 
       if (sb) {
-        sb->w = (xof * font_size) - sb->w;
+        sb->size[0] = (xof * font_size) - sb->size[0];
       }
     }
     ct++;
@@ -1442,8 +1442,7 @@ static bool vfont_to_curve(Object *ob,
         ct->yof = vec[1] + co * yof;
 
         if (selboxes && (i >= selstart) && (i <= selend)) {
-          EditFontSelBox *sb;
-          sb = &selboxes[i - selstart];
+          EditFontSelBox *sb = &selboxes[i - selstart];
           sb->rot = -ct->rot;
         }
       }
@@ -1452,12 +1451,11 @@ static bool vfont_to_curve(Object *ob,
 
   if (selboxes) {
     ct = chartransdata;
-    for (i = 0; i <= selend; i++, ct++) {
-      if (i >= selstart) {
-        selboxes[i - selstart].x = ct->xof * font_size;
-        selboxes[i - selstart].y = (ct->yof - 0.25f) * font_size;
-        selboxes[i - selstart].h = font_size;
-      }
+    ct += selstart;
+    for (i = 0; i <= selend - selstart; i++, ct++) {
+      copy_v2_v2(selboxes[i].loc, &ct->xof);
+      mul_v2_fl(selboxes[i].loc, font_size);
+      selboxes[i].size[1] = font_size;
     }
   }
 
@@ -1537,14 +1535,28 @@ static bool vfont_to_curve(Object *ob,
   /* Rectangle shape of first cursor. */
   if (ef) {
     ct = &chartransdata[ef->pos];
+    // if (ef->pos < slen){}
+    const float descender_downship = 0.25f;
+
+    const float centre = (0.5 - descender_downship) * font_size;
+    float geom[2][2];
+    angle_to_mat2(geom, -ct->rot);
+    float offset_for_centre[2] = {0.0f, centre};
+    mul_v2_m2v2(ef->curs_location, geom, offset_for_centre);
+    add_v2_v2(ef->curs_location, &ct->xof);
+
+    ef->curs_size[0] = 0.05f;
+    ef->curs_size[1] = 1.0f;
+    mul_v2_fl(ef->curs_size, font_size / 2.0f);
+    ef->curs_angle = -ct->rot;
+    mul_v2_fl(ef->curs_location, font_size);
+#if 0
     float(*points)[4][2] = &ef->textcurs;
 
     float geom[2][2];
     angle_to_mat2(geom, -ct->rot);
 
     const float width = 0.05f / 2.0f;
-    const float top_point = 0.8f;
-    const float bottom_point = -0.2;
 
     /* Bottom left corner point. */
     (*points)[0][0] = width;
@@ -1568,6 +1580,7 @@ static bool vfont_to_curve(Object *ob,
       add_v2_v2(*point, &ct->xof);
       mul_v2_fl(*point, font_size);
     }
+#endif
   }
 
   if (mode == FO_SELCHANGE) {
@@ -1800,16 +1813,8 @@ bool BKE_vfont_to_curve_ex(Object *ob,
   };
 
   do {
-    data.ok &= vfont_to_curve(ob,
-                              cu,
-                              mode,
-                              &data,
-                              NULL,
-                              r_nubase,
-                              r_text,
-                              r_text_len,
-                              r_text_free,
-                              r_chartransdata);
+    data.ok &= vfont_to_curve(
+        ob, cu, mode, &data, NULL, r_nubase, r_text, r_text_len, r_text_free, r_chartransdata);
   } while (data.ok && ELEM(data.status, VFONT_TO_CURVE_SCALE_ONCE, VFONT_TO_CURVE_BISECT));
 
   return data.ok;

@@ -66,18 +66,15 @@ void OVERLAY_edit_text_cache_init(OVERLAY_Data *vedata)
   }
 }
 
-/* Use 2D quad corners to create a matrix that set
- * a [-1..1] quad at the right position. */
-static void v2_quad_corners_to_mat4(const float corners[4][2], float r_mat[4][4])
+static void v2_transform_to_mat4(const float loc[2],
+                                 const float rot,
+                                 const float scale[2],
+                                 float r_mat[4][4])
 {
-  unit_m4(r_mat);
-  sub_v2_v2v2(r_mat[0], corners[1], corners[0]);
-  sub_v2_v2v2(r_mat[1], corners[3], corners[0]);
-  mul_v2_fl(r_mat[0], 0.5f);
-  mul_v2_fl(r_mat[1], 0.5f);
-  copy_v2_v2(r_mat[3], corners[0]);
-  add_v2_v2(r_mat[3], r_mat[0]);
-  add_v2_v2(r_mat[3], r_mat[1]);
+  const float loc_v3[3] = {loc[0], loc[1], 0.0f};
+  const float rot_v3[3] = {0.0f, 0.0f, rot};
+  const float size_v3[3] = {scale[0], scale[1], 0.0f};
+  loc_eul_size_to_mat4(r_mat, loc_v3, rot_v3, size_v3);
 }
 
 static void edit_text_cache_populate_select(OVERLAY_Data *vedata, Object *ob)
@@ -85,42 +82,13 @@ static void edit_text_cache_populate_select(OVERLAY_Data *vedata, Object *ob)
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   const Curve *cu = static_cast<Curve *>(ob->data);
   EditFont *ef = cu->editfont;
-  float final_mat[4][4], box[4][2];
   struct GPUBatch *geom = DRW_cache_quad_get();
 
   for (int i = 0; i < ef->selboxes_len; i++) {
-    EditFontSelBox *sb = &ef->selboxes[i];
-
-    float selboxw;
-    if (i + 1 != ef->selboxes_len) {
-      if (ef->selboxes[i + 1].y == sb->y) {
-        selboxw = ef->selboxes[i + 1].x - sb->x;
-      }
-      else {
-        selboxw = sb->w;
-      }
-    }
-    else {
-      selboxw = sb->w;
-    }
-    /* NOTE: v2_quad_corners_to_mat4 don't need the 3rd corner. */
-    if (sb->rot == 0.0f) {
-      copy_v2_fl2(box[0], sb->x, sb->y);
-      copy_v2_fl2(box[1], sb->x + selboxw, sb->y);
-      copy_v2_fl2(box[3], sb->x, sb->y + sb->h);
-    }
-    else {
-      float mat[2][2];
-      angle_to_mat2(mat, sb->rot);
-      copy_v2_fl2(box[0], sb->x, sb->y);
-      mul_v2_v2fl(box[1], mat[0], selboxw);
-      add_v2_v2(box[1], &sb->x);
-      mul_v2_v2fl(box[3], mat[1], sb->h);
-      add_v2_v2(box[3], &sb->x);
-    }
-    v2_quad_corners_to_mat4(box, final_mat);
+    EditFontSelBox &sb = ef->selboxes[i];
+    float final_mat[4][4];
+    v2_transform_to_mat4(sb.loc, sb.rot, sb.size, final_mat);
     mul_m4_m4m4(final_mat, ob->object_to_world, final_mat);
-
     DRW_shgroup_call_obmat(pd->edit_text_selection_grp, geom, final_mat);
   }
 }
@@ -129,11 +97,10 @@ static void edit_text_cache_populate_cursor(OVERLAY_Data *vedata, Object *ob)
 {
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   const Curve *cu = static_cast<Curve *>(ob->data);
-  EditFont *edit_font = cu->editfont;
-  float(*cursor)[2] = edit_font->textcurs;
-  float mat[4][4];
+  EditFont &edit_font = *cu->editfont;
 
-  v2_quad_corners_to_mat4(cursor, mat);
+  float mat[4][4];
+  v2_transform_to_mat4(edit_font.curs_location, edit_font.curs_angle, edit_font.curs_size, mat);
   mul_m4_m4m4(mat, ob->object_to_world, mat);
 
   struct GPUBatch *geom = DRW_cache_quad_get();
