@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. All rights reserved. */
+ * Copyright 2016 Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -2525,8 +2525,16 @@ static void lib_override_library_main_resync_on_library_indirect_level(
           BLI_assert(id_resync_root_iter == id_resync_roots->list &&
                      id_resync_root_iter == id_resync_roots->last_node);
         }
-        BLI_assert(!lib_override_resync_tagging_finalize_recurse(
-            bmain, id_resync_root, id_roots, library_indirect_level, true));
+        if (lib_override_resync_tagging_finalize_recurse(
+                bmain, id_resync_root, id_roots, library_indirect_level, true)) {
+          CLOG_WARN(&LOG,
+                    "Resync root ID still has ancestors tagged for resync, this should not happen "
+                    "at this point."
+                    "\n\tRoot ID: %s"
+                    "\n\tResync root ID: %s",
+                    id_root->name,
+                    id_resync_root->name);
+        }
       }
       BLI_ghashIterator_step(id_roots_iter);
     }
@@ -3776,7 +3784,7 @@ void BKE_lib_override_library_main_unused_cleanup(Main *bmain)
 
 static void lib_override_id_swap(Main *bmain, ID *id_local, ID *id_temp)
 {
-  BKE_lib_id_swap(bmain, id_local, id_temp);
+  BKE_lib_id_swap(bmain, id_local, id_temp, true, 0);
   /* We need to keep these tags from temp ID into orig one.
    * ID swap does not swap most of ID data itself. */
   id_local->tag |= (id_temp->tag & LIB_TAG_LIB_OVERRIDE_NEED_RESYNC);

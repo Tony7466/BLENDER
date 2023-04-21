@@ -16,7 +16,7 @@
 
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_fair.h"
 #include "BKE_mesh_mapping.h"
 
@@ -200,14 +200,10 @@ class MeshFairingContext : public FairingContext {
     MutableSpan<float3> positions = mesh->vert_positions_for_write();
     edges_ = mesh->edges();
     polys = mesh->polys();
-    mloop_ = mesh->loops();
-    BKE_mesh_vert_loop_map_create(&vlmap_,
-                                  &vlmap_mem_,
-                                  polys.data(),
-                                  mloop_.data(),
-                                  mesh->totvert,
-                                  mesh->totpoly,
-                                  mesh->totloop);
+    corner_verts_ = mesh->corner_verts();
+    corner_edges_ = mesh->corner_edges();
+    BKE_mesh_vert_loop_map_create(
+        &vlmap_, &vlmap_mem_, polys, corner_verts_.data(), mesh->totvert);
 
     /* Deformation coords. */
     co_.reserve(mesh->totvert);
@@ -222,7 +218,7 @@ class MeshFairingContext : public FairingContext {
       }
     }
 
-    loop_to_poly_map_ = blender::bke::mesh_topology::build_loop_to_poly_map(polys, mloop_.size());
+    loop_to_poly_map_ = blender::bke::mesh_topology::build_loop_to_poly_map(polys);
   }
 
   ~MeshFairingContext() override
@@ -235,27 +231,26 @@ class MeshFairingContext : public FairingContext {
                                   float r_adj_next[3],
                                   float r_adj_prev[3]) override
   {
-    const int vert = mloop_[loop].v;
-    const MPoly *poly = &polys[loop_to_poly_map_[loop]];
-    const int corner = poly_find_loop_from_vert(poly, &mloop_[poly->loopstart], vert);
-    copy_v3_v3(r_adj_next, co_[ME_POLY_LOOP_NEXT(mloop_, poly, corner)->v]);
-    copy_v3_v3(r_adj_prev, co_[ME_POLY_LOOP_PREV(mloop_, poly, corner)->v]);
+    using namespace blender;
+    const int vert = corner_verts_[loop];
+    const blender::IndexRange poly = polys[loop_to_poly_map_[loop]];
+    const int2 adjecent_verts = bke::mesh::poly_find_adjecent_verts(poly, corner_verts_, vert);
+    copy_v3_v3(r_adj_next, co_[adjecent_verts[0]]);
+    copy_v3_v3(r_adj_prev, co_[adjecent_verts[1]]);
   }
 
   int other_vertex_index_from_loop(const int loop, const uint v) override
   {
-    const MEdge *edge = &edges_[mloop_[loop].e];
-    if (edge->v1 == v) {
-      return edge->v2;
-    }
-    return edge->v1;
+    const blender::int2 &edge = edges_[corner_edges_[loop]];
+    return blender::bke::mesh::edge_other_vert(edge, v);
   }
 
  protected:
   Mesh *mesh_;
-  Span<MLoop> mloop_;
-  Span<MPoly> polys;
-  Span<MEdge> edges_;
+  Span<int> corner_verts_;
+  Span<int> corner_edges_;
+  blender::OffsetIndices<int> polys;
+  Span<blender::int2> edges_;
   Array<int> loop_to_poly_map_;
 };
 
@@ -451,7 +446,7 @@ static void prefair_and_fair_verts(FairingContext *fairing_context,
                                    bool *affected_verts,
                                    const eMeshFairingDepth depth)
 {
-  /* Prefair. */
+  /* Pre-fair. */
   UniformVertexWeight *uniform_vertex_weights = new UniformVertexWeight(fairing_context);
   UniformLoopWeight *uniform_loop_weights = new UniformLoopWeight();
   fairing_context->fair_verts(affected_verts, depth, uniform_vertex_weights, uniform_loop_weights);

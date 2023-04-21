@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup edobj
@@ -72,7 +72,7 @@ void OBJECT_OT_drop_geometry_nodes(struct wmOperatorType *ot);
  */
 void OBJECT_OT_unlink_data(struct wmOperatorType *ot);
 
-/* object_edit.c */
+/* object_edit.cc */
 
 void OBJECT_OT_hide_view_set(struct wmOperatorType *ot);
 void OBJECT_OT_hide_view_clear(struct wmOperatorType *ot);

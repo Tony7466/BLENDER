@@ -176,6 +176,7 @@ Sequence *SEQ_add_effect_strip(Scene *scene, ListBase *seqbase, struct SeqLoadDa
 
   if (!load_data->effect.seq1) {
     seq->len = 1; /* Effect is generator, set non zero length. */
+    seq->flag |= SEQ_SINGLE_FRAME_CONTENT;
     SEQ_time_right_handle_frame_set(scene, seq, load_data->effect.end_frame);
   }
 
@@ -234,6 +235,10 @@ Sequence *SEQ_add_image_strip(Main *bmain, Scene *scene, ListBase *seqbase, SeqL
   seq->len = load_data->image.len;
   Strip *strip = seq->strip;
   strip->stripdata = MEM_callocN(load_data->image.len * sizeof(StripElem), "stripelem");
+
+  if (seq->len == 1) {
+    seq->flag |= SEQ_SINGLE_FRAME_CONTENT;
+  }
 
   /* Multiview settings. */
   if (load_data->use_multiview) {
@@ -433,6 +438,7 @@ Sequence *SEQ_add_movie_strip(Main *bmain, Scene *scene, ListBase *seqbase, SeqL
     if (load_data->flags & SEQ_LOAD_MOVIE_SYNC_FPS) {
       scene->r.frs_sec = fps_denom;
       scene->r.frs_sec_base = fps_num;
+      DEG_id_tag_update(&scene->id, ID_RECALC_AUDIO_FPS | ID_RECALC_SEQUENCER_STRIPS);
     }
 
     load_data->r_video_stream_start = IMD_anim_get_offset(anim_arr[0]);

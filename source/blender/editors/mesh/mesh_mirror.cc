@@ -15,7 +15,7 @@
 #include "DNA_object_types.h"
 
 #include "BKE_editmesh.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BLI_kdtree.h"
 
 #include "ED_mesh.h"
@@ -110,10 +110,10 @@ struct MirrTopoVert_t {
 
 static int mirrtopo_hash_sort(const void *l1, const void *l2)
 {
-  if ((MirrTopoHash_t)(intptr_t)l1 > (MirrTopoHash_t)(intptr_t)l2) {
+  if (MirrTopoHash_t(intptr_t(l1)) > MirrTopoHash_t(intptr_t(l2))) {
     return 1;
   }
-  if ((MirrTopoHash_t)(intptr_t)l1 < (MirrTopoHash_t)(intptr_t)l2) {
+  if (MirrTopoHash_t(intptr_t(l1)) < MirrTopoHash_t(intptr_t(l2))) {
     return -1;
   }
   return 0;
@@ -203,9 +203,9 @@ void ED_mesh_mirrtopo_init(BMEditMesh *em,
   }
   else {
     totedge = me->totedge;
-    for (const MEdge &edge : me->edges()) {
-      topo_hash[edge.v1]++;
-      topo_hash[edge.v2]++;
+    for (const blender::int2 &edge : me->edges()) {
+      topo_hash[edge[0]]++;
+      topo_hash[edge[1]]++;
     }
   }
 
@@ -228,8 +228,8 @@ void ED_mesh_mirrtopo_init(BMEditMesh *em,
       }
     }
     else {
-      for (const MEdge &edge : me->edges()) {
-        const uint i1 = edge.v1, i2 = edge.v2;
+      for (const blender::int2 &edge : me->edges()) {
+        const int i1 = edge[0], i2 = edge[1];
         topo_hash[i1] += topo_hash_prev[i2] * topo_pass;
         topo_hash[i2] += topo_hash_prev[i1] * topo_pass;
         tot_unique_edges += (topo_hash[i1] != topo_hash[i2]);
@@ -298,13 +298,13 @@ void ED_mesh_mirrtopo_init(BMEditMesh *em,
         const int match_count = a - last;
         if (match_count == 2) {
           const int j = topo_pairs[a - 1].v_index, k = topo_pairs[a - 2].v_index;
-          index_lookup[j] = (intptr_t)vtable[k];
-          index_lookup[k] = (intptr_t)vtable[j];
+          index_lookup[j] = intptr_t(vtable[k]);
+          index_lookup[k] = intptr_t(vtable[j]);
         }
         else if (match_count == 1) {
           /* Center vertex. */
           const int j = topo_pairs[a - 1].v_index;
-          index_lookup[j] = (intptr_t)vtable[j];
+          index_lookup[j] = intptr_t(vtable[j]);
         }
         last = a;
       }

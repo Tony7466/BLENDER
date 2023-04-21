@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation. All rights reserved. */
+ * Copyright 2009 Blender Foundation */
 
 /** \file
  * \ingroup blf
@@ -286,7 +286,7 @@ static GlyphBLF *blf_glyph_cache_add_glyph(
  *
  * This table can be used to find a coverage bit based on a charcode.
  * Later we can get default language and script from `codepoint`.
- */
+ * \{ */
 
 struct UnicodeBlock {
   uint first;
@@ -631,20 +631,53 @@ static FT_UInt blf_glyph_index_from_charcode(FontBLF **font, const uint charcode
     return 0;
   }
 
-  /* Not found in main font, so look in the others. */
-  FontBLF *last_resort = NULL;
+  /* First look in currently-loaded cached fonts that match the coverage bit. Super fast. */
   int coverage_bit = blf_charcode_to_coverage_bit(charcode);
+  for (int i = 0; i < BLF_MAX_FONT; i++) {
+    FontBLF *f = global_font[i];
+    if (!f || f == *font || !(f->face) || !(f->flags & BLF_DEFAULT) ||
+        (!((*font)->flags & BLF_MONOSPACED) && (f->flags & BLF_MONOSPACED)) ||
+        f->flags & BLF_LAST_RESORT) {
+      continue;
+    }
+    if (coverage_bit < 0 || blf_font_has_coverage_bit(f, coverage_bit)) {
+      glyph_index = blf_get_char_index(f, charcode);
+      if (glyph_index) {
+        *font = f;
+        return glyph_index;
+      }
+    }
+  }
+
+  /* Next look only in unloaded fonts that match the coverage bit. */
+  for (int i = 0; i < BLF_MAX_FONT; i++) {
+    FontBLF *f = global_font[i];
+    if (!f || f == *font || (f->face) || !(f->flags & BLF_DEFAULT) ||
+        (!((*font)->flags & BLF_MONOSPACED) && (f->flags & BLF_MONOSPACED)) ||
+        f->flags & BLF_LAST_RESORT) {
+      continue;
+    }
+    if (coverage_bit < 0 || blf_font_has_coverage_bit(f, coverage_bit)) {
+      glyph_index = blf_get_char_index(f, charcode);
+      if (glyph_index) {
+        *font = f;
+        return glyph_index;
+      }
+    }
+  }
+
+  /* Last look in anything else. Also check if we have a last-resort font. */
+  FontBLF *last_resort = NULL;
   for (int i = 0; i < BLF_MAX_FONT; i++) {
     FontBLF *f = global_font[i];
     if (!f || f == *font || !(f->flags & BLF_DEFAULT)) {
       continue;
     }
-
     if (f->flags & BLF_LAST_RESORT) {
       last_resort = f;
       continue;
     }
-    if (coverage_bit < 0 || blf_font_has_coverage_bit(f, coverage_bit)) {
+    if (coverage_bit >= 0 && !blf_font_has_coverage_bit(f, coverage_bit)) {
       glyph_index = blf_get_char_index(f, charcode);
       if (glyph_index) {
         *font = f;
@@ -1212,8 +1245,19 @@ void blf_glyph_draw(FontBLF *font, GlyphCacheBLF *gc, GlyphBLF *g, const int x, 
   }
 
   if (font->flags & BLF_CLIPPING) {
+    float xa, ya;
+
+    if (font->flags & BLF_ASPECT) {
+      xa = font->aspect[0];
+      ya = font->aspect[1];
+    }
+    else {
+      xa = 1.0f;
+      ya = 1.0f;
+    }
+
     rcti rect_test;
-    blf_glyph_calc_rect_test(&rect_test, g, x, y);
+    blf_glyph_calc_rect_test(&rect_test, g, (int)((float)x * xa), (int)((float)y * ya));
     BLI_rcti_translate(&rect_test, font->pos[0], font->pos[1]);
     if (!BLI_rcti_inside_rcti(&font->clip_rec, &rect_test)) {
       return;

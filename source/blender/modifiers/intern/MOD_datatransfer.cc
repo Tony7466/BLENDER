@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2014 Blender Foundation. All rights reserved. */
+ * Copyright 2014 Blender Foundation */
 
 /** \file
  * \ingroup modifiers
@@ -22,7 +22,7 @@
 #include "BKE_data_transfer.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.h"
 #include "BKE_mesh_remap.h"
 #include "BKE_modifier.h"
@@ -176,9 +176,9 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   }
 
   const float(*me_positions)[3] = BKE_mesh_vert_positions(me);
-  const blender::Span<MEdge> me_edges = me->edges();
+  const blender::Span<blender::int2> me_edges = me->edges();
   const float(*result_positions)[3] = BKE_mesh_vert_positions(result);
-  const blender::Span<MEdge> result_edges = result->edges();
+  const blender::Span<blender::int2> result_edges = result->edges();
 
   if (((result == me) || (me_positions == result_positions) ||
        (me_edges.data() == result_edges.data())) &&

@@ -43,7 +43,7 @@
 #include "GPU_viewport.h"
 
 #include "ED_anim_api.h"
-#include "ED_gpencil.h"
+#include "ED_gpencil_legacy.h"
 #include "ED_markers.h"
 #include "ED_mask.h"
 #include "ED_screen.h"
@@ -413,7 +413,6 @@ static void draw_seq_waveform_overlay(
 
   const float frames_per_pixel = BLI_rctf_size_x(&region->v2d.cur) / region->winx;
   const float samples_per_frame = SOUND_WAVE_SAMPLES_PER_SECOND / FPS;
-  float samples_per_pixel = samples_per_frame * frames_per_pixel;
 
   /* Align strip start with nearest pixel to prevent waveform flickering. */
   const float x1_aligned = align_frame_with_pixel(x1, frames_per_pixel);
@@ -439,15 +438,17 @@ static void draw_seq_waveform_overlay(
   size_t wave_data_len = 0;
 
   /* Offset must be also aligned, otherwise waveform flickers when moving left handle. */
-  const float strip_offset = align_frame_with_pixel(seq->startofs + seq->anim_startofs,
-                                                    frames_per_pixel);
-  float start_sample = strip_offset * samples_per_frame;
-  start_sample += seq->sound->offset_time * SOUND_WAVE_SAMPLES_PER_SECOND;
+  float start_frame = SEQ_time_left_handle_frame_get(scene, seq);
+
   /* Add off-screen part of strip to offset. */
-  start_sample += (frame_start - x1_aligned) * samples_per_frame;
+  start_frame += (frame_start - x1_aligned);
+  start_frame += seq->sound->offset_time / FPS;
 
   for (int i = 0; i < pixels_to_draw; i++) {
-    float sample = start_sample + i * samples_per_pixel;
+    float timeline_frame = start_frame + i * frames_per_pixel;
+    /* TODO: Use linear interpolation between frames to avoid bad drawing quality. */
+    float frame_index = SEQ_give_frame_index(scene, seq, timeline_frame);
+    float sample = frame_index * samples_per_frame;
     int sample_index = round_fl_to_int(sample);
 
     if (sample_index < 0) {
@@ -468,6 +469,8 @@ static void draw_seq_waveform_overlay(
       value_min = (1.0f - f) * value_min + f * waveform->data[sample_index * 3 + 3];
       value_max = (1.0f - f) * value_max + f * waveform->data[sample_index * 3 + 4];
       rms = (1.0f - f) * rms + f * waveform->data[sample_index * 3 + 5];
+
+      float samples_per_pixel = samples_per_frame * frames_per_pixel;
       if (samples_per_pixel > 1.0f) {
         /* We need to sum up the values we skip over until the next step. */
         float next_pos = sample + samples_per_pixel;
@@ -1330,10 +1333,10 @@ static void draw_seq_strip(const bContext *C,
       (sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_STRIP_DURATION)) {
 
     /* Calculate height needed for drawing text on strip. */
-    text_margin_y = y2 - min_ff(0.40f, 20 * U.dpi_fac * pixely);
+    text_margin_y = y2 - min_ff(0.40f, 20 * UI_SCALE_FAC * pixely);
 
     /* Is there enough space for drawing something else than text? */
-    y_threshold = ((y2 - y1) / pixely) > 20 * U.dpi_fac;
+    y_threshold = ((y2 - y1) / pixely) > 20 * UI_SCALE_FAC;
   }
   else {
     text_margin_y = y2;
@@ -1423,7 +1426,7 @@ static void draw_seq_strip(const bContext *C,
 
   if (sseq->flag & SEQ_SHOW_OVERLAY) {
     /* Don't draw strip if there is not enough vertical or horizontal space. */
-    if (((x2 - x1) > 32 * pixelx * U.dpi_fac) && ((y2 - y1) > 8 * pixely * U.dpi_fac)) {
+    if (((x2 - x1) > 32 * pixelx * UI_SCALE_FAC) && ((y2 - y1) > 8 * pixely * UI_SCALE_FAC)) {
       /* Depending on the vertical space, draw text on top or in the center of strip. */
       draw_seq_text_overlay(
           scene, v2d, seq, sseq, x1, x2, y_threshold ? text_margin_y : y1, y2, seq_active);
@@ -1650,7 +1653,7 @@ static void sequencer_draw_borders_overlay(const SpaceSeq *sseq,
 
   float viewport_size[4];
   GPU_viewport_size_get_f(viewport_size);
-  immUniform2f("viewport_size", viewport_size[2] / UI_DPI_FAC, viewport_size[3] / UI_DPI_FAC);
+  immUniform2f("viewport_size", viewport_size[2] / UI_SCALE_FAC, viewport_size[3] / UI_SCALE_FAC);
 
   immUniformThemeColor(TH_BACK);
   immUniform1i("colors_len", 0); /* Simple dashes. */
@@ -2470,7 +2473,7 @@ static bool draw_cache_view_iter_fn(void *userdata,
 
   if ((cache_type & SEQ_CACHE_STORE_FINAL_OUT) &&
       (drawdata->cache_flag & SEQ_CACHE_VIEW_FINAL_OUT)) {
-    stripe_ht = UI_view2d_region_to_view_y(v2d, 4.0f * UI_DPI_FAC * U.pixelsize) - v2d->cur.ymin;
+    stripe_ht = UI_view2d_region_to_view_y(v2d, 4.0f * UI_SCALE_FAC * U.pixelsize) - v2d->cur.ymin;
     stripe_bot = UI_view2d_region_to_view_y(v2d, V2D_SCROLL_HANDLE_HEIGHT);
     stripe_top = stripe_bot + stripe_ht;
     vbo = drawdata->final_out_vbo;
@@ -2551,7 +2554,7 @@ static void draw_cache_view(const bContext *C)
 
   float stripe_bot, stripe_top;
   float stripe_ofs_y = UI_view2d_region_to_view_y(v2d, 1.0f) - v2d->cur.ymin;
-  float stripe_ht = UI_view2d_region_to_view_y(v2d, 4.0f * UI_DPI_FAC * U.pixelsize) -
+  float stripe_ht = UI_view2d_region_to_view_y(v2d, 4.0f * UI_SCALE_FAC * U.pixelsize) -
                     v2d->cur.ymin;
 
   CLAMP_MAX(stripe_ht, 0.2f);

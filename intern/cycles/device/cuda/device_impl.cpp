@@ -35,7 +35,7 @@ bool CUDADevice::have_precompiled_kernels()
   return path_exists(cubins_path);
 }
 
-BVHLayoutMask CUDADevice::get_bvh_layout_mask() const
+BVHLayoutMask CUDADevice::get_bvh_layout_mask(uint /*kernel_features*/) const
 {
   return BVH_LAYOUT_BVH2;
 }
@@ -536,12 +536,11 @@ void CUDADevice::free_host(void *shared_pointer)
   cuMemFreeHost(shared_pointer);
 }
 
-bool CUDADevice::transform_host_pointer(void *&device_pointer, void *&shared_pointer)
+void CUDADevice::transform_host_pointer(void *&device_pointer, void *&shared_pointer)
 {
   CUDAContextScope scope(this);
 
   cuda_assert(cuMemHostGetDevicePointer_v2((CUdeviceptr *)&device_pointer, shared_pointer, 0));
-  return true;
 }
 
 void CUDADevice::copy_host_to_device(void *device_pointer, void *host_pointer, size_t size)

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation. All rights reserved. */
+ * Copyright 2013 Blender Foundation */
 
 /** \file
  * \ingroup modifiers
@@ -24,7 +24,7 @@
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
 #include "BKE_lib_id.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_mesh_wrapper.h"
@@ -140,7 +140,7 @@ static void deleteLaplacianSystem(LaplacianSystem *sys)
 
 static void createFaceRingMap(const int mvert_tot,
                               blender::Span<MLoopTri> looptris,
-                              blender::Span<MLoop> loops,
+                              blender::Span<int> corner_verts,
                               MeshElemMap **r_map,
                               int **r_indices)
 {
@@ -151,7 +151,7 @@ static void createFaceRingMap(const int mvert_tot,
   for (const int i : looptris.index_range()) {
     const MLoopTri &mlt = looptris[i];
     for (int j = 0; j < 3; j++) {
-      const uint v_index = loops[mlt.tri[j]].v;
+      const int v_index = corner_verts[mlt.tri[j]];
       map[v_index].count++;
       indices_num++;
     }
@@ -166,7 +166,7 @@ static void createFaceRingMap(const int mvert_tot,
   for (const int i : looptris.index_range()) {
     const MLoopTri &mlt = looptris[i];
     for (int j = 0; j < 3; j++) {
-      const uint v_index = loops[mlt.tri[j]].v;
+      const int v_index = corner_verts[mlt.tri[j]];
       map[v_index].indices[map[v_index].count] = i;
       map[v_index].count++;
     }
@@ -176,7 +176,7 @@ static void createFaceRingMap(const int mvert_tot,
 }
 
 static void createVertRingMap(const int mvert_tot,
-                              const blender::Span<MEdge> edges,
+                              const blender::Span<blender::int2> edges,
                               MeshElemMap **r_map,
                               int **r_indices)
 {
@@ -185,8 +185,8 @@ static void createVertRingMap(const int mvert_tot,
   int *indices, *index_iter;
 
   for (const int i : edges.index_range()) {
-    vid[0] = edges[i].v1;
-    vid[1] = edges[i].v2;
+    vid[0] = edges[i][0];
+    vid[1] = edges[i][1];
     map[vid[0]].count++;
     map[vid[1]].count++;
     indices_num += 2;
@@ -199,8 +199,8 @@ static void createVertRingMap(const int mvert_tot,
     map[i].count = 0;
   }
   for (const int i : edges.index_range()) {
-    vid[0] = edges[i].v1;
-    vid[1] = edges[i].v2;
+    vid[0] = edges[i][0];
+    vid[1] = edges[i][1];
     map[vid[0]].indices[map[vid[0]].count] = vid[1];
     map[vid[0]].count++;
     map[vid[1]].indices[map[vid[1]].count] = vid[0];
@@ -212,21 +212,21 @@ static void createVertRingMap(const int mvert_tot,
 
 /**
  * This method computes the Laplacian Matrix and Differential Coordinates
- * for all vertex in the mesh..
+ * for all vertex in the mesh.
  * The Linear system is LV = d
  * Where L is Laplacian Matrix, V as the vertices in Mesh, d is the differential coordinates
- * The Laplacian Matrix is computes as a
- * Lij = sum(Wij) (if i == j)
- * Lij = Wij (if i != j)
- * Wij is weight between vertex Vi and vertex Vj, we use cotangent weight
+ * The Laplacian Matrix is computes as a:
+ * `Lij = sum(Wij) (if i == j)`
+ * `Lij = Wij (if i != j)`
+ * `Wij` is weight between vertex Vi and vertex Vj, we use cotangent weight
  *
- * The Differential Coordinate is computes as a
- * di = Vi * sum(Wij) - sum(Wij * Vj)
- * Where :
+ * The Differential Coordinate is computes as a:
+ * `di = Vi * sum(Wij) - sum(Wij * Vj)`
+ * Where:
  * di is the Differential Coordinate i
- * sum (Wij) is the sum of all weights between vertex Vi and its vertices neighbors (Vj)
- * sum (Wij * Vj) is the sum of the product between vertex neighbor Vj and weight Wij
- *                for all neighborhood.
+ * `sum (Wij)` is the sum of all weights between vertex Vi and its vertices neighbors (`Vj`).
+ * `sum (Wij * Vj)` is the sum of the product between vertex neighbor `Vj` and weight `Wij`
+ *                  for all neighborhood.
  *
  * This Laplacian Matrix is described in the paper:
  * Desbrun M. et.al, Implicit fairing of irregular meshes using diffusion and curvature flow,
@@ -547,8 +547,8 @@ static void initSystem(
       }
     }
 
-    const blender::Span<MEdge> edges = mesh->edges();
-    const blender::Span<MLoop> loops = mesh->loops();
+    const blender::Span<blender::int2> edges = mesh->edges();
+    const blender::Span<int> corner_verts = mesh->corner_verts();
     const blender::Span<MLoopTri> looptris = mesh->looptris();
 
     anchors_num = STACK_SIZE(index_anchors);
@@ -562,13 +562,13 @@ static void initSystem(
     memcpy(lmd->vertexco, vertexCos, sizeof(float[3]) * verts_num);
     lmd->verts_num = verts_num;
 
-    createFaceRingMap(mesh->totvert, looptris, loops, &sys->ringf_map, &sys->ringf_indices);
+    createFaceRingMap(mesh->totvert, looptris, corner_verts, &sys->ringf_map, &sys->ringf_indices);
     createVertRingMap(mesh->totvert, edges, &sys->ringv_map, &sys->ringv_indices);
 
     for (i = 0; i < sys->tris_num; i++) {
-      sys->tris[i][0] = loops[looptris[i].tri[0]].v;
-      sys->tris[i][1] = loops[looptris[i].tri[1]].v;
-      sys->tris[i][2] = loops[looptris[i].tri[2]].v;
+      sys->tris[i][0] = corner_verts[looptris[i].tri[0]];
+      sys->tris[i][1] = corner_verts[looptris[i].tri[1]];
+      sys->tris[i][2] = corner_verts[looptris[i].tri[2]];
     }
   }
 }

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2017 Blender Foundation. All rights reserved. */
+ * Copyright 2017 Blender Foundation */
 
 /** \file
  * \ingroup draw
@@ -111,7 +111,7 @@ static void curve_eval_render_wire_verts_edges_len_get(const blender::bke::Curve
   *r_vert_len = points_by_curve.total_size();
   *r_edge_len = 0;
   for (const int i : curves.curves_range()) {
-    *r_edge_len += blender::bke::curves::segments_num(points_by_curve.size(i), cyclic[i]);
+    *r_edge_len += blender::bke::curves::segments_num(points_by_curve[i].size(), cyclic[i]);
   }
 }
 
@@ -495,8 +495,8 @@ static void curve_create_attribute(CurveRenderData *rdata, GPUVertBuf *vbo_attr)
 
   const bke::CurvesGeometry &curves = rdata->curve_eval->geometry.wrap();
   curves.ensure_can_interpolate_to_evaluated();
-  const VArraySpan<ColorGeometry4f> colors = curves.attributes().lookup<ColorGeometry4f>(
-      ".viewer", ATTR_DOMAIN_POINT);
+  const VArraySpan colors = *curves.attributes().lookup<ColorGeometry4f>(".viewer",
+                                                                         ATTR_DOMAIN_POINT);
   ColorGeometry4f *vbo_data = static_cast<ColorGeometry4f *>(GPU_vertbuf_get_data(vbo_attr));
   curves.interpolate_to_evaluated(colors, MutableSpan<ColorGeometry4f>{vbo_data, vert_len});
 }

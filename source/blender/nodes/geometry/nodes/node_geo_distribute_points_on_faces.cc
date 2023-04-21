@@ -12,7 +12,7 @@
 
 #include "BKE_attribute_math.hh"
 #include "BKE_bvhutils.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.h"
 #include "BKE_mesh_sample.hh"
 #include "BKE_pointcloud.h"
@@ -111,7 +111,7 @@ static void sample_mesh_surface(const Mesh &mesh,
                                 Vector<int> &r_looptri_indices)
 {
   const Span<float3> positions = mesh.vert_positions();
-  const Span<MLoop> loops = mesh.loops();
+  const Span<int> corner_verts = mesh.corner_verts();
   const Span<MLoopTri> looptris = mesh.looptris();
 
   for (const int looptri_index : looptris.index_range()) {
@@ -119,12 +119,9 @@ static void sample_mesh_surface(const Mesh &mesh,
     const int v0_loop = looptri.tri[0];
     const int v1_loop = looptri.tri[1];
     const int v2_loop = looptri.tri[2];
-    const int v0_index = loops[v0_loop].v;
-    const int v1_index = loops[v1_loop].v;
-    const int v2_index = loops[v2_loop].v;
-    const float3 v0_pos = positions[v0_index];
-    const float3 v1_pos = positions[v1_index];
-    const float3 v2_pos = positions[v2_index];
+    const float3 &v0_pos = positions[corner_verts[v0_loop]];
+    const float3 &v1_pos = positions[corner_verts[v1_loop]];
+    const float3 &v2_pos = positions[corner_verts[v2_loop]];
 
     float looptri_density_factor = 1.0f;
     if (!density_factors.is_empty()) {
@@ -325,8 +322,8 @@ BLI_NOINLINE static void propagate_existing_attributes(
 
 namespace {
 struct AttributeOutputs {
-  AutoAnonymousAttributeID normal_id;
-  AutoAnonymousAttributeID rotation_id;
+  AnonymousAttributeIDPtr normal_id;
+  AnonymousAttributeIDPtr rotation_id;
 };
 }  // namespace
 
@@ -362,16 +359,16 @@ static void compute_legacy_normal_outputs(const Mesh &mesh,
                                           MutableSpan<float3> r_normals)
 {
   const Span<float3> positions = mesh.vert_positions();
-  const Span<MLoop> loops = mesh.loops();
+  const Span<int> corner_verts = mesh.corner_verts();
   const Span<MLoopTri> looptris = mesh.looptris();
 
   for (const int i : bary_coords.index_range()) {
     const int looptri_index = looptri_indices[i];
     const MLoopTri &looptri = looptris[looptri_index];
 
-    const int v0_index = loops[looptri.tri[0]].v;
-    const int v1_index = loops[looptri.tri[1]].v;
-    const int v2_index = loops[looptri.tri[2]].v;
+    const int v0_index = corner_verts[looptri.tri[0]];
+    const int v1_index = corner_verts[looptri.tri[1]];
+    const int v2_index = corner_verts[looptri.tri[2]];
     const float3 v0_pos = positions[v0_index];
     const float3 v1_pos = positions[v1_index];
     const float3 v2_pos = positions[v2_index];
@@ -542,13 +539,10 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
 
   PointCloud *pointcloud = BKE_pointcloud_new_nomain(positions.size());
   bke::MutableAttributeAccessor point_attributes = pointcloud->attributes_for_write();
-  bke::SpanAttributeWriter<float3> point_positions =
-      point_attributes.lookup_or_add_for_write_only_span<float3>("position", ATTR_DOMAIN_POINT);
   bke::SpanAttributeWriter<float> point_radii =
       point_attributes.lookup_or_add_for_write_only_span<float>("radius", ATTR_DOMAIN_POINT);
-  point_positions.span.copy_from(positions);
+  pointcloud->positions_for_write().copy_from(positions);
   point_radii.span.fill(0.05f);
-  point_positions.finish();
   point_radii.finish();
 
   geometry_set.replace_pointcloud(pointcloud);

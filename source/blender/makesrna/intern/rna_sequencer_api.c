@@ -580,6 +580,8 @@ static StripElem *rna_SequenceElements_append(ID *id, Sequence *seq, const char 
   BLI_strncpy(se->name, filename, sizeof(se->name));
   seq->len++;
 
+  seq->flag &= ~SEQ_SINGLE_FRAME_CONTENT;
+
   WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, scene);
 
   return se;
@@ -607,6 +609,10 @@ static void rna_SequenceElements_pop(ID *id, Sequence *seq, ReportList *reports,
 
   new_seq = MEM_callocN(sizeof(StripElem) * (seq->len - 1), "SequenceElements_pop");
   seq->len--;
+
+  if (seq->len == 1) {
+    seq->flag |= SEQ_SINGLE_FRAME_CONTENT;
+  }
 
   se = seq->strip->stripdata;
   if (index > 0) {
@@ -644,7 +650,7 @@ static SeqRetimingHandle *rna_Sequence_retiming_handles_add(ID *id,
 {
   Scene *scene = (Scene *)id;
 
-  SeqRetimingHandle *handle = SEQ_retiming_add_handle(seq, timeline_frame);
+  SeqRetimingHandle *handle = SEQ_retiming_add_handle(scene, seq, timeline_frame);
 
   SEQ_relations_invalidate_cache_raw(scene, seq);
   WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, NULL);

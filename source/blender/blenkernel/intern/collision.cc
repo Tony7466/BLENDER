@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright Blender Foundation. All rights reserved. */
+ * Copyright Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -587,7 +587,7 @@ static void collision_compute_barycentric(const float pv[3],
 
   d = (a * c - b * b);
 
-  if (fabs(d) < (double)ALMOST_ZERO) {
+  if (fabs(d) < double(ALMOST_ZERO)) {
     *w1 = *w2 = *w3 = 1.0 / 3.0;
     return;
   }
@@ -598,7 +598,7 @@ static void collision_compute_barycentric(const float pv[3],
     w1[0] = 0;
   }
 
-  w2[0] = float((f - b * (double)w1[0]) / c);
+  w2[0] = float((f - b * double(w1[0])) / c);
 
   if (w2[0] < 0) {
     w2[0] = 0;
@@ -736,21 +736,21 @@ static int cloth_collision_response_static(ClothModifierData *clmd,
 
         impulse = magtangent / 1.5;
 
-        VECADDMUL(i1, vrel_t_pre, (double)w1 * impulse);
-        VECADDMUL(i2, vrel_t_pre, (double)w2 * impulse);
+        VECADDMUL(i1, vrel_t_pre, double(w1) * impulse);
+        VECADDMUL(i2, vrel_t_pre, double(w2) * impulse);
 
         if (!is_hair) {
-          VECADDMUL(i3, vrel_t_pre, (double)w3 * impulse);
+          VECADDMUL(i3, vrel_t_pre, double(w3) * impulse);
         }
       }
 
       /* Apply velocity stopping impulse. */
       impulse = magrelVel / 1.5f;
 
-      VECADDMUL(i1, collpair->normal, (double)w1 * impulse);
-      VECADDMUL(i2, collpair->normal, (double)w2 * impulse);
+      VECADDMUL(i1, collpair->normal, double(w1) * impulse);
+      VECADDMUL(i2, collpair->normal, double(w2) * impulse);
       if (!is_hair) {
-        VECADDMUL(i3, collpair->normal, (double)w3 * impulse);
+        VECADDMUL(i3, collpair->normal, double(w3) * impulse);
       }
 
       if ((magrelVel < 0.1f * d * time_multiplier) && (d > ALMOST_ZERO)) {
@@ -877,25 +877,25 @@ static int cloth_selfcollision_response_static(ClothModifierData *clmd,
 
         impulse = magtangent / 1.5;
 
-        VECADDMUL(ia[0], vrel_t_pre, (double)w1 * impulse);
-        VECADDMUL(ia[1], vrel_t_pre, (double)w2 * impulse);
-        VECADDMUL(ia[2], vrel_t_pre, (double)w3 * impulse);
+        VECADDMUL(ia[0], vrel_t_pre, double(w1) * impulse);
+        VECADDMUL(ia[1], vrel_t_pre, double(w2) * impulse);
+        VECADDMUL(ia[2], vrel_t_pre, double(w3) * impulse);
 
-        VECADDMUL(ib[0], vrel_t_pre, (double)u1 * -impulse);
-        VECADDMUL(ib[1], vrel_t_pre, (double)u2 * -impulse);
-        VECADDMUL(ib[2], vrel_t_pre, (double)u3 * -impulse);
+        VECADDMUL(ib[0], vrel_t_pre, double(u1) * -impulse);
+        VECADDMUL(ib[1], vrel_t_pre, double(u2) * -impulse);
+        VECADDMUL(ib[2], vrel_t_pre, double(u3) * -impulse);
       }
 
       /* Apply velocity stopping impulse. */
       impulse = magrelVel / 3.0f;
 
-      VECADDMUL(ia[0], collpair->normal, (double)w1 * impulse);
-      VECADDMUL(ia[1], collpair->normal, (double)w2 * impulse);
-      VECADDMUL(ia[2], collpair->normal, (double)w3 * impulse);
+      VECADDMUL(ia[0], collpair->normal, double(w1) * impulse);
+      VECADDMUL(ia[1], collpair->normal, double(w2) * impulse);
+      VECADDMUL(ia[2], collpair->normal, double(w3) * impulse);
 
-      VECADDMUL(ib[0], collpair->normal, (double)u1 * -impulse);
-      VECADDMUL(ib[1], collpair->normal, (double)u2 * -impulse);
-      VECADDMUL(ib[2], collpair->normal, (double)u3 * -impulse);
+      VECADDMUL(ib[0], collpair->normal, double(u1) * -impulse);
+      VECADDMUL(ib[1], collpair->normal, double(u2) * -impulse);
+      VECADDMUL(ib[2], collpair->normal, double(u3) * -impulse);
 
       if ((magrelVel < 0.1f * d * time_multiplier) && (d > ALMOST_ZERO)) {
         repulse = MIN2(d / time_multiplier, 0.1f * d * time_multiplier - magrelVel);
@@ -907,13 +907,13 @@ static int cloth_selfcollision_response_static(ClothModifierData *clmd,
         repulse = max_ff(impulse, repulse);
         impulse = repulse / 1.5f;
 
-        VECADDMUL(ia[0], collpair->normal, (double)w1 * impulse);
-        VECADDMUL(ia[1], collpair->normal, (double)w2 * impulse);
-        VECADDMUL(ia[2], collpair->normal, (double)w3 * impulse);
+        VECADDMUL(ia[0], collpair->normal, double(w1) * impulse);
+        VECADDMUL(ia[1], collpair->normal, double(w2) * impulse);
+        VECADDMUL(ia[2], collpair->normal, double(w3) * impulse);
 
-        VECADDMUL(ib[0], collpair->normal, (double)u1 * -impulse);
-        VECADDMUL(ib[1], collpair->normal, (double)u2 * -impulse);
-        VECADDMUL(ib[2], collpair->normal, (double)u3 * -impulse);
+        VECADDMUL(ib[0], collpair->normal, double(u1) * -impulse);
+        VECADDMUL(ib[1], collpair->normal, double(u2) * -impulse);
+        VECADDMUL(ib[2], collpair->normal, double(u3) * -impulse);
       }
 
       result = 1;
@@ -1176,7 +1176,6 @@ static void hair_collision(void *__restrict userdata,
   CollisionModifierData *collmd = data->collmd;
   CollPair *collpair = data->collisions;
   const MVertTri *tri_coll;
-  const MEdge *edge_coll;
   ClothVertex *verts1 = clmd->clothObject->verts;
   float distance = 0.0f;
   float epsilon1 = clmd->coll_parms->epsilon;
@@ -1185,12 +1184,13 @@ static void hair_collision(void *__restrict userdata,
 
   /* TODO: This is not efficient. Might be wise to instead build an array before iterating, to
    * avoid walking the list every time. */
-  edge_coll = &clmd->clothObject->edges[data->overlap[index].indexA];
+  const blender::int2 &edge_coll = reinterpret_cast<const blender::int2 *>(
+      clmd->clothObject->edges)[data->overlap[index].indexA];
   tri_coll = &collmd->tri[data->overlap[index].indexB];
 
   /* Compute distance and normal. */
-  distance = compute_collision_point_edge_tri(verts1[edge_coll->v1].tx,
-                                              verts1[edge_coll->v2].tx,
+  distance = compute_collision_point_edge_tri(verts1[edge_coll[0]].tx,
+                                              verts1[edge_coll[1]].tx,
                                               collmd->current_x[tri_coll->tri[0]],
                                               collmd->current_x[tri_coll->tri[1]],
                                               collmd->current_x[tri_coll->tri[2]],
@@ -1201,8 +1201,8 @@ static void hair_collision(void *__restrict userdata,
                                               vect);
 
   if ((distance <= (epsilon1 + epsilon2 + ALMOST_ZERO)) && (len_squared_v3(vect) > ALMOST_ZERO)) {
-    collpair[index].ap1 = edge_coll->v1;
-    collpair[index].ap2 = edge_coll->v2;
+    collpair[index].ap1 = edge_coll[0];
+    collpair[index].ap2 = edge_coll[1];
 
     collpair[index].bp1 = tri_coll->tri[0];
     collpair[index].bp2 = tri_coll->tri[1];
@@ -1221,7 +1221,7 @@ static void hair_collision(void *__restrict userdata,
 
     /* Compute barycentric coordinates for the collision points. */
     collpair[index].aw2 = line_point_factor_v3(
-        pa, verts1[edge_coll->v1].tx, verts1[edge_coll->v2].tx);
+        pa, verts1[edge_coll[0]].tx, verts1[edge_coll[1]].tx);
 
     collpair[index].aw1 = 1.0f - collpair[index].aw2;
 

@@ -5,7 +5,7 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -63,9 +63,9 @@ static VArray<float3> construct_uv_gvarray(const Mesh &mesh,
                                            const eAttrDomain domain)
 {
   const Span<float3> positions = mesh.vert_positions();
-  const Span<MEdge> edges = mesh.edges();
-  const Span<MPoly> polys = mesh.polys();
-  const Span<MLoop> loops = mesh.loops();
+  const Span<int2> edges = mesh.edges();
+  const OffsetIndices polys = mesh.polys();
+  const Span<int> corner_verts = mesh.corner_verts();
 
   bke::MeshFieldContext face_context{mesh, ATTR_DOMAIN_FACE};
   FieldEvaluator face_evaluator{face_context, polys.size()};
@@ -82,27 +82,28 @@ static VArray<float3> construct_uv_gvarray(const Mesh &mesh,
   edge_evaluator.evaluate();
   const IndexMask seam = edge_evaluator.get_evaluated_as_mask(0);
 
-  Array<float3> uv(loops.size(), float3(0));
+  Array<float3> uv(corner_verts.size(), float3(0));
 
   geometry::ParamHandle *handle = geometry::uv_parametrizer_construct_begin();
   for (const int poly_index : selection) {
-    const MPoly &poly = polys[poly_index];
-    Array<geometry::ParamKey, 16> mp_vkeys(poly.totloop);
-    Array<bool, 16> mp_pin(poly.totloop);
-    Array<bool, 16> mp_select(poly.totloop);
-    Array<const float *, 16> mp_co(poly.totloop);
-    Array<float *, 16> mp_uv(poly.totloop);
-    for (const int i : IndexRange(poly.totloop)) {
-      const MLoop &ml = loops[poly.loopstart + i];
-      mp_vkeys[i] = ml.v;
-      mp_co[i] = positions[ml.v];
-      mp_uv[i] = uv[poly.loopstart + i];
+    const IndexRange poly = polys[poly_index];
+    Array<geometry::ParamKey, 16> mp_vkeys(poly.size());
+    Array<bool, 16> mp_pin(poly.size());
+    Array<bool, 16> mp_select(poly.size());
+    Array<const float *, 16> mp_co(poly.size());
+    Array<float *, 16> mp_uv(poly.size());
+    for (const int i : IndexRange(poly.size())) {
+      const int corner = poly[i];
+      const int vert = corner_verts[corner];
+      mp_vkeys[i] = vert;
+      mp_co[i] = positions[vert];
+      mp_uv[i] = uv[corner];
       mp_pin[i] = false;
       mp_select[i] = false;
     }
     geometry::uv_parametrizer_face_add(handle,
                                        poly_index,
-                                       poly.totloop,
+                                       poly.size(),
                                        mp_vkeys.data(),
                                        mp_co.data(),
                                        mp_uv.data(),
@@ -110,8 +111,7 @@ static VArray<float3> construct_uv_gvarray(const Mesh &mesh,
                                        mp_select.data());
   }
   for (const int i : seam) {
-    const MEdge &edge = edges[i];
-    geometry::ParamKey vkeys[2]{edge.v1, edge.v2};
+    geometry::ParamKey vkeys[2]{uint(edges[i][0]), uint(edges[i][1])};
     geometry::uv_parametrizer_edge_set_seam(handle, vkeys);
   }
   /* TODO: once field input nodes are able to emit warnings (#94039), emit a

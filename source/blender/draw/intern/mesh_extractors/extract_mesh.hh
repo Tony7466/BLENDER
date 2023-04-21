@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. All rights reserved. */
+ * Copyright 2021 Blender Foundation */
 
 /** \file
  * \ingroup draw
@@ -49,6 +49,7 @@ struct MeshRenderData {
   bool use_hide;
   bool use_subsurf_fdots;
   bool use_final_mesh;
+  bool hide_unmapped_edges;
 
   /** Use for #MeshStatVis calculation which use world-space coords. */
   float obmat[4][4];
@@ -75,9 +76,10 @@ struct MeshRenderData {
   /** Mesh */
   Mesh *me;
   blender::Span<blender::float3> vert_positions;
-  blender::Span<MEdge> edges;
-  blender::Span<MPoly> polys;
-  blender::Span<MLoop> loops;
+  blender::Span<blender::int2> edges;
+  blender::OffsetIndices<int> polys;
+  blender::Span<int> corner_verts;
+  blender::Span<int> corner_edges;
   BMVert *eve_act;
   BMEdge *eed_act;
   BMFace *efa_act;
@@ -93,17 +95,15 @@ struct MeshRenderData {
   const bool *select_vert;
   const bool *select_edge;
   const bool *select_poly;
-  float (*loop_normals)[3];
-  int *lverts, *ledges;
+  const bool *sharp_faces;
+  blender::Array<blender::float3> loop_normals;
+
+  blender::Span<int> loose_verts;
+  blender::Span<int> loose_edges;
+  const SortedPolyData *poly_sorted;
 
   const char *active_color_name;
   const char *default_color_name;
-
-  struct {
-    int *tri_first_index;
-    int *mat_tri_len;
-    int visible_tri_len;
-  } poly_sorted;
 };
 
 BLI_INLINE const Mesh *editmesh_final_or_this(const Object *object, const Mesh *me)
@@ -253,16 +253,13 @@ using ExtractPolyBMeshFn = void(const MeshRenderData *mr,
                                 const BMFace *f,
                                 int f_index,
                                 void *data);
-using ExtractPolyMeshFn = void(const MeshRenderData *mr,
-                               const MPoly *poly,
-                               int poly_index,
-                               void *data);
+using ExtractPolyMeshFn = void(const MeshRenderData *mr, int poly_index, void *data);
 using ExtractLEdgeBMeshFn = void(const MeshRenderData *mr,
                                  const BMEdge *eed,
                                  int ledge_index,
                                  void *data);
 using ExtractLEdgeMeshFn = void(const MeshRenderData *mr,
-                                const MEdge *edge,
+                                blender::int2 edge,
                                 int ledge_index,
                                 void *data);
 using ExtractLVertBMeshFn = void(const MeshRenderData *mr,
@@ -298,7 +295,7 @@ using ExtractIterSubdivMeshFn = void(const DRWSubdivCache *subdiv_cache,
                                      const MeshRenderData *mr,
                                      void *data,
                                      uint subdiv_quad_index,
-                                     const MPoly *coarse_quad);
+                                     int coarse_quad_index);
 using ExtractFinishSubdivFn = void(const DRWSubdivCache *subdiv_cache,
                                    const MeshRenderData *mr,
                                    MeshBatchCache *cache,
@@ -313,10 +310,10 @@ struct MeshExtract {
   ExtractTriMeshFn *iter_looptri_mesh;
   ExtractPolyBMeshFn *iter_poly_bm;
   ExtractPolyMeshFn *iter_poly_mesh;
-  ExtractLEdgeBMeshFn *iter_ledge_bm;
-  ExtractLEdgeMeshFn *iter_ledge_mesh;
-  ExtractLVertBMeshFn *iter_lvert_bm;
-  ExtractLVertMeshFn *iter_lvert_mesh;
+  ExtractLEdgeBMeshFn *iter_loose_edge_bm;
+  ExtractLEdgeMeshFn *iter_loose_edge_mesh;
+  ExtractLVertBMeshFn *iter_loose_vert_bm;
+  ExtractLVertMeshFn *iter_loose_vert_mesh;
   ExtractLooseGeomSubdivFn *iter_loose_geom_subdiv;
   /** Executed on one worker thread after all elements iterations. */
   ExtractTaskReduceFn *task_reduce;

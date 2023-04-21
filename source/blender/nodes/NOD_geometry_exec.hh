@@ -18,6 +18,7 @@ namespace blender::nodes {
 
 using bke::AnonymousAttributeFieldInput;
 using bke::AnonymousAttributeID;
+using bke::AnonymousAttributeIDPtr;
 using bke::AnonymousAttributePropagationInfo;
 using bke::AttributeAccessor;
 using bke::AttributeFieldInput;
@@ -26,7 +27,6 @@ using bke::AttributeKind;
 using bke::AttributeMetaData;
 using bke::AttributeReader;
 using bke::AttributeWriter;
-using bke::AutoAnonymousAttributeID;
 using bke::GAttributeReader;
 using bke::GAttributeWriter;
 using bke::GSpanAttributeWriter;
@@ -194,36 +194,11 @@ class GeoNodeExecParams {
 
   /**
    * Returns true when the output has to be computed.
-   * Nodes that support laziness could use the #lazy_output_is_required variant to possibly avoid
-   * some computations.
    */
   bool output_is_required(StringRef identifier) const
   {
     const int index = this->get_output_index(identifier);
     return params_.get_output_usage(index) != lf::ValueUsage::Unused;
-  }
-
-  /**
-   * Tell the evaluator that a specific input is required.
-   * This returns true when the input will only be available in the next execution.
-   * False is returned if the input is available already.
-   * This can only be used when the node supports laziness.
-   */
-  bool lazy_require_input(StringRef identifier)
-  {
-    const int index = this->get_input_index(identifier);
-    return params_.try_get_input_data_ptr_or_request(index) == nullptr;
-  }
-
-  /**
-   * Asks the evaluator if a specific output is required right now. If this returns false, the
-   * value might still need to be computed later.
-   * This can only be used when the node supports laziness.
-   */
-  bool lazy_output_is_required(StringRef identifier)
-  {
-    const int index = this->get_output_index(identifier);
-    return params_.get_output_usage(index) == lf::ValueUsage::Used;
   }
 
   /**
@@ -284,7 +259,7 @@ class GeoNodeExecParams {
    * Return a new anonymous attribute id for the given output. None is returned if the anonymous
    * attribute is not needed.
    */
-  AutoAnonymousAttributeID get_output_anonymous_attribute_id_if_needed(
+  AnonymousAttributeIDPtr get_output_anonymous_attribute_id_if_needed(
       const StringRef output_identifier, const bool force_create = false)
   {
     if (!this->anonymous_attribute_output_is_required(output_identifier) && !force_create) {

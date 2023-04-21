@@ -217,7 +217,7 @@ class Instance {
 
             ::Image *image = nullptr;
             ImageUser *iuser = nullptr;
-            eGPUSamplerState sampler_state = eGPUSamplerState::GPU_SAMPLER_DEFAULT;
+            GPUSamplerState sampler_state = GPUSamplerState::default_sampler();
             if (object_state.color_type == V3D_SHADING_TEXTURE_COLOR) {
               get_material_image(ob_ref.object, i + 1, image, iuser, sampler_state);
             }
@@ -284,7 +284,7 @@ class Instance {
                  GPUBatch *batch,
                  ResourceHandle handle,
                  ::Image *image = nullptr,
-                 eGPUSamplerState sampler_state = GPU_SAMPLER_DEFAULT,
+                 GPUSamplerState sampler_state = GPUSamplerState::default_sampler(),
                  ImageUser *iuser = nullptr)
   {
     const bool in_front = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0;
@@ -577,7 +577,7 @@ static void write_render_z_output(struct RenderLayer *layer,
 
     int pix_num = BLI_rcti_size_x(rect) * BLI_rcti_size_y(rect);
 
-    /* Convert ogl depth [0..1] to view Z [near..far] */
+    /* Convert GPU depth [0..1] to view Z [near..far] */
     if (DRW_view_is_persp_get(nullptr)) {
       for (float &z : MutableSpan(rp->rect, pix_num)) {
         if (z == 1.0f) {

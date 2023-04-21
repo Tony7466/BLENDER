@@ -246,19 +246,7 @@ void BKE_view_layer_free(ViewLayer *view_layer)
 
 void BKE_view_layer_free_ex(ViewLayer *view_layer, const bool do_id_user)
 {
-  view_layer->basact = nullptr;
-
-  BLI_freelistN(&view_layer->object_bases);
-
-  if (view_layer->object_bases_hash) {
-    BLI_ghash_free(view_layer->object_bases_hash, nullptr, nullptr);
-  }
-
-  LISTBASE_FOREACH_MUTABLE (LayerCollection *, lc, &view_layer->layer_collections) {
-    layer_collection_free(view_layer, lc);
-    MEM_freeN(lc);
-  }
-  BLI_listbase_clear(&view_layer->layer_collections);
+  BKE_view_layer_free_object_content(view_layer);
 
   LISTBASE_FOREACH (ViewLayerEngineData *, sled, &view_layer->drawdata) {
     if (sled->storage) {
@@ -285,6 +273,23 @@ void BKE_view_layer_free_ex(ViewLayer *view_layer, const bool do_id_user)
   MEM_SAFE_FREE(view_layer->object_bases_array);
 
   MEM_freeN(view_layer);
+}
+
+void BKE_view_layer_free_object_content(ViewLayer *view_layer)
+{
+  view_layer->basact = nullptr;
+
+  BLI_freelistN(&view_layer->object_bases);
+
+  if (view_layer->object_bases_hash) {
+    BLI_ghash_free(view_layer->object_bases_hash, nullptr, nullptr);
+  }
+
+  LISTBASE_FOREACH_MUTABLE (LayerCollection *, lc, &view_layer->layer_collections) {
+    layer_collection_free(view_layer, lc);
+    MEM_freeN(lc);
+  }
+  BLI_listbase_clear(&view_layer->layer_collections);
 }
 
 void BKE_view_layer_selected_objects_tag(const Scene *scene, ViewLayer *view_layer, const int tag)
@@ -1431,6 +1436,8 @@ void BKE_main_collection_sync_remap(const Main *bmain)
   /* On remapping of object or collection pointers free caches. */
   /* TODO: try to make this faster */
 
+  BKE_main_collections_object_cache_free(bmain);
+
   for (Scene *scene = static_cast<Scene *>(bmain->scenes.first); scene;
        scene = static_cast<Scene *>(scene->id.next)) {
     LISTBASE_FOREACH (ViewLayer *, view_layer, &scene->view_layers) {
@@ -1447,14 +1454,12 @@ void BKE_main_collection_sync_remap(const Main *bmain)
       view_layer_bases_hash_create(view_layer, true);
     }
 
-    BKE_collection_object_cache_free(scene->master_collection);
     DEG_id_tag_update_ex((Main *)bmain, &scene->master_collection->id, ID_RECALC_COPY_ON_WRITE);
     DEG_id_tag_update_ex((Main *)bmain, &scene->id, ID_RECALC_COPY_ON_WRITE);
   }
 
   for (Collection *collection = static_cast<Collection *>(bmain->collections.first); collection;
        collection = static_cast<Collection *>(collection->id.next)) {
-    BKE_collection_object_cache_free(collection);
     DEG_id_tag_update_ex((Main *)bmain, &collection->id, ID_RECALC_COPY_ON_WRITE);
   }
 

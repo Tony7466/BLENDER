@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup edcurve
@@ -34,6 +34,8 @@ enum { CASE_LOWER, CASE_UPPER };
 enum {
   LINE_BEGIN,
   LINE_END,
+  TEXT_BEGIN,
+  TEXT_END,
   PREV_CHAR,
   NEXT_CHAR,
   PREV_WORD,
