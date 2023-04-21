@@ -434,10 +434,8 @@ void butterworth_smooth_fcurve_segment(FCurve *fcu,
   const int sample_count = (int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) + 1 +
                            filter_order * 2;
   float *samples = MEM_callocN(sizeof(float) * sample_count, "Smooth FCurve Op Samples");
-  float *fwd_filtered_values = MEM_callocN(sizeof(float) * sample_count,
-                                           "Filtered forward FCurve Values");
-  float *bwd_filtered_values = MEM_callocN(sizeof(float) * sample_count,
-                                           "Filtered backwards FCurve Values");
+  float *filtered_values = MEM_callocN(sizeof(float) * sample_count,
+                                       "Butterworth Filtered FCurve Values");
   sample_fcurve_segment(fcu, left_bezt.vec[1][0] - filter_order, samples, sample_count);
 
   double *w0 = MEM_callocN(sizeof(double) * filter_order, "w0");
@@ -454,7 +452,7 @@ void butterworth_smooth_fcurve_segment(FCurve *fcu,
       w2[j] = w1[j];
       w1[j] = w0[j];
     }
-    fwd_filtered_values[i] = x + fwd_offset;
+    filtered_values[i] = x + fwd_offset;
   }
 
   for (int i = 0; i < filter_order; i++) {
@@ -463,29 +461,29 @@ void butterworth_smooth_fcurve_segment(FCurve *fcu,
     w2[i] = 0;
   }
 
-  const float bwd_offset = fwd_filtered_values[sample_count - 1];
+  const float bwd_offset = filtered_values[sample_count - 1];
 
   for (int i = sample_count - 1; i > 0; i--) {
-    double x = (double)(fwd_filtered_values[i] - bwd_offset);
+    double x = (double)(filtered_values[i] - bwd_offset);
     for (int j = 0; j < filter_order; j++) {
       w0[j] = d1[j] * w1[j] + d2[j] * w2[j] + x;
       x = A[j] * (w0[j] + 2.0 * w1[j] + w2[j]);
       w2[j] = w1[j];
       w1[j] = w0[j];
     }
-    bwd_filtered_values[i] = x + bwd_offset;
+    filtered_values[i] = x + bwd_offset;
   }
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
     const int filter_index = (int)(fcu->bezt[i].vec[1][0] -
                                    fcu->bezt[segment->start_index].vec[1][0]) +
                              filter_order;
-    const float filter_value = bwd_filtered_values[filter_index];
-    move_key(&fcu->bezt[i], interpf(filter_value, samples[filter_index], factor));
+    const float key_y_value = interpf(
+        filtered_values[filter_index], samples[filter_index], factor);
+    move_key(&fcu->bezt[i], key_y_value);
   }
 
-  MEM_freeN(fwd_filtered_values);
-  MEM_freeN(bwd_filtered_values);
+  MEM_freeN(filtered_values);
   MEM_freeN(samples);
   MEM_freeN(w0);
   MEM_freeN(w1);
