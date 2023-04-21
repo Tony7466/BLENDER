@@ -302,13 +302,6 @@ static eFieldStateSyncResult simulation_nodes_field_state_sync(
     const MutableSpan<SocketFieldState> field_state_by_socket_id)
 {
   eFieldStateSyncResult res = static_cast<eFieldStateSyncResult>(0);
-  for (const int i : output_node.input_sockets().index_range()) {
-    const bNodeSocket &input_socket = input_node.input_socket(i);
-    const bNodeSocket &output_socket = output_node.input_socket(i);
-    SocketFieldState &input_state = field_state_by_socket_id[input_socket.index_in_tree()];
-    SocketFieldState &output_state = field_state_by_socket_id[output_socket.index_in_tree()];
-    res |= sync_field_states(input_state, output_state);
-  }
   for (const int i : output_node.output_sockets().index_range()) {
     /* First input node output is Delta Time which does not appear in the output node outputs. */
     const bNodeSocket &input_socket = input_node.output_socket(i + 1);
