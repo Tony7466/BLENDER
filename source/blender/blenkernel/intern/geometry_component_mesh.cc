@@ -202,10 +202,10 @@ void adapt_mesh_domain_corner_to_point_impl(const Mesh &mesh,
   /* Deselect loose vertices without corners that are still selected from the 'true' default. */
   const bke::LooseVertCache &loose_verts = mesh.verts_no_face();
   if (loose_verts.count > 0) {
-    const BitSpan loose = loose_verts.is_loose_bits;
-    threading::parallel_for(loose.index_range(), 2048, [loose, r_values](const IndexRange range) {
+    const BitSpan bits = loose_verts.is_loose_bits;
+    threading::parallel_for(bits.index_range(), 2048, [&](const IndexRange range) {
       for (const int vert_index : range) {
-        if (loose[vert_index]) {
+        if (bits[vert_index]) {
           r_values[vert_index] = false;
         }
       }

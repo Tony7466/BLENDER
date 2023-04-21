@@ -171,12 +171,11 @@ struct MeshRuntime {
   mutable Vector<float3> vert_normals;
   mutable Vector<float3> poly_normals;
 
-  /**
-   * Caches of data about the loose edges/verts. Can be shared with other data-blocks with
-   * unchanged topology. Accessed with #Mesh::loose_edges()/loose_verts().
-   */
+  /** Cache of data about edges not used by faces. See #Mesh::loose_edges(). */
   SharedCache<LooseEdgeCache> loose_edges_cache;
+  /** Cache of data about vertices not used by edges. See #Mesh::loose_verts(). */
   SharedCache<LooseVertCache> loose_verts_cache;
+  /** Cache of data about vertices not used by faces. See #Mesh::loose_verts(). */
   SharedCache<LooseVertCache> verts_no_face_cache;
 
   /**

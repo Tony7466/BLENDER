@@ -309,7 +309,6 @@ typedef struct Mesh {
   const blender::bke::LooseVertCache &loose_verts() const;
   /**
    * Cached information about vertices that aren't used by faces (but may be used by loose edges).
-   * This also contains vertices with no edges from #loose_verts().
    */
   const blender::bke::LooseVertCache &verts_no_face() const;
 
@@ -324,9 +323,11 @@ typedef struct Mesh {
   /**
    * Set the number of verices not connected to edges to zero. Similar to #loose_edges_tag_none().
    * There may still be vertices only used by loose edges though.
+   *
+   * \note If both #loose_edges_tag_none() and #tag_loose_verts_none() are called,
+   * all vertices are used by faces, so #verts_no_faces() will be tagged empty as well.
    */
   void tag_loose_verts_none() const;
-  void tag_verts_no_face_none() const;
 
   /**
    * Normal direction of polygons, defined by positions and the winding direction of face corners.

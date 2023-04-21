@@ -106,7 +106,7 @@ MeshRuntime::~MeshRuntime()
   }
 }
 
-static int reset_bits_and_count(const Span<int> indices_to_reset, MutableBitSpan bits)
+static int reset_bits_and_count(MutableBitSpan bits, const Span<int> indices_to_reset)
 {
   int count = bits.size();
   for (const int vert : indices_to_reset) {
@@ -118,21 +118,45 @@ static int reset_bits_and_count(const Span<int> indices_to_reset, MutableBitSpan
   return count;
 }
 
+static void bit_vector_with_reset_bits_or_empty(const Span<int> indices_to_reset,
+                                                const int indexed_elems_num,
+                                                BitVector<> &r_bits,
+                                                int &r_count)
+{
+  r_bits.resize(0);
+  r_bits.resize(indexed_elems_num, true);
+  r_count = reset_bits_and_count(r_bits, indices_to_reset);
+  if (r_count == 0) {
+    r_bits.clear_and_shrink();
+  }
+}
+
+/**
+ * If there are no loose edges and no loose vertices, all vertices are used by faces.
+ */
+static void try_tag_verts_no_face_none(const Mesh &mesh)
+{
+  if (mesh.runtime->loose_edges_cache.is_cached() || mesh.loose_edges().count > 0) {
+    return;
+  }
+  if (mesh.runtime->loose_verts_cache.is_cached() || mesh.loose_verts().count > 0) {
+    return;
+  }
+  mesh.runtime->verts_no_face_cache.ensure([&](LooseVertCache &r_data) {
+    r_data.is_loose_bits.clear_and_shrink();
+    r_data.count = 0;
+  });
+}
+
 }  // namespace blender::bke
 
 const blender::bke::LooseVertCache &Mesh::loose_verts() const
 {
   using namespace blender::bke;
   this->runtime->loose_verts_cache.ensure([&](LooseVertCache &r_data) {
-    blender::BitVector<> &loose_verts = r_data.is_loose_bits;
-    loose_verts.resize(0);
-    loose_verts.resize(this->totvert, true);
-    r_data.count = reset_bits_and_count(this->edges().cast<int>(), loose_verts);
-    if (r_data.count == 0) {
-      loose_verts.clear_and_shrink();
-    }
+    const Span<int> verts = this->edges().cast<int>();
+    bit_vector_with_reset_bits_or_empty(verts, this->totvert, r_data.is_loose_bits, r_data.count);
   });
-
   return this->runtime->loose_verts_cache.data();
 }
 
@@ -140,15 +164,9 @@ const blender::bke::LooseVertCache &Mesh::verts_no_face() const
 {
   using namespace blender::bke;
   this->runtime->verts_no_face_cache.ensure([&](LooseVertCache &r_data) {
-    blender::BitVector<> &loose_verts = r_data.is_loose_bits;
-    loose_verts.resize(0);
-    loose_verts.resize(this->totvert, true);
-    r_data.count = reset_bits_and_count(this->corner_verts(), loose_verts);
-    if (r_data.count == 0) {
-      loose_verts.clear_and_shrink();
-    }
+    const Span<int> verts = this->corner_verts();
+    bit_vector_with_reset_bits_or_empty(verts, this->totvert, r_data.is_loose_bits, r_data.count);
   });
-
   return this->runtime->verts_no_face_cache.data();
 }
 
@@ -156,15 +174,9 @@ const blender::bke::LooseEdgeCache &Mesh::loose_edges() const
 {
   using namespace blender::bke;
   this->runtime->loose_edges_cache.ensure([&](LooseEdgeCache &r_data) {
-    blender::BitVector<> &loose_edges = r_data.is_loose_bits;
-    loose_edges.resize(0);
-    loose_edges.resize(this->totedge, true);
-    r_data.count = reset_bits_and_count(this->corner_edges(), loose_edges);
-    if (r_data.count == 0) {
-      loose_edges.clear_and_shrink();
-    }
+    const Span<int> edges = this->corner_edges();
+    bit_vector_with_reset_bits_or_empty(edges, this->totedge, r_data.is_loose_bits, r_data.count);
   });
-
   return this->runtime->loose_edges_cache.data();
 }
 
@@ -175,15 +187,7 @@ void Mesh::tag_loose_verts_none() const
     r_data.is_loose_bits.clear_and_shrink();
     r_data.count = 0;
   });
-}
-
-void Mesh::tag_verts_no_face_none() const
-{
-  using namespace blender::bke;
-  this->runtime->verts_no_face_cache.ensure([&](LooseEdgeCache &r_data) {
-    r_data.is_loose_bits.clear_and_shrink();
-    r_data.count = 0;
-  });
+  try_tag_verts_no_face_none(*this);
 }
 
 void Mesh::loose_edges_tag_none() const
@@ -193,6 +197,7 @@ void Mesh::loose_edges_tag_none() const
     r_data.is_loose_bits.clear_and_shrink();
     r_data.count = 0;
   });
+  try_tag_verts_no_face_none(*this);
 }
 
 blender::Span<MLoopTri> Mesh::looptris() const

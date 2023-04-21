@@ -30,33 +30,31 @@
 /** \name Update Loose Geometry
  * \{ */
 
+static void extract_set_bits(const blender::BitSpan bits, blender::MutableSpan<int> indices)
+{
+  int count = 0;
+  for (const int64_t i : bits.index_range()) {
+    if (bits[i]) {
+      indices[count] = int(i);
+      count++;
+    }
+  }
+  BLI_assert(count == indices.size());
+}
+
 static void mesh_render_data_loose_geom_mesh(const MeshRenderData *mr, MeshBufferCache *cache)
 {
   using namespace blender;
   const bke::LooseEdgeCache &loose_edges = mr->me->loose_edges();
   if (loose_edges.count > 0) {
     cache->loose_geom.edges.reinitialize(loose_edges.count);
-
-    int count = 0;
-    for (const int64_t i : loose_edges.is_loose_bits.index_range()) {
-      if (loose_edges.is_loose_bits[i]) {
-        cache->loose_geom.edges[count] = int(i);
-        count++;
-      }
-    }
+    extract_set_bits(loose_edges.is_loose_bits, cache->loose_geom.edges);
   }
 
   const bke::LooseVertCache &loose_verts = mr->me->loose_verts();
   if (loose_verts.count > 0) {
     cache->loose_geom.verts.reinitialize(loose_verts.count);
-
-    int count = 0;
-    for (const int64_t i : loose_edges.is_loose_bits.index_range()) {
-      if (loose_verts.is_loose_bits[i]) {
-        cache->loose_geom.verts[count] = int(i);
-        count++;
-      }
-    }
+    extract_set_bits(loose_verts.is_loose_bits, cache->loose_geom.verts);
   }
 }
 
