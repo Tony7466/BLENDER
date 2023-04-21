@@ -2745,7 +2745,8 @@ void GRAPH_OT_smooth(wmOperatorType *ot)
 static void btw_smooth_graph_keys(bAnimContext *ac,
                                   const float factor,
                                   const float smoothing_factor,
-                                  const int filter_order)
+                                  const int filter_order,
+                                  const int samples_per_frame)
 {
   ListBase anim_data = {NULL, NULL};
   eAnimFilter_Flags filters = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE |
@@ -2753,20 +2754,18 @@ static void btw_smooth_graph_keys(bAnimContext *ac,
                                ANIMFILTER_NODUPLIS);
   ANIM_animdata_filter(ac, &anim_data, filters, ac->data, ac->datatype);
 
-  bAnimListElem *ale;
-  const float frame_rate = (float)(ac->scene->r.frs_sec) / ac->scene->r.frs_sec_base;
-
   ButterworthCoefficients *bw_coeff = ED_anim_allocate_butterworth_coefficients(filter_order);
 
-  /* Ensure that cutoff frequency never exceeds half of sampling_frequency. */
-  const float cutoff_frequency = smoothing_factor * (frame_rate / 2);
-  ED_anim_calculate_butterworth_coefficients(cutoff_frequency, frame_rate, bw_coeff);
+  /* Fix sampling frequency to 1. This is possible since the user just defines a cutoff from 0 to
+   * Nyquist Frequency, instead of dealing with Hz. */
+  const float cutoff_frequency = smoothing_factor * (1.0f / 2);
+  ED_anim_calculate_butterworth_coefficients(cutoff_frequency, 1, bw_coeff);
 
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     FCurve *fcu = (FCurve *)ale->key_data;
     ListBase segments = find_fcurve_segments(fcu);
     LISTBASE_FOREACH (FCurveSegment *, segment, &segments) {
-      butterworth_smooth_fcurve_segment(fcu, segment, factor, bw_coeff);
+      butterworth_smooth_fcurve_segment(fcu, segment, factor, samples_per_frame, bw_coeff);
     }
     BLI_freelistN(&segments);
     ale->update |= ANIM_UPDATE_DEFAULT;
@@ -2787,7 +2786,8 @@ static int btw_exec(bContext *C, wmOperator *op)
   const float factor = RNA_float_get(op->ptr, "factor");
   const float freq_cutoff = RNA_float_get(op->ptr, "frequency_cutoff");
   const int filter_order = RNA_int_get(op->ptr, "filter_order");
-  btw_smooth_graph_keys(&ac, factor, freq_cutoff, filter_order);
+  const int samples_per_frame = RNA_int_get(op->ptr, "samples_per_frame");
+  btw_smooth_graph_keys(&ac, factor, freq_cutoff, filter_order, samples_per_frame);
 
   /* Set notifier that keyframes have changed. */
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
@@ -2838,6 +2838,16 @@ void GRAPH_OT_butterworth_smooth(wmOperatorType *ot)
               32,
               "Filter Order",
               "Higher values produce a harder frequency cutoff",
+              1,
+              16);
+
+  RNA_def_int(ot->srna,
+              "samples_per_frame",
+              1,
+              1,
+              64,
+              "Samples per Frame",
+              "How many samples to calculate per frame, helps with subframe data",
               1,
               16);
 }

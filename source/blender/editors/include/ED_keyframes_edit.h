@@ -446,6 +446,7 @@ void ED_anim_calculate_butterworth_coefficients(float cutoff,
 void butterworth_smooth_fcurve_segment(struct FCurve *fcu,
                                        struct FCurveSegment *segment,
                                        float factor,
+                                       int sample_rate,
                                        struct ButterworthCoefficients *bw_coeff);
 void smooth_fcurve_segment(struct FCurve *fcu,
                            struct FCurveSegment *segment,
@@ -465,10 +466,9 @@ void blend_to_default_fcurve(struct PointerRNA *id_ptr, struct FCurve *fcu, floa
  */
 void smooth_fcurve(struct FCurve *fcu);
 void sample_fcurve(struct FCurve *fcu);
-void sample_fcurve_segment(struct FCurve *fcu,
-                           float start_frame,
-                           float *r_samples,
-                           int sample_count);
+/** \param sample_rate indicates how many samples per frame should be generated. */
+void sample_fcurve_segment(
+    struct FCurve *fcu, float start_frame, int sample_rate, float *r_samples, int sample_count);
 
 /* ----------- */
 

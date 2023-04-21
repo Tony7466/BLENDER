@@ -451,18 +451,21 @@ static double butterworth_filter_value(
 void butterworth_smooth_fcurve_segment(FCurve *fcu,
                                        FCurveSegment *segment,
                                        const float factor,
+                                       const int sample_rate,
                                        ButterworthCoefficients *bw_coeff)
 {
   const int filter_order = bw_coeff->filter_order;
   BezTriple left_bezt = fcu->bezt[segment->start_index];
   BezTriple right_bezt = fcu->bezt[segment->start_index + segment->length - 1];
 
-  const int sample_count = (int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) + 1 +
-                           filter_order * 2;
+  const int sample_count = ((int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) + 1 +
+                            filter_order * 2) *
+                           sample_rate;
   float *samples = MEM_callocN(sizeof(float) * sample_count, "Smooth FCurve Op Samples");
   float *filtered_values = MEM_callocN(sizeof(float) * sample_count,
                                        "Butterworth Filtered FCurve Values");
-  sample_fcurve_segment(fcu, left_bezt.vec[1][0] - filter_order, samples, sample_count);
+  sample_fcurve_segment(
+      fcu, left_bezt.vec[1][0] - filter_order, sample_rate, samples, sample_count);
 
   double *w0 = MEM_callocN(sizeof(double) * filter_order, "w0");
   double *w1 = MEM_callocN(sizeof(double) * filter_order, "w1");
@@ -494,9 +497,8 @@ void butterworth_smooth_fcurve_segment(FCurve *fcu,
   }
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
-    const int filter_index = (int)(fcu->bezt[i].vec[1][0] -
-                                   fcu->bezt[segment->start_index].vec[1][0]) +
-                             filter_order;
+    const float x_delta = fcu->bezt[i].vec[1][0] - left_bezt.vec[1][0] + filter_order;
+    const int filter_index = (int)(x_delta * sample_rate);
     const float key_y_value = interpf(
         filtered_values[filter_index], samples[filter_index], factor);
     move_key(&fcu->bezt[i], key_y_value);
@@ -860,11 +862,13 @@ typedef struct TempFrameValCache {
 
 void sample_fcurve_segment(FCurve *fcu,
                            const float start_frame,
+                           const int sample_rate,
                            float *samples,
                            const int sample_count)
 {
   for (int i = 0; i < sample_count; i++) {
-    samples[i] = evaluate_fcurve(fcu, start_frame + i);
+    const float evaluation_time = start_frame + ((float)i / sample_rate);
+    samples[i] = evaluate_fcurve(fcu, evaluation_time);
   }
 }
 

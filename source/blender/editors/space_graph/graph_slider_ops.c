@@ -1109,7 +1109,7 @@ static void gaussian_smooth_allocate_operator_data(tGraphSliderOp *gso,
       const int sample_count = (int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) +
                                (filter_width * 2 + 1);
       float *samples = MEM_callocN(sizeof(float) * sample_count, "Smooth FCurve Op Samples");
-      sample_fcurve_segment(fcu, left_bezt.vec[1][0] - filter_width, samples, sample_count);
+      sample_fcurve_segment(fcu, left_bezt.vec[1][0] - filter_width, 1, samples, sample_count);
       segment_link->samples = samples;
       BLI_addtail(&segment_links, segment_link);
     }
@@ -1232,7 +1232,7 @@ static void gaussian_smooth_graph_keys(bAnimContext *ac,
       const int sample_count = (int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) +
                                (filter_width * 2 + 1);
       float *samples = MEM_callocN(sizeof(float) * sample_count, "Smooth FCurve Op Samples");
-      sample_fcurve_segment(fcu, left_bezt.vec[1][0] - filter_width, samples, sample_count);
+      sample_fcurve_segment(fcu, left_bezt.vec[1][0] - filter_width, 1, samples, sample_count);
       smooth_fcurve_segment(fcu, segment, samples, factor, filter_width, kernel);
       MEM_freeN(samples);
     }
