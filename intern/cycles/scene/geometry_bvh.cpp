@@ -85,7 +85,8 @@ void GeometryManager::device_update_bvh_postprocess(Device *device,
 
   if (has_bvh2_layout) {
     BVH2 *bvh2 = static_cast<BVH2 *>(scene->bvh);
-    dscene->data.bvh.root = bvh2->pack.root_index;
+    PackedBVH pack = std::move(bvh2->pack);
+    dscene->data.bvh.root = pack.root_index;
   }
   else {
     dscene->data.bvh.root = -1;
@@ -274,29 +275,6 @@ size_t GeometryManager::create_object_bvhs(Device *device,
   }
 
   return num_bvh;
-}
-
-/*
- * Prepares scene BVH for building or refitting. Then builds or refits the scene
- * BVH for all the devices.
- */
-void GeometryManager::update_scene_bvhs(Device *device,
-                                      DeviceScene *dscene,
-                                      Scene *scene,
-                                      Progress &progress)
-{
-  scoped_callback_timer timer([scene](double time) {
-    if (scene->update_stats) {
-      scene->update_stats->geometry.times.add_entry({"device_update (build scene BVH)", time});
-    }
-  });
-
-  bool can_refit = device_update_bvh_preprocess(device, dscene, scene, progress);
-  foreach (auto sub_dscene, scene->dscenes) {
-    Device *sub_device = sub_dscene->tri_verts.device;
-    device_update_bvh(sub_device, sub_dscene, scene, can_refit, 1, 1, progress);
-  }
-  device_update_bvh_postprocess(device, dscene, scene, progress);
 }
 
 CCL_NAMESPACE_END

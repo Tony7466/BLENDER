@@ -258,7 +258,6 @@ class GeometryManager {
                             Scene *scene,
                             const BVHLayout bvh_layout,
                             bool &need_update_scene_bvh);
-  void update_scene_bvhs(Device *device, DeviceScene *dscene, Scene *scene, Progress &progress);
   void clear_shader_update_tags(Scene *scene);
   void clear_geometry_update_and_modified_tags(Scene *scene);
   void device_data_xfer_and_bvh_update(int idx,

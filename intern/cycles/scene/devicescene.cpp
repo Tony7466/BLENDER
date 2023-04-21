@@ -5,6 +5,7 @@
 
 #include "scene/devicescene.h"
 #include "scene/scene.h"
+
 #include "device/device.h"
 #include "device/memory.h"
 
@@ -281,7 +282,7 @@ void DeviceScene::device_update_bvh2(Device *device,
 {
   if (bvh->params.bvh_layout == BVH_LAYOUT_BVH2) {
     BVH2 *bvh2 = static_cast<BVH2 *>(bvh);
-
+    data.bvh.root = bvh2->pack.root_index;
     /* When using BVH2, we always have to copy/update the data as its layout is dependent on
      * the BVH's leaf nodes which may be different when the objects or vertices move. */
 

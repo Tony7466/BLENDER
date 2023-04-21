@@ -4,15 +4,18 @@
 #ifndef __DEVICESCENE_H__
 #define __DEVICESCENE_H__
 
-#include "device/device.h"
 #include "device/memory.h"
 
 #include "util/types.h"
 #include "util/vector.h"
 
+#include "kernel/types.h"
+
 CCL_NAMESPACE_BEGIN
 
 class BVH;
+class Device;
+class Progress;
 struct GeometrySizes;
 struct AttributeSizes;
 

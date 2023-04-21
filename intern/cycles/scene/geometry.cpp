@@ -779,8 +779,6 @@ void GeometryManager::update_object_bounds(Scene *scene)
   }
 }
 
-
-
 /*
  * Tesselates any modified object that requires it.
  */
