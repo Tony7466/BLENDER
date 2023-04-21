@@ -2819,7 +2819,7 @@ void GRAPH_OT_butterworth_smooth(wmOperatorType *ot)
                        "Factor",
                        "How much to blend to the default value",
                        0.0f,
-                       2.0f);
+                       1.0f);
 
   RNA_def_float_factor(ot->srna,
                        "frequency_cutoff",
