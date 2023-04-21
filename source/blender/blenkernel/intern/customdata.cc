@@ -5271,7 +5271,7 @@ void CustomData_blend_read(BlendDataReader *reader, CustomData *data, const int 
     layer->sharing_info = nullptr;
 
     if (CustomData_verify_versions(data, i)) {
-      layer->sharing_info = BLO_read_shared(reader, layer->data, [&]() {
+      layer->sharing_info = BLO_read_shared(reader, &layer->data, [&]() {
         BLO_read_data_address(reader, &layer->data);
         if (CustomData_layer_ensure_data_exists(layer, count)) {
           /* Under normal operations, this shouldn't happen, but...

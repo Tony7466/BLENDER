@@ -1623,7 +1623,7 @@ void CurvesGeometry::blend_read(BlendDataReader &reader)
 
   if (this->curve_offsets) {
     this->runtime->curve_offsets_sharing_info = BLO_read_shared(
-        &reader, this->curve_offsets, [&]() {
+        &reader, &this->curve_offsets, [&]() {
           BLO_read_int32_array(&reader, this->curve_num + 1, &this->curve_offsets);
           return implicit_sharing::info_for_mem_free(this->curve_offsets);
         });
