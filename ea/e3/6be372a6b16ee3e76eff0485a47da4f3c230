@@ -14,3 +14,4 @@ Referenced by issue #96895, GPU Subdivision destroys vertex color in Eevee
 Referenced by issue #96209, Smear tool painting vertex colors  corrupts color info: part 2
 Referenced by issue #94428, Geometry Nodes - Vertex Color Issues
 Referenced by issue #104803, Regression: mesh.vertex_colors.active doesn't work since 3.2
+Referenced by issue #107194, Regression: Python: wrong mesh.color_attributes.active
