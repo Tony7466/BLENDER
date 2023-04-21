@@ -6,6 +6,8 @@
 
 #include "BKE_global.h"
 
+#include "CLG_log.h"
+
 #include "gpu_backend.hh"
 #include "mtl_backend.hh"
 #include "mtl_batch.hh"
@@ -31,6 +33,10 @@ namespace blender::gpu {
 /* Global per-thread AutoReleasePool. */
 thread_local NSAutoreleasePool *g_autoreleasepool = nil;
 thread_local int g_autoreleasepool_depth = 0;
+
+/* Logging. */
+static CLG_LogRef LOG_MTL_BACKEND = {"gpu.metal"};
+#define LOG (&LOG_MTL_BACKEND)
 
 /* -------------------------------------------------------------------- */
 /** \name Metal Backend
@@ -189,7 +195,7 @@ void MTLBackend::platform_init(MTLContext *ctx)
   const char *vendor = [gpu_name UTF8String];
   const char *renderer = "Metal API";
   const char *version = "1.2";
-  printf("METAL API - DETECTED GPU: %s\n", vendor);
+  CLOG_INFO(LOG, 2, "METAL API - DETECTED GPU: %s\n", vendor);
 
   /* macOS is the only supported platform, but check to ensure we are not building with Metal
    * enablement on another platform. */
@@ -230,10 +236,11 @@ void MTLBackend::platform_init(MTLContext *ctx)
     driver = GPU_DRIVER_SOFTWARE;
   }
   else {
-    printf("Warning: Could not find a matching GPU name. Things may not behave as expected.\n");
-    printf("Detected configuration:\n");
-    printf("Vendor: %s\n", vendor);
-    printf("Renderer: %s\n", renderer);
+    CLOG_WARN(LOG,
+              "Warning: Could not find a matching GPU name. Things may not behave as expected.\n");
+    CLOG_WARN(LOG, "Detected configuration:\n");
+    CLOG_WARN(LOG, "Vendor: %s\n", vendor);
+    CLOG_WARN(LOG, "Renderer: %s\n", renderer);
   }
 
   GPG.init(device, os, driver, support_level, GPU_BACKEND_METAL, vendor, renderer, version);
@@ -298,7 +305,9 @@ bool MTLBackend::metal_is_supported()
   bool supported_os_version = version.majorVersion >= 11 ||
                               (version.majorVersion == 10 ? version.minorVersion >= 15 : false);
   if (!supported_os_version) {
-    printf(
+    CLOG_INFO(
+        LOG,
+        1,
         "OS Version too low to run minimum required metal version. Required at least 10.15, got "
         "%ld.%ld \n",
         (long)version.majorVersion,
@@ -322,22 +331,24 @@ bool MTLBackend::metal_is_supported()
       }
     }
 
-    /* TOOD(Metal): Temporarily disable Metal backend on AMD GPUs until known issues (#106551) are
+    /* Note(Metal): Temporarily disable Metal backend on AMD GPUs until known issues (#106551) are
      * resolved. */
     const char *device_name = [[device name] UTF8String];
     if ((strstr(device_name, "AMD") != nullptr)) {
-      printf("[Metal] Metal backend temporarily disabled by default on AMD configurations.\n");
+      CLOG_INFO(LOG,
+                1,
+                "[Metal] Metal backend temporarily disabled by default on AMD configurations.\n");
       return false;
     }
 
-    /* TODO(Metal): Only support Metal on Intel configurations running macOS 13.0 and onwards until
+    /* Note(Metal): Only support Metal on Intel configurations running macOS 13.0 and onwards until
      * known issues (#106905) are resolved. */
     if ((strstr(device_name, "Intel") || strstr(device_name, "INTEL"))) {
       if (@available(macOS 13.00, *)) {
         /* Passthrough - @available checks cannot be negated. */
       }
       else {
-        printf("[Metal] Metal backend requires macOS 13.0+ on Intel platforms.\n");
+        CLOG_INFO(LOG, 1, "[Metal] Metal backend requires macOS 13.0+ on Intel platforms.\n");
         return false;
       }
     }
@@ -354,18 +365,20 @@ bool MTLBackend::metal_is_supported()
                   supported_os_version && supported_metal_version;
 
     if (!supports_argument_buffers_tier2) {
-      printf("[Metal] Device does not support argument buffers tier 2\n");
+      CLOG_INFO(LOG, 1, "[Metal] Device does not support argument buffers tier 2\n");
     }
     if (!supports_barycentrics) {
-      printf("[Metal] Device does not support barycentrics coordinates\n");
+      CLOG_INFO(LOG, 1, "[Metal] Device does not support barycentrics coordinates\n");
     }
     if (!supported_metal_version) {
-      printf("[Metal] Device does not support metal 2.2 or higher\n");
+      CLOG_INFO(LOG, 1, "[Metal] Device does not support metal 2.2 or higher\n");
     }
 
     if (result) {
-      printf("Device with name %s supports metal minimum requirements\n",
-             [[device name] UTF8String]);
+      CLOG_INFO(LOG,
+                2,
+                "Device with name %s supports metal minimum requirements\n",
+                [[device name] UTF8String]);
     }
 
     return result;
