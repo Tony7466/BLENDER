@@ -306,11 +306,11 @@ typedef struct Mesh {
   /**
    * Cached information about vertices that aren't used by any edges.
    */
-  const blender::bke::LooseVertCache &loose_verts_edge() const;
+  const blender::bke::LooseVertCache &loose_verts_no_edge() const;
   /**
    * Cached information about vertices that aren't used by faces (but may be used by loose edges).
    */
-  const blender::bke::LooseVertCache &loose_verts_face() const;
+  const blender::bke::LooseVertCache &loose_verts_no_face() const;
 
   /**
    * Explicitly set the cached number of loose edges to zero. This can improve performance
@@ -320,9 +320,9 @@ typedef struct Mesh {
    * cache dirty. If the mesh was changed first, the relevant dirty tags should be called first.
    */
   void loose_edges_tag_none() const;
-  void loose_verts_edge_tag_none() const;
-  void loose_verts_face_tag_none() const;
-  void loose_verts_tag_none() const;
+  void tag_loose_verts_no_edge_none() const;
+  void tag_loose_verts_no_face_none() const;
+  void tag_loose_verts_none() const;
 
   /**
    * Normal direction of polygons, defined by positions and the winding direction of face corners.

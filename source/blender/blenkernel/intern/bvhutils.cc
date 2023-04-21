@@ -1213,7 +1213,7 @@ BVHTree *BKE_bvhtree_from_mesh_get(struct BVHTreeFromMesh *data,
 
   switch (bvh_cache_type) {
     case BVHTREE_FROM_LOOSEVERTS: {
-      const blender::bke::LooseVertCache &loose_verts = mesh->loose_verts_edge();
+      const blender::bke::LooseVertCache &loose_verts = mesh->loose_verts_no_edge();
       data->tree = bvhtree_from_mesh_verts_create_tree(0.0f,
                                                        tree_type,
                                                        6,

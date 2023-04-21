@@ -951,13 +951,13 @@ static AllMeshesInfo preprocess_meshes(const GeometrySet &geometry_set,
       });
   info.no_loose_verts_edge_hint = std::all_of(
       info.order.begin(), info.order.end(), [](const Mesh *mesh) {
-        return mesh->runtime->loose_verts_edge_cache.is_cached() &&
-               mesh->loose_verts_edge().count == 0;
+        return mesh->runtime->loose_verts_no_edge_cache.is_cached() &&
+               mesh->loose_verts_no_edge().count == 0;
       });
   info.no_loose_verts_face_hint = std::all_of(
       info.order.begin(), info.order.end(), [](const Mesh *mesh) {
-        return mesh->runtime->loose_verts_face_cache.is_cached() &&
-               mesh->loose_verts_face().count == 0;
+        return mesh->runtime->loose_verts_no_face_cache.is_cached() &&
+               mesh->loose_verts_no_face().count == 0;
       });
 
   return info;
@@ -1168,10 +1168,10 @@ static void execute_realize_mesh_tasks(const RealizeInstancesOptions &options,
     dst_mesh->loose_edges_tag_none();
   }
   if (all_meshes_info.no_loose_verts_edge_hint) {
-    dst_mesh->loose_verts_edge_tag_none();
+    dst_mesh->tag_loose_verts_no_edge_none();
   }
   if (all_meshes_info.no_loose_verts_face_hint) {
-    dst_mesh->loose_verts_face_tag_none();
+    dst_mesh->tag_loose_verts_no_face_none();
   }
 }
 

@@ -154,7 +154,7 @@ static Mesh *create_circle_mesh(const float radius,
     std::iota(corner_verts.begin(), corner_verts.end(), 0);
     std::iota(corner_edges.begin(), corner_edges.end(), 0);
 
-    mesh->loose_verts_tag_none();
+    mesh->tag_loose_verts_none();
   }
   else if (fill_type == GEO_NODE_MESH_CIRCLE_FILL_TRIANGLE_FAN) {
     for (const int i : poly_offsets.index_range()) {
@@ -171,7 +171,7 @@ static Mesh *create_circle_mesh(const float radius,
       corner_edges[3 * i + 2] = verts_num + i;
     }
 
-    mesh->loose_verts_edge_tag_none();
+    mesh->tag_loose_verts_no_edge_none();
   }
 
   mesh->bounds_set_eager(calculate_bounds_circle(radius, verts_num));
