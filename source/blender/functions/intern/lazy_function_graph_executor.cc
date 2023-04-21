@@ -964,7 +964,7 @@ class Executor {
     const int input_index = input_socket.index();
     InputState &input_state = node_state.inputs[input_index];
 
-    // BLI_assert(input_state.usage != ValueUsage::Used);
+    BLI_assert(input_state.usage != ValueUsage::Used);
     if (input_state.usage == ValueUsage::Unused) {
       return;
     }
