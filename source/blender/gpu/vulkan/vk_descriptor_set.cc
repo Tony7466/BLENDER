@@ -143,6 +143,8 @@ void VKDescriptorSetTracker::update(VKContext &context)
     if (!binding.is_image()) {
       continue;
     }
+    /* When updating the descriptor sets the layout of the texture should already be updated. */
+    binding.texture->layout_ensure(context, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     VkDescriptorImageInfo image_info = {};
     image_info.sampler = binding.vk_sampler;
     image_info.imageView = binding.texture->vk_image_view_handle();
@@ -168,7 +170,7 @@ void VKDescriptorSetTracker::update(VKContext &context)
   vkUpdateDescriptorSets(
       vk_device, descriptor_writes.size(), descriptor_writes.data(), 0, nullptr);
 
-  bindings_.clear();
+  // bindings_.clear();
 }
 
 std::unique_ptr<VKDescriptorSet> VKDescriptorSetTracker::create_resource(VKContext &context)

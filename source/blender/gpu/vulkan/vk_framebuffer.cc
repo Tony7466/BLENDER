@@ -342,7 +342,7 @@ void VKFrameBuffer::render_pass_create()
       attachment_description.flags = 0;
       attachment_description.format = to_vk_format(texture.format_get());
       attachment_description.samples = VK_SAMPLE_COUNT_1_BIT;
-      attachment_description.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+      attachment_description.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
       attachment_description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       attachment_description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
       attachment_description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;

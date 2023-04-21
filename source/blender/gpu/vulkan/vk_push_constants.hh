@@ -215,10 +215,10 @@ class VKPushConstants : VKResourceTracker<VKUniformBuffer> {
     const bool is_tightly_std140_packed = (comp_len % 4) == 0;
     if (layout_->storage_type_get() == StorageType::PUSH_CONSTANTS || array_size == 0 ||
         push_constant_layout->array_size == 0 || is_tightly_std140_packed) {
-      BLI_assert_msg(push_constant_layout->offset + comp_len * array_size * sizeof(T) <=
-                         layout_->size_in_bytes(),
+      const size_t copy_size_in_bytes = comp_len * min_ii(array_size, 1) * sizeof(T);
+      BLI_assert_msg(push_constant_layout->offset + copy_size_in_bytes <= layout_->size_in_bytes(),
                      "Tried to write outside the push constant allocated memory.");
-      memcpy(dst, input_data, comp_len * array_size * sizeof(T));
+      memcpy(dst, input_data, copy_size_in_bytes);
       is_dirty_ = true;
       return;
     }

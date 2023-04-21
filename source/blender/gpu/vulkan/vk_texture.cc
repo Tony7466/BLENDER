@@ -291,8 +291,6 @@ void VKTexture::bind(int unit, VKSampler &sampler)
     allocate();
   }
   VKContext &context = *VKContext::get();
-  layout_ensure(context, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
   VKShader *shader = static_cast<VKShader *>(context.shader);
   const VKShaderInterface &shader_interface = shader->interface_get();
   const VKDescriptorSet::Location location = shader_interface.descriptor_set_location(
@@ -307,8 +305,6 @@ void VKTexture::image_bind(int binding)
     allocate();
   }
   VKContext &context = *VKContext::get();
-  layout_ensure(context, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
   VKShader *shader = static_cast<VKShader *>(context.shader);
   const VKShaderInterface &shader_interface = shader->interface_get();
   const VKDescriptorSet::Location location = shader_interface.descriptor_set_location(
