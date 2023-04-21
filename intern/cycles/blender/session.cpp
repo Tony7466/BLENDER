@@ -125,7 +125,6 @@ void BlenderSession::create_session()
   session = new Session(session_params, scene_params);
   session->progress.set_update_callback(function_bind(&BlenderSession::tag_redraw, this));
   session->progress.set_cancel_callback(function_bind(&BlenderSession::test_cancel, this));
-  session->progress.set_updates(!headless);
   session->set_pause(session_pause);
 
   /* create scene */
