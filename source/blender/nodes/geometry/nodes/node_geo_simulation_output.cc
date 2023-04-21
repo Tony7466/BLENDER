@@ -323,17 +323,6 @@ bool NOD_geometry_simulation_output_item_socket_type_supported(const eNodeSocket
   return ELEM(socket_type, SOCK_GEOMETRY);
 }
 
-bNode *NOD_geometry_simulation_output_find_node_by_data(bNodeTree *ntree,
-                                                        const NodeGeometrySimulationOutput *sim)
-{
-  for (bNode *node : ntree->nodes_by_type("GeometryNodeSimulationOutput")) {
-    if (node->storage == sim) {
-      return node;
-    }
-  }
-  return nullptr;
-}
-
 bNode *NOD_geometry_simulation_output_find_node_by_item(bNodeTree *ntree,
                                                         const NodeSimulationItem *item)
 {

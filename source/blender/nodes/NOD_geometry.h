@@ -43,9 +43,6 @@ bool NOD_geometry_simulation_output_item_set_unique_name(struct NodeGeometrySimu
                                                          const char *name,
                                                          const char *defname);
 
-/** Find the node owning this simulation output data. */
-bNode *NOD_geometry_simulation_output_find_node_by_data(
-    struct bNodeTree *ntree, const struct NodeGeometrySimulationOutput *sim);
 /** Find the node owning this simulation state item. */
 bNode *NOD_geometry_simulation_output_find_node_by_item(struct bNodeTree *ntree,
                                                         const struct NodeSimulationItem *item);
