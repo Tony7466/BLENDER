@@ -21,8 +21,6 @@
 
 namespace blender::nodes::node_geo_delete_geometry_cc {
 
-using blender::bke::CustomDataAttributes;
-
 template<typename T>
 static void copy_data_based_on_map(const Span<T> src,
                                    const Span<int> index_map,
@@ -915,8 +913,8 @@ static void do_mesh_separation(GeometrySet &geometry_set,
       mesh_out = BKE_mesh_new_nomain_from_template(&mesh_in,
                                                    selected_verts_num,
                                                    selected_edges_num,
-                                                   selected_loops_num,
-                                                   selected_polys_num);
+                                                   selected_polys_num,
+                                                   selected_loops_num);
 
       /* Copy the selected parts of the mesh over to the new mesh. */
       copy_masked_edges_to_new_mesh(mesh_in, *mesh_out, vertex_map, edge_map);
@@ -988,7 +986,7 @@ static void do_mesh_separation(GeometrySet &geometry_set,
           break;
       }
       mesh_out = BKE_mesh_new_nomain_from_template(
-          &mesh_in, mesh_in.totvert, selected_edges_num, selected_loops_num, selected_polys_num);
+          &mesh_in, mesh_in.totvert, selected_edges_num, selected_polys_num, selected_loops_num);
 
       /* Copy the selected parts of the mesh over to the new mesh. */
       copy_masked_edges_to_new_mesh(mesh_in, *mesh_out, edge_map);
@@ -1051,7 +1049,7 @@ static void do_mesh_separation(GeometrySet &geometry_set,
           break;
       }
       mesh_out = BKE_mesh_new_nomain_from_template(
-          &mesh_in, mesh_in.totvert, mesh_in.totedge, selected_loops_num, selected_polys_num);
+          &mesh_in, mesh_in.totvert, mesh_in.totedge, selected_polys_num, selected_loops_num);
 
       /* Copy the selected parts of the mesh over to the new mesh. */
       mesh_out->edges_for_write().copy_from(mesh_in.edges());
