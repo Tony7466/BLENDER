@@ -106,54 +106,50 @@ MeshRuntime::~MeshRuntime()
   }
 }
 
-}  // namespace blender::bke
-
-const blender::bke::LooseVertCache &Mesh::loose_verts_no_edge() const
+static int reset_bits_and_count(const Span<int> indices_to_reset, MutableBitSpan bits)
 {
-  using namespace blender::bke;
-  this->runtime->loose_verts_no_edge_cache.ensure([&](LooseVertCache &r_data) {
-    blender::BitVector<> &loose_verts = r_data.is_loose_bits;
-    loose_verts.resize(0);
-    loose_verts.resize(this->totvert, true);
-
-    int count = this->totvert;
-    for (const int vert : this->edges().cast<int>()) {
-      if (loose_verts[vert]) {
-        loose_verts[vert].reset();
-        count--;
-      }
+  int count = bits.size();
+  for (const int vert : indices_to_reset) {
+    if (bits[vert]) {
+      bits[vert].reset();
+      count--;
     }
-    if (count == 0) {
-      loose_verts.clear_and_shrink();
-    }
-    r_data.count = count;
-  });
-
-  return this->runtime->loose_verts_no_edge_cache.data();
+  }
+  return count;
 }
 
-const blender::bke::LooseVertCache &Mesh::loose_verts_no_face() const
+}  // namespace blender::bke
+
+const blender::bke::LooseVertCache &Mesh::loose_verts() const
 {
   using namespace blender::bke;
-  this->runtime->loose_verts_no_face_cache.ensure([&](LooseVertCache &r_data) {
+  this->runtime->loose_verts_cache.ensure([&](LooseVertCache &r_data) {
     blender::BitVector<> &loose_verts = r_data.is_loose_bits;
     loose_verts.resize(0);
     loose_verts.resize(this->totvert, true);
-
-    int count = this->totvert;
-    for (const int vert : this->corner_verts()) {
-      if (loose_verts[vert]) {
-        loose_verts[vert].reset();
-        count--;
-      }
-    }
-    if (count == 0) {
+    r_data.count = reset_bits_and_count(this->edges().cast<int>(), loose_verts);
+    if (r_data.count == 0) {
       loose_verts.clear_and_shrink();
     }
-    r_data.count = count;
   });
 
-  return this->runtime->loose_verts_no_face_cache.data();
+  return this->runtime->loose_verts_cache.data();
+}
+
+const blender::bke::LooseVertCache &Mesh::verts_no_face() const
+{
+  using namespace blender::bke;
+  this->runtime->verts_no_face_cache.ensure([&](LooseVertCache &r_data) {
+    blender::BitVector<> &loose_verts = r_data.is_loose_bits;
+    loose_verts.resize(0);
+    loose_verts.resize(this->totvert, true);
+    r_data.count = reset_bits_and_count(this->corner_verts(), loose_verts);
+    if (r_data.count == 0) {
+      loose_verts.clear_and_shrink();
+    }
+  });
+
+  return this->runtime->verts_no_face_cache.data();
 }
 
 const blender::bke::LooseEdgeCache &Mesh::loose_edges() const
@@ -163,43 +159,31 @@ const blender::bke::LooseEdgeCache &Mesh::loose_edges() const
     blender::BitVector<> &loose_edges = r_data.is_loose_bits;
     loose_edges.resize(0);
     loose_edges.resize(this->totedge, true);
-
-    int count = this->totedge;
-    for (const int edge : this->corner_edges()) {
-      if (loose_edges[edge]) {
-        loose_edges[edge].reset();
-        count--;
-      }
-    }
-    if (count == 0) {
+    r_data.count = reset_bits_and_count(this->corner_edges(), loose_edges);
+    if (r_data.count == 0) {
       loose_edges.clear_and_shrink();
     }
-    r_data.count = count;
   });
 
   return this->runtime->loose_edges_cache.data();
 }
 
-void Mesh::tag_loose_verts_no_edge_none() const
-{
-  using namespace blender::bke;
-  this->runtime->loose_verts_no_edge_cache.ensure([&](LooseVertCache &r_data) {
-    r_data.is_loose_bits.clear_and_shrink();
-    r_data.count = 0;
-  });
-}
-void Mesh::tag_loose_verts_no_face_none() const
-{
-  using namespace blender::bke;
-  this->runtime->loose_verts_no_face_cache.ensure([&](LooseVertCache &r_data) {
-    r_data.is_loose_bits.clear_and_shrink();
-    r_data.count = 0;
-  });
-}
 void Mesh::tag_loose_verts_none() const
 {
-  this->tag_loose_verts_no_edge_none();
-  this->tag_loose_verts_no_face_none();
+  using namespace blender::bke;
+  this->runtime->loose_verts_cache.ensure([&](LooseVertCache &r_data) {
+    r_data.is_loose_bits.clear_and_shrink();
+    r_data.count = 0;
+  });
+}
+
+void Mesh::tag_verts_no_face_none() const
+{
+  using namespace blender::bke;
+  this->runtime->verts_no_face_cache.ensure([&](LooseEdgeCache &r_data) {
+    r_data.is_loose_bits.clear_and_shrink();
+    r_data.count = 0;
+  });
 }
 
 void Mesh::loose_edges_tag_none() const
@@ -289,8 +273,8 @@ void BKE_mesh_runtime_clear_geometry(Mesh *mesh)
   free_subdiv_ccg(*mesh->runtime);
   mesh->runtime->bounds_cache.tag_dirty();
   mesh->runtime->loose_edges_cache.tag_dirty();
-  mesh->runtime->loose_verts_no_edge_cache.tag_dirty();
-  mesh->runtime->loose_verts_no_face_cache.tag_dirty();
+  mesh->runtime->loose_verts_cache.tag_dirty();
+  mesh->runtime->verts_no_face_cache.tag_dirty();
   mesh->runtime->looptris_cache.tag_dirty();
   mesh->runtime->subsurf_face_dot_tags.clear_and_shrink();
   mesh->runtime->subsurf_optimal_display_edges.clear_and_shrink();
@@ -309,8 +293,8 @@ void BKE_mesh_tag_edges_split(struct Mesh *mesh)
   reset_normals(*mesh->runtime);
   free_subdiv_ccg(*mesh->runtime);
   mesh->runtime->loose_edges_cache.tag_dirty();
-  mesh->runtime->loose_verts_no_edge_cache.tag_dirty();
-  mesh->runtime->loose_verts_no_face_cache.tag_dirty();
+  mesh->runtime->loose_verts_cache.tag_dirty();
+  mesh->runtime->verts_no_face_cache.tag_dirty();
   mesh->runtime->subsurf_face_dot_tags.clear_and_shrink();
   mesh->runtime->subsurf_optimal_display_edges.clear_and_shrink();
   if (mesh->runtime->shrinkwrap_data) {

@@ -200,7 +200,7 @@ void adapt_mesh_domain_corner_to_point_impl(const Mesh &mesh,
   }
 
   /* Deselect loose vertices without corners that are still selected from the 'true' default. */
-  const bke::LooseVertCache &loose_verts = mesh.loose_verts_no_face();
+  const bke::LooseVertCache &loose_verts = mesh.verts_no_face();
   if (loose_verts.count > 0) {
     const BitSpan loose = loose_verts.is_loose_bits;
     threading::parallel_for(loose.index_range(), 2048, [loose, r_values](const IndexRange range) {
@@ -753,12 +753,12 @@ static bool can_simple_adapt_for_single(const Mesh &mesh,
       return true;
     case ATTR_DOMAIN_EDGE:
       if (to_domain == ATTR_DOMAIN_POINT) {
-        return mesh.loose_verts_no_edge().count == 0;
+        return mesh.loose_verts().count == 0;
       }
       return true;
     case ATTR_DOMAIN_FACE:
       if (to_domain == ATTR_DOMAIN_POINT) {
-        return mesh.loose_verts_no_face().count == 0;
+        return mesh.verts_no_face().count == 0;
       }
       if (to_domain == ATTR_DOMAIN_EDGE) {
         return mesh.loose_edges().count == 0;
@@ -766,7 +766,7 @@ static bool can_simple_adapt_for_single(const Mesh &mesh,
       return true;
     case ATTR_DOMAIN_CORNER:
       if (to_domain == ATTR_DOMAIN_POINT) {
-        return mesh.loose_verts_no_face().count == 0;
+        return mesh.verts_no_face().count == 0;
       }
       if (to_domain == ATTR_DOMAIN_EDGE) {
         return mesh.loose_edges().count == 0;
