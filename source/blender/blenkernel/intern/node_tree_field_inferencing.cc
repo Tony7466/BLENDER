@@ -326,10 +326,10 @@ static bool propagate_special_data_requirements(
 
   /* Sync field state between simulation nodes and schedule another pass if necessary. */
   if (node.type == GEO_NODE_SIMULATION_INPUT) {
-    const NodeGeometrySimulationInput &data = *static_cast<NodeGeometrySimulationInput *>(
+    const NodeGeometrySimulationInput &data = *static_cast<const NodeGeometrySimulationInput *>(
         node.storage);
     if (const bNode *output_node = tree.node_by_id(data.output_node_id)) {
-      eFieldStateSyncResult sync_result = simulation_nodes_field_state_sync(
+      const eFieldStateSyncResult sync_result = simulation_nodes_field_state_sync(
           node, *output_node, field_state_by_socket_id);
       if ((bool)(sync_result & eFieldStateSyncResult::CHANGED_B)) {
         need_update = true;
@@ -338,10 +338,10 @@ static bool propagate_special_data_requirements(
   }
   else if (node.type == GEO_NODE_SIMULATION_OUTPUT) {
     for (const bNode *input_node : tree.nodes_by_type("GeometryNodeSimulationInput")) {
-      const NodeGeometrySimulationInput &data = *static_cast<NodeGeometrySimulationInput *>(
+      const NodeGeometrySimulationInput &data = *static_cast<const NodeGeometrySimulationInput *>(
           input_node->storage);
       if (node.identifier == data.output_node_id) {
-        eFieldStateSyncResult sync_result = simulation_nodes_field_state_sync(
+        const eFieldStateSyncResult sync_result = simulation_nodes_field_state_sync(
             *input_node, node, field_state_by_socket_id);
         if ((bool)(sync_result & eFieldStateSyncResult::CHANGED_A)) {
           need_update = true;

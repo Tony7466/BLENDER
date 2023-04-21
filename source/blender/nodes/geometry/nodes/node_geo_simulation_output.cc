@@ -32,8 +32,7 @@ bool is_simulation_item_type_supported(const eNodeSocketDatatype socket_type)
 static std::unique_ptr<SocketDeclaration> socket_declaration_for_simulation_item(
     const NodeSimulationItem &item, const eNodeSocketInOut in_out, const int index)
 {
-  BLI_assert(
-      is_simulation_item_type_supported(static_cast<eNodeSocketDatatype>(item.socket_type)));
+  BLI_assert(is_simulation_item_type_supported(eNodeSocketDatatype(item.socket_type)));
 
   std::unique_ptr<SocketDeclaration> decl;
   switch (eNodeSocketDatatype(item.socket_type)) {
@@ -108,7 +107,7 @@ static bool simulation_items_unique_name_check(void *arg, const char *name)
 NodeSimulationItem *simulation_item_add_from_socket(NodeGeometrySimulationOutput &storage,
                                                     const bNodeSocket &socket)
 {
-  if (!is_simulation_item_type_supported(static_cast<eNodeSocketDatatype>(socket.type))) {
+  if (!is_simulation_item_type_supported(eNodeSocketDatatype(socket.type))) {
     return nullptr;
   }
 
@@ -148,7 +147,7 @@ const CPPType &get_simulation_item_cpp_type(const eNodeSocketDatatype socket_typ
 
 const CPPType &get_simulation_item_cpp_type(const NodeSimulationItem &item)
 {
-  return get_simulation_item_cpp_type(static_cast<eNodeSocketDatatype>(item.socket_type));
+  return get_simulation_item_cpp_type(eNodeSocketDatatype(item.socket_type));
 }
 
 static std::unique_ptr<bke::sim::SimulationStateItem> make_simulation_state_item(
@@ -265,8 +264,8 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
         continue;
       }
 
-      new_zone_state.items[i] = make_simulation_state_item(
-          static_cast<eNodeSocketDatatype>(item.socket_type), input_data);
+      new_zone_state.items[i] = make_simulation_state_item(eNodeSocketDatatype(item.socket_type),
+                                                           input_data);
     }
 
     if (all_available) {
@@ -286,8 +285,7 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
       if (state_item == nullptr) {
         continue;
       }
-      copy_simulation_state_output(
-          params, i, static_cast<eNodeSocketDatatype>(item.socket_type), *state_item);
+      copy_simulation_state_output(params, i, eNodeSocketDatatype(item.socket_type), *state_item);
     }
     params.set_default_remaining_outputs();
   }
