@@ -2,7 +2,22 @@
  * Copyright 2011-2022 Blender Foundation */
 
 #pragma once
+#include "device/device.h"
 
+#include "scene/background.h"
+#include "scene/light.h"
+#include "scene/mesh.h"
+#include "scene/scene.h"
+#include "scene/shader.h"
+#include "scene/shader_graph.h"
+#include "scene/shader_nodes.h"
+#include "scene/stats.h"
+#include "scene/svm.h"
+
+#include "util/foreach.h"
+#include "util/log.h"
+#include "util/progress.h"
+#include "util/task.h"
 CCL_NAMESPACE_BEGIN
 
 /*
@@ -950,21 +965,23 @@ ccl_device void fractal_voronoi_x_fx(VoronoiParams<T> &vp,
 template<typename T>
 ccl_device void fractal_voronoi_distance_to_edge(VoronoiParams<T> &vp, VoronoiOutput<T> &vo)
 {
-  float octave_scale = 1.0f;
-  float octave_amplitude = 1.0f;
-  float octave_distance = 0.0f;
-
-  vp.max_amplitude = 2.0f - vp.randomness;
+  vp.octave_scale = 1.0f;
+  vp.octave_amplitude = 1.0f;
   vp.octave_distance = 8.0f;
-  for (int i = 0; i <= ceilf(detail); ++i) {
-    voronoi_distance_to_edge(coord * octave_scale, vp.randomness, &octave_distance);
-    if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
-      vp.octave_distance = octave_distance;
-      return;
+  bool zeroinput = vp.detail == 0.0f || vp.roughness == 0.0f || vp.lacunarity == 0.0f;
+
+  T voronoi_coord = vp.octave_coord;
+  vp.max_amplitude = 2.0f - vp.randomness;
+  for (int i = 0; i <= ceilf(vp.detail); ++i) {
+    vp.octave_coord = voronoi_coord * vp.octave_scale;
+    voronoi_distance_to_edge(vp);
+    if (zeroinput) {
+      vo.distance_out = vp.octave_distance;
+      break;
     }
     else if (i <= detail) {
       vp.max_amplitude = lerp(
-          vp.max_amplitude, (2.0f - vp.randomness) * octave_scale, octave_amplitude);
+          vp.max_amplitude, (2.0f - vp.randomness) * vp.octave_scale, vp.octave_amplitude);
       vp.octave_distance = lerp(vp.octave_distance,
                                 min(vp.octave_distance, octave_distance / octave_scale),
                                 octave_amplitude);
@@ -1052,10 +1069,10 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
   VoronoiOutputBase vob;
 
   vob.distance_out = 0.0f;
-  float voronoi_w_out = 0.0f;
   vob.radius_out = 0.0f;
   vob.color_out = make_float3(0.0f, 0.0f, 0.0f);
   float3 voronoi_position_out = make_float3(0.0f, 0.0f, 0.0f);
+  float voronoi_w_out = 0.0f;
 
   vpb.detail = clamp(vpb.detail, 0.0f, 15.0f);
   vpb.roughness = clamp(vpb.roughness, 0.0f, 1.0f);
@@ -1065,433 +1082,167 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
   voronoi_coord *= vpb.scale;
   voronoi_w *= vpb.scale;
 
-  VoronoiParams<float3> vp{vpb};
-  vp.octave_coord = voronoi_coord;
-  vp.max_distance = voronoi_distance_3d(zero_float3(), one_float3(), vp.metric, vp.exponent);
-  VoronoiOutput<float3> vo{vob};
-  vo.position_out = zero_float3();
-  fractal_voronoi_x_fx<float3>(vp, vo, voronoi_f1_3d);
-  vob = vo;
-  voronoi_position_out = vo.position_out;
-  voronoi_w_out = 0.0f;
+  switch (dimensions) {
+    case 1: {
+      VoronoiParams<float> vp{vpb};
+      vp.octave_coord = voronoi_w;
+      vp.max_distance = 1.0f;
+      VoronoiOutput<float> vo{vob};
+      vo.position_out = 0.0f;
 
-  // switch (dimensions) {
-  //   case 1: {
-  //     switch (voronoi_feature) {
-  //       case NODE_VORONOI_F1: {
-  //         fractal_voronoi_f1<float>(w,
-  //                                   detail,
-  //                                   roughness,
-  //                                   lacunarity,
-  //                                   vp.exponent,
-  //                                   vp.randomness,
-  //                                   voronoi_metric,
-  //                                   &max_amplitude,
-  //                                   &distance_out,
-  //                                   &color_out,
-  //                                   &w_out);
-  //         if (normalize) {
-  //           distance_out /= (0.5f + 0.5f * vp.randomness) * max_amplitude;
-  //           color_out /= max_amplitude;
-  //         }
-  //         break;
-  //       }
-  //       case NODE_VORONOI_SMOOTH_F1: {
-  //         fractal_voronoi_smooth_f1<float>(w,
-  //                                          detail,
-  //                                          roughness,
-  //                                          lacunarity,
-  //                                          vp.smoothness,
-  //                                          vp.exponent,
-  //                                          vp.randomness,
-  //                                          voronoi_metric,
-  //                                          &max_amplitude,
-  //                                          &distance_out,
-  //                                          &color_out,
-  //                                          &w_out);
-  //         if (normalize) {
-  //           distance_out /= (0.5f + 0.5f * vp.randomness) * max_amplitude;
-  //           color_out /= max_amplitude;
-  //         }
-  //         break;
-  //       }
-  //       case NODE_VORONOI_F2: {
-  //         fractal_voronoi_f2<float>(w,
-  //                                   detail,
-  //                                   roughness,
-  //                                   lacunarity,
-  //                                   vp.exponent,
-  //                                   vp.randomness,
-  //                                   voronoi_metric,
-  //                                   &max_amplitude,
-  //                                   &distance_out,
-  //                                   &color_out,
-  //                                   &w_out);
-  //         if (normalize) {
-  //           if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
-  //             distance_out /= (1.0f - vp.randomness) + vp.randomness * max_amplitude;
-  //           }
-  //           else {
-  //             distance_out /= (1.0f - vp.randomness) * ceilf(detail + 1.0f) +
-  //                             vp.randomness * max_amplitude;
-  //           }
-  //           color_out /= max_amplitude;
-  //         }
-  //         break;
-  //       }
-  //       case NODE_VORONOI_DISTANCE_TO_EDGE: {
-  //         fractal_voronoi_distance_to_edge<float>(
-  //             w, detail, roughness, lacunarity, vp.randomness, &max_amplitude, &distance_out);
-  //         if (normalize) {
-  //           /* max_amplitude is used here to keep the code consistent, however it has a
-  //           different
-  //            * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude,
-  //            it
-  //            * represents an abstract factor needed to cancel out the amplitude attenuation
-  //            caused
-  //            * by the higher layers. */
-  //           distance_out *= max_amplitude;
-  //         }
-  //         break;
-  //       }
-  //       case NODE_VORONOI_N_SPHERE_RADIUS:
-  //         voronoi_n_sphere_radius_1d(w, vp.randomness, &radius_out);
-  //         break;
-  //       default:
-  //         kernel_assert(0);
-  //     }
-  //     w_out = safe_divide(w_out, scale);
-  //     break;
-  //   }
-  //   case 2: {
-  //     float2 coord_2d = make_float2(coord.x, coord.y);
-  //     float2 position_out_2d = zero_float2();
+      switch (vpb.feature) {
+        case NODE_VORONOI_F1: {
+          fractal_voronoi_x_fx<float>(vp, vo, voronoi_f1_1d);
+          break;
+        }
+        case NODE_VORONOI_SMOOTH_F1: {
+          fractal_voronoi_x_fx<float>(vp, vo, voronoi_smooth_f1_1d);
+          break;
+        }
+        case NODE_VORONOI_F2: {
+          fractal_voronoi_x_fx<float>(vp, vo, voronoi_f2_1d);
+          break;
+        }
+        case NODE_VORONOI_DISTANCE_TO_EDGE: {
+          fractal_voronoi_distance_to_edge<float>(vp, vo);
+          break;
+        }
+        case NODE_VORONOI_N_SPHERE_RADIUS:
+          voronoi_n_sphere_radius_1d(vp, vo);
+          break;
+        default:
+          kernel_assert(0);
+      }
+      vo.position_out = safe_divide(vo.position_out, vpb.scale);
 
-  //    switch (voronoi_feature) {
-  //      case NODE_VORONOI_F1: {
-  //        fractal_voronoi_f1<float2>(coord_2d,
-  //                                   detail,
-  //                                   roughness,
-  //                                   lacunarity,
-  //                                   vp.exponent,
-  //                                   vp.randomness,
-  //                                   voronoi_metric,
-  //                                   &max_amplitude,
-  //                                   &distance_out,
-  //                                   &color_out,
-  //                                   &position_out_2d);
-  //        if (normalize) {
-  //          distance_out /= (0.5f + 0.5f * vp.randomness) * max_amplitude *
-  //                          voronoi_distance_2d(make_float2(1.0f, 1.0f),
-  //                                              make_float2(0.0f, 0.0f),
-  //                                              voronoi_metric,
-  //                                              vp.exponent);
-  //          color_out /= max_amplitude;
-  //        }
-  //        break;
-  //      }
-  //      case NODE_VORONOI_SMOOTH_F1:
-  //        IF_KERNEL_NODES_FEATURE(VORONOI_EXTRA)
-  //        {
-  //          fractal_voronoi_smooth_f1<float2>(coord_2d,
-  //                                            detail,
-  //                                            roughness,
-  //                                            lacunarity,
-  //                                            vp.smoothness,
-  //                                            vp.exponent,
-  //                                            vp.randomness,
-  //                                            voronoi_metric,
-  //                                            &max_amplitude,
-  //                                            &distance_out,
-  //                                            &color_out,
-  //                                            &position_out_2d);
-  //          if (normalize) {
-  //            distance_out /= (0.5f + 0.5f * vp.randomness) * max_amplitude *
-  //                            voronoi_distance_2d(make_float2(1.0f, 1.0f),
-  //                                                make_float2(0.0f, 0.0f),
-  //                                                voronoi_metric,
-  //                                                vp.exponent);
-  //            color_out /= max_amplitude;
-  //          }
-  //          break;
-  //        }
-  //        break;
-  //      case NODE_VORONOI_F2: {
-  //        fractal_voronoi_f2<float2>(coord_2d,
-  //                                   detail,
-  //                                   roughness,
-  //                                   lacunarity,
-  //                                   vp.exponent,
-  //                                   vp.randomness,
-  //                                   voronoi_metric,
-  //                                   &max_amplitude,
-  //                                   &distance_out,
-  //                                   &color_out,
-  //                                   &position_out_2d);
-  //        if (normalize) {
-  //          if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
-  //            distance_out /= (1.0f - vp.randomness) +
-  //                            vp.randomness * max_amplitude *
-  //                                voronoi_distance_2d(make_float2(1.0f, 1.0f),
-  //                                                    make_float2(0.0f, 0.0f),
-  //                                                    voronoi_metric,
-  //                                                    vp.exponent);
-  //          }
-  //          else {
-  //            distance_out /= (1.0f - vp.randomness) * ceilf(detail + 1.0f) +
-  //                            vp.randomness * max_amplitude *
-  //                                voronoi_distance_2d(make_float2(1.0f, 1.0f),
-  //                                                    make_float2(0.0f, 0.0f),
-  //                                                    voronoi_metric,
-  //                                                    vp.exponent);
-  //          }
-  //          color_out /= max_amplitude;
-  //        }
-  //        break;
-  //      }
-  //      case NODE_VORONOI_DISTANCE_TO_EDGE: {
-  //        fractal_voronoi_distance_to_edge<float2>(
-  //            coord_2d, detail, roughness, lacunarity, vp.randomness, &max_amplitude,
-  //            &distance_out);
-  //        if (normalize) {
-  //          /* max_amplitude is used here to keep the code consistent, however it has a different
-  //           * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude,
-  //           it
-  //           * represents an abstract factor needed to cancel out the amplitude attenuation
-  //           caused
-  //           * by the higher layers. */
-  //          distance_out *= max_amplitude;
-  //        }
-  //        break;
-  //      }
-  //      case NODE_VORONOI_N_SPHERE_RADIUS:
-  //        voronoi_n_sphere_radius_2d(coord_2d, vp.randomness, &radius_out);
-  //        break;
-  //      default:
-  //        kernel_assert(0);
-  //    }
-  //    position_out_2d = safe_divide_float2_float(position_out_2d, scale);
-  //    position_out = make_float3(position_out_2d.x, position_out_2d.y, 0.0f);
-  //    break;
-  //  }
-  //  case 3: {
-  //    switch (voronoi_feature) {
-  //   case NODE_VORONOI_F1: {
-  // if (normalize) {
-  //   distance_out /= (0.5f + 0.5f * vp.randomness) * max_amplitude *
-  //                   voronoi_distance_3d(make_float3(1.0f, 1.0f, 1.0f),
-  //                                       make_float3(0.0f, 0.0f, 0.0f),
-  //                                       voronoi_metric,
-  //                                       vp.exponent);
-  //   color_out /= max_amplitude;
-  // }
-  //         break;
-  //       }
-  //       case NODE_VORONOI_SMOOTH_F1:
-  //         IF_KERNEL_NODES_FEATURE(VORONOI_EXTRA)
-  //         {
-  //           fractal_voronoi_smooth_f1<float3>(coord,
-  //                                             detail,
-  //                                             roughness,
-  //                                             lacunarity,
-  //                                             vp.smoothness,
-  //                                             vp.exponent,
-  //                                             vp.randomness,
-  //                                             voronoi_metric,
-  //                                             &max_amplitude,
-  //                                             &distance_out,
-  //                                             &color_out,
-  //                                             &position_out);
-  //           if (normalize) {
-  //             distance_out /= (0.5f + 0.5f * vp.randomness) * max_amplitude *
-  //                             voronoi_distance_3d(make_float3(1.0f, 1.0f, 1.0f),
-  //                                                 make_float3(0.0f, 0.0f, 0.0f),
-  //                                                 voronoi_metric,
-  //                                                 vp.exponent);
-  //             color_out /= max_amplitude;
-  //           }
-  //           break;
-  //         }
-  //         break;
-  //       case NODE_VORONOI_F2: {
-  //         fractal_voronoi_f2<float3>(coord,
-  //                                    detail,
-  //                                    roughness,
-  //                                    lacunarity,
-  //                                    vp.exponent,
-  //                                    vp.randomness,
-  //                                    voronoi_metric,
-  //                                    &max_amplitude,
-  //                                    &distance_out,
-  //                                    &color_out,
-  //                                    &position_out);
-  //         if (normalize) {
-  //           if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
-  //             distance_out /= (1.0f - vp.randomness) +
-  //                             vp.randomness * max_amplitude *
-  //                                 voronoi_distance_3d(make_float3(1.0f, 1.0f, 1.0f),
-  //                                                     make_float3(0.0f, 0.0f, 0.0f),
-  //                                                     voronoi_metric,
-  //                                                     vp.exponent);
-  //           }
-  //           else {
-  //             distance_out /= (1.0f - vp.randomness) * ceilf(detail + 1.0f) +
-  //                             vp.randomness * max_amplitude *
-  //                                 voronoi_distance_3d(make_float3(1.0f, 1.0f, 1.0f),
-  //                                                     make_float3(0.0f, 0.0f, 0.0f),
-  //                                                     voronoi_metric,
-  //                                                     vp.exponent);
-  //           }
-  //           color_out /= max_amplitude;
-  //         }
-  //         break;
-  //       }
-  //       case NODE_VORONOI_DISTANCE_TO_EDGE: {
-  //         fractal_voronoi_distance_to_edge<float3>(
-  //             coord, detail, roughness, lacunarity, vp.randomness, &max_amplitude,
-  //             &distance_out);
-  //         if (normalize) {
-  //           /* max_amplitude is used here to keep the code consistent, however it has a
-  //           different
-  //            * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude,
-  //            it
-  //            * represents an abstract factor needed to cancel out the amplitude attenuation
-  //            caused
-  //            * by the higher layers. */
-  //           distance_out *= max_amplitude;
-  //         }
-  //         break;
-  //       }
-  //       case NODE_VORONOI_N_SPHERE_RADIUS:
-  //         voronoi_n_sphere_radius_3d(coord, vp.randomness, &radius_out);
-  //         break;
-  //       default:
-  //         kernel_assert(0);
-  //     }
-  //     position_out = safe_divide(position_out, scale);
-  //     break;
-  //   }
+      vob = vo;
+      voronoi_w = vo.position_out;
+      break;
+    }
+    case 2: {
+      VoronoiParams<float2> vp{vpb};
+      vp.octave_coord = make_float2(voronoi_coord.x, voronoi_coord.y);
+      vp.max_distance = voronoi_distance_2d(zero_float2(), one_float2(), vp.metric, vp.exponent);
+      VoronoiOutput<float2> vo{vob};
+      vo.position_out = zero_float2();
 
-  //  case 4: {
-  //    IF_KERNEL_NODES_FEATURE(VORONOI_EXTRA)
-  //    {
-  //      float4 coord_4d = make_float4(coord.x, coord.y, coord.z, w);
-  //      float4 position_out_4d;
+      switch (vpb.feature) {
+        case NODE_VORONOI_F1: {
+          fractal_voronoi_x_fx<float2>(vp, vo, voronoi_f1_2d);
+          break;
+        }
+        case NODE_VORONOI_SMOOTH_F1:
+          IF_KERNEL_NODES_FEATURE(VORONOI_EXTRA)
+          {
+            fractal_voronoi_x_fx<float2>(vp, vo, voronoi_smooth_f1_2d);
+            break;
+          }
+          break;
+        case NODE_VORONOI_F2: {
+          fractal_voronoi_x_fx<float2>(vp, vo, voronoi_f2_2d);
+          break;
+        }
+        case NODE_VORONOI_DISTANCE_TO_EDGE: {
+          fractal_voronoi_distance_to_edge<float2>(vp, vo);
+          break;
+        }
+        case NODE_VORONOI_N_SPHERE_RADIUS:
+          voronoi_n_sphere_radius_2d(vp, vo);
+          break;
+        default:
+          kernel_assert(0);
+      }
+      vo.position_out = safe_divide_float2_float(vo.position_out, vpb.scale);
 
-  //      switch (voronoi_feature) {
-  //        case NODE_VORONOI_F1: {
-  //          fractal_voronoi_f1<float4>(coord_4d,
-  //                                     detail,
-  //                                     roughness,
-  //                                     lacunarity,
-  //                                     vp.exponent,
-  //                                     vp.randomness,
-  //                                     voronoi_metric,
-  //                                     &max_amplitude,
-  //                                     &distance_out,
-  //                                     &color_out,
-  //                                     &position_out_4d);
-  //          if (normalize) {
-  //            distance_out /= (0.5f + 0.5f * vp.randomness) * max_amplitude *
-  //                            voronoi_distance_4d(make_float4(1.0f, 1.0f, 1.0f, 1.0f),
-  //                                                make_float4(0.0f, 0.0f, 0.0f, 0.0f),
-  //                                                voronoi_metric,
-  //                                                vp.exponent);
-  //            color_out /= max_amplitude;
-  //          }
-  //          break;
-  //        }
-  //        case NODE_VORONOI_SMOOTH_F1: {
-  //          fractal_voronoi_smooth_f1<float4>(coord_4d,
-  //                                            detail,
-  //                                            roughness,
-  //                                            lacunarity,
-  //                                            vp.smoothness,
-  //                                            vp.exponent,
-  //                                            vp.randomness,
-  //                                            voronoi_metric,
-  //                                            &max_amplitude,
-  //                                            &distance_out,
-  //                                            &color_out,
-  //                                            &position_out_4d);
-  //          if (normalize) {
-  //            distance_out /= (0.5f + 0.5f * vp.randomness) * max_amplitude *
-  //                            voronoi_distance_4d(make_float4(1.0f, 1.0f, 1.0f, 1.0f),
-  //                                                make_float4(0.0f, 0.0f, 0.0f, 0.0f),
-  //                                                voronoi_metric,
-  //                                                vp.exponent);
-  //            color_out /= max_amplitude;
-  //          }
-  //          break;
-  //        }
-  //        case NODE_VORONOI_F2: {
-  //          fractal_voronoi_f2<float4>(coord_4d,
-  //                                     detail,
-  //                                     roughness,
-  //                                     lacunarity,
-  //                                     vp.exponent,
-  //                                     vp.randomness,
-  //                                     voronoi_metric,
-  //                                     &max_amplitude,
-  //                                     &distance_out,
-  //                                     &color_out,
-  //                                     &position_out_4d);
-  //          if (normalize) {
-  //            if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
-  //              distance_out /= (1.0f - vp.randomness) +
-  //                              vp.randomness * max_amplitude *
-  //                                  voronoi_distance_4d(make_float4(1.0f, 1.0f, 1.0f, 1.0f),
-  //                                                      make_float4(0.0f, 0.0f, 0.0f, 0.0f),
-  //                                                      voronoi_metric,
-  //                                                      vp.exponent);
-  //            }
-  //            else {
-  //              distance_out /= (1.0f - vp.randomness) * ceilf(detail + 1.0f) +
-  //                              vp.randomness * max_amplitude *
-  //                                  voronoi_distance_4d(make_float4(1.0f, 1.0f, 1.0f, 1.0f),
-  //                                                      make_float4(0.0f, 0.0f, 0.0f, 0.0f),
-  //                                                      voronoi_metric,
-  //                                                      vp.exponent);
-  //            }
-  //            color_out /= max_amplitude;
-  //          }
-  //          break;
-  //        }
-  //        case NODE_VORONOI_DISTANCE_TO_EDGE: {
-  //          fractal_voronoi_distance_to_edge<float4>(coord_4d,
-  //                                                   detail,
-  //                                                   roughness,
-  //                                                   lacunarity,
-  //                                                   vp.randomness,
-  //                                                   &max_amplitude,
-  //                                                   &distance_out);
-  //          if (normalize) {
-  //            /* max_amplitude is used here to keep the code consistent, however it has a
-  //            different
-  //             * meaning than in F1, Smooth F1 and F2. Instead of the highest possible
-  //             amplitude,
-  //             * it represents an abstract factor needed to cancel out the amplitude
-  //             attenuation
-  //             * caused by the higher layers. */
-  //            distance_out *= max_amplitude;
-  //          }
-  //          break;
-  //        }
-  //        case NODE_VORONOI_N_SPHERE_RADIUS:
-  //          voronoi_n_sphere_radius_4d(coord_4d, vp.randomness, &radius_out);
-  //          break;
-  //        default:
-  //          kernel_assert(0);
-  //      }
-  //      position_out_4d = safe_divide(position_out_4d, scale);
-  //      position_out = make_float3(position_out_4d.x, position_out_4d.y, position_out_4d.z);
-  //      w_out = position_out_4d.w;
-  //    }
-  //    break;
-  //  }
-  //  default:
-  //    kernel_assert(0);
-  //}
+      vob = vo;
+      voronoi_position_out = make_float3(vo.position_out.x, vo.position_out.y, 0.0f);
+      break;
+    }
+    case 3: {
+      VoronoiParams<float3> vp{vpb};
+      vp.octave_coord = voronoi_coord;
+      vp.max_distance = voronoi_distance_3d(zero_float3(), one_float3(), vp.metric, vp.exponent);
+      VoronoiOutput<float3> vo{vob};
+      vo.position_out = zero_float3();
+
+      switch (vpb.feature) {
+        case NODE_VORONOI_F1: {
+          fractal_voronoi_x_fx<float3>(vp, vo, voronoi_f1_3d);
+          break;
+        }
+        case NODE_VORONOI_SMOOTH_F1:
+          IF_KERNEL_NODES_FEATURE(VORONOI_EXTRA)
+          {
+            fractal_voronoi_x_fx<float3>(vp, vo, voronoi_smooth_f1_3d);
+            break;
+          }
+          break;
+        case NODE_VORONOI_F2: {
+          fractal_voronoi_x_fx<float3>(vp, vo, voronoi_f2_3d);
+          break;
+        }
+        case NODE_VORONOI_DISTANCE_TO_EDGE: {
+          fractal_voronoi_distance_to_edge<float3>(vp, vo);
+          break;
+        }
+        case NODE_VORONOI_N_SPHERE_RADIUS:
+          voronoi_n_sphere_radius_3d(vp, vo);
+          break;
+        default:
+          kernel_assert(0);
+      }
+      vo.position_out = safe_divide(vo.position_out, vpb.scale);
+
+      vob = vo;
+      voronoi_position_out = vo.position_out;
+      break;
+    }
+
+    case 4: {
+      IF_KERNEL_NODES_FEATURE(VORONOI_EXTRA)
+      {
+        VoronoiParams<float4> vp{vpb};
+        vp.octave_coord = make_float4(
+            voronoi_coord.x, voronoi_coord.y, voronoi_coord.z, voronoi_w);
+        vp.max_distance = voronoi_distance_4d(zero_float4(), one_float4(), vp.metric, vp.exponent);
+        VoronoiOutput<float4> vo{vob};
+        vo.position_out = zero_float4();
+
+        switch (vpb.feature) {
+          case NODE_VORONOI_F1: {
+            fractal_voronoi_x_fx<float4>(vp, vo, voronoi_f1_4d);
+            break;
+          }
+          case NODE_VORONOI_SMOOTH_F1: {
+            fractal_voronoi_x_fx<float4>(vp, vo, voronoi_smooth_f1_4d);
+            break;
+          }
+          case NODE_VORONOI_F2: {
+            fractal_voronoi_x_fx<float4>(vp, vo, voronoi_f2_4d);
+            break;
+          }
+          case NODE_VORONOI_DISTANCE_TO_EDGE: {
+            fractal_voronoi_distance_to_edge<float4>(vp, vo);
+            break;
+          }
+          case NODE_VORONOI_N_SPHERE_RADIUS:
+            voronoi_n_sphere_radius_4d(vp, vo);
+            break;
+          default:
+            kernel_assert(0);
+        }
+        vo.position_out = safe_divide(vo.position_out, vpb.scale);
+
+        vob = vo;
+        voronoi_position_out = make_float3(
+            vo.position_out.x, vo.position_out.y, vo.position_out.z);
+        voronoi_w_out = vo.position_out.w;
+      }
+      break;
+    }
+    default:
+      kernel_assert(0);
+  }
 
   if (stack_valid(distance_out_stack_offset))
     stack_store_float(stack, distance_out_stack_offset, vob.distance_out);
