@@ -16,6 +16,8 @@
 #ifdef __cplusplus
 namespace blender {
 template<typename T> class Span;
+template<typename T> class MutableSpan;
+class IndexRange;
 class StringRef;
 class StringRefNull;
 }  // namespace blender
@@ -1616,6 +1618,12 @@ typedef struct NodeGeometrySimulationOutput {
   /* Number to give unique IDs to state items. */
   int next_identifier;
   int _pad;
+
+#ifdef __cplusplus
+  blender::Span<NodeSimulationItem> items_span() const;
+  blender::MutableSpan<NodeSimulationItem> items_mutable_span();
+  blender::IndexRange items_range() const;
+#endif
 } NodeGeometrySimulationOutput;
 
 typedef struct NodeGeometryDistributePointsInVolume {

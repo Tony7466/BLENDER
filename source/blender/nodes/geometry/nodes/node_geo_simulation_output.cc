@@ -55,7 +55,7 @@ static bool simulation_items_unique_name_check(void *arg, const char *name)
 {
   const SimulationItemsUniqueNameArgs &args = *static_cast<const SimulationItemsUniqueNameArgs *>(
       arg);
-  for (const NodeSimulationItem &item : Span(args.sim->items, args.sim->items_num)) {
+  for (const NodeSimulationItem &item : args.sim->items_span()) {
     if (&item != args.item) {
       if (STREQ(item.name, name)) {
         return true;
@@ -319,7 +319,24 @@ void register_node_type_geo_simulation_output()
   nodeRegisterType(&ntype);
 }
 
-bool NOD_geometry_simulation_output_item_socket_type_supported(const eNodeSocketDatatype socket_type) {
+blender::Span<NodeSimulationItem> NodeGeometrySimulationOutput::items_span() const
+{
+  return blender::Span<NodeSimulationItem>(items, items_num);
+}
+
+blender::MutableSpan<NodeSimulationItem> NodeGeometrySimulationOutput::items_mutable_span()
+{
+  return blender::MutableSpan<NodeSimulationItem>(items, items_num);
+}
+
+blender::IndexRange NodeGeometrySimulationOutput::items_range() const
+{
+  return blender::IndexRange(items_num);
+}
+
+bool NOD_geometry_simulation_output_item_socket_type_supported(
+    const eNodeSocketDatatype socket_type)
+{
   return ELEM(socket_type, SOCK_GEOMETRY);
 }
 
@@ -329,7 +346,7 @@ bNode *NOD_geometry_simulation_output_find_node_by_item(bNodeTree *ntree,
   ntree->ensure_topology_cache();
   for (bNode *node : ntree->nodes_by_type("GeometryNodeSimulationOutput")) {
     NodeGeometrySimulationOutput *sim = static_cast<NodeGeometrySimulationOutput *>(node->storage);
-    if (NOD_geometry_simulation_output_contains_item(sim, item)) {
+    if (sim->items_span().contains_ptr(item)) {
       return node;
     }
   }
@@ -358,14 +375,13 @@ bool NOD_geometry_simulation_output_item_set_unique_name(NodeGeometrySimulationO
 bool NOD_geometry_simulation_output_contains_item(NodeGeometrySimulationOutput *sim,
                                                   const NodeSimulationItem *item)
 {
-  const int index = item - sim->items;
-  return index >= 0 && index < sim->items_num;
+  return sim->items_span().contains_ptr(item);
 }
 
 NodeSimulationItem *NOD_geometry_simulation_output_get_active_item(
     NodeGeometrySimulationOutput *sim)
 {
-  if (sim->active_index >= 0 && sim->active_index < sim->items_num) {
+  if (sim->items_range().contains(sim->active_index)) {
     return &sim->items[sim->active_index];
   }
   return nullptr;
@@ -374,18 +390,17 @@ NodeSimulationItem *NOD_geometry_simulation_output_get_active_item(
 void NOD_geometry_simulation_output_set_active_item(NodeGeometrySimulationOutput *sim,
                                                     NodeSimulationItem *item)
 {
-  const int index = item - sim->items;
-  if (index >= 0 && index < sim->items_num) {
-    sim->active_index = index;
+  if (sim->items_span().contains_ptr(item)) {
+    sim->active_index = item - sim->items;
   }
 }
 
 NodeSimulationItem *NOD_geometry_simulation_output_find_item(NodeGeometrySimulationOutput *sim,
                                                              const char *name)
 {
-  for (const int i : blender::IndexRange(sim->items_num)) {
-    if (STREQ(sim->items[i].name, name)) {
-      return &sim->items[i];
+  for (NodeSimulationItem &item : sim->items_mutable_span()) {
+    if (STREQ(item.name, name)) {
+      return &item;
     }
   }
   return nullptr;
@@ -405,7 +420,7 @@ NodeSimulationItem *NOD_geometry_simulation_output_insert_item(NodeGeometrySimul
 {
   NodeSimulationItem *old_items = sim->items;
   sim->items = MEM_cnew_array<NodeSimulationItem>(sim->items_num + 1, __func__);
-  for (const int i : blender::IndexRange(0, index)) {
+  for (const int i : blender::IndexRange(index)) {
     sim->items[i] = old_items[i];
   }
   for (const int i : blender::IndexRange(index, sim->items_num - index)) {
@@ -453,7 +468,7 @@ void NOD_geometry_simulation_output_remove_item(NodeGeometrySimulationOutput *si
 
   NodeSimulationItem *old_items = sim->items;
   sim->items = MEM_cnew_array<NodeSimulationItem>(sim->items_num - 1, __func__);
-  for (const int i : blender::IndexRange(0, index)) {
+  for (const int i : blender::IndexRange(index)) {
     sim->items[i] = old_items[i];
   }
   for (const int i : blender::IndexRange(index, sim->items_num - index).drop_front(1)) {
@@ -468,7 +483,7 @@ void NOD_geometry_simulation_output_remove_item(NodeGeometrySimulationOutput *si
 
 void NOD_geometry_simulation_output_clear_items(struct NodeGeometrySimulationOutput *sim)
 {
-  for (NodeSimulationItem &item : blender::MutableSpan(sim->items, sim->items_num)) {
+  for (NodeSimulationItem &item : sim->items_mutable_span()) {
     MEM_SAFE_FREE(item.name);
   }
   MEM_SAFE_FREE(sim->items);
