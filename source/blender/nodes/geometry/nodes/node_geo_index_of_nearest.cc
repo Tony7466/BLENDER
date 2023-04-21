@@ -86,7 +86,6 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
     }
 
     VectorSet<int> group_indexing;
-
     for (const int index : mask) {
       const int group_id = group[index];
       group_indexing.add(group_id);
@@ -127,11 +126,11 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
 
     threading::parallel_for(group_indexing.index_range(), 256, [&](const IndexRange range) {
       for (const int index : range) {
-        const Span<int64_t> mask_of_tree = tree_indices[index];
-        KDTree_3d &tree = *build_kdtree(positions, mask_of_tree);
-        const Span<int64_t> mask = use_cheap_mask ? mask_indices[index].as_span() : mask_of_tree;
-        find_neighbors(tree, positions, mask, result);
-        BLI_kdtree_3d_free(&tree);
+        const IndexMask mask_of_tree = tree_indices[index].as_span();
+        const IndexMask mask = use_cheap_mask ? IndexMask(mask_indices[index]) : mask_of_tree;
+        KDTree_3d *tree = build_kdtree(positions, mask_of_tree);
+        find_neighbors(*tree, positions, mask, result);
+        BLI_kdtree_3d_free(tree);
       }
     });
 
