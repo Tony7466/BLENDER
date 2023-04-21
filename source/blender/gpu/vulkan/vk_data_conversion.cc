@@ -6,9 +6,7 @@
  */
 
 #include "vk_data_conversion.hh"
-#ifdef _WIN32
-#  define IMATH_DLL
-#endif
+
 #include "Imath/half.h"
 
 namespace blender::gpu {
