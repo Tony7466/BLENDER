@@ -109,7 +109,7 @@ def export_mtlx(material):
         if not doc:
             return ""
 
-        mtlx_file = mx_utils.get_temp_file(".mtlx", material.name)
+        mtlx_file = mx_utils.get_temp_file(".mtlx", f"mat_{material.as_pointer():016x}")
         mx_utils.export_to_file(doc, mtlx_file, export_deps=True, copy_deps=False)
         return str(mtlx_file)
 

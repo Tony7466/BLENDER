@@ -12,13 +12,15 @@
 #include "BKE_camera.h"
 
 #include "BLI_math_matrix.h"
+#include "BLI_timecode.h"
 
 #include "DEG_depsgraph_query.h"
 
 #include "GPU_matrix.h"
 
+#include "PIL_time.h"
+
 #include "camera.h"
-#include "utils.h"
 #include "viewport_engine.h"
 
 namespace blender::render::hydra {
@@ -259,10 +261,6 @@ void ViewportEngine::render(Depsgraph *depsgraph, bContext *context)
     render_task_delegate_->set_renderer_aov(pxr::HdAovTokens->color);
   }
 
-  if (renderer_percent_done() == 0.0f) {
-    time_begin_ = std::chrono::steady_clock::now();
-  }
-
   GPUShader *shader = GPU_shader_get_builtin_shader(GPU_SHADER_3D_IMAGE);
   GPU_shader_bind(shader);
 
@@ -285,21 +283,23 @@ void ViewportEngine::render(Depsgraph *depsgraph, bContext *context)
 
   GPU_shader_unbind();
 
-  std::chrono::time_point<std::chrono::steady_clock> time_current =
-      std::chrono::steady_clock::now();
-  std::chrono::milliseconds elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(
-      time_current - time_begin_);
+  if (renderer_percent_done() == 0.0f) {
+    time_begin_ = PIL_check_seconds_timer();
+  }
 
-  std::string formatted_time = format_duration(elapsed_time);
+  char elapsed_time[32];
+
+  BLI_timecode_string_from_time_simple(
+      elapsed_time, sizeof(elapsed_time), PIL_check_seconds_timer() - time_begin_);
 
   if (!render_task_delegate_->is_converged()) {
-    notify_status("Time: " + formatted_time +
+    notify_status(std::string("Time: ") + elapsed_time +
                       " | Done: " + std::to_string(int(renderer_percent_done())) + "%",
                   "Render");
     bl_engine_->flag |= RE_ENGINE_DO_DRAW;
   }
   else {
-    notify_status(("Time: " + formatted_time).c_str(), "Rendering Done");
+    notify_status((std::string("Time: ") + elapsed_time).c_str(), "Rendering Done");
   }
 }
 

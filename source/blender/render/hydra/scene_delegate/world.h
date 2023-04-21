@@ -37,7 +37,7 @@ class WorldData : public IdData {
   pxr::GfMatrix4d transform;
 
  private:
-  void set_transform();
+  void write_transform();
 
   std::map<pxr::TfToken, pxr::VtValue> data_;
 };

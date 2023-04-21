@@ -39,6 +39,7 @@ template<class T> const T IdData::get_data(pxr::TfToken const &key) const
 }
 
 #define ID_LOG(level, msg, ...) \
-  CLOG_INFO(LOG_BSD, level, "%s (%s): " msg, prim_id.GetText(), id->name, __VA_ARGS__);
+  CLOG_INFO( \
+      LOG_RENDER_HYDRA_SCENE, level, "%s (%s): " msg, prim_id.GetText(), id->name, __VA_ARGS__);
 
 }  // namespace blender::render::hydra

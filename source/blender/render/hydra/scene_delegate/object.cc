@@ -79,7 +79,7 @@ bool ObjectData::update_visibility()
   return ret;
 }
 
-void ObjectData::set_transform_to_object()
+void ObjectData::write_transform()
 {
   transform = gf_matrix_from_transform(((Object *)id)->object_to_world);
 }

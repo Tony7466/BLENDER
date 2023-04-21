@@ -3,8 +3,6 @@
 
 #pragma once
 
-#include <chrono>
-
 #include <pxr/imaging/hd/renderBuffer.h>
 
 #include "GPU_batch.h"
@@ -46,7 +44,7 @@ class ViewportEngine : public Engine {
   void notify_status(const std::string &title, const std::string &info);
 
  private:
-  std::chrono::time_point<std::chrono::steady_clock> time_begin_;
+  double time_begin_;
 
   DrawTexture draw_texture_;
 };

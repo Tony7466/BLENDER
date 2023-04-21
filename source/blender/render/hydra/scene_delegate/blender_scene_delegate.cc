@@ -11,7 +11,7 @@
 
 namespace blender::render::hydra {
 
-CLG_LOGREF_DECLARE_GLOBAL(LOG_BSD, "rhd.bsd");
+CLG_LOGREF_DECLARE_GLOBAL(LOG_RENDER_HYDRA_SCENE, "render.hydra.scene");
 
 BlenderSceneDelegate::BlenderSceneDelegate(pxr::HdRenderIndex *parent_index,
                                            pxr::SdfPath const &delegate_id,
@@ -22,14 +22,14 @@ BlenderSceneDelegate::BlenderSceneDelegate(pxr::HdRenderIndex *parent_index,
 
 pxr::HdMeshTopology BlenderSceneDelegate::GetMeshTopology(pxr::SdfPath const &id)
 {
-  CLOG_INFO(LOG_BSD, 3, "%s", id.GetText());
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", id.GetText());
   MeshData *m_data = mesh_data(id);
   return m_data->mesh_topology();
 }
 
 pxr::GfMatrix4d BlenderSceneDelegate::GetTransform(pxr::SdfPath const &id)
 {
-  CLOG_INFO(LOG_BSD, 3, "%s", id.GetText());
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", id.GetText());
   ObjectData *obj_data = object_data(id);
   if (obj_data) {
     return obj_data->transform;
@@ -44,7 +44,7 @@ pxr::GfMatrix4d BlenderSceneDelegate::GetTransform(pxr::SdfPath const &id)
 
 pxr::VtValue BlenderSceneDelegate::Get(pxr::SdfPath const &id, pxr::TfToken const &key)
 {
-  CLOG_INFO(LOG_BSD, 3, "%s, %s", id.GetText(), key.GetText());
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s, %s", id.GetText(), key.GetText());
 
   ObjectData *obj_data = object_data(id);
   if (obj_data) {
@@ -80,7 +80,7 @@ pxr::VtValue BlenderSceneDelegate::GetLightParamValue(pxr::SdfPath const &id,
 pxr::HdPrimvarDescriptorVector BlenderSceneDelegate::GetPrimvarDescriptors(
     pxr::SdfPath const &id, pxr::HdInterpolation interpolation)
 {
-  CLOG_INFO(LOG_BSD, 3, "%s, %d", id.GetText(), interpolation);
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s, %d", id.GetText(), interpolation);
 
   MeshData *m_data = mesh_data(id);
   if (m_data) {
@@ -120,7 +120,7 @@ bool BlenderSceneDelegate::GetVisible(pxr::SdfPath const &id)
 
 pxr::SdfPath BlenderSceneDelegate::GetInstancerId(pxr::SdfPath const &prim_id)
 {
-  CLOG_INFO(LOG_BSD, 3, "%s", prim_id.GetText());
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", prim_id.GetText());
   InstancerData *i_data = instancer_data(prim_id.GetParentPath());
   if (i_data) {
     return i_data->prim_id;
@@ -130,7 +130,7 @@ pxr::SdfPath BlenderSceneDelegate::GetInstancerId(pxr::SdfPath const &prim_id)
 
 pxr::SdfPathVector BlenderSceneDelegate::GetInstancerPrototypes(pxr::SdfPath const &instancer_id)
 {
-  CLOG_INFO(LOG_BSD, 3, "%s", instancer_id.GetText());
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", instancer_id.GetText());
   InstancerData *i_data = instancer_data(instancer_id);
   return i_data->prototypes();
 }
@@ -138,14 +138,14 @@ pxr::SdfPathVector BlenderSceneDelegate::GetInstancerPrototypes(pxr::SdfPath con
 pxr::VtIntArray BlenderSceneDelegate::GetInstanceIndices(pxr::SdfPath const &instancer_id,
                                                          pxr::SdfPath const &prototype_id)
 {
-  CLOG_INFO(LOG_BSD, 3, "%s, %s", instancer_id.GetText(), prototype_id.GetText());
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s, %s", instancer_id.GetText(), prototype_id.GetText());
   InstancerData *i_data = instancer_data(instancer_id);
   return i_data->indices(prototype_id);
 }
 
 pxr::GfMatrix4d BlenderSceneDelegate::GetInstancerTransform(pxr::SdfPath const &instancer_id)
 {
-  CLOG_INFO(LOG_BSD, 3, "%s", instancer_id.GetText());
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", instancer_id.GetText());
   InstancerData *i_data = instancer_data(instancer_id);
   return i_data->transform;
 }
@@ -336,8 +336,11 @@ void BlenderSceneDelegate::check_updates()
   ITER_BEGIN (
       DEG_iterator_ids_begin, DEG_iterator_ids_next, DEG_iterator_ids_end, &data, ID *, id) {
 
-    CLOG_INFO(
-        LOG_BSD, 2, "Update: %s [%s]", id->name, std::bitset<32>(id->recalc).to_string().c_str());
+    CLOG_INFO(LOG_RENDER_HYDRA_SCENE,
+              2,
+              "Update: %s [%s]",
+              id->name,
+              std::bitset<32>(id->recalc).to_string().c_str());
 
     switch (GS(id->name)) {
       case ID_OB: {

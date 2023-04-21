@@ -29,7 +29,7 @@ class ObjectData : public IdData {
   bool visible;
 
  protected:
-  void set_transform_to_object();
+  void write_transform();
 };
 
 using ObjectDataMap =

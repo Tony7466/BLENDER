@@ -2,13 +2,14 @@
  * Copyright 2011-2022 Blender Foundation */
 
 #include "BKE_lib_id.h"
+#include "BLI_timecode.h"
 #include "DEG_depsgraph_query.h"
 #include "GPU_framebuffer.h"
 #include "GPU_texture.h"
+#include "PIL_time.h"
 
 #include "camera.h"
 #include "final_engine.h"
-#include "utils.h"
 
 namespace blender::render::hydra {
 
@@ -63,12 +64,6 @@ void FinalEngine::render(Depsgraph *depsgraph)
   }
   tasks.push_back(render_task_delegate_->get_task());
 
-  std::chrono::time_point<std::chrono::steady_clock> time_begin = std::chrono::steady_clock::now(),
-                                                     time_current;
-  std::chrono::milliseconds elapsed_time;
-
-  float percent_done = 0.0;
-
   std::map<std::string, std::vector<float>> render_images{
       {"Combined", std::vector<float>(res[0] * res[1] * 4)}}; /* 4 - number of channels. */
   std::vector<float> &pixels = render_images["Combined"];
@@ -79,19 +74,23 @@ void FinalEngine::render(Depsgraph *depsgraph)
     engine_->Execute(render_index_.get(), &tasks);
   }
 
+  char elapsed_time[32];
+  double time_begin = PIL_check_seconds_timer();
+  float percent_done = 0.0;
+
   while (true) {
     if (RE_engine_test_break(bl_engine_)) {
       break;
     }
 
     percent_done = renderer_percent_done();
-    time_current = std::chrono::steady_clock::now();
-    elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(time_current -
-                                                                         time_begin);
+
+    BLI_timecode_string_from_time_simple(
+        elapsed_time, sizeof(elapsed_time), PIL_check_seconds_timer() - time_begin);
 
     notify_status(percent_done / 100.0,
                   scene_name + ": " + layer_name,
-                  "Render Time: " + format_duration(elapsed_time) +
+                  std::string("Render Time: ") + elapsed_time +
                       " | Done: " + std::to_string(int(percent_done)) + "%");
 
     if (render_task_delegate_->is_converged()) {
@@ -185,12 +184,6 @@ void FinalEngineGL::render(Depsgraph *depsgraph)
   }
   tasks.push_back(render_task_delegate_->get_task());
 
-  std::chrono::time_point<std::chrono::steady_clock> time_begin = std::chrono::steady_clock::now(),
-                                                     time_current;
-  std::chrono::milliseconds elapsed_time;
-
-  float percent_done = 0.0;
-
   std::map<std::string, std::vector<float>> render_images{
       {"Combined", std::vector<float>(res[0] * res[1] * 4)}}; /* 4 - number of channels. */
   std::vector<float> &pixels = render_images["Combined"];
@@ -217,19 +210,23 @@ void FinalEngineGL::render(Depsgraph *depsgraph)
     engine_->Execute(render_index_.get(), &tasks);
   }
 
+  char elapsed_time[32];
+  double time_begin = PIL_check_seconds_timer();
+  float percent_done = 0.0;
+
   while (true) {
     if (RE_engine_test_break(bl_engine_)) {
       break;
     }
 
     percent_done = renderer_percent_done();
-    time_current = std::chrono::steady_clock::now();
-    elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(time_current -
-                                                                         time_begin);
+
+    BLI_timecode_string_from_time_simple(
+        elapsed_time, sizeof(elapsed_time), PIL_check_seconds_timer() - time_begin);
 
     notify_status(percent_done / 100.0,
                   scene_name + ": " + layer_name,
-                  "Render Time: " + format_duration(elapsed_time) +
+                  std::string("Render Time: ") + elapsed_time +
                       " | Done: " + std::to_string(int(percent_done)) + "%");
 
     if (render_task_delegate_->is_converged()) {

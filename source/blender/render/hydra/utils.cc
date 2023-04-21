@@ -1,9 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
-#include <chrono>
 #include <filesystem>
-#include <sstream>
 
 #include <pxr/base/tf/stringUtils.h>
 
@@ -29,35 +27,6 @@ pxr::GfMatrix4d gf_matrix_from_transform(float m[4][4])
   return ret;
 }
 
-std::string format_duration(std::chrono::milliseconds millisecs)
-{
-  std::stringstream ss;
-  bool neg = millisecs < std::chrono::milliseconds(0);
-  if (neg) {
-    millisecs = -millisecs;
-  }
-  auto m = std::chrono::duration_cast<std::chrono::minutes>(millisecs);
-  millisecs -= m;
-  auto s = std::chrono::duration_cast<std::chrono::seconds>(millisecs);
-  millisecs -= s;
-  if (neg) {
-    ss << "-";
-  }
-  if (m < std::chrono::minutes(10)) {
-    ss << "0";
-  }
-  ss << std::to_string(m / std::chrono::minutes(1)) << ":";
-  if (s < std::chrono::seconds(10)) {
-    ss << "0";
-  }
-  ss << std::to_string(s / std::chrono::seconds(1)) << ":";
-  if (millisecs < std::chrono::milliseconds(10)) {
-    ss << "0";
-  }
-  ss << std::to_string(millisecs / std::chrono::milliseconds(1) / 10);
-  return ss.str();
-}
-
 std::string cache_image(Main *bmain,
                         Scene *scene,
                         Image *image,
@@ -65,8 +34,7 @@ std::string cache_image(Main *bmain,
                         ImageSaveOptions *opts,
                         ReportList *reports)
 {
-  const std::string default_format = ".png";
-
+  const char *default_format = ".png";
   char tempfile[FILE_MAX];
 
   if (!BKE_image_save_options_init(opts, bmain, scene, image, iuser, true, false)) {
@@ -74,20 +42,13 @@ std::string cache_image(Main *bmain,
     return "";
   }
 
-  std::string image_name;
+  char image_name[32];
+  snprintf(image_name, 32, "img_%016llx", (uint64_t)image);
 
-  if (image->source == IMA_SRC_GENERATED) {
-    image_name = pxr::TfMakeValidIdentifier(image_name.append(image->id.name + 2));
-  }
-  else {
-    image_name = image->filepath == NULL ? image->filepath : image->id.name + 2;
-    image_name = std::filesystem::path(image_name).filename().replace_extension().string();
-    image_name = pxr::TfMakeValidIdentifier(image_name);
-  }
+  strcat(image_name, default_format);
 
-  image_name.append(default_format);
-
-  BLI_path_join(tempfile, sizeof(tempfile), BKE_tempdir_session(), image_name.c_str());
+  BLI_path_join(
+      tempfile, sizeof(tempfile), BKE_tempdir_session(), "hydra_image_cache", image_name);
   STRNCPY(opts->filepath, tempfile);
 
   if (!BKE_image_save(reports, bmain, image, iuser, opts)) {

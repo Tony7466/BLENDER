@@ -40,7 +40,7 @@ void MeshData::init()
   }
 
   write_material();
-  set_transform_to_object();
+  write_transform();
 }
 
 void MeshData::insert()
@@ -60,7 +60,7 @@ void MeshData::remove()
     return;
   }
 
-  CLOG_INFO(LOG_BSD, 2, "%s", prim_id.GetText());
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 2, "%s", prim_id.GetText());
   scene_delegate_->GetRenderIndex().RemoveRprim(prim_id);
 }
 
@@ -78,7 +78,7 @@ void MeshData::update()
       bits |= pxr::HdChangeTracker::DirtyMaterialId;
     }
     if (id->recalc & ID_RECALC_TRANSFORM) {
-      set_transform_to_object();
+      write_transform();
       bits |= pxr::HdChangeTracker::DirtyTransform;
     }
   }

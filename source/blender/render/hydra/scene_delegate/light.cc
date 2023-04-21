@@ -85,7 +85,7 @@ void LightData::init()
   /* TODO: temporary value, it should be delivered through Python UI */
   data_[pxr::HdLightTokens->exposure] = 1.0f;
 
-  set_transform_to_object();
+  write_transform();
 }
 
 void LightData::insert()
@@ -96,7 +96,7 @@ void LightData::insert()
 
 void LightData::remove()
 {
-  CLOG_INFO(LOG_BSD, 2, "%s", prim_id.GetText());
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 2, "%s", prim_id.GetText());
   scene_delegate_->GetRenderIndex().RemoveSprim(prim_type_, prim_id);
 }
 
@@ -118,7 +118,7 @@ void LightData::update()
     bits = pxr::HdLight::AllDirty;
   }
   else if (id->recalc & ID_RECALC_TRANSFORM) {
-    set_transform_to_object();
+    write_transform();
     bits = pxr::HdLight::DirtyTransform;
   }
   scene_delegate_->GetRenderIndex().GetChangeTracker().MarkSprimDirty(prim_id, bits);

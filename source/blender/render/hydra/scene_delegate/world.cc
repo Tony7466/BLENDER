@@ -49,7 +49,7 @@ void WorldData::init()
 {
   ID_LOG(2, "");
 
-  set_transform();
+  write_transform();
 
   World *world = (World *)id;
   data_.clear();
@@ -129,7 +129,7 @@ void WorldData::insert()
 
 void WorldData::remove()
 {
-  CLOG_INFO(LOG_BSD, 2, "%s", prim_id.GetText());
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 2, "%s", prim_id.GetText());
   scene_delegate_->GetRenderIndex().RemoveSprim(pxr::HdPrimTypeTokens->domeLight, prim_id);
 }
 
@@ -157,7 +157,7 @@ pxr::VtValue WorldData::get_data(pxr::TfToken const &key) const
   return ret;
 }
 
-void WorldData::set_transform()
+void WorldData::write_transform()
 {
   transform = pxr::GfMatrix4d(pxr::GfRotation(pxr::GfVec3d(1.0, 0.0, 0.0), -90), pxr::GfVec3d());
 

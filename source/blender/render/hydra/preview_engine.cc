@@ -109,7 +109,7 @@ double PreviewEngine::free_instance(uintptr_t uuid, void *user_data)
     return LIFETIME;
   }
 
-  CLOG_INFO(LOG_EN, 2, "");
+  CLOG_INFO(LOG_RENDER_HYDRA, 2, "");
   instance_ = nullptr;
   return -1;
 }

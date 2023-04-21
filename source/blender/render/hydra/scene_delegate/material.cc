@@ -68,7 +68,7 @@ void MaterialData::init()
     Py_DECREF(result);
   }
   else {
-    CLOG_ERROR(LOG_BSD, "Export error for %s", id->name);
+    CLOG_ERROR(LOG_RENDER_HYDRA_SCENE, "Export error for %s", id->name);
     PyErr_Print();
   }
   Py_DECREF(module);
@@ -103,7 +103,7 @@ void MaterialData::insert()
 
 void MaterialData::remove()
 {
-  CLOG_INFO(LOG_BSD, 2, "%s", prim_id.GetText());
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 2, "%s", prim_id.GetText());
   scene_delegate_->GetRenderIndex().RemoveSprim(pxr::HdPrimTypeTokens->material, prim_id);
 }
 

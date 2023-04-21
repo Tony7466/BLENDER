@@ -21,7 +21,7 @@
 
 namespace blender::render::hydra {
 
-extern struct CLG_LogRef *LOG_EN; /* EN - Engine */
+extern struct CLG_LogRef *LOG_RENDER_HYDRA; /* EN - Engine */
 
 class Engine {
  public:

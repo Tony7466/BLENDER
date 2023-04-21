@@ -3,8 +3,6 @@
 
 #pragma once
 
-#include <chrono>
-
 #include "engine.h"
 
 namespace blender::render::hydra {

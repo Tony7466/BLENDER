@@ -59,7 +59,7 @@ void InstancerData::insert()
 
 void InstancerData::remove()
 {
-  CLOG_INFO(LOG_BSD, 2, "%s", prim_id.GetText());
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 2, "%s", prim_id.GetText());
   for (auto &it : instances_) {
     it.second.obj_data->remove();
   }

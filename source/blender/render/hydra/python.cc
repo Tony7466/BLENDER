@@ -22,7 +22,7 @@ namespace blender::render::hydra {
 
 static PyObject *init_func(PyObject * /*self*/, PyObject *args)
 {
-  CLOG_INFO(LOG_EN, 1, "Init");
+  CLOG_INFO(LOG_RENDER_HYDRA, 1, "Init");
 
   pxr::PlugRegistry::GetInstance().RegisterPlugins(std::string(BKE_appdir_program_dir()) +
                                                    "/blender.shared/usd");
@@ -59,7 +59,7 @@ static PyObject *register_plugins_func(PyObject * /*self*/, PyObject *args)
     ss << s << ", ";
   }
   ss << "]";
-  CLOG_INFO(LOG_EN, 1, "Register %s", ss.str().c_str());
+  CLOG_INFO(LOG_RENDER_HYDRA, 1, "Register %s", ss.str().c_str());
 
   Py_RETURN_NONE;
 }
@@ -125,7 +125,7 @@ static PyObject *engine_create_func(PyObject * /*self*/, PyObject *args)
     }
   }
 
-  CLOG_INFO(LOG_EN, 2, "Engine %016llx %s", engine, engine_type);
+  CLOG_INFO(LOG_RENDER_HYDRA, 2, "Engine %016llx %s", engine, engine_type);
 
   return PyLong_FromVoidPtr(engine);
 }
@@ -146,7 +146,7 @@ static PyObject *engine_free_func(PyObject * /*self*/, PyObject *args)
     delete engine;
   }
 
-  CLOG_INFO(LOG_EN, 2, "Engine %016llx", engine);
+  CLOG_INFO(LOG_RENDER_HYDRA, 2, "Engine %016llx", engine);
   Py_RETURN_NONE;
 }
 
@@ -185,7 +185,7 @@ static PyObject *engine_sync_func(PyObject * /*self*/, PyObject *args)
 
   engine->sync(depsgraph, context, settings);
 
-  CLOG_INFO(LOG_EN, 2, "Engine %016llx", engine);
+  CLOG_INFO(LOG_RENDER_HYDRA, 2, "Engine %016llx", engine);
   Py_RETURN_NONE;
 }
 
@@ -205,7 +205,7 @@ static PyObject *engine_render_func(PyObject * /*self*/, PyObject *args)
   engine->render(depsgraph);
   Py_END_ALLOW_THREADS;
 
-  CLOG_INFO(LOG_EN, 2, "Engine %016llx", engine);
+  CLOG_INFO(LOG_RENDER_HYDRA, 2, "Engine %016llx", engine);
   Py_RETURN_NONE;
 }
 
@@ -225,7 +225,7 @@ static PyObject *engine_view_draw_func(PyObject * /*self*/, PyObject *args)
   engine->render(depsgraph, context);
   Py_END_ALLOW_THREADS;
 
-  CLOG_INFO(LOG_EN, 3, "Engine %016llx", engine);
+  CLOG_INFO(LOG_RENDER_HYDRA, 3, "Engine %016llx", engine);
   Py_RETURN_NONE;
 }
 
