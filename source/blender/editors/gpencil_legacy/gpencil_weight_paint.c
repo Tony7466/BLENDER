@@ -846,7 +846,7 @@ static bool gpencil_weightpaint_brush_init(bContext *C, wmOperator *op)
     /* Get boolean array of vertex groups deformed by bones. */
     gso->vgroup_bone_deformed = gpencil_vgroup_bone_deformed_map_get(ob, gso->vgroup_tot);
     if (gso->vgroup_bone_deformed != NULL) {
-      /* Get boolean array of locked vertext groups. */
+      /* Get boolean array of locked vertex groups. */
       gso->vgroup_locked = BKE_object_defgroup_lock_flags_get(ob, gso->vgroup_tot);
       if (gso->vgroup_locked == NULL) {
         gso->vgroup_locked = (bool *)MEM_callocN(sizeof(bool) * gso->vgroup_tot, __func__);
@@ -907,7 +907,7 @@ static bool gpencil_weightpaint_brush_poll(bContext *C)
   }
 
   ToolSettings *ts = CTX_data_scene(C)->toolsettings;
-  if (!&ts->gp_weightpaint->paint.brush) {
+  if (!ts->gp_weightpaint->paint.brush) {
     CTX_wm_operator_poll_msg_set(C, "Grease Pencil has no active paint tool");
     return false;
   }
