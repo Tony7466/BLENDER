@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_array.hh"
 #include "BLI_kdtree.h"
 #include "BLI_map.hh"
 #include "BLI_task.hh"
-#include "BLI_vector.hh"
 
 #include "node_geometry_util.hh"
 
@@ -18,20 +18,10 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Bool>(N_("Has Neighbor")).field_source();
 }
 
-static KDTree_3d *build_kdtree(const Span<float3> &positions, const Span<int> indices)
+static KDTree_3d *build_kdtree(const Span<float3> positions, const IndexMask mask)
 {
-  KDTree_3d *tree = BLI_kdtree_3d_new(indices.size());
-  for (const int index : indices) {
-    BLI_kdtree_3d_insert(tree, index, positions[index]);
-  }
-  BLI_kdtree_3d_balance(tree);
-  return tree;
-}
-
-static KDTree_3d *build_kdtree(const Span<float3> &positions, const IndexRange range)
-{
-  KDTree_3d *tree = BLI_kdtree_3d_new(range.size());
-  for (const int index : range) {
+  KDTree_3d *tree = BLI_kdtree_3d_new(mask.size());
+  for (const int index : mask) {
     BLI_kdtree_3d_insert(tree, index, positions[index]);
   }
   BLI_kdtree_3d_balance(tree);
@@ -46,17 +36,6 @@ static int find_nearest_non_self(const KDTree_3d &tree, const float3 &position, 
       });
 }
 
-static void find_neighbors(const KDTree_3d &tree,
-                           const Span<float3> positions,
-                           const Span<int> mask,
-                           MutableSpan<int> r_indices)
-{
-  threading::parallel_for(mask.index_range(), 512, [&](const IndexRange range) {
-    for (const int index : mask.slice(range)) {
-      r_indices[index] = find_nearest_non_self(tree, positions[index], index);
-    }
-  });
-}
 static void find_neighbors(const KDTree_3d &tree,
                            const Span<float3> positions,
                            const IndexMask mask,
@@ -112,10 +91,16 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
       group_indexing.add(group_id);
     }
 
-    Vector<Vector<int>> mask_indices(group_indexing.size());
-    Vector<Vector<int>> tree_indices(group_indexing.size());
+    const bool mask_is_cheap = mask.size() < domain_size / 2;
 
-    const auto build_group_masks = [&](const IndexMask mask, MutableSpan<Vector<int>> r_groups) {
+    Array<Vector<int64_t>> tree_indices(group_indexing.size());
+    Array<Vector<int64_t>> mask_indices;
+    if (mask_is_cheap) {
+      mask_indices.reinitialize(group_indexing.size());
+    }
+
+    const auto build_group_masks = [&](const IndexMask mask,
+                                       MutableSpan<Vector<int64_t>> r_groups) {
       for (const int index : mask) {
         const int group_id = group[index];
         const int index_of_group = group_indexing.index_of_try(group_id);
@@ -126,15 +111,19 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
     };
 
     threading::parallel_invoke(
-        mask.size() + domain_size > 1024,
-        [&]() { build_group_masks(mask, mask_indices); },
+        domain_size > 1024 && mask_is_cheap,
+        [&]() {
+          if (mask_is_cheap) {
+            build_group_masks(mask, mask_indices);
+          }
+        },
         [&]() { build_group_masks(IndexMask(domain_size), tree_indices); });
 
     threading::parallel_for(group_indexing.index_range(), 256, [&](const IndexRange range) {
       for (const int index : range) {
-        const Span<int> mask_of_tree = tree_indices[index];
-        const Span<int> mask = mask_indices[index];
+        const Span<int64_t> mask_of_tree = tree_indices[index];
         KDTree_3d &tree = *build_kdtree(positions, mask_of_tree);
+        const Span<int64_t> mask = mask_is_cheap ? mask_indices[index].as_span() : mask_of_tree;
         find_neighbors(tree, positions, mask, result);
         BLI_kdtree_3d_free(&tree);
       }
@@ -201,7 +190,6 @@ class HasNeighborFieldInput final : public bke::GeometryFieldInput {
       return VArray<bool>::ForSingle(true, mask.min_array_size());
     }
 
-    /* When a group ID is contained in the set, it means there is only one element with that ID. */
     Map<int, int> counts;
     const VArraySpan<int> group_span(group);
     mask.foreach_index([&](const int i) {
