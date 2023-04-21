@@ -63,9 +63,9 @@ static void find_neighbors(const KDTree_3d &tree,
                            MutableSpan<int> r_indices)
 {
   threading::parallel_for(mask.index_range(), 512, [&](const IndexRange range) {
-    mask.slice(range).foreach_index([&tree, positions, r_indices](const int index) {
+    for (const int index : mask.slice(range)) {
       r_indices[index] = find_nearest_non_self(tree, positions[index], index);
-    });
+    }
   });
 }
 
@@ -106,41 +106,35 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
     }
 
     VectorSet<int> group_indexing;
-    Vector<Vector<int>> mask_indices;
-    Vector<Vector<int>> tree_indices;
-    Vector<KDTree_3d *> forest;
 
     for (const int index : mask) {
       const int group_id = group[index];
-      const int index_of_group = group_indexing.index_of_or_add(group_id);
-      if (index_of_group == mask_indices.size()) {
-        mask_indices.append({});
-      }
-      mask_indices[index_of_group].append(index);
+      group_indexing.add(group_id);
     }
 
-    tree_indices.resize(group_indexing.size());
-    forest.resize(group_indexing.size());
+    Vector<Vector<int>> mask_indices(group_indexing.size());
+    Vector<Vector<int>> tree_indices(group_indexing.size());
 
-    for (const int index : IndexMask(domain_size)) {
-      const int group_id = group[index];
-      const int index_of_group = group_indexing.index_of_try(group_id);
-      if (index_of_group != -1) {
-        tree_indices[index_of_group].append(index);
+    const auto build_group_masks = [&](const IndexMask mask, MutableSpan<Vector<int>> r_groups) {
+      for (const int index : mask) {
+        const int group_id = group[index];
+        const int index_of_group = group_indexing.index_of_try(group_id);
+        if (index_of_group != -1) {
+          r_groups[index_of_group].append(index);
+        }
       }
-    }
+    };
 
-    threading::parallel_for(group_indexing.index_range(), 8, [&](const IndexRange range) {
+    threading::parallel_invoke(
+        mask.size() + domain_size > 1024,
+        [&]() { build_group_masks(mask, mask_indices); },
+        [&]() { build_group_masks(IndexMask(domain_size), tree_indices); });
+
+    threading::parallel_for(group_indexing.index_range(), 256, [&](const IndexRange range) {
       for (const int index : range) {
         const Span<int> mask_of_tree = tree_indices[index];
-        forest[index] = build_kdtree(positions, mask_of_tree);
-      }
-    });
-
-    threading::parallel_for(group_indexing.index_range(), 1024, [&](const IndexRange range) {
-      for (const int index : range) {
-        KDTree_3d &tree = *forest[index];
         const Span<int> mask = mask_indices[index];
+        KDTree_3d &tree = *build_kdtree(positions, mask_of_tree);
         find_neighbors(tree, positions, mask, result);
         BLI_kdtree_3d_free(&tree);
       }
@@ -175,7 +169,7 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
     return bke::try_detect_field_domain(component, positions_field_);
   }
 };
-/*
+
 class HasNeighborFieldInput final : public bke::GeometryFieldInput {
  private:
   const Field<int> group_field_;
@@ -194,6 +188,10 @@ class HasNeighborFieldInput final : public bke::GeometryFieldInput {
       return {};
     }
     const int domain_size = context.attributes()->domain_size(context.domain());
+    if (domain_size == 1) {
+      return VArray<bool>::ForSingle(false, mask.min_array_size());
+    }
+
     fn::FieldEvaluator evaluator{context, domain_size};
     evaluator.add(group_field_);
     evaluator.evaluate();
@@ -203,7 +201,7 @@ class HasNeighborFieldInput final : public bke::GeometryFieldInput {
       return VArray<bool>::ForSingle(true, mask.min_array_size());
     }
 
-    /* When a group ID is contained in the set, it means there is only one element with that ID. *//*
+    /* When a group ID is contained in the set, it means there is only one element with that ID. */
     Map<int, int> counts;
     const VArraySpan<int> group_span(group);
     mask.foreach_index([&](const int i) {
@@ -239,7 +237,6 @@ class HasNeighborFieldInput final : public bke::GeometryFieldInput {
     return bke::try_detect_field_domain(component, group_field_);
   }
 };
-*/
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
@@ -251,12 +248,12 @@ static void node_geo_exec(GeoNodeExecParams params)
                       Field<int>(std::make_shared<IndexOfNearestFieldInput>(
                           std::move(position_field), group_field)));
   }
-  /*
-    if (params.output_is_required("Has Neighbor")) {
-      params.set_output(
-          "Has Neighbor",
-          Field<bool>(std::make_shared<HasNeighborFieldInput>(std::move(group_field))));
-    }*/
+
+  if (params.output_is_required("Has Neighbor")) {
+    params.set_output(
+        "Has Neighbor",
+        Field<bool>(std::make_shared<HasNeighborFieldInput>(std::move(group_field))));
+  }
 }
 
 }  // namespace blender::nodes::node_geo_index_of_nearest_cc
