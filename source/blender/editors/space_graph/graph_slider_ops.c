@@ -1184,7 +1184,7 @@ void GRAPH_OT_shear_left(wmOperatorType *ot)
                        FLT_MAX,
                        "Curve Bend",
                        "Control the bend of the curve",
-                       0.0f,
+                       -1.0f,
                        1.0f);
 }
 
