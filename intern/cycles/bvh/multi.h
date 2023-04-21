@@ -7,11 +7,14 @@
 #include "bvh/bvh.h"
 #include "bvh/params.h"
 
+#include "util/vector.h"
+#include "util/unique_ptr.h"
+
 CCL_NAMESPACE_BEGIN
 
 class BVHMulti : public BVH {
  public:
-  vector<BVH *> sub_bvhs;
+  vector<unique_ptr<BVH>> sub_bvhs;
 
   virtual BVH *get_device_bvh(const Device *device) override;
   virtual void set_device_bvh(const Device *sub_device, BVH *bvh) override;

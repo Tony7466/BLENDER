@@ -197,12 +197,12 @@ class MultiDevice : public Device {
                 !bvh_multi->geometry[0]->is_instanced()) {
             }
             else {
-              bvh_multi->sub_bvhs[id] = BVH::create(
-                  params, bvh_multi->geometry, bvh_multi->objects, sub->device.get());
+              bvh_multi->sub_bvhs[id] = std::unique_ptr<BVH>(BVH::create(
+									 params, bvh_multi->geometry, bvh_multi->objects, sub->device.get()));
             }
           }
           if (bvh_multi->sub_bvhs[id]) {
-            sub->device->build_bvh(bvh_multi->sub_bvhs[id], dscene, progress, refit);
+            sub->device->build_bvh(bvh_multi->sub_bvhs[id].get(), dscene, progress, refit);
           }
         });
   }

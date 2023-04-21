@@ -18,25 +18,20 @@ BVHMulti::BVHMulti(const BVHParams &params_,
   sub_bvhs.resize(n);
 }
 
-BVHMulti::~BVHMulti()
-{
-  foreach (BVH *bvh, sub_bvhs) {
-    delete bvh;
-  }
-}
+BVHMulti::~BVHMulti() { }
 
 BVH *BVHMulti::get_device_bvh(const Device *subdevice)
 {
   int id = device->device_number(subdevice);
   resize_sub_bvhs_if_needed(id);
-  return sub_bvhs[id];
+  return sub_bvhs[id].get();
 }
 
 void BVHMulti::set_device_bvh(const Device *subdevice, BVH *bvh)
 {
   int id = device->device_number(subdevice);
   resize_sub_bvhs_if_needed(id);
-  sub_bvhs[id] = bvh;
+  sub_bvhs[id] = unique_ptr<BVH>(bvh);
 };
 
 /**
@@ -46,14 +41,14 @@ void BVHMulti::set_device_bvh(const Device *subdevice, BVH *bvh)
 void BVHMulti::resize_sub_bvhs_if_needed(int id)
 {
   if ((id != -1) && (id >= sub_bvhs.size())) {
-    sub_bvhs.resize(id + 1, NULL);
+    sub_bvhs.resize(id + 1);
   }
 }
 
 void BVHMulti::replace_geometry(const vector<Geometry *> &geometry,
                                 const vector<Object *> &objects)
 {
-  foreach (BVH *bvh, sub_bvhs) {
+  foreach (auto &bvh, sub_bvhs) {
     bvh->replace_geometry(geometry, objects);
   }
 }
