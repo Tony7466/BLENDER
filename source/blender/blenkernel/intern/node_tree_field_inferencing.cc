@@ -257,13 +257,15 @@ static OutputFieldDependency find_group_output_dependencies(
 }
 
 /** Result of syncing two field states. */
-enum eFieldStateSyncResult {
+enum class eFieldStateSyncResult : char {
+  /* Nothing changed. */
+  NONE = 0,
   /* State A has been modified. */
   CHANGED_A = (1 << 0),
   /* State B has been modified. */
   CHANGED_B = (1 << 1),
 };
-ENUM_OPERATORS(eFieldStateSyncResult, CHANGED_B)
+ENUM_OPERATORS(eFieldStateSyncResult, eFieldStateSyncResult::CHANGED_B)
 
 /**
  * Compare both field states and select the most compatible.
@@ -275,7 +277,7 @@ static eFieldStateSyncResult sync_field_states(SocketFieldState &a, SocketFieldS
   const bool requires_single = a.requires_single || b.requires_single;
   const bool is_single = a.is_single && b.is_single;
 
-  eFieldStateSyncResult res = static_cast<eFieldStateSyncResult>(0);
+  eFieldStateSyncResult res = eFieldStateSyncResult::NONE;
   if (a.requires_single != requires_single || a.is_single != is_single) {
     res |= eFieldStateSyncResult::CHANGED_A;
   }
@@ -301,7 +303,7 @@ static eFieldStateSyncResult simulation_nodes_field_state_sync(
     const bNode &output_node,
     const MutableSpan<SocketFieldState> field_state_by_socket_id)
 {
-  eFieldStateSyncResult res = static_cast<eFieldStateSyncResult>(0);
+  eFieldStateSyncResult res = eFieldStateSyncResult::NONE;
   for (const int i : output_node.output_sockets().index_range()) {
     /* First input node output is Delta Time which does not appear in the output node outputs. */
     const bNodeSocket &input_socket = input_node.output_socket(i + 1);
@@ -329,7 +331,7 @@ static bool propagate_special_data_requirements(
     if (const bNode *output_node = tree.node_by_id(data.output_node_id)) {
       eFieldStateSyncResult sync_result = simulation_nodes_field_state_sync(
           node, *output_node, field_state_by_socket_id);
-      if (sync_result & eFieldStateSyncResult::CHANGED_B) {
+      if ((bool)(sync_result & eFieldStateSyncResult::CHANGED_B)) {
         need_update = true;
       }
     }
@@ -341,7 +343,7 @@ static bool propagate_special_data_requirements(
       if (node.identifier == data.output_node_id) {
         eFieldStateSyncResult sync_result = simulation_nodes_field_state_sync(
             *input_node, node, field_state_by_socket_id);
-        if (sync_result & eFieldStateSyncResult::CHANGED_A) {
+        if ((bool)(sync_result & eFieldStateSyncResult::CHANGED_A)) {
           need_update = true;
         }
       }
