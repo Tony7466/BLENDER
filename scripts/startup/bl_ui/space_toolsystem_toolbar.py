@@ -1266,7 +1266,7 @@ class _defs_edit_text:
         return dict(
             idname="builtin.select_text",
             label="Select Text",
-            cursor='CROSSHAIR',
+            cursor='TEXT',
             icon="ops.generic.select_box",
             widget=None,
             keymap=(),
