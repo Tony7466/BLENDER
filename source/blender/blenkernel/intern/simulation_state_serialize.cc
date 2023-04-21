@@ -318,15 +318,10 @@ template<typename T>
                                                         const BDataSharing &bdata_sharing,
                                                         const int size,
                                                         T **r_data,
-                                                        ImplicitSharingInfo **r_sharing_info)
+                                                        const ImplicitSharingInfo **r_sharing_info)
 {
-  *r_data = const_cast<T *>(static_cast<const T *>(
-      read_bdata_shared_simple_gspan(io_data,
-                                     bdata_reader,
-                                     bdata_sharing,
-                                     CPPType::get<T>(),
-                                     size,
-                                     (const ImplicitSharingInfo **)r_sharing_info)));
+  *r_data = const_cast<T *>(static_cast<const T *>(read_bdata_shared_simple_gspan(
+      io_data, bdata_reader, bdata_sharing, CPPType::get<T>(), size, r_sharing_info)));
   return *r_data != nullptr;
 }
 
