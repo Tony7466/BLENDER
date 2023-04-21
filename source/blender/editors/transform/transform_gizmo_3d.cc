@@ -1038,11 +1038,11 @@ static void gizmo_get_idot(const RegionView3D *rv3d, float r_idot[3])
   }
 }
 
-static bool gizmo_prepare_mat_ex(const bContext *C,
-                                 const Scene *scene,
-                                 const TransformBounds *tbounds,
-                                 const short pivot_type,
-                                 float r_pivot_pos[3])
+static bool gizmo_3d_calc_pos(const bContext *C,
+                              const Scene *scene,
+                              const TransformBounds *tbounds,
+                              const short pivot_type,
+                              float r_pivot_pos[3])
 {
   zero_v3(r_pivot_pos);
 
@@ -1120,8 +1120,7 @@ void gizmo_prepare_mat(const struct bContext *C,
                        const struct TransformBounds *tbounds)
 {
   Scene *scene = CTX_data_scene(C);
-  gizmo_prepare_mat_ex(
-      C, scene, tbounds, scene->toolsettings->transform_pivot_point, rv3d->twmat[3]);
+  gizmo_3d_calc_pos(C, scene, tbounds, scene->toolsettings->transform_pivot_point, rv3d->twmat[3]);
 }
 
 /**
@@ -1962,7 +1961,7 @@ static void WIDGETGROUP_gizmo_refresh(const bContext *C, wmGizmoGroup *gzgroup)
     return;
   }
 
-  gizmo_prepare_mat_ex(
+  gizmo_3d_calc_pos(
       C, scene, &tbounds, scene->toolsettings->transform_pivot_point, rv3d->twmat[3]);
 
   gizmogroup_refresh_from_matrix(gzgroup, rv3d->twmat, nullptr, false);
@@ -2468,5 +2467,5 @@ bool ED_transform_calc_pivot_pos(const struct bContext *C,
                                  float r_pivot_pos[3])
 {
   Scene *scene = CTX_data_scene(C);
-  return gizmo_prepare_mat_ex(C, scene, nullptr, pivot_type, r_pivot_pos);
+  return gizmo_3d_calc_pos(C, scene, nullptr, pivot_type, r_pivot_pos);
 }
