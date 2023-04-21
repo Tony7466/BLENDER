@@ -2,22 +2,7 @@
  * Copyright 2011-2022 Blender Foundation */
 
 #pragma once
-#include "device/device.h"
 
-#include "scene/background.h"
-#include "scene/light.h"
-#include "scene/mesh.h"
-#include "scene/scene.h"
-#include "scene/shader.h"
-#include "scene/shader_graph.h"
-#include "scene/shader_nodes.h"
-#include "scene/stats.h"
-#include "scene/svm.h"
-
-#include "util/foreach.h"
-#include "util/log.h"
-#include "util/progress.h"
-#include "util/task.h"
 CCL_NAMESPACE_BEGIN
 
 /*
@@ -47,6 +32,8 @@ struct VoronoiParamsBase {
   float randomness;
   float max_amplitude;
   float max_distance;
+  uint normalize;
+  NodeVoronoiFeature feature;
   NodeVoronoiDistanceMetric metric;
   float octave_scale;
   float octave_amplitude;
@@ -902,19 +889,18 @@ ccl_device void fractal_voronoi_x_fx(VoronoiParams<T> &vp,
   vp.octave_scale = 1.0f;
   vp.octave_amplitude = 1.0f;
   vp.octave_distance = 0.0f;
-  vp.octave_color;
-  vp.octave_postion;
+  bool zeroinput = vp.detail == 0.0f || vp.roughness == 0.0f || vp.lacunarity == 0.0f;
 
   T voronoi_coord = vp.octave_coord;
   for (int i = 0; i <= ceilf(vp.detail); ++i) {
     vp.octave_coord = voronoi_coord * vp.octave_scale;
     voronoi_x_fx(vp);
-    if (vp.detail == 0.0f || vp.roughness == 0.0f || vp.lacunarity == 0.0f) {
+    if (zeroinput) {
       vp.max_amplitude = 1.0f;
       vo.distance_out = vp.octave_distance;
       vo.color_out = vp.octave_color;
       vo.position_out = vp.octave_postion;
-      return;
+      break;
     }
     else if (i <= vp.detail) {
       vp.max_amplitude += vp.octave_amplitude;
@@ -943,13 +929,21 @@ ccl_device void fractal_voronoi_x_fx(VoronoiParams<T> &vp,
     }
   }
 
-  if () {
-    distance_out /= (0.5f + 0.5f * vp.randomness) * vp.max_amplitude *
-                    voronoi_distance_3d(make_float3(1.0f, 1.0f, 1.0f),
-                                        make_float3(0.0f, 0.0f, 0.0f),
-                                        voronoi_metric,
-                                        vp.exponent);
-    color_out /= max_amplitude;
+  if (vp.normalize) {
+    if (vp.feature == NODE_VORONOI_F2) {
+      if (zeroinput) {
+        vo.distance_out /= (1.0f - vp.randomness) +
+                           vp.randomness * vp.max_amplitude * vp.max_distance;
+      }
+      else {
+        vo.distance_out /= (1.0f - vp.randomness) * ceilf(vp.detail + 1.0f) +
+                           vp.randomness * vp.max_amplitude * vp.max_distance;
+      }
+    }
+    else {
+      vo.distance_out /= (0.5f + 0.5f * vp.randomness) * vp.max_amplitude * vp.max_distance;
+    }
+    vo.color_out /= vp.max_amplitude;
   }
 }
 
@@ -991,6 +985,14 @@ ccl_device void fractal_voronoi_distance_to_edge(VoronoiParams<T> &vp, VoronoiOu
       }
     }
   }
+  if (vp.normalize) {
+    /* vp.max_amplitude is used here to keep the code consistent, however it has a different
+     * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude, it
+     * represents an abstract factor needed to cancel out the amplitude attenuation caused by the
+     * higher layers. */
+    vo.distance_out *= vp.max_amplitude;
+  }
+  break;
 }
 
 template<uint node_feature_mask>
@@ -1044,7 +1046,7 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
   vpb.randomness = stack_load_float_default(stack, randomness_stack_offset, defaults2.w);
   vpb.max_amplitude = 0.0f;
 
-  NodeVoronoiFeature voronoi_feature = (NodeVoronoiFeature)feature;
+  vpb.feature = (NodeVoronoiFeature)feature;
   vpb.metric = (NodeVoronoiDistanceMetric)metric;
 
   VoronoiOutputBase vob;
