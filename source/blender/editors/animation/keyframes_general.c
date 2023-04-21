@@ -498,35 +498,30 @@ void time_offset_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float
   const BezTriple *first_key = &fcu->bezt[0];
 
   const int fcu_x_range = last_key->vec[1][0] - first_key->vec[1][0];
-  float delta_y;
+  const float fcu_y_range = last_key->vec[1][1] - first_key->vec[1][1];
+
+  const float first_key_x = first_key->vec[1][0];
 
   /* If we operate directly on the fcurve there will be a feedback loop
    * so we need to capture the "y" values on an array to then apply them on a second loop. */
   float *y_values = MEM_callocN(sizeof(float) * segment->length, "Time Offset Samples");
-  y_values[segment->length];
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
 
     /* This simulates the fcu curve moving in time. */
-    float time = fcu->bezt[i].vec[1][0] + fcu_x_range * factor;
-
-    /* The values need to go back to the ones at the other end of the fcurve
-     * every time we get to the last or the first key. */
-    if (time > last_key->vec[1][0]) {
-      int offset_frame = fcu->bezt[i].vec[1][0] - fcu_x_range;
-      time = offset_frame + fcu_x_range * factor;
-      delta_y = last_key->vec[1][1] - first_key->vec[1][1];
-    }
-    else if (time < first_key->vec[1][0]) {
-      int offset_frame = fcu->bezt[i].vec[1][0] + fcu_x_range;
-      time = offset_frame + fcu_x_range * factor;
-      delta_y = first_key->vec[1][1] - last_key->vec[1][1];
-    }
-    else {
-      delta_y = 0;
+    const float time = fcu->bezt[i].vec[1][0] + fcu_x_range * factor;
+    /* Need to normalize time to first_key to specify that as the wrapping point. */
+    float wrapped_time = fmod(time - first_key_x, fcu_x_range) + first_key_x;
+    float delta_y = fcu_y_range * (int)((time - first_key_x) / fcu_x_range);
+    if (time - first_key_x < 0) {
+      /* Offset negative values since the modulo at fmod(-0.1, 1) would produce -0.1 instead of
+       * 0.9, as we'd need it to. */
+      wrapped_time += fcu_x_range;
+      /* Similarly, (int)-0.1 produces 0 while we need it to be -1. */
+      delta_y -= fcu_y_range;
     }
 
-    const float key_y_value = evaluate_fcurve(fcu, time) + delta_y;
+    const float key_y_value = evaluate_fcurve(fcu, wrapped_time) + delta_y;
     const int index_from_zero = i - segment->start_index;
     y_values[index_from_zero] = key_y_value;
   }
