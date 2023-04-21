@@ -1269,7 +1269,7 @@ class _defs_edit_text:
             cursor='CROSSHAIR',
             icon="ops.generic.select_box",
             widget=None,
-            keymap=("3D View Tool: Text Select"),
+            keymap=(),
         )
 
 
