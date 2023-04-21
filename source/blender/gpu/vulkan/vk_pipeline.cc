@@ -189,6 +189,7 @@ void VKPipeline::finalize(VKContext &context,
    * also be done using a VkPipelineCache. For now we just destroy any available pipeline so it
    * won't be overwritten by the newly created one. */
   vk_pipelines_.append(active_vk_pipeline_);
+  debug::object_label(&context, active_vk_pipeline_, "GraphicsPipeline");
 }
 
 }  // namespace blender::gpu

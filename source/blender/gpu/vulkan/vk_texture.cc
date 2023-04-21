@@ -265,6 +265,7 @@ bool VKTexture::allocate()
   if (result != VK_SUCCESS) {
     return false;
   }
+  debug::object_label(&context, vk_image_, name_);
 
   /* Promote image to the correct layout. */
   layout_ensure(context, VK_IMAGE_LAYOUT_GENERAL);
@@ -282,6 +283,7 @@ bool VKTexture::allocate()
 
   result = vkCreateImageView(
       context.device_get(), &image_view_info, vk_allocation_callbacks, &vk_image_view_);
+  debug::object_label(&context, vk_image_view_, name_);
   return result == VK_SUCCESS;
 }
 
@@ -310,6 +312,17 @@ void VKTexture::image_bind(int binding)
   const VKDescriptorSet::Location location = shader_interface.descriptor_set_location(
       shader::ShaderCreateInfo::Resource::BindType::IMAGE, binding);
   shader->pipeline_get().descriptor_set_get().image_bind(*this, location);
+}
+
+void VKTexture::unbind()
+{
+  VKContext &context = *VKContext::get();
+  /* TODO get a list of shaders this texture is bound to. */
+  VKShader *shader = static_cast<VKShader *>(context.shader);
+  if (shader) {
+    VKDescriptorSetTracker &descriptor_set = shader->pipeline_get().descriptor_set_get();
+    descriptor_set.unbind(*this);
+  }
 }
 
 /* -------------------------------------------------------------------- */

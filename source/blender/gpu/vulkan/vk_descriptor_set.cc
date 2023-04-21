@@ -94,6 +94,16 @@ void VKDescriptorSetTracker::bind(VKTexture &texture,
   binding.vk_sampler = sampler.vk_handle();
 }
 
+void VKDescriptorSetTracker::unbind(VKTexture &texture)
+{
+  for (Binding &binding : bindings_) {
+    if (binding.texture == &texture) {
+      binding.texture = nullptr;
+      binding.vk_sampler = VK_NULL_HANDLE;
+    }
+  }
+}
+
 VKDescriptorSetTracker::Binding &VKDescriptorSetTracker::ensure_location(
     const VKDescriptorSet::Location location)
 {

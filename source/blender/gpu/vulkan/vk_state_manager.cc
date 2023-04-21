@@ -49,7 +49,11 @@ void VKStateManager::texture_bind(Texture *tex, GPUSamplerState sampler, int uni
   texture.bind(unit, sampler_);
 }
 
-void VKStateManager::texture_unbind(Texture * /*tex*/) {}
+void VKStateManager::texture_unbind(Texture *tex)
+{
+  VKTexture *texture = unwrap(tex);
+  texture->unbind();
+}
 
 void VKStateManager::texture_unbind_all() {}
 
@@ -59,7 +63,11 @@ void VKStateManager::image_bind(Texture *tex, int binding)
   texture->image_bind(binding);
 }
 
-void VKStateManager::image_unbind(Texture * /*tex*/) {}
+void VKStateManager::image_unbind(Texture *tex)
+{
+  VKTexture *texture = unwrap(tex);
+  texture->unbind();
+}
 
 void VKStateManager::image_unbind_all() {}
 

@@ -133,8 +133,10 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
 
     bool is_image() const
     {
-      return ELEM(
-          type, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+      return ELEM(type,
+                  VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) &&
+             texture != nullptr;
     }
   };
 
@@ -155,6 +157,7 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
   /* TODO: bind as image */
   void image_bind(VKTexture &texture, VKDescriptorSet::Location location);
   void bind(VKTexture &texture, VKDescriptorSet::Location location, VKSampler &sampler);
+  void unbind(VKTexture &texture);
 
   /**
    * Some shaders don't need any descriptor sets so we don't need to bind them.

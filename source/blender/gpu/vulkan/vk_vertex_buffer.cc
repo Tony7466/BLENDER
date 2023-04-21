@@ -92,6 +92,7 @@ void VKVertexBuffer::allocate(VKContext &context)
                  usage_,
                  static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
                                                     VK_BUFFER_USAGE_VERTEX_BUFFER_BIT));
+  debug::object_label(&context, buffer_.vk_handle(), "VertexBuffer");
 }
 
 }  // namespace blender::gpu

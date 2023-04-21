@@ -25,6 +25,7 @@ void VKSampler::create(VKContext &context)
   VkSamplerCreateInfo sampler_info = {};
   sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
   vkCreateSampler(context.device_get(), &sampler_info, vk_allocation_callbacks, &vk_sampler_);
+  debug::object_label(&context, vk_sampler_, "DummySampler");
 }
 
 void VKSampler::free(VKContext &context)

@@ -72,6 +72,7 @@ void VKIndexBuffer::allocate(VKContext &context)
                  usage,
                  static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
                                                     VK_BUFFER_USAGE_INDEX_BUFFER_BIT));
+  debug::object_label(&context, buffer_.vk_handle(), "IndexBuffer");
 }
 
 }  // namespace blender::gpu
