@@ -540,6 +540,7 @@ typedef enum ObjectType {
         OB_FONT, \
         OB_MBALL, \
         OB_GPENCIL_LEGACY, \
+        OB_CURVES_LEGACY, \
         OB_CURVES, \
         OB_POINTCLOUD, \
         OB_VOLUME))
