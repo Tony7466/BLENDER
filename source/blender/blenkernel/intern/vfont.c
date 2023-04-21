@@ -1788,8 +1788,7 @@ bool BKE_vfont_to_curve_ex(Object *ob,
                               r_text,
                               r_text_len,
                               r_text_free,
-                              r_chartransdata,
-                              NULL);
+                              r_chartransdata);
   } while (data.ok && ELEM(data.status, VFONT_TO_CURVE_SCALE_ONCE, VFONT_TO_CURVE_BISECT));
 
   return data.ok;
