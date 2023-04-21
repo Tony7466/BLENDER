@@ -21,7 +21,6 @@ namespace blender::eevee {
  *
  * \{ */
 
-/* TODO(fclem) Only enable this module if there is any SSS object in the scene. */
 void SubsurfaceModule::end_sync()
 {
   data_.jitter_threshold = inst_.scene->eevee.sss_jitter_threshold;

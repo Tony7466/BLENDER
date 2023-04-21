@@ -369,10 +369,10 @@ void DeferredLayer::end_sync()
   DRWState state_write_color = state | DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM;
 
   if (closure_bits_ & (CLOSURE_DIFFUSE | CLOSURE_REFLECTION)) {
-    const bool is_last_eval_pass = true;
+    const bool is_last_eval_pass = !(closure_bits_ & CLOSURE_SSS);
 
     eval_light_ps_.init();
-    eval_light_ps_.state_set(is_last_eval_pass ? state_write_color : state);
+    eval_light_ps_.state_set(state_write_color);
     eval_light_ps_.state_stencil(0x00u, 0x01u, 0xFFu);
     eval_light_ps_.shader_set(inst_.shaders.static_shader_get(DEFERRED_LIGHT));
     eval_light_ps_.bind_image("out_diffuse_light_img", &diffuse_light_tx_);
@@ -390,6 +390,26 @@ void DeferredLayer::end_sync()
 
     eval_light_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
     eval_light_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
+  }
+
+  if (closure_bits_ & CLOSURE_SSS) {
+    inst_.subsurface.end_sync();
+
+    subsurface_ps_.init();
+    subsurface_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_EQUAL |
+                             DRW_STATE_BLEND_ADD_FULL);
+    subsurface_ps_.state_stencil(0x00u, 0x01u, 0xFFu);
+    /* TODO(Miguel Pozo): */
+    /*subsurface_ps_.state_stencil(0x0, 0xFF, CLOSURE_SSS);*/
+    subsurface_ps_.shader_set(inst_.shaders.static_shader_get(SUBSURFACE_EVAL));
+    inst_.subsurface.bind_resources(&subsurface_ps_);
+    inst_.hiz_buffer.bind_resources(&subsurface_ps_);
+    subsurface_ps_.bind_texture("radiance_tx", &diffuse_light_tx_);
+    subsurface_ps_.bind_texture("gbuffer_closure_tx", &inst_.gbuffer.closure_tx);
+    subsurface_ps_.bind_texture("gbuffer_color_tx", &inst_.gbuffer.color_tx);
+
+    subsurface_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH);
+    subsurface_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
   }
 }
 
@@ -421,7 +441,6 @@ void DeferredLayer::render(View &view,
                            Framebuffer &combined_fb,
                            int2 extent)
 {
-
   GPU_framebuffer_bind(prepass_fb);
   inst_.manager->submit(prepass_ps_, view);
 
@@ -440,6 +459,10 @@ void DeferredLayer::render(View &view,
   specular_light_tx_.clear(float4(0.0f));
 
   inst_.manager->submit(eval_light_ps_, view);
+
+  if (closure_bits_ & CLOSURE_SSS) {
+    inst_.manager->submit(subsurface_ps_, view);
+  }
 
   diffuse_light_tx_.release();
   specular_light_tx_.release();

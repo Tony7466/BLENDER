@@ -11,6 +11,8 @@
  * we precompute a weight profile texture to be able to support per pixel AND per channel radius.
  **/
 
+#pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_geom_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
@@ -47,11 +49,14 @@ void main(void)
 
   float gbuffer_depth = texelFetch(hiz_tx, texel, 0).r;
   vec3 vP = get_view_space_from_depth(center_uv, gbuffer_depth);
-  vec4 tra_col_in = texelFetch(transmit_color_tx, texel, 0);
-  vec4 tra_nor_in = texelFetch(transmit_normal_tx, texel, 0);
-  vec4 tra_dat_in = texelFetch(transmit_data_tx, texel, 0);
 
-  ClosureDiffuse diffuse = gbuffer_load_diffuse_data(tra_col_in, tra_nor_in, tra_dat_in);
+  vec4 color_1_packed = texelFetch(gbuffer_color_tx, ivec3(texel, 1), 0);
+  vec4 gbuffer_2_packed = texelFetch(gbuffer_closure_tx, ivec3(texel, 2), 0);
+
+  ClosureDiffuse diffuse;
+  diffuse.sss_radius = gbuffer_sss_radii_unpack(gbuffer_2_packed.xyz);
+  diffuse.sss_id = gbuffer_object_id_unorm16_unpack(gbuffer_2_packed.w);
+  diffuse.color = gbuffer_color_unpack(color_1_packed);
 
   if (diffuse.sss_id == 0u) {
     /* Normal diffuse is already in combined pass. */
@@ -66,7 +71,7 @@ void main(void)
   vec2 sample_scale = vec2(ProjectionMatrix[0][0], ProjectionMatrix[1][1]) *
                       (0.5 * max_radius / homcoord);
 
-  float pixel_footprint = sample_scale.x * drw_view.viewport_size.x;
+  float pixel_footprint = sample_scale.x * textureSize(hiz_tx, 0).x;
   if (pixel_footprint <= 1.0) {
     /* Early out. */
     out_combined = vec4(texture(radiance_tx, center_uv).rgb * diffuse.color, 0.0);

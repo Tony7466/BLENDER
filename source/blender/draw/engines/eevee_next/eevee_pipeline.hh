@@ -132,6 +132,7 @@ class DeferredLayer {
   PassMain::Sub *gbuffer_double_sided_ps_ = nullptr;
 
   PassSimple eval_light_ps_ = {"EvalLights"};
+  PassSimple subsurface_ps_ = {"Subsurface"};
 
   /* Closures bits from the materials in this pass. */
   eClosureBits closure_bits_;

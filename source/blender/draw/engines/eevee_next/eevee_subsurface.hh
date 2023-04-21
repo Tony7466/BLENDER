@@ -43,6 +43,11 @@ struct SubsurfaceModule {
 
   void end_sync();
 
+  template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)
+  {
+    pass->bind_ubo("sss_buf", data_);
+  }
+
   const GPUUniformBuf *ubo_get(void) const
   {
     return data_;
