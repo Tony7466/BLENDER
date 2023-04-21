@@ -750,29 +750,70 @@ const ListBase *WM_drag_asset_list_get(const wmDrag *drag)
   return &drag->asset_items;
 }
 
-wmDragPath *WM_drag_create_path_data(const char *path)
+wmDragPath *WM_drag_create_path_data(const char **paths, int path_count)
 {
   wmDragPath *path_data = MEM_new<wmDragPath>("wmDragPath");
-  path_data->path = BLI_strdup(path);
-  path_data->file_type = ED_path_extension_type(path);
+
+  const char *ext = BLI_path_extension(paths[0]);
+
+  int valid_path_count = 1;
+  for (int i = 1; i < path_count; i++) {
+    if ((ext == nullptr && BLI_path_extension(paths[i]) == nullptr) ||
+        (ext != nullptr && BLI_path_extension_check(paths[i], ext))) {
+      valid_path_count++;
+    }
+  }
+  path_data->paths = (char **)MEM_mallocN(valid_path_count * sizeof(char *), "paths");
+
+  int path_index = 0;
+  for (int i = 0; i < path_count; i++) {
+    if ((ext == nullptr && BLI_path_extension(paths[i]) == nullptr) ||
+        (ext != nullptr && BLI_path_extension_check(paths[i], ext))) {
+      path_data->paths[path_index] = BLI_strdup(paths[i]);
+      path_index++;
+    }
+  }
+
+  path_data->file_type = ED_path_extension_type(paths[0]);
+  path_data->path_count = valid_path_count;
+  if (path_count == 1) {
+    path_data->tooltip = BLI_strdup(paths[0]);
+  }
+  else {
+    const char *tooltip = TIP_("Dragging %d %s files.");
+    path_data->tooltip = BLI_sprintfN(tooltip, valid_path_count, ext);
+  }
   return path_data;
 }
 
 static void wm_drag_free_path_data(wmDragPath **path_data)
 {
-  MEM_freeN((*path_data)->path);
+  for (int i = 0; i < (*path_data)->path_count; i++) {
+    MEM_freeN((*path_data)->paths[i]);
+  }
+  MEM_freeN((*path_data)->paths);
+  MEM_freeN((*path_data)->tooltip);
   MEM_delete(*path_data);
   *path_data = nullptr;
 }
 
-const char *WM_drag_get_path(const wmDrag *drag)
+const char **WM_drag_get_paths(const wmDrag *drag)
 {
   if (drag->type != WM_DRAG_PATH) {
     return nullptr;
   }
 
   const wmDragPath *path_data = static_cast<const wmDragPath *>(drag->poin);
-  return path_data->path;
+  return const_cast<const char **>(path_data->paths);
+}
+const int WM_drag_get_path_count(const wmDrag *drag)
+{
+  if (drag->type != WM_DRAG_PATH) {
+    return 0;
+  }
+
+  const wmDragPath *path_data = static_cast<const wmDragPath *>(drag->poin);
+  return path_data->path_count;
 }
 
 int WM_drag_get_path_file_type(const wmDrag *drag)
@@ -836,7 +877,7 @@ const char *WM_drag_get_item_name(wmDrag *drag)
     }
     case WM_DRAG_PATH: {
       const wmDragPath *path_drag_data = static_cast<const wmDragPath *>(drag->poin);
-      return path_drag_data->path;
+      return path_drag_data->tooltip;
     }
     case WM_DRAG_NAME:
       return static_cast<const char *>(drag->poin);

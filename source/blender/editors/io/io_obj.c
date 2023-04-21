@@ -535,7 +535,7 @@ bool obj_file_drop_poll(bContext *UNUSED(C), wmDrag *drag, const wmEvent *UNUSED
   if (drag->type == WM_DRAG_PATH) {
     const eFileSel_File_Types file_type = WM_drag_get_path_file_type(drag);
     if (file_type == FILE_TYPE_OBJECT_IO &&
-        BLI_path_extension_check(WM_drag_get_path(drag), ".obj")) {
+        BLI_path_extension_check(WM_drag_get_paths(drag)[0], ".obj")) {
       return true;
     }
   }

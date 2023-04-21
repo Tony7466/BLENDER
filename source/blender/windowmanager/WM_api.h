@@ -1445,13 +1445,15 @@ const ListBase *WM_drag_asset_list_get(const wmDrag *drag);
 
 const char *WM_drag_get_item_name(struct wmDrag *drag);
 
-/* Path drag and drop. */
+/* Paths drag and drop. */
 /**
- * \param path: The path to drag. Value will be copied into the drag data so the passed string may
- *              be destructed.
+ * \param paths: The paths to drag. Value will be copied into the drag data so the passed strings
+ * may be destructed. Only paths that share the same extension of the first file will be copied.
+ * \param path_count: the number of paths in #paths
  */
-wmDragPath *WM_drag_create_path_data(const char *path);
-const char *WM_drag_get_path(const wmDrag *drag);
+wmDragPath *WM_drag_create_path_data(const char **paths, int path_count);
+const char **WM_drag_get_paths(const wmDrag *drag);
+const int WM_drag_get_path_count(const wmDrag *drag);
 /**
  * Note that even though the enum return type uses bit-flags, this should never have multiple
  * type-bits set, so `ELEM()` like comparison is possible.

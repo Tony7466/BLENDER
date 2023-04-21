@@ -55,24 +55,27 @@ void skip_save_import_paths_props(wmOperatorType *ot, const eFileSel_Flag flag)
 
 void files_drop_copy(bContext *UNUSED(C), wmDrag *drag, wmDropBox *drop)
 {
+  const char **paths = WM_drag_get_paths(drag);
+  RNA_string_set(drop->ptr, "filepath", paths[0]);
 
-  RNA_string_set(drop->ptr, "filepath", WM_drag_get_path(drag));
-
-  // TODO(@guishe): Add support for multiple drag&drop files import
   char dir[FILE_MAX], file[FILE_MAX];
-  BLI_split_dirfile(WM_drag_get_path(drag), dir, file, sizeof(dir), sizeof(file));
+  BLI_split_dirfile(paths[0], dir, file, sizeof(dir), sizeof(file));
 
   RNA_string_set(drop->ptr, "directory", dir);
-
   RNA_collection_clear(drop->ptr, "files");
-  PointerRNA itemptr;
-  RNA_collection_add(drop->ptr, "files", &itemptr);
-  RNA_string_set(&itemptr, "name", file);
+
+  const int path_count = WM_drag_get_path_count(drag);
+  for (int i = 0; i < path_count; i++) {
+    BLI_split_dirfile(paths[i], dir, file, sizeof(dir), sizeof(file));
+    PointerRNA itemptr;
+    RNA_collection_add(drop->ptr, "files", &itemptr);
+    RNA_string_set(&itemptr, "name", file);
+  }
 }
 
 void file_drop_copy(bContext *UNUSED(C), wmDrag *drag, wmDropBox *drop)
 {
-  RNA_string_set(drop->ptr, "filepath", WM_drag_get_path(drag));
+  RNA_string_set(drop->ptr, "filepath", WM_drag_get_paths(drag)[0]);
 }
 
 void file_drop_info_draw(bContext *C, wmOperator *op, int icon)
