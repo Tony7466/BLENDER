@@ -13,17 +13,15 @@
 
 namespace blender::render::hydra {
 
-class MeshData;
-
-class MaterialData : IdData {
-  friend MeshData;
-
+class MaterialData : public IdData {
  public:
-  MaterialData(BlenderSceneDelegate *scene_delegate, Material *material);
+  MaterialData(BlenderSceneDelegate *scene_delegate,
+               Material *material,
+               pxr::SdfPath const &prim_id);
 
   static std::unique_ptr<MaterialData> create(BlenderSceneDelegate *scene_delegate,
-                                              Material *material);
-  static pxr::SdfPath prim_id(BlenderSceneDelegate *scene_delegate, Material *material);
+                                              Material *material,
+                                              pxr::SdfPath const &prim_id);
 
   void init() override;
   void insert() override;
@@ -31,7 +29,7 @@ class MaterialData : IdData {
   void update() override;
 
   pxr::VtValue get_data(pxr::TfToken const &key) const override;
-  pxr::VtValue get_material_resource();
+  pxr::VtValue get_material_resource() const;
 
  private:
   pxr::SdfAssetPath mtlx_path_;

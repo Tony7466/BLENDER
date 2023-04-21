@@ -28,33 +28,30 @@
 
 namespace blender::render::hydra {
 
-WorldData::WorldData(BlenderSceneDelegate *scene_delegate, World *world, bContext *context)
-    : IdData(scene_delegate, (ID *)world), context_(context)
+WorldData::WorldData(BlenderSceneDelegate *scene_delegate,
+                     World *world,
+                     pxr::SdfPath const &prim_id)
+    : IdData(scene_delegate, (ID *)world, prim_id)
 {
-  p_id_ = prim_id(scene_delegate);
-  ID_LOG(2, "");
 }
 
 std::unique_ptr<WorldData> WorldData::create(BlenderSceneDelegate *scene_delegate,
                                              World *world,
-                                             bContext *context)
+                                             pxr::SdfPath const &prim_id)
 {
-  auto data = std::make_unique<WorldData>(scene_delegate, world, context);
+  auto data = std::make_unique<WorldData>(scene_delegate, world, prim_id);
   data->init();
   data->insert();
   return data;
-}
-
-pxr::SdfPath WorldData::prim_id(BlenderSceneDelegate *scene_delegate)
-{
-  return scene_delegate->GetDelegateID().AppendElementString("World");
 }
 
 void WorldData::init()
 {
   ID_LOG(2, "");
 
-  World *world = (World *)id_;
+  set_transform();
+
+  World *world = (World *)id;
   data_.clear();
 
   data_[pxr::UsdLuxTokens->orientToStageUpAxis] = true;
@@ -101,8 +98,8 @@ void WorldData::init()
         Image *image = (Image *)color_input_node->id;
 
         if (image) {
-          Main *bmain = CTX_data_main(context_);
-          Scene *scene = CTX_data_scene(context_);
+          Main *bmain = CTX_data_main(scene_delegate_->context);
+          Scene *scene = scene_delegate_->scene;
 
           ReportList reports;
           ImageSaveOptions opts;
@@ -127,42 +124,27 @@ void WorldData::insert()
 {
   ID_LOG(2, "");
   scene_delegate_->GetRenderIndex().InsertSprim(
-      pxr::HdPrimTypeTokens->domeLight, scene_delegate_, p_id_);
+      pxr::HdPrimTypeTokens->domeLight, scene_delegate_, prim_id);
 }
 
 void WorldData::remove()
 {
-  CLOG_INFO(LOG_BSD, 2, "%s", id_->name);
-  scene_delegate_->GetRenderIndex().RemoveSprim(pxr::HdPrimTypeTokens->domeLight, p_id_);
+  CLOG_INFO(LOG_BSD, 2, "%s", prim_id.GetText());
+  scene_delegate_->GetRenderIndex().RemoveSprim(pxr::HdPrimTypeTokens->domeLight, prim_id);
 }
 
 void WorldData::update()
 {
   ID_LOG(2, "");
   init();
-  scene_delegate_->GetRenderIndex().GetChangeTracker().MarkSprimDirty(p_id_,
+  scene_delegate_->GetRenderIndex().GetChangeTracker().MarkSprimDirty(prim_id,
                                                                       pxr::HdLight::AllDirty);
 }
 
 void WorldData::update(World *world)
 {
-  id_ = (ID *)world;
+  id = (ID *)world;
   update();
-}
-
-pxr::GfMatrix4d WorldData::transform()
-{
-  pxr::GfMatrix4d transform = pxr::GfMatrix4d(pxr::GfRotation(pxr::GfVec3d(1.0, 0.0, 0.0), -90),
-                                              pxr::GfVec3d());
-
-  /* TODO : do this check via RenderSettings*/
-  if (scene_delegate_->GetRenderIndex().GetRenderDelegate()->GetRendererDisplayName() == "RPR") {
-    transform *= pxr::GfMatrix4d(pxr::GfRotation(pxr::GfVec3d(1.0, 0.0, 0.0), -180),
-                                 pxr::GfVec3d());
-    transform *= pxr::GfMatrix4d(pxr::GfRotation(pxr::GfVec3d(0.0, 0.0, 1.0), 90.0),
-                                 pxr::GfVec3d());
-  }
-  return transform;
 }
 
 pxr::VtValue WorldData::get_data(pxr::TfToken const &key) const
@@ -173,6 +155,19 @@ pxr::VtValue WorldData::get_data(pxr::TfToken const &key) const
     ret = it->second;
   }
   return ret;
+}
+
+void WorldData::set_transform()
+{
+  transform = pxr::GfMatrix4d(pxr::GfRotation(pxr::GfVec3d(1.0, 0.0, 0.0), -90), pxr::GfVec3d());
+
+  /* TODO : do this check via RenderSettings*/
+  if (scene_delegate_->GetRenderIndex().GetRenderDelegate()->GetRendererDisplayName() == "RPR") {
+    transform *= pxr::GfMatrix4d(pxr::GfRotation(pxr::GfVec3d(1.0, 0.0, 0.0), -180),
+                                 pxr::GfVec3d());
+    transform *= pxr::GfMatrix4d(pxr::GfRotation(pxr::GfVec3d(0.0, 0.0, 1.0), 90.0),
+                                 pxr::GfVec3d());
+  }
 }
 
 }  // namespace blender::render::hydra

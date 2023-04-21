@@ -15,17 +15,18 @@
 
 namespace blender::render::hydra {
 
-MeshData::MeshData(BlenderSceneDelegate *scene_delegate, Object *object)
-    : ObjectData(scene_delegate, object), mat_data_(nullptr)
+MeshData::MeshData(BlenderSceneDelegate *scene_delegate,
+                   Object *object,
+                   pxr::SdfPath const &prim_id)
+    : ObjectData(scene_delegate, object, prim_id)
 {
-  ID_LOG(2, "");
 }
 
 void MeshData::init()
 {
-  CLOG_INFO(LOG_BSD, 2, "%s", id_->name);
+  ID_LOG(2, "");
 
-  Object *object = (Object *)id_;
+  Object *object = (Object *)id;
   if (object->type == OB_MESH && object->mode == OB_MODE_OBJECT &&
       BLI_listbase_is_empty(&object->modifiers)) {
     write_mesh((Mesh *)object->data);
@@ -39,6 +40,7 @@ void MeshData::init()
   }
 
   write_material();
+  set_transform_to_object();
 }
 
 void MeshData::insert()
@@ -47,35 +49,36 @@ void MeshData::insert()
     return;
   }
 
-  CLOG_INFO(LOG_BSD, 2, "%s", id_->name);
+  ID_LOG(2, "");
   scene_delegate_->GetRenderIndex().InsertRprim(
-      pxr::HdPrimTypeTokens->mesh, scene_delegate_, p_id_);
+      pxr::HdPrimTypeTokens->mesh, scene_delegate_, prim_id);
 }
 
 void MeshData::remove()
 {
-  if (!scene_delegate_->GetRenderIndex().HasRprim(p_id_)) {
+  if (!scene_delegate_->GetRenderIndex().HasRprim(prim_id)) {
     return;
   }
 
-  CLOG_INFO(LOG_BSD, 2, "%s", id_->name);
-  scene_delegate_->GetRenderIndex().RemoveRprim(p_id_);
+  CLOG_INFO(LOG_BSD, 2, "%s", prim_id.GetText());
+  scene_delegate_->GetRenderIndex().RemoveRprim(prim_id);
 }
 
 void MeshData::update()
 {
   pxr::HdDirtyBits bits = pxr::HdChangeTracker::Clean;
-  Object *object = (Object *)id_;
-  if ((id_->recalc & ID_RECALC_GEOMETRY) || (((ID *)object->data)->recalc & ID_RECALC_GEOMETRY)) {
+  Object *object = (Object *)id;
+  if ((id->recalc & ID_RECALC_GEOMETRY) || (((ID *)object->data)->recalc & ID_RECALC_GEOMETRY)) {
     init();
     bits = pxr::HdChangeTracker::AllDirty;
   }
   else {
-    if (id_->recalc & ID_RECALC_SHADING) {
+    if (id->recalc & ID_RECALC_SHADING) {
       write_material();
       bits |= pxr::HdChangeTracker::DirtyMaterialId;
     }
-    if (id_->recalc & ID_RECALC_TRANSFORM) {
+    if (id->recalc & ID_RECALC_TRANSFORM) {
+      set_transform_to_object();
       bits |= pxr::HdChangeTracker::DirtyTransform;
     }
   }
@@ -84,7 +87,7 @@ void MeshData::update()
     return;
   }
 
-  if (!scene_delegate_->GetRenderIndex().HasRprim(p_id_)) {
+  if (!scene_delegate_->GetRenderIndex().HasRprim(prim_id)) {
     insert();
     return;
   }
@@ -94,8 +97,8 @@ void MeshData::update()
     remove();
     return;
   }
-  CLOG_INFO(LOG_BSD, 2, "%s", id_->name);
-  scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(p_id_, bits);
+  ID_LOG(2, "");
+  scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(prim_id, bits);
 }
 
 pxr::VtValue MeshData::get_data(pxr::TfToken const &key) const
@@ -116,17 +119,17 @@ pxr::VtValue MeshData::get_data(pxr::TfToken const &key) const
   return ret;
 }
 
-bool MeshData::update_visibility(View3D *view3d)
+bool MeshData::update_visibility()
 {
-  bool ret = ObjectData::update_visibility(view3d);
+  bool ret = ObjectData::update_visibility();
   if (ret) {
     scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(
-        p_id_, pxr::HdChangeTracker::DirtyVisibility);
+        prim_id, pxr::HdChangeTracker::DirtyVisibility);
   }
   return ret;
 }
 
-pxr::HdMeshTopology MeshData::mesh_topology()
+pxr::HdMeshTopology MeshData::mesh_topology() const
 {
   return pxr::HdMeshTopology(pxr::PxOsdOpenSubdivTokens->none,
                              pxr::HdTokens->rightHanded,
@@ -134,7 +137,8 @@ pxr::HdMeshTopology MeshData::mesh_topology()
                              face_vertex_indices_);
 }
 
-pxr::HdPrimvarDescriptorVector MeshData::primvar_descriptors(pxr::HdInterpolation interpolation)
+pxr::HdPrimvarDescriptorVector MeshData::primvar_descriptors(
+    pxr::HdInterpolation interpolation) const
 {
   pxr::HdPrimvarDescriptorVector primvars;
   if (interpolation == pxr::HdInterpolationVertex) {
@@ -156,12 +160,12 @@ pxr::HdPrimvarDescriptorVector MeshData::primvar_descriptors(pxr::HdInterpolatio
   return primvars;
 }
 
-pxr::SdfPath MeshData::material_id()
+pxr::SdfPath MeshData::material_id() const
 {
   if (!mat_data_) {
     return pxr::SdfPath();
   }
-  return mat_data_->p_id_;
+  return mat_data_->prim_id;
 }
 
 void MeshData::write_mesh(Mesh *mesh)
@@ -205,7 +209,7 @@ void MeshData::write_mesh(Mesh *mesh)
 
 void MeshData::write_material()
 {
-  Object *object = (Object *)id_;
+  Object *object = (Object *)id;
   Material *mat = nullptr;
   if (BKE_object_material_count_eval(object) > 0) {
     mat = BKE_object_material_get_eval(object, object->actcol);
@@ -215,11 +219,11 @@ void MeshData::write_material()
     mat_data_ = nullptr;
     return;
   }
-  pxr::SdfPath id = MaterialData::prim_id(scene_delegate_, mat);
-  mat_data_ = scene_delegate_->material_data(id);
+  pxr::SdfPath p_id = scene_delegate_->material_prim_id(mat);
+  mat_data_ = scene_delegate_->material_data(p_id);
   if (!mat_data_) {
-    scene_delegate_->materials_[id] = MaterialData::create(scene_delegate_, mat);
-    mat_data_ = scene_delegate_->material_data(id);
+    scene_delegate_->materials_[p_id] = MaterialData::create(scene_delegate_, mat, p_id);
+    mat_data_ = scene_delegate_->material_data(p_id);
   }
 }
 

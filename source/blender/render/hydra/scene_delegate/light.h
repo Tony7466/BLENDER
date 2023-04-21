@@ -15,7 +15,7 @@ namespace blender::render::hydra {
 
 class LightData : public ObjectData {
  public:
-  LightData(BlenderSceneDelegate *scene_delegate, Object *object);
+  LightData(BlenderSceneDelegate *scene_delegate, Object *object, pxr::SdfPath const &prim_id);
 
   void init() override;
   void insert() override;
@@ -23,13 +23,13 @@ class LightData : public ObjectData {
   void update() override;
 
   pxr::VtValue get_data(pxr::TfToken const &key) const override;
-  bool update_visibility(View3D *view3d) override;
+  bool update_visibility() override;
 
  private:
   pxr::TfToken prim_type(Light *light);
 
   std::map<pxr::TfToken, pxr::VtValue> data_;
-  pxr::TfToken p_type_;
+  pxr::TfToken prim_type_;
 };
 
 }  // namespace blender::render::hydra

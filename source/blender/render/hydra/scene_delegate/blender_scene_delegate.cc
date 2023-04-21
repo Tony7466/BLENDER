@@ -32,11 +32,11 @@ pxr::GfMatrix4d BlenderSceneDelegate::GetTransform(pxr::SdfPath const &id)
   CLOG_INFO(LOG_BSD, 3, "%s", id.GetText());
   ObjectData *obj_data = object_data(id);
   if (obj_data) {
-    return obj_data->transform();
+    return obj_data->transform;
   }
 
-  if (id == WorldData::prim_id(this)) {
-    return world_data_->transform();
+  if (id == world_prim_id()) {
+    return world_data_->transform;
   }
 
   return pxr::GfMatrix4d();
@@ -71,7 +71,7 @@ pxr::VtValue BlenderSceneDelegate::GetLightParamValue(pxr::SdfPath const &id,
   if (l_data) {
     return l_data->get_data(key);
   }
-  if (id == WorldData::prim_id(this)) {
+  if (id == world_prim_id()) {
     return world_data_->get_data(key);
   }
   return pxr::VtValue();
@@ -111,7 +111,7 @@ pxr::VtValue BlenderSceneDelegate::GetMaterialResource(pxr::SdfPath const &id)
 
 bool BlenderSceneDelegate::GetVisible(pxr::SdfPath const &id)
 {
-  if (id == WorldData::prim_id(this)) {
+  if (id == world_prim_id()) {
     return true;
   }
 
@@ -123,7 +123,7 @@ pxr::SdfPath BlenderSceneDelegate::GetInstancerId(pxr::SdfPath const &prim_id)
   CLOG_INFO(LOG_BSD, 3, "%s", prim_id.GetText());
   InstancerData *i_data = instancer_data(prim_id.GetParentPath());
   if (i_data) {
-    return i_data->p_id_;
+    return i_data->prim_id;
   }
   return pxr::SdfPath();
 }
@@ -147,17 +147,17 @@ pxr::GfMatrix4d BlenderSceneDelegate::GetInstancerTransform(pxr::SdfPath const &
 {
   CLOG_INFO(LOG_BSD, 3, "%s", instancer_id.GetText());
   InstancerData *i_data = instancer_data(instancer_id);
-  return i_data->transform();
+  return i_data->transform;
 }
 
-void BlenderSceneDelegate::populate(Depsgraph * deps, bContext * cont)
+void BlenderSceneDelegate::populate(Depsgraph *deps, bContext *cont)
 {
-  bool is_populated = depsgraph_ != nullptr;
+  bool is_populated = depsgraph != nullptr;
 
-  depsgraph_ = deps;
-  context_ = cont;
-  scene_ = DEG_get_input_scene(depsgraph_);
-  view3d_ = CTX_wm_view3d(context_);
+  depsgraph = deps;
+  context = cont;
+  scene = DEG_get_input_scene(depsgraph);
+  view3d = CTX_wm_view3d(context);
 
   if (is_populated) {
     check_updates();
@@ -187,7 +187,35 @@ void BlenderSceneDelegate::clear()
   materials_.clear();
 }
 
-ObjectData *BlenderSceneDelegate::object_data(pxr::SdfPath const &id)
+pxr::SdfPath BlenderSceneDelegate::prim_id(ID *id, const char *prefix) const
+{
+  /* Making id of object in form like <prefix>_<pointer in 16 hex digits format> */
+  char str[32];
+  snprintf(str, 32, "%s_%016llx", prefix, (uint64_t)id);
+  return GetDelegateID().AppendElementString(str);
+}
+
+pxr::SdfPath BlenderSceneDelegate::object_prim_id(Object *object) const
+{
+  return prim_id((ID *)object, "O");
+}
+
+pxr::SdfPath BlenderSceneDelegate::material_prim_id(Material *mat) const
+{
+  return prim_id((ID *)mat, "M");
+}
+
+pxr::SdfPath BlenderSceneDelegate::instancer_prim_id(Object *object) const
+{
+  return prim_id((ID *)object, "I");
+}
+
+pxr::SdfPath BlenderSceneDelegate::world_prim_id() const
+{
+  return GetDelegateID().AppendElementString("World");
+}
+
+ObjectData *BlenderSceneDelegate::object_data(pxr::SdfPath const &id) const
 {
   auto it = objects_.find(id);
   if (it != objects_.end()) {
@@ -200,17 +228,17 @@ ObjectData *BlenderSceneDelegate::object_data(pxr::SdfPath const &id)
   return nullptr;
 }
 
-MeshData *BlenderSceneDelegate::mesh_data(pxr::SdfPath const &id)
+MeshData *BlenderSceneDelegate::mesh_data(pxr::SdfPath const &id) const
 {
   return dynamic_cast<MeshData *>(object_data(id));
 }
 
-LightData *BlenderSceneDelegate::light_data(pxr::SdfPath const &id)
+LightData *BlenderSceneDelegate::light_data(pxr::SdfPath const &id) const
 {
   return dynamic_cast<LightData *>(object_data(id));
 }
 
-MaterialData *BlenderSceneDelegate::material_data(pxr::SdfPath const &id)
+MaterialData *BlenderSceneDelegate::material_data(pxr::SdfPath const &id) const
 {
   auto it = materials_.find(id);
   if (it == materials_.end()) {
@@ -219,7 +247,7 @@ MaterialData *BlenderSceneDelegate::material_data(pxr::SdfPath const &id)
   return it->second.get();
 }
 
-InstancerData *BlenderSceneDelegate::instancer_data(pxr::SdfPath const &id)
+InstancerData *BlenderSceneDelegate::instancer_data(pxr::SdfPath const &id) const
 {
   auto it = instancers_.find(id);
   if (it != instancers_.end()) {
@@ -233,18 +261,18 @@ void BlenderSceneDelegate::update_objects(Object *object)
   if (!ObjectData::is_supported(object)) {
     return;
   }
-  pxr::SdfPath id = ObjectData::prim_id(this, object);
+  pxr::SdfPath id = object_prim_id(object);
   ObjectData *obj_data = object_data(id);
   if (obj_data) {
     obj_data->update();
     return;
   }
-  if (view3d_ && !BKE_object_is_visible_in_viewport(view3d_, object)) {
+  if (view3d && !BKE_object_is_visible_in_viewport(view3d, object)) {
     return;
   }
-  objects_[id] = ObjectData::create(this, object);
+  objects_[id] = ObjectData::create(this, object, id);
   obj_data = object_data(id);
-  obj_data->update_visibility(view3d_);
+  obj_data->update_visibility();
 }
 
 void BlenderSceneDelegate::update_instancers(Object *object)
@@ -254,7 +282,7 @@ void BlenderSceneDelegate::update_instancers(Object *object)
     it.second->check_update(object);
   }
 
-  pxr::SdfPath id = InstancerData::prim_id(this, object);
+  pxr::SdfPath id = instancer_prim_id(object);
   InstancerData *i_data = instancer_data(id);
   if (i_data) {
     if (object->transflag & OB_DUPLI) {
@@ -269,20 +297,20 @@ void BlenderSceneDelegate::update_instancers(Object *object)
   if ((object->transflag & OB_DUPLI) == 0) {
     return;
   }
-  if (view3d_ && !BKE_object_is_visible_in_viewport(view3d_, object)) {
+  if (view3d && !BKE_object_is_visible_in_viewport(view3d, object)) {
     return;
   }
-  instancers_[id] = InstancerData::create(this, object);
+  instancers_[id] = InstancerData::create(this, object, id);
   i_data = instancer_data(id);
-  i_data->update_visibility(view3d_);
+  i_data->update_visibility();
 }
 
 void BlenderSceneDelegate::update_world()
 {
-  World *world = scene_->world;
+  World *world = scene->world;
   if (!world_data_) {
     if (world) {
-      world_data_ = WorldData::create(this, world, context_);
+      world_data_ = WorldData::create(this, world, world_prim_id());
     }
   }
   else {
@@ -298,36 +326,12 @@ void BlenderSceneDelegate::update_world()
 
 void BlenderSceneDelegate::check_updates()
 {
-  /* Working with updates */
   bool do_update_collection = false;
   bool do_update_visibility = false;
   bool do_update_world = false;
 
-  unsigned int scene_recalc = scene_->id.recalc;
-  if (scene_recalc) {
-    /* Checking scene updates */
-    CLOG_INFO(LOG_BSD,
-              2,
-              "Update: %s [%s]",
-              ((ID *)scene_)->name,
-              std::bitset<32>(scene_recalc).to_string().c_str());
-
-    if (scene_recalc & ID_RECALC_BASE_FLAGS) {
-      do_update_visibility = true;
-    }
-    if (scene_recalc & (ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY)) {
-      do_update_collection = true;
-    }
-    if (scene_recalc & ID_RECALC_AUDIO_VOLUME) {
-      if ((scene_->world && !world_data_) || (!scene_->world && world_data_)) {
-        do_update_world = true;
-      }
-    }
-  }
-
-  /* Checking other objects updates */
   DEGIDIterData data = {0};
-  data.graph = depsgraph_;
+  data.graph = depsgraph;
   data.only_updated = true;
   ITER_BEGIN (
       DEG_iterator_ids_begin, DEG_iterator_ids_next, DEG_iterator_ids_end, &data, ID *, id) {
@@ -343,7 +347,7 @@ void BlenderSceneDelegate::check_updates()
       } break;
 
       case ID_MA: {
-        MaterialData *mat_data = material_data(MaterialData::prim_id(this, (Material *)id));
+        MaterialData *mat_data = material_data(material_prim_id((Material *)id));
         if (mat_data) {
           mat_data->update();
         }
@@ -352,6 +356,20 @@ void BlenderSceneDelegate::check_updates()
       case ID_WO: {
         if (id->recalc & ID_RECALC_SHADING) {
           do_update_world = true;
+        }
+      } break;
+
+      case ID_SCE: {
+        if (id->recalc & ID_RECALC_BASE_FLAGS) {
+          do_update_visibility = true;
+        }
+        if (id->recalc & (ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY)) {
+          do_update_collection = true;
+        }
+        if (id->recalc & ID_RECALC_AUDIO_VOLUME) {
+          if ((scene->world && !world_data_) || (!scene->world && world_data_)) {
+            do_update_world = true;
+          }
         }
       } break;
 
@@ -375,7 +393,7 @@ void BlenderSceneDelegate::check_updates()
 void BlenderSceneDelegate::add_new_objects()
 {
   DEGObjectIterSettings settings = {0};
-  settings.depsgraph = depsgraph_;
+  settings.depsgraph = depsgraph;
   settings.flags = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_VISIBLE |
                    DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET;
   DEGObjectIterData data = {0};
@@ -405,7 +423,7 @@ void BlenderSceneDelegate::remove_unused_objects()
   std::set<std::string> available_objects;
 
   DEGObjectIterSettings settings = {0};
-  settings.depsgraph = depsgraph_;
+  settings.depsgraph = depsgraph;
   settings.flags = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET;
   DEGObjectIterData data = {0};
   data.settings = &settings;
@@ -420,8 +438,8 @@ void BlenderSceneDelegate::remove_unused_objects()
     if (!ObjectData::is_supported(object)) {
       continue;
     }
-    available_objects.insert(ObjectData::prim_id(this, object).GetName());
-    available_objects.insert(InstancerData::prim_id(this, object).GetName());
+    available_objects.insert(object_prim_id(object).GetName());
+    available_objects.insert(instancer_prim_id(object).GetName());
   }
   ITER_END;
 
@@ -475,15 +493,15 @@ void BlenderSceneDelegate::remove_unused_objects()
 void BlenderSceneDelegate::update_visibility()
 {
   for (auto &it : objects_) {
-    it.second->update_visibility(view3d_);
+    it.second->update_visibility();
   }
   for (auto &it : instancers_) {
-    it.second->update_visibility(view3d_);
+    it.second->update_visibility();
   }
 
   /* Add objects which were invisible before and not added yet */
   DEGObjectIterSettings settings = {0};
-  settings.depsgraph = depsgraph_;
+  settings.depsgraph = depsgraph;
   settings.flags = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_VISIBLE |
                    DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET;
   DEGObjectIterData data = {0};
@@ -501,10 +519,10 @@ void BlenderSceneDelegate::update_visibility()
       continue;
     }
 
-    if (!object_data(ObjectData::prim_id(this, object))) {
+    if (!object_data(object_prim_id(object))) {
       update_objects(object);
     }
-    if (!instancer_data(InstancerData::prim_id(this, object))) {
+    if (!instancer_data(instancer_prim_id(object))) {
       update_instancers(object);
     }
   }

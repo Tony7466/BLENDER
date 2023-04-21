@@ -21,8 +21,7 @@ namespace blender::render::hydra {
 extern struct CLG_LogRef *LOG_BSD; /* BSD - Blender Scene Delegate */
 
 class BlenderSceneDelegate : public pxr::HdSceneDelegate {
-  friend MeshData;
-  friend InstancerData;
+  friend MeshData; /* has access to materials_*/
 
  public:
   enum class EngineType { VIEWPORT = 1, FINAL, PREVIEW };
@@ -52,13 +51,23 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
   void clear();
 
   EngineType engine_type;
+  Depsgraph *depsgraph = nullptr;
+  bContext *context = nullptr;
+  View3D *view3d = nullptr;
+  Scene *scene = nullptr;
 
  private:
-  ObjectData *object_data(pxr::SdfPath const &id);
-  MeshData *mesh_data(pxr::SdfPath const &id);
-  LightData *light_data(pxr::SdfPath const &id);
-  MaterialData *material_data(pxr::SdfPath const &id);
-  InstancerData *instancer_data(pxr::SdfPath const &id);
+  pxr::SdfPath prim_id(ID *id, const char *prefix) const;
+  pxr::SdfPath object_prim_id(Object *object) const;
+  pxr::SdfPath material_prim_id(Material *mat) const;
+  pxr::SdfPath instancer_prim_id(Object *object) const;
+  pxr::SdfPath world_prim_id() const;
+
+  ObjectData *object_data(pxr::SdfPath const &id) const;
+  MeshData *mesh_data(pxr::SdfPath const &id) const;
+  LightData *light_data(pxr::SdfPath const &id) const;
+  MaterialData *material_data(pxr::SdfPath const &id) const;
+  InstancerData *instancer_data(pxr::SdfPath const &id) const;
 
   void update_objects(Object *object);
   void update_instancers(Object *object);
@@ -67,11 +76,6 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
   void add_new_objects();
   void remove_unused_objects();
   void update_visibility();
-
-  Depsgraph *depsgraph_ = nullptr;
-  bContext *context_ = nullptr;
-  View3D *view3d_ = nullptr;
-  Scene *scene_ = nullptr;
 
   ObjectDataMap objects_;
   MaterialDataMap materials_;

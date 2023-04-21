@@ -15,7 +15,7 @@ namespace blender::render::hydra {
 
 class MeshData : public ObjectData {
  public:
-  MeshData(BlenderSceneDelegate *scene_delegate, Object *object);
+  MeshData(BlenderSceneDelegate *scene_delegate, Object *object, pxr::SdfPath const &prim_id);
 
   void init() override;
   void insert() override;
@@ -23,11 +23,11 @@ class MeshData : public ObjectData {
   void update() override;
 
   pxr::VtValue get_data(pxr::TfToken const &key) const override;
-  bool update_visibility(View3D *view3d) override;
+  bool update_visibility() override;
 
-  pxr::HdMeshTopology mesh_topology();
-  pxr::HdPrimvarDescriptorVector primvar_descriptors(pxr::HdInterpolation interpolation);
-  pxr::SdfPath material_id();
+  pxr::HdMeshTopology mesh_topology() const;
+  pxr::HdPrimvarDescriptorVector primvar_descriptors(pxr::HdInterpolation interpolation) const;
+  pxr::SdfPath material_id() const;
 
  protected:
   void write_mesh(Mesh *mesh);
@@ -42,7 +42,7 @@ class MeshData : public ObjectData {
   pxr::VtVec3fArray normals_;
   pxr::VtMatrix4dArray instances_;
 
-  MaterialData *mat_data_;
+  MaterialData *mat_data_ = nullptr;
 };
 
 }  // namespace blender::render::hydra

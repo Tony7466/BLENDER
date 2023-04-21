@@ -39,6 +39,8 @@ class Engine {
   RenderEngine *bl_engine_;
 
   /* The order is important due to deletion order */
+  pxr::HgiUniquePtr hgi_;
+  pxr::HdDriver hgi_driver_;
   pxr::HdPluginRenderDelegateUniqueHandle render_delegate_;
   std::unique_ptr<pxr::HdRenderIndex> render_index_;
   std::unique_ptr<BlenderSceneDelegate> scene_delegate_;
@@ -46,9 +48,6 @@ class Engine {
   std::unique_ptr<pxr::HdxFreeCameraSceneDelegate> free_camera_delegate_;
   std::unique_ptr<SimpleLightTaskDelegate> simple_light_task_delegate_;
   std::unique_ptr<pxr::HdEngine> engine_;
-
-  pxr::HgiUniquePtr hgi_;
-  pxr::HdDriver hgi_driver_;
 };
 
 }  // namespace blender::render::hydra

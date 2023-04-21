@@ -14,17 +14,18 @@
 
 namespace blender::render::hydra {
 
-LightData::LightData(BlenderSceneDelegate *scene_delegate, Object *object)
-    : ObjectData(scene_delegate, object)
+LightData::LightData(BlenderSceneDelegate *scene_delegate,
+                     Object *object,
+                     pxr::SdfPath const &prim_id)
+    : ObjectData(scene_delegate, object, prim_id)
 {
-  ID_LOG(2, "");
 }
 
 void LightData::init()
 {
   ID_LOG(2, "");
 
-  Light *light = (Light *)((Object *)id_)->data;
+  Light *light = (Light *)((Object *)id)->data;
   data_.clear();
 
   float intensity = light->energy;
@@ -79,30 +80,32 @@ void LightData::init()
       break;
   }
 
-  p_type_ = prim_type(light);
+  prim_type_ = prim_type(light);
 
   /* TODO: temporary value, it should be delivered through Python UI */
   data_[pxr::HdLightTokens->exposure] = 1.0f;
+
+  set_transform_to_object();
 }
 
 void LightData::insert()
 {
-  CLOG_INFO(LOG_BSD, 2, "%s", id_->name);
-  scene_delegate_->GetRenderIndex().InsertSprim(p_type_, scene_delegate_, p_id_);
+  ID_LOG(2, "");
+  scene_delegate_->GetRenderIndex().InsertSprim(prim_type_, scene_delegate_, prim_id);
 }
 
 void LightData::remove()
 {
-  CLOG_INFO(LOG_BSD, 2, "%s", id_->name);
-  scene_delegate_->GetRenderIndex().RemoveSprim(p_type_, p_id_);
+  CLOG_INFO(LOG_BSD, 2, "%s", prim_id.GetText());
+  scene_delegate_->GetRenderIndex().RemoveSprim(prim_type_, prim_id);
 }
 
 void LightData::update()
 {
-  CLOG_INFO(LOG_BSD, 2, "%s", id_->name);
+  ID_LOG(2, "");
 
-  Light *light = (Light *)((Object *)id_)->data;
-  if (prim_type(light) != p_type_) {
+  Light *light = (Light *)((Object *)id)->data;
+  if (prim_type(light) != prim_type_) {
     remove();
     init();
     insert();
@@ -110,14 +113,15 @@ void LightData::update()
   }
 
   pxr::HdDirtyBits bits = pxr::HdLight::Clean;
-  if (id_->recalc & ID_RECALC_GEOMETRY) {
+  if (id->recalc & ID_RECALC_GEOMETRY) {
     init();
     bits = pxr::HdLight::AllDirty;
   }
-  else if (id_->recalc & ID_RECALC_TRANSFORM) {
+  else if (id->recalc & ID_RECALC_TRANSFORM) {
+    set_transform_to_object();
     bits = pxr::HdLight::DirtyTransform;
   }
-  scene_delegate_->GetRenderIndex().GetChangeTracker().MarkSprimDirty(p_id_, bits);
+  scene_delegate_->GetRenderIndex().GetChangeTracker().MarkSprimDirty(prim_id, bits);
 }
 
 pxr::VtValue LightData::get_data(pxr::TfToken const &key) const
@@ -141,11 +145,11 @@ pxr::VtValue LightData::get_data(pxr::TfToken const &key) const
   return ret;
 }
 
-bool LightData::update_visibility(View3D *view3d)
+bool LightData::update_visibility()
 {
-  bool ret = ObjectData::update_visibility(view3d);
+  bool ret = ObjectData::update_visibility();
   if (ret) {
-    scene_delegate_->GetRenderIndex().GetChangeTracker().MarkSprimDirty(p_id_,
+    scene_delegate_->GetRenderIndex().GetChangeTracker().MarkSprimDirty(prim_id,
                                                                         pxr::HdLight::DirtyParams);
   }
   return ret;

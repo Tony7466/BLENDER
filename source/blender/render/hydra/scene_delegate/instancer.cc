@@ -9,11 +9,21 @@
 
 namespace blender::render::hydra {
 
-InstancerData::InstancerData(BlenderSceneDelegate *scene_delegate, Object *object)
-    : ObjectData(scene_delegate, object)
+InstancerData::InstancerData(BlenderSceneDelegate *scene_delegate,
+                             Object *object,
+                             pxr::SdfPath const &prim_id)
+    : ObjectData(scene_delegate, object, prim_id)
 {
-  p_id_ = prim_id(scene_delegate, object);
-  ID_LOG(2, "");
+}
+
+std::unique_ptr<InstancerData> InstancerData::create(BlenderSceneDelegate *scene_delegate,
+                                                     Object *object,
+                                                     pxr::SdfPath const &prim_id)
+{
+  auto data = std::make_unique<InstancerData>(scene_delegate, object, prim_id);
+  data->init();
+  data->insert();
+  return data;
 }
 
 bool InstancerData::is_supported(Object *object)
@@ -32,24 +42,6 @@ bool InstancerData::is_supported(Object *object)
   return false;
 }
 
-std::unique_ptr<InstancerData> InstancerData::create(BlenderSceneDelegate *scene_delegate,
-                                                     Object *object)
-{
-  auto data = std::make_unique<InstancerData>(scene_delegate, object);
-  data->init();
-  data->insert();
-  return data;
-}
-
-pxr::SdfPath InstancerData::prim_id(BlenderSceneDelegate *scene_delegate, Object *object)
-{
-  /* Making id of instancer in form like I_<pointer in 16 hex digits format>. Example:
-   * I_000002073e369608 */
-  char str[32];
-  snprintf(str, 32, "I_%016llx", (uint64_t)object);
-  return scene_delegate->GetDelegateID().AppendElementString(str);
-}
-
 void InstancerData::init()
 {
   ID_LOG(2, "");
@@ -59,7 +51,7 @@ void InstancerData::init()
 void InstancerData::insert()
 {
   ID_LOG(2, "");
-  scene_delegate_->GetRenderIndex().InsertInstancer(scene_delegate_, p_id_);
+  scene_delegate_->GetRenderIndex().InsertInstancer(scene_delegate_, prim_id);
   for (auto &it : instances_) {
     it.second.obj_data->insert();
   }
@@ -67,11 +59,11 @@ void InstancerData::insert()
 
 void InstancerData::remove()
 {
-  CLOG_INFO(LOG_BSD, 2, "%s", p_id_.GetText());
+  CLOG_INFO(LOG_BSD, 2, "%s", prim_id.GetText());
   for (auto &it : instances_) {
     it.second.obj_data->remove();
   }
-  scene_delegate_->GetRenderIndex().RemoveInstancer(p_id_);
+  scene_delegate_->GetRenderIndex().RemoveInstancer(prim_id);
 }
 
 void InstancerData::update()
@@ -80,17 +72,17 @@ void InstancerData::update()
 
   pxr::HdDirtyBits bits = pxr::HdChangeTracker::Clean;
 
-  Object *object = (Object *)id_;
-  if ((id_->recalc & ID_RECALC_GEOMETRY) || (((ID *)object->data)->recalc & ID_RECALC_GEOMETRY)) {
+  Object *object = (Object *)id;
+  if ((id->recalc & ID_RECALC_GEOMETRY) || (((ID *)object->data)->recalc & ID_RECALC_GEOMETRY)) {
     set_instances();
     bits |= pxr::HdChangeTracker::AllDirty;
   }
-  else if (id_->recalc & ID_RECALC_TRANSFORM) {
+  else if (id->recalc & ID_RECALC_TRANSFORM) {
     set_instances();
     bits |= pxr::HdChangeTracker::DirtyTransform;
   }
   if (bits != pxr::HdChangeTracker::Clean) {
-    scene_delegate_->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(p_id_, bits);
+    scene_delegate_->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(prim_id, bits);
   }
 }
 
@@ -104,31 +96,23 @@ pxr::VtValue InstancerData::get_data(pxr::TfToken const &key) const
   return ret;
 }
 
-pxr::GfMatrix4d InstancerData::transform()
+bool InstancerData::update_visibility()
 {
-  return pxr::GfMatrix4d(1.0);
-}
-
-bool InstancerData::update_visibility(View3D *view3d)
-{
-  if (!view3d) {
-    return false;
-  }
-
-  bool ret = ObjectData::update_visibility(view3d);
+  bool ret = ObjectData::update_visibility();
   if (ret) {
     scene_delegate_->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(
-        p_id_, pxr::HdChangeTracker::DirtyVisibility);
+        prim_id, pxr::HdChangeTracker::DirtyVisibility);
     for (auto &it : instances_) {
       it.second.obj_data->visible = visible;
       scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(
-          it.second.obj_data->p_id_, pxr::HdChangeTracker::DirtyVisibility);
+          it.second.obj_data->prim_id, pxr::HdChangeTracker::DirtyVisibility);
     }
   }
   return ret;
 }
 
-pxr::HdPrimvarDescriptorVector InstancerData::primvar_descriptors(pxr::HdInterpolation interpolation)
+pxr::HdPrimvarDescriptorVector InstancerData::primvar_descriptors(
+    pxr::HdInterpolation interpolation) const
 {
   pxr::HdPrimvarDescriptorVector primvars;
   if (interpolation == pxr::HdInterpolationInstance) {
@@ -138,17 +122,17 @@ pxr::HdPrimvarDescriptorVector InstancerData::primvar_descriptors(pxr::HdInterpo
   return primvars;
 }
 
-pxr::VtIntArray InstancerData::indices(pxr::SdfPath const &id)
+pxr::VtIntArray InstancerData::indices(pxr::SdfPath const &id) const
 {
-  return instances_[id].indices;
+  return instances_.find(id)->second.indices;
 }
 
-ObjectData *InstancerData::object_data(pxr::SdfPath const &id)
+ObjectData *InstancerData::object_data(pxr::SdfPath const &id) const
 {
-  return instances_[id].obj_data.get();
+  return instances_.find(id)->second.obj_data.get();
 }
 
-pxr::SdfPathVector InstancerData::prototypes()
+pxr::SdfPathVector InstancerData::prototypes() const
 {
   pxr::SdfPathVector paths;
   for (auto &it : instances_) {
@@ -159,8 +143,7 @@ pxr::SdfPathVector InstancerData::prototypes()
 
 void InstancerData::check_update(Object *object)
 {
-  pxr::SdfPath path = ObjectData::prim_id(scene_delegate_, object);
-  path = p_id_.AppendElementString(path.GetName());
+  pxr::SdfPath path = object_prim_id(object);
   auto it = instances_.find(path);
   if (it == instances_.end()) {
     return;
@@ -174,7 +157,7 @@ void InstancerData::check_update(Object *object)
     bits |= pxr::HdChangeTracker::DirtyTransform;
   }
   if (bits != pxr::HdChangeTracker::Clean) {
-    scene_delegate_->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(p_id_, bits);
+    scene_delegate_->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(prim_id, bits);
   }
 }
 
@@ -192,12 +175,12 @@ void InstancerData::check_remove(std::set<std::string> &available_objects)
   }
   if (ret) {
     set_instances();
-    scene_delegate_->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(p_id_,
-                                                                           pxr::HdChangeTracker::AllDirty);
+    scene_delegate_->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(
+        prim_id, pxr::HdChangeTracker::AllDirty);
   }
 }
 
-void InstancerData::available_materials(std::set<pxr::SdfPath> &paths)
+void InstancerData::available_materials(std::set<pxr::SdfPath> &paths) const
 {
   for (auto &it : instances_) {
     pxr::SdfPath mat_id = ((MeshData *)it.second.obj_data.get())->material_id();
@@ -205,6 +188,14 @@ void InstancerData::available_materials(std::set<pxr::SdfPath> &paths)
       paths.insert(mat_id);
     }
   }
+}
+
+pxr::SdfPath InstancerData::object_prim_id(Object *object) const
+{
+  /* Making id of object in form like <prefix>_<pointer in 16 hex digits format> */
+  char str[32];
+  snprintf(str, 32, "O_%016llx", (uint64_t)object);
+  return prim_id.AppendElementString(str);
 }
 
 void InstancerData::set_instances()
@@ -215,28 +206,29 @@ void InstancerData::set_instances()
   }
   int index = 0;
   Instance *inst;
-  pxr::SdfPath path;
+  pxr::SdfPath p_id;
 
-  ListBase *lb = object_duplilist(scene_delegate_->depsgraph_, scene_delegate_->scene_, (Object *)id_);
+  ListBase *lb = object_duplilist(
+      scene_delegate_->depsgraph, scene_delegate_->scene, (Object *)id);
   LISTBASE_FOREACH (DupliObject *, dupli, lb) {
-    path = ObjectData::prim_id(scene_delegate_, dupli->ob);
-    path = p_id_.AppendElementString(path.GetName());
-    auto it = instances_.find(path);
+    p_id = object_prim_id(dupli->ob);
+    auto it = instances_.find(p_id);
     if (it == instances_.end()) {
-      inst = &instances_[path];
+      inst = &instances_[p_id];
       if (!is_supported(dupli->ob)) {
         continue;
       }
-      inst->obj_data = std::make_unique<InstanceMeshData>(scene_delegate_, dupli->ob, path);
-      inst->obj_data->init();
-      inst->obj_data->insert();
+      inst->obj_data = ObjectData::create(scene_delegate_, dupli->ob, p_id);
+
+      /* Instance's transform should be identity */
+      inst->obj_data->transform = pxr::GfMatrix4d(1.0);
     }
     else {
       inst = &it->second;
     }
     transforms_.push_back(gf_matrix_from_transform(dupli->mat));
     inst->indices.push_back(index);
-    ID_LOG(2, "Instance %s %d", inst->obj_data->id_->name, index);
+    ID_LOG(2, "%s %d", inst->obj_data->id->name, index);
     ++index;
   }
   free_object_duplilist(lb);
@@ -250,19 +242,6 @@ void InstancerData::set_instances()
     instances_.erase(it);
     it = instances_.begin();
   }
-}
-
-InstanceMeshData::InstanceMeshData(BlenderSceneDelegate *scene_delegate,
-                                   Object *object,
-                                   pxr::SdfPath const &p_id)
-    : MeshData(scene_delegate, object)
-{
-  this->p_id_ = p_id;
-}
-
-pxr::GfMatrix4d InstanceMeshData::transform()
-{
-  return pxr::GfMatrix4d(1.0);
 }
 
 }  // namespace blender::render::hydra

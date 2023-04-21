@@ -16,16 +16,20 @@ namespace blender::render::hydra {
 
 class ObjectData : public IdData {
  public:
-  ObjectData(BlenderSceneDelegate *scene_delegate, Object *object);
+  ObjectData(BlenderSceneDelegate *scene_delegate, Object *object, pxr::SdfPath const &prim_id);
 
+  static std::unique_ptr<ObjectData> create(BlenderSceneDelegate *scene_delegate,
+                                            Object *object,
+                                            pxr::SdfPath const &prim_id);
   static bool is_supported(Object *object);
-  static std::unique_ptr<ObjectData> create(BlenderSceneDelegate *scene_delegate, Object *object);
-  static pxr::SdfPath prim_id(BlenderSceneDelegate *scene_delegate, Object *object);
 
-  virtual pxr::GfMatrix4d transform();
-  virtual bool update_visibility(View3D *view3d);
+  virtual bool update_visibility();
 
+  pxr::GfMatrix4d transform;
   bool visible;
+
+ protected:
+  void set_transform_to_object();
 };
 
 using ObjectDataMap =

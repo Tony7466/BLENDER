@@ -20,12 +20,11 @@ namespace blender::render::hydra {
 
 class WorldData : public IdData {
  public:
-  WorldData(BlenderSceneDelegate *scene_delegate, World *world, bContext *context);
+  WorldData(BlenderSceneDelegate *scene_delegate, World *world, pxr::SdfPath const &prim_id);
 
   static std::unique_ptr<WorldData> create(BlenderSceneDelegate *scene_delegate,
                                            World *world,
-                                           bContext *context);
-  static pxr::SdfPath prim_id(BlenderSceneDelegate *scene_delegate);
+                                           pxr::SdfPath const &prim_id);
 
   void init() override;
   void insert() override;
@@ -33,12 +32,14 @@ class WorldData : public IdData {
   void update() override;
   void update(World *world);
 
-  pxr::GfMatrix4d transform();
   pxr::VtValue get_data(pxr::TfToken const &key) const override;
 
+  pxr::GfMatrix4d transform;
+
  private:
+  void set_transform();
+
   std::map<pxr::TfToken, pxr::VtValue> data_;
-  bContext *context_;
 };
 
 }  // namespace blender::render::hydra
