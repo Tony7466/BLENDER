@@ -81,6 +81,10 @@ void VKBuffer::update(const void *data) const
 {
   BLI_assert_msg(is_mapped(), "Cannot update a non-mapped buffer.");
   memcpy(mapped_memory_, data, size_in_bytes_);
+
+  VKContext &context = *VKContext::get();
+  VmaAllocator mem_allocator = context.mem_allocator_get();
+  vmaFlushAllocation(mem_allocator, allocation_, 0, VK_WHOLE_SIZE);
 }
 
 void VKBuffer::clear(VKContext &context, uint32_t clear_value)
