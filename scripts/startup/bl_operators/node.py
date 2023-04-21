@@ -259,7 +259,7 @@ class NODE_OT_simulation_zone_item_remove(SimulationZoneOperator, Operator):
 
 
 class NODE_OT_simulation_zone_item_move(SimulationZoneOperator, Operator):
-    '''Move a simulation state item up or down in list'''
+    '''Move a simulation state item up or down in the list'''
     bl_idname = "node.simulation_zone_item_move"
     bl_label = "Move State Item"
     bl_options = {'REGISTER', 'UNDO'}
