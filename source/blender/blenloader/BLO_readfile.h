@@ -445,17 +445,6 @@ void BLO_library_temp_free(TempLibraryContext *temp_lib_ctx);
 
 void *BLO_library_read_struct(struct FileData *fd, struct BHead *bh, const char *blockname);
 
-/* internal function but we need to expose it */
-/**
- * Used to link a file (without UI) to the current UI.
- * Note that it assumes the old pointers in UI are still valid, so old Main is not freed.
- */
-void blo_lib_link_restore(struct Main *oldmain,
-                          struct Main *newmain,
-                          struct wmWindowManager *curwm,
-                          struct Scene *curscene,
-                          struct ViewLayer *cur_view_layer);
-
 typedef void (*BLOExpandDoitCallback)(void *fdhandle, struct Main *mainvar, void *idv);
 
 /**
