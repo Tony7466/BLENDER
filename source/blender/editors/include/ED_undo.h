@@ -111,7 +111,6 @@ void ED_undosys_type_free(void);
 
 /* memfile_undo.c */
 
-struct MemFile *ED_undosys_stack_memfile_get_active(struct UndoStack *ustack);
 /**
  * If the last undo step is a memfile one, find the first #MemFileChunk matching given ID
  * (using its session UUID), and tag it as "changed in the future".

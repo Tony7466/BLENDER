@@ -348,25 +348,6 @@ void ED_memfile_undosys_type(UndoType *ut)
 /** \name Utilities
  * \{ */
 
-/**
- * Ideally we wouldn't need to export global undo internals,
- * there are some cases where it's needed though.
- */
-static struct MemFile *ed_undosys_step_get_memfile(UndoStep *us_p)
-{
-  MemFileUndoStep *us = (MemFileUndoStep *)us_p;
-  return &us->data->memfile;
-}
-
-struct MemFile *ED_undosys_stack_memfile_get_active(UndoStack *ustack)
-{
-  UndoStep *us = BKE_undosys_stack_active_with_type(ustack, BKE_UNDOSYS_TYPE_MEMFILE);
-  if (us) {
-    return ed_undosys_step_get_memfile(us);
-  }
-  return nullptr;
-}
-
 void ED_undosys_stack_memfile_id_changed_tag(UndoStack *ustack, ID *id)
 {
   UndoStep *us = ustack->step_active;
