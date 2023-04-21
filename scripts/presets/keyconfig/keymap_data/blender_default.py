@@ -5611,7 +5611,6 @@ def km_font(params):
          {"properties": [("delta", 1)]}),
         ("font.change_character", {"type": 'DOWN_ARROW', "value": 'PRESS', "alt": True, "repeat": True},
          {"properties": [("delta", -1)]}),
-        ("font.selection_set", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
         ("font.select_word", {"type": 'LEFTMOUSE', "value": 'DOUBLE_CLICK'}, None),
         ("font.select_all", {"type": 'A', "value": 'PRESS', "ctrl": True}, None),
         ("font.text_copy", {"type": 'C', "value": 'PRESS', "ctrl": True}, None),
@@ -6778,6 +6777,16 @@ def km_3d_view_tool_cursor(params):
             # Don't use `tool_maybe_tweak_event` since it conflicts with `PRESS` that places the cursor.
             ("transform.translate", params.tool_tweak_event,
              {"properties": [("release_confirm", True), ("cursor_transform", True)]}),
+        ]},
+    )
+
+
+def km_3d_view_tool_text_select(params):
+    return (
+        "3D View Tool: Text Select",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("font.selection_set", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
         ]},
     )
 
@@ -8195,6 +8204,7 @@ def generate_keymaps(params=None):
         *(km_node_editor_tool_select_circle(params, fallback=fallback) for fallback in (False, True)),
         km_node_editor_tool_links_cut(params),
         km_3d_view_tool_cursor(params),
+        km_3d_view_tool_text_select(params),
         *(km_3d_view_tool_select(params, fallback=fallback) for fallback in (False, True)),
         *(km_3d_view_tool_select_box(params, fallback=fallback) for fallback in (False, True)),
         *(km_3d_view_tool_select_circle(params, fallback=fallback) for fallback in (False, True)),
