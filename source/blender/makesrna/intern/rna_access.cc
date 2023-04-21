@@ -5248,18 +5248,6 @@ void RNA_string_get(PointerRNA *ptr, const char *name, char *value)
   }
 }
 
-void RNA_property_subtype_set(struct ID *id,
-                              void *data,
-                              const char *propname,
-                              PropertySubType value)
-{
-  PointerRNA ptr;
-
-  RNA_pointer_create(id, &RNA_Node, data, &ptr);
-  PropertyRNA *prop = RNA_struct_find_property(&ptr, propname);
-  prop->subtype = value;
-}
-
 char *RNA_string_get_alloc(
     PointerRNA *ptr, const char *name, char *fixedbuf, int fixedlen, int *r_len)
 {
@@ -5390,6 +5378,12 @@ bool RNA_collection_is_empty(PointerRNA *ptr, const char *name)
   }
   printf("%s: %s.%s not found.\n", __func__, ptr->type->identifier, name);
   return false;
+}
+
+void RNA_property_subtype_set(PointerRNA *ptr, const char *propname, PropertySubType value)
+{
+  PropertyRNA *prop = RNA_struct_find_property(ptr, propname);
+  prop->subtype = value;
 }
 
 bool RNA_property_is_set_ex(PointerRNA *ptr, PropertyRNA *prop, bool use_ghost)

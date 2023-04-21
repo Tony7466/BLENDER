@@ -2448,6 +2448,13 @@ static void rna_Node_update_relations(Main *bmain, Scene *scene, PointerRNA *ptr
   DEG_relations_tag_update(bmain);
 }
 
+static void rna_Node_update_individual(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
+{
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
+  bNode *node = (bNode *)ptr->data;
+  node->typeinfo->updatefunc(ntree, node);
+}
+
 static void rna_Node_socket_value_update(ID *id, bNode *UNUSED(node), bContext *C)
 {
   BKE_ntree_update_tag_all((bNodeTree *)id);
@@ -5178,7 +5185,7 @@ static void def_fn_input_vector(StructRNA *srna)
   RNA_def_property_enum_sdna(prop, NULL, "subtype");
   RNA_def_property_enum_items(prop, rna_input_vector_subtype);
   RNA_def_property_ui_text(prop, "Subtype", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update_individual");
 }
 
 static void def_fn_input_string(StructRNA *srna)

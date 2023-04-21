@@ -14,6 +14,7 @@ set(INC
   ../../makesrna
   ../../windowmanager
   ../../../../intern/guardedalloc
+  ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
 set(INC_SYS

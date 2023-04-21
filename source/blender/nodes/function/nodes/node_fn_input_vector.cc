@@ -5,6 +5,7 @@
 #include "BLI_hash.h"
 
 #include "RNA_access.h"
+#include "RNA_prototypes.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -38,7 +39,9 @@ static void node_layout_ex(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 static void node_update(bNodeTree *ntree, bNode *node) {
   NodeInputVector *data = static_cast<NodeInputVector *>(node->storage);
 
-  RNA_property_subtype_set(&ntree->id, node, "vector", static_cast<PropertySubType>(data->subtype));
+  PointerRNA ptr;
+  RNA_pointer_create(&ntree->id, &RNA_Node, node, &ptr);
+  RNA_property_subtype_set(&ptr, "vector", static_cast<PropertySubType>(data->subtype));
 }
 
 static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
