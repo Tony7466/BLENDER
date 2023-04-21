@@ -51,8 +51,8 @@ Mesh *create_grid_mesh(const int verts_x,
   const int edges_y = verts_y - 1;
   Mesh *mesh = BKE_mesh_new_nomain(verts_x * verts_y,
                                    edges_x * verts_y + edges_y * verts_x,
-                                   edges_x * edges_y * 4,
-                                   edges_x * edges_y);
+                                   edges_x * edges_y,
+                                   edges_x * edges_y * 4);
   MutableSpan<float3> positions = mesh->vert_positions_for_write();
   MutableSpan<int2> edges = mesh->edges_for_write();
   MutableSpan<int> poly_offsets = mesh->poly_offsets_for_write();
@@ -198,8 +198,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
-  AutoAnonymousAttributeID uv_map_id = params.get_output_anonymous_attribute_id_if_needed(
-      "UV Map");
+  AnonymousAttributeIDPtr uv_map_id = params.get_output_anonymous_attribute_id_if_needed("UV Map");
 
   Mesh *mesh = create_grid_mesh(verts_x, verts_y, size_x, size_y, uv_map_id.get());
   BKE_id_material_eval_ensure_default_slot(&mesh->id);

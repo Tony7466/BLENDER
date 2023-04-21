@@ -93,7 +93,7 @@ static Mesh *create_ico_sphere_mesh(const int subdivisions,
    * have a simple utility for that yet though so there is some overhead right now. */
   MutableAttributeAccessor attributes = mesh->attributes_for_write();
   if (create_uv_map) {
-    const VArraySpan<float2> orig_uv_map = attributes.lookup<float2>("UVMap");
+    const VArraySpan orig_uv_map = *attributes.lookup<float2>("UVMap");
     SpanAttributeWriter<float2> uv_map = attributes.lookup_or_add_for_write_only_span<float2>(
         uv_map_id, ATTR_DOMAIN_CORNER);
     uv_map.span.copy_from(orig_uv_map);
@@ -111,8 +111,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   const int subdivisions = std::min(params.extract_input<int>("Subdivisions"), 10);
   const float radius = params.extract_input<float>("Radius");
 
-  AutoAnonymousAttributeID uv_map_id = params.get_output_anonymous_attribute_id_if_needed(
-      "UV Map");
+  AnonymousAttributeIDPtr uv_map_id = params.get_output_anonymous_attribute_id_if_needed("UV Map");
 
   Mesh *mesh = create_ico_sphere_mesh(subdivisions, radius, uv_map_id.get());
   params.set_output("Mesh", GeometrySet::create_with_mesh(mesh));
