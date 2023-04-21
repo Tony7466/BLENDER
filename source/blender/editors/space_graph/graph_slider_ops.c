@@ -1331,27 +1331,23 @@ static void btw_smooth_graph_keys(bAnimContext *ac,
   bAnimListElem *ale;
   const float frame_rate = (float)(ac->scene->r.frs_sec) / ac->scene->r.frs_sec_base;
 
-  double *d1 = MEM_callocN(sizeof(double) * filter_order, "coeff filtered");
-  double *d2 = MEM_callocN(sizeof(double) * filter_order, "coeff samples");
-  double *A = MEM_callocN(sizeof(double) * filter_order, "Butterworth A");
+  ButterworthCoefficients *bw_coeff = ED_anim_allocate_butterworth_coefficients(filter_order);
 
   /* Ensure that cutoff frequency never exceeds half of sampling_frequency. */
   const float cutoff_frequency = smoothing_factor * (frame_rate / 2);
-  ED_anim_get_butterworth_coefficients(cutoff_frequency, frame_rate, filter_order, A, d1, d2);
+  ED_anim_get_butterworth_coefficients(cutoff_frequency, frame_rate, bw_coeff);
 
   for (ale = anim_data.first; ale; ale = ale->next) {
     FCurve *fcu = (FCurve *)ale->key_data;
     ListBase segments = find_fcurve_segments(fcu);
     LISTBASE_FOREACH (FCurveSegment *, segment, &segments) {
-      butterworth_smooth_fcurve_segment(fcu, segment, factor, filter_order, A, d1, d2);
+      butterworth_smooth_fcurve_segment(fcu, segment, factor, bw_coeff);
     }
     BLI_freelistN(&segments);
     ale->update |= ANIM_UPDATE_DEFAULT;
   }
 
-  MEM_freeN(d1);
-  MEM_freeN(d2);
-  MEM_freeN(A);
+  ED_anim_free_butterworth_coefficients(bw_coeff);
   ANIM_animdata_update(ac, &anim_data);
   ANIM_animdata_freelist(&anim_data);
 }

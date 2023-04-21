@@ -400,34 +400,60 @@ void blend_to_default_fcurve(PointerRNA *id_ptr, FCurve *fcu, const float factor
 
 /* ---------------- */
 
+ButterworthCoefficients *ED_anim_allocate_butterworth_coefficients(const int filter_order)
+{
+  ButterworthCoefficients *bw_coeff = MEM_callocN(sizeof(ButterworthCoefficients),
+                                                  "Butterworth Coefficients");
+  bw_coeff->filter_order = filter_order;
+  bw_coeff->d1 = MEM_callocN(sizeof(double) * filter_order, "coeff filtered");
+  bw_coeff->d2 = MEM_callocN(sizeof(double) * filter_order, "coeff samples");
+  bw_coeff->A = MEM_callocN(sizeof(double) * filter_order, "Butterworth A");
+  return bw_coeff;
+}
+
+void ED_anim_free_butterworth_coefficients(ButterworthCoefficients *bw_coeff)
+{
+  MEM_freeN(bw_coeff->d1);
+  MEM_freeN(bw_coeff->d2);
+  MEM_freeN(bw_coeff->A);
+  MEM_freeN(bw_coeff);
+}
+
 void ED_anim_get_butterworth_coefficients(const float cutoff_frequency,
                                           const float sampling_frequency,
-                                          const int filter_order,
-                                          double *A,
-                                          double *d1,
-                                          double *d2)
+                                          ButterworthCoefficients *bw_coeff)
 {
   double s = (double)sampling_frequency;
   const double a = tan(M_PI * cutoff_frequency / s);
   const double a2 = a * a;
   double r;
-  for (int i = 0; i < filter_order; ++i) {
-    r = sin(M_PI * (2.0 * i + 1.0) / (4.0 * filter_order));
+  for (int i = 0; i < bw_coeff->filter_order; ++i) {
+    r = sin(M_PI * (2.0 * i + 1.0) / (4.0 * bw_coeff->filter_order));
     s = a2 + 2.0 * a * r + 1.0;
-    A[i] = a2 / s;
-    d1[i] = 2.0 * (1 - a2) / s;
-    d2[i] = -(a2 - 2.0 * a * r + 1.0) / s;
+    bw_coeff->A[i] = a2 / s;
+    bw_coeff->d1[i] = 2.0 * (1 - a2) / s;
+    bw_coeff->d2[i] = -(a2 - 2.0 * a * r + 1.0) / s;
   }
+}
+
+static double butterworth_filter_value(
+    double x, double *w0, double *w1, double *w2, ButterworthCoefficients *bw_coeff)
+{
+  for (int i = 0; i < bw_coeff->filter_order; i++) {
+    w0[i] = bw_coeff->d1[i] * w1[i] + bw_coeff->d2[i] * w2[i] + x;
+    x = bw_coeff->A[i] * (w0[i] + 2.0 * w1[i] + w2[i]);
+    w2[i] = w1[i];
+    w1[i] = w0[i];
+  }
+  return x;
 }
 
 void butterworth_smooth_fcurve_segment(FCurve *fcu,
                                        FCurveSegment *segment,
                                        const float factor,
-                                       const int filter_order,
-                                       double *A,
-                                       double *d1,
-                                       double *d2)
+                                       ButterworthCoefficients *bw_coeff)
 {
+  const int filter_order = bw_coeff->filter_order;
   BezTriple left_bezt = fcu->bezt[segment->start_index];
   BezTriple right_bezt = fcu->bezt[segment->start_index + segment->length - 1];
 
@@ -442,17 +468,14 @@ void butterworth_smooth_fcurve_segment(FCurve *fcu,
   double *w1 = MEM_callocN(sizeof(double) * filter_order, "w1");
   double *w2 = MEM_callocN(sizeof(double) * filter_order, "w2");
 
+  /* The values need to be offset so the first sample starts at 0. This avoids oscillations at the
+   * start and end of the curve. */
   const float fwd_offset = samples[0];
 
   for (int i = 0; i < sample_count; i++) {
     double x = (double)(samples[i] - fwd_offset);
-    for (int j = 0; j < filter_order; j++) {
-      w0[j] = d1[j] * w1[j] + d2[j] * w2[j] + x;
-      x = A[j] * (w0[j] + 2.0 * w1[j] + w2[j]);
-      w2[j] = w1[j];
-      w1[j] = w0[j];
-    }
-    filtered_values[i] = x + fwd_offset;
+    const double filtered_value = butterworth_filter_value(x, w0, w1, w2, bw_coeff);
+    filtered_values[i] = filtered_value + fwd_offset;
   }
 
   for (int i = 0; i < filter_order; i++) {
@@ -463,15 +486,11 @@ void butterworth_smooth_fcurve_segment(FCurve *fcu,
 
   const float bwd_offset = filtered_values[sample_count - 1];
 
+  /* Run the filter backwards as well to remove phase offset. */
   for (int i = sample_count - 1; i > 0; i--) {
     double x = (double)(filtered_values[i] - bwd_offset);
-    for (int j = 0; j < filter_order; j++) {
-      w0[j] = d1[j] * w1[j] + d2[j] * w2[j] + x;
-      x = A[j] * (w0[j] + 2.0 * w1[j] + w2[j]);
-      w2[j] = w1[j];
-      w1[j] = w0[j];
-    }
-    filtered_values[i] = x + bwd_offset;
+    const double filtered_value = butterworth_filter_value(x, w0, w1, w2, bw_coeff);
+    filtered_values[i] = filtered_value + bwd_offset;
   }
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
