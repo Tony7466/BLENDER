@@ -463,7 +463,7 @@ void graphedit_operatortypes(void)
   WM_operatortype_append(GRAPH_OT_blend_to_neighbor);
   WM_operatortype_append(GRAPH_OT_breakdown);
   WM_operatortype_append(GRAPH_OT_ease);
-  WM_operatortype_append(GRAPH_OT_shear_left);
+  WM_operatortype_append(GRAPH_OT_shear_from_left);
   WM_operatortype_append(GRAPH_OT_blend_to_default);
   WM_operatortype_append(GRAPH_OT_gaussian_smooth);
   WM_operatortype_append(GRAPH_OT_euler_filter);
