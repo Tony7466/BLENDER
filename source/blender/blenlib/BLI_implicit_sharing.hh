@@ -92,7 +92,7 @@ class ImplicitSharingInfo : NonCopyable, NonMovable {
    * Adding a weak owner prevents the #ImplicitSharingInfo from being freed but not the referenced
    * data.
    *
-   * \note Other than with std::shared_ptr a weak user cannot be turned into a strong user. This is
+   * \note Unlike std::shared_ptr a weak user cannot be turned into a strong user. This is
    * because some code might change the referenced data assuming that there is only one strong user
    * while a new strong user is added by another thread.
    */
@@ -109,8 +109,9 @@ class ImplicitSharingInfo : NonCopyable, NonMovable {
   void tag_ensured_mutable() const
   {
     BLI_assert(this->is_mutable());
-    /* Does not need an atomic increment, because if the data is mutable, there is only a single
-     * owner that may call this at a time. */
+    /* This might not need an atomic increment when the #version method below is only called when
+     * the code calling it is a strong user of this sharing info. Better be safe and use an atomic
+     * for now. */
     version_.fetch_add(1, std::memory_order_acq_rel);
   }
 
