@@ -55,6 +55,7 @@ struct WriteContext {
  * Check to see if we can load and open the given file format.
  */
 bool imb_oiio_check(const uchar *mem, size_t mem_size, const char *file_format);
+bool imb_oiio_check(const char *filename, const char *file_format);
 
 /**
  * The primary method for reading data into an #ImBuf.

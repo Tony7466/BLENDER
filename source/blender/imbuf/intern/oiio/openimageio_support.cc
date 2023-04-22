@@ -269,6 +269,16 @@ bool imb_oiio_check(const uchar *mem, size_t mem_size, const char *file_format)
   return in ? true : false;
 }
 
+bool imb_oiio_check(const char *filename, const char *file_format)
+{
+  unique_ptr<ImageInput> in = ImageInput::create(file_format);
+  if (!in) {
+    return false;
+  }
+
+  return in->valid_file(filename);
+}
+
 ImBuf *imb_oiio_read(const ReadContext &ctx,
                      const ImageSpec &config,
                      char colorspace[IM_MAX_SPACE],

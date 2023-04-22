@@ -15,6 +15,11 @@ bool imb_is_a_dpx(const uchar *mem, size_t size)
   return imb_oiio_check(mem, size, "dpx");
 }
 
+bool imb_is_a_dpx_file(const char *filename)
+{
+  return imb_oiio_check(filename, "dpx");
+}
+
 ImBuf *imb_load_dpx(const uchar *mem, size_t size, int flags, char colorspace[IM_MAX_SPACE])
 {
   ImageSpec config, spec;

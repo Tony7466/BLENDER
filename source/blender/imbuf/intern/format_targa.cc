@@ -15,6 +15,11 @@ bool imb_is_a_tga(const uchar *mem, size_t size)
   return imb_oiio_check(mem, size, "tga");
 }
 
+bool imb_is_a_tga_file(const char *filename)
+{
+  return imb_oiio_check(filename, "tga");
+}
+
 ImBuf *imb_load_tga(const uchar *mem, size_t size, int flags, char colorspace[IM_MAX_SPACE])
 {
   ImageSpec config, spec;

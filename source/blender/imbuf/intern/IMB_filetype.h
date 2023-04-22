@@ -32,6 +32,7 @@ typedef struct ImFileType {
    * see: #IMB_ispic_type for details.
    */
   bool (*is_a)(const unsigned char *buf, size_t size);
+  bool (*is_a_from_file)(const char *filepath);
 
   /** Load an image from memory. */
   struct ImBuf *(*load)(const unsigned char *mem,
@@ -80,6 +81,7 @@ void imb_filetypes_exit(void);
  * \{ */
 
 bool imb_is_a_png(const unsigned char *mem, size_t size);
+bool imb_is_a_png_file(const char *filename);
 struct ImBuf *imb_load_png(const unsigned char *mem,
                            size_t size,
                            int flags,
@@ -93,6 +95,7 @@ bool imb_save_png(struct ImBuf *ibuf, const char *filepath, int flags);
  * \{ */
 
 bool imb_is_a_tga(const unsigned char *mem, size_t size);
+bool imb_is_a_tga_file(const char *filename);
 struct ImBuf *imb_load_tga(const unsigned char *mem,
                            size_t size,
                            int flags,
@@ -157,6 +160,7 @@ struct ImBuf *imb_thumbnail_jpeg(const char *filepath,
  * \{ */
 
 bool imb_is_a_bmp(const unsigned char *buf, size_t size);
+bool imb_is_a_bmp_file(const char *filename);
 struct ImBuf *imb_load_bmp(const unsigned char *mem,
                            size_t size,
                            int flags,
@@ -184,6 +188,7 @@ struct ImBuf *imb_load_cineon(const unsigned char *mem,
  * \{ */
 
 bool imb_is_a_dpx(const unsigned char *buf, size_t size);
+bool imb_is_a_dpx_file(const char *filename);
 bool imb_save_dpx(struct ImBuf *ibuf, const char *filepath, int flags);
 struct ImBuf *imb_load_dpx(const unsigned char *mem,
                            size_t size,
@@ -197,6 +202,7 @@ struct ImBuf *imb_load_dpx(const unsigned char *mem,
  * \{ */
 
 bool imb_is_a_hdr(const unsigned char *buf, size_t size);
+bool imb_is_a_hdr_file(const char *filename);
 struct ImBuf *imb_load_hdr(const unsigned char *mem,
                            size_t size,
                            int flags,
@@ -210,6 +216,7 @@ bool imb_save_hdr(struct ImBuf *ibuf, const char *filepath, int flags);
  * \{ */
 
 bool imb_is_a_tiff(const unsigned char *buf, size_t size);
+bool imb_is_a_tiff_file(const char *filename);
 /**
  * Loads a TIFF file.
  * \param mem: Memory containing the TIFF file.
@@ -265,6 +272,7 @@ bool imb_savewebp(struct ImBuf *ibuf, const char *name, int flags);
  * \{ */
 
 bool imb_is_a_dds(const unsigned char *buf, size_t size);
+bool imb_is_a_dds_file(const char *filename);
 
 struct ImBuf *imb_load_dds(const unsigned char *mem,
                            size_t size,
@@ -278,6 +286,7 @@ struct ImBuf *imb_load_dds(const unsigned char *mem,
  * \{ */
 
 bool imb_is_a_psd(const unsigned char *buf, size_t size);
+bool imb_is_a_psd_file(const char *filename);
 
 struct ImBuf *imb_load_psd(const unsigned char *mem,
                            size_t size,

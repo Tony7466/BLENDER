@@ -116,17 +116,25 @@ static ssize_t imb_ispic_read_header_from_filepath(const char *filepath, uchar b
   return size;
 }
 
-int IMB_ispic_type_from_memory(const uchar *buf, const size_t buf_size)
+static int imb_ispic_type_from_file_or_memory(const char *filepath,
+                                              const uchar *buf,
+                                              const size_t buf_size)
 {
   for (const ImFileType *type = IMB_FILE_TYPES; type < IMB_FILE_TYPES_LAST; type++) {
-    if (type->is_a != NULL) {
-      if (type->is_a(buf, buf_size)) {
-        return type->filetype;
-      }
+    if (filepath != NULL && type->is_a_from_file != NULL && type->is_a_from_file(filepath)) {
+      return type->filetype;
+    }
+    else if (type->is_a != NULL && type->is_a(buf, buf_size)) {
+      return type->filetype;
     }
   }
 
   return IMB_FTYPE_NONE;
+}
+
+int IMB_ispic_type_from_memory(const uchar *buf, const size_t buf_size)
+{
+  return imb_ispic_type_from_file_or_memory(NULL, buf, buf_size);
 }
 
 int IMB_ispic_type(const char *filepath)
@@ -136,7 +144,7 @@ int IMB_ispic_type(const char *filepath)
   if (buf_size <= 0) {
     return IMB_FTYPE_NONE;
   }
-  return IMB_ispic_type_from_memory(buf, (size_t)buf_size);
+  return imb_ispic_type_from_file_or_memory(filepath, buf, (size_t)buf_size);
 }
 
 bool IMB_ispic_type_matches(const char *filepath, int filetype)
