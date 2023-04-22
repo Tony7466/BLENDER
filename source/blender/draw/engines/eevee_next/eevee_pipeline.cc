@@ -263,6 +263,7 @@ void ForwardPipeline::render(View &view,
   // }
 
   inst_.shadows.set_view(view);
+  inst_.irradiance_cache.set_view(view);
 
   GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(opaque_ps_, view);
@@ -385,6 +386,7 @@ void DeferredLayer::end_sync()
     inst_.shadows.bind_resources(&eval_light_ps_);
     inst_.sampling.bind_resources(&eval_light_ps_);
     inst_.hiz_buffer.bind_resources(&eval_light_ps_);
+    inst_.irradiance_cache.bind_resources(&eval_light_ps_);
 
     eval_light_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
     eval_light_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
@@ -425,6 +427,7 @@ void DeferredLayer::render(View &view,
 
   inst_.hiz_buffer.set_dirty();
   inst_.shadows.set_view(view);
+  inst_.irradiance_cache.set_view(view);
 
   inst_.gbuffer.acquire(extent, closure_bits_);
 

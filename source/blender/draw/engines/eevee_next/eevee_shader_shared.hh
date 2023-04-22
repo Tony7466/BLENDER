@@ -892,6 +892,37 @@ struct SurfelListInfoData {
 };
 BLI_STATIC_ASSERT_ALIGN(SurfelListInfoData, 16)
 
+struct IrradianceGridData {
+  /** World to non-normalized local grid space [0..size-1]. Stored transposed for compactness. */
+  float3x4 world_to_grid_transposed;
+  /** Number of bricks for this grid. */
+  int3 grid_size;
+  /** Index in brick descriptor list of the first brick of this grid. */
+  int brick_offset;
+};
+BLI_STATIC_ASSERT_ALIGN(IrradianceGridData, 16)
+
+struct IrradianceBrick {
+  /* Offset in pixel to the start of the data inside the atlas texture. */
+  uint2 atlas_coord;
+};
+/** \note Stored packed as a uint. */
+#define IrradianceBrickPacked uint
+
+static inline IrradianceBrickPacked irradiance_brick_pack(IrradianceBrick brick)
+{
+  uint2 data = (uint2(brick.atlas_coord) & 0xFFFFu) << uint2(0u, 16u);
+  IrradianceBrickPacked brick_packed = data.x | data.y;
+  return brick_packed;
+}
+
+static inline IrradianceBrick irradiance_brick_unpack(IrradianceBrickPacked brick_packed)
+{
+  IrradianceBrick brick;
+  brick.atlas_coord = (uint2(brick_packed) >> uint2(0u, 16u)) & uint2(0xFFFFu);
+  return brick;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1002,6 +1033,8 @@ using DepthOfFieldScatterListBuf = draw::StorageArrayBuffer<ScatterRect, 16, tru
 using DrawIndirectBuf = draw::StorageBuffer<DrawCommand, true>;
 using FilmDataBuf = draw::UniformBuffer<FilmData>;
 using HiZDataBuf = draw::UniformBuffer<HiZData>;
+using IrradianceGridDataBuf = draw::UniformArrayBuffer<IrradianceGridData, IRRADIANCE_GRID_MAX>;
+using IrradianceBrickBuf = draw::StorageVectorBuffer<IrradianceBrickPacked, 16>;
 using LightCullingDataBuf = draw::StorageBuffer<LightCullingData>;
 using LightCullingKeyBuf = draw::StorageArrayBuffer<uint, LIGHT_CHUNK, true>;
 using LightCullingTileBuf = draw::StorageArrayBuffer<uint, LIGHT_CHUNK, true>;

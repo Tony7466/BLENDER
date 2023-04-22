@@ -13,6 +13,8 @@
 #include "eevee_instance.hh"
 #include "eevee_lightprobe.hh"
 
+#include "draw_debug.hh"
+
 namespace blender::eevee {
 
 void LightProbeModule::begin_sync()
@@ -31,7 +33,10 @@ void LightProbeModule::sync_grid(const Object *ob, ObjectHandle &handle)
     grid.object_to_world = float4x4(ob->object_to_world);
     grid.world_to_object = float4x4(
         math::normalize(math::transpose(float3x3(grid.object_to_world))));
+
     grid.cache = ob->lightprobe_cache;
+    /* Force reupload. */
+    inst_.irradiance_cache.bricks_free(grid.bricks);
   }
 }
 
@@ -71,9 +76,11 @@ void LightProbeModule::end_sync()
     for (auto it = grid_map_.items().begin(); it != it_end; ++it) {
       IrradianceGrid &grid = (*it).value;
       if (grid.updated) {
+        grid.updated = false;
         grid_update_ = true;
       }
       if (!grid.used) {
+        inst_.irradiance_cache.bricks_free(grid.bricks);
         grid_map_.remove(it);
         grid_update_ = true;
         continue;
@@ -89,6 +96,7 @@ void LightProbeModule::end_sync()
     for (auto it = cube_map_.items().begin(); it != it_end; ++it) {
       ReflectionCube &cube = (*it).value;
       if (cube.updated) {
+        cube.updated = false;
         cube_update_ = true;
       }
       if (!cube.used) {
@@ -101,6 +109,7 @@ void LightProbeModule::end_sync()
     }
   }
 
+#if 0 /* TODO make this work with new per object light cache. */
   /* If light-cache auto-update is enable we tag the relevant part
    * of the cache to update and fire up a baking job. */
   if (auto_bake_enabled_ && (grid_update_ || cube_update_)) {
@@ -123,6 +132,7 @@ void LightProbeModule::end_sync()
       WM_event_add_notifier(DRW_context_state_get()->evil_C, NC_LIGHTPROBE, original_scene);
     }
   }
+#endif
 }
 
 }  // namespace blender::eevee

@@ -465,7 +465,9 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_light_eval_lib.glsl
   engines/eevee_next/shaders/eevee_light_iter_lib.glsl
   engines/eevee_next/shaders/eevee_light_lib.glsl
+  engines/eevee_next/shaders/eevee_lightprobe_eval_lib.glsl
   engines/eevee_next/shaders/eevee_lightprobe_irradiance_ray_comp.glsl
+  engines/eevee_next/shaders/eevee_lightprobe_irradiance_load_comp.glsl
   engines/eevee_next/shaders/eevee_lightprobe_lib.glsl
   engines/eevee_next/shaders/eevee_ltc_lib.glsl
   engines/eevee_next/shaders/eevee_motion_blur_dilate_comp.glsl

@@ -22,6 +22,6 @@ void main()
   vec3 N = normal_view_to_world(vN);
   vec3 lN = transform_direction(world_to_grid, N);
 
-  vec4 irradiance = spherical_harmonics_evaluate_lambert(lN, sh);
-  out_color = vec4(irradiance.rgb, 0.0);
+  vec3 irradiance = spherical_harmonics_evaluate_lambert(lN, sh);
+  out_color = vec4(irradiance, 0.0);
 }

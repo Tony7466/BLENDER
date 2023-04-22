@@ -71,6 +71,10 @@
 #define MOTION_BLUR_GROUP_SIZE 32
 #define MOTION_BLUR_DILATE_GROUP_SIZE 512
 
+/* Irradiance Cache. */
+/** Maximum number of entities inside the cache. */
+#define IRRADIANCE_GRID_MAX 64
+
 /* Depth Of Field. */
 #define DOF_TILES_SIZE 8
 #define DOF_TILES_FLATTEN_GROUP_SIZE DOF_TILES_SIZE
@@ -89,17 +93,20 @@
 /* IrradianceBake. */
 #define SURFEL_GROUP_SIZE 256
 #define SURFEL_LIST_GROUP_SIZE 256
-#define IRRADIANCE_GRID_GROUP_SIZE 4 /* In each dimension, do 4x4x4 workgroup size. */
+#define IRRADIANCE_GRID_GROUP_SIZE 4 /* In each dimension, so 4x4x4 workgroup size. */
+#define IRRADIANCE_GRID_BRICK_SIZE 4 /* In each dimension, so 4x4x4 brick size. */
 
 /* Resource bindings. */
 
 /* Texture. */
+#define IRRADIANCE_ATLAS_TEX_SLOT 11
 #define SHADOW_TILEMAPS_TEX_SLOT 12
 /* Only during surface shading. */
 #define SHADOW_ATLAS_TEX_SLOT 13
 /* Only during shadow rendering. */
 #define SHADOW_RENDER_MAP_SLOT 13
 #define RBUFS_UTILITY_TEX_SLOT 14
+#define HIZ_TEX_SLOT 15
 
 /* Images. */
 #define RBUFS_NORMAL_SLOT 0
@@ -115,6 +122,8 @@
 #define GBUF_COLOR_SLOT RBUFS_DIFF_COLOR_SLOT
 
 /* Uniform Buffers. */
+#define IRRADIANCE_GRID_BUF_SLOT 3
+#define HIZ_BUF_SLOT 5
 /* Only during pre-pass. */
 #define VELOCITY_CAMERA_PREV_BUF 3
 #define VELOCITY_CAMERA_CURR_BUF 4
@@ -127,6 +136,7 @@
 #define LIGHT_BUF_SLOT 1
 #define LIGHT_ZBIN_BUF_SLOT 2
 #define LIGHT_TILE_BUF_SLOT 3
+#define IRRADIANCE_BRICK_BUF_SLOT 4
 /* Only during surface capture. */
 #define SURFEL_BUF_SLOT 4
 /* Only during surface capture. */

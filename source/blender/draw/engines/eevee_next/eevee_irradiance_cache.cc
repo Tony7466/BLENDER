@@ -22,7 +22,44 @@ namespace blender::eevee {
 void IrradianceCache::init()
 {
   display_grids_enabled_ = DRW_state_draw_support() &&
-                           inst_.scene->eevee.flag & SCE_EEVEE_SHOW_IRRADIANCE;
+                           (inst_.scene->eevee.flag & SCE_EEVEE_SHOW_IRRADIANCE);
+
+  /* TODO option. */
+  int atlas_byte_size = 1024 * 1024 * 16;
+  /* This might become an option in the future. */
+  bool use_l2_band = false;
+  int sh_coef_len = use_l2_band ? 9 : 4;
+  int texel_byte_size = 8; /* Assumes GPU_RGBA16F. */
+  int3 atlas_extent(IRRADIANCE_GRID_BRICK_SIZE);
+  atlas_extent.z *= sh_coef_len;
+  int atlas_col_count = 256;
+  atlas_extent.x *= atlas_col_count;
+  /* Determine the row count depending on the scene settings. */
+  int row_byte_size = atlas_extent.x * atlas_extent.y * atlas_extent.z * texel_byte_size;
+  int atlas_row_count = divide_ceil_u(atlas_byte_size, row_byte_size);
+  atlas_extent.y *= atlas_row_count;
+
+  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_WRITE | GPU_TEXTURE_USAGE_SHADER_READ;
+  do_full_update_ = irradiance_atlas_tx_.ensure_3d(GPU_RGBA16F, atlas_extent, usage);
+
+  if (do_full_update_) {
+    /* Delete all references to existing bricks. */
+    for (IrradianceGrid &grid : inst_.light_probes.grid_map_.values()) {
+      grid.bricks.clear();
+    }
+    brick_pool_.clear();
+    /* Fill with all the available bricks. */
+    for (auto i : IndexRange(atlas_row_count * atlas_col_count)) {
+      IrradianceBrick brick;
+      brick.atlas_coord = uint2(i % atlas_col_count, i / atlas_col_count) *
+                          IRRADIANCE_GRID_BRICK_SIZE;
+      brick_pool_.append(irradiance_brick_pack(brick));
+    }
+  }
+
+  if (irradiance_atlas_tx_.is_valid() == false) {
+    inst_.info = "Irradiance Atlas texture could not be created";
+  }
 }
 
 void IrradianceCache::sync()
@@ -30,6 +67,165 @@ void IrradianceCache::sync()
   if (inst_.is_baking()) {
     bake.sync();
   }
+}
+
+Vector<IrradianceBrickPacked> IrradianceCache::bricks_alloc(int brick_len)
+{
+  if (brick_pool_.size() < brick_len) {
+    /* Fail allocation. Not enough brick in the atlas. */
+    return {};
+  }
+  Vector<IrradianceBrickPacked> allocated;
+  allocated.resize(brick_len);
+  /* Copy bricks to return vector. */
+  allocated.as_mutable_span().copy_from(brick_pool_.as_span().take_back(brick_len));
+  /* Remove bricks from the pool. */
+  brick_pool_.resize(brick_pool_.size() - brick_len);
+
+  return allocated;
+}
+
+void IrradianceCache::bricks_free(Vector<IrradianceBrickPacked> &bricks)
+{
+  brick_pool_.extend(bricks.as_span());
+  bricks.clear();
+}
+
+void IrradianceCache::set_view(View & /*view*/)
+{
+  Vector<IrradianceGrid *> grid_updates;
+
+  /* First allocate the needed bricks and populate the brick buffer. */
+  int grids_len = 0;
+  bricks_infos_buf_.clear();
+  for (IrradianceGrid &grid : inst_.light_probes.grid_map_.values()) {
+    LightProbeGridCacheFrame *cache = grid.cache ? grid.cache->grid_static_cache : nullptr;
+    if (cache == nullptr) {
+      continue;
+    }
+
+    if (cache->baking.L0 == nullptr && cache->irradiance.L0 == nullptr) {
+      /* No data. */
+      continue;
+    }
+
+    int3 grid_size = int3(cache->size);
+    if (grid_size.x <= 0 || grid_size.y <= 0 || grid_size.z <= 0) {
+      inst_.info = "Error: Malformed irradiance grid data";
+      continue;
+    }
+
+    /* TODO frustum cull and only load visible grids. */
+
+    if (grids_len >= IRRADIANCE_GRID_MAX) {
+      inst_.info = "Error: Too many grid visible";
+      continue;
+    }
+
+    if (grid.bricks.is_empty()) {
+      int3 grid_size_in_bricks = math::divide_ceil(grid_size,
+                                                   int3(IRRADIANCE_GRID_BRICK_SIZE - 1));
+      int brick_len = grid_size_in_bricks.x * grid_size_in_bricks.y * grid_size_in_bricks.z;
+      grid.bricks = bricks_alloc(brick_len);
+
+      if (grid.bricks.is_empty()) {
+        inst_.info = "Error: Irradiance grid allocation failed";
+        continue;
+      }
+
+      grid_updates.append(&grid);
+    }
+
+    grid.brick_offset = bricks_infos_buf_.size();
+    bricks_infos_buf_.extend(grid.bricks);
+
+    if (grid_size.x <= 0 || grid_size.y <= 0 || grid_size.z <= 0) {
+      inst_.info = "Error: Malformed irradiance grid data";
+      continue;
+    }
+
+    float4x4 grid_to_world = grid.object_to_world * math::from_location<float4x4>(float3(-1.0f)) *
+                             math::from_scale<float4x4>(float3(2.0f / float3(grid_size))) *
+                             math::from_location<float4x4>(float3(0.0f));
+
+    grid.world_to_grid_transposed = float3x4(math::transpose(math::invert(grid_to_world)));
+    grid.grid_size = grid_size;
+    grid.grid_index = grids_len;
+    grids_infos_buf_[grids_len++] = grid;
+  }
+
+  /* TODO(fclem): Insert world grid here. */
+
+  if (grids_len < IRRADIANCE_GRID_MAX) {
+    /* Tag last grid as invalid to stop the iteration. */
+    grids_infos_buf_[grids_len].grid_size = int3(-1);
+  }
+
+  bricks_infos_buf_.push_update();
+  grids_infos_buf_.push_update();
+
+  /* Upload data for each grid that need to be inserted in the atlas. */
+  for (IrradianceGrid *grid : grid_updates) {
+    LightProbeGridCacheFrame *cache = grid->cache->grid_static_cache;
+
+    /* Staging textures are recreated for each light grid to avoid increasing VRAM usage. */
+    draw::Texture irradiance_a_tx = {"irradiance_a_tx"};
+    draw::Texture irradiance_b_tx = {"irradiance_b_tx"};
+    draw::Texture irradiance_c_tx = {"irradiance_c_tx"};
+    draw::Texture irradiance_d_tx = {"irradiance_d_tx"};
+
+    eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ;
+    int3 grid_size = int3(cache->size);
+    if (cache->baking.L0) {
+      irradiance_a_tx.ensure_3d(GPU_RGBA16F, grid_size, usage, (float *)cache->baking.L0);
+      irradiance_b_tx.ensure_3d(GPU_RGBA16F, grid_size, usage, (float *)cache->baking.L1_a);
+      irradiance_c_tx.ensure_3d(GPU_RGBA16F, grid_size, usage, (float *)cache->baking.L1_b);
+      irradiance_d_tx.ensure_3d(GPU_RGBA16F, grid_size, usage, (float *)cache->baking.L1_c);
+    }
+    else if (cache->irradiance.L0) {
+      irradiance_a_tx.ensure_3d(GPU_RGB16F, grid_size, usage, (float *)cache->irradiance.L0);
+      irradiance_b_tx.ensure_3d(GPU_RGB16F, grid_size, usage, (float *)cache->irradiance.L1_a);
+      irradiance_c_tx.ensure_3d(GPU_RGB16F, grid_size, usage, (float *)cache->irradiance.L1_b);
+      irradiance_d_tx.ensure_3d(GPU_RGB16F, grid_size, usage, (float *)cache->irradiance.L1_c);
+    }
+    else {
+      continue;
+    }
+
+    if (irradiance_a_tx.is_valid() == false) {
+      inst_.info = "Error: Could not allocate irradiance staging texture";
+      /* Avoid undefined behavior with uninitialized values. */
+      irradiance_a_tx.clear(float4(0.0f));
+      irradiance_b_tx.clear(float4(0.0f));
+      irradiance_c_tx.clear(float4(0.0f));
+      irradiance_d_tx.clear(float4(0.0f));
+    }
+
+    grid_upload_ps_.init();
+    grid_upload_ps_.shader_set(inst_.shaders.static_shader_get(LIGHTPROBE_IRRADIANCE_LOAD));
+
+    grid_upload_ps_.push_constant("grid_index", grid->grid_index);
+    grid_upload_ps_.bind_ubo("grids_infos_buf", &grids_infos_buf_);
+    grid_upload_ps_.bind_ssbo("bricks_infos_buf", &bricks_infos_buf_);
+    grid_upload_ps_.bind_texture("irradiance_a_tx", &irradiance_a_tx);
+    grid_upload_ps_.bind_texture("irradiance_b_tx", &irradiance_b_tx);
+    grid_upload_ps_.bind_texture("irradiance_c_tx", &irradiance_c_tx);
+    grid_upload_ps_.bind_texture("irradiance_d_tx", &irradiance_d_tx);
+    grid_upload_ps_.bind_image("irradiance_atlas_img", &irradiance_atlas_tx_);
+
+    /* Note that we take into account the padding border of each brick. */
+    int3 grid_size_in_bricks = math::divide_ceil(grid_size, int3(IRRADIANCE_GRID_BRICK_SIZE - 1));
+    grid_upload_ps_.dispatch(grid_size_in_bricks);
+
+    inst_.manager->submit(grid_upload_ps_);
+
+    irradiance_a_tx.free();
+    irradiance_b_tx.free();
+    irradiance_c_tx.free();
+    irradiance_d_tx.free();
+  }
+
+  do_full_update_ = false;
 }
 
 void IrradianceCache::viewport_draw(View &view, GPUFrameBuffer *view_fb)
@@ -105,24 +301,24 @@ void IrradianceCache::display_pass_draw(View &view, GPUFrameBuffer *view_fb)
     }
 
     /* Display texture. Updated for each individual light grid to avoid increasing VRAM usage. */
-    draw::Texture irradiance_a_tx_ = {"irradiance_a_tx"};
-    draw::Texture irradiance_b_tx_ = {"irradiance_b_tx"};
-    draw::Texture irradiance_c_tx_ = {"irradiance_c_tx"};
-    draw::Texture irradiance_d_tx_ = {"irradiance_d_tx"};
+    draw::Texture irradiance_a_tx = {"irradiance_a_tx"};
+    draw::Texture irradiance_b_tx = {"irradiance_b_tx"};
+    draw::Texture irradiance_c_tx = {"irradiance_c_tx"};
+    draw::Texture irradiance_d_tx = {"irradiance_d_tx"};
 
     eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ;
     int3 grid_size = int3(cache->size);
     if (cache->baking.L0) {
-      irradiance_a_tx_.ensure_3d(GPU_RGBA16F, grid_size, usage, (float *)cache->baking.L0);
-      irradiance_b_tx_.ensure_3d(GPU_RGBA16F, grid_size, usage, (float *)cache->baking.L1_a);
-      irradiance_c_tx_.ensure_3d(GPU_RGBA16F, grid_size, usage, (float *)cache->baking.L1_b);
-      irradiance_d_tx_.ensure_3d(GPU_RGBA16F, grid_size, usage, (float *)cache->baking.L1_c);
+      irradiance_a_tx.ensure_3d(GPU_RGBA16F, grid_size, usage, (float *)cache->baking.L0);
+      irradiance_b_tx.ensure_3d(GPU_RGBA16F, grid_size, usage, (float *)cache->baking.L1_a);
+      irradiance_c_tx.ensure_3d(GPU_RGBA16F, grid_size, usage, (float *)cache->baking.L1_b);
+      irradiance_d_tx.ensure_3d(GPU_RGBA16F, grid_size, usage, (float *)cache->baking.L1_c);
     }
     else if (cache->irradiance.L0) {
-      irradiance_a_tx_.ensure_3d(GPU_RGB16F, grid_size, usage, (float *)cache->irradiance.L0);
-      irradiance_b_tx_.ensure_3d(GPU_RGB16F, grid_size, usage, (float *)cache->irradiance.L1_a);
-      irradiance_c_tx_.ensure_3d(GPU_RGB16F, grid_size, usage, (float *)cache->irradiance.L1_b);
-      irradiance_d_tx_.ensure_3d(GPU_RGB16F, grid_size, usage, (float *)cache->irradiance.L1_c);
+      irradiance_a_tx.ensure_3d(GPU_RGB16F, grid_size, usage, (float *)cache->irradiance.L0);
+      irradiance_b_tx.ensure_3d(GPU_RGB16F, grid_size, usage, (float *)cache->irradiance.L1_a);
+      irradiance_c_tx.ensure_3d(GPU_RGB16F, grid_size, usage, (float *)cache->irradiance.L1_b);
+      irradiance_d_tx.ensure_3d(GPU_RGB16F, grid_size, usage, (float *)cache->irradiance.L1_c);
     }
     else {
       continue;
@@ -139,10 +335,10 @@ void IrradianceCache::display_pass_draw(View &view, GPUFrameBuffer *view_fb)
     display_grids_ps_.push_constant("grid_to_world", grid.object_to_world);
     display_grids_ps_.push_constant("world_to_grid", grid.world_to_object);
 
-    display_grids_ps_.bind_texture("irradiance_a_tx", &irradiance_a_tx_);
-    display_grids_ps_.bind_texture("irradiance_b_tx", &irradiance_b_tx_);
-    display_grids_ps_.bind_texture("irradiance_c_tx", &irradiance_c_tx_);
-    display_grids_ps_.bind_texture("irradiance_d_tx", &irradiance_d_tx_);
+    display_grids_ps_.bind_texture("irradiance_a_tx", &irradiance_a_tx);
+    display_grids_ps_.bind_texture("irradiance_b_tx", &irradiance_b_tx);
+    display_grids_ps_.bind_texture("irradiance_c_tx", &irradiance_c_tx);
+    display_grids_ps_.bind_texture("irradiance_d_tx", &irradiance_d_tx);
 
     int sample_count = static_cast<int>(BKE_lightprobe_grid_cache_frame_sample_count(cache));
     int triangle_count = sample_count * 2;
@@ -150,10 +346,10 @@ void IrradianceCache::display_pass_draw(View &view, GPUFrameBuffer *view_fb)
 
     inst_.manager->submit(display_grids_ps_, view);
 
-    irradiance_a_tx_.free();
-    irradiance_b_tx_.free();
-    irradiance_c_tx_.free();
-    irradiance_d_tx_.free();
+    irradiance_a_tx.free();
+    irradiance_b_tx.free();
+    irradiance_c_tx.free();
+    irradiance_d_tx.free();
   }
 }
 

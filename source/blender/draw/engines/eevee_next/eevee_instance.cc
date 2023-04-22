@@ -474,7 +474,6 @@ void Instance::light_bake_irradiance(Object &probe,
   };
 
   custom_pipeline_wrapper([&]() {
-    GPU_debug_capture_begin();
     irradiance_cache.bake.surfel_raster_views_sync(probe);
     /* TODO: lightprobe visibility group option. */
     manager->begin_sync();
@@ -483,7 +482,6 @@ void Instance::light_bake_irradiance(Object &probe,
 
     irradiance_cache.bake.surfels_create(probe);
     irradiance_cache.bake.surfels_lights_eval();
-    GPU_debug_capture_end();
   });
 
   int bounce_len = scene->eevee.gi_diffuse_bounces;

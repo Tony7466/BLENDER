@@ -150,6 +150,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_light_culling_zbin";
     case LIGHTPROBE_IRRADIANCE_RAY:
       return "eevee_lightprobe_irradiance_ray";
+    case LIGHTPROBE_IRRADIANCE_LOAD:
+      return "eevee_lightprobe_irradiance_load";
     case SHADOW_CLIPMAP_CLEAR:
       return "eevee_shadow_clipmap_clear";
     case SHADOW_DEBUG:

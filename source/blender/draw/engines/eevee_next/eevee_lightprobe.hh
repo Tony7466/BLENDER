@@ -24,7 +24,7 @@ struct LightProbe {
   bool updated = false;
 };
 
-struct IrradianceGrid : public LightProbe {
+struct IrradianceGrid : public LightProbe, IrradianceGridData {
   /** Copy of the transform matrix. */
   float4x4 object_to_world;
   /** Precomputed inverse transform with normalized axes. No position. Used for rotating SH. */
@@ -36,6 +36,10 @@ struct IrradianceGrid : public LightProbe {
    * pruning have been done.
    */
   const struct LightProbeObjectCache *cache = nullptr;
+  /** List of associated atlas bricks that are used by this grid. */
+  Vector<IrradianceBrickPacked> bricks;
+  /** Index of the grid inside the grid UBO. */
+  int grid_index;
 };
 
 struct ReflectionCube : public LightProbe {};

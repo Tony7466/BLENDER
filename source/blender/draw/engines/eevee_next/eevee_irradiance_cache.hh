@@ -128,6 +128,18 @@ class IrradianceCache {
  private:
   Instance &inst_;
 
+  /** Atlas 3D texture containing all loaded grid data. */
+  Texture irradiance_atlas_tx_ = {"irradiance_atlas_tx_"};
+  /** Data structure used to index irradiance cache pages inside the atlas. */
+  IrradianceGridDataBuf grids_infos_buf_ = {"grids_infos_buf_"};
+  IrradianceBrickBuf bricks_infos_buf_ = {"bricks_infos_buf_"};
+  /** Pool of atlas regions to allocate to different grids. */
+  Vector<IrradianceBrickPacked> brick_pool_;
+  /** Stream data into the irradiance atlas texture. */
+  PassSimple grid_upload_ps_ = {"IrradianceCache.Upload"};
+  /** If true, will trigger the reupload of all grid data instead of just streaming new ones. */
+  bool do_full_update_ = true;
+
   /** Display surfel debug data. */
   PassSimple debug_surfels_ps_ = {"IrradianceCache.Debug"};
   /** Debug surfel elements copied from the light cache. */
@@ -143,7 +155,18 @@ class IrradianceCache {
 
   void init();
   void sync();
+  void set_view(View &view);
   void viewport_draw(View &view, GPUFrameBuffer *view_fb);
+
+  Vector<IrradianceBrickPacked> bricks_alloc(int brick_len);
+  void bricks_free(Vector<IrradianceBrickPacked> &bricks);
+
+  template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)
+  {
+    pass->bind_ubo(IRRADIANCE_GRID_BUF_SLOT, &grids_infos_buf_);
+    pass->bind_ssbo(IRRADIANCE_BRICK_BUF_SLOT, &bricks_infos_buf_);
+    pass->bind_texture(IRRADIANCE_ATLAS_TEX_SLOT, &irradiance_atlas_tx_);
+  }
 
  private:
   void debug_pass_draw(View &view, GPUFrameBuffer *view_fb);

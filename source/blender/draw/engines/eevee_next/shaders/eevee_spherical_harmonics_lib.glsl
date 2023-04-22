@@ -188,6 +188,40 @@ vec4 spherical_harmonics_L2_evaluate(vec3 direction, SphericalHarmonicBandL2 L2)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Rotation
+ * \{ */
+
+void spherical_harmonics_L0_rotate(mat3x3 rotation, inout SphericalHarmonicBandL0 L0)
+{
+  /* L0 band being a constant function (i.e: there is no directionallity) there is nothing to
+   * rotate. This is a no-op. */
+}
+
+void spherical_harmonics_L1_rotate(mat3x3 rotation, inout SphericalHarmonicBandL1 L1)
+{
+  /* Convert L1 coefficients to per channel column.
+   * Note the component shuffle to match blender coordinate system. */
+  mat4x3 per_channel = transpose(mat3x4(L1.Mp1, L1.Mn1, -L1.M0));
+  /* Rotate each channel. */
+  per_channel[0] = rotation * per_channel[0];
+  per_channel[1] = rotation * per_channel[1];
+  per_channel[2] = rotation * per_channel[2];
+  /* Convert back to L1 coefficients to per channel column.
+   * Note the component shuffle to match blender coordinate system. */
+  mat3x4 per_coef = transpose(per_channel);
+  L1.Mn1 = per_coef[1];
+  L1.M0 = -per_coef[2];
+  L1.Mp1 = per_coef[0];
+}
+
+void spherical_harmonics_L2_rotate(mat3x3 rotation, inout SphericalHarmonicBandL2 L2)
+{
+  /* TODO */
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Evaluation
  * \{ */
 
@@ -197,20 +231,23 @@ vec4 spherical_harmonics_L2_evaluate(vec3 direction, SphericalHarmonicBandL2 L2)
  * 2/3 and 1/4. See this reference for more explanation:
  * https://seblagarde.wordpress.com/2012/01/08/pi-or-not-to-pi-in-game-lighting-equation/
  */
-vec4 spherical_harmonics_evaluate_lambert(vec3 N, SphericalHarmonicL0 sh)
+vec3 spherical_harmonics_evaluate_lambert(vec3 N, SphericalHarmonicL0 sh)
 {
-  return spherical_harmonics_L0_evaluate(N, sh.L0);
+  vec3 radiance = spherical_harmonics_L0_evaluate(N, sh.L0).rgb;
+  return radiance;
 }
-vec4 spherical_harmonics_evaluate_lambert(vec3 N, SphericalHarmonicL1 sh)
+vec3 spherical_harmonics_evaluate_lambert(vec3 N, SphericalHarmonicL1 sh)
 {
-  return spherical_harmonics_L0_evaluate(N, sh.L0) +
-         spherical_harmonics_L1_evaluate(N, sh.L1) * (2.0 / 3.0);
+  vec3 radiance = spherical_harmonics_L0_evaluate(N, sh.L0).rgb +
+                  spherical_harmonics_L1_evaluate(N, sh.L1).rgb * (2.0 / 3.0);
+  return radiance;
 }
-vec4 spherical_harmonics_evaluate_lambert(vec3 N, SphericalHarmonicL2 sh)
+vec3 spherical_harmonics_evaluate_lambert(vec3 N, SphericalHarmonicL2 sh)
 {
-  return spherical_harmonics_L0_evaluate(N, sh.L0) +
-         spherical_harmonics_L1_evaluate(N, sh.L1) * (2.0 / 3.0) +
-         spherical_harmonics_L2_evaluate(N, sh.L2) * (1.0 / 4.0);
+  vec3 radiance = spherical_harmonics_L0_evaluate(N, sh.L0).rgb +
+                  spherical_harmonics_L1_evaluate(N, sh.L1).rgb * (2.0 / 3.0) +
+                  spherical_harmonics_L2_evaluate(N, sh.L2).rgb * (1.0 / 4.0);
+  return radiance;
 }
 
 /** \} */
