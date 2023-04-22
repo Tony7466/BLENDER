@@ -374,8 +374,6 @@ BLI_mempool *BLI_mempool_create(uint esize, uint elem_num, uint pchunk, uint fla
 
 void *BLI_mempool_alloc(BLI_mempool *pool)
 {
-  mempool_asan_lock(pool);
-
   BLI_freenode *free_pop;
 
   if (UNLIKELY(pool->free == NULL)) {
@@ -401,8 +399,6 @@ void *BLI_mempool_alloc(BLI_mempool *pool)
   VALGRIND_MEMPOOL_ALLOC(pool, free_pop, pool->esize);
 #endif
 
-  mempool_asan_unlock(pool);
-
   return (void *)free_pop;
 }
 
@@ -410,9 +406,7 @@ void *BLI_mempool_calloc(BLI_mempool *pool)
 {
   void *retval = BLI_mempool_alloc(pool);
 
-  mempool_asan_lock(pool);
   memset(retval, 0, (size_t)pool->esize - POISON_REDZONE_SIZE);
-  mempool_asan_unlock(pool);
 
   return retval;
 }
@@ -424,8 +418,6 @@ void *BLI_mempool_calloc(BLI_mempool *pool)
  */
 void BLI_mempool_free(BLI_mempool *pool, void *addr)
 {
-  mempool_asan_lock(pool);
-
   BLI_freenode *newhead = addr;
 
 #ifndef NDEBUG
@@ -514,15 +506,11 @@ void BLI_mempool_free(BLI_mempool *pool, void *addr)
     VALGRIND_MEMPOOL_FREE(pool, CHUNK_DATA(first));
 #endif
   }
-
-  mempool_asan_unlock(pool);
 }
 
 int BLI_mempool_len(const BLI_mempool *pool)
 {
-  mempool_asan_lock((BLI_mempool *)pool);
   int ret = pool->totused;
-  mempool_asan_unlock((BLI_mempool *)pool);
 
   return ret;
 }
@@ -556,9 +544,7 @@ void BLI_mempool_as_table(BLI_mempool *pool, void **data)
   void *elem;
   void **p = data;
 
-  mempool_asan_lock(pool);
   BLI_assert(pool->flag & BLI_MEMPOOL_ALLOW_ITER);
-  mempool_asan_unlock(pool);
 
   BLI_mempool_iternew(pool, &iter);
 
@@ -566,9 +552,7 @@ void BLI_mempool_as_table(BLI_mempool *pool, void **data)
     *p++ = elem;
   }
 
-  mempool_asan_lock(pool);
   BLI_assert((int)(p - data) == pool->totused);
-  mempool_asan_unlock(pool);
 }
 
 void **BLI_mempool_as_tableN(BLI_mempool *pool, const char *allocstr)
@@ -580,29 +564,24 @@ void **BLI_mempool_as_tableN(BLI_mempool *pool, const char *allocstr)
 
 void BLI_mempool_as_array(BLI_mempool *pool, void *data)
 {
-  mempool_asan_lock(pool);
-
   const uint esize = pool->esize - (uint)POISON_REDZONE_SIZE;
   BLI_mempool_iter iter;
   char *elem, *p = data;
 
   BLI_assert(pool->flag & BLI_MEMPOOL_ALLOW_ITER);
 
-  mempool_asan_unlock(pool);
-
+  mempool_asan_lock(pool);
   BLI_mempool_iternew(pool, &iter);
   while ((elem = BLI_mempool_iterstep(&iter))) {
     memcpy(p, elem, (size_t)esize);
     p = NODE_STEP_NEXT(p);
   }
+  mempool_asan_unlock(pool);
 }
 
 void *BLI_mempool_as_arrayN(BLI_mempool *pool, const char *allocstr)
 {
-  mempool_asan_lock(pool);
   char *data = MEM_malloc_arrayN((size_t)pool->totused, pool->esize, allocstr);
-  mempool_asan_unlock(pool);
-
   BLI_mempool_as_array(pool, data);
   return data;
 }
@@ -612,9 +591,7 @@ void BLI_mempool_iternew(BLI_mempool *pool, BLI_mempool_iter *iter)
   BLI_assert(pool->flag & BLI_MEMPOOL_ALLOW_ITER);
 
   iter->pool = pool;
-  mempool_asan_lock(pool);
   iter->curchunk = pool->chunks;
-  mempool_asan_unlock(pool);
   iter->curindex = 0;
 }
 
@@ -694,8 +671,6 @@ void *BLI_mempool_iterstep(BLI_mempool_iter *iter)
     return NULL;
   }
 
-  mempool_asan_lock(iter->pool);
-
   const uint esize = iter->pool->esize;
   BLI_freenode *curnode = POINTER_OFFSET(CHUNK_DATA(iter->curchunk), (esize * iter->curindex));
   BLI_freenode *ret;
@@ -718,14 +693,12 @@ void *BLI_mempool_iterstep(BLI_mempool_iter *iter)
           BLI_asan_poison(ret, iter->pool->esize);
         }
 
-        mempool_asan_unlock(iter->pool);
         return ret2;
       }
       curnode = CHUNK_DATA(iter->curchunk);
     }
   } while (ret->freeword == FREEWORD);
 
-  mempool_asan_unlock(iter->pool);
   return ret;
 }
 
@@ -805,8 +778,6 @@ void *mempool_iter_threadsafe_step(BLI_mempool_threadsafe_iter *ts_iter)
 
 void BLI_mempool_clear_ex(BLI_mempool *pool, const int elem_num_reserve)
 {
-  mempool_asan_lock(pool);
-
   BLI_mempool_chunk *mpchunk;
   BLI_mempool_chunk *mpchunk_next;
   uint maxchunks;
@@ -855,8 +826,6 @@ void BLI_mempool_clear_ex(BLI_mempool *pool, const int elem_num_reserve)
     chunks_temp = mpchunk->next;
     last_tail = mempool_chunk_add(pool, mpchunk, last_tail);
   }
-
-  mempool_asan_unlock(pool);
 }
 
 void BLI_mempool_clear(BLI_mempool *pool)
