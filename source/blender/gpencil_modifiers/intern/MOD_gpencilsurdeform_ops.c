@@ -1232,11 +1232,11 @@ static bool add_frame(SurDeformGpencilModifierData *smd_orig,
 
   /*Fill in the frame data*/
   sdef_layer->frames->blender_frame = gpf;
-  // sdef_layer->frames->frame_number // Not storing it because it could just change
+  sdef_layer->frames->frame_number = gpf->framenum; // Not storing it because it could just change
   sdef_layer->frames->strokes_num = BLI_listbase_count(&(gpf->strokes));
 
   /*Allocate the strokes*/
-  sdef_layer->frames->strokes = MEM_malloc_arrayN(
+  sdef_layer->frames->strokes = MEM_calloc_arrayN(
       sdef_layer->frames->strokes_num, sizeof(*sdef_layer->frames->strokes), "SDefGPStrokes");
   if (sdef_layer->frames->strokes == NULL) {
     BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "Out of memory");
@@ -1268,7 +1268,7 @@ static bool free_layer(SurDeformGpencilModifierData *smd_orig,
 
   /*Do the same thing as add, but in reverse*/
   smd_orig->num_of_layers--;
-  SDefGPLayer *temp_layers_pointer = MEM_malloc_arrayN(
+  SDefGPLayer *temp_layers_pointer = MEM_calloc_arrayN(
       smd_orig->num_of_layers, sizeof(*smd_orig->layers), "SDefGPLayers");
 
   if (temp_layers_pointer == NULL) {
@@ -1308,7 +1308,7 @@ static bool free_frame(SurDeformGpencilModifierData *smd_orig,
 
   /*Do the same thing as add, but in reverse */
   sdef_layer->num_of_frames--;
-  SDefGPFrame *temp_frames_pointer = MEM_malloc_arrayN(
+  SDefGPFrame *temp_frames_pointer = MEM_calloc_arrayN(
       sdef_layer->num_of_frames, sizeof(*sdef_layer->frames), "SDefGPFrames");
 
   if (temp_frames_pointer == NULL) {
@@ -1555,6 +1555,7 @@ static bool surfacedeformBind(Object *ob,
     return true;  // TODO: checks for operation successful
   }
 
+  /*Bind mode*/
   const float(*positions)[3] = BKE_mesh_vert_positions(target);  //  FOR 3.4 +
   const MPoly *mpoly = BKE_mesh_polys(target);
   const MEdge *medge = BKE_mesh_edges(target);
@@ -1629,6 +1630,7 @@ static bool surfacedeformBind(Object *ob,
   if (smd_orig->bind_modes & GP_MOD_SDEF_BIND_ALL_LAYERS) {
     LISTBASE_FOREACH (bGPDlayer *, curr_gpl, &gpd->layers)
     {
+      
       /* If a layer is already bound, skip it.*/
       rollback_layers_a(smd_orig);
       int l = 0;
@@ -1647,8 +1649,15 @@ static bool surfacedeformBind(Object *ob,
 
       if (smd_orig->bind_modes & GP_MOD_SDEF_BIND_ALL_FRAMES) {
         LISTBASE_FOREACH (bGPDframe *, curr_gpf, &curr_gpl->frames) {
-          /* If a frame is already bound, skip it.*/
+
           rollback_lframes_a(smd_orig, smd_orig->layers);
+          /*If a frame has no strokes, skip it.*/
+          if (BLI_listbase_count(&(curr_gpf->strokes)) < 1)
+          {
+            continue;
+          }
+
+          /* If a frame is already bound, skip it.*/
           int f = 0;
           while (f != smd_orig->layers->num_of_frames &&
                  smd_orig->layers->frames[f].blender_frame->framenum != curr_gpf->framenum)

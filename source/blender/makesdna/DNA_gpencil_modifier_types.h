@@ -1434,6 +1434,7 @@ enum {
   /* Only store bind data for nonzero vgroup weights at the time of bind. */
   GP_MOD_SDEF_SPARSE_BIND = (1 << 2),
   GP_MOD_SDEF_WITHHOLD_EVALUATION = (1 << 3),
+  GP_MOD_SDEF_CHECKED = (1 << 3),
   
 
 };

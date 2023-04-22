@@ -1701,6 +1701,8 @@ static void check_bind_situation(SurDeformGpencilModifierData *smd,
   if (smd->layers == NULL) 
   {return;}
   rollback_layers(smd);
+
+  /*IMPORTANT TODO: Check if frame number changed and update it*/
   
   smd->bound_flags |= GP_MOD_SDEF_SOMETHING_BOUND;
 
@@ -2159,15 +2161,29 @@ static void deformVert(void *__restrict userdata,
   }
 }
 
-static void end_stroke_evaluation(SurDeformGpencilModifierData *smd, bGPDstroke *gps)
+static void end_stroke_evaluation(SurDeformGpencilModifierData *smd, bGPDframe *gpf)
 {
-  if (gps->next == NULL) /*If we are on the last stroke...*/
+  if (smd->layers->frames == NULL) return;
+  if (smd->layers->frames->strokes == NULL) return;
+
+  if (smd->layers->frames->strokes->stroke_idx == smd->layers->frames->strokes_num-1)/*If we are on the last stroke...*/
   {
-    /* ...Go back to the start of the stroke array. */
-    uint target_idx = smd->layers->frames->strokes->stroke_idx;
-    for (int idx = 0; idx < target_idx; idx++) {
-      (smd->layers->frames->strokes)--;
-    }
+    /* ...Go back to the start of the stroke array, 
+    increase the layer array  or rol it back*/
+    rollback_strokes(smd, smd->layers->frames);
+   // if (smd->layers->layer_idx == smd->num_of_layers-1)
+   // {smd->layers++;}
+   // else
+   // {rollback_layers;}
+    /*Make it point to the right frame
+    
+    int i=0;
+    while (smd->layers->frames->frame_number != gpf->framenum &&
+          i < smd->layers->num_of_frames)
+    { 
+      smd->layers->frames++;
+      i++;  
+    }*/
   }
   else { /*Else increase the pointer */
     (smd->layers->frames->strokes)++;
@@ -2190,12 +2206,20 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   uint verts_num = gps->totpoints;
   uint strokes_num = BLI_listbase_count(&gpf->strokes);
   SurDeformGpencilModifierData *smd_orig = get_original_modifier(ob, smd, md);
+ // Object *ob_orig = (Object *)DEG_get_original_id(&ob->id);
+ // bGPdata *gpd_orig = ob_orig->data;
 
-  /*Only on the first evaluation, check bind situation*/
-  if (gpl->prev == NULL && gps->prev == NULL) {
-    check_bind_situation(smd_orig, depsgraph, DEG_get_evaluated_scene(depsgraph), ob);
-  }
   smd->bound_flags = smd_orig->bound_flags;
+
+  /*Check only one time. Once the evaluation is over, the flag data will be copied again from 
+  the original modifier, so the flag will hopefully became 0 again on its own.*/
+  if (!(smd->flags & GP_MOD_SDEF_CHECKED))
+  {
+    check_bind_situation(smd_orig, depsgraph, DEG_get_evaluated_scene(depsgraph), ob);
+    smd->bound_flags = smd_orig->bound_flags;
+    smd->flags &= GP_MOD_SDEF_CHECKED;
+  }
+  
   
   /* Exit function if bind flag is not set  and free bind data if any. */
   if (smd->bound_flags == 0 && !(smd->flags & GP_MOD_SDEF_DO_BIND)) { 
@@ -2213,9 +2237,34 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
     printf("Flag disabled, verts null \n");
     return;
   }
+  
+  
+
   Object *ob_target = DEG_get_evaluated_object(depsgraph, smd->target);
   target = BKE_modifier_get_evaluated_mesh_from_evaluated_object(ob_target);
 
+  /*So there might be many reason why the order of the layers (and frames?) 
+  stored in the surdef structure may differ from the order of the bGPDlayer list.
+  The best solution for now is to look for the right data at the start of every new layer
+  evaluation. Could be made quicker with a check to see if it corresponds to the saved order,
+  and even to swap it if it doesnt.*/
+  rollback_layers(smd);
+  while (strcmp(smd->layers->blender_layer->info,gpl->info) != 0 &&
+  smd->layers->layer_idx < smd->num_of_layers)
+   {smd->layers++;}
+  /*Make it point to the right frame*/
+  if (smd->layers->frames != NULL)
+  {
+    while (smd->layers->frames->frame_number != gpf->framenum &&
+          smd->layers->frames->frame_idx < smd->layers->num_of_frames)
+    { smd->layers->frames++;}
+  }
+  else
+  {
+    end_stroke_evaluation(smd, gpf);
+    return;
+  }
+  
   
   
 
@@ -2283,9 +2332,10 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   
 
   /*Exit evaluation if we are on a frame that is not bound.*/
-  if (smd->layers->frames->blender_frame->framenum != gpf->framenum) 
+  
+  if (smd->layers->frames->frame_number != gpf->framenum) 
   {
-    end_stroke_evaluation(smd, gps);
+    end_stroke_evaluation(smd, gpf);
     return;
   }
 
@@ -2377,7 +2427,7 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
 
     if (!curr_layer) /* If layer or frame not found, retun and pass onto the next evaluation */
     {
-      end_stroke_evaluation(smd, gps);
+      end_stroke_evaluation(smd, gpf);
       return;
     }
 
@@ -2393,7 +2443,7 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
     }
     if (!curr_frame) /* If layer or frame not found, retun and pass onto the next evaluation */
     {
-      end_stroke_evaluation(smd, gps);
+      end_stroke_evaluation(smd, gpf);
       return;
     }
     smd->layers->frames = curr_frame;
@@ -2426,7 +2476,7 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
 
   BKE_gpencil_stroke_geometry_update(ob->data, gps);
   
-  end_stroke_evaluation(smd, gps);
+  end_stroke_evaluation(smd, gpf);
   
   
 }
@@ -2447,10 +2497,9 @@ static void deformStroke(GpencilModifierData *md, // every time deform stroke is
 
 
 
-  /* Update flags to evaluated modifier */
-  SurDeformGpencilModifierData *smd_orig = get_original_modifier(ob, smd, md);
+  //SurDeformGpencilModifierData *smd_orig = get_original_modifier(ob, smd, md);
 
-  smd->flags = smd_orig->flags;
+  //smd->flags = smd_orig->flags;
 
  
   
@@ -2496,7 +2545,7 @@ static void panel_draw(const bContext *UNUSED(C), Panel *panel)
   PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, &ob_ptr);
 
   PointerRNA target_ptr = RNA_pointer_get(ptr, "target");
-
+ // GpencilModifierData *data = (GpencilModifierData *)ptr->data;
   
 
  // bool unbind_mode = RNA_boolean_get(ptr, "unbind_mode"); 
@@ -2506,6 +2555,7 @@ static void panel_draw(const bContext *UNUSED(C), Panel *panel)
   bool all_layers_current_frames_bound = RNA_boolean_get(ptr, "all_layers_current_frames_bound");
   bool current_layer_all_frames_bound = RNA_boolean_get(ptr, "current_layer_all_frames_bound");
   bool current_layer_current_frame_bound = RNA_boolean_get(ptr, "current_layer_current_frame_bound");
+ // bool something_bound = RNA_boolean_get(ptr, "current_layer_current_frame_bound");
   uiLayoutSetPropSep(layout, true);
 
   col = uiLayoutColumn(layout, false);
