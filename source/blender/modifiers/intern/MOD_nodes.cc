@@ -1162,65 +1162,65 @@ static void store_output_attributes(GeometrySet &geometry,
 }
 
 static void prepare_simulation_states_for_evaluation(
-    NodesModifierData *nmd,
-    NodesModifierData *nmd_orig,
-    const ModifierEvalContext *ctx,
+    const NodesModifierData &nmd,
+    NodesModifierData &nmd_orig,
+    const ModifierEvalContext &ctx,
     nodes::GeoNodesModifierData &geo_nodes_modifier_data)
 {
-  const Main *bmain = DEG_get_bmain(ctx->depsgraph);
-  const SubFrame current_frame = DEG_get_ctime(ctx->depsgraph);
-  const Scene *scene = DEG_get_input_scene(ctx->depsgraph);
+  const Main *bmain = DEG_get_bmain(ctx.depsgraph);
+  const SubFrame current_frame = DEG_get_ctime(ctx.depsgraph);
+  const Scene *scene = DEG_get_input_scene(ctx.depsgraph);
   const SubFrame start_frame = scene->r.sfra;
   const bool is_start_frame = current_frame == start_frame;
 
-  if (DEG_is_active(ctx->depsgraph)) {
-    if (nmd_orig->simulation_cache == nullptr) {
-      nmd_orig->simulation_cache = MEM_new<bke::sim::ModifierSimulationCache>(__func__);
+  if (DEG_is_active(ctx.depsgraph)) {
+    if (nmd_orig.simulation_cache == nullptr) {
+      nmd_orig.simulation_cache = MEM_new<bke::sim::ModifierSimulationCache>(__func__);
     }
 
     {
       /* Try to use baked data. */
       const StringRefNull bmain_path = BKE_main_blendfile_path(bmain);
-      if (nmd_orig->simulation_cache->cache_state() != bke::sim::CacheState::Baked &&
+      if (nmd_orig.simulation_cache->cache_state() != bke::sim::CacheState::Baked &&
           !bmain_path.is_empty()) {
-        nmd_orig->simulation_cache->try_discover_bake(
-            bke::sim::get_meta_directory(*bmain, *ctx->object, nmd->modifier),
-            bke::sim::get_bdata_directory(*bmain, *ctx->object, nmd->modifier));
+        nmd_orig.simulation_cache->try_discover_bake(
+            bke::sim::get_meta_directory(*bmain, *ctx.object, nmd.modifier),
+            bke::sim::get_bdata_directory(*bmain, *ctx.object, nmd.modifier));
       }
     }
 
     {
       /* Reset cached data if necessary. */
       const bke::sim::StatesAroundFrame sim_states =
-          nmd_orig->simulation_cache->get_states_around_frame(current_frame);
-      if (nmd_orig->simulation_cache->cache_state() == bke::sim::CacheState::Invalid &&
+          nmd_orig.simulation_cache->get_states_around_frame(current_frame);
+      if (nmd_orig.simulation_cache->cache_state() == bke::sim::CacheState::Invalid &&
           (current_frame == start_frame ||
            (sim_states.current == nullptr && sim_states.prev == nullptr &&
             sim_states.next != nullptr))) {
-        nmd_orig->simulation_cache->reset();
+        nmd_orig.simulation_cache->reset();
       }
     }
     /* Decide if a new simulation state should be created in this evaluation. */
     const bke::sim::StatesAroundFrame sim_states =
-        nmd_orig->simulation_cache->get_states_around_frame(current_frame);
-    if (nmd_orig->simulation_cache->cache_state() != bke::sim::CacheState::Baked) {
+        nmd_orig.simulation_cache->get_states_around_frame(current_frame);
+    if (nmd_orig.simulation_cache->cache_state() != bke::sim::CacheState::Baked) {
       if (sim_states.current == nullptr) {
-        if (is_start_frame || !nmd_orig->simulation_cache->has_states()) {
+        if (is_start_frame || !nmd_orig.simulation_cache->has_states()) {
           bke::sim::ModifierSimulationState &current_sim_state =
-              nmd_orig->simulation_cache->get_state_at_frame_for_write(current_frame);
+              nmd_orig.simulation_cache->get_state_at_frame_for_write(current_frame);
           geo_nodes_modifier_data.current_simulation_state_for_write = &current_sim_state;
           geo_nodes_modifier_data.simulation_time_delta = 0.0f;
           if (!is_start_frame) {
             /* When starting a new simulation at another frame than the start frame, it can't match
              * what would be baked, so invalidate it immediately. */
-            nmd_orig->simulation_cache->invalidate();
+            nmd_orig.simulation_cache->invalidate();
           }
         }
         else if (sim_states.prev != nullptr && sim_states.next == nullptr) {
           const float delta_frames = float(current_frame) - float(sim_states.prev->frame);
           if (delta_frames <= 1.0f) {
             bke::sim::ModifierSimulationState &current_sim_state =
-                nmd_orig->simulation_cache->get_state_at_frame_for_write(current_frame);
+                nmd_orig.simulation_cache->get_state_at_frame_for_write(current_frame);
             geo_nodes_modifier_data.current_simulation_state_for_write = &current_sim_state;
             const float delta_seconds = delta_frames / FPS;
             geo_nodes_modifier_data.simulation_time_delta = delta_seconds;
@@ -1231,7 +1231,7 @@ static void prepare_simulation_states_for_evaluation(
   }
   /* Load read-only states to give nodes access to cached data. */
   const bke::sim::StatesAroundFrame sim_states =
-      nmd_orig->simulation_cache->get_states_around_frame(current_frame);
+      nmd_orig.simulation_cache->get_states_around_frame(current_frame);
   if (sim_states.current) {
     sim_states.current->state.ensure_bake_loaded();
     geo_nodes_modifier_data.current_simulation_state = &sim_states.current->state;
@@ -1287,7 +1287,7 @@ static GeometrySet compute_geometry(const bNodeTree &btree,
   geo_nodes_modifier_data.self_object = ctx->object;
   auto eval_log = std::make_unique<geo_log::GeoModifierLog>();
 
-  prepare_simulation_states_for_evaluation(nmd, nmd_orig, ctx, geo_nodes_modifier_data);
+  prepare_simulation_states_for_evaluation(*nmd, *nmd_orig, *ctx, geo_nodes_modifier_data);
 
   Set<blender::ComputeContextHash> socket_log_contexts;
   if (logging_enabled(ctx)) {
