@@ -91,14 +91,18 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
       group_indexing.add(group_id);
     }
 
-    const bool use_cheap_mask = mask.size() < domain_size / 2;
+    /* Each group id has two corresponding index masks. One that contains all the points in the
+     * group, one that contains all the points in the group that should be looked up (this is the
+     * intersection of the points in the group and `mask`). In many cases, both of these masks are
+     * the same or very similar, so there is no benefit two separate masks. */
+    const bool use_separate_lookup_indices = mask.size() < domain_size / 2;
 
-    Array<Vector<int64_t>> tree_indices(group_indexing.size());
-    Array<Vector<int64_t>> mask_indices;
+    Array<Vector<int64_t>> all_indices_by_group_id(group_indexing.size());
+    Array<Vector<int64_t>> lookup_indices_by_group_id;
 
-    if (use_cheap_mask) {
+    if (use_separate_lookup_indices) {
       result.reinitialize(mask.min_array_size());
-      mask_indices.reinitialize(group_indexing.size());
+      lookup_indices_by_group_id.reinitialize(group_indexing.size());
     }
     else {
       result.reinitialize(domain_size);
@@ -116,20 +120,22 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
     };
 
     threading::parallel_invoke(
-        domain_size > 1024 && use_cheap_mask,
+        domain_size > 1024 && use_separate_lookup_indices,
         [&]() {
-          if (use_cheap_mask) {
-            build_group_masks(mask, mask_indices);
+          if (use_separate_lookup_indices) {
+            build_group_masks(mask, lookup_indices_by_group_id);
           }
         },
-        [&]() { build_group_masks(IndexMask(domain_size), tree_indices); });
+        [&]() { build_group_masks(IndexMask(domain_size), all_indices_by_group_id); });
 
     threading::parallel_for(group_indexing.index_range(), 256, [&](const IndexRange range) {
       for (const int index : range) {
-        const IndexMask mask_of_tree = tree_indices[index].as_span();
-        const IndexMask mask = use_cheap_mask ? IndexMask(mask_indices[index]) : mask_of_tree;
-        KDTree_3d *tree = build_kdtree(positions, mask_of_tree);
-        find_neighbors(*tree, positions, mask, result);
+        const IndexMask tree_mask = all_indices_by_group_id[index].as_span();
+        const IndexMask lookup_mask = use_separate_lookup_indices ?
+                                          IndexMask(lookup_indices_by_group_id[index]) :
+                                          tree_mask;
+        KDTree_3d *tree = build_kdtree(positions, tree_mask);
+        find_neighbors(*tree, positions, lookup_mask, result);
         BLI_kdtree_3d_free(tree);
       }
     });
