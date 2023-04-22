@@ -898,6 +898,20 @@ void add_qt_qtqt(float q[4], const float a[4], const float b[4], const float t)
   q[3] = a[3] + t * b[3];
 }
 
+float slerp_r_r_f(const float r1, const float r2, const float t)
+{
+  const float r1_s = sinf(r1);
+  const float r1_c = cosf(r1);
+
+  const float r2_s = sinf(r2);
+  const float r2_c = cosf(r2);
+
+  const float m_s = r1_s + (r2_s - r1_s) * t;
+  const float m_c = r1_c + (r2_c - r1_c) * t;
+
+  return atan2f(m_s, m_c);
+}
+
 void tri_to_quat_ex(
     float quat[4], const float v1[3], const float v2[3], const float v3[3], const float no_orig[3])
 {

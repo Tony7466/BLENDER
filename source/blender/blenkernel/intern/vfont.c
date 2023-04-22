@@ -1544,42 +1544,93 @@ static bool vfont_to_curve(Object *ob,
     }
   }
 
-  /* Rectangle shape of first cursor. */
+  /* Сursor transform. */
   if (ef) {
 
-    float sel_centre[2] = {0.0f, 0.5f};
-    sel_centre[1] -= descender_downship;
+    const int cursor_index = ef->pos;
+    const int prev_index = cursor_index != 0 ? cursor_index - 1 : 0;
 
+    const bool is_line_cap = ELEM(cursor_index, 0, slen) || ELEM(mem[cursor_index], '\n', '\0') ||
+                             ELEM(mem[cursor_index - 1], '\n', '\0');
+    const bool is_start_cap = (cursor_index == 0) || ELEM(mem[cursor_index - 1], '\n', '\0');
+
+    const bool is_word_space = !is_line_cap && (mem[prev_index] != ' ') &&
+                               (mem[cursor_index] == ' ');
+    const bool is_space_word = !is_line_cap && (mem[prev_index] == ' ') &&
+                               (mem[cursor_index] != ' ');
+
+    const bool is_between_space_and_word = is_word_space || is_space_word;
+
+    /* After or before of selections. Cursore alway related with selection if is exist. */
+    const bool cursor_to_selection = selboxes != NULL;
+    const bool is_before_selection = cursor_index == selstart;
+
+    const float curent_char_rot = -chartransdata[cursor_index].rot;
+    const float prev_char_rot = -chartransdata[prev_index].rot;
+
+    float current_char_loc[2];
+    copy_v2_v2(current_char_loc, &chartransdata[cursor_index].xof);
+    float prev_char_loc[2];
+    copy_v2_v2(prev_char_loc, &chartransdata[prev_index].xof);
+
+    {
+      float prev_offset[2];
+      zero_v2(prev_offset);
+      che = find_vfont_char(vfd, mem[prev_index]);
+      info = &custrinfo[prev_index];
+      prev_offset[0] = char_width(cu, che, info);
+      float geom[2][2];
+      angle_to_mat2(geom, prev_char_rot);
+      mul_m2_v2(geom, prev_offset);
+      add_v2_v2(prev_char_loc, prev_offset);
+    }
+
+    float cursor_loc[2];
+    float cursor_centre[2] = {0.0f, 0.5f};
+    cursor_centre[1] -= descender_downship;
     float sel_rot = 0.0f;
 
-    int fixed_char_pos = ef->pos;
-    if (selboxes) {
-      if (fixed_char_pos == selend + 1) {
-        const EditFontSelBox *parent_sel_box = &selboxes[selend - selstart];
-        if (fixed_char_pos > 0) {
-          fixed_char_pos--;
-          sel_centre[0] += parent_sel_box->size[0] / font_size;
-        }
+    bool skip_copy = false;
+    bool copy_prev = false;
+
+    if (is_line_cap) {
+      if (!is_start_cap) {
+        copy_prev = true;
       }
     }
-    else { /*
-       ct = &chartransdata[fixed_char_pos];
-       sel_rot = -ct->rot;
-       if (fixed_char_pos <= slen) {
-         fixed_char_pos++;
-         if (!ELEM(mem[fixed_char_pos], '\n', '\0')) {
-           sel_rot += -chartransdata[fixed_char_pos].rot;
-           sel_rot /= 2.0f;
-         }
-       }*/
+    else if (cursor_to_selection) {
+      if (!is_before_selection) {
+        copy_prev = true;
+      }
     }
-    ct = &chartransdata[fixed_char_pos];
-    sel_rot = -ct->rot;
+    else {
+      if (is_between_space_and_word) {
+        if (is_word_space) {
+          copy_prev = true;
+        }
+      }
+      else {
+        skip_copy = true;
+        sel_rot = slerp_r_r_f(curent_char_rot, prev_char_rot, 0.5f);
+        interp_v2_v2v2(cursor_loc, current_char_loc, prev_char_loc, 0.5f);
+      }
+    }
+
+    if (!skip_copy) {
+      if (copy_prev) {
+        copy_v2_v2(cursor_loc, prev_char_loc);
+        sel_rot = prev_char_rot;
+      }
+      else {
+        copy_v2_v2(cursor_loc, current_char_loc);
+        sel_rot = curent_char_rot;
+      }
+    }
 
     float geom[2][2];
     angle_to_mat2(geom, sel_rot);
-    mul_v2_m2v2(ef->curs_location, geom, sel_centre);
-    add_v2_v2(ef->curs_location, &ct->xof);
+    mul_v2_m2v2(ef->curs_location, geom, cursor_centre);
+    add_v2_v2(ef->curs_location, cursor_loc);
     mul_v2_fl(ef->curs_location, font_size);
 
     ef->curs_size[0] = 0.05f;
