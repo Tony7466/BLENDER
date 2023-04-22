@@ -1123,7 +1123,7 @@ static bool vfont_to_curve(Object *ob,
       if (selboxes && (i >= selstart) && (i <= selend)) {
         sb = &selboxes[i - selstart];
         sb->loc[1] = yof * font_size - linedist * font_size * 0.1f;
-        const float size[2] = {linedist * font_size, xof * font_size};
+        const float size[2] = {xof * font_size, linedist * font_size};
         copy_v2_v2(sb->size, size);
       }
 
@@ -1449,12 +1449,24 @@ static bool vfont_to_curve(Object *ob,
     }
   }
 
+  const float descender_downship = 0.25f;
+
   if (selboxes) {
     ct = chartransdata;
     ct += selstart;
-    for (i = 0; i <= selend - selstart; i++, ct++) {
+    float geom[2][2];
+    for (i = 0; i < selend - selstart + 1; i++, ct++) {
       copy_v2_v2(selboxes[i].loc, &ct->xof);
       mul_v2_fl(selboxes[i].loc, font_size);
+
+      angle_to_mat2(geom, selboxes[i].rot);
+      const float centre = (-1.0f + descender_downship * 2.0f) * font_size;
+      float offset_for_centre[2] = {0.0f, centre};
+      add_v2_v2(offset_for_centre, selboxes[i].size);
+      mul_m2_v2(geom, offset_for_centre);
+      mul_v2_fl(offset_for_centre, 0.5f);
+      add_v2_v2(selboxes[i].loc, offset_for_centre);
+
       selboxes[i].size[1] = font_size;
     }
   }
@@ -1534,53 +1546,47 @@ static bool vfont_to_curve(Object *ob,
 
   /* Rectangle shape of first cursor. */
   if (ef) {
-    ct = &chartransdata[ef->pos];
-    // if (ef->pos < slen){}
-    const float descender_downship = 0.25f;
 
-    const float centre = (0.5 - descender_downship) * font_size;
+    float sel_centre[2] = {0.0f, 0.5f};
+    sel_centre[1] -= descender_downship;
+
+    float sel_rot = 0.0f;
+
+    int fixed_char_pos = ef->pos;
+    if (selboxes) {
+      if (fixed_char_pos == selend + 1) {
+        const EditFontSelBox *parent_sel_box = &selboxes[selend - selstart];
+        if (fixed_char_pos > 0) {
+          fixed_char_pos--;
+          sel_centre[0] += parent_sel_box->size[0] / font_size;
+        }
+      }
+    }
+    else { /*
+       ct = &chartransdata[fixed_char_pos];
+       sel_rot = -ct->rot;
+       if (fixed_char_pos <= slen) {
+         fixed_char_pos++;
+         if (!ELEM(mem[fixed_char_pos], '\n', '\0')) {
+           sel_rot += -chartransdata[fixed_char_pos].rot;
+           sel_rot /= 2.0f;
+         }
+       }*/
+    }
+    ct = &chartransdata[fixed_char_pos];
+    sel_rot = -ct->rot;
+
     float geom[2][2];
-    angle_to_mat2(geom, -ct->rot);
-    float offset_for_centre[2] = {0.0f, centre};
-    mul_v2_m2v2(ef->curs_location, geom, offset_for_centre);
+    angle_to_mat2(geom, sel_rot);
+    mul_v2_m2v2(ef->curs_location, geom, sel_centre);
     add_v2_v2(ef->curs_location, &ct->xof);
+    mul_v2_fl(ef->curs_location, font_size);
 
     ef->curs_size[0] = 0.05f;
     ef->curs_size[1] = 1.0f;
-    mul_v2_fl(ef->curs_size, font_size / 2.0f);
-    ef->curs_angle = -ct->rot;
-    mul_v2_fl(ef->curs_location, font_size);
-#if 0
-    float(*points)[4][2] = &ef->textcurs;
+    mul_v2_fl(ef->curs_size, font_size);
 
-    float geom[2][2];
-    angle_to_mat2(geom, -ct->rot);
-
-    const float width = 0.05f / 2.0f;
-
-    /* Bottom left corner point. */
-    (*points)[0][0] = width;
-    (*points)[0][1] = bottom_point;
-
-    /* Bottom right corner point. */
-    (*points)[1][0] = -width;
-    (*points)[1][1] = bottom_point;
-
-    /* Top right corner point. */
-    (*points)[2][0] = -width;
-    (*points)[2][1] = top_point;
-
-    /* Top left corner point. */
-    (*points)[3][0] = width;
-    (*points)[3][1] = top_point;
-
-    for (int i = 0; i < 4; i++) {
-      float(*point)[2] = &(*points)[i];
-      mul_m2_v2(geom, *point);
-      add_v2_v2(*point, &ct->xof);
-      mul_v2_fl(*point, font_size);
-    }
-#endif
+    ef->curs_angle = sel_rot;
   }
 
   if (mode == FO_SELCHANGE) {

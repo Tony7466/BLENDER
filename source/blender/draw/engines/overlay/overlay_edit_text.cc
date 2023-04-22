@@ -73,7 +73,8 @@ static void v2_transform_to_mat4(const float loc[2],
 {
   const float loc_v3[3] = {loc[0], loc[1], 0.0f};
   const float rot_v3[3] = {0.0f, 0.0f, rot};
-  const float size_v3[3] = {scale[0], scale[1], 0.0f};
+  float size_v3[3] = {scale[0], scale[1], 0.0f};
+  mul_v3_fl(size_v3, 0.5f);
   loc_eul_size_to_mat4(r_mat, loc_v3, rot_v3, size_v3);
 }
 
