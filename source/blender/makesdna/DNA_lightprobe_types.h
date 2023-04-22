@@ -218,7 +218,7 @@ typedef struct LightProbeBakingData {
 } LightProbeBakingData;
 
 /**
- * Irradiance stored as RGB triple using scene referred color space.
+ * Irradiance stored as RGB triple using scene linear color space.
  */
 typedef struct LightProbeIrradianceData {
   float (*L0)[3];
@@ -231,10 +231,10 @@ typedef struct LightProbeIrradianceData {
  * Normalized visibility of distant light. Used for compositing grids together.
  */
 typedef struct LightProbeVisibilityData {
-  uint8_t *L0;
-  uint8_t *L1_a;
-  uint8_t *L1_b;
-  uint8_t *L1_c;
+  float *L0;
+  float *L1_a;
+  float *L1_b;
+  float *L1_c;
 } LightProbeVisibilityData;
 
 /**
@@ -279,8 +279,9 @@ typedef struct LightProbeGridCacheFrame {
   /** Sparse or adaptive layout only: specify the blocks positions. */
   LightProbeBlockData *block_infos;
 
-  /** Baked data. */
+  /** In-progress baked data. Not stored in file. */
   LightProbeBakingData baking;
+  /** Baked data. */
   LightProbeIrradianceData irradiance;
   LightProbeVisibilityData visibility;
   LightProbeConnectivityData connectivity;
@@ -289,7 +290,7 @@ typedef struct LightProbeGridCacheFrame {
 
   /** Number of debug surfels. */
   int surfels_len;
-  /** Debug surfels used to visualize the baking process.  */
+  /** Debug surfels used to visualize the baking process. Not stored in file. */
   void *surfels;
 } LightProbeGridCacheFrame;
 
