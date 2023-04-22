@@ -293,6 +293,26 @@ static PyObject *pygpu_state_scissor_test_set(PyObject *UNUSED(self), PyObject *
   Py_RETURN_NONE;
 }
 
+PyDoc_STRVAR(pygpu_state_polygon_smooth_set_doc,
+             ".. function:: polygon_smooth_set(enable)\n"
+             "\n"
+             "   Enable/disable polygon smoothing on the active framebuffer.\n"
+             "\n"
+             "   :arg enable:\n"
+             "        True - enable polygon smoothing.\n"
+             "        False - disable polygon smoothing.\n"
+             "   :type enable: bool\n");
+static PyObject *pygpu_state_polygon_smooth_set(PyObject *UNUSED(self), PyObject *value)
+{
+  bool enabled;
+  if (!PyC_ParseBool(value, &enabled)) {
+    return NULL;
+  }
+
+  GPU_polygon_smooth(enabled);
+  Py_RETURN_NONE;
+}
+
 PyDoc_STRVAR(pygpu_state_line_width_set_doc,
              ".. function:: line_width_set(width)\n"
              "\n"
@@ -472,6 +492,10 @@ static struct PyMethodDef pygpu_state__tp_methods[] = {
      (PyCFunction)pygpu_state_scissor_test_set,
      METH_O,
      pygpu_state_scissor_test_set_doc},
+    {"polygon_smooth_set",
+     (PyCFunction)pygpu_state_polygon_smooth_set,
+     METH_O,
+     pygpu_state_polygon_smooth_set_doc},
     {"line_width_set",
      (PyCFunction)pygpu_state_line_width_set,
      METH_O,
