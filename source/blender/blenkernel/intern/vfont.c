@@ -1590,25 +1590,25 @@ static bool vfont_to_curve(Object *ob,
     cursor_centre[1] -= descender_downship;
     float cursor_rot = 0.0f;
 
-    float aling_factor = 1.0f;
+    float align_factor = 1.0f;
     if (is_line_cap) {
       /* Aling to start or end of each line. */
-      aling_factor = is_start_cap ? 1.0f : 0.0f;
+      align_factor = is_start_cap ? 1.0f : 0.0f;
     }
     else if (cursor_to_selection) {
-      aling_factor = is_before_selection ? 1.0f : 0.0f;
+      align_factor = is_before_selection ? 1.0f : 0.0f;
     }
     else {
       if (is_between_space_and_word) {
         /* Aling to text, if cursor between regular text and space. */
-        aling_factor = is_space_word ? 1.0f : 0.0f;
+        align_factor = is_space_word ? 1.0f : 0.0f;
       }
       else {
-        aling_factor = 0.5f;
+        align_factor = 0.5f;
       }
     }
-    cursor_rot = slerp_r_r(prev_char_rot, curent_char_rot, aling_factor);
-    interp_v2_v2v2(cursor_loc, prev_char_loc, current_char_loc, aling_factor);
+    cursor_rot = slerp_r_r(prev_char_rot, curent_char_rot, align_factor);
+    interp_v2_v2v2(cursor_loc, prev_char_loc, current_char_loc, align_factor);
 
     float geom[2][2];
     angle_to_mat2(geom, cursor_rot);
