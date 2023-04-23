@@ -58,7 +58,9 @@ static float mode_transfer_alpha_for_animation_time_get(const float anim_time)
 
   float alpha = 0.0f;
   if (anim_time < flash_fade_in_time) {
-    alpha = anim_time / flash_fade_in_time;
+    if constexpr (flash_fade_in_time != 0.0f) {
+      alpha = anim_time / flash_fade_in_time;
+    }
   }
   else {
     const float fade_out_anim_time = anim_time - flash_fade_in_time;
