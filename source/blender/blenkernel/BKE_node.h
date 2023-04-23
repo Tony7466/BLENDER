@@ -154,11 +154,11 @@ typedef struct CPPTypeHandle CPPTypeHandle;
  * Defines the appearance and behavior of a socket in the UI.
  */
 typedef struct bNodeSocketType {
-  /* Identifier name */
+  /** Identifier name. */
   char idname[64];
-  /* Type label */
+  /** Type label. */
   char label[64];
-  /* Subtype label */
+  /** Sub-type label. */
   char subtype_label[64];
 
   void (*draw)(struct bContext *C,
@@ -297,6 +297,12 @@ typedef struct bNodeType {
   void (*initfunc_api)(const struct bContext *C, struct PointerRNA *ptr);
   void (*freefunc_api)(struct PointerRNA *ptr);
   void (*copyfunc_api)(struct PointerRNA *ptr, const struct bNode *src_node);
+
+  /**
+   * An additional poll test for deciding whether nodes should be an option in search menus.
+   * Potentially more strict poll than #poll(), but doesn't have to check the same things.
+   */
+  bool (*add_ui_poll)(const struct bContext *C);
 
   /**
    * Can this node type be added to a node tree?

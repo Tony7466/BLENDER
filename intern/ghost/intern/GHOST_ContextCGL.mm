@@ -13,11 +13,13 @@
 #  pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
-#include "GHOST_ContextCGL.h"
+#include "GHOST_ContextCGL.hh"
 
 #include <Cocoa/Cocoa.h>
 #include <Metal/Metal.h>
 #include <QuartzCore/QuartzCore.h>
+
+#include <epoxy/gl.h>
 
 #include <cassert>
 #include <vector>
