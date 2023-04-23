@@ -1590,7 +1590,7 @@ static bool vfont_to_curve(Object *ob,
     cursor_centre[1] -= descender_downship;
     float cursor_rot = 0.0f;
 
-    float align_factor = 1.0f;
+    float align_factor = 0.5f;
     if (is_line_cap) {
       /* Aling to start or end of each line. */
       align_factor = is_start_cap ? 1.0f : 0.0f;
@@ -1598,14 +1598,9 @@ static bool vfont_to_curve(Object *ob,
     else if (cursor_to_selection) {
       align_factor = is_before_selection ? 1.0f : 0.0f;
     }
-    else {
-      if (is_between_space_and_word) {
-        /* Aling to text, if cursor between regular text and space. */
-        align_factor = is_space_word ? 1.0f : 0.0f;
-      }
-      else {
-        align_factor = 0.5f;
-      }
+    else if (is_between_space_and_word) {
+      /* Aling to text, if cursor between regular text and space. */
+      align_factor = is_space_word ? 1.0f : 0.0f;
     }
     cursor_rot = slerp_r_r(prev_char_rot, curent_char_rot, align_factor);
     interp_v2_v2v2(cursor_loc, prev_char_loc, current_char_loc, align_factor);
