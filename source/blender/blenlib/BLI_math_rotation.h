@@ -106,7 +106,7 @@ bool is_zero_qt(const float q[4]);
 void interp_dot_slerp(float t, float cosom, float r_w[2]);
 void interp_qt_qtqt(float q[4], const float a[4], const float b[4], float t);
 void add_qt_qtqt(float q[4], const float a[4], const float b[4], float t);
-float slerp_r_r_f(const float r1, const float r2, const float t);
+float slerp_r_r(const float r1, const float r2, const float t);
 
 /* Conversion. */
 

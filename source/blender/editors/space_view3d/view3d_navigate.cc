@@ -259,14 +259,15 @@ bool view3d_orbit_calc_center(bContext *C, float r_dyn_ofs[3])
   }
   else if (ob_act && (ob_act->mode & OB_MODE_EDIT) && (ob_act->type == OB_FONT)) {
     Curve *cu = static_cast<Curve *>(ob_act_eval->data);
-    EditFont *ef = cu->editfont;
+    EditFont &edit_font = *cu->editfont;
+    EditFontCharExtra &cursor = edit_font.cursor;
 
     float geom[2][2];
-    angle_to_mat2(geom, ef->curs_angle);
+    angle_to_mat2(geom, cursor.rot);
     zero_v3(lastofs);
-    lastofs[1] = ef->curs_size[1] / 2.0f;
+    lastofs[1] = cursor.size[1] / 2.0f;
     mul_m2_v2(geom, lastofs);
-    add_v2_v2(lastofs, ef->curs_location);
+    add_v2_v2(lastofs, cursor.loc);
 
     mul_m4_v3(ob_act_eval->object_to_world, lastofs);
 

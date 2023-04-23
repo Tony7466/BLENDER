@@ -23,11 +23,14 @@ struct CharTrans {
   char dobreak;
 };
 
-typedef struct EditFontSelBox {
+/**
+ * Extra gizmo transform for symbol.
+ * */
+typedef struct EditFontCharExtra {
   float loc[2];
   float size[2];
   float rot;
-} EditFontSelBox;
+} EditFontCharExtra;
 
 /**
  * Edit data for #Curve (a text curve, with an #Object::type of `OB_FONT`).
@@ -38,12 +41,8 @@ typedef struct EditFont {
   /** Text style info (aligned with `textbuf`). */
   struct CharInfo *textbufinfo;
 
-  /* Location is centre of box.*/
-  float curs_location[2];
-  float curs_size[2];
-  float curs_angle;
-  /** Array of location & rotation. */
-  EditFontSelBox *selboxes;
+  EditFontCharExtra cursor;
+  EditFontCharExtra *selboxes;
   int selboxes_len;
 
   /* Positional vars relative to the `textbuf` (not utf8 bytes)

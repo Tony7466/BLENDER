@@ -801,7 +801,7 @@ static bool vfont_to_curve(Object *ob,
                            struct CharTrans **r_chartransdata)
 {
   EditFont *ef = cu->editfont;
-  EditFontSelBox *selboxes = NULL;
+  EditFontCharExtra *selboxes = NULL;
   VFont *vfont, *oldvfont;
   VFontData *vfd = NULL;
   CharInfo *info = NULL, *custrinfo;
@@ -897,7 +897,8 @@ static bool vfont_to_curve(Object *ob,
 
     if (BKE_vfont_select_get(ob, &selstart, &selend)) {
       ef->selboxes_len = (selend - selstart) + 1;
-      ef->selboxes = MEM_calloc_arrayN(ef->selboxes_len, sizeof(EditFontSelBox), "font selboxes");
+      ef->selboxes = MEM_calloc_arrayN(
+          ef->selboxes_len, sizeof(EditFontCharExtra), "font selboxes");
     }
     else {
       ef->selboxes_len = 0;
@@ -1112,7 +1113,7 @@ static bool vfont_to_curve(Object *ob,
       xof = MARGIN_X_MIN + tabfac;
     }
     else {
-      EditFontSelBox *sb = NULL;
+      EditFontCharExtra *sb = NULL;
       float wsfac;
 
       ct->xof = xof;
@@ -1123,8 +1124,8 @@ static bool vfont_to_curve(Object *ob,
       if (selboxes && (i >= selstart) && (i <= selend)) {
         sb = &selboxes[i - selstart];
         sb->loc[1] = yof * font_size - linedist * font_size * 0.1f;
-        const float size[2] = {xof * font_size, linedist * font_size};
-        copy_v2_v2(sb->size, size);
+        sb->size[0] = xof * font_size;
+        sb->size[1] = linedist * font_size;
       }
 
       if (ascii == ' ') { /* Space character. */
@@ -1442,7 +1443,7 @@ static bool vfont_to_curve(Object *ob,
         ct->yof = vec[1] + co * yof;
 
         if (selboxes && (i >= selstart) && (i <= selend)) {
-          EditFontSelBox *sb = &selboxes[i - selstart];
+          EditFontCharExtra *sb = &selboxes[i - selstart];
           sb->rot = -ct->rot;
         }
       }
@@ -1455,7 +1456,7 @@ static bool vfont_to_curve(Object *ob,
     ct = chartransdata;
     ct += selstart;
     float geom[2][2];
-    for (i = 0; i < selend - selstart + 1; i++, ct++) {
+    for (i = 0; i < ef->selboxes_len; i++, ct++) {
       copy_v2_v2(selboxes[i].loc, &ct->xof);
       mul_v2_fl(selboxes[i].loc, font_size);
 
@@ -1544,11 +1545,10 @@ static bool vfont_to_curve(Object *ob,
     }
   }
 
-  /* Сursor transform. */
+  /* Cursor transform. */
   if (ef) {
-
     const int cursor_index = ef->pos;
-    const int prev_index = cursor_index != 0 ? cursor_index - 1 : 0;
+    const int prev_index = cursor_index != 0 ? cursor_index - 1 : cursor_index;
 
     const bool is_line_cap = ELEM(cursor_index, 0, slen) || ELEM(mem[cursor_index], '\n', '\0') ||
                              ELEM(mem[cursor_index - 1], '\n', '\0');
@@ -1572,15 +1572,15 @@ static bool vfont_to_curve(Object *ob,
     copy_v2_v2(current_char_loc, &chartransdata[cursor_index].xof);
     float prev_char_loc[2];
     copy_v2_v2(prev_char_loc, &chartransdata[prev_index].xof);
-
-    {
-      float prev_offset[2];
-      zero_v2(prev_offset);
+    if (cursor_index != 0) {
       che = find_vfont_char(vfd, mem[prev_index]);
       info = &custrinfo[prev_index];
-      prev_offset[0] = char_width(cu, che, info);
       float geom[2][2];
       angle_to_mat2(geom, prev_char_rot);
+
+      float prev_offset[2];
+      zero_v2(prev_offset);
+      prev_offset[0] = char_width(cu, che, info);
       mul_m2_v2(geom, prev_offset);
       add_v2_v2(prev_char_loc, prev_offset);
     }
@@ -1588,56 +1588,39 @@ static bool vfont_to_curve(Object *ob,
     float cursor_loc[2];
     float cursor_centre[2] = {0.0f, 0.5f};
     cursor_centre[1] -= descender_downship;
-    float sel_rot = 0.0f;
+    float cursor_rot = 0.0f;
 
-    bool skip_copy = false;
-    bool copy_prev = false;
-
+    float aling_factor = 1.0f;
     if (is_line_cap) {
-      if (!is_start_cap) {
-        copy_prev = true;
-      }
+      /* Aling to start or end of each line. */
+      aling_factor = is_start_cap ? 1.0f : 0.0f;
     }
     else if (cursor_to_selection) {
-      if (!is_before_selection) {
-        copy_prev = true;
-      }
+      aling_factor = is_before_selection ? 1.0f : 0.0f;
     }
     else {
       if (is_between_space_and_word) {
-        if (is_word_space) {
-          copy_prev = true;
-        }
+        /* Aling to text, if cursor between regular text and space. */
+        aling_factor = is_space_word ? 1.0f : 0.0f;
       }
       else {
-        skip_copy = true;
-        sel_rot = slerp_r_r_f(curent_char_rot, prev_char_rot, 0.5f);
-        interp_v2_v2v2(cursor_loc, current_char_loc, prev_char_loc, 0.5f);
+        aling_factor = 0.5f;
       }
     }
-
-    if (!skip_copy) {
-      if (copy_prev) {
-        copy_v2_v2(cursor_loc, prev_char_loc);
-        sel_rot = prev_char_rot;
-      }
-      else {
-        copy_v2_v2(cursor_loc, current_char_loc);
-        sel_rot = curent_char_rot;
-      }
-    }
+    cursor_rot = slerp_r_r(prev_char_rot, curent_char_rot, aling_factor);
+    interp_v2_v2v2(cursor_loc, prev_char_loc, current_char_loc, aling_factor);
 
     float geom[2][2];
-    angle_to_mat2(geom, sel_rot);
-    mul_v2_m2v2(ef->curs_location, geom, cursor_centre);
-    add_v2_v2(ef->curs_location, cursor_loc);
-    mul_v2_fl(ef->curs_location, font_size);
+    angle_to_mat2(geom, cursor_rot);
+    mul_v2_m2v2(ef->cursor.loc, geom, cursor_centre);
+    add_v2_v2(ef->cursor.loc, cursor_loc);
+    mul_v2_fl(ef->cursor.loc, font_size);
 
-    ef->curs_size[0] = 0.05f;
-    ef->curs_size[1] = 1.0f;
-    mul_v2_fl(ef->curs_size, font_size);
+    ef->cursor.size[0] = 0.05f;
+    ef->cursor.size[1] = 1.0f;
+    mul_v2_fl(ef->cursor.size, font_size);
 
-    ef->curs_angle = sel_rot;
+    ef->cursor.rot = cursor_rot;
   }
 
   if (mode == FO_SELCHANGE) {
