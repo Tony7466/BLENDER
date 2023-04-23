@@ -250,14 +250,8 @@ bool external_file_get_info(const char *filepath)
 bool external_file_open_terminal(const char *filepath)
 {
   @autoreleasepool {
-    const char *const buffer_to_restore = GHOST_getClipboard(false);
-    std::string buffer_to_restore_str(buffer_to_restore == nullptr ? "" : buffer_to_restore);
-    const bool ok = perform_service_for_fileurl(@"New Terminal at Folder",
-                                                [NSString stringWithUTF8String:filepath]);
-    if (!buffer_to_restore_str.empty()) {
-      GHOST_putClipboard(buffer_to_restore_str.c_str(), false);
-    }
-    return ok;
+    return perform_service_for_fileurl(@"New Terminal at Folder",
+                                       [NSString stringWithUTF8String:filepath]);
   }
 }
 
