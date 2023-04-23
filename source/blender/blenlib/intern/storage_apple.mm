@@ -232,13 +232,6 @@ bool perform_service_for_fileurl(NSString *service_invocation, NSString *fileurl
   }
 }
 
-bool external_file_open(const char *filepath)
-{
-  @autoreleasepool {
-    return perform_service_for_fileurl(@"Finder/Open", [NSString stringWithUTF8String:filepath]);
-  }
-}
-
 bool external_finder_reveal(const char *filepath)
 {
   @autoreleasepool {
