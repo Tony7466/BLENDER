@@ -232,7 +232,7 @@ bool perform_service_for_fileurl(NSString *service_invocation, NSString *fileurl
   }
 }
 
-bool external_finder_reveal(const char *filepath)
+bool external_file_finder_reveal(const char *filepath)
 {
   @autoreleasepool {
     return perform_service_for_fileurl(@"Finder/Reveal", [NSString stringWithUTF8String:filepath]);
@@ -262,10 +262,10 @@ external_operation_executor apple_external_operation_execute(const char *filepat
 {
   switch (operation) {
     case FILE_EXTERNAL_OPERATION_OPEN: {
-      return external_finder_reveal;
+      return external_file_finder_reveal;
     }
     case FILE_EXTERNAL_OPERATION_FOLDER_OPEN: {
-      return nullptr;
+      return external_file_finder_reveal;
     }
     case FILE_EXTERNAL_OPERATION_EDIT: {
       return nullptr;
