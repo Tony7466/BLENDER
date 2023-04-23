@@ -1789,8 +1789,14 @@ static const EnumPropertyItem file_external_operation[] = {
     {FILE_EXTERNAL_OPERATION_FOLDER_OPEN,
      "FOLDER_OPEN",
      ICON_NONE,
+#ifdef __APPLE__
+     "Reveal in Finder",
+     "Reveal location in Finder"
+#else
      "Open Folder",
-     "Open the folder"},
+     "Open the folder"
+#endif
+    },
     {FILE_EXTERNAL_OPERATION_EDIT, "EDIT", ICON_NONE, "Edit", "Edit the file"},
     {FILE_EXTERNAL_OPERATION_NEW, "NEW", ICON_NONE, "New", "Create a new file of this type"},
     {FILE_EXTERNAL_OPERATION_FIND,
