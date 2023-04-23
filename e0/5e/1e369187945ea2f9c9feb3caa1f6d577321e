@@ -21,3 +21,4 @@ Referenced by issue #98719, Choosing HIP as Render Device Option causes immediat
 Referenced by issue #98708, Blender 3.2.0 crashes on start on Ubuntu 22.04
 Referenced by issue blender/blender-addons#100113, Rigify Error
 Referenced by issue #105228, Particle Info Node does not return particle information in light nodes
+Referenced by issue #107272, Sample color operator options no longer shown
