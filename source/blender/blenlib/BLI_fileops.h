@@ -357,6 +357,8 @@ void BLI_file_free_lines(struct LinkNode *lines);
  * Giving a path without leading `~` is not an error.
  */
 const char *BLI_expand_tilde(const char *path_with_tilde);
+bool BLI_apple_external_operation_supported(const char *filepath, FileExternalOperation operation);
+bool BLI_apple_external_operation_execute(const char *filepath, FileExternalOperation operation);
 #endif
 /* This weirdo pops up in two places. */
 #if !defined(WIN32)

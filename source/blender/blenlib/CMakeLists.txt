@@ -12,6 +12,7 @@ set(INC
   ../makesdna
   ../../../intern/atomic
   ../../../intern/eigen
+  ../../../intern/ghost
   ../../../intern/guardedalloc
 )
 
@@ -384,6 +385,7 @@ set(SRC
 
 set(LIB
   bf_intern_eigen
+  bf_intern_ghost
   bf_intern_guardedalloc
   extern_wcwidth
 

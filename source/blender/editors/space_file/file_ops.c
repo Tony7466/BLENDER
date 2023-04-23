@@ -1775,33 +1775,63 @@ bool file_draw_check_exists(SpaceFile *sfile)
  * \{ */
 
 static const EnumPropertyItem file_external_operation[] = {
-    {FILE_EXTERNAL_OPERATION_OPEN, "OPEN", 0, "Open", "Open the file"},
-    {FILE_EXTERNAL_OPERATION_FOLDER_OPEN, "FOLDER_OPEN", 0, "Open Folder", "Open the folder"},
-    {FILE_EXTERNAL_OPERATION_EDIT, "EDIT", 0, "Edit", "Edit the file"},
-    {FILE_EXTERNAL_OPERATION_NEW, "NEW", 0, "New", "Create a new file of this type"},
-    {FILE_EXTERNAL_OPERATION_FIND, "FIND", 0, "Find File", "Search for files of this type"},
-    {FILE_EXTERNAL_OPERATION_SHOW, "SHOW", 0, "Show", "Show this file"},
-    {FILE_EXTERNAL_OPERATION_PLAY, "PLAY", 0, "Play", "Play this file"},
-    {FILE_EXTERNAL_OPERATION_BROWSE, "BROWSE", 0, "Browse", "Browse this file"},
-    {FILE_EXTERNAL_OPERATION_PREVIEW, "PREVIEW", 0, "Preview", "Preview this file"},
-    {FILE_EXTERNAL_OPERATION_PRINT, "PRINT", 0, "Print", "Print this file"},
-    {FILE_EXTERNAL_OPERATION_INSTALL, "INSTALL", 0, "Install", "Install this file"},
-    {FILE_EXTERNAL_OPERATION_RUNAS, "RUNAS", 0, "Run As User", "Run as specific user"},
+    {FILE_EXTERNAL_OPERATION_OPEN,
+     "OPEN",
+     ICON_NONE,
+#ifdef __APPLE__
+     "Reveal in Finder",
+     "Reveal location in Finder"
+#else
+     "Open",
+     "Open the file"
+#endif
+    },
+    {FILE_EXTERNAL_OPERATION_FOLDER_OPEN,
+     "FOLDER_OPEN",
+     ICON_NONE,
+     "Open Folder",
+     "Open the folder"},
+    {FILE_EXTERNAL_OPERATION_EDIT, "EDIT", ICON_NONE, "Edit", "Edit the file"},
+    {FILE_EXTERNAL_OPERATION_NEW, "NEW", ICON_NONE, "New", "Create a new file of this type"},
+    {FILE_EXTERNAL_OPERATION_FIND,
+     "FIND",
+     ICON_NONE,
+     "Find File",
+     "Search for files of this type"},
+    {FILE_EXTERNAL_OPERATION_SHOW, "SHOW", ICON_NONE, "Show", "Show this file"},
+    {FILE_EXTERNAL_OPERATION_PLAY, "PLAY", ICON_NONE, "Play", "Play this file"},
+    {FILE_EXTERNAL_OPERATION_BROWSE, "BROWSE", ICON_NONE, "Browse", "Browse this file"},
+    {FILE_EXTERNAL_OPERATION_PREVIEW, "PREVIEW", ICON_NONE, "Preview", "Preview this file"},
+    {FILE_EXTERNAL_OPERATION_PRINT, "PRINT", ICON_NONE, "Print", "Print this file"},
+    {FILE_EXTERNAL_OPERATION_INSTALL, "INSTALL", ICON_NONE, "Install", "Install this file"},
+    {FILE_EXTERNAL_OPERATION_RUNAS, "RUNAS", ICON_NONE, "Run As User", "Run as specific user"},
     {FILE_EXTERNAL_OPERATION_PROPERTIES,
      "PROPERTIES",
-     0,
+     ICON_NONE,
+#ifdef __APPLE__
+     "Get Info",
+     "Open the Get Info window for this item"
+#else
      "Properties",
-     "Show OS Properties for this item"},
+     "Show OS Properties for this item"
+#endif
+    },
     {FILE_EXTERNAL_OPERATION_FOLDER_FIND,
      "FOLDER_FIND",
-     0,
+     ICON_NONE,
      "Find in Folder",
      "Search for items in this folder"},
     {FILE_EXTERNAL_OPERATION_FOLDER_CMD,
      "CMD",
-     0,
+     ICON_NONE,
+#ifdef __APPLE__
+     "Open in Terminal",
+     "Open a terminal window with this folder as the current directory"
+#else
      "Command Prompt Here",
-     "Open a command prompt here"},
+     "Open a command prompt here"
+#endif
+    },
     {0, NULL, 0, NULL, NULL}};
 
 static int file_external_operation_exec(bContext *C, wmOperator *op)
@@ -1812,7 +1842,7 @@ static int file_external_operation_exec(bContext *C, wmOperator *op)
 
   WM_cursor_set(CTX_wm_window(C), WM_CURSOR_WAIT);
 
-#ifdef WIN32
+#if defined(WIN32) || defined(__APPLE__)
   const FileExternalOperation operation = (FileExternalOperation)RNA_enum_get(op->ptr,
                                                                               "operation");
   if (BLI_file_external_operation_execute(filepath, operation)) {
@@ -1879,7 +1909,7 @@ static void file_os_operations_menu_item(uiLayout *layout,
                                          const char *path,
                                          FileExternalOperation operation)
 {
-#ifdef WIN32
+#if defined(WIN32) || defined(__APPLE__)
   if (!BLI_file_external_operation_supported(path, operation)) {
     return;
   }

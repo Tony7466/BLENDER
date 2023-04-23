@@ -7,13 +7,20 @@
  * macOS specific implementations for storage.c.
  */
 
+#import <AppKit/AppKit.h>
+#import <AppKit/NSPasteboard.h>
+#import <AppKit/NSWorkspace.h>
 #import <Foundation/Foundation.h>
+
 #include <string>
 #include <sys/xattr.h>
+#include <utility>
 
+#include "BLI_assert.h"
 #include "BLI_fileops.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
+#include "GHOST_C-api.h"
 
 /* Extended file attribute used by OneDrive to mark placeholder files. */
 static const char *ONEDRIVE_RECALLONOPEN_ATTRIBUTE = "com.microsoft.OneDrive.RecallOnOpen";
@@ -210,5 +217,129 @@ bool BLI_change_working_dir(const char *dir)
     else {
       return false;
     }
+  }
+}
+
+bool perform_service_for_fileurl(NSString *service_invocation, NSString *fileurl)
+{
+  @autoreleasepool {
+    NSPasteboard *pasteboard = [NSPasteboard pasteboardWithUniqueName];
+    [pasteboard declareTypes:@[ NSPasteboardTypeString ] owner:nil];
+    [pasteboard setString:fileurl forType:NSPasteboardTypeString];
+    const bool ok = NSPerformService(service_invocation, pasteboard);
+    [pasteboard releaseGlobally];
+    return ok;
+  }
+}
+
+bool external_file_open(const char *filepath)
+{
+  @autoreleasepool {
+    return perform_service_for_fileurl(@"Finder/Open", [NSString stringWithUTF8String:filepath]);
+  }
+}
+
+bool external_finder_reveal(const char *filepath)
+{
+  @autoreleasepool {
+    return perform_service_for_fileurl(@"Finder/Reveal", [NSString stringWithUTF8String:filepath]);
+  }
+}
+
+bool external_file_get_info(const char *filepath)
+{
+  @autoreleasepool {
+    return perform_service_for_fileurl(@"Finder/Show Info",
+                                       [NSString stringWithUTF8String:filepath]);
+  }
+}
+
+bool external_file_open_terminal(const char *filepath)
+{
+  @autoreleasepool {
+    const char *const buffer_to_restore = GHOST_getClipboard(false);
+    std::string buffer_to_restore_str(buffer_to_restore == nullptr ? "" : buffer_to_restore);
+    const bool ok = perform_service_for_fileurl(@"New Terminal at Folder",
+                                                [NSString stringWithUTF8String:filepath]);
+    if (!buffer_to_restore_str.empty()) {
+      GHOST_putClipboard(buffer_to_restore_str.c_str(), false);
+    }
+    return ok;
+  }
+}
+
+using external_operation_executor = bool (*)(const char *);
+
+external_operation_executor apple_external_operation_execute(const char *filepath,
+                                                             FileExternalOperation operation)
+{
+  switch (operation) {
+    case FILE_EXTERNAL_OPERATION_OPEN: {
+      return external_finder_reveal;
+    }
+    case FILE_EXTERNAL_OPERATION_FOLDER_OPEN: {
+      return nullptr;
+    }
+    case FILE_EXTERNAL_OPERATION_EDIT: {
+      return nullptr;
+    }
+    case FILE_EXTERNAL_OPERATION_NEW: {
+      return nullptr;
+    }
+    case FILE_EXTERNAL_OPERATION_FIND: {
+      return nullptr;
+    }
+    case FILE_EXTERNAL_OPERATION_SHOW: {
+      return nullptr;
+    }
+    case FILE_EXTERNAL_OPERATION_PLAY: {
+      return nullptr;
+    }
+    case FILE_EXTERNAL_OPERATION_BROWSE: {
+      return nullptr;
+    }
+    case FILE_EXTERNAL_OPERATION_PREVIEW: {
+      return nullptr;
+    }
+    case FILE_EXTERNAL_OPERATION_PRINT: {
+      return nullptr;
+    }
+    case FILE_EXTERNAL_OPERATION_INSTALL: {
+      return nullptr;
+    }
+    case FILE_EXTERNAL_OPERATION_RUNAS: {
+      return nullptr;
+    }
+    case FILE_EXTERNAL_OPERATION_PROPERTIES: {
+      return external_file_get_info;
+    }
+    case FILE_EXTERNAL_OPERATION_FOLDER_FIND: {
+      return nullptr;
+    }
+    case FILE_EXTERNAL_OPERATION_FOLDER_CMD: {
+      return external_file_open_terminal;
+    }
+  }
+  BLI_assert_unreachable();
+  return nullptr;
+}
+
+bool BLI_apple_external_operation_execute(const char *filepath, FileExternalOperation operation)
+{
+  @autoreleasepool {
+    const external_operation_executor executor = apple_external_operation_execute(filepath,
+                                                                                  operation);
+    if (executor == nullptr) {
+      return false;
+    }
+    return executor(filepath);
+  }
+}
+bool BLI_apple_external_operation_supported(const char *filepath, FileExternalOperation operation)
+{
+  @autoreleasepool {
+    const external_operation_executor executor = apple_external_operation_execute(filepath,
+                                                                                  operation);
+    return executor != nullptr;
   }
 }

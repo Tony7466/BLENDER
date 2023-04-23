@@ -92,6 +92,8 @@ bool BLI_file_external_operation_supported(const char *filepath, FileExternalOpe
 #ifdef WIN32
   char *opstring = windows_operation_string(operation);
   return BLI_windows_external_operation_supported(filepath, opstring);
+#elif defined(__APPLE__)
+  return BLI_apple_external_operation_supported(filepath, operation);
 #else
   UNUSED_VARS(filepath, operation);
   return false;
@@ -107,6 +109,8 @@ bool BLI_file_external_operation_execute(const char *filepath, FileExternalOpera
     return true;
   }
   return false;
+#elif defined(__APPLE__)
+  return BLI_apple_external_operation_execute(filepath, operation);
 #else
   UNUSED_VARS(filepath, operation);
   return false;
