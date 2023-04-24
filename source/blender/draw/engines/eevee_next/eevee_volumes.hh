@@ -8,7 +8,7 @@ namespace blender::eevee {
 
 class Instance;
 
-class Volumes {
+class VolumeModule {
  private:
   Instance &inst_;
 
@@ -52,9 +52,9 @@ class Volumes {
   Map<GPUShader *, Vector<GridAABB>> subpass_aabbs_;
 
  public:
-  Volumes(Instance &inst) : inst_(inst){};
+  VolumeModule(Instance &inst) : inst_(inst){};
 
-  ~Volumes(){};
+  ~VolumeModule(){};
 
   template<typename PassType> void bind_resources(PassType &ps)
   {

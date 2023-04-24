@@ -75,7 +75,7 @@
 
 namespace blender::eevee {
 
-bool Volumes::GridAABB::init(Object *ob, const Camera &camera, const VolumesDataBuf &data)
+bool VolumeModule::GridAABB::init(Object *ob, const Camera &camera, const VolumesDataBuf &data)
 {
   auto to_global_grid_coords = [&](float3 wP) -> int3 {
     const float4x4 &view_matrix = camera.data_get().viewmat;
@@ -126,7 +126,7 @@ bool Volumes::GridAABB::init(Object *ob, const Camera &camera, const VolumesData
   return is_visible;
 }
 
-bool Volumes::GridAABB::overlaps(const GridAABB &aabb)
+bool VolumeModule::GridAABB::overlaps(const GridAABB &aabb)
 {
   for (int i : IndexRange(3)) {
     if (min[i] > aabb.max[i] || max[i] < aabb.min[i]) {
@@ -136,7 +136,7 @@ bool Volumes::GridAABB::overlaps(const GridAABB &aabb)
   return true;
 }
 
-void Volumes::set_jitter(uint current_sample)
+void VolumeModule::set_jitter(uint current_sample)
 {
   double ht_point[3];
   double ht_offset[3] = {0.0, 0.0};
@@ -147,7 +147,7 @@ void Volumes::set_jitter(uint current_sample)
   data_.jitter = float3(ht_point);
 }
 
-void Volumes::init()
+void VolumeModule::init()
 {
   enabled_ = false;
   subpass_aabbs_.clear();
@@ -191,7 +191,7 @@ void Volumes::init()
   data_.light_clamp = scene_eval->eevee.volumetric_light_clamp;
 }
 
-void Volumes::begin_sync()
+void VolumeModule::begin_sync()
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
   Scene *scene = draw_ctx->scene;
@@ -262,7 +262,7 @@ void Volumes::begin_sync()
   ps.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
 }
 
-void Volumes::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHandle res_handle)
+void VolumeModule::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHandle res_handle)
 {
   ::Material *material = BKE_object_material_get(ob, VOLUME_MATERIAL_NR);
   if (material == nullptr) {
@@ -329,7 +329,7 @@ void Volumes::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHand
   }
 }
 
-void Volumes::end_sync()
+void VolumeModule::end_sync()
 {
   if (!enabled_) {
     prop_scattering_tx_.free();
@@ -412,7 +412,7 @@ void Volumes::end_sync()
   resolve_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
 }
 
-void Volumes::draw_compute(View &view)
+void VolumeModule::draw_compute(View &view)
 {
   if (!enabled_) {
     return;
@@ -430,7 +430,7 @@ void Volumes::draw_compute(View &view)
   DRW_stats_group_end();
 }
 
-void Volumes::draw_resolve(View &view)
+void VolumeModule::draw_resolve(View &view)
 {
   if (!enabled_) {
     return;

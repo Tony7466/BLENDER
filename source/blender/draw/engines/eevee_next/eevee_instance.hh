@@ -65,7 +65,7 @@ class Instance {
   MainView main_view;
   World world;
   IrradianceCache irradiance_cache;
-  Volumes volumes;
+  VolumeModule volumes;
 
   /** Input data. */
   Depsgraph *depsgraph;
