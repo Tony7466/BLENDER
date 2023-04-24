@@ -251,7 +251,7 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
       i++;
     }
 
-    new_layer.tag_frame_times_changed();
+    new_layer.tag_frames_map_keys_changed();
   }
 
   /* Convert the onion skinning settings. */
