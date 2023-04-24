@@ -16,10 +16,16 @@
 
 namespace blender::nodes {
 
+std::string socket_identifier_for_simulation_item(const NodeSimulationItem &item)
+{
+  return "Item_" + std::to_string(item.identifier);
+}
+
 static std::unique_ptr<SocketDeclaration> socket_declaration_for_simulation_item(
     const NodeSimulationItem &item, const eNodeSocketInOut in_out, const int index)
 {
-  BLI_assert(NOD_geometry_simulation_output_item_socket_type_supported(eNodeSocketDatatype(item.socket_type)));
+  BLI_assert(NOD_geometry_simulation_output_item_socket_type_supported(
+      eNodeSocketDatatype(item.socket_type)));
 
   std::unique_ptr<SocketDeclaration> decl;
   switch (eNodeSocketDatatype(item.socket_type)) {
@@ -59,7 +65,7 @@ static std::unique_ptr<SocketDeclaration> socket_declaration_for_simulation_item
   }
 
   decl->name = item.name ? item.name : "";
-  decl->identifier = "Item_" + std::to_string(item.identifier);
+  decl->identifier = socket_identifier_for_simulation_item(item);
   decl->in_out = in_out;
   return decl;
 }
@@ -375,7 +381,8 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
       if (const NodeSimulationItem *item = NOD_geometry_simulation_output_add_item_from_socket(
               &storage, link->fromnode, link->fromsock)) {
         update_node_declaration_and_sockets(*ntree, *node);
-        link->tosock = nodeFindSocket(node, SOCK_IN, item->name);
+        link->tosock = nodeFindSocket(
+            node, SOCK_IN, socket_identifier_for_simulation_item(*item).c_str());
       }
       else {
         return false;
@@ -388,7 +395,8 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
       if (const NodeSimulationItem *item = NOD_geometry_simulation_output_add_item_from_socket(
               &storage, link->fromnode, link->tosock)) {
         update_node_declaration_and_sockets(*ntree, *node);
-        link->fromsock = nodeFindSocket(node, SOCK_OUT, item->name);
+        link->fromsock = nodeFindSocket(
+            node, SOCK_OUT, socket_identifier_for_simulation_item(*item).c_str());
       }
       else {
         return false;
@@ -524,6 +532,11 @@ NodeSimulationItem *NOD_geometry_simulation_output_insert_item(NodeGeometrySimul
                                                                const char *name,
                                                                int index)
 {
+  if (!NOD_geometry_simulation_output_item_socket_type_supported(
+          eNodeSocketDatatype(socket_type))) {
+    return nullptr;
+  }
+
   NodeSimulationItem *old_items = sim->items;
   sim->items = MEM_cnew_array<NodeSimulationItem>(sim->items_num + 1, __func__);
   for (const int i : blender::IndexRange(index)) {
@@ -548,9 +561,6 @@ NodeSimulationItem *NOD_geometry_simulation_output_insert_item(NodeGeometrySimul
 NodeSimulationItem *NOD_geometry_simulation_output_add_item_from_socket(
     NodeGeometrySimulationOutput *sim, const bNode * /*from_node*/, const bNodeSocket *from_sock)
 {
-  if (from_sock->type != SOCK_GEOMETRY) {
-    return nullptr;
-  }
   return NOD_geometry_simulation_output_insert_item(
       sim, from_sock->type, from_sock->name, sim->items_num);
 }
