@@ -292,7 +292,7 @@ static tNearestVertInfo *get_best_nearest_fcurve_vert(ListBase *matches)
   /* Try to find the next vert that's on the active fcurve, falling back to the next
    * vert on any selected fcurve if that's not found. */
   tNearestVertInfo *nvi_to_select = NULL;
-  for (tNearestVertInfo *nvi = matches->first; nvi != nvi_first_selected; nvi = nvi->next) {
+  for (tNearestVertInfo *nvi = matches->first; nvi && nvi != nvi_first_selected; nvi = nvi->next) {
     if (nvi->fcu->flag & FCURVE_ACTIVE) {
       nvi_to_select = nvi;
       break;
