@@ -154,6 +154,15 @@ class Layer : public TreeNode, public ::GreasePencilLayer {
   Vector<LayerMask> &masks_for_write();
 
   /**
+   * \return true if the layer is visible.
+   */
+  bool is_visible() const;
+  /**
+   * \return true if the layer is locked. 
+   */
+  bool is_locked() const;
+
+  /**
    * Inserts the frame into the layer. Fails if there exists a frame at \a frame_number already.
    * \returns true on success.
    */

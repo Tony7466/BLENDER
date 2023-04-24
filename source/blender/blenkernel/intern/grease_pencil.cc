@@ -390,6 +390,16 @@ Vector<LayerMask> &Layer::masks_for_write()
   return this->masks_;
 }
 
+bool Layer::is_visible() const
+{
+  return (this->flag & GP_LAYER_TREE_NODE_HIDE) == 0;
+}
+
+bool Layer::is_locked() const
+{
+  return (this->flag & GP_LAYER_TREE_NODE_LOCKED) != 0;
+}
+
 bool Layer::insert_frame(int frame_number, GreasePencilFrame &frame)
 {
   return this->frames_for_write().add(frame_number, frame);
@@ -1153,6 +1163,9 @@ void GreasePencil::foreach_visible_drawing(
 
   blender::Span<GreasePencilDrawingBase *> drawings = this->drawings();
   for (const Layer *layer : this->layers()) {
+    if (!layer->is_visible()) {
+      continue;
+    }
     int index = layer->drawing_index_at(frame);
     if (index == -1) {
       continue;
