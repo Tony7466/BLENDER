@@ -645,7 +645,7 @@ static GHOST_TSuccess create_render_pass(VkDevice device,
   VkAttachmentDescription colorAttachment = {};
   colorAttachment.format = format;
   colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-  colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
   colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
   colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
   colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -929,6 +929,9 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
   vector<const char *> layers_enabled;
   vector<const char *> extensions_device;
   vector<const char *> extensions_enabled;
+
+  /* Allow negative viewport dimensions to flip coordinate system using VkViewport. */
+  requireExtension(extensions_available, extensions_enabled, VK_KHR_MAINTENANCE1_EXTENSION_NAME);
 
   if (m_debug) {
     enableLayer(layers_available, layers_enabled, VkLayer::KHRONOS_validation, m_debug);
