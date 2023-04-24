@@ -57,14 +57,11 @@ GPU_SHADER_CREATE_INFO(eevee_volume_integration)
     .image(1, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_transmittance")
     .do_static_compilation(true);
 
-GPU_SHADER_CREATE_INFO(eevee_volume_resolve_common)
-    .additional_info("draw_fullscreen")
-    .additional_info("eevee_volume_lib")
-    .sampler(0, ImageType::DEPTH_2D, "inSceneDepth")
-    .fragment_source("eevee_volume_resolve_frag.glsl");
-
 GPU_SHADER_CREATE_INFO(eevee_volume_resolve)
-    .additional_info("eevee_volume_resolve_common")
+    .additional_info("eevee_volume_lib")
+    .additional_info("draw_fullscreen")
+    .fragment_source("eevee_volume_resolve_frag.glsl")
+    .sampler(0, ImageType::DEPTH_2D, "inSceneDepth")
     .fragment_out(0, Type::VEC4, "out_radiance", DualBlend::SRC_0)
     .fragment_out(0, Type::VEC4, "out_transmittance", DualBlend::SRC_1)
     .do_static_compilation(true);
