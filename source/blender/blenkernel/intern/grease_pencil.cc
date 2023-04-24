@@ -67,6 +67,7 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
       grease_pencil_src->drawing_array_size, __func__);
   for (int i = 0; i < grease_pencil_src->drawing_array_size; i++) {
     const GreasePencilDrawingBase *src_drawing_base = grease_pencil_src->drawing_array[i];
+    grease_pencil_dst->drawing_array[i]->user_count = src_drawing_base->user_count;
     switch (src_drawing_base->type) {
       case GP_DRAWING: {
         const GreasePencilDrawing *src_drawing = reinterpret_cast<const GreasePencilDrawing *>(
@@ -1082,6 +1083,7 @@ void GreasePencil::add_empty_drawings(int n)
   for (const int i : IndexRange(new_drawings.size())) {
     new_drawings[i] = reinterpret_cast<GreasePencilDrawingBase *>(
         MEM_new<GreasePencilDrawing>(__func__));
+    new_drawings[i]->user_count = 0;
     GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(new_drawings[i]);
     new (&drawing->geometry) bke::CurvesGeometry();
     drawing->runtime = MEM_new<bke::GreasePencilDrawingRuntime>(__func__);

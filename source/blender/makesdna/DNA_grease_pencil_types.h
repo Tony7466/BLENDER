@@ -79,6 +79,11 @@ typedef struct GreasePencilDrawingBase {
    * Flag. Used to set e.g. the selection status. See `GreasePencilDrawingBaseFlag`.
    */
   uint32_t flag;
+  /**
+   * Number of users of this drawing in the layer tree.
+   */
+  int32_t user_count;
+  char _pad2[4];
 } GreasePencilDrawingBase;
 
 /**
