@@ -36,7 +36,7 @@ GeometryComponent *MeshComponent::copy() const
 {
   MeshComponent *new_component = new MeshComponent();
   if (mesh_ != nullptr) {
-    new_component->mesh_ = BKE_mesh_copy_for_eval(mesh_, false);
+    new_component->mesh_ = BKE_mesh_copy_for_eval(mesh_);
     new_component->ownership_ = GeometryOwnershipType::Owned;
   }
   return new_component;
@@ -83,7 +83,7 @@ Mesh *MeshComponent::get_for_write()
 {
   BLI_assert(this->is_mutable());
   if (ownership_ == GeometryOwnershipType::ReadOnly) {
-    mesh_ = BKE_mesh_copy_for_eval(mesh_, false);
+    mesh_ = BKE_mesh_copy_for_eval(mesh_);
     ownership_ = GeometryOwnershipType::Owned;
   }
   return mesh_;
@@ -103,7 +103,7 @@ void MeshComponent::ensure_owns_direct_data()
 {
   BLI_assert(this->is_mutable());
   if (ownership_ != GeometryOwnershipType::Owned) {
-    mesh_ = BKE_mesh_copy_for_eval(mesh_, false);
+    mesh_ = BKE_mesh_copy_for_eval(mesh_);
     ownership_ = GeometryOwnershipType::Owned;
   }
 }
@@ -190,29 +190,27 @@ void adapt_mesh_domain_corner_to_point_impl(const Mesh &mesh,
   BLI_assert(r_values.size() == mesh.totvert);
   const Span<int> corner_verts = mesh.corner_verts();
 
-  Array<bool> loose_verts(mesh.totvert, true);
-
   r_values.fill(true);
   for (const int corner : IndexRange(mesh.totloop)) {
     const int point_index = corner_verts[corner];
 
-    loose_verts[point_index] = false;
     if (!old_values[corner]) {
       r_values[point_index] = false;
     }
   }
 
   /* Deselect loose vertices without corners that are still selected from the 'true' default. */
-  /* The record fact says that the value is true.
-   * Writing to the array from different threads is okay because each thread sets the same value.
-   */
-  threading::parallel_for(loose_verts.index_range(), 2048, [&](const IndexRange range) {
-    for (const int vert_index : range) {
-      if (loose_verts[vert_index]) {
-        r_values[vert_index] = false;
+  const bke::LooseVertCache &loose_verts = mesh.verts_no_face();
+  if (loose_verts.count > 0) {
+    const BitSpan bits = loose_verts.is_loose_bits;
+    threading::parallel_for(bits.index_range(), 2048, [&](const IndexRange range) {
+      for (const int vert_index : range) {
+        if (bits[vert_index]) {
+          r_values[vert_index] = false;
+        }
       }
-    }
-  });
+    });
+  }
 }
 
 static GVArray adapt_mesh_domain_corner_to_point(const Mesh &mesh, const GVArray &varray)
@@ -754,20 +752,26 @@ static bool can_simple_adapt_for_single(const Mesh &mesh,
       /* All other domains are always connected to points. */
       return true;
     case ATTR_DOMAIN_EDGE:
-      /* There may be loose vertices not connected to edges. */
-      return ELEM(to_domain, ATTR_DOMAIN_FACE, ATTR_DOMAIN_CORNER);
+      if (to_domain == ATTR_DOMAIN_POINT) {
+        return mesh.loose_verts().count == 0;
+      }
+      return true;
     case ATTR_DOMAIN_FACE:
-      /* There may be loose vertices or edges not connected to faces. */
+      if (to_domain == ATTR_DOMAIN_POINT) {
+        return mesh.verts_no_face().count == 0;
+      }
       if (to_domain == ATTR_DOMAIN_EDGE) {
         return mesh.loose_edges().count == 0;
       }
-      return to_domain == ATTR_DOMAIN_CORNER;
+      return true;
     case ATTR_DOMAIN_CORNER:
-      /* Only faces are always connected to corners. */
+      if (to_domain == ATTR_DOMAIN_POINT) {
+        return mesh.verts_no_face().count == 0;
+      }
       if (to_domain == ATTR_DOMAIN_EDGE) {
         return mesh.loose_edges().count == 0;
       }
-      return to_domain == ATTR_DOMAIN_FACE;
+      return true;
     default:
       BLI_assert_unreachable();
       return false;
@@ -859,39 +863,12 @@ static blender::GVArray adapt_mesh_attribute_domain(const Mesh &mesh,
 
 namespace blender::bke {
 
-template<typename StructT, typename ElemT, ElemT (*GetFunc)(const StructT &)>
-static GVArray make_derived_read_attribute(const void *data, const int domain_num)
-{
-  return VArray<ElemT>::template ForDerivedSpan<StructT, GetFunc>(
-      Span<StructT>((const StructT *)data, domain_num));
-}
-
-template<typename StructT,
-         typename ElemT,
-         ElemT (*GetFunc)(const StructT &),
-         void (*SetFunc)(StructT &, ElemT)>
-static GVMutableArray make_derived_write_attribute(void *data, const int domain_num)
-{
-  return VMutableArray<ElemT>::template ForDerivedSpan<StructT, GetFunc, SetFunc>(
-      MutableSpan<StructT>((StructT *)data, domain_num));
-}
-
 static void tag_component_positions_changed(void *owner)
 {
   Mesh *mesh = static_cast<Mesh *>(owner);
   if (mesh != nullptr) {
     BKE_mesh_tag_positions_changed(mesh);
   }
-}
-
-static float get_crease(const float &crease)
-{
-  return crease;
-}
-
-static void set_crease(float &crease, const float value)
-{
-  crease = std::clamp(value, 0.0f, 1.0f);
 }
 
 class VArrayImpl_For_VertexWeights final : public VMutableArrayImpl<float> {
@@ -1141,11 +1118,9 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
                                                  ATTR_DOMAIN_POINT,
                                                  CD_PROP_FLOAT3,
                                                  CD_PROP_FLOAT3,
-                                                 BuiltinAttributeProvider::NonCreatable,
+                                                 BuiltinAttributeProvider::Creatable,
                                                  BuiltinAttributeProvider::NonDeletable,
                                                  point_access,
-                                                 make_array_read_attribute<float3>,
-                                                 make_array_write_attribute<float3>,
                                                  tag_component_positions_changed);
 
   static BuiltinCustomDataLayerProvider id("id",
@@ -1155,8 +1130,6 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
                                            BuiltinAttributeProvider::Creatable,
                                            BuiltinAttributeProvider::Deletable,
                                            point_access,
-                                           make_array_read_attribute<int>,
-                                           make_array_write_attribute<int>,
                                            nullptr);
 
   static const auto material_index_clamp = mf::build::SI1_SO<int, int>(
@@ -1173,8 +1146,6 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
                                                        BuiltinAttributeProvider::Creatable,
                                                        BuiltinAttributeProvider::Deletable,
                                                        face_access,
-                                                       make_array_read_attribute<int>,
-                                                       make_array_write_attribute<int>,
                                                        nullptr,
                                                        AttributeValidator{&material_index_clamp});
 
@@ -1189,8 +1160,6 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
                                                    BuiltinAttributeProvider::NonCreatable,
                                                    BuiltinAttributeProvider::NonDeletable,
                                                    edge_access,
-                                                   make_array_read_attribute<int2>,
-                                                   make_array_write_attribute<int2>,
                                                    nullptr,
                                                    AttributeValidator{&int2_index_clamp});
 
@@ -1207,8 +1176,6 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
                                                     BuiltinAttributeProvider::NonCreatable,
                                                     BuiltinAttributeProvider::NonDeletable,
                                                     corner_access,
-                                                    make_array_read_attribute<int>,
-                                                    make_array_write_attribute<int>,
                                                     nullptr,
                                                     AttributeValidator{&int_index_clamp});
   static BuiltinCustomDataLayerProvider corner_edge(".corner_edge",
@@ -1218,8 +1185,6 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
                                                     BuiltinAttributeProvider::NonCreatable,
                                                     BuiltinAttributeProvider::NonDeletable,
                                                     corner_access,
-                                                    make_array_read_attribute<int>,
-                                                    make_array_write_attribute<int>,
                                                     nullptr,
                                                     AttributeValidator{&int_index_clamp});
 
@@ -1230,8 +1195,6 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
                                                    BuiltinAttributeProvider::Creatable,
                                                    BuiltinAttributeProvider::Deletable,
                                                    face_access,
-                                                   make_array_read_attribute<bool>,
-                                                   make_array_write_attribute<bool>,
                                                    nullptr);
 
   static BuiltinCustomDataLayerProvider sharp_edge("sharp_edge",
@@ -1241,21 +1204,21 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
                                                    BuiltinAttributeProvider::Creatable,
                                                    BuiltinAttributeProvider::Deletable,
                                                    edge_access,
-                                                   make_array_read_attribute<bool>,
-                                                   make_array_write_attribute<bool>,
                                                    nullptr);
 
-  static BuiltinCustomDataLayerProvider crease(
-      "crease",
-      ATTR_DOMAIN_EDGE,
-      CD_PROP_FLOAT,
-      CD_CREASE,
-      BuiltinAttributeProvider::Creatable,
-      BuiltinAttributeProvider::Deletable,
-      edge_access,
-      make_array_read_attribute<float>,
-      make_derived_write_attribute<float, float, get_crease, set_crease>,
-      nullptr);
+  static const auto crease_clamp = mf::build::SI1_SO<float, float>(
+      "Crease Clamp",
+      [](float value) { return std::clamp(value, 0.0f, 1.0f); },
+      mf::build::exec_presets::AllSpanOrSingle());
+  static BuiltinCustomDataLayerProvider crease("crease",
+                                               ATTR_DOMAIN_EDGE,
+                                               CD_PROP_FLOAT,
+                                               CD_CREASE,
+                                               BuiltinAttributeProvider::Creatable,
+                                               BuiltinAttributeProvider::Deletable,
+                                               edge_access,
+                                               nullptr,
+                                               AttributeValidator{&crease_clamp});
 
   static VertexGroupsAttributeProvider vertex_groups;
   static CustomDataAttributeProvider corner_custom_data(ATTR_DOMAIN_CORNER, corner_access);

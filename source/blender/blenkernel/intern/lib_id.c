@@ -137,7 +137,7 @@ static bool lib_id_library_local_paths_callback(BPathForeachPathData *bpath_data
     /* Path was relative and is now absolute. Remap.
      * Important BLI_path_normalize runs before the path is made relative
      * because it won't work for paths that start with "//../" */
-    BLI_path_normalize(base_new, filepath);
+    BLI_path_normalize(filepath);
     BLI_path_rel(filepath, base_new);
     BLI_strncpy(r_path_dst, filepath, FILE_MAX);
     return true;
@@ -845,7 +845,7 @@ static void id_swap(Main *bmain,
     BKE_id_remapper_add(remapper_id_b, id_a, id_b);
   }
 
-  /* Finalize remapping of internal referrences to self broken by swapping, if requested. */
+  /* Finalize remapping of internal references to self broken by swapping, if requested. */
   if (do_self_remap) {
     LinkNode ids = {.next = NULL, .link = id_a};
     BKE_libblock_relink_multiple(
@@ -864,7 +864,7 @@ static void id_swap(Main *bmain,
 }
 
 /* Conceptually, embedded IDs are part of their owner's data. However, some parts of the code
- * (like e.g. the depsgraph) may treat them as independant IDs, so swapping them here and
+ * (like e.g. the depsgraph) may treat them as independent IDs, so swapping them here and
  * switching their pointers in the owner IDs allows to help not break cached relationships and
  * such (by preserving the pointer values). */
 static void id_embedded_swap(ID **embedded_id_a,

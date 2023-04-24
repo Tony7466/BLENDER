@@ -704,7 +704,7 @@ Mesh *create_cylinder_or_cone_mesh(const float radius_top,
   }
 
   Mesh *mesh = BKE_mesh_new_nomain(
-      config.tot_verts, config.tot_edges, config.tot_corners, config.tot_faces);
+      config.tot_verts, config.tot_edges, config.tot_faces, config.tot_corners);
   BKE_id_material_eval_ensure_default_slot(&mesh->id);
 
   MutableSpan<float3> positions = mesh->vert_positions_for_write();
@@ -723,6 +723,7 @@ Mesh *create_cylinder_or_cone_mesh(const float radius_top,
   }
   calculate_selection_outputs(config, attribute_outputs, mesh->attributes_for_write());
 
+  mesh->tag_loose_verts_none();
   mesh->loose_edges_tag_none();
   mesh->bounds_set_eager(calculate_bounds_cylinder(config));
 
