@@ -256,6 +256,63 @@ SeqRetimingHandle *SEQ_retiming_add_handle(const Scene *scene,
   return added_handle;
 }
 
+static void seq_retiming_offset_linear_handle(const Scene *scene,
+                                              Sequence *seq,
+                                              SeqRetimingHandle *handle,
+                                              const int offset)
+{
+  MutableSpan handles = SEQ_retiming_handles_get(seq);
+  for (; handle < handles.end(); handle++) {
+    handle->strip_frame_index += offset * seq_time_media_playback_rate_factor_get(scene, seq);
+  }
+
+  SEQ_time_update_meta_strip_range(scene, seq_sequence_lookup_meta_by_seq(scene, seq));
+  seq_time_update_effects_strip_range(scene, seq_sequence_lookup_effects_by_seq(scene, seq));
+}
+
+static void seq_retiming_offset_gradient_handle(const Scene *scene,
+                                                Sequence *seq,
+                                                SeqRetimingHandle *handle,
+                                                const int offset)
+{
+  SeqRetimingHandle *handle_start, *handle_end;
+  int corrected_offset;
+
+  if (handle->flag == 1) {
+    handle_start = handle;
+    handle_end = handle + 1;
+    corrected_offset = offset;
+  }
+  else {
+    handle_start = handle - 1;
+    handle_end = handle;
+    corrected_offset = -1 * offset;
+  }
+
+  /* Prevent gradient handles crossing each other. */
+  const float start_frame = SEQ_retiming_handle_timeline_frame_get(scene, seq, handle_start);
+  const float end_frame = SEQ_retiming_handle_timeline_frame_get(scene, seq, handle_end);
+  int xmax = ((start_frame + end_frame) / 2) - 1;
+  int max_offset = xmax - start_frame;
+  corrected_offset = min_ii(corrected_offset, max_offset);
+  /* Prevent mirrored movement crossing any handle. */
+  SeqRetimingHandle *prev_segment_end = handle_start - 1, *next_segment_start = handle_end + 1;
+  int offset_min_left = SEQ_retiming_handle_timeline_frame_get(scene, seq, prev_segment_end) + 1 -
+                        start_frame;
+  int offset_min_right = end_frame -
+                         SEQ_retiming_handle_timeline_frame_get(scene, seq, next_segment_start) -
+                         1;
+  corrected_offset = max_iii(corrected_offset, offset_min_left, offset_min_right);
+
+  float prev_segment_step = seq_retiming_segment_step_get(handle_start - 1);
+  float next_segment_step = seq_retiming_segment_step_get(handle_end);
+
+  handle_start->strip_frame_index += corrected_offset;
+  handle_start->retiming_factor += corrected_offset * prev_segment_step;
+  handle_end->strip_frame_index -= corrected_offset;
+  handle_end->retiming_factor -= corrected_offset * next_segment_step;
+}
+
 void SEQ_retiming_offset_handle(const Scene *scene,
                                 Sequence *seq,
                                 SeqRetimingHandle *handle,
@@ -265,13 +322,25 @@ void SEQ_retiming_offset_handle(const Scene *scene,
     return; /* First handle can not be moved. */
   }
 
-  MutableSpan handles = SEQ_retiming_handles_get(seq);
-  for (; handle < handles.end(); handle++) {
-    handle->strip_frame_index += offset * seq_time_media_playback_rate_factor_get(scene, seq);
-  }
+  SeqRetimingHandle *prev_handle = handle - 1;
+  SeqRetimingHandle *next_handle = handle + 1;
 
-  SEQ_time_update_meta_strip_range(scene, seq_sequence_lookup_meta_by_seq(scene, seq));
-  seq_time_update_effects_strip_range(scene, seq_sequence_lookup_effects_by_seq(scene, seq));
+  /* Limit retiming handle movement. */
+  int corrected_offset = offset;
+  int handle_frame = SEQ_retiming_handle_timeline_frame_get(scene, seq, handle);
+  int offset_min = SEQ_retiming_handle_timeline_frame_get(scene, seq, prev_handle) + 1 -
+                   handle_frame;
+  int offset_max = SEQ_retiming_handle_timeline_frame_get(scene, seq, next_handle) - 1 -
+                   handle_frame;
+  corrected_offset = max_ii(corrected_offset, offset_min);
+  corrected_offset = min_ii(corrected_offset, offset_max);
+
+  if (handle->flag == 1 || prev_handle->flag == 1) {
+    seq_retiming_offset_gradient_handle(scene, seq, handle, corrected_offset);
+  }
+  else {
+    seq_retiming_offset_linear_handle(scene, seq, handle, corrected_offset);
+  }
 }
 
 static void seq_retiming_remove_handle_ex(Sequence *seq, SeqRetimingHandle *handle)
@@ -306,7 +375,13 @@ static void seq_retiming_remove_gradient(const Scene *scene,
   /* Get 2 segments. */
   seq_retiming_segment_as_line_segment(handle - 1, s1_1, s1_2);
   seq_retiming_segment_as_line_segment(handle + 1, s2_1, s2_2);
-  /* Find frame where handle originally was. */
+  /* Remove both handles defining gradient. */
+  /* Remove handle to the left (gradual) and to the right (linear). */
+  int handle_index = SEQ_retiming_handle_index_get(seq, handle);
+  seq_retiming_remove_handle_ex(seq, handle);
+  seq_retiming_remove_handle_ex(seq, seq->retiming_handles + handle_index);
+
+  /* Find frame where linear handle originally was. */
   double lambda, mu;
   // XXX may be colinear - in that case the handle should be in middle of s1 and s2.
   int res = isect_seg_seg_v2_lambda_mu_db(s1_1, s1_2, s2_1, s2_2, &lambda, &mu);
@@ -314,11 +389,6 @@ static void seq_retiming_remove_gradient(const Scene *scene,
   /* Create original linear handle. */
   SeqRetimingHandle *orig_handle = SEQ_retiming_add_handle(scene, seq, new_handle_frame);
   orig_handle->retiming_factor = s1_1[1] + lambda * (s1_2[1] - s1_1[1]);
-  /* Remove handle to the left (gradual) and to the right (linear). */
-  int orig_handle_index = SEQ_retiming_handle_index_get(seq, orig_handle);
-
-  seq_retiming_remove_handle_ex(seq, seq->retiming_handles + orig_handle_index - 1);
-  seq_retiming_remove_handle_ex(seq, seq->retiming_handles + orig_handle_index);
 }
 
 void SEQ_retiming_remove_handle(const Scene *scene, Sequence *seq, SeqRetimingHandle *handle)
@@ -340,14 +410,19 @@ SeqRetimingHandle *SEQ_retiming_add_gradient(const Scene *scene,
                                              SeqRetimingHandle *handle,
                                              const int offset)
 {
+  SeqRetimingHandle *prev_handle = handle - 1;
+  if (handle->flag == 1 || prev_handle->flag == 1) {
+    return nullptr;
+  }
+
   int orig_handle_index = SEQ_retiming_handle_index_get(seq, handle);
   int orig_timeline_frame = SEQ_retiming_handle_timeline_frame_get(scene, seq, handle);
+  SEQ_retiming_add_handle(scene, seq, orig_timeline_frame + offset);
   SeqRetimingHandle *new_handle = SEQ_retiming_add_handle(
       scene, seq, orig_timeline_frame - offset);
   new_handle->flag |= 1;
-  SEQ_retiming_add_handle(scene, seq, orig_timeline_frame + offset);
-  seq_retiming_remove_handle_ex(seq, &SEQ_retiming_handles_get(seq)[orig_handle_index + 1]);
-  return new_handle;
+  seq_retiming_remove_handle_ex(seq, seq->retiming_handles + orig_handle_index + 1);
+  return seq->retiming_handles + orig_handle_index;
 }
 
 float SEQ_retiming_handle_speed_get(const Sequence *seq, const SeqRetimingHandle *handle)

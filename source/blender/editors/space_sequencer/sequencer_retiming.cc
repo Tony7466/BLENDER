@@ -166,14 +166,12 @@ static int sequencer_retiming_handle_move_invoke(bContext *C, wmOperator *op, co
 
   RNA_int_set(op->ptr, "handle_index", SEQ_retiming_handle_index_get(seq, handle));
 
+  if ((event->modifier & KM_SHIFT) != 0) {
+    op->customdata = (void *)1;
+  }
+
   WM_event_add_modal_handler(C, op);
   return OPERATOR_RUNNING_MODAL;
-}
-
-static void sequencer_retiming_handle_move_gradual(const bContext *C,
-                                                   const int orig_frame,
-                                                   const int offset)
-{
 }
 
 static int sequencer_retiming_handle_move_modal(bContext *C, wmOperator *op, const wmEvent *event)
@@ -192,35 +190,33 @@ static int sequencer_retiming_handle_move_modal(bContext *C, wmOperator *op, con
       float mouse_x = UI_view2d_region_to_view_x(v2d, event->mval[0]);
       int offset = 0;
 
-      SeqRetimingHandle *handle_prev = handle - 1;
-
-      if (handle->flag == 1) {
-        SEQ_retiming_remove_handle(scene, seq, handle);
-        handle = seq->retiming_handles + handle_index;
-      }
-
-      /* Limit retiming handle movement. */
-      int xmin = SEQ_retiming_handle_timeline_frame_get(scene, seq, handle_prev) + 1;
-      mouse_x = max_ff(xmin, mouse_x);
       offset = mouse_x - SEQ_retiming_handle_timeline_frame_get(scene, seq, handle);
 
       if (offset == 0) {
         return OPERATOR_RUNNING_MODAL;
       }
-      ///////////////////////////////////////////////////////////////////////////////////////////
-      SEQ_retiming_add_gradient(scene, seq, handle, abs(offset));
-      ///////////////////////////////////////////////////////////////////////////////////////////
 
-      // SEQ_retiming_offset_handle(scene, seq, handle, offset);
+      /* Add retiming gradient and move handle. */
+      if (op->customdata) {
+        SeqRetimingHandle *gradient_handle = SEQ_retiming_add_gradient(
+            scene, seq, handle, abs(offset));
+        /* New gradient handle was created - update operator properties. */
+        if (gradient_handle != nullptr) {
+          if (offset < 0) {
+            handle = gradient_handle;
+          }
+          else {
+            handle = gradient_handle + 1;
+          }
+          RNA_int_set(op->ptr, "handle_index", SEQ_retiming_handle_index_get(seq, handle));
+        }
+      }
+
+      SEQ_retiming_offset_handle(scene, seq, handle, offset);
 
       SEQ_relations_invalidate_cache_raw(scene, seq);
       WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
       return OPERATOR_RUNNING_MODAL;
-    }
-
-    case EVT_RIGHTSHIFTKEY:
-    case EVT_LEFTSHIFTKEY: {
-      // xxx data->is_gradual = true;
     }
 
     case LEFTMOUSE:
