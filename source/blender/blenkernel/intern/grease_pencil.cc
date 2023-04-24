@@ -594,7 +594,8 @@ namespace blender::bke {
 GreasePencilRuntime::GreasePencilRuntime(const GreasePencilRuntime &other)
     : root_group_(other.root_group_), active_layer_index_(other.active_layer_index_)
 {
-  layer_cache_ = other.layer_cache_;
+  /* We cannot copy this cache, because the pointers in that cache become invalid. */
+  layer_cache_.tag_dirty();
 }
 
 const greasepencil::LayerGroup &GreasePencilRuntime::root_group() const
