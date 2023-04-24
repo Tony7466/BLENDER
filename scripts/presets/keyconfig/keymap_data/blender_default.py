@@ -93,6 +93,8 @@ class Params:
         # Since this means with RMB select enabled in edit-mode for e.g.
         # `Ctrl-LMB` would be caught by box-select instead of add/extrude.
         "tool_maybe_tweak_event",
+        # Access to bpy.context.preferences.experimental
+        "experimental",
     )
 
     def __init__(
@@ -119,6 +121,7 @@ class Params:
             use_file_single_click=False,
             v3d_tilde_action='VIEW',
             v3d_alt_mmb_drag_action='RELATIVE',
+            experimental=None
     ):
         from sys import platform
         self.apple = (platform == 'darwin')
@@ -209,6 +212,9 @@ class Params:
         self.pie_value = 'CLICK_DRAG' if use_pie_click_drag else 'PRESS'
         self.tool_tweak_event = {"type": self.tool_mouse, "value": 'CLICK_DRAG'}
         self.tool_maybe_tweak_event = {"type": self.tool_mouse, "value": self.tool_maybe_tweak_value}
+
+        if experimental:
+            self.experimental = experimental
 
 
 # ------------------------------------------------------------------------------
@@ -3810,24 +3816,31 @@ def km_grease_pencil_stroke_paint_draw_brush(params):
         {"items": items},
     )
 
-    items.extend([
-        # Draw
+    # Draw
+    if params.experimental.use_grease_pencil_version3:
+        items.extend([
         ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS'},
          {"properties": [("mode", 'NORMAL')]}),
         ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
          {"properties": [("mode", 'INVERT')]}),
         ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
          {"properties": [("mode", 'SMOOTH')]}),
-        # ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS'},
-        #  {"properties": [("mode", 'DRAW'), ("wait_for_input", False)]}),
-        # ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
-        #  {"properties": [("mode", 'DRAW'), ("wait_for_input", False)]}),
-        # # Draw - straight lines
-        # ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
-        #  {"properties": [("mode", 'DRAW_STRAIGHT'), ("wait_for_input", False)]}),
-        # # Erase
-        # ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
-        #  {"properties": [("mode", 'ERASER'), ("wait_for_input", False)]}),
+        ])
+    else:
+        items.extend([
+        ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+         {"properties": [("mode", 'DRAW'), ("wait_for_input", False)]}),
+        ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+         {"properties": [("mode", 'DRAW'), ("wait_for_input", False)]}),
+        # Draw - straight lines
+        ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
+         {"properties": [("mode", 'DRAW_STRAIGHT'), ("wait_for_input", False)]}),
+        # Erase
+        ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
+         {"properties": [("mode", 'ERASER'), ("wait_for_input", False)]}),
+        ])
+
+    items.extend([
         # Constrain Guides Speedlines
         # Freehand
         ("gpencil.draw", {"type": 'O', "value": 'PRESS'}, None),
