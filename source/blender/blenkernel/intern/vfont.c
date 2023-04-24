@@ -1458,17 +1458,18 @@ static bool vfont_to_curve(Object *ob,
     float geom[2][2];
     for (i = 0; i < ef->selboxes_len; i++, ct++) {
       copy_v2_v2(selboxes[i].loc, &ct->xof);
-      mul_v2_fl(selboxes[i].loc, font_size);
-
-      angle_to_mat2(geom, selboxes[i].rot);
-      const float centre = (-1.0f + descender_downship * 2.0f) * font_size;
-      float offset_for_centre[2] = {0.0f, centre};
-      add_v2_v2(offset_for_centre, selboxes[i].size);
-      mul_m2_v2(geom, offset_for_centre);
-      mul_v2_fl(offset_for_centre, 0.5f);
-      add_v2_v2(selboxes[i].loc, offset_for_centre);
 
       selboxes[i].size[1] = font_size;
+
+      float centre_offset[2];
+      copy_v2_v2(centre_offset, selboxes[i].size);
+      mul_v2_fl(centre_offset, 1.0f / font_size);
+      mul_v2_fl(centre_offset, 0.5f);
+      centre_offset[1] -= descender_downship;
+      angle_to_mat2(geom, selboxes[i].rot);
+      mul_m2_v2(geom, centre_offset);
+      add_v2_v2(selboxes[i].loc, centre_offset);
+      mul_v2_fl(selboxes[i].loc, font_size);
     }
   }
 
@@ -1572,15 +1573,15 @@ static bool vfont_to_curve(Object *ob,
     copy_v2_v2(current_char_loc, &chartransdata[cursor_index].xof);
     float prev_char_loc[2];
     copy_v2_v2(prev_char_loc, &chartransdata[prev_index].xof);
-    if (cursor_index != 0) {
+    if (cursor_index != prev_index) {
       che = find_vfont_char(vfd, mem[prev_index]);
       info = &custrinfo[prev_index];
-      float geom[2][2];
-      angle_to_mat2(geom, prev_char_rot);
 
       float prev_offset[2];
       zero_v2(prev_offset);
       prev_offset[0] = char_width(cu, che, info);
+      float geom[2][2];
+      angle_to_mat2(geom, prev_char_rot);
       mul_m2_v2(geom, prev_offset);
       add_v2_v2(prev_char_loc, prev_offset);
     }
