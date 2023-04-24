@@ -272,15 +272,15 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
     const Span<float3> positions = curves.positions();
     const VArray<bool> cyclic = curves.cyclic();
     const VArray<float> radii = attributes.lookup_or_default<float>(
-        "radius", ATTR_DOMAIN_POINT, 1.0f);
+        "radius", ATTR_DOMAIN_POINT, 1.0f).varray;
     const VArray<float> opacities = attributes.lookup_or_default<float>(
-        "opacity", ATTR_DOMAIN_POINT, 1.0f);
+        "opacity", ATTR_DOMAIN_POINT, 1.0f).varray;
     const VArray<int8_t> start_caps = attributes.lookup_or_default<int8_t>(
-        "start_cap", ATTR_DOMAIN_CURVE, 0);
+        "start_cap", ATTR_DOMAIN_CURVE, 0).varray;
     const VArray<int8_t> end_caps = attributes.lookup_or_default<int8_t>(
-        "end_cap", ATTR_DOMAIN_CURVE, 0);
+        "end_cap", ATTR_DOMAIN_CURVE, 0).varray;
     const VArray<int> materials = attributes.lookup_or_default<int>(
-        "material_index", ATTR_DOMAIN_CURVE, -1);
+        "material_index", ATTR_DOMAIN_CURVE, -1).varray;
     const Span<uint3> triangles = drawing.triangles();
     const Span<int> verts_start_offsets =
         verts_start_offsets_per_visible_drawing[drawing_i].as_span();
