@@ -182,7 +182,7 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow)
 
 GPU_SHADER_CREATE_INFO(eevee_transmittance_data)
     .define("SSS_TRANSMITTANCE")
-    .sampler(0, ImageType::FLOAT_1D, "sss_transmittance_tx");
+    .sampler(SSS_TRANSMITTANCE_TEX_SLOT, ImageType::FLOAT_1D, "sss_transmittance_tx");
 
 GPU_SHADER_CREATE_INFO(eevee_subsurface_eval)
     .do_static_compilation(true)

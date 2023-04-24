@@ -44,6 +44,7 @@ void main()
   }
   else if (textureSize(gbuffer_closure_tx, 0).z >= 3) {
     vec4 gbuffer_2_packed = texelFetch(gbuffer_closure_tx, ivec3(texel, 2), 0);
+    diffuse_data.sss_radius = gbuffer_sss_radii_unpack(gbuffer_2_packed.xyz);
     diffuse_data.sss_id = gbuffer_object_id_unorm16_unpack(gbuffer_2_packed.w);
     thickness = gbuffer_thickness_unpack(gbuffer_1_packed.z);
   }

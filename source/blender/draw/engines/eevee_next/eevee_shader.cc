@@ -267,6 +267,10 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     info.additional_info("eevee_cryptomatte_out");
   }
 
+  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_SUBSURFACE) && pipeline_type == MAT_PIPE_FORWARD) {
+    info.additional_info("eevee_transmittance_data");
+  }
+
   if (GPU_material_flag_get(gpumat, GPU_MATFLAG_BARYCENTRIC)) {
     switch (geometry_type) {
       case MAT_GEOM_MESH:

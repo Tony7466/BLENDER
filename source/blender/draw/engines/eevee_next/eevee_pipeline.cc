@@ -156,6 +156,9 @@ void ForwardPipeline::sync()
       opaque_ps_.bind_ssbo(RBUFS_AOV_BUF_SLOT, &inst_.film.aovs_info);
       /* Textures. */
       opaque_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
+      opaque_ps_.bind_texture(SSS_TRANSMITTANCE_TEX_SLOT,
+                              inst_.subsurface.transmittance_ref_get());
+
       /* Uniform Buffer. */
       opaque_ps_.bind_ubo(CAMERA_BUF_SLOT, inst_.camera.ubo_get());
 
@@ -182,6 +185,7 @@ void ForwardPipeline::sync()
 
     /* Textures. */
     sub.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
+    sub.bind_texture(SSS_TRANSMITTANCE_TEX_SLOT, inst_.subsurface.transmittance_ref_get());
     /* Uniform Buffer. */
     sub.bind_ubo(CAMERA_BUF_SLOT, inst_.camera.ubo_get());
 
@@ -382,6 +386,8 @@ void DeferredLayer::end_sync()
     eval_light_ps_.push_constant("is_last_eval_pass", is_last_eval_pass);
     eval_light_ps_.bind_image(RBUFS_LIGHT_SLOT, &inst_.render_buffers.light_tx);
     eval_light_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
+    eval_light_ps_.bind_texture(SSS_TRANSMITTANCE_TEX_SLOT,
+                                inst_.subsurface.transmittance_ref_get());
 
     inst_.lights.bind_resources(&eval_light_ps_);
     inst_.shadows.bind_resources(&eval_light_ps_);
