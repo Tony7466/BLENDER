@@ -67,7 +67,6 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
       grease_pencil_src->drawing_array_size, __func__);
   for (int i = 0; i < grease_pencil_src->drawing_array_size; i++) {
     const GreasePencilDrawingBase *src_drawing_base = grease_pencil_src->drawing_array[i];
-    grease_pencil_dst->drawing_array[i]->user_count = src_drawing_base->user_count;
     switch (src_drawing_base->type) {
       case GP_DRAWING: {
         const GreasePencilDrawing *src_drawing = reinterpret_cast<const GreasePencilDrawing *>(
@@ -93,6 +92,7 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
         break;
       }
     }
+    grease_pencil_dst->drawing_array[i]->user_count = src_drawing_base->user_count;
   }
 
   /* Do not copy layer tree storage. */
