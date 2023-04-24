@@ -348,7 +348,7 @@ blender::Span<NodeSimulationItem> NodeGeometrySimulationOutput::items_span() con
   return blender::Span<NodeSimulationItem>(items, items_num);
 }
 
-blender::MutableSpan<NodeSimulationItem> NodeGeometrySimulationOutput::items_mutable_span()
+blender::MutableSpan<NodeSimulationItem> NodeGeometrySimulationOutput::items_span_for_write()
 {
   return blender::MutableSpan<NodeSimulationItem>(items, items_num);
 }
@@ -422,7 +422,7 @@ void NOD_geometry_simulation_output_set_active_item(NodeGeometrySimulationOutput
 NodeSimulationItem *NOD_geometry_simulation_output_find_item(NodeGeometrySimulationOutput *sim,
                                                              const char *name)
 {
-  for (NodeSimulationItem &item : sim->items_mutable_span()) {
+  for (NodeSimulationItem &item : sim->items_span_for_write()) {
     if (STREQ(item.name, name)) {
       return &item;
     }
@@ -507,7 +507,7 @@ void NOD_geometry_simulation_output_remove_item(NodeGeometrySimulationOutput *si
 
 void NOD_geometry_simulation_output_clear_items(struct NodeGeometrySimulationOutput *sim)
 {
-  for (NodeSimulationItem &item : sim->items_mutable_span()) {
+  for (NodeSimulationItem &item : sim->items_span_for_write()) {
     MEM_SAFE_FREE(item.name);
   }
   MEM_SAFE_FREE(sim->items);
