@@ -6,6 +6,7 @@
  */
 
 #include "vk_framebuffer.hh"
+#include "vk_context.hh"
 #include "vk_memory.hh"
 #include "vk_texture.hh"
 
@@ -22,6 +23,7 @@ VKFrameBuffer::VKFrameBuffer(const char *name) : FrameBuffer(name)
 }
 
 VKFrameBuffer::VKFrameBuffer(const char *name,
+                             VkImage vk_image,
                              VkFramebuffer vk_framebuffer,
                              VkRenderPass vk_render_pass,
                              VkExtent2D vk_extent)
@@ -30,6 +32,7 @@ VKFrameBuffer::VKFrameBuffer(const char *name,
   immutable_ = true;
   /* Never update an internal frame-buffer. */
   dirty_attachments_ = false;
+  vk_image_ = vk_image;
   vk_framebuffer_ = vk_framebuffer;
   vk_render_pass_ = vk_render_pass;
 
@@ -258,13 +261,69 @@ void VKFrameBuffer::read(eGPUFrameBufferBits plane,
 /** \name Blit operations
  * \{ */
 
-void VKFrameBuffer::blit_to(eGPUFrameBufferBits /*planes*/,
-                            int /*src_slot*/,
-                            FrameBuffer * /*dst*/,
-                            int /*dst_slot*/,
-                            int /*dst_offset_x*/,
-                            int /*dst_offset_y*/)
+void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
+                            int src_slot,
+                            FrameBuffer *dst,
+                            int dst_slot,
+                            int dst_offset_x,
+                            int dst_offset_y)
 {
+  BLI_assert(dst);
+  BLI_assert(planes == GPU_COLOR_BIT);
+
+  VKContext &context = *VKContext::get();
+  if (!context.has_active_framebuffer()) {
+    BLI_assert_unreachable();
+    return;
+  }
+
+  /* Retrieve source texture. */
+  const GPUAttachment &src_attachment = attachments_[GPU_FB_COLOR_ATTACHMENT0 + src_slot];
+  if (src_attachment.tex == nullptr) {
+    return;
+  }
+  VKTexture &src_texture = *unwrap(unwrap(src_attachment.tex));
+  src_texture.layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+  /* Retrieve destination texture. */
+  const VKFrameBuffer &dst_framebuffer = *unwrap(dst);
+  const GPUAttachment &dst_attachment =
+      dst_framebuffer.attachments_[GPU_FB_COLOR_ATTACHMENT0 + dst_slot];
+  VKTexture *dst_texture = nullptr;
+  VKTexture tmp_texture("FramebufferTexture");
+  if (dst_attachment.tex) {
+    dst_texture = unwrap(unwrap(dst_attachment.tex));
+    dst_texture->layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  }
+  else {
+    tmp_texture.init(dst_framebuffer.vk_image_get(), VK_IMAGE_LAYOUT_GENERAL);
+    dst_texture = &tmp_texture;
+  }
+
+  VkImageBlit image_blit = {};
+  image_blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  image_blit.srcSubresource.mipLevel = 0;
+  image_blit.srcSubresource.baseArrayLayer = 0;
+  image_blit.srcSubresource.layerCount = 1;
+  image_blit.srcOffsets[0].x = 0;
+  image_blit.srcOffsets[0].y = 0;
+  image_blit.srcOffsets[0].z = 0;
+  image_blit.srcOffsets[1].x = src_texture.width_get();
+  image_blit.srcOffsets[1].y = src_texture.height_get();
+  image_blit.srcOffsets[1].z = 1;
+
+  image_blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  image_blit.dstSubresource.mipLevel = 0;
+  image_blit.dstSubresource.baseArrayLayer = 0;
+  image_blit.dstSubresource.layerCount = 1;
+  image_blit.dstOffsets[0].x = dst_offset_x;
+  image_blit.dstOffsets[0].y = dst_offset_y;
+  image_blit.dstOffsets[0].z = 0;
+  image_blit.dstOffsets[1].x = dst_offset_x + src_texture.width_get();
+  image_blit.dstOffsets[1].y = dst_offset_y + src_texture.height_get();
+  image_blit.dstOffsets[1].z = 1;
+
+  context.command_buffer_get().blit(*dst_texture, src_texture, Span<VkImageBlit>(&image_blit, 1));
 }
 
 /** \} */

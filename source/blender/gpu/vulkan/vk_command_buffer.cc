@@ -176,6 +176,20 @@ void VKCommandBuffer::copy(VKTexture &dst_texture,
                          regions.size(),
                          regions.data());
 }
+void VKCommandBuffer::blit(VKTexture &dst_texture,
+                           VKTexture &src_buffer,
+                           Span<VkImageBlit> regions)
+{
+  ensure_no_active_framebuffer();
+  vkCmdBlitImage(vk_command_buffer_,
+                 src_buffer.vk_image_handle(),
+                 src_buffer.current_layout_get(),
+                 dst_texture.vk_image_handle(),
+                 dst_texture.current_layout_get(),
+                 regions.size(),
+                 regions.data(),
+                 VK_FILTER_NEAREST);
+}
 
 void VKCommandBuffer::clear(VkImage vk_image,
                             VkImageLayout vk_image_layout,

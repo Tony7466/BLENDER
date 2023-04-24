@@ -27,7 +27,10 @@ class VKTexture : public Texture {
 
  public:
   VKTexture(const char *name) : Texture(name) {}
+
   virtual ~VKTexture() override;
+
+  void init(VkImage vk_image, VkImageLayout layout);
 
   void generate_mipmap() override;
   void copy_to(Texture *tex) override;
@@ -53,7 +56,7 @@ class VKTexture : public Texture {
 
   VkImage vk_image_handle() const
   {
-    BLI_assert(is_allocated());
+    BLI_assert(vk_image_ != VK_NULL_HANDLE);
     return vk_image_;
   }
   VkImageView vk_image_view_handle() const

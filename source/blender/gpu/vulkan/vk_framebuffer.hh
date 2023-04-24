@@ -25,6 +25,7 @@ class VKFrameBuffer : public FrameBuffer {
   VkDevice vk_device_ = VK_NULL_HANDLE;
   /* Base render pass used for framebuffer creation. */
   VkRenderPass vk_render_pass_ = VK_NULL_HANDLE;
+  VkImage vk_image_ = VK_NULL_HANDLE;
   /* Number of layers if the attachments are layered textures. */
   int depth_ = 1;
   /** Internal frame-buffers are immutable. */
@@ -41,6 +42,7 @@ class VKFrameBuffer : public FrameBuffer {
    * This just act as a wrapper, the actual allocations are done by GHOST_ContextVK.
    **/
   VKFrameBuffer(const char *name,
+                VkImage vk_image,
                 VkFramebuffer vk_framebuffer,
                 VkRenderPass vk_render_pass,
                 VkExtent2D vk_extent);
@@ -94,6 +96,11 @@ class VKFrameBuffer : public FrameBuffer {
   }
   VkViewport vk_viewport_get() const;
   VkRect2D vk_render_area_get() const;
+  VkImage vk_image_get() const
+  {
+    BLI_assert(vk_image_ != VK_NULL_HANDLE);
+    return vk_image_;
+  }
 
  private:
   void update_attachments();

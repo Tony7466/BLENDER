@@ -23,11 +23,19 @@ namespace blender::gpu {
 
 VKTexture::~VKTexture()
 {
-  VK_ALLOCATION_CALLBACKS
+  if (is_allocated()) {
+    VK_ALLOCATION_CALLBACKS
 
-  VKContext &context = *VKContext::get();
-  vmaDestroyImage(context.mem_allocator_get(), vk_image_, allocation_);
-  vkDestroyImageView(context.device_get(), vk_image_view_, vk_allocation_callbacks);
+    VKContext &context = *VKContext::get();
+    vmaDestroyImage(context.mem_allocator_get(), vk_image_, allocation_);
+    vkDestroyImageView(context.device_get(), vk_image_view_, vk_allocation_callbacks);
+  }
+}
+
+void VKTexture::init(VkImage vk_image, VkImageLayout layout)
+{
+  vk_image_ = vk_image;
+  current_layout_ = layout;
 }
 
 void VKTexture::generate_mipmap() {}
@@ -197,7 +205,8 @@ bool VKTexture::is_allocated() const
 static VkImageUsageFlagBits to_vk_image_usage(const eGPUTextureUsage usage,
                                               const eGPUTextureFormatFlag format_flag)
 {
-  VkImageUsageFlagBits result = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+  VkImageUsageFlagBits result = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                                                                  VK_IMAGE_USAGE_TRANSFER_DST_BIT |
                                                                   VK_IMAGE_USAGE_SAMPLED_BIT);
   if (usage & GPU_TEXTURE_USAGE_SHADER_READ) {
     result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_STORAGE_BIT);
@@ -229,6 +238,7 @@ static VkImageUsageFlagBits to_vk_image_usage(const eGPUTextureUsage usage,
 
 bool VKTexture::allocate()
 {
+  BLI_assert(vk_image_ == VK_NULL_HANDLE);
   BLI_assert(!is_allocated());
 
   int extent[3] = {1, 1, 1};

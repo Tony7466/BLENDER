@@ -13,6 +13,7 @@
 #include "vk_memory.hh"
 #include "vk_shader.hh"
 #include "vk_state_manager.hh"
+#include "vk_texture.hh"
 
 #include "GHOST_C-api.h"
 
@@ -89,14 +90,18 @@ void VKContext::activate()
   is_active_ = true;
 
   if (ghost_window_) {
-    VkImage image; /* TODO will be used for reading later... */
+    VkImage vk_image;
     VkFramebuffer vk_framebuffer;
     VkRenderPass render_pass;
     VkExtent2D extent;
     uint32_t fb_id;
 
-    GHOST_GetVulkanBackbuffer(
-        (GHOST_WindowHandle)ghost_window_, &image, &vk_framebuffer, &render_pass, &extent, &fb_id);
+    GHOST_GetVulkanBackbuffer((GHOST_WindowHandle)ghost_window_,
+                              &vk_image,
+                              &vk_framebuffer,
+                              &render_pass,
+                              &extent,
+                              &fb_id);
 
     /* Recreate the gpu::VKFrameBuffer wrapper after every swap. */
     if (has_active_framebuffer()) {
@@ -105,10 +110,9 @@ void VKContext::activate()
     delete back_left;
 
     VKFrameBuffer *framebuffer = new VKFrameBuffer(
-        "back_left", vk_framebuffer, render_pass, extent);
+        "back_left", vk_image, vk_framebuffer, render_pass, extent);
     back_left = framebuffer;
     framebuffer->bind(false);
-    active_fb = back_left;
   }
 
   immActivate();
