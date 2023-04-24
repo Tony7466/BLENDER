@@ -139,9 +139,6 @@ void socket_declarations_for_simulation_items(Span<NodeSimulationItem> items,
                                               NodeDeclaration &r_declaration);
 const CPPType &get_simulation_item_cpp_type(eNodeSocketDatatype socket_type);
 const CPPType &get_simulation_item_cpp_type(const NodeSimulationItem &item);
-/** \warning Return value will be reallocated when items are added or removed. */
-NodeSimulationItem *simulation_item_add_from_socket(NodeGeometrySimulationOutput &storage,
-                                                    const bNodeSocket &socket);
 void copy_simulation_state_to_output_param(lf::Params &params,
                                            int index,
                                            eNodeSocketDatatype socket_type,
