@@ -5,11 +5,13 @@
  * \ingroup imbuf
  */
 
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "MEM_guardedalloc.h"
 
+#include "BKE_appdir.h"
 #include "BKE_blendfile.h"
 
 #include "BLI_fileops.h"
@@ -50,70 +52,33 @@
 #  include <shlobj.h>
 #endif
 
-#if defined(WIN32) || defined(__APPLE__)
-/* pass */
-#else
-#  define USE_FREEDESKTOP
-#endif
-
-/* '$HOME/.cache/thumbnails' or '$HOME/.thumbnails' */
-#ifdef USE_FREEDESKTOP
-#  define THUMBNAILS "thumbnails"
-#else
-#  define THUMBNAILS ".thumbnails"
-#endif
-
 #define URI_MAX (FILE_MAX * 3 + 8)
 
-static bool get_thumb_dir(char *dir, ThumbSize size)
+static bool get_thumb_dir(char *r_dir, const size_t dir_len, const ThumbSize size)
 {
-  char *s = dir;
-  const char *subdir;
-#ifdef WIN32
-  wchar_t dir_16[MAX_PATH];
-  /* Yes, applications shouldn't store data there, but so does GIMP :). */
-  SHGetSpecialFolderPathW(0, dir_16, CSIDL_PROFILE, 0);
-  conv_utf_16_to_8(dir_16, dir, FILE_MAX);
-  s += strlen(dir);
-#else
-#  if defined(USE_FREEDESKTOP)
-  const char *home_cache = BLI_getenv("XDG_CACHE_HOME");
-  const char *home = home_cache ? home_cache : BLI_getenv("HOME");
-#  else
-  const char *home = BLI_getenv("HOME");
-#  endif
-  if (!home) {
-    return 0;
+  char cache_dir[FILE_MAX];
+  const bool ok = BKE_appdir_folder_caches(cache_dir, sizeof(cache_dir));
+  if (!ok) {
+    return false;
   }
-  s += BLI_strncpy_rlen(s, home, FILE_MAX);
-
-#  ifdef USE_FREEDESKTOP
-  if (!home_cache) {
-    s += BLI_strncpy_rlen(s, "/.cache", FILE_MAX - (s - dir));
-  }
-#  endif
-#endif
+  const char *thumb_size_dir = NULL;
   switch (size) {
     case THB_NORMAL:
-      subdir = SEP_STR THUMBNAILS SEP_STR "normal" SEP_STR;
+      thumb_size_dir = "normal";
       break;
     case THB_LARGE:
-      subdir = SEP_STR THUMBNAILS SEP_STR "large" SEP_STR;
+      thumb_size_dir = "large";
       break;
     case THB_FAIL:
-      subdir = SEP_STR THUMBNAILS SEP_STR "fail" SEP_STR "blender" SEP_STR;
+      thumb_size_dir = "fail";
       break;
     default:
-      return 0; /* unknown size */
+      return false; /* unknown size */
   }
-
-  s += BLI_strncpy_rlen(s, subdir, FILE_MAX - (s - dir));
-  (void)s;
-
-  return 1;
+  const size_t len = BLI_path_join(
+      r_dir, dir_len, cache_dir, "thumbnails", thumb_size_dir, SEP_STR);
+  return len < dir_len;
 }
-
-#undef THUMBNAILS
 
 /* --- Begin of adapted code from glib. --- */
 
@@ -266,7 +231,7 @@ static bool thumbpathname_from_uri(
   if (r_path) {
     char tmppath[FILE_MAX];
 
-    if (get_thumb_dir(tmppath, size)) {
+    if (get_thumb_dir(tmppath, sizeof(tmppath), size)) {
       BLI_snprintf(r_path, path_len, "%s%s", tmppath, r_name);
       //          printf("%s: '%s' --> '%s'\n", __func__, uri, r_path);
       return true;
@@ -293,10 +258,10 @@ void IMB_thumb_makedirs(void)
     BLI_dir_create_recursive(tpath);
   }
 #endif
-  if (get_thumb_dir(tpath, THB_LARGE)) {
+  if (get_thumb_dir(tpath, sizeof(tpath), THB_LARGE)) {
     BLI_dir_create_recursive(tpath);
   }
-  if (get_thumb_dir(tpath, THB_FAIL)) {
+  if (get_thumb_dir(tpath, sizeof(tpath), THB_FAIL)) {
     BLI_dir_create_recursive(tpath);
   }
 }
@@ -335,7 +300,7 @@ static ImBuf *thumb_create_ex(const char *file_path,
       return NULL; /* unknown size */
   }
 
-  if (get_thumb_dir(tdir, size)) {
+  if (get_thumb_dir(tdir, sizeof(tdir), size)) {
     BLI_snprintf(tpath, FILE_MAX, "%s%s", tdir, thumb);
     //      thumb[8] = '\0'; /* shorten for tempname, not needed anymore */
     BLI_snprintf(temp, FILE_MAX, "%sblender_%d_%s.png", tdir, abs(getpid()), thumb);
