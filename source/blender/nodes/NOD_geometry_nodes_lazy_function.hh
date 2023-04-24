@@ -47,8 +47,10 @@ struct GeoNodesModifierData {
   /** Optional logger. */
   geo_eval_log::GeoModifierLog *eval_log = nullptr;
 
-  const bke::sim::ModifierSimulationState *prev_simulation_state = nullptr;
   const bke::sim::ModifierSimulationState *current_simulation_state = nullptr;
+  const bke::sim::ModifierSimulationState *prev_simulation_state = nullptr;
+  const bke::sim::ModifierSimulationState *next_simulation_state = nullptr;
+  float simulation_state_mix_factor = 0.0f;
   bke::sim::ModifierSimulationState *current_simulation_state_for_write = nullptr;
   float simulation_time_delta = 0.0f;
 
@@ -158,6 +160,13 @@ struct GeometryNodeLazyFunctionGraphMapping {
   Map<const bNode *, const lf::FunctionNode *> group_node_map;
   Map<const bNode *, const lf::FunctionNode *> viewer_node_map;
   Map<const bNode *, const lf::FunctionNode *> sim_output_node_map;
+
+  /* Indexed by #bNodeSocket::index_in_all_outputs. */
+  Array<int> lf_input_index_for_output_bsocket_usage;
+  /* Indexed by #bNodeSocket::index_in_all_outputs. */
+  Array<int> lf_input_index_for_attribute_propagation_to_output;
+  /* Indexed by #bNodeSocket::index_in_tree. */
+  Array<int> lf_index_by_bsocket;
 };
 
 /**
