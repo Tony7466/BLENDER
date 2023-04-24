@@ -525,7 +525,8 @@ void NOD_geometry_simulation_output_move_item(NodeGeometrySimulationOutput *sim,
   if (from_index == to_index) {
     return;
   }
-  else if (from_index < to_index) {
+
+  if (from_index < to_index) {
     const NodeSimulationItem tmp = sim->items[from_index];
     for (int i = from_index; i < to_index; ++i) {
       sim->items[i] = sim->items[i + 1];
