@@ -256,7 +256,7 @@ class SimulationZoneOperator():
     @classmethod
     def poll(cls, context):
         space = context.space_data
-        # needs active node editor and a tree to add nodes to
+        # Needs active node editor and a tree
         if not space or space.type != 'NODE_EDITOR' or not space.edit_tree or space.edit_tree.library:
             return False
         node = context.active_node
