@@ -150,25 +150,27 @@ const CPPType &get_simulation_item_cpp_type(const NodeSimulationItem &item)
   return get_simulation_item_cpp_type(eNodeSocketDatatype(item.socket_type));
 }
 
+/** Create a simulation state item from parameter input data. */
 static std::unique_ptr<bke::sim::SimulationStateItem> make_simulation_state_item(
     const eNodeSocketDatatype socket_type, void *input_data)
 {
-  /* TODO */
   if (socket_type == SOCK_GEOMETRY) {
     GeometrySet *input_geometry = static_cast<GeometrySet *>(input_data);
     input_geometry->ensure_owns_direct_data();
     return std::make_unique<bke::sim::GeometrySimulationStateItem>(*input_geometry);
   }
   else {
+    /* TODO: Implement for non-geometry state items. */
     GeometrySet geometry;
     return std::make_unique<bke::sim::GeometrySimulationStateItem>(geometry);
   }
 }
 
-static void copy_simulation_state_output(lf::Params &params,
-                                         const int index,
-                                         const eNodeSocketDatatype socket_type,
-                                         const bke::sim::SimulationStateItem &state_item)
+/** Copy the current simulation state to the node output parameter. */
+void copy_simulation_state_to_output_param(lf::Params &params,
+                                           const int index,
+                                           const eNodeSocketDatatype socket_type,
+                                           const bke::sim::SimulationStateItem &state_item)
 {
   const CPPType &cpptype = get_simulation_item_cpp_type(socket_type);
 
@@ -178,7 +180,7 @@ static void copy_simulation_state_output(lf::Params &params,
     params.set_output(index, geo_state_item.geometry());
   }
   else {
-    /* TODO */
+    /* TODO: Implement for non-geometry state items. */
     if (const void *src = cpptype.default_value()) {
       void *dst = params.get_output_data_ptr(index);
       cpptype.copy_construct(src, dst);
@@ -299,7 +301,8 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
       if (state_item == nullptr) {
         continue;
       }
-      copy_simulation_state_output(params, i, eNodeSocketDatatype(item.socket_type), *state_item);
+      copy_simulation_state_to_output_param(
+          params, i, eNodeSocketDatatype(item.socket_type), *state_item);
     }
     params.set_default_remaining_outputs();
   }

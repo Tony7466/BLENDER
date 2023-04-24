@@ -142,5 +142,9 @@ const CPPType &get_simulation_item_cpp_type(const NodeSimulationItem &item);
 /** \warning Return value will be reallocated when items are added or removed. */
 NodeSimulationItem *simulation_item_add_from_socket(NodeGeometrySimulationOutput &storage,
                                                     const bNodeSocket &socket);
+void copy_simulation_state_to_output_param(lf::Params &params,
+                                           int index,
+                                           eNodeSocketDatatype socket_type,
+                                           const bke::sim::SimulationStateItem &state_item);
 
 }  // namespace blender::nodes

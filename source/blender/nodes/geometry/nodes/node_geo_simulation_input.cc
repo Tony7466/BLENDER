@@ -14,9 +14,10 @@
 
 namespace blender::nodes {
 
-static void copy_initial_simulation_state(lf::Params &params,
-                                          const int index,
-                                          const eNodeSocketDatatype socket_type)
+/** Copy a node input parameter to the matching output parameter. */
+static void copy_input_to_output_param(lf::Params &params,
+                                       const int index,
+                                       const eNodeSocketDatatype socket_type)
 {
   const CPPType &cpptype = get_simulation_item_cpp_type(socket_type);
 
@@ -26,31 +27,6 @@ static void copy_initial_simulation_state(lf::Params &params,
     void *dst = params.get_output_data_ptr(index + 1);
     cpptype.move_construct(src, dst);
     params.output_set(index + 1);
-  }
-}
-
-static void copy_next_simulation_state(lf::Params &params,
-                                       const int index,
-                                       const eNodeSocketDatatype socket_type,
-                                       const bke::sim::SimulationStateItem &state_item)
-{
-  const CPPType &cpptype = get_simulation_item_cpp_type(socket_type);
-
-  /* TODO */
-  if (socket_type == SOCK_GEOMETRY) {
-    const bke::sim::GeometrySimulationStateItem &geo_state_item =
-        static_cast<const bke::sim::GeometrySimulationStateItem &>(state_item);
-    const GeometrySet &src = geo_state_item.geometry();
-    /* First output parameter is "Delta Time", state item parameters start at index 1. */
-    params.set_output(index + 1, src);
-  }
-  else {
-    if (const void *src = cpptype.default_value()) {
-      /* First output parameter is "Delta Time", state item parameters start at index 1. */
-      void *dst = params.get_output_data_ptr(index + 1);
-      cpptype.copy_construct(src, dst);
-      params.output_set(index + 1);
-    }
   }
 }
 
@@ -107,7 +83,7 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
         if (params.output_was_set(i + 1)) {
           continue;
         }
-        copy_initial_simulation_state(
+        copy_input_to_output_param(
             params, i, eNodeSocketDatatype(simulation_items_[i].socket_type));
       }
     }
@@ -119,8 +95,9 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
         }
         const bke::sim::SimulationStateItem *state_item = prev_zone_state->items[i].get();
         if (state_item != nullptr) {
-          copy_next_simulation_state(
-              params, i, eNodeSocketDatatype(simulation_items_[i].socket_type), *state_item);
+          /* First output parameter is "Delta Time", state item parameters start at index 1. */
+          copy_simulation_state_to_output_param(
+              params, i + 1, eNodeSocketDatatype(simulation_items_[i].socket_type), *state_item);
         }
       }
     }
