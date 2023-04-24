@@ -252,7 +252,7 @@ typedef struct GreasePencilLayer {
    */
   float tint_color[4];
   /**
-   * Layer transfrom.
+   * Layer transform.
    * \note rotation is in euler format.
    */
   float location[3], rotation[3], scale[3];
