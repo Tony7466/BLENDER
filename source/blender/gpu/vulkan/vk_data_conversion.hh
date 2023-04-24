@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include "BLI_math_vector_types.hh"
+
 #include "gpu_texture_private.hh"
 
 namespace blender::gpu {
@@ -27,6 +29,12 @@ namespace blender::gpu {
 void convert_host_to_device(void *dst_buffer,
                             const void *src_buffer,
                             size_t buffer_size,
+                            eGPUDataFormat host_format,
+                            eGPUTextureFormat device_format);
+void convert_host_to_device(void *dst_buffer,
+                            const void *src_buffer,
+                            uint2 src_size,
+                            uint src_row_stride,
                             eGPUDataFormat host_format,
                             eGPUTextureFormat device_format);
 

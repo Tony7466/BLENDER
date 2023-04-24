@@ -16,6 +16,8 @@ class VKStateManager : public StateManager {
   /* Dummy sampler for now.*/
   VKSampler sampler_;
 
+  uint texture_unpack_row_length_ = 0;
+
  public:
   VKStateManager(VKContext &context);
 
@@ -33,5 +35,6 @@ class VKStateManager : public StateManager {
   void image_unbind_all() override;
 
   void texture_unpack_row_length_set(uint len) override;
+  uint texture_unpack_row_length_get() const;
 };
 }  // namespace blender::gpu

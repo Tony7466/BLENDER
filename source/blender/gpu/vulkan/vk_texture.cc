@@ -13,6 +13,7 @@
 #include "vk_memory.hh"
 #include "vk_shader.hh"
 #include "vk_shader_interface.hh"
+#include "vk_state_manager.hh"
 
 #include "BLI_math_vector.hh"
 
@@ -31,7 +32,10 @@ VKTexture::~VKTexture()
 
 void VKTexture::generate_mipmap() {}
 
-void VKTexture::copy_to(Texture * /*tex*/) {}
+void VKTexture::copy_to(Texture * /*tex*/)
+{
+  BLI_assert_unreachable();
+}
 
 void VKTexture::clear(eGPUDataFormat format, const void *data)
 {
@@ -113,7 +117,20 @@ void VKTexture::update_sub(
 
   staging_buffer.create(
       context, device_memory_size, GPU_USAGE_DEVICE_ONLY, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-  convert_host_to_device(staging_buffer.mapped_memory_get(), data, sample_len, format, format_);
+
+  uint buffer_row_length = context.state_manager_get().texture_unpack_row_length_get();
+  if (buffer_row_length) {
+    /* Use custom row length #GPU_texture_unpack_row_length */
+    convert_host_to_device(staging_buffer.mapped_memory_get(),
+                           data,
+                           uint2(extent),
+                           buffer_row_length,
+                           format,
+                           format_);
+  }
+  else {
+    convert_host_to_device(staging_buffer.mapped_memory_get(), data, sample_len, format, format_);
+  }
 
   VkBufferImageCopy region = {};
   region.imageExtent.width = extent.x;
