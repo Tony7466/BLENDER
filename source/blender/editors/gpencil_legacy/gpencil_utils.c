@@ -2930,7 +2930,14 @@ static void gpencil_sbuffer_vertex_color_random(
     }
 
     rgb_to_hsv_v(tpt->vert_color, hsv);
-    add_v3_v3(hsv, factor_value);
+    /* Hue and Saturation can just be added; but Value should be multiplied
+     * because we want the ratio of the origin to modified value to not depend on the origin Value.
+     * Exp is used because we need a function that is positive
+     * and has the property that 'f(-x) = 1/f(x)' */
+    hsv[0] += factor_value[0];
+    hsv[1] += factor_value[1];
+    hsv[2] *= exp(factor_value[2]);
+
     /* For Hue need to cover all range, but for Saturation and Value
      * is not logic because the effect is too hard, so the value is just clamped. */
     if (hsv[0] < 0.0f) {
