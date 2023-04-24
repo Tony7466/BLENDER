@@ -9940,7 +9940,7 @@ static void rna_def_simulation_state_item(BlenderRNA *brna)
   PropertyRNA *prop;
 
   StructRNA *srna = RNA_def_struct(brna, "SimulationStateItem", NULL);
-  RNA_def_struct_ui_text(srna, "Simulation Sate Item", "");
+  RNA_def_struct_ui_text(srna, "Simulation Item", "");
   RNA_def_struct_sdna(srna, "NodeSimulationItem");
 
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
@@ -9970,31 +9970,31 @@ static void rna_def_geo_simulation_output_items(BlenderRNA *brna)
 
   srna = RNA_def_struct(brna, "NodeGeometrySimulationOutputItems", NULL);
   RNA_def_struct_sdna(srna, "bNode");
-  RNA_def_struct_ui_text(srna, "State Items", "Collection of simulation state items");
+  RNA_def_struct_ui_text(srna, "Items", "Collection of simulation items");
 
   func = RNA_def_function(srna, "new", "rna_NodeGeometrySimulationOutput_items_new");
-  RNA_def_function_ui_description(func, "Add a state item to this simulation zone");
+  RNA_def_function_ui_description(func, "Add a item to this simulation zone");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
   parm = RNA_def_enum(func, "socket_type", node_socket_data_type_items, SOCK_GEOMETRY, "Socket Type", "Socket type of the item");
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
   parm = RNA_def_string(func, "name", NULL, MAX_NAME, "Name", "");
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
   /* return value */
-  parm = RNA_def_pointer(func, "item", "SimulationStateItem", "Item", "New state item");
+  parm = RNA_def_pointer(func, "item", "SimulationStateItem", "Item", "New item");
   RNA_def_function_return(func, parm);
 
   func = RNA_def_function(srna, "remove", "rna_NodeGeometrySimulationOutput_items_remove");
-  RNA_def_function_ui_description(func, "Remove a state item from this simulation zone");
+  RNA_def_function_ui_description(func, "Remove an item from this simulation zone");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
   parm = RNA_def_pointer(func, "item", "SimulationStateItem", "Item", "The item to remove");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 
   func = RNA_def_function(srna, "clear", "rna_NodeGeometrySimulationOutput_items_clear");
-  RNA_def_function_ui_description(func, "Remove all state items from this simulation zone");
+  RNA_def_function_ui_description(func, "Remove all items from this simulation zone");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
 
   func = RNA_def_function(srna, "move", "rna_NodeGeometrySimulationOutput_items_move");
-  RNA_def_function_ui_description(func, "Move a state item to another position");
+  RNA_def_function_ui_description(func, "Move an item to another position");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
   parm = RNA_def_int(
       func, "from_index", -1, 0, INT_MAX, "From Index", "Index of the item to move", 0, 10000);
