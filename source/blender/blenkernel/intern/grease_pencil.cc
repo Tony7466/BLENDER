@@ -269,6 +269,8 @@ TreeNode::TreeNode(const TreeNode &other)
   if (other.name) {
     this->name = BLI_strdup(other.name);
   }
+  this->flag = other.flag;
+  copy_v3_v3_uchar(this->color, other.color);
 }
 
 TreeNode::~TreeNode()
@@ -313,6 +315,7 @@ LayerMask::LayerMask(const LayerMask &other) : LayerMask()
   if (other.layer_name) {
     this->layer_name = BLI_strdup(other.layer_name);
   }
+  this->flag = other.flag;
 }
 
 LayerMask::~LayerMask()
@@ -338,6 +341,10 @@ Layer::Layer(StringRefNull name)
 Layer::Layer(const Layer &other)
     : TreeNode::TreeNode(other), frames_(other.frames_), masks_(other.masks_)
 {
+  this->parent_type = other.parent_type;
+  this->blend_mode = other.blend_mode;
+  this->thickness_adjustment = other.thickness_adjustment;
+  this->parent = other.parent;
   this->parsubstr = nullptr;
   this->viewlayer_name = nullptr;
   if (other.parsubstr != nullptr) {
@@ -346,6 +353,11 @@ Layer::Layer(const Layer &other)
   if (other.viewlayer_name != nullptr) {
     this->viewlayer_name = BLI_strdup(other.viewlayer_name);
   }
+  this->opacity = other.opacity;
+  copy_v4_v4(this->tint_color, other.tint_color);
+  copy_v3_v3(this->location, other.location);
+  copy_v3_v3(this->rotation, other.rotation);
+  copy_v3_v3(this->scale, other.scale);
 }
 
 Layer::~Layer()
