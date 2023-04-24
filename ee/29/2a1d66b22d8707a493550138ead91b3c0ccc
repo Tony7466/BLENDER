@@ -1,1 +1,2 @@
 Referenced by pull request #107285, Fix #107261: bpy.types.Text (region_as_string/region_from_string) crash
+Referenced by commit e4afa06dab143adca4fa6a955ccabb9a4d9729d2, Fix #107261: bpy.types.Text (region_as_string/region_from_string) crash
