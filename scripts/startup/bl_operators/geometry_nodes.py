@@ -256,7 +256,7 @@ class SimulationZoneOperator():
     @classmethod
     def poll(cls, context):
         space = context.space_data
-        # Needs active node editor and a tree
+        # Needs active node editor and a tree.
         if not space or space.type != 'NODE_EDITOR' or not space.edit_tree or space.edit_tree.library:
             return False
         node = context.active_node
@@ -279,9 +279,9 @@ class SimulationZoneItemAddOperator(SimulationZoneOperator, Operator):
         node = self.get_output_node(context)
         state_items = node.state_items
 
-        # Remember index to move the item
+        # Remember index to move the item.
         dst_index = min(node.active_index + 1, len(state_items))
-        # Empty name so it is based on the type only
+        # Empty name so it is based on the type only.
         state_items.new(self.default_socket_type, "")
         state_items.move(len(state_items) - 1, dst_index)
         node.active_index = dst_index
