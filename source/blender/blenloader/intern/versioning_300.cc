@@ -4306,6 +4306,9 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
       }
     }
 
+    /* Rename Grease Pencil weight draw brush. */
+    do_versions_rename_id(bmain, ID_BR, "Draw Weight", "Weight Draw");
+
     /* Identifier generation for simulation node sockets changed.
      * Update identifiers so links are not removed during validation. */
     if (!DNA_struct_elem_find(fd->filesdna, "NodeSimulationItem", "int", "identifier")) {
