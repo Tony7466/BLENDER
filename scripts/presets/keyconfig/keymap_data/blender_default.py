@@ -213,8 +213,7 @@ class Params:
         self.tool_tweak_event = {"type": self.tool_mouse, "value": 'CLICK_DRAG'}
         self.tool_maybe_tweak_event = {"type": self.tool_mouse, "value": self.tool_maybe_tweak_value}
 
-        if experimental:
-            self.experimental = experimental
+        self.experimental = experimental
 
 
 # ------------------------------------------------------------------------------
@@ -3817,7 +3816,7 @@ def km_grease_pencil_stroke_paint_draw_brush(params):
     )
 
     # Draw
-    if params.experimental.use_grease_pencil_version3:
+    if params.experimental and params.experimental.use_grease_pencil_version3:
         items.extend([
         ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS'},
          {"properties": [("mode", 'NORMAL')]}),
