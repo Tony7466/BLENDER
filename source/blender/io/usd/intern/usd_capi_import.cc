@@ -205,7 +205,7 @@ static void import_startjob(void *customdata, bool *stop, bool *do_update, float
   std::string prim_path_mask(data->params.prim_path_mask);
   pxr::UsdStagePopulationMask pop_mask;
   if (!prim_path_mask.empty()) {
-    const std::vector<std::string> mask_tokens = pxr::TfStringTokenize(prim_path_mask, " ,;");
+    const std::vector<std::string> mask_tokens = pxr::TfStringTokenize(prim_path_mask, ",;");
     for (const std::string &tok : mask_tokens) {
       pxr::SdfPath prim_path(tok);
       if (!prim_path.IsEmpty()) {
