@@ -318,7 +318,7 @@ class RENDER_PT_eevee_bloom(RenderButtonsPanel, Panel):
 class RENDER_PT_eevee_volumetric(RenderButtonsPanel, Panel):
     bl_label = "Volumetrics"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE'}
 
     @classmethod
     def poll(cls, context):
@@ -344,7 +344,7 @@ class RENDER_PT_eevee_volumetric(RenderButtonsPanel, Panel):
 class RENDER_PT_eevee_volumetric_lighting(RenderButtonsPanel, Panel):
     bl_label = "Volumetric Lighting"
     bl_parent_id = "RENDER_PT_eevee_volumetric"
-    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE'}
 
     def draw_header(self, context):
         scene = context.scene
@@ -365,7 +365,7 @@ class RENDER_PT_eevee_volumetric_lighting(RenderButtonsPanel, Panel):
 class RENDER_PT_eevee_volumetric_shadows(RenderButtonsPanel, Panel):
     bl_label = "Volumetric Shadows"
     bl_parent_id = "RENDER_PT_eevee_volumetric"
-    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE'}
 
     def draw_header(self, context):
         scene = context.scene
@@ -381,6 +381,53 @@ class RENDER_PT_eevee_volumetric_shadows(RenderButtonsPanel, Panel):
 
         layout.active = props.use_volumetric_shadows
         layout.prop(props, "volumetric_shadow_samples", text="Samples")
+
+
+class RENDER_PT_eevee_next_volumetric(RenderButtonsPanel, Panel):
+    bl_label = "Volumetrics"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
+
+    @classmethod
+    def poll(cls, context):
+        return (context.engine in cls.COMPAT_ENGINES)
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        scene = context.scene
+        props = scene.eevee
+
+        col = layout.column(align=True)
+        col.prop(props, "volumetric_start")
+        col.prop(props, "volumetric_end")
+
+        col = layout.column()
+        col.prop(props, "volumetric_tile_size")
+        col.prop(props, "volumetric_samples")
+        col.prop(props, "volumetric_sample_distribution", text="Distribution")
+
+
+class RENDER_PT_eevee_next_volumetric_lighting(RenderButtonsPanel, Panel):
+    bl_label = "Volumetric Lighting"
+    bl_parent_id = "RENDER_PT_eevee_next_volumetric"
+    COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
+
+    def draw_header(self, context):
+        scene = context.scene
+        props = scene.eevee
+        self.layout.prop(props, "use_volumetric_lights", text="")
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        scene = context.scene
+        props = scene.eevee
+
+        layout.active = props.use_volumetric_lights
+        layout.prop(props, "volumetric_light_clamp", text="Light Clamping")
 
 
 class RENDER_PT_eevee_subsurface_scattering(RenderButtonsPanel, Panel):
@@ -899,6 +946,8 @@ classes = (
     RENDER_PT_eevee_volumetric,
     RENDER_PT_eevee_volumetric_lighting,
     RENDER_PT_eevee_volumetric_shadows,
+    RENDER_PT_eevee_next_volumetric,
+    RENDER_PT_eevee_next_volumetric_lighting,
     RENDER_PT_eevee_performance,
     RENDER_PT_eevee_hair,
     RENDER_PT_eevee_shadows,
