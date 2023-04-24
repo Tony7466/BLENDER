@@ -129,12 +129,14 @@ Closure closure_eval(ClosureTransparency transparency)
 
 Closure closure_eval(ClosureVolumeScatter volume_scatter)
 {
+  /* TODO: Combine instead of selecting. */
   SELECT_CLOSURE(g_volume_scatter_data, g_volume_scatter_rand, volume_scatter);
   return Closure(0);
 }
 
 Closure closure_eval(ClosureVolumeAbsorption volume_absorption)
 {
+  /* TODO: Combine instead of selecting. */
   SELECT_CLOSURE(g_volume_absorption_data, g_volume_absorption_rand, volume_absorption);
   return Closure(0);
 }
