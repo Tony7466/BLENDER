@@ -2768,8 +2768,16 @@ static const EnumPropertyItem convert_target_items[] = {
     {OB_GPENCIL_LEGACY,
      "GPENCIL",
      ICON_OUTLINER_OB_GREASEPENCIL,
+#ifdef WITH_GREASE_PENCIL_V3
      "Grease Pencil (legacy)",
+#else
+     "Grease Pencil",
+#endif
+#ifdef WITH_GREASE_PENCIL_V3
      "Grease Pencil (legacy) from Curve or Mesh objects"},
+#else
+     "Grease Pencil from Curve or Mesh objects"},
+#endif
 #ifdef WITH_POINT_CLOUD
     {OB_POINTCLOUD,
      "POINTCLOUD",
@@ -2778,11 +2786,13 @@ static const EnumPropertyItem convert_target_items[] = {
      "Point Cloud from Mesh objects"},
 #endif
     {OB_CURVES, "CURVES", ICON_OUTLINER_OB_CURVES, "Curves", "Curves from evaluated curve data"},
+#ifdef WITH_GREASE_PENCIL_V3
     {OB_GREASE_PENCIL,
      "GREASEPENCIL",
      ICON_OUTLINER_OB_GREASEPENCIL,
      "Grease Pencil",
      "Grease Pencil from Grease Pencil (legacy)"},
+#endif
     {0, nullptr, 0, nullptr, nullptr},
 };
 
