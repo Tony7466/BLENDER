@@ -35,7 +35,8 @@ bool NOD_geometry_simulation_input_pair_with_output(const struct bNodeTree *node
 
 bool NOD_geometry_simulation_output_item_socket_type_supported(eNodeSocketDatatype socket_type);
 
-/** Set a unique item name.
+/**
+ * Set a unique item name.
  * \return True if the unique name differs from the original name.
  */
 bool NOD_geometry_simulation_output_item_set_unique_name(struct NodeGeometrySimulationOutput *sim,
@@ -43,7 +44,9 @@ bool NOD_geometry_simulation_output_item_set_unique_name(struct NodeGeometrySimu
                                                          const char *name,
                                                          const char *defname);
 
-/** Find the node owning this simulation state item. */
+/**
+ * Find the node owning this simulation state item.
+ */
 bNode *NOD_geometry_simulation_output_find_node_by_item(struct bNodeTree *ntree,
                                                         const struct NodeSimulationItem *item);
 
