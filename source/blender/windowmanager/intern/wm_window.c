@@ -2619,8 +2619,6 @@ void *WM_opengl_context_create(void)
   BLI_assert(GPU_framebuffer_active_get() == GPU_framebuffer_back_get());
 
   GHOST_GLSettings glSettings = {0};
-  /* TODO(jbakker): This used to always construct an opengl context, and could wrap it into a
-   * VK/MTLContext. This needs to be solved and tested. */
   const eGPUBackendType gpu_backend = GPU_backend_type_selection_get();
   glSettings.context_type = wm_ghost_drawing_context_type(gpu_backend);
   if (G.debug & G_DEBUG_GPU) {
