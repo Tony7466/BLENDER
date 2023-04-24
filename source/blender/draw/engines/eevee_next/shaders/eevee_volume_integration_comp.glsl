@@ -25,14 +25,17 @@ void main()
   vec3 ndc_cell = volume_to_ndc(vec3(uvs, 1e-5));
   vec3 view_cell = get_view_space_from_depth(ndc_cell.xy, ndc_cell.z);
 
-  /* Ortho */
-  float prev_ray_len = view_cell.z;
-  float orig_ray_len = 1.0;
+  float prev_ray_len;
+  float orig_ray_len;
 
-  /* Persp */
-  if (ProjectionMatrix[3][3] == 0.0) {
+  bool is_persp = ProjectionMatrix[3][3] == 0.0;
+  if (is_persp) {
     prev_ray_len = length(view_cell);
     orig_ray_len = prev_ray_len / view_cell.z;
+  }
+  else {
+    float prev_ray_len = view_cell.z;
+    float orig_ray_len = 1.0;
   }
 
   for (int i = 0; i <= tex_size.z; i++) {
@@ -48,19 +51,19 @@ void main()
      * froxel_transmittance evaluates to 1.0 leading to froxel_scattering = 0.0. (See #65771) */
     extinction = max(vec3(1e-7) * step(1e-5, froxel_scattering), extinction);
 
-    /* Evaluate Scattering */
+    /* Evaluate Scattering. */
     float step_len = abs(ray_len - prev_ray_len);
     prev_ray_len = ray_len;
     vec3 froxel_transmittance = exp(-extinction * step_len);
 
-    /* integrate along the current step segment */
-    /* NOTE: Original calculation carries precision issues when compiling for AMD GPUs
+    /* Integrate along the current step segment. */
+    /** NOTE: Original calculation carries precision issues when compiling for AMD GPUs
      * and running Metal. This version of the equation retains precision well for all
      * macOS HW configurations. */
     froxel_scattering = (froxel_scattering * (1.0f - froxel_transmittance)) /
                         max(vec3(1e-8), extinction);
 
-    /* accumulate and also take into account the transmittance from previous steps */
+    /* Accumulate and also take into account the transmittance from previous steps. */
     scattering += transmittance * froxel_scattering;
     transmittance *= froxel_transmittance;
 

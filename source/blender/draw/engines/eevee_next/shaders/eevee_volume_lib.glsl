@@ -12,12 +12,13 @@ float volume_z_to_view_z(float z)
   float far = volumes_buf.depth_far;
   float distribution = volumes_buf.depth_distribution;
 
-  if (ProjectionMatrix[3][3] == 0.0) {
-    /* Exponential distribution */
+  bool is_persp = ProjectionMatrix[3][3] == 0.0;
+  if (is_persp) {
+    /* Exponential distribution. */
     return (exp2(z / distribution) - near) / far;
   }
   else {
-    /* Linear distribution */
+    /* Linear distribution. */
     return mix(near, far, z);
   }
 }
@@ -28,12 +29,13 @@ float view_z_to_volume_z(float depth)
   float far = volumes_buf.depth_far;
   float distribution = volumes_buf.depth_distribution;
 
-  if (ProjectionMatrix[3][3] == 0.0) {
-    /* Exponential distribution */
+  bool is_persp = ProjectionMatrix[3][3] == 0.0;
+  if (is_persp) {
+    /* Exponential distribution. */
     return distribution * log2(depth * far + near);
   }
   else {
-    /* Linear distribution */
+    /* Linear distribution. */
     return (depth - near) * distribution;
   }
 }
@@ -63,7 +65,7 @@ float phase_function_isotropic()
 
 float phase_function(vec3 v, vec3 l, float g)
 {
-  /* Henyey-Greenstein */
+  /* Henyey-Greenstein. */
   float cos_theta = dot(v, l);
   g = clamp(g, -1.0 + 1e-3, 1.0 - 1e-3);
   float sqr_g = g * g;
@@ -167,7 +169,7 @@ vec3 light_volume_shadow(LightData ld, vec3 ray_wpos, vec4 l_vector, sampler3D v
     }
   }
 
-  /* Heterogeneous volume shadows */
+  /* Heterogeneous volume shadows. */
   float dd = l_vector.w / volumes_buf.shadow_steps;
   vec3 L = l_vector.xyz / volumes_buf.shadow_steps;
 

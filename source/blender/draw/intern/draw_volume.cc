@@ -364,7 +364,7 @@ bool drw_volume_object_mesh_init(PassType &ps,
   volume_infos.temperature_mul = 1.0f;
   volume_infos.temperature_bias = 0.0f;
 
-  /* Smoke Simulation */
+  /* Smoke Simulation. */
   if ((md = BKE_modifiers_findby_type(ob, eModifierType_Fluid)) &&
       BKE_modifier_is_enabled(scene, md, eModifierMode_Realtime) &&
       ((FluidModifierData *)md)->domain != nullptr) {

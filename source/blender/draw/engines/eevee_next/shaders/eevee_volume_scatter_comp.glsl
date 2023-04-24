@@ -52,7 +52,7 @@ void main()
     return;
   }
 
-  /* Emission */
+  /* Emission. */
   vec3 scattering = texelFetch(emission_tx, froxel, 0).rgb;
   vec3 transmittance = texelFetch(extinction_tx, froxel, 0).rgb;
   vec3 s_scattering = texelFetch(scattering_tx, froxel, 0).rgb;
@@ -65,7 +65,6 @@ void main()
   vec2 phase = texelFetch(phase_tx, froxel, 0).rg;
   float s_anisotropy = phase.x / max(1.0, phase.y);
 
-  /* Environment : Average color. */
   scattering += irradiance_volumetric(P) * s_scattering * phase_function_isotropic();
 
 #ifdef VOLUME_LIGHTING
@@ -85,7 +84,7 @@ void main()
 
 #endif
 
-  /* Catch NaNs */
+  /* Catch NaNs. */
   if (any(isnan(scattering)) || any(isnan(transmittance))) {
     scattering = vec3(0.0);
     transmittance = vec3(1.0);
