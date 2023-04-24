@@ -262,11 +262,10 @@ bool view3d_orbit_calc_center(bContext *C, float r_dyn_ofs[3])
     EditFont &edit_font = *cu->editfont;
     EditFontCharExtra &cursor = edit_font.cursor;
 
-    float geom[2][2];
-    angle_to_mat2(geom, cursor.rot);
-    zero_v3(lastofs);
-    lastofs[1] = cursor.size[1] / 2.0f;
-    mul_m2_v2(geom, lastofs);
+    float centre[3];
+    zero_v3(centre);
+    centre[1] = cursor.size[1] / 2.0f;
+    rotate_v2_v2fl(lastofs, centre, cursor.rot);
     add_v2_v2(lastofs, cursor.loc);
 
     mul_m4_v3(ob_act_eval->object_to_world, lastofs);

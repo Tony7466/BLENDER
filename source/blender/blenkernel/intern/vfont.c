@@ -1455,9 +1455,7 @@ static bool vfont_to_curve(Object *ob,
   if (selboxes) {
     ct = chartransdata;
     ct += selstart;
-    float geom[2][2];
     for (i = 0; i < ef->selboxes_len; i++, ct++) {
-      copy_v2_v2(selboxes[i].loc, &ct->xof);
 
       selboxes[i].size[1] = font_size;
 
@@ -1466,9 +1464,8 @@ static bool vfont_to_curve(Object *ob,
       mul_v2_fl(centre_offset, 1.0f / font_size);
       mul_v2_fl(centre_offset, 0.5f);
       centre_offset[1] -= descender_downship;
-      angle_to_mat2(geom, selboxes[i].rot);
-      mul_m2_v2(geom, centre_offset);
-      add_v2_v2(selboxes[i].loc, centre_offset);
+      rotate_v2_v2fl(selboxes[i].loc, centre_offset, selboxes[i].rot);
+      add_v2_v2(selboxes[i].loc, &ct->xof);
       mul_v2_fl(selboxes[i].loc, font_size);
     }
   }
@@ -1580,10 +1577,9 @@ static bool vfont_to_curve(Object *ob,
       float prev_offset[2];
       zero_v2(prev_offset);
       prev_offset[0] = char_width(cu, che, info);
-      float geom[2][2];
-      angle_to_mat2(geom, prev_char_rot);
-      mul_m2_v2(geom, prev_offset);
-      add_v2_v2(prev_char_loc, prev_offset);
+      float tmp_rotated[2];
+      rotate_v2_v2fl(tmp_rotated, prev_offset, prev_char_rot);
+      add_v2_v2(prev_char_loc, tmp_rotated);
     }
 
     float cursor_loc[2];
@@ -1607,9 +1603,7 @@ static bool vfont_to_curve(Object *ob,
     cursor_rot = slerp_r_r(prev_char_rot, curent_char_rot, align_factor);
     interp_v2_v2v2(cursor_loc, prev_char_loc, current_char_loc, align_factor);
 
-    float geom[2][2];
-    angle_to_mat2(geom, cursor_rot);
-    mul_v2_m2v2(ef->cursor.loc, geom, cursor_centre);
+    rotate_v2_v2fl(ef->cursor.loc, cursor_centre, cursor_rot);
     add_v2_v2(ef->cursor.loc, cursor_loc);
     mul_v2_fl(ef->cursor.loc, font_size);
 
