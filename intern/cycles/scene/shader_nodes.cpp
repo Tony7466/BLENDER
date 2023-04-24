@@ -1245,11 +1245,9 @@ void VoronoiTextureNode::compile(SVMCompiler &compiler)
                              lacunarity_stack_offset,
                              smoothness_stack_offset,
                              exponent_stack_offset),
-      compiler.encode_uchar4(randomness_stack_offset,
-                             distance_stack_offset,
-                             color_stack_offset,
-                             position_stack_offset),
-      compiler.encode_uchar4(w_out_stack_offset, radius_stack_offset, normalize));
+      compiler.encode_uchar4(
+          randomness_stack_offset, normalize, distance_stack_offset, color_stack_offset),
+      compiler.encode_uchar4(position_stack_offset, w_out_stack_offset, radius_stack_offset));
 
   compiler.add_node(
       __float_as_int(w), __float_as_int(scale), __float_as_int(detail), __float_as_int(roughness));
