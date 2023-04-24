@@ -1,5 +1,34 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
+/** \file
+ * \ingroup draw_engine
+ *
+ * Volumetric effects rendering using frostbite approach.
+ *
+ * The rendering is separated in 4 stages:
+ *
+ * - Material Parameters : we collect volume properties of
+ *   all participating media in the scene and store them in
+ *   a 3D texture aligned with the 3D frustum.
+ *   This is done in 2 passes, one that clear the texture
+ *   and/or evaluate the world volumes, and the 2nd one that
+ *   additively render object volumes.
+ *
+ * - Light Scattering : the volume properties then are sampled
+ *   and light scattering is evaluated for each froxel of the
+ *   volume texture. Temporal super-sampling (if enabled) occurs here.
+ *
+ * - Volume Integration : the scattered light and extinction is
+ *   integrated (accumulated) along the view-rays. The result is stored
+ *   for every froxel in another texture.
+ *
+ * - Full-screen Resolve : From the previous stage, we get two
+ *   3D textures that contains integrated scattered light and extinction
+ *   for "every" positions in the frustum. We only need to sample
+ *   them and blend the scene color with those factors. This also
+ *   work for alpha blended materials.
+ */
+
 #pragma once
 
 #include "eevee_shader_shared.hh"
@@ -16,39 +45,51 @@ class VolumeModule {
 
   VolumesDataBuf data_;
 
+  /* Material Parameters */
+  /** NOTE: The objects pass is in VolumePipeline (PipelineModule). */
+  PassSimple world_ps_ = {"Volumes.World"};
+  Framebuffer volumetric_fb_;
   Texture prop_scattering_tx_;
   Texture prop_extinction_tx_;
   Texture prop_emission_tx_;
   Texture prop_phase_tx_;
+
+  /* Light Scattering. */
+  PassSimple scatter_ps_ = {"Volumes.Scatter"};
+  Framebuffer scatter_fb_;
   Texture scatter_tx_;
   Texture extinction_tx_;
+
+  /* Volume Integration */
+  PassSimple integration_ps_ = {"Volumes.Integration"};
+  Framebuffer integration_fb_;
   Texture integrated_scatter_tx_;
   Texture integrated_transmit_tx_;
+
+  /* Full-screen Resolve */
+  PassSimple resolve_ps_ = {"Volumes.Resolve"};
+  Framebuffer resolve_fb_;
+  /* Used in the forward transparent pass (ForwardPipeline).
+   * The forward transparent pass must perform its own resolve step for correct composition between
+   * volumes and transparent surfaces. */
+  GPUTexture *transparent_pass_scatter_tx_;
+  GPUTexture *transparent_pass_transmit_tx_;
   Texture dummy_scatter_tx_;
   Texture dummy_transmit_tx_;
 
-  GPUTexture *transparent_pass_scatter_tx_;
-  GPUTexture *transparent_pass_transmit_tx_;
-
-  Framebuffer volumetric_fb_;
-  Framebuffer scatter_fb_;
-  Framebuffer integration_fb_;
-  Framebuffer resolve_fb_;
-
-  PassSimple world_ps_ = {"Volumes.World"};
-  PassSimple scatter_ps_ = {"Volumes.Scatter"};
-  PassSimple integration_ps_ = {"Volumes.Integration"};
-  PassSimple resolve_ps_ = {"Volumes.Resolve"};
-  PassSimple accum_ps_ = {"Volumes.Accum"};
-
+  /* Axis aligned bounding box in the volume grid.
+   * Used for frustum culling and volumes overlapping detection. */
   struct GridAABB {
     int3 min, max;
 
-    /* Returns true if visible */
+    /* Returns true if visible. */
     bool init(Object *ob, const Camera &camera, const VolumesDataBuf &data);
 
     bool overlaps(const GridAABB &aabb);
   };
+  /* Stores a vector of volume AABBs for each material pass,
+   * so we can detect overlapping volumes and place GPU barriers where needed
+   * (Only stores the AABBs for the volumes rendered since the last barrier). */
   Map<GPUShader *, Vector<GridAABB>> subpass_aabbs_;
 
  public:
@@ -56,6 +97,7 @@ class VolumeModule {
 
   ~VolumeModule(){};
 
+  /* Bind resources needed by external passes to perform their own resolve. */
   template<typename PassType> void bind_resources(PassType &ps)
   {
     ps.bind_ubo(VOLUMES_BUF_SLOT, data_);
@@ -63,6 +105,7 @@ class VolumeModule {
     ps.bind_texture(VOLUME_TRANSMITTANCE_TEX_SLOT, &transparent_pass_transmit_tx_);
   }
 
+  /* Bind the common resources needed by all volumetric passes. */
   template<typename PassType>
   void bind_volume_pass_resources(PassType &ps, bool is_material_pass = false)
   {
@@ -77,8 +120,6 @@ class VolumeModule {
     inst_.shadows.bind_resources(&ps);
   }
 
-  void set_jitter(uint current_sample);
-
   void init();
 
   void begin_sync();
@@ -90,5 +131,8 @@ class VolumeModule {
   void draw_compute(View &view);
 
   void draw_resolve(View &view);
+
+ private:
+  void set_jitter(uint current_sample);
 };
 }  // namespace blender::eevee

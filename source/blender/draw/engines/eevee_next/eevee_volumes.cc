@@ -4,29 +4,6 @@
  * \ingroup draw_engine
  *
  * Volumetric effects rendering using frostbite approach.
- *
- * The rendering is separated in 4 stages:
- *
- * - Material Parameters : we collect volume properties of
- *   all participating media in the scene and store them in
- *   a 3D texture aligned with the 3D frustum.
- *   This is done in 2 passes, one that clear the texture
- *   and/or evaluate the world volumes, and the 2nd one that
- *   additively render object volumes.
- *
- * - Light Scattering : the volume properties then are sampled
- *   and light scattering is evaluated for each cell of the
- *   volume texture. Temporal super-sampling (if enabled) occurs here.
- *
- * - Volume Integration : the scattered light and extinction is
- *   integrated (accumulated) along the view-rays. The result is stored
- *   for every cell in another texture.
- *
- * - Full-screen Resolve : From the previous stage, we get two
- *   3D textures that contains integrated scattered light and extinction
- *   for "every" positions in the frustum. We only need to sample
- *   them and blend the scene color with those factors. This also
- *   work for alpha blended materials.
  */
 
 #pragma once
@@ -228,7 +205,7 @@ void VolumeModule::begin_sync()
 
   data_.push_update();
 
-  /* World Volume Pass */
+  /* World Volume Pass. */
 
   world_ps_.init();
   world_ps_.state_set(DRW_STATE_WRITE_COLOR);
@@ -352,23 +329,15 @@ void VolumeModule::end_sync()
   }
 
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
-  /* Volume properties: We evaluate all volumetric objects
-   * and store their final properties into each froxel */
+
   prop_scattering_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
   prop_extinction_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
   prop_emission_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
   prop_phase_tx_.ensure_3d(GPU_RG16F, data_.tex_size, usage);
 
-  /* Volume scattering: We compute for each froxel the
-   * Scattered light towards the view. We also resolve temporal
-   * super sampling during this stage. */
   scatter_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
   extinction_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
 
-  /* Final integration: We compute for each froxel the
-   * amount of scattered light and extinction coef at this
-   * given depth. We use these textures as double buffer
-   * for the volumetric history. */
   integrated_scatter_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
   integrated_transmit_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
 
