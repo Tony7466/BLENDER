@@ -129,7 +129,6 @@ class USDExportTest(AbstractUSDTest):
         # Note that the scene file used here is shared with a different test.
         # Here we assume that it has a Principled BSDF material with
         # a texture connected to its Base Color input.
-        print(self.testdir)
         bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "usd_materials_export.blend"))
 
         export_path = self.tempdir / "opaque_material.usda"
