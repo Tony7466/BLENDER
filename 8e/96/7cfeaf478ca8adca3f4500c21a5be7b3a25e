@@ -1,1 +1,2 @@
 Referenced by commit 54072154c5b92f94f1c4786463e3fa74ea8072ac, Subdiv: Tag result mesh with no loose edges/verts
+Referenced by commit 3507431c3064eb29871a37affb6125391363d5f1, Subdiv: Optimize coarse position extraction with cache
