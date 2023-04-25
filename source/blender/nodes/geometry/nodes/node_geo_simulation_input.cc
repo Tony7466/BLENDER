@@ -8,9 +8,30 @@
 #include "UI_interface.h"
 #include "UI_resources.h"
 
+#include "NOD_geometry.h"
 #include "NOD_socket.h"
 
 #include "node_geometry_util.hh"
+
+namespace blender::nodes {
+
+/** Copy a node input parameter to the matching output parameter. */
+static void copy_input_to_output_param(lf::Params &params,
+                                       const int index,
+                                       const eNodeSocketDatatype socket_type)
+{
+  const CPPType &cpptype = get_simulation_item_cpp_type(socket_type);
+
+  void *src = params.try_get_input_data_ptr_or_request(index);
+  if (src != nullptr) {
+    /* First output parameter is "Delta Time", state item parameters start at index 1. */
+    void *dst = params.get_output_data_ptr(index + 1);
+    cpptype.move_construct(src, dst);
+    params.output_set(index + 1);
+  }
+}
+
+}  // namespace blender::nodes
 
 namespace blender::nodes::node_geo_simulation_input_cc {
 
@@ -23,6 +44,7 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
  public:
   LazyFunctionForSimulationInputNode(const bNodeTree &node_tree, const bNode &node)
   {
+    debug_name_ = "Simulation Input";
     output_node_id_ = node_storage(node).output_node_id;
     const bNode &output_node = *node_tree.node_by_id(output_node_id_);
     const NodeGeometrySimulationOutput &storage = *static_cast<NodeGeometrySimulationOutput *>(
@@ -41,7 +63,7 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
     GeoNodesLFUserData &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
     GeoNodesModifierData &modifier_data = *user_data.modifier_data;
 
-    if (modifier_data.current_simulation_state == nullptr) {
+    if (modifier_data.current_simulation_state_for_write == nullptr) {
       params.set_default_remaining_outputs();
       return;
     }
@@ -63,10 +85,8 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
         if (params.output_was_set(i + 1)) {
           continue;
         }
-        GeometrySet *geometry = params.try_get_input_data_ptr_or_request<GeometrySet>(i);
-        if (geometry != nullptr) {
-          params.set_output(i + 1, std::move(*geometry));
-        }
+        copy_input_to_output_param(
+            params, i, eNodeSocketDatatype(simulation_items_[i].socket_type));
       }
     }
     else {
@@ -75,10 +95,11 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
           params.set_output(i + 1, GeometrySet());
           continue;
         }
-        const bke::sim::SimulationStateItem *item = prev_zone_state->items[i].get();
-        if (auto *geometry_item = dynamic_cast<const bke::sim::GeometrySimulationStateItem *>(
-                item)) {
-          params.set_output(i + 1, geometry_item->geometry());
+        const bke::sim::SimulationStateItem *state_item = prev_zone_state->items[i].get();
+        if (state_item != nullptr) {
+          /* First output parameter is "Delta Time", state item parameters start at index 1. */
+          copy_simulation_state_to_output_param(
+              params, i + 1, eNodeSocketDatatype(simulation_items_[i].socket_type), *state_item);
         }
       }
       params.set_default_remaining_outputs();
@@ -122,33 +143,11 @@ static void node_declare_dynamic(const bNodeTree &node_tree,
   socket_declarations_for_simulation_items({storage.items, storage.items_num}, r_declaration);
 }
 
-static void node_init(bNodeTree *tree, bNode *node)
+static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeGeometrySimulationInput *data = MEM_cnew<NodeGeometrySimulationInput>(__func__);
-
-  VectorSet<int32_t> sim_output_ids;
-  Set<int32_t> sim_input_output_ids;
-  for (bNode *other_node : tree->all_nodes()) {
-    if (other_node->type == GEO_NODE_SIMULATION_INPUT && other_node != node &&
-        other_node->storage) {
-      const NodeGeometrySimulationInput &storage = node_storage(*other_node);
-      sim_input_output_ids.add_new(storage.output_node_id);
-    }
-    else if (other_node->type == GEO_NODE_SIMULATION_OUTPUT) {
-      sim_output_ids.add_new(other_node->identifier);
-    }
-  }
-
-  sim_output_ids.remove_if(
-      [&](const int32_t identifier) { return sim_input_output_ids.contains(identifier); });
-
-  if (sim_output_ids.size() == 1) {
-    data->output_node_id = sim_output_ids[0];
-  }
-  else {
-    data->output_node_id = 0;
-  }
-
+  /* Needs to be initialized for the node to work. */
+  data->output_node_id = 0;
   node->storage = data;
 }
 
@@ -164,10 +163,11 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
 
   if (link->tonode == node) {
     if (link->tosock->identifier == StringRef("__extend__")) {
-      if (const NodeSimulationItem *item = simulation_item_add_from_socket(storage,
-                                                                           *link->fromsock)) {
+      if (const NodeSimulationItem *item = NOD_geometry_simulation_output_add_item_from_socket(
+              &storage, link->fromnode, link->fromsock)) {
         update_node_declaration_and_sockets(*ntree, *node);
-        link->tosock = nodeFindSocket(node, SOCK_IN, item->name);
+        link->tosock = nodeFindSocket(
+            node, SOCK_IN, socket_identifier_for_simulation_item(*item).c_str());
       }
       else {
         return false;
@@ -177,10 +177,11 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
   else {
     BLI_assert(link->fromnode == node);
     if (link->fromsock->identifier == StringRef("__extend__")) {
-      if (const NodeSimulationItem *item = simulation_item_add_from_socket(storage,
-                                                                           *link->tosock)) {
+      if (const NodeSimulationItem *item = NOD_geometry_simulation_output_add_item_from_socket(
+              &storage, link->tonode, link->tosock)) {
         update_node_declaration_and_sockets(*ntree, *node);
-        link->fromsock = nodeFindSocket(node, SOCK_OUT, item->name);
+        link->fromsock = nodeFindSocket(
+            node, SOCK_OUT, socket_identifier_for_simulation_item(*item).c_str());
       }
       else {
         return false;
@@ -206,4 +207,39 @@ void register_node_type_geo_simulation_input()
                     node_free_standard_storage,
                     node_copy_standard_storage);
   nodeRegisterType(&ntype);
+}
+
+bNode *NOD_geometry_simulation_input_get_paired_output(bNodeTree *node_tree,
+                                                       const bNode *simulation_input_node)
+{
+  namespace file_ns = blender::nodes::node_geo_simulation_input_cc;
+
+  const NodeGeometrySimulationInput &data = file_ns::node_storage(*simulation_input_node);
+  return node_tree->node_by_id(data.output_node_id);
+}
+
+bool NOD_geometry_simulation_input_pair_with_output(const bNodeTree *node_tree,
+                                                    bNode *sim_input_node,
+                                                    const bNode *sim_output_node)
+{
+  namespace file_ns = blender::nodes::node_geo_simulation_input_cc;
+
+  BLI_assert(sim_input_node->type == GEO_NODE_SIMULATION_INPUT);
+  if (sim_output_node->type != GEO_NODE_SIMULATION_OUTPUT) {
+    return false;
+  }
+
+  /* Allow only one input paired to an output. */
+  for (const bNode *other_input_node : node_tree->nodes_by_type("GeometryNodeSimulationInput")) {
+    if (other_input_node != sim_input_node) {
+      const NodeGeometrySimulationInput &other_storage = file_ns::node_storage(*other_input_node);
+      if (other_storage.output_node_id == sim_output_node->identifier) {
+        return false;
+      }
+    }
+  }
+
+  NodeGeometrySimulationInput &storage = file_ns::node_storage(*sim_input_node);
+  storage.output_node_id = sim_output_node->identifier;
+  return true;
 }

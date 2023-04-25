@@ -918,7 +918,8 @@ void DepsgraphNodeBuilder::build_object_modifiers(Object *object)
           case eTimeSourceType::DEG_TIME_SOURCE_SCENE:
             /* Modifier changes invalidate the cache when using the scene clock. */
             if (modifier_node->flag & DEPSOP_FLAG_USER_MODIFIED) {
-              if (nmd->simulation_cache) {
+              if (nmd->simulation_cache &&
+                  nmd->simulation_cache->cache_state() == bke::sim::CacheState::Valid) {
                 nmd->simulation_cache->invalidate();
               }
             }

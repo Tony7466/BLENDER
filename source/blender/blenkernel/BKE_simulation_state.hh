@@ -5,8 +5,12 @@
 #include "BKE_geometry_set.hh"
 
 #include "BLI_map.hh"
+#include "BLI_sub_frame.hh"
 
 namespace blender::bke::sim {
+
+class BDataSharing;
+class ModifierSimulationCache;
 
 class SimulationStateItem {
  public:
@@ -18,9 +22,7 @@ class GeometrySimulationStateItem : public SimulationStateItem {
   GeometrySet geometry_;
 
  public:
-  GeometrySimulationStateItem(GeometrySet geometry) : geometry_(std::move(geometry))
-  {
-  }
+  GeometrySimulationStateItem(GeometrySet geometry) : geometry_(std::move(geometry)) {}
 
   const GeometrySet &geometry() const
   {
@@ -49,10 +51,15 @@ struct SimulationZoneID {
 
 class ModifierSimulationState {
  private:
-  mutable std::mutex mutex_;
-  Map<SimulationZoneID, std::unique_ptr<SimulationZoneState>> zone_states_;
+  mutable bool bake_loaded_;
 
  public:
+  ModifierSimulationCache *owner_;
+  mutable std::mutex mutex_;
+  Map<SimulationZoneID, std::unique_ptr<SimulationZoneState>> zone_states_;
+  std::optional<std::string> meta_path_;
+  std::optional<std::string> bdata_dir_;
+
   const SimulationZoneState *get_zone_state(const SimulationZoneID &zone_id) const
   {
     std::lock_guard lock{mutex_};
@@ -68,72 +75,141 @@ class ModifierSimulationState {
     return *zone_states_.lookup_or_add_cb(
         zone_id, []() { return std::make_unique<SimulationZoneState>(); });
   }
+
+  void ensure_bake_loaded() const;
+};
+
+struct ModifierSimulationStateAtFrame {
+  SubFrame frame;
+  ModifierSimulationState state;
+};
+
+enum class CacheState {
+  Valid,
+  Invalid,
+  Baked,
+};
+
+struct StatesAroundFrame {
+  const ModifierSimulationStateAtFrame *prev = nullptr;
+  const ModifierSimulationStateAtFrame *current = nullptr;
+  const ModifierSimulationStateAtFrame *next = nullptr;
 };
 
 class ModifierSimulationCache {
  private:
-  Map<float, std::unique_ptr<ModifierSimulationState>> states_by_time_;
-  bool invalid_ = false;
+  Vector<std::unique_ptr<ModifierSimulationStateAtFrame>> states_at_frames_;
+  std::unique_ptr<BDataSharing> bdata_sharing_;
+
+  friend ModifierSimulationState;
 
  public:
-  bool has_state_at_time(const float time) const
+  CacheState cache_state_ = CacheState::Valid;
+  bool failed_finding_bake_ = false;
+
+  void try_discover_bake(StringRefNull meta_dir, StringRefNull bdata_dir);
+
+  bool has_state_at_frame(const SubFrame &frame) const
   {
-    return states_by_time_.contains(time);
+    for (const auto &item : states_at_frames_) {
+      if (item->frame == frame) {
+        return true;
+      }
+    }
+    return false;
   }
 
-  const ModifierSimulationState *get_state_at_time(const float time) const
+  bool has_states() const
   {
-    if (auto *ptr = states_by_time_.lookup_ptr(time)) {
-      return ptr->get();
+    return !states_at_frames_.is_empty();
+  }
+
+  const ModifierSimulationState *get_state_at_exact_frame(const SubFrame &frame) const
+  {
+    for (const auto &item : states_at_frames_) {
+      if (item->frame == frame) {
+        return &item->state;
+      }
     }
     return nullptr;
   }
 
-  ModifierSimulationState &get_state_for_write(const float time)
+  ModifierSimulationState &get_state_at_frame_for_write(const SubFrame &frame)
   {
-    return *states_by_time_.lookup_or_add_cb(
-        time, []() { return std::make_unique<ModifierSimulationState>(); });
-  }
-
-  std::pair<float, const ModifierSimulationState *> try_get_last_state_before(
-      const float time) const
-  {
-    float last_time = -FLT_MAX;
-    const ModifierSimulationState *last_state = nullptr;
-    for (const auto &item : states_by_time_.items()) {
-      if (item.key < time && item.key > last_time) {
-        last_time = item.key;
-        last_state = item.value.get();
+    for (const auto &item : states_at_frames_) {
+      if (item->frame == frame) {
+        return item->state;
       }
     }
-    return {last_time, last_state};
+    states_at_frames_.append(std::make_unique<ModifierSimulationStateAtFrame>());
+    states_at_frames_.last()->frame = frame;
+    states_at_frames_.last()->state.owner_ = this;
+    return states_at_frames_.last()->state;
+  }
+
+  StatesAroundFrame get_states_around_frame(const SubFrame &frame) const
+  {
+    StatesAroundFrame states_around_frame;
+    for (const auto &item : states_at_frames_) {
+      if (item->frame < frame) {
+        if (states_around_frame.prev == nullptr || item->frame > states_around_frame.prev->frame) {
+          states_around_frame.prev = item.get();
+        }
+      }
+      if (item->frame == frame) {
+        if (states_around_frame.current == nullptr) {
+          states_around_frame.current = item.get();
+        }
+      }
+      if (item->frame > frame) {
+        if (states_around_frame.next == nullptr || item->frame < states_around_frame.next->frame) {
+          states_around_frame.next = item.get();
+        }
+      }
+    }
+    return states_around_frame;
+  }
+
+  const ModifierSimulationStateAtFrame *get_last_state() const
+  {
+    if (states_at_frames_.is_empty()) {
+      return nullptr;
+    }
+
+    return states_at_frames_.last().get();
   }
 
   void invalidate()
   {
-    invalid_ = true;
+    cache_state_ = CacheState::Invalid;
   }
 
-  bool is_invalid() const
+  CacheState cache_state() const
   {
-    return invalid_;
+    return cache_state_;
   }
 
-  void reset()
-  {
-    states_by_time_.clear();
-    invalid_ = false;
-  }
+  void reset();
 
   void prune(int max_states)
   {
-    Vector<float> times(states_by_time_.keys().begin(), states_by_time_.keys().end());
-    std::sort(times.begin(), times.end());
-
-    for (const float key : times.as_span().drop_back(max_states)) {
-      states_by_time_.remove(key);
+    Vector<int> sorted_indices(states_at_frames_.size());
+    for (const int i : sorted_indices.index_range()) {
+      sorted_indices[i] = i;
     }
-    invalid_ = false;
+    std::sort(sorted_indices.begin(), sorted_indices.end(), [this](const int a, const int b) {
+      return states_at_frames_[a]->frame < states_at_frames_[b]->frame;
+    });
+
+    Vector<std::unique_ptr<ModifierSimulationStateAtFrame>> new_states(
+        std::min(max_states, int(sorted_indices.size())));
+    for (const int i : new_states.index_range()) {
+      states_at_frames_[sorted_indices[sorted_indices.size() - new_states.size() + i]].swap(
+          new_states[i]);
+    }
+    states_at_frames_ = std::move(new_states);
+
+    cache_state_ = CacheState::Valid;
   }
 };
 
