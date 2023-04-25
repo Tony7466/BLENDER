@@ -74,16 +74,16 @@ float volume_compute_voxel_size(const Depsgraph *depsgraph,
                                 const float exterior_band_width,
                                 const float4x4 &transform)
 {
-  const float simplify_factor = BKE_volume_simplify_factor(depsgraph);
-  if (simplify_factor <= 0.0f) {
+  const float volume_simplify = BKE_volume_simplify_factor(depsgraph);
+  if (volume_simplify == 0.0f) {
     return 0.0f;
   }
 
   if (res.mode == MESH_TO_VOLUME_RESOLUTION_MODE_VOXEL_SIZE) {
-    return res.settings.voxel_size / simplify_factor;
+    return res.settings.voxel_size / volume_simplify;
   }
   if (res.settings.voxel_amount <= 0) {
-    return 0.0f;
+    return 0;
   }
 
   float3 bb_min;
@@ -101,7 +101,7 @@ float volume_compute_voxel_size(const Depsgraph *depsgraph,
       (diagonal / std::max(1.0f, float(res.settings.voxel_amount) - 2.0f * exterior_band_width));
 
   /* Return the simplified voxel size. */
-  return voxel_size / simplify_factor;
+  return voxel_size / volume_simplify;
 }
 
 static openvdb::FloatGrid::Ptr mesh_to_fog_volume_grid(
