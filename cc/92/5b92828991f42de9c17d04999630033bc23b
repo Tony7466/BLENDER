@@ -4,3 +4,4 @@ Referenced by issue #106138, Regression: Search in shader node editor exposes no
 Referenced by issue #106879, Regression: Texture Node add search is broken
 Referenced by issue #107273, Regression: Group input is not listed in the node search
 Referenced by pull request #107323, Fix #107273: Group input is not listed in the node search
+Referenced by commit d742223197d25b7d2a9d4598fd09be6404c3f840, Fix #107273: Group input is not listed in the node search
