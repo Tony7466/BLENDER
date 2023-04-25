@@ -46,8 +46,6 @@ static bool start_brush_operation(bContext &C,
       /* FIXME: Somehow store the unique_ptr in the PaintStroke. */
       operation = greasepencil::new_paint_operation().release();
       break;
-    default:
-      BLI_assert_unreachable();
   }
 
   if (operation) {
@@ -122,16 +120,16 @@ static int grease_pencil_stroke_invoke(bContext *C, wmOperator *op, const wmEven
     return OPERATOR_CANCELLED;
   }
 
-  op->customdata = static_cast<void *>(paint_stroke_new(C,
-                                                        op,
-                                                        stroke_get_location,
-                                                        stroke_test_start,
-                                                        stroke_update_step,
-                                                        stroke_redraw,
-                                                        stroke_done,
-                                                        event->type));
+  op->customdata = paint_stroke_new(C,
+                                    op,
+                                    stroke_get_location,
+                                    stroke_test_start,
+                                    stroke_update_step,
+                                    stroke_redraw,
+                                    stroke_done,
+                                    event->type);
 
-  int return_value = op->type->modal(C, op, event);
+  const int return_value = op->type->modal(C, op, event);
   if (return_value == OPERATOR_FINISHED) {
     return OPERATOR_FINISHED;
   }

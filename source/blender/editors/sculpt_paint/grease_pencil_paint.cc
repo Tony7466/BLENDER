@@ -109,7 +109,7 @@ void PaintOperation::on_stroke_done(const bContext &C)
   curves.offsets_for_write()[num_old_curves] = num_old_points;
   curves.offsets_for_write()[num_old_curves + 1] = num_old_points + stroke_points.size();
 
-  const offset_indices::OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
   const IndexRange new_points_range = points_by_curve[curves.curves_num() - 1];
   const IndexRange new_curves_range = IndexRange(num_old_curves, 1);
 

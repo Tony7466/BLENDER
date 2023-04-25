@@ -685,11 +685,8 @@ static bool ED_object_editmode_load_free_ex(Main *bmain,
       ED_mball_editmball_free(obedit);
     }
   }
-  else if (obedit->type == OB_CURVES) {
-    /* Curves don't have specific edit mode data, so pass. */
-  }
-  else if (obedit->type == OB_GREASE_PENCIL) {
-    /* Grease Pencil does not have specific edit mode data, so pass. */
+  else if (ELEM(obedit->type, OB_CURVES, OB_GREASE_PENCIL)) {
+    /* Object doesn't have specific edit mode data, so pass. */
   }
   else {
     return false;

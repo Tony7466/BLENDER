@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. */
+ * Copyright 2023 Blender Foundation. */
 
 /** \file
  * \ingroup draw
@@ -8,7 +8,6 @@
 #pragma once
 
 #include "BKE_grease_pencil.hh"
-#include "BKE_image.h"
 #include "DRW_gpu_wrapper.hh"
 #include "DRW_render.h"
 
@@ -30,9 +29,10 @@ class LayerModule {
     layers_buf_.clear();
   }
 
-  void sync(const Object *object, const bke::greasepencil::Layer &layer, bool &do_layer_blending)
+  void sync(const Object * /*object*/,
+            const bke::greasepencil::Layer & /*layer*/,
+          bool &do_layer_blending)
   {
-    UNUSED_VARS(object, layer);
     /* TODO(fclem): All of this is placeholder. */
     gpLayer gp_layer;
     gp_layer.vertex_color_opacity = 0.0f;
