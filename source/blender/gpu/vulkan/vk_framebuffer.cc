@@ -19,6 +19,7 @@ namespace blender::gpu {
 VKFrameBuffer::VKFrameBuffer(const char *name) : FrameBuffer(name)
 {
   immutable_ = false;
+  flip_viewport_ = true;
   size_set(1, 1);
 }
 
@@ -30,6 +31,7 @@ VKFrameBuffer::VKFrameBuffer(const char *name,
     : FrameBuffer(name)
 {
   immutable_ = true;
+  flip_viewport_ = false;
   /* Never update an internal frame-buffer. */
   dirty_attachments_ = false;
   vk_image_ = vk_image;
@@ -69,16 +71,22 @@ void VKFrameBuffer::bind(bool /*enabled_srgb*/)
 
 VkViewport VKFrameBuffer::vk_viewport_get() const
 {
+  /*
+   * Vulkan has origin to the top left, Blender uses the origin at the bottom left. We counteract
+   * this by using a negative viewport (only when flip_viewport_ is set to true). This flips the
+   * viewport making any vkCmdDraw use the correct orientation.
+   */
   VkViewport viewport;
   int viewport_rect[4];
   viewport_get(viewport_rect);
 
   viewport.x = viewport_rect[0];
-  viewport.y = viewport_rect[1];
+  viewport.y = flip_viewport_ ? viewport_rect[3] - viewport_rect[1] : viewport_rect[1];
   viewport.width = viewport_rect[2];
-  viewport.height = viewport_rect[3];
+  viewport.height = flip_viewport_ ? -viewport_rect[3] : viewport_rect[3];
   viewport.minDepth = 0.0f;
   viewport.maxDepth = 1.0f;
+
   return viewport;
 }
 
@@ -299,6 +307,7 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
     tmp_texture.init(dst_framebuffer.vk_image_get(), VK_IMAGE_LAYOUT_GENERAL);
     dst_texture = &tmp_texture;
   }
+  const bool should_flip = flip_viewport_ != dst_framebuffer.flip_viewport_;
 
   VkImageBlit image_blit = {};
   image_blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -317,10 +326,13 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
   image_blit.dstSubresource.baseArrayLayer = 0;
   image_blit.dstSubresource.layerCount = 1;
   image_blit.dstOffsets[0].x = dst_offset_x;
-  image_blit.dstOffsets[0].y = dst_offset_y;
+  image_blit.dstOffsets[0].y = should_flip ? dst_framebuffer.height_ - dst_offset_y -
+                                                 src_texture.height_get() :
+                                             dst_offset_y;
   image_blit.dstOffsets[0].z = 0;
   image_blit.dstOffsets[1].x = dst_offset_x + src_texture.width_get();
-  image_blit.dstOffsets[1].y = dst_offset_y + src_texture.height_get();
+  image_blit.dstOffsets[1].y = should_flip ? dst_framebuffer.height_ - dst_offset_y :
+                                             dst_offset_x + src_texture.height_get();
   image_blit.dstOffsets[1].z = 1;
 
   context.command_buffer_get().blit(*dst_texture, src_texture, Span<VkImageBlit>(&image_blit, 1));

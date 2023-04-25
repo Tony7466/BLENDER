@@ -930,9 +930,6 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
   vector<const char *> extensions_device;
   vector<const char *> extensions_enabled;
 
-  /* Allow negative viewport dimensions to flip coordinate system using VkViewport. */
-  requireExtension(extensions_available, extensions_enabled, VK_KHR_MAINTENANCE1_EXTENSION_NAME);
-
   if (m_debug) {
     enableLayer(layers_available, layers_enabled, VkLayer::KHRONOS_validation, m_debug);
     requireExtension(extensions_available, extensions_enabled, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);

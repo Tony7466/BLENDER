@@ -31,6 +31,15 @@ class VKFrameBuffer : public FrameBuffer {
   /** Internal frame-buffers are immutable. */
   bool immutable_;
 
+  /**
+   * Should we flip the viewport to match Blenders coordinate system. We flip the viewport for
+   * offscreen framebuffers.
+   *
+   * When two framebuffers are blitted we also check if the coordinate system should be flipped
+   * during blitting.
+   */
+  bool flip_viewport_ = false;
+
  public:
   /**
    * Create a conventional framebuffer to attach texture to.
