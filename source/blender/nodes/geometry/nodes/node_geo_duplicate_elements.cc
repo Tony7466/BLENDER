@@ -57,7 +57,7 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 }
 
 struct IndexAttributes {
-  AutoAnonymousAttributeID duplicate_index;
+  AnonymousAttributeIDPtr duplicate_index;
 };
 
 /* -------------------------------------------------------------------- */
@@ -512,7 +512,7 @@ static void duplicate_faces(GeometrySet &geometry_set,
 
   const OffsetIndices<int> duplicates(offset_data);
 
-  Mesh *new_mesh = BKE_mesh_new_nomain(total_loops, total_loops, total_loops, total_polys);
+  Mesh *new_mesh = BKE_mesh_new_nomain(total_loops, total_loops, total_polys, total_loops);
   MutableSpan<int2> new_edges = new_mesh->edges_for_write();
   MutableSpan<int> new_poly_offsets = new_mesh->poly_offsets_for_write();
   MutableSpan<int> new_corner_verts = new_mesh->corner_verts_for_write();
@@ -551,6 +551,7 @@ static void duplicate_faces(GeometrySet &geometry_set,
     }
   }
 
+  new_mesh->tag_loose_verts_none();
   new_mesh->loose_edges_tag_none();
 
   copy_face_attributes_without_id(edge_mapping,
@@ -1097,12 +1098,6 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
-  if (attribute_outputs.duplicate_index) {
-    params.set_output(
-        "Duplicate Index",
-        AnonymousAttributeFieldInput::Create<int>(std::move(attribute_outputs.duplicate_index),
-                                                  params.attribute_producer_name()));
-  }
   params.set_output("Geometry", std::move(geometry_set));
 }
 

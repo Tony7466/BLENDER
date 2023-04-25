@@ -202,6 +202,10 @@ struct BHeadN {
  */
 #define BHEAD_USE_READ_ON_DEMAND(bhead) ((bhead)->code == BLO_CODE_DATA)
 
+/* -------------------------------------------------------------------- */
+/** \name Blend Loader Reporting Wrapper
+ * \{ */
+
 void BLO_reportf_wrap(BlendFileReadReport *reports, eReportType type, const char *format, ...)
 {
   char fixed_buf[1024]; /* should be long enough */
@@ -226,6 +230,8 @@ static const char *library_parent_filepath(Library *lib)
 {
   return lib->parent ? lib->parent->filepath_abs : "<direct>";
 }
+
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name OldNewMap API
@@ -510,7 +516,8 @@ static Main *blo_find_main(FileData *fd, const char *filepath, const char *relab
   char name1[FILE_MAX];
 
   BLI_strncpy(name1, filepath, sizeof(name1));
-  BLI_path_normalize(relabase, name1);
+  BLI_path_abs(name1, relabase);
+  BLI_path_normalize(name1);
 
   //  printf("blo_find_main: relabase  %s\n", relabase);
   //  printf("blo_find_main: original in  %s\n", filepath);
@@ -1306,6 +1313,10 @@ void blo_filedata_free(FileData *fd)
 }
 
 /** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Read Thumbnail from Blend File
+ * \{ */
 
 BlendThumbnail *BLO_thumbnail_from_file(const char *filepath)
 {
@@ -2685,7 +2696,8 @@ static void direct_link_library(FileData *fd, Library *lib, Main *main)
 
   /* Make sure we have full path in lib->filepath_abs */
   BLI_strncpy(lib->filepath_abs, lib->filepath, sizeof(lib->filepath));
-  BLI_path_normalize(fd->relabase, lib->filepath_abs);
+  BLI_path_abs(lib->filepath_abs, fd->relabase);
+  BLI_path_normalize(lib->filepath_abs);
 
   //  printf("direct_link_library: filepath %s\n", lib->filepath);
   //  printf("direct_link_library: filepath_abs %s\n", lib->filepath_abs);
@@ -3100,13 +3112,13 @@ static void read_libblock_undo_restore_at_old_address(FileData *fd, Main *main, 
    *
    * Passing a NULL BMain means that not all potential runtime data (like collections' parent
    * pointers etc.) will be up-to-date. However, this should not be a problem here, since these
-   * data are re-generated later in fileread process anyway.. */
+   * data are re-generated later in file-read process anyway. */
   BKE_lib_id_swap_full(nullptr,
                        id,
                        id_old,
                        true,
-                       ID_REMAP_SKIP_NEVER_NULL_USAGE | ID_REMAP_SKIP_UPDATE_TAGGING |
-                           ID_REMAP_SKIP_USER_REFCOUNT);
+                       (ID_REMAP_NO_ORIG_POINTERS_ACCESS | ID_REMAP_SKIP_NEVER_NULL_USAGE |
+                        ID_REMAP_SKIP_UPDATE_TAGGING | ID_REMAP_SKIP_USER_REFCOUNT));
 
   /* Special temporary usage of this pointer, necessary for the `undo_preserve` call after
    * lib-linking to restore some data that should never be affected by undo, e.g. the 3D cursor of
