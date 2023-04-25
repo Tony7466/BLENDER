@@ -27,6 +27,7 @@ namespace bke {
 struct MeshRuntime;
 class AttributeAccessor;
 class MutableAttributeAccessor;
+struct LooseVertCache;
 struct LooseEdgeCache;
 }  // namespace bke
 }  // namespace blender
@@ -76,8 +77,7 @@ typedef struct Mesh {
   int totloop;
 
   /**
-   * Array owned by mesh. May be null of there are no polygons. Index of the first corner of each
-   * polygon, with the total number of corners at the end. See #Mesh::polys() and #OffsetIndices.
+   * Array owned by mesh. See #Mesh::polys() and #OffsetIndices.
    *
    * This array is shared based on the bke::MeshRuntime::poly_offsets_sharing_info.
    * Avoid accessing directly when possible.
@@ -249,7 +249,11 @@ typedef struct Mesh {
    * #corner_edges arrays to find the vertices or edges that make up each face.
    */
   blender::OffsetIndices<int> polys() const;
-  /** The first corner index of every polygon. */
+  /**
+   * Index of the first corner of each polygon, and the size of the polygon encoded as the next
+   * offset. The total number of corners is the final value, and the first value is always zero.
+   * May be empty if there are no polygons.
+   */
   blender::Span<int> poly_offsets() const;
   /** Write access to #poly_offsets data. */
   blender::MutableSpan<int> poly_offsets_for_write();
@@ -300,6 +304,15 @@ typedef struct Mesh {
    */
   const blender::bke::LooseEdgeCache &loose_edges() const;
   /**
+   * Cached information about vertices that aren't used by any edges.
+   */
+  const blender::bke::LooseVertCache &loose_verts() const;
+  /**
+   * Cached information about vertices that aren't used by faces (but may be used by loose edges).
+   */
+  const blender::bke::LooseVertCache &verts_no_face() const;
+
+  /**
    * Explicitly set the cached number of loose edges to zero. This can improve performance
    * later on, because finding loose edges lazily can be skipped entirely.
    *
@@ -307,6 +320,14 @@ typedef struct Mesh {
    * cache dirty. If the mesh was changed first, the relevant dirty tags should be called first.
    */
   void loose_edges_tag_none() const;
+  /**
+   * Set the number of verices not connected to edges to zero. Similar to #loose_edges_tag_none().
+   * There may still be vertices only used by loose edges though.
+   *
+   * \note If both #loose_edges_tag_none() and #tag_loose_verts_none() are called,
+   * all vertices are used by faces, so #verts_no_faces() will be tagged empty as well.
+   */
+  void tag_loose_verts_none() const;
 
   /**
    * Normal direction of polygons, defined by positions and the winding direction of face corners.
