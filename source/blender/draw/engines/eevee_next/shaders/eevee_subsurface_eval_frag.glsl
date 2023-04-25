@@ -74,7 +74,7 @@ void main(void)
   float pixel_footprint = sample_scale.x * textureSize(hiz_tx, 0).x;
   if (pixel_footprint <= 1.0) {
     /* Early out. */
-    out_combined = vec4(texture(radiance_tx, center_uv).rgb * diffuse.color, 0.0);
+    out_combined = vec4(0);
     return;
   }
 
@@ -125,6 +125,11 @@ void main(void)
   }
   /* Normalize the sum (slide 34). */
   accum /= accum_weight;
+
+  /* This pass uses additive blending.
+   * Subtract the surface diffuse radiance so it's not added twice. */
+  accum -= texelFetch(radiance_tx, texel, 0).rgb;
+
   /* Apply surface color on final radiance. */
   accum *= diffuse.color;
 
