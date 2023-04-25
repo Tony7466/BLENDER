@@ -149,6 +149,7 @@ Mesh *create_grid_mesh(const int verts_x,
     calculate_uvs(mesh, positions, corner_verts, size_x, size_y, uv_map_id);
   }
 
+  mesh->tag_loose_verts_none();
   mesh->loose_edges_tag_none();
 
   const float3 bounds = float3(size_x * 0.5f, size_y * 0.5f, 0.0f);
@@ -204,12 +205,6 @@ static void node_geo_exec(GeoNodeExecParams params)
   BKE_id_material_eval_ensure_default_slot(&mesh->id);
 
   params.set_output("Mesh", GeometrySet::create_with_mesh(mesh));
-
-  if (uv_map_id) {
-    params.set_output("UV Map",
-                      AnonymousAttributeFieldInput::Create<float3>(
-                          std::move(uv_map_id), params.attribute_producer_name()));
-  }
 }
 
 }  // namespace blender::nodes::node_geo_mesh_primitive_grid_cc
