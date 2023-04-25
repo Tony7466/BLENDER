@@ -948,14 +948,8 @@ void VKShader::update_graphics_pipeline(VKContext &context,
 
 void VKShader::bind()
 {
-  VKContext *context = VKContext::get();
-
-  if (is_compute_shader()) {
-    context->command_buffer_get().bind(pipeline_, VK_PIPELINE_BIND_POINT_COMPUTE);
-  }
-
-  /* Graphics pipeline needs to be constructed just before drawing in order to take the GPU state
-   * into account. GPU state can be changed after binding the shader. */
+  /* Intentionally empty. Binding of the pipeline are done just before drawing/dispatching.
+   * See #VKPipeline.update_and_bind */
 }
 
 void VKShader::unbind() {}

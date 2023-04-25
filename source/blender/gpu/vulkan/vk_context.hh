@@ -68,6 +68,7 @@ class VKContext : public Context, NonCopyable {
   void deactivate_framebuffer();
   VKFrameBuffer *active_framebuffer_get() const;
 
+  void bind_compute_pipeline();
   void bind_graphics_pipeline(const GPUPrimType prim_type,
                               const VKVertexAttributeObject &vertex_attribute_object);
 

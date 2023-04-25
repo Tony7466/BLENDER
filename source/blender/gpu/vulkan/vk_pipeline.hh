@@ -93,6 +93,13 @@ class VKPipeline : NonCopyable {
                 VkPipelineLayout &pipeline_layout,
                 const GPUPrimType prim_type,
                 const VKVertexAttributeObject &vertex_attribute_object);
+
+  /**
+   * Update PushConstants, DescriptorSets and bind pipeline to command buffer.
+   */
+  void update_and_bind(VKContext &context,
+                       VkPipelineLayout vk_pipeline_layout,
+                       VkPipelineBindPoint vk_pipeline_bind_point);
 };
 
 }  // namespace blender::gpu
