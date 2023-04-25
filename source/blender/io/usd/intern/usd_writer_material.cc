@@ -274,8 +274,7 @@ void create_usd_viewport_material(const USDExporterContext &usd_export_context,
 static InputSpecMap &preview_surface_input_map()
 {
   static InputSpecMap input_map = {
-      {"Base Color",
-       {usdtokens::diffuse_color, pxr::SdfValueTypeNames->Float3, true}},
+      {"Base Color", {usdtokens::diffuse_color, pxr::SdfValueTypeNames->Float3, true}},
       {"Color", {usdtokens::diffuse_color, pxr::SdfValueTypeNames->Float3, true}},
       {"Roughness", {usdtokens::roughness, pxr::SdfValueTypeNames->Float, true}},
       {"Metallic", {usdtokens::metallic, pxr::SdfValueTypeNames->Float, true}},
@@ -336,7 +335,8 @@ static void create_uvmap_shader(const USDExporterContext &usd_export_context,
 
     found_uv_node = true;
 
-    if (NodeShaderUVMap *shader_uv_map = static_cast<NodeShaderUVMap *>(uv_node_link->fromnode->storage)) {
+    if (NodeShaderUVMap *shader_uv_map = static_cast<NodeShaderUVMap *>(
+            uv_node_link->fromnode->storage)) {
       /* We need to make valid here because actual uv primvar has been. */
       std::string uv_set = pxr::TfMakeValidIdentifier(shader_uv_map->uv_map);
 
