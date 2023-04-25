@@ -10,6 +10,7 @@ namespace blender::compositor {
 FastGaussianBlurOperation::FastGaussianBlurOperation() : BlurBaseOperation(DataType::Color)
 {
   iirgaus_ = nullptr;
+  data_.filtertype = R_FILTER_FAST_GAUSS;
 }
 
 void FastGaussianBlurOperation::execute_pixel(float output[4], int x, int y, void *data)
@@ -65,6 +66,15 @@ void FastGaussianBlurOperation::deinit_execution()
     iirgaus_ = nullptr;
   }
   BlurBaseOperation::deinit_mutex();
+}
+
+void FastGaussianBlurOperation::set_size(int size_x, int size_y)
+{
+  // todo: there should be a better way to use the operation without knowing specifics of the blur
+  // node (data_) Could use factory pattern to solve this problem.
+  data_.sizex = size_x;
+  data_.sizey = size_y;
+  sizeavailable_ = true;
 }
 
 void *FastGaussianBlurOperation::initialize_tile_data(rcti *rect)

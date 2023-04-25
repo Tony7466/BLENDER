@@ -9265,6 +9265,14 @@ static void def_cmp_kuwahara(StructRNA *srna)
   RNA_def_property_enum_items(prop, variation_items);
   RNA_def_property_ui_text(prop, "", "Variation of Kuwahara filter to use.");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "sigma", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "sigma");
+  RNA_def_property_ui_text(
+      prop,
+      "Sigma",
+      "Edges get smoothed before applying filter. Sigma controls smoothing degree.");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
 static void def_cmp_antialiasing(StructRNA *srna)

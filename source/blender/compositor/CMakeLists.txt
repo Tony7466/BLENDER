@@ -350,8 +350,10 @@ if(WITH_COMPOSITOR_CPU)
     operations/COM_GaussianXBlurOperation.h
     operations/COM_GaussianYBlurOperation.cc
     operations/COM_GaussianYBlurOperation.h
-    operations/COM_KuwaharaOperation.h
-    operations/COM_KuwaharaOperation.cc
+    operations/COM_KuwaharaClassicOperation.h
+    operations/COM_KuwaharaClassicOperation.cc
+    operations/COM_KuwaharaAnisotropicOperation.h
+    operations/COM_KuwaharaAnisotropicOperation.cc
     operations/COM_MovieClipAttributeOperation.cc
     operations/COM_MovieClipAttributeOperation.h
     operations/COM_MovieDistortionOperation.cc

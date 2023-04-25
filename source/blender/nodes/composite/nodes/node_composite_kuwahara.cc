@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation */
+ * Copyright 2023 Blender Foundation */
 
 /** \file
  * \ingroup cmpnodes
@@ -22,6 +22,11 @@ static void cmp_node_kuwahara_declare(NodeDeclarationBuilder &b)
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .compositor_domain_priority(0);
   b.add_output<decl::Color>(N_("Image"));
+
+  // For debug. Todo:remove
+//  b.add_output<decl::Color>(N_("Sobel x"));
+//  b.add_output<decl::Color>(N_("Sobel xx blurred"));
+//  b.add_output<decl::Color>(N_("Sobel xy blurred"));
 }
 
 static void node_composit_init_kuwahara(bNodeTree * /*ntree*/, bNode *node)
@@ -40,6 +45,12 @@ static void node_composit_buts_kuwahara(uiLayout *layout, bContext * /*C*/, Poin
 
   uiItemR(col, ptr, "variation", 0, nullptr, ICON_NONE);
   uiItemR(col, ptr, "kernel_size", 0, nullptr, ICON_NONE);
+
+  const int variation = RNA_enum_get(ptr, "variation");
+
+  if(variation == CMP_NODE_KUWAHARA_ANISOTROPIC) {
+    uiItemR(col, ptr, "sigma", 0, nullptr, ICON_NONE);
+  }
 }
 
 }  // namespace blender::nodes::node_composite_kuwahara_cc

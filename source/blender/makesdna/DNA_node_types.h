@@ -879,7 +879,7 @@ typedef struct NodeBilateralBlurData {
 typedef struct NodeKuwaharaData {
   short kernel_size;
   short variation;
-  char _pad[4];
+  float sigma;
 } NodeKuwaharaData;
 
 typedef struct NodeAntiAliasingData {
@@ -2101,6 +2101,12 @@ typedef enum CMPNodeGlareType {
   CMP_NODE_GLARE_STREAKS = 2,
   CMP_NODE_GLARE_GHOST = 3,
 } CMPNodeGlareType;
+
+/* Kuwahara Node. Stored in variation */
+typedef enum CMPNodeKuwahara {
+  CMP_NODE_KUWAHARA_CLASSIC = 0,
+  CMP_NODE_KUWAHARA_ANISOTROPIC = 1,
+} CMPNodeKuwahara;
 
 /* Plane track deform node. */
 

@@ -1,66 +1,50 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+ * Copyright 2023 Blender Foundation. */
 
-#include "COM_KuwaharaOperation.h"
+#include "COM_KuwaharaClassicOperation.h"
 
 namespace blender::compositor {
 
-KuwaharaOperation::KuwaharaOperation()
+KuwaharaClassicOperation::KuwaharaClassicOperation()
 {
   this->add_input_socket(DataType::Color);
   this->add_output_socket(DataType::Color);
-  this->set_kernel_size(4.4f);
+  this->set_kernel_size(4);
 
   this->flags_.is_fullframe_operation = true;
 }
 
-void KuwaharaOperation::init_execution()
+void KuwaharaClassicOperation::init_execution()
 {
   image_reader_ = this->get_input_socket_reader(0);
 }
 
-void KuwaharaOperation::deinit_execution()
+void KuwaharaClassicOperation::deinit_execution()
 {
   image_reader_ = nullptr;
 }
 
-void KuwaharaOperation::execute_pixel_sampled(float output[4],
-                                              float x,
-                                              float y,
-                                              PixelSampler sampler)
+void KuwaharaClassicOperation::execute_pixel_sampled(float output[4],
+                                                     float x,
+                                                     float y,
+                                                     PixelSampler sampler)
 {
-  float input_value[4];
-  image_reader_->read_sampled(input_value, x, y, sampler);
-
-  output[0] = input_value[0] + 1.0;
-  output[1] = input_value[1] + 2.0;
-  output[2] = input_value[2] + 3.0;
-  output[3] = input_value[3] + 4.0;
+  /* Not implemented */
 }
 
-void KuwaharaOperation::set_kernel_size(int kernel_size)
+void KuwaharaClassicOperation::set_kernel_size(int kernel_size)
 {
   kernel_size_ = kernel_size;
 }
 
-int KuwaharaOperation::get_kernel_size()
+int KuwaharaClassicOperation::get_kernel_size()
 {
   return kernel_size_;
 }
 
-void KuwaharaOperation::set_variation(int variation)
-{
-  variation_ = variation;
-}
-
-int KuwaharaOperation::get_variation()
-{
-  return variation_;
-}
-
-void KuwaharaOperation::update_memory_buffer_partial(MemoryBuffer *output,
-                                                     const rcti &area,
-                                                     Span<MemoryBuffer *> inputs)
+void KuwaharaClassicOperation::update_memory_buffer_partial(MemoryBuffer *output,
+                                                            const rcti &area,
+                                                            Span<MemoryBuffer *> inputs)
 {
   MemoryBuffer *image = inputs[0];
 
@@ -74,13 +58,13 @@ void KuwaharaOperation::update_memory_buffer_partial(MemoryBuffer *output,
       float var[4] = {0.0f, 0.0f, 0.0f, 0.0f};
       int cnt[4] = {0, 0, 0, 0};
 
-      /* Split surroundings of */
+      /* Split surroundings of pixel into 4 overlapping regions */
       for (int dy = -kernel_size_; dy <= kernel_size_; dy++) {
         for (int dx = -kernel_size_; dx <= kernel_size_; dx++) {
 
           int xx = x + dx;
           int yy = y + dy;
-          if (xx >= 0 && yy >= 0 && xx < area.xmax && yy < area.ymax) {
+          if (xx >= 0 && yy >= 0 && xx < image->get_width() && yy < image->get_height()) {
             float v;
             v = image->get_value(xx, yy, ch);
 
