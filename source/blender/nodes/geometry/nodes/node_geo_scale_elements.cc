@@ -337,7 +337,7 @@ static Vector<ElementIsland> prepare_edge_islands(const Mesh &mesh, const IndexM
   edge_selection.foreach_index([&](const int edge_index) {
     const int2 &edge = edges[edge_index];
     disjoint_set.join(edge[0], edge[1]);
-  }
+  });
 
   VectorSet<int> island_ids;
   Vector<ElementIsland> islands;

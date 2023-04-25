@@ -48,7 +48,7 @@ void copy_point_data(const OffsetIndices<int> src_points_by_curve,
 
 void copy_point_data(const OffsetIndices<int> src_points_by_curve,
                      const OffsetIndices<int> dst_points_by_curve,
-                     const IndexMask src_curve_selection,
+                     const IndexMask &src_curve_selection,
                      const GSpan src,
                      GMutableSpan dst)
 {
@@ -61,7 +61,7 @@ void copy_point_data(const OffsetIndices<int> src_points_by_curve,
 }
 
 void fill_points(const OffsetIndices<int> points_by_curve,
-                 const IndexMask curve_selection,
+                 const IndexMask &curve_selection,
                  const GPointer value,
                  GMutableSpan dst)
 {
@@ -100,7 +100,7 @@ bke::CurvesGeometry copy_only_curve_domain(const bke::CurvesGeometry &src_curves
 IndexMask indices_for_type(const VArray<int8_t> &types,
                            const std::array<int, CURVE_TYPES_NUM> &type_counts,
                            const CurveType type,
-                           const IndexMask selection,
+                           const IndexMask &selection,
                            IndexMaskMemory &memory)
 {
   if (type_counts[type] == types.size()) {
@@ -117,7 +117,7 @@ IndexMask indices_for_type(const VArray<int8_t> &types,
 
 void foreach_curve_by_type(const VArray<int8_t> &types,
                            const std::array<int, CURVE_TYPES_NUM> &counts,
-                           const IndexMask selection,
+                           const IndexMask &selection,
                            FunctionRef<void(IndexMask)> catmull_rom_fn,
                            FunctionRef<void(IndexMask)> poly_fn,
                            FunctionRef<void(IndexMask)> bezier_fn,

@@ -628,16 +628,13 @@ Span<float3> CurvesGeometry::evaluated_positions() const
     auto evaluate_catmull = [&](const IndexMask selection) {
       const VArray<bool> cyclic = this->cyclic();
       const VArray<int> resolution = this->resolution();
-      threading::parallel_for(selection.index_range(), 128, [&](const IndexRange range) {
-        for (const int curve_index : selection.slice(range)) {
-          const IndexRange points = points_by_curve[curve_index];
-          const IndexRange evaluated_points = evaluated_points_by_curve[curve_index];
-          curves::catmull_rom::interpolate_to_evaluated(
-              positions.slice(points),
-              cyclic[curve_index],
-              resolution[curve_index],
-              evaluated_positions.slice(evaluated_points));
-        }
+      selection.foreach_index(GrainSize(128), [&](const int curve_index) {
+        const IndexRange points = points_by_curve[curve_index];
+        const IndexRange evaluated_points = evaluated_points_by_curve[curve_index];
+        curves::catmull_rom::interpolate_to_evaluated(positions.slice(points),
+                                                      cyclic[curve_index],
+                                                      resolution[curve_index],
+                                                      evaluated_positions.slice(evaluated_points));
       });
     };
     auto evaluate_poly = [&](const IndexMask selection) {
@@ -653,18 +650,15 @@ Span<float3> CurvesGeometry::evaluated_positions() const
       }
       const Span<int> all_bezier_offsets =
           runtime.evaluated_offsets_cache.data().all_bezier_offsets;
-      threading::parallel_for(selection.index_range(), 128, [&](const IndexRange range) {
-        for (const int curve_index : selection.slice(range)) {
-          const IndexRange points = points_by_curve[curve_index];
-          const IndexRange evaluated_points = evaluated_points_by_curve[curve_index];
-          const IndexRange offsets = curves::per_curve_point_offsets_range(points, curve_index);
-          curves::bezier::calculate_evaluated_positions(
-              positions.slice(points),
-              handle_positions_left.slice(points),
-              handle_positions_right.slice(points),
-              all_bezier_offsets.slice(offsets),
-              evaluated_positions.slice(evaluated_points));
-        }
+      selection.foreach_index(GrainSize(128), [&](const int curve_index) {
+        const IndexRange points = points_by_curve[curve_index];
+        const IndexRange evaluated_points = evaluated_points_by_curve[curve_index];
+        const IndexRange offsets = curves::per_curve_point_offsets_range(points, curve_index);
+        curves::bezier::calculate_evaluated_positions(positions.slice(points),
+                                                      handle_positions_left.slice(points),
+                                                      handle_positions_right.slice(points),
+                                                      all_bezier_offsets.slice(offsets),
+                                                      evaluated_positions.slice(evaluated_points));
       });
     };
     auto evaluate_nurbs = [&](const IndexMask selection) {
@@ -672,16 +666,14 @@ Span<float3> CurvesGeometry::evaluated_positions() const
       const VArray<int8_t> nurbs_orders = this->nurbs_orders();
       const Span<float> nurbs_weights = this->nurbs_weights();
       const Span<curves::nurbs::BasisCache> nurbs_basis_cache = runtime.nurbs_basis_cache.data();
-      threading::parallel_for(selection.index_range(), 128, [&](const IndexRange range) {
-        for (const int curve_index : selection.slice(range)) {
-          const IndexRange points = points_by_curve[curve_index];
-          const IndexRange evaluated_points = evaluated_points_by_curve[curve_index];
-          curves::nurbs::interpolate_to_evaluated(nurbs_basis_cache[curve_index],
-                                                  nurbs_orders[curve_index],
-                                                  nurbs_weights.slice_safe(points),
-                                                  positions.slice(points),
-                                                  evaluated_positions.slice(evaluated_points));
-        }
+      selection.foreach_index(GrainSize(128), [&](const int curve_index) {
+        const IndexRange points = points_by_curve[curve_index];
+        const IndexRange evaluated_points = evaluated_points_by_curve[curve_index];
+        curves::nurbs::interpolate_to_evaluated(nurbs_basis_cache[curve_index],
+                                                nurbs_orders[curve_index],
+                                                nurbs_weights.slice_safe(points),
+                                                positions.slice(points),
+                                                evaluated_positions.slice(evaluated_points));
       });
     };
     curves::foreach_curve_by_type(this->curve_types(),

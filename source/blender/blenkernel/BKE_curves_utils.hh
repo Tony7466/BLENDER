@@ -479,14 +479,14 @@ void copy_point_data(OffsetIndices<int> src_points_by_curve,
 
 void copy_point_data(OffsetIndices<int> src_points_by_curve,
                      OffsetIndices<int> dst_points_by_curve,
-                     IndexMask src_curve_selection,
+                     const IndexMask &src_curve_selection,
                      GSpan src,
                      GMutableSpan dst);
 
 template<typename T>
 void copy_point_data(OffsetIndices<int> src_points_by_curve,
                      OffsetIndices<int> dst_points_by_curve,
-                     IndexMask src_curve_selection,
+                     const IndexMask &src_curve_selection,
                      Span<T> src,
                      MutableSpan<T> dst)
 {
@@ -498,13 +498,13 @@ void copy_point_data(OffsetIndices<int> src_points_by_curve,
 }
 
 void fill_points(OffsetIndices<int> points_by_curve,
-                 IndexMask curve_selection,
+                 const IndexMask &curve_selection,
                  GPointer value,
                  GMutableSpan dst);
 
 template<typename T>
 void fill_points(const OffsetIndices<int> points_by_curve,
-                 IndexMask curve_selection,
+                 const IndexMask &curve_selection,
                  const T &value,
                  MutableSpan<T> dst)
 {
@@ -554,12 +554,12 @@ void copy_curve_sizes(OffsetIndices<int> points_by_curve,
 IndexMask indices_for_type(const VArray<int8_t> &types,
                            const std::array<int, CURVE_TYPES_NUM> &type_counts,
                            const CurveType type,
-                           const IndexMask selection,
+                           const IndexMask &selection,
                            IndexMaskMemory &memory);
 
 void foreach_curve_by_type(const VArray<int8_t> &types,
                            const std::array<int, CURVE_TYPES_NUM> &type_counts,
-                           IndexMask selection,
+                           const IndexMask &selection,
                            FunctionRef<void(IndexMask)> catmull_rom_fn,
                            FunctionRef<void(IndexMask)> poly_fn,
                            FunctionRef<void(IndexMask)> bezier_fn,

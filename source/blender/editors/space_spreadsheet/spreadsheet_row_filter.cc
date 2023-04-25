@@ -145,7 +145,7 @@ static IndexMask apply_row_filter(const SpreadsheetRowFilter &row_filter,
             column_data.typed<int2>(),
             [&](const int2 cell) { return math::distance_squared(cell, value) <= threshold_sq; },
             prev_mask,
-            new_indices);
+            memory);
         break;
       }
       case SPREADSHEET_ROW_FILTER_GREATER: {
@@ -153,7 +153,7 @@ static IndexMask apply_row_filter(const SpreadsheetRowFilter &row_filter,
             column_data.typed<int2>(),
             [&](const int2 cell) { return cell.x > value.x && cell.y > value.y; },
             prev_mask,
-            new_indices);
+            memory);
         break;
       }
       case SPREADSHEET_ROW_FILTER_LESS: {
@@ -161,7 +161,7 @@ static IndexMask apply_row_filter(const SpreadsheetRowFilter &row_filter,
             column_data.typed<int2>(),
             [&](const int2 cell) { return cell.x < value.x && cell.y < value.y; },
             prev_mask,
-            new_indices);
+            memory);
         break;
       }
     }

@@ -504,10 +504,11 @@ struct AddOperationExecutor {
   {
     if (self_->curve_roots_kdtree_ == nullptr) {
       self_->curve_roots_kdtree_ = BLI_kdtree_3d_new(curves_orig_->curves_num());
-      for (const int curve_i : curves_orig_->curves_range()) {
-        const int root_point_i = curves_orig_->offsets()[curve_i];
-        const float3 &root_pos_cu = curves_orig_->positions()[root_point_i];
-        BLI_kdtree_3d_insert(self_->curve_roots_kdtree_, curve_i, root_pos_cu);
+      const Span<int> root_points = curves_orig_->offsets().drop_back(1);
+      const Span<float3> positions = curves_orig_->positions();
+      for (const int curve : root_points.index_range()) {
+        const float3 &root_pos_cu = positions[root_points[curve]];
+        BLI_kdtree_3d_insert(self_->curve_roots_kdtree_, curve, root_pos_cu);
       }
       BLI_kdtree_3d_balance(self_->curve_roots_kdtree_);
     }
