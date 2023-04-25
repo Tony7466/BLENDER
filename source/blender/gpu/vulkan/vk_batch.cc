@@ -30,12 +30,17 @@ void VKBatch::draw(int v_first, int v_count, int i_first, int i_count)
   /* Bind geometry resources. */
   vao.bind(context);
   VKIndexBuffer *index_buffer = index_buffer_get();
-  if (index_buffer) {
+  const bool draw_indexed = index_buffer != nullptr;
+  if (draw_indexed) {
     index_buffer->upload_data();
     index_buffer->bind(context);
+    context.command_buffer_get().draw(
+        index_buffer->index_len_get(), i_count, index_buffer->index_start_get(), v_first, i_first);
+  }
+  else {
+    context.command_buffer_get().draw(v_first, v_count, i_first, i_count);
   }
 
-  context.command_buffer_get().draw(v_first, v_count, i_first, i_count);
   context.command_buffer_get().submit();
 }
 

@@ -225,6 +225,17 @@ void VKCommandBuffer::draw(int v_first, int v_count, int i_first, int i_count)
   state.draw_counts++;
 }
 
+void VKCommandBuffer::draw(
+    int index_count, int instance_count, int first_index, int vertex_offset, int first_instance)
+{
+  validate_framebuffer_exists();
+  ensure_active_framebuffer();
+  printf("%s: %lu\n", __func__, state.draw_counts);
+  vkCmdDrawIndexed(
+      vk_command_buffer_, index_count, instance_count, first_index, vertex_offset, first_instance);
+  state.draw_counts++;
+}
+
 void VKCommandBuffer::pipeline_barrier(VkPipelineStageFlags source_stages,
                                        VkPipelineStageFlags destination_stages)
 {

@@ -178,6 +178,8 @@ class VKCommandBuffer : NonCopyable, NonMovable {
   void fill(VKBuffer &buffer, uint32_t data);
 
   void draw(int v_first, int v_count, int i_first, int i_count);
+  void draw(
+      int index_count, int instance_count, int first_index, int vertex_offset, int first_instance);
 
   /**
    * Stop recording commands, encode + send the recordings to Vulkan, wait for the until the
