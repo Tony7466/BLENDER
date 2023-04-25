@@ -948,7 +948,7 @@ void GeometryManager::device_update(Device *device,
 
 void GeometryManager::device_free(Device *device, DeviceScene *dscene, bool force_free)
 {
-  dscene->device_free(force_free);
+  dscene->device_free_geometry(force_free);
 #ifdef WITH_OSL
   OSLGlobals *og = (OSLGlobals *)device->get_cpu_osl_memory();
 

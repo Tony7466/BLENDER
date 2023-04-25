@@ -104,7 +104,7 @@ class DeviceScene {
 
   DeviceScene(Device *device);
 
-  void device_free(bool force_free);
+  void device_free_geometry(bool force_free);
   void device_scene_clear_modified();
   void device_update_host_pointers(Device *device,
                                    DeviceScene *dscene,

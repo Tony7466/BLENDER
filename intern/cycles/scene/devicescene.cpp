@@ -67,7 +67,7 @@ DeviceScene::DeviceScene(Device *device)
   memset((void *)&data, 0, sizeof(data));
 }
 
-void DeviceScene::device_free(bool force_free)
+void DeviceScene::device_free_geometry(bool force_free)
 {
   bvh_nodes.free_if_need_realloc(force_free);
   bvh_leaf_nodes.free_if_need_realloc(force_free);
