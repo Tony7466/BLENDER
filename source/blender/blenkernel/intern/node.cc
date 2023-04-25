@@ -240,6 +240,8 @@ static void ntree_free_data(ID *id)
         ntreeTexEndExecTree(ntree->runtime->execdata);
         ntree->runtime->execdata = nullptr;
         break;
+      default:
+        break;
     }
   }
 
@@ -1855,7 +1857,8 @@ const char *nodeStaticSocketType(const int type, const int subtype)
       return "NodeSocketTexture";
     case SOCK_MATERIAL:
       return "NodeSocketMaterial";
-    default:
+    case SOCK_CUSTOM:
+    case __SOCK_MESH:
       break;
   }
   return nullptr;
@@ -1934,7 +1937,8 @@ const char *nodeStaticSocketInterfaceType(const int type, const int subtype)
       return "NodeSocketInterfaceTexture";
     case SOCK_MATERIAL:
       return "NodeSocketInterfaceMaterial";
-    default:
+    case SOCK_CUSTOM:
+    case __SOCK_MESH:
       break;
   }
   return nullptr;
@@ -1969,7 +1973,8 @@ const char *nodeStaticSocketLabel(const int type, const int /*subtype*/)
       return "Texture";
     case SOCK_MATERIAL:
       return "Material";
-    default:
+    case SOCK_CUSTOM:
+    case __SOCK_MESH:
       break;
   }
   return nullptr;
