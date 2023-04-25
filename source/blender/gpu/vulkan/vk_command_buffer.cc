@@ -217,10 +217,6 @@ void VKCommandBuffer::draw(int v_first, int v_count, int i_first, int i_count)
 {
   validate_framebuffer_exists();
   ensure_active_framebuffer();
-  if (state.draw_counts == 64) {
-    printf("BREAK\n");
-  }
-  printf("%s: %lu\n", __func__, state.draw_counts);
   vkCmdDraw(vk_command_buffer_, v_count, i_count, v_first, i_first);
   state.draw_counts++;
 }
@@ -230,7 +226,6 @@ void VKCommandBuffer::draw(
 {
   validate_framebuffer_exists();
   ensure_active_framebuffer();
-  printf("%s: %lu\n", __func__, state.draw_counts);
   vkCmdDrawIndexed(
       vk_command_buffer_, index_count, instance_count, first_index, vertex_offset, first_instance);
   state.draw_counts++;
@@ -333,9 +328,6 @@ void VKCommandBuffer::ensure_active_framebuffer()
   BLI_assert(state.framebuffer_);
   state.checks_++;
   if (!state.framebuffer_active_) {
-    if (state.draw_counts == 71) {
-      printf("BREAK\n");
-    }
     VkRenderPassBeginInfo render_pass_begin_info = {};
     render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     render_pass_begin_info.renderPass = state.framebuffer_->vk_render_pass_get();

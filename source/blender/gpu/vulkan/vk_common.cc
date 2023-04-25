@@ -355,7 +355,6 @@ VkFormat to_vk_format(const GPUVertCompType type, const uint32_t size)
 
     case GPU_COMP_I10:
       BLI_assert(size == 4);
-      // return VK_FORMAT_A2B10G10R10_SINT_PACK32;
       return VK_FORMAT_A2B10G10R10_UNORM_PACK32;
 
     default:
