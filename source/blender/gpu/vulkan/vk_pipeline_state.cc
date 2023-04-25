@@ -19,19 +19,19 @@ VKPipelineStateManager::VKPipelineStateManager()
 
   depth_stencil_state = {};
   depth_stencil_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-}
 
-void VKPipelineStateManager::set_state(const GPUState &state, const GPUStateMutable &mutable_state)
-{
   /* TODO should be extracted from current framebuffer and should not be done here and now. */
-  color_blend_attachments.clear();
+  /* When the attachments differ the state should be forced. */
   VkPipelineColorBlendAttachmentState color_blend_attachment = {};
   color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                                           VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
   color_blend_attachments.append(color_blend_attachment);
   pipeline_color_blend_state.attachmentCount = color_blend_attachments.size();
   pipeline_color_blend_state.pAttachments = color_blend_attachments.data();
+}
 
+void VKPipelineStateManager::set_state(const GPUState &state, const GPUStateMutable &mutable_state)
+{
   GPUState changed = state ^ current_;
   if (changed.blend) {
     set_blend(static_cast<eGPUBlend>(state.blend));
@@ -335,9 +335,8 @@ void VKPipelineStateManager::set_logic_op(const bool enable)
 
 void VKPipelineStateManager::set_facing(const bool invert)
 {
-  rasterization_state.frontFace = VK_FRONT_FACE_CLOCKWISE;
-  // invert ? VK_FRONT_FACE_CLOCKWISE :
-  //  VK_FRONT_FACE_COUNTER_CLOCKWISE;
+  rasterization_state.frontFace = invert ? VK_FRONT_FACE_COUNTER_CLOCKWISE :
+                                           VK_FRONT_FACE_CLOCKWISE;
 }
 
 void VKPipelineStateManager::set_backface_culling(const eGPUFaceCullTest cull_test)
