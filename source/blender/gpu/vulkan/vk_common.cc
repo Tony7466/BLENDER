@@ -243,6 +243,126 @@ VkFormat to_vk_format(const eGPUTextureFormat format)
   return VK_FORMAT_UNDEFINED;
 }
 
+VkFormat to_vk_format(const GPUVertCompType type, const uint32_t size)
+{
+  switch (type) {
+    case GPU_COMP_I8:
+      switch (size) {
+        case 1:
+          return VK_FORMAT_R8_SNORM;
+        case 2:
+          return VK_FORMAT_R8G8_SNORM;
+        case 3:
+          return VK_FORMAT_R8G8B8_SNORM;
+        case 4:
+          return VK_FORMAT_R8G8B8A8_SNORM;
+        default:
+          BLI_assert(false);
+          return VK_FORMAT_R32_SFLOAT;
+      }
+
+    case GPU_COMP_U8:
+      switch (size) {
+        case 1:
+          return VK_FORMAT_R8_UNORM;
+        case 2:
+          return VK_FORMAT_R8G8_UNORM;
+        case 3:
+          return VK_FORMAT_R8G8B8_UNORM;
+        case 4:
+          return VK_FORMAT_R8G8B8A8_UNORM;
+        default:
+          BLI_assert(false);
+          return VK_FORMAT_R32_SFLOAT;
+      }
+
+    case GPU_COMP_I16:
+      switch (size) {
+        case 2:
+          return VK_FORMAT_R16_SNORM;
+        case 4:
+          return VK_FORMAT_R16G16_SNORM;
+        case 6:
+          return VK_FORMAT_R16G16B16_SNORM;
+        case 8:
+          return VK_FORMAT_R16G16B16A16_SNORM;
+        default:
+          BLI_assert(false);
+          return VK_FORMAT_R32_SFLOAT;
+      }
+
+    case GPU_COMP_U16:
+      switch (size) {
+        case 2:
+          return VK_FORMAT_R16_UNORM;
+        case 4:
+          return VK_FORMAT_R16G16_UNORM;
+        case 6:
+          return VK_FORMAT_R16G16B16_UNORM;
+        case 8:
+          return VK_FORMAT_R16G16B16A16_UNORM;
+        default:
+          BLI_assert(false);
+          return VK_FORMAT_R32_SFLOAT;
+      }
+
+    case GPU_COMP_I32:
+      switch (size) {
+        case 4:
+          return VK_FORMAT_R32_SINT;
+        case 8:
+          return VK_FORMAT_R32G32_SINT;
+        case 12:
+          return VK_FORMAT_R32G32B32_SINT;
+        case 16:
+          return VK_FORMAT_R32G32B32A32_SINT;
+        default:
+          BLI_assert(false);
+          return VK_FORMAT_R32_SFLOAT;
+      }
+
+    case GPU_COMP_U32:
+      switch (size) {
+        case 4:
+          return VK_FORMAT_R32_UINT;
+        case 8:
+          return VK_FORMAT_R32G32_UINT;
+        case 12:
+          return VK_FORMAT_R32G32B32_UINT;
+        case 16:
+          return VK_FORMAT_R32G32B32A32_UINT;
+        default:
+          BLI_assert(false);
+          return VK_FORMAT_R32_SFLOAT;
+      }
+
+    case GPU_COMP_F32:
+      switch (size) {
+        case 4:
+          return VK_FORMAT_R32_SFLOAT;
+        case 8:
+          return VK_FORMAT_R32G32_SFLOAT;
+        case 12:
+          return VK_FORMAT_R32G32B32_SFLOAT;
+        case 16:
+          return VK_FORMAT_R32G32B32A32_SFLOAT;
+        case 64:
+          return VK_FORMAT_R32G32B32A32_SFLOAT;
+        default:
+          BLI_assert(false);
+          return VK_FORMAT_R32_SFLOAT;
+      }
+
+    case GPU_COMP_I10:
+      BLI_assert(size == 4);
+      return VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+
+    default:
+      BLI_assert(0);
+      return VK_FORMAT_R32_SFLOAT;
+  }
+}
+
 VkImageType to_vk_image_type(const eGPUTextureType type)
 {
   switch (type) {
@@ -347,6 +467,66 @@ VkClearColorValue to_vk_clear_color_value(const eGPUDataFormat format, const voi
     }
   }
   return result;
+}
+
+VkIndexType to_vk_index_type(const GPUIndexBufType index_type)
+{
+  switch (index_type) {
+    case GPU_INDEX_U16:
+      return VK_INDEX_TYPE_UINT16;
+    case GPU_INDEX_U32:
+      return VK_INDEX_TYPE_UINT32;
+    default:
+      BLI_assert_unreachable();
+      break;
+  }
+  return VK_INDEX_TYPE_UINT16;
+}
+
+VkPrimitiveTopology to_vk_primitive_topology(const GPUPrimType prim_type)
+{
+  switch (prim_type) {
+    case GPU_PRIM_POINTS:
+      return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+    case GPU_PRIM_LINES:
+      return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+    case GPU_PRIM_TRIS:
+      return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    case GPU_PRIM_LINE_STRIP:
+      return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+    case GPU_PRIM_LINE_LOOP:
+      return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+    case GPU_PRIM_TRI_STRIP:
+      return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+    case GPU_PRIM_TRI_FAN:
+      return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
+    case GPU_PRIM_LINES_ADJ:
+      return VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY;
+    case GPU_PRIM_TRIS_ADJ:
+      return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY;
+    case GPU_PRIM_LINE_STRIP_ADJ:
+      return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY;
+
+    case GPU_PRIM_NONE:
+      break;
+  }
+
+  BLI_assert_unreachable();
+  return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+}
+
+VkCullModeFlags to_vk_cull_mode_flags(const eGPUFaceCullTest cull_test)
+{
+  switch (cull_test) {
+    case GPU_CULL_FRONT:
+      return VK_CULL_MODE_FRONT_BIT;
+    case GPU_CULL_BACK:
+      return VK_CULL_MODE_BACK_BIT;
+    case GPU_CULL_NONE:
+      return VK_CULL_MODE_NONE;
+  }
+  BLI_assert_unreachable();
+  return VK_CULL_MODE_NONE;
 }
 
 }  // namespace blender::gpu
