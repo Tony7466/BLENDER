@@ -318,6 +318,7 @@ static void library_foreach_node_socket(LibraryForeachIDData *data, bNodeSocket 
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
+    default:
       break;
   }
 }
@@ -464,6 +465,8 @@ static void write_node_socket_default_value(BlendWriter *writer, bNodeSocket *so
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
       BLI_assert_unreachable();
+      break;
+    default:
       break;
   }
 }
@@ -882,6 +885,7 @@ static void lib_link_node_socket(BlendLibReader *reader, Library *lib, bNodeSock
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
+    default:
       break;
   }
 }
@@ -981,6 +985,7 @@ static void expand_node_socket(BlendExpander *expander, bNodeSocket *sock)
       case SOCK_CUSTOM:
       case SOCK_SHADER:
       case SOCK_GEOMETRY:
+      default:
         break;
     }
   }
@@ -1624,6 +1629,7 @@ static void socket_id_user_increment(bNodeSocket *sock)
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
+    default:
       break;
   }
 }
@@ -1683,6 +1689,7 @@ static bool socket_id_user_decrement(bNodeSocket *sock)
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
+    default:
       break;
   }
   return false;
@@ -1739,6 +1746,7 @@ void nodeModifySocketType(bNodeTree *ntree,
         case SOCK_COLLECTION:
         case SOCK_TEXTURE:
         case SOCK_MATERIAL:
+        default:
           break;
       }
     }
@@ -1865,6 +1873,8 @@ const char *nodeStaticSocketType(const int type, const int subtype)
       return "NodeSocketTexture";
     case SOCK_MATERIAL:
       return "NodeSocketMaterial";
+    default:
+      break;
   }
   return nullptr;
 }
@@ -1942,6 +1952,8 @@ const char *nodeStaticSocketInterfaceType(const int type, const int subtype)
       return "NodeSocketInterfaceTexture";
     case SOCK_MATERIAL:
       return "NodeSocketInterfaceMaterial";
+    default:
+      break;
   }
   return nullptr;
 }
@@ -1975,6 +1987,8 @@ const char *nodeStaticSocketLabel(const int type, const int /*subtype*/)
       return "Texture";
     case SOCK_MATERIAL:
       return "Material";
+    default:
+      break;
   }
   return nullptr;
 }
@@ -4077,6 +4091,8 @@ void node_type_base(bNodeType *ntype, const int type, const char *name, const sh
 
   switch (type) {
 #include "NOD_static_types.h"
+    default:
+      break;
   }
 
   /* make sure we have a valid type (everything registered) */
@@ -4201,6 +4217,8 @@ void node_type_size_preset(bNodeType *ntype, const eNodeSizePreset size)
       break;
     case NODE_SIZE_LARGE:
       node_type_size(ntype, 240, 140, NODE_DEFAULT_MAX_WIDTH);
+      break;
+    default:
       break;
   }
 }
