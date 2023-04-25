@@ -7,3 +7,4 @@ Referenced by commit 85bd64ece468bb6fff097d96c44033074dba13dc, Fix: Crash and br
 Referenced by issue #106926, Geometry Nodes Extrude producing weird normals when Mesh has Custom Normals
 Referenced by issue #107095, Multires: Spikes on base mesh verts when sculpting on lower levels
 Referenced by commit 19dbe049db9198f7f018c92c42f69daa2d7faeeb, Fix #106469: unstable tessellation with quad-flipping detection
+Referenced by commit ae57d86d42c7f2184c657c8118ebffad30baf6ee, Fix #107095: Spikes during multires reshape propagation
