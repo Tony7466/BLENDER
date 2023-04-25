@@ -1559,7 +1559,7 @@ static bool vfont_to_curve(Object *ob,
 
     const bool is_between_space_and_word = is_word_space || is_space_word;
 
-    /* After or before of selections. Cursore alway related with selection if is exist. */
+    /* After or before of selections. Cursor alway related with selection if is exist. */
     const bool cursor_to_selection = selboxes != NULL;
     const bool is_before_selection = cursor_index == selstart;
 
