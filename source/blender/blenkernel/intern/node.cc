@@ -1515,7 +1515,7 @@ bNodeSocket *node_find_enabled_socket(bNode &node,
 {
   ListBase *sockets = (in_out == SOCK_IN) ? &node.inputs : &node.outputs;
   LISTBASE_FOREACH (bNodeSocket *, socket, sockets) {
-    if (!(socket->flag & SOCK_UNAVAIL) && socket->name == name) {
+    if (socket->is_available() && socket->name == name) {
       return socket;
     }
   }
@@ -2430,29 +2430,7 @@ bNode *node_copy_with_mapping(bNodeTree *dst_tree,
   return node_dst;
 }
 
-static void for_each_node_group_instance(Main &bmain,
-                                         const bNodeTree &node_group,
-                                         const Span<int> tree_types_to_lookup,
-                                         const FunctionRef<void(bNode &)> func)
-{
-  LISTBASE_FOREACH (bNodeTree *, other_group, &bmain.nodetrees) {
-    if (!tree_types_to_lookup.contains(other_group->type)) {
-      continue;
-    }
-    if (other_group == &node_group) {
-      continue;
-    }
-
-    other_group->ensure_topology_cache();
-    for (bNode *node : other_group->group_nodes()) {
-      if (node->id == &node_group.id) {
-        func(*node);
-      }
-    }
-  }
-}
-
-void node_socket_move_default_value(Main &bmain,
+void node_socket_move_default_value(Main & /*bmain*/,
                                     bNodeTree &tree,
                                     bNodeSocket &src,
                                     bNodeSocket &dst)
@@ -2488,14 +2466,6 @@ void node_socket_move_default_value(Main &bmain,
       switch (dst_node.type) {
         case GEO_NODE_IMAGE: {
           dst_values.append(&dst_node.id);
-          break;
-        }
-        case NODE_GROUP_INPUT: {
-          for_each_node_group_instance(bmain, tree, {NTREE_GEOMETRY}, [&](bNode &node_group) {
-            bNodeSocket &socket = node_group.input_by_identifier(dst.identifier);
-            Image **tmp_dst_value = &socket.default_value_typed<bNodeSocketValueImage>()->value;
-            dst_values.append(reinterpret_cast<ID **>(tmp_dst_value));
-          });
           break;
         }
         default: {
@@ -2582,7 +2552,7 @@ bNodeLink *nodeAddLink(
     BKE_ntree_update_tag_link_added(ntree, link);
   }
 
-  if (link != nullptr && link->tosock->flag & SOCK_MULTI_INPUT) {
+  if (link != nullptr && link->tosock->is_multi_input()) {
     link->multi_input_socket_index = node_count_links(ntree, link->tosock) - 1;
   }
 
@@ -2608,7 +2578,7 @@ void nodeRemLink(bNodeTree *ntree, bNodeLink *link)
 
 void nodeLinkSetMute(bNodeTree *ntree, bNodeLink *link, const bool muted)
 {
-  const bool was_muted = link->flag & NODE_LINK_MUTED;
+  const bool was_muted = link->is_muted();
   SET_FLAG_FROM_TEST(link->flag, muted, NODE_LINK_MUTED);
   if (muted != was_muted) {
     BKE_ntree_update_tag_link_mute(ntree, link);
@@ -2670,7 +2640,7 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node)
     bNodeLink *fromlink = internal_link ? internal_link->fromsock->link : nullptr;
 
     if (fromlink == nullptr) {
-      if (link->tosock->flag & SOCK_MULTI_INPUT) {
+      if (link->tosock->is_multi_input()) {
         adjust_multi_input_indices_after_removed_link(
             ntree, link->tosock, link->multi_input_socket_index);
       }
@@ -2678,7 +2648,7 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node)
       continue;
     }
 
-    if (link->tosock->flag & SOCK_MULTI_INPUT) {
+    if (link->tosock->is_multi_input()) {
       /* remove the link that would be the same as the relinked one */
       LISTBASE_FOREACH_MUTABLE (bNodeLink *, link_to_compare, &ntree->links) {
         if (link_to_compare->fromsock == fromlink->fromsock &&
@@ -3086,7 +3056,7 @@ void nodeUnlinkNode(bNodeTree *ntree, bNode *node)
 
     if (lb) {
       /* Only bother adjusting if the socket is not on the node we're deleting. */
-      if (link->tonode != node && link->tosock->flag & SOCK_MULTI_INPUT) {
+      if (link->tonode != node && link->tosock->is_multi_input()) {
         adjust_multi_input_indices_after_removed_link(
             ntree, link->tosock, link->multi_input_socket_index);
       }
@@ -3733,8 +3703,7 @@ void nodeSetActive(bNodeTree *ntree, bNode *node)
 
 void nodeSetSocketAvailability(bNodeTree *ntree, bNodeSocket *sock, const bool is_available)
 {
-  const bool was_available = (sock->flag & SOCK_UNAVAIL) == 0;
-  if (is_available == was_available) {
+  if (is_available == sock->is_available()) {
     return;
   }
   if (is_available) {
@@ -3748,7 +3717,7 @@ void nodeSetSocketAvailability(bNodeTree *ntree, bNodeSocket *sock, const bool i
 
 int nodeSocketLinkLimit(const bNodeSocket *sock)
 {
-  if (sock->flag & SOCK_MULTI_INPUT) {
+  if (sock->is_multi_input()) {
     return 4095;
   }
   if (sock->typeinfo == nullptr) {
