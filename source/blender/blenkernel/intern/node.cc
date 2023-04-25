@@ -2456,7 +2456,7 @@ void node_socket_move_default_value(Main & /*bmain*/,
 
   ID **src_socket_value = nullptr;
   Vector<ID **> dst_values;
-  switch (dst.type) {
+  switch (eNodeSocketDatatype(dst.type)) {
     case SOCK_IMAGE: {
       Image **tmp_socket_value = &src.default_value_typed<bNodeSocketValueImage>()->value;
       src_socket_value = reinterpret_cast<ID **>(tmp_socket_value);
@@ -2475,12 +2475,24 @@ void node_socket_move_default_value(Main & /*bmain*/,
       }
       break;
     }
+    case SOCK_BOOLEAN:
+    case SOCK_INT:
+    case SOCK_FLOAT:
+    case SOCK_VECTOR:
+    case SOCK_RGBA:
+    case SOCK_STRING:
+    case SOCK_OBJECT:
+    case SOCK_COLLECTION:
+    case SOCK_TEXTURE:
+    case SOCK_MATERIAL:
+      /* Unsupported yet. */
+      return;
+    case __SOCK_MESH:
     case SOCK_CUSTOM:
     case SOCK_SHADER:
-    case SOCK_GEOMETRY: {
+    case SOCK_GEOMETRY:
       /* Unmovable types. */
       return;
-    }
   }
 
   if (dst_values.is_empty() || src_socket_value == nullptr) {
