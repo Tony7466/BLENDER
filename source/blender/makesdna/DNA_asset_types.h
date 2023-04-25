@@ -129,7 +129,7 @@ typedef enum eAssetImportMethod {
 
 typedef enum eAssetLibrary_Flag {
   ASSET_LIBRARY_RELATIVE_PATH = (1 << 0),
-} eUserPref_bUserAssetLibrary_Flag;
+} eAssetLibrary_Flag;
 
 /**
  * Information to identify an asset library. May be either one of the predefined types (current

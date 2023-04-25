@@ -25,7 +25,6 @@
 
 #include "BKE_blendfile.h"
 #include "BKE_context.h"
-#include "BKE_main.h"
 
 #include "BLT_translation.h"
 
