@@ -1491,6 +1491,8 @@ class USERPREF_PT_file_paths_asset_libraries(FilePathsPanel, Panel):
         active_library = paths.asset_libraries[active_library_index]
         layout.prop(active_library, "path")
         layout.prop(active_library, "import_method", text="Import Method")
+        if active_library.import_method == 'LINK':
+            layout.prop(active_library, "use_relative_path")
 
 
 class USERPREF_UL_asset_libraries(bpy.types.UIList):

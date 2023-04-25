@@ -593,7 +593,8 @@ typedef struct bUserAssetLibrary {
   char path[1024]; /* FILE_MAX */
 
   short import_method; /* eAssetImportMethod */
-  char _pad0[6];
+  char flag; /* eAssetLibrary_Flag */
+  char _pad0[5];
 } bUserAssetLibrary;
 
 typedef struct SolidLight {
