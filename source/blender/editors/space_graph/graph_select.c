@@ -142,7 +142,8 @@ static void nearest_fcurve_vert_store(ListBase *matches,
 
       nvi->frame = bezt->vec[1][0]; /* currently in global time... */
 
-      nvi->sel = BEZT_ISSEL_ANY(bezt); /* XXX... should this use the individual verts instead? */
+      /* NOTE: `hpoint` is -1,0,1, but `BEZT_ISSEL_IDX` expects 0,1,2. */
+      nvi->sel = BEZT_ISSEL_IDX(bezt, hpoint + 1);
 
       /* add to list of matches if appropriate... */
       if (replace == 0) {
