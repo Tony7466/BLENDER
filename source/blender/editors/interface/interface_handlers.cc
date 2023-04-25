@@ -1918,6 +1918,7 @@ static void ui_selectcontext_apply(bContext *C,
       bool b;
       int i;
       float f;
+      char *str;
       PointerRNA p;
     } delta, min, max;
 
@@ -1949,6 +1950,10 @@ static void ui_selectcontext_apply(bContext *C,
     else if (rna_type == PROP_POINTER) {
       /* Not a delta in fact. */
       delta.p = RNA_property_pointer_get(&but->rnapoin, prop);
+    }
+    else if (rna_type == PROP_STRING) {
+      /* Not a delta in fact. */
+      delta.str = RNA_property_string_get_alloc(&but->rnapoin, prop, nullptr, 0, nullptr);
     }
 
 #  ifdef USE_ALLSELECT_LAYER_HACK
@@ -2023,8 +2028,15 @@ static void ui_selectcontext_apply(bContext *C,
         const PointerRNA other_value = delta.p;
         RNA_property_pointer_set(&lptr, lprop, other_value, nullptr);
       }
+      else if (rna_type == PROP_STRING) {
+        const char *other_value = delta.str;
+        RNA_property_string_set(&lptr, lprop, other_value);
+      }
 
       RNA_property_update(C, &lptr, prop);
+    }
+    if (rna_type == PROP_STRING) {
+      MEM_freeN(delta.str);
     }
   }
 }
@@ -3146,12 +3158,14 @@ static bool ui_textedit_insert_buf(uiBut *but,
   return changed;
 }
 
+#ifdef WITH_INPUT_IME
 static bool ui_textedit_insert_ascii(uiBut *but, uiHandleButtonData *data, const char ascii)
 {
   BLI_assert(isascii(ascii));
   const char buf[2] = {ascii, '\0'};
   return ui_textedit_insert_buf(but, data, buf, sizeof(buf) - 1);
 }
+#endif
 
 static void ui_textedit_move(uiBut *but,
                              uiHandleButtonData *data,
@@ -3928,9 +3942,6 @@ static void ui_do_but_textedit(
   else if (event->type == WM_IME_COMPOSITE_END) {
     changed = true;
   }
-#else
-  /* Prevent the function from being unused. */
-  (void)ui_textedit_insert_ascii;
 #endif
 
   if (changed) {
@@ -8339,7 +8350,7 @@ static void button_activate_state(bContext *C, uiBut *but, uiHandleButtonState s
        */
       if (state != BUTTON_STATE_TEXT_EDITING) {
         WM_report(RPT_INFO,
-                  "Can't edit driven number value, see graph editor for the driver setup.");
+                  "Can't edit driven number value, see driver editor for the driver setup");
       }
     }
 

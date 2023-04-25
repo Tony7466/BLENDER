@@ -33,7 +33,7 @@ static IndexMask retrieve_selected_curves(const bke::CurvesGeometry &curves,
   if (meta_data && meta_data->domain == ATTR_DOMAIN_POINT) {
     /* Avoid the interpolation from interpolating the attribute to the
      * curve domain by retrieving the point domain values directly. */
-    const VArray<bool> selection = attributes.lookup_or_default<bool>(
+    const VArray<bool> selection = *attributes.lookup_or_default<bool>(
         ".selection", ATTR_DOMAIN_POINT, true);
     if (selection.is_single()) {
       return selection.get_internal_single() ? IndexMask(curves_range) : IndexMask();
@@ -48,7 +48,7 @@ static IndexMask retrieve_selected_curves(const bke::CurvesGeometry &curves,
           return point_selection.as_span().contains(true);
         });
   }
-  const VArray<bool> selection = attributes.lookup_or_default<bool>(
+  const VArray<bool> selection = *attributes.lookup_or_default<bool>(
       ".selection", ATTR_DOMAIN_CURVE, true);
   return IndexMask::from_bools(curves_range, selection, memory);
 }
@@ -62,7 +62,7 @@ IndexMask retrieve_selected_curves(const Curves &curves_id, IndexMaskMemory &mem
 IndexMask retrieve_selected_points(const bke::CurvesGeometry &curves, IndexMaskMemory &memory)
 {
   return IndexMask::from_bools(
-      curves.attributes().lookup_or_default<bool>(".selection", ATTR_DOMAIN_POINT, true), memory);
+      *curves.attributes().lookup_or_default<bool>(".selection", ATTR_DOMAIN_POINT, true), memory);
 }
 
 IndexMask retrieve_selected_points(const Curves &curves_id, IndexMaskMemory &memory)
@@ -162,7 +162,7 @@ bool has_anything_selected(const VArray<bool> &varray, const IndexRange range_to
 
 bool has_anything_selected(const bke::CurvesGeometry &curves)
 {
-  const VArray<bool> selection = curves.attributes().lookup<bool>(".selection");
+  const VArray<bool> selection = *curves.attributes().lookup<bool>(".selection");
   return !selection || contains(selection, selection.index_range(), true);
 }
 
