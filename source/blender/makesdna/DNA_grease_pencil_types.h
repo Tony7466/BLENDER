@@ -109,8 +109,8 @@ typedef struct GreasePencilDrawing {
   /**
    * A buffer for a single stroke while drawing.
    */
-  blender::Span<blender::bke::StrokePoint> stroke_buffer();
-  bool has_stroke_buffer();
+  blender::Span<blender::bke::StrokePoint> stroke_buffer() const;
+  bool has_stroke_buffer() const;
 #endif
 } GreasePencilDrawing;
 
