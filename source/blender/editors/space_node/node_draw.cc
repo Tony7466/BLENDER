@@ -336,6 +336,10 @@ float2 node_from_view(const bNode &node, const float2 &co)
   ;
 }
 
+float grid_snap_floor(float x, float offset) {
+  return floor((x - offset) / NODE_DY) * NODE_DY + offset;
+}
+
 /**
  * Based on settings and sockets in node, set drawing rect info.
  */
@@ -351,6 +355,8 @@ static void node_update_basis(const bContext &C,
   const bool node_options = node.typeinfo->draw_buttons && (node.flag & NODE_OPTIONS);
   const bool inputs_first = node.inputs.first &&
                             !(node.outputs.first || (node.flag & NODE_PREVIEW) || node_options);
+
+  const bool align_to_grid = UI_GetThemeValueType(TH_NODE_ALIGN_TO_GRID, SPACE_NODE);
 
   /* Get "global" coordinates. */
   float2 loc = node_to_view(node, float2(0));
@@ -418,11 +424,15 @@ static void node_update_basis(const bContext &C,
     /* Ensure minimum socket height in case layout is empty. */
     buty = min_ii(buty, dy - NODE_DY);
 
+    if (align_to_grid) {
+      dy = grid_snap_floor(dy, loc.y + NODE_DYS);
+    }
+
     /* Round the socket location to stop it from jiggling. */
     socket->runtime->location = float2(round(loc.x + NODE_WIDTH(node)), round(dy - NODE_DYS));
 
     dy = buty;
-    if (socket->next) {
+    if (socket->next && !align_to_grid) {
       dy -= NODE_SOCKDY;
     }
 
@@ -499,6 +509,10 @@ static void node_update_basis(const bContext &C,
     dy = buty - NODE_DYS / 2;
   }
 
+  if (align_to_grid) {
+    dy = grid_snap_floor(dy, loc.y + NODE_DYS);
+  }
+
   /* Input sockets. */
   for (bNodeSocket *socket : node.input_sockets()) {
     if (!socket->is_visible()) {
@@ -555,15 +569,23 @@ static void node_update_basis(const bContext &C,
     /* Ensure minimum socket height in case layout is empty. */
     buty = min_ii(buty, dy - NODE_DY);
 
+    if (align_to_grid && !(socket->flag & SOCK_MULTI_INPUT)) {
+      dy = grid_snap_floor(dy, loc.y + NODE_DYS);
+    }
+
     /* Round the socket vertical position to stop it from jiggling. */
     socket->runtime->location = float2(loc.x, round(dy - NODE_DYS));
 
     dy = buty - multi_input_socket_offset * 0.5;
-    if (socket->next) {
+    if (socket->next && !align_to_grid) {
       dy -= NODE_SOCKDY;
     }
   }
 
+  if (align_to_grid) {
+    dy = grid_snap_floor(dy, loc.y + NODE_DYS);
+  }
+  
   /* Little bit of space in end. */
   if (node.inputs.first || (node.flag & (NODE_OPTIONS | NODE_PREVIEW)) == 0) {
     dy -= NODE_DYS / 2;
