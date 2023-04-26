@@ -95,8 +95,8 @@
 /* Only during shadow rendering. */
 #define SHADOW_RENDER_MAP_SLOT 13
 #define RBUFS_UTILITY_TEX_SLOT 14
-/* TODO(Miguel Pozo): Set the correct slot. */
-#define SSS_TRANSMITTANCE_TEX_SLOT 28
+#define HIZ_TEX_SLOT 15
+#define SSS_TRANSMITTANCE_TEX_SLOT 16
 
 /* Images. */
 #define RBUFS_NORMAL_SLOT 0
