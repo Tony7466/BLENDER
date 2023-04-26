@@ -9,14 +9,11 @@
 
 #include "gpu_batch_private.hh"
 
-#include "vk_vertex_attribute_object_cache.hh"
-
 namespace blender::gpu {
+class VKVertexBuffer;
+class VKIndexBuffer;
 
 class VKBatch : public Batch {
- private:
-  VKVaoCache vao_cache_;
-
  public:
   void draw(int v_first, int v_count, int i_first, int i_count) override;
   void draw_indirect(GPUStorageBuf *indirect_buf, intptr_t offset) override;

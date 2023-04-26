@@ -9,21 +9,21 @@
 
 #include "vk_context.hh"
 #include "vk_index_buffer.hh"
+#include "vk_vertex_attribute_object.hh"
 #include "vk_vertex_buffer.hh"
 
 namespace blender::gpu {
 
 void VKBatch::draw(int v_first, int v_count, int i_first, int i_count)
 {
-  if (flag & GPU_BATCH_DIRTY) {
-    vao_cache_.clear();
-    flag &= ~GPU_BATCH_DIRTY;
-  }
+  /* Currently the pipeline is rebuild on each draw command. Clearing the dirty flag for
+   * consistency with the internals of GPU module.  */
+  flag &= ~GPU_BATCH_DIRTY;
 
   /* Finalize graphics pipeline */
   VKContext &context = *VKContext::get();
   context.state_manager->apply_state();
-  VKVertexAttributeObject &vao = vao_cache_.vao_get(this);
+  VKVertexAttributeObject vao;
   vao.update_bindings(context, *this);
   context.bind_graphics_pipeline(prim_type, vao);
 
