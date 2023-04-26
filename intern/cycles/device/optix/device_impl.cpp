@@ -949,11 +949,6 @@ bool OptiXDevice::build_optix_bvh(BVHOptiX *bvh,
    * from running out of memory (since both original and compacted acceleration structure memory
    * may be allocated at the same time for the duration of this function). The builds would
    * otherwise happen on the same CUDA stream anyway. */
-  static thread_mutex mutex;
-  thread_scoped_lock lock(mutex);
-
-  const CUDAContextScope scope(this);
-
   const bool use_fast_trace_bvh = (bvh->params.bvh_type == BVH_TYPE_STATIC);
 
   /* Compute memory usage. */
@@ -1063,6 +1058,7 @@ bool OptiXDevice::build_optix_bvh(BVHOptiX *bvh,
 
 void OptiXDevice::build_bvh(BVH *bvh, DeviceScene *dscene, Progress &progress, bool refit)
 {
+  const CUDAContextScope scope(this);
   const bool use_fast_trace_bvh = (bvh->params.bvh_type == BVH_TYPE_STATIC);
 
   free_bvh_memory_delayed();
