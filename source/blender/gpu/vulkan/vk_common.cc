@@ -257,9 +257,9 @@ VkFormat to_vk_format(const GPUVertCompType type, const uint32_t size)
         case 4:
           return VK_FORMAT_R8G8B8A8_SNORM;
         default:
-          BLI_assert(false);
-          return VK_FORMAT_R32_SFLOAT;
+          break;
       }
+      break;
 
     case GPU_COMP_U8:
       switch (size) {
@@ -272,9 +272,9 @@ VkFormat to_vk_format(const GPUVertCompType type, const uint32_t size)
         case 4:
           return VK_FORMAT_R8G8B8A8_UNORM;
         default:
-          BLI_assert(false);
-          return VK_FORMAT_R32_SFLOAT;
+          break;
       }
+      break;
 
     case GPU_COMP_I16:
       switch (size) {
@@ -287,9 +287,9 @@ VkFormat to_vk_format(const GPUVertCompType type, const uint32_t size)
         case 8:
           return VK_FORMAT_R16G16B16A16_SNORM;
         default:
-          BLI_assert(false);
-          return VK_FORMAT_R32_SFLOAT;
+          break;
       }
+      break;
 
     case GPU_COMP_U16:
       switch (size) {
@@ -302,9 +302,9 @@ VkFormat to_vk_format(const GPUVertCompType type, const uint32_t size)
         case 8:
           return VK_FORMAT_R16G16B16A16_UNORM;
         default:
-          BLI_assert(false);
-          return VK_FORMAT_R32_SFLOAT;
+          break;
       }
+      break;
 
     case GPU_COMP_I32:
       switch (size) {
@@ -317,9 +317,9 @@ VkFormat to_vk_format(const GPUVertCompType type, const uint32_t size)
         case 16:
           return VK_FORMAT_R32G32B32A32_SINT;
         default:
-          BLI_assert(false);
-          return VK_FORMAT_R32_SFLOAT;
+          break;
       }
+      break;
 
     case GPU_COMP_U32:
       switch (size) {
@@ -332,9 +332,9 @@ VkFormat to_vk_format(const GPUVertCompType type, const uint32_t size)
         case 16:
           return VK_FORMAT_R32G32B32A32_UINT;
         default:
-          BLI_assert(false);
-          return VK_FORMAT_R32_SFLOAT;
+          break;
       }
+      break;
 
     case GPU_COMP_F32:
       switch (size) {
@@ -349,18 +349,19 @@ VkFormat to_vk_format(const GPUVertCompType type, const uint32_t size)
         case 64:
           return VK_FORMAT_R32G32B32A32_SFLOAT;
         default:
-          BLI_assert(false);
-          return VK_FORMAT_R32_SFLOAT;
+          break;
       }
+      break;
 
     case GPU_COMP_I10:
       BLI_assert(size == 4);
       return VK_FORMAT_A2B10G10R10_UNORM_PACK32;
 
     default:
-      BLI_assert(0);
-      return VK_FORMAT_R32_SFLOAT;
+      break;
   }
+  BLI_assert_unreachable();
+  return VK_FORMAT_R32_SFLOAT;
 }
 
 VkImageType to_vk_image_type(const eGPUTextureType type)
@@ -380,10 +381,10 @@ VkImageType to_vk_image_type(const eGPUTextureType type)
 
     case GPU_TEXTURE_ARRAY:
       /* GPU_TEXTURE_ARRAY should always be used together with 1D, 2D, or CUBE*/
-      BLI_assert_unreachable();
       break;
   }
 
+  BLI_assert_unreachable();
   return VK_IMAGE_TYPE_1D;
 }
 
@@ -408,10 +409,10 @@ VkImageViewType to_vk_image_view_type(const eGPUTextureType type)
 
     case GPU_TEXTURE_ARRAY:
       /* GPU_TEXTURE_ARRAY should always be used together with 1D, 2D, or CUBE*/
-      BLI_assert_unreachable();
       break;
   }
 
+  BLI_assert_unreachable();
   return VK_IMAGE_VIEW_TYPE_1D;
 }
 
@@ -477,9 +478,9 @@ VkIndexType to_vk_index_type(const GPUIndexBufType index_type)
     case GPU_INDEX_U32:
       return VK_INDEX_TYPE_UINT32;
     default:
-      BLI_assert_unreachable();
       break;
   }
+  BLI_assert_unreachable();
   return VK_INDEX_TYPE_UINT16;
 }
 
