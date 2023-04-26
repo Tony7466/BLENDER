@@ -441,6 +441,9 @@ static bNode *join_objects_as_instances(const Span<Object *> objects, bNodeTree 
 
   for (Object *object : objects) {
     bNode *object_info = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_OBJECT_INFO);
+    for_node_storage<NodeGeometryObjectInfo>(node_tree, object_info, [&](auto &storage) {
+      storage.transform_space = GEO_NODE_TRANSFORM_SPACE_RELATIVE;
+    });
     bNodeSocket &object_input = node_input_by_name("Object", object_info);
     bNodeSocket &as_instance = node_input_by_name("As Instance", object_info);
     object_input.default_value_typed<bNodeSocketValueObject>()->value = object;
@@ -473,23 +476,48 @@ static bNodeTree *reset_instances_transform_tree(Main *bmain, RegularNodeTrees &
     bNodeSocket &in = node_input_by_name(name_in, node_in);
     nodeAddLink(node_tree, node_out, &out, node_in, &in);
   };
+
+  const auto set_in = [](bNode *node, StringRefNull input_name, auto value) {
+    if constexpr (std::is_same_v<decltype(value), bool>) {
+      node_input_by_name(input_name, node).default_value_typed<bNodeSocketValueBoolean>()->value =
+          value;
+    }
+    else if constexpr (std::is_same_v<decltype(value), float>) {
+      node_input_by_name(input_name, node).default_value_typed<bNodeSocketValueFloat>()->value =
+          value;
+    }
+    else if constexpr (std::is_same_v<decltype(value), float3>) {
+      float(&values)[3] = node_input_by_name(input_name, node)
+                              .default_value_typed<bNodeSocketValueVector>()
+                              ->value;
+      values[0] = value[0];
+      values[1] = value[1];
+      values[2] = value[2];
+    }
+    else {
+      static_assert(true);
+    }
+  };
+
   bNode *instances_in = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
 
   bNode *scale_instances = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_SCALE_INSTANCES);
   connect(instances_in, "Instances", scale_instances, "Instances");
-  node_input_by_name("Local Space", scale_instances)
-      .default_value_typed<bNodeSocketValueBoolean>()
-      ->value = true;
+  set_in(scale_instances, "Local Space", false);
 
   bNode *rotate_z_instances = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_ROTATE_INSTANCES);
   connect(scale_instances, "Instances", rotate_z_instances, "Instances");
+  set_in(rotate_z_instances, "Local Space", false);
   bNode *rotate_y_instances = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_ROTATE_INSTANCES);
   connect(rotate_z_instances, "Instances", rotate_y_instances, "Instances");
+  set_in(rotate_y_instances, "Local Space", false);
   bNode *rotate_x_instances = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_ROTATE_INSTANCES);
   connect(rotate_y_instances, "Instances", rotate_x_instances, "Instances");
+  set_in(rotate_x_instances, "Local Space", false);
 
   bNode *translate_instances = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_TRANSLATE_INSTANCES);
   connect(rotate_x_instances, "Instances", translate_instances, "Instances");
+  set_in(translate_instances, "Local Space", false);
 
   bNode *geometry_out = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_OUTPUT);
   connect(translate_instances, "Instances", geometry_out, "Instances");
@@ -497,17 +525,13 @@ static bNodeTree *reset_instances_transform_tree(Main *bmain, RegularNodeTrees &
   bNode *invert_size = nodeAddStaticNode(nullptr, node_tree, SH_NODE_VECTOR_MATH);
   invert_size->custom1 = NODE_VECTOR_MATH_DIVIDE;
   invert_size->typeinfo->updatefunc(node_tree, invert_size);
-  float(&size)[3] = node_input_by_name("Vector", invert_size)
-                        .default_value_typed<bNodeSocketValueVector>()
-                        ->value;
-  size[0] = -1.0f;
-  size[1] = -1.0f;
-  size[2] = -1.0f;
+  set_in(invert_size, "Vector", float3{1.0f});
   connect(invert_size, "Vector", scale_instances, "Scale");
 
   bNode *flip_rotation = nodeAddStaticNode(nullptr, node_tree, SH_NODE_VECTOR_MATH);
   flip_rotation->custom1 = NODE_VECTOR_MATH_SCALE;
   flip_rotation->typeinfo->updatefunc(node_tree, flip_rotation);
+  set_in(flip_rotation, "Scale", -1.0f);
 
   bNode *separate_rotation = nodeAddStaticNode(nullptr, node_tree, SH_NODE_SEPXYZ);
   connect(flip_rotation, "Vector", separate_rotation, "Vector");
@@ -526,12 +550,10 @@ static bNodeTree *reset_instances_transform_tree(Main *bmain, RegularNodeTrees &
   go_back_position->custom1 = NODE_VECTOR_MATH_SCALE;
   go_back_position->typeinfo->updatefunc(node_tree, go_back_position);
   connect(go_back_position, "Vector", translate_instances, "Translation");
-  node_input_by_name("Scale", go_back_position)
-      .default_value_typed<bNodeSocketValueFloat>()
-      ->value = -1.0f;
+  set_in(go_back_position, "Scale", -1.0f);
 
   bNode *set_scale = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_INPUT_INSTANCE_SCALE);
-  connect(set_scale, "Scale", invert_size, "Vector");
+  connect(set_scale, "Scale", invert_size, "Vector_001");
   bNode *set_rotation = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_INPUT_INSTANCE_ROTATION);
   connect(set_rotation, "Rotation", flip_rotation, "Vector");
   bNode *set_position = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_INPUT_POSITION);
@@ -566,16 +588,33 @@ static bNodeTree *sample_apply_instances_transform_tree(Main *bmain,
     nodeAddLink(node_tree, node_out, &out, node_in, &in);
   };
 
+  const auto set_in = [](bNode *node, StringRefNull input_name, auto value) {
+    if constexpr (std::is_same_v<decltype(value), bool>) {
+      node_input_by_name(input_name, node).default_value_typed<bNodeSocketValueBoolean>()->value =
+          value;
+    }
+    else {
+      static_assert(true);
+    }
+  };
+
   bNode *instances_in = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
+
+  bNode *pivot_porition = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_INPUT_POSITION);
 
   bNode *scale_instances = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_SCALE_INSTANCES);
   connect(instances_in, "Instances", scale_instances, "Instances");
+  connect(pivot_porition, "Position", scale_instances, "Center");
+  set_in(scale_instances, "Local Space", false);
 
   bNode *rotate_instances = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_ROTATE_INSTANCES);
   connect(scale_instances, "Instances", rotate_instances, "Instances");
+  connect(pivot_porition, "Position", rotate_instances, "Pivot Point");
+  set_in(rotate_instances, "Local Space", false);
 
   bNode *translate_instances = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_TRANSLATE_INSTANCES);
   connect(rotate_instances, "Instances", translate_instances, "Instances");
+  set_in(translate_instances, "Local Space", false);
 
   bNode *geometry_out = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_OUTPUT);
   connect(translate_instances, "Instances", geometry_out, "Instances");
