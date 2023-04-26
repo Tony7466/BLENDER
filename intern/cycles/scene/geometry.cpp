@@ -1150,21 +1150,21 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
         sub_dscene->device_update_attributes(sub_device, &(scene->attrib_sizes), progress);
         sub_dscene->device_update_mesh(sub_device, &(scene->geom_sizes), progress);
       }
-        /* Copy constant data needed by shader evaluation. */
-        sub_device->const_copy_to("data", &sub_dscene->data, sizeof(sub_dscene->data));
+      /* Copy constant data needed by shader evaluation. */
+      sub_device->const_copy_to("data", &dscene->data, sizeof(dscene->data));
+
+      /* Update images needed for true displacement. */
+      if (true_displacement_used) {
+        scoped_callback_timer timer([scene](double time) {
+          if (scene->update_stats) {
+            scene->update_stats->geometry.times.add_entry(
+                {"device_update (displacement: load images)", time});
+          }
+        });
+        device_update_displacement_images(sub_device, scene, progress);
+      }
 
       foreach (Geometry *geom, scene->geometry) {
-        /* Update images needed for true displacement. */
-        if(true_displacement_used){
-          scoped_callback_timer timer([scene](double time) {
-            if (scene->update_stats) {
-              scene->update_stats->geometry.times.add_entry(
-                  {"device_update (displacement: load images)", time});
-            }
-          });
-          device_update_displacement_images(sub_device, scene, progress);
-        }
-
         if (geom->is_modified()) {
           if (geom->is_mesh()) {
             Mesh *mesh = static_cast<Mesh *>(geom);
@@ -1197,8 +1197,7 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
       /* Need to redo host side filling out the attribute and mesh buffers as these may have
          changed. Hair adds a new attribute buffer and displace updates the mesh. */
       geom_calc_offset(scene);
-      gather_attributes(
-          scene, geom_attributes, object_attributes, object_attribute_values);
+      gather_attributes(scene, geom_attributes, object_attributes, object_attribute_values);
       device_free(device, dscene, false);
       device_update_attributes_preprocess(device,
                                           dscene,
