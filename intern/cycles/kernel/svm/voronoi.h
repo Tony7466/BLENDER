@@ -853,6 +853,29 @@ ccl_device float voronoi_n_sphere_radius(const VoronoiParams &params, const floa
   return distance(closestPointToClosestPoint, closestPoint) / 2.0f;
 }
 
+/* **** Normalization **** */
+
+ccl_device void normalize_voronoi_x_fx(const VoronoiParams &params,
+                                    VoronoiOutput &output,
+                                    float max_amplitude,
+                                    bool zero_input)
+{
+  if (params.feature == NODE_VORONOI_F2) {
+    if (zero_input) {
+      output.distance /= (1.0f - params.randomness) +
+                         params.randomness * max_amplitude * params.max_distance;
+    }
+    else {
+      output.distance /= (1.0f - params.randomness) * ceilf(params.detail + 1.0f) +
+                         params.randomness * max_amplitude * params.max_distance;
+    }
+  }
+  else {
+    output.distance /= (0.5f + 0.5f * params.randomness) * max_amplitude * params.max_distance;
+  }
+  output.color /= max_amplitude;
+}
+
 /* **** Fractal Voronoi **** */
 
 template<typename T>
@@ -866,12 +889,11 @@ ccl_device VoronoiOutput fractal_voronoi_x_fx(const VoronoiParams &params, const
   bool zero_input = params.detail == 0.0f || params.roughness == 0.0f || params.lacunarity == 0.0f;
 
   for (int i = 0; i <= ceilf(params.detail); ++i) {
-    const T octave_coord = coord * scale;
     VoronoiOutput octave = (params.feature == NODE_VORONOI_F1) ?
-                               voronoi_f1(params, octave_coord) :
+                               voronoi_f1(params, coord * scale) :
                            (params.feature == NODE_VORONOI_SMOOTH_F1) ?
-                               voronoi_smooth_f1(params, octave_coord) :
-                               voronoi_f2(params, octave_coord);
+                               voronoi_smooth_f1(params, coord * scale) :
+                               voronoi_f2(params, coord * scale);
 
     if (zero_input) {
       max_amplitude = 1.0f;
@@ -902,21 +924,7 @@ ccl_device VoronoiOutput fractal_voronoi_x_fx(const VoronoiParams &params, const
   }
 
   if (params.normalize) {
-    if (params.feature == NODE_VORONOI_F2) {
-      if (zero_input) {
-        output.distance /= (1.0f - params.randomness) +
-                           params.randomness * max_amplitude * params.max_distance;
-      }
-      else {
-        output.distance /= (1.0f - params.randomness) * ceilf(params.detail + 1.0f) +
-                           params.randomness * max_amplitude * params.max_distance;
-      }
-    }
-    else {
-      output.distance /= (0.5f + 0.5f * params.randomness) * max_amplitude * params.max_distance;
-    }
-
-    output.color /= max_amplitude;
+    normalize_voronoi_x_fx(params, output, max_amplitude, zero_input);
   }
 
   output.position = safe_divide(output.position, params.scale);
@@ -1014,7 +1022,7 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
   uint coord_stack_offset, w_stack_offset, scale_stack_offset, detail_stack_offset;
   uint roughness_stack_offset, lacunarity_stack_offset, smoothness_stack_offset,
       exponent_stack_offset;
-  uint randomness_stack_offset, voronoi_normalize;
+  uint randomness_stack_offset, normalize;
 
   svm_unpack_node_uchar4(stack_offsets.x,
                          &coord_stack_offset,
@@ -1026,11 +1034,11 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                          &lacunarity_stack_offset,
                          &smoothness_stack_offset,
                          &exponent_stack_offset);
-  svm_unpack_node_uchar2(stack_offsets.z, &randomness_stack_offset, &voronoi_normalize);
+  svm_unpack_node_uchar2(stack_offsets.z, &randomness_stack_offset, &normalize);
 
   /* Read from stack. */
-  float3 voronoi_coord = stack_load_float3(stack, coord_stack_offset);
-  float voronoi_w = stack_load_float_default(stack, w_stack_offset, defaults1.x);
+  float3 coord = stack_load_float3(stack, coord_stack_offset);
+  float w = stack_load_float_default(stack, w_stack_offset, defaults1.x);
 
   VoronoiParams params;
   params.feature = (NodeVoronoiFeature)feature;
@@ -1043,15 +1051,15 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
   params.exponent = stack_load_float_default(stack, exponent_stack_offset, defaults2.z);
   params.randomness = stack_load_float_default(stack, randomness_stack_offset, defaults2.w);
   params.max_distance = 0.0f;
-  params.normalize = voronoi_normalize;
+  params.normalize = normalize;
 
   params.detail = clamp(params.detail, 0.0f, 15.0f);
   params.roughness = clamp(params.roughness, 0.0f, 1.0f);
   params.randomness = clamp(params.randomness, 0.0f, 1.0f);
   params.smoothness = clamp(params.smoothness / 2.0f, 0.0f, 0.5f);
 
-  voronoi_coord *= params.scale;
-  voronoi_w *= params.scale;
+  coord *= params.scale;
+  w *= params.scale;
 
   /* Compute output, specialized for each dimension. */
   switch (params.feature) {
@@ -1059,17 +1067,17 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
       float distance = 0.0f;
       switch (dimensions) {
         case 1:
-          distance = fractal_voronoi_distance_to_edge(params, voronoi_w);
+          distance = fractal_voronoi_distance_to_edge(params, w);
           break;
         case 2:
-          distance = fractal_voronoi_distance_to_edge(params, float3_to_float2(voronoi_coord));
+          distance = fractal_voronoi_distance_to_edge(params, float3_to_float2(coord));
           break;
         case 3:
-          distance = fractal_voronoi_distance_to_edge(params, voronoi_coord);
+          distance = fractal_voronoi_distance_to_edge(params, coord);
           break;
         case 4:
           distance = fractal_voronoi_distance_to_edge(params,
-                                                      float3_to_float4(voronoi_coord, voronoi_w));
+                                                      float3_to_float4(coord, w));
           break;
       }
 
@@ -1080,16 +1088,16 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
       float radius = 0.0f;
       switch (dimensions) {
         case 1:
-          radius = voronoi_n_sphere_radius(params, voronoi_w);
+          radius = voronoi_n_sphere_radius(params, w);
           break;
         case 2:
-          radius = voronoi_n_sphere_radius(params, float3_to_float2(voronoi_coord));
+          radius = voronoi_n_sphere_radius(params, float3_to_float2(coord));
           break;
         case 3:
-          radius = voronoi_n_sphere_radius(params, voronoi_coord);
+          radius = voronoi_n_sphere_radius(params, coord);
           break;
         case 4:
-          radius = voronoi_n_sphere_radius(params, float3_to_float4(voronoi_coord, voronoi_w));
+          radius = voronoi_n_sphere_radius(params, float3_to_float4(coord, w));
           break;
       }
 
@@ -1101,27 +1109,27 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
       switch (dimensions) {
         case 1:
           params.max_distance = 1.0f;
-          output = fractal_voronoi_x_fx(params, voronoi_w);
+          output = fractal_voronoi_x_fx(params, w);
           break;
         case 2:
           IF_KERNEL_NODES_FEATURE(VORONOI_EXTRA)
           {
             params.max_distance = voronoi_distance(zero_float2(), one_float2(), params);
-            output = fractal_voronoi_x_fx(params, float3_to_float2(voronoi_coord));
+            output = fractal_voronoi_x_fx(params, float3_to_float2(coord));
           }
           break;
         case 3:
           IF_KERNEL_NODES_FEATURE(VORONOI_EXTRA)
           {
             params.max_distance = voronoi_distance(zero_float3(), one_float3(), params);
-            output = fractal_voronoi_x_fx(params, voronoi_coord);
+            output = fractal_voronoi_x_fx(params, coord);
           }
           break;
         case 4:
           IF_KERNEL_NODES_FEATURE(VORONOI_EXTRA)
           {
             params.max_distance = voronoi_distance(zero_float4(), one_float4(), params);
-            output = fractal_voronoi_x_fx(params, float3_to_float4(voronoi_coord, voronoi_w));
+            output = fractal_voronoi_x_fx(params, float3_to_float4(coord, w));
           }
           break;
       }
