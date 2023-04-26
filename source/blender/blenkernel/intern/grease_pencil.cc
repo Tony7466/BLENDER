@@ -424,10 +424,10 @@ bool Layer::overwrite_frame(int frame_number, GreasePencilFrame &&frame)
 Span<int> Layer::sorted_keys() const
 {
   this->sorted_keys_cache_.ensure([&](Vector<int> &r_data) {
-    r_data.clear_and_shrink();
-    r_data.reserve(this->frames().size());
+    r_data.reinitialize(this->frames().size());
+    int i = 0;
     for (int64_t key : this->frames().keys()) {
-      r_data.append(key);
+      r_data[i++] = key;
     }
     std::sort(r_data.begin(), r_data.end());
   });
