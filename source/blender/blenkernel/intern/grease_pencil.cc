@@ -608,6 +608,16 @@ greasepencil::LayerGroup &GreasePencilRuntime::root_group_for_write()
   return this->root_group_;
 }
 
+Span<const greasepencil::Layer *> GreasePencilRuntime::layers() const
+{
+  return this->layer_cache_.data();
+}
+
+Span<greasepencil::Layer *> GreasePencilRuntime::layers_for_write()
+{
+  return this->layer_cache_.data();
+}
+
 bool GreasePencilRuntime::has_active_layer() const
 {
   return this->active_layer_index_ >= 0;
@@ -1194,14 +1204,16 @@ blender::bke::greasepencil::LayerGroup &GreasePencil::root_group_for_write()
 
 blender::Span<const blender::bke::greasepencil::Layer *> GreasePencil::layers() const
 {
+  BLI_assert(this->runtime != nullptr);
   this->runtime->ensure_layer_cache();
-  return this->runtime->layer_cache_.data();
+  return this->runtime->layers();
 }
 
 blender::Span<blender::bke::greasepencil::Layer *> GreasePencil::layers_for_write()
 {
+  BLI_assert(this->runtime != nullptr);
   this->runtime->ensure_layer_cache();
-  return this->runtime->layer_cache_.data();
+  return this->runtime->layers_for_write();
 }
 
 void GreasePencil::tag_layer_tree_topology_changed()

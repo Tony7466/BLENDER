@@ -299,8 +299,11 @@ class GreasePencilDrawingRuntime {
 };
 
 class GreasePencilRuntime {
- public:
+ private:
   mutable SharedCache<Vector<greasepencil::Layer *>> layer_cache_;
+
+ public:
+  void *batch_cache = nullptr;
 
  private:
   greasepencil::LayerGroup root_group_;
@@ -314,6 +317,9 @@ class GreasePencilRuntime {
   const greasepencil::LayerGroup &root_group() const;
   greasepencil::LayerGroup &root_group_for_write();
 
+  Span<const greasepencil::Layer *> layers() const;
+  Span<greasepencil::Layer *> layers_for_write();
+
   bool has_active_layer() const;
   const greasepencil::Layer &active_layer() const;
   greasepencil::Layer &active_layer_for_write() const;
@@ -326,9 +332,6 @@ class GreasePencilRuntime {
   void save_layer_tree_to_storage(GreasePencilLayerTreeStorage &storage);
 
   void tag_layer_tree_topology_changed();
-
- public:
-  void *batch_cache = nullptr;
 
  private:
   greasepencil::Layer *get_active_layer_from_index(int index) const;
