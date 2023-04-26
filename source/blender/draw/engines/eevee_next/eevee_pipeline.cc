@@ -156,8 +156,7 @@ void ForwardPipeline::sync()
       opaque_ps_.bind_ssbo(RBUFS_AOV_BUF_SLOT, &inst_.film.aovs_info);
       /* Textures. */
       opaque_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
-      opaque_ps_.bind_texture(SSS_TRANSMITTANCE_TEX_SLOT,
-                              inst_.subsurface.transmittance_ref_get());
+      opaque_ps_.bind_texture(SSS_TRANSMITTANCE_TEX_SLOT, inst_.subsurface.transmittance_tx_get());
 
       /* Uniform Buffer. */
       opaque_ps_.bind_ubo(CAMERA_BUF_SLOT, inst_.camera.ubo_get());
@@ -185,7 +184,7 @@ void ForwardPipeline::sync()
 
     /* Textures. */
     sub.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
-    sub.bind_texture(SSS_TRANSMITTANCE_TEX_SLOT, inst_.subsurface.transmittance_ref_get());
+    sub.bind_texture(SSS_TRANSMITTANCE_TEX_SLOT, inst_.subsurface.transmittance_tx_get());
     /* Uniform Buffer. */
     sub.bind_ubo(CAMERA_BUF_SLOT, inst_.camera.ubo_get());
 
@@ -366,17 +365,14 @@ void DeferredLayer::begin_sync()
 
 void DeferredLayer::end_sync()
 {
-  /* Use stencil test to reject pixel not written by this layer. */
-  /* WORKAROUND: Stencil write is only here to avoid rasterizer discard. */
-  DRWState state = DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_EQUAL;
-  /* Allow output to combined pass for the last pass. */
-  DRWState state_write_color = state | DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM;
 
   if (closure_bits_ & (CLOSURE_DIFFUSE | CLOSURE_REFLECTION)) {
     const bool is_last_eval_pass = !(closure_bits_ & CLOSURE_SSS);
 
     eval_light_ps_.init();
-    eval_light_ps_.state_set(state_write_color);
+    /* Use stencil test to reject pixel not written by this layer. */
+    eval_light_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_EQUAL |
+                             DRW_STATE_BLEND_CUSTOM);
     eval_light_ps_.state_stencil(0x00u, 0x01u, 0xFFu);
     eval_light_ps_.shader_set(inst_.shaders.static_shader_get(DEFERRED_LIGHT));
     eval_light_ps_.bind_image("out_diffuse_light_img", &diffuse_light_tx_);
@@ -387,7 +383,7 @@ void DeferredLayer::end_sync()
     eval_light_ps_.bind_image(RBUFS_LIGHT_SLOT, &inst_.render_buffers.light_tx);
     eval_light_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
     eval_light_ps_.bind_texture(SSS_TRANSMITTANCE_TEX_SLOT,
-                                inst_.subsurface.transmittance_ref_get());
+                                inst_.subsurface.transmittance_tx_get());
 
     inst_.lights.bind_resources(&eval_light_ps_);
     inst_.shadows.bind_resources(&eval_light_ps_);

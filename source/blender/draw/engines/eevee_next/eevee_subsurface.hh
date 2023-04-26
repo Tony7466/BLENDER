@@ -5,6 +5,15 @@
 /** \file
  * \ingroup eevee
  *
+ * Postprocess diffuse radiance output from the diffuse evaluation pass to mimic subsurface
+ * transmission.
+ *
+ * This implementation follows the technique described in the siggraph presentation:
+ * "Efficient screen space subsurface scattering Siggraph 2018"
+ * by Evgenii Golubev
+ *
+ * But, instead of having all the precomputed weights for all three color primaries,
+ * we precompute a weight profile texture to be able to support per pixel AND per channel radius.
  */
 
 #pragma once
@@ -27,7 +36,7 @@ struct SubsurfaceModule {
   /** Contains samples locations. */
   SubsurfaceDataBuf data_;
   /** Contains translucence profile for a single color channel. */
-  GPUTexture *transmittance_tx = nullptr;
+  Texture transmittance_tx;
 
  public:
   SubsurfaceModule(Instance &inst) : inst_(inst)
@@ -48,12 +57,7 @@ struct SubsurfaceModule {
     pass->bind_ubo("sss_buf", data_);
   }
 
-  const GPUUniformBuf *ubo_get(void) const
-  {
-    return data_;
-  }
-
-  GPUTexture **transmittance_ref_get(void)
+  GPUTexture **transmittance_tx_get(void)
   {
     return &transmittance_tx;
   }

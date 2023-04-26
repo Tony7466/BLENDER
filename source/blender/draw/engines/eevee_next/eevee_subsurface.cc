@@ -31,7 +31,7 @@ void SubsurfaceModule::end_sync()
     data_.sample_len = 55;
   }
 
-  if (transmittance_tx == nullptr) {
+  if (!transmittance_tx.is_valid()) {
     precompute_transmittance_profile();
   }
 
@@ -105,12 +105,8 @@ void SubsurfaceModule::precompute_transmittance_profile()
   profile.first() = 1;
   profile.last() = 0;
 
-  transmittance_tx = GPU_texture_create_1d("SSSTransmittanceProfile",
-                                           profile.size(),
-                                           1,
-                                           GPU_R16F,
-                                           GPU_TEXTURE_USAGE_SHADER_READ,
-                                           profile.data());
+  transmittance_tx.ensure_1d(
+      GPU_R16F, profile.size(), GPU_TEXTURE_USAGE_SHADER_READ, profile.data());
 }
 
 /** \} */
