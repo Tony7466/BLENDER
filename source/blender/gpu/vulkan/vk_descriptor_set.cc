@@ -180,7 +180,7 @@ void VKDescriptorSetTracker::update(VKContext &context)
   vkUpdateDescriptorSets(
       vk_device, descriptor_writes.size(), descriptor_writes.data(), 0, nullptr);
 
-  // bindings_.clear();
+  bindings_.clear();
 }
 
 std::unique_ptr<VKDescriptorSet> VKDescriptorSetTracker::create_resource(VKContext &context)
