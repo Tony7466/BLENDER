@@ -684,6 +684,18 @@ static bNodeTree *instances_on_points_tree(Main *bmain, RegularNodeTrees &cached
     nodeAddLink(node_tree, node_out, &out, node_in, &in);
   };
 
+  const auto add_node_group =
+      [&](const FunctionRef<bNodeTree *(Main * bmain, RegularNodeTrees & cached_node_trees)>
+              tree_func) -> bNode * {
+    bNodeTree *tree = tree_func(bmain, cached_node_trees);
+    bNode *group = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP);
+    group->id = &tree->id;
+    id_us_plus(&tree->id);
+    bke::node_field_inferencing::update_field_inferencing(*node_tree);
+    nodes::update_node_declaration_and_sockets(*node_tree, *group);
+    return group;
+  };
+
   bNode *normal_input = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_INPUT_NORMAL);
 
   bNode *aling_y_z = nodeAddStaticNode(nullptr, node_tree, FN_NODE_ALIGN_EULER_TO_VECTOR);
@@ -706,16 +718,42 @@ static bNodeTree *instances_on_points_tree(Main *bmain, RegularNodeTrees &cached
   connect(aling_y_x, "Rotation", switch_vector, "True");
 
   bNode *instance_on_point = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_INSTANCE_ON_POINTS);
-  connect(switch_vector, "Output", instance_on_point, "Rotation");
 
   bNode *parent_in = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
-  connect(parent_in, "Instancer", instance_on_point, "Points");
+  bNode *capture_result = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_CAPTURE_ATTRIBUTE);
+  for_node_storage<NodeGeometryAttributeCapture>(
+      node_tree, capture_result, [&](auto &storage) { storage.data_type = CD_PROP_FLOAT3; });
+  connect(parent_in, "Instancer", capture_result, "Geometry");
+  connect(switch_vector, "Output", capture_result, "Value");
+  connect(capture_result, "Attribute", instance_on_point, "Rotation");
+
+  bNode *mesh_to_points = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_MESH_TO_POINTS);
+  connect(capture_result, "Geometry", mesh_to_points, "Mesh");
+
+  bNode *duplicate_instances = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_DUPLICATE_ELEMENTS);
+  connect(mesh_to_points, "Points", duplicate_instances, "Geometry");
+  connect(duplicate_instances, "Geometry", instance_on_point, "Points");
+
+  bNode *instance_total_in = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
+  bNode *instance_total = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_ATTRIBUTE_DOMAIN_SIZE);
+  instance_total->custom1 = int(GEO_COMPONENT_TYPE_INSTANCES);
+  instance_total->typeinfo->updatefunc(node_tree, instance_total);
+  connect(instance_total_in, "Instance", instance_total, "Geometry");
+  connect(instance_total, "Instance Count", duplicate_instances, "Amount");
 
   bNode *geometry_in = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
-  connect(geometry_in, "Instance", instance_on_point, "Instance");
+  bNode *reset_transform = add_node_group(reset_instances_transform_tree);
+  connect(geometry_in, "Instance", reset_transform, "Instances");
+  connect(reset_transform, "Instances", instance_on_point, "Instance");
+
+  bNode *instances_source_in = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
+  bNode *apply_transform = add_node_group(sample_apply_instances_transform_tree);
+  connect(instance_on_point, "Instances", apply_transform, "Instances");
+  connect(instances_source_in, "Instance", apply_transform, "Transform Source");
+  connect(duplicate_instances, "Duplicate Index", apply_transform, "Instances Index");
 
   bNode *instances_out = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_OUTPUT);
-  connect(instance_on_point, "Instances", instances_out, "Instances");
+  connect(apply_transform, "Instances", instances_out, "Instances");
 
   bke::node_field_inferencing::update_field_inferencing(*node_tree);
   cached_node_trees.instances_on_points = node_tree;
