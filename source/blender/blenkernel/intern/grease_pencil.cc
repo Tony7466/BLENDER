@@ -1034,32 +1034,28 @@ blender::Span<blender::bke::StrokePoint> GreasePencilDrawing::stroke_buffer() co
 /** \name Grease Pencil data-block API
  * \{ */
 
-static void grease_pencil_grow_drawing_array_by(GreasePencil &self, const int add_capacity)
+template<typename T> static void grow_array(T **array, int *size, const int add_size)
 {
-  BLI_assert(add_capacity > 0);
-  const int new_drawing_array_size = self.drawing_array_size + add_capacity;
-  GreasePencilDrawingBase **new_drawing_array = reinterpret_cast<GreasePencilDrawingBase **>(
-      MEM_cnew_array<GreasePencilDrawingBase *>(new_drawing_array_size, __func__));
+  BLI_assert(add_size > 0);
+  const int new_array_size = *size + add_size;
+  T *new_array = reinterpret_cast<T *>(MEM_cnew_array<T *>(new_array_size, __func__));
 
-  blender::uninitialized_relocate_n(
-      self.drawing_array, self.drawing_array_size, new_drawing_array);
+  blender::uninitialized_relocate_n(*array, *size, new_array);
 
-  self.drawing_array = new_drawing_array;
-  self.drawing_array_size = new_drawing_array_size;
+  *array = new_array;
+  *size = new_array_size;
 }
-
-static void grease_pencil_shrink_drawing_array_by(GreasePencil &self, const int remove_capacity)
+template<typename T> static void shrink_array(T **array, int *size, const int shrink_size)
 {
-  BLI_assert(remove_capacity > 0);
-  const int new_drawing_array_size = self.drawing_array_size - remove_capacity;
-  GreasePencilDrawingBase **new_drawing_array = reinterpret_cast<GreasePencilDrawingBase **>(
-      MEM_cnew_array<GreasePencilDrawingBase *>(new_drawing_array_size, __func__));
+  BLI_assert(shrink_size > 0);
+  const int new_array_size = *size - shrink_size;
+  T *new_array = reinterpret_cast<T *>(MEM_cnew_array<T *>(new_array_size, __func__));
 
-  blender::uninitialized_move_n(self.drawing_array, new_drawing_array_size, new_drawing_array);
-  MEM_freeN(self.drawing_array);
+  blender::uninitialized_move_n(*array, new_array_size, new_array);
+  MEM_freeN(*array);
 
-  self.drawing_array = new_drawing_array;
-  self.drawing_array_size = new_drawing_array_size;
+  *array = new_array;
+  *size = new_array_size;
 }
 
 blender::Span<GreasePencilDrawingBase *> GreasePencil::drawings() const
@@ -1078,7 +1074,7 @@ void GreasePencil::add_empty_drawings(int n)
   using namespace blender;
   BLI_assert(n > 0);
   const int prev_size = this->drawings().size();
-  grease_pencil_grow_drawing_array_by(*this, n);
+  grow_array<GreasePencilDrawingBase *>(&this->drawing_array, &this->drawing_array_size, add_size);
   MutableSpan<GreasePencilDrawingBase *> new_drawings = this->drawings_for_write().drop_front(
       prev_size);
   for (const int i : IndexRange(new_drawings.size())) {
@@ -1156,7 +1152,7 @@ void GreasePencil::remove_drawing(int index_to_remove)
   }
 
   /* Shrink drawing array. */
-  grease_pencil_shrink_drawing_array_by(*this, 1);
+  shrink_array<GreasePencilDrawingBase *>(&this->drawing_array, &this->drawing_array_size, 1);
 }
 
 void GreasePencil::foreach_visible_drawing(
