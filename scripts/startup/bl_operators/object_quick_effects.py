@@ -317,7 +317,7 @@ class QuickExplode(ObjectModeOperator, Operator):
                         node_out_mat = node
                         break
 
-                node_surface = node_out_mat.inputs['Surface'].links[0].from_node
+                node_surface = node_out_mat.inputs["Surface"].links[0].from_node
 
                 node_x = node_surface.location[0]
                 node_y = node_surface.location[1] - 400
@@ -326,7 +326,7 @@ class QuickExplode(ObjectModeOperator, Operator):
                 node_mix = nodes.new('ShaderNodeMixShader')
                 node_mix.location = (node_x - offset_x, node_y)
                 mat.node_tree.links.new(node_surface.outputs[0], node_mix.inputs[1])
-                mat.node_tree.links.new(node_mix.outputs["Shader"], node_out_mat.inputs['Surface'])
+                mat.node_tree.links.new(node_mix.outputs["Shader"], node_out_mat.inputs["Surface"])
                 offset_x += 200
 
                 node_trans = nodes.new('ShaderNodeBsdfTransparent')
@@ -476,7 +476,7 @@ class QuickSmoke(ObjectModeOperator, Operator):
         # setup smoke domain
         bpy.ops.object.modifier_add(type='FLUID')
         obj.modifiers[-1].fluid_type = 'DOMAIN'
-        if self.style == 'FIRE' or self.style == 'BOTH':
+        if self.style == {'FIRE', 'BOTH'}:
             obj.modifiers[-1].domain_settings.use_noise = True
 
         # ensure correct cache file format for smoke

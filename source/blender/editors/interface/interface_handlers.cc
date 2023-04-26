@@ -3158,12 +3158,14 @@ static bool ui_textedit_insert_buf(uiBut *but,
   return changed;
 }
 
+#ifdef WITH_INPUT_IME
 static bool ui_textedit_insert_ascii(uiBut *but, uiHandleButtonData *data, const char ascii)
 {
   BLI_assert(isascii(ascii));
   const char buf[2] = {ascii, '\0'};
   return ui_textedit_insert_buf(but, data, buf, sizeof(buf) - 1);
 }
+#endif
 
 static void ui_textedit_move(uiBut *but,
                              uiHandleButtonData *data,
@@ -3940,9 +3942,6 @@ static void ui_do_but_textedit(
   else if (event->type == WM_IME_COMPOSITE_END) {
     changed = true;
   }
-#else
-  /* Prevent the function from being unused. */
-  (void)ui_textedit_insert_ascii;
 #endif
 
   if (changed) {
@@ -8351,7 +8350,7 @@ static void button_activate_state(bContext *C, uiBut *but, uiHandleButtonState s
        */
       if (state != BUTTON_STATE_TEXT_EDITING) {
         WM_report(RPT_INFO,
-                  "Can't edit driven number value, see driver editor for the driver setup.");
+                  "Can't edit driven number value, see driver editor for the driver setup");
       }
     }
 
