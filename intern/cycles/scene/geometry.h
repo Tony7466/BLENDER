@@ -313,6 +313,7 @@ class GeometryManager {
                                                   vector<AttributeRequestSet> &geom_attributes,
                                                   vector<AttributeRequestSet> &object_attributes,
                                                   vector<AttributeSet> &object_attribute_values,
+						  bool true_displacement_used,
                                                   Progress &progress);
 
   void gather_attributes(Scene *scene,

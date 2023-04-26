@@ -877,6 +877,7 @@ void GeometryManager::device_update(Device *device,
         geom_attributes,
         object_attributes,
         object_attribute_values,
+	true_displacement_used,
         progress);
   }
 
@@ -1115,6 +1116,7 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
     vector<AttributeRequestSet> &geom_attributes,
     vector<AttributeRequestSet> &object_attributes,
     vector<AttributeSet> &object_attribute_values,
+    bool true_displacement_used,
     Progress &progress)
 {
   scoped_callback_timer timer([scene](double time) {
@@ -1129,12 +1131,12 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
   bool displacement_done = false;
   bool curve_shadow_transparency_done = false;
   {
-    // Need to upload the attribute and mesh buffers for dispacement.
-    // Evaluate these on a single device (anyone will do, so use the first)
+    /* Need to upload the attribute and mesh buffers for dispacement.
+       Evaluate these on a single device (anyone will do, so use the first) */
     {
-      // Could break this out across all the devices as
-      // the results are read back to the host. For now, the computations
-      // are done on the first device.
+      /* Could break this out across all the devices as
+         the results are read back to the host. For now, the computations
+         are done on the first device. */
       DeviceScene *sub_dscene = scene->dscenes.front();
       Device *sub_device = sub_dscene->tri_verts.device;
       {
@@ -1149,11 +1151,11 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
         sub_dscene->device_update_mesh(sub_device, &(scene->geom_sizes), progress);
       }
         /* Copy constant data needed by shader evaluation. */
-        sub_device->const_copy_to("data", &dscene->data, sizeof(dscene->data));
+        sub_device->const_copy_to("data", &sub_dscene->data, sizeof(sub_dscene->data));
 
       foreach (Geometry *geom, scene->geometry) {
         /* Update images needed for true displacement. */
-        {
+        if(true_displacement_used){
           scoped_callback_timer timer([scene](double time) {
             if (scene->update_stats) {
               scene->update_stats->geometry.times.add_entry(
@@ -1178,10 +1180,11 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
           }
         }
       }
+      sub_dscene->device_free_geometry(false);
     }
 
-    // Some host side code here as the mesh and attributes need to be
-    // recalculated after displacement and shadow transparency
+    /* Some host side code here as the mesh and attributes need to be
+       recalculated after displacement and shadow transparency */
     /* Device re-update after displacement. */
     if (displacement_done || curve_shadow_transparency_done) {
       scoped_callback_timer timer([scene](double time) {
@@ -1191,8 +1194,8 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
         }
       });
 
-      // Need to redo host side filling out the attribute and mesh buffers as these may have
-      // changed. Hair adds a new attribute buffer and displace updates the mesh.
+      /* Need to redo host side filling out the attribute and mesh buffers as these may have
+         changed. Hair adds a new attribute buffer and displace updates the mesh. */
       geom_calc_offset(scene);
       gather_attributes(
           scene, geom_attributes, object_attributes, object_attribute_values);
