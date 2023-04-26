@@ -204,7 +204,7 @@ class VKPushConstants : VKResourceTracker<VKUniformBuffer> {
   {
     const Layout::PushConstant *push_constant_layout = layout_->find(location);
     if (push_constant_layout == nullptr) {
-      /* Legacy code can still try to update push constants that are no push constants. For example
+      /* Legacy code can still try to update push constants when they don't exist. For example
        * `immDrawPixelsTexSetup` will bind an image slot manually. This works in OpenGL, but in
        * vulkan images aren't stored as push constants. */
       return;

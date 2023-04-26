@@ -27,7 +27,14 @@ void VKUniformBuffer::allocate(VKContext &context)
   debug::object_label(&context, buffer_.vk_handle(), name_);
 }
 
-void VKUniformBuffer::clear_to_zero() {}
+void VKUniformBuffer::clear_to_zero()
+{
+  VKContext &context = *VKContext::get();
+  if (!buffer_.is_allocated()) {
+    allocate(context);
+  }
+  buffer_.clear(context, 0);
+}
 
 void VKUniformBuffer::bind(int slot, shader::ShaderCreateInfo::Resource::BindType bind_type)
 {
