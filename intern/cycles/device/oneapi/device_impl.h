@@ -45,7 +45,7 @@ class OneapiDevice : public Device {
 
   virtual ~OneapiDevice();
 #  ifdef WITH_EMBREE_GPU
-  void build_bvh(BVH *bvh, Progress &progress, bool refit) override;
+  void build_bvh(BVH *bvh, DeviceScene *dscene, Progress &progress, bool refit) override;
 #  endif
   bool check_peer_access(Device *peer_device) override;
 

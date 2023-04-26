@@ -135,7 +135,7 @@ BVHLayoutMask OneapiDevice::get_bvh_layout_mask(uint requested_features) const
 }
 
 #  ifdef WITH_EMBREE_GPU
-void OneapiDevice::build_bvh(BVH *bvh, Progress &progress, bool refit)
+void OneapiDevice::build_bvh(BVH *bvh, DeviceScene *dscene, Progress &progress, bool refit)
 {
   if (embree_device && bvh->params.bvh_layout == BVH_LAYOUT_EMBREE) {
     BVHEmbree *const bvh_embree = static_cast<BVHEmbree *>(bvh);
@@ -150,7 +150,7 @@ void OneapiDevice::build_bvh(BVH *bvh, Progress &progress, bool refit)
     }
   }
   else {
-    Device::build_bvh(bvh, progress, refit);
+    Device::build_bvh(bvh, dscene, progress, refit);
   }
 }
 #  endif
