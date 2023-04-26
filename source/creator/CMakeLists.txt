@@ -1252,11 +1252,6 @@ elseif(WIN32)
   unset(SNDFILE_DLL)
 
   windows_install_shared_manifest(
-    FILES ${LIBDIR}/sndfile/lib/sndfile.dll
-    ALL
-  )
-
-  windows_install_shared_manifest(
     FILES ${LIBDIR}/shaderc/bin/shaderc_shared.dll
     RELEASE
   )
