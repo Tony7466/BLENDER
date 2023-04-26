@@ -277,7 +277,7 @@ static tNearestVertInfo *get_best_nearest_fcurve_vert(ListBase *matches)
 
   /* Find the first selected vert in `matches` if one exists. */
   tNearestVertInfo *nvi_first_selected = NULL;
-  for (tNearestVertInfo *nvi = matches->first; nvi; nvi = nvi->next) {
+  LISTBASE_FOREACH (tNearestVertInfo *, nvi, matches) {
     if (nvi->sel) {
       nvi_first_selected = nvi;
       break;
@@ -293,11 +293,17 @@ static tNearestVertInfo *get_best_nearest_fcurve_vert(ListBase *matches)
   /* Try to find the next vert that's on the active fcurve, falling back to the next
    * vert on any selected fcurve if that's not found. */
   tNearestVertInfo *nvi_to_select = NULL;
-  for (tNearestVertInfo *nvi = matches->first; nvi && nvi != nvi_first_selected; nvi = nvi->next) {
+  LISTBASE_FOREACH (tNearestVertInfo *, nvi, matches) {
+    if (nvi == nvi_first_selected) {
+      continue;
+    }
+
     if (nvi->fcu->flag & FCURVE_ACTIVE) {
       nvi_to_select = nvi;
       break;
-    } else if (nvi->fcu->flag & FCURVE_SELECTED && !nvi_to_select) {
+    }
+
+    if (nvi->fcu->flag & FCURVE_SELECTED && !nvi_to_select) {
       nvi_to_select = nvi;
     }
   }
@@ -309,7 +315,7 @@ static tNearestVertInfo *get_best_nearest_fcurve_vert(ListBase *matches)
   }
 
   /* If we're still here, that means we didn't find any verts on selected fcurves.
-   * So return the first item, which was the next item after `nvi_first_selected`.
+   * So return the item following `nvi_first_selected` (at the head of the list).
    */
   return BLI_pophead(matches);
 }
