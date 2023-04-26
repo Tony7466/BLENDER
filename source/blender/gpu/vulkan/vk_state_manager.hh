@@ -35,6 +35,12 @@ class VKStateManager : public StateManager {
   void image_unbind_all() override;
 
   void texture_unpack_row_length_set(uint len) override;
+
+  /**
+   * Row length for unpacking host data when uploading texture data.
+   *
+   * When set to zero (0) host data can be assumed to be stored sequential.
+   */
   uint texture_unpack_row_length_get() const;
 };
 }  // namespace blender::gpu

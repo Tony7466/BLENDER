@@ -299,7 +299,7 @@ void VKCommandBuffer::submit_encoded_commands()
 }
 
 /* -------------------------------------------------------------------- */
-/** \name Framebuffer/RenderPass state tracking
+/** \name FrameBuffer/RenderPass state tracking
  * \{ */
 
 void VKCommandBuffer::validate_framebuffer_not_exists()

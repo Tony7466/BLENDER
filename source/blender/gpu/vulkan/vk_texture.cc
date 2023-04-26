@@ -108,8 +108,8 @@ void *VKTexture::read(int mip, eGPUDataFormat format)
 void VKTexture::update_sub(
     int mip, int offset[3], int extent_[3], eGPUDataFormat format, const void *data)
 {
-  /* TODO: Add support for mip levels. */
   if (mip != 0) {
+    /* TODO: not implemented yet. */
     return;
   }
   if (!is_allocated()) {
@@ -215,7 +215,7 @@ static VkImageUsageFlagBits to_vk_image_usage(const eGPUTextureUsage usage,
     result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_STORAGE_BIT);
   }
   if (usage & GPU_TEXTURE_USAGE_ATTACHMENT) {
-    if (format_flag & (GPU_FORMAT_COMPRESSED)) {
+    if (format_flag & GPU_FORMAT_COMPRESSED) {
       /* These formats aren't supported as an attachment. When using GPU_TEXTURE_USAGE_DEFAULT they
        * are still being evaluated to be attachable. So we need to skip them. */
     }

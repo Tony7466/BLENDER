@@ -76,7 +76,7 @@ void VKStateManager::texture_unpack_row_length_set(uint len)
   texture_unpack_row_length_ = len;
 }
 
-uint VKStateManager::texture_unpack_row_length_get()const
+uint VKStateManager::texture_unpack_row_length_get() const
 {
   return texture_unpack_row_length_;
 }
