@@ -45,10 +45,7 @@ struct SubsurfaceModule {
     data_.sample_len = -1;
   };
 
-  ~SubsurfaceModule()
-  {
-    GPU_TEXTURE_FREE_SAFE(transmittance_tx);
-  };
+  ~SubsurfaceModule(){};
 
   void end_sync();
 
