@@ -406,7 +406,7 @@ typedef struct GreasePencil {
   struct AnimData *adt;
 
   /**
-   * An array of pointers to drawings. The drawing can own it's data or reference it from another
+   * An array of pointers to drawings. The drawing can own its data or reference it from another
    * data-block. Note that the order of this array is arbitrary. The mapping of drawings to frames
    * is done by the layers. See the `Layer` class in `BKE_grease_pencil.hh`.
    */

@@ -1018,12 +1018,12 @@ void GreasePencilDrawing::tag_positions_changed()
   this->runtime->triangles_cache.tag_dirty();
 }
 
-bool GreasePencilDrawing::has_stroke_buffer()
+bool GreasePencilDrawing::has_stroke_buffer() const
 {
   return this->runtime->stroke_cache.points.size() > 0;
 }
 
-blender::Span<blender::bke::StrokePoint> GreasePencilDrawing::stroke_buffer()
+blender::Span<blender::bke::StrokePoint> GreasePencilDrawing::stroke_buffer() const
 {
   return this->runtime->stroke_cache.points.as_span();
 }
