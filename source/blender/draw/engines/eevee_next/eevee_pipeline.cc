@@ -322,7 +322,7 @@ void DeferredLayer::begin_sync()
   {
     gbuffer_ps_.init();
     gbuffer_ps_.clear_stencil(0x00u);
-    gbuffer_ps_.state_stencil(0x01u, 0x01u, 0x01u);
+    gbuffer_ps_.state_stencil(0xFFu, 0xFFu, 0xFFu);
 
     {
       /* Common resources. */
@@ -371,9 +371,9 @@ void DeferredLayer::end_sync()
 
     eval_light_ps_.init();
     /* Use stencil test to reject pixel not written by this layer. */
-    eval_light_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_EQUAL |
+    eval_light_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_NEQUAL |
                              DRW_STATE_BLEND_CUSTOM);
-    eval_light_ps_.state_stencil(0x00u, 0x01u, 0xFFu);
+    eval_light_ps_.state_stencil(0x00u, 0x00u, (CLOSURE_DIFFUSE | CLOSURE_REFLECTION));
     eval_light_ps_.shader_set(inst_.shaders.static_shader_get(DEFERRED_LIGHT));
     eval_light_ps_.bind_image("out_diffuse_light_img", &diffuse_light_tx_);
     eval_light_ps_.bind_image("out_specular_light_img", &specular_light_tx_);
@@ -400,9 +400,7 @@ void DeferredLayer::end_sync()
     subsurface_ps_.init();
     subsurface_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_EQUAL |
                              DRW_STATE_BLEND_ADD_FULL);
-    subsurface_ps_.state_stencil(0x00u, 0x01u, 0xFFu);
-    /* TODO(Miguel Pozo): */
-    /*subsurface_ps_.state_stencil(0x0, 0xFF, CLOSURE_SSS);*/
+    subsurface_ps_.state_stencil(0x00u, 0xFFu, CLOSURE_SSS);
     subsurface_ps_.shader_set(inst_.shaders.static_shader_get(SUBSURFACE_EVAL));
     inst_.subsurface.bind_resources(&subsurface_ps_);
     inst_.hiz_buffer.bind_resources(&subsurface_ps_);
@@ -430,12 +428,15 @@ PassMain::Sub *DeferredLayer::prepass_add(::Material *blender_mat,
 
 PassMain::Sub *DeferredLayer::material_add(::Material *blender_mat, GPUMaterial *gpumat)
 {
-  closure_bits_ |= shader_closure_bits_from_flag(gpumat);
+  eClosureBits closure_bits = shader_closure_bits_from_flag(gpumat);
+  closure_bits_ |= closure_bits;
 
   PassMain::Sub *pass = (blender_mat->blend_flag & MA_BL_CULL_BACKFACE) ?
                             gbuffer_single_sided_ps_ :
                             gbuffer_double_sided_ps_;
-  return &pass->sub(GPU_material_get_name(gpumat));
+  pass = &pass->sub(GPU_material_get_name(gpumat));
+  pass->state_stencil(closure_bits, 0xFFu, 0xFFu);
+  return pass;
 }
 
 void DeferredLayer::render(View &view,
