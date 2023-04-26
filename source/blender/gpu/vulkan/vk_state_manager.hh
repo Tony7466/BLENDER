@@ -11,6 +11,14 @@
 
 namespace blender::gpu {
 class VKStateManager : public StateManager {
+
+  /**
+   * Row length for unpacking host data when uploading texture data.
+   *
+   * When set to zero continuous data is assumed.
+   */
+  uint texture_unpack_row_length_;
+
  public:
   void apply_state() override;
   void force_state() override;
@@ -26,5 +34,6 @@ class VKStateManager : public StateManager {
   void image_unbind_all() override;
 
   void texture_unpack_row_length_set(uint len) override;
+  uint texture_unpack_row_length_get() const;
 };
 }  // namespace blender::gpu
