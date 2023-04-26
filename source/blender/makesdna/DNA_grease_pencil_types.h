@@ -448,7 +448,7 @@ typedef struct GreasePencil {
 #ifdef __cplusplus
   blender::Span<GreasePencilDrawingBase *> drawings() const;
   blender::MutableSpan<GreasePencilDrawingBase *> drawings_for_write();
-  void add_empty_drawings(int n);
+  void add_empty_drawings(int add_size);
   void remove_drawing(int index);
   void foreach_visible_drawing(int frame,
                                blender::FunctionRef<void(GreasePencilDrawing &)> function);

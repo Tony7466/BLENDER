@@ -538,7 +538,7 @@ void LayerGroup::foreach_children_pre_order(TreeNodeIterFn function)
 void LayerGroup::foreach_children_with_index_pre_order(TreeNodeIndexIterFn function)
 {
   Vector<TreeNode *> children = this->children_in_pre_order();
-  for (const int64_t i : IndexRange(children.size())) {
+  for (const int64_t i : children.index_range()) {
     function(i, *children[i]);
   }
 }
@@ -1069,15 +1069,15 @@ blender::MutableSpan<GreasePencilDrawingBase *> GreasePencil::drawings_for_write
                                                          this->drawing_array_size};
 }
 
-void GreasePencil::add_empty_drawings(int n)
+void GreasePencil::add_empty_drawings(const int add_size)
 {
   using namespace blender;
-  BLI_assert(n > 0);
+  BLI_assert(add_size > 0);
   const int prev_size = this->drawings().size();
   grow_array<GreasePencilDrawingBase *>(&this->drawing_array, &this->drawing_array_size, add_size);
   MutableSpan<GreasePencilDrawingBase *> new_drawings = this->drawings_for_write().drop_front(
       prev_size);
-  for (const int i : IndexRange(new_drawings.size())) {
+  for (const int i : new_drawings.index_range()) {
     new_drawings[i] = reinterpret_cast<GreasePencilDrawingBase *>(
         MEM_new<GreasePencilDrawing>(__func__));
     new_drawings[i]->user_count = 0;
@@ -1087,7 +1087,7 @@ void GreasePencil::add_empty_drawings(int n)
   }
 }
 
-void GreasePencil::remove_drawing(int index_to_remove)
+void GreasePencil::remove_drawing(const int index_to_remove)
 {
   using namespace blender::bke::greasepencil;
   /* In order to not change the indices of the drawings, we do the following to the drawing to be
@@ -1226,10 +1226,7 @@ void GreasePencil::read_drawing_array(BlendDataReader *reader)
         GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
         drawing->geometry.wrap().blend_read(*reader);
         /* Initialize runtime data. */
-        drawing->geometry.runtime = MEM_new<blender::bke::CurvesGeometryRuntime>(__func__);
-        drawing->geometry.wrap().update_curve_types();
         drawing->runtime = MEM_new<blender::bke::GreasePencilDrawingRuntime>(__func__);
-        drawing->runtime->triangles_cache.tag_dirty();
         break;
       }
       case GP_DRAWING_REFERENCE: {
@@ -1277,7 +1274,7 @@ void GreasePencil::free_drawing_array()
         drawing->geometry.wrap().~CurvesGeometry();
         MEM_delete(drawing->runtime);
         drawing->runtime = nullptr;
-        MEM_freeN(drawing);
+        MEM_delete(drawing);
         break;
       }
       case GP_DRAWING_REFERENCE: {
