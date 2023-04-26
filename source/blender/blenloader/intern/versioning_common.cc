@@ -366,27 +366,19 @@ struct RegularNodeTrees {
   bNodeTree *first_face_tris_points = nullptr;
 };
 
-template<typename Func> static void for_node_storage(bNodeTree *tree, bNode *node, Func &func)
+template<typename StorageT>
+static void for_node_storage(bNodeTree *tree,
+                             bNode *node,
+                             const FunctionRef<void(StorageT &)> &func)
 {
-  switch (node->type) {
-    case GEO_NODE_SAMPLE_INDEX:
-      func(*reinterpret_cast<NodeGeometrySampleIndex *>(node->storage));
-      break;
-    case GEO_NODE_SWITCH:
-      func(*reinterpret_cast<NodeSwitch *>(node->storage));
-      break;
-    case GEO_NODE_CAPTURE_ATTRIBUTE:
-      func(*reinterpret_cast<NodeGeometryAttributeCapture *>(node->storage));
-      break;
-    default:
-      BLI_assert_unreachable();
-      return;
-  }
+  func(*reinterpret_cast<StorageT *>(node->storage));
+
   if (node->typeinfo->updatefunc != nullptr) {
     node->typeinfo->updatefunc(tree, node);
   }
 }
 
+/*
 static bNodeTree *reset_instances_transform_tree(Main *bmain, RegularNodeTrees &cached_node_trees)
 {
   if (cached_node_trees.reset_instances_transform != nullptr) {
@@ -510,7 +502,7 @@ static bNodeTree *sample_apply_instances_transform_tree(Main *bmain,
 
   bNode *rotation = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_INPUT_INSTANCE_ROTATION);
   bNode *sample_rotation = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_SAMPLE_INDEX);
-  for_node_storage(node_tree, sample_rotation, [&](auto &storage) {
+  for_node_storage<NodeGeometrySampleIndex>(node_tree, sample_rotation, [&](auto &storage) {
     storage.data_type = CD_PROP_FLOAT3;
     storage.domain = ATTR_DOMAIN_INSTANCE;
   });
@@ -521,7 +513,7 @@ static bNodeTree *sample_apply_instances_transform_tree(Main *bmain,
 
   bNode *scale = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_INPUT_INSTANCE_SCALE);
   bNode *sample_scale = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_SAMPLE_INDEX);
-  for_node_storage(node_tree, sample_scale, [&](auto &storage) {
+  for_node_storage<NodeGeometrySampleIndex>(node_tree, sample_scale, [&](auto &storage) {
     storage.data_type = CD_PROP_FLOAT3;
     storage.domain = ATTR_DOMAIN_INSTANCE;
   });
@@ -545,6 +537,7 @@ static bNodeTree *sample_apply_instances_transform_tree(Main *bmain,
   cached_node_trees.sample_apply_instances_transform = node_tree;
   return node_tree;
 }
+*/
 
 static bNodeTree *view_geometry_tree(Main *bmain, RegularNodeTrees &cached_node_trees)
 {
@@ -579,7 +572,7 @@ static bNodeTree *view_geometry_tree(Main *bmain, RegularNodeTrees &cached_node_
   bNode *viewport_render_in = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
 
   bNode *viewport_render_switch = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_SWITCH);
-  for_node_storage(node_tree, viewport_render_switch, [&](auto &storage) {
+  for_node_storage<NodeSwitch>(node_tree, viewport_render_switch, [&](auto &storage) {
     storage.input_type = SOCK_BOOLEAN;
   });
   connect(bool_invert, "Boolean", viewport_render_switch, "Switch");
@@ -589,7 +582,7 @@ static bNodeTree *view_geometry_tree(Main *bmain, RegularNodeTrees &cached_node_
   bNode *geometry_in = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
 
   bNode *geometry_switch = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_SWITCH);
-  for_node_storage(
+  for_node_storage<NodeSwitch>(
       node_tree, geometry_switch, [&](auto &storage) { storage.input_type = SOCK_GEOMETRY; });
   connect(viewport_render_switch, "Output", geometry_switch, "Switch");
   connect(geometry_in, "Geometry", geometry_switch, "True");
@@ -641,7 +634,7 @@ static bNodeTree *instances_on_points_tree(Main *bmain, RegularNodeTrees &cached
   bNode *aling_selection_in = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
 
   bNode *switch_vector = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_SWITCH);
-  for_node_storage(
+  for_node_storage<NodeSwitch>(
       node_tree, switch_vector, [&](auto &storage) { storage.input_type = SOCK_VECTOR; });
   connect(aling_selection_in, "Aling to Vertex Normal", switch_vector, "Switch");
   connect(aling_y_x, "Rotation", switch_vector, "True");
@@ -815,7 +808,7 @@ static bNodeTree *face_aling_tree(Main *bmain, RegularNodeTrees &cached_node_tre
   bNode *in = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
 
   bNode *capture_result = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_CAPTURE_ATTRIBUTE);
-  for_node_storage(node_tree, capture_result, [&](auto &storage) {
+  for_node_storage<NodeGeometryAttributeCapture>(node_tree, capture_result, [&](auto &storage) {
     storage.domain = ATTR_DOMAIN_FACE;
     storage.data_type = CD_PROP_FLOAT3;
   });
@@ -863,7 +856,7 @@ static bNodeTree *faces_scale_tree(Main *bmain, RegularNodeTrees &cached_node_tr
   bNode *in = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
 
   bNode *capture_result = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_CAPTURE_ATTRIBUTE);
-  for_node_storage(node_tree, capture_result, [&](auto &storage) {
+  for_node_storage<NodeGeometryAttributeCapture>(node_tree, capture_result, [&](auto &storage) {
     storage.domain = ATTR_DOMAIN_FACE;
     storage.data_type = CD_PROP_FLOAT;
   });
@@ -919,7 +912,7 @@ static bNodeTree *instances_on_faces_tree(Main *bmain, RegularNodeTrees &cached_
   connect(face_size_group, "Geometry", face_aling_group, "Geometry");
 
   bNode *mesh_to_points = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_MESH_TO_POINTS);
-  for_node_storage(node_tree, mesh_to_points, [&](auto &storage) {
+  for_node_storage<NodeGeometryMeshToPoints>(node_tree, mesh_to_points, [&](auto &storage) {
     storage.mode = GEO_NODE_MESH_TO_POINTS_FACES;
   });
   connect(face_aling_group, "Geometry", mesh_to_points, "Mesh");
