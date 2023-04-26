@@ -32,6 +32,7 @@
 
 #include "BKE_animsys.h"
 #include "BKE_attribute.h"
+#include "BKE_geometry_set.h"
 #include "BKE_idprop.hh"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
@@ -571,7 +572,7 @@ static bNodeTree *sample_apply_instances_transform_tree(Main *bmain,
     return cached_node_trees.sample_apply_instances_transform;
   }
 
-  bNodeTree *node_tree = ntreeAddTree(bmain, ".Reset Instances Trasform", "GeometryNodeTree");
+  bNodeTree *node_tree = ntreeAddTree(bmain, ".Apply Instances Trasform", "GeometryNodeTree");
 
   ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketGeometry", "Instances");
   ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketGeometry", "Transform Source");
@@ -970,8 +971,11 @@ static bNodeTree *instances_on_faces_tree(Main *bmain, RegularNodeTrees &cached_
 
   bNode *instancer_in = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
 
-  add_node_group(reset_instances_transform_tree(bmain, cached_node_trees));
-  add_node_group(sample_apply_instances_transform_tree(bmain, cached_node_trees));
+  bNode *instance_total_in = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
+  bNode *instance_total = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_ATTRIBUTE_DOMAIN_SIZE);
+  instance_total->custom1 = int(GEO_COMPONENT_TYPE_INSTANCES);
+  instance_total->typeinfo->updatefunc(node_tree, instance_total);
+  connect(instance_total_in, "Instance", instance_total, "Geometry");
 
   bNode *face_size_group = add_node_group(faces_scale_tree(bmain, cached_node_trees));
   connect(instancer_in, "Instancer", face_size_group, "Geometry");
@@ -985,16 +989,30 @@ static bNodeTree *instances_on_faces_tree(Main *bmain, RegularNodeTrees &cached_
   });
   connect(face_aling_group, "Geometry", mesh_to_points, "Mesh");
 
+  bNode *duplicate_instances = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_DUPLICATE_ELEMENTS);
+  connect(mesh_to_points, "Points", duplicate_instances, "Geometry");
+  connect(instance_total, "Instance Count", duplicate_instances, "Amount");
+
   bNode *instance_in = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
+  bNode *reset_transform = add_node_group(
+      reset_instances_transform_tree(bmain, cached_node_trees));
+  connect(instance_in, "Instance", reset_transform, "Instances");
 
   bNode *instance_on_points = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_INSTANCE_ON_POINTS);
-  connect(mesh_to_points, "Points", instance_on_points, "Points");
-  connect(instance_in, "Instance", instance_on_points, "Instance");
+  connect(duplicate_instances, "Geometry", instance_on_points, "Points");
+  connect(reset_transform, "Instances", instance_on_points, "Instance");
   connect(face_aling_group, "Rotation", instance_on_points, "Rotation");
   connect(face_size_group, "Size", instance_on_points, "Scale");
 
+  bNode *instances_source_in = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
+  bNode *apply_transform = add_node_group(
+      sample_apply_instances_transform_tree(bmain, cached_node_trees));
+  connect(instance_on_points, "Instances", apply_transform, "Instances");
+  connect(instances_source_in, "Instance", apply_transform, "Transform Source");
+  connect(duplicate_instances, "Duplicate Index", apply_transform, "Instances Index");
+
   bNode *out = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_OUTPUT);
-  connect(instance_on_points, "Instances", out, "Instances");
+  connect(apply_transform, "Instances", out, "Instances");
 
   bke::node_field_inferencing::update_field_inferencing(*node_tree);
   cached_node_trees.instances_on_faces = node_tree;
