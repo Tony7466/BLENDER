@@ -801,7 +801,10 @@ static bNodeTree *face_aling_tree(Main *bmain, RegularNodeTrees &cached_node_tre
     nodeAddLink(node_tree, node_out, &out, node_in, &in);
   };
 
-  const auto add_node_group = [node_tree](bNodeTree *tree) -> bNode * {
+  const auto add_node_group =
+      [&](const FunctionRef<bNodeTree *(Main * bmain, RegularNodeTrees & cached_node_trees)>
+              tree_func) -> bNode * {
+    bNodeTree *tree = tree_func(bmain, cached_node_trees);
     bNode *group = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP);
     group->id = &tree->id;
     id_us_plus(&tree->id);
@@ -810,8 +813,7 @@ static bNodeTree *face_aling_tree(Main *bmain, RegularNodeTrees &cached_node_tre
     return group;
   };
 
-  bNode *triangle_indices_group = add_node_group(
-      first_face_tris_points_tree(bmain, cached_node_trees));
+  bNode *triangle_indices_group = add_node_group(first_face_tris_points_tree);
 
   bNode *position = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_INPUT_POSITION);
 
@@ -960,7 +962,10 @@ static bNodeTree *instances_on_faces_tree(Main *bmain, RegularNodeTrees &cached_
     nodeAddLink(node_tree, node_out, &out, node_in, &in);
   };
 
-  const auto add_node_group = [node_tree](bNodeTree *tree) -> bNode * {
+  const auto add_node_group =
+      [&](const FunctionRef<bNodeTree *(Main * bmain, RegularNodeTrees & cached_node_trees)>
+              tree_func) -> bNode * {
+    bNodeTree *tree = tree_func(bmain, cached_node_trees);
     bNode *group = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP);
     group->id = &tree->id;
     id_us_plus(&tree->id);
@@ -977,10 +982,10 @@ static bNodeTree *instances_on_faces_tree(Main *bmain, RegularNodeTrees &cached_
   instance_total->typeinfo->updatefunc(node_tree, instance_total);
   connect(instance_total_in, "Instance", instance_total, "Geometry");
 
-  bNode *face_size_group = add_node_group(faces_scale_tree(bmain, cached_node_trees));
+  bNode *face_size_group = add_node_group(faces_scale_tree);
   connect(instancer_in, "Instancer", face_size_group, "Geometry");
 
-  bNode *face_aling_group = add_node_group(face_aling_tree(bmain, cached_node_trees));
+  bNode *face_aling_group = add_node_group(face_aling_tree);
   connect(face_size_group, "Geometry", face_aling_group, "Geometry");
 
   bNode *mesh_to_points = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_MESH_TO_POINTS);
@@ -994,8 +999,7 @@ static bNodeTree *instances_on_faces_tree(Main *bmain, RegularNodeTrees &cached_
   connect(instance_total, "Instance Count", duplicate_instances, "Amount");
 
   bNode *instance_in = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
-  bNode *reset_transform = add_node_group(
-      reset_instances_transform_tree(bmain, cached_node_trees));
+  bNode *reset_transform = add_node_group(reset_instances_transform_tree);
   connect(instance_in, "Instance", reset_transform, "Instances");
 
   bNode *instance_on_points = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_INSTANCE_ON_POINTS);
@@ -1005,8 +1009,7 @@ static bNodeTree *instances_on_faces_tree(Main *bmain, RegularNodeTrees &cached_
   connect(face_size_group, "Size", instance_on_points, "Scale");
 
   bNode *instances_source_in = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
-  bNode *apply_transform = add_node_group(
-      sample_apply_instances_transform_tree(bmain, cached_node_trees));
+  bNode *apply_transform = add_node_group(sample_apply_instances_transform_tree);
   connect(instance_on_points, "Instances", apply_transform, "Instances");
   connect(instances_source_in, "Instance", apply_transform, "Transform Source");
   connect(duplicate_instances, "Duplicate Index", apply_transform, "Instances Index");
@@ -1042,7 +1045,10 @@ static bNodeTree *instances_on_points(const Span<Object *> objects,
     nodeAddLink(node_tree, node_out, &out, node_in, &in);
   };
 
-  const auto add_node_group = [node_tree](bNodeTree *tree) -> bNode * {
+  const auto add_node_group =
+      [&](const FunctionRef<bNodeTree *(Main * bmain, RegularNodeTrees & cached_node_trees)>
+              tree_func) -> bNode * {
+    bNodeTree *tree = tree_func(bmain, cached_node_trees);
     bNode *group = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP);
     group->id = &tree->id;
     id_us_plus(&tree->id);
@@ -1053,7 +1059,7 @@ static bNodeTree *instances_on_points(const Span<Object *> objects,
 
   bNode *join_geometrys = join_objects_as_instances(objects, node_tree);
 
-  bNode *instansing_group = add_node_group(instances_on_points_tree(bmain, cached_node_trees));
+  bNode *instansing_group = add_node_group(instances_on_points_tree);
   connect(join_geometrys, "Geometry", instansing_group, "Instance");
 
   bNode *parent_aling_input = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
@@ -1061,7 +1067,7 @@ static bNodeTree *instances_on_points(const Span<Object *> objects,
   connect(
       parent_aling_input, "Aling to Vertex Normal", instansing_group, "Aling to Vertex Normal");
 
-  bNode *view_switch_group = add_node_group(view_geometry_tree(bmain, cached_node_trees));
+  bNode *view_switch_group = add_node_group(view_geometry_tree);
   bNode *geometry_viewport_render_input = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
   connect(geometry_viewport_render_input, "Geometry", view_switch_group, "Geometry");
   connect(geometry_viewport_render_input, "Viewport", view_switch_group, "Viewport");
@@ -1104,7 +1110,10 @@ static bNodeTree *instances_on_faces(const Span<Object *> objects,
     nodeAddLink(node_tree, node_out, &out, node_in, &in);
   };
 
-  const auto add_node_group = [node_tree](bNodeTree *tree) -> bNode * {
+  const auto add_node_group =
+      [&](const FunctionRef<bNodeTree *(Main * bmain, RegularNodeTrees & cached_node_trees)>
+              tree_func) -> bNode * {
+    bNodeTree *tree = tree_func(bmain, cached_node_trees);
     bNode *group = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP);
     group->id = &tree->id;
     id_us_plus(&tree->id);
@@ -1122,7 +1131,7 @@ static bNodeTree *instances_on_faces(const Span<Object *> objects,
   connect(scale_factor_input, "Scale by Face Size", scale_instances, "Selection");
   connect(scale_factor_input, "Factor", scale_instances, "Scale");
 
-  bNode *instansing_group = add_node_group(instances_on_faces_tree(bmain, cached_node_trees));
+  bNode *instansing_group = add_node_group(instances_on_faces_tree);
   connect(scale_instances, "Instances", instansing_group, "Instance");
 
   bNode *geometry_input = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
@@ -1130,7 +1139,7 @@ static bNodeTree *instances_on_faces(const Span<Object *> objects,
 
   bNode *geometry_viewport_render_input = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
 
-  bNode *view_switch_group = add_node_group(view_geometry_tree(bmain, cached_node_trees));
+  bNode *view_switch_group = add_node_group(view_geometry_tree);
   connect(geometry_viewport_render_input, "Geometry", view_switch_group, "Geometry");
   connect(geometry_viewport_render_input, "Viewport", view_switch_group, "Viewport");
   connect(geometry_viewport_render_input, "Render", view_switch_group, "Render");
