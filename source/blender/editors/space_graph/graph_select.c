@@ -275,20 +275,16 @@ static tNearestVertInfo *get_best_nearest_fcurve_vert(ListBase *matches)
    * selected fcurves, but to still cycle through the vertices in `matches` if
    * a selected-fcurve vertex is already selected. */
 
-  /* Find the first selected vert in `matches` if one exists. */
+  /* Try to find the first selected vert in `matches`.  Additionally, if
+   * one exists, rotate `matches` to put it last in the list and the vert
+   * following it first, since that's the order we'll want to scan in. */
   tNearestVertInfo *nvi_first_selected = NULL;
   LISTBASE_FOREACH (tNearestVertInfo *, nvi, matches) {
     if (nvi->sel) {
       nvi_first_selected = nvi;
+      BLI_listbase_rotate_last(matches, nvi_first_selected);
       break;
     }
-  }
-
-  /* Rotate `matches` to be in the order we want to scan in, with
-   * `nvi_first_selected` being last and the element following it
-   * being first. */
-  if (nvi_first_selected) {
-    BLI_listbase_rotate_last(matches, nvi_first_selected);
   }
 
   /* Try to find the next vert that's on the active fcurve, falling back
@@ -316,8 +312,8 @@ static tNearestVertInfo *get_best_nearest_fcurve_vert(ListBase *matches)
   }
 
   /* If we're still here, that means we didn't find any verts on selected
-   * fcurves.  So return the item following `nvi_first_selected` (at the
-   * head of the list). */
+   * fcurves.  So return the head (which is also the item following
+   * `nvi_first_selected` if that was found). */
   return BLI_pophead(matches);
 }
 
