@@ -859,11 +859,6 @@ elseif(WIN32)
     ALL
   )
 
-  windows_install_shared_manifest(
-    FILES ${LIBDIR}/zlib/bin/zlib.dll
-    ALL
-  )
-
   if(WITH_OPENMP AND MSVC_CLANG)
     windows_install_shared_manifest(
       FILES ${CLANG_OPENMP_DLL}
@@ -871,10 +866,18 @@ elseif(WIN32)
     )
   endif()
 
+  if(EXISTS ${LIBDIR}/fftw3/lib/fftw3.dll)
+    set(FFTW_DLL ${LIBDIR}/fftw3/lib/fftw3.dll)
+  else()
+    set(FFTW_DLL ${LIBDIR}/fftw3/lib/libfftw3-3.dll)
+  endif()
+
   windows_install_shared_manifest(
-    FILES ${LIBDIR}/fftw3/lib/fftw3.dll
+    FILES ${FFTW_DLL}
     ALL
   )
+  unset(FFTW_DLL)
+
   if(MSVC_ASAN)
     # The ASAN DLL's can be found in the same folder as the compiler,
     # this is the easiest way to find these.
@@ -935,10 +938,18 @@ elseif(WIN32)
     )
   endif()
 
+  if(EXISTS ${LIBDIR}/gmp/lib/gmp-10.dll)
+    set(GMP_DLL ${LIBDIR}/gmp/lib/gmp-10.dll)
+  else()
+    set(GMP_DLL ${LIBDIR}/gmp/lib/libgmp-10.dll)
+  endif()
+
   windows_install_shared_manifest(
-    FILES ${LIBDIR}/gmp/lib/gmp-10.dll
+    FILES ${GMP_DLL}
     ALL
   )
+  unset(GMP_DLL)
+
   windows_install_shared_manifest(
     FILES ${LIBDIR}/gmp/lib/libgmpxx.dll
     RELEASE
@@ -1138,27 +1149,25 @@ elseif(WIN32)
         )
       endif()
 
-      if(WITH_MATERIALX)
-        # MaterialX python bindings
-        install(
-          DIRECTORY ${LIBDIR}/materialx/python/Release/MaterialX
-          DESTINATION ${TARGETDIR_VER}/python/lib/site-packages/
-          CONFIGURATIONS Release;RelWithDebInfo;MinSizeRel
-          PATTERN ".svn" EXCLUDE
-          PATTERN "__pycache__" EXCLUDE           # * any cache *
-          PATTERN "*.pyc" EXCLUDE                 # * any cache *
-          PATTERN "*.pyo" EXCLUDE                 # * any cache *
-        )
-        install(
-          DIRECTORY ${LIBDIR}/materialx/python/Debug/MaterialX
-          DESTINATION ${TARGETDIR_VER}/python/lib/site-packages/
-          CONFIGURATIONS Debug
-          PATTERN ".svn" EXCLUDE
-          PATTERN "__pycache__" EXCLUDE           # * any cache *
-          PATTERN "*.pyc" EXCLUDE                 # * any cache *
-          PATTERN "*.pyo" EXCLUDE                 # * any cache *
-        )
-      endif()
+      # MaterialX python bindings
+      install(
+        DIRECTORY ${LIBDIR}/materialx/python/Release/MaterialX
+        DESTINATION ${TARGETDIR_VER}/python/lib/site-packages/
+        CONFIGURATIONS Release;RelWithDebInfo;MinSizeRel
+        PATTERN ".svn" EXCLUDE
+        PATTERN "__pycache__" EXCLUDE           # * any cache *
+        PATTERN "*.pyc" EXCLUDE                 # * any cache *
+        PATTERN "*.pyo" EXCLUDE                 # * any cache *
+      )
+      install(
+        DIRECTORY ${LIBDIR}/materialx/python/Debug/MaterialX
+        DESTINATION ${TARGETDIR_VER}/python/lib/site-packages/
+        CONFIGURATIONS Debug
+        PATTERN ".svn" EXCLUDE
+        PATTERN "__pycache__" EXCLUDE           # * any cache *
+        PATTERN "*.pyc" EXCLUDE                 # * any cache *
+        PATTERN "*.pyo" EXCLUDE                 # * any cache *
+      )
 
       if(WINDOWS_PYTHON_DEBUG)
         install(
@@ -1229,6 +1238,18 @@ elseif(WIN32)
     )
     list(APPEND LIB ${TBB_MALLOC_LIBRARIES})
   endif()
+
+  if(EXISTS ${LIBDIR}/sndfile/lib/sndfile.dll)
+    set(SNDFILE_DLL ${LIBDIR}/sndfile/lib/sndfile.dll)
+  else()
+    set(SNDFILE_DLL ${LIBDIR}/sndfile/lib/libsndfile-1.dll)
+  endif()
+
+  windows_install_shared_manifest(
+    FILES ${SNDFILE_DLL}
+    ALL
+  )
+  unset(SNDFILE_DLL)
 
   windows_install_shared_manifest(
     FILES ${LIBDIR}/sndfile/lib/sndfile.dll
