@@ -1349,11 +1349,6 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
     FOREACH_NODETREE_END;
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 306, 5)) {
-    /* TODO: (bmain, 400, 0). */
-    remove_legacy_instances_on(bmain, bmain->objects);
-  }
-
   if (!MAIN_VERSION_ATLEAST(bmain, 306, 6)) {
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       Editing *ed = SEQ_editing_get(scene);
@@ -1364,6 +1359,11 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
       SEQ_for_each_callback(
           &scene->ed->seqbase, do_versions_sequencer_init_retiming_tool_data, scene);
     }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 7)) {
+    /* TODO: (bmain, 400, 0). */
+    remove_legacy_instances_on(bmain, bmain->objects);
   }
 
   /**
