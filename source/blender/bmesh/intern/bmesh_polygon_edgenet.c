@@ -576,13 +576,8 @@ bool BM_face_split_edgenet(BMesh *bm,
     BMLoop *l_other;
 
     /* See: #BM_loop_interp_from_face for similar logic. */
-    void **blocks, **vblocks;
-    if (has_interp_ldata) {
-      blocks = BLI_array_alloca(blocks, f->len);
-    }
-    if (has_interp_vdata) {
-      vblocks = BLI_array_alloca(blocks, f->len);
-    }
+    void **blocks = has_interp_ldata ? BLI_array_alloca(blocks, f->len) : NULL;
+    void **vblocks = has_interp_vdata ? BLI_array_alloca(blocks, f->len) : NULL;
     float(*cos_2d)[2] = BLI_array_alloca(cos_2d, f->len);
     float *w = BLI_array_alloca(w, f->len);
     float axis_mat[3][3];
