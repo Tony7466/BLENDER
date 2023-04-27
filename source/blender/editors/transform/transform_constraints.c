@@ -781,12 +781,17 @@ static void drawLine(
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
   immUniformColor3ubv(col2);
 
+
+  GPU_line_smooth(true);
+  GPU_blend(GPU_BLEND_ALPHA);
+
   immBegin(GPU_PRIM_LINES, 2);
   immVertex3fv(pos, v1);
   immVertex3fv(pos, v2);
   immEnd();
 
   immUnbindProgram();
+  GPU_line_smooth(false);
 
   GPU_matrix_pop();
 }
