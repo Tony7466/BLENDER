@@ -781,7 +781,6 @@ static void drawLine(
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
   immUniformColor3ubv(col2);
 
-
   GPU_line_smooth(true);
   GPU_blend(GPU_BLEND_ALPHA);
 
