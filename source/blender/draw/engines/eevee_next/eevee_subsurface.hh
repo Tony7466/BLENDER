@@ -36,7 +36,7 @@ struct SubsurfaceModule {
   /** Contains samples locations. */
   SubsurfaceDataBuf data_;
   /** Contains translucence profile for a single color channel. */
-  Texture transmittance_tx;
+  Texture transmittance_tx_;
 
  public:
   SubsurfaceModule(Instance &inst) : inst_(inst)
@@ -56,7 +56,7 @@ struct SubsurfaceModule {
 
   GPUTexture **transmittance_tx_get(void)
   {
-    return &transmittance_tx;
+    return &transmittance_tx_;
   }
 
  private:
