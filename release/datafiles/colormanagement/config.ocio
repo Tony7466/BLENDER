@@ -673,7 +673,7 @@ colorspaces:
         - !<AllocationTransform> {allocation: lg2, vars: [-12.47393, 12.5260688117]}
         - !<FileTransform> {src: luminance_compensation_bt2020.cube, interpolation: best}
         - !<AllocationTransform> {allocation: lg2, vars: [-12.47393, 12.5260688117], direction: inverse}
-        - !<ColorSpaceTransform> {src: Linear E-Gamut I-D65, dst: Linear BT.2020 I-D65, direction: inverse}
+        - !<ColorSpaceTransform> {src: Linear E-Gamut I-D65, dst: Linear BT.2020 I-D65}
 
   - !<ColorSpace>
     name: Luminance Compensation sRGB
