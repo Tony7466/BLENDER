@@ -1539,8 +1539,8 @@ static bool vfont_to_curve(Object *ob,
     ct = &chartransdata[ef->pos];
     const float cursor_width = 0.04f;
     const float cursor_half = 0.02f;
-    const float xof = ct->xof;
-    const float yof = ct->yof;
+    const float xoffset = ct->xof;
+    const float yoffset = ct->yof;
 
     /* By default the cursor is exactly between the characters
      * and matches the rotation of the character to the right. */
@@ -1581,13 +1581,13 @@ static bool vfont_to_curve(Object *ob,
     ef->textcurs[2][0] = cursor_left + cursor_width;
     ef->textcurs[2][1] = 1.0f;
 
-  for (int i = 0; i < 4; i++) {
+  for (int vert = 0; vert < 4; vert++) {
       float temp_fl[2];
       /* Rotate around the cursor's bottom-left corner. */
-      rotate_v2_v2fl(temp_fl, &ef->textcurs[i][0], -rotation);
-      ef->textcurs[i][0] = font_size * (xof + temp_fl[0]);
+      rotate_v2_v2fl(temp_fl, &ef->textcurs[vert][0], -rotation);
+      ef->textcurs[vert][0] = font_size * (xoffset + temp_fl[0]);
       /* Shift down vertically so we are 25% below and 75% above baseline. */
-      ef->textcurs[i][1] = font_size * (yof + temp_fl[1] - 0.25f);
+      ef->textcurs[vert][1] = font_size * (yoffset + temp_fl[1] - 0.25f);
     }
   }
 
