@@ -229,6 +229,7 @@ static int pose_slide_init(bContext *C, wmOperator *op, ePoseSlide_Modes mode)
 
   pso->slider = ED_slider_create(C);
   ED_slider_factor_set(pso->slider, RNA_float_get(op->ptr, "factor"));
+  ED_slider_is_bidirectional_set(pso->slider, true);
 
   /* For each Pose-Channel which gets affected, get the F-Curves for that channel
    * and set the relevant transform flags. */
@@ -357,81 +358,69 @@ static bool pose_frame_range_from_object_get(tPoseSlideOp *pso,
  */
 static void pose_slide_apply_val(tPoseSlideOp *pso, FCurve *fcu, Object *ob, float *val)
 {
-  float prevFrameF, nextFrameF;
-  float cframe = (float)pso->cframe;
-  float sVal, eVal;
-  float w1, w2;
 
-  pose_frame_range_from_object_get(pso, ob, &prevFrameF, &nextFrameF);
+  float prev_frame, next_frame;
+  pose_frame_range_from_object_get(pso, ob, &prev_frame, &next_frame);
 
   /* Get keyframe values for endpoint poses to blend with. */
-  /* Previous/start. */
-  sVal = evaluate_fcurve(fcu, prevFrameF);
-  /* Next/end. */
-  eVal = evaluate_fcurve(fcu, nextFrameF);
+  const float prev_frame_y = evaluate_fcurve(fcu, prev_frame);
+  const float next_frame_y = evaluate_fcurve(fcu, next_frame);
+
+  const float factor = ED_slider_factor_get(pso->slider);
+  const float lerp_factor = (factor + 1) / 2;
 
   /* Calculate the relative weights of the endpoints. */
-  if (pso->mode == POSESLIDE_BREAKDOWN) {
-    /* Get weights from the factor control. */
-    w1 = ED_slider_factor_get(pso->slider); /* This must come second. */
-    w2 = 1.0f - w1;                         /* This must come first. */
-  }
-  else {
-    /* - these weights are derived from the relative distance of these
-     *   poses from the current frame
-     * - they then get normalized so that they only sum up to 1
-     */
-    float wtot;
+  /* - these weights are derived from the relative distance of these
+   *   poses from the current frame
+   * - they then get normalized so that they only sum up to 1
+   */
+  const float current_frame = (float)pso->cframe;
+  float next_weight = current_frame - (float)pso->prevFrame;
+  float prev_weight = (float)pso->nextFrame - current_frame;
 
-    w1 = cframe - (float)pso->prevFrame;
-    w2 = (float)pso->nextFrame - cframe;
-
-    wtot = w1 + w2;
-    w1 = (w1 / wtot);
-    w2 = (w2 / wtot);
-  }
+  const float total_weight = next_weight + prev_weight;
+  next_weight = (next_weight / total_weight);
+  prev_weight = (prev_weight / total_weight);
 
   /* Depending on the mode, calculate the new value:
-   * - In all of these, the start+end values are multiplied by w2 and w1 (respectively),
-   *   since multiplication in another order would decrease
-   *   the value the current frame is closer to.
+   * - In all of these, the start+end values are multiplied by prev_weight and
+   * next_weight (respectively), since multiplication in another order would decrease the
+   * value the current frame is closer to.
    */
   switch (pso->mode) {
     case POSESLIDE_PUSH: /* Make the current pose more pronounced. */
     {
       /* Slide the pose away from the breakdown pose in the timeline */
-      (*val) -= ((sVal * w2) + (eVal * w1) - (*val)) * ED_slider_factor_get(pso->slider);
+      (*val) -= ((prev_frame_y * prev_weight) + (next_frame_y * next_weight) - (*val)) *
+                lerp_factor;
       break;
     }
     case POSESLIDE_RELAX: /* Make the current pose more like its surrounding ones. */
     {
       /* Slide the pose towards the breakdown pose in the timeline */
-      (*val) += ((sVal * w2) + (eVal * w1) - (*val)) * ED_slider_factor_get(pso->slider);
+      (*val) += ((prev_frame_y * prev_weight) + (next_frame_y * next_weight) - (*val)) *
+                lerp_factor;
       break;
     }
     case POSESLIDE_BREAKDOWN: /* Make the current pose slide around between the endpoints. */
     {
       /* Perform simple linear interpolation -
        * coefficient for start must come from pso->factor. */
-      /* TODO: make this use some kind of spline interpolation instead? */
-      (*val) = ((sVal * w2) + (eVal * w1));
+      (*val) = interpf(next_frame_y, prev_frame_y, lerp_factor);
       break;
     }
-    case POSESLIDE_BLEND: /* Blend the current pose with the previous (<50%) or next key (>50%). */
+    case POSESLIDE_BLEND: /* Blend the current pose with the previous (<0%) or next key (>0%). */
     {
-      /* FCurve value on current frame. */
-      const float cVal = evaluate_fcurve(fcu, cframe);
-      const float factor = ED_slider_factor_get(pso->slider);
-      /* Convert factor to absolute 0-1 range. */
-      const float blend_factor = fabs((factor - 0.5f) * 2);
+      const float current_frame_y = evaluate_fcurve(fcu, current_frame);
+      const float blend_factor = fabs(factor);
 
-      if (factor < 0.5) {
+      if (factor < 0) {
         /* Blend to previous key. */
-        (*val) = (cVal * (1 - blend_factor)) + (sVal * blend_factor);
+        (*val) = interpf(prev_frame_y, current_frame_y, blend_factor);
       }
       else {
         /* Blend to next key. */
-        (*val) = (cVal * (1 - blend_factor)) + (eVal * blend_factor);
+        (*val) = interpf(next_frame_y, current_frame_y, blend_factor);
       }
 
       break;
@@ -617,10 +606,9 @@ static void pose_slide_apply_quat(tPoseSlideOp *pso, tPChanFCurveLink *pfl)
   bPoseChannel *pchan = pfl->pchan;
   LinkData *ld = NULL;
   char *path = NULL;
-  float cframe;
-  float prevFrameF, nextFrameF;
+  float prev_frame, next_frame;
 
-  if (!pose_frame_range_from_object_get(pso, pfl->ob, &prevFrameF, &nextFrameF)) {
+  if (!pose_frame_range_from_object_get(pso, pfl->ob, &prev_frame, &next_frame)) {
     BLI_assert_msg(0, "Invalid pfl data");
     return;
   }
@@ -629,7 +617,9 @@ static void pose_slide_apply_quat(tPoseSlideOp *pso, tPChanFCurveLink *pfl)
   path = BLI_sprintfN("%s.%s", pfl->pchan_path, "rotation_quaternion");
 
   /* Get the current frame number. */
-  cframe = (float)pso->cframe;
+  const float cframe = (float)pso->cframe;
+  const float factor = ED_slider_factor_get(pso->slider);
+  const float lerp_factor = (factor + 1) / 2;
 
   /* Using this path, find each matching F-Curve for the variables we're interested in. */
   while ((ld = poseAnim_mapping_getNextFCurve(&pfl->fcurves, ld, path))) {
@@ -660,15 +650,15 @@ static void pose_slide_apply_quat(tPoseSlideOp *pso, tPChanFCurveLink *pfl)
     if (ELEM(pso->mode, POSESLIDE_BREAKDOWN, POSESLIDE_PUSH, POSESLIDE_RELAX)) {
       float quat_prev[4], quat_next[4];
 
-      quat_prev[0] = evaluate_fcurve(fcu_w, prevFrameF);
-      quat_prev[1] = evaluate_fcurve(fcu_x, prevFrameF);
-      quat_prev[2] = evaluate_fcurve(fcu_y, prevFrameF);
-      quat_prev[3] = evaluate_fcurve(fcu_z, prevFrameF);
+      quat_prev[0] = evaluate_fcurve(fcu_w, prev_frame);
+      quat_prev[1] = evaluate_fcurve(fcu_x, prev_frame);
+      quat_prev[2] = evaluate_fcurve(fcu_y, prev_frame);
+      quat_prev[3] = evaluate_fcurve(fcu_z, prev_frame);
 
-      quat_next[0] = evaluate_fcurve(fcu_w, nextFrameF);
-      quat_next[1] = evaluate_fcurve(fcu_x, nextFrameF);
-      quat_next[2] = evaluate_fcurve(fcu_y, nextFrameF);
-      quat_next[3] = evaluate_fcurve(fcu_z, nextFrameF);
+      quat_next[0] = evaluate_fcurve(fcu_w, next_frame);
+      quat_next[1] = evaluate_fcurve(fcu_x, next_frame);
+      quat_next[2] = evaluate_fcurve(fcu_y, next_frame);
+      quat_next[3] = evaluate_fcurve(fcu_z, next_frame);
 
       normalize_qt(quat_prev);
       normalize_qt(quat_next);
@@ -676,7 +666,7 @@ static void pose_slide_apply_quat(tPoseSlideOp *pso, tPChanFCurveLink *pfl)
       if (pso->mode == POSESLIDE_BREAKDOWN) {
         /* Just perform the interpolation between quat_prev and
          * quat_next using pso->factor as a guide. */
-        interp_qt_qtqt(quat_final, quat_prev, quat_next, ED_slider_factor_get(pso->slider));
+        interp_qt_qtqt(quat_final, quat_prev, quat_next, lerp_factor);
       }
       else {
         float quat_curr[4], quat_breakdown[4];
@@ -689,12 +679,11 @@ static void pose_slide_apply_quat(tPoseSlideOp *pso, tPChanFCurveLink *pfl)
         interp_qt_qtqt(quat_breakdown, quat_prev, quat_next, factor);
 
         if (pso->mode == POSESLIDE_PUSH) {
-          interp_qt_qtqt(
-              quat_final, quat_breakdown, quat_curr, 1.0f + ED_slider_factor_get(pso->slider));
+          interp_qt_qtqt(quat_final, quat_breakdown, quat_curr, 1.0f + lerp_factor);
         }
         else {
           BLI_assert(pso->mode == POSESLIDE_RELAX);
-          interp_qt_qtqt(quat_final, quat_curr, quat_breakdown, ED_slider_factor_get(pso->slider));
+          interp_qt_qtqt(quat_final, quat_curr, quat_breakdown, lerp_factor);
         }
       }
     }
@@ -704,23 +693,23 @@ static void pose_slide_apply_quat(tPoseSlideOp *pso, tPChanFCurveLink *pfl)
 
       copy_qt_qt(quat_curr, pchan->quat);
 
-      if (ED_slider_factor_get(pso->slider) < 0.5) {
-        quat_blend[0] = evaluate_fcurve(fcu_w, prevFrameF);
-        quat_blend[1] = evaluate_fcurve(fcu_x, prevFrameF);
-        quat_blend[2] = evaluate_fcurve(fcu_y, prevFrameF);
-        quat_blend[3] = evaluate_fcurve(fcu_z, prevFrameF);
+      if (factor < 0.0f) {
+        quat_blend[0] = evaluate_fcurve(fcu_w, prev_frame);
+        quat_blend[1] = evaluate_fcurve(fcu_x, prev_frame);
+        quat_blend[2] = evaluate_fcurve(fcu_y, prev_frame);
+        quat_blend[3] = evaluate_fcurve(fcu_z, prev_frame);
       }
       else {
-        quat_blend[0] = evaluate_fcurve(fcu_w, nextFrameF);
-        quat_blend[1] = evaluate_fcurve(fcu_x, nextFrameF);
-        quat_blend[2] = evaluate_fcurve(fcu_y, nextFrameF);
-        quat_blend[3] = evaluate_fcurve(fcu_z, nextFrameF);
+        quat_blend[0] = evaluate_fcurve(fcu_w, next_frame);
+        quat_blend[1] = evaluate_fcurve(fcu_x, next_frame);
+        quat_blend[2] = evaluate_fcurve(fcu_y, next_frame);
+        quat_blend[3] = evaluate_fcurve(fcu_z, next_frame);
       }
 
       normalize_qt(quat_blend);
       normalize_qt(quat_curr);
 
-      const float blend_factor = fabs((ED_slider_factor_get(pso->slider) - 0.5f) * 2);
+      const float blend_factor = fabs(factor);
 
       interp_qt_qtqt(quat_final, quat_curr, quat_blend, blend_factor);
     }
@@ -1418,8 +1407,8 @@ static void pose_slide_opdef_properties(wmOperatorType *ot)
 
   prop = RNA_def_float_factor(ot->srna,
                               "factor",
-                              0.5f,
                               0.0f,
+                              -1.0f,
                               1.0f,
                               "Factor",
                               "Weighting factor for which keyframe is favored more",
