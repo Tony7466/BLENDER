@@ -35,7 +35,7 @@ float gbuffer_ior_pack(float ior)
 
 float gbuffer_ior_unpack(float ior_packed)
 {
-  return (ior_packed > 0.5) ? (-1.0 / (ior_packed * 2.0 + 2.0)) : (2.0 * ior_packed);
+  return (ior_packed > 0.5) ? (0.5 / (1.0 - ior_packed)) : (2.0 * ior_packed);
 }
 
 float gbuffer_thickness_pack(float thickness)
