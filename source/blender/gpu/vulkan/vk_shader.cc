@@ -15,6 +15,8 @@
 #include "BLI_string_utils.h"
 #include "BLI_vector.hh"
 
+#include "BKE_global.h"
+
 using namespace blender::gpu::shader;
 
 extern "C" char datatoc_glsl_shader_defines_glsl[];
@@ -360,7 +362,7 @@ static void print_resource(std::ostream &os,
       array_offset = res.uniformbuf.name.find_first_of("[");
       name_no_array = (array_offset == -1) ? res.uniformbuf.name :
                                              StringRef(res.uniformbuf.name.c_str(), array_offset);
-      os << "uniform " << name_no_array << " { " << res.uniformbuf.type_name << " _"
+      os << "uniform _" << name_no_array << " { " << res.uniformbuf.type_name << " "
          << res.uniformbuf.name << "; };\n";
       break;
     case ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER:
@@ -368,8 +370,8 @@ static void print_resource(std::ostream &os,
       name_no_array = (array_offset == -1) ? res.storagebuf.name :
                                              StringRef(res.storagebuf.name.c_str(), array_offset);
       print_qualifier(os, res.storagebuf.qualifiers);
-      os << "buffer ";
-      os << name_no_array << " { " << res.storagebuf.type_name << " _" << res.storagebuf.name
+      os << "buffer _";
+      os << name_no_array << " { " << res.storagebuf.type_name << " " << res.storagebuf.name
          << "; };\n";
       break;
   }
@@ -381,29 +383,6 @@ static void print_resource(std::ostream &os,
 {
   const VKDescriptorSet::Location location = shader_interface.descriptor_set_location(res);
   print_resource(os, location, res);
-}
-
-static void print_resource_alias(std::ostream &os, const ShaderCreateInfo::Resource &res)
-{
-  int64_t array_offset;
-  StringRef name_no_array;
-
-  switch (res.bind_type) {
-    case ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER:
-      array_offset = res.uniformbuf.name.find_first_of("[");
-      name_no_array = (array_offset == -1) ? res.uniformbuf.name :
-                                             StringRef(res.uniformbuf.name.c_str(), array_offset);
-      os << "#define " << name_no_array << " (_" << name_no_array << ")\n";
-      break;
-    case ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER:
-      array_offset = res.storagebuf.name.find_first_of("[");
-      name_no_array = (array_offset == -1) ? res.storagebuf.name :
-                                             StringRef(res.storagebuf.name.c_str(), array_offset);
-      os << "#define " << name_no_array << " (_" << name_no_array << ")\n";
-      break;
-    default:
-      break;
-  }
 }
 
 inline int get_location_count(const Type &type)
@@ -546,6 +525,10 @@ Vector<uint32_t> VKShader::compile_glsl_to_spirv(Span<const char *> sources,
   shaderc::Compiler &compiler = backend.get_shaderc_compiler();
   shaderc::CompileOptions options;
   options.SetOptimizationLevel(shaderc_optimization_level_performance);
+  if (G.debug & G_DEBUG_GPU_RENDERDOC) {
+    options.SetOptimizationLevel(shaderc_optimization_level_zero);
+    options.SetGenerateDebugInfo();
+  }
 
   shaderc::SpvCompilationResult module = compiler.CompileGlslToSpv(
       combined_sources, stage, name, options);
@@ -1001,12 +984,14 @@ void VKShader::unbind()
 
 void VKShader::uniform_float(int location, int comp_len, int array_size, const float *data)
 {
-  pipeline_get().push_constants_get().push_constant_set(location, comp_len, array_size, data);
+  VKPushConstants &push_constants = pipeline_get().push_constants_get();
+  push_constants.push_constant_set(location, comp_len, array_size, data);
 }
 
 void VKShader::uniform_int(int location, int comp_len, int array_size, const int *data)
 {
-  pipeline_get().push_constants_get().push_constant_set(location, comp_len, array_size, data);
+  VKPushConstants &push_constants = pipeline_get().push_constants_get();
+  push_constants.push_constant_set(location, comp_len, array_size, data);
 }
 
 std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) const
@@ -1019,16 +1004,10 @@ std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) co
   for (const ShaderCreateInfo::Resource &res : info.pass_resources_) {
     print_resource(ss, interface, res);
   }
-  for (const ShaderCreateInfo::Resource &res : info.pass_resources_) {
-    print_resource_alias(ss, res);
-  }
 
   ss << "\n/* Batch Resources. */\n";
   for (const ShaderCreateInfo::Resource &res : info.batch_resources_) {
     print_resource(ss, interface, res);
-  }
-  for (const ShaderCreateInfo::Resource &res : info.batch_resources_) {
-    print_resource_alias(ss, res);
   }
 
   /* Push constants. */
@@ -1206,6 +1185,7 @@ std::string VKShader::geometry_layout_declare(const shader::ShaderCreateInfo &in
   }
   ss << "\n";
 
+  location = 0;
   for (const StageInterfaceInfo *iface : info.geometry_out_interfaces_) {
     bool has_matching_input_iface = find_interface_by_name(info.vertex_out_interfaces_,
                                                            iface->instance_name) != nullptr;
