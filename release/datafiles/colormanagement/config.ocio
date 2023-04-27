@@ -69,7 +69,7 @@ displays:
     - !<View> {name: None, colorspace: Non-Color}
 active_displays: []
 active_views: []
-inactive_colorspaces: [Guard Rail sRGB, Guard Rail P3, Guard Rail BT.1886, Guard Rail BT.2020, Luminance Compensation BT.2020, Display P3 I-E, sRGB I-E, BT.2020 I-E, AgX False Color]
+inactive_colorspaces: [Guard Rail sRGB, Guard Rail P3, Guard Rail BT.1886, Guard Rail BT.2020, Luminance Compensation BT.2020, Luminance Compensation P3, Luminance Compensation sRGB, Display P3 I-E, sRGB I-E, BT.2020 I-E, AgX False Color]
 
 looks:
   - !<Look>
@@ -404,18 +404,15 @@ colorspaces:
     allocation: unknown
     from_scene_reference: !<GroupTransform>
       children:
-        - !<ColorSpaceTransform> {src: Linear CIE-XYZ I-E, dst: Linear E-Gamut I-D65}
-        - !<RangeTransform> {min_in_value: 0, min_out_value: 0, max_in_value: 10, max_out_value: 100, style: noclamp}
-        - !<BuiltinTransform> {style: CURVE - LINEAR_to_ST-2084}
-        - !<ExponentTransform> {value: 1.5}
-        - !<FileTransform> {src: guard_rail_bt2020.cube, interpolation: best}
-        - !<ExponentTransform> {value: 1.5, direction: inverse}
-        - !<BuiltinTransform> {style: CURVE - LINEAR_to_ST-2084, direction: inverse}
-        - !<RangeTransform> {min_in_value: 0, min_out_value: 0, max_in_value: 10, max_out_value: 100, style: noclamp, direction: inverse}
-        - !<ColorSpaceTransform> {src: Linear E-Gamut I-D65, dst: BT.2020}
+        - !<ColorSpaceTransform> {src: Linear CIE-XYZ I-E, dst: Luminance Compensation BT.2020}
+        - !<FileTransform> {src: Guard_Rail_Higher_Shaper_EOTF.spi1d, interpolation: linear, direction: inverse}
+        - !<FileTransform> {src: guard_rail_higher.cube, interpolation: best}
+        - !<FileTransform> {src: Guard_Rail_Higher_Shaper_EOTF.spi1d, interpolation: linear}
+        - !<ColorSpaceTransform> {src: Linear BT.2020 I-D65, dst: BT.2020}
+        - !<RangeTransform> {max_in_value: 1, max_out_value: 1}
     to_scene_reference: !<GroupTransform>
       children:
-        - !<ColorSpaceTransform> {src: BT.2020, dst: Linear CIE-XYZ I-E}
+        - !<ColorSpaceTransform> {src: BT.2020 2.4, dst: Linear CIE-XYZ I-E}
 
   - !<ColorSpace>
     name: Guard Rail sRGB
@@ -427,18 +424,15 @@ colorspaces:
     allocation: unknown
     from_scene_reference: !<GroupTransform>
       children:
-        - !<ColorSpaceTransform> {src: Linear CIE-XYZ I-E, dst: Linear E-Gamut I-D65}
-        - !<RangeTransform> {min_in_value: 0, min_out_value: 0, max_in_value: 10, max_out_value: 100, style: noclamp}
-        - !<BuiltinTransform> {style: CURVE - LINEAR_to_ST-2084}
-        - !<ExponentTransform> {value: 1.5}
-        - !<FileTransform> {src: guard_rail_srgb.cube, interpolation: best}
-        - !<ExponentTransform> {value: 1.5, direction: inverse}
-        - !<BuiltinTransform> {style: CURVE - LINEAR_to_ST-2084, direction: inverse}
-        - !<RangeTransform> {min_in_value: 0, min_out_value: 0, max_in_value: 10, max_out_value: 100, style: noclamp, direction: inverse}
-        - !<ColorSpaceTransform> {src: Linear E-Gamut I-D65, dst: sRGB}
+        - !<ColorSpaceTransform> {src: Linear CIE-XYZ I-E, dst: Luminance Compensation sRGB}
+        - !<FileTransform> {src: Guard_Rail_Higher_Shaper_EOTF.spi1d, interpolation: linear, direction: inverse}
+        - !<FileTransform> {src: guard_rail_higher.cube, interpolation: best}
+        - !<FileTransform> {src: Guard_Rail_Higher_Shaper_EOTF.spi1d, interpolation: linear}
+        - !<ColorSpaceTransform> {src: Linear BT.709 I-D65, dst: sRGB}
+        - !<RangeTransform> {max_in_value: 1, max_out_value: 1}
     to_scene_reference: !<GroupTransform>
       children:
-        - !<ColorSpaceTransform> {src: sRGB, dst: Linear CIE-XYZ I-E}
+        - !<ColorSpaceTransform> {src: sRGB 2.2, dst: Linear CIE-XYZ I-E}
 
   - !<ColorSpace>
     name: Guard Rail BT.1886
@@ -466,18 +460,15 @@ colorspaces:
     allocation: unknown
     from_scene_reference: !<GroupTransform>
       children:
-        - !<ColorSpaceTransform> {src: Linear CIE-XYZ I-E, dst: Linear E-Gamut I-D65}
-        - !<RangeTransform> {min_in_value: 0, min_out_value: 0, max_in_value: 10, max_out_value: 100, style: noclamp}
-        - !<BuiltinTransform> {style: CURVE - LINEAR_to_ST-2084}
-        - !<ExponentTransform> {value: 1.5}
-        - !<FileTransform> {src: guard_rail_p3.cube, interpolation: best}
-        - !<ExponentTransform> {value: 1.5, direction: inverse}
-        - !<BuiltinTransform> {style: CURVE - LINEAR_to_ST-2084, direction: inverse}
-        - !<RangeTransform> {min_in_value: 0, min_out_value: 0, max_in_value: 10, max_out_value: 100, style: noclamp, direction: inverse}
-        - !<ColorSpaceTransform> {src: Linear E-Gamut I-D65, dst: Display P3}
+        - !<ColorSpaceTransform> {src: Linear CIE-XYZ I-E, dst: Luminance Compensation P3}
+        - !<FileTransform> {src: Guard_Rail_Higher_Shaper_EOTF.spi1d, interpolation: linear, direction: inverse}
+        - !<FileTransform> {src: guard_rail_higher.cube, interpolation: best}
+        - !<FileTransform> {src: Guard_Rail_Higher_Shaper_EOTF.spi1d, interpolation: linear}
+        - !<ColorSpaceTransform> {src: Linear DCI-P3 I-D65, dst: Display P3}
+        - !<RangeTransform> {max_in_value: 1, max_out_value: 1}
     to_scene_reference: !<GroupTransform>
       children:
-        - !<ColorSpaceTransform> {src: Display P3, dst: Linear CIE-XYZ I-E}
+        - !<ColorSpaceTransform> {src: Display P3 2.2, dst: Linear CIE-XYZ I-E}
 
   - !<ColorSpace>
     name: AgX Base BT.2020
@@ -683,6 +674,50 @@ colorspaces:
         - !<FileTransform> {src: luminance_compensation_bt2020.cube, interpolation: best}
         - !<AllocationTransform> {allocation: lg2, vars: [-12.47393, 12.5260688117], direction: inverse}
         - !<ColorSpaceTransform> {src: Linear CIE-XYZ I-E, dst: Linear E-Gamut I-D65, direction: inverse}
+
+  - !<ColorSpace>
+    name: Luminance Compensation sRGB
+    aliases: []
+    family: Utilities
+    equalitygroup: ""
+    bitdepth: unknown
+    description: Use CIE 2012 Luminance to Compensate for Some Out-of-BT.709-Domain Values
+    isdata: false
+    allocation: uniform
+    from_scene_reference: !<GroupTransform>
+      children:
+        - !<ColorSpaceTransform> {src: Linear CIE-XYZ I-E, dst: Linear E-Gamut I-D65}
+        - !<MatrixTransform> {matrix: [0.842398929049531, 0.0784301651048638, 0.0791709058456046, 0, 0.0423989290495314, 0.878430165104864, 0.0791709058456046, 0, 0.0423989290495314, 0.078430165104864, 0.879170905845605, 0, 0, 0, 0, 1]}
+        - !<BuiltinTransform> {style: CURVE - LINEAR_to_ST-2084}
+        - !<ExponentTransform> {value: 0.5}
+        - !<FileTransform> {src: luminance_compensation_srgb.cube, interpolation: best}
+        - !<ExponentTransform> {value: 0.5, direction: inverse}
+        - !<BuiltinTransform> {style: CURVE - LINEAR_to_ST-2084, direction: inverse}
+        - !<MatrixTransform> {matrix: [0.842398929049531, 0.0784301651048638, 0.0791709058456046, 0, 0.0423989290495314, 0.878430165104864, 0.0791709058456046, 0, 0.0423989290495314, 0.078430165104864, 0.879170905845605, 0, 0, 0, 0, 1], direction: inverse}
+        - !<ColorSpaceTransform> {src: Linear E-Gamut I-D65, dst: Linear BT.709 I-D65}
+        - !<RangeTransform> {min_in_value: 0, min_out_value: 0}
+
+  - !<ColorSpace>
+    name: Luminance Compensation P3
+    aliases: []
+    family: Utilities
+    equalitygroup: ""
+    bitdepth: unknown
+    description: Use CIE 2012 Luminance to Compensate for Some Out-of-P3-Domain Values
+    isdata: false
+    allocation: uniform
+    from_scene_reference: !<GroupTransform>
+      children:
+        - !<ColorSpaceTransform> {src: Linear CIE-XYZ I-E, dst: Linear E-Gamut I-D65}
+        - !<MatrixTransform> {matrix: [0.842398929049531, 0.0784301651048638, 0.0791709058456046, 0, 0.0423989290495314, 0.878430165104864, 0.0791709058456046, 0, 0.0423989290495314, 0.078430165104864, 0.879170905845605, 0, 0, 0, 0, 1]}
+        - !<BuiltinTransform> {style: CURVE - LINEAR_to_ST-2084}
+        - !<ExponentTransform> {value: 0.5}
+        - !<FileTransform> {src: luminance_compensation_p3.cube, interpolation: best}
+        - !<ExponentTransform> {value: 0.5, direction: inverse}
+        - !<BuiltinTransform> {style: CURVE - LINEAR_to_ST-2084, direction: inverse}
+        - !<MatrixTransform> {matrix: [0.842398929049531, 0.0784301651048638, 0.0791709058456046, 0, 0.0423989290495314, 0.878430165104864, 0.0791709058456046, 0, 0.0423989290495314, 0.078430165104864, 0.879170905845605, 0, 0, 0, 0, 1], direction: inverse}
+        - !<ColorSpaceTransform> {src: Linear E-Gamut I-D65, dst: Linear DCI-P3 I-D65}
+        - !<RangeTransform> {min_in_value: 0, min_out_value: 0}
 
   - !<ColorSpace>
     name: Non-Color
