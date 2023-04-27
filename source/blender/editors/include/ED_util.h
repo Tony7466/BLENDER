@@ -94,14 +94,13 @@ void ED_slider_status_string_get(const struct tSlider *slider,
 float ED_slider_factor_get(struct tSlider *slider);
 void ED_slider_factor_set(struct tSlider *slider, float factor);
 
-bool ED_slider_allow_overshoot_get(struct tSlider *slider);
-void ED_slider_allow_overshoot_set(struct tSlider *slider, bool value);
+/* One bool value for each side of the slider. Allows to allow overshoot only on one side. */
+void ED_slider_allow_overshoot_set(struct tSlider *slider, bool left, bool right);
+
+void ED_slider_range_set(struct tSlider *slider, float range[2]);
 
 bool ED_slider_allow_increments_get(struct tSlider *slider);
 void ED_slider_allow_increments_set(struct tSlider *slider, bool value);
-
-bool ED_slider_is_bidirectional_get(struct tSlider *slider);
-void ED_slider_is_bidirectional_set(struct tSlider *slider, bool value);
 
 /* ************** XXX OLD CRUFT WARNING ************* */
 
