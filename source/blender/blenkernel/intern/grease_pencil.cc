@@ -644,7 +644,13 @@ bool GreasePencilRuntime::has_active_layer() const
 const greasepencil::Layer &GreasePencilRuntime::active_layer() const
 {
   BLI_assert(this->active_layer_index_ >= 0);
-  return *this->root_group().layers()[this->active_layer_index_];
+  return this->root_group().children()[this->active_layer_index_]->as_layer();
+}
+
+greasepencil::Layer &GreasePencilRuntime::active_layer_for_write()
+{
+  BLI_assert(this->active_layer_index_ >= 0);
+  return this->root_group_for_write().children_for_write()[this->active_layer_index_]->as_layer_for_write();
 }
 
 void GreasePencilRuntime::set_active_layer_index(int index)
@@ -710,7 +716,7 @@ BoundBox *BKE_grease_pencil_boundbox_get(Object *ob)
           break;
         }
         case GP_DRAWING_REFERENCE: {
-          /* TODO */
+          /* TODO: Calculate the bounding box of the reference drawing. */
           break;
         }
       }
@@ -731,7 +737,7 @@ void BKE_grease_pencil_data_update(struct Depsgraph * /*depsgraph*/,
 
   GreasePencil *grease_pencil = static_cast<GreasePencil *>(object->data);
   /* Evaluate modifiers. */
-  /* TODO: modifiers. */
+  /* TODO: evaluate modifiers. */
 
   /* Assign evaluated object. */
   /* TODO: Get eval from modifiers geometry set. */

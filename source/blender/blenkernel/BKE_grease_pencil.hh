@@ -31,6 +31,7 @@ class Layer;
  */
 class TreeNode : public ::GreasePencilLayerTreeNode, NonMovable {
   friend class LayerGroup;
+
  public:
   explicit TreeNode(GreasePencilLayerTreeNodeType type);
   explicit TreeNode(GreasePencilLayerTreeNodeType type, StringRefNull name);
@@ -206,8 +207,17 @@ class LayerGroup : public TreeNode {
   LayerGroup(const LayerGroup &other);
 
  private:
+  /**
+   * CacheMutex for `children_cache_` and `layer_cache_`;
+   */
   mutable CacheMutex children_cache_mutex_;
+  /**
+   * Caches all the children of this group in a single pre-order vector.
+   */
   mutable Vector<TreeNode *> children_cache_;
+  /**
+   * Caches all the layers in this group in a single pre-order vector.
+   */
   mutable Vector<Layer *> layer_cache_;
 
  public:
@@ -239,17 +249,20 @@ class LayerGroup : public TreeNode {
   void remove_child(int64_t index);
 
   /**
-   * Returns a `Vector` of pointers to all the `TreeNode`s in this group.
+   * Returns a `Span` of pointers to all the `TreeNode`s in this group.
    */
   Span<const TreeNode *> children() const;
   Span<TreeNode *> children_for_write();
 
   /**
-   * Returns a `Vector` of pointers to all the `Layers`s in this group.
+   * Returns a `Span` of pointers to all the `Layers`s in this group.
    */
   Span<const Layer *> layers() const;
   Span<Layer *> layers_for_write();
 
+  /**
+   * Print the children. For debugging purposes.
+   */
   void print_children(StringRefNull header) const;
 
  private:
@@ -323,7 +336,7 @@ class GreasePencilRuntime {
 
   bool has_active_layer() const;
   const greasepencil::Layer &active_layer() const;
-  greasepencil::Layer &active_layer_for_write() const;
+  greasepencil::Layer &active_layer_for_write();
   void set_active_layer_index(int index);
   int active_layer_index() const;
 };
