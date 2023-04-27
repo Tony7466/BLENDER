@@ -1,1 +1,2 @@
 Referenced by issue #107390, Regression: Image transformation in VSE is very slow
+Referenced by commit be53da087d5f00283123e9d0979e4daf1c6ba704, Fix #107390: Image transformation in VSE is very slow
