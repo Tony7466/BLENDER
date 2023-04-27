@@ -186,7 +186,7 @@ class Scene : public NodeOwner {
   AttributeSizes attrib_sizes;
 
   /* Stores a DeviceScene for each sub-device */
-  std::vector<DeviceScene *> dscenes;
+  std::vector<unique_ptr<DeviceScene>> dscenes;
 
   /* Stats time logging */
   struct SceneTimes {

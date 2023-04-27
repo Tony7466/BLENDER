@@ -697,7 +697,7 @@ void GeometryManager::device_data_xfer_and_bvh_update(int idx,
                                                       bool need_update_scene_bvh,
                                                       Progress &progress)
 {
-  auto sub_dscene = scene->dscenes[idx];
+  auto sub_dscene = scene->dscenes[idx].get();
   sub_dscene->data.bvh.bvh_layout = BVH_LAYOUT_NONE;
   // Get the device to use for this DeviceScene from one of the buffers
   Device *sub_device = sub_dscene->tri_verts.device;
@@ -1137,7 +1137,7 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
       /* Could break this out across all the devices as
          the results are read back to the host. For now, the computations
          are done on the first device. */
-      DeviceScene *sub_dscene = scene->dscenes.front();
+      DeviceScene *sub_dscene = scene->dscenes.front().get();
       Device *sub_device = sub_dscene->tri_verts.device;
       {
         scoped_callback_timer timer([scene](double time) {

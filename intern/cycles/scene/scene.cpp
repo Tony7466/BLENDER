@@ -63,9 +63,9 @@ Scene::Scene(const SceneParams &params_, Device *device)
 {
   /* Create a DeviceScene for each device */
   device->foreach_device([this](Device *sub_device) {
-    auto sub_dscene = new DeviceScene(sub_device);
-    this->dscenes.push_back(sub_dscene);
+    auto sub_dscene = make_unique<DeviceScene>(sub_device);
     memset((void *)&sub_dscene->data, 0, sizeof(sub_dscene->data));
+    this->dscenes.push_back(std::move(sub_dscene));
   });
   memset((void *)&dscene.data, 0, sizeof(dscene.data));
 
@@ -98,10 +98,6 @@ Scene::Scene(const SceneParams &params_, Device *device)
 
 Scene::~Scene()
 {
-  foreach (DeviceScene *sub_scene, dscenes) {
-    delete sub_scene;
-  }
-
   free_memory(true);
 }
 
