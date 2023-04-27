@@ -3,7 +3,6 @@
 
 #include <pxr/base/gf/vec2f.h>
 
-#include "../utils.h"
 #include "blender_scene_delegate.h"
 #include "instancer.h"
 

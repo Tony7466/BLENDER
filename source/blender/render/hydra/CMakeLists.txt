@@ -58,8 +58,6 @@ set(SRC
   viewport_engine.cc
   camera.h
   camera.cc
-  utils.h
-  utils.cc
 
   render_task_delegate.cc
   render_task_delegate.h
@@ -84,6 +82,8 @@ set(SRC
   scene_delegate/world.cc
   scene_delegate/instancer.h
   scene_delegate/instancer.cc
+  scene_delegate/image.h
+  scene_delegate/image.cc
 )
 
 set(LIB

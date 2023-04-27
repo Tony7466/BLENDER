@@ -3,7 +3,6 @@
 
 #include "BKE_object.h"
 
-#include "../utils.h"
 #include "blender_scene_delegate.h"
 #include "light.h"
 #include "mesh.h"
@@ -82,6 +81,17 @@ bool ObjectData::update_visibility()
 void ObjectData::write_transform()
 {
   transform = gf_matrix_from_transform(((Object *)id)->object_to_world);
+}
+
+pxr::GfMatrix4d gf_matrix_from_transform(float m[4][4])
+{
+  pxr::GfMatrix4d ret;
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 4; j++) {
+      ret[i][j] = m[i][j];
+    }
+  }
+  return ret;
 }
 
 }  // namespace blender::render::hydra

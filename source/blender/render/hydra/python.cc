@@ -13,10 +13,7 @@
 
 #include "final_engine.h"
 #include "preview_engine.h"
-#include "utils.h"
 #include "viewport_engine.h"
-
-#include "BLI_timer.h"
 
 namespace blender::render::hydra {
 

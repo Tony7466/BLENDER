@@ -6,7 +6,6 @@
 #include "DEG_depsgraph_query.h"
 #include "DNA_scene_types.h"
 
-#include "..\utils.h"
 #include "blender_scene_delegate.h"
 
 namespace blender::render::hydra {
@@ -194,7 +193,7 @@ pxr::SdfPath BlenderSceneDelegate::prim_id(ID *id, const char *prefix) const
 {
   /* Making id of object in form like <prefix>_<pointer in 16 hex digits format> */
   char str[32];
-  snprintf(str, 32, "%s_%016llx", prefix, (uint64_t)id);
+  snprintf(str, 32, "%s_%016llx", prefix, (uintptr_t)id);
   return GetDelegateID().AppendElementString(str);
 }
 

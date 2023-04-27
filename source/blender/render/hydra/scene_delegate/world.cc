@@ -13,15 +13,14 @@
 
 #include "BKE_context.h"
 #include "DNA_node_types.h"
-#include "DNA_windowmanager_types.h"
 
-#include "BKE_image.h"
 #include "BKE_node.h"
 #include "BKE_node_runtime.hh"
+#include "BLI_path_util.h"
 #include "NOD_shader.h"
 
-#include "../utils.h"
 #include "blender_scene_delegate.h"
+#include "image.h"
 #include "world.h"
 
 /* TODO : add custom tftoken "transparency"? */
@@ -96,16 +95,8 @@ void WorldData::init()
       if (color_input_node->type == SH_NODE_TEX_IMAGE) {
         NodeTexImage *tex = static_cast<NodeTexImage *>(color_input_node->storage);
         Image *image = (Image *)color_input_node->id;
-
         if (image) {
-          Main *bmain = CTX_data_main(scene_delegate_->context);
-          Scene *scene = scene_delegate_->scene;
-
-          ReportList reports;
-          ImageSaveOptions opts;
-          opts.im_format.imtype = R_IMF_IMTYPE_PNG;
-
-          std::string image_path = cache_image(bmain, scene, image, &tex->iuser, &opts, &reports);
+          std::string image_path = cache_or_get_image_file(image, scene_delegate_, &tex->iuser);
           if (!image_path.empty()) {
             data_[pxr::HdLightTokens->textureFile] = pxr::SdfAssetPath(image_path, image_path);
           }

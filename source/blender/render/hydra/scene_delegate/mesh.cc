@@ -9,7 +9,6 @@
 #include "BKE_mesh_runtime.h"
 #include "BKE_object.h"
 
-#include "../utils.h"
 #include "blender_scene_delegate.h"
 #include "mesh.h"
 

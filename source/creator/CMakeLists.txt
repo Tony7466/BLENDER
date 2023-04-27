@@ -1535,6 +1535,7 @@ if((DEFINED LIBDIR) AND TARGETDIR_LIB)
       )
       install(DIRECTORY
         ${LIBDIR}/usd/plugin/usd/usdShaders
+        ${LIBDIR}/usd/plugin/usd/hioOiio
         DESTINATION "./blender.shared/usd"
       )
     elseif(USD_PYTHON_SUPPORT)

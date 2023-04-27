@@ -35,4 +35,6 @@ class ObjectData : public IdData {
 using ObjectDataMap =
     pxr::TfHashMap<pxr::SdfPath, std::unique_ptr<ObjectData>, pxr::SdfPath::Hash>;
 
+pxr::GfMatrix4d gf_matrix_from_transform(float m[4][4]);
+
 }  // namespace blender::render::hydra
