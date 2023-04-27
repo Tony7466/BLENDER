@@ -879,7 +879,6 @@ void GeometryManager::device_update(Device *device,
         geom_attributes,
         object_attributes,
         object_attribute_values,
-	true_displacement_used,
         progress);
   }
 
@@ -1118,7 +1117,6 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
     vector<AttributeRequestSet> &geom_attributes,
     vector<AttributeRequestSet> &object_attributes,
     vector<AttributeSet> &object_attribute_values,
-    bool true_displacement_used,
     Progress &progress)
 {
   scoped_callback_timer timer([scene](double time) {
@@ -1156,14 +1154,19 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
       sub_device->const_copy_to("data", &dscene->data, sizeof(dscene->data));
 
       /* Update images needed for true displacement. */
-      if (true_displacement_used) {
+      {
         scoped_callback_timer timer([scene](double time) {
           if (scene->update_stats) {
             scene->update_stats->geometry.times.add_entry(
                 {"device_update (displacement: load images)", time});
           }
         });
-        device_update_displacement_images(sub_device, scene, progress);
+	/* Upload the textures to all devices as this includes bump maps
+	   which are used when rendering and only uploaded here. Also
+	   you can't iterate over all devices as this routine sets some
+	   state which stops some images getting uploaded.
+	 */
+	device_update_displacement_images(device, scene, progress);
       }
 
       foreach (Geometry *geom, scene->geometry) {
