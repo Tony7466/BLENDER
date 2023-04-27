@@ -30,6 +30,7 @@ class Layer;
  * children if it is a group.
  */
 class TreeNode : public ::GreasePencilLayerTreeNode, NonMovable {
+  friend class LayerGroup;
  public:
   explicit TreeNode(GreasePencilLayerTreeNodeType type);
   explicit TreeNode(GreasePencilLayerTreeNodeType type, StringRefNull name);
@@ -37,8 +38,9 @@ class TreeNode : public ::GreasePencilLayerTreeNode, NonMovable {
   TreeNode &operator=(const TreeNode &other) = delete;
   virtual ~TreeNode();
 
- public:
-  Vector<std::unique_ptr<TreeNode>> children;
+ private:
+  std::unique_ptr<LayerGroup> parent_ = nullptr;
+  Vector<std::unique_ptr<TreeNode>> children_;
 
  public:
   /**
@@ -158,7 +160,7 @@ class Layer : public TreeNode, public ::GreasePencilLayer {
    */
   bool is_visible() const;
   /**
-   * \return true if the layer is locked. 
+   * \return true if the layer is locked.
    */
   bool is_locked() const;
 
@@ -198,15 +200,15 @@ class Layer : public TreeNode, public ::GreasePencilLayer {
  * A LayerGroup is a grouping of zero or more Layers.
  */
 class LayerGroup : public TreeNode {
-  using TreeNodeIterFn = FunctionRef<void(TreeNode &)>;
-  using TreeNodeIndexIterFn = FunctionRef<void(int64_t, TreeNode &)>;
-  using LayerIterFn = FunctionRef<void(Layer &)>;
-  using LayerIndexIterFn = FunctionRef<void(int64_t, Layer &)>;
-
  public:
   LayerGroup() : TreeNode(GP_LAYER_TREE_GROUP) {}
   explicit LayerGroup(const StringRefNull name) : TreeNode(GP_LAYER_TREE_GROUP, name) {}
   LayerGroup(const LayerGroup &other);
+
+ private:
+  mutable CacheMutex children_cache_mutex_;
+  mutable Vector<TreeNode *> children_cache_;
+  mutable Vector<Layer *> layer_cache_;
 
  public:
   /**
@@ -237,20 +239,22 @@ class LayerGroup : public TreeNode {
   void remove_child(int64_t index);
 
   /**
-   * Calls \a function on every `TreeNode` in this group.
-   */
-  void foreach_children_pre_order(TreeNodeIterFn function);
-  void foreach_children_with_index_pre_order(TreeNodeIndexIterFn function);
-
-  /**
    * Returns a `Vector` of pointers to all the `TreeNode`s in this group.
    */
-  Vector<TreeNode *> children_in_pre_order() const;
+  Span<const TreeNode *> children() const;
+  Span<TreeNode *> children_for_write();
 
   /**
    * Returns a `Vector` of pointers to all the `Layers`s in this group.
    */
-  Vector<Layer *> layers_in_pre_order() const;
+  Span<const Layer *> layers() const;
+  Span<Layer *> layers_for_write();
+
+  void print_children(StringRefNull header) const;
+
+ private:
+  void ensure_children_cache() const;
+  void tag_children_cache_dirty() const;
 };
 
 namespace convert {
@@ -299,9 +303,6 @@ class GreasePencilDrawingRuntime {
 };
 
 class GreasePencilRuntime {
- private:
-  mutable SharedCache<Vector<greasepencil::Layer *>> layer_cache_;
-
  public:
   void *batch_cache = nullptr;
 
@@ -325,13 +326,6 @@ class GreasePencilRuntime {
   greasepencil::Layer &active_layer_for_write() const;
   void set_active_layer_index(int index);
   int active_layer_index() const;
-
-  void ensure_layer_cache() const;
-
-  void tag_layer_tree_topology_changed();
-
- private:
-  greasepencil::Layer *get_active_layer_from_index(int index) const;
 };
 
 }  // namespace blender::bke

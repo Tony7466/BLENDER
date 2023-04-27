@@ -57,7 +57,6 @@ TEST(greasepencil, save_layer_tree_to_storage)
   group.add_group(std::move(group2));
   grease_pencil.root_group_for_write().add_group(std::move(group));
   grease_pencil.root_group_for_write().add_layer(Layer(names[6]));
-  grease_pencil.tag_layer_tree_topology_changed();
 
   /* Save to storage. */
   grease_pencil.free_layer_tree_storage();
@@ -68,8 +67,13 @@ TEST(greasepencil, save_layer_tree_to_storage)
   grease_pencil.runtime = MEM_new<blender::bke::GreasePencilRuntime>(__func__);
   grease_pencil.load_layer_tree_from_storage();
 
-  grease_pencil.root_group_for_write().foreach_children_with_index_pre_order(
-      [&](uint64_t i, TreeNode &child) { EXPECT_STREQ(child.name, names[i].data()); });
+  grease_pencil.print_layer_tree();
+
+  Span<const TreeNode *> children = grease_pencil.root_group().children();
+  for (const int i : children.index_range()) {
+    const TreeNode &child = *children[i];
+    EXPECT_STREQ(child.name, names[i].data());
+  }
 }
 
 TEST(greasepencil, set_active_layer_index)
@@ -84,7 +88,6 @@ TEST(greasepencil, set_active_layer_index)
 
   const Layer &layer1_ref = grease_pencil.root_group_for_write().add_layer(std::move(layer1));
   const Layer &layer2_ref = grease_pencil.root_group_for_write().add_layer(std::move(layer2));
-  grease_pencil.tag_layer_tree_topology_changed();
 
   grease_pencil.runtime->set_active_layer_index(0);
   EXPECT_TRUE(grease_pencil.runtime->has_active_layer());
@@ -142,7 +145,6 @@ TEST(greasepencil, remove_drawing)
 
   grease_pencil.root_group_for_write().add_layer(std::move(layer1));
   grease_pencil.root_group_for_write().add_layer(std::move(layer2));
-  grease_pencil.tag_layer_tree_topology_changed();
 
   grease_pencil.remove_drawing(1);
   EXPECT_EQ(grease_pencil.drawings().size(), 2);
@@ -201,11 +203,15 @@ struct GreasePencilLayerTreeExample {
   }
 };
 
-TEST(greasepencil, layer_tree_pre_order_iteration_callback)
+TEST(greasepencil, layer_tree_pre_order_iteration)
 {
   GreasePencilLayerTreeExample ex;
-  ex.root.foreach_children_with_index_pre_order(
-      [&](uint64_t i, TreeNode &child) { EXPECT_EQ(child.name, ex.names[i]); });
+
+  Span<const TreeNode *> children = ex.root.children();
+  for (const int i : children.index_range()) {
+    const TreeNode &child = *children[i];
+    EXPECT_STREQ(child.name, ex.names[i].data());
+  }
 }
 
 TEST(greasepencil, layer_tree_total_size)
@@ -217,10 +223,12 @@ TEST(greasepencil, layer_tree_total_size)
 TEST(greasepencil, layer_tree_node_types)
 {
   GreasePencilLayerTreeExample ex;
-  ex.root.foreach_children_with_index_pre_order([&](uint64_t i, TreeNode &child) {
+  Span<const TreeNode *> children = ex.root.children();
+  for (const int i : children.index_range()) {
+    const TreeNode &child = *children[i];
     EXPECT_EQ(child.is_layer(), ex.is_layer[i]);
     EXPECT_EQ(child.is_group(), !ex.is_layer[i]);
-  });
+  }
 }
 
 }  // namespace blender::bke::greasepencil::tests
