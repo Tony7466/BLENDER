@@ -54,10 +54,6 @@ class VKDebuggingTools {
   VkDebugUtilsMessengerEXT vk_debug_utils_messenger = nullptr;
   Set<int32_t> vk_message_id_number_ignored;
   std::mutex ignore_mutex;
-
-  std::function<void(const char *message)> post_proc;
-
-  const int32_t debug_printf1_id_number = -1841738615;
   void print_vulkan_version();
   void add_group(int32_t id_number);
   void remove_group(int32_t id_number);
@@ -103,7 +99,7 @@ void raise_message(int32_t id_number,
     vk_call_back_data.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CALLBACK_DATA_EXT;
     vk_call_back_data.pNext = VK_NULL_HANDLE;
     vk_call_back_data.messageIdNumber = id_number;
-    vk_call_back_data.pMessageIdName = "VulkanMessager";
+    vk_call_back_data.pMessageIdName = "VulkanMessenger";
     vk_call_back_data.objectCount = 0;
     vk_call_back_data.flags = 0;
     vk_call_back_data.pObjects = VK_NULL_HANDLE;
