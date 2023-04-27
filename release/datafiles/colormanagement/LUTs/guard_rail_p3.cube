@@ -1,6 +1,6 @@
 TITLE "Pre-formation 2012 Luminance Correction for P3 Target"
 # Lower Side of Guard Rail Formation for P3 medium.
-# The Guard Rail is designed to leaves valid value as-is, and only touch out of domain valuesModified from python script shared by Sakari Kapanen
+# The Guard Rail is designed to leaves valid value as-is, and only touch out of domain values Modified from python script shared by Sakari Kapanen
 # This LUT assumes E Gamut encoded in ST2084 (100) curve and then power 0.5
 # LUT resolution 50
 LUT_3D_SIZE 50
