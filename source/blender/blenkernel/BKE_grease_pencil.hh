@@ -39,7 +39,7 @@ class TreeNode : public ::GreasePencilLayerTreeNode, NonMovable {
   virtual ~TreeNode();
 
  private:
-  std::unique_ptr<LayerGroup> parent_ = nullptr;
+  LayerGroup *parent_ = nullptr;
   Vector<std::unique_ptr<TreeNode>> children_;
 
  public:

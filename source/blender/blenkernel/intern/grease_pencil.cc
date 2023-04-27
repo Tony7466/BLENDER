@@ -472,7 +472,7 @@ LayerGroup::LayerGroup(const LayerGroup &other) : TreeNode(other)
     else if (elem.get()->is_layer()) {
       this->children_.append(std::make_unique<Layer>(elem.get()->as_layer()));
     }
-    this->children_.last().get()->parent_.reset(this);
+    this->children_.last().get()->parent_ = this;
   }
   this->tag_children_cache_dirty();
 }
@@ -480,29 +480,29 @@ LayerGroup::LayerGroup(const LayerGroup &other) : TreeNode(other)
 void LayerGroup::add_group(LayerGroup &group)
 {
   this->children_.append(std::make_unique<LayerGroup>(group));
-  this->children_.last().get()->parent_.reset(this);
+  this->children_.last().get()->parent_ = this;
   this->tag_children_cache_dirty();
 }
 
 void LayerGroup::add_group(LayerGroup &&group)
 {
   this->children_.append(std::make_unique<LayerGroup>(group));
-  this->children_.last().get()->parent_.reset(this);
+  this->children_.last().get()->parent_ = this;
   this->tag_children_cache_dirty();
 }
 
 Layer &LayerGroup::add_layer(Layer &layer)
 {
-  children_.append(std::make_unique<Layer>(layer));
-  this->children_.last().get()->parent_.reset(this);
+  this->children_.append(std::make_unique<Layer>(layer));
+  this->children_.last().get()->parent_ = this;
   this->tag_children_cache_dirty();
   return children_.last().get()->as_layer_for_write();
 }
 
 Layer &LayerGroup::add_layer(Layer &&layer)
 {
-  children_.append(std::make_unique<Layer>(std::move(layer)));
-  this->children_.last().get()->parent_.reset(this);
+  this->children_.append(std::make_unique<Layer>(std::move(layer)));
+  this->children_.last().get()->parent_ = this;
   this->tag_children_cache_dirty();
   return children_.last().get()->as_layer_for_write();
 }
@@ -580,19 +580,15 @@ void LayerGroup::ensure_children_cache() const
     this->children_cache_.clear_and_shrink();
     this->layer_cache_.clear_and_shrink();
 
-    Stack<TreeNode *> stack;
-    for (auto it = this->children_.rbegin(); it != this->children_.rend(); it++) {
-      stack.push((*it).get());
-    }
-    while (!stack.is_empty()) {
-      TreeNode *next_node = stack.pop();
+    for (auto &it : this->children_) {
+      TreeNode *next_node = it.get();
       this->children_cache_.append(next_node);
       if (next_node->is_layer()) {
         this->layer_cache_.append(&next_node->as_layer_for_write());
       }
       else if (next_node->is_group()) {
-        for (auto it = next_node->children_.rbegin(); it != next_node->children_.rend(); it++) {
-          stack.push((*it).get());
+        for (TreeNode *node : next_node->as_group_for_write().children_for_write()) {
+          this->children_cache_.append(node);
         }
       }
     }
@@ -603,7 +599,7 @@ void LayerGroup::tag_children_cache_dirty() const
 {
   this->children_cache_mutex_.tag_dirty();
   if (this->parent_) {
-    this->parent_.get()->tag_children_cache_dirty();
+    this->parent_->tag_children_cache_dirty();
   }
 }
 

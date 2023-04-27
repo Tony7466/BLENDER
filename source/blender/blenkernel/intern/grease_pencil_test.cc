@@ -67,8 +67,6 @@ TEST(greasepencil, save_layer_tree_to_storage)
   grease_pencil.runtime = MEM_new<blender::bke::GreasePencilRuntime>(__func__);
   grease_pencil.load_layer_tree_from_storage();
 
-  grease_pencil.print_layer_tree();
-
   Span<const TreeNode *> children = grease_pencil.root_group().children();
   for (const int i : children.index_range()) {
     const TreeNode &child = *children[i];
@@ -151,17 +149,14 @@ TEST(greasepencil, remove_drawing)
 
   static int expected_frames_size[] = {2, 0};
   static int expected_frames_pairs_layer0[][2] = {{0, 0}, {20, 1}};
+
   Span<const Layer *> layers = grease_pencil.layers();
-  for (const int layer_i : IndexRange(layers.size())) {
-    const Layer &layer = *layers[layer_i];
-    EXPECT_EQ(layer.frames().size(), expected_frames_size[layer_i]);
-    if (layer_i == 0) {
-      for (const int i : IndexRange(2)) {
-        EXPECT_EQ(layer.frames().lookup(expected_frames_pairs_layer0[i][0]).drawing_index,
-                  expected_frames_pairs_layer0[i][1]);
-      }
-    }
-  }
+  EXPECT_EQ(layers[0]->frames().size(), expected_frames_size[0]);
+  EXPECT_EQ(layers[1]->frames().size(), expected_frames_size[1]);
+  EXPECT_EQ(layers[0]->frames().lookup(expected_frames_pairs_layer0[0][0]).drawing_index,
+            expected_frames_pairs_layer0[0][1]);
+  EXPECT_EQ(layers[0]->frames().lookup(expected_frames_pairs_layer0[1][0]).drawing_index,
+            expected_frames_pairs_layer0[1][1]);
 }
 
 /* --------------------------------------------------------------------------------------------- */
