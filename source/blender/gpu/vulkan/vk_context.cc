@@ -36,7 +36,6 @@ VKContext::VKContext(void *ghost_window, void *ghost_context)
 
   debug::object_label(this, vk_device_, "LogicalDevice");
   debug::object_label(this, vk_queue_, "GenericQueue");
-
   /* Initialize the memory allocator. */
   VmaAllocatorCreateInfo info = {};
   info.vulkanApiVersion = VK_API_VERSION_1_2;
@@ -92,6 +91,10 @@ void VKContext::activate()
     back_left = framebuffer;
     framebuffer->bind(false);
   }
+  debug::raise_message(0xB41CA2,
+                       VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT,
+                       "Vulkan Debug Utils Messenger is enabled. VkContext[0x%llx]",
+                       (uintptr_t)this);
 }
 
 void VKContext::deactivate() {}

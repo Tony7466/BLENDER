@@ -6,10 +6,13 @@
  */
 
 #include "BKE_global.h"
+#include "CLG_log.h"
 
 #include "vk_backend.hh"
 #include "vk_context.hh"
 #include "vk_debug.hh"
+
+static CLG_LogRef LOG = {"gpu.debug.vulkan"};
 
 namespace blender::gpu {
 void VKContext::debug_group_begin(const char *name, int)
@@ -65,6 +68,221 @@ void VKContext::debug_capture_scope_end(void * /*scope*/) {}
 }  // namespace blender::gpu
 
 namespace blender::gpu::debug {
+VKDebuggingTools::~VKDebuggingTools()
+{
+  destroy_messenger();
+};
+void VKDebuggingTools::print_vulkan_version()
+{
+  uint32_t instanceVersion = VK_API_VERSION_1_0;
+  assert(vkEnumerateInstanceVersion);
+  vkEnumerateInstanceVersion(&instanceVersion);
+  uint32_t major = VK_VERSION_MAJOR(instanceVersion);
+  uint32_t minor = VK_VERSION_MINOR(instanceVersion);
+  uint32_t patch = VK_VERSION_PATCH(instanceVersion);
+
+  printf("Vulkan Version:%d.%d.%d\n", major, minor, patch);
+}
+void VKDebuggingTools::print_labels(const VkDebugUtilsMessengerCallbackDataEXT *callback_data,
+                                    bool use_color)
+{
+#define COLOR_FILE \
+  if (use_color) { \
+    ss << "\x1b[2m"; \
+  }
+#define COLOR_RESET \
+  if (use_color) { \
+    ss << "\x1b[0m"; \
+  }
+  std::stringstream ss;
+  if (callback_data->objectCount > 0) {
+    COLOR_FILE
+    ss << callback_data->objectCount << " Object[s] related \n";
+    COLOR_RESET;
+
+    for (uint32_t object = 0; object < callback_data->objectCount; ++object) {
+      COLOR_FILE
+      ss << "ObjectType[" << to_string(callback_data->pObjects[object].objectType) << "],";
+      ss << "Handle[" << std::hex
+         << static_cast<uintptr_t>(callback_data->pObjects[object].objectHandle) << "],";
+      ss << "Name[" << callback_data->pObjects[object].pObjectName << "] \n";
+      COLOR_RESET;
+    }
+  }
+  if (callback_data->cmdBufLabelCount > 0) {
+    COLOR_FILE
+    ss << callback_data->cmdBufLabelCount << " Command Buffer Label[s] \n";
+    COLOR_RESET;
+    for (uint32_t label = 0; label < callback_data->cmdBufLabelCount; ++label) {
+      COLOR_FILE
+      ss << "CmdBufLabelName : " << callback_data->pCmdBufLabels[label].pLabelName << "\n";
+      COLOR_RESET;
+    }
+  }
+  if (callback_data->queueLabelCount > 0) {
+    COLOR_FILE
+    ss << callback_data->queueLabelCount << " Queue Label[s]\n";
+    COLOR_RESET;
+    for (uint32_t label = 0; label < callback_data->queueLabelCount; ++label) {
+      COLOR_FILE
+      ss << "QueueLabelName : " << callback_data->pQueueLabels[label].pLabelName << "\n";
+      COLOR_RESET;
+    }
+  }
+  printf("%s\n", ss.str().c_str());
+  fflush(stdout);
+
+#undef COLOR_FILE
+#undef COLOR_RESET
+}
+
+VKAPI_ATTR VkBool32 VKAPI_CALL
+messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
+                   VkDebugUtilsMessageTypeFlagsEXT /* message_type*/,
+                   const VkDebugUtilsMessengerCallbackDataEXT *callback_data,
+                   void *user_data)
+{
+#define CONSOLE_COLOR_YELLOW "\x1b[33m"
+#define CONSOLE_COLOR_RED "\x1b[31m"
+#define CONSOLE_COLOR_RESET "\x1b[0m"
+#define CONSOLE_COLOR_FINE "\x1b[2m"
+
+  VKDebuggingTools &debugging_tools = *reinterpret_cast<VKDebuggingTools *>(user_data);
+  if (debugging_tools.is_ignore(callback_data->messageIdNumber)) {
+    return VK_FALSE;
+  }
+  const bool use_color = CLG_color_support_get(&LOG);
+  bool enabled = false;
+  if ((message_severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) ||
+      (message_severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)) {
+
+    if ((LOG.type->flag & CLG_FLAG_USE) && (LOG.type->level >= CLG_SEVERITY_INFO)) {
+      const char *format = use_color ? CONSOLE_COLOR_FINE "{0x%x}% s\n %s " CONSOLE_COLOR_RESET :
+                                       "{0x%x}% s\n %s ";
+      CLG_logf(LOG.type,
+               CLG_SEVERITY_INFO,
+               "",
+               "",
+               format,
+               callback_data->messageIdNumber,
+               callback_data->pMessageIdName,
+               callback_data->pMessage);
+      enabled = true;
+    }
+  }
+  else {
+    CLG_Severity clog_severity;
+    switch (message_severity) {
+      case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
+        clog_severity = CLG_SEVERITY_WARN;
+        break;
+      case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
+        clog_severity = CLG_SEVERITY_ERROR;
+        break;
+      default:
+        BLI_assert_unreachable();
+    }
+    enabled = true;
+    if (clog_severity == CLG_SEVERITY_ERROR) {
+
+      const char *format = use_color ? CONSOLE_COLOR_RED "%s {0x%x}\n" CONSOLE_COLOR_RESET
+                                                         " %s \n " :
+                                       " %s {0x%x}\n %s ";
+      CLG_logf(LOG.type,
+               clog_severity,
+               "",
+               "",
+               format,
+               callback_data->pMessageIdName,
+               callback_data->messageIdNumber,
+               callback_data->pMessage);
+    }
+    else if (LOG.type->level >= CLG_SEVERITY_WARN) {
+      const char *format = use_color ? CONSOLE_COLOR_YELLOW "%s {0x%x}\n" CONSOLE_COLOR_RESET
+                                                            " %s \n " :
+                                       " %s {0x%x}\n %s ";
+      CLG_logf(LOG.type,
+               clog_severity,
+               "",
+               "",
+               format,
+               callback_data->pMessageIdName,
+               callback_data->messageIdNumber,
+               callback_data->pMessage);
+    }
+  }
+  if ((enabled) && ((callback_data->objectCount > 0) || (callback_data->cmdBufLabelCount > 0) ||
+                    (callback_data->queueLabelCount > 0))) {
+    debugging_tools.print_labels(callback_data, use_color);
+  }
+
+#undef CONSOLE_COLOR_YELLOW
+#undef CONSOLE_COLOR_RED
+#undef CONSOLE_COLOR_RESET
+#undef CONSOLE_COLOR_FINE
+  return VK_TRUE;
+};
+
+VkResult VKDebuggingTools::create_messenger()
+{
+  print_vulkan_version();
+  vk_message_id_number_ignored.clear();
+  BLI_assert(enabled);
+
+  VkDebugUtilsMessengerCreateInfoEXT create_info;
+  create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+  create_info.pNext = nullptr;
+  create_info.flags = 0;
+  create_info.messageSeverity = message_severity;
+  create_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                            VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                            VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+  create_info.pfnUserCallback = messenger_callback;
+  create_info.pUserData = this;
+  VkResult res = vkCreateDebugUtilsMessengerEXT_r(
+      vk_instance_, &create_info, nullptr, &vk_debug_utils_messenger);
+  BLI_assert(res == VK_SUCCESS);
+  return res;
+}
+
+void VKDebuggingTools::destroy_messenger()
+{
+  if (vk_debug_utils_messenger == nullptr) {
+    return;
+  }
+  BLI_assert(enabled);
+  vkDestroyDebugUtilsMessengerEXT_r(vk_instance_, vk_debug_utils_messenger, nullptr);
+
+  vk_message_id_number_ignored.clear();
+  vk_debug_utils_messenger = nullptr;
+  vk_instance_ = VK_NULL_HANDLE;
+  return;
+}
+
+bool VKDebuggingTools::is_ignore(int32_t id_number)
+{
+  bool found = false;
+  {
+    std::scoped_lock lock(ignore_mutex);
+    found = vk_message_id_number_ignored.contains(id_number);
+  }
+  return found;
+}
+
+void VKDebuggingTools::add_group(int32_t id_number)
+{
+  std::scoped_lock lock(ignore_mutex);
+  vk_message_id_number_ignored.add(id_number);
+};
+
+void VKDebuggingTools::remove_group(int32_t id_number)
+{
+  std::scoped_lock lock(ignore_mutex);
+  vk_message_id_number_ignored.remove(id_number);
+};
+};  // namespace blender::gpu::debug
+
+namespace blender::gpu::debug {
 
 static void load_dynamic_functions(VKContext *context,
                                    PFN_vkGetInstanceProcAddr instance_proc_addr)
@@ -99,6 +317,7 @@ static void load_dynamic_functions(VKContext *context,
         instance_proc_addr(vk_instance, "vkSubmitDebugUtilsMessageEXT");
     if (debugging_tools.vkCmdBeginDebugUtilsLabelEXT_r) {
       debugging_tools.enabled = true;
+      debugging_tools.vk_instance_set(vk_instance);
     }
   }
   else {
@@ -121,7 +340,11 @@ bool init_callbacks(VKContext *context, PFN_vkGetInstanceProcAddr instance_proc_
 {
   if (instance_proc_addr) {
     load_dynamic_functions(context, instance_proc_addr);
-    return true;
+    VKDebuggingTools &debuggingtools = context->debugging_tools_get();
+    if (!debuggingtools.enabled) {
+      return false;
+    }
+    return (debuggingtools.create_messenger() == VK_SUCCESS);
   };
   return false;
 }
@@ -130,6 +353,7 @@ void destroy_callbacks(VKContext *context)
 {
   VKDebuggingTools &debugging_tools = context->debugging_tools_get();
   if (debugging_tools.enabled) {
+    debugging_tools.destroy_messenger();
     load_dynamic_functions(context, nullptr);
   }
 }

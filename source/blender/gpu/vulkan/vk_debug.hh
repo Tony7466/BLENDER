@@ -7,17 +7,25 @@
 #pragma once
 
 #include "BKE_global.h"
+#include "BLI_set.hh"
 #include "BLI_string.h"
 
 #include "vk_common.hh"
 
+#include <mutex>
 #include <typeindex>
 
 namespace blender::gpu {
 class VKContext;
 namespace debug {
-typedef struct VKDebuggingTools {
+class VKDebuggingTools {
+ public:
   bool enabled = false;
+  VkDebugUtilsMessageSeverityFlagsEXT message_severity =
+      VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
+      VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+      VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+      VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
   /* Function pointer definitions. */
   PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT_r = nullptr;
   PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT_r = nullptr;
@@ -30,8 +38,30 @@ typedef struct VKDebuggingTools {
   PFN_vkQueueInsertDebugUtilsLabelEXT vkQueueInsertDebugUtilsLabelEXT_r = nullptr;
   PFN_vkSetDebugUtilsObjectNameEXT vkSetDebugUtilsObjectNameEXT_r = nullptr;
   PFN_vkSetDebugUtilsObjectTagEXT vkSetDebugUtilsObjectTagEXT_r = nullptr;
+  VKDebuggingTools() = default;
+  ~VKDebuggingTools();
+  bool is_ignore(int32_t id_number);
+  VkResult create_messenger();
+  void destroy_messenger();
+  void print_labels(const VkDebugUtilsMessengerCallbackDataEXT *callback_data, bool use_color);
+  void vk_instance_set(VkInstance vk_instance)
+  {
+    vk_instance_ = vk_instance;
+  }
 
-} VKDebuggingTools;
+ private:
+  VkInstance vk_instance_ = VK_NULL_HANDLE;
+  VkDebugUtilsMessengerEXT vk_debug_utils_messenger = nullptr;
+  Set<int32_t> vk_message_id_number_ignored;
+  std::mutex ignore_mutex;
+
+  std::function<void(const char *message)> post_proc;
+
+  const int32_t debug_printf1_id_number = -1841738615;
+  void print_vulkan_version();
+  void add_group(int32_t id_number);
+  void remove_group(int32_t id_number);
+};
 
 bool init_callbacks(VKContext *context, PFN_vkGetInstanceProcAddr instance_proc_addr);
 void destroy_callbacks(VKContext *context);
@@ -53,6 +83,38 @@ template<typename T> void object_label(VKContext *context, T vk_object_type, con
   object_label(
       context, to_vk_object_type(vk_object_type), (uint64_t)vk_object_type, (const char *)label);
 };
+
+/* how to use : debug::raise_message(-12345,VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,"This is
+ * a raise message. %llx", (uintptr_t)vk_object); */
+template<typename... Args>
+void raise_message(int32_t id_number,
+                   VkDebugUtilsMessageSeverityFlagBitsEXT vk_severity_flag_bits,
+                   const char *fmt,
+                   Args... args)
+{
+  VKContext *context = VKContext::get();
+  if (!context) {
+    return;
+  }
+  VKDebuggingTools &debugging_tools = context->debugging_tools_get();
+  if (debugging_tools.enabled) {
+    char *info = BLI_sprintfN(fmt, args...);
+    static VkDebugUtilsMessengerCallbackDataEXT vk_call_back_data;
+    vk_call_back_data.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CALLBACK_DATA_EXT;
+    vk_call_back_data.pNext = VK_NULL_HANDLE;
+    vk_call_back_data.messageIdNumber = id_number;
+    vk_call_back_data.pMessageIdName = "VulkanMessager";
+    vk_call_back_data.objectCount = 0;
+    vk_call_back_data.flags = 0;
+    vk_call_back_data.pObjects = VK_NULL_HANDLE;
+    vk_call_back_data.pMessage = info;
+    debugging_tools.vkSubmitDebugUtilsMessageEXT_r(context->instance_get(),
+                                                   vk_severity_flag_bits,
+                                                   VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT,
+                                                   &vk_call_back_data);
+    MEM_freeN((void *)info);
+  }
+}
 
 void push_marker(VKContext *context, VkCommandBuffer vk_command_buffer, const char *name);
 void set_marker(VKContext *context, VkCommandBuffer vk_command_buffer, const char *name);
