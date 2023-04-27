@@ -4,11 +4,13 @@
 #pragma once
 
 #include "kernel/integrator/init_from_camera.h"
+#include "kernel/integrator/intersect_blocked_light.h"
 #include "kernel/integrator/intersect_closest.h"
 #include "kernel/integrator/intersect_shadow.h"
 #include "kernel/integrator/intersect_subsurface.h"
 #include "kernel/integrator/intersect_volume_stack.h"
 #include "kernel/integrator/shade_background.h"
+#include "kernel/integrator/shade_blocked_light.h"
 #include "kernel/integrator/shade_light.h"
 #include "kernel/integrator/shade_shadow.h"
 #include "kernel/integrator/shade_surface.h"
@@ -83,11 +85,17 @@ ccl_device void integrator_megakernel(KernelGlobals kg,
         case DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT:
           integrator_shade_light(kg, state, render_buffer);
           break;
+        case DEVICE_KERNEL_INTEGRATOR_SHADE_BLOCKED_LIGHT:
+          integrator_shade_blocked_light(kg, state, render_buffer);
+          break;
         case DEVICE_KERNEL_INTEGRATOR_INTERSECT_SUBSURFACE:
           integrator_intersect_subsurface(kg, state);
           break;
         case DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK:
           integrator_intersect_volume_stack(kg, state);
+          break;
+        case DEVICE_KERNEL_INTEGRATOR_INTERSECT_BLOCKED_LIGHT:
+          integrator_intersect_blocked_light(kg, state);
           break;
         default:
           kernel_assert(0);

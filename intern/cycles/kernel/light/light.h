@@ -244,13 +244,15 @@ ccl_device_noinline bool light_sample(KernelGlobals kg,
 /* Intersect ray with individual light. */
 
 ccl_device bool lights_intersect(KernelGlobals kg,
-                                 IntegratorState state,
                                  ccl_private const Ray *ccl_restrict ray,
                                  ccl_private Intersection *ccl_restrict isect,
                                  const int last_prim,
                                  const int last_object,
                                  const int last_type,
-                                 const uint32_t path_flag)
+                                 const uint32_t path_flag,
+                                 const uint8_t path_mnee,
+                                 const int receiver_forward,
+                                 const int self_light)
 {
   for (int lamp = 0; lamp < kernel_data.integrator.num_lights; lamp++) {
     const ccl_global KernelLight *klight = &kernel_data_fetch(lights, lamp);
@@ -268,8 +270,7 @@ ccl_device bool lights_intersect(KernelGlobals kg,
 #ifdef __MNEE__
       /* This path should have been resolved with mnee, it will
        * generate a firefly for small lights since it is improbable. */
-      if ((INTEGRATOR_STATE(state, path, mnee) & PATH_MNEE_CULL_LIGHT_CONNECTION) &&
-          klight->use_caustics) {
+      if ((path_mnee & PATH_MNEE_CULL_LIGHT_CONNECTION) && klight->use_caustics) {
         continue;
       }
 #endif
@@ -281,10 +282,18 @@ ccl_device bool lights_intersect(KernelGlobals kg,
       }
     }
 
-    /* Light linking. */
-    if (!light_link_light_match(kg, light_link_receiver_forward(kg, state), lamp)) {
+#ifdef __SHADOW_LINKING__
+    if (lamp == self_light) {
       continue;
     }
+#endif
+
+#ifdef __LIGHT_LINKING__
+    /* Light linking. */
+    if (!light_link_light_match(kg, receiver_forward, lamp)) {
+      continue;
+    }
+#endif
 
     LightType type = (LightType)klight->type;
     float t = 0.0f, u = 0.0f, v = 0.0f;
@@ -320,6 +329,53 @@ ccl_device bool lights_intersect(KernelGlobals kg,
   }
 
   return isect->prim != PRIM_NONE;
+}
+
+ccl_device bool lights_intersect(KernelGlobals kg,
+                                 IntegratorState state,
+                                 ccl_private const Ray *ccl_restrict ray,
+                                 ccl_private Intersection *ccl_restrict isect,
+                                 const int last_prim,
+                                 const int last_object,
+                                 const int last_type,
+                                 const uint32_t path_flag)
+{
+  const uint8_t path_mnee = INTEGRATOR_STATE(state, path, mnee);
+  const int receiver_forward = light_link_receiver_forward(kg, state);
+  const int self_light = (kernel_data.kernel_features & KERNEL_FEATURE_SHADOW_LINKING) ?
+                             INTEGRATOR_STATE(state, shadow_link, light) :
+                             LAMP_NONE;
+
+  return lights_intersect(kg,
+                          ray,
+                          isect,
+                          last_prim,
+                          last_object,
+                          last_type,
+                          path_flag,
+                          path_mnee,
+                          receiver_forward,
+                          self_light);
+}
+
+ccl_device bool lights_intersect(KernelGlobals kg,
+                                 ccl_private const Ray *ccl_restrict ray,
+                                 ccl_private Intersection *ccl_restrict isect,
+                                 const int last_prim,
+                                 const int last_object,
+                                 const int last_type,
+                                 const uint32_t path_flag)
+{
+  return lights_intersect(kg,
+                          ray,
+                          isect,
+                          last_prim,
+                          last_object,
+                          last_type,
+                          path_flag,
+                          PATH_MNEE_NONE,
+                          OBJECT_NONE,
+                          LAMP_NONE);
 }
 
 /* Setup light sample from intersection. */

@@ -997,6 +997,11 @@ ccl_device_forceinline bool integrate_volume_phase_scatter(
     INTEGRATOR_STATE_WRITE(state, path, mis_ray_object) = sd->object;
   }
 #  endif
+#  ifdef __SHADOW_LINKING__
+  if (kernel_data.kernel_features & KERNEL_FEATURE_SHADOW_LINKING) {
+    INTEGRATOR_STATE_WRITE(state, shadow_link, light) = LAMP_NONE;
+  }
+#  endif
 
   path_state_next(kg, state, label, sd->flag);
   return true;

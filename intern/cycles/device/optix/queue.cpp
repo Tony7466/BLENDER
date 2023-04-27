@@ -122,6 +122,10 @@ bool OptiXDeviceQueue::enqueue(DeviceKernel kernel,
       pipeline = optix_device->pipelines[PIP_SHADE];
       sbt_params.raygenRecord = sbt_data_ptr + PG_RGEN_SHADE_SHADOW * sizeof(SbtRecord);
       break;
+    case DEVICE_KERNEL_INTEGRATOR_SHADE_BLOCKED_LIGHT:
+      pipeline = optix_device->pipelines[PIP_SHADE];
+      sbt_params.raygenRecord = sbt_data_ptr + PG_RGEN_SHADE_BLOCKED_LIGHT * sizeof(SbtRecord);
+      break;
 
     case DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST:
       pipeline = optix_device->pipelines[PIP_INTERSECT];
@@ -138,6 +142,10 @@ bool OptiXDeviceQueue::enqueue(DeviceKernel kernel,
     case DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK:
       pipeline = optix_device->pipelines[PIP_INTERSECT];
       sbt_params.raygenRecord = sbt_data_ptr + PG_RGEN_INTERSECT_VOLUME_STACK * sizeof(SbtRecord);
+      break;
+    case DEVICE_KERNEL_INTEGRATOR_INTERSECT_BLOCKED_LIGHT:
+      pipeline = optix_device->pipelines[PIP_INTERSECT];
+      sbt_params.raygenRecord = sbt_data_ptr + PG_RGEN_INTERSECT_BLOCKER_LIGHT * sizeof(SbtRecord);
       break;
 
     case DEVICE_KERNEL_SHADER_EVAL_DISPLACE:
