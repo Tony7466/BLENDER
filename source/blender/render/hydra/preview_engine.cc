@@ -44,7 +44,8 @@ void PreviewEngine::sync(Depsgraph *depsgraph,
     scene_delegate_ = std::make_unique<BlenderSceneDelegate>(
         render_index_.get(),
         pxr::SdfPath::AbsoluteRootPath().AppendElementString("scene"),
-        BlenderSceneDelegate::EngineType::PREVIEW);
+        BlenderSceneDelegate::EngineType::PREVIEW,
+        render_delegate_name_);
   }
   scene_delegate_->clear();
   scene_delegate_->populate(depsgraph, context);
@@ -56,33 +57,14 @@ void PreviewEngine::sync(Depsgraph *depsgraph,
 
 void PreviewEngine::render(Depsgraph *depsgraph)
 {
-  const Scene *scene = DEG_get_evaluated_scene(depsgraph);
-  const ViewLayer *view_layer = DEG_get_evaluated_view_layer(depsgraph);
+  prepare_for_render(depsgraph);
 
-  std::string layer_name = view_layer->name;
-  pxr::GfVec2i res(scene->r.xsch, scene->r.ysch);
-
-  pxr::GfCamera camera =
-      CameraData(scene->camera, res, pxr::GfVec4f(0, 0, 1, 1)).gf_camera(pxr::GfVec4f(0, 0, 1, 1));
-
-  free_camera_delegate_->SetCamera(camera);
-  render_task_delegate_->set_camera_and_viewport(free_camera_delegate_->GetCameraId(),
-                                                 pxr::GfVec4d(0, 0, res[0], res[1]));
-  render_task_delegate_->set_renderer_aov(pxr::HdAovTokens->color);
-
-  pxr::HdTaskSharedPtrVector tasks;
-  if (simple_light_task_delegate_) {
-    tasks.push_back(simple_light_task_delegate_->get_task());
-  }
-  tasks.push_back(render_task_delegate_->get_task());
-
-  std::vector<float> pixels = std::vector<float>(res[0] * res[1] *
-                                                 4); /* 4 - number of channels. */
+  std::vector<float> &pixels = render_images_["Combined"];
 
   {
     /* Release the GIL before calling into hydra, in case any hydra plugins call into python. */
     pxr::TF_PY_ALLOW_THREADS_IN_SCOPE();
-    engine_->Execute(render_index_.get(), &tasks);
+    engine_->Execute(render_index_.get(), &tasks_);
   }
 
   while (true) {
@@ -95,11 +77,11 @@ void PreviewEngine::render(Depsgraph *depsgraph)
     }
 
     render_task_delegate_->get_renderer_aov_data(pxr::HdAovTokens->color, pixels.data());
-    update_render_result(layer_name, res[0], res[1], pixels);
+    update_render_result(pixels);
   }
 
   render_task_delegate_->get_renderer_aov_data(pxr::HdAovTokens->color, pixels.data());
-  update_render_result(layer_name, res[0], res[1], pixels);
+  update_render_result(pixels);
 }
 
 double PreviewEngine::free_instance(uintptr_t uuid, void *user_data)
@@ -120,13 +102,10 @@ void PreviewEngine::update(RenderEngine *bl_engine, const std::string &render_de
   /* TODO: recreate render_delegate when render_delegate_id is changed */
 }
 
-void PreviewEngine::update_render_result(const std::string &layer_name,
-                                         int width,
-                                         int height,
-                                         std::vector<float> &pixels)
+void PreviewEngine::update_render_result(std::vector<float> &pixels)
 {
   RenderResult *result = RE_engine_begin_result(
-      bl_engine_, 0, 0, width, height, layer_name.c_str(), nullptr);
+      bl_engine_, 0, 0, resolution_[0], resolution_[1], layer_name_.c_str(), nullptr);
 
   RenderLayer *layer = (RenderLayer *)result->layers.first;
   RenderPass *pass = (RenderPass *)layer->passes.first;

@@ -26,10 +26,7 @@ class PreviewEngine : public FinalEngine {
   static std::unique_ptr<PreviewEngine> instance_;
 
   void update(RenderEngine *bl_engine, const std::string &render_delegate_id);
-  void update_render_result(const std::string &layer_name,
-                            int width,
-                            int height,
-                            std::vector<float> &pixels);
+  void update_render_result(std::vector<float> &pixels);
 };
 
 }  // namespace blender::render::hydra

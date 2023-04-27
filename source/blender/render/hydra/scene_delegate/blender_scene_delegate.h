@@ -28,7 +28,8 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
 
   BlenderSceneDelegate(pxr::HdRenderIndex *parent_index,
                        pxr::SdfPath const &delegate_id,
-                       BlenderSceneDelegate::EngineType engine_type);
+                       BlenderSceneDelegate::EngineType engine_type,
+                       std::string render_delegate_name);
   ~BlenderSceneDelegate() override = default;
 
   /* Delegate methods */
@@ -55,6 +56,8 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
   bContext *context = nullptr;
   View3D *view3d = nullptr;
   Scene *scene = nullptr;
+
+  std::string render_delegate_name;
 
  private:
   pxr::SdfPath prim_id(ID *id, const char *prefix) const;

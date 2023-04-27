@@ -162,7 +162,7 @@ void WorldData::write_transform()
   transform = pxr::GfMatrix4d(pxr::GfRotation(pxr::GfVec3d(1.0, 0.0, 0.0), -90), pxr::GfVec3d());
 
   /* TODO : do this check via RenderSettings*/
-  if (scene_delegate_->GetRenderIndex().GetRenderDelegate()->GetRendererDisplayName() == "RPR") {
+  if (scene_delegate_->render_delegate_name == "HdRprPlugin") {
     transform *= pxr::GfMatrix4d(pxr::GfRotation(pxr::GfVec3d(1.0, 0.0, 0.0), -180),
                                  pxr::GfVec3d());
     transform *= pxr::GfMatrix4d(pxr::GfRotation(pxr::GfVec3d(0.0, 0.0, 1.0), 90.0),

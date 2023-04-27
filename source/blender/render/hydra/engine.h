@@ -25,7 +25,7 @@ extern struct CLG_LogRef *LOG_RENDER_HYDRA; /* EN - Engine */
 
 class Engine {
  public:
-  Engine(RenderEngine *bl_engine, const std::string &render_delegate_id);
+  Engine(RenderEngine *bl_engine, const std::string &render_delegate_name);
   virtual ~Engine() = default;
 
   virtual void sync(Depsgraph *depsgraph,
@@ -37,6 +37,7 @@ class Engine {
   float renderer_percent_done();
 
   RenderEngine *bl_engine_;
+  std::string render_delegate_name_;
 
   /* The order is important due to deletion order */
   pxr::HgiUniquePtr hgi_;

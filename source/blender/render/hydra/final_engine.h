@@ -17,14 +17,16 @@ class FinalEngine : public Engine {
   virtual void render(Depsgraph *b_depsgraph) override;
 
  protected:
-  pxr::GfVec2i get_resolution(Scene *scene);
-  void update_render_result(std::map<std::string, std::vector<float>> &render_images,
-                            const std::string &layer_name,
-                            int width,
-                            int height);
+  void update_render_result();
   void notify_status(float progress, const std::string &title, const std::string &info);
+  void prepare_for_render(Depsgraph *depsgraph);
 
   pxr::HdRenderSettingsMap render_settings_;
+  pxr::HdTaskSharedPtrVector tasks_;
+  std::string scene_name_;
+  std::string layer_name_;
+  std::map<std::string, std::vector<float>> render_images_;
+  pxr::GfVec2i resolution_;
 };
 
 class FinalEngineGL : public FinalEngine {

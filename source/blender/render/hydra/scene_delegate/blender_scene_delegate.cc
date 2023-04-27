@@ -15,8 +15,11 @@ CLG_LOGREF_DECLARE_GLOBAL(LOG_RENDER_HYDRA_SCENE, "render.hydra.scene");
 
 BlenderSceneDelegate::BlenderSceneDelegate(pxr::HdRenderIndex *parent_index,
                                            pxr::SdfPath const &delegate_id,
-                                           BlenderSceneDelegate::EngineType engine_type)
-    : HdSceneDelegate(parent_index, delegate_id), engine_type(engine_type)
+                                           BlenderSceneDelegate::EngineType engine_type,
+                                           std::string render_delegate_name)
+    : HdSceneDelegate(parent_index, delegate_id),
+      engine_type(engine_type),
+      render_delegate_name(render_delegate_name)
 {
 }
 

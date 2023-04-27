@@ -17,12 +17,13 @@ namespace blender::render::hydra {
 
 CLG_LOGREF_DECLARE_GLOBAL(LOG_RENDER_HYDRA, "render.hydra");
 
-Engine::Engine(RenderEngine *bl_engine, const std::string &delegate_id) : bl_engine_(bl_engine)
+Engine::Engine(RenderEngine *bl_engine, const std::string &render_delegate_name)
+    : bl_engine_(bl_engine), render_delegate_name_(render_delegate_name)
 {
   pxr::HdRendererPluginRegistry &registry = pxr::HdRendererPluginRegistry::GetInstance();
 
   pxr::TF_PY_ALLOW_THREADS_IN_SCOPE();
-  render_delegate_ = registry.CreateRenderDelegate(pxr::TfToken(delegate_id));
+  render_delegate_ = registry.CreateRenderDelegate(pxr::TfToken(render_delegate_name_));
 
   /* Current USD (23.02) has limited support for Vulkan. To make it works USD should be built
    * with PXR_ENABLE_VULKAN_SUPPORT=TRUE which is not possible now */
@@ -44,7 +45,7 @@ Engine::Engine(RenderEngine *bl_engine, const std::string &delegate_id) : bl_eng
       render_index_.get(), pxr::SdfPath::AbsoluteRootPath().AppendElementString("freeCamera"));
   render_task_delegate_ = std::make_unique<RenderTaskDelegate>(
       render_index_.get(), pxr::SdfPath::AbsoluteRootPath().AppendElementString("renderTask"));
-  if (render_delegate_->GetRendererDisplayName() == "GL") {
+  if (render_delegate_name_ == "HdStormRendererPlugin") {
     simple_light_task_delegate_ = std::make_unique<SimpleLightTaskDelegate>(
         render_index_.get(),
         pxr::SdfPath::AbsoluteRootPath().AppendElementString("simpleLightTask"));

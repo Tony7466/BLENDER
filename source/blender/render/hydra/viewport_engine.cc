@@ -225,7 +225,8 @@ void ViewportEngine::sync(Depsgraph *depsgraph,
     scene_delegate_ = std::make_unique<BlenderSceneDelegate>(
         render_index_.get(),
         pxr::SdfPath::AbsoluteRootPath().AppendElementString("scene"),
-        BlenderSceneDelegate::EngineType::VIEWPORT);
+        BlenderSceneDelegate::EngineType::VIEWPORT,
+        render_delegate_name_);
   }
   scene_delegate_->populate(depsgraph, context);
 

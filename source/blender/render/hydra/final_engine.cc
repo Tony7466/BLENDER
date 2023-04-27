@@ -20,7 +20,8 @@ void FinalEngine::sync(Depsgraph *depsgraph,
   scene_delegate_ = std::make_unique<BlenderSceneDelegate>(
       render_index_.get(),
       pxr::SdfPath::AbsoluteRootPath().AppendElementString("scene"),
-      BlenderSceneDelegate::EngineType::FINAL);
+      BlenderSceneDelegate::EngineType::FINAL,
+      render_delegate_name_);
   scene_delegate_->populate(depsgraph, context);
 
   for (auto const &setting : render_settings) {
@@ -30,48 +31,14 @@ void FinalEngine::sync(Depsgraph *depsgraph,
 
 void FinalEngine::render(Depsgraph *depsgraph)
 {
-  const Scene *scene = DEG_get_evaluated_scene(depsgraph);
-  const ViewLayer *view_layer = DEG_get_evaluated_view_layer(depsgraph);
+  prepare_for_render(depsgraph);
 
-  std::string scene_name(MAX_ID_FULL_NAME, 0);
-  BKE_id_full_name_get(scene_name.data(), (ID *)scene, 0);
-  std::string layer_name = view_layer->name;
-
-  const RenderData &r = scene->r;
-  pxr::GfVec4f border(0, 0, 1, 1);
-  if (r.mode & R_BORDER) {
-    border = pxr::GfVec4f(r.border.xmin,
-                          r.border.ymin,
-                          r.border.xmax - r.border.xmin,
-                          r.border.ymax - r.border.ymin);
-  }
-  pxr::GfVec2i image_res(r.xsch * r.size / 100, r.ysch * r.size / 100);
-  pxr::GfVec2i res(int(image_res[0] * border[2]), int(image_res[1] * border[3]));
-  pxr::GfCamera camera =
-      CameraData(scene->camera, image_res, pxr::GfVec4f(0, 0, 1, 1)).gf_camera(border);
-
-  free_camera_delegate_->SetCamera(camera);
-  render_task_delegate_->set_camera_and_viewport(free_camera_delegate_->GetCameraId(),
-                                                 pxr::GfVec4d(0, 0, res[0], res[1]));
-  render_task_delegate_->set_renderer_aov(pxr::HdAovTokens->color);
-  if (simple_light_task_delegate_) {
-    simple_light_task_delegate_->set_camera_path(free_camera_delegate_->GetCameraId());
-  }
-
-  pxr::HdTaskSharedPtrVector tasks;
-  if (simple_light_task_delegate_) {
-    tasks.push_back(simple_light_task_delegate_->get_task());
-  }
-  tasks.push_back(render_task_delegate_->get_task());
-
-  std::map<std::string, std::vector<float>> render_images{
-      {"Combined", std::vector<float>(res[0] * res[1] * 4)}}; /* 4 - number of channels. */
-  std::vector<float> &pixels = render_images["Combined"];
+  std::vector<float> &pixels = render_images_["Combined"];
 
   {
     /* Release the GIL before calling into hydra, in case any hydra plugins call into python. */
     pxr::TF_PY_ALLOW_THREADS_IN_SCOPE();
-    engine_->Execute(render_index_.get(), &tasks);
+    engine_->Execute(render_index_.get(), &tasks_);
   }
 
   char elapsed_time[32];
@@ -89,7 +56,7 @@ void FinalEngine::render(Depsgraph *depsgraph)
         elapsed_time, sizeof(elapsed_time), PIL_check_seconds_timer() - time_begin);
 
     notify_status(percent_done / 100.0,
-                  scene_name + ": " + layer_name,
+                  scene_name_ + ": " + layer_name_,
                   std::string("Render Time: ") + elapsed_time +
                       " | Done: " + std::to_string(int(percent_done)) + "%");
 
@@ -98,38 +65,23 @@ void FinalEngine::render(Depsgraph *depsgraph)
     }
 
     render_task_delegate_->get_renderer_aov_data(pxr::HdAovTokens->color, pixels.data());
-    update_render_result(render_images, layer_name, res[0], res[1]);
+    update_render_result();
   }
 
   render_task_delegate_->get_renderer_aov_data(pxr::HdAovTokens->color, pixels.data());
-  update_render_result(render_images, layer_name, res[0], res[1]);
+  update_render_result();
 }
 
-pxr::GfVec2i FinalEngine::get_resolution(Scene *scene)
-{
-  RenderData &r = scene->r;
-  float border_w = 1.0, border_h = 1.0;
-  if (r.mode & R_BORDER) {
-    border_w = r.border.xmax - r.border.xmin;
-    border_h = r.border.ymax - r.border.ymin;
-  }
-  return pxr::GfVec2i(int(r.xsch * border_w * r.size / 100),
-                      int(r.ysch * border_h * r.size / 100));
-}
-
-void FinalEngine::update_render_result(std::map<std::string, std::vector<float>> &render_images,
-                                       const std::string &layer_name,
-                                       int width,
-                                       int height)
+void FinalEngine::update_render_result()
 {
   RenderResult *result = RE_engine_begin_result(
-      bl_engine_, 0, 0, width, height, layer_name.c_str(), nullptr);
+      bl_engine_, 0, 0, resolution_[0], resolution_[1], layer_name_.c_str(), nullptr);
 
   /* TODO: only for the first render layer */
   RenderLayer *layer = (RenderLayer *)result->layers.first;
   for (RenderPass *pass = (RenderPass *)layer->passes.first; pass != nullptr; pass = pass->next) {
-    auto it_image = render_images.find(pass->name);
-    if (it_image == render_images.end()) {
+    auto it_image = render_images_.find(pass->name);
+    if (it_image == render_images_.end()) {
       continue;
     }
     memcpy(pass->rect,
@@ -146,52 +98,53 @@ void FinalEngine::notify_status(float progress, const std::string &title, const 
   RE_engine_update_stats(bl_engine_, title.c_str(), info.c_str());
 }
 
-void FinalEngineGL::render(Depsgraph *depsgraph)
+void FinalEngine::prepare_for_render(Depsgraph *depsgraph)
 {
   const Scene *scene = DEG_get_evaluated_scene(depsgraph);
   const ViewLayer *view_layer = DEG_get_evaluated_view_layer(depsgraph);
 
-  std::string scene_name(MAX_ID_FULL_NAME, 0);
-  BKE_id_full_name_get(scene_name.data(), (ID *)scene, 0);
-  std::string layer_name = view_layer->name;
+  BKE_id_full_name_get(scene_name_.data(), (ID *)scene, 0);
+  layer_name_ = view_layer->name;
 
   const RenderData &r = scene->r;
   pxr::GfVec4f border(0, 0, 1, 1);
   if (r.mode & R_BORDER) {
-    border = pxr::GfVec4f(r.border.xmin,
-                          r.border.ymin,
-                          r.border.xmax - r.border.xmin,
-                          r.border.ymax - r.border.ymin);
+    border.Set(r.border.xmin,
+               r.border.ymin,
+               r.border.xmax - r.border.xmin,
+               r.border.ymax - r.border.ymin);
   }
-  pxr::GfVec2i image_res = {r.xsch * r.size / 100, r.ysch * r.size / 100};
-  pxr::GfVec2i res = {int(image_res[0] * border[2]), int(image_res[1] * border[3])};
+  pxr::GfVec2i image_res(r.xsch * r.size / 100, r.ysch * r.size / 100);
+  resolution_ = pxr::GfVec2i(int(image_res[0] * border[2]), int(image_res[1] * border[3]));
   pxr::GfCamera camera =
       CameraData(scene->camera, image_res, pxr::GfVec4f(0, 0, 1, 1)).gf_camera(border);
 
   free_camera_delegate_->SetCamera(camera);
-  render_task_delegate_->set_camera_and_viewport(free_camera_delegate_->GetCameraId(),
-                                                 pxr::GfVec4d(0, 0, res[0], res[1]));
+  render_task_delegate_->set_camera_and_viewport(
+      free_camera_delegate_->GetCameraId(), pxr::GfVec4d(0, 0, resolution_[0], resolution_[1]));
+  render_task_delegate_->set_renderer_aov(pxr::HdAovTokens->color);
+
   if (simple_light_task_delegate_) {
     simple_light_task_delegate_->set_camera_path(free_camera_delegate_->GetCameraId());
+    tasks_.push_back(simple_light_task_delegate_->get_task());
   }
+  tasks_.push_back(render_task_delegate_->get_task());
 
-  pxr::HdTaskSharedPtrVector tasks;
-  if (simple_light_task_delegate_) {
-    /* TODO: Uncomment this and fix GL error:
-     *    invalid operation, reported from void __cdecl
-     * pxrInternal_v0_22__pxrReserved__::HgiGLResourceBindings::BindResources(void) */
-    // tasks.push_back(simple_light_task_delegate_->get_task());
-  }
-  tasks.push_back(render_task_delegate_->get_task());
+  render_images_.emplace(
+      "Combined",
+      std::vector<float>(resolution_[0] * resolution_[1] * 4)); /* 4 - number of channels. */
+}
 
-  std::map<std::string, std::vector<float>> render_images{
-      {"Combined", std::vector<float>(res[0] * res[1] * 4)}}; /* 4 - number of channels. */
-  std::vector<float> &pixels = render_images["Combined"];
+void FinalEngineGL::render(Depsgraph *depsgraph)
+{
+  prepare_for_render(depsgraph);
+
+  std::vector<float> &pixels = render_images_["Combined"];
 
   GPUFrameBuffer *framebuffer = GPU_framebuffer_create("fb_hdyra_render_final");
   GPUTexture *texture = GPU_texture_create_2d("tex_hydra_render_final",
-                                              res[0],
-                                              res[1],
+                                              resolution_[0],
+                                              resolution_[1],
                                               1,
                                               GPU_RGBA32F,
                                               GPU_TEXTURE_USAGE_GENERAL,
@@ -207,7 +160,7 @@ void FinalEngineGL::render(Depsgraph *depsgraph)
   {
     /* Release the GIL before calling into hydra, in case any hydra plugins call into python. */
     pxr::TF_PY_ALLOW_THREADS_IN_SCOPE();
-    engine_->Execute(render_index_.get(), &tasks);
+    engine_->Execute(render_index_.get(), &tasks_);
   }
 
   char elapsed_time[32];
@@ -225,7 +178,7 @@ void FinalEngineGL::render(Depsgraph *depsgraph)
         elapsed_time, sizeof(elapsed_time), PIL_check_seconds_timer() - time_begin);
 
     notify_status(percent_done / 100.0,
-                  scene_name + ": " + layer_name,
+                  scene_name_ + ": " + layer_name_,
                   std::string("Render Time: ") + elapsed_time +
                       " | Done: " + std::to_string(int(percent_done)) + "%");
 
@@ -236,13 +189,13 @@ void FinalEngineGL::render(Depsgraph *depsgraph)
     void *data = GPU_texture_read(texture, GPU_DATA_FLOAT, 0);
     memcpy(pixels.data(), data, pixels.size() * sizeof(float));
     MEM_freeN(data);
-    update_render_result(render_images, layer_name, res[0], res[1]);
+    update_render_result();
   }
 
   void *data = GPU_texture_read(texture, GPU_DATA_FLOAT, 0);
   memcpy(pixels.data(), data, pixels.size() * sizeof(float));
   MEM_freeN(data);
-  update_render_result(render_images, layer_name, res[0], res[1]);
+  update_render_result();
 
   GPU_framebuffer_free(framebuffer);
   GPU_texture_free(texture);
