@@ -693,20 +693,30 @@ LightProbeGridCacheFrame *IrradianceBake::read_result_packed()
 
   GPU_memory_barrier(GPU_BARRIER_TEXTURE_UPDATE);
 
-  /* TODO(fclem): Temp. */
   cache_frame->baking.L0 = (float(*)[4])irradiance_L0_tx_.read<float4>(GPU_DATA_FLOAT);
   cache_frame->baking.L1_a = (float(*)[4])irradiance_L1_a_tx_.read<float4>(GPU_DATA_FLOAT);
   cache_frame->baking.L1_b = (float(*)[4])irradiance_L1_b_tx_.read<float4>(GPU_DATA_FLOAT);
   cache_frame->baking.L1_c = (float(*)[4])irradiance_L1_c_tx_.read<float4>(GPU_DATA_FLOAT);
 
-  /* TODO(fclem): Create packed format texture and swizzle on gpu. */
-  // cache_frame->irradiance.L0 = (float(*)[4])irradiance_only_L0_tx_.read<float4>(GPU_DATA_FLOAT);
-  // cache_frame->irradiance.L1_a =
-  // (float(*)[4])irradiance_only_L1_a_tx_.read<float4>(GPU_DATA_FLOAT);
-  // cache_frame->irradiance.L1_b =
-  // (float(*)[4])irradiance_only_L1_b_tx_.read<float4>(GPU_DATA_FLOAT);
-  // cache_frame->irradiance.L1_c =
-  // (float(*)[4])irradiance_only_L1_c_tx_.read<float4>(GPU_DATA_FLOAT);
+  int64_t sample_count = irradiance_L0_tx_.width() * irradiance_L0_tx_.height() *
+                         irradiance_L0_tx_.depth();
+  size_t coefficient_texture_size = sizeof(*cache_frame->irradiance.L0) * sample_count;
+  cache_frame->irradiance.L0 = (float(*)[3])MEM_mallocN(coefficient_texture_size, __func__);
+  cache_frame->irradiance.L1_a = (float(*)[3])MEM_mallocN(coefficient_texture_size, __func__);
+  cache_frame->irradiance.L1_b = (float(*)[3])MEM_mallocN(coefficient_texture_size, __func__);
+  cache_frame->irradiance.L1_c = (float(*)[3])MEM_mallocN(coefficient_texture_size, __func__);
+
+  for (auto i : IndexRange(sample_count)) {
+    copy_v3_v3(cache_frame->irradiance.L0[i], cache_frame->baking.L0[i]);
+    copy_v3_v3(cache_frame->irradiance.L1_a[i], cache_frame->baking.L1_a[i]);
+    copy_v3_v3(cache_frame->irradiance.L1_b[i], cache_frame->baking.L1_b[i]);
+    copy_v3_v3(cache_frame->irradiance.L1_c[i], cache_frame->baking.L1_c[i]);
+  }
+
+  MEM_SAFE_FREE(cache_frame->baking.L0);
+  MEM_SAFE_FREE(cache_frame->baking.L1_a);
+  MEM_SAFE_FREE(cache_frame->baking.L1_b);
+  MEM_SAFE_FREE(cache_frame->baking.L1_c);
 
   // cache_frame->visibility.L0 = irradiance_only_L0_tx_.read<uint8_t>(GPU_DATA_UBYTE);
   // cache_frame->visibility.L1_a = irradiance_only_L1_a_tx_.read<uint8_t>(GPU_DATA_UBYTE);
