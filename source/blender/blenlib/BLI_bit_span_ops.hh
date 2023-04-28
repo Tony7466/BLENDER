@@ -195,7 +195,7 @@ inline void inplace_or(FirstBitSpanT &first_arg, const BitSpanT &...args)
 }
 
 template<typename FirstBitSpanT, typename... BitSpanT>
-inline void inplace_reset_and_or(FirstBitSpanT &first_arg, const BitSpanT &...args)
+inline void copy_from_or(FirstBitSpanT &first_arg, const BitSpanT &...args)
 {
   mix_into_first_expr(
       [](auto /*first*/, auto... rest) { return (rest | ...); }, first_arg, args...);
