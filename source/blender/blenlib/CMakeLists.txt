@@ -491,6 +491,7 @@ if(WITH_GTESTS)
     tests/BLI_edgehash_test.cc
     tests/BLI_expr_pylike_eval_test.cc
     tests/BLI_fileops_test.cc
+    tests/BLI_fixed_width_int_test.cc
     tests/BLI_function_ref_test.cc
     tests/BLI_generic_array_test.cc
     tests/BLI_generic_span_test.cc
