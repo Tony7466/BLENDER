@@ -778,11 +778,16 @@ static void drawLine(
 
   uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
 
-  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-  immUniformColor3ubv(col2);
-
-  GPU_line_smooth(true);
+  // immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+  float viewport[4];
+  GPU_viewport_size_get_f(viewport);
   GPU_blend(GPU_BLEND_ALPHA);
+
+  immBindBuiltinProgram(GPU_SHADER_3D_POLYLINE_UNIFORM_COLOR);
+  immUniform2fv("viewportSize", &viewport[2]);
+  immUniform1f("lineWidth", U.pixelsize * 2.0f);
+
+  immUniformColor3ubv(col2);
 
   immBegin(GPU_PRIM_LINES, 2);
   immVertex3fv(pos, v1);
@@ -790,7 +795,6 @@ static void drawLine(
   immEnd();
 
   immUnbindProgram();
-  GPU_line_smooth(false);
 
   GPU_matrix_pop();
 }
