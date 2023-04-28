@@ -370,6 +370,34 @@ int Object::get_device_index() const
   return index;
 }
 
+bool Object::usable_as_light() const
+{
+  Geometry *geom = get_geometry();
+  if (!geom->is_mesh() && !geom->is_volume()) {
+    return false;
+  }
+  /* Skip non-traceable objects. */
+  if (!is_traceable()) {
+    return false;
+  }
+  /* Skip if we are not visible for BSDFs. */
+  if (!(get_visibility() & (PATH_RAY_DIFFUSE | PATH_RAY_GLOSSY | PATH_RAY_TRANSMIT))) {
+    return false;
+  }
+  /* Skip if we have no emission shaders. */
+  /* TODO(sergey): Ideally we want to avoid such duplicated loop, since it'll
+   * iterate all geometry shaders twice (when counting and when calculating
+   * triangle area.
+   */
+  foreach (Node *node, geom->get_used_shaders()) {
+    Shader *shader = static_cast<Shader *>(node);
+    if (shader->emission_sampling != EMISSION_SAMPLING_NONE) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /* Object Manager */
 
 ObjectManager::ObjectManager()
@@ -567,9 +595,10 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
 void ObjectManager::device_update_prim_offsets(Device *device, DeviceScene *dscene, Scene *scene)
 {
   if (!scene->integrator->get_use_light_tree()) {
-    BVHLayoutMask layout_mask = device->get_bvh_layout_mask();
+    BVHLayoutMask layout_mask = device->get_bvh_layout_mask(dscene->data.kernel_features);
     if (layout_mask != BVH_LAYOUT_METAL && layout_mask != BVH_LAYOUT_MULTI_METAL &&
-        layout_mask != BVH_LAYOUT_MULTI_METAL_EMBREE) {
+        layout_mask != BVH_LAYOUT_MULTI_METAL_EMBREE && layout_mask != BVH_LAYOUT_HIPRT &&
+        layout_mask != BVH_LAYOUT_MULTI_HIPRT && layout_mask != BVH_LAYOUT_MULTI_HIPRT_EMBREE) {
       return;
     }
   }

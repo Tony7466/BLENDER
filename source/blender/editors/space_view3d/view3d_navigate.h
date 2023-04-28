@@ -49,6 +49,7 @@ enum {
 
 /* NOTE: these defines are saved in keymap files, do not change values but just add new ones */
 enum {
+  VIEW_MODAL_CANCEL = 0,  /* used for all view operations */
   VIEW_MODAL_CONFIRM = 1, /* used for all view operations */
   VIEWROT_MODAL_AXIS_SNAP_ENABLE = 2,
   VIEWROT_MODAL_AXIS_SNAP_DISABLE = 3,
@@ -151,6 +152,15 @@ typedef struct ViewOpsData {
   /** Use for orbit selection and auto-dist. */
   float dyn_ofs[3];
   bool use_dyn_ofs;
+
+  /**
+   * In orthographic views, a dynamic offset should not cause #RegionView3D::ofs to end up
+   * at a location that has no relation to the content where `ofs` originated or to `dyn_ofs`.
+   * Failing to do so can cause the orthographic views `ofs` to be far away from the content
+   * to the point it gets clipped out of the view.
+   * See #view3d_orbit_apply_dyn_ofs code-comments for an example, also see: #104385.
+   */
+  bool use_dyn_ofs_ortho_correction;
 } ViewOpsData;
 
 /* view3d_navigate.cc */

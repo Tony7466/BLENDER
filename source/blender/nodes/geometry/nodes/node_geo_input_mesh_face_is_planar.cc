@@ -40,11 +40,11 @@ class PlanarFieldInput final : public bke::MeshFieldInput {
                                  IndexMask /*mask*/) const final
   {
     const Span<float3> positions = mesh.vert_positions();
-    const Span<MPoly> polys = mesh.polys();
+    const OffsetIndices polys = mesh.polys();
     const Span<int> corner_verts = mesh.corner_verts();
     const Span<float3> poly_normals = mesh.poly_normals();
 
-    bke::MeshFieldContext context{mesh, ATTR_DOMAIN_FACE};
+    const bke::MeshFieldContext context{mesh, ATTR_DOMAIN_FACE};
     fn::FieldEvaluator evaluator{context, polys.size()};
     evaluator.add(threshold_);
     evaluator.evaluate();
@@ -52,8 +52,8 @@ class PlanarFieldInput final : public bke::MeshFieldInput {
 
     auto planar_fn =
         [positions, polys, corner_verts, thresholds, poly_normals](const int i) -> bool {
-      const MPoly &poly = polys[i];
-      if (poly.totloop <= 3) {
+      const IndexRange poly = polys[i];
+      if (poly.size() <= 3) {
         return true;
       }
       const float3 &reference_normal = poly_normals[i];
@@ -61,7 +61,7 @@ class PlanarFieldInput final : public bke::MeshFieldInput {
       float min = FLT_MAX;
       float max = -FLT_MAX;
 
-      for (const int vert : corner_verts.slice(poly.loopstart, poly.totloop)) {
+      for (const int vert : corner_verts.slice(poly)) {
         float dot = math::dot(reference_normal, positions[vert]);
         if (dot > max) {
           max = dot;

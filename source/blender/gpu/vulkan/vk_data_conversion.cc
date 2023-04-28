@@ -609,7 +609,7 @@ void convert_component(F32 &dst, const UnsignedNormalized<StorageType> &src)
   dst.value = float(src.value) / scalar;
 }
 
-/* Copy the contents of src to dst with out performing any actual conversion.*/
+/* Copy the contents of src to dst with out performing any actual conversion. */
 template<typename DestinationType, typename SourceType>
 void convert_component(DestinationType &dst, const SourceType &src)
 {
@@ -762,6 +762,28 @@ void convert_host_to_device(void *dst_buffer,
   ConversionType conversion_type = host_to_device(host_format, device_format);
   BLI_assert(conversion_type != ConversionType::UNSUPPORTED);
   convert_buffer(dst_buffer, src_buffer, buffer_size, device_format, conversion_type);
+}
+
+void convert_host_to_device(void *dst_buffer,
+                            const void *src_buffer,
+                            uint2 src_size,
+                            uint src_row_length,
+                            eGPUDataFormat host_format,
+                            eGPUTextureFormat device_format)
+{
+  const uint8_t *src = static_cast<const uint8_t *>(src_buffer);
+  uint8_t *dst = static_cast<uint8_t *>(dst_buffer);
+  ConversionType conversion_type = host_to_device(host_format, device_format);
+  size_t src_row_len = src_row_length * to_bytesize(device_format, host_format);
+  size_t dst_row_len = src_size.x * to_bytesize(device_format);
+
+  for (uint row : IndexRange(src_size.y)) {
+    convert_buffer(&dst[dst_row_len * row],
+                   &src[src_row_len * row],
+                   src_size.x,
+                   device_format,
+                   conversion_type);
+  }
 }
 
 void convert_device_to_host(void *dst_buffer,

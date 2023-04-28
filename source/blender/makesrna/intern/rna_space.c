@@ -4551,7 +4551,10 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "show_retopology", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "overlay.edit_flag", V3D_OVERLAY_EDIT_RETOPOLOGY);
-  RNA_def_property_ui_text(prop, "Retopology", "Use retopology display");
+  RNA_def_property_ui_text(prop,
+                           "Retopology",
+                           "Hide the solid mesh and offset the overlay towards the view. "
+                           "Selection is occluded by inactive geometry, unless X-Ray is enabled");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D | NS_VIEW3D_SHADING, NULL);
 
   prop = RNA_def_property(srna, "retopology_offset", PROP_FLOAT, PROP_DISTANCE);
@@ -5099,7 +5102,9 @@ static void rna_def_space_view3d(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "RegionView3D");
   RNA_def_property_pointer_funcs(prop, "rna_SpaceView3D_region_3d_get", NULL, NULL, NULL);
   RNA_def_property_ui_text(
-      prop, "3D Region", "3D region in this space, in case of quad view the camera region");
+      prop,
+      "3D Region",
+      "3D region for this space. When the space is in quad view, the camera region");
 
   prop = RNA_def_property(srna, "region_quadviews", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "RegionView3D");
@@ -5303,9 +5308,9 @@ static void rna_def_space_view3d(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop,
       "Is Axis Aligned",
-      "Is current view aligned to an axis "
-      "(does not check the view is orthographic use \"is_perspective\" for that). "
-      "Assignment sets the \"view_rotation\" to the closest axis aligned view");
+      "Whether the current view is aligned to an axis "
+      "(does not check whether the view is orthographic, use \"is_perspective\" for that). "
+      "Setting this will rotate the view to the closest axis");
 
   /* This isn't directly accessible from the UI, only an operator. */
   prop = RNA_def_property(srna, "use_clip_planes", PROP_BOOLEAN, PROP_NONE);
@@ -6768,7 +6773,7 @@ static void rna_def_fileselect_params(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_library_browsing", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(
-      prop, "Library Browser", "Whether we may browse blender files' content or not");
+      prop, "Library Browser", "Whether we may browse Blender files' content or not");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_boolean_funcs(prop, "rna_FileSelectParams_use_lib_get", NULL);
 
@@ -7997,6 +8002,11 @@ static void rna_def_spreadsheet_row_filter(BlenderRNA *brna)
   RNA_def_property_int_sdna(prop, NULL, "value_int");
   RNA_def_property_range(prop, -128, 127);
   RNA_def_property_ui_text(prop, "8-Bit Integer Value", "");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SPREADSHEET, NULL);
+
+  prop = RNA_def_property(srna, "value_int2", PROP_INT, PROP_NONE);
+  RNA_def_property_array(prop, 2);
+  RNA_def_property_ui_text(prop, "2D Vector Value", "");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SPREADSHEET, NULL);
 
   prop = RNA_def_property(srna, "value_boolean", PROP_BOOLEAN, PROP_NONE);
