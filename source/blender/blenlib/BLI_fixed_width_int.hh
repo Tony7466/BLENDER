@@ -93,11 +93,58 @@ using UInt128 = UInt128_32;
 
 inline UInt128_32 operator+(const UInt128_32 &a, const UInt128_32 &b)
 {
-  UInt128_32 result;
   const uint64_t r1 = uint64_t(a.v1) + uint64_t(b.v1);
   const uint64_t r2 = uint64_t(a.v2) + uint64_t(b.v2) + (r1 >> 32);
   const uint64_t r3 = uint64_t(a.v3) + uint64_t(b.v3) + (r2 >> 32);
   const uint64_t r4 = uint64_t(a.v4) + uint64_t(b.v4) + (r3 >> 32);
+
+  UInt128_32 result;
+  result.v1 = uint32_t(r1);
+  result.v2 = uint32_t(r2);
+  result.v3 = uint32_t(r3);
+  result.v4 = uint32_t(r4);
+  return result;
+}
+
+inline UInt128_32 operator*(const UInt128_32 &a, const uint32_t b)
+{
+  const uint64_t r1 = a.v1 * b;
+  const uint64_t r2 = a.v2 * b + (r1 >> 32);
+  const uint64_t r3 = a.v3 * b + (r2 >> 32);
+  const uint64_t r4 = a.v4 * b + (r3 >> 32);
+
+  UInt128_32 result;
+  result.v1 = uint32_t(r1);
+  result.v2 = uint32_t(r2);
+  result.v2 = uint32_t(r3);
+  result.v4 = uint32_t(r4);
+  return result;
+}
+
+inline UInt128_32 operator*(const UInt128_32 &a, const UInt128_32 &b)
+{
+  const uint64_t r1_1 = uint64_t(a.v1) * uint64_t(b.v1);
+  const uint64_t r1_2 = uint64_t(a.v2) * uint64_t(b.v1) + (r1_1 >> 32);
+  const uint64_t r1_3 = uint64_t(a.v3) * uint64_t(b.v1) + (r1_2 >> 32);
+  const uint64_t r1_4 = uint64_t(a.v4) * uint64_t(b.v1) + (r1_3 >> 32);
+
+  const uint64_t r2_2 = uint64_t(a.v1) * uint64_t(b.v2);
+  const uint64_t r2_3 = uint64_t(a.v2) * uint64_t(b.v2) + (r2_2 >> 32);
+  const uint64_t r2_4 = uint64_t(a.v3) * uint64_t(b.v2) + (r2_3 >> 32);
+
+  const uint64_t r3_3 = uint64_t(a.v1) * uint64_t(b.v3);
+  const uint64_t r3_4 = uint64_t(a.v2) * uint64_t(b.v3) + (r3_3 >> 32);
+
+  const uint64_t r4_4 = uint64_t(a.v1) * uint64_t(b.v4);
+
+  const uint64_t r1 = uint64_t(uint32_t(r1_1));
+  const uint64_t r2 = uint64_t(uint32_t(r1_2)) + uint64_t(uint32_t(r2_2)) + (r1 >> 32);
+  const uint64_t r3 = uint64_t(uint32_t(r1_3)) + uint64_t(uint32_t(r2_3)) +
+                      uint64_t(uint32_t(r3_3)) + (r2 >> 32);
+  const uint64_t r4 = uint64_t(uint32_t(r1_4)) + uint64_t(uint32_t(r2_4)) +
+                      uint64_t(uint32_t(r3_4)) + uint64_t(uint32_t(r4_4)) + (r3 >> 32);
+
+  UInt128_32 result;
   result.v1 = uint32_t(r1);
   result.v2 = uint32_t(r2);
   result.v3 = uint32_t(r3);

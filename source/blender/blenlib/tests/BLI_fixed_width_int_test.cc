@@ -8,9 +8,9 @@ namespace blender::fixed_width_int::tests {
 
 TEST(fixed_width_int, Test)
 {
-  UInt128 a{"99999999999999999999999999999"};
-  UInt128 b{"1"};
-  UInt128 c = a + b;
+  UInt128 a{"1000000000000000000000000000000"};
+  UInt128 b{"50000"};
+  UInt128 c = a * b;
   a.print();
   b.print();
   c.print();
