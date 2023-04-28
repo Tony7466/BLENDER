@@ -44,6 +44,9 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "RNA_access.h"
+#include "RNA_prototypes.h"
+
 #include "versioning_common.h"
 
 using blender::Map;
@@ -1195,6 +1198,7 @@ static bNodeTree *instances_on_faces(const Span<Object *> objects,
 }
 
 static void object_push_instances_modifier(const StringRefNull name,
+                                           Main * /*bmain*/,
                                            Object &object,
                                            bNodeTree &node_tree)
 {
@@ -1219,15 +1223,26 @@ static void object_push_instances_modifier(const StringRefNull name,
       continue;
     }
     /* TODO */
-    // IDProperty *new_prop = IDP_GetPropertyFromGroup(nmd.settings.properties,
-    // socket->identifier); BLI_assert(old_prop != nullptr); IDP_CopyPropertyContent(new_prop,
-    // old_prop);
+    // copy DNA value in idprop
+    // change fcurve to remap this from object rna prop to modifier id property
+    //
+
+    /*
+        IDProperty *object_prop_group = IDP_GetProperties(&object.id, false);
+        BLI_assert(object_prop_group != nullptr);
+        IDProperty *old_prop = IDP_GetPropertyFromGroup(object_prop_group, socket->identifier);
+        BLI_assert(old_prop != nullptr);
+
+        IDProperty *new_prop = IDP_GetPropertyFromGroup(nmd.settings.properties,
+       socket->identifier); BLI_assert(new_prop != nullptr);
+
+        IDP_CopyPropertyContent(new_prop, old_prop);
+    */
   }
 }
 
 }  //  namespace replace_legacy_instances
 
-/* TODO: objects in parent object space or in global? */
 void remove_legacy_instances_on(Main *bmain, ListBase &lb_objects)
 {
   using namespace blender;
@@ -1280,11 +1295,9 @@ void remove_legacy_instances_on(Main *bmain, ListBase &lb_objects)
     else {
       instances_node_tree = instances_on_faces(objects, tree_name, bmain, cached_node_trees);
     }
-    object_push_instances_modifier(modifier_name, *parent, *instances_node_tree);
+    object_push_instances_modifier(bmain, modifier_name, *parent, *instances_node_tree);
 
     parent->transflag = 0;
-
-    DEG_id_tag_update(&parent->id, ID_RECALC_GEOMETRY);
   }
 
   printf("HELLO!\n");
