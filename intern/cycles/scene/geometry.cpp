@@ -733,16 +733,23 @@ void GeometryManager::device_data_xfer_and_bvh_update(int idx,
         scene->times[idx].object_bvh = time;
       }
     });
+    TaskPool pool;
+    
     size_t i = 0;
     /* Build the Object BVHs */
     foreach (Geometry *geom, scene->geometry) {
       if (geom->is_modified() || geom->need_update_bvh_for_offset) {
-        geom->compute_bvh(sub_device, sub_dscene, &scene->params, &progress, i, num_bvh);
+        pool.push(function_bind(
+				&Geometry::compute_bvh, geom, sub_device, sub_dscene, &scene->params, &progress, i, num_bvh));
+	//geom->compute_bvh(sub_device, sub_dscene, &scene->params, &progress, i, num_bvh);
         if (geom->need_build_bvh(bvh_layout)) {
           i++;
         }
       }
     }
+    TaskPool::Summary summary;
+    pool.wait_work(&summary);
+    VLOG_WORK << "Objects BVH build pool statistics:\n" << summary.full_report();
   }
 
   if(need_update_scene_bvh) {
@@ -1119,11 +1126,6 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
     vector<AttributeSet> &object_attribute_values,
     Progress &progress)
 {
-  scoped_callback_timer timer([scene](double time) {
-    if (scene->update_stats) {
-      scene->update_stats->geometry.times.add_entry({"device_update (displacement)", time});
-    }
-  });
   /* Signal for shaders like displacement not to do ray tracing. */
   dscene->data.bvh.bvh_layout = BVH_LAYOUT_NONE;
   scene->object_manager->device_update_flags(device, dscene, scene, progress, false);
@@ -1139,6 +1141,9 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
          are done on the first device. */
       DeviceScene *sub_dscene = scene->dscenes.front().get();
       Device *sub_device = sub_dscene->tri_verts.device;
+
+      sub_dscene->device_update_host_pointers(sub_device, dscene, &(scene->geom_sizes));
+      
       {
         scoped_callback_timer timer([scene](double time) {
           if (scene->update_stats) {
@@ -1146,8 +1151,14 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
                 {"device_update (displacement: copy meshes to device)", time});
           }
         });
-        sub_dscene->device_update_host_pointers(sub_device, dscene, &(scene->geom_sizes));
         sub_dscene->device_update_attributes(sub_device, &(scene->attrib_sizes), progress);
+      }
+      {
+	scoped_callback_timer timer([scene](double time) {
+	  if (scene->update_stats) {
+	    scene->update_stats->geometry.times.add_entry({"displacement: copy attributes to device", time});
+	  }
+	});
         sub_dscene->device_update_mesh(sub_device, &(scene->geom_sizes), progress);
       }
       /* Copy constant data needed by shader evaluation. */
@@ -1168,22 +1179,28 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
 	 */
 	device_update_displacement_images(device, scene, progress);
       }
-
-      foreach (Geometry *geom, scene->geometry) {
-        if (geom->is_modified()) {
-          if (geom->is_mesh()) {
-            Mesh *mesh = static_cast<Mesh *>(geom);
-            if (displace(sub_device, scene, mesh, progress)) {
-              displacement_done = true;
+      {
+	scoped_callback_timer timer([scene](double time) {
+	  if (scene->update_stats) {
+	    scene->update_stats->geometry.times.add_entry({"device_update (displacement)", time});
+	  }
+	});
+	foreach (Geometry *geom, scene->geometry) {
+          if (geom->is_modified()) {
+            if (geom->is_mesh()) {
+              Mesh *mesh = static_cast<Mesh *>(geom);
+              if (displace(sub_device, scene, mesh, progress)) {
+                displacement_done = true;
+              }
+            }
+            else if (geom->geometry_type == Geometry::HAIR) {
+              Hair *hair = static_cast<Hair *>(geom);
+              if (hair->update_shadow_transparency(sub_device, scene, progress)) {
+                curve_shadow_transparency_done = true;
+              }
             }
           }
-          else if (geom->geometry_type == Geometry::HAIR) {
-            Hair *hair = static_cast<Hair *>(geom);
-            if (hair->update_shadow_transparency(sub_device, scene, progress)) {
-              curve_shadow_transparency_done = true;
-            }
-          }
-        }
+	}
       }
       sub_dscene->device_free_geometry(false);
     }
@@ -1195,7 +1212,7 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
       scoped_callback_timer timer([scene](double time) {
         if (scene->update_stats) {
           scene->update_stats->geometry.times.add_entry(
-              {"device_update (displacement: attributes)", time});
+              {"device_update (displacement: preprocess attributes & mesh)", time});
         }
       });
 
