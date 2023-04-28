@@ -64,9 +64,15 @@ using double_uint_type = std::conditional_t<
 using UInt128_8 = UIntF<uint8_t, 16>;
 using Uint128_16 = UIntF<uint16_t, 8>;
 using UInt128_32 = UIntF<uint32_t, 4>;
-using UInt128_64 = UIntF<uint64_t, 4>;
+using UInt128_64 = UIntF<uint64_t, 2>;
 
-using UInt128 = UInt128_8;
+using UInt256_8 = UIntF<uint8_t, 32>;
+using UInt256_16 = UIntF<uint16_t, 16>;
+using UInt256_32 = UIntF<uint32_t, 8>;
+using UInt256_64 = UIntF<uint64_t, 4>;
+
+using UInt128 = UInt128_64;
+using UInt256 = UInt256_64;
 
 template<typename T, typename T2, int S> inline void generic_add(T *dst, const T *a, const T *b)
 {
