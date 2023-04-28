@@ -67,7 +67,7 @@ class HydraRenderEngine(bpy.types.RenderEngine):
         _bpy_hydra.init()
         root_folder = "blender.shared" if platform.system() == 'Windows' else "lib"
         os.environ['PXR_MTLX_STDLIB_SEARCH_PATHS'] = os.pathsep.join([
-            Path(bpy.app.binary_path).parent / f"{root_folder}/materialx/libraries",
+            str(Path(bpy.app.binary_path).parent / f"{root_folder}/materialx/libraries"),
             os.environ.get('PXR_MTLX_STDLIB_SEARCH_PATHS', "")])
 
     @classmethod
