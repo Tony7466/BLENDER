@@ -51,6 +51,81 @@ void poly_angles_calc(Span<float3> vert_positions,
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Face Corner Normal Calculation
+ * \{ */
+
+/**
+ * Combined with the automatically calculated face corner normal, this gives a dimentional
+ * coordinate space used to convert normals between the "custom normal" #short2 representation and
+ * a regular #float3 format.
+ */
+struct NormalFanSpace {
+  /** Reference vector, orthogonal to vec_lnor. */
+  float3 vec_ref;
+  /** Third vector, orthogonal to vec_lnor and vec_ref. */
+  float3 vec_ortho;
+  /** Reference angle, around vec_ortho, in [0, pi] range (0.0 marks that space as invalid). */
+  float ref_alpha;
+  /** Reference angle, around vec_lnor, in [0, 2pi] range (0.0 marks that space as invalid). */
+  float ref_beta;
+};
+
+/**
+ * Storage for coordinate spaces and connection information during normal calculation.
+ */
+struct MeshNormalFanSpaces {
+  /**
+   * The normal coordinate spaces, potentially shared between multiple face corners in a smooth fan
+   * connected to a vertex. Depending on the geometry (the amount of sharing / size of each fan),
+   * there may be many fewer spaces than face corners, so they are stored in a separate array.
+   */
+  Array<NormalFanSpace> spaces;
+
+  /** The index in #spaces for each face corner. */
+  Array<int> corner_space_indices;
+
+  /**
+   * An index-based linked list of the face corners in each smooth fan, starting at each corner.
+   * Each index stores the index of the next corner in the fan, or -1 if it is the last. "Single"
+   * fans with only a single corner store -1 at that corner index directly.
+   */
+  Array<int> corner_group_lists;
+};
+
+short2 fan_space_custom_normal_to_data(const NormalFanSpace &space,
+                                       float3 corner_normal_no_custom,
+                                       float3 custom_lnor);
+
+/**
+ * Compute split normals, i.e. vertex normals associated with each poly (hence 'loop normals').
+ * Useful to materialize sharp edges (or non-smooth faces) without actually modifying the geometry
+ * (splitting edges).
+ *
+ * \param loop_to_poly_map: Optional pre-created map from corners to their polygon.
+ * \param sharp_edges: Optional array of sharp edge tags, used to split the evaluated normals on
+ * each side of the edge.
+ * \param r_lnors_spacearr: Optional return data filled with information about the custom normals
+ * spaces for each grouped fan of face corners.
+ */
+void normals_calc_loop(Span<float3> vert_positions,
+                       Span<int2> edges,
+                       OffsetIndices<int> polys,
+                       Span<int> corner_verts,
+                       Span<int> corner_edges,
+                       Span<int> loop_to_poly_map,
+                       Span<float3> vert_normals,
+                       Span<float3> poly_normals,
+                       const bool *sharp_edges,
+                       const bool *sharp_faces,
+                       bool use_split_normals,
+                       float split_angle,
+                       short (*clnors_data)[2],
+                       MeshNormalFanSpaces *r_lnors_spacearr,
+                       MutableSpan<float3> r_loop_normals);
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Medium-Level Normals Calculation
  * \{ */
 
@@ -76,31 +151,6 @@ void normals_calc_poly_vert(Span<float3> vert_positions,
                             Span<int> corner_verts,
                             MutableSpan<float3> poly_normals,
                             MutableSpan<float3> vert_normals);
-
-/**
- * Compute split normals, i.e. vertex normals associated with each poly (hence 'loop normals').
- * Useful to materialize sharp edges (or non-smooth faces) without actually modifying the geometry
- * (splitting edges).
- *
- * \param loop_to_poly_map: Optional pre-created map from corners to their polygon.
- * \param sharp_edges: Optional array of sharp edge tags, used to split the evaluated normals on
- * each side of the edge.
- */
-void normals_calc_loop(Span<float3> vert_positions,
-                       Span<int2> edges,
-                       OffsetIndices<int> polys,
-                       Span<int> corner_verts,
-                       Span<int> corner_edges,
-                       Span<int> loop_to_poly_map,
-                       Span<float3> vert_normals,
-                       Span<float3> poly_normals,
-                       const bool *sharp_edges,
-                       const bool *sharp_faces,
-                       bool use_split_normals,
-                       float split_angle,
-                       short (*clnors_data)[2],
-                       MLoopNorSpaceArray *r_lnors_spacearr,
-                       MutableSpan<float3> r_loop_normals);
 
 void normals_loop_custom_set(Span<float3> vert_positions,
                              Span<int2> edges,

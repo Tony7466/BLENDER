@@ -204,7 +204,7 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
 
   const bool has_clnors = wn_data->has_clnors;
   const float split_angle = wn_data->split_angle;
-  MLoopNorSpaceArray lnors_spacearr = {nullptr};
+  bke::mesh::MeshNormalFanSpaces lnors_spacearr;
 
   const bool keep_sharp = (wnmd->flag & MOD_WEIGHTEDNORMAL_KEEP_SHARP) != 0;
   const bool use_face_influence = (wnmd->flag & MOD_WEIGHTEDNORMAL_FACE_INFLUENCE) != 0 &&
@@ -214,7 +214,6 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
   blender::Array<blender::float3> loop_normals;
 
   WeightedNormalDataAggregateItem *items_data = nullptr;
-  Array<int> item_index_per_corner(corner_verts.size(), 0);
   int items_num = 0;
   if (keep_sharp) {
     BLI_bitmap *done_loops = BLI_BITMAP_NEW(corner_verts.size(), __func__);
@@ -238,13 +237,12 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
                                  &lnors_spacearr,
                                  loop_normals);
 
-    items_num = lnors_spacearr.spaces_num;
+    items_num = lnors_spacearr.spaces.size();
     items_data = static_cast<WeightedNormalDataAggregateItem *>(
         MEM_calloc_arrayN(size_t(items_num), sizeof(*items_data), __func__));
 
     /* In this first loop, we assign each WeightedNormalDataAggregateItem
      * to its smooth fan of loops (aka lnor space). */
-    int item_index = 0;
     for (const int i : polys.index_range()) {
       for (const int ml_index : polys[i]) {
         if (BLI_BITMAP_TEST(done_loops, ml_index)) {
@@ -252,23 +250,15 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
           continue;
         }
 
-        WeightedNormalDataAggregateItem *itdt = &items_data[item_index];
+        const int space_index = lnors_spacearr.corner_space_indices[ml_index];
+        WeightedNormalDataAggregateItem *itdt = &items_data[space_index];
         itdt->curr_strength = FACE_STRENGTH_WEAK;
 
-        MLoopNorSpace *lnor_space = lnors_spacearr.lspacearr[ml_index];
-        item_index_per_corner[ml_index] = item_index;
-
-        if (!(lnor_space->flags & MLNOR_SPACE_IS_SINGLE)) {
-          for (LinkNode *lnode = lnor_space->loops; lnode; lnode = lnode->next) {
-            const int ml_fan_index = POINTER_AS_INT(lnode->link);
-            BLI_BITMAP_ENABLE(done_loops, ml_fan_index);
-          }
+        int fan_corner = lnors_spacearr.corner_group_lists[ml_index];
+        while (fan_corner != -1) {
+          BLI_BITMAP_ENABLE(done_loops, fan_corner);
+          fan_corner = lnors_spacearr.corner_group_lists[fan_corner];
         }
-        else {
-          BLI_BITMAP_ENABLE(done_loops, ml_index);
-        }
-
-        item_index++;
       }
     }
 
@@ -294,8 +284,10 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
 
         for (const int ml_index : polys[poly_index]) {
           const int mv_index = corner_verts[ml_index];
-          WeightedNormalDataAggregateItem *item_data =
-              keep_sharp ? &items_data[item_index_per_corner[ml_index]] : &items_data[mv_index];
+          const int space_index = lnors_spacearr.corner_space_indices[ml_index];
+
+          WeightedNormalDataAggregateItem *item_data = keep_sharp ? &items_data[space_index] :
+                                                                    &items_data[mv_index];
 
           aggregate_item_normal(
               wnmd, wn_data, item_data, mv_index, poly_index, mp_val, use_face_influence);
@@ -307,11 +299,12 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
       for (int i = 0; i < corner_verts.size(); i++) {
         const int ml_index = mode_pair[i].index;
         const float ml_val = mode_pair[i].val;
+        const int space_index = lnors_spacearr.corner_space_indices[ml_index];
 
         const int poly_index = loop_to_poly[ml_index];
         const int mv_index = corner_verts[ml_index];
-        WeightedNormalDataAggregateItem *item_data =
-            keep_sharp ? &items_data[item_index_per_corner[ml_index]] : &items_data[mv_index];
+        WeightedNormalDataAggregateItem *item_data = keep_sharp ? &items_data[space_index] :
+                                                                  &items_data[mv_index];
 
         aggregate_item_normal(
             wnmd, wn_data, item_data, mv_index, poly_index, ml_val, use_face_influence);
@@ -334,7 +327,8 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
      * (before this modifier is applied, at start of this function),
      * so no need to recompute them here. */
     for (int ml_index = 0; ml_index < corner_verts.size(); ml_index++) {
-      WeightedNormalDataAggregateItem *item_data = &items_data[item_index_per_corner[ml_index]];
+      const int space_index = lnors_spacearr.corner_space_indices[ml_index];
+      WeightedNormalDataAggregateItem *item_data = &items_data[space_index];
       if (!is_zero_v3(item_data->normal)) {
         copy_v3_v3(loop_normals[ml_index], item_data->normal);
       }
@@ -417,10 +411,6 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
                                                   loop_normals,
                                                   clnors);
     }
-  }
-
-  if (keep_sharp) {
-    BKE_lnor_spacearr_free(&lnors_spacearr);
   }
 }
 
