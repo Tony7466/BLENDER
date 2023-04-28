@@ -37,6 +37,7 @@ __all__ = (
 )
 
 import os
+import platform
 import traceback
 from pathlib import Path
 
@@ -64,8 +65,10 @@ class HydraRenderEngine(bpy.types.RenderEngine):
     @classmethod
     def register(cls):
         _bpy_hydra.init()
-        os.environ['PXR_MTLX_STDLIB_SEARCH_PATHS'] = str(Path(bpy.app.binary_path).parent / "materialx/libraries") + \
-                                                     os.pathsep + os.environ.get('PXR_MTLX_STDLIB_SEARCH_PATHS', "")
+        root_folder = "blender.shared" if platform.system() == 'Windows' else "lib"
+        os.environ['PXR_MTLX_STDLIB_SEARCH_PATHS'] = os.pathsep.join([
+            Path(bpy.app.binary_path).parent / f"{root_folder}/materialx/libraries",
+            os.environ.get('PXR_MTLX_STDLIB_SEARCH_PATHS', "")])
 
     @classmethod
     def unregister(cls):
