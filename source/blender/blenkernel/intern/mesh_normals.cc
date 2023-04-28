@@ -713,7 +713,7 @@ void BKE_lnor_space_custom_normal_to_data(const MLoopNorSpace *lnor_space,
   space.ref_alpha = lnor_space->ref_alpha;
   space.ref_beta = lnor_space->ref_beta;
   copy_v2_v2_short(r_clnor_data,
-                   fan_space_custom_normal_to_data(space, lnor_space->vec_lnor, custom_lnor));
+                   fan_space_custom_normal_to_data(&space, lnor_space->vec_lnor, custom_lnor));
 }
 
 namespace blender::bke::mesh {
@@ -1622,7 +1622,7 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
 
         const int space_index = lnors_spacearr.corner_space_indices[i];
         r_clnors_data[i] = fan_space_custom_normal_to_data(
-            lnors_spacearr.spaces[space_index], loop_normals[i], nor);
+            &lnors_spacearr.spaces[space_index], loop_normals[i], nor);
         done_loops[i].reset();
       }
       else {
@@ -1644,9 +1644,7 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
         mul_v3_fl(avg_nor, 1.0f / float(avg_nor_count));
         const int space_index = lnors_spacearr.corner_space_indices[i];
         const short2 clnor_data_tmp = fan_space_custom_normal_to_data(
-            lnors_spacearr.spaces[space_index], loop_normals[i], avg_nor);
-
-        std::cout << float3(avg_nor) << '\n';
+            &lnors_spacearr.spaces[space_index], loop_normals[i], avg_nor);
 
         r_clnors_data.fill_indices(processed_corners.as_span(), clnor_data_tmp);
         processed_corners.clear();
