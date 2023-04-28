@@ -94,15 +94,12 @@ using UInt128 = UInt128_32;
 template<typename T, typename T2, int S> inline void generic_add(T *dst, const T *a, const T *b)
 {
   constexpr int shift = 8 * sizeof(T);
-  const T2 r0 = T2(a[0]) + T2(b[0]);
-  dst[0] = T(r0);
-  T2 carry = r0 >> shift;
-  for (int i = 1; i < S - 1; i++) {
+  T2 carry = 0;
+  for (int i = 0; i < S; i++) {
     const T2 ri = T2(a[i]) + T2(b[i]) + carry;
     dst[i] = T(ri);
     carry = ri >> shift;
   }
-  dst[S - 1] = T(T2(a[S - 1]) + T2(b[S - 1]) + carry);
 }
 
 inline UInt128_32 operator+(const UInt128_32 &a, const UInt128_32 &b)
