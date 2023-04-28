@@ -1333,10 +1333,7 @@ static void btw_smooth_graph_keys(bAnimContext *ac,
                                   const int sample_rate)
 {
   ListBase anim_data = {NULL, NULL};
-  eAnimFilter_Flags filters = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE |
-                               ANIMFILTER_FCURVESONLY | ANIMFILTER_FOREDIT | ANIMFILTER_SEL |
-                               ANIMFILTER_NODUPLIS);
-  ANIM_animdata_filter(ac, &anim_data, filters, ac->data, ac->datatype);
+  ANIM_animdata_filter(ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, ac->datatype);
 
   ButterworthCoefficients *bw_coeff = ED_anim_allocate_butterworth_coefficients(filter_order);
 
