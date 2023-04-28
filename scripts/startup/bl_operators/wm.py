@@ -1357,7 +1357,10 @@ rna_custom_property_type_items = (
     ('PYTHON', "Python", "Edit a python value directly, for unsupported property types"),
 )
 
+rna_generic_subtype_none_item = ('NONE', "Plain Data", "Data values without special behavior")
+
 rna_number_subtype_items = (
+    rna_generic_subtype_none_item,
     ('PIXEL', "Pixel", ""),
     ('PERCENTAGE', "Percentage", ""),
     ('FACTOR', "Factor", ""),
@@ -1369,6 +1372,7 @@ rna_number_subtype_items = (
 )
 
 rna_vector_subtype_items = (
+    rna_generic_subtype_none_item,
     ('COLOR', "Linear Color", "Color in the linear space"),
     ('COLOR_GAMMA', "Gamma-Corrected Color", "Color in the gamma corrected space"),
     ('EULER', "Euler Angles", "Euler rotation angles in radians"),
@@ -1384,14 +1388,11 @@ class WM_OT_properties_edit(Operator):
     bl_options = {'REGISTER', 'INTERNAL'}
 
     def subtype_items_cb(self, context):
-        subtype_items = [
-            ('NONE', "Plain Data", "Data values without special behavior")
-        ]
         if self.property_type == 'FLOAT':
-            subtype_items.extend(rna_number_subtype_items)
+            return rna_number_subtype_items
         elif self.property_type == 'FLOAT_ARRAY':
-            subtype_items.extend(rna_vector_subtype_items)
-        return subtype_items
+            return rna_vector_subtype_items
+        return []
 
     def property_type_update_cb(self, context):
         self.subtype = 'NONE'
