@@ -1017,15 +1017,13 @@ bool OptiXDevice::build_optix_bvh(BVHOptiX *bvh,
                                use_fast_trace_bvh ? 1 : 0));
   bvh->traversable_handle = static_cast<uint64_t>(out_handle);
 
-  /* Wait for all operations to finish. */
-  cuda_assert(cuStreamSynchronize(NULL));
-
   /* Compact acceleration structure to save memory (do not do this in viewport for faster builds).
    */
   if (use_fast_trace_bvh) {
+    const CUDAContextScope scope(this);
     uint64_t compacted_size = sizes.outputSizeInBytes;
     cuda_assert(cuMemcpyDtoH(&compacted_size, compacted_size_prop.result, sizeof(compacted_size)));
-
+    
     /* Temporary memory is no longer needed, so free it now to make space. */
     temp_mem.free();
 
@@ -1058,7 +1056,6 @@ bool OptiXDevice::build_optix_bvh(BVHOptiX *bvh,
 
 void OptiXDevice::build_bvh(BVH *bvh, DeviceScene *dscene, Progress &progress, bool refit)
 {
-  const CUDAContextScope scope(this);
   const bool use_fast_trace_bvh = (bvh->params.bvh_type == BVH_TYPE_STATIC);
 
   free_bvh_memory_delayed();
