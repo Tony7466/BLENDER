@@ -434,9 +434,8 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
         const int space_index = lnors_spacearr.corner_space_indices[mirrorj];
         const blender::bke::mesh::NormalFanSpace &space = lnors_spacearr.spaces[space_index];
 
-        copy_v2_v2_short(clnors[mirrorj],
-                         blender::bke::mesh::fan_space_custom_normal_to_data(
-                             space, loop_normals[mirrorj], loop_normals[mirrorj]));
+        clnors[mirrorj] = blender::bke::mesh::fan_space_custom_normal_to_data(
+            &space, loop_normals[mirrorj], loop_normals[mirrorj]);
       }
     }
   }

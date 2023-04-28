@@ -595,12 +595,12 @@ MINLINE short unit_float_to_short(const float val)
 }
 
 namespace blender::bke::mesh {
-static float3 fan_space_custom_data_to_normal(const NormalFanSpace &lnor_space,
+static float3 fan_space_custom_data_to_normal(const NormalFanSpace *lnor_space,
                                               const float3 lnor_no_custom,
                                               const short2 clnor_data)
 {
   /* NOP custom normal data or invalid lnor space, return. */
-  if (clnor_data[0] == 0 || lnor_space.ref_alpha == 0.0f || lnor_space.ref_beta == 0.0f) {
+  if (clnor_data[0] == 0 || lnor_space->ref_alpha == 0.0f || lnor_space->ref_beta == 0.0f) {
     return lnor_no_custom;
   }
 
@@ -610,21 +610,21 @@ static float3 fan_space_custom_data_to_normal(const NormalFanSpace &lnor_space,
    * (could not even get it working under linux though)! */
   const float pi2 = float(M_PI * 2.0);
   const float alphafac = unit_short_to_float(clnor_data[0]);
-  const float alpha = (alphafac > 0.0f ? lnor_space.ref_alpha : pi2 - lnor_space.ref_alpha) *
+  const float alpha = (alphafac > 0.0f ? lnor_space->ref_alpha : pi2 - lnor_space->ref_alpha) *
                       alphafac;
   const float betafac = unit_short_to_float(clnor_data[1]);
 
   mul_v3_v3fl(r_custom_lnor, lnor_no_custom, cosf(alpha));
 
   if (betafac == 0.0f) {
-    madd_v3_v3fl(r_custom_lnor, lnor_space.vec_ref, sinf(alpha));
+    madd_v3_v3fl(r_custom_lnor, lnor_space->vec_ref, sinf(alpha));
   }
   else {
     const float sinalpha = sinf(alpha);
-    const float beta = (betafac > 0.0f ? lnor_space.ref_beta : pi2 - lnor_space.ref_beta) *
+    const float beta = (betafac > 0.0f ? lnor_space->ref_beta : pi2 - lnor_space->ref_beta) *
                        betafac;
-    madd_v3_v3fl(r_custom_lnor, lnor_space.vec_ref, sinalpha * cosf(beta));
-    madd_v3_v3fl(r_custom_lnor, lnor_space.vec_ortho, sinalpha * sinf(beta));
+    madd_v3_v3fl(r_custom_lnor, lnor_space->vec_ref, sinalpha * cosf(beta));
+    madd_v3_v3fl(r_custom_lnor, lnor_space->vec_ortho, sinalpha * sinf(beta));
   }
 
   return r_custom_lnor;
@@ -643,11 +643,11 @@ void BKE_lnor_space_custom_data_to_normal(const MLoopNorSpace *lnor_space,
   space.ref_alpha = lnor_space->ref_alpha;
   space.ref_beta = lnor_space->ref_beta;
   copy_v3_v3(r_custom_lnor,
-             fan_space_custom_data_to_normal(space, lnor_space->vec_lnor, clnor_data));
+             fan_space_custom_data_to_normal(&space, lnor_space->vec_lnor, clnor_data));
 }
 
 namespace blender::bke::mesh {
-short2 fan_space_custom_normal_to_data(const NormalFanSpace &lnor_space,
+short2 fan_space_custom_normal_to_data(const NormalFanSpace *lnor_space,
                                        const float3 lnor_no_custom,
                                        const float3 custom_lnor)
 {
@@ -665,13 +665,13 @@ short2 fan_space_custom_normal_to_data(const NormalFanSpace &lnor_space,
   short2 r_clnor_data;
 
   alpha = saacosf(cos_alpha);
-  if (alpha > lnor_space.ref_alpha) {
+  if (alpha > lnor_space->ref_alpha) {
     /* Note we could stick to [0, pi] range here,
      * but makes decoding more complex, not worth it. */
-    r_clnor_data[0] = unit_float_to_short(-(pi2 - alpha) / (pi2 - lnor_space.ref_alpha));
+    r_clnor_data[0] = unit_float_to_short(-(pi2 - alpha) / (pi2 - lnor_space->ref_alpha));
   }
   else {
-    r_clnor_data[0] = unit_float_to_short(alpha / lnor_space.ref_alpha);
+    r_clnor_data[0] = unit_float_to_short(alpha / lnor_space->ref_alpha);
   }
 
   /* Project custom lnor on (vec_ref, vec_ortho) plane. */
@@ -679,19 +679,19 @@ short2 fan_space_custom_normal_to_data(const NormalFanSpace &lnor_space,
   add_v3_v3(vec, custom_lnor);
   normalize_v3(vec);
 
-  cos_beta = dot_v3v3(lnor_space.vec_ref, vec);
+  cos_beta = dot_v3v3(lnor_space->vec_ref, vec);
 
   if (cos_beta < LNOR_SPACE_TRIGO_THRESHOLD) {
     float beta = saacosf(cos_beta);
-    if (dot_v3v3(lnor_space.vec_ortho, vec) < 0.0f) {
+    if (dot_v3v3(lnor_space->vec_ortho, vec) < 0.0f) {
       beta = pi2 - beta;
     }
 
-    if (beta > lnor_space.ref_beta) {
-      r_clnor_data[1] = unit_float_to_short(-(pi2 - beta) / (pi2 - lnor_space.ref_beta));
+    if (beta > lnor_space->ref_beta) {
+      r_clnor_data[1] = unit_float_to_short(-(pi2 - beta) / (pi2 - lnor_space->ref_beta));
     }
     else {
-      r_clnor_data[1] = unit_float_to_short(beta / lnor_space.ref_beta);
+      r_clnor_data[1] = unit_float_to_short(beta / lnor_space->ref_beta);
     }
   }
   else {
@@ -927,7 +927,7 @@ static void lnor_space_for_single_fan(LoopSplitTaskDataCommon *common_data,
 
     if (!clnors_data.is_empty()) {
       loop_normals[ml_curr_index] = fan_space_custom_data_to_normal(
-          *lnor_space, loop_normals[ml_curr_index], clnors_data[ml_curr_index]);
+          lnor_space, loop_normals[ml_curr_index], clnors_data[ml_curr_index]);
     }
   }
 }
@@ -1098,7 +1098,7 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
         /* Extra bonus: since small-stack is local to this function,
          * no more need to empty it at all cost! */
 
-        lnor = fan_space_custom_data_to_normal(*lnor_space, lnor, *clnor_ref);
+        lnor = fan_space_custom_data_to_normal(lnor_space, lnor, *clnor_ref);
       }
     }
 

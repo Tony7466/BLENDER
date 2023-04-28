@@ -92,7 +92,7 @@ struct MeshNormalFanSpaces {
   Array<int> corner_group_lists;
 };
 
-short2 fan_space_custom_normal_to_data(const NormalFanSpace &space,
+short2 fan_space_custom_normal_to_data(const NormalFanSpace *space,
                                        float3 corner_normal_no_custom,
                                        float3 custom_lnor);
 
