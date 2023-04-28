@@ -934,6 +934,7 @@ static void lnor_space_for_single_fan(LoopSplitTaskDataCommon *common_data,
 
 static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
                                   const int ml_curr_index,
+                                  Vector<int, 8> &processed_corners,
                                   NormalFanSpace *lnor_space,
                                   Vector<float3> *edge_vectors)
 {
@@ -972,8 +973,6 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
   short2 *clnor_ref = nullptr;
   int clnors_count = 0;
   bool clnors_invalid = false;
-
-  Vector<int, 8> processed_corners;
 
   /* `mlfan_vert_index` the loop of our current edge might not be the loop of our current vertex!
    */
@@ -1399,17 +1398,21 @@ void normals_calc_loop(const Span<float3> vert_positions,
   });
 
   threading::parallel_for(fan_corners.index_range(), 1024, [&](const IndexRange range) {
+    Vector<int, 8> processed_corners;
     Vector<float3> edge_vectors;
     for (const int i : range) {
       const int corner = fan_corners[i];
       const int space_index = single_corners.size() + i;
       split_loop_nor_fan_do(&common_data,
                             corner,
+                            processed_corners,
                             r_lnors_spacearr ? &r_lnors_spacearr->spaces[space_index] : nullptr,
                             &edge_vectors);
       if (r_lnors_spacearr) {
-        r_lnors_spacearr->corner_space_indices[corner] = space_index;
+        r_lnors_spacearr->corner_space_indices.as_mutable_span().fill_indices(
+            processed_corners.as_span(), space_index);
       }
+      processed_corners.clear();
     }
   });
 
