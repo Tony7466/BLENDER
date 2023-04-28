@@ -355,14 +355,14 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
 #  if OPTIX_ABI_VERSION >= 84
     OptixTask task = nullptr;
     OptixResult result = optixModuleCreateWithTasks(context,
-                                                           &module_options,
-                                                           &pipeline_options,
-                                                           ptx_data.data(),
-                                                           ptx_data.size(),
-                                                           nullptr,
-                                                           nullptr,
-                                                           &optix_module,
-                                                           &task);
+                                                    &module_options,
+                                                    &pipeline_options,
+                                                    ptx_data.data(),
+                                                    ptx_data.size(),
+                                                    nullptr,
+                                                    nullptr,
+                                                    &optix_module,
+                                                    &task);
     if (result == OPTIX_SUCCESS) {
       TaskPool pool;
       execute_optix_task(pool, task, result);
@@ -571,11 +571,11 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
   memset(sbt_data.host_pointer, 0, sizeof(SbtRecord) * NUM_PROGRAM_GROUPS);
   for (int i = 0; i < NUM_PROGRAM_GROUPS; ++i) {
     optix_assert(optixSbtRecordPackHeader(groups[i], &sbt_data[i]));
-  # if OPTIX_ABI_VERSION >= 84
+#  if OPTIX_ABI_VERSION >= 84
     optix_assert(optixProgramGroupGetStackSize(groups[i], &stack_size[i], nullptr));
-  # else
+#  else
     optix_assert(optixProgramGroupGetStackSize(groups[i], &stack_size[i]));
-  # endif
+#  endif
   }
   sbt_data.copy_to_device(); /* Upload SBT to device. */
 
@@ -597,9 +597,9 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
 
   OptixPipelineLinkOptions link_options = {};
   link_options.maxTraceDepth = 1;
-# if OPTIX_ABI_VERSION < 84
+#  if OPTIX_ABI_VERSION < 84
   link_options.debugLevel = module_options.debugLevel;
-# endif
+#  endif
 
   if (use_osl) {
     /* Re-create OSL pipeline in case kernels are reloaded after it has been created before. */
@@ -790,16 +790,16 @@ bool OptiXDevice::load_osl_kernels()
       return false;
     }
 
-    # if OPTIX_ABI_VERSION >= 84
+#    if OPTIX_ABI_VERSION >= 84
     const OptixResult result = optixModuleCreate(context,
-                                                        &module_options,
-                                                        &pipeline_options,
-                                                        ptx_data.data(),
-                                                        ptx_data.size(),
-                                                        nullptr,
-                                                        0,
-                                                        &osl_modules.back());
-    # else
+                                                 &module_options,
+                                                 &pipeline_options,
+                                                 ptx_data.data(),
+                                                 ptx_data.size(),
+                                                 nullptr,
+                                                 0,
+                                                 &osl_modules.back());
+#    else
     const OptixResult result = optixModuleCreateFromPTX(context,
                                                         &module_options,
                                                         &pipeline_options,
@@ -808,7 +808,7 @@ bool OptiXDevice::load_osl_kernels()
                                                         nullptr,
                                                         0,
                                                         &osl_modules.back());
-    # endif
+#    endif
     if (result != OPTIX_SUCCESS) {
       set_error(string_printf("Failed to load OptiX OSL services kernel from '%s' (%s)",
                               ptx_filename.c_str(),
@@ -836,14 +836,14 @@ bool OptiXDevice::load_osl_kernels()
 #    if OPTIX_ABI_VERSION >= 84
     OptixTask task = nullptr;
     results[i] = optixModuleCreateWithTasks(context,
-                                                   &module_options,
-                                                   &pipeline_options,
-                                                   osl_kernels[i].ptx.data(),
-                                                   osl_kernels[i].ptx.size(),
-                                                   nullptr,
-                                                   nullptr,
-                                                   &osl_modules[i],
-                                                   &task);
+                                            &module_options,
+                                            &pipeline_options,
+                                            osl_kernels[i].ptx.data(),
+                                            osl_kernels[i].ptx.size(),
+                                            nullptr,
+                                            nullptr,
+                                            &osl_modules[i],
+                                            &task);
     if (results[i] == OPTIX_SUCCESS) {
       execute_optix_task(pool, task, results[i]);
     }
@@ -908,21 +908,21 @@ bool OptiXDevice::load_osl_kernels()
   sbt_data.alloc(NUM_PROGRAM_GROUPS + osl_groups.size());
   for (int i = 0; i < NUM_PROGRAM_GROUPS; ++i) {
     optix_assert(optixSbtRecordPackHeader(groups[i], &sbt_data[i]));
-    # if OPTIX_ABI_VERSION >= 84
+#    if OPTIX_ABI_VERSION >= 84
     optix_assert(optixProgramGroupGetStackSize(groups[i], &stack_size[i], nullptr));
-    # else
+#    else
     optix_assert(optixProgramGroupGetStackSize(groups[i], &stack_size[i]));
-    # endif
+#    endif
   }
   for (size_t i = 0; i < osl_groups.size(); ++i) {
     if (osl_groups[i] != NULL) {
       optix_assert(optixSbtRecordPackHeader(osl_groups[i], &sbt_data[NUM_PROGRAM_GROUPS + i]));
-      # if OPTIX_ABI_VERSION >= 84
+#    if OPTIX_ABI_VERSION >= 84
       optix_assert(optixProgramGroupGetStackSize(osl_groups[i], &osl_stack_size[i], nullptr));
-      # else
+#    else
       optix_assert(optixProgramGroupGetStackSize(osl_groups[i], &osl_stack_size[i]));
-      # endif
-   }
+#    endif
+    }
     else {
       /* Default to "__direct_callable__dummy_services", so that OSL evaluation for empty
        * materials has direct callables to call and does not crash. */
@@ -933,9 +933,9 @@ bool OptiXDevice::load_osl_kernels()
 
   OptixPipelineLinkOptions link_options = {};
   link_options.maxTraceDepth = 0;
-  # if OPTIX_ABI_VERSION < 84
+#    if OPTIX_ABI_VERSION < 84
   link_options.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
-  # endif
+#    endif
 
   {
     vector<OptixProgramGroup> pipeline_groups;
