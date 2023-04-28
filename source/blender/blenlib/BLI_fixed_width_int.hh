@@ -13,6 +13,8 @@
 namespace blender::fixed_width_int {
 
 template<typename T, int S> struct UIntF {
+  using type = T;
+  static constexpr int Size = S;
   T v[S];
 
   UIntF() = default;
@@ -45,9 +47,19 @@ template<typename T, int S> struct UIntF {
   }
 };
 
+template<typename T>
+using double_uint_type = std::conditional_t<
+    std::is_same_v<T, uint8_t>,
+    uint16_t,
+    std::conditional_t<std::is_same_v<T, uint16_t>,
+                       uint32_t,
+                       std::conditional_t<std::is_same_v<T, uint32_t>, uint64_t, void>>>;
+
+using UInt128_8 = UIntF<uint8_t, 16>;
+using Uint128_16 = UIntF<uint16_t, 8>;
 using UInt128_32 = UIntF<uint32_t, 4>;
 
-using UInt128 = UInt128_32;
+using UInt128 = Uint128_16;
 
 template<typename T, typename T2, int S> inline void generic_add(T *dst, const T *a, const T *b)
 {
@@ -60,10 +72,11 @@ template<typename T, typename T2, int S> inline void generic_add(T *dst, const T
   }
 }
 
-inline UInt128_32 operator+(const UInt128_32 &a, const UInt128_32 &b)
+template<typename T, int Size, BLI_ENABLE_IF((!std::is_void_v<double_uint_type<T>>))>
+inline UIntF<T, Size> operator+(const UIntF<T, Size> &a, const UIntF<T, Size> &b)
 {
-  UInt128_32 result;
-  generic_add<uint32_t, uint64_t, 4>(result.v, a.v, b.v);
+  UIntF<T, Size> result;
+  generic_add<T, double_uint_type<T>, Size>(result.v, a.v, b.v);
   return result;
 }
 
@@ -91,10 +104,11 @@ template<typename T, typename T2, int S> inline void generic_mul(T *dst, const T
   }
 }
 
-inline UInt128_32 operator*(const UInt128_32 &a, const UInt128_32 &b)
+template<typename T, int Size, BLI_ENABLE_IF((!std::is_void_v<double_uint_type<T>>))>
+inline UIntF<T, Size> operator*(const UIntF<T, Size> &a, const UIntF<T, Size> &b)
 {
-  UInt128_32 result;
-  generic_mul<uint32_t, uint64_t, 4>(result.v, a.v, b.v);
+  UIntF<T, Size> result;
+  generic_mul<T, double_uint_type<T>, Size>(result.v, a.v, b.v);
   return result;
 }
 
