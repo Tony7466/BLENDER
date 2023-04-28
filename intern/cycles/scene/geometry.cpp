@@ -907,7 +907,7 @@ void GeometryManager::device_update(Device *device,
     /* Parallel upload the geometry data to the devices and
        calculate or refit the BVHs */
     parallel_for(
-        size_t(0), num_scenes, [=, this, &progress](const size_t idx) {
+        size_t(0), num_scenes, [=, &progress](const size_t idx) {
           device_data_xfer_and_bvh_update(idx,
                                           scene,
                                           dscene,
