@@ -1295,7 +1295,7 @@ void remove_legacy_instances_on(Main *bmain, ListBase &lb_objects)
     else {
       instances_node_tree = instances_on_faces(objects, tree_name, bmain, cached_node_trees);
     }
-    object_push_instances_modifier(bmain, modifier_name, *parent, *instances_node_tree);
+    object_push_instances_modifier(modifier_name, bmain, *parent, *instances_node_tree);
 
     parent->transflag = 0;
   }
