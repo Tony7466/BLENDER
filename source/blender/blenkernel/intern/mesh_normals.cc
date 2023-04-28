@@ -1412,6 +1412,20 @@ void normals_calc_loop(const Span<float3> vert_positions,
       }
     }
   });
+
+  for (const int i : corner_verts.index_range()) {
+    std::cout << "Corner " << i << '\n';
+    std::cout << "  Vert: " << corner_verts[i] << '\n';
+    std::cout << "  Normal: " << r_loop_normals[i] << '\n';
+    if (r_lnors_spacearr) {
+      const NormalFanSpace &space =
+          r_lnors_spacearr->spaces[r_lnors_spacearr->corner_space_indices[i]];
+      std::cout << "  vec_ref: " << space.vec_ref << '\n';
+      std::cout << "  vec_ortho: " << space.vec_ortho << '\n';
+      std::cout << "  ref_alpha: " << space.ref_alpha << '\n';
+      std::cout << "  ref_beta: " << space.ref_beta << '\n';
+    }
+  }
 }
 
 #undef INDEX_UNSET
