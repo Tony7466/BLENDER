@@ -91,7 +91,7 @@ struct UInt128_32 {
 
 using UInt128 = UInt128_32;
 
-template<typename T, typename T2, int S> inline void add_fallback(T *dst, const T *a, const T *b)
+template<typename T, typename T2, int S> inline void generic_add(T *dst, const T *a, const T *b)
 {
   constexpr int shift = 8 * sizeof(T);
   const T2 r0 = T2(a[0]) + T2(b[0]);
@@ -108,7 +108,7 @@ template<typename T, typename T2, int S> inline void add_fallback(T *dst, const 
 inline UInt128_32 operator+(const UInt128_32 &a, const UInt128_32 &b)
 {
   UInt128_32 result;
-  add_fallback<uint32_t, uint64_t, 4>(&result.v1, &a.v1, &b.v1);
+  generic_add<uint32_t, uint64_t, 4>(&result.v1, &a.v1, &b.v1);
   return result;
 
   const uint64_t r1 = uint64_t(a.v1) + uint64_t(b.v1);
@@ -138,8 +138,36 @@ inline UInt128_32 operator*(const UInt128_32 &a, const uint32_t b)
   return result;
 }
 
+template<typename T, typename T2, int S> inline void generic_mul(T *dst, const T *a, const T *b)
+{
+  constexpr int shift = 8 * sizeof(T);
+
+  T2 r[S] = {};
+
+  for (int i = 0; i < S; i++) {
+    const T2 bi = T2(b[i]);
+    T2 carry = 0;
+    for (int j = 0; j < S - i; j++) {
+      const T2 rji = T2(a[j]) * bi + carry;
+      carry = rji >> shift;
+      r[i + j] += T2(T(rji));
+    }
+  }
+
+  T2 carry = 0;
+  for (int i = 0; i < S; i++) {
+    const T2 ri = r[i] + carry;
+    carry = ri >> shift;
+    dst[i] = T(ri);
+  }
+}
+
 inline UInt128_32 operator*(const UInt128_32 &a, const UInt128_32 &b)
 {
+  UInt128_32 result;
+  generic_mul<uint32_t, uint64_t, 4>(&result.v1, &a.v1, &b.v1);
+  return result;
+
   const uint64_t r1_1 = uint64_t(a.v1) * uint64_t(b.v1);
   const uint64_t r1_2 = uint64_t(a.v2) * uint64_t(b.v1) + (r1_1 >> 32);
   const uint64_t r1_3 = uint64_t(a.v3) * uint64_t(b.v1) + (r1_2 >> 32);
@@ -161,7 +189,6 @@ inline UInt128_32 operator*(const UInt128_32 &a, const UInt128_32 &b)
   const uint64_t r4 = uint64_t(uint32_t(r1_4)) + uint64_t(uint32_t(r2_4)) +
                       uint64_t(uint32_t(r3_4)) + uint64_t(uint32_t(r4_4)) + (r3 >> 32);
 
-  UInt128_32 result;
   result.v1 = uint32_t(r1);
   result.v2 = uint32_t(r2);
   result.v3 = uint32_t(r3);
