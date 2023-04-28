@@ -1621,9 +1621,8 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
         float *nor = r_custom_loop_normals[nidx];
 
         const int space_index = lnors_spacearr.corner_space_indices[i];
-        copy_v2_v2_short(r_clnors_data[i],
-                         fan_space_custom_normal_to_data(
-                             lnors_spacearr.spaces[space_index], loop_normals[i], nor));
+        r_clnors_data[i] = fan_space_custom_normal_to_data(
+            lnors_spacearr.spaces[space_index], loop_normals[i], nor);
         done_loops[i].reset();
       }
       else {
