@@ -926,8 +926,7 @@ float ED_view3d_grid_view_scale(Scene *scene,
       const void *usys;
       int len;
       BKE_unit_system_get(scene->unit.system, B_UNIT_LENGTH, &usys, &len);
-
-      if (usys) {
+      if (usys && i < len) {
         *r_grid_unit = IFACE_(BKE_unit_display_name_get(usys, len - i - 1));
       }
     }
@@ -1976,10 +1975,10 @@ ImBuf *ED_view3d_draw_offscreen_imbuf(Depsgraph *depsgraph,
                            nullptr);
 
   if (ibuf->rect_float) {
-    GPU_offscreen_read_pixels(ofs, GPU_DATA_FLOAT, ibuf->rect_float);
+    GPU_offscreen_read_color(ofs, GPU_DATA_FLOAT, ibuf->rect_float);
   }
   else if (ibuf->rect) {
-    GPU_offscreen_read_pixels(ofs, GPU_DATA_UBYTE, ibuf->rect);
+    GPU_offscreen_read_color(ofs, GPU_DATA_UBYTE, ibuf->rect);
   }
 
   /* unbind */
