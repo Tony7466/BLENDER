@@ -1485,6 +1485,5 @@ void ED_mesh_split_faces(Mesh *mesh)
     return;
   }
 
-  const bke::AnonymousAttributePropagationInfo propagation_info;
-  geometry::split_edges(*mesh, split_mask, propagation_info);
+  geometry::split_edges(*mesh, split_mask, {});
 }

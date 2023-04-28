@@ -10,6 +10,7 @@
 #include "DNA_meshdata_types.h"
 
 #include "BLI_rand.hh"
+#include "BLI_task.hh"
 
 namespace blender::bke::mesh_surface_sample {
 
@@ -49,21 +50,21 @@ void sample_point_normals(const Span<int> corner_verts,
   }
 }
 
-void sample_point_attribute(const Mesh &mesh,
+void sample_point_attribute(const Span<int> corner_verts,
+                            const Span<MLoopTri> looptris,
                             const Span<int> looptri_indices,
                             const Span<float3> bary_coords,
                             const GVArray &src,
                             const IndexMask mask,
                             const GMutableSpan dst)
 {
-  BLI_assert(src.size() == mesh.totvert);
   BLI_assert(src.type() == dst.type());
 
   const CPPType &type = src.type();
   attribute_math::convert_to_static_type(type, [&](auto dummy) {
     using T = decltype(dummy);
-    sample_point_attribute<T>(mesh.corner_verts(),
-                              mesh.looptris(),
+    sample_point_attribute<T>(corner_verts,
+                              looptris,
                               looptri_indices,
                               bary_coords,
                               src.typed<T>(),
@@ -81,10 +82,8 @@ BLI_NOINLINE static void sample_corner_attribute(const Span<MLoopTri> looptris,
                                                  const MutableSpan<T> dst)
 {
   for (const int i : mask) {
-    const int looptri_index = looptri_indices[i];
-    const MLoopTri &tri = looptris[looptri_index];
-    const float3 &bary_coord = bary_coords[i];
-    dst[i] = attribute_math::mix3(bary_coord, src[tri.tri[0]], src[tri.tri[1]], src[tri.tri[2]]);
+    const MLoopTri &tri = looptris[looptri_indices[i]];
+    dst[i] = sample_corner_attribute_with_bary_coords(bary_coords[i], tri, src);
   }
 }
 
@@ -96,30 +95,26 @@ void sample_corner_normals(const Span<MLoopTri> looptris,
                            const MutableSpan<float3> dst)
 {
   for (const int i : mask) {
-    const int looptri_index = looptri_indices[i];
-    const MLoopTri &tri = looptris[looptri_index];
-    const float3 &bary_coord = bary_coords[i];
-    const float3 value = attribute_math::mix3(
-        bary_coord, src[tri.tri[0]], src[tri.tri[1]], src[tri.tri[2]]);
+    const MLoopTri &tri = looptris[looptri_indices[i]];
+    const float3 value = sample_corner_attribute_with_bary_coords(bary_coords[i], tri, src);
     dst[i] = math::normalize(value);
   }
 }
 
-void sample_corner_attribute(const Mesh &mesh,
+void sample_corner_attribute(const Span<MLoopTri> looptris,
                              const Span<int> looptri_indices,
                              const Span<float3> bary_coords,
                              const GVArray &src,
                              const IndexMask mask,
                              const GMutableSpan dst)
 {
-  BLI_assert(src.size() == mesh.totloop);
   BLI_assert(src.type() == dst.type());
 
   const CPPType &type = src.type();
   attribute_math::convert_to_static_type(type, [&](auto dummy) {
     using T = decltype(dummy);
     sample_corner_attribute<T>(
-        mesh.looptris(), looptri_indices, bary_coords, src.typed<T>(), mask, dst.typed<T>());
+        looptris, looptri_indices, bary_coords, src.typed<T>(), mask, dst.typed<T>());
   });
 }
 
@@ -138,20 +133,18 @@ void sample_face_attribute(const Span<MLoopTri> looptris,
   }
 }
 
-void sample_face_attribute(const Mesh &mesh,
+void sample_face_attribute(const Span<MLoopTri> looptris,
                            const Span<int> looptri_indices,
                            const GVArray &src,
                            const IndexMask mask,
                            const GMutableSpan dst)
 {
-  BLI_assert(src.size() == mesh.totpoly);
   BLI_assert(src.type() == dst.type());
 
   const CPPType &type = src.type();
   attribute_math::convert_to_static_type(type, [&](auto dummy) {
     using T = decltype(dummy);
-    sample_face_attribute<T>(
-        mesh.looptris(), looptri_indices, src.typed<T>(), mask, dst.typed<T>());
+    sample_face_attribute<T>(looptris, looptri_indices, src.typed<T>(), mask, dst.typed<T>());
   });
 }
 
@@ -177,14 +170,8 @@ Span<float3> MeshAttributeInterpolator::ensure_barycentric_coords()
   const Span<MLoopTri> looptris = mesh_->looptris();
 
   for (const int i : mask_) {
-    const int looptri_index = looptri_indices_[i];
-    const MLoopTri &looptri = looptris[looptri_index];
-
-    interp_weights_tri_v3(bary_coords_[i],
-                          positions[corner_verts[looptri.tri[0]]],
-                          positions[corner_verts[looptri.tri[1]]],
-                          positions[corner_verts[looptri.tri[2]]],
-                          positions_[i]);
+    const MLoopTri &tri = looptris[looptri_indices_[i]];
+    bary_coords_[i] = compute_bary_coord_in_triangle(positions, corner_verts, tri, positions_[i]);
   }
   return bary_coords_;
 }
@@ -239,13 +226,14 @@ void MeshAttributeInterpolator::sample_data(const GVArray &src,
   /* Interpolate the source attributes on the surface. */
   switch (domain) {
     case ATTR_DOMAIN_POINT:
-      sample_point_attribute(*mesh_, looptri_indices_, weights, src, mask_, dst);
+      sample_point_attribute(
+          mesh_->corner_verts(), mesh_->looptris(), looptri_indices_, weights, src, mask_, dst);
       break;
     case ATTR_DOMAIN_FACE:
-      sample_face_attribute(*mesh_, looptri_indices_, src, mask_, dst);
+      sample_face_attribute(mesh_->looptris(), looptri_indices_, src, mask_, dst);
       break;
     case ATTR_DOMAIN_CORNER:
-      sample_corner_attribute(*mesh_, looptri_indices_, weights, src, mask_, dst);
+      sample_corner_attribute(mesh_->looptris(), looptri_indices_, weights, src, mask_, dst);
       break;
     case ATTR_DOMAIN_EDGE:
       /* Not yet supported. */

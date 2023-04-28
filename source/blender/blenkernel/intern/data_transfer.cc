@@ -385,7 +385,7 @@ static void data_transfer_dtdata_type_postprocess(Mesh *me_dst,
                                                 sharp_faces,
                                                 sharp_edges.span,
                                                 {loop_nors_dst, me_dst->totloop},
-                                                custom_nors_dst);
+                                                {custom_nors_dst, me_dst->totloop});
     sharp_edges.finish();
   }
 }

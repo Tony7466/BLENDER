@@ -112,7 +112,7 @@ void normals_loop_custom_set(Span<float3> vert_positions,
                              const VArray<bool> &sharp_faces,
                              MutableSpan<bool> sharp_edges,
                              MutableSpan<float3> r_custom_loop_normals,
-                             short2 *r_clnors_data);
+                             MutableSpan<short2> r_clnors_data);
 
 void normals_loop_custom_set_from_verts(Span<float3> vert_positions,
                                         Span<int2> edges,
@@ -124,7 +124,7 @@ void normals_loop_custom_set_from_verts(Span<float3> vert_positions,
                                         const VArray<bool> &sharp_faces,
                                         MutableSpan<bool> sharp_edges,
                                         MutableSpan<float3> r_custom_vert_normals,
-                                        short2 *r_clnors_data);
+                                        MutableSpan<short2> r_clnors_data);
 
 /**
  * Define sharp edges as needed to mimic 'autosmooth' from angle threshold.

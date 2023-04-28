@@ -255,7 +255,8 @@ BLI_NOINLINE static void interpolate_attribute(const Mesh &mesh,
 {
   switch (source_domain) {
     case ATTR_DOMAIN_POINT: {
-      bke::mesh_surface_sample::sample_point_attribute(mesh,
+      bke::mesh_surface_sample::sample_point_attribute(mesh.corner_verts(),
+                                                       mesh.looptris(),
                                                        looptri_indices,
                                                        bary_coords,
                                                        source_data,
@@ -264,7 +265,7 @@ BLI_NOINLINE static void interpolate_attribute(const Mesh &mesh,
       break;
     }
     case ATTR_DOMAIN_CORNER: {
-      bke::mesh_surface_sample::sample_corner_attribute(mesh,
+      bke::mesh_surface_sample::sample_corner_attribute(mesh.looptris(),
                                                         looptri_indices,
                                                         bary_coords,
                                                         source_data,
@@ -273,8 +274,11 @@ BLI_NOINLINE static void interpolate_attribute(const Mesh &mesh,
       break;
     }
     case ATTR_DOMAIN_FACE: {
-      bke::mesh_surface_sample::sample_face_attribute(
-          mesh, looptri_indices, source_data, IndexMask(output_data.size()), output_data);
+      bke::mesh_surface_sample::sample_face_attribute(mesh.looptris(),
+                                                      looptri_indices,
+                                                      source_data,
+                                                      IndexMask(output_data.size()),
+                                                      output_data);
       break;
     }
     default: {
@@ -298,25 +302,19 @@ BLI_NOINLINE static void propagate_existing_attributes(
     const AttributeIDRef attribute_id = entry.key;
     const eCustomDataType output_data_type = entry.value.data_type;
 
-    GAttributeReader source_attribute = mesh_attributes.lookup(attribute_id);
-    if (!source_attribute) {
+    GAttributeReader src = mesh_attributes.lookup(attribute_id);
+    if (!src) {
       continue;
     }
 
-    /* The output domain is always #ATTR_DOMAIN_POINT, since we are creating a point cloud. */
-    GSpanAttributeWriter attribute_out = point_attributes.lookup_or_add_for_write_only_span(
+    GSpanAttributeWriter dst = point_attributes.lookup_or_add_for_write_only_span(
         attribute_id, ATTR_DOMAIN_POINT, output_data_type);
-    if (!attribute_out) {
+    if (!dst) {
       continue;
     }
 
-    interpolate_attribute(mesh,
-                          bary_coords,
-                          looptri_indices,
-                          source_attribute.domain,
-                          source_attribute.varray,
-                          attribute_out.span);
-    attribute_out.finish();
+    interpolate_attribute(mesh, bary_coords, looptri_indices, src.domain, src.varray, dst.span);
+    dst.finish();
   }
 }
 
@@ -341,12 +339,11 @@ static void compute_normal_outputs(const Mesh &mesh,
                                                      mesh.vert_normals(),
                                                      IndexMask(looptri_indices.index_range()),
                                                      r_normals);
-
       break;
     }
     case ATTR_DOMAIN_FACE: {
       const Span<float3> poly_normals = mesh.poly_normals();
-      bke::mesh_surface_sample::sample_face_attribute(mesh,
+      bke::mesh_surface_sample::sample_face_attribute(mesh.looptris(),
                                                       looptri_indices,
                                                       VArray<float3>::ForSpan(poly_normals),
                                                       IndexMask(looptri_indices.index_range()),

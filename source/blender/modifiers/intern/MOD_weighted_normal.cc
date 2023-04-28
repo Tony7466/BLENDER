@@ -78,7 +78,7 @@ struct WeightedNormalData {
   blender::Span<int> corner_verts;
   blender::Span<int> corner_edges;
   blender::Span<int> loop_to_poly;
-  blender::short2 *clnors;
+  blender::MutableSpan<blender::short2> clnors;
   bool has_clnors; /* True if clnors already existed, false if we had to create them. */
 
   blender::OffsetIndices<int> polys;
@@ -190,7 +190,7 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
   const blender::Span<int> corner_verts = wn_data->corner_verts;
   const blender::Span<int> corner_edges = wn_data->corner_edges;
 
-  blender::short2 *clnors = wn_data->clnors;
+  MutableSpan<short2> clnors = wn_data->clnors;
   const blender::Span<int> loop_to_poly = wn_data->loop_to_poly;
 
   const blender::Span<blender::float3> poly_normals = wn_data->poly_normals;
@@ -230,7 +230,7 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
                                  wn_data->poly_normals,
                                  blender::VArray<bool>::ForSpan(wn_data->sharp_edges),
                                  wn_data->sharp_faces,
-                                 has_clnors ? clnors : nullptr,
+                                 has_clnors ? clnors.data() : nullptr,
                                  &lnors_spacearr,
                                  loop_normals);
 
@@ -389,7 +389,7 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
                                             poly_normals,
                                             blender::VArray<bool>::ForSpan(wn_data->sharp_edges),
                                             wn_data->sharp_faces,
-                                            has_clnors ? clnors : nullptr,
+                                            has_clnors ? clnors.data() : nullptr,
                                             nullptr,
                                             loop_normals);
 
@@ -568,7 +568,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   wn_data.corner_verts = corner_verts;
   wn_data.corner_edges = corner_edges;
   wn_data.loop_to_poly = loop_to_poly_map;
-  wn_data.clnors = clnors;
+  wn_data.clnors = {clnors, mesh->totloop};
   wn_data.has_clnors = has_clnors;
 
   wn_data.polys = polys;

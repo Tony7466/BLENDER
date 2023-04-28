@@ -35,7 +35,7 @@ float3 compute_surface_point_normal(const MLoopTri &looptri,
                                     const float3 &bary_coord,
                                     const Span<float3> corner_normals)
 {
-  const float3 value = bke::mesh_surface_sample::sample_corner_attrribute_with_bary_coords(
+  const float3 value = bke::mesh_surface_sample::sample_corner_attribute_with_bary_coords(
       bary_coord, looptri, corner_normals);
   return math::normalize(value);
 }
@@ -340,7 +340,7 @@ AddCurvesOnMeshOutputs add_curves_on_mesh(CurvesGeometry &curves,
   /* Find surface normal at root points. */
   Array<float3> new_normals_su(added_curves_num);
   bke::mesh_surface_sample::sample_corner_attribute(
-      *inputs.surface,
+      inputs.surface_looptris,
       looptri_indices,
       bary_coords,
       VArray<float3>::ForSpan(inputs.corner_normals_su),

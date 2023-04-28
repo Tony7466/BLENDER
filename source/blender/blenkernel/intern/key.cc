@@ -2280,7 +2280,7 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
         "sharp_edge", ATTR_DOMAIN_EDGE, false);
     const blender::VArray<bool> sharp_faces = *attributes.lookup_or_default<bool>(
         "sharp_face", ATTR_DOMAIN_FACE, false);
-    const blender::short2 *custom_normals = static_cast<const blender::short2 *>(
+    const blender::short2 *clnors = static_cast<const blender::short2 *>(
         CustomData_get_layer(&mesh->ldata, CD_CUSTOMLOOPNORMAL));
     blender::bke::mesh::normals_calc_loop(
         {reinterpret_cast<const blender::float3 *>(positions), mesh->totvert},
@@ -2293,7 +2293,7 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
         {reinterpret_cast<blender::float3 *>(poly_normals), polys.size()},
         sharp_edges,
         sharp_faces,
-        custom_normals,
+        clnors,
         nullptr,
         {reinterpret_cast<blender::float3 *>(r_loop_normals), corner_verts.size()});
   }
