@@ -234,7 +234,7 @@ TEST(bit_span, InPlaceAnd)
 
 TEST(bit_span, ForEach1)
 {
-  std::array<uint64_t, 2> data;
+  std::array<uint64_t, 2> data{};
   MutableBitSpan span(data.data(), data.size() * BitsPerInt);
   for (const int i : {1, 28, 37, 86}) {
     span[i].set();
