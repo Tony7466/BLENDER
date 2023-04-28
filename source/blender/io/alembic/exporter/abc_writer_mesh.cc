@@ -390,7 +390,7 @@ void ABCGenericMeshWriter::get_geo_groups(Object *object,
                                           std::map<std::string, std::vector<int32_t>> &geo_groups)
 {
   const bke::AttributeAccessor attributes = mesh->attributes();
-  const VArraySpan<int> material_indices = attributes.lookup_or_default<int>(
+  const VArraySpan<int> material_indices = *attributes.lookup_or_default<int>(
       "material_index", ATTR_DOMAIN_FACE, 0);
 
   for (const int i : material_indices.index_range()) {
@@ -477,13 +477,13 @@ static void get_edge_creases(struct Mesh *mesh,
   if (!creases) {
     return;
   }
-  const Span<MEdge> edges = mesh->edges();
+  const Span<int2> edges = mesh->edges();
   for (const int i : edges.index_range()) {
     const float sharpness = creases[i];
 
     if (sharpness != 0.0f) {
-      indices.push_back(edges[i].v1);
-      indices.push_back(edges[i].v2);
+      indices.push_back(edges[i][0]);
+      indices.push_back(edges[i][1]);
       sharpnesses.push_back(sharpness);
     }
   }

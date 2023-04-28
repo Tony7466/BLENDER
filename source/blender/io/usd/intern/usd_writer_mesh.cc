@@ -109,7 +109,7 @@ void USDGenericMeshWriter::write_color_data(const Mesh *mesh,
   pxr::UsdGeomPrimvar colors_pv = pvApi.CreatePrimvar(
       primvar_name, pxr::SdfValueTypeNames->Color3fArray, prim_varying);
 
-  const VArray<ColorGeometry4f> attribute = mesh->attributes().lookup_or_default<ColorGeometry4f>(
+  const VArray<ColorGeometry4f> attribute = *mesh->attributes().lookup_or_default<ColorGeometry4f>(
       attribute_id, meta_data.domain, {0.0f, 0.0f, 0.0f, 1.0f});
 
   pxr::VtArray<pxr::GfVec3f> colors_data;
@@ -346,7 +346,7 @@ static void get_loops_polys(const Mesh *mesh, USDMeshData &usd_mesh_data)
   /* Only construct face groups (a.k.a. geometry subsets) when we need them for material
    * assignments. */
   const bke::AttributeAccessor attributes = mesh->attributes();
-  const VArray<int> material_indices = attributes.lookup_or_default<int>(
+  const VArray<int> material_indices = *attributes.lookup_or_default<int>(
       "material_index", ATTR_DOMAIN_FACE, 0);
   if (!material_indices.is_single() && mesh->totcol > 1) {
     const VArraySpan<int> indices_span(material_indices);
@@ -377,7 +377,7 @@ static void get_edge_creases(const Mesh *mesh, USDMeshData &usd_mesh_data)
     return;
   }
 
-  const Span<MEdge> edges = mesh->edges();
+  const Span<int2> edges = mesh->edges();
   for (const int i : edges.index_range()) {
     const float crease = creases[i];
     if (crease == 0.0f) {
@@ -386,8 +386,8 @@ static void get_edge_creases(const Mesh *mesh, USDMeshData &usd_mesh_data)
 
     const float sharpness = crease >= 1.0f ? pxr::UsdGeomMesh::SHARPNESS_INFINITE : crease;
 
-    usd_mesh_data.crease_vertex_indices.push_back(edges[i].v1);
-    usd_mesh_data.crease_vertex_indices.push_back(edges[i].v2);
+    usd_mesh_data.crease_vertex_indices.push_back(edges[i][0]);
+    usd_mesh_data.crease_vertex_indices.push_back(edges[i][1]);
     usd_mesh_data.crease_lengths.push_back(2);
     usd_mesh_data.crease_sharpnesses.push_back(sharpness);
   }

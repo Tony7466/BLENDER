@@ -760,6 +760,7 @@ static void rna_def_attribute_float(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "data", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "FloatAttributeValue");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_IGNORE);
   RNA_def_property_collection_funcs(prop,
                                     "rna_Attribute_data_begin",
                                     "rna_iterator_array_next",
@@ -792,6 +793,7 @@ static void rna_def_attribute_float_vector(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "data", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "FloatVectorAttributeValue");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_IGNORE);
   RNA_def_property_collection_funcs(prop,
                                     "rna_Attribute_data_begin",
                                     "rna_iterator_array_next",
@@ -830,6 +832,7 @@ static void rna_def_attribute_float_color(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "data", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "FloatColorAttributeValue");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_IGNORE);
   RNA_def_property_collection_funcs(prop,
                                     "rna_Attribute_data_begin",
                                     "rna_iterator_array_next",
@@ -877,6 +880,7 @@ static void rna_def_attribute_byte_color(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "data", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "ByteColorAttributeValue");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_IGNORE);
   RNA_def_property_collection_funcs(prop,
                                     "rna_Attribute_data_begin",
                                     "rna_iterator_array_next",
@@ -925,6 +929,7 @@ static void rna_def_attribute_int(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "data", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "IntAttributeValue");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_IGNORE);
   RNA_def_property_collection_funcs(prop,
                                     "rna_Attribute_data_begin",
                                     "rna_iterator_array_next",
@@ -954,6 +959,7 @@ static void rna_def_attribute_string(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "data", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "StringAttributeValue");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_IGNORE);
   RNA_def_property_collection_funcs(prop,
                                     "rna_Attribute_data_begin",
                                     "rna_iterator_array_next",
@@ -983,6 +989,7 @@ static void rna_def_attribute_bool(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "data", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "BoolAttributeValue");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_IGNORE);
   RNA_def_property_collection_funcs(prop,
                                     "rna_Attribute_data_begin",
                                     "rna_iterator_array_next",
@@ -1012,6 +1019,7 @@ static void rna_def_attribute_int8(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "data", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "ByteIntAttributeValue");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_IGNORE);
   RNA_def_property_collection_funcs(prop,
                                     "rna_Attribute_data_begin",
                                     "rna_iterator_array_next",
@@ -1043,6 +1051,7 @@ static void rna_def_attribute_int2(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "data", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "Int2AttributeValue");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_IGNORE);
   RNA_def_property_collection_funcs(prop,
                                     "rna_Attribute_data_begin",
                                     "rna_iterator_array_next",
@@ -1078,6 +1087,7 @@ static void rna_def_attribute_float2(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "data", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "Float2AttributeValue");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_IGNORE);
   RNA_def_property_collection_funcs(prop,
                                     "rna_Attribute_data_begin",
                                     "rna_iterator_array_next",

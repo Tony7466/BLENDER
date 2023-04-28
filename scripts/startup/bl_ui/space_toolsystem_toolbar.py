@@ -68,6 +68,7 @@ def generate_from_enum_ex(
                 dict(
                     idname=idname_prefix + name,
                     label=name,
+                    description=enum.description,
                     icon=icon,
                     cursor=cursor,
                     data_block=idname,
@@ -1280,6 +1281,20 @@ class _defs_edit_curve:
             widget="VIEW3D_GGT_tool_generic_handle_normal",
             keymap=(),
             draw_settings=draw_settings,
+        )
+
+
+class _defs_edit_text:
+
+    @ToolDef.from_fn
+    def select_text():
+        return dict(
+            idname="builtin.select_text",
+            label="Select Text",
+            cursor='TEXT',
+            icon="ops.generic.select_box",
+            widget=None,
+            keymap=(),
         )
 
 
@@ -2620,7 +2635,7 @@ class IMAGE_PT_tools_active(ToolSelectPanelHelper, Panel):
     bl_label = "Tools"  # not visible
     bl_options = {'HIDE_HEADER'}
 
-    # Satisfy the 'ToolSelectPanelHelper' API.
+    # Satisfy the `ToolSelectPanelHelper` API.
     keymap_prefix = "Image Editor Tool:"
 
     # Default group to use as a fallback.
@@ -2715,7 +2730,7 @@ class NODE_PT_tools_active(ToolSelectPanelHelper, Panel):
     bl_label = "Tools"  # not visible
     bl_options = {'HIDE_HEADER'}
 
-    # Satisfy the 'ToolSelectPanelHelper' API.
+    # Satisfy the `ToolSelectPanelHelper` API.
     keymap_prefix = "Node Editor Tool:"
 
     # Default group to use as a fallback.
@@ -2779,7 +2794,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
     bl_label = "Tools"  # not visible
     bl_options = {'HIDE_HEADER'}
 
-    # Satisfy the 'ToolSelectPanelHelper' API.
+    # Satisfy the `ToolSelectPanelHelper` API.
     keymap_prefix = "3D View Tool:"
 
     # Default group to use as a fallback.
@@ -2979,6 +2994,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             _defs_transform.shear,
         ],
         'EDIT_TEXT': [
+            _defs_edit_text.select_text,
             _defs_view3d_generic.cursor,
             None,
             *_tools_annotate,
@@ -3147,7 +3163,7 @@ class SEQUENCER_PT_tools_active(ToolSelectPanelHelper, Panel):
     bl_label = "Tools"  # not visible
     bl_options = {'HIDE_HEADER'}
 
-    # Satisfy the 'ToolSelectPanelHelper' API.
+    # Satisfy the `ToolSelectPanelHelper` API.
     keymap_prefix = "Sequence Editor Tool:"
 
     # Default group to use as a fallback.
