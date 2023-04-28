@@ -65,32 +65,6 @@ inline UInt128_32 operator+(const UInt128_32 &a, const UInt128_32 &b)
   UInt128_32 result;
   generic_add<uint32_t, uint64_t, 4>(result.v, a.v, b.v);
   return result;
-
-  const uint64_t r1 = uint64_t(a.v[0]) + uint64_t(b.v[0]);
-  const uint64_t r2 = uint64_t(a.v[1]) + uint64_t(b.v[1]) + (r1 >> 32);
-  const uint64_t r3 = uint64_t(a.v[2]) + uint64_t(b.v[2]) + (r2 >> 32);
-  const uint64_t r4 = uint64_t(a.v[3]) + uint64_t(b.v[3]) + (r3 >> 32);
-
-  result.v[0] = uint32_t(r1);
-  result.v[1] = uint32_t(r2);
-  result.v[2] = uint32_t(r3);
-  result.v[3] = uint32_t(r4);
-  return result;
-}
-
-inline UInt128_32 operator*(const UInt128_32 &a, const uint32_t b)
-{
-  const uint64_t r1 = a.v[0] * b;
-  const uint64_t r2 = a.v[1] * b + (r1 >> 32);
-  const uint64_t r3 = a.v[2] * b + (r2 >> 32);
-  const uint64_t r4 = a.v[3] * b + (r3 >> 32);
-
-  UInt128_32 result;
-  result.v[0] = uint32_t(r1);
-  result.v[1] = uint32_t(r2);
-  result.v[2] = uint32_t(r3);
-  result.v[3] = uint32_t(r4);
-  return result;
 }
 
 template<typename T, typename T2, int S> inline void generic_mul(T *dst, const T *a, const T *b)
@@ -121,33 +95,6 @@ inline UInt128_32 operator*(const UInt128_32 &a, const UInt128_32 &b)
 {
   UInt128_32 result;
   generic_mul<uint32_t, uint64_t, 4>(result.v, a.v, b.v);
-  return result;
-
-  const uint64_t r1_1 = uint64_t(a.v[0]) * uint64_t(b.v[0]);
-  const uint64_t r1_2 = uint64_t(a.v[1]) * uint64_t(b.v[0]) + (r1_1 >> 32);
-  const uint64_t r1_3 = uint64_t(a.v[2]) * uint64_t(b.v[0]) + (r1_2 >> 32);
-  const uint64_t r1_4 = uint64_t(a.v[3]) * uint64_t(b.v[0]) + (r1_3 >> 32);
-
-  const uint64_t r2_2 = uint64_t(a.v[0]) * uint64_t(b.v[1]);
-  const uint64_t r2_3 = uint64_t(a.v[1]) * uint64_t(b.v[1]) + (r2_2 >> 32);
-  const uint64_t r2_4 = uint64_t(a.v[2]) * uint64_t(b.v[1]) + (r2_3 >> 32);
-
-  const uint64_t r3_3 = uint64_t(a.v[0]) * uint64_t(b.v[2]);
-  const uint64_t r3_4 = uint64_t(a.v[1]) * uint64_t(b.v[2]) + (r3_3 >> 32);
-
-  const uint64_t r4_4 = uint64_t(a.v[0]) * uint64_t(b.v[3]);
-
-  const uint64_t r1 = uint64_t(uint32_t(r1_1));
-  const uint64_t r2 = uint64_t(uint32_t(r1_2)) + uint64_t(uint32_t(r2_2)) + (r1 >> 32);
-  const uint64_t r3 = uint64_t(uint32_t(r1_3)) + uint64_t(uint32_t(r2_3)) +
-                      uint64_t(uint32_t(r3_3)) + (r2 >> 32);
-  const uint64_t r4 = uint64_t(uint32_t(r1_4)) + uint64_t(uint32_t(r2_4)) +
-                      uint64_t(uint32_t(r3_4)) + uint64_t(uint32_t(r4_4)) + (r3 >> 32);
-
-  result.v[0] = uint32_t(r1);
-  result.v[1] = uint32_t(r2);
-  result.v[2] = uint32_t(r3);
-  result.v[3] = uint32_t(r4);
   return result;
 }
 
