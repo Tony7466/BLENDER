@@ -193,6 +193,8 @@ static bool use_gnome_confine_hack = false;
 #  define USE_GNOME_NEEDS_LIBDECOR_HACK
 #endif
 
+/** \} */
+
 /* -------------------------------------------------------------------- */
 /** \name Local Defines
  *
@@ -4520,7 +4522,8 @@ static void xdg_output_handle_logical_size(void *data,
      * Until this is fixed, validate that _some_ kind of scaling is being
      * done (we can't match exactly because fractional scaling can't be
      * detected otherwise), then override if necessary. */
-    if ((output->size_logical[0] == width) && (output->scale_fractional == wl_fixed_from_int(1))) {
+    if ((output->size_logical[0] == width) &&
+        (output->scale_fractional == (1 * FRACTIONAL_DENOMINATOR))) {
       GHOST_PRINT("xdg_output scale did not match, overriding with wl_output scale\n");
 
 #ifdef USE_GNOME_CONFINE_HACK
@@ -4667,7 +4670,7 @@ static void output_handle_done(void *data, struct wl_output * /*wl_output*/)
     GHOST_ASSERT(size_native[0] && output->size_logical[0],
                  "Screen size values were not set when they were expected to be.");
 
-    output->scale_fractional = wl_fixed_from_int(size_native[0]) / output->size_logical[0];
+    output->scale_fractional = (size_native[0] * FRACTIONAL_DENOMINATOR) / output->size_logical[0];
     output->has_scale_fractional = true;
   }
 }
@@ -5583,8 +5586,6 @@ GHOST_SystemWayland::GHOST_SystemWayland(bool background)
 #  endif
       display_destroy_and_free_all();
       throw std::runtime_error("Wayland: unable to find libdecor!");
-
-      use_libdecor = true;
     }
   }
   else {
@@ -5607,7 +5608,7 @@ GHOST_SystemWayland::GHOST_SystemWayland(bool background)
   (void)background;
 #endif
   {
-    GWL_XDG_Decor_System &decor = *display_->xdg_decor;
+    const GWL_XDG_Decor_System &decor = *display_->xdg_decor;
     if (!decor.shell) {
       display_destroy_and_free_all();
       throw std::runtime_error("Wayland: unable to access xdg_shell!");
@@ -5781,8 +5782,14 @@ GHOST_TSuccess GHOST_SystemWayland::getModifierKeys(GHOST_ModifierKeys &keys) co
     }
     const GWL_ModifierInfo &mod_info = g_modifier_info_table[i];
     const bool val = (state & (1 << seat->xkb_keymap_mod_index[i])) != 0;
-    bool val_l = seat->key_depressed.mods[GHOST_KEY_MODIFIER_TO_INDEX(mod_info.key_l)] > 0;
-    bool val_r = seat->key_depressed.mods[GHOST_KEY_MODIFIER_TO_INDEX(mod_info.key_r)] > 0;
+    /* NOTE(@ideasman42): it's important to write the XKB state back to #GWL_KeyboardDepressedState
+     * otherwise changes to modifiers in the future wont generate events.
+     * This can cause modifiers to be stuck when switching between windows in GNOME because
+     * window activation is handled before the keyboard enter callback runs, see: #107314. */
+    int16_t &depressed_l = seat->key_depressed.mods[GHOST_KEY_MODIFIER_TO_INDEX(mod_info.key_l)];
+    int16_t &depressed_r = seat->key_depressed.mods[GHOST_KEY_MODIFIER_TO_INDEX(mod_info.key_r)];
+    bool val_l = depressed_l > 0;
+    bool val_r = depressed_r > 0;
 
     /* This shouldn't be needed, but guard against any possibility of modifiers being stuck.
      * Warn so if this happens it can be investigated. */
@@ -5795,6 +5802,7 @@ GHOST_TSuccess GHOST_SystemWayland::getModifierKeys(GHOST_ModifierKeys &keys) co
         }
         /* Picking the left is arbitrary. */
         val_l = true;
+        depressed_l = 1;
       }
     }
     else {
@@ -5806,6 +5814,8 @@ GHOST_TSuccess GHOST_SystemWayland::getModifierKeys(GHOST_ModifierKeys &keys) co
         }
         val_l = false;
         val_r = false;
+        depressed_l = 0;
+        depressed_r = 0;
       }
     }
 
@@ -6068,10 +6078,8 @@ static GHOST_TSuccess getCursorPositionClientRelative_impl(
     /* As the cursor is restored at the warped location,
      * apply warping when requesting the cursor location. */
     GHOST_Rect wrap_bounds{};
-    if (win->getCursorGrabModeIsWarp()) {
-      if (win->getCursorGrabBounds(wrap_bounds) == GHOST_kFailure) {
-        win->getClientBounds(wrap_bounds);
-      }
+    if (win->getCursorGrabBounds(wrap_bounds) == GHOST_kFailure) {
+      win->getClientBounds(wrap_bounds);
     }
     int xy_wrap[2] = {
         seat_state_pointer->xy[0],
@@ -6299,13 +6307,14 @@ GHOST_IContext *GHOST_SystemWayland::createOffscreenContext(GHOST_GLSettings glS
                                                  wl_surface,
                                                  display_->wl_display,
                                                  1,
-                                                 0,
+                                                 2,
                                                  debug_context);
 
     if (!context->initializeDrawingContext()) {
       delete context;
       return nullptr;
     }
+    context->setUserData(wl_surface);
     return context;
   }
 #else
@@ -6338,13 +6347,16 @@ GHOST_TSuccess GHOST_SystemWayland::disposeContext(GHOST_IContext *context)
 #ifdef USE_EVENT_BACKGROUND_THREAD
   std::lock_guard lock_server_guard{*server_mutex};
 #endif
-
   struct wl_surface *wl_surface = (struct wl_surface *)((GHOST_Context *)context)->getUserData();
-  wl_egl_window *egl_window = (wl_egl_window *)wl_surface_get_user_data(wl_surface);
-  wl_egl_window_destroy(egl_window);
-  wl_surface_destroy(wl_surface);
-
+  /* Delete the context before the window so the context is able to release
+   * native resources (such as the #EGLSurface) before WAYLAND frees them. */
   delete context;
+
+  wl_egl_window *egl_window = (wl_egl_window *)wl_surface_get_user_data(wl_surface);
+  if (egl_window != nullptr) {
+    wl_egl_window_destroy(egl_window);
+  }
+  wl_surface_destroy(wl_surface);
 
   return GHOST_kSuccess;
 }
@@ -6673,10 +6685,9 @@ GHOST_TSuccess GHOST_SystemWayland::cursor_shape_custom_set(uint8_t *bitmap,
   static constexpr uint32_t transparent = 0x00000000;
 
   uint8_t datab = 0, maskb = 0;
-  uint32_t *pixel;
 
   for (int y = 0; y < sizey; ++y) {
-    pixel = &static_cast<uint32_t *>(cursor->custom_data)[y * sizex];
+    uint32_t *pixel = &static_cast<uint32_t *>(cursor->custom_data)[y * sizex];
     for (int x = 0; x < sizex; ++x) {
       if ((x % 8) == 0) {
         datab = *bitmap++;
@@ -6760,7 +6771,21 @@ GHOST_TCapabilityFlag GHOST_SystemWayland::getCapabilities() const
           GHOST_kCapabilityWindowPosition |
           /* WAYLAND doesn't support setting the cursor position directly,
            * this is an intentional choice, forcing us to use a software cursor in this case. */
-          GHOST_kCapabilityCursorWarp));
+          GHOST_kCapabilityCursorWarp |
+          /* Some drivers don't support front-buffer reading, see: #98462 & #106264.
+           *
+           * NOTE(@ideasman42): the EGL flag `EGL_BUFFER_PRESERVED` is intended request support for
+           * front-buffer reading however in my tests requesting the flag didn't work with AMD,
+           * and it's not even requirement - so we can't rely on this feature being supported.
+           *
+           * Instead of assuming this is not supported, the graphics card driver could be inspected
+           * (enable for NVIDIA for e.g.), but the advantage in supporting this is minimal.
+           * In practice it means an off-screen buffer is used to redraw the window for the
+           * screen-shot and eye-dropper sampling logic, both operations where the overhead
+           * is negligible. */
+          GHOST_kCapabilityGPUReadFrontBuffer |
+          /* This WAYLAND back-end has not yet implemented image copy/paste. */
+          GHOST_kCapabilityClipboardImages));
 }
 
 bool GHOST_SystemWayland::cursor_grab_use_software_display_get(const GHOST_TGrabCursorMode mode)
@@ -7063,6 +7088,7 @@ bool GHOST_SystemWayland::output_unref(wl_output *wl_output)
     for (GHOST_IWindow *iwin : window_manager->getWindows()) {
       GHOST_WindowWayland *win = static_cast<GHOST_WindowWayland *>(iwin);
       if (win->outputs_leave(output)) {
+        win->outputs_changed_update_scale_tag();
         changed = true;
       }
     }
@@ -7087,7 +7113,7 @@ void GHOST_SystemWayland::output_scale_update(GWL_Output *output)
       GHOST_WindowWayland *win = static_cast<GHOST_WindowWayland *>(iwin);
       const std::vector<GWL_Output *> &outputs = win->outputs();
       if (!(std::find(outputs.begin(), outputs.end(), output) == outputs.cend())) {
-        win->outputs_changed_update_scale();
+        win->outputs_changed_update_scale_tag();
       }
     }
   }

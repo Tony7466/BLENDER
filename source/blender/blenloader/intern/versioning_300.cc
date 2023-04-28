@@ -67,6 +67,7 @@
 #include "BKE_modifier.h"
 #include "BKE_node.h"
 #include "BKE_screen.h"
+#include "BKE_workspace.h"
 
 #include "RNA_access.h"
 #include "RNA_enum_types.h"
@@ -1348,6 +1349,18 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
     FOREACH_NODETREE_END;
   }
 
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 6)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      Editing *ed = SEQ_editing_get(scene);
+      if (ed == nullptr) {
+        continue;
+      }
+
+      SEQ_for_each_callback(
+          &scene->ed->seqbase, do_versions_sequencer_init_retiming_tool_data, scene);
+    }
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -1360,16 +1373,6 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
-
-    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-      Editing *ed = SEQ_editing_get(scene);
-      if (ed == nullptr) {
-        continue;
-      }
-
-      SEQ_for_each_callback(
-          &scene->ed->seqbase, do_versions_sequencer_init_retiming_tool_data, scene);
-    }
   }
 }
 
@@ -4251,18 +4254,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  /**
-   * Versioning code until next subversion bump goes here.
-   *
-   * \note Be sure to check when bumping the version:
-   * - "versioning_userdef.c", #blo_do_versions_userdef
-   * - "versioning_userdef.c", #do_versions_theme
-   *
-   * \note Keep this message at the bottom of the function.
-   */
-  {
-    /* Keep this block, even when empty. */
-
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 5)) {
     /* Some regions used to be added/removed dynamically. Ensure they are always there, there is a
      * `ARegionType.poll()` now. */
     LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
@@ -4291,6 +4283,45 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
           }
         }
       }
+
+      /* Replace old hard coded names with brush names, see: #106057. */
+      const char *tool_replace_table[][2] = {
+          {"selection_paint", "Paint Selection"},
+          {"add", "Add"},
+          {"delete", "Delete"},
+          {"density", "Density"},
+          {"comb", "Comb"},
+          {"snake_hook", "Snake Hook"},
+          {"grow_shrink", "Grow / Shrink"},
+          {"pinch", "Pinch"},
+          {"puff", "Puff"},
+          {"smooth", "Comb"},
+          {"slide", "Slide"},
+      };
+      LISTBASE_FOREACH (WorkSpace *, workspace, &bmain->workspaces) {
+        BKE_workspace_tool_id_replace_table(workspace,
+                                            SPACE_VIEW3D,
+                                            CTX_MODE_SCULPT_CURVES,
+                                            "builtin_brush.",
+                                            tool_replace_table,
+                                            ARRAY_SIZE(tool_replace_table));
+      }
     }
+
+    /* Rename Grease Pencil weight draw brush. */
+    do_versions_rename_id(bmain, ID_BR, "Draw Weight", "Weight Draw");
+  }
+
+  /**
+   * Versioning code until next subversion bump goes here.
+   *
+   * \note Be sure to check when bumping the version:
+   * - "versioning_userdef.c", #blo_do_versions_userdef
+   * - "versioning_userdef.c", #do_versions_theme
+   *
+   * \note Keep this message at the bottom of the function.
+   */
+  {
+    /* Keep this block, even when empty. */
   }
 }
