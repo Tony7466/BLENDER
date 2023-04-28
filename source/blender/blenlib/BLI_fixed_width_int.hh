@@ -55,17 +55,15 @@ inline MyUint16 operator*(const MyUint16 &a, const MyUint16 &b)
   return r1 + r2;
 }
 
-struct UInt128 {
-  /* Smallest. */
+struct UInt128_32 {
   uint32_t v1;
   uint32_t v2;
   uint32_t v3;
-  /* Highest. */
   uint32_t v4;
 
-  UInt128() = default;
+  UInt128_32() = default;
 
-  UInt128(const StringRefNull str, const int base = 10)
+  UInt128_32(const StringRefNull str, const int base = 10)
   {
     mpz_t a;
     mpz_init(a);
@@ -91,9 +89,11 @@ struct UInt128 {
   }
 };
 
-inline UInt128 operator+(const UInt128 &a, const UInt128 &b)
+using UInt128 = UInt128_32;
+
+inline UInt128_32 operator+(const UInt128_32 &a, const UInt128_32 &b)
 {
-  UInt128 result;
+  UInt128_32 result;
   const uint64_t r1 = uint64_t(a.v1) + uint64_t(b.v1);
   const uint64_t r2 = uint64_t(a.v2) + uint64_t(b.v2) + (r1 >> 32);
   const uint64_t r3 = uint64_t(a.v3) + uint64_t(b.v3) + (r2 >> 32);
