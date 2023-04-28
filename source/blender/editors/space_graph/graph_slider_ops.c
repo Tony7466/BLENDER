@@ -1199,3 +1199,251 @@ void GRAPH_OT_gaussian_smooth(wmOperatorType *ot)
               32);
 }
 /** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Butterworth Smooth Operator
+ * \{ */
+
+typedef struct tBtwOperatorData {
+  ButterworthCoefficients *coefficients;
+  ListBase segment_links; /* tFCurveSegmentLink */
+  ListBase anim_data;     /* bAnimListElem */
+} tBtwOperatorData;
+
+static void btw_smooth_allocate_operator_data(tGraphSliderOp *gso,
+                                              const int filter_order,
+                                              const int sample_rate)
+{
+  tBtwOperatorData *operator_data = MEM_callocN(sizeof(tBtwOperatorData), "tBtwOperatorData");
+
+  operator_data->coefficients = ED_anim_allocate_butterworth_coefficients(filter_order);
+
+  ListBase anim_data = {NULL, NULL};
+  ANIM_animdata_filter(&gso->ac, &anim_data, OPERATOR_DATA_FILTER, gso->ac.data, gso->ac.datatype);
+
+  ListBase segment_links = {NULL, NULL};
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    FCurve *fcu = (FCurve *)ale->key_data;
+    ListBase fcu_segments = find_fcurve_segments(fcu);
+
+    LISTBASE_FOREACH (FCurveSegment *, segment, &fcu_segments) {
+      tFCurveSegmentLink *segment_link = MEM_callocN(sizeof(tFCurveSegmentLink),
+                                                     "FCurve Segment Link");
+      segment_link->fcu = fcu;
+      segment_link->segment = segment;
+      BezTriple left_bezt = fcu->bezt[segment->start_index];
+      BezTriple right_bezt = fcu->bezt[segment->start_index + segment->length - 1];
+      const int sample_count = ((int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) +
+                                (filter_order * 2)) *
+                               sample_rate;
+      float *samples = MEM_callocN(sizeof(float) * sample_count, "Btw Smooth FCurve Op Samples");
+      sample_fcurve_segment(
+          fcu, left_bezt.vec[1][0] - filter_order, sample_rate, samples, sample_count);
+      segment_link->samples = samples;
+      BLI_addtail(&segment_links, segment_link);
+    }
+  }
+
+  operator_data->anim_data = anim_data;
+  operator_data->segment_links = segment_links;
+  gso->operator_data = operator_data;
+}
+
+static void btw_smooth_free_operator_data(void *operator_data)
+{
+  tBtwOperatorData *btw_data = (tBtwOperatorData *)operator_data;
+  LISTBASE_FOREACH (tFCurveSegmentLink *, segment_link, &btw_data->segment_links) {
+    MEM_freeN(segment_link->samples);
+    MEM_freeN(segment_link->segment);
+  }
+  ED_anim_free_butterworth_coefficients(btw_data->coefficients);
+  BLI_freelistN(&btw_data->segment_links);
+  ANIM_animdata_freelist(&btw_data->anim_data);
+  MEM_freeN(btw_data);
+}
+
+static void btw_smooth_modal_update(bContext *C, wmOperator *op)
+{
+  tGraphSliderOp *gso = op->customdata;
+
+  bAnimContext ac;
+
+  if (ANIM_animdata_get_context(C, &ac) == 0) {
+    return;
+  }
+
+  common_draw_status_header(C, gso, "Butterworth Smooth");
+
+  tBtwOperatorData *operator_data = (tBtwOperatorData *)gso->operator_data;
+
+  /* Slider factor is used as cutoff factor, it makes more sense to give the user interactive
+   * control over that. */
+  const float cutoff_factor = slider_factor_get_and_remember(op);
+  const float cutoff_frequency = cutoff_factor * (1.0f / 2);
+  ED_anim_calculate_butterworth_coefficients(cutoff_frequency, 1, operator_data->coefficients);
+
+  const int sample_rate = RNA_int_get(op->ptr, "sample_rate");
+  const float factor = RNA_float_get(op->ptr, "factor");
+  LISTBASE_FOREACH (tFCurveSegmentLink *, segment, &operator_data->segment_links) {
+    butterworth_smooth_fcurve_segment(segment->fcu,
+                                      segment->segment,
+                                      segment->samples,
+                                      factor,
+                                      sample_rate,
+                                      operator_data->coefficients);
+  }
+
+  LISTBASE_FOREACH (bAnimListElem *, ale, &operator_data->anim_data) {
+    ale->update |= ANIM_UPDATE_DEFAULT;
+  }
+
+  ANIM_animdata_update(&ac, &operator_data->anim_data);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+}
+
+static int btw_smooth_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  const int invoke_result = graph_slider_invoke(C, op, event);
+
+  if (invoke_result == OPERATOR_CANCELLED) {
+    return invoke_result;
+  }
+
+  tGraphSliderOp *gso = op->customdata;
+  gso->modal_update = btw_smooth_modal_update;
+  gso->factor_prop = RNA_struct_find_property(op->ptr, "cutoff_factor");
+
+  const int filter_order = RNA_int_get(op->ptr, "filter_order");
+  const int sample_rate = RNA_int_get(op->ptr, "sample_rate");
+
+  btw_smooth_allocate_operator_data(gso, filter_order, sample_rate);
+  gso->free_operator_data = btw_smooth_free_operator_data;
+
+  ED_slider_allow_overshoot_set(gso->slider, false);
+  ED_slider_factor_set(gso->slider, 1.0f);
+  common_draw_status_header(C, gso, "Butterworth Smooth");
+
+  return invoke_result;
+}
+
+static void btw_smooth_graph_keys(bAnimContext *ac,
+                                  const float factor,
+                                  const float cutoff_factor,
+                                  const int filter_order,
+                                  const int sample_rate)
+{
+  ListBase anim_data = {NULL, NULL};
+  eAnimFilter_Flags filters = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE |
+                               ANIMFILTER_FCURVESONLY | ANIMFILTER_FOREDIT | ANIMFILTER_SEL |
+                               ANIMFILTER_NODUPLIS);
+  ANIM_animdata_filter(ac, &anim_data, filters, ac->data, ac->datatype);
+
+  ButterworthCoefficients *bw_coeff = ED_anim_allocate_butterworth_coefficients(filter_order);
+
+  /* Fix sampling frequency to 1. This is possible since the user just defines a cutoff from 0 to
+   * Nyquist Frequency, instead of dealing with Hz. */
+  const float cutoff_frequency = cutoff_factor * (1.0f / 2);
+  ED_anim_calculate_butterworth_coefficients(cutoff_frequency, 1, bw_coeff);
+
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    FCurve *fcu = (FCurve *)ale->key_data;
+    ListBase segments = find_fcurve_segments(fcu);
+
+    LISTBASE_FOREACH (FCurveSegment *, segment, &segments) {
+      BezTriple left_bezt = fcu->bezt[segment->start_index];
+      BezTriple right_bezt = fcu->bezt[segment->start_index + segment->length - 1];
+      const int sample_count = ((int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) + 1 +
+                                filter_order * 2) *
+                               sample_rate;
+      float *samples = MEM_callocN(sizeof(float) * sample_count, "Smooth FCurve Op Samples");
+      sample_fcurve_segment(
+          fcu, left_bezt.vec[1][0] - filter_order, sample_rate, samples, sample_count);
+      butterworth_smooth_fcurve_segment(fcu, segment, samples, factor, sample_rate, bw_coeff);
+      MEM_freeN(samples);
+    }
+
+    BLI_freelistN(&segments);
+    ale->update |= ANIM_UPDATE_DEFAULT;
+  }
+
+  ED_anim_free_butterworth_coefficients(bw_coeff);
+  ANIM_animdata_update(ac, &anim_data);
+  ANIM_animdata_freelist(&anim_data);
+}
+
+static int btw_exec(bContext *C, wmOperator *op)
+{
+  bAnimContext ac;
+
+  if (ANIM_animdata_get_context(C, &ac) == 0) {
+    return OPERATOR_CANCELLED;
+  }
+  const float factor = RNA_float_get(op->ptr, "factor");
+  const float freq_cutoff = RNA_float_get(op->ptr, "cutoff_factor");
+  const int filter_order = RNA_int_get(op->ptr, "filter_order");
+  const int sample_rate = RNA_int_get(op->ptr, "sample_rate");
+  btw_smooth_graph_keys(&ac, factor, freq_cutoff, filter_order, sample_rate);
+
+  /* Set notifier that keyframes have changed. */
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+
+  return OPERATOR_FINISHED;
+}
+
+void GRAPH_OT_butterworth_smooth(wmOperatorType *ot)
+{
+  /* Identifiers. */
+  ot->name = "Butterworth Smooth";
+  ot->idname = "GRAPH_OT_butterworth_smooth";
+  ot->description = "Smooth an F-Curve while maintaining the general shape of the curve";
+
+  /* API callbacks. */
+  ot->invoke = btw_smooth_invoke;
+  ot->modal = graph_slider_modal;
+  ot->exec = btw_exec;
+  ot->poll = graphop_editable_keyframes_poll;
+
+  /* Flags. */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  RNA_def_float_factor(ot->srna,
+                       "factor",
+                       1.0f,
+                       0,
+                       FLT_MAX,
+                       "Factor",
+                       "How much to blend to the smoothed curve",
+                       0.0f,
+                       1.0f);
+
+  RNA_def_float_factor(ot->srna,
+                       "cutoff_factor",
+                       0.5f,
+                       0.0001f,
+                       1.0f,
+                       "Frquency Cutoff",
+                       "Lower values give a smoother curve, 1 equals the Nyquist frequency",
+                       0.0001f,
+                       1.0f);
+
+  RNA_def_int(ot->srna,
+              "filter_order",
+              4,
+              1,
+              32,
+              "Filter Order",
+              "Higher values produce a harder frequency cutoff",
+              1,
+              16);
+
+  RNA_def_int(ot->srna,
+              "sample_rate",
+              1,
+              1,
+              64,
+              "Samples Rate",
+              "How many samples to calculate per frame, helps with subframe data",
+              1,
+              16);
+}
+/** \} */

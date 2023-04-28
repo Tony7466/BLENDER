@@ -450,6 +450,7 @@ static double butterworth_filter_value(
 
 void butterworth_smooth_fcurve_segment(FCurve *fcu,
                                        FCurveSegment *segment,
+                                       float *samples,
                                        const float factor,
                                        const int sample_rate,
                                        ButterworthCoefficients *bw_coeff)
@@ -461,11 +462,9 @@ void butterworth_smooth_fcurve_segment(FCurve *fcu,
   const int sample_count = ((int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) + 1 +
                             filter_order * 2) *
                            sample_rate;
-  float *samples = MEM_callocN(sizeof(float) * sample_count, "Smooth FCurve Op Samples");
+
   float *filtered_values = MEM_callocN(sizeof(float) * sample_count,
                                        "Butterworth Filtered FCurve Values");
-  sample_fcurve_segment(
-      fcu, left_bezt.vec[1][0] - filter_order, sample_rate, samples, sample_count);
 
   double *w0 = MEM_callocN(sizeof(double) * filter_order, "w0");
   double *w1 = MEM_callocN(sizeof(double) * filter_order, "w1");
@@ -505,7 +504,6 @@ void butterworth_smooth_fcurve_segment(FCurve *fcu,
   }
 
   MEM_freeN(filtered_values);
-  MEM_freeN(samples);
   MEM_freeN(w0);
   MEM_freeN(w1);
   MEM_freeN(w2);
