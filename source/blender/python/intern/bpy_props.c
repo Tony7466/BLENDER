@@ -2745,7 +2745,7 @@ static int bpy_struct_id_used(StructRNA *srna, char *identifier)
 PyDoc_STRVAR(BPy_BoolProperty_doc,
              ".. function:: BoolProperty(name=\"\", "
              "description=\"\", "
-             "translation_context=\"\", "
+             "translation_context=\"*\", "
              "default=False, "
              "options={'ANIMATABLE'}, "
              "override=set(), "
@@ -2774,8 +2774,8 @@ static PyObject *BPy_BoolProperty(PyObject *self, PyObject *args, PyObject *kw)
   struct BPy_PropIDParse id_data = {
       .srna = srna,
   };
-  const char *name = NULL, *description = "",
-             *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
+  const char *name = NULL, *description = "";
+  const char *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
   bool default_value = false;
   PropertyRNA *prop;
   struct BPy_EnumProperty_Parse options_enum = {
@@ -2894,7 +2894,7 @@ PyDoc_STRVAR(
     BPy_BoolVectorProperty_doc,
     ".. function:: BoolVectorProperty(name=\"\", "
     "description=\"\", "
-    "translation_context=\"\", "
+    "translation_context=\"*\", "
     "default=(False, False, False), "
     "options={'ANIMATABLE'}, "
     "override=set(), "
@@ -2926,8 +2926,8 @@ static PyObject *BPy_BoolVectorProperty(PyObject *self, PyObject *args, PyObject
   struct BPy_PropIDParse id_data = {
       .srna = srna,
   };
-  const char *name = NULL, *description = "",
-             *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
+  const char *name = NULL, *description = "";
+  const char *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
   bool default_value[RNA_MAX_ARRAY_DIMENSION][PYRNA_STACK_ARRAY] = {{false}};
   struct BPyPropArrayLength array_len_info = {.len_total = 3};
   PropertyRNA *prop;
@@ -3073,7 +3073,7 @@ PyDoc_STRVAR(
     BPy_IntProperty_doc,
     ".. function:: IntProperty(name=\"\", "
     "description=\"\", "
-    "translation_context=\"\", "
+    "translation_context=\"*\", "
     "default=0, "
     "min=-2**31, max=2**31-1, "
     "soft_min=-2**31, soft_max=2**31-1, "
@@ -3107,8 +3107,8 @@ static PyObject *BPy_IntProperty(PyObject *self, PyObject *args, PyObject *kw)
   struct BPy_PropIDParse id_data = {
       .srna = srna,
   };
-  const char *name = NULL, *description = "",
-             *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
+  const char *name = NULL, *description = "";
+  const char *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
   int min = INT_MIN, max = INT_MAX, soft_min = INT_MIN, soft_max = INT_MAX;
   int step = 1;
   int default_value = 0;
@@ -3244,7 +3244,7 @@ static PyObject *BPy_IntProperty(PyObject *self, PyObject *args, PyObject *kw)
 PyDoc_STRVAR(BPy_IntVectorProperty_doc,
              ".. function:: IntVectorProperty(name=\"\", "
              "description=\"\", "
-             "translation_context=\"\", "
+             "translation_context=\"*\", "
              "default=(0, 0, 0), min=-2**31, max=2**31-1, "
              "soft_min=-2**31, "
              "soft_max=2**31-1, "
@@ -3284,8 +3284,8 @@ static PyObject *BPy_IntVectorProperty(PyObject *self, PyObject *args, PyObject 
   struct BPy_PropIDParse id_data = {
       .srna = srna,
   };
-  const char *name = NULL, *description = "",
-             *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
+  const char *name = NULL, *description = "";
+  const char *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
   int min = INT_MIN, max = INT_MAX, soft_min = INT_MIN, soft_max = INT_MAX;
   int step = 1;
   int default_value[RNA_MAX_ARRAY_DIMENSION][PYRNA_STACK_ARRAY] = {0};
@@ -3436,7 +3436,7 @@ static PyObject *BPy_IntVectorProperty(PyObject *self, PyObject *args, PyObject 
 PyDoc_STRVAR(BPy_FloatProperty_doc,
              ".. function:: FloatProperty(name=\"\", "
              "description=\"\", "
-             "translation_context=\"\", "
+             "translation_context=\"*\", "
              "default=0.0, "
              "min=-3.402823e+38, max=3.402823e+38, "
              "soft_min=-3.402823e+38, soft_max=3.402823e+38, "
@@ -3474,8 +3474,8 @@ static PyObject *BPy_FloatProperty(PyObject *self, PyObject *args, PyObject *kw)
   struct BPy_PropIDParse id_data = {
       .srna = srna,
   };
-  const char *name = NULL, *description = "",
-             *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
+  const char *name = NULL, *description = "";
+  const char *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
   float min = -FLT_MAX, max = FLT_MAX, soft_min = -FLT_MAX, soft_max = FLT_MAX;
   float step = 3;
   float default_value = 0.0f;
@@ -3609,7 +3609,7 @@ static PyObject *BPy_FloatProperty(PyObject *self, PyObject *args, PyObject *kw)
 PyDoc_STRVAR(BPy_FloatVectorProperty_doc,
              ".. function:: FloatVectorProperty(name=\"\", "
              "description=\"\", "
-             "translation_context=\"\", "
+             "translation_context=\"*\", "
              "default=(0.0, 0.0, 0.0), "
              "min=sys.float_info.min, max=sys.float_info.max, "
              "soft_min=sys.float_info.min, soft_max=sys.float_info.max, "
@@ -3652,8 +3652,8 @@ static PyObject *BPy_FloatVectorProperty(PyObject *self, PyObject *args, PyObjec
   struct BPy_PropIDParse id_data = {
       .srna = srna,
   };
-  const char *name = NULL, *description = "",
-             *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
+  const char *name = NULL, *description = "";
+  const char *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
   float min = -FLT_MAX, max = FLT_MAX, soft_min = -FLT_MAX, soft_max = FLT_MAX;
   float step = 3;
   float default_value[RNA_MAX_ARRAY_DIMENSION][PYRNA_STACK_ARRAY] = {{0.0f}};
@@ -3819,7 +3819,7 @@ static PyObject *BPy_FloatVectorProperty(PyObject *self, PyObject *args, PyObjec
 PyDoc_STRVAR(BPy_StringProperty_doc,
              ".. function:: StringProperty(name=\"\", "
              "description=\"\", "
-             "translation_context=\"\", "
+             "translation_context=\"*\", "
              "default=\"\", "
              "maxlen=0, "
              "options={'ANIMATABLE'}, "
@@ -3854,8 +3854,8 @@ static PyObject *BPy_StringProperty(PyObject *self, PyObject *args, PyObject *kw
   struct BPy_PropIDParse id_data = {
       .srna = srna,
   };
-  const char *name = NULL, *description = "",
-             *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA, *default_value = "";
+  const char *name = NULL, *description = "";
+  const char *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA, *default_value = "";
   int maxlen = 0;
   PropertyRNA *prop;
 
@@ -3998,7 +3998,7 @@ PyDoc_STRVAR(
     ".. function:: EnumProperty(items, "
     "name=\"\", "
     "description=\"\", "
-    "translation_context=\"\", "
+    "translation_context=\"*\", "
     "default=None, "
     "options={'ANIMATABLE'}, "
     "override=set(), "
@@ -4063,8 +4063,8 @@ static PyObject *BPy_EnumProperty(PyObject *self, PyObject *args, PyObject *kw)
   struct BPy_PropIDParse id_data = {
       .srna = srna,
   };
-  const char *name = NULL, *description = "",
-             *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
+  const char *name = NULL, *description = "";
+  const char *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
   PyObject *default_py = NULL;
   int default_value = 0;
   PyObject *items, *items_fast;
@@ -4268,7 +4268,7 @@ PyDoc_STRVAR(BPy_PointerProperty_doc,
              ".. function:: PointerProperty(type=None, "
              "name=\"\", "
              "description=\"\", "
-             "translation_context=\"\", "
+             "translation_context=\"*\", "
              "options={'ANIMATABLE'}, "
              "override=set(), "
              "tags=set(), "
@@ -4294,8 +4294,8 @@ PyObject *BPy_PointerProperty(PyObject *self, PyObject *args, PyObject *kw)
   struct BPy_PropIDParse id_data = {
       .srna = srna,
   };
-  const char *name = NULL, *description = "",
-             *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
+  const char *name = NULL, *description = "";
+  const char *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
   PropertyRNA *prop;
   StructRNA *ptype;
   PyObject *type = Py_None;
@@ -4413,7 +4413,7 @@ PyDoc_STRVAR(BPy_CollectionProperty_doc,
              ".. function:: CollectionProperty(type=None, "
              "name=\"\", "
              "description=\"\", "
-             "translation_context=\"\", "
+             "translation_context=\"*\", "
              "options={'ANIMATABLE'}, "
              "override=set(), "
              "tags=set())\n"
@@ -4437,8 +4437,8 @@ PyObject *BPy_CollectionProperty(PyObject *self, PyObject *args, PyObject *kw)
   struct BPy_PropIDParse id_data = {
       .srna = srna,
   };
-  const char *name = NULL, *description = "",
-             *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
+  const char *name = NULL, *description = "";
+  const char *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
   PropertyRNA *prop;
   StructRNA *ptype;
   PyObject *type = Py_None;
