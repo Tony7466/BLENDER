@@ -252,15 +252,13 @@ class GRAPH_MT_key_density(Menu):
     bl_label = "Density"
 
     def draw(self, _context):
+        from bl_ui_utils.layout import operator_context
         layout = self.layout
-        operator_context = layout.operator_context
-
         layout.operator("graph.decimate", text="Decimate (Ratio)").mode = 'RATIO'
         # Using the modal operation doesn't make sense for this variant
         # as we do not have a modal mode for it, so just execute it.
-        layout.operator_context = 'EXEC_REGION_WIN'
-        layout.operator("graph.decimate", text="Decimate (Allowed Change)").mode = 'ERROR'
-        layout.operator_context = operator_context
+        with operator_context(layout, 'EXEC_REGION_WIN'):
+            layout.operator("graph.decimate", text="Decimate (Allowed Change)").mode = 'ERROR'
         layout.operator("graph.sample")
 
         layout.separator()
@@ -293,8 +291,6 @@ class GRAPH_MT_key(Menu):
     bl_label = "Key"
 
     def draw(self, _context):
-        from bl_ui_utils.layout import operator_context
-
         layout = self.layout
 
         layout.menu("GRAPH_MT_key_transform", text="Transform")
@@ -319,24 +315,9 @@ class GRAPH_MT_key(Menu):
 
         layout.separator()
 
-        layout.operator("graph.decimate", text="Decimate (Ratio)").mode = 'RATIO'
-
-        # Using the modal operation doesn't make sense for this variant
-        # as we do not have a modal mode for it, so just execute it.
-        with operator_context(layout, 'EXEC_REGION_WIN'):
-            layout.operator("graph.decimate", text="Decimate (Allowed Change)").mode = 'ERROR'
-
-        layout.menu("GRAPH_MT_slider", text="Slider Operators")
-
-        layout.operator("graph.clean").channels = False
-        layout.operator("graph.clean", text="Clean Channels").channels = True
-        layout.operator("graph.smooth")
-        layout.operator("graph.sample")
-        layout.operator("graph.bake")
-        layout.operator("graph.unbake")
-
-        layout.separator()
-        layout.operator("graph.euler_filter", text="Discontinuity (Euler) Filter")
+        layout.menu("GRAPH_MT_key_density")
+        layout.menu("GRAPH_MT_key_blending")
+        layout.menu("GRAPH_MT_key_smoothing")
 
 
 class GRAPH_MT_key_transform(Menu):
