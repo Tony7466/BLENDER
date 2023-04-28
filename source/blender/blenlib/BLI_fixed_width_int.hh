@@ -51,15 +51,19 @@ template<typename T>
 using double_uint_type = std::conditional_t<
     std::is_same_v<T, uint8_t>,
     uint16_t,
-    std::conditional_t<std::is_same_v<T, uint16_t>,
-                       uint32_t,
-                       std::conditional_t<std::is_same_v<T, uint32_t>, uint64_t, void>>>;
+    std::conditional_t<
+        std::is_same_v<T, uint16_t>,
+        uint32_t,
+        std::conditional_t<std::is_same_v<T, uint32_t>,
+                           uint64_t,
+                           std::conditional_t<std::is_same_v<T, uint64_t>, __uint128_t, void>>>>;
 
 using UInt128_8 = UIntF<uint8_t, 16>;
 using Uint128_16 = UIntF<uint16_t, 8>;
 using UInt128_32 = UIntF<uint32_t, 4>;
+using UInt128_64 = UIntF<uint64_t, 4>;
 
-using UInt128 = Uint128_16;
+using UInt128 = UInt128_64;
 
 template<typename T, typename T2, int S> inline void generic_add(T *dst, const T *a, const T *b)
 {
