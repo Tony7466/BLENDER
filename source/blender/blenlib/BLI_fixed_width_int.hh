@@ -13,8 +13,11 @@
 namespace blender::fixed_width_int {
 
 template<typename T, int S> struct UIntF {
-  using type = T;
+  static_assert(std::is_unsigned_v<T>);
+  static_assert(S >= 1);
+
   static constexpr int Size = S;
+
   T v[S];
 
   UIntF() = default;
