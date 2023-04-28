@@ -371,9 +371,9 @@ class VoronoiMetricFunction : public mf::MultiFunction {
       builder.single_input<float>("Exponent");
     }
     builder.single_input<float>("Randomness");
+
     builder.single_output<float>("Distance", mf::ParamFlag::SupportsUnusedOutput);
     builder.single_output<ColorGeometry4f>("Color", mf::ParamFlag::SupportsUnusedOutput);
-
     if (dimensions != 1) {
       builder.single_output<float3>("Position", mf::ParamFlag::SupportsUnusedOutput);
     }
@@ -1211,36 +1211,29 @@ class VoronoiMetricFunction : public mf::MultiFunction {
   }
 };
 
-class VoronoiEdgeFunction : public mf::MultiFunction {
+class VoronoiDistToEdgeFunction : public mf::MultiFunction {
  private:
   int dimensions_;
-  int feature_;
   bool normalize_;
 
  public:
-  VoronoiEdgeFunction(int dimensions, int feature, bool normalize)
-      : dimensions_(dimensions), feature_(feature), normalize_(normalize)
+  VoronoiDistToEdgeFunction(int dimensions, bool normalize)
+      : dimensions_(dimensions), normalize_(normalize)
   {
     BLI_assert(dimensions >= 1 && dimensions <= 4);
-    BLI_assert(feature >= 3 && feature <= 4);
-    static std::array<mf::Signature, 8> signatures{
-        create_signature(1, SHD_VORONOI_DISTANCE_TO_EDGE),
-        create_signature(2, SHD_VORONOI_DISTANCE_TO_EDGE),
-        create_signature(3, SHD_VORONOI_DISTANCE_TO_EDGE),
-        create_signature(4, SHD_VORONOI_DISTANCE_TO_EDGE),
-
-        create_signature(1, SHD_VORONOI_N_SPHERE_RADIUS),
-        create_signature(2, SHD_VORONOI_N_SPHERE_RADIUS),
-        create_signature(3, SHD_VORONOI_N_SPHERE_RADIUS),
-        create_signature(4, SHD_VORONOI_N_SPHERE_RADIUS),
+    static std::array<mf::Signature, 4> signatures{
+        create_signature(1),
+        create_signature(2),
+        create_signature(3),
+        create_signature(4),
     };
-    this->set_signature(&signatures[dimensions + (feature - 3) * 4 - 1]);
+    this->set_signature(&signatures[dimensions - 1]);
   }
 
-  static mf::Signature create_signature(int dimensions, int feature)
+  static mf::Signature create_signature(int dimensions)
   {
     mf::Signature signature;
-    mf::SignatureBuilder builder{"voronoi_edge", signature};
+    mf::SignatureBuilder builder{"voronoi_dist_to_edge", signature};
 
     if (ELEM(dimensions, 2, 3, 4)) {
       builder.single_input<float3>("Vector");
@@ -1249,18 +1242,12 @@ class VoronoiEdgeFunction : public mf::MultiFunction {
       builder.single_input<float>("W");
     }
     builder.single_input<float>("Scale");
-    if (feature == SHD_VORONOI_DISTANCE_TO_EDGE) {
-      builder.single_input<float>("Detail");
-      builder.single_input<float>("Roughness");
-      builder.single_input<float>("Lacunarity");
-    }
+    builder.single_input<float>("Detail");
+    builder.single_input<float>("Roughness");
+    builder.single_input<float>("Lacunarity");
     builder.single_input<float>("Randomness");
-    if (feature == SHD_VORONOI_DISTANCE_TO_EDGE) {
-      builder.single_output<float>("Distance");
-    }
-    if (feature == SHD_VORONOI_N_SPHERE_RADIUS) {
-      builder.single_output<float>("Radius");
-    }
+
+    builder.single_output<float>("Distance");
 
     return signature;
   }
@@ -1291,6 +1278,173 @@ class VoronoiEdgeFunction : public mf::MultiFunction {
     auto get_r_distance = [&](int param_index) -> MutableSpan<float> {
       return params.uninitialized_single_output<float>(param_index, "Distance");
     };
+
+    int param = 0;
+    switch (dimensions_) {
+      case 1: {
+        const VArray<float> &w = get_w(param++);
+        const VArray<float> &scale = get_scale(param++);
+        const VArray<float> &detail = get_detail(param++);
+        const VArray<float> &roughness = get_roughness(param++);
+        const VArray<float> &lacunarity = get_lacunarity(param++);
+        const VArray<float> &randomness = get_randomness(param++);
+        MutableSpan<float> r_distance = get_r_distance(param++);
+        for (int64_t i : mask) {
+          const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
+          const float p = w[i] * scale[i];
+          float max_amplitude = 0.0f;
+
+          noise::fractal_voronoi_distance_to_edge<float>(
+              p, detail[i], roughness[i], lacunarity[i], rand, &max_amplitude, &r_distance[i]);
+          if (normalize_) {
+            /* max_amplitude is used here to keep the code consistent, however it has a
+             * different meaning than in F1, Smooth F1 and F2. Instead of the highest possible
+             * amplitude, it represents an abstract factor needed to cancel out the amplitude
+             * attenuation caused by the higher layers. */
+            r_distance[i] *= max_amplitude;
+          }
+        }
+        break;
+      }
+      case 2: {
+        const VArray<float3> &vector = get_vector(param++);
+        const VArray<float> &scale = get_scale(param++);
+        const VArray<float> &detail = get_detail(param++);
+        const VArray<float> &roughness = get_roughness(param++);
+        const VArray<float> &lacunarity = get_lacunarity(param++);
+        const VArray<float> &randomness = get_randomness(param++);
+        MutableSpan<float> r_distance = get_r_distance(param++);
+        for (int64_t i : mask) {
+          const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
+          const float2 p = float2(vector[i].x, vector[i].y) * scale[i];
+          float max_amplitude = 0.0f;
+
+          noise::fractal_voronoi_distance_to_edge<float2>(
+              p, detail[i], roughness[i], lacunarity[i], rand, &max_amplitude, &r_distance[i]);
+          if (normalize_) {
+            /* max_amplitude is used here to keep the code consistent, however it has a
+             * different meaning than in F1, Smooth F1 and F2. Instead of the highest possible
+             * amplitude, it represents an abstract factor needed to cancel out the amplitude
+             * attenuation caused by the higher layers. */
+            r_distance[i] *= max_amplitude;
+          }
+        }
+        break;
+      }
+      case 3: {
+        const VArray<float3> &vector = get_vector(param++);
+        const VArray<float> &scale = get_scale(param++);
+        const VArray<float> &detail = get_detail(param++);
+        const VArray<float> &roughness = get_roughness(param++);
+        const VArray<float> &lacunarity = get_lacunarity(param++);
+        const VArray<float> &randomness = get_randomness(param++);
+        MutableSpan<float> r_distance = get_r_distance(param++);
+        for (int64_t i : mask) {
+          const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
+          float max_amplitude = 0.0f;
+
+          noise::fractal_voronoi_distance_to_edge<float3>(vector[i] * scale[i],
+                                                          detail[i],
+                                                          roughness[i],
+                                                          lacunarity[i],
+                                                          rand,
+                                                          &max_amplitude,
+                                                          &r_distance[i]);
+          if (normalize_) {
+            /* max_amplitude is used here to keep the code consistent, however it has a
+             * different meaning than in F1, Smooth F1 and F2. Instead of the highest possible
+             * amplitude, it represents an abstract factor needed to cancel out the amplitude
+             * attenuation caused by the higher layers. */
+            r_distance[i] *= max_amplitude;
+          }
+        }
+        break;
+      }
+      case 4: {
+        const VArray<float3> &vector = get_vector(param++);
+        const VArray<float> &w = get_w(param++);
+        const VArray<float> &scale = get_scale(param++);
+        const VArray<float> &detail = get_detail(param++);
+        const VArray<float> &roughness = get_roughness(param++);
+        const VArray<float> &lacunarity = get_lacunarity(param++);
+        const VArray<float> &randomness = get_randomness(param++);
+        MutableSpan<float> r_distance = get_r_distance(param++);
+        for (int64_t i : mask) {
+          const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
+          const float4 p = float4(vector[i].x, vector[i].y, vector[i].z, w[i]) * scale[i];
+          float max_amplitude = 0.0f;
+
+          noise::fractal_voronoi_distance_to_edge<float4>(
+              p, detail[i], roughness[i], lacunarity[i], rand, &max_amplitude, &r_distance[i]);
+          if (normalize_) {
+            /* max_amplitude is used here to keep the code consistent, however it has a
+             * different meaning than in F1, Smooth F1 and F2. Instead of the highest possible
+             * amplitude, it represents an abstract factor needed to cancel out the amplitude
+             * attenuation caused by the higher layers. */
+            r_distance[i] *= max_amplitude;
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  ExecutionHints get_execution_hints() const override
+  {
+    return voronoi_execution_hints;
+  }
+};
+
+class VoronoiNSphereFunction : public mf::MultiFunction {
+ private:
+  int dimensions_;
+
+ public:
+  VoronoiNSphereFunction(int dimensions) : dimensions_(dimensions)
+  {
+    BLI_assert(dimensions >= 1 && dimensions <= 4);
+    static std::array<mf::Signature, 4> signatures{
+        create_signature(1),
+        create_signature(2),
+        create_signature(3),
+        create_signature(4),
+    };
+    this->set_signature(&signatures[dimensions - 1]);
+  }
+
+  static mf::Signature create_signature(int dimensions)
+  {
+    mf::Signature signature;
+    mf::SignatureBuilder builder{"voronoi_n_sphere", signature};
+
+    if (ELEM(dimensions, 2, 3, 4)) {
+      builder.single_input<float3>("Vector");
+    }
+    if (ELEM(dimensions, 1, 4)) {
+      builder.single_input<float>("W");
+    }
+    builder.single_input<float>("Scale");
+    builder.single_input<float>("Randomness");
+
+    builder.single_output<float>("Radius");
+
+    return signature;
+  }
+
+  void call(IndexMask mask, mf::Params params, mf::Context /*context*/) const override
+  {
+    auto get_vector = [&](int param_index) -> VArray<float3> {
+      return params.readonly_single_input<float3>(param_index, "Vector");
+    };
+    auto get_w = [&](int param_index) -> VArray<float> {
+      return params.readonly_single_input<float>(param_index, "W");
+    };
+    auto get_scale = [&](int param_index) -> VArray<float> {
+      return params.readonly_single_input<float>(param_index, "Scale");
+    };
+    auto get_randomness = [&](int param_index) -> VArray<float> {
+      return params.readonly_single_input<float>(param_index, "Randomness");
+    };
     auto get_r_radius = [&](int param_index) -> MutableSpan<float> {
       return params.uninitialized_single_output<float>(param_index, "Radius");
     };
@@ -1300,123 +1454,35 @@ class VoronoiEdgeFunction : public mf::MultiFunction {
       case 1: {
         const VArray<float> &w = get_w(param++);
         const VArray<float> &scale = get_scale(param++);
-        switch (feature_) {
-          case SHD_VORONOI_DISTANCE_TO_EDGE: {
-            const VArray<float> &detail = get_detail(param++);
-            const VArray<float> &roughness = get_roughness(param++);
-            const VArray<float> &lacunarity = get_lacunarity(param++);
-            const VArray<float> &randomness = get_randomness(param++);
-            MutableSpan<float> r_distance = get_r_distance(param++);
-            for (int64_t i : mask) {
-              const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
-              const float p = w[i] * scale[i];
-              float max_amplitude = 0.0f;
-
-              noise::fractal_voronoi_distance_to_edge<float>(
-                  p, detail[i], roughness[i], lacunarity[i], rand, &max_amplitude, &r_distance[i]);
-              if (normalize_) {
-                /* max_amplitude is used here to keep the code consistent, however it has a
-                 * different meaning than in F1, Smooth F1 and F2. Instead of the highest possible
-                 * amplitude, it represents an abstract factor needed to cancel out the amplitude
-                 * attenuation caused by the higher layers. */
-                r_distance[i] *= max_amplitude;
-              }
-            }
-            break;
-          }
-          case SHD_VORONOI_N_SPHERE_RADIUS: {
-            const VArray<float> &randomness = get_randomness(param++);
-            MutableSpan<float> r_radius = get_r_radius(param++);
-            for (int64_t i : mask) {
-              const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
-              const float p = w[i] * scale[i];
-              noise::voronoi_n_sphere_radius(p, rand, &r_radius[i]);
-            }
-            break;
-          }
+        const VArray<float> &randomness = get_randomness(param++);
+        MutableSpan<float> r_radius = get_r_radius(param++);
+        for (int64_t i : mask) {
+          const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
+          const float p = w[i] * scale[i];
+          noise::voronoi_n_sphere_radius(p, rand, &r_radius[i]);
         }
         break;
       }
       case 2: {
         const VArray<float3> &vector = get_vector(param++);
         const VArray<float> &scale = get_scale(param++);
-        switch (feature_) {
-          case SHD_VORONOI_DISTANCE_TO_EDGE: {
-            const VArray<float> &detail = get_detail(param++);
-            const VArray<float> &roughness = get_roughness(param++);
-            const VArray<float> &lacunarity = get_lacunarity(param++);
-            const VArray<float> &randomness = get_randomness(param++);
-            MutableSpan<float> r_distance = get_r_distance(param++);
-            for (int64_t i : mask) {
-              const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
-              const float2 p = float2(vector[i].x, vector[i].y) * scale[i];
-              float max_amplitude = 0.0f;
-
-              noise::fractal_voronoi_distance_to_edge<float2>(
-                  p, detail[i], roughness[i], lacunarity[i], rand, &max_amplitude, &r_distance[i]);
-              if (normalize_) {
-                /* max_amplitude is used here to keep the code consistent, however it has a
-                 * different meaning than in F1, Smooth F1 and F2. Instead of the highest possible
-                 * amplitude, it represents an abstract factor needed to cancel out the amplitude
-                 * attenuation caused by the higher layers. */
-                r_distance[i] *= max_amplitude;
-              }
-            }
-            break;
-          }
-          case SHD_VORONOI_N_SPHERE_RADIUS: {
-            const VArray<float> &randomness = get_randomness(param++);
-            MutableSpan<float> r_radius = get_r_radius(param++);
-            for (int64_t i : mask) {
-              const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
-              const float2 p = float2(vector[i].x, vector[i].y) * scale[i];
-              noise::voronoi_n_sphere_radius(p, rand, &r_radius[i]);
-            }
-            break;
-          }
+        const VArray<float> &randomness = get_randomness(param++);
+        MutableSpan<float> r_radius = get_r_radius(param++);
+        for (int64_t i : mask) {
+          const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
+          const float2 p = float2(vector[i].x, vector[i].y) * scale[i];
+          noise::voronoi_n_sphere_radius(p, rand, &r_radius[i]);
         }
         break;
       }
       case 3: {
         const VArray<float3> &vector = get_vector(param++);
         const VArray<float> &scale = get_scale(param++);
-        switch (feature_) {
-          case SHD_VORONOI_DISTANCE_TO_EDGE: {
-            const VArray<float> &detail = get_detail(param++);
-            const VArray<float> &roughness = get_roughness(param++);
-            const VArray<float> &lacunarity = get_lacunarity(param++);
-            const VArray<float> &randomness = get_randomness(param++);
-            MutableSpan<float> r_distance = get_r_distance(param++);
-            for (int64_t i : mask) {
-              const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
-              float max_amplitude = 0.0f;
-
-              noise::fractal_voronoi_distance_to_edge<float3>(vector[i] * scale[i],
-                                                              detail[i],
-                                                              roughness[i],
-                                                              lacunarity[i],
-                                                              rand,
-                                                              &max_amplitude,
-                                                              &r_distance[i]);
-              if (normalize_) {
-                /* max_amplitude is used here to keep the code consistent, however it has a
-                 * different meaning than in F1, Smooth F1 and F2. Instead of the highest possible
-                 * amplitude, it represents an abstract factor needed to cancel out the amplitude
-                 * attenuation caused by the higher layers. */
-                r_distance[i] *= max_amplitude;
-              }
-            }
-            break;
-          }
-          case SHD_VORONOI_N_SPHERE_RADIUS: {
-            const VArray<float> &randomness = get_randomness(param++);
-            MutableSpan<float> r_radius = get_r_radius(param++);
-            for (int64_t i : mask) {
-              const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
-              noise::voronoi_n_sphere_radius(vector[i] * scale[i], rand, &r_radius[i]);
-            }
-            break;
-          }
+        const VArray<float> &randomness = get_randomness(param++);
+        MutableSpan<float> r_radius = get_r_radius(param++);
+        for (int64_t i : mask) {
+          const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
+          noise::voronoi_n_sphere_radius(vector[i] * scale[i], rand, &r_radius[i]);
         }
         break;
       }
@@ -1424,40 +1490,12 @@ class VoronoiEdgeFunction : public mf::MultiFunction {
         const VArray<float3> &vector = get_vector(param++);
         const VArray<float> &w = get_w(param++);
         const VArray<float> &scale = get_scale(param++);
-        switch (feature_) {
-          case SHD_VORONOI_DISTANCE_TO_EDGE: {
-            const VArray<float> &detail = get_detail(param++);
-            const VArray<float> &roughness = get_roughness(param++);
-            const VArray<float> &lacunarity = get_lacunarity(param++);
-            const VArray<float> &randomness = get_randomness(param++);
-            MutableSpan<float> r_distance = get_r_distance(param++);
-            for (int64_t i : mask) {
-              const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
-              const float4 p = float4(vector[i].x, vector[i].y, vector[i].z, w[i]) * scale[i];
-              float max_amplitude = 0.0f;
-
-              noise::fractal_voronoi_distance_to_edge<float4>(
-                  p, detail[i], roughness[i], lacunarity[i], rand, &max_amplitude, &r_distance[i]);
-              if (normalize_) {
-                /* max_amplitude is used here to keep the code consistent, however it has a
-                 * different meaning than in F1, Smooth F1 and F2. Instead of the highest possible
-                 * amplitude, it represents an abstract factor needed to cancel out the amplitude
-                 * attenuation caused by the higher layers. */
-                r_distance[i] *= max_amplitude;
-              }
-            }
-            break;
-          }
-          case SHD_VORONOI_N_SPHERE_RADIUS: {
-            const VArray<float> &randomness = get_randomness(param++);
-            MutableSpan<float> r_radius = get_r_radius(param++);
-            for (int64_t i : mask) {
-              const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
-              const float4 p = float4(vector[i].x, vector[i].y, vector[i].z, w[i]) * scale[i];
-              noise::voronoi_n_sphere_radius(p, rand, &r_radius[i]);
-            }
-            break;
-          }
+        const VArray<float> &randomness = get_randomness(param++);
+        MutableSpan<float> r_radius = get_r_radius(param++);
+        for (int64_t i : mask) {
+          const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
+          const float4 p = float4(vector[i].x, vector[i].y, vector[i].z, w[i]) * scale[i];
+          noise::voronoi_n_sphere_radius(p, rand, &r_radius[i]);
         }
         break;
       }
@@ -1473,15 +1511,21 @@ class VoronoiEdgeFunction : public mf::MultiFunction {
 static void sh_node_voronoi_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
   const NodeTexVoronoi &storage = node_storage(builder.node());
-  bool dist_radius = ELEM(
-      storage.feature, SHD_VORONOI_DISTANCE_TO_EDGE, SHD_VORONOI_N_SPHERE_RADIUS);
-  if (dist_radius) {
-    builder.construct_and_set_matching_fn<VoronoiEdgeFunction>(
-        storage.dimensions, storage.feature, storage.normalize);
-  }
-  else {
-    builder.construct_and_set_matching_fn<VoronoiMetricFunction>(
-        storage.dimensions, storage.feature, storage.distance, storage.normalize);
+  switch (storage.feature) {
+    case SHD_VORONOI_DISTANCE_TO_EDGE: {
+      builder.construct_and_set_matching_fn<VoronoiDistToEdgeFunction>(storage.dimensions,
+                                                                       storage.normalize);
+      break;
+    }
+    case SHD_VORONOI_N_SPHERE_RADIUS: {
+      builder.construct_and_set_matching_fn<VoronoiNSphereFunction>(storage.dimensions);
+      break;
+    }
+    default: {
+      builder.construct_and_set_matching_fn<VoronoiMetricFunction>(
+          storage.dimensions, storage.feature, storage.distance, storage.normalize);
+      break;
+    }
   }
 }
 
