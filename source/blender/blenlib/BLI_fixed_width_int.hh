@@ -63,7 +63,7 @@ using Uint128_16 = UIntF<uint16_t, 8>;
 using UInt128_32 = UIntF<uint32_t, 4>;
 using UInt128_64 = UIntF<uint64_t, 4>;
 
-using UInt128 = UInt128_64;
+using UInt128 = UInt128_8;
 
 template<typename T, typename T2, int S> inline void generic_add(T *dst, const T *a, const T *b)
 {
@@ -76,12 +76,14 @@ template<typename T, typename T2, int S> inline void generic_add(T *dst, const T
   }
 }
 
-template<typename T, int Size, BLI_ENABLE_IF((!std::is_void_v<double_uint_type<T>>))>
-inline UIntF<T, Size> operator+(const UIntF<T, Size> &a, const UIntF<T, Size> &b)
+template<typename T, int S> inline void generic_sub(T *dst, const T *a, const T *b)
 {
-  UIntF<T, Size> result;
-  generic_add<T, double_uint_type<T>, Size>(result.v, a.v, b.v);
-  return result;
+  T carry = 0;
+  for (int i = 0; i < S; i++) {
+    const T ri = a[i] - b[i] - carry;
+    dst[i] = T(ri);
+    carry = ri > a[i];
+  }
 }
 
 template<typename T, typename T2, int S> inline void generic_mul(T *dst, const T *a, const T *b)
@@ -106,6 +108,22 @@ template<typename T, typename T2, int S> inline void generic_mul(T *dst, const T
     carry = ri >> shift;
     dst[i] = T(ri);
   }
+}
+
+template<typename T, int Size, BLI_ENABLE_IF((!std::is_void_v<double_uint_type<T>>))>
+inline UIntF<T, Size> operator+(const UIntF<T, Size> &a, const UIntF<T, Size> &b)
+{
+  UIntF<T, Size> result;
+  generic_add<T, double_uint_type<T>, Size>(result.v, a.v, b.v);
+  return result;
+}
+
+template<typename T, int Size>
+inline UIntF<T, Size> operator-(const UIntF<T, Size> &a, const UIntF<T, Size> &b)
+{
+  UIntF<T, Size> result;
+  generic_sub<T, Size>(result.v, a.v, b.v);
+  return result;
 }
 
 template<typename T, int Size, BLI_ENABLE_IF((!std::is_void_v<double_uint_type<T>>))>
