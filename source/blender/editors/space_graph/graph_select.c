@@ -259,9 +259,6 @@ static void get_nearest_fcurve_verts_list(bAnimContext *ac, const int mval[2], L
 /* helper for find_nearest_fcurve_vert() - get the best match to use */
 static tNearestVertInfo *get_best_nearest_fcurve_vert(ListBase *matches)
 {
-  tNearestVertInfo *nvi = NULL;
-  short found = 0;
-
   /* abort if list is empty */
   if (BLI_listbase_is_empty(matches)) {
     return NULL;
@@ -273,28 +270,50 @@ static tNearestVertInfo *get_best_nearest_fcurve_vert(ListBase *matches)
     return BLI_pophead(matches);
   }
 
-  /* try to find the first selected F-Curve vert, then take the one after it */
+  tNearestVertInfo *nvi = NULL;
+  tNearestVertInfo *best = NULL;
+  bool after_active_fcu = false;
+  /* List of priority: active fcu > after active fcu > Selected fcu > unselected fcu. The "after
+   * active fcu" enables cycling through keys by clicking on them repeatedly. */
   for (nvi = matches->first; nvi; nvi = nvi->next) {
-    /* which mode of search are we in: find first selected, or find vert? */
-    if (found) {
-      /* Just take this vert now that we've found the selected one
-       * - We'll need to remove this from the list
-       *   so that it can be returned to the original caller.
-       */
-      BLI_remlink(matches, nvi);
-      return nvi;
+    if (nvi->fcu->flag & FCURVE_ACTIVE) {
+      after_active_fcu = true;
     }
 
-    /* if vert is selected, we've got what we want... */
     if (nvi->sel) {
-      found = 1;
+      continue;
+    }
+
+    if (nvi->fcu->flag & FCURVE_ACTIVE) {
+      /* Exit early because there can only be 1 active FCurve and it has the highest selection
+       * priority. */
+      best = nvi;
+      break;
+    }
+
+    if (after_active_fcu) {
+      best = nvi;
+      after_active_fcu = false;
+    }
+
+    if (best == NULL) {
+      best = nvi;
+      continue;
+    }
+
+    if ((nvi->fcu->flag & FCURVE_SELECTED) && !(best->fcu->flag & FCURVE_SELECTED)) {
+      best = nvi;
     }
   }
 
-  /* if we're still here, this means that we failed to find anything appropriate in the first pass,
-   * so just take the first item now...
-   */
-  return BLI_pophead(matches);
+  if (best != NULL) {
+    BLI_remlink(matches, best);
+    return best;
+  }
+  else {
+    /* Can happen if all verts are selected. */
+    return BLI_pophead(matches);
+  }
 }
 
 /**
