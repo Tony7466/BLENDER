@@ -2276,9 +2276,9 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
   }
   if (loop_normals_needed) {
     const blender::bke::AttributeAccessor attributes = mesh->attributes();
-    const blender::VArray<bool> sharp_edges = attributes.lookup_or_default<bool>(
+    const blender::VArray<bool> sharp_edges = *attributes.lookup_or_default<bool>(
         "sharp_edge", ATTR_DOMAIN_EDGE, false);
-    const blender::VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
+    const blender::VArray<bool> sharp_faces = *attributes.lookup_or_default<bool>(
         "sharp_face", ATTR_DOMAIN_FACE, false);
     const blender::short2 *custom_normals = static_cast<const blender::short2 *>(
         CustomData_get_layer(&mesh->ldata, CD_CUSTOMLOOPNORMAL));

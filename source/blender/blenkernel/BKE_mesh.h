@@ -214,7 +214,7 @@ bool BKE_mesh_material_index_used(struct Mesh *me, short index);
 void BKE_mesh_material_index_clear(struct Mesh *me);
 void BKE_mesh_material_remap(struct Mesh *me, const unsigned int *remap, unsigned int remap_len);
 void BKE_mesh_smooth_flag_set(struct Mesh *me, bool use_smooth);
-void BKE_mesh_sharp_edges_set_from_angle(struct Mesh *me, float auto_smooth_angle);
+void BKE_mesh_sharp_edges_set_from_angle(struct Mesh *me, float angle);
 
 /**
  * Used for unit testing; compares two meshes, checking only

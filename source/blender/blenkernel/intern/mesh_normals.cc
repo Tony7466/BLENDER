@@ -293,13 +293,15 @@ void normals_calc_poly_vert(const Span<float3> positions,
   }
 }
 
-/** \} */
-
 }  // namespace blender::bke::mesh
+
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Mesh Normal Calculation
  * \{ */
+
+namespace blender::bke {
 
 enum class BoolArrayMix {
   None,
@@ -365,6 +367,8 @@ static BoolArrayMix bool_array_mix_calc(const VArray<bool> &varray)
   return bool_array_mix_calc(varray, varray.index_range());
 }
 
+}  // namespace blender::bke
+
 eAttrDomain Mesh::normal_domain_all_info() const
 {
   using namespace blender;
@@ -378,7 +382,7 @@ eAttrDomain Mesh::normal_domain_all_info() const
   }
 
   const AttributeAccessor attributes = this->attributes();
-  const VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
+  const VArray<bool> sharp_faces = *attributes.lookup_or_default<bool>(
       "sharp_face", ATTR_DOMAIN_FACE, false);
 
   const BoolArrayMix face_mix = bool_array_mix_calc(sharp_faces);
@@ -386,7 +390,7 @@ eAttrDomain Mesh::normal_domain_all_info() const
     return ATTR_DOMAIN_FACE;
   }
 
-  const VArray<bool> sharp_edges = attributes.lookup_or_default<bool>(
+  const VArray<bool> sharp_edges = *attributes.lookup_or_default<bool>(
       "sharp_edge", ATTR_DOMAIN_EDGE, false);
   const BoolArrayMix edge_mix = bool_array_mix_calc(sharp_edges);
   if (edge_mix == BoolArrayMix::AllTrue) {
@@ -507,9 +511,9 @@ blender::Span<blender::float3> Mesh::corner_normals() const
       }
       case ATTR_DOMAIN_CORNER: {
         const AttributeAccessor attributes = this->attributes();
-        const VArray<bool> sharp_edges = attributes.lookup_or_default<bool>(
+        const VArray<bool> sharp_edges = *attributes.lookup_or_default<bool>(
             "sharp_edge", ATTR_DOMAIN_EDGE, false);
-        const VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
+        const VArray<bool> sharp_faces = *attributes.lookup_or_default<bool>(
             "sharp_face", ATTR_DOMAIN_FACE, false);
         const short2 *custom_normals = static_cast<const short2 *>(
             CustomData_get_layer(&this->ldata, CD_CUSTOMLOOPNORMAL));
@@ -925,8 +929,7 @@ static void build_edge_to_loop_map(const OffsetIndices<int> polys,
         /* Second loop using this edge, time to test its sharpness.
          * An edge is sharp if it is tagged as such, or its face is not smooth,
          * or both poly have opposed (flipped) normals, i.e. both loops on the same edge share the
-         * same vertex, or angle between both its polys' normals is above split_angle value.
-         */
+         * same vertex. */
         if (sharp_faces[poly_i] || sharp_edges[edge_i] || vert_i == corner_verts[e2l[0]]) {
           /* NOTE: we are sure that loop != 0 here ;). */
           e2l[1] = INDEX_INVALID;
@@ -1814,7 +1817,7 @@ static void mesh_set_custom_normals(Mesh *mesh, float (*r_custom_nors)[3], const
   MutableAttributeAccessor attributes = mesh->attributes_for_write();
   SpanAttributeWriter<bool> sharp_edges = attributes.lookup_or_add_for_write_span<bool>(
       "sharp_edge", ATTR_DOMAIN_EDGE);
-  const VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
+  const VArray<bool> sharp_faces = *attributes.lookup_or_default<bool>(
       "sharp_face", ATTR_DOMAIN_FACE, false);
 
   mesh_normals_loop_custom_set(

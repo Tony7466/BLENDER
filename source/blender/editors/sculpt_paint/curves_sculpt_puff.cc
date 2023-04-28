@@ -71,8 +71,8 @@ struct PuffOperationExecutor {
 
   CurvesSurfaceTransforms transforms_;
 
-  Object *surface_ob_ = nullptr;
-  Mesh *surface_ = nullptr;
+  const Object *surface_ob_ = nullptr;
+  const Mesh *surface_ = nullptr;
   Span<float3> surface_positions_;
   Span<int> surface_corner_verts_;
   Span<MLoopTri> surface_looptris_;
@@ -111,7 +111,7 @@ struct PuffOperationExecutor {
     falloff_shape_ = static_cast<eBrushFalloffShape>(brush_->falloff_shape);
 
     surface_ob_ = curves_id_->surface;
-    surface_ = static_cast<Mesh *>(surface_ob_->data);
+    surface_ = static_cast<const Mesh *>(surface_ob_->data);
 
     transforms_ = CurvesSurfaceTransforms(*object_, surface_ob_);
 

@@ -1554,21 +1554,21 @@ void BKE_mesh_smooth_flag_set(Mesh *me, const bool use_smooth)
   }
 }
 
-void BKE_mesh_sharp_edges_set_from_angle(Mesh *me, const float auto_smooth_angle)
+void BKE_mesh_sharp_edges_set_from_angle(Mesh *me, const float angle)
 {
   using namespace blender;
   using namespace blender::bke;
   bke::MutableAttributeAccessor attributes = me->attributes_for_write();
   bke::SpanAttributeWriter<bool> sharp_edges = attributes.lookup_or_add_for_write_span<bool>(
       "sharp_edge", ATTR_DOMAIN_EDGE);
-  const VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
+  const VArray<bool> sharp_faces = *attributes.lookup_or_default<bool>(
       "sharp_face", ATTR_DOMAIN_FACE, false);
   bke::mesh::edges_sharp_from_angle_set(me->polys(),
                                         me->corner_verts(),
                                         me->corner_edges(),
                                         me->poly_normals(),
                                         sharp_faces,
-                                        auto_smooth_angle,
+                                        angle,
                                         sharp_edges.span);
   sharp_edges.finish();
 }

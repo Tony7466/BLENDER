@@ -24,8 +24,7 @@ BLI_NOINLINE static void sample_point_attribute(const Span<int> corner_verts,
 {
   for (const int i : mask) {
     const MLoopTri &tri = looptris[looptri_indices[i]];
-    const float3 &bary_coord = bary_coords[i];
-    dst[i] = attribute_math::mix3(bary_coord,
+    dst[i] = attribute_math::mix3(bary_coords[i],
                                   src[corner_verts[tri.tri[0]]],
                                   src[corner_verts[tri.tri[1]]],
                                   src[corner_verts[tri.tri[2]]]);
@@ -42,8 +41,7 @@ void sample_point_normals(const Span<int> corner_verts,
 {
   for (const int i : mask) {
     const MLoopTri &tri = looptris[looptri_indices[i]];
-    const float3 &bary_coord = bary_coords[i];
-    const float3 value = attribute_math::mix3(bary_coord,
+    const float3 value = attribute_math::mix3(bary_coords[i],
                                               src[corner_verts[tri.tri[0]]],
                                               src[corner_verts[tri.tri[1]]],
                                               src[corner_verts[tri.tri[2]]]);

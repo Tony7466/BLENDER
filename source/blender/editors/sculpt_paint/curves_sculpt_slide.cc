@@ -97,7 +97,7 @@ struct SlideOperationExecutor {
   CurvesGeometry *curves_orig_ = nullptr;
 
   Object *surface_ob_orig_ = nullptr;
-  Mesh *surface_orig_ = nullptr;
+  const Mesh *surface_orig_ = nullptr;
   Span<MLoopTri> surface_looptris_orig_;
   VArraySpan<float2> surface_uv_map_orig_;
   Span<float3> corner_normals_orig_su_;
@@ -164,7 +164,7 @@ struct SlideOperationExecutor {
     transforms_ = CurvesSurfaceTransforms(*curves_ob_orig_, curves_id_orig_->surface);
 
     surface_ob_orig_ = curves_id_orig_->surface;
-    surface_orig_ = static_cast<Mesh *>(surface_ob_orig_->data);
+    surface_orig_ = static_cast<const Mesh *>(surface_ob_orig_->data);
     if (surface_orig_->totpoly == 0) {
       report_empty_original_surface(stroke_extension.reports);
       return;

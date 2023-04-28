@@ -331,7 +331,7 @@ static void normalEditModifier_do_radial(NormalEditModifierData *enmd,
           corner_verts, corner_edges, nos.data(), &mesh->ldata, polys, mesh->poly_normals())) {
     BKE_mesh_tag_face_winding_changed(mesh);
   }
-  const VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
+  const VArray<bool> sharp_faces = *attributes.lookup_or_default<bool>(
       "sharp_face", ATTR_DOMAIN_FACE, false);
   blender::bke::mesh::normals_loop_custom_set(vert_positions,
                                               edges,
@@ -440,7 +440,7 @@ static void normalEditModifier_do_directional(NormalEditModifierData *enmd,
           corner_verts, corner_edges, nos.data(), &mesh->ldata, polys, mesh->poly_normals())) {
     BKE_mesh_tag_face_winding_changed(mesh);
   }
-  const VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
+  const VArray<bool> sharp_faces = *attributes.lookup_or_default<bool>(
       "sharp_face", ATTR_DOMAIN_FACE, false);
   blender::bke::mesh::normals_loop_custom_set(positions,
                                               edges,
@@ -525,7 +525,7 @@ static Mesh *normalEditModifier_do(NormalEditModifierData *enmd,
     clnors = static_cast<blender::short2 *>(
         CustomData_get_layer_for_write(ldata, CD_CUSTOMLOOPNORMAL, corner_verts.size()));
     loop_normals.reinitialize(corner_verts.size());
-    const VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
+    const VArray<bool> sharp_faces =* attributes.lookup_or_default<bool>(
         "sharp_face", ATTR_DOMAIN_FACE, false);
     blender::bke::mesh::normals_calc_loop(positions,
                                           edges,

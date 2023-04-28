@@ -73,7 +73,7 @@ struct DensityAddOperationExecutor {
   CurvesGeometry *curves_orig_ = nullptr;
 
   Object *surface_ob_orig_ = nullptr;
-  Mesh *surface_orig_ = nullptr;
+  const Mesh *surface_orig_ = nullptr;
 
   Object *surface_ob_eval_ = nullptr;
   Mesh *surface_eval_ = nullptr;
@@ -112,7 +112,7 @@ struct DensityAddOperationExecutor {
     }
 
     surface_ob_orig_ = curves_id_orig_->surface;
-    surface_orig_ = static_cast<Mesh *>(surface_ob_orig_->data);
+    surface_orig_ = static_cast<const Mesh *>(surface_ob_orig_->data);
     if (surface_orig_->totpoly == 0) {
       report_empty_original_surface(stroke_extension.reports);
       return;

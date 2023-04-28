@@ -392,9 +392,9 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
     /* calculate custom normals into loop_normals, then mirror first half into second half */
 
     const blender::bke::AttributeAccessor attributes = result->attributes();
-    const blender::VArray<bool> sharp_edges = attributes.lookup_or_default<bool>(
+    const blender::VArray<bool> sharp_edges = *attributes.lookup_or_default<bool>(
         "sharp_edge", ATTR_DOMAIN_EDGE, false);
-    const blender::VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
+    const blender::VArray<bool> sharp_faces = *attributes.lookup_or_default<bool>(
         "sharp_face", ATTR_DOMAIN_FACE, false);
     blender::bke::mesh::normals_calc_loop(result->vert_positions(),
                                           result_edges,

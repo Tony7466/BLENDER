@@ -503,8 +503,7 @@ void USDGenericMeshWriter::write_normals(const Mesh *mesh, pxr::UsdGeomMesh usd_
 
   switch (mesh->normal_domain_all_info()) {
     case ATTR_DOMAIN_POINT: {
-      const Span<int> corner_verts = mesh->corner_verts();
-      array_utils::gather(mesh->vert_normals(), corner_verts, dst_normals);
+      array_utils::gather(mesh->vert_normals(), mesh->corner_verts(), dst_normals);
       break;
     }
     case ATTR_DOMAIN_FACE: {

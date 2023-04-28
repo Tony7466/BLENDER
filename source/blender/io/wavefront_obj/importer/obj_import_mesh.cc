@@ -381,7 +381,6 @@ void MeshFromGeometry::create_normals(Mesh *mesh)
       tot_loop_idx++;
     }
   }
-
   BKE_mesh_set_custom_normals(mesh, loop_normals);
   MEM_freeN(loop_normals);
 }

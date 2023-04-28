@@ -42,17 +42,6 @@ static const char *rna_Mesh_unit_test_compare(struct Mesh *mesh,
   return ret;
 }
 
-static void rna_Mesh_create_normals_split(Mesh *mesh)
-{
-  /* TODO: Deprecation? */
-  BKE_mesh_corner_normals_ensure(mesh);
-}
-
-static void rna_Mesh_free_normals_split(Mesh *UNUSED(mesh))
-{
-  /* TODO: Deprecation? */
-}
-
 static void rna_Mesh_calc_tangents(Mesh *mesh, ReportList *reports, const char *uvmap)
 {
   float(*r_looptangents)[4];
@@ -225,16 +214,6 @@ void RNA_api_mesh(StructRNA *srna)
   func = RNA_def_function(srna, "calc_normals", "rna_Mesh_calc_normals");
   RNA_def_function_ui_description(
       func, "Deprecated. Has no effect. Normals are calculated upon retrieval");
-
-  func = RNA_def_function(srna, "create_normals_split", "rna_Mesh_create_normals_split");
-  RNA_def_function_ui_description(func, "Empty split vertex normals");
-
-  func = RNA_def_function(srna, "calc_normals_split", "rna_Mesh_create_normals_split");
-  RNA_def_function_ui_description(func,
-                                  "Calculate split vertex normals, which preserve sharp edges");
-
-  func = RNA_def_function(srna, "free_normals_split", "rna_Mesh_free_normals_split");
-  RNA_def_function_ui_description(func, "Free split vertex normals");
 
   func = RNA_def_function(srna, "split_faces", "rna_Mesh_split_faces");
   RNA_def_function_ui_description(func, "Split faces based on the edge angle");

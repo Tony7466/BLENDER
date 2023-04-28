@@ -573,7 +573,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 
   wn_data.polys = polys;
   wn_data.poly_normals = mesh->poly_normals();
-  wn_data.sharp_faces = attributes.lookup_or_default<bool>("sharp_face", ATTR_DOMAIN_FACE, false);
+  wn_data.sharp_faces = *attributes.lookup_or_default<bool>("sharp_face", ATTR_DOMAIN_FACE, false);
   wn_data.poly_strength = static_cast<const int *>(CustomData_get_layer_named(
       &result->pdata, CD_PROP_INT32, MOD_WEIGHTEDNORMALS_FACEWEIGHT_CDLAYER_ID));
 

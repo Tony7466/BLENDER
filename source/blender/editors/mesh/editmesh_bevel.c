@@ -333,8 +333,6 @@ static bool edbm_bevel_calc(wmOperator *op)
 
     const int material = CLAMPIS(material_init, -1, obedit->totcol - 1);
 
-    Mesh *me = obedit->data;
-
     EDBM_op_init(em,
                  &bmop,
                  op,

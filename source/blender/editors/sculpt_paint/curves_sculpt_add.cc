@@ -125,7 +125,7 @@ struct AddOperationExecutor {
     transforms_ = CurvesSurfaceTransforms(*curves_ob_orig_, curves_id_orig_->surface);
 
     Object &surface_ob_orig = *curves_id_orig_->surface;
-    const Mesh &surface_orig = *static_cast<Mesh *>(surface_ob_orig.data);
+    const Mesh &surface_orig = *static_cast<const Mesh *>(surface_ob_orig.data);
     if (surface_orig.totpoly == 0) {
       report_empty_original_surface(stroke_extension.reports);
       return;

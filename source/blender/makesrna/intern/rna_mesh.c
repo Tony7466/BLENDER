@@ -4242,7 +4242,10 @@ static void rna_def_mesh(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "normal_domain_all_info", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_attribute_domain_only_mesh_no_edge_items);
-  RNA_def_property_ui_text(prop, "Normal Domain ALl Info", "");
+  RNA_def_property_ui_text(
+      prop,
+      "Normal Domain All Info",
+      "The attribute domain that gives enough information to represent the mesh's normals");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_enum_funcs(prop, "rna_Mesh_normal_domain_all_info_get", NULL, NULL);
 
