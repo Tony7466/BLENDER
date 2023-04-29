@@ -19,3 +19,4 @@ Referenced by issue #97220, Crash on object offset in the array modifier
 Referenced by issue #97150, Export GP to PDF or SVG crashes blender
 Referenced by issue #36350,  Freestyle renders extra lines
 Referenced by issue #104726, Blender crashes on opening BLENDER-v248REND file
+Referenced by issue #107473, Inconsistent behavior of `bpy.types.NodeLink.is_valid`
