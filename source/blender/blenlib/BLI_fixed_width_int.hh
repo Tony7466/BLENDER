@@ -20,9 +20,25 @@ template<typename T, int S> struct UIntF {
 
   UIntF() = default;
 
-  explicit UIntF(const uint64_t value) : UIntF(std::to_string(value).c_str()) {}
+  explicit UIntF(const uint64_t value)
+  {
+    constexpr int Count = std::min(S, int(sizeof(decltype(value)) / sizeof(T)));
+    constexpr int BitsPerT = 8 * sizeof(T);
+
+    for (int i = 0; i < std::min(Count, S); i++) {
+      this->v[i] = T(value >> (BitsPerT * i));
+    }
+    for (int i = Count; i < S; i++) {
+      this->v[i] = 0;
+    }
+  }
 
   explicit UIntF(const char *str, const int base = 10)
+  {
+    this->set_from_str(str, base);
+  }
+
+  void set_from_str(const char *str, const int base = 10)
   {
     mpz_t x;
     mpz_init(x);
@@ -63,6 +79,11 @@ template<typename T, int S> struct IntF {
   explicit IntF(const UIntF<T, S> &value) : v(value.v) {}
 
   explicit IntF(const char *str, const int base = 10)
+  {
+    this->set_from_str(str, base);
+  }
+
+  void set_from_str(const char *str, const int base = 10)
   {
     if (str[0] == '-') {
       const UIntF<T, S> unsigned_value(str + 1, base);
