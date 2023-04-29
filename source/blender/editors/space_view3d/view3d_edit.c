@@ -1197,6 +1197,7 @@ static int toggle_xray_exec(bContext *C, wmOperator *op)
   ScrArea *area = CTX_wm_area(C);
   Object *obact = CTX_data_active_object(C);
 
+  /* Note: this logic is duplicated in the view3d header and shading_ex_pie */
   if (obact && ((obact->mode & OB_MODE_POSE) ||
                 ((obact->mode & OB_MODE_WEIGHT_PAINT) && BKE_object_pose_armature_get(obact)))) {
     v3d->overlay.flag ^= V3D_OVERLAY_BONE_SELECT;
