@@ -117,10 +117,12 @@ ENUM_OPERATORS(eFileAttributes, FILE_ATTR_HARDLINK);
 /** \name External File Operations
  * \{ */
 
+/**
+ * All operations may not be supported on all platforms.
+ */
 typedef enum FileExternalOperation {
   FILE_EXTERNAL_OPERATION_OPEN = 1,
-  FILE_EXTERNAL_OPERATION_FOLDER_OPEN,
-  /* Following are Windows-only: */
+  FILE_EXTERNAL_OPERATION_FILE_REVEAL,
   FILE_EXTERNAL_OPERATION_EDIT,
   FILE_EXTERNAL_OPERATION_NEW,
   FILE_EXTERNAL_OPERATION_FIND,
@@ -133,7 +135,7 @@ typedef enum FileExternalOperation {
   FILE_EXTERNAL_OPERATION_RUNAS,
   FILE_EXTERNAL_OPERATION_PROPERTIES,
   FILE_EXTERNAL_OPERATION_FOLDER_FIND,
-  FILE_EXTERNAL_OPERATION_FOLDER_CMD,
+  FILE_EXTERNAL_OPERATION_FOLDER_TERMINAL,
 } FileExternalOperation;
 
 bool BLI_file_external_operation_supported(const char *filepath, FileExternalOperation operation);

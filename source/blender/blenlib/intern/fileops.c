@@ -53,7 +53,7 @@ static char *windows_operation_string(FileExternalOperation operation)
   switch (operation) {
     case FILE_EXTERNAL_OPERATION_OPEN:
       return "open";
-    case FILE_EXTERNAL_OPERATION_FOLDER_OPEN:
+    case FILE_EXTERNAL_OPERATION_FILE_REVEAL:
       return "open";
     case FILE_EXTERNAL_OPERATION_EDIT:
       return "edit";
@@ -79,7 +79,7 @@ static char *windows_operation_string(FileExternalOperation operation)
       return "properties";
     case FILE_EXTERNAL_OPERATION_FOLDER_FIND:
       return "find";
-    case FILE_EXTERNAL_OPERATION_FOLDER_CMD:
+    case FILE_EXTERNAL_OPERATION_FOLDER_TERMINAL:
       return "cmd";
   }
   BLI_assert_unreachable();

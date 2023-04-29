@@ -5,11 +5,11 @@
  * \ingroup spfile
  */
 
-#include "BLI_utildefines.h"
-
 #include "BLI_blenlib.h"
+#include "BLI_fileops.h"
 #include "BLI_linklist.h"
 #include "BLI_math.h"
+#include "BLI_utildefines.h"
 
 #include "BKE_appdir.h"
 #include "BKE_blendfile.h"
@@ -1778,23 +1778,17 @@ static const EnumPropertyItem file_external_operation[] = {
     {FILE_EXTERNAL_OPERATION_OPEN,
      "OPEN",
      ICON_NONE,
-#ifdef __APPLE__
-     "Reveal in Finder",
-     "Reveal location in Finder"
-#else
      "Open",
-     "Open the file"
-#endif
-    },
-    {FILE_EXTERNAL_OPERATION_FOLDER_OPEN,
+     "Open the file in its default application"},
+    {FILE_EXTERNAL_OPERATION_FILE_REVEAL,
      "FOLDER_OPEN",
      ICON_NONE,
 #ifdef __APPLE__
      "Reveal in Finder",
-     "Reveal location in Finder"
+     "Reveal this file in a new Finder window"
 #else
      "Open Folder",
-     "Open the folder"
+     "Open the folder in system file browser"
 #endif
     },
     {FILE_EXTERNAL_OPERATION_EDIT, "EDIT", ICON_NONE, "Edit", "Edit the file"},
@@ -1816,7 +1810,7 @@ static const EnumPropertyItem file_external_operation[] = {
      ICON_NONE,
 #ifdef __APPLE__
      "Get Info",
-     "Open the Get Info window for this item"
+     "Open the Get Info window for this file"
 #else
      "Properties",
      "Show OS Properties for this item"
@@ -1827,12 +1821,12 @@ static const EnumPropertyItem file_external_operation[] = {
      ICON_NONE,
      "Find in Folder",
      "Search for items in this folder"},
-    {FILE_EXTERNAL_OPERATION_FOLDER_CMD,
+    {FILE_EXTERNAL_OPERATION_FOLDER_TERMINAL,
      "CMD",
      ICON_NONE,
 #ifdef __APPLE__
      "Open in Terminal",
-     "Open a terminal window with this folder as the current directory"
+     "Open a terminal window with this folder as the current folder"
 #else
      "Command Prompt Here",
      "Open a command prompt here"
@@ -1907,7 +1901,7 @@ void FILE_OT_external_operation(wmOperatorType *ot)
                file_external_operation,
                FILE_EXTERNAL_OPERATION_OPEN,
                "Operation",
-               "Operation to perform on the file or path");
+               "Operation to perform on the file or folder");
 }
 
 static void file_os_operations_menu_item(uiLayout *layout,
@@ -1920,7 +1914,7 @@ static void file_os_operations_menu_item(uiLayout *layout,
     return;
   }
 #else
-  if (!ELEM(operation, FILE_EXTERNAL_OPERATION_OPEN, FILE_EXTERNAL_OPERATION_FOLDER_OPEN)) {
+  if (!ELEM(operation, FILE_EXTERNAL_OPERATION_OPEN, FILE_EXTERNAL_OPERATION_FILE_REVEAL)) {
     return;
   }
 #endif
@@ -1980,8 +1974,8 @@ static void file_os_operations_menu_draw(const bContext *C_const, Menu *menu)
   wmOperatorType *ot = WM_operatortype_find("FILE_OT_external_operation", true);
 
   if (fileentry->typeflag & FILE_TYPE_DIR) {
-    file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_FOLDER_OPEN);
-    file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_FOLDER_CMD);
+    file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_FILE_REVEAL);
+    file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_FOLDER_TERMINAL);
     file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_PROPERTIES);
   }
   else {
@@ -1996,8 +1990,8 @@ static void file_os_operations_menu_draw(const bContext *C_const, Menu *menu)
     file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_PRINT);
     file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_INSTALL);
     file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_RUNAS);
-    file_os_operations_menu_item(layout, ot, root, FILE_EXTERNAL_OPERATION_FOLDER_OPEN);
-    file_os_operations_menu_item(layout, ot, root, FILE_EXTERNAL_OPERATION_FOLDER_CMD);
+    file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_FILE_REVEAL);
+    file_os_operations_menu_item(layout, ot, root, FILE_EXTERNAL_OPERATION_FOLDER_TERMINAL);
     file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_PROPERTIES);
   }
 }

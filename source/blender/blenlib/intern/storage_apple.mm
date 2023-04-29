@@ -220,6 +220,12 @@ bool BLI_change_working_dir(const char *dir)
   }
 }
 
+/**
+ *
+ * \param service_invocation: Taken from `/System/Library/CoreServices/pbs -dump`
+ * \param fileurl: The fileurl to operate on. Starts with `/`.
+ * \return: If the service call succeeded.
+ */
 bool perform_service_for_fileurl(NSString *service_invocation, NSString *fileurl)
 {
   @autoreleasepool {
@@ -229,6 +235,21 @@ bool perform_service_for_fileurl(NSString *service_invocation, NSString *fileurl
     const bool ok = NSPerformService(service_invocation, pasteboard);
     [pasteboard releaseGlobally];
     return ok;
+  }
+}
+
+bool external_file_finder_open_default(const char *filepath)
+{
+  @autoreleasepool {
+    // Shows confirmation popup on every call, so use a different method.
+    //
+    // return perform_service_for_fileurl(@"Finder/Open", [NSString
+    // stringWithUTF8String:filepath]);
+
+    NSURL *url = [NSURL fileURLWithFileSystemRepresentation:filepath
+                                                isDirectory:NO
+                                              relativeToURL:nil];
+    return [[NSWorkspace sharedWorkspace] openURL:url];
   }
 }
 
@@ -255,16 +276,16 @@ bool external_file_open_terminal(const char *filepath)
   }
 }
 
-using external_operation_executor = bool (*)(const char *);
+using ExternalOperationExecutor = bool (*)(const char *);
 
-external_operation_executor apple_external_operation_execute(const char *filepath,
-                                                             FileExternalOperation operation)
+ExternalOperationExecutor get_external_operation_executor(const char *filepath,
+                                                          FileExternalOperation operation)
 {
   switch (operation) {
     case FILE_EXTERNAL_OPERATION_OPEN: {
-      return external_file_finder_reveal;
+      return external_file_finder_open_default;
     }
-    case FILE_EXTERNAL_OPERATION_FOLDER_OPEN: {
+    case FILE_EXTERNAL_OPERATION_FILE_REVEAL: {
       return external_file_finder_reveal;
     }
     case FILE_EXTERNAL_OPERATION_EDIT: {
@@ -303,7 +324,7 @@ external_operation_executor apple_external_operation_execute(const char *filepat
     case FILE_EXTERNAL_OPERATION_FOLDER_FIND: {
       return nullptr;
     }
-    case FILE_EXTERNAL_OPERATION_FOLDER_CMD: {
+    case FILE_EXTERNAL_OPERATION_FOLDER_TERMINAL: {
       return external_file_open_terminal;
     }
   }
@@ -314,8 +335,8 @@ external_operation_executor apple_external_operation_execute(const char *filepat
 bool BLI_apple_external_operation_execute(const char *filepath, FileExternalOperation operation)
 {
   @autoreleasepool {
-    const external_operation_executor executor = apple_external_operation_execute(filepath,
-                                                                                  operation);
+    const ExternalOperationExecutor executor = get_external_operation_executor(filepath,
+                                                                               operation);
     if (executor == nullptr) {
       return false;
     }
@@ -325,8 +346,8 @@ bool BLI_apple_external_operation_execute(const char *filepath, FileExternalOper
 bool BLI_apple_external_operation_supported(const char *filepath, FileExternalOperation operation)
 {
   @autoreleasepool {
-    const external_operation_executor executor = apple_external_operation_execute(filepath,
-                                                                                  operation);
+    const ExternalOperationExecutor executor = get_external_operation_executor(filepath,
+                                                                               operation);
     return executor != nullptr;
   }
 }
