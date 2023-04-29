@@ -8,12 +8,12 @@ namespace blender::fixed_width_int::tests {
 
 TEST(fixed_width_int, Test)
 {
-  Int128 a{"10000"};
-  Int128 b{"-5"};
-  Int128 c = a * b;
+  Int128 a{-5};
+  // Int128 b{"-5"};
+  // Int128 c = a * b;
   a.print();
-  b.print();
-  c.print();
+  // b.print();
+  // c.print();
   // UInt256 a{"100000000000"};
   // UInt256 b{"20000"};
   // UInt256 c = a * b;

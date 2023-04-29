@@ -74,7 +74,19 @@ template<typename T, int S> struct IntF {
 
   IntF() = default;
 
-  explicit IntF(const int64_t value) : IntF(std::to_string(value).c_str()) {}
+  explicit IntF(const int64_t value)
+  {
+    constexpr int Count = std::min(S, int(sizeof(decltype(value)) / sizeof(T)));
+    constexpr int BitsPerT = 8 * sizeof(T);
+
+    for (int i = 0; i < std::min(Count, S); i++) {
+      this->v[i] = T(value >> (BitsPerT * i));
+    }
+    const T sign_extend_fill = value < 0 ? T(-1) : T(0);
+    for (int i = Count; i < S; i++) {
+      this->v[i] = sign_extend_fill;
+    }
+  }
 
   explicit IntF(const UIntF<T, S> &value) : v(value.v) {}
 
