@@ -115,15 +115,21 @@ using UInt256_16 = UIntF<uint16_t, 16>;
 using UInt256_32 = UIntF<uint32_t, 8>;
 using UInt256_64 = UIntF<uint64_t, 4>;
 
-using UInt128 = UInt128_64;
-using UInt256 = UInt256_64;
-
 using Int128_8 = IntF<uint8_t, 16>;
 using Int128_16 = IntF<uint16_t, 8>;
 using Int128_32 = IntF<uint32_t, 4>;
 using Int128_64 = IntF<uint64_t, 2>;
 
-using Int128 = Int128_8;
+using Int256_8 = IntF<uint8_t, 32>;
+using Int256_16 = IntF<uint16_t, 16>;
+using Int256_32 = IntF<uint32_t, 8>;
+using Int256_64 = IntF<uint64_t, 4>;
+
+using UInt128 = UInt128_64;
+using UInt256 = UInt256_64;
+
+using Int128 = Int128_64;
+using Int256 = Int256_64;
 
 template<typename T, typename T2, int S> inline void generic_add(T *dst, const T *a, const T *b)
 {

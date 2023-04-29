@@ -9,7 +9,7 @@ namespace blender::fixed_width_int::tests {
 TEST(fixed_width_int, Test)
 {
   Int128 a{"10000"};
-  Int128 b{"5"};
+  Int128 b{"-5"};
   Int128 c = a * b;
   a.print();
   b.print();
