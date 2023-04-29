@@ -287,6 +287,27 @@ inline UInt256_64 operator+(const UInt256_64 &a, const UInt256_64 &b)
 // inline UInt256_64 operator+(const UInt256_64 &a, const UInt256_64 &b)
 // {
 //   UInt256_64 r;
+//   asm("mov (%1), %%rax\n\t"
+//       "add (%2), %%rax\n\t"
+//       "mov %%rax, (%0)\n\t"
+//       "mov 8(%1), %%rax\n\t"
+//       "adc 8(%2), %%rax\n\t"
+//       "mov %%rax, 8(%0)\n\t"
+//       "mov 16(%1), %%rax\n\t"
+//       "adc 16(%2), %%rax\n\t"
+//       "mov %%rax, 16(%0)\n\t"
+//       "mov 24(%1), %%rax\n\t"
+//       "adc 24(%2), %%rax\n\t"
+//       "mov %%rax, 24(%0)\n\t" ::"r"(&r),
+//       "r"(&a),
+//       "r"(&b)
+//       : "rax");
+//   return r;
+// }
+
+// inline UInt256_64 operator+(const UInt256_64 &a, const UInt256_64 &b)
+// {
+//   UInt256_64 r;
 
 //   const auto *a_ptr = reinterpret_cast<const unsigned long long *>(a.v.data());
 //   const auto *b_ptr = reinterpret_cast<const unsigned long long *>(b.v.data());
