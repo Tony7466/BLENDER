@@ -114,6 +114,11 @@ template<typename T, int S> struct IntF {
     this->set_from_str(str, base);
   }
 
+  explicit operator int64_t() const
+  {
+    return int64_t(uint64_t(UIntF<T, S>(*this)));
+  }
+
   void set_from_str(const char *str, const int base = 10)
   {
     if (str[0] == '-') {
@@ -163,6 +168,14 @@ using double_uint_type = std::conditional_t<
         std::conditional_t<std::is_same_v<T, uint32_t>,
                            uint64_t,
                            std::conditional_t<std::is_same_v<T, uint64_t>, __uint128_t, void>>>>;
+
+using UInt64_8 = UIntF<uint8_t, 8>;
+using UInt64_16 = UIntF<uint16_t, 4>;
+using UInt64_32 = UIntF<uint32_t, 2>;
+
+using Int64_8 = IntF<uint8_t, 8>;
+using Int64_16 = IntF<uint16_t, 4>;
+using Int64_32 = IntF<uint32_t, 2>;
 
 using UInt128_8 = UIntF<uint8_t, 16>;
 using UInt128_16 = UIntF<uint16_t, 8>;
@@ -409,7 +422,7 @@ inline bool operator>(const IntF<T, Size> &a, const IntF<T, Size> &b)
   if (is_negative_a == is_negative_b) {
     return compare_reversed_order(a.v, b.v) > 0;
   }
-  return is_negative_a;
+  return is_negative_b;
 }
 
 template<typename T, int Size>
@@ -420,7 +433,7 @@ inline bool operator>=(const IntF<T, Size> &a, const IntF<T, Size> &b)
   if (is_negative_a == is_negative_b) {
     return compare_reversed_order(a.v, b.v) >= 0;
   }
-  return is_negative_a;
+  return is_negative_b;
 }
 
 template<typename T, int Size>
