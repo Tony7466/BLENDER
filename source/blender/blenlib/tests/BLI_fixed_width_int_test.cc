@@ -54,7 +54,7 @@ TEST(fixed_width_int, Performance)
 {
   const int amount = 1'000'000;
 
-  using IntT = UInt128_8;
+  using IntT = UInt64_8;
   Vector<IntT> a(amount);
   Vector<IntT> b(amount);
   Vector<IntT> c(amount);
@@ -67,24 +67,24 @@ TEST(fixed_width_int, Performance)
   }
 
   for ([[maybe_unused]] const int iter : IndexRange(10)) {
-    // {
-    //   SCOPED_TIMER("add");
-    //   for (const int i : a.index_range()) {
-    //     c[i] = a[i] + b[i];
-    //   }
-    // }
     {
-      SCOPED_TIMER("timer");
+      SCOPED_TIMER("add");
+      for (const int i : a.index_range()) {
+        c[i] = a[i] + b[i];
+      }
+    }
+    {
+      SCOPED_TIMER("sub");
       for (const int i : a.index_range()) {
         c[i] = a[i] - b[i];
       }
     }
-    // {
-    //   SCOPED_TIMER("mul");
-    //   for (const int i : a.index_range()) {
-    //     c[i] = a[i] * b[i];
-    //   }
-    // }
+    {
+      SCOPED_TIMER("mul");
+      for (const int i : a.index_range()) {
+        c[i] = a[i] * b[i];
+      }
+    }
   }
 }
 

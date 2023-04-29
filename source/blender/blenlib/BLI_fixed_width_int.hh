@@ -208,7 +208,9 @@ template<typename T, typename T2, int S> inline void generic_add(T *dst, const T
   constexpr int shift = 8 * sizeof(T);
   T2 carry = 0;
   for (int i = 0; i < S; i++) {
-    const T2 ri = T2(a[i]) + T2(b[i]) + carry;
+    const T2 ai = T2(a[i]);
+    const T2 bi = T2(b[i]);
+    const T2 ri = ai + bi + carry;
     dst[i] = T(ri);
     carry = ri >> shift;
   }
@@ -218,9 +220,11 @@ template<typename T, typename T2, int S> inline void generic_sub(T *dst, const T
 {
   T2 carry = 0;
   for (int i = 0; i < S; i++) {
-    const T2 ri = T2(a[i]) - T2(b[i]) - carry;
+    const T2 ai = T2(a[i]);
+    const T2 bi = T2(b[i]);
+    const T2 ri = ai - bi - carry;
     dst[i] = T(ri);
-    carry = ri > a[i];
+    carry = ri > ai;
   }
 }
 
