@@ -25,7 +25,7 @@ template<typename T, int S> struct UIntF {
     constexpr int Count = std::min(S, int(sizeof(decltype(value)) / sizeof(T)));
     constexpr int BitsPerT = 8 * sizeof(T);
 
-    for (int i = 0; i < std::min(Count, S); i++) {
+    for (int i = 0; i < Count; i++) {
       this->v[i] = T(value >> (BitsPerT * i));
     }
     for (int i = Count; i < S; i++) {
@@ -36,6 +36,18 @@ template<typename T, int S> struct UIntF {
   explicit UIntF(const char *str, const int base = 10)
   {
     this->set_from_str(str, base);
+  }
+
+  explicit operator uint64_t() const
+  {
+    constexpr int Count = std::min(S, int(sizeof(uint64_t) / sizeof(T)));
+    constexpr int BitsPerT = 8 * sizeof(T);
+
+    uint64_t result = 0;
+    for (int i = 0; i < Count; i++) {
+      result |= uint64_t(this->v[i]) << (BitsPerT * i);
+    }
+    return result;
   }
 
   void set_from_str(const char *str, const int base = 10)
@@ -51,7 +63,7 @@ template<typename T, int S> struct UIntF {
     mpz_clear(x);
   }
 
-  void print(const int base = 10) const
+  void print(const int base = 10, const char *end = "\n") const
   {
     mpz_t x;
     mpz_init(x);
@@ -62,7 +74,14 @@ template<typename T, int S> struct UIntF {
     }
     mpz_out_str(stdout, base, x);
     mpz_clear(x);
-    std::cout << "\n";
+    std::cout << end;
+  }
+
+  friend std::ostream &operator<<(std::ostream &stream, const UIntF &a)
+  {
+    /* Might not actually print to the stream currently. */
+    a.print(10, "");
+    return stream;
   }
 };
 
@@ -79,7 +98,7 @@ template<typename T, int S> struct IntF {
     constexpr int Count = std::min(S, int(sizeof(decltype(value)) / sizeof(T)));
     constexpr int BitsPerT = 8 * sizeof(T);
 
-    for (int i = 0; i < std::min(Count, S); i++) {
+    for (int i = 0; i < Count; i++) {
       this->v[i] = T(value >> (BitsPerT * i));
     }
     const T sign_extend_fill = value < 0 ? T(-1) : T(0);
@@ -115,15 +134,22 @@ template<typename T, int S> struct IntF {
     return result;
   }
 
-  void print(const int base = 10) const
+  void print(const int base = 10, const char *end = "\n") const
   {
     if (is_negative(*this)) {
       std::cout << "-";
-      (-*this).print(base);
+      (-*this).print(base, end);
     }
     else {
-      UIntF<T, S>(*this).print(base);
+      UIntF<T, S>(*this).print(base, end);
     }
+  }
+
+  friend std::ostream &operator<<(std::ostream &stream, const IntF &a)
+  {
+    /* Might not actually print to the stream currently. */
+    a.print(10, "");
+    return stream;
   }
 };
 
@@ -179,9 +205,10 @@ template<typename T, int S> inline void generic_sub(T *dst, const T *a, const T 
 {
   T carry = 0;
   for (int i = 0; i < S; i++) {
-    const T ri = a[i] - b[i] - carry;
+    const T sub = b[i] + carry;
+    const T ri = a[i] - sub;
     dst[i] = T(ri);
-    carry = ri > a[i];
+    carry = ri > a[i] || (sub == 0 && carry != 0);
   }
 }
 
@@ -312,6 +339,112 @@ template<typename T, int Size> inline void operator*=(UIntF<T, Size> &a, const U
 template<typename T, int Size> inline void operator*=(IntF<T, Size> &a, const IntF<T, Size> &b)
 {
   a = a * b;
+}
+
+template<typename T, int Size>
+inline bool operator==(const IntF<T, Size> &a, const IntF<T, Size> &b)
+{
+  return a.v == b.v;
+}
+
+template<typename T, int Size>
+inline bool operator==(const UIntF<T, Size> &a, const UIntF<T, Size> &b)
+{
+  return a.v == b.v;
+}
+
+template<typename T, int Size>
+inline bool operator!=(const IntF<T, Size> &a, const IntF<T, Size> &b)
+{
+  return a.v != b.v;
+}
+
+template<typename T, int Size>
+inline bool operator!=(const UIntF<T, Size> &a, const UIntF<T, Size> &b)
+{
+  return a.v != b.v;
+}
+
+template<typename T, size_t Size>
+inline int compare_reversed_order(const std::array<T, Size> &a, const std::array<T, Size> &b)
+{
+  for (int i = Size - 1; i >= 0; i--) {
+    if (a[i] < b[i]) {
+      return -1;
+    }
+    if (a[i] > b[i]) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+template<typename T, int Size>
+inline bool operator<(const IntF<T, Size> &a, const IntF<T, Size> &b)
+{
+  const bool is_negative_a = is_negative(a);
+  const bool is_negative_b = is_negative(b);
+  if (is_negative_a == is_negative_b) {
+    return compare_reversed_order(a.v, b.v) < 0;
+  }
+  return is_negative_a;
+}
+
+template<typename T, int Size>
+inline bool operator<=(const IntF<T, Size> &a, const IntF<T, Size> &b)
+{
+  const bool is_negative_a = is_negative(a);
+  const bool is_negative_b = is_negative(b);
+  if (is_negative_a == is_negative_b) {
+    return compare_reversed_order(a.v, b.v) <= 0;
+  }
+  return is_negative_a;
+}
+
+template<typename T, int Size>
+inline bool operator>(const IntF<T, Size> &a, const IntF<T, Size> &b)
+{
+  const bool is_negative_a = is_negative(a);
+  const bool is_negative_b = is_negative(b);
+  if (is_negative_a == is_negative_b) {
+    return compare_reversed_order(a.v, b.v) > 0;
+  }
+  return is_negative_a;
+}
+
+template<typename T, int Size>
+inline bool operator>=(const IntF<T, Size> &a, const IntF<T, Size> &b)
+{
+  const bool is_negative_a = is_negative(a);
+  const bool is_negative_b = is_negative(b);
+  if (is_negative_a == is_negative_b) {
+    return compare_reversed_order(a.v, b.v) >= 0;
+  }
+  return is_negative_a;
+}
+
+template<typename T, int Size>
+inline bool operator<(const UIntF<T, Size> &a, const UIntF<T, Size> &b)
+{
+  return compare_reversed_order(a.v, b.v) < 0;
+}
+
+template<typename T, int Size>
+inline bool operator<=(const UIntF<T, Size> &a, const UIntF<T, Size> &b)
+{
+  return compare_reversed_order(a.v, b.v) <= 0;
+}
+
+template<typename T, int Size>
+inline bool operator>(const UIntF<T, Size> &a, const UIntF<T, Size> &b)
+{
+  return compare_reversed_order(a.v, b.v) > 0;
+}
+
+template<typename T, int Size>
+inline bool operator>=(const UIntF<T, Size> &a, const UIntF<T, Size> &b)
+{
+  return compare_reversed_order(a.v, b.v) >= 0;
 }
 
 }  // namespace blender::fixed_width_int
