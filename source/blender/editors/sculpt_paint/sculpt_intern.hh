@@ -1093,6 +1093,10 @@ void SCULPT_face_set_set(SculptSession *ss, PBVHFaceRef face, int fset);
 bool SCULPT_vertex_has_face_set(SculptSession *ss, PBVHVertRef vertex, int face_set);
 bool SCULPT_vertex_has_unique_face_set(SculptSession *ss, PBVHVertRef vertex);
 
+/* Given two neighbor vertices in both in a Face Set boundary, checks if they are in the same
+ * boundary. */
+bool SCULPT_vertices_are_same_face_set_boundary(SculptSession *ss, PBVHVertRef vertex1, PBVHVertRef vertex2);
+
 int SCULPT_face_set_next_available_get(SculptSession *ss);
 
 void SCULPT_face_set_visibility_set(SculptSession *ss, int face_set, bool visible);

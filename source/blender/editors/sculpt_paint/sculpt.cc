@@ -615,6 +615,29 @@ int SCULPT_vertex_face_set_get(SculptSession *ss, PBVHVertRef vertex)
   return 0;
 }
 
+bool SCULPT_vertices_are_same_face_set_boundary(SculptSession *ss, PBVHVertRef vertex1, PBVHVertRef vertex2)
+{
+  switch (BKE_pbvh_type(ss->pbvh)) {
+    case PBVH_FACES: {
+      MeshElemMap *vert_map = &ss->pmap[vertex1.i];
+      for (int i = 0; i < ss->pmap[vertex1.i].count; i++) {
+        if (!SCULPT_vertex_has_face_set(ss, vertex2, ss->face_sets[vert_map->indices[i]])) {
+          return false;
+        }
+      }
+      return true;
+    }
+    case PBVH_BMESH:
+      return true;
+    case PBVH_GRIDS:
+      /* There is no need check this in Multires. If two vertices are connected and both
+       * are in a boundary, they will be always in the same boundary. */
+      return true;
+  }
+  return true;
+}
+
+
 bool SCULPT_vertex_has_face_set(SculptSession *ss, PBVHVertRef vertex, int face_set)
 {
   switch (BKE_pbvh_type(ss->pbvh)) {

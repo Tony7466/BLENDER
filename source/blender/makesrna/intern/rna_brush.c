@@ -3447,6 +3447,15 @@ static void rna_def_brush(BlenderRNA *brna)
       prop, "Area Radius Pressure", "Enable tablet pressure sensitivity for area radius");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
 
+  prop = RNA_def_property(srna, "use_preserve_face_sets_shape", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag2", BRUSH_PRESERVE_FACE_SETS_SHAPE);
+  RNA_def_property_ui_text(
+      prop,
+      "Preserve Face Sets Shape",
+      "Smooths Face Sets boundary vertices independently and uses regular smoothing for the rest "
+      "of the mesh.This preserves the general shape of the Face Sets");
+  RNA_def_property_update(prop, 0, "rna_Brush_update");
+
   prop = RNA_def_property(srna, "use_pressure_size", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", BRUSH_SIZE_PRESSURE);
   RNA_def_property_ui_icon(prop, ICON_STYLUS_PRESSURE, 0);

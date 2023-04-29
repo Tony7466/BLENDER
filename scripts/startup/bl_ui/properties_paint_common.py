@@ -759,6 +759,8 @@ def brush_settings(layout, context, brush, popover=False):
                 col.prop(brush, "surface_smooth_shape_preservation")
                 col.prop(brush, "surface_smooth_current_vertex")
                 col.prop(brush, "surface_smooth_iterations")
+            elif brush.smooth_deform_type == 'LAPLACIAN':
+                col.prop(brush, "use_preserve_face_sets_shape")
 
         elif sculpt_tool == 'DISPLACEMENT_SMEAR':
             col = layout.column()

@@ -261,6 +261,84 @@ static void SCULPT_enhance_details_brush(Sculpt *sd, Object *ob, Span<PBVHNode *
   BLI_task_parallel_range(0, nodes.size(), &data, do_enhance_details_brush_task_cb_ex, &settings);
 }
 
+static void do_smooth_brush_preserve_face_sets_shape_task_cb_ex(
+    void *__restrict userdata, const int n, const TaskParallelTLS *__restrict tls)
+{
+  SculptThreadedTaskData *data = (SculptThreadedTaskData*)userdata;
+  SculptSession *ss = data->ob->sculpt;
+  Sculpt *sd = data->sd;
+  const Brush *brush = data->brush;
+  const bool smooth_mask = data->smooth_mask;
+  float bstrength = data->strength;
+
+  PBVHVertexIter vd;
+
+  CLAMP(bstrength, 0.0f, 1.0f);
+
+  SculptBrushTest test;
+  SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
+      ss, &test, data->brush->falloff_shape);
+
+  const int thread_id = BLI_task_parallel_thread_id(tls);
+
+  BKE_pbvh_vertex_iter_begin(ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE)
+  {
+    if (sculpt_brush_test_sq_fn(&test, vd.co)) {
+      float fade = bstrength *
+                   SCULPT_brush_strength_factor(ss,
+                                                brush,
+                                                vd.co,
+                                                sqrtf(test.dist),
+                                                vd.no,
+                                                vd.fno,
+                                                smooth_mask ? 0.0f : (vd.mask ? *vd.mask : 0.0f),
+                                                vd.vertex,
+                                                thread_id,
+                                                nullptr);
+      float smooth_co[3];
+      if (SCULPT_vertex_has_unique_face_set(ss, vd.vertex)) {
+        SCULPT_neighbor_coords_average_interior(ss, smooth_co, vd.vertex);
+      }
+      else if (!SCULPT_vertex_is_boundary(ss, vd.vertex)) {
+        int neighbor_count = 0;
+        float co_accum[3] = {0.0f, 0.0f, 0.0f};
+
+        SculptVertexNeighborIter ni;
+        SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, vd.vertex, ni) {
+          if (!SCULPT_vertex_has_unique_face_set(ss, ni.vertex) &&
+              SCULPT_vertices_are_same_face_set_boundary(ss, vd.vertex, ni.vertex)) {
+            add_v3_v3(co_accum, SCULPT_vertex_co_get(ss, ni.vertex));
+            neighbor_count++;
+          }
+        }
+        SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
+        if (neighbor_count > 0) {
+          mul_v3_v3fl(smooth_co, co_accum, 1.0f / neighbor_count);
+          /* When smoothing the Face Set boundary using only boundary neighbors the mesh will
+           * shrink much faster per iteration comparted to other vertices. Reducing the fade by a
+           * factor helps compensating this undesired effect. */
+          fade *= 0.1f;
+        }
+        else {
+          copy_v3_v3(smooth_co, vd.co);
+        }
+      }
+      else {
+        copy_v3_v3(smooth_co, vd.co);
+      }
+
+      float disp[3];
+      sub_v3_v3v3(disp, smooth_co, vd.co);
+      madd_v3_v3v3fl(disp, vd.co, disp, fade);
+      SCULPT_clip(sd, ss, vd.co, disp);
+      // if (vd.mvert) {
+      //   vd.mvert->flag |= ME_VERT_PBVH_UPDATE;
+      // }
+    }
+  }
+  BKE_pbvh_vertex_iter_end;
+}
+
 static void do_smooth_brush_task_cb_ex(void *__restrict userdata,
                                        const int n,
                                        const TaskParallelTLS *__restrict tls)
@@ -361,7 +439,15 @@ void SCULPT_smooth(
 
     TaskParallelSettings settings;
     BKE_pbvh_parallel_range_settings(&settings, true, nodes.size());
-    BLI_task_parallel_range(0, nodes.size(), &data, do_smooth_brush_task_cb_ex, &settings);
+    if (brush->flag2 & BRUSH_PRESERVE_FACE_SETS_SHAPE && !smooth_mask) {
+      /* Smooth mask never uses preserve Face Sets shape version of smooth as it does not move the
+       * vertices. */
+      BLI_task_parallel_range(
+          0, nodes.size(), &data, do_smooth_brush_preserve_face_sets_shape_task_cb_ex, &settings);
+    }
+    else {
+      BLI_task_parallel_range(0, nodes.size(), &data, do_smooth_brush_task_cb_ex, &settings);
+    }
   }
 }
 
