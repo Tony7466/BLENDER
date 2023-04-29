@@ -9,3 +9,4 @@ Referenced by issue #89774, Freestyle parameter_editor.process crashes Blender i
 Referenced by issue #89602, Blender working fine yesterday, today is crashing and freezing. First time user so might need things spelling out to me.
 Referenced by issue #88417, Faces flickering in edit mode
 Referenced by issue blender/blender-addons#89427, blenderkit error in every version
+Referenced by issue #107473, Inconsistent behavior of `bpy.types.NodeLink.is_valid`
