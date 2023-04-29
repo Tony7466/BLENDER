@@ -65,6 +65,7 @@
 #include "BKE_node.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
+#include "BKE_type_conversions.hh"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -2430,7 +2431,7 @@ bNode *node_copy_with_mapping(bNodeTree *dst_tree,
  * Type of value storage related with socket is the same.
  * \param socket: Node can have multiple sockets & storages pairs.
  */
-void **node_static_value_storage_for(bNode &node, const bNodeSocket &socket)
+void *node_static_value_storage_for(bNode &node, const bNodeSocket &socket)
 {
   if (!socket.is_output()) {
     return nullptr;
@@ -2438,10 +2439,69 @@ void **node_static_value_storage_for(bNode &node, const bNodeSocket &socket)
 
   switch (node.type) {
     case GEO_NODE_IMAGE: {
-      return reinterpret_cast<void **>(&node.id);
+      return &node.id;
+    }
+    case FN_NODE_INPUT_VECTOR: {
+      return &reinterpret_cast<NodeInputVector *>(node.storage)->vector;
+    }
+    case FN_NODE_INPUT_BOOL: {
+      return &reinterpret_cast<NodeInputBool *>(node.storage)->boolean;
+    }
+    case FN_NODE_INPUT_INT: {
+      return &reinterpret_cast<NodeInputInt *>(node.storage)->integer;
+    }
+    case FN_NODE_INPUT_COLOR: {
+      return &reinterpret_cast<NodeInputColor *>(node.storage)->color;
     }
     default:
       break;
+  }
+
+  return nullptr;
+}
+
+void *socket_value_storage(bNodeSocket &socket)
+{
+  switch (eNodeSocketDatatype(socket.type)) {
+    case SOCK_BOOLEAN: {
+      return &socket.default_value_typed<bNodeSocketValueBoolean>()->value;
+    }
+    case SOCK_INT: {
+      return &socket.default_value_typed<bNodeSocketValueInt>()->value;
+    }
+    case SOCK_FLOAT: {
+      return &socket.default_value_typed<bNodeSocketValueFloat>()->value;
+    }
+    case SOCK_VECTOR: {
+      return &socket.default_value_typed<bNodeSocketValueVector>()->value;
+    }
+    case SOCK_RGBA: {
+      return &socket.default_value_typed<bNodeSocketValueRGBA>()->value;
+    }
+    case SOCK_IMAGE: {
+      return &socket.default_value_typed<bNodeSocketValueImage>()->value;
+    }
+    case SOCK_TEXTURE: {
+      return &socket.default_value_typed<bNodeSocketValueTexture>()->value;
+    }
+    case SOCK_COLLECTION: {
+      return &socket.default_value_typed<bNodeSocketValueCollection>()->value;
+    }
+    case SOCK_OBJECT: {
+      return &socket.default_value_typed<bNodeSocketValueObject>()->value;
+    }
+    case SOCK_MATERIAL: {
+      return &socket.default_value_typed<bNodeSocketValueMaterial>()->value;
+    }
+    case __SOCK_MESH:
+    case SOCK_STRING:
+    case SOCK_CUSTOM:
+      break;
+    case SOCK_SHADER:
+    case SOCK_GEOMETRY: {
+      /* Unmovable types. */
+      break;
+    }
   }
 
   return nullptr;
@@ -2457,6 +2517,11 @@ void node_socket_move_default_value(Main & /*bmain*/,
   bNode &dst_node = dst.owner_node();
   bNode &src_node = src.owner_node();
 
+  const CPPType &src_type = *src.typeinfo->base_cpp_type;
+  const CPPType &dst_type = *dst.typeinfo->base_cpp_type;
+
+  const bke::DataTypeConversions &convert = bke::get_implicit_type_conversions();
+
   if (src.is_multi_input()) {
     /* Multi input sockets no have value. */
     return;
@@ -2465,42 +2530,35 @@ void node_socket_move_default_value(Main & /*bmain*/,
     /* Reroute node can't have ownership of socket value directly. */
     return;
   }
-  if (dst.type != src.type) {
-    /* It could be possible to support conversion in future. */
-    return;
-  }
-
-  void **src_socket_value = nullptr;
-  void **dst_value = node_static_value_storage_for(dst_node, dst);
-  if (dst_value == nullptr) {
-    return;
-  }
-
-  switch (dst.type) {
-    case SOCK_IMAGE: {
-      Image **tmp_socket_value = &src.default_value_typed<bNodeSocketValueImage>()->value;
-      src_socket_value = reinterpret_cast<void **>(tmp_socket_value);
-      break;
-    }
-    case SOCK_CUSTOM:
-    case SOCK_SHADER:
-    case SOCK_GEOMETRY: {
-      /* Unmovable types. */
+  if (&src_type != &dst_type) {
+    if (!convert.is_convertible(src_type, dst_type)) {
       return;
     }
-    default: {
-      break;
-    }
   }
-
-  if (src_socket_value == nullptr) {
+  if (eNodeSocketDatatype(src.type) == SOCK_STRING) {
+    /* We don't want do this now! */
     return;
   }
 
-  ID **src_id = reinterpret_cast<ID **>(src_socket_value);
-  ID **dst_id = reinterpret_cast<ID **>(dst_value);
-  *dst_id = *src_id;
-  *src_id = nullptr;
+  void **src_value = static_cast<void **>(socket_value_storage(src));
+  void **dst_value = static_cast<void **>(node_static_value_storage_for(dst_node, dst));
+  if (!dst_value || !src_value) {
+    return;
+  }
+
+  convert.convert_to_uninitialized(src_type, dst_type, src_value, dst_value);
+
+  src_type.destruct(src_value);
+
+  /* Destruct source value to default value for pointers, strings, and all other.
+   *
+   * C++ equivalent:
+   *   src_value = {};
+   */
+  BUFFER_FOR_CPP_TYPE_VALUE(src_type, src_zero_value);
+  src_type.value_initialize(src_zero_value);
+  src_type.copy_assign(src_zero_value, src_value);
+  src_type.destruct(src_zero_value);
 }
 
 bNode *node_copy(bNodeTree *dst_tree, const bNode &src_node, const int flag, const bool use_unique)
