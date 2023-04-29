@@ -203,7 +203,8 @@ using UInt256 = UInt256_64;
 using Int128 = Int128_64;
 using Int256 = Int256_64;
 
-template<typename T, typename T2, int S> inline void generic_add(T *dst, const T *a, const T *b)
+template<typename T, typename T2, int S>
+inline void generic_add(T *__restrict dst, const T *a, const T *b)
 {
   constexpr int shift = 8 * sizeof(T);
   T2 carry = 0;
@@ -216,7 +217,8 @@ template<typename T, typename T2, int S> inline void generic_add(T *dst, const T
   }
 }
 
-template<typename T, typename T2, int S> inline void generic_sub(T *dst, const T *a, const T *b)
+template<typename T, typename T2, int S>
+inline void generic_sub(T *__restrict dst, const T *a, const T *b)
 {
   T2 carry = 0;
   for (int i = 0; i < S; i++) {
@@ -229,7 +231,7 @@ template<typename T, typename T2, int S> inline void generic_sub(T *dst, const T
 }
 
 template<typename T, typename T2, int S>
-inline void generic_unsigned_mul(T *dst, const T *a, const T *b)
+inline void generic_unsigned_mul(T *__restrict dst, const T *a, const T *b)
 {
   constexpr int shift = 8 * sizeof(T);
 

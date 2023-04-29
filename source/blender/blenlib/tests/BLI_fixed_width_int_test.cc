@@ -54,7 +54,7 @@ TEST(fixed_width_int, Performance)
 {
   const int amount = 1'000'000;
 
-  using IntT = UInt64_8;
+  using IntT = UInt256_32;
   Vector<IntT> a(amount);
   Vector<IntT> b(amount);
   Vector<IntT> c(amount);
