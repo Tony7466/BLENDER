@@ -1918,6 +1918,7 @@ static void ui_selectcontext_apply(bContext *C,
       bool b;
       int i;
       float f;
+      char *str;
       PointerRNA p;
     } delta, min, max;
 
@@ -1949,6 +1950,10 @@ static void ui_selectcontext_apply(bContext *C,
     else if (rna_type == PROP_POINTER) {
       /* Not a delta in fact. */
       delta.p = RNA_property_pointer_get(&but->rnapoin, prop);
+    }
+    else if (rna_type == PROP_STRING) {
+      /* Not a delta in fact. */
+      delta.str = RNA_property_string_get_alloc(&but->rnapoin, prop, nullptr, 0, nullptr);
     }
 
 #  ifdef USE_ALLSELECT_LAYER_HACK
@@ -2023,8 +2028,15 @@ static void ui_selectcontext_apply(bContext *C,
         const PointerRNA other_value = delta.p;
         RNA_property_pointer_set(&lptr, lprop, other_value, nullptr);
       }
+      else if (rna_type == PROP_STRING) {
+        const char *other_value = delta.str;
+        RNA_property_string_set(&lptr, lprop, other_value);
+      }
 
       RNA_property_update(C, &lptr, prop);
+    }
+    if (rna_type == PROP_STRING) {
+      MEM_freeN(delta.str);
     }
   }
 }
@@ -3146,12 +3158,14 @@ static bool ui_textedit_insert_buf(uiBut *but,
   return changed;
 }
 
+#ifdef WITH_INPUT_IME
 static bool ui_textedit_insert_ascii(uiBut *but, uiHandleButtonData *data, const char ascii)
 {
   BLI_assert(isascii(ascii));
   const char buf[2] = {ascii, '\0'};
   return ui_textedit_insert_buf(but, data, buf, sizeof(buf) - 1);
 }
+#endif
 
 static void ui_textedit_move(uiBut *but,
                              uiHandleButtonData *data,
@@ -3455,7 +3469,9 @@ static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
      * #ui_but_update_view_for_active() to run after the layout is resolved. */
     but->changed = true;
   }
-  else {
+  else if ((but->block->flag & UI_BLOCK_CLIP_EVENTS) == 0) {
+    /* Blocks with UI_BLOCK_CLIP_EVENTS are overlapping their region, so scrolling
+     * that region to ensure it is in view can't work and causes issues. #97530 */
     UI_but_ensure_in_view(C, data->region, but);
   }
 
@@ -3738,47 +3754,21 @@ static void ui_do_but_textedit(
         }
         break;
       case EVT_RIGHTARROWKEY:
-#if defined(__APPLE__)
-            if (event->modifier == KM_OSKEY || event->modifier == (KM_OSKEY + KM_SHIFT))
+        case EVT_LEFTARROWKEY: {
+#ifdef __APPLE__
+            eStrCursorJumpDirection direction = (event->type == EVT_RIGHTARROWKEY) ? STRCUR_DIR_NEXT : STRCUR_DIR_PREV;
+            eStrCursorJumpType jump = (event->modifier & KM_OSKEY) ? STRCUR_JUMP_ALL : ((event->modifier & KM_ALT) ? STRCUR_JUMP_DELIM : STRCUR_JUMP_NONE);
 #else
-            if (event->modifier == KM_CTRL)
+            eStrCursorJumpType jump = (event->modifier & KM_CTRL) ? STRCUR_JUMP_DELIM : STRCUR_JUMP_NONE;
 #endif
-            {
-                /*Allows for standard macOS cursor behavior for this key command*/
-                if (event->type == EVT_RIGHTARROWKEY) {
-                    ui_textedit_move(but, data, STRCUR_DIR_NEXT, event->modifier & KM_SHIFT,
-                                     ((event->modifier & KM_ALT) || (event->modifier & KM_CTRL)) ? STRCUR_JUMP_DELIM : STRCUR_JUMP_ALL);
-                }
-            }
-            else
             ui_textedit_move(but,
-                         data,
-                         STRCUR_DIR_NEXT,
-                         event->modifier & KM_SHIFT,
-                             ((event->modifier & KM_ALT) || (event->modifier & KM_CTRL)) ? STRCUR_JUMP_DELIM : STRCUR_JUMP_NONE);
-        retval = WM_UI_HANDLER_BREAK;
-        break;
-      case EVT_LEFTARROWKEY:
-#if defined(__APPLE__)
-            if (event->modifier == KM_OSKEY || event->modifier == (KM_OSKEY + KM_SHIFT))
-#else
-            if (event->modifier == KM_CTRL)
-#endif
-            {
-                /*Allows for standard macOS cursor behavior for this key command*/
-                if (event->type == EVT_LEFTARROWKEY) {
-                    ui_textedit_move(but, data, STRCUR_DIR_PREV, event->modifier & KM_SHIFT,
-                                     ((event->modifier & KM_ALT) || (event->modifier & KM_CTRL)) ? STRCUR_JUMP_DELIM : STRCUR_JUMP_ALL);
-                }
-            }
-            else
-            ui_textedit_move(but,
-                         data,
-                         STRCUR_DIR_PREV,
-                         event->modifier & KM_SHIFT,
-                             ((event->modifier & KM_ALT) || (event->modifier & KM_CTRL)) ? STRCUR_JUMP_DELIM : STRCUR_JUMP_NONE);
-        retval = WM_UI_HANDLER_BREAK;
-        break;
+                             data,
+                             direction,
+                             event->modifier & KM_SHIFT,
+                             jump);
+            retval = WM_UI_HANDLER_BREAK;
+            break;
+        }
       case WHEELDOWNMOUSE:
       case EVT_DOWNARROWKEY:
         if (data->searchbox) {
@@ -3818,26 +3808,32 @@ static void ui_do_but_textedit(
         button_activate_state(C, but, BUTTON_STATE_EXIT);
         retval = WM_UI_HANDLER_BREAK;
         break;
-      case EVT_DELKEY:
-        changed = ui_textedit_delete(but,
-                                     data,
-                                     STRCUR_DIR_NEXT,
-                                     /*Allows for standard macOS cursor behavior for this key command*/
-                                     ((event->modifier & KM_ALT) || (event->modifier & KM_CTRL)) ? STRCUR_JUMP_DELIM :
-                                                                   STRCUR_JUMP_NONE);
-        retval = WM_UI_HANDLER_BREAK;
-        break;
-
-      case EVT_BACKSPACEKEY:
-        changed = ui_textedit_delete(but,
-                                     data,
-                                     STRCUR_DIR_PREV,
-                                     /*Allows for standard macOS cursor behavior for this key command*/
-                                     ((event->modifier & KM_ALT) || (event->modifier & KM_CTRL)) ? STRCUR_JUMP_DELIM :
-                                                                   STRCUR_JUMP_NONE);
-        retval = WM_UI_HANDLER_BREAK;
-        break;
-
+        case EVT_DELKEY: {
+#ifdef __APPLE__
+            eStrCursorJumpType jump = (event->modifier & KM_OSKEY) ? STRCUR_JUMP_ALL : ((event->modifier & KM_ALT) ? STRCUR_JUMP_DELIM : STRCUR_JUMP_NONE);
+#else
+            eStrCursorJumpType jump = (event->modifier & KM_CTRL) ? STRCUR_JUMP_DELIM : STRCUR_JUMP_NONE;
+#endif
+            changed = ui_textedit_delete(but,
+                                         data,
+                                         STRCUR_DIR_NEXT,
+                                         jump);
+            retval = WM_UI_HANDLER_BREAK;
+            break;
+        }
+        case EVT_BACKSPACEKEY: {
+#ifdef __APPLE__
+            eStrCursorJumpType jump = (event->modifier & KM_OSKEY) ? STRCUR_JUMP_ALL : ((event->modifier & KM_ALT) ? STRCUR_JUMP_DELIM : STRCUR_JUMP_NONE);
+#else
+            eStrCursorJumpType jump = (event->modifier & KM_CTRL) ? STRCUR_JUMP_DELIM : STRCUR_JUMP_NONE;
+#endif
+            changed = ui_textedit_delete(but,
+                                         data,
+                                         STRCUR_DIR_PREV,
+                                         jump);
+            retval = WM_UI_HANDLER_BREAK;
+            break;
+        }
       case EVT_AKEY:
 
         /* Ctrl-A: Select all. */
@@ -3956,9 +3952,6 @@ static void ui_do_but_textedit(
   else if (event->type == WM_IME_COMPOSITE_END) {
     changed = true;
   }
-#else
-  /* Prevent the function from being unused. */
-  (void)ui_textedit_insert_ascii;
 #endif
 
   if (changed) {
@@ -8367,7 +8360,7 @@ static void button_activate_state(bContext *C, uiBut *but, uiHandleButtonState s
        */
       if (state != BUTTON_STATE_TEXT_EDITING) {
         WM_report(RPT_INFO,
-                  "Can't edit driven number value, see driver editor for the driver setup.");
+                  "Can't edit driven number value, see driver editor for the driver setup");
       }
     }
 
