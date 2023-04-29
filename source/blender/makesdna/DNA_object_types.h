@@ -34,6 +34,7 @@ struct FluidsimSettings;
 struct GeometrySet;
 struct Ipo;
 struct LightgroupMembership;
+struct LightProbeGridCacheFrame;
 struct Material;
 struct Mesh;
 struct Object;
@@ -449,6 +450,11 @@ typedef struct Object {
   /** Lightgroup membership information. */
   struct LightgroupMembership *lightgroup;
 
+  /** Irradiance caches baked for this object (light-probes only). */
+  struct LightProbeObjectCache *lightprobe_cache;
+
+  void *_pad9;
+
   /** Runtime evaluation data (keep last). */
   Object_Runtime runtime;
 } Object;
@@ -526,7 +532,8 @@ typedef enum ObjectType {
 #define OB_TYPE_SUPPORT_MATERIAL(_type) \
   (((_type) >= OB_MESH && (_type) <= OB_MBALL) || \
    ((_type) >= OB_GPENCIL_LEGACY && (_type) <= OB_VOLUME))
-/** Does the object have some render-able geometry (unlike empties, cameras, etc.). */
+/** Does the object have some render-able geometry (unlike empties, cameras, etc.). True for
+ * #OB_CURVES_LEGACY, since these often evaluate to objects with geometry. */
 #define OB_TYPE_IS_GEOMETRY(_type) \
   (ELEM(_type, \
         OB_MESH, \
@@ -534,6 +541,7 @@ typedef enum ObjectType {
         OB_FONT, \
         OB_MBALL, \
         OB_GPENCIL_LEGACY, \
+        OB_CURVES_LEGACY, \
         OB_CURVES, \
         OB_POINTCLOUD, \
         OB_VOLUME))
