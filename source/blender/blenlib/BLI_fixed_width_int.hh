@@ -7,6 +7,7 @@
 
 #include <gmpxx.h>
 
+#include "BLI_math_vector_types.hh"
 #include "BLI_string_ref.hh"
 #include "BLI_utildefines.h"
 
@@ -208,26 +209,26 @@ inline void generic_add(T *__restrict dst, const T *a, const T *b)
 {
   constexpr int shift = 8 * sizeof(T);
   T2 carry = 0;
-  for (int i = 0; i < S; i++) {
+  unroll<S>([&](auto i) {
     const T2 ai = T2(a[i]);
     const T2 bi = T2(b[i]);
     const T2 ri = ai + bi + carry;
     dst[i] = T(ri);
     carry = ri >> shift;
-  }
+  });
 }
 
 template<typename T, typename T2, int S>
 inline void generic_sub(T *__restrict dst, const T *a, const T *b)
 {
   T2 carry = 0;
-  for (int i = 0; i < S; i++) {
+  unroll<S>([&](auto i) {
     const T2 ai = T2(a[i]);
     const T2 bi = T2(b[i]);
     const T2 ri = ai - bi - carry;
     dst[i] = T(ri);
     carry = ri > ai;
-  }
+  });
 }
 
 template<typename T, typename T2, int S>
@@ -277,12 +278,12 @@ inline void operator+=(UInt256_64 &a, const UInt256_64 &b)
       : "%rax");
 }
 
-inline UInt256_64 operator+(const UInt256_64 &a, const UInt256_64 &b)
-{
-  UInt256_64 r = a;
-  r += b;
-  return r;
-}
+// inline UInt256_64 operator+(const UInt256_64 &a, const UInt256_64 &b)
+// {
+//   UInt256_64 r = a;
+//   r += b;
+//   return r;
+// }
 
 // inline UInt256_64 operator+(const UInt256_64 &a, const UInt256_64 &b)
 // {
@@ -521,5 +522,7 @@ inline bool operator>=(const UIntF<T, Size> &a, const UIntF<T, Size> &b)
 {
   return compare_reversed_order(a.v, b.v) >= 0;
 }
+
+void test_performance();
 
 }  // namespace blender::fixed_width_int

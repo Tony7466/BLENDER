@@ -75,6 +75,7 @@ set(SRC
   intern/filereader_gzip.c
   intern/filereader_memory.c
   intern/filereader_zstd.c
+  intern/fixed_width_int.cc
   intern/fnmatch.c
   intern/generic_vector_array.cc
   intern/generic_virtual_array.cc
