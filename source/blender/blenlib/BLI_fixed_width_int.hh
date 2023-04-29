@@ -33,7 +33,7 @@ template<typename T, int S> struct UIntF {
     }
   }
 
-  explicit UIntF(const char *str, const int base = 10)
+  explicit UIntF(const StringRefNull str, const int base = 10)
   {
     this->set_from_str(str, base);
   }
@@ -50,11 +50,11 @@ template<typename T, int S> struct UIntF {
     return result;
   }
 
-  void set_from_str(const char *str, const int base = 10)
+  void set_from_str(const StringRefNull str, const int base = 10)
   {
     mpz_t x;
     mpz_init(x);
-    mpz_set_str(x, str, base);
+    mpz_set_str(x, str.c_str(), base);
     for (int i = 0; i < S; i++) {
       static_assert(sizeof(T) <= sizeof(decltype(mpz_get_ui(x))));
       this->v[i] = T(mpz_get_ui(x));
@@ -109,7 +109,7 @@ template<typename T, int S> struct IntF {
 
   explicit IntF(const UIntF<T, S> &value) : v(value.v) {}
 
-  explicit IntF(const char *str, const int base = 10)
+  explicit IntF(const StringRefNull str, const int base = 10)
   {
     this->set_from_str(str, base);
   }
@@ -119,15 +119,15 @@ template<typename T, int S> struct IntF {
     return int64_t(uint64_t(UIntF<T, S>(*this)));
   }
 
-  void set_from_str(const char *str, const int base = 10)
+  void set_from_str(const StringRefNull str, const int base = 10)
   {
     if (str[0] == '-') {
-      const UIntF<T, S> unsigned_value(str + 1, base);
+      const UIntF<T, S> unsigned_value(str.c_str() + 1, base);
       this->v = unsigned_value.v;
       *this = -*this;
     }
     else {
-      const UIntF<T, S> unsigned_value(str, base);
+      const UIntF<T, S> unsigned_value(str.c_str(), base);
       this->v = unsigned_value.v;
     }
   }
@@ -214,14 +214,13 @@ template<typename T, typename T2, int S> inline void generic_add(T *dst, const T
   }
 }
 
-template<typename T, int S> inline void generic_sub(T *dst, const T *a, const T *b)
+template<typename T, typename T2, int S> inline void generic_sub(T *dst, const T *a, const T *b)
 {
-  T carry = 0;
+  T2 carry = 0;
   for (int i = 0; i < S; i++) {
-    const T sub = b[i] + carry;
-    const T ri = a[i] - sub;
+    const T2 ri = T2(a[i]) - T2(b[i]) - carry;
     dst[i] = T(ri);
-    carry = ri > a[i] || (sub == 0 && carry != 0);
+    carry = ri > a[i];
   }
 }
 
@@ -270,7 +269,7 @@ template<typename T, int Size>
 inline UIntF<T, Size> operator-(const UIntF<T, Size> &a, const UIntF<T, Size> &b)
 {
   UIntF<T, Size> result;
-  generic_sub<T, Size>(result.v.data(), a.v.data(), b.v.data());
+  generic_sub<T, double_uint_type<T>, Size>(result.v.data(), a.v.data(), b.v.data());
   return result;
 }
 
@@ -278,7 +277,7 @@ template<typename T, int Size>
 inline IntF<T, Size> operator-(const IntF<T, Size> &a, const IntF<T, Size> &b)
 {
   IntF<T, Size> result;
-  generic_sub<T, Size>(result.v.data(), a.v.data(), b.v.data());
+  generic_sub<T, double_uint_type<T>, Size>(result.v.data(), a.v.data(), b.v.data());
   return result;
 }
 
