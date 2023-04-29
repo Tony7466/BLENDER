@@ -60,6 +60,8 @@ template<typename T, int S> struct IntF {
 
   explicit IntF(const int64_t value) : IntF(std::to_string(value).c_str()) {}
 
+  explicit IntF(const UIntF<T, S> &value) : v(value.v) {}
+
   explicit IntF(const char *str, const int base = 10)
   {
     if (str[0] == '-') {
@@ -73,23 +75,21 @@ template<typename T, int S> struct IntF {
     }
   }
 
+  explicit operator UIntF<T, S>() const
+  {
+    UIntF<T, S> result;
+    result.v = this->v;
+    return result;
+  }
+
   void print(const int base = 10) const
   {
-    const bool is_negative = (this->v[S - 1] & (T(1) << (8 * sizeof(T) - 1))) != 0;
-    if (is_negative) {
+    if (is_negative(*this)) {
       std::cout << "-";
-      UIntF<T, S> negated;
-      negated.v = this->v;
-      for (int i = 0; i < S; i++) {
-        negated.v[i] = ~negated.v[i];
-      }
-      negated = negated + UIntF<T, S>("1");
-      negated.print(base);
+      (-*this).print(base);
     }
     else {
-      UIntF<T, S> value;
-      value.v = this->v;
-      value.print(base);
+      UIntF<T, S>(*this).print(base);
     }
   }
 };
@@ -209,6 +209,31 @@ inline UIntF<T, Size> operator*(const UIntF<T, Size> &a, const UIntF<T, Size> &b
   UIntF<T, Size> result;
   generic_unsigned_mul<T, double_uint_type<T>, Size>(result.v.data(), a.v.data(), b.v.data());
   return result;
+}
+
+template<typename T, int Size> bool is_negative(const IntF<T, Size> &a)
+{
+  return (a.v[Size - 1] & (T(1) << (sizeof(T) * 8 - 1))) != 0;
+}
+
+template<typename T, int Size, BLI_ENABLE_IF((!std::is_void_v<double_uint_type<T>>))>
+inline IntF<T, Size> operator*(const IntF<T, Size> &a, const IntF<T, Size> &b)
+{
+  using UIntF = UIntF<T, Size>;
+  using IntF = IntF<T, Size>;
+
+  const bool is_negative_a = is_negative(a);
+  const bool is_negative_b = is_negative(b);
+  if (is_negative_a && is_negative_b) {
+    return IntF(UIntF(-a) * UIntF(-b));
+  }
+  if (is_negative_a) {
+    return -IntF(UIntF(-a) * UIntF(b));
+  }
+  if (is_negative_b) {
+    return -IntF(UIntF(a) * UIntF(-b));
+  }
+  return IntF(UIntF(a) * UIntF(b));
 }
 
 template<typename T, int Size> inline IntF<T, Size> operator-(const IntF<T, Size> &a)
