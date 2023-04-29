@@ -251,4 +251,34 @@ template<typename T, int Size> inline IntF<T, Size> operator-(const IntF<T, Size
   return result + IntF<T, Size>(1);
 }
 
+template<typename T, int Size> inline void operator+=(UIntF<T, Size> &a, const UIntF<T, Size> &b)
+{
+  a = a + b;
+}
+
+template<typename T, int Size> inline void operator+=(IntF<T, Size> &a, const IntF<T, Size> &b)
+{
+  a = a + b;
+}
+
+template<typename T, int Size> inline void operator-=(UIntF<T, Size> &a, const UIntF<T, Size> &b)
+{
+  a = a - b;
+}
+
+template<typename T, int Size> inline void operator-=(IntF<T, Size> &a, const IntF<T, Size> &b)
+{
+  a = a - b;
+}
+
+template<typename T, int Size> inline void operator*=(UIntF<T, Size> &a, const UIntF<T, Size> &b)
+{
+  a = a * b;
+}
+
+template<typename T, int Size> inline void operator*=(IntF<T, Size> &a, const IntF<T, Size> &b)
+{
+  a = a * b;
+}
+
 }  // namespace blender::fixed_width_int
