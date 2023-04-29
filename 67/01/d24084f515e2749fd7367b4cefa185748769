@@ -1,1 +1,2 @@
 Referenced by issue #107443, Regression: Movie Clip Editor doesn't load JPEG / EXR images any more
+Referenced by commit d145dfdae0104fbc88f113199fa843e744f30fa3, Fix #107443 movie clip fails to load
