@@ -1,3 +1,3 @@
 Referenced by issue #106925, 3.5.1 (Metal GPU Backend) Cycles Viewport intensely flashes on AMD FirePro D500 macOS Monterey
 Referenced by issue #106702, 3.6.0 Metal GPU Backend broken on Mac Intel AMD FirePro D500 macOS Monterey
-Referenced by issue #107473, Inconsistent behavior of `bpy.types.NodeLink.is_valid`
+Referenced by issue #107473, Regression: Nodes: Selection of node affected on sorting -> correctness validation
