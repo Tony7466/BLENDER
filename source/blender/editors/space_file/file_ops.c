@@ -1787,8 +1787,8 @@ static const EnumPropertyItem file_external_operation[] = {
      "Reveal in Finder",
      "Reveal this file in a new Finder window"
 #else
-     "Open Folder",
-     "Open the folder in system file browser"
+     "Reveal in File Explorer",
+     "Open this file in system file browser"
 #endif
     },
     {FILE_EXTERNAL_OPERATION_EDIT, "EDIT", ICON_NONE, "Edit", "Edit the file"},
@@ -1813,14 +1813,14 @@ static const EnumPropertyItem file_external_operation[] = {
      "Open the Get Info window for this file"
 #else
      "Properties",
-     "Show OS Properties for this item"
+     "Show OS Properties for this file"
 #endif
     },
     {FILE_EXTERNAL_OPERATION_FOLDER_FIND,
      "FOLDER_FIND",
      ICON_NONE,
      "Find in Folder",
-     "Search for items in this folder"},
+     "Search for files in this folder"},
     {FILE_EXTERNAL_OPERATION_FOLDER_TERMINAL,
      "CMD",
      ICON_NONE,
