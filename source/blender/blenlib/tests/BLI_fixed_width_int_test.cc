@@ -10,9 +10,9 @@ TEST(fixed_width_int, Test)
 {
   Int128 a{"-10000"};
   Int128 b{"1000"};
-  Int128 c = a - b;
+  Int128 c = -a;
   a.print();
-  b.print();
+  // b.print();
   c.print();
   // UInt256 a{"100000000000"};
   // UInt256 b{"20000"};

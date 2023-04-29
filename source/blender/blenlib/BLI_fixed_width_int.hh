@@ -20,7 +20,9 @@ template<typename T, int S> struct UIntF {
 
   UIntF() = default;
 
-  UIntF(const char *str, const int base = 10)
+  explicit UIntF(const uint64_t value) : UIntF(std::to_string(value).c_str()) {}
+
+  explicit UIntF(const char *str, const int base = 10)
   {
     mpz_t x;
     mpz_init(x);
@@ -56,13 +58,14 @@ template<typename T, int S> struct IntF {
 
   IntF() = default;
 
-  IntF(const char *str, const int base = 10)
+  explicit IntF(const int64_t value) : IntF(std::to_string(value).c_str()) {}
+
+  explicit IntF(const char *str, const int base = 10)
   {
     if (str[0] == '-') {
       const UIntF<T, S> unsigned_value(str + 1, base);
-      const UIntF<T, S> zero_value("0");
-      const UIntF<T, S> result = zero_value - unsigned_value;
-      this->v = result.v;
+      this->v = unsigned_value.v;
+      *this = -*this;
     }
     else {
       const UIntF<T, S> unsigned_value(str, base);
@@ -206,6 +209,15 @@ inline UIntF<T, Size> operator*(const UIntF<T, Size> &a, const UIntF<T, Size> &b
   UIntF<T, Size> result;
   generic_unsigned_mul<T, double_uint_type<T>, Size>(result.v.data(), a.v.data(), b.v.data());
   return result;
+}
+
+template<typename T, int Size> inline IntF<T, Size> operator-(const IntF<T, Size> &a)
+{
+  IntF<T, Size> result;
+  for (int i = 0; i < Size; i++) {
+    result.v[i] = ~a.v[i];
+  }
+  return result + IntF<T, Size>(1);
 }
 
 }  // namespace blender::fixed_width_int
