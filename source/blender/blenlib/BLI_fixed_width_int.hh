@@ -263,20 +263,41 @@ inline UIntF<T, Size> operator+(const UIntF<T, Size> &a, const UIntF<T, Size> &b
   return result;
 }
 
+inline void operator+=(UInt256_64 &a, const UInt256_64 &b)
+{
+  asm("mov (%1), %%rax\n\t"
+      "add %%rax, (%0)\n\t"
+      "mov 8(%1), %%rax\n\t"
+      "adc %%rax, 8(%0)\n\t"
+      "mov 16(%1), %%rax\n\t"
+      "adc %%rax, 16(%0)\n\t"
+      "mov 24(%1), %%rax\n\t"
+      "adc %%rax, 24(%0)\n\t" ::"r"(&a),
+      "r"(&b)
+      : "%rax");
+}
+
 inline UInt256_64 operator+(const UInt256_64 &a, const UInt256_64 &b)
 {
-  UInt256_64 r;
-
-  const auto *a_ptr = reinterpret_cast<const unsigned long long *>(a.v.data());
-  const auto *b_ptr = reinterpret_cast<const unsigned long long *>(b.v.data());
-  auto *r_ptr = reinterpret_cast<unsigned long long *>(r.v.data());
-
-  const uint8_t carry0 = _addcarry_u64(0, a_ptr[0], b_ptr[0], r_ptr + 0);
-  const uint8_t carry1 = _addcarry_u64(carry0, a_ptr[1], b_ptr[1], r_ptr + 1);
-  const uint8_t carry2 = _addcarry_u64(carry1, a_ptr[2], b_ptr[2], r_ptr + 2);
-  r.v[3] = a_ptr[3] + b_ptr[3] + carry2;
+  UInt256_64 r = a;
+  r += b;
   return r;
 }
+
+// inline UInt256_64 operator+(const UInt256_64 &a, const UInt256_64 &b)
+// {
+//   UInt256_64 r;
+
+//   const auto *a_ptr = reinterpret_cast<const unsigned long long *>(a.v.data());
+//   const auto *b_ptr = reinterpret_cast<const unsigned long long *>(b.v.data());
+//   auto *r_ptr = reinterpret_cast<unsigned long long *>(r.v.data());
+
+//   const uint8_t carry0 = _addcarry_u64(0, a_ptr[0], b_ptr[0], r_ptr + 0);
+//   const uint8_t carry1 = _addcarry_u64(carry0, a_ptr[1], b_ptr[1], r_ptr + 1);
+//   const uint8_t carry2 = _addcarry_u64(carry1, a_ptr[2], b_ptr[2], r_ptr + 2);
+//   r.v[3] = a_ptr[3] + b_ptr[3] + carry2;
+//   return r;
+// }
 
 template<typename T, int Size, BLI_ENABLE_IF((!std::is_void_v<double_uint_type<T>>))>
 inline IntF<T, Size> operator+(const IntF<T, Size> &a, const IntF<T, Size> &b)
