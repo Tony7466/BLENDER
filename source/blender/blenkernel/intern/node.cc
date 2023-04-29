@@ -2426,6 +2426,27 @@ bNode *node_copy_with_mapping(bNodeTree *dst_tree,
   return node_dst;
 }
 
+/**
+ * Type of value storage related with socket is the same.
+ * \param socket: Node can have multiple sockets & storages pairs.
+ */
+void **node_static_value_storage_for(bNode &node, const bNodeSocket &socket)
+{
+  if (!socket.is_output()) {
+    return nullptr;
+  }
+
+  switch (node.type) {
+    case GEO_NODE_IMAGE: {
+      return reinterpret_cast<void **>(&node.id);
+    }
+    default:
+      break;
+  }
+
+  return nullptr;
+}
+
 void node_socket_move_default_value(Main & /*bmain*/,
                                     bNodeTree &tree,
                                     bNodeSocket &src,
@@ -2449,25 +2470,16 @@ void node_socket_move_default_value(Main & /*bmain*/,
     return;
   }
 
-  ID **src_socket_value = nullptr;
-  Vector<ID **> dst_values;
+  void **src_socket_value = nullptr;
+  void **dst_value = node_static_value_storage_for(dst_node, dst);
+  if (dst_value == nullptr) {
+    return;
+  }
+
   switch (dst.type) {
     case SOCK_IMAGE: {
       Image **tmp_socket_value = &src.default_value_typed<bNodeSocketValueImage>()->value;
-      src_socket_value = reinterpret_cast<ID **>(tmp_socket_value);
-      if (*src_socket_value == nullptr) {
-        break;
-      }
-
-      switch (dst_node.type) {
-        case GEO_NODE_IMAGE: {
-          dst_values.append(&dst_node.id);
-          break;
-        }
-        default: {
-          break;
-        }
-      }
+      src_socket_value = reinterpret_cast<void **>(tmp_socket_value);
       break;
     }
     case SOCK_CUSTOM:
@@ -2481,17 +2493,14 @@ void node_socket_move_default_value(Main & /*bmain*/,
     }
   }
 
-  if (dst_values.is_empty() || src_socket_value == nullptr) {
+  if (src_socket_value == nullptr) {
     return;
   }
 
-  for (ID **dst_value : dst_values) {
-    *dst_value = *src_socket_value;
-    id_us_plus(*dst_value);
-  }
-
-  id_us_min(*src_socket_value);
-  *src_socket_value = nullptr;
+  ID **src_id = reinterpret_cast<ID **>(src_socket_value);
+  ID **dst_id = reinterpret_cast<ID **>(dst_value);
+  *dst_id = *src_id;
+  *src_id = nullptr;
 }
 
 bNode *node_copy(bNodeTree *dst_tree, const bNode &src_node, const int flag, const bool use_unique)
