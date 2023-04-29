@@ -264,19 +264,19 @@ inline UIntF<T, Size> operator+(const UIntF<T, Size> &a, const UIntF<T, Size> &b
   return result;
 }
 
-inline void operator+=(UInt256_64 &a, const UInt256_64 &b)
-{
-  asm("mov (%1), %%rax\n\t"
-      "add %%rax, (%0)\n\t"
-      "mov 8(%1), %%rax\n\t"
-      "adc %%rax, 8(%0)\n\t"
-      "mov 16(%1), %%rax\n\t"
-      "adc %%rax, 16(%0)\n\t"
-      "mov 24(%1), %%rax\n\t"
-      "adc %%rax, 24(%0)\n\t" ::"r"(&a),
-      "r"(&b)
-      : "%rax");
-}
+// inline void operator+=(UInt256_64 &a, const UInt256_64 &b)
+// {
+//   asm("mov (%1), %%rax\n\t"
+//       "add %%rax, (%0)\n\t"
+//       "mov 8(%1), %%rax\n\t"
+//       "adc %%rax, 8(%0)\n\t"
+//       "mov 16(%1), %%rax\n\t"
+//       "adc %%rax, 16(%0)\n\t"
+//       "mov 24(%1), %%rax\n\t"
+//       "adc %%rax, 24(%0)\n\t" ::"r"(&a),
+//       "r"(&b)
+//       : "%rax");
+// }
 
 // inline UInt256_64 operator+(const UInt256_64 &a, const UInt256_64 &b)
 // {
