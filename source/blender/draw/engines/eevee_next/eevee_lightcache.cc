@@ -138,8 +138,6 @@ class LightBake {
    */
   void run(bool *stop = nullptr, bool *do_update = nullptr, float *progress = nullptr)
   {
-    UNUSED_VARS(stop, do_update, progress);
-
     DEG_graph_relations_update(depsgraph_);
     DEG_evaluate_on_framechange(depsgraph_, frame_);
 
@@ -160,6 +158,7 @@ class LightBake {
           *eval_ob,
           [this]() { context_enable(); },
           [this]() { context_disable(); },
+          [&]() { return (G.is_break == true) || ((stop != nullptr) ? *stop : false); },
           [&](LightProbeGridCacheFrame *cache_frame) {
             {
               std::scoped_lock lock(result_mutex_);
@@ -169,9 +168,19 @@ class LightBake {
               }
               bake_result_[i] = cache_frame;
             }
-            *do_update = true;
-            /* TODO: Update progress. */
+
+            if (do_update) {
+              *do_update = true;
+            }
+
+            if (progress) {
+              /* TODO: Update progress. */
+            }
           });
+
+      if ((G.is_break == true) || ((stop != nullptr && *stop == true))) {
+        break;
+      }
     }
 
     delete_resources();

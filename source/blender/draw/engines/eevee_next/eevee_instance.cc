@@ -455,6 +455,7 @@ void Instance::update_passes(RenderEngine *engine, Scene *scene, ViewLayer *view
 void Instance::light_bake_irradiance(Object &probe,
                                      std::function<void()> context_enable,
                                      std::function<void()> context_disable,
+                                     std::function<bool()> stop,
                                      std::function<void(LightProbeGridCacheFrame *)> result_update)
 {
   BLI_assert(is_baking());
@@ -509,6 +510,10 @@ void Instance::light_bake_irradiance(Object &probe,
         }
         result_update(cache_frame);
       });
+
+      if (stop()) {
+        return;
+      }
     }
   }
 }
