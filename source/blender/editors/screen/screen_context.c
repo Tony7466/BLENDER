@@ -110,6 +110,7 @@ const char *screen_context_dir[] = {
     "active_editable_fcurve",
     "selected_editable_keyframes",
     "ui_list",
+    "property",
     "asset_library_ref",
     NULL,
 };
@@ -534,6 +535,25 @@ static eContextResult screen_ctx_active_object(const bContext *C, bContextDataRe
   if (obact) {
     CTX_data_id_pointer_set(result, &obact->id);
   }
+
+  return CTX_RESULT_OK;
+}
+static eContextResult screen_ctx_property(const bContext *C, bContextDataResult *result)
+{
+  PointerRNA ptr;
+  PropertyRNA *prop;
+  int index;
+
+  UI_context_active_but_prop_get(C, &ptr, &prop, &index);
+  // UI_context_active_but_prop_get returns an index of 0 if the property is not
+  // an array, but other functions expect -1 for non-arrays.
+  if (!RNA_property_array_check(prop)) {
+    index = -1;
+  }
+
+  CTX_data_type_set(result, CTX_DATA_TYPE_PROPERTY);
+  CTX_data_pointer_set_ptr(result, &ptr);
+  CTX_data_prop_set(result, prop, index);
 
   return CTX_RESULT_OK;
 }
@@ -1347,6 +1367,7 @@ static void ensure_ed_screen_context_functions(void)
   register_context_function("selected_editable_keyframes", screen_ctx_selected_editable_keyframes);
   register_context_function("asset_library_ref", screen_ctx_asset_library);
   register_context_function("ui_list", screen_ctx_ui_list);
+  register_context_function("property", screen_ctx_property);
 }
 
 int ed_screen_context(const bContext *C, const char *member, bContextDataResult *result)

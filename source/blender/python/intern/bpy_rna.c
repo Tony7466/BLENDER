@@ -4342,13 +4342,15 @@ static PyObject *pyrna_struct_getattro(BPy_StructRNA *self, PyObject *pyname)
     else {
       PointerRNA newptr;
       ListBase newlb;
+      PropertyRNA *newprop;
+      int newindex;
       short newtype;
 
       /* An empty string is used to implement #CTX_data_dir_get,
        * without this check `getattr(context, "")` succeeds. */
       eContextResult done;
       if (name[0]) {
-        done = CTX_data_get(C, name, &newptr, &newlb, &newtype);
+        done = CTX_data_get(C, name, &newptr, &newlb, &newprop, &newindex, &newtype);
       }
       else {
         /* Fall through to built-in `getattr`. */
@@ -4374,6 +4376,28 @@ static PyObject *pyrna_struct_getattro(BPy_StructRNA *self, PyObject *pyname)
 
             for (link = newlb.first; link; link = link->next) {
               PyList_APPEND(ret, pyrna_struct_CreatePyObject(&link->ptr));
+            }
+            break;
+          }
+          case CTX_DATA_TYPE_PROPERTY: {
+            if (newprop == NULL) {
+              ret = Py_None;
+              Py_INCREF(ret);
+            } else {
+              PointerRNA parentptr;
+              // RNA_path_from_ID_to_property gives the path from the parent of
+              // newptr to the property in question.
+              const char *path_str = RNA_path_from_ID_to_property(&newptr, newprop);
+              // Since RNA_path_from_ID_to_property gives the path from the
+              // parent to the property in question, we need to get the parent
+              // and return that to the user instead of just returning newptr.
+              RNA_id_pointer_create(newptr.owner_id, &parentptr);
+
+              const PyObject *obj_ptr_py = pyrna_struct_CreatePyObject(&parentptr);
+              const PyObject *path_str_py = PyUnicode_FromString(path_str);
+              ret = PyTuple_Pack(3, obj_ptr_py, path_str_py, PyLong_FromLong(newindex));
+
+              MEM_freeN((void*) path_str);
             }
             break;
           }
@@ -4568,9 +4592,11 @@ static int pyrna_struct_setattro(BPy_StructRNA *self, PyObject *pyname, PyObject
 
     PointerRNA newptr;
     ListBase newlb;
+    PropertyRNA *newprop;
+    int newindex;
     short newtype;
 
-    const eContextResult done = CTX_data_get(C, name, &newptr, &newlb, &newtype);
+    const eContextResult done = CTX_data_get(C, name, &newptr, &newlb, &newprop, &newindex, &newtype);
 
     if (done == CTX_RESULT_OK) {
       PyErr_Format(
