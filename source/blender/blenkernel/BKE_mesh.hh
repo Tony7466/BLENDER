@@ -92,9 +92,10 @@ struct MeshNormalFanSpaces {
   Array<int> corner_group_lists;
 };
 
-short2 fan_space_custom_normal_to_data(const NormalFanSpace *space,
-                                       float3 corner_normal_no_custom,
-                                       float3 custom_lnor);
+void fan_space_custom_normal_to_data(const NormalFanSpace *lnor_space,
+                                     const float3 lnor_no_custom,
+                                     const float custom_lnor[3],
+                                     short r_clnor_data[2]);
 
 /**
  * Compute split normals, i.e. vertex normals associated with each poly (hence 'loop normals').
@@ -104,8 +105,8 @@ short2 fan_space_custom_normal_to_data(const NormalFanSpace *space,
  * \param loop_to_poly_map: Optional pre-created map from corners to their polygon.
  * \param sharp_edges: Optional array of sharp edge tags, used to split the evaluated normals on
  * each side of the edge.
- * \param r_lnors_spacearr: Optional return data filled with information about the custom normals
- * spaces for each grouped fan of face corners.
+ * \param r_lnors_spacearr: Optional return data filled with information about the custom
+ * normals spaces for each grouped fan of face corners.
  */
 void normals_calc_loop(Span<float3> vert_positions,
                        Span<int2> edges,
