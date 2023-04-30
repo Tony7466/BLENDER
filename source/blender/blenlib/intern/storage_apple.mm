@@ -20,7 +20,6 @@
 #include "BLI_fileops.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
-#include "GHOST_C-api.h"
 
 /* Extended file attribute used by OneDrive to mark placeholder files. */
 static const char *ONEDRIVE_RECALLONOPEN_ATTRIBUTE = "com.microsoft.OneDrive.RecallOnOpen";
@@ -241,10 +240,9 @@ bool perform_service_for_fileurl(NSString *service_invocation, NSString *fileurl
 bool external_file_finder_open_default(const char *filepath)
 {
   @autoreleasepool {
-    // Shows confirmation popup on every call, so use a different method.
-    //
-    // return perform_service_for_fileurl(@"Finder/Open", [NSString
-    // stringWithUTF8String:filepath]);
+    /* `perform_service_for_fileurl(@"Finder/Open"..` shows OS confirmation popup on
+     * every call, so use a different method.
+     */
 
     NSURL *url = [NSURL fileURLWithFileSystemRepresentation:filepath
                                                 isDirectory:NO
