@@ -125,7 +125,7 @@ void sample_face_attribute(const Span<int> looptri_polys,
   const CPPType &type = src.type();
   attribute_math::convert_to_static_type(type, [&](auto dummy) {
     using T = decltype(dummy);
-    sample_face_attribute<T>(looptris, looptri_indices, src.typed<T>(), mask, dst.typed<T>());
+    sample_face_attribute<T>(looptri_polys, looptri_indices, src.typed<T>(), mask, dst.typed<T>());
   });
 }
 
