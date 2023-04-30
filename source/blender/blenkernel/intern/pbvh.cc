@@ -17,6 +17,7 @@
 #include "BLI_task.hh"
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
+#include "BLI_vector_set.hh"
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -40,7 +41,6 @@
 #include "pbvh_intern.hh"
 
 using blender::float3;
-using blender::IndexRange;
 using blender::MutableSpan;
 using blender::Span;
 using blender::Vector;
@@ -1370,7 +1370,6 @@ struct PBVHUpdateData {
   PBVH *pbvh;
   Span<PBVHNode *> nodes;
 
-  float (*vert_normals)[3] = nullptr;
   int flag = 0;
   bool show_sculpt_face_sets = false;
   PBVHAttrReq *attrs = nullptr;
@@ -1383,17 +1382,19 @@ static void pbvh_faces_update_normals(PBVH *pbvh, Span<PBVHNode *> nodes)
 {
   using namespace blender;
   using namespace blender::bke;
-
   const Span<float3> positions(reinterpret_cast<const float3 *>(pbvh->vert_positions),
                                pbvh->totvert);
   const OffsetIndices polys = pbvh->polys;
   const Span<int> corner_verts(pbvh->corner_verts, pbvh->mesh->totloop);
 
   MutableSpan<bool> update_tags(pbvh->vert_bitmap, pbvh->totvert);
-  Vector<int> polys_to_update;
-  for (const int vert : IndexRange(pbvh->totvert)) {
-    if (update_tags[vert]) {
-      polys_to_update.extend({pbvh->pmap[vert].indices, pbvh->pmap[vert].count});
+
+  VectorSet<int> polys_to_update;
+  for (const PBVHNode *node : nodes) {
+    for (const int vert : Span(node->vert_indices, node->uniq_verts)) {
+      if (update_tags[vert]) {
+        polys_to_update.add_multiple({pbvh->pmap[vert].indices, pbvh->pmap[vert].count});
+      }
     }
   }
 
@@ -1401,40 +1402,41 @@ static void pbvh_faces_update_normals(PBVH *pbvh, Span<PBVHNode *> nodes)
     return;
   }
 
-  /* Also update vertices connected to updated faces, even if they weren't explicitly tagged. */
-  for (const int poly : polys_to_update) {
-    for (const int vert : corner_verts.slice(polys[poly])) {
-      update_tags[vert] = true;
-    }
-  }
-
   MutableSpan<float3> vert_normals(reinterpret_cast<float3 *>(pbvh->vert_normals), pbvh->totvert);
   MutableSpan<float3> poly_normals = pbvh->poly_normals;
 
-  threading::parallel_for(polys_to_update.index_range(), 1024, [&](const IndexRange range) {
-    for (const int i : polys_to_update.as_span().slice(range)) {
-      pbvh->poly_normals[i] = mesh::poly_normal_calc(positions, corner_verts.slice(polys[i]));
-    }
-  });
+  VectorSet<int> verts_to_update;
+  threading::parallel_invoke(
+      [&]() {
+        threading::parallel_for(polys_to_update.index_range(), 512, [&](const IndexRange range) {
+          for (const int i : polys_to_update.as_span().slice(range)) {
+            poly_normals[i] = mesh::poly_normal_calc(positions, corner_verts.slice(polys[i]));
+          }
+        });
+      },
+      [&]() {
+        /* Update all normals connected to affected faces faces, even if not explicitly tagged. */
+        verts_to_update.reserve(polys_to_update.size());
+        for (const int poly : polys_to_update) {
+          verts_to_update.add_multiple(corner_verts.slice(polys[poly]));
+        }
+      },
+      [&]() {
+        update_tags.fill(false);
+        for (PBVHNode *node : nodes) {
+          node->flag &= ~PBVH_UpdateNormals;
+        }
+      });
 
-  threading::parallel_for(positions.index_range(), 1024, [&](const IndexRange range) {
-    for (const int vert : range) {
-      if (!update_tags[vert]) {
-        continue;
-      }
-
-      float3 vert_normal(0.0f);
+  threading::parallel_for(verts_to_update.index_range(), 1024, [&](const IndexRange range) {
+    for (const int vert : verts_to_update.as_span().slice(range)) {
+      float3 normal(0.0f);
       for (const int poly : Span(pbvh->pmap[vert].indices, pbvh->pmap[vert].count)) {
-        vert_normal += poly_normals[poly];
+        normal += poly_normals[poly];
       }
-      vert_normals[vert] = math::normalize(vert_normal);
-      update_tags[vert] = false;
+      vert_normals[vert] = math::normalize(normal);
     }
   });
-
-  for (PBVHNode *node : nodes) {
-    node->flag &= ~PBVH_UpdateNormals;
-  }
 }
 
 static void pbvh_update_mask_redraw_task_cb(void *__restrict userdata,
