@@ -128,6 +128,8 @@ class IrradianceCache {
 
   /** Atlas 3D texture containing all loaded grid data. */
   Texture irradiance_atlas_tx_ = {"irradiance_atlas_tx_"};
+  /** Reserved atlas brick for world irradiance. */
+  int world_brick_index_ = 0;
   /** Data structure used to index irradiance cache pages inside the atlas. */
   IrradianceGridDataBuf grids_infos_buf_ = {"grids_infos_buf_"};
   IrradianceBrickBuf bricks_infos_buf_ = {"bricks_infos_buf_"};

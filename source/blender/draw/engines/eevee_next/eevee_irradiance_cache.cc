@@ -50,10 +50,20 @@ void IrradianceCache::init()
     brick_pool_.clear();
     /* Fill with all the available bricks. */
     for (auto i : IndexRange(atlas_row_count * atlas_col_count)) {
-      IrradianceBrick brick;
-      brick.atlas_coord = uint2(i % atlas_col_count, i / atlas_col_count) *
-                          IRRADIANCE_GRID_BRICK_SIZE;
-      brick_pool_.append(irradiance_brick_pack(brick));
+      if (i == 0) {
+        /* Reserve one brick for the world. */
+        world_brick_index_ = 0;
+      }
+      else {
+        IrradianceBrick brick;
+        brick.atlas_coord = uint2(i % atlas_col_count, i / atlas_col_count) *
+                            IRRADIANCE_GRID_BRICK_SIZE;
+        brick_pool_.append(irradiance_brick_pack(brick));
+      }
+    }
+
+    if (irradiance_atlas_tx_.is_valid()) {
+      irradiance_atlas_tx_.clear(float4(0.0f));
     }
   }
 
@@ -117,7 +127,8 @@ void IrradianceCache::set_view(View & /*view*/)
 
     /* TODO frustum cull and only load visible grids. */
 
-    if (grids_len >= IRRADIANCE_GRID_MAX) {
+    /* Note that we reserve 1 slot for the world irradiance. */
+    if (grids_len >= IRRADIANCE_GRID_MAX - 1) {
       inst_.info = "Error: Too many grid visible";
       continue;
     }
@@ -153,8 +164,17 @@ void IrradianceCache::set_view(View & /*view*/)
     grid.grid_index = grids_len;
     grids_infos_buf_[grids_len++] = grid;
   }
+  /* TODO: Stable sorting of grids. */
 
-  /* TODO(fclem): Insert world grid here. */
+  {
+    /* Insert world grid last. */
+    IrradianceGridData grid;
+    grid.world_to_grid_transposed = float3x4::identity();
+    grid.grid_size = int3(1);
+    grid.brick_offset = bricks_infos_buf_.size();
+    grids_infos_buf_[grids_len++] = grid;
+    bricks_infos_buf_.append(world_brick_index_);
+  }
 
   if (grids_len < IRRADIANCE_GRID_MAX) {
     /* Tag last grid as invalid to stop the iteration. */
