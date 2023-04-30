@@ -8,10 +8,11 @@
 
 #include "CLG_log.h"
 
-#include "DNA_movieclip_types.h"
-
 #include "BLI_assert.h"
 #include "BLI_listbase.h"
+
+#include "DNA_genfile.h"
+#include "DNA_movieclip_types.h"
 
 #include "BKE_main.h"
 #include "BKE_mesh_legacy_convert.h"
@@ -90,7 +91,7 @@ static void version_movieclips_legacy_camera_object(Main *bmain)
   }
 }
 
-void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
+void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   // if (!MAIN_VERSION_ATLEAST(bmain, 400, 0)) {
   /* This is done here because we will continue to write with the old format until 4.0, so we need
@@ -112,6 +113,11 @@ void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
    * \note Keep this message at the bottom of the function.
    */
   {
+    if (!DNA_struct_elem_find(fd->filesdna, "SceneEEVEE", "int", "gi_irradiance_samples")) {
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        scene->eevee.gi_irradiance_samples = 512;
+      }
+    }
     /* Keep this block, even when empty. */
   }
 }
