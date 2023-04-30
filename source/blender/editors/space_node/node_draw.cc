@@ -375,6 +375,10 @@ static void node_update_basis(const bContext &C,
       continue;
     }
 
+    if (align_to_grid) {
+      dy = grid_snap_floor(dy, loc.y + NODE_DYS);
+    }
+
     PointerRNA sockptr;
     RNA_pointer_create(&ntree.id, &RNA_NodeSocket, socket, &sockptr);
 
@@ -416,10 +420,6 @@ static void node_update_basis(const bContext &C,
     /* Ensure minimum socket height in case layout is empty. */
     buty = min_ii(buty, dy - NODE_DY);
 
-    if (align_to_grid) {
-      dy = grid_snap_floor(dy, loc.y + NODE_DYS);
-    }
-
     /* Round the socket location to stop it from jiggling. */
     socket->runtime->location = float2(round(loc.x + NODE_WIDTH(node)), round(dy - NODE_DYS));
 
@@ -431,7 +431,7 @@ static void node_update_basis(const bContext &C,
     add_output_space = true;
   }
 
-  if (add_output_space) {
+  if (add_output_space && !align_to_grid) {
     dy -= NODE_DY / 4;
   }
 
@@ -501,14 +501,14 @@ static void node_update_basis(const bContext &C,
     dy = buty - NODE_DYS / 2;
   }
 
-  if (align_to_grid) {
-    dy = grid_snap_floor(dy, loc.y + NODE_DYS);
-  }
-
   /* Input sockets. */
   for (bNodeSocket *socket : node.input_sockets()) {
     if (!socket->is_visible()) {
       continue;
+    }
+
+    if (align_to_grid) {
+      dy = grid_snap_floor(dy, loc.y + NODE_DYS);
     }
 
     PointerRNA sockptr;
@@ -518,9 +518,17 @@ static void node_update_basis(const bContext &C,
      * to account for the increased height of the taller sockets. */
     float multi_input_socket_offset = 0.0f;
     if (socket->flag & SOCK_MULTI_INPUT) {
-      if (socket->runtime->total_inputs > 2) {
-        multi_input_socket_offset = (socket->runtime->total_inputs - 2) *
-                                    NODE_MULTI_INPUT_LINK_GAP;
+      if (align_to_grid) {
+        if (socket->runtime->total_inputs > 1) {
+          multi_input_socket_offset = (socket->runtime->total_inputs - 1) *
+                                      NODE_DYS;
+        }
+      }
+      else {
+        if (socket->runtime->total_inputs > 2) {
+          multi_input_socket_offset = (socket->runtime->total_inputs - 2) *
+                                      NODE_MULTI_INPUT_LINK_GAP;
+        }
       }
     }
     dy -= multi_input_socket_offset * 0.5f;
@@ -561,10 +569,6 @@ static void node_update_basis(const bContext &C,
     /* Ensure minimum socket height in case layout is empty. */
     buty = min_ii(buty, dy - NODE_DY);
 
-    if (align_to_grid && !(socket->flag & SOCK_MULTI_INPUT)) {
-      dy = grid_snap_floor(dy, loc.y + NODE_DYS);
-    }
-
     /* Round the socket vertical position to stop it from jiggling. */
     socket->runtime->location = float2(loc.x, round(dy - NODE_DYS));
 
@@ -574,13 +578,13 @@ static void node_update_basis(const bContext &C,
     }
   }
 
-  if (align_to_grid) {
-    dy = grid_snap_floor(dy, loc.y + NODE_DYS);
-  }
-  
   /* Little bit of space in end. */
-  if (node.inputs.first || (node.flag & (NODE_OPTIONS | NODE_PREVIEW)) == 0) {
+  if ((node.inputs.first || (node.flag & (NODE_OPTIONS | NODE_PREVIEW)) == 0) && !align_to_grid) {
     dy -= NODE_DYS / 2;
+  }
+
+  if (align_to_grid) {
+    dy = grid_snap_floor(dy, loc.y);
   }
 
   node.runtime->totr.xmin = loc.x;
