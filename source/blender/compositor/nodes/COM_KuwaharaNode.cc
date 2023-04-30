@@ -62,11 +62,7 @@ void KuwaharaNode::convert_to_operations(NodeConverter &converter,
       converter.add_link(sobel_y->get_output_socket(0), sobel_xy->get_input_socket(1));
 
       /* blurring for more robustness. */
-      // Note: blurring doesn't make as big of a difference as I was expecting,
-      // especially around edges.
-      // Todo: investigate further and remove if necessary. For now the parameter is kept for
-      // better user feedback
-      float sigma = data->sigma;
+      const int sigma = data->sigma;
 
       auto blur_sobel_xx = new FastGaussianBlurOperation();
       auto blur_sobel_yy = new FastGaussianBlurOperation();

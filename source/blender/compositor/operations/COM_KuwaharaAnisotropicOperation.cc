@@ -4,6 +4,10 @@
 #include "COM_KuwaharaAnisotropicOperation.h"
 #include "BLI_vector.hh"
 
+extern "C" {
+#include "IMB_colormanagement.h"
+}
+
 namespace blender::compositor {
 
 KuwaharaAnisotropicOperation::KuwaharaAnisotropicOperation()
@@ -69,20 +73,22 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
   MemoryBuffer *s_yy = inputs[2];
   MemoryBuffer *s_xy = inputs[3];
 
-  // BLI_assert all inputs have same size
+  BLI_assert(image->get_width() == s_xx->get_width());
+  BLI_assert(image->get_height() == s_xx->get_height());
+  BLI_assert(image->get_width() == s_yy->get_width());
+  BLI_assert(image->get_height() == s_yy->get_height());
+  BLI_assert(image->get_width() == s_xy->get_width());
+  BLI_assert(image->get_height() == s_xy->get_height());
 
-  int n_div = 8; // recommended by authors in original paper
-  double angle = 2.0 * M_PI / n_div;
-  double q = 3.0;
+  const int n_div = 8; // recommended by authors in original paper
+  const float angle = 2.0 * M_PI / n_div;
+  const float q = 3.0;
   const float EPS = 1.0e-10;
 
 
   for (BuffersIterator<float> it = output->iterate_with(inputs, area); !it.is_end(); ++it) {
     const int x = it.x;
     const int y = it.y;
-
-    /* Compute orientation */
-    // todo: make orientation separate operation
 
     // for now use green channel to compute orientation
     // todo: convert to HSV and compute orientation and strength on luminance channel
@@ -102,8 +108,8 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
     const double strength = (lambda1 == 0 && lambda2 == 0) ? 0 : (lambda1 - lambda2) / (lambda1 + lambda2);
 
     for(int ch = 0; ch < 3; ch++) {
-      // todo: compute anisotropy and weights on luminance channel to avoid color artifacts
 
+      Vector<float> mean(n_div, 0.0f);
       Vector<float> sum(n_div, 0.0f);
       Vector<float> var(n_div, 0.0f);
       Vector<float> weight(n_div, 0.0f);
@@ -127,12 +133,17 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
             float ddy2 = (float)dy2;
             float theta = atan2(ddy2, ddx2) + M_PI;
             int t = static_cast<int>(floor(theta / angle)) % n_div;
-
             float d2 = dx2 * dx2 + dy2 * dy2;
             float g = exp(-d2 / (2.0 * kernel_size_));
             float v = image->get_value(xx, yy, ch);
-            sum[t] += g * v;
-            var[t] += g * v * v;
+            float color[4];
+            image->read_elem(xx, yy, color);
+            // todo(zazizizou): only compute lum once per region
+            const float lum = IMB_colormanagement_get_luminance(color);
+            // todo(zazizizou): only compute mean for the selected region
+            mean[t] += g * v;
+            sum[t] += g * lum;
+            var[t] += g * lum * lum;
             weight[t] += g;
           }
         }
@@ -142,13 +153,14 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
       float de = 0.0;
       float nu = 0.0;
       for (int i = 0; i < n_div; i++) {
+        mean[i] = weight[i] != 0 ? mean[i] / weight[i] : 0.0;
         sum[i] = weight[i] != 0 ? sum[i] / weight[i] : 0.0;
         var[i] = weight[i] != 0 ? var[i] / weight[i] : 0.0;
         var[i] = var[i] - sum[i] * sum[i];
-        var[i] = var[i] > EPS ? sqrt(var[i]) : EPS;
+        var[i] = var[i] > FLT_EPSILON ? sqrt(var[i]) : FLT_EPSILON;
         float w = powf(var[i], -q);
 
-        de += sum[i] * w;
+        de += mean[i] * w;
         nu += w;
       }
 

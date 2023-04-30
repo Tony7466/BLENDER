@@ -879,7 +879,7 @@ typedef struct NodeBilateralBlurData {
 typedef struct NodeKuwaharaData {
   short kernel_size;
   short variation;
-  float sigma;
+  int sigma;
 } NodeKuwaharaData;
 
 typedef struct NodeAntiAliasingData {

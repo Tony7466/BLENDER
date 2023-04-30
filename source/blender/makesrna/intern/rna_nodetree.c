@@ -9256,8 +9256,9 @@ static void def_cmp_kuwahara(StructRNA *srna)
 
   prop = RNA_def_property(srna, "kernel_size", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "kernel_size");
+  RNA_def_property_ui_range(prop, 4, 50, 1, -1);
   RNA_def_property_ui_text(
-      prop, "Kernel Size", "Kernel size of filter. The larger the stronger the effect");
+      prop, "Kernel Size", "Kernel size of filter. Larger values give stronger stylized effect");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "variation", PROP_ENUM, PROP_NONE);
@@ -9266,12 +9267,13 @@ static void def_cmp_kuwahara(StructRNA *srna)
   RNA_def_property_ui_text(prop, "", "Variation of Kuwahara filter to use.");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
-  prop = RNA_def_property(srna, "sigma", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, NULL, "sigma");
+  prop = RNA_def_property(srna, "sigma", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, NULL, "sigma");
+  RNA_def_property_ui_range(prop, 0, 50, 1, -1);
   RNA_def_property_ui_text(
       prop,
       "Sigma",
-      "Edges get smoothed before applying filter. Sigma controls smoothing degree.");
+      "Smoothing degree before applying filter. Higher values remove details and give smoother edges");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 

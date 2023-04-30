@@ -3,6 +3,10 @@
 
 #include "COM_KuwaharaClassicOperation.h"
 
+extern "C" {
+#include "IMB_colormanagement.h"
+}
+
 namespace blender::compositor {
 
 KuwaharaClassicOperation::KuwaharaClassicOperation()
@@ -55,6 +59,7 @@ void KuwaharaClassicOperation::update_memory_buffer_partial(MemoryBuffer *output
 
     for (int ch = 0; ch < 3; ch++) {
       float sum[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+      float mean[4] = {0.0f, 0.0f, 0.0f, 0.0f};
       float var[4] = {0.0f, 0.0f, 0.0f, 0.0f};
       int cnt[4] = {0, 0, 0, 0};
 
@@ -65,30 +70,36 @@ void KuwaharaClassicOperation::update_memory_buffer_partial(MemoryBuffer *output
           int xx = x + dx;
           int yy = y + dy;
           if (xx >= 0 && yy >= 0 && xx < image->get_width() && yy < image->get_height()) {
-            float v;
-            v = image->get_value(xx, yy, ch);
+            const float v = image->get_value(xx, yy, ch);
+            float color[4];
+            image->read_elem(xx, yy, color);
+            const float lum = IMB_colormanagement_get_luminance(color);
 
             if (dx <= 0 && dy <= 0) {
-              sum[0] += v;
-              var[0] += v * v;
+              mean[0] += v;
+              sum[0] += lum;
+              var[0] += lum * lum;
               cnt[0]++;
             }
 
             if (dx >= 0 && dy <= 0) {
-              sum[1] += v;
-              var[1] += v * v;
+              mean[1] += v;
+              sum[1] += lum;
+              var[1] += lum * lum;
               cnt[1]++;
             }
 
             if (dx <= 0 && dy >= 0) {
-              sum[2] += v;
-              var[2] += v * v;
+              mean[2] += v;
+              sum[2] += lum;
+              var[2] += lum * lum;
               cnt[2]++;
             }
 
             if (dx >= 0 && dy >= 0) {
-              sum[3] += v;
-              var[3] += v * v;
+              mean[3] += v;
+              sum[3] += lum;
+              var[3] += lum * lum;
               cnt[3]++;
             }
           }
@@ -97,6 +108,7 @@ void KuwaharaClassicOperation::update_memory_buffer_partial(MemoryBuffer *output
 
       /* Compute region variances */
       for (int i = 0; i < 4; i++) {
+        mean[i] = cnt[i] != 0 ? mean[i] / cnt[i] : 0.0f;
         sum[i] = cnt[i] != 0 ? sum[i] / cnt[i] : 0.0f;
         var[i] = cnt[i] != 0 ? var[i] / cnt[i] : 0.0f;
         const float temp = sum[i] * sum[i];
@@ -112,7 +124,7 @@ void KuwaharaClassicOperation::update_memory_buffer_partial(MemoryBuffer *output
           min_index = i;
         }
       }
-      output->get_value(x, y, ch) = sum[min_index];
+      output->get_value(x, y, ch) = mean[min_index];
     }
   }
 }
