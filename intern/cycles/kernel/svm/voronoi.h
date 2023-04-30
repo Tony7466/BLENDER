@@ -856,18 +856,18 @@ ccl_device float voronoi_n_sphere_radius(const VoronoiParams &params, const floa
 /* **** Normalization **** */
 
 ccl_device void normalize_voronoi_x_fx(const VoronoiParams &params,
-                                    VoronoiOutput &output,
-                                    float max_amplitude,
-                                    bool zero_input)
+                                       VoronoiOutput &output,
+                                       float max_amplitude,
+                                       bool zero_input)
 {
   if (params.feature == NODE_VORONOI_F2) {
     if (zero_input) {
       output.distance /= (1.0f - params.randomness) +
-                         params.randomness * max_amplitude * params.max_distance;
+                         params.randomness * max_amplitude * params.max_distance * 1.5f;
     }
     else {
       output.distance /= (1.0f - params.randomness) * ceilf(params.detail + 1.0f) +
-                         params.randomness * max_amplitude * params.max_distance;
+                         params.randomness * max_amplitude * params.max_distance * 1.5f;
     }
   }
   else {
@@ -1076,8 +1076,7 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
           distance = fractal_voronoi_distance_to_edge(params, coord);
           break;
         case 4:
-          distance = fractal_voronoi_distance_to_edge(params,
-                                                      float3_to_float4(coord, w));
+          distance = fractal_voronoi_distance_to_edge(params, float3_to_float4(coord, w));
           break;
       }
 

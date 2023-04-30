@@ -304,156 +304,78 @@ float musgrave_hetero_terrain(
 /** \name Voronoi Noise
  * \{ */
 
-void voronoi_f1(const float w,
-                float exponent,
-                float randomness,
-                int metric,
-                float *r_distance,
-                float3 *r_color,
-                float *r_w);
-void voronoi_smooth_f1(const float w,
-                       float smoothness,
-                       float exponent,
-                       float randomness,
-                       int metric,
-                       float *r_distance,
-                       float3 *r_color,
-                       float *r_w);
-void voronoi_f2(const float w,
-                float exponent,
-                float randomness,
-                int metric,
-                float *r_distance,
-                float3 *r_color,
-                float *r_w);
-void voronoi_distance_to_edge(const float w, float randomness, float *r_distance);
-void voronoi_n_sphere_radius(const float w, float randomness, float *r_radius);
+struct VoronoiParams {
+  float scale;
+  float detail;
+  float roughness;
+  float lacunarity;
+  float smoothness;
+  float exponent;
+  float randomness;
+  float max_distance;
+  bool normalize;
+  int feature;
+  int metric;
+};
 
-void voronoi_f1(const float2 coord,
-                float exponent,
-                float randomness,
-                int metric,
-                float *r_distance,
-                float3 *r_color,
-                float2 *r_position);
-void voronoi_smooth_f1(const float2 coord,
-                       float smoothness,
-                       float exponent,
-                       float randomness,
-                       int metric,
-                       float *r_distance,
-                       float3 *r_color,
-                       float2 *r_position);
-void voronoi_f2(const float2 coord,
-                float exponent,
-                float randomness,
-                int metric,
-                float *r_distance,
-                float3 *r_color,
-                float2 *r_position);
-void voronoi_distance_to_edge(const float2 coord, float randomness, float *r_distance);
-void voronoi_n_sphere_radius(const float2 coord, float randomness, float *r_radius);
+struct VoronoiOutput {
+  float distance = 0.0f;
+  float3 color{0.0f, 0.0f, 0.0f};
+  float4 position{0.0f, 0.0f, 0.0f, 0.0f};
+};
 
-void voronoi_f1(const float3 coord,
-                float exponent,
-                float randomness,
-                int metric,
-                float *r_distance,
-                float3 *r_color,
-                float3 *r_position);
-void voronoi_smooth_f1(const float3 coord,
-                       float smoothness,
-                       float exponent,
-                       float randomness,
-                       int metric,
-                       float *r_distance,
-                       float3 *r_color,
-                       float3 *r_position);
-void voronoi_f2(const float3 coord,
-                float exponent,
-                float randomness,
-                int metric,
-                float *r_distance,
-                float3 *r_color,
-                float3 *r_position);
-void voronoi_distance_to_edge(const float3 coord, float randomness, float *r_distance);
-void voronoi_n_sphere_radius(const float3 coord, float randomness, float *r_radius);
+template<class A, class B> static A lerp(const A &a, const A &b, const B &t)
+{
+  return (A)(a * ((B)1 - t) + b * t);
+}
 
-void voronoi_f1(const float4 coord,
-                float exponent,
-                float randomness,
-                int metric,
-                float *r_distance,
-                float3 *r_color,
-                float4 *r_position);
-void voronoi_smooth_f1(const float4 coord,
-                       float smoothness,
-                       float exponent,
-                       float randomness,
-                       int metric,
-                       float *r_distance,
-                       float3 *r_color,
-                       float4 *r_position);
-void voronoi_f2(const float4 coord,
-                float exponent,
-                float randomness,
-                int metric,
-                float *r_distance,
-                float3 *r_color,
-                float4 *r_position);
-void voronoi_distance_to_edge(const float4 coord, float randomness, float *r_distance);
-void voronoi_n_sphere_radius(const float4 coord, float randomness, float *r_radius);
+/* ***** Distances ***** */
+
+float voronoi_distance_1d(const float a, const float b, const VoronoiParams &params);
+template<typename T> float voronoi_distance(const T a, const T b, const VoronoiParams &params);
+
+/* **** 1D Voronoi **** */
+
+float4 voronoi_position(const float coord);
+VoronoiOutput voronoi_f1(const VoronoiParams &params, const float coord);
+VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params, const float coord);
+VoronoiOutput voronoi_f2(const VoronoiParams &params, const float coord);
+float voronoi_distance_to_edge(const VoronoiParams &params, const float coord);
+float voronoi_n_sphere_radius(const VoronoiParams &params, const float coord);
+
+/* **** 2D Voronoi **** */
+
+float4 voronoi_position(const float2 coord);
+VoronoiOutput voronoi_f1(const VoronoiParams &params, const float2 coord);
+VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params, const float2 coord);
+VoronoiOutput voronoi_f2(const VoronoiParams &params, const float2 coord);
+float voronoi_distance_to_edge(const VoronoiParams &params, const float2 coord);
+float voronoi_n_sphere_radius(const VoronoiParams &params, const float2 coord);
+
+/* **** 3D Voronoi **** */
+
+float4 voronoi_position(const float3 coord);
+VoronoiOutput voronoi_f1(const VoronoiParams &params, const float3 coord);
+VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params, const float3 coord);
+VoronoiOutput voronoi_f2(const VoronoiParams &params, const float3 coord);
+float voronoi_distance_to_edge(const VoronoiParams &params, const float3 coord);
+float voronoi_n_sphere_radius(const VoronoiParams &params, const float3 coord);
+
+/* **** 4D Voronoi **** */
+
+float4 voronoi_position(const float4 coord);
+VoronoiOutput voronoi_f1(const VoronoiParams &params, const float4 coord);
+VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params, const float4 coord);
+VoronoiOutput voronoi_f2(const VoronoiParams &params, const float4 coord);
+float voronoi_distance_to_edge(const VoronoiParams &params, const float4 coord);
+float voronoi_n_sphere_radius(const VoronoiParams &params, const float4 coord);
 
 /* Fractal Voronoi Noise */
 
 template<typename T>
-void fractal_voronoi_f1(const T coord,
-                        const float detail,
-                        const float roughness,
-                        const float lacunarity,
-                        const float exponent,
-                        const float randomness,
-                        const int metric,
-                        float *r_max_amplitude,
-                        float *r_distance,
-                        float3 *r_color,
-                        T *r_position);
-
+VoronoiOutput fractal_voronoi_x_fx(const VoronoiParams &params, const T coord);
 template<typename T>
-void fractal_voronoi_smooth_f1(const T coord,
-                               const float detail,
-                               const float roughness,
-                               const float lacunarity,
-                               const float smoothness,
-                               const float exponent,
-                               const float randomness,
-                               const int metric,
-                               float *r_max_amplitude,
-                               float *r_distance,
-                               float3 *r_color,
-                               T *r_position);
-
-template<typename T>
-void fractal_voronoi_f2(const T coord,
-                        const float detail,
-                        const float roughness,
-                        const float lacunarity,
-                        const float exponent,
-                        const float randomness,
-                        const int metric,
-                        float *r_max_amplitude,
-                        float *r_distance,
-                        float3 *r_color,
-                        T *r_position);
-
-template<typename T>
-void fractal_voronoi_distance_to_edge(const T coord,
-                                      const float detail,
-                                      const float roughness,
-                                      const float lacunarity,
-                                      const float randomness,
-                                      float *r_max_amplitude,
-                                      float *r_distance);
+float fractal_voronoi_distance_to_edge(const VoronoiParams &params, const T coord);
 
 /** \} */
 
