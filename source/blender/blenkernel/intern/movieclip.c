@@ -474,7 +474,9 @@ static int get_timecode(MovieClip *clip, int flag)
   return clip->proxy.tc;
 }
 
-static void get_sequence_filepath(const MovieClip *clip, const int framenr, char *filepath)
+static void get_sequence_filepath(const MovieClip *clip,
+                                  const int framenr,
+                                  char filepath[FILE_MAX])
 {
   ushort numlen;
   char head[FILE_MAX], tail[FILE_MAX];
@@ -489,7 +491,7 @@ static void get_sequence_filepath(const MovieClip *clip, const int framenr, char
 
   if (numlen) {
     BLI_path_sequence_encode(filepath,
-                             sizeof(filepath),
+                             FILE_MAX,
                              head,
                              tail,
                              numlen,
@@ -503,8 +505,11 @@ static void get_sequence_filepath(const MovieClip *clip, const int framenr, char
 }
 
 /* supposed to work with sequences only */
-static void get_proxy_filepath(
-    const MovieClip *clip, int proxy_render_size, bool undistorted, int framenr, char *filepath)
+static void get_proxy_filepath(const MovieClip *clip,
+                               int proxy_render_size,
+                               bool undistorted,
+                               int framenr,
+                               char filepath[FILE_MAX])
 {
   int size = rendersize_to_number(proxy_render_size);
   char dir[FILE_MAX], clipdir[FILE_MAX], clipfile[FILE_MAX];
@@ -516,15 +521,26 @@ static void get_proxy_filepath(
     BLI_strncpy(dir, clip->proxy.dir, sizeof(dir));
   }
   else {
-    BLI_snprintf(dir, FILE_MAX, "%s/BL_proxy", clipdir);
+    BLI_snprintf(dir, sizeof(dir), "%s" SEP_STR "BL_proxy", clipdir);
   }
 
   if (undistorted) {
-    BLI_snprintf(
-        filepath, FILE_MAX, "%s/%s/proxy_%d_undistorted/%08d", dir, clipfile, size, proxynr);
+    BLI_snprintf(filepath,
+                 FILE_MAX,
+                 "%s" SEP_STR "%s" SEP_STR "proxy_%d_undistorted" SEP_STR "%08d",
+                 dir,
+                 clipfile,
+                 size,
+                 proxynr);
   }
   else {
-    BLI_snprintf(filepath, FILE_MAX, "%s/%s/proxy_%d/%08d", dir, clipfile, size, proxynr);
+    BLI_snprintf(filepath,
+                 FILE_MAX,
+                 "%s" SEP_STR "%s" SEP_STR "proxy_%d" SEP_STR "%08d",
+                 dir,
+                 clipfile,
+                 size,
+                 proxynr);
   }
 
   BLI_path_abs(filepath, BKE_main_blendfile_path_from_global());
