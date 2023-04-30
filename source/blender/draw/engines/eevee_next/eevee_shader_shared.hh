@@ -879,6 +879,16 @@ struct CaptureInfoData {
   /** Transform vectors from world space to local space. Does not have location component. */
   /** TODO(fclem): This could be a float3x4 or a float3x3 if padded correctly. */
   float4x4 irradiance_grid_world_to_local_rotation;
+  /** Scene bounds. Stored as min & max and as int for atomic operations. */
+  int scene_bound_x_min;
+  int scene_bound_y_min;
+  int scene_bound_z_min;
+  int scene_bound_x_max;
+  int scene_bound_y_max;
+  int scene_bound_z_max;
+  int _pad0;
+  int _pad1;
+  int _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(CaptureInfoData, 16)
 

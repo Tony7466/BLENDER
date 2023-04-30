@@ -149,6 +149,7 @@ GPU_SHADER_CREATE_INFO(eevee_surf_forward)
 
 GPU_SHADER_CREATE_INFO(eevee_surf_capture)
     .vertex_out(eevee_surf_iface)
+    .define("MAT_CAPTURE")
     .storage_buf(SURFEL_BUF_SLOT, Qualifier::WRITE, "Surfel", "surfel_buf[]")
     .storage_buf(CAPTURE_BUF_SLOT, Qualifier::READ_WRITE, "CaptureInfoData", "capture_info_buf")
     .fragment_source("eevee_surf_capture_frag.glsl")

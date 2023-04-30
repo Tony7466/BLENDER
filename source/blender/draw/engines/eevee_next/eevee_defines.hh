@@ -95,6 +95,7 @@
 #define SURFEL_LIST_GROUP_SIZE 256
 #define IRRADIANCE_GRID_GROUP_SIZE 4 /* In each dimension, so 4x4x4 workgroup size. */
 #define IRRADIANCE_GRID_BRICK_SIZE 4 /* In each dimension, so 4x4x4 brick size. */
+#define IRRADIANCE_BOUNDS_GROUP_SIZE 64
 
 /* Resource bindings. */
 

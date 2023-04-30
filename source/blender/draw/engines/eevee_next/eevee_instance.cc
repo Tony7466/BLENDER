@@ -474,7 +474,6 @@ void Instance::light_bake_irradiance(Object &probe,
   };
 
   custom_pipeline_wrapper([&]() {
-    irradiance_cache.bake.surfel_raster_views_sync(probe);
     /* TODO: lightprobe visibility group option. */
     manager->begin_sync();
     render_sync();

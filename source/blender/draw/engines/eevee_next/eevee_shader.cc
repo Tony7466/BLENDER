@@ -148,6 +148,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_light_culling_tile";
     case LIGHT_CULLING_ZBIN:
       return "eevee_light_culling_zbin";
+    case LIGHTPROBE_IRRADIANCE_BOUNDS:
+      return "eevee_lightprobe_irradiance_bounds";
     case LIGHTPROBE_IRRADIANCE_RAY:
       return "eevee_lightprobe_irradiance_ray";
     case LIGHTPROBE_IRRADIANCE_LOAD:

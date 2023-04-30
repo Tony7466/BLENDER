@@ -435,24 +435,23 @@ void IrradianceBake::sync()
   }
 }
 
-void IrradianceBake::surfel_raster_views_sync(const Object &probe_object)
+void IrradianceBake::surfel_raster_views_sync(const float3 &scene_min, const float3 &scene_max)
 {
   using namespace blender::math;
-  const float4x4 transform(probe_object.object_to_world);
 
-  float3 scale;
-  math::to_loc_rot_scale(transform, grid_location_, grid_orientation_, scale);
+  grid_pixel_extent_ = max(int3(1), int3(surfel_density_ * (scene_max - scene_min)));
 
-  grid_pixel_extent_ = max(int3(1), int3(surfel_density_ * 2.0f * scale));
+  grid_pixel_extent_ = min(grid_pixel_extent_, int3(16384));
 
   /* We could use multi-view rendering here to avoid multiple submissions but it is unlikely to
    * make any difference. The bottleneck is still the light propagation loop. */
   auto sync_view = [&](View &view, CartesianBasis basis) {
-    float3 extent = transform_point(invert(basis), scale);
+    float3 extent_min = transform_point(invert(basis), scene_min);
+    float3 extent_max = transform_point(invert(basis), scene_max);
     float4x4 winmat = projection::orthographic(
-        -extent.x, extent.x, -extent.y, extent.y, -extent.z, extent.z);
-    float4x4 viewinv = math::from_loc_rot<float4x4>(
-        grid_location_, grid_orientation_ * to_quaternion<float>(basis));
+        extent_min.x, extent_max.x, extent_min.y, extent_max.y, extent_min.z, extent_max.z);
+    float4x4 viewinv = from_rotation<float4x4>(to_quaternion<float>(basis));
+    view.visibility_test(false);
     view.sync(invert(viewinv), winmat);
   };
 
@@ -499,19 +498,72 @@ void IrradianceBake::surfels_create(const Object &probe_object)
   irradiance_L1_b_tx_.clear(float4(0.0f));
   irradiance_L1_c_tx_.clear(float4(0.0f));
 
-  /* Extract bounding box. Order is arbitrary as it is not important for our usage. */
-  const std::array<float3, 8> bbox_corners({float3{+1, +1, +1},
-                                            float3{-1, +1, +1},
-                                            float3{+1, -1, +1},
-                                            float3{-1, -1, +1},
-                                            float3{+1, +1, -1},
-                                            float3{-1, +1, -1},
-                                            float3{+1, -1, -1},
-                                            float3{-1, -1, -1}});
-  grid_bbox_vertices.clear();
-  for (const float3 &point : bbox_corners) {
-    grid_bbox_vertices.append(transform_point(grid_local_to_world, point));
+  DRW_stats_group_start("IrradianceBake.SceneBounds");
+
+  {
+    draw::Manager &manager = *inst_.manager;
+    PassSimple &pass = irradiance_bounds_ps_;
+    pass.init();
+    pass.shader_set(inst_.shaders.static_shader_get(LIGHTPROBE_IRRADIANCE_BOUNDS));
+    pass.bind_ssbo("capture_info_buf", &capture_info_buf_);
+    pass.bind_ssbo("bounds_buf", &manager.bounds_buf.current());
+    pass.push_constant("resource_len", int(manager.resource_handle_count()));
+    pass.dispatch(
+        int3(divide_ceil_u(manager.resource_handle_count(), IRRADIANCE_BOUNDS_GROUP_SIZE), 1, 1));
   }
+
+  /* Raster the scene to query the number of surfel needed. */
+  capture_info_buf_.do_surfel_count = false;
+  capture_info_buf_.do_surfel_output = false;
+
+  int neg_flt_max = int(0xFF7FFFFFu ^ 0x7FFFFFFFu); /* floatBitsToOrderedInt(-FLT_MAX) */
+  int pos_flt_max = 0x7F7FFFFF;                     /* floatBitsToOrderedInt(FLT_MAX) */
+  capture_info_buf_.scene_bound_x_min = pos_flt_max;
+  capture_info_buf_.scene_bound_y_min = pos_flt_max;
+  capture_info_buf_.scene_bound_z_min = pos_flt_max;
+  capture_info_buf_.scene_bound_x_max = neg_flt_max;
+  capture_info_buf_.scene_bound_y_max = neg_flt_max;
+  capture_info_buf_.scene_bound_z_max = neg_flt_max;
+
+  capture_info_buf_.push_update();
+
+  inst_.manager->submit(irradiance_bounds_ps_);
+
+  GPU_memory_barrier(GPU_BARRIER_BUFFER_UPDATE);
+  capture_info_buf_.read();
+
+  auto ordered_int_bits_to_float = [](int32_t int_value) -> float {
+    int32_t float_bits = (int_value < 0) ? (int_value ^ 0x7FFFFFFF) : int_value;
+    return *reinterpret_cast<float *>(&float_bits);
+  };
+
+  float3 scene_min = float3(ordered_int_bits_to_float(capture_info_buf_.scene_bound_x_min),
+                            ordered_int_bits_to_float(capture_info_buf_.scene_bound_y_min),
+                            ordered_int_bits_to_float(capture_info_buf_.scene_bound_z_min));
+  float3 scene_max = float3(ordered_int_bits_to_float(capture_info_buf_.scene_bound_x_max),
+                            ordered_int_bits_to_float(capture_info_buf_.scene_bound_y_max),
+                            ordered_int_bits_to_float(capture_info_buf_.scene_bound_z_max));
+  /* To avoid loosing any surface to the clipping planes, add some padding. */
+  float epsilon = 1.0f / surfel_density_;
+  scene_min -= epsilon;
+  scene_max += epsilon;
+  surfel_raster_views_sync(scene_min, scene_max);
+
+  /* Extract bounding box. Order is arbitrary as it is not important for our usage. */
+  scene_bbox_vertices_.clear();
+  scene_bbox_vertices_.append(float3{scene_max.x, scene_max.y, scene_max.z});
+  scene_bbox_vertices_.append(float3{scene_min.x, scene_max.y, scene_max.z});
+  scene_bbox_vertices_.append(float3{scene_max.x, scene_min.y, scene_max.z});
+  scene_bbox_vertices_.append(float3{scene_min.x, scene_min.y, scene_max.z});
+  scene_bbox_vertices_.append(float3{scene_max.x, scene_max.y, scene_min.z});
+  scene_bbox_vertices_.append(float3{scene_min.x, scene_max.y, scene_min.z});
+  scene_bbox_vertices_.append(float3{scene_max.x, scene_min.y, scene_min.z});
+  scene_bbox_vertices_.append(float3{scene_min.x, scene_min.y, scene_min.z});
+
+  DRW_stats_group_end();
+
+  /* WORKAROUND: Sync camera with correct bounds for light culling. */
+  inst_.camera.sync();
 
   DRW_stats_group_start("IrradianceBake.SurfelsCount");
 
@@ -570,7 +622,6 @@ void IrradianceBake::surfels_lights_eval()
   /* TODO(fclem): Remove this. It is only present to avoid crash inside `shadows.set_view` */
   inst_.render_buffers.acquire(int2(1));
   inst_.lights.set_view(view_z_, grid_pixel_extent_.xy());
-  /* TODO: Instead of using the volume tagging we should tag using the surfels. */
   inst_.shadows.set_view(view_z_);
   inst_.render_buffers.release();
 
@@ -584,21 +635,14 @@ void IrradianceBake::propagate_light_sample()
   float2 rand_uv = inst_.sampling.rng_2d_get(eSamplingDimension::SAMPLING_FILTER_U);
   const float3 ray_direction = inst_.sampling.sample_hemisphere(rand_uv);
   const float3 up = ray_direction;
-  /* Find the closest axis. */
-  const float3 grid_local_ray_direction = transform_point(grid_orientation_, ray_direction);
-  Axis closest_grid_axis = Axis::from_int(dominant_axis(grid_local_ray_direction));
-  /* Use one of the other 2 grid axes to get a reference right vector. */
-  Axis right_axis = AxisSigned(closest_grid_axis).next_after().axis();
-  const float3 grid_right = from_rotation<float3x3>(grid_orientation_)[right_axis.as_int()];
-  /* Create a view around the grid position with the ray direction as up axis.
-   * The other axes are aligned to the grid local axes to avoid to allocate too many list start. */
-  const float4x4 viewmat = invert(
-      from_orthonormal_axes<float4x4>(grid_location_, normalize(cross(up, grid_right)), up));
+  const float3 forward = cross(up, normalize(orthogonal(up)));
+  const float4x4 viewinv = from_orthonormal_axes<float4x4>(float3(0.0f), forward, up);
+  const float4x4 viewmat = invert(viewinv);
 
   /* Compute projection bounds. */
   float2 min, max;
   INIT_MINMAX2(min, max);
-  for (const float3 &point : grid_bbox_vertices) {
+  for (const float3 &point : scene_bbox_vertices_) {
     min_max(transform_point(viewmat, point).xy(), min, max);
   }
 

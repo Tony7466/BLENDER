@@ -47,6 +47,8 @@ class IrradianceBake {
   PassSimple surfel_light_bounce_ps_ = {"LightBounce"};
   /** Capture surfel lighting to irradiance samples. */
   PassSimple irradiance_capture_ps_ = {"IrradianceCapture"};
+  /** Compute scene bounding box. */
+  PassSimple irradiance_bounds_ps_ = {"IrradianceBounds"};
 
   /**
    * Basis orientation for each baking projection.
@@ -82,12 +84,8 @@ class IrradianceBake {
   Texture irradiance_L1_b_tx_ = {"irradiance_L1_b_tx_"};
   Texture irradiance_L1_c_tx_ = {"irradiance_L1_c_tx_"};
 
-  /* Orientation of the irradiance grid being baked. */
-  math::Quaternion grid_orientation_;
-  /* Object center of the irradiance grid being baked. */
-  float3 grid_location_;
   /* Bounding box vertices of the irradiance grid being baked. In world space. */
-  Vector<float3> grid_bbox_vertices;
+  Vector<float3> scene_bbox_vertices_;
   /* Surfel per unit distance. */
   float surfel_density_ = 2.0f;
 
@@ -97,7 +95,7 @@ class IrradianceBake {
   void sync();
 
   /** Create the views used to rasterize the scene into surfel representation. */
-  void surfel_raster_views_sync(const Object &probe_object);
+  void surfel_raster_views_sync(const float3 &scene_min, const float3 &scene_max);
   /** Create a surfel representation of the scene from the probe using the capture pipeline. */
   void surfels_create(const Object &probe_object);
   /** Evaluate direct lighting (and also clear the surfels radiance). */
