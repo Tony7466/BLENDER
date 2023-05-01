@@ -30,370 +30,97 @@ shader node_voronoi_texture(
     output float WOut = 0.0,
     output float Radius = 0.0)
 {
-  float detail = clamp(Detail, 0.0, 15.0);
-  float roughness = clamp(Roughness, 0.0, 1.0);
-  float randomness = clamp(Randomness, 0.0, 1.0);
-  float smoothness = clamp(Smoothness / 2.0, 0.0, 0.5);
-  float max_amplitude = 0.0;
+  VoronoiParams params;
+
+  params.feature = feature;
+  params.metric = metric;
+  params.scale = Scale;
+  params.detail = clamp(Detail, 0.0, 15.0);
+  params.roughness = clamp(Roughness, 0.0, 1.0);
+  params.lacunarity = Lacunarity;
+  params.smoothness = clamp(Smoothness / 2.0, 0.0, 0.5);
+  params.exponent = Exponent;
+  params.randomness = clamp(Randomness, 0.0, 1.0);
+  params.max_distance = 0.0;
+  params.normalize = normalize;
 
   vector3 coord = Vector;
-  if (use_mapping)
+  if (use_mapping) {
     coord = transform(mapping, coord);
+  }
 
   float w = WIn * Scale;
   coord *= Scale;
 
-  if (dimensions == "1D") {
-    if (feature == "f1") {
-      fractal_voronoi_f1(w,
-                         detail,
-                         roughness,
-                         Lacunarity,
-                         Exponent,
-                         randomness,
-                         metric,
-                         max_amplitude,
-                         Distance,
-                         Color,
-                         WOut);
-      if (normalize != 0.0) {
-        Distance /= (0.5 + 0.5 * randomness) * max_amplitude;
-        Color /= max_amplitude;
-      }
+  if (feature == "distance_to_edge") {
+    if (dimensions == "1D") {
+      Distance = fractal_voronoi_distance_to_edge(params, w);
     }
-    else if (feature == "smooth_f1") {
-      fractal_voronoi_smooth_f1(w,
-                                detail,
-                                roughness,
-                                Lacunarity,
-                                smoothness,
-                                Exponent,
-                                randomness,
-                                metric,
-                                max_amplitude,
-                                Distance,
-                                Color,
-                                WOut);
-      if (normalize != 0.0) {
-        Distance /= (0.5 + 0.5 * randomness) * max_amplitude;
-        Color /= max_amplitude;
-      }
+    else if (dimensions == "2D") {
+      Distance = fractal_voronoi_distance_to_edge(params, vector2(coord.x, coord.y));
     }
-    else if (feature == "f2") {
-      fractal_voronoi_f2(w,
-                         detail,
-                         roughness,
-                         Lacunarity,
-                         Exponent,
-                         randomness,
-                         metric,
-                         max_amplitude,
-                         Distance,
-                         Color,
-                         WOut);
-      if (normalize != 0.0) {
-        if (detail == 0.0 || roughness == 0.0 || Lacunarity == 0.0) {
-          Distance /= (1.0 - randomness) + randomness * max_amplitude;
-        }
-        else {
-          Distance /= (1.0 - randomness) * ceil(detail + 1.0) + randomness * max_amplitude;
-        }
-        Color /= max_amplitude;
-      }
+    else if (dimensions == "3D") {
+      Distance = fractal_voronoi_distance_to_edge(params, coord);
     }
-    else if (feature == "distance_to_edge") {
-      fractal_voronoi_distance_to_edge(
-          w, detail, roughness, Lacunarity, randomness, max_amplitude, Distance);
-      if (normalize != 0.0) {
-        /* max_amplitude is used here to keep the code consistent, however it has a different
-         * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude, it
-         * represents an abstract factor needed to cancel out the amplitude attenuation caused
-         * by the higher layers. */
-        Distance *= max_amplitude;
-      }
-    }
-    else if (feature == "n_sphere_radius") {
-      voronoi_n_sphere_radius(w, randomness, Radius);
+    else if (dimensions == "4D") {
+      Distance = fractal_voronoi_distance_to_edge(params, vector4(coord.x, coord.y, coord.z, w));
     }
     else {
-      error("Unknown feature!");
+      error("Unknown dimension!");
     }
-    WOut = (Scale != 0.0) ? WOut / Scale : 0.0;
   }
-  else if (dimensions == "2D") {
-    vector2 coord2D = vector2(coord[0], coord[1]);
-    vector2 outPosition2D;
-
-    if (feature == "f1") {
-      fractal_voronoi_f1(coord2D,
-                         detail,
-                         roughness,
-                         Lacunarity,
-                         Exponent,
-                         randomness,
-                         metric,
-                         max_amplitude,
-                         Distance,
-                         Color,
-                         outPosition2D);
-      if (normalize != 0.0) {
-        Distance /= (0.5 + 0.5 * randomness) * max_amplitude *
-                    voronoi_distance(vector2(1.0, 1.0), vector2(0.0, 0.0), metric, Exponent);
-        Color /= max_amplitude;
-      }
+  else if (feature == "n_sphere_radius") {
+    if (dimensions == "1D") {
+      Radius = voronoi_n_sphere_radius(params, w);
     }
-    else if (feature == "smooth_f1") {
-      fractal_voronoi_smooth_f1(coord2D,
-                                detail,
-                                roughness,
-                                Lacunarity,
-                                smoothness,
-                                Exponent,
-                                randomness,
-                                metric,
-                                max_amplitude,
-                                Distance,
-                                Color,
-                                outPosition2D);
-      if (normalize != 0.0) {
-        Distance /= (0.5 + 0.5 * randomness) * max_amplitude *
-                    voronoi_distance(vector2(1.0, 1.0), vector2(0.0, 0.0), metric, Exponent);
-        Color /= max_amplitude;
-      }
+    else if (dimensions == "2D") {
+      Radius = voronoi_n_sphere_radius(params, vector2(coord.x, coord.y));
     }
-    else if (feature == "f2") {
-      fractal_voronoi_f2(coord2D,
-                         detail,
-                         roughness,
-                         Lacunarity,
-                         Exponent,
-                         randomness,
-                         metric,
-                         max_amplitude,
-                         Distance,
-                         Color,
-                         outPosition2D);
-      if (normalize != 0.0) {
-        if (detail == 0.0 || roughness == 0.0 || Lacunarity == 0.0) {
-          Distance /= (1.0 - randomness) +
-                      randomness * max_amplitude *
-                          voronoi_distance(vector2(1.0, 1.0), vector2(0.0, 0.0), metric, Exponent);
-        }
-        else {
-          Distance /= (1.0 - randomness) * ceil(detail + 1.0) +
-                      randomness * max_amplitude *
-                          voronoi_distance(vector2(1.0, 1.0), vector2(0.0, 0.0), metric, Exponent);
-        }
-        Color /= max_amplitude;
-      }
+    else if (dimensions == "3D") {
+      Radius = voronoi_n_sphere_radius(params, coord);
     }
-    else if (feature == "distance_to_edge") {
-      fractal_voronoi_distance_to_edge(
-          coord2D, detail, roughness, Lacunarity, randomness, max_amplitude, Distance);
-      if (normalize != 0.0) {
-        /* max_amplitude is used here to keep the code consistent, however it has a different
-         * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude, it
-         * represents an abstract factor needed to cancel out the amplitude attenuation caused
-         * by the higher layers. */
-        Distance *= max_amplitude;
-      }
-    }
-    else if (feature == "n_sphere_radius") {
-      voronoi_n_sphere_radius(coord2D, randomness, Radius);
+    else if (dimensions == "4D") {
+      Radius = voronoi_n_sphere_radius(params, vector4(coord.x, coord.y, coord.z, w));
     }
     else {
-      error("Unknown feature!");
+      error("Unknown dimension!");
     }
-    outPosition2D = safe_divide(outPosition2D, Scale);
-    Position = vector3(outPosition2D.x, outPosition2D.y, 0.0);
-  }
-  else if (dimensions == "3D") {
-    if (feature == "f1") {
-      fractal_voronoi_f1(coord,
-                         detail,
-                         roughness,
-                         Lacunarity,
-                         Exponent,
-                         randomness,
-                         metric,
-                         max_amplitude,
-                         Distance,
-                         Color,
-                         Position);
-      if (normalize != 0.0) {
-        Distance /= (0.5 + 0.5 * randomness) * max_amplitude *
-                    voronoi_distance(
-                        vector3(1.0, 1.0, 1.0), vector3(0.0, 0.0, 0.0), metric, Exponent);
-        Color /= max_amplitude;
-      }
-    }
-    else if (feature == "smooth_f1") {
-      fractal_voronoi_smooth_f1(coord,
-                                detail,
-                                roughness,
-                                Lacunarity,
-                                smoothness,
-                                Exponent,
-                                randomness,
-                                metric,
-                                max_amplitude,
-                                Distance,
-                                Color,
-                                Position);
-      if (normalize != 0.0) {
-        Distance /= (0.5 + 0.5 * randomness) * max_amplitude *
-                    voronoi_distance(
-                        vector3(1.0, 1.0, 1.0), vector3(0.0, 0.0, 0.0), metric, Exponent);
-        Color /= max_amplitude;
-      }
-    }
-    else if (feature == "f2") {
-      fractal_voronoi_f2(coord,
-                         detail,
-                         roughness,
-                         Lacunarity,
-                         Exponent,
-                         randomness,
-                         metric,
-                         max_amplitude,
-                         Distance,
-                         Color,
-                         Position);
-      if (normalize != 0.0) {
-        if (detail == 0.0 || roughness == 0.0 || Lacunarity == 0.0) {
-          Distance /= (1.0 - randomness) +
-                      randomness * max_amplitude *
-                          voronoi_distance(
-                              vector3(1.0, 1.0, 1.0), vector3(0.0, 0.0, 0.0), metric, Exponent);
-        }
-        else {
-          Distance /= (1.0 - randomness) * ceil(detail + 1.0) +
-                      randomness * max_amplitude *
-                          voronoi_distance(
-                              vector3(1.0, 1.0, 1.0), vector3(0.0, 0.0, 0.0), metric, Exponent);
-        }
-        Color /= max_amplitude;
-      }
-    }
-    else if (feature == "distance_to_edge") {
-      fractal_voronoi_distance_to_edge(
-          coord, detail, roughness, Lacunarity, randomness, max_amplitude, Distance);
-      if (normalize != 0.0) {
-        /* max_amplitude is used here to keep the code consistent, however it has a different
-         * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude, it
-         * represents an abstract factor needed to cancel out the amplitude attenuation caused
-         * by the higher layers. */
-        Distance *= max_amplitude;
-      }
-    }
-    else if (feature == "n_sphere_radius") {
-      voronoi_n_sphere_radius(coord, randomness, Radius);
-    }
-    else {
-      error("Unknown feature!");
-    }
-    Position = (Scale != 0.0) ? Position / Scale : vector3(0.0);
-  }
-  else if (dimensions == "4D") {
-    vector4 coord4D = vector4(coord[0], coord[1], coord[2], w);
-    vector4 outPosition4D;
-
-    if (feature == "f1") {
-      fractal_voronoi_f1(coord4D,
-                         detail,
-                         roughness,
-                         Lacunarity,
-                         Exponent,
-                         randomness,
-                         metric,
-                         max_amplitude,
-                         Distance,
-                         Color,
-                         outPosition4D);
-      if (normalize != 0.0) {
-        Distance /= (0.5 + 0.5 * randomness) * max_amplitude *
-                    voronoi_distance(vector4(1.0, 1.0, 1.0, 1.0),
-                                     vector4(0.0, 0.0, 0.0, 0.0),
-                                     metric,
-                                     Exponent);
-        Color /= max_amplitude;
-      }
-    }
-    else if (feature == "smooth_f1") {
-      fractal_voronoi_smooth_f1(coord4D,
-                                detail,
-                                roughness,
-                                Lacunarity,
-                                smoothness,
-                                Exponent,
-                                randomness,
-                                metric,
-                                max_amplitude,
-                                Distance,
-                                Color,
-                                outPosition4D);
-      if (normalize != 0.0) {
-        Distance /= (0.5 + 0.5 * randomness) * max_amplitude *
-                    voronoi_distance(vector4(1.0, 1.0, 1.0, 1.0),
-                                     vector4(0.0, 0.0, 0.0, 0.0),
-                                     metric,
-                                     Exponent);
-        Color /= max_amplitude;
-      }
-    }
-    else if (feature == "f2") {
-      fractal_voronoi_f2(coord4D,
-                         detail,
-                         roughness,
-                         Lacunarity,
-                         Exponent,
-                         randomness,
-                         metric,
-                         max_amplitude,
-                         Distance,
-                         Color,
-                         outPosition4D);
-      if (normalize != 0.0) {
-        if (detail == 0.0 || roughness == 0.0 || Lacunarity == 0.0) {
-          Distance /= (1.0 - randomness) + randomness * max_amplitude *
-                                               voronoi_distance(vector4(1.0, 1.0, 1.0, 1.0),
-                                                                vector4(0.0, 0.0, 0.0, 0.0),
-                                                                metric,
-                                                                Exponent);
-        }
-        else {
-          Distance /= (1.0 - randomness) * ceil(detail + 1.0) +
-                      randomness * max_amplitude *
-                          voronoi_distance(vector4(1.0, 1.0, 1.0, 1.0),
-                                           vector4(0.0, 0.0, 0.0, 0.0),
-                                           metric,
-                                           Exponent);
-        }
-        Color /= max_amplitude;
-      }
-    }
-    else if (feature == "distance_to_edge") {
-      fractal_voronoi_distance_to_edge(
-          coord4D, detail, roughness, Lacunarity, randomness, max_amplitude, Distance);
-      if (normalize != 0.0) {
-        /* max_amplitude is used here to keep the code consistent, however it has a different
-         * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude, it
-         * represents an abstract factor needed to cancel out the amplitude attenuation caused
-         * by the higher layers. */
-        Distance *= max_amplitude;
-      }
-    }
-    else if (feature == "n_sphere_radius") {
-      voronoi_n_sphere_radius(coord4D, randomness, Radius);
-    }
-    else {
-      error("Unknown feature!");
-    }
-    outPosition4D = safe_divide(outPosition4D, Scale);
-    Position = vector3(outPosition4D.x, outPosition4D.y, outPosition4D.z);
-    WOut = outPosition4D.w;
   }
   else {
-    error("Unknown dimension!");
+    VoronoiOutput Output;
+    if (dimensions == "1D") {
+      params.max_distance = 1.0;
+      Output = fractal_voronoi_x_fx(params, w);
+      Distance = Output.Distance;
+      Color = Output.Color;
+      WOut = Output.Position.w;
+    }
+    else if (dimensions == "2D") {
+      params.max_distance = voronoi_distance(vector2(0.0, 0.0), vector2(1.0, 1.0), params);
+      Output = fractal_voronoi_x_fx(params, vector2(coord.x, coord.y));
+      Distance = Output.Distance;
+      Color = Output.Color;
+      Position = vector3(Output.Position.x, Output.Position.y, 0.0);
+    }
+    else if (dimensions == "3D") {
+      params.max_distance = voronoi_distance(
+          vector3(0.0, 0.0, 0.0), vector3(1.0, 1.0, 1.0), params);
+      Output = fractal_voronoi_x_fx(params, coord);
+      Distance = Output.Distance;
+      Color = Output.Color;
+      Position = vector3(Output.Position.x, Output.Position.y, Output.Position.z);
+    }
+    else if (dimensions == "4D") {
+      params.max_distance = voronoi_distance(
+          vector4(0.0, 0.0, 0.0, 0.0), vector4(1.0, 1.0, 1.0, 1.0), params);
+      Output = fractal_voronoi_x_fx(params, vector4(coord.x, coord.y, coord.z, w));
+      Distance = Output.Distance;
+      Color = Output.Color;
+      Position = vector3(Output.Position.x, Output.Position.y, Output.Position.z);
+      WOut = Output.Position.w;
+    }
+    else {
+      error("Unknown dimension!");
+    }
   }
 }
