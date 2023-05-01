@@ -1161,11 +1161,10 @@ static void store_output_attributes(GeometrySet &geometry,
   store_computed_output_attributes(geometry, attributes_to_store);
 }
 
-static void prepare_simulation_states_for_evaluation(
-    const NodesModifierData &nmd,
-    NodesModifierData &nmd_orig,
-    const ModifierEvalContext &ctx,
-    nodes::GeoNodesModifierData &geo_nodes_modifier_data)
+static void prepare_simulation_states_for_evaluation(const NodesModifierData &nmd,
+                                                     NodesModifierData &nmd_orig,
+                                                     const ModifierEvalContext &ctx,
+                                                     nodes::GeoNodesModifierData &exec_data)
 {
   const Main *bmain = DEG_get_bmain(ctx.depsgraph);
   const SubFrame current_frame = DEG_get_ctime(ctx.depsgraph);
@@ -1208,8 +1207,8 @@ static void prepare_simulation_states_for_evaluation(
         if (is_start_frame || !nmd_orig.simulation_cache->has_states()) {
           bke::sim::ModifierSimulationState &current_sim_state =
               nmd_orig.simulation_cache->get_state_at_frame_for_write(current_frame);
-          geo_nodes_modifier_data.current_simulation_state_for_write = &current_sim_state;
-          geo_nodes_modifier_data.simulation_time_delta = 0.0f;
+          exec_data.current_simulation_state_for_write = &current_sim_state;
+          exec_data.simulation_time_delta = 0.0f;
           if (!is_start_frame) {
             /* When starting a new simulation at another frame than the start frame, it can't match
              * what would be baked, so invalidate it immediately. */
@@ -1221,28 +1220,29 @@ static void prepare_simulation_states_for_evaluation(
           if (delta_frames <= 1.0f) {
             bke::sim::ModifierSimulationState &current_sim_state =
                 nmd_orig.simulation_cache->get_state_at_frame_for_write(current_frame);
-            geo_nodes_modifier_data.current_simulation_state_for_write = &current_sim_state;
+            exec_data.current_simulation_state_for_write = &current_sim_state;
             const float delta_seconds = delta_frames / FPS;
-            geo_nodes_modifier_data.simulation_time_delta = delta_seconds;
+            exec_data.simulation_time_delta = delta_seconds;
           }
         }
       }
     }
   }
+
   /* Load read-only states to give nodes access to cached data. */
   const bke::sim::StatesAroundFrame sim_states =
       nmd_orig.simulation_cache->get_states_around_frame(current_frame);
   if (sim_states.current) {
     sim_states.current->state.ensure_bake_loaded();
-    geo_nodes_modifier_data.current_simulation_state = &sim_states.current->state;
+    exec_data.current_simulation_state = &sim_states.current->state;
   }
   if (sim_states.prev) {
     sim_states.prev->state.ensure_bake_loaded();
-    geo_nodes_modifier_data.prev_simulation_state = &sim_states.prev->state;
+    exec_data.prev_simulation_state = &sim_states.prev->state;
     if (sim_states.next) {
       sim_states.next->state.ensure_bake_loaded();
-      geo_nodes_modifier_data.next_simulation_state = &sim_states.next->state;
-      geo_nodes_modifier_data.simulation_state_mix_factor =
+      exec_data.next_simulation_state = &sim_states.next->state;
+      exec_data.simulation_state_mix_factor =
           (float(current_frame) - float(sim_states.prev->frame)) /
           (float(sim_states.next->frame) - float(sim_states.prev->frame));
     }
