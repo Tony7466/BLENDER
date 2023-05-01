@@ -14,40 +14,39 @@
 namespace blender::gpu {
 void VKContext::debug_group_begin(const char *name, int)
 {
-  debug::push_marker(this, vk_queue_, name);
+  const VKDevice &device = VKBackend::get().device_get();
+  debug::push_marker(this, device.queue_get(), name);
 }
 
 void VKContext::debug_group_end()
 {
-  debug::pop_marker(this, vk_queue_);
+  const VKDevice &device = VKBackend::get().device_get();
+  debug::pop_marker(this, device.queue_get());
 }
 
 bool VKContext::debug_capture_begin()
 {
-  return VKBackend::get().debug_capture_begin(vk_instance_);
+  return VKBackend::get().debug_capture_begin();
 }
 
-bool VKBackend::debug_capture_begin(VkInstance vk_instance)
+bool VKBackend::debug_capture_begin()
 {
 #ifdef WITH_RENDERDOC
-  return renderdoc_api_.start_frame_capture(vk_instance, nullptr);
+  return renderdoc_api_.start_frame_capture(device_get().instance_get(), nullptr);
 #else
-  UNUSED_VARS(vk_instance);
   return false;
 #endif
 }
 
 void VKContext::debug_capture_end()
 {
-  VKBackend::get().debug_capture_end(vk_instance_);
+  VKBackend::get().debug_capture_end();
 }
 
-void VKBackend::debug_capture_end(VkInstance vk_instance)
+void VKBackend::debug_capture_end()
 {
 #ifdef WITH_RENDERDOC
-  renderdoc_api_.end_frame_capture(vk_instance, nullptr);
-#else
-  UNUSED_VARS(vk_instance);
+  renderdoc_api_.end_frame_capture(device_get().instance_get(), nullptr);
 #endif
 }
 
@@ -70,7 +69,8 @@ static void load_dynamic_functions(VKContext *context,
                                    PFN_vkGetInstanceProcAddr instance_proc_addr)
 {
   VKDebuggingTools &debugging_tools = context->debugging_tools_get();
-  VkInstance vk_instance = context->instance_get();
+  const VKDevice &device = VKBackend::get().device_get();
+  VkInstance vk_instance = device.instance_get();
 
   if (instance_proc_addr) {
 
@@ -142,12 +142,13 @@ void object_label(VKContext *context,
   if (G.debug & G_DEBUG_GPU) {
     const VKDebuggingTools &debugging_tools = context->debugging_tools_get();
     if (debugging_tools.enabled) {
+      const VKDevice &device = VKBackend::get().device_get();
       VkDebugUtilsObjectNameInfoEXT info = {};
       info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
       info.objectType = vk_object_type;
       info.objectHandle = object_handle;
       info.pObjectName = name;
-      debugging_tools.vkSetDebugUtilsObjectNameEXT_r(context->device_get(), &info);
+      debugging_tools.vkSetDebugUtilsObjectNameEXT_r(device.device_get(), &info);
     }
   }
 }

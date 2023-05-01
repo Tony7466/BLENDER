@@ -67,8 +67,7 @@ void VKIndexBuffer::strip_restart_indices() {}
 void VKIndexBuffer::allocate(VKContext &context)
 {
   GPUUsageType usage = data_ == nullptr ? GPU_USAGE_DEVICE_ONLY : GPU_USAGE_STATIC;
-  buffer_.create(context,
-                 size_get(),
+  buffer_.create(size_get(),
                  usage,
                  static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
                                                     VK_BUFFER_USAGE_INDEX_BUFFER_BIT));

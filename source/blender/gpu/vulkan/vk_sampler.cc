@@ -6,6 +6,7 @@
  */
 
 #include "vk_sampler.hh"
+#include "vk_backend.hh"
 #include "vk_context.hh"
 #include "vk_memory.hh"
 
@@ -24,16 +25,18 @@ void VKSampler::create(VKContext &context)
 
   VkSamplerCreateInfo sampler_info = {};
   sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-  vkCreateSampler(context.device_get(), &sampler_info, vk_allocation_callbacks, &vk_sampler_);
+  const VKDevice &device = VKBackend::get().device_get();
+  vkCreateSampler(device.device_get(), &sampler_info, vk_allocation_callbacks, &vk_sampler_);
   debug::object_label(&context, vk_sampler_, "DummySampler");
 }
 
-void VKSampler::free(VKContext &context)
+void VKSampler::free(VKContext & /*context*/)
 {
   VK_ALLOCATION_CALLBACKS
 
   if (vk_sampler_ != VK_NULL_HANDLE) {
-    vkDestroySampler(context.device_get(), vk_sampler_, vk_allocation_callbacks);
+    const VKDevice &device = VKBackend::get().device_get();
+    vkDestroySampler(device.device_get(), vk_sampler_, vk_allocation_callbacks);
     vk_sampler_ = VK_NULL_HANDLE;
   }
 }

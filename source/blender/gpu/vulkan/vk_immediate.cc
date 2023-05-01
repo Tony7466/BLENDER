@@ -65,11 +65,11 @@ std::unique_ptr<VKBuffer> VKImmediate::create_resource(VKContext &context)
 {
   const size_t bytes_needed = vertex_buffer_size(&vertex_format, vertex_len);
   std::unique_ptr<VKBuffer> result = std::make_unique<VKBuffer>();
-  result->create(context,
-                 new_buffer_size(bytes_needed),
+  result->create(new_buffer_size(bytes_needed),
                  GPU_USAGE_DYNAMIC,
                  static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
                                                     VK_BUFFER_USAGE_TRANSFER_DST_BIT));
+  debug::object_label(&context, result->vk_handle(), "Immediate");
   buffer_offset_ = 0;
   return result;
 }

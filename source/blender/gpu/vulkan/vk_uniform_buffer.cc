@@ -23,7 +23,7 @@ void VKUniformBuffer::update(const void *data)
 
 void VKUniformBuffer::allocate(VKContext &context)
 {
-  buffer_.create(context, size_in_bytes_, GPU_USAGE_STATIC, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+  buffer_.create(size_in_bytes_, GPU_USAGE_STATIC, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
   debug::object_label(&context, buffer_.vk_handle(), name_);
 }
 

@@ -6,6 +6,7 @@
  */
 
 #include "vk_pipeline.hh"
+#include "vk_backend.hh"
 #include "vk_batch.hh"
 #include "vk_context.hh"
 #include "vk_framebuffer.hh"
@@ -36,21 +37,21 @@ VKPipeline::VKPipeline(VkPipeline vk_pipeline,
 VKPipeline::~VKPipeline()
 {
   VK_ALLOCATION_CALLBACKS
-  VkDevice vk_device = VKContext::get()->device_get();
+  const VKDevice &device = VKBackend::get().device_get();
   for (VkPipeline vk_pipeline : vk_pipelines_) {
-    vkDestroyPipeline(vk_device, vk_pipeline, vk_allocation_callbacks);
+    vkDestroyPipeline(device.device_get(), vk_pipeline, vk_allocation_callbacks);
   }
 }
 
 VKPipeline VKPipeline::create_compute_pipeline(
-    VKContext &context,
+    VKContext & /*context*/,
     VkShaderModule compute_module,
     VkDescriptorSetLayout &descriptor_set_layout,
     VkPipelineLayout &pipeline_layout,
     const VKPushConstants::Layout &push_constants_layout)
 {
   VK_ALLOCATION_CALLBACKS
-  VkDevice vk_device = context.device_get();
+  const VKDevice &device = VKBackend::get().device_get();
   VkComputePipelineCreateInfo pipeline_info = {};
   pipeline_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
   pipeline_info.flags = 0;
@@ -63,9 +64,12 @@ VKPipeline VKPipeline::create_compute_pipeline(
   pipeline_info.stage.pName = "main";
 
   VkPipeline vk_pipeline;
-  if (vkCreateComputePipelines(
-          vk_device, nullptr, 1, &pipeline_info, vk_allocation_callbacks, &vk_pipeline) !=
-      VK_SUCCESS) {
+  if (vkCreateComputePipelines(device.device_get(),
+                               nullptr,
+                               1,
+                               &pipeline_info,
+                               vk_allocation_callbacks,
+                               &vk_pipeline) != VK_SUCCESS) {
     return VKPipeline();
   }
 
@@ -178,8 +182,8 @@ void VKPipeline::finalize(VKContext &context,
   pipeline_create_info.pRasterizationState = &state_manager.rasterization_state;
   pipeline_create_info.pDepthStencilState = &state_manager.depth_stencil_state;
 
-  VkDevice vk_device = context.device_get();
-  vkCreateGraphicsPipelines(vk_device,
+  const VKDevice &device = VKBackend::get().device_get();
+  vkCreateGraphicsPipelines(device.device_get(),
                             VK_NULL_HANDLE,
                             1,
                             &pipeline_create_info,
