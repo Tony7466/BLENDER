@@ -818,7 +818,8 @@ static void mesh_loops_to_tessdata(CustomData *fdata,
         CustomData_get_layer_n(ldata, CD_PROP_FLOAT2, i));
 
     for (findex = 0, pidx = polyindices, lidx = loopindices; findex < num_faces;
-         pidx++, lidx++, findex++, texface++) {
+         pidx++, lidx++, findex++, texface++)
+    {
       for (j = (mface ? mface[findex].v4 : (*lidx)[3]) ? 4 : 3; j--;) {
         copy_v2_v2(texface->uv[j], uv[(*lidx)[j]]);
       }
@@ -877,7 +878,8 @@ static void mesh_loops_to_tessdata(CustomData *fdata,
     const float(*ltangents)[4] = (const float(*)[4])CustomData_get_layer(ldata, CD_TANGENT);
 
     for (findex = 0, pidx = polyindices, lidx = loopindices; findex < num_faces;
-         pidx++, lidx++, findex++) {
+         pidx++, lidx++, findex++)
+    {
       int nverts = (mface ? mface[findex].v4 : (*lidx)[3]) ? 4 : 3;
       for (j = nverts; j--;) {
         copy_v4_v4(ftangents[findex * 4 + j], ltangents[(*lidx)[j]]);
@@ -910,7 +912,8 @@ int BKE_mesh_mface_index_validate(MFace *mface, CustomData *fdata, int mfindex, 
   if (nr == 3) {
     if (
         /* real edges */
-        mface->v1 == mface->v2 || mface->v2 == mface->v3 || mface->v3 == mface->v1) {
+        mface->v1 == mface->v2 || mface->v2 == mface->v3 || mface->v3 == mface->v1)
+    {
       return 0;
     }
   }
@@ -920,7 +923,8 @@ int BKE_mesh_mface_index_validate(MFace *mface, CustomData *fdata, int mfindex, 
         mface->v1 == mface->v2 || mface->v2 == mface->v3 || mface->v3 == mface->v4 ||
         mface->v4 == mface->v1 ||
         /* across the face */
-        mface->v1 == mface->v3 || mface->v2 == mface->v4) {
+        mface->v1 == mface->v3 || mface->v2 == mface->v4)
+    {
       return 0;
     }
   }
@@ -1229,7 +1233,8 @@ void BKE_mesh_legacy_sharp_faces_to_flags(Mesh *mesh, blender::MutableSpan<MPoly
 {
   using namespace blender;
   if (const bool *sharp_faces = static_cast<const bool *>(
-          CustomData_get_layer_named(&mesh->pdata, CD_PROP_BOOL, "sharp_face"))) {
+          CustomData_get_layer_named(&mesh->pdata, CD_PROP_BOOL, "sharp_face")))
+  {
     threading::parallel_for(legacy_polys.index_range(), 4096, [&](const IndexRange range) {
       for (const int i : range) {
         SET_FLAG_FROM_TEST(legacy_polys[i].flag_legacy, !sharp_faces[i], ME_SMOOTH);
@@ -1255,7 +1260,8 @@ void BKE_mesh_legacy_sharp_faces_from_flags(Mesh *mesh)
                           mesh->totpoly);
   if (std::any_of(polys.begin(), polys.end(), [](const MPoly &poly) {
         return !(poly.flag_legacy & ME_SMOOTH);
-      })) {
+      }))
+  {
     SpanAttributeWriter<bool> sharp_faces = attributes.lookup_or_add_for_write_only_span<bool>(
         "sharp_face", ATTR_DOMAIN_FACE);
     threading::parallel_for(polys.index_range(), 4096, [&](const IndexRange range) {
@@ -1341,7 +1347,8 @@ void BKE_mesh_legacy_bevel_weight_from_layers(Mesh *mesh)
   using namespace blender;
   MutableSpan<MVert> verts(mesh->mvert, mesh->totvert);
   if (const float *weights = static_cast<const float *>(
-          CustomData_get_layer(&mesh->vdata, CD_BWEIGHT))) {
+          CustomData_get_layer(&mesh->vdata, CD_BWEIGHT)))
+  {
     mesh->cd_flag |= ME_CDFLAG_VERT_BWEIGHT;
     for (const int i : verts.index_range()) {
       verts[i].bweight_legacy = std::clamp(weights[i], 0.0f, 1.0f) * 255.0f;
@@ -1355,7 +1362,8 @@ void BKE_mesh_legacy_bevel_weight_from_layers(Mesh *mesh)
   }
   MutableSpan<MEdge> edges(mesh->medge, mesh->totedge);
   if (const float *weights = static_cast<const float *>(
-          CustomData_get_layer(&mesh->edata, CD_BWEIGHT))) {
+          CustomData_get_layer(&mesh->edata, CD_BWEIGHT)))
+  {
     mesh->cd_flag |= ME_CDFLAG_EDGE_BWEIGHT;
     for (const int i : edges.index_range()) {
       edges[i].bweight_legacy = std::clamp(weights[i], 0.0f, 1.0f) * 255.0f;
@@ -1406,7 +1414,8 @@ void BKE_mesh_legacy_edge_crease_from_layers(Mesh *mesh)
   using namespace blender;
   MutableSpan<MEdge> edges(mesh->medge, mesh->totedge);
   if (const float *creases = static_cast<const float *>(
-          CustomData_get_layer(&mesh->edata, CD_CREASE))) {
+          CustomData_get_layer(&mesh->edata, CD_CREASE)))
+  {
     mesh->cd_flag |= ME_CDFLAG_EDGE_CREASE;
     for (const int i : edges.index_range()) {
       edges[i].crease_legacy = std::clamp(creases[i], 0.0f, 1.0f) * 255.0f;
@@ -1447,7 +1456,8 @@ void BKE_mesh_legacy_sharp_edges_to_flags(Mesh *mesh)
   using namespace blender;
   MutableSpan<MEdge> edges(mesh->medge, mesh->totedge);
   if (const bool *sharp_edges = static_cast<const bool *>(
-          CustomData_get_layer_named(&mesh->edata, CD_PROP_BOOL, "sharp_edge"))) {
+          CustomData_get_layer_named(&mesh->edata, CD_PROP_BOOL, "sharp_edge")))
+  {
     threading::parallel_for(edges.index_range(), 4096, [&](const IndexRange range) {
       for (const int i : range) {
         SET_FLAG_FROM_TEST(edges[i].flag_legacy, sharp_edges[i], ME_SHARP);
@@ -1475,7 +1485,8 @@ void BKE_mesh_legacy_sharp_edges_from_flags(Mesh *mesh)
   }
   if (std::any_of(edges.begin(), edges.end(), [](const MEdge &edge) {
         return edge.flag_legacy & ME_SHARP;
-      })) {
+      }))
+  {
     SpanAttributeWriter<bool> sharp_edges = attributes.lookup_or_add_for_write_only_span<bool>(
         "sharp_edge", ATTR_DOMAIN_EDGE);
     threading::parallel_for(edges.index_range(), 4096, [&](const IndexRange range) {
@@ -1498,7 +1509,8 @@ void BKE_mesh_legacy_uv_seam_to_flags(Mesh *mesh)
   using namespace blender;
   MutableSpan<MEdge> edges(mesh->medge, mesh->totedge);
   if (const bool *uv_seams = static_cast<const bool *>(
-          CustomData_get_layer_named(&mesh->edata, CD_PROP_BOOL, ".uv_seam"))) {
+          CustomData_get_layer_named(&mesh->edata, CD_PROP_BOOL, ".uv_seam")))
+  {
     threading::parallel_for(edges.index_range(), 4096, [&](const IndexRange range) {
       for (const int i : range) {
         SET_FLAG_FROM_TEST(edges[i].flag_legacy, uv_seams[i], ME_SEAM);
@@ -1526,7 +1538,8 @@ void BKE_mesh_legacy_uv_seam_from_flags(Mesh *mesh)
   }
   if (std::any_of(edges.begin(), edges.end(), [](const MEdge &edge) {
         return edge.flag_legacy & ME_SEAM;
-      })) {
+      }))
+  {
     SpanAttributeWriter<bool> uv_seams = attributes.lookup_or_add_for_write_only_span<bool>(
         ".uv_seam", ATTR_DOMAIN_EDGE);
     threading::parallel_for(edges.index_range(), 4096, [&](const IndexRange range) {
@@ -1584,13 +1597,15 @@ void BKE_mesh_legacy_convert_flags_to_hide_layers(Mesh *mesh)
   using namespace blender::bke;
   MutableAttributeAccessor attributes = mesh->attributes_for_write();
   if (!mesh->mvert || attributes.contains(".hide_vert") || attributes.contains(".hide_edge") ||
-      attributes.contains(".hide_poly")) {
+      attributes.contains(".hide_poly"))
+  {
     return;
   }
   const Span<MVert> verts(mesh->mvert, mesh->totvert);
   if (std::any_of(verts.begin(), verts.end(), [](const MVert &vert) {
         return vert.flag_legacy & ME_HIDE;
-      })) {
+      }))
+  {
     SpanAttributeWriter<bool> hide_vert = attributes.lookup_or_add_for_write_only_span<bool>(
         ".hide_vert", ATTR_DOMAIN_POINT);
     threading::parallel_for(verts.index_range(), 4096, [&](IndexRange range) {
@@ -1605,7 +1620,8 @@ void BKE_mesh_legacy_convert_flags_to_hide_layers(Mesh *mesh)
     const Span<MEdge> edges(mesh->medge, mesh->totedge);
     if (std::any_of(edges.begin(), edges.end(), [](const MEdge &edge) {
           return edge.flag_legacy & ME_HIDE;
-        })) {
+        }))
+    {
       SpanAttributeWriter<bool> hide_edge = attributes.lookup_or_add_for_write_only_span<bool>(
           ".hide_edge", ATTR_DOMAIN_EDGE);
       threading::parallel_for(edges.index_range(), 4096, [&](IndexRange range) {
@@ -1621,7 +1637,8 @@ void BKE_mesh_legacy_convert_flags_to_hide_layers(Mesh *mesh)
                           mesh->totpoly);
   if (std::any_of(polys.begin(), polys.end(), [](const MPoly &poly) {
         return poly.flag_legacy & ME_HIDE;
-      })) {
+      }))
+  {
     SpanAttributeWriter<bool> hide_poly = attributes.lookup_or_add_for_write_only_span<bool>(
         ".hide_poly", ATTR_DOMAIN_FACE);
     threading::parallel_for(polys.index_range(), 4096, [&](IndexRange range) {
@@ -1665,7 +1682,8 @@ void BKE_mesh_legacy_convert_mpoly_to_material_indices(Mesh *mesh)
   const Span<MPoly> polys(static_cast<const MPoly *>(CustomData_get_layer(&mesh->pdata, CD_MPOLY)),
                           mesh->totpoly);
   if (std::any_of(
-          polys.begin(), polys.end(), [](const MPoly &poly) { return poly.mat_nr_legacy != 0; })) {
+          polys.begin(), polys.end(), [](const MPoly &poly) { return poly.mat_nr_legacy != 0; }))
+  {
     SpanAttributeWriter<int> material_indices = attributes.lookup_or_add_for_write_only_span<int>(
         "material_index", ATTR_DOMAIN_FACE);
     threading::parallel_for(polys.index_range(), 4096, [&](IndexRange range) {
@@ -1933,14 +1951,15 @@ void BKE_mesh_legacy_convert_flags_to_selection_layers(Mesh *mesh)
   using namespace blender::bke;
   MutableAttributeAccessor attributes = mesh->attributes_for_write();
   if (!mesh->mvert || attributes.contains(".select_vert") || attributes.contains(".select_edge") ||
-      attributes.contains(".select_poly")) {
+      attributes.contains(".select_poly"))
+  {
     return;
   }
 
   const Span<MVert> verts(mesh->mvert, mesh->totvert);
-  if (std::any_of(verts.begin(), verts.end(), [](const MVert &vert) {
-        return vert.flag_legacy & SELECT;
-      })) {
+  if (std::any_of(
+          verts.begin(), verts.end(), [](const MVert &vert) { return vert.flag_legacy & SELECT; }))
+  {
     SpanAttributeWriter<bool> select_vert = attributes.lookup_or_add_for_write_only_span<bool>(
         ".select_vert", ATTR_DOMAIN_POINT);
     threading::parallel_for(verts.index_range(), 4096, [&](IndexRange range) {
@@ -1955,7 +1974,8 @@ void BKE_mesh_legacy_convert_flags_to_selection_layers(Mesh *mesh)
     const Span<MEdge> edges(mesh->medge, mesh->totedge);
     if (std::any_of(edges.begin(), edges.end(), [](const MEdge &edge) {
           return edge.flag_legacy & SELECT;
-        })) {
+        }))
+    {
       SpanAttributeWriter<bool> select_edge = attributes.lookup_or_add_for_write_only_span<bool>(
           ".select_edge", ATTR_DOMAIN_EDGE);
       threading::parallel_for(edges.index_range(), 4096, [&](IndexRange range) {
@@ -1971,7 +1991,8 @@ void BKE_mesh_legacy_convert_flags_to_selection_layers(Mesh *mesh)
                           mesh->totpoly);
   if (std::any_of(polys.begin(), polys.end(), [](const MPoly &poly) {
         return poly.flag_legacy & ME_FACE_SEL;
-      })) {
+      }))
+  {
     SpanAttributeWriter<bool> select_poly = attributes.lookup_or_add_for_write_only_span<bool>(
         ".select_poly", ATTR_DOMAIN_FACE);
     threading::parallel_for(polys.index_range(), 4096, [&](IndexRange range) {
@@ -2277,7 +2298,8 @@ void BKE_mesh_legacy_convert_loops_to_corners(Mesh *mesh)
 {
   using namespace blender;
   if (CustomData_get_layer_named(&mesh->ldata, CD_PROP_INT32, ".corner_vert") &&
-      CustomData_get_layer_named(&mesh->ldata, CD_PROP_INT32, ".corner_edge")) {
+      CustomData_get_layer_named(&mesh->ldata, CD_PROP_INT32, ".corner_edge"))
+  {
     return;
   }
   const Span<MLoop> loops(static_cast<const MLoop *>(CustomData_get_layer(&mesh->ldata, CD_MLOOP)),
