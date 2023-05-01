@@ -111,22 +111,8 @@ class ModifierSimulationState {
   std::optional<std::string> meta_path_;
   std::optional<std::string> bdata_dir_;
 
-  const SimulationZoneState *get_zone_state(const SimulationZoneID &zone_id) const
-  {
-    std::lock_guard lock{mutex_};
-    if (auto *ptr = zone_states_.lookup_ptr(zone_id)) {
-      return ptr->get();
-    }
-    return nullptr;
-  }
-
-  SimulationZoneState &get_zone_state_for_write(const SimulationZoneID &zone_id)
-  {
-    std::lock_guard lock{mutex_};
-    return *zone_states_.lookup_or_add_cb(
-        zone_id, []() { return std::make_unique<SimulationZoneState>(); });
-  }
-
+  const SimulationZoneState *get_zone_state(const SimulationZoneID &zone_id) const;
+  SimulationZoneState &get_zone_state_for_write(const SimulationZoneID &zone_id);
   void ensure_bake_loaded() const;
 };
 
@@ -160,66 +146,11 @@ class ModifierSimulationCache {
 
   void try_discover_bake(StringRefNull meta_dir, StringRefNull bdata_dir);
 
-  bool has_state_at_frame(const SubFrame &frame) const
-  {
-    for (const auto &item : states_at_frames_) {
-      if (item->frame == frame) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  bool has_states() const
-  {
-    return !states_at_frames_.is_empty();
-  }
-
-  const ModifierSimulationState *get_state_at_exact_frame(const SubFrame &frame) const
-  {
-    for (const auto &item : states_at_frames_) {
-      if (item->frame == frame) {
-        return &item->state;
-      }
-    }
-    return nullptr;
-  }
-
-  ModifierSimulationState &get_state_at_frame_for_write(const SubFrame &frame)
-  {
-    for (const auto &item : states_at_frames_) {
-      if (item->frame == frame) {
-        return item->state;
-      }
-    }
-    states_at_frames_.append(std::make_unique<ModifierSimulationStateAtFrame>());
-    states_at_frames_.last()->frame = frame;
-    states_at_frames_.last()->state.owner_ = this;
-    return states_at_frames_.last()->state;
-  }
-
-  StatesAroundFrame get_states_around_frame(const SubFrame &frame) const
-  {
-    StatesAroundFrame states_around_frame;
-    for (const auto &item : states_at_frames_) {
-      if (item->frame < frame) {
-        if (states_around_frame.prev == nullptr || item->frame > states_around_frame.prev->frame) {
-          states_around_frame.prev = item.get();
-        }
-      }
-      if (item->frame == frame) {
-        if (states_around_frame.current == nullptr) {
-          states_around_frame.current = item.get();
-        }
-      }
-      if (item->frame > frame) {
-        if (states_around_frame.next == nullptr || item->frame < states_around_frame.next->frame) {
-          states_around_frame.next = item.get();
-        }
-      }
-    }
-    return states_around_frame;
-  }
+  bool has_state_at_frame(const SubFrame &frame) const;
+  bool has_states() const;
+  const ModifierSimulationState *get_state_at_exact_frame(const SubFrame &frame) const;
+  ModifierSimulationState &get_state_at_frame_for_write(const SubFrame &frame);
+  StatesAroundFrame get_states_around_frame(const SubFrame &frame) const;
 
   void invalidate()
   {

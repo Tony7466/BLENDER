@@ -84,6 +84,87 @@ void ModifierSimulationCache::try_discover_bake(const StringRefNull meta_dir,
   cache_state_ = CacheState::Baked;
 }
 
+bool ModifierSimulationCache::has_state_at_frame(const SubFrame &frame) const
+{
+  for (const auto &item : states_at_frames_) {
+    if (item->frame == frame) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool ModifierSimulationCache::has_states() const
+{
+  return !states_at_frames_.is_empty();
+}
+
+const ModifierSimulationState *ModifierSimulationCache::get_state_at_exact_frame(
+    const SubFrame &frame) const
+{
+  for (const auto &item : states_at_frames_) {
+    if (item->frame == frame) {
+      return &item->state;
+    }
+  }
+  return nullptr;
+}
+
+ModifierSimulationState &ModifierSimulationCache::get_state_at_frame_for_write(
+    const SubFrame &frame)
+{
+  for (const auto &item : states_at_frames_) {
+    if (item->frame == frame) {
+      return item->state;
+    }
+  }
+  states_at_frames_.append(std::make_unique<ModifierSimulationStateAtFrame>());
+  states_at_frames_.last()->frame = frame;
+  states_at_frames_.last()->state.owner_ = this;
+  return states_at_frames_.last()->state;
+}
+
+StatesAroundFrame ModifierSimulationCache::get_states_around_frame(const SubFrame &frame) const
+{
+  StatesAroundFrame states_around_frame;
+  for (const auto &item : states_at_frames_) {
+    if (item->frame < frame) {
+      if (states_around_frame.prev == nullptr || item->frame > states_around_frame.prev->frame) {
+        states_around_frame.prev = item.get();
+      }
+    }
+    if (item->frame == frame) {
+      if (states_around_frame.current == nullptr) {
+        states_around_frame.current = item.get();
+      }
+    }
+    if (item->frame > frame) {
+      if (states_around_frame.next == nullptr || item->frame < states_around_frame.next->frame) {
+        states_around_frame.next = item.get();
+      }
+    }
+  }
+  return states_around_frame;
+}
+
+const SimulationZoneState *ModifierSimulationState::get_zone_state(
+    const SimulationZoneID &zone_id) const
+{
+  std::lock_guard lock{mutex_};
+  if (auto *ptr = zone_states_.lookup_ptr(zone_id)) {
+    return ptr->get();
+  }
+  return nullptr;
+}
+
+SimulationZoneState &ModifierSimulationState::get_zone_state_for_write(
+    const SimulationZoneID &zone_id)
+{
+  std::lock_guard lock{mutex_};
+  return *zone_states_.lookup_or_add_cb(zone_id,
+                                        []() { return std::make_unique<SimulationZoneState>(); });
+}
+
 void ModifierSimulationState::ensure_bake_loaded() const
 {
   std::scoped_lock lock{mutex_};
