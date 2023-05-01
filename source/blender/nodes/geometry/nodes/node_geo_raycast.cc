@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_index_mask_ops.hh"
+
 #include "DNA_mesh_types.h"
 
 #include "BKE_attribute_math.hh"
@@ -116,17 +118,6 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   }
 }
 
-static eAttributeMapMode get_map_mode(GeometryNodeRaycastMapMode map_mode)
-{
-  switch (map_mode) {
-    case GEO_NODE_RAYCAST_INTERPOLATED:
-      return eAttributeMapMode::INTERPOLATED;
-    default:
-    case GEO_NODE_RAYCAST_NEAREST:
-      return eAttributeMapMode::NEAREST;
-  }
-}
-
 static void raycast_to_mesh(IndexMask mask,
                             const Mesh &mesh,
                             const VArray<float3> &ray_origins,
@@ -136,8 +127,7 @@ static void raycast_to_mesh(IndexMask mask,
                             const MutableSpan<int> r_hit_indices,
                             const MutableSpan<float3> r_hit_positions,
                             const MutableSpan<float3> r_hit_normals,
-                            const MutableSpan<float> r_hit_distances,
-                            int &hit_count)
+                            const MutableSpan<float> r_hit_distances)
 {
   BVHTreeFromMesh tree_data;
   BKE_bvhtree_from_mesh_get(&tree_data, &mesh, BVHTREE_FROM_LOOPTRI, 4);
@@ -152,7 +142,7 @@ static void raycast_to_mesh(IndexMask mask,
   for (const int i : mask) {
     const float ray_length = ray_lengths[i];
     const float3 ray_origin = ray_origins[i];
-    const float3 ray_direction = math::normalize(ray_directions[i]);
+    const float3 ray_direction = ray_directions[i];
 
     BVHTreeRayHit hit;
     hit.index = -1;
@@ -164,7 +154,6 @@ static void raycast_to_mesh(IndexMask mask,
                              &hit,
                              tree_data.raycast_callback,
                              &tree_data) != -1) {
-      hit_count++;
       if (!r_hit.is_empty()) {
         r_hit[i] = hit.index >= 0;
       }
@@ -205,59 +194,49 @@ static void raycast_to_mesh(IndexMask mask,
 class RaycastFunction : public mf::MultiFunction {
  private:
   GeometrySet target_;
-  GeometryNodeRaycastMapMode mapping_;
-
-  /** The field for data evaluated on the target geometry. */
-  std::optional<bke::MeshFieldContext> target_context_;
-  std::unique_ptr<FieldEvaluator> target_evaluator_;
-  const GVArray *target_data_ = nullptr;
-
-  /* Always evaluate the target domain data on the face corner domain because it contains the most
-   * information. Eventually this could be exposed as an option or determined automatically from
-   * the field inputs for better performance. */
-  const eAttrDomain domain_ = ATTR_DOMAIN_CORNER;
-
-  mf::Signature signature_;
 
  public:
-  RaycastFunction(GeometrySet target, GField src_field, GeometryNodeRaycastMapMode mapping)
-      : target_(std::move(target)), mapping_((GeometryNodeRaycastMapMode)mapping)
+  RaycastFunction(GeometrySet target) : target_(std::move(target))
   {
     target_.ensure_owns_direct_data();
-    this->evaluate_target_field(std::move(src_field));
 
-    mf::SignatureBuilder builder{"Geometry Proximity", signature_};
-    builder.single_input<float3>("Source Position");
-    builder.single_input<float3>("Ray Direction");
-    builder.single_input<float>("Ray Length");
-    builder.single_output<bool>("Is Hit", mf::ParamFlag::SupportsUnusedOutput);
-    builder.single_output<float3>("Hit Position");
-    builder.single_output<float3>("Hit Normal", mf::ParamFlag::SupportsUnusedOutput);
-    builder.single_output<float>("Distance", mf::ParamFlag::SupportsUnusedOutput);
-    if (target_data_) {
-      builder.single_output(
-          "Attribute", target_data_->type(), mf::ParamFlag::SupportsUnusedOutput);
-    }
-    this->set_signature(&signature_);
+    static const mf::Signature signature = []() {
+      mf::Signature signature;
+      mf::SignatureBuilder builder{"Raycast", signature};
+      builder.single_input<float3>("Source Position");
+      builder.single_input<float3>("Ray Direction");
+      builder.single_input<float>("Ray Length");
+
+      builder.single_output<bool>("Is Hit", mf::ParamFlag::SupportsUnusedOutput);
+      builder.single_output<float3>("Hit Position");
+      builder.single_output<float3>("Hit Normal", mf::ParamFlag::SupportsUnusedOutput);
+      builder.single_output<float>("Distance", mf::ParamFlag::SupportsUnusedOutput);
+
+      builder.single_output<int>("Triangle Index", mf::ParamFlag::SupportsUnusedOutput);
+      builder.single_output<float3>("Barycentric Weights", mf::ParamFlag::SupportsUnusedOutput);
+      return signature;
+    }();
+    this->set_signature(&signature);
   }
 
-  void call(IndexMask mask, mf::Params params, mf::Context /*context*/) const override
+  void call(const IndexMask mask, mf::Params params, mf::Context /*context*/) const override
   {
-    /* Hit positions are always necessary for retrieving the attribute from the target if that
-     * output is required, so always retrieve a span from the evaluator in that case (it's
-     * expected that the evaluator is more likely to have a spare buffer that could be used). */
-    MutableSpan<float3> hit_positions = params.uninitialized_single_output<float3>(4,
-                                                                                   "Hit Position");
-
-    Array<int> hit_indices;
-    if (target_data_) {
-      hit_indices.reinitialize(mask.min_array_size());
+    MutableSpan<float3> hit_positions;
+    MutableSpan<int> hit_indices;
+    MutableSpan<float3> bary_weights = params.uninitialized_single_output_if_required<float3>(
+        8, "Barycentric Weights");
+    if (bary_weights.is_empty()) {
+      hit_positions = params.uninitialized_single_output_if_required<float3>(4, "Hit Position");
+      hit_indices = params.uninitialized_single_output_if_required<int>(7, "Triangle Index");
+    }
+    else {
+      hit_positions = params.uninitialized_single_output<float3>(4, "Hit Position");
+      hit_indices = params.uninitialized_single_output<int>(7, "Triangle Index");
     }
 
     BLI_assert(target_.has_mesh());
     const Mesh &mesh = *target_.get_mesh_for_read();
 
-    int hit_count = 0;
     raycast_to_mesh(mask,
                     mesh,
                     params.readonly_single_input<float3>(0, "Source Position"),
@@ -267,51 +246,22 @@ class RaycastFunction : public mf::MultiFunction {
                     hit_indices,
                     hit_positions,
                     params.uninitialized_single_output_if_required<float3>(5, "Hit Normal"),
-                    params.uninitialized_single_output_if_required<float>(6, "Distance"),
-                    hit_count);
+                    params.uninitialized_single_output_if_required<float>(6, "Distance"));
 
-    if (target_data_) {
-      IndexMask hit_mask;
+    if (!bary_weights.is_empty()) {
       Vector<int64_t> hit_mask_indices;
-      if (hit_count < mask.size()) {
-        /* Not all rays hit the target. Create a corrected mask to avoid transferring attribute
-         * data to invalid indices. An alternative would be handling -1 indices in a separate case
-         * in #MeshAttributeInterpolator, but since it already has an IndexMask in its constructor,
-         * it's simpler to use that. */
-        hit_mask_indices.reserve(hit_count);
-        for (const int64_t i : mask) {
-          if (hit_indices[i] != -1) {
-            hit_mask_indices.append(i);
-          }
-          hit_mask = IndexMask(hit_mask_indices);
-        }
-      }
-      else {
-        hit_mask = mask;
-      }
-
-      GMutableSpan result = params.uninitialized_single_output_if_required(7, "Attribute");
-      if (!result.is_empty()) {
-        MeshAttributeInterpolator interp(&mesh, hit_mask, hit_positions, hit_indices);
-        result.type().value_initialize_indices(result.data(), mask);
-        interp.sample_data(*target_data_, domain_, get_map_mode(mapping_), result);
-      }
+      const IndexMask hit_mask = index_mask_ops::find_indices_based_on_predicate(
+          mask, mask.size(), hit_mask_indices, [&](const int64_t i) {
+            return hit_indices[i] != -1;
+          });
+      bke::mesh_surface_sample::sample_barycentric_weights(mesh.vert_positions(),
+                                                           mesh.corner_verts(),
+                                                           mesh.looptris(),
+                                                           hit_indices,
+                                                           hit_positions,
+                                                           hit_mask,
+                                                           bary_weights);
     }
-  }
-
- private:
-  void evaluate_target_field(GField src_field)
-  {
-    if (!src_field) {
-      return;
-    }
-    const Mesh &mesh = *target_.get_mesh_for_read();
-    target_context_.emplace(bke::MeshFieldContext{mesh, domain_});
-    const int domain_size = mesh.attributes().domain_size(domain_);
-    target_evaluator_ = std::make_unique<FieldEvaluator>(*target_context_, domain_size);
-    target_evaluator_->add(std::move(src_field));
-    target_evaluator_->evaluate();
-    target_data_ = &target_evaluator_->get_evaluated(0);
   }
 };
 
@@ -400,23 +350,34 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
-  GField field = get_input_attribute_field(params, data_type);
-  const bool do_attribute_transfer = bool(field);
-  Field<float3> position_field = params.extract_input<Field<float3>>("Source Position");
-  Field<float3> direction_field = params.extract_input<Field<float3>>("Ray Direction");
-  Field<float> length_field = params.extract_input<Field<float>>("Ray Length");
+  static auto normalize_fn = mf::build::SI1_SO<float3, float3>(
+      "Normalize",
+      [](const float3 &v) { return math::normalize(v); },
+      mf::build::exec_presets::AllSpanOrSingle());
+  auto direction_op = FieldOperation::Create(
+      normalize_fn, {params.extract_input<Field<float3>>("Ray Direction")});
 
-  auto fn = std::make_unique<RaycastFunction>(std::move(target), std::move(field), mapping);
-  auto op = FieldOperation::Create(
-      std::move(fn),
-      {std::move(position_field), std::move(direction_field), std::move(length_field)});
+  auto raycast_op = FieldOperation::Create(std::make_unique<RaycastFunction>(target),
+                                           {params.extract_input<Field<float3>>("Source Position"),
+                                            Field<float3>(direction_op),
+                                            params.extract_input<Field<float>>("Ray Length")});
 
-  params.set_output("Is Hit", Field<bool>(op, 0));
-  params.set_output("Hit Position", Field<float3>(op, 1));
-  params.set_output("Hit Normal", Field<float3>(op, 2));
-  params.set_output("Hit Distance", Field<float>(op, 3));
-  if (do_attribute_transfer) {
-    output_attribute_field(params, GField(op, 4));
+  params.set_output("Is Hit", Field<bool>(raycast_op, 0));
+  params.set_output("Hit Position", Field<float3>(raycast_op, 1));
+  params.set_output("Hit Normal", Field<float3>(raycast_op, 2));
+  params.set_output("Hit Distance", Field<float>(raycast_op, 3));
+
+  if (GField field = get_input_attribute_field(params, data_type)) {
+    if (mapping == GEO_NODE_RAYCAST_INTERPOLATED) {
+      auto sample_op = FieldOperation::Create(
+          std::make_unique<bke::SampleMeshBarycentricFunction>(std::move(target),
+                                                               std::move(field)),
+          {Field<int>(raycast_op, 7), Field<float3>(raycast_op, 8)});
+      output_attribute_field(params, GField(sample_op, 0));
+    }
+    else {
+      // TODO
+    }
   }
 }
 

@@ -51,42 +51,13 @@ void sample_face_attribute(Span<MLoopTri> looptris,
                            IndexMask mask,
                            GMutableSpan dst);
 
-enum class eAttributeMapMode {
-  INTERPOLATED,
-  NEAREST,
-};
-
-/**
- * A utility class that performs attribute interpolation from a source mesh.
- *
- * The interpolator is only valid as long as the mesh is valid.
- * Barycentric weights are needed when interpolating point or corner domain attributes,
- * these are computed lazily when needed and re-used.
- */
-class MeshAttributeInterpolator {
-  const Mesh *mesh_;
-  const IndexMask mask_;
-  const Span<float3> positions_;
-  const Span<int> looptri_indices_;
-
-  Array<float3> bary_coords_;
-  Array<float3> nearest_weights_;
-
- public:
-  MeshAttributeInterpolator(const Mesh *mesh,
-                            IndexMask mask,
-                            Span<float3> positions,
-                            Span<int> looptri_indices);
-
-  void sample_data(const GVArray &src,
-                   eAttrDomain domain,
-                   eAttributeMapMode mode,
-                   GMutableSpan dst);
-
- protected:
-  Span<float3> ensure_barycentric_coords();
-  Span<float3> ensure_nearest_weights();
-};
+void sample_barycentric_weights(const Span<float3> vert_positions,
+                                const Span<int> corner_verts,
+                                const Span<MLoopTri> looptris,
+                                const Span<int> looptri_indices,
+                                const Span<float3> sample_positions,
+                                const IndexMask mask,
+                                MutableSpan<float3> bary_coords);
 
 /**
  * Find randomly distributed points on the surface of a mesh within a 3D sphere. This does not

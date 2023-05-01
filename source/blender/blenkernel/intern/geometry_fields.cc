@@ -629,6 +629,83 @@ std::optional<eAttrDomain> try_detect_field_domain(const GeometryComponent &comp
   return output_domain;
 }
 
+class SampleMeshBarycentricFunction : public mf::MultiFunction {
+  GeometrySet source_;
+  fn::GField src_field_;
+
+  /**
+   * Use the most complex domain for now ensuring no information is lost. In the future, it should
+   * be possible to use the most complex domain required by the field inputs, to simplify sampling
+   * and avoid domain conversions.
+   */
+  eAttrDomain domain_ = ATTR_DOMAIN_CORNER;
+
+  mf::Signature signature_;
+
+  std::optional<bke::MeshFieldContext> source_context_;
+  std::unique_ptr<fn::FieldEvaluator> source_evaluator_;
+
+  Span<MLoopTri> looptris_;
+
+ public:
+  SampleMeshBarycentricFunction(GeometrySet geometry, fn::GField src_field)
+      : source_(std::move(geometry)), src_field_(std::move(src_field))
+  {
+    source_.ensure_owns_direct_data();
+    this->evaluate_source();
+
+    mf::SignatureBuilder builder{"Sample Barycentric Triangles", signature_};
+    builder.single_input<int>("Triangle Index");
+    builder.single_input<float3>("Barycentric Weight");
+    builder.single_output("Value", src_field_.cpp_type());
+    this->set_signature(&signature_);
+  }
+
+  void call(const IndexMask mask, mf::Params params, mf::Context /*context*/) const override
+  {
+    const VArraySpan<int> triangle_indices = params.readonly_single_input<int>(0,
+                                                                               "Triangle Index");
+    const VArraySpan<float3> bary_weights = params.readonly_single_input<float3>(
+        1, "Barycentric Weight");
+    GMutableSpan dst = params.uninitialized_single_output(2, "Value");
+
+    attribute_math::convert_to_static_type(src_field_.cpp_type(), [&](auto dummy) {
+      using T = decltype(dummy);
+      const VArray<T> src_typed = source_evaluator_->get_evaluated(0).typed<T>();
+      MutableSpan<T> dst_typed = dst.typed<T>();
+      for (const int i : mask) {
+        const int triangle_index = triangle_indices[i];
+        if (triangle_indices[i] != -1) {
+          dst_typed[i] = attribute_math::mix3(bary_weights[i],
+                                              src_typed[looptris_[triangle_index].tri[0]],
+                                              src_typed[looptris_[triangle_index].tri[1]],
+                                              src_typed[looptris_[triangle_index].tri[2]]);
+        }
+        else {
+          dst_typed[i] = {};
+        }
+      }
+    });
+  }
+
+ private:
+  /**
+   * \note Multi-threading for this function is provided by the field evaluator. Since the #call
+   * function could be called many times, calculate the data from the source geometry once and
+   * store it for later.
+   */
+  void evaluate_source()
+  {
+    const Mesh &mesh = *source_.get_mesh_for_read();
+    looptris_ = mesh.looptris();
+    source_context_.emplace(bke::MeshFieldContext{mesh, domain_});
+    const int domain_size = mesh.attributes().domain_size(domain_);
+    source_evaluator_ = std::make_unique<fn::FieldEvaluator>(*source_context_, domain_size);
+    source_evaluator_->add(src_field_);
+    source_evaluator_->evaluate();
+  }
+};
+
 }  // namespace blender::bke
 
 /** \} */
