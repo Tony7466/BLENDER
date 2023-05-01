@@ -9946,6 +9946,7 @@ static void rna_def_simulation_state_item(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, node_socket_data_type_items);
   RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_SimulationStateItem_socket_type_itemf");
   RNA_def_property_ui_text(prop, "Socket Type", "");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_SimulationStateItem_update");
 
   prop = RNA_def_property(srna, "attribute_domain", PROP_ENUM, PROP_NONE);
@@ -9954,13 +9955,15 @@ static void rna_def_simulation_state_item(BlenderRNA *brna)
       prop,
       "Attribute Domain",
       "Attribute domain where the attribute domain is stored in the simulation state");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_SimulationStateItem_update");
 
   prop = RNA_def_property(srna, "color", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 4);
   RNA_def_property_float_funcs(prop, "rna_SimulationStateItem_color_get", NULL, NULL);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(prop, "Color", "Socket color");
+  RNA_def_property_ui_text(
+      prop, "Color", "Color of the corresponding socket type in the node editor");
 }
 
 static void rna_def_geo_simulation_output_items(BlenderRNA *brna)
