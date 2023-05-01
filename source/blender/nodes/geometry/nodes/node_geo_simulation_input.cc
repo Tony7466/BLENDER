@@ -92,7 +92,6 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
       prev_zone_state = &*initial_prev_zone_state;
     }
 
-    Vector<int> lf_output_indices;
     Array<void *> output_values(simulation_items_.size());
     for (const int i : simulation_items_.index_range()) {
       output_values[i] = params.get_output_data_ptr(i + 1);
