@@ -268,6 +268,14 @@ ccl_device_inline bool microfacet_visible(const float3 wi,
   return microfacet_visible(wi, m, h) && microfacet_visible(wo, m, h);
 }
 
+template<MicrofacetType m_type>
+ccl_device_inline float bsdf_Go(float alpha2, float cos_NI, float cos_NO)
+{
+  const float lambdaI = bsdf_lambda<m_type>(alpha2, cos_NI);
+  const float lambdaO = bsdf_lambda<m_type>(alpha2, cos_NO);
+  return (1.0f + lambdaI) / (1.0f + lambdaI + lambdaO);
+}
+
 /* Compute fresnel reflection. Also return the dot product of the refracted ray and the normal as
  * `cos_theta_t`, as it is used when computing the direction of the refracted ray. */
 ccl_device float fresnel(float cos_theta_i, float eta, ccl_private float *cos_theta_t)
@@ -392,9 +400,8 @@ ccl_device Spectrum bsdf_microfacet_hair_eval_r(ccl_private const ShaderClosure 
 
     if (microfacet_visible(wi, wo, make_float3(wm.x, 0.0f, wm.z), wh)) {
       const float weight = (i == 0 || i == intervals) ? 0.5f : (i % 2 + 1);
-      /* NOTE: using separable masking and shadowing as one factor cancels out in `sample()`. */
-      const float G = bsdf_G<m_type>(roughness2, dot(wm, wi)) *
-                      bsdf_G<m_type>(roughness2, dot(wm, wo));
+      const float cos_mi = dot(wm, wi);
+      const float G = bsdf_G<m_type>(roughness2, cos_mi, dot(wm, wo));
       integral += weight * bsdf_D<m_type>(roughness2, dot(wm, wh)) * G *
                   arc_length(bsdf->extra->e2, gamma_m);
     }
@@ -490,7 +497,7 @@ ccl_device Spectrum bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
     const float cos_mi1 = dot(wi, wmi);
     const float cos_mo1 = dot(-wt, wmi);
     const float cos_mi2 = dot(-wt, wmt);
-    const float G1o = bsdf_G<m_type>(roughness2, cos_mo1);
+    const float G1o = bsdf_Go<m_type>(roughness2, cos_mi1, cos_mo1);
     if (!microfacet_visible(wi, -wt, wmi, wh1) || !microfacet_visible(wi, -wt, wmi_, wh1)) {
       continue;
     }
@@ -516,8 +523,7 @@ ccl_device Spectrum bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
 
           const float T2 = 1.0f - fresnel_dielectric_cos(cos_hi2, inv_eta);
           const float D2 = bsdf_D<m_type>(roughness2, cos_mh2);
-          const float G2 = bsdf_G<m_type>(roughness2, cos_mi2) *
-                           bsdf_G<m_type>(roughness2, cos_mo2);
+          const float G2 = bsdf_G<m_type>(roughness2, cos_mi2, cos_mo2);
 
           const Spectrum result = weight * T1 * T2 * D2 * G1o * G2 * A_t / cos_mo1 * cos_mi1 *
                                   cos_hi2 * cos_ho2 * sqr(rcp_norm_wh2);
@@ -577,9 +583,9 @@ ccl_device Spectrum bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
                                      -len(to_point(gamma_mtr, b) - to_point(gamma_mt, b))));
 
       const float cos_mo2 = dot(wmt, -wtr);
-      const float G2o = bsdf_G<m_type>(roughness2, cos_mo2);
-      const float G3 = bsdf_G<m_type>(roughness2, dot(wmtr, wtr)) *
-                       bsdf_G<m_type>(roughness2, dot(wmtr, -wo));
+      const float G2o = bsdf_Go<m_type>(roughness2, cos_mi2, cos_mo2);
+      const float cos_mi3 = dot(wmtr, wtr);
+      const float G3 = bsdf_G<m_type>(roughness2, cos_mi3, dot(wmtr, -wo));
 
       const Spectrum result = weight * T1 * R2 * T3 * D3 * G1o * G2o * G3 * A_t * A_tr /
                               (cos_mo1 * cos_mo2) * cos_mi1 * cos_mi2 * cos_hi3 * cos_ho3 *
@@ -660,8 +666,9 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
   float st, ct;
   fast_sincosf(bsdf->tilt, &st, &ct);
   const float3 wmi = make_float3(wmi_.x * ct, st, wmi_.z * ct);
+  const float cos_mi1 = dot(wmi, wi);
 
-  if (dot(wmi, wi) < 0.0f || dot(wmi_, wi) < 0.0f) {
+  if (cos_mi1 < 0.0f || dot(wmi_, wi) < 0.0f) {
     /* Macro/mesonormal invisible. */
     *pdf = 0.0f;
     return LABEL_NONE;
@@ -698,8 +705,10 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
   float3 wh3, wtt, wtrt, wmtr;
   Spectrum TT = zero_spectrum();
   Spectrum TRT = zero_spectrum();
+  const float cos_mi2 = dot(-wt, wmt);
+  float cos_mi3;
 
-  if (dot(wh2, -wt) > 0.0f && dot(wmt, -wt) > 0.0f && microfacet_visible(-wt, -wtr, wmt_, wh2)) {
+  if (dot(wh2, -wt) > 0.0f && cos_mi2 > 0.0f && microfacet_visible(-wt, -wtr, wmt_, wh2)) {
     const Spectrum mu_a = bsdf->sigma;
     const Spectrum A_t = exp(mu_a / cos_theta(wt) *
                              (is_circular ?
@@ -729,7 +738,8 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
 
     wtrt = -refract_angle(wtr, wh3, cos_theta_t3, *eta);
 
-    if (cos_theta_t3 != 0.0f && dot(wtr, wh3) > 0.0f && dot(wmtr, wtr) > 0.0f &&
+    cos_mi3 = dot(wmtr, wtr);
+    if (cos_theta_t3 != 0.0f && dot(wtr, wh3) > 0.0f && cos_mi3 > 0.0f &&
         dot(wmtr, -wtrt) > 0.0f &&
         microfacet_visible(wtr, -wtrt, make_float3(wmtr.x, 0.0f, wmtr.z), wh3)) {
       const Spectrum T3 = make_spectrum(1.0f - R3);
@@ -764,7 +774,7 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
     *eval = R / r * total_energy;
 
     if (microfacet_visible(wi, wr, wmi_, wh1)) {
-      visibility = bsdf_G<m_type>(roughness2, dot(wmi, wr));
+      visibility = bsdf_Go<m_type>(roughness2, cos_mi1, dot(wmi, wr));
     }
   }
   else if (sample_lobe < (r + tt)) {
@@ -772,8 +782,8 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
     *eval = TT / tt * total_energy;
 
     if (microfacet_visible(wi, -wt, wmi_, wh1) && microfacet_visible(-wt, -wtt, wmt_, wh2)) {
-      visibility = bsdf_G<m_type>(roughness2, dot(wmi, -wt)) *
-                   bsdf_G<m_type>(roughness2, dot(wmt, -wtt));
+      visibility = bsdf_Go<m_type>(roughness2, cos_mi1, dot(wmi, -wt)) *
+                   bsdf_Go<m_type>(roughness2, cos_mi2, dot(wmt, -wtt));
     }
   }
   else { /* if (sample_lobe >= (r + tt)) */
@@ -781,9 +791,9 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
     *eval = TRT / trt * total_energy;
 
     if (microfacet_visible(wi, -wt, wmi_, wh1)) {
-      visibility = bsdf_G<m_type>(roughness2, dot(wmi, -wt)) *
-                   bsdf_G<m_type>(roughness2, dot(wmt, -wtr)) *
-                   bsdf_G<m_type>(roughness2, dot(wmtr, -wtrt));
+      visibility = bsdf_Go<m_type>(roughness2, cos_mi1, dot(wmi, -wt)) *
+                   bsdf_Go<m_type>(roughness2, cos_mi2, dot(wmt, -wtr)) *
+                   bsdf_Go<m_type>(roughness2, cos_mi3, dot(wmtr, -wtrt));
     }
   }
   label |= LABEL_REFLECT;
