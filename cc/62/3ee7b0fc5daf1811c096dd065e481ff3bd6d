@@ -1,2 +1,3 @@
 Referenced by issue #107474, Transform operators do not save state when cancelling
 Referenced by pull request #107507, UI: add Proportional Size to Proportional Edit popover
+Referenced by commit c7f1ad10581511c48851b7c2eaf00a346d546dc9, Fix #107474: Proportional Size not saved when canceling the operation
