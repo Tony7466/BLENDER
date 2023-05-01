@@ -2438,20 +2438,20 @@ void *node_static_value_storage_for(bNode &node, const bNodeSocket &socket)
   }
 
   switch (node.type) {
-    case GEO_NODE_IMAGE: {
-      return &node.id;
-    }
-    case FN_NODE_INPUT_VECTOR: {
-      return &reinterpret_cast<NodeInputVector *>(node.storage)->vector;
-    }
     case FN_NODE_INPUT_BOOL: {
       return &reinterpret_cast<NodeInputBool *>(node.storage)->boolean;
     }
     case FN_NODE_INPUT_INT: {
       return &reinterpret_cast<NodeInputInt *>(node.storage)->integer;
     }
+    case FN_NODE_INPUT_VECTOR: {
+      return &reinterpret_cast<NodeInputVector *>(node.storage)->vector;
+    }
     case FN_NODE_INPUT_COLOR: {
       return &reinterpret_cast<NodeInputColor *>(node.storage)->color;
+    }
+    case GEO_NODE_IMAGE: {
+      return &node.id;
     }
     default:
       break;
@@ -2493,10 +2493,10 @@ void *socket_value_storage(bNodeSocket &socket)
     case SOCK_MATERIAL: {
       return &socket.default_value_typed<bNodeSocketValueMaterial>()->value;
     }
-    case __SOCK_MESH:
     case SOCK_STRING:
-    case SOCK_CUSTOM:
       break;
+    case __SOCK_MESH:
+    case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY: {
       /* Unmovable types. */
@@ -2540,8 +2540,8 @@ void node_socket_move_default_value(Main & /*bmain*/,
     return;
   }
 
-  void **src_value = static_cast<void **>(socket_value_storage(src));
-  void **dst_value = static_cast<void **>(node_static_value_storage_for(dst_node, dst));
+  void *src_value = socket_value_storage(src);
+  void *dst_value = node_static_value_storage_for(dst_node, dst);
   if (!dst_value || !src_value) {
     return;
   }
@@ -2549,16 +2549,7 @@ void node_socket_move_default_value(Main & /*bmain*/,
   convert.convert_to_uninitialized(src_type, dst_type, src_value, dst_value);
 
   src_type.destruct(src_value);
-
-  /* Destruct source value to default value for pointers, strings, and all other.
-   *
-   * C++ equivalent:
-   *   src_value = {};
-   */
-  BUFFER_FOR_CPP_TYPE_VALUE(src_type, src_zero_value);
-  src_type.value_initialize(src_zero_value);
-  src_type.copy_assign(src_zero_value, src_value);
-  src_type.destruct(src_zero_value);
+  src_type.value_initialize(src_value);
 }
 
 bNode *node_copy(bNodeTree *dst_tree, const bNode &src_node, const int flag, const bool use_unique)
