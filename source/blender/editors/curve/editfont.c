@@ -1204,6 +1204,10 @@ static int move_cursor(bContext *C, int type, const bool select)
       int pos = ef->pos;
       BLI_str_cursor_step_utf32(
           ef->textbuf, ef->len, &pos, STRCUR_DIR_PREV, STRCUR_JUMP_DELIM, true);
+      if (ELEM(ef->textbuf[pos], ' ', '\n', '\t')) {
+        /* Correction for moving too far if from first character or one-letter word. */
+        BLI_str_cursor_step_next_utf32(ef->textbuf, ef->len, &pos);
+      }
       ef->pos = pos;
       cursmove = FO_CURS;
       break;
@@ -1213,6 +1217,10 @@ static int move_cursor(bContext *C, int type, const bool select)
       int pos = ef->pos;
       BLI_str_cursor_step_utf32(
           ef->textbuf, ef->len, &pos, STRCUR_DIR_NEXT, STRCUR_JUMP_DELIM, true);
+      if (pos > 0 && ELEM(ef->textbuf[pos - 1], ' ', '\n', '\t')) {
+        /* Correction for moving too far if from last character or one-letter word. */
+        BLI_str_cursor_step_prev_utf32(ef->textbuf, ef->len, &pos);
+      }
       ef->pos = pos;
       cursmove = FO_CURS;
       break;
@@ -1921,9 +1929,20 @@ void FONT_OT_selection_set(struct wmOperatorType *ot)
 
 static int font_select_word_exec(bContext *C, wmOperator *UNUSED(op))
 {
-  move_cursor(C, NEXT_CHAR, false);
-  move_cursor(C, PREV_WORD, false);
-  move_cursor(C, NEXT_WORD, true);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+  Object *obedit = CTX_data_edit_object(C);
+  Curve *cu = obedit->data;
+  EditFont *ef = cu->editfont;
+
+  if (ef->pos > 0 && ELEM(ef->textbuf[ef->pos - 1], ' ', '\n', '\t')) {
+    /* Currently next to white space so just select forward */
+    move_cursor(C, NEXT_WORD, true);
+  }
+  else {
+    move_cursor(C, PREV_WORD, false);
+    move_cursor(C, NEXT_WORD, true);
+  }
+
   return OPERATOR_FINISHED;
 }
 
