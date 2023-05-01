@@ -55,10 +55,11 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
 
   void execute_impl(lf::Params &params, const lf::Context &context) const final
   {
-    GeoNodesLFUserData &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
-    GeoNodesModifierData &modifier_data = *user_data.modifier_data;
+    const GeoNodesLFUserData &user_data = *static_cast<const GeoNodesLFUserData *>(
+        context.user_data);
+    const GeoNodesModifierData &modifier_data = *user_data.modifier_data;
 
-    if (modifier_data.current_simulation_state_for_write == nullptr) {
+    if (modifier_data.current_simulation_state == nullptr) {
       params.set_default_remaining_outputs();
       return;
     }
