@@ -203,6 +203,9 @@ static bool BLI_windows_file_operation_is_registered(const char *extension, cons
 
 bool BLI_windows_external_operation_supported(const char *filepath, const char *operation)
 {
+  if (!operation) {
+    return false;
+  }
   if (STREQ(operation, "open") || STREQ(operation, "properties")) {
     return true;
   }

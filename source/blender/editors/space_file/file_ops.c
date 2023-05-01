@@ -1787,7 +1787,7 @@ static const EnumPropertyItem file_external_operation[] = {
      "Reveal in Finder",
      "Reveal this folder in a new Finder window"
 #else
-     "Reveal in File Explorer",
+     "Open in File Explorer",
      "Open this folder in a system file browser"
 #endif
     },
@@ -1798,8 +1798,8 @@ static const EnumPropertyItem file_external_operation[] = {
      "Reveal in Finder",
      "Reveal this file in a new Finder window"
 #else
-     "Reveal in File Explorer",
-     "Reveal this file in a system file browser"
+     "Open in File Explorer",
+     "Open this file in a system file browser"
 #endif
     },
     {FILE_EXTERNAL_OPERATION_EDIT, "EDIT", ICON_NONE, "Edit", "Edit this file"},
@@ -2002,6 +2002,7 @@ static void file_os_operations_menu_draw(const bContext *C_const, Menu *menu)
     file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_PRINT);
     file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_INSTALL);
     file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_RUNAS);
+    file_os_operations_menu_item(layout, ot, root, FILE_EXTERNAL_OPERATION_FOLDER_OPEN);
     file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_FILE_REVEAL);
     file_os_operations_menu_item(layout, ot, root, FILE_EXTERNAL_OPERATION_FOLDER_TERMINAL);
     file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_PROPERTIES);

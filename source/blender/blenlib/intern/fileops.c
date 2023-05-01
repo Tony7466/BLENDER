@@ -55,6 +55,8 @@ static char *windows_operation_string(FileExternalOperation operation)
       return "open";
     case FILE_EXTERNAL_OPERATION_FOLDER_OPEN:
       return "open";
+    case FILE_EXTERNAL_OPERATION_FILE_REVEAL:
+      return NULL;
     case FILE_EXTERNAL_OPERATION_EDIT:
       return "edit";
     case FILE_EXTERNAL_OPERATION_NEW:
@@ -83,7 +85,7 @@ static char *windows_operation_string(FileExternalOperation operation)
       return "cmd";
   }
   BLI_assert_unreachable();
-  return "";
+  return NULL;
 }
 #endif
 
