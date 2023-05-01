@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include "kernel/closure/bsdf_util.h"
 #include "kernel/util/color.h"
 
 CCL_NAMESPACE_BEGIN
@@ -313,9 +314,9 @@ ccl_device_inline float3 refract_angle(const float3 incident,
 }
 
 template<MicrofacetType m_type>
-ccl_device float3 bsdf_microfacet_hair_eval_r(ccl_private const ShaderClosure *sc,
-                                              const float3 wi,
-                                              const float3 wo)
+ccl_device Spectrum bsdf_microfacet_hair_eval_r(ccl_private const ShaderClosure *sc,
+                                                const float3 wi,
+                                                const float3 wo)
 {
   ccl_private MicrofacetHairBSDF *bsdf = (ccl_private MicrofacetHairBSDF *)sc;
 
@@ -335,14 +336,14 @@ ccl_device float3 bsdf_microfacet_hair_eval_r(ccl_private const ShaderClosure *s
   const float tan_tilt = tanf(bsdf->tilt);
   float phi_m_max1 = acosf(fmaxf(-tan_tilt * tan_theta(wi), 0.0f)) + phi_i;
   if (isnan_safe(phi_m_max1)) {
-    return zero_float3();
+    return zero_spectrum();
   }
   float phi_m_min1 = -phi_m_max1 + 2.0f * phi_i;
 
   /* dot(wo, wmi) > 0 */
   float phi_m_max2 = acosf(fmaxf(-tan_tilt * tan_theta(wo), 0.0f)) + phi_o;
   if (isnan_safe(phi_m_max2)) {
-    return zero_float3();
+    return zero_spectrum();
   }
   float phi_m_min2 = -phi_m_max2 + 2.0f * phi_o;
 
@@ -361,7 +362,7 @@ ccl_device float3 bsdf_microfacet_hair_eval_r(ccl_private const ShaderClosure *s
   const float phi_m_min = fmaxf(phi_m_min1, phi_m_min2) + 1e-3f;
   const float phi_m_max = fminf(phi_m_max1, phi_m_max2) - 1e-3f;
   if (phi_m_min > phi_m_max) {
-    return zero_float3();
+    return zero_spectrum();
   }
 
   const float gamma_m_min = to_gamma(phi_m_min, b);
@@ -403,21 +404,21 @@ ccl_device float3 bsdf_microfacet_hair_eval_r(ccl_private const ShaderClosure *s
 
   const float F = fresnel_dielectric_cos(dot(wi, wh), bsdf->eta);
 
-  return make_float3(bsdf->extra->R * 0.125f * F * integral / bsdf->extra->radius);
+  return make_spectrum(bsdf->extra->R * 0.125f * F * integral / bsdf->extra->radius);
 }
 
 /* Evaluate TT and TRT components using combined Monte Carlo-Simpson integration. */
 template<MicrofacetType m_type>
-ccl_device float3 bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
-                                                   ccl_private const ShaderClosure *sc,
-                                                   const float3 wi,
-                                                   const float3 wo,
-                                                   uint rng_quadrature)
+ccl_device Spectrum bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
+                                                     ccl_private const ShaderClosure *sc,
+                                                     const float3 wi,
+                                                     const float3 wo,
+                                                     uint rng_quadrature)
 {
   ccl_private MicrofacetHairBSDF *bsdf = (ccl_private MicrofacetHairBSDF *)sc;
 
   if (bsdf->extra->TT <= 0.0f && bsdf->extra->TRT <= 0.0f) {
-    return zero_float3();
+    return zero_spectrum();
   }
 
   /* Get minor axis, assuming major axis is 1. */
@@ -431,16 +432,16 @@ ccl_device float3 bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
   const float phi_m_max = acosf(fmaxf(-tan_tilt * tan_theta(wi), 0.0f)) + phi_i;
   if (isnan_safe(phi_m_max)) {
     /* Early detection of dot(wi, wmi) < 0. */
-    return zero_float3();
+    return zero_spectrum();
   }
   const float phi_m_min = -phi_m_max + 2.0f * phi_i;
 
   if (tan_tilt * tan_theta(wo) < -1.0f) {
     /* Early detection of dot(wo, wmo) < 0. */
-    return zero_float3();
+    return zero_spectrum();
   }
 
-  const float3 mu_a = bsdf->sigma;
+  const Spectrum mu_a = bsdf->sigma;
   const float eta = bsdf->eta;
   const float inv_eta = 1.0f / eta;
 
@@ -457,8 +458,8 @@ ccl_device float3 bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
   const size_t intervals = 2 * (size_t)ceilf((gamma_m_max - gamma_m_min) / res * 0.5f);
   res = (gamma_m_max - gamma_m_min) / intervals;
 
-  float3 S_tt = zero_float3();
-  float3 S_trt = zero_float3();
+  Spectrum S_tt = zero_spectrum();
+  Spectrum S_trt = zero_spectrum();
   for (size_t i = 0; i <= intervals; i++) {
 
     const float gamma_mi = gamma_m_min + i * res;
@@ -496,10 +497,10 @@ ccl_device float3 bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
 
     const float weight = (i == 0 || i == intervals) ? 0.5f : (i % 2 + 1);
 
-    const float3 A_t = exp(mu_a / cos_theta(wt) *
-                           (is_circular ?
-                                2.0f * cosf(gamma_mi - phi_t) :
-                                -len(to_point(gamma_mi, b) - to_point(gamma_mt + M_PI_F, b))));
+    const Spectrum A_t = exp(mu_a / cos_theta(wt) *
+                             (is_circular ?
+                                  2.0f * cosf(gamma_mi - phi_t) :
+                                  -len(to_point(gamma_mi, b) - to_point(gamma_mt + M_PI_F, b))));
 
     /* TT */
     if (bsdf->extra->TT > 0.0f) {
@@ -518,8 +519,8 @@ ccl_device float3 bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
           const float G2 = bsdf_G<m_type>(roughness2, cos_mi2) *
                            bsdf_G<m_type>(roughness2, cos_mo2);
 
-          const float3 result = weight * T1 * T2 * D2 * G1o * G2 * A_t / cos_mo1 * cos_mi1 *
-                                cos_hi2 * cos_ho2 * sqr(rcp_norm_wh2);
+          const Spectrum result = weight * T1 * T2 * D2 * G1o * G2 * A_t / cos_mo1 * cos_mi1 *
+                                  cos_hi2 * cos_ho2 * sqr(rcp_norm_wh2);
 
           if (isfinite_safe(result)) {
             S_tt += bsdf->extra->TT * result * arc_length(bsdf->extra->e2, gamma_mt);
@@ -567,22 +568,22 @@ ccl_device float3 bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
       const float cos_hi3 = dot(wh3, wtr);
       const float cos_ho3 = dot(wh3, -wo);
 
-      const float T3 = 1.0f - fresnel_dielectric_cos(cos_hi3, inv_eta);
+      const Spectrum T3 = make_spectrum(1.0f - fresnel_dielectric_cos(cos_hi3, inv_eta));
       const float D3 = bsdf_D<m_type>(roughness2, cos_mh3);
 
-      const float3 A_tr = exp(mu_a / cos_theta(wtr) *
-                              (is_circular ?
-                                   2.0f * cosf(phi_tr - gamma_mt) :
-                                   -len(to_point(gamma_mtr, b) - to_point(gamma_mt, b))));
+      const Spectrum A_tr = exp(mu_a / cos_theta(wtr) *
+                                (is_circular ?
+                                     2.0f * cosf(phi_tr - gamma_mt) :
+                                     -len(to_point(gamma_mtr, b) - to_point(gamma_mt, b))));
 
       const float cos_mo2 = dot(wmt, -wtr);
       const float G2o = bsdf_G<m_type>(roughness2, cos_mo2);
       const float G3 = bsdf_G<m_type>(roughness2, dot(wmtr, wtr)) *
                        bsdf_G<m_type>(roughness2, dot(wmtr, -wo));
 
-      const float3 result = weight * T1 * R2 * T3 * D3 * G1o * G2o * G3 * A_t * A_tr /
-                            (cos_mo1 * cos_mo2) * cos_mi1 * cos_mi2 * cos_hi3 * cos_ho3 *
-                            sqr(rcp_norm_wh3);
+      const Spectrum result = weight * T1 * R2 * T3 * D3 * G1o * G2o * G3 * A_t * A_tr /
+                              (cos_mo1 * cos_mo2) * cos_mi1 * cos_mi2 * cos_hi3 * cos_ho3 *
+                              sqr(rcp_norm_wh3);
 
       if (isfinite_safe(result)) {
         S_trt += bsdf->extra->TRT * result * arc_length(bsdf->extra->e2, gamma_mtr);
@@ -679,7 +680,7 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
 
   float cos_theta_t1;
   const float R1 = fresnel(dot(wi, wh1), *eta, &cos_theta_t1);
-  const float3 R = make_float3(bsdf->extra->R * R1);
+  const Spectrum R = make_spectrum(bsdf->extra->R * R1);
 
   /* Sample TT lobe. */
   const float inv_eta = 1.0f / bsdf->eta;
@@ -695,20 +696,20 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
   const float3 wtr = -reflect(wt, wh2);
 
   float3 wh3, wtt, wtrt, wmtr;
-  float3 TT = zero_float3();
-  float3 TRT = zero_float3();
+  Spectrum TT = zero_spectrum();
+  Spectrum TRT = zero_spectrum();
 
   if (dot(wh2, -wt) > 0.0f && dot(wmt, -wt) > 0.0f && microfacet_visible(-wt, -wtr, wmt_, wh2)) {
-    const float3 mu_a = bsdf->sigma;
-    const float3 A_t = exp(mu_a / cos_theta(wt) *
-                           (is_circular ?
-                                2.0f * cosf(phi_t - gamma_mi) :
-                                -len(to_point(gamma_mi, b) - to_point(gamma_mt + M_PI_F, b))));
+    const Spectrum mu_a = bsdf->sigma;
+    const Spectrum A_t = exp(mu_a / cos_theta(wt) *
+                             (is_circular ?
+                                  2.0f * cosf(phi_t - gamma_mi) :
+                                  -len(to_point(gamma_mi, b) - to_point(gamma_mt + M_PI_F, b))));
 
     float cos_theta_t2;
     const float R2 = fresnel(dot(-wt, wh2), inv_eta, &cos_theta_t2);
-    const float3 T1 = make_float3(1.0f - R1);
-    const float3 T2 = make_float3(1.0f - R2);
+    const Spectrum T1 = make_spectrum(1.0f - R1);
+    const Spectrum T2 = make_spectrum(1.0f - R2);
 
     wtt = -refract_angle(-wt, wh2, cos_theta_t2, *eta);
 
@@ -731,12 +732,12 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
     if (cos_theta_t3 != 0.0f && dot(wtr, wh3) > 0.0f && dot(wmtr, wtr) > 0.0f &&
         dot(wmtr, -wtrt) > 0.0f &&
         microfacet_visible(wtr, -wtrt, make_float3(wmtr.x, 0.0f, wmtr.z), wh3)) {
-      const float3 T3 = make_float3(1.0f - R3);
+      const Spectrum T3 = make_spectrum(1.0f - R3);
 
-      const float3 A_tr = exp(mu_a / cos_theta(wtr) *
-                              (is_circular ?
-                                   2.0f * cos(phi_tr - gamma_mt) :
-                                   -len(to_point(gamma_mt, b) - to_point(gamma_mtr, b))));
+      const Spectrum A_tr = exp(mu_a / cos_theta(wtr) *
+                                (is_circular ?
+                                     2.0f * cos(phi_tr - gamma_mt) :
+                                     -len(to_point(gamma_mt, b) - to_point(gamma_mtr, b))));
 
       TRT = bsdf->extra->TRT * T1 * R2 * T3 * A_t * A_tr;
     }
@@ -760,7 +761,7 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
   sample_lobe *= total_energy;
   if (sample_lobe < r) {
     local_O = wr;
-    *eval = rgb_to_spectrum(R / r * total_energy);
+    *eval = R / r * total_energy;
 
     if (microfacet_visible(wi, wr, wmi_, wh1)) {
       visibility = bsdf_G<m_type>(roughness2, dot(wmi, wr));
@@ -768,7 +769,7 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
   }
   else if (sample_lobe < (r + tt)) {
     local_O = wtt;
-    *eval = rgb_to_spectrum(TT / tt * total_energy);
+    *eval = TT / tt * total_energy;
 
     if (microfacet_visible(wi, -wt, wmi_, wh1) && microfacet_visible(-wt, -wtt, wmt_, wh2)) {
       visibility = bsdf_G<m_type>(roughness2, dot(wmi, -wt)) *
@@ -777,7 +778,7 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
   }
   else { /* if (sample_lobe >= (r + tt)) */
     local_O = wtrt;
-    *eval = rgb_to_spectrum(TRT / trt * total_energy);
+    *eval = TRT / trt * total_energy;
 
     if (microfacet_visible(wi, -wt, wmi_, wh1)) {
       visibility = bsdf_G<m_type>(roughness2, dot(wmi, -wt)) *
@@ -832,7 +833,7 @@ ccl_device Spectrum bsdf_microfacet_hair_eval(KernelGlobals kg,
   const float3 local_O = make_float3(dot(wo, X), dot(wo, Y), dot(wo, Z));
 
   /* Evaluate. */
-  float3 eval;
+  Spectrum eval;
   if (bsdf->distribution_type == NODE_MICROFACET_HAIR_BECKMANN) {
     eval = bsdf_microfacet_hair_eval_r<MicrofacetType::BECKMANN>(sc, local_I, local_O) +
            bsdf_microfacet_hair_eval_tt_trt<MicrofacetType::BECKMANN>(
