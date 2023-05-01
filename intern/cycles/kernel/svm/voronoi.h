@@ -76,7 +76,7 @@ ccl_device float voronoi_distance(const T a, const T b, const VoronoiParams &par
 
 ccl_device float4 voronoi_position(const float coord)
 {
-  return make_float4(0.0f, 0.0, 0.0f, coord);
+  return make_float4(0.0f, 0.0f, 0.0f, coord);
 }
 
 ccl_device VoronoiOutput voronoi_f1(const VoronoiParams &params, const float coord)

@@ -1388,7 +1388,7 @@ float voronoi_distance_1d(const float a, const float b, const VoronoiParams &par
   return std::abs(b - a);
 }
 
-template<typename T> float voronoi_distance(const T a, const T b, const VoronoiParams &params)
+float voronoi_distance(const float2 a, const float2 b, const VoronoiParams &params)
 {
   switch (params.metric) {
     case NOISE_SHD_VORONOI_EUCLIDEAN:
@@ -1408,11 +1408,56 @@ template<typename T> float voronoi_distance(const T a, const T b, const VoronoiP
   return 0.0f;
 }
 
+float voronoi_distance(const float3 a, const float3 b, const VoronoiParams &params)
+{
+  switch (params.metric) {
+    case NOISE_SHD_VORONOI_EUCLIDEAN:
+      return math::distance(a, b);
+    case NOISE_SHD_VORONOI_MANHATTAN:
+      return std::abs(a.x - b.x) + std::abs(a.y - b.y) + std::abs(a.z - b.z);
+    case NOISE_SHD_VORONOI_CHEBYCHEV:
+      return std::max(std::abs(a.x - b.x), std::max(std::abs(a.y - b.y), std::abs(a.z - b.z)));
+    case NOISE_SHD_VORONOI_MINKOWSKI:
+      return std::pow(std::pow(std::abs(a.x - b.x), params.exponent) +
+                          std::pow(std::abs(a.y - b.y), params.exponent) +
+                          std::pow(std::abs(a.z - b.z), params.exponent),
+                      1.0f / params.exponent);
+    default:
+      BLI_assert_unreachable();
+      break;
+  }
+  return 0.0f;
+}
+
+float voronoi_distance(const float4 a, const float4 b, const VoronoiParams &params)
+{
+  switch (params.metric) {
+    case NOISE_SHD_VORONOI_EUCLIDEAN:
+      return math::distance(a, b);
+    case NOISE_SHD_VORONOI_MANHATTAN:
+      return std::abs(a.x - b.x) + std::abs(a.y - b.y) + std::abs(a.z - b.z) + std::abs(a.w - b.w);
+    case NOISE_SHD_VORONOI_CHEBYCHEV:
+      return std::max(
+          std::abs(a.x - b.x),
+          std::max(std::abs(a.y - b.y), std::max(std::abs(a.z - b.z), std::abs(a.w - b.w))));
+    case NOISE_SHD_VORONOI_MINKOWSKI:
+      return std::pow(std::pow(std::abs(a.x - b.x), params.exponent) +
+                          std::pow(std::abs(a.y - b.y), params.exponent) +
+                          std::pow(std::abs(a.z - b.z), params.exponent) +
+                          std::pow(std::abs(a.w - b.w), params.exponent),
+                      1.0f / params.exponent);
+    default:
+      BLI_assert_unreachable();
+      break;
+  }
+  return 0.0f;
+}
+
 /* **** 1D Voronoi **** */
 
 float4 voronoi_position(const float coord)
 {
-  return {0.0f, 0.0, 0.0f, coord};
+  return {0.0f, 0.0f, 0.0f, coord};
 }
 
 VoronoiOutput voronoi_f1(const VoronoiParams &params, const float coord)

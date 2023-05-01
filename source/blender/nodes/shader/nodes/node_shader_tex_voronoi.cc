@@ -728,7 +728,8 @@ class VoronoiNSphereFunction : public mf::MultiFunction {
         for (int64_t i : mask) {
           params.scale = scale[i];
           params.randomness = std::min(std::max(randomness[i], 0.0f), 1.0f);
-          noise::voronoi_n_sphere_radius(params, float2{vector[i].x, vector[i].y} * params.scale);
+          r_radius[i] = noise::voronoi_n_sphere_radius(
+              params, float2{vector[i].x, vector[i].y} * params.scale);
         }
         break;
       }
@@ -736,7 +737,7 @@ class VoronoiNSphereFunction : public mf::MultiFunction {
         for (int64_t i : mask) {
           params.scale = scale[i];
           params.randomness = std::min(std::max(randomness[i], 0.0f), 1.0f);
-          noise::voronoi_n_sphere_radius(params, vector[i] * params.scale);
+          r_radius[i] = noise::voronoi_n_sphere_radius(params, vector[i] * params.scale);
         }
         break;
       }
@@ -744,7 +745,7 @@ class VoronoiNSphereFunction : public mf::MultiFunction {
         for (int64_t i : mask) {
           params.scale = scale[i];
           params.randomness = std::min(std::max(randomness[i], 0.0f), 1.0f);
-          noise::voronoi_n_sphere_radius(
+          r_radius[i] = noise::voronoi_n_sphere_radius(
               params, float4{vector[i].x, vector[i].y, vector[i].z, w[i]} * params.scale);
         }
         break;
