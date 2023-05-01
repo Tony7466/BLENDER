@@ -19,7 +19,7 @@ void KuwaharaNode::convert_to_operations(NodeConverter &converter,
   switch (data->variation) {
     case CMP_NODE_KUWAHARA_CLASSIC: {
       KuwaharaClassicOperation *operation = new KuwaharaClassicOperation();
-      operation->set_kernel_size(data->kernel_size);
+      operation->set_kernel_size(data->size);
 
       converter.add_operation(operation);
       converter.map_input_socket(get_input_socket(0), operation->get_input_socket(0));
@@ -61,8 +61,8 @@ void KuwaharaNode::convert_to_operations(NodeConverter &converter,
       converter.add_link(sobel_x->get_output_socket(0), sobel_xy->get_input_socket(0));
       converter.add_link(sobel_y->get_output_socket(0), sobel_xy->get_input_socket(1));
 
-      /* blurring for more robustness. */
-      const int sigma = data->sigma;
+      /* Blurring for more robustness. */
+      const int sigma = data->smoothing;
 
       auto blur_sobel_xx = new FastGaussianBlurOperation();
       auto blur_sobel_yy = new FastGaussianBlurOperation();
@@ -80,13 +80,9 @@ void KuwaharaNode::convert_to_operations(NodeConverter &converter,
       converter.add_link(sobel_yy->get_output_socket(0), blur_sobel_yy->get_input_socket(0));
       converter.add_link(sobel_xy->get_output_socket(0), blur_sobel_xy->get_input_socket(0));
 
-      // For now, orientation is part of kuwahara operation.
-      // todo: implement orientation as a separate operation
-      // auto orientation = new OrientationOperation(); // OrientationOperation
-
       /* Apply anisotropic Kuwahara filter */
       KuwaharaAnisotropicOperation *aniso = new KuwaharaAnisotropicOperation();
-      aniso->set_kernel_size(data->kernel_size);
+      aniso->set_kernel_size(data->size);
       converter.map_input_socket(get_input_socket(0), aniso->get_input_socket(0));
       converter.add_operation(aniso);
 
@@ -95,11 +91,6 @@ void KuwaharaNode::convert_to_operations(NodeConverter &converter,
       converter.add_link(blur_sobel_xy->get_output_socket(0), aniso->get_input_socket(3));
 
       converter.map_output_socket(get_output_socket(0), aniso->get_output_socket(0));
-
-      // For debug. Todo: remove
-//      converter.map_output_socket(get_output_socket(1), sobel_xx->get_output_socket(0));
-//      converter.map_output_socket(get_output_socket(2), blur_sobel_xx->get_output_socket(0));
-//      converter.map_output_socket(get_output_socket(3), blur_sobel_xy->get_output_socket(0));
 
       break;
     }

@@ -13,7 +13,7 @@ namespace blender::compositor {
 KuwaharaAnisotropicOperation::KuwaharaAnisotropicOperation()
 {
   this->add_input_socket(DataType::Color);
-  this->add_input_socket(DataType::Color); 
+  this->add_input_socket(DataType::Color);
   this->add_input_socket(DataType::Color);
   this->add_input_socket(DataType::Color);
 
@@ -44,7 +44,7 @@ void KuwaharaAnisotropicOperation::execute_pixel_sampled(float output[4],
                                                          float y,
                                                          PixelSampler sampler)
 {
- /* Not implemented */
+  /* Not implemented */
 }
 
 void KuwaharaAnisotropicOperation::set_kernel_size(int kernel_size)
@@ -65,7 +65,7 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
    Implementation based on Kyprianidis, Jan & Kang, Henry & Döllner, Jürgen. (2009).
    "Image and Video Abstraction by Anisotropic Kuwahara Filtering".
    Comput. Graph. Forum. 28. 1955-1963. 10.1111/j.1467-8659.2009.01574.x.
-   Used reference implementation from lime image processing library (MIT license). 
+   Used reference implementation from lime image processing library (MIT license).
    */
 
   MemoryBuffer *image = inputs[0];
@@ -80,11 +80,10 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
   BLI_assert(image->get_width() == s_xy->get_width());
   BLI_assert(image->get_height() == s_xy->get_height());
 
-  const int n_div = 8; // recommended by authors in original paper
+  const int n_div = 8;  // recommended by authors in original paper
   const float angle = 2.0 * M_PI / n_div;
   const float q = 3.0;
   const float EPS = 1.0e-10;
-
 
   for (BuffersIterator<float> it = output->iterate_with(inputs, area); !it.is_end(); ++it) {
     const int x = it.x;
@@ -96,18 +95,19 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
     const float b = s_xy->get_value(x, y, 1);
     const float c = s_yy->get_value(x, y, 1);
 
-
     /* Compute egenvalues of structure tensor */
     const double tr = a + c;
-    const double discr = sqrt((a - b)*(a-b) + 4 * b * c);
+    const double discr = sqrt((a - b) * (a - b) + 4 * b * c);
     const double lambda1 = (tr + discr) / 2;
     const double lambda2 = (tr - discr) / 2;
 
     /* Compute orientation and its strength based on structure tensor */
     const double orientation = 0.5 * atan2(2 * b, a - c);
-    const double strength = (lambda1 == 0 && lambda2 == 0) ? 0 : (lambda1 - lambda2) / (lambda1 + lambda2);
+    const double strength = (lambda1 == 0 && lambda2 == 0) ?
+                                0 :
+                                (lambda1 - lambda2) / (lambda1 + lambda2);
 
-    for(int ch = 0; ch < 3; ch++) {
+    for (int ch = 0; ch < 3; ch++) {
 
       Vector<float> mean(n_div, 0.0f);
       Vector<float> sum(n_div, 0.0f);
@@ -120,7 +120,8 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
 
       for (int dy = -kernel_size_; dy <= kernel_size_; dy++) {
         for (int dx = -kernel_size_; dx <= kernel_size_; dx++) {
-          if (dx == 0 && dy == 0) continue;
+          if (dx == 0 && dy == 0)
+            continue;
 
           // rotate and scale the kernel. This is the "anisotropic" part.
           int dx2 = static_cast<int>(sx * (cos(theta) * dx - sin(theta) * dy));
@@ -173,6 +174,5 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
     it.out[3] = image->get_value(x, y, 3);
   }
 }
-
 
 }  // namespace blender::compositor
