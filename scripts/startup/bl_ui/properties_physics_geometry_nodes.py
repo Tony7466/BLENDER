@@ -10,7 +10,7 @@ class PHYSICS_PT_geometry_nodes(Panel):
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = "physics"
-    bl_label = "Geometry Nodes"
+    bl_label = "Simulation Nodes"
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
