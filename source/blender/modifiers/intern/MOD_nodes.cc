@@ -1262,7 +1262,7 @@ static GeometrySet compute_geometry(const bNodeTree &btree,
   NodesModifierData *nmd_orig = reinterpret_cast<NodesModifierData *>(
       BKE_modifier_get_original(ctx->object, &nmd->modifier));
 
-  const blender::nodes::GeometryNodeLazyFunctionGraphMapping &mapping = lf_graph_info.mapping;
+  const nodes::GeometryNodeLazyFunctionGraphMapping &mapping = lf_graph_info.mapping;
 
   Vector<const lf::OutputSocket *> graph_inputs = mapping.group_input_sockets;
   graph_inputs.extend(mapping.group_output_used_sockets);
@@ -1289,7 +1289,7 @@ static GeometrySet compute_geometry(const bNodeTree &btree,
 
   prepare_simulation_states_for_evaluation(*nmd, *nmd_orig, *ctx, geo_nodes_modifier_data);
 
-  Set<blender::ComputeContextHash> socket_log_contexts;
+  Set<ComputeContextHash> socket_log_contexts;
   if (logging_enabled(ctx)) {
     geo_nodes_modifier_data.eval_log = eval_log.get();
 
