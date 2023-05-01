@@ -52,7 +52,11 @@ static std::string get_blendcache_directory(const Main &bmain)
                     blend_name,
                     sizeof(blend_directory),
                     sizeof(blend_name));
-  blend_name[StringRef(blend_name).rfind(".")] = '\0';
+  const int64_t type_start_index = StringRef(blend_name).rfind(".");
+  if (type_start_index == StringRef::not_found) {
+    return "";
+  }
+  blend_name[type_start_index] = '\0';
   const std::string blendcache_name = "blendcache_" + StringRef(blend_name);
 
   char blendcache_dir[FILE_MAX];
