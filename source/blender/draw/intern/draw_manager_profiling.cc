@@ -68,7 +68,8 @@ void DRW_stats_begin()
   if (DTP.is_recording && DTP.timers == nullptr) {
     DTP.chunk_count = 1;
     DTP.timer_count = DTP.chunk_count * MIM_RANGE_LEN;
-    DTP.timers = static_cast<DRWTimer*>(MEM_callocN(sizeof(DRWTimer) * DTP.timer_count, "DRWTimer stack"));
+    DTP.timers = static_cast<DRWTimer *>(
+        MEM_callocN(sizeof(DRWTimer) * DTP.timer_count, "DRWTimer stack"));
   }
   else if (!DTP.is_recording && DTP.timers != nullptr) {
     DRW_stats_free();
@@ -85,7 +86,8 @@ static DRWTimer *drw_stats_timer_get()
     /* Resize the stack. */
     DTP.chunk_count++;
     DTP.timer_count = DTP.chunk_count * MIM_RANGE_LEN;
-    DTP.timers = static_cast<DRWTimer*>(MEM_recallocN(DTP.timers, sizeof(DRWTimer) * DTP.timer_count));
+    DTP.timers = static_cast<DRWTimer *>(
+        MEM_recallocN(DTP.timers, sizeof(DRWTimer) * DTP.timer_count));
   }
 
   return &DTP.timers[DTP.timer_increment++];
