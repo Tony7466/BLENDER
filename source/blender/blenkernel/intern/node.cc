@@ -2431,7 +2431,7 @@ bNode *node_copy_with_mapping(bNodeTree *dst_tree,
  * Type of value storage related with socket is the same.
  * \param socket: Node can have multiple sockets & storages pairs.
  */
-void *node_static_value_storage_for(bNode &node, const bNodeSocket &socket)
+static void *node_static_value_storage_for(bNode &node, const bNodeSocket &socket)
 {
   if (!socket.is_output()) {
     return nullptr;
@@ -2455,7 +2455,7 @@ void *node_static_value_storage_for(bNode &node, const bNodeSocket &socket)
   return nullptr;
 }
 
-void *socket_value_storage(bNodeSocket &socket)
+static void *socket_value_storage(bNodeSocket &socket)
 {
   switch (eNodeSocketDatatype(socket.type)) {
     case SOCK_BOOLEAN:
@@ -2479,7 +2479,8 @@ void *socket_value_storage(bNodeSocket &socket)
     case SOCK_MATERIAL:
       return &socket.default_value_typed<bNodeSocketValueMaterial>()->value;
     case SOCK_STRING:
-      break;
+      /* We don't want do this now! */
+      return nullptr;
     case __SOCK_MESH:
     case SOCK_CUSTOM:
     case SOCK_SHADER:
@@ -2519,10 +2520,6 @@ void node_socket_move_default_value(Main & /*bmain*/,
       return;
     }
   }
-  if (eNodeSocketDatatype(src.type) == SOCK_STRING) {
-    /* We don't want do this now! */
-    return;
-  }
 
   void *src_value = socket_value_storage(src);
   void *dst_value = node_static_value_storage_for(dst_node, dst);
@@ -2533,7 +2530,14 @@ void node_socket_move_default_value(Main & /*bmain*/,
   convert.convert_to_uninitialized(src_type, dst_type, src_value, dst_value);
 
   src_type.destruct(src_value);
-  src_type.value_initialize(src_value);
+  if (ELEM(eNodeSocketDatatype(src.type),
+           SOCK_COLLECTION,
+           SOCK_IMAGE,
+           SOCK_MATERIAL,
+           SOCK_TEXTURE,
+           SOCK_OBJECT)) {
+    src_type.value_initialize(src_value);
+  }
 }
 
 bNode *node_copy(bNodeTree *dst_tree, const bNode &src_node, const int flag, const bool use_unique)
