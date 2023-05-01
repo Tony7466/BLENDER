@@ -1252,7 +1252,7 @@ static void node_duplicate_reparent_recursive(bNodeTree *ntree,
 static void remap_pairing(bNodeTree &dst_tree, const Map<bNode *, bNode *> &node_map)
 {
   /* We don't have the old tree for looking up output nodes by ID,
-   * so have to build a map first to find copied output nodes in the new tree. */
+   * so we have to build a map first to find copied output nodes in the new tree. */
   Map<uint32_t, bNode *> dst_output_node_map;
   for (const auto &item : node_map.items()) {
     if (item.key->type == GEO_NODE_SIMULATION_OUTPUT) {
@@ -1264,10 +1264,9 @@ static void remap_pairing(bNodeTree &dst_tree, const Map<bNode *, bNode *> &node
     if (dst_node->type == GEO_NODE_SIMULATION_INPUT) {
       NodeGeometrySimulationInput *data = static_cast<NodeGeometrySimulationInput *>(
           dst_node->storage);
-      const bNode *dst_output_node = dst_output_node_map.lookup_default(data->output_node_id,
-                                                                        nullptr);
-      if (dst_output_node != nullptr) {
-        data->output_node_id = dst_output_node->identifier;
+      if (const bNode *output_node = dst_output_node_map.lookup_default(data->output_node_id,
+                                                                        nullptr)) {
+        data->output_node_id = output_node->identifier;
       }
       else {
         data->output_node_id = 0;
