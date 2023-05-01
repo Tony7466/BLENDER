@@ -118,10 +118,11 @@ ENUM_OPERATORS(eFileAttributes, FILE_ATTR_HARDLINK);
  * \{ */
 
 /**
- * All operations may not be supported on all platforms.
+ * Not all operations may be supported on all platforms.
  */
 typedef enum FileExternalOperation {
   FILE_EXTERNAL_OPERATION_OPEN = 1,
+  FILE_EXTERNAL_OPERATION_FOLDER_OPEN,
   FILE_EXTERNAL_OPERATION_FILE_REVEAL,
   FILE_EXTERNAL_OPERATION_EDIT,
   FILE_EXTERNAL_OPERATION_NEW,

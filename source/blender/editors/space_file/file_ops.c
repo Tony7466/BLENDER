@@ -1779,19 +1779,30 @@ static const EnumPropertyItem file_external_operation[] = {
      "OPEN",
      ICON_NONE,
      "Open",
-     "Open the file in its default application"},
-    {FILE_EXTERNAL_OPERATION_FILE_REVEAL,
+     "Open this file in its default application"},
+    {FILE_EXTERNAL_OPERATION_FOLDER_OPEN,
      "FOLDER_OPEN",
+     ICON_NONE,
+#ifdef __APPLE__
+     "Reveal in Finder",
+     "Reveal this folder in a new Finder window"
+#else
+     "Reveal in File Explorer",
+     "Open this folder in a system file browser"
+#endif
+    },
+    {FILE_EXTERNAL_OPERATION_FILE_REVEAL,
+     "FILE_REVEAL",
      ICON_NONE,
 #ifdef __APPLE__
      "Reveal in Finder",
      "Reveal this file in a new Finder window"
 #else
      "Reveal in File Explorer",
-     "Open this file in system file browser"
+     "Reveal this file in a system file browser"
 #endif
     },
-    {FILE_EXTERNAL_OPERATION_EDIT, "EDIT", ICON_NONE, "Edit", "Edit the file"},
+    {FILE_EXTERNAL_OPERATION_EDIT, "EDIT", ICON_NONE, "Edit", "Edit this file"},
     {FILE_EXTERNAL_OPERATION_NEW, "NEW", ICON_NONE, "New", "Create a new file of this type"},
     {FILE_EXTERNAL_OPERATION_FIND,
      "FIND",
@@ -1826,7 +1837,8 @@ static const EnumPropertyItem file_external_operation[] = {
      ICON_NONE,
 #ifdef __APPLE__
      "Open in Terminal",
-     "Open a terminal window with this folder as the current folder"
+     "Open a terminal window with this folder/ file's parent folder as the current working "
+     "directory"
 #else
      "Command Prompt Here",
      "Open a command prompt here"
@@ -1914,7 +1926,7 @@ static void file_os_operations_menu_item(uiLayout *layout,
     return;
   }
 #else
-  if (!ELEM(operation, FILE_EXTERNAL_OPERATION_OPEN, FILE_EXTERNAL_OPERATION_FILE_REVEAL)) {
+  if (!ELEM(operation, FILE_EXTERNAL_OPERATION_OPEN, FILE_EXTERNAL_OPERATION_FOLDER_OPEN)) {
     return;
   }
 #endif
@@ -1974,7 +1986,7 @@ static void file_os_operations_menu_draw(const bContext *C_const, Menu *menu)
   wmOperatorType *ot = WM_operatortype_find("FILE_OT_external_operation", true);
 
   if (fileentry->typeflag & FILE_TYPE_DIR) {
-    file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_FILE_REVEAL);
+    file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_FOLDER_OPEN);
     file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_FOLDER_TERMINAL);
     file_os_operations_menu_item(layout, ot, path, FILE_EXTERNAL_OPERATION_PROPERTIES);
   }

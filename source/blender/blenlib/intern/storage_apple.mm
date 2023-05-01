@@ -283,6 +283,9 @@ ExternalOperationExecutor get_external_operation_executor(const char *filepath,
     case FILE_EXTERNAL_OPERATION_OPEN: {
       return external_file_finder_open_default;
     }
+    case FILE_EXTERNAL_OPERATION_FOLDER_OPEN: {
+      return external_file_finder_reveal;
+    }
     case FILE_EXTERNAL_OPERATION_FILE_REVEAL: {
       return external_file_finder_reveal;
     }
@@ -346,6 +349,15 @@ bool BLI_apple_external_operation_supported(const char *filepath, FileExternalOp
   @autoreleasepool {
     const ExternalOperationExecutor executor = get_external_operation_executor(filepath,
                                                                                operation);
-    return executor != nullptr;
+    if (!executor) {
+      return false;
+    }
+    if (operation == FILE_EXTERNAL_OPERATION_FILE_REVEAL && !BLI_is_file(filepath)) {
+      return false;
+    }
+    if (operation == FILE_EXTERNAL_OPERATION_FOLDER_OPEN && !BLI_is_dir(filepath)) {
+      return false;
+    }
+    return true;
   }
 }
