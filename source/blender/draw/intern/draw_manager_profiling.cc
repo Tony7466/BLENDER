@@ -45,17 +45,17 @@ static struct DRWTimerPool {
   int end_increment;   /* Keep track of bad usage. */
   bool is_recording;   /* Are we in the render loop? */
   bool is_querying;    /* Keep track of bad usage. */
-} DTP = {NULL};
+} DTP = {nullptr};
 
 void DRW_stats_free()
 {
-  if (DTP.timers != NULL) {
+  if (DTP.timers != nullptr) {
     // for (int i = 0; i < DTP.timer_count; i++) {
     // DRWTimer *timer = &DTP.timers[i];
     // glDeleteQueries(2, timer->query);
     // }
     MEM_freeN(DTP.timers);
-    DTP.timers = NULL;
+    DTP.timers = nullptr;
   }
 }
 
@@ -65,12 +65,12 @@ void DRW_stats_begin()
     DTP.is_recording = true;
   }
 
-  if (DTP.is_recording && DTP.timers == NULL) {
+  if (DTP.is_recording && DTP.timers == nullptr) {
     DTP.chunk_count = 1;
     DTP.timer_count = DTP.chunk_count * MIM_RANGE_LEN;
     DTP.timers = static_cast<DRWTimer*>(MEM_callocN(sizeof(DRWTimer) * DTP.timer_count, "DRWTimer stack"));
   }
-  else if (!DTP.is_recording && DTP.timers != NULL) {
+  else if (!DTP.is_recording && DTP.timers != nullptr) {
     DRW_stats_free();
   }
 
@@ -317,7 +317,7 @@ void DRW_stats_draw(const rcti *rect)
   for (int i = 0; i < DTP.timer_increment; i++) {
     double time_ms, time_percent;
     DRWTimer *timer = &DTP.timers[i];
-    DRWTimer *timer_parent = (timer->lvl > 0) ? &DTP.timers[lvl_index[timer->lvl - 1]] : NULL;
+    DRWTimer *timer_parent = (timer->lvl > 0) ? &DTP.timers[lvl_index[timer->lvl - 1]] : nullptr;
 
     /* Only display a number of lvl at a time */
     if ((G.debug_value - 21) < timer->lvl) {
@@ -329,7 +329,7 @@ void DRW_stats_draw(const rcti *rect)
 
     time_ms = timer->time_average / 1000000.0;
 
-    if (timer_parent != NULL) {
+    if (timer_parent != nullptr) {
       time_percent = ((double)timer->time_average / (double)timer_parent->time_average) * 100.0;
     }
     else {
