@@ -16,8 +16,8 @@ struct RenderResult;
 extern "C" {
 #endif
 
-struct RenderLayer *render_get_single_layer(struct Render *re, struct RenderResult *rr);
-void render_copy_renderdata(struct RenderData *to, struct RenderData *from);
+struct RenderLayer *render_get_single_layer(Render *re, RenderResult *rr);
+void render_copy_renderdata(RenderData *to, RenderData *from);
 
 #ifdef __cplusplus
 }
