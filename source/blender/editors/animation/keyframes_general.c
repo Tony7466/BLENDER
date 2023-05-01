@@ -523,7 +523,7 @@ bool blend_to_infinity_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const
 
   /* Avoids dividing by 0. */
   if (x_delta == 0) {
-    return true;
+    return false;
   }
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
