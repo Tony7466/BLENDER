@@ -1030,7 +1030,6 @@ class NODE_PT_simulation_zone_items(Panel):
             layout.use_property_split = True
             layout.use_property_decorate = False
             layout.prop(active_item, "socket_type")
-            layout.prop(active_item, "name")
             if active_item.socket_type in {'VECTOR', 'INT', 'BOOLEAN', 'FLOAT', 'RGBA'}:
                 layout.prop(active_item, "attribute_domain")
 
