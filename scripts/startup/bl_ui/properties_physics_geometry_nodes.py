@@ -36,8 +36,26 @@ class PHYSICS_PT_geometry_nodes(Panel):
         row.operator("object.simulation_nodes_cache_delete", text="", icon='TRASH').selected = True
 
 
+class PHYSICS_PT_geometry_nodes_cache(Panel):
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "physics"
+    bl_label = ""
+    bl_options = {'DEFAULT_CLOSED'}
+    bl_parent_id = "PHYSICS_PT_geometry_nodes"
+
+    def draw_header(self, context):
+        layout = self.layout
+        layout.prop(context.object, "use_simulation_cache", text="Cache")
+
+    def draw(self, context):
+        layout = self.layout
+        layout.label(text="Button not functional yet")
+
+
 classes = (
     PHYSICS_PT_geometry_nodes,
+    PHYSICS_PT_geometry_nodes_cache,
 )
 
 
