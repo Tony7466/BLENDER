@@ -239,10 +239,6 @@ void node_draw_link_dragged(const bContext &C,
                             const View2D &v2d,
                             const SpaceNode &snode,
                             const bNodeLink &link);
-
-std::array<float2, 4> node_link_bezier_points_dragged(const SpaceNode &snode,
-                                                      const bNodeLink &link);
-
 /**
  * Don't do shadows if th_col3 is -1.
  */
@@ -255,6 +251,8 @@ void node_draw_link_bezier(const bContext &C,
                            int th_col3,
                            bool selected);
 
+std::array<float2, 4> node_link_bezier_points_dragged(const SpaceNode &snode,
+                                                      const bNodeLink &link);
 void node_link_bezier_points_evaluated(const bNodeLink &link,
                                        std::array<float2, NODE_LINK_RESOL + 1> &coords);
 
