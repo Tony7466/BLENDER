@@ -1197,12 +1197,18 @@ static bNodeTree *instances_on_faces(const Span<Object *> objects,
   return node_tree;
 }
 
+static void move_rna_to_id_prop(PropertyRNA &src, IDProperty &dst, Main *bmain)
+{
+  // values = (float)RNA_property_boolean_get(ptr, prop);
+
+  // BKE_animdata_fix_paths_rename_all
+}
+
 static void object_push_instances_modifier(const StringRefNull name,
-                                           Main * /*bmain*/,
+                                           Main *bmain,
                                            Object &object,
                                            bNodeTree &node_tree)
 {
-  /* TODO: Move setings from object properties in modifier panel. */
   ModifierData *md = BKE_modifier_new(eModifierType_Nodes);
   NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
 
@@ -1217,27 +1223,35 @@ static void object_push_instances_modifier(const StringRefNull name,
 
   MOD_nodes_update_interface(&object, &nmd);
 
-  int index = 0;
-  LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, &node_tree.inputs, index) {
-    if (index == 0) {
-      continue;
-    }
-    /* TODO */
-    // copy DNA value in idprop
-    // change fcurve to remap this from object rna prop to modifier id property
-    //
+  PointerRNA object_ptr;
+  RNA_pointer_create(&object.id, &RNA_Object, &object, &object_ptr);
 
-    /*
-        IDProperty *object_prop_group = IDP_GetProperties(&object.id, false);
-        BLI_assert(object_prop_group != nullptr);
-        IDProperty *old_prop = IDP_GetPropertyFromGroup(object_prop_group, socket->identifier);
-        BLI_assert(old_prop != nullptr);
+  static const Map<StringRef, StringRef> socket_legacy_name_maping = []() -> auto
+  {
+    Map<StringRef, StringRef> name_mapping;
 
-        IDProperty *new_prop = IDP_GetPropertyFromGroup(nmd.settings.properties,
-       socket->identifier); BLI_assert(new_prop != nullptr);
+    name_mapping.add("Viewport", "show_instancer_for_viewport");
+    name_mapping.add("Render", "show_instancer_for_render");
 
-        IDP_CopyPropertyContent(new_prop, old_prop);
-    */
+    name_mapping.add("Scale by Face Size", "use_instance_faces_scale");
+    name_mapping.add("Factor", "instance_faces_scale");
+
+    name_mapping.add("Aling to Vertex Normal", "use_instance_vertices_rotation");
+    return name_mapping;
+  }
+  ();
+
+  node_tree.ensure_topology_cache();
+  for (const bNodeSocket *socket : node_tree.interface_inputs().drop_front(1)) {
+
+    IDProperty *dst = IDP_GetPropertyFromGroup(nmd.settings.properties, socket->identifier);
+    BLI_assert(dst != nullptr);
+
+    const StringRef legacy_prop_name = socket_legacy_name_maping.lookup(socket->name);
+    PropertyRNA *src = RNA_struct_find_property(&object_ptr, legacy_prop_name.data());
+    BLI_assert(src != nullptr);
+
+    move_rna_to_id_prop(*src, *dst, bmain);
   }
 }
 
