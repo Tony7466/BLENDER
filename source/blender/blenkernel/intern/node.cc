@@ -2438,21 +2438,16 @@ void *node_static_value_storage_for(bNode &node, const bNodeSocket &socket)
   }
 
   switch (node.type) {
-    case FN_NODE_INPUT_BOOL: {
+    case FN_NODE_INPUT_BOOL:
       return &reinterpret_cast<NodeInputBool *>(node.storage)->boolean;
-    }
-    case FN_NODE_INPUT_INT: {
+    case FN_NODE_INPUT_INT:
       return &reinterpret_cast<NodeInputInt *>(node.storage)->integer;
-    }
-    case FN_NODE_INPUT_VECTOR: {
+    case FN_NODE_INPUT_VECTOR:
       return &reinterpret_cast<NodeInputVector *>(node.storage)->vector;
-    }
-    case FN_NODE_INPUT_COLOR: {
+    case FN_NODE_INPUT_COLOR:
       return &reinterpret_cast<NodeInputColor *>(node.storage)->color;
-    }
-    case GEO_NODE_IMAGE: {
+    case GEO_NODE_IMAGE:
       return &node.id;
-    }
     default:
       break;
   }
@@ -2463,45 +2458,34 @@ void *node_static_value_storage_for(bNode &node, const bNodeSocket &socket)
 void *socket_value_storage(bNodeSocket &socket)
 {
   switch (eNodeSocketDatatype(socket.type)) {
-    case SOCK_BOOLEAN: {
+    case SOCK_BOOLEAN:
       return &socket.default_value_typed<bNodeSocketValueBoolean>()->value;
-    }
-    case SOCK_INT: {
+    case SOCK_INT:
       return &socket.default_value_typed<bNodeSocketValueInt>()->value;
-    }
-    case SOCK_FLOAT: {
+    case SOCK_FLOAT:
       return &socket.default_value_typed<bNodeSocketValueFloat>()->value;
-    }
-    case SOCK_VECTOR: {
+    case SOCK_VECTOR:
       return &socket.default_value_typed<bNodeSocketValueVector>()->value;
-    }
-    case SOCK_RGBA: {
+    case SOCK_RGBA:
       return &socket.default_value_typed<bNodeSocketValueRGBA>()->value;
-    }
-    case SOCK_IMAGE: {
+    case SOCK_IMAGE:
       return &socket.default_value_typed<bNodeSocketValueImage>()->value;
-    }
-    case SOCK_TEXTURE: {
+    case SOCK_TEXTURE:
       return &socket.default_value_typed<bNodeSocketValueTexture>()->value;
-    }
-    case SOCK_COLLECTION: {
+    case SOCK_COLLECTION:
       return &socket.default_value_typed<bNodeSocketValueCollection>()->value;
-    }
-    case SOCK_OBJECT: {
+    case SOCK_OBJECT:
       return &socket.default_value_typed<bNodeSocketValueObject>()->value;
-    }
-    case SOCK_MATERIAL: {
+    case SOCK_MATERIAL:
       return &socket.default_value_typed<bNodeSocketValueMaterial>()->value;
-    }
     case SOCK_STRING:
       break;
     case __SOCK_MESH:
     case SOCK_CUSTOM:
     case SOCK_SHADER:
-    case SOCK_GEOMETRY: {
+    case SOCK_GEOMETRY:
       /* Unmovable types. */
       break;
-    }
   }
 
   return nullptr;
