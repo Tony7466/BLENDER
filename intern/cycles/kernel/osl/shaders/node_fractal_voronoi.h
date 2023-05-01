@@ -97,7 +97,7 @@ VoronoiOutput fractal_voronoi_x_fx(VoronoiParams params, float coord)
 float fractal_voronoi_distance_to_edge(VoronoiParams params, float coord)
 {
   float amplitude = 1.0;
-  float max_amplitude = 2.0 - params.randomness;
+  float max_amplitude = 1.5 - 0.5 * params.randomness;
   float scale = 1.0;
   float distance = 8.0;
 
@@ -111,7 +111,7 @@ float fractal_voronoi_distance_to_edge(VoronoiParams params, float coord)
       break;
     }
     else if (i <= params.detail) {
-      max_amplitude = mix(max_amplitude, (2.0 - params.randomness) * scale, amplitude);
+      max_amplitude = mix(max_amplitude, (1.5 - 0.5 * params.randomness) * scale, amplitude);
       distance = mix(distance, min(distance, octave_distance / scale), amplitude);
       scale *= params.lacunarity;
       amplitude *= params.roughness;
@@ -119,7 +119,7 @@ float fractal_voronoi_distance_to_edge(VoronoiParams params, float coord)
     else {
       float remainder = params.detail - floor(params.detail);
       if (remainder != 0.0) {
-        float lerp_amplitude = mix(max_amplitude, (2.0 - params.randomness) * scale, amplitude);
+        float lerp_amplitude = mix(max_amplitude, (1.5 - 0.5 * params.randomness) * scale, amplitude);
         max_amplitude = mix(max_amplitude, lerp_amplitude, remainder);
         float lerp_distance = mix(distance, min(distance, octave_distance / scale), amplitude);
         distance = mix(distance, min(distance, lerp_distance), remainder);
@@ -204,7 +204,7 @@ VoronoiOutput fractal_voronoi_x_fx(VoronoiParams params, vector2 coord)
 float fractal_voronoi_distance_to_edge(VoronoiParams params, vector2 coord)
 {
   float amplitude = 1.0;
-  float max_amplitude = 2.0 - params.randomness;
+  float max_amplitude = 1.5 - 0.5 * params.randomness;
   float scale = 1.0;
   float distance = 8.0;
 
@@ -218,7 +218,7 @@ float fractal_voronoi_distance_to_edge(VoronoiParams params, vector2 coord)
       break;
     }
     else if (i <= params.detail) {
-      max_amplitude = mix(max_amplitude, (2.0 - params.randomness) * scale, amplitude);
+      max_amplitude = mix(max_amplitude, (1.5 - 0.5 * params.randomness) * scale, amplitude);
       distance = mix(distance, min(distance, octave_distance / scale), amplitude);
       scale *= params.lacunarity;
       amplitude *= params.roughness;
@@ -226,7 +226,7 @@ float fractal_voronoi_distance_to_edge(VoronoiParams params, vector2 coord)
     else {
       float remainder = params.detail - floor(params.detail);
       if (remainder != 0.0) {
-        float lerp_amplitude = mix(max_amplitude, (2.0 - params.randomness) * scale, amplitude);
+        float lerp_amplitude = mix(max_amplitude, (1.5 - 0.5 * params.randomness) * scale, amplitude);
         max_amplitude = mix(max_amplitude, lerp_amplitude, remainder);
         float lerp_distance = mix(distance, min(distance, octave_distance / scale), amplitude);
         distance = mix(distance, min(distance, lerp_distance), remainder);
@@ -311,7 +311,7 @@ VoronoiOutput fractal_voronoi_x_fx(VoronoiParams params, vector3 coord)
 float fractal_voronoi_distance_to_edge(VoronoiParams params, vector3 coord)
 {
   float amplitude = 1.0;
-  float max_amplitude = 2.0 - params.randomness;
+  float max_amplitude = 1.5 - 0.5 * params.randomness;
   float scale = 1.0;
   float distance = 8.0;
 
@@ -325,7 +325,7 @@ float fractal_voronoi_distance_to_edge(VoronoiParams params, vector3 coord)
       break;
     }
     else if (i <= params.detail) {
-      max_amplitude = mix(max_amplitude, (2.0 - params.randomness) * scale, amplitude);
+      max_amplitude = mix(max_amplitude, (1.5 - 0.5 * params.randomness) * scale, amplitude);
       distance = mix(distance, min(distance, octave_distance / scale), amplitude);
       scale *= params.lacunarity;
       amplitude *= params.roughness;
@@ -333,7 +333,7 @@ float fractal_voronoi_distance_to_edge(VoronoiParams params, vector3 coord)
     else {
       float remainder = params.detail - floor(params.detail);
       if (remainder != 0.0) {
-        float lerp_amplitude = mix(max_amplitude, (2.0 - params.randomness) * scale, amplitude);
+        float lerp_amplitude = mix(max_amplitude, (1.5 - 0.5 * params.randomness) * scale, amplitude);
         max_amplitude = mix(max_amplitude, lerp_amplitude, remainder);
         float lerp_distance = mix(distance, min(distance, octave_distance / scale), amplitude);
         distance = mix(distance, min(distance, lerp_distance), remainder);
@@ -418,7 +418,7 @@ VoronoiOutput fractal_voronoi_x_fx(VoronoiParams params, vector4 coord)
 float fractal_voronoi_distance_to_edge(VoronoiParams params, vector4 coord)
 {
   float amplitude = 1.0;
-  float max_amplitude = 2.0 - params.randomness;
+  float max_amplitude = 1.5 - 0.5 * params.randomness;
   float scale = 1.0;
   float distance = 8.0;
 
@@ -432,7 +432,7 @@ float fractal_voronoi_distance_to_edge(VoronoiParams params, vector4 coord)
       break;
     }
     else if (i <= params.detail) {
-      max_amplitude = mix(max_amplitude, (2.0 - params.randomness) * scale, amplitude);
+      max_amplitude = mix(max_amplitude, (1.5 - 0.5 * params.randomness) * scale, amplitude);
       distance = mix(distance, min(distance, octave_distance / scale), amplitude);
       scale *= params.lacunarity;
       amplitude *= params.roughness;
@@ -440,7 +440,7 @@ float fractal_voronoi_distance_to_edge(VoronoiParams params, vector4 coord)
     else {
       float remainder = params.detail - floor(params.detail);
       if (remainder != 0.0) {
-        float lerp_amplitude = mix(max_amplitude, (2.0 - params.randomness) * scale, amplitude);
+        float lerp_amplitude = mix(max_amplitude, (1.5 - 0.5 * params.randomness) * scale, amplitude);
         max_amplitude = mix(max_amplitude, lerp_amplitude, remainder);
         float lerp_distance = mix(distance, min(distance, octave_distance / scale), amplitude);
         distance = mix(distance, min(distance, lerp_distance), remainder);

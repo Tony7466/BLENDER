@@ -2310,7 +2310,7 @@ template<typename T>
 float fractal_voronoi_distance_to_edge(const VoronoiParams &params, const T coord)
 {
   float amplitude = 1.0f;
-  float max_amplitude = 2.0f - params.randomness;
+  float max_amplitude = 1.5f - 0.5f * params.randomness;
   float scale = 1.0f;
   float distance = 8.0f;
 
@@ -2324,7 +2324,7 @@ float fractal_voronoi_distance_to_edge(const VoronoiParams &params, const T coor
       break;
     }
     else if (i <= params.detail) {
-      max_amplitude = lerp(max_amplitude, (2.0f - params.randomness) * scale, amplitude);
+      max_amplitude = lerp(max_amplitude, (1.5f - 0.5f * params.randomness) * scale, amplitude);
       distance = lerp(distance, math::min(distance, octave_distance / scale), amplitude);
       scale *= params.lacunarity;
       amplitude *= params.roughness;
@@ -2332,7 +2332,7 @@ float fractal_voronoi_distance_to_edge(const VoronoiParams &params, const T coor
     else {
       float remainder = params.detail - floorf(params.detail);
       if (remainder != 0.0f) {
-        float lerp_amplitude = lerp(max_amplitude, (2.0f - params.randomness) * scale, amplitude);
+        float lerp_amplitude = lerp(max_amplitude, (1.5f - 0.5f * params.randomness) * scale, amplitude);
         max_amplitude = lerp(max_amplitude, lerp_amplitude, remainder);
         float lerp_distance = lerp(
             distance, math::min(distance, octave_distance / scale), amplitude);
