@@ -1420,9 +1420,10 @@ static void pbvh_faces_update_normals(PBVH *pbvh, Span<PBVHNode *> nodes)
         for (const int poly : polys_to_update) {
           verts_to_update.add_multiple(corner_verts.slice(polys[poly]));
         }
-      },
-      [&]() {
-        update_tags.fill(false);
+
+        for (const int vert : verts_to_update) {
+          update_tags[vert] = false;
+        }
         for (PBVHNode *node : nodes) {
           node->flag &= ~PBVH_UpdateNormals;
         }
