@@ -160,10 +160,11 @@ void BKE_fcurves_copy(ListBase *dst, ListBase *src)
 
 void BKE_fmodifier_name_set(FModifier *fcm, const char *name)
 {
-  /* Copy Modifier name. */
+  /* Copy new Modifier name. */
   BLI_strncpy(fcm->name, name, sizeof(fcm->name));
 
-  /* Check unique name. */
+  /* Set default modifier name when name parameter is an empty string.
+   * Ensure the name is unique. */
   const FModifierTypeInfo *fmi = get_fmodifier_typeinfo(fcm->type);
   ListBase list = BLI_listbase_from_link((Link *)fcm);
   BLI_uniquename(&list, fcm, fmi->name, '.', offsetof(FModifier, name), sizeof(fcm->name));
