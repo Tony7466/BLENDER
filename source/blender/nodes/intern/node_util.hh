@@ -7,10 +7,6 @@
 
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct bNode;
 struct bNodeTree;
 
@@ -95,7 +91,3 @@ void node_socket_set_vector(bNodeTree *ntree,
                             bNode *node,
                             bNodeSocket *sock,
                             const float *value);
-
-#ifdef __cplusplus
-}
-#endif
