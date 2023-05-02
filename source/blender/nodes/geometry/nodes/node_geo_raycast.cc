@@ -211,7 +211,6 @@ class RaycastFunction : public mf::MultiFunction {
       builder.single_output<float3>("Hit Position", mf::ParamFlag::SupportsUnusedOutput);
       builder.single_output<float3>("Hit Normal", mf::ParamFlag::SupportsUnusedOutput);
       builder.single_output<float>("Distance", mf::ParamFlag::SupportsUnusedOutput);
-
       builder.single_output<int>("Triangle Index", mf::ParamFlag::SupportsUnusedOutput);
       return signature;
     }();
@@ -332,15 +331,15 @@ static void node_geo_exec(GeoNodeExecParams params)
                                    {params.extract_input<Field<float3>>("Source Position"),
                                     Field<float3>(direction_op),
                                     params.extract_input<Field<float>>("Ray Length")});
-  Field<float3> hit_position(op, 1);
 
+  Field<float3> hit_position(op, 1);
   params.set_output("Is Hit", Field<bool>(op, 0));
   params.set_output("Hit Position", hit_position);
   params.set_output("Hit Normal", Field<float3>(op, 2));
   params.set_output("Hit Distance", Field<float>(op, 3));
 
   if (GField field = get_input_attribute_field(params, data_type)) {
-    Field<int> triangle_index(op, 7);
+    Field<int> triangle_index(op, 4);
     Field<float3> bary_weights;
     switch (mapping) {
       case GEO_NODE_RAYCAST_INTERPOLATED:

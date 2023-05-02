@@ -209,18 +209,18 @@ static void node_geo_exec(GeoNodeExecParams params)
   auto nearest_op = FieldOperation::Create(
       std::make_shared<SampleNearestSurfaceFunction>(geometry),
       {params.extract_input<Field<float3>>("Sample Position")});
-  Field<float3> nearest_positions(nearest_op, 0);
-  Field<int> triangle_indices(nearest_op, 1);
+  Field<int> triangle_indices(nearest_op, 0);
+  Field<float3> nearest_positions(nearest_op, 1);
 
   Field<float3> bary_weights = Field<float3>(FieldOperation::Create(
       std::make_shared<bke::mesh_surface_sample::BaryWeightFromPositionFn>(geometry),
-      {triangle_indices, nearest_positions}));
+      {nearest_positions, triangle_indices}));
 
   GField field = get_input_attribute_field(params, data_type);
   auto sample_op = FieldOperation::Create(
       std::make_shared<bke::mesh_surface_sample::BaryWeightSampleFn>(std::move(geometry),
                                                                      std::move(field)),
-      {triangle_indices, nearest_positions});
+      {triangle_indices, bary_weights});
 
   output_attribute_field(params, GField(sample_op));
 }
