@@ -450,8 +450,8 @@ static void interpolate_curve_attributes(bke::CurvesGeometry &child_curves,
     if (type == CD_PROP_STRING) {
       return true;
     }
-    if (guide_curve_attributes.is_builtin(id) &&
-        !ELEM(id.name(), "radius", "tilt", "resolution")) {
+    if (guide_curve_attributes.is_builtin(id) && !ELEM(id.name(), "radius", "tilt", "resolution"))
+    {
       return true;
     }
 
@@ -793,7 +793,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   const Curves &guide_curves_id = *guide_curves_geometry.get_curves_for_read();
 
-  bke::CurvesFieldContext curves_context{guide_curves_id.geometry.wrap(), ATTR_DOMAIN_CURVE};
+  const bke::CurvesFieldContext curves_context{guide_curves_id.geometry.wrap(), ATTR_DOMAIN_CURVE};
   fn::FieldEvaluator curves_evaluator{curves_context, guide_curves_id.geometry.curve_num};
   curves_evaluator.add(guides_up_field);
   curves_evaluator.add(guide_group_field);
@@ -801,7 +801,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   const VArray<float3> guides_up = curves_evaluator.get_evaluated<float3>(0);
   const VArray<int> guide_group_ids = curves_evaluator.get_evaluated<int>(1);
 
-  bke::GeometryFieldContext points_context(*points_component, ATTR_DOMAIN_POINT);
+  const bke::GeometryFieldContext points_context(*points_component, ATTR_DOMAIN_POINT);
   fn::FieldEvaluator points_evaluator{points_context,
                                       points_component->attribute_domain_size(ATTR_DOMAIN_POINT)};
   points_evaluator.add(points_up_field);
@@ -831,7 +831,8 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   GeometryComponentEditData::remember_deformed_curve_positions_if_necessary(guide_curves_geometry);
   if (const auto *curve_edit_data =
-          guide_curves_geometry.get_component_for_read<GeometryComponentEditData>()) {
+          guide_curves_geometry.get_component_for_read<GeometryComponentEditData>())
+  {
     new_curves.add(*curve_edit_data);
   }
 

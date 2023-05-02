@@ -182,7 +182,8 @@ static bool transdata_get_track_shuffle_offset_side(ListBase *trans_datas,
 
       /* Shuffle only if track is locked or library override. */
       if (((dst_track->flag & NLATRACK_PROTECTED) == 0) &&
-          !BKE_nlatrack_is_nonlocal_in_liboverride(trans_data->id, dst_track)) {
+          !BKE_nlatrack_is_nonlocal_in_liboverride(trans_data->id, dst_track))
+      {
         continue;
       }
 
@@ -327,12 +328,14 @@ static void nlastrip_flag_overlaps(NlaStrip *strip)
 
   NlaStrip *adj_strip = strip->prev;
   if (adj_strip != NULL && !(adj_strip->flag & NLASTRIP_FLAG_SELECT) &&
-      nlastrip_is_overlap(strip, 0, adj_strip, 0)) {
+      nlastrip_is_overlap(strip, 0, adj_strip, 0))
+  {
     strip->flag |= NLASTRIP_FLAG_INVALID_LOCATION;
   }
   adj_strip = strip->next;
   if (adj_strip != NULL && !(adj_strip->flag & NLASTRIP_FLAG_SELECT) &&
-      nlastrip_is_overlap(strip, 0, adj_strip, 0)) {
+      nlastrip_is_overlap(strip, 0, adj_strip, 0))
+  {
     strip->flag |= NLASTRIP_FLAG_INVALID_LOCATION;
   }
 }
@@ -433,7 +436,8 @@ static void nlatrack_auto_grow_tracklist(TransInfo *t,
   while (delta_new_tracks < 0) {
     dst_track = dst_track->prev;
     if ((event->modifier & KM_CTRL) &&
-        (dst_track == NULL || BKE_nlatrack_is_nonlocal_in_liboverride(tdn->id, dst_track))) {
+        (dst_track == NULL || BKE_nlatrack_is_nonlocal_in_liboverride(tdn->id, dst_track)))
+    {
       break;
     }
     delta_new_tracks++;
@@ -808,7 +812,8 @@ static void recalcData_nla(TransInfo *t)
       while (delta_new_tracks < 0) {
         dst_track = dst_track->prev;
         if ((event->modifier & KM_CTRL) &&
-            (dst_track == NULL || BKE_nlatrack_is_nonlocal_in_liboverride(tdn->id, dst_track))) {
+            (dst_track == NULL || BKE_nlatrack_is_nonlocal_in_liboverride(tdn->id, dst_track)))
+        {
           break;
         }
         delta_new_tracks++;
