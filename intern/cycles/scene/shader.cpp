@@ -14,6 +14,7 @@
 #include "scene/procedural.h"
 #include "scene/scene.h"
 #include "scene/shader.h"
+#include "scene/shader.tables"
 #include "scene/shader_graph.h"
 #include "scene/shader_nodes.h"
 #include "scene/svm.h"
@@ -562,6 +563,23 @@ void ShaderManager::device_update_common(Device * /*device*/,
 
   dscene->shaders.copy_to_device();
 
+  /* multi ggx lookup tables */
+  KernelTables *ktables = &dscene->data.tables;
+
+  auto bsdf_table = [&](int *offset_entry, const float *data, size_t size, string name) {
+    if (!(bsdf_lookup_tables.count(name))) {
+      vector<float> entries(data, data + size);
+      bsdf_lookup_tables[name] = scene->lookup_tables->add_table(dscene, entries);
+    }
+    *offset_entry = bsdf_lookup_tables[name];
+  };
+  bsdf_table(
+      &ktables->ggx_glass_E_offset, &table_ggx_glass_E[0][0][0], 16 * 16 * 16, "ggx_glass_E");
+  bsdf_table(&ktables->ggx_glass_inv_E_offset,
+             &table_ggx_glass_inv_E[0][0][0],
+             16 * 16 * 16,
+             "ggx_glass_inv_E");
+
   /* integrator */
   KernelIntegrator *kintegrator = &dscene->data.integrator;
   kintegrator->use_volumes = has_volumes;
@@ -581,8 +599,12 @@ void ShaderManager::device_update_common(Device * /*device*/,
   kfilm->is_rec709 = is_rec709;
 }
 
-void ShaderManager::device_free_common(Device * /*device*/, DeviceScene *dscene, Scene * /*scene*/)
+void ShaderManager::device_free_common(Device * /*device*/, DeviceScene *dscene, Scene *scene)
 {
+  for (auto &entry : bsdf_lookup_tables) {
+    scene->lookup_tables->remove_table(&entry.second);
+  }
+  bsdf_lookup_tables.clear();
   dscene->shaders.free();
 }
 

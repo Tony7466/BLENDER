@@ -233,6 +233,8 @@ class ShaderManager {
 
   static thread_mutex lookup_table_mutex;
 
+  unordered_map<string, size_t> bsdf_lookup_tables;
+
   uint get_graph_kernel_features(ShaderGraph *graph);
 
   thread_spin_lock attribute_lock_;

@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "kernel/util/lookup_table.h"
+
 CCL_NAMESPACE_BEGIN
 
 ccl_device float fresnel_dielectric(
@@ -191,6 +193,22 @@ ccl_device float3 maybe_ensure_valid_specular_reflection(ccl_private ShaderData 
     return N;
   }
   return ensure_valid_specular_reflection(sd->Ng, sd->wi, N);
+}
+
+/* Albedo correction. */
+
+ccl_device_forceinline float microfacet_ggx_glass_E(KernelGlobals kg,
+                                                    float mu,
+                                                    float rough,
+                                                    float ior)
+{
+  bool inv_table = (ior < 1.0f);
+  int offset = inv_table ? kernel_data.tables.ggx_glass_inv_E_offset :
+                           kernel_data.tables.ggx_glass_E_offset;
+
+  float x = mu, y = 1 - rough;
+  float z = sqrtf(0.5f * ((inv_table ? 1.0f / ior : ior) - 1.0f));
+  return lookup_table_read_3D(kg, x, y, z, offset, 16, 16, 16);
 }
 
 CCL_NAMESPACE_END

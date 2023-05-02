@@ -40,4 +40,22 @@ ccl_device float lookup_table_read_2D(
   return (1.0f - t) * data0 + t * data1;
 }
 
+ccl_device float lookup_table_read_3D(
+    KernelGlobals kg, float x, float y, float z, int offset, int xsize, int ysize, int zsize)
+{
+  z = clamp(z * zsize - 0.5f, 0.0f, (float)zsize);
+
+  int index = min(float_to_int(z), zsize - 1);
+  int nindex = min(index + 1, zsize - 1);
+  float t = z - index;
+
+  float data0 = lookup_table_read_2D(kg, x, y, offset + xsize * ysize * index, xsize, ysize);
+  if (t == 0.0f) {
+    return data0;
+  }
+
+  float data1 = lookup_table_read_2D(kg, x, y, offset + xsize * ysize * nindex, xsize, ysize);
+  return mix(data0, data1, t);
+}
+
 CCL_NAMESPACE_END

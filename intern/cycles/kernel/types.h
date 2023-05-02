@@ -1192,7 +1192,9 @@ typedef enum KernelBVHLayout {
 
 typedef struct KernelTables {
   int filter_table_offset;
-  int pad1, pad2, pad3;
+  int ggx_glass_E_offset;
+  int ggx_glass_inv_E_offset;
+  int pad1;
 } KernelTables;
 static_assert_align(KernelTables, 16);
 
