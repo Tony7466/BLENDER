@@ -697,6 +697,11 @@ void ANIM_set_active_channel(bAnimContext *ac,
                              eAnim_ChannelType channel_type);
 
 /**
+ * Return whether channel is active.
+ */
+bool ANIM_is_active_channel(bAnimListElem *ale);
+
+/**
  * Delete the F-Curve from the given AnimData block (if possible),
  * as appropriate according to animation context.
  */

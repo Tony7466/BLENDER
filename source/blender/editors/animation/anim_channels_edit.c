@@ -214,6 +214,59 @@ void ANIM_set_active_channel(bAnimContext *ac,
   ANIM_animdata_freelist(&anim_data);
 }
 
+bool ANIM_is_active_channel(bAnimListElem *ale)
+{
+  bool is_active_found = false;
+  switch (ale->type) {
+    case ANIMTYPE_FILLACTD: /* Action Expander */
+    case ANIMTYPE_DSMAT:    /* Datablock AnimData Expanders */
+    case ANIMTYPE_DSLAM:
+    case ANIMTYPE_DSCAM:
+    case ANIMTYPE_DSCACHEFILE:
+    case ANIMTYPE_DSCUR:
+    case ANIMTYPE_DSSKEY:
+    case ANIMTYPE_DSWOR:
+    case ANIMTYPE_DSPART:
+    case ANIMTYPE_DSMBALL:
+    case ANIMTYPE_DSARM:
+    case ANIMTYPE_DSMESH:
+    case ANIMTYPE_DSNTREE:
+    case ANIMTYPE_DSTEX:
+    case ANIMTYPE_DSLAT:
+    case ANIMTYPE_DSLINESTYLE:
+    case ANIMTYPE_DSSPK:
+    case ANIMTYPE_DSGPENCIL:
+    case ANIMTYPE_DSMCLIP:
+    case ANIMTYPE_DSHAIR:
+    case ANIMTYPE_DSPOINTCLOUD:
+    case ANIMTYPE_DSVOLUME:
+    case ANIMTYPE_NLAACTION:
+    case ANIMTYPE_DSSIMULATION: {
+      if (ale->adt) {
+        is_active_found = ale->adt->flag & ADT_UI_ACTIVE;
+      }
+      break;
+    }
+    case ANIMTYPE_GROUP: {
+      bActionGroup *argp = (bActionGroup *)ale->data;
+      is_active_found = argp->flag & AGRP_ACTIVE;
+      break;
+    }
+    case ANIMTYPE_FCURVE:
+    case ANIMTYPE_NLACURVE: {
+      FCurve *fcu = (FCurve *)ale->data;
+      is_active_found = fcu->flag & FCURVE_ACTIVE;
+      break;
+    }
+    case ANIMTYPE_GPLAYER: {
+      bGPDlayer *gpl = (bGPDlayer *)ale->data;
+      is_active_found = gpl->flag & GP_LAYER_ACTIVE;
+      break;
+    }
+      return is_active_found;
+  }
+}
+
 /* change_active determines whether to change the active bone of the armature when selecting pose
  * channels. It is false during range selection otherwise true. */
 static void select_pchan_for_action_group(bAnimContext *ac,
@@ -3043,53 +3096,9 @@ static bool animchannel_has_active_of_type(bAnimContext *ac, const eAnim_Channel
     if (ale->type != type) {
       continue;
     }
-
-    switch (ale->type) {
-      case ANIMTYPE_FILLACTD: /* Action Expander */
-      case ANIMTYPE_DSMAT:    /* Datablock AnimData Expanders */
-      case ANIMTYPE_DSLAM:
-      case ANIMTYPE_DSCAM:
-      case ANIMTYPE_DSCACHEFILE:
-      case ANIMTYPE_DSCUR:
-      case ANIMTYPE_DSSKEY:
-      case ANIMTYPE_DSWOR:
-      case ANIMTYPE_DSPART:
-      case ANIMTYPE_DSMBALL:
-      case ANIMTYPE_DSARM:
-      case ANIMTYPE_DSMESH:
-      case ANIMTYPE_DSNTREE:
-      case ANIMTYPE_DSTEX:
-      case ANIMTYPE_DSLAT:
-      case ANIMTYPE_DSLINESTYLE:
-      case ANIMTYPE_DSSPK:
-      case ANIMTYPE_DSGPENCIL:
-      case ANIMTYPE_DSMCLIP:
-      case ANIMTYPE_DSHAIR:
-      case ANIMTYPE_DSPOINTCLOUD:
-      case ANIMTYPE_DSVOLUME:
-      case ANIMTYPE_NLAACTION:
-      case ANIMTYPE_DSSIMULATION: {
-        if (ale->adt) {
-          is_active_found |= ale->adt->flag & ADT_UI_ACTIVE;
-        }
-        break;
-      }
-      case ANIMTYPE_GROUP: {
-        bActionGroup *argp = (bActionGroup *)ale->data;
-        is_active_found |= argp->flag & AGRP_ACTIVE;
-        break;
-      }
-      case ANIMTYPE_FCURVE:
-      case ANIMTYPE_NLACURVE: {
-        FCurve *fcu = (FCurve *)ale->data;
-        is_active_found |= fcu->flag & FCURVE_ACTIVE;
-        break;
-      }
-      case ANIMTYPE_GPLAYER: {
-        bGPDlayer *gpl = (bGPDlayer *)ale->data;
-        is_active_found |= gpl->flag & GP_LAYER_ACTIVE;
-        break;
-      }
+    is_active_found = ANIM_is_active_channel(ale);
+    if (is_active_found) {
+      break;
     }
   }
 
@@ -3170,53 +3179,8 @@ static void animchannel_select_range(bAnimContext *ac, bAnimListElem *cursor_ele
       continue;
     }
 
-    switch (ale->type) {
-      case ANIMTYPE_FILLACTD: /* Action Expander */
-      case ANIMTYPE_DSMAT:    /* Datablock AnimData Expanders */
-      case ANIMTYPE_DSLAM:
-      case ANIMTYPE_DSCAM:
-      case ANIMTYPE_DSCACHEFILE:
-      case ANIMTYPE_DSCUR:
-      case ANIMTYPE_DSSKEY:
-      case ANIMTYPE_DSWOR:
-      case ANIMTYPE_DSPART:
-      case ANIMTYPE_DSMBALL:
-      case ANIMTYPE_DSARM:
-      case ANIMTYPE_DSMESH:
-      case ANIMTYPE_DSNTREE:
-      case ANIMTYPE_DSTEX:
-      case ANIMTYPE_DSLAT:
-      case ANIMTYPE_DSLINESTYLE:
-      case ANIMTYPE_DSSPK:
-      case ANIMTYPE_DSGPENCIL:
-      case ANIMTYPE_DSMCLIP:
-      case ANIMTYPE_DSHAIR:
-      case ANIMTYPE_DSPOINTCLOUD:
-      case ANIMTYPE_DSVOLUME:
-      case ANIMTYPE_NLAACTION:
-      case ANIMTYPE_DSSIMULATION: {
-        if (ale->adt) {
-          is_active_elem = ale->adt->flag & ADT_UI_ACTIVE;
-        }
-        break;
-      }
-      case ANIMTYPE_GROUP: {
-        bActionGroup *argp = (bActionGroup *)ale->data;
-        is_active_elem = argp->flag & AGRP_ACTIVE;
-        break;
-      }
-      case ANIMTYPE_FCURVE:
-      case ANIMTYPE_NLACURVE: {
-        FCurve *fcu = (FCurve *)ale->data;
-        is_active_elem = fcu->flag & FCURVE_ACTIVE;
-        break;
-      }
-      case ANIMTYPE_GPLAYER: {
-        bGPDlayer *gpl = (bGPDlayer *)ale->data;
-        is_active_elem = gpl->flag & GP_LAYER_ACTIVE;
-        break;
-      }
-    }
+    is_active_elem = ANIM_is_active_channel(ale);
+
     /* Restrict selection when active element is not found and group-channels are excluded from the
      * selection. */
     if (is_active_elem || is_cursor_elem) {
