@@ -3861,11 +3861,6 @@ static void rna_def_object(BlenderRNA *brna)
   RNA_def_property_editable_func(prop, "rna_Object_mesh_symmetry_yz_editable");
   RNA_def_property_ui_text(prop, "Z", "Enable mesh symmetry in the Z axis");
 
-  prop = RNA_def_property(srna, "use_simulation_cache", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", OB_FLAG_USE_SIMULATION_CACHE);
-  RNA_def_property_ui_text(
-      prop, "Use Simulation Cache", "Cache simulation nodes data for all frames during playback");
-
   /* Lightgroup Membership */
   prop = RNA_def_property(srna, "lightgroup", PROP_STRING, PROP_NONE);
   RNA_def_property_string_funcs(prop,
