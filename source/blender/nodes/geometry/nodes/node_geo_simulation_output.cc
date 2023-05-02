@@ -34,11 +34,11 @@ std::string socket_identifier_for_simulation_item(const NodeSimulationItem &item
 static std::unique_ptr<SocketDeclaration> socket_declaration_for_simulation_item(
     const NodeSimulationItem &item, const eNodeSocketInOut in_out, const int index)
 {
-  BLI_assert(NOD_geometry_simulation_output_item_socket_type_supported(
-      eNodeSocketDatatype(item.socket_type)));
+  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
+  BLI_assert(NOD_geometry_simulation_output_item_socket_type_supported(socket_type));
 
   std::unique_ptr<SocketDeclaration> decl;
-  switch (eNodeSocketDatatype(item.socket_type)) {
+  switch (socket_type) {
     case SOCK_FLOAT:
       decl = std::make_unique<decl::Float>();
       decl->input_field_type = InputSocketFieldType::IsSupported;
@@ -179,7 +179,8 @@ void simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_i
     switch (socket_type) {
       case SOCK_GEOMETRY: {
         if (const auto *geo_state_item =
-                dynamic_cast<const bke::sim::GeometrySimulationStateItem *>(&state_item)) {
+                dynamic_cast<const bke::sim::GeometrySimulationStateItem *>(&state_item))
+        {
           GeometrySet *geometry = new (r_output_value) GeometrySet(geo_state_item->geometry());
           geometries.append(geometry);
         }
@@ -196,7 +197,8 @@ void simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_i
         const fn::ValueOrFieldCPPType &value_or_field_type =
             *fn::ValueOrFieldCPPType::get_from_self(cpp_type);
         if (const auto *primitive_state_item =
-                dynamic_cast<const bke::sim::PrimitiveSimulationStateItem *>(&state_item)) {
+                dynamic_cast<const bke::sim::PrimitiveSimulationStateItem *>(&state_item))
+        {
           if (primitive_state_item->type() == value_or_field_type.value) {
             value_or_field_type.construct_from_value(r_output_value,
                                                      primitive_state_item->value());
@@ -206,7 +208,8 @@ void simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_i
           }
         }
         else if (const auto *attribute_state_item =
-                     dynamic_cast<const bke::sim::AttributeSimulationStateItem *>(&state_item)) {
+                     dynamic_cast<const bke::sim::AttributeSimulationStateItem *>(&state_item))
+        {
           AnonymousAttributeIDPtr attribute_id = MEM_new<NodeAnonymousAttributeID>(
               __func__,
               self_object,
@@ -226,7 +229,8 @@ void simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_i
       }
       case SOCK_STRING: {
         if (const auto *string_state_item =
-                dynamic_cast<const bke::sim::StringSimulationStateItem *>(&state_item)) {
+                dynamic_cast<const bke::sim::StringSimulationStateItem *>(&state_item))
+        {
           new (r_output_value) ValueOrField<std::string>(string_state_item->value());
         }
         else {
@@ -246,7 +250,8 @@ void simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_i
     for (const GeometryComponentType type : {GEO_COMPONENT_TYPE_MESH,
                                              GEO_COMPONENT_TYPE_CURVE,
                                              GEO_COMPONENT_TYPE_POINT_CLOUD,
-                                             GEO_COMPONENT_TYPE_INSTANCES}) {
+                                             GEO_COMPONENT_TYPE_INSTANCES})
+    {
       if (!geometry->has(type)) {
         continue;
       }
@@ -415,6 +420,7 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
             modifier_data.current_simulation_state->get_zone_state(zone_id) :
             nullptr;
     if (eval_data.is_first_evaluation && current_zone_state != nullptr) {
+      /* Common case when data is cached already. */
       this->output_cached_state(
           params, *modifier_data.self_object, *user_data.compute_context, *current_zone_state);
       return;
@@ -426,6 +432,8 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
               modifier_data.prev_simulation_state->get_zone_state(zone_id) :
               nullptr;
       if (prev_zone_state == nullptr) {
+        /* There is no previous simulation state and we also don't create a new one, so just output
+         * defaults. */
         params.set_default_remaining_outputs();
         return;
       }
@@ -434,10 +442,12 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
               modifier_data.next_simulation_state->get_zone_state(zone_id) :
               nullptr;
       if (next_zone_state == nullptr) {
+        /* Output the last cached simulation state. */
         this->output_cached_state(
             params, *modifier_data.self_object, *user_data.compute_context, *prev_zone_state);
         return;
       }
+      /* A previous and next frame is cached already, but the current frame is not. */
       this->output_mixed_cached_state(params,
                                       *modifier_data.self_object,
                                       *user_data.compute_context,
@@ -512,7 +522,8 @@ bke::sim::SimulationZoneID get_simulation_zone_id(const ComputeContext &compute_
 {
   bke::sim::SimulationZoneID zone_id;
   for (const ComputeContext *context = &compute_context; context != nullptr;
-       context = context->parent()) {
+       context = context->parent())
+  {
     if (const auto *node_context = dynamic_cast<const bke::NodeGroupComputeContext *>(context)) {
       zone_id.node_ids.append(node_context->node_id());
     }
@@ -622,7 +633,8 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
   if (link->tonode == node) {
     if (link->tosock->identifier == StringRef("__extend__")) {
       if (const NodeSimulationItem *item = NOD_geometry_simulation_output_add_item_from_socket(
-              &storage, link->fromnode, link->fromsock)) {
+              &storage, link->fromnode, link->fromsock))
+      {
         update_node_declaration_and_sockets(*ntree, *node);
         link->tosock = nodeFindSocket(
             node, SOCK_IN, socket_identifier_for_simulation_item(*item).c_str());
@@ -636,7 +648,8 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
     BLI_assert(link->fromnode == node);
     if (link->fromsock->identifier == StringRef("__extend__")) {
       if (const NodeSimulationItem *item = NOD_geometry_simulation_output_add_item_from_socket(
-              &storage, link->fromnode, link->tosock)) {
+              &storage, link->fromnode, link->tosock))
+      {
         update_node_declaration_and_sockets(*ntree, *node);
         link->fromsock = nodeFindSocket(
             node, SOCK_OUT, socket_identifier_for_simulation_item(*item).c_str());
@@ -777,8 +790,8 @@ NodeSimulationItem *NOD_geometry_simulation_output_insert_item(NodeGeometrySimul
                                                                const char *name,
                                                                int index)
 {
-  if (!NOD_geometry_simulation_output_item_socket_type_supported(
-          eNodeSocketDatatype(socket_type))) {
+  if (!NOD_geometry_simulation_output_item_socket_type_supported(eNodeSocketDatatype(socket_type)))
+  {
     return nullptr;
   }
 

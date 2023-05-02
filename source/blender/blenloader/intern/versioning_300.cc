@@ -4331,7 +4331,9 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     do_versions_rename_id(bmain, ID_BR, "Draw Weight", "Weight Draw");
 
     /* Identifier generation for simulation node sockets changed.
-     * Update identifiers so links are not removed during validation. */
+     * Update identifiers so links are not removed during validation.
+     * This only affects files that have been created using simulation nodes before they were first
+     * officially released. */
     if (!DNA_struct_elem_find(fd->filesdna, "NodeSimulationItem", "int", "identifier")) {
       static auto set_socket_identifiers =
           [](bNode *node, const bNode *output_node, int extra_outputs) {

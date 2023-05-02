@@ -4134,7 +4134,7 @@ static void rna_SimulationStateItem_color_get(PointerRNA *ptr, float *values)
   NodeSimulationItem *item = (NodeSimulationItem *)ptr->data;
 
   const char *socket_type_idname = nodeStaticSocketType(item->socket_type, 0);
-  node_type_draw_color(socket_type_idname, values);
+  ED_node_type_draw_color(socket_type_idname, values);
 }
 
 static PointerRNA rna_NodeGeometrySimulationInput_paired_output_get(PointerRNA *ptr)
@@ -4221,8 +4221,8 @@ static void rna_NodeGeometrySimulationOutput_items_move(
 {
   NodeGeometrySimulationOutput *sim = (NodeGeometrySimulationOutput *)node->storage;
 
-  if (from_index < 0 || from_index >= sim->items_num || to_index < 0 ||
-      to_index >= sim->items_num) {
+  if (from_index < 0 || from_index >= sim->items_num || to_index < 0 || to_index >= sim->items_num)
+  {
     return;
   }
 

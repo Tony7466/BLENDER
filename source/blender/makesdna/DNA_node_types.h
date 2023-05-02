@@ -1596,19 +1596,21 @@ typedef struct NodeGeometryUVUnwrap {
   uint8_t method;
 } NodeGeometryUVUnwrap;
 
-/* TODO: Add RAII */
 typedef struct NodeSimulationItem {
   char *name;
-  /* #eNodeSocketDatatype. */
-  /* TODO: Use a different enum instead to support Byte colors, etc. */
+  /** #eNodeSocketDatatype. */
   short socket_type;
   /** #eAttrDomain. */
   short attribute_domain;
-  /* Generates unique identifier for sockets. */
+  /**
+   * Generates unique identifier for sockets which stays the same even when the item order or
+   * names change.
+   */
   int identifier;
 } NodeSimulationItem;
 
 typedef struct NodeGeometrySimulationInput {
+  /** bNode.identifier of the corresponding output node. */
   int32_t output_node_id;
 } NodeGeometrySimulationInput;
 
@@ -1616,7 +1618,7 @@ typedef struct NodeGeometrySimulationOutput {
   NodeSimulationItem *items;
   int items_num;
   int active_index;
-  /* Number to give unique IDs to state items. */
+  /** Number to give unique IDs to state items. */
   int next_identifier;
   int _pad;
 

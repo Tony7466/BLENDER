@@ -246,7 +246,7 @@ class NewGeometryNodeTreeAssign(Operator):
         return {'FINISHED'}
 
 
-class SimulationZoneOperator():
+class SimulationZoneOperator:
     input_node_type = 'GeometryNodeSimulationInput'
     output_node_type = 'GeometryNodeSimulationOutput'
 
@@ -273,7 +273,7 @@ class SimulationZoneOperator():
 
 
 class SimulationZoneItemAddOperator(SimulationZoneOperator, Operator):
-    '''Add a state item to the simulation zone'''
+    """Add a state item to the simulation zone"""
     bl_idname = "node.simulation_zone_item_add"
     bl_label = "Add State Item"
     bl_options = {'REGISTER', 'UNDO'}
@@ -295,7 +295,7 @@ class SimulationZoneItemAddOperator(SimulationZoneOperator, Operator):
 
 
 class SimulationZoneItemRemoveOperator(SimulationZoneOperator, Operator):
-    '''Remove a state item from the simulation zone'''
+    """Remove a state item from the simulation zone"""
     bl_idname = "node.simulation_zone_item_remove"
     bl_label = "Remove State Item"
     bl_options = {'REGISTER', 'UNDO'}
@@ -312,7 +312,7 @@ class SimulationZoneItemRemoveOperator(SimulationZoneOperator, Operator):
 
 
 class SimulationZoneItemMoveOperator(SimulationZoneOperator, Operator):
-    '''Move a simulation state item up or down in the list'''
+    """Move a simulation state item up or down in the list"""
     bl_idname = "node.simulation_zone_item_move"
     bl_label = "Move State Item"
     bl_options = {'REGISTER', 'UNDO'}
