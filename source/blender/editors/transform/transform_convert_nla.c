@@ -415,6 +415,58 @@ static void nlastrip_fix_overlapping(TransInfo *t, TransDataNla *tdn, NlaStrip *
   }
 }
 
+/**
+ * TODO make this functional abstration work
+ */
+static void nlatrack_auto_grow_tracklist(TransInfo *t,
+                                         TransDataNla *tdn,
+                                         ListBase *nla_tracks,
+                                         NlaTrack *dst_track,
+                                         int delta_new_tracks,
+                                         bool is_liboverride)
+{
+
+  /* Get event to check if ctrl is geld down. */
+  wmEvent *event = CTX_wm_window(t->context)->eventstate;
+
+  /* Only grow track list of ctrl key is held down. */
+  while (delta_new_tracks < 0) {
+    dst_track = dst_track->prev;
+    if ((event->modifier & KM_CTRL) &&
+        (dst_track == NULL || BKE_nlatrack_is_nonlocal_in_liboverride(tdn->id, dst_track))) {
+      break;
+    }
+    delta_new_tracks++;
+  }
+
+  /** We assume all library tracks are grouped at the bottom of the nla stack. Thus, no need
+   * to check for them when moving tracks upward. */
+  while (delta_new_tracks > 0) {
+    dst_track = dst_track->next;
+    if ((event->modifier & KM_CTRL) && dst_track == NULL) {
+      break;
+    }
+    delta_new_tracks--;
+  }
+
+  /* Check if new tracks need to be added above or below existing tracks.*/
+  for (int i = 0; i < -delta_new_tracks; i++) {
+    NlaTrack *new_track = BKE_nlatrack_new();
+    new_track->flag |= NLATRACK_TEMPORARILY_ADDED;
+    BKE_nlatrack_insert_before(
+        nla_tracks, (NlaTrack *)nla_tracks->first, new_track, is_liboverride);
+    dst_track = new_track;
+  }
+
+  for (int i = 0; i < delta_new_tracks; i++) {
+    NlaTrack *new_track = BKE_nlatrack_new();
+    new_track->flag |= NLATRACK_TEMPORARILY_ADDED;
+
+    BKE_nlatrack_insert_after(nla_tracks, (NlaTrack *)nla_tracks->last, new_track, is_liboverride);
+    dst_track = new_track;
+  }
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -739,28 +791,40 @@ static void recalcData_nla(TransInfo *t)
        */
 
       int delta_new_tracks = delta;
+
+      /* it's possible to drag a strip fast enough to make delta > |1|. We only want to process
+       * 1 track shift at a time.
+       */
+      CLAMP(delta_new_tracks, -1, 1);
       dst_track = old_track;
 
+      /* Get event to check if ctrl is geld down. */
+      wmEvent *event = CTX_wm_window(t->context)->eventstate;
+
+      // nlatrack_auto_grow_tracklist(
+      //     t, tdn, nla_tracks, dst_track, delta_new_tracks, is_liboverride);
+
+      /* Auto-grow track list on ctrl + transform. */
       while (delta_new_tracks < 0) {
         dst_track = dst_track->prev;
-        if (dst_track == NULL || BKE_nlatrack_is_nonlocal_in_liboverride(tdn->id, dst_track)) {
+        if ((event->modifier & KM_CTRL) &&
+            (dst_track == NULL || BKE_nlatrack_is_nonlocal_in_liboverride(tdn->id, dst_track))) {
           break;
         }
         delta_new_tracks++;
       }
 
-      /** We assume all library tracks are grouped at the bottom of the nla stack. Thus, no need
+      /** We assume all library tracks are grouped at the bottom of the nla stack. Thus, no
+      need
        * to check for them when moving tracks upward. */
-
       while (delta_new_tracks > 0) {
         dst_track = dst_track->next;
-        if (dst_track == NULL) {
+        if ((event->modifier & KM_CTRL) && dst_track == NULL) {
           break;
         }
         delta_new_tracks--;
       }
 
-      /* Auto-grow track list. */
       for (int i = 0; i < -delta_new_tracks; i++) {
         NlaTrack *new_track = BKE_nlatrack_new();
         new_track->flag |= NLATRACK_TEMPORARILY_ADDED;
@@ -778,6 +842,11 @@ static void recalcData_nla(TransInfo *t)
         dst_track = new_track;
       }
 
+      /* If the destination track is null, then we need to go to the last track. */
+      if (dst_track == NULL) {
+        dst_track = old_track;
+      }
+
       /* Move strip from old_track to dst_track. */
       if (dst_track != old_track) {
         BKE_nlatrack_remove_strip(old_track, strip);
@@ -787,6 +856,9 @@ static void recalcData_nla(TransInfo *t)
         tdn->signed_track_index += delta;
         tdn->trackIndex = BLI_findindex(nla_tracks, dst_track);
       }
+
+      /* Ensure we set the target track as active. */
+      BKE_nlatrack_set_active(nla_tracks, dst_track);
 
       if (tdn->nlt->flag & NLATRACK_PROTECTED) {
         strip->flag |= NLASTRIP_FLAG_INVALID_LOCATION;
@@ -875,13 +947,9 @@ static void nlastrip_shuffle_transformed(TransDataContainer *tc, TransDataNla *f
         TransDataNla *trans_data = (TransDataNla *)link->data;
         NlaTrack *dst_track = BLI_findlink(tracks, trans_data->trackIndex + minimum_track_offset);
 
-        // trans_data->trackIndex = trans_data->trackIndex + minimum_track_offset;
-        // NlaTrack *dst_track = BLI_findlink(tracks, trans_data->trackIndex);
-
+        NlaStrip *strip = trans_data->strip;
         if ((dst_track->flag & NLATRACK_PROTECTED) != 0) {
 
-          printf("this track isn't protected \n");
-          NlaStrip *strip = trans_data->strip;
           BKE_nlatrack_remove_strip(trans_data->nlt, strip);
           // Should this be false? Should we short circuit the loop
           BKE_nlatrack_add_strip(dst_track, strip, false);
@@ -889,7 +957,6 @@ static void nlastrip_shuffle_transformed(TransDataContainer *tc, TransDataNla *f
           trans_data->nlt = dst_track;
         }
         else {
-          NlaStrip *strip = trans_data->strip;
           NlaTrack *old_track = BLI_findlink(tracks, trans_data->oldTrack->index);
 
           BKE_nlatrack_remove_strip(trans_data->nlt, strip);
@@ -978,7 +1045,6 @@ static void special_aftertrans_update__nla(bContext *C, TransInfo *t)
   ANIM_animdata_freelist(&anim_data);
 
   /* Truncate temporarily added tracks. */
-  // TODO move this into a method
   nlatrack_truncate_temporary_tracks(&ac);
 
   /* Perform after-transform validation. */
