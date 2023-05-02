@@ -47,11 +47,11 @@ static std::string get_blendcache_directory(const Main &bmain)
   StringRefNull blend_file_path = BKE_main_blendfile_path(&bmain);
   char blend_directory[FILE_MAX];
   char blend_name[FILE_MAX];
-  BLI_split_dirfile(blend_file_path.c_str(),
-                    blend_directory,
-                    blend_name,
-                    sizeof(blend_directory),
-                    sizeof(blend_name));
+  BLI_path_split_dir_file(blend_file_path.c_str(),
+                          blend_directory,
+                          blend_name,
+                          sizeof(blend_directory),
+                          sizeof(blend_name));
   const int64_t type_start_index = StringRef(blend_name).rfind(".");
   if (type_start_index == StringRef::not_found) {
     return "";
