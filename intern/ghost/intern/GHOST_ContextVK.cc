@@ -137,6 +137,7 @@ class GHOST_DeviceVK {
 
   VkPhysicalDeviceProperties properties = {};
   VkPhysicalDeviceFeatures features = {};
+  int users = 0;
 
  public:
   GHOST_DeviceVK(VkInstance vk_instance, VkPhysicalDevice vk_physical_device)
@@ -236,7 +237,8 @@ class GHOST_DeviceVK {
        * and compute pipelines. We select this one; compute only queue family hints at async
        * compute implementations. */
       if ((queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT) &&
-          (queue_family.queueFlags & VK_QUEUE_COMPUTE_BIT)) {
+          (queue_family.queueFlags & VK_QUEUE_COMPUTE_BIT))
+      {
         return;
       }
       generic_queue_family++;
@@ -297,7 +299,8 @@ static GHOST_TSuccess ensure_vulkan_device(VkInstance vk_instance,
 
 #if STRICT_REQUIREMENTS
     if (!device_vk.features.geometryShader || !device_vk.features.dualSrcBlend ||
-        !device_vk.features.logicOp) {
+        !device_vk.features.logicOp)
+    {
       continue;
     }
 #endif
@@ -392,6 +395,11 @@ GHOST_ContextVK::~GHOST_ContextVK()
     }
     if (m_surface != VK_NULL_HANDLE) {
       vkDestroySurfaceKHR(device_vk.instance, m_surface, NULL);
+    }
+
+    device_vk.users--;
+    if (device_vk.users == 0) {
+      vulkan_device.reset();
     }
   }
 }
@@ -854,7 +862,7 @@ GHOST_TSuccess GHOST_ContextVK::createSwapchain()
   create_info.imageColorSpace = format.colorSpace;
   create_info.imageExtent = m_render_extent;
   create_info.imageArrayLayers = 1;
-  create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+  create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
   create_info.preTransform = capabilities.currentTransform;
   create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
   create_info.presentMode = present_mode;
@@ -1074,11 +1082,12 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
    * enabled. See
    * https://vulkan.lunarg.com/doc/view/1.2.198.1/mac/1.2-extensions/vkspec.html#VUID-VkDeviceCreateInfo-pProperties-04451*/
   if (device_extensions_support(vulkan_device->physical_device,
-                                {VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME})) {
+                                {VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME}))
+  {
     extensions_device.push_back(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
   }
 #endif
-
+  vulkan_device->users++;
   vulkan_device->ensure_device(layers_enabled, extensions_device);
 
   vkGetDeviceQueue(

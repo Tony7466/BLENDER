@@ -58,6 +58,7 @@ class VKContext : public Context, NonCopyable {
   void bind_compute_pipeline();
   void bind_graphics_pipeline(const GPUPrimType prim_type,
                               const VKVertexAttributeObject &vertex_attribute_object);
+  void sync_backbuffer();
 
   static VKContext *get(void)
   {
@@ -68,7 +69,6 @@ class VKContext : public Context, NonCopyable {
   {
     return command_buffer_;
   }
-
 
   const VKStateManager &state_manager_get() const;
 
