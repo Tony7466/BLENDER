@@ -616,6 +616,7 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
   const float roughness = bsdf->roughness;
   *sampled_roughness = make_float2(roughness, roughness);
   *eta = bsdf->eta;
+  *eval = zero_spectrum();
 
   /* Treat as transparent material if intersection lies outside of the projected radius. */
   if (fabsf(bsdf->h) > bsdf->extra->radius) {
@@ -680,14 +681,15 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
   const float3 wr = -reflect(wi, wh1);
 
   /* Ensure that this is a valid sample. */
-  if (!(dot(wr, wh1) > 0.0f) || !(dot(wr, wmi) > 0.0f) || !microfacet_visible(wi, wr, wmi_, wh1)) {
+  if (!microfacet_visible(wi, wmi_, wh1)) {
     *pdf = 0.0f;
     return LABEL_NONE;
   }
 
   float cos_theta_t1;
   const float R1 = fresnel(dot(wi, wh1), *eta, &cos_theta_t1);
-  const Spectrum R = make_spectrum(bsdf->extra->R * R1);
+  const Spectrum R = make_spectrum(bsdf->extra->R * R1 * microfacet_visible(wr, wmi_, wh1) *
+                                   bsdf_Go<m_type>(roughness2, cos_mi1, dot(wmi, wr)));
 
   /* Sample TT lobe. */
   const float inv_eta = 1.0f / bsdf->eta;
@@ -706,9 +708,8 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
   Spectrum TT = zero_spectrum();
   Spectrum TRT = zero_spectrum();
   const float cos_mi2 = dot(-wt, wmt);
-  float cos_mi3;
 
-  if (dot(wh2, -wt) > 0.0f && cos_mi2 > 0.0f && microfacet_visible(-wt, -wtr, wmt_, wh2)) {
+  if (cos_mi2 > 0.0f && microfacet_visible(-wt, wmi_, wh1) && microfacet_visible(-wt, wmt_, wh2)) {
     const Spectrum mu_a = bsdf->sigma;
     const Spectrum A_t = exp(mu_a / cos_theta(wt) *
                              (is_circular ?
@@ -717,13 +718,14 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
 
     float cos_theta_t2;
     const float R2 = fresnel(dot(-wt, wh2), inv_eta, &cos_theta_t2);
-    const Spectrum T1 = make_spectrum(1.0f - R1);
+    const Spectrum T1 = make_spectrum(1.0f - R1) *
+                        bsdf_Go<m_type>(roughness2, cos_mi1, dot(wmi, -wt));
     const Spectrum T2 = make_spectrum(1.0f - R2);
 
     wtt = -refract_angle(-wt, wh2, cos_theta_t2, *eta);
 
-    if (dot(wmt, -wtt) > 0.0f && cos_theta_t2 != 0.0f) {
-      TT = bsdf->extra->TT * T1 * A_t * T2;
+    if (dot(wmt, -wtt) > 0.0f && cos_theta_t2 != 0.0f && microfacet_visible(-wtt, wmt_, wh2)) {
+      TT = bsdf->extra->TT * T1 * A_t * T2 * bsdf_Go<m_type>(roughness2, cos_mi2, dot(wmt, -wtt));
     }
 
     /* Sample TRT lobe. */
@@ -737,10 +739,9 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
     const float R3 = fresnel(dot(wtr, wh3), inv_eta, &cos_theta_t3);
 
     wtrt = -refract_angle(wtr, wh3, cos_theta_t3, *eta);
+    const float cos_mi3 = dot(wmtr, wtr);
 
-    cos_mi3 = dot(wmtr, wtr);
-    if (cos_theta_t3 != 0.0f && dot(wtr, wh3) > 0.0f && cos_mi3 > 0.0f &&
-        dot(wmtr, -wtrt) > 0.0f &&
+    if (cos_theta_t3 != 0.0f && cos_mi3 > 0.0f &&
         microfacet_visible(wtr, -wtrt, make_float3(wmtr.x, 0.0f, wmtr.z), wh3)) {
       const Spectrum T3 = make_spectrum(1.0f - R3);
 
@@ -749,7 +750,9 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
                                      2.0f * cos(phi_tr - gamma_mt) :
                                      -len(to_point(gamma_mt, b) - to_point(gamma_mtr, b))));
 
-      TRT = bsdf->extra->TRT * T1 * R2 * T3 * A_t * A_tr;
+      TRT = bsdf->extra->TRT * T1 * R2 * T3 * A_t * A_tr *
+            bsdf_Go<m_type>(roughness2, cos_mi2, dot(wmt, -wtr)) *
+            bsdf_Go<m_type>(roughness2, cos_mi3, dot(wmtr, -wtrt));
     }
   }
 
@@ -765,40 +768,20 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
   }
 
   float3 local_O;
-  float visibility = 0.0f;
-  int label = LABEL_GLOSSY;
 
   sample_lobe *= total_energy;
   if (sample_lobe < r) {
     local_O = wr;
     *eval = R / r * total_energy;
-
-    if (microfacet_visible(wi, wr, wmi_, wh1)) {
-      visibility = bsdf_Go<m_type>(roughness2, cos_mi1, dot(wmi, wr));
-    }
   }
   else if (sample_lobe < (r + tt)) {
     local_O = wtt;
     *eval = TT / tt * total_energy;
-
-    if (microfacet_visible(wi, -wt, wmi_, wh1) && microfacet_visible(-wt, -wtt, wmt_, wh2)) {
-      visibility = bsdf_Go<m_type>(roughness2, cos_mi1, dot(wmi, -wt)) *
-                   bsdf_Go<m_type>(roughness2, cos_mi2, dot(wmt, -wtt));
-    }
   }
   else { /* if (sample_lobe >= (r + tt)) */
     local_O = wtrt;
     *eval = TRT / trt * total_energy;
-
-    if (microfacet_visible(wi, -wt, wmi_, wh1)) {
-      visibility = bsdf_Go<m_type>(roughness2, cos_mi1, dot(wmi, -wt)) *
-                   bsdf_Go<m_type>(roughness2, cos_mi2, dot(wmt, -wtr)) *
-                   bsdf_Go<m_type>(roughness2, cos_mi3, dot(wmtr, -wtrt));
-    }
   }
-  label |= LABEL_REFLECT;
-
-  *eval *= visibility;
 
   /* Get local coordinate system. */
   const float3 X = bsdf->N;
@@ -812,7 +795,7 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
    * already factored in the value so this value is only used for MIS. */
   *pdf = 1.0f;
 
-  return label;
+  return LABEL_GLOSSY | LABEL_REFLECT;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
