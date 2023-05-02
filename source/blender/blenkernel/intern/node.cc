@@ -2456,13 +2456,6 @@ bNode *node_copy_with_mapping(bNodeTree *dst_tree,
     node_dst->typeinfo->copyfunc_api(&ptr, &node_src);
   }
 
-  /* Reset the declaration of the new node in real tree. */
-  if (dst_tree != nullptr) {
-    /* TODO: Moved to caller because sometimes this depends on another node that isn't copid yet.
-     * Commit this separately or find a different solution. */
-    // nodeDeclarationEnsure(dst_tree, node_dst);
-  }
-
   return node_dst;
 }
 
