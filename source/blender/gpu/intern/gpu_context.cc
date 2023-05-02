@@ -344,6 +344,7 @@ static void gpu_backend_create()
 void gpu_backend_delete_resources()
 {
   BLI_assert(g_backend);
+  g_backend->delete_resources();
 }
 
 void gpu_backend_discard()
