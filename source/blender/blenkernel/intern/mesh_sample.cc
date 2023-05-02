@@ -461,7 +461,6 @@ void BaryWeightSampleFn::evaluate_source(fn::GField src_field)
 {
   const Mesh &mesh = *source_.get_mesh_for_read();
   looptris_ = mesh.looptris();
-
   /* Use the most complex domain for now, ensuring no information is lost. In the future, it should
    * be possible to use the most complex domain required by the field inputs, to simplify sampling
    * and avoid domain conversions. */

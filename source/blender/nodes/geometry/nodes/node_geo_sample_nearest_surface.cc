@@ -218,8 +218,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   GField field = get_input_attribute_field(params, data_type);
   auto sample_op = FieldOperation::Create(
-      std::make_shared<bke::mesh_surface_sample::BaryWeightSampleFn>(std::move(geometry),
-                                                                     std::move(field)),
+      std::make_shared<bke::mesh_surface_sample::BaryWeightSampleFn>(geometry, std::move(field)),
       {triangle_indices, bary_weights});
 
   output_attribute_field(params, GField(sample_op));

@@ -200,7 +200,6 @@ class RaycastFunction : public mf::MultiFunction {
   RaycastFunction(GeometrySet target) : target_(std::move(target))
   {
     target_.ensure_owns_direct_data();
-
     static const mf::Signature signature = []() {
       mf::Signature signature;
       mf::SignatureBuilder builder{"Raycast", signature};
@@ -217,7 +216,7 @@ class RaycastFunction : public mf::MultiFunction {
     this->set_signature(&signature);
   }
 
-  void call(const IndexMask mask, mf::Params params, mf::Context /*context*/) const override
+  void call(IndexMask mask, mf::Params params, mf::Context /*context*/) const override
   {
     BLI_assert(target_.has_mesh());
     const Mesh &mesh = *target_.get_mesh_for_read();
