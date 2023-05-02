@@ -90,7 +90,8 @@ static Vector<ZoneRelation> get_direct_zone_relations(
         }
         const ZoneRelation &relation_c = zone_relations[c];
         if (relation_a.child == relation_b.parent && relation_a.parent == relation_c.parent &&
-            relation_b.child == relation_c.child) {
+            relation_b.child == relation_c.child)
+        {
           transitive_relations.append_non_duplicates(c);
         }
       }

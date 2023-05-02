@@ -380,7 +380,8 @@ template<typename T>
       if (!attributes.add(*name,
                           *domain,
                           *data_type,
-                          AttributeInitShared(attribute_data, *attribute_sharing_info))) {
+                          AttributeInitShared(attribute_data, *attribute_sharing_info)))
+      {
         return false;
       }
     }
@@ -451,7 +452,8 @@ static Curves *try_load_curves(const DictionaryValue &io_geometry,
                                        bdata_sharing,
                                        curves.curves_num() + 1,
                                        &curves.curve_offsets,
-                                       &curves.runtime->curve_offsets_sharing_info)) {
+                                       &curves.runtime->curve_offsets_sharing_info))
+    {
       return cancel();
     }
   }
@@ -503,7 +505,8 @@ static Mesh *try_load_mesh(const DictionaryValue &io_geometry,
                                        bdata_sharing,
                                        mesh->totpoly + 1,
                                        &mesh->poly_offset_indices,
-                                       &mesh->runtime->poly_offsets_sharing_info)) {
+                                       &mesh->runtime->poly_offsets_sharing_info))
+    {
       return cancel();
     }
   }
@@ -821,13 +824,15 @@ void serialize_modifier_simulation_state(const ModifierSimulationState &state,
 
     auto io_state_items = io_zone->append_array("state_items");
     for (const MapItem<int, std::unique_ptr<SimulationStateItem>> &state_item_with_id :
-         zone_state.item_by_identifier.items()) {
+         zone_state.item_by_identifier.items())
+    {
       auto io_state_item = io_state_items->append_dict();
 
       io_state_item->append_int("id", state_item_with_id.key);
 
       if (const GeometrySimulationStateItem *geometry_state_item =
-              dynamic_cast<const GeometrySimulationStateItem *>(state_item_with_id.value.get())) {
+              dynamic_cast<const GeometrySimulationStateItem *>(state_item_with_id.value.get()))
+      {
         io_state_item->append_str("type", "GEOMETRY");
 
         const GeometrySet &geometry = geometry_state_item->geometry();
@@ -837,13 +842,14 @@ void serialize_modifier_simulation_state(const ModifierSimulationState &state,
       }
       else if (const AttributeSimulationStateItem *attribute_state_item =
                    dynamic_cast<const AttributeSimulationStateItem *>(
-                       state_item_with_id.value.get())) {
+                       state_item_with_id.value.get()))
+      {
         io_state_item->append_str("type", "ATTRIBUTE");
         io_state_item->append_str("name", attribute_state_item->name());
       }
       else if (const StringSimulationStateItem *string_state_item =
-                   dynamic_cast<const StringSimulationStateItem *>(
-                       state_item_with_id.value.get())) {
+                   dynamic_cast<const StringSimulationStateItem *>(state_item_with_id.value.get()))
+      {
         io_state_item->append_str("type", "STRING");
         const StringRefNull str = string_state_item->value();
         /* Small strings are inlined, larger strings are stored separately. */
@@ -858,7 +864,8 @@ void serialize_modifier_simulation_state(const ModifierSimulationState &state,
       }
       else if (const PrimitiveSimulationStateItem *primitive_state_item =
                    dynamic_cast<const PrimitiveSimulationStateItem *>(
-                       state_item_with_id.value.get())) {
+                       state_item_with_id.value.get()))
+      {
         const eCustomDataType data_type = cpp_type_to_custom_data_type(
             primitive_state_item->type());
         io_state_item->append_str("type", get_data_type_io_name(data_type));

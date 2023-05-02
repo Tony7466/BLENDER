@@ -168,7 +168,8 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
   if (link->tonode == node) {
     if (link->tosock->identifier == StringRef("__extend__")) {
       if (const NodeSimulationItem *item = NOD_geometry_simulation_output_add_item_from_socket(
-              &storage, link->fromnode, link->fromsock)) {
+              &storage, link->fromnode, link->fromsock))
+      {
         update_node_declaration_and_sockets(*ntree, *node);
         link->tosock = nodeFindSocket(
             node, SOCK_IN, socket_identifier_for_simulation_item(*item).c_str());
@@ -182,7 +183,8 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
     BLI_assert(link->fromnode == node);
     if (link->fromsock->identifier == StringRef("__extend__")) {
       if (const NodeSimulationItem *item = NOD_geometry_simulation_output_add_item_from_socket(
-              &storage, link->tonode, link->tosock)) {
+              &storage, link->tonode, link->tosock))
+      {
         update_node_declaration_and_sockets(*ntree, *node);
         link->fromsock = nodeFindSocket(
             node, SOCK_OUT, socket_identifier_for_simulation_item(*item).c_str());

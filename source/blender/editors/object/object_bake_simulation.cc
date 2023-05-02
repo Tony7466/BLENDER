@@ -127,8 +127,8 @@ static void bake_simulation_job_startjob(void *customdata,
                                            frame_step_size);
   const int old_frame = job.scene->r.cfra;
 
-  for (float frame_f = job.scene->r.sfra; frame_f <= job.scene->r.efra;
-       frame_f += frame_step_size) {
+  for (float frame_f = job.scene->r.sfra; frame_f <= job.scene->r.efra; frame_f += frame_step_size)
+  {
     const SubFrame frame{frame_f};
 
     if (G.is_break || (stop != nullptr && *stop)) {

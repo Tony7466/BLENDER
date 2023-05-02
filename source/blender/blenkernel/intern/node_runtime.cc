@@ -260,7 +260,8 @@ static Vector<const bNode *> get_implicit_origin_nodes(const bNodeTree &ntree, b
   Vector<const bNode *> origin_nodes;
   if (node.type == GEO_NODE_SIMULATION_OUTPUT) {
     for (const bNode *sim_input_node :
-         ntree.runtime->nodes_by_type.lookup(nodeTypeFind("GeometryNodeSimulationInput"))) {
+         ntree.runtime->nodes_by_type.lookup(nodeTypeFind("GeometryNodeSimulationInput")))
+    {
       const auto &storage = *static_cast<const NodeGeometrySimulationInput *>(
           sim_input_node->storage);
       if (storage.output_node_id == node.identifier) {

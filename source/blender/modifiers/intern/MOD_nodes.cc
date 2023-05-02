@@ -1187,7 +1187,8 @@ static void prepare_simulation_states_for_evaluation(const NodesModifierData &nm
       /* Try to use baked data. */
       const StringRefNull bmain_path = BKE_main_blendfile_path(bmain);
       if (nmd_orig.simulation_cache->cache_state() != bke::sim::CacheState::Baked &&
-          !bmain_path.is_empty()) {
+          !bmain_path.is_empty())
+      {
         nmd_orig.simulation_cache->try_discover_bake(
             bke::sim::get_meta_directory(*bmain, *ctx.object, nmd.modifier),
             bke::sim::get_bdata_directory(*bmain, *ctx.object, nmd.modifier));
@@ -1201,7 +1202,8 @@ static void prepare_simulation_states_for_evaluation(const NodesModifierData &nm
       if (nmd_orig.simulation_cache->cache_state() == bke::sim::CacheState::Invalid &&
           (current_frame == start_frame ||
            (sim_states.current == nullptr && sim_states.prev == nullptr &&
-            sim_states.next != nullptr))) {
+            sim_states.next != nullptr)))
+      {
         nmd_orig.simulation_cache->reset();
       }
     }
