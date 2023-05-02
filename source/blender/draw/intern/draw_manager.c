@@ -54,6 +54,7 @@
 #include "ED_view3d.h"
 
 #include "GPU_capabilities.h"
+#include "GPU_debug.h"
 #include "GPU_framebuffer.h"
 #include "GPU_immediate.h"
 #include "GPU_matrix.h"
@@ -1618,6 +1619,7 @@ void DRW_draw_view(const bContext *C)
 {
   View3D *v3d = CTX_wm_view3d(C);
   if (v3d) {
+    GPU_debug_capture_begin();
     Depsgraph *depsgraph = CTX_data_expect_evaluated_depsgraph(C);
     ARegion *region = CTX_wm_region(C);
     Scene *scene = DEG_get_evaluated_scene(depsgraph);
@@ -1631,6 +1633,7 @@ void DRW_draw_view(const bContext *C)
     DST.options.draw_background = (scene->r.alphamode == R_ADDSKY) ||
                                   (v3d->shading.type != OB_RENDER);
     DRW_draw_render_loop_ex(depsgraph, engine_type, region, v3d, viewport, C);
+    GPU_debug_capture_end();
   }
   else {
     Depsgraph *depsgraph = CTX_data_expect_evaluated_depsgraph(C);

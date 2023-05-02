@@ -40,10 +40,7 @@ void VKTexture::init(VkImage vk_image, VkImageLayout layout)
 
 void VKTexture::generate_mipmap() {}
 
-void VKTexture::copy_to(Texture * /*tex*/)
-{
-  BLI_assert_unreachable();
-}
+void VKTexture::copy_to(Texture * /*tex*/) {}
 
 void VKTexture::clear(eGPUDataFormat format, const void *data)
 {
@@ -231,6 +228,16 @@ static VkImageUsageFlagBits to_vk_image_usage(const eGPUTextureUsage usage,
   }
   if (usage & GPU_TEXTURE_USAGE_HOST_READ) {
     result = static_cast<VkImageUsageFlagBits>(result | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+  }
+
+  /* Disable some usages based on the given format flag to support more devices. */
+  if (format_flag & GPU_FORMAT_SRGB) {
+    /* NVIDIA devices don't create SRGB textures when it storage bit is set. */
+    result = static_cast<VkImageUsageFlagBits>(result & ~VK_IMAGE_USAGE_STORAGE_BIT);
+  }
+  if (format_flag & (GPU_FORMAT_DEPTH | GPU_FORMAT_STENCIL)) {
+    /* NVIDIA devices don't create depth textures when it storage bit is set. */
+    result = static_cast<VkImageUsageFlagBits>(result & ~VK_IMAGE_USAGE_STORAGE_BIT);
   }
 
   return result;

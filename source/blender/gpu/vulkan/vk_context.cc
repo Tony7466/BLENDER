@@ -89,6 +89,18 @@ void VKContext::activate()
     framebuffer->bind(false);
   }
 
+  if (ghost_context_) {
+    /* TODO deduplicate this with begin frame.*/
+    VkCommandBuffer command_buffer = VK_NULL_HANDLE;
+    GHOST_GetVulkanCommandBuffer(static_cast<GHOST_ContextHandle>(ghost_context_),
+                                 &command_buffer);
+    VKDevice &device = VKBackend::get().device_;
+    command_buffer_.init(device.device_get(), device.queue_get(), command_buffer);
+    command_buffer_.begin_recording();
+
+    device.descriptor_pools_get().reset();
+  }
+
   immActivate();
 }
 
