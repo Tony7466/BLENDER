@@ -241,7 +241,7 @@ void BKE_fcurves_free(ListBase *list);
 void BKE_fcurves_copy(ListBase *dst, ListBase *src);
 
 /* Set fcurve modifier name and ensure uniqueness.
- * Pass new name string when its edited otherwise pass empty string. */
+ * Pass new name string when it's been edited otherwise pass empty string. */
 void BKE_fmodifier_name_set(struct FModifier *fcm, const char *name);
 
 /**
