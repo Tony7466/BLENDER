@@ -16,6 +16,7 @@
 #include "BLI_math.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
+#include "BLI_string_utils.h"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 #ifdef _WIN32
@@ -66,9 +67,9 @@ anim_index_builder *IMB_index_builder_create(const char *name)
   fprintf(stderr, "Starting work on index: %s\n", name);
 
   BLI_strncpy(rv->name, name, sizeof(rv->name));
-  BLI_strncpy(rv->temp_name, name, sizeof(rv->temp_name));
 
-  strcat(rv->temp_name, temp_ext);
+  BLI_strncpy(rv->temp_name, name, sizeof(rv->temp_name));
+  BLI_string_join(rv->temp_name, sizeof(rv->temp_name), name, temp_ext);
 
   BLI_make_existing_file(rv->temp_name);
 
@@ -607,7 +608,8 @@ static struct proxy_output_ctx *alloc_proxy_output_ffmpeg(
   rv->orig_height = st->codecpar->height;
 
   if (st->codecpar->width != width || st->codecpar->height != height ||
-      st->codecpar->format != rv->c->pix_fmt) {
+      st->codecpar->format != rv->c->pix_fmt)
+  {
     rv->frame = av_frame_alloc();
 
     av_image_fill_arrays(rv->frame->data,
@@ -662,7 +664,8 @@ static void add_to_proxy_output_ffmpeg(struct proxy_output_ctx *ctx, AVFrame *fr
   }
 
   if (ctx->sws_ctx && frame &&
-      (frame->data[0] || frame->data[1] || frame->data[2] || frame->data[3])) {
+      (frame->data[0] || frame->data[1] || frame->data[2] || frame->data[3]))
+  {
     sws_scale(ctx->sws_ctx,
               (const uint8_t *const *)frame->data,
               frame->linesize,
@@ -908,7 +911,8 @@ static IndexBuildContext *index_ffmpeg_create_context(struct anim *anim,
   }
 
   if (context->proxy_ctx[0] == NULL && context->proxy_ctx[1] == NULL &&
-      context->proxy_ctx[2] == NULL && context->proxy_ctx[3] == NULL) {
+      context->proxy_ctx[2] == NULL && context->proxy_ctx[3] == NULL)
+  {
     avformat_close_input(&context->iFormatCtx);
     avcodec_free_context(&context->iCodecCtx);
     MEM_freeN(context);
