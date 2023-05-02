@@ -21,6 +21,7 @@
 #include "util/types.h"
 #include "util/unique_ptr.h"
 #include "util/vector.h"
+#include "util/set.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -120,8 +121,9 @@ class DeviceInfo {
 
 class Device {
   friend class device_sub_ptr;
-
- protected:
+  thread_mutex device_buffer_mutex;
+  set<device_memory *> device_buffers;
+protected:
   Device(const DeviceInfo &info_, Stats &stats_, Profiler &profiler_)
       : info(info_), stats(stats_), profiler(profiler_)
   {
@@ -293,6 +295,12 @@ class Device {
 
   static void free_memory();
 
+  /*
+   * Upload to the device any buffers that have changed
+   */
+  virtual void upload_changed();
+
+  virtual void register_buffer(device_memory *);
  protected:
   /* Memory allocation, only accessed through device_memory. */
   friend class MultiDevice;
@@ -317,7 +325,7 @@ class Device {
   static vector<DeviceInfo> hip_devices;
   static vector<DeviceInfo> metal_devices;
   static vector<DeviceInfo> oneapi_devices;
-  static uint devices_initialized_mask;
+  static uint devices_initialized_mask;  
 };
 
 /* Device, which is GPU, with some common functionality for GPU back-ends. */
@@ -348,7 +356,6 @@ class GPUDevice : public Device {
   /* Returns true if the texture info was copied to the device (meaning, some more
    * re-initialization might be needed). */
   virtual bool load_texture_info();
-
  protected:
   /* Memory allocation, only accessed through device_memory. */
   friend class device_memory;

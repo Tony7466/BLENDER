@@ -713,7 +713,7 @@ void GeometryManager::device_data_xfer_and_bvh_update(int idx,
         scene->times[idx].mesh = time;
       }
     });
-    sub_dscene->device_update_mesh(sub_device, &(scene->geom_sizes), progress);
+    //sub_dscene->device_update_mesh(sub_device, &(scene->geom_sizes), progress);
   }
 
   {
@@ -722,7 +722,7 @@ void GeometryManager::device_data_xfer_and_bvh_update(int idx,
         scene->times[idx].attrib = time;
       }
     });
-    sub_dscene->device_update_attributes(sub_device, &(scene->attrib_sizes), progress);
+    //sub_dscene->device_update_attributes(sub_device, &(scene->attrib_sizes), progress);
   }
 
   sub_dscene->device_scene_clear_modified();
@@ -909,10 +909,12 @@ void GeometryManager::device_update(Device *device,
     can_refit_scene_bvh = device_update_bvh_preprocess(device, dscene, scene, progress);
   }
   {
+    //device->upload_changed();
     size_t num_scenes = scene->dscenes.size();
     VLOG_INFO << "Rendering using " << num_scenes << " devices";
     /* Parallel upload the geometry data to the devices and
        calculate or refit the BVHs */
+    device->upload_changed();
     parallel_for(
         size_t(0), num_scenes, [=, &progress](const size_t idx) {
           device_data_xfer_and_bvh_update(idx,

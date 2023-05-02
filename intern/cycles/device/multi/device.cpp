@@ -31,6 +31,45 @@ class MultiDevice : public Device {
     int peer_island_index = -1;
   };
 
+  class device_memory_clone : public device_texture {
+  public:
+    device_memory_clone(const device_memory &mem, Device *sub_device, device_ptr sub_device_pointer)
+      : device_texture(sub_device, mem.name, 0, IMAGE_DATA_TYPE_FLOAT,INTERPOLATION_NONE,EXTENSION_REPEAT) //mem.type)
+    {
+      data_type = mem.data_type;
+      data_elements = mem.data_elements;
+      data_size = mem.data_size;
+      device_size = mem.device_size;
+      data_width = mem.data_width;
+      data_height = mem.data_height;
+      data_depth = mem.data_depth;
+      type = mem.type;
+      name = mem.name;
+
+      /* Pointers. */
+      device = sub_device;
+      device_pointer = sub_device_pointer;
+
+      host_pointer = mem.host_pointer;
+      shared_pointer = mem.shared_pointer;
+      /* reference counter for shared_pointer */
+      shared_counter = mem.shared_counter;
+      modified = mem.modified;
+
+      if(type == MEM_TEXTURE) {
+	const device_texture *p_tex = static_cast<const device_texture *>(&mem);
+	memcpy(&info, &(p_tex->info), sizeof(TextureInfo));
+	slot = p_tex->slot;
+      }
+    }
+
+    ~device_memory_clone() {
+      // Don't free anything
+      host_pointer = 0;
+      device_pointer = 0;
+    }
+  };
+
   /* Switch from list to a vector to make the parallel_for easily map to the integer id.
      Also id now could be used to access the real device pointer more quickly. Also, since
      the vector reallocates the memory on resize the sub-devices are stored as pointers. */
@@ -317,26 +356,25 @@ class MultiDevice : public Device {
 
     /* The tile buffers are allocated on each device (see below), so copy to all of them */
     foreach (const vector<SubDevice *> &island, peer_islands) {
+    //parallel_for_each (peer_islands.begin(), peer_islands.end(), [&](const vector<SubDevice *> &island) {
       SubDevice *owner_sub = find_suitable_mem_device(existing_key, island);
-      mem.device = owner_sub->device.get();
-      mem.device_pointer = (existing_key) ? owner_sub->ptr_map[existing_key] : 0;
-      mem.device_size = existing_size;
 
-      owner_sub->device->mem_copy_to(mem, size, offset);
-      owner_sub->ptr_map[key] = mem.device_pointer;
+      Device *sub_device = owner_sub->device.get();
+      device_ptr sub_device_pointer = (existing_key) ? owner_sub->ptr_map[existing_key] : 0;
+      device_memory_clone sub_mem(mem, sub_device, sub_device_pointer);
+      owner_sub->device->mem_copy_to(sub_mem, size, offset);
+      owner_sub->ptr_map[key] = sub_mem.device_pointer;
 
       if (mem.type == MEM_GLOBAL || mem.type == MEM_TEXTURE) {
-        /* Need to create texture objects and update pointer in kernel globals on all devices */
-        foreach (SubDevice *island_sub, island) {
-          if (island_sub != owner_sub) {
-            island_sub->device->mem_copy_to(mem, size, offset);
-          }
-        }
-      }
-    }
+	/* Need to create texture objects and update pointer in kernel globals on all devices */
+	foreach (SubDevice *island_sub, island) {
+	  if (island_sub != owner_sub) {
+	    island_sub->device->mem_copy_to(mem, size, offset);
+	  }
+	}
+      } 
+    }//);
 
-    mem.device = this;
-    mem.device_pointer = key;
     stats.mem_alloc(mem.device_size - existing_size);
   }
 
@@ -442,6 +480,41 @@ class MultiDevice : public Device {
     foreach (auto &sub, devices) {
       sub->device->foreach_device(callback);
     }
+  }
+
+  virtual void upload_changed() override
+  {
+    //foreach (const vector<SubDevice *> &island, peer_islands) {
+    parallel_for_each (peer_islands.begin(), peer_islands.end(), [&](const vector<SubDevice *> &island) {
+      for (const device_memory *buffer: device_buffers) {
+	VLOG_INFO << "Checking " << buffer->name << " on " << this;
+        if (buffer->modified) {	  
+	  device_ptr existing_key = buffer->device_pointer;
+	  device_ptr key = (existing_key) ? existing_key : unique_key++;
+	  size_t existing_size = buffer->device_size;
+
+	  SubDevice *owner_sub = find_suitable_mem_device(existing_key, island);	  
+	  Device *sub_device = owner_sub->device.get();
+	  device_ptr sub_device_pointer = (existing_key) ? owner_sub->ptr_map[existing_key] : 0;
+	  device_memory_clone sub_mem(*buffer, sub_device, sub_device_pointer);
+              
+          VLOG_INFO << "Uploading to " << buffer->name;
+	  owner_sub->device->mem_copy_to(sub_mem, existing_size, 0);
+	  owner_sub->ptr_map[key] = sub_mem.device_pointer;
+	  
+	  if (sub_mem.type == MEM_GLOBAL || sub_mem.type == MEM_TEXTURE) {
+	    /* Need to create texture objects and update pointer in kernel globals on all devices */
+	    foreach (SubDevice *island_sub, island) {
+	      if (island_sub != owner_sub) {
+		island_sub->device->mem_copy_to(sub_mem, existing_size, 0);
+	      }
+	    }
+	  }
+	  stats.mem_alloc(sub_mem.device_size - existing_size);
+	}
+      }
+    }
+      );
   }
 };
 

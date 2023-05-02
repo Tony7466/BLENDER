@@ -246,7 +246,8 @@ class device_memory {
   void *shared_pointer;
   /* reference counter for shared_pointer */
   int shared_counter;
-
+  bool modified;
+  
   virtual ~device_memory();
 
   void swap_device(Device *new_device, size_t new_device_size, device_ptr new_device_ptr);
@@ -296,7 +297,6 @@ class device_memory {
   size_t original_device_size;
   Device *original_device;
   bool need_realloc_;
-  bool modified;
   bool shared_mem;
 };
 

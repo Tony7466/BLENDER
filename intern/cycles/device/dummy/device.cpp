@@ -36,6 +36,7 @@ class DummyDevice : public Device {
   virtual void mem_free(device_memory &) override {}
 
   virtual void const_copy_to(const char *, void *, size_t) override {}
+  virtual void upload_changed() override {}
 };
 
 Device *device_dummy_create(const DeviceInfo &info, Stats &stats, Profiler &profiler)
