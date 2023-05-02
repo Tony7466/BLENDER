@@ -69,7 +69,8 @@ VKPipeline VKPipeline::create_compute_pipeline(
                                1,
                                &pipeline_info,
                                vk_allocation_callbacks,
-                               &vk_pipeline) != VK_SUCCESS) {
+                               &vk_pipeline) != VK_SUCCESS)
+  {
     return VKPipeline();
   }
 
