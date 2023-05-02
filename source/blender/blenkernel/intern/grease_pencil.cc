@@ -92,7 +92,7 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
         break;
       }
     }
-    grease_pencil_dst->drawing_array[i]->user_count = src_drawing_base->user_count;
+    /* TODO: Update drawing user counts. */
   }
 
   /* Do not copy layer tree storage. */
@@ -900,11 +900,12 @@ void GreasePencil::add_empty_drawings(const int add_size)
   for (const int i : new_drawings.index_range()) {
     new_drawings[i] = reinterpret_cast<GreasePencilDrawingBase *>(
         MEM_new<GreasePencilDrawing>(__func__));
-    new_drawings[i]->user_count = 0;
     GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(new_drawings[i]);
     new (&drawing->geometry) bke::CurvesGeometry();
     drawing->runtime = MEM_new<bke::GreasePencilDrawingRuntime>(__func__);
   }
+
+  /* TODO: Update drawing user counts. */
 }
 
 void GreasePencil::remove_drawing(const int index_to_remove)
