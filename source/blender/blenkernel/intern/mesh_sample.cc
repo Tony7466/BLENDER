@@ -377,7 +377,9 @@ BaryWeightFromPositionFn::BaryWeightFromPositionFn(GeometrySet geometry)
   looptris_ = mesh.looptris();
 }
 
-void BaryWeightFromPositionFn::call(IndexMask mask, mf::Params params, mf::Context context) const
+void BaryWeightFromPositionFn::call(IndexMask mask,
+                                    mf::Params params,
+                                    mf::Context /*context*/) const
 {
   const VArraySpan<float3> sample_positions = params.readonly_single_input<float3>(0, "Position");
   const VArraySpan<int> triangle_indices = params.readonly_single_input<int>(1, "Triangle Index");
@@ -413,7 +415,7 @@ NearestWeightFromPositionFn::NearestWeightFromPositionFn(GeometrySet geometry)
 
 void NearestWeightFromPositionFn::call(IndexMask mask,
                                        mf::Params params,
-                                       mf::Context context) const
+                                       mf::Context /*context*/) const
 {
   const VArraySpan<float3> sample_positions = params.readonly_single_input<float3>(0, "Position");
   const VArraySpan<int> triangle_indices = params.readonly_single_input<int>(1, "Triangle Index");
