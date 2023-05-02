@@ -1796,7 +1796,7 @@ void MSLGeneratorInterface::prepare_from_createinfo(const shader::ShaderCreateIn
           msl_tex.name = res.sampler.name;
           msl_tex.access = access;
           msl_tex.slot = texture_slot_id++;
-          msl_tex.location = (create_info_->auto_resource_location_) ? msl_tex.slot: res.slot;
+          msl_tex.location = (create_info_->auto_resource_location_) ? msl_tex.slot : res.slot;
           msl_tex.is_texture_sampler = true;
           BLI_assert(msl_tex.slot < MTL_MAX_TEXTURE_SLOTS);
 
@@ -1824,7 +1824,7 @@ void MSLGeneratorInterface::prepare_from_createinfo(const shader::ShaderCreateIn
           msl_image.name = res.image.name;
           msl_image.access = access;
           msl_image.slot = texture_slot_id++;
-          msl_image.location = (create_info_->auto_resource_location_) ? msl_image.slot: res.slot;
+          msl_image.location = (create_info_->auto_resource_location_) ? msl_image.slot : res.slot;
           msl_image.is_texture_sampler = false;
           BLI_assert(msl_image.slot < MTL_MAX_TEXTURE_SLOTS);
 
@@ -1840,10 +1840,11 @@ void MSLGeneratorInterface::prepare_from_createinfo(const shader::ShaderCreateIn
 
           /* We maintain two bind indices. "Slot" refers to the storage index buffer(N) in which
            * we will bind the resource. "Location" refers to the explicit bind index specified
-           * in ShaderCreateInfo. 
-           * NOTE: ubo.slot is offset by one, as first UBO slot is reserved for push constant data. */
-          ubo.slot = 1+(ubo_buffer_slot_id_++);
-          ubo.location = (create_info_->auto_resource_location_) ? ubo.slot: res.slot;
+           * in ShaderCreateInfo.
+           * NOTE: ubo.slot is offset by one, as first UBO slot is reserved for push constant data.
+           */
+          ubo.slot = 1 + (ubo_buffer_slot_id_++);
+          ubo.location = (create_info_->auto_resource_location_) ? ubo.slot : res.slot;
 
           BLI_assert(ubo.location >= 0 && ubo.location < MTL_MAX_BUFFER_BINDINGS);
 
@@ -1872,7 +1873,7 @@ void MSLGeneratorInterface::prepare_from_createinfo(const shader::ShaderCreateIn
            * we will bind the resource. "Location" refers to the explicit bind index specified
            * in ShaderCreateInfo. */
           ssbo.slot = storage_buffer_slot_id_++;
-          ssbo.location = (create_info_->auto_resource_location_) ? ssbo.slot: res.slot;
+          ssbo.location = (create_info_->auto_resource_location_) ? ssbo.slot : res.slot;
 
           BLI_assert(ssbo.location >= 0 && ssbo.location < MTL_MAX_BUFFER_BINDINGS);
 
@@ -2121,8 +2122,8 @@ std::string MSLGeneratorInterface::generate_msl_fragment_entry_stub()
   out << generate_msl_uniform_undefs(ShaderStage::FRAGMENT);
 
   /* Early fragment tests. */
-  if(uses_early_fragment_test) {
-  out << "[[early_fragment_tests]]" << std::endl;
+  if (uses_early_fragment_test) {
+    out << "[[early_fragment_tests]]" << std::endl;
   }
 
   /* Generate function entry point signature w/ resource bindings and inputs. */
@@ -2282,7 +2283,8 @@ void MSLGeneratorInterface::generate_msl_textures_input_string(std::stringstream
   BLI_assert(this->texture_samplers.size() <= GPU_max_textures_vert());
   for (const MSLTextureResource &tex : this->texture_samplers) {
     if (bool(tex.stage & stage)) {
-      out << parameter_delimiter(is_first_parameter) << "\n\t" << tex.get_msl_typestring(false) << " [[texture(" << tex.slot << ")]]";
+      out << parameter_delimiter(is_first_parameter) << "\n\t" << tex.get_msl_typestring(false)
+          << " [[texture(" << tex.slot << ")]]";
     }
   }
 
@@ -2302,7 +2304,8 @@ void MSLGeneratorInterface::generate_msl_textures_input_string(std::stringstream
     BLI_assert(this->texture_samplers.size() <= MTL_MAX_DEFAULT_SAMPLERS);
     for (const MSLTextureResource &tex : this->texture_samplers) {
       if (bool(tex.stage & stage)) {
-        out << parameter_delimiter(is_first_parameter) << "\n\tsampler " << tex.name << "_sampler [[sampler(" << tex.slot << ")]]";
+        out << parameter_delimiter(is_first_parameter) << "\n\tsampler " << tex.name
+            << "_sampler [[sampler(" << tex.slot << ")]]";
       }
     }
 

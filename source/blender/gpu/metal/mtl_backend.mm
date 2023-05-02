@@ -459,9 +459,9 @@ void MTLBackend::compute_dispatch(int groups_x_len, int groups_y_len, int groups
   }
 }
 
- void MTLBackend::compute_dispatch_indirect(StorageBuf *indirect_buf)
-  {
-    /* Fetch Context.
+void MTLBackend::compute_dispatch_indirect(StorageBuf *indirect_buf)
+{
+  /* Fetch Context.
    * With Metal, workload submission and resource management occurs within the context.
    * Call compute dispatch on valid context. */
   MTLContext *ctx = MTLContext::get();
@@ -469,7 +469,7 @@ void MTLBackend::compute_dispatch(int groups_x_len, int groups_y_len, int groups
   if (ctx) {
     ctx->compute_dispatch_indirect(indirect_buf);
   }
-  }
+}
 
 /** \} */
 

@@ -144,7 +144,7 @@ uint32_t MTLShaderInterface::add_storage_block(uint32_t name_offset,
     size += 16 - (size % 16);
   }
 
-BLI_assert(buffer_index < MTL_MAX_BUFFER_BINDINGS);
+  BLI_assert(buffer_index < MTL_MAX_BUFFER_BINDINGS);
 
   MTLShaderBufferBlock &ssbo_block = ssbos_[total_storage_blocks_];
   ssbo_block.name_offset = name_offset;
@@ -511,7 +511,8 @@ uint32_t MTLShaderInterface::get_storage_block_size(uint32_t block_index) const
   return (block_index < total_storage_blocks_) ? ssbos_[block_index].size : 0;
 }
 
-uint32_t MTLShaderInterface::get_max_buffer_index() const {
+uint32_t MTLShaderInterface::get_max_buffer_index() const
+{
   /* PushConstantBlock + All uniform blocks + all storage blocks. */
   return 1 + get_total_uniform_blocks() + get_total_storage_blocks();
 }
