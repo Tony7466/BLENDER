@@ -1826,7 +1826,7 @@ static int font_cursor_text_index_from_event(bContext *C, Object *obedit, const 
   /* Convert to object space and scale by font size. */
   mul_m4_v3(obedit->world_to_object, mouse_loc);
 
-  float curs_loc[2] = {mouse_loc[0] / cu->fsize, mouse_loc[1] / cu->fsize};
+  float curs_loc[2] = {mouse_loc[0], mouse_loc[1]};
   return BKE_vfont_cursor_to_text_index(obedit, curs_loc);
 }
 
