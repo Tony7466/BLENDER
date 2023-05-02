@@ -607,19 +607,14 @@ void SEQ_retiming_sound_animation_data_set(const Scene *scene, const Sequence *s
     RetimingRange range = retiming_data.ranges[i];
     if (range.type == range.TRANSITION) {
 
-      RetimingRange previous = retiming_data.ranges[i - 1];
-      RetimingRange next = retiming_data.ranges[i + 1];
+      for (int frame = range.start; frame < range.end; frame++) {
+        /* We need number actual number of frames here. */
+        double normal_step = 1 / (double)seq->len;
 
-      int range_start = range.start;
-      float speed_prev = previous.speed;
-      float speed_next = next.speed;
-      int range_length = range.end - range.start - 1;
-      float speed_diff = speed_next - speed_prev;
-
-      for (int j = 0; j < range_length; j++) {
-        int frame = range_start + j;
-        float fac = j / static_cast<float>(range_length);
-        float speed_at_frame = speed_prev + fac * speed_diff;
+        // xxx who needs calculus, when you can have slow code?
+        double val_prev = seq_retiming_evaluate(seq, frame - 1);
+        double val = seq_retiming_evaluate(seq, frame);
+        double speed_at_frame = (val - val_prev) / normal_step;
         BKE_sound_set_scene_sound_pitch_at_frame(seq->scene_sound, frame, speed_at_frame, true);
       }
     }
