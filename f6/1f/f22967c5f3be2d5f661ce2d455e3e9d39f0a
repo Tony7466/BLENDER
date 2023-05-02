@@ -1,1 +1,2 @@
 Referenced by issue #102024, Malformed wired objects on Linux with Crocus driver
+Referenced by pull request #107536, Fix #107420: crash getting PTCacheID when baking scene rigid body world
