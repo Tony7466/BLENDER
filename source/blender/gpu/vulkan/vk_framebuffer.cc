@@ -284,6 +284,7 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
 {
   BLI_assert(dst);
   BLI_assert(planes == GPU_COLOR_BIT);
+  UNUSED_VARS_NDEBUG(planes);
 
   VKContext &context = *VKContext::get();
   if (!context.has_active_framebuffer()) {
