@@ -615,6 +615,20 @@ static void rna_float_print(FILE *f, float num)
   }
 }
 
+static const char *rna_ui_scale_type_string(const PropertyScaleType type)
+{
+  switch (type) {
+    case PROP_SCALE_LINEAR:
+      return "PROP_SCALE_LINEAR";
+    case PROP_SCALE_LOG:
+      return "PROP_SCALE_LOG";
+    case PROP_SCALE_CUBIC:
+      return "PROP_SCALE_CUBIC";
+  }
+  BLI_assert_unreachable();
+  return "";
+}
+
 static void rna_int_print(FILE *f, int64_t num)
 {
   if (num == INT_MIN) {
@@ -1794,7 +1808,7 @@ static char *rna_def_property_lookup_string_func(FILE *f,
   fprintf(f, "                }\n");
   fprintf(f, "            }\n");
   fprintf(f, "            else {\n");
-  fprintf(f, "                name = MEM_mallocN(namelen+1, \"name string\");\n");
+  fprintf(f, "                name = (char *)MEM_mallocN(namelen+1, \"name string\");\n");
   fprintf(f,
           "                %s_%s_get(&iter.ptr, name);\n",
           item_name_base->identifier,
@@ -1912,7 +1926,8 @@ static void rna_set_raw_offset(FILE *f, StructRNA *srna, PropertyRNA *prop)
 {
   PropertyDefRNA *dp = rna_find_struct_property_def(srna, prop);
 
-  fprintf(f, "\toffsetof(%s, %s), %d", dp->dnastructname, dp->dnaname, prop->rawtype);
+  fprintf(
+      f, "\toffsetof(%s, %s), (RawPropertyType)%d", dp->dnastructname, dp->dnaname, prop->rawtype);
 }
 
 static void rna_def_property_funcs(FILE *f, StructRNA *srna, PropertyDefRNA *dp)
@@ -3502,7 +3517,7 @@ static void rna_generate_internal_property_prototypes(BlenderRNA *UNUSED(brna),
 
   for (prop = srna->cont.properties.first; prop; prop = prop->next) {
     fprintf(f,
-            "%s rna_%s_%s;\n",
+            "extern %s rna_%s_%s;\n",
             rna_property_structname(prop->type),
             srna->identifier,
             prop->identifier);
@@ -4064,7 +4079,7 @@ static void rna_generate_property(FILE *f, StructRNA *srna, const char *nest, Pr
   rna_print_c_string(f, prop->translation_context);
   fprintf(f, ",\n");
   fprintf(f,
-          "\t%s, %s | %s, %s, %u, {%u, %u, %u}, %u,\n",
+          "\t%s, (PropertySubType)((int)%s | (int)%s), %s, %u, {%u, %u, %u}, %u,\n",
           RNA_property_typename(prop->type),
           rna_property_subtypename(prop->subtype),
           rna_property_subtype_unit(prop->subtype),
@@ -4089,7 +4104,7 @@ static void rna_generate_property(FILE *f, StructRNA *srna, const char *nest, Pr
     rna_set_raw_offset(f, srna, prop);
   }
   else {
-    fprintf(f, "\t0, -1");
+    fprintf(f, "\t0, PROP_RAW_UNSET");
   }
 
   /* our own type - collections/arrays only */
@@ -4174,8 +4189,7 @@ static void rna_generate_property(FILE *f, StructRNA *srna, const char *nest, Pr
               rna_function_string(fprop->getarray_ex),
               rna_function_string(fprop->setarray_ex),
               rna_function_string(fprop->range_ex));
-      rna_float_print(f, fprop->ui_scale_type);
-      fprintf(f, ", ");
+      fprintf(f, "%s, ", rna_ui_scale_type_string(fprop->ui_scale_type));
       rna_float_print(f, fprop->softmin);
       fprintf(f, ", ");
       rna_float_print(f, fprop->softmax);
@@ -4530,7 +4544,7 @@ static RNAProcessItem PROCESS_ITEMS[] = {
     {"rna_fluid.c", NULL, RNA_def_fluid},
     {"rna_material.c", "rna_material_api.c", RNA_def_material},
     {"rna_mesh.c", "rna_mesh_api.c", RNA_def_mesh},
-    {"rna_meta.c", "rna_meta_api.c", RNA_def_meta},
+    {"rna_meta.cc", "rna_meta_api.c", RNA_def_meta},
     {"rna_modifier.c", NULL, RNA_def_modifier},
     {"rna_gpencil_legacy_modifier.c", NULL, RNA_def_greasepencil_modifier},
     {"rna_shader_fx.c", NULL, RNA_def_shader_fx},
@@ -5356,8 +5370,14 @@ static int rna_preprocess(const char *outfile, const char *public_header_outfile
   for (i = 0; PROCESS_ITEMS[i].filename; i++) {
     strcpy(deffile, outfile);
     strcat(deffile, PROCESS_ITEMS[i].filename);
-    deffile[strlen(deffile) - 2] = '\0';
-    strcat(deffile, "_gen.c" TMP_EXT);
+    if (deffile[strlen(deffile) - 3] == '.') {
+      deffile[strlen(deffile) - 3] = '\0';
+      strcat(deffile, "_gen.cc" TMP_EXT);
+    }
+    else {
+      deffile[strlen(deffile) - 2] = '\0';
+      strcat(deffile, "_gen.c" TMP_EXT);
+    }
 
     if (status) {
       make_bad_file(deffile, __LINE__);

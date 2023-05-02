@@ -49,7 +49,7 @@ set(DEFSRC
   rna_mask.c
   rna_material.c
   rna_mesh.c
-  rna_meta.c
+  rna_meta.cc
   rna_modifier.c
   rna_movieclip.c
   rna_nla.c
