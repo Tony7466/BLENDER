@@ -52,8 +52,7 @@ VkImageAspectFlagBits to_vk_image_aspect_flag_bits(const eGPUTextureFormat forma
       return VK_IMAGE_ASPECT_COLOR_BIT;
     case GPU_DEPTH32F_STENCIL8:
     case GPU_DEPTH24_STENCIL8:
-      return static_cast<VkImageAspectFlagBits>(VK_IMAGE_ASPECT_DEPTH_BIT |
-                                                VK_IMAGE_ASPECT_STENCIL_BIT);
+      return static_cast<VkImageAspectFlagBits>(VK_IMAGE_ASPECT_DEPTH_BIT);
 
     /* Depth Formats. */
     case GPU_DEPTH_COMPONENT32F:
