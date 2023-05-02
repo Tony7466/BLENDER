@@ -77,51 +77,22 @@ class AntiAliasing {
     const float *sizeinv = DRW_viewport_invert_size_get();
     const float4 metrics = {sizeinv[0], sizeinv[1], size[0], size[1]};
 
-    if (anti_aliasing_enabled_) {
-      /* Stage 1: Edge detection. */
-      PassSimple &pass = edge_detect_ps_;
-      pass.init();
-      pass.framebuffer_set(&edge_detect_fb_);
-      pass.state_set(DRW_STATE_WRITE_COLOR);
-      pass.shader_set(shaders_.static_shader_get(ANTIALIASING_EDGE_DETECT));
-      pass.bind_texture("colorTex", &color_tx);
-      pass.bind_texture("revealTex", &reveal_tx);
-      pass.push_constant("viewportMetrics", metrics);
-      pass.push_constant("lumaWeight", luma_weight_);
-      pass.clear_color(float4(0.0f));
-      pass.draw_procedural(GPU_PRIM_TRIS, 1, 3);
-    }
-    if (anti_aliasing_enabled_) {
-      /* Stage 2: Blend Weight/Coord. */
-      PassSimple &pass = blend_weight_ps_;
-      pass.init();
+    anti_aliasing_pass(color_tx, reveal_tx, metrics);
 
-      pass.framebuffer_set(&blend_weight_fb_);
-      pass.state_set(DRW_STATE_WRITE_COLOR);
-      pass.shader_set(shaders_.static_shader_get(ANTIALIASING_BLEND_WEIGHT));
-      pass.bind_texture("edgesTex", &edge_detect_tx_);
-      pass.bind_texture("areaTex", smaa_area_tx_);
-      pass.bind_texture("searchTex", smaa_search_tx_);
-      pass.push_constant("viewportMetrics", metrics);
-      pass.clear_color(float4(0.0f));
-      pass.draw_procedural(GPU_PRIM_TRIS, 1, 3);
-    }
-    {
-      /* Stage 3: Resolve. */
-      PassSimple &pass = resolve_ps_;
-      pass.init();
-      pass.framebuffer_set(&output_fb_);
-      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
-      pass.shader_set(shaders_.static_shader_get(ANTIALIASING_RESOLVE));
-      /** \note use color_tx as dummy if AA is diabled. */
-      pass.bind_texture("blendTex", anti_aliasing_enabled_ ? &blend_weight_tx_ : &color_tx);
-      pass.bind_texture("colorTex", &color_tx);
-      pass.bind_texture("revealTex", &reveal_tx);
-      pass.push_constant("doAntiAliasing", anti_aliasing_enabled_);
-      pass.push_constant("onlyAlpha", draw_wireframe_);
-      pass.push_constant("viewportMetrics", metrics);
-      pass.draw_procedural(GPU_PRIM_TRIS, 1, 3);
-    }
+    /* Resolve pass. */
+    PassSimple &pass = resolve_ps_;
+    pass.init();
+    pass.framebuffer_set(&output_fb_);
+    pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
+    pass.shader_set(shaders_.static_shader_get(ANTIALIASING_RESOLVE));
+    /** \note use color_tx as dummy if AA is diabled. */
+    pass.bind_texture("blendTex", anti_aliasing_enabled_ ? &blend_weight_tx_ : &color_tx);
+    pass.bind_texture("colorTex", &color_tx);
+    pass.bind_texture("revealTex", &reveal_tx);
+    pass.push_constant("doAntiAliasing", anti_aliasing_enabled_);
+    pass.push_constant("onlyAlpha", draw_wireframe_);
+    pass.push_constant("viewportMetrics", metrics);
+    pass.draw_procedural(GPU_PRIM_TRIS, 1, 3);
   }
 
   void draw(Manager &manager, GPUTexture *dst_color_tx)
@@ -134,9 +105,7 @@ class AntiAliasing {
       edge_detect_tx_.acquire(render_size, GPU_RG8);
       edge_detect_fb_.ensure(GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(edge_detect_tx_));
       manager.submit(edge_detect_ps_);
-    }
 
-    if (anti_aliasing_enabled_) {
       blend_weight_tx_.acquire(render_size, GPU_RGBA8);
       blend_weight_fb_.ensure(GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(blend_weight_tx_));
       manager.submit(blend_weight_ps_);
@@ -148,6 +117,40 @@ class AntiAliasing {
     blend_weight_tx_.release();
 
     DRW_stats_group_end();
+  }
+
+ private:
+  void anti_aliasing_pass(TextureFromPool &color_tx,
+                          TextureFromPool &reveal_tx,
+                          const float4 metrics)
+  {
+    if (!anti_aliasing_enabled_) {
+      return;
+    }
+
+    /* Stage 1: Edge detection. */
+    edge_detect_ps_.init();
+    edge_detect_ps_.framebuffer_set(&edge_detect_fb_);
+    edge_detect_ps_.state_set(DRW_STATE_WRITE_COLOR);
+    edge_detect_ps_.shader_set(shaders_.static_shader_get(ANTIALIASING_EDGE_DETECT));
+    edge_detect_ps_.bind_texture("colorTex", &color_tx);
+    edge_detect_ps_.bind_texture("revealTex", &reveal_tx);
+    edge_detect_ps_.push_constant("viewportMetrics", metrics);
+    edge_detect_ps_.push_constant("lumaWeight", luma_weight_);
+    edge_detect_ps_.clear_color(float4(0.0f));
+    edge_detect_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
+
+    /* Stage 2: Blend Weight/Coord. */
+    blend_weight_ps_.init();
+    blend_weight_ps_.framebuffer_set(&blend_weight_fb_);
+    blend_weight_ps_.state_set(DRW_STATE_WRITE_COLOR);
+    blend_weight_ps_.shader_set(shaders_.static_shader_get(ANTIALIASING_BLEND_WEIGHT));
+    blend_weight_ps_.bind_texture("edgesTex", &edge_detect_tx_);
+    blend_weight_ps_.bind_texture("areaTex", smaa_area_tx_);
+    blend_weight_ps_.bind_texture("searchTex", smaa_search_tx_);
+    blend_weight_ps_.push_constant("viewportMetrics", metrics);
+    blend_weight_ps_.clear_color(float4(0.0f));
+    blend_weight_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
   }
 };
 

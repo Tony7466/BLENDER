@@ -41,7 +41,7 @@ ShaderModule::ShaderModule()
     const char *name = static_shader_create_info_name_get(eShaderType(i));
     if (name == nullptr) {
       std::cerr << "GPencil: Missing case for eShaderType(" << i
-                << ") in static_shader_create_info_name_get().";
+                << ") in static_shader_create_info_name_get()." << std::endl;
       BLI_assert(0);
     }
     const GPUShaderCreateInfo *create_info = GPU_shader_create_info_get(name);
@@ -105,7 +105,8 @@ GPUShader *ShaderModule::static_shader_get(eShaderType shader_type)
     shaders_[shader_type] = GPU_shader_create_from_info_name(shader_name);
 
     if (shaders_[shader_type] == nullptr) {
-      fprintf(stderr, "GPencil: error: Could not compile static shader \"%s\"\n", shader_name);
+      std::cerr << "GPencil: error: Could not compile static shader \"" << shader_name << "\""
+                << std::endl;
     }
     BLI_assert(shaders_[shader_type] != nullptr);
   }

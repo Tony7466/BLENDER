@@ -46,6 +46,11 @@ struct PaintOperationExecutor {
     Object *obact = CTX_data_active_object(&C);
     Object *ob_eval = DEG_get_evaluated_object(depsgraph, obact);
 
+    /**
+     * Note: We write to the evaluated object here, so that the additional copy from orig -> eval
+     * is not needed for every update. After the stroke is done, the result is written to the
+     * original object.
+     */
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob_eval->data);
     if (!grease_pencil.runtime->has_active_layer()) {
       /* TODO: create a new layer. */

@@ -184,17 +184,14 @@ static void grease_pencil_draw_mode_enter(bContext *C)
   wmMsgBus *mbus = CTX_wm_message_bus(C);
 
   Object *ob = CTX_data_active_object(C);
-  BKE_paint_ensure(scene->toolsettings, (Paint **)&scene->toolsettings->gp_paint);
-  // GpPaint *grease_pencil_paint = scene->toolsettings->gp_paint;
+  GpPaint *grease_pencil_paint = scene->toolsettings->gp_paint;
+  BKE_paint_ensure(scene->toolsettings, (Paint **)&grease_pencil_paint);
 
   ob->mode = OB_MODE_PAINT_GPENCIL;
 
-  /* Setup cursor color. BKE_paint_init() could be used, but creates an additional brush. */
-  // Paint *paint = BKE_paint_get_active_from_paintmode(scene, PAINT_MODE_GPENCIL);
-  // copy_v3_v3_uchar(paint->paint_cursor_col, PAINT_CURSOR_GREASE_PENCIL);
-  // paint->paint_cursor_col[3] = 128;
-
-  // ED_paint_cursor_start(&grease_pencil_paint->paint, GREASE_PENCIL_mode_poll_view3d);
+  /* TODO: Setup cursor color. BKE_paint_init() could be used, but creates an additional brush. */
+  /* TODO: Call ED_paint_cursor_start(...) */
+  
   paint_init_pivot(ob, scene);
 
   /* Necessary to change the object mode on the evaluated object. */

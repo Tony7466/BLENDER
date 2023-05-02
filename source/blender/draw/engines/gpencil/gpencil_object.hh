@@ -116,7 +116,7 @@ class ObjectModule {
     const bool is_stroke_order_3d = false; /* TODO */
     bool do_material_holdout = false;
     bool do_layer_blending = false;
-    bool object_has_vfx = false;  // TODO vfx.object_has_vfx(gpd);
+    bool object_has_vfx = false;  // TODO: vfx.object_has_vfx(gpd);
 
     uint material_offset = materials_.object_offset_get();
     for (auto i : IndexRange(BKE_object_material_count_eval(object))) {
@@ -152,8 +152,6 @@ class ObjectModule {
     GPUVertBuf *color_tx = DRW_cache_grease_pencil_color_buffer_get(object, current_frame_);
     GPUBatch *geom = DRW_cache_grease_pencil_get(object, current_frame_);
 
-    // grease_pencil.foreach_visible_drawing(current_frame_, [&](GreasePencilDrawing & /*drawing*/)
-    // {
     /* TODO(fclem): Pass per frame object matrix here. */
     ResourceHandle handle = manager.resource_handle(object_ref);
     gpObject &ob = objects_buf_.get_or_resize(handle.resource_index());
@@ -164,18 +162,20 @@ class ObjectModule {
     ob.material_offset = material_offset;
 
     if (do_layer_blending) {
+      /* TODO: Do layer blending. */
       // for (const LayerData &layer : frame.layers) {
-      // UNUSED_VARS(layer);
-      // if (has_blending(layer)) {
-      //   object_subpass.framebuffer_set(*vfx_fb.current());
-      // }
+      //    UNUSED_VARS(layer);
+      //    if (has_blending(layer)) {
+      //      object_subpass.framebuffer_set(*vfx_fb.current());
+      //    }
 
       /* TODO(fclem): Only draw subrange of geometry for this layer. */
       object_subpass.draw(geom, handle);
 
-      // if (has_blending(layer)) {
-      //   layer_blend_sync(object_ref, object_subpass);
-      // }
+      /* TODO: Do layer blending. */
+      //    if (has_blending(layer)) {
+      //      layer_blend_sync(object_ref, object_subpass);
+      //    }
       // }
     }
     else {
@@ -184,8 +184,8 @@ class ObjectModule {
       object_subpass.bind_texture("gp_col_tx", color_tx);
       object_subpass.draw(geom, handle);
     }
-    // });
 
+    /* TODO: Do object VFX. */
 #if 0
     if (object_has_vfx) {
       VfxContext vfx_ctx(object_subpass,
@@ -246,29 +246,6 @@ class ObjectModule {
   {
     return objects_buf_.size() > 0;
   }
-
- private:
-  // static float4 frame_tint_get(const bGPdata *gpd, const bGPDframe *gpf, int /* current_frame
-  // */)
-  // {
-  //   /* TODO(fclem): Onion color should rely on time and or frame id and not on runtime.onion_id.
-  //    * This should be evaluated at draw time as it is just a way of displaying the data. */
-  //   const bool use_onion_custom_col = (gpd->onion_flag & GP_ONION_GHOST_PREVCOL) != 0;
-  //   const bool use_onion_fade = (gpd->onion_flag & GP_ONION_FADE) != 0;
-  //   const bool use_next_col = gpf->runtime.onion_id > 0.0f;
-
-  //   const float *onion_col_custom = (use_onion_custom_col) ?
-  //                                       (use_next_col ? gpd->gcolor_next : gpd->gcolor_prev) :
-  //                                       U.gpencil_new_layer_col;
-
-  //   float4 tint = {UNPACK3(onion_col_custom), 1.0f};
-
-  //   tint[3] = use_onion_fade ? (1.0f / abs(gpf->runtime.onion_id)) : 0.5f;
-  //   tint[3] *= gpd->onion_factor;
-  //   tint[3] = (gpd->onion_factor > 0.0f) ? clamp_f(tint[3], 0.1f, 1.0f) :
-  //                                          clamp_f(tint[3], 0.01f, 1.0f);
-  //   return tint;
-  // }
 };
 
 }  // namespace blender::greasepencil

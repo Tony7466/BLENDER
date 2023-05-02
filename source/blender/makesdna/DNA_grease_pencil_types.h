@@ -180,7 +180,6 @@ typedef struct GreasePencilLayerMask {
   struct GreasePencilLayerMask *next, *prev;
   /**
    * The name of the layer that is the mask.
-   * \note Null-terminated.
    */
   char *layer_name;
   /**
@@ -235,13 +234,11 @@ typedef struct GreasePencilLayer {
   struct Object *parent;
   /**
    * Parent sub-object info. E.g. the name of a bone if the parent is an armature.
-   * \note Null-terminated.
    */
   char *parsubstr;
   /**
    * Name of a view layer. If used, the layer is only rendered on the specified view layer. Not
    * used for viewport rendering.
-   * \note Null-terminated.
    */
   char *viewlayer_name;
   /**
@@ -413,20 +410,10 @@ typedef struct GreasePencil {
   GreasePencilDrawingBase **drawing_array;
   int drawing_array_size;
   char _pad[4];
-#ifdef __cplusplus
-  void read_drawing_array(BlendDataReader *reader);
-  void write_drawing_array(BlendWriter *writer);
-  void free_drawing_array();
-#endif
+
   /* Only used for storage in the .blend file. */
   GreasePencilLayerTreeStorage layer_tree_storage;
-#ifdef __cplusplus
-  void save_layer_tree_to_storage();
-  void load_layer_tree_from_storage();
-  void read_layer_tree_storage(BlendDataReader *reader);
-  void write_layer_tree_storage(BlendWriter *writer);
-  void free_layer_tree_storage();
-#endif
+
   /**
    * An array of materials.
    */
@@ -446,17 +433,37 @@ typedef struct GreasePencil {
    */
   GreasePencilRuntimeHandle *runtime;
 #ifdef __cplusplus
+  /* GreasePencilDrawingBase array functions. */
+  void read_drawing_array(BlendDataReader *reader);
+  void write_drawing_array(BlendWriter *writer);
+  void free_drawing_array();
+
+  /* GreasePencilLayerTreeStorage functions. */
+  void save_layer_tree_to_storage();
+  void load_layer_tree_from_storage();
+  void read_layer_tree_storage(BlendDataReader *reader);
+  void write_layer_tree_storage(BlendWriter *writer);
+  void free_layer_tree_storage();
+
+  /* Drawings read/write access. */
   blender::Span<GreasePencilDrawingBase *> drawings() const;
   blender::MutableSpan<GreasePencilDrawingBase *> drawings_for_write();
-  void add_empty_drawings(int add_size);
-  void remove_drawing(int index);
-  void foreach_visible_drawing(int frame,
-                               blender::FunctionRef<void(GreasePencilDrawing &)> function);
+
+  /* Root group read/write access. */
   const blender::bke::greasepencil::LayerGroup &root_group() const;
   blender::bke::greasepencil::LayerGroup &root_group_for_write();
+
+  /* Layers read/write access. */
   blender::Span<const blender::bke::greasepencil::Layer *> layers() const;
   blender::Span<blender::bke::greasepencil::Layer *> layers_for_write();
 
+  void add_empty_drawings(int add_size);
+  void remove_drawing(int index);
+
+  void foreach_visible_drawing(int frame,
+                               blender::FunctionRef<void(GreasePencilDrawing &)> function);
+
+  /* For debugging purposes. */
   void print_layer_tree();
 #endif
 } GreasePencil;
