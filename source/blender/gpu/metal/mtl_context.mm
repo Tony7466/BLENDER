@@ -307,9 +307,7 @@ MTLContext::~MTLContext()
     if (this->pipeline_state.ssbo_bindings[i].bound &&
         this->pipeline_state.ssbo_bindings[i].ssbo != nullptr)
     {
-      GPUStorageBuf *ssbo = wrap(
-          static_cast<StorageBuf *>(this->pipeline_state.ssbo_bindings[i].ssbo));
-      GPU_storagebuf_unbind(ssbo);
+      this->pipeline_state.ssbo_bindings[i].ssbo->unbind();
     }
   }
 
@@ -1267,9 +1265,9 @@ bool MTLContext::ensure_uniform_buffer_bindings(
     const MTLShaderBufferBlock &ssbo = shader_interface->get_storage_block(ssbo_index);
 
     if (ssbo.buffer_index >= 0 && ssbo.location >= 0) {
-      /* Explicit lookup location for UBO in bind table.*/
+      /* Explicit lookup location for SSBO in bind table.*/
       const uint32_t ssbo_location = ssbo.location;
-      /* buffer(N) index of where to bind the UBO. */
+      /* buffer(N) index of where to bind the SSBO. */
       const uint32_t buffer_index = ssbo.buffer_index;
       id<MTLBuffer> ssbo_buffer = nil;
       int ssbo_size = 0;
@@ -1277,7 +1275,7 @@ bool MTLContext::ensure_uniform_buffer_bindings(
 
       if (this->pipeline_state.ssbo_bindings[ssbo_location].bound) {
 
-        /* Fetch UBO global-binding properties from slot. */
+        /* Fetch SSBO global-binding properties from slot. */
         ssbo_buffer = this->pipeline_state.ssbo_bindings[ssbo_location].ssbo->get_metal_buffer();
         ssbo_size = this->pipeline_state.ssbo_bindings[ssbo_location].ssbo->get_size();
 
@@ -1306,13 +1304,13 @@ bool MTLContext::ensure_uniform_buffer_bindings(
         uint32_t buffer_bind_index = pipeline_state_instance->base_storage_buffer_index +
                                      buffer_index;
 
-        /* Bind Vertex UBO. */
+        /* Bind Vertex SSBO. */
         if (bool(ssbo.stage_mask & ShaderStage::VERTEX)) {
           BLI_assert(buffer_bind_index >= 0 && buffer_bind_index < MTL_MAX_BUFFER_BINDINGS);
           rps.bind_vertex_buffer(ssbo_buffer, 0, buffer_bind_index);
         }
 
-        /* Bind Fragment UBOs. */
+        /* Bind Fragment SSBOs. */
         if (bool(ssbo.stage_mask & ShaderStage::FRAGMENT)) {
           BLI_assert(buffer_bind_index >= 0 && buffer_bind_index < MTL_MAX_BUFFER_BINDINGS);
           rps.bind_fragment_buffer(ssbo_buffer, 0, buffer_bind_index);
@@ -2128,40 +2126,43 @@ bool MTLContext::ensure_compute_pipeline_state()
 
 void MTLContext::compute_dispatch(int groups_x_len, int groups_y_len, int groups_z_len)
 {
-  /* Ensure all resources required by upcoming compute submission are correctly bound. */
-  if (this->ensure_compute_pipeline_state()) {
-    /* Shader instance. */
-    MTLShaderInterface *shader_interface = this->pipeline_state.active_shader->get_interface();
-    const MTLComputePipelineStateInstance &compute_pso_inst =
-        this->pipeline_state.active_shader->get_compute_pipeline_state();
-
-    /* Begin compute encoder. */
-    id<MTLComputeCommandEncoder> compute_encoder =
-        this->main_command_buffer.ensure_begin_compute_encoder();
-    BLI_assert(compute_encoder != nil);
-
-    /* Bind PSO. */
-    MTLComputeState &cs = this->main_command_buffer.get_compute_state();
-    cs.bind_pso(compute_pso_inst.pso);
-
-    /* Bind buffers. */
-    this->ensure_uniform_buffer_bindings(compute_encoder, shader_interface, compute_pso_inst);
-    /** Ensure resource bindings. */
-    /* Texture Bindings. */
-    /* We will iterate through all texture bindings on the context and determine if any of the
-     * active slots match those in our shader interface. If so, textures will be bound. */
-    if (shader_interface->get_total_textures() > 0) {
-      this->ensure_texture_bindings(compute_encoder, shader_interface, compute_pso_inst);
-    }
-
-    /* Dispatch compute. */
-    [compute_encoder dispatchThreadgroups:MTLSizeMake(max_ii(groups_x_len, 1),
-                                                      max_ii(groups_y_len, 1),
-                                                      max_ii(groups_z_len, 1))
-                    threadsPerThreadgroup:MTLSizeMake(compute_pso_inst.threadgroup_x_len,
-                                                      compute_pso_inst.threadgroup_y_len,
-                                                      compute_pso_inst.threadgroup_z_len)];
+  /* Ensure all resources required by upcoming compute submission are correctly bound to avoid
+   * out of bounds reads/writes. */
+  if (!this->ensure_compute_pipeline_state()) {
+    return;
   }
+
+  /* Shader instance. */
+  MTLShaderInterface *shader_interface = this->pipeline_state.active_shader->get_interface();
+  const MTLComputePipelineStateInstance &compute_pso_inst =
+      this->pipeline_state.active_shader->get_compute_pipeline_state();
+
+  /* Begin compute encoder. */
+  id<MTLComputeCommandEncoder> compute_encoder =
+      this->main_command_buffer.ensure_begin_compute_encoder();
+  BLI_assert(compute_encoder != nil);
+
+  /* Bind PSO. */
+  MTLComputeState &cs = this->main_command_buffer.get_compute_state();
+  cs.bind_pso(compute_pso_inst.pso);
+
+  /* Bind buffers. */
+  this->ensure_uniform_buffer_bindings(compute_encoder, shader_interface, compute_pso_inst);
+  /** Ensure resource bindings. */
+  /* Texture Bindings. */
+  /* We will iterate through all texture bindings on the context and determine if any of the
+   * active slots match those in our shader interface. If so, textures will be bound. */
+  if (shader_interface->get_total_textures() > 0) {
+    this->ensure_texture_bindings(compute_encoder, shader_interface, compute_pso_inst);
+  }
+
+  /* Dispatch compute. */
+  [compute_encoder dispatchThreadgroups:MTLSizeMake(max_ii(groups_x_len, 1),
+                                                    max_ii(groups_y_len, 1),
+                                                    max_ii(groups_z_len, 1))
+                  threadsPerThreadgroup:MTLSizeMake(compute_pso_inst.threadgroup_x_len,
+                                                    compute_pso_inst.threadgroup_y_len,
+                                                    compute_pso_inst.threadgroup_z_len)];
 }
 
 void MTLContext::compute_dispatch_indirect(StorageBuf *indirect_buf)
@@ -2197,7 +2198,6 @@ void MTLContext::compute_dispatch_indirect(StorageBuf *indirect_buf)
     id<MTLBuffer> mtl_indirect_buf = mtlssbo->get_metal_buffer();
     BLI_assert(mtl_indirect_buf != nil);
     if (mtl_indirect_buf == nil) {
-      printf("Metal Indirect Compute dispatch storage buffer does not exist.\n");
       MTL_LOG_WARNING("Metal Indirect Compute dispatch storage buffer does not exist.\n");
       return;
     }

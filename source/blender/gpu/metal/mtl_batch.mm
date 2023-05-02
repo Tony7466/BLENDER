@@ -910,7 +910,7 @@ void MTLBatch::draw_advanced_indirect(GPUStorageBuf *indirect_buf, intptr_t offs
   MTLPrimitiveType mtl_prim_type = gpu_prim_type_to_metal(this->prim_type);
 
   if (mtl_needs_topology_emulation(this->prim_type)) {
-    printf("Metal Topology emulation unsupported for draw indirect.\n");
+    BLI_assert_msg(false, "Metal Topology emulation unsupported for draw indirect.\n");
     return;
   }
 
@@ -919,7 +919,6 @@ void MTLBatch::draw_advanced_indirect(GPUStorageBuf *indirect_buf, intptr_t offs
   id<MTLBuffer> mtl_indirect_buf = mtlssbo->get_metal_buffer();
   BLI_assert(mtl_indirect_buf != nil);
   if (mtl_indirect_buf == nil) {
-    printf("Metal Indirect Draw Storage Buffer is nil.\n");
     MTL_LOG_WARNING("Metal Indirect Draw Storage Buffer is nil.\n");
     return;
   }
@@ -1097,4 +1096,4 @@ id<MTLBuffer> MTLBatch::get_emulated_toplogy_buffer(GPUPrimType &in_out_prim_typ
 
 /** \} */
 
-}  // blender::gpu
+}  // namespace blender::gpu

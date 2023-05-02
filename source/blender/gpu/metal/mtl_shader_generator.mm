@@ -719,7 +719,7 @@ static void print_resource(std::ostream &os, const ShaderCreateInfo::Resource &r
       const char *memory_scope = ((writeable) ? "device " : "constant ");
       if (array_offset == -1) {
         /* Create local class member as device pointer reference to bound SSBO.
-         * Given usage within a shader follows ssbo_name.ubo_element syntax, we can
+         * Given usage within a shader follows ssbo_name.ssbo_element syntax, we can
          * dereference the pointer as the compiler will optimize this data fetch.
          * To do this, we also give the UBO name a post-fix of `_local` to avoid
          * macro accessor collisions. */
