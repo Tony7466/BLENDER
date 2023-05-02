@@ -84,10 +84,15 @@ TEST(path_util, Normalize_Dot)
   NORMALIZE("/a/./././b/", "/a/b/");
 }
 /* #BLI_path_normalize: complex "/./" -> "/", "//" -> "/", "./path/../" -> "./". */
-TEST(path_util, Normalize_Complex)
+TEST(path_util, Normalize_ComplexAbsolute)
 {
   NORMALIZE("/a/./b/./c/./.././.././", "/a/");
   NORMALIZE("/a//.//b//.//c//.//..//.//..//.//", "/a/");
+}
+TEST(path_util, Normalize_ComplexRelative)
+{
+  NORMALIZE("a/b/c/d/e/f/g/../a/../b/../../c/../../../d/../../../..", ".");
+  NORMALIZE("a/b/c/d/e/f/g/../a/../../../../b/../../../c/../../d/..", ".");
 }
 /* #BLI_path_normalize: "//" -> "/" */
 TEST(path_util, Normalize_DoubleSlash)
@@ -565,42 +570,42 @@ TEST(path_util, Frame)
 
   {
     char path[FILE_MAX] = "";
-    ret = BLI_path_frame(path, 123, 1);
+    ret = BLI_path_frame(path, sizeof(path), 123, 1);
     EXPECT_TRUE(ret);
     EXPECT_STREQ(path, "123");
   }
 
   {
     char path[FILE_MAX] = "";
-    ret = BLI_path_frame(path, 123, 12);
+    ret = BLI_path_frame(path, sizeof(path), 123, 12);
     EXPECT_TRUE(ret);
     EXPECT_STREQ(path, "000000000123");
   }
 
   {
     char path[FILE_MAX] = "test_";
-    ret = BLI_path_frame(path, 123, 1);
+    ret = BLI_path_frame(path, sizeof(path), 123, 1);
     EXPECT_TRUE(ret);
     EXPECT_STREQ(path, "test_123");
   }
 
   {
     char path[FILE_MAX] = "test_";
-    ret = BLI_path_frame(path, 1, 12);
+    ret = BLI_path_frame(path, sizeof(path), 1, 12);
     EXPECT_TRUE(ret);
     EXPECT_STREQ(path, "test_000000000001");
   }
 
   {
     char path[FILE_MAX] = "test_############";
-    ret = BLI_path_frame(path, 1, 0);
+    ret = BLI_path_frame(path, sizeof(path), 1, 0);
     EXPECT_TRUE(ret);
     EXPECT_STREQ(path, "test_000000000001");
   }
 
   {
     char path[FILE_MAX] = "test_#_#_middle";
-    ret = BLI_path_frame(path, 123, 0);
+    ret = BLI_path_frame(path, sizeof(path), 123, 0);
     EXPECT_TRUE(ret);
     EXPECT_STREQ(path, "test_#_123_middle");
   }
@@ -608,14 +613,14 @@ TEST(path_util, Frame)
   /* intentionally fail */
   {
     char path[FILE_MAX] = "";
-    ret = BLI_path_frame(path, 123, 0);
+    ret = BLI_path_frame(path, sizeof(path), 123, 0);
     EXPECT_FALSE(ret);
     EXPECT_STREQ(path, "");
   }
 
   {
     char path[FILE_MAX] = "test_middle";
-    ret = BLI_path_frame(path, 123, 0);
+    ret = BLI_path_frame(path, sizeof(path), 123, 0);
     EXPECT_FALSE(ret);
     EXPECT_STREQ(path, "test_middle");
   }
@@ -623,13 +628,13 @@ TEST(path_util, Frame)
   /* negative frame numbers */
   {
     char path[FILE_MAX] = "test_####";
-    ret = BLI_path_frame(path, -1, 4);
+    ret = BLI_path_frame(path, sizeof(path), -1, 4);
     EXPECT_TRUE(ret);
     EXPECT_STREQ(path, "test_-0001");
   }
   {
     char path[FILE_MAX] = "test_####";
-    ret = BLI_path_frame(path, -100, 4);
+    ret = BLI_path_frame(path, sizeof(path), -100, 4);
     EXPECT_TRUE(ret);
     EXPECT_STREQ(path, "test_-0100");
   }
@@ -1054,7 +1059,8 @@ TEST(path_util, FrameGet)
     char head[FILE_MAX]; \
     char tail[FILE_MAX]; \
     ushort numdigits = 0; \
-    const int result = BLI_path_sequence_decode(path, head, tail, &numdigits); \
+    const int result = BLI_path_sequence_decode( \
+        path, head, sizeof(head), tail, sizeof(tail), &numdigits); \
     EXPECT_EQ(result, expect_result); \
     EXPECT_STREQ(head, expect_head); \
     EXPECT_STREQ(tail, expect_tail); \

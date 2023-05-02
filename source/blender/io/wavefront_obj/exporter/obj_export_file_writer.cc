@@ -519,7 +519,10 @@ static std::string float3_to_string(const float3 &numbers)
 MTLWriter::MTLWriter(const char *obj_filepath) noexcept(false)
 {
   mtl_filepath_ = obj_filepath;
-  const bool ok = BLI_path_extension_replace(mtl_filepath_.data(), FILE_MAX, ".mtl");
+  /* It only makes sense to replace this extension if it's at least as long as the existing one. */
+  BLI_assert(strlen(BLI_path_extension(obj_filepath)) == 4);
+  const bool ok = BLI_path_extension_replace(
+      mtl_filepath_.data(), mtl_filepath_.size() + 1, ".mtl");
   if (!ok) {
     throw std::system_error(ENAMETOOLONG, std::system_category(), "");
   }
@@ -607,8 +610,8 @@ void MTLWriter::write_bsdf_properties(const MTLMaterial &mtl, bool write_pbr)
     if (mtl.aniso_rot >= 0.0f) {
       fmt_handler_.write_mtl_float("anisor", mtl.aniso_rot);
     }
-    if (mtl.transmit_color.x > 0.0f || mtl.transmit_color.y > 0.0f ||
-        mtl.transmit_color.z > 0.0f) {
+    if (mtl.transmit_color.x > 0.0f || mtl.transmit_color.y > 0.0f || mtl.transmit_color.z > 0.0f)
+    {
       fmt_handler_.write_mtl_float3(
           "Tf", mtl.transmit_color.x, mtl.transmit_color.y, mtl.transmit_color.z);
     }
