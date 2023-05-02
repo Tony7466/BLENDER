@@ -8,6 +8,8 @@
  * Common field utilities and field definitions for geometry components.
  */
 
+#include "DNA_meshdata_types.h"
+
 #include "BKE_geometry_set.hh"
 
 #include "FN_field.hh"

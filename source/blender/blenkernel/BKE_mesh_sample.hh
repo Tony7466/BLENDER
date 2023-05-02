@@ -51,12 +51,12 @@ void sample_face_attribute(Span<MLoopTri> looptris,
                            IndexMask mask,
                            GMutableSpan dst);
 
-void sample_barycentric_weights(const Span<float3> vert_positions,
-                                const Span<int> corner_verts,
-                                const Span<MLoopTri> looptris,
-                                const Span<int> looptri_indices,
-                                const Span<float3> sample_positions,
-                                const IndexMask mask,
+void sample_barycentric_weights(Span<float3> vert_positions,
+                                Span<int> corner_verts,
+                                Span<MLoopTri> looptris,
+                                Span<int> looptri_indices,
+                                Span<float3> sample_positions,
+                                IndexMask mask,
                                 MutableSpan<float3> bary_coords);
 
 /**
