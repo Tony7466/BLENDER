@@ -8,6 +8,7 @@
 #include "imbuf.h"
 
 #include "BLI_math.h"
+#include "BLI_task.hh"
 #include "BLI_utildefines.h"
 #include "MEM_guardedalloc.h"
 
@@ -418,7 +419,10 @@ void IMB_gpu_clamp_half_float(ImBuf *image_buffer)
   int rect_float_len = image_buffer->x * image_buffer->y *
                        (image_buffer->channels == 0 ? 4 : image_buffer->channels);
 
-  for (int i = 0; i < rect_float_len; i++) {
-    image_buffer->rect_float[i] = clamp_f(image_buffer->rect_float[i], half_min, half_max);
-  }
+  blender::threading::parallel_for(
+      blender::IndexRange(rect_float_len), 16384, [&](const blender::IndexRange range) {
+        for (auto i : range) {
+          image_buffer->rect_float[i] = clamp_f(image_buffer->rect_float[i], half_min, half_max);
+        }
+      });
 }
