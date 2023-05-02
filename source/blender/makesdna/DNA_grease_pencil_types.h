@@ -172,7 +172,6 @@ typedef enum GreasePencilLayerMaskFlag {
  * A grease pencil layer mask stores the name of a layer that is the mask.
  */
 typedef struct GreasePencilLayerMask {
-  struct GreasePencilLayerMask *next, *prev;
   /**
    * The name of the layer that is the mask.
    */
@@ -183,6 +182,15 @@ typedef struct GreasePencilLayerMask {
   uint16_t flag;
   char _pad[6];
 } GreasePencilLayerMask;
+
+/**
+ * Storage for the layer masks.
+ */
+typedef struct GreasePencilLayerMaskStorage {
+  GreasePencilLayerMask *masks;
+  int masks_size;
+  char _pad[4];
+} GreasePencilLayerMaskStorage;
 
 /**
  * Type of parent of a layer. #GreasePencilLayer.parent_type
@@ -237,9 +245,9 @@ typedef struct GreasePencilLayer {
    */
   char *viewlayer_name;
   /**
-   * List of `GreasePencilLayerMask`. Only used for storage in the .blend file.
+   * Only used for storage in the .blend file.
    */
-  ListBase masks_storage;
+  GreasePencilLayerMaskStorage masks_storage;
   /**
    * Opacity of the layer.
    */
