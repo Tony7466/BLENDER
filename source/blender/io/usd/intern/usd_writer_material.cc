@@ -350,7 +350,8 @@ static void create_uvmap_shader(const USDExporterContext &usd_export_context,
     found_uv_node = true;
 
     if (NodeShaderUVMap *shader_uv_map = static_cast<NodeShaderUVMap *>(
-            uv_node_link->fromnode->storage)) {
+            uv_node_link->fromnode->storage))
+    {
       /* We need to make valid here because actual uv primvar has been. */
       std::string uv_set = pxr::TfMakeValidIdentifier(shader_uv_map->uv_map);
 
