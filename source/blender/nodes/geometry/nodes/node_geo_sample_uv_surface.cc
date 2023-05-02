@@ -2,6 +2,7 @@
 
 #include "BKE_attribute_math.hh"
 #include "BKE_mesh.hh"
+#include "BKE_mesh_sample.hh"
 #include "BKE_type_conversions.hh"
 
 #include "UI_interface.h"
@@ -127,8 +128,8 @@ class ReverseUVSampleFunction : public mf::MultiFunction {
       mf::SignatureBuilder builder{"Sample UV Surface", signature};
       builder.single_input<float2>("Sample UV");
       builder.single_output<bool>("Is Valid", mf::ParamFlag::SupportsUnusedOutput);
-      builder.single_output<int>("Triangle Index");
-      builder.single_output<float3>("Barycentric Weights");
+      builder.single_output<int>("Triangle Index", mf::ParamFlag::SupportsUnusedOutput);
+      builder.single_output<float3>("Barycentric Weights", mf::ParamFlag::SupportsUnusedOutput);
       return signature;
     }();
     this->set_signature(&signature);
@@ -139,8 +140,9 @@ class ReverseUVSampleFunction : public mf::MultiFunction {
     const VArraySpan<float2> sample_uvs = params.readonly_single_input<float2>(0, "Sample UV");
     MutableSpan<bool> is_valid = params.uninitialized_single_output_if_required<bool>(1,
                                                                                       "Is Valid");
-    MutableSpan<int> tri_index = params.uninitialized_single_output<int>(2, "Triangle Index");
-    MutableSpan<float3> bary_weights = params.uninitialized_single_output<float3>(
+    MutableSpan<int> tri_index = params.uninitialized_single_output_if_required<int>(
+        2, "Triangle Index");
+    MutableSpan<float3> bary_weights = params.uninitialized_single_output_if_required<float3>(
         3, "Barycentric Weights");
 
     for (const int i : mask) {
@@ -148,8 +150,12 @@ class ReverseUVSampleFunction : public mf::MultiFunction {
       if (!is_valid.is_empty()) {
         is_valid[i] = result.type == ReverseUVSampler::ResultType::Ok;
       }
-      tri_index[i] = result.looptri_index;
-      bary_weights[i] = result.bary_weights;
+      if (!tri_index.is_empty()) {
+        tri_index[i] = result.looptri_index;
+      }
+      if (!bary_weights.is_empty()) {
+        bary_weights[i] = result.bary_weights;
+      }
     }
   }
 
@@ -244,7 +250,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   /* Use the output of the UV sampling to interpolate the mesh attribute. */
   GField field = get_input_attribute_field(params, data_type);
   auto sample_op = FieldOperation::Create(
-      std::make_shared<bke::SampleMeshBarycentricFunction>(std::move(geometry), std::move(field)),
+      std::make_shared<bke::mesh_surface_sample::BaryWeightSampleFn>(std::move(geometry),
+                                                                     std::move(field)),
       {Field<int>(uv_op, 1), Field<float3>(uv_op, 2)});
   output_attribute_field(params, GField(sample_op, 0));
 }

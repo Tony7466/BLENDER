@@ -10,9 +10,13 @@
 #include "BLI_generic_virtual_array.hh"
 #include "BLI_math_vector_types.hh"
 
+#include "FN_field.hh"
+#include "FN_multi_function.hh"
+
 #include "DNA_meshdata_types.h"
 
 #include "BKE_attribute.h"
+#include "BKE_geometry_fields.hh"
 
 struct Mesh;
 struct BVHTreeFromMesh;
@@ -50,14 +54,6 @@ void sample_face_attribute(Span<MLoopTri> looptris,
                            const GVArray &src,
                            IndexMask mask,
                            GMutableSpan dst);
-
-void sample_barycentric_weights(Span<float3> vert_positions,
-                                Span<int> corner_verts,
-                                Span<MLoopTri> looptris,
-                                Span<int> looptri_indices,
-                                Span<float3> sample_positions,
-                                IndexMask mask,
-                                MutableSpan<float3> bary_coords);
 
 /**
  * Find randomly distributed points on the surface of a mesh within a 3D sphere. This does not
@@ -132,5 +128,57 @@ inline T sample_corner_attribute_with_bary_coords(const float3 &bary_weights,
                               corner_attribute[looptri.tri[1]],
                               corner_attribute[looptri.tri[2]]);
 }
+
+/**
+ * Calculate barycentric weights from triangle indices and positions within the triangles.
+ */
+class BaryWeightFromPositionFn : public mf::MultiFunction {
+  GeometrySet source_;
+  Span<float3> vert_positions_;
+  Span<int> corner_verts_;
+  Span<MLoopTri> looptris_;
+
+ public:
+  BaryWeightFromPositionFn(GeometrySet geometry);
+  void call(IndexMask mask, mf::Params params, mf::Context context) const;
+};
+
+/**
+ * Calculate face corner weights from triangle indices and positions within the triangles.
+ * The weights are 1 for the nearest corner and 0 for the two others.
+ */
+class NearestWeightFromPositionFn : public mf::MultiFunction {
+  GeometrySet source_;
+  Span<float3> vert_positions_;
+  Span<int> corner_verts_;
+  Span<MLoopTri> looptris_;
+
+ public:
+  NearestWeightFromPositionFn(GeometrySet geometry);
+  void call(IndexMask mask, mf::Params params, mf::Context context) const;
+};
+
+/**
+ * Evaluate an attribute on the input geometry and sample it with input barycentric weights and
+ * triangle indices.
+ */
+class BaryWeightSampleFn : public mf::MultiFunction {
+  mf::Signature signature_;
+
+  GeometrySet source_;
+  Span<MLoopTri> looptris_;
+  std::optional<bke::MeshFieldContext> source_context_;
+  std::unique_ptr<fn::FieldEvaluator> source_evaluator_;
+  const GVArray *source_data_;
+  eAttrDomain domain_;
+
+ public:
+  BaryWeightSampleFn(GeometrySet geometry, fn::GField src_field);
+
+  void call(IndexMask mask, mf::Params params, mf::Context context) const;
+
+ private:
+  void evaluate_source(fn::GField src_field);
+};
 
 }  // namespace blender::bke::mesh_surface_sample

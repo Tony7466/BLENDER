@@ -207,14 +207,12 @@ class RaycastFunction : public mf::MultiFunction {
       builder.single_input<float3>("Source Position");
       builder.single_input<float3>("Ray Direction");
       builder.single_input<float>("Ray Length");
-
       builder.single_output<bool>("Is Hit", mf::ParamFlag::SupportsUnusedOutput);
-      builder.single_output<float3>("Hit Position");
+      builder.single_output<float3>("Hit Position", mf::ParamFlag::SupportsUnusedOutput);
       builder.single_output<float3>("Hit Normal", mf::ParamFlag::SupportsUnusedOutput);
       builder.single_output<float>("Distance", mf::ParamFlag::SupportsUnusedOutput);
 
       builder.single_output<int>("Triangle Index", mf::ParamFlag::SupportsUnusedOutput);
-      builder.single_output<float3>("Barycentric Weights", mf::ParamFlag::SupportsUnusedOutput);
       return signature;
     }();
     this->set_signature(&signature);
@@ -222,19 +220,6 @@ class RaycastFunction : public mf::MultiFunction {
 
   void call(const IndexMask mask, mf::Params params, mf::Context /*context*/) const override
   {
-    MutableSpan<float3> hit_positions;
-    MutableSpan<int> hit_indices;
-    MutableSpan<float3> bary_weights = params.uninitialized_single_output_if_required<float3>(
-        8, "Barycentric Weights");
-    if (bary_weights.is_empty()) {
-      hit_positions = params.uninitialized_single_output_if_required<float3>(4, "Hit Position");
-      hit_indices = params.uninitialized_single_output_if_required<int>(7, "Triangle Index");
-    }
-    else {
-      hit_positions = params.uninitialized_single_output<float3>(4, "Hit Position");
-      hit_indices = params.uninitialized_single_output<int>(7, "Triangle Index");
-    }
-
     BLI_assert(target_.has_mesh());
     const Mesh &mesh = *target_.get_mesh_for_read();
 
@@ -244,25 +229,10 @@ class RaycastFunction : public mf::MultiFunction {
                     params.readonly_single_input<float3>(1, "Ray Direction"),
                     params.readonly_single_input<float>(2, "Ray Length"),
                     params.uninitialized_single_output_if_required<bool>(3, "Is Hit"),
-                    hit_indices,
-                    hit_positions,
+                    params.uninitialized_single_output_if_required<int>(7, "Triangle Index"),
+                    params.uninitialized_single_output_if_required<float3>(4, "Hit Position"),
                     params.uninitialized_single_output_if_required<float3>(5, "Hit Normal"),
                     params.uninitialized_single_output_if_required<float>(6, "Distance"));
-
-    if (!bary_weights.is_empty()) {
-      Vector<int64_t> hit_mask_indices;
-      const IndexMask hit_mask = index_mask_ops::find_indices_based_on_predicate(
-          mask, mask.size(), hit_mask_indices, [&](const int64_t i) {
-            return hit_indices[i] != -1;
-          });
-      bke::mesh_surface_sample::sample_barycentric_weights(mesh.vert_positions(),
-                                                           mesh.corner_verts(),
-                                                           mesh.looptris(),
-                                                           hit_indices,
-                                                           hit_positions,
-                                                           hit_mask,
-                                                           bary_weights);
-    }
   }
 };
 
@@ -358,27 +328,36 @@ static void node_geo_exec(GeoNodeExecParams params)
   auto direction_op = FieldOperation::Create(
       normalize_fn, {params.extract_input<Field<float3>>("Ray Direction")});
 
-  auto raycast_op = FieldOperation::Create(std::make_unique<RaycastFunction>(target),
-                                           {params.extract_input<Field<float3>>("Source Position"),
-                                            Field<float3>(direction_op),
-                                            params.extract_input<Field<float>>("Ray Length")});
+  auto op = FieldOperation::Create(std::make_unique<RaycastFunction>(target),
+                                   {params.extract_input<Field<float3>>("Source Position"),
+                                    Field<float3>(direction_op),
+                                    params.extract_input<Field<float>>("Ray Length")});
+  Field<float3> hit_position(op, 1);
 
-  params.set_output("Is Hit", Field<bool>(raycast_op, 0));
-  params.set_output("Hit Position", Field<float3>(raycast_op, 1));
-  params.set_output("Hit Normal", Field<float3>(raycast_op, 2));
-  params.set_output("Hit Distance", Field<float>(raycast_op, 3));
+  params.set_output("Is Hit", Field<bool>(op, 0));
+  params.set_output("Hit Position", hit_position);
+  params.set_output("Hit Normal", Field<float3>(op, 2));
+  params.set_output("Hit Distance", Field<float>(op, 3));
 
   if (GField field = get_input_attribute_field(params, data_type)) {
-    if (mapping == GEO_NODE_RAYCAST_INTERPOLATED) {
-      auto sample_op = FieldOperation::Create(
-          std::make_unique<bke::SampleMeshBarycentricFunction>(std::move(target),
-                                                               std::move(field)),
-          {Field<int>(raycast_op, 7), Field<float3>(raycast_op, 8)});
-      output_attribute_field(params, GField(sample_op, 0));
+    Field<int> triangle_index(op, 7);
+    Field<float3> bary_weights;
+    switch (mapping) {
+      case GEO_NODE_RAYCAST_INTERPOLATED:
+        bary_weights = Field<float3>(FieldOperation::Create(
+            std::make_shared<bke::mesh_surface_sample::BaryWeightFromPositionFn>(target),
+            {hit_position, triangle_index}));
+        break;
+      case GEO_NODE_RAYCAST_NEAREST:
+        bary_weights = Field<float3>(FieldOperation::Create(
+            std::make_shared<bke::mesh_surface_sample::NearestWeightFromPositionFn>(target),
+            {hit_position, triangle_index}));
     }
-    else {
-      // TODO
-    }
+    auto sample_op = FieldOperation::Create(
+        std::make_shared<bke::mesh_surface_sample::BaryWeightSampleFn>(std::move(target),
+                                                                       std::move(field)),
+        {triangle_index, bary_weights});
+    output_attribute_field(params, GField(sample_op));
   }
 }
 

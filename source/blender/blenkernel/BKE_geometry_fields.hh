@@ -8,8 +8,6 @@
  * Common field utilities and field definitions for geometry components.
  */
 
-#include "DNA_meshdata_types.h"
-
 #include "BKE_geometry_set.hh"
 
 #include "FN_field.hh"
@@ -327,33 +325,5 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
  */
 std::optional<eAttrDomain> try_detect_field_domain(const GeometryComponent &component,
                                                    const fn::GField &field);
-
-class SampleMeshBarycentricFunction : public mf::MultiFunction {
-  GeometrySet source_;
-  fn::GField src_field_;
-
-  /**
-   * Use the most complex domain for now ensuring no information is lost. In the future, it should
-   * be possible to use the most complex domain required by the field inputs, to simplify sampling
-   * and avoid domain conversions.
-   */
-  eAttrDomain domain_ = ATTR_DOMAIN_CORNER;
-
-  mf::Signature signature_;
-
-  std::optional<bke::MeshFieldContext> source_context_;
-  std::unique_ptr<fn::FieldEvaluator> source_evaluator_;
-  const GVArray *source_data_;
-
-  Span<MLoopTri> looptris_;
-
- public:
-  SampleMeshBarycentricFunction(GeometrySet geometry, fn::GField src_field);
-
-  void call(IndexMask mask, mf::Params params, mf::Context /*context*/) const;
-
- private:
-  void evaluate_source();
-};
 
 }  // namespace blender::bke

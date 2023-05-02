@@ -123,7 +123,7 @@ class SampleNearestSurfaceFunction : public mf::MultiFunction {
       mf::SignatureBuilder builder{"Sample Nearest Surface", signature};
       builder.single_input<float3>("Position");
       builder.single_output<int>("Triangle Index");
-      builder.single_output<float3>("Barycentric Weights");
+      builder.single_output<float3>("Sample Position");
       return signature;
     }();
     this->set_signature(&signature);
@@ -132,23 +132,11 @@ class SampleNearestSurfaceFunction : public mf::MultiFunction {
   void call(IndexMask mask, mf::Params params, mf::Context /*context*/) const override
   {
     const VArray<float3> &positions = params.readonly_single_input<float3>(0, "Position");
-    MutableSpan<int> tri_index = params.uninitialized_single_output<int>(2, "Triangle Index");
-    MutableSpan<float3> bary_weights = params.uninitialized_single_output<float3>(
-        3, "Barycentric Weights");
-
+    MutableSpan<int> triangle_index = params.uninitialized_single_output<int>(1, "Triangle Index");
+    MutableSpan<float3> sample_position = params.uninitialized_single_output<float3>(
+        2, "Sample Position");
     const Mesh &mesh = *source_.get_mesh_for_read();
-    BLI_assert(mesh.totpoly > 0);
-
-    Array<float3> sampled_positions(mask.min_array_size());
-    get_closest_mesh_looptris(mesh, positions, mask, tri_index, {}, sampled_positions);
-
-    bke::mesh_surface_sample::sample_barycentric_weights(mesh.vert_positions(),
-                                                         mesh.corner_verts(),
-                                                         mesh.looptris(),
-                                                         tri_index,
-                                                         sampled_positions,
-                                                         mask,
-                                                         bary_weights);
+    get_closest_mesh_looptris(mesh, positions, mask, triangle_index, {}, sample_position);
   }
 };
 
@@ -221,13 +209,18 @@ static void node_geo_exec(GeoNodeExecParams params)
   auto nearest_op = FieldOperation::Create(
       std::make_shared<SampleNearestSurfaceFunction>(geometry),
       {params.extract_input<Field<float3>>("Sample Position")});
+  Field<float3> nearest_positions(nearest_op, 0);
+  Field<int> triangle_indices(nearest_op, 1);
 
-  /* Note: #SampleMeshBarycentricFunction handles the -1 triangle index as a default value which
-   * isn't necessary for this operation, since there is always a "nearest" triangle. */
+  Field<float3> bary_weights = Field<float3>(FieldOperation::Create(
+      std::make_shared<bke::mesh_surface_sample::BaryWeightFromPositionFn>(geometry),
+      {triangle_indices, nearest_positions}));
+
   GField field = get_input_attribute_field(params, data_type);
   auto sample_op = FieldOperation::Create(
-      std::make_shared<bke::SampleMeshBarycentricFunction>(geometry, std::move(field)),
-      {Field<int>(nearest_op, 1), Field<float3>(nearest_op, 2)});
+      std::make_shared<bke::mesh_surface_sample::BaryWeightSampleFn>(std::move(geometry),
+                                                                     std::move(field)),
+      {triangle_indices, nearest_positions});
 
   output_attribute_field(params, GField(sample_op));
 }
