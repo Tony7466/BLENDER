@@ -891,12 +891,12 @@ int BLI_kdtree_nd_(calc_duplicates_fast)(const KDTree *tree,
 
   if (use_index_order) {
     int *order = kdtree_order(tree);
-    for (uint i = 0; i < tree->nodes_len; i++) {
+    for (int i = 0; i < tree->max_node_index + 1; i++) {
       const int node_index = order[i];
       if (node_index == -1) {
         continue;
       }
-      const int index = (int)i;
+      const int index = i;
       if (ELEM(duplicates[index], -1, index)) {
         p.search = index;
         copy_vn_vn(p.search_co, tree->nodes[node_index].co);
