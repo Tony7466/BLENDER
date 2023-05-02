@@ -1295,7 +1295,7 @@ const char *BLI_getenv(const char *env)
 bool BLI_make_existing_file(const char *name)
 {
   char di[FILE_MAX];
-  BLI_split_dir_part(name, di, sizeof(di));
+  BLI_path_split_dir_part(name, di, sizeof(di));
 
   /* Make if the dir doesn't exist. */
   return BLI_dir_create_recursive(di);
@@ -1479,39 +1479,51 @@ bool BLI_path_filename_ensure(char *filepath, size_t maxlen, const char *filenam
   return false;
 }
 
-void BLI_split_dirfile(
-    const char *string, char *dir, char *file, const size_t dirlen, const size_t filelen)
+static size_t path_split_dir_file_offset(const char *string)
+{
+  const char *lslash_str = BLI_path_slash_rfind(string);
+  const size_t lslash = lslash_str ? (size_t)(lslash_str - string) + 1 : 0;
+  return lslash;
+}
+
+void BLI_path_split_dir_file(
+    const char *string, char *dir, const size_t dirlen, char *file, const size_t filelen)
 {
 #ifdef DEBUG_STRSIZE
   memset(dir, 0xff, sizeof(*dir) * dirlen);
   memset(file, 0xff, sizeof(*file) * filelen);
 #endif
-  const char *lslash_str = BLI_path_slash_rfind(string);
-  const size_t lslash = lslash_str ? (size_t)(lslash_str - string) + 1 : 0;
-
-  if (dir) {
-    if (lslash) {
-      /* +1 to include the slash and the last char. */
-      BLI_strncpy(dir, string, MIN2(dirlen, lslash + 1));
-    }
-    else {
-      dir[0] = '\0';
-    }
+  const size_t lslash = path_split_dir_file_offset(string);
+  if (lslash) { /* +1 to include the slash and the last char. */
+    BLI_strncpy(dir, string, MIN2(dirlen, lslash + 1));
   }
+  else {
+    dir[0] = '\0';
+  }
+  BLI_strncpy(file, string + lslash, filelen);
+}
 
-  if (file) {
-    BLI_strncpy(file, string + lslash, filelen);
+void BLI_path_split_dir_part(const char *string, char *dir, const size_t dirlen)
+{
+#ifdef DEBUG_STRSIZE
+  memset(dir, 0xff, sizeof(*dir) * dirlen);
+#endif
+  const size_t lslash = path_split_dir_file_offset(string);
+  if (lslash) { /* +1 to include the slash and the last char. */
+    BLI_strncpy(dir, string, MIN2(dirlen, lslash + 1));
+  }
+  else {
+    dir[0] = '\0';
   }
 }
 
-void BLI_split_dir_part(const char *string, char *dir, const size_t dirlen)
+void BLI_path_split_file_part(const char *string, char *file, const size_t filelen)
 {
-  BLI_split_dirfile(string, dir, NULL, dirlen, 0);
-}
-
-void BLI_split_file_part(const char *string, char *file, const size_t filelen)
-{
-  BLI_split_dirfile(string, NULL, file, 0, filelen);
+#ifdef DEBUG_STRSIZE
+  memset(file, 0xff, sizeof(*file) * filelen);
+#endif
+  const size_t lslash = path_split_dir_file_offset(string);
+  BLI_strncpy(file, string + lslash, filelen);
 }
 
 const char *BLI_path_extension_or_end(const char *filepath)
