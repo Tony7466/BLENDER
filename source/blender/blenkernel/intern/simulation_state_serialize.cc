@@ -49,8 +49,8 @@ static std::string get_blendcache_directory(const Main &bmain)
   char blend_name[FILE_MAX];
   BLI_path_split_dir_file(blend_file_path.c_str(),
                           blend_directory,
-                          blend_name,
                           sizeof(blend_directory),
+                          blend_name,
                           sizeof(blend_name));
   const int64_t type_start_index = StringRef(blend_name).rfind(".");
   if (type_start_index == StringRef::not_found) {
