@@ -49,17 +49,20 @@ bool BLI_make_existing_file(const char *name);
  * - Won't change \a string.
  * - Won't create any directories.
  * - Doesn't use CWD, or deal with relative paths.
- * - Only fill's in \a dir and \a file when they are non NULL.
  */
-void BLI_split_dirfile(const char *string, char *dir, char *file, size_t dirlen, size_t filelen);
+void BLI_path_split_dir_file(const char *string,
+                             char *dir,
+                             size_t dirlen,
+                             char *file,
+                             size_t filelen) ATTR_NONNULL(1, 2, 4);
 /**
  * Copies the parent directory part of string into `dir`, max length `dirlen`.
  */
-void BLI_split_dir_part(const char *string, char *dir, size_t dirlen);
+void BLI_path_split_dir_part(const char *string, char *dir, size_t dirlen);
 /**
  * Copies the leaf filename part of string into `file`, max length `filelen`.
  */
-void BLI_split_file_part(const char *string, char *file, size_t filelen);
+void BLI_path_split_file_part(const char *string, char *file, size_t filelen);
 /**
  * Returns a pointer to the last extension (e.g. the position of the last period).
  * Returns a pointer to the nil byte when no extension is found.
@@ -311,22 +314,41 @@ bool BLI_path_filename_ensure(char *filepath, size_t maxlen, const char *filenam
  */
 int BLI_path_sequence_decode(const char *string,
                              char *head,
+                             size_t head_maxncpy,
                              char *tail,
+                             size_t tail_maxncpy,
                              unsigned short *r_digits_len);
 /**
  * Returns in area pointed to by string a string of the form `<head><pic><tail>`,
  * where pic is formatted as `numlen` digits with leading zeroes.
  */
-void BLI_path_sequence_encode(
-    char *string, const char *head, const char *tail, unsigned short numlen, int pic);
+void BLI_path_sequence_encode(char *string,
+                              size_t string_maxncpy,
+                              const char *head,
+                              const char *tail,
+                              unsigned short numlen,
+                              int pic);
 
 /**
- * Remove redundant characters from \a path and optionally make absolute.
+ * Remove redundant characters from \a path.
  *
- * \param path: Can be any input, and this function converts it to a regular full path.
- * Also removes garbage from directory paths, like `/../` or double slashes etc.
+ * The following operations are performed:
+ * - Redundant path components such as `//`, `/./` & `./` (prefix) are stripped.
+ *   (with the exception of `//` prefix used for blend-file relative paths).
+ * - `..` are resolved so `<parent>/../<child>/` resolves to `<child>/`.
+ *   Note that the resulting path may begin with `..` if it's relative.
  *
- * \note \a path isn't protected for max string names.
+ * Details:
+ * - The slash direction is expected to be native (see #SEP).
+ *   When calculating a canonical paths you may need to run #BLI_path_slash_native first.
+ *   #BLI_path_cmp_normalized can be used for canonical path comparison.
+ * - Trailing slashes are left intact (unlike Python which strips them).
+ * - Handling paths beginning with `..` depends on them being absolute or relative.
+ *   For absolute paths they are removed (e.g. `/../path` becomes `/path`).
+ *   For relative paths they are kept as it's valid to reference paths above a relative location
+ *   such as `//../parent` or `../parent`.
+ *
+ * \param path: The path to a file or directory which can be absolute or relative.
  */
 void BLI_path_normalize(char *path) ATTR_NONNULL(1);
 /**
@@ -404,7 +426,7 @@ bool BLI_path_abs(char *path, const char *basepath) ATTR_NONNULL();
  * Replaces "#" character sequence in last slash-separated component of `path`
  * with frame as decimal integer, with leading zeroes as necessary, to make digits.
  */
-bool BLI_path_frame(char *path, int frame, int digits) ATTR_NONNULL();
+bool BLI_path_frame(char *path, size_t path_maxncpy, int frame, int digits) ATTR_NONNULL();
 /**
  * Replaces "#" character sequence in last slash-separated component of `path`
  * with sta and end as decimal integers, with leading zeroes as necessary, to make digits
