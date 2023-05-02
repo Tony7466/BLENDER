@@ -238,7 +238,7 @@ StripElem *SEQ_render_give_stripelem(const Scene *scene, Sequence *seq, int time
      * all other strips don't use this...
      */
 
-    int frame_index = (int)seq_give_frame_index(scene, seq, timeline_frame);
+    int frame_index = (int)SEQ_give_frame_index(scene, seq, timeline_frame);
 
     if (frame_index == -1 || se == NULL) {
       return NULL;
@@ -313,7 +313,8 @@ static bool sequencer_use_transform(const Sequence *seq)
   const StripTransform *transform = seq->strip->transform;
 
   if (transform->xofs != 0 || transform->yofs != 0 || transform->scale_x != 1 ||
-      transform->scale_y != 1 || transform->rotation != 0) {
+      transform->scale_y != 1 || transform->rotation != 0)
+  {
     return true;
   }
 
@@ -341,7 +342,8 @@ static bool seq_input_have_to_preprocess(const SeqRenderData *context,
   }
 
   if ((seq->flag & (SEQ_FILTERY | SEQ_FLIPX | SEQ_FLIPY | SEQ_MAKE_FLOAT)) ||
-      sequencer_use_crop(seq) || sequencer_use_transform(seq)) {
+      sequencer_use_crop(seq) || sequencer_use_transform(seq))
+  {
     return true;
   }
 
@@ -379,7 +381,8 @@ static bool seq_need_scale_to_render_size(const Sequence *seq, bool is_proxy_ima
   }
   if ((seq->type & SEQ_TYPE_EFFECT) != 0 || seq->type == SEQ_TYPE_MASK ||
       seq->type == SEQ_TYPE_META ||
-      (seq->type == SEQ_TYPE_SCENE && ((seq->flag & SEQ_SCENE_STRIPS) != 0))) {
+      (seq->type == SEQ_TYPE_SCENE && ((seq->flag & SEQ_SCENE_STRIPS) != 0)))
+  {
     return true;
   }
   return false;
@@ -607,7 +610,8 @@ static ImBuf *input_preprocess(const SeqRenderData *context,
   }
 
   if (sequencer_use_crop(seq) || sequencer_use_transform(seq) || context->rectx != ibuf->x ||
-      context->recty != ibuf->y) {
+      context->recty != ibuf->y)
+  {
     const int x = context->rectx;
     const int y = context->recty;
     preprocessed_ibuf = IMB_allocImBuf(x, y, 32, ibuf->rect_float ? IB_rectfloat : IB_rect);
@@ -1042,7 +1046,7 @@ static ImBuf *seq_render_movie_strip_custom_file_proxy(const SeqRenderData *cont
     }
   }
 
-  int frameno = (int)seq_give_frame_index(context->scene, seq, timeline_frame) +
+  int frameno = (int)SEQ_give_frame_index(context->scene, seq, timeline_frame) +
                 seq->anim_startofs;
   return IMB_anim_absolute(proxy->anim, frameno, IMB_TC_NONE, IMB_PROXY_NONE);
 }
@@ -1073,7 +1077,8 @@ static ImBuf *seq_render_movie_strip_view(const SeqRenderData *context,
     /* Try to get a proxy image.
      * Movie proxies are handled by ImBuf module with exception of `custom file` setting. */
     if (context->scene->ed->proxy_storage != SEQ_EDIT_PROXY_DIR_STORAGE &&
-        seq->strip->proxy->storage & SEQ_STORAGE_PROXY_CUSTOM_FILE) {
+        seq->strip->proxy->storage & SEQ_STORAGE_PROXY_CUSTOM_FILE)
+    {
       ibuf = seq_render_movie_strip_custom_file_proxy(context, seq, timeline_frame);
     }
     else {
@@ -1658,7 +1663,7 @@ static ImBuf *do_render_strip_uncached(const SeqRenderData *context,
                                        bool *r_is_proxy_image)
 {
   ImBuf *ibuf = NULL;
-  float frame_index = seq_give_frame_index(context->scene, seq, timeline_frame);
+  float frame_index = SEQ_give_frame_index(context->scene, seq, timeline_frame);
   int type = (seq->type & SEQ_TYPE_EFFECT) ? SEQ_TYPE_EFFECT : seq->type;
   switch (type) {
     case SEQ_TYPE_META: {
@@ -1761,8 +1766,8 @@ ImBuf *seq_render_strip(const SeqRenderData *context,
   }
 
   /* Proxies are not stored in cache. */
-  if (!SEQ_can_use_proxy(
-          context, seq, SEQ_rendersize_to_proxysize(context->preview_render_size))) {
+  if (!SEQ_can_use_proxy(context, seq, SEQ_rendersize_to_proxysize(context->preview_render_size)))
+  {
     ibuf = seq_cache_get(context, seq, timeline_frame, SEQ_CACHE_STORE_RAW);
   }
 

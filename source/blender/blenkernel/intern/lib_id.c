@@ -137,7 +137,7 @@ static bool lib_id_library_local_paths_callback(BPathForeachPathData *bpath_data
     /* Path was relative and is now absolute. Remap.
      * Important BLI_path_normalize runs before the path is made relative
      * because it won't work for paths that start with "//../" */
-    BLI_path_normalize(base_new, filepath);
+    BLI_path_normalize(filepath);
     BLI_path_rel(filepath, base_new);
     BLI_strncpy(r_path_dst, filepath, FILE_MAX);
     return true;
@@ -422,7 +422,8 @@ static int lib_id_expand_local_cb(LibraryIDLinkCallbackData *cb_data)
    * Just skip it, shape key can only be either indirectly linked, or fully local, period.
    * And let's curse one more time that stupid useless shape-key ID type! */
   if (*id_pointer && *id_pointer != id_self &&
-      BKE_idtype_idcode_is_linkable(GS((*id_pointer)->name))) {
+      BKE_idtype_idcode_is_linkable(GS((*id_pointer)->name)))
+  {
     id_lib_extern(*id_pointer);
   }
 
@@ -874,7 +875,12 @@ static void id_embedded_swap(ID **embedded_id_a,
                              struct IDRemapper *remapper_id_b)
 {
   if (embedded_id_a != NULL && *embedded_id_a != NULL) {
-    BLI_assert(embedded_id_b != NULL && *embedded_id_b != NULL);
+    BLI_assert(embedded_id_b != NULL);
+
+    if (*embedded_id_b == NULL) {
+      /* Cannot swap anything if one of the embedded IDs is NULL. */
+      return;
+    }
 
     /* Do not remap internal references to itself here, since embedded IDs pointers also need to be
      * potentially remapped in owner ID's data, which will also handle embedded IDs data. */
@@ -1482,7 +1488,8 @@ void id_sort_by_name(ListBase *lb, ID *id, ID *id_sorting_hint)
     ID *id_sorting_hint_next = id_sorting_hint->next;
     if (BLI_strcasecmp(id_sorting_hint->name, id->name) < 0 &&
         (id_sorting_hint_next == NULL || id_sorting_hint_next->lib != id->lib ||
-         BLI_strcasecmp(id_sorting_hint_next->name, id->name) > 0)) {
+         BLI_strcasecmp(id_sorting_hint_next->name, id->name) > 0))
+    {
       BLI_insertlinkafter(lb, id_sorting_hint, id);
       return;
     }
@@ -1490,7 +1497,8 @@ void id_sort_by_name(ListBase *lb, ID *id, ID *id_sorting_hint)
     ID *id_sorting_hint_prev = id_sorting_hint->prev;
     if (BLI_strcasecmp(id_sorting_hint->name, id->name) > 0 &&
         (id_sorting_hint_prev == NULL || id_sorting_hint_prev->lib != id->lib ||
-         BLI_strcasecmp(id_sorting_hint_prev->name, id->name) < 0)) {
+         BLI_strcasecmp(id_sorting_hint_prev->name, id->name) < 0))
+    {
       BLI_insertlinkbefore(lb, id_sorting_hint, id);
       return;
     }
@@ -1682,7 +1690,8 @@ static void library_make_local_copying_check(ID *id,
   MainIDRelationsEntry *entry = BLI_ghash_lookup(id_relations->relations_from_pointers, id);
   BLI_gset_insert(loop_tags, id);
   for (MainIDRelationsEntryItem *from_id_entry = entry->from_ids; from_id_entry != NULL;
-       from_id_entry = from_id_entry->next) {
+       from_id_entry = from_id_entry->next)
+  {
     /* Our oh-so-beloved 'from' pointers... Those should always be ignored here, since the actual
      * relation we want to check is in the other way around. */
     if (from_id_entry->usage_flag & IDWALK_CB_LOOPBACK) {
@@ -1784,7 +1793,8 @@ void BKE_library_make_local(Main *bmain,
         id->flag &= ~LIB_INDIRECT_WEAK_LINK;
         if (ID_IS_OVERRIDE_LIBRARY_REAL(id) &&
             ELEM(lib, NULL, id->override_library->reference->lib) &&
-            ((untagged_only == false) || !(id->tag & LIB_TAG_PRE_EXISTING))) {
+            ((untagged_only == false) || !(id->tag & LIB_TAG_PRE_EXISTING)))
+        {
           BKE_lib_override_library_make_local(id);
         }
       }
@@ -1802,7 +1812,8 @@ void BKE_library_make_local(Main *bmain,
        * but complicates slightly the pre-processing of relations between IDs at step 2... */
       else if (!do_skip && id->tag & (LIB_TAG_EXTERN | LIB_TAG_INDIRECT | LIB_TAG_NEW) &&
                ELEM(lib, NULL, id->lib) &&
-               ((untagged_only == false) || !(id->tag & LIB_TAG_PRE_EXISTING))) {
+               ((untagged_only == false) || !(id->tag & LIB_TAG_PRE_EXISTING)))
+      {
         BLI_linklist_prepend_arena(&todo_ids, id, linklist_mem);
         id->tag |= LIB_TAG_DOIT;
 
@@ -1937,7 +1948,8 @@ void BKE_library_make_local(Main *bmain,
    * Try "make all local" in 04_01_H.lighting.blend from Agent327 without this, e.g. */
   for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
     if (ob->data != NULL && ob->type == OB_ARMATURE && ob->pose != NULL &&
-        ob->pose->flag & POSE_RECALC) {
+        ob->pose->flag & POSE_RECALC)
+    {
       BKE_pose_rebuild(bmain, ob, ob->data, true);
     }
   }

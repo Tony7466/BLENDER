@@ -54,11 +54,13 @@ static void add_new_vertices(Mesh &mesh, const Span<int> new_to_old_verts_map)
     attribute.finish();
   }
   if (float3 *orco = static_cast<float3 *>(
-          CustomData_get_layer_for_write(&mesh.vdata, CD_ORCO, mesh.totvert))) {
+          CustomData_get_layer_for_write(&mesh.vdata, CD_ORCO, mesh.totvert)))
+  {
     copy_to_new_verts<float3>({orco, mesh.totvert}, new_to_old_verts_map);
   }
   if (int *orig_indices = static_cast<int *>(
-          CustomData_get_layer_for_write(&mesh.vdata, CD_ORIGINDEX, mesh.totvert))) {
+          CustomData_get_layer_for_write(&mesh.vdata, CD_ORIGINDEX, mesh.totvert)))
+  {
     copy_to_new_verts<int>({orig_indices, mesh.totvert}, new_to_old_verts_map);
   }
 }
@@ -73,7 +75,7 @@ static void add_new_edges(Mesh &mesh,
   /* Store a copy of the IDs locally since we will remove the existing attributes which
    * can also free the names, since the API does not provide pointer stability. */
   Vector<std::string> named_ids;
-  Vector<bke::AutoAnonymousAttributeID> anonymous_ids;
+  Vector<bke::AnonymousAttributeIDPtr> anonymous_ids;
   for (const bke::AttributeIDRef &id : attributes.all_ids()) {
     if (attributes.lookup_meta_data(id)->domain != ATTR_DOMAIN_EDGE) {
       continue;
@@ -95,7 +97,7 @@ static void add_new_edges(Mesh &mesh,
   for (const StringRef name : named_ids) {
     local_edge_ids.append(name);
   }
-  for (const bke::AutoAnonymousAttributeID &id : anonymous_ids) {
+  for (const bke::AnonymousAttributeIDPtr &id : anonymous_ids) {
     local_edge_ids.append(*id);
   }
 
@@ -131,7 +133,8 @@ static void add_new_edges(Mesh &mesh,
 
   int *new_orig_indices = nullptr;
   if (const int *orig_indices = static_cast<const int *>(
-          CustomData_get_layer(&mesh.edata, CD_ORIGINDEX))) {
+          CustomData_get_layer(&mesh.edata, CD_ORIGINDEX)))
+  {
     new_orig_indices = static_cast<int *>(
         MEM_malloc_arrayN(new_edges.size(), sizeof(int), __func__));
     array_utils::gather(Span(orig_indices, mesh.totedge),

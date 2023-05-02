@@ -35,16 +35,13 @@
 using namespace blender;
 using namespace blender::gpu;
 
-/* Debug option to bind null buffer for missing UBOs. 
+/* Debug option to bind null buffer for missing UBOs.
  * Enabled by default. TODO: Ensure all required UBO bindings are present. */
 #define DEBUG_BIND_NULL_BUFFER_FOR_MISSING_UBO 1
-
-
 
 /* Debug option to bind null buffer for missing SSBOs. NOTE: This is unsafe if replacing a
  * write-enabled SSBO and should only be used for debugging to identify binding-related issues. */
 #define DEBUG_BIND_NULL_BUFFER_FOR_MISSING_SSBO 0
-
 
 /* Error or warning depending on debug flag. */
 #if DEBUG_BIND_NULL_BUFFER_FOR_MISSING_UBO == 1
@@ -215,6 +212,16 @@ MTLContext::MTLContext(void *ghost_window, void *ghost_context)
   [this->queue retain];
   [this->device retain];
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wobjc-method-access"
+  /* Enable increased concurrent shader compiler limit.
+   * Note: Disable warning for missing method when building on older OS's, as compiled code will
+   * still work correctly when run on a system with the API available. */
+  if (@available(macOS 13.3, *)) {
+    [this->device setShouldMaximizeConcurrentCompilation:YES];
+  }
+#pragma clang diagnostic pop
+
   /* Register present callback. */
   this->ghost_context_->metalRegisterPresentCallback(&present);
 
@@ -287,7 +294,8 @@ MTLContext::~MTLContext()
   /* Unbind UBOs. */
   for (int i = 0; i < MTL_MAX_BUFFER_BINDINGS; i++) {
     if (this->pipeline_state.ubo_bindings[i].bound &&
-        this->pipeline_state.ubo_bindings[i].ubo != nullptr) {
+        this->pipeline_state.ubo_bindings[i].ubo != nullptr)
+    {
       GPUUniformBuf *ubo = wrap(
           static_cast<UniformBuf *>(this->pipeline_state.ubo_bindings[i].ubo));
       GPU_uniformbuf_unbind(ubo);
@@ -297,7 +305,8 @@ MTLContext::~MTLContext()
   /* Unbind SSBOs. */
   for (int i = 0; i < MTL_MAX_BUFFER_BINDINGS; i++) {
     if (this->pipeline_state.ssbo_bindings[i].bound &&
-        this->pipeline_state.ssbo_bindings[i].ssbo != nullptr) {
+        this->pipeline_state.ssbo_bindings[i].ssbo != nullptr)
+    {
       GPUStorageBuf *ssbo = wrap(
           static_cast<StorageBuf *>(this->pipeline_state.ssbo_bindings[i].ssbo));
       GPU_storagebuf_unbind(ssbo);
@@ -398,7 +407,8 @@ void MTLContext::activate()
   /* Reset UBO bind state. */
   for (int i = 0; i < MTL_MAX_BUFFER_BINDINGS; i++) {
     if (this->pipeline_state.ubo_bindings[i].bound &&
-        this->pipeline_state.ubo_bindings[i].ubo != nullptr) {
+        this->pipeline_state.ubo_bindings[i].ubo != nullptr)
+    {
       this->pipeline_state.ubo_bindings[i].bound = false;
       this->pipeline_state.ubo_bindings[i].ubo = nullptr;
     }
@@ -407,7 +417,8 @@ void MTLContext::activate()
   /* Reset SSBO bind state. */
   for (int i = 0; i < MTL_MAX_BUFFER_BINDINGS; i++) {
     if (this->pipeline_state.ssbo_bindings[i].bound &&
-        this->pipeline_state.ssbo_bindings[i].ssbo != nullptr) {
+        this->pipeline_state.ssbo_bindings[i].ssbo != nullptr)
+    {
       this->pipeline_state.ssbo_bindings[i].bound = false;
       this->pipeline_state.ssbo_bindings[i].ssbo = nullptr;
     }
@@ -475,7 +486,8 @@ id<MTLRenderCommandEncoder> MTLContext::ensure_begin_render_pass()
   /* Ensure command buffer workload submissions are optimal --
    * Though do not split a batch mid-IMM recording. */
   if (this->main_command_buffer.do_break_submission() &&
-      !((MTLImmediate *)(this->imm))->imm_is_recording()) {
+      !((MTLImmediate *)(this->imm))->imm_is_recording())
+  {
     this->flush();
   }
 
@@ -484,7 +496,8 @@ id<MTLRenderCommandEncoder> MTLContext::ensure_begin_render_pass()
   if (!this->main_command_buffer.is_inside_render_pass() ||
       this->active_fb != this->main_command_buffer.get_active_framebuffer() ||
       this->main_command_buffer.get_active_framebuffer()->get_dirty() ||
-      this->is_visibility_dirty()) {
+      this->is_visibility_dirty())
+  {
 
     /* Validate bound framebuffer before beginning render pass. */
     if (!static_cast<MTLFrameBuffer *>(this->active_fb)->validate_render_pass()) {
@@ -1107,7 +1120,8 @@ bool MTLContext::ensure_uniform_buffer_bindings(
      * the current RenderCommandEncoder. */
     if (this->pipeline_state.active_shader->get_push_constant_is_dirty() ||
         active_shader_changed || !rps.cached_vertex_buffer_bindings[buffer_index].is_bytes ||
-        !rps.cached_fragment_buffer_bindings[buffer_index].is_bytes || true) {
+        !rps.cached_fragment_buffer_bindings[buffer_index].is_bytes || true)
+    {
 
       /* Bind push constant data. */
       BLI_assert(this->pipeline_state.active_shader->get_push_constant_data() != nullptr);
@@ -2249,7 +2263,8 @@ void MTLContext::texture_bind(gpu::MTLTexture *mtl_texture, uint texture_unit, b
   BLI_assert(mtl_texture);
 
   if (texture_unit < 0 || texture_unit >= GPU_max_textures() ||
-      texture_unit >= MTL_MAX_TEXTURE_SLOTS) {
+      texture_unit >= MTL_MAX_TEXTURE_SLOTS)
+  {
     MTL_LOG_WARNING("Attempting to bind texture '%s' to invalid texture unit %d\n",
                     mtl_texture->get_name(),
                     texture_unit);
@@ -2272,7 +2287,8 @@ void MTLContext::sampler_bind(MTLSamplerState sampler_state, uint sampler_unit)
 {
   BLI_assert(this);
   if (sampler_unit < 0 || sampler_unit >= GPU_max_textures() ||
-      sampler_unit >= MTL_MAX_SAMPLER_SLOTS) {
+      sampler_unit >= MTL_MAX_SAMPLER_SLOTS)
+  {
     MTL_LOG_WARNING("Attempting to bind sampler to invalid sampler unit %d\n", sampler_unit);
     BLI_assert(false);
     return;
@@ -2313,7 +2329,6 @@ void MTLContext::texture_unbind_all(bool is_image)
   /* Iterate through context's bound textures. */
   for (int t = 0; t < min_uu(GPU_max_textures(), MTL_MAX_TEXTURE_SLOTS); t++) {
     if (resource_bind_table[t].used && resource_bind_table[t].texture_resource) {
-
       resource_bind_table[t].used = false;
       resource_bind_table[t].texture_resource = nullptr;
     }

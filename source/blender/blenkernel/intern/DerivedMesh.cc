@@ -569,6 +569,27 @@ static Mesh *modifier_modify_mesh_and_geometry_set(ModifierData *md,
   return mesh_output;
 }
 
+static void set_rest_position(Mesh &mesh)
+{
+  using namespace blender;
+  using namespace blender::bke;
+  MutableAttributeAccessor attributes = mesh.attributes_for_write();
+  const AttributeReader positions = attributes.lookup<float3>("position");
+  attributes.remove("rest_position");
+  if (positions) {
+    if (positions.sharing_info && positions.varray.is_span()) {
+      attributes.add<float3>("rest_position",
+                             ATTR_DOMAIN_POINT,
+                             AttributeInitShared(positions.varray.get_internal_span().data(),
+                                                 *positions.sharing_info));
+    }
+    else {
+      attributes.add<float3>(
+          "rest_position", ATTR_DOMAIN_POINT, AttributeInitVArray(positions.varray));
+    }
+  }
+}
+
 static void mesh_calc_modifiers(struct Depsgraph *depsgraph,
                                 const Scene *scene,
                                 Object *ob,
@@ -657,20 +678,7 @@ static void mesh_calc_modifiers(struct Depsgraph *depsgraph,
       mesh_final = BKE_mesh_copy_for_eval(mesh_input);
       ASSERT_IS_VALID_MESH(mesh_final);
     }
-    MutableAttributeAccessor attributes = mesh_final->attributes_for_write();
-    const AttributeReader positions = attributes.lookup<float3>("position");
-    if (positions) {
-      if (positions.sharing_info && positions.varray.is_span()) {
-        attributes.add<float3>("rest_position",
-                               ATTR_DOMAIN_POINT,
-                               AttributeInitShared(positions.varray.get_internal_span().data(),
-                                                   *positions.sharing_info));
-      }
-      else {
-        attributes.add<float3>(
-            "rest_position", ATTR_DOMAIN_POINT, AttributeInitVArray(positions.varray));
-      }
-    }
+    set_rest_position(*mesh_final);
   }
 
   /* Apply all leading deform modifiers. */
@@ -1194,6 +1202,14 @@ static void editbmesh_calc_modifiers(struct Depsgraph *depsgraph,
   /* Clear errors before evaluation. */
   BKE_modifiers_clear_errors(ob);
 
+  if (ob->modifier_flag & OB_MODIFIER_FLAG_ADD_REST_POSITION) {
+    if (mesh_final == nullptr) {
+      mesh_final = BKE_mesh_from_bmesh_for_eval_nomain(em_input->bm, nullptr, mesh_input);
+      ASSERT_IS_VALID_MESH(mesh_final);
+    }
+    set_rest_position(*mesh_final);
+  }
+
   for (int i = 0; md; i++, md = md->next, md_datamask = md_datamask->next) {
     const ModifierTypeInfo *mti = BKE_modifier_get_info((ModifierType)md->type);
 
@@ -1651,7 +1667,8 @@ Mesh *mesh_get_eval_final(struct Depsgraph *depsgraph,
   Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob);
   if ((mesh_eval == nullptr) ||
       !CustomData_MeshMasks_are_matching(&(ob->runtime.last_data_mask), &cddata_masks) ||
-      (need_mapping && !ob->runtime.last_need_mapping)) {
+      (need_mapping && !ob->runtime.last_need_mapping))
+  {
     CustomData_MeshMasks_update(&cddata_masks, &ob->runtime.last_data_mask);
 
     makeDerivedMesh(depsgraph, scene, ob, dataMask);
@@ -1693,7 +1710,8 @@ Mesh *mesh_get_eval_deform(struct Depsgraph *depsgraph,
 
   if (!ob->runtime.mesh_deform_eval ||
       !CustomData_MeshMasks_are_matching(&(ob->runtime.last_data_mask), &cddata_masks) ||
-      (need_mapping && !ob->runtime.last_need_mapping)) {
+      (need_mapping && !ob->runtime.last_need_mapping))
+  {
     CustomData_MeshMasks_update(&cddata_masks, &ob->runtime.last_data_mask);
     mesh_build_data(
         depsgraph, scene, ob, &cddata_masks, need_mapping || ob->runtime.last_need_mapping);
@@ -1751,7 +1769,8 @@ Mesh *editbmesh_get_eval_cage(struct Depsgraph *depsgraph,
   object_get_datamask(depsgraph, obedit, &cddata_masks, nullptr);
 
   if (!obedit->runtime.editmesh_eval_cage ||
-      !CustomData_MeshMasks_are_matching(&(obedit->runtime.last_data_mask), &cddata_masks)) {
+      !CustomData_MeshMasks_are_matching(&(obedit->runtime.last_data_mask), &cddata_masks))
+  {
     editbmesh_build_data(depsgraph, scene, obedit, em, &cddata_masks);
   }
 
