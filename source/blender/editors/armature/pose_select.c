@@ -92,7 +92,7 @@ void ED_pose_bone_select_tag_update(Object *ob)
   DEG_id_tag_update(&arm->id, ID_RECALC_SELECT);
 }
 
-void ED_pose_bone_select(Object *ob, bPoseChannel *pchan, bool select, const bool change_active)
+void ED_pose_bone_select(Object *ob, bPoseChannel *pchan, bool select, bool change_active)
 {
   bArmature *arm;
 

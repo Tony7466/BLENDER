@@ -214,7 +214,12 @@ void ANIM_set_active_channel(bAnimContext *ac,
   ANIM_animdata_freelist(&anim_data);
 }
 
-static void select_pchan_for_action_group(bAnimContext *ac, bActionGroup *agrp, bAnimListElem *ale, const bool change_active)
+/* change_active determines whether to change the active bone of the armature when selecting pose
+ * channels. It is false during range selection otherwise true. */
+static void select_pchan_for_action_group(bAnimContext *ac,
+                                          bActionGroup *agrp,
+                                          bAnimListElem *ale,
+                                          const bool change_active)
 {
   /* Armatures-Specific Feature:
    * See mouse_anim_channels() -> ANIMTYPE_GROUP case for more details (#38737)
@@ -3028,8 +3033,8 @@ static int click_select_channel_scene(bAnimListElem *ale,
   return (ND_ANIMCHAN | NA_SELECTED);
 }
 
-/* Before selecting the range, check if any active element is present. */
-static bool animchannel_active_check(bAnimContext *ac, eAnim_ChannelType type)
+/* Return whether active channel of given type is present. */
+static bool animchannel_has_active_of_type(bAnimContext *ac, const eAnim_ChannelType type)
 {
   ListBase anim_data = anim_channels_for_selection(ac);
   bool is_active_found = false;
@@ -3085,8 +3090,6 @@ static bool animchannel_active_check(bAnimContext *ac, eAnim_ChannelType type)
         is_active_found |= gpl->flag & GP_LAYER_ACTIVE;
         break;
       }
-      default:
-        break;
     }
   }
 
@@ -3131,8 +3134,8 @@ static void animchannel_clear_selection(bAnimContext *ac)
       }
       case ANIMTYPE_GROUP: {
         bActionGroup *agrp = (bActionGroup *)ale->data;
-          agrp->flag &= ~AGRP_SELECTED;
-          select_pchan_for_action_group(ac, agrp, ale, false);
+        agrp->flag &= ~AGRP_SELECTED;
+        select_pchan_for_action_group(ac, agrp, ale, false);
         break;
       }
       case ANIMTYPE_FCURVE: {
@@ -3145,15 +3148,13 @@ static void animchannel_clear_selection(bAnimContext *ac)
         gpl->flag &= ~GP_LAYER_SELECT;
         break;
       }
-      default:
-        break;
     }
   }
 
   ANIM_animdata_freelist(&anim_data);
 }
 
-/* Select channels that lies between active channel and last clicked channel. */
+/* Select channels that lies between active channel and cursor_elem. */
 static void animchannel_select_range(bAnimContext *ac, bAnimListElem *cursor_elem)
 {
   ListBase anim_data = anim_channels_for_selection(ac);
@@ -3161,7 +3162,7 @@ static void animchannel_select_range(bAnimContext *ac, bAnimListElem *cursor_ele
 
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     bool is_active_elem = false;
-    bool is_selection_allowed = ale->type == cursor_elem->type;
+    const bool is_selection_allowed = (ale->type == cursor_elem->type);
     const bool is_cursor_elem = (ale->data == cursor_elem->data);
 
     /* Allow selection when active and clicked channel has same type. */
@@ -3215,8 +3216,6 @@ static void animchannel_select_range(bAnimContext *ac, bAnimListElem *cursor_ele
         is_active_elem = gpl->flag & GP_LAYER_ACTIVE;
         break;
       }
-      default:
-        break;
     }
     /* Restrict selection when active element is not found and group-channels are excluded from the
      * selection. */
@@ -3620,7 +3619,7 @@ static int mouse_anim_channels(bContext *C,
   }
 
   /* Change selection mode to single when no active element is found. */
-  if ((selectmode == SELECT_EXTEND_RANGE) && !animchannel_active_check(ac, ale->type)) {
+  if ((selectmode == SELECT_EXTEND_RANGE) && !animchannel_has_active_of_type(ac, ale->type)) {
     selectmode = SELECT_INVERT;
   }
 
