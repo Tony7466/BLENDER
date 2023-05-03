@@ -818,7 +818,7 @@ const char *BKE_appdir_resource_path_id(const int folder_id, const bool check_is
  * (must be #FILE_MAX minimum)
  * \param name: The name of the executable (usually `argv[0]`) to be checked
  */
-static void where_am_i(char *fullname, const size_t maxlen, const char *name)
+static void where_am_i(char *fullname, const size_t maxlen, const char *binary_path)
 {
 #  ifdef WITH_BINRELOC
   /* Linux uses `binreloc` since `argv[0]` is not reliable, call `br_init(NULL)` first. */
@@ -852,31 +852,31 @@ static void where_am_i(char *fullname, const size_t maxlen, const char *name)
 #  endif
 
   /* Unix and non Linux. */
-  if (name && name[0]) {
+  if (binary_path && binary_path[0]) {
 
-    BLI_strncpy(fullname, name, maxlen);
-    if (name[0] == '.') {
+    BLI_strncpy(fullname, binary_path, maxlen);
+    if (binary_path[0] == '.') {
       BLI_path_abs_from_cwd(fullname, maxlen);
 #  ifdef _WIN32
       BLI_path_program_extensions_add_win32(fullname, maxlen);
 #  endif
     }
-    else if (BLI_path_slash_rfind(name)) {
+    else if (BLI_path_slash_rfind(binary_path)) {
       /* Full path. */
-      BLI_strncpy(fullname, name, maxlen);
+      BLI_strncpy(fullname, binary_path, maxlen);
 #  ifdef _WIN32
       BLI_path_program_extensions_add_win32(fullname, maxlen);
 #  endif
     }
     else {
-      BLI_path_program_search(fullname, maxlen, name);
+      BLI_path_program_search(fullname, maxlen, binary_path);
     }
     /* Remove "/./" and "/../" so string comparisons can be used on the path. */
     BLI_path_normalize(fullname);
 
 #  if defined(DEBUG)
-    if (!STREQ(name, fullname)) {
-      CLOG_INFO(&LOG, 2, "guessing '%s' == '%s'", name, fullname);
+    if (!STREQ(binary_path, fullname)) {
+      CLOG_INFO(&LOG, 2, "guessing '%s' == '%s'", binary_path, fullname);
     }
 #  endif
   }

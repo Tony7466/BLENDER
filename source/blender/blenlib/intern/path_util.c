@@ -42,7 +42,7 @@
 static int BLI_path_unc_prefix_len(const char *path);
 
 #ifdef WIN32
-static bool BLI_path_is_abs_win32(const char *name);
+static bool BLI_path_is_abs_win32(const char *path);
 #endif /* WIN32 */
 
 // #define DEBUG_STRSIZE
@@ -485,9 +485,9 @@ bool BLI_path_is_rel(const char *path)
   return path[0] == '/' && path[1] == '/';
 }
 
-bool BLI_path_is_unc(const char *name)
+bool BLI_path_is_unc(const char *path)
 {
-  return name[0] == '\\' && name[1] == '\\';
+  return path[0] == '\\' && path[1] == '\\';
 }
 
 /**
@@ -520,9 +520,9 @@ static int BLI_path_unc_prefix_len(const char *path)
  * \note Not to be confused with the opposite of #BLI_path_is_rel which checks for the
  * Blender specific convention of using `//` prefix for blend-file relative paths.
  */
-static bool BLI_path_is_abs_win32(const char *name)
+static bool BLI_path_is_abs_win32(const char *path)
 {
-  return (name[1] == ':' && ELEM(name[2], '\\', '/')) || BLI_path_is_unc(name);
+  return (path[1] == ':' && ELEM(path[2], '\\', '/')) || BLI_path_is_unc(path);
 }
 
 static wchar_t *next_slash(wchar_t *path)
