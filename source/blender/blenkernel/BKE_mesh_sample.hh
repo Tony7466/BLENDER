@@ -147,14 +147,14 @@ class BaryWeightFromPositionFn : public mf::MultiFunction {
  * Calculate face corner weights from triangle indices and positions within the triangles.
  * The weights are 1 for the nearest corner and 0 for the two others.
  */
-class NearestWeightFromPositionFn : public mf::MultiFunction {
+class CornerBaryWeightFromPositionFn : public mf::MultiFunction {
   GeometrySet source_;
   Span<float3> vert_positions_;
   Span<int> corner_verts_;
   Span<MLoopTri> looptris_;
 
  public:
-  NearestWeightFromPositionFn(GeometrySet geometry);
+  CornerBaryWeightFromPositionFn(GeometrySet geometry);
   void call(IndexMask mask, mf::Params params, mf::Context context) const;
 };
 

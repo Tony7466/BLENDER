@@ -394,7 +394,7 @@ void BaryWeightFromPositionFn::call(IndexMask mask,
                                    bary_weights);
 }
 
-NearestWeightFromPositionFn::NearestWeightFromPositionFn(GeometrySet geometry)
+CornerBaryWeightFromPositionFn::CornerBaryWeightFromPositionFn(GeometrySet geometry)
     : source_(std::move(geometry))
 {
   source_.ensure_owns_direct_data();
@@ -413,7 +413,7 @@ NearestWeightFromPositionFn::NearestWeightFromPositionFn(GeometrySet geometry)
   looptris_ = mesh.looptris();
 }
 
-void NearestWeightFromPositionFn::call(IndexMask mask,
+void CornerBaryWeightFromPositionFn::call(IndexMask mask,
                                        mf::Params params,
                                        mf::Context /*context*/) const
 {

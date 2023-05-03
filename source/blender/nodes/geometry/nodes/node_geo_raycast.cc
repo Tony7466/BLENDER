@@ -348,7 +348,7 @@ static void node_geo_exec(GeoNodeExecParams params)
         break;
       case GEO_NODE_RAYCAST_NEAREST:
         bary_weights = Field<float3>(FieldOperation::Create(
-            std::make_shared<bke::mesh_surface_sample::NearestWeightFromPositionFn>(target),
+            std::make_shared<bke::mesh_surface_sample::CornerBaryWeightFromPositionFn>(target),
             {hit_position, triangle_index}));
     }
     auto sample_op = FieldOperation::Create(
