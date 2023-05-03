@@ -88,7 +88,7 @@ class CPUDevice : public Device {
       vector<CPUKernelThreadGlobals> &kernel_thread_globals) override;
   virtual void *get_cpu_osl_memory() override;
 
-  virtual void upload_changed() override {} ;
+  virtual void upload_changed(vector<device_memory *> ) override {} ;
  protected:
   virtual bool load_kernels(uint /*kernel_features*/) override;
 };

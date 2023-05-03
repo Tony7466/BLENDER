@@ -66,7 +66,8 @@ void GeometryManager::device_update_mesh_preprocess(
         Mesh *mesh = static_cast<Mesh *>(geom);
 
         if (mesh->shader_is_modified() || mesh->smooth_is_modified() ||
-            mesh->triangles_is_modified() || copy_all_data) {
+            mesh->triangles_is_modified() || copy_all_data)
+        {
           mesh->pack_shaders(scene, &tri_shader[mesh->prim_offset]);
         }
 
@@ -75,7 +76,8 @@ void GeometryManager::device_update_mesh_preprocess(
         }
 
         if (mesh->verts_is_modified() || mesh->triangles_is_modified() ||
-            mesh->vert_patch_uv_is_modified() || copy_all_data) {
+            mesh->vert_patch_uv_is_modified() || copy_all_data)
+        {
           mesh->pack_verts(&tri_verts[mesh->vert_offset],
                            &tri_vindex[mesh->prim_offset],
                            &tri_patch[mesh->prim_offset],

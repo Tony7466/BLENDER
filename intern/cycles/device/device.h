@@ -121,8 +121,8 @@ class DeviceInfo {
 
 class Device {
   friend class device_sub_ptr;
-  thread_mutex device_buffer_mutex;
-  set<device_memory *> device_buffers;
+  //thread_mutex device_buffer_mutex;
+  //set<device_memory *> device_buffers;
 protected:
   Device(const DeviceInfo &info_, Stats &stats_, Profiler &profiler_)
       : info(info_), stats(stats_), profiler(profiler_)
@@ -298,9 +298,9 @@ protected:
   /*
    * Upload to the device any buffers that have changed
    */
-  virtual void upload_changed();
+  virtual void upload_changed(vector<device_memory *> buffers);
 
-  virtual void register_buffer(device_memory *);
+  //virtual void register_buffer(device_memory *);
  protected:
   /* Memory allocation, only accessed through device_memory. */
   friend class MultiDevice;

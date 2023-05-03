@@ -421,7 +421,8 @@ void GeometryManager::device_update_preprocess(Device *device, Scene *scene, Pro
   DeviceScene *dscene = &scene->dscene;
 
   if (device_update_flags & (DEVICE_MESH_DATA_NEEDS_REALLOC | DEVICE_CURVE_DATA_NEEDS_REALLOC |
-                             DEVICE_POINT_DATA_NEEDS_REALLOC)) {
+                             DEVICE_POINT_DATA_NEEDS_REALLOC))
+  {
     delete scene->bvh;
     scene->bvh = nullptr;
 
@@ -914,7 +915,36 @@ void GeometryManager::device_update(Device *device,
     VLOG_INFO << "Rendering using " << num_scenes << " devices";
     /* Parallel upload the geometry data to the devices and
        calculate or refit the BVHs */
-    device->upload_changed();
+    vector<device_memory *> buffers {
+      // Geometry buffers
+      &dscene->tri_verts,
+      &dscene->tri_shader,
+      &dscene->tri_vnormal,
+      &dscene->tri_vindex,
+      &dscene->tri_patch,
+      &dscene->tri_patch_uv,
+
+      &dscene->curve_keys,
+      &dscene->curves,
+      &dscene->curve_segments,
+
+      &dscene->points,
+      &dscene->points_shader,
+
+      &dscene->patches,
+
+      // Attribute buffers
+      &dscene->attributes_map,
+      &dscene->attributes_float,
+      &dscene->attributes_float2,
+      &dscene->attributes_float3,
+      &dscene->attributes_float4,
+      &dscene->attributes_uchar4,
+      
+      &dscene->objects
+    };
+	    
+    device->upload_changed(buffers);
     parallel_for(
         size_t(0), num_scenes, [=, &progress](const size_t idx) {
           device_data_xfer_and_bvh_update(idx,
