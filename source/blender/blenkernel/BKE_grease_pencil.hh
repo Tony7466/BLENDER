@@ -118,9 +118,9 @@ class Layer : public TreeNode, public ::GreasePencilLayer {
    *    frame 5 and ends at frame 10. Finally, the third drawing starts at frame 12 and ends at
    *    frame 16.
    *
-   *             | | | | | | | | | | |1|1|1|1|1|1|1|
-   *    Time:    |0|1|2|3|4|5|6|7|8|9|0|1|2|3|4|5|6|...
-   *    Drawing: [#0      ][#1      ]    [#2    ]
+   *                  | | | | | | | | | | |1|1|1|1|1|1|1|
+   *    Scene Frame:  |0|1|2|3|4|5|6|7|8|9|0|1|2|3|4|5|6|...
+   *    Drawing:      [#0      ][#1      ]    [#2    ]
    *
    * \note If a drawing references another data-block, all of the drawings in that data-block are
    * mapped sequentially to the frames (frame-by-frame). If another frame starts, the rest of the
