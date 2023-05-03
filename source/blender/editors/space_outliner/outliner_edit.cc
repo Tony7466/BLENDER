@@ -465,7 +465,7 @@ static void id_delete_tag(bContext *C, ReportList *reports, TreeElement *te, Tre
 
   if (ID_IS_OVERRIDE_LIBRARY(id)) {
     if (!ID_IS_OVERRIDE_LIBRARY_REAL(id) ||
-        (id->override_library->flag & IDOVERRIDE_LIBRARY_FLAG_NO_HIERARCHY) == 0)
+        (id->override_library->flag & LIBOVERRIDE_FLAG_NO_HIERARCHY) == 0)
     {
       BKE_reportf(reports,
                   RPT_WARNING,
@@ -903,7 +903,7 @@ static int lib_relocate(
     Library *lib = (Library *)tselem->id;
     char dir[FILE_MAXDIR], filename[FILE_MAX];
 
-    BLI_split_dirfile(lib->filepath_abs, dir, filename, sizeof(dir), sizeof(filename));
+    BLI_path_split_dir_file(lib->filepath_abs, dir, sizeof(dir), filename, sizeof(filename));
 
     printf("%s, %s\n", tselem->id->name, lib->filepath_abs);
 
