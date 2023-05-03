@@ -237,7 +237,6 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
 
     WeightedNormalDataAggregateItem start_item{};
     start_item.curr_strength = FACE_STRENGTH_WEAK;
-
     items_data = Array<WeightedNormalDataAggregateItem>(lnors_spacearr.spaces.size(), start_item);
   }
   else {
