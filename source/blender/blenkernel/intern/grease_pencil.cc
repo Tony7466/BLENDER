@@ -702,26 +702,9 @@ BoundBox *BKE_grease_pencil_boundbox_get(Object *ob)
     float3 min(FLT_MAX);
     float3 max(-FLT_MAX);
 
-    /* FIXME: this should somehow go through the visible drawings. We don't have access to the
-     * scene time here, so we probably need to cache the visible drawing for each layer somehow. */
-    for (int i = 0; i < grease_pencil->drawing_array_size; i++) {
-      GreasePencilDrawingBase *drawing_base = grease_pencil->drawing_array[i];
-      switch (drawing_base->type) {
-        case GP_DRAWING: {
-          GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
-          const blender::bke::CurvesGeometry &curves = drawing->geometry.wrap();
-
-          if (!curves.bounds_min_max(min, max)) {
-            blender::math::min_max(float3(-1), min, max);
-            blender::math::min_max(float3(1), min, max);
-          }
-          break;
-        }
-        case GP_DRAWING_REFERENCE: {
-          /* TODO: Calculate the bounding box of the reference drawing. */
-          break;
-        }
-      }
+    if (!grease_pencil->bounds_min_max(min, max)) {
+      min = float3(-1);
+      max = float3(1);
     }
 
     BKE_boundbox_init_from_minmax(ob->runtime.bb, min, max);
@@ -1001,6 +984,33 @@ void GreasePencil::foreach_visible_drawing(
       /* TODO */
     }
   }
+}
+
+bool GreasePencil::bounds_min_max(float3 &min, float3 &max) const
+{
+  bool found = false;
+  /* FIXME: this should somehow go through the visible drawings. We don't have access to the
+   * scene time here, so we probably need to cache the visible drawing for each layer somehow. */
+  for (int i = 0; i < this->drawing_array_size; i++) {
+    GreasePencilDrawingBase *drawing_base = this->drawing_array[i];
+    switch (drawing_base->type) {
+      case GP_DRAWING: {
+        GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
+        const blender::bke::CurvesGeometry &curves = drawing->geometry.wrap();
+
+        if (curves.bounds_min_max(min, max)) {
+          found = true;
+        }
+        break;
+      }
+      case GP_DRAWING_REFERENCE: {
+        /* TODO: Calculate the bounding box of the reference drawing. */
+        break;
+      }
+    }
+  }
+
+  return found;
 }
 
 const blender::bke::greasepencil::LayerGroup &GreasePencil::root_group() const
