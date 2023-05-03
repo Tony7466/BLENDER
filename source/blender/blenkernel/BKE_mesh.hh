@@ -68,7 +68,6 @@ struct NormalFanSpace {
   float ref_alpha;
   /** Reference angle, around vec_lnor, in [0, 2pi] range (0.0 marks that space as invalid). */
   float ref_beta;
-  Vector<int> corners;
 };
 
 /**
@@ -77,20 +76,14 @@ struct NormalFanSpace {
 struct MeshNormalFanSpaces {
   /**
    * The normal coordinate spaces, potentially shared between multiple face corners in a smooth fan
-   * connected to a vertex. Depending on the geometry (the amount of sharing / size of each fan),
-   * there may be many fewer spaces than face corners, so they are stored in a separate array.
+   * connected to a vertex. Depending on the mesh (the amount of sharing / number of sharp edges /
+   * size of each fan), there may be many fewer spaces than face corners, so they are stored in a
+   * separate array.
    */
   Array<NormalFanSpace> spaces;
 
-  /** The index in #spaces for each face corner. */
+  /** The index of the data in the #spaces array for each face corner. */
   Array<int> corner_space_indices;
-
-  /**
-   * An index-based linked list of the face corners in each smooth fan, starting at each corner.
-   * Each index stores the index of the next corner in the fan, or -1 if it is the last. "Single"
-   * fans with only a single corner store -1 at that corner index directly.
-   */
-  Array<int> corner_group_lists;
 };
 
 void fan_space_custom_normal_to_data(const NormalFanSpace *lnor_space,

@@ -879,17 +879,6 @@ static void loop_manifold_fan_around_vert_next(const Span<int> corner_verts,
   }
 }
 
-static void fan_space_add_corners(MeshNormalFanSpaces &fan_spaces,
-                                  const Span<int> corners,
-                                  const int space_index)
-{
-  for (const int i : corners.index_range().drop_back(1)) {
-    fan_spaces.corner_group_lists[corners[i]] = corners[i + 1];
-  }
-  fan_spaces.corner_group_lists[corners.last()] = -1;
-  fan_spaces.corner_space_indices.as_mutable_span().fill_indices(corners, space_index);
-}
-
 static void lnor_space_for_single_fan(LoopSplitTaskDataCommon *common_data,
                                       const int ml_curr_index,
                                       const int space_index)
@@ -925,8 +914,7 @@ static void lnor_space_for_single_fan(LoopSplitTaskDataCommon *common_data,
 
     NormalFanSpace *lnor_space = &lnors_spacearr->spaces[space_index];
     normal_fan_space_define(lnor_space, loop_normals[ml_curr_index], vec_curr, vec_prev, {});
-    /* We know there is only one loop in this space, no need to create a link-list in this case. */
-    fan_space_add_corners(*lnors_spacearr, {ml_curr_index}, space_index);
+    lnors_spacearr->corner_space_indices[ml_curr_index] = space_index;
 
     if (!clnors_data.is_empty()) {
       fan_space_custom_data_to_normal(lnor_space,
@@ -1078,16 +1066,16 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
    * and optionally compute final lnor from custom data too!
    */
   if (lnors_spacearr) {
-    fan_space_add_corners(*lnors_spacearr, processed_corners, space_index);
     if (UNLIKELY(length == 0.0f)) {
       /* Use vertex normal as fallback! */
-      copy_v3_v3(lnor, loop_normals[mlfan_vert_index]);
+      lnor = loop_normals[mlfan_vert_index];
       length = 1.0f;
     }
 
     NormalFanSpace *lnor_space = &lnors_spacearr->spaces[space_index];
     normal_fan_space_define(lnor_space, lnor, vec_org, vec_curr, *edge_vectors);
-    lnor_space->corners = std::move(processed_corners);
+    lnors_spacearr->corner_space_indices.as_mutable_span().fill_indices(
+        processed_corners.as_span(), space_index);
     edge_vectors->clear();
 
     if (!clnors_data.is_empty()) {
@@ -1098,11 +1086,14 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
         if (G.debug & G_DEBUG) {
           printf("Invalid clnors in this fan!\n");
         }
-        /* Extra bonus: since small-stack is local to this function,
-         * no more need to empty it at all cost! */
-
-        fan_space_custom_data_to_normal(lnor_space, lnor, *clnor_ref, lnor);
+        clnors_data.fill_indices(processed_corners.as_span(),
+                                 short2(clnors_avg[0], clnors_avg[1]));
+        // print_v2("new clnors", clnors_avg);
       }
+      /* Extra bonus: since small-stack is local to this function,
+       * no more need to empty it at all cost! */
+
+      fan_space_custom_data_to_normal(lnor_space, lnor, *clnor_ref, lnor);
     }
   }
 
@@ -1387,7 +1378,6 @@ void normals_calc_loop(const Span<float3> vert_positions,
 
   if (r_lnors_spacearr) {
     r_lnors_spacearr->spaces.reinitialize(single_corners.size() + fan_corners.size());
-    r_lnors_spacearr->corner_group_lists.reinitialize(corner_verts.size());
     r_lnors_spacearr->corner_space_indices = Array<int>(corner_verts.size(), -1);
   }
 
@@ -1418,13 +1408,13 @@ void normals_calc_loop(const Span<float3> vert_positions,
       std::cout << "  vec_ortho: " << space.vec_ortho << '\n';
       std::cout << "  ref_alpha: " << space.ref_alpha << '\n';
       std::cout << "  ref_beta: " << space.ref_beta << '\n';
-      std::cout << "  fan indices: (";
-      int iter = r_lnors_spacearr->corner_group_lists[corner];
-      while (iter != -1) {
-        std::cout << iter << ", ";
-        iter = r_lnors_spacearr->corner_group_lists[iter];
-      }
-      std::cout << ")\n";
+      // std::cout << "  fan indices: (";
+      // int iter = r_lnors_spacearr->corner_group_lists[corner];
+      // while (iter != -1) {
+      // std::cout << iter << ", ";
+      // iter = r_lnors_spacearr->corner_group_lists[iter];
+      // }
+      // std::cout << ")\n";
     }
   }
 }
@@ -1432,6 +1422,24 @@ void normals_calc_loop(const Span<float3> vert_positions,
 #undef INDEX_UNSET
 #undef INDEX_INVALID
 #undef IS_EDGE_SHARP
+
+static void reverse_space_index_array(const MeshNormalFanSpaces &spaces,
+                                      Array<int> &corner_offset_indices,
+                                      Array<int> &space_corner_indices)
+{
+  corner_offset_indices = Array<int>(spaces.spaces.size() + 1, 0);
+  for (const int index : spaces.corner_space_indices) {
+    corner_offset_indices[index]++;
+  }
+  offset_indices::accumulate_counts_to_offsets(corner_offset_indices);
+
+  space_corner_indices.reinitialize(corner_offset_indices.last());
+  Array<int> count(spaces.spaces.size(), 0);
+  for (const int corner : spaces.corner_space_indices.index_range()) {
+    const int space = spaces.corner_space_indices[corner];
+    space_corner_indices[corner_offset_indices[space] + count[space]] = corner;
+  }
+}
 
 /**
  * Compute internal representation of given custom normals (as an array of float[2]).
@@ -1513,6 +1521,11 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
     done_loops.fill(true);
   }
   else {
+    Array<int> space_corner_offset_indices;
+    Array<int> space_corner_indices;
+    reverse_space_index_array(lnors_spacearr, space_corner_offset_indices, space_corner_indices);
+    const OffsetIndices<int> space_corner_offsets(space_corner_offset_indices);
+
     for (const int i : corner_verts.index_range()) {
       if (lnors_spacearr.corner_space_indices[i] == -1) {
         /* This should not happen in theory, but in some rare case (probably ugly geometry)
@@ -1528,6 +1541,10 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
         continue;
       }
 
+      const int space_index = lnors_spacearr.corner_space_indices[i];
+      const Span<int> space_corners = space_corner_indices.as_span().slice(
+          space_corner_offsets[space_index]);
+
       /* Notes:
        * - In case of mono-loop smooth fan, we have nothing to do.
        * - Loops in this linklist are ordered (in reversed order compared to how they were
@@ -1537,8 +1554,7 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
        * - In smooth fan case, we compare each clnor against a ref one,
        *   to avoid small differences adding up into a real big one in the end!
        */
-      int loop_link = lnors_spacearr.corner_group_lists[i];
-      if (loop_link == -1) {
+      if (space_corners.is_empty()) {
         done_loops[i].set();
         continue;
       }
@@ -1546,8 +1562,7 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
       int prev_corner = -1;
       const float *org_nor = nullptr;
 
-      while (loop_link != -1) {
-        const int lidx = loop_link;
+      for (const int lidx : space_corners) {
         float *nor = r_custom_loop_normals[lidx];
 
         if (!org_nor) {
@@ -1569,7 +1584,6 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
         }
 
         prev_corner = lidx;
-        loop_link = lnors_spacearr.corner_group_lists[loop_link];
         done_loops[lidx].set();
       }
 
@@ -1612,7 +1626,10 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
                       loop_normals);
   }
 
-  Vector<int> processed_corners;
+  Array<int> space_corner_offset_indices;
+  Array<int> space_corner_indices;
+  reverse_space_index_array(lnors_spacearr, space_corner_offset_indices, space_corner_indices);
+  const OffsetIndices<int> space_corner_offsets(space_corner_offset_indices);
 
   /* And we just have to convert plain object-space custom normals to our
    * lnor space-encoded ones. */
@@ -1625,6 +1642,8 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
       }
       continue;
     }
+
+    const int space_index = lnors_spacearr.corner_space_indices[i];
 
     if (done_loops[i]) {
       /* Note we accumulate and average all custom normals in current smooth fan,
@@ -1650,7 +1669,6 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
 
           avg_nor_count++;
           add_v3_v3(avg_nor, nor);
-          processed_corners.append(lidx);
 
           loop_link = lnors_spacearr.corner_group_lists[loop_link];
           done_loops[lidx].reset();
@@ -1658,7 +1676,6 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
 
         mul_v3_fl(avg_nor, 1.0f / float(avg_nor_count));
         short2 clnor_data_tmp;
-        const int space_index = lnors_spacearr.corner_space_indices[i];
         fan_space_custom_normal_to_data(
             &lnors_spacearr.spaces[space_index], loop_normals[i], avg_nor, clnor_data_tmp);
 
