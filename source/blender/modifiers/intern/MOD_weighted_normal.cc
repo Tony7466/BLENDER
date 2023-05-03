@@ -216,8 +216,6 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
 
   Array<WeightedNormalDataAggregateItem> items_data;
   if (keep_sharp) {
-    BLI_bitmap *done_loops = BLI_BITMAP_NEW(corner_verts.size(), __func__);
-
     /* This will give us loop normal spaces,
      * we do not actually care about computed loop_normals for now... */
     loop_normals.reinitialize(corner_verts.size());
@@ -237,40 +235,15 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
                                  &lnors_spacearr,
                                  loop_normals);
 
-    items_data = Array<WeightedNormalDataAggregateItem>(lnors_spacearr.spaces.size(),
-                                                        WeightedNormalDataAggregateItem{});
+    WeightedNormalDataAggregateItem start_item{};
+    start_item.curr_strength = FACE_STRENGTH_WEAK;
 
-    /* In this first loop, we assign each WeightedNormalDataAggregateItem
-     * to its smooth fan of loops (aka lnor space). */
-    for (const int i : polys.index_range()) {
-      for (const int ml_index : polys[i]) {
-        if (BLI_BITMAP_TEST(done_loops, ml_index)) {
-          /* Smooth fan of this loop has already been processed, skip it. */
-          continue;
-        }
-
-        const int space_index = lnors_spacearr.corner_space_indices[ml_index];
-        WeightedNormalDataAggregateItem *itdt = &items_data[space_index];
-        itdt->curr_strength = FACE_STRENGTH_WEAK;
-
-        int fan_corner = lnors_spacearr.corner_group_lists[ml_index];
-        while (fan_corner != -1) {
-          BLI_BITMAP_ENABLE(done_loops, fan_corner);
-          fan_corner = lnors_spacearr.corner_group_lists[fan_corner];
-        }
-      }
-    }
-
-    MEM_freeN(done_loops);
+    items_data = Array<WeightedNormalDataAggregateItem>(lnors_spacearr.spaces.size(), start_item);
   }
   else {
-    items_data = Array<WeightedNormalDataAggregateItem>(verts_num,
-                                                        WeightedNormalDataAggregateItem{});
-    if (use_face_influence) {
-      for (int item_index : items_data.index_range()) {
-        items_data[item_index].curr_strength = FACE_STRENGTH_WEAK;
-      }
-    }
+    WeightedNormalDataAggregateItem start_item{};
+    start_item.curr_strength = FACE_STRENGTH_WEAK;
+    items_data = Array<WeightedNormalDataAggregateItem>(verts_num, start_item);
   }
   wn_data->items_data = items_data;
 

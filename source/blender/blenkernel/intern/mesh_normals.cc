@@ -1085,6 +1085,7 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
 
       NormalFanSpace *lnor_space = &lnors_spacearr->spaces[space_index];
       normal_fan_space_define(lnor_space, lnor, vec_org, vec_curr, *edge_vectors);
+      lnor_space->corners = std::move(processed_corners);
       edge_vectors->clear();
 
       if (!clnors_data.is_empty()) {

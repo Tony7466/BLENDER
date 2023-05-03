@@ -68,6 +68,7 @@ struct NormalFanSpace {
   float ref_alpha;
   /** Reference angle, around vec_lnor, in [0, 2pi] range (0.0 marks that space as invalid). */
   float ref_beta;
+  Vector<int> corners;
 };
 
 /**
