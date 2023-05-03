@@ -150,7 +150,7 @@ enum ModSide {
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Window Open & Close
+/** \name Window Open
  * \{ */
 
 static void wm_window_set_drawable(wmWindowManager *wm, wmWindow *win, bool activate);
@@ -359,7 +359,7 @@ wmWindow *wm_window_copy_test(bContext *C,
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Quit Confirmation Dialog
+/** \name Window Quit Confirmation Dialog
  * \{ */
 
 static void wm_save_file_on_quit_dialog_callback(bContext *C, void *UNUSED(user_data))
@@ -388,7 +388,8 @@ void wm_quit_with_optional_confirmation_prompt(bContext *C, wmWindow *win)
 
   if (U.uiflag & USER_SAVE_PROMPT) {
     if (wm_file_or_session_data_has_unsaved_changes(CTX_data_main(C), CTX_wm_manager(C)) &&
-        !G.background) {
+        !G.background)
+    {
       wm_window_raise(win);
       wm_confirm_quit(C);
     }
@@ -404,6 +405,10 @@ void wm_quit_with_optional_confirmation_prompt(bContext *C, wmWindow *win)
 }
 
 /** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Window Close
+ * \{ */
 
 void wm_window_close(bContext *C, wmWindowManager *wm, wmWindow *win)
 {
@@ -436,6 +441,7 @@ void wm_window_close(bContext *C, wmWindowManager *wm, wmWindow *win)
 
   CTX_wm_window_set(C, win); /* needed by handlers */
   WM_event_remove_handlers(C, &win->handlers);
+
   WM_event_remove_handlers(C, &win->modalhandlers);
 
   /* for regular use this will _never_ be NULL,
@@ -1645,6 +1651,8 @@ void wm_window_process_events(const bContext *C)
   }
 }
 
+/** \} */
+
 /* -------------------------------------------------------------------- */
 /** \name Ghost Init/Exit
  * \{ */
@@ -2072,11 +2080,18 @@ void WM_clipboard_text_set(const char *buf, bool selection)
 
 bool WM_clipboard_image_available(void)
 {
+  if (G.background) {
+    return false;
+  }
   return (bool)GHOST_hasClipboardImage();
 }
 
 ImBuf *WM_clipboard_image_get(void)
 {
+  if (G.background) {
+    return NULL;
+  }
+
   int width, height;
 
   uint *rgba = GHOST_getClipboardImage(&width, &height);
@@ -2092,6 +2107,10 @@ ImBuf *WM_clipboard_image_get(void)
 
 bool WM_clipboard_image_set(ImBuf *ibuf)
 {
+  if (G.background) {
+    return false;
+  }
+
   bool free_byte_buffer = false;
   if (ibuf->rect == NULL) {
     /* Add a byte buffer if it does not have one. */
@@ -2612,6 +2631,8 @@ void *WM_opengl_context_create(void)
   BLI_assert(GPU_framebuffer_active_get() == GPU_framebuffer_back_get());
 
   GHOST_GLSettings glSettings = {0};
+  const eGPUBackendType gpu_backend = GPU_backend_type_selection_get();
+  glSettings.context_type = wm_ghost_drawing_context_type(gpu_backend);
   if (G.debug & G_DEBUG_GPU) {
     glSettings.flags |= GHOST_glDebugContext;
   }

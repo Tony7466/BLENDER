@@ -84,8 +84,8 @@ static bool isDisabled(const Scene *scene, ModifierData *md, bool useRenderParam
   /* If the psys modifier is disabled we cannot use its data.
    * First look up the psys modifier from the object, then check if it is enabled.
    */
-  for (ob_md = static_cast<ModifierData *>(pimd->ob->modifiers.first); ob_md;
-       ob_md = ob_md->next) {
+  for (ob_md = static_cast<ModifierData *>(pimd->ob->modifiers.first); ob_md; ob_md = ob_md->next)
+  {
     if (ob_md->type == eModifierType_ParticleSystem) {
       ParticleSystemModifierData *psmd = (ParticleSystemModifierData *)ob_md;
       if (psmd->psys == psys) {
@@ -312,7 +312,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     max_co = max[track];
   }
 
-  result = BKE_mesh_new_nomain_from_template(mesh, maxvert, maxedge, maxloop, maxpoly);
+  result = BKE_mesh_new_nomain_from_template(mesh, maxvert, maxedge, maxpoly, maxloop);
 
   const blender::OffsetIndices orig_polys = mesh->polys();
   const blender::Span<int> orig_corner_verts = mesh->corner_verts();
@@ -368,7 +368,8 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 
       /* get particle state */
       if ((psys->flag & (PSYS_HAIR_DONE | PSYS_KEYED) || psys->pointcache->flag & PTCACHE_BAKED) &&
-          (pimd->flag & eParticleInstanceFlag_Path)) {
+          (pimd->flag & eParticleInstanceFlag_Path))
+      {
         float ran = 0.0f;
         if (pimd->random_position != 0.0f) {
           ran = pimd->random_position * BLI_hash_frand(psys->seed + p);

@@ -359,7 +359,8 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
    * NOTE: smaller than `FLT_EPSILON * 100`
    * gives problems with float precision so its never closed. */
   if (fabsf(screw_ofs) <= (FLT_EPSILON * 100.0f) &&
-      fabsf(fabsf(angle) - (float(M_PI) * 2.0f)) <= (FLT_EPSILON * 100.0f) && step_tot > 3) {
+      fabsf(fabsf(angle) - (float(M_PI) * 2.0f)) <= (FLT_EPSILON * 100.0f) && step_tot > 3)
+  {
     close = true;
     step_tot--;
 
@@ -390,7 +391,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   const bool do_remove_doubles = (ltmd->flag & MOD_SCREW_MERGE) && (screw_ofs == 0.0f);
 
   result = BKE_mesh_new_nomain_from_template(
-      mesh, int(maxVerts), int(maxEdges), int(maxPolys) * 4, int(maxPolys));
+      mesh, int(maxVerts), int(maxEdges), int(maxPolys), int(maxPolys) * 4);
   /* The modifier doesn't support original index mapping on the edge or face domains. Remove
    * original index layers, since otherwise edges aren't displayed at all in wireframe view. */
   CustomData_free_layers(&result->edata, CD_ORIGINDEX, result->totedge);

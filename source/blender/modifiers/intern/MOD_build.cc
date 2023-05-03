@@ -128,7 +128,8 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
       const blender::int2 &edge = edges_src[i];
 
       if (BLI_ghash_haskey(vertHash, POINTER_FROM_INT(edge[0])) &&
-          BLI_ghash_haskey(vertHash, POINTER_FROM_INT(edge[1]))) {
+          BLI_ghash_haskey(vertHash, POINTER_FROM_INT(edge[1])))
+      {
         BLI_ghash_insert(edgeHash, (void *)hash_num, (void *)hash_num_alt);
         BLI_ghash_insert(edgeHash2, (void *)hash_num_alt, (void *)hash_num);
         hash_num++;
@@ -189,7 +190,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 
   /* now we know the number of verts, edges and faces, we can create the mesh. */
   result = BKE_mesh_new_nomain_from_template(
-      mesh, BLI_ghash_len(vertHash), BLI_ghash_len(edgeHash), loops_dst_num, faces_dst_num);
+      mesh, BLI_ghash_len(vertHash), BLI_ghash_len(edgeHash), faces_dst_num, loops_dst_num);
   blender::MutableSpan<blender::int2> result_edges = result->edges_for_write();
   blender::MutableSpan<int> result_poly_offsets = result->poly_offsets_for_write();
   blender::MutableSpan<int> result_corner_verts = result->corner_verts_for_write();

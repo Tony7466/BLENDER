@@ -113,6 +113,15 @@ void WM_exit(struct bContext *C) ATTR_NORETURN;
 
 void WM_main(struct bContext *C) ATTR_NORETURN;
 
+/**
+ * Show the splash screen as needed on startup.
+ *
+ * The splash may not show depending on a file being loaded and user preferences.
+ */
+void WM_init_splash_on_startup(struct bContext *C);
+/**
+ * Show the splash screen.
+ */
 void WM_init_splash(struct bContext *C);
 
 void WM_init_opengl(void);
@@ -1507,6 +1516,7 @@ typedef enum eWM_JobType {
   WM_JOB_TYPE_LINEART,
   WM_JOB_TYPE_SEQ_DRAW_THUMBNAIL,
   WM_JOB_TYPE_SEQ_DRAG_DROP_PREVIEW,
+  WM_JOB_TYPE_BAKE_SIMULATION_NODES,
   /* add as needed, bake, seq proxy build
    * if having hard coded values is a problem */
 } eWM_JobType;

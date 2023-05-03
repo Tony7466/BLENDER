@@ -180,7 +180,8 @@ static void weld_assert_poly_and_loop_kill_len(WeldMesh *weld_mesh,
                                         corner_verts,
                                         corner_edges,
                                         weld_mesh->loop_map,
-                                        nullptr)) {
+                                        nullptr))
+      {
         poly_kills++;
         continue;
       }
@@ -1186,7 +1187,8 @@ static int poly_find_doubles(const OffsetIndices<int> poly_corners_offsets,
 
     for (int corner_index = poly_corners_offsets[poly_index].last();
          corner_index >= poly_corners_offsets[poly_index].first();
-         corner_index--) {
+         corner_index--)
+    {
       const int elem_index = corners[corner_index];
       linked_polys_buffer[--linked_polys_offset[elem_index]] = poly_index;
     }
@@ -1544,7 +1546,7 @@ static Mesh *create_merged_mesh(const Mesh &mesh,
   const int result_npolys = src_polys.size() - weld_mesh.poly_kill_len + weld_mesh.wpoly_new_len;
 
   Mesh *result = BKE_mesh_new_nomain_from_template(
-      &mesh, result_nverts, result_nedges, result_nloops, result_npolys);
+      &mesh, result_nverts, result_nedges, result_npolys, result_nloops);
   MutableSpan<int2> dst_edges = result->edges_for_write();
   MutableSpan<int> dst_poly_offsets = result->poly_offsets_for_write();
   MutableSpan<int> dst_corner_verts = result->corner_verts_for_write();
@@ -1660,7 +1662,8 @@ static Mesh *create_merged_mesh(const Mesh &mesh,
                                         src_corner_verts,
                                         src_corner_edges,
                                         weld_mesh.loop_map,
-                                        group_buffer.data())) {
+                                        group_buffer.data()))
+      {
         continue;
       }
 
@@ -1692,7 +1695,8 @@ static Mesh *create_merged_mesh(const Mesh &mesh,
                                       src_corner_verts,
                                       src_corner_edges,
                                       weld_mesh.loop_map,
-                                      group_buffer.data())) {
+                                      group_buffer.data()))
+    {
       continue;
     }
 
@@ -1737,7 +1741,7 @@ std::optional<Mesh *> mesh_merge_by_distance_all(const Mesh &mesh,
 
   BLI_kdtree_3d_balance(tree);
   const int vert_kill_len = BLI_kdtree_3d_calc_duplicates_fast(
-      tree, merge_distance, false, vert_dest_map.data());
+      tree, merge_distance, true, vert_dest_map.data());
   BLI_kdtree_3d_free(tree);
 
   if (vert_kill_len == 0) {

@@ -621,7 +621,8 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext * /*ctx*/, M
 
   /* Quick test to see if we can return early. */
   if (!ELEM(mmd->mode, MOD_MASK_MODE_ARM, MOD_MASK_MODE_VGROUP) || (mesh->totvert == 0) ||
-      BLI_listbase_is_empty(&mesh->vertex_group_names)) {
+      BLI_listbase_is_empty(&mesh->vertex_group_names))
+  {
     return mesh;
   }
 
@@ -702,8 +703,8 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext * /*ctx*/, M
   Mesh *result = BKE_mesh_new_nomain_from_template(mesh,
                                                    verts_masked_num + verts_add_num,
                                                    edges_masked_num + edges_add_num,
-                                                   loops_masked_num + loops_add_num,
-                                                   polys_masked_num + polys_add_num);
+                                                   polys_masked_num + polys_add_num,
+                                                   loops_masked_num + loops_add_num);
 
   copy_masked_verts_to_new_mesh(*mesh, *result, vertex_map);
   if (use_interpolation) {

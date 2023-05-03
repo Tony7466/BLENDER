@@ -72,6 +72,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_lib_override.h"
 #include "BKE_lib_query.h"
+#include "BKE_lib_remap.h"
 #include "BKE_main.h" /* for Main */
 #include "BKE_main_idmap.h"
 #include "BKE_material.h"
@@ -201,6 +202,10 @@ struct BHeadN {
  */
 #define BHEAD_USE_READ_ON_DEMAND(bhead) ((bhead)->code == BLO_CODE_DATA)
 
+/* -------------------------------------------------------------------- */
+/** \name Blend Loader Reporting Wrapper
+ * \{ */
+
 void BLO_reportf_wrap(BlendFileReadReport *reports, eReportType type, const char *format, ...)
 {
   char fixed_buf[1024]; /* should be long enough */
@@ -225,6 +230,8 @@ static const char *library_parent_filepath(Library *lib)
 {
   return lib->parent ? lib->parent->filepath_abs : "<direct>";
 }
+
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name OldNewMap API
@@ -359,7 +366,8 @@ static void split_libdata(ListBase *lb_src, Main **lib_main_array, const uint li
     if (id->lib) {
       if ((uint(id->lib->temp_index) < lib_main_array_len) &&
           /* this check should never fail, just in case 'id->lib' is a dangling pointer. */
-          (lib_main_array[id->lib->temp_index]->curlib == id->lib)) {
+          (lib_main_array[id->lib->temp_index]->curlib == id->lib))
+      {
         Main *mainvar = lib_main_array[id->lib->temp_index];
         ListBase *lb_dst = which_libbase(mainvar, GS(id->name));
         BLI_remlink(lb_src, id);
@@ -394,7 +402,8 @@ void blo_split_main(ListBase *mainlist, Main *main)
 
   int i = 0;
   for (Library *lib = static_cast<Library *>(main->libraries.first); lib;
-       lib = static_cast<Library *>(lib->id.next), i++) {
+       lib = static_cast<Library *>(lib->id.next), i++)
+  {
     Main *libmain = BKE_main_new();
     libmain->curlib = lib;
     libmain->versionfile = lib->versionfile;
@@ -506,19 +515,20 @@ static Main *blo_find_main(FileData *fd, const char *filepath, const char *relab
   ListBase *mainlist = fd->mainlist;
   Main *m;
   Library *lib;
-  char name1[FILE_MAX];
+  char filepath_abs[FILE_MAX];
 
-  BLI_strncpy(name1, filepath, sizeof(name1));
-  BLI_path_normalize(relabase, name1);
+  BLI_strncpy(filepath_abs, filepath, sizeof(filepath_abs));
+  BLI_path_abs(filepath_abs, relabase);
+  BLI_path_normalize(filepath_abs);
 
   //  printf("blo_find_main: relabase  %s\n", relabase);
   //  printf("blo_find_main: original in  %s\n", filepath);
-  //  printf("blo_find_main: converted to %s\n", name1);
+  //  printf("blo_find_main: converted to %s\n", filepath_abs);
 
   for (m = static_cast<Main *>(mainlist->first); m; m = m->next) {
     const char *libname = (m->curlib) ? m->curlib->filepath_abs : m->filepath;
 
-    if (BLI_path_cmp(name1, libname) == 0) {
+    if (BLI_path_cmp(filepath_abs, libname) == 0) {
       if (G.debug & G_DEBUG) {
         CLOG_INFO(&LOG, 3, "Found library %s", libname);
       }
@@ -541,7 +551,7 @@ static Main *blo_find_main(FileData *fd, const char *filepath, const char *relab
   id_us_ensure_real(&lib->id);
 
   BLI_strncpy(lib->filepath, filepath, sizeof(lib->filepath));
-  BLI_strncpy(lib->filepath_abs, name1, sizeof(lib->filepath_abs));
+  BLI_strncpy(lib->filepath_abs, filepath_abs, sizeof(lib->filepath_abs));
 
   m->curlib = lib;
 
@@ -918,7 +928,8 @@ static void decode_blender_header(FileData *fd)
 
   if (readsize == sizeof(header) && STREQLEN(header, "BLENDER", 7) && ELEM(header[7], '_', '-') &&
       ELEM(header[8], 'v', 'V') &&
-      (isdigit(header[9]) && isdigit(header[10]) && isdigit(header[11]))) {
+      (isdigit(header[9]) && isdigit(header[10]) && isdigit(header[11])))
+  {
     fd->flags |= FD_FLAGS_FILE_OK;
 
     /* what size are pointers in the file ? */
@@ -1305,6 +1316,10 @@ void blo_filedata_free(FileData *fd)
 }
 
 /** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Read Thumbnail from Blend File
+ * \{ */
 
 BlendThumbnail *BLO_thumbnail_from_file(const char *filepath)
 {
@@ -2282,8 +2297,8 @@ static void lib_link_window_scene_data_restore(wmWindow *win, Scene *scene, View
 
           /* Local-view can become invalid during undo/redo steps,
            * so we exit it when no could be found. */
-          for (base = static_cast<Base *>(view_layer->object_bases.first); base;
-               base = base->next) {
+          for (base = static_cast<Base *>(view_layer->object_bases.first); base; base = base->next)
+          {
             if (base->local_view_bits & v3d->local_view_uuid) {
               break;
             }
@@ -2684,7 +2699,8 @@ static void direct_link_library(FileData *fd, Library *lib, Main *main)
 
   /* Make sure we have full path in lib->filepath_abs */
   BLI_strncpy(lib->filepath_abs, lib->filepath, sizeof(lib->filepath));
-  BLI_path_normalize(fd->relabase, lib->filepath_abs);
+  BLI_path_abs(lib->filepath_abs, fd->relabase);
+  BLI_path_normalize(lib->filepath_abs);
 
   //  printf("direct_link_library: filepath %s\n", lib->filepath);
   //  printf("direct_link_library: filepath_abs %s\n", lib->filepath_abs);
@@ -3095,15 +3111,23 @@ static void read_libblock_undo_restore_at_old_address(FileData *fd, Main *main, 
   BLI_remlink(old_lb, id_old);
   BLI_remlink(new_lb, id);
 
-  /* We do not need any remapping from this call here, since no ID pointer is valid in the data
-   * currently (they are all pointing to old addresses, and need to go through `lib_link`
-   * process). So we can pass nullptr for the Main pointer parameter. */
-  BKE_lib_id_swap_full(nullptr, id, id_old);
+  /* We do need remapping of internal pointers to the ID itself here.
+   *
+   * Passing a NULL BMain means that not all potential runtime data (like collections' parent
+   * pointers etc.) will be up-to-date. However, this should not be a problem here, since these
+   * data are re-generated later in file-read process anyway. */
+  BKE_lib_id_swap_full(nullptr,
+                       id,
+                       id_old,
+                       true,
+                       (ID_REMAP_NO_ORIG_POINTERS_ACCESS | ID_REMAP_SKIP_NEVER_NULL_USAGE |
+                        ID_REMAP_SKIP_UPDATE_TAGGING | ID_REMAP_SKIP_USER_REFCOUNT));
 
   /* Special temporary usage of this pointer, necessary for the `undo_preserve` call after
    * lib-linking to restore some data that should never be affected by undo, e.g. the 3D cursor of
    * #Scene. */
   id_old->orig_id = id;
+  id_old->tag |= LIB_TAG_UNDO_OLD_ID_REREAD_IN_PLACE;
 
   BLI_addtail(new_lb, id_old);
   BLI_addtail(old_lb, id);
@@ -3122,17 +3146,18 @@ static bool read_libblock_undo_restore(
       return true;
     }
   }
+  else if (id_type->flags & IDTYPE_FLAGS_NO_MEMFILE_UNDO) {
+    /* Skip reading any 'no undo' datablocks (typically UI-like ones), existing ones are kept.
+     * See `setup_app_data` for details. */
+    CLOG_INFO(
+        &LOG_UNDO, 2, "UNDO: skip restore datablock %s, 'NO_MEMFILE_UNDO' type of ID", id->name);
+    return true;
+  }
   else if (bhead->code == ID_LINK_PLACEHOLDER) {
     /* Restore linked datablock. */
     if (read_libblock_undo_restore_linked(fd, main, id, bhead)) {
       return true;
     }
-  }
-  else if (id_type->flags & IDTYPE_FLAGS_NO_MEMFILE_UNDO) {
-    /* Skip reading any UI datablocks, existing ones are kept. We don't
-     * support pointers from other datablocks to UI datablocks so those
-     * we also don't put UI datablocks in fd->libmap. */
-    return true;
   }
 
   /* Restore local datablocks. */
@@ -3561,7 +3586,8 @@ static void lib_link_all(FileData *fd, Main *bmain)
     }
 
     if ((fd->flags & FD_FLAGS_IS_MEMFILE) && do_partial_undo &&
-        (id->tag & LIB_TAG_UNDO_OLD_ID_REUSED) != 0) {
+        (id->tag & LIB_TAG_UNDO_OLD_ID_REUSED) != 0)
+    {
       /* This ID has been re-used from 'old' bmain. Since it was therefore unchanged across
        * current undo step, and old IDs re-use their old memory address, we do not need to liblink
        * it at all. */
