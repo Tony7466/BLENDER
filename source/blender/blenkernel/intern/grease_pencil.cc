@@ -787,7 +787,7 @@ blender::Span<blender::uint3> GreasePencilDrawing::triangles() const
 
     const bke::CurvesGeometry &curves = this->geometry.wrap();
     const Span<float3> positions = curves.positions();
-    const offset_indices::OffsetIndices<int> points_by_curve = curves.points_by_curve();
+    const OffsetIndices<int> points_by_curve = curves.points_by_curve();
 
     int total_triangles = 0;
     Array<int> tris_offests(curves.curves_num());
@@ -1141,9 +1141,9 @@ static void read_layer_from_storage(blender::bke::greasepencil::LayerGroup &curr
   Vector<LayerMask> masks = new_layer.masks_for_write();
   GreasePencilLayerMaskStorage *masks_storage = &node_leaf->layer.masks_storage;
   for (int mask_i = 0; mask_i < masks_storage->masks_size; mask_i++) {
-    GreasePencilLayerMask *mask = &masks_storage->masks[mask_i];
-    LayerMask new_mask = LayerMask(mask->layer_name);
-    new_mask.flag = mask->flag;
+    GreasePencilLayerMask &mask = masks_storage->masks[mask_i];
+    LayerMask new_mask = LayerMask(mask.layer_name);
+    new_mask.flag = mask.flag;
     masks.append(std::move(new_mask));
   }
   new_layer.opacity = node_leaf->layer.opacity;
@@ -1342,8 +1342,8 @@ void GreasePencil::read_layer_tree_storage(BlendDataReader *reader)
         GreasePencilLayerMaskStorage *masks_storage = &node_leaf->layer.masks_storage;
         BLO_read_data_address(reader, &masks_storage->masks);
         for (int mask_i = 0; mask_i < masks_storage->masks_size; mask_i++) {
-          GreasePencilLayerMask *mask = &masks_storage->masks[mask_i];
-          BLO_read_data_address(reader, &mask->layer_name);
+          GreasePencilLayerMask &mask = masks_storage->masks[mask_i];
+          BLO_read_data_address(reader, &mask.layer_name);
         }
         break;
       }
@@ -1382,8 +1382,8 @@ void GreasePencil::write_layer_tree_storage(BlendWriter *writer)
         BLO_write_struct_array(
             writer, GreasePencilLayerMask, masks_storage->masks_size, masks_storage->masks);
         for (int mask_i = 0; mask_i < masks_storage->masks_size; mask_i++) {
-          GreasePencilLayerMask *mask = &masks_storage->masks[mask_i];
-          BLO_write_string(writer, mask->layer_name);
+          GreasePencilLayerMask &mask = masks_storage->masks[mask_i];
+          BLO_write_string(writer, mask.layer_name);
         }
         break;
       }
@@ -1422,9 +1422,9 @@ void GreasePencil::free_layer_tree_storage()
         }
         GreasePencilLayerMaskStorage *masks_storage = &node_leaf->layer.masks_storage;
         for (int mask_i = 0; mask_i < masks_storage->masks_size; mask_i++) {
-          GreasePencilLayerMask *mask = &masks_storage->masks[mask_i];
-          if (mask->layer_name) {
-            MEM_freeN(mask->layer_name);
+          GreasePencilLayerMask &mask = masks_storage->masks[mask_i];
+          if (mask.layer_name) {
+            MEM_freeN(mask.layer_name);
           }
         }
         if (masks_storage->masks) {

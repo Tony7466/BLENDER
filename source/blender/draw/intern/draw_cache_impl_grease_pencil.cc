@@ -205,7 +205,7 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
   for (const int drawing_i : drawings.index_range()) {
     const GreasePencilDrawing &drawing = *drawings[drawing_i];
     const bke::CurvesGeometry &curves = drawing.geometry.wrap();
-    const offset_indices::OffsetIndices<int> points_by_curve = curves.points_by_curve();
+    const OffsetIndices<int> points_by_curve = curves.points_by_curve();
     const VArray<bool> cyclic = curves.cyclic();
 
     int verts_start_offsets_size = curves.curves_num();
@@ -282,7 +282,7 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
     const GreasePencilDrawing &drawing = *drawings[drawing_i];
     const bke::CurvesGeometry &curves = drawing.geometry.wrap();
     const bke::AttributeAccessor attributes = curves.attributes();
-    const offset_indices::OffsetIndices<int> points_by_curve = curves.points_by_curve();
+    const OffsetIndices<int> points_by_curve = curves.points_by_curve();
     const Span<float3> positions = curves.positions();
     const VArray<bool> cyclic = curves.cyclic();
     const VArray<float> radii = *attributes.lookup_or_default<float>(

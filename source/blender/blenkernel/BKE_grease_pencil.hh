@@ -47,7 +47,7 @@ class TreeNode : public ::GreasePencilLayerTreeNode, NonMovable {
   /**
    * \returns true if this node is a LayerGroup.
    */
-  constexpr bool is_group() const
+  const bool is_group() const
   {
     return this->type == GP_LAYER_TREE_GROUP;
   }
@@ -55,7 +55,7 @@ class TreeNode : public ::GreasePencilLayerTreeNode, NonMovable {
   /**
    * \returns true if this node is a Layer.
    */
-  constexpr bool is_layer() const
+  const bool is_layer() const
   {
     return this->type == GP_LAYER_TREE_LEAF;
   }
@@ -272,7 +272,7 @@ class LayerGroup : public TreeNode {
 
 namespace convert {
 
-void legacy_gpencil_frame_to_grease_pencil_drawing(GreasePencilDrawing &drawing, bGPDframe &gpf);
+void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf, GreasePencilDrawing &r_drawing);
 void legacy_gpencil_to_grease_pencil(Main &main, GreasePencil &grease_pencil, bGPdata &gpd);
 
 }  // namespace convert
@@ -293,8 +293,8 @@ struct StrokePoint {
  * Stroke cache for a stroke that is currently being drawn.
  */
 struct StrokeCache {
-  Vector<StrokePoint> points = {};
-  Vector<uint3> triangles = {};
+  Vector<StrokePoint> points;
+  Vector<uint3> triangles;
   int mat = 0;
 
   void clear()
