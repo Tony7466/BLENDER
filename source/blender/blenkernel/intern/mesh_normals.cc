@@ -1642,46 +1642,47 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
       }
       continue;
     }
+    if (!done_loops[i]) {
+      continue;
+    }
 
     const int space_index = lnors_spacearr.corner_space_indices[i];
 
-    if (done_loops[i]) {
-      /* Note we accumulate and average all custom normals in current smooth fan,
-       * to avoid getting different clnors data (tiny differences in plain custom normals can
-       * give rather huge differences in computed 2D factors). */
-      int loop_link = lnors_spacearr.corner_group_lists[i];
-      if (loop_link == -1) {
-        const int nidx = use_vertices ? corner_verts[i] : i;
+    /* Note we accumulate and average all custom normals in current smooth fan,
+     * to avoid getting different clnors data (tiny differences in plain custom normals can
+     * give rather huge differences in computed 2D factors). */
+    int loop_link = lnors_spacearr.corner_group_lists[i];
+    if (loop_link == -1) {
+      const int nidx = use_vertices ? corner_verts[i] : i;
+      float *nor = r_custom_loop_normals[nidx];
+
+      const int space_index = lnors_spacearr.corner_space_indices[i];
+      fan_space_custom_normal_to_data(
+          &lnors_spacearr.spaces[space_index], loop_normals[i], nor, r_clnors_data[i]);
+      done_loops[i].reset();
+    }
+    else {
+      int avg_nor_count = 0;
+      float3 avg_nor(0.0f);
+      while (loop_link != -1) {
+        const int lidx = loop_link;
+        const int nidx = use_vertices ? corner_verts[lidx] : lidx;
         float *nor = r_custom_loop_normals[nidx];
 
-        const int space_index = lnors_spacearr.corner_space_indices[i];
-        fan_space_custom_normal_to_data(
-            &lnors_spacearr.spaces[space_index], loop_normals[i], nor, r_clnors_data[i]);
-        done_loops[i].reset();
+        avg_nor_count++;
+        add_v3_v3(avg_nor, nor);
+
+        loop_link = lnors_spacearr.corner_group_lists[loop_link];
+        done_loops[lidx].reset();
       }
-      else {
-        int avg_nor_count = 0;
-        float3 avg_nor(0.0f);
-        while (loop_link != -1) {
-          const int lidx = loop_link;
-          const int nidx = use_vertices ? corner_verts[lidx] : lidx;
-          float *nor = r_custom_loop_normals[nidx];
 
-          avg_nor_count++;
-          add_v3_v3(avg_nor, nor);
+      mul_v3_fl(avg_nor, 1.0f / float(avg_nor_count));
+      short2 clnor_data_tmp;
+      fan_space_custom_normal_to_data(
+          &lnors_spacearr.spaces[space_index], loop_normals[i], avg_nor, clnor_data_tmp);
 
-          loop_link = lnors_spacearr.corner_group_lists[loop_link];
-          done_loops[lidx].reset();
-        }
-
-        mul_v3_fl(avg_nor, 1.0f / float(avg_nor_count));
-        short2 clnor_data_tmp;
-        fan_space_custom_normal_to_data(
-            &lnors_spacearr.spaces[space_index], loop_normals[i], avg_nor, clnor_data_tmp);
-
-        r_clnors_data.fill_indices(processed_corners.as_span(), clnor_data_tmp);
-        processed_corners.clear();
-      }
+      r_clnors_data.fill_indices(processed_corners.as_span(), clnor_data_tmp);
+      processed_corners.clear();
     }
   }
 }
