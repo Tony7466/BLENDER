@@ -171,7 +171,7 @@ static void bake_simulation_job_startjob(void *customdata,
                       modifier_bake_data.meta_dir.c_str(),
                       meta_file_name.c_str());
 
-        BLI_make_existing_file(bdata_path);
+        BLI_file_ensure_parent_dir_exists(bdata_path);
         fstream bdata_file{bdata_path, std::ios::out | std::ios::binary};
         bke::sim::DiskBDataWriter bdata_writer{bdata_file_name, bdata_file, 0};
 
@@ -179,7 +179,7 @@ static void bake_simulation_job_startjob(void *customdata,
         bke::sim::serialize_modifier_simulation_state(
             *sim_state, bdata_writer, *modifier_bake_data.bdata_sharing, io_root);
 
-        BLI_make_existing_file(meta_path);
+        BLI_file_ensure_parent_dir_exists(meta_path);
         io::serialize::write_json_file(meta_path, io_root);
       }
     }
