@@ -407,7 +407,8 @@ BLI_INLINE uint nearestVert(SDefBindCalcData *const data, const float point_co[3
 
   const blender::int2 &edge = data->edges[index];
   if (len_squared_v3v3(point_co, data->targetCos[edge[0]]) <
-      len_squared_v3v3(point_co, data->targetCos[edge[1]])) {
+      len_squared_v3v3(point_co, data->targetCos[edge[1]]))
+  {
     return edge[0];
   }
 
@@ -653,7 +654,8 @@ BLI_INLINE SDefBindWeightData *computeBindWeights(SDefBindCalcData *const data,
          * degenerate despite having passed isPolyValid). */
         if (bpoly->scales[0] < FLT_EPSILON || bpoly->scales[1] < FLT_EPSILON ||
             bpoly->edgemid_angle < FLT_EPSILON || bpoly->corner_edgemid_angles[0] < FLT_EPSILON ||
-            bpoly->corner_edgemid_angles[1] < FLT_EPSILON) {
+            bpoly->corner_edgemid_angles[1] < FLT_EPSILON)
+        {
           freeBindData(bwdata);
           data->success = MOD_SDEF_BIND_RESULT_GENERIC_ERR;
           return nullptr;
@@ -711,7 +713,8 @@ BLI_INLINE SDefBindWeightData *computeBindWeights(SDefBindCalcData *const data,
 
           /* Verify that the additional computed values are valid. */
           if (bpoly->scale_mid < FLT_EPSILON ||
-              bpoly->point_edgemid_angles[0] + bpoly->point_edgemid_angles[1] < FLT_EPSILON) {
+              bpoly->point_edgemid_angles[0] + bpoly->point_edgemid_angles[1] < FLT_EPSILON)
+          {
             freeBindData(bwdata);
             data->success = MOD_SDEF_BIND_RESULT_GENERIC_ERR;
             return nullptr;
@@ -913,7 +916,8 @@ BLI_INLINE SDefBindWeightData *computeBindWeights(SDefBindCalcData *const data,
       }
       else {
         if (bpoly->dominant_angle_weight < FLT_EPSILON ||
-            1.0f - bpoly->dominant_angle_weight < FLT_EPSILON) {
+            1.0f - bpoly->dominant_angle_weight < FLT_EPSILON)
+        {
           bwdata->binds_num += 1;
         }
         else {
@@ -1478,7 +1482,8 @@ static void surfacedeformModifier_do(ModifierData *md,
                            target_polys_num,
                            target_verts_num,
                            target,
-                           mesh)) {
+                           mesh))
+    {
       smd->flags &= ~MOD_SDEF_BIND;
     }
     /* Early abort, this is binding 'call', no need to perform whole evaluation. */

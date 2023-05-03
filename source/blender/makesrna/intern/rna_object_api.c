@@ -609,7 +609,8 @@ static void rna_Object_ray_cast(Object *ob,
 
   if (!bb ||
       (isect_ray_aabb_v3_simple(origin, direction, bb->vec[0], bb->vec[6], &distmin, NULL) &&
-       distmin <= distance)) {
+       distmin <= distance))
+  {
     BVHTreeFromMesh treeData = {NULL};
 
     /* No need to managing allocation or freeing of the BVH data.
@@ -630,7 +631,8 @@ static void rna_Object_ray_cast(Object *ob,
                                0.0f,
                                &hit,
                                treeData.raycast_callback,
-                               &treeData) != -1) {
+                               &treeData) != -1)
+      {
         if (hit.dist <= distance) {
           *r_success = success = true;
 
@@ -688,7 +690,8 @@ static void rna_Object_closest_point_on_mesh(Object *ob,
     nearest.dist_sq = distance * distance;
 
     if (BLI_bvhtree_find_nearest(
-            treeData.tree, origin, &nearest, treeData.nearest_callback, &treeData) != -1) {
+            treeData.tree, origin, &nearest, treeData.nearest_callback, &treeData) != -1)
+    {
       *r_success = true;
 
       copy_v3_v3(r_location, nearest.co);
