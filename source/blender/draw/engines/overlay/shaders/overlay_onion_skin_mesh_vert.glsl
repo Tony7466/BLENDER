@@ -3,8 +3,8 @@
 
 void main()
 {
-    interp.color.rgb = vec3(1, 0, 1);
-    interp.color.a = 0.5f;
+    interp.color.rgb = color;
+    interp.color.a = alpha;
     vec3 world_pos = point_object_to_world(pos);
     gl_Position = point_world_to_ndc(world_pos);
     /* view_clipping_distances(world_pos); */
