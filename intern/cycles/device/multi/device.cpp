@@ -487,37 +487,39 @@ class MultiDevice : public Device {
 
   virtual void upload_changed(vector<device_memory *> buffers) override
   {
-    //foreach (const vector<SubDevice *> &island, peer_islands) {
-    parallel_for_each (peer_islands.begin(), peer_islands.end(), [&](const vector<SubDevice *> &island) {
-      for (const device_memory *buffer: buffers) {
-	VLOG_INFO << "Checking " << buffer->name << " on " << this;
-        if (buffer->modified) {	  
-	  device_ptr existing_key = buffer->device_pointer;
-	  device_ptr key = (existing_key) ? existing_key : unique_key++;
-	  size_t existing_size = buffer->device_size;
+    // foreach (const vector<SubDevice *> &island, peer_islands) {
+    parallel_for_each(
+        peer_islands.begin(), peer_islands.end(), [&](const vector<SubDevice *> &island) {
+          for (const device_memory *buffer : buffers) {
+            VLOG_INFO << "Checking " << buffer->name << " on " << this;
+            if (buffer->modified) {
+              device_ptr existing_key = buffer->device_pointer;
+              device_ptr key = (existing_key) ? existing_key : unique_key++;
+              size_t existing_size = buffer->device_size;
 
-	  SubDevice *owner_sub = find_suitable_mem_device(existing_key, island);	  
-	  Device *sub_device = owner_sub->device.get();
-	  device_ptr sub_device_pointer = (existing_key) ? owner_sub->ptr_map[existing_key] : 0;
-	  device_memory_clone sub_mem(*buffer, sub_device, sub_device_pointer);
-              
-          VLOG_INFO << "Uploading to " << buffer->name;
-	  owner_sub->device->mem_copy_to(sub_mem, existing_size, 0);
-	  owner_sub->ptr_map[key] = sub_mem.device_pointer;
-	  
-	  if (sub_mem.type == MEM_GLOBAL || sub_mem.type == MEM_TEXTURE) {
-	    /* Need to create texture objects and update pointer in kernel globals on all devices */
-	    foreach (SubDevice *island_sub, island) {
-	      if (island_sub != owner_sub) {
-		island_sub->device->mem_copy_to(sub_mem, existing_size, 0);
-	      }
-	    }
-	  }
-	  stats.mem_alloc(sub_mem.device_size - existing_size);
-	}
-      }
-    }
-      );
+              SubDevice *owner_sub = find_suitable_mem_device(existing_key, island);
+              Device *sub_device = owner_sub->device.get();
+              device_ptr sub_device_pointer = (existing_key) ? owner_sub->ptr_map[existing_key] :
+                                                               0;
+              device_memory_clone sub_mem(*buffer, sub_device, sub_device_pointer);
+
+              VLOG_INFO << "Uploading to " << buffer->name;
+              owner_sub->device->mem_copy_to(sub_mem, existing_size, 0);
+              owner_sub->ptr_map[key] = sub_mem.device_pointer;
+
+              if (sub_mem.type == MEM_GLOBAL || sub_mem.type == MEM_TEXTURE) {
+                /* Need to create texture objects and update pointer in kernel globals on all
+                 * devices */
+                foreach (SubDevice *island_sub, island) {
+                  if (island_sub != owner_sub) {
+                    island_sub->device->mem_copy_to(sub_mem, existing_size, 0);
+                  }
+                }
+              }
+              stats.mem_alloc(sub_mem.device_size - existing_size);
+            }
+          }
+        });
   }
 };
 
