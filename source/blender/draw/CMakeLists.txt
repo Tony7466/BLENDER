@@ -219,6 +219,7 @@ set(SRC
   engines/overlay/overlay_viewer_attribute.cc
   engines/overlay/overlay_volume.cc
   engines/overlay/overlay_wireframe.cc
+  engines/overlay/overlay_onion_skin.cc
 
   DRW_engine.h
   DRW_pbvh.hh
@@ -685,6 +686,8 @@ set(GLSL_SRC
   engines/overlay/shaders/overlay_motion_path_line_vert.glsl
   engines/overlay/shaders/overlay_motion_path_line_vert_no_geom.glsl
   engines/overlay/shaders/overlay_motion_path_point_vert.glsl
+  engines/overlay/shaders/overlay_onion_skin_mesh_frag.glsl
+  engines/overlay/shaders/overlay_onion_skin_mesh_vert.glsl
   engines/overlay/shaders/overlay_outline_detect_frag.glsl
   engines/overlay/shaders/overlay_outline_prepass_curves_vert.glsl
   engines/overlay/shaders/overlay_outline_prepass_frag.glsl

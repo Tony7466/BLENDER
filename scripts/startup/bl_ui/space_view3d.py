@@ -6523,7 +6523,7 @@ class VIEW3D_PT_overlay_geometry(Panel):
 
         col.prop(overlay, "show_face_orientation")
 
-        # sub.prop(overlay, "show_onion_skins")
+        sub.prop(overlay, "show_onion_skins")
 
 
 class VIEW3D_PT_overlay_motion_tracking(Panel):

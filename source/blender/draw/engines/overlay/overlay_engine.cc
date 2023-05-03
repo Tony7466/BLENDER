@@ -216,10 +216,12 @@ static void OVERLAY_cache_init(void *vedata)
   OVERLAY_image_cache_init(data);
   OVERLAY_metaball_cache_init(data);
   OVERLAY_motion_path_cache_init(data);
+  OVERLAY_onion_skin_init(data);
   OVERLAY_outline_cache_init(data);
   OVERLAY_particle_cache_init(data);
   OVERLAY_wireframe_cache_init(data);
   OVERLAY_volume_cache_init(data);
+  OVERLAY_onion_skin_init(data);
 }
 
 BLI_INLINE OVERLAY_DupliData *OVERLAY_duplidata_get(Object *ob, void *vedata, bool *do_init)
@@ -357,6 +359,8 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
 
   const bool draw_motion_paths = (pd->overlay.flag & V3D_OVERLAY_HIDE_MOTION_PATHS) == 0;
 
+  const bool draw_onion_skins = pd->overlay.flag & V3D_OVERLAY_ONION_SKINS;
+
   bool do_init;
   OVERLAY_DupliData *dupli = OVERLAY_duplidata_get(ob, vedata, &do_init);
 
@@ -377,6 +381,9 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
   }
   if (draw_bone_selection) {
     OVERLAY_pose_cache_populate(data, ob);
+  }
+  if (draw_onion_skins) {
+    OVERLAY_onion_skin_populate(data, ob);
   }
 
   if (pd->overlay.flag & V3D_OVERLAY_VIEWER_ATTRIBUTE) {
@@ -678,6 +685,7 @@ static void OVERLAY_draw_scene(void *vedata)
 
   OVERLAY_image_in_front_draw(data);
   OVERLAY_motion_path_draw(data);
+  OVERLAY_onion_skin_draw(data);
   OVERLAY_extra_centers_draw(data);
 
   if (DRW_state_is_select() || DRW_state_is_depth()) {

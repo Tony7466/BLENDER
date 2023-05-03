@@ -110,6 +110,7 @@ typedef struct OVERLAY_PassList {
   DRWPass *image_foreground_scene_ps;
   DRWPass *metaball_ps[2];
   DRWPass *motion_paths_ps;
+  DRWPass *onion_skin_ps;
   DRWPass *outlines_prepass_ps;
   DRWPass *outlines_detect_ps;
   DRWPass *outlines_resolve_ps;
@@ -276,6 +277,7 @@ typedef struct OVERLAY_PrivateData {
   DRWShadingGroup *flash_grp[2];
   DRWShadingGroup *motion_path_lines_grp;
   DRWShadingGroup *motion_path_points_grp;
+  DRWShadingGroup *onion_skin_grp;
   DRWShadingGroup *outlines_grp;
   DRWShadingGroup *outlines_curves_grp;
   DRWShadingGroup *outlines_ptcloud_grp;
@@ -649,6 +651,7 @@ void OVERLAY_image_empty_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_image_cache_finish(OVERLAY_Data *vedata);
 void OVERLAY_image_draw(OVERLAY_Data *vedata);
 void OVERLAY_image_background_draw(OVERLAY_Data *vedata);
+
 /**
  * This function draws images that needs the view transform applied.
  * It draws these images directly into the scene color buffer.
@@ -665,6 +668,10 @@ void OVERLAY_metaball_in_front_draw(OVERLAY_Data *vedata);
 void OVERLAY_motion_path_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_motion_path_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_motion_path_draw(OVERLAY_Data *vedata);
+
+void OVERLAY_onion_skin_init(OVERLAY_Data *vedata);
+void OVERLAY_onion_skin_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_onion_skin_draw(OVERLAY_Data *vedata);
 
 void OVERLAY_outline_init(OVERLAY_Data *vedata);
 void OVERLAY_outline_cache_init(OVERLAY_Data *vedata);
@@ -765,6 +772,7 @@ GPUShader *OVERLAY_shader_grid_image(void);
 GPUShader *OVERLAY_shader_image(void);
 GPUShader *OVERLAY_shader_motion_path_line(void);
 GPUShader *OVERLAY_shader_motion_path_vert(void);
+GPUShader *OVERLAY_shader_onion_skin_mesh(void);
 GPUShader *OVERLAY_shader_uniform_color(void);
 GPUShader *OVERLAY_shader_uniform_color_pointcloud(void);
 GPUShader *OVERLAY_shader_outline_prepass(bool use_wire);

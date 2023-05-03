@@ -248,6 +248,23 @@ GPU_SHADER_CREATE_INFO(overlay_motion_path_point_clipped)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Onion Skin
+ * \{ */
+
+GPU_SHADER_INTERFACE_INFO(onion_skin_iface, "interp").smooth(Type::VEC4, "color");
+
+GPU_SHADER_CREATE_INFO(overlay_onion_skin_mesh)
+    .do_static_compilation(true)
+    .vertex_in(0, Type::VEC3, "pos")
+    .vertex_out(onion_skin_iface)
+    .fragment_out(0, Type::VEC4, "fragColor")
+    .fragment_source("overlay_onion_skin_mesh_frag.glsl")
+    .vertex_source("overlay_onion_skin_mesh_vert.glsl")
+    .additional_info("draw_mesh", "draw_globals");
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Image Empty
  * \{ */
 
