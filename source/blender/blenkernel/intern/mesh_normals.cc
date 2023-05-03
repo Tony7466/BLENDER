@@ -1397,26 +1397,19 @@ void normals_calc_loop(const Span<float3> vert_positions,
     }
   });
 
-  for (const int corner : corner_verts.index_range()) {
-    std::cout << "Corner " << corner << '\n';
-    std::cout << "  Vert: " << corner_verts[corner] << '\n';
-    std::cout << "  Normal: " << r_loop_normals[corner] << '\n';
-    if (r_lnors_spacearr) {
-      const NormalFanSpace &space =
-          r_lnors_spacearr->spaces[r_lnors_spacearr->corner_space_indices[corner]];
-      std::cout << "  vec_ref: " << space.vec_ref << '\n';
-      std::cout << "  vec_ortho: " << space.vec_ortho << '\n';
-      std::cout << "  ref_alpha: " << space.ref_alpha << '\n';
-      std::cout << "  ref_beta: " << space.ref_beta << '\n';
-      // std::cout << "  fan indices: (";
-      // int iter = r_lnors_spacearr->corner_group_lists[corner];
-      // while (iter != -1) {
-      // std::cout << iter << ", ";
-      // iter = r_lnors_spacearr->corner_group_lists[iter];
-      // }
-      // std::cout << ")\n";
-    }
-  }
+  // for (const int corner : corner_verts.index_range()) {
+  //   std::cout << "Corner " << corner << '\n';
+  //   std::cout << "  Vert: " << corner_verts[corner] << '\n';
+  //   std::cout << "  Normal: " << r_loop_normals[corner] << '\n';
+  //   if (r_lnors_spacearr) {
+  //     const NormalFanSpace &space =
+  //         r_lnors_spacearr->spaces[r_lnors_spacearr->corner_space_indices[corner]];
+  //     std::cout << "  vec_ref: " << space.vec_ref << '\n';
+  //     std::cout << "  vec_ortho: " << space.vec_ortho << '\n';
+  //     std::cout << "  ref_alpha: " << space.ref_alpha << '\n';
+  //     std::cout << "  ref_beta: " << space.ref_beta << '\n';
+  //   }
+  // }
 }
 
 #undef INDEX_UNSET
@@ -1438,6 +1431,7 @@ static void reverse_space_index_array(const MeshNormalFanSpaces &spaces,
   for (const int corner : spaces.corner_space_indices.index_range()) {
     const int space = spaces.corner_space_indices[corner];
     space_corner_indices[corner_offset_indices[space] + count[space]] = corner;
+    count[space]++;
   }
 }
 
@@ -1591,9 +1585,8 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
        * otherwise we may miss some sharp edges here!
        * This is just a simplified version of above while loop.
        * See #45984. */
-      loop_link = lnors_spacearr.corner_group_lists[i];
-      if (loop_link != -1 && org_nor) {
-        const int lidx = loop_link;
+      if (space_corners.size() > 1 && org_nor) {
+        const int lidx = space_corners.last();
         float *nor = r_custom_loop_normals[lidx];
 
         if (dot_v3v3(org_nor, nor) < LNOR_SPACE_TRIGO_THRESHOLD) {
@@ -1647,12 +1640,13 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
     }
 
     const int space_index = lnors_spacearr.corner_space_indices[i];
+    const Span<int> space_corners = space_corner_indices.as_span().slice(
+        space_corner_offsets[space_index]);
 
     /* Note we accumulate and average all custom normals in current smooth fan,
      * to avoid getting different clnors data (tiny differences in plain custom normals can
      * give rather huge differences in computed 2D factors). */
-    int loop_link = lnors_spacearr.corner_group_lists[i];
-    if (loop_link == -1) {
+    if (space_corners.size() < 2) {
       const int nidx = use_vertices ? corner_verts[i] : i;
       float *nor = r_custom_loop_normals[nidx];
 
@@ -1662,27 +1656,22 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
       done_loops[i].reset();
     }
     else {
-      int avg_nor_count = 0;
       float3 avg_nor(0.0f);
-      while (loop_link != -1) {
-        const int lidx = loop_link;
+      for (const int lidx : space_corners) {
         const int nidx = use_vertices ? corner_verts[lidx] : lidx;
         float *nor = r_custom_loop_normals[nidx];
 
-        avg_nor_count++;
         add_v3_v3(avg_nor, nor);
 
-        loop_link = lnors_spacearr.corner_group_lists[loop_link];
         done_loops[lidx].reset();
       }
 
-      mul_v3_fl(avg_nor, 1.0f / float(avg_nor_count));
+      mul_v3_fl(avg_nor, 1.0f / float(space_corners.size()));
       short2 clnor_data_tmp;
       fan_space_custom_normal_to_data(
           &lnors_spacearr.spaces[space_index], loop_normals[i], avg_nor, clnor_data_tmp);
 
-      r_clnors_data.fill_indices(processed_corners.as_span(), clnor_data_tmp);
-      processed_corners.clear();
+      r_clnors_data.fill_indices(space_corners, clnor_data_tmp);
     }
   }
 }
