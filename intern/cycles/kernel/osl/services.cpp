@@ -429,7 +429,8 @@ static bool set_attribute_float2(float2 f[3], TypeDesc type, bool derivatives, v
     return true;
   }
   else if (type == TypeDesc::TypePoint || type == TypeDesc::TypeVector ||
-           type == TypeDesc::TypeNormal || type == TypeDesc::TypeColor) {
+           type == TypeDesc::TypeNormal || type == TypeDesc::TypeColor)
+  {
     float *fval = (float *)val;
 
     fval[0] = f[0].x;
@@ -499,7 +500,8 @@ static bool set_attribute_float3(float3 f[3], TypeDesc type, bool derivatives, v
     return true;
   }
   else if (type == TypeDesc::TypePoint || type == TypeDesc::TypeVector ||
-           type == TypeDesc::TypeNormal || type == TypeDesc::TypeColor) {
+           type == TypeDesc::TypeNormal || type == TypeDesc::TypeColor)
+  {
     float *fval = (float *)val;
 
     fval[0] = f[0].x;
@@ -575,7 +577,8 @@ static bool set_attribute_float4(float4 f[3], TypeDesc type, bool derivatives, v
     return true;
   }
   else if (type == TypeDesc::TypePoint || type == TypeDesc::TypeVector ||
-           type == TypeDesc::TypeNormal || type == TypeDesc::TypeColor) {
+           type == TypeDesc::TypeNormal || type == TypeDesc::TypeColor)
+  {
     fval[0] = f[0].x;
     fval[1] = f[0].y;
     fval[2] = f[0].z;
@@ -639,7 +642,8 @@ static bool set_attribute_float(float f[3], TypeDesc type, bool derivatives, voi
     return true;
   }
   else if (type == TypeDesc::TypePoint || type == TypeDesc::TypeVector ||
-           type == TypeDesc::TypeNormal || type == TypeDesc::TypeColor) {
+           type == TypeDesc::TypeNormal || type == TypeDesc::TypeColor)
+  {
     float *fval = (float *)val;
     fval[0] = f[0];
     fval[1] = f[0];
@@ -930,7 +934,8 @@ bool OSLRenderServices::get_object_standard_attribute(const KernelGlobalsCPU *kg
     return set_attribute_int(3, type, derivatives, val);
   }
   else if ((name == u_geom_trianglevertices || name == u_geom_polyvertices) &&
-           sd->type & PRIMITIVE_TRIANGLE) {
+           sd->type & PRIMITIVE_TRIANGLE)
+  {
     float3 P[3];
 
     if (sd->type & PRIMITIVE_MOTION) {
@@ -1070,7 +1075,8 @@ bool OSLRenderServices::get_background_attribute(const KernelGlobalsCPU *kg,
     float3 ndc[3];
 
     if ((globals->raytype & PATH_RAY_CAMERA) && sd->object == OBJECT_NONE &&
-        kernel_data.cam.type == CAMERA_ORTHOGRAPHIC) {
+        kernel_data.cam.type == CAMERA_ORTHOGRAPHIC)
+    {
       ndc[0] = camera_world_to_ndc(kg, sd, sd->ray_P);
 
       if (derivatives) {
