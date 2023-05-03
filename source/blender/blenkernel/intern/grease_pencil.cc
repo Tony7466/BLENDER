@@ -784,6 +784,7 @@ blender::Span<blender::uint3> GreasePencilDrawing::triangles() const
 
     r_data.resize(total_triangles);
 
+    /* TODO: use threading. */
     for (const int curve_i : curves.curves_range()) {
       const IndexRange points = points_by_curve[curve_i];
 
