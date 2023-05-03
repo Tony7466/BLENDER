@@ -709,7 +709,7 @@ struct LoopSplitTaskDataCommon {
   /* Read/write.
    * Note we do not need to protect it, though, since two different tasks will *always* affect
    * different elements in the arrays. */
-  MeshNormalFanSpaces *lnors_spacearr;
+  NormalFanSpaces *lnors_spacearr;
   MutableSpan<float3> loop_normals;
   MutableSpan<short2> clnors_data;
 
@@ -889,7 +889,7 @@ static void lnor_space_for_single_fan(LoopSplitTaskDataCommon *common_data,
 
   loop_normals[ml_curr_index] = poly_normals[loop_to_poly[ml_curr_index]];
 
-  if (MeshNormalFanSpaces *lnors_spacearr = common_data->lnors_spacearr) {
+  if (NormalFanSpaces *lnors_spacearr = common_data->lnors_spacearr) {
     const Span<float3> positions = common_data->positions;
     const Span<int2> edges = common_data->edges;
     const OffsetIndices polys = common_data->polys;
@@ -930,7 +930,7 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
                                   const int space_index,
                                   Vector<float3> *edge_vectors)
 {
-  MeshNormalFanSpaces *lnors_spacearr = common_data->lnors_spacearr;
+  NormalFanSpaces *lnors_spacearr = common_data->lnors_spacearr;
   MutableSpan<float3> loop_normals = common_data->loop_normals;
   MutableSpan<short2> clnors_data = common_data->clnors_data;
 
@@ -1270,7 +1270,7 @@ void normals_calc_loop(const Span<float3> vert_positions,
                        bool use_split_normals,
                        float split_angle,
                        short2 *clnors_data,
-                       MeshNormalFanSpaces *r_lnors_spacearr,
+                       NormalFanSpaces *r_lnors_spacearr,
                        MutableSpan<float3> r_loop_normals)
 {
   /* For now this is not supported.
@@ -1328,7 +1328,7 @@ void normals_calc_loop(const Span<float3> vert_positions,
   /* When using custom loop normals, disable the angle feature! */
   const bool check_angle = (split_angle < float(M_PI)) && (clnors_data == nullptr);
 
-  MeshNormalFanSpaces _lnors_spacearr;
+  NormalFanSpaces _lnors_spacearr;
 
 #ifdef DEBUG_TIME
   SCOPED_TIMER_AVERAGED(__func__);
@@ -1457,7 +1457,7 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
    * function *is not* performance-critical, since it is mostly expected to be called by io add-ons
    * when importing custom normals, and modifier (and perhaps from some editing tools later?). So
    * better to keep some simplicity here, and just call #bke::mesh::normals_calc_loop() twice! */
-  MeshNormalFanSpaces lnors_spacearr;
+  NormalFanSpaces lnors_spacearr;
   BitVector<> done_loops(corner_verts.size(), false);
   Array<float3> loop_normals(corner_verts.size());
   const Array<int> loop_to_poly = mesh_topology::build_loop_to_poly_map(polys);

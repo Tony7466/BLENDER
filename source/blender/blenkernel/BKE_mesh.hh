@@ -51,6 +51,35 @@ void poly_angles_calc(Span<float3> vert_positions,
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Medium-Level Normals Calculation
+ * \{ */
+
+/**
+ * Calculate face normals directly into a result array.
+ *
+ * \note Usually #Mesh::poly_normals() is the preferred way to access face normals,
+ * since they may already be calculated and cached on the mesh.
+ */
+void normals_calc_polys(Span<float3> vert_positions,
+                        OffsetIndices<int> polys,
+                        Span<int> corner_verts,
+                        MutableSpan<float3> poly_normals);
+
+/**
+ * Calculate face and vertex normals directly into result arrays.
+ *
+ * \note Usually #Mesh::vert_normals() is the preferred way to access vertex normals,
+ * since they may already be calculated and cached on the mesh.
+ */
+void normals_calc_poly_vert(Span<float3> vert_positions,
+                            OffsetIndices<int> polys,
+                            Span<int> corner_verts,
+                            MutableSpan<float3> poly_normals,
+                            MutableSpan<float3> vert_normals);
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Face Corner Normal Calculation
  * \{ */
 
@@ -60,20 +89,20 @@ void poly_angles_calc(Span<float3> vert_positions,
  * a regular #float3 format.
  */
 struct NormalFanSpace {
-  /** Reference vector, orthogonal to vec_lnor. */
+  /** Reference vector, orthogonal to corner normal. */
   float3 vec_ref;
-  /** Third vector, orthogonal to vec_lnor and vec_ref. */
+  /** Third vector, orthogonal to corner normal and #vec_ref. */
   float3 vec_ortho;
-  /** Reference angle, around vec_ortho, in [0, pi] range (0.0 marks that space as invalid). */
+  /** Reference angle around #vec_ortho, in [0, pi] range (0.0 marks space as invalid). */
   float ref_alpha;
-  /** Reference angle, around vec_lnor, in [0, 2pi] range (0.0 marks that space as invalid). */
+  /** Reference angle around corner normal, in [0, 2pi] range (0.0 marks space as invalid). */
   float ref_beta;
 };
 
 /**
  * Storage for coordinate spaces and connection information during normal calculation.
  */
-struct MeshNormalFanSpaces {
+struct NormalFanSpaces {
   /**
    * The normal coordinate spaces, potentially shared between multiple face corners in a smooth fan
    * connected to a vertex. Depending on the mesh (the amount of sharing / number of sharp edges /
@@ -115,37 +144,8 @@ void normals_calc_loop(Span<float3> vert_positions,
                        bool use_split_normals,
                        float split_angle,
                        short2 *clnors_data,
-                       MeshNormalFanSpaces *r_lnors_spacearr,
+                       NormalFanSpaces *r_lnors_spacearr,
                        MutableSpan<float3> r_loop_normals);
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Medium-Level Normals Calculation
- * \{ */
-
-/**
- * Calculate face normals directly into a result array.
- *
- * \note Usually #Mesh::poly_normals() is the preferred way to access face normals,
- * since they may already be calculated and cached on the mesh.
- */
-void normals_calc_polys(Span<float3> vert_positions,
-                        OffsetIndices<int> polys,
-                        Span<int> corner_verts,
-                        MutableSpan<float3> poly_normals);
-
-/**
- * Calculate face and vertex normals directly into result arrays.
- *
- * \note Usually #Mesh::vert_normals() is the preferred way to access vertex normals,
- * since they may already be calculated and cached on the mesh.
- */
-void normals_calc_poly_vert(Span<float3> vert_positions,
-                            OffsetIndices<int> polys,
-                            Span<int> corner_verts,
-                            MutableSpan<float3> poly_normals,
-                            MutableSpan<float3> vert_normals);
 
 void normals_loop_custom_set(Span<float3> vert_positions,
                              Span<int2> edges,
