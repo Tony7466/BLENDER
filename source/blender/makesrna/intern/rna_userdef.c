@@ -655,7 +655,8 @@ static void rna_UserDef_viewport_lights_update(Main *bmain, Scene *scene, Pointe
   /* If all lights are off gpu_draw resets them all, see: #27627,
    * so disallow them all to be disabled. */
   if (U.light_param[0].flag == 0 && U.light_param[1].flag == 0 && U.light_param[2].flag == 0 &&
-      U.light_param[3].flag == 0) {
+      U.light_param[3].flag == 0)
+  {
     SolidLight *light = ptr->data;
     light->flag |= 1;
   }
@@ -962,15 +963,15 @@ static void rna_StudioLights_remove(UserDef *UNUSED(userdef), StudioLight *studi
   BKE_studiolight_remove(studio_light);
 }
 
-static StudioLight *rna_StudioLights_load(UserDef *UNUSED(userdef), const char *path, int type)
+static StudioLight *rna_StudioLights_load(UserDef *UNUSED(userdef), const char *filepath, int type)
 {
-  return BKE_studiolight_load(path, type);
+  return BKE_studiolight_load(filepath, type);
 }
 
 /* TODO: Make it accept arguments. */
-static StudioLight *rna_StudioLights_new(UserDef *userdef, const char *name)
+static StudioLight *rna_StudioLights_new(UserDef *userdef, const char *filepath)
 {
-  return BKE_studiolight_create(name, userdef->light_param, userdef->light_ambient);
+  return BKE_studiolight_create(filepath, userdef->light_param, userdef->light_ambient);
 }
 
 /* StudioLight.name */
@@ -990,13 +991,13 @@ static int rna_UserDef_studiolight_name_length(PointerRNA *ptr)
 static void rna_UserDef_studiolight_path_get(PointerRNA *ptr, char *value)
 {
   StudioLight *sl = (StudioLight *)ptr->data;
-  BLI_strncpy(value, sl->path, FILE_MAX);
+  BLI_strncpy(value, sl->filepath, FILE_MAX);
 }
 
 static int rna_UserDef_studiolight_path_length(PointerRNA *ptr)
 {
   StudioLight *sl = (StudioLight *)ptr->data;
-  return strlen(sl->path);
+  return strlen(sl->filepath);
 }
 
 /* StudioLight.path_irr_cache */
@@ -4921,7 +4922,7 @@ static void rna_def_userdef_view(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop,
       "Timecode Style",
-      "Format of timecodes displayed when not displaying timing in terms of frames");
+      "Format of timecode displayed when not displaying timing in terms of frames");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 
   prop = RNA_def_property(srna, "view_frame_type", PROP_ENUM, PROP_NONE);
@@ -6258,6 +6259,11 @@ static void rna_def_userdef_filepaths_asset_library(BlenderRNA *brna)
       "Default Import Method",
       "Determine how the asset will be imported, unless overridden by the Asset Browser");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
+
+  prop = RNA_def_property(srna, "use_relative_path", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag", ASSET_LIBRARY_RELATIVE_PATH);
+  RNA_def_property_ui_text(
+      prop, "Relative Path", "Use relative path when linking assets from this asset library");
 }
 
 static void rna_def_userdef_script_directory(BlenderRNA *brna)

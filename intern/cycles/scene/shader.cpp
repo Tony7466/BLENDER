@@ -132,7 +132,8 @@ static float3 output_estimate_emission(ShaderOutput *output, bool &is_constant)
     return zero_float3();
   }
   else if (node->type == EmissionNode::get_node_type() ||
-           node->type == BackgroundNode::get_node_type()) {
+           node->type == BackgroundNode::get_node_type())
+  {
     /* Emission and Background node. */
     ShaderInput *color_in = node->input("Color");
     ShaderInput *strength_in = node->input("Strength");
@@ -167,7 +168,8 @@ static float3 output_estimate_emission(ShaderOutput *output, bool &is_constant)
     return estimate;
   }
   else if (node->type == LightFalloffNode::get_node_type() ||
-           node->type == IESLightNode::get_node_type()) {
+           node->type == IESLightNode::get_node_type())
+  {
     /* Get strength from Light Falloff and IES texture node. */
     ShaderInput *strength_in = node->input("Strength");
     is_constant = false;
