@@ -1140,7 +1140,7 @@ bool BLI_path_abs_from_cwd(char *path, const size_t maxlen)
  * environment variable (Windows-only) onto `name` in turn until such a file is found.
  * Returns success/failure.
  */
-bool BLI_path_program_extensions_add_win32(char *program_name, const size_t maxlen)
+bool BLI_path_program_extensions_add_win32(char *name, const size_t maxlen)
 {
   bool retval = false;
   int type;
