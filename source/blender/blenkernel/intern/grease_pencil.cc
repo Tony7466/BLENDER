@@ -418,7 +418,7 @@ bool Layer::overwrite_frame(int frame_number, GreasePencilFrame &frame)
 
 bool Layer::overwrite_frame(int frame_number, GreasePencilFrame &&frame)
 {
-  return this->frames_for_write().add_overwrite(frame_number, frame);
+  return this->frames_for_write().add_overwrite(frame_number, std::move(frame));
 }
 
 Span<int> Layer::sorted_keys() const

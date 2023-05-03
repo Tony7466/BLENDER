@@ -16,6 +16,8 @@ namespace blender::bke::greasepencil::tests {
 /* --------------------------------------------------------------------------------------------- */
 /* Grease Pencil ID Tests. */
 
+/* Note: Using a struct with constructor and destructor instead of a fixture here, to have all the
+ * tests in the same group. */
 struct GreasePencilIDTestContext {
   Main *bmain = nullptr;
 
@@ -157,6 +159,19 @@ TEST(greasepencil, remove_drawing)
             expected_frames_pairs_layer0[0][1]);
   EXPECT_EQ(layers[0]->frames().lookup(expected_frames_pairs_layer0[1][0]).drawing_index,
             expected_frames_pairs_layer0[1][1]);
+}
+
+TEST(greasepencil, overwrite_frame)
+{
+  Layer layer1("Layer1");
+
+  layer1.insert_frame(0, GreasePencilFrame{0});
+  layer1.tag_frames_map_keys_changed();
+
+  EXPECT_EQ(layer1.frames().lookup(0).drawing_index, 0);
+
+  layer1.overwrite_frame(0, GreasePencilFrame{42});
+  EXPECT_EQ(layer1.frames().lookup(0).drawing_index, 42);
 }
 
 /* --------------------------------------------------------------------------------------------- */
