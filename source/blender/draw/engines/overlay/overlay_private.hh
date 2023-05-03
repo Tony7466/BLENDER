@@ -32,7 +32,6 @@
 struct ImBuf;
 
 namespace blender::draw::overlay {
-template<typename SelectEngineT> class Instance;
 
 struct State {
   Depsgraph *depsgraph;
@@ -64,8 +63,8 @@ using blender::draw::Texture;
 using blender::draw::TextureFromPool;
 using blender::draw::TextureRef;
 
-template<typename SelectEngineT> struct Resources : public SelectEngineT::SelectMap {
-  ShaderModule<SelectEngineT> &shaders;
+struct Resources : public select::SelectMap {
+  ShaderModule &shaders;
 
   Framebuffer overlay_fb = {"overlay_fb"};
   Framebuffer overlay_in_front_fb = {"overlay_in_front_fb"};
@@ -88,7 +87,8 @@ template<typename SelectEngineT> struct Resources : public SelectEngineT::Select
   TextureRef color_overlay_tx;
   TextureRef color_render_tx;
 
-  Resources(ShaderModule<SelectEngineT> &shader_module) : shaders(shader_module){};
+  Resources(const eSelectionType selection_type_, ShaderModule &shader_module)
+      : select::SelectMap(selection_type_), shaders(shader_module){};
 
   [[nodiscard]] ThemeColorID object_wire_theme_id(const ObjectRef &ob_ref,
                                                   const State &state) const

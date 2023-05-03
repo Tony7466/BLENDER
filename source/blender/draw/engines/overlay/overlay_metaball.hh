@@ -19,26 +19,28 @@
 
 namespace blender::draw::overlay {
 
-template<typename SelectEngineT> class Metaballs {
-  using SelectID = typename SelectEngineT::ID;
-  using ResourcesT = Resources<SelectEngineT>;
-  using SphereOutlineInstanceBuf = ShapeInstanceBuf<SelectEngineT, BoneInstanceData>;
+class Metaballs {
+  using SphereOutlineInstanceBuf = ShapeInstanceBuf<BoneInstanceData>;
 
  private:
+  const eSelectionType selection_type_;
+
   PassSimple metaball_ps_ = {"MetaBalls"};
   PassSimple metaball_in_front_ps_ = {"MetaBalls_In_front"};
 
-  SphereOutlineInstanceBuf circle_buf_ = {"metaball_data_buf"};
-  SphereOutlineInstanceBuf circle_in_front_buf_ = {"metaball_data_buf"};
+  SphereOutlineInstanceBuf circle_buf_ = {selection_type_, "metaball_data_buf"};
+  SphereOutlineInstanceBuf circle_in_front_buf_ = {selection_type_, "metaball_data_buf"};
 
  public:
+  Metaballs(const eSelectionType selection_type) : selection_type_(selection_type){};
+
   void begin_sync()
   {
     circle_buf_.clear();
     circle_in_front_buf_.clear();
   }
 
-  void edit_object_sync(const ObjectRef &ob_ref, ResourcesT &res)
+  void edit_object_sync(const ObjectRef &ob_ref, Resources &res)
   {
     SphereOutlineInstanceBuf &circle_buf = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0 ?
                                                circle_in_front_buf_ :
@@ -56,17 +58,17 @@ template<typename SelectEngineT> class Metaballs {
       const bool is_scale_radius = (ml->flag & MB_SCALE_RAD) != 0;
       float stiffness_radius = ml->rad * atanf(ml->s) / float(M_PI_2);
 
-      const SelectID radius_id = res.select_id(ob_ref, MBALLSEL_RADIUS);
+      const select::ID radius_id = res.select_id(ob_ref, MBALLSEL_RADIUS);
       color = (is_selected && is_scale_radius) ? col_radius_select : col_radius;
       circle_buf.append({ob_ref.object, &ml->x, ml->rad, color}, radius_id);
 
-      const SelectID stiff_id = res.select_id(ob_ref, MBALLSEL_STIFF);
+      const select::ID stiff_id = res.select_id(ob_ref, MBALLSEL_STIFF);
       color = (is_selected && !is_scale_radius) ? col_stiffness_select : col_stiffness;
       circle_buf.append({ob_ref.object, &ml->x, stiffness_radius, color}, stiff_id);
     }
   }
 
-  void object_sync(const ObjectRef &ob_ref, ResourcesT &res, const State &state)
+  void object_sync(const ObjectRef &ob_ref, Resources &res, const State &state)
   {
     SphereOutlineInstanceBuf &circle_buf = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0 ?
                                                circle_in_front_buf_ :
@@ -74,7 +76,7 @@ template<typename SelectEngineT> class Metaballs {
     MetaBall *mb = static_cast<MetaBall *>(ob_ref.object->data);
 
     const float4 &color = res.object_wire_color(ob_ref, state);
-    const SelectID select_id = res.select_id(ob_ref);
+    const select::ID select_id = res.select_id(ob_ref);
 
     LISTBASE_FOREACH (MetaElem *, ml, &mb->elems) {
       /* Draw radius only. */
@@ -82,7 +84,7 @@ template<typename SelectEngineT> class Metaballs {
     }
   }
 
-  void end_sync(ResourcesT &res, ShapeCache &shapes, const State &state)
+  void end_sync(Resources &res, ShapeCache &shapes, const State &state)
   {
     auto init_pass = [&](PassSimple &pass, SphereOutlineInstanceBuf &call_buf) {
       pass.init();
@@ -100,13 +102,13 @@ template<typename SelectEngineT> class Metaballs {
     init_pass(metaball_in_front_ps_, circle_in_front_buf_);
   }
 
-  void draw(ResourcesT &res, Manager &manager, View &view)
+  void draw(Resources &res, Manager &manager, View &view)
   {
     GPU_framebuffer_bind(res.overlay_line_fb);
     manager.submit(metaball_ps_, view);
   }
 
-  void draw_in_front(ResourcesT &res, Manager &manager, View &view)
+  void draw_in_front(Resources &res, Manager &manager, View &view)
   {
     GPU_framebuffer_bind(res.overlay_line_in_front_fb);
     manager.submit(metaball_in_front_ps_, view);

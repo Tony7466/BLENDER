@@ -19,14 +19,16 @@
 
 namespace blender::draw::overlay {
 
-template<typename SelectEngineT> class Background {
-  using ResourcesT = Resources<SelectEngineT>;
-
+class Background {
  private:
+  const eSelectionType selection_type_;
+
   PassSimple bg_ps_ = {"Background"};
 
  public:
-  void begin_sync(ResourcesT &res, const State &state)
+  Background(const eSelectionType selection_type) : selection_type_(selection_type){};
+
+  void begin_sync(Resources &res, const State &state)
   {
     DRWState pass_state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_BACKGROUND;
     float4 color_override(0.0f, 0.0f, 0.0f, 0.0f);
@@ -56,7 +58,8 @@ template<typename SelectEngineT> class Background {
       color_override = float4(UNPACK3(&state.scene->world->horr), 1.0f);
     }
     else if (state.v3d->shading.background_type == V3D_SHADING_BACKGROUND_VIEWPORT &&
-             state.v3d->shading.type <= OB_SOLID) {
+             state.v3d->shading.type <= OB_SOLID)
+    {
       background_type = BG_SOLID;
       color_override = float4(UNPACK3(state.v3d->shading.background_color), 1.0f);
     }
@@ -94,7 +97,7 @@ template<typename SelectEngineT> class Background {
     }
   }
 
-  void draw(ResourcesT &res, Manager &manager)
+  void draw(Resources &res, Manager &manager)
   {
     GPU_framebuffer_bind(res.overlay_color_only_fb);
     manager.submit(bg_ps_);

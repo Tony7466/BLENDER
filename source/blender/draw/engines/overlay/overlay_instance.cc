@@ -10,7 +10,7 @@
 
 namespace blender::draw::overlay {
 
-template<typename T> void Instance<T>::init()
+void Instance::init()
 {
   /* TODO(fclem): Remove DRW global usage. */
   const DRWContextState *ctx = DRW_context_state_get();
@@ -60,7 +60,7 @@ template<typename T> void Instance<T>::init()
   resources.theme_settings = G_draw.block;
 }
 
-template<typename T> void Instance<T>::begin_sync()
+void Instance::begin_sync()
 {
   const DRWView *view_legacy = DRW_view_default_get();
   View view("OverlayView", view_legacy);
@@ -74,7 +74,7 @@ template<typename T> void Instance<T>::begin_sync()
   grid.begin_sync(resources, state, view);
 }
 
-template<typename T> void Instance<T>::object_sync(ObjectRef &ob_ref, Manager &manager)
+void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
 {
   const bool in_edit_mode = object_is_edit_mode(ob_ref.object);
   const bool needs_prepass = true; /* TODO */
@@ -131,7 +131,7 @@ template<typename T> void Instance<T>::object_sync(ObjectRef &ob_ref, Manager &m
   }
 }
 
-template<typename T> void Instance<T>::end_sync()
+void Instance::end_sync()
 {
   resources.end_sync();
 
@@ -139,7 +139,7 @@ template<typename T> void Instance<T>::end_sync()
   empties.end_sync(resources, shapes, state);
 }
 
-template<typename T> void Instance<T>::draw(Manager &manager)
+void Instance::draw(Manager &manager)
 {
   resources.depth_tx.wrap(DRW_viewport_texture_list_get()->depth);
   resources.depth_in_front_tx.wrap(DRW_viewport_texture_list_get()->depth_in_front);
@@ -218,19 +218,6 @@ template<typename T> void Instance<T>::draw(Manager &manager)
 
   resources.read_result();
 }
-
-/* Instantiation. */
-template void Instance<>::init();
-template void Instance<>::begin_sync();
-template void Instance<>::object_sync(ObjectRef &ob_ref, Manager &manager);
-template void Instance<>::end_sync();
-template void Instance<>::draw(Manager &manager);
-
-template void Instance<select::Instance>::init();
-template void Instance<select::Instance>::begin_sync();
-template void Instance<select::Instance>::object_sync(ObjectRef &ob_ref, Manager &manager);
-template void Instance<select::Instance>::end_sync();
-template void Instance<select::Instance>::draw(Manager &manager);
 
 }  // namespace blender::draw::overlay
 

@@ -22,7 +22,7 @@
 
 using namespace blender::draw;
 
-using Instance = blender::draw::overlay::Instance<>;
+using Instance = blender::draw::overlay::Instance;
 
 BLI_STATIC_ASSERT(SI_GRID_STEPS_LEN == OVERLAY_GRID_STEPS_LEN, "")
 

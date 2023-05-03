@@ -32,7 +32,7 @@
 
 using namespace blender::draw;
 
-using Instance = blender::draw::overlay::Instance<>;
+using Instance = blender::draw::overlay::Instance;
 
 /* -------------------------------------------------------------------- */
 /** \name Engine Callbacks
@@ -55,7 +55,7 @@ static void OVERLAY_engine_init(void *vedata)
 
   /* Allocate instance. */
   if (data->instance == nullptr) {
-    data->instance = new Instance();
+    data->instance = new Instance(select::eSelectionType::DISABLED);
   }
 
   OVERLAY_PrivateData *pd = stl->pd;
@@ -762,7 +762,7 @@ static void OVERLAY_next_engine_init(void *vedata)
   OVERLAY_Data *ved = reinterpret_cast<OVERLAY_Data *>(vedata);
 
   if (ved->instance == nullptr) {
-    ved->instance = new Instance();
+    ved->instance = new Instance(select::eSelectionType::DISABLED);
   }
 
   reinterpret_cast<Instance *>(ved->instance)->init();

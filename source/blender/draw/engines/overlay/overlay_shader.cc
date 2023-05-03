@@ -1215,17 +1215,11 @@ void OVERLAY_shader_free(void)
 
 namespace blender::draw::overlay {
 
-template<>
-ShaderModule<select::Instance> *ShaderModule<select::Instance>::g_shader_module = nullptr;
-
-template<>
-ShaderModule<select::InstanceDummy> *ShaderModule<select::InstanceDummy>::g_shader_module =
-    nullptr;
+ShaderModule *ShaderModule::g_shader_modules[2][2] = {{nullptr}};
 
 void shader_module_free()
 {
-  ShaderModule<select::Instance>::module_free();
-  ShaderModule<select::InstanceDummy>::module_free();
+  ShaderModule::module_free();
 }
 
 }  // namespace blender::draw::overlay

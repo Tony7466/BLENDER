@@ -15,13 +15,12 @@ namespace blender::draw::overlay {
 /**
  * Buffer containing instances of a certain shape.
  */
-template<typename SelectEngineT, typename InstanceDataT>
-struct ShapeInstanceBuf : private SelectEngineT::SelectBuf {
-  using SelectID = typename SelectEngineT::ID;
+template<typename InstanceDataT> struct ShapeInstanceBuf : private select::SelectBuf {
 
   StorageVectorBuffer<InstanceDataT> data_buf;
 
-  ShapeInstanceBuf(const char *name = nullptr) : data_buf(name){};
+  ShapeInstanceBuf(const eSelectionType selection_type, const char *name = nullptr)
+      : select::SelectBuf(selection_type), data_buf(name){};
 
   void clear()
   {
@@ -29,7 +28,7 @@ struct ShapeInstanceBuf : private SelectEngineT::SelectBuf {
     data_buf.clear();
   }
 
-  void append(const InstanceDataT &data, SelectID select_id)
+  void append(const InstanceDataT &data, select::ID select_id)
   {
     this->select_append(select_id);
     data_buf.append(data);

@@ -15,16 +15,17 @@
 
 namespace blender::draw::overlay {
 
-template<typename SelectEngineT> class Prepass {
-  using SelectID = typename SelectEngineT::ID;
-  using ResourcesT = Resources<SelectEngineT>;
-
+class Prepass {
  private:
+  const eSelectionType selection_type_;
+
   PassMain prepass_ps_ = {"prepass"};
   PassMain prepass_in_front_ps_ = {"prepass_in_front"};
 
  public:
-  void begin_sync(ResourcesT &res, const State &state)
+  Prepass(const eSelectionType selection_type) : selection_type_(selection_type){};
+
+  void begin_sync(Resources &res, const State &state)
   {
     auto init_pass = [&](PassMain &pass) {
       pass.init();
@@ -36,7 +37,7 @@ template<typename SelectEngineT> class Prepass {
     init_pass(prepass_in_front_ps_);
   }
 
-  void object_sync(Manager &manager, const ObjectRef &ob_ref, ResourcesT &res)
+  void object_sync(Manager &manager, const ObjectRef &ob_ref, Resources &res)
   {
     PassMain &pass = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0 ? prepass_in_front_ps_ :
                                                                     prepass_ps_;
@@ -50,14 +51,14 @@ template<typename SelectEngineT> class Prepass {
     }
   }
 
-  void draw(ResourcesT &res, Manager &manager, View &view)
+  void draw(Resources &res, Manager &manager, View &view)
   {
     /* Should be fine to use the line buffer since the prepass only writes to the depth buffer. */
     GPU_framebuffer_bind(res.overlay_line_fb);
     manager.submit(prepass_ps_, view);
   }
 
-  void draw_in_front(ResourcesT &res, Manager &manager, View &view)
+  void draw_in_front(Resources &res, Manager &manager, View &view)
   {
     /* Should be fine to use the line buffer since the prepass only writes to the depth buffer. */
     GPU_framebuffer_bind(res.overlay_line_in_front_fb);

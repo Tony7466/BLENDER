@@ -19,13 +19,13 @@
 
 namespace blender::draw::overlay {
 
-template<
-    /* Selection engine reuse most of the Overlay engine by creating selection IDs for each
-     * selectable component and using a special shaders for drawing.
-     * Making the select engine templated makes it easier to phase out any overhead of the
-     * selection for the regular non-selection case.*/
-    typename SelectEngineT = select::InstanceDummy>
+using eSelectionType = select::eSelectionType;
+
+/* Selection engine reuse most of the Overlay engine by creating selection IDs for each
+ * selectable component and using a special shaders for drawing.*/
 class Instance {
+  const eSelectionType selection_type_;
+
  public:
   /* WORKAROUND: Legacy. Move to grid pass. */
   GPUUniformBuf *grid_ubo = nullptr;
@@ -33,15 +33,18 @@ class Instance {
   ShapeCache shapes;
 
   /** Global types. */
-  Resources<SelectEngineT> resources = {overlay::ShaderModule<SelectEngineT>::module_get()};
+  Resources resources = {selection_type_,
+                         overlay::ShaderModule::module_get(selection_type, false /*TODO*/)};
   State state;
 
   /** Overlay types. */
-  Background<SelectEngineT> background;
-  Prepass<SelectEngineT> prepass;
-  Metaballs<SelectEngineT> metaballs;
-  Empties<SelectEngineT> empties;
-  Grid<SelectEngineT> grid;
+  Background background = {selection_type_};
+  Prepass prepass = {selection_type_};
+  Metaballs metaballs = {selection_type_};
+  Empties empties = {selection_type_};
+  Grid grid = {selection_type_};
+
+  Instance(const eSelectionType selection_type) : selection_type_(selection_type){};
 
   ~Instance()
   {
@@ -85,18 +88,5 @@ class Instance {
     return false;
   }
 };
-
-/* Instantiation. */
-extern template void Instance<>::init();
-extern template void Instance<>::begin_sync();
-extern template void Instance<>::object_sync(ObjectRef &ob_ref, Manager &manager);
-extern template void Instance<>::end_sync();
-extern template void Instance<>::draw(Manager &manager);
-
-extern template void Instance<select::Instance>::init();
-extern template void Instance<select::Instance>::begin_sync();
-extern template void Instance<select::Instance>::object_sync(ObjectRef &ob_ref, Manager &manager);
-extern template void Instance<select::Instance>::end_sync();
-extern template void Instance<select::Instance>::draw(Manager &manager);
 
 }  // namespace blender::draw::overlay

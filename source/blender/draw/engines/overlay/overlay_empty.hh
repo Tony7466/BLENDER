@@ -15,27 +15,30 @@
 
 namespace blender::draw::overlay {
 
-template<typename SelectEngineT> class Empties {
-  using SelectID = typename SelectEngineT::ID;
-  using ResourcesT = Resources<SelectEngineT>;
-  using EmptyInstanceBuf = ShapeInstanceBuf<SelectEngineT, ExtraInstanceData>;
+class Empties {
+  using EmptyInstanceBuf = ShapeInstanceBuf<ExtraInstanceData>;
 
  private:
+  const eSelectionType selection_type_;
+
   PassSimple empty_ps_ = {"Empties"};
   PassSimple empty_in_front_ps_ = {"Empties_In_front"};
 
   struct CallBuffers {
-    EmptyInstanceBuf plain_axes_buf = {"plain_axes_buf"};
-    EmptyInstanceBuf single_arrow_buf = {"single_arrow_buf"};
-    EmptyInstanceBuf cube_buf = {"cube_buf"};
-    EmptyInstanceBuf circle_buf = {"circle_buf"};
-    EmptyInstanceBuf sphere_buf = {"sphere_buf"};
-    EmptyInstanceBuf cone_buf = {"cone_buf"};
-    EmptyInstanceBuf arrows_buf = {"arrows_buf"};
-    EmptyInstanceBuf image_buf = {"image_buf"};
-  } call_buffers_[2];
+    const eSelectionType selection_type_;
+    EmptyInstanceBuf plain_axes_buf = {selection_type_, "plain_axes_buf"};
+    EmptyInstanceBuf single_arrow_buf = {selection_type_, "single_arrow_buf"};
+    EmptyInstanceBuf cube_buf = {selection_type_, "cube_buf"};
+    EmptyInstanceBuf circle_buf = {selection_type_, "circle_buf"};
+    EmptyInstanceBuf sphere_buf = {selection_type_, "sphere_buf"};
+    EmptyInstanceBuf cone_buf = {selection_type_, "cone_buf"};
+    EmptyInstanceBuf arrows_buf = {selection_type_, "arrows_buf"};
+    EmptyInstanceBuf image_buf = {selection_type_, "image_buf"};
+  } call_buffers_[2] = {{selection_type_}, {selection_type_}};
 
  public:
+  Empties(const eSelectionType selection_type) : selection_type_(selection_type){};
+
   void begin_sync()
   {
     for (int i = 0; i < 2; i++) {
@@ -50,7 +53,7 @@ template<typename SelectEngineT> class Empties {
     }
   }
 
-  void object_sync(const ObjectRef &ob_ref, ResourcesT &res, const State &state)
+  void object_sync(const ObjectRef &ob_ref, Resources &res, const State &state)
   {
     CallBuffers &call_bufs = call_buffers_[int((ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0)];
 
@@ -58,7 +61,7 @@ template<typename SelectEngineT> class Empties {
     ExtraInstanceData data(
         float4x4(ob_ref.object->object_to_world), color, ob_ref.object->empty_drawsize);
 
-    const SelectID select_id = res.select_id(ob_ref);
+    const select::ID select_id = res.select_id(ob_ref);
 
     switch (ob_ref.object->empty_drawtype) {
       case OB_PLAINAXES:
@@ -89,7 +92,7 @@ template<typename SelectEngineT> class Empties {
     }
   }
 
-  void end_sync(ResourcesT &res, ShapeCache &shapes, const State &state)
+  void end_sync(Resources &res, ShapeCache &shapes, const State &state)
   {
     auto init_pass = [&](PassSimple &pass, CallBuffers &call_bufs) {
       pass.init();
@@ -112,13 +115,13 @@ template<typename SelectEngineT> class Empties {
     init_pass(empty_in_front_ps_, call_buffers_[1]);
   }
 
-  void draw(ResourcesT &res, Manager &manager, View &view)
+  void draw(Resources &res, Manager &manager, View &view)
   {
     GPU_framebuffer_bind(res.overlay_line_fb);
     manager.submit(empty_ps_, view);
   }
 
-  void draw_in_front(ResourcesT &res, Manager &manager, View &view)
+  void draw_in_front(Resources &res, Manager &manager, View &view)
   {
     GPU_framebuffer_bind(res.overlay_line_in_front_fb);
     manager.submit(empty_in_front_ps_, view);

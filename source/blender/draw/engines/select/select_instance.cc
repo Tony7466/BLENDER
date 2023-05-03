@@ -19,7 +19,7 @@ using namespace blender::draw;
 /** \name Select-Next Engine
  * \{ */
 
-using Instance = overlay::Instance<select::Instance>;
+using Instance = overlay::Instance;
 
 typedef struct SELECT_NextData {
   void *engine_type;
@@ -40,7 +40,7 @@ static void SELECT_next_engine_init(void *vedata)
   OVERLAY_Data *ved = reinterpret_cast<OVERLAY_Data *>(vedata);
 
   if (ved->instance == nullptr) {
-    ved->instance = new Instance();
+    ved->instance = new Instance(select::eSelectionType::ENABLED);
   }
 
   reinterpret_cast<Instance *>(ved->instance)->init();

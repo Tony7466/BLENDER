@@ -18,10 +18,10 @@
 
 namespace blender::draw::overlay {
 
-template<typename SelectEngineT> class Grid {
-  using ResourcesT = Resources<SelectEngineT>;
-
+class Grid {
  private:
+  const eSelectionType selection_type_;
+
   UniformBuffer<OVERLAY_GridData> data_;
 
   PassSimple grid_ps_ = {"grid_ps_"};
@@ -35,6 +35,8 @@ template<typename SelectEngineT> class Grid {
   bool enabled_ = false;
 
  public:
+  Grid(const eSelectionType selection_type) : selection_type_(selection_type){};
+
   void update_ubo(const State &state, const View &view)
   {
     float grid_steps[SI_GRID_STEPS_LEN] = {
@@ -166,7 +168,7 @@ template<typename SelectEngineT> class Grid {
     data_.push_update();
   }
 
-  void begin_sync(ResourcesT &res, const State &state, const View &view)
+  void begin_sync(Resources &res, const State &state, const View &view)
   {
     this->update_ubo(state, view);
 
@@ -197,7 +199,7 @@ template<typename SelectEngineT> class Grid {
     }
   }
 
-  void draw(ResourcesT &res, Manager &manager, View &view)
+  void draw(Resources &res, Manager &manager, View &view)
   {
     if (!enabled_) {
       return;
