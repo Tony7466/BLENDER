@@ -21,7 +21,7 @@ namespace blender::render::hydra {
 extern struct CLG_LogRef *LOG_RENDER_HYDRA_SCENE; /* BSD - Blender Scene Delegate */
 
 class BlenderSceneDelegate : public pxr::HdSceneDelegate {
-  friend MeshData; /* has access to materials_*/
+  friend MeshData; /* has access to materials and instances */
 
  public:
   enum class EngineType { VIEWPORT = 1, FINAL, PREVIEW };

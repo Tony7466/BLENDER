@@ -51,9 +51,6 @@ void InstancerData::insert()
 {
   ID_LOG(2, "");
   scene_delegate_->GetRenderIndex().InsertInstancer(scene_delegate_, prim_id);
-  for (auto &it : instances_) {
-    it.second.obj_data->insert();
-  }
 }
 
 void InstancerData::remove()
@@ -149,6 +146,7 @@ void InstancerData::check_update(Object *object)
   }
   ObjectData *obj_data = it->second.obj_data.get();
   obj_data->update();
+  obj_data->transform = pxr::GfMatrix4d(1.0);
 
   pxr::HdDirtyBits bits = pxr::HdChangeTracker::Clean;
   if (object->id.recalc & ID_RECALC_TRANSFORM) {
@@ -187,6 +185,13 @@ void InstancerData::available_materials(std::set<pxr::SdfPath> &paths) const
       paths.insert(mat_id);
     }
   }
+}
+
+void InstancerData::update_as_parent()
+{
+  set_instances();
+  scene_delegate_->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(
+      prim_id, pxr::HdChangeTracker::AllDirty);
 }
 
 pxr::SdfPath InstancerData::object_prim_id(Object *object) const

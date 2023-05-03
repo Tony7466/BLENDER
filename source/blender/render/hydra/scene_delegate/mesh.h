@@ -29,7 +29,7 @@ class MeshData : public ObjectData {
   pxr::HdPrimvarDescriptorVector primvar_descriptors(pxr::HdInterpolation interpolation) const;
   pxr::SdfPath material_id() const;
 
- protected:
+ private:
   void write_mesh(Mesh *mesh);
   void write_material();
   void write_uv_maps(Mesh *mesh);
@@ -43,6 +43,7 @@ class MeshData : public ObjectData {
   pxr::VtMatrix4dArray instances_;
 
   MaterialData *mat_data_ = nullptr;
+  Object *parent_;
 };
 
 }  // namespace blender::render::hydra

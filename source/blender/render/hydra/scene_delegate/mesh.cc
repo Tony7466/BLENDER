@@ -17,7 +17,7 @@ namespace blender::render::hydra {
 MeshData::MeshData(BlenderSceneDelegate *scene_delegate,
                    Object *object,
                    pxr::SdfPath const &prim_id)
-    : ObjectData(scene_delegate, object, prim_id)
+    : ObjectData(scene_delegate, object, prim_id), parent_(object->parent)
 {
 }
 
@@ -65,8 +65,22 @@ void MeshData::remove()
 
 void MeshData::update()
 {
-  pxr::HdDirtyBits bits = pxr::HdChangeTracker::Clean;
   Object *object = (Object *)id;
+  if (parent_ != object->parent) {
+    parent_ = object->parent;
+
+    /* Looking for corresponded instancer and update it as parent */
+    for (Object *ob = parent_; ob != nullptr; ob = ob->parent) {
+      pxr::SdfPath i_id = scene_delegate_->instancer_prim_id(ob);
+      InstancerData *i_data = scene_delegate_->instancer_data(i_id);
+      if (i_data) {
+        i_data->update_as_parent();
+        break;
+      }
+    }
+  }
+
+  pxr::HdDirtyBits bits = pxr::HdChangeTracker::Clean;
   if ((id->recalc & ID_RECALC_GEOMETRY) || (((ID *)object->data)->recalc & ID_RECALC_GEOMETRY)) {
     init();
     bits = pxr::HdChangeTracker::AllDirty;
