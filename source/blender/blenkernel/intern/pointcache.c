@@ -1475,13 +1475,11 @@ static PTCacheFile *ptcache_file_open(PTCacheID *pid, int mode, int cfra)
     fp = BLI_fopen(filepath, "rb");
   }
   else if (mode == PTCACHE_FILE_WRITE) {
-    /* Will create the dir if needs be, same as "//textures" is created. */
-    BLI_make_existing_file(filepath);
-
+    BLI_file_ensure_parent_dir_exists(filepath);
     fp = BLI_fopen(filepath, "wb");
   }
   else if (mode == PTCACHE_FILE_UPDATE) {
-    BLI_make_existing_file(filepath);
+    BLI_file_ensure_parent_dir_exists(filepath);
     fp = BLI_fopen(filepath, "rb+");
   }
 
@@ -3338,7 +3336,7 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
   }
 
   /* clear baking flag */
-  if (pid) {
+  if (pid && cache) {
     cache->flag &= ~(PTCACHE_BAKING | PTCACHE_REDO_NEEDED);
     cache->flag |= PTCACHE_SIMULATION_VALID;
     if (bake) {
