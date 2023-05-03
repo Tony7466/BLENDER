@@ -38,7 +38,6 @@ __all__ = (
 
 import os
 import platform
-import traceback
 from pathlib import Path
 
 import bpy
@@ -107,21 +106,14 @@ def export_mtlx(material):
     """ Exports material to .mtlx file. It is called from Blender source code. """
     try:
         import materialx.utils as mx_utils
-
-        doc = mx_utils.export(material, None)
-        if not doc:
-            return ""
-
-        mtlx_file = mx_utils.get_temp_file(".mtlx", f"mat_{material.as_pointer():016x}")
-        mx_utils.export_to_file(doc, mtlx_file, export_deps=True, copy_deps=False)
-        return str(mtlx_file)
-
     except ImportError:
         print("ERROR: no MaterialX addon available")
+        return ""
 
-    except:
-        # This is a placeholder, this code will be moved to C part later
-        # This code shouldn't raise any exception due to breaking refcounts on RenderEngine
-        traceback.print_exc()
+    doc = mx_utils.export(material, None)
+    if not doc:
+        return ""
 
-    return ""
+    mtlx_file = mx_utils.get_temp_file(".mtlx", f"mat_{material.as_pointer():016x}")
+    mx_utils.export_to_file(doc, mtlx_file, export_deps=True, copy_deps=False)
+    return str(mtlx_file)

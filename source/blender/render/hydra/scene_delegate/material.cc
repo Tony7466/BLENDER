@@ -68,8 +68,28 @@ void MaterialData::init()
     Py_DECREF(result);
   }
   else {
-    CLOG_ERROR(LOG_RENDER_HYDRA_SCENE, "Export error for %s", id->name);
-    PyErr_Print();
+    /* Clearing and logging exception data */
+    PyObject *type, *value, *traceback;
+    PyErr_Fetch(&type, &value, &traceback);
+    PyErr_NormalizeException(&type, &value, &traceback);
+    std::string err_str = ((PyTypeObject *)type)->tp_name;
+    if (value) {
+      PyObject *pstr = PyObject_Str(value);
+      err_str += ": ";
+      err_str += PyUnicode_AsUTF8(pstr);
+      Py_DECREF(pstr);
+    }
+    CLOG_ERROR(LOG_RENDER_HYDRA_SCENE,
+               "Export error for %s (%s): %s",
+               prim_id.GetText(),
+               id->name,
+               err_str.c_str());
+    if (traceback) {
+      PyTraceBack_Print(traceback, PySys_GetObject("stderr"));
+    }
+    Py_XDECREF(traceback);
+    Py_XDECREF(value);
+    Py_DECREF(type);
   }
   Py_DECREF(module);
 
