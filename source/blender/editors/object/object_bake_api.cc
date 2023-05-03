@@ -203,7 +203,7 @@ static bool write_internal_bake_pixels(Image *image,
     RE_bake_mask_fill(pixel_array, pixels_num, mask_buffer);
   }
 
-  is_float = (ibuf->rect_float != nullptr);
+  is_float = (ibuf->float_buffer.data != nullptr);
 
   /* colormanagement conversions */
   if (!is_noncolor) {
@@ -228,7 +228,7 @@ static bool write_internal_bake_pixels(Image *image,
   /* populates the ImBuf */
   if (is_clear) {
     if (is_float) {
-      IMB_buffer_float_from_float(ibuf->rect_float,
+      IMB_buffer_float_from_float(ibuf->float_buffer.data,
                                   buffer,
                                   ibuf->channels,
                                   IB_PROFILE_LINEAR_RGB,
@@ -240,7 +240,7 @@ static bool write_internal_bake_pixels(Image *image,
                                   ibuf->x);
     }
     else {
-      IMB_buffer_byte_from_float((uchar *)ibuf->rect,
+      IMB_buffer_byte_from_float(ibuf->byte_buffer.data,
                                  buffer,
                                  ibuf->channels,
                                  ibuf->dither,
@@ -255,7 +255,7 @@ static bool write_internal_bake_pixels(Image *image,
   }
   else {
     if (is_float) {
-      IMB_buffer_float_from_float_mask(ibuf->rect_float,
+      IMB_buffer_float_from_float_mask(ibuf->float_buffer.data,
                                        buffer,
                                        ibuf->channels,
                                        ibuf->x,
@@ -265,7 +265,7 @@ static bool write_internal_bake_pixels(Image *image,
                                        mask_buffer);
     }
     else {
-      IMB_buffer_byte_from_float_mask((uchar *)ibuf->rect,
+      IMB_buffer_byte_from_float_mask(ibuf->byte_buffer.data,
                                       buffer,
                                       ibuf->channels,
                                       ibuf->dither,
@@ -286,7 +286,7 @@ static bool write_internal_bake_pixels(Image *image,
   ibuf->userflags |= IB_DISPLAY_BUFFER_INVALID;
   BKE_image_mark_dirty(image, ibuf);
 
-  if (ibuf->rect_float) {
+  if (ibuf->float_buffer.data) {
     ibuf->userflags |= IB_RECT_INVALID;
   }
 
@@ -347,7 +347,7 @@ static bool write_external_bake_pixels(const char *filepath,
 
   /* populates the ImBuf */
   if (is_float) {
-    IMB_buffer_float_from_float(ibuf->rect_float,
+    IMB_buffer_float_from_float(ibuf->float_buffer.data,
                                 buffer,
                                 ibuf->channels,
                                 IB_PROFILE_LINEAR_RGB,
@@ -367,7 +367,7 @@ static bool write_external_bake_pixels(const char *filepath,
           buffer, ibuf->x, ibuf->y, ibuf->channels, from_colorspace, to_colorspace, false);
     }
 
-    IMB_buffer_byte_from_float((uchar *)ibuf->rect,
+    IMB_buffer_byte_from_float(ibuf->byte_buffer.data,
                                buffer,
                                ibuf->channels,
                                ibuf->dither,
