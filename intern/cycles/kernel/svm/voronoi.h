@@ -853,29 +853,6 @@ ccl_device float voronoi_n_sphere_radius(const VoronoiParams &params, const floa
   return distance(closestPointToClosestPoint, closestPoint) / 2.0f;
 }
 
-/* **** Normalization **** */
-
-ccl_device void normalize_voronoi_x_fx(const VoronoiParams &params,
-                                       VoronoiOutput &output,
-                                       float max_amplitude,
-                                       bool zero_input)
-{
-  if (params.feature == NODE_VORONOI_F2) {
-    if (zero_input) {
-      output.distance /= (1.0f - params.randomness) +
-                         params.randomness * max_amplitude * params.max_distance * 1.5f;
-    }
-    else {
-      output.distance /= (1.0f - params.randomness) * ceilf(params.detail + 1.0f) +
-                         params.randomness * max_amplitude * params.max_distance * 1.5f;
-    }
-  }
-  else {
-    output.distance /= (0.5f + 0.5f * params.randomness) * max_amplitude * params.max_distance;
-  }
-  output.color /= max_amplitude;
-}
-
 /* **** Fractal Voronoi **** */
 
 template<typename T>
@@ -924,7 +901,8 @@ ccl_device VoronoiOutput fractal_voronoi_x_fx(const VoronoiParams &params, const
   }
 
   if (params.normalize) {
-    normalize_voronoi_x_fx(params, output, max_amplitude, zero_input);
+    output.distance /= max_amplitude * params.max_distance;
+    output.color /= max_amplitude;
   }
 
   output.position = safe_divide(output.position, params.scale);
@@ -936,7 +914,7 @@ template<typename T>
 ccl_device float fractal_voronoi_distance_to_edge(const VoronoiParams &params, const T coord)
 {
   float amplitude = 1.0f;
-  float max_amplitude = 1.5f - 0.5f * params.randomness;
+  float max_amplitude = 0.5f + 0.5f * params.randomness;
   float scale = 1.0f;
   float distance = 8.0f;
 
@@ -950,7 +928,7 @@ ccl_device float fractal_voronoi_distance_to_edge(const VoronoiParams &params, c
       break;
     }
     else if (i <= params.detail) {
-      max_amplitude = lerp(max_amplitude, (1.5f - 0.5f * params.randomness) * scale, amplitude);
+      max_amplitude = lerp(max_amplitude, (0.5f + 0.5f * params.randomness) / scale, amplitude);
       distance = lerp(distance, min(distance, octave_distance / scale), amplitude);
       scale *= params.lacunarity;
       amplitude *= params.roughness;
@@ -958,7 +936,8 @@ ccl_device float fractal_voronoi_distance_to_edge(const VoronoiParams &params, c
     else {
       float remainder = params.detail - floorf(params.detail);
       if (remainder != 0.0f) {
-        float lerp_amplitude = lerp(max_amplitude, (1.5f - 0.5f * params.randomness) * scale, amplitude);
+        float lerp_amplitude = lerp(
+            max_amplitude, (0.5f + 0.5f * params.randomness) / scale, amplitude);
         max_amplitude = lerp(max_amplitude, lerp_amplitude, remainder);
         float lerp_distance = lerp(distance, min(distance, octave_distance / scale), amplitude);
         distance = lerp(distance, min(distance, lerp_distance), remainder);
@@ -967,11 +946,7 @@ ccl_device float fractal_voronoi_distance_to_edge(const VoronoiParams &params, c
   }
 
   if (params.normalize) {
-    /* max_amplitude is used here to keep the code consistent, however it has a different
-     * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude, it
-     * represents an abstract factor needed to cancel out the amplitude attenuation caused by the
-     * higher layers. */
-    distance *= max_amplitude;
+    distance /= max_amplitude;
   }
 
   return distance;
@@ -1107,27 +1082,43 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
       VoronoiOutput output;
       switch (dimensions) {
         case 1:
-          params.max_distance = 1.0f;
+          params.max_distance = (0.5f + 0.5f * params.randomness) *
+                                ((params.feature == NODE_VORONOI_F2) ? 2.0f : 1.0f);
           output = fractal_voronoi_x_fx(params, w);
           break;
         case 2:
           IF_KERNEL_NODES_FEATURE(VORONOI_EXTRA)
           {
-            params.max_distance = voronoi_distance(zero_float2(), one_float2(), params);
+            params.max_distance = voronoi_distance(zero_float2(),
+                                                   make_float2(0.5f + 0.5f * params.randomness,
+                                                               0.5f + 0.5f * params.randomness),
+                                                   params) *
+                                  ((params.feature == NODE_VORONOI_F2) ? 2.0f : 1.0f);
             output = fractal_voronoi_x_fx(params, float3_to_float2(coord));
           }
           break;
         case 3:
           IF_KERNEL_NODES_FEATURE(VORONOI_EXTRA)
           {
-            params.max_distance = voronoi_distance(zero_float3(), one_float3(), params);
+            params.max_distance = voronoi_distance(zero_float3(),
+                                                   make_float3(0.5f + 0.5f * params.randomness,
+                                                               0.5f + 0.5f * params.randomness,
+                                                               0.5f + 0.5f * params.randomness),
+                                                   params) *
+                                  ((params.feature == NODE_VORONOI_F2) ? 2.0f : 1.0f);
             output = fractal_voronoi_x_fx(params, coord);
           }
           break;
         case 4:
           IF_KERNEL_NODES_FEATURE(VORONOI_EXTRA)
           {
-            params.max_distance = voronoi_distance(zero_float4(), one_float4(), params);
+            params.max_distance = voronoi_distance(zero_float4(),
+                                                   make_float4(0.5f + 0.5f * params.randomness,
+                                                               0.5f + 0.5f * params.randomness,
+                                                               0.5f + 0.5f * params.randomness,
+                                                               0.5f + 0.5f * params.randomness),
+                                                   params) *
+                                  ((params.feature == NODE_VORONOI_F2) ? 2.0f : 1.0f);
             output = fractal_voronoi_x_fx(params, float3_to_float4(coord, w));
           }
           break;

@@ -389,7 +389,8 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                                   0.0f;
           params.exponent = 0.0f;
           params.randomness = std::min(std::max(randomness[i], 0.0f), 1.0f);
-          params.max_distance = 1.0f;
+          params.max_distance = (0.5f + 0.5f * params.randomness) *
+                                ((params.feature == SHD_VORONOI_F2) ? 2.0f : 1.0f);
 
           output = noise::fractal_voronoi_x_fx<float>(params, w[i] * params.scale);
           if (calc_distance) {
@@ -417,8 +418,11 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                                 exponent[i] :
                                 0.0f;
           params.randomness = std::min(std::max(randomness[i], 0.0f), 1.0f);
-          params.max_distance = noise::voronoi_distance(
-              float2{0.0f, 0.0f}, float2{1.0f, 1.0f}, params);
+          params.max_distance = noise::voronoi_distance(float2{0.0f, 0.0f},
+                                                        float2(0.5f + 0.5f * params.randomness,
+                                                               0.5f + 0.5f * params.randomness),
+                                                        params) *
+                                ((params.feature == SHD_VORONOI_F2) ? 2.0f : 1.0f);
 
           output = noise::fractal_voronoi_x_fx<float2>(
               params, float2{vector[i].x, vector[i].y} * params.scale);
@@ -447,8 +451,12 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                                 exponent[i] :
                                 0.0f;
           params.randomness = std::min(std::max(randomness[i], 0.0f), 1.0f);
-          params.max_distance = noise::voronoi_distance(
-              float3{0.0f, 0.0f, 0.0f}, float3{1.0f, 1.0f, 1.0f}, params);
+          params.max_distance = noise::voronoi_distance(float3{0.0f, 0.0f, 0.0f},
+                                                        float3(0.5f + 0.5f * params.randomness,
+                                                               0.5f + 0.5f * params.randomness,
+                                                               0.5f + 0.5f * params.randomness),
+                                                        params) *
+                                ((params.feature == SHD_VORONOI_F2) ? 2.0f : 1.0f);
 
           output = noise::fractal_voronoi_x_fx<float3>(params, vector[i] * params.scale);
           if (calc_distance) {
@@ -476,8 +484,13 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                                 exponent[i] :
                                 0.0f;
           params.randomness = std::min(std::max(randomness[i], 0.0f), 1.0f);
-          params.max_distance = noise::voronoi_distance(
-              float4{0.0f, 0.0f, 0.0f, 0.0f}, float4{1.0f, 1.0f, 1.0f, 1.0f}, params);
+          params.max_distance = noise::voronoi_distance(float4{0.0f, 0.0f, 0.0f, 0.0f},
+                                                        float4(0.5f + 0.5f * params.randomness,
+                                                               0.5f + 0.5f * params.randomness,
+                                                               0.5f + 0.5f * params.randomness,
+                                                               0.5f + 0.5f * params.randomness),
+                                                        params) *
+                                ((params.feature == SHD_VORONOI_F2) ? 2.0f : 1.0f);
 
           output = noise::fractal_voronoi_x_fx<float4>(
               params, float4{vector[i].x, vector[i].y, vector[i].z, w[i]} * params.scale);

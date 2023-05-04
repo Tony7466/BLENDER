@@ -8,29 +8,6 @@
 
 #define vector3 point
 
-/* **** Normalization **** */
-
-void normalize_voronoi_x_fx(VoronoiParams params,
-                            output VoronoiOutput Output,
-                            float max_amplitude,
-                            int zero_input)
-{
-  if (params.feature == "f2") {
-    if (zero_input) {
-      Output.Distance /= (1.0 - params.randomness) +
-                         params.randomness * max_amplitude * params.max_distance * 1.5;
-    }
-    else {
-      Output.Distance /= (1.0 - params.randomness) * ceil(params.detail + 1.0) +
-                         params.randomness * max_amplitude * params.max_distance * 1.5;
-    }
-  }
-  else {
-    Output.Distance /= (0.5 + 0.5 * params.randomness) * max_amplitude * params.max_distance;
-  }
-  Output.Color /= max_amplitude;
-}
-
 /* **** 1D Fractal Voronoi **** */
 
 VoronoiOutput fractal_voronoi_x_fx(VoronoiParams params, float coord)
@@ -86,7 +63,8 @@ VoronoiOutput fractal_voronoi_x_fx(VoronoiParams params, float coord)
   }
 
   if (params.normalize) {
-    normalize_voronoi_x_fx(params, Output, max_amplitude, zero_input);
+    Output.Distance /= max_amplitude * params.max_distance;
+    Output.Color /= max_amplitude;
   }
 
   Output.Position = safe_divide(Output.Position, params.scale);
@@ -97,7 +75,7 @@ VoronoiOutput fractal_voronoi_x_fx(VoronoiParams params, float coord)
 float fractal_voronoi_distance_to_edge(VoronoiParams params, float coord)
 {
   float amplitude = 1.0;
-  float max_amplitude = 1.5 - 0.5 * params.randomness;
+  float max_amplitude = 0.5 + 0.5 * params.randomness;
   float scale = 1.0;
   float distance = 8.0;
 
@@ -111,7 +89,7 @@ float fractal_voronoi_distance_to_edge(VoronoiParams params, float coord)
       break;
     }
     else if (i <= params.detail) {
-      max_amplitude = mix(max_amplitude, (1.5 - 0.5 * params.randomness) * scale, amplitude);
+      max_amplitude = mix(max_amplitude, (0.5 + 0.5 * params.randomness) / scale, amplitude);
       distance = mix(distance, min(distance, octave_distance / scale), amplitude);
       scale *= params.lacunarity;
       amplitude *= params.roughness;
@@ -119,7 +97,8 @@ float fractal_voronoi_distance_to_edge(VoronoiParams params, float coord)
     else {
       float remainder = params.detail - floor(params.detail);
       if (remainder != 0.0) {
-        float lerp_amplitude = mix(max_amplitude, (1.5 - 0.5 * params.randomness) * scale, amplitude);
+        float lerp_amplitude = mix(
+            max_amplitude, (0.5 + 0.5 * params.randomness) / scale, amplitude);
         max_amplitude = mix(max_amplitude, lerp_amplitude, remainder);
         float lerp_distance = mix(distance, min(distance, octave_distance / scale), amplitude);
         distance = mix(distance, min(distance, lerp_distance), remainder);
@@ -128,11 +107,7 @@ float fractal_voronoi_distance_to_edge(VoronoiParams params, float coord)
   }
 
   if (params.normalize) {
-    /* max_amplitude is used here to keep the code consistent, however it has a different
-     * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude, it
-     * represents an abstract factor needed to cancel out the amplitude attenuation caused by the
-     * higher layers. */
-    distance *= max_amplitude;
+    distance /= max_amplitude;
   }
 
   return distance;
@@ -193,7 +168,8 @@ VoronoiOutput fractal_voronoi_x_fx(VoronoiParams params, vector2 coord)
   }
 
   if (params.normalize) {
-    normalize_voronoi_x_fx(params, Output, max_amplitude, zero_input);
+    Output.Distance /= max_amplitude * params.max_distance;
+    Output.Color /= max_amplitude;
   }
 
   Output.Position = safe_divide(Output.Position, params.scale);
@@ -204,7 +180,7 @@ VoronoiOutput fractal_voronoi_x_fx(VoronoiParams params, vector2 coord)
 float fractal_voronoi_distance_to_edge(VoronoiParams params, vector2 coord)
 {
   float amplitude = 1.0;
-  float max_amplitude = 1.5 - 0.5 * params.randomness;
+  float max_amplitude = 0.5 + 0.5 * params.randomness;
   float scale = 1.0;
   float distance = 8.0;
 
@@ -218,7 +194,7 @@ float fractal_voronoi_distance_to_edge(VoronoiParams params, vector2 coord)
       break;
     }
     else if (i <= params.detail) {
-      max_amplitude = mix(max_amplitude, (1.5 - 0.5 * params.randomness) * scale, amplitude);
+      max_amplitude = mix(max_amplitude, (0.5 + 0.5 * params.randomness) / scale, amplitude);
       distance = mix(distance, min(distance, octave_distance / scale), amplitude);
       scale *= params.lacunarity;
       amplitude *= params.roughness;
@@ -226,7 +202,8 @@ float fractal_voronoi_distance_to_edge(VoronoiParams params, vector2 coord)
     else {
       float remainder = params.detail - floor(params.detail);
       if (remainder != 0.0) {
-        float lerp_amplitude = mix(max_amplitude, (1.5 - 0.5 * params.randomness) * scale, amplitude);
+        float lerp_amplitude = mix(
+            max_amplitude, (0.5 + 0.5 * params.randomness) / scale, amplitude);
         max_amplitude = mix(max_amplitude, lerp_amplitude, remainder);
         float lerp_distance = mix(distance, min(distance, octave_distance / scale), amplitude);
         distance = mix(distance, min(distance, lerp_distance), remainder);
@@ -235,11 +212,7 @@ float fractal_voronoi_distance_to_edge(VoronoiParams params, vector2 coord)
   }
 
   if (params.normalize) {
-    /* max_amplitude is used here to keep the code consistent, however it has a different
-     * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude, it
-     * represents an abstract factor needed to cancel out the amplitude attenuation caused by the
-     * higher layers. */
-    distance *= max_amplitude;
+    distance /= max_amplitude;
   }
 
   return distance;
@@ -300,7 +273,8 @@ VoronoiOutput fractal_voronoi_x_fx(VoronoiParams params, vector3 coord)
   }
 
   if (params.normalize) {
-    normalize_voronoi_x_fx(params, Output, max_amplitude, zero_input);
+    Output.Distance /= max_amplitude * params.max_distance;
+    Output.Color /= max_amplitude;
   }
 
   Output.Position = safe_divide(Output.Position, params.scale);
@@ -311,7 +285,7 @@ VoronoiOutput fractal_voronoi_x_fx(VoronoiParams params, vector3 coord)
 float fractal_voronoi_distance_to_edge(VoronoiParams params, vector3 coord)
 {
   float amplitude = 1.0;
-  float max_amplitude = 1.5 - 0.5 * params.randomness;
+  float max_amplitude = 0.5 + 0.5 * params.randomness;
   float scale = 1.0;
   float distance = 8.0;
 
@@ -325,7 +299,7 @@ float fractal_voronoi_distance_to_edge(VoronoiParams params, vector3 coord)
       break;
     }
     else if (i <= params.detail) {
-      max_amplitude = mix(max_amplitude, (1.5 - 0.5 * params.randomness) * scale, amplitude);
+      max_amplitude = mix(max_amplitude, (0.5 + 0.5 * params.randomness) / scale, amplitude);
       distance = mix(distance, min(distance, octave_distance / scale), amplitude);
       scale *= params.lacunarity;
       amplitude *= params.roughness;
@@ -333,7 +307,8 @@ float fractal_voronoi_distance_to_edge(VoronoiParams params, vector3 coord)
     else {
       float remainder = params.detail - floor(params.detail);
       if (remainder != 0.0) {
-        float lerp_amplitude = mix(max_amplitude, (1.5 - 0.5 * params.randomness) * scale, amplitude);
+        float lerp_amplitude = mix(
+            max_amplitude, (0.5 + 0.5 * params.randomness) / scale, amplitude);
         max_amplitude = mix(max_amplitude, lerp_amplitude, remainder);
         float lerp_distance = mix(distance, min(distance, octave_distance / scale), amplitude);
         distance = mix(distance, min(distance, lerp_distance), remainder);
@@ -342,11 +317,7 @@ float fractal_voronoi_distance_to_edge(VoronoiParams params, vector3 coord)
   }
 
   if (params.normalize) {
-    /* max_amplitude is used here to keep the code consistent, however it has a different
-     * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude, it
-     * represents an abstract factor needed to cancel out the amplitude attenuation caused by the
-     * higher layers. */
-    distance *= max_amplitude;
+    distance /= max_amplitude;
   }
 
   return distance;
@@ -407,7 +378,8 @@ VoronoiOutput fractal_voronoi_x_fx(VoronoiParams params, vector4 coord)
   }
 
   if (params.normalize) {
-    normalize_voronoi_x_fx(params, Output, max_amplitude, zero_input);
+    Output.Distance /= max_amplitude * params.max_distance;
+    Output.Color /= max_amplitude;
   }
 
   Output.Position = safe_divide(Output.Position, params.scale);
@@ -418,7 +390,7 @@ VoronoiOutput fractal_voronoi_x_fx(VoronoiParams params, vector4 coord)
 float fractal_voronoi_distance_to_edge(VoronoiParams params, vector4 coord)
 {
   float amplitude = 1.0;
-  float max_amplitude = 1.5 - 0.5 * params.randomness;
+  float max_amplitude = 0.5 + 0.5 * params.randomness;
   float scale = 1.0;
   float distance = 8.0;
 
@@ -432,7 +404,7 @@ float fractal_voronoi_distance_to_edge(VoronoiParams params, vector4 coord)
       break;
     }
     else if (i <= params.detail) {
-      max_amplitude = mix(max_amplitude, (1.5 - 0.5 * params.randomness) * scale, amplitude);
+      max_amplitude = mix(max_amplitude, (0.5 + 0.5 * params.randomness) / scale, amplitude);
       distance = mix(distance, min(distance, octave_distance / scale), amplitude);
       scale *= params.lacunarity;
       amplitude *= params.roughness;
@@ -440,7 +412,8 @@ float fractal_voronoi_distance_to_edge(VoronoiParams params, vector4 coord)
     else {
       float remainder = params.detail - floor(params.detail);
       if (remainder != 0.0) {
-        float lerp_amplitude = mix(max_amplitude, (1.5 - 0.5 * params.randomness) * scale, amplitude);
+        float lerp_amplitude = mix(
+            max_amplitude, (0.5 + 0.5 * params.randomness) / scale, amplitude);
         max_amplitude = mix(max_amplitude, lerp_amplitude, remainder);
         float lerp_distance = mix(distance, min(distance, octave_distance / scale), amplitude);
         distance = mix(distance, min(distance, lerp_distance), remainder);
@@ -449,11 +422,7 @@ float fractal_voronoi_distance_to_edge(VoronoiParams params, vector4 coord)
   }
 
   if (params.normalize) {
-    /* max_amplitude is used here to keep the code consistent, however it has a different
-     * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude, it
-     * represents an abstract factor needed to cancel out the amplitude attenuation caused by the
-     * higher layers. */
-    distance *= max_amplitude;
+    distance /= max_amplitude;
   }
 
   return distance;

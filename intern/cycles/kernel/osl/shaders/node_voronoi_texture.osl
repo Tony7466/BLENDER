@@ -89,30 +89,44 @@ shader node_voronoi_texture(
   else {
     VoronoiOutput Output;
     if (dimensions == "1D") {
-      params.max_distance = 1.0;
+      params.max_distance = (0.5 + 0.5 * params.randomness) *
+                            ((params.feature == "f2") ? 2.0 : 1.0);
       Output = fractal_voronoi_x_fx(params, w);
       Distance = Output.Distance;
       Color = Output.Color;
       WOut = Output.Position.w;
     }
     else if (dimensions == "2D") {
-      params.max_distance = voronoi_distance(vector2(0.0, 0.0), vector2(1.0, 1.0), params);
+      params.max_distance = voronoi_distance(vector2(0.0, 0.0),
+                                             vector2(0.5 + 0.5 * params.randomness,
+                                                     0.5 + 0.5 * params.randomness),
+                                             params) *
+                            ((params.feature == "f2") ? 2.0 : 1.0);
       Output = fractal_voronoi_x_fx(params, vector2(coord.x, coord.y));
       Distance = Output.Distance;
       Color = Output.Color;
       Position = vector3(Output.Position.x, Output.Position.y, 0.0);
     }
     else if (dimensions == "3D") {
-      params.max_distance = voronoi_distance(
-          vector3(0.0, 0.0, 0.0), vector3(1.0, 1.0, 1.0), params);
+      params.max_distance = voronoi_distance(vector3(0.0, 0.0, 0.0),
+                                             vector3(0.5 + 0.5 * params.randomness,
+                                                     0.5 + 0.5 * params.randomness,
+                                                     0.5 + 0.5 * params.randomness),
+                                             params) *
+                            ((params.feature == "f2") ? 2.0 : 1.0);
       Output = fractal_voronoi_x_fx(params, coord);
       Distance = Output.Distance;
       Color = Output.Color;
       Position = vector3(Output.Position.x, Output.Position.y, Output.Position.z);
     }
     else if (dimensions == "4D") {
-      params.max_distance = voronoi_distance(
-          vector4(0.0, 0.0, 0.0, 0.0), vector4(1.0, 1.0, 1.0, 1.0), params);
+      params.max_distance = voronoi_distance(vector4(0.0, 0.0, 0.0, 0.0),
+                                             vector4(0.5 + 0.5 * params.randomness,
+                                                     0.5 + 0.5 * params.randomness,
+                                                     0.5 + 0.5 * params.randomness,
+                                                     0.5 + 0.5 * params.randomness),
+                                             params) *
+                            ((params.feature == "f2") ? 2.0 : 1.0);
       Output = fractal_voronoi_x_fx(params, vector4(coord.x, coord.y, coord.z, w));
       Distance = Output.Distance;
       Color = Output.Color;
