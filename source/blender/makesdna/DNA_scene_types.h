@@ -2395,7 +2395,7 @@ enum {
 
 /** #Face select style */
 enum {
-  FACE_AUTO = (1 << 0),
+  FACE_DEFAULT = (1 << 0),
   FACE_TOUCH = (1 << 1),
   FACE_ENCLOSE = (1 << 2),
   FACE_CENTER = (1 << 3),
@@ -2403,7 +2403,7 @@ enum {
 
 /** #Edge select style */
 enum {
-  EDGE_HYBRID = (1 << 0),
+  EDGE_DEFAULT = (1 << 0),
   EDGE_TOUCH = (1 << 1),
   EDGE_ENCLOSE = (1 << 2),
 };

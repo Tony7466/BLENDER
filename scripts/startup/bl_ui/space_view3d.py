@@ -1072,84 +1072,6 @@ class ShowHideMenu:
 
 
 # Custom Operators
-class VIEW3D_gizmo_tweak(bpy.types.Operator):
-  """tweak based on gizmo shown"""
-  bl_idname = "view3d.gizmo_tweak"
-  bl_label = "gizmo tweak"
-
-  from bpy.props import StringProperty, BoolProperty
-
-  tmode: StringProperty(name="Transform Mode")
-  release: BoolProperty(name="Confirm on Release")
-
-  def modal(self, context, event):
-    if event.type == 'MOUSEMOVE':
-      bpy.ops.transform.transform(
-              'INVOKE_DEFAULT',
-              mode=self.tmode,
-              release_confirm=self.release)
-      return {'FINISHED'}
-
-    return {'RUNNING_MODAL'}
-
-  def invoke(self, context, event):
-    if context.object:
-      if context.space_data.show_gizmo_object_translate==True:
-        self.tmode = 'TRANSLATION'
-      elif context.space_data.show_gizmo_object_rotate==True:
-        self.tmode = 'ROTATION'
-      elif context.space_data.show_gizmo_object_scale==True:
-        self.tmode = 'RESIZE'
-      else: self.tmode = 'TRANSLATION'
-
-      context.window_manager.modal_handler_add(self)
-      return {'RUNNING_MODAL'}
-    else:
-      self.report({'WARNING'}, "No active object, could not finish")
-      return {'CANCELLED'}
-
-class VIEW3D_gizmo_move(bpy.types.Operator):
-  bl_idname = "view3d.gizmo_move"
-  bl_label = "gizmo move"
-
-  def invoke(self, context, event):
-    areas = bpy.context.workspace.screens[0].areas
-    for area in areas:
-      for space in area.spaces:
-        if space.type == 'VIEW_3D':
-          space.show_gizmo_object_translate^= True
-          space.show_gizmo_object_rotate = False
-          space.show_gizmo_object_scale = False
-    return {'FINISHED'}
-
-class VIEW3D_gizmo_scale(bpy.types.Operator):
-  bl_idname = "view3d.gizmo_scale"
-  bl_label = "gizmo scale"
-
-  def invoke(self, context, event):
-    areas = bpy.context.workspace.screens[0].areas
-    for area in areas:
-      for space in area.spaces:
-        if space.type == 'VIEW_3D':
-          space.show_gizmo_object_translate = False
-          space.show_gizmo_object_rotate = False
-          space.show_gizmo_object_scale ^= True
-    return {'FINISHED'}
-
-class VIEW3D_gizmo_rotate(bpy.types.Operator):
-  bl_idname = "view3d.gizmo_rotate"
-  bl_label = "gizmo rotate"
-
-  def invoke(self, context, event):
-    areas = bpy.context.workspace.screens[0].areas
-    for area in areas:
-      for space in area.spaces:
-        if space.type == 'VIEW_3D':
-          space.show_gizmo_object_translate = False
-          space.show_gizmo_object_rotate ^= True
-          space.show_gizmo_object_scale = False
-    return {'FINISHED'}
-
 class VIEW3D_box_lasso(bpy.types.Operator):
   bl_idname = "view3d.box_lasso"
   bl_label = "box lasso"
@@ -8423,10 +8345,6 @@ classes = (
     VIEW3D_MT_sculpt_gpencil_automasking_pie,
     VIEW3D_MT_wpaint_vgroup_lock_pie,
     VIEW3D_MT_sculpt_face_sets_edit_pie,
-    VIEW3D_gizmo_tweak,
-    VIEW3D_gizmo_move,
-    VIEW3D_gizmo_scale,
-    VIEW3D_gizmo_rotate,
     VIEW3D_box_lasso,
     VIEW3D_MT_sculpt_curves,
     VIEW3D_PT_active_tool,

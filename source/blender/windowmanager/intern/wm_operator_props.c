@@ -412,10 +412,10 @@ void WM_operator_properties_gesture_box_ex(wmOperatorType *ot, bool deselect, bo
   PropertyRNA *prop;
 
   static const EnumPropertyItem face_select_items[] = {
-      {FACE_AUTO,
-       "FACE_AUTO",
+      {FACE_DEFAULT,
+       "FACE_DEFAULT",
        0,
-       "Auto",
+       "Default",
        "Select faces that are touched by the selection area in near select. Select faces whose "
        "center is touched by the selection area in X-Ray select"},
       {FACE_TOUCH,
@@ -437,10 +437,10 @@ void WM_operator_properties_gesture_box_ex(wmOperatorType *ot, bool deselect, bo
   };
 
   static const EnumPropertyItem edge_select_items[] = {
-      {EDGE_HYBRID,
-       "EDGE_HYBRID",
+      {EDGE_DEFAULT,
+       "EDGE_DEFAULT",
        0,
-       "Hybrid",
+       "Default",
        "Select edges that are fully inside the selection area. If no edges are fully inside the "
        "selection area, select edges that are touched by the selection area"},
       {EDGE_TOUCH,
@@ -572,10 +572,10 @@ void WM_operator_properties_gesture_lasso(wmOperatorType *ot)
 {
   PropertyRNA *prop;
   static const EnumPropertyItem face_select_items[] = {
-      {FACE_AUTO,
-       "FACE_AUTO",
+      {FACE_DEFAULT,
+       "FACE_DEFAULT",
        0,
-       "Auto",
+       "Default",
        "Select faces that are touched by the selection area in near select. Select faces whose "
        "center is touched by the selection area in X-Ray select"},
       {FACE_TOUCH,
@@ -597,10 +597,10 @@ void WM_operator_properties_gesture_lasso(wmOperatorType *ot)
   };
 
   static const EnumPropertyItem edge_select_items[] = {
-      {EDGE_HYBRID,
-       "EDGE_HYBRID",
+      {EDGE_DEFAULT,
+       "EDGE_DEFAULT",
        0,
-       "Hybrid",
+       "Default",
        "Select edges that are fully inside the selection area. If no edges are fully inside the "
        "selection area, select edges that are touched by the selection area"},
       {EDGE_TOUCH,
@@ -661,10 +661,10 @@ void WM_operator_properties_gesture_circle(wmOperatorType *ot)
   const int radius_default = 25;
 
   static const EnumPropertyItem face_select_items[] = {
-      {FACE_AUTO,
-       "FACE_AUTO",
+      {FACE_DEFAULT,
+       "FACE_DEFAULT",
        0,
-       "Auto",
+       "Default",
        "Select faces that are touched by the selection area in near select. Select faces whose "
        "center is touched by the selection area in X-Ray select"},
       {FACE_TOUCH,

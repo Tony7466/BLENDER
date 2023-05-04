@@ -904,11 +904,14 @@ typedef struct UserDef {
   char drag_threshold;
   char move_threshold;
 
-  /** Adjustable selection radius */
+  /** Adjustable selection radius. */
   float selection_radius;
   char adjustable_click_select;
   char select_unbiased;
-  char _pad9[2];
+
+  /** Edit mode cursor. **/
+  char edit_cursor;
+  char _pad9[1];
 
   char font_path_ui[1024];
   char font_path_ui_mono[1024];
@@ -1014,9 +1017,9 @@ typedef enum eUserPref_Flag {
   USER_FLAG_NUMINPUT_ADVANCED = (1 << 1),
   USER_ADJUSTABLE_CLICK_SELECT = (1 << 2),
   USER_SELECT_UNBIASED = (1 << 3),
-  USER_ALTERNATE_CURSOR = (1 << 4),
+  USER_FLAG_UNUSED_4 = (1 << 4), /* cleared */
   USER_TRACKBALL = (1 << 5),
-  USER_ALTERNATE_CURSOR_LARGE = (1 << 6),
+  USER_FLAG_UNUSED_6 = (1 << 6), /* cleared */
   USER_FLAG_UNUSED_7 = (1 << 7), /* cleared */
   USER_MAT_ON_OB = (1 << 8),
   USER_FLAG_UNUSED_9 = (1 << 9), /* cleared */
@@ -1169,6 +1172,19 @@ typedef enum eUserpref_Click_Drag_Direction {
   USER_CLICK_DRAG_DIRECTION_LEFT_RIGHT = 1,
   USER_CLICK_DRAG_DIRECTION_UP_DOWN = 2,
 } eUserpref_Click_Drag_Direction;
+
+/** #UserDef.edit_cursor_types */
+typedef enum eUserpref_Edit_Cursor_Types {
+  USER_EDIT_CURSOR_CROSS = 0,
+  USER_EDIT_CURSOR_SYSTEM = 1,
+  USER_EDIT_CURSOR_POINTER = 2,
+  USER_EDIT_CURSOR_CROSS_OPEN = 3,
+  USER_EDIT_CURSOR_CROSS_DOT = 4,
+  USER_EDIT_CURSOR_CROSS_MIN = 5,
+  USER_EDIT_CURSOR_BOX = 6,
+  USER_EDIT_CURSOR_BOX_DOT = 7,
+  USER_EDIT_CURSOR_BOX_POINTER = 8,
+} eUserpref_Edit_Cursor_Types;
 
 /** #UserDef.app_flag */
 typedef enum eUserpref_APP_Flag {

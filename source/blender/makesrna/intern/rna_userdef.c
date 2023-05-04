@@ -4999,6 +4999,19 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
+  static const EnumPropertyItem edit_cursor_items[] = {
+      {USER_EDIT_CURSOR_CROSS, "CROSS", 0, "Cross", ""},
+      {USER_EDIT_CURSOR_SYSTEM, "SYSTEM", 0, "System", ""},
+      {USER_EDIT_CURSOR_POINTER, "POINTER", 0, "Pointer", ""},
+      {USER_EDIT_CURSOR_CROSS_OPEN, "CROSS_OPEN", 0, "Cross Open", ""},
+      {USER_EDIT_CURSOR_CROSS_DOT, "CROSS_DOT", 0, "Cross Dot", ""},
+      {USER_EDIT_CURSOR_CROSS_MIN, "CROSS_MIN", 0, "Cross Minimal", ""},
+      {USER_EDIT_CURSOR_BOX, "BOX", 0, "Box", ""},
+      {USER_EDIT_CURSOR_BOX_DOT, "BOX_DOT", 0, "Box Dot", ""},
+      {USER_EDIT_CURSOR_BOX_POINTER, "BOX_POINTER", 0, "Box Pointer", ""},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   srna = RNA_def_struct(brna, "PreferencesEdit", NULL);
   RNA_def_struct_sdna(srna, "UserDef");
   RNA_def_struct_nested(brna, srna, "Preferences");
@@ -5338,13 +5351,10 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Cursor Surface Project", "Use the surface depth for cursor placement");
 
-  prop = RNA_def_property(srna, "alternate_cursor", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", USER_ALTERNATE_CURSOR);
-  RNA_def_property_ui_text(prop, "Enable", "Alternate edit mode crosshair");
-
-  prop = RNA_def_property(srna, "alternate_cursor_large", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", USER_ALTERNATE_CURSOR_LARGE);
-  RNA_def_property_ui_text(prop, "Larger", "Bigger version of the alternate crosshair");
+  prop = RNA_def_property(srna, "edit_cursor", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, edit_cursor_items);
+  RNA_def_property_enum_sdna(prop, NULL, "edit_cursor");
+  RNA_def_property_ui_text(prop, "Edit Cursor", "Edit mode cursor style");
 }
 
 static void rna_def_userdef_system(BlenderRNA *brna)

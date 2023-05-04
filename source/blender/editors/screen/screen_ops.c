@@ -3848,10 +3848,10 @@ static void SCREEN_OT_repeat_history(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Repeat Tool Operator
+/** \name Invoke Last Operator
  * \{ */
 
-static int repeat_tool_exec(bContext *C, wmOperator *UNUSED(op))
+static int invoke_last_exec(bContext *C, wmOperator *UNUSED(op))
 {
   wmWindowManager *wm = CTX_wm_manager(C);
   wmOperator *lastop = wm->operators.last;
@@ -3881,21 +3881,21 @@ static int repeat_tool_exec(bContext *C, wmOperator *UNUSED(op))
 
   if (lastop) {
     WM_operator_free_all_after(wm, lastop);
-    WM_operator_repeat_tool(C, lastop);
+    WM_operator_invoke_last(C, lastop);
   }
 
   return OPERATOR_CANCELLED;
 }
 
-static void SCREEN_OT_repeat_tool(wmOperatorType *ot)
+static void SCREEN_OT_invoke_last(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Repeat Tool";
-  ot->description = "Repeat last tool";
-  ot->idname = "SCREEN_OT_repeat_tool";
+  ot->name = "Invoke Last";
+  ot->description = "Invoke last operation";
+  ot->idname = "SCREEN_OT_invoke_last";
 
   /* api callbacks */
-  ot->exec = repeat_tool_exec;
+  ot->exec = invoke_last_exec;
 
   ot->poll = ED_operator_screenactive;
 }
@@ -5734,7 +5734,7 @@ void ED_operatortypes_screen(void)
   WM_operatortype_append(SCREEN_OT_actionzone);
   WM_operatortype_append(SCREEN_OT_repeat_last);
   WM_operatortype_append(SCREEN_OT_repeat_history);
-  WM_operatortype_append(SCREEN_OT_repeat_tool);
+  WM_operatortype_append(SCREEN_OT_invoke_last);
   WM_operatortype_append(SCREEN_OT_redo_last);
 
   /* Screen tools. */

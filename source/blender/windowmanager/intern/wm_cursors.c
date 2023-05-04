@@ -43,6 +43,7 @@ static BCursor *BlenderCursor[WM_CURSOR_NUM] = {0};
 /* Blender cursor to GHOST standard cursor conversion. */
 static GHOST_TStandardCursor convert_to_ghost_standard_cursor(WMCursorType curs)
 {
+  const int edit_style = U.edit_cursor;
   switch (curs) {
     case WM_CURSOR_DEFAULT:
       return GHOST_kStandardCursorDefault;
@@ -50,11 +51,29 @@ static GHOST_TStandardCursor convert_to_ghost_standard_cursor(WMCursorType curs)
       return GHOST_kStandardCursorWait;
     case WM_CURSOR_EDIT:
     case WM_CURSOR_CROSS:
-      if (U.flag & USER_ALTERNATE_CURSOR && !(U.flag & USER_ALTERNATE_CURSOR_LARGE)) {
+      if (edit_style == 1) {
+        return GHOST_kStandardCursorDefault;
+      }
+      else if (edit_style == 2) {
+        return GHOST_kStandardCursorPointer;
+      }
+      else if (edit_style == 3) {
         return GHOST_kStandardCursorCrosshairD;
       }
-      else if (U.flag & USER_ALTERNATE_CURSOR && U.flag & USER_ALTERNATE_CURSOR_LARGE) {
-        return GHOST_kStandardCursorCrosshairE;
+      else if (edit_style == 4) {
+        return GHOST_kStandardCursorCrosshairA;
+      }
+      else if (edit_style == 5) {
+        return GHOST_kStandardCursorCrosshairC;
+      }
+      else if (edit_style == 6) {
+        return GHOST_kStandardCursorBox;
+      }
+      else if (edit_style == 7) {
+        return GHOST_kStandardCursorBoxDot;
+      }
+      else if (edit_style == 8) {
+        return GHOST_kStandardCursorBoxPointer;
       }
       else {
         return GHOST_kStandardCursorCrosshair;
