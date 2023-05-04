@@ -162,7 +162,7 @@ struct RulerItem {
   wmGizmo gz;
 
   /** World-space coords, middle being optional. */
-  float3x3 co;
+  float co[3][3];
 
   int flag;
   int raycast_dir; /* RULER_DIRECTION_* */
@@ -242,7 +242,7 @@ static bool view3d_ruler_pick(wmGizmoGroup *gzgroup,
   int co_index_best = -1;
 
   {
-    float co_ss[3][2];
+    float3x2 co_ss;
     float dist;
     int j;
 
@@ -259,10 +259,10 @@ static bool view3d_ruler_pick(wmGizmoGroup *gzgroup,
         found = true;
 
         {
-          const float dist_points[3] = {
-              len_squared_v2v2(co_ss[0], mval),
-              len_squared_v2v2(co_ss[1], mval),
-              len_squared_v2v2(co_ss[2], mval),
+          const float3 dist_points = {
+              blender::math::distance_squared(co_ss[0], mval),
+              blender::math::distance_squared(co_ss[1], mval),
+              blender::math::distance_squared(co_ss[2], mval),
           };
           if (min_fff(UNPACK3(dist_points)) < RULER_PICK_DIST_SQ) {
             co_index_best = min_axis_v3(dist_points);
@@ -280,9 +280,9 @@ static bool view3d_ruler_pick(wmGizmoGroup *gzgroup,
         found = true;
 
         {
-          const float dist_points[2] = {
-              len_squared_v2v2(co_ss[0], mval),
-              len_squared_v2v2(co_ss[2], mval),
+          const float2 dist_points = {
+              blender::math::distance_squared(co_ss[0], mval),
+              blender::math::distance_squared(co_ss[2], mval),
           };
           if (min_ff(UNPACK2(dist_points)) < RULER_PICK_DIST_SQ) {
             co_index_best = (dist_points[0] < dist_points[1]) ? 0 : 2;
@@ -325,7 +325,7 @@ static void ruler_state_set(RulerInfo *ruler_info, int state)
   ruler_info->state = state;
 }
 
-static void view3d_ruler_item_project(RulerInfo *ruler_info, float3 &r_co, const int xy[2])
+static void view3d_ruler_item_project(RulerInfo *ruler_info, float r_co[3], const int xy[2])
 {
   ED_view3d_win_to_3d_int(static_cast<const View3D *>(ruler_info->area->spacedata.first),
                           ruler_info->region,
@@ -351,18 +351,18 @@ static bool view3d_ruler_item_mousemove(const bContext *C,
 
   if (ruler_item) {
     RulerInteraction *inter = static_cast<RulerInteraction *>(ruler_item->gz.interaction_data);
-    float3 &co = ruler_item->co[inter->co_index];
+    float *co = ruler_item->co[inter->co_index];
     /* restore the initial depth */
-    co = inter->drag_start_co;
+    copy_v3_v3(co, inter->drag_start_co);
     view3d_ruler_item_project(ruler_info, co, mval);
     if (do_thickness && inter->co_index != 1) {
       Scene *scene = DEG_get_input_scene(depsgraph);
       View3D *v3d = static_cast<View3D *>(ruler_info->area->spacedata.first);
       SnapObjectContext *snap_context = ED_gizmotypes_snap_3d_context_ensure(scene, snap_gizmo);
-      const float2 mval_fl = {float(mval[0]), float(mval[1])};
-      float3 ray_normal;
-      float3 ray_start;
-      float3 &co_other = ruler_item->co[inter->co_index == 0 ? 2 : 0];
+      const float mval_fl[2] = {UNPACK2(mval)};
+      float ray_normal[3];
+      float ray_start[3];
+      float *co_other = ruler_item->co[inter->co_index == 0 ? 2 : 0];
 
       SnapObjectParams snap_object_params{};
       snap_object_params.snap_target_select = SCE_SNAP_TARGET_ALL;
@@ -382,13 +382,13 @@ static bool view3d_ruler_item_mousemove(const bContext *C,
                                                               ray_normal);
       if (hit) {
         /* add some bias */
-        ray_start = co - ray_normal * eps_bias;
+        madd_v3_v3v3fl(ray_start, co, ray_normal, eps_bias);
         ED_transform_snap_object_project_ray(snap_context,
                                              depsgraph,
                                              v3d,
                                              &snap_object_params,
                                              ray_start,
-                                             -ray_normal,
+                                             ray_normal,
                                              nullptr,
                                              co_other,
                                              nullptr);
@@ -397,23 +397,23 @@ static bool view3d_ruler_item_mousemove(const bContext *C,
     else {
       View3D *v3d = static_cast<View3D *>(ruler_info->area->spacedata.first);
       if (do_snap) {
-        float3 *prev_point = nullptr;
+        float *prev_point = nullptr;
         BLI_assert(ED_gizmotypes_snap_3d_is_enabled(snap_gizmo));
 
         if (inter->co_index != 1) {
           if (ruler_item->flag & RULERITEM_USE_ANGLE) {
-            prev_point = &ruler_item->co[1];
+            prev_point = ruler_item->co[1];
           }
           else if (inter->co_index == 0) {
-            prev_point = &ruler_item->co[2];
+            prev_point = ruler_item->co[2];
           }
           else {
-            prev_point = &ruler_item->co[0];
+            prev_point = ruler_item->co[0];
           }
         }
         if (prev_point != nullptr) {
           RNA_property_float_set_array(
-              snap_gizmo->ptr, ruler_info->snap_data.prop_prevpoint, *prev_point);
+              snap_gizmo->ptr, ruler_info->snap_data.prop_prevpoint, prev_point);
         }
 
         ED_gizmotypes_snap_3d_data_get(C, snap_gizmo, co, nullptr, nullptr, nullptr);
@@ -438,12 +438,13 @@ static bool view3d_ruler_item_mousemove(const bContext *C,
         }
 
         const int pivot_point = scene->toolsettings->transform_pivot_point;
-        float3x3 mat;
+        float mat[3][3];
 
         ED_transform_calc_orientation_from_type_ex(
-            scene, view_layer, v3d, rv3d, ob, obedit, orient_index, pivot_point, mat.ptr());
+            scene, view_layer, v3d, rv3d, ob, obedit, orient_index, pivot_point, mat);
 
-        ruler_item->co = blender::math::invert(mat) * ruler_item->co;
+        invert_m3(mat);
+        mul_m3_m3_pre(ruler_item->co, mat);
 
         /* Loop through the axes and constrain the dragged point to the current constrained axis.
          */
@@ -452,7 +453,8 @@ static bool view3d_ruler_item_mousemove(const bContext *C,
             ruler_item->co[inter->co_index][i] = ruler_item->co[(inter->co_index == 0) ? 2 : 0][i];
           }
         }
-        ruler_item->co = mat * ruler_item->co;
+        invert_m3(mat);
+        mul_m3_m3_pre(ruler_item->co, mat);
       }
 #endif
     }
@@ -726,24 +728,27 @@ static void gizmo_ruler_draw(const bContext *C, wmGizmo *gz)
       float angle;
       const float px_scale = (ED_view3d_pixel_size_no_ui_scale(rv3d, ruler_item->co[1]) *
                               min_fff(arc_size,
-                                      blender::math::distance(co_ss[0], co_ss[1]) / 2.0f,
-                                      blender::math::distance(co_ss[2], co_ss[1]) / 2.0f));
+                                      len_v2v2(co_ss[0], co_ss[1]) / 2.0f,
+                                      len_v2v2(co_ss[2], co_ss[1]) / 2.0f));
 
-      dir_a = blender::math::normalize(ruler_item->co[0] - ruler_item->co[1]);
-      dir_b = blender::math::normalize(ruler_item->co[2] - ruler_item->co[1]);
-      axis = blender::math::cross(dir_a, dir_b);
+      sub_v3_v3v3(dir_a, ruler_item->co[0], ruler_item->co[1]);
+      sub_v3_v3v3(dir_b, ruler_item->co[2], ruler_item->co[1]);
+      normalize_v3(dir_a);
+      normalize_v3(dir_b);
+
+      cross_v3_v3v3(axis, dir_a, dir_b);
       angle = angle_normalized_v3v3(dir_a, dir_b);
 
       axis_angle_to_quat(quat, axis, angle / arc_steps);
 
-      dir_tmp = dir_a;
+      copy_v3_v3(dir_tmp, dir_a);
 
       immUniformColor3ubv(color_wire);
 
       immBegin(GPU_PRIM_LINE_STRIP, arc_steps + 1);
 
       for (j = 0; j <= arc_steps; j++) {
-        ar_coord = ruler_item->co[1] + dir_tmp * px_scale;
+        madd_v3_v3v3fl(ar_coord, ruler_item->co[1], dir_tmp, px_scale);
         mul_qt_v3(quat, dir_tmp);
 
         immVertex3fv(shdr_pos_3d, ar_coord);
@@ -1111,7 +1116,7 @@ static int gizmo_ruler_invoke(bContext *C, wmGizmo *gz, const wmEvent *event)
 
       /* find the factor */
       {
-        float2x2 co_ss;
+        float co_ss[2][2];
         float fac;
 
         ED_view3d_project_float_global(
@@ -1122,8 +1127,8 @@ static int gizmo_ruler_invoke(bContext *C, wmGizmo *gz, const wmEvent *event)
         fac = line_point_factor_v2(mval_fl, co_ss[0], co_ss[1]);
         CLAMP(fac, 0.0f, 1.0f);
 
-        ruler_item_pick->co[1] = blender::math::interpolate(
-            ruler_item_pick->co[0], ruler_item_pick->co[2], fac);
+        interp_v3_v3v3(
+            ruler_item_pick->co[1], ruler_item_pick->co[0], ruler_item_pick->co[2], fac);
       }
 
       /* update the new location */
@@ -1137,7 +1142,7 @@ static int gizmo_ruler_invoke(bContext *C, wmGizmo *gz, const wmEvent *event)
     ruler_state_set(ruler_info, RULER_STATE_DRAG);
 
     /* store the initial depth */
-    inter->drag_start_co = ruler_item_pick->co[inter->co_index];
+    copy_v3_v3(inter->drag_start_co, ruler_item_pick->co[inter->co_index]);
   }
 
   if (inter->co_index == 1) {
@@ -1149,20 +1154,20 @@ static int gizmo_ruler_invoke(bContext *C, wmGizmo *gz, const wmEvent *event)
 
   {
     /* Set Snap prev point. */
-    float3 *prev_point;
+    float *prev_point;
     if (ruler_item_pick->flag & RULERITEM_USE_ANGLE) {
-      prev_point = (inter->co_index != 1) ? &ruler_item_pick->co[1] : nullptr;
+      prev_point = (inter->co_index != 1) ? ruler_item_pick->co[1] : nullptr;
     }
     else if (inter->co_index == 0) {
-      prev_point = &ruler_item_pick->co[2];
+      prev_point = ruler_item_pick->co[2];
     }
     else {
-      prev_point = &ruler_item_pick->co[0];
+      prev_point = ruler_item_pick->co[0];
     }
 
     if (prev_point) {
       RNA_property_float_set_array(
-          ruler_info->snap_data.gizmo->ptr, ruler_info->snap_data.prop_prevpoint, *prev_point);
+          ruler_info->snap_data.gizmo->ptr, ruler_info->snap_data.prop_prevpoint, prev_point);
     }
     else {
       RNA_property_unset(ruler_info->snap_data.gizmo->ptr, ruler_info->snap_data.prop_prevpoint);
