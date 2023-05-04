@@ -1007,6 +1007,9 @@ bool OptiXDevice::build_optix_bvh(BVHOptiX *bvh,
    * from running out of memory (since both original and compacted acceleration structure memory
    * may be allocated at the same time for the duration of this function). The builds would
    * otherwise happen on the same CUDA stream anyway. */
+  static thread_mutex mutex;
+  thread_scoped_lock lock(mutex);
+  const CUDAContextScope scope(this);
   const bool use_fast_trace_bvh = (bvh->params.bvh_type == BVH_TYPE_STATIC);
 
   /* Compute memory usage. */
@@ -1076,10 +1079,12 @@ bool OptiXDevice::build_optix_bvh(BVHOptiX *bvh,
                                use_fast_trace_bvh ? 1 : 0));
   bvh->traversable_handle = static_cast<uint64_t>(out_handle);
 
+  /* Wait for all operations to finish. */
+  cuda_assert(cuStreamSynchronize(NULL));
+
   /* Compact acceleration structure to save memory (do not do this in viewport for faster builds).
    */
   if (use_fast_trace_bvh) {
-    const CUDAContextScope scope(this);
     uint64_t compacted_size = sizes.outputSizeInBytes;
     cuda_assert(cuMemcpyDtoH(&compacted_size, compacted_size_prop.result, sizeof(compacted_size)));
     
