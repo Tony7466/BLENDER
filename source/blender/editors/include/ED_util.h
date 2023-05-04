@@ -97,7 +97,7 @@ void ED_slider_factor_set(struct tSlider *slider, float factor);
 /* One bool value for each side of the slider. Allows to allow overshoot only on one side. */
 void ED_slider_allow_overshoot_set(struct tSlider *slider, bool left, bool right);
 
-void ED_slider_range_set(struct tSlider *slider, float range[2]);
+void ED_slider_factor_bounds_set(struct tSlider *slider, float lower_bound, float upper_bound);
 
 bool ED_slider_allow_increments_get(struct tSlider *slider);
 void ED_slider_allow_increments_set(struct tSlider *slider, bool value);
