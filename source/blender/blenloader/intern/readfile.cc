@@ -2782,7 +2782,7 @@ static void direct_link_library(FileData *fd, Library *lib, Main *main)
       }
     }
   }
-
+641cb77f593052607838e282
   /* Make sure we have full path in lib->filepath_abs */
   BLI_strncpy(lib->filepath_abs, lib->filepath, sizeof(lib->filepath));
   BLI_path_normalize(fd->relabase, lib->filepath_abs);
@@ -5074,9 +5074,7 @@ static void convert_pointer_array_64_to_32(BlendDataReader *reader,
   if (BLO_read_requires_endian_switch(reader)) {
     int change = 0;
     for (int i = array_size; --i; ) {
-      /*optimized loop to use deincrement instead to use less resources 
-      because now it automatically stops when a reaches 0 and it loops 
-      the same number of times*/
+      //changed it to use decrement instead of increment to use less resources
       change = (array_size - i);
       uint64_t ptr = src[change];
       BLI_endian_switch_uint64(&ptr);
@@ -5086,9 +5084,7 @@ static void convert_pointer_array_64_to_32(BlendDataReader *reader,
   else {
     int change = 0;
     for (int i = array_size; --i; ) {
-      /*optimized loop to use deincrement instead to use less resources 
-      because now it automatically stops when a reaches 0 and it loops 
-      the same number of times*/
+      //changed it to use decrement instead of increment to use less resources
       change = (array_size - i);
       dst[change] = uint32_t(src[change] >> 3);
     }
@@ -5103,9 +5099,7 @@ static void convert_pointer_array_32_to_64(BlendDataReader * /*reader*/,
   /* Match pointer conversion rules from bh8_from_bh4 and cast_pointer_32_to_64. */
   int change = 0;
   for (int i = array_size; --i; ) {
-    /*optimized loop to use deincrement instead to use less resources 
-      because now it automatically stops when a reaches 0 and it loops 
-      the same number of times*/
+    //changed it to use decrement instead of increment to use less resources
     change = (array_size - i);
     dst[change] = src[change];
   }
