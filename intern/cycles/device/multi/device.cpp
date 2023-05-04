@@ -288,8 +288,7 @@ class MultiDevice : public Device {
     SubDevice *owner_sub = sub;
     if (owner_sub->ptr_map.find(key) == owner_sub->ptr_map.end()) {
       foreach (SubDevice *island_sub, peer_islands[sub->peer_island_index]) {
-        if (island_sub != owner_sub &&
-            island_sub->ptr_map.find(key) != island_sub->ptr_map.end())
+        if (island_sub != owner_sub && island_sub->ptr_map.find(key) != island_sub->ptr_map.end())
 	{
           owner_sub = island_sub;
         }
