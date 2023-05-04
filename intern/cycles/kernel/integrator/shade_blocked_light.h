@@ -63,6 +63,9 @@ ccl_device void shadow_linking_shade(KernelGlobals kg, IntegratorState state)
   }
 
   const uint32_t path_flag = INTEGRATOR_STATE(state, path, flag);
+  if (!is_light_shader_visible_to_path(ls.shader, path_flag)) {
+    return;
+  }
 
   /* MIS weighting. */
   float mis_weight = 1.0f;
