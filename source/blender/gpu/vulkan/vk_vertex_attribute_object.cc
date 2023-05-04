@@ -172,7 +172,9 @@ void VKVertexAttributeObject::update_bindings(const GPUVertFormat &vertex_format
       attribute_description.location = shader_input->location;
       attribute_description.offset = offset;
       attribute_description.format = to_vk_format(
-          static_cast<GPUVertCompType>(attribute.comp_type), attribute.size);
+          static_cast<GPUVertCompType>(attribute.comp_type),
+          attribute.size,
+          static_cast<GPUVertFetchMode>(attribute.fetch_mode));
       attributes.append(attribute_description);
     }
 

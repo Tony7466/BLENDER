@@ -41,6 +41,7 @@ class VKVertexBuffer : public VertBuf {
 
  private:
   void allocate();
+  void *convert() const;
 };
 
 static inline VKVertexBuffer *unwrap(VertBuf *vertex_buffer)
