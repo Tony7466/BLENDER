@@ -434,7 +434,7 @@ Span<int> Layer::sorted_keys() const
   return this->sorted_keys_cache_.data();
 }
 
-int Layer::drawing_index_at(int frame) const
+int Layer::drawing_index_at(const int frame) const
 {
   Span<int> sorted_keys = this->sorted_keys();
   /* No keyframes, return no drawing. */
@@ -682,7 +682,8 @@ void *BKE_grease_pencil_add(Main *bmain, const char *name)
 
 GreasePencil *BKE_grease_pencil_new_nomain()
 {
-  GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(BKE_id_new_nomain(ID_GP, nullptr));
+  GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(
+      BKE_id_new_nomain(ID_GP, nullptr));
   grease_pencil_init_data(&grease_pencil->id);
   return grease_pencil;
 }
@@ -1196,13 +1197,13 @@ static int read_layer_node_recursive(blender::bke::greasepencil::LayerGroup &cur
 }
 
 static void save_tree_node_to_storage(const blender::bke::greasepencil::TreeNode &node,
-                                      GreasePencilLayerTreeNode *dst)
+                                      GreasePencilLayerTreeNode &dst)
 {
-  dst->type = node.type;
-  copy_v3_v3_uchar(dst->color, node.color);
-  dst->flag = node.flag;
+  dst.type = node.type;
+  copy_v3_v3_uchar(dst.color, node.color);
+  dst.flag = node.flag;
   if (node.name) {
-    dst->name = BLI_strdup(node.name);
+    dst.name = BLI_strdup(node.name);
   }
 }
 
@@ -1212,7 +1213,7 @@ static void save_layer_to_storage(const blender::bke::greasepencil::Layer &node,
   using namespace blender;
   GreasePencilLayerTreeLeaf *new_leaf = MEM_cnew<GreasePencilLayerTreeLeaf>(__func__);
   /* Save properties. */
-  save_tree_node_to_storage(node, &new_leaf->base);
+  save_tree_node_to_storage(node, new_leaf->base);
 
   /* Save frames map. */
   const int frames_size = node.frames().size();
@@ -1266,7 +1267,7 @@ static void save_layer_group_to_storage(const blender::bke::greasepencil::LayerG
 {
   GreasePencilLayerTreeGroup *new_group = MEM_cnew<GreasePencilLayerTreeGroup>(__func__);
   /* Save properties. */
-  save_tree_node_to_storage(node, &new_group->base);
+  save_tree_node_to_storage(node, new_group->base);
 
   /* Save number of children. */
   new_group->children_num = node.num_direct_children();
@@ -1432,7 +1433,7 @@ void GreasePencil::free_layer_tree_storage()
         }
         MEM_SAFE_FREE(masks_storage->masks);
         MEM_freeN(node_leaf);
-        break;  
+        break;
       }
       case GP_LAYER_TREE_GROUP: {
         GreasePencilLayerTreeGroup *group = reinterpret_cast<GreasePencilLayerTreeGroup *>(node);

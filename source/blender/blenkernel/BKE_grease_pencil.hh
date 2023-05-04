@@ -183,10 +183,11 @@ class Layer : public TreeNode, public ::GreasePencilLayer {
   /**
    * \returns the index of the drawing at frame \a frame or -1 if there is no drawing.
    */
-  int drawing_index_at(int frame) const;
+  int drawing_index_at(const int frame) const;
 
   /**
-   * Should be called whenever the keys in the frames map have changed.
+   * Should be called whenever the keys in the frames map have changed. E.g. when new keys were
+   * added, removed or updated.
    */
   void tag_frames_map_keys_changed();
 };
@@ -266,7 +267,8 @@ class LayerGroup : public TreeNode {
 
 namespace convert {
 
-void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf, GreasePencilDrawing &r_drawing);
+void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
+                                                   GreasePencilDrawing &r_drawing);
 void legacy_gpencil_to_grease_pencil(Main &main, GreasePencil &grease_pencil, bGPdata &gpd);
 
 }  // namespace convert
