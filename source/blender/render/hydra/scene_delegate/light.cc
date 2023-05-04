@@ -104,7 +104,8 @@ void LightData::update()
 {
   ID_LOG(2, "");
 
-  Light *light = (Light *)((Object *)id)->data;
+  Object *object = (Object *)id;
+  Light *light = (Light *)object->data;
   if (prim_type(light) != prim_type_) {
     remove();
     init();
@@ -113,7 +114,7 @@ void LightData::update()
   }
 
   pxr::HdDirtyBits bits = pxr::HdLight::Clean;
-  if (id->recalc & ID_RECALC_GEOMETRY) {
+  if (id->recalc & ID_RECALC_GEOMETRY || light->id.recalc & ID_RECALC_GEOMETRY) {
     init();
     bits = pxr::HdLight::AllDirty;
   }
@@ -121,7 +122,9 @@ void LightData::update()
     write_transform();
     bits = pxr::HdLight::DirtyTransform;
   }
-  scene_delegate_->GetRenderIndex().GetChangeTracker().MarkSprimDirty(prim_id, bits);
+  if (bits != pxr::HdChangeTracker::Clean) {
+    scene_delegate_->GetRenderIndex().GetChangeTracker().MarkSprimDirty(prim_id, bits);
+  }
 }
 
 pxr::VtValue LightData::get_data(pxr::TfToken const &key) const

@@ -34,16 +34,6 @@ WorldData::WorldData(BlenderSceneDelegate *scene_delegate,
 {
 }
 
-std::unique_ptr<WorldData> WorldData::create(BlenderSceneDelegate *scene_delegate,
-                                             World *world,
-                                             pxr::SdfPath const &prim_id)
-{
-  auto data = std::make_unique<WorldData>(scene_delegate, world, prim_id);
-  data->init();
-  data->insert();
-  return data;
-}
-
 void WorldData::init()
 {
   ID_LOG(2, "");

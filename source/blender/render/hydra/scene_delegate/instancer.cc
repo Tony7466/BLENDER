@@ -2,6 +2,7 @@
  * Copyright 2011-2022 Blender Foundation */
 
 #include <pxr/base/gf/vec2f.h>
+#include <pxr/imaging/hd/light.h>
 
 #include "blender_scene_delegate.h"
 #include "instancer.h"
@@ -15,16 +16,6 @@ InstancerData::InstancerData(BlenderSceneDelegate *scene_delegate,
 {
 }
 
-std::unique_ptr<InstancerData> InstancerData::create(BlenderSceneDelegate *scene_delegate,
-                                                     Object *object,
-                                                     pxr::SdfPath const &prim_id)
-{
-  auto data = std::make_unique<InstancerData>(scene_delegate, object, prim_id);
-  data->init();
-  data->insert();
-  return data;
-}
-
 bool InstancerData::is_supported(Object *object)
 {
   switch (object->type) {
@@ -33,6 +24,7 @@ bool InstancerData::is_supported(Object *object)
     case OB_FONT:
     case OB_CURVES_LEGACY:
     case OB_MBALL:
+    case OB_LAMP:
       return true;
 
     default:
@@ -56,29 +48,27 @@ void InstancerData::insert()
 void InstancerData::remove()
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 2, "%s", prim_id.GetText());
-  for (auto &it : instances_) {
-    it.second.obj_data->remove();
+  for (auto &it : mesh_instances_) {
+    it.second.data->remove();
   }
   scene_delegate_->GetRenderIndex().RemoveInstancer(prim_id);
+
+  for (auto &it : light_instances_) {
+    it.second.transforms.clear();
+    update_light_instance(it.second);
+  }
 }
 
 void InstancerData::update()
 {
   ID_LOG(2, "");
 
-  pxr::HdDirtyBits bits = pxr::HdChangeTracker::Clean;
-
   Object *object = (Object *)id;
-  if ((id->recalc & ID_RECALC_GEOMETRY) || (((ID *)object->data)->recalc & ID_RECALC_GEOMETRY)) {
+  if (id->recalc & ID_RECALC_GEOMETRY || ((ID *)object->data)->recalc & ID_RECALC_GEOMETRY ||
+      id->recalc & ID_RECALC_TRANSFORM) {
     set_instances();
-    bits |= pxr::HdChangeTracker::AllDirty;
-  }
-  else if (id->recalc & ID_RECALC_TRANSFORM) {
-    set_instances();
-    bits |= pxr::HdChangeTracker::DirtyTransform;
-  }
-  if (bits != pxr::HdChangeTracker::Clean) {
-    scene_delegate_->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(prim_id, bits);
+    scene_delegate_->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(
+        prim_id, pxr::HdChangeTracker::AllDirty);
   }
 }
 
@@ -87,7 +77,7 @@ pxr::VtValue InstancerData::get_data(pxr::TfToken const &key) const
   ID_LOG(3, "%s", key.GetText());
   pxr::VtValue ret;
   if (key == pxr::HdInstancerTokens->instanceTransform) {
-    ret = transforms_;
+    ret = mesh_transforms_;
   }
   return ret;
 }
@@ -96,15 +86,34 @@ bool InstancerData::update_visibility()
 {
   bool ret = ObjectData::update_visibility();
   if (ret) {
-    scene_delegate_->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(
-        prim_id, pxr::HdChangeTracker::DirtyVisibility);
-    for (auto &it : instances_) {
-      it.second.obj_data->visible = visible;
-      scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(
-          it.second.obj_data->prim_id, pxr::HdChangeTracker::DirtyVisibility);
+    auto &change_tracker = scene_delegate_->GetRenderIndex().GetChangeTracker();
+    change_tracker.MarkInstancerDirty(prim_id, pxr::HdChangeTracker::DirtyVisibility);
+    for (auto &it : mesh_instances_) {
+      it.second.data->visible = visible;
+      change_tracker.MarkRprimDirty(it.second.data->prim_id,
+                                    pxr::HdChangeTracker::DirtyVisibility);
+    }
+    char name[16];
+    for (auto &it : light_instances_) {
+      for (int i = 0; i < it.second.count; ++i) {
+        snprintf(name, 16, "L_%08x", i);
+        change_tracker.MarkRprimDirty(it.second.data->prim_id.AppendElementString(name),
+                                      pxr::HdChangeTracker::DirtyVisibility);
+      }
     }
   }
   return ret;
+}
+
+pxr::GfMatrix4d InstancerData::get_transform(pxr::SdfPath const &id) const
+{
+  if (id.GetPathElementCount() == 4) {
+    const auto &inst = light_instances_.find(id.GetParentPath())->second;
+    return inst.transforms[light_prim_id_index(id)];
+  }
+
+  /* Mesh instance transform must be identity */
+  return pxr::GfMatrix4d(1.0);
 }
 
 pxr::HdPrimvarDescriptorVector InstancerData::primvar_descriptors(
@@ -120,18 +129,26 @@ pxr::HdPrimvarDescriptorVector InstancerData::primvar_descriptors(
 
 pxr::VtIntArray InstancerData::indices(pxr::SdfPath const &id) const
 {
-  return instances_.find(id)->second.indices;
+  return mesh_instances_.find(id)->second.indices;
 }
 
 ObjectData *InstancerData::object_data(pxr::SdfPath const &id) const
 {
-  return instances_.find(id)->second.obj_data.get();
+  auto m_it = mesh_instances_.find(id);
+  if (m_it != mesh_instances_.end()) {
+    return m_it->second.data.get();
+  }
+  auto l_it = light_instances_.find(id.GetParentPath());
+  if (l_it != light_instances_.end()) {
+    return l_it->second.data.get();
+  }
+  return nullptr;
 }
 
 pxr::SdfPathVector InstancerData::prototypes() const
 {
   pxr::SdfPathVector paths;
-  for (auto &it : instances_) {
+  for (auto &it : mesh_instances_) {
     paths.push_back(it.first);
   }
   return paths;
@@ -140,34 +157,39 @@ pxr::SdfPathVector InstancerData::prototypes() const
 void InstancerData::check_update(Object *object)
 {
   pxr::SdfPath path = object_prim_id(object);
-  auto it = instances_.find(path);
-  if (it == instances_.end()) {
+  auto m_it = mesh_instances_.find(path);
+  if (m_it != mesh_instances_.end()) {
+    m_it->second.data->update();
+
+    if (m_it->second.data->id->recalc & ID_RECALC_TRANSFORM) {
+      set_instances();
+      scene_delegate_->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(
+          prim_id, pxr::HdChangeTracker::AllDirty);
+    }
     return;
   }
-  ObjectData *obj_data = it->second.obj_data.get();
-  obj_data->update();
-  obj_data->transform = pxr::GfMatrix4d(1.0);
 
-  pxr::HdDirtyBits bits = pxr::HdChangeTracker::Clean;
-  if (object->id.recalc & ID_RECALC_TRANSFORM) {
-    set_instances();
-    bits |= pxr::HdChangeTracker::DirtyTransform;
-  }
-  if (bits != pxr::HdChangeTracker::Clean) {
-    scene_delegate_->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(prim_id, bits);
+  auto l_it = light_instances_.find(path);
+  if (l_it != light_instances_.end()) {
+    Object *obj = (Object *)l_it->second.data->id;
+    if (obj->id.recalc & (ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY) ||
+        ((ID *)obj->data)->recalc & ID_RECALC_GEOMETRY) {
+      set_instances();
+    }
+    return;
   }
 }
 
 void InstancerData::check_remove(std::set<std::string> &available_objects)
 {
   bool ret = false;
-  for (auto it = instances_.begin(); it != instances_.end(); ++it) {
+  for (auto it = mesh_instances_.begin(); it != mesh_instances_.end(); ++it) {
     if (available_objects.find(it->first.GetName()) != available_objects.end()) {
       continue;
     }
-    it->second.obj_data->remove();
-    instances_.erase(it);
-    it = instances_.begin();
+    it->second.data->remove();
+    mesh_instances_.erase(it);
+    it = mesh_instances_.begin();
     ret = true;
   }
   if (ret) {
@@ -175,12 +197,23 @@ void InstancerData::check_remove(std::set<std::string> &available_objects)
     scene_delegate_->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(
         prim_id, pxr::HdChangeTracker::AllDirty);
   }
+
+  for (auto it = light_instances_.begin(); it != light_instances_.end(); ++it) {
+    if (available_objects.find(it->first.GetName()) != available_objects.end()) {
+      continue;
+    }
+    it->second.transforms.clear();
+    update_light_instance(it->second);
+
+    light_instances_.erase(it);
+    it = light_instances_.begin();
+  }
 }
 
 void InstancerData::available_materials(std::set<pxr::SdfPath> &paths) const
 {
-  for (auto &it : instances_) {
-    pxr::SdfPath mat_id = ((MeshData *)it.second.obj_data.get())->material_id();
+  for (auto &it : mesh_instances_) {
+    pxr::SdfPath mat_id = ((MeshData *)it.second.data.get())->material_id();
     if (!mat_id.IsEmpty()) {
       paths.insert(mat_id);
     }
@@ -202,49 +235,144 @@ pxr::SdfPath InstancerData::object_prim_id(Object *object) const
   return prim_id.AppendElementString(str);
 }
 
+pxr::SdfPath InstancerData::light_prim_id(LightInstance const &inst, int index) const
+{
+  char name[16];
+  snprintf(name, 16, "L_%08x", index);
+  return inst.data->prim_id.AppendElementString(name);
+}
+
+int InstancerData::light_prim_id_index(pxr::SdfPath const &id) const
+{
+  int index;
+  sscanf_s(id.GetName().c_str(), "L_%x", &index);
+  return index;
+}
+
 void InstancerData::set_instances()
 {
-  transforms_.clear();
-  for (auto &it : instances_) {
+  mesh_transforms_.clear();
+  for (auto &it : mesh_instances_) {
     it.second.indices.clear();
   }
-  int index = 0;
-  Instance *inst;
-  pxr::SdfPath p_id;
+  for (auto &it : light_instances_) {
+    it.second.transforms.clear();
+  }
 
   ListBase *lb = object_duplilist(
       scene_delegate_->depsgraph, scene_delegate_->scene, (Object *)id);
   LISTBASE_FOREACH (DupliObject *, dupli, lb) {
-    p_id = object_prim_id(dupli->ob);
-    auto it = instances_.find(p_id);
-    if (it == instances_.end()) {
-      inst = &instances_[p_id];
-      if (!is_supported(dupli->ob)) {
-        continue;
-      }
-      inst->obj_data = ObjectData::create(scene_delegate_, dupli->ob, p_id);
+    Object *ob = dupli->ob;
+    if (!is_supported(ob)) {
+      continue;
+    }
 
-      /* Instance's transform should be identity */
-      inst->obj_data->transform = pxr::GfMatrix4d(1.0);
+    pxr::SdfPath p_id = object_prim_id(ob);
+    if (ob->type == OB_LAMP) {
+      LightInstance *inst;
+      auto it = light_instances_.find(p_id);
+      if (it == light_instances_.end()) {
+        inst = &light_instances_[p_id];
+        inst->data = std::make_unique<LightData>(scene_delegate_, ob, p_id);
+        inst->data->init();
+      }
+      else {
+        inst = &it->second;
+      }
+      ID_LOG(2, "Light %s %d", inst->data->id->name, inst->transforms.size());
+      inst->transforms.push_back(gf_matrix_from_transform(dupli->mat));
     }
     else {
-      inst = &it->second;
+      MeshInstance *inst;
+      auto it = mesh_instances_.find(p_id);
+      if (it == mesh_instances_.end()) {
+        inst = &mesh_instances_[p_id];
+        inst->data = std::make_unique<MeshData>(scene_delegate_, ob, p_id);
+        inst->data->init();
+        inst->data->insert();
+      }
+      else {
+        inst = &it->second;
+      }
+      ID_LOG(2, "Mesh %s %d", inst->data->id->name, mesh_transforms_.size());
+      inst->indices.push_back(mesh_transforms_.size());
+      mesh_transforms_.push_back(gf_matrix_from_transform(dupli->mat));
     }
-    transforms_.push_back(gf_matrix_from_transform(dupli->mat));
-    inst->indices.push_back(index);
-    ID_LOG(2, "%s %d", inst->obj_data->id->name, index);
-    ++index;
   }
   free_object_duplilist(lb);
 
-  /* Remove intances without indices */
-  for (auto it = instances_.begin(); it != instances_.end(); ++it) {
+  /* Remove mesh intances without indices */
+  for (auto it = mesh_instances_.begin(); it != mesh_instances_.end(); ++it) {
     if (!it->second.indices.empty()) {
       continue;
     }
-    it->second.obj_data->remove();
-    instances_.erase(it);
-    it = instances_.begin();
+    it->second.data->remove();
+    mesh_instances_.erase(it);
+    it = mesh_instances_.begin();
+  }
+
+  /* Update light intances and remove instances without transforms */
+  for (auto it = light_instances_.begin(); it != light_instances_.end(); ++it) {
+    update_light_instance(it->second);
+    if (it->second.transforms.empty()) {
+      light_instances_.erase(it);
+      it = light_instances_.begin();
+    }
+  }
+}
+
+void InstancerData::update_light_instance(LightInstance &inst)
+{
+  auto &render_index = scene_delegate_->GetRenderIndex();
+  LightData &l_data = *inst.data;
+
+  int i;
+  pxr::SdfPath p;
+
+  /* Remove old light instances */
+  while (inst.count > inst.transforms.size()) {
+    --inst.count;
+    p = light_prim_id(inst, inst.count);
+    render_index.RemoveSprim(l_data.prim_type_, p);
+    ID_LOG(2, "Remove %s", p.GetText());
+  }
+
+  /* Update current light instances */
+  if (inst.data->prim_type((Light *)((Object *)l_data.id)->data) != l_data.prim_type_) {
+    /* Recreate instances when prim_type was changed */
+    for (i = 0; i < inst.count; ++i) {
+      p = light_prim_id(inst, i);
+      render_index.RemoveSprim(l_data.prim_type_, p);
+      ID_LOG(2, "Remove %s", p.GetText());
+    }
+    inst.data->init();
+    for (i = 0; i < inst.count; ++i) {
+      p = light_prim_id(inst, i);
+      render_index.InsertSprim(l_data.prim_type_, scene_delegate_, p);
+      ID_LOG(2, "Insert %s (%s)", p.GetText(), l_data.id->name);
+    }
+  }
+  else {
+    /* Update light instances*/
+    pxr::HdDirtyBits bits = pxr::HdLight::DirtyTransform;
+    Object *obj = (Object *)inst.data->id;
+    if (obj->id.recalc & ID_RECALC_GEOMETRY || ((ID *)obj->data)->recalc & ID_RECALC_GEOMETRY) {
+      l_data.init();
+      bits = pxr::HdLight::AllDirty;
+    }
+    for (i = 0; i < inst.count; ++i) {
+      p = light_prim_id(inst, i);
+      render_index.GetChangeTracker().MarkSprimDirty(p, bits);
+      ID_LOG(2, "Update %s (%s)", p.GetText(), l_data.id->name);
+    }
+  }
+
+  /* Add new light instances */
+  while (inst.count < inst.transforms.size()) {
+    p = light_prim_id(inst, inst.count);
+    render_index.InsertSprim(l_data.prim_type_, scene_delegate_, p);
+    ID_LOG(2, "Insert %s (%s)", p.GetText(), l_data.id->name);
+    ++inst.count;
   }
 }
 

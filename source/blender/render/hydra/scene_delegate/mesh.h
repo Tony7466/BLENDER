@@ -40,10 +40,8 @@ class MeshData : public ObjectData {
   pxr::VtVec3fArray vertices_;
   pxr::VtVec2fArray uvs_;
   pxr::VtVec3fArray normals_;
-  pxr::VtMatrix4dArray instances_;
 
   MaterialData *mat_data_ = nullptr;
-  Object *parent_;
 };
 
 }  // namespace blender::render::hydra

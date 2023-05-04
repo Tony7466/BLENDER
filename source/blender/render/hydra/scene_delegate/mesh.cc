@@ -17,7 +17,7 @@ namespace blender::render::hydra {
 MeshData::MeshData(BlenderSceneDelegate *scene_delegate,
                    Object *object,
                    pxr::SdfPath const &prim_id)
-    : ObjectData(scene_delegate, object, prim_id), parent_(object->parent)
+    : ObjectData(scene_delegate, object, prim_id)
 {
 }
 
@@ -66,20 +66,6 @@ void MeshData::remove()
 void MeshData::update()
 {
   Object *object = (Object *)id;
-  if (parent_ != object->parent) {
-    parent_ = object->parent;
-
-    /* Looking for corresponded instancer and update it as parent */
-    for (Object *ob = parent_; ob != nullptr; ob = ob->parent) {
-      pxr::SdfPath i_id = scene_delegate_->instancer_prim_id(ob);
-      InstancerData *i_data = scene_delegate_->instancer_data(i_id);
-      if (i_data) {
-        i_data->update_as_parent();
-        break;
-      }
-    }
-  }
-
   pxr::HdDirtyBits bits = pxr::HdChangeTracker::Clean;
   if ((id->recalc & ID_RECALC_GEOMETRY) || (((ID *)object->data)->recalc & ID_RECALC_GEOMETRY)) {
     init();
@@ -125,9 +111,6 @@ pxr::VtValue MeshData::get_data(pxr::TfToken const &key) const
   }
   else if (key == pxr::HdPrimvarRoleTokens->textureCoordinate) {
     ret = uvs_;
-  }
-  else if (key == pxr::HdInstancerTokens->instanceTransform) {
-    ret = instances_;
   }
   return ret;
 }
@@ -235,8 +218,10 @@ void MeshData::write_material()
   pxr::SdfPath p_id = scene_delegate_->material_prim_id(mat);
   mat_data_ = scene_delegate_->material_data(p_id);
   if (!mat_data_) {
-    scene_delegate_->materials_[p_id] = MaterialData::create(scene_delegate_, mat, p_id);
+    scene_delegate_->materials_[p_id] = std::make_unique<MaterialData>(scene_delegate_, mat, p_id);
     mat_data_ = scene_delegate_->material_data(p_id);
+    mat_data_->init();
+    mat_data_->insert();
   }
 }
 

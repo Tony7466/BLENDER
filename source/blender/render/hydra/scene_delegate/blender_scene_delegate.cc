@@ -32,43 +32,42 @@ pxr::HdMeshTopology BlenderSceneDelegate::GetMeshTopology(pxr::SdfPath const &id
 pxr::GfMatrix4d BlenderSceneDelegate::GetTransform(pxr::SdfPath const &id)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", id.GetText());
+  InstancerData *i_data = instancer_data(id, true);
+  if (i_data) {
+    return i_data->get_transform(id);
+  }
   ObjectData *obj_data = object_data(id);
   if (obj_data) {
     return obj_data->transform;
   }
-
   if (id == world_prim_id()) {
     return world_data_->transform;
   }
-
   return pxr::GfMatrix4d();
 }
 
 pxr::VtValue BlenderSceneDelegate::Get(pxr::SdfPath const &id, pxr::TfToken const &key)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s, %s", id.GetText(), key.GetText());
-
   ObjectData *obj_data = object_data(id);
   if (obj_data) {
     return obj_data->get_data(key);
   }
-
   MaterialData *mat_data = material_data(id);
   if (mat_data) {
     return mat_data->get_data(key);
   }
-
   InstancerData *i_data = instancer_data(id);
   if (i_data) {
     return i_data->get_data(key);
   }
-
   return pxr::VtValue();
 }
 
 pxr::VtValue BlenderSceneDelegate::GetLightParamValue(pxr::SdfPath const &id,
                                                       pxr::TfToken const &key)
 {
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s, %s", id.GetText(), key.GetText());
   LightData *l_data = light_data(id);
   if (l_data) {
     return l_data->get_data(key);
@@ -83,27 +82,26 @@ pxr::HdPrimvarDescriptorVector BlenderSceneDelegate::GetPrimvarDescriptors(
     pxr::SdfPath const &id, pxr::HdInterpolation interpolation)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s, %d", id.GetText(), interpolation);
-
   MeshData *m_data = mesh_data(id);
   if (m_data) {
     return m_data->primvar_descriptors(interpolation);
   }
-
   InstancerData *i_data = instancer_data(id);
   if (i_data) {
     return i_data->primvar_descriptors(interpolation);
   }
-
   return pxr::HdPrimvarDescriptorVector();
 }
 
 pxr::SdfPath BlenderSceneDelegate::GetMaterialId(pxr::SdfPath const &rprim_id)
 {
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", rprim_id.GetText());
   return mesh_data(rprim_id)->material_id();
 }
 
 pxr::VtValue BlenderSceneDelegate::GetMaterialResource(pxr::SdfPath const &id)
 {
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", id.GetText());
   MaterialData *mat_data = material_data(id);
   if (mat_data) {
     return mat_data->get_material_resource();
@@ -113,10 +111,14 @@ pxr::VtValue BlenderSceneDelegate::GetMaterialResource(pxr::SdfPath const &id)
 
 bool BlenderSceneDelegate::GetVisible(pxr::SdfPath const &id)
 {
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", id.GetText());
   if (id == world_prim_id()) {
     return true;
   }
-
+  InstancerData *i_data = instancer_data(id, true);
+  if (i_data) {
+    return i_data->visible;
+  }
   return object_data(id)->visible;
 }
 
@@ -175,11 +177,9 @@ void BlenderSceneDelegate::clear()
   for (auto &it : objects_) {
     it.second->remove();
   }
-
   for (auto &it : instancers_) {
     it.second->remove();
   }
-
   for (auto &it : materials_) {
     it.second->remove();
   }
@@ -223,7 +223,7 @@ ObjectData *BlenderSceneDelegate::object_data(pxr::SdfPath const &id) const
   if (it != objects_.end()) {
     return it->second.get();
   }
-  InstancerData *i_data = instancer_data(id.GetParentPath());
+  InstancerData *i_data = instancer_data(id, true);
   if (i_data) {
     return i_data->object_data(id);
   }
@@ -249,9 +249,23 @@ MaterialData *BlenderSceneDelegate::material_data(pxr::SdfPath const &id) const
   return it->second.get();
 }
 
-InstancerData *BlenderSceneDelegate::instancer_data(pxr::SdfPath const &id) const
+InstancerData *BlenderSceneDelegate::instancer_data(pxr::SdfPath const &id, bool child_id) const
 {
-  auto it = instancers_.find(id);
+  pxr::SdfPath p_id;
+  if (child_id) {
+    int n = id.GetPathElementCount();
+    if (n == 3) {
+      p_id = id.GetParentPath();
+    }
+    else if (n == 4) {
+      p_id = id.GetParentPath().GetParentPath();
+    }
+  }
+  else {
+    p_id = id;
+  }
+
+  auto it = instancers_.find(p_id);
   if (it != instancers_.end()) {
     return it->second.get();
   }
@@ -266,6 +280,7 @@ void BlenderSceneDelegate::update_objects(Object *object)
   pxr::SdfPath id = object_prim_id(object);
   ObjectData *obj_data = object_data(id);
   if (obj_data) {
+    obj_data->update_parent();
     obj_data->update();
     return;
   }
@@ -274,6 +289,9 @@ void BlenderSceneDelegate::update_objects(Object *object)
   }
   objects_[id] = ObjectData::create(this, object, id);
   obj_data = object_data(id);
+  obj_data->update_parent();
+  obj_data->init();
+  obj_data->insert();
   obj_data->update_visibility();
 }
 
@@ -302,8 +320,10 @@ void BlenderSceneDelegate::update_instancers(Object *object)
   if (view3d && !BKE_object_is_visible_in_viewport(view3d, object)) {
     return;
   }
-  instancers_[id] = InstancerData::create(this, object, id);
+  instancers_[id] = std::make_unique<InstancerData>(this, object, id);
   i_data = instancer_data(id);
+  i_data->init();
+  i_data->insert();
   i_data->update_visibility();
 }
 
@@ -312,7 +332,9 @@ void BlenderSceneDelegate::update_world()
   World *world = scene->world;
   if (!world_data_) {
     if (world) {
-      world_data_ = WorldData::create(this, world, world_prim_id());
+      world_data_ = std::make_unique<WorldData>(this, world, world_prim_id());
+      world_data_->init();
+      world_data_->insert();
     }
   }
   else {

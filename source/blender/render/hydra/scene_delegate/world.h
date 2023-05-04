@@ -22,10 +22,6 @@ class WorldData : public IdData {
  public:
   WorldData(BlenderSceneDelegate *scene_delegate, World *world, pxr::SdfPath const &prim_id);
 
-  static std::unique_ptr<WorldData> create(BlenderSceneDelegate *scene_delegate,
-                                           World *world,
-                                           pxr::SdfPath const &prim_id);
-
   void init() override;
   void insert() override;
   void remove() override;

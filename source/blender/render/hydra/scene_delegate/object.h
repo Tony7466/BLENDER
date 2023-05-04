@@ -24,12 +24,15 @@ class ObjectData : public IdData {
   static bool is_supported(Object *object);
 
   virtual bool update_visibility();
+  void update_parent();
 
   pxr::GfMatrix4d transform;
-  bool visible;
+  bool visible = true;
 
  protected:
   void write_transform();
+
+  Object *parent_ = nullptr;
 };
 
 using ObjectDataMap =

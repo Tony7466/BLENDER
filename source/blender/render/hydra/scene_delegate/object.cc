@@ -13,7 +13,7 @@ namespace blender::render::hydra {
 ObjectData::ObjectData(BlenderSceneDelegate *scene_delegate,
                        Object *object,
                        pxr::SdfPath const &prim_id)
-    : IdData(scene_delegate, (ID *)object, prim_id), transform(pxr::GfMatrix4d(1.0)), visible(true)
+    : IdData(scene_delegate, (ID *)object, prim_id), transform(pxr::GfMatrix4d(1.0))
 {
 }
 
@@ -38,10 +38,6 @@ std::unique_ptr<ObjectData> ObjectData::create(BlenderSceneDelegate *scene_deleg
 
     default:
       break;
-  }
-  if (data) {
-    data->init();
-    data->insert();
   }
   return data;
 }
@@ -76,6 +72,25 @@ bool ObjectData::update_visibility()
     ID_LOG(2, "");
   }
   return ret;
+}
+
+void ObjectData::update_parent()
+{
+  Object *object = (Object *)id;
+  if (parent_ != object->parent) {
+    ID_LOG(2, "");
+    parent_ = object->parent;
+
+    /* Looking for corresponded instancer and update it as parent */
+    for (Object *ob = parent_; ob != nullptr; ob = ob->parent) {
+      InstancerData *i_data = scene_delegate_->instancer_data(
+          scene_delegate_->instancer_prim_id(ob));
+      if (i_data) {
+        i_data->update_as_parent();
+        break;
+      }
+    }
+  }
 }
 
 void ObjectData::write_transform()

@@ -13,7 +13,11 @@
 
 namespace blender::render::hydra {
 
+class InstancerData;
+
 class LightData : public ObjectData {
+  friend InstancerData;
+
  public:
   LightData(BlenderSceneDelegate *scene_delegate, Object *object, pxr::SdfPath const &prim_id);
 

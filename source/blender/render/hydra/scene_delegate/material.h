@@ -19,10 +19,6 @@ class MaterialData : public IdData {
                Material *material,
                pxr::SdfPath const &prim_id);
 
-  static std::unique_ptr<MaterialData> create(BlenderSceneDelegate *scene_delegate,
-                                              Material *material,
-                                              pxr::SdfPath const &prim_id);
-
   void init() override;
   void insert() override;
   void remove() override;

@@ -27,16 +27,6 @@ MaterialData::MaterialData(BlenderSceneDelegate *scene_delegate,
 {
 }
 
-std::unique_ptr<MaterialData> MaterialData::create(BlenderSceneDelegate *scene_delegate,
-                                                   Material *material,
-                                                   pxr::SdfPath const &prim_id)
-{
-  auto data = std::make_unique<MaterialData>(scene_delegate, material, prim_id);
-  data->init();
-  data->insert();
-  return data;
-}
-
 void MaterialData::init()
 {
   ID_LOG(2, "");
