@@ -21,8 +21,8 @@ class VKSampler : public NonCopyable {
 
  public:
   virtual ~VKSampler();
-  void create(VKContext &context);
-  void free(VKContext &context);
+  void create();
+  void free();
 
   VkSampler vk_handle()
   {

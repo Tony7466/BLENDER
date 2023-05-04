@@ -13,11 +13,10 @@
 namespace blender::gpu {
 VKSampler::~VKSampler()
 {
-  VKContext &context = *VKContext::get();
-  free(context);
+  free();
 }
 
-void VKSampler::create(VKContext &context)
+void VKSampler::create()
 {
   BLI_assert(vk_sampler_ == VK_NULL_HANDLE);
 
@@ -27,10 +26,10 @@ void VKSampler::create(VKContext &context)
   sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
   const VKDevice &device = VKBackend::get().device_get();
   vkCreateSampler(device.device_get(), &sampler_info, vk_allocation_callbacks, &vk_sampler_);
-  debug::object_label(&context, vk_sampler_, "DummySampler");
+  debug::object_label(vk_sampler_, "DummySampler");
 }
 
-void VKSampler::free(VKContext & /*context*/)
+void VKSampler::free()
 {
   VK_ALLOCATION_CALLBACKS
 

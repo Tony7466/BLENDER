@@ -40,7 +40,7 @@ class VKVertexBuffer : public VertBuf {
   void duplicate_data(VertBuf *dst) override;
 
  private:
-  void allocate(VKContext &context);
+  void allocate();
 };
 
 static inline VKVertexBuffer *unwrap(VertBuf *vertex_buffer)

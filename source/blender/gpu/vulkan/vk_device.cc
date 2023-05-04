@@ -6,6 +6,7 @@
  */
 
 #include "vk_device.hh"
+#include "vk_backend.hh"
 #include "vk_memory.hh"
 
 #include "GHOST_C-api.h"
@@ -16,6 +17,7 @@ void VKDevice::deinit()
 {
   vmaDestroyAllocator(mem_allocator_);
   mem_allocator_ = VK_NULL_HANDLE;
+  debugging_tools_.deinit();
 
   vk_instance_ = VK_NULL_HANDLE;
   vk_physical_device_ = VK_NULL_HANDLE;
@@ -41,8 +43,18 @@ void VKDevice::init(void *ghost_context)
                          &vk_queue_);
 
   init_physical_device_limits();
+  init_capabilities();
+  init_debug_callbacks();
   init_memory_allocator();
   init_descriptor_pools();
+
+  debug::object_label(device_get(), "LogicalDevice");
+  debug::object_label(queue_get(), "GenericQueue");
+}
+
+void VKDevice::init_debug_callbacks()
+{
+  debugging_tools_.init(vk_instance_);
 }
 
 void VKDevice::init_physical_device_limits()
@@ -51,6 +63,11 @@ void VKDevice::init_physical_device_limits()
   VkPhysicalDeviceProperties properties = {};
   vkGetPhysicalDeviceProperties(vk_physical_device_, &properties);
   vk_physical_device_limits_ = properties.limits;
+}
+
+void VKDevice::init_capabilities()
+{
+  VKBackend::capabilities_init();
 }
 
 void VKDevice::init_memory_allocator()

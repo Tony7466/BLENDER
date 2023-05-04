@@ -23,9 +23,6 @@ class VKContext : public Context, NonCopyable {
  private:
   VKCommandBuffer command_buffer_;
 
-  /** Functions of vk_ext_debugutils to use in this context. */
-  debug::VKDebuggingTools debugging_tools_;
-
   void *ghost_context_;
 
  public:
@@ -71,16 +68,6 @@ class VKContext : public Context, NonCopyable {
   }
 
   const VKStateManager &state_manager_get() const;
-
-  debug::VKDebuggingTools &debugging_tools_get()
-  {
-    return debugging_tools_;
-  }
-
-  const debug::VKDebuggingTools &debugging_tools_get() const
-  {
-    return debugging_tools_;
-  }
 };
 
 }  // namespace blender::gpu

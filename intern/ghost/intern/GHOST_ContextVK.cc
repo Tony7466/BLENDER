@@ -383,7 +383,6 @@ GHOST_ContextVK::GHOST_ContextVK(bool stereoVisual,
 
 GHOST_ContextVK::~GHOST_ContextVK()
 {
-  // TODO: see if we can use a usage counter to free the global device.
   if (vulkan_device.has_value()) {
     GHOST_DeviceVK &device_vk = *vulkan_device;
     device_vk.wait_idle();

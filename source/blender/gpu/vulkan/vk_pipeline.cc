@@ -44,7 +44,6 @@ VKPipeline::~VKPipeline()
 }
 
 VKPipeline VKPipeline::create_compute_pipeline(
-    VKContext & /*context*/,
     VkShaderModule compute_module,
     VkDescriptorSetLayout &descriptor_set_layout,
     VkPipelineLayout &pipeline_layout,
@@ -194,7 +193,7 @@ void VKPipeline::finalize(VKContext &context,
    * also be done using a VkPipelineCache. For now we just destroy any available pipeline so it
    * won't be overwritten by the newly created one. */
   vk_pipelines_.append(active_vk_pipeline_);
-  debug::object_label(&context, active_vk_pipeline_, "GraphicsPipeline");
+  debug::object_label(active_vk_pipeline_, "GraphicsPipeline");
 }
 
 void VKPipeline::update_and_bind(VKContext &context,

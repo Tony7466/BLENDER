@@ -13,9 +13,9 @@
 
 namespace blender::gpu {
 
-VKStateManager::VKStateManager(VKContext &context)
+VKStateManager::VKStateManager()
 {
-  sampler_.create(context);
+  sampler_.create();
 }
 
 void VKStateManager::apply_state()

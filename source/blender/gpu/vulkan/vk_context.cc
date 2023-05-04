@@ -31,15 +31,8 @@ VKContext::VKContext(void *ghost_window, void *ghost_context)
     device.init(ghost_context);
   }
 
-  debug::init_callbacks(this, vkGetInstanceProcAddr);
-
-  debug::object_label(this, device.device_get(), "LogicalDevice");
-  debug::object_label(this, device.queue_get(), "GenericQueue");
-
-  state_manager = new VKStateManager(*this);
+  state_manager = new VKStateManager();
   imm = new VKImmediate();
-
-  VKBackend::capabilities_init(*this);
 
   /* For off-screen contexts. Default frame-buffer is empty. */
   VKFrameBuffer *framebuffer = new VKFrameBuffer("back_left");
@@ -53,7 +46,6 @@ VKContext::~VKContext()
   /* TODO: Introduce a buffer pool for temporary buffers. */
   delete imm;
   imm = nullptr;
-  debug::destroy_callbacks(this);
 }
 
 void VKContext::sync_backbuffer()

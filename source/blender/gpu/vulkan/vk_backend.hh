@@ -76,7 +76,7 @@ class VKBackend : public GPUBackend {
 
   shaderc::Compiler &get_shaderc_compiler();
 
-  static void capabilities_init(VKContext &context);
+  static void capabilities_init();
 
   static VKBackend &get()
   {

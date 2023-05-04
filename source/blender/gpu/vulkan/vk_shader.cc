@@ -562,7 +562,6 @@ void VKShader::build_shader_module(Span<uint32_t> spirv_module, VkShaderModule *
   create_info.pCode = spirv_module.data();
 
   const VKDevice &device = VKBackend::get().device_get();
-
   VkResult result = vkCreateShaderModule(
       device.device_get(), &create_info, vk_allocation_callbacks, r_shader_module);
   if (result != VK_SUCCESS) {
@@ -676,11 +675,8 @@ bool VKShader::finalize(const shader::ShaderCreateInfo *info)
     BLI_assert(geometry_module_ == VK_NULL_HANDLE);
     BLI_assert(fragment_module_ == VK_NULL_HANDLE);
     BLI_assert(compute_module_ != VK_NULL_HANDLE);
-    pipeline_ = VKPipeline::create_compute_pipeline(*context_,
-                                                    compute_module_,
-                                                    layout_,
-                                                    pipeline_layout_,
-                                                    vk_interface->push_constants_layout_get());
+    pipeline_ = VKPipeline::create_compute_pipeline(
+        compute_module_, layout_, pipeline_layout_, vk_interface->push_constants_layout_get());
     result = pipeline_.is_valid();
   }
 

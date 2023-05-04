@@ -19,7 +19,7 @@ class VKStateManager : public StateManager {
   uint texture_unpack_row_length_ = 0;
 
  public:
-  VKStateManager(VKContext &context);
+  VKStateManager();
 
   void apply_state() override;
   void force_state() override;

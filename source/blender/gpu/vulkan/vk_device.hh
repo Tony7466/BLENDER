@@ -10,6 +10,7 @@
 #include "BLI_utility_mixins.hh"
 
 #include "vk_common.hh"
+#include "vk_debug.hh"
 #include "vk_descriptor_pools.hh"
 
 namespace blender::gpu {
@@ -29,6 +30,9 @@ class VKDevice : public NonCopyable {
 
   /** Limits of the device linked to this context. */
   VkPhysicalDeviceLimits vk_physical_device_limits_;
+
+  /** Functions of vk_ext_debugutils for this device/instance. */
+  debug::VKDebuggingTools debugging_tools_;
 
  public:
   VkPhysicalDevice physical_device_get() const
@@ -71,12 +75,24 @@ class VKDevice : public NonCopyable {
     return mem_allocator_;
   }
 
+  debug::VKDebuggingTools &debugging_tools_get()
+  {
+    return debugging_tools_;
+  }
+
+  const debug::VKDebuggingTools &debugging_tools_get() const
+  {
+    return debugging_tools_;
+  }
+
   bool is_initialized() const;
   void init(void *ghost_context);
   void deinit();
 
  private:
   void init_physical_device_limits();
+  void init_capabilities();
+  void init_debug_callbacks();
   void init_memory_allocator();
   void init_descriptor_pools();
 };
