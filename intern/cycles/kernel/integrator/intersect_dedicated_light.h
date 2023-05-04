@@ -43,12 +43,8 @@ ccl_device bool shadow_linking_pick_light_intersection(KernelGlobals kg,
 
   // TODO: What of the actual shadow ray hits the same light through a semi-transparent surface?
 
-  if (!lights_intersect(kg, ray, isect, last_prim, last_object, last_type, path_flag)) {
-    return false;
-  }
-
-  /* Only handle lights with shadow linking. */
-  if (!kernel_data_fetch(lights, isect->prim).shadow_set_membership) {
+  if (!lights_intersect_shadow_linked(
+          kg, ray, isect, last_prim, last_object, last_type, path_flag)) {
     return false;
   }
 

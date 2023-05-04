@@ -244,15 +244,16 @@ ccl_device_noinline bool light_sample(KernelGlobals kg,
 
 /* Intersect ray with individual light. */
 
-ccl_device bool lights_intersect(KernelGlobals kg,
-                                 ccl_private const Ray *ccl_restrict ray,
-                                 ccl_private Intersection *ccl_restrict isect,
-                                 const int last_prim,
-                                 const int last_object,
-                                 const int last_type,
-                                 const uint32_t path_flag,
-                                 const uint8_t path_mnee,
-                                 const int receiver_forward)
+template<bool is_main_path>
+ccl_device bool lights_intersect_impl(KernelGlobals kg,
+                                      ccl_private const Ray *ccl_restrict ray,
+                                      ccl_private Intersection *ccl_restrict isect,
+                                      const int last_prim,
+                                      const int last_object,
+                                      const int last_type,
+                                      const uint32_t path_flag,
+                                      const uint8_t path_mnee,
+                                      const int receiver_forward)
 {
   for (int lamp = 0; lamp < kernel_data.integrator.num_lights; lamp++) {
     const ccl_global KernelLight *klight = &kernel_data_fetch(lights, lamp);
@@ -283,15 +284,22 @@ ccl_device bool lights_intersect(KernelGlobals kg,
     }
 
 #ifdef __SHADOW_LINKING__
-    /* Exclude lights with shadow linking from indirect rays.
-     * They are handled via dedicated light intersect and shade kernels. */
-    if ((kernel_data.kernel_features & KERNEL_FEATURE_SHADOW_LINKING) &&
-        !(path_flag & PATH_RAY_TRANSPARENT_BACKGROUND))
-    {
-      if (kernel_data_fetch(lights, lamp).shadow_set_membership) {
+    /* For the main path exclude shadow-linked lights if intersecting with an indirect light ray.
+     * Those lights are handled via dedicated light intersect and shade kernels.
+     * For the shadow path used for the dedicated light shading ignore all non-shadow-linked
+     * lights. */
+    if (kernel_data.kernel_features & KERNEL_FEATURE_SHADOW_LINKING) {
+      if (is_main_path) {
+        const bool is_indirect_ray = !(path_flag & PATH_RAY_TRANSPARENT_BACKGROUND);
+        if (is_indirect_ray && kernel_data_fetch(lights, lamp).shadow_set_membership) {
+          continue;
+        }
+      }
+      else if (!kernel_data_fetch(lights, lamp).shadow_set_membership) {
         continue;
       }
     }
+
 #endif
 
 #ifdef __LIGHT_LINKING__
@@ -350,19 +358,19 @@ ccl_device bool lights_intersect(KernelGlobals kg,
   const uint8_t path_mnee = INTEGRATOR_STATE(state, path, mnee);
   const int receiver_forward = light_link_receiver_forward(kg, state);
 
-  return lights_intersect(
+  return lights_intersect_impl<true>(
       kg, ray, isect, last_prim, last_object, last_type, path_flag, path_mnee, receiver_forward);
 }
 
-ccl_device bool lights_intersect(KernelGlobals kg,
-                                 ccl_private const Ray *ccl_restrict ray,
-                                 ccl_private Intersection *ccl_restrict isect,
-                                 const int last_prim,
-                                 const int last_object,
-                                 const int last_type,
-                                 const uint32_t path_flag)
+ccl_device bool lights_intersect_shadow_linked(KernelGlobals kg,
+                                               ccl_private const Ray *ccl_restrict ray,
+                                               ccl_private Intersection *ccl_restrict isect,
+                                               const int last_prim,
+                                               const int last_object,
+                                               const int last_type,
+                                               const uint32_t path_flag)
 {
-  return lights_intersect(
+  return lights_intersect_impl<false>(
       kg, ray, isect, last_prim, last_object, last_type, path_flag, PATH_MNEE_NONE, OBJECT_NONE);
 }
 
