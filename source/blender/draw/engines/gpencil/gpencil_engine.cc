@@ -291,12 +291,11 @@ static void gpencil_engine_free()
   blender::draw::greasepencil::ShaderModule::module_free();
 }
 
-static void gpencil_render_to_image(void *vedata,
-                                    struct RenderEngine *engine,
-                                    struct RenderLayer *layer,
+static void gpencil_render_to_image(void * /*vedata*/,
+                                    struct RenderEngine * /*engine*/,
+                                    struct RenderLayer * /*layer*/,
                                     const struct rcti * /*rect*/)
 {
-  UNUSED_VARS(vedata, engine, layer);
 }
 
 extern "C" {
