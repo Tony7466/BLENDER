@@ -12347,6 +12347,9 @@ static void rna_def_node_socket_standard_types(BlenderRNA *brna)
   rna_def_node_socket_float(
       brna, "NodeSocketFloatDistance", "NodeSocketInterfaceFloatDistance", PROP_DISTANCE);
 
+  rna_def_node_socket_float(
+      brna, "NodeSocketFloatTemperature", "NodeSocketInterfaceFloatTemperature", PROP_TEMPERATURE);
+
   rna_def_node_socket_int(brna, "NodeSocketInt", "NodeSocketInterfaceInt", PROP_NONE);
   rna_def_node_socket_int(
       brna, "NodeSocketIntUnsigned", "NodeSocketInterfaceIntUnsigned", PROP_UNSIGNED);

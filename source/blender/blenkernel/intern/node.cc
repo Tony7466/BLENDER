@@ -1839,6 +1839,8 @@ const char *nodeStaticSocketType(const int type, const int subtype)
           return "NodeSocketFloatTimeAbsolute";
         case PROP_DISTANCE:
           return "NodeSocketFloatDistance";
+        case PROP_TEMPERATURE:
+          return "NodeSocketFloatTemperature";
         case PROP_NONE:
         default:
           return "NodeSocketFloat";
@@ -1918,6 +1920,8 @@ const char *nodeStaticSocketInterfaceType(const int type, const int subtype)
           return "NodeSocketInterfaceFloatTimeAbsolute";
         case PROP_DISTANCE:
           return "NodeSocketInterfaceFloatDistance";
+        case PROP_TEMPERATURE:
+          return "NodeSocketInterfaceFloatTemperature";
         case PROP_NONE:
         default:
           return "NodeSocketInterfaceFloat";

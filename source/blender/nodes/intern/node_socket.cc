@@ -790,6 +790,7 @@ void register_standard_node_socket_types()
   nodeRegisterSocketType(make_socket_type_float(PROP_TIME));
   nodeRegisterSocketType(make_socket_type_float(PROP_TIME_ABSOLUTE));
   nodeRegisterSocketType(make_socket_type_float(PROP_DISTANCE));
+  nodeRegisterSocketType(make_socket_type_float(PROP_TEMPERATURE));
 
   nodeRegisterSocketType(make_socket_type_int(PROP_NONE));
   nodeRegisterSocketType(make_socket_type_int(PROP_UNSIGNED));
