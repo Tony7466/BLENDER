@@ -43,7 +43,16 @@ ccl_device bool shadow_linking_pick_light_intersection(KernelGlobals kg,
 
   // TODO: What of the actual shadow ray hits the same light through a semi-transparent surface?
 
-  return lights_intersect(kg, ray, isect, last_prim, last_object, last_type, path_flag);
+  if (!lights_intersect(kg, ray, isect, last_prim, last_object, last_type, path_flag)) {
+    return false;
+  }
+
+  /* Only handle lights with shadow linking. */
+  if (!kernel_data_fetch(lights, isect->prim).shadow_set_membership) {
+    return false;
+  }
+
+  return true;
 }
 
 /* Check whether a special shadow ray is needed to calculate direct light contribution which comes
@@ -66,12 +75,6 @@ ccl_device bool shadow_linking_intersect(KernelGlobals kg, IntegratorState state
     /* No light is hit, no need in the extra shadow ray for the direct light. */
     return false;
   }
-
-  /* Store light towards which the shadow ray is cast.
-   * This light will be excluded from the main path MIS it is hit, avoiding counting contribution
-   * twice. */
-  // TODO: Mesh emitter support.
-  INTEGRATOR_STATE_WRITE(state, shadow_link, light) = isect.prim;
 
   /* Make a copy of primitives needed by the main path self-intersection check before writing the
    * new intersection. Those primitives will be restored before the main path is returned to the

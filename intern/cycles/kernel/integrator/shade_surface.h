@@ -476,15 +476,6 @@ ccl_device_forceinline int integrate_surface_bsdf_bssrdf_bounce(
   }
 #endif
 
-#ifdef __SHADOW_LINKING__
-  // XXX: DOcumentation.
-  if (kernel_data.kernel_features & KERNEL_FEATURE_SHADOW_LINKING) {
-    if (!(label & LABEL_TRANSPARENT)) {
-      INTEGRATOR_STATE_WRITE(state, shadow_link, light) = LAMP_NONE;
-    }
-  }
-#endif
-
   path_state_next(kg, state, label, sd->flag);
 
   guiding_record_surface_bounce(kg,

@@ -251,8 +251,7 @@ ccl_device bool lights_intersect(KernelGlobals kg,
                                  const int last_type,
                                  const uint32_t path_flag,
                                  const uint8_t path_mnee,
-                                 const int receiver_forward,
-                                 const int self_light)
+                                 const int receiver_forward)
 {
   for (int lamp = 0; lamp < kernel_data.integrator.num_lights; lamp++) {
     const ccl_global KernelLight *klight = &kernel_data_fetch(lights, lamp);
@@ -283,8 +282,13 @@ ccl_device bool lights_intersect(KernelGlobals kg,
     }
 
 #ifdef __SHADOW_LINKING__
-    if (lamp == self_light) {
-      continue;
+    /* Exclude lights with shadow linking from indirect rays.
+     * They are handled via dedicated light intersect and shade kernels. */
+    if ((kernel_data.kernel_features & KERNEL_FEATURE_SHADOW_LINKING) &&
+        !(path_flag & PATH_RAY_TRANSPARENT_BACKGROUND)) {
+      if (kernel_data_fetch(lights, lamp).shadow_set_membership) {
+        continue;
+      }
     }
 #endif
 
@@ -342,20 +346,9 @@ ccl_device bool lights_intersect(KernelGlobals kg,
 {
   const uint8_t path_mnee = INTEGRATOR_STATE(state, path, mnee);
   const int receiver_forward = light_link_receiver_forward(kg, state);
-  const int self_light = (kernel_data.kernel_features & KERNEL_FEATURE_SHADOW_LINKING) ?
-                             INTEGRATOR_STATE(state, shadow_link, light) :
-                             LAMP_NONE;
 
-  return lights_intersect(kg,
-                          ray,
-                          isect,
-                          last_prim,
-                          last_object,
-                          last_type,
-                          path_flag,
-                          path_mnee,
-                          receiver_forward,
-                          self_light);
+  return lights_intersect(
+      kg, ray, isect, last_prim, last_object, last_type, path_flag, path_mnee, receiver_forward);
 }
 
 ccl_device bool lights_intersect(KernelGlobals kg,
@@ -366,16 +359,8 @@ ccl_device bool lights_intersect(KernelGlobals kg,
                                  const int last_type,
                                  const uint32_t path_flag)
 {
-  return lights_intersect(kg,
-                          ray,
-                          isect,
-                          last_prim,
-                          last_object,
-                          last_type,
-                          path_flag,
-                          PATH_MNEE_NONE,
-                          OBJECT_NONE,
-                          LAMP_NONE);
+  return lights_intersect(
+      kg, ray, isect, last_prim, last_object, last_type, path_flag, PATH_MNEE_NONE, OBJECT_NONE);
 }
 
 /* Setup light sample from intersection. */
