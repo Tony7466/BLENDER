@@ -91,17 +91,18 @@ static void sig_handle_crash(int signum)
   FILE *fp;
   char header[512];
 
-  char fname[FILE_MAX];
+  char filepath[FILE_MAX];
 
   if (!(G_MAIN && G_MAIN->filepath[0])) {
-    BLI_path_join(fname, sizeof(fname), BKE_tempdir_base(), "blender.crash.txt");
+    BLI_path_join(filepath, sizeof(filepath), BKE_tempdir_base(), "blender.crash.txt");
   }
   else {
-    BLI_path_join(fname, sizeof(fname), BKE_tempdir_base(), BLI_path_basename(G_MAIN->filepath));
-    BLI_path_extension_replace(fname, sizeof(fname), ".crash.txt");
+    BLI_path_join(
+        filepath, sizeof(filepath), BKE_tempdir_base(), BLI_path_basename(G_MAIN->filepath));
+    BLI_path_extension_replace(filepath, sizeof(filepath), ".crash.txt");
   }
 
-  printf("Writing: %s\n", fname);
+  printf("Writing: %s\n", filepath);
   fflush(stdout);
 
 #  ifndef BUILD_DATE
@@ -119,11 +120,11 @@ static void sig_handle_crash(int signum)
 
   /* open the crash log */
   errno = 0;
-  fp = BLI_fopen(fname, "wb");
+  fp = BLI_fopen(filepath, "wb");
   if (fp == NULL) {
     fprintf(stderr,
             "Unable to save '%s': %s\n",
-            fname,
+            filepath,
             errno ? strerror(errno) : "Unknown error opening file");
   }
   else {

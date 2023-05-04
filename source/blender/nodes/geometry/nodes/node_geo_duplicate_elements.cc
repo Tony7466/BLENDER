@@ -178,12 +178,10 @@ static void copy_attributes_without_id(const OffsetIndices<int> offsets,
                                        const bke::AttributeAccessor src_attributes,
                                        bke::MutableAttributeAccessor dst_attributes)
 {
-  for (auto &attribute : bke::retrieve_attributes_for_transfer(src_attributes,
-                                                               dst_attributes,
-                                                               ATTR_DOMAIN_AS_MASK(domain),
-                                                               propagation_info,
-                                                               {"id"})) {
-    attribute_math::convert_to_static_type(attribute.src.type(), [&](auto dummy) {
+  for (auto &attribute : bke::retrieve_attributes_for_transfer(
+           src_attributes, dst_attributes, ATTR_DOMAIN_AS_MASK(domain), propagation_info, {"id"}))
+  {
+    bke::attribute_math::convert_to_static_type(attribute.src.type(), [&](auto dummy) {
       using T = decltype(dummy);
       const Span<T> src = attribute.src.typed<T>();
       MutableSpan<T> dst = attribute.dst.span.typed<T>();
@@ -217,8 +215,9 @@ static void copy_curve_attributes_without_id(
                                                                dst_curves.attributes_for_write(),
                                                                ATTR_DOMAIN_MASK_ALL,
                                                                propagation_info,
-                                                               {"id"})) {
-    attribute_math::convert_to_static_type(attribute.src.type(), [&](auto dummy) {
+                                                               {"id"}))
+  {
+    bke::attribute_math::convert_to_static_type(attribute.src.type(), [&](auto dummy) {
       using T = decltype(dummy);
       const Span<T> src = attribute.src.typed<T>();
       MutableSpan<T> dst = attribute.dst.span.typed<T>();
@@ -305,7 +304,7 @@ static void duplicate_curves(GeometrySet &geometry_set,
   const Curves &curves_id = *geometry_set.get_curves_for_read();
   const bke::CurvesGeometry &curves = curves_id.geometry.wrap();
 
-  bke::CurvesFieldContext field_context{curves, ATTR_DOMAIN_CURVE};
+  const bke::CurvesFieldContext field_context{curves, ATTR_DOMAIN_CURVE};
   FieldEvaluator evaluator{field_context, curves.curves_num()};
   evaluator.add(count_field);
   evaluator.set_selection(selection_field);
@@ -394,8 +393,9 @@ static void copy_face_attributes_without_id(
            dst_attributes,
            ATTR_DOMAIN_MASK_ALL,
            propagation_info,
-           {"id", ".corner_vert", ".corner_edge", ".edge_verts"})) {
-    attribute_math::convert_to_static_type(attribute.src.type(), [&](auto dummy) {
+           {"id", ".corner_vert", ".corner_edge", ".edge_verts"}))
+  {
+    bke::attribute_math::convert_to_static_type(attribute.src.type(), [&](auto dummy) {
       using T = decltype(dummy);
       const Span<T> src = attribute.src.typed<T>();
       MutableSpan<T> dst = attribute.dst.span.typed<T>();
@@ -491,7 +491,7 @@ static void duplicate_faces(GeometrySet &geometry_set,
   const Span<int> corner_verts = mesh.corner_verts();
   const Span<int> corner_edges = mesh.corner_edges();
 
-  bke::MeshFieldContext field_context{mesh, ATTR_DOMAIN_FACE};
+  const bke::MeshFieldContext field_context{mesh, ATTR_DOMAIN_FACE};
   FieldEvaluator evaluator(field_context, polys.size());
   evaluator.add(count_field);
   evaluator.set_selection(selection_field);
@@ -604,8 +604,9 @@ static void copy_edge_attributes_without_id(
                                              dst_attributes,
                                              ATTR_DOMAIN_MASK_POINT | ATTR_DOMAIN_MASK_EDGE,
                                              propagation_info,
-                                             {"id", ".edge_verts"})) {
-    attribute_math::convert_to_static_type(attribute.src.type(), [&](auto dummy) {
+                                             {"id", ".edge_verts"}))
+  {
+    bke::attribute_math::convert_to_static_type(attribute.src.type(), [&](auto dummy) {
       using T = decltype(dummy);
       const Span<T> src = attribute.src.typed<T>();
       MutableSpan<T> dst = attribute.dst.span.typed<T>();
@@ -683,7 +684,7 @@ static void duplicate_edges(GeometrySet &geometry_set,
   const Mesh &mesh = *geometry_set.get_mesh_for_read();
   const Span<int2> edges = mesh.edges();
 
-  bke::MeshFieldContext field_context{mesh, ATTR_DOMAIN_EDGE};
+  const bke::MeshFieldContext field_context{mesh, ATTR_DOMAIN_EDGE};
   FieldEvaluator evaluator{field_context, edges.size()};
   evaluator.add(count_field);
   evaluator.set_selection(selection_field);
@@ -764,7 +765,7 @@ static void duplicate_points_curve(GeometrySet &geometry_set,
     return;
   }
 
-  bke::CurvesFieldContext field_context{src_curves, ATTR_DOMAIN_POINT};
+  const bke::CurvesFieldContext field_context{src_curves, ATTR_DOMAIN_POINT};
   FieldEvaluator evaluator{field_context, src_curves.points_num()};
   evaluator.add(count_field);
   evaluator.set_selection(selection_field);
@@ -792,8 +793,9 @@ static void duplicate_points_curve(GeometrySet &geometry_set,
                                                                new_curves.attributes_for_write(),
                                                                ATTR_DOMAIN_MASK_ALL,
                                                                propagation_info,
-                                                               {"id"})) {
-    attribute_math::convert_to_static_type(attribute.src.type(), [&](auto dummy) {
+                                                               {"id"}))
+  {
+    bke::attribute_math::convert_to_static_type(attribute.src.type(), [&](auto dummy) {
       using T = decltype(dummy);
       const Span<T> src = attribute.src.typed<T>();
       MutableSpan<T> dst = attribute.dst.span.typed<T>();
@@ -844,7 +846,7 @@ static void duplicate_points_mesh(GeometrySet &geometry_set,
 {
   const Mesh &mesh = *geometry_set.get_mesh_for_read();
 
-  bke::MeshFieldContext field_context{mesh, ATTR_DOMAIN_POINT};
+  const bke::MeshFieldContext field_context{mesh, ATTR_DOMAIN_POINT};
   FieldEvaluator evaluator{field_context, mesh.totvert};
   evaluator.add(count_field);
   evaluator.set_selection(selection_field);
@@ -892,7 +894,7 @@ static void duplicate_points_pointcloud(GeometrySet &geometry_set,
 {
   const PointCloud &src_points = *geometry_set.get_pointcloud_for_read();
 
-  bke::PointCloudFieldContext field_context{src_points};
+  const bke::PointCloudFieldContext field_context{src_points};
   FieldEvaluator evaluator{field_context, src_points.totpoint};
   evaluator.add(count_field);
   evaluator.set_selection(selection_field);

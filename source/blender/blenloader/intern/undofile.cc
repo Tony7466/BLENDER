@@ -70,7 +70,8 @@ void BLO_memfile_merge(MemFile *first, MemFile *second)
 
   /* First, detect all memchunks in second memfile that are not owned by it. */
   for (MemFileChunk *sc = static_cast<MemFileChunk *>(second->chunks.first); sc != nullptr;
-       sc = static_cast<MemFileChunk *>(sc->next)) {
+       sc = static_cast<MemFileChunk *>(sc->next))
+  {
     if (sc->is_identical) {
       BLI_ghash_insert(buffer_to_second_memchunk, (void *)sc->buf, sc);
     }
@@ -79,7 +80,8 @@ void BLO_memfile_merge(MemFile *first, MemFile *second)
   /* Now, check all chunks from first memfile (the one we are removing), and if a memchunk owned by
    * it is also used by the second memfile, transfer the ownership. */
   for (MemFileChunk *fc = static_cast<MemFileChunk *>(first->chunks.first); fc != nullptr;
-       fc = static_cast<MemFileChunk *>(fc->next)) {
+       fc = static_cast<MemFileChunk *>(fc->next))
+  {
     if (!fc->is_identical) {
       MemFileChunk *sc = static_cast<MemFileChunk *>(
           BLI_ghash_lookup(buffer_to_second_memchunk, fc->buf));
@@ -131,7 +133,8 @@ void BLO_memfile_write_init(MemFileWriteData *mem_data,
         void **entry;
         if (!BLI_ghash_ensure_p(mem_data->id_session_uuid_mapping,
                                 POINTER_FROM_UINT(current_session_uuid),
-                                &entry)) {
+                                &entry))
+        {
           *entry = mem_chunk;
         }
         else {
