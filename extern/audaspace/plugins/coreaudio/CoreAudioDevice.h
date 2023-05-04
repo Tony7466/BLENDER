@@ -67,6 +67,10 @@ private:
 	 */
 	AUD_LOCAL static OSStatus CoreAudio_mix(void* data, AudioUnitRenderActionFlags* flags, const AudioTimeStamp* time_stamp, UInt32 bus_number, UInt32 number_frames, AudioBufferList* buffer_list);
 
+    bool m_device_opened;
+    void openDeviceOnDemand();
+    void closeDevice();
+
 	// delete copy constructor and operator=
 	CoreAudioDevice(const CoreAudioDevice&) = delete;
 	CoreAudioDevice& operator=(const CoreAudioDevice&) = delete;

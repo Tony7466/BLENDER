@@ -33,6 +33,7 @@ OSStatus CoreAudioDevice::CoreAudio_mix(void* data, AudioUnitRenderActionFlags* 
 		device->mix((data_t*)buffer.mData, buffer.mDataByteSize / AUD_DEVICE_SAMPLE_SIZE(device->m_specs));
 	}
 
+    if (!device->m_playback) device->closeDevice();
 	return noErr;
 }
 
@@ -40,133 +41,147 @@ void CoreAudioDevice::playing(bool playing)
 {
 	if(m_playback != playing)
 	{
-		if(playing)
-			AudioOutputUnitStart(m_audio_unit);
-		else
-			AudioOutputUnitStop(m_audio_unit);
+        m_playback = playing;
+        if(playing){
+            openDeviceOnDemand();
+            AudioOutputUnitStart(m_audio_unit);
+        }
+        else{
+            AudioOutputUnitStop(m_audio_unit);
+        }
 	}
+}
 
-	m_playback = playing;
+void CoreAudioDevice::openDeviceOnDemand(){
+    if (m_device_opened) return;
+
+    AudioComponentDescription component_description = {};
+
+    component_description.componentType = kAudioUnitType_Output;
+    component_description.componentSubType = kAudioUnitSubType_DefaultOutput;
+    component_description.componentManufacturer = kAudioUnitManufacturer_Apple;
+
+    AudioComponent component = AudioComponentFindNext(nullptr, &component_description);
+
+    if(!component)
+        AUD_THROW(DeviceException, "The audio device couldn't be opened with CoreAudio.");
+
+    OSStatus status = AudioComponentInstanceNew(component, &m_audio_unit);
+
+    if(status != noErr)
+        AUD_THROW(DeviceException, "The audio device couldn't be opened with CoreAudio.");
+
+    AudioStreamBasicDescription stream_basic_description = {};
+
+    switch(m_specs.format)
+    {
+    case FORMAT_U8:
+        stream_basic_description.mFormatFlags = 0;
+        stream_basic_description.mBitsPerChannel = 8;
+        break;
+    case FORMAT_S16:
+        stream_basic_description.mFormatFlags = kLinearPCMFormatFlagIsSignedInteger;
+        stream_basic_description.mBitsPerChannel = 16;
+        break;
+    case FORMAT_S24:
+        stream_basic_description.mFormatFlags = kLinearPCMFormatFlagIsSignedInteger;
+        stream_basic_description.mBitsPerChannel = 24;
+        break;
+    case FORMAT_S32:
+        stream_basic_description.mFormatFlags = kLinearPCMFormatFlagIsSignedInteger;
+        stream_basic_description.mBitsPerChannel = 32;
+        break;
+    case FORMAT_FLOAT32:
+        stream_basic_description.mFormatFlags = kLinearPCMFormatFlagIsFloat;
+        stream_basic_description.mBitsPerChannel = 32;
+        break;
+    case FORMAT_FLOAT64:
+        stream_basic_description.mFormatFlags = kLinearPCMFormatFlagIsFloat;
+        stream_basic_description.mBitsPerChannel = 64;
+        break;
+    default:
+        m_specs.format = FORMAT_FLOAT32;
+        stream_basic_description.mFormatFlags = kLinearPCMFormatFlagIsFloat;
+        stream_basic_description.mBitsPerChannel = 32;
+        break;
+    }
+
+    stream_basic_description.mSampleRate = m_specs.rate;
+    stream_basic_description.mFormatID = kAudioFormatLinearPCM;
+    stream_basic_description.mFormatFlags |= kAudioFormatFlagsNativeEndian | kLinearPCMFormatFlagIsPacked;
+    stream_basic_description.mBytesPerPacket = stream_basic_description.mBytesPerFrame = AUD_DEVICE_SAMPLE_SIZE(m_specs);
+    stream_basic_description.mFramesPerPacket = 1;
+    stream_basic_description.mChannelsPerFrame = m_specs.channels;
+
+    status = AudioUnitSetProperty(m_audio_unit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0, &stream_basic_description, sizeof(stream_basic_description));
+
+    if(status != noErr)
+    {
+        AudioComponentInstanceDispose(m_audio_unit);
+        AUD_THROW(DeviceException, "The audio device couldn't be opened with CoreAudio.");
+    }
+
+    AURenderCallbackStruct render_callback_struct;
+    render_callback_struct.inputProc = CoreAudioDevice::CoreAudio_mix;
+    render_callback_struct.inputProcRefCon = this;
+
+    status = AudioUnitSetProperty(m_audio_unit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, 0, &render_callback_struct, sizeof(render_callback_struct));
+
+    if(status != noErr)
+    {
+        AudioComponentInstanceDispose(m_audio_unit);
+        AUD_THROW(DeviceException, "The audio device couldn't be opened with CoreAudio.");
+    }
+
+    status = AudioUnitInitialize(m_audio_unit);
+
+    if(status != noErr)
+    {
+        AudioComponentInstanceDispose(m_audio_unit);
+        AUD_THROW(DeviceException, "The audio device couldn't be opened with CoreAudio.");
+    }
+
+    try
+    {
+        m_synchronizer = std::unique_ptr<CoreAudioSynchronizer>(new CoreAudioSynchronizer(m_audio_unit));
+    }
+    catch(Exception&)
+    {
+        AudioComponentInstanceDispose(m_audio_unit);
+        throw;
+    }
+
+    m_device_opened = true;
 }
 
 CoreAudioDevice::CoreAudioDevice(DeviceSpecs specs, int buffersize) :
 m_playback(false),
 m_audio_unit(nullptr)
 {
-	AudioComponentDescription component_description = {};
+    if(specs.channels == CHANNELS_INVALID)
+        specs.channels = CHANNELS_STEREO;
+    if(specs.format == FORMAT_INVALID)
+        specs.format = FORMAT_FLOAT32;
+    if(specs.rate == RATE_INVALID)
+        specs.rate = RATE_48000;
 
-	component_description.componentType = kAudioUnitType_Output;
-	component_description.componentSubType = kAudioUnitSubType_DefaultOutput;
-	component_description.componentManufacturer = kAudioUnitManufacturer_Apple;
-
-	AudioComponent component = AudioComponentFindNext(nullptr, &component_description);
-
-	if(!component)
-		AUD_THROW(DeviceException, "The audio device couldn't be opened with CoreAudio.");
-
-	OSStatus status = AudioComponentInstanceNew(component, &m_audio_unit);
-
-	if(status != noErr)
-		AUD_THROW(DeviceException, "The audio device couldn't be opened with CoreAudio.");
-
-	AudioStreamBasicDescription stream_basic_description = {};
-
-	if(specs.channels == CHANNELS_INVALID)
-		specs.channels = CHANNELS_STEREO;
-	if(specs.format == FORMAT_INVALID)
-		specs.format = FORMAT_FLOAT32;
-	if(specs.rate == RATE_INVALID)
-		specs.rate = RATE_48000;
-
-	switch(specs.format)
-	{
-	case FORMAT_U8:
-		stream_basic_description.mFormatFlags = 0;
-		stream_basic_description.mBitsPerChannel = 8;
-		break;
-	case FORMAT_S16:
-		stream_basic_description.mFormatFlags = kLinearPCMFormatFlagIsSignedInteger;
-		stream_basic_description.mBitsPerChannel = 16;
-		break;
-	case FORMAT_S24:
-		stream_basic_description.mFormatFlags = kLinearPCMFormatFlagIsSignedInteger;
-		stream_basic_description.mBitsPerChannel = 24;
-		break;
-	case FORMAT_S32:
-		stream_basic_description.mFormatFlags = kLinearPCMFormatFlagIsSignedInteger;
-		stream_basic_description.mBitsPerChannel = 32;
-		break;
-	case FORMAT_FLOAT32:
-		stream_basic_description.mFormatFlags = kLinearPCMFormatFlagIsFloat;
-		stream_basic_description.mBitsPerChannel = 32;
-		break;
-	case FORMAT_FLOAT64:
-		stream_basic_description.mFormatFlags = kLinearPCMFormatFlagIsFloat;
-		stream_basic_description.mBitsPerChannel = 64;
-		break;
-	default:
-		specs.format = FORMAT_FLOAT32;
-		stream_basic_description.mFormatFlags = kLinearPCMFormatFlagIsFloat;
-		stream_basic_description.mBitsPerChannel = 32;
-		break;
-	}
-
-	stream_basic_description.mSampleRate = specs.rate;
-	stream_basic_description.mFormatID = kAudioFormatLinearPCM;
-	stream_basic_description.mFormatFlags |= kAudioFormatFlagsNativeEndian | kLinearPCMFormatFlagIsPacked;
-	stream_basic_description.mBytesPerPacket = stream_basic_description.mBytesPerFrame = AUD_DEVICE_SAMPLE_SIZE(specs);
-	stream_basic_description.mFramesPerPacket = 1;
-	stream_basic_description.mChannelsPerFrame = specs.channels;
-
-	status = AudioUnitSetProperty(m_audio_unit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0, &stream_basic_description, sizeof(stream_basic_description));
-
-	if(status != noErr)
-	{
-		AudioComponentInstanceDispose(m_audio_unit);
-		AUD_THROW(DeviceException, "The audio device couldn't be opened with CoreAudio.");
-	}
-
-	m_specs = specs;
-
-	AURenderCallbackStruct render_callback_struct;
-	render_callback_struct.inputProc = CoreAudioDevice::CoreAudio_mix;
-	render_callback_struct.inputProcRefCon = this;
-
-	status = AudioUnitSetProperty(m_audio_unit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, 0, &render_callback_struct, sizeof(render_callback_struct));
-
-	if(status != noErr)
-	{
-		AudioComponentInstanceDispose(m_audio_unit);
-		AUD_THROW(DeviceException, "The audio device couldn't be opened with CoreAudio.");
-	}
-
-	status = AudioUnitInitialize(m_audio_unit);
-
-	if(status != noErr)
-	{
-		AudioComponentInstanceDispose(m_audio_unit);
-		AUD_THROW(DeviceException, "The audio device couldn't be opened with CoreAudio.");
-	}
-
-	try
-	{
-		m_synchronizer = std::unique_ptr<CoreAudioSynchronizer>(new CoreAudioSynchronizer(m_audio_unit));
-	}
-	catch(Exception&)
-	{
-		AudioComponentInstanceDispose(m_audio_unit);
-		throw;
-	}
-
+    m_specs = specs;
+    openDeviceOnDemand();
+    closeDevice();
 	create();
+}
+
+void CoreAudioDevice::closeDevice(){
+    if (!m_device_opened) return;
+    AudioOutputUnitStop(m_audio_unit);
+    AudioUnitUninitialize(m_audio_unit);
+    AudioComponentInstanceDispose(m_audio_unit);
+    m_device_opened = false;
 }
 
 CoreAudioDevice::~CoreAudioDevice()
 {
-	AudioOutputUnitStop(m_audio_unit);
-	AudioUnitUninitialize(m_audio_unit);
-	AudioComponentInstanceDispose(m_audio_unit);
-
+    closeDevice();
 	destroy();
 }
 
