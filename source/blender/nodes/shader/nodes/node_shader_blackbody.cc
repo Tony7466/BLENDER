@@ -12,7 +12,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Float>(N_("Temperature"))
     .default_value(6500.0f)
     .min(800.0f)
-    .max(12000.0f)
+    .max(12000.0f);
   b.add_output<decl::Color>(N_("Color"));
 }
 
