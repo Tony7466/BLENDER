@@ -158,7 +158,7 @@ void VKDescriptorSetTracker::update(VKContext &context)
   bindings_.clear();
 }
 
-std::unique_ptr<VKDescriptorSet> VKDescriptorSetTracker::create_resource(VKContext &context)
+std::unique_ptr<VKDescriptorSet> VKDescriptorSetTracker::create_resource(VKContext & /*context*/)
 {
   VKDevice &device = VKBackend::get().device_;
   return device.descriptor_pools_get().allocate(layout_);
