@@ -138,12 +138,12 @@ typedef struct tPoseSlideOp {
   struct AnimKeylist *keylist;
 
   /** current frame number - global time */
-  int cframe;
+  int current_frame;
 
   /** frame before current frame (blend-from) - global time */
-  int prevFrame;
+  int prev_frame;
   /** frame after current frame (blend-to)    - global time */
-  int nextFrame;
+  int next_frame;
 
   /** Sliding Mode. */
   ePoseSlide_Modes mode;
@@ -169,10 +169,10 @@ typedef struct tPoseSlideOp {
 typedef struct tPoseSlideObject {
   /** Active object that Pose Info comes from. */
   Object *ob;
-  /** `prevFrame`, but in local action time (for F-Curve look-ups to work). */
-  float prevFrameF;
-  /** `nextFrame`, but in local action time (for F-Curve look-ups to work). */
-  float nextFrameF;
+  /** `prev_frame`, but in local action time (for F-Curve look-ups to work). */
+  float prev_frame;
+  /** `next_frame`, but in local action time (for F-Curve look-ups to work). */
+  float next_frame;
   bool valid;
 } tPoseSlideObject;
 
@@ -216,12 +216,12 @@ static int pose_slide_init(bContext *C, wmOperator *op, ePoseSlide_Modes mode)
   pso->area = CTX_wm_area(C);     /* Only really needed when doing modal(). */
   pso->region = CTX_wm_region(C); /* Only really needed when doing modal(). */
 
-  pso->cframe = pso->scene->r.cfra;
+  pso->current_frame = pso->scene->r.cfra;
   pso->mode = mode;
 
   /* Set range info from property values - these may get overridden for the invoke(). */
-  pso->prevFrame = RNA_int_get(op->ptr, "prev_frame");
-  pso->nextFrame = RNA_int_get(op->ptr, "next_frame");
+  pso->prev_frame = RNA_int_get(op->ptr, "prev_frame");
+  pso->next_frame = RNA_int_get(op->ptr, "next_frame");
 
   /* Get the set of properties/axes that can be operated on. */
   pso->channels = RNA_enum_get(op->ptr, "channels");
@@ -255,10 +255,10 @@ static int pose_slide_init(bContext *C, wmOperator *op, ePoseSlide_Modes mode)
     ob_data->valid = true;
 
     /* Apply NLA mapping corrections so the frame look-ups work. */
-    ob_data->prevFrameF = BKE_nla_tweakedit_remap(
-        ob_data->ob->adt, pso->prevFrame, NLATIME_CONVERT_UNMAP);
-    ob_data->nextFrameF = BKE_nla_tweakedit_remap(
-        ob_data->ob->adt, pso->nextFrame, NLATIME_CONVERT_UNMAP);
+    ob_data->prev_frame = BKE_nla_tweakedit_remap(
+        ob_data->ob->adt, pso->prev_frame, NLATIME_CONVERT_UNMAP);
+    ob_data->next_frame = BKE_nla_tweakedit_remap(
+        ob_data->ob->adt, pso->next_frame, NLATIME_CONVERT_UNMAP);
 
     /* Set depsgraph flags. */
     /* Make sure the lock is set OK, unlock can be accidentally saved? */
@@ -335,20 +335,20 @@ static void pose_slide_refresh(bContext *C, tPoseSlideOp *pso)
  */
 static bool pose_frame_range_from_object_get(tPoseSlideOp *pso,
                                              Object *ob,
-                                             float *prevFrameF,
-                                             float *nextFrameF)
+                                             float *prev_frame,
+                                             float *next_frame)
 {
   for (uint ob_index = 0; ob_index < pso->objects_len; ob_index++) {
     tPoseSlideObject *ob_data = &pso->ob_data_array[ob_index];
     Object *ob_iter = ob_data->ob;
 
     if (ob_iter == ob) {
-      *prevFrameF = ob_data->prevFrameF;
-      *nextFrameF = ob_data->nextFrameF;
+      *prev_frame = ob_data->prev_frame;
+      *next_frame = ob_data->next_frame;
       return true;
     }
   }
-  *prevFrameF = *nextFrameF = 0.0f;
+  *prev_frame = *next_frame = 0.0f;
   return false;
 }
 
@@ -362,7 +362,7 @@ static void pose_slide_apply_val(tPoseSlideOp *pso, FCurve *fcu, Object *ob, flo
   pose_frame_range_from_object_get(pso, ob, &prev_frame, &next_frame);
 
   const float factor = ED_slider_factor_get(pso->slider);
-  const float current_frame = (float)pso->cframe;
+  const float current_frame = (float)pso->current_frame;
 
   /* Calculate the relative weights of the endpoints. */
   if (pso->mode == POSESLIDE_BREAKDOWN) {
@@ -376,8 +376,8 @@ static void pose_slide_apply_val(tPoseSlideOp *pso, FCurve *fcu, Object *ob, flo
      * - they then get normalized so that they only sum up to 1
      */
 
-    next_weight = current_frame - (float)pso->prevFrame;
-    prev_weight = (float)pso->nextFrame - current_frame;
+    next_weight = current_frame - (float)pso->prev_frame;
+    prev_weight = (float)pso->next_frame - current_frame;
 
     const float total_weight = next_weight + prev_weight;
     next_weight = (next_weight / total_weight);
@@ -623,7 +623,7 @@ static void pose_slide_apply_quat(tPoseSlideOp *pso, tPChanFCurveLink *pfl)
   path = BLI_sprintfN("%s.%s", pfl->pchan_path, "rotation_quaternion");
 
   /* Get the current frame number. */
-  const float current_frame = (float)pso->cframe;
+  const float current_frame = (float)pso->current_frame;
   const float factor = ED_slider_factor_get(pso->slider);
 
   /* Using this path, find each matching F-Curve for the variables we're interested in. */
@@ -679,8 +679,8 @@ static void pose_slide_apply_quat(tPoseSlideOp *pso, tPChanFCurveLink *pfl)
         normalize_qt_qt(quat_curr, pchan->quat);
 
         /* Compute breakdown based on actual frame range. */
-        const float interp_factor = (current_frame - pso->prevFrame) /
-                                    (float)(pso->nextFrame - pso->prevFrame);
+        const float interp_factor = (current_frame - pso->prev_frame) /
+                                    (float)(pso->next_frame - pso->prev_frame);
 
         interp_qt_qtqt(quat_breakdown, quat_prev, quat_next, interp_factor);
 
@@ -838,10 +838,10 @@ static void pose_slide_apply(bContext *C, tPoseSlideOp *pso)
   tPChanFCurveLink *pfl;
 
   /* Sanitize the frame ranges. */
-  if (pso->prevFrame == pso->nextFrame) {
+  if (pso->prev_frame == pso->next_frame) {
     /* Move out one step either side. */
-    pso->prevFrame--;
-    pso->nextFrame++;
+    pso->prev_frame--;
+    pso->next_frame++;
 
     for (uint ob_index = 0; ob_index < pso->objects_len; ob_index++) {
       tPoseSlideObject *ob_data = &pso->ob_data_array[ob_index];
@@ -851,10 +851,10 @@ static void pose_slide_apply(bContext *C, tPoseSlideOp *pso)
       }
 
       /* Apply NLA mapping corrections so the frame look-ups work. */
-      ob_data->prevFrameF = BKE_nla_tweakedit_remap(
-          ob_data->ob->adt, pso->prevFrame, NLATIME_CONVERT_UNMAP);
-      ob_data->nextFrameF = BKE_nla_tweakedit_remap(
-          ob_data->ob->adt, pso->nextFrame, NLATIME_CONVERT_UNMAP);
+      ob_data->prev_frame = BKE_nla_tweakedit_remap(
+          ob_data->ob->adt, pso->prev_frame, NLATIME_CONVERT_UNMAP);
+      ob_data->next_frame = BKE_nla_tweakedit_remap(
+          ob_data->ob->adt, pso->next_frame, NLATIME_CONVERT_UNMAP);
     }
   }
 
@@ -914,7 +914,7 @@ static void pose_slide_apply(bContext *C, tPoseSlideOp *pso)
 static void pose_slide_autoKeyframe(bContext *C, tPoseSlideOp *pso)
 {
   /* Wrapper around the generic call. */
-  poseAnim_mapping_autoKeyframe(C, pso->scene, &pso->pfLinks, (float)pso->cframe);
+  poseAnim_mapping_autoKeyframe(C, pso->scene, &pso->pfLinks, (float)pso->current_frame);
 }
 
 /**
@@ -1070,42 +1070,42 @@ static int pose_slide_invoke_common(bContext *C, wmOperator *op, const wmEvent *
     return OPERATOR_CANCELLED;
   }
 
-  float cframe = (float)pso->cframe;
+  float current_frame = (float)pso->current_frame;
 
   /* Firstly, check if the current frame is a keyframe. */
-  const ActKeyColumn *ak = ED_keylist_find_exact(pso->keylist, cframe);
+  const ActKeyColumn *ak = ED_keylist_find_exact(pso->keylist, current_frame);
 
   if (ak == NULL) {
     /* Current frame is not a keyframe, so search. */
-    const ActKeyColumn *pk = ED_keylist_find_prev(pso->keylist, cframe);
-    const ActKeyColumn *nk = ED_keylist_find_next(pso->keylist, cframe);
+    const ActKeyColumn *pk = ED_keylist_find_prev(pso->keylist, current_frame);
+    const ActKeyColumn *nk = ED_keylist_find_next(pso->keylist, current_frame);
 
     /* New set the frames. */
     /* Previous frame. */
-    pso->prevFrame = (pk) ? (pk->cfra) : (pso->cframe - 1);
-    RNA_int_set(op->ptr, "prev_frame", pso->prevFrame);
+    pso->prev_frame = (pk) ? (pk->cfra) : (pso->current_frame - 1);
+    RNA_int_set(op->ptr, "prev_frame", pso->prev_frame);
     /* Next frame. */
-    pso->nextFrame = (nk) ? (nk->cfra) : (pso->cframe + 1);
-    RNA_int_set(op->ptr, "next_frame", pso->nextFrame);
+    pso->next_frame = (nk) ? (nk->cfra) : (pso->current_frame + 1);
+    RNA_int_set(op->ptr, "next_frame", pso->next_frame);
   }
   else {
     /* Current frame itself is a keyframe, so just take keyframes on either side. */
     /* Previous frame. */
-    pso->prevFrame = (ak->prev) ? (ak->prev->cfra) : (pso->cframe - 1);
-    RNA_int_set(op->ptr, "prev_frame", pso->prevFrame);
+    pso->prev_frame = (ak->prev) ? (ak->prev->cfra) : (pso->current_frame - 1);
+    RNA_int_set(op->ptr, "prev_frame", pso->prev_frame);
     /* Next frame. */
-    pso->nextFrame = (ak->next) ? (ak->next->cfra) : (pso->cframe + 1);
-    RNA_int_set(op->ptr, "next_frame", pso->nextFrame);
+    pso->next_frame = (ak->next) ? (ak->next->cfra) : (pso->current_frame + 1);
+    RNA_int_set(op->ptr, "next_frame", pso->next_frame);
   }
 
   /* Apply NLA mapping corrections so the frame look-ups work. */
   for (uint ob_index = 0; ob_index < pso->objects_len; ob_index++) {
     tPoseSlideObject *ob_data = &pso->ob_data_array[ob_index];
     if (ob_data->valid) {
-      ob_data->prevFrameF = BKE_nla_tweakedit_remap(
-          ob_data->ob->adt, pso->prevFrame, NLATIME_CONVERT_UNMAP);
-      ob_data->nextFrameF = BKE_nla_tweakedit_remap(
-          ob_data->ob->adt, pso->nextFrame, NLATIME_CONVERT_UNMAP);
+      ob_data->prev_frame = BKE_nla_tweakedit_remap(
+          ob_data->ob->adt, pso->prev_frame, NLATIME_CONVERT_UNMAP);
+      ob_data->next_frame = BKE_nla_tweakedit_remap(
+          ob_data->ob->adt, pso->next_frame, NLATIME_CONVERT_UNMAP);
     }
   }
 
