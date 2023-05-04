@@ -492,7 +492,7 @@ class MultiDevice : public Device {
         peer_islands.begin(), peer_islands.end(), [&](const vector<SubDevice *> &island) {
           for (const device_memory *buffer : buffers) {
             VLOG_INFO << "Checking " << buffer->name << " on " << this;
-            if (buffer->modified) {
+            if (buffer->modified && buffer->device_size > 0) {
               device_ptr existing_key = buffer->device_pointer;
               device_ptr key = (existing_key) ? existing_key : unique_key++;
               size_t existing_size = buffer->device_size;
