@@ -242,7 +242,7 @@ static bool view3d_ruler_pick(wmGizmoGroup *gzgroup,
   int co_index_best = -1;
 
   {
-    float3x2 co_ss;
+    float co_ss[3][2];
     float dist;
     int j;
 
@@ -259,10 +259,10 @@ static bool view3d_ruler_pick(wmGizmoGroup *gzgroup,
         found = true;
 
         {
-          const float3 dist_points = {
-              blender::math::distance_squared(co_ss[0], mval),
-              blender::math::distance_squared(co_ss[1], mval),
-              blender::math::distance_squared(co_ss[2], mval),
+          const float dist_points[3] = {
+              len_squared_v2v2(co_ss[0], mval),
+              len_squared_v2v2(co_ss[1], mval),
+              len_squared_v2v2(co_ss[2], mval),
           };
           if (min_fff(UNPACK3(dist_points)) < RULER_PICK_DIST_SQ) {
             co_index_best = min_axis_v3(dist_points);
@@ -280,9 +280,9 @@ static bool view3d_ruler_pick(wmGizmoGroup *gzgroup,
         found = true;
 
         {
-          const float2 dist_points = {
-              blender::math::distance_squared(co_ss[0], mval),
-              blender::math::distance_squared(co_ss[2], mval),
+          const float dist_points[2] = {
+              len_squared_v2v2(co_ss[0], mval),
+              len_squared_v2v2(co_ss[2], mval),
           };
           if (min_ff(UNPACK2(dist_points)) < RULER_PICK_DIST_SQ) {
             co_index_best = (dist_points[0] < dist_points[1]) ? 0 : 2;
