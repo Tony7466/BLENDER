@@ -4374,7 +4374,7 @@ static void rna_def_mesh(BlenderRNA *brna)
 
   rna_def_looptri_poly_value(brna);
 
-  prop = RNA_def_property(srna, "loop_triangle_faces", PROP_COLLECTION, PROP_NONE);
+  prop = RNA_def_property(srna, "loop_triangle_polygons", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_funcs(prop,
                                     "rna_Mesh_loop_triangle_faces_begin",
                                     "rna_iterator_array_next",
