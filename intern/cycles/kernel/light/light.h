@@ -211,7 +211,8 @@ ccl_device_noinline bool light_sample(KernelGlobals kg,
 
     /* Exclude synthetic meshes from shadow catcher pass. */
     if ((path_flag & PATH_RAY_SHADOW_CATCHER_PASS) &&
-        !(kernel_data_fetch(object_flag, object) & SD_OBJECT_SHADOW_CATCHER)) {
+        !(kernel_data_fetch(object_flag, object) & SD_OBJECT_SHADOW_CATCHER))
+    {
       return false;
     }
 
@@ -285,7 +286,8 @@ ccl_device bool lights_intersect(KernelGlobals kg,
     /* Exclude lights with shadow linking from indirect rays.
      * They are handled via dedicated light intersect and shade kernels. */
     if ((kernel_data.kernel_features & KERNEL_FEATURE_SHADOW_LINKING) &&
-        !(path_flag & PATH_RAY_TRANSPARENT_BACKGROUND)) {
+        !(path_flag & PATH_RAY_TRANSPARENT_BACKGROUND))
+    {
       if (kernel_data_fetch(lights, lamp).shadow_set_membership) {
         continue;
       }
@@ -322,7 +324,8 @@ ccl_device bool lights_intersect(KernelGlobals kg,
     }
 
     if (t < isect->t &&
-        !(last_prim == lamp && last_object == OBJECT_NONE && last_type == PRIMITIVE_LAMP)) {
+        !(last_prim == lamp && last_object == OBJECT_NONE && last_type == PRIMITIVE_LAMP))
+    {
       isect->t = t;
       isect->u = u;
       isect->v = v;

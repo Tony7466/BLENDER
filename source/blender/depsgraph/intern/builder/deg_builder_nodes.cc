@@ -87,6 +87,7 @@
 #include "BKE_scene.h"
 #include "BKE_shader_fx.h"
 #include "BKE_simulation.h"
+#include "BKE_simulation_state.hh"
 #include "BKE_sound.h"
 #include "BKE_tracking.h"
 #include "BKE_volume.h"
@@ -386,7 +387,8 @@ void DepsgraphNodeBuilder::begin_build()
      * possibly deleted memory. */
     IDInfo *id_info = (IDInfo *)MEM_mallocN(sizeof(IDInfo), "depsgraph id info");
     if (deg_copy_on_write_is_needed(id_node->id_type) &&
-        deg_copy_on_write_is_expanded(id_node->id_cow) && id_node->id_orig != id_node->id_cow) {
+        deg_copy_on_write_is_expanded(id_node->id_cow) && id_node->id_orig != id_node->id_cow)
+    {
       id_info->id_cow = id_node->id_cow;
     }
     else {
@@ -690,7 +692,8 @@ void DepsgraphNodeBuilder::build_collection(LayerCollection *from_layer_collecti
   if (built_map_.checkIsBuiltAndTag(collection)) {
     id_node = find_id_node(&collection->id);
     if (is_collection_visible && id_node->is_visible_on_build == false &&
-        id_node->is_collection_fully_expanded == true) {
+        id_node->is_collection_fully_expanded == true)
+    {
       /* Collection became visible, make sure nested collections and
        * objects are poked with the new visibility flag, since they
        * might become visible too. */
@@ -830,7 +833,8 @@ void DepsgraphNodeBuilder::build_object(int base_index,
   }
   /* Force field Texture. */
   if ((object->pd != nullptr) && (object->pd->forcefield == PFIELD_TEXTURE) &&
-      (object->pd->tex != nullptr)) {
+      (object->pd->tex != nullptr))
+  {
     build_texture(object->pd->tex);
   }
 
@@ -922,6 +926,20 @@ void DepsgraphNodeBuilder::build_object_modifiers(Object *object)
   LISTBASE_FOREACH (ModifierData *, modifier, &object->modifiers) {
     OperationNode *modifier_node = add_operation_node(
         &object->id, NodeType::GEOMETRY, OperationCode::MODIFIER, nullptr, modifier->name);
+    if (modifier->type == eModifierType_Nodes) {
+      modifier_node->evaluate = [nmd = reinterpret_cast<NodesModifierData *>(modifier),
+                                 modifier_node](::Depsgraph *depsgraph) {
+        if (!DEG_is_active(depsgraph)) {
+          return;
+        }
+        if (modifier_node->flag & DEPSOP_FLAG_USER_MODIFIED) {
+          if (nmd->simulation_cache &&
+              nmd->simulation_cache->cache_state() == bke::sim::CacheState::Valid) {
+            nmd->simulation_cache->invalidate();
+          }
+        }
+      };
+    }
 
     /* Mute modifier mode if the modifier is not enabled for the dependency graph mode.
      * This handles static (non-animated) mode of the modifier. */
@@ -1149,7 +1167,8 @@ void DepsgraphNodeBuilder::build_light_linking_collection(Collection *collection
    * needs to be done in all places where the collection is built (is not something that can be
    * easily solved from just adding the light linking functionality). */
   if (!has_operation_node(
-          &collection->id, NodeType::PARAMETERS, OperationCode::LIGHT_LINKING_UPDATE)) {
+          &collection->id, NodeType::PARAMETERS, OperationCode::LIGHT_LINKING_UPDATE))
+  {
     add_operation_node(&collection->id, NodeType::PARAMETERS, OperationCode::LIGHT_LINKING_UPDATE);
   }
 }
@@ -1214,8 +1233,8 @@ void DepsgraphNodeBuilder::build_animation_images(ID *id)
   bool has_image_animation = false;
   if (ELEM(GS(id->name), ID_MA, ID_WO)) {
     bNodeTree *ntree = *BKE_ntree_ptr_from_id(id);
-    if (ntree != nullptr &&
-        ntree->runtime->runtime_flag & NTREE_RUNTIME_FLAG_HAS_IMAGE_ANIMATION) {
+    if (ntree != nullptr && ntree->runtime->runtime_flag & NTREE_RUNTIME_FLAG_HAS_IMAGE_ANIMATION)
+    {
       has_image_animation = true;
     }
   }
