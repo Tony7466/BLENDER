@@ -42,26 +42,38 @@ static char *str_replace_char_strdup(const char *str, char src, char dst)
 /** \name Tests for: #BLI_path_normalize
  * \{ */
 
-#define NORMALIZE_WITH_BASEDIR(input, input_base, output_expect) \
+#define NORMALIZE(input, output_expect) \
   { \
     char path[FILE_MAX] = input; \
-    const char *input_base_test = input_base; \
     if (SEP == '\\') { \
       str_replace_char_with_relative_exception(path, '/', '\\'); \
-      input_base_test = str_replace_char_strdup(input_base_test, '/', '\\'); \
     } \
-    BLI_path_normalize(input_base_test, path); \
+    BLI_path_normalize(path); \
     if (SEP == '\\') { \
       BLI_str_replace_char(path, '\\', '/'); \
-      if (input_base_test) { \
-        free((void *)input_base_test); \
-      } \
     } \
     EXPECT_STREQ(path, output_expect); \
   } \
   ((void)0)
 
-#define NORMALIZE(input, output_expect) NORMALIZE_WITH_BASEDIR(input, nullptr, output_expect)
+/* #BLI_path_normalize: do nothing. */
+TEST(path_util, Normalize_Nop)
+{
+  NORMALIZE(".", ".");
+  NORMALIZE("./", "./");
+  NORMALIZE("/", "/");
+  NORMALIZE("//", "//");
+  NORMALIZE("//a", "//a");
+}
+
+TEST(path_util, Normalize_NopRelative)
+{
+  NORMALIZE("..", "..");
+  NORMALIZE("../", "../");
+  NORMALIZE("../", "../");
+  NORMALIZE("../..", "../..");
+  NORMALIZE("../../", "../../");
+}
 
 /* #BLI_path_normalize: "/./" -> "/" */
 TEST(path_util, Normalize_Dot)
@@ -72,10 +84,15 @@ TEST(path_util, Normalize_Dot)
   NORMALIZE("/a/./././b/", "/a/b/");
 }
 /* #BLI_path_normalize: complex "/./" -> "/", "//" -> "/", "./path/../" -> "./". */
-TEST(path_util, Normalize_Complex)
+TEST(path_util, Normalize_ComplexAbsolute)
 {
   NORMALIZE("/a/./b/./c/./.././.././", "/a/");
   NORMALIZE("/a//.//b//.//c//.//..//.//..//.//", "/a/");
+}
+TEST(path_util, Normalize_ComplexRelative)
+{
+  NORMALIZE("a/b/c/d/e/f/g/../a/../b/../../c/../../../d/../../../..", ".");
+  NORMALIZE("a/b/c/d/e/f/g/../a/../../../../b/../../../c/../../d/..", ".");
 }
 /* #BLI_path_normalize: "//" -> "/" */
 TEST(path_util, Normalize_DoubleSlash)
@@ -90,7 +107,6 @@ TEST(path_util, Normalize_Parent)
 {
   NORMALIZE("/a/b/c/../../../", "/");
   NORMALIZE("/a/../a/b/../b/c/../c/", "/a/b/c/");
-  NORMALIZE_WITH_BASEDIR("//../", "/a/b/c/", "/a/b/");
 }
 /* #BLI_path_normalize: with too many "/../", match Python's behavior. */
 TEST(path_util, Normalize_UnbalancedAbsolute)
@@ -135,7 +151,6 @@ TEST(path_util, Normalize_UnbalancedRelativeTrailing)
   NORMALIZE("../a/../../..", "../../..");
 }
 
-#undef NORMALIZE_WITH_BASEDIR
 #undef NORMALIZE
 
 /** \} */
@@ -555,42 +570,42 @@ TEST(path_util, Frame)
 
   {
     char path[FILE_MAX] = "";
-    ret = BLI_path_frame(path, 123, 1);
+    ret = BLI_path_frame(path, sizeof(path), 123, 1);
     EXPECT_TRUE(ret);
     EXPECT_STREQ(path, "123");
   }
 
   {
     char path[FILE_MAX] = "";
-    ret = BLI_path_frame(path, 123, 12);
+    ret = BLI_path_frame(path, sizeof(path), 123, 12);
     EXPECT_TRUE(ret);
     EXPECT_STREQ(path, "000000000123");
   }
 
   {
     char path[FILE_MAX] = "test_";
-    ret = BLI_path_frame(path, 123, 1);
+    ret = BLI_path_frame(path, sizeof(path), 123, 1);
     EXPECT_TRUE(ret);
     EXPECT_STREQ(path, "test_123");
   }
 
   {
     char path[FILE_MAX] = "test_";
-    ret = BLI_path_frame(path, 1, 12);
+    ret = BLI_path_frame(path, sizeof(path), 1, 12);
     EXPECT_TRUE(ret);
     EXPECT_STREQ(path, "test_000000000001");
   }
 
   {
     char path[FILE_MAX] = "test_############";
-    ret = BLI_path_frame(path, 1, 0);
+    ret = BLI_path_frame(path, sizeof(path), 1, 0);
     EXPECT_TRUE(ret);
     EXPECT_STREQ(path, "test_000000000001");
   }
 
   {
     char path[FILE_MAX] = "test_#_#_middle";
-    ret = BLI_path_frame(path, 123, 0);
+    ret = BLI_path_frame(path, sizeof(path), 123, 0);
     EXPECT_TRUE(ret);
     EXPECT_STREQ(path, "test_#_123_middle");
   }
@@ -598,14 +613,14 @@ TEST(path_util, Frame)
   /* intentionally fail */
   {
     char path[FILE_MAX] = "";
-    ret = BLI_path_frame(path, 123, 0);
+    ret = BLI_path_frame(path, sizeof(path), 123, 0);
     EXPECT_FALSE(ret);
     EXPECT_STREQ(path, "");
   }
 
   {
     char path[FILE_MAX] = "test_middle";
-    ret = BLI_path_frame(path, 123, 0);
+    ret = BLI_path_frame(path, sizeof(path), 123, 0);
     EXPECT_FALSE(ret);
     EXPECT_STREQ(path, "test_middle");
   }
@@ -613,13 +628,13 @@ TEST(path_util, Frame)
   /* negative frame numbers */
   {
     char path[FILE_MAX] = "test_####";
-    ret = BLI_path_frame(path, -1, 4);
+    ret = BLI_path_frame(path, sizeof(path), -1, 4);
     EXPECT_TRUE(ret);
     EXPECT_STREQ(path, "test_-0001");
   }
   {
     char path[FILE_MAX] = "test_####";
-    ret = BLI_path_frame(path, -100, 4);
+    ret = BLI_path_frame(path, sizeof(path), -100, 4);
     EXPECT_TRUE(ret);
     EXPECT_STREQ(path, "test_-0100");
   }
@@ -628,7 +643,7 @@ TEST(path_util, Frame)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Tests for: #BLI_split_dirfile
+/** \name Tests for: #BLI_path_split_dir_file
  * \{ */
 
 TEST(path_util, SplitDirfile)
@@ -636,7 +651,7 @@ TEST(path_util, SplitDirfile)
   {
     const char *path = "";
     char dir[FILE_MAX], file[FILE_MAX];
-    BLI_split_dirfile(path, dir, file, sizeof(dir), sizeof(file));
+    BLI_path_split_dir_file(path, dir, sizeof(dir), file, sizeof(file));
     EXPECT_STREQ(dir, "");
     EXPECT_STREQ(file, "");
   }
@@ -644,7 +659,7 @@ TEST(path_util, SplitDirfile)
   {
     const char *path = "/";
     char dir[FILE_MAX], file[FILE_MAX];
-    BLI_split_dirfile(path, dir, file, sizeof(dir), sizeof(file));
+    BLI_path_split_dir_file(path, dir, sizeof(dir), file, sizeof(file));
     EXPECT_STREQ(dir, "/");
     EXPECT_STREQ(file, "");
   }
@@ -652,7 +667,7 @@ TEST(path_util, SplitDirfile)
   {
     const char *path = "fileonly";
     char dir[FILE_MAX], file[FILE_MAX];
-    BLI_split_dirfile(path, dir, file, sizeof(dir), sizeof(file));
+    BLI_path_split_dir_file(path, dir, sizeof(dir), file, sizeof(file));
     EXPECT_STREQ(dir, "");
     EXPECT_STREQ(file, "fileonly");
   }
@@ -660,7 +675,7 @@ TEST(path_util, SplitDirfile)
   {
     const char *path = "dironly/";
     char dir[FILE_MAX], file[FILE_MAX];
-    BLI_split_dirfile(path, dir, file, sizeof(dir), sizeof(file));
+    BLI_path_split_dir_file(path, dir, sizeof(dir), file, sizeof(file));
     EXPECT_STREQ(dir, "dironly/");
     EXPECT_STREQ(file, "");
   }
@@ -668,7 +683,7 @@ TEST(path_util, SplitDirfile)
   {
     const char *path = "/a/b";
     char dir[FILE_MAX], file[FILE_MAX];
-    BLI_split_dirfile(path, dir, file, sizeof(dir), sizeof(file));
+    BLI_path_split_dir_file(path, dir, sizeof(dir), file, sizeof(file));
     EXPECT_STREQ(dir, "/a/");
     EXPECT_STREQ(file, "b");
   }
@@ -676,11 +691,11 @@ TEST(path_util, SplitDirfile)
   {
     const char *path = "/dirtoobig/filetoobig";
     char dir[5], file[5];
-    BLI_split_dirfile(path, dir, file, sizeof(dir), sizeof(file));
+    BLI_path_split_dir_file(path, dir, sizeof(dir), file, sizeof(file));
     EXPECT_STREQ(dir, "/dir");
     EXPECT_STREQ(file, "file");
 
-    BLI_split_dirfile(path, dir, file, 1, 1);
+    BLI_path_split_dir_file(path, dir, 1, file, 1);
     EXPECT_STREQ(dir, "");
     EXPECT_STREQ(file, "");
   }
@@ -1044,7 +1059,8 @@ TEST(path_util, FrameGet)
     char head[FILE_MAX]; \
     char tail[FILE_MAX]; \
     ushort numdigits = 0; \
-    const int result = BLI_path_sequence_decode(path, head, tail, &numdigits); \
+    const int result = BLI_path_sequence_decode( \
+        path, head, sizeof(head), tail, sizeof(tail), &numdigits); \
     EXPECT_EQ(result, expect_result); \
     EXPECT_STREQ(head, expect_head); \
     EXPECT_STREQ(tail, expect_tail); \
