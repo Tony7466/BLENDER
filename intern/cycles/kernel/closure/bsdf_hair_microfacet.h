@@ -318,7 +318,7 @@ ccl_device_inline float3 refract_angle(const float3 incident,
                                        const float cos_theta_t,
                                        const float inv_eta)
 {
-  return inv_eta * incident - (inv_eta * dot(normal, incident) + cos_theta_t) * normal;
+  return (inv_eta * dot(normal, incident) + cos_theta_t) * normal - inv_eta * incident;
 }
 
 template<MicrofacetType m_type>
@@ -493,7 +493,7 @@ ccl_device Spectrum bsdf_microfacet_hair_eval_tt_trt(KernelGlobals kg,
                      microfacet_ggx_glass_E(kg, cos_mi1, sqrt_roughness, eta);
 
     /* Refraction at the first interface. */
-    const float3 wt = -refract_angle(wi, wh1, cos_theta_t1, inv_eta);
+    const float3 wt = refract_angle(wi, wh1, cos_theta_t1, inv_eta);
     const float phi_t = dir_phi(wt);
     const float gamma_mt = 2.0f * to_phi(phi_t, b) - gamma_mi;
     const float3 wmt = sphg_dir(-bsdf->tilt, gamma_mt, b);
@@ -702,7 +702,7 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
 
   /* Sample TT lobe. */
   const float inv_eta = 1.0f / bsdf->eta;
-  const float3 wt = -refract_angle(wi, wh1, cos_theta_t1, inv_eta);
+  const float3 wt = refract_angle(wi, wh1, cos_theta_t1, inv_eta);
   const float phi_t = dir_phi(wt);
 
   const float gamma_mt = 2.0f * to_phi(phi_t, b) - gamma_mi;
@@ -731,7 +731,7 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
     const float T2 = 1.0f - R2;
     const float scale2 = 1.0f / microfacet_ggx_glass_E(kg, cos_mi2, sqrt_roughness, inv_eta);
 
-    wtt = -refract_angle(-wt, wh2, cos_theta_t2, *eta);
+    wtt = refract_angle(-wt, wh2, cos_theta_t2, *eta);
 
     if (dot(wmt, -wtt) > 0.0f && cos_theta_t2 != 0.0f && microfacet_visible(-wtt, wmt_, wh2)) {
       TT = bsdf->extra->TT * T1 * A_t * T2 * scale2 *
@@ -748,8 +748,8 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
     float cos_theta_t3;
     const float R3 = fresnel(dot(wtr, wh3), inv_eta, &cos_theta_t3);
 
-    wtrt = -refract_angle(wtr, wh3, cos_theta_t3, *eta);
     const float cos_mi3 = dot(wmtr, wtr);
+    wtrt = refract_angle(wtr, wh3, cos_theta_t3, *eta);
 
     if (cos_theta_t3 != 0.0f && cos_mi3 > 0.0f &&
         microfacet_visible(wtr, -wtrt, make_float3(wmtr.x, 0.0f, wmtr.z), wh3)) {
