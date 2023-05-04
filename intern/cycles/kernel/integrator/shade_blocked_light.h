@@ -67,8 +67,7 @@ ccl_device void shadow_linking_shade(KernelGlobals kg, IntegratorState state)
   /* MIS weighting. */
   float mis_weight = 1.0f;
   if (!(path_flag & PATH_RAY_MIS_SKIP)) {
-    const float mis_ray_pdf = INTEGRATOR_STATE(state, path, mis_ray_pdf);
-    mis_weight = light_sample_mis_weight_nee(kg, ls.pdf, mis_ray_pdf);
+    mis_weight = light_sample_mis_weight_forward_lamp(kg, state, path_flag, &ls, ray.P);
   }
 
   const Spectrum bsdf_spectrum = light_eval * mis_weight;
