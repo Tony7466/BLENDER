@@ -97,13 +97,18 @@ bUserMenu *ED_screen_user_menu_ensure(bContext *C)
 bUserMenuItem_Op *ED_screen_user_menu_item_find_operator(ListBase *lb,
                                                          const wmOperatorType *ot,
                                                          IDProperty *prop,
+                                                         const char *op_prop_enum,
                                                          wmOperatorCallContext opcontext)
 {
   LISTBASE_FOREACH (bUserMenuItem *, umi, lb) {
     if (umi->type == USER_MENU_TYPE_OPERATOR) {
       bUserMenuItem_Op *umi_op = (bUserMenuItem_Op *)umi;
-      if (STREQ(ot->idname, umi_op->op_idname) && (opcontext == umi_op->opcontext) &&
-          IDP_EqualsProperties(prop, umi_op->prop))
+      const bool ok_idprop = prop ? IDP_EqualsProperties(prop, umi_op->prop) : true;
+      const bool ok_prop_enum = (umi_op->op_prop_enum[0] != '\0') ?
+                                    STREQ(umi_op->op_prop_enum, op_prop_enum) :
+                                    true;
+      if (STREQ(ot->idname, umi_op->op_idname) && (opcontext == umi_op->opcontext) && ok_idprop &&
+          ok_prop_enum)
       {
         return umi_op;
       }
@@ -148,6 +153,7 @@ void ED_screen_user_menu_item_add_operator(ListBase *lb,
                                            const char *ui_name,
                                            const wmOperatorType *ot,
                                            const IDProperty *prop,
+                                           const char *op_prop_enum,
                                            wmOperatorCallContext opcontext)
 {
   bUserMenuItem_Op *umi_op = (bUserMenuItem_Op *)BKE_blender_user_menu_item_add(
@@ -157,6 +163,7 @@ void ED_screen_user_menu_item_add_operator(ListBase *lb,
     STRNCPY(umi_op->item.ui_name, ui_name);
   }
   STRNCPY(umi_op->op_idname, ot->idname);
+  STRNCPY(umi_op->op_prop_enum, op_prop_enum);
   umi_op->prop = prop ? IDP_CopyProperty(prop) : NULL;
 }
 
@@ -196,8 +203,9 @@ void ED_screen_user_menu_item_remove(ListBase *lb, bUserMenuItem *umi)
 /** \name Menu Definition
  * \{ */
 
-static void screen_user_menu_draw(const bContext *C, Menu *menu)
+static void screen_user_menu_draw(const bContext *C_const, Menu *menu)
 {
+  bContext *C = (bContext *)C_const;
   /* Enable when we have the ability to edit menus. */
   const bool show_missing = false;
   char label[512];
@@ -216,15 +224,27 @@ static void screen_user_menu_draw(const bContext *C, Menu *menu)
         bUserMenuItem_Op *umi_op = (bUserMenuItem_Op *)umi;
         wmOperatorType *ot = WM_operatortype_find(umi_op->op_idname, false);
         if (ot != NULL) {
-          IDProperty *prop = umi_op->prop ? IDP_CopyProperty(umi_op->prop) : NULL;
-          uiItemFullO_ptr(menu->layout,
-                          ot,
-                          CTX_IFACE_(ot->translation_context, ui_name),
-                          ICON_NONE,
-                          prop,
-                          umi_op->opcontext,
-                          0,
-                          NULL);
+          if (umi_op->op_prop_enum[0] == '\0') {
+            IDProperty *prop = umi_op->prop ? IDP_CopyProperty(umi_op->prop) : NULL;
+            uiItemFullO_ptr(menu->layout,
+                            ot,
+                            CTX_IFACE_(ot->translation_context, ui_name),
+                            ICON_NONE,
+                            prop,
+                            umi_op->opcontext,
+                            0,
+                            NULL);
+          }
+          else {
+            uiItemMenuEnumFullO_ptr(menu->layout,
+                                    C,
+                                    ot,
+                                    umi_op->op_prop_enum,
+                                    CTX_IFACE_(ot->translation_context, ui_name),
+                                    ICON_NONE,
+                                    &umi_op->opcontext,
+                                    NULL);
+          }
           is_empty = false;
         }
         else {

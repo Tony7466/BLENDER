@@ -2896,6 +2896,7 @@ void uiItemMenuEnumFullO_ptr(uiLayout *layout,
                              const char *propname,
                              const char *name,
                              int icon,
+                             wmOperatorCallContext *opcontext,
                              struct PointerRNA *r_opptr);
 void uiItemMenuEnumFullO(uiLayout *layout,
                          struct bContext *C,

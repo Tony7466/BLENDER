@@ -3555,6 +3555,7 @@ void uiItemMenuEnumFullO_ptr(uiLayout *layout,
                              const char *propname,
                              const char *name,
                              int icon,
+                             wmOperatorCallContext *opcontext,
                              PointerRNA *r_opptr)
 {
   /* Caller must check */
@@ -3571,7 +3572,7 @@ void uiItemMenuEnumFullO_ptr(uiLayout *layout,
   MenuItemLevel *lvl = MEM_cnew<MenuItemLevel>("MenuItemLevel");
   BLI_strncpy(lvl->opname, ot->idname, sizeof(lvl->opname));
   BLI_strncpy(lvl->propname, propname, sizeof(lvl->propname));
-  lvl->opcontext = layout->root->opcontext;
+  lvl->opcontext = opcontext ? *opcontext : layout->root->opcontext;
 
   uiBut *but = ui_item_menu(
       layout, name, icon, menu_item_enum_opname_menu, nullptr, lvl, nullptr, true);
@@ -3614,7 +3615,7 @@ void uiItemMenuEnumFullO(uiLayout *layout,
     return;
   }
 
-  uiItemMenuEnumFullO_ptr(layout, C, ot, propname, name, icon, r_opptr);
+  uiItemMenuEnumFullO_ptr(layout, C, ot, propname, name, icon, nullptr, r_opptr);
 }
 
 void uiItemMenuEnumO(uiLayout *layout,
