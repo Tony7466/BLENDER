@@ -1,2 +1,3 @@
 Referenced by issue #105894, Object cryptomatte is not respecting the camera Dof
 Referenced by issue #106394, Strange shading when motion blur is on (fixed in 3.6, request for backport)
+Referenced by issue #107603, Light tree stack overflow crash with emission materials
