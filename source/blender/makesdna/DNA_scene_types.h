@@ -1875,6 +1875,11 @@ enum {
 /** \name Scene ID-Block
  * \{ */
 
+typedef struct SceneOnionSkin {
+  SceneOnionSkin *prev, *next;
+  Mesh *mesh;
+} SceneOnionSkin;
+
 typedef struct Scene {
   ID id;
   /** Animation data (must be immediately after id for utilities to use it). */
@@ -1994,6 +1999,7 @@ typedef struct Scene {
   struct SceneDisplay display;
   struct SceneEEVEE eevee;
   struct SceneGpencil grease_pencil_settings;
+  struct ListBase onion_skin_cache /* SceneOnionSkin */;
 } Scene;
 
 /** \} */

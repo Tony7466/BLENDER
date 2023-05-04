@@ -21,6 +21,8 @@ void OVERLAY_onion_skin_populate(OVERLAY_Data *vedata, Object *ob)
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   DRWShadingGroup *grp = pd->onion_skin_grp;
 
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+
   float color[3] = {1, 1, 0};
   DRW_shgroup_uniform_vec3_copy(grp, "color", color);
   DRW_shgroup_uniform_float_copy(grp, "alpha", 0.2f);

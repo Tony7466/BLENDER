@@ -41,6 +41,7 @@
 #include "ED_mesh.h"
 #include "ED_node.h"
 #include "ED_object.h"
+#include "ED_onion_skin.h"
 #include "ED_paint.h"
 #include "ED_physics.h"
 #include "ED_render.h"
@@ -105,6 +106,7 @@ void ED_spacetypes_init(void)
   ED_operatortypes_curves();
   ED_operatortypes_armature();
   ED_operatortypes_marker();
+  ED_operatortypes_onion_skin();
   ED_operatortypes_metaball();
   ED_operatortypes_sound();
   ED_operatortypes_render();

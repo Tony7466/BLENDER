@@ -29,6 +29,7 @@ set(SRC
   anim_ipo_utils.c
   anim_markers.c
   anim_motion_paths.c
+  anim_onion_skin.c
   anim_ops.c
   drivers.c
   fmodifier_ui.c
