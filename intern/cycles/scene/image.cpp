@@ -714,7 +714,8 @@ void ImageManager::device_load_image(Device *device, Scene *scene, size_t slot, 
 
   /* Create new texture. */
   if (type == IMAGE_DATA_TYPE_FLOAT4) {
-    if (!file_load_image<TypeDesc::FLOAT, float>(img, texture_limit)) {
+    bool status = file_load_image<TypeDesc::FLOAT, float>(img, texture_limit);
+    if (!status) {
       /* on failure to load, we set a 1x1 pixels pink image */
       thread_scoped_lock device_lock(device_mutex);
       float *pixels = (float *)img->mem->alloc(1, 1);
@@ -726,7 +727,8 @@ void ImageManager::device_load_image(Device *device, Scene *scene, size_t slot, 
     }
   }
   else if (type == IMAGE_DATA_TYPE_FLOAT) {
-    if (!file_load_image<TypeDesc::FLOAT, float>(img, texture_limit)) {
+    bool status = file_load_image<TypeDesc::FLOAT, float>(img, texture_limit);
+    if (!status) {
       /* on failure to load, we set a 1x1 pixels pink image */
       thread_scoped_lock device_lock(device_mutex);
       float *pixels = (float *)img->mem->alloc(1, 1);
@@ -735,7 +737,8 @@ void ImageManager::device_load_image(Device *device, Scene *scene, size_t slot, 
     }
   }
   else if (type == IMAGE_DATA_TYPE_BYTE4) {
-    if (!file_load_image<TypeDesc::UINT8, uchar>(img, texture_limit)) {
+    bool status = file_load_image<TypeDesc::UINT8, uchar>(img, texture_limit);
+    if (!status) {
       /* on failure to load, we set a 1x1 pixels pink image */
       thread_scoped_lock device_lock(device_mutex);
       uchar *pixels = (uchar *)img->mem->alloc(1, 1);
@@ -747,7 +750,8 @@ void ImageManager::device_load_image(Device *device, Scene *scene, size_t slot, 
     }
   }
   else if (type == IMAGE_DATA_TYPE_BYTE) {
-    if (!file_load_image<TypeDesc::UINT8, uchar>(img, texture_limit)) {
+    bool status = file_load_image<TypeDesc::UINT8, uchar>(img, texture_limit);
+    if (!status) {
       /* on failure to load, we set a 1x1 pixels pink image */
       thread_scoped_lock device_lock(device_mutex);
       uchar *pixels = (uchar *)img->mem->alloc(1, 1);
@@ -756,7 +760,8 @@ void ImageManager::device_load_image(Device *device, Scene *scene, size_t slot, 
     }
   }
   else if (type == IMAGE_DATA_TYPE_HALF4) {
-    if (!file_load_image<TypeDesc::HALF, half>(img, texture_limit)) {
+    bool status = file_load_image<TypeDesc::HALF, half>(img, texture_limit);
+    if (!status) {
       /* on failure to load, we set a 1x1 pixels pink image */
       thread_scoped_lock device_lock(device_mutex);
       half *pixels = (half *)img->mem->alloc(1, 1);
@@ -768,7 +773,8 @@ void ImageManager::device_load_image(Device *device, Scene *scene, size_t slot, 
     }
   }
   else if (type == IMAGE_DATA_TYPE_USHORT) {
-    if (!file_load_image<TypeDesc::USHORT, uint16_t>(img, texture_limit)) {
+    bool status = file_load_image<TypeDesc::USHORT, uint16_t>(img, texture_limit);
+    if (!status) {
       /* on failure to load, we set a 1x1 pixels pink image */
       thread_scoped_lock device_lock(device_mutex);
       uint16_t *pixels = (uint16_t *)img->mem->alloc(1, 1);
@@ -777,7 +783,8 @@ void ImageManager::device_load_image(Device *device, Scene *scene, size_t slot, 
     }
   }
   else if (type == IMAGE_DATA_TYPE_USHORT4) {
-    if (!file_load_image<TypeDesc::USHORT, uint16_t>(img, texture_limit)) {
+    bool status = file_load_image<TypeDesc::USHORT, uint16_t>(img, texture_limit);
+    if (!status) {
       /* on failure to load, we set a 1x1 pixels pink image */
       thread_scoped_lock device_lock(device_mutex);
       uint16_t *pixels = (uint16_t *)img->mem->alloc(1, 1);
@@ -789,7 +796,8 @@ void ImageManager::device_load_image(Device *device, Scene *scene, size_t slot, 
     }
   }
   else if (type == IMAGE_DATA_TYPE_HALF) {
-    if (!file_load_image<TypeDesc::HALF, half>(img, texture_limit)) {
+    bool status = file_load_image<TypeDesc::HALF, half>(img, texture_limit);
+    if (!status) {
       /* on failure to load, we set a 1x1 pixels pink image */
       thread_scoped_lock device_lock(device_mutex);
       half *pixels = (half *)img->mem->alloc(1, 1);
@@ -811,8 +819,14 @@ void ImageManager::device_load_image(Device *device, Scene *scene, size_t slot, 
 #endif
 
   {
+    VLOG_INFO << "BEGIN Copy texture:" << img->mem->name;
     thread_scoped_lock device_lock(device_mutex);
+    VLOG_INFO << "LOCK Copy texture:" << img->mem->name;
+    //vector<device_memory *> image{img->mem};
+    //img->mem->modified = true;
+    //img->mem->device->upload_changed(image);
     img->mem->copy_to_device();
+    VLOG_INFO << "END Copy texture:" << img->mem->name;
   }
 
   /* Cleanup memory in image loader. */
@@ -839,6 +853,7 @@ void ImageManager::device_free_image(Device *, size_t slot)
   if (img->mem) {
     thread_scoped_lock device_lock(device_mutex);
     delete img->mem;
+    img->mem = NULL;
   }
 
   delete img->loader;

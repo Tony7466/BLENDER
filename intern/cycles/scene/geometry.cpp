@@ -944,7 +944,7 @@ void GeometryManager::device_update(Device *device,
       &dscene->objects
     };
 	    
-    device->upload_changed(buffers);
+    device->upload_changed(scene->scene_buffers);
     parallel_for(
         size_t(0), num_scenes, [=, &progress](const size_t idx) {
           device_data_xfer_and_bvh_update(idx,
@@ -1183,7 +1183,7 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
                 {"device_update (displacement: copy meshes to device)", time});
           }
         });
-        sub_dscene->device_update_attributes(sub_device, &(scene->attrib_sizes), progress);
+        //sub_dscene->device_update_attributes(sub_device, &(scene->attrib_sizes), progress);
       }
       {
 	scoped_callback_timer timer([scene](double time) {
@@ -1191,8 +1191,10 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
 	    scene->update_stats->geometry.times.add_entry({"displacement: copy attributes to device", time});
 	  }
 	});
-        sub_dscene->device_update_mesh(sub_device, &(scene->geom_sizes), progress);
+        //sub_dscene->device_update_mesh(sub_device, &(scene->geom_sizes), progress);
       }
+      device->upload_changed(scene->scene_buffers);
+      
       /* Copy constant data needed by shader evaluation. */
       sub_device->const_copy_to("data", &dscene->data, sizeof(dscene->data));
 

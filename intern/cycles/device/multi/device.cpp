@@ -245,7 +245,8 @@ class MultiDevice : public Device {
             /* Skip building a bottom level acceleration structure for non-instanced geometry on
              * Embree (since they are put into the top level directly, see bvh_embree.cpp) */
             if (!params.top_level && params.bvh_layout == BVH_LAYOUT_EMBREE &&
-                !bvh_multi->geometry[0]->is_instanced()) {
+                !bvh_multi->geometry[0]->is_instanced())
+            {
             }
             else {
               bvh_multi->sub_bvhs[id] = std::unique_ptr<BVH>(BVH::create(
@@ -487,8 +488,8 @@ class MultiDevice : public Device {
   virtual void upload_changed(vector<device_memory *> buffers) override
   {
     // foreach (const vector<SubDevice *> &island, peer_islands) {
-    parallel_for_each(
-        peer_islands.begin(), peer_islands.end(), [&](const vector<SubDevice *> &island) {
+    parallel_for(size_t(0), peer_islands.size(), [&](const size_t idx) {
+      vector<SubDevice *> &island = peer_islands[idx];
           for (const device_memory *buffer : buffers) {
             VLOG_INFO << "Checking " << buffer->name << " on " << this;
             if (buffer->modified && buffer->data_size > 0) {
@@ -506,16 +507,16 @@ class MultiDevice : public Device {
               owner_sub->device->mem_copy_to(sub_mem, existing_size, 0);
               owner_sub->ptr_map[key] = sub_mem.device_pointer;
 
-              if (sub_mem.type == MEM_GLOBAL || sub_mem.type == MEM_TEXTURE) {
-                /* Need to create texture objects and update pointer in kernel globals on all
-                 * devices */
-                foreach (SubDevice *island_sub, island) {
-                  if (island_sub != owner_sub) {
-                    island_sub->device->mem_copy_to(sub_mem, existing_size, 0);
-                  }
-                }
-              }
-              stats.mem_alloc(sub_mem.device_size - existing_size);
+              // if (sub_mem.type == MEM_GLOBAL || sub_mem.type == MEM_TEXTURE) {
+              //   /* Need to create texture objects and update pointer in kernel globals on all
+              //    * devices */
+              //   foreach (SubDevice *island_sub, island) {
+              //     if (island_sub != owner_sub) {
+              //       island_sub->device->mem_copy_to(sub_mem, existing_size, 0);
+              //     }
+              //   }
+              // }
+              //stats.mem_alloc(sub_mem.device_size - existing_size);
             }
           }
         });
