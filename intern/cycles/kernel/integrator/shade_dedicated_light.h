@@ -102,23 +102,23 @@ ccl_device void shadow_linking_shade(KernelGlobals kg, IntegratorState state)
 
 #endif /* __SHADOW_LINKING__ */
 
-ccl_device void integrator_shade_blocked_light(KernelGlobals kg,
-                                               IntegratorState state,
-                                               ccl_global float *ccl_restrict /*render_buffer*/)
+ccl_device void integrator_shade_dedicated_light(KernelGlobals kg,
+                                                 IntegratorState state,
+                                                 ccl_global float *ccl_restrict /*render_buffer*/)
 {
-  PROFILING_INIT(kg, PROFILING_SHADE_BLOCKED_LIGHT);
+  PROFILING_INIT(kg, PROFILING_SHADE_DEDICATED_LIGHT);
 
 #ifdef __SHADOW_LINKING__
   shadow_linking_shade(kg, state);
 #else
-  kernel_assert(!"integrator_intersect_blocked_light is not supposed to be scheduled");
+  kernel_assert(!"integrator_intersect_dedicated_light is not supposed to be scheduled");
 #endif
 
   /* Restore self-intersection check primitives in the main state before returning to the
    * intersect_closest() state. */
   shadow_linking_restore_last_primitives(state);
 
-  integrator_shade_surface_next_kernel<DEVICE_KERNEL_INTEGRATOR_SHADE_BLOCKED_LIGHT>(kg, state);
+  integrator_shade_surface_next_kernel<DEVICE_KERNEL_INTEGRATOR_SHADE_DEDICATED_LIGHT>(kg, state);
 }
 
 CCL_NAMESPACE_END

@@ -764,7 +764,7 @@ ccl_device_inline bool shadow_linking_schedule_intersection_kernel(KernelGlobals
   }
 
   integrator_path_next(
-      kg, state, current_kernel, DEVICE_KERNEL_INTEGRATOR_INTERSECT_BLOCKED_LIGHT);
+      kg, state, current_kernel, DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT);
 
   return true;
 }

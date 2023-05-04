@@ -38,7 +38,7 @@ bool kernel_has_intersection(DeviceKernel device_kernel)
           device_kernel == DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW ||
           device_kernel == DEVICE_KERNEL_INTEGRATOR_INTERSECT_SUBSURFACE ||
           device_kernel == DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK ||
-          device_kernel == DEVICE_KERNEL_INTEGRATOR_INTERSECT_BLOCKED_LIGHT ||
+          device_kernel == DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT ||
           device_kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE ||
           device_kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_MNEE);
 }
@@ -48,8 +48,8 @@ struct ShaderCache {
   {
     /* Initialize occupancy tuning LUT. */
 
-    // TODO: Look into tuning for DEVICE_KERNEL_INTEGRATOR_INTERSECT_BLOCKED_LIGHT and
-    // DEVICE_KERNEL_INTEGRATOR_SHADE_BLOCKED_LIGHT.
+    // TODO: Look into tuning for DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT and
+    // DEVICE_KERNEL_INTEGRATOR_SHADE_DEDICATED_LIGHT.
 
     if (MetalInfo::get_device_vendor(mtlDevice) == METAL_GPU_APPLE) {
       switch (MetalInfo::get_apple_gpu_architecture(mtlDevice)) {
