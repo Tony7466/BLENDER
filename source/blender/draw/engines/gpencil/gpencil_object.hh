@@ -19,7 +19,7 @@
 #include "gpencil_material.hh"
 #include "gpencil_shader.hh"
 
-namespace blender::greasepencil {
+namespace blender::draw::greasepencil {
 
 using namespace draw;
 
@@ -248,4 +248,4 @@ class ObjectModule {
   }
 };
 
-}  // namespace blender::greasepencil
+}  // namespace blender::draw::greasepencil

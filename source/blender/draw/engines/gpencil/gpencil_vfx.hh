@@ -17,7 +17,7 @@
 #include "gpencil_shader.hh"
 #include "gpencil_shader_shared.h"
 
-namespace blender::greasepencil {
+namespace blender::draw::greasepencil {
 
 using namespace draw;
 
@@ -82,7 +82,8 @@ struct VfxContext {
     }
 
     if (((fx->mode & eShaderFxMode_Realtime) && (is_viewport == true)) ||
-        ((fx->mode & eShaderFxMode_Render) && (is_viewport == false))) {
+        ((fx->mode & eShaderFxMode_Render) && (is_viewport == false)))
+    {
       return true;
     }
 
@@ -331,4 +332,4 @@ class VfxModule {
   }
 };
 
-}  // namespace blender::greasepencil
+}  // namespace blender::draw::greasepencil

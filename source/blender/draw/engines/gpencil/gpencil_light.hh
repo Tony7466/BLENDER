@@ -15,7 +15,7 @@
 #include "draw_manager.hh"
 #include "draw_pass.hh"
 
-namespace blender::greasepencil {
+namespace blender::draw::greasepencil {
 
 using namespace draw;
 
@@ -127,4 +127,4 @@ class LightModule {
   }
 };
 
-}  // namespace blender::greasepencil
+}  // namespace blender::draw::greasepencil

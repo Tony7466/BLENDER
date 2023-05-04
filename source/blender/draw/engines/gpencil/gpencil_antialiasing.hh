@@ -19,7 +19,7 @@
 
 #include "BLI_smaa_textures.h"
 
-namespace blender::greasepencil {
+namespace blender::draw::greasepencil {
 
 using namespace draw;
 
@@ -154,4 +154,4 @@ class AntiAliasing {
   }
 };
 
-}  // namespace blender::greasepencil
+}  // namespace blender::draw::greasepencil

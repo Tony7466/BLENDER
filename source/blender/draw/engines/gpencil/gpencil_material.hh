@@ -15,7 +15,7 @@
 #include "draw_manager.hh"
 #include "draw_pass.hh"
 
-namespace blender::greasepencil {
+namespace blender::draw::greasepencil {
 
 using namespace draw;
 
@@ -170,7 +170,8 @@ class MaterialModule {
         *gp_style_override = blender::dna::shallow_copy(*gp_style);
         gp_style = gp_style_override;
         if ((gp_style_override->stroke_style == GP_MATERIAL_STROKE_STYLE_TEXTURE) &&
-            (gp_style_override->sima)) {
+            (gp_style_override->sima))
+        {
           copy_v4_fl(gp_style_override->stroke_rgba, 1.0f);
           gp_style_override->mix_stroke_factor = 0.0f;
         }
@@ -317,4 +318,4 @@ class MaterialModule {
   }
 };
 
-}  // namespace blender::greasepencil
+}  // namespace blender::draw::greasepencil

@@ -7,7 +7,7 @@
 
 #include "gpencil_shader.hh"
 
-namespace blender::greasepencil {
+namespace blender::draw::greasepencil {
 
 ShaderModule *ShaderModule::g_shader_module = nullptr;
 
@@ -113,4 +113,4 @@ GPUShader *ShaderModule::static_shader_get(eShaderType shader_type)
   return shaders_[shader_type];
 }
 
-}  // namespace blender::greasepencil
+}  // namespace blender::draw::greasepencil

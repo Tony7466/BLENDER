@@ -9,7 +9,7 @@
 
 #include "DRW_render.h"
 
-namespace blender::greasepencil {
+namespace blender::draw::greasepencil {
 
 enum eShaderType {
   /* SMAA antialiasing */
@@ -62,4 +62,4 @@ class ShaderModule {
   const char *static_shader_create_info_name_get(eShaderType shader_type);
 };
 
-}  // namespace blender::greasepencil
+}  // namespace blender::draw::greasepencil
