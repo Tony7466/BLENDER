@@ -2,36 +2,33 @@
  * Copyright 2019 Blender Foundation. */
 
 /** \file
- * \ingroup DNA
+ * \ingroup overlay
  */
 
 #pragma once
 
-#include "BKE_global.h"
-
 #include "DRW_gpu_wrapper.hh"
 #include "DRW_render.h"
-
 #include "UI_resources.h"
+#include "draw_manager.hh"
+#include "draw_pass.hh"
+#include "gpu_shader_create_info.hh"
 
-#include "draw_handle.hh"
-
-#include "overlay_next_shader.hh"
+#include "../select/select_instance.hh"
 #include "overlay_shader_shared.h"
 
-#ifdef __APPLE__
-#  define USE_GEOM_SHADER_WORKAROUND 1
-#else
-#  define USE_GEOM_SHADER_WORKAROUND 0
-#endif
-
-/* Needed for eSpaceImage_UVDT_Stretch and eMaskOverlayMode */
-#include "DNA_mask_types.h"
-#include "DNA_space_types.h"
-/* Forward declarations */
-struct ImBuf;
+/* Needed for BoneInstanceData. */
+#include "overlay_private.hh"
 
 namespace blender::draw::overlay {
+
+using eSelectionType = select::eSelectionType;
+
+using blender::draw::Framebuffer;
+using blender::draw::StorageVectorBuffer;
+using blender::draw::Texture;
+using blender::draw::TextureFromPool;
+using blender::draw::TextureRef;
 
 struct State {
   Depsgraph *depsgraph;
@@ -57,11 +54,52 @@ struct State {
   DRWState clipping_state;
 };
 
-using blender::draw::Framebuffer;
-using blender::draw::StorageVectorBuffer;
-using blender::draw::Texture;
-using blender::draw::TextureFromPool;
-using blender::draw::TextureRef;
+/**
+ * Shader module. Shared between instances.
+ */
+class ShaderModule {
+ private:
+  const eSelectionType selection_type_;
+  /** TODO: Support clipping. This global state should be set by the overlay::Instance and switch
+   * to the shader variations that use clipping. */
+  const bool clipping_enabled_;
+  /** Shared shader module across all engine instances. */
+  static ShaderModule *g_shader_modules[2 /*Selection Instance*/][2 /*Clipping Enabled*/];
+
+  struct ShaderDeleter {
+    void operator()(GPUShader *shader)
+    {
+      DRW_SHADER_FREE_SAFE(shader);
+    }
+  };
+  using ShaderPtr = std::unique_ptr<GPUShader, ShaderDeleter>;
+
+  ShaderPtr shader(const char *create_info_name)
+  {
+    return ShaderPtr(GPU_shader_create_from_info_name(create_info_name));
+  }
+  ShaderPtr selectable_shader(const char *create_info_name);
+  ShaderPtr selectable_shader(const char *create_info_name,
+                              std::function<void(gpu::shader::ShaderCreateInfo &info)> patch);
+
+ public:
+  ShaderModule(const eSelectionType selection_type, const bool clipping_enabled);
+
+  /** Selectable Shaders */
+  ShaderPtr armature_sphere_outline;
+  ShaderPtr depth_mesh;
+  ShaderPtr extra_shape;
+
+  /** Shaders */
+  ShaderPtr grid = shader("overlay_grid");
+  ShaderPtr background_fill = shader("overlay_background");
+  ShaderPtr background_clip_bound = shader("overlay_clipbound");
+
+  /** Module */
+  /** Only to be used by Instance constructor. */
+  static ShaderModule &module_get(eSelectionType selection_type, bool clipping_enabled);
+  static void module_free();
+};
 
 struct Resources : public select::SelectMap {
   ShaderModule &shaders;
@@ -90,79 +128,178 @@ struct Resources : public select::SelectMap {
   Resources(const eSelectionType selection_type_, ShaderModule &shader_module)
       : select::SelectMap(selection_type_), shaders(shader_module){};
 
-  [[nodiscard]] ThemeColorID object_wire_theme_id(const ObjectRef &ob_ref,
-                                                  const State &state) const
+  ThemeColorID object_wire_theme_id(const ObjectRef &ob_ref, const State &state) const;
+  const float4 &object_wire_color(const ObjectRef &ob_ref, ThemeColorID theme_id) const;
+  const float4 &object_wire_color(const ObjectRef &ob_ref, const State &state) const;
+};
+
+/**
+ * Buffer containing instances of a certain shape.
+ */
+template<typename InstanceDataT> struct ShapeInstanceBuf : private select::SelectBuf {
+
+  StorageVectorBuffer<InstanceDataT> data_buf;
+
+  ShapeInstanceBuf(const eSelectionType selection_type, const char *name = nullptr)
+      : select::SelectBuf(selection_type), data_buf(name){};
+
+  void clear()
   {
-    const bool is_edit = (state.object_mode & OB_MODE_EDIT) &&
-                         (ob_ref.object->mode & OB_MODE_EDIT);
-    const bool active = (state.active_base != nullptr) &&
-                        ((ob_ref.dupli_parent != nullptr) ?
-                             (state.active_base->object == ob_ref.dupli_parent) :
-                             (state.active_base->object == ob_ref.object));
-    const bool is_selected = ((ob_ref.object->base_flag & BASE_SELECTED) != 0);
-
-    /* Object in edit mode. */
-    if (is_edit) {
-      return TH_WIRE_EDIT;
-    }
-    /* Transformed object during operators. */
-    if (((G.moving & G_TRANSFORM_OBJ) != 0) && is_selected) {
-      return TH_TRANSFORM;
-    }
-    /* Sets the 'theme_id' or fallback to wire */
-    if ((ob_ref.object->base_flag & BASE_SELECTED) != 0) {
-      return (active) ? TH_ACTIVE : TH_SELECT;
-    }
-
-    switch (ob_ref.object->type) {
-      case OB_LAMP:
-        return TH_LIGHT;
-      case OB_SPEAKER:
-        return TH_SPEAKER;
-      case OB_CAMERA:
-        return TH_CAMERA;
-      case OB_LIGHTPROBE:
-        /* TODO: add light-probe color. Use empty color for now. */
-      case OB_EMPTY:
-        return TH_EMPTY;
-      default:
-        return (is_edit) ? TH_WIRE_EDIT : TH_WIRE;
-    }
+    this->select_clear();
+    data_buf.clear();
   }
 
-  [[nodiscard]] const float4 &object_wire_color(const ObjectRef &ob_ref,
-                                                ThemeColorID theme_id) const
+  void append(const InstanceDataT &data, select::ID select_id)
   {
-    if (UNLIKELY(ob_ref.object->base_flag & BASE_FROM_SET)) {
-      return theme_settings.color_wire;
-    }
-    switch (theme_id) {
-      case TH_WIRE_EDIT:
-        return theme_settings.color_wire_edit;
-      case TH_ACTIVE:
-        return theme_settings.color_active;
-      case TH_SELECT:
-        return theme_settings.color_select;
-      case TH_TRANSFORM:
-        return theme_settings.color_transform;
-      case TH_SPEAKER:
-        return theme_settings.color_speaker;
-      case TH_CAMERA:
-        return theme_settings.color_camera;
-      case TH_EMPTY:
-        return theme_settings.color_empty;
-      case TH_LIGHT:
-        return theme_settings.color_light;
-      default:
-        return theme_settings.color_wire;
-    }
+    this->select_append(select_id);
+    data_buf.append(data);
   }
 
-  [[nodiscard]] const float4 &object_wire_color(const ObjectRef &ob_ref, const State &state) const
+  void end_sync(PassSimple &pass, GPUBatch *shape)
   {
-    ThemeColorID theme_id = object_wire_theme_id(ob_ref, state);
-    return object_wire_color(ob_ref, theme_id);
+    if (data_buf.size() == 0) {
+      return;
+    }
+    this->select_bind(pass);
+    data_buf.push_update();
+    pass.bind_ssbo("data_buf", &data_buf);
+    pass.draw(shape, data_buf.size());
   }
+};
+
+/**
+ * Contains all overlay generic geometry batches.
+ */
+class ShapeCache {
+ private:
+  struct BatchDeleter {
+    void operator()(GPUBatch *shader)
+    {
+      GPU_BATCH_DISCARD_SAFE(shader);
+    }
+  };
+  using BatchPtr = std::unique_ptr<GPUBatch, BatchDeleter>;
+
+ public:
+  ShapeCache();
+
+  BatchPtr quad_wire;
+  BatchPtr plain_axes;
+  BatchPtr single_arrow;
+  BatchPtr cube;
+  BatchPtr circle;
+  BatchPtr empty_sphere;
+  BatchPtr empty_cone;
+  BatchPtr arrows;
+  BatchPtr metaball_wire_circle;
+};
+
+class Prepass {
+ private:
+  const eSelectionType selection_type_;
+
+  PassMain prepass_ps_ = {"prepass"};
+  PassMain prepass_in_front_ps_ = {"prepass_in_front"};
+
+ public:
+  Prepass(const eSelectionType selection_type) : selection_type_(selection_type){};
+
+  void begin_sync(Resources &res, const State &state);
+  void object_sync(Manager &manager, const ObjectRef &ob_ref, Resources &res);
+  void draw(Resources &res, Manager &manager, View &view);
+  void draw_in_front(Resources &res, Manager &manager, View &view);
+};
+
+class Background {
+ private:
+  const eSelectionType selection_type_;
+
+  PassSimple bg_ps_ = {"Background"};
+
+ public:
+  Background(const eSelectionType selection_type) : selection_type_(selection_type){};
+
+  void begin_sync(Resources &res, const State &state);
+  void draw(Resources &res, Manager &manager);
+};
+
+class Grid {
+ private:
+  const eSelectionType selection_type_;
+
+  UniformBuffer<OVERLAY_GridData> data_;
+
+  PassSimple grid_ps_ = {"grid_ps_"};
+
+  float3 grid_axes_ = float3(0.0f);
+  float3 zplane_axes_ = float3(0.0f);
+  OVERLAY_GridBits grid_flag_ = OVERLAY_GridBits(0);
+  OVERLAY_GridBits zneg_flag_ = OVERLAY_GridBits(0);
+  OVERLAY_GridBits zpos_flag_ = OVERLAY_GridBits(0);
+
+  bool enabled_ = false;
+
+  void update_ubo(const State &state, const View &view);
+
+ public:
+  Grid(const eSelectionType selection_type) : selection_type_(selection_type){};
+
+  void begin_sync(Resources &res, const State &state, const View &view);
+  void draw(Resources &res, Manager &manager, View &view);
+};
+
+class Empties {
+  using EmptyInstanceBuf = ShapeInstanceBuf<ExtraInstanceData>;
+
+ private:
+  const eSelectionType selection_type_;
+
+  PassSimple empty_ps_ = {"Empties"};
+  PassSimple empty_in_front_ps_ = {"Empties_In_front"};
+
+  struct CallBuffers {
+    const eSelectionType selection_type_;
+    EmptyInstanceBuf plain_axes_buf = {selection_type_, "plain_axes_buf"};
+    EmptyInstanceBuf single_arrow_buf = {selection_type_, "single_arrow_buf"};
+    EmptyInstanceBuf cube_buf = {selection_type_, "cube_buf"};
+    EmptyInstanceBuf circle_buf = {selection_type_, "circle_buf"};
+    EmptyInstanceBuf sphere_buf = {selection_type_, "sphere_buf"};
+    EmptyInstanceBuf cone_buf = {selection_type_, "cone_buf"};
+    EmptyInstanceBuf arrows_buf = {selection_type_, "arrows_buf"};
+    EmptyInstanceBuf image_buf = {selection_type_, "image_buf"};
+  } call_buffers_[2] = {{selection_type_}, {selection_type_}};
+
+ public:
+  Empties(const eSelectionType selection_type) : selection_type_(selection_type){};
+
+  void begin_sync();
+  void object_sync(const ObjectRef &ob_ref, Resources &res, const State &state);
+  void end_sync(Resources &res, ShapeCache &shapes, const State &state);
+  void draw(Resources &res, Manager &manager, View &view);
+  void draw_in_front(Resources &res, Manager &manager, View &view);
+};
+
+class Metaballs {
+  using SphereOutlineInstanceBuf = ShapeInstanceBuf<BoneInstanceData>;
+
+ private:
+  const eSelectionType selection_type_;
+
+  PassSimple metaball_ps_ = {"MetaBalls"};
+  PassSimple metaball_in_front_ps_ = {"MetaBalls_In_front"};
+
+  SphereOutlineInstanceBuf circle_buf_ = {selection_type_, "metaball_data_buf"};
+  SphereOutlineInstanceBuf circle_in_front_buf_ = {selection_type_, "metaball_data_buf"};
+
+ public:
+  Metaballs(const eSelectionType selection_type) : selection_type_(selection_type){};
+
+  void begin_sync();
+  void edit_object_sync(const ObjectRef &ob_ref, Resources &res);
+  void object_sync(const ObjectRef &ob_ref, Resources &res, const State &state);
+  void end_sync(Resources &res, ShapeCache &shapes, const State &state);
+  void draw(Resources &res, Manager &manager, View &view);
+  void draw_in_front(Resources &res, Manager &manager, View &view);
 };
 
 }  // namespace blender::draw::overlay

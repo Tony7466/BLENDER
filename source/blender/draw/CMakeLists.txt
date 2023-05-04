@@ -211,8 +211,16 @@ set(SRC
   engines/overlay/overlay_metaball.cc
   engines/overlay/overlay_mode_transfer.cc
   engines/overlay/overlay_motion_path.cc
+  engines/overlay/overlay_next_background.cc
+  engines/overlay/overlay_next_empty.cc
   engines/overlay/overlay_next_engine.cc
+  engines/overlay/overlay_next_grid.cc
   engines/overlay/overlay_next_instance.cc
+  engines/overlay/overlay_next_metaball.cc
+  engines/overlay/overlay_next_prepass.cc
+  engines/overlay/overlay_next_resources.cc
+  engines/overlay/overlay_next_shader.cc
+  engines/overlay/overlay_next_shape.cc
   engines/overlay/overlay_outline.cc
   engines/overlay/overlay_paint.cc
   engines/overlay/overlay_particle.cc
@@ -315,6 +323,7 @@ set(SRC
   engines/select/select_private.h
   engines/overlay/overlay_engine.h
   engines/overlay/overlay_next_instance.hh
+  engines/overlay/overlay_next_private.hh
   engines/overlay/overlay_private.hh
 )
 

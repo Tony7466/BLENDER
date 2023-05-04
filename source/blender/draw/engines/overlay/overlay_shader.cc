@@ -1211,17 +1211,3 @@ void OVERLAY_shader_free(void)
     MEM_SAFE_FREE(*format);
   }
 }
-
-/* TODO (Miguel Pozo): Move this. */
-#include "overlay_next_shader.hh"
-
-namespace blender::draw::overlay {
-
-ShaderModule *ShaderModule::g_shader_modules[2][2] = {{nullptr}};
-
-void shader_module_free()
-{
-  ShaderModule::module_free();
-}
-
-}  // namespace blender::draw::overlay

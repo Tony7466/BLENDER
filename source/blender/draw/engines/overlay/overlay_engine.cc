@@ -737,7 +737,7 @@ static void OVERLAY_draw_scene(void *vedata)
 static void OVERLAY_engine_free()
 {
   OVERLAY_shader_free();
-  overlay::shader_module_free();
+  overlay::ShaderModule::module_free();
 }
 
 static void OVERLAY_instance_free(void *instance_)

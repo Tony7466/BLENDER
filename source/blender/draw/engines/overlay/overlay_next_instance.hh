@@ -6,20 +6,9 @@
 
 #pragma once
 
-#include "draw_manager.hh"
-
-#include "overlay_next_background.hh"
-#include "overlay_next_empty.hh"
-#include "overlay_next_grid.hh"
-#include "overlay_next_metaball.hh"
-#include "overlay_next_prepass.hh"
-#include "overlay_next_shape.hh"
-
-#include "../select/select_instance.hh"
+#include "overlay_next_private.hh"
 
 namespace blender::draw::overlay {
-
-using eSelectionType = select::eSelectionType;
 
 /* Selection engine reuse most of the Overlay engine by creating selection IDs for each
  * selectable component and using a special shaders for drawing.*/

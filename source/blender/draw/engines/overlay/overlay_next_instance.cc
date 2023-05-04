@@ -4,6 +4,8 @@
  * \ingroup overlay
  */
 
+#include "DEG_depsgraph_query.h"
+#include "ED_view3d.h"
 #include "draw_debug.hh"
 
 #include "overlay_next_instance.hh"
@@ -250,6 +252,8 @@ bool Instance::object_is_edit_mode(const Object *ob)
 }
 
 }  // namespace blender::draw::overlay
+
+#include "overlay_private.hh"
 
 /* TODO(fclem): Move elsewhere. */
 BoneInstanceData::BoneInstanceData(Object *ob,

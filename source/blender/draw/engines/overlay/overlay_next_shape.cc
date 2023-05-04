@@ -7,185 +7,127 @@
 
 #pragma once
 
-#include "BLI_vector.hh"
-#include "GPU_batch.h"
+#include "overlay_next_private.hh"
 
 namespace blender::draw::overlay {
 
-/**
- * Buffer containing instances of a certain shape.
- */
-template<typename InstanceDataT> struct ShapeInstanceBuf : private select::SelectBuf {
-
-  StorageVectorBuffer<InstanceDataT> data_buf;
-
-  ShapeInstanceBuf(const eSelectionType selection_type, const char *name = nullptr)
-      : select::SelectBuf(selection_type), data_buf(name){};
-
-  void clear()
-  {
-    this->select_clear();
-    data_buf.clear();
-  }
-
-  void append(const InstanceDataT &data, select::ID select_id)
-  {
-    this->select_append(select_id);
-    data_buf.append(data);
-  }
-
-  void end_sync(PassSimple &pass, GPUBatch *shape)
-  {
-    if (data_buf.size() == 0) {
-      return;
-    }
-    this->select_bind(pass);
-    data_buf.push_update();
-    pass.bind_ssbo("data_buf", &data_buf);
-    pass.draw(shape, data_buf.size());
-  }
+/* Matches Vertex Format. */
+struct Vertex {
+  float3 pos;
+  int vclass;
 };
 
-/**
- * Contains all overlay generic geometry batches.
- */
-class ShapeCache {
- private:
-  /* Needs to be first for other lambdas to access. */
-  GPUVertFormat format = []() {
-    GPUVertFormat format = {0};
+/* Caller gets ownership of the #GPUVertBuf. */
+static GPUVertBuf *vbo_from_vector(Vector<Vertex> &vector)
+{
+  static GPUVertFormat format = {0};
+  if (format.attr_len == 0) {
     GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
     GPU_vertformat_attr_add(&format, "vclass", GPU_COMP_I32, 1, GPU_FETCH_INT);
-    return format;
-  }();
-
-  /* Matches Vertex Format. */
-  struct Vertex {
-    float3 pos;
-    int vclass;
-  };
-
-  struct AutoFreeGPUBatch {
-    GPUBatch *batch;
-
-    AutoFreeGPUBatch(GPUBatch *_batch) : batch(_batch){};
-
-    ~AutoFreeGPUBatch()
-    {
-      GPU_BATCH_DISCARD_SAFE(batch);
-    }
-
-    operator GPUBatch *()
-    {
-      return batch;
-    }
-  };
-
-  /* Caller gets ownership of the #GPUVertBuf. */
-  GPUVertBuf *vbo_from_vector(Vector<Vertex> &vector)
-  {
-    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
-    GPU_vertbuf_data_alloc(vbo, vector.size());
-    Vertex *vbo_data = (Vertex *)GPU_vertbuf_get_data(vbo);
-    /* Copy data to VBO using a wrapper span. Could use memcpy if that's too slow. */
-    MutableSpan<Vertex> span(vbo_data, vector.size());
-    span.copy_from(vector);
-    return vbo;
   }
 
-  enum VertexClass {
-    VCLASS_LIGHT_AREA_SHAPE = 1 << 0,
-    VCLASS_LIGHT_SPOT_SHAPE = 1 << 1,
-    VCLASS_LIGHT_SPOT_BLEND = 1 << 2,
-    VCLASS_LIGHT_SPOT_CONE = 1 << 3,
-    VCLASS_LIGHT_DIST = 1 << 4,
+  GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+  GPU_vertbuf_data_alloc(vbo, vector.size());
+  Vertex *vbo_data = (Vertex *)GPU_vertbuf_get_data(vbo);
+  /* Copy data to VBO using a wrapper span. Could use memcpy if that's too slow. */
+  MutableSpan<Vertex> span(vbo_data, vector.size());
+  span.copy_from(vector);
+  return vbo;
+}
 
-    VCLASS_CAMERA_FRAME = 1 << 5,
-    VCLASS_CAMERA_DIST = 1 << 6,
-    VCLASS_CAMERA_VOLUME = 1 << 7,
+enum VertexClass {
+  VCLASS_LIGHT_AREA_SHAPE = 1 << 0,
+  VCLASS_LIGHT_SPOT_SHAPE = 1 << 1,
+  VCLASS_LIGHT_SPOT_BLEND = 1 << 2,
+  VCLASS_LIGHT_SPOT_CONE = 1 << 3,
+  VCLASS_LIGHT_DIST = 1 << 4,
 
-    VCLASS_SCREENSPACE = 1 << 8,
-    VCLASS_SCREENALIGNED = 1 << 9,
+  VCLASS_CAMERA_FRAME = 1 << 5,
+  VCLASS_CAMERA_DIST = 1 << 6,
+  VCLASS_CAMERA_VOLUME = 1 << 7,
 
-    VCLASS_EMPTY_SCALED = 1 << 10,
-    VCLASS_EMPTY_AXES = 1 << 11,
-    VCLASS_EMPTY_AXES_NAME = 1 << 12,
-    VCLASS_EMPTY_AXES_SHADOW = 1 << 13,
-    VCLASS_EMPTY_SIZE = 1 << 14,
-  };
+  VCLASS_SCREENSPACE = 1 << 8,
+  VCLASS_SCREENALIGNED = 1 << 9,
 
-  static constexpr float bone_box_verts[8][3] = {
-      {1.0f, 0.0f, 1.0f},
-      {1.0f, 0.0f, -1.0f},
-      {-1.0f, 0.0f, -1.0f},
-      {-1.0f, 0.0f, 1.0f},
-      {1.0f, 1.0f, 1.0f},
-      {1.0f, 1.0f, -1.0f},
-      {-1.0f, 1.0f, -1.0f},
-      {-1.0f, 1.0f, 1.0f},
-  };
+  VCLASS_EMPTY_SCALED = 1 << 10,
+  VCLASS_EMPTY_AXES = 1 << 11,
+  VCLASS_EMPTY_AXES_NAME = 1 << 12,
+  VCLASS_EMPTY_AXES_SHADOW = 1 << 13,
+  VCLASS_EMPTY_SIZE = 1 << 14,
+};
 
-  static constexpr std::array<uint, 24> bone_box_wire = {
-      0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7,
-  };
+static constexpr float bone_box_verts[8][3] = {
+    {1.0f, 0.0f, 1.0f},
+    {1.0f, 0.0f, -1.0f},
+    {-1.0f, 0.0f, -1.0f},
+    {-1.0f, 0.0f, 1.0f},
+    {1.0f, 1.0f, 1.0f},
+    {1.0f, 1.0f, -1.0f},
+    {-1.0f, 1.0f, -1.0f},
+    {-1.0f, 1.0f, 1.0f},
+};
 
-  /* A single ring of vertices. */
-  static Vector<float2> ring_vertices(const float radius, const int segments)
-  {
-    Vector<float2> verts;
+static constexpr std::array<uint, 24> bone_box_wire = {
+    0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7,
+};
+
+/* A single ring of vertices. */
+static Vector<float2> ring_vertices(const float radius, const int segments)
+{
+  Vector<float2> verts;
+  for (int i : IndexRange(segments)) {
+    float angle = (2 * M_PI * i) / segments;
+    verts.append(radius * float2(math::cos(angle), math::sin(angle)));
+  }
+  return verts;
+}
+
+/* Returns lines segment geometry forming 3 circles, one on each axis. */
+static Vector<Vertex> sphere_axes_circles(const float radius,
+                                          const VertexClass vclass,
+                                          const int segments)
+{
+  Vector<float2> ring = ring_vertices(radius, segments);
+
+  Vector<Vertex> verts;
+  for (int axis : IndexRange(3)) {
     for (int i : IndexRange(segments)) {
-      float angle = (2 * M_PI * i) / segments;
-      verts.append(radius * float2(math::cos(angle), math::sin(angle)));
-    }
-    return verts;
-  }
-
-  /* Returns lines segment geometry forming 3 circles, one on each axis. */
-  static Vector<Vertex> sphere_axes_circles(const float radius,
-                                            const VertexClass vclass,
-                                            const int segments)
-  {
-    Vector<float2> ring = ring_vertices(radius, segments);
-
-    Vector<Vertex> verts;
-    for (int axis : IndexRange(3)) {
-      for (int i : IndexRange(segments)) {
-        for (int j : IndexRange(2)) {
-          float2 cv = ring[(i + j) % segments];
-          if (axis == 0) {
-            verts.append({{cv[0], cv[1], 0.0f}, vclass});
-          }
-          else if (axis == 1) {
-            verts.append({{cv[0], 0.0f, cv[1]}, vclass});
-          }
-          else {
-            verts.append({{0.0f, cv[0], cv[1]}, vclass});
-          }
+      for (int j : IndexRange(2)) {
+        float2 cv = ring[(i + j) % segments];
+        if (axis == 0) {
+          verts.append({{cv[0], cv[1], 0.0f}, vclass});
+        }
+        else if (axis == 1) {
+          verts.append({{cv[0], 0.0f, cv[1]}, vclass});
+        }
+        else {
+          verts.append({{0.0f, cv[0], cv[1]}, vclass});
         }
       }
     }
-    return verts;
   }
+  return verts;
+}
 
- public:
-  AutoFreeGPUBatch quad_wire = [this]() {
+ShapeCache::ShapeCache()
+{
+  /* quad_wire */
+  {
     Vector<Vertex> verts;
     verts.append({{-1.0f, -1.0f, 0.0f}, VCLASS_EMPTY_SCALED});
     verts.append({{-1.0f, +1.0f, 0.0f}, VCLASS_EMPTY_SCALED});
-
     verts.append({{-1.0f, +1.0f, 0.0f}, VCLASS_EMPTY_SCALED});
     verts.append({{+1.0f, +1.0f, 0.0f}, VCLASS_EMPTY_SCALED});
-
     verts.append({{+1.0f, +1.0f, 0.0f}, VCLASS_EMPTY_SCALED});
     verts.append({{+1.0f, -1.0f, 0.0f}, VCLASS_EMPTY_SCALED});
-
     verts.append({{+1.0f, -1.0f, 0.0f}, VCLASS_EMPTY_SCALED});
     verts.append({{-1.0f, -1.0f, 0.0f}, VCLASS_EMPTY_SCALED});
-    return GPU_batch_create_ex(
-        GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO);
-  }();
 
-  AutoFreeGPUBatch plain_axes = [this]() {
+    quad_wire = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* plain_axes */
+  {
     Vector<Vertex> verts;
     verts.append({{0.0f, -1.0f, 0.0f}, VCLASS_EMPTY_SCALED});
     verts.append({{0.0f, +1.0f, 0.0f}, VCLASS_EMPTY_SCALED});
@@ -193,11 +135,12 @@ class ShapeCache {
     verts.append({{+1.0f, 0.0f, 0.0f}, VCLASS_EMPTY_SCALED});
     verts.append({{0.0f, 0.0f, -1.0f}, VCLASS_EMPTY_SCALED});
     verts.append({{0.0f, 0.0f, +1.0f}, VCLASS_EMPTY_SCALED});
-    return GPU_batch_create_ex(
-        GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO);
-  }();
 
-  AutoFreeGPUBatch single_arrow = [this]() {
+    plain_axes = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* single_arrow */
+  {
     Vector<Vertex> verts;
     float p[3][3] = {{0}};
     p[0][2] = 1.0f;
@@ -222,11 +165,12 @@ class ShapeCache {
     }
     verts.append({{0.0f, 0.0f, 0.0}, VCLASS_EMPTY_SCALED});
     verts.append({{0.0f, 0.0f, 0.75f}, VCLASS_EMPTY_SCALED});
-    return GPU_batch_create_ex(
-        GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO);
-  }();
 
-  AutoFreeGPUBatch cube = [this]() {
+    single_arrow = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* cube */
+  {
     Vector<Vertex> verts;
     for (auto index : bone_box_wire) {
       float x = bone_box_verts[index][0];
@@ -234,11 +178,12 @@ class ShapeCache {
       float z = bone_box_verts[index][2];
       verts.append({{x, y, z}, VCLASS_EMPTY_SCALED});
     }
-    return GPU_batch_create_ex(
-        GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO);
-  }();
 
-  AutoFreeGPUBatch circle = [this]() {
+    cube = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* circle */
+  {
     constexpr int resolution = 64;
     Vector<float2> ring = ring_vertices(1.0f, resolution);
 
@@ -247,18 +192,19 @@ class ShapeCache {
       float2 cv = ring[a % resolution];
       verts.append({{cv.x, 0.0f, cv.y}, VCLASS_EMPTY_SCALED});
     }
-    return GPU_batch_create_ex(
-        GPU_PRIM_LINE_STRIP, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO);
-  }();
 
-  AutoFreeGPUBatch empty_sphere = [this]() {
+    circle = BatchPtr(GPU_batch_create_ex(
+        GPU_PRIM_LINE_STRIP, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* empty_spehere */
+  {
     Vector<Vertex> verts = sphere_axes_circles(1.0f, VCLASS_EMPTY_SCALED, 32);
-    return GPU_batch_create_ex(
-        GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO);
-  }();
 
-  AutoFreeGPUBatch empty_cone = [this]() {
-    /* A single ring of vertices. */
+    empty_sphere = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* empty_cone */
+  {
     constexpr int resolution = 8;
     Vector<float2> ring = ring_vertices(1.0f, resolution);
 
@@ -274,11 +220,12 @@ class ShapeCache {
         verts.append({{cv[0], 0.0f, cv[1]}, VCLASS_EMPTY_SCALED});
       }
     }
-    return GPU_batch_create_ex(
-        GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO);
-  }();
 
-  AutoFreeGPUBatch arrows = [this]() {
+    empty_cone = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* arrows */
+  {
     float2 x_axis_name_scale = {0.0215f, 0.025f};
     Vector<float2> x_axis_name = {
         float2(0.9f, 1.0f) * x_axis_name_scale,
@@ -323,14 +270,14 @@ class ShapeCache {
         float2(-1.0f, -1.0f) * axis_marker_scale,
         float2(-1.0f, 1.0f) * axis_marker_scale,
 #else /* diamond */
-        float2(-1.0f, 0.0f) * axis_marker_scale,
-        float2(0.0f, 1.0f) * axis_marker_scale,
-        float2(0.0f, 1.0f) * axis_marker_scale,
-        float2(1.0f, 0.0f) * axis_marker_scale,
-        float2(1.0f, 0.0f) * axis_marker_scale,
-        float2(0.0f, -1.0f) * axis_marker_scale,
-        float2(0.0f, -1.0f) * axis_marker_scale,
-        float2(-1.0f, 0.0f) * axis_marker_scale,
+      float2(-1.0f, 0.0f) * axis_marker_scale,
+      float2(0.0f, 1.0f) * axis_marker_scale,
+      float2(0.0f, 1.0f) * axis_marker_scale,
+      float2(1.0f, 0.0f) * axis_marker_scale,
+      float2(1.0f, 0.0f) * axis_marker_scale,
+      float2(0.0f, -1.0f) * axis_marker_scale,
+      float2(0.0f, -1.0f) * axis_marker_scale,
+      float2(-1.0f, 0.0f) * axis_marker_scale,
 #endif
     };
 
@@ -356,12 +303,11 @@ class ShapeCache {
         verts.append({{axis_name_vert * 4.0f, axis + 0.25f}, flag});
       }
     }
-    return GPU_batch_create_ex(
-        GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO);
-  }();
-
-  AutoFreeGPUBatch metaball_wire_circle = [this]() {
-    /* A single ring of vertices. */
+    arrows = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* metaball_wire_circle */
+  {
     constexpr int resolution = 64;
     constexpr float radius = 1.0f;
     Vector<float2> ring = ring_vertices(radius, resolution);
@@ -371,9 +317,9 @@ class ShapeCache {
       float2 cv = ring[i % resolution];
       verts.append({{cv[0], cv[1], 0.0f}, VCLASS_SCREENALIGNED});
     }
-    return GPU_batch_create_ex(
-        GPU_PRIM_LINE_STRIP, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO);
-  }();
-};
+    metaball_wire_circle = BatchPtr(GPU_batch_create_ex(
+        GPU_PRIM_LINE_STRIP, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  };
+}
 
 }  // namespace blender::draw::overlay
