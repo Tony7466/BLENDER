@@ -10,8 +10,8 @@
 
 #include "draw_pass.hh"
 #include "draw_shader_shared.h"
-#include "overlay_private.hh"
-#include "overlay_shape.hh"
+#include "overlay_next_private.hh"
+#include "overlay_next_shape.hh"
 
 namespace blender::draw::overlay {
 

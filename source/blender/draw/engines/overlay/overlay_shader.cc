@@ -14,7 +14,6 @@
 #include "gpu_shader_create_info.hh"
 
 #include "overlay_private.hh"
-#include "overlay_shader.hh"
 
 struct OVERLAY_Shaders {
   GPUShader *antialiasing;
@@ -1212,6 +1211,9 @@ void OVERLAY_shader_free(void)
     MEM_SAFE_FREE(*format);
   }
 }
+
+/* TODO (Miguel Pozo): Move this. */
+#include "overlay_next_shader.hh"
 
 namespace blender::draw::overlay {
 

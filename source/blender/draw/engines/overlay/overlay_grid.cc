@@ -17,7 +17,7 @@
 
 #include "UI_resources.h"
 
-#include "overlay_instance.hh"
+#include "overlay_next_instance.hh"
 #include "overlay_private.hh"
 
 using namespace blender::draw;

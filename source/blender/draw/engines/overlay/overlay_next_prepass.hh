@@ -11,7 +11,7 @@
 
 #include "draw_cache.h"
 
-#include "overlay_private.hh"
+#include "overlay_next_private.hh"
 
 namespace blender::draw::overlay {
 

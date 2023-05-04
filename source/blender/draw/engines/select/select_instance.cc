@@ -10,7 +10,7 @@
 
 #include "select_engine.h"
 
-#include "../overlay/overlay_instance.hh"
+#include "../overlay/overlay_next_instance.hh"
 #include "select_instance.hh"
 
 using namespace blender::draw;

@@ -8,12 +8,12 @@
 
 #include "draw_manager.hh"
 
-#include "overlay_background.hh"
-#include "overlay_empty.hh"
-#include "overlay_grid.hh"
-#include "overlay_metaball.hh"
-#include "overlay_prepass.hh"
-#include "overlay_shape.hh"
+#include "overlay_next_background.hh"
+#include "overlay_next_empty.hh"
+#include "overlay_next_grid.hh"
+#include "overlay_next_metaball.hh"
+#include "overlay_next_prepass.hh"
+#include "overlay_next_shape.hh"
 
 #include "../select/select_instance.hh"
 
