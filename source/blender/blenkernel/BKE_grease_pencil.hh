@@ -47,7 +47,7 @@ class TreeNode : public ::GreasePencilLayerTreeNode, NonMovable {
   /**
    * \returns true if this node is a LayerGroup.
    */
-  const bool is_group() const
+  bool is_group() const
   {
     return this->type == GP_LAYER_TREE_GROUP;
   }
@@ -55,7 +55,7 @@ class TreeNode : public ::GreasePencilLayerTreeNode, NonMovable {
   /**
    * \returns true if this node is a Layer.
    */
-  const bool is_layer() const
+  bool is_layer() const
   {
     return this->type == GP_LAYER_TREE_LEAF;
   }
@@ -153,23 +153,17 @@ class Layer : public TreeNode, public ::GreasePencilLayer {
   /**
    * \returns the layer masks.
    */
-  const Vector<LayerMask> &masks() const;
+  Span<LayerMask> masks() const;
   Vector<LayerMask> &masks_for_write();
 
-  /**
-   * \return true if the layer is visible.
-   */
   bool is_visible() const;
-  /**
-   * \return true if the layer is locked.
-   */
   bool is_locked() const;
 
   /**
    * Inserts the frame into the layer. Fails if there exists a frame at \a frame_number already.
    * \returns true on success.
    */
-  bool insert_frame(int frame_number, GreasePencilFrame &frame);
+  bool insert_frame(int frame_number, const GreasePencilFrame &frame);
   bool insert_frame(int frame_number, GreasePencilFrame &&frame);
 
   /**
@@ -177,7 +171,7 @@ class Layer : public TreeNode, public ::GreasePencilLayer {
    * overwritten.
    * \returns true on success.
    */
-  bool overwrite_frame(int frame_number, GreasePencilFrame &frame);
+  bool overwrite_frame(int frame_number, const GreasePencilFrame &frame);
   bool overwrite_frame(int frame_number, GreasePencilFrame &&frame);
 
   /**

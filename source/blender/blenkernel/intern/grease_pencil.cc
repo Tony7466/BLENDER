@@ -43,7 +43,7 @@ static void grease_pencil_init_data(ID *id)
 {
   using namespace blender::bke;
 
-  GreasePencil *grease_pencil = (GreasePencil *)id;
+  GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(id);
   grease_pencil->runtime = MEM_new<GreasePencilRuntime>(__func__);
 }
 
@@ -54,8 +54,8 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
 {
   using namespace blender;
 
-  GreasePencil *grease_pencil_dst = (GreasePencil *)id_dst;
-  const GreasePencil *grease_pencil_src = (GreasePencil *)id_src;
+  GreasePencil *grease_pencil_dst = reinterpret_cast<GreasePencil *>(id_dst);
+  const GreasePencil *grease_pencil_src = reinterpret_cast<const GreasePencil *>(id_src);
 
   /* Duplicate material array. */
   grease_pencil_dst->material_array = static_cast<Material **>(
@@ -108,7 +108,7 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
 
 static void grease_pencil_free_data(ID *id)
 {
-  GreasePencil *grease_pencil = (GreasePencil *)id;
+  GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(id);
   BKE_animdata_free(&grease_pencil->id, false);
 
   MEM_SAFE_FREE(grease_pencil->material_array);
@@ -124,7 +124,7 @@ static void grease_pencil_free_data(ID *id)
 
 static void grease_pencil_foreach_id(ID *id, LibraryForeachIDData *data)
 {
-  GreasePencil *grease_pencil = (GreasePencil *)id;
+  GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(id);
   for (int i = 0; i < grease_pencil->material_array_size; i++) {
     BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, grease_pencil->material_array[i], IDWALK_CB_USER);
   }
@@ -140,7 +140,7 @@ static void grease_pencil_foreach_id(ID *id, LibraryForeachIDData *data)
 
 static void grease_pencil_blend_write(BlendWriter *writer, ID *id, const void *id_address)
 {
-  GreasePencil *grease_pencil = (GreasePencil *)id;
+  GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(id);
 
   /* Free storage if there is one. */
   grease_pencil->free_layer_tree_storage();
@@ -169,7 +169,7 @@ static void grease_pencil_blend_write(BlendWriter *writer, ID *id, const void *i
 static void grease_pencil_blend_read_data(BlendDataReader *reader, ID *id)
 {
   using namespace blender::bke::greasepencil;
-  GreasePencil *grease_pencil = (GreasePencil *)id;
+  GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(id);
 
   /* Read animation data. */
   BLO_read_data_address(reader, &grease_pencil->adt);
@@ -180,7 +180,7 @@ static void grease_pencil_blend_read_data(BlendDataReader *reader, ID *id)
   /* Read layer tree. */
   grease_pencil->read_layer_tree_storage(reader);
   /* Read materials. */
-  BLO_read_pointer_array(reader, (void **)&grease_pencil->material_array);
+  BLO_read_pointer_array(reader, reinterpret_cast<void **>(&grease_pencil->material_array));
 
   grease_pencil->runtime = MEM_new<blender::bke::GreasePencilRuntime>(__func__);
   grease_pencil->load_layer_tree_from_storage();
@@ -190,7 +190,7 @@ static void grease_pencil_blend_read_data(BlendDataReader *reader, ID *id)
 
 static void grease_pencil_blend_read_lib(BlendLibReader *reader, ID *id)
 {
-  GreasePencil *grease_pencil = (GreasePencil *)id;
+  GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(id);
   for (int i = 0; i < grease_pencil->material_array_size; i++) {
     BLO_read_id_address(reader, grease_pencil->id.lib, &grease_pencil->material_array[i]);
   }
@@ -206,7 +206,7 @@ static void grease_pencil_blend_read_lib(BlendLibReader *reader, ID *id)
 
 static void grease_pencil_blend_read_expand(BlendExpander *expander, ID *id)
 {
-  GreasePencil *grease_pencil = (GreasePencil *)id;
+  GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(id);
   for (int i = 0; i < grease_pencil->material_array_size; i++) {
     BLO_expand(expander, grease_pencil->material_array[i]);
   }
@@ -381,9 +381,9 @@ Map<int, GreasePencilFrame> &Layer::frames_for_write()
   return this->frames_;
 }
 
-const Vector<LayerMask> &Layer::masks() const
+Span<LayerMask> Layer::masks() const
 {
-  return this->masks_;
+  return this->masks_.as_span();
 }
 
 Vector<LayerMask> &Layer::masks_for_write()
@@ -401,7 +401,7 @@ bool Layer::is_locked() const
   return (this->flag & GP_LAYER_TREE_NODE_LOCKED) != 0;
 }
 
-bool Layer::insert_frame(int frame_number, GreasePencilFrame &frame)
+bool Layer::insert_frame(int frame_number, const GreasePencilFrame &frame)
 {
   return this->frames_for_write().add(frame_number, frame);
 }
@@ -411,7 +411,7 @@ bool Layer::insert_frame(int frame_number, GreasePencilFrame &&frame)
   return this->frames_for_write().add(frame_number, frame);
 }
 
-bool Layer::overwrite_frame(int frame_number, GreasePencilFrame &frame)
+bool Layer::overwrite_frame(int frame_number, const GreasePencilFrame &frame)
 {
   return this->frames_for_write().add_overwrite(frame_number, frame);
 }
@@ -675,14 +675,14 @@ int GreasePencilRuntime::active_layer_index() const
 
 void *BKE_grease_pencil_add(Main *bmain, const char *name)
 {
-  GreasePencil *grease_pencil = static_cast<GreasePencil *>(BKE_id_new(bmain, ID_GP, name));
+  GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(BKE_id_new(bmain, ID_GP, name));
 
   return grease_pencil;
 }
 
 GreasePencil *BKE_grease_pencil_new_nomain()
 {
-  GreasePencil *grease_pencil = static_cast<GreasePencil *>(BKE_id_new_nomain(ID_GP, nullptr));
+  GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(BKE_id_new_nomain(ID_GP, nullptr));
   grease_pencil_init_data(&grease_pencil->id);
   return grease_pencil;
 }
@@ -720,14 +720,14 @@ void BKE_grease_pencil_data_update(struct Depsgraph * /*depsgraph*/,
   /* Free any evaluated data and restore original data. */
   BKE_object_free_derived_caches(object);
 
-  GreasePencil *grease_pencil = static_cast<GreasePencil *>(object->data);
+  GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(object->data);
   /* Evaluate modifiers. */
   /* TODO: evaluate modifiers. */
 
   /* Assign evaluated object. */
   /* TODO: Get eval from modifiers geometry set. */
-  GreasePencil *grease_pencil_eval = (GreasePencil *)BKE_id_copy_ex(
-      nullptr, &grease_pencil->id, nullptr, LIB_ID_COPY_LOCALIZE);
+  GreasePencil *grease_pencil_eval = reinterpret_cast<GreasePencil *>(
+      BKE_id_copy_ex(nullptr, &grease_pencil->id, nullptr, LIB_ID_COPY_LOCALIZE));
   BKE_object_eval_assign_data(object, &grease_pencil_eval->id, true);
 }
 
@@ -1052,7 +1052,7 @@ void GreasePencil::print_layer_tree()
 
 void GreasePencil::read_drawing_array(BlendDataReader *reader)
 {
-  BLO_read_pointer_array(reader, (void **)&this->drawing_array);
+  BLO_read_pointer_array(reader, reinterpret_cast<void **>(&this->drawing_array));
   for (int i = 0; i < this->drawing_array_size; i++) {
     BLO_read_data_address(reader, &this->drawing_array[i]);
     GreasePencilDrawingBase *drawing_base = this->drawing_array[i];
@@ -1334,7 +1334,7 @@ void GreasePencil::load_layer_tree_from_storage()
 
 void GreasePencil::read_layer_tree_storage(BlendDataReader *reader)
 {
-  BLO_read_pointer_array(reader, (void **)&this->layer_tree_storage.nodes);
+  BLO_read_pointer_array(reader, reinterpret_cast<void **>(&this->layer_tree_storage.nodes));
   for (int i = 0; i < this->layer_tree_storage.nodes_num; i++) {
     BLO_read_data_address(reader, &this->layer_tree_storage.nodes[i]);
     GreasePencilLayerTreeNode *node = this->layer_tree_storage.nodes[i];
@@ -1415,9 +1415,7 @@ void GreasePencil::free_layer_tree_storage()
   }
   for (int i = 0; i < this->layer_tree_storage.nodes_num; i++) {
     GreasePencilLayerTreeNode *node = this->layer_tree_storage.nodes[i];
-    if (node->name) {
-      MEM_freeN(node->name);
-    }
+    MEM_SAFE_FREE(node->name);
     switch (node->type) {
       case GP_LAYER_TREE_LEAF: {
         GreasePencilLayerTreeLeaf *node_leaf = reinterpret_cast<GreasePencilLayerTreeLeaf *>(node);
@@ -1425,24 +1423,16 @@ void GreasePencil::free_layer_tree_storage()
           MEM_freeN(node_leaf->layer.frames_storage.keys);
           MEM_freeN(node_leaf->layer.frames_storage.values);
         }
-        if (node_leaf->layer.parsubstr) {
-          MEM_freeN(node_leaf->layer.parsubstr);
-        }
-        if (node_leaf->layer.viewlayer_name) {
-          MEM_freeN(node_leaf->layer.viewlayer_name);
-        }
+        MEM_SAFE_FREE(node_leaf->layer.parsubstr);
+        MEM_SAFE_FREE(node_leaf->layer.viewlayer_name);
         GreasePencilLayerMaskStorage *masks_storage = &node_leaf->layer.masks_storage;
         for (int mask_i = 0; mask_i < masks_storage->masks_size; mask_i++) {
           GreasePencilLayerMask &mask = masks_storage->masks[mask_i];
-          if (mask.layer_name) {
-            MEM_freeN(mask.layer_name);
-          }
+          MEM_SAFE_FREE(mask.layer_name);
         }
-        if (masks_storage->masks) {
-          MEM_freeN(masks_storage->masks);
-        }
+        MEM_SAFE_FREE(masks_storage->masks);
         MEM_freeN(node_leaf);
-        break;
+        break;  
       }
       case GP_LAYER_TREE_GROUP: {
         GreasePencilLayerTreeGroup *group = reinterpret_cast<GreasePencilLayerTreeGroup *>(node);
