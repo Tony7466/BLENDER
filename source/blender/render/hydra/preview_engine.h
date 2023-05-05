@@ -12,7 +12,7 @@ class PreviewEngine : public FinalEngine {
   using FinalEngine::FinalEngine;
 
   static PreviewEngine *get_instance(RenderEngine *bl_engine,
-                                     const std::string &render_delegate_id);
+                                     const std::string &render_delegate_name);
   static void schedule_free();
 
   void sync(Depsgraph *depsgraph,
@@ -25,7 +25,7 @@ class PreviewEngine : public FinalEngine {
   static double free_instance(uintptr_t uuid, void *user_data);
   static std::unique_ptr<PreviewEngine> instance_;
 
-  void update(RenderEngine *bl_engine, const std::string &render_delegate_id);
+  void update(RenderEngine *bl_engine, const std::string &render_delegate_name);
   void update_render_result(std::vector<float> &pixels);
 };
 

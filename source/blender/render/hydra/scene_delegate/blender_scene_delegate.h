@@ -30,7 +30,7 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
   BlenderSceneDelegate(pxr::HdRenderIndex *parent_index,
                        pxr::SdfPath const &delegate_id,
                        BlenderSceneDelegate::EngineType engine_type,
-                       std::string render_delegate_name);
+                       const std::string &render_delegate_name);
   ~BlenderSceneDelegate() override = default;
 
   /* Delegate methods */

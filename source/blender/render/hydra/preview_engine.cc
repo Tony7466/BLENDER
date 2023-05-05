@@ -14,16 +14,16 @@ const double LIFETIME = 180.0;
 std::unique_ptr<PreviewEngine> PreviewEngine::instance_;
 
 PreviewEngine *PreviewEngine::get_instance(RenderEngine *bl_engine,
-                                           const std::string &render_delegate_id)
+                                           const std::string &render_delegate_name)
 {
   if (!instance_) {
-    instance_ = std::make_unique<PreviewEngine>(bl_engine, render_delegate_id);
+    instance_ = std::make_unique<PreviewEngine>(bl_engine, render_delegate_name);
   }
   if (BLI_timer_is_registered((uintptr_t)instance_.get())) {
     /* Unregister timer while PreviewEngine is working */
     BLI_timer_unregister((uintptr_t)instance_.get());
   }
-  instance_->update(bl_engine, render_delegate_id);
+  instance_->update(bl_engine, render_delegate_name);
 
   return instance_.get();
 }
@@ -96,10 +96,13 @@ double PreviewEngine::free_instance(uintptr_t uuid, void *user_data)
   return -1;
 }
 
-void PreviewEngine::update(RenderEngine *bl_engine, const std::string &render_delegate_id)
+void PreviewEngine::update(RenderEngine *bl_engine, const std::string &render_delegate_name)
 {
-  this->bl_engine_ = bl_engine;
-  /* TODO: recreate render_delegate when render_delegate_id is changed */
+  bl_engine_ = bl_engine;
+  if (render_delegate_name != render_delegate_name_) {
+    render_delegate_->Stop();
+    instance_.reset(new PreviewEngine(bl_engine, render_delegate_name));
+  }
 }
 
 void PreviewEngine::update_render_result(std::vector<float> &pixels)

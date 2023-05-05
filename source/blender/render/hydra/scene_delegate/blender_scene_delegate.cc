@@ -15,7 +15,7 @@ CLG_LOGREF_DECLARE_GLOBAL(LOG_RENDER_HYDRA_SCENE, "render.hydra.scene");
 BlenderSceneDelegate::BlenderSceneDelegate(pxr::HdRenderIndex *parent_index,
                                            pxr::SdfPath const &delegate_id,
                                            BlenderSceneDelegate::EngineType engine_type,
-                                           std::string render_delegate_name)
+                                           const std::string &render_delegate_name)
     : HdSceneDelegate(parent_index, delegate_id),
       engine_type(engine_type),
       render_delegate_name(render_delegate_name)
@@ -187,6 +187,11 @@ void BlenderSceneDelegate::clear()
   objects_.clear();
   instancers_.clear();
   materials_.clear();
+
+  depsgraph = nullptr;
+  context = nullptr;
+  scene = nullptr;
+  view3d = nullptr;
 }
 
 pxr::SdfPath BlenderSceneDelegate::prim_id(ID *id, const char *prefix) const
@@ -253,6 +258,8 @@ InstancerData *BlenderSceneDelegate::instancer_data(pxr::SdfPath const &id, bool
 {
   pxr::SdfPath p_id;
   if (child_id) {
+    /* Getting instancer path id from child Mesh instance (consist with 3 path elements) and
+     * Light instance (consist with 4 path elements) */
     int n = id.GetPathElementCount();
     if (n == 3) {
       p_id = id.GetParentPath();

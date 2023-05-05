@@ -25,7 +25,7 @@ Engine::Engine(RenderEngine *bl_engine, const std::string &render_delegate_name)
   pxr::TF_PY_ALLOW_THREADS_IN_SCOPE();
   render_delegate_ = registry.CreateRenderDelegate(pxr::TfToken(render_delegate_name_));
 
-  /* Current USD (23.02) has limited support for Vulkan. To make it works USD should be built
+  /* USD has limited support for Vulkan. To make it works USD should be built
    * with PXR_ENABLE_VULKAN_SUPPORT=TRUE which is not possible now */
   if (GPU_backend_get_type() == GPU_BACKEND_VULKAN) {
     BLI_setenv("HGI_ENABLE_VULKAN", "1");
