@@ -385,20 +385,23 @@ void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const boo
   const Span<int2> edges = mesh->edges();
   IndexRange poly = polys[index];
 
+  ARegion *region = CTX_wm_region(C);
+  RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
+  ED_view3d_init_mats_rv3d(ob_eval, rv3d);
   int2 closest_edge;
 
   const float mval_f[2] = {float(mval[0]), float(mval[1])};
   float min_distance = FLT_MAX;
   for (const int i : corner_edges.slice(poly)) {
     float screen_coordinate[2];
-    const int2 edge = edges[corner_edges[i]];
+    const int2 edge = edges[i];
     const float3 v1 = verts[edge[0]];
     const float3 v2 = verts[edge[1]];
     float3 edge_vert_average;
     add_v3_v3v3(edge_vert_average, v1, v2);
     mul_v3_fl(edge_vert_average, 0.5f);
     eV3DProjStatus status = ED_view3d_project_float_object(
-        CTX_wm_region(C), edge_vert_average, screen_coordinate, V3D_PROJ_TEST_CLIP_DEFAULT);
+        region, edge_vert_average, screen_coordinate, V3D_PROJ_TEST_CLIP_DEFAULT);
     if (status != V3D_PROJ_RET_OK) {
       continue;
     }
