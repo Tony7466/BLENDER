@@ -810,7 +810,7 @@ void IMB_rectblend(ImBuf *dbuf,
             }
             dmaskrect += origskip;
           }
-          /* no destination mask buffer, do regular blend with masktexture if present */
+          /* No destination mask buffer, do regular blend with mask-texture if present. */
           else {
             for (x = width; x > 0; x--, dr++, outr++, sr++, cmr++) {
               uchar *src = (uchar *)sr;
@@ -909,7 +909,7 @@ void IMB_rectblend(ImBuf *dbuf,
             }
             dmaskrect += origskip;
           }
-          /* no destination mask buffer, do regular blend with masktexture if present */
+          /* No destination mask buffer, do regular blend with mask-texture if present. */
           else {
             for (x = width; x > 0; x--, drf += 4, orf += 4, srf += 4, cmr++) {
               float mask = float(mask_max) * float(*cmr);
