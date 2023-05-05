@@ -212,8 +212,8 @@ set(SRC
   engines/overlay/overlay_mode_transfer.cc
   engines/overlay/overlay_motion_path.cc
   engines/overlay/overlay_next_background.cc
-  engines/overlay/overlay_next_empty.cc
   engines/overlay/overlay_next_engine.cc
+  engines/overlay/overlay_next_extra.cc
   engines/overlay/overlay_next_grid.cc
   engines/overlay/overlay_next_instance.cc
   engines/overlay/overlay_next_metaball.cc

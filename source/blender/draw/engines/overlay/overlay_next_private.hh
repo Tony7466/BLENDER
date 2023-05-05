@@ -279,30 +279,39 @@ class ShapeCache {
   BatchPtr speaker;
 };
 
-class Empties {
+class Extras {
   using EmptyInstanceBuf = ShapeInstanceBuf<ExtraInstanceData>;
 
  private:
   const eSelectionType selection_type_;
 
-  PassSimple empty_ps_ = {"Empties"};
-  PassSimple empty_in_front_ps_ = {"Empties_In_front"};
+  PassSimple empty_ps_ = {"Extras"};
+  PassSimple empty_in_front_ps_ = {"Extras_In_front"};
 
   struct CallBuffers {
     const eSelectionType selection_type_;
-    EmptyInstanceBuf plain_axes_buf = {selection_type_, "plain_axes_buf"};
-    EmptyInstanceBuf single_arrow_buf = {selection_type_, "single_arrow_buf"};
-    EmptyInstanceBuf cube_buf = {selection_type_, "cube_buf"};
-    EmptyInstanceBuf circle_buf = {selection_type_, "circle_buf"};
-    EmptyInstanceBuf sphere_buf = {selection_type_, "sphere_buf"};
-    EmptyInstanceBuf cone_buf = {selection_type_, "cone_buf"};
-    EmptyInstanceBuf arrows_buf = {selection_type_, "arrows_buf"};
-    EmptyInstanceBuf image_buf = {selection_type_, "image_buf"};
-    EmptyInstanceBuf speaker_buf = {selection_type_, "image_buf"};
+    EmptyInstanceBuf plain_axes = {selection_type_, "plain_axes_buf"};
+    EmptyInstanceBuf single_arrow = {selection_type_, "single_arrow_buf"};
+    EmptyInstanceBuf cube = {selection_type_, "cube_buf"};
+    EmptyInstanceBuf circle = {selection_type_, "circle_buf"};
+    EmptyInstanceBuf sphere = {selection_type_, "sphere_buf"};
+    EmptyInstanceBuf cone = {selection_type_, "cone_buf"};
+    EmptyInstanceBuf arrows = {selection_type_, "arrows_buf"};
+    EmptyInstanceBuf image = {selection_type_, "image_buf"};
+    EmptyInstanceBuf speaker = {selection_type_, "speaker_buf"};
+    EmptyInstanceBuf probe_cube = {selection_type_, "probe_cube_buf"};
+    EmptyInstanceBuf probe_grid = {selection_type_, "probe_grid_buf"};
+    EmptyInstanceBuf probe_planar = {selection_type_, "probe_planar_buf"};
   } call_buffers_[2] = {{selection_type_}, {selection_type_}};
 
+  void empty_sync(CallBuffers &call_bufs,
+                  const ObjectRef &ob_ref,
+                  const ExtraInstanceData data,
+                  const select::ID select_id);
+  void probe_sync();
+
  public:
-  Empties(const eSelectionType selection_type) : selection_type_(selection_type){};
+  Extras(const eSelectionType selection_type) : selection_type_(selection_type){};
 
   void begin_sync();
   void object_sync(const ObjectRef &ob_ref, Resources &res, const State &state);

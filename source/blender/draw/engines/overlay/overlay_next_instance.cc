@@ -71,7 +71,7 @@ void Instance::begin_sync()
 
   background.begin_sync(resources, state);
   prepass.begin_sync(resources, state);
-  empties.begin_sync();
+  extras.begin_sync();
   metaballs.begin_sync();
   grid.begin_sync(resources, state, view);
 }
@@ -118,8 +118,9 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
   if (!state.hide_overlays) {
     switch (ob_ref.object->type) {
       case OB_EMPTY:
+      case OB_LIGHTPROBE:
       case OB_SPEAKER:
-        empties.object_sync(ob_ref, resources, state);
+        extras.object_sync(ob_ref, resources, state);
         break;
       case OB_ARMATURE:
         break;
@@ -139,7 +140,7 @@ void Instance::end_sync()
   resources.end_sync();
 
   metaballs.end_sync(resources, shapes, state);
-  empties.end_sync(resources, shapes, state);
+  extras.end_sync(resources, shapes, state);
 }
 
 void Instance::draw(Manager &manager)
@@ -204,12 +205,12 @@ void Instance::draw(Manager &manager)
 
   background.draw(resources, manager);
 
-  empties.draw(resources, manager, view);
+  extras.draw(resources, manager, view);
   metaballs.draw(resources, manager, view);
 
   grid.draw(resources, manager, view);
 
-  empties.draw_in_front(resources, manager, view);
+  extras.draw_in_front(resources, manager, view);
   metaballs.draw_in_front(resources, manager, view);
 
   // anti_aliasing.draw(resources, manager, view);
