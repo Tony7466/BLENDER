@@ -23,7 +23,6 @@
 #include "DNA_customdata_types.h" /* Scene's runtime custom-data masks. */
 #include "DNA_layer_types.h"
 #include "DNA_listBase.h"
-#include "DNA_mesh_types.h"
 #include "DNA_vec_types.h"
 #include "DNA_view3d_types.h"
 
@@ -1849,6 +1848,18 @@ typedef struct SceneGpencil {
   char _pad[4];
 } SceneGpencil;
 
+typedef struct OnionSkinMesh {
+  struct OnionSkinMesh *prev, *next;
+  /* Having a Mesh pointer here breaks compilation. Complains about "extern C" issues. */
+  void *mesh;
+} OnionSkinMesh;
+
+typedef struct SceneOnionSkin {
+  float color[3];
+  float alpha;
+  ListBase meshes /* OnionSkinMesh */;
+} SceneOnionSkin;
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1875,17 +1886,6 @@ enum {
 /* -------------------------------------------------------------------- */
 /** \name Scene ID-Block
  * \{ */
-
-typedef struct OnionSkinMesh {
-  struct OnionSkinMesh *prev, *next;
-  Mesh *mesh;
-} OnionSkinMesh;
-
-typedef struct SceneOnionSkin {
-  float color[3];
-  float alpha;
-  ListBase meshes /* OnionSkinMesh */;
-} SceneOnionSkin;
 
 typedef struct Scene {
   ID id;
