@@ -59,15 +59,6 @@ static bool calculate_to_frame_poll(bContext *C)
   return true;
 }
 
-struct ModifierCalculateData {
-  NodesModifierData *nmd;
-  std::unique_ptr<bke::sim::BDataSharing> bdata_sharing;
-};
-
-struct ObjectCalculateData {
-  Object *object;
-};
-
 struct CalculateSimulationJob {
   wmWindowManager *wm;
   Main *bmain;
@@ -90,13 +81,11 @@ static void calculate_simulation_job_startjob(void *customdata,
   G.is_break = false;
   WM_set_locked_interface(job.wm, true);
 
-  Vector<ObjectCalculateData> objects_to_calc;
+  Vector<Object *> objects_to_calc;
   for (Object *object : job.objects) {
     if (!BKE_id_is_editable(job.bmain, &object->id)) {
       continue;
     }
-    ObjectCalculateData calc_data;
-    calc_data.object = object;
     LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
       if (md->type == eModifierType_Nodes) {
         NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
@@ -105,7 +94,7 @@ static void calculate_simulation_job_startjob(void *customdata,
         }
       }
     }
-    objects_to_calc.append(std::move(calc_data));
+    objects_to_calc.append(object);
   }
 
   *progress = 0.0f;
