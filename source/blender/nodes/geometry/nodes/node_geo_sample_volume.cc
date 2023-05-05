@@ -3,6 +3,8 @@
 #include "DEG_depsgraph_query.h"
 
 #include "BKE_volume.h"
+#include "NOD_add_node_search.hh"
+#include "NOD_socket_search_link.hh"
 #include "node_geometry_util.hh"
 
 #include "UI_interface.h"
@@ -34,6 +36,20 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Float>(N_("Value"), "Value_001");
   b.add_output<decl::Bool>(N_("Value"), "Value_002");
   b.add_output<decl::Int>(N_("Value"), "Value_003");
+}
+
+static void search_node_add_ops(GatherAddNodeSearchParams &params)
+{
+  if (U.experimental.use_new_volume_nodes) {
+    blender::nodes::search_node_add_ops_for_basic_node(params);
+  }
+}
+
+static void search_link_ops(GatherLinkSearchOpParams &params)
+{
+  if (U.experimental.use_new_volume_nodes) {
+    blender::nodes::search_link_ops_for_basic_node(params);
+  }
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -222,6 +238,8 @@ void register_node_type_geo_sample_volume()
   ntype.declare = file_ns::node_declare;
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   ntype.draw_buttons = file_ns::node_layout;
+  ntype.gather_add_node_search_ops = file_ns::search_node_add_ops;
+  ntype.gather_link_search_ops = file_ns::search_link_ops;
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   nodeRegisterType(&ntype);
 }
