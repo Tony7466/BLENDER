@@ -216,7 +216,6 @@ void ANIM_set_active_channel(bAnimContext *ac,
 
 bool ANIM_is_active_channel(bAnimListElem *ale)
 {
-  bool is_active_found = false;
   switch (ale->type) {
     case ANIMTYPE_FILLACTD: /* Action Expander */
     case ANIMTYPE_DSMAT:    /* Datablock AnimData Expanders */
@@ -243,27 +242,23 @@ bool ANIM_is_active_channel(bAnimListElem *ale)
     case ANIMTYPE_NLAACTION:
     case ANIMTYPE_DSSIMULATION: {
       if (ale->adt) {
-        is_active_found = ale->adt->flag & ADT_UI_ACTIVE;
+        return ale->adt->flag & ADT_UI_ACTIVE;
       }
-      break;
     }
     case ANIMTYPE_GROUP: {
       bActionGroup *argp = (bActionGroup *)ale->data;
-      is_active_found = argp->flag & AGRP_ACTIVE;
-      break;
+      return argp->flag & AGRP_ACTIVE;
     }
     case ANIMTYPE_FCURVE:
     case ANIMTYPE_NLACURVE: {
       FCurve *fcu = (FCurve *)ale->data;
-      is_active_found = fcu->flag & FCURVE_ACTIVE;
-      break;
+      return fcu->flag & FCURVE_ACTIVE;
     }
     case ANIMTYPE_GPLAYER: {
       bGPDlayer *gpl = (bGPDlayer *)ale->data;
-      is_active_found = gpl->flag & GP_LAYER_ACTIVE;
-      break;
+      return gpl->flag & GP_LAYER_ACTIVE;
     }
-      return is_active_found;
+      return false;
   }
 }
 
@@ -3170,16 +3165,14 @@ static void animchannel_select_range(bAnimContext *ac, bAnimListElem *cursor_ele
   bool in_selection_range = false;
 
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    bool is_active_elem = false;
-    const bool is_selection_allowed = (ale->type == cursor_elem->type);
-    const bool is_cursor_elem = (ale->data == cursor_elem->data);
 
-    /* Allow selection when active and clicked channel has same type. */
-    if (!is_selection_allowed) {
+    /* Allow selection when active channel and `cursor_elem` are of same type. */
+    if (ale->type != cursor_elem->type) {
       continue;
     }
 
-    is_active_elem = ANIM_is_active_channel(ale);
+    const bool is_cursor_elem = (ale->data == cursor_elem->data);
+    const bool is_active_elem = ANIM_is_active_channel(ale);
 
     /* Restrict selection when active element is not found and group-channels are excluded from the
      * selection. */

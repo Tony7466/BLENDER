@@ -109,11 +109,15 @@ void ED_pose_bone_select(Object *ob, bPoseChannel *pchan, bool select, bool chan
     /* change selection state - activate too if selected */
     if (select) {
       pchan->bone->flag |= BONE_SELECTED;
-      arm->act_bone = change_active ? pchan->bone : arm->act_bone;
+      if (change_active) {
+        arm->act_bone = pchan->bone;
+      }
     }
     else {
       pchan->bone->flag &= ~BONE_SELECTED;
-      arm->act_bone = change_active ? NULL : arm->act_bone;
+      if (change_active) {
+        arm->act_bone = pchan->bone;
+      }
     }
 
     /* TODO: select and activate corresponding vgroup? */
