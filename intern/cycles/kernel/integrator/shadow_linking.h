@@ -50,6 +50,22 @@ ccl_device_forceinline void shadow_linking_restore_last_primitives(IntegratorSta
       state, shadow_link, last_isect_object);
 }
 
+/* Schedule shadow linking intersection kernel if it is needed.
+ * Returns true if the shadow linking specific kernel has been scheduled, false otherwise. */
+template<DeviceKernel current_kernel>
+ccl_device_inline bool shadow_linking_schedule_intersection_kernel(KernelGlobals kg,
+                                                                   IntegratorState state)
+{
+  if (!shadow_linking_scene_need_shadow_ray(kg, state)) {
+    return false;
+  }
+
+  integrator_path_next(
+      kg, state, current_kernel, DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT);
+
+  return true;
+}
+
 #endif /* __SHADOW_LINKING__ */
 
 CCL_NAMESPACE_END

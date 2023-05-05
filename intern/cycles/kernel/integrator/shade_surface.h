@@ -737,33 +737,6 @@ ccl_device int integrate_surface(KernelGlobals kg,
   return continue_path_label;
 }
 
-#ifdef __SHADOW_LINKING__
-
-/* Schedule shadow linking intersection kernel if it is needed.
- * Returns true if the shadow linking specific kernel has been scheduled, false otherwise. */
-template<DeviceKernel current_kernel>
-ccl_device_inline bool shadow_linking_schedule_intersection_kernel(KernelGlobals kg,
-                                                                   IntegratorState state,
-                                                                   const int continue_path_label)
-{
-  if (continue_path_label & LABEL_TRANSPARENT) {
-    /* No need to cast shadow linking rays at a transparent bounce: the lights will be accumulated
-     * via the main path in this case. */
-    return false;
-  }
-
-  if (!shadow_linking_scene_need_shadow_ray(kg, state)) {
-    return false;
-  }
-
-  integrator_path_next(
-      kg, state, current_kernel, DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT);
-
-  return true;
-}
-
-#endif
-
 template<DeviceKernel current_kernel>
 ccl_device_forceinline void integrator_shade_surface_next_kernel(KernelGlobals kg,
                                                                  IntegratorState state)
@@ -784,20 +757,22 @@ ccl_device_forceinline void integrator_shade_surface(KernelGlobals kg,
                                                      ccl_global float *ccl_restrict render_buffer)
 {
   const int continue_path_label = integrate_surface<node_feature_mask>(kg, state, render_buffer);
+  if (continue_path_label == LABEL_NONE) {
+    integrator_path_terminate(kg, state, current_kernel);
+    return;
+  }
 
-  if (continue_path_label != LABEL_NONE) {
 #ifdef __SHADOW_LINKING__
-    if (shadow_linking_schedule_intersection_kernel<current_kernel>(
-            kg, state, continue_path_label)) {
+  /* No need to cast shadow linking rays at a transparent bounce: the lights will be accumulated
+   * via the main path in this case. */
+  if ((continue_path_label & LABEL_TRANSPARENT) == 0) {
+    if (shadow_linking_schedule_intersection_kernel<current_kernel>(kg, state)) {
       return;
     }
+  }
 #endif
 
-    integrator_shade_surface_next_kernel<current_kernel>(kg, state);
-  }
-  else {
-    integrator_path_terminate(kg, state, current_kernel);
-  }
+  integrator_shade_surface_next_kernel<current_kernel>(kg, state);
 }
 
 ccl_device_forceinline void integrator_shade_surface_raytrace(
