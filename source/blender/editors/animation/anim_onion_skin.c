@@ -32,8 +32,15 @@ static int onion_skin_add_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
 
   Object *ob = CTX_data_active_object(C);
+  if (!ob) {
+    return OPERATOR_CANCELLED;
+  }
   Mesh *mesh = BKE_mesh_from_object(ob);
-  Mesh *copy = BKE_mesh_copy_for_eval(mesh);
+  if (!mesh) {
+    return OPERATOR_CANCELLED;
+  }
+  /* Mesh *copy = BKE_mesh_copy_for_eval(mesh); */
+  Mesh *copy = (Mesh *)BKE_id_copy_ex(NULL, &mesh->id, NULL, LIB_ID_COPY_LOCALIZE);
 
   OnionSkinMeshLink *link = MEM_callocN(sizeof(OnionSkinMeshLink), "onion skin mesh link");
   link->mesh = copy;
