@@ -146,7 +146,8 @@ bool OptiXDeviceQueue::enqueue(DeviceKernel kernel,
       break;
     case DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT:
       pipeline = optix_device->pipelines[PIP_INTERSECT];
-      sbt_params.raygenRecord = sbt_data_ptr + PG_RGEN_INTERSECT_BLOCKER_LIGHT * sizeof(SbtRecord);
+      sbt_params.raygenRecord = sbt_data_ptr +
+                                PG_RGEN_INTERSECT_DEDICATED_LIGHT * sizeof(SbtRecord);
       break;
 
     case DEVICE_KERNEL_SHADER_EVAL_DISPLACE:

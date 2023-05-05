@@ -667,7 +667,7 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
     pipeline_groups.push_back(groups[PG_RGEN_INTERSECT_SHADOW]);
     pipeline_groups.push_back(groups[PG_RGEN_INTERSECT_SUBSURFACE]);
     pipeline_groups.push_back(groups[PG_RGEN_INTERSECT_VOLUME_STACK]);
-    pipeline_groups.push_back(groups[PG_RGEN_INTERSECT_BLOCKER_LIGHT]);
+    pipeline_groups.push_back(groups[PG_RGEN_INTERSECT_DEDICATED_LIGHT]);
     pipeline_groups.push_back(groups[PG_MISS]);
     pipeline_groups.push_back(groups[PG_HITD]);
     pipeline_groups.push_back(groups[PG_HITS]);
