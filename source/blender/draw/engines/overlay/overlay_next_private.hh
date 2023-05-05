@@ -251,6 +251,34 @@ class Grid {
   void update_ubo(const State &state, const View &view);
 };
 
+/**
+ * Contains all overlay generic geometry batches.
+ */
+class ShapeCache {
+ private:
+  struct BatchDeleter {
+    void operator()(GPUBatch *shader)
+    {
+      GPU_BATCH_DISCARD_SAFE(shader);
+    }
+  };
+  using BatchPtr = std::unique_ptr<GPUBatch, BatchDeleter>;
+
+ public:
+  ShapeCache();
+
+  BatchPtr quad_wire;
+  BatchPtr plain_axes;
+  BatchPtr single_arrow;
+  BatchPtr cube;
+  BatchPtr circle;
+  BatchPtr empty_sphere;
+  BatchPtr empty_cone;
+  BatchPtr arrows;
+  BatchPtr metaball_wire_circle;
+  BatchPtr speaker;
+};
+
 class Empties {
   using EmptyInstanceBuf = ShapeInstanceBuf<ExtraInstanceData>;
 
@@ -270,6 +298,7 @@ class Empties {
     EmptyInstanceBuf cone_buf = {selection_type_, "cone_buf"};
     EmptyInstanceBuf arrows_buf = {selection_type_, "arrows_buf"};
     EmptyInstanceBuf image_buf = {selection_type_, "image_buf"};
+    EmptyInstanceBuf speaker_buf = {selection_type_, "image_buf"};
   } call_buffers_[2] = {{selection_type_}, {selection_type_}};
 
  public:

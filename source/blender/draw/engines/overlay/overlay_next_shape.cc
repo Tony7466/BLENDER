@@ -36,6 +36,7 @@ static GPUVertBuf *vbo_from_vector(Vector<Vertex> &vector)
 }
 
 enum VertexClass {
+  VCLASS_NONE = 0,
   VCLASS_LIGHT_AREA_SHAPE = 1 << 0,
   VCLASS_LIGHT_SPOT_SHAPE = 1 << 1,
   VCLASS_LIGHT_SPOT_BLEND = 1 << 2,
@@ -320,6 +321,46 @@ ShapeCache::ShapeCache()
     metaball_wire_circle = BatchPtr(GPU_batch_create_ex(
         GPU_PRIM_LINE_STRIP, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
   };
+  /* speaker */
+  {
+    const int segments = 16;
+    Vector<Vertex> verts;
+
+    for (int i : IndexRange(3)) {
+      float r = (i == 0 ? 0.5f : 0.25f);
+      float z = 0.25f * i - 0.125f;
+
+      verts.append({float3(r, 0.0f, z), VCLASS_NONE});
+
+      for (float2 v : ring_vertices(r, segments)) {
+        verts.append({float3(v, z), VCLASS_NONE});
+        verts.append({float3(v, z), VCLASS_NONE});
+      }
+
+      verts.append({float3(r, 0.0f, z), VCLASS_NONE});
+    }
+
+    for (int i : IndexRange(4)) {
+      float x = (((i + 1) % 2) * (i - 1)) * 0.5f;
+      float y = ((i % 2) * (i - 2)) * 0.5f;
+
+      for (int i2 : IndexRange(3)) {
+        if (i2 == 1) {
+          x *= 0.5f;
+          y *= 0.5f;
+        }
+        float z = 0.25f * i2 - 0.125f;
+
+        verts.append({float3(x, y, z), VCLASS_NONE});
+        if (i2 == 1) {
+          verts.append({float3(x, y, z), VCLASS_NONE});
+        }
+      }
+    }
+
+    speaker = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
 }
 
 }  // namespace blender::draw::overlay

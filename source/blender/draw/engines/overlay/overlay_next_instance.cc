@@ -118,6 +118,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
   if (!state.hide_overlays) {
     switch (ob_ref.object->type) {
       case OB_EMPTY:
+      case OB_SPEAKER:
         empties.object_sync(ob_ref, resources, state);
         break;
       case OB_ARMATURE:

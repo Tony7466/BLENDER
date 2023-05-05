@@ -21,6 +21,7 @@ void Empties::begin_sync()
     call_buffers_[i].cone_buf.clear();
     call_buffers_[i].arrows_buf.clear();
     call_buffers_[i].image_buf.clear();
+    call_buffers_[i].speaker_buf.clear();
   }
 }
 
@@ -29,36 +30,43 @@ void Empties::object_sync(const ObjectRef &ob_ref, Resources &res, const State &
   CallBuffers &call_bufs = call_buffers_[int((ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0)];
 
   float4 color = res.object_wire_color(ob_ref, state);
-  ExtraInstanceData data(
-      float4x4(ob_ref.object->object_to_world), color, ob_ref.object->empty_drawsize);
+  float size = ob_ref.object->type == OB_EMPTY ? ob_ref.object->empty_drawsize : 1.0f;
+  ExtraInstanceData data(float4x4(ob_ref.object->object_to_world), color, size);
 
   const select::ID select_id = res.select_id(ob_ref);
 
-  switch (ob_ref.object->empty_drawtype) {
-    case OB_PLAINAXES:
-      call_bufs.plain_axes_buf.append(data, select_id);
+  switch (ob_ref.object->type) {
+    case OB_SPEAKER:
+      call_bufs.speaker_buf.append(data, select_id);
       break;
-    case OB_SINGLE_ARROW:
-      call_bufs.single_arrow_buf.append(data, select_id);
-      break;
-    case OB_CUBE:
-      call_bufs.cube_buf.append(data, select_id);
-      break;
-    case OB_CIRCLE:
-      call_bufs.circle_buf.append(data, select_id);
-      break;
-    case OB_EMPTY_SPHERE:
-      call_bufs.sphere_buf.append(data, select_id);
-      break;
-    case OB_EMPTY_CONE:
-      call_bufs.cone_buf.append(data, select_id);
-      break;
-    case OB_ARROWS:
-      call_bufs.arrows_buf.append(data, select_id);
-      break;
-    case OB_EMPTY_IMAGE:
-      /* This only show the frame. See OVERLAY_image_empty_cache_populate() for the image. */
-      call_bufs.image_buf.append(data, select_id);
+    case OB_EMPTY:
+      switch (ob_ref.object->empty_drawtype) {
+        case OB_PLAINAXES:
+          call_bufs.plain_axes_buf.append(data, select_id);
+          break;
+        case OB_SINGLE_ARROW:
+          call_bufs.single_arrow_buf.append(data, select_id);
+          break;
+        case OB_CUBE:
+          call_bufs.cube_buf.append(data, select_id);
+          break;
+        case OB_CIRCLE:
+          call_bufs.circle_buf.append(data, select_id);
+          break;
+        case OB_EMPTY_SPHERE:
+          call_bufs.sphere_buf.append(data, select_id);
+          break;
+        case OB_EMPTY_CONE:
+          call_bufs.cone_buf.append(data, select_id);
+          break;
+        case OB_ARROWS:
+          call_bufs.arrows_buf.append(data, select_id);
+          break;
+        case OB_EMPTY_IMAGE:
+          /* This only show the frame. See OVERLAY_image_empty_cache_populate() for the image. */
+          call_bufs.image_buf.append(data, select_id);
+          break;
+      }
       break;
   }
 }
@@ -81,6 +89,7 @@ void Empties::end_sync(Resources &res, ShapeCache &shapes, const State &state)
     call_bufs.cone_buf.end_sync(pass, shapes.empty_cone.get());
     call_bufs.arrows_buf.end_sync(pass, shapes.arrows.get());
     call_bufs.image_buf.end_sync(pass, shapes.quad_wire.get());
+    call_bufs.speaker_buf.end_sync(pass, shapes.speaker.get());
   };
   init_pass(empty_ps_, call_buffers_[0]);
   init_pass(empty_in_front_ps_, call_buffers_[1]);
