@@ -463,14 +463,18 @@ void OBJECT_OT_simulation_nodes_cache_calculate_to_frame(wmOperatorType *ot)
 
   ot->name = "Calculate Simulation to Frame";
   ot->description =
-      "Calculate simulations in geometry nodes modifiers from start to current frame";
+      "Calculate simulations in geometry nodes modifiers from the start to current frame";
   ot->idname = __func__;
 
   ot->invoke = calculate_to_frame_invoke;
   ot->modal = calculate_to_frame_modal;
   ot->poll = calculate_to_frame_poll;
 
-  RNA_def_boolean(ot->srna, "selected", false, "Selected", "Bake cache on all selected objects");
+  RNA_def_boolean(ot->srna,
+                  "selected",
+                  false,
+                  "Selected",
+                  "Calculate all selected objects instead of just the active object");
 }
 
 void OBJECT_OT_simulation_nodes_cache_bake(wmOperatorType *ot)
