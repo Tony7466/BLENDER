@@ -25,6 +25,7 @@
 #include "BKE_global.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.h"
+#include "BKE_mesh_runtime.h"
 #include "BKE_object.h"
 
 #include "ED_mesh.h"
@@ -249,7 +250,8 @@ static void build_poly_connections(blender::AtomicDisjointSet &islands,
         }
 
         for (const int inner_edge :
-             poly_edges.slice(poly_loop_index, poly_edges.size() - poly_loop_index)) {
+             poly_edges.slice(poly_loop_index, poly_edges.size() - poly_loop_index))
+        {
           if (outer_edge == inner_edge) {
             continue;
           }
@@ -345,6 +347,69 @@ void paintface_select_linked(bContext *C, Object *ob, const int mval[2], const b
   select_poly.finish();
 
   paintface_select_linked_faces(*me, indices, select);
+  paintface_flush_flags(C, ob, true, false);
+}
+
+void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const bool select)
+{
+  using namespace blender;
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+  ViewContext vc;
+  ED_view3d_viewcontext_init(C, &vc, depsgraph);
+  ED_view3d_select_id_validate(&vc);
+
+  Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
+  if (!ob_eval) {
+    return;
+  }
+
+  /* Need to use the evaluated mesh for projection to region space. */
+  Scene *scene_eval = DEG_get_evaluated_scene(vc.depsgraph);
+  Mesh *mesh = mesh_get_eval_final(vc.depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH);
+  if (mesh == nullptr || mesh->totpoly == 0) {
+    return;
+  }
+
+  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
+  bke::SpanAttributeWriter<bool> select_poly = attributes.lookup_or_add_for_write_span<bool>(
+      ".select_poly", ATTR_DOMAIN_FACE);
+
+  uint index = uint(-1);
+  if (!ED_mesh_pick_face(C, ob_eval, mval, ED_MESH_PICK_DEFAULT_FACE_DIST, &index)) {
+    select_poly.finish();
+    return;
+  }
+  const Span<int> corner_edges = mesh->corner_edges();
+  const Span<float3> verts = mesh->vert_positions();
+  const OffsetIndices polys = mesh->polys();
+  const Span<int2> edges = mesh->edges();
+  IndexRange poly = polys[index];
+
+  int2 closest_edge;
+
+  const float mval_f[2] = {float(mval[0]), float(mval[1])};
+  float min_distance = FLT_MAX;
+  for (const int i : corner_edges.slice(poly)) {
+    float screen_coordinate[2];
+    const int2 edge = edges[corner_edges[i]];
+    const float3 v1 = verts[edge[0]];
+    const float3 v2 = verts[edge[1]];
+    float3 edge_vert_average;
+    add_v3_v3v3(edge_vert_average, v1, v2);
+    mul_v3_fl(edge_vert_average, 0.5f);
+    eV3DProjStatus status = ED_view3d_project_float_object(
+        CTX_wm_region(C), edge_vert_average, screen_coordinate, V3D_PROJ_TEST_CLIP_DEFAULT);
+    if (status != V3D_PROJ_RET_OK) {
+      continue;
+    }
+    const float distance = len_v2v2(screen_coordinate, mval_f);
+    if (distance < min_distance) {
+      min_distance = distance;
+      closest_edge = edge;
+    }
+  }
+
+  select_poly.finish();
   paintface_flush_flags(C, ob, true, false);
 }
 

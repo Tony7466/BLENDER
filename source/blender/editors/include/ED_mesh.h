@@ -419,6 +419,8 @@ void paintface_select_linked(struct bContext *C,
                              struct Object *ob,
                              const int mval[2],
                              bool select);
+
+void paintface_select_loop(struct bContext *C, struct Object *ob, const int mval[2], bool select);
 /** Grow the selection of faces.
  * \param face_step If true will also select faces that only touch on the corner.
  */

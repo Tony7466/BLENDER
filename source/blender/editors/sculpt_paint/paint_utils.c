@@ -756,6 +756,29 @@ void PAINT_OT_face_select_less(wmOperatorType *ot)
       ot->srna, "face_step", true, "Face Step", "Also deselect faces that only touch on a corner");
 }
 
+static int paintface_select_loop_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  const bool select = !RNA_boolean_get(op->ptr, "deselect");
+  view3d_operator_needs_opengl(C);
+  paintface_select_loop(C, CTX_data_active_object(C), event->mval, select);
+  ED_region_tag_redraw(CTX_wm_region(C));
+  return OPERATOR_FINISHED;
+}
+
+void PAINT_OT_face_select_loop(wmOperatorType *ot)
+{
+  ot->name = "Select Loop";
+  ot->description = "Select face loop under the cursor";
+  ot->idname = "PAINT_OT_face_select_loop";
+
+  ot->invoke = paintface_select_loop_invoke;
+  ot->poll = facemask_paint_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  RNA_def_boolean(ot->srna, "deselect", 0, "Deselect", "Deselect rather than select items");
+}
+
 static int vert_select_all_exec(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
