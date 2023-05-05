@@ -203,9 +203,8 @@ void ED_screen_user_menu_item_remove(ListBase *lb, bUserMenuItem *umi)
 /** \name Menu Definition
  * \{ */
 
-static void screen_user_menu_draw(const bContext *C_const, Menu *menu)
+static void screen_user_menu_draw(const bContext *C, Menu *menu)
 {
-  bContext *C = (bContext *)C_const;
   /* Enable when we have the ability to edit menus. */
   const bool show_missing = false;
   char label[512];
