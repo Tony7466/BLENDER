@@ -7,6 +7,7 @@
 #include <pxr/imaging/hd/tokens.h>
 #include <pxr/usd/usdLux/tokens.h>
 
+#include "BLI_math_rotation.h"
 #include "DNA_light_types.h"
 
 #include "blender_scene_delegate.h"
@@ -29,26 +30,30 @@ void LightData::init()
   data_.clear();
 
   float intensity = light->energy;
-  if (scene_delegate_->engine_type == BlenderSceneDelegate::EngineType::PREVIEW) {
-    intensity *= 0.001;
-  }
-  data_[pxr::HdLightTokens->intensity] = intensity;
-
   data_[pxr::HdLightTokens->color] = pxr::GfVec3f(light->r, light->g, light->b);
 
   switch (light->type) {
     case LA_LOCAL:
-      data_[pxr::HdLightTokens->radius] = light->area_size / 2;
+      if (light->radius <= FLT_EPSILON) {
+        /* extremely small object should be considered as point */
+        data_[pxr::UsdLuxTokens->treatAsPoint] = true;
+      }
+      else {
+        data_[pxr::HdLightTokens->radius] = light->radius;
+        data_[pxr::HdLightTokens->normalize] = true;
+      }
+      intensity /= 40.0f; /* coefficient approximated to follow Cycles results */
       break;
 
     case LA_SUN:
-      data_[pxr::HdLightTokens->angle] = light->sun_angle * 180.0 / M_PI;
+      data_[pxr::HdLightTokens->angle] = RAD2DEGF(light->sun_angle * 0.5f);
       break;
 
     case LA_SPOT:
-      data_[pxr::HdLightTokens->shapingConeAngle] = light->spotsize / 2;
-      data_[pxr::HdLightTokens->shapingConeSoftness] = light->spotblend;
+      data_[pxr::UsdLuxTokens->inputsShapingConeAngle] = RAD2DEGF(light->spotsize * 0.5f);
+      data_[pxr::UsdLuxTokens->inputsShapingConeSoftness] = light->spotblend;
       data_[pxr::UsdLuxTokens->treatAsPoint] = true;
+      intensity /= 10.0f; /* coefficient approximated to follow Cycles results */
       break;
 
     case LA_AREA:
@@ -56,18 +61,22 @@ void LightData::init()
         case LA_AREA_SQUARE:
           data_[pxr::HdLightTokens->width] = light->area_size;
           data_[pxr::HdLightTokens->height] = light->area_size;
+          intensity /= 4.0f; /* coefficient approximated to follow Cycles results */
           break;
         case LA_AREA_RECT:
           data_[pxr::HdLightTokens->width] = light->area_size;
           data_[pxr::HdLightTokens->height] = light->area_sizey;
+          intensity /= 4.0f; /* coefficient approximated to follow Cycles results */
           break;
 
         case LA_AREA_DISK:
-          data_[pxr::HdLightTokens->radius] = light->area_size / 2;
+          data_[pxr::HdLightTokens->radius] = light->area_size / 2.0f;
+          intensity /= 16.0f; /* coefficient approximated to follow Cycles results */
           break;
 
         case LA_AREA_ELLIPSE:
-          data_[pxr::HdLightTokens->radius] = (light->area_size + light->area_sizey) / 4;
+          data_[pxr::HdLightTokens->radius] = (light->area_size + light->area_sizey) / 4.0f;
+          intensity /= 16.0f; /* coefficient approximated to follow Cycles results */
           break;
 
         default:
@@ -80,10 +89,10 @@ void LightData::init()
       break;
   }
 
-  prim_type_ = prim_type(light);
+  data_[pxr::HdLightTokens->intensity] = intensity;
+  data_[pxr::HdLightTokens->exposure] = 0.0f;
 
-  /* TODO: temporary value, it should be delivered through Python UI */
-  data_[pxr::HdLightTokens->exposure] = 1.0f;
+  prim_type_ = prim_type(light);
 
   write_transform();
 }
