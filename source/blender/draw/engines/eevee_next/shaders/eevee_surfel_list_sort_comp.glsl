@@ -74,7 +74,7 @@ bool is_valid_surfel_link(int a, int b)
 
 void main()
 {
-  int list_index = int(gl_GlobalInvocationID);
+  int list_index = int(gl_GlobalInvocationID.x);
   if (list_index >= list_info_buf.list_max) {
     return;
   }

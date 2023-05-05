@@ -187,12 +187,12 @@ void shadow_tag_usage(vec3 vP, vec3 P, vec2 pixel)
   shadow_tag_usage(vP, P, vec3(0), 0, dist_to_cam, pixel);
 }
 
-void shadow_tag_usage_surfel(Surfel surfel, int directional_level)
+void shadow_tag_usage_surfel(Surfel surfel, int directional_lvl)
 {
   vec3 P = surfel.position;
 
   LIGHT_FOREACH_BEGIN_DIRECTIONAL (light_cull_buf, l_idx) {
-    shadow_tag_usage_tilemap_directional_at_level(l_idx, P, directional_level);
+    shadow_tag_usage_tilemap_directional_at_level(l_idx, P, directional_lvl);
   }
   LIGHT_FOREACH_END
 

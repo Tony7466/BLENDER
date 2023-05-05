@@ -33,11 +33,11 @@ void irradiance_capture(Surfel surfel_emitter, vec3 P, inout SphericalHarmonicL1
 
 void main()
 {
-  if (any(greaterThanEqual(gl_GlobalInvocationID, capture_info_buf.irradiance_grid_size))) {
+  ivec3 grid_coord = ivec3(gl_GlobalInvocationID);
+
+  if (any(greaterThanEqual(grid_coord, capture_info_buf.irradiance_grid_size))) {
     return;
   }
-
-  ivec3 grid_coord = ivec3(gl_GlobalInvocationID);
 
   vec3 P = lightprobe_irradiance_grid_sample_position(
       capture_info_buf.irradiance_grid_local_to_world,

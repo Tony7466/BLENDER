@@ -17,14 +17,13 @@ void main()
   lP = pos[gl_VertexID % 6];
   int cell_index = gl_VertexID / 6;
 
-  ivec3 grid_resolution = textureSize(irradiance_a_tx, 0);
+  ivec3 grid_res = grid_resolution;
 
-  cell = ivec3(cell_index / (grid_resolution.z * grid_resolution.y),
-               (cell_index / grid_resolution.z) % grid_resolution.y,
-               cell_index % grid_resolution.z);
+  cell = ivec3(cell_index / (grid_res.z * grid_res.y),
+               (cell_index / grid_res.z) % grid_res.y,
+               cell_index % grid_res.z);
 
-  vec3 ws_cell_pos = lightprobe_irradiance_grid_sample_position(
-      grid_to_world, grid_resolution, cell);
+  vec3 ws_cell_pos = lightprobe_irradiance_grid_sample_position(grid_to_world, grid_res, cell);
 
   vec3 vs_offset = vec3(lP, 0.0) * sphere_radius;
   vec3 vP = (ViewMatrix * vec4(ws_cell_pos, 1.0)).xyz + vs_offset;

@@ -25,7 +25,7 @@ vec3 lightprobe_irradiance_grid_atlas_coord(IrradianceGridData grid_data, vec3 l
   int brick_index = lightprobe_irradiance_grid_brick_index_get(grid_data, brick_coord);
 
   IrradianceBrick brick = irradiance_brick_unpack(bricks_infos_buf[brick_index]);
-  vec3 output_coord = vec3(brick.atlas_coord, 0.0) + brick_lP;
+  vec3 output_coord = vec3(vec2(brick.atlas_coord), 0.0) + brick_lP;
 
   return output_coord;
 }
