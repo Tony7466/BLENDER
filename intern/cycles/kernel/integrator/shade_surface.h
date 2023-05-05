@@ -3,6 +3,9 @@
 
 #pragma once
 
+#include "kernel/integrator/path_state.h"
+#include "kernel/integrator/surface_shader.h"
+
 #include "kernel/film/data_passes.h"
 #include "kernel/film/denoising_passes.h"
 #include "kernel/film/light_passes.h"
@@ -10,10 +13,8 @@
 #include "kernel/integrator/mnee.h"
 
 #include "kernel/integrator/guiding.h"
-#include "kernel/integrator/path_state.h"
 #include "kernel/integrator/shadow_linking.h"
 #include "kernel/integrator/subsurface.h"
-#include "kernel/integrator/surface_shader.h"
 #include "kernel/integrator/volume_stack.h"
 
 #include "kernel/light/sample.h"
