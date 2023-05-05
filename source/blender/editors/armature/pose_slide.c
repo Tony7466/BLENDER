@@ -358,7 +358,7 @@ static bool pose_frame_range_from_object_get(tPoseSlideOp *pso,
 static void pose_slide_apply_val(tPoseSlideOp *pso, FCurve *fcu, Object *ob, float *val)
 {
   float prev_frame, next_frame;
-  float next_weight, prev_weight;
+  float prev_weight, next_weight;
   pose_frame_range_from_object_get(pso, ob, &prev_frame, &next_frame);
 
   const float factor = ED_slider_factor_get(pso->slider);
@@ -367,8 +367,8 @@ static void pose_slide_apply_val(tPoseSlideOp *pso, FCurve *fcu, Object *ob, flo
   /* Calculate the relative weights of the endpoints. */
   if (pso->mode == POSESLIDE_BREAKDOWN) {
     /* Get weights from the factor control. */
-    next_weight = factor;             /* This must come second. */
-    prev_weight = 1.0f - next_weight; /* This must come first. */
+    next_weight = factor;
+    prev_weight = 1.0f - next_weight;
   }
   else {
     /* - these weights are derived from the relative distance of these
@@ -389,11 +389,7 @@ static void pose_slide_apply_val(tPoseSlideOp *pso, FCurve *fcu, Object *ob, flo
   const float prev_frame_y = evaluate_fcurve(fcu, prev_frame);
   const float next_frame_y = evaluate_fcurve(fcu, next_frame);
 
-  /* Depending on the mode, calculate the new value:
-   * - In all of these, the start+end values are multiplied by prev_weight and next_weight
-   * (respectively), since multiplication in another order would decrease the value the current
-   * frame is closer to.
-   */
+  /* Depending on the mode, calculate the new value. */
   switch (pso->mode) {
     case POSESLIDE_PUSH: /* Make the current pose more pronounced. */
     {
@@ -685,11 +681,11 @@ static void pose_slide_apply_quat(tPoseSlideOp *pso, tPChanFCurveLink *pfl)
         interp_qt_qtqt(quat_breakdown, quat_prev, quat_next, interp_factor);
 
         if (pso->mode == POSESLIDE_PUSH) {
-          interp_qt_qtqt(quat_final, quat_breakdown, quat_curr, 1.0f + interp_factor);
+          interp_qt_qtqt(quat_final, quat_breakdown, quat_curr, 1.0f + factor);
         }
         else {
           BLI_assert(pso->mode == POSESLIDE_RELAX);
-          interp_qt_qtqt(quat_final, quat_curr, quat_breakdown, interp_factor);
+          interp_qt_qtqt(quat_final, quat_curr, quat_breakdown, factor);
         }
       }
     }
