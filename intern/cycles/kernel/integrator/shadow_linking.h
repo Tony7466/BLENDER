@@ -50,6 +50,6 @@ ccl_device_forceinline void shadow_linking_restore_last_primitives(IntegratorSta
       state, shadow_link, last_isect_object);
 }
 
-#endif /* __SHADOW_CATCHER__ */
+#endif /* __SHADOW_LINKING__ */
 
 CCL_NAMESPACE_END
