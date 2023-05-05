@@ -68,6 +68,7 @@ class VKContext : public Context, NonCopyable {
   }
 
   const VKStateManager &state_manager_get() const;
+  VKStateManager &state_manager_get();
 };
 
 }  // namespace blender::gpu

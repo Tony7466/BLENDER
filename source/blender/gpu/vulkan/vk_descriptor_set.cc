@@ -28,7 +28,6 @@ VKDescriptorSet::~VKDescriptorSet()
 {
   if (vk_descriptor_set_ != VK_NULL_HANDLE) {
     /* Handle should be given back to the pool. */
-    BLI_assert(VKContext::get());
     VKDevice &device = VKBackend::get().device_;
     device.descriptor_pools_get().free(*this);
     BLI_assert(vk_descriptor_set_ == VK_NULL_HANDLE);

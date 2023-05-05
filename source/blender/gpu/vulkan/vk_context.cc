@@ -137,6 +137,11 @@ const VKStateManager &VKContext::state_manager_get() const
   return *static_cast<const VKStateManager *>(state_manager);
 }
 
+VKStateManager &VKContext::state_manager_get()
+{
+  return *static_cast<VKStateManager *>(state_manager);
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

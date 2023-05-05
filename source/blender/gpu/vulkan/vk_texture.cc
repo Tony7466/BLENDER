@@ -322,6 +322,7 @@ bool VKTexture::allocate()
   return result == VK_SUCCESS;
 }
 
+// TODO: move texture/image bindings to shader.
 void VKTexture::bind(int unit, VKSampler &sampler)
 {
   if (!is_allocated()) {
@@ -330,10 +331,13 @@ void VKTexture::bind(int unit, VKSampler &sampler)
   VKContext &context = *VKContext::get();
   VKShader *shader = static_cast<VKShader *>(context.shader);
   const VKShaderInterface &shader_interface = shader->interface_get();
-  const VKDescriptorSet::Location location = shader_interface.descriptor_set_location(
-      shader::ShaderCreateInfo::Resource::BindType::SAMPLER, unit);
-  VKDescriptorSetTracker &descriptor_set = shader->pipeline_get().descriptor_set_get();
-  descriptor_set.bind(*this, location, sampler);
+  const std::optional<VKDescriptorSet::Location> location =
+      shader_interface.descriptor_set_location(
+          shader::ShaderCreateInfo::Resource::BindType::SAMPLER, unit);
+  if (location) {
+    VKDescriptorSetTracker &descriptor_set = shader->pipeline_get().descriptor_set_get();
+    descriptor_set.bind(*this, *location, sampler);
+  }
 }
 
 void VKTexture::image_bind(int binding)
@@ -344,9 +348,13 @@ void VKTexture::image_bind(int binding)
   VKContext &context = *VKContext::get();
   VKShader *shader = static_cast<VKShader *>(context.shader);
   const VKShaderInterface &shader_interface = shader->interface_get();
-  const VKDescriptorSet::Location location = shader_interface.descriptor_set_location(
-      shader::ShaderCreateInfo::Resource::BindType::IMAGE, binding);
-  shader->pipeline_get().descriptor_set_get().image_bind(*this, location);
+  const std::optional<VKDescriptorSet::Location> location =
+      shader_interface.descriptor_set_location(shader::ShaderCreateInfo::Resource::BindType::IMAGE,
+                                               binding);
+  if (location) {
+    VKDescriptorSetTracker &descriptor_set = shader->pipeline_get().descriptor_set_get();
+    descriptor_set.image_bind(*this, *location);
+  }
 }
 
 void VKTexture::unbind()
