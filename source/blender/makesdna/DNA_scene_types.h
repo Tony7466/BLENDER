@@ -1848,16 +1848,16 @@ typedef struct SceneGpencil {
   char _pad[4];
 } SceneGpencil;
 
-typedef struct OnionSkinMesh {
-  struct OnionSkinMesh *prev, *next;
+typedef struct OnionSkinMeshLink {
+  struct OnionSkinMeshLink *prev, *next;
   /* Having a Mesh pointer here breaks compilation. Complains about "extern C" issues. */
   void *mesh;
-} OnionSkinMesh;
+} OnionSkinMeshLink;
 
 typedef struct SceneOnionSkin {
   float color[3];
   float alpha;
-  ListBase meshes /* OnionSkinMesh */;
+  ListBase meshes /* OnionSkinMeshLink */;
 } SceneOnionSkin;
 
 /** \} */

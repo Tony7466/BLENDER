@@ -715,6 +715,29 @@ class RENDER_PT_gpencil(RenderButtonsPanel, Panel):
         col.prop(props, "antialias_threshold")
 
 
+class RENDER_PT_onion_skins(RenderButtonsPanel, Panel):
+    bl_label = "Onion Skins"
+    bl_options = {'DEFAULT_CLOSED'}
+    bl_order = 10
+    COMPAT_ENGINES = {
+        'BLENDER_RENDER',
+        'BLENDER_EEVEE',
+        'BLENDER_EEVEE_NEXT',
+        'BLENDER_WORKBENCH',
+        'BLENDER_WORKBENCH_NEXT'}
+
+    def draw(self, context):
+        layout = self.layout
+        # layout.use_property_split = True
+        # layout.use_property_decorate = False  # No animation.
+
+        scene = context.scene
+
+        col = layout.column()
+        col.prop(scene, "onion_skin_color")
+        col.prop(scene, "onion_skin_alpha")
+
+
 class RENDER_PT_opengl_sampling(RenderButtonsPanel, Panel):
     bl_label = "Sampling"
     COMPAT_ENGINES = {'BLENDER_WORKBENCH', 'BLENDER_WORKBENCH_NEXT'}
@@ -921,6 +944,8 @@ classes = (
     RENDER_PT_simplify_viewport,
     RENDER_PT_simplify_render,
     RENDER_PT_simplify_greasepencil,
+
+    RENDER_PT_onion_skins,
 )
 
 if __name__ == "__main__":  # only for live edit.

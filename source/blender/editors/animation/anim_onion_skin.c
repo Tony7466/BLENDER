@@ -1,26 +1,44 @@
 #include "BKE_context.h"
+#include "BKE_lib_id.h"
+#include "BKE_mesh.h"
 #include "DNA_scene_types.h"
 #include "DNA_windowmanager_types.h"
-
 #include "ED_onion_skin.h"
 #include "MEM_guardedalloc.h"
 #include "WM_api.h"
 #include "WM_types.h"
 
-static int onion_skin_add_exec(bContext *C, wmOperator *op)
+static void graveyard()
 {
   ListBase selected = {NULL, NULL};
-  CTX_data_selected_objects(C, &selected);
+  LISTBASE_FOREACH (CollectionPointerLink *, object_ptr_link, &selected) {
+    /* Mesh *mesh = BKE_mesh_from_object(ob);
+    if (!mesh) {
+      continue;
+    } */
+    /* Mesh *copy = BKE_mesh_copy_for_eval(mesh); */
+    /* Mesh *mesh_result = (Mesh *)BKE_id_copy_ex(
+        NULL, &mesh->id, NULL, LIB_ID_CREATE_NO_MAIN | LIB_ID_CREATE_NO_USER_REFCOUNT); */
+    /*
+    OnionSkinMeshLink *link = MEM_callocN(sizeof(OnionSkinMeshLink), "onion skin mesh link");
+    link->mesh = copy;
+    BLI_addtail(&scene->onion_skin_cache.meshes, link); */
+  }
+  BLI_freelistN(&selected);
+}
+
+static int onion_skin_add_exec(bContext *C, wmOperator *op)
+{
   Scene *scene = CTX_data_scene(C);
 
-  LISTBASE_FOREACH (Object *, ob, &selected) {
-    /* Mesh *mesh; */
-    OnionSkinMesh *link = MEM_callocN(sizeof(OnionSkinMesh), "onion skin mesh link");
-    /* link->mesh = mesh; */
-    BLI_addtail(&scene->onion_skin_cache.meshes, link);
-  }
+  Object *ob = CTX_data_active_object(C);
+  Mesh *mesh = BKE_mesh_from_object(ob);
+  Mesh *copy = BKE_mesh_copy_for_eval(mesh);
 
-  BLI_freelistN(&selected);
+  OnionSkinMeshLink *link = MEM_callocN(sizeof(OnionSkinMeshLink), "onion skin mesh link");
+  link->mesh = copy;
+  BLI_addtail(&scene->onion_skin_cache.meshes, link);
+
   return OPERATOR_FINISHED;
 }
 

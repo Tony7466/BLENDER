@@ -8358,6 +8358,21 @@ void RNA_def_scene(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "SceneGpencil");
   RNA_def_property_ui_text(prop, "Grease Pencil", "Grease Pencil settings for the scene");
 
+  prop = RNA_def_property(srna, "onion_skin_color", PROP_FLOAT, PROP_COLOR);
+  RNA_def_property_float_sdna(prop, NULL, "onion_skin_cache.color");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_ui_text(prop, "Onion Skin Color", "Define the color of onion skins");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D | NS_VIEW3D_SHADING, NULL);
+
+  prop = RNA_def_property(srna, "onion_skin_alpha", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, NULL, "onion_skin_cache.alpha");
+  RNA_def_property_ui_text(prop, "Onion Skin Alpha", "Alpha of drawn onion skins");
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 1, 2);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D | NS_VIEW3D_SHADING, NULL);
+
   /* Nestled Data. */
   /* *** Non-Animated *** */
   RNA_define_animate_sdna(false);
