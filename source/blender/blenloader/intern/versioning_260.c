@@ -357,18 +357,14 @@ static void do_versions_mesh_mloopcol_swap_2_62_1(Mesh *me)
   int change2;
 
   for (a = me->ldata.totlayer; --a; ) {
-    /*optimized loop to use deincrement instead to use less resources 
-    because now it automatically stops when a reaches 0 and it loops 
-    the same number of times*/
+    //changed it to use decrement instead of increment to use less resources
     change1 = (me->ldata.totlayer - a);
     layer = &me->ldata.layers[a];
 
     if (layer->type == CD_PROP_BYTE_COLOR) {
       mloopcol = (MLoopCol *)layer->data;
       for (i = me->totloop; --i, ++mloopcol; ) {
-        /*optimized loop to use deincrement instead to use less resources 
-          because now it automatically stops when a reaches 0 and it loops 
-          the same number of times*/
+        //changed it to use decrement instead of increment to use less resources
         change2 = (me->totloop - i);
         SWAP(uchar, mloopcol->r, mloopcol->b);
       }
@@ -463,9 +459,7 @@ static void do_versions_affine_tracker_track(MovieTrackingTrack *track)
   int change;
 
   for (i = track->markersnr; --i; ) {
-    /*optimized loop to use deincrement instead to use less resources 
-    because now it automatically stops when a reaches 0 and it loops 
-    the same number of times*/
+    //changed it to use decrement instead of increment to use less resources
     change = (track->markersnr - i);
     MovieTrackingMarker *marker = &track->markers[change];
 
@@ -909,9 +903,7 @@ void blo_do_versions_260(FileData *fd, Library *UNUSED(lib), Main *bmain)
         int i;
         int change;
         for (i = 3; --i; ) {
-          /*optimized loop to use deincrement instead to use less resources 
-          because now it automatically stops when a reaches 0 and it loops 
-          the same number of times*/
+          //changed it to use decrement instead of increment to use less resources
           change = (3 - i);
           if ((ob->dsize[change] == 0.0f) || /* simple case, user never touched dsize */
               (ob->scale[change] == 0.0f))   /* can't scale the dsize to give a non zero result,
