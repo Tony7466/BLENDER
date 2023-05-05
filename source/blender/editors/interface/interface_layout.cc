@@ -3550,7 +3550,7 @@ static void menu_item_enum_opname_menu(bContext * /*C*/, uiLayout *layout, void 
 }
 
 void uiItemMenuEnumFullO_ptr(uiLayout *layout,
-                             bContext *C,
+                             const bContext *C,
                              wmOperatorType *ot,
                              const char *propname,
                              const char *name,
@@ -3598,7 +3598,7 @@ void uiItemMenuEnumFullO_ptr(uiLayout *layout,
 }
 
 void uiItemMenuEnumFullO(uiLayout *layout,
-                         bContext *C,
+                         const bContext *C,
                          const char *opname,
                          const char *propname,
                          const char *name,
@@ -3619,7 +3619,7 @@ void uiItemMenuEnumFullO(uiLayout *layout,
 }
 
 void uiItemMenuEnumO(uiLayout *layout,
-                     bContext *C,
+                     const bContext *C,
                      const char *opname,
                      const char *propname,
                      const char *name,
