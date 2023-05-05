@@ -290,7 +290,7 @@ ccl_device bool lights_intersect_impl(KernelGlobals kg,
      * lights. */
     if (kernel_data.kernel_features & KERNEL_FEATURE_SHADOW_LINKING) {
       if (is_main_path) {
-        const bool is_indirect_ray = !(path_flag & PATH_RAY_TRANSPARENT_BACKGROUND);
+        const bool is_indirect_ray = !(path_flag & PATH_RAY_CAMERA);
         if (is_indirect_ray && kernel_data_fetch(lights, lamp).shadow_set_membership) {
           continue;
         }
