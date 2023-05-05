@@ -59,10 +59,6 @@ void VKContext::activate()
     back_left = framebuffer;
     framebuffer->bind(false);
   }
-  debug::raise_message(0xB41CA2,
-                       VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT,
-                       "Vulkan Debug Utils Messenger is enabled. VkContext[0x%llx]",
-                       (uintptr_t)this);
 }
 
 void VKContext::deactivate() {}

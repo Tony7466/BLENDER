@@ -43,11 +43,11 @@ class VKDebuggingTools {
   VKDebuggingTools() = default;
   ~VKDebuggingTools();
   void init(VkInstance vk_instance);
-  void deinit();
+  void deinit(VkInstance vk_instance);
   bool is_ignore(int32_t id_number);
-  VkResult create_messenger(VkInstance vk_instance);
+  VkResult init_messenger(VkInstance vk_instance);
   void destroy_messenger(VkInstance vk_instance);
-  void print_labels(const VkDebugUtilsMessengerCallbackDataEXT *callback_data, bool use_color);
+  void print_labels(const VkDebugUtilsMessengerCallbackDataEXT *callback_data);
 
  private:
   VkDebugUtilsMessengerEXT vk_debug_utils_messenger = nullptr;

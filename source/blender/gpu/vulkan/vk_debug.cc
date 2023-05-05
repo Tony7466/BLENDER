@@ -97,14 +97,13 @@ void VKDebuggingTools::init(VkInstance vk_instance)
       vk_instance, "vkSubmitDebugUtilsMessageEXT");
   if (vkCmdBeginDebugUtilsLabelEXT_r) {
     enabled = true;
-    create_messenger(vk_instance);
+    init_messenger(vk_instance);
   }
 }
 
-void VKDebuggingTools::deinit()
+void VKDebuggingTools::deinit(VkInstance vk_instance)
 {
   if (enabled) {
-    const VkInstance &vk_instance = VKBackend::get().device_get().instance_get();
     destroy_messenger(vk_instance);
   }
   vkCmdBeginDebugUtilsLabelEXT_r = nullptr;
@@ -229,9 +228,10 @@ void VKDebuggingTools::print_vulkan_version()
 
   printf("Vulkan Version:%d.%d.%d\n", major, minor, patch);
 }
-void VKDebuggingTools::print_labels(const VkDebugUtilsMessengerCallbackDataEXT *callback_data,
-                                    bool use_color)
+
+void VKDebuggingTools::print_labels(const VkDebugUtilsMessengerCallbackDataEXT *callback_data)
 {
+  const bool use_color = CLG_color_support_get(&LOG);
 #define COLOR_FILE \
   if (use_color) { \
     ss << "\x1b[2m"; \
@@ -281,6 +281,7 @@ void VKDebuggingTools::print_labels(const VkDebugUtilsMessengerCallbackDataEXT *
 #undef COLOR_FILE
 #undef COLOR_RESET
 }
+
 VKAPI_ATTR VkBool32 VKAPI_CALL
 messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
                    VkDebugUtilsMessageTypeFlagsEXT /* message_type*/,
@@ -360,7 +361,7 @@ messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
   if ((enabled) && ((callback_data->objectCount > 0) || (callback_data->cmdBufLabelCount > 0) ||
                     (callback_data->queueLabelCount > 0)))
   {
-    debugging_tools.print_labels(callback_data, use_color);
+    debugging_tools.print_labels(callback_data);
   }
 
 #undef CONSOLE_COLOR_YELLOW
@@ -370,7 +371,7 @@ messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
   return VK_TRUE;
 };
 
-VkResult VKDebuggingTools::create_messenger(VkInstance vk_instance)
+VkResult VKDebuggingTools::init_messenger(VkInstance vk_instance)
 {
   print_vulkan_version();
   vk_message_id_number_ignored.clear();
