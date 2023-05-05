@@ -1634,6 +1634,11 @@ typedef struct NodeGeometryDistributePointsInVolume {
   uint8_t mode;
 } NodeGeometryDistributePointsInVolume;
 
+typedef struct NodeGeometrySampleVolume {
+  /* eCustomDataType. */
+  int8_t grid_type;
+} NodeGeometrySampleVolume;
+
 typedef struct NodeFunctionCompare {
   /* NodeCompareOperation */
   int8_t operation;

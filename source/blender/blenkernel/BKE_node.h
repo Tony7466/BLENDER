@@ -1587,6 +1587,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 /* Function nodes use the range starting at 1200. */
 #define GEO_NODE_SIMULATION_INPUT 2100
 #define GEO_NODE_SIMULATION_OUTPUT 2101
+#define GEO_NODE_SAMPLE_VOLUME 2102
 
 /** \} */
 
