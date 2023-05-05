@@ -196,7 +196,7 @@ static DrawInfo *def_internal_icon(
 
       /* Here we store the rect in the icon - same as before */
       if (size == bbuf->x && size == bbuf->y && xofs == 0 && yofs == 0) {
-        memcpy(iimg->rect, bbuf->byte_buffer.data, size * size * sizeof(int));
+        memcpy(iimg->rect, bbuf->byte_buffer.data, size * size * 4 * sizeof(uint8_t));
       }
       else {
         /* this code assumes square images */
@@ -204,7 +204,7 @@ static DrawInfo *def_internal_icon(
         for (y = 0; y < size; y++) {
           memcpy(&iimg->rect[y * size],
                  &bbuf->byte_buffer.data[(y + yofs) * imgsize + xofs],
-                 size * sizeof(int));
+                 size * 4 * sizeof(uint8_t));
         }
       }
     }

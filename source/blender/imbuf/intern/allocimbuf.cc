@@ -686,7 +686,7 @@ ImBuf *IMB_dupImBuf(const ImBuf *ibuf1)
   }
 
   if (flags & IB_rect) {
-    memcpy(ibuf2->byte_buffer.data, ibuf1->byte_buffer.data, size_t(x) * y * sizeof(int));
+    memcpy(ibuf2->byte_buffer.data, ibuf1->byte_buffer.data, size_t(x) * y * 4 * sizeof(uint8_t));
   }
 
   if (flags & IB_rectfloat) {
