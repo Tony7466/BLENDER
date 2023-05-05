@@ -68,34 +68,6 @@ Scene::Scene(const SceneParams &params_, Device *device)
     this->dscenes.push_back(std::move(sub_dscene));
   });
   memset((void *)&dscene.data, 0, sizeof(dscene.data));
-
-  /* Set up the buffers to upload */
-  // Geometry buffers
-  scene_buffers.push_back(&dscene.tri_verts);
-  scene_buffers.push_back(&dscene.tri_shader);
-  scene_buffers.push_back(&dscene.tri_vnormal);
-  scene_buffers.push_back(&dscene.tri_vindex);
-  scene_buffers.push_back(&dscene.tri_patch);
-  scene_buffers.push_back(&dscene.tri_patch_uv);
-
-  scene_buffers.push_back(&dscene.curve_keys);
-  scene_buffers.push_back(&dscene.curves);
-  scene_buffers.push_back(&dscene.curve_segments);
-
-  scene_buffers.push_back(&dscene.points);
-  scene_buffers.push_back(&dscene.points_shader);
-
-  scene_buffers.push_back(&dscene.patches);
-
-  // Attribute buffers
-  scene_buffers.push_back(&dscene.attributes_map);
-  scene_buffers.push_back(&dscene.attributes_float);
-  scene_buffers.push_back(&dscene.attributes_float2);
-  scene_buffers.push_back(&dscene.attributes_float3);
-  scene_buffers.push_back(&dscene.attributes_float4);
-  scene_buffers.push_back(&dscene.attributes_uchar4);
-      
-  scene_buffers.push_back(&dscene.objects);
 	
   /* Stats time logging allocate memory to store times for each device */
   size_t device_count = this->dscenes.size();

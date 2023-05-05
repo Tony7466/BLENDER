@@ -645,18 +645,11 @@ void GPUDevice::move_textures_to_host(size_t size, bool for_texture)
   load_texture_info();
 }
 
-// void Device::register_buffer(device_memory *mem)
-// {
-//   VLOG_INFO << "Register buffer " << mem->name;
-//   /* Insert into set of buffers. */
-//   thread_scoped_lock lock(device_buffer_mutex);
-//   device_buffers.insert(mem);
-// }
-
-void Device::upload_changed(vector<device_memory *> buffers) {
-  for (const auto& buffer : buffers) {
+void Device::upload_changed(vector<device_memory *> buffers)
+{
+  for (const auto &buffer : buffers) {
     VLOG_INFO << "Checking " << buffer->name;
-    if(buffer->modified) {
+    if (buffer->modified && (buffer->data_size > 0)) {
       VLOG_INFO << "Uploading to " << buffer->name;
       this->mem_copy_to(*buffer, buffer->device_size, 0);
     }

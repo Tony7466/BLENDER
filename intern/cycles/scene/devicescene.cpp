@@ -65,6 +65,34 @@ DeviceScene::DeviceScene(Device *device)
       ies_lights(device, "ies", MEM_GLOBAL)
 {
   memset((void *)&data, 0, sizeof(data));
+
+  /* Set up the buffers to upload */
+  /* Geometry buffers */
+  geom_buffers.push_back(&tri_verts);
+  geom_buffers.push_back(&tri_shader);
+  geom_buffers.push_back(&tri_vnormal);
+  geom_buffers.push_back(&tri_vindex);
+  geom_buffers.push_back(&tri_patch);
+  geom_buffers.push_back(&tri_patch_uv);
+
+  geom_buffers.push_back(&curve_keys);
+  geom_buffers.push_back(&curves);
+  geom_buffers.push_back(&curve_segments);
+
+  geom_buffers.push_back(&points);
+  geom_buffers.push_back(&points_shader);
+
+  geom_buffers.push_back(&patches);
+
+  /* Attribute buffers */
+  geom_buffers.push_back(&attributes_map);
+  geom_buffers.push_back(&attributes_float);
+  geom_buffers.push_back(&attributes_float2);
+  geom_buffers.push_back(&attributes_float3);
+  geom_buffers.push_back(&attributes_float4);
+  geom_buffers.push_back(&attributes_uchar4);
+
+  geom_buffers.push_back(&objects);
 }
 
 void DeviceScene::device_free_geometry(bool force_free)

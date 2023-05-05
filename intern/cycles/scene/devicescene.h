@@ -100,6 +100,7 @@ class DeviceScene {
   /* IES lights */
   device_vector<float> ies_lights;
 
+  vector<device_memory *> geom_buffers;
   KernelData data;
 
   DeviceScene(Device *device);

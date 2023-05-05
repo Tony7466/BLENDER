@@ -300,7 +300,6 @@ protected:
    */
   virtual void upload_changed(vector<device_memory *> buffers);
 
-  //virtual void register_buffer(device_memory *);
  protected:
   /* Memory allocation, only accessed through device_memory. */
   friend class MultiDevice;

@@ -187,7 +187,7 @@ class Scene : public NodeOwner {
 
   /* Stores a DeviceScene for each sub-device */
   std::vector<unique_ptr<DeviceScene>> dscenes;
-  vector<device_memory *> scene_buffers;
+
   /* Stats time logging */
   struct SceneTimes {
     double mesh;

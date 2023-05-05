@@ -262,6 +262,7 @@ class GeometryManager {
   void clear_geometry_update_and_modified_tags(Scene *scene);
   void device_data_xfer_and_bvh_update(int idx,
                                        Scene *scene,
+                                       Device *device,
                                        DeviceScene *dscene,
                                        const BVHLayout bvh_layout,
                                        size_t num_bvh,
