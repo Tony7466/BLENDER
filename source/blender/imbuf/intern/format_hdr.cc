@@ -12,7 +12,8 @@ extern "C" {
 
 bool imb_is_a_hdr(const uchar *mem, size_t size)
 {
-  return imb_oiio_check(mem, size, "hdr");
+  char signature[] = {0x23, 0x3F, 0x52, 0x41, 0x44, 0x49, 0x41, 0x4E, 0x43, 0x45, 0x0A};
+  return (size >= sizeof(signature)) && (memcmp(mem, &signature, sizeof(signature)) == 0);
 }
 
 ImBuf *imb_load_hdr(const uchar *mem, size_t size, int flags, char colorspace[IM_MAX_SPACE])

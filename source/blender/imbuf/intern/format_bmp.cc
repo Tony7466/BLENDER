@@ -12,7 +12,8 @@ extern "C" {
 
 bool imb_is_a_bmp(const uchar *mem, size_t size)
 {
-  return imb_oiio_check(mem, size, "bmp");
+  char signature[] = {0x42, 0x4D};
+  return (size >= sizeof(signature)) && (memcmp(mem, &signature, sizeof(signature)) == 0);
 }
 
 ImBuf *imb_load_bmp(const uchar *mem, size_t size, int flags, char colorspace[IM_MAX_SPACE])

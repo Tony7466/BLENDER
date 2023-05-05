@@ -13,7 +13,8 @@ extern "C" {
 
 bool imb_is_a_psd(const uchar *mem, size_t size)
 {
-  return imb_oiio_check(mem, size, "psd");
+  char signature[] = {0x38, 0x42, 0x50, 0x53};
+  return (size >= sizeof(signature)) && (memcmp(mem, &signature, sizeof(signature)) == 0);
 }
 
 ImBuf *imb_load_psd(const uchar *mem, size_t size, int flags, char colorspace[IM_MAX_SPACE])
