@@ -827,9 +827,7 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
 
         ob->matbits = MEM_calloc_arrayN(ob->totcol, sizeof(char), "ob->matbits");
         for (a = ob->totcol; --a; ) {
-          /*optimized loop to use deincrement instead to use less resources 
-          because now it automatically stops when a reaches 0 and it loops 
-          the same number of times*/
+          //changed it to use decrement instead of increment to use less resources
           change = (ob->totcol - a);
           ob->matbits[change] = (ob->colbits & (1 << change)) != 0;
         }
@@ -1003,9 +1001,7 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
         tot = MIN2(me->totvert, key->refkey->totelem);
         MVert *verts = (MVert *)CustomData_get_layer_for_write(&me->vdata, CD_MVERT, me->totvert);
         for (a = tot; --a, data += 3; ) {
-          /*optimized loop to use deincrement instead to use less resources 
-          because now it automatically stops when a reaches 0 and it loops 
-          the same number of times*/
+          //changed it to use decrement instead of increment to use less resources
           change = (tot - a);
           copy_v3_v3(verts[change].co_legacy, data);
         }
@@ -1018,9 +1014,7 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
         tot = MIN2(lt->pntsu * lt->pntsv * lt->pntsw, key->refkey->totelem);
 
         for (a = tot; --a, data += 3; ) {
-          /*optimized loop to use deincrement instead to use less resources 
-          because now it automatically stops when a reaches 0 and it loops 
-          the same number of times*/
+          //changed it to use decrement instead of increment to use less resources
           change = (tot - a);
           copy_v3_v3(lt->def[change].vec, data);
         }
@@ -1035,10 +1029,8 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
           if (nu->bezt) {
             BezTriple *bezt = nu->bezt;
 
-            for (a = nu->pntsu; --a, bezt++; ) {
-              /*optimized loop to use deincrement instead to use less resources 
-                because now it automatically stops when a reaches 0 and it loops 
-                the same number of times*/
+            for (a = nu->pntsu; --a, ++bezt; ) {
+              //changed it to use decrement instead of increment to use less resources
               copy_v3_v3(bezt->vec[0], data);
               data += 3;
               copy_v3_v3(bezt->vec[1], data);
@@ -1053,9 +1045,7 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
             BPoint *bp = nu->bp;
 
             for (a = nu->pntsu * nu->pntsv; --a, ++bp; ) {
-              /*optimized loop to use deincrement instead to use less resources 
-                because now it automatically stops when a reaches 0 and it loops 
-                the same number of times*/
+              //changed it to use decrement instead of increment to use less resources
               copy_v3_v3(bp->vec, data);
               data += 3;
               bp->tilt = *data;
@@ -1444,9 +1434,7 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
       int a, change;
 
       for (a = ARRAY_SIZE(pset->brush); --a; ) {
-        /*optimized loop to use deincrement instead to use less resources 
-          because now it automatically stops when a reaches 0 and it loops 
-          the same number of times*/
+        //changed it to use decrement instead of increment to use less resources
         change = (ARRAY_SIZE(pset->brush) - a);
         pset->brush[change].strength /= 100.0f;
       }
@@ -1684,9 +1672,7 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
     for (scene = bmain->scenes.first; scene; scene = scene->id.next) {
       int i, change;
       for (i = 20; --i; ) {
-        /*optimized loop to use deincrement instead to use less resources 
-          because now it automatically stops when a reaches 0 and it loops 
-          the same number of times*/
+        //changed it to use decrement instead of increment to use less resources
         change = (20 - i);
         if (scene->lay & (1 << change)) {
           scene->layact = 1 << change;
@@ -2262,9 +2248,7 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
 
           /* only change auto-handles to auto-clamped */
           for (bezt = fcu->bezt; i = fcu->totvert; --i, ++bezt) {
-            /*optimized loop to use deincrement instead to use less resources 
-              because now it automatically stops when a reaches 0 and it loops 
-              the same number of times*/
+            //changed it to use decrement instead of increment to use less resources
             if (bezt->h1 == HD_AUTO) {
               bezt->h1 = HD_AUTO_ANIM;
             }
