@@ -393,7 +393,7 @@ static PointerRNA rna_uiItemMenuEnumO(uiLayout *layout,
   name = rna_translate_ui_text(name, text_ctxt, ot->srna, NULL, translate);
 
   PointerRNA opptr;
-  uiItemMenuEnumFullO_ptr(layout, C, ot, propname, name, icon, NULL, &opptr);
+  uiItemMenuEnumFullO_ptr(layout, C, ot, propname, name, icon, &opptr);
   return opptr;
 }
 

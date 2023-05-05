@@ -242,7 +242,6 @@ static void screen_user_menu_draw(const bContext *C_const, Menu *menu)
                                     umi_op->op_prop_enum,
                                     CTX_IFACE_(ot->translation_context, ui_name),
                                     ICON_NONE,
-                                    &umi_op->opcontext,
                                     NULL);
           }
           is_empty = false;
