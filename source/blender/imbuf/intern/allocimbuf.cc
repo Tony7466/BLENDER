@@ -138,6 +138,10 @@ auto imb_steal_buffer_data(BufferType &buffer) -> decltype(BufferType::data)
       return data;
     }
   }
+
+  BLI_assert_unreachable();
+
+  return nullptr;
 }
 
 void imb_freemipmapImBuf(ImBuf *ibuf)
