@@ -1,4 +1,4 @@
 Referenced by issue #88449: Blender LTS: Maintenance Task 2.93
 Referenced by issue #88449, Blender LTS: Maintenance Task 2.93
 Referenced by issue #93995, Cycles: motion blur only applies on Left view
-Referenced by issue #107589, Failure to render stereoscopy correctly in background (rendering of curve objects with cycles and motion blur)
+Referenced by issue #107589, Regression: Failure to render stereoscopy correctly in background (rendering of curve objects with cycles and motion blur)
