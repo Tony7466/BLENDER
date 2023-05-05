@@ -166,6 +166,9 @@ class Device {
   }
   virtual BVHLayoutMask get_bvh_layout_mask(uint kernel_features) const = 0;
 
+  virtual BVHLayout get_bvh_layout(Device *device, BVHLayout layout) {
+    return layout;
+  }
   /* statistics */
   Stats &stats;
   Profiler &profiler;

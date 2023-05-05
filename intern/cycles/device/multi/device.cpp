@@ -160,6 +160,24 @@ class MultiDevice : public Device {
     return true;
   }
 
+  BVHLayout get_bvh_layout(Device *device, BVHLayout bvh_layout) override
+  {
+    if (bvh_layout == BVH_LAYOUT_MULTI_OPTIX)
+      bvh_layout = BVH_LAYOUT_OPTIX;
+    else if (bvh_layout == BVH_LAYOUT_MULTI_METAL)
+      bvh_layout = BVH_LAYOUT_METAL;
+    else if (bvh_layout == BVH_LAYOUT_MULTI_HIPRT)
+      bvh_layout = BVH_LAYOUT_HIPRT;
+    else if (bvh_layout == BVH_LAYOUT_MULTI_OPTIX_EMBREE)
+      bvh_layout = device->info.type == DEVICE_OPTIX ? BVH_LAYOUT_OPTIX : BVH_LAYOUT_EMBREE;
+    else if (bvh_layout == BVH_LAYOUT_MULTI_METAL_EMBREE)
+      bvh_layout = device->info.type == DEVICE_METAL ? BVH_LAYOUT_METAL : BVH_LAYOUT_EMBREE;
+    else if (bvh_layout == BVH_LAYOUT_MULTI_HIPRT_EMBREE)
+      bvh_layout = device->info.type == DEVICE_HIPRT ? BVH_LAYOUT_HIPRT : BVH_LAYOUT_EMBREE;
+
+    return bvh_layout;
+  }
+
   void build_bvh(BVH *bvh, DeviceScene *dscene, Progress &progress, bool refit) override
   {
     /* Try to build and share a single acceleration structure, if possible */
@@ -187,21 +205,7 @@ class MultiDevice : public Device {
 
           if (!bvh_multi->sub_bvhs[id]) {
             BVHParams params = bvh_multi->params;
-            if (bvh_multi->params.bvh_layout == BVH_LAYOUT_MULTI_OPTIX)
-              params.bvh_layout = BVH_LAYOUT_OPTIX;
-            else if (bvh_multi->params.bvh_layout == BVH_LAYOUT_MULTI_METAL)
-              params.bvh_layout = BVH_LAYOUT_METAL;
-	    else if (bvh_multi->params.bvh_layout == BVH_LAYOUT_MULTI_HIPRT)
-              params.bvh_layout = BVH_LAYOUT_HIPRT;
-            else if (bvh_multi->params.bvh_layout == BVH_LAYOUT_MULTI_OPTIX_EMBREE)
-              params.bvh_layout = sub->device->info.type == DEVICE_OPTIX ? BVH_LAYOUT_OPTIX :
-                                                                           BVH_LAYOUT_EMBREE;
-            else if (bvh_multi->params.bvh_layout == BVH_LAYOUT_MULTI_METAL_EMBREE)
-              params.bvh_layout = sub->device->info.type == DEVICE_METAL ? BVH_LAYOUT_METAL :
-                                                                           BVH_LAYOUT_EMBREE;
-	    else if (bvh_multi->params.bvh_layout == BVH_LAYOUT_MULTI_HIPRT_EMBREE)
-              params.bvh_layout = sub->device->info.type == DEVICE_HIPRT ? BVH_LAYOUT_HIPRT :
-                                                                      BVH_LAYOUT_EMBREE;
+	    params.bvh_layout = get_bvh_layout(sub->device, bvh_multi->params.bvh_layout);
 
             /* Skip building a bottom level acceleration structure for non-instanced geometry on
              * Embree (since they are put into the top level directly, see bvh_embree.cpp) */
