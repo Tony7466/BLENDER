@@ -400,10 +400,15 @@ static void anim_channels_select_set(bAnimContext *ac,
                                      eAnimChannels_SetFlag sel)
 {
   bAnimListElem *ale;
+  /* Boolean to keep active channel status during range selection. */
+  const bool change_active = (sel != ACHANNEL_SETFLAG_EXTEND_RANGE);
 
   for (ale = anim_data.first; ale; ale = ale->next) {
     switch (ale->type) {
       case ANIMTYPE_SCENE: {
+        if (change_active) {
+          break;
+        }
         Scene *scene = (Scene *)ale->data;
 
         ACHANNEL_SET_FLAG(scene, sel, SCE_DS_SELECTED);
@@ -430,8 +435,10 @@ static void anim_channels_select_set(bAnimContext *ac,
       case ANIMTYPE_GROUP: {
         bActionGroup *agrp = (bActionGroup *)ale->data;
         ACHANNEL_SET_FLAG(agrp, sel, AGRP_SELECTED);
-        select_pchan_for_action_group(ac, agrp, ale, true);
-        agrp->flag &= ~AGRP_ACTIVE;
+        select_pchan_for_action_group(ac, agrp, ale, change_active);
+        if (change_active) {
+          agrp->flag &= ~AGRP_ACTIVE;
+        }
         break;
       }
       case ANIMTYPE_FCURVE:
@@ -439,7 +446,7 @@ static void anim_channels_select_set(bAnimContext *ac,
         FCurve *fcu = (FCurve *)ale->data;
 
         ACHANNEL_SET_FLAG(fcu, sel, FCURVE_SELECTED);
-        if ((fcu->flag & FCURVE_SELECTED) == 0) {
+        if (!(fcu->flag & FCURVE_SELECTED) && change_active) {
           /* Only erase the ACTIVE flag when deselecting. This ensures that "select all curves"
            * retains the currently active curve. */
           fcu->flag &= ~FCURVE_ACTIVE;
@@ -486,7 +493,9 @@ static void anim_channels_select_set(bAnimContext *ac,
         /* need to verify that this data is valid for now */
         if (ale->adt) {
           ACHANNEL_SET_FLAG(ale->adt, sel, ADT_UI_SELECTED);
-          ale->adt->flag &= ~ADT_UI_ACTIVE;
+          if (change_active) {
+            ale->adt->flag &= ~ADT_UI_ACTIVE;
+          }
         }
         break;
       }
@@ -3105,63 +3114,6 @@ static bool animchannel_has_active_of_type(bAnimContext *ac, const eAnim_Channel
   return is_active_found;
 }
 
-static void animchannel_clear_selection(bAnimContext *ac)
-{
-  ListBase anim_data = anim_channels_for_selection(ac);
-
-  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    switch (ale->type) {
-      case ANIMTYPE_FILLACTD: /* Action Expander */
-      case ANIMTYPE_DSMAT:    /* Datablock AnimData Expanders */
-      case ANIMTYPE_DSLAM:
-      case ANIMTYPE_DSCAM:
-      case ANIMTYPE_DSCACHEFILE:
-      case ANIMTYPE_DSCUR:
-      case ANIMTYPE_DSSKEY:
-      case ANIMTYPE_DSWOR:
-      case ANIMTYPE_DSPART:
-      case ANIMTYPE_DSMBALL:
-      case ANIMTYPE_DSARM:
-      case ANIMTYPE_DSMESH:
-      case ANIMTYPE_DSNTREE:
-      case ANIMTYPE_DSTEX:
-      case ANIMTYPE_DSLAT:
-      case ANIMTYPE_DSLINESTYLE:
-      case ANIMTYPE_DSSPK:
-      case ANIMTYPE_DSGPENCIL:
-      case ANIMTYPE_DSMCLIP:
-      case ANIMTYPE_DSHAIR:
-      case ANIMTYPE_DSPOINTCLOUD:
-      case ANIMTYPE_DSVOLUME:
-      case ANIMTYPE_NLAACTION:
-      case ANIMTYPE_DSSIMULATION: {
-        if (ale->adt) {
-          ale->adt->flag &= ~ADT_UI_SELECTED;
-        }
-        break;
-      }
-      case ANIMTYPE_GROUP: {
-        bActionGroup *agrp = (bActionGroup *)ale->data;
-        agrp->flag &= ~AGRP_SELECTED;
-        select_pchan_for_action_group(ac, agrp, ale, false);
-        break;
-      }
-      case ANIMTYPE_FCURVE: {
-        FCurve *fcu = (FCurve *)ale->data;
-        fcu->flag &= ~FCURVE_SELECTED;
-        break;
-      }
-      case ANIMTYPE_GPLAYER: {
-        bGPDlayer *gpl = (bGPDlayer *)ale->data;
-        gpl->flag &= ~GP_LAYER_SELECT;
-        break;
-      }
-    }
-  }
-
-  ANIM_animdata_freelist(&anim_data);
-}
-
 /* Select channels that lies between active channel and cursor_elem. */
 static void animchannel_select_range(bAnimContext *ac, bAnimListElem *cursor_elem)
 {
@@ -3230,7 +3182,7 @@ static int click_select_channel_object(bContext *C,
     }
   }
   else if (selectmode == SELECT_EXTEND_RANGE) {
-    animchannel_clear_selection(ac);
+    ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_EXTEND_RANGE);
     animchannel_select_range(ac, ale);
   }
   else {
@@ -3280,7 +3232,7 @@ static int click_select_channel_dummy(bAnimContext *ac,
     ale->adt->flag ^= ADT_UI_SELECTED;
   }
   else if (selectmode == SELECT_EXTEND_RANGE) {
-    animchannel_clear_selection(ac);
+    ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_EXTEND_RANGE);
     animchannel_select_range(ac, ale);
   }
   else {
@@ -3337,7 +3289,7 @@ static int click_select_channel_group(bAnimContext *ac,
     agrp->flag ^= AGRP_SELECTED;
   }
   else if (selectmode == SELECT_EXTEND_RANGE) {
-    animchannel_clear_selection(ac);
+    ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_EXTEND_RANGE);
     animchannel_select_range(ac, ale);
   }
   else if (selectmode == -1) {
@@ -3401,7 +3353,7 @@ static int click_select_channel_fcurve(bAnimContext *ac,
     fcu->flag ^= FCURVE_SELECTED;
   }
   else if (selectmode == SELECT_EXTEND_RANGE) {
-    animchannel_clear_selection(ac);
+    ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_EXTEND_RANGE);
     animchannel_select_range(ac, ale);
   }
   else {
@@ -3481,7 +3433,7 @@ static int click_select_channel_gplayer(bContext *C,
     gpl->flag ^= GP_LAYER_SELECT;
   }
   else if (selectmode == SELECT_EXTEND_RANGE) {
-    animchannel_clear_selection(ac);
+    ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_EXTEND_RANGE);
     animchannel_select_range(ac, ale);
   }
   else {
