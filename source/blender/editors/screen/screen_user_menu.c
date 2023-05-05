@@ -235,6 +235,8 @@ static void screen_user_menu_draw(const bContext *C, Menu *menu)
                             NULL);
           }
           else {
+            /* umi_op->prop could be used to set other properties but it's currently unsupported.
+             */
             uiItemMenuEnumFullO_ptr(menu->layout,
                                     C,
                                     ot,
