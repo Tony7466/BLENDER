@@ -252,6 +252,27 @@ static void sculpt_dynamic_topology_enable_with_undo(Main *bmain,
   }
 }
 
+static bool sculpt_dynamic_topology_toggle_poll(bContext *C)
+{
+  if (!SCULPT_mode_poll(C)) {
+    return false;
+  }
+
+  Object *ob = CTX_data_active_object(C);
+  SculptSession *ss = ob->sculpt;
+  if (ss->bm) {
+    return true;
+  }
+
+  if (BKE_modifiers_uses_multires(ob)) {
+    CTX_wm_operator_poll_msg_set(
+        C, "Dyntopo cannot be used with a Multires modifier in the modifier stack");
+    return false;
+  }
+
+  return true;
+}
+
 static int sculpt_dynamic_topology_toggle_exec(bContext *C, wmOperator * /*op*/)
 {
   Main *bmain = CTX_data_main(C);
@@ -407,7 +428,7 @@ void SCULPT_OT_dynamic_topology_toggle(wmOperatorType *ot)
   /* API callbacks. */
   ot->invoke = sculpt_dynamic_topology_toggle_invoke;
   ot->exec = sculpt_dynamic_topology_toggle_exec;
-  ot->poll = SCULPT_mode_poll;
+  ot->poll = sculpt_dynamic_topology_toggle_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
