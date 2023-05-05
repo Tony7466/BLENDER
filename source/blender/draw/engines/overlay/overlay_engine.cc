@@ -129,6 +129,7 @@ static void OVERLAY_engine_init(void *vedata)
   OVERLAY_outline_init(data);
   OVERLAY_wireframe_init(data);
   OVERLAY_paint_init(data);
+  OVERLAY_onion_skin_init(data);
 }
 
 static void OVERLAY_cache_init(void *vedata)
@@ -216,12 +217,10 @@ static void OVERLAY_cache_init(void *vedata)
   OVERLAY_image_cache_init(data);
   OVERLAY_metaball_cache_init(data);
   OVERLAY_motion_path_cache_init(data);
-  OVERLAY_onion_skin_init(data);
   OVERLAY_outline_cache_init(data);
   OVERLAY_particle_cache_init(data);
   OVERLAY_wireframe_cache_init(data);
   OVERLAY_volume_cache_init(data);
-  OVERLAY_onion_skin_init(data);
 }
 
 BLI_INLINE OVERLAY_DupliData *OVERLAY_duplidata_get(Object *ob, void *vedata, bool *do_init)

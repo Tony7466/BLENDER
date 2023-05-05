@@ -23,6 +23,7 @@
 #include "DNA_customdata_types.h" /* Scene's runtime custom-data masks. */
 #include "DNA_layer_types.h"
 #include "DNA_listBase.h"
+#include "DNA_mesh_types.h"
 #include "DNA_vec_types.h"
 #include "DNA_view3d_types.h"
 
@@ -1875,9 +1876,15 @@ enum {
 /** \name Scene ID-Block
  * \{ */
 
-typedef struct SceneOnionSkin {
-  SceneOnionSkin *prev, *next;
+typedef struct OnionSkinMesh {
+  struct OnionSkinMesh *prev, *next;
   Mesh *mesh;
+} OnionSkinMesh;
+
+typedef struct SceneOnionSkin {
+  float color[3];
+  float alpha;
+  ListBase meshes /* OnionSkinMesh */;
 } SceneOnionSkin;
 
 typedef struct Scene {
@@ -1999,7 +2006,7 @@ typedef struct Scene {
   struct SceneDisplay display;
   struct SceneEEVEE eevee;
   struct SceneGpencil grease_pencil_settings;
-  struct ListBase onion_skin_cache /* SceneOnionSkin */;
+  struct SceneOnionSkin onion_skin_cache;
 } Scene;
 
 /** \} */
