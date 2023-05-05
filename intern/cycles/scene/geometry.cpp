@@ -906,19 +906,28 @@ void GeometryManager::device_update(Device *device,
     size_t num_scenes = scene->dscenes.size();
 
     VLOG_INFO << "Rendering using " << num_scenes << " devices";
-    parallel_for(size_t(0), num_scenes, [=, &progress](const size_t idx) {
-      DeviceScene *sub_dscene = scene->dscenes[idx].get();
-      Device *sub_device = sub_dscene->tri_verts.device;
-      device_data_xfer_and_bvh_update(idx,
-                                      scene,
-                                      sub_device,
-                                      sub_dscene,
-                                      bvh_layout,
-                                      num_bvh,
-                                      can_refit_scene_bvh,
-                                      need_update_scene_bvh,
-                                      progress);
-    });
+    // parallel_for(size_t(0), num_scenes, [=, &progress](const size_t idx) {
+    //   DeviceScene *sub_dscene = scene->dscenes[idx].get();
+    //   Device *sub_device = sub_dscene->tri_verts.device;
+    //   device_data_xfer_and_bvh_update(idx,
+    //                                   scene,
+    //                                   sub_device,
+    //                                   sub_dscene,
+    //                                   bvh_layout,
+    //                                   num_bvh,
+    //                                   can_refit_scene_bvh,
+    //                                   need_update_scene_bvh,
+    //                                   progress);
+    // });
+    device_data_xfer_and_bvh_update(0,
+                                    scene,
+                                    device,
+                                    dscene,
+                                    bvh_layout,
+                                    num_bvh,
+                                    can_refit_scene_bvh,
+                                    need_update_scene_bvh,
+                                    progress);
     if (need_update_scene_bvh) {
       device_update_bvh_postprocess(device, dscene, scene, progress);
     }
@@ -927,7 +936,7 @@ void GeometryManager::device_update(Device *device,
       double max_attrib_time = 0.0f;
       double max_object_bvh_time = 0.0f;
       double max_scene_bvh_time = 0.0f;
-      for (size_t i = 0; i < num_scenes; i++) {
+      for (size_t i = 0; i < 1 /*num_scenes*/; i++) {
         max_mesh_time = max(max_mesh_time, scene->times[i].mesh);
         max_attrib_time = max(max_attrib_time, scene->times[i].attrib);
         max_object_bvh_time = max(max_object_bvh_time, scene->times[i].object_bvh);
