@@ -94,9 +94,12 @@ void ED_slider_status_string_get(const struct tSlider *slider,
 float ED_slider_factor_get(struct tSlider *slider);
 void ED_slider_factor_set(struct tSlider *slider, float factor);
 
-/* One bool value for each side of the slider. Allows to allow overshoot only on one side. */
-void ED_slider_allow_overshoot_set(struct tSlider *slider, bool left, bool right);
+/* One bool value for each side of the slider. Allows to enable overshoot only on one side. */
+void ED_slider_allow_overshoot_set(struct tSlider *slider, bool lower, bool upper);
 
+/**
+ * Set the soft limits for the slider, which are applied until the user enables overshooting.
+ */
 void ED_slider_factor_bounds_set(struct tSlider *slider, float lower_bound, float upper_bound);
 
 bool ED_slider_allow_increments_get(struct tSlider *slider);
