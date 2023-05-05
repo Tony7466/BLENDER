@@ -326,7 +326,6 @@ ccl_device_forceinline void integrate_surface_direct_light(KernelGlobals kg,
   }
 
   if (ray.self.object != OBJECT_NONE) {
-    // TODO: Why is it needed here? The light_sample_to_surface_shadow_ray offsets the ray.
     ray.P = integrate_surface_ray_offset(kg, sd, ray.P, ray.D);
   }
 
