@@ -277,10 +277,13 @@ class ShapeCache {
   BatchPtr arrows;
   BatchPtr metaball_wire_circle;
   BatchPtr speaker;
+  BatchPtr probe_cube;
+  BatchPtr probe_grid;
+  BatchPtr probe_planar;
 };
 
 class Extras {
-  using EmptyInstanceBuf = ShapeInstanceBuf<ExtraInstanceData>;
+  using InstanceBuf = ShapeInstanceBuf<ExtraInstanceData>;
 
  private:
   const eSelectionType selection_type_;
@@ -288,27 +291,30 @@ class Extras {
   PassSimple empty_ps_ = {"Extras"};
   PassSimple empty_in_front_ps_ = {"Extras_In_front"};
 
-  struct CallBuffers {
+  struct InstanceBuffers {
     const eSelectionType selection_type_;
-    EmptyInstanceBuf plain_axes = {selection_type_, "plain_axes_buf"};
-    EmptyInstanceBuf single_arrow = {selection_type_, "single_arrow_buf"};
-    EmptyInstanceBuf cube = {selection_type_, "cube_buf"};
-    EmptyInstanceBuf circle = {selection_type_, "circle_buf"};
-    EmptyInstanceBuf sphere = {selection_type_, "sphere_buf"};
-    EmptyInstanceBuf cone = {selection_type_, "cone_buf"};
-    EmptyInstanceBuf arrows = {selection_type_, "arrows_buf"};
-    EmptyInstanceBuf image = {selection_type_, "image_buf"};
-    EmptyInstanceBuf speaker = {selection_type_, "speaker_buf"};
-    EmptyInstanceBuf probe_cube = {selection_type_, "probe_cube_buf"};
-    EmptyInstanceBuf probe_grid = {selection_type_, "probe_grid_buf"};
-    EmptyInstanceBuf probe_planar = {selection_type_, "probe_planar_buf"};
+    InstanceBuf plain_axes = {selection_type_, "plain_axes_buf"};
+    InstanceBuf single_arrow = {selection_type_, "single_arrow_buf"};
+    InstanceBuf cube = {selection_type_, "cube_buf"};
+    InstanceBuf circle = {selection_type_, "circle_buf"};
+    InstanceBuf sphere = {selection_type_, "sphere_buf"};
+    InstanceBuf cone = {selection_type_, "cone_buf"};
+    InstanceBuf arrows = {selection_type_, "arrows_buf"};
+    InstanceBuf image = {selection_type_, "image_buf"};
+    InstanceBuf speaker = {selection_type_, "speaker_buf"};
+    InstanceBuf probe_cube = {selection_type_, "probe_cube_buf"};
+    InstanceBuf probe_grid = {selection_type_, "probe_grid_buf"};
+    InstanceBuf probe_planar = {selection_type_, "probe_planar_buf"};
   } call_buffers_[2] = {{selection_type_}, {selection_type_}};
 
-  void empty_sync(CallBuffers &call_bufs,
+  void empty_sync(InstanceBuffers &call_bufs,
                   const ObjectRef &ob_ref,
                   const ExtraInstanceData data,
                   const select::ID select_id);
-  void probe_sync();
+  void probe_sync(InstanceBuffers &call_bufs,
+                  const ObjectRef &ob_ref,
+                  const ExtraInstanceData data,
+                  const select::ID select_id);
 
  public:
   Extras(const eSelectionType selection_type) : selection_type_(selection_type){};

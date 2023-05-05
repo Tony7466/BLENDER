@@ -72,6 +72,25 @@ static constexpr std::array<uint, 24> bone_box_wire = {
     0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7,
 };
 
+static float light_distance_z_get(char axis, const bool start)
+{
+  switch (axis) {
+    case 'x': /* - X */
+      return start ? 0.4f : 0.3f;
+    case 'X': /* + X */
+      return start ? 0.6f : 0.7f;
+    case 'y': /* - Y */
+      return start ? 1.4f : 1.3f;
+    case 'Y': /* + Y */
+      return start ? 1.6f : 1.7f;
+    case 'z': /* - Z */
+      return start ? 2.4f : 2.3f;
+    case 'Z': /* + Z */
+      return start ? 2.6f : 2.7f;
+  }
+  return 0.0;
+}
+
 /* A single ring of vertices. */
 static Vector<float2> ring_vertices(const float radius, const int segments)
 {
@@ -320,7 +339,7 @@ ShapeCache::ShapeCache()
     }
     metaball_wire_circle = BatchPtr(GPU_batch_create_ex(
         GPU_PRIM_LINE_STRIP, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
-  };
+  }
   /* speaker */
   {
     const int segments = 16;
@@ -359,6 +378,168 @@ ShapeCache::ShapeCache()
     }
 
     speaker = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  const int diamond_segments = 4;
+  /* probe_cube */
+  {
+    Vector<Vertex> verts;
+
+    int v_len = (6 + 3 + (1 + 2 * diamond_segments) * 6) * 2;
+
+    const float r = 14.0f;
+    int v = 0;
+    int flag = VCLASS_SCREENSPACE;
+    /* Icon */
+    const float sin_pi_3 = 0.86602540378f;
+    const float cos_pi_3 = 0.5f;
+    const float p[7][2] = {
+        {0.0f, 1.0f},
+        {sin_pi_3, cos_pi_3},
+        {sin_pi_3, -cos_pi_3},
+        {0.0f, -1.0f},
+        {-sin_pi_3, -cos_pi_3},
+        {-sin_pi_3, cos_pi_3},
+        {0.0f, 0.0f},
+    };
+    for (int i = 0; i < 6; i++) {
+      float t1[2], t2[2];
+      copy_v2_v2(t1, p[i]);
+      copy_v2_v2(t2, p[(i + 1) % 6]);
+      verts.append({{t1[0] * r, t1[1] * r, 0.0f}, flag});
+      verts.append({{t2[0] * r, t2[1] * r, 0.0f}, flag});
+    }
+    verts.append({{p[1][0] * r, p[1][1] * r, 0.0f}, flag});
+    verts.append({{p[6][0] * r, p[6][1] * r, 0.0f}, flag});
+    verts.append({{p[5][0] * r, p[5][1] * r, 0.0f}, flag});
+    verts.append({{p[6][0] * r, p[6][1] * r, 0.0f}, flag});
+    verts.append({{p[3][0] * r, p[3][1] * r, 0.0f}, flag});
+    verts.append({{p[6][0] * r, p[6][1] * r, 0.0f}, flag});
+    /* Direction Lines */
+    flag = VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE;
+    for (int i = 0; i < 6; i++) {
+      char axes[] = "zZyYxX";
+      float zsta = light_distance_z_get(axes[i], true);
+      float zend = light_distance_z_get(axes[i], false);
+      verts.append({{0.0f, 0.0f, zsta}, flag});
+      verts.append({{0.0f, 0.0f, zend}, flag});
+
+      const float r = 1.2f;
+
+      verts.append({float3(r, 0.0f, zsta), flag});
+      for (float2 v : ring_vertices(r, diamond_segments)) {
+        verts.append({float3(v, zsta), flag});
+        verts.append({float3(v, zsta), flag});
+      }
+      verts.append({float3(r, 0.0f, zsta), flag});
+
+      verts.append({float3(r, 0.0f, zend), flag});
+      for (float2 v : ring_vertices(r, diamond_segments)) {
+        verts.append({float3(v, zend), flag});
+        verts.append({float3(v, zend), flag});
+      }
+      verts.append({float3(r, 0.0f, zend), flag});
+    }
+
+    probe_cube = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* probe_grid */
+  {
+    Vector<Vertex> verts;
+
+    int v_len = (6 * 2 + 3 + (1 + 2 * diamond_segments) * 6) * 2;
+
+    const float r = 14.0f;
+    int v = 0;
+    int flag = VCLASS_SCREENSPACE;
+    /* Icon */
+    const float sin_pi_3 = 0.86602540378f;
+    const float cos_pi_3 = 0.5f;
+    const float p[7][2] = {
+        {0.0f, 1.0f},
+        {sin_pi_3, cos_pi_3},
+        {sin_pi_3, -cos_pi_3},
+        {0.0f, -1.0f},
+        {-sin_pi_3, -cos_pi_3},
+        {-sin_pi_3, cos_pi_3},
+        {0.0f, 0.0f},
+    };
+    for (int i = 0; i < 6; i++) {
+      float t1[2], t2[2], tr[2];
+      copy_v2_v2(t1, p[i]);
+      copy_v2_v2(t2, p[(i + 1) % 6]);
+      verts.append({{t1[0] * r, t1[1] * r, 0.0f}, flag});
+      verts.append({{t2[0] * r, t2[1] * r, 0.0f}, flag});
+      /* Internal wires. */
+      for (int j = 1; j < 2; j++) {
+        mul_v2_v2fl(tr, p[(i / 2) * 2 + 1], -0.5f * j);
+        add_v2_v2v2(t1, p[i], tr);
+        add_v2_v2v2(t2, p[(i + 1) % 6], tr);
+        verts.append({{t1[0] * r, t1[1] * r, 0.0f}, flag});
+        verts.append({{t2[0] * r, t2[1] * r, 0.0f}, flag});
+      }
+    }
+    verts.append({{p[1][0] * r, p[1][1] * r, 0.0f}, flag});
+    verts.append({{p[6][0] * r, p[6][1] * r, 0.0f}, flag});
+    verts.append({{p[5][0] * r, p[5][1] * r, 0.0f}, flag});
+    verts.append({{p[6][0] * r, p[6][1] * r, 0.0f}, flag});
+    verts.append({{p[3][0] * r, p[3][1] * r, 0.0f}, flag});
+    verts.append({{p[6][0] * r, p[6][1] * r, 0.0f}, flag});
+    /* Direction Lines */
+    flag = VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE;
+    for (int i = 0; i < 6; i++) {
+      char axes[] = "zZyYxX";
+      float zsta = light_distance_z_get(axes[i], true);
+      float zend = light_distance_z_get(axes[i], false);
+      verts.append({{0.0f, 0.0f, zsta}, flag});
+      verts.append({{0.0f, 0.0f, zend}, flag});
+
+      const float r = 1.2f;
+
+      verts.append({float3(r, 0.0f, zsta), flag});
+      for (float2 v : ring_vertices(r, diamond_segments)) {
+        verts.append({float3(v, zsta), flag});
+        verts.append({float3(v, zsta), flag});
+      }
+      verts.append({float3(r, 0.0f, zsta), flag});
+
+      verts.append({float3(r, 0.0f, zend), flag});
+      for (float2 v : ring_vertices(r, diamond_segments)) {
+        verts.append({float3(v, zend), flag});
+        verts.append({float3(v, zend), flag});
+      }
+      verts.append({float3(r, 0.0f, zend), flag});
+    }
+
+    probe_grid = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* probe_planar */
+  {
+    Vector<Vertex> verts;
+
+    int v_len = 2 * 4;
+
+    const float r = 20.0f;
+    int v = 0;
+    /* Icon */
+    const float sin_pi_3 = 0.86602540378f;
+    const float p[4][2] = {
+        {0.0f, 0.5f},
+        {sin_pi_3, 0.0f},
+        {0.0f, -0.5f},
+        {-sin_pi_3, 0.0f},
+    };
+    for (int i = 0; i < 4; i++) {
+      for (int a = 0; a < 2; a++) {
+        float x = p[(i + a) % 4][0] * r;
+        float y = p[(i + a) % 4][1] * r;
+        verts.append({{x, y, 0.0}, VCLASS_SCREENSPACE});
+      }
+    }
+
+    probe_planar = BatchPtr(
         GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
   }
 }
