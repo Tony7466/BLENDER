@@ -116,7 +116,7 @@ void ED_pose_bone_select(Object *ob, bPoseChannel *pchan, bool select, bool chan
     else {
       pchan->bone->flag &= ~BONE_SELECTED;
       if (change_active) {
-        arm->act_bone = pchan->bone;
+        arm->act_bone = NULL;
       }
     }
 
