@@ -441,10 +441,6 @@ void BlenderSceneDelegate::add_new_objects()
               Object *,
               object) {
 
-    if (!ObjectData::is_supported(object)) {
-      continue;
-    }
-
     update_objects(object);
     update_instancers(object);
   }
@@ -469,10 +465,9 @@ void BlenderSceneDelegate::remove_unused_objects()
               &data,
               Object *,
               object) {
-    if (!ObjectData::is_supported(object)) {
-      continue;
+    if (ObjectData::is_supported(object)) {
+      available_objects.insert(object_prim_id(object).GetName());
     }
-    available_objects.insert(object_prim_id(object).GetName());
     available_objects.insert(instancer_prim_id(object).GetName());
   }
   ITER_END;
@@ -548,10 +543,6 @@ void BlenderSceneDelegate::update_visibility()
               &data,
               Object *,
               object) {
-
-    if (!ObjectData::is_supported(object)) {
-      continue;
-    }
 
     if (!object_data(object_prim_id(object))) {
       update_objects(object);

@@ -64,7 +64,8 @@ void InstancerData::update()
   ID_LOG(2, "");
 
   Object *object = (Object *)id;
-  if (id->recalc & ID_RECALC_GEOMETRY || ((ID *)object->data)->recalc & ID_RECALC_GEOMETRY ||
+  if (id->recalc & ID_RECALC_GEOMETRY ||
+      (object->data && ((ID *)object->data)->recalc & ID_RECALC_GEOMETRY) ||
       id->recalc & ID_RECALC_TRANSFORM) {
     set_instances();
     scene_delegate_->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(
