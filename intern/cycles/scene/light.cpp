@@ -548,24 +548,26 @@ static void light_tree_leaf_emitters_flatten(LightTreeFlatten &flatten,
       LightTreeNode *instance_node = emitter.root.get();
       LightTreeNode *reference_node = instance_node->get_reference();
 
+      auto map_it = flatten.instances.find(reference_node);
+      if (map_it == flatten.instances.end()) {
+        if (instance_node != reference_node) {
+          /* Flatten the node with the subtree first so the subsequent instances know the index. */
+          std::swap(instance_node->type, reference_node->type);
+          std::swap(instance_node->variant_type, reference_node->variant_type);
+        }
+        instance_node->type &= ~LIGHT_TREE_INSTANCE;
+      }
+
       kemitter.mesh.node_id = light_tree_flatten(
           flatten, instance_node, knodes, kemitters, next_node_index);
 
       KernelLightTreeNode &kinstance_node = knodes[kemitter.mesh.node_id];
       kinstance_node.bit_trail = node.bit_trail;
 
-      auto map_it = flatten.instances.find(reference_node);
       if (map_it != flatten.instances.end()) {
         kinstance_node.instance.reference = map_it->second;
       }
       else {
-        if (instance_node != reference_node) {
-          /* Flatten the node with the subtree first so the subsequent instances know the index. */
-          std::swap(instance_node->type, reference_node->type);
-          std::swap(instance_node->variant_type, reference_node->variant_type);
-        }
-
-        kinstance_node.type = LightTreeNodeType(kinstance_node.type & ~LIGHT_TREE_INSTANCE);
         flatten.instances[reference_node] = kemitter.mesh.node_id;
       }
     }
