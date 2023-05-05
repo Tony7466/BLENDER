@@ -682,6 +682,11 @@ inline bool bNodeLink::is_used() const
   return !this->is_muted() && this->is_available();
 }
 
+inline bool bNodeLink::is_in_cycle() const
+{
+  return this->flag & NODE_LINK_IN_CYCLE;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

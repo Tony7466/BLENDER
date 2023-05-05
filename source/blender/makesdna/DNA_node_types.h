@@ -506,6 +506,7 @@ typedef struct bNodeLink {
   bool is_available() const;
   /** Both linked sockets are available and the link is not muted. */
   bool is_used() const;
+  bool is_in_cycle() const;
 #endif
 
 } bNodeLink;
@@ -516,6 +517,7 @@ typedef struct bNodeLink {
 #define NODE_LINK_TEST (1 << 2)           /* free test flag, undefined */
 #define NODE_LINK_TEMP_HIGHLIGHT (1 << 3) /* Link is highlighted for picking. */
 #define NODE_LINK_MUTED (1 << 4)          /* Link is muted. */
+#define NODE_LINK_IN_CYCLE (1 << 5)       /* All links between nodes forming a cycle. */
 
 /* tree->edit_quality/tree->render_quality */
 #define NTREE_QUALITY_HIGH 0
