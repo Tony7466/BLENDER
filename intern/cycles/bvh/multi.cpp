@@ -22,9 +22,19 @@ BVHMulti::~BVHMulti() { }
 
 BVH *BVHMulti::get_device_bvh(const Device *subdevice)
 {
-  int id = device->device_number(subdevice);
-  resize_sub_bvhs_if_needed(id);
-  return sub_bvhs[id].get();
+  BVH *bvh = NULL;
+  if (subdevice == device) {
+    bvh = this;
+  }
+  else {
+    int id = device->device_number(subdevice);
+    assert(id != -1);
+    if (id != -1) {
+      resize_sub_bvhs_if_needed(id);
+      bvh = sub_bvhs[id].get();
+    }
+  }
+  return bvh;
 }
 
 void BVHMulti::set_device_bvh(const Device *subdevice, BVH *bvh)
