@@ -72,4 +72,15 @@ void convert_device_to_host(void *dst_buffer,
                             eGPUDataFormat host_format,
                             eGPUTextureFormat device_format);
 
+/**
+ * Is the given vertex format natively supported or does it need conversion in order to be used.
+ *
+ * Vulkan doesn't support int32_t/uint32_t to float conversions.
+ *
+ * \param vertex_format: the vertex format to check if a associated buffer requires conversion
+ *                       being done on the host.
+ */
+bool conversion_needed(const GPUVertFormat &vertex_format);
+void convert_in_place(void *data, const GPUVertFormat &vertex_format, const uint vertex_len);
+
 };  // namespace blender::gpu

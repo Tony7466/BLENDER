@@ -7,6 +7,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "vk_data_conversion.hh"
 #include "vk_shader.hh"
 #include "vk_shader_interface.hh"
 #include "vk_vertex_buffer.hh"
@@ -65,33 +66,10 @@ void VKVertexBuffer::release_data()
   MEM_SAFE_FREE(data);
 }
 
-static bool needs_conversion(const GPUVertAttr &vertex_attribute)
-{
-  return (vertex_attribute.fetch_mode == GPU_FETCH_INT_TO_FLOAT &&
-          ELEM(vertex_attribute.comp_type, GPU_COMP_I32, GPU_COMP_U32));
-}
-/**
- * Check if the VertBuf format needs conversion as one or more attributes aren't natively
- * supported.
- *
- * For example GPU_COMP_I32 With GPU_FETCH_INT_TO_FLOAT isn't natively supported by Vulkan. We
- * should perform the conversion on the host.
- */
-static bool needs_conversion(const GPUVertFormat &vertex_format)
-{
-  for (int attr_index : IndexRange(vertex_format.attr_len)) {
-    const GPUVertAttr &vert_attr = vertex_format.attrs[attr_index];
-    if (needs_conversion(vert_attr)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 static bool inplace_conversion_doable(const GPUUsageType &usage)
 {
   /* based on the flags the conversion can be done inplace.*/
-  return usage == GPU_USAGE_STATIC;
+  return ELEM(usage, GPU_USAGE_STATIC, GPU_USAGE_STREAM);
 }
 
 void *VKVertexBuffer::convert() const
@@ -101,31 +79,7 @@ void *VKVertexBuffer::convert() const
     out_data = MEM_dupallocN(out_data);
   }
   BLI_assert(format.deinterleaved);
-
-  for (int attr_index : IndexRange(format.attr_len)) {
-    const GPUVertAttr &vert_attr = format.attrs[attr_index];
-    if (!needs_conversion(vert_attr)) {
-      continue;
-    }
-    void *row_data = out_data + vert_attr.offset;
-    for (int vert_index = 0; vert_index < vertex_len; vert_index++) {
-      if (vert_attr.comp_type == GPU_COMP_I32) {
-        for (int component : IndexRange(vert_attr.comp_len)) {
-          int32_t *component_in = static_cast<int32_t *>(row_data) + component;
-          float *component_out = static_cast<float *>(row_data) + component;
-          *component_out = float(*component_in);
-        }
-      }
-      else if (vert_attr.comp_type == GPU_COMP_U32) {
-        for (int component : IndexRange(vert_attr.comp_len)) {
-          uint32_t *component_in = static_cast<uint32_t *>(row_data) + component;
-          float *component_out = static_cast<float *>(row_data) + component;
-          *component_out = float(*component_in);
-        }
-      }
-      row_data += format.stride;
-    }
-  }
+  convert_in_place(out_data, format, vertex_len);
   return out_data;
 }
 
@@ -137,8 +91,7 @@ void VKVertexBuffer::upload_data()
 
   if (flag &= GPU_VERTBUF_DATA_DIRTY) {
     void *converted_data = data;
-    if (needs_conversion(format)) {
-      printf("Slow conversion\n");
+    if (conversion_needed(format)) {
       converted_data = convert();
     }
     buffer_.update(converted_data);

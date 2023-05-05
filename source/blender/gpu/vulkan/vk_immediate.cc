@@ -8,6 +8,7 @@
  */
 
 #include "vk_immediate.hh"
+#include "vk_data_conversion.hh"
 
 namespace blender::gpu {
 
@@ -32,6 +33,16 @@ void VKImmediate::end()
   BLI_assert_msg(prim_type != GPU_PRIM_NONE, "Illegal state: not between an immBegin/End pair.");
   if (vertex_len == 0) {
     return;
+  }
+
+  if (conversion_needed(vertex_format)) {
+    // Slow path
+    /* Determine the start of the subbuffer. The `vertex_data` attribute changes when new vertices
+     * are loaded.
+     */
+    uchar *data = static_cast<uchar *>(active_resource()->mapped_memory_get()) +
+                  subbuffer_offset_get();
+    convert_in_place(data, vertex_format, vertex_len);
   }
 
   VKContext &context = *VKContext::get();
