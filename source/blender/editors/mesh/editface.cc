@@ -350,6 +350,39 @@ void paintface_select_linked(bContext *C, Object *ob, const int mval[2], const b
   paintface_flush_flags(C, ob, true, false);
 }
 
+static blender::int2 get_closest_edge(ARegion *region,
+                                      blender::Span<blender::int2> edges,
+                                      blender::Span<int> poly_edges,
+                                      blender::Span<blender::float3> verts,
+                                      const int mval[2])
+{
+  using namespace blender;
+  int2 closest_edge;
+
+  const float mval_f[2] = {float(mval[0]), float(mval[1])};
+  float min_distance = FLT_MAX;
+  for (const int i : poly_edges) {
+    float screen_coordinate[2];
+    const int2 edge = edges[i];
+    const float3 v1 = verts[edge[0]];
+    const float3 v2 = verts[edge[1]];
+    float3 edge_vert_average;
+    add_v3_v3v3(edge_vert_average, v1, v2);
+    mul_v3_fl(edge_vert_average, 0.5f);
+    eV3DProjStatus status = ED_view3d_project_float_object(
+        region, edge_vert_average, screen_coordinate, V3D_PROJ_TEST_CLIP_DEFAULT);
+    if (status != V3D_PROJ_RET_OK) {
+      continue;
+    }
+    const float distance = len_v2v2(screen_coordinate, mval_f);
+    if (distance < min_distance) {
+      min_distance = distance;
+      closest_edge = edge;
+    }
+  }
+  return closest_edge;
+}
+
 void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const bool select)
 {
   using namespace blender;
@@ -388,29 +421,7 @@ void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const boo
   ARegion *region = CTX_wm_region(C);
   RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
   ED_view3d_init_mats_rv3d(ob_eval, rv3d);
-  int2 closest_edge;
-
-  const float mval_f[2] = {float(mval[0]), float(mval[1])};
-  float min_distance = FLT_MAX;
-  for (const int i : corner_edges.slice(poly)) {
-    float screen_coordinate[2];
-    const int2 edge = edges[i];
-    const float3 v1 = verts[edge[0]];
-    const float3 v2 = verts[edge[1]];
-    float3 edge_vert_average;
-    add_v3_v3v3(edge_vert_average, v1, v2);
-    mul_v3_fl(edge_vert_average, 0.5f);
-    eV3DProjStatus status = ED_view3d_project_float_object(
-        region, edge_vert_average, screen_coordinate, V3D_PROJ_TEST_CLIP_DEFAULT);
-    if (status != V3D_PROJ_RET_OK) {
-      continue;
-    }
-    const float distance = len_v2v2(screen_coordinate, mval_f);
-    if (distance < min_distance) {
-      min_distance = distance;
-      closest_edge = edge;
-    }
-  }
+  int2 closest_edge = get_closest_edge(region, edges, corner_edges.slice(poly), verts, mval);
 
   select_poly.finish();
   paintface_flush_flags(C, ob, true, false);
