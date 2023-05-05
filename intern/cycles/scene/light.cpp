@@ -445,9 +445,9 @@ struct LightTreeFlatten {
   std::unordered_map<LightTreeNode *, int> instances;
 };
 
-static void light_tree_node_flatten(KernelLightTreeNode &knode,
-                                    const LightTreeNode &node,
-                                    const int child_index)
+static void light_tree_node_copy_to_device(KernelLightTreeNode &knode,
+                                           const LightTreeNode &node,
+                                           const int child_index)
 {
   /* Convert node to kernel representation. */
   knode.energy = node.measure.energy;
@@ -478,11 +478,11 @@ static int light_tree_flatten(LightTreeFlatten &flatten,
                               KernelLightTreeEmitter *kemitters,
                               int &next_node_index);
 
-static void light_tree_leaf_emitters_flatten(LightTreeFlatten &flatten,
-                                             const LightTreeNode &node,
-                                             KernelLightTreeNode *knodes,
-                                             KernelLightTreeEmitter *kemitters,
-                                             int &next_node_index)
+static void light_tree_leaf_emitters_copy_and_flatten(LightTreeFlatten &flatten,
+                                                      const LightTreeNode &node,
+                                                      KernelLightTreeNode *knodes,
+                                                      KernelLightTreeEmitter *kemitters,
+                                                      int &next_node_index)
 {
   /* Convert emitters to kernel representation. */
   for (int i = 0; i < node.get_leaf().num_emitters; i++) {
@@ -586,7 +586,7 @@ static int light_tree_flatten(LightTreeFlatten &flatten,
   int child_index = -1;
 
   if (node->is_leaf() || node->is_distant()) {
-    light_tree_leaf_emitters_flatten(flatten, *node, knodes, kemitters, next_node_index);
+    light_tree_leaf_emitters_copy_and_flatten(flatten, *node, knodes, kemitters, next_node_index);
   }
   else if (node->is_inner()) {
     /* Nodes are stored in depth first order so that the left child node
@@ -608,7 +608,7 @@ static int light_tree_flatten(LightTreeFlatten &flatten,
     assert(node->is_instance());
   }
 
-  light_tree_node_flatten(knodes[node_index], *node, child_index);
+  light_tree_node_copy_to_device(knodes[node_index], *node, child_index);
 
   return node_index;
 }
