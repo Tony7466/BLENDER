@@ -258,8 +258,12 @@ bool ANIM_is_active_channel(bAnimListElem *ale)
       bGPDlayer *gpl = (bGPDlayer *)ale->data;
       return gpl->flag & GP_LAYER_ACTIVE;
     }
-      return false;
+    /* These channel types do not have active flags. */
+    case ANIMTYPE_MASKLAYER:
+    case ANIMTYPE_SHAPEKEY:
+      break;
   }
+  return false;
 }
 
 /* change_active determines whether to change the active bone of the armature when selecting pose
