@@ -35,7 +35,9 @@ void VKSampler::free()
 
   if (vk_sampler_ != VK_NULL_HANDLE) {
     const VKDevice &device = VKBackend::get().device_get();
-    vkDestroySampler(device.device_get(), vk_sampler_, vk_allocation_callbacks);
+    if (device.device_get() != VK_NULL_HANDLE) {
+      vkDestroySampler(device.device_get(), vk_sampler_, vk_allocation_callbacks);
+    }
     vk_sampler_ = VK_NULL_HANDLE;
   }
 }

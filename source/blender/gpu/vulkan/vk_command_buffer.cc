@@ -38,6 +38,10 @@ void VKCommandBuffer::init(const VkDevice vk_device,
   submission_id_.reset();
   state.stage = Stage::Initial;
 
+  if (vk_device == VK_NULL_HANDLE) {
+    return;
+  }
+
   if (vk_fence_ == VK_NULL_HANDLE) {
     VK_ALLOCATION_CALLBACKS;
     VkFenceCreateInfo fenceInfo{};
