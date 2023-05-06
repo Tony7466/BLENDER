@@ -494,7 +494,7 @@ static void ensure_topology_cache(const bNodeTree &ntree)
     update_interface_sockets(ntree);
 
     threading::parallel_invoke(
-        tree_runtime.nodes_by_id.size() > 32,
+        tree_runtime.nodes_by_id.size() > 64,
         [&] { update_node_vector(ntree); },
         [&] { update_link_vector(ntree); },
         [&] { update_socket_vectors_and_owner_node(ntree); },
@@ -503,7 +503,7 @@ static void ensure_topology_cache(const bNodeTree &ntree)
         [&] { update_nodes_by_type(ntree); });
 
     threading::parallel_invoke(
-        tree_runtime.nodes_by_id.size() > 32,
+        tree_runtime.nodes_by_id.size() > 64,
         [&]() { update_logical_origins(ntree); },
         [&]() { update_sockets_by_identifier(ntree); },
         [&]() {
