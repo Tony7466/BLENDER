@@ -122,6 +122,12 @@ struct TreeDrawContext {
 
 float ED_node_grid_size()
 {
+  const bool align_to_grid = UI_GetThemeValueType(TH_NODE_ALIGN_TO_GRID, SPACE_NODE);
+
+  if (align_to_grid) {
+    return NODE_DY + NODE_SOCKDY;
+  }
+
   return U.widget_unit;
 }
 
@@ -337,7 +343,8 @@ float2 node_from_view(const bNode &node, const float2 &co)
 }
 
 float grid_snap_floor(float x, float offset) {
-  return floor((x - offset) / NODE_DY) * NODE_DY + offset;
+  const float grid_size = NODE_GRID_STEP_SIZE;
+  return floor((x - offset) / grid_size) * grid_size + offset;
 }
 
 /**
@@ -432,7 +439,7 @@ static void node_update_basis(const bContext &C,
     socket->runtime->location = float2(round(loc.x + NODE_WIDTH(node)), round(dy - NODE_DYS));
 
     dy = buty;
-    if (socket->next && !align_to_grid) {
+    if (socket->next) {
       dy -= NODE_SOCKDY;
     }
 
@@ -581,7 +588,7 @@ static void node_update_basis(const bContext &C,
     socket->runtime->location = float2(loc.x, round(dy - NODE_DYS));
 
     dy = buty - multi_input_socket_offset * 0.5;
-    if (socket->next && !align_to_grid) {
+    if (socket->next) {
       dy -= NODE_SOCKDY;
     }
   }
