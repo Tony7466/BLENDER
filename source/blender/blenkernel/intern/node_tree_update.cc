@@ -481,7 +481,6 @@ class NodeTreeMainUpdater {
     result.output_changed = this->check_if_output_changed(ntree);
 
     this->update_socket_link_and_use(ntree);
-    this->update_cyclic_links(ntree);
     this->update_link_validation(ntree);
 
     if (ntree.type == NTREE_TEXTURE) {
@@ -745,26 +744,9 @@ class NodeTreeMainUpdater {
     }
   }
 
-  void update_cyclic_links(bNodeTree &ntree)
-  {
-    for (bNodeLink *link : ntree.links()) {
-      link.flag |= NODE_LINK_IN_CYCLE;
-    }
-
-    for (node : nodes) {
-      Vector<bNodeLink *> to_fill;
-
-      for (socket : node.inputs()) {
-        for (link : socket.directly_linked_links()) {
-          if (!to_fill.add(link)) {
-          }
-        }
-      }
-    }
-  }
-
   void update_link_validation(bNodeTree &ntree)
   {
+    ntree.ensure_topology_cache();
     LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
       if (link->is_in_cycle()) {
         link->flag &= ~NODE_LINK_VALID;
@@ -772,8 +754,6 @@ class NodeTreeMainUpdater {
       }
 
       link->flag |= NODE_LINK_VALID;
-      const bNode &from_node = *link->fromnode;
-      const bNode &to_node = *link->tonode;
       if (ntree.typeinfo->validate_link) {
         const eNodeSocketDatatype from_type = eNodeSocketDatatype(link->fromsock->type);
         const eNodeSocketDatatype to_type = eNodeSocketDatatype(link->tosock->type);

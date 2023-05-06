@@ -154,6 +154,7 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
   Vector<bNode *> toposort_right_to_left;
   Vector<bNode *> group_nodes;
   bool has_available_link_cycle = false;
+  bool need_clear_cyclisity = false;
   bool has_undefined_nodes_or_sockets = false;
   bNode *group_output_node = nullptr;
   Vector<bNode *> root_frames;

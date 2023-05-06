@@ -6,6 +6,7 @@
 #include "DNA_node_types.h"
 
 #include "BLI_function_ref.hh"
+#include "BLI_math_base.hh"
 #include "BLI_stack.hh"
 #include "BLI_task.hh"
 #include "BLI_timeit.hh"
@@ -482,6 +483,100 @@ static void update_group_output_node(const bNodeTree &ntree)
   }
 }
 
+static void recursions_cyclic_visiting(const Span<const bNode *> nodes,
+                                       const int node_index,
+                                       MutableSpan<int> node_indices,
+                                       MutableSpan<int> node_group_ids,
+                                       MutableSpan<bool> is_in_stack,
+                                       Vector<int> &r_visited_nodes,
+                                       int &index)
+{
+  node_indices[node_index] = index;
+  node_group_ids[node_index] = index;
+  is_in_stack[node_index] = true;
+  r_visited_nodes.append(node_index);
+  index++;
+
+  for (const bNodeSocket *input : nodes[node_index]->runtime->inputs) {
+    /* Have to also visit all reroute nodes. */
+    for (const bNodeSocket *connected : input->runtime->directly_linked_sockets) {
+      const int other_node_index = connected->runtime->owner_node->runtime->index_in_tree;
+      if (node_indices[other_node_index] == -1) {
+        recursions_cyclic_visiting(nodes,
+                                   other_node_index,
+                                   node_indices,
+                                   node_group_ids,
+                                   is_in_stack,
+                                   r_visited_nodes,
+                                   index);
+        node_group_ids[node_index] = math::min(node_group_ids[node_index],
+                                               node_group_ids[other_node_index]);
+      }
+      else if (is_in_stack[other_node_index]) {
+        node_group_ids[node_index] = math::min(node_group_ids[node_index],
+                                               node_indices[other_node_index]);
+      }
+    }
+  }
+
+  if (node_group_ids[node_index] != node_indices[node_index]) {
+    return;
+  }
+
+  while (!r_visited_nodes.is_empty()) {
+    const int other_node_index = r_visited_nodes.pop_last();
+    is_in_stack[other_node_index] = false;
+    if (other_node_index == node_index) {
+      break;
+    }
+  }
+}
+
+static void update_cyclic_links(const bNodeTree &ntree)
+{
+  if (!ntree.runtime->has_available_link_cycle) {
+    if (ntree.runtime->need_clear_cyclisity) {
+      LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
+        link->flag &= ~NODE_LINK_IN_CYCLE;
+      }
+    }
+    return;
+  }
+
+  Vector<int> visited_nodes;
+  visited_nodes.reserve(ntree.all_nodes().size());
+  int index = 0;
+
+  Array<int> node_indices(ntree.all_nodes().size(), -1);
+  Array<int> node_group_ids(ntree.all_nodes().size());
+  Array<bool> is_on_stack(ntree.all_nodes().size(), false);
+
+  for (const int node_index : ntree.all_nodes().index_range()) {
+    if (node_indices[node_index] == -1) {
+      recursions_cyclic_visiting(ntree.all_nodes(),
+                                 node_index,
+                                 node_indices,
+                                 node_group_ids,
+                                 is_on_stack,
+                                 visited_nodes,
+                                 index);
+    }
+  }
+
+  LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
+    const int from_node = link->fromnode->index();
+    const int to_node = link->tonode->index();
+    if (node_group_ids[from_node] == node_group_ids[to_node]) {
+      link->flag |= NODE_LINK_IN_CYCLE;
+    }
+    else {
+      link->flag &= ~NODE_LINK_IN_CYCLE;
+    }
+  }
+
+  ntree.runtime->need_clear_cyclisity = true;
+}
+
 static void ensure_topology_cache(const bNodeTree &ntree)
 {
   bNodeTreeRuntime &tree_runtime = *ntree.runtime;
@@ -510,6 +605,7 @@ static void ensure_topology_cache(const bNodeTree &ntree)
         },
         [&]() { update_root_frames(ntree); },
         [&]() { update_direct_frames_childrens(ntree); });
+    update_cyclic_links(ntree);
     update_group_output_node(ntree);
     tree_runtime.topology_cache_exists = true;
   });
