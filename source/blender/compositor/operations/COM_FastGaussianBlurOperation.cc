@@ -70,8 +70,8 @@ void FastGaussianBlurOperation::deinit_execution()
 
 void FastGaussianBlurOperation::set_size(int size_x, int size_y)
 {
-  // todo: there should be a better way to use the operation without knowing specifics of the blur
-  // node (data_) Could use factory pattern to solve this problem.
+  /* TODO: there should be a better way to use the operation without knowing specifics of the blur
+   * node (i.e. data_). We could use factory pattern to solve this problem. */
   data_.sizex = size_x;
   data_.sizey = size_y;
   sizeavailable_ = true;

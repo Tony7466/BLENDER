@@ -82,7 +82,7 @@ void KuwaharaNode::convert_to_operations(NodeConverter &converter,
 
       /* Apply anisotropic Kuwahara filter */
       KuwaharaAnisotropicOperation *aniso = new KuwaharaAnisotropicOperation();
-      aniso->set_kernel_size(data->size);
+      aniso->set_kernel_size(data->size + 4);
       converter.map_input_socket(get_input_socket(0), aniso->get_input_socket(0));
       converter.add_operation(aniso);
 

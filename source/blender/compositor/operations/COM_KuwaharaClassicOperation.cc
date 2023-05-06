@@ -33,7 +33,75 @@ void KuwaharaClassicOperation::execute_pixel_sampled(float output[4],
                                                      float y,
                                                      PixelSampler sampler)
 {
-  /* Not implemented */
+  for (int ch = 0; ch < 3; ch++) {
+    float sum[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+    float mean[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+    float var[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+    int cnt[4] = {0, 0, 0, 0};
+
+    /* Split surroundings of pixel into 4 overlapping regions */
+    for (int dy = -kernel_size_; dy <= kernel_size_; dy++) {
+      for (int dx = -kernel_size_; dx <= kernel_size_; dx++) {
+
+        int xx = x + dx;
+        int yy = y + dy;
+        if (xx >= 0 && yy >= 0 && xx < this->get_width() && yy < this->get_height()) {
+          float color[4];
+          image_reader_->read_sampled(color, xx, yy, sampler);
+          const float v = color[ch];
+          const float lum = IMB_colormanagement_get_luminance(color);
+
+          if (dx <= 0 && dy <= 0) {
+            mean[0] += v;
+            sum[0] += lum;
+            var[0] += lum * lum;
+            cnt[0]++;
+          }
+
+          if (dx >= 0 && dy <= 0) {
+            mean[1] += v;
+            sum[1] += lum;
+            var[1] += lum * lum;
+            cnt[1]++;
+          }
+
+          if (dx <= 0 && dy >= 0) {
+            mean[2] += v;
+            sum[2] += lum;
+            var[2] += lum * lum;
+            cnt[2]++;
+          }
+
+          if (dx >= 0 && dy >= 0) {
+            mean[3] += v;
+            sum[3] += lum;
+            var[3] += lum * lum;
+            cnt[3]++;
+          }
+        }
+      }
+    }
+
+    /* Compute region variances */
+    for (int i = 0; i < 4; i++) {
+      mean[i] = cnt[i] != 0 ? mean[i] / cnt[i] : 0.0f;
+      sum[i] = cnt[i] != 0 ? sum[i] / cnt[i] : 0.0f;
+      var[i] = cnt[i] != 0 ? var[i] / cnt[i] : 0.0f;
+      const float temp = sum[i] * sum[i];
+      var[i] = var[i] > temp ? sqrt(var[i] - temp) : 0.0f;
+    }
+
+    /* Choose the region with lowest variance */
+    float min_var = FLT_MAX;
+    int min_index = 0;
+    for (int i = 0; i < 4; i++) {
+      if (var[i] < min_var) {
+        min_var = var[i];
+        min_index = i;
+      }
+    }
+    output[ch] = mean[min_index];
+  }
 }
 
 void KuwaharaClassicOperation::set_kernel_size(int kernel_size)

@@ -9,8 +9,12 @@ namespace blender::compositor {
 
 class KuwaharaAnisotropicOperation : public MultiThreadedOperation {
   SocketReader *image_reader_;
+  SocketReader *s_xx_reader_;
+  SocketReader *s_yy_reader_;
+  SocketReader *s_xy_reader_;
 
   int kernel_size_;
+  int n_div_;
 
  public:
   KuwaharaAnisotropicOperation();
@@ -21,6 +25,7 @@ class KuwaharaAnisotropicOperation : public MultiThreadedOperation {
 
   void set_kernel_size(int kernel_size);
   int get_kernel_size();
+  int get_n_div();
 
   void update_memory_buffer_partial(MemoryBuffer *output,
                                     const rcti &area,
