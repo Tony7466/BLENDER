@@ -536,7 +536,7 @@ static void node_update_basis(const bContext &C,
       if (align_to_grid) {
         if (socket->runtime->total_inputs > 1) {
           multi_input_socket_offset = (socket->runtime->total_inputs - 1) *
-                                      NODE_DYS;
+                                      NODE_GRID_STEP_SIZE;
         }
       }
       else {
