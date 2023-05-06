@@ -92,7 +92,7 @@ static void update_internal_link_inputs(const bNodeTree &ntree)
 {
   bNodeTreeRuntime &tree_runtime = *ntree.runtime;
   for (bNode *node : tree_runtime.nodes_by_id) {
-    for (bNodeSocket *socket : node->runtime->outputs) {
+    LISTBASE_FOREACH (bNodeSocket *, socket, &node->outputs) {
       socket->runtime->internal_link_input = nullptr;
     }
     for (bNodeLink &link : node->runtime->internal_links) {
@@ -105,40 +105,40 @@ static void update_directly_linked_links_and_sockets(const bNodeTree &ntree)
 {
   bNodeTreeRuntime &tree_runtime = *ntree.runtime;
   for (bNode *node : tree_runtime.nodes_by_id) {
-    for (bNodeSocket *socket : node->runtime->inputs) {
+    LISTBASE_FOREACH (bNodeSocket *, socket, &node->inputs) {
       socket->runtime->directly_linked_links.clear();
       socket->runtime->directly_linked_sockets.clear();
     }
-    for (bNodeSocket *socket : node->runtime->outputs) {
+    LISTBASE_FOREACH (bNodeSocket *, socket, &node->outputs) {
       socket->runtime->directly_linked_links.clear();
       socket->runtime->directly_linked_sockets.clear();
     }
     node->runtime->has_available_linked_inputs = false;
     node->runtime->has_available_linked_outputs = false;
   }
-  for (bNodeLink *link : tree_runtime.links) {
+  LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
     link->fromsock->runtime->directly_linked_links.append(link);
     link->fromsock->runtime->directly_linked_sockets.append(link->tosock);
-    link->tosock->runtime->directly_linked_links.append(link);
     if (link->is_available()) {
       link->fromnode->runtime->has_available_linked_outputs = true;
       link->tonode->runtime->has_available_linked_inputs = true;
     }
   }
-  for (bNodeSocket *socket : tree_runtime.input_sockets) {
-    if (socket->flag & SOCK_MULTI_INPUT) {
-      std::sort(socket->runtime->directly_linked_links.begin(),
-                socket->runtime->directly_linked_links.end(),
-                [&](const bNodeLink *a, const bNodeLink *b) {
-                  return a->multi_input_socket_index > b->multi_input_socket_index;
-                });
+  for (bNode *node : tree_runtime.nodes_by_id) {
+    LISTBASE_FOREACH (bNodeSocket *, socket, &node->inputs) {
+      if (socket->is_multi_input()) {
+        std::sort(socket->runtime->directly_linked_links.begin(),
+                  socket->runtime->directly_linked_links.end(),
+                  [&](const bNodeLink *a, const bNodeLink *b) {
+                    return a->multi_input_socket_index > b->multi_input_socket_index;
+                  });
+      }
     }
   }
-  for (bNodeSocket *socket : tree_runtime.input_sockets) {
-    for (bNodeLink *link : socket->runtime->directly_linked_links) {
-      /* Do this after sorting the input links. */
-      socket->runtime->directly_linked_sockets.append(link->fromsock);
-    }
+  LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
+    /* Do this after sorting the input links. */
+    link->tosock->runtime->directly_linked_sockets.append(link->fromsock);
+    link->tosock->runtime->directly_linked_links.append(link);
   }
 }
 
@@ -486,13 +486,18 @@ static void ensure_topology_cache(const bNodeTree &ntree)
 {
   bNodeTreeRuntime &tree_runtime = *ntree.runtime;
   tree_runtime.topology_cache_mutex.ensure([&]() {
+    bNodeTreeRuntime &tree_runtime = *ntree.runtime;
     update_interface_sockets(ntree);
-    update_node_vector(ntree);
-    update_link_vector(ntree);
-    update_socket_vectors_and_owner_node(ntree);
-    update_internal_link_inputs(ntree);
-    update_directly_linked_links_and_sockets(ntree);
-    update_nodes_by_type(ntree);
+
+    threading::parallel_invoke(
+        tree_runtime.nodes_by_id.size() > 32,
+        [&] { update_node_vector(ntree); },
+        [&] { update_link_vector(ntree); },
+        [&] { update_socket_vectors_and_owner_node(ntree); },
+        [&] { update_internal_link_inputs(ntree); },
+        [&] { update_directly_linked_links_and_sockets(ntree); },
+        [&] { update_nodes_by_type(ntree); });
+
     threading::parallel_invoke(
         tree_runtime.nodes_by_id.size() > 32,
         [&]() { update_logical_origins(ntree); },
@@ -510,6 +515,7 @@ static void ensure_topology_cache(const bNodeTree &ntree)
         },
         [&]() { update_root_frames(ntree); },
         [&]() { update_direct_frames_childrens(ntree); });
+
     update_group_output_node(ntree);
     tree_runtime.topology_cache_exists = true;
   });
