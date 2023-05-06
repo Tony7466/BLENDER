@@ -500,6 +500,9 @@ static void recursions_cyclic_visiting(const Span<const bNode *> nodes,
   for (const bNodeSocket *input : nodes[node_index]->runtime->inputs) {
     /* Have to also visit all reroute nodes. */
     for (const bNodeSocket *connected : input->runtime->directly_linked_sockets) {
+      if (!connected->is_available()) {
+        continue;
+      }
       const int other_node_index = connected->runtime->owner_node->runtime->index_in_tree;
       if (node_indices[other_node_index] == -1) {
         recursions_cyclic_visiting(nodes,
