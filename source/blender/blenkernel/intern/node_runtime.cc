@@ -491,7 +491,6 @@ static void ensure_topology_cache(const bNodeTree &ntree)
 {
   bNodeTreeRuntime &tree_runtime = *ntree.runtime;
   tree_runtime.topology_cache_mutex.ensure([&]() {
-    bNodeTreeRuntime &tree_runtime = *ntree.runtime;
     update_interface_sockets(ntree);
 
     threading::parallel_invoke(
