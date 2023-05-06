@@ -483,13 +483,13 @@ static void update_group_output_node(const bNodeTree &ntree)
   }
 }
 
-static void recursions_cyclic_visiting(const Span<const bNode *> nodes,
-                                       const int node_index,
-                                       MutableSpan<int> node_indices,
-                                       MutableSpan<int> node_group_ids,
-                                       MutableSpan<bool> is_in_stack,
-                                       Vector<int> &r_visited_nodes,
-                                       int &index)
+static void recursive_cycles_visiting(const Span<const bNode *> nodes,
+                                      const int node_index,
+                                      MutableSpan<int> node_indices,
+                                      MutableSpan<int> node_group_ids,
+                                      MutableSpan<bool> is_in_stack,
+                                      Vector<int> &r_visited_nodes,
+                                      int &index)
 {
   node_indices[node_index] = index;
   node_group_ids[node_index] = index;
@@ -497,21 +497,24 @@ static void recursions_cyclic_visiting(const Span<const bNode *> nodes,
   r_visited_nodes.append(node_index);
   index++;
 
-  for (const bNodeSocket *input : nodes[node_index]->runtime->inputs) {
+  for (const bNodeSocket *input_socket : nodes[node_index]->runtime->inputs) {
+    if (!input_socket->is_available()) {
+      continue;
+    }
     /* Have to also visit all reroute nodes. */
-    for (const bNodeSocket *connected : input->runtime->directly_linked_sockets) {
-      if (!connected->is_available()) {
+    for (const bNodeSocket *connected_socket : input_socket->runtime->directly_linked_sockets) {
+      if (!connected_socket->is_available()) {
         continue;
       }
-      const int other_node_index = connected->runtime->owner_node->runtime->index_in_tree;
+      const int other_node_index = connected_socket->runtime->owner_node->runtime->index_in_tree;
       if (node_indices[other_node_index] == -1) {
-        recursions_cyclic_visiting(nodes,
-                                   other_node_index,
-                                   node_indices,
-                                   node_group_ids,
-                                   is_in_stack,
-                                   r_visited_nodes,
-                                   index);
+        recursive_cycles_visiting(nodes,
+                                  other_node_index,
+                                  node_indices,
+                                  node_group_ids,
+                                  is_in_stack,
+                                  r_visited_nodes,
+                                  index);
         node_group_ids[node_index] = math::min(node_group_ids[node_index],
                                                node_group_ids[other_node_index]);
       }
@@ -557,13 +560,13 @@ static void update_cyclic_links(const bNodeTree &ntree)
 
   for (const int node_index : ntree.all_nodes().index_range()) {
     if (node_indices[node_index] == -1) {
-      recursions_cyclic_visiting(ntree.all_nodes(),
-                                 node_index,
-                                 node_indices,
-                                 node_group_ids,
-                                 is_on_stack,
-                                 visited_nodes,
-                                 index);
+      recursive_cycles_visiting(ntree.all_nodes(),
+                                node_index,
+                                node_indices,
+                                node_group_ids,
+                                is_on_stack,
+                                visited_nodes,
+                                index);
     }
   }
 
