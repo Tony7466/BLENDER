@@ -539,6 +539,7 @@ static void update_cyclic_links(const bNodeTree &ntree)
       LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
         link->flag &= ~NODE_LINK_IN_CYCLE;
       }
+      ntree.runtime->need_clear_cyclisity = false;
     }
     return;
   }
