@@ -25,9 +25,26 @@ class MESH_MT_vertex_group_context_menu(Menu):
             icon='BONE_DATA',
             text="Sort by Bone Hierarchy",
         ).sort_type = 'BONE_HIERARCHY'
+
         layout.separator()
         layout.operator("object.vertex_group_copy", icon='DUPLICATE')
-        layout.operator("object.vertex_group_copy_to_selected")
+        copy_vgroups = layout.operator(
+            "object.data_transfer",
+            icon = "MOD_DATA_TRANSFER",
+            text="Copy to Selected Objects")
+        copy_vgroups.data_type = "VGROUP_WEIGHTS"
+        copy_vgroups.vert_mapping = "TOPOLOGY"
+        copy_vgroups.layers_select_src = "ACTIVE"
+        copy_vgroups.layers_select_dst = "NAME"
+        
+        copy_vgroups = layout.operator(
+            "object.data_transfer",
+            text="Copy All to Selected Objects")
+        copy_vgroups.data_type = "VGROUP_WEIGHTS"
+        copy_vgroups.vert_mapping = "TOPOLOGY"
+        copy_vgroups.layers_select_src = "ALL"
+        copy_vgroups.layers_select_dst = "NAME"
+
         layout.separator()
         layout.operator("object.vertex_group_mirror", icon='ARROW_LEFTRIGHT').use_topology = False
         layout.operator("object.vertex_group_mirror", text="Mirror Vertex Group (Topology)").use_topology = True
