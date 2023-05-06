@@ -116,9 +116,11 @@ static void update_directly_linked_links_and_sockets(const bNodeTree &ntree)
     node->runtime->has_available_linked_inputs = false;
     node->runtime->has_available_linked_outputs = false;
   }
+
   LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
     link->fromsock->runtime->directly_linked_links.append(link);
     link->fromsock->runtime->directly_linked_sockets.append(link->tosock);
+    link->tosock->runtime->directly_linked_links.append(link);
     if (link->is_available()) {
       link->fromnode->runtime->has_available_linked_outputs = true;
       link->tonode->runtime->has_available_linked_inputs = true;
@@ -135,10 +137,13 @@ static void update_directly_linked_links_and_sockets(const bNodeTree &ntree)
       }
     }
   }
-  LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
-    /* Do this after sorting the input links. */
-    link->tosock->runtime->directly_linked_sockets.append(link->fromsock);
-    link->tosock->runtime->directly_linked_links.append(link);
+  for (bNode *node : tree_runtime.nodes_by_id) {
+    LISTBASE_FOREACH (bNodeSocket *, socket, &node->outputs) {
+      for (bNodeLink *link : socket->runtime->directly_linked_links) {
+        /* Do this after sorting the input links. */
+        link->tosock->runtime->directly_linked_sockets.append(link->fromsock);
+      }
+    }
   }
 }
 
