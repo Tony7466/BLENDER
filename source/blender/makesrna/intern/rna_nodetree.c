@@ -1185,6 +1185,9 @@ static bNode *rna_NodeTree_node_new(bNodeTree *ntree,
     return NULL;
   }
 
+  /* If the given idname is an alias, translate it to the proper idname. */
+  type = nodeTypeFindAlias(type);
+
   ntype = nodeTypeFind(type);
   if (!ntype) {
     BKE_reportf(reports, RPT_ERROR, "Node type %s undefined", type);

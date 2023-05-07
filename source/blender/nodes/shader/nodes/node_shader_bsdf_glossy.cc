@@ -73,4 +73,8 @@ void register_node_type_sh_bsdf_glossy()
   ntype.gpu_fn = file_ns::node_shader_gpu_bsdf_glossy;
 
   nodeRegisterType(&ntype);
+
+  /* Needed to preserve API compatibility with older versions which had separate
+   * Glossy and Anisotropic nodes. */
+  nodeRegisterAlias(&ntype, "ShaderNodeBsdfGlossy");
 }

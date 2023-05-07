@@ -554,8 +554,10 @@ struct bNodeSocket *ntreeAddSocketInterface(struct bNodeTree *ntree,
  * \{ */
 
 struct bNodeType *nodeTypeFind(const char *idname);
+const char *nodeTypeFindAlias(const char *idname);
 void nodeRegisterType(struct bNodeType *ntype);
 void nodeUnregisterType(struct bNodeType *ntype);
+void nodeRegisterAlias(struct bNodeType *nt, const char *alias);
 struct GHashIterator *nodeTypeGetIterator(void);
 
 /* Helper macros for iterating over node types. */
