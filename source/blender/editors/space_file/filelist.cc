@@ -2233,9 +2233,9 @@ void filelist_uid_unset(FileUID *r_uid)
 
 void filelist_file_cache_slidingwindow_set(FileList *filelist, size_t window_size)
 {
-  /* Always keep it power of 2, in [256, 8192] range for now,
-   * cache being app. twice bigger than requested window. */
-  size_t size = 256;
+  /* Always keep it power of 2, in [FILELIST_ENTRYCACHESIZE_DEFAULT, 8192] range
+   * for now, cache being approximately twice bigger than requested window. */
+  size_t size = FILELIST_ENTRYCACHESIZE_DEFAULT;
   window_size *= 2;
 
   while (size < window_size && size < 8192) {
