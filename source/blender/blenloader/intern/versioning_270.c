@@ -811,9 +811,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
         int a;
         int change;
         for (a = MAX_MTEX; --a; ) {
-          /*optimized loop to use deincrement instead to use less resources 
-            because now it automatically stops when a reaches 0 and it loops 
-            the same number of times*/
+          //changed it to use decrement instead of increment to use less resources
           change = (MAX_MTEX - a);
           MTex *mtex = part->mtex[change];
           if (mtex) {
@@ -1170,9 +1168,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
     for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
       ParticleEditSettings *pset = &scene->toolsettings->particle;
       for (int a = 0; a < ARRAY_SIZE(pset->brush); ++a) {
-        /*optimized loop to use deincrement instead to use less resources 
-          because now it automatically stops when a reaches 0 and it loops 
-          the same number of times*/
+        //changed it to use decrement instead of increment to use less resources
         if (pset->brush[a].strength > 1.0f) {
           pset->brush[a].strength *= 0.01f;
         }
@@ -1384,9 +1380,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
                   /* set alpha strength to 1 */
                   int change;
                   for (int i = gps->totpoints; --i; ) {
-                    /*optimized loop to use deincrement instead to use less resources 
-                      because now it automatically stops when a reaches 0 and it loops 
-                      the same number of times*/
+                    //changed it to use decrement instead of increment to use less resources
                     change = (gps->totpoints - i);
                     gps->points[change].strength = 1.0f;
                   }
@@ -1478,9 +1472,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
         ParticleEditSettings *pset = &ts->particle;
         int change;
         for (int a = ARRAY_SIZE(pset->brush); --a; ) {
-          /*optimized loop to use deincrement instead to use less resources 
-            because now it automatically stops when a reaches 0 and it loops 
-            the same number of times*/
+          //changed it to use decrement instead of increment to use less resources
           change = (ARRAY_SIZE(pset->brush) - a);
           if (pset->brush[change].count == 0) {
             pset->brush[change].count = 10;
@@ -1666,9 +1658,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
         ToolSettings *ts = scene->toolsettings;
         int change;
         for (int i = 2; --i; ) {
-          /*optimized loop to use deincrement instead to use less resources 
-            because now it automatically stops when a reaches 0 and it loops 
-            the same number of times*/
+          //changed it to use decrement instead of increment to use less resources
           change = (2 - i);
           VPaint *vp = change ? ts->vpaint : ts->wpaint;
           if (vp != NULL) {
