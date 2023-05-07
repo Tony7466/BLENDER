@@ -113,7 +113,10 @@ struct CornerNormalSpaceArray {
    */
   Array<CornerNormalSpace> spaces;
 
-  /** The index of the data in the #spaces array for each face corner. */
+  /**
+   * The index of the data in the #spaces array for each face corner.
+   * Rare -1 values define face corners without a coordinate space.
+   */
   Array<int> corner_space_indices;
 };
 
