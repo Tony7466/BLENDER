@@ -17,6 +17,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
+#include "BLI_math.h"
 #include "BLI_string.h"
 
 #include "DNA_anim_types.h"
@@ -1212,7 +1213,7 @@ typedef struct tBtwOperatorData {
 
 static void btw_smooth_allocate_operator_data(tGraphSliderOp *gso,
                                               const int filter_order,
-                                              const int sample_rate)
+                                              const int samples_per_frame)
 {
   tBtwOperatorData *operator_data = MEM_callocN(sizeof(tBtwOperatorData), "tBtwOperatorData");
 
@@ -1235,10 +1236,10 @@ static void btw_smooth_allocate_operator_data(tGraphSliderOp *gso,
       BezTriple right_bezt = fcu->bezt[segment->start_index + segment->length - 1];
       const int sample_count = ((int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) +
                                 (filter_order * 2)) *
-                               sample_rate;
+                               samples_per_frame;
       float *samples = MEM_callocN(sizeof(float) * sample_count, "Btw Smooth FCurve Op Samples");
       sample_fcurve_segment(
-          fcu, left_bezt.vec[1][0] - filter_order, sample_rate, samples, sample_count);
+          fcu, left_bezt.vec[1][0] - filter_order, samples_per_frame, samples, sample_count);
       segment_link->samples = samples;
       BLI_addtail(&segment_links, segment_link);
     }
@@ -1276,20 +1277,22 @@ static void btw_smooth_modal_update(bContext *C, wmOperator *op)
 
   tBtwOperatorData *operator_data = (tBtwOperatorData *)gso->operator_data;
 
-  /* Slider factor is used as cutoff factor, it makes more sense to give the user interactive
-   * control over that. */
-  const float cutoff_factor = slider_factor_get_and_remember(op);
-  const float cutoff_frequency = cutoff_factor * (1.0f / 2);
-  ED_anim_calculate_butterworth_coefficients(cutoff_frequency, 1, operator_data->coefficients);
+  const float frame_rate = (float)(ac.scene->r.frs_sec) / ac.scene->r.frs_sec_base;
+  const int samples_per_frame = RNA_int_get(op->ptr, "samples_per_frame");
+  const float sampling_frequency = frame_rate * samples_per_frame;
+  /* Clamp cutoff frequency to Nyquist Frequency. */
+  const float cutoff_frequency = min_ff(RNA_float_get(op->ptr, "cutoff_frequency"),
+                                        sampling_frequency / 2);
+  ED_anim_calculate_butterworth_coefficients(
+      cutoff_frequency, sampling_frequency, operator_data->coefficients);
 
-  const int sample_rate = RNA_int_get(op->ptr, "sample_rate");
-  const float factor = RNA_float_get(op->ptr, "factor");
+  const float factor = slider_factor_get_and_remember(op);
   LISTBASE_FOREACH (tFCurveSegmentLink *, segment, &operator_data->segment_links) {
     butterworth_smooth_fcurve_segment(segment->fcu,
                                       segment->segment,
                                       segment->samples,
                                       factor,
-                                      sample_rate,
+                                      samples_per_frame,
                                       operator_data->coefficients);
   }
 
@@ -1311,12 +1314,12 @@ static int btw_smooth_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
   tGraphSliderOp *gso = op->customdata;
   gso->modal_update = btw_smooth_modal_update;
-  gso->factor_prop = RNA_struct_find_property(op->ptr, "cutoff_factor");
+  gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
 
   const int filter_order = RNA_int_get(op->ptr, "filter_order");
-  const int sample_rate = RNA_int_get(op->ptr, "sample_rate");
+  const int samples_per_frame = RNA_int_get(op->ptr, "samples_per_frame");
 
-  btw_smooth_allocate_operator_data(gso, filter_order, sample_rate);
+  btw_smooth_allocate_operator_data(gso, filter_order, samples_per_frame);
   gso->free_operator_data = btw_smooth_free_operator_data;
 
   ED_slider_allow_overshoot_set(gso->slider, false, false);
@@ -1328,19 +1331,20 @@ static int btw_smooth_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
 static void btw_smooth_graph_keys(bAnimContext *ac,
                                   const float factor,
-                                  const float cutoff_factor,
+                                  float cutoff_frequency,
                                   const int filter_order,
-                                  const int sample_rate)
+                                  const int samples_per_frame)
 {
   ListBase anim_data = {NULL, NULL};
   ANIM_animdata_filter(ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, ac->datatype);
 
   ButterworthCoefficients *bw_coeff = ED_anim_allocate_butterworth_coefficients(filter_order);
 
-  /* Fix sampling frequency to 1. This is possible since the user just defines a cutoff from 0 to
-   * Nyquist Frequency, instead of dealing with Hz. */
-  const float cutoff_frequency = cutoff_factor * (1.0f / 2);
-  ED_anim_calculate_butterworth_coefficients(cutoff_frequency, 1, bw_coeff);
+  const float frame_rate = (float)(ac->scene->r.frs_sec) / ac->scene->r.frs_sec_base;
+  const float sampling_frequency = frame_rate * samples_per_frame;
+  /* Clamp cutoff frequency to Nyquist Frequency. */
+  cutoff_frequency = min_ff(cutoff_frequency, sampling_frequency / 2);
+  ED_anim_calculate_butterworth_coefficients(cutoff_frequency, sampling_frequency, bw_coeff);
 
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     FCurve *fcu = (FCurve *)ale->key_data;
@@ -1351,11 +1355,12 @@ static void btw_smooth_graph_keys(bAnimContext *ac,
       BezTriple right_bezt = fcu->bezt[segment->start_index + segment->length - 1];
       const int sample_count = ((int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) + 1 +
                                 filter_order * 2) *
-                               sample_rate;
+                               samples_per_frame;
       float *samples = MEM_callocN(sizeof(float) * sample_count, "Smooth FCurve Op Samples");
       sample_fcurve_segment(
-          fcu, left_bezt.vec[1][0] - filter_order, sample_rate, samples, sample_count);
-      butterworth_smooth_fcurve_segment(fcu, segment, samples, factor, sample_rate, bw_coeff);
+          fcu, left_bezt.vec[1][0] - filter_order, samples_per_frame, samples, sample_count);
+      butterworth_smooth_fcurve_segment(
+          fcu, segment, samples, factor, samples_per_frame, bw_coeff);
       MEM_freeN(samples);
     }
 
@@ -1376,10 +1381,10 @@ static int btw_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
   const float factor = RNA_float_get(op->ptr, "factor");
-  const float freq_cutoff = RNA_float_get(op->ptr, "cutoff_factor");
+  const float cutoff_frequency = RNA_float_get(op->ptr, "cutoff_frequency");
   const int filter_order = RNA_int_get(op->ptr, "filter_order");
-  const int sample_rate = RNA_int_get(op->ptr, "sample_rate");
-  btw_smooth_graph_keys(&ac, factor, freq_cutoff, filter_order, sample_rate);
+  const int samples_per_frame = RNA_int_get(op->ptr, "samples_per_frame");
+  btw_smooth_graph_keys(&ac, factor, cutoff_frequency, filter_order, samples_per_frame);
 
   /* Set notifier that keyframes have changed. */
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
@@ -1413,15 +1418,15 @@ void GRAPH_OT_butterworth_smooth(wmOperatorType *ot)
                        0.0f,
                        1.0f);
 
-  RNA_def_float_factor(ot->srna,
-                       "cutoff_factor",
-                       0.5f,
-                       0.0001f,
-                       1.0f,
-                       "Frquency Cutoff",
-                       "Lower values give a smoother curve, 1 equals the Nyquist frequency",
-                       0.0001f,
-                       1.0f);
+  RNA_def_float(ot->srna,
+                "cutoff_frequency",
+                3.0f,
+                0.0001f,
+                FLT_MAX,
+                "Frquency Cutoff (Hz)",
+                "Lower values give a smoother curve",
+                0.0001f,
+                FLT_MAX);
 
   RNA_def_int(ot->srna,
               "filter_order",
@@ -1434,11 +1439,11 @@ void GRAPH_OT_butterworth_smooth(wmOperatorType *ot)
               16);
 
   RNA_def_int(ot->srna,
-              "sample_rate",
+              "samples_per_frame",
               1,
               1,
               64,
-              "Samples Rate",
+              "Samples per Frame",
               "How many samples to calculate per frame, helps with subframe data",
               1,
               16);
