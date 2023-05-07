@@ -1247,7 +1247,8 @@ static void add_nodes(Scene *scene,
       }
     }
     else if (b_node.is_a(&RNA_ShaderNodeGroup) || b_node.is_a(&RNA_NodeCustomGroup) ||
-             b_node.is_a(&RNA_ShaderNodeCustomGroup)) {
+             b_node.is_a(&RNA_ShaderNodeCustomGroup))
+    {
 
       BL::ShaderNodeTree b_group_ntree(PointerRNA_NULL);
       if (b_node.is_a(&RNA_ShaderNodeGroup))
@@ -1383,7 +1384,8 @@ static void add_nodes(Scene *scene,
     /* Ignore invalid links to avoid unwanted cycles created in graph.
      * Also ignore links with unavailable sockets. */
     if (!(b_link.is_valid() && b_link.from_socket().enabled() && b_link.to_socket().enabled()) ||
-        b_link.is_muted()) {
+        b_link.is_muted())
+    {
       continue;
     }
     /* get blender link data */
@@ -1532,7 +1534,8 @@ void BlenderSync::sync_materials(BL::Depsgraph &b_depsgraph, bool update_all)
 
     /* test if we need to sync */
     if (shader_map.add_or_update(&shader, b_mat) || update_all ||
-        scene_attr_needs_recalc(shader, b_depsgraph)) {
+        scene_attr_needs_recalc(shader, b_depsgraph))
+    {
       ShaderGraph *graph = new ShaderGraph();
 
       shader->name = b_mat.name().c_str();
@@ -1615,12 +1618,14 @@ void BlenderSync::sync_world(BL::Depsgraph &b_depsgraph, BL::SpaceView3D &b_v3d,
 
   if (world_recalc || update_all || b_world.ptr.data != world_map ||
       viewport_parameters.shader_modified(new_viewport_parameters) ||
-      scene_attr_needs_recalc(shader, b_depsgraph)) {
+      scene_attr_needs_recalc(shader, b_depsgraph))
+  {
     ShaderGraph *graph = new ShaderGraph();
 
     /* create nodes */
     if (new_viewport_parameters.use_scene_world && b_world && b_world.use_nodes() &&
-        b_world.node_tree()) {
+        b_world.node_tree())
+    {
       BL::ShaderNodeTree b_ntree(b_world.node_tree());
 
       add_nodes(scene, b_engine, b_data, b_depsgraph, b_scene, graph, b_ntree);
@@ -1782,7 +1787,8 @@ void BlenderSync::sync_lights(BL::Depsgraph &b_depsgraph, bool update_all)
 
     /* test if we need to sync */
     if (shader_map.add_or_update(&shader, b_light) || update_all ||
-        scene_attr_needs_recalc(shader, b_depsgraph)) {
+        scene_attr_needs_recalc(shader, b_depsgraph))
+    {
       ShaderGraph *graph = new ShaderGraph();
 
       /* create nodes */
