@@ -1202,12 +1202,10 @@ static int move_cursor(bContext *C, int type, const bool select)
 
     case PREV_WORD: {
       int pos = ef->pos;
+      /* Only use_init_step if there is space to the left. */
+      bool space_left = pos > 0 && ELEM(ef->textbuf[pos - 1], ' ', '\n', '\t');
       BLI_str_cursor_step_utf32(
-          ef->textbuf, ef->len, &pos, STRCUR_DIR_PREV, STRCUR_JUMP_DELIM, true);
-      if (ELEM(ef->textbuf[pos], ' ', '\n', '\t')) {
-        /* Correction for moving too far if from first character or one-letter word. */
-        BLI_str_cursor_step_next_utf32(ef->textbuf, ef->len, &pos);
-      }
+          ef->textbuf, ef->len, &pos, STRCUR_DIR_PREV, STRCUR_JUMP_DELIM, space_left);
       ef->pos = pos;
       cursmove = FO_CURS;
       break;
@@ -1215,12 +1213,10 @@ static int move_cursor(bContext *C, int type, const bool select)
 
     case NEXT_WORD: {
       int pos = ef->pos;
+      /* Only use_init_step if there is space to the right. */
+      bool space_right = ELEM(ef->textbuf[pos], ' ', '\n', '\t');
       BLI_str_cursor_step_utf32(
-          ef->textbuf, ef->len, &pos, STRCUR_DIR_NEXT, STRCUR_JUMP_DELIM, true);
-      if (pos > 0 && ELEM(ef->textbuf[pos - 1], ' ', '\n', '\t')) {
-        /* Correction for moving too far if from last character or one-letter word. */
-        BLI_str_cursor_step_prev_utf32(ef->textbuf, ef->len, &pos);
-      }
+          ef->textbuf, ef->len, &pos, STRCUR_DIR_NEXT, STRCUR_JUMP_DELIM, space_right);
       ef->pos = pos;
       cursmove = FO_CURS;
       break;
@@ -1934,14 +1930,12 @@ static int font_select_word_exec(bContext *C, wmOperator *UNUSED(op))
   Curve *cu = obedit->data;
   EditFont *ef = cu->editfont;
 
-  if (ef->pos > 0 && ELEM(ef->textbuf[ef->pos - 1], ' ', '\n', '\t')) {
-    /* Currently next to white space so just select forward */
-    move_cursor(C, NEXT_WORD, true);
-  }
-  else {
+  if (ef->pos > 0 && !ELEM(ef->textbuf[ef->pos - 1], ' ', '\n', '\t')) {
+    /* We are at the end or middle of a word, so move back. */
     move_cursor(C, PREV_WORD, false);
-    move_cursor(C, NEXT_WORD, true);
   }
+
+  move_cursor(C, NEXT_WORD, true);
 
   return OPERATOR_FINISHED;
 }
