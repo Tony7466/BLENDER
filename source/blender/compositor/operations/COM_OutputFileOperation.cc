@@ -461,6 +461,7 @@ void OutputOpenExrMultiLayerOperation::update_memory_buffer_partial(MemoryBuffer
                               layer_num_channels,
                               this->get_width(),
                               this->get_height());
+      /* Input node always has 4 channels. Not all are needed depending on datatype. */
       output_buf.copy_from(inputs[i], area, 0, layer_num_channels, 0);
     }
   }
