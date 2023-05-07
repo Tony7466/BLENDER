@@ -1319,7 +1319,7 @@ static int btw_smooth_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   btw_smooth_allocate_operator_data(gso, filter_order, sample_rate);
   gso->free_operator_data = btw_smooth_free_operator_data;
 
-  ED_slider_allow_overshoot_set(gso->slider, false);
+  ED_slider_allow_overshoot_set(gso->slider, false, false);
   ED_slider_factor_set(gso->slider, 1.0f);
   common_draw_status_header(C, gso, "Butterworth Smooth");
 

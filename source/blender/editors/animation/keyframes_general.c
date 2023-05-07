@@ -489,7 +489,7 @@ void butterworth_smooth_fcurve_segment(FCurve *fcu,
     const int filter_index = (int)(x_delta * sample_rate);
     const float key_y_value = interpf(
         filtered_values[filter_index], samples[filter_index], factor);
-    move_key(&fcu->bezt[i], key_y_value);
+    BKE_fcurve_keyframe_move_value_with_handles(&fcu->bezt[i], key_y_value);
   }
 
   MEM_freeN(filtered_values);
