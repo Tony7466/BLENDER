@@ -10,6 +10,7 @@
 #include "DNA_node_types.h"
 
 #include "BLI_color.hh"
+#include "BLI_cpp_type_make.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
@@ -181,7 +182,14 @@ static void verify_socket_template_list(bNodeTree *ntree,
   }
 }
 
+BLI_CPP_TYPE_MAKE(blender::nodes::Closure, CPPTypeFlags::None);
+
 namespace blender::nodes {
+
+void register_cpp_types()
+{
+  BLI_CPP_TYPE_REGISTER(blender::nodes::Closure);
+}
 
 static void refresh_socket_list(bNodeTree &ntree,
                                 bNode &node,
@@ -789,9 +797,9 @@ static bNodeSocketType *make_socket_type_material()
 static bNodeSocketType *make_socket_type_function()
 {
   bNodeSocketType *socktype = make_standard_socket_type(SOCK_FUNCTION, PROP_NONE);
-  socktype->base_cpp_type = &blender::CPPType::get<fn::Closure>();
+  socktype->base_cpp_type = &blender::CPPType::get<blender::nodes::Closure>();
   socktype->get_base_cpp_value = [](const bNodeSocket &/*socket*/, void *r_value) {
-    new (r_value) fn::Closure();
+    new (r_value) blender::nodes::Closure();
   };
   socktype->geometry_nodes_cpp_type = socktype->base_cpp_type;
   socktype->get_geometry_nodes_cpp_value = socktype->get_base_cpp_value;

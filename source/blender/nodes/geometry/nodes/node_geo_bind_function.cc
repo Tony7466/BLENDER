@@ -4,12 +4,12 @@
 
 #include "BKE_node_runtime.hh"
 
-#include "FN_closure.hh"
 #include "FN_lazy_function_graph.hh"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
 
+#include "NOD_closure.hh"
 #include "NOD_common.h"
 #include "NOD_node_declaration.hh"
 
@@ -60,7 +60,7 @@ static void node_geo_exec(GeoNodeExecParams params)
         bind_tree.runtime->geometry_nodes_lazy_function_graph_info;
     BLI_assert(lf_graph_info_ptr);
 
-    fn::Closure closure(lf_graph_info_ptr->graph);
+    Closure closure(*lf_graph_info_ptr);
     params.set_output("Function", std::move(closure));
   }
 

@@ -43,6 +43,8 @@ void register_standard_node_socket_types(void);
 
 namespace blender::nodes {
 
+void register_cpp_types();
+
 void update_node_declaration_and_sockets(bNodeTree &ntree, bNode &node);
 
 }  // namespace blender::nodes

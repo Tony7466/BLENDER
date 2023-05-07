@@ -17,7 +17,7 @@ Closure::Closure(const GeometryNodesLazyFunctionGraphInfo &lf_graph_info)
 
 const GeometryNodesLazyFunctionGraphInfo *Closure::lf_graph_info() const
 {
-  return *lf_graph_info_;
+  return lf_graph_info_;
 }
 
 }  // namespace blender::nodes

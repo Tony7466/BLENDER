@@ -4,13 +4,12 @@
 #include "BLI_math_vector.h"
 #include "BLI_string.h"
 
-#include "FN_closure.hh"
-
 #include "RNA_enum_types.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
 
+#include "NOD_closure.hh"
 #include "NOD_common.h"
 #include "node_geometry_util.hh"
 

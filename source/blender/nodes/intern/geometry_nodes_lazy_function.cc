@@ -1158,14 +1158,14 @@ class LazyFunctionForEvaluateFunctionNode : public LazyFunction {
 
  public:
 
-  LazyFunctionForEvaluateFunctionNode(const bNode &eval_node) : eval_node_(eval_node)
+  LazyFunctionForEvaluateFunctionNode(const bNode &eval_node,
+                                      MutableSpan<int> r_lf_index_by_bsocket)
+      : eval_node_(eval_node)
   {
     debug_name_ = eval_node.name;
     allow_missing_requested_inputs_ = true;
 
-    Vector<const bNodeSocket *> tmp_inputs;
-    Vector<const bNodeSocket *> tmp_outputs;
-    lazy_function_interface_from_node(eval_node, tmp_inputs, tmp_outputs, inputs_, outputs_);
+    lazy_function_interface_from_node(eval_node, inputs_, outputs_, r_lf_index_by_bsocket);
   }
 
   void execute_impl(lf::Params &params, const lf::Context &context) const override
@@ -1252,7 +1252,7 @@ class LazyFunctionForEvaluateFunctionNode : public LazyFunction {
 
     /* The compute context changes when entering a node group. */
     bke::NodeGroupComputeContext compute_context{
-        user_data->compute_context, group_node_.identifier, storage->context_hash_cache};
+        user_data->compute_context, eval_node_.identifier, storage->context_hash_cache};
     storage->context_hash_cache = compute_context.hash();
 
     GeoNodesLFUserData group_user_data = *user_data;
@@ -1271,7 +1271,7 @@ class LazyFunctionForEvaluateFunctionNode : public LazyFunction {
                                 param_input_usages,
                                 param_output_usages,
                                 param_set_outputs};
-    graph_executor->execute(params, func_context);
+    graph_executor.execute(func_params, func_context);
   }
 
   void *init_storage(LinearAllocator<> &allocator) const override
