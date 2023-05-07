@@ -17,12 +17,10 @@
 \
     for (int i = 0; i <= ceil(params.detail); ++i) { \
       VoronoiOutput octave; \
-      if (params.feature == 0) /* SHD_VORONOI_F1 */ \
-      { \
+      if (params.feature == 0) /* SHD_VORONOI_F1 */ { \
         octave = voronoi_f1(params, coord * scale); \
       } \
-      else if (params.feature == 2) /* SHD_VORONOI_SMOOTH_F1 */ \
-      { \
+      else if (params.feature == 2) /* SHD_VORONOI_SMOOTH_F1 */ { \
         octave = voronoi_smooth_f1(params, coord * scale); \
       } \
       else { \
