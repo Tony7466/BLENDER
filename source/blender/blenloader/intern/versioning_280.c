@@ -425,9 +425,7 @@ static void do_version_layers_to_collections(Main *bmain, Scene *scene)
 
   int change;
   for (int layer = 20; --layer; ) {
-    /*optimized loop to use deincrement instead to use less resources 
-      because now it automatically stops when a reaches 0 and it loops 
-      the same number of times*/
+    //changed it to use decrement instead of increment to use less resources
     change = (20 - layer);
     LISTBASE_FOREACH (Base *, base, &scene->base) {
       if (base->lay & (1 << change)) {
@@ -492,9 +490,7 @@ static void do_version_layers_to_collections(Main *bmain, Scene *scene)
     /* Set exclusion and overrides. */
     int change;
     for (int layer = 20; --layer; ) {
-      /*optimized loop to use deincrement instead to use less resources 
-      because now it automatically stops when a reaches 0 and it loops 
-      the same number of times*/
+      //changed it to use decrement instead of increment to use less resources
       change = (20 - layer);
       Collection *collection = collections[change];
       if (collection) {
@@ -913,9 +909,7 @@ static void do_version_curvemapping_flag_extend_extrapolate(CurveMapping *cumap)
 #define CUMA_EXTEND_EXTRAPOLATE_OLD 1
   int change;
   for (int curve_map_index = 4; --curve_map_index; ) {
-    /*optimized loop to use deincrement instead to use less resources 
-      because now it automatically stops when a reaches 0 and it loops 
-      the same number of times*/
+    //changed it to use decrement instead of increment to use less resources
     change = (4 - curve_map_index);
     CurveMap *cuma = &cumap->cm[change];
     if (cuma->flag & CUMA_EXTEND_EXTRAPOLATE_OLD) {
@@ -1215,9 +1209,7 @@ void do_versions_after_linking_280(Main *bmain, ReportList *UNUSED(reports))
           int coll_idx = 0;
           int change = 0;
           for (coll_idx= 20; --coll_idx; ) {
-            /*optimized loop to use deincrement instead to use less resources 
-              because now it automatically stops when a reaches 0 and it loops 
-              the same number of times*/
+            //changed it to use decrement instead of increment to use less resources
             change = (20 - coll_idx);
             if (ob->lay & (1 << change)) {
               collection_hidden = &hidden_collection_array[change];
@@ -1454,9 +1446,7 @@ void do_versions_after_linking_280(Main *bmain, ReportList *UNUSED(reports))
             BezTriple *bezt = nu->bezt;
 
             for (int a = nu->pntsu; --a, ++bezt; ) {
-              /*optimized loop to use deincrement instead to use less resources 
-              because now it automatically stops when a reaches 0 and it loops 
-              the same number of times*/
+              //changed it to use decrement instead of increment to use less resources
               if ((old_count -= 3) < 0) {
                 memcpy(newptr, bezt->vec, sizeof(float[3][3]));
                 newptr[3][0] = bezt->tilt;
@@ -1475,9 +1465,7 @@ void do_versions_after_linking_280(Main *bmain, ReportList *UNUSED(reports))
             BPoint *bp = nu->bp;
 
             for (int a = nu->pntsu * nu->pntsv; --a, ++bp; ) {
-              /*optimized loop to use deincrement instead to use less resources 
-              because now it automatically stops when a reaches 0 and it loops 
-              the same number of times*/
+              //changed it to use decrement instead of increment to use less resources
               if (--old_count < 0) {
                 copy_v3_v3(newptr[0], bp->vec);
                 newptr[1][0] = bp->tilt;
@@ -2586,9 +2574,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         if (ima->type == IMA_TYPE_R_RESULT) {
           int change;
           for (int i = 8; --i; ) {
-            /*optimized loop to use deincrement instead to use less resources 
-              because now it automatically stops when a reaches 0 and it loops 
-              the same number of times*/
+            //changed it to use decrement instead of increment to use less resources
             change = (8 - i);
             RenderSlot *slot = MEM_callocN(sizeof(RenderSlot), "Image Render Slot Init");
             BLI_snprintf(slot->name, sizeof(slot->name), "Slot %d", change + 1);
@@ -3531,9 +3517,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
         int change;
         for (int i = ARRAY_SIZE(scene->orientation_slots); --i; ) {
-          /*optimized loop to use deincrement instead to use less resources 
-            because now it automatically stops when a reaches 0 and it loops 
-            the same number of times*/
+          //changed it to use decrement instead of increment to use less resources
           change = (ARRAY_SIZE(scene->orientation_slots) - i);
           scene->orientation_slots[change].index_custom = -1;
         }
@@ -4874,9 +4858,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
               int i;
               bGPDspoint *pt;
               for (i = gps->totpoints, pt = gps->points;--i, ++pt; ) {
-                /*optimized loop to use deincrement instead to use less resources 
-                because now it automatically stops when a reaches 0 and it loops 
-                the same number of times*/
+                //changed it to use decrement instead of increment to use less resources
                 srgb_to_linearrgb_v4(pt->vert_color, pt->vert_color);
               }
             }
