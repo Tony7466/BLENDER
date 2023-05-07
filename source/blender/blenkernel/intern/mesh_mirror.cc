@@ -24,7 +24,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "MOD_modifiertypes.h"
+#include "MOD_modifiertypes.hh"
 
 Mesh *BKE_mesh_mirror_bisect_on_mirror_plane_for_modifier(MirrorModifierData *mmd,
                                                           const Mesh *mesh,
@@ -343,7 +343,8 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
   /* handle uvs,
    * let tessface recalc handle updating the MTFace data */
   if (mmd->flag & (MOD_MIR_MIRROR_U | MOD_MIR_MIRROR_V) ||
-      (is_zero_v2(mmd->uv_offset_copy) == false)) {
+      (is_zero_v2(mmd->uv_offset_copy) == false))
+  {
     const bool do_mirr_u = (mmd->flag & MOD_MIR_MIRROR_U) != 0;
     const bool do_mirr_v = (mmd->flag & MOD_MIR_MIRROR_V) != 0;
     /* If set, flip around center of each tile. */
@@ -383,10 +384,11 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
 
   /* handle custom split normals */
   if (ob->type == OB_MESH && (((Mesh *)ob->data)->flag & ME_AUTOSMOOTH) &&
-      CustomData_has_layer(&result->ldata, CD_CUSTOMLOOPNORMAL) && result->totpoly > 0) {
+      CustomData_has_layer(&result->ldata, CD_CUSTOMLOOPNORMAL) && result->totpoly > 0)
+  {
     blender::Array<blender::float3> loop_normals(result_corner_verts.size());
     CustomData *ldata = &result->ldata;
-    short(*clnors)[2] = static_cast<short(*)[2]>(
+    blender::short2 *clnors = static_cast<blender::short2 *>(
         CustomData_get_layer_for_write(ldata, CD_CUSTOMLOOPNORMAL, result->totloop));
     MLoopNorSpaceArray lnors_spacearr = {nullptr};
 
@@ -451,8 +453,8 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
               ((*r_vert_merge_map)[i + src_verts_num] != -1)) {
             BKE_defvert_flip_merged(dvert - src_verts_num, flip_map, flip_map_len);
           }
-          else if (!use_correct_order_on_merge && do_vtargetmap &&
-                   ((*r_vert_merge_map)[i] != -1)) {
+          else if (!use_correct_order_on_merge && do_vtargetmap && ((*r_vert_merge_map)[i] != -1))
+          {
             BKE_defvert_flip_merged(dvert, flip_map, flip_map_len);
           }
           else {
