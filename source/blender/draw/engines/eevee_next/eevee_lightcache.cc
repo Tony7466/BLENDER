@@ -58,9 +58,6 @@ class LightBake {
 
   /** Baking instance. Created and freed in the worker thread. */
   Instance *instance_ = nullptr;
-  /** Light Cache being baked. Create in worker thread and pass ownership to original scene on
-   * first `update()` call. */
-  ::LightCache *light_cache_ = nullptr;
   /** Manager used for command submission. Created and freed in the worker thread. */
   draw::Manager *manager_ = nullptr;
 
@@ -216,20 +213,21 @@ class LightBake {
 
   void context_disable()
   {
-    GPU_render_end();
-
     if (GPU_use_main_context_workaround() && !BLI_thread_is_main()) {
       /* Reuse main draw context. */
       DRW_opengl_context_disable();
+      GPU_render_end();
       GPU_context_main_unlock();
     }
     else if (gl_context_ == nullptr) {
       /* Main thread case. */
       DRW_opengl_context_disable();
+      GPU_render_end();
     }
     else {
       /* Worker thread case. */
       DRW_gpu_render_context_disable(gpu_context_);
+      GPU_render_end();
       DRW_opengl_render_context_disable(gl_context_);
     }
   }

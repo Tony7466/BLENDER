@@ -39,7 +39,8 @@ void IrradianceCache::init()
   int atlas_row_count = divide_ceil_u(atlas_byte_size, row_byte_size);
   atlas_extent.y *= atlas_row_count;
 
-  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_WRITE | GPU_TEXTURE_USAGE_SHADER_READ;
+  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_WRITE | GPU_TEXTURE_USAGE_SHADER_READ |
+                           GPU_TEXTURE_USAGE_ATTACHMENT;
   do_full_update_ = irradiance_atlas_tx_.ensure_3d(GPU_RGBA16F, atlas_extent, usage);
 
   if (do_full_update_) {
@@ -505,7 +506,7 @@ void IrradianceBake::surfels_create(const Object &probe_object)
                                                     (2 * inst_.sampling.sample_count());
 
   eGPUTextureUsage texture_usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE |
-                                   GPU_TEXTURE_USAGE_HOST_READ;
+                                   GPU_TEXTURE_USAGE_HOST_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
 
   /* 32bit float is needed here otherwise we loose too much energy from rounding error during the
    * accumulation when the sample count is above 500. */
@@ -706,7 +707,8 @@ void IrradianceBake::read_surfels(LightProbeGridCacheFrame *cache_frame)
 {
   if (!ELEM(inst_.debug_mode,
             eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_NORMAL,
-            eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_IRRADIANCE)) {
+            eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_IRRADIANCE))
+  {
     return;
   }
 
