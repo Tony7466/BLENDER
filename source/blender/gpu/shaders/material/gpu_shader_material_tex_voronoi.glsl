@@ -19,6 +19,18 @@
  * as explained in https://www.shadertoy.com/view/llG3zy.
  */
 
+#define INITIALIZE_VORONOIPARAMS \
+  params.metric = int(metric); \
+  params.scale = scale; \
+  params.detail = clamp(detail, 0.0, 15.0); \
+  params.roughness = clamp(roughness, 0.0, 1.0); \
+  params.lacunarity = lacunarity; \
+  params.smoothness = clamp(smoothness / 2.0, 0.0, 0.5); \
+  params.exponent = exponent; \
+  params.randomness = clamp(randomness, 0.0, 1.0); \
+  params.max_distance = 0.0; \
+  params.normalize = bool(normalize);
+
 /* **** 1D Voronoi **** */
 
 void node_tex_voronoi_f1_1d(vec3 coord,
@@ -38,27 +50,18 @@ void node_tex_voronoi_f1_1d(vec3 coord,
                             out float outW,
                             out float outRadius)
 {
-  detail = clamp(detail, 0.0, 15.0);
-  roughness = clamp(roughness, 0.0, 1.0);
-  randomness = clamp(randomness, 0.0, 1.0);
-  float max_amplitude = 0.0;
+  VoronoiParams params;
 
-  float scaledCoord = w * scale;
+  params.feature = 0;  // SHD_VORONOI_F1
+  INITIALIZE_VORONOIPARAMS
 
-  fractal_voronoi_f1(scaledCoord,
-                     detail,
-                     roughness,
-                     lacunarity,
-                     randomness,
-                     max_amplitude,
-                     outDistance,
-                     outColor,
-                     outW);
-  if (normalize != 0.0) {
-    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude;
-    outColor /= max_amplitude;
-  }
-  outW = safe_divide(outW, scale);
+  w *= scale;
+
+  params.max_distance = 0.5 + 0.5 * params.randomness;
+  VoronoiOutput Output = fractal_voronoi_x_fx(params, w);
+  outDistance = Output.Distance;
+  outColor.xyz = Output.Color;
+  outW = Output.Position.w;
 }
 
 void node_tex_voronoi_smooth_f1_1d(vec3 coord,
@@ -78,29 +81,18 @@ void node_tex_voronoi_smooth_f1_1d(vec3 coord,
                                    out float outW,
                                    out float outRadius)
 {
-  detail = clamp(detail, 0.0, 15.0);
-  roughness = clamp(roughness, 0.0, 1.0);
-  randomness = clamp(randomness, 0.0, 1.0);
-  smoothness = clamp(smoothness / 2.0, 0.0, 0.5);
-  float max_amplitude = 0.0;
+  VoronoiParams params;
 
-  float scaledCoord = w * scale;
+  params.feature = 2;  // SHD_VORONOI_SMOOTH_F1
+  INITIALIZE_VORONOIPARAMS
 
-  fractal_voronoi_smooth_f1(scaledCoord,
-                            detail,
-                            roughness,
-                            lacunarity,
-                            smoothness,
-                            randomness,
-                            max_amplitude,
-                            outDistance,
-                            outColor,
-                            outW);
-  if (normalize != 0.0) {
-    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude;
-    outColor /= max_amplitude;
-  }
-  outW = safe_divide(outW, scale);
+  w *= scale;
+
+  params.max_distance = 0.5 + 0.5 * params.randomness;
+  VoronoiOutput Output = fractal_voronoi_x_fx(params, w);
+  outDistance = Output.Distance;
+  outColor.xyz = Output.Color;
+  outW = Output.Position.w;
 }
 
 void node_tex_voronoi_f2_1d(vec3 coord,
@@ -120,32 +112,18 @@ void node_tex_voronoi_f2_1d(vec3 coord,
                             out float outW,
                             out float outRadius)
 {
-  detail = clamp(detail, 0.0, 15.0);
-  roughness = clamp(roughness, 0.0, 1.0);
-  randomness = clamp(randomness, 0.0, 1.0);
-  float max_amplitude = 0.0;
+  VoronoiParams params;
 
-  float scaledCoord = w * scale;
+  params.feature = 1;  // SHD_VORONOI_F2
+  INITIALIZE_VORONOIPARAMS
 
-  fractal_voronoi_f2(scaledCoord,
-                     detail,
-                     roughness,
-                     lacunarity,
-                     randomness,
-                     max_amplitude,
-                     outDistance,
-                     outColor,
-                     outW);
-  if (normalize != 0.0) {
-    if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
-      outDistance /= (1.0 - randomness) + randomness * max_amplitude;
-    }
-    else {
-      outDistance /= (1.0 - randomness) * ceil(detail + 1.0) + randomness * max_amplitude;
-    }
-    outColor /= max_amplitude;
-  }
-  outW = safe_divide(outW, scale);
+  w *= scale;
+
+  params.max_distance = (0.5 + 0.5 * params.randomness) * 2.0;
+  VoronoiOutput Output = fractal_voronoi_x_fx(params, w);
+  outDistance = Output.Distance;
+  outColor.xyz = Output.Color;
+  outW = Output.Position.w;
 }
 
 void node_tex_voronoi_distance_to_edge_1d(vec3 coord,
@@ -165,21 +143,14 @@ void node_tex_voronoi_distance_to_edge_1d(vec3 coord,
                                           out float outW,
                                           out float outRadius)
 {
-  detail = clamp(detail, 0.0, 15.0);
-  randomness = clamp(randomness, 0.0, 1.0);
+  VoronoiParams params;
 
-  float scaledCoord = w * scale;
-  float max_amplitude = 0.0;
+  params.feature = 3;  // SHD_VORONOI_DISTANCE_TO_EDGE
+  INITIALIZE_VORONOIPARAMS
 
-  fractal_voronoi_distance_to_edge(
-      scaledCoord, detail, roughness, lacunarity, randomness, max_amplitude, outDistance);
-  if (normalize != 0.0) {
-    /* max_amplitude is used here to keep the code consistent, however it has a different
-     * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude, it
-     * represents an abstract factor needed to cancel out the amplitude attenuation caused
-     * by the higher layers. */
-    outDistance *= max_amplitude;
-  }
+  w *= scale;
+
+  outDistance = fractal_voronoi_distance_to_edge(params, w);
 }
 
 void node_tex_voronoi_n_sphere_radius_1d(vec3 coord,
@@ -199,11 +170,14 @@ void node_tex_voronoi_n_sphere_radius_1d(vec3 coord,
                                          out float outW,
                                          out float outRadius)
 {
-  randomness = clamp(randomness, 0.0, 1.0);
+  VoronoiParams params;
 
-  float scaledCoord = w * scale;
+  params.feature = 4;  // SHD_VORONOI_N_SPHERE_RADIUS
+  INITIALIZE_VORONOIPARAMS
 
-  voronoi_n_sphere_radius(scaledCoord, randomness, outRadius);
+  w *= scale;
+
+  outRadius = voronoi_n_sphere_radius(params, w);
 }
 
 /* **** 2D Voronoi **** */
@@ -225,31 +199,19 @@ void node_tex_voronoi_f1_2d(vec3 coord,
                             out float outW,
                             out float outRadius)
 {
-  detail = clamp(detail, 0.0, 15.0);
-  roughness = clamp(roughness, 0.0, 1.0);
-  randomness = clamp(randomness, 0.0, 1.0);
-  float max_amplitude = 0.0;
+  VoronoiParams params;
 
-  vec2 scaledCoord = coord.xy * scale;
-  vec2 outPosition_2d;
+  params.feature = 0;  // SHD_VORONOI_F1
+  INITIALIZE_VORONOIPARAMS
 
-  fractal_voronoi_f1(scaledCoord,
-                     detail,
-                     roughness,
-                     lacunarity,
-                     exponent,
-                     randomness,
-                     metric,
-                     max_amplitude,
-                     outDistance,
-                     outColor,
-                     outPosition_2d);
-  if (normalize != 0.0) {
-    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude *
-                   voronoi_distance(vec2(1.0, 1.0), vec2(0.0, 0.0), metric, exponent);
-    outColor /= max_amplitude;
-  }
-  outPosition = vec3(safe_divide(outPosition_2d, scale), 0.0);
+  coord *= scale;
+
+  params.max_distance = voronoi_distance(
+      vec2(0.0, 0.0), vec2(0.5 + 0.5 * params.randomness, 0.5 + 0.5 * params.randomness), params);
+  VoronoiOutput Output = fractal_voronoi_x_fx(params, coord.xy);
+  outDistance = Output.Distance;
+  outColor.xyz = Output.Color;
+  outPosition = Output.Position.xyz;
 }
 
 void node_tex_voronoi_smooth_f1_2d(vec3 coord,
@@ -269,33 +231,19 @@ void node_tex_voronoi_smooth_f1_2d(vec3 coord,
                                    out float outW,
                                    out float outRadius)
 {
-  detail = clamp(detail, 0.0, 15.0);
-  roughness = clamp(roughness, 0.0, 1.0);
-  randomness = clamp(randomness, 0.0, 1.0);
-  smoothness = clamp(smoothness / 2.0, 0.0, 0.5);
-  float max_amplitude = 0.0;
+  VoronoiParams params;
 
-  vec2 scaledCoord = coord.xy * scale;
-  vec2 outPosition_2d;
+  params.feature = 2;  // SHD_VORONOI_SMOOTH_F1
+  INITIALIZE_VORONOIPARAMS
 
-  fractal_voronoi_smooth_f1(scaledCoord,
-                            detail,
-                            roughness,
-                            lacunarity,
-                            smoothness,
-                            exponent,
-                            randomness,
-                            metric,
-                            max_amplitude,
-                            outDistance,
-                            outColor,
-                            outPosition_2d);
-  if (normalize != 0.0) {
-    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude *
-                   voronoi_distance(vec2(1.0, 1.0), vec2(0.0, 0.0), metric, exponent);
-    outColor /= max_amplitude;
-  }
-  outPosition = vec3(safe_divide(outPosition_2d, scale), 0.0);
+  coord *= scale;
+
+  params.max_distance = voronoi_distance(
+      vec2(0.0, 0.0), vec2(0.5 + 0.5 * params.randomness, 0.5 + 0.5 * params.randomness), params);
+  VoronoiOutput Output = fractal_voronoi_x_fx(params, coord.xy);
+  outDistance = Output.Distance;
+  outColor.xyz = Output.Color;
+  outPosition = Output.Position.xyz;
 }
 
 void node_tex_voronoi_f2_2d(vec3 coord,
@@ -315,39 +263,22 @@ void node_tex_voronoi_f2_2d(vec3 coord,
                             out float outW,
                             out float outRadius)
 {
-  detail = clamp(detail, 0.0, 15.0);
-  roughness = clamp(roughness, 0.0, 1.0);
-  randomness = clamp(randomness, 0.0, 1.0);
-  float max_amplitude = 0.0;
+  VoronoiParams params;
 
-  vec2 scaledCoord = coord.xy * scale;
-  vec2 outPosition_2d;
+  params.feature = 1;  // SHD_VORONOI_F2
+  INITIALIZE_VORONOIPARAMS
 
-  fractal_voronoi_f2(scaledCoord,
-                     detail,
-                     roughness,
-                     lacunarity,
-                     exponent,
-                     randomness,
-                     metric,
-                     max_amplitude,
-                     outDistance,
-                     outColor,
-                     outPosition_2d);
-  if (normalize != 0.0) {
-    if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
-      outDistance /= (1.0 - randomness) +
-                     randomness * max_amplitude *
-                         voronoi_distance(vec2(1.0, 1.0), vec2(0.0, 0.0), metric, exponent);
-    }
-    else {
-      outDistance /= (1.0 - randomness) * ceil(detail + 1.0) +
-                     randomness * max_amplitude *
-                         voronoi_distance(vec2(1.0, 1.0), vec2(0.0, 0.0), metric, exponent);
-    }
-    outColor /= max_amplitude;
-  }
-  outPosition = vec3(safe_divide(outPosition_2d, scale), 0.0);
+  coord *= scale;
+
+  params.max_distance = voronoi_distance(
+                            vec2(0.0, 0.0),
+                            vec2(0.5 + 0.5 * params.randomness, 0.5 + 0.5 * params.randomness),
+                            params) *
+                        2.0;
+  VoronoiOutput Output = fractal_voronoi_x_fx(params, coord.xy);
+  outDistance = Output.Distance;
+  outColor.xyz = Output.Color;
+  outPosition = Output.Position.xyz;
 }
 
 void node_tex_voronoi_distance_to_edge_2d(vec3 coord,
@@ -367,21 +298,14 @@ void node_tex_voronoi_distance_to_edge_2d(vec3 coord,
                                           out float outW,
                                           out float outRadius)
 {
-  detail = clamp(detail, 0.0, 15.0);
-  randomness = clamp(randomness, 0.0, 1.0);
+  VoronoiParams params;
 
-  vec2 scaledCoord = coord.xy * scale;
-  float max_amplitude = 0.0;
+  params.feature = 3;  // SHD_VORONOI_DISTANCE_TO_EDGE
+  INITIALIZE_VORONOIPARAMS
 
-  fractal_voronoi_distance_to_edge(
-      scaledCoord, detail, roughness, lacunarity, randomness, max_amplitude, outDistance);
-  if (normalize != 0.0) {
-    /* max_amplitude is used here to keep the code consistent, however it has a different
-     * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude, it
-     * represents an abstract factor needed to cancel out the amplitude attenuation caused
-     * by the higher layers. */
-    outDistance *= max_amplitude;
-  }
+  coord *= scale;
+
+  outDistance = fractal_voronoi_distance_to_edge(params, coord.xy);
 }
 
 void node_tex_voronoi_n_sphere_radius_2d(vec3 coord,
@@ -401,11 +325,14 @@ void node_tex_voronoi_n_sphere_radius_2d(vec3 coord,
                                          out float outW,
                                          out float outRadius)
 {
-  randomness = clamp(randomness, 0.0, 1.0);
+  VoronoiParams params;
 
-  vec2 scaledCoord = coord.xy * scale;
+  params.feature = 4;  // SHD_VORONOI_N_SPHERE_RADIUS
+  INITIALIZE_VORONOIPARAMS
 
-  voronoi_n_sphere_radius(scaledCoord, randomness, outRadius);
+  coord *= scale;
+
+  outRadius = voronoi_n_sphere_radius(params, coord.xy);
 }
 
 /* **** 3D Voronoi **** */
@@ -427,30 +354,22 @@ void node_tex_voronoi_f1_3d(vec3 coord,
                             out float outW,
                             out float outRadius)
 {
-  detail = clamp(detail, 0.0, 15.0);
-  roughness = clamp(roughness, 0.0, 1.0);
-  randomness = clamp(randomness, 0.0, 1.0);
-  float max_amplitude = 0.0;
+  VoronoiParams params;
 
-  vec3 scaledCoord = coord * scale;
+  params.feature = 0;  // SHD_VORONOI_F1
+  INITIALIZE_VORONOIPARAMS
 
-  fractal_voronoi_f1(scaledCoord,
-                     detail,
-                     roughness,
-                     lacunarity,
-                     exponent,
-                     randomness,
-                     metric,
-                     max_amplitude,
-                     outDistance,
-                     outColor,
-                     outPosition);
-  if (normalize != 0.0) {
-    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude *
-                   voronoi_distance(vec3(1.0, 1.0, 1.0), vec3(0.0, 0.0, 0.0), metric, exponent);
-    outColor /= max_amplitude;
-  }
-  outPosition = safe_divide(outPosition, scale);
+  coord *= scale;
+
+  params.max_distance = voronoi_distance(vec3(0.0, 0.0, 0.0),
+                                         vec3(0.5 + 0.5 * params.randomness,
+                                              0.5 + 0.5 * params.randomness,
+                                              0.5 + 0.5 * params.randomness),
+                                         params);
+  VoronoiOutput Output = fractal_voronoi_x_fx(params, coord);
+  outDistance = Output.Distance;
+  outColor.xyz = Output.Color;
+  outPosition = Output.Position.xyz;
 }
 
 void node_tex_voronoi_smooth_f1_3d(vec3 coord,
@@ -470,32 +389,22 @@ void node_tex_voronoi_smooth_f1_3d(vec3 coord,
                                    out float outW,
                                    out float outRadius)
 {
-  detail = clamp(detail, 0.0, 15.0);
-  roughness = clamp(roughness, 0.0, 1.0);
-  randomness = clamp(randomness, 0.0, 1.0);
-  smoothness = clamp(smoothness / 2.0, 0.0, 0.5);
-  float max_amplitude = 0.0;
+  VoronoiParams params;
 
-  vec3 scaledCoord = coord * scale;
+  params.feature = 2;  // SHD_VORONOI_SMOOTH_F1
+  INITIALIZE_VORONOIPARAMS
 
-  fractal_voronoi_smooth_f1(scaledCoord,
-                            detail,
-                            roughness,
-                            lacunarity,
-                            smoothness,
-                            exponent,
-                            randomness,
-                            metric,
-                            max_amplitude,
-                            outDistance,
-                            outColor,
-                            outPosition);
-  if (normalize != 0.0) {
-    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude *
-                   voronoi_distance(vec3(1.0, 1.0, 1.0), vec3(0.0, 0.0, 0.0), metric, exponent);
-    outColor /= max_amplitude;
-  }
-  outPosition = safe_divide(outPosition, scale);
+  coord *= scale;
+
+  params.max_distance = voronoi_distance(vec3(0.0, 0.0, 0.0),
+                                         vec3(0.5 + 0.5 * params.randomness,
+                                              0.5 + 0.5 * params.randomness,
+                                              0.5 + 0.5 * params.randomness),
+                                         params);
+  VoronoiOutput Output = fractal_voronoi_x_fx(params, coord);
+  outDistance = Output.Distance;
+  outColor.xyz = Output.Color;
+  outPosition = Output.Position.xyz;
 }
 
 void node_tex_voronoi_f2_3d(vec3 coord,
@@ -515,40 +424,23 @@ void node_tex_voronoi_f2_3d(vec3 coord,
                             out float outW,
                             out float outRadius)
 {
-  detail = clamp(detail, 0.0, 15.0);
-  roughness = clamp(roughness, 0.0, 1.0);
-  randomness = clamp(randomness, 0.0, 1.0);
-  float max_amplitude = 0.0;
+  VoronoiParams params;
 
-  vec3 scaledCoord = coord * scale;
+  params.feature = 1;  // SHD_VORONOI_F2
+  INITIALIZE_VORONOIPARAMS
 
-  fractal_voronoi_f2(scaledCoord,
-                     detail,
-                     roughness,
-                     lacunarity,
-                     exponent,
-                     randomness,
-                     metric,
-                     max_amplitude,
-                     outDistance,
-                     outColor,
-                     outPosition);
-  if (normalize != 0.0) {
-    if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
-      outDistance /= (1.0 - randomness) +
-                     randomness * max_amplitude *
-                         voronoi_distance(
-                             vec3(1.0, 1.0, 1.0), vec3(0.0, 0.0, 0.0), metric, exponent);
-    }
-    else {
-      outDistance /= (1.0 - randomness) * ceil(detail + 1.0) +
-                     randomness * max_amplitude *
-                         voronoi_distance(
-                             vec3(1.0, 1.0, 1.0), vec3(0.0, 0.0, 0.0), metric, exponent);
-    }
-    outColor /= max_amplitude;
-  }
-  outPosition = safe_divide(outPosition, scale);
+  coord *= scale;
+
+  params.max_distance = voronoi_distance(vec3(0.0, 0.0, 0.0),
+                                         vec3(0.5 + 0.5 * params.randomness,
+                                              0.5 + 0.5 * params.randomness,
+                                              0.5 + 0.5 * params.randomness),
+                                         params) *
+                        2.0;
+  VoronoiOutput Output = fractal_voronoi_x_fx(params, coord);
+  outDistance = Output.Distance;
+  outColor.xyz = Output.Color;
+  outPosition = Output.Position.xyz;
 }
 
 void node_tex_voronoi_distance_to_edge_3d(vec3 coord,
@@ -568,21 +460,14 @@ void node_tex_voronoi_distance_to_edge_3d(vec3 coord,
                                           out float outW,
                                           out float outRadius)
 {
-  detail = clamp(detail, 0.0, 15.0);
-  randomness = clamp(randomness, 0.0, 1.0);
+  VoronoiParams params;
 
-  vec3 scaledCoord = coord * scale;
-  float max_amplitude = 0.0;
+  params.feature = 3;  // SHD_VORONOI_DISTANCE_TO_EDGE
+  INITIALIZE_VORONOIPARAMS
 
-  fractal_voronoi_distance_to_edge(
-      scaledCoord, detail, roughness, lacunarity, randomness, max_amplitude, outDistance);
-  if (normalize != 0.0) {
-    /* max_amplitude is used here to keep the code consistent, however it has a different
-     * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude, it
-     * represents an abstract factor needed to cancel out the amplitude attenuation caused
-     * by the higher layers. */
-    outDistance *= max_amplitude;
-  }
+  coord *= scale;
+
+  outDistance = fractal_voronoi_distance_to_edge(params, coord);
 }
 
 void node_tex_voronoi_n_sphere_radius_3d(vec3 coord,
@@ -602,11 +487,14 @@ void node_tex_voronoi_n_sphere_radius_3d(vec3 coord,
                                          out float outW,
                                          out float outRadius)
 {
-  randomness = clamp(randomness, 0.0, 1.0);
+  VoronoiParams params;
 
-  vec3 scaledCoord = coord * scale;
+  params.feature = 4;  // SHD_VORONOI_N_SPHERE_RADIUS
+  INITIALIZE_VORONOIPARAMS
 
-  voronoi_n_sphere_radius(scaledCoord, randomness, outRadius);
+  coord *= scale;
+
+  outRadius = voronoi_n_sphere_radius(params, coord);
 }
 
 /* **** 4D Voronoi **** */
@@ -628,33 +516,25 @@ void node_tex_voronoi_f1_4d(vec3 coord,
                             out float outW,
                             out float outRadius)
 {
-  detail = clamp(detail, 0.0, 15.0);
-  roughness = clamp(roughness, 0.0, 1.0);
-  randomness = clamp(randomness, 0.0, 1.0);
-  float max_amplitude = 0.0;
+  VoronoiParams params;
 
-  vec4 scaledCoord = vec4(coord, w) * scale;
-  vec4 outPosition_4d;
+  params.feature = 0;  // SHD_VORONOI_F1
+  INITIALIZE_VORONOIPARAMS
 
-  fractal_voronoi_f1(scaledCoord,
-                     detail,
-                     roughness,
-                     lacunarity,
-                     exponent,
-                     randomness,
-                     metric,
-                     max_amplitude,
-                     outDistance,
-                     outColor,
-                     outPosition_4d);
-  if (normalize != 0.0) {
-    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude *
-                   voronoi_distance(
-                       vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0, 0.0, 0.0, 0.0), metric, exponent);
-    outColor /= max_amplitude;
-  }
-  outPosition_4d = safe_divide(outPosition_4d, scale);
-  outPosition = outPosition_4d.xyz;
+  w *= scale;
+  coord *= scale;
+
+  params.max_distance = voronoi_distance(vec4(0.0, 0.0, 0.0, 0.0),
+                                         vec4(0.5 + 0.5 * params.randomness,
+                                              0.5 + 0.5 * params.randomness,
+                                              0.5 + 0.5 * params.randomness,
+                                              0.5 + 0.5 * params.randomness),
+                                         params);
+  VoronoiOutput Output = fractal_voronoi_x_fx(params, vec4(coord, w));
+  outDistance = Output.Distance;
+  outColor.xyz = Output.Color;
+  outPosition = Output.Position.xyz;
+  outW = Output.Position.w;
 }
 
 void node_tex_voronoi_smooth_f1_4d(vec3 coord,
@@ -674,36 +554,25 @@ void node_tex_voronoi_smooth_f1_4d(vec3 coord,
                                    out float outW,
                                    out float outRadius)
 {
-  detail = clamp(detail, 0.0, 15.0);
-  roughness = clamp(roughness, 0.0, 1.0);
-  randomness = clamp(randomness, 0.0, 1.0);
-  smoothness = clamp(smoothness / 2.0, 0.0, 0.5);
-  float max_amplitude = 0.0;
+  VoronoiParams params;
 
-  vec4 scaledCoord = vec4(coord, w) * scale;
-  vec4 outPosition_4d;
+  params.feature = 2;  // SHD_VORONOI_SMOOTH_F1
+  INITIALIZE_VORONOIPARAMS
 
-  fractal_voronoi_smooth_f1(scaledCoord,
-                            detail,
-                            roughness,
-                            lacunarity,
-                            smoothness,
-                            exponent,
-                            randomness,
-                            metric,
-                            max_amplitude,
-                            outDistance,
-                            outColor,
-                            outPosition_4d);
-  if (normalize != 0.0) {
-    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude *
-                   voronoi_distance(
-                       vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0, 0.0, 0.0, 0.0), metric, exponent);
-    outColor /= max_amplitude;
-  }
-  outPosition_4d = safe_divide(outPosition_4d, scale);
-  outPosition = outPosition_4d.xyz;
-  outW = outPosition_4d.w;
+  w *= scale;
+  coord *= scale;
+
+  params.max_distance = voronoi_distance(vec4(0.0, 0.0, 0.0, 0.0),
+                                         vec4(0.5 + 0.5 * params.randomness,
+                                              0.5 + 0.5 * params.randomness,
+                                              0.5 + 0.5 * params.randomness,
+                                              0.5 + 0.5 * params.randomness),
+                                         params);
+  VoronoiOutput Output = fractal_voronoi_x_fx(params, vec4(coord, w));
+  outDistance = Output.Distance;
+  outColor.xyz = Output.Color;
+  outPosition = Output.Position.xyz;
+  outW = Output.Position.w;
 }
 
 void node_tex_voronoi_f2_4d(vec3 coord,
@@ -723,43 +592,26 @@ void node_tex_voronoi_f2_4d(vec3 coord,
                             out float outW,
                             out float outRadius)
 {
-  detail = clamp(detail, 0.0, 15.0);
-  roughness = clamp(roughness, 0.0, 1.0);
-  randomness = clamp(randomness, 0.0, 1.0);
-  float max_amplitude = 0.0;
+  VoronoiParams params;
 
-  vec4 scaledCoord = vec4(coord, w) * scale;
-  vec4 outPosition_4d;
+  params.feature = 1;  // SHD_VORONOI_F2
+  INITIALIZE_VORONOIPARAMS
 
-  fractal_voronoi_f2(scaledCoord,
-                     detail,
-                     roughness,
-                     lacunarity,
-                     exponent,
-                     randomness,
-                     metric,
-                     max_amplitude,
-                     outDistance,
-                     outColor,
-                     outPosition_4d);
-  if (normalize != 0.0) {
-    if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
-      outDistance /= (1.0 - randomness) +
-                     randomness * max_amplitude *
-                         voronoi_distance(
-                             vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0, 0.0, 0.0, 0.0), metric, exponent);
-    }
-    else {
-      outDistance /= (1.0 - randomness) * ceil(detail + 1.0) +
-                     randomness * max_amplitude *
-                         voronoi_distance(
-                             vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0, 0.0, 0.0, 0.0), metric, exponent);
-    }
-    outColor /= max_amplitude;
-  }
-  outPosition_4d = safe_divide(outPosition_4d, scale);
-  outPosition = outPosition_4d.xyz;
-  outW = outPosition_4d.w;
+  w *= scale;
+  coord *= scale;
+
+  params.max_distance = voronoi_distance(vec4(0.0, 0.0, 0.0, 0.0),
+                                         vec4(0.5 + 0.5 * params.randomness,
+                                              0.5 + 0.5 * params.randomness,
+                                              0.5 + 0.5 * params.randomness,
+                                              0.5 + 0.5 * params.randomness),
+                                         params) *
+                        2.0;
+  VoronoiOutput Output = fractal_voronoi_x_fx(params, vec4(coord, w));
+  outDistance = Output.Distance;
+  outColor.xyz = Output.Color;
+  outPosition = Output.Position.xyz;
+  outW = Output.Position.w;
 }
 
 void node_tex_voronoi_distance_to_edge_4d(vec3 coord,
@@ -779,21 +631,15 @@ void node_tex_voronoi_distance_to_edge_4d(vec3 coord,
                                           out float outW,
                                           out float outRadius)
 {
-  detail = clamp(detail, 0.0, 15.0);
-  randomness = clamp(randomness, 0.0, 1.0);
+  VoronoiParams params;
 
-  vec4 scaledCoord = vec4(coord, w) * scale;
-  float max_amplitude = 0.0;
+  params.feature = 3;  // SHD_VORONOI_DISTANCE_TO_EDGE
+  INITIALIZE_VORONOIPARAMS
 
-  fractal_voronoi_distance_to_edge(
-      scaledCoord, detail, roughness, lacunarity, randomness, max_amplitude, outDistance);
-  if (normalize != 0.0) {
-    /* max_amplitude is used here to keep the code consistent, however it has a different
-     * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude, it
-     * represents an abstract factor needed to cancel out the amplitude attenuation caused
-     * by the higher layers. */
-    outDistance *= max_amplitude;
-  }
+  w *= scale;
+  coord *= scale;
+
+  outDistance = fractal_voronoi_distance_to_edge(params, vec4(coord, w));
 }
 
 void node_tex_voronoi_n_sphere_radius_4d(vec3 coord,
@@ -813,9 +659,13 @@ void node_tex_voronoi_n_sphere_radius_4d(vec3 coord,
                                          out float outW,
                                          out float outRadius)
 {
-  randomness = clamp(randomness, 0.0, 1.0);
+  VoronoiParams params;
 
-  vec4 scaledCoord = vec4(coord, w) * scale;
+  params.feature = 4;  // SHD_VORONOI_N_SPHERE_RADIUS
+  INITIALIZE_VORONOIPARAMS
 
-  voronoi_n_sphere_radius(scaledCoord, randomness, outRadius);
+  w *= scale;
+  coord *= scale;
+
+  outRadius = voronoi_n_sphere_radius(params, vec4(coord, w));
 }
