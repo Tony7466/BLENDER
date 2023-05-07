@@ -2496,6 +2496,10 @@ bool filelist_file_cache_block(FileList *filelist, const int index)
         int offs_idx = index + offs;
         if (start_index <= offs_idx && offs_idx < end_index) {
           int offs_block_idx = (block_index + offs) % int(cache_size);
+          if (cache->previews_todo_count == 0) {
+            /* No previews in progress so none should have FILE_ENTRY_PREVIEW_LOADING. #106023. */
+            cache->block_entries[offs_block_idx]->flags &= ~FILE_ENTRY_PREVIEW_LOADING;
+          }
           filelist_cache_previews_push(filelist, cache->block_entries[offs_block_idx], offs_idx);
         }
       } while ((offs = -offs) < 0); /* Switch between negative and positive offset. */
