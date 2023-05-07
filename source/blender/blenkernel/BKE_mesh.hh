@@ -90,7 +90,7 @@ void normals_calc_poly_vert(Span<float3> vert_positions,
  * coordinate space used to convert normals between the "custom normal" #short2 representation and
  * a regular #float3 format.
  */
-struct NormalFanSpace {
+struct CornerNormalSpace {
   /** Reference vector, orthogonal to corner normal. */
   float3 vec_ref;
   /** Third vector, orthogonal to corner normal and #vec_ref. */
@@ -102,22 +102,22 @@ struct NormalFanSpace {
 };
 
 /**
- * Storage for coordinate spaces and connection information during normal calculation.
+ * Storage for corner fan coordinate spaces for an entire mesh.
  */
-struct NormalFanSpaces {
+struct CornerNormalSpaceArray {
   /**
    * The normal coordinate spaces, potentially shared between multiple face corners in a smooth fan
-   * connected to a vertex. Depending on the mesh (the amount of sharing / number of sharp edges /
-   * size of each fan), there may be many fewer spaces than face corners, so they are stored in a
-   * separate array.
+   * connected to a vertex (and not per face corner). Depending on the mesh (the amount of sharing
+   * / number of sharp edges / size of each fan), there may be many fewer spaces than face corners,
+   * so they are stored in a separate array.
    */
-  Array<NormalFanSpace> spaces;
+  Array<CornerNormalSpace> spaces;
 
   /** The index of the data in the #spaces array for each face corner. */
   Array<int> corner_space_indices;
 };
 
-void fan_space_custom_normal_to_data(const NormalFanSpace *lnor_space,
+void fan_space_custom_normal_to_data(const CornerNormalSpace *lnor_space,
                                      const float3 lnor_no_custom,
                                      const float custom_lnor[3],
                                      short r_clnor_data[2]);
@@ -146,7 +146,7 @@ void normals_calc_loop(Span<float3> vert_positions,
                        bool use_split_normals,
                        float split_angle,
                        short2 *clnors_data,
-                       NormalFanSpaces *r_lnors_spacearr,
+                       CornerNormalSpaceArray *r_lnors_spacearr,
                        MutableSpan<float3> r_loop_normals);
 
 void normals_loop_custom_set(Span<float3> vert_positions,

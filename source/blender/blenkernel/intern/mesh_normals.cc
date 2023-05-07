@@ -468,7 +468,7 @@ MLoopNorSpace *BKE_lnor_space_create(MLoopNorSpaceArray *lnors_spacearr)
 #define LNOR_SPACE_TRIGO_THRESHOLD (1.0f - 1e-4f)
 
 namespace blender::bke::mesh {
-static void normal_fan_space_define(NormalFanSpace *lnor_space,
+static void normal_fan_space_define(CornerNormalSpace *lnor_space,
                                     const float lnor[3],
                                     float vec_ref[3],
                                     float vec_other[3],
@@ -540,7 +540,7 @@ void BKE_lnor_space_define(MLoopNorSpace *lnor_space,
                            const blender::Span<blender::float3> edge_vectors)
 {
   using namespace blender::bke::mesh;
-  NormalFanSpace space{};
+  CornerNormalSpace space{};
   normal_fan_space_define(&space, lnor, vec_ref, vec_other, edge_vectors);
   copy_v3_v3(lnor_space->vec_lnor, lnor);
   copy_v3_v3(lnor_space->vec_ref, space.vec_ref);
@@ -585,7 +585,7 @@ MINLINE short unit_float_to_short(const float val)
 }
 
 namespace blender::bke::mesh {
-static void fan_space_custom_data_to_normal(const NormalFanSpace *lnor_space,
+static void fan_space_custom_data_to_normal(const CornerNormalSpace *lnor_space,
                                             const float3 lnor_no_custom,
                                             const short clnor_data[2],
                                             float r_custom_lnor[3])
@@ -626,7 +626,7 @@ void BKE_lnor_space_custom_data_to_normal(const MLoopNorSpace *lnor_space,
                                           float r_custom_lnor[3])
 {
   using namespace blender::bke::mesh;
-  NormalFanSpace space;
+  CornerNormalSpace space;
   space.vec_ref = lnor_space->vec_ref;
   space.vec_ortho = lnor_space->vec_ortho;
   space.ref_alpha = lnor_space->ref_alpha;
@@ -635,7 +635,7 @@ void BKE_lnor_space_custom_data_to_normal(const MLoopNorSpace *lnor_space,
 }
 
 namespace blender::bke::mesh {
-void fan_space_custom_normal_to_data(const NormalFanSpace *lnor_space,
+void fan_space_custom_normal_to_data(const CornerNormalSpace *lnor_space,
                                      const float3 lnor_no_custom,
                                      const float custom_lnor[3],
                                      short r_clnor_data[2])
@@ -695,7 +695,7 @@ void BKE_lnor_space_custom_normal_to_data(const MLoopNorSpace *lnor_space,
                                           short r_clnor_data[2])
 {
   using namespace blender::bke::mesh;
-  NormalFanSpace space;
+  CornerNormalSpace space;
   space.vec_ref = lnor_space->vec_ref;
   space.vec_ortho = lnor_space->vec_ortho;
   space.ref_alpha = lnor_space->ref_alpha;
@@ -709,7 +709,7 @@ struct LoopSplitTaskDataCommon {
   /* Read/write.
    * Note we do not need to protect it, though, since two different tasks will *always* affect
    * different elements in the arrays. */
-  NormalFanSpaces *lnors_spacearr;
+  CornerNormalSpaceArray *lnors_spacearr;
   MutableSpan<float3> loop_normals;
   MutableSpan<short2> clnors_data;
 
@@ -889,7 +889,7 @@ static void lnor_space_for_single_fan(LoopSplitTaskDataCommon *common_data,
 
   loop_normals[ml_curr_index] = poly_normals[loop_to_poly[ml_curr_index]];
 
-  if (NormalFanSpaces *lnors_spacearr = common_data->lnors_spacearr) {
+  if (CornerNormalSpaceArray *lnors_spacearr = common_data->lnors_spacearr) {
     const Span<float3> positions = common_data->positions;
     const Span<int2> edges = common_data->edges;
     const OffsetIndices polys = common_data->polys;
@@ -912,7 +912,7 @@ static void lnor_space_for_single_fan(LoopSplitTaskDataCommon *common_data,
     sub_v3_v3v3(vec_prev, positions[vert_3], positions[vert_pivot]);
     normalize_v3(vec_prev);
 
-    NormalFanSpace *lnor_space = &lnors_spacearr->spaces[space_index];
+    CornerNormalSpace *lnor_space = &lnors_spacearr->spaces[space_index];
     normal_fan_space_define(lnor_space, loop_normals[ml_curr_index], vec_curr, vec_prev, {});
     lnors_spacearr->corner_space_indices[ml_curr_index] = space_index;
 
@@ -930,7 +930,7 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
                                   const int space_index,
                                   Vector<float3> *edge_vectors)
 {
-  NormalFanSpaces *lnors_spacearr = common_data->lnors_spacearr;
+  CornerNormalSpaceArray *lnors_spacearr = common_data->lnors_spacearr;
   MutableSpan<float3> loop_normals = common_data->loop_normals;
   MutableSpan<short2> clnors_data = common_data->clnors_data;
 
@@ -1072,7 +1072,7 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
       length = 1.0f;
     }
 
-    NormalFanSpace *lnor_space = &lnors_spacearr->spaces[space_index];
+    CornerNormalSpace *lnor_space = &lnors_spacearr->spaces[space_index];
     normal_fan_space_define(lnor_space, lnor, vec_org, vec_curr, *edge_vectors);
     lnors_spacearr->corner_space_indices.as_mutable_span().fill_indices(
         processed_corners.as_span(), space_index);
@@ -1270,7 +1270,7 @@ void normals_calc_loop(const Span<float3> vert_positions,
                        bool use_split_normals,
                        float split_angle,
                        short2 *clnors_data,
-                       NormalFanSpaces *r_lnors_spacearr,
+                       CornerNormalSpaceArray *r_lnors_spacearr,
                        MutableSpan<float3> r_loop_normals)
 {
   /* For now this is not supported.
@@ -1328,7 +1328,7 @@ void normals_calc_loop(const Span<float3> vert_positions,
   /* When using custom loop normals, disable the angle feature! */
   const bool check_angle = (split_angle < float(M_PI)) && (clnors_data == nullptr);
 
-  NormalFanSpaces _lnors_spacearr;
+  CornerNormalSpaceArray _lnors_spacearr;
 
 #ifdef DEBUG_TIME
   SCOPED_TIMER_AVERAGED(__func__);
@@ -1457,7 +1457,7 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
    * function *is not* performance-critical, since it is mostly expected to be called by io add-ons
    * when importing custom normals, and modifier (and perhaps from some editing tools later?). So
    * better to keep some simplicity here, and just call #bke::mesh::normals_calc_loop() twice! */
-  NormalFanSpaces lnors_spacearr;
+  CornerNormalSpaceArray lnors_spacearr;
   BitVector<> done_loops(corner_verts.size(), false);
   Array<float3> loop_normals(corner_verts.size());
   const Array<int> loop_to_poly = mesh_topology::build_loop_to_poly_map(polys);

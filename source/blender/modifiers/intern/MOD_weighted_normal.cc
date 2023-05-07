@@ -205,7 +205,7 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
 
   const bool has_clnors = wn_data->has_clnors;
   const float split_angle = wn_data->split_angle;
-  bke::mesh::NormalFanSpaces lnors_spacearr;
+  bke::mesh::CornerNormalSpaceArray lnors_spacearr;
 
   const bool keep_sharp = (wnmd->flag & MOD_WEIGHTEDNORMAL_KEEP_SHARP) != 0;
   const bool use_face_influence = (wnmd->flag & MOD_WEIGHTEDNORMAL_FACE_INFLUENCE) != 0 &&
