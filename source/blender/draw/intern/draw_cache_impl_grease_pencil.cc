@@ -388,7 +388,7 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
     });
 
     if (drawing.has_stroke_buffer()) {
-      Span<bke::StrokePoint> points = drawing.stroke_buffer();
+      Span<bke::greasepencil::StrokePoint> points = drawing.stroke_buffer();
       const int verts_start_offset = verts_start_offsets.last();
       const int num_verts = 1 + points.size() + 1;
       IndexRange verts_range = IndexRange(verts_start_offset, num_verts);
@@ -401,7 +401,7 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
         const int idx = i + 1;
         GreasePencilStrokeVert &s_vert = verts_slice[idx];
         GreasePencilColorVert &c_vert = cols_slice[idx];
-        const bke::StrokePoint &point = points[i];
+        const bke::greasepencil::StrokePoint &point = points[i];
 
         copy_v3_v3(s_vert.pos, point.position);
         s_vert.radius = point.radius;

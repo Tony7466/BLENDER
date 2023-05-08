@@ -67,7 +67,7 @@ struct PaintOperationExecutor {
     float3 proj_pos;
     ED_view3d_win_to_3d_on_plane(region, plane, stroke_extension.mouse_position, false, proj_pos);
 
-    StrokePoint new_point{proj_pos, stroke_extension.pressure * 100.0f, 1.0f, float4(1.0f)};
+    bke::greasepencil::StrokePoint new_point{proj_pos, stroke_extension.pressure * 100.0f, 1.0f, float4(1.0f)};
 
     drawing.runtime->stroke_cache.points.append(std::move(new_point));
 
@@ -104,7 +104,7 @@ void PaintOperation::on_stroke_done(const bContext &C)
   GreasePencilDrawing &drawing_eval = *reinterpret_cast<GreasePencilDrawing *>(
       grease_pencil_eval.drawings()[index_eval]);
 
-  const Span<StrokePoint> stroke_points = drawing_eval.stroke_buffer();
+  const Span<bke::greasepencil::StrokePoint> stroke_points = drawing_eval.stroke_buffer();
   CurvesGeometry &curves = drawing_orig.geometry.wrap();
 
   int num_old_curves = curves.curves_num();
@@ -124,7 +124,7 @@ void PaintOperation::on_stroke_done(const bContext &C)
   SpanAttributeWriter<float> radii = attributes.lookup_for_write_span<float>("radius");
   SpanAttributeWriter<float> opacities = attributes.lookup_for_write_span<float>("opacity");
   for (const int i : IndexRange(stroke_points.size())) {
-    const StrokePoint &point = stroke_points[i];
+    const bke::greasepencil::StrokePoint &point = stroke_points[i];
     const int point_i = new_points_range[i];
     positions[point_i] = point.position;
     radii.span[point_i] = point.radius;

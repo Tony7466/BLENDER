@@ -18,10 +18,10 @@
 namespace blender::bke {
 class GreasePencilRuntime;
 class GreasePencilDrawingRuntime;
-struct StrokePoint;
 namespace greasepencil {
 class Layer;
 class LayerGroup;
+struct StrokePoint;
 }  // namespace greasepencil
 }  // namespace blender::bke
 using GreasePencilRuntimeHandle = blender::bke::GreasePencilRuntime;
@@ -104,7 +104,7 @@ typedef struct GreasePencilDrawing {
   /**
    * A buffer for a single stroke while drawing.
    */
-  blender::Span<blender::bke::StrokePoint> stroke_buffer() const;
+  blender::Span<blender::bke::greasepencil::StrokePoint> stroke_buffer() const;
   bool has_stroke_buffer() const;
 #endif
 } GreasePencilDrawing;

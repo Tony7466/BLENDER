@@ -273,8 +273,6 @@ void legacy_gpencil_to_grease_pencil(Main &main, GreasePencil &grease_pencil, bG
 
 }  // namespace convert
 
-}  // namespace greasepencil
-
 /**
  * A single point for a stroke that is currently being drawn.
  */
@@ -301,6 +299,8 @@ struct StrokeCache {
   }
 };
 
+}  // namespace greasepencil
+
 class GreasePencilDrawingRuntime {
  public:
   /**
@@ -308,7 +308,7 @@ class GreasePencilDrawingRuntime {
    */
   mutable SharedCache<Vector<uint3>> triangles_cache;
 
-  StrokeCache stroke_cache;
+  greasepencil::StrokeCache stroke_cache;
 };
 
 class GreasePencilRuntime {

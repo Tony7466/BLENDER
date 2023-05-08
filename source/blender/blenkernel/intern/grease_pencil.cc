@@ -829,7 +829,7 @@ bool GreasePencilDrawing::has_stroke_buffer() const
   return this->runtime->stroke_cache.points.size() > 0;
 }
 
-blender::Span<blender::bke::StrokePoint> GreasePencilDrawing::stroke_buffer() const
+blender::Span<blender::bke::greasepencil::StrokePoint> GreasePencilDrawing::stroke_buffer() const
 {
   return this->runtime->stroke_cache.points.as_span();
 }
