@@ -55,6 +55,37 @@ struct State {
 };
 
 /**
+ * Contains all overlay generic geometry batches.
+ */
+class ShapeCache {
+ private:
+  struct BatchDeleter {
+    void operator()(GPUBatch *shader)
+    {
+      GPU_BATCH_DISCARD_SAFE(shader);
+    }
+  };
+  using BatchPtr = std::unique_ptr<GPUBatch, BatchDeleter>;
+
+ public:
+  BatchPtr quad_wire;
+  BatchPtr plain_axes;
+  BatchPtr single_arrow;
+  BatchPtr cube;
+  BatchPtr circle;
+  BatchPtr empty_sphere;
+  BatchPtr empty_cone;
+  BatchPtr arrows;
+  BatchPtr metaball_wire_circle;
+  BatchPtr speaker;
+  BatchPtr probe_cube;
+  BatchPtr probe_grid;
+  BatchPtr probe_planar;
+
+  ShapeCache();
+};
+
+/**
  * Shader module. Shared between instances.
  */
 class ShaderModule {
@@ -130,9 +161,77 @@ struct Resources : public select::SelectMap {
   Resources(const eSelectionType selection_type_, ShaderModule &shader_module)
       : select::SelectMap(selection_type_), shaders(shader_module){};
 
-  ThemeColorID object_wire_theme_id(const ObjectRef &ob_ref, const State &state) const;
-  const float4 &object_wire_color(const ObjectRef &ob_ref, ThemeColorID theme_id) const;
-  const float4 &object_wire_color(const ObjectRef &ob_ref, const State &state) const;
+  ThemeColorID object_wire_theme_id(const ObjectRef &ob_ref, const State &state) const
+  {
+    const bool is_edit = (state.object_mode & OB_MODE_EDIT) &&
+                         (ob_ref.object->mode & OB_MODE_EDIT);
+    const bool active = (state.active_base != nullptr) &&
+                        ((ob_ref.dupli_parent != nullptr) ?
+                             (state.active_base->object == ob_ref.dupli_parent) :
+                             (state.active_base->object == ob_ref.object));
+    const bool is_selected = ((ob_ref.object->base_flag & BASE_SELECTED) != 0);
+
+    /* Object in edit mode. */
+    if (is_edit) {
+      return TH_WIRE_EDIT;
+    }
+    /* Transformed object during operators. */
+    if (((G.moving & G_TRANSFORM_OBJ) != 0) && is_selected) {
+      return TH_TRANSFORM;
+    }
+    /* Sets the 'theme_id' or fallback to wire */
+    if ((ob_ref.object->base_flag & BASE_SELECTED) != 0) {
+      return (active) ? TH_ACTIVE : TH_SELECT;
+    }
+
+    switch (ob_ref.object->type) {
+      case OB_LAMP:
+        return TH_LIGHT;
+      case OB_SPEAKER:
+        return TH_SPEAKER;
+      case OB_CAMERA:
+        return TH_CAMERA;
+      case OB_LIGHTPROBE:
+        /* TODO: add light-probe color. Use empty color for now. */
+      case OB_EMPTY:
+        return TH_EMPTY;
+      default:
+        return (is_edit) ? TH_WIRE_EDIT : TH_WIRE;
+    }
+  }
+
+  const float4 &object_wire_color(const ObjectRef &ob_ref, ThemeColorID theme_id) const
+  {
+    if (UNLIKELY(ob_ref.object->base_flag & BASE_FROM_SET)) {
+      return theme_settings.color_wire;
+    }
+    switch (theme_id) {
+      case TH_WIRE_EDIT:
+        return theme_settings.color_wire_edit;
+      case TH_ACTIVE:
+        return theme_settings.color_active;
+      case TH_SELECT:
+        return theme_settings.color_select;
+      case TH_TRANSFORM:
+        return theme_settings.color_transform;
+      case TH_SPEAKER:
+        return theme_settings.color_speaker;
+      case TH_CAMERA:
+        return theme_settings.color_camera;
+      case TH_EMPTY:
+        return theme_settings.color_empty;
+      case TH_LIGHT:
+        return theme_settings.color_light;
+      default:
+        return theme_settings.color_wire;
+    }
+  }
+
+  const float4 &object_wire_color(const ObjectRef &ob_ref, const State &state) const
+  {
+    ThemeColorID theme_id = object_wire_theme_id(ob_ref, state);
+    return object_wire_color(ob_ref, theme_id);
+  }
 };
 
 /**
@@ -167,159 +266,6 @@ template<typename InstanceDataT> struct ShapeInstanceBuf : private select::Selec
     pass.bind_ssbo("data_buf", &data_buf);
     pass.draw(shape, data_buf.size());
   }
-};
-
-/**
- * Contains all overlay generic geometry batches.
- */
-class ShapeCache {
- private:
-  struct BatchDeleter {
-    void operator()(GPUBatch *shader)
-    {
-      GPU_BATCH_DISCARD_SAFE(shader);
-    }
-  };
-  using BatchPtr = std::unique_ptr<GPUBatch, BatchDeleter>;
-
- public:
-  BatchPtr quad_wire;
-  BatchPtr plain_axes;
-  BatchPtr single_arrow;
-  BatchPtr cube;
-  BatchPtr circle;
-  BatchPtr empty_sphere;
-  BatchPtr empty_cone;
-  BatchPtr arrows;
-  BatchPtr metaball_wire_circle;
-  BatchPtr speaker;
-  BatchPtr probe_cube;
-  BatchPtr probe_grid;
-  BatchPtr probe_planar;
-
-  ShapeCache();
-};
-
-class Prepass {
- private:
-  const eSelectionType selection_type_;
-
-  PassMain prepass_ps_ = {"prepass"};
-  PassMain prepass_in_front_ps_ = {"prepass_in_front"};
-
- public:
-  Prepass(const eSelectionType selection_type) : selection_type_(selection_type){};
-
-  void begin_sync(Resources &res, const State &state);
-  void object_sync(Manager &manager, const ObjectRef &ob_ref, Resources &res);
-  void draw(Resources &res, Manager &manager, View &view);
-  void draw_in_front(Resources &res, Manager &manager, View &view);
-};
-
-class Background {
- private:
-  const eSelectionType selection_type_;
-
-  PassSimple bg_ps_ = {"Background"};
-
- public:
-  Background(const eSelectionType selection_type) : selection_type_(selection_type){};
-
-  void begin_sync(Resources &res, const State &state);
-  void draw(Resources &res, Manager &manager);
-};
-
-class Grid {
- private:
-  const eSelectionType selection_type_;
-
-  UniformBuffer<OVERLAY_GridData> data_;
-
-  PassSimple grid_ps_ = {"grid_ps_"};
-
-  float3 grid_axes_ = float3(0.0f);
-  float3 zplane_axes_ = float3(0.0f);
-  OVERLAY_GridBits grid_flag_ = OVERLAY_GridBits(0);
-  OVERLAY_GridBits zneg_flag_ = OVERLAY_GridBits(0);
-  OVERLAY_GridBits zpos_flag_ = OVERLAY_GridBits(0);
-
-  bool enabled_ = false;
-
- public:
-  Grid(const eSelectionType selection_type) : selection_type_(selection_type){};
-
-  void begin_sync(Resources &res, const State &state, const View &view);
-  void draw(Resources &res, Manager &manager, View &view);
-
- private:
-  void update_ubo(const State &state, const View &view);
-};
-
-class Extras {
-  using InstanceBuf = ShapeInstanceBuf<ExtraInstanceData>;
-
- private:
-  const eSelectionType selection_type_;
-
-  PassSimple empty_ps_ = {"Extras"};
-  PassSimple empty_in_front_ps_ = {"Extras_In_front"};
-
-  struct InstanceBuffers {
-    const eSelectionType selection_type_;
-    InstanceBuf plain_axes = {selection_type_, "plain_axes_buf"};
-    InstanceBuf single_arrow = {selection_type_, "single_arrow_buf"};
-    InstanceBuf cube = {selection_type_, "cube_buf"};
-    InstanceBuf circle = {selection_type_, "circle_buf"};
-    InstanceBuf sphere = {selection_type_, "sphere_buf"};
-    InstanceBuf cone = {selection_type_, "cone_buf"};
-    InstanceBuf arrows = {selection_type_, "arrows_buf"};
-    InstanceBuf image = {selection_type_, "image_buf"};
-    InstanceBuf speaker = {selection_type_, "speaker_buf"};
-    InstanceBuf probe_cube = {selection_type_, "probe_cube_buf"};
-    InstanceBuf probe_grid = {selection_type_, "probe_grid_buf"};
-    InstanceBuf probe_planar = {selection_type_, "probe_planar_buf"};
-  } call_buffers_[2] = {{selection_type_}, {selection_type_}};
-
-  void empty_sync(InstanceBuffers &call_bufs,
-                  const ObjectRef &ob_ref,
-                  const ExtraInstanceData data,
-                  const select::ID select_id);
-  void probe_sync(InstanceBuffers &call_bufs,
-                  const ObjectRef &ob_ref,
-                  const ExtraInstanceData data,
-                  const select::ID select_id);
-
- public:
-  Extras(const eSelectionType selection_type) : selection_type_(selection_type){};
-
-  void begin_sync();
-  void object_sync(const ObjectRef &ob_ref, Resources &res, const State &state);
-  void end_sync(Resources &res, ShapeCache &shapes, const State &state);
-  void draw(Resources &res, Manager &manager, View &view);
-  void draw_in_front(Resources &res, Manager &manager, View &view);
-};
-
-class Metaballs {
-  using SphereOutlineInstanceBuf = ShapeInstanceBuf<BoneInstanceData>;
-
- private:
-  const eSelectionType selection_type_;
-
-  PassSimple metaball_ps_ = {"MetaBalls"};
-  PassSimple metaball_in_front_ps_ = {"MetaBalls_In_front"};
-
-  SphereOutlineInstanceBuf circle_buf_ = {selection_type_, "metaball_data_buf"};
-  SphereOutlineInstanceBuf circle_in_front_buf_ = {selection_type_, "metaball_data_buf"};
-
- public:
-  Metaballs(const eSelectionType selection_type) : selection_type_(selection_type){};
-
-  void begin_sync();
-  void edit_object_sync(const ObjectRef &ob_ref, Resources &res);
-  void object_sync(const ObjectRef &ob_ref, Resources &res, const State &state);
-  void end_sync(Resources &res, ShapeCache &shapes, const State &state);
-  void draw(Resources &res, Manager &manager, View &view);
-  void draw_in_front(Resources &res, Manager &manager, View &view);
 };
 
 }  // namespace blender::draw::overlay

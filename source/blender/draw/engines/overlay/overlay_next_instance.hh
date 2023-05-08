@@ -8,6 +8,12 @@
 
 #include "overlay_next_private.hh"
 
+#include "overlay_next_background.hh"
+#include "overlay_next_extra.hh"
+#include "overlay_next_grid.hh"
+#include "overlay_next_metaball.hh"
+#include "overlay_next_prepass.hh"
+
 namespace blender::draw::overlay {
 
 /* Selection engine reuse most of the Overlay engine by creating selection IDs for each
