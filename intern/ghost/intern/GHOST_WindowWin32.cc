@@ -5,6 +5,8 @@
  * \ingroup GHOST
  */
 
+#define _USE_MATH_DEFINES
+
 #include "GHOST_WindowWin32.hh"
 #include "GHOST_ContextD3D.hh"
 #include "GHOST_ContextNone.hh"
