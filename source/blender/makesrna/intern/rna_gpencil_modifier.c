@@ -4710,12 +4710,6 @@ static void rna_def_modifier_gpencilsurdeform(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, " ", "Current frame or all frames");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
-  prop = RNA_def_property(srna, "curr_layer_or_all_layers", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "curr_layer_or_all_layers");
-  RNA_def_property_enum_items(prop, gpsurdef_curr_layer_or_all_layers_items);
-  RNA_def_property_enum_default(prop, GP_MOD_SDEF_BIND_CURRENT_LAYER);
-  RNA_def_property_ui_text(prop, " ", "Current layer or all layers");
-  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "unbind_mode", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "bound_flags", GP_MOD_SDEF_UNBIND_MODE);

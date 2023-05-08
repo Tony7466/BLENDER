@@ -1301,6 +1301,7 @@ static bool free_frame(SurDeformGpencilModifierData *smd_orig,
                        SDefGPLayer *sdef_layer,
                        bGPDframe *gpf)
 {
+  if (sdef_layer->frames == NULL) return false;
   /* If we're not on the first frame, rollback the pointer*/
   if (sdef_layer->frames->frame_idx > 0) {
     rollback_lframes_a(smd_orig, sdef_layer);
@@ -1626,148 +1627,52 @@ static bool surfacedeformBind(Object *ob,
   smd_orig->target_polys_num = target_polys_num;
   float current_frame = BKE_scene_frame_get(scene);
 
-  /* Bind all layers and bind only one layer are mutually exclusive. */
-  if (smd_orig->bind_modes & GP_MOD_SDEF_BIND_ALL_LAYERS) {
-    LISTBASE_FOREACH (bGPDlayer *, curr_gpl, &gpd->layers)
-    {
-      
-      /* If a layer is already bound, skip it.*/
-      rollback_layers_a(smd_orig);
-      int l = 0;
-      bool resutl = 1;
-      while (l != smd_orig->num_of_layers && resutl != 0) {
-        resutl = strcmp(smd_orig->layers[l].blender_layer->info, curr_gpl->info);
-        if (resutl)
-          ++l;
-      }
-      if (l != smd_orig->num_of_layers) {
-        continue;
-      }
-
-      add_layer(smd_orig, smd_eval, curr_gpl);
-      /* Now smd_orig->layers should point to the new layer. */
-
-      if (smd_orig->bind_modes & GP_MOD_SDEF_BIND_ALL_FRAMES) {
-        LISTBASE_FOREACH (bGPDframe *, curr_gpf, &curr_gpl->frames) {
-
-          rollback_lframes_a(smd_orig, smd_orig->layers);
-          /*If a frame has no strokes, skip it.*/
-          if (BLI_listbase_count(&(curr_gpf->strokes)) < 1)
-          {
-            continue;
-          }
-
-          /* If a frame is already bound, skip it.*/
-          int f = 0;
-          while (f != smd_orig->layers->num_of_frames &&
-                 smd_orig->layers->frames[f].blender_frame->framenum != curr_gpf->framenum)
-            ++f;  // credits for this line: "Vlad from Moscow " from stack overflow. This is so
-                  // fricking smart I can't
-          if (f != smd_orig->layers->num_of_frames) {
-            continue;
-          }
-          add_frame(smd_orig, smd_eval, smd_orig->layers, curr_gpf);
-          smd_orig->flags |= GP_MOD_SDEF_WITHHOLD_EVALUATION;
-          smd_eval->flags |= GP_MOD_SDEF_WITHHOLD_EVALUATION;
-          BKE_scene_frame_set(scene, (float)curr_gpf->framenum);
-          BKE_scene_graph_update_for_newframe(depsgraph);
-          smd_orig->flags &= ~GP_MOD_SDEF_WITHHOLD_EVALUATION;
-          smd_eval->flags &= ~GP_MOD_SDEF_WITHHOLD_EVALUATION;
-          uint s = 0;
-          LISTBASE_FOREACH (bGPDstroke *, curr_gps, &curr_gpf->strokes) {
-            if (!surfacedeformBind_stroke(s,
-                                          smd_orig,
-                                          smd_eval,
-                                          curr_gps,
-                                          curr_gps->totpoints,
-                                          target_verts_num,
-                                          target,
-                                          positions,
-                                          mpoly,
-                                          medge,
-                                          mloop,
-                                          treeData,
-                                          vert_edges,
-                                          edge_polys)) {
-              freeAdjacencyMap(vert_edges, adj_array, edge_polys);
-              return false;
-            }
-            s++;
-          }
-          rollback_strokes_a(smd_orig, smd_orig->layers->frames);
-        }
-      }
-      else {
-        /* If a frame is already bound, skip it.*/
-        rollback_lframes_a(smd_orig, smd_orig->layers);
-        int f = 0;
-        while (f != smd_orig->layers->num_of_frames &&
-               smd_orig->layers->frames[f].blender_frame->framenum !=
-                   smd_orig->layers->frames->blender_frame->framenum)
-          ++f;  // credits for this line: "Vlad from Moscow " from stack overflow. This is so
-                // fricking smart I can't
-        if (f == smd_orig->layers->num_of_frames) {
-          add_frame(
-              smd_orig,
-              smd_eval,
-              smd_orig->layers,
-              BKE_gpencil_frame_retime_get(depsgraph, scene, ob, smd_orig->layers->blender_layer));
-          uint s = 0;
-          LISTBASE_FOREACH (
-              bGPDstroke *, curr_gps, &smd_orig->layers->frames->blender_frame->strokes) {
-            if (!surfacedeformBind_stroke(s,
-                                          smd_orig,
-                                          smd_eval,
-                                          curr_gps,
-                                          curr_gps->totpoints,
-                                          target_verts_num,
-                                          target,
-                                          positions,
-                                          mpoly,
-                                          medge,
-                                          mloop,
-                                          treeData,
-                                          vert_edges,
-                                          edge_polys)) {
-              freeAdjacencyMap(vert_edges, adj_array, edge_polys);
-              return false;
-            }
-            s++;
-          }
-          rollback_strokes_a(smd_orig, smd_orig->layers->frames);
-        }
-      }
-      rollback_lframes_a(smd_orig, smd_orig->layers);
-     }
-  }
-  else /*Bind just current layer (Not much useful now that I think of it, but well...)*/
+ 
+  LISTBASE_FOREACH (bGPDlayer *, curr_gpl, &gpd->layers)
   {
-    /* If a layer is already bound, see if additional frames have to be bound.*/
+    
+    /* If a layer is already bound, skip it.*/
+    rollback_layers_a(smd_orig);
     int l = 0;
-    while (l != smd_orig->num_of_layers && smd_orig->layers[l].blender_layer != gpl_active)
-      ++l;
+    bool resutl = 1;
+    while (l != smd_orig->num_of_layers && resutl != 0) {
+      resutl = strcmp(smd_orig->layers[l].blender_layer->info, curr_gpl->info);
+      if (resutl)
+        ++l;
+    }
     if (l != smd_orig->num_of_layers) {
-      smd_orig->layers = &smd_orig->layers[l];  // ...Can I do this? Idk I hope
+      continue;
     }
-    else {
-      add_layer(smd_orig, smd_eval, gpl_active);
-    }
-    /* Bind all frames and bind only one frame are mutually exclusive. */
+
+    add_layer(smd_orig, smd_eval, curr_gpl);
+    /* Now smd_orig->layers should point to the new layer. */
+
     if (smd_orig->bind_modes & GP_MOD_SDEF_BIND_ALL_FRAMES) {
-      LISTBASE_FOREACH (bGPDframe *, curr_gpf, &gpl_active->frames) {
-        /* If a frame is already bound, skip it.*/
+      LISTBASE_FOREACH (bGPDframe *, curr_gpf, &curr_gpl->frames) {
+
         rollback_lframes_a(smd_orig, smd_orig->layers);
+        /*If a frame has no strokes, skip it.*/
+        if (BLI_listbase_count(&(curr_gpf->strokes)) < 1)
+        {
+          continue;
+        }
+
+        /* If a frame is already bound, skip it.*/
         int f = 0;
         while (f != smd_orig->layers->num_of_frames &&
-               smd_orig->layers->frames[f].blender_frame != curr_gpf)
+                smd_orig->layers->frames[f].blender_frame->framenum != curr_gpf->framenum)
           ++f;  // credits for this line: "Vlad from Moscow " from stack overflow. This is so
                 // fricking smart I can't
         if (f != smd_orig->layers->num_of_frames) {
           continue;
         }
         add_frame(smd_orig, smd_eval, smd_orig->layers, curr_gpf);
+        smd_orig->flags |= GP_MOD_SDEF_WITHHOLD_EVALUATION;
+        smd_eval->flags |= GP_MOD_SDEF_WITHHOLD_EVALUATION;
         BKE_scene_frame_set(scene, (float)curr_gpf->framenum);
         BKE_scene_graph_update_for_newframe(depsgraph);
+        smd_orig->flags &= ~GP_MOD_SDEF_WITHHOLD_EVALUATION;
+        smd_eval->flags &= ~GP_MOD_SDEF_WITHHOLD_EVALUATION;
         uint s = 0;
         LISTBASE_FOREACH (bGPDstroke *, curr_gps, &curr_gpf->strokes) {
           if (!surfacedeformBind_stroke(s,
@@ -1791,14 +1696,14 @@ static bool surfacedeformBind(Object *ob,
         }
         rollback_strokes_a(smd_orig, smd_orig->layers->frames);
       }
-
     }
     else {
       /* If a frame is already bound, skip it.*/
       rollback_lframes_a(smd_orig, smd_orig->layers);
       int f = 0;
       while (f != smd_orig->layers->num_of_frames &&
-             smd_orig->layers->frames[f].blender_frame != smd_orig->layers->frames->blender_frame)
+              smd_orig->layers->frames[f].blender_frame->framenum !=
+                  smd_orig->layers->frames->blender_frame->framenum)
         ++f;  // credits for this line: "Vlad from Moscow " from stack overflow. This is so
               // fricking smart I can't
       if (f == smd_orig->layers->num_of_frames) {
@@ -1831,9 +1736,11 @@ static bool surfacedeformBind(Object *ob,
         }
         rollback_strokes_a(smd_orig, smd_orig->layers->frames);
       }
-      
     }
+    rollback_lframes_a(smd_orig, smd_orig->layers);
+    
   }
+  
   BKE_scene_frame_set(scene, current_frame);
   freeAdjacencyMap(vert_edges, adj_array, edge_polys);
   free_bvhtree_from_mesh(&treeData);
@@ -1922,7 +1829,8 @@ static bool gpencil_edit_modifier_invoke_properties(bContext *C,
   return gpencil_edit_modifier_poll_generic(C, &RNA_SurDeformGpencilModifier, 0, true);
 } */
 
-static int gpencil_surfacedeform_bind_exec(bContext *C, wmOperator *op)
+
+static int gpencil_surfacedeform_bind_or_unbind(bContext *C, wmOperator *op)
 {
   Object *ob = ED_object_active_context(C);
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
@@ -1936,9 +1844,7 @@ static int gpencil_surfacedeform_bind_exec(bContext *C, wmOperator *op)
   PointerRNA ob_ptr;
   RNA_pointer_create(&ob->id, &RNA_GpencilModifier, smd_orig, &ob_ptr);
   const bool current_frame_only = (RNA_enum_get(&ob_ptr, "curr_frame_or_all_frames") == (1 << 0));
-  const bool current_layer_only = (RNA_enum_get(&ob_ptr, "curr_layer_or_all_layers") == (1 << 2));
-  const bool unbind_mode = RNA_boolean_get(&ob_ptr, "unbind_mode");
-
+ 
   if (smd_orig == NULL) {
     return OPERATOR_CANCELLED;
   }
@@ -1947,12 +1853,6 @@ static int gpencil_surfacedeform_bind_exec(bContext *C, wmOperator *op)
     smd_orig->flags |= GP_MOD_SDEF_DO_BIND;
   }
 
-  if (unbind_mode) {
-    smd_orig->bind_modes |= GP_MOD_SDEF_UNBIND_MODE;
-  }
-  else {
-    smd_orig->bind_modes &= ~GP_MOD_SDEF_UNBIND_MODE;
-  }
 
   if (current_frame_only) {
     smd_orig->bind_modes |= GP_MOD_SDEF_BIND_CURRENT_FRAME;
@@ -1963,14 +1863,9 @@ static int gpencil_surfacedeform_bind_exec(bContext *C, wmOperator *op)
     smd_orig->bind_modes |= GP_MOD_SDEF_BIND_ALL_FRAMES;
   }
 
-  if (current_layer_only) {
-    smd_orig->bind_modes |= GP_MOD_SDEF_BIND_CURRENT_LAYER;
-    smd_orig->bind_modes &= ~GP_MOD_SDEF_BIND_ALL_LAYERS;
-  }
-  else {
-    smd_orig->bind_modes &= ~GP_MOD_SDEF_BIND_CURRENT_LAYER;
-    smd_orig->bind_modes |= GP_MOD_SDEF_BIND_ALL_LAYERS;
-  }
+ 
+  smd_orig->bind_modes &= ~GP_MOD_SDEF_BIND_CURRENT_LAYER;
+   
 
   /*SurDeformGpencilModifierData *smd_eval = (SurDeformGpencilModifierData
   *)BKE_modifier_get_evaluated( depsgraph, ob, &smd->modifier); smd_eval->flags = smd->flags;*/
@@ -2043,6 +1938,26 @@ static int gpencil_surfacedeform_bind_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+
+static int gpencil_surfacedeform_bind_exec(bContext *C, wmOperator *op)
+{
+  Object *ob = ED_object_active_context(C);
+  SurDeformGpencilModifierData *smd_orig = (SurDeformGpencilModifierData *)
+      gpencil_edit_modifier_property_get(op, ob, eGpencilModifierType_SurDeform);
+  smd_orig->bind_modes &= ~GP_MOD_SDEF_UNBIND_MODE;
+  return gpencil_surfacedeform_bind_or_unbind(C,  op);
+}
+
+static int gpencil_surfacedeform_unbind_exec(bContext *C, wmOperator *op)
+{
+  Object *ob = ED_object_active_context(C);
+  SurDeformGpencilModifierData *smd_orig = (SurDeformGpencilModifierData *)
+      gpencil_edit_modifier_property_get(op, ob, eGpencilModifierType_SurDeform);
+  smd_orig->bind_modes |= GP_MOD_SDEF_UNBIND_MODE;
+  return gpencil_surfacedeform_bind_or_unbind(C,  op);
+}
+
+
 static int gpencil_surfacedeform_bind_invoke(bContext *C,
                                              wmOperator *op,
                                              const wmEvent *UNUSED(event))
@@ -2051,6 +1966,30 @@ static int gpencil_surfacedeform_bind_invoke(bContext *C,
     return gpencil_surfacedeform_bind_exec(C, op);
   }
   return OPERATOR_CANCELLED;
+}
+
+static int gpencil_surfacedeform_unbind_invoke(bContext *C,
+                                             wmOperator *op,
+                                             const wmEvent *UNUSED(event))
+{
+  if (gpencil_edit_modifier_invoke_properties(C, op, NULL, NULL)) {
+    return gpencil_surfacedeform_unbind_exec(C, op);
+  }
+  return OPERATOR_CANCELLED;
+}
+
+static const EnumPropertyItem gpsurdef_curr_frame_or_all_frames_items[] = {
+  {GP_MOD_SDEF_BIND_CURRENT_FRAME, "CURR_FRAME", 0, "Current Frame", "Bind the current frame"},
+  {GP_MOD_SDEF_BIND_ALL_FRAMES, "ALL_FRAMES", 0, "All Frames", "Bind all the frames in the layer(s)"},
+  {0, NULL, 0, NULL, NULL},
+};
+
+static void bind_unbind_rna_props(wmOperatorType *ot)
+{
+  RNA_def_enum(ot->srna, "curr_frame_or_all_frames", 
+              &gpsurdef_curr_frame_or_all_frames_items,
+              0, "", "");
+  RNA_def_boolean(ot->srna, "unbind_mode", true, "Unbind", "");
 }
 
 void GPENCIL_OT_gpencilsurdeform_bind(wmOperatorType *ot)
@@ -2067,12 +2006,40 @@ void GPENCIL_OT_gpencilsurdeform_bind(wmOperatorType *ot)
 
   /* parameters */
   // RNA_def_boolean(ot->srna, "current_frame_only", true, "Only current frame", "");
-  // RNA_def_boolean(ot->srna, "current_layer_only", true, "Only current layer", "");
-  RNA_def_boolean(ot->srna, "unbind_mode", true, "Unbind", "");
+  bind_unbind_rna_props(ot);
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
   gpencil_edit_modifier_properties(ot);
 }
+
+void GPENCIL_OT_gpencilsurdeform_unbind(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Surface Deform Unind";
+  ot->description = "Unbind a GP with a surface deform modifier from its mesh";
+  ot->idname = "GPENCIL_OT_gpencilsurdeform_unbind";
+
+  /* api callbacks */
+ // ot->poll = gpencil_surfacedeform_bind_poll;
+  ot->invoke = gpencil_surfacedeform_unbind_invoke;
+  ot->exec = gpencil_surfacedeform_unbind_exec;
+
+  /* parameters */
+  // RNA_def_boolean(ot->srna, "current_frame_only", true, "Only current frame", "");
+  // RNA_def_boolean(ot->srna, "current_layer_only", true, "Only current layer", "");
+ // RNA_def_boolean(ot->srna, "unbind_mode", true, "Unbind", "");
+  bind_unbind_rna_props(ot);
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
+  gpencil_edit_modifier_properties(ot);
+}
+void WM_operatortypes_gpencilsurdeform(void)
+{
+  WM_operatortype_append(GPENCIL_OT_gpencilsurdeform_bind);
+  WM_operatortype_append(GPENCIL_OT_gpencilsurdeform_unbind);
+}
+
 
 /** \} */
