@@ -86,7 +86,7 @@ class SimulationZoneState {
 
 /** Identifies a simulation zone (input and output node pair) used by a modifier. */
 struct SimulationZoneID {
-  /** Every node identifier in the heirarchy of compute contexts. */
+  /** Every node identifier in the hierarchy of compute contexts. */
   Vector<int> node_ids;
 
   uint64_t hash() const
