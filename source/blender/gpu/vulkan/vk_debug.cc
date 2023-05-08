@@ -231,55 +231,30 @@ void VKDebuggingTools::print_vulkan_version()
 
 void VKDebuggingTools::print_labels(const VkDebugUtilsMessengerCallbackDataEXT *callback_data)
 {
-  const bool use_color = CLG_color_support_get(&LOG);
-#define COLOR_FILE \
-  if (use_color) { \
-    ss << "\x1b[2m"; \
-  }
-#define COLOR_RESET \
-  if (use_color) { \
-    ss << "\x1b[0m"; \
-  }
   std::stringstream ss;
   if (callback_data->objectCount > 0) {
-    COLOR_FILE
     ss << callback_data->objectCount << " Object[s] related \n";
-    COLOR_RESET;
-
     for (uint32_t object = 0; object < callback_data->objectCount; ++object) {
-      COLOR_FILE
       ss << "ObjectType[" << to_string(callback_data->pObjects[object].objectType) << "],";
       ss << "Handle[" << std::hex
          << static_cast<uintptr_t>(callback_data->pObjects[object].objectHandle) << "],";
       ss << "Name[" << callback_data->pObjects[object].pObjectName << "] \n";
-      COLOR_RESET;
     }
   }
   if (callback_data->cmdBufLabelCount > 0) {
-    COLOR_FILE
     ss << callback_data->cmdBufLabelCount << " Command Buffer Label[s] \n";
-    COLOR_RESET;
     for (uint32_t label = 0; label < callback_data->cmdBufLabelCount; ++label) {
-      COLOR_FILE
       ss << "CmdBufLabelName : " << callback_data->pCmdBufLabels[label].pLabelName << "\n";
-      COLOR_RESET;
     }
   }
   if (callback_data->queueLabelCount > 0) {
-    COLOR_FILE
     ss << callback_data->queueLabelCount << " Queue Label[s]\n";
-    COLOR_RESET;
     for (uint32_t label = 0; label < callback_data->queueLabelCount; ++label) {
-      COLOR_FILE
       ss << "QueueLabelName : " << callback_data->pQueueLabels[label].pLabelName << "\n";
-      COLOR_RESET;
     }
   }
   printf("%s\n", ss.str().c_str());
   fflush(stdout);
-
-#undef COLOR_FILE
-#undef COLOR_RESET
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL
@@ -288,24 +263,19 @@ messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
                    const VkDebugUtilsMessengerCallbackDataEXT *callback_data,
                    void *user_data)
 {
-#define CONSOLE_COLOR_YELLOW "\x1b[33m"
-#define CONSOLE_COLOR_RED "\x1b[31m"
-#define CONSOLE_COLOR_RESET "\x1b[0m"
-#define CONSOLE_COLOR_FINE "\x1b[2m"
-
   VKDebuggingTools &debugging_tools = *reinterpret_cast<VKDebuggingTools *>(user_data);
   if (debugging_tools.is_ignore(callback_data->messageIdNumber)) {
     return VK_FALSE;
   }
-  const bool use_color = CLG_color_support_get(&LOG);
+  bool use_color = CLG_color_support_get(&LOG);
+  UNUSED_VARS(use_color);
   bool enabled = false;
-  if ((message_severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) ||
-      (message_severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT))
+  if ((message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) ||
+      (message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT))
   {
-
-    if ((LOG.type->flag & CLG_FLAG_USE) && (LOG.type->level >= CLG_SEVERITY_INFO)) {
-      const char *format = use_color ? CONSOLE_COLOR_FINE "{0x%x}% s\n %s " CONSOLE_COLOR_RESET :
-                                       "{0x%x}% s\n %s ";
+    if ((LOG.type->flag & CLG_FLAG_USE) && (LOG.type->level >= CLG_SEVERITY_INFO))
+    {
+      const char *format = "{0x%x}% s\n %s ";
       CLG_logf(LOG.type,
                CLG_SEVERITY_INFO,
                "",
@@ -331,10 +301,7 @@ messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
     }
     enabled = true;
     if (clog_severity == CLG_SEVERITY_ERROR) {
-
-      const char *format = use_color ? CONSOLE_COLOR_RED "%s {0x%x}\n" CONSOLE_COLOR_RESET
-                                                         " %s \n " :
-                                       " %s {0x%x}\n %s ";
+      const char *format = " %s {0x%x}\n %s ";
       CLG_logf(LOG.type,
                clog_severity,
                "",
@@ -345,9 +312,7 @@ messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
                callback_data->pMessage);
     }
     else if (LOG.type->level >= CLG_SEVERITY_WARN) {
-      const char *format = use_color ? CONSOLE_COLOR_YELLOW "%s {0x%x}\n" CONSOLE_COLOR_RESET
-                                                            " %s \n " :
-                                       " %s {0x%x}\n %s ";
+      const char *format = " %s {0x%x}\n %s ";
       CLG_logf(LOG.type,
                clog_severity,
                "",
@@ -363,11 +328,6 @@ messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
   {
     debugging_tools.print_labels(callback_data);
   }
-
-#undef CONSOLE_COLOR_YELLOW
-#undef CONSOLE_COLOR_RED
-#undef CONSOLE_COLOR_RESET
-#undef CONSOLE_COLOR_FINE
   return VK_TRUE;
 };
 
