@@ -13,9 +13,11 @@ CCL_NAMESPACE_BEGIN
 #define SPECTRUM_CHANNELS 3
 #define SPECTRUM_DATA_TYPE float3
 #define PACKED_SPECTRUM_DATA_TYPE packed_float3
+#define SPECTRUM_RGBE_DATATYPE int32_t
 
 using Spectrum = SPECTRUM_DATA_TYPE;
 using PackedSpectrum = PACKED_SPECTRUM_DATA_TYPE;
+using SpectrumRGBE = SPECTRUM_RGBE_DATATYPE;
 
 #define make_spectrum(f) CONCAT(make_, SPECTRUM_DATA_TYPE(f))
 #define load_spectrum(f) CONCAT(load_, SPECTRUM_DATA_TYPE(f))
