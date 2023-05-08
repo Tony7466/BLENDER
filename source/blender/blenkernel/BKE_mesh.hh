@@ -120,8 +120,8 @@ struct CornerNormalSpaceArray {
   Array<int> corner_space_indices;
 };
 
-void lnor_space_custom_data_to_normal(const CornerNormalSpace *lnor_space,
-                                      const float3 lnor_no_custom,
+void lnor_space_custom_normal_to_data(const CornerNormalSpace *lnor_space,
+                                      float3 lnor_no_custom,
                                       const float custom_lnor[3],
                                       short r_clnor_data[2]);
 
