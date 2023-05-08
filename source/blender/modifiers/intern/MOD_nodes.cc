@@ -1207,9 +1207,12 @@ static void prepare_simulation_states_for_evaluation(const NodesModifierData &nm
     return;
   }
 
+  exec_data.simulation_cache = nmd_orig.simulation_cache;
+  exec_data.cache_all_frames = ctx.object->flag & OB_FLAG_USE_SIMULATION_CACHE;
+
   /* Load read-only states to give nodes access to cached data. */
-  const bke::sim::StatesAroundFrame sim_states =
-      nmd_orig.simulation_cache->get_states_around_frame(current_frame);
+  const bke::sim::MutableStatesAroundFrame sim_states =
+      nmd_orig.simulation_cache->get_states_around_frame_for_write(current_frame);
   if (sim_states.current) {
     sim_states.current->state.ensure_bake_loaded();
     exec_data.current_simulation_state = &sim_states.current->state;

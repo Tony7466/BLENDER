@@ -93,7 +93,9 @@ bool ModifierSimulationCache::has_state_at_frame(const SubFrame &frame) const
   std::lock_guard lock(states_at_frames_mutex_);
   for (const auto &item : states_at_frames_) {
     if (item->frame == frame) {
-      return true;
+      if (!item->state.zone_states_.is_empty()) {
+        return true;
+      }
     }
   }
   return false;
@@ -156,6 +158,15 @@ StatesAroundFrame ModifierSimulationCache::get_states_around_frame(const SubFram
   return states_around_frame;
 }
 
+MutableStatesAroundFrame ModifierSimulationCache::get_states_around_frame_for_write(
+    const SubFrame &frame)
+{
+  StatesAroundFrame states = this->get_states_around_frame(frame);
+  return {const_cast<ModifierSimulationStateAtFrame *>(states.prev),
+          const_cast<ModifierSimulationStateAtFrame *>(states.current),
+          const_cast<ModifierSimulationStateAtFrame *>(states.next)};
+}
+
 const SimulationZoneState *ModifierSimulationState::get_zone_state(
     const SimulationZoneID &zone_id) const
 {
@@ -172,6 +183,12 @@ SimulationZoneState &ModifierSimulationState::get_zone_state_for_write(
   std::lock_guard lock{mutex_};
   return *zone_states_.lookup_or_add_cb(zone_id,
                                         []() { return std::make_unique<SimulationZoneState>(); });
+}
+
+void ModifierSimulationState::remove_zone_state(const SimulationZoneID &zone_id)
+{
+  std::lock_guard lock{mutex_};
+  zone_states_.remove(zone_id);
 }
 
 void ModifierSimulationState::ensure_bake_loaded() const

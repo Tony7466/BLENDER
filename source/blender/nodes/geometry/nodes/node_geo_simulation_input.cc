@@ -17,6 +17,15 @@ namespace blender::nodes::node_geo_simulation_input_cc {
 
 NODE_STORAGE_FUNCS(NodeGeometrySimulationInput);
 
+static const bke::sim::SimulationZoneState *try_get_prev_state(
+    const GeoNodesModifierData &modifier_data, const bke::sim::SimulationZoneID &zone_id)
+{
+  if (!modifier_data.prev_simulation_state) {
+    return nullptr;
+  }
+  return modifier_data.prev_simulation_state->get_zone_state(zone_id);
+}
+
 class LazyFunctionForSimulationInputNode final : public LazyFunction {
   const bNode &node_;
   int32_t output_node_id_;
@@ -57,7 +66,7 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
   {
     const GeoNodesLFUserData &user_data = *static_cast<const GeoNodesLFUserData *>(
         context.user_data);
-    const GeoNodesModifierData &modifier_data = *user_data.modifier_data;
+    GeoNodesModifierData &modifier_data = *user_data.modifier_data;
     if (modifier_data.current_simulation_state == nullptr) {
       params.set_default_remaining_outputs();
       return;
@@ -71,13 +80,33 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
     const bke::sim::SimulationZoneID zone_id = get_simulation_zone_id(*user_data.compute_context,
                                                                       output_node_id_);
 
-    const bke::sim::SimulationZoneState *prev_zone_state =
-        modifier_data.prev_simulation_state == nullptr ?
-            nullptr :
-            modifier_data.prev_simulation_state->get_zone_state(zone_id);
+    Array<void *> output_values(simulation_items_.size());
+    for (const int i : simulation_items_.index_range()) {
+      output_values[i] = params.get_output_data_ptr(i + 1);
+    }
 
-    std::optional<bke::sim::SimulationZoneState> initial_prev_zone_state;
-    if (prev_zone_state == nullptr) {
+    if (const bke::sim::SimulationZoneState *prev_state = try_get_prev_state(modifier_data,
+                                                                             zone_id)) {
+      simulation_state_to_values(simulation_items_,
+                                 *prev_state,
+                                 *modifier_data.self_object,
+                                 *user_data.compute_context,
+                                 node_,
+                                 output_values);
+
+      if (!modifier_data.cache_all_frames) {
+        const Scene *scene = DEG_get_input_scene(modifier_data.depsgraph);
+        const float scene_ctime = BKE_scene_ctime_get(scene);
+
+        std::cout << "Removing state at " << scene_ctime << "\n";
+        modifier_data.prev_simulation_state->remove_zone_state(zone_id);
+      }
+      for (const int i : inputs_.index_range()) {
+        params.set_input_unused(i);
+      }
+    }
+    else {
+      std::cout << "Fetching initial values\n";
       Array<void *> input_values(simulation_items_.size(), nullptr);
       for (const int i : simulation_items_.index_range()) {
         input_values[i] = params.try_get_input_data_ptr_or_request(i);
@@ -87,21 +116,11 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
         return;
       }
 
-      initial_prev_zone_state.emplace();
-      values_to_simulation_state(simulation_items_, input_values, *initial_prev_zone_state);
-      prev_zone_state = &*initial_prev_zone_state;
+      for (const int i : input_values.index_range()) {
+        inputs_[i].type->move_construct(input_values[i], output_values[i]);
+      }
     }
 
-    Array<void *> output_values(simulation_items_.size());
-    for (const int i : simulation_items_.index_range()) {
-      output_values[i] = params.get_output_data_ptr(i + 1);
-    }
-    simulation_state_to_values(simulation_items_,
-                               *prev_zone_state,
-                               *modifier_data.self_object,
-                               *user_data.compute_context,
-                               node_,
-                               output_values);
     for (const int i : simulation_items_.index_range()) {
       params.output_set(i + 1);
     }
