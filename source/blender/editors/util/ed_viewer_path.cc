@@ -346,6 +346,11 @@ bool is_active_geometry_nodes_viewer(const bContext &C,
 
 bNode *find_geometry_nodes_viewer(const ViewerPath &viewer_path, SpaceNode &snode)
 {
+  /* Viewer path is only valid if the context object is set. */
+  if (snode.id == nullptr || GS(snode.id->name) != ID_OB) {
+    return nullptr;
+  }
+
   const std::optional<ViewerPathForGeometryNodesViewer> parsed_viewer_path =
       parse_geometry_nodes_viewer(viewer_path);
   if (!parsed_viewer_path.has_value()) {
@@ -359,9 +364,7 @@ bNode *find_geometry_nodes_viewer(const ViewerPath &viewer_path, SpaceNode &snod
   }
   ViewerPath tmp_viewer_path;
   BLI_SCOPED_DEFER([&]() { BKE_viewer_path_clear(&tmp_viewer_path); });
-  if (snode.id != nullptr && GS(snode.id->name) == ID_OB) {
-    viewer_path_for_geometry_node(snode, *possible_viewer, tmp_viewer_path);
-  }
+  viewer_path_for_geometry_node(snode, *possible_viewer, tmp_viewer_path);
 
   if (BKE_viewer_path_equal(&viewer_path, &tmp_viewer_path)) {
     return possible_viewer;
