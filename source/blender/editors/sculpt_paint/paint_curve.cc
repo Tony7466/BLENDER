@@ -177,7 +177,7 @@ static void paintcurve_point_add(bContext *C, wmOperator *op, const int loc[2])
   Main *bmain = CTX_data_main(C);
   wmWindow *window = CTX_wm_window(C);
   ARegion *region = CTX_wm_region(C);
-  const float vec[3] = {loc[0], loc[1], 0.0};
+  const float vec[3] = {float(loc[0]), float(loc[1]), 0.0f};
 
   PaintCurve *pc = br->paint_curve;
   if (!pc) {
@@ -234,7 +234,7 @@ static void paintcurve_point_add(bContext *C, wmOperator *op, const int loc[2])
 
 static int paintcurve_add_point_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  const int loc[2] = {event->mval[0], event->mval[1]};
+  const int loc[2] = {float(event->mval[0]), float(event->mval[1])};
   paintcurve_point_add(C, op, loc);
   RNA_int_set_array(op->ptr, "location", loc);
   return OPERATOR_FINISHED;
@@ -370,7 +370,7 @@ static bool paintcurve_point_select(
   Brush *br = p->brush;
   PaintCurve *pc;
   int i;
-  const float loc_fl[2] = {UNPACK2(loc)};
+  const float loc_fl[2] = {float(loc[0]), float(loc[1])};
 
   pc = br->paint_curve;
 
@@ -464,7 +464,7 @@ static bool paintcurve_point_select(
 
 static int paintcurve_select_point_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  const int loc[2] = {UNPACK2(event->mval)};
+  const int loc[2] = {float(event->mval[0]), float(event->mval[1])};
   bool toggle = RNA_boolean_get(op->ptr, "toggle");
   bool extend = RNA_boolean_get(op->ptr, "extend");
   if (paintcurve_point_select(C, op, loc, toggle, extend)) {
@@ -536,7 +536,7 @@ struct PointSlideData {
 static int paintcurve_slide_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   Paint *p = BKE_paint_get_active_from_context(C);
-  const float loc_fl[2] = {UNPACK2(event->mval)};
+  const float loc_fl[2] = {float(event->mval[0]), float(event->mval[1])};
   char select;
   int i;
   bool do_select = RNA_boolean_get(op->ptr, "select");
@@ -610,7 +610,8 @@ static int paintcurve_slide_modal(bContext *C, wmOperator *op, const wmEvent *ev
     case MOUSEMOVE: {
       ARegion *region = CTX_wm_region(C);
       wmWindow *window = CTX_wm_window(C);
-      float diff[2] = {event->mval[0] - psd->initial_loc[0], event->mval[1] - psd->initial_loc[1]};
+      float diff[2] = {float(event->mval[0] - psd->initial_loc[0]),
+                       float(event->mval[1] - psd->initial_loc[1])};
       if (psd->select == 1) {
         int i;
         for (i = 0; i < 3; i++) {
