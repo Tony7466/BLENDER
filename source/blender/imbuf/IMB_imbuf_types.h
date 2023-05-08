@@ -160,7 +160,7 @@ typedef enum eImBufFlags {
 /* Specialization of an ownership whenever a bare pointer is provided to the ImBuf buffers
  * assignment API. */
 typedef enum ImBufOwnership {
-  /* The ImBug simply shares pointer with data owned by someone else, and will not perform any
+  /* The ImBuf simply shares pointer with data owned by someone else, and will not perform any
    * memory management when the ImBuf frees the buffer. */
   IB_DO_NOT_TAKE_OWNERSHIP = 0,
 

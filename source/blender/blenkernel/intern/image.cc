@@ -4457,7 +4457,7 @@ static ImBuf *image_get_render_result(Image *ima, ImageUser *iuser, void **r_loc
   IMB_assign_float_z_buffer(ibuf, rectz, IB_DO_NOT_TAKE_OWNERSHIP);
 
   /* TODO(sergey): Make this faster by either simply referencing the stamp
-   * or by changing both ImBug and RenderResult to use same data type to
+   * or by changing both ImBuf and RenderResult to use same data type to
    * store metadata. */
   if (ibuf->metadata != nullptr) {
     IMB_metadata_free(ibuf->metadata);
