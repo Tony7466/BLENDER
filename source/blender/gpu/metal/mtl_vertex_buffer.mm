@@ -5,12 +5,11 @@
  */
 #include "mtl_vertex_buffer.hh"
 #include "mtl_debug.hh"
+#include "mtl_storage_buffer.hh"
 
 namespace blender::gpu {
 
-MTLVertBuf::MTLVertBuf() : VertBuf()
-{
-}
+MTLVertBuf::MTLVertBuf() : VertBuf() {}
 
 MTLVertBuf::~MTLVertBuf()
 {
@@ -50,6 +49,11 @@ void MTLVertBuf::release_data()
   GPU_TEXTURE_FREE_SAFE(buffer_texture_);
 
   MEM_SAFE_FREE(data);
+
+  if (ssbo_wrapper_) {
+    delete ssbo_wrapper_;
+    ssbo_wrapper_ = nullptr;
+  }
 }
 
 void MTLVertBuf::duplicate_data(VertBuf *dst_)
@@ -255,7 +259,7 @@ void MTLVertBuf::bind()
 void MTLVertBuf::update_sub(uint start, uint len, const void *data)
 {
   /* Fetch and verify active context. */
-  MTLContext *ctx = reinterpret_cast<MTLContext *>(unwrap(GPU_context_active_get()));
+  MTLContext *ctx = static_cast<MTLContext *>(unwrap(GPU_context_active_get()));
   BLI_assert(ctx);
   BLI_assert(ctx->device);
 
@@ -294,10 +298,16 @@ void MTLVertBuf::update_sub(uint start, uint len, const void *data)
 
 void MTLVertBuf::bind_as_ssbo(uint binding)
 {
-  /* TODO(Metal): Support binding of buffers as SSBOs.
-   * Pending overall compute support for Metal backend. */
-  MTL_LOG_WARNING("MTLVertBuf::bind_as_ssbo not yet implemented!\n");
   this->flag_used();
+
+  /* Ensure resource is initialized. */
+  this->bind();
+
+  /* Create MTLStorageBuffer to wrap this resource and use conventional binding. */
+  if (ssbo_wrapper_ == nullptr) {
+    ssbo_wrapper_ = new MTLStorageBuf(this, alloc_size_);
+  }
+  ssbo_wrapper_->bind(binding);
 }
 
 void MTLVertBuf::bind_as_texture(uint binding)
@@ -328,21 +338,12 @@ void MTLVertBuf::bind_as_texture(uint binding)
   GPU_texture_bind(buffer_texture_, binding);
 }
 
-const void *MTLVertBuf::read() const
+void MTLVertBuf::read(void *data) const
 {
   BLI_assert(vbo_ != nullptr);
   BLI_assert(usage_ != GPU_USAGE_DEVICE_ONLY);
-  void *return_ptr = vbo_->get_host_ptr();
-  BLI_assert(return_ptr != nullptr);
-
-  return return_ptr;
-}
-
-void *MTLVertBuf::unmap(const void *mapped_data) const
-{
-  void *result = MEM_mallocN(alloc_size_, __func__);
-  memcpy(result, mapped_data, alloc_size_);
-  return result;
+  void *host_ptr = vbo_->get_host_ptr();
+  memcpy(data, host_ptr, alloc_size_);
 }
 
 void MTLVertBuf::wrap_handle(uint64_t handle)

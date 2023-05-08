@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. All rights reserved. */
+ * Copyright 2021 Blender Foundation */
 
 /** \file
  * \ingroup draw
@@ -11,7 +11,7 @@
 
 #include "BKE_editmesh.h"
 #include "BKE_editmesh_tangent.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_tangent.h"
 
 #include "extract_mesh.hh"
@@ -46,7 +46,7 @@ static void extract_tan_init_common(const MeshRenderData *mr,
 
   int tan_len = 0;
 
-  /* FIXME(T91838): This is to avoid a crash when orco tangent was requested but there are valid
+  /* FIXME(#91838): This is to avoid a crash when orco tangent was requested but there are valid
    * uv layers. It would be better to fix the root cause. */
   if (tan_layers == 0 && use_orco_tan &&
       CustomData_get_layer_index(cd_ldata, CD_PROP_FLOAT2) != -1) {
@@ -106,30 +106,31 @@ static void extract_tan_init_common(const MeshRenderData *mr,
                                      calc_active_tangent,
                                      r_tangent_names,
                                      tan_len,
-                                     mr->poly_normals,
-                                     mr->loop_normals,
+                                     reinterpret_cast<const float(*)[3]>(mr->poly_normals.data()),
+                                     reinterpret_cast<const float(*)[3]>(mr->loop_normals.data()),
                                      orco,
                                      r_loop_data,
                                      mr->loop_len,
                                      &tangent_mask);
     }
     else {
-      BKE_mesh_calc_loop_tangent_ex(reinterpret_cast<const float(*)[3]>(mr->vert_positions),
-                                    mr->mpoly,
-                                    mr->poly_len,
-                                    mr->mloop,
-                                    mr->mlooptri,
+      BKE_mesh_calc_loop_tangent_ex(reinterpret_cast<const float(*)[3]>(mr->vert_positions.data()),
+                                    mr->polys,
+                                    mr->corner_verts.data(),
+                                    mr->looptris.data(),
+                                    mr->looptri_polys.data(),
                                     mr->tri_len,
+                                    mr->sharp_faces,
                                     cd_ldata,
                                     calc_active_tangent,
                                     r_tangent_names,
                                     tan_len,
-                                    mr->vert_normals,
-                                    mr->poly_normals,
-                                    mr->loop_normals,
+                                    reinterpret_cast<const float(*)[3]>(mr->vert_normals.data()),
+                                    reinterpret_cast<const float(*)[3]>(mr->poly_normals.data()),
+                                    reinterpret_cast<const float(*)[3]>(mr->loop_normals.data()),
                                     orco,
                                     r_loop_data,
-                                    mr->loop_len,
+                                    mr->corner_verts.size(),
                                     &tangent_mask);
     }
   }

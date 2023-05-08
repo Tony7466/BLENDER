@@ -2814,7 +2814,8 @@ void RNA_def_property_collection_sdna(PropertyRNA *prop,
 
     int dnaoffset = 0;
     if (lengthpropname[0] == 0 ||
-        rna_find_sdna_member(DefRNA.sdna, structname, lengthpropname, &smember, &dnaoffset)) {
+        rna_find_sdna_member(DefRNA.sdna, structname, lengthpropname, &smember, &dnaoffset))
+    {
       if (lengthpropname[0] == 0) {
         dp->dnalengthfixed = prop->totarraylength;
         prop->arraydimension = 0;
@@ -4439,7 +4440,7 @@ void RNA_enum_item_add(EnumPropertyItem **items, int *totitem, const EnumPropert
 
   if (tot == 0) {
     *items = MEM_callocN(sizeof(EnumPropertyItem[8]), __func__);
-    /* Ensure we get crashes on missing calls to 'RNA_enum_item_end', see T74227. */
+    /* Ensure we get crashes on missing calls to 'RNA_enum_item_end', see #74227. */
 #ifdef DEBUG
     memset(*items, 0xff, sizeof(EnumPropertyItem[8]));
 #endif

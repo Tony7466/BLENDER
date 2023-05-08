@@ -2,6 +2,8 @@
 
 #include <atomic>
 
+#include "BLI_task.hh"
+
 #include "BKE_curves.hh"
 
 #include "UI_interface.h"
@@ -84,7 +86,7 @@ static void set_position_in_component(bke::CurvesGeometry &curves,
     return;
   }
 
-  bke::CurvesFieldContext field_context{curves, ATTR_DOMAIN_POINT};
+  const bke::CurvesFieldContext field_context{curves, ATTR_DOMAIN_POINT};
   fn::FieldEvaluator evaluator{field_context, curves.points_num()};
   evaluator.set_selection(selection_field);
   evaluator.add(position_field);

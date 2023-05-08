@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation. All rights reserved. */
+ * Copyright 2006 Blender Foundation */
 
 /** \file
  * \ingroup cmpnodes
@@ -246,7 +246,8 @@ static void copy_output_file(bNodeTree * /*dst_ntree*/, bNode *dest_node, const 
   for (src_sock = (bNodeSocket *)src_node->inputs.first,
       dest_sock = (bNodeSocket *)dest_node->inputs.first;
        src_sock && dest_sock;
-       src_sock = src_sock->next, dest_sock = (bNodeSocket *)dest_sock->next) {
+       src_sock = src_sock->next, dest_sock = (bNodeSocket *)dest_sock->next)
+  {
     dest_sock->storage = MEM_dupallocN(src_sock->storage);
     NodeImageMultiFileSocket *dest_sockdata = (NodeImageMultiFileSocket *)dest_sock->storage;
     NodeImageMultiFileSocket *src_sockdata = (NodeImageMultiFileSocket *)src_sock->storage;
@@ -258,7 +259,7 @@ static void update_output_file(bNodeTree *ntree, bNode *node)
 {
   PointerRNA ptr;
 
-  /* XXX fix for T36706: remove invalid sockets added with bpy API.
+  /* XXX fix for #36706: remove invalid sockets added with bpy API.
    * This is not ideal, but prevents crashes from missing storage.
    * FileOutput node needs a redesign to support this properly.
    */

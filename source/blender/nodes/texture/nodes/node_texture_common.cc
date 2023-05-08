@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation. All rights reserved. */
+ * Copyright 2006 Blender Foundation */
 
 /** \file
  * \ingroup texnodes
@@ -13,7 +13,7 @@
 
 #include "NOD_common.h"
 #include "node_common.h"
-#include "node_exec.h"
+#include "node_exec.hh"
 #include "node_texture_util.hh"
 
 #include "RNA_access.h"
@@ -69,7 +69,7 @@ static void group_copy_inputs(bNode *gnode, bNodeStack **in, bNodeStack *gstack)
     if (node->type == NODE_GROUP_INPUT) {
       for (sock = static_cast<bNodeSocket *>(node->outputs.first), a = 0; sock;
            sock = sock->next, a++) {
-        if (in[a]) { /* shouldn't need to check this T36694. */
+        if (in[a]) { /* shouldn't need to check this #36694. */
           ns = node_get_socket_stack(gstack, sock);
           if (ns) {
             copy_stack(ns, in[a]);
@@ -95,7 +95,7 @@ static void group_copy_outputs(bNode *gnode, bNodeStack **out, bNodeStack *gstac
   int a;
   LISTBASE_FOREACH_INDEX (bNodeSocket *, sock, &group_output_node->inputs, a) {
     if (!out[a]) {
-      /* shouldn't need to check this T36694. */
+      /* shouldn't need to check this #36694. */
       continue;
     }
 

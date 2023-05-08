@@ -59,8 +59,11 @@ ccl_device_inline int fast_rint(float x)
 {
   /* used by sin/cos/tan range reduction. */
 #ifdef __KERNEL_SSE41__
-  /* Single `roundps` instruction on SSE4.1+ (for gcc/clang at least). */
-  return float_to_int(rintf(x));
+  /* Single `roundps` instruction on SSE4.1+ for gcc/clang but not MSVC 19.35:
+   * float_to_int(rintf(x)); so we use the equivalent intrinsics. */
+  __m128 vec = _mm_set_ss(x);
+  vec = _mm_round_ss(vec, vec, (_MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC));
+  return _mm_cvtss_si32(vec);
 #else
   /* emulate rounding by adding/subtracting 0.5. */
   return float_to_int(x + copysignf(0.5f, x));
@@ -421,7 +424,7 @@ ccl_device_inline float fast_expf(float x)
 
 #if !defined(__KERNEL_GPU__) && !defined(_MSC_VER)
 /* MSVC seems to have a code-gen bug here in at least SSE41/AVX, see
- * T78047 and T78869 for details. Just disable for now, it only makes
+ * #78047 and #78869 for details. Just disable for now, it only makes
  * a small difference in denoising performance. */
 ccl_device float4 fast_exp2f4(float4 x)
 {

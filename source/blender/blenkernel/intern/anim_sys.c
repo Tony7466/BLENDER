@@ -608,20 +608,44 @@ static void animsys_evaluate_fcurves(PointerRNA *ptr,
   }
 }
 
-/* This function assumes that the quaternion is fully keyed, and is stored in array index order. */
+/* This function assumes that the quaternion is keyed in array index order.
+ * If the quaternion is only partially keyed, the result is normalized.
+ * If it is fully keyed, the result is returned as-is. */
 static void animsys_quaternion_evaluate_fcurves(PathResolvedRNA quat_rna,
                                                 FCurve *first_fcurve,
                                                 const AnimationEvalContext *anim_eval_context,
                                                 float r_quaternion[4])
 {
   FCurve *quat_curve_fcu = first_fcurve;
-  for (int prop_index = 0; prop_index < 4; ++prop_index, quat_curve_fcu = quat_curve_fcu->next) {
-    /* Big fat assumption that the quaternion is fully keyed, and stored in order. */
-    BLI_assert(STREQ(quat_curve_fcu->rna_path, first_fcurve->rna_path) &&
-               quat_curve_fcu->array_index == prop_index);
+
+  /* Initialize r_quaternion to the unit quaternion so that half-keyed quaternions at least have
+   * *some* value in there. */
+  r_quaternion[0] = 1.0f;
+  r_quaternion[1] = 0.0f;
+  r_quaternion[2] = 0.0f;
+  r_quaternion[3] = 0.0f;
+
+  /* This should start at 0, but in the case of semi-keyed quaternions, the first FCurve may
+   * actually have a different array index. */
+  const int start_index = first_fcurve->array_index;
+  int prop_index = start_index;
+  for (; prop_index < 4 && quat_curve_fcu; ++prop_index, quat_curve_fcu = quat_curve_fcu->next) {
+    if (quat_curve_fcu->array_index != prop_index ||
+        !STREQ(quat_curve_fcu->rna_path, first_fcurve->rna_path))
+    {
+      /* This should never happen when the quaternion is fully keyed and stored in order. People
+       * do use half-keyed quaternions, though, so better to check anyway. */
+      break;
+    }
 
     quat_rna.prop_index = prop_index;
     r_quaternion[prop_index] = calculate_fcurve(&quat_rna, quat_curve_fcu, anim_eval_context);
+  }
+
+  if (start_index != 0 || prop_index < 4) {
+    /* This quaternion was incompletely keyed, so the result is a mixture of the unit quaterion and
+     * values from FCurves. This means that it's almost certainly no longer of unit length. */
+    normalize_qt(r_quaternion);
   }
 }
 
@@ -2053,7 +2077,8 @@ static void nlaevalchan_blend_value(NlaEvalChannelSnapshot *lower_necs,
 {
   nlaevalchan_assert_blendOrcombine_compatible(lower_necs, upper_necs, r_blended_necs);
   if (nlaevalchan_blendOrcombine_try_copy_from_lower(
-          lower_necs, upper_necs, upper_influence, r_blended_necs)) {
+          lower_necs, upper_necs, upper_influence, r_blended_necs))
+  {
     return;
   }
 
@@ -2082,7 +2107,8 @@ static void nlaevalchan_combine_value(NlaEvalChannelSnapshot *lower_necs,
 {
   nlaevalchan_assert_blendOrcombine_compatible(lower_necs, upper_necs, r_blended_necs);
   if (nlaevalchan_blendOrcombine_try_copy_from_lower(
-          lower_necs, upper_necs, upper_influence, r_blended_necs)) {
+          lower_necs, upper_necs, upper_influence, r_blended_necs))
+  {
     return;
   }
 
@@ -2115,7 +2141,8 @@ static void nlaevalchan_combine_quaternion(NlaEvalChannelSnapshot *lower_necs,
 {
   nlaevalchan_assert_blendOrcombine_compatible_quaternion(lower_necs, upper_necs, r_blended_necs);
   if (nlaevalchan_blendOrcombine_try_copy_from_lower(
-          lower_necs, upper_necs, upper_influence, r_blended_necs)) {
+          lower_necs, upper_necs, upper_influence, r_blended_necs))
+  {
     return;
   }
 
@@ -2347,7 +2374,8 @@ static void nlaevalchan_blend_value_get_inverted_lower_evalchan(
   nlaevalchan_assert_blendOrcombine_compatible(r_lower_necs, upper_necs, blended_necs);
 
   if (nlaevalchan_blendOrcombine_try_copy_to_lower(
-          blended_necs, upper_necs, upper_influence, r_lower_necs)) {
+          blended_necs, upper_necs, upper_influence, r_lower_necs))
+  {
     return;
   }
 
@@ -2386,7 +2414,8 @@ static void nlaevalchan_combine_value_get_inverted_lower_evalchan(
   nlaevalchan_assert_blendOrcombine_compatible(r_lower_necs, upper_necs, blended_necs);
 
   if (nlaevalchan_blendOrcombine_try_copy_to_lower(
-          blended_necs, upper_necs, upper_influence, r_lower_necs)) {
+          blended_necs, upper_necs, upper_influence, r_lower_necs))
+  {
     return;
   }
 
@@ -2432,7 +2461,8 @@ static void nlaevalchan_combine_quaternion_get_inverted_lower_evalchan(
   }
 
   if (nlaevalchan_blendOrcombine_try_copy_to_lower(
-          blended_necs, upper_necs, upper_influence, r_lower_necs)) {
+          blended_necs, upper_necs, upper_influence, r_lower_necs))
+  {
     return;
   }
 
@@ -2880,7 +2910,7 @@ static void nlastrip_evaluate_meta(const int evaluation_mode,
                   STRIP_EVAL_NOBLEND));
 
   /* directly evaluate child strip into accumulation buffer...
-   * - there's no need to use a temporary buffer (as it causes issues [T40082])
+   * - there's no need to use a temporary buffer (as it causes issues [#40082])
    */
   if (tmp_nes) {
     nlastrip_evaluate(evaluation_mode,
@@ -3287,7 +3317,7 @@ static bool is_action_track_evaluated_without_nla(const AnimData *adt,
  * sure why. Preferably, it would be as simple as checking for `(adt->act_Track == nlt)` but that
  * doesn't work either, neither does comparing indices.
  *
- *  This function is a temporary work around. The first disabled track is always the tweaked track.
+ * This function is a temporary work around. The first disabled track is always the tweaked track.
  */
 static NlaTrack *nlatrack_find_tweaked(const AnimData *adt)
 {
@@ -3493,7 +3523,8 @@ static void animsys_evaluate_nla_for_keyframing(PointerRNA *ptr,
 
   /* If tweak strip is full REPLACE, then lower strips not needed. */
   if (r_context->strip.blendmode == NLASTRIP_MODE_REPLACE &&
-      IS_EQF(r_context->strip.influence, 1.0f)) {
+      IS_EQF(r_context->strip.influence, 1.0f))
+  {
     BLI_freelistN(&lower_estrips);
     return;
   }
@@ -3659,7 +3690,8 @@ NlaKeyframingContext *BKE_animsys_get_nla_keyframing_context(
 {
   /* No remapping needed if NLA is off or no action. */
   if ((adt == NULL) || (adt->action == NULL) || (adt->nla_tracks.first == NULL) ||
-      (adt->flag & ADT_NLA_EVAL_OFF)) {
+      (adt->flag & ADT_NLA_EVAL_OFF))
+  {
     return NULL;
   }
 
@@ -3667,7 +3699,8 @@ NlaKeyframingContext *BKE_animsys_get_nla_keyframing_context(
    * evaluated. */
   if (!(adt->flag & ADT_NLA_EDIT_ON) &&
       (adt->act_blendmode == NLASTRIP_MODE_REPLACE && adt->act_influence == 1.0f) &&
-      (adt->flag & ADT_NLA_EVAL_UPPER_TRACKS) == 0) {
+      (adt->flag & ADT_NLA_EVAL_UPPER_TRACKS) == 0)
+  {
     return NULL;
   }
 
@@ -3733,7 +3766,8 @@ void BKE_animsys_nla_remap_keyframe_values(struct NlaKeyframingContext *context,
   float influence = context->strip.influence;
 
   if (blend_mode == NLASTRIP_MODE_REPLACE && influence == 1.0f &&
-      BLI_listbase_is_empty(&context->upper_estrips)) {
+      BLI_listbase_is_empty(&context->upper_estrips))
+  {
     BLI_bitmap_copy_all(r_successful_remaps, remap_domain, count);
     MEM_freeN(remap_domain);
     return;
@@ -3767,12 +3801,13 @@ void BKE_animsys_nla_remap_keyframe_values(struct NlaKeyframingContext *context,
   NlaEvalChannelSnapshot *blended_necs = nlaeval_snapshot_ensure_channel(&blended_snapshot, nec);
   memcpy(blended_necs->values, values, sizeof(float) * count);
 
-  /* Force all channels to be remapped for quaternions in a Combine strip, otherwise it will
-   * always fail. See nlaevalchan_combine_quaternion_handle_undefined_blend_values().
+  /* Force all channels to be remapped for quaternions in a Combine or Replace strip, otherwise it
+   * will always fail. See nlaevalchan_combine_quaternion_handle_undefined_blend_values().
    */
   const bool can_force_all = r_force_all != NULL;
   if (blended_necs->channel->mix_mode == NEC_MIX_QUATERNION &&
-      blend_mode == NLASTRIP_MODE_COMBINE && can_force_all) {
+      ELEM(blend_mode, NLASTRIP_MODE_COMBINE, NLASTRIP_MODE_REPLACE) && can_force_all)
+  {
 
     *r_force_all = true;
     index = -1;
@@ -4163,7 +4198,7 @@ void BKE_animsys_eval_driver(Depsgraph *depsgraph, ID *id, int driver_index, FCu
         const float curval = calculate_fcurve(&anim_rna, fcu, &anim_eval_context);
         ok = BKE_animsys_write_to_rna_path(&anim_rna, curval);
 
-        /* Flush results & status codes to original data for UI (T59984) */
+        /* Flush results & status codes to original data for UI (#59984) */
         if (ok && DEG_is_active(depsgraph)) {
           animsys_write_orig_anim_rna(&id_ptr, fcu->rna_path, fcu->array_index, curval);
 

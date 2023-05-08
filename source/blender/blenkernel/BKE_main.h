@@ -79,15 +79,26 @@ typedef enum eMainIDRelationsEntryTags {
   /* Generic tag marking the entry as to be processed. */
   MAINIDRELATIONS_ENTRY_TAGS_DOIT = 1 << 0,
 
-  /* Generic tag marking the entry as processed in the `to` direction (i.e. we processed the IDs
-   * used by this item). */
-  MAINIDRELATIONS_ENTRY_TAGS_PROCESSED_TO = 1 << 1,
-  /* Generic tag marking the entry as processed in the `from` direction (i.e. we processed the IDs
-   * using by this item). */
-  MAINIDRELATIONS_ENTRY_TAGS_PROCESSED_FROM = 1 << 2,
+  /* Generic tag marking the entry as processed in the `to` direction (i.e. the IDs used by this
+   * item have been processed). */
+  MAINIDRELATIONS_ENTRY_TAGS_PROCESSED_TO = 1 << 4,
+  /* Generic tag marking the entry as processed in the `from` direction (i.e. the IDs using this
+   * item have been processed). */
+  MAINIDRELATIONS_ENTRY_TAGS_PROCESSED_FROM = 1 << 5,
   /* Generic tag marking the entry as processed. */
   MAINIDRELATIONS_ENTRY_TAGS_PROCESSED = MAINIDRELATIONS_ENTRY_TAGS_PROCESSED_TO |
                                          MAINIDRELATIONS_ENTRY_TAGS_PROCESSED_FROM,
+
+  /* Generic tag marking the entry as being processed in the `to` direction (i.e. the IDs used by
+   * this item are being processed). Useful for dependency loops detection and handling. */
+  MAINIDRELATIONS_ENTRY_TAGS_INPROGRESS_TO = 1 << 8,
+  /* Generic tag marking the entry as being processed in the `from` direction (i.e. the IDs using
+   * this item are being processed). Useful for dependency loops detection and handling. */
+  MAINIDRELATIONS_ENTRY_TAGS_INPROGRESS_FROM = 1 << 9,
+  /* Generic tag marking the entry as being processed. Useful for dependency loops detection and
+   * handling. */
+  MAINIDRELATIONS_ENTRY_TAGS_INPROGRESS = MAINIDRELATIONS_ENTRY_TAGS_INPROGRESS_TO |
+                                          MAINIDRELATIONS_ENTRY_TAGS_INPROGRESS_FROM,
 } eMainIDRelationsEntryTags;
 
 typedef struct MainIDRelations {
@@ -134,9 +145,16 @@ typedef struct Main {
 
   /**
    * When linking, disallow creation of new data-blocks.
-   * Make sure we don't do this by accident, see T76738.
+   * Make sure we don't do this by accident, see #76738.
    */
   bool is_locked_for_linking;
+
+  /**
+   * When set, indicates that an unrecoverable error/data corruption was detected.
+   * Should only be set by readfile code, and used by upper-level code (typically #setup_app_data)
+   * to cancel a file reading operation.
+   */
+  bool is_read_invalid;
 
   /**
    * True if this main is the 'GMAIN' of current Blender.
@@ -178,8 +196,8 @@ typedef struct Main {
   ListBase particles;
   ListBase palettes;
   ListBase paintcurves;
-  ListBase wm; /* Singleton (exception). */
-  ListBase gpencils;
+  ListBase wm;       /* Singleton (exception). */
+  ListBase gpencils; /* Legacy Grease Pencil. */
   ListBase movieclips;
   ListBase masks;
   ListBase linestyles;
@@ -425,7 +443,7 @@ int set_listbasepointers(struct Main *main, struct ListBase *lb[]);
 /**
  * The size of thumbnails (optionally) stored in the `.blend` files header.
  *
- * NOTE(@campbellbarton): This is kept small as it's stored uncompressed in the `.blend` file,
+ * NOTE(@ideasman42): This is kept small as it's stored uncompressed in the `.blend` file,
  * where a larger size would increase the size of every `.blend` file unreasonably.
  * If we wanted to increase the size, we'd want to use compression (JPEG or similar).
  */

@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_task.hh"
+
 #include "BKE_curves.hh"
 
 #include "UI_interface.h"
@@ -51,7 +53,7 @@ class EndpointFieldInput final : public bke::CurvesFieldInput {
       return {};
     }
 
-    bke::CurvesFieldContext size_context{curves, ATTR_DOMAIN_CURVE};
+    const bke::CurvesFieldContext size_context{curves, ATTR_DOMAIN_CURVE};
     fn::FieldEvaluator evaluator{size_context, curves.curves_num()};
     evaluator.add(start_size_);
     evaluator.add(end_size_);

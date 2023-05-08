@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+ * Copyright 2005 Blender Foundation */
 
 #include "node_shader_util.hh"
 
@@ -49,7 +49,7 @@ static int node_shader_gpu_vertex_color(GPUMaterial *mat,
   NodeShaderVertexColor *vertexColor = (NodeShaderVertexColor *)node->storage;
   /* NOTE: Using #CD_AUTO_FROM_NAME is necessary because there are multiple color attribute types,
    * and the type may change during evaluation anyway. This will also make EEVEE and Cycles
-   * consistent. See T93179. */
+   * consistent. See #93179. */
 
   GPUNodeLink *vertexColorLink;
 

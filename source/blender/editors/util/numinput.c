@@ -323,7 +323,8 @@ bool handleNumInput(bContext *C, NumInput *n, const wmEvent *event)
 #endif
   {
     if (((event->modifier & (KM_CTRL | KM_ALT)) == 0) && (event_ascii != '\0') &&
-        strchr("01234567890@%^&*-+/{}()[]<>.|", event_ascii)) {
+        strchr("01234567890@%^&*-+/{}()[]<>.|", event_ascii))
+    {
       if (!(n->flag & NUM_EDIT_FULL)) {
         n->flag |= NUM_EDITED;
         n->flag |= NUM_EDIT_FULL;
@@ -455,7 +456,7 @@ bool handleNumInput(bContext *C, NumInput *n, const wmEvent *event)
       return true;
     case EVT_PADPERIOD:
     case EVT_PERIODKEY:
-      /* Force number-pad "." since some OS's/countries generate a comma char, see: T37992 */
+      /* Force number-pad "." since some OS's/countries generate a comma char, see: #37992 */
       ascii[0] = '.';
       utf8_buf = ascii;
       break;
@@ -594,7 +595,7 @@ bool handleNumInput(bContext *C, NumInput *n, const wmEvent *event)
     if (n->val_flag[idx] & NUM_INVERSE) {
       val = n->val[idx];
       /* If we invert on radians when user is in degrees,
-       * you get unexpected results... See T53463. */
+       * you get unexpected results... See #53463. */
       if (!n->unit_use_radians && n->unit_type[idx] == B_UNIT_ROTATION) {
         val = RAD2DEG(val);
       }

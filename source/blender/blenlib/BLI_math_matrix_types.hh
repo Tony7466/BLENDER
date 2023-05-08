@@ -149,9 +149,7 @@ struct alignas(Alignment) MatBase : public vec_struct_base<VecBase<T, NumRow>, N
     unroll<NumCol>([&](auto i) { (*this)[i] = ptr[i]; });
   }
 
-  explicit MatBase(const T (*ptr)[NumCol]) : MatBase(static_cast<const T *>(ptr[0]))
-  {
-  }
+  explicit MatBase(const T (*ptr)[NumCol]) : MatBase(static_cast<const T *>(ptr[0])) {}
 
   /** Conversion from other matrix types. */
 
@@ -909,6 +907,27 @@ struct MutableMatView
   {
     unroll<NumCol>([&](auto i) { (*this)[i] *= b; });
     return *this;
+  }
+
+  /** Vector operators. Need to be redefined to avoid operator priority issue. */
+
+  friend col_type operator*(MutableMatView &a, const row_type &b)
+  {
+    /* This is the reference implementation.
+     * Might be overloaded with vectorized / optimized code. */
+    col_type result(0);
+    unroll<NumCol>([&](auto c) { result += b[c] * a[c]; });
+    return result;
+  }
+
+  /** Multiply by the transposed. */
+  friend row_type operator*(const col_type &a, MutableMatView &b)
+  {
+    /* This is the reference implementation.
+     * Might be overloaded with vectorized / optimized code. */
+    row_type result(0);
+    unroll<NumCol>([&](auto c) { unroll<NumRow>([&](auto r) { result[c] += b[c][r] * a[r]; }); });
+    return result;
   }
 };
 

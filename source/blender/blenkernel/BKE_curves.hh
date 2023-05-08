@@ -2,30 +2,26 @@
 
 #pragma once
 
-#include "BKE_curves.h"
-
 /** \file
  * \ingroup bke
  * \brief Low-level operations for curves.
  */
 
-#include <mutex>
-
 #include "BLI_bounds_types.hh"
-#include "BLI_cache_mutex.hh"
 #include "BLI_generic_virtual_array.hh"
+#include "BLI_implicit_sharing.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_shared_cache.hh"
 #include "BLI_span.hh"
-#include "BLI_task.hh"
 #include "BLI_vector.hh"
 #include "BLI_virtual_array.hh"
 
 #include "BKE_attribute.hh"
 #include "BKE_attribute_math.hh"
+#include "BKE_curves.h"
 
 namespace blender::bke {
 
@@ -58,6 +54,9 @@ struct BasisCache {
  */
 class CurvesGeometryRuntime {
  public:
+  /** Implicit sharing user count for #CurvesGeometry::curve_offsets. */
+  const ImplicitSharingInfo *curve_offsets_sharing_info = nullptr;
+
   /**
    * The cached number of curves with each type. Unlike other caches here, this is not computed
    * lazily, since it is needed so often and types are not adjusted much anyway.
@@ -76,16 +75,11 @@ class CurvesGeometryRuntime {
 
   mutable SharedCache<Vector<curves::nurbs::BasisCache>> nurbs_basis_cache;
 
-  /** Cache of evaluated positions. */
-  struct EvaluatedPositions {
-    Vector<float3> vector;
-    /**
-     * The evaluated positions result, using a separate span in case all curves are poly curves,
-     * in which case a separate array of evaluated positions is unnecessary.
-     */
-    Span<float3> span;
-  };
-  mutable SharedCache<EvaluatedPositions> evaluated_position_cache;
+  /**
+   * Cache of evaluated positions for all curves. The positions span will
+   * be used directly rather than the cache when all curves are poly type.
+   */
+  mutable SharedCache<Vector<float3>> evaluated_position_cache;
 
   /**
    * A cache of bounds shared between data-blocks with unchanged positions and radii.
@@ -144,7 +138,9 @@ class CurvesGeometry : public ::CurvesGeometry {
 
   /**
    * The index of the first point in every curve. The size of this span is one larger than the
-   * number of curves. Consider using #points_by_curve rather than using the offsets directly.
+   * number of curves, but the spans will be empty if there are no curves/points.
+   *
+   * Consider using #points_by_curve rather than these offsets directly.
    */
   Span<int> offsets() const;
   MutableSpan<int> offsets_for_write();
@@ -394,6 +390,13 @@ class CurvesGeometry : public ::CurvesGeometry {
   {
     return this->adapt_domain(GVArray(varray), from, to).typed<T>();
   }
+
+  /* --------------------------------------------------------------------
+   * File Read/Write.
+   */
+
+  void blend_read(BlendDataReader &reader);
+  void blend_write(BlendWriter &writer, ID &id);
 };
 
 static_assert(sizeof(blender::bke::CurvesGeometry) == sizeof(::CurvesGeometry));
@@ -419,9 +422,7 @@ class CurvesEditHints {
    */
   std::optional<Array<float3x3>> deform_mats;
 
-  CurvesEditHints(const Curves &curves_id_orig) : curves_id_orig(curves_id_orig)
-  {
-  }
+  CurvesEditHints(const Curves &curves_id_orig) : curves_id_orig(curves_id_orig) {}
 
   /**
    * The edit hints have to correspond to the original curves, i.e. the number of deformed points

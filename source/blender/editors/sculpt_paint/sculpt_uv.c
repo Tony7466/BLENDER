@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2002-2009 Blender Foundation. All rights reserved. */
+ * Copyright 2002-2009 Blender Foundation */
 
 /** \file
  * \ingroup edsculpt
@@ -50,83 +50,84 @@
 #define MARK_BOUNDARY 1
 
 typedef struct UvAdjacencyElement {
-  /* pointer to original uvelement */
+  /** pointer to original UV-element. */
   UvElement *element;
-  /* uv pointer for convenience. Caution, this points to the original UVs! */
+  /** UV pointer for convenience. Caution, this points to the original UVs! */
   float *uv;
-  /* Are we on locked in place? */
+  /** Are we on locked in place? */
   bool is_locked;
-  /* Are we on the boundary? */
+  /** Are we on the boundary? */
   bool is_boundary;
 } UvAdjacencyElement;
 
 typedef struct UvEdge {
   uint uv1;
   uint uv2;
-  /* Are we in the interior? */
+  /** Are we in the interior? */
   bool is_interior;
 } UvEdge;
 
 typedef struct UVInitialStrokeElement {
-  /* index to unique uv */
+  /** index to unique UV. */
   int uv;
 
-  /* strength of brush on initial position */
+  /** Strength of brush on initial position. */
   float strength;
 
-  /* initial uv position */
+  /** initial UV position. */
   float initial_uv[2];
 } UVInitialStrokeElement;
 
 typedef struct UVInitialStroke {
-  /* Initial Selection,for grab brushes for instance */
+  /** Initial Selection,for grab brushes for instance. */
   UVInitialStrokeElement *initialSelection;
 
-  /* Total initially selected UVs. */
+  /** Total initially selected UVs. */
   int totalInitialSelected;
 
-  /* initial mouse coordinates */
+  /** Initial mouse coordinates. */
   float init_coord[2];
 } UVInitialStroke;
 
-/* custom data for uv smoothing brush */
+/** Custom data for UV smoothing brush. */
 typedef struct UvSculptData {
-  /* Contains the first of each set of coincident UVs.
-   * These will be used to perform smoothing on and propagate the changes
-   * to their coincident UVs */
+  /**
+   * Contains the first of each set of coincident UVs.
+   * These will be used to perform smoothing on and propagate the changes to their coincident UVs.
+   */
   UvAdjacencyElement *uv;
 
-  /* Total number of unique UVs. */
+  /** Total number of unique UVs. */
   int totalUniqueUvs;
 
-  /* Edges used for adjacency info, used with laplacian smoothing */
+  /** Edges used for adjacency info, used with laplacian smoothing */
   UvEdge *uvedges;
 
-  /* Total number of #UvEdge. */
+  /** Total number of #UvEdge. */
   int totalUvEdges;
 
-  /* data for initial stroke, used by tools like grab */
+  /** data for initial stroke, used by tools like grab */
   UVInitialStroke *initial_stroke;
 
-  /* timer to be used for airbrush-type brush */
+  /** Timer to be used for airbrush-type brush. */
   wmTimer *timer;
 
-  /* to determine quickly adjacent UVs */
+  /** To determine quickly adjacent UVs. */
   UvElementMap *elementMap;
 
-  /* uvsmooth Paint for fast reference */
+  /** UV-smooth Paint for fast reference. */
   Paint *uvsculpt;
 
-  /* tool to use. duplicating here to change if modifier keys are pressed */
+  /** Tool to use. duplicating here to change if modifier keys are pressed. */
   char tool;
 
-  /* store invert flag here */
+  /** Store invert flag here. */
   char invert;
 
-  /* Is constrain to image bounds active? */
+  /** Is constrain to image bounds active? */
   bool constrain_to_bounds;
 
-  /* Base for constrain_to_bounds. */
+  /** Base for constrain_to_bounds. */
   float uv_base_offset[2];
 } UvSculptData;
 
@@ -151,8 +152,8 @@ typedef struct Temp_UvData {
   int ncounter;
 } Temp_UVData;
 
-static void HC_relaxation_iteration_uv(BMEditMesh *em,
-                                       UvSculptData *sculptdata,
+static void HC_relaxation_iteration_uv(UvSculptData *sculptdata,
+                                       const int cd_loop_uv_offset,
                                        const float mouse_coord[2],
                                        float alpha,
                                        float radius,
@@ -219,15 +220,10 @@ static void HC_relaxation_iteration_uv(BMEditMesh *em,
       apply_sculpt_data_constraints(sculptdata, sculptdata->uv[i].uv);
 
       for (element = sculptdata->uv[i].element; element; element = element->next) {
-        float(*luv)[2];
-        BMLoop *l;
-
         if (element->separate && element != sculptdata->uv[i].element) {
           break;
         }
-
-        l = element->l;
-        luv = CustomData_bmesh_get(&em->bm->ldata, l->head.data, CD_PROP_FLOAT2);
+        float(*luv)[2] = BM_ELEM_CD_GET_FLOAT2_P(element->l, cd_loop_uv_offset);
         copy_v2_v2(*luv, sculptdata->uv[i].uv);
       }
     }
@@ -243,8 +239,8 @@ static void HC_relaxation_iteration_uv(BMEditMesh *em,
  * all the `HC_*` and `laplacian_*` specific functions can probably be removed.
  */
 
-static void laplacian_relaxation_iteration_uv(BMEditMesh *em,
-                                              UvSculptData *sculptdata,
+static void laplacian_relaxation_iteration_uv(UvSculptData *sculptdata,
+                                              const int cd_loop_uv_offset,
                                               const float mouse_coord[2],
                                               float alpha,
                                               float radius,
@@ -302,15 +298,11 @@ static void laplacian_relaxation_iteration_uv(BMEditMesh *em,
       apply_sculpt_data_constraints(sculptdata, sculptdata->uv[i].uv);
 
       for (element = sculptdata->uv[i].element; element; element = element->next) {
-        float(*luv)[2];
-        BMLoop *l;
-
         if (element->separate && element != sculptdata->uv[i].element) {
           break;
         }
 
-        l = element->l;
-        luv = CustomData_bmesh_get(&em->bm->ldata, l->head.data, CD_PROP_FLOAT2);
+        float(*luv)[2] = BM_ELEM_CD_GET_FLOAT2_P(element->l, cd_loop_uv_offset);
         copy_v2_v2(*luv, sculptdata->uv[i].uv);
       }
     }
@@ -360,8 +352,8 @@ static float tri_weight_v3(int method, const float *v1, const float *v2, const f
   return 0.0f;
 }
 
-static void relaxation_iteration_uv(BMEditMesh *em,
-                                    UvSculptData *sculptdata,
+static void relaxation_iteration_uv(UvSculptData *sculptdata,
+                                    const int cd_loop_uv_offset,
                                     const float mouse_coord[2],
                                     const float alpha,
                                     const float radius_squared,
@@ -369,19 +361,17 @@ static void relaxation_iteration_uv(BMEditMesh *em,
                                     const int method)
 {
   if (method == UV_SCULPT_TOOL_RELAX_HC) {
-    HC_relaxation_iteration_uv(em, sculptdata, mouse_coord, alpha, radius_squared, aspect_ratio);
+    HC_relaxation_iteration_uv(
+        sculptdata, cd_loop_uv_offset, mouse_coord, alpha, radius_squared, aspect_ratio);
     return;
   }
   if (method == UV_SCULPT_TOOL_RELAX_LAPLACIAN) {
     laplacian_relaxation_iteration_uv(
-        em, sculptdata, mouse_coord, alpha, radius_squared, aspect_ratio);
+        sculptdata, cd_loop_uv_offset, mouse_coord, alpha, radius_squared, aspect_ratio);
     return;
   }
 
   struct UvElement **head_table = BM_uv_element_map_ensure_head_table(sculptdata->elementMap);
-
-  const int cd_loop_uv_offset = CustomData_get_offset(&em->bm->ldata, CD_PROP_FLOAT2);
-  BLI_assert(cd_loop_uv_offset >= 0);
 
   const int total_uvs = sculptdata->elementMap->total_uvs;
   float(*delta_buf)[3] = (float(*)[3])MEM_callocN(total_uvs * sizeof(float[3]), __func__);
@@ -500,6 +490,8 @@ static void uv_sculpt_stroke_apply(bContext *C,
   radius = radius * radius;
   radius_root = sqrtf(radius);
 
+  const int cd_loop_uv_offset = CustomData_get_offset(&em->bm->ldata, CD_PROP_FLOAT2);
+
   /*
    * Pinch Tool
    */
@@ -527,15 +519,10 @@ static void uv_sculpt_stroke_apply(bContext *C,
         apply_sculpt_data_constraints(sculptdata, sculptdata->uv[i].uv);
 
         for (element = sculptdata->uv[i].element; element; element = element->next) {
-          float(*luv)[2];
-          BMLoop *l;
-
           if (element->separate && element != sculptdata->uv[i].element) {
             break;
           }
-
-          l = element->l;
-          luv = CustomData_bmesh_get(&em->bm->ldata, l->head.data, CD_PROP_FLOAT2);
+          float(*luv)[2] = BM_ELEM_CD_GET_FLOAT2_P(element->l, cd_loop_uv_offset);
           copy_v2_v2(*luv, sculptdata->uv[i].uv);
         }
       }
@@ -546,8 +533,13 @@ static void uv_sculpt_stroke_apply(bContext *C,
    * Relax Tool
    */
   else if (tool == UV_SCULPT_TOOL_RELAX) {
-    relaxation_iteration_uv(
-        em, sculptdata, co, alpha, radius, aspectRatio, toolsettings->uv_relax_method);
+    relaxation_iteration_uv(sculptdata,
+                            cd_loop_uv_offset,
+                            co,
+                            alpha,
+                            radius,
+                            aspectRatio,
+                            toolsettings->uv_relax_method);
   }
 
   /*
@@ -570,15 +562,10 @@ static void uv_sculpt_stroke_apply(bContext *C,
       apply_sculpt_data_constraints(sculptdata, sculptdata->uv[uvindex].uv);
 
       for (element = sculptdata->uv[uvindex].element; element; element = element->next) {
-        float(*luv)[2];
-        BMLoop *l;
-
         if (element->separate && element != sculptdata->uv[uvindex].element) {
           break;
         }
-
-        l = element->l;
-        luv = CustomData_bmesh_get(&em->bm->ldata, l->head.data, CD_PROP_FLOAT2);
+        float(*luv)[2] = BM_ELEM_CD_GET_FLOAT2_P(element->l, cd_loop_uv_offset);
         copy_v2_v2(*luv, sculptdata->uv[uvindex].uv);
       }
     }
@@ -685,7 +672,7 @@ static UvSculptData *uv_sculpt_stroke_init(bContext *C, wmOperator *op, const wm
 
     /* Winding was added to island detection in 5197aa04c6bd
      * However the sculpt tools can flip faces, potentially creating orphaned islands.
-     * See T100132 */
+     * See #100132 */
     const bool use_winding = false;
     const bool use_seams = true;
     data->elementMap = BM_uv_element_map_create(

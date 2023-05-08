@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. All rights reserved. */
+ * Copyright 2021 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -112,7 +112,8 @@ struct GPUSource {
       }
       if ((source.find("drw_debug_") != StringRef::not_found) &&
           /* Avoid these two files where it makes no sense to add the dependency. */
-          !ELEM(filename, "common_debug_draw_lib.glsl", "draw_debug_draw_display_vert.glsl")) {
+          !ELEM(filename, "common_debug_draw_lib.glsl", "draw_debug_draw_display_vert.glsl"))
+      {
         builtins |= shader::BuiltinBits::USE_DEBUG_DRAW;
       }
       check_no_quotes();
@@ -194,7 +195,7 @@ struct GPUSource {
   /**
    * Some drivers completely forbid quote characters even in unused preprocessor directives.
    * We fix the cases where we can't manually patch in `enum_preprocess()`.
-   * This check ensure none are present in non-patched sources. (see T97545)
+   * This check ensure none are present in non-patched sources. (see #97545)
    */
   void check_no_quotes()
   {
@@ -214,7 +215,7 @@ struct GPUSource {
 
   /**
    * Some drivers completely forbid string characters even in unused preprocessor directives.
-   * This fixes the cases we cannot manually patch: Shared headers #includes. (see T97545)
+   * This fixes the cases we cannot manually patch: Shared headers #includes. (see #97545)
    * TODO(fclem): This could be done during the datatoc step.
    */
   void quote_preprocess()
@@ -810,6 +811,8 @@ struct GPUSource {
       }
       dependencies.append_non_duplicates(dependency_source);
     }
+    /* Precedes an eternal loop (quiet CLANG's `unreachable-code` warning). */
+    BLI_assert_unreachable();
     return 0;
   }
 

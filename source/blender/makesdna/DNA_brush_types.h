@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup DNA
@@ -162,7 +162,8 @@ typedef struct BrushCurvesSculptSettings {
   int density_add_attempts;
   /** #eBrushCurvesSculptDensityMode. */
   uint8_t density_mode;
-  char _pad[7];
+  char _pad[3];
+  struct CurveMapping *curve_parameter_falloff;
 } BrushCurvesSculptSettings;
 
 typedef struct Brush {

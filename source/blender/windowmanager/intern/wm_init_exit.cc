@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 Blender Foundation. All rights reserved. */
+ * Copyright 2007 Blender Foundation */
 
 /** \file
  * \ingroup wm
@@ -25,6 +25,7 @@
 #include "DNA_userdef_types.h"
 #include "DNA_windowmanager_types.h"
 
+#include "BLI_fileops.h"
 #include "BLI_listbase.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
@@ -76,7 +77,7 @@
 #endif
 
 #include "GHOST_C-api.h"
-#include "GHOST_Path-api.h"
+#include "GHOST_Path-api.hh"
 
 #include "RNA_define.h"
 
@@ -95,7 +96,7 @@
 #include "ED_anim_api.h"
 #include "ED_armature.h"
 #include "ED_asset.h"
-#include "ED_gpencil.h"
+#include "ED_gpencil_legacy.h"
 #include "ED_keyframes_edit.h"
 #include "ED_keyframing.h"
 #include "ED_node.h"
@@ -249,7 +250,7 @@ void WM_init(bContext *C, int argc, const char **argv)
 
   BLT_lang_init();
   /* Must call first before doing any `.blend` file reading,
-   * since versioning code may create new IDs. See T57066. */
+   * since versioning code may create new IDs. See #57066. */
   BLT_lang_set(nullptr);
 
   /* Init icons before reading .blend files for preview icons, which can
@@ -270,7 +271,7 @@ void WM_init(bContext *C, int argc, const char **argv)
   BLI_assert((G.fileflags & G_FILE_NO_UI) == 0);
 
   /**
-   * NOTE(@campbellbarton): Startup file and order of initialization.
+   * NOTE(@ideasman42): Startup file and order of initialization.
    *
    * Loading #BLENDER_STARTUP_FILE, #BLENDER_USERPREF_FILE, starting Python and other sub-systems,
    * have inter-dependencies, for example.
@@ -278,7 +279,7 @@ void WM_init(bContext *C, int argc, const char **argv)
    * - Some sub-systems depend on the preferences (initializing icons depend on the theme).
    * - Add-ons depends on the preferences to know what has been enabled.
    * - Add-ons depends on the window-manger to register their key-maps.
-   * - Evaluating the startup file depends on Python for animation-drivers (see T89046).
+   * - Evaluating the startup file depends on Python for animation-drivers (see #89046).
    * - Starting Python depends on the startup file so key-maps can be added in the window-manger.
    *
    * Loading preferences early, then application subsystems and finally the startup data would
@@ -358,18 +359,59 @@ void WM_init(bContext *C, int argc, const char **argv)
   wm_homefile_read_post(C, params_file_read_post);
 }
 
-void WM_init_splash(bContext *C)
+static bool wm_init_splash_show_on_startup_check()
 {
-  if ((U.uiflag & USER_SPLASH_DISABLE) == 0) {
-    wmWindowManager *wm = CTX_wm_manager(C);
-    wmWindow *prevwin = CTX_wm_window(C);
+  if (U.uiflag & USER_SPLASH_DISABLE) {
+    return false;
+  }
 
-    if (wm->windows.first) {
-      CTX_wm_window_set(C, static_cast<wmWindow *>(wm->windows.first));
-      WM_operator_name_call(C, "WM_OT_splash", WM_OP_INVOKE_DEFAULT, nullptr, nullptr);
-      CTX_wm_window_set(C, prevwin);
+  bool use_splash = false;
+
+  const char *blendfile_path = BKE_main_blendfile_path_from_global();
+  if (blendfile_path[0] == '\0') {
+    /* Common case, no file is loaded, show the splash. */
+    use_splash = true;
+  }
+  else {
+    /* A less common case, if there is no user preferences, show the splash screen
+     * so the user has the opportunity to restore settings from a previous version. */
+    const char *const cfgdir = BKE_appdir_folder_id(BLENDER_USER_CONFIG, nullptr);
+    if (cfgdir) {
+      char userpref[FILE_MAX];
+      BLI_path_join(userpref, sizeof(userpref), cfgdir, BLENDER_USERPREF_FILE);
+      if (!BLI_exists(userpref)) {
+        use_splash = true;
+      }
+    }
+    else {
+      use_splash = true;
     }
   }
+
+  return use_splash;
+}
+
+void WM_init_splash_on_startup(bContext *C)
+{
+  if (!wm_init_splash_show_on_startup_check()) {
+    return;
+  }
+
+  WM_init_splash(C);
+}
+
+void WM_init_splash(bContext *C)
+{
+  wmWindowManager *wm = CTX_wm_manager(C);
+  /* NOTE(@ideasman42): this should practically never happen. */
+  if (UNLIKELY(BLI_listbase_is_empty(&wm->windows))) {
+    return;
+  }
+
+  wmWindow *prevwin = CTX_wm_window(C);
+  CTX_wm_window_set(C, static_cast<wmWindow *>(wm->windows.first));
+  WM_operator_name_call(C, "WM_OT_splash", WM_OP_INVOKE_DEFAULT, nullptr, nullptr);
+  CTX_wm_window_set(C, prevwin);
 }
 
 /* free strings of open recent files */
@@ -456,8 +498,9 @@ void WM_exit_ex(bContext *C, const bool do_python)
         BlendFileWriteParams blend_file_write_params{};
         if ((has_edited &&
              BLO_write_file(bmain, filepath, fileflags, &blend_file_write_params, nullptr)) ||
-            BLO_memfile_write_file(undo_memfile, filepath)) {
-          printf("Saved session recovery to '%s'\n", filepath);
+            BLO_memfile_write_file(undo_memfile, filepath))
+        {
+          printf("Saved session recovery to \"%s\"\n", filepath);
         }
       }
     }
@@ -485,12 +528,12 @@ void WM_exit_ex(bContext *C, const bool do_python)
 
 #if defined(WITH_PYTHON) && !defined(WITH_PYTHON_MODULE)
   /* Without this, we there isn't a good way to manage false-positive resource leaks
-   * where a #PyObject references memory allocated with guarded-alloc, T71362.
+   * where a #PyObject references memory allocated with guarded-alloc, #71362.
    *
    * This allows add-ons to free resources when unregistered (which is good practice anyway).
    *
    * Don't run this code when built as a Python module as this runs when Python is in the
-   * process of shutting down, where running a snippet like this will crash, see T82675.
+   * process of shutting down, where running a snippet like this will crash, see #82675.
    * Instead use the `atexit` module, installed by #BPY_python_start */
   const char *imports[2] = {"addon_utils", nullptr};
   BPY_run_string_eval(C, imports, "addon_utils.disable_all()");
@@ -631,7 +674,7 @@ void WM_exit_ex(bContext *C, const bool do_python)
   BLI_task_scheduler_exit();
 
   /* No need to call this early, rather do it late so that other
-   * pieces of Blender using sound may exit cleanly, see also T50676. */
+   * pieces of Blender using sound may exit cleanly, see also #50676. */
   BKE_sound_exit();
 
   BKE_appdir_exit();
