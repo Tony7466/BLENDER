@@ -651,7 +651,7 @@ void Device::upload_changed(vector<device_memory *> buffers)
     VLOG_INFO << "Checking " << buffer->name;
     if (buffer->modified && (buffer->data_size > 0)) {
       VLOG_INFO << "Uploading to " << buffer->name;
-      this->mem_copy_to(*buffer, buffer->device_size, 0);
+      this->mem_copy_to(*buffer, buffer->data_size, 0);
     }
   }
 }
