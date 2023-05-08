@@ -37,6 +37,7 @@
 #define _DNA_DEFAULT_View3DOverlay \
   { \
     .flag = V3D_OVERLAY_VIEWER_ATTRIBUTE | V3D_OVERLAY_SCULPT_SHOW_MASK | V3D_OVERLAY_SCULPT_SHOW_FACE_SETS, \
+    .backwire_opacity = 0.5f, \
     .wireframe_threshold = 1.0f, \
     .wireframe_opacity = 1.0f, \
     .retopology_offset = 0.2f, \
