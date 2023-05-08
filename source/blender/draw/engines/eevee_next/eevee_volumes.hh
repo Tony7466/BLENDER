@@ -116,8 +116,6 @@ class VolumeModule {
       ps.bind_image(2, &prop_emission_tx_);
       ps.bind_image(3, &prop_phase_tx_);
     }
-    inst_.lights.bind_resources(&ps);
-    inst_.shadows.bind_resources(&ps);
   }
 
   void init();

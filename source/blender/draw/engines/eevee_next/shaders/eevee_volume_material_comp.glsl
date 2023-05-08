@@ -31,8 +31,10 @@ GlobalData init_globals(void)
   return surf;
 }
 
+#ifndef GPU_METAL
 Closure nodetree_volume();
 void attrib_load();
+#endif
 
 void main()
 {

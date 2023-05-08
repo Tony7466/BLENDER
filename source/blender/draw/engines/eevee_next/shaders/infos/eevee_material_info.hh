@@ -201,8 +201,6 @@ GPU_SHADER_CREATE_INFO(eevee_volume_material_common)
                      "draw_modelmat_new_common",
                      "draw_view",
                      "eevee_shared",
-                     "eevee_light_data",
-                     "eevee_shadow_data",
                      "eevee_sampling_data",
                      "eevee_camera",
                      "eevee_utility_texture");

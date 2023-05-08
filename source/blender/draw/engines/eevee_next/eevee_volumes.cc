@@ -210,12 +210,15 @@ void VolumeModule::begin_sync()
   world_ps_.init();
   world_ps_.state_set(DRW_STATE_WRITE_COLOR);
   bind_volume_pass_resources(world_ps_, true);
+  inst_.lights.bind_resources(&world_ps_);
+  inst_.shadows.bind_resources(&world_ps_);
 
   GPUMaterial *material = nullptr;
 
   ::World *world = scene->world;
   if (world && world->use_nodes && world->nodetree &&
-      !LOOK_DEV_STUDIO_LIGHT_ENABLED(draw_ctx->v3d)) {
+      !LOOK_DEV_STUDIO_LIGHT_ENABLED(draw_ctx->v3d))
+  {
 
     material = inst_.shaders.world_shader_get(world, world->nodetree, MAT_PIPE_VOLUME);
 
@@ -348,6 +351,8 @@ void VolumeModule::end_sync()
   scatter_ps_.shader_set(inst_.shaders.static_shader_get(
       data_.use_lights ? VOLUME_SCATTER_WITH_LIGHTS : VOLUME_SCATTER));
   bind_volume_pass_resources(scatter_ps_);
+  inst_.lights.bind_resources(&scatter_ps_);
+  inst_.shadows.bind_resources(&scatter_ps_);
   scatter_ps_.bind_texture("scattering_tx", &prop_scattering_tx_);
   scatter_ps_.bind_texture("extinction_tx", &prop_extinction_tx_);
   scatter_ps_.bind_texture("emission_tx", &prop_emission_tx_);
