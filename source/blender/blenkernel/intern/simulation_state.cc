@@ -16,7 +16,7 @@
 namespace blender::bke::sim {
 
 GeometrySimulationStateItem::GeometrySimulationStateItem(GeometrySet geometry)
-    : geometry_(std::move(geometry))
+    : geometry(std::move(geometry))
 {
 }
 
