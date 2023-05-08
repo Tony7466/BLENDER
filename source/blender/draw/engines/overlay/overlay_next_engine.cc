@@ -128,5 +128,3 @@ DrawEngineType draw_engine_overlay_next_type = {
 };
 
 /** \} */
-
-#undef SELECT_ENGINE
