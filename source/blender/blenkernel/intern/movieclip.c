@@ -515,7 +515,7 @@ static void get_proxy_filepath(const MovieClip *clip,
   char dir[FILE_MAX], clipdir[FILE_MAX], clipfile[FILE_MAX];
   int proxynr = framenr - clip->start_frame + 1 + clip->frame_offset;
 
-  BLI_split_dirfile(clip->filepath, clipdir, clipfile, FILE_MAX, FILE_MAX);
+  BLI_path_split_dir_file(clip->filepath, clipdir, FILE_MAX, clipfile, FILE_MAX);
 
   if (clip->flag & MCLIP_USE_PROXY_CUSTOM_DIR) {
     BLI_strncpy(dir, clip->proxy.dir, sizeof(dir));
@@ -1881,7 +1881,7 @@ static void movieclip_build_proxy_ibuf(
    */
   BLI_thread_lock(LOCK_MOVIECLIP);
 
-  BLI_make_existing_file(filepath);
+  BLI_file_ensure_parent_dir_exists(filepath);
   if (IMB_saveiff(scaleibuf, filepath, IB_rect) == 0) {
     perror(filepath);
   }

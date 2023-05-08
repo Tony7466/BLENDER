@@ -498,7 +498,7 @@ void BKE_mesh_origindex_map_create(MeshElemMap **r_map,
 void BKE_mesh_origindex_map_create_looptri(MeshElemMap **r_map,
                                            int **r_mem,
                                            const blender::OffsetIndices<int> polys,
-                                           const MLoopTri *looptri,
+                                           const int *looptri_polys,
                                            const int looptri_num)
 {
   MeshElemMap *map = MEM_cnew_array<MeshElemMap>(size_t(polys.size()), __func__);
@@ -514,7 +514,7 @@ void BKE_mesh_origindex_map_create_looptri(MeshElemMap **r_map,
 
   /* assign poly-tessface users */
   for (int i = 0; i < looptri_num; i++) {
-    MeshElemMap *map_ele = &map[looptri[i].poly];
+    MeshElemMap *map_ele = &map[looptri_polys[i]];
     map_ele->indices[map_ele->count++] = i;
   }
 
@@ -825,7 +825,7 @@ int *BKE_mesh_calc_smoothgroups(const int totedge,
                                             const MeshElemMap &edge_poly_map_elem) {
     /* Edge is sharp if one of its polys is flat, or edge itself is sharp,
      * or edge is not used by exactly two polygons. */
-    if ((poly_is_smooth(poly_index)) && !(sharp_edges && sharp_edges[edge_index]) &&
+    if (poly_is_smooth(poly_index) && !(sharp_edges && sharp_edges[edge_index]) &&
         (edge_user_count == 2))
     {
       /* In that case, edge appears to be smooth, but we need to check its other poly too. */

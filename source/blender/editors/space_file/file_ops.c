@@ -1690,8 +1690,8 @@ void file_operator_to_sfile(Main *bmain, SpaceFile *sfile, wmOperator *op)
   if ((prop = RNA_struct_find_property(op->ptr, "filepath"))) {
     char filepath[FILE_MAX];
     RNA_property_string_get(op->ptr, prop, filepath);
-    BLI_split_dirfile(
-        filepath, params->dir, params->file, sizeof(params->dir), sizeof(params->file));
+    BLI_path_split_dir_file(
+        filepath, params->dir, sizeof(params->dir), params->file, sizeof(params->file));
   }
   else {
     if ((prop = RNA_struct_find_property(op->ptr, "filename"))) {
@@ -1719,11 +1719,11 @@ void file_sfile_filepath_set(SpaceFile *sfile, const char *filepath)
   }
   else {
     if ((params->flag & FILE_DIRSEL_ONLY) == 0) {
-      BLI_split_dirfile(
-          filepath, params->dir, params->file, sizeof(params->dir), sizeof(params->file));
+      BLI_path_split_dir_file(
+          filepath, params->dir, sizeof(params->dir), params->file, sizeof(params->file));
     }
     else {
-      BLI_split_dir_part(filepath, params->dir, sizeof(params->dir));
+      BLI_path_split_dir_part(filepath, params->dir, sizeof(params->dir));
     }
   }
 }
@@ -2048,11 +2048,11 @@ static bool file_execute(bContext *C, SpaceFile *sfile)
   if (file && file->redirection_path) {
     /* redirection_path is an absolute path that takes precedence
      * over using params->dir + params->file. */
-    BLI_split_dirfile(file->redirection_path,
-                      params->dir,
-                      params->file,
-                      sizeof(params->dir),
-                      sizeof(params->file));
+    BLI_path_split_dir_file(file->redirection_path,
+                            params->dir,
+                            sizeof(params->dir),
+                            params->file,
+                            sizeof(params->file));
     /* Update relpath with redirected filename as well so that the alternative
      * combination of params->dir + relpath remains valid as well. */
     MEM_freeN(file->relpath);
@@ -2253,7 +2253,7 @@ static int file_parent_exec(bContext *C, wmOperator *UNUSED(unused))
 void FILE_OT_parent(struct wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Parent File";
+  ot->name = "Parent Directory";
   ot->description = "Move to parent directory";
   ot->idname = "FILE_OT_parent";
 
@@ -2583,24 +2583,26 @@ void FILE_OT_filepath_drop(wmOperatorType *ot)
  * \{ */
 
 /**
- * Create a new, non-existing folder name, returns true if successful,
+ * Create a new, non-existing folder `dirname`, returns true if successful,
  * false if name couldn't be created.
- * The actual name is returned in 'name', 'folder' contains the complete path,
+ * The actual name is returned in `r_dirpath`, `r_dirpath_full` contains the complete path,
  * including the new folder name.
  */
-static bool new_folder_path(const char *parent, char folder[FILE_MAX], char name[FILE_MAXFILE])
+static bool new_folder_path(const char *parent,
+                            char r_dirpath_full[FILE_MAX],
+                            char r_dirname[FILE_MAXFILE])
 {
   int i = 1;
   int len = 0;
 
-  BLI_strncpy(name, "New Folder", FILE_MAXFILE);
-  BLI_path_join(folder, FILE_MAX, parent, name);
-  /* check whether folder with the name already exists, in this case
+  BLI_strncpy(r_dirname, "New Folder", FILE_MAXFILE);
+  BLI_path_join(r_dirpath_full, FILE_MAX, parent, r_dirname);
+  /* check whether r_dirpath_full with the name already exists, in this case
    * add number to the name. Check length of generated name to avoid
    * crazy case of huge number of folders each named 'New Folder (x)' */
-  while (BLI_exists(folder) && (len < FILE_MAXFILE)) {
-    len = BLI_snprintf(name, FILE_MAXFILE, "New Folder(%d)", i);
-    BLI_path_join(folder, FILE_MAX, parent, name);
+  while (BLI_exists(r_dirpath_full) && (len < FILE_MAXFILE)) {
+    len = BLI_snprintf(r_dirname, FILE_MAXFILE, "New Folder(%d)", i);
+    BLI_path_join(r_dirpath_full, FILE_MAX, parent, r_dirname);
     i++;
   }
 
@@ -2609,7 +2611,7 @@ static bool new_folder_path(const char *parent, char folder[FILE_MAX], char name
 
 static int file_directory_new_exec(bContext *C, wmOperator *op)
 {
-  char name[FILE_MAXFILE];
+  char dirname[FILE_MAXFILE];
   char path[FILE_MAX];
   bool generate_name = true;
 
@@ -2635,7 +2637,7 @@ static int file_directory_new_exec(bContext *C, wmOperator *op)
 
   if (generate_name) {
     /* create a new, non-existing folder name */
-    if (!new_folder_path(params->dir, path, name)) {
+    if (!new_folder_path(params->dir, path, dirname)) {
       BKE_report(op->reports, RPT_ERROR, "Could not create new folder name");
       return OPERATOR_CANCELLED;
     }
@@ -2674,7 +2676,7 @@ static int file_directory_new_exec(bContext *C, wmOperator *op)
     BLI_assert_msg(params->rename_id == NULL,
                    "File rename handling should immediately clear rename_id when done, "
                    "because otherwise it will keep taking precedence over renamefile.");
-    BLI_strncpy(params->renamefile, name, FILE_MAXFILE);
+    BLI_strncpy(params->renamefile, dirname, FILE_MAXFILE);
     rename_flag = FILE_PARAMS_RENAME_PENDING;
   }
 
@@ -2805,8 +2807,8 @@ void file_directory_enter_handle(bContext *C, void *UNUSED(arg_unused), void *UN
       if (BLI_is_file(params->dir)) {
         char path[sizeof(params->dir)];
         BLI_strncpy(path, params->dir, sizeof(path));
-        BLI_split_dirfile(
-            path, params->dir, params->file, sizeof(params->dir), sizeof(params->file));
+        BLI_path_split_dir_file(
+            path, params->dir, sizeof(params->dir), params->file, sizeof(params->file));
       }
       else if (BKE_blendfile_library_path_explode(params->dir, tdir, &group, &name)) {
         if (group) {
@@ -2895,7 +2897,7 @@ void file_filename_enter_handle(bContext *C, void *UNUSED(arg_unused), void *arg
 
     /* *After* file_select_match! */
     const bool allow_tokens = (params->flag & FILE_PATH_TOKENS_ALLOW) != 0;
-    BLI_filename_make_safe_ex(params->file, allow_tokens);
+    BLI_path_make_safe_filename_ex(params->file, allow_tokens);
 
     if (matches) {
       /* replace the pattern (or filename that the user typed in,
@@ -2979,16 +2981,16 @@ static bool file_filenum_poll(bContext *C)
 }
 
 /**
- * Looks for a string of digits within name (using BLI_path_sequence_decode) and adjusts it by add.
+ * Looks for a string of digits within filename (using BLI_path_sequence_decode) and adjusts it by
+ * add.
  */
-static void filenum_newname(char *name, size_t name_size, int add)
+static void filenum_newname(char *filename, size_t filename_maxncpy, int add)
 {
   char head[FILE_MAXFILE], tail[FILE_MAXFILE];
-  char name_temp[FILE_MAXFILE];
   int pic;
   ushort digits;
 
-  pic = BLI_path_sequence_decode(name, head, sizeof(head), tail, sizeof(tail), &digits);
+  pic = BLI_path_sequence_decode(filename, head, sizeof(head), tail, sizeof(tail), &digits);
 
   /* are we going from 100 -> 99 or from 10 -> 9 */
   if (add < 0 && digits > 0) {
@@ -3006,8 +3008,7 @@ static void filenum_newname(char *name, size_t name_size, int add)
   if (pic < 0) {
     pic = 0;
   }
-  BLI_path_sequence_encode(name_temp, sizeof(name_temp), head, tail, digits, pic);
-  BLI_strncpy(name, name_temp, name_size);
+  BLI_path_sequence_encode(filename, filename_maxncpy, head, tail, digits, pic);
 }
 
 static int file_filenum_exec(bContext *C, wmOperator *op)

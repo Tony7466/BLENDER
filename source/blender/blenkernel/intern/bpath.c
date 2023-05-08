@@ -174,7 +174,7 @@ bool BKE_bpath_foreach_path_dirfile_fixed_process(BPathForeachPathData *bpath_da
   }
 
   if (bpath_data->callback_function(bpath_data, path_dst, (const char *)path_src)) {
-    BLI_split_dirfile(path_dst, path_dir, path_file, FILE_MAXDIR, FILE_MAXFILE);
+    BLI_path_split_dir_file(path_dst, path_dir, FILE_MAXDIR, path_file, FILE_MAXFILE);
     bpath_data->is_path_modified = true;
     return true;
   }
@@ -603,7 +603,7 @@ static bool bpath_list_append(BPathForeachPathData *bpath_data,
   struct PathStore *path_store = MEM_mallocN(sizeof(struct PathStore) + path_size, __func__);
   char *filepath = (char *)(path_store + 1);
 
-  BLI_strncpy(filepath, path_src, path_size);
+  memcpy(filepath, path_src, path_size);
   BLI_addtail(path_list, path_store);
   return false;
 }

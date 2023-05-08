@@ -653,7 +653,7 @@ static bool rna_Object_parent_override_apply(Main *bmain,
                                              IDOverrideLibraryPropertyOperation *opop)
 {
   BLI_assert(len_dst == len_src && (!ptr_storage || len_dst == len_storage) && len_dst == 0);
-  BLI_assert(opop->operation == IDOVERRIDE_LIBRARY_OP_REPLACE &&
+  BLI_assert(opop->operation == LIBOVERRIDE_OP_REPLACE &&
              "Unsupported RNA override operation on object parent pointer");
   UNUSED_VARS_NDEBUG(ptr_storage, len_dst, len_src, len_storage, opop);
 
@@ -909,7 +909,7 @@ void rna_object_vgroup_name_index_get(PointerRNA *ptr, char *value, int index)
   const bDeformGroup *dg = BLI_findlink(defbase, index - 1);
 
   if (dg) {
-    BLI_strncpy(value, dg->name, sizeof(dg->name));
+    strcpy(value, dg->name);
   }
   else {
     value[0] = '\0';
@@ -939,7 +939,10 @@ void rna_object_vgroup_name_index_set(PointerRNA *ptr, const char *value, short 
   *index = BKE_object_defgroup_name_index(ob, value) + 1;
 }
 
-void rna_object_vgroup_name_set(PointerRNA *ptr, const char *value, char *result, int maxlen)
+void rna_object_vgroup_name_set(PointerRNA *ptr,
+                                const char *value,
+                                char *result,
+                                int result_maxncpy)
 {
   Object *ob = (Object *)ptr->owner_id;
   if (!BKE_object_supports_vertex_groups(ob)) {
@@ -950,7 +953,7 @@ void rna_object_vgroup_name_set(PointerRNA *ptr, const char *value, char *result
   bDeformGroup *dg = BKE_object_defgroup_find_name(ob, value);
   if (dg) {
     /* No need for BLI_strncpy_utf8, since this matches an existing group. */
-    BLI_strncpy(result, value, maxlen);
+    BLI_strncpy(result, value, result_maxncpy);
     return;
   }
 
@@ -1007,7 +1010,7 @@ void rna_object_BKE_object_facemap_name_index_get(PointerRNA *ptr, char *value, 
   fmap = BLI_findlink(&ob->fmaps, index - 1);
 
   if (fmap) {
-    BLI_strncpy(value, fmap->name, sizeof(fmap->name));
+    strcpy(value, fmap->name);
   }
   else {
     value[0] = '\0';
@@ -1029,20 +1032,23 @@ void rna_object_BKE_object_facemap_name_index_set(PointerRNA *ptr, const char *v
   *index = BKE_object_facemap_name_index(ob, value) + 1;
 }
 
-void rna_object_fmap_name_set(PointerRNA *ptr, const char *value, char *result, int maxlen)
+void rna_object_fmap_name_set(PointerRNA *ptr, const char *value, char *result, int result_maxncpy)
 {
   Object *ob = (Object *)ptr->owner_id;
   bFaceMap *fmap = BKE_object_facemap_find_name(ob, value);
   if (fmap) {
     /* No need for BLI_strncpy_utf8, since this matches an existing group. */
-    BLI_strncpy(result, value, maxlen);
+    BLI_strncpy(result, value, result_maxncpy);
     return;
   }
 
   result[0] = '\0';
 }
 
-void rna_object_uvlayer_name_set(PointerRNA *ptr, const char *value, char *result, int maxlen)
+void rna_object_uvlayer_name_set(PointerRNA *ptr,
+                                 const char *value,
+                                 char *result,
+                                 int result_maxncpy)
 {
   Object *ob = (Object *)ptr->owner_id;
   Mesh *me;
@@ -1056,7 +1062,7 @@ void rna_object_uvlayer_name_set(PointerRNA *ptr, const char *value, char *resul
       layer = &me->ldata.layers[a];
 
       if (layer->type == CD_PROP_FLOAT2 && STREQ(layer->name, value)) {
-        BLI_strncpy(result, value, maxlen);
+        BLI_strncpy(result, value, result_maxncpy);
         return;
       }
     }
@@ -1065,7 +1071,10 @@ void rna_object_uvlayer_name_set(PointerRNA *ptr, const char *value, char *resul
   result[0] = '\0';
 }
 
-void rna_object_vcollayer_name_set(PointerRNA *ptr, const char *value, char *result, int maxlen)
+void rna_object_vcollayer_name_set(PointerRNA *ptr,
+                                   const char *value,
+                                   char *result,
+                                   int result_maxncpy)
 {
   Object *ob = (Object *)ptr->owner_id;
   Mesh *me;
@@ -1079,7 +1088,7 @@ void rna_object_vcollayer_name_set(PointerRNA *ptr, const char *value, char *res
       layer = &me->fdata.layers[a];
 
       if (layer->type == CD_MCOL && STREQ(layer->name, value)) {
-        BLI_strncpy(result, value, maxlen);
+        BLI_strncpy(result, value, result_maxncpy);
         return;
       }
     }
@@ -1683,7 +1692,7 @@ bool rna_Object_constraints_override_apply(Main *bmain,
                                            PointerRNA *UNUSED(ptr_item_storage),
                                            IDOverrideLibraryPropertyOperation *opop)
 {
-  BLI_assert(opop->operation == IDOVERRIDE_LIBRARY_OP_INSERT_AFTER &&
+  BLI_assert(opop->operation == LIBOVERRIDE_OP_INSERT_AFTER &&
              "Unsupported RNA override operation on constraints collection");
 
   Object *ob_dst = (Object *)ptr_dst->owner_id;
@@ -1811,7 +1820,7 @@ bool rna_Object_modifiers_override_apply(Main *bmain,
                                          PointerRNA *UNUSED(ptr_item_storage),
                                          IDOverrideLibraryPropertyOperation *opop)
 {
-  BLI_assert(opop->operation == IDOVERRIDE_LIBRARY_OP_INSERT_AFTER &&
+  BLI_assert(opop->operation == LIBOVERRIDE_OP_INSERT_AFTER &&
              "Unsupported RNA override operation on modifiers collection");
 
   Object *ob_dst = (Object *)ptr_dst->owner_id;
@@ -1927,7 +1936,7 @@ bool rna_Object_greasepencil_modifiers_override_apply(Main *bmain,
                                                       PointerRNA *UNUSED(ptr_item_storage),
                                                       IDOverrideLibraryPropertyOperation *opop)
 {
-  BLI_assert(opop->operation == IDOVERRIDE_LIBRARY_OP_INSERT_AFTER &&
+  BLI_assert(opop->operation == LIBOVERRIDE_OP_INSERT_AFTER &&
              "Unsupported RNA override operation on modifiers collection");
 
   Object *ob_dst = (Object *)ptr_dst->owner_id;
@@ -2330,12 +2339,16 @@ static int rna_Object_mesh_symmetry_yz_editable(PointerRNA *ptr, const char **UN
 
 void rna_Object_lightgroup_get(PointerRNA *ptr, char *value)
 {
-  BKE_lightgroup_membership_get(((Object *)ptr->owner_id)->lightgroup, value);
+  const LightgroupMembership *lgm = ((Object *)ptr->owner_id)->lightgroup;
+  char value_buf[sizeof(lgm->name)];
+  int len = BKE_lightgroup_membership_get(lgm, value_buf);
+  memcpy(value, value_buf, len + 1);
 }
 
 int rna_Object_lightgroup_length(PointerRNA *ptr)
 {
-  return BKE_lightgroup_membership_length(((Object *)ptr->owner_id)->lightgroup);
+  const LightgroupMembership *lgm = ((Object *)ptr->owner_id)->lightgroup;
+  return BKE_lightgroup_membership_length(lgm);
 }
 
 void rna_Object_lightgroup_set(PointerRNA *ptr, const char *value)

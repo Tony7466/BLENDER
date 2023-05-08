@@ -1761,6 +1761,18 @@ int RNA_enum_from_identifier(const EnumPropertyItem *item, const char *identifie
   return -1;
 }
 
+bool RNA_enum_value_from_identifier(const EnumPropertyItem *item,
+                                    const char *identifier,
+                                    int *r_value)
+{
+  const int i = RNA_enum_from_identifier(item, identifier);
+  if (i == -1) {
+    return false;
+  }
+  *r_value = item[i].value;
+  return true;
+}
+
 int RNA_enum_from_name(const EnumPropertyItem *item, const char *name)
 {
   int i = 0;
@@ -2102,7 +2114,7 @@ static void rna_property_update(
             ((ContextPropUpdateFunc)prop->update)(C, ptr, prop);
           }
           else {
-            (reinterpret_cast<ContextUpdateFunc>(reinterpret_cast<void *>(prop->update)))(C, ptr);
+            reinterpret_cast<ContextUpdateFunc>(reinterpret_cast<void *>(prop->update))(C, ptr);
           }
         }
       }
@@ -3328,6 +3340,10 @@ void RNA_property_string_get(PointerRNA *ptr, PropertyRNA *prop, char *value)
 char *RNA_property_string_get_alloc(
     PointerRNA *ptr, PropertyRNA *prop, char *fixedbuf, int fixedlen, int *r_len)
 {
+  if (fixedbuf) {
+    BLI_string_debug_size(fixedbuf, fixedlen);
+  }
+
   char *buf;
   int length;
 

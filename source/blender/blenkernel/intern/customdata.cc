@@ -4416,7 +4416,8 @@ void CustomData_set_layer_unique_name(CustomData *data, const int index)
     STRNCPY(nlayer->name, DATA_(typeInfo->defaultname));
   }
 
-  BLI_uniquename_cb(customdata_unique_check, &data_arg, nullptr, '.', nlayer->name, max_length);
+  const char *defname = ""; /* Dummy argument, never used as `name` is never zero length. */
+  BLI_uniquename_cb(customdata_unique_check, &data_arg, defname, '.', nlayer->name, max_length);
 }
 
 void CustomData_validate_layer_name(const CustomData *data,
@@ -4833,8 +4834,8 @@ static void copy_bit_flag(void *dst, const void *src, const size_t data_size, co
 {
 #define COPY_BIT_FLAG(_type, _dst, _src, _f) \
   { \
-    const _type _val = *((_type *)(_src)) & ((_type)(_f)); \
-    *((_type *)(_dst)) &= ~((_type)(_f)); \
+    const _type _val = *((_type *)(_src)) & (_type)(_f); \
+    *((_type *)(_dst)) &= ~(_type)(_f); \
     *((_type *)(_dst)) |= _val; \
   } \
   (void)0
