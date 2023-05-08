@@ -976,7 +976,7 @@ GHOST_TSuccess GHOST_WindowWin32::getPointerInfo(
 
     if (pointerPenInfo[i].penMask & PEN_MASK_ROTATION) {
       /* POINTER_PEN_INFO specifies rotation range to be [0,359], convert to radiant here. */
-      outPointerInfo[i].tabletData.Twist = ((float)pointerPenInfo[i].rotation / 360.0f) * M_PI_2;
+      outPointerInfo[i].tabletData.Twist = ((float)pointerPenInfo[i].rotation / 360.0f) * M_PI * 2;
       /* Debug only. */
       printf("Twist (ink): %f\n", outPointerInfo[i].tabletData.Twist);
     }
