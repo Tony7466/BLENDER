@@ -953,6 +953,7 @@ GHOST_TSuccess GHOST_WindowWin32::getPointerInfo(
     outPointerInfo[i].tabletData.Pressure = 1.0f;
     outPointerInfo[i].tabletData.Xtilt = 0.0f;
     outPointerInfo[i].tabletData.Ytilt = 0.0f;
+    outPointerInfo[i].tabletData.Twist = 0.0f;
     outPointerInfo[i].time = system->performanceCounterToMillis(pointerApiInfo.PerformanceCount);
 
     if (pointerPenInfo[i].penMask & PEN_MASK_PRESSURE) {
@@ -969,6 +970,11 @@ GHOST_TSuccess GHOST_WindowWin32::getPointerInfo(
 
     if (pointerPenInfo[i].penMask & PEN_MASK_TILT_Y) {
       outPointerInfo[i].tabletData.Ytilt = fmin(fabs(pointerPenInfo[i].tiltY / 90.0f), 1.0f);
+    }
+
+    if (pointerPenInfo[i].penMask & PEN_MASK_ROTATION) {
+      /* POINTER_PEN_INFO specifies rotation range to be [0,359], convert to radiant here. */
+      outPointerInfo[i].tabletData.Twist = ((float)pointerPenInfo[i].rotation / 360.0f) * M_PI_2;
     }
   }
 
