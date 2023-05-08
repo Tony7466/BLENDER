@@ -234,7 +234,7 @@ static void paintcurve_point_add(bContext *C, wmOperator *op, const int loc[2])
 
 static int paintcurve_add_point_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  const int loc[2] = {float(event->mval[0]), float(event->mval[1])};
+  const int loc[2] = {event->mval[0], event->mval[1]};
   paintcurve_point_add(C, op, loc);
   RNA_int_set_array(op->ptr, "location", loc);
   return OPERATOR_FINISHED;
@@ -464,7 +464,7 @@ static bool paintcurve_point_select(
 
 static int paintcurve_select_point_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  const int loc[2] = {float(event->mval[0]), float(event->mval[1])};
+  const int loc[2] = {event->mval[0], event->mval[1]};
   bool toggle = RNA_boolean_get(op->ptr, "toggle");
   bool extend = RNA_boolean_get(op->ptr, "extend");
   if (paintcurve_point_select(C, op, loc, toggle, extend)) {
