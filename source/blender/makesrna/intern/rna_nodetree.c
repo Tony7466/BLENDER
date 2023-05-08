@@ -11000,9 +11000,21 @@ static void def_geo_attribute_capture(StructRNA *srna)
 
 static void def_geo_sample_volume(StructRNA *srna)
 {
+  static const EnumPropertyItem sampler_items[] = {
+      {GEO_NODE_SAMPLE_VOLUME_SAMPLING_MODE_POINT, "POINT", 0, "Point", ""},
+      {GEO_NODE_SAMPLE_VOLUME_SAMPLING_MODE_BOX, "BOX", 0, "Box", ""},
+      {GEO_NODE_SAMPLE_VOLUME_SAMPLING_MODE_QUADRATIC, "QUADRATIC", 0, "Quadratic", ""},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   PropertyRNA *prop;
 
   RNA_def_struct_sdna_from(srna, "NodeGeometrySampleVolume", "storage");
+
+  prop = RNA_def_property(srna, "sampling_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, sampler_items);
+  RNA_def_property_ui_text(prop, "Sampling Mode", "Which OpenVDB sampler to use");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "grid_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_attribute_type_items);

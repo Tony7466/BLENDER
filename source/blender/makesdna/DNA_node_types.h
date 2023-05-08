@@ -1637,6 +1637,8 @@ typedef struct NodeGeometryDistributePointsInVolume {
 typedef struct NodeGeometrySampleVolume {
   /* eCustomDataType. */
   int8_t grid_type;
+  /* GeometryNodeSampleVolumeSamplingMode */
+  int8_t sampling_mode;
 } NodeGeometrySampleVolume;
 
 typedef struct NodeFunctionCompare {
@@ -2442,6 +2444,12 @@ typedef enum GeometryNodeScaleElementsMode {
   GEO_NODE_SCALE_ELEMENTS_UNIFORM = 0,
   GEO_NODE_SCALE_ELEMENTS_SINGLE_AXIS = 1,
 } GeometryNodeScaleElementsMode;
+
+typedef enum GeometryNodeSampleVolumeSamplingMode {
+  GEO_NODE_SAMPLE_VOLUME_SAMPLING_MODE_POINT = 0,
+  GEO_NODE_SAMPLE_VOLUME_SAMPLING_MODE_BOX = 1,
+  GEO_NODE_SAMPLE_VOLUME_SAMPLING_MODE_QUADRATIC = 2,
+} GeometryNodeSampleVolumeSamplingMode;
 
 typedef enum NodeCombSepColorMode {
   NODE_COMBSEP_COLOR_RGB = 0,
