@@ -974,29 +974,29 @@ static void expand_node_socket(BlendExpander *expander, bNodeSocket *sock)
 {
   IDP_BlendReadExpand(expander, sock->prop);
 
-  if (sock->default_value != nullptr) {
+  if (sock->default_value == nullptr) {
     return;
   }
 
   switch (eNodeSocketDatatype(sock->type)) {
     case SOCK_OBJECT: {
-      BLO_expand(expander, &sock->default_value_typed<bNodeSocketValueObject>()->value);
+      BLO_expand(expander, sock->default_value_typed<bNodeSocketValueObject>()->value);
       break;
     }
     case SOCK_IMAGE: {
-      BLO_expand(expander, &sock->default_value_typed<bNodeSocketValueImage>()->value);
+      BLO_expand(expander, sock->default_value_typed<bNodeSocketValueImage>()->value);
       break;
     }
     case SOCK_COLLECTION: {
-      BLO_expand(expander, &sock->default_value_typed<bNodeSocketValueCollection>()->value);
+      BLO_expand(expander, sock->default_value_typed<bNodeSocketValueCollection>()->value);
       break;
     }
     case SOCK_TEXTURE: {
-      BLO_expand(expander, &sock->default_value_typed<bNodeSocketValueTexture>()->value);
+      BLO_expand(expander, sock->default_value_typed<bNodeSocketValueTexture>()->value);
       break;
     }
     case SOCK_MATERIAL: {
-      BLO_expand(expander, &sock->default_value_typed<bNodeSocketValueMaterial>()->value);
+      BLO_expand(expander, sock->default_value_typed<bNodeSocketValueMaterial>()->value);
       break;
     }
     case SOCK_FLOAT:
@@ -4095,15 +4095,15 @@ void ntreeUpdateAllUsers(Main *main, ID *id)
 
 /* ************* node type access ********** */
 
-void nodeLabel(const bNodeTree *ntree, const bNode *node, char *label, const int maxlen)
+void nodeLabel(const bNodeTree *ntree, const bNode *node, char *label, const int label_maxncpy)
 {
   label[0] = '\0';
 
   if (node->label[0] != '\0') {
-    BLI_strncpy(label, node->label, maxlen);
+    BLI_strncpy(label, node->label, label_maxncpy);
   }
   else if (node->typeinfo->labelfunc) {
-    node->typeinfo->labelfunc(ntree, node, label, maxlen);
+    node->typeinfo->labelfunc(ntree, node, label, label_maxncpy);
   }
   if (label[0] != '\0') {
     /* The previous methods (labelfunc) could not provide an adequate label for the node. */
@@ -4115,7 +4115,7 @@ void nodeLabel(const bNodeTree *ntree, const bNode *node, char *label, const int
   if (tmp == node->typeinfo->ui_name) {
     tmp = IFACE_(node->typeinfo->ui_name);
   }
-  BLI_strncpy(label, tmp, maxlen);
+  BLI_strncpy(label, tmp, label_maxncpy);
 }
 
 const char *nodeSocketLabel(const bNodeSocket *sock)
