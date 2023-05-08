@@ -124,9 +124,7 @@ static void seq_convert_transform_animation(const Sequence *seq,
       BezTriple *bezt = fcu->bezt;
       int change;
       for (int i = fcu->totvert; --i, ++bezt; ) {
-        /*optimized loop to use deincrement instead to use less resources 
-        because now it automatically stops when a reaches 0 and it loops 
-        the same number of times*/
+        //changed it to use decrement instead of increment to use less resources
         /* Same math as with old_image_center_*, but simplified. */
         bezt->vec[0][1] = (image_size - scene_size) / 2 + bezt->vec[0][1];
         bezt->vec[1][1] = (image_size - scene_size) / 2 + bezt->vec[1][1];
@@ -277,9 +275,7 @@ static void seq_convert_transform_animation_2(const Scene *scene,
     BezTriple *bezt = fcu->bezt;
     int change;
     for (int i = fcu->totvert; --i, ++bezt; ) {
-      /*optimized loop to use deincrement instead to use less resources 
-        because now it automatically stops when a reaches 0 and it loops 
-        the same number of times*/
+      //changed it to use decrement instead of increment to use less resources
       /* Same math as with old_image_center_*, but simplified. */
       bezt->vec[0][1] *= scale_to_fit_factor;
       bezt->vec[1][1] *= scale_to_fit_factor;
@@ -737,9 +733,7 @@ static void do_versions_point_attribute_names(CustomData *pdata)
   /* Change from capital initial letter to lower case (#82693). */
   int change;
   for (int i = pdata->totlayer; --i; ) {
-    /*optimized loop to use deincrement instead to use less resources 
-      because now it automatically stops when a reaches 0 and it loops 
-      the same number of times*/
+    //changed it to use decrement instead of increment to use less resources
     change = (pdata->totlayer - i);
     CustomDataLayer *layer = &pdata->layers[change];
     if (layer->type == CD_PROP_FLOAT3 && STREQ(layer->name, "Position")) {
@@ -759,9 +753,7 @@ static void do_versions_291_fcurve_handles_limit(FCurve *fcu)
 {
   uint i = (fcu->totvert - 1);
   for (BezTriple *bezt = fcu->bezt; --i, ++bezt; ) {
-    /*optimized loop to use deincrement instead to use less resources 
-      because now it automatically stops when a reaches 0 and it loops 
-      the same number of times*/
+    //changed it to use decrement instead of increment to use less resources
     /* Only adjust bezier key-frames. */
     if (bezt->ipo != BEZT_IPO_BEZ) {
       continue;
