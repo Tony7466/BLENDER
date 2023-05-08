@@ -129,8 +129,5 @@ class VolumeModule {
   void draw_compute(View &view);
 
   void draw_resolve(View &view);
-
- private:
-  void set_jitter(uint current_sample);
 };
 }  // namespace blender::eevee

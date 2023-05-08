@@ -101,6 +101,8 @@ void Sampling::step()
     data_.dimensions[SAMPLING_TIME] = r[0];
     data_.dimensions[SAMPLING_CLOSURE] = r[1];
     data_.dimensions[SAMPLING_RAYTRACE_X] = r[0];
+    data_.dimensions[SAMPLING_VOLUME_U] = r[1];
+    data_.dimensions[SAMPLING_VOLUME_W] = r[0];
   }
   {
     double2 r, offset = {0, 0};
@@ -111,6 +113,7 @@ void Sampling::step()
     /* TODO de-correlate. */
     data_.dimensions[SAMPLING_LIGHTPROBE] = r[0];
     data_.dimensions[SAMPLING_TRANSPARENCY] = r[1];
+    data_.dimensions[SAMPLING_VOLUME_V] = r[1];
   }
   {
     /* Using leaped Halton sequence so we can reused the same primes as lens. */

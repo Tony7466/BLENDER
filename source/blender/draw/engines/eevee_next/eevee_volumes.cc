@@ -111,17 +111,6 @@ bool VolumeModule::GridAABB::overlaps(const GridAABB &aabb)
   return true;
 }
 
-void VolumeModule::set_jitter(uint current_sample)
-{
-  double ht_point[3];
-  double ht_offset[3] = {0.0, 0.0};
-  const uint3 ht_primes = {3, 7, 2};
-
-  BLI_halton_3d(ht_primes, ht_offset, current_sample, ht_point);
-
-  data_.jitter = float3(ht_point);
-}
-
 void VolumeModule::init()
 {
   enabled_ = false;
@@ -151,7 +140,7 @@ void VolumeModule::init()
     data_.inv_tex_size = 1.0f / float3(tex_size);
   }
 
-  set_jitter(inst_.sampling.current_sample() - 1);
+  data_.jitter = inst_.sampling.rng_3d_get(eSamplingDimension::SAMPLING_TRANSPARENCY);
 
   if ((scene_eval->eevee.flag & SCE_EEVEE_VOLUMETRIC_SHADOWS) == 0) {
     data_.shadow_steps = 0;
