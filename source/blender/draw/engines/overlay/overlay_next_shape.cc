@@ -72,7 +72,11 @@ static Vector<Vertex> sphere_axes_circles(const float radius,
 {
   Vector<float2> ring = ring_vertices(radius, segments);
 
-  Vector<Vertex> verts;
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
   for (int axis : IndexRange(3)) {
     for (int i : IndexRange(segments)) {
       for (int j : IndexRange(2)) {
@@ -92,33 +96,47 @@ static Vector<Vertex> sphere_axes_circles(const float radius,
   return verts;
 }
 
-static Vector<Vertex> compute_quad_wire_verts()
+static const Vector<Vertex> &quad_wire_verts()
 {
-  return {{{-1.0f, -1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
-          {{-1.0f, +1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
-          {{-1.0f, +1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
-          {{+1.0f, +1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
-          {{+1.0f, +1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
-          {{+1.0f, -1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
-          {{+1.0f, -1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
-          {{-1.0f, -1.0f, 0.0f}, VCLASS_EMPTY_SCALED}};
-}
-static const Vector<Vertex> quad_wire_verts = compute_quad_wire_verts();
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
 
-static Vector<Vertex> compute_plain_axes_verts()
-{
-  return {{{0.0f, -1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
-          {{0.0f, +1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
-          {{-1.0f, 0.0f, 0.0f}, VCLASS_EMPTY_SCALED},
-          {{+1.0f, 0.0f, 0.0f}, VCLASS_EMPTY_SCALED},
-          {{0.0f, 0.0f, -1.0f}, VCLASS_EMPTY_SCALED},
-          {{0.0f, 0.0f, +1.0f}, VCLASS_EMPTY_SCALED}};
+  verts = {{{-1.0f, -1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
+           {{-1.0f, +1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
+           {{-1.0f, +1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
+           {{+1.0f, +1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
+           {{+1.0f, +1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
+           {{+1.0f, -1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
+           {{+1.0f, -1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
+           {{-1.0f, -1.0f, 0.0f}, VCLASS_EMPTY_SCALED}};
+  return verts;
 }
-static const Vector<Vertex> plain_axes_verts = compute_plain_axes_verts();
 
-static Vector<Vertex> compute_single_arrow_verts()
+static const Vector<Vertex> &plain_axes_verts()
 {
-  Vector<Vertex> verts;
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  verts = {{{0.0f, -1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
+           {{0.0f, +1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
+           {{-1.0f, 0.0f, 0.0f}, VCLASS_EMPTY_SCALED},
+           {{+1.0f, 0.0f, 0.0f}, VCLASS_EMPTY_SCALED},
+           {{0.0f, 0.0f, -1.0f}, VCLASS_EMPTY_SCALED},
+           {{0.0f, 0.0f, +1.0f}, VCLASS_EMPTY_SCALED}};
+  return verts;
+}
+
+static const Vector<Vertex> &single_arrow_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
   float3 p[3] = {{0.0f, 0.0f, 1.0f}, {0.035f, 0.035f, 0.75f}, {-0.035f, 0.035f, 0.75f}};
   for (int sides : IndexRange(4)) {
     if (sides % 2 == 1) {
@@ -138,11 +156,14 @@ static Vector<Vertex> compute_single_arrow_verts()
   verts.append({{0.0f, 0.0f, 0.75f}, VCLASS_EMPTY_SCALED});
   return verts;
 }
-static const Vector<Vertex> single_arrow_verts = compute_single_arrow_verts();
 
-static Vector<Vertex> compute_cube_verts()
+static const Vector<Vertex> &cube_verts()
 {
-  Vector<Vertex> verts;
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
   for (auto index : bone_box_wire) {
     float x = bone_box_verts[index][0];
     float y = bone_box_verts[index][1] * 2.0f - 1.0f;
@@ -151,31 +172,45 @@ static Vector<Vertex> compute_cube_verts()
   }
   return verts;
 }
-static const Vector<Vertex> cube_verts = compute_cube_verts();
 
-static Vector<Vertex> compute_circle_verts()
+static const Vector<Vertex> &circle_verts()
 {
   const int resolution = 64;
   Vector<float2> ring = ring_vertices(1.0f, resolution);
 
-  Vector<Vertex> verts;
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
   for (int a : IndexRange(resolution + 1)) {
     float2 cv = ring[a % resolution];
     verts.append({{cv.x, 0.0f, cv.y}, VCLASS_EMPTY_SCALED});
   }
   return verts;
 }
-static const Vector<Vertex> circle_verts = compute_circle_verts();
 
-static const Vector<Vertex> empty_sphere_verts = sphere_axes_circles(
-    1.0f, VCLASS_EMPTY_SCALED, 32);
-
-static Vector<Vertex> compute_empty_cone_verts()
+static const Vector<Vertex> &empty_sphere_verts()
 {
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  verts = sphere_axes_circles(1.0f, VCLASS_EMPTY_SCALED, 32);
+  return verts;
+}
+
+static const Vector<Vertex> &empty_cone_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
   const int resolution = 8;
   Vector<float2> ring = ring_vertices(1.0f, resolution);
 
-  Vector<Vertex> verts;
   for (int i : IndexRange(resolution)) {
     float2 cv = ring[i % resolution];
     /* Cone sides. */
@@ -189,10 +224,14 @@ static Vector<Vertex> compute_empty_cone_verts()
   }
   return verts;
 }
-static const Vector<Vertex> empty_cone_verts = compute_empty_cone_verts();
 
-static Vector<Vertex> compute_arrows_verts()
+static const Vector<Vertex> &arrows_verts()
 {
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
   float2 x_axis_name_scale = {0.0215f, 0.025f};
   Vector<float2> x_axis_name = {
       float2(0.9f, 1.0f) * x_axis_name_scale,
@@ -248,7 +287,6 @@ static Vector<Vertex> compute_arrows_verts()
 #endif
   };
 
-  Vector<Vertex> verts;
   for (int axis : IndexRange(3)) {
     /* Vertex layout is XY screen position and axis in Z.
      * Fractional part of Z is a positive offset at axis unit position. */
@@ -272,27 +310,33 @@ static Vector<Vertex> compute_arrows_verts()
   }
   return verts;
 }
-static const Vector<Vertex> arrows_verts = compute_arrows_verts();
 
-static Vector<Vertex> compute_metaball_wire_circle_verts()
+static const Vector<Vertex> &metaball_wire_circle_verts()
 {
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
   const int resolution = 64;
   const float radius = 1.0f;
   Vector<float2> ring = ring_vertices(radius, resolution);
 
-  Vector<Vertex> verts;
   for (int i : IndexRange(resolution + 1)) {
     float2 cv = ring[i % resolution];
     verts.append({{cv[0], cv[1], 0.0f}, VCLASS_SCREENALIGNED});
   }
   return verts;
 }
-static const Vector<Vertex> metaball_wire_circle_verts = compute_metaball_wire_circle_verts();
 
-static Vector<Vertex> compute_speaker_verts()
+static const Vector<Vertex> &speaker_verts()
 {
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
   const int segments = 16;
-  Vector<Vertex> verts;
 
   for (int i : IndexRange(3)) {
     float r = (i == 0 ? 0.5f : 0.25f);
@@ -327,7 +371,6 @@ static Vector<Vertex> compute_speaker_verts()
   }
   return verts;
 }
-static const Vector<Vertex> speaker_verts = compute_speaker_verts();
 
 static float light_distance_z_get(char axis, const bool start)
 {
@@ -353,9 +396,13 @@ const float cos_pi_3 = 0.5f;
 
 const int diamond_segments = 4;
 
-static Vector<Vertex> compute_probe_cube_verts()
+static const Vector<Vertex> &probe_cube_verts()
 {
-  Vector<Vertex> verts;
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
   const float r = 14.0f;
   int flag = VCLASS_SCREENSPACE;
   /* Icon */
@@ -403,11 +450,14 @@ static Vector<Vertex> compute_probe_cube_verts()
   }
   return verts;
 }
-static const Vector<Vertex> probe_cube_verts = compute_probe_cube_verts();
 
-static Vector<Vertex> compute_probe_grid_verts()
+static const Vector<Vertex> &probe_grid_verts()
 {
-  Vector<Vertex> verts;
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
   const float r = 14.0f;
   int flag = VCLASS_SCREENSPACE;
   /* Icon */
@@ -464,11 +514,14 @@ static Vector<Vertex> compute_probe_grid_verts()
   }
   return verts;
 }
-static const Vector<Vertex> probe_grid_verts = compute_probe_grid_verts();
 
-static Vector<Vertex> compute_probe_planar_verts()
+static const Vector<Vertex> &probe_planar_verts()
 {
-  Vector<Vertex> verts;
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
   const float r = 20.0f;
   /* Icon */
   const float2 p[4] = {
@@ -484,7 +537,6 @@ static Vector<Vertex> compute_probe_planar_verts()
   }
   return verts;
 }
-static const Vector<Vertex> probe_planar_verts = compute_probe_planar_verts();
 
 ShapeCache::ShapeCache()
 {
@@ -503,19 +555,19 @@ ShapeCache::ShapeCache()
     return BatchPtr(GPU_batch_create_ex(prim, vbo, nullptr, GPU_BATCH_OWNS_VBO));
   };
 
-  quad_wire = batch_ptr(quad_wire_verts);
-  plain_axes = batch_ptr(plain_axes_verts);
-  single_arrow = batch_ptr(single_arrow_verts);
-  cube = batch_ptr(cube_verts);
-  circle = batch_ptr(circle_verts, GPU_PRIM_LINE_STRIP);
-  empty_sphere = batch_ptr(empty_sphere_verts);
-  empty_cone = batch_ptr(empty_cone_verts);
-  arrows = batch_ptr(arrows_verts);
-  metaball_wire_circle = batch_ptr(metaball_wire_circle_verts, GPU_PRIM_LINE_STRIP);
-  speaker = batch_ptr(speaker_verts);
-  probe_cube = batch_ptr(probe_cube_verts);
-  probe_grid = batch_ptr(probe_grid_verts);
-  probe_planar = batch_ptr(probe_planar_verts);
+  quad_wire = batch_ptr(quad_wire_verts());
+  plain_axes = batch_ptr(plain_axes_verts());
+  single_arrow = batch_ptr(single_arrow_verts());
+  cube = batch_ptr(cube_verts());
+  circle = batch_ptr(circle_verts(), GPU_PRIM_LINE_STRIP);
+  empty_sphere = batch_ptr(empty_sphere_verts());
+  empty_cone = batch_ptr(empty_cone_verts());
+  arrows = batch_ptr(arrows_verts());
+  metaball_wire_circle = batch_ptr(metaball_wire_circle_verts(), GPU_PRIM_LINE_STRIP);
+  speaker = batch_ptr(speaker_verts());
+  probe_cube = batch_ptr(probe_cube_verts());
+  probe_grid = batch_ptr(probe_grid_verts());
+  probe_planar = batch_ptr(probe_planar_verts());
 }
 
 }  // namespace blender::draw::overlay
