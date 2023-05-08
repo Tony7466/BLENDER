@@ -639,6 +639,8 @@ typedef struct wmTabletData {
   float x_tilt;
   /** as above. */
   float y_tilt;
+  /** range (-pi,pi), with stylus button to the left side being 0. */
+  float twist;
   /** Interpret mouse motion as absolute as typical for tablets. */
   char is_motion_absolute;
 } wmTabletData;
