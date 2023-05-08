@@ -168,9 +168,24 @@ protected:
   }
   virtual BVHLayoutMask get_bvh_layout_mask(uint kernel_features) const = 0;
 
-  virtual BVHLayout get_bvh_layout(Device *device, BVHLayout layout) {
+  BVHLayout get_bvh_layout(Device *device, BVHLayout layout)
+  {
+    if (layout == BVH_LAYOUT_MULTI_OPTIX)
+      layout = BVH_LAYOUT_OPTIX;
+    else if (layout == BVH_LAYOUT_MULTI_METAL)
+      layout = BVH_LAYOUT_METAL;
+    else if (layout == BVH_LAYOUT_MULTI_HIPRT)
+      layout = BVH_LAYOUT_HIPRT;
+    else if (layout == BVH_LAYOUT_MULTI_OPTIX_EMBREE)
+      layout = device->info.type == DEVICE_OPTIX ? BVH_LAYOUT_OPTIX : BVH_LAYOUT_EMBREE;
+    else if (layout == BVH_LAYOUT_MULTI_METAL_EMBREE)
+      layout = device->info.type == DEVICE_METAL ? BVH_LAYOUT_METAL : BVH_LAYOUT_EMBREE;
+    else if (layout == BVH_LAYOUT_MULTI_HIPRT_EMBREE)
+      layout = device->info.type == DEVICE_HIPRT ? BVH_LAYOUT_HIPRT : BVH_LAYOUT_EMBREE;
+
     return layout;
   }
+  
   /* statistics */
   Stats &stats;
   Profiler &profiler;
