@@ -1407,6 +1407,11 @@ void normals_calc_loop(const Span<float3> vert_positions,
  * same item, and reverse the indices to create an array of all the indices that reference each
  * item. Group each item's indices together consecutively, encoding the grouping in #r_offsets,
  * which is meant to be used by #OffsetIndices.
+ *
+ * \param r_offsets: An array to be filled with the first index of each item in
+ * \a r_reverse_indices, used to split the indices into chunks by item. (See #OffsetIndices).
+ * \param r_reverse_indices: The indices into \a item_indices that point to each item, split by \a
+ * r_offsets.
  */
 static void reverse_index_array(const Span<int> item_indices,
                                 const int items_num,
