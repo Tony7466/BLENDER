@@ -607,6 +607,37 @@ static void handle_object_parent_orientation(Object *ob, float r_mat[3][3])
   }
 }
 
+static void handle_channel_space_orientation(const Scene *scene,
+                                             ViewLayer *view_layer,
+                                             const View3D *v3d,
+                                             Object *ob,
+                                             Object *obedit,
+                                             const short pivot_point,
+                                             float r_mat[3][3])
+{
+  bPoseChannel *active_pchan = BKE_pose_channel_active(ob, false);
+  /* Check if target bone is a child. */
+  if (active_pchan->parent) {
+    if ((active_pchan->bone->flag & BONE_NO_LOCAL_LOCATION) == 0) {
+      ED_getTransformOrientationMatrix(scene, view_layer, v3d, ob, obedit, pivot_point, r_mat);
+      printf("I'm child local location");
+      return;
+    }
+    /* For child, show parent local regardless if "local location" is set for parent bone. */
+    transform_orientations_create_from_axis(r_mat, UNPACK3(active_pchan->parent->pose_mat));
+    return;
+  }
+
+  if ((active_pchan->bone->flag & BONE_NO_LOCAL_LOCATION) == 0) {
+    ED_getTransformOrientationMatrix(scene, view_layer, v3d, ob, obedit, pivot_point, r_mat);
+    printf("I'm parent location");
+    return;
+  }
+
+  /* For root, use local transform of armature object. */
+  transform_orientations_create_from_axis(r_mat, UNPACK3(ob->object_to_world));
+}
+
 short ED_transform_calc_orientation_from_type_ex(const Scene *scene,
                                                  ViewLayer *view_layer,
                                                  const View3D *v3d,
@@ -617,6 +648,7 @@ short ED_transform_calc_orientation_from_type_ex(const Scene *scene,
                                                  const int pivot_point,
                                                  float r_mat[3][3])
 {
+
   switch (orientation_index) {
     case V3D_ORIENT_GIMBAL: {
 
@@ -648,6 +680,17 @@ short ED_transform_calc_orientation_from_type_ex(const Scene *scene,
         }
       }
       /* No break; we define 'parent' as 'normal' otherwise. */
+      ATTR_FALLTHROUGH;
+    }
+    case V3D_ORIENT_CHANNEL: {
+
+      if (ob) {
+        if (ob->mode & OB_MODE_POSE) {
+          handle_channel_space_orientation(scene, view_layer, v3d, ob, obedit, pivot_point, r_mat);
+          break;
+        }
+      }
+
       ATTR_FALLTHROUGH;
     }
     case V3D_ORIENT_NORMAL: {
@@ -784,6 +827,8 @@ const char *transform_orientations_spacename_get(TransInfo *t, const short orien
       return TIP_("cursor");
     case V3D_ORIENT_PARENT:
       return TIP_("parent");
+    case V3D_ORIENT_CHANNEL:
+      return TIP_("channel");
     case V3D_ORIENT_CUSTOM_MATRIX:
       return TIP_("custom");
     case V3D_ORIENT_CUSTOM:
@@ -1084,7 +1129,8 @@ int getTransformOrientation_ex(const Scene *scene,
               }
               else {
                 if (BM_edge_calc_length_squared(e_pair[0]) <
-                    BM_edge_calc_length_squared(e_pair[1])) {
+                    BM_edge_calc_length_squared(e_pair[1]))
+                {
                   v_pair_swap = true;
                 }
               }

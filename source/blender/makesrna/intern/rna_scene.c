@@ -633,6 +633,11 @@ const EnumPropertyItem rna_enum_transform_orientation_items[] = {
      ICON_BLANK1,
      "Parent",
      "Align the transformation axes to the object's parent space"},
+    {V3D_ORIENT_CHANNEL,
+     "CHANNEL",
+     ICON_BLANK1,
+     "Channel",
+     "Align the transformation axes to the armatures channel space"},
     // {V3D_ORIENT_CUSTOM, "CUSTOM", 0, "Custom", "Use a custom transform orientation"},
     {0, NULL, 0, NULL, NULL},
 };
@@ -2586,13 +2591,16 @@ static PointerRNA rna_TransformOrientationSlot_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_TransformOrientation, orientation);
 }
 
-static const EnumPropertyItem *rna_TransformOrientation_impl_itemf(Scene *scene,
+static const EnumPropertyItem *rna_TransformOrientation_impl_itemf(bContext *C,
+                                                                   Scene *scene,
                                                                    const bool include_default,
                                                                    bool *r_free)
 {
   EnumPropertyItem tmp = {0, "", 0, "", ""};
   EnumPropertyItem *item = NULL;
   int i = V3D_ORIENT_CUSTOM, totitem = 0;
+
+  Object *obact = CTX_data_active_object(C);
 
   if (include_default) {
     tmp.identifier = "DEFAULT";
@@ -2606,8 +2614,13 @@ static const EnumPropertyItem *rna_TransformOrientation_impl_itemf(Scene *scene,
     RNA_enum_item_add_separator(&item, &totitem);
   }
 
-  RNA_enum_items_add(&item, &totitem, rna_enum_transform_orientation_items);
-
+  for (int a = V3D_ORIENT_GLOBAL; a <= V3D_ORIENT_CHANNEL; a++) {
+    /* Only add Channel space if we're in pose mode. */
+    if (a == V3D_ORIENT_CHANNEL && (obact->mode & OB_MODE_POSE) == 0) {
+      continue;
+    }
+    RNA_enum_items_add_value(&item, &totitem, rna_enum_transform_orientation_items, a);
+  }
   const ListBase *transform_orientations = scene ? &scene->transform_spaces : NULL;
 
   if (transform_orientations && (BLI_listbase_is_empty(transform_orientations) == false)) {
@@ -2642,7 +2655,7 @@ const EnumPropertyItem *rna_TransformOrientation_itemf(bContext *C,
   else {
     scene = CTX_data_scene(C);
   }
-  return rna_TransformOrientation_impl_itemf(scene, false, r_free);
+  return rna_TransformOrientation_impl_itemf(C, scene, false, r_free);
 }
 
 const EnumPropertyItem *rna_TransformOrientation_with_scene_itemf(bContext *C,
@@ -2657,7 +2670,7 @@ const EnumPropertyItem *rna_TransformOrientation_with_scene_itemf(bContext *C,
   Scene *scene = (Scene *)ptr->owner_id;
   TransformOrientationSlot *orient_slot = ptr->data;
   bool include_default = (orient_slot != &scene->orientation_slots[SCE_ORIENT_DEFAULT]);
-  return rna_TransformOrientation_impl_itemf(scene, include_default, r_free);
+  return rna_TransformOrientation_impl_itemf(C, scene, include_default, r_free);
 }
 
 #  undef V3D_ORIENT_DEFAULT
