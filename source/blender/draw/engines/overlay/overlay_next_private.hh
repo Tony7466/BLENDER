@@ -192,6 +192,10 @@ class ShapeCache {
   BatchPtr empty_cone;
   BatchPtr arrows;
   BatchPtr metaball_wire_circle;
+  BatchPtr speaker;
+  BatchPtr probe_cube;
+  BatchPtr probe_grid;
+  BatchPtr probe_planar;
 
   ShapeCache();
 };
@@ -249,37 +253,6 @@ class Grid {
 
  private:
   void update_ubo(const State &state, const View &view);
-};
-
-/**
- * Contains all overlay generic geometry batches.
- */
-class ShapeCache {
- private:
-  struct BatchDeleter {
-    void operator()(GPUBatch *shader)
-    {
-      GPU_BATCH_DISCARD_SAFE(shader);
-    }
-  };
-  using BatchPtr = std::unique_ptr<GPUBatch, BatchDeleter>;
-
- public:
-  ShapeCache();
-
-  BatchPtr quad_wire;
-  BatchPtr plain_axes;
-  BatchPtr single_arrow;
-  BatchPtr cube;
-  BatchPtr circle;
-  BatchPtr empty_sphere;
-  BatchPtr empty_cone;
-  BatchPtr arrows;
-  BatchPtr metaball_wire_circle;
-  BatchPtr speaker;
-  BatchPtr probe_cube;
-  BatchPtr probe_grid;
-  BatchPtr probe_planar;
 };
 
 class Extras {
