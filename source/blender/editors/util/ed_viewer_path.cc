@@ -24,38 +24,39 @@ static void viewer_path_for_geometry_node(const SpaceNode &snode,
                                           const bNode &node,
                                           ViewerPath &r_dst)
 {
+  /* Only valid if the node space has a context object. */
+  BLI_assert(snode.id != nullptr && GS(snode.id->name) == ID_OB);
+
   BKE_viewer_path_init(&r_dst);
 
-  if (snode.id != nullptr && GS(snode.id->name) == ID_OB) {
-    Object *ob = reinterpret_cast<Object *>(snode.id);
-    IDViewerPathElem *id_elem = BKE_viewer_path_elem_new_id();
-    id_elem->id = &ob->id;
-    BLI_addtail(&r_dst.path, id_elem);
+  Object *ob = reinterpret_cast<Object *>(snode.id);
+  IDViewerPathElem *id_elem = BKE_viewer_path_elem_new_id();
+  id_elem->id = &ob->id;
+  BLI_addtail(&r_dst.path, id_elem);
 
-    NodesModifierData *modifier = nullptr;
-    LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
-      if (md->type != eModifierType_Nodes) {
-        continue;
-      }
-      NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-      if (nmd->node_group != snode.nodetree) {
-        continue;
-      }
-      if (snode.flag & SNODE_PIN) {
-        /* If the node group is pinned, use the first matching modifier. This can be improved by
-         * storing the modifier name in the node editor when the context is pinned. */
-        modifier = nmd;
-        break;
-      }
-      if (md->flag & eModifierFlag_Active) {
-        modifier = nmd;
-      }
+  NodesModifierData *modifier = nullptr;
+  LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
+    if (md->type != eModifierType_Nodes) {
+      continue;
     }
-    if (modifier != nullptr) {
-      ModifierViewerPathElem *modifier_elem = BKE_viewer_path_elem_new_modifier();
-      modifier_elem->modifier_name = BLI_strdup(modifier->modifier.name);
-      BLI_addtail(&r_dst.path, modifier_elem);
+    NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
+    if (nmd->node_group != snode.nodetree) {
+      continue;
     }
+    if (snode.flag & SNODE_PIN) {
+      /* If the node group is pinned, use the first matching modifier. This can be improved by
+       * storing the modifier name in the node editor when the context is pinned. */
+      modifier = nmd;
+      break;
+    }
+    if (md->flag & eModifierFlag_Active) {
+      modifier = nmd;
+    }
+  }
+  if (modifier != nullptr) {
+    ModifierViewerPathElem *modifier_elem = BKE_viewer_path_elem_new_modifier();
+    modifier_elem->modifier_name = BLI_strdup(modifier->modifier.name);
+    BLI_addtail(&r_dst.path, modifier_elem);
   }
 
   Vector<const bNodeTreePath *, 16> tree_path = snode.treepath;
@@ -89,7 +90,9 @@ void activate_geometry_node(Main &bmain, SpaceNode &snode, bNode &node)
   }
   ViewerPath new_viewer_path{};
   BLI_SCOPED_DEFER([&]() { BKE_viewer_path_clear(&new_viewer_path); });
-  viewer_path_for_geometry_node(snode, node, new_viewer_path);
+  if (snode.id != nullptr && GS(snode.id->name) == ID_OB) {
+    viewer_path_for_geometry_node(snode, node, new_viewer_path);
+  }
 
   bool found_view3d_with_enabled_viewer = false;
   View3D *any_view3d_without_viewer = nullptr;
@@ -356,7 +359,9 @@ bNode *find_geometry_nodes_viewer(const ViewerPath &viewer_path, SpaceNode &snod
   }
   ViewerPath tmp_viewer_path;
   BLI_SCOPED_DEFER([&]() { BKE_viewer_path_clear(&tmp_viewer_path); });
-  viewer_path_for_geometry_node(snode, *possible_viewer, tmp_viewer_path);
+  if (snode.id != nullptr && GS(snode.id->name) == ID_OB) {
+    viewer_path_for_geometry_node(snode, *possible_viewer, tmp_viewer_path);
+  }
 
   if (BKE_viewer_path_equal(&viewer_path, &tmp_viewer_path)) {
     return possible_viewer;
