@@ -8,8 +8,8 @@ GPU_SHADER_CREATE_INFO(eevee_volume_lib)
     .additional_info("eevee_shared")
     .additional_info("draw_view")
     .uniform_buf(VOLUMES_BUF_SLOT, "VolumesData", "volumes_buf")
-    .sampler(VOLUME_SCATTERING_TEX_SLOT, ImageType::FLOAT_3D, "inScattering")
-    .sampler(VOLUME_TRANSMITTANCE_TEX_SLOT, ImageType::FLOAT_3D, "inTransmittance");
+    .sampler(VOLUME_SCATTERING_TEX_SLOT, ImageType::FLOAT_3D, "in_scattering")
+    .sampler(VOLUME_TRANSMITTANCE_TEX_SLOT, ImageType::FLOAT_3D, "in_transmittance");
 
 GPU_SHADER_CREATE_INFO(eevee_volume_clear)
     .additional_info("eevee_shared")
@@ -61,7 +61,7 @@ GPU_SHADER_CREATE_INFO(eevee_volume_resolve)
     .additional_info("eevee_volume_lib")
     .additional_info("draw_fullscreen")
     .fragment_source("eevee_volume_resolve_frag.glsl")
-    .sampler(0, ImageType::DEPTH_2D, "inSceneDepth")
+    .sampler(0, ImageType::DEPTH_2D, "in_scene_depth")
     .fragment_out(0, Type::VEC4, "out_radiance", DualBlend::SRC_0)
     .fragment_out(0, Type::VEC4, "out_transmittance", DualBlend::SRC_1)
     .do_static_compilation(true);
