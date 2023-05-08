@@ -61,19 +61,18 @@ void ImagesExporter::export_UV_Image(Image *image, bool use_copies)
   char export_file[FILE_MAX];
 
   /* Destination folder for exported assets */
-  BLI_split_dir_part(this->export_settings.get_filepath(), export_dir, sizeof(export_dir));
+  BLI_path_split_dir_part(this->export_settings.get_filepath(), export_dir, sizeof(export_dir));
 
   if (is_generated || is_dirty || use_copies || is_packed) {
 
     /* make absolute destination path */
 
     BLI_strncpy(export_file, name.c_str(), sizeof(export_file));
-    BKE_image_path_ensure_ext_from_imformat(export_file, &imageFormat);
+    BKE_image_path_ext_from_imformat_ensure(export_file, sizeof(export_file), &imageFormat);
 
     BLI_path_join(export_path, sizeof(export_path), export_dir, export_file);
 
-    /* make dest directory if it doesn't exist */
-    BLI_make_existing_file(export_path);
+    BLI_file_ensure_parent_dir_exists(export_path);
   }
 
   if (is_generated || is_dirty || is_packed) {
@@ -93,7 +92,7 @@ void ImagesExporter::export_UV_Image(Image *image, bool use_copies)
     /* make absolute source path */
     BLI_strncpy(source_path, image->filepath, sizeof(source_path));
     BLI_path_abs(source_path, ID_BLEND_PATH_FROM_GLOBAL(&image->id));
-    BLI_path_normalize(nullptr, source_path);
+    BLI_path_normalize(source_path);
 
     if (use_copies) {
 
