@@ -59,13 +59,6 @@ struct State {
  */
 class ShaderModule {
  private:
-  const eSelectionType selection_type_;
-  /** TODO: Support clipping. This global state should be set by the overlay::Instance and switch
-   * to the shader variations that use clipping. */
-  const bool clipping_enabled_;
-  /** Shared shader module across all engine instances. */
-  static ShaderModule *g_shader_modules[2 /*Selection Instance*/][2 /*Clipping Enabled*/];
-
   struct ShaderDeleter {
     void operator()(GPUShader *shader)
     {
@@ -74,6 +67,33 @@ class ShaderModule {
   };
   using ShaderPtr = std::unique_ptr<GPUShader, ShaderDeleter>;
 
+  /** Shared shader module across all engine instances. */
+  static ShaderModule *g_shader_modules[2 /*Selection Instance*/][2 /*Clipping Enabled*/];
+
+  const eSelectionType selection_type_;
+  /** TODO: Support clipping. This global state should be set by the overlay::Instance and switch
+   * to the shader variations that use clipping. */
+  const bool clipping_enabled_;
+
+ public:
+  /** Shaders */
+  ShaderPtr grid = shader("overlay_grid");
+  ShaderPtr background_fill = shader("overlay_background");
+  ShaderPtr background_clip_bound = shader("overlay_clipbound");
+
+  /** Selectable Shaders */
+  ShaderPtr armature_sphere_outline;
+  ShaderPtr depth_mesh;
+  ShaderPtr extra_shape;
+
+  ShaderModule(const eSelectionType selection_type, const bool clipping_enabled);
+
+  /** Module */
+  /** Only to be used by Instance constructor. */
+  static ShaderModule &module_get(eSelectionType selection_type, bool clipping_enabled);
+  static void module_free();
+
+ private:
   ShaderPtr shader(const char *create_info_name)
   {
     return ShaderPtr(GPU_shader_create_from_info_name(create_info_name));
@@ -81,24 +101,6 @@ class ShaderModule {
   ShaderPtr selectable_shader(const char *create_info_name);
   ShaderPtr selectable_shader(const char *create_info_name,
                               std::function<void(gpu::shader::ShaderCreateInfo &info)> patch);
-
- public:
-  ShaderModule(const eSelectionType selection_type, const bool clipping_enabled);
-
-  /** Selectable Shaders */
-  ShaderPtr armature_sphere_outline;
-  ShaderPtr depth_mesh;
-  ShaderPtr extra_shape;
-
-  /** Shaders */
-  ShaderPtr grid = shader("overlay_grid");
-  ShaderPtr background_fill = shader("overlay_background");
-  ShaderPtr background_clip_bound = shader("overlay_clipbound");
-
-  /** Module */
-  /** Only to be used by Instance constructor. */
-  static ShaderModule &module_get(eSelectionType selection_type, bool clipping_enabled);
-  static void module_free();
 };
 
 struct Resources : public select::SelectMap {
@@ -181,8 +183,6 @@ class ShapeCache {
   using BatchPtr = std::unique_ptr<GPUBatch, BatchDeleter>;
 
  public:
-  ShapeCache();
-
   BatchPtr quad_wire;
   BatchPtr plain_axes;
   BatchPtr single_arrow;
@@ -192,6 +192,8 @@ class ShapeCache {
   BatchPtr empty_cone;
   BatchPtr arrows;
   BatchPtr metaball_wire_circle;
+
+  ShapeCache();
 };
 
 class Prepass {
@@ -239,13 +241,14 @@ class Grid {
 
   bool enabled_ = false;
 
-  void update_ubo(const State &state, const View &view);
-
  public:
   Grid(const eSelectionType selection_type) : selection_type_(selection_type){};
 
   void begin_sync(Resources &res, const State &state, const View &view);
   void draw(Resources &res, Manager &manager, View &view);
+
+ private:
+  void update_ubo(const State &state, const View &view);
 };
 
 class Empties {
