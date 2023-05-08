@@ -123,7 +123,8 @@ static uiBut *ui_but_anim_decorate_find_attached_button(uiButDecorator *but)
   LISTBASE_CIRCULAR_BACKWARD_BEGIN (uiBut *, &but->block->buttons, but_iter, but->prev) {
     if (but_iter != but &&
         ui_but_rna_equals_ex(
-            but_iter, &but->decorated_rnapoin, but->decorated_rnaprop, but->decorated_rnaindex)) {
+            but_iter, &but->decorated_rnapoin, but->decorated_rnaprop, but->decorated_rnaindex))
+    {
       return but_iter;
     }
   }
@@ -170,7 +171,7 @@ void ui_but_anim_decorate_update_from_flag(uiButDecorator *but)
   but->flag = (but->flag & ~flag_copy) | (flag & flag_copy);
 }
 
-bool ui_but_anim_expression_get(uiBut *but, char *str, size_t maxlen)
+bool ui_but_anim_expression_get(uiBut *but, char *str, size_t str_maxncpy)
 {
   FCurve *fcu;
   ChannelDriver *driver;
@@ -183,7 +184,7 @@ bool ui_but_anim_expression_get(uiBut *but, char *str, size_t maxlen)
 
     if (driver && driver->type == DRIVER_TYPE_PYTHON) {
       if (str) {
-        BLI_strncpy(str, driver->expression, maxlen);
+        BLI_strncpy(str, driver->expression, str_maxncpy);
       }
       return true;
     }
