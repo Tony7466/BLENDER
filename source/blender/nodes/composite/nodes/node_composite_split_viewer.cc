@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation. All rights reserved. */
+ * Copyright 2006 Blender Foundation */
 
 /** \file
  * \ingroup cmpnodes
@@ -77,7 +77,7 @@ class ViewerOperation : public NodeOperation {
     second_image.bind_as_texture(shader, "second_image_tx");
 
     GPUTexture *output_texture = context().get_output_texture();
-    const int image_unit = GPU_shader_get_texture_binding(shader, "output_img");
+    const int image_unit = GPU_shader_get_sampler_binding(shader, "output_img");
     GPU_texture_image_bind(output_texture, image_unit);
 
     compute_dispatch_threads_at_least(shader, compositing_region_size);

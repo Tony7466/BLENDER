@@ -40,7 +40,7 @@
 #define WITH_GLOBAL_UNDO_ENSURE_UPDATED
 
 /**
- * Make sure we don't apply edits on top of a newer memfile state, see: T56163.
+ * Make sure we don't apply edits on top of a newer memfile state, see: #56163.
  * \note Keep an eye on this, could solve differently.
  */
 #define WITH_GLOBAL_UNDO_CORRECT_ORDER
@@ -183,7 +183,7 @@ static void undosys_step_decode(bContext *C,
           }
           else {
             /* Load the previous memfile state so any ID's referenced in this
-             * undo step will be correctly resolved, see: T56163. */
+             * undo step will be correctly resolved, see: #56163. */
             undosys_step_decode(C, bmain, ustack, us_iter, dir, false);
             /* May have been freed on memfile read. */
             bmain = G_MAIN;
@@ -244,9 +244,7 @@ static void undosys_stack_validate(UndoStack *ustack, bool expect_non_empty)
   }
 }
 #else
-static void undosys_stack_validate(UndoStack * /*ustack*/, bool /*expect_non_empty*/)
-{
-}
+static void undosys_stack_validate(UndoStack * /*ustack*/, bool /*expect_non_empty*/) {}
 #endif
 
 UndoStack *BKE_undosys_stack_create(void)
@@ -564,7 +562,7 @@ eUndoPushReturn BKE_undosys_step_push_with_type(UndoStack *ustack,
 
   if (use_memfile_step) {
     /* Make this the user visible undo state, so redo always applies
-     * on top of the mem-file undo instead of skipping it. see: T67256. */
+     * on top of the mem-file undo instead of skipping it. see: #67256. */
     UndoStep *us_prev = ustack->step_active;
     const char *name_internal = us_prev->name;
     const bool ok = undosys_stack_push_main(ustack, name_internal, G_MAIN);
@@ -769,7 +767,8 @@ bool BKE_undosys_step_load_data_ex(UndoStack *ustack,
    * from given reference step. */
   bool is_processing_extra_skipped_steps = false;
   for (UndoStep *us_iter = undosys_step_iter_first(us_reference, undo_dir); us_iter != nullptr;
-       us_iter = (undo_dir == -1) ? us_iter->prev : us_iter->next) {
+       us_iter = (undo_dir == -1) ? us_iter->prev : us_iter->next)
+  {
     BLI_assert(us_iter != nullptr);
 
     const bool is_final = (us_iter == us_target_active);

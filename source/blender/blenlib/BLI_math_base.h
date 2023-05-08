@@ -97,8 +97,9 @@ MINLINE float saacos(float fac);
 MINLINE float saasin(float fac);
 MINLINE float sasqrt(float fac);
 
-MINLINE float interpf(float a, float b, float t);
-MINLINE double interpd(double a, double b, double t);
+/* Compute linear interpolation (lerp) between origin and target. */
+MINLINE float interpf(float target, float origin, float t);
+MINLINE double interpd(double target, double origin, double t);
 
 MINLINE float ratiof(float min, float max, float pos);
 MINLINE double ratiod(double min, double max, double pos);
@@ -139,6 +140,8 @@ MINLINE float max_ffff(float a, float b, float c, float d);
 
 MINLINE double min_dd(double a, double b);
 MINLINE double max_dd(double a, double b);
+MINLINE double min_ddd(double a, double b, double c);
+MINLINE double max_ddd(double a, double b, double c);
 
 MINLINE int min_ii(int a, int b);
 MINLINE int max_ii(int a, int b);
@@ -308,7 +311,7 @@ float ceil_power_of_10(float f);
  * check the vector is unit length, or zero length (which can't be helped in some cases). */
 
 #ifndef NDEBUG
-/** \note 0.0001 is too small because normals may be converted from short's: see T34322. */
+/** \note 0.0001 is too small because normals may be converted from short's: see #34322. */
 #  define BLI_ASSERT_UNIT_EPSILON 0.0002f
 #  define BLI_ASSERT_UNIT_EPSILON_DB 0.0002
 /**

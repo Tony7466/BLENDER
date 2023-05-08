@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2004 Blender Foundation. All rights reserved. */
+ * Copyright 2004 Blender Foundation */
 
 /** \file
  * \ingroup edmesh
@@ -138,7 +138,8 @@ static float edbm_rip_edge_side_measure(
   score = len_v2v2(e_v1_co, e_v2_co);
 
   if (dist_squared_to_line_segment_v2(fmval_tweak, e_v1_co, e_v2_co) >
-      dist_squared_to_line_segment_v2(fmval, e_v1_co, e_v2_co)) {
+      dist_squared_to_line_segment_v2(fmval, e_v1_co, e_v2_co))
+  {
     return score;
   }
   return -score;
@@ -768,7 +769,7 @@ static int edbm_rip_invoke__vert(bContext *C, const wmEvent *event, Object *obed
           if (do_fill) {
             /* Only needed when filling...
              * Also, we never want to tag best edge,
-             * that one won't change during split. See T44618. */
+             * that one won't change during split. See #44618. */
             if (larr[larr_len]->e == e_best) {
               BM_elem_flag_enable(larr[larr_len]->prev->e, BM_ELEM_TAG);
             }

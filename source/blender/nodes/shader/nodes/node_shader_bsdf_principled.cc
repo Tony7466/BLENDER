@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+ * Copyright 2005 Blender Foundation */
 
 #include "node_shader_util.hh"
 
@@ -173,7 +173,7 @@ static int node_shader_gpu_bsdf_principled(GPUMaterial *mat,
     flag |= GPU_MATFLAG_CLEARCOAT;
   }
 
-  /* Ref. T98190: Defines are optimizations for old compilers.
+  /* Ref. #98190: Defines are optimizations for old compilers.
    * Might become unnecessary with EEVEE-Next. */
   if (use_diffuse == false && use_refract == false && use_clear == true) {
     flag |= GPU_MATFLAG_PRINCIPLED_CLEARCOAT;
@@ -245,6 +245,7 @@ void register_node_type_sh_bsdf_principled()
 
   sh_node_type_base(&ntype, SH_NODE_BSDF_PRINCIPLED, "Principled BSDF", NODE_CLASS_SHADER);
   ntype.declare = file_ns::node_declare;
+  ntype.add_ui_poll = object_shader_nodes_poll;
   ntype.draw_buttons = file_ns::node_shader_buts_principled;
   node_type_size_preset(&ntype, NODE_SIZE_LARGE);
   ntype.initfunc = file_ns::node_shader_init_principled;

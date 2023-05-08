@@ -24,7 +24,7 @@ void BlenderSync::sync_light(BL::Object &b_parent,
   Light *light = light_map.find(key);
 
   /* Check if the transform was modified, in case a linked collection is moved we do not get a
-   * specific depsgraph update (T88515). This also mimics the behavior for Objects. */
+   * specific depsgraph update (#88515). This also mimics the behavior for Objects. */
   const bool tfm_updated = (light && light->get_tfm() != tfm);
 
   /* Update if either object or light data changed. */
@@ -169,7 +169,8 @@ void BlenderSync::sync_background_light(BL::SpaceView3D &b_v3d, bool use_portal)
       ObjectKey key(b_world, 0, b_world, false);
 
       if (light_map.add_or_update(&light, b_world, b_world, key) || world_recalc ||
-          b_world.ptr.data != world_map) {
+          b_world.ptr.data != world_map)
+      {
         light->set_light_type(LIGHT_BACKGROUND);
         if (sampling_method == SAMPLING_MANUAL) {
           light->set_map_resolution(get_int(cworld, "sample_map_resolution"));

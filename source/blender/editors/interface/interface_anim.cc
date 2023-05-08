@@ -85,7 +85,7 @@ void ui_but_anim_flag(uiBut *but, const AnimationEvalContext *anim_eval_context)
 
       but->flag |= UI_BUT_ANIMATED;
 
-      /* T41525 - When the active action is a NLA strip being edited,
+      /* #41525 - When the active action is a NLA strip being edited,
        * we need to correct the frame number to "look inside" the
        * remapped action
        */
@@ -94,7 +94,7 @@ void ui_but_anim_flag(uiBut *but, const AnimationEvalContext *anim_eval_context)
         cfra = BKE_nla_tweakedit_remap(adt, cfra, NLATIME_CONVERT_UNMAP);
       }
 
-      if (fcurve_frame_has_keyframe(fcu, cfra, 0)) {
+      if (fcurve_frame_has_keyframe(fcu, cfra)) {
         but->flag |= UI_BUT_ANIMATED_KEY;
       }
 
@@ -123,7 +123,8 @@ static uiBut *ui_but_anim_decorate_find_attached_button(uiButDecorator *but)
   LISTBASE_CIRCULAR_BACKWARD_BEGIN (uiBut *, &but->block->buttons, but_iter, but->prev) {
     if (but_iter != but &&
         ui_but_rna_equals_ex(
-            but_iter, &but->decorated_rnapoin, but->decorated_rnaprop, but->decorated_rnaindex)) {
+            but_iter, &but->decorated_rnapoin, but->decorated_rnaprop, but->decorated_rnaindex))
+    {
       return but_iter;
     }
   }
@@ -170,7 +171,7 @@ void ui_but_anim_decorate_update_from_flag(uiButDecorator *but)
   but->flag = (but->flag & ~flag_copy) | (flag & flag_copy);
 }
 
-bool ui_but_anim_expression_get(uiBut *but, char *str, size_t maxlen)
+bool ui_but_anim_expression_get(uiBut *but, char *str, size_t str_maxncpy)
 {
   FCurve *fcu;
   ChannelDriver *driver;
@@ -183,7 +184,7 @@ bool ui_but_anim_expression_get(uiBut *but, char *str, size_t maxlen)
 
     if (driver && driver->type == DRIVER_TYPE_PYTHON) {
       if (str) {
-        BLI_strncpy(str, driver->expression, maxlen);
+        BLI_strncpy(str, driver->expression, str_maxncpy);
       }
       return true;
     }

@@ -435,8 +435,7 @@ static int ndof_orbit_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
   const wmNDOFMotionData *ndof = event->customdata;
 
-  vod = op->customdata = viewops_data_create(
-      C, event, (viewops_flag_from_prefs() & ~VIEWOPS_FLAG_DEPTH_NAVIGATE));
+  vod = op->customdata = viewops_data_create(C, event, V3D_OP_MODE_NDOF_ORBIT, false);
 
   ED_view3d_smooth_view_force_finish(C, vod->v3d, vod->region);
 
@@ -522,8 +521,7 @@ static int ndof_orbit_zoom_invoke(bContext *C, wmOperator *op, const wmEvent *ev
 
   const wmNDOFMotionData *ndof = event->customdata;
 
-  vod = op->customdata = viewops_data_create(
-      C, event, (viewops_flag_from_prefs() & ~VIEWOPS_FLAG_DEPTH_NAVIGATE));
+  vod = op->customdata = viewops_data_create(C, event, V3D_OP_MODE_NDOF_ORBIT_ZOOM, false);
 
   ED_view3d_smooth_view_force_finish(C, vod->v3d, vod->region);
 
@@ -549,7 +547,7 @@ static int ndof_orbit_zoom_invoke(bContext *C, wmOperator *op, const wmEvent *ev
     }
   }
   else {
-    /* NOTE: based on feedback from T67579, users want to have pan and orbit enabled at once.
+    /* NOTE: based on feedback from #67579, users want to have pan and orbit enabled at once.
      * It's arguable that orbit shouldn't pan (since we have a pan only operator),
      * so if there are users who like to separate orbit/pan operations - it can be a preference. */
     const bool is_orbit_around_pivot = (U.ndof_flag & NDOF_MODE_ORBIT) ||
