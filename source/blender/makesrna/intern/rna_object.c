@@ -606,6 +606,12 @@ static StructRNA *rna_Object_data_typef(PointerRNA *ptr)
       return &RNA_LightProbe;
     case OB_GPENCIL_LEGACY:
       return &RNA_GreasePencil;
+    case OB_GREASE_PENCIL:
+#  ifdef WITH_GREASE_PENCIL_V3
+      return &RNA_GreasePencilv3;
+#  else
+      return &RNA_ID;
+#  endif
     case OB_CURVES:
       return &RNA_Curves;
     case OB_POINTCLOUD:
