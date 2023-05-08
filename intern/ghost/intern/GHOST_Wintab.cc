@@ -375,6 +375,7 @@ void GHOST_Wintab::getInput(std::vector<GHOST_WintabInfoWin32> &outWintabInfo)
     }
 
     if (m_maxTwist > 0) {
+      ORIENTATION ort = pkt.pkOrientation;
       out.tabletData.Twist = float(float(ort.orTwist) / float(m_maxTwist) * M_PI);
     }
 
