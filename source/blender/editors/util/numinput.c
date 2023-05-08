@@ -395,7 +395,7 @@ bool handleNumInput(bContext *C, NumInput *n, const wmEvent *event)
         if (event->modifier & KM_CTRL) {
           mode = STRCUR_JUMP_DELIM;
         }
-        BLI_str_cursor_step_utf8(n->str, strlen(n->str), &t_cur, dir, mode, true);
+        BLI_str_cursor_step_utf8(n->str, strlen(n->str), &t_cur, dir, mode);
         if (t_cur != cur) {
           if (t_cur < cur) {
             SWAP(int, t_cur, cur);
@@ -421,7 +421,7 @@ bool handleNumInput(bContext *C, NumInput *n, const wmEvent *event)
       if (event->modifier & KM_CTRL) {
         mode = STRCUR_JUMP_DELIM;
       }
-      BLI_str_cursor_step_utf8(n->str, strlen(n->str), &cur, dir, mode, true);
+      BLI_str_cursor_step_utf8(n->str, strlen(n->str), &cur, dir, mode);
       if (cur != n->str_cur) {
         n->str_cur = cur;
         return true;

@@ -138,17 +138,13 @@ void BLI_str_cursor_step_utf8(const char *str,
                               size_t str_maxlen,
                               int *pos,
                               eStrCursorJumpDirection direction,
-                              eStrCursorJumpType jump,
-                              bool use_init_step)
+                              eStrCursorJumpType jump)
 {
   const int pos_orig = *pos;
 
   if (direction == STRCUR_DIR_NEXT) {
-    if (use_init_step) {
+    if (jump == STRCUR_JUMP_DELIM && ELEM(str[*pos], ' ', '\n', '\t')) {
       BLI_str_cursor_step_next_utf8(str, str_maxlen, pos);
-    }
-    else {
-      BLI_assert(jump == STRCUR_JUMP_DELIM);
     }
 
     if (jump != STRCUR_JUMP_NONE) {
@@ -175,11 +171,8 @@ void BLI_str_cursor_step_utf8(const char *str,
     }
   }
   else if (direction == STRCUR_DIR_PREV) {
-    if (use_init_step) {
+    if (jump == STRCUR_JUMP_DELIM && *pos > 0 && ELEM(str[*pos - 1], ' ', '\n', '\t')) {
       BLI_str_cursor_step_prev_utf8(str, str_maxlen, pos);
-    }
-    else {
-      BLI_assert(jump == STRCUR_JUMP_DELIM);
     }
 
     if (jump != STRCUR_JUMP_NONE) {
@@ -244,17 +237,13 @@ void BLI_str_cursor_step_utf32(const char32_t *str,
                                size_t str_maxlen,
                                int *pos,
                                eStrCursorJumpDirection direction,
-                               eStrCursorJumpType jump,
-                               bool use_init_step)
+                               eStrCursorJumpType jump)
 {
   const int pos_orig = *pos;
 
   if (direction == STRCUR_DIR_NEXT) {
-    if (use_init_step) {
+    if (jump == STRCUR_JUMP_DELIM && ELEM(str[*pos], U' ', U'\n', U'\t')) {
       BLI_str_cursor_step_next_utf32(str, str_maxlen, pos);
-    }
-    else {
-      BLI_assert(jump == STRCUR_JUMP_DELIM);
     }
 
     if (jump != STRCUR_JUMP_NONE) {
@@ -278,11 +267,8 @@ void BLI_str_cursor_step_utf32(const char32_t *str,
     }
   }
   else if (direction == STRCUR_DIR_PREV) {
-    if (use_init_step) {
+    if (jump == STRCUR_JUMP_DELIM && *pos > 0 && ELEM(str[*pos - 1], U' ', U'\n', U'\t')) {
       BLI_str_cursor_step_prev_utf32(str, str_maxlen, pos);
-    }
-    else {
-      BLI_assert(jump == STRCUR_JUMP_DELIM);
     }
 
     if (jump != STRCUR_JUMP_NONE) {

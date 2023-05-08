@@ -1577,11 +1577,12 @@ void TEXT_OT_select_line(wmOperatorType *ot)
 static int text_select_word_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Text *text = CTX_data_edit_text(C);
-  /* don't advance cursor before stepping */
-  const bool use_init_step = false;
 
-  txt_jump_left(text, false, use_init_step);
-  txt_jump_right(text, true, use_init_step);
+  TextLine *line = text->curl;
+  if (text->curc > 0 && !ELEM(line->line[text->curc - 1], ' ', '\n', '\t')) {
+    txt_jump_left(text, false);
+  }
+  txt_jump_right(text, true);
 
   text_update_cursor_moved(C);
   text_select_update_primary_clipboard(text);
@@ -2202,14 +2203,14 @@ static int text_move_cursor(bContext *C, int type, bool select)
       if (txt_cursor_is_line_start(text)) {
         txt_move_left(text, select);
       }
-      txt_jump_left(text, select, true);
+      txt_jump_left(text, select);
       break;
 
     case NEXT_WORD:
       if (txt_cursor_is_line_end(text)) {
         txt_move_right(text, select);
       }
-      txt_jump_right(text, select, true);
+      txt_jump_right(text, select);
       break;
 
     case PREV_CHAR:

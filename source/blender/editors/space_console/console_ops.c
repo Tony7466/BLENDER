@@ -370,22 +370,22 @@ static int console_move_exec(bContext *C, wmOperator *op)
   switch (type) {
     case LINE_BEGIN:
       pos = ci->cursor;
-      BLI_str_cursor_step_utf8(ci->line, ci->len, &pos, STRCUR_DIR_PREV, STRCUR_JUMP_ALL, true);
+      BLI_str_cursor_step_utf8(ci->line, ci->len, &pos, STRCUR_DIR_PREV, STRCUR_JUMP_ALL);
       done = console_line_cursor_set(ci, pos);
       break;
     case LINE_END:
       pos = ci->cursor;
-      BLI_str_cursor_step_utf8(ci->line, ci->len, &pos, STRCUR_DIR_NEXT, STRCUR_JUMP_ALL, true);
+      BLI_str_cursor_step_utf8(ci->line, ci->len, &pos, STRCUR_DIR_NEXT, STRCUR_JUMP_ALL);
       done = console_line_cursor_set(ci, pos);
       break;
     case PREV_CHAR:
       pos = ci->cursor;
-      BLI_str_cursor_step_utf8(ci->line, ci->len, &pos, STRCUR_DIR_PREV, STRCUR_JUMP_NONE, true);
+      BLI_str_cursor_step_utf8(ci->line, ci->len, &pos, STRCUR_DIR_PREV, STRCUR_JUMP_NONE);
       done = console_line_cursor_set(ci, pos);
       break;
     case NEXT_CHAR:
       pos = ci->cursor;
-      BLI_str_cursor_step_utf8(ci->line, ci->len, &pos, STRCUR_DIR_NEXT, STRCUR_JUMP_NONE, true);
+      BLI_str_cursor_step_utf8(ci->line, ci->len, &pos, STRCUR_DIR_NEXT, STRCUR_JUMP_NONE);
       done = console_line_cursor_set(ci, pos);
       break;
 
@@ -393,12 +393,12 @@ static int console_move_exec(bContext *C, wmOperator *op)
      * - when jump over the word */
     case PREV_WORD:
       pos = ci->cursor;
-      BLI_str_cursor_step_utf8(ci->line, ci->len, &pos, STRCUR_DIR_PREV, STRCUR_JUMP_DELIM, true);
+      BLI_str_cursor_step_utf8(ci->line, ci->len, &pos, STRCUR_DIR_PREV, STRCUR_JUMP_DELIM);
       done = console_line_cursor_set(ci, pos);
       break;
     case NEXT_WORD:
       pos = ci->cursor;
-      BLI_str_cursor_step_utf8(ci->line, ci->len, &pos, STRCUR_DIR_NEXT, STRCUR_JUMP_DELIM, true);
+      BLI_str_cursor_step_utf8(ci->line, ci->len, &pos, STRCUR_DIR_NEXT, STRCUR_JUMP_DELIM);
       done = console_line_cursor_set(ci, pos);
       break;
   }
@@ -687,8 +687,7 @@ static int console_delete_exec(bContext *C, wmOperator *op)
                                  ci->len,
                                  &pos,
                                  STRCUR_DIR_NEXT,
-                                 (type == DEL_NEXT_CHAR) ? STRCUR_JUMP_NONE : STRCUR_JUMP_DELIM,
-                                 true);
+                                 (type == DEL_NEXT_CHAR) ? STRCUR_JUMP_NONE : STRCUR_JUMP_DELIM);
         stride = pos - ci->cursor;
         if (stride) {
           memmove(ci->line + ci->cursor,
@@ -708,8 +707,7 @@ static int console_delete_exec(bContext *C, wmOperator *op)
                                  ci->len,
                                  &pos,
                                  STRCUR_DIR_PREV,
-                                 (type == DEL_PREV_CHAR) ? STRCUR_JUMP_NONE : STRCUR_JUMP_DELIM,
-                                 true);
+                                 (type == DEL_PREV_CHAR) ? STRCUR_JUMP_NONE : STRCUR_JUMP_DELIM);
         stride = ci->cursor - pos;
         if (stride) {
           ci->cursor -= stride; /* same as above */
@@ -1258,9 +1256,9 @@ static int console_selectword_invoke(bContext *C, wmOperator *UNUSED(op), const 
   if (console_line_column_from_index(sc, pos, &cl, &offset, &n)) {
     int sel[2] = {n, n};
 
-    BLI_str_cursor_step_utf8(cl->line, cl->len, &sel[0], STRCUR_DIR_NEXT, STRCUR_JUMP_DELIM, true);
+    BLI_str_cursor_step_utf8(cl->line, cl->len, &sel[0], STRCUR_DIR_NEXT, STRCUR_JUMP_DELIM);
 
-    BLI_str_cursor_step_utf8(cl->line, cl->len, &sel[1], STRCUR_DIR_PREV, STRCUR_JUMP_DELIM, true);
+    BLI_str_cursor_step_utf8(cl->line, cl->len, &sel[1], STRCUR_DIR_PREV, STRCUR_JUMP_DELIM);
 
     sel[0] = offset - sel[0];
     sel[1] = offset - sel[1];

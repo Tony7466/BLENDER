@@ -949,7 +949,7 @@ void txt_move_right(Text *text, const bool sel)
   }
 }
 
-void txt_jump_left(Text *text, const bool sel, const bool use_init_step)
+void txt_jump_left(Text *text, const bool sel)
 {
   TextLine **linep;
   int *charp;
@@ -966,14 +966,14 @@ void txt_jump_left(Text *text, const bool sel, const bool use_init_step)
   }
 
   BLI_str_cursor_step_utf8(
-      (*linep)->line, (*linep)->len, charp, STRCUR_DIR_PREV, STRCUR_JUMP_DELIM, use_init_step);
+      (*linep)->line, (*linep)->len, charp, STRCUR_DIR_PREV, STRCUR_JUMP_DELIM);
 
   if (!sel) {
     txt_pop_sel(text);
   }
 }
 
-void txt_jump_right(Text *text, const bool sel, const bool use_init_step)
+void txt_jump_right(Text *text, const bool sel)
 {
   TextLine **linep;
   int *charp;
@@ -990,7 +990,7 @@ void txt_jump_right(Text *text, const bool sel, const bool use_init_step)
   }
 
   BLI_str_cursor_step_utf8(
-      (*linep)->line, (*linep)->len, charp, STRCUR_DIR_NEXT, STRCUR_JUMP_DELIM, use_init_step);
+      (*linep)->line, (*linep)->len, charp, STRCUR_DIR_NEXT, STRCUR_JUMP_DELIM);
 
   if (!sel) {
     txt_pop_sel(text);
@@ -1798,7 +1798,7 @@ void txt_delete_char(Text *text)
 
 void txt_delete_word(Text *text)
 {
-  txt_jump_right(text, true, true);
+  txt_jump_right(text, true);
   txt_delete_sel(text);
   txt_make_dirty(text);
 }
@@ -1847,7 +1847,7 @@ void txt_backspace_char(Text *text)
 
 void txt_backspace_word(Text *text)
 {
-  txt_jump_left(text, true, true);
+  txt_jump_left(text, true);
   txt_delete_sel(text);
   txt_make_dirty(text);
 }

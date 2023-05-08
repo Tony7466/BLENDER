@@ -32,15 +32,13 @@ void BLI_str_cursor_step_utf8(const char *str,
                               size_t str_maxlen,
                               int *pos,
                               eStrCursorJumpDirection direction,
-                              eStrCursorJumpType jump,
-                              bool use_init_step);
+                              eStrCursorJumpType jump);
 
 void BLI_str_cursor_step_utf32(const char32_t *str,
                                size_t str_maxlen,
                                int *pos,
                                eStrCursorJumpDirection direction,
-                               eStrCursorJumpType jump,
-                               bool use_init_step);
+                               eStrCursorJumpType jump);
 
 #ifdef __cplusplus
 }

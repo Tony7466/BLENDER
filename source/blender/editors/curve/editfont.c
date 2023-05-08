@@ -1203,8 +1203,7 @@ static int move_cursor(bContext *C, int type, const bool select)
 
     case PREV_WORD: {
       int pos = ef->pos;
-      BLI_str_cursor_step_utf32(
-          ef->textbuf, ef->len, &pos, STRCUR_DIR_PREV, STRCUR_JUMP_DELIM, true);
+      BLI_str_cursor_step_utf32(ef->textbuf, ef->len, &pos, STRCUR_DIR_PREV, STRCUR_JUMP_DELIM);
       ef->pos = pos;
       cursmove = FO_CURS;
       break;
@@ -1212,8 +1211,7 @@ static int move_cursor(bContext *C, int type, const bool select)
 
     case NEXT_WORD: {
       int pos = ef->pos;
-      BLI_str_cursor_step_utf32(
-          ef->textbuf, ef->len, &pos, STRCUR_DIR_NEXT, STRCUR_JUMP_DELIM, true);
+      BLI_str_cursor_step_utf32(ef->textbuf, ef->len, &pos, STRCUR_DIR_NEXT, STRCUR_JUMP_DELIM);
       ef->pos = pos;
       cursmove = FO_CURS;
       break;
@@ -1578,10 +1576,10 @@ static int delete_exec(bContext *C, wmOperator *op)
       range[1] = ef->pos;
       BLI_str_cursor_step_next_utf32(ef->textbuf, ef->len, &range[1]);
       break;
+
     case DEL_NEXT_WORD: {
       int pos = ef->pos;
-      BLI_str_cursor_step_utf32(
-          ef->textbuf, ef->len, &pos, STRCUR_DIR_NEXT, STRCUR_JUMP_DELIM, true);
+      BLI_str_cursor_step_utf32(ef->textbuf, ef->len, &pos, STRCUR_DIR_NEXT, STRCUR_JUMP_DELIM);
       range[0] = ef->pos;
       range[1] = pos;
       break;
@@ -1589,8 +1587,7 @@ static int delete_exec(bContext *C, wmOperator *op)
 
     case DEL_PREV_WORD: {
       int pos = ef->pos;
-      BLI_str_cursor_step_utf32(
-          ef->textbuf, ef->len, &pos, STRCUR_DIR_PREV, STRCUR_JUMP_DELIM, true);
+      BLI_str_cursor_step_utf32(ef->textbuf, ef->len, &pos, STRCUR_DIR_PREV, STRCUR_JUMP_DELIM);
       range[0] = pos;
       range[1] = ef->pos;
       ef->pos = pos;
@@ -1920,8 +1917,15 @@ void FONT_OT_selection_set(struct wmOperatorType *ot)
 
 static int font_select_word_exec(bContext *C, wmOperator *UNUSED(op))
 {
-  move_cursor(C, NEXT_CHAR, false);
-  move_cursor(C, PREV_WORD, false);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+  Object *obedit = CTX_data_edit_object(C);
+  Curve *cu = obedit->data;
+  EditFont *ef = cu->editfont;
+
+  if (ef->pos > 0 && !ELEM(ef->textbuf[ef->pos - 1], ' ', '\n', '\t')) {
+    /* We are at the end or middle of a word, so move back. */
+    move_cursor(C, PREV_WORD, false);
+  }
   move_cursor(C, NEXT_WORD, true);
   return OPERATOR_FINISHED;
 }

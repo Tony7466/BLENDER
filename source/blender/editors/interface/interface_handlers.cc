@@ -3210,7 +3210,7 @@ static void ui_textedit_move(uiBut *but,
   }
   else {
     int pos_i = but->pos;
-    BLI_str_cursor_step_utf8(str, len, &pos_i, direction, jump, true);
+    BLI_str_cursor_step_utf8(str, len, &pos_i, direction, jump);
     but->pos = pos_i;
 
     if (select) {
@@ -3250,7 +3250,7 @@ static bool ui_textedit_delete(uiBut *but,
     else if (but->pos >= 0 && but->pos < len) {
       int pos = but->pos;
       int step;
-      BLI_str_cursor_step_utf8(str, len, &pos, direction, jump, true);
+      BLI_str_cursor_step_utf8(str, len, &pos, direction, jump);
       step = pos - but->pos;
       memmove(&str[but->pos], &str[but->pos + step], (len + 1) - (but->pos + step));
       changed = true;
@@ -3265,7 +3265,7 @@ static bool ui_textedit_delete(uiBut *but,
         int pos = but->pos;
         int step;
 
-        BLI_str_cursor_step_utf8(str, len, &pos, direction, jump, true);
+        BLI_str_cursor_step_utf8(str, len, &pos, direction, jump);
         step = but->pos - pos;
         memmove(&str[but->pos - step], &str[but->pos], (len + 1) - but->pos);
         but->pos -= step;
@@ -3730,7 +3730,9 @@ static void ui_do_but_textedit(
 
       /* only select a word in button if there was no selection before */
       if (event->val == KM_DBL_CLICK && had_selection == false) {
-        ui_textedit_move(but, data, STRCUR_DIR_PREV, false, STRCUR_JUMP_DELIM);
+        if (but->pos > 0 && !ELEM(but->editstr[but->pos - 1], ' ', '\n', '\t')) {
+          ui_textedit_move(but, data, STRCUR_DIR_PREV, false, STRCUR_JUMP_DELIM);
+        }
         ui_textedit_move(but, data, STRCUR_DIR_NEXT, true, STRCUR_JUMP_DELIM);
         retval = WM_UI_HANDLER_BREAK;
         changed = true;
