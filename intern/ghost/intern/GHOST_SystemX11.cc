@@ -59,6 +59,9 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+/* M_PI */
+#include <math.h>
+
 #include <cstdio>  /* for fprintf only */
 #include <cstdlib> /* for exit */
 #include <iostream>
@@ -1558,6 +1561,13 @@ void GHOST_SystemX11::processEvent(XEvent *xe)
             window->GetTabletData().Ytilt = short(axis_value & 0xffff) /
                                             float(xtablet.YtiltLevels);
           }
+          if (AXIS_VALUE_GET(5, axis_value)) {
+            window->GetTabletData().Twist = short(axis_value & 0xffff) /
+                                            float(xtablet.TwistLevels) * M_PI;
+#  ifdef WITH_GHOST_DEBUG
+            printf("Twist: %f\n", window->GetTabletData().Twist);
+#  endif
+          }
 
 #  undef AXIS_VALUE_GET
         }
@@ -2720,6 +2730,12 @@ void GHOST_SystemX11::refreshXInputDevices()
                   else {
                     xtablet.XtiltLevels = 0;
                     xtablet.YtiltLevels = 0;
+                  }
+                  if (xvi->num_axes > 5) {
+                    xtablet.TwistLevels = xvi->axes[5].max_value;
+                  }
+                  else {
+                    xtablet.TwistLevels = 0;
                   }
 
                   break;

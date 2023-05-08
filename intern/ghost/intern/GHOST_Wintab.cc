@@ -263,7 +263,7 @@ void GHOST_Wintab::remapCoordinates()
 
 void GHOST_Wintab::updateCursorInfo()
 {
-  AXIS Pressure, Orientation[3];
+  AXIS Pressure, Orientation[3], Rotation;
 
   BOOL pressureSupport = m_fpInfo(WTI_DEVICES, DVC_NPRESSURE, &Pressure);
   m_maxPressure = pressureSupport ? Pressure.axMax : 0;
@@ -278,11 +278,23 @@ void GHOST_Wintab::updateCursorInfo()
   else {
     m_maxAzimuth = m_maxAltitude = 0;
   }
-  WINTAB_PRINTF("HCTX %p %s maxAzimuth: %d, maxAltitude: %d\n",
+
+  if (Orientation[2].axResolution) {
+    m_maxTwist = Orientation[2].axMax;
+  }
+  else {
+    BOOL rotationSupport = m_fpInfo(WTI_DEVICES, DVC_ROTATION, &Rotation);
+    if (rotationSupport && Rotation.axResolution) {
+      m_maxTwist = Rotation.axMax;
+    }
+  }
+
+  WINTAB_PRINTF("HCTX %p %s maxAzimuth: %d, maxAltitude: %d, maxTwist: %d\n",
                 m_context.get(),
                 __func__,
                 m_maxAzimuth,
-                m_maxAltitude);
+                m_maxAltitude,
+                m_maxTwist);
 }
 
 void GHOST_Wintab::processInfoChange(LPARAM lParam)
@@ -360,6 +372,10 @@ void GHOST_Wintab::getInput(std::vector<GHOST_WintabInfoWin32> &outWintabInfo)
       /* From there calculate X and Y components based on azimuth. */
       out.tabletData.Xtilt = sin(azmRad) * vecLen;
       out.tabletData.Ytilt = float(sin(M_PI_2 - azmRad) * vecLen);
+    }
+
+    if (m_maxTwist > 0) {
+      out.tabletData.Twist = float(float(ort.orTwist) / float(m_maxTwist) * M_PI);
     }
 
     out.time = pkt.pkTime;

@@ -142,6 +142,7 @@ typedef struct GHOST_TabletData {
   float Pressure;           /* range 0.0 (not touching) to 1.0 (full pressure) */
   float Xtilt; /* range 0.0 (upright) to 1.0 (tilted fully against the tablet surface) */
   float Ytilt; /* as above */
+  float Twist; /* range (-pi,pi), stylus button side towards left is 0.0. */
 } GHOST_TabletData;
 
 static const GHOST_TabletData GHOST_TABLET_DATA_NONE = {

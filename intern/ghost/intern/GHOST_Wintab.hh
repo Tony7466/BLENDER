@@ -214,6 +214,7 @@ class GHOST_Wintab {
   int m_maxPressure = 0;
   int m_maxAzimuth = 0;
   int m_maxAltitude = 0;
+  int m_maxTwist = 0;
 
   /** Number of connected Wintab devices. */
   UINT m_numDevices = 0;
