@@ -385,15 +385,12 @@ ShapeCache::ShapeCache()
   {
     Vector<Vertex> verts;
 
-    int v_len = (6 + 3 + (1 + 2 * diamond_segments) * 6) * 2;
-
     const float r = 14.0f;
-    int v = 0;
     int flag = VCLASS_SCREENSPACE;
     /* Icon */
     const float sin_pi_3 = 0.86602540378f;
     const float cos_pi_3 = 0.5f;
-    const float p[7][2] = {
+    const float2 p[7] = {
         {0.0f, 1.0f},
         {sin_pi_3, cos_pi_3},
         {sin_pi_3, -cos_pi_3},
@@ -402,22 +399,18 @@ ShapeCache::ShapeCache()
         {-sin_pi_3, cos_pi_3},
         {0.0f, 0.0f},
     };
-    for (int i = 0; i < 6; i++) {
-      float t1[2], t2[2];
-      copy_v2_v2(t1, p[i]);
-      copy_v2_v2(t2, p[(i + 1) % 6]);
-      verts.append({{t1[0] * r, t1[1] * r, 0.0f}, flag});
-      verts.append({{t2[0] * r, t2[1] * r, 0.0f}, flag});
+    for (int i : IndexRange(6)) {
+      float2 t1 = p[i];
+      float2 t2 = p[(i + 1) % 6];
+      verts.append({{t1 * r, 0.0f}, flag});
+      verts.append({{t2 * r, 0.0f}, flag});
     }
-    verts.append({{p[1][0] * r, p[1][1] * r, 0.0f}, flag});
-    verts.append({{p[6][0] * r, p[6][1] * r, 0.0f}, flag});
-    verts.append({{p[5][0] * r, p[5][1] * r, 0.0f}, flag});
-    verts.append({{p[6][0] * r, p[6][1] * r, 0.0f}, flag});
-    verts.append({{p[3][0] * r, p[3][1] * r, 0.0f}, flag});
-    verts.append({{p[6][0] * r, p[6][1] * r, 0.0f}, flag});
+    for (int i : {1, 6, 5, 6, 3, 6}) {
+      verts.append({{p[i].x * r, p[i].y * r, 0.0f}, flag});
+    }
     /* Direction Lines */
     flag = VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE;
-    for (int i = 0; i < 6; i++) {
+    for (int i : IndexRange(6)) {
       char axes[] = "zZyYxX";
       float zsta = light_distance_z_get(axes[i], true);
       float zend = light_distance_z_get(axes[i], false);
@@ -426,19 +419,19 @@ ShapeCache::ShapeCache()
 
       const float r = 1.2f;
 
-      verts.append({float3(r, 0.0f, zsta), flag});
+      verts.append({{r, 0.0f, zsta}, flag});
       for (float2 v : ring_vertices(r, diamond_segments)) {
-        verts.append({float3(v, zsta), flag});
-        verts.append({float3(v, zsta), flag});
+        verts.append({{v, zsta}, flag});
+        verts.append({{v, zsta}, flag});
       }
-      verts.append({float3(r, 0.0f, zsta), flag});
+      verts.append({{r, 0.0f, zsta}, flag});
 
-      verts.append({float3(r, 0.0f, zend), flag});
+      verts.append({{r, 0.0f, zend}, flag});
       for (float2 v : ring_vertices(r, diamond_segments)) {
-        verts.append({float3(v, zend), flag});
-        verts.append({float3(v, zend), flag});
+        verts.append({{v, zend}, flag});
+        verts.append({{v, zend}, flag});
       }
-      verts.append({float3(r, 0.0f, zend), flag});
+      verts.append({{r, 0.0f, zend}, flag});
     }
 
     probe_cube = BatchPtr(
@@ -448,15 +441,12 @@ ShapeCache::ShapeCache()
   {
     Vector<Vertex> verts;
 
-    int v_len = (6 * 2 + 3 + (1 + 2 * diamond_segments) * 6) * 2;
-
     const float r = 14.0f;
-    int v = 0;
     int flag = VCLASS_SCREENSPACE;
     /* Icon */
     const float sin_pi_3 = 0.86602540378f;
     const float cos_pi_3 = 0.5f;
-    const float p[7][2] = {
+    const float2 p[7] = {
         {0.0f, 1.0f},
         {sin_pi_3, cos_pi_3},
         {sin_pi_3, -cos_pi_3},
@@ -465,30 +455,27 @@ ShapeCache::ShapeCache()
         {-sin_pi_3, cos_pi_3},
         {0.0f, 0.0f},
     };
-    for (int i = 0; i < 6; i++) {
-      float t1[2], t2[2], tr[2];
-      copy_v2_v2(t1, p[i]);
-      copy_v2_v2(t2, p[(i + 1) % 6]);
-      verts.append({{t1[0] * r, t1[1] * r, 0.0f}, flag});
-      verts.append({{t2[0] * r, t2[1] * r, 0.0f}, flag});
+    for (int i : IndexRange(6)) {
+      float2 t1 = p[i];
+      float2 t2 = p[(i + 1) % 6];
+      float2 tr;
+      verts.append({{t1 * r, 0.0f}, flag});
+      verts.append({{t2 * r, 0.0f}, flag});
       /* Internal wires. */
       for (int j = 1; j < 2; j++) {
-        mul_v2_v2fl(tr, p[(i / 2) * 2 + 1], -0.5f * j);
-        add_v2_v2v2(t1, p[i], tr);
-        add_v2_v2v2(t2, p[(i + 1) % 6], tr);
-        verts.append({{t1[0] * r, t1[1] * r, 0.0f}, flag});
-        verts.append({{t2[0] * r, t2[1] * r, 0.0f}, flag});
+        tr = p[(i / 2) * 2 + 1] * (-0.5f * j);
+        t1 = p[i] + tr;
+        t2 = p[(i + 1) % 6] + tr;
+        verts.append({{t1 * r, 0.0f}, flag});
+        verts.append({{t2 * r, 0.0f}, flag});
       }
     }
-    verts.append({{p[1][0] * r, p[1][1] * r, 0.0f}, flag});
-    verts.append({{p[6][0] * r, p[6][1] * r, 0.0f}, flag});
-    verts.append({{p[5][0] * r, p[5][1] * r, 0.0f}, flag});
-    verts.append({{p[6][0] * r, p[6][1] * r, 0.0f}, flag});
-    verts.append({{p[3][0] * r, p[3][1] * r, 0.0f}, flag});
-    verts.append({{p[6][0] * r, p[6][1] * r, 0.0f}, flag});
+    for (int i : {1, 6, 5, 6, 3, 6}) {
+      verts.append({{p[i].x * r, p[i].y * r, 0.0f}, flag});
+    }
     /* Direction Lines */
     flag = VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE;
-    for (int i = 0; i < 6; i++) {
+    for (int i : IndexRange(6)) {
       char axes[] = "zZyYxX";
       float zsta = light_distance_z_get(axes[i], true);
       float zend = light_distance_z_get(axes[i], false);
@@ -497,19 +484,19 @@ ShapeCache::ShapeCache()
 
       const float r = 1.2f;
 
-      verts.append({float3(r, 0.0f, zsta), flag});
+      verts.append({{r, 0.0f, zsta}, flag});
       for (float2 v : ring_vertices(r, diamond_segments)) {
-        verts.append({float3(v, zsta), flag});
-        verts.append({float3(v, zsta), flag});
+        verts.append({{v, zsta}, flag});
+        verts.append({{v, zsta}, flag});
       }
-      verts.append({float3(r, 0.0f, zsta), flag});
+      verts.append({{r, 0.0f, zsta}, flag});
 
-      verts.append({float3(r, 0.0f, zend), flag});
+      verts.append({{r, 0.0f, zend}, flag});
       for (float2 v : ring_vertices(r, diamond_segments)) {
-        verts.append({float3(v, zend), flag});
-        verts.append({float3(v, zend), flag});
+        verts.append({{v, zend}, flag});
+        verts.append({{v, zend}, flag});
       }
-      verts.append({float3(r, 0.0f, zend), flag});
+      verts.append({{r, 0.0f, zend}, flag});
     }
 
     probe_grid = BatchPtr(
@@ -519,13 +506,10 @@ ShapeCache::ShapeCache()
   {
     Vector<Vertex> verts;
 
-    int v_len = 2 * 4;
-
     const float r = 20.0f;
-    int v = 0;
     /* Icon */
     const float sin_pi_3 = 0.86602540378f;
-    const float p[4][2] = {
+    const float2 p[4] = {
         {0.0f, 0.5f},
         {sin_pi_3, 0.0f},
         {0.0f, -0.5f},
@@ -533,9 +517,7 @@ ShapeCache::ShapeCache()
     };
     for (int i = 0; i < 4; i++) {
       for (int a = 0; a < 2; a++) {
-        float x = p[(i + a) % 4][0] * r;
-        float y = p[(i + a) % 4][1] * r;
-        verts.append({{x, y, 0.0}, VCLASS_SCREENSPACE});
+        verts.append({{p[(i + a) % 4] * r, 0.0}, VCLASS_SCREENSPACE});
       }
     }
 
