@@ -351,3 +351,6 @@ BoundBox *BKE_grease_pencil_boundbox_get(Object *ob);
 void BKE_grease_pencil_data_update(struct Depsgraph *depsgraph,
                                    struct Scene *scene,
                                    struct Object *object);
+
+bool BKE_grease_pencil_references_cyclic_check(const GreasePencil *id_reference,
+                                               const GreasePencil *grease_pencil);

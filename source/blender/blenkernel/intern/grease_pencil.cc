@@ -734,6 +734,37 @@ void BKE_grease_pencil_data_update(struct Depsgraph * /*depsgraph*/,
 /** \} */
 
 /* ------------------------------------------------------------------- */
+/** \name Grease Pencil reference functions
+ * \{ */
+
+static bool grease_pencil_references_cyclic_check_internal(const GreasePencil *id_reference,
+                                                           const GreasePencil *grease_pencil)
+{
+  for (GreasePencilDrawingBase *base : grease_pencil->drawings()) {
+    if (base->type == GP_DRAWING_REFERENCE) {
+      GreasePencilDrawingReference *reference = reinterpret_cast<GreasePencilDrawingReference *>(
+          base);
+      if (id_reference == reference->id_reference) {
+        return true;
+      }
+
+      if (grease_pencil_references_cyclic_check_internal(id_reference, reference->id_reference)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+bool BKE_grease_pencil_references_cyclic_check(const GreasePencil *id_reference,
+                                               const GreasePencil *grease_pencil)
+{
+  return grease_pencil_references_cyclic_check_internal(id_reference, grease_pencil);
+}
+
+/** \} */
+
+/* ------------------------------------------------------------------- */
 /** \name Draw Cache
  * \{ */
 
