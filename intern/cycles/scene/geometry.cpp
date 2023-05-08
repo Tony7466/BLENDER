@@ -715,6 +715,8 @@ void GeometryManager::device_data_xfer_and_bvh_update(int idx,
         scene->times[idx].mesh = time;
       }
     });
+    //dscene->device_update_attributes(device, &(scene->attrib_sizes), progress);
+    //dscene->device_update_mesh(device, &(scene->geom_sizes), progress);
     device->upload_changed(dscene->geom_buffers);
   }
 
@@ -1156,6 +1158,7 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
           }
         });
         //sub_dscene->device_update_attributes(sub_device, &(scene->attrib_sizes), progress);
+	device->upload_changed(dscene->geom_buffers);
       }
       {
 	scoped_callback_timer timer([scene](double time) {
@@ -1165,7 +1168,6 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
 	});
         //sub_dscene->device_update_mesh(sub_device, &(scene->geom_sizes), progress);
       }
-      device->upload_changed(dscene->geom_buffers);
       
       /* Copy constant data needed by shader evaluation. */
       sub_device->const_copy_to("data", &dscene->data, sizeof(dscene->data));
