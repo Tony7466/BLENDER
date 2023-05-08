@@ -128,19 +128,17 @@ void sample_grid(openvdb::GridBase::ConstPtr base_grid,
   GridT::ConstAccessor accessor = grid->getConstAccessor();
 
   auto copy_data = [&](auto sampler) {
-    devirtualize_varray(positions, [&](const auto positions) {
-      for (const int i : mask.index_range()) {
-        const float3 &pos = positions[i];
-        ValueT value = sampler.wsSample(openvdb::Vec3R(pos.x, pos.y, pos.z));
+    mask.foreach_index([&](const int64_t i) {
+      const float3 &pos = positions[i];
+      ValueT value = sampler.wsSample(openvdb::Vec3R(pos.x, pos.y, pos.z));
 
-        /* Special case for vector. */
-        if constexpr (std::is_same_v<GridT, openvdb::VectorGrid>) {
-          openvdb::Vec3f vec = static_cast<openvdb::Vec3f>(value);
-          dst.typed<float3>()[i] = float3(vec.asV());
-        }
-        else {
-          dst.typed<ValueT>()[i] = value;
-        }
+      /* Special case for vector. */
+      if constexpr (std::is_same_v<GridT, openvdb::VectorGrid>) {
+        openvdb::Vec3f vec = static_cast<openvdb::Vec3f>(value);
+        dst.typed<float3>()[i] = float3(vec.asV());
+      }
+      else {
+        dst.typed<ValueT>()[i] = value;
       }
     });
   };
