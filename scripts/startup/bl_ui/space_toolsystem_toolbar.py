@@ -1989,7 +1989,7 @@ class _defs_gpencil_paint:
                 operator="gpencil.draw",
             ),
         )
-    
+
     @ToolDef.from_fn
     def cutter():
         def draw_settings(_context, layout, tool):

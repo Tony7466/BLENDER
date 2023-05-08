@@ -684,7 +684,6 @@ GreasePencil *BKE_grease_pencil_new_nomain()
 {
   GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(
       BKE_id_new_nomain(ID_GP, nullptr));
-  grease_pencil_init_data(&grease_pencil->id);
   return grease_pencil;
 }
 

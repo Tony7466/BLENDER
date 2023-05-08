@@ -114,7 +114,7 @@ class Layer : public TreeNode, public ::GreasePencilLayer {
    *    {0: 0, 5: 1, 10: -1, 12: 2, 16: -1}
    *
    *    In this example there are three drawings (drawing #0, drawing #1 and drawing #2). The first
-   *    drawing starts at frame 0 and ends at frame 5 (excusive). The second drawing starts at
+   *    drawing starts at frame 0 and ends at frame 5 (exclusive). The second drawing starts at
    *    frame 5 and ends at frame 10. Finally, the third drawing starts at frame 12 and ends at
    *    frame 16.
    *
@@ -207,11 +207,11 @@ class LayerGroup : public TreeNode {
    */
   mutable CacheMutex children_cache_mutex_;
   /**
-   * Caches all the children of this group in a single pre-order vector.
+   * Caches all the children of this group in a single pre-ordered vector.
    */
   mutable Vector<TreeNode *> children_cache_;
   /**
-   * Caches all the layers in this group in a single pre-order vector.
+   * Caches all the layers in this group in a single pre-ordered vector.
    */
   mutable Vector<Layer *> layer_cache_;
 
