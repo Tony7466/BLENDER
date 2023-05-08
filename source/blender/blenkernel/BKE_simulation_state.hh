@@ -112,7 +112,9 @@ class ModifierSimulationState {
   ModifierSimulationCache *owner_;
   mutable std::mutex mutex_;
   Map<SimulationZoneID, std::unique_ptr<SimulationZoneState>> zone_states_;
+  /** File path to folder containing baked meta-data. */
   std::optional<std::string> meta_path_;
+  /** File path to folder containing baked data. */
   std::optional<std::string> bdata_dir_;
 
   const SimulationZoneState *get_zone_state(const SimulationZoneID &zone_id) const;
