@@ -149,8 +149,8 @@ class ModifierSimulationCache {
  private:
   Vector<std::unique_ptr<ModifierSimulationStateAtFrame>> states_at_frames_;
   /**
-   * Used for baking to deduplicate arrays when writing to storage. Sharing info must be kept
-   * alive for multiple frames to detect if each data array's version has changed.
+   * Used for baking to deduplicate arrays when writing and writing from storage. Sharing info
+   * must be kept alive for multiple frames to detect if each data array's version has changed.
    */
   std::unique_ptr<BDataSharing> bdata_sharing_;
 
