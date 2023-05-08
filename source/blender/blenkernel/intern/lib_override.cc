@@ -1810,7 +1810,7 @@ static LibOverrideMissingIDsData lib_override_library_resync_build_missing_ids_d
     if (!ID_IS_LINKED(id_iter)) {
       continue;
     }
-    const int required_tags = (LIB_TAG_MISSING | LIB_TAG_LIB_OVERRIDE_NEED_RESYNC);
+    const int required_tags = (LIB_TAG_MISSING | LIB_TAG_LIBOVERRIDE_NEED_RESYNC);
     if ((id_iter->tag & required_tags) != required_tags) {
       continue;
     }

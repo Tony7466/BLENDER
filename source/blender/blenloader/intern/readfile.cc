@@ -2774,11 +2774,11 @@ static ID *create_placeholder(Main *mainvar,
   ph_id->icon_id = 0;
 
   if (was_liboverride) {
-    /* 'Abuse' `LIB_TAG_LIB_OVERRIDE_NEED_RESYNC` to mark that placeholder missing linked ID as
+    /* 'Abuse' `LIB_TAG_LIBOVERRIDE_NEED_RESYNC` to mark that placeholder missing linked ID as
      * being a liboverride.
      *
      * This will be used by the liboverride resync process, see #lib_override_library_resync. */
-    ph_id->tag |= LIB_TAG_LIB_OVERRIDE_NEED_RESYNC;
+    ph_id->tag |= LIB_TAG_LIBOVERRIDE_NEED_RESYNC;
   }
 
   BLI_addtail(lb, ph_id);
