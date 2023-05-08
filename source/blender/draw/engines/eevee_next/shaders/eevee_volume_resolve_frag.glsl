@@ -8,8 +8,8 @@
 
 void main()
 {
-  vec2 uvs = gl_FragCoord.xy / vec2(textureSize(inSceneDepth, 0));
-  float scene_depth = texture(inSceneDepth, uvs).r;
+  vec2 uvs = gl_FragCoord.xy / vec2(textureSize(in_scene_depth, 0));
+  float scene_depth = texture(in_scene_depth, uvs).r;
 
   vec3 transmittance, scattering;
   volumetric_resolve(uvs, scene_depth, transmittance, scattering);

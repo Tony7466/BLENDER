@@ -221,6 +221,6 @@ void volumetric_resolve(vec2 frag_uvs,
 {
   vec3 coord = ndc_to_volume(vec3(frag_uvs, frag_depth));
 
-  scattering = texture(inScattering, coord).rgb;
-  transmittance = texture(inTransmittance, coord).rgb;
+  scattering = texture(in_scattering, coord).rgb;
+  transmittance = texture(in_transmittance, coord).rgb;
 }

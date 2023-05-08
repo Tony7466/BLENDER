@@ -6,8 +6,6 @@
  * Volumetric effects rendering using frostbite approach.
  */
 
-#pragma once
-
 #include "DRW_render.h"
 
 #include "BLI_listbase.h"
@@ -379,9 +377,9 @@ void VolumeModule::end_sync()
   resolve_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
   resolve_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_RESOLVE));
   bind_volume_pass_resources(resolve_ps_);
-  resolve_ps_.bind_texture("inScattering", &integrated_scatter_tx_);
-  resolve_ps_.bind_texture("inTransmittance", &integrated_transmit_tx_);
-  resolve_ps_.bind_texture("inSceneDepth", &inst_.render_buffers.depth_tx);
+  resolve_ps_.bind_texture("in_scattering", &integrated_scatter_tx_);
+  resolve_ps_.bind_texture("in_transmittance", &integrated_transmit_tx_);
+  resolve_ps_.bind_texture("in_scene_depth", &inst_.render_buffers.depth_tx);
 
   resolve_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
 }
