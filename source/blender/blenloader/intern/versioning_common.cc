@@ -1198,11 +1198,36 @@ static bNodeTree *instances_on_faces(const Span<Object *> objects,
   return node_tree;
 }
 
-static void move_rna_to_id_prop(PropertyRNA &src, IDProperty &dst, Main *bmain)
+static void move_rna_to_id_prop(PropertyRNA &src_prop,
+                                PointerRNA &src_ptr,
+                                IDProperty &dst,
+                                Object &object)
 {
-  // values = (float)RNA_property_boolean_get(ptr, prop);
+  switch (IDP_ui_data_type(&dst)) {
+    case IDP_UI_DATA_TYPE_INT: {
+      const int values = RNA_property_int_get(&src_ptr, &src_prop);
+      *reinterpret_cast<int *>(&IDP_Int(&dst)) = values;
+      break;
+    }
+    case IDP_UI_DATA_TYPE_FLOAT: {
+      const int values = RNA_property_float_get(&src_ptr, &src_prop);
+      *reinterpret_cast<float *>(&IDP_Float(&dst)) = values;
+      break;
+    }
+    case IDP_UI_DATA_TYPE_BOOLEAN: {
+      const bool values = RNA_property_boolean_get(&src_ptr, &src_prop);
+      *reinterpret_cast<bool *>(&IDP_Bool(&dst)) = values;
+      break;
+    }
+    case IDP_UI_DATA_TYPE_UNSUPPORTED:
+    case IDP_UI_DATA_TYPE_STRING:
+    case IDP_UI_DATA_TYPE_ID:
+      BLI_assert_unreachable();
+      break;
+  }
 
-  // BKE_animdata_fix_paths_rename_all
+  // BKE_animdata_fix_paths_rename_all(&object.id, "modifiers['Instances on Points 3.6'][",
+  // "use_instance_vertices_rotation", "Input_3");
 }
 
 static void object_push_instances_modifier(const StringRefNull name,
@@ -1249,10 +1274,11 @@ static void object_push_instances_modifier(const StringRefNull name,
     BLI_assert(dst != nullptr);
 
     const StringRef legacy_prop_name = socket_legacy_name_maping.lookup(socket->name);
-    PropertyRNA *src = RNA_struct_find_property(&object_ptr, legacy_prop_name.data());
-    BLI_assert(src != nullptr);
 
-    move_rna_to_id_prop(*src, *dst, bmain);
+    PropertyRNA *obkect_prop = RNA_struct_find_property(&object_ptr, legacy_prop_name.data());
+    BLI_assert(obkect_prop != nullptr);
+
+    move_rna_to_id_prop(*obkect_prop, object_ptr, *dst, object);
   }
 }
 

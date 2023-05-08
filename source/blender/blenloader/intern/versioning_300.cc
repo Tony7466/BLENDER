@@ -1367,7 +1367,7 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 306, 7)) {
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 8)) {
     /* TODO: (bmain, 400, 0). */
     remove_legacy_instances_on(bmain, bmain->objects);
   }
