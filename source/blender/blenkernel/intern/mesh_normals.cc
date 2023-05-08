@@ -1509,13 +1509,13 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
     done_loops.fill(true);
   }
   else {
-    Array<int> fan_corner_offset_indices;
-    Array<int> fan_corners_data;
+    Array<int> fan_corners_from_space_offset_indices;
+    Array<int> fan_corners_from_space_data;
     reverse_index_array(lnors_spacearr.corner_space_indices,
                         lnors_spacearr.spaces.size(),
-                        fan_corner_offset_indices,
-                        fan_corners_data);
-    const OffsetIndices<int> fan_corner_offsets(fan_corner_offset_indices);
+                        fan_corners_from_space_offset_indices,
+                        fan_corners_from_space_data);
+    const OffsetIndices<int> fan_corner_offsets(fan_corners_from_space_offset_indices);
 
     for (const int i : corner_verts.index_range()) {
       if (lnors_spacearr.corner_space_indices[i] == -1) {
@@ -1533,7 +1533,7 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
       }
 
       const int space_index = lnors_spacearr.corner_space_indices[i];
-      const Span<int> fan_corners = fan_corners_data.as_span().slice(
+      const Span<int> fan_corners = fan_corners_from_space_data.as_span().slice(
           fan_corner_offsets[space_index]);
 
       /* Notes:
@@ -1616,13 +1616,13 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
                       loop_normals);
   }
 
-  Array<int> fan_corner_offset_indices;
-  Array<int> fan_corners_data;
+  Array<int> fan_corners_from_space_offset_indices;
+  Array<int> fan_corners_from_space_data;
   reverse_index_array(lnors_spacearr.corner_space_indices,
                       lnors_spacearr.spaces.size(),
-                      fan_corner_offset_indices,
-                      fan_corners_data);
-  const OffsetIndices<int> fan_corner_offsets(fan_corner_offset_indices);
+                      fan_corners_from_space_offset_indices,
+                      fan_corners_from_space_data);
+  const OffsetIndices<int> fan_corner_offsets(fan_corners_from_space_offset_indices);
 
   /* And we just have to convert plain object-space custom normals to our
    * lnor space-encoded ones. */
@@ -1640,7 +1640,7 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
     }
 
     const int space_index = lnors_spacearr.corner_space_indices[i];
-    const Span<int> fan_corners = fan_corners_data.as_span().slice(
+    const Span<int> fan_corners = fan_corners_from_space_data.as_span().slice(
         fan_corner_offsets[space_index]);
 
     /* Note we accumulate and average all custom normals in current smooth fan,
