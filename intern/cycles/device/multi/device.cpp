@@ -244,7 +244,7 @@ class MultiDevice : public Device {
 
           if (!bvh_multi->sub_bvhs[id]) {
             BVHParams params = bvh_multi->params;
-	    params.bvh_layout = get_bvh_layout(sub->device, bvh_multi->params.bvh_layout);
+	    params.bvh_layout = get_bvh_layout(sub->device.get(), bvh_multi->params.bvh_layout);
 
             /* Skip building a bottom level acceleration structure for non-instanced geometry on
              * Embree (since they are put into the top level directly, see bvh_embree.cpp) */

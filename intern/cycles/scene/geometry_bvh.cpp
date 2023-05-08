@@ -174,7 +174,7 @@ void GeometryManager::device_update_sub_bvh(Device *device,
       // Yes, so setup the device specific sub_bvh in the multi-bvh.
       BVHParams bparams = bvh->params;
       // Set the layout to the correct one for the device
-      bparams.bvh_layout = device->get_bvh(device, bvh->params.bvh_layout);
+      bparams.bvh_layout = device->get_bvh_layout(device, bvh->params.bvh_layout);
       if (sub_bvh != NULL) {
         delete sub_bvh;
       }
