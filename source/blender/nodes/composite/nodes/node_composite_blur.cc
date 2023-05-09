@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation. All rights reserved. */
+ * Copyright 2006 Blender Foundation */
 
 /** \file
  * \ingroup cmpnodes
@@ -136,7 +136,7 @@ class BlurOperation : public NodeOperation {
 
     const float2 blur_radius = compute_blur_radius();
 
-    const SymmetricBlurWeights &weights = context().cache_manager().get_symmetric_blur_weights(
+    const SymmetricBlurWeights &weights = context().cache_manager().symmetric_blur_weights.get(
         node_storage(bnode()).filtertype, blur_radius);
     weights.bind_as_texture(shader, "weights_tx");
 
@@ -171,7 +171,7 @@ class BlurOperation : public NodeOperation {
 
     const float2 blur_radius = compute_blur_radius();
 
-    const SymmetricBlurWeights &weights = context().cache_manager().get_symmetric_blur_weights(
+    const SymmetricBlurWeights &weights = context().cache_manager().symmetric_blur_weights.get(
         node_storage(bnode()).filtertype, blur_radius);
     weights.bind_as_texture(shader, "weights_tx");
 

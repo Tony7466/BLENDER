@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup edobj
@@ -337,6 +337,12 @@ void OBJECT_OT_collection_objects_select(struct wmOperatorType *ot);
 
 void OBJECT_OT_bake_image(wmOperatorType *ot);
 void OBJECT_OT_bake(wmOperatorType *ot);
+
+/* object_bake_simulation.cc */
+
+void OBJECT_OT_simulation_nodes_cache_calculate_to_frame(wmOperatorType *ot);
+void OBJECT_OT_simulation_nodes_cache_bake(wmOperatorType *ot);
+void OBJECT_OT_simulation_nodes_cache_delete(wmOperatorType *ot);
 
 /* object_random.c */
 

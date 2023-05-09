@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation. All rights reserved. */
+ * Copyright 2023 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -27,8 +27,9 @@ VKDescriptorSet::~VKDescriptorSet()
 {
   if (vk_descriptor_set_ != VK_NULL_HANDLE) {
     /* Handle should be given back to the pool. */
-    VKContext &context = *VKContext::get();
-    context.descriptor_pools_get().free(*this);
+    BLI_assert(VKContext::get());
+    VKDevice &device = VKBackend::get().device_;
+    device.descriptor_pools_get().free(*this);
     BLI_assert(vk_descriptor_set_ == VK_NULL_HANDLE);
   }
 }
@@ -150,16 +151,17 @@ void VKDescriptorSetTracker::update(VKContext &context)
                  "Not all changes have been converted to a write descriptor. Check "
                  "`Binding::is_buffer` and `Binding::is_image`.");
 
-  VkDevice vk_device = context.device_get();
+  const VKDevice &device = VKBackend::get().device_get();
   vkUpdateDescriptorSets(
-      vk_device, descriptor_writes.size(), descriptor_writes.data(), 0, nullptr);
+      device.device_get(), descriptor_writes.size(), descriptor_writes.data(), 0, nullptr);
 
   bindings_.clear();
 }
 
 std::unique_ptr<VKDescriptorSet> VKDescriptorSetTracker::create_resource(VKContext &context)
 {
-  return context.descriptor_pools_get().allocate(layout_);
+  VKDevice &device = VKBackend::get().device_;
+  return device.descriptor_pools_get().allocate(layout_);
 }
 
 }  // namespace blender::gpu

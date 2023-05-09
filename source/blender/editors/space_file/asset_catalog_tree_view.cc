@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 Blender Foundation. All rights reserved. */
+ * Copyright 2007 Blender Foundation */
 
 /** \file
  * \ingroup spfile
@@ -718,7 +718,8 @@ bool file_set_asset_catalog_filter_settings(
   }
 
   if (filter_settings->asset_catalog_visibility == FILE_SHOW_ASSETS_FROM_CATALOG &&
-      !BLI_uuid_equal(filter_settings->asset_catalog_id, catalog_id)) {
+      !BLI_uuid_equal(filter_settings->asset_catalog_id, catalog_id))
+  {
     filter_settings->asset_catalog_id = catalog_id;
     needs_update = true;
   }

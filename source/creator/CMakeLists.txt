@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation. All rights reserved.
+# Copyright 2006 Blender Foundation
 
 set(INC
   ../../intern/clog
@@ -11,6 +11,7 @@ set(INC
   ../blender/gpu
   ../blender/imbuf
   ../blender/io/usd
+  ../blender/bmesh
   ../blender/makesdna
   ../blender/makesrna
   ../blender/render
@@ -23,6 +24,10 @@ set(LIB
 
 if(HAVE_FEENABLEEXCEPT)
   add_definitions(-DHAVE_FEENABLEEXCEPT)
+endif()
+
+if(WITH_STRSIZE_DEBUG)
+  add_definitions(-DWITH_STRSIZE_DEBUG)
 endif()
 
 if(WITH_TBB)
@@ -52,6 +57,10 @@ endif()
 
 if(WITH_VULKAN_BACKEND)
   add_definitions(-DWITH_VULKAN_BACKEND)
+endif()
+
+if(WITH_RENDERDOC)
+  add_definitions(-DWITH_RENDERDOC)
 endif()
 
 if(WITH_CODEC_FFMPEG)
@@ -1289,10 +1298,7 @@ elseif(WIN32)
   endif()
 
   if(PLATFORM_BUNDLED_LIBRARIES)
-    install(
-      FILES ${PLATFORM_BUNDLED_LIBRARIES}
-      DESTINATION ${TARGETDIR_EXE}
-    )
+    windows_process_platform_bundled_libraries("${PLATFORM_BUNDLED_LIBRARIES}")
   endif()
 elseif(APPLE)
   if(NOT WITH_PYTHON_MODULE)
@@ -1472,7 +1478,11 @@ install(
 # -----------------------------------------------------------------------------
 # Bundle assets
 
-set(ASSET_BUNDLE_DIR ${CMAKE_SOURCE_DIR}/../lib/assets/publish/)
+set(ASSET_BUNDLE_DIR ${CMAKE_SOURCE_DIR}/release/datafiles/assets/publish/)
+
+if(NOT EXISTS "${ASSET_BUNDLE_DIR}")
+  set(ASSET_BUNDLE_DIR ${CMAKE_SOURCE_DIR}/../lib/assets/publish/)
+endif()
 
 if(EXISTS "${ASSET_BUNDLE_DIR}")
   install(
@@ -1653,14 +1663,20 @@ endif()
 if(UNIX AND NOT APPLE)
   if(NOT WITH_PYTHON_MODULE)
     if(WITH_DOC_MANPAGE)
+      # Only run the command to generate the man-page when it may be outdated.
+      # The `IS_NEWER_THAN` checks always run when files are missing.
       install(
         CODE "\
-execute_process(\
-  COMMAND \
-  \"${CMAKE_SOURCE_DIR}/doc/manpage/blender.1.py\" \
-  --blender \"${EXECUTABLE_OUTPUT_PATH}/blender\" \
-  --output \"${CMAKE_CURRENT_BINARY_DIR}/blender.1\"\
-)"
+set(BLENDER_BIN \"${EXECUTABLE_OUTPUT_PATH}/blender\")\n\
+set(MANPAGE_GEN \"${CMAKE_SOURCE_DIR}/doc/manpage/blender.1.py\")\n\
+set(MANPAGE_OUT \"${CMAKE_CURRENT_BINARY_DIR}/blender.1\")\n\
+if(\n\
+  ($\{BLENDER_BIN\} IS_NEWER_THAN $\{MANPAGE_OUT\}) OR\n\
+  ($\{MANPAGE_GEN\} IS_NEWER_THAN $\{MANPAGE_OUT\})\n\
+)\n\
+  execute_process(COMMAND $\{MANPAGE_GEN\} --blender $\{BLENDER_BIN\} --output $\{MANPAGE_OUT\})\n\
+endif()\n\
+"
         DEPENDS blender
       )
 

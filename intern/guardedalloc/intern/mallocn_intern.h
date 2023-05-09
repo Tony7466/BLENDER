@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation. All rights reserved. */
+ * Copyright 2013 Blender Foundation */
 
 /** \file
  * \ingroup intern_mem
@@ -52,7 +52,7 @@ size_t malloc_usable_size(void *ptr);
 #  define UNLIKELY(x) (x)
 #endif
 
-#if !defined(__APPLE__) && !defined(__FreeBSD__) && !defined(__NetBSD__)
+#if !defined(__APPLE__) && !defined(__FreeBSD__) && !defined(__NetBSD__) && !defined(__OpenBSD__)
 // Needed for memalign on Linux and _aligned_alloc on Windows.
 
 #  include <malloc.h>

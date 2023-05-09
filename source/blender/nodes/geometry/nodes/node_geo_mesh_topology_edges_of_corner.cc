@@ -75,14 +75,14 @@ class CornerPreviousEdgeFieldInput final : public bke::MeshFieldInput {
     if (domain != ATTR_DOMAIN_CORNER) {
       return {};
     }
-    const Span<MPoly> polys = mesh.polys();
+    const OffsetIndices polys = mesh.polys();
     const Span<int> corner_edges = mesh.corner_edges();
-    Array<int> loop_to_poly_map = bke::mesh_topology::build_loop_to_poly_map(polys, mesh.totloop);
+    Array<int> loop_to_poly_map = bke::mesh_topology::build_loop_to_poly_map(polys);
     return VArray<int>::ForFunc(
         mesh.totloop,
         [polys, corner_edges, loop_to_poly_map = std::move(loop_to_poly_map)](const int corner_i) {
-          const MPoly &poly = polys[loop_to_poly_map[corner_i]];
-          return corner_edges[bke::mesh::poly_corner_prev(poly, corner_i)];
+          return corner_edges[bke::mesh::poly_corner_prev(polys[loop_to_poly_map[corner_i]],
+                                                          corner_i)];
         });
   }
 
@@ -110,14 +110,14 @@ static void node_geo_exec(GeoNodeExecParams params)
   const Field<int> corner_index = params.extract_input<Field<int>>("Corner Index");
   if (params.output_is_required("Next Edge Index")) {
     params.set_output("Next Edge Index",
-                      Field<int>(std::make_shared<FieldAtIndexInput>(
+                      Field<int>(std::make_shared<EvaluateAtIndexInput>(
                           corner_index,
                           Field<int>(std::make_shared<CornerNextEdgeFieldInput>()),
                           ATTR_DOMAIN_CORNER)));
   }
   if (params.output_is_required("Previous Edge Index")) {
     params.set_output("Previous Edge Index",
-                      Field<int>(std::make_shared<FieldAtIndexInput>(
+                      Field<int>(std::make_shared<EvaluateAtIndexInput>(
                           corner_index,
                           Field<int>(std::make_shared<CornerPreviousEdgeFieldInput>()),
                           ATTR_DOMAIN_CORNER)));

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation. All rights reserved. */
+ * Copyright 2006 Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -217,7 +217,7 @@ bool BKE_id_attribute_rename(ID *id,
     BKE_id_attributes_default_color_set(id, result_name);
   }
 
-  BLI_strncpy_utf8(layer->name, result_name, sizeof(layer->name));
+  STRNCPY_UTF8(layer->name, result_name);
 
   return true;
 }
@@ -265,11 +265,15 @@ bool BKE_id_attribute_calc_unique_name(ID *id, const char *name, char *outname)
     BLI_strncpy_utf8(outname, name, maxlength);
   }
 
-  return BLI_uniquename_cb(unique_name_cb, &data, nullptr, '.', outname, maxlength);
+  const char *defname = ""; /* Dummy argument, never used as `name` is never zero length. */
+  return BLI_uniquename_cb(unique_name_cb, &data, defname, '.', outname, maxlength);
 }
 
-CustomDataLayer *BKE_id_attribute_new(
-    ID *id, const char *name, const int type, const eAttrDomain domain, ReportList *reports)
+CustomDataLayer *BKE_id_attribute_new(ID *id,
+                                      const char *name,
+                                      const eCustomDataType type,
+                                      const eAttrDomain domain,
+                                      ReportList *reports)
 {
   using namespace blender::bke;
   DomainInfo info[ATTR_DOMAIN_NUM];
@@ -500,7 +504,7 @@ bool BKE_id_attribute_remove(ID *id, const char *name, ReportList *reports)
 
 CustomDataLayer *BKE_id_attribute_find(const ID *id,
                                        const char *name,
-                                       const int type,
+                                       const eCustomDataType type,
                                        const eAttrDomain domain)
 {
   if (!name) {
@@ -536,7 +540,8 @@ CustomDataLayer *BKE_id_attribute_search(ID *id,
   get_domains(id, info);
 
   for (eAttrDomain domain = ATTR_DOMAIN_POINT; domain < ATTR_DOMAIN_NUM;
-       domain = static_cast<eAttrDomain>(int(domain) + 1)) {
+       domain = static_cast<eAttrDomain>(int(domain) + 1))
+  {
     if (!(domain_mask & ATTR_DOMAIN_AS_MASK(domain))) {
       continue;
     }
@@ -749,7 +754,8 @@ CustomDataLayer *BKE_id_attribute_from_index(ID *id,
 
     for (int i = 0; i < customdata->totlayer; i++) {
       if (!(layer_mask & CD_TYPE_AS_MASK(customdata->layers[i].type)) ||
-          (customdata->layers[i].flag & CD_FLAG_TEMPORARY)) {
+          (customdata->layers[i].flag & CD_FLAG_TEMPORARY))
+      {
         continue;
       }
 
@@ -870,16 +876,18 @@ CustomDataLayer *BKE_id_attributes_color_find(const ID *id, const char *name)
   if (CustomDataLayer *layer = BKE_id_attribute_find(id, name, CD_PROP_COLOR, ATTR_DOMAIN_POINT)) {
     return layer;
   }
-  if (CustomDataLayer *layer = BKE_id_attribute_find(
-          id, name, CD_PROP_COLOR, ATTR_DOMAIN_CORNER)) {
+  if (CustomDataLayer *layer = BKE_id_attribute_find(id, name, CD_PROP_COLOR, ATTR_DOMAIN_CORNER))
+  {
     return layer;
   }
   if (CustomDataLayer *layer = BKE_id_attribute_find(
-          id, name, CD_PROP_BYTE_COLOR, ATTR_DOMAIN_POINT)) {
+          id, name, CD_PROP_BYTE_COLOR, ATTR_DOMAIN_POINT))
+  {
     return layer;
   }
   if (CustomDataLayer *layer = BKE_id_attribute_find(
-          id, name, CD_PROP_BYTE_COLOR, ATTR_DOMAIN_CORNER)) {
+          id, name, CD_PROP_BYTE_COLOR, ATTR_DOMAIN_CORNER))
+  {
     return layer;
   }
   return nullptr;

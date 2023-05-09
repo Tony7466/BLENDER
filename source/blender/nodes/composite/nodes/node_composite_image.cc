@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation. All rights reserved. */
+ * Copyright 2006 Blender Foundation */
 
 /** \file
  * \ingroup cmpnodes
@@ -113,7 +113,7 @@ static void cmp_node_image_add_pass_output(bNodeTree *ntree,
 
   NodeImageLayer *sockdata = (NodeImageLayer *)sock->storage;
   if (sockdata) {
-    BLI_strncpy(sockdata->pass_name, passname, sizeof(sockdata->pass_name));
+    STRNCPY(sockdata->pass_name, passname);
   }
 
   /* Reorder sockets according to order that passes are added. */
@@ -310,7 +310,8 @@ static void cmp_node_rlayer_create_outputs(bNodeTree *ntree,
         RE_engine_free(engine);
 
         if ((scene->r.mode & R_EDGE_FRS) &&
-            (view_layer->freestyle_config.flags & FREESTYLE_AS_RENDER_PASS)) {
+            (view_layer->freestyle_config.flags & FREESTYLE_AS_RENDER_PASS))
+        {
           node_cmp_rlayers_register_pass(
               ntree, node, scene, view_layer, RE_PASSNAME_FREESTYLE, SOCK_RGBA);
         }
@@ -709,9 +710,7 @@ static void node_composit_init_rlayers(const bContext *C, PointerRNA *ptr)
     NodeImageLayer *sockdata = MEM_cnew<NodeImageLayer>(__func__);
     sock->storage = sockdata;
 
-    BLI_strncpy(sockdata->pass_name,
-                node_cmp_rlayers_sock_to_pass(sock_index),
-                sizeof(sockdata->pass_name));
+    STRNCPY(sockdata->pass_name, node_cmp_rlayers_sock_to_pass(sock_index));
   }
 }
 

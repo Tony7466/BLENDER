@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation. All rights reserved. */
+ * Copyright 2006 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -244,7 +244,8 @@ void GPU_viewport_colorspace_set(GPUViewport *viewport,
   if (view_settings->curve_mapping) {
     if (viewport->view_settings.curve_mapping) {
       if (view_settings->curve_mapping->changed_timestamp !=
-          viewport->view_settings.curve_mapping->changed_timestamp) {
+          viewport->view_settings.curve_mapping->changed_timestamp)
+      {
         BKE_color_managed_view_settings_free(&viewport->view_settings);
       }
     }

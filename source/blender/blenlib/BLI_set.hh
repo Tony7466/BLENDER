@@ -175,9 +175,7 @@ class Set {
   {
   }
 
-  Set(NoExceptConstructor, Allocator allocator = {}) noexcept : Set(allocator)
-  {
-  }
+  Set(NoExceptConstructor, Allocator allocator = {}) noexcept : Set(allocator) {}
 
   Set(Span<Key> values, Allocator allocator = {}) : Set(NoExceptConstructor(), allocator)
   {
@@ -187,9 +185,7 @@ class Set {
   /**
    * Construct a set that contains the given keys. Duplicates will be removed automatically.
    */
-  Set(const std::initializer_list<Key> &values) : Set(Span<Key>(values))
-  {
-  }
+  Set(const std::initializer_list<Key> &values) : Set(Span<Key>(values)) {}
 
   ~Set() = default;
 
@@ -493,12 +489,14 @@ class Set {
   }
 
   /**
-   * Remove all values for which the given predicate is true.
+   * Remove all values for which the given predicate is true and return the number of removed
+   * values.
    *
    * This is similar to std::erase_if.
    */
-  template<typename Predicate> void remove_if(Predicate &&predicate)
+  template<typename Predicate> int64_t remove_if(Predicate &&predicate)
   {
+    const int64_t prev_size = this->size();
     for (Slot &slot : slots_) {
       if (slot.is_occupied()) {
         const Key &key = *slot.key();
@@ -508,6 +506,7 @@ class Set {
         }
       }
     }
+    return prev_size - this->size();
   }
 
   /**

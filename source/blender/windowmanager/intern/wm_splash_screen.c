@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 Blender Foundation. All rights reserved. */
+ * Copyright 2007 Blender Foundation */
 
 /** \file
  * \ingroup wm
@@ -139,7 +139,8 @@ static ImBuf *wm_block_splash_image(int width, int *r_height)
     char splash_filepath[FILE_MAX];
     char template_directory[FILE_MAX];
     if (BKE_appdir_app_template_id_search(
-            U.app_template, template_directory, sizeof(template_directory))) {
+            U.app_template, template_directory, sizeof(template_directory)))
+    {
       BLI_path_join(splash_filepath, sizeof(splash_filepath), template_directory, "splash.png");
       ibuf = IMB_loadiffname(splash_filepath, IB_rect, NULL);
     }

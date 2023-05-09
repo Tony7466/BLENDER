@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. All rights reserved. */
+ * Copyright 2022 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -17,17 +17,17 @@ class VKTexture : public Texture {
   VkImageView vk_image_view_ = VK_NULL_HANDLE;
   VmaAllocation allocation_ = VK_NULL_HANDLE;
 
-  /* Last image layout of the texture. Framebuffer and barriers can alter/require the actual layout
-   * to be changed. During this it requires to set the current layout in order to know which
+  /* Last image layout of the texture. Frame-buffer and barriers can alter/require the actual
+   * layout to be changed. During this it requires to set the current layout in order to know which
    * conversion should happen. #current_layout_ keep track of the layout so the correct conversion
-   * can be done.*/
+   * can be done. */
   VkImageLayout current_layout_ = VK_IMAGE_LAYOUT_UNDEFINED;
 
  public:
-  VKTexture(const char *name) : Texture(name)
-  {
-  }
+  VKTexture(const char *name) : Texture(name) {}
   virtual ~VKTexture() override;
+
+  void init(VkImage vk_image, VkImageLayout layout);
 
   void generate_mipmap() override;
   void copy_to(Texture *tex) override;
@@ -49,7 +49,7 @@ class VKTexture : public Texture {
   void image_bind(int location);
   VkImage vk_image_handle() const
   {
-    BLI_assert(is_allocated());
+    BLI_assert(vk_image_ != VK_NULL_HANDLE);
     return vk_image_;
   }
   VkImageView vk_image_view_handle() const
@@ -63,7 +63,7 @@ class VKTexture : public Texture {
  protected:
   bool init_internal() override;
   bool init_internal(GPUVertBuf *vbo) override;
-  bool init_internal(const GPUTexture *src, int mip_offset, int layer_offset) override;
+  bool init_internal(GPUTexture *src, int mip_offset, int layer_offset) override;
 
  private:
   /** Is this texture already allocated on device. */

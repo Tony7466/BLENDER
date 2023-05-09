@@ -84,15 +84,11 @@ int AbstractGridView::get_item_count() const
   return items_.size();
 }
 
-GridViewStyle::GridViewStyle(int width, int height) : tile_width(width), tile_height(height)
-{
-}
+GridViewStyle::GridViewStyle(int width, int height) : tile_width(width), tile_height(height) {}
 
 /* ---------------------------------------------------------------------- */
 
-AbstractGridViewItem::AbstractGridViewItem(StringRef identifier) : identifier_(identifier)
-{
-}
+AbstractGridViewItem::AbstractGridViewItem(StringRef identifier) : identifier_(identifier) {}
 
 bool AbstractGridViewItem::matches(const AbstractViewItem &other) const
 {
@@ -372,7 +368,8 @@ void GridViewLayoutBuilder::build_from_view(const AbstractGridView &grid_view,
    * stretch over the entire width. */
   if (grid_view.get_item_count() < cols_per_row) {
     for (int padding_item_idx = 0; padding_item_idx < (cols_per_row - grid_view.get_item_count());
-         padding_item_idx++) {
+         padding_item_idx++)
+    {
       uiItemS(grid_layout);
     }
   }
@@ -389,9 +386,7 @@ uiLayout *GridViewLayoutBuilder::current_layout() const
 
 /* ---------------------------------------------------------------------- */
 
-GridViewBuilder::GridViewBuilder(uiBlock & /*block*/)
-{
-}
+GridViewBuilder::GridViewBuilder(uiBlock & /*block*/) {}
 
 void GridViewBuilder::build_grid_view(AbstractGridView &grid_view,
                                       const View2D &v2d,

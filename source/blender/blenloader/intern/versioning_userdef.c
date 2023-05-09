@@ -31,7 +31,11 @@
 
 #include "BLO_readfile.h"
 
+#include "BLT_translation.h"
+
 #include "GPU_platform.h"
+
+#include "MEM_guardedalloc.h"
 
 #include "readfile.h" /* Own include. */
 
@@ -104,6 +108,7 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
    */
   {
     /* Keep this block, even when empty. */
+    FROM_DEFAULT_V4_UCHAR(space_node.node_zone_simulation);
   }
 
 #undef FROM_DEFAULT_V4_UCHAR
@@ -795,6 +800,23 @@ void blo_do_versions_userdef(UserDef *userdef)
     /* Increase the number of recently-used files if using the old default value. */
     if (userdef->recent_files == 10) {
       userdef->recent_files = 20;
+    }
+  }
+
+  if (!USER_VERSION_ATLEAST(306, 5)) {
+    if (userdef->pythondir_legacy[0]) {
+      bUserScriptDirectory *script_dir = MEM_callocN(sizeof(*script_dir),
+                                                     "Versioning user script path");
+
+      STRNCPY(script_dir->dir_path, userdef->pythondir_legacy);
+      STRNCPY(script_dir->name, DATA_("Untitled"));
+      BLI_addhead(&userdef->script_directories, script_dir);
+    }
+  }
+
+  if (!USER_VERSION_ATLEAST(306, 6)) {
+    LISTBASE_FOREACH (bUserAssetLibrary *, asset_library, &userdef->asset_libraries) {
+      asset_library->flag |= ASSET_LIBRARY_RELATIVE_PATH;
     }
   }
 

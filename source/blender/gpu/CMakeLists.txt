@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation. All rights reserved.
+# Copyright 2006 Blender Foundation
 
 # WITH_OPENGL limits the visibility of the opengl headers to just GPU and bg_gpu,
 # to more easily highlight code-paths in other libraries that need to be refactored,
@@ -208,12 +208,13 @@ set(VULKAN_SRC
   vulkan/vk_debug.cc
   vulkan/vk_descriptor_pools.cc
   vulkan/vk_descriptor_set.cc
+  vulkan/vk_device.cc
   vulkan/vk_drawlist.cc
   vulkan/vk_fence.cc
   vulkan/vk_framebuffer.cc
   vulkan/vk_index_buffer.cc
-  vulkan/vk_memory_layout.cc
   vulkan/vk_memory.cc
+  vulkan/vk_memory_layout.cc
   vulkan/vk_pipeline.cc
   vulkan/vk_pixel_buffer.cc
   vulkan/vk_push_constants.cc
@@ -235,14 +236,16 @@ set(VULKAN_SRC
   vulkan/vk_common.hh
   vulkan/vk_context.hh
   vulkan/vk_data_conversion.hh
+  vulkan/vk_debug.hh
   vulkan/vk_descriptor_pools.hh
   vulkan/vk_descriptor_set.hh
+  vulkan/vk_device.hh
   vulkan/vk_drawlist.hh
   vulkan/vk_fence.hh
   vulkan/vk_framebuffer.hh
   vulkan/vk_index_buffer.hh
-  vulkan/vk_memory_layout.hh
   vulkan/vk_memory.hh
+  vulkan/vk_memory_layout.hh
   vulkan/vk_pipeline.hh
   vulkan/vk_pixel_buffer.hh
   vulkan/vk_push_constants.hh
@@ -273,7 +276,9 @@ set(METAL_SRC
   metal/mtl_shader.mm
   metal/mtl_shader_generator.mm
   metal/mtl_shader_interface.mm
+  metal/mtl_shader_log.mm
   metal/mtl_state.mm
+  metal/mtl_storage_buffer.mm
   metal/mtl_texture.mm
   metal/mtl_texture_util.mm
   metal/mtl_uniform_buffer.mm
@@ -297,8 +302,10 @@ set(METAL_SRC
   metal/mtl_shader_generator.hh
   metal/mtl_shader_interface.hh
   metal/mtl_shader_interface_type.hh
+  metal/mtl_shader_log.hh
   metal/mtl_shader_shared.h
   metal/mtl_state.hh
+  metal/mtl_storage_buffer.hh
   metal/mtl_texture.hh
   metal/mtl_uniform_buffer.hh
   metal/mtl_vertex_buffer.hh
@@ -337,7 +344,13 @@ if(WITH_VULKAN_BACKEND)
     ${MOLTENVK_LIBRARIES}
     extern_vulkan_memory_allocator
   )
+
   add_definitions(-DWITH_VULKAN_BACKEND)
+  if(WIN32)
+    if(EXISTS ${LIBDIR}/imath/bin/imath.dll)
+      add_definitions(-DIMATH_DLL)
+    endif()
+  endif()
 endif()
 
 if(WITH_VULKAN_GUARDEDALLOC)
@@ -738,10 +751,6 @@ if(WITH_MOD_FLUID)
   add_definitions(-DWITH_FLUID)
 endif()
 
-if(WITH_IMAGE_DDS)
-  add_definitions(-DWITH_DDS)
-endif()
-
 if(WITH_OPENCOLORIO)
   add_definitions(-DWITH_OCIO)
 endif()
@@ -801,7 +810,6 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
     bf_intern_ghost
     ${PLATFORM_LINKLIBS}
     ${IMATH_LIBRARIES}
-    ${IMATH_LIBRARY}
   )
   target_include_directories(shader_builder PRIVATE ${INC} ${CMAKE_CURRENT_BINARY_DIR})
 

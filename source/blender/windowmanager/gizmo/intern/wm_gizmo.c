@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2014 Blender Foundation. All rights reserved. */
+ * Copyright 2014 Blender Foundation */
 
 /** \file
  * \ingroup wm
@@ -505,7 +505,8 @@ int wm_gizmo_is_visible(wmGizmo *gz)
     return 0;
   }
   if ((gz->state & WM_GIZMO_STATE_MODAL) &&
-      !(gz->flag & (WM_GIZMO_DRAW_MODAL | WM_GIZMO_DRAW_VALUE))) {
+      !(gz->flag & (WM_GIZMO_DRAW_MODAL | WM_GIZMO_DRAW_VALUE)))
+  {
     /* don't draw while modal (dragging) */
     return 0;
   }

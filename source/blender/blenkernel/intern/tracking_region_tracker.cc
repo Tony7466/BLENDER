@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. All rights reserved. */
+ * Copyright 2011 Blender Foundation */
 
 /** \file
  * \ingroup bke
@@ -278,7 +278,8 @@ static bool refine_marker_reference_frame_get(MovieTrackingTrack *track,
   MovieTrackingMarker *reference = backwards ? marker + 1 : marker - 1;
 
   while (reference >= first_marker && reference <= last_marker &&
-         (reference->flag & MARKER_DISABLED) != 0) {
+         (reference->flag & MARKER_DISABLED) != 0)
+  {
     if (backwards) {
       reference++;
     }
