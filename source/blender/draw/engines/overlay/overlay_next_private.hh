@@ -81,6 +81,12 @@ class ShapeCache {
   BatchPtr probe_cube;
   BatchPtr probe_grid;
   BatchPtr probe_planar;
+  BatchPtr camera_frame;
+  BatchPtr camera_volume;
+  BatchPtr camera_volume_wire;
+  BatchPtr camera_tria_wire;
+  BatchPtr camera_tria;
+  BatchPtr camera_distances;
 
   ShapeCache();
 };

@@ -39,7 +39,12 @@ enum VertexClass {
   VCLASS_EMPTY_SIZE = 1 << 14,
 };
 
-static const float bone_box_verts[8][3] = {
+#define DIAMOND_NSEGMENTS 4
+#define INNER_NSEGMENTS 8
+#define OUTER_NSEGMENTS 10
+#define CIRCLE_NSEGMENTS 32
+
+static const float3 bone_box_verts[8] = {
     {1.0f, 0.0f, 1.0f},
     {1.0f, 0.0f, -1.0f},
     {-1.0f, 0.0f, -1.0f},
@@ -53,6 +58,79 @@ static const float bone_box_verts[8][3] = {
 static const std::array<uint, 24> bone_box_wire = {
     0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7,
 };
+
+static const uint3 bone_box_solid_tris[12] = {
+    {0, 2, 1}, /* bottom */
+    {0, 3, 2},
+
+    {0, 1, 5}, /* sides */
+    {0, 5, 4},
+
+    {1, 2, 6},
+    {1, 6, 5},
+
+    {2, 3, 7},
+    {2, 7, 6},
+
+    {3, 0, 4},
+    {3, 4, 7},
+
+    {4, 5, 6}, /* top */
+    {4, 6, 7},
+};
+
+/**
+ * Store indices of generated verts from bone_box_solid_tris to define adjacency infos.
+ * See bone_octahedral_solid_tris for more infos.
+ */
+static const uint4 bone_box_wire_lines_adjacency[12] = {
+    {4, 2, 0, 11},
+    {0, 1, 2, 8},
+    {2, 4, 1, 14},
+    {1, 0, 4, 20}, /* bottom */
+    {0, 8, 11, 14},
+    {2, 14, 8, 20},
+    {1, 20, 14, 11},
+    {4, 11, 20, 8}, /* top */
+    {20, 0, 11, 2},
+    {11, 2, 8, 1},
+    {8, 1, 14, 4},
+    {14, 4, 20, 0}, /* sides */
+};
+
+/* aligned with bone_box_solid_tris */
+static const float3 bone_box_solid_normals[12] = {
+    {0.0f, -1.0f, 0.0f},
+    {0.0f, -1.0f, 0.0f},
+
+    {1.0f, 0.0f, 0.0f},
+    {1.0f, 0.0f, 0.0f},
+
+    {0.0f, 0.0f, -1.0f},
+    {0.0f, 0.0f, -1.0f},
+
+    {-1.0f, 0.0f, 0.0f},
+    {-1.0f, 0.0f, 0.0f},
+
+    {0.0f, 0.0f, 1.0f},
+    {0.0f, 0.0f, 1.0f},
+
+    {0.0f, 1.0f, 0.0f},
+    {0.0f, 1.0f, 0.0f},
+};
+
+static void append_circle_verts(
+    Vector<Vertex> &verts, int segments, float radius, float z, int flag)
+{
+  for (int a : IndexRange(segments)) {
+    for (int b : IndexRange(2)) {
+      float angle = (2.0f * M_PI * (a + b)) / segments;
+      float s = sinf(angle) * radius;
+      float c = cosf(angle) * radius;
+      verts.append({{s, c, z}, flag});
+    }
+  }
+}
 
 /* A single ring of vertices. */
 static Vector<float2> ring_vertices(const float radius, const int segments)
@@ -538,6 +616,123 @@ static const Vector<Vertex> &probe_planar_verts()
   return verts;
 }
 
+/* -------------------------------------------------------------------- */
+/** \name Camera
+ * \{ */
+
+static const Vector<Vertex> &camera_frame_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  const float2 p[4] = {{-1.0f, -1.0f}, {-1.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, -1.0f}};
+  /* Frame */
+  for (int a : IndexRange(4)) {
+    for (int b : IndexRange(2)) {
+      verts.append({{p[(a + b) % 4], 1.0f}, VCLASS_CAMERA_FRAME});
+    }
+  }
+  /* Wires to origin. */
+  for (int a : IndexRange(4)) {
+    verts.append({{p[a], 1.0f}, VCLASS_CAMERA_FRAME});
+    verts.append({{p[a], 0.0f}, VCLASS_CAMERA_FRAME});
+  }
+
+  return verts;
+}
+
+static const Vector<Vertex> &camera_volume_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  int flag = VCLASS_CAMERA_FRAME | VCLASS_CAMERA_VOLUME;
+  for (uint3 i : bone_box_solid_tris) {
+    for (int a : IndexRange(3)) {
+      float3 vert = bone_box_verts[i[a]];
+      verts.append({{vert.z, vert.x, vert.y}, flag});
+    }
+  }
+
+  return verts;
+}
+
+static const Vector<Vertex> &camera_volume_wire_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  int flag = VCLASS_CAMERA_FRAME | VCLASS_CAMERA_VOLUME;
+  for (uint i : bone_box_wire) {
+    float3 vert = bone_box_verts[i];
+    verts.append({{vert.z, vert.x, vert.y}, flag});
+  }
+
+  return verts;
+}
+
+static const Vector<Vertex> &camera_tria_wire_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  const float2 p[3] = {{-1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 0.0f}};
+  for (int a : IndexRange(3)) {
+    for (int b : IndexRange(2)) {
+      verts.append({{p[(a + b) % 3], 1.0f}, VCLASS_CAMERA_FRAME});
+    }
+  }
+
+  return verts;
+}
+
+static const Vector<Vertex> &camera_tria_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  /* Use camera frame position */
+  verts.append({{-1.0f, 1.0f, 1.0f}, VCLASS_CAMERA_FRAME});
+  verts.append({{1.0f, 1.0f, 1.0f}, VCLASS_CAMERA_FRAME});
+  verts.append({{0.0f, 0.0f, 1.0f}, VCLASS_CAMERA_FRAME});
+
+  return verts;
+}
+
+static const Vector<Vertex> &camera_distances_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  /* Direction Line */
+  verts.append({{0.0, 0.0, 0.0}, VCLASS_CAMERA_DIST});
+  verts.append({{0.0, 0.0, 1.0}, VCLASS_CAMERA_DIST});
+  append_circle_verts(
+      verts, DIAMOND_NSEGMENTS, 1.5f, 0.0f, VCLASS_CAMERA_DIST | VCLASS_SCREENSPACE);
+  append_circle_verts(
+      verts, DIAMOND_NSEGMENTS, 1.5f, 1.0f, VCLASS_CAMERA_DIST | VCLASS_SCREENSPACE);
+  /* Focus cross */
+  verts.append({{1.0, 0.0, 2.0}, VCLASS_CAMERA_DIST});
+  verts.append({{-1.0, 0.0, 2.0}, VCLASS_CAMERA_DIST});
+  verts.append({{0.0, 1.0, 2.0}, VCLASS_CAMERA_DIST});
+  verts.append({{0.0, -1.0, 2.0}, VCLASS_CAMERA_DIST});
+  return verts;
+}
+
+/** \} */
+
 ShapeCache::ShapeCache()
 {
   static GPUVertFormat format = {0};
@@ -568,6 +763,12 @@ ShapeCache::ShapeCache()
   probe_cube = batch_ptr(probe_cube_verts());
   probe_grid = batch_ptr(probe_grid_verts());
   probe_planar = batch_ptr(probe_planar_verts());
+  camera_frame = batch_ptr(camera_frame_verts());
+  camera_volume = batch_ptr(camera_volume_verts());
+  camera_volume_wire = batch_ptr(camera_volume_wire_verts());
+  camera_tria_wire = batch_ptr(camera_tria_wire_verts());
+  camera_tria = batch_ptr(camera_tria_verts());
+  camera_distances = batch_ptr(camera_distances_verts());
 }
 
 }  // namespace blender::draw::overlay
