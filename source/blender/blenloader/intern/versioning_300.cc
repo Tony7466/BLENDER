@@ -4336,6 +4336,13 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
       }
     }
   }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 8)) {
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      ob->flag |= OB_FLAG_USE_SIMULATION_CACHE;
+    }
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -4347,8 +4354,5 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
-    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
-      ob->flag |= OB_FLAG_USE_SIMULATION_CACHE;
-    }
   }
 }
