@@ -433,7 +433,7 @@ BLI_STATIC_ASSERT_ALIGN(MotionBlurTileIndirection, 16)
 struct VolumesData {
   float2 coord_scale;
   float2 viewport_size_inv;
-  int3 tex_size;
+  packed_int3 tex_size;
   float light_clamp;
   packed_float3 inv_tex_size;
   float shadow_steps;
