@@ -178,9 +178,9 @@ void simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_i
 
     switch (socket_type) {
       case SOCK_GEOMETRY: {
-        const auto *geo_state_item = static_cast<const bke::sim::GeometrySimulationStateItem *>(
-            &state_item);
-        GeometrySet *geometry = new (r_output_value) GeometrySet(geo_state_item->geometry);
+        const auto &geo_state_item = static_cast<const bke::sim::GeometrySimulationStateItem &>(
+            state_item);
+        GeometrySet *geometry = new (r_output_value) GeometrySet(geo_state_item.geometry);
         geometries.append(geometry);
         break;
       }
@@ -223,9 +223,9 @@ void simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_i
         break;
       }
       case SOCK_STRING: {
-        const auto *string_state_item = static_cast<const bke::sim::StringSimulationStateItem *>(
-            &state_item);
-        new (r_output_value) ValueOrField<std::string>(string_state_item->value());
+        const auto &string_state_item = static_cast<const bke::sim::StringSimulationStateItem &>(
+            state_item);
+        new (r_output_value) ValueOrField<std::string>(string_state_item.value());
         break;
       }
       default: {
