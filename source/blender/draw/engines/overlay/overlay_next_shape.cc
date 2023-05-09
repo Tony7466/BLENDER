@@ -420,14 +420,7 @@ static const Vector<Vertex> &speaker_verts()
     float r = (i == 0 ? 0.5f : 0.25f);
     float z = 0.25f * i - 0.125f;
 
-    verts.append({float3(r, 0.0f, z), VCLASS_NONE});
-
-    for (float2 v : ring_vertices(r, segments)) {
-      verts.append({float3(v, z), VCLASS_NONE});
-      verts.append({float3(v, z), VCLASS_NONE});
-    }
-
-    verts.append({float3(r, 0.0f, z), VCLASS_NONE});
+    append_circle_verts(verts, segments, r, z, VCLASS_NONE);
   }
 
   for (int i : IndexRange(4)) {
@@ -472,8 +465,6 @@ static float light_distance_z_get(char axis, const bool start)
 const float sin_pi_3 = 0.86602540378f;
 const float cos_pi_3 = 0.5f;
 
-const int diamond_segments = 4;
-
 static const Vector<Vertex> &probe_cube_verts()
 {
   static Vector<Vertex> verts;
@@ -511,20 +502,8 @@ static const Vector<Vertex> &probe_cube_verts()
     verts.append({{0.0f, 0.0f, zend}, flag});
 
     const float r = 1.2f;
-
-    verts.append({{r, 0.0f, zsta}, flag});
-    for (float2 v : ring_vertices(r, diamond_segments)) {
-      verts.append({{v, zsta}, flag});
-      verts.append({{v, zsta}, flag});
-    }
-    verts.append({{r, 0.0f, zsta}, flag});
-
-    verts.append({{r, 0.0f, zend}, flag});
-    for (float2 v : ring_vertices(r, diamond_segments)) {
-      verts.append({{v, zend}, flag});
-      verts.append({{v, zend}, flag});
-    }
-    verts.append({{r, 0.0f, zend}, flag});
+    append_circle_verts(verts, DIAMOND_NSEGMENTS, r, zsta, flag);
+    append_circle_verts(verts, DIAMOND_NSEGMENTS, r, zend, flag);
   }
   return verts;
 }
@@ -575,20 +554,8 @@ static const Vector<Vertex> &probe_grid_verts()
     verts.append({{0.0f, 0.0f, zend}, flag});
 
     const float r = 1.2f;
-
-    verts.append({{r, 0.0f, zsta}, flag});
-    for (float2 v : ring_vertices(r, diamond_segments)) {
-      verts.append({{v, zsta}, flag});
-      verts.append({{v, zsta}, flag});
-    }
-    verts.append({{r, 0.0f, zsta}, flag});
-
-    verts.append({{r, 0.0f, zend}, flag});
-    for (float2 v : ring_vertices(r, diamond_segments)) {
-      verts.append({{v, zend}, flag});
-      verts.append({{v, zend}, flag});
-    }
-    verts.append({{r, 0.0f, zend}, flag});
+    append_circle_verts(verts, DIAMOND_NSEGMENTS, r, zsta, flag);
+    append_circle_verts(verts, DIAMOND_NSEGMENTS, r, zend, flag);
   }
   return verts;
 }
@@ -702,10 +669,9 @@ static const Vector<Vertex> &camera_tria_verts()
   }
 
   /* Use camera frame position */
-  verts.append({{-1.0f, 1.0f, 1.0f}, VCLASS_CAMERA_FRAME});
-  verts.append({{1.0f, 1.0f, 1.0f}, VCLASS_CAMERA_FRAME});
-  verts.append({{0.0f, 0.0f, 1.0f}, VCLASS_CAMERA_FRAME});
-
+  verts = {{{-1.0f, 1.0f, 1.0f}, VCLASS_CAMERA_FRAME},
+           {{1.0f, 1.0f, 1.0f}, VCLASS_CAMERA_FRAME},
+           {{0.0f, 0.0f, 1.0f}, VCLASS_CAMERA_FRAME}};
   return verts;
 }
 
@@ -717,17 +683,16 @@ static const Vector<Vertex> &camera_distances_verts()
   }
 
   /* Direction Line */
-  verts.append({{0.0, 0.0, 0.0}, VCLASS_CAMERA_DIST});
-  verts.append({{0.0, 0.0, 1.0}, VCLASS_CAMERA_DIST});
+  verts.extend({{{0.0, 0.0, 0.0}, VCLASS_CAMERA_DIST}, {{0.0, 0.0, 1.0}, VCLASS_CAMERA_DIST}});
   append_circle_verts(
       verts, DIAMOND_NSEGMENTS, 1.5f, 0.0f, VCLASS_CAMERA_DIST | VCLASS_SCREENSPACE);
   append_circle_verts(
       verts, DIAMOND_NSEGMENTS, 1.5f, 1.0f, VCLASS_CAMERA_DIST | VCLASS_SCREENSPACE);
   /* Focus cross */
-  verts.append({{1.0, 0.0, 2.0}, VCLASS_CAMERA_DIST});
-  verts.append({{-1.0, 0.0, 2.0}, VCLASS_CAMERA_DIST});
-  verts.append({{0.0, 1.0, 2.0}, VCLASS_CAMERA_DIST});
-  verts.append({{0.0, -1.0, 2.0}, VCLASS_CAMERA_DIST});
+  verts.extend({{{1.0, 0.0, 2.0}, VCLASS_CAMERA_DIST},
+                {{-1.0, 0.0, 2.0}, VCLASS_CAMERA_DIST},
+                {{0.0, 1.0, 2.0}, VCLASS_CAMERA_DIST},
+                {{0.0, -1.0, 2.0}, VCLASS_CAMERA_DIST}});
   return verts;
 }
 
