@@ -607,7 +607,7 @@ void SEQ_retiming_sound_animation_data_set(const Scene *scene, const Sequence *s
     RetimingRange range = retiming_data.ranges[i];
     if (range.type == range.TRANSITION) {
 
-      for (int frame = range.start; frame < range.end; frame++) {
+      for (int frame = range.start; frame <= range.end; frame++) {
         /* We need number actual number of frames here. */
         double normal_step = 1 / (double)seq->len;
 
