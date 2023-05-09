@@ -23,6 +23,7 @@
 #include "BLI_ghash.h"
 #include "BLI_hash.h"
 #include "BLI_implicit_sharing.hh"
+#include "BLI_implicit_sharing_cache.hh"
 #include "BLI_index_range.hh"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
@@ -1601,10 +1602,16 @@ bool BKE_mesh_minmax(const Mesh *me, float r_min[3], float r_max[3])
     return false;
   }
 
-  me->runtime->bounds_cache.ensure(
-      [me](Bounds<float3> &r_bounds) { r_bounds = *bounds::min_max(me->vert_positions()); });
+  static implicit_sharing_cache::ImplicitSharingCache<Bounds<float3>> cache;
 
-  const Bounds<float3> &bounds = me->runtime->bounds_cache.data();
+  bke::GAttributeReader attribute = me->attributes().lookup("position");
+  BLI_assert(attribute);
+
+  const Bounds<float3> bounds = cache.lookup_or_compute(
+      [&]() { return *bounds::min_max(attribute.varray.get_internal_span().typed<float3>()); },
+      implicit_sharing_cache::Key({ImplicitSharingInfoAndData{
+          attribute.sharing_info, attribute.varray.get_internal_span().data()}}));
+
   copy_v3_v3(r_min, math::min(bounds.min, float3(r_min)));
   copy_v3_v3(r_max, math::max(bounds.max, float3(r_max)));
 
