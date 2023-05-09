@@ -1234,7 +1234,7 @@ static void btw_smooth_allocate_operator_data(tGraphSliderOp *gso,
       segment_link->segment = segment;
       BezTriple left_bezt = fcu->bezt[segment->start_index];
       BezTriple right_bezt = fcu->bezt[segment->start_index + segment->length - 1];
-      const int sample_count = ((int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) +
+      const int sample_count = ((int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) + 1 +
                                 (filter_order * 2)) *
                                samples_per_frame;
       float *samples = MEM_callocN(sizeof(float) * sample_count, "Btw Smooth FCurve Op Samples");
