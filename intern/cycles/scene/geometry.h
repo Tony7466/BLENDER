@@ -25,6 +25,7 @@ class Mesh;
 class Progress;
 class RenderStats;
 class Scene;
+struct SceneTimes;
 struct GeometrySizes;
 struct AttributeSizes;
 class SceneParams;
@@ -260,8 +261,9 @@ class GeometryManager {
                             bool &need_update_scene_bvh);
   void clear_shader_update_tags(Scene *scene);
   void clear_geometry_update_and_modified_tags(Scene *scene);
-  void device_data_xfer_and_bvh_update(int idx,
+  void device_data_xfer_and_bvh_update(SceneTimes *times,
                                        Scene *scene,
+				       Device *device,
                                        DeviceScene *dscene,
                                        const BVHLayout bvh_layout,
                                        size_t num_bvh,

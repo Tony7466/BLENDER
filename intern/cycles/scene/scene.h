@@ -76,6 +76,14 @@ struct AttributeSizes {
   size_t attr_uchar4_size;
 };
 
+/* Stats time logging */
+struct SceneTimes {
+  double mesh;
+  double attrib;
+  double object_bvh;
+  double scene_bvh;
+};
+
 /* Scene Parameters */
 
 class SceneParams {
@@ -187,14 +195,7 @@ class Scene : public NodeOwner {
 
   /* Stores a DeviceScene for each sub-device */
   std::vector<unique_ptr<DeviceScene>> dscenes;
-
-  /* Stats time logging */
-  struct SceneTimes {
-    double mesh;
-    double attrib;
-    double object_bvh;
-    double scene_bvh;
-  };
+  
   vector<SceneTimes> times;
   
   /* parameters */
