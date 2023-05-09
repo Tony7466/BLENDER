@@ -208,6 +208,8 @@ class GeoTreeLogger {
   Vector<ViewerNodeLogWithNode, 0> viewer_node_logs;
   Vector<AttributeUsageWithNode, 0> used_named_attributes;
   Vector<DebugMessage, 0> debug_messages;
+  /** Might contain duplicates. */
+  Vector<int32_t> evaluated_node_ids;
 
   GeoTreeLogger();
   ~GeoTreeLogger();
@@ -266,6 +268,7 @@ class GeoTreeLog {
   bool reduced_existing_attributes_ = false;
   bool reduced_used_named_attributes_ = false;
   bool reduced_debug_messages_ = false;
+  bool reduced_evaluated_node_ids_ = false;
 
  public:
   Map<int32_t, GeoNodeLog> nodes;
@@ -274,6 +277,7 @@ class GeoTreeLog {
   std::chrono::nanoseconds run_time_sum{0};
   Vector<const GeometryAttributeInfo *> existing_attributes;
   Map<StringRefNull, NamedAttributeUsage> used_named_attributes;
+  Set<int32_t> evaluated_node_ids;
 
   GeoTreeLog(GeoModifierLog *modifier_log, Vector<GeoTreeLogger *> tree_loggers);
   ~GeoTreeLog();
@@ -285,6 +289,7 @@ class GeoTreeLog {
   void ensure_existing_attributes();
   void ensure_used_named_attributes();
   void ensure_debug_messages();
+  void ensure_evaluated_node_ids();
 
   ValueLog *find_socket_value_log(const bNodeSocket &query_socket);
 };

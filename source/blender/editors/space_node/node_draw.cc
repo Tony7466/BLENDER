@@ -2182,6 +2182,12 @@ static void node_draw_basis(const bContext &C,
       UI_GetThemeColorBlend4f(TH_NODE, color_id, 0.4f, color_header);
     }
 
+    if (tree_draw_ctx.geo_tree_log &&
+        tree_draw_ctx.geo_tree_log->evaluated_node_ids.contains(node.identifier))
+    {
+      copy_v4_fl4(color_header, 0.8f, 0.4f, 0.2f, 1.0f);
+    }
+
     UI_draw_roundbox_corner_set(UI_CNR_TOP_LEFT | UI_CNR_TOP_RIGHT);
     UI_draw_roundbox_4fv(&rect, true, BASIS_RAD, color_header);
   }
@@ -2516,6 +2522,12 @@ static void node_draw_hidden(const bContext &C,
     /* Draw muted nodes slightly transparent so the wires inside are visible. */
     if (node.flag & NODE_MUTED) {
       color[3] -= 0.2f;
+    }
+
+    if (tree_draw_ctx.geo_tree_log &&
+        tree_draw_ctx.geo_tree_log->evaluated_node_ids.contains(node.identifier))
+    {
+      copy_v4_fl4(color, 0.8f, 0.4f, 0.2f, 1.0f);
     }
 
     UI_draw_roundbox_4fv(&rct, true, hiddenrad, color);
@@ -3368,6 +3380,7 @@ static void draw_nodetree(const bContext &C,
     if (tree_draw_ctx.geo_tree_log != nullptr) {
       tree_draw_ctx.geo_tree_log->ensure_node_warnings();
       tree_draw_ctx.geo_tree_log->ensure_node_run_time();
+      tree_draw_ctx.geo_tree_log->ensure_evaluated_node_ids();
     }
     const WorkSpace *workspace = CTX_wm_workspace(&C);
     tree_draw_ctx.active_geometry_nodes_viewer = viewer_path::find_geometry_nodes_viewer(

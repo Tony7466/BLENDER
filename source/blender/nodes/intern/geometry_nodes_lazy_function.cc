@@ -303,6 +303,7 @@ class LazyFunctionForGeometryNode : public LazyFunction {
     if (local_user_data.tree_logger) {
       local_user_data.tree_logger->node_execution_times.append(
           {node_.identifier, start_time, end_time});
+      local_user_data.tree_logger->evaluated_node_ids.append(node_.identifier);
     }
   }
 
@@ -649,6 +650,7 @@ class LazyFunctionForMultiFunctionConversion : public LazyFunction {
  */
 class LazyFunctionForMultiFunctionNode : public LazyFunction {
  private:
+  const bNode &node_;
   const NodeMultiFunctions::Item fn_item_;
   Vector<const ValueOrFieldCPPType *> input_types_;
   Vector<const ValueOrFieldCPPType *> output_types_;
@@ -657,7 +659,7 @@ class LazyFunctionForMultiFunctionNode : public LazyFunction {
   LazyFunctionForMultiFunctionNode(const bNode &node,
                                    NodeMultiFunctions::Item fn_item,
                                    MutableSpan<int> r_lf_index_by_bsocket)
-      : fn_item_(std::move(fn_item))
+      : node_(node), fn_item_(std::move(fn_item))
   {
     BLI_assert(fn_item_.fn != nullptr);
     debug_name_ = node.name;
@@ -670,7 +672,7 @@ class LazyFunctionForMultiFunctionNode : public LazyFunction {
     }
   }
 
-  void execute_impl(lf::Params &params, const lf::Context & /*context*/) const override
+  void execute_impl(lf::Params &params, const lf::Context &context) const override
   {
     Vector<const void *> input_values(inputs_.size());
     Vector<void *> output_values(outputs_.size());
@@ -684,6 +686,11 @@ class LazyFunctionForMultiFunctionNode : public LazyFunction {
         *fn_item_.fn, fn_item_.owned_fn, input_types_, output_types_, input_values, output_values);
     for (const int i : outputs_.index_range()) {
       params.output_set(i);
+    }
+
+    auto &local_user_data = *static_cast<GeoNodesLFLocalUserData *>(context.local_user_data);
+    if (local_user_data.tree_logger) {
+      local_user_data.tree_logger->evaluated_node_ids.append(node_.identifier);
     }
   }
 };
@@ -799,6 +806,7 @@ class LazyFunctionForViewerNode : public LazyFunction {
     }
 
     local_user_data.tree_logger->log_viewer_node(bnode_, std::move(geometry));
+    local_user_data.tree_logger->evaluated_node_ids.append(bnode_.identifier);
   }
 };
 
@@ -947,8 +955,8 @@ class LazyFunctionForGroupNode : public LazyFunction {
 
   void execute_impl(lf::Params &params, const lf::Context &context) const override
   {
-    GeoNodesLFUserData *user_data = dynamic_cast<GeoNodesLFUserData *>(context.user_data);
-    BLI_assert(user_data != nullptr);
+    auto &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
+    auto &local_user_data = *static_cast<GeoNodesLFLocalUserData *>(context.local_user_data);
 
     if (has_many_nodes_) {
       /* If the called node group has many nodes, it's likely that executing it takes a while even
@@ -958,15 +966,22 @@ class LazyFunctionForGroupNode : public LazyFunction {
 
     Storage *storage = static_cast<Storage *>(context.storage);
 
+    /* Only log that the node is executed once. */
+    if (!storage->context_hash_cache.has_value()) {
+      if (local_user_data.tree_logger) {
+        local_user_data.tree_logger->evaluated_node_ids.append(group_node_.identifier);
+      }
+    }
+
     /* The compute context changes when entering a node group. */
     bke::NodeGroupComputeContext compute_context{
-        user_data->compute_context, group_node_.identifier, storage->context_hash_cache};
+        user_data.compute_context, group_node_.identifier, storage->context_hash_cache};
     storage->context_hash_cache = compute_context.hash();
 
-    GeoNodesLFUserData group_user_data = *user_data;
+    GeoNodesLFUserData group_user_data = user_data;
     group_user_data.compute_context = &compute_context;
-    if (user_data->modifier_data->socket_log_contexts) {
-      group_user_data.log_socket_values = user_data->modifier_data->socket_log_contexts->contains(
+    if (user_data.modifier_data->socket_log_contexts) {
+      group_user_data.log_socket_values = user_data.modifier_data->socket_log_contexts->contains(
           compute_context.hash());
     }
 

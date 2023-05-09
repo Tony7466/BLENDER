@@ -352,6 +352,19 @@ void GeoTreeLog::ensure_debug_messages()
   reduced_debug_messages_ = true;
 }
 
+void GeoTreeLog::ensure_evaluated_node_ids()
+{
+  if (reduced_evaluated_node_ids_) {
+    return;
+  }
+  for (GeoTreeLogger *tree_logger : tree_loggers_) {
+    for (const int32_t node_id : tree_logger->evaluated_node_ids) {
+      this->evaluated_node_ids.add(node_id);
+    }
+  }
+  reduced_evaluated_node_ids_ = true;
+}
+
 ValueLog *GeoTreeLog::find_socket_value_log(const bNodeSocket &query_socket)
 {
   /**

@@ -55,9 +55,15 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
 
   void execute_impl(lf::Params &params, const lf::Context &context) const final
   {
-    const GeoNodesLFUserData &user_data = *static_cast<const GeoNodesLFUserData *>(
-        context.user_data);
+    const auto &user_data = *static_cast<const GeoNodesLFUserData *>(context.user_data);
+    const auto &local_user_data = *static_cast<const GeoNodesLFLocalUserData *>(
+        context.local_user_data);
     const GeoNodesModifierData &modifier_data = *user_data.modifier_data;
+
+    if (local_user_data.tree_logger) {
+      local_user_data.tree_logger->evaluated_node_ids.append(node_.identifier);
+    }
+
     if (modifier_data.current_simulation_state == nullptr) {
       params.set_default_remaining_outputs();
       return;

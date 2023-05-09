@@ -146,10 +146,11 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 
 class LazyFunctionForSwitchNode : public LazyFunction {
  private:
+  const bNode &node_;
   bool can_be_field_ = false;
 
  public:
-  LazyFunctionForSwitchNode(const bNode &node)
+  LazyFunctionForSwitchNode(const bNode &node) : node_(node)
   {
     const NodeSwitch &storage = node_storage(node);
     const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.input_type);
@@ -171,8 +172,13 @@ class LazyFunctionForSwitchNode : public LazyFunction {
     outputs_.append_as("Value", cpp_type);
   }
 
-  void execute_impl(lf::Params &params, const lf::Context & /*context*/) const override
+  void execute_impl(lf::Params &params, const lf::Context &context) const override
   {
+    auto &local_user_data = *static_cast<GeoNodesLFLocalUserData *>(context.local_user_data);
+    if (local_user_data.tree_logger) {
+      local_user_data.tree_logger->evaluated_node_ids.append(node_.identifier);
+    }
+
     const ValueOrField<bool> condition = params.get_input<ValueOrField<bool>>(0);
     if (condition.is_field() && can_be_field_) {
       Field<bool> condition_field = condition.as_field();

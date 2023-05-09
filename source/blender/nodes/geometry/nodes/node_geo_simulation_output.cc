@@ -407,10 +407,17 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
 
   void execute_impl(lf::Params &params, const lf::Context &context) const final
   {
-    GeoNodesLFUserData &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
+    auto &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
+    auto &local_user_data = *static_cast<GeoNodesLFLocalUserData *>(context.local_user_data);
     GeoNodesModifierData &modifier_data = *user_data.modifier_data;
     EvalData &eval_data = *static_cast<EvalData *>(context.storage);
     BLI_SCOPED_DEFER([&]() { eval_data.is_first_evaluation = false; });
+
+    if (eval_data.is_first_evaluation) {
+      if (local_user_data.tree_logger) {
+        local_user_data.tree_logger->evaluated_node_ids.append(node_.identifier);
+      }
+    }
 
     const bke::sim::SimulationZoneID zone_id = get_simulation_zone_id(*user_data.compute_context,
                                                                       node_.identifier);
