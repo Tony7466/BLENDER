@@ -374,13 +374,7 @@ static bool sharing_info_equal(const ImplicitSharingInfo *a, const ImplicitShari
   if (!a || !b) {
     return false;
   }
-  if (a != b) {
-    return false;
-  }
-  if (a->version() != b->version()) {
-    return false;
-  }
-  return true;
+  return a == b;
 }
 
 template<typename T>
