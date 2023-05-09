@@ -78,6 +78,16 @@ class ShapeCache {
   BatchPtr arrows;
   BatchPtr metaball_wire_circle;
   BatchPtr speaker;
+  BatchPtr groundline;
+  BatchPtr light_icon_inner_lines;
+  BatchPtr light_icon_outer_lines;
+  BatchPtr light_icon_sun_rays;
+  BatchPtr light_point_lines;
+  BatchPtr light_sun_lines;
+  BatchPtr light_spot_lines;
+  BatchPtr light_spot_volume;
+  BatchPtr light_area_disk_lines;
+  BatchPtr light_area_square_lines;
   BatchPtr probe_cube;
   BatchPtr probe_grid;
   BatchPtr probe_planar;

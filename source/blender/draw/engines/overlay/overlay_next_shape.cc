@@ -132,6 +132,19 @@ static void append_circle_verts(
   }
 }
 
+static void append_circle_dashed_verts(
+    Vector<Vertex> &verts, int segments, float radius, float z, int flag)
+{
+  for (int a : IndexRange(segments)) {
+    for (int b : IndexRange(2)) {
+      float angle = (2.0f * M_PI * (a * 2 + b)) / (segments * 2);
+      float s = sinf(angle) * radius;
+      float c = cosf(angle) * radius;
+      verts.append({{s, c, z}, flag});
+    }
+  }
+}
+
 /* A single ring of vertices. */
 static Vector<float2> ring_vertices(const float radius, const int segments)
 {
@@ -443,6 +456,10 @@ static const Vector<Vertex> &speaker_verts()
   return verts;
 }
 
+/* -------------------------------------------------------------------- */
+/** \name Lights
+ * \{ */
+
 static float light_distance_z_get(char axis, const bool start)
 {
   switch (axis) {
@@ -461,6 +478,208 @@ static float light_distance_z_get(char axis, const bool start)
   }
   return 0.0;
 }
+
+static const Vector<Vertex> &groundline_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  /* Ground Point */
+  append_circle_verts(verts, DIAMOND_NSEGMENTS, 1.35f, 0.0f, 0);
+  /* Ground Line */
+  verts.append({{0.0, 0.0, 1.0}, 0});
+  verts.append({{0.0, 0.0, 0.0}, 0});
+  return verts;
+}
+
+static const Vector<Vertex> &light_icon_inner_lines_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  const float r = 9.0f;
+
+  append_circle_verts(verts, DIAMOND_NSEGMENTS, r * 0.3f, 0.0f, VCLASS_SCREENSPACE);
+  append_circle_dashed_verts(verts, INNER_NSEGMENTS, r * 1.0f, 0.0f, VCLASS_SCREENSPACE);
+  return verts;
+}
+
+static const Vector<Vertex> &light_icon_outer_lines_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  const float r = 9.0f;
+
+  append_circle_dashed_verts(verts, OUTER_NSEGMENTS, r * 1.33f, 0.0f, VCLASS_SCREENSPACE);
+  return verts;
+}
+
+static const Vector<Vertex> &light_icon_sun_rays_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  const int num_rays = 8;
+  const float r = 9.0f;
+
+  /* Sun Rays */
+  for (int a : IndexRange(num_rays)) {
+    float angle = (2.0f * M_PI * a) / (float)num_rays;
+    float s = sinf(angle) * r;
+    float c = cosf(angle) * r;
+    verts.append({{s * 1.6f, c * 1.6f, 0.0f}, VCLASS_SCREENSPACE});
+    verts.append({{s * 1.9f, c * 1.9f, 0.0f}, VCLASS_SCREENSPACE});
+    verts.append({{s * 2.2f, c * 2.2f, 0.0f}, VCLASS_SCREENSPACE});
+    verts.append({{s * 2.5f, c * 2.5f, 0.0f}, VCLASS_SCREENSPACE});
+  }
+  return verts;
+}
+
+static const Vector<Vertex> &light_point_lines_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  /* Light area */
+  int flag = VCLASS_SCREENALIGNED | VCLASS_LIGHT_AREA_SHAPE;
+  append_circle_verts(verts, CIRCLE_NSEGMENTS, 1.0f, 0.0f, flag);
+  return verts;
+}
+
+static const Vector<Vertex> &light_sun_lines_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  /* Direction Line */
+  verts.append({{0.0, 0.0, 0.0}, 0});
+  verts.append({{0.0, 0.0, -20.0}, 0}); /* Good default. */
+  return verts;
+}
+
+static const Vector<Vertex> &light_spot_lines_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  /* Light area */
+  int flag = VCLASS_SCREENALIGNED | VCLASS_LIGHT_AREA_SHAPE;
+  append_circle_verts(verts, CIRCLE_NSEGMENTS, 1.0f, 0.0f, flag);
+  /* Cone cap */
+  flag = VCLASS_LIGHT_SPOT_SHAPE;
+  append_circle_verts(verts, CIRCLE_NSEGMENTS, 1.0f, 0.0f, flag);
+  flag = VCLASS_LIGHT_SPOT_SHAPE | VCLASS_LIGHT_SPOT_BLEND;
+  append_circle_verts(verts, CIRCLE_NSEGMENTS, 1.0f, 0.0f, flag);
+  /* Cone silhouette */
+  flag = VCLASS_LIGHT_SPOT_SHAPE | VCLASS_LIGHT_SPOT_CONE;
+  for (int a : IndexRange(CIRCLE_NSEGMENTS)) {
+    float angle = (2.0f * M_PI * a) / CIRCLE_NSEGMENTS;
+    float s = sinf(angle);
+    float c = cosf(angle);
+    verts.append({{0.0f, 0.0f, 0.0f}, 0});
+    verts.append({{s, c, -1.0f}, flag});
+  }
+  /* Direction Line */
+  float zsta = light_distance_z_get('z', true);
+  float zend = light_distance_z_get('z', false);
+  verts.append({{0.0, 0.0, zsta}, VCLASS_LIGHT_DIST});
+  verts.append({{0.0, 0.0, zend}, VCLASS_LIGHT_DIST});
+  append_circle_verts(
+      verts, DIAMOND_NSEGMENTS, 1.2f, zsta, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
+  append_circle_verts(
+      verts, DIAMOND_NSEGMENTS, 1.2f, zend, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
+  return verts;
+}
+
+static const Vector<Vertex> &light_spot_volume_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  /* Cone apex */
+  verts.append({{0.0f, 0.0f, 0.0f}, 0});
+  /* Cone silhouette */
+  int flag = VCLASS_LIGHT_SPOT_SHAPE;
+  for (int a : IndexRange(CIRCLE_NSEGMENTS + 1)) {
+    float angle = (2.0f * M_PI * a) / CIRCLE_NSEGMENTS;
+    float s = sinf(-angle);
+    float c = cosf(-angle);
+    verts.append({{s, c, -1.0f}, flag});
+  }
+  return verts;
+}
+
+static const Vector<Vertex> &light_area_disk_lines_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  /* Light area */
+  append_circle_verts(verts, CIRCLE_NSEGMENTS, 0.5f, 0.0f, VCLASS_LIGHT_AREA_SHAPE);
+  /* Direction Line */
+  float zsta = light_distance_z_get('z', true);
+  float zend = light_distance_z_get('z', false);
+  verts.append({{0.0, 0.0, zsta}, VCLASS_LIGHT_DIST});
+  verts.append({{0.0, 0.0, zend}, VCLASS_LIGHT_DIST});
+  append_circle_verts(
+      verts, DIAMOND_NSEGMENTS, 1.2f, zsta, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
+  append_circle_verts(
+      verts, DIAMOND_NSEGMENTS, 1.2f, zend, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
+  return verts;
+}
+
+static const Vector<Vertex> &light_area_square_lines_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  const float2 p[4] = {{-1.0f, -1.0f}, {-1.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, -1.0f}};
+
+  /* Light area */
+  int flag = VCLASS_LIGHT_AREA_SHAPE;
+  for (int a : IndexRange(4)) {
+    for (int b : IndexRange(2)) {
+      verts.append({{p[(a + b) % 4] * 0.5f, 0.0f}, flag});
+    }
+  }
+  /* Direction Line */
+  float zsta = light_distance_z_get('z', true);
+  float zend = light_distance_z_get('z', false);
+  verts.append({{0.0, 0.0, zsta}, VCLASS_LIGHT_DIST});
+  verts.append({{0.0, 0.0, zend}, VCLASS_LIGHT_DIST});
+  append_circle_verts(
+      verts, DIAMOND_NSEGMENTS, 1.2f, zsta, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
+  append_circle_verts(
+      verts, DIAMOND_NSEGMENTS, 1.2f, zend, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
+  return verts;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Probe
+ * \{ */
 
 const float sin_pi_3 = 0.86602540378f;
 const float cos_pi_3 = 0.5f;
@@ -575,13 +794,15 @@ static const Vector<Vertex> &probe_planar_verts()
       {0.0f, -0.5f},
       {-sin_pi_3, 0.0f},
   };
-  for (int i = 0; i < 4; i++) {
-    for (int a = 0; a < 2; a++) {
+  for (int i : IndexRange(4)) {
+    for (int a : IndexRange(2)) {
       verts.append({{p[(i + a) % 4] * r, 0.0}, VCLASS_SCREENSPACE});
     }
   }
   return verts;
 }
+
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Camera
@@ -725,6 +946,16 @@ ShapeCache::ShapeCache()
   arrows = batch_ptr(arrows_verts());
   metaball_wire_circle = batch_ptr(metaball_wire_circle_verts(), GPU_PRIM_LINE_STRIP);
   speaker = batch_ptr(speaker_verts());
+  groundline = batch_ptr(groundline_verts());
+  light_icon_inner_lines = batch_ptr(light_icon_inner_lines_verts());
+  light_icon_outer_lines = batch_ptr(light_icon_outer_lines_verts());
+  light_icon_sun_rays = batch_ptr(light_icon_sun_rays_verts());
+  light_point_lines = batch_ptr(light_point_lines_verts());
+  light_sun_lines = batch_ptr(light_sun_lines_verts());
+  light_spot_lines = batch_ptr(light_spot_lines_verts());
+  light_spot_volume = batch_ptr(light_spot_volume_verts());
+  light_area_disk_lines = batch_ptr(light_area_disk_lines_verts());
+  light_area_square_lines = batch_ptr(light_area_square_lines_verts());
   probe_cube = batch_ptr(probe_cube_verts());
   probe_grid = batch_ptr(probe_grid_verts());
   probe_planar = batch_ptr(probe_planar_verts());
