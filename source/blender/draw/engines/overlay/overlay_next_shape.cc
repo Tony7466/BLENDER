@@ -187,24 +187,6 @@ static Vector<Vertex> sphere_axes_circles(const float radius,
   return verts;
 }
 
-static const Vector<Vertex> &quad_wire_verts()
-{
-  static Vector<Vertex> verts;
-  if (!verts.is_empty()) {
-    return verts;
-  }
-
-  verts = {{{-1.0f, -1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
-           {{-1.0f, +1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
-           {{-1.0f, +1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
-           {{+1.0f, +1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
-           {{+1.0f, +1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
-           {{+1.0f, -1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
-           {{+1.0f, -1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
-           {{-1.0f, -1.0f, 0.0f}, VCLASS_EMPTY_SCALED}};
-  return verts;
-}
-
 static const Vector<Vertex> &plain_axes_verts()
 {
   static Vector<Vertex> verts;
@@ -245,74 +227,6 @@ static const Vector<Vertex> &single_arrow_verts()
   }
   verts.append({{0.0f, 0.0f, 0.0f}, VCLASS_EMPTY_SCALED});
   verts.append({{0.0f, 0.0f, 0.75f}, VCLASS_EMPTY_SCALED});
-  return verts;
-}
-
-static const Vector<Vertex> &cube_verts()
-{
-  static Vector<Vertex> verts;
-  if (!verts.is_empty()) {
-    return verts;
-  }
-
-  for (auto index : bone_box_wire) {
-    float x = bone_box_verts[index][0];
-    float y = bone_box_verts[index][1] * 2.0f - 1.0f;
-    float z = bone_box_verts[index][2];
-    verts.append({{x, y, z}, VCLASS_EMPTY_SCALED});
-  }
-  return verts;
-}
-
-static const Vector<Vertex> &circle_verts()
-{
-  const int resolution = 64;
-  Vector<float2> ring = ring_vertices(1.0f, resolution);
-
-  static Vector<Vertex> verts;
-  if (!verts.is_empty()) {
-    return verts;
-  }
-
-  for (int a : IndexRange(resolution + 1)) {
-    float2 cv = ring[a % resolution];
-    verts.append({{cv.x, 0.0f, cv.y}, VCLASS_EMPTY_SCALED});
-  }
-  return verts;
-}
-
-static const Vector<Vertex> &empty_sphere_verts()
-{
-  static Vector<Vertex> verts;
-  if (!verts.is_empty()) {
-    return verts;
-  }
-
-  verts = sphere_axes_circles(1.0f, VCLASS_EMPTY_SCALED, 32);
-  return verts;
-}
-
-static const Vector<Vertex> &empty_cone_verts()
-{
-  static Vector<Vertex> verts;
-  if (!verts.is_empty()) {
-    return verts;
-  }
-
-  const int resolution = 8;
-  Vector<float2> ring = ring_vertices(1.0f, resolution);
-
-  for (int i : IndexRange(resolution)) {
-    float2 cv = ring[i % resolution];
-    /* Cone sides. */
-    verts.append({{cv[0], 0.0f, cv[1]}, VCLASS_EMPTY_SCALED});
-    verts.append({{0.0f, 2.0f, 0.0f}, VCLASS_EMPTY_SCALED});
-    /* Base ring. */
-    for (int j : IndexRange(2)) {
-      float2 cv = ring[(i + j) % resolution];
-      verts.append({{cv[0], 0.0f, cv[1]}, VCLASS_EMPTY_SCALED});
-    }
-  }
   return verts;
 }
 
@@ -399,6 +313,209 @@ static const Vector<Vertex> &arrows_verts()
       verts.append({{axis_name_vert * 4.0f, axis + 0.25f}, flag});
     }
   }
+  return verts;
+}
+
+static const Vector<Vertex> &quad_wire_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  verts = {{{-1.0f, -1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
+           {{-1.0f, +1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
+           {{-1.0f, +1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
+           {{+1.0f, +1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
+           {{+1.0f, +1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
+           {{+1.0f, -1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
+           {{+1.0f, -1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
+           {{-1.0f, -1.0f, 0.0f}, VCLASS_EMPTY_SCALED}};
+  return verts;
+}
+
+static const Vector<Vertex> &circle_verts()
+{
+  const int resolution = 64;
+  Vector<float2> ring = ring_vertices(1.0f, resolution);
+
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  for (int a : IndexRange(resolution + 1)) {
+    float2 cv = ring[a % resolution];
+    verts.append({{cv.x, 0.0f, cv.y}, VCLASS_EMPTY_SCALED});
+  }
+  return verts;
+}
+
+static const Vector<Vertex> &empty_cube_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  for (auto index : bone_box_wire) {
+    float3 vert = bone_box_verts[index];
+    vert.y = vert.y * 2.0f - 1.0f;
+    verts.append({vert, VCLASS_EMPTY_SCALED});
+  }
+  return verts;
+}
+
+static const Vector<Vertex> &empty_sphere_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  verts = sphere_axes_circles(1.0f, VCLASS_EMPTY_SCALED, 32);
+  return verts;
+}
+
+static const Vector<Vertex> &empty_cone_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  const int resolution = 8;
+  Vector<float2> ring = ring_vertices(1.0f, resolution);
+
+  for (int i : IndexRange(resolution)) {
+    float2 cv = ring[i % resolution];
+    /* Cone sides. */
+    verts.append({{cv.x, 0.0f, cv.y}, VCLASS_EMPTY_SCALED});
+    verts.append({{0.0f, 2.0f, 0.0f}, VCLASS_EMPTY_SCALED});
+    /* Base ring. */
+    for (int j : IndexRange(2)) {
+      float2 cv = ring[(i + j) % resolution];
+      verts.append({{cv.x, 0.0f, cv.y}, VCLASS_EMPTY_SCALED});
+    }
+  }
+  return verts;
+}
+
+static const Vector<Vertex> &empty_cylinder_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+  const int segments = 12;
+
+  int flag = VCLASS_EMPTY_SCALED;
+  float2 p[segments];
+  for (int i : IndexRange(segments)) {
+    float angle = 2 * M_PI * ((float)i / (float)segments);
+    p[i] = {cosf(angle), sinf(angle)};
+  }
+  for (int i : IndexRange(segments)) {
+    float2 cv = p[(i) % segments];
+    float2 pv = p[(i + 1) % segments];
+
+    /* cylinder sides */
+    verts.append({{cv, -1.0f}, flag});
+    verts.append({{cv, 1.0f}, flag});
+    /* top ring */
+    verts.append({{cv, 1.0f}, flag});
+    verts.append({{pv, 1.0f}, flag});
+    /* bottom ring */
+    verts.append({{cv, -1.0f}, flag});
+    verts.append({{pv, -1.0f}, flag});
+  }
+
+  return verts;
+}
+
+static const Vector<Vertex> &empty_capsule_body_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  verts = {{{1.0f, 0.0f, 1.0f}, VCLASS_NONE},
+           {{1.0f, 0.0f, 0.0f}, VCLASS_NONE},
+           {{0.0f, 1.0f, 1.0f}, VCLASS_NONE},
+           {{0.0f, 1.0f, 0.0f}, VCLASS_NONE},
+           {{-1.0f, 0.0f, 1.0f}, VCLASS_NONE},
+           {{-1.0f, 0.0f, 0.0f}, VCLASS_NONE},
+           {{0.0f, -1.0f, 1.0f}, VCLASS_NONE},
+           {{0.0f, -1.0f, 0.0f}, VCLASS_NONE}};
+
+  return verts;
+}
+
+static const Vector<Vertex> &empty_capsule_cap_verts()
+{
+  const int segments = 24 /* Must be multiple of 2. */;
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  /* a single ring of vertices */
+  float2 p[segments];
+  for (int i : IndexRange(segments)) {
+    float angle = 2 * M_PI * ((float)i / (float)segments);
+    p[i] = {cosf(angle), sinf(angle)};
+  }
+
+  /* Base circle */
+  for (int i : IndexRange(segments)) {
+    verts.append({{p[(i) % segments], 0.0f}, VCLASS_NONE});
+    verts.append({{p[(i + 1) % segments], 0.0f}, VCLASS_NONE});
+  }
+
+  for (int i : IndexRange(segments / 2)) {
+    int ci = i % segments;
+    int pi = (i + 1) % segments;
+    /* Y half circle */
+    verts.append({{p[ci].x, 0.0f, p[ci].y}, VCLASS_NONE});
+    verts.append({{p[pi].x, 0.0f, p[pi].y}, VCLASS_NONE});
+    /* X half circle */
+    verts.append({{0.0f, p[ci].x, p[ci].y}, VCLASS_NONE});
+    verts.append({{0.0f, p[ci].x, p[ci].y}, VCLASS_NONE});
+  }
+
+  return verts;
+}
+
+static const Vector<Vertex> &grid_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  for (int i : IndexRange(8)) {
+    for (int j : IndexRange(8)) {
+      float2 pos0 = {(float)i / 8.0f, (float)j / 8.0f};
+      float2 pos1 = {(float)(i + 1) / 8.0f, (float)j / 8.0f};
+      float2 pos2 = {(float)i / 8.0f, (float)(j + 1) / 8.0f};
+      float2 pos3 = {(float)(i + 1) / 8.0f, (float)(j + 1) / 8.0f};
+
+      pos0 = float2{-1.0f, -1.0f} + pos0 * 2.0f;
+      pos1 = float2{-1.0f, -1.0f} + pos1 * 2.0f;
+      pos2 = float2{-1.0f, -1.0f} + pos2 * 2.0f;
+      pos3 = float2{-1.0f, -1.0f} + pos3 * 2.0f;
+
+      verts.append({{pos0, 0.0f}, VCLASS_NONE});
+      verts.append({{pos1, 0.0f}, VCLASS_NONE});
+      verts.append({{pos2, 0.0f}, VCLASS_NONE});
+
+      verts.append({{pos2, 0.0f}, VCLASS_NONE});
+      verts.append({{pos1, 0.0f}, VCLASS_NONE});
+      verts.append({{pos3, 0.0f}, VCLASS_NONE});
+    }
+  }
+
   return verts;
 }
 
@@ -1076,16 +1193,24 @@ ShapeCache::ShapeCache()
     return BatchPtr(GPU_batch_create_ex(prim, vbo, nullptr, GPU_BATCH_OWNS_VBO));
   };
 
-  quad_wire = batch_ptr(quad_wire_verts());
   plain_axes = batch_ptr(plain_axes_verts());
   single_arrow = batch_ptr(single_arrow_verts());
-  cube = batch_ptr(cube_verts());
+  arrows = batch_ptr(arrows_verts());
+  quad_wire = batch_ptr(quad_wire_verts());
   circle = batch_ptr(circle_verts(), GPU_PRIM_LINE_STRIP);
+  empty_cube = batch_ptr(empty_cube_verts());
   empty_sphere = batch_ptr(empty_sphere_verts());
   empty_cone = batch_ptr(empty_cone_verts());
-  arrows = batch_ptr(arrows_verts());
+  empty_cylinder = batch_ptr(empty_cylinder_verts());
+  empty_capsule_body = batch_ptr(empty_capsule_body_verts());
+  empty_capsule_cap = batch_ptr(empty_capsule_cap_verts());
+
+  grid = batch_ptr(grid_verts(), GPU_PRIM_TRIS);
+
   metaball_wire_circle = batch_ptr(metaball_wire_circle_verts(), GPU_PRIM_LINE_STRIP);
+
   speaker = batch_ptr(speaker_verts());
+
   groundline = batch_ptr(groundline_verts());
   light_icon_inner_lines = batch_ptr(light_icon_inner_lines_verts());
   light_icon_outer_lines = batch_ptr(light_icon_outer_lines_verts());
@@ -1096,15 +1221,18 @@ ShapeCache::ShapeCache()
   light_spot_volume = batch_ptr(light_spot_volume_verts());
   light_area_disk_lines = batch_ptr(light_area_disk_lines_verts());
   light_area_square_lines = batch_ptr(light_area_square_lines_verts());
+
   probe_cube = batch_ptr(probe_cube_verts());
   probe_grid = batch_ptr(probe_grid_verts());
   probe_planar = batch_ptr(probe_planar_verts());
+
   camera_frame = batch_ptr(camera_frame_verts());
   camera_volume = batch_ptr(camera_volume_verts());
   camera_volume_wire = batch_ptr(camera_volume_wire_verts());
   camera_tria_wire = batch_ptr(camera_tria_wire_verts());
   camera_tria = batch_ptr(camera_tria_verts());
   camera_distances = batch_ptr(camera_distances_verts());
+
   field_wind = batch_ptr(field_wind_verts());
   field_force = batch_ptr(field_force_verts());
   field_vortex = batch_ptr(field_vortex_verts());

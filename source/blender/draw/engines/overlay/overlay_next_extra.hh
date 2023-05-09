@@ -25,12 +25,12 @@ class Extras {
     const eSelectionType selection_type_;
     InstanceBuf plain_axes = {selection_type_, "plain_axes_buf"};
     InstanceBuf single_arrow = {selection_type_, "single_arrow_buf"};
+    InstanceBuf arrows = {selection_type_, "arrows_buf"};
+    InstanceBuf image = {selection_type_, "image_buf"};
     InstanceBuf cube = {selection_type_, "cube_buf"};
     InstanceBuf circle = {selection_type_, "circle_buf"};
     InstanceBuf sphere = {selection_type_, "sphere_buf"};
     InstanceBuf cone = {selection_type_, "cone_buf"};
-    InstanceBuf arrows = {selection_type_, "arrows_buf"};
-    InstanceBuf image = {selection_type_, "image_buf"};
     InstanceBuf speaker = {selection_type_, "speaker_buf"};
     InstanceBuf probe_cube = {selection_type_, "probe_cube_buf"};
     InstanceBuf probe_grid = {selection_type_, "probe_grid_buf"};
@@ -45,12 +45,12 @@ class Extras {
     for (InstanceBuffers &bufs : buffers_) {
       bufs.plain_axes.clear();
       bufs.single_arrow.clear();
+      bufs.arrows.clear();
+      bufs.image.clear();
       bufs.cube.clear();
       bufs.circle.clear();
       bufs.sphere.clear();
       bufs.cone.clear();
-      bufs.arrows.clear();
-      bufs.image.clear();
       bufs.speaker.clear();
       bufs.probe_cube.clear();
       bufs.probe_grid.clear();
@@ -93,12 +93,12 @@ class Extras {
 
       bufs.plain_axes.end_sync(pass, shapes.plain_axes.get());
       bufs.single_arrow.end_sync(pass, shapes.single_arrow.get());
-      bufs.cube.end_sync(pass, shapes.cube.get());
-      bufs.circle.end_sync(pass, shapes.circle.get());
-      bufs.sphere.end_sync(pass, shapes.empty_sphere.get());
-      bufs.cone.end_sync(pass, shapes.empty_cone.get());
       bufs.arrows.end_sync(pass, shapes.arrows.get());
       bufs.image.end_sync(pass, shapes.quad_wire.get());
+      bufs.circle.end_sync(pass, shapes.circle.get());
+      bufs.cube.end_sync(pass, shapes.empty_cube.get());
+      bufs.sphere.end_sync(pass, shapes.empty_sphere.get());
+      bufs.cone.end_sync(pass, shapes.empty_cone.get());
       bufs.speaker.end_sync(pass, shapes.speaker.get());
       bufs.probe_cube.end_sync(pass, shapes.probe_cube.get());
       bufs.probe_grid.end_sync(pass, shapes.probe_grid.get());

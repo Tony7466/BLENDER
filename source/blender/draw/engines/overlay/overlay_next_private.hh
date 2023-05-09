@@ -68,16 +68,26 @@ class ShapeCache {
   using BatchPtr = std::unique_ptr<GPUBatch, BatchDeleter>;
 
  public:
-  BatchPtr quad_wire;
+  // GPUBatch *drw_normal_arrow; /* Single Arrow? */
+
   BatchPtr plain_axes;
   BatchPtr single_arrow;
-  BatchPtr cube;
+  BatchPtr arrows;
+  BatchPtr quad_wire;
   BatchPtr circle;
+  BatchPtr empty_cube;
   BatchPtr empty_sphere;
   BatchPtr empty_cone;
-  BatchPtr arrows;
+  BatchPtr empty_cylinder;
+  BatchPtr empty_capsule_body;
+  BatchPtr empty_capsule_cap;
+
+  BatchPtr grid;
+
   BatchPtr metaball_wire_circle;
+
   BatchPtr speaker;
+
   BatchPtr groundline;
   BatchPtr light_icon_inner_lines;
   BatchPtr light_icon_outer_lines;
@@ -88,15 +98,18 @@ class ShapeCache {
   BatchPtr light_spot_volume;
   BatchPtr light_area_disk_lines;
   BatchPtr light_area_square_lines;
+
   BatchPtr probe_cube;
   BatchPtr probe_grid;
   BatchPtr probe_planar;
+
   BatchPtr camera_frame;
   BatchPtr camera_volume;
   BatchPtr camera_volume_wire;
   BatchPtr camera_tria_wire;
   BatchPtr camera_tria;
   BatchPtr camera_distances;
+
   BatchPtr field_wind;
   BatchPtr field_force;
   BatchPtr field_vortex;
