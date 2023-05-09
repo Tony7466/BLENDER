@@ -180,8 +180,6 @@ class MetalDevice : public Device {
   void tex_free(device_texture &mem);
 
   void flush_delayed_free_list();
-
-  void upload_changed() {};
 };
 
 CCL_NAMESPACE_END

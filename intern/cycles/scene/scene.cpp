@@ -68,7 +68,7 @@ Scene::Scene(const SceneParams &params_, Device *device)
     this->dscenes.push_back(std::move(sub_dscene));
   });
   memset((void *)&dscene.data, 0, sizeof(dscene.data));
-
+	
   /* Stats time logging allocate memory to store times for each device */
   size_t device_count = this->dscenes.size();
   this->times.resize(device_count);
@@ -368,7 +368,8 @@ bool Scene::need_global_attribute(AttributeStandard std)
   else if (std == ATTR_STD_MOTION_VERTEX_NORMAL)
     return need_motion() == MOTION_BLUR;
   else if (std == ATTR_STD_VOLUME_VELOCITY || std == ATTR_STD_VOLUME_VELOCITY_X ||
-           std == ATTR_STD_VOLUME_VELOCITY_Y || std == ATTR_STD_VOLUME_VELOCITY_Z) {
+           std == ATTR_STD_VOLUME_VELOCITY_Y || std == ATTR_STD_VOLUME_VELOCITY_Z)
+  {
     return need_motion() != MOTION_NONE;
   }
 

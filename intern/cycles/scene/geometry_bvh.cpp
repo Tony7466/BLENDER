@@ -174,16 +174,7 @@ void GeometryManager::device_update_sub_bvh(Device *device,
       // Yes, so setup the device specific sub_bvh in the multi-bvh.
       BVHParams bparams = bvh->params;
       // Set the layout to the correct one for the device
-      if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_OPTIX)
-        bparams.bvh_layout = BVH_LAYOUT_OPTIX;
-      else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_METAL)
-        bparams.bvh_layout = BVH_LAYOUT_METAL;
-      else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_OPTIX_EMBREE)
-        bparams.bvh_layout = device->info.type == DEVICE_OPTIX ? BVH_LAYOUT_OPTIX :
-                                                                 BVH_LAYOUT_EMBREE;
-      else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_METAL_EMBREE)
-        bparams.bvh_layout = device->info.type == DEVICE_METAL ? BVH_LAYOUT_METAL :
-                                                                 BVH_LAYOUT_EMBREE;
+      bparams.bvh_layout = device->get_bvh_layout(device, bvh->params.bvh_layout);
       if (sub_bvh != NULL) {
         delete sub_bvh;
       }

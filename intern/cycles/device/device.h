@@ -121,8 +121,8 @@ class DeviceInfo {
 
 class Device {
   friend class device_sub_ptr;
-  thread_mutex device_buffer_mutex;
-  set<device_memory *> device_buffers;
+  //thread_mutex device_buffer_mutex;
+  //set<device_memory *> device_buffers;
 protected:
   Device(const DeviceInfo &info_, Stats &stats_, Profiler &profiler_)
       : info(info_), stats(stats_), profiler(profiler_)
@@ -168,6 +168,24 @@ protected:
   }
   virtual BVHLayoutMask get_bvh_layout_mask(uint kernel_features) const = 0;
 
+  BVHLayout get_bvh_layout(Device *device, BVHLayout layout)
+  {
+    if (layout == BVH_LAYOUT_MULTI_OPTIX)
+      layout = BVH_LAYOUT_OPTIX;
+    else if (layout == BVH_LAYOUT_MULTI_METAL)
+      layout = BVH_LAYOUT_METAL;
+    else if (layout == BVH_LAYOUT_MULTI_HIPRT)
+      layout = BVH_LAYOUT_HIPRT;
+    else if (layout == BVH_LAYOUT_MULTI_OPTIX_EMBREE)
+      layout = device->info.type == DEVICE_OPTIX ? BVH_LAYOUT_OPTIX : BVH_LAYOUT_EMBREE;
+    else if (layout == BVH_LAYOUT_MULTI_METAL_EMBREE)
+      layout = device->info.type == DEVICE_METAL ? BVH_LAYOUT_METAL : BVH_LAYOUT_EMBREE;
+    else if (layout == BVH_LAYOUT_MULTI_HIPRT_EMBREE)
+      layout = device->info.type == DEVICE_HIPRT ? BVH_LAYOUT_HIPRT : BVH_LAYOUT_EMBREE;
+
+    return layout;
+  }
+  
   /* statistics */
   Stats &stats;
   Profiler &profiler;
@@ -298,9 +316,8 @@ protected:
   /*
    * Upload to the device any buffers that have changed
    */
-  virtual void upload_changed();
+  virtual void upload_changed(vector<device_memory *> buffers);
 
-  virtual void register_buffer(device_memory *);
  protected:
   /* Memory allocation, only accessed through device_memory. */
   friend class MultiDevice;

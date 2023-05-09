@@ -117,7 +117,8 @@ class MultiDevice : public Device {
       foreach (auto &peer_sub, devices) {
         if (peer_sub->peer_island_index < 0 &&
             peer_sub->device->info.type == sub->device->info.type &&
-            peer_sub->device->check_peer_access(sub->device.get())) {
+            peer_sub->device->check_peer_access(sub->device.get()))
+	{
           peer_sub->peer_island_index = sub->peer_island_index;
           peer_islands[sub->peer_island_index].push_back(peer_sub.get());
         }
@@ -225,26 +226,13 @@ class MultiDevice : public Device {
 
           if (!bvh_multi->sub_bvhs[id]) {
             BVHParams params = bvh_multi->params;
-            if (bvh_multi->params.bvh_layout == BVH_LAYOUT_MULTI_OPTIX)
-              params.bvh_layout = BVH_LAYOUT_OPTIX;
-            else if (bvh_multi->params.bvh_layout == BVH_LAYOUT_MULTI_METAL)
-              params.bvh_layout = BVH_LAYOUT_METAL;
-	    else if (bvh_multi->params.bvh_layout == BVH_LAYOUT_MULTI_HIPRT)
-              params.bvh_layout = BVH_LAYOUT_HIPRT;
-            else if (bvh_multi->params.bvh_layout == BVH_LAYOUT_MULTI_OPTIX_EMBREE)
-              params.bvh_layout = sub->device->info.type == DEVICE_OPTIX ? BVH_LAYOUT_OPTIX :
-                                                                           BVH_LAYOUT_EMBREE;
-            else if (bvh_multi->params.bvh_layout == BVH_LAYOUT_MULTI_METAL_EMBREE)
-              params.bvh_layout = sub->device->info.type == DEVICE_METAL ? BVH_LAYOUT_METAL :
-                                                                           BVH_LAYOUT_EMBREE;
-	    else if (bvh_multi->params.bvh_layout == BVH_LAYOUT_MULTI_HIPRT_EMBREE)
-              params.bvh_layout = sub->device->info.type == DEVICE_HIPRT ? BVH_LAYOUT_HIPRT :
-                                                                      BVH_LAYOUT_EMBREE;
+	    params.bvh_layout = get_bvh_layout(sub->device.get(), bvh_multi->params.bvh_layout);
 
             /* Skip building a bottom level acceleration structure for non-instanced geometry on
              * Embree (since they are put into the top level directly, see bvh_embree.cpp) */
             if (!params.top_level && params.bvh_layout == BVH_LAYOUT_EMBREE &&
-                !bvh_multi->geometry[0]->is_instanced()) {
+                !bvh_multi->geometry[0]->is_instanced())
+            {
             }
             else {
               bvh_multi->sub_bvhs[id] = std::unique_ptr<BVH>(BVH::create(
@@ -287,8 +275,8 @@ class MultiDevice : public Device {
     SubDevice *owner_sub = sub;
     if (owner_sub->ptr_map.find(key) == owner_sub->ptr_map.end()) {
       foreach (SubDevice *island_sub, peer_islands[sub->peer_island_index]) {
-        if (island_sub != owner_sub &&
-            island_sub->ptr_map.find(key) != island_sub->ptr_map.end()) {
+        if (island_sub != owner_sub && island_sub->ptr_map.find(key) != island_sub->ptr_map.end())
+	{
           owner_sub = island_sub;
         }
       }
@@ -304,7 +292,8 @@ class MultiDevice : public Device {
     SubDevice *owner_sub = island.front();
     foreach (SubDevice *island_sub, island) {
       if (key ? (island_sub->ptr_map.find(key) != island_sub->ptr_map.end()) :
-                (island_sub->device->stats.mem_used < owner_sub->device->stats.mem_used)) {
+                (island_sub->device->stats.mem_used < owner_sub->device->stats.mem_used))
+      {
         owner_sub = island_sub;
       }
     }
@@ -482,39 +471,41 @@ class MultiDevice : public Device {
     }
   }
 
-  virtual void upload_changed() override
+  virtual void upload_changed(vector<device_memory *> buffers) override
   {
-    //foreach (const vector<SubDevice *> &island, peer_islands) {
-    parallel_for_each (peer_islands.begin(), peer_islands.end(), [&](const vector<SubDevice *> &island) {
-      for (const device_memory *buffer: device_buffers) {
-	VLOG_INFO << "Checking " << buffer->name << " on " << this;
-        if (buffer->modified) {	  
-	  device_ptr existing_key = buffer->device_pointer;
-	  device_ptr key = (existing_key) ? existing_key : unique_key++;
-	  size_t existing_size = buffer->device_size;
+    // foreach (const vector<SubDevice *> &island, peer_islands) {
+    parallel_for(size_t(0), peer_islands.size(), [&](const size_t idx) {
+      vector<SubDevice *> &island = peer_islands[idx];
+          for (const device_memory *buffer : buffers) {
+            VLOG_INFO << "Checking " << buffer->name << " on " << this;
+            if (buffer->modified && buffer->data_size > 0) {
+              device_ptr existing_key = buffer->device_pointer;
+              device_ptr key = (existing_key) ? existing_key : unique_key++;
+              size_t existing_size = buffer->device_size;
 
-	  SubDevice *owner_sub = find_suitable_mem_device(existing_key, island);	  
-	  Device *sub_device = owner_sub->device.get();
-	  device_ptr sub_device_pointer = (existing_key) ? owner_sub->ptr_map[existing_key] : 0;
-	  device_memory_clone sub_mem(*buffer, sub_device, sub_device_pointer);
-              
-          VLOG_INFO << "Uploading to " << buffer->name;
-	  owner_sub->device->mem_copy_to(sub_mem, existing_size, 0);
-	  owner_sub->ptr_map[key] = sub_mem.device_pointer;
-	  
-	  if (sub_mem.type == MEM_GLOBAL || sub_mem.type == MEM_TEXTURE) {
-	    /* Need to create texture objects and update pointer in kernel globals on all devices */
-	    foreach (SubDevice *island_sub, island) {
-	      if (island_sub != owner_sub) {
-		island_sub->device->mem_copy_to(sub_mem, existing_size, 0);
-	      }
-	    }
-	  }
-	  stats.mem_alloc(sub_mem.device_size - existing_size);
-	}
-      }
-    }
-      );
+              SubDevice *owner_sub = find_suitable_mem_device(existing_key, island);
+              Device *sub_device = owner_sub->device.get();
+              device_ptr sub_device_pointer = (existing_key) ? owner_sub->ptr_map[existing_key] :
+                                                               0;
+              device_memory_clone sub_mem(*buffer, sub_device, sub_device_pointer);
+
+              VLOG_INFO << "Uploading to " << buffer->name;
+              owner_sub->device->mem_copy_to(sub_mem, existing_size, 0);
+              owner_sub->ptr_map[key] = sub_mem.device_pointer;
+
+              // if (sub_mem.type == MEM_GLOBAL || sub_mem.type == MEM_TEXTURE) {
+              //   /* Need to create texture objects and update pointer in kernel globals on all
+              //    * devices */
+              //   foreach (SubDevice *island_sub, island) {
+              //     if (island_sub != owner_sub) {
+              //       island_sub->device->mem_copy_to(sub_mem, existing_size, 0);
+              //     }
+              //   }
+              // }
+              stats.mem_alloc(sub_mem.device_size - existing_size);
+            }
+          }
+        });
   }
 };
 

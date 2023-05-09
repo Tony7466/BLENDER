@@ -421,7 +421,8 @@ void GeometryManager::device_update_preprocess(Device *device, Scene *scene, Pro
   DeviceScene *dscene = &scene->dscene;
 
   if (device_update_flags & (DEVICE_MESH_DATA_NEEDS_REALLOC | DEVICE_CURVE_DATA_NEEDS_REALLOC |
-                             DEVICE_POINT_DATA_NEEDS_REALLOC)) {
+                             DEVICE_POINT_DATA_NEEDS_REALLOC))
+  {
     delete scene->bvh;
     scene->bvh = nullptr;
 
@@ -688,8 +689,9 @@ void GeometryManager::pretess_disp_normal_and_vertices_setup(Device *device,
  * Uploads the mesh data to the device and then builds or refits the BVH
  * using the uploaded data.
  */
-void GeometryManager::device_data_xfer_and_bvh_update(int idx,
+void GeometryManager::device_data_xfer_and_bvh_update(SceneTimes *times,
                                                       Scene *scene,
+                                                      Device *device,
                                                       DeviceScene *dscene,
                                                       const BVHLayout bvh_layout,
                                                       size_t num_bvh,
@@ -697,51 +699,41 @@ void GeometryManager::device_data_xfer_and_bvh_update(int idx,
                                                       bool need_update_scene_bvh,
                                                       Progress &progress)
 {
-  auto sub_dscene = scene->dscenes[idx].get();
-  sub_dscene->data.bvh.bvh_layout = BVH_LAYOUT_NONE;
-  // Get the device to use for this DeviceScene from one of the buffers
-  Device *sub_device = sub_dscene->tri_verts.device;
   // Assign the host_pointers to the sub_dscene so that they access
   // the correct data
-  sub_dscene->device_update_host_pointers(sub_device, dscene, &(scene->geom_sizes));
+  if (dscene != &(scene->dscene)) {
+    dscene->device_update_host_pointers(device, &(scene->dscene), &(scene->geom_sizes));
+  }
 
   /* Upload geometry and attribute buffers to the device */
   {
-    scoped_callback_timer timer([scene, idx](double time) {
+    scoped_callback_timer timer([scene, times](double time) {
       if (scene->update_stats) {
         // Save copy mesh to device duration for later logging
-        scene->times[idx].mesh = time;
+        times->mesh = time;
       }
     });
-    //sub_dscene->device_update_mesh(sub_device, &(scene->geom_sizes), progress);
+    //dscene->device_update_attributes(device, &(scene->attrib_sizes), progress);
+    //dscene->device_update_mesh(device, &(scene->geom_sizes), progress);
+    device->upload_changed(dscene->geom_buffers);
   }
 
-  {
-    scoped_callback_timer timer([scene, idx](double time) {
-      if (scene->update_stats) {
-        scene->times[idx].attrib = time;
-      }
-    });
-    //sub_dscene->device_update_attributes(sub_device, &(scene->attrib_sizes), progress);
-  }
-
-  sub_dscene->device_scene_clear_modified();
+  dscene->device_scene_clear_modified();
   device_init_update_bvh(scene);
   {
-    scoped_callback_timer timer([scene, idx](double time) {
+    scoped_callback_timer timer([scene, times](double time) {
       if (scene->update_stats) {
-        scene->times[idx].object_bvh = time;
+        times->object_bvh = time;
       }
     });
     TaskPool pool;
-    
+
     size_t i = 0;
     /* Build the Object BVHs */
     foreach (Geometry *geom, scene->geometry) {
       if (geom->is_modified() || geom->need_update_bvh_for_offset) {
         pool.push(function_bind(
-				&Geometry::compute_bvh, geom, sub_device, sub_dscene, &scene->params, &progress, i, num_bvh));
-	//geom->compute_bvh(sub_device, sub_dscene, &scene->params, &progress, i, num_bvh);
+            &Geometry::compute_bvh, geom, device, dscene, &scene->params, &progress, i, num_bvh));
         if (geom->need_build_bvh(bvh_layout)) {
           i++;
         }
@@ -752,15 +744,15 @@ void GeometryManager::device_data_xfer_and_bvh_update(int idx,
     VLOG_WORK << "Objects BVH build pool statistics:\n" << summary.full_report();
   }
 
-  if(need_update_scene_bvh) {
-    scoped_callback_timer timer([scene, idx](double time) {
+  if (need_update_scene_bvh) {
+    scoped_callback_timer timer([scene, times](double time) {
       if (scene->update_stats) {
-        scene->times[idx].scene_bvh = time;
+        times->scene_bvh = time;
       }
     });
     /* Build the scene BVH */
-    device_update_bvh(sub_device, sub_dscene, scene, can_refit, 1, 1, progress);
-    sub_dscene->device_update_bvh2(sub_device, scene->bvh, progress);
+    device_update_bvh(device, dscene, scene, can_refit, 1, 1, progress);
+    dscene->device_update_bvh2(device, scene->bvh, progress);
   }
 }
 
@@ -909,23 +901,33 @@ void GeometryManager::device_update(Device *device,
     can_refit_scene_bvh = device_update_bvh_preprocess(device, dscene, scene, progress);
   }
   {
-    //device->upload_changed();
-    size_t num_scenes = scene->dscenes.size();
-    VLOG_INFO << "Rendering using " << num_scenes << " devices";
     /* Parallel upload the geometry data to the devices and
        calculate or refit the BVHs */
-    device->upload_changed();
-    parallel_for(
-        size_t(0), num_scenes, [=, &progress](const size_t idx) {
-          device_data_xfer_and_bvh_update(idx,
-                                          scene,
-                                          dscene,
-                                          bvh_layout,
-                                          num_bvh,
-                                          can_refit_scene_bvh,
-                                          need_update_scene_bvh,
-                                          progress);
-        });
+    size_t num_scenes = scene->dscenes.size();
+
+    VLOG_INFO << "Rendering using " << num_scenes << " devices";
+    // parallel_for(size_t(0), num_scenes, [=, &progress](const size_t idx) {
+    //   DeviceScene *sub_dscene = scene->dscenes[idx].get();
+    //   Device *sub_device = sub_dscene->tri_verts.device;
+    //   device_data_xfer_and_bvh_update(&(scene->times[0]),
+    //                                   scene,
+    //                                   sub_device,
+    //                                   sub_dscene,
+    //                                   bvh_layout,
+    //                                   num_bvh,
+    //                                   can_refit_scene_bvh,
+    //                                   need_update_scene_bvh,
+    //                                   progress);
+    // });
+    device_data_xfer_and_bvh_update(&(scene->times[0]),
+                                    scene,
+                                    device,
+                                    dscene,
+                                    bvh_layout,
+                                    num_bvh,
+                                    can_refit_scene_bvh,
+                                    need_update_scene_bvh,
+                                    progress);
     if (need_update_scene_bvh) {
       device_update_bvh_postprocess(device, dscene, scene, progress);
     }
@@ -934,11 +936,11 @@ void GeometryManager::device_update(Device *device,
       double max_attrib_time = 0.0f;
       double max_object_bvh_time = 0.0f;
       double max_scene_bvh_time = 0.0f;
-      for (size_t i = 0; i < num_scenes; i++) {
+      for (size_t i = 0; i < 1 /*num_scenes*/; i++) {
         max_mesh_time = max(max_mesh_time, scene->times[i].mesh);
         max_attrib_time = max(max_attrib_time, scene->times[i].attrib);
         max_object_bvh_time = max(max_object_bvh_time, scene->times[i].object_bvh);
-	max_scene_bvh_time = max(max_scene_bvh_time, scene->times[i].scene_bvh);
+        max_scene_bvh_time = max(max_scene_bvh_time, scene->times[i].scene_bvh);
       }
       scene->update_stats->geometry.times.add_entry(
           {"device_update (copy meshes to device)", max_mesh_time});
@@ -947,7 +949,7 @@ void GeometryManager::device_update(Device *device,
       scene->update_stats->geometry.times.add_entry(
           {"device_update (build object BVHs)", max_object_bvh_time});
       scene->update_stats->geometry.times.add_entry(
-	  {"device_update (build scene BVH)", max_scene_bvh_time});
+          {"device_update (build scene BVH)", max_scene_bvh_time});
     }
   }
 
@@ -1144,7 +1146,9 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
       DeviceScene *sub_dscene = scene->dscenes.front().get();
       Device *sub_device = sub_dscene->tri_verts.device;
 
-      sub_dscene->device_update_host_pointers(sub_device, dscene, &(scene->geom_sizes));
+      if(sub_dscene != &(scene->dscene)) {
+	sub_dscene->device_update_host_pointers(sub_device, dscene, &(scene->geom_sizes));
+      }
       
       {
         scoped_callback_timer timer([scene](double time) {
@@ -1153,16 +1157,9 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
                 {"device_update (displacement: copy meshes to device)", time});
           }
         });
-        sub_dscene->device_update_attributes(sub_device, &(scene->attrib_sizes), progress);
+	device->upload_changed(dscene->geom_buffers);
       }
-      {
-	scoped_callback_timer timer([scene](double time) {
-	  if (scene->update_stats) {
-	    scene->update_stats->geometry.times.add_entry({"displacement: copy attributes to device", time});
-	  }
-	});
-        sub_dscene->device_update_mesh(sub_device, &(scene->geom_sizes), progress);
-      }
+      
       /* Copy constant data needed by shader evaluation. */
       sub_device->const_copy_to("data", &dscene->data, sizeof(dscene->data));
 
