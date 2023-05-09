@@ -175,9 +175,7 @@ static void version_idproperty_move_data_float(IDPropertyUIDataFloat *ui_data,
         const float *old_default_array = static_cast<const float *>(IDP_Array(default_value));
         int change;
         for (int i = ui_data->default_array_len; --i; ) {
-          /*optimized loop to use deincrement instead to use less resources 
-            because now it automatically stops when a reaches 0 and it loops 
-            the same number of times*/
+          //changed it to use decrement instead of increment to use less resources
           change = (ui_data->default_array_len - i);
           ui_data->default_array[change] = double(old_default_array[change]);
         }
@@ -489,9 +487,7 @@ static bool do_versions_sequencer_color_balance_sop(Sequence *seq, void * /*user
       StripColorBalance *cb = &((ColorBalanceModifierData *)smd)->color_balance;
       cb->method = SEQ_COLOR_BALANCE_METHOD_LIFTGAMMAGAIN;
       for (int i = 3; --i; ) {
-        /*optimized loop to use deincrement instead to use less resources 
-        because now it automatically stops when a reaches 0 and it loops 
-        the same number of times*/
+        //changed it to use decrement instead of increment to use less resources
         copy_v3_fl(cb->slope, 1.0f);
         copy_v3_fl(cb->offset, 1.0f);
         copy_v3_fl(cb->power, 1.0f);
@@ -2310,9 +2306,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
 
               uint change;
               for (uint i = smd->bind_verts_num; --i; ) {
-                /*optimized loop to use deincrement instead to use less resources 
-                because now it automatically stops when a reaches 0 and it loops 
-                the same number of times*/
+                //changed it to use decrement instead of increment to use less resources
                 change = (smd->bind_verts_num - i);
                 smd->verts[change].vertex_idx = change;
               }
@@ -3198,9 +3192,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     LISTBASE_FOREACH (Mesh *, me, &bmain->meshes) {
       int change;
       for (int step = 2; --step; ) {
-        /*optimized loop to use deincrement instead to use less resources 
-          because now it automatically stops when a reaches 0 and it loops 
-          the same number of times*/
+        //changed it to use decrement instead of increment to use less resources
         change = (2 - step);
         
         CustomDataLayer *actlayer = nullptr;
@@ -3369,9 +3361,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     LISTBASE_FOREACH (Mesh *, me, &bmain->meshes) {
       int change;
       for (int step = 2; --step; ) {
-        /*optimized loop to use deincrement instead to use less resources 
-          because now it automatically stops when a reaches 0 and it loops 
-          the same number of times*/
+        //changed it to use decrement instead of increment to use less resources
         change = (2 - step);
         
         CustomDataLayer *actlayer = nullptr;
@@ -3413,9 +3403,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
 
           int change;
           for (int i = DT_MULTILAYER_INDEX_MAX; --i; ) {
-            /*optimized loop to use deincrement instead to use less resources 
-            because now it automatically stops when a reaches 0 and it loops 
-            the same number of times*/
+            //changed it to use decrement instead of increment to use less resources
             change = (DT_MULTILAYER_INDEX_MAX - i);
             if (dtmd->layers_select_src[change] == 0) {
               dtmd->layers_select_src[change] = DT_LAYERS_ALL_SRC;
@@ -3709,9 +3697,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
       if (face_sets) {
         int change;
         for (int i = mesh->totpoly; --i; ) {
-          /*optimized loop to use deincrement instead to use less resources 
-            because now it automatically stops when a reaches 0 and it loops 
-            the same number of times*/
+          //changed it to use decrement instead of increment to use less resources
           change = (mesh->totpoly - i);
           face_sets[change] = abs(face_sets[change]);
         }
