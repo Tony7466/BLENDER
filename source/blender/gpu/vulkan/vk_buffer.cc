@@ -55,12 +55,8 @@ bool VKBuffer::create(int64_t size_in_bytes,
   create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
   create_info.flags = 0;
   /*
-   * Vulkan doesn't allow empty buffers. There are areas that can still request to create empty
-   * buffers, like:
-   * - DrawManager (instance drawing)
-   * - PyGPU
-   *
-   * Best to create a buffer of a single byte.
+   * Vulkan doesn't allow empty buffers but some areas (DrawManager Instance data, PyGPU) create
+   * them.
    */
   create_info.size = max_ii(size_in_bytes, 1);
   create_info.usage = buffer_usage;
