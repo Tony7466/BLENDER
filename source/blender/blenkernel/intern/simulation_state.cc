@@ -158,15 +158,6 @@ StatesAroundFrame ModifierSimulationCache::get_states_around_frame(const SubFram
   return states_around_frame;
 }
 
-MutableStatesAroundFrame ModifierSimulationCache::get_states_around_frame_for_write(
-    const SubFrame &frame)
-{
-  StatesAroundFrame states = this->get_states_around_frame(frame);
-  return {const_cast<ModifierSimulationStateAtFrame *>(states.prev),
-          const_cast<ModifierSimulationStateAtFrame *>(states.current),
-          const_cast<ModifierSimulationStateAtFrame *>(states.next)};
-}
-
 const SimulationZoneState *ModifierSimulationState::get_zone_state(
     const SimulationZoneID &zone_id) const
 {
@@ -183,12 +174,6 @@ SimulationZoneState &ModifierSimulationState::get_zone_state_for_write(
   std::lock_guard lock{mutex_};
   return *zone_states_.lookup_or_add_cb(zone_id,
                                         []() { return std::make_unique<SimulationZoneState>(); });
-}
-
-void ModifierSimulationState::remove_zone_state(const SimulationZoneID &zone_id)
-{
-  std::lock_guard lock{mutex_};
-  zone_states_.remove(zone_id);
 }
 
 void ModifierSimulationState::ensure_bake_loaded() const
@@ -217,6 +202,15 @@ void ModifierSimulationState::ensure_bake_loaded() const
                                         *owner_->bdata_sharing_,
                                         const_cast<ModifierSimulationState &>(*this));
   bake_loaded_ = true;
+}
+
+void ModifierSimulationCache::clear_prev_states()
+{
+  std::lock_guard lock(states_at_frames_mutex_);
+  std::unique_ptr<ModifierSimulationStateAtFrame> temp = std::move(states_at_frames_.last());
+  states_at_frames_.clear_and_shrink();
+  bdata_sharing_.reset();
+  states_at_frames_.append(std::move(temp));
 }
 
 void ModifierSimulationCache::reset()

@@ -107,7 +107,6 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
         /* Wait until all inputs are available. */
         return;
       }
-
       for (const int i : input_values.index_range()) {
         inputs_[i].type->move_construct(input_values[i], output_values[i]);
       }

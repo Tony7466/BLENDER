@@ -120,7 +120,6 @@ class ModifierSimulationState {
 
   const SimulationZoneState *get_zone_state(const SimulationZoneID &zone_id) const;
   SimulationZoneState &get_zone_state_for_write(const SimulationZoneID &zone_id);
-  void remove_zone_state(const SimulationZoneID &zone_id);
   void ensure_bake_loaded() const;
 };
 
@@ -147,12 +146,6 @@ struct StatesAroundFrame {
   const ModifierSimulationStateAtFrame *next = nullptr;
 };
 
-struct MutableStatesAroundFrame {
-  ModifierSimulationStateAtFrame *prev = nullptr;
-  ModifierSimulationStateAtFrame *current = nullptr;
-  ModifierSimulationStateAtFrame *next = nullptr;
-};
-
 class ModifierSimulationCache {
  private:
   mutable std::mutex states_at_frames_mutex_;
@@ -176,7 +169,6 @@ class ModifierSimulationCache {
   const ModifierSimulationState *get_state_at_exact_frame(const SubFrame &frame) const;
   ModifierSimulationState &get_state_at_frame_for_write(const SubFrame &frame);
   StatesAroundFrame get_states_around_frame(const SubFrame &frame) const;
-  MutableStatesAroundFrame get_states_around_frame_for_write(const SubFrame &frame);
 
   void invalidate()
   {
@@ -189,6 +181,7 @@ class ModifierSimulationCache {
   }
 
   void reset();
+  void clear_prev_states();
 };
 
 }  // namespace blender::bke::sim
