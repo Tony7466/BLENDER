@@ -3730,7 +3730,13 @@ static void ui_do_but_textedit(
 
       /* only select a word in button if there was no selection before */
       if (event->val == KM_DBL_CLICK && had_selection == false) {
-        if (but->pos > 0 && !ELEM(but->editstr[but->pos - 1], ' ', '\n', '\t')) {
+        if (!but->editstr[but->pos] ||
+            (BLI_str_cursor_delim_type_utf8(but->editstr, but->strwidth, but->pos) ==
+             STRCUR_DELIM_WHITESPACE) ||
+            (but->pos > 0 &&
+             BLI_str_cursor_delim_type_utf8(but->editstr, but->strwidth, but->pos - 1) !=
+                 STRCUR_DELIM_WHITESPACE))
+        {
           ui_textedit_move(but, data, STRCUR_DIR_PREV, false, STRCUR_JUMP_DELIM);
         }
         ui_textedit_move(but, data, STRCUR_DIR_NEXT, true, STRCUR_JUMP_DELIM);

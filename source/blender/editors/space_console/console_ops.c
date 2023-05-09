@@ -1256,9 +1256,17 @@ static int console_selectword_invoke(bContext *C, wmOperator *UNUSED(op), const 
   if (console_line_column_from_index(sc, pos, &cl, &offset, &n)) {
     int sel[2] = {n, n};
 
-    BLI_str_cursor_step_utf8(cl->line, cl->len, &sel[0], STRCUR_DIR_NEXT, STRCUR_JUMP_DELIM);
-
-    BLI_str_cursor_step_utf8(cl->line, cl->len, &sel[1], STRCUR_DIR_PREV, STRCUR_JUMP_DELIM);
+    char c = cl->line[n - 1];
+    char d = cl->line[n];
+    if (!cl->line[n] ||
+        (BLI_str_cursor_delim_type_utf8(cl->line, cl->len, n) == STRCUR_DELIM_WHITESPACE) ||
+        (n > 0 &&
+         BLI_str_cursor_delim_type_utf8(cl->line, cl->len, n - 1) != STRCUR_DELIM_WHITESPACE))
+    {
+      BLI_str_cursor_step_utf8(cl->line, cl->len, &sel[0], STRCUR_DIR_PREV, STRCUR_JUMP_DELIM);
+      sel[1] = sel[0];
+    }
+    BLI_str_cursor_step_utf8(cl->line, cl->len, &sel[1], STRCUR_DIR_NEXT, STRCUR_JUMP_DELIM);
 
     sel[0] = offset - sel[0];
     sel[1] = offset - sel[1];

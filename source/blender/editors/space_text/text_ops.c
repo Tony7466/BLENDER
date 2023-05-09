@@ -15,6 +15,7 @@
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
 #include "BLI_math_base.h"
+#include "BLI_string_cursor_utf8.h"
 
 #include "BLT_translation.h"
 
@@ -1579,7 +1580,13 @@ static int text_select_word_exec(bContext *C, wmOperator *UNUSED(op))
   Text *text = CTX_data_edit_text(C);
 
   TextLine *line = text->curl;
-  if (text->curc > 0 && !ELEM(line->line[text->curc - 1], ' ', '\n', '\t')) {
+  if (!line->line[text->curc] ||
+      (BLI_str_cursor_delim_type_utf8(line->line, line->len, text->curc) ==
+       STRCUR_DELIM_WHITESPACE) ||
+      (text->curc > 0 && BLI_str_cursor_delim_type_utf8(line->line, line->len, text->curc - 1) !=
+                             STRCUR_DELIM_WHITESPACE))
+  {
+    /* Move left if to left is non-whitespace or if right is whitespace. */
     txt_jump_left(text, false);
   }
   txt_jump_right(text, true);
