@@ -292,7 +292,6 @@ void BKE_mesh_runtime_clear_geometry(Mesh *mesh)
   free_bvh_cache(*mesh->runtime);
   reset_normals(*mesh->runtime);
   free_subdiv_ccg(*mesh->runtime);
-  mesh->runtime->bounds_cache.tag_dirty();
   mesh->runtime->loose_edges_cache.tag_dirty();
   mesh->runtime->loose_verts_cache.tag_dirty();
   mesh->runtime->verts_no_face_cache.tag_dirty();
@@ -337,14 +336,12 @@ void BKE_mesh_tag_positions_changed(Mesh *mesh)
   mesh->runtime->poly_normals_dirty = true;
   free_bvh_cache(*mesh->runtime);
   mesh->runtime->looptris_cache.tag_dirty();
-  mesh->runtime->bounds_cache.tag_dirty();
 }
 
 void BKE_mesh_tag_positions_changed_uniformly(Mesh *mesh)
 {
   /* The normals and triangulation didn't change, since all verts moved by the same amount. */
   free_bvh_cache(*mesh->runtime);
-  mesh->runtime->bounds_cache.tag_dirty();
 }
 
 void BKE_mesh_tag_topology_changed(struct Mesh *mesh)

@@ -102,12 +102,6 @@ struct MeshRuntime {
   /** Implicit sharing user count for #Mesh::poly_offset_indices. */
   const ImplicitSharingInfoHandle *poly_offsets_sharing_info;
 
-  /**
-   * A cache of bounds shared between data-blocks with unchanged positions. When changing positions
-   * affect the bounds, the cache is "un-shared" with other geometries. See #SharedCache comments.
-   */
-  SharedCache<Bounds<float3>> bounds_cache;
-
   /** Lazily initialized SoA data from the #edit_mesh field in #Mesh. */
   EditMeshData *edit_data = nullptr;
 

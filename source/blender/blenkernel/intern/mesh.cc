@@ -131,7 +131,6 @@ static void mesh_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int 
   /* Share various derived caches between the source and destination mesh for improved performance
    * when the source is persistent and edits to the destination mesh don't affect the caches.
    * Caches will be "un-shared" as necessary later on. */
-  mesh_dst->runtime->bounds_cache = mesh_src->runtime->bounds_cache;
   mesh_dst->runtime->loose_verts_cache = mesh_src->runtime->loose_verts_cache;
   mesh_dst->runtime->verts_no_face_cache = mesh_src->runtime->verts_no_face_cache;
   mesh_dst->runtime->loose_edges_cache = mesh_src->runtime->loose_edges_cache;
@@ -1617,7 +1616,13 @@ bool BKE_mesh_minmax(const Mesh *me, float r_min[3], float r_max[3])
 
 void Mesh::bounds_set_eager(const blender::Bounds<float3> &bounds)
 {
-  this->runtime->bounds_cache.ensure([&](blender::Bounds<float3> &r_data) { r_data = bounds; });
+  using namespace blender;
+  if (this->totvert == 0) {
+    return;
+  }
+  bke::GAttributeReader attribute = this->attributes().lookup("position");
+  bounds::set_min_max(
+      attribute.varray.get_internal_span().typed<float3>(), attribute.sharing_info, bounds);
 }
 
 void BKE_mesh_transform(Mesh *me, const float mat[4][4], bool do_keys)
@@ -1672,9 +1677,6 @@ void BKE_mesh_translate(Mesh *mesh, const float offset[3], const bool do_keys)
   }
 
   std::optional<Bounds<float3>> bounds;
-  if (mesh->runtime->bounds_cache.is_cached()) {
-    bounds = mesh->runtime->bounds_cache.data();
-  }
 
   translate_positions(mesh->vert_positions_for_write(), offset);
   if (do_keys && mesh->key) {
