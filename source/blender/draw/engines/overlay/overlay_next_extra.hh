@@ -259,7 +259,9 @@ class Extras {
       z = float3(0);
       bufs.cube.append(_data, select_id);
 
+      _data = data;
       _data.object_to_world_ = math::normalize(_data.object_to_world_);
+      _data.object_to_world_[3] = data.object_to_world_[3];
       bufs.single_arrow.append(
           ExtraInstanceData(_data.object_to_world_, data.color_, ob_ref.object->empty_drawsize),
           select_id);
