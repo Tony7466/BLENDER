@@ -38,6 +38,7 @@
 #include "DNA_modifier_types.h"
 #include "DNA_movieclip_types.h"
 #include "DNA_screen_types.h"
+#include "DNA_sound_types.h"
 #include "DNA_space_types.h"
 #include "DNA_text_types.h"
 #include "DNA_tracking_types.h"
@@ -67,6 +68,7 @@
 #include "BKE_modifier.h"
 #include "BKE_node.h"
 #include "BKE_screen.h"
+#include "BKE_sound.h"
 #include "BKE_workspace.h"
 
 #include "RNA_access.h"
@@ -1373,6 +1375,35 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+
+    /* Fix sound strips with speed factor set to 0. Cause is unknown, see #107289. */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      Editing *ed = SEQ_editing_get(scene);
+      if (ed == nullptr) {
+        continue;
+      }
+
+      LISTBASE_FOREACH (Sequence *, seq, &ed->seqbase) {
+        if (seq->type != SEQ_TYPE_SOUND_RAM && seq->speed_factor != 0.0f) {
+          continue;
+        }
+
+        bSound *sound = seq->sound;
+        SoundInfo info;
+        bool sound_loaded = BKE_sound_info_get(bmain, sound, &info);
+
+        if (!sound_loaded) {
+          continue;
+        }
+        if (info.specs.channels == SOUND_CHANNELS_INVALID) {
+          continue;
+        }
+
+        seq->len = MAX2(1, round((info.length - sound->offset_time) * FPS));
+        seq->speed_factor = 1.0f;
+        seq->startofs = 0.0f;
+      }
+    }
   }
 }
 
@@ -4311,7 +4342,6 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     /* Rename Grease Pencil weight draw brush. */
     do_versions_rename_id(bmain, ID_BR, "Draw Weight", "Weight Draw");
   }
-
   /**
    * Versioning code until next subversion bump goes here.
    *
