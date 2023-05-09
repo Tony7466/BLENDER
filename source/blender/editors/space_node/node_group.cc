@@ -551,7 +551,7 @@ static bool node_group_separate_selected(
   }
 
   for (bNode *node : new_nodes) {
-    nodeDeclarationEnsure(&ntree, node);
+    blender::bke::nodeDeclarationEnsure(&ntree, node);
   }
 
   /* and copy across the animation,
@@ -752,7 +752,7 @@ static void get_min_max_of_nodes(const Span<bNode *> nodes,
   INIT_MINMAX2(min, max);
   for (const bNode *node : nodes) {
     float2 loc;
-    nodeToView(node, node->offsetx, node->offsety, &loc.x, &loc.y);
+    blender::bke::nodeToView(node, node->offsetx, node->offsety, &loc.x, &loc.y);
     math::min_max(loc, min, max);
     if (use_size) {
       loc.x += node->width;

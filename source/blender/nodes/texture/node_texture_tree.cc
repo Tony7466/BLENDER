@@ -20,7 +20,7 @@
 #include "BKE_context.h"
 #include "BKE_layer.h"
 #include "BKE_linestyle.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_paint.h"
 
 #include "NOD_texture.h"
@@ -107,7 +107,7 @@ static void localize(bNodeTree *localtree, bNodeTree * /*ntree*/)
     node_next = node->next;
 
     if (node->flag & NODE_MUTED || node->type == NODE_REROUTE) {
-      nodeInternalRelink(localtree, node);
+      blender::bke::nodeInternalRelink(localtree, node);
       ntreeFreeLocalNode(localtree, node);
     }
   }

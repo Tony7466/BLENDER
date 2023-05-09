@@ -3,7 +3,7 @@
 
 #include "COM_PreviewOperation.h"
 
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "IMB_colormanagement.h"
 
 namespace blender::compositor {

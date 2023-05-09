@@ -17,7 +17,7 @@
 #include "BKE_global.h"
 #include "BKE_image.h"
 #include "BKE_main.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_tracking.h"
@@ -96,7 +96,7 @@ static void localize(bNodeTree *localtree, bNodeTree *ntree)
 static void local_merge(Main *bmain, bNodeTree *localtree, bNodeTree *ntree)
 {
   /* move over the compbufs and previews */
-  BKE_node_preview_merge_tree(ntree, localtree, true);
+  blender::bke::node_preview_merge_tree(ntree, localtree, true);
 
   for (bNode *lnode = (bNode *)localtree->nodes.first; lnode; lnode = lnode->next) {
     if (bNode *orig_node = nodeFindNodebyName(ntree, lnode->name)) {

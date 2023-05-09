@@ -18,7 +18,7 @@
 #include "BKE_curve.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_screen.h"
@@ -1643,7 +1643,7 @@ static int mute_links_exec(bContext *C, wmOperator *op)
   bke::node_tree_runtime::AllowUsingOutdatedInfo allow_outdated_info{ntree};
 
   for (bNodeLink *link : affected_links) {
-    nodeLinkSetMute(&ntree, link, !(link->flag & NODE_LINK_MUTED));
+    blender::bke::nodeLinkSetMute(&ntree, link, !(link->flag & NODE_LINK_MUTED));
     const bool muted = link->flag & NODE_LINK_MUTED;
 
     /* Propagate mute status downstream past reroute nodes. */
@@ -1652,7 +1652,7 @@ static int mute_links_exec(bContext *C, wmOperator *op)
       links.push_multiple(link->tonode->output_socket(0).directly_linked_links());
       while (!links.is_empty()) {
         bNodeLink *link = links.pop();
-        nodeLinkSetMute(&ntree, link, muted);
+        blender::bke::nodeLinkSetMute(&ntree, link, muted);
         if (!link->tonode->is_reroute()) {
           continue;
         }
@@ -1666,7 +1666,7 @@ static int mute_links_exec(bContext *C, wmOperator *op)
         links.push_multiple(link->fromnode->input_socket(0).directly_linked_links());
         while (!links.is_empty()) {
           bNodeLink *link = links.pop();
-          nodeLinkSetMute(&ntree, link, muted);
+          blender::bke::nodeLinkSetMute(&ntree, link, muted);
           if (!link->fromnode->is_reroute()) {
             continue;
           }
@@ -1722,7 +1722,7 @@ static int detach_links_exec(bContext *C, wmOperator * /*op*/)
 
   for (bNode *node : ntree.all_nodes()) {
     if (node->flag & SELECT) {
-      nodeInternalRelink(&ntree, node);
+      blender::bke::nodeInternalRelink(&ntree, node);
     }
   }
 
@@ -2254,7 +2254,7 @@ bNodeSocket *get_main_socket(bNodeTree &ntree, bNode &node, eNodeSocketInOut in_
   ListBase *sockets = (in_out == SOCK_IN) ? &node.inputs : &node.outputs;
 
   /* Try to get the main socket based on the socket declaration. */
-  nodeDeclarationEnsure(&ntree, &node);
+  blender::bke::nodeDeclarationEnsure(&ntree, &node);
   const nodes::NodeDeclaration *node_decl = node.declaration();
   if (node_decl != nullptr) {
     Span<nodes::SocketDeclarationPtr> socket_decls = (in_out == SOCK_IN) ? node_decl->inputs :
@@ -2371,7 +2371,7 @@ static void node_link_insert_offset_frame_chains(bNodeTree *ntree,
 {
   for (bNode *node : ntree->all_nodes()) {
     if (nodeIsParentAndChild(parent, node)) {
-      nodeChainIter(ntree, node, node_link_insert_offset_frame_chain_cb, data, reversed);
+      blender::bke::nodeChainIter(ntree, node, node_link_insert_offset_frame_chain_cb, data, reversed);
     }
   }
 }
@@ -2402,7 +2402,7 @@ static bool node_link_insert_offset_chain_cb(bNode *fromnode,
     }
   }
   else if (ofs_node->parent) {
-    bNode *node = nodeFindRootParent(ofs_node);
+    bNode *node = blender::bke::nodeFindRootParent(ofs_node);
     node_offset_apply(*node, data->offset_x);
   }
   else {
@@ -2505,7 +2505,7 @@ static void node_link_insert_offset_ntree(NodeInsertOfsData *iofsd,
         node_offset_apply(*offs_node, addval);
       }
       else if (!insert.parent && offs_node->parent) {
-        node_offset_apply(*nodeFindRootParent(offs_node), addval);
+        node_offset_apply(*blender::bke::nodeFindRootParent(offs_node), addval);
       }
       margin = addval;
     }
@@ -2521,9 +2521,9 @@ static void node_link_insert_offset_ntree(NodeInsertOfsData *iofsd,
     iofsd->offset_x = margin;
 
     /* flag all parents of insert as offset to prevent them from being offset */
-    nodeParentsIter(&insert, node_parents_offset_flag_enable_cb, nullptr);
+    blender::bke::nodeParentsIter(&insert, node_parents_offset_flag_enable_cb, nullptr);
     /* iterate over entire chain and apply offsets */
-    nodeChainIter(ntree,
+    blender::bke::nodeChainIter(ntree,
                   right_alignment ? next : prev,
                   node_link_insert_offset_chain_cb,
                   iofsd,

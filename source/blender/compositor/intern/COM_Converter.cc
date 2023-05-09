@@ -5,7 +5,7 @@
 
 #include "DNA_node_types.h"
 
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
 #include "COM_NodeOperationBuilder.h"
 

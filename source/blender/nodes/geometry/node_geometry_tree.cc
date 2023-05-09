@@ -8,7 +8,7 @@
 
 #include "BKE_context.h"
 #include "BKE_layer.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_object.h"
 
 #include "BLT_translation.h"

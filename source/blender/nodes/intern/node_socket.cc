@@ -18,7 +18,7 @@
 
 #include "BKE_geometry_set.hh"
 #include "BKE_lib_id.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 
@@ -261,7 +261,7 @@ static void refresh_node(bNodeTree &ntree,
     refresh_socket_list(ntree, node, node.inputs, node_decl.inputs, do_id_user);
     refresh_socket_list(ntree, node, node.outputs, node_decl.outputs, do_id_user);
   }
-  nodeSocketDeclarationsUpdate(&node);
+  blender::bke::nodeSocketDeclarationsUpdate(&node);
 }
 
 void update_node_declaration_and_sockets(bNodeTree &ntree, bNode &node)
@@ -284,7 +284,7 @@ void node_verify_sockets(bNodeTree *ntree, bNode *node, bool do_id_user)
     return;
   }
   if (ntype->declare || ntype->declare_dynamic) {
-    nodeDeclarationEnsureOnOutdatedNode(ntree, node);
+    blender::bke::nodeDeclarationEnsureOnOutdatedNode(ntree, node);
     refresh_node(*ntree, *node, *node->runtime->declaration, do_id_user);
     return;
   }

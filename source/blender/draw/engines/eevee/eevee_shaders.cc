@@ -8,7 +8,7 @@
 #include "DRW_render.h"
 
 #include "BKE_lib_id.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
 #include "BLI_dynstr.h"
 #include "BLI_string_utils.h"

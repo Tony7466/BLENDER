@@ -38,11 +38,11 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *axis_socket = static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, 2));
   bNodeSocket *angle_socket = static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, 3));
 
-  nodeSetSocketAvailability(
+  blender::bke::nodeSetSocketAvailability(
       ntree, rotate_by_socket, ELEM(node->custom1, FN_NODE_ROTATE_EULER_TYPE_EULER));
-  nodeSetSocketAvailability(
+  blender::bke::nodeSetSocketAvailability(
       ntree, axis_socket, ELEM(node->custom1, FN_NODE_ROTATE_EULER_TYPE_AXIS_ANGLE));
-  nodeSetSocketAvailability(
+  blender::bke::nodeSetSocketAvailability(
       ntree, angle_socket, ELEM(node->custom1, FN_NODE_ROTATE_EULER_TYPE_AXIS_ANGLE));
 }
 

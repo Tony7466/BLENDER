@@ -3,7 +3,7 @@
 #include "NOD_register.hh"
 #include "NOD_socket.h"
 
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
 #include "ED_node.hh"
 

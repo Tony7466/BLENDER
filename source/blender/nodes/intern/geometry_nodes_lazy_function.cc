@@ -371,7 +371,7 @@ class LazyFunctionForMultiInput : public LazyFunction {
     const bNodeTree &btree = socket.owner_tree();
     for (const bNodeLink *link : socket.directly_linked_links()) {
       if (link->is_muted() || !link->fromsock->is_available() ||
-          nodeIsDanglingReroute(&btree, link->fromnode))
+          blender::bke::nodeIsDanglingReroute(&btree, link->fromnode))
       {
         continue;
       }
@@ -738,7 +738,7 @@ class LazyFunctionForViewerNode : public LazyFunction {
         continue;
       }
       const Span<const bNodeLink *> links = bsocket->directly_linked_links();
-      if (links.is_empty() || nodeIsDanglingReroute(&bnode.owner_tree(), links.first()->fromnode))
+      if (links.is_empty() || blender::bke::nodeIsDanglingReroute(&bnode.owner_tree(), links.first()->fromnode))
       {
         use_field_input_ = false;
         inputs_.pop_last();
@@ -1908,7 +1908,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
   void insert_links_from_socket(const bNodeSocket &from_bsocket, lf::OutputSocket &from_lf_socket)
   {
-    if (nodeIsDanglingReroute(&btree_, &from_bsocket.owner_node())) {
+    if (blender::bke::nodeIsDanglingReroute(&btree_, &from_bsocket.owner_node())) {
       return;
     }
 
@@ -1974,7 +1974,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
               break;
             }
             if (multi_input_link->is_muted() || !multi_input_link->fromsock->is_available() ||
-                nodeIsDanglingReroute(&btree_, multi_input_link->fromnode))
+                blender::bke::nodeIsDanglingReroute(&btree_, multi_input_link->fromnode))
             {
               continue;
             }
