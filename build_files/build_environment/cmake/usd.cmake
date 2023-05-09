@@ -26,6 +26,12 @@ elseif(UNIX)
   # part of the interpret in the USD library. Allow undefined Python symbols and replace
   # Python library with TBB so it doesn't complain about missing library.
   set(USD_PLATFORM_FLAGS
+    # NOTE(@ideasman42): Setting the root is needed, without this an older version of Python
+    # is detected from the system. Referencing the root-directory may remove the need
+    # to explicitly set the `PYTHON_INCLUDE_DIR` & `PYTHON_LIBRARY`.
+    # Keep them as it's known these are the libraries to use and it avoids any ambiguity.
+    -DPython3_ROOT_DIR=${LIBDIR}/python/
+
     -DPYTHON_INCLUDE_DIR=${LIBDIR}/python/include/python${PYTHON_SHORT_VERSION}/
     -DPYTHON_LIBRARY=${LIBDIR}/tbb/lib/${LIBPREFIX}${TBB_LIBRARY}${SHAREDLIBEXT}
   )
