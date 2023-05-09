@@ -11,20 +11,19 @@ CCL_NAMESPACE_BEGIN
 ccl_device_inline SpectrumRGBE SpectrumToSpectrumRGBE(const Spectrum &spec)
 {
   SpectrumRGBE specRGBE;
-  char *specRGBEPtr = (char *)&specRGBE;
 
   float v;
   int e;
   v = max(spec.x, max(spec.y, spec.z));
   if (v < 1e-32f) {
-    specRGBEPtr[0] = specRGBEPtr[1] = specRGBEPtr[2] = specRGBEPtr[3] = 0;
+    specRGBE.r = specRGBE.g = specRGBE.b = specRGBE.e = 0;
   }
   else {
     v = frexp(v, &e) * 256.0f / v;
-    specRGBEPtr[0] = (unsigned char)(spec.x * v);
-    specRGBEPtr[1] = (unsigned char)(spec.y * v);
-    specRGBEPtr[2] = (unsigned char)(spec.z * v);
-    specRGBEPtr[3] = (unsigned char)(e + 128);
+    specRGBE.r = (uint8_t)(spec.x * v);
+    specRGBE.g = (uint8_t)(spec.y * v);
+    specRGBE.b = (uint8_t)(spec.z * v);
+    specRGBE.e = (uint8_t)(e + 128);
   }
   return specRGBE;
 }
@@ -32,13 +31,12 @@ ccl_device_inline SpectrumRGBE SpectrumToSpectrumRGBE(const Spectrum &spec)
 ccl_device_inline Spectrum SpectrumRGBEToSpectrum(const SpectrumRGBE &specRGBE)
 {
   Spectrum spec;
-  SpectrumRGBE specRGBE_ = specRGBE;
-  char *specRGBEPtr = (char *)&specRGBE_;
-  if (specRGBEPtr[3]) {
-    const float f = ldexp(1.0f, specRGBEPtr[3] - (int)(128 + 8));
-    spec.x = specRGBEPtr[0] * f;
-    spec.y = specRGBEPtr[1] * f;
-    spec.z = specRGBEPtr[2] * f;
+
+  if (specRGBE.e) {
+    const float f = ldexp(1.0f, specRGBE.e - (int)(128 + 8));
+    spec.x = specRGBE.r * f;
+    spec.y = specRGBE.g * f;
+    spec.z = specRGBE.b * f;
   }
   else {
     spec.x = spec.y = spec.z = 0.0f;
