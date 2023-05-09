@@ -449,7 +449,8 @@ static void mix_with_indices(MutableSpan<float4x4> prev,
 
 static void mix_attributes(MutableAttributeAccessor prev_attributes,
                            const AttributeAccessor next_attributes,
-                           const std::array<Span<int>, ATTR_DOMAIN_NUM> &index_maps,
+                           const Span<int> index_map,
+                           const eAttrDomain mix_domain,
                            const float factor,
                            const Set<std::string> &names_to_skip = {})
 {
@@ -462,6 +463,9 @@ static void mix_attributes(MutableAttributeAccessor prev_attributes,
   for (const AttributeIDRef &id : ids) {
     const GAttributeReader prev = prev_attributes.lookup(id);
     const eAttrDomain domain = prev.domain;
+    if (domain != mix_domain) {
+      continue;
+    }
     const eCustomDataType type = bke::cpp_type_to_custom_data_type(prev.varray.type());
     if (ELEM(type, CD_PROP_STRING, CD_PROP_BOOL)) {
       /* String attributes can't be mixed, and there's no point in mixing boolean attributes. */
@@ -472,7 +476,6 @@ static void mix_attributes(MutableAttributeAccessor prev_attributes,
       continue;
     }
     GSpanAttributeWriter dst = prev_attributes.lookup_for_write_span(id);
-    const Span<int> index_map = index_maps[domain];
     if (!index_map.is_empty()) {
       /* If there's an ID attribute, use its values to mix with potentially changed indices. */
       mix_with_indices(dst.span, *next, index_map, factor);
@@ -503,7 +506,7 @@ static Array<int> create_id_index_map(const AttributeAccessor prev_attributes,
   const AttributeReader<int> prev_ids = prev_attributes.lookup<int>("id");
   const AttributeReader<int> next_ids = next_attributes.lookup<int>("id");
   if (!prev_ids || !next_ids) {
-    return;
+    return {};
   }
   if (sharing_info_equal(prev_ids.sharing_info, next_ids.sharing_info)) {
     return {};
@@ -522,62 +525,28 @@ static Array<int> create_id_index_map(const AttributeAccessor prev_attributes,
   return index_map;
 }
 
-static void create_mesh_index_maps(const Mesh &prev_mesh,
-                                   const Mesh &next_mesh,
-                                   Array<int> &vert_map,
-                                   Array<int> &edge_map,
-                                   Array<int> &face_map)
-{
-  const AttributeReader<int> prev_ids = prev_mesh.attributes().lookup<int>("id",
-                                                                           ATTR_DOMAIN_POINT);
-  const AttributeReader<int> next_ids = next_mesh.attributes().lookup<int>("id",
-                                                                           ATTR_DOMAIN_POINT);
-  if (!prev_ids || !next_ids) {
-    return;
-  }
-  if (sharing_info_equal(prev_ids.sharing_info, next_ids.sharing_info)) {
-    return;
-  }
-
-  const VArraySpan prev_ids_span(*prev_ids);
-  const VArraySpan next_ids_span(*next_ids);
-
-  const Map<int, int> vert_hash_map = create_value_to_first_index_map(VArraySpan(*next_ids));
-
-  vert_map.reinitialize(prev_mesh.totvert);
-  threading::parallel_for(prev_ids_span.index_range(), 1024, [&](const IndexRange range) {
-    for (const int i : range) {
-      vert_map[i] = vert_hash_map.lookup_default(prev_ids_span[i], -1);
-    }
-  });
-}
-
-static void mix_mesh_attributes(Mesh &prev_mesh, const Mesh &next_mesh, const float factor)
-{
-  Array<int> vert_map;
-  Array<int> edge_map;
-  Array<int> face_map;
-  create_mesh_index_maps(prev_mesh, next_mesh, vert_map, edge_map, face_map);
-  mix_attributes(prev_mesh.attributes_for_write(),
-                 next_mesh.attributes(),
-                 {vert_map, edge_map, face_map},
-                 factor,
-                 {".edge_verts", ".corner_vert", ".corner_edge"});
-}
-
 static void mix_geometries(GeometrySet &prev, const GeometrySet &next, const float factor)
 {
   if (Mesh *mesh_prev = prev.get_mesh_for_write()) {
     if (const Mesh *mesh_next = next.get_mesh_for_read()) {
-      mix_mesh_attributes(*mesh_prev, *mesh_next, factor);
+      Array<int> vert_map = create_id_index_map(mesh_prev->attributes(), mesh_next->attributes());
+      mix_attributes(mesh_prev->attributes_for_write(),
+                     mesh_next->attributes(),
+                     vert_map,
+                     ATTR_DOMAIN_POINT,
+                     factor,
+                     {});
     }
   }
   if (PointCloud *points_prev = prev.get_pointcloud_for_write()) {
     if (const PointCloud *points_next = next.get_pointcloud_for_read()) {
       const Array<int> index_map = create_id_index_map(points_prev->attributes(),
                                                        points_next->attributes());
-      mix_attributes(
-          points_prev->attributes_for_write(), points_next->attributes(), index_map, factor);
+      mix_attributes(points_prev->attributes_for_write(),
+                     points_next->attributes(),
+                     index_map,
+                     ATTR_DOMAIN_POINT,
+                     factor);
     }
   }
   if (Curves *curves_prev = prev.get_curves_for_write()) {
@@ -585,12 +554,12 @@ static void mix_geometries(GeometrySet &prev, const GeometrySet &next, const flo
       MutableAttributeAccessor prev = curves_prev->geometry.wrap().attributes_for_write();
       const AttributeAccessor next = curves_next->geometry.wrap().attributes();
       const Array<int> index_map = create_id_index_map(prev, next);
-      mix_attributes(
-          prev,
-          next,
-          index_map,
-          factor,
-          {"curve_type", "normal_mode", "handle_type_left", "handle_type_right", "knots_mode"});
+      mix_attributes(prev,
+                     next,
+                     index_map,
+                     ATTR_DOMAIN_POINT,
+                     factor,
+                     {"handle_type_left", "handle_type_right"});
     }
   }
   if (bke::Instances *instances_prev = prev.get_instances_for_write()) {
@@ -600,13 +569,15 @@ static void mix_geometries(GeometrySet &prev, const GeometrySet &next, const flo
       mix_attributes(instances_prev->attributes_for_write(),
                      instances_next->attributes(),
                      index_map,
+                     ATTR_DOMAIN_INSTANCE,
                      factor,
                      {"position"});
       if (index_map.is_empty()) {
         mix(instances_prev->transforms(), instances_next->transforms(), factor);
       }
       else {
-        mix_with_indices(instances_prev->transforms(), instances_next->transforms(), map, factor);
+        mix_with_indices(
+            instances_prev->transforms(), instances_next->transforms(), index_map, factor);
       }
 
       // TODO: Mix nested instance geometries. Try to match instance geometries by id.
@@ -633,7 +604,7 @@ static void mix_simulation_state(const NodeSimulationItem &item,
       const CPPType &type = get_simulation_item_cpp_type(item);
       const fn::ValueOrFieldCPPType &value_or_field_type = *fn::ValueOrFieldCPPType::get_from_self(
           type);
-      if (value_or_field_type.is_field(prev)) {
+      if (value_or_field_type.is_field(prev) || value_or_field_type.is_field(next)) {
         /* Fields are evaluated on geometries and are mixed there. */
         break;
       }
@@ -803,6 +774,15 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
 
     for (const int i : simulation_items_.index_range()) {
       mix_simulation_state(simulation_items_[i], output_values[i], next_values[i], mix_factor);
+    }
+
+    for (const int i : simulation_items_.index_range()) {
+      const CPPType &type = *outputs_[i].type;
+      type.destruct(next_values[i]);
+    }
+
+    for (const int i : simulation_items_.index_range()) {
+      params.output_set(i);
     }
   }
 };
