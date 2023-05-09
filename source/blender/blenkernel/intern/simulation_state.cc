@@ -93,9 +93,7 @@ bool ModifierSimulationCache::has_state_at_frame(const SubFrame &frame) const
   std::lock_guard lock(states_at_frames_mutex_);
   for (const auto &item : states_at_frames_) {
     if (item->frame == frame) {
-      if (!item->state.zone_states_.is_empty()) {
-        return true;
-      }
+      return true;
     }
   }
   return false;

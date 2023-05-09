@@ -57,7 +57,7 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
   {
     const GeoNodesLFUserData &user_data = *static_cast<const GeoNodesLFUserData *>(
         context.user_data);
-    GeoNodesModifierData &modifier_data = *user_data.modifier_data;
+    const GeoNodesModifierData &modifier_data = *user_data.modifier_data;
     if (modifier_data.current_simulation_state == nullptr) {
       params.set_default_remaining_outputs();
       return;
@@ -71,28 +71,13 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
     const bke::sim::SimulationZoneID zone_id = get_simulation_zone_id(*user_data.compute_context,
                                                                       output_node_id_);
 
-    Array<void *> output_values(simulation_items_.size());
-    for (const int i : simulation_items_.index_range()) {
-      output_values[i] = params.get_output_data_ptr(i + 1);
-    }
-
     const bke::sim::SimulationZoneState *prev_zone_state =
         modifier_data.prev_simulation_state == nullptr ?
             nullptr :
             modifier_data.prev_simulation_state->get_zone_state(zone_id);
 
-    if (prev_zone_state) {
-      simulation_state_to_values(simulation_items_,
-                                 *prev_zone_state,
-                                 *modifier_data.self_object,
-                                 *user_data.compute_context,
-                                 node_,
-                                 output_values);
-      for (const int i : inputs_.index_range()) {
-        params.set_input_unused(i);
-      }
-    }
-    else {
+    std::optional<bke::sim::SimulationZoneState> initial_prev_zone_state;
+    if (prev_zone_state == nullptr) {
       Array<void *> input_values(simulation_items_.size(), nullptr);
       for (const int i : simulation_items_.index_range()) {
         input_values[i] = params.try_get_input_data_ptr_or_request(i);
@@ -101,11 +86,22 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
         /* Wait until all inputs are available. */
         return;
       }
-      for (const int i : input_values.index_range()) {
-        inputs_[i].type->move_construct(input_values[i], output_values[i]);
-      }
+
+      initial_prev_zone_state.emplace();
+      values_to_simulation_state(simulation_items_, input_values, *initial_prev_zone_state);
+      prev_zone_state = &*initial_prev_zone_state;
     }
 
+    Array<void *> output_values(simulation_items_.size());
+    for (const int i : simulation_items_.index_range()) {
+      output_values[i] = params.get_output_data_ptr(i + 1);
+    }
+    simulation_state_to_values(simulation_items_,
+                               *prev_zone_state,
+                               *modifier_data.self_object,
+                               *user_data.compute_context,
+                               node_,
+                               output_values);
     for (const int i : simulation_items_.index_range()) {
       params.output_set(i + 1);
     }
