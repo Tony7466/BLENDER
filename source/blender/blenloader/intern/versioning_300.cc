@@ -38,7 +38,6 @@
 #include "DNA_modifier_types.h"
 #include "DNA_movieclip_types.h"
 #include "DNA_screen_types.h"
-#include "DNA_sound_types.h"
 #include "DNA_space_types.h"
 #include "DNA_text_types.h"
 #include "DNA_tracking_types.h"
@@ -68,7 +67,6 @@
 #include "BKE_modifier.h"
 #include "BKE_node.h"
 #include "BKE_screen.h"
-#include "BKE_sound.h"
 #include "BKE_workspace.h"
 
 #include "RNA_access.h"
@@ -4325,6 +4323,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     /* Rename Grease Pencil weight draw brush. */
     do_versions_rename_id(bmain, ID_BR, "Draw Weight", "Weight Draw");
   }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
