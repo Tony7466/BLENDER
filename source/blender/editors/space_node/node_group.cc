@@ -360,7 +360,8 @@ static bool node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
 
         /* find internal links to this output */
         for (bNodeLink *tlink = glinks_first->next; tlink != glinks_last->next;
-             tlink = tlink->next) {
+             tlink = tlink->next)
+        {
           /* only use active output node */
           if (tlink->tonode->type == NODE_GROUP_OUTPUT && (tlink->tonode->flag & NODE_DO_OUTPUT)) {
             if (STREQ(tlink->tosock->identifier, identifier)) {
@@ -696,7 +697,8 @@ static bool node_group_make_test_selected(bNodeTree &ntree,
   for (bNode *node : nodes_to_group) {
     const char *disabled_hint = nullptr;
     if (node->typeinfo->poll_instance &&
-        !node->typeinfo->poll_instance(node, ngroup, &disabled_hint)) {
+        !node->typeinfo->poll_instance(node, ngroup, &disabled_hint))
+    {
       if (disabled_hint) {
         BKE_reportf(&reports,
                     RPT_WARNING,
@@ -732,6 +734,36 @@ static bool node_group_make_test_selected(bNodeTree &ntree,
         sockets_connected_to_group(node->output_sockets()))
     {
       return false;
+    }
+  }
+  /* Check if simulation zone pairs are fully selected.
+   * Simulation input or output nodes can only be grouped together with the paired node.
+   */
+  for (bNode *input_node : ntree.nodes_by_type("GeometryNodeSimulationInput")) {
+    const NodeGeometrySimulationInput &input_data =
+        *static_cast<const NodeGeometrySimulationInput *>(input_node->storage);
+
+    if (bNode *output_node = ntree.node_by_id(input_data.output_node_id)) {
+      const bool input_selected = nodes_to_group.contains(input_node);
+      const bool output_selected = nodes_to_group.contains(output_node);
+      if (input_selected && !output_selected) {
+        BKE_reportf(
+            &reports,
+            RPT_WARNING,
+            "Can not add simulation input node '%s' to a group without its paired output '%s'",
+            input_node->name,
+            output_node->name);
+        return false;
+      }
+      if (output_selected && !input_selected) {
+        BKE_reportf(
+            &reports,
+            RPT_WARNING,
+            "Can not add simulation output node '%s' to a group without its paired input '%s'",
+            output_node->name,
+            input_node->name);
+        return false;
+      }
     }
   }
 
@@ -863,6 +895,8 @@ static void node_group_make_insert_selected(const bContext &C,
   Vector<OutputLinkInfo> output_links;
   Set<bNodeLink *> internal_links_to_move;
   Set<bNodeLink *> links_to_remove;
+  /* Map old to new node identifiers. */
+  Map<int32_t, int32_t> node_identifier_map;
 
   ntree.ensure_topology_cache();
   for (bNode *node : nodes_to_move) {
@@ -959,10 +993,14 @@ static void node_group_make_insert_selected(const bContext &C,
 
   /* Move nodes into the group. */
   for (bNode *node : nodes_to_move) {
+    const int32_t old_identifier = node->identifier;
+
     BLI_remlink(&ntree.nodes, node);
     BLI_addtail(&group.nodes, node);
     nodeUniqueID(&group, node);
     nodeUniqueName(&group, node);
+
+    node_identifier_map.add(old_identifier, node->identifier);
 
     BKE_ntree_update_tag_node_removed(&ntree);
     BKE_ntree_update_tag_node_new(&group, node);
@@ -1026,6 +1064,15 @@ static void node_group_make_insert_selected(const bContext &C,
     else {
       bNodeSocket *output_socket = node_group_output_find_socket(output_node, io_identifier);
       nodeAddLink(&group, info.node, info.socket, output_node, output_socket);
+    }
+  }
+
+  /* Remap simulation zone pairings. */
+  for (bNode *node : nodes_to_move) {
+    if (node->type == GEO_NODE_SIMULATION_INPUT) {
+      NodeGeometrySimulationInput &data = *static_cast<NodeGeometrySimulationInput *>(
+          node->storage);
+      data.output_node_id = node_identifier_map.lookup_default(data.output_node_id, 0);
     }
   }
 
