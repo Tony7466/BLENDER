@@ -59,6 +59,7 @@ set(USD_EXTRA_ARGS
   -DPXR_ENABLE_MATERIALX_SUPPORT=ON
   -DPXR_ENABLE_OPENVDB_SUPPORT=ON
   -DPYTHON_EXECUTABLE=${PYTHON_BINARY}
+  -DPython3_EXECUTABLE=${PYTHON_BINARY}
   -DPXR_BUILD_MONOLITHIC=ON
   # OSL is an optional dependency of the Imaging module. However, since that
   # module was included for its support for converting primitive shapes (sphere,
