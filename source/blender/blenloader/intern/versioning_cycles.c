@@ -262,6 +262,7 @@ static void vector_curve_node_remap(bNode *node)
       if (cm->curve) {
         int change2;
         for (int i = cm->totpoint; --i; ) {
+          //changed it to use decrement instead of increment to use less resources
           change2 = (cm->totpoint - i);
           cm->curve[change2].x = (cm->curve[change2].x * 2.0f) - 1.0f;
           cm->curve[change2].y = (cm->curve[change2].y - 0.5f) * 2.0f;
