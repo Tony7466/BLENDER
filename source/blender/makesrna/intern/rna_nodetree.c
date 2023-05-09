@@ -11003,10 +11003,22 @@ static void def_geo_attribute_capture(StructRNA *srna)
 
 static void def_geo_sample_volume(StructRNA *srna)
 {
-  static const EnumPropertyItem sampler_items[] = {
-      {GEO_NODE_SAMPLE_VOLUME_SAMPLING_MODE_POINT, "POINT", 0, "Point", ""},
-      {GEO_NODE_SAMPLE_VOLUME_SAMPLING_MODE_BOX, "BOX", 0, "Box", ""},
-      {GEO_NODE_SAMPLE_VOLUME_SAMPLING_MODE_QUADRATIC, "QUADRATIC", 0, "Quadratic", ""},
+  static const EnumPropertyItem interpolation_mode_items[] = {
+      {GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_NEAREST, "NEAREST", 0, "Nearest Neighbor", ""},
+      {GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRILINEAR, "TRILINEAR", 0, "Trilinear", ""},
+      {GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRIQUADRATIC,
+       "TRIQUADRATIC",
+       0,
+       "Triquadratic",
+       ""},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem grid_type_items[] = {
+      {CD_PROP_FLOAT, "FLOAT", 0, "Float", "Floating-point value"},
+      {CD_PROP_FLOAT3, "FLOAT_VECTOR", 0, "Vector", "3D vector with floating-point values"},
+      {CD_PROP_INT32, "INT", 0, "Integer", "32-bit integer"},
+      {CD_PROP_BOOL, "BOOLEAN", 0, "Boolean", "True or false"},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -11014,17 +11026,16 @@ static void def_geo_sample_volume(StructRNA *srna)
 
   RNA_def_struct_sdna_from(srna, "NodeGeometrySampleVolume", "storage");
 
-  prop = RNA_def_property(srna, "sampling_mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, sampler_items);
-  RNA_def_property_ui_text(prop, "Sampling Mode", "Which OpenVDB sampler to use");
+  prop = RNA_def_property(srna, "interpolation_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, interpolation_mode_items);
+  RNA_def_property_ui_text(
+      prop, "Interpolation Mode", "How to interpolate the values from neighboring voxels");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "grid_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_attribute_type_items);
-  RNA_def_property_enum_funcs(
-      prop, NULL, NULL, "rna_GeometryNodeAttributeType_type_with_socket_itemf");
+  RNA_def_property_enum_items(prop, grid_type_items);
   RNA_def_property_enum_default(prop, CD_PROP_FLOAT);
-  RNA_def_property_ui_text(prop, "Grid Type", "Type of data stored in the input grid");
+  RNA_def_property_ui_text(prop, "Grid Type", "Type of grid to sample data from");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNode_socket_update");
 }
 
