@@ -39,27 +39,14 @@ class PHYSICS_PT_geometry_nodes(Panel):
         row.operator("object.simulation_nodes_cache_bake", text=bake_text).selected = True
         row.operator("object.simulation_nodes_cache_delete", text="", icon='TRASH').selected = True
 
-
-class PHYSICS_PT_geometry_nodes_caching(Panel):
-    bl_space_type = 'PROPERTIES'
-    bl_region_type = 'WINDOW'
-    bl_context = "physics"
-    bl_label = ""
-    bl_options = {'DEFAULT_CLOSED'}
-    bl_parent_id = "PHYSICS_PT_geometry_nodes"
-
-    def draw_header(self, context):
-        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
         ob = context.object
         layout.prop(ob, "use_simulation_cache", text="Cache")
-
-    def draw(self, context):
-        layout = self.layout
 
 
 classes = (
     PHYSICS_PT_geometry_nodes,
-    PHYSICS_PT_geometry_nodes_caching,
 )
 
 
