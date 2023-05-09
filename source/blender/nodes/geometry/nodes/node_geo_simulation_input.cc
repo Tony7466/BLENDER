@@ -93,14 +93,6 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
                                  *user_data.compute_context,
                                  node_,
                                  output_values);
-
-      if (!modifier_data.cache_all_frames) {
-        const Scene *scene = DEG_get_input_scene(modifier_data.depsgraph);
-        const float scene_ctime = BKE_scene_ctime_get(scene);
-
-        std::cout << "Removing state at " << scene_ctime << "\n";
-        modifier_data.prev_simulation_state->remove_zone_state(zone_id);
-      }
       for (const int i : inputs_.index_range()) {
         params.set_input_unused(i);
       }

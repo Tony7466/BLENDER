@@ -53,7 +53,6 @@ struct GeoNodesModifierData {
   bke::sim::ModifierSimulationState *prev_simulation_state = nullptr;
   const bke::sim::ModifierSimulationState *next_simulation_state = nullptr;
   float simulation_state_mix_factor = 0.0f;
-  bool cache_all_frames = false;
   /** Used when the evaluation should create a new simulation state. */
   bke::sim::ModifierSimulationState *current_simulation_state_for_write = nullptr;
   float simulation_time_delta = 0.0f;
