@@ -1041,7 +1041,7 @@ static int blend_offset_invoke(bContext *C, wmOperator *op, const wmEvent *event
   gso->modal_update = blend_offset_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   blend_offset_draw_status_header(C, gso);
-  ED_slider_is_bidirectional_set(gso->slider, true);
+  ED_slider_factor_bounds_set(gso->slider, -1, 1);
   ED_slider_factor_set(gso->slider, 0.0f);
 
   return invoke_result;
