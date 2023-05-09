@@ -11,6 +11,7 @@
 #include "BLI_compiler_compat.h"
 #include "BLI_ghash.h"
 #ifdef __cplusplus
+#  include "BKE_mesh.hh"
 #  include "BLI_offset_indices.hh"
 #  include "BLI_vector.hh"
 #endif
@@ -808,7 +809,6 @@ void BKE_pbvh_is_drawing_set(PBVH *pbvh, bool val);
 void BKE_pbvh_node_num_loops(PBVH *pbvh, PBVHNode *node, int *r_totloop);
 
 void BKE_pbvh_update_active_vcol(PBVH *pbvh, const struct Mesh *mesh);
-void BKE_pbvh_pmap_set(PBVH *pbvh, const struct MeshElemMap *pmap);
 
 void BKE_pbvh_vertex_color_set(PBVH *pbvh, PBVHVertRef vertex, const float color[4]);
 void BKE_pbvh_vertex_color_get(const PBVH *pbvh, PBVHVertRef vertex, float r_color[4]);
@@ -818,6 +818,7 @@ bool BKE_pbvh_draw_cache_invalid(const PBVH *pbvh);
 int BKE_pbvh_debug_draw_gen_get(PBVHNode *node);
 
 #ifdef __cplusplus
+void BKE_pbvh_pmap_set(PBVH *pbvh, blender::bke::mesh::VertToPolyMap pmap);
 }
 
 namespace blender::bke::pbvh {

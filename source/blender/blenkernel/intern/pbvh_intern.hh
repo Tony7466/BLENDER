@@ -203,7 +203,7 @@ struct PBVH {
   BMLog *bm_log;
   SubdivCCG *subdiv_ccg;
 
-  const MeshElemMap *pmap;
+  blender::bke::mesh::VertToPolyMap pmap;
 
   CustomDataLayer *color_layer;
   eAttrDomain color_domain;

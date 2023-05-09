@@ -367,9 +367,6 @@ static int sculpt_color_filter_init(bContext *C, wmOperator *op)
    * earlier steps modifying the data. */
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   BKE_sculpt_update_object_for_edit(depsgraph, ob, true, false, true);
-  if (pbvh_type_prev == PBVH_FACES && !ob->sculpt->pmap) {
-    return OPERATOR_CANCELLED;
-  }
 
   SCULPT_filter_cache_init(C,
                            ob,

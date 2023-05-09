@@ -1287,8 +1287,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
 
     MeshElemMap *vert_to_loop_map_src = nullptr;
     int *vert_to_loop_map_src_buff = nullptr;
-    MeshElemMap *vert_to_poly_map_src = nullptr;
-    int *vert_to_poly_map_src_buff = nullptr;
+    blender::bke::mesh::VertToPolyMap vert_to_poly_map_src;
     MeshElemMap *edge_to_poly_map_src = nullptr;
     int *edge_to_poly_map_src_buff = nullptr;
     MeshElemMap *poly_to_looptri_map_src = nullptr;
@@ -1392,11 +1391,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
                                     corner_verts_src.data(),
                                     num_verts_src);
       if (mode & MREMAP_USE_POLY) {
-        BKE_mesh_vert_poly_map_create(&vert_to_poly_map_src,
-                                      &vert_to_poly_map_src_buff,
-                                      polys_src,
-                                      corner_verts_src.data(),
-                                      num_verts_src);
+        vert_to_poly_map_src = me_src->vert_to_poly_map();
       }
     }
 
@@ -1583,7 +1578,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
         for (plidx_dst = 0; plidx_dst < poly_dst.size(); plidx_dst++) {
           const int vert_dst = corner_verts_dst[poly_dst.start() + plidx_dst];
           if (use_from_vert) {
-            MeshElemMap *vert_to_refelem_map_src = nullptr;
+            blender::Span<int> vert_to_refelem_map_src;
 
             copy_v3_v3(tmp_co, vert_positions_dst[vert_dst]);
             nearest.index = -1;
@@ -1608,16 +1603,16 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
                 }
                 nor_dst = &tmp_no;
                 nors_src = loop_normals_src;
-                vert_to_refelem_map_src = vert_to_loop_map_src;
+                vert_to_refelem_map_src = {vert_to_loop_map_src[nearest.index].indices,
+                                           vert_to_loop_map_src[nearest.index].count};
               }
               else { /* if (mode == MREMAP_MODE_LOOP_NEAREST_POLYNOR) { */
                 nor_dst = &pnor_dst;
                 nors_src = poly_normals_src;
-                vert_to_refelem_map_src = vert_to_poly_map_src;
+                vert_to_refelem_map_src = vert_to_poly_map_src[nearest.index];
               }
 
-              for (int i = vert_to_refelem_map_src[nearest.index].count; i--;) {
-                const int index_src = vert_to_refelem_map_src[nearest.index].indices[i];
+              for (const int index_src : vert_to_refelem_map_src) {
                 BLI_assert(index_src != -1);
                 const float dot = dot_v3v3(nors_src[index_src], *nor_dst);
 
@@ -2089,12 +2084,6 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
     }
     if (vert_to_loop_map_src_buff) {
       MEM_freeN(vert_to_loop_map_src_buff);
-    }
-    if (vert_to_poly_map_src) {
-      MEM_freeN(vert_to_poly_map_src);
-    }
-    if (vert_to_poly_map_src_buff) {
-      MEM_freeN(vert_to_poly_map_src_buff);
     }
     if (edge_to_poly_map_src) {
       MEM_freeN(edge_to_poly_map_src);

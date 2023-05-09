@@ -21,7 +21,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_customdata.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.h"
 #include "BLI_memarena.h"
 
@@ -188,7 +188,7 @@ void BKE_mesh_uv_vert_map_free(UvVertMap *vmap)
  * of polys or loops that use that vertex as a corner. The lists are allocated
  * from one memory pool.
  *
- * Wrapped by #BKE_mesh_vert_poly_map_create & BKE_mesh_vert_loop_map_create
+ * Wrapped by #BKE_mesh_vert_loop_map_create
  */
 static void mesh_vert_poly_or_loop_map_create(MeshElemMap **r_map,
                                               int **r_mem,
@@ -233,14 +233,7 @@ static void mesh_vert_poly_or_loop_map_create(MeshElemMap **r_map,
   *r_mem = indices;
 }
 
-void BKE_mesh_vert_poly_map_create(MeshElemMap **r_map,
-                                   int **r_mem,
-                                   const blender::OffsetIndices<int> polys,
-                                   const int *corner_verts,
-                                   int totvert)
-{
-  mesh_vert_poly_or_loop_map_create(r_map, r_mem, polys, corner_verts, totvert, false);
-}
+
 
 void BKE_mesh_vert_loop_map_create(MeshElemMap **r_map,
                                    int **r_mem,
@@ -521,6 +514,34 @@ void BKE_mesh_origindex_map_create_looptri(MeshElemMap **r_map,
   *r_map = map;
   *r_mem = indices;
 }
+
+namespace blender::bke::mesh {
+
+void build_poly_and_corner_by_vert_offsets(const Span<int> corner_verts, MutableSpan<int> offsets)
+{
+  BLI_assert(std::all_of(offsets.begin(), offsets.end(), [](int value) { return value == 0; }));
+  for (const int vert : corner_verts) {
+    offsets[vert]++;
+  }
+  offset_indices::accumulate_counts_to_offsets(offsets);
+}
+
+void build_vert_to_poly_indices(const OffsetIndices<int> polys,
+                                const Span<int> corner_verts,
+                                const OffsetIndices<int> offsets,
+                                MutableSpan<int> poly_indices)
+{
+  BLI_assert(poly_indices.size() == corner_verts.size());
+  Array<int> counts(offsets.size(), 0);
+  for (const int64_t i : polys.index_range()) {
+    for (const int vert : corner_verts.slice(polys[i])) {
+      poly_indices[offsets[vert][counts[vert]]] = int(i);
+      counts[vert]++;
+    }
+  }
+}
+
+}  // namespace blender::bke::mesh
 
 namespace blender::bke::mesh_topology {
 

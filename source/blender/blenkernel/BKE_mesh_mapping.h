@@ -121,16 +121,6 @@ void BKE_mesh_uv_vert_map_free(UvVertMap *vmap);
 
 /**
  * Generates a map where the key is the vertex and the value
- * is a list of polys that use that vertex as a corner.
- * The lists are allocated from one memory pool.
- */
-void BKE_mesh_vert_poly_map_create(MeshElemMap **r_map,
-                                   int **r_mem,
-                                   blender::OffsetIndices<int> polys,
-                                   const int *corner_verts,
-                                   int totvert);
-/**
- * Generates a map where the key is the vertex and the value
  * is a list of loops that use that vertex as a corner.
  * The lists are allocated from one memory pool.
  */

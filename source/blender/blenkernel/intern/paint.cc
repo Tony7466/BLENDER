@@ -1390,8 +1390,6 @@ void BKE_sculptsession_free_vwpaint_data(SculptSession *ss)
   }
   MEM_SAFE_FREE(gmap->vert_to_loop);
   MEM_SAFE_FREE(gmap->vert_map_mem);
-  MEM_SAFE_FREE(gmap->vert_to_poly);
-  MEM_SAFE_FREE(gmap->poly_map_mem);
 }
 
 /**
@@ -1442,9 +1440,6 @@ static void sculptsession_free_pbvh(Object *object)
     ss->pbvh = nullptr;
   }
 
-  MEM_SAFE_FREE(ss->pmap);
-  MEM_SAFE_FREE(ss->pmap_mem);
-
   MEM_SAFE_FREE(ss->epmap);
   MEM_SAFE_FREE(ss->epmap_mem);
 
@@ -1494,9 +1489,6 @@ void BKE_sculptsession_free(Object *ob)
     }
 
     sculptsession_free_pbvh(ob);
-
-    MEM_SAFE_FREE(ss->pmap);
-    MEM_SAFE_FREE(ss->pmap_mem);
 
     MEM_SAFE_FREE(ss->epmap);
     MEM_SAFE_FREE(ss->epmap_mem);
@@ -1766,9 +1758,8 @@ static void sculpt_update_object(
   sculpt_attribute_update_refs(ob);
   sculpt_update_persistent_base(ob);
 
-  if (need_pmap && ob->type == OB_MESH && !ss->pmap) {
-    BKE_mesh_vert_poly_map_create(
-        &ss->pmap, &ss->pmap_mem, me->polys(), me->corner_verts().data(), me->totvert);
+  if (need_pmap && ob->type == OB_MESH) {
+    ss->pmap = me->vert_to_poly_map();
 
     if (ss->pbvh) {
       BKE_pbvh_pmap_set(ss->pbvh, ss->pmap);

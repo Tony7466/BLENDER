@@ -85,6 +85,11 @@ struct LooseEdgeCache : public LooseGeomCache {
 struct LooseVertCache : public LooseGeomCache {
 };
 
+struct MeshTopologyMapData {
+  Array<int> offset_indices;
+  Array<int> indices;
+};
+
 struct MeshRuntime {
   /* Evaluated mesh for objects which do not have effective modifiers.
    * This mesh is used as a result of modifier stack evaluation.
@@ -168,6 +173,8 @@ struct MeshRuntime {
   bool poly_normals_dirty = true;
   mutable Vector<float3> vert_normals;
   mutable Vector<float3> poly_normals;
+
+  SharedCache<MeshTopologyMapData> vert_to_poly_map_cache;
 
   /** Cache of data about edges not used by faces. See #Mesh::loose_edges(). */
   SharedCache<LooseEdgeCache> loose_edges_cache;
