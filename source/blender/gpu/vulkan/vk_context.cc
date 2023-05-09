@@ -67,7 +67,6 @@ void VKContext::sync_backbuffer()
   }
 
   if (ghost_context_) {
-    /* TODO deduplicate this with begin frame.*/
     VkCommandBuffer command_buffer = VK_NULL_HANDLE;
     GHOST_GetVulkanCommandBuffer(static_cast<GHOST_ContextHandle>(ghost_context_),
                                  &command_buffer);
