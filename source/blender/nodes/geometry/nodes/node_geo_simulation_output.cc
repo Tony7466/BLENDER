@@ -178,10 +178,15 @@ void simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_i
 
     switch (socket_type) {
       case SOCK_GEOMETRY: {
-        const auto *geo_state_item = static_cast<const bke::sim::GeometrySimulationStateItem *>(
-            &state_item);
-        GeometrySet *geometry = new (r_output_value) GeometrySet(geo_state_item->geometry);
-        geometries.append(geometry);
+        if (const auto *geo_state_item =
+                dynamic_cast<const bke::sim::GeometrySimulationStateItem *>(&state_item))
+        {
+          GeometrySet *geometry = new (r_output_value) GeometrySet(geo_state_item->geometry);
+          geometries.append(geometry);
+        }
+        else {
+          cpp_type.value_initialize(r_output_value);
+        }
         break;
       }
       case SOCK_FLOAT:
