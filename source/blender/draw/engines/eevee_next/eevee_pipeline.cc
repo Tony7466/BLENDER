@@ -520,7 +520,9 @@ void DeferredPipeline::render(View &view,
 void VolumePipeline::sync()
 {
   volume_ps_.init();
-  inst_.volumes.bind_volume_pass_resources(volume_ps_, true);
+  volume_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
+  inst_.volumes.bind_properties_buffers(volume_ps_);
+  inst_.sampling.bind_resources(&volume_ps_);
 }
 
 PassMain::Sub *VolumePipeline::volume_material_add(GPUMaterial *gpumat)

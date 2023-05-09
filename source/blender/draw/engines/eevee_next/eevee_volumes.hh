@@ -106,22 +106,20 @@ class VolumeModule {
   }
 
   /* Bind the common resources needed by all volumetric passes. */
-  template<typename PassType>
-  void bind_volume_pass_resources(PassType &ps, bool is_material_pass = false)
+  template<typename PassType> void bind_properties_buffers(PassType &ps)
   {
     ps.bind_ubo(VOLUMES_BUF_SLOT, data_);
-    if (is_material_pass) {
-      ps.bind_image(0, &prop_scattering_tx_);
-      ps.bind_image(1, &prop_extinction_tx_);
-      ps.bind_image(2, &prop_emission_tx_);
-      ps.bind_image(3, &prop_phase_tx_);
-    }
+    ps.bind_image(VOLUME_PROP_SCATTERING_TEX_SLOT, &prop_scattering_tx_);
+    ps.bind_image(VOLUME_PROP_EXTINCTION_TEX_SLOT, &prop_extinction_tx_);
+    ps.bind_image(VOLUME_PROP_EMISSION_TEX_SLOT, &prop_emission_tx_);
+    ps.bind_image(VOLUME_PROP_PHASE_TEX_SLOT, &prop_phase_tx_);
   }
 
   void init();
 
   void begin_sync();
 
+  void sync_world();
   void sync_object(Object *ob, ObjectHandle &ob_handle, ResourceHandle res_handle);
 
   void end_sync();

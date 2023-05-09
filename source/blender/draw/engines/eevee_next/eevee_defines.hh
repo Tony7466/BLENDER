@@ -93,14 +93,14 @@
 /* Resource bindings. */
 
 /* Texture. */
+#define VOLUME_SCATTERING_TEX_SLOT 10
+#define VOLUME_TRANSMITTANCE_TEX_SLOT 11
 #define SHADOW_TILEMAPS_TEX_SLOT 12
 /* Only during surface shading. */
 #define SHADOW_ATLAS_TEX_SLOT 13
 /* Only during shadow rendering. */
 #define SHADOW_RENDER_MAP_SLOT 13
 #define RBUFS_UTILITY_TEX_SLOT 14
-#define VOLUME_SCATTERING_TEX_SLOT 15
-#define VOLUME_TRANSMITTANCE_TEX_SLOT 16
 
 /* Images. */
 #define RBUFS_NORMAL_SLOT 0
@@ -114,6 +114,11 @@
 /* G-buffer reuses render passes slots. */
 #define GBUF_CLOSURE_SLOT RBUFS_LIGHT_SLOT
 #define GBUF_COLOR_SLOT RBUFS_DIFF_COLOR_SLOT
+/* Volume properties pass do not write to rbufs. Reuse the same bind points. */
+#define VOLUME_PROP_SCATTERING_TEX_SLOT 0
+#define VOLUME_PROP_EXTINCTION_TEX_SLOT 1
+#define VOLUME_PROP_EMISSION_TEX_SLOT 2
+#define VOLUME_PROP_PHASE_TEX_SLOT 3
 
 /* Uniform Buffers. */
 /* Only during pre-pass. */

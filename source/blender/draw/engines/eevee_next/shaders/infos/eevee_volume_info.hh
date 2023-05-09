@@ -4,40 +4,44 @@
 
 #pragma once
 
+/* Used for shaders that need the final accumulated volume transmittance and scaterring. */
 GPU_SHADER_CREATE_INFO(eevee_volume_lib)
     .additional_info("eevee_shared")
     .additional_info("draw_view")
     .uniform_buf(VOLUMES_BUF_SLOT, "VolumesData", "volumes_buf")
-    .sampler(VOLUME_SCATTERING_TEX_SLOT, ImageType::FLOAT_3D, "in_scattering")
-    .sampler(VOLUME_TRANSMITTANCE_TEX_SLOT, ImageType::FLOAT_3D, "in_transmittance");
+    .sampler(VOLUME_SCATTERING_TEX_SLOT, ImageType::FLOAT_3D, "volume_scattering_tx")
+    .sampler(VOLUME_TRANSMITTANCE_TEX_SLOT, ImageType::FLOAT_3D, "volume_transmittance_tx");
 
 GPU_SHADER_CREATE_INFO(eevee_volume_clear)
     .additional_info("eevee_shared")
     .uniform_buf(VOLUMES_BUF_SLOT, "VolumesData", "volumes_buf")
     .compute_source("eevee_volume_clear_comp.glsl")
     .local_group_size(VOLUME_GROUP_SIZE, VOLUME_GROUP_SIZE, VOLUME_GROUP_SIZE)
-    .image(0, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_scattering")
-    .image(1, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_extinction")
-    .image(2, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_emissive")
-    .image(3, GPU_RG16F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_phase")
+    /* Outputs. */
+    .image(0, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_scattering_img")
+    .image(1, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_extinction_img")
+    .image(2, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_emissive_img")
+    .image(3, GPU_RG16F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_phase_img")
     .do_static_compilation(true);
 
 GPU_SHADER_CREATE_INFO(eevee_volume_scatter)
+    .additional_info("eevee_shared")
     .additional_info("draw_resource_id_varying")
-    .additional_info("eevee_volume_lib")
+    .additional_info("draw_view")
     .additional_info("eevee_light_data")
     .additional_info("eevee_shadow_data")
     .compute_source("eevee_volume_scatter_comp.glsl")
     .local_group_size(VOLUME_GROUP_SIZE, VOLUME_GROUP_SIZE, VOLUME_GROUP_SIZE)
     .define("VOLUME_SHADOW")
-    /** NOTE: Unique sampler IDs assigned for consistency between library includes,
-     * and to avoid unique assignment collision validation error. */
-    .sampler(17, ImageType::FLOAT_3D, "scattering_tx")
-    .sampler(18, ImageType::FLOAT_3D, "extinction_tx")
-    .sampler(19, ImageType::FLOAT_3D, "emission_tx")
-    .sampler(20, ImageType::FLOAT_3D, "phase_tx")
-    .image(0, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_scattering")
-    .image(1, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_extinction")
+    .uniform_buf(VOLUMES_BUF_SLOT, "VolumesData", "volumes_buf")
+    /* Inputs. */
+    .image(0, GPU_R11F_G11F_B10F, Qualifier::READ, ImageType::FLOAT_3D, "in_scattering_img")
+    .image(1, GPU_R11F_G11F_B10F, Qualifier::READ, ImageType::FLOAT_3D, "in_extinction_img")
+    .image(2, GPU_R11F_G11F_B10F, Qualifier::READ, ImageType::FLOAT_3D, "in_emission_img")
+    .image(3, GPU_RG16F, Qualifier::READ, ImageType::FLOAT_3D, "in_phase_img")
+    /* Outputs. */
+    .image(4, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_scattering_img")
+    .image(5, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_extinction_img")
     .do_static_compilation(true);
 
 GPU_SHADER_CREATE_INFO(eevee_volume_scatter_with_lights)
@@ -46,22 +50,25 @@ GPU_SHADER_CREATE_INFO(eevee_volume_scatter_with_lights)
     .do_static_compilation(true);
 
 GPU_SHADER_CREATE_INFO(eevee_volume_integration)
-    .additional_info("eevee_volume_lib")
+    .additional_info("eevee_shared")
+    .additional_info("draw_view")
     .compute_source("eevee_volume_integration_comp.glsl")
     .local_group_size(VOLUME_2D_GROUP_SIZE, VOLUME_2D_GROUP_SIZE, 1)
-    /** NOTE: Unique sampler IDs assigned for consistency between library includes,
-     * and to avoid unique assignment collision validation error. */
-    .sampler(17, ImageType::FLOAT_3D, "scattering_tx")
-    .sampler(18, ImageType::FLOAT_3D, "extinction_tx")
-    .image(0, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_scattering")
-    .image(1, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_transmittance")
+    .uniform_buf(VOLUMES_BUF_SLOT, "VolumesData", "volumes_buf")
+    /* Inputs. */
+    .sampler(0, ImageType::FLOAT_3D, "in_scattering_tx")
+    .sampler(1, ImageType::FLOAT_3D, "in_extinction_tx")
+    /* Outputs. */
+    .image(0, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_scattering_img")
+    .image(1, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_transmittance_img")
     .do_static_compilation(true);
 
-GPU_SHADER_CREATE_INFO(eevee_volume_resolve)
+GPU_SHADER_CREATE_INFO(eevee_volume_resolve_opaque)
+    .additional_info("eevee_shared")
     .additional_info("eevee_volume_lib")
     .additional_info("draw_fullscreen")
     .fragment_source("eevee_volume_resolve_frag.glsl")
-    .sampler(0, ImageType::DEPTH_2D, "in_scene_depth")
+    .sampler(0, ImageType::DEPTH_2D, "depth_tx")
     .fragment_out(0, Type::VEC4, "out_radiance", DualBlend::SRC_0)
     .fragment_out(0, Type::VEC4, "out_transmittance", DualBlend::SRC_1)
     .do_static_compilation(true);

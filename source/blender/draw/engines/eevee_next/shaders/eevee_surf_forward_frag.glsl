@@ -118,16 +118,15 @@ void main()
 #ifdef MAT_TRANSPARENT
   /* Volumetric resolve and compositing. */
   vec2 uvs = gl_FragCoord.xy * volumes_buf.viewport_size_inv;
-  vec3 vol_transmit, vol_scatter;
-  volumetric_resolve(uvs, gl_FragCoord.z, vol_transmit, vol_scatter);
+  VolumeResolveSample vol = volumetric_resolve(
+      vec3(uvs, gl_FragCoord.z), volume_scattering_tx, volume_transmittance_tx);
 
   /* Removes the part of the volume scattering that has
-   * already been added to the destination pixels.
-   * Since we do that using the blending pipeline we need to account for material transmittance.
-   */
-  vol_scatter -= vol_scatter * g_transmittance;
+   * already been added to the destination pixels by the opaque resolve.
+   * Since we do that using the blending pipeline we need to account for material transmittance. */
+  vol.scattering -= vol.scattering * g_transmittance;
 
-  out_radiance.rgb = out_radiance.rgb * vol_transmit + vol_scatter;
+  out_radiance.rgb = out_radiance.rgb * vol.transmittance + vol.scattering;
 #endif
 
   out_radiance.rgb *= 1.0 - g_holdout;

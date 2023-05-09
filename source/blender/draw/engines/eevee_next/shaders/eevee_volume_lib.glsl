@@ -151,7 +151,7 @@ vec3 participating_media_extinction(vec3 wpos, sampler3D volume_extinction)
   return texture(volume_extinction, volume_co).rgb;
 }
 
-vec3 light_volume_shadow(LightData ld, vec3 ray_wpos, vec4 l_vector, sampler3D volume_extinction)
+vec3 light_volume_shadow(LightData ld, vec3 ray_wpos, vec4 l_vector)
 {
   /* TODO (Miguel Pozo) */
 #if 0 && defined(VOLUME_SHADOW)
@@ -188,6 +188,7 @@ vec3 light_volume_shadow(LightData ld, vec3 ray_wpos, vec4 l_vector, sampler3D v
     dd = length(L);
   }
 
+#  if 0 /* TODO use shadow maps instead. */
   vec3 shadow = vec3(1.0);
   for (float s = 1.0; s < VOLUMETRIC_SHADOW_MAX_STEP && s <= volumes_buf.shadow_steps; s += 1.0) {
     vec3 pos = ray_wpos + L * s;
@@ -195,6 +196,7 @@ vec3 light_volume_shadow(LightData ld, vec3 ray_wpos, vec4 l_vector, sampler3D v
     shadow *= exp(-s_extinction * dd);
   }
   return shadow;
+#  endif
 #else
   return vec3(1.0);
 #endif /* VOLUME_SHADOW */
@@ -214,13 +216,19 @@ vec3 irradiance_volumetric(vec3 wpos)
 #endif
 }
 
-void volumetric_resolve(vec2 frag_uvs,
-                        float frag_depth,
-                        out vec3 transmittance,
-                        out vec3 scattering)
-{
-  vec3 coord = ndc_to_volume(vec3(frag_uvs, frag_depth));
+struct VolumeResolveSample {
+  vec3 transmittance;
+  vec3 scattering;
+};
 
-  scattering = texture(in_scattering, coord).rgb;
-  transmittance = texture(in_transmittance, coord).rgb;
+VolumeResolveSample volumetric_resolve(vec3 ndc_P,
+                                       sampler3D transmittance_tx,
+                                       sampler3D scattering_tx)
+{
+  vec3 coord = ndc_to_volume(ndc_P);
+
+  VolumeResolveSample volume;
+  volume.scattering = texture(scattering_tx, coord).rgb;
+  volume.transmittance = texture(transmittance_tx, coord).rgb;
+  return volume;
 }

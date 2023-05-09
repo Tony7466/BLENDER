@@ -116,8 +116,7 @@ void VolumeModule::init()
   enabled_ = false;
   subpass_aabbs_.clear();
 
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-  const Scene *scene_eval = DEG_get_evaluated_scene(draw_ctx->depsgraph);
+  const Scene *scene_eval = inst_.scene;
 
   const float3 viewport_size = DRW_viewport_size_get();
   const int tile_size = scene_eval->eevee.volumetric_tile_size;
@@ -157,12 +156,7 @@ void VolumeModule::init()
 
 void VolumeModule::begin_sync()
 {
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-  Scene *scene = draw_ctx->scene;
-  const Scene *scene_eval = DEG_get_evaluated_scene(draw_ctx->depsgraph);
-
-  /* TODO (Miguel Pozo): Done here since it needs to run after camera sync.
-   * Is this the way to go? */
+  const Scene *scene_eval = inst_.scene;
 
   /* Negate clip values (View matrix forward vector is -Z). */
   const float clip_start = -inst_.camera.data_get().clip_near;
@@ -192,21 +186,21 @@ void VolumeModule::begin_sync()
 
   data_.push_update();
 
-  /* World Volume Pass. */
+  sync_world();
+}
 
+void VolumeModule::sync_world()
+{
   world_ps_.init();
   world_ps_.state_set(DRW_STATE_WRITE_COLOR);
-  bind_volume_pass_resources(world_ps_, true);
+  this->bind_properties_buffers(world_ps_);
   inst_.lights.bind_resources(&world_ps_);
   inst_.shadows.bind_resources(&world_ps_);
 
   GPUMaterial *material = nullptr;
 
-  ::World *world = scene->world;
-  if (world && world->use_nodes && world->nodetree &&
-      !LOOK_DEV_STUDIO_LIGHT_ENABLED(draw_ctx->v3d))
-  {
-
+  ::World *world = inst_.scene->world;
+  if (world && world->use_nodes && world->nodetree && !inst_.use_studio_light()) {
     material = inst_.shaders.world_shader_get(world, world->nodetree, MAT_PIPE_VOLUME);
 
     if (!GPU_material_has_volume_output(material)) {
@@ -226,6 +220,7 @@ void VolumeModule::begin_sync()
     ps.shader_set(inst_.shaders.static_shader_get(VOLUME_CLEAR));
   }
   ps.dispatch(math::divide_ceil(data_.tex_size, int3(VOLUME_GROUP_SIZE)));
+  /* Sync with object property pass. */
   ps.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
 }
 
@@ -337,39 +332,36 @@ void VolumeModule::end_sync()
   scatter_ps_.init();
   scatter_ps_.shader_set(inst_.shaders.static_shader_get(
       data_.use_lights ? VOLUME_SCATTER_WITH_LIGHTS : VOLUME_SCATTER));
-  bind_volume_pass_resources(scatter_ps_);
   inst_.lights.bind_resources(&scatter_ps_);
   inst_.shadows.bind_resources(&scatter_ps_);
-  scatter_ps_.bind_texture("scattering_tx", &prop_scattering_tx_);
-  scatter_ps_.bind_texture("extinction_tx", &prop_extinction_tx_);
-  scatter_ps_.bind_texture("emission_tx", &prop_emission_tx_);
-  scatter_ps_.bind_texture("phase_tx", &prop_phase_tx_);
-  scatter_ps_.bind_image("out_scattering", &scatter_tx_);
-  scatter_ps_.bind_image("out_extinction", &extinction_tx_);
-
-  scatter_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH);
+  scatter_ps_.bind_image("in_scattering_img", &prop_scattering_tx_);
+  scatter_ps_.bind_image("in_extinction_img", &prop_extinction_tx_);
+  scatter_ps_.bind_image("in_emission_img", &prop_emission_tx_);
+  scatter_ps_.bind_image("in_phase_img", &prop_phase_tx_);
+  scatter_ps_.bind_image("out_scattering_img", &scatter_tx_);
+  scatter_ps_.bind_image("out_extinction_img", &extinction_tx_);
+  /* Sync with the property pass. */
+  scatter_ps_.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   scatter_ps_.dispatch(math::divide_ceil(data_.tex_size, int3(VOLUME_GROUP_SIZE)));
-  scatter_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH);
 
   integration_ps_.init();
   integration_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_INTEGRATION));
-  bind_volume_pass_resources(integration_ps_);
-  integration_ps_.bind_texture("scattering_tx", &scatter_tx_);
-  integration_ps_.bind_texture("extinction_tx", &extinction_tx_);
-  integration_ps_.bind_image("out_scattering", &integrated_scatter_tx_);
-  integration_ps_.bind_image("out_transmittance", &integrated_transmit_tx_);
-
-  integration_ps_.dispatch(math::divide_ceil(int2(data_.tex_size), int2(VOLUME_2D_GROUP_SIZE)));
+  integration_ps_.bind_ubo(VOLUMES_BUF_SLOT, data_);
+  integration_ps_.bind_texture("in_scattering_tx", &scatter_tx_);
+  integration_ps_.bind_texture("in_extinction_tx", &extinction_tx_);
+  integration_ps_.bind_image("out_scattering_img", &integrated_scatter_tx_);
+  integration_ps_.bind_image("out_transmittance_img", &integrated_transmit_tx_);
+  /* Sync with the scatter pass. */
   integration_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH);
+  integration_ps_.dispatch(math::divide_ceil(int2(data_.tex_size), int2(VOLUME_2D_GROUP_SIZE)));
 
   resolve_ps_.init();
   resolve_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
   resolve_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_RESOLVE));
-  bind_volume_pass_resources(resolve_ps_);
-  resolve_ps_.bind_texture("in_scattering", &integrated_scatter_tx_);
-  resolve_ps_.bind_texture("in_transmittance", &integrated_transmit_tx_);
-  resolve_ps_.bind_texture("in_scene_depth", &inst_.render_buffers.depth_tx);
-
+  this->bind_resources(resolve_ps_);
+  resolve_ps_.bind_texture("depth_tx", &inst_.render_buffers.depth_tx);
+  /* Sync with the integration pass. */
+  resolve_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH);
   resolve_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
 }
 

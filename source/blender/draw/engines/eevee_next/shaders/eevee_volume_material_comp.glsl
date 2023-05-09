@@ -89,14 +89,14 @@ void main()
 #ifdef MAT_GEOM_VOLUME_OBJECT
   /* Additive Blending.
    * No race condition since each invocation only handles its own froxel. */
-  scattering += imageLoad(out_scattering, froxel).rgb;
-  extinction += imageLoad(out_extinction, froxel).rgb;
-  emission += imageLoad(out_emissive, froxel).rgb;
-  anisotropy += imageLoad(out_phase, froxel).r;
+  scattering += imageLoad(out_scattering_img, froxel).rgb;
+  extinction += imageLoad(out_extinction_img, froxel).rgb;
+  emission += imageLoad(out_emissive_img, froxel).rgb;
+  anisotropy += imageLoad(out_phase_img, froxel).r;
 #endif
 
-  imageStore(out_scattering, froxel, vec4(scattering, 1.0));
-  imageStore(out_extinction, froxel, vec4(extinction, 1.0));
-  imageStore(out_emissive, froxel, vec4(emission, 1.0));
-  imageStore(out_phase, froxel, vec4(anisotropy, vec3(1.0)));
+  imageStore(out_scattering_img, froxel, vec4(scattering, 1.0));
+  imageStore(out_extinction_img, froxel, vec4(extinction, 1.0));
+  imageStore(out_emissive_img, froxel, vec4(emission, 1.0));
+  imageStore(out_phase_img, froxel, vec4(anisotropy, vec3(1.0)));
 }

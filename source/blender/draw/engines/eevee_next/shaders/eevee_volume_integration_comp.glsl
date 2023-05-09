@@ -41,8 +41,8 @@ void main()
   for (int i = 0; i <= tex_size.z; i++) {
     ivec3 froxel = ivec3(texel, i);
 
-    vec3 froxel_scattering = texelFetch(scattering_tx, froxel, 0).rgb;
-    vec3 extinction = texelFetch(extinction_tx, froxel, 0).rgb;
+    vec3 froxel_scattering = texelFetch(in_scattering_tx, froxel, 0).rgb;
+    vec3 extinction = texelFetch(in_extinction_tx, froxel, 0).rgb;
 
     float cell_depth = volume_z_to_view_z((float(i) + 1.0) / tex_size.z);
     float ray_len = orig_ray_len * cell_depth;
@@ -67,7 +67,7 @@ void main()
     scattering += transmittance * froxel_scattering;
     transmittance *= froxel_transmittance;
 
-    imageStore(out_scattering, froxel, vec4(scattering, 1.0));
-    imageStore(out_transmittance, froxel, vec4(transmittance, 1.0));
+    imageStore(out_scattering_img, froxel, vec4(scattering, 1.0));
+    imageStore(out_transmittance_img, froxel, vec4(transmittance, 1.0));
   }
 }

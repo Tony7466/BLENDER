@@ -177,7 +177,7 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
     case VOLUME_INTEGRATION:
       return "eevee_volume_integration";
     case VOLUME_RESOLVE:
-      return "eevee_volume_resolve";
+      return "eevee_volume_resolve_opaque";
     case VOLUME_SCATTER:
       return "eevee_volume_scatter";
     case VOLUME_SCATTER_WITH_LIGHTS:

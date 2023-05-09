@@ -9,8 +9,8 @@ void main()
 
   vec4 clear = vec4(0.0);
 
-  imageStore(out_scattering, froxel, clear);
-  imageStore(out_extinction, froxel, clear);
-  imageStore(out_emissive, froxel, clear);
-  imageStore(out_phase, froxel, clear);
+  imageStore(out_scattering_img, froxel, clear);
+  imageStore(out_extinction_img, froxel, clear);
+  imageStore(out_emissive_img, froxel, clear);
+  imageStore(out_phase_img, froxel, clear);
 }

@@ -8,12 +8,12 @@
 
 void main()
 {
-  vec2 uvs = gl_FragCoord.xy / vec2(textureSize(in_scene_depth, 0));
-  float scene_depth = texture(in_scene_depth, uvs).r;
+  vec2 uvs = gl_FragCoord.xy / vec2(textureSize(depth_tx, 0));
+  float scene_depth = texture(depth_tx, uvs).r;
 
-  vec3 transmittance, scattering;
-  volumetric_resolve(uvs, scene_depth, transmittance, scattering);
+  VolumeResolveSample vol = volumetric_resolve(
+      vec3(uvs, scene_depth), volume_transmittance_tx, volume_scattering_tx);
 
-  out_radiance = vec4(scattering, 0.0);
-  out_transmittance = vec4(transmittance, saturate(avg(transmittance)));
+  out_radiance = vec4(vol.scattering, 0.0);
+  out_transmittance = vec4(vol.transmittance, saturate(avg(vol.transmittance)));
 }

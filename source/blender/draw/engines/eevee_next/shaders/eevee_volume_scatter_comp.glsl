@@ -37,7 +37,7 @@ vec3 volume_scatter_light_eval(vec3 P, vec3 V, uint l_idx, float s_anisotropy)
     return vec3(0);
   }
 
-  vec3 Li = light_volume(ld, l_vector) * light_volume_shadow(ld, P, l_vector, extinction_tx);
+  vec3 Li = light_volume(ld, l_vector) * light_volume_shadow(ld, P, l_vector);
 
   return Li * vis * phase_function(-V, l_vector.xyz / l_vector.w, s_anisotropy);
 }
@@ -53,16 +53,16 @@ void main()
   }
 
   /* Emission. */
-  vec3 scattering = texelFetch(emission_tx, froxel, 0).rgb;
-  vec3 transmittance = texelFetch(extinction_tx, froxel, 0).rgb;
-  vec3 s_scattering = texelFetch(scattering_tx, froxel, 0).rgb;
+  vec3 scattering = imageLoad(in_emission_img, froxel).rgb;
+  vec3 transmittance = imageLoad(in_extinction_img, froxel).rgb;
+  vec3 s_scattering = imageLoad(in_scattering_img, froxel).rgb;
 
   vec3 volume_ndc = volume_to_ndc((vec3(froxel) + volumes_buf.jitter) * volumes_buf.inv_tex_size);
   vec3 vP = get_view_space_from_depth(volume_ndc.xy, volume_ndc.z);
   vec3 P = point_view_to_world(vP);
   vec3 V = cameraVec(P);
 
-  vec2 phase = texelFetch(phase_tx, froxel, 0).rg;
+  vec2 phase = imageLoad(in_phase_img, froxel).rg;
   float s_anisotropy = phase.x / max(1.0, phase.y);
 
   scattering += irradiance_volumetric(P) * s_scattering * phase_function_isotropic();
@@ -90,6 +90,6 @@ void main()
     transmittance = vec3(1.0);
   }
 
-  imageStore(out_scattering, froxel, vec4(scattering, 1.0));
-  imageStore(out_extinction, froxel, vec4(transmittance, 1.0));
+  imageStore(out_scattering_img, froxel, vec4(scattering, 1.0));
+  imageStore(out_extinction_img, froxel, vec4(transmittance, 1.0));
 }
