@@ -919,6 +919,146 @@ static const Vector<Vertex> &camera_distances_verts()
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Force Fields
+ * \{ */
+
+#define CIRCLE_RESOL 32
+#define SPIRAL_RESOL 32
+#define SIDE_STIPPLE 32
+
+static const Vector<Vertex> &field_wind_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  int flag = VCLASS_EMPTY_SIZE;
+  for (int i : IndexRange(4)) {
+    float z = 0.05f * (float)i;
+    append_circle_verts(verts, CIRCLE_RESOL, 1.0f, z, flag);
+  }
+
+  return verts;
+}
+
+static const Vector<Vertex> &field_force_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  int flag = VCLASS_EMPTY_SIZE | VCLASS_SCREENALIGNED;
+  for (int i : IndexRange(3)) {
+    float radius = 1.0f + 0.5f * i;
+    append_circle_verts(verts, CIRCLE_RESOL, radius, 0.0f, flag);
+  }
+
+  return verts;
+}
+
+static const Vector<Vertex> &field_vortex_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  int flag = VCLASS_EMPTY_SIZE;
+  for (int a = SPIRAL_RESOL; a > -1; a--) {
+    float r = a / (float)SPIRAL_RESOL;
+    float angle = (2.0f * M_PI * a) / SPIRAL_RESOL;
+    verts.append({{sinf(angle) * r, cosf(angle) * r, 0.0f}, flag});
+  }
+  for (int a = 1; a <= SPIRAL_RESOL; a++) {
+    float r = a / (float)SPIRAL_RESOL;
+    float angle = (2.0f * M_PI * a) / SPIRAL_RESOL;
+    verts.append({{sinf(angle) * -r, cosf(angle) * -r, 0.0f}, flag});
+  }
+
+  return verts;
+}
+
+static const Vector<Vertex> &field_curve_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  int flag = VCLASS_EMPTY_SIZE | VCLASS_SCREENALIGNED;
+  append_circle_verts(verts, CIRCLE_RESOL, 1.0f, 0.0f, flag);
+
+  return verts;
+}
+
+static const Vector<Vertex> &field_tube_limit_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  int flag = VCLASS_EMPTY_SIZE;
+  /* Caps */
+  for (int i : IndexRange(2)) {
+    float z = i * 2.0f - 1.0f;
+    append_circle_dashed_verts(verts, CIRCLE_RESOL, 1.0f, z, flag);
+  }
+  /* Side Edges */
+  for (int a : IndexRange(4)) {
+    float angle = (2.0f * M_PI * a) / 4.0f;
+    for (int i : IndexRange(SIDE_STIPPLE)) {
+      float z = (i / (float)SIDE_STIPPLE) * 2.0f - 1.0f;
+      verts.append({{sinf(angle), cosf(angle), z}, flag});
+    }
+  }
+
+  return verts;
+}
+
+static const Vector<Vertex> &field_cone_limit_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  int flag = VCLASS_EMPTY_SIZE;
+  /* Caps */
+  for (int i : IndexRange(2)) {
+    float z = i * 2.0f - 1.0f;
+    append_circle_dashed_verts(verts, CIRCLE_RESOL, 1.0f, z, flag);
+  }
+  /* Side Edges */
+  for (int a : IndexRange(4)) {
+    float angle = (2.0f * M_PI * a) / 4.0f;
+    for (int i : IndexRange(SIDE_STIPPLE)) {
+      float z = (i / (float)SIDE_STIPPLE) * 2.0f - 1.0f;
+      verts.append({{sinf(angle) * z, cosf(angle) * z, z}, flag});
+    }
+  }
+
+  return verts;
+}
+
+static const Vector<Vertex> &field_sphere_limit_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  int flag = VCLASS_EMPTY_SIZE | VCLASS_SCREENALIGNED;
+  append_circle_dashed_verts(verts, CIRCLE_RESOL, 1.0f, 0.0f, flag);
+
+  return verts;
+}
+
+/** \} */
+
 ShapeCache::ShapeCache()
 {
   static GPUVertFormat format = {0};
@@ -965,6 +1105,13 @@ ShapeCache::ShapeCache()
   camera_tria_wire = batch_ptr(camera_tria_wire_verts());
   camera_tria = batch_ptr(camera_tria_verts());
   camera_distances = batch_ptr(camera_distances_verts());
+  field_wind = batch_ptr(field_wind_verts());
+  field_force = batch_ptr(field_force_verts());
+  field_vortex = batch_ptr(field_vortex_verts());
+  field_curve = batch_ptr(field_curve_verts());
+  field_tube_limit = batch_ptr(field_tube_limit_verts());
+  field_cone_limit = batch_ptr(field_cone_limit_verts());
+  field_sphere_limit = batch_ptr(field_sphere_limit_verts());
 }
 
 }  // namespace blender::draw::overlay

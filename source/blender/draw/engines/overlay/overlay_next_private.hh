@@ -97,6 +97,13 @@ class ShapeCache {
   BatchPtr camera_tria_wire;
   BatchPtr camera_tria;
   BatchPtr camera_distances;
+  BatchPtr field_wind;
+  BatchPtr field_force;
+  BatchPtr field_vortex;
+  BatchPtr field_curve;
+  BatchPtr field_tube_limit;
+  BatchPtr field_cone_limit;
+  BatchPtr field_sphere_limit;
 
   ShapeCache();
 };
