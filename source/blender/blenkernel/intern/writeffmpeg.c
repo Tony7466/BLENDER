@@ -535,7 +535,7 @@ static const AVCodec *get_av1_encoder(
       }
       /* Set gop_size as rav1e's "--keyint". */
       char buffer[64];
-      BLI_snprintf(buffer, sizeof(buffer), "keyint=%d", context->ffmpeg_gop_size);
+      SNPRINTF(buffer, "keyint=%d", context->ffmpeg_gop_size);
       av_dict_set(opts, "rav1e-params", buffer, 0);
     }
     else if (STREQ(codec->name, "libsvtav1")) {
@@ -734,8 +734,7 @@ static AVStream *alloc_video_stream(FFMpegContext *context,
   if (c->time_base.num != 1) {
     AVRational new_time_base;
     if (av_reduce(
-            &new_time_base.num, &new_time_base.den, c->time_base.num, c->time_base.den, INT_MAX))
-    {
+            &new_time_base.num, &new_time_base.den, c->time_base.num, c->time_base.den, INT_MAX)) {
       /* Exact reduction was possible. Use the new value. */
       c->time_base = new_time_base;
     }
@@ -1074,7 +1073,7 @@ static void ffmpeg_dict_set_int(AVDictionary **dict, const char *key, int value)
 {
   char buffer[32];
 
-  BLI_snprintf(buffer, sizeof(buffer), "%d", value);
+  SNPRINTF(buffer, "%d", value);
 
   av_dict_set(dict, key, buffer, 0);
 }
@@ -1392,7 +1391,7 @@ static void ffmpeg_filepath_get(FFMpegContext *context,
 
   if ((rd->ffcodecdata.flags & FFMPEG_AUTOSPLIT_OUTPUT) != 0) {
     if (context) {
-      BLI_snprintf(autosplit, sizeof(autosplit), "_%03d", context->ffmpeg_autosplit_count);
+      SNPRINTF(autosplit, "_%03d", context->ffmpeg_autosplit_count);
     }
   }
 

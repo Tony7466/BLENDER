@@ -169,7 +169,6 @@ static void bake_update_image(ScrArea *area, Image *image)
   }
 }
 
-
 /* Bias almost-flat normals in tangent space to be flat to avoid artifacts in byte textures.
  * For some types of normal baking, especially bevels, you can end up with a small amount
  * of noise in the result. Since the border between pixel value 127 and 128 is exactly 0.5,
@@ -181,11 +180,8 @@ static void bake_update_image(ScrArea *area, Image *image)
  * textures (which includes 16-bit formats). Also, it's only applied to the first two channels,
  * since on flat surfaces the Z channel will be close enough to 1.0 to reliably end up on 255.
  */
-void bias_tangent_normal_pixels(float *rect,
-                                int channels,
-                                int width,
-                                int height,
-                                int stride)
+static void bias_tangent_normal_pixels(
+    float *rect, int channels, int width, int height, int stride)
 {
   BLI_assert(channels >= 3);
 
@@ -832,7 +828,8 @@ static bool bake_targets_output_internal(const BakeAPIRender *bkr,
                                          Mesh *mesh_eval)
 {
   bool all_ok = true;
-  const bool is_tangent_normal = (bkr->pass_type == SCE_PASS_NORMAL) && (bkr->normal_space == R_BAKE_SPACE_TANGENT);
+  const bool is_tangent_normal = (bkr->pass_type == SCE_PASS_NORMAL) &&
+                                 (bkr->normal_space == R_BAKE_SPACE_TANGENT);
 
   for (int i = 0; i < targets->images_num; i++) {
     BakeImage *bk_image = &targets->images[i];
@@ -914,7 +911,8 @@ static bool bake_targets_output_external(const BakeAPIRender *bkr,
                                          ReportList *reports)
 {
   bool all_ok = true;
-  const bool is_tangent_normal = (bkr->pass_type == SCE_PASS_NORMAL) && (bkr->normal_space == R_BAKE_SPACE_TANGENT);
+  const bool is_tangent_normal = (bkr->pass_type == SCE_PASS_NORMAL) &&
+                                 (bkr->normal_space == R_BAKE_SPACE_TANGENT);
 
   for (int i = 0; i < targets->images_num; i++) {
     BakeImage *bk_image = &targets->images[i];
@@ -946,7 +944,7 @@ static bool bake_targets_output_external(const BakeAPIRender *bkr,
       else {
         /* if everything else fails, use the material index */
         char tmp[5];
-        BLI_snprintf(tmp, sizeof(tmp), "%d", i % 1000);
+        SNPRINTF(tmp, "%d", i % 1000);
         BLI_path_suffix(filepath, FILE_MAX, tmp, "_");
       }
     }
