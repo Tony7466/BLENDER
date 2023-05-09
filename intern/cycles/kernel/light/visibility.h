@@ -72,8 +72,8 @@ ccl_device_inline void light_visibility_correction(KernelGlobals kg,
                                                    ccl_private Spectrum *light_visibility)
 {
   Spectrum visible_components = zero_spectrum();
-  const BsdfEval scatter_eval = BsdfEvalRGBEToBsdfEval(
-      &INTEGRATOR_STATE(state, path, scatter_eval));
+  const BsdfEvalRGBE scatter_eval_rgbe = INTEGRATOR_STATE(state, path, scatter_eval);
+  const BsdfEval scatter_eval = BsdfEvalRGBEToBsdfEval(&scatter_eval_rgbe);
   Spectrum transmission = scatter_eval.sum - (scatter_eval.glossy + scatter_eval.diffuse);
   if (!(shader & SHADER_EXCLUDE_DIFFUSE)) {
     visible_components += scatter_eval.diffuse;
