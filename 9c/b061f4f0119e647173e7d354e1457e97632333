@@ -1,2 +1,3 @@
 Referenced by issue #103118, Using Metarig Limbs With only 1 B-Bone segment causes console spam and slows rig down massively
 Referenced by issue #106340, Blender 3.5 returns identity instead of real value for matrix_basis, 3.4 works ok
+Referenced by issue #107777, Regression: Shadow always produces black image on baking
