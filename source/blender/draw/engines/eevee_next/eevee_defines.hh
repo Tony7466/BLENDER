@@ -93,6 +93,7 @@
 /* Resource bindings. */
 
 /* Texture. */
+/* Only used by forward pipeline. */
 #define VOLUME_SCATTERING_TEX_SLOT 10
 #define VOLUME_TRANSMITTANCE_TEX_SLOT 11
 #define SHADOW_TILEMAPS_TEX_SLOT 12

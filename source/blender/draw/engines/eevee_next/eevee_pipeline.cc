@@ -440,7 +440,7 @@ void DeferredLayer::render(View &view,
   GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(gbuffer_ps_, view);
 
-  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
+  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE | GPU_TEXTURE_USAGE_ATTACHMENT;
   diffuse_light_tx_.acquire(extent, GPU_RGBA16F, usage);
   specular_light_tx_.acquire(extent, GPU_RGBA16F, usage);
   diffuse_light_tx_.clear(float4(0.0f));
