@@ -1579,14 +1579,7 @@ static int text_select_word_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Text *text = CTX_data_edit_text(C);
 
-  TextLine *line = text->curl;
-  if (!line->line[text->curc] ||
-      (BLI_str_cursor_delim_type_utf8(line->line, line->len, text->curc) ==
-       STRCUR_DELIM_WHITESPACE) ||
-      (text->curc > 0 && BLI_str_cursor_delim_type_utf8(line->line, line->len, text->curc - 1) !=
-                             STRCUR_DELIM_WHITESPACE))
-  {
-    /* Move left if to left is non-whitespace or if right is whitespace. */
+  if (!BLI_str_cursor_at_word_boundary_utf8(text->curl->line, text->curl->len, text->curc)) {
     txt_jump_left(text, false);
   }
   txt_jump_right(text, true);

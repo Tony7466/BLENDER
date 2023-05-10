@@ -1922,12 +1922,7 @@ static int font_select_word_exec(bContext *C, wmOperator *UNUSED(op))
   Curve *cu = obedit->data;
   EditFont *ef = cu->editfont;
 
-  if (!ef->textbuf[ef->pos] ||
-      (BLI_str_cursor_delim_type_utf32(ef->textbuf[ef->pos]) == STRCUR_DELIM_WHITESPACE) ||
-      (ef->pos > 0 &&
-       BLI_str_cursor_delim_type_utf32(ef->textbuf[ef->pos - 1]) != STRCUR_DELIM_WHITESPACE))
-  {
-    /* We are at the end or middle of a word, so move back. */
+  if (!BLI_str_cursor_at_word_boundary_utf32(ef->textbuf, ef->len, ef->pos)) {
     move_cursor(C, PREV_WORD, false);
   }
   move_cursor(C, NEXT_WORD, true);
