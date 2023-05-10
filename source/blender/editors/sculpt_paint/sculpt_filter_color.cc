@@ -359,7 +359,6 @@ static int sculpt_color_filter_init(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  const PBVHType pbvh_type_prev = BKE_pbvh_type(ss->pbvh);
   SCULPT_undo_push_begin(ob, op);
   BKE_sculpt_color_layer_create_if_needed(ob);
 

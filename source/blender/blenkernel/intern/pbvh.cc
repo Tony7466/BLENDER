@@ -1396,7 +1396,7 @@ static void pbvh_faces_update_normals(PBVH *pbvh, Span<PBVHNode *> nodes)
   for (const PBVHNode *node : nodes) {
     for (const int vert : Span(node->vert_indices, node->uniq_verts)) {
       if (update_tags[vert]) {
-        polys_to_update.add_multiple({pbvh->pmap[vert].indices, pbvh->pmap[vert].count});
+        polys_to_update.add_multiple(pbvh->pmap[vert]);
       }
     }
   }
@@ -1435,7 +1435,7 @@ static void pbvh_faces_update_normals(PBVH *pbvh, Span<PBVHNode *> nodes)
   threading::parallel_for(verts_to_update.index_range(), 1024, [&](const IndexRange range) {
     for (const int vert : verts_to_update.as_span().slice(range)) {
       float3 normal(0.0f);
-      for (const int poly : Span(pbvh->pmap[vert].indices, pbvh->pmap[vert].count)) {
+      for (const int poly : pbvh->pmap[vert]) {
         normal += poly_normals[poly];
       }
       vert_normals[vert] = math::normalize(normal);

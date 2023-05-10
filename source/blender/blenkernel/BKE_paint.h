@@ -273,13 +273,10 @@ void BKE_paint_blend_read_lib(struct BlendLibReader *reader,
 #define SCULPT_FACE_SET_NONE 0
 
 /** Used for both vertex color and weight paint. */
-#ifdef __cplusplus
 struct SculptVertexPaintGeomMap {
   int *vert_map_mem;
   struct MeshElemMap *vert_to_loop;
-  blender::bke::mesh::VertToPolyMap vert_to_poly;
 };
-#endif
 
 /** Pose Brush IK Chain. */
 typedef struct SculptPoseIKChainSegment {
