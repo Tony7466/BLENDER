@@ -137,6 +137,28 @@ static bNode *node_group_get_active(bContext *C, const char *node_idname)
   return nullptr;
 }
 
+/* Maps old to new identifiers for simulation input node pairing. */
+template<typename NodeIterator>
+static void remap_pairing(bNodeTree &dst_tree,
+                          NodeIterator nodes,
+                          const Map<int32_t, int32_t> &identifier_map)
+{
+  for (bNode *dst_node : nodes) {
+    if (dst_node->type == GEO_NODE_SIMULATION_INPUT) {
+      NodeGeometrySimulationInput *data = static_cast<NodeGeometrySimulationInput *>(
+          dst_node->storage);
+      if (data->output_node_id == 0) {
+        continue;
+      }
+
+      data->output_node_id = identifier_map.lookup_default(data->output_node_id, 0);
+      if (data->output_node_id == 0) {
+        blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
+      }
+    }
+  }
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -232,7 +254,10 @@ static bool node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
   bNodeTree *wgroup = ntreeCopyTree(bmain, ngroup);
 
   /* Add the nodes into the `ntree`. */
+  Vector<bNode *> new_nodes;
+  Map<int32_t, int32_t> node_identifier_map;
   LISTBASE_FOREACH_MUTABLE (bNode *, node, &wgroup->nodes) {
+    new_nodes.append(node);
     /* Remove interface nodes.
      * This also removes remaining links to and from interface nodes.
      */
@@ -253,8 +278,10 @@ static bool node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
     /* migrate node */
     BLI_remlink(&wgroup->nodes, node);
     BLI_addtail(&ntree->nodes, node);
+    const int32_t old_identifier = node->identifier;
     nodeUniqueID(ntree, node);
     nodeUniqueName(ntree, node);
+    node_identifier_map.add(old_identifier, node->identifier);
 
     BKE_ntree_update_tag_node_new(ntree, node);
 
@@ -309,6 +336,8 @@ static bool node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
       wgroup->adt->action = nullptr;
     }
   }
+
+  remap_pairing(*ntree, new_nodes, node_identifier_map);
 
   /* free the group tree (takes care of user count) */
   BKE_id_free(bmain, wgroup);
@@ -441,27 +470,6 @@ void NODE_OT_group_ungroup(wmOperatorType *ot)
 /** \name Separate Operator
  * \{ */
 
-/* Maps old to new identifiers for simulation input node pairing. */
-static void remap_pairing(bNodeTree &dst_tree,
-                          const Map<bNode *, bNode *> node_map,
-                          const Map<int32_t, int32_t> &identifier_map)
-{
-  for (bNode *dst_node : node_map.values()) {
-    if (dst_node->type == GEO_NODE_SIMULATION_INPUT) {
-      NodeGeometrySimulationInput *data = static_cast<NodeGeometrySimulationInput *>(
-          dst_node->storage);
-      if (data->output_node_id == 0) {
-        continue;
-      }
-
-      data->output_node_id = identifier_map.lookup_default(data->output_node_id, 0);
-      if (data->output_node_id == 0) {
-        blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
-      }
-    }
-  }
-}
-
 /**
  * \return True if successful.
  */
@@ -474,7 +482,7 @@ static bool node_group_separate_selected(
 
   Map<bNode *, bNode *> node_map;
   Map<const bNodeSocket *, bNodeSocket *> socket_map;
-  Map<int32_t, int32_t> identifier_map;
+  Map<int32_t, int32_t> node_identifier_map;
 
   /* Add selected nodes into the ntree, ignoring interface nodes. */
   VectorSet<bNode *> nodes_to_move = get_selected_nodes(ngroup);
@@ -485,7 +493,7 @@ static bool node_group_separate_selected(
     bNode *newnode;
     if (make_copy) {
       newnode = bke::node_copy_with_mapping(&ntree, *node, LIB_ID_COPY_DEFAULT, true, socket_map);
-      identifier_map.add(node->identifier, newnode->identifier);
+      node_identifier_map.add(node->identifier, newnode->identifier);
     }
     else {
       newnode = node;
@@ -494,7 +502,7 @@ static bool node_group_separate_selected(
       const int32_t old_identifier = node->identifier;
       nodeUniqueID(&ntree, newnode);
       nodeUniqueName(&ntree, newnode);
-      identifier_map.add(old_identifier, newnode->identifier);
+      node_identifier_map.add(old_identifier, newnode->identifier);
     }
     node_map.add_new(node, newnode);
 
@@ -553,7 +561,7 @@ static bool node_group_separate_selected(
     }
   }
 
-  remap_pairing(ntree, node_map, identifier_map);
+  remap_pairing(ntree, node_map.values(), node_identifier_map);
 
   for (bNode *node : node_map.values()) {
     nodeDeclarationEnsure(&ntree, node);
@@ -1069,14 +1077,7 @@ static void node_group_make_insert_selected(const bContext &C,
     }
   }
 
-  /* Remap simulation zone pairings. */
-  for (bNode *node : nodes_to_move) {
-    if (node->type == GEO_NODE_SIMULATION_INPUT) {
-      NodeGeometrySimulationInput &data = *static_cast<NodeGeometrySimulationInput *>(
-          node->storage);
-      data.output_node_id = node_identifier_map.lookup_default(data.output_node_id, 0);
-    }
-  }
+  remap_pairing(group, nodes_to_move, node_identifier_map);
 
   if (group.type == NTREE_GEOMETRY) {
     bke::node_field_inferencing::update_field_inferencing(group);
