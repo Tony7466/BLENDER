@@ -1,2 +1,3 @@
 Referenced by issue #107212, Regression: Image thumbnails in file browser sometimes do not show up
 Referenced by issue #107538, can't see png preview
+Referenced by commit 0168c4b893dc1ba648016dcf27c75b00962d480d, Cleanup: remove unused "dds" directory
