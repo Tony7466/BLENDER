@@ -122,6 +122,18 @@ bool BlenderSceneDelegate::GetVisible(pxr::SdfPath const &id)
   return object_data(id)->visible;
 }
 
+bool BlenderSceneDelegate::GetDoubleSided(pxr::SdfPath const &id)
+{
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", id.GetText());
+  return mesh_data(id)->double_sided();
+}
+
+pxr::HdCullStyle BlenderSceneDelegate::GetCullStyle(pxr::SdfPath const &id)
+{
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", id.GetText());
+  return mesh_data(id)->cull_style;
+}
+
 pxr::SdfPath BlenderSceneDelegate::GetInstancerId(pxr::SdfPath const &prim_id)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", prim_id.GetText());

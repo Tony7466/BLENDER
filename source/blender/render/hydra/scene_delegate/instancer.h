@@ -43,6 +43,7 @@ class InstancerData : public ObjectData {
   void check_remove(std::set<std::string> &available_objects);
   void available_materials(std::set<pxr::SdfPath> &paths) const;
   void update_as_parent();
+  void update_double_sided(MaterialData *mat_data);
 
  private:
   pxr::SdfPath object_prim_id(Object *object) const;

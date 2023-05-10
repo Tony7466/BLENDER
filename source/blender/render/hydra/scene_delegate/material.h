@@ -27,6 +27,8 @@ class MaterialData : public IdData {
   pxr::VtValue get_data(pxr::TfToken const &key) const override;
   pxr::VtValue get_material_resource() const;
 
+  bool double_sided = true;
+
  private:
   pxr::SdfAssetPath mtlx_path_;
   pxr::VtValue material_network_map_;

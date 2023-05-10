@@ -28,6 +28,10 @@ class MeshData : public ObjectData {
   pxr::HdMeshTopology mesh_topology() const;
   pxr::HdPrimvarDescriptorVector primvar_descriptors(pxr::HdInterpolation interpolation) const;
   pxr::SdfPath material_id() const;
+  bool double_sided() const;
+  void update_double_sided(MaterialData *mat_data);
+
+  pxr::HdCullStyle cull_style = pxr::HdCullStyleBackUnlessDoubleSided;
 
  private:
   void write_mesh(Mesh *mesh);

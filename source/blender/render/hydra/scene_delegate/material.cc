@@ -30,7 +30,7 @@ MaterialData::MaterialData(BlenderSceneDelegate *scene_delegate,
 void MaterialData::init()
 {
   ID_LOG(2, "");
-
+  double_sided = (((Material *)id)->blend_flag & MA_BL_CULL_BACKFACE) == 0;
   material_network_map_ = pxr::VtValue();
 
   /* Call of python function hydra.export_mtlx() */
@@ -120,9 +120,21 @@ void MaterialData::remove()
 void MaterialData::update()
 {
   ID_LOG(2, "");
+  bool prev_double_sided = double_sided;
   init();
   scene_delegate_->GetRenderIndex().GetChangeTracker().MarkSprimDirty(prim_id,
                                                                       pxr::HdMaterial::AllDirty);
+  if (prev_double_sided != double_sided) {
+    for (auto &it : scene_delegate_->objects_) {
+      MeshData *m_data = dynamic_cast<MeshData *>(it.second.get());
+      if (m_data) {
+        m_data->update_double_sided(this);
+      }
+    }
+    for (auto &it : scene_delegate_->instancers_) {
+      it.second->update_double_sided(this);
+    }
+  }
 }
 
 pxr::VtValue MaterialData::get_data(pxr::TfToken const &key) const

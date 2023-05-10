@@ -228,6 +228,13 @@ void InstancerData::update_as_parent()
       prim_id, pxr::HdChangeTracker::AllDirty);
 }
 
+void InstancerData::update_double_sided(MaterialData *mat_data)
+{
+  for (auto &it : mesh_instances_) {
+    it.second.data->update_double_sided(mat_data);
+  }
+}
+
 pxr::SdfPath InstancerData::object_prim_id(Object *object) const
 {
   /* Making id of object in form like <prefix>_<pointer in 16 hex digits format> */

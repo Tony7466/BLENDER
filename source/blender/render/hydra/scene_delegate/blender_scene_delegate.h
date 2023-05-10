@@ -21,8 +21,9 @@ namespace blender::render::hydra {
 extern struct CLG_LogRef *LOG_RENDER_HYDRA_SCENE; /* BSD - Blender Scene Delegate */
 
 class BlenderSceneDelegate : public pxr::HdSceneDelegate {
-  friend ObjectData; /* has access to instances */
-  friend MeshData;   /* has access to materials */
+  friend ObjectData;   /* has access to instances */
+  friend MeshData;     /* has access to materials */
+  friend MaterialData; /* has access to objects and instancers */
 
  public:
   enum class EngineType { VIEWPORT = 1, FINAL, PREVIEW };
@@ -43,6 +44,8 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
   pxr::SdfPath GetMaterialId(pxr::SdfPath const &rprim_id) override;
   pxr::VtValue GetMaterialResource(pxr::SdfPath const &material_id) override;
   bool GetVisible(pxr::SdfPath const &id) override;
+  bool GetDoubleSided(pxr::SdfPath const &id) override;
+  pxr::HdCullStyle GetCullStyle(pxr::SdfPath const &id) override;
   pxr::SdfPath GetInstancerId(pxr::SdfPath const &prim_id) override;
   pxr::SdfPathVector GetInstancerPrototypes(pxr::SdfPath const &instancer_id) override;
   pxr::VtIntArray GetInstanceIndices(pxr::SdfPath const &instancer_id,

@@ -74,7 +74,7 @@ void MeshData::update()
   else {
     if (id->recalc & ID_RECALC_SHADING) {
       write_material();
-      bits |= pxr::HdChangeTracker::DirtyMaterialId;
+      bits |= pxr::HdChangeTracker::DirtyMaterialId | pxr::HdChangeTracker::DirtyDoubleSided;
     }
     if (id->recalc & ID_RECALC_TRANSFORM) {
       write_transform();
@@ -119,6 +119,7 @@ bool MeshData::update_visibility()
 {
   bool ret = ObjectData::update_visibility();
   if (ret) {
+    ID_LOG(2, "");
     scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(
         prim_id, pxr::HdChangeTracker::DirtyVisibility);
   }
@@ -162,6 +163,23 @@ pxr::SdfPath MeshData::material_id() const
     return pxr::SdfPath();
   }
   return mat_data_->prim_id;
+}
+
+bool MeshData::double_sided() const
+{
+  if (mat_data_) {
+    return mat_data_->double_sided;
+  }
+  return true;
+}
+
+void MeshData::update_double_sided(MaterialData *mat_data)
+{
+  if (mat_data_ == mat_data) {
+    ID_LOG(2, "");
+    scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(
+        prim_id, pxr::HdChangeTracker::DirtyDoubleSided);
+  }
 }
 
 void MeshData::write_mesh(Mesh *mesh)
