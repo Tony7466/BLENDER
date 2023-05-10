@@ -52,7 +52,11 @@ VolumeGrid *fog_volume_grid_add_from_mesh(Volume *volume,
 /**
  * Add a new SDF VolumeGrid to the Volume by converting the supplied mesh.
  */
-VolumeGrid *sdf_volume_grid_add_from_mesh(
-    Volume *volume, StringRefNull name, const Mesh &mesh, float voxel_size, float half_band_width);
+VolumeGrid *sdf_volume_grid_add_from_mesh(Volume *volume,
+                                          StringRefNull name,
+                                          const Mesh &mesh,
+                                          float voxel_size,
+                                          float half_band_width,
+                                          bool fill_interior);
 #endif
 }  // namespace blender::geometry

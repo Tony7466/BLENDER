@@ -39,6 +39,9 @@ static void node_declare(NodeDeclarationBuilder &b)
       .default_value(3.0f)
       .min(1.01f)
       .max(10.0f);
+  b.add_input<decl::Bool>(N_("Fill Interior"))
+      .default_value(false)
+      .description(N_("Fill the entire interior of the mesh with distance values"));
   b.add_output<decl::Geometry>(CTX_N_(BLT_I18NCONTEXT_ID_ID, "Volume"))
       .translation_context(BLT_I18NCONTEXT_ID_ID);
 }
@@ -91,6 +94,7 @@ static Volume *create_volume_from_mesh(const Mesh &mesh, GeoNodeExecParams &para
   const NodeGeometryMeshToVolume &storage = node_storage(params.node());
 
   const float half_band_width = params.get_input<float>("Half-Band Width");
+  const bool fill_interior = params.get_input<bool>("Fill Interior");
 
   geometry::MeshToVolumeResolution resolution;
   resolution.mode = (MeshToVolumeModifierResolutionMode)storage.resolution_mode;
@@ -132,7 +136,8 @@ static Volume *create_volume_from_mesh(const Mesh &mesh, GeoNodeExecParams &para
   Volume *volume = reinterpret_cast<Volume *>(BKE_id_new_nomain(ID_VO, nullptr));
 
   /* Convert mesh to grid and add to volume. */
-  geometry::sdf_volume_grid_add_from_mesh(volume, "distance", mesh, voxel_size, half_band_width);
+  geometry::sdf_volume_grid_add_from_mesh(
+      volume, "distance", mesh, voxel_size, half_band_width, fill_interior);
 
   return volume;
 }
