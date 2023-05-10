@@ -1,2 +1,3 @@
 Referenced by pull request #104924, Geometry Nodes: add simulation support
 Referenced by pull request #107808, Fix #107608 : Changing color for simulation zone doesn't save
+Referenced by issue #107826, Regression: Volumes not rendering (EEVEE & Cycles)
