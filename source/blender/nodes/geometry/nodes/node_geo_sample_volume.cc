@@ -252,7 +252,7 @@ static void output_attribute_field(GeoNodeExecParams &params, GField field)
   }
 }
 
-static std::optional<eCustomDataType> openvdb_grid_type_to_customdata_type(
+static std::optional<eCustomDataType> vdb_grid_type_to_customdata_type(
     const VolumeGridType grid_type)
 {
   switch (grid_type) {
@@ -268,7 +268,6 @@ static std::optional<eCustomDataType> openvdb_grid_type_to_customdata_type(
     default:
       break;
   }
-  BLI_assert_unreachable();
   return std::nullopt;
 }
 #endif /* WITH_OPENVDB */
@@ -283,8 +282,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
   const NodeGeometrySampleVolume &storage = node_storage(params.node());
   const eCustomDataType input_grid_type = eCustomDataType(storage.grid_type);
-  auto interpolation_mode = (const GeometryNodeSampleVolumeInterpolationMode)
-                                storage.interpolation_mode;
+  auto interpolation_mode = GeometryNodeSampleVolumeInterpolationMode(storage.interpolation_mode);
 
   GField grid_field = get_input_attribute_field(params, input_grid_type);
   const StringRefNull grid_name = get_grid_name(grid_field);
@@ -306,8 +304,9 @@ static void node_geo_exec(GeoNodeExecParams params)
   const VolumeGridType grid_type = BKE_volume_grid_type_openvdb(*base_grid);
 
   /* Check that the input grid socket type matches the grid type. */
-
-  if (openvdb_grid_type_to_customdata_type(grid_type).value() != input_grid_type) {
+  std::optional<eCustomDataType> grid_customdata_type = vdb_grid_type_to_customdata_type(
+      grid_type);
+  if (!grid_customdata_type.has_value() || grid_customdata_type.value() != input_grid_type) {
     params.set_default_remaining_outputs();
     params.error_message_add(
         NodeWarningType::Error,
@@ -329,7 +328,6 @@ static void node_geo_exec(GeoNodeExecParams params)
   GField output_field = GField(std::move(op));
 
   output_attribute_field(params, std::move(output_field));
-  params.set_default_remaining_outputs();
 #else
   params.set_default_remaining_outputs();
   params.error_message_add(NodeWarningType::Error,
