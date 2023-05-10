@@ -22,6 +22,7 @@
 #include "DNA_world_types.h"
 
 #include "BLI_array.hh"
+#include "BLI_bounds.hh"
 #include "BLI_convexhull_2d.h"
 #include "BLI_map.hh"
 #include "BLI_set.hh"
@@ -3142,6 +3143,7 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
 
   Array<Vector<float2>> bounds_by_zone(zones->zones.size());
   Array<bke::CurvesGeometry> fillet_curve_by_zone(zones->zones.size());
+  Array<float> bounding_box_area_by_zone(zones->zones.size());
 
   for (const int zone_i : zones->zones.index_range()) {
     const TreeZone &zone = *zones->zones[zone_i];
@@ -3149,6 +3151,11 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
     find_bounds_by_zone_recursive(snode, zone, zones->zones, bounds_by_zone);
     const Span<float2> boundary_positions = bounds_by_zone[zone_i];
     const int boundary_positions_num = boundary_positions.size();
+
+    const Bounds<float2> bounding_box = *bounds::min_max(boundary_positions);
+    const float bounding_box_area = (bounding_box.max.x - bounding_box.min.x) *
+                                    (bounding_box.max.y - bounding_box.min.y);
+    bounding_box_area_by_zone[zone_i] = bounding_box_area;
 
     bke::CurvesGeometry boundary_curve(boundary_positions_num, 1);
     boundary_curve.cyclic_for_write().first() = true;
@@ -3186,8 +3193,25 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
   const uint pos = GPU_vertformat_attr_add(
       immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
 
-  /* Draw all the contour lines after to prevent them from getting hidden by overlapping zones. */
+  Vector<int> zone_draw_order;
   for (const int zone_i : zones->zones.index_range()) {
+    zone_draw_order.append(zone_i);
+  }
+  std::sort(zone_draw_order.begin(), zone_draw_order.end(), [&](const int a, const int b) {
+    const int depth_a = zones->zones[a]->depth;
+    const int depth_b = zones->zones[b]->depth;
+    if (depth_a < depth_b) {
+      return true;
+    }
+    if (depth_a == depth_b) {
+      /* Draw zones with smaller bounding box on top to make them visible. */
+      return bounding_box_area_by_zone[a] > bounding_box_area_by_zone[b];
+    }
+    return false;
+  });
+
+  /* Draw all the contour lines after to prevent them from getting hidden by overlapping zones. */
+  for (const int zone_i : zone_draw_order) {
     float zone_color[4];
     UI_GetThemeColor4fv(get_theme_id(zone_i), zone_color);
     if (zone_color[3] == 0.0f) {
@@ -3208,7 +3232,7 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
     immUnbindProgram();
   }
 
-  for (const int zone_i : zones->zones.index_range()) {
+  for (const int zone_i : zone_draw_order) {
     const Span<float3> fillet_boundary_positions = fillet_curve_by_zone[zone_i].positions();
     /* Draw the contour lines. */
     immBindBuiltinProgram(GPU_SHADER_3D_POLYLINE_UNIFORM_COLOR);
