@@ -183,67 +183,6 @@ void BKE_mesh_uv_vert_map_free(UvVertMap *vmap)
   }
 }
 
-/**
- * Generates a map where the key is the vertex and the value is a list
- * of polys or loops that use that vertex as a corner. The lists are allocated
- * from one memory pool.
- *
- * Wrapped by #BKE_mesh_vert_loop_map_create
- */
-static void mesh_vert_poly_or_loop_map_create(MeshElemMap **r_map,
-                                              int **r_mem,
-                                              const blender::OffsetIndices<int> polys,
-                                              const int *corner_verts,
-                                              int totvert,
-                                              const bool do_loops)
-{
-  MeshElemMap *map = MEM_cnew_array<MeshElemMap>(size_t(totvert), __func__);
-  int *indices, *index_iter;
-
-  indices = static_cast<int *>(MEM_mallocN(sizeof(int) * size_t(polys.total_size()), __func__));
-  index_iter = indices;
-
-  /* Count number of polys for each vertex */
-  for (const int64_t i : polys.index_range()) {
-    for (const int64_t corner : polys[i]) {
-      map[corner_verts[corner]].count++;
-    }
-  }
-
-  /* Assign indices mem */
-  for (int64_t i = 0; i < totvert; i++) {
-    map[i].indices = index_iter;
-    index_iter += map[i].count;
-
-    /* Reset 'count' for use as index in last loop */
-    map[i].count = 0;
-  }
-
-  /* Find the users */
-  for (const int64_t i : polys.index_range()) {
-    for (const int64_t corner : polys[i]) {
-      const int v = corner_verts[corner];
-
-      map[v].indices[map[v].count] = do_loops ? int(corner) : int(i);
-      map[v].count++;
-    }
-  }
-
-  *r_map = map;
-  *r_mem = indices;
-}
-
-
-
-void BKE_mesh_vert_loop_map_create(MeshElemMap **r_map,
-                                   int **r_mem,
-                                   const blender::OffsetIndices<int> polys,
-                                   const int *corner_verts,
-                                   int totvert)
-{
-  mesh_vert_poly_or_loop_map_create(r_map, r_mem, polys, corner_verts, totvert, true);
-}
-
 void BKE_mesh_vert_looptri_map_create(MeshElemMap **r_map,
                                       int **r_mem,
                                       const int totvert,
@@ -541,6 +480,19 @@ void build_vert_to_poly_indices(const OffsetIndices<int> polys,
   }
 }
 
+void build_vert_to_corner_indices(const Span<int> corner_verts,
+                                  const OffsetIndices<int> offsets,
+                                  MutableSpan<int> corner_indices)
+{
+  BLI_assert(corner_indices.size() == corner_verts.size());
+  Array<int> counts(offsets.size(), 0);
+  for (const int64_t corner : corner_verts.index_range()) {
+    const int vert = corner_verts[corner];
+    corner_indices[offsets[vert][counts[vert]]] = int(corner);
+    counts[vert]++;
+  }
+}
+
 }  // namespace blender::bke::mesh
 
 namespace blender::bke::mesh_topology {
@@ -571,15 +523,6 @@ Array<Vector<int>> build_vert_to_poly_map(const OffsetIndices<int> polys,
     for (const int64_t vert_i : corner_verts.slice(polys[i])) {
       map[int(vert_i)].append(int(i));
     }
-  }
-  return map;
-}
-
-Array<Vector<int>> build_vert_to_loop_map(const Span<int> corner_verts, const int verts_num)
-{
-  Array<Vector<int>> map(verts_num);
-  for (const int64_t i : corner_verts.index_range()) {
-    map[corner_verts[i]].append(int(i));
   }
   return map;
 }

@@ -61,8 +61,7 @@ class CornersOfVertInput final : public bke::MeshFieldInput {
   {
     const IndexRange vert_range(mesh.totvert);
     const Span<int> corner_verts = mesh.corner_verts();
-    Array<Vector<int>> vert_to_loop_map = bke::mesh_topology::build_vert_to_loop_map(corner_verts,
-                                                                                     mesh.totvert);
+    const bke::mesh::VertToCornerMap vert_to_corner_map = mesh.vert_to_corner_map();
 
     const bke::MeshFieldContext context{mesh, domain};
     fn::FieldEvaluator evaluator{context, &mask};
@@ -94,7 +93,7 @@ class CornersOfVertInput final : public bke::MeshFieldInput {
           continue;
         }
 
-        const Span<int> corners = vert_to_loop_map[vert_i];
+        const Span<int> corners = vert_to_corner_map[vert_i];
         if (corners.is_empty()) {
           corner_of_vertex[selection_i] = 0;
           continue;

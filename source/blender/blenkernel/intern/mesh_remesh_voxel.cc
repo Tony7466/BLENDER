@@ -363,10 +363,8 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
   int i = 0;
   const CustomDataLayer *layer;
 
-  MeshElemMap *source_lmap = nullptr;
-  int *source_lmap_mem = nullptr;
-  MeshElemMap *target_lmap = nullptr;
-  int *target_lmap_mem = nullptr;
+  blender::bke::mesh::VertToCornerMap source_lmap;
+  blender::bke::mesh::VertToCornerMap target_lmap;
 
   while ((layer = BKE_id_attribute_from_index(
               const_cast<ID *>(&source->id), i++, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL)))
@@ -410,19 +408,8 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
     }
     else {
       /* Lazily init vertex -> loop maps. */
-      if (!source_lmap) {
-        BKE_mesh_vert_loop_map_create(&source_lmap,
-                                      &source_lmap_mem,
-                                      source->polys(),
-                                      source->corner_verts().data(),
-                                      source->totvert);
-
-        BKE_mesh_vert_loop_map_create(&target_lmap,
-                                      &target_lmap_mem,
-                                      target->polys(),
-                                      target->corner_verts().data(),
-                                      target->totvert);
-      }
+      source_lmap = source->vert_to_corner_map();
+      target_lmap = target->vert_to_corner_map();
 
       blender::threading::parallel_for(
           IndexRange(target->totvert), 2048, [&](const IndexRange range) {
@@ -437,10 +424,10 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
                 continue;
               }
 
-              MeshElemMap *source_loops = source_lmap + nearest.index;
-              MeshElemMap *target_loops = target_lmap + i;
+              const Span<int> source_loops = source_lmap[nearest.index];
+              const Span<int> target_loops = target_lmap[i];
 
-              if (target_loops->count == 0 || source_loops->count == 0) {
+              if (target_loops.size() == 0 || source_loops.size() == 0) {
                 continue;
               }
 
@@ -451,18 +438,17 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
 
               CustomData_interp(source_cdata,
                                 target_cdata,
-                                source_loops->indices,
+                                source_loops.data(),
                                 nullptr,
                                 nullptr,
-                                source_loops->count,
-                                target_loops->indices[0]);
+                                source_loops.size(),
+                                target_loops[0]);
 
-              void *elem = POINTER_OFFSET(target_data,
-                                          size_t(target_loops->indices[0]) * data_size);
+              void *elem = POINTER_OFFSET(target_data, size_t(target_loops[0]) * data_size);
 
               /* Copy to rest of target loops. */
-              for (int j = 1; j < target_loops->count; j++) {
-                memcpy(POINTER_OFFSET(target_data, size_t(target_loops->indices[j]) * data_size),
+              for (int j = 1; j < target_loops.size(); j++) {
+                memcpy(POINTER_OFFSET(target_data, size_t(target_loops[j]) * data_size),
                        elem,
                        data_size);
               }
@@ -481,10 +467,6 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
     target->default_color_attribute = BLI_strdup(source->default_color_attribute);
   }
 
-  MEM_SAFE_FREE(source_lmap);
-  MEM_SAFE_FREE(source_lmap_mem);
-  MEM_SAFE_FREE(target_lmap);
-  MEM_SAFE_FREE(target_lmap_mem);
   free_bvhtree_from_mesh(&bvhtree);
 }
 

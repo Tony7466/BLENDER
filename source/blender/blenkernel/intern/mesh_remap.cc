@@ -1285,8 +1285,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
 
     blender::Array<blender::float3> poly_cents_src;
 
-    MeshElemMap *vert_to_loop_map_src = nullptr;
-    int *vert_to_loop_map_src_buff = nullptr;
+    blender::bke::mesh::VertToCornerMap vert_to_loop_map_src;
     blender::bke::mesh::VertToPolyMap vert_to_poly_map_src;
     MeshElemMap *edge_to_poly_map_src = nullptr;
     int *edge_to_poly_map_src_buff = nullptr;
@@ -1385,11 +1384,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
     }
 
     if (use_from_vert) {
-      BKE_mesh_vert_loop_map_create(&vert_to_loop_map_src,
-                                    &vert_to_loop_map_src_buff,
-                                    polys_src,
-                                    corner_verts_src.data(),
-                                    num_verts_src);
+      vert_to_loop_map_src = me_src->vert_to_corner_map();
       if (mode & MREMAP_USE_POLY) {
         vert_to_poly_map_src = me_src->vert_to_poly_map();
       }
@@ -1603,8 +1598,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
                 }
                 nor_dst = &tmp_no;
                 nors_src = loop_normals_src;
-                vert_to_refelem_map_src = {vert_to_loop_map_src[nearest.index].indices,
-                                           vert_to_loop_map_src[nearest.index].count};
+                vert_to_refelem_map_src = vert_to_loop_map_src[nearest.index];
               }
               else { /* if (mode == MREMAP_MODE_LOOP_NEAREST_POLYNOR) { */
                 nor_dst = &pnor_dst;
@@ -2079,12 +2073,6 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
       BLI_astar_solution_free(&as_solution);
     }
 
-    if (vert_to_loop_map_src) {
-      MEM_freeN(vert_to_loop_map_src);
-    }
-    if (vert_to_loop_map_src_buff) {
-      MEM_freeN(vert_to_loop_map_src_buff);
-    }
     if (edge_to_poly_map_src) {
       MEM_freeN(edge_to_poly_map_src);
     }

@@ -31,7 +31,8 @@ struct LooseVertCache;
 struct LooseEdgeCache;
 namespace mesh {
 class VertToPolyMap;
-}
+class VertToCornerMap;
+}  // namespace mesh
 }  // namespace bke
 }  // namespace blender
 using MeshRuntimeHandle = blender::bke::MeshRuntime;
@@ -311,6 +312,8 @@ typedef struct Mesh {
    * A cached topology map of the faces connected to (using) each vertex.
    */
   blender::bke::mesh::VertToPolyMap vert_to_poly_map() const;
+  blender::bke::mesh::VertToCornerMap vert_to_corner_map() const;
+  blender::OffsetIndices<int> vert_to_poly_map_offsets() const;
 
   /**
    * Cached information about loose edges, calculated lazily when necessary.

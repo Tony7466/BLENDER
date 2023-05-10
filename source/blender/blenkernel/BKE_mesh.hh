@@ -239,6 +239,23 @@ class VertToPolyMap {
   }
 };
 
+class VertToCornerMap {
+  OffsetIndices<int> offsets_;
+  Span<int> indices_;
+
+ public:
+  VertToCornerMap() = default;
+  VertToCornerMap(OffsetIndices<int> offsets, Span<int> indices)
+      : offsets_(offsets), indices_(indices)
+  {
+  }
+  /* Indices of all faces using the indexed vertex. */
+  Span<int> operator[](const int64_t vert_index) const
+  {
+    return indices_.slice(offsets_[vert_index]);
+  }
+};
+
 /**
  * Build offsets per vertex used to slice arrays containing the indices of connected
  * faces or face corners (each vertex used by the same number of corners and faces).
@@ -253,6 +270,10 @@ void build_vert_to_poly_indices(OffsetIndices<int> polys,
                                 Span<int> corner_verts,
                                 OffsetIndices<int> offsets,
                                 MutableSpan<int> poly_indices);
+
+void build_vert_to_corner_indices(Span<int> corner_verts,
+                                  OffsetIndices<int> offsets,
+                                  MutableSpan<int> corner_indices);
 
 }  // namespace blender::bke::mesh
 

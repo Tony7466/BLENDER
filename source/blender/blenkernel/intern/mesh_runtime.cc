@@ -153,18 +153,38 @@ static void try_tag_verts_no_face_none(const Mesh &mesh)
 blender::bke::mesh::VertToPolyMap Mesh::vert_to_poly_map() const
 {
   using namespace blender;
-  this->runtime->vert_to_poly_map_cache.ensure([&](blender::bke::MeshTopologyMapData &r_data) {
-    r_data.offset_indices.reinitialize(this->totvert + 1);
-    bke::mesh::build_poly_and_corner_by_vert_offsets(this->corner_verts(), r_data.offset_indices);
-
-    r_data.indices.reinitialize(this->totloop);
-    blender::bke::mesh::build_vert_to_poly_indices(this->polys(),
-                                                   this->corner_verts(),
-                                                   OffsetIndices<int>(r_data.offset_indices),
-                                                   r_data.indices);
+  const OffsetIndices offsets = this->vert_to_poly_map_offsets();
+  this->runtime->vert_to_poly_map_offset_cache.ensure([&](Array<int> &r_data) {
+    r_data.reinitialize(this->totloop);
+    blender::bke::mesh::build_vert_to_poly_indices(
+        this->polys(), this->corner_verts(), offsets, r_data);
   });
-  return {OffsetIndices<int>(this->runtime->vert_to_poly_map_cache.data().offset_indices),
-          this->runtime->vert_to_poly_map_cache.data().indices};
+  return {offsets, this->runtime->vert_to_poly_map_cache.data()};
+}
+
+blender::bke::mesh::VertToCornerMap Mesh::vert_to_corner_map() const
+{
+  using namespace blender;
+  const OffsetIndices offsets = this->vert_to_poly_map_offsets();
+  this->runtime->vert_to_corner_map_cache.ensure([&](Array<int> &r_data) {
+    r_data.reinitialize(this->totloop);
+    blender::bke::mesh::build_vert_to_corner_indices(this->corner_verts(), offsets, r_data);
+  });
+  return {offsets, this->runtime->vert_to_corner_map_cache.data()};
+}
+
+blender::OffsetIndices<int> Mesh::vert_to_poly_map_offsets() const
+{
+  using namespace blender;
+  this->runtime->vert_to_poly_map_offset_cache.ensure([&](Array<int> &r_data) {
+    r_data.reinitialize(this->totvert + 1);
+    bke::mesh::build_poly_and_corner_by_vert_offsets(this->corner_verts(), r_data);
+
+    r_data.reinitialize(this->totloop);
+    blender::bke::mesh::build_vert_to_poly_indices(
+        this->polys(), this->corner_verts(), OffsetIndices<int>(r_data), r_data);
+  });
+  return OffsetIndices<int>(this->runtime->vert_to_poly_map_offset_cache.data());
 }
 
 const blender::bke::LooseVertCache &Mesh::loose_verts() const

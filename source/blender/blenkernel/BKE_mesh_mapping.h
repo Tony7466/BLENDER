@@ -120,17 +120,6 @@ void BKE_mesh_uv_vert_map_free(UvVertMap *vmap);
 #ifdef __cplusplus
 
 /**
- * Generates a map where the key is the vertex and the value
- * is a list of loops that use that vertex as a corner.
- * The lists are allocated from one memory pool.
- */
-void BKE_mesh_vert_loop_map_create(MeshElemMap **r_map,
-                                   int **r_mem,
-                                   blender::OffsetIndices<int> polys,
-                                   const int *corner_verts,
-                                   int totvert);
-
-/**
  * Generates a map where the key is the edge and the value
  * is a list of looptris that use that edge.
  * The lists are allocated from one memory pool.
@@ -344,7 +333,6 @@ Array<Vector<int>> build_vert_to_edge_map(Span<int2> edges, int verts_num);
 Array<Vector<int>> build_vert_to_poly_map(OffsetIndices<int> polys,
                                           Span<int> corner_verts,
                                           int verts_num);
-Array<Vector<int>> build_vert_to_loop_map(Span<int> corner_verts, int verts_num);
 Array<Vector<int>> build_edge_to_loop_map(Span<int> corner_edges, int edges_num);
 Array<Vector<int, 2>> build_edge_to_poly_map(OffsetIndices<int> polys,
                                              Span<int> corner_edges,
