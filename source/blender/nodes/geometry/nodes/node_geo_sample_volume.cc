@@ -26,12 +26,27 @@ static void node_declare(NodeDeclarationBuilder &b)
       .translation_context(BLT_I18NCONTEXT_ID_ID)
       .supported_type(GEO_COMPONENT_TYPE_VOLUME);
 
-  b.add_input<decl::Vector>(N_("Grid"), "Grid_Vector").field_on_all().hide_value();
-  b.add_input<decl::Float>(N_("Grid"), "Grid_Float").field_on_all().hide_value();
-  b.add_input<decl::Bool>(N_("Grid"), "Grid_Bool").field_on_all().hide_value();
-  b.add_input<decl::Int>(N_("Grid"), "Grid_Int").field_on_all().hide_value();
+  std::string grid_socket_description = N_(
+      "Expects a Named Attribute with the name of a Grid in the Volume");
 
-  b.add_input<decl::Vector>(N_("Position")).supports_field();
+  b.add_input<decl::Vector>(N_("Grid"), "Grid_Vector")
+      .field_on_all()
+      .hide_value()
+      .description(grid_socket_description);
+  b.add_input<decl::Float>(N_("Grid"), "Grid_Float")
+      .field_on_all()
+      .hide_value()
+      .description(grid_socket_description);
+  b.add_input<decl::Bool>(N_("Grid"), "Grid_Bool")
+      .field_on_all()
+      .hide_value()
+      .description(grid_socket_description);
+  b.add_input<decl::Int>(N_("Grid"), "Grid_Int")
+      .field_on_all()
+      .hide_value()
+      .description(grid_socket_description);
+
+  b.add_input<decl::Vector>(N_("Position")).implicit_field(implicit_field_inputs::position);
 
   b.add_output<decl::Vector>(N_("Value"), "Value_Vector").dependent_field({5});
   b.add_output<decl::Float>(N_("Value"), "Value_Float").dependent_field({5});
