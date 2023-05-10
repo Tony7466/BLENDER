@@ -171,8 +171,7 @@ class NodeAddZoneOperator(NodeAddOperator):
             return {'CANCELLED'}
 
         # Simulation input must be paired with the output.
-        if "Simulation" in self.input_node_type:
-            input_node.pair_with_output(output_node)
+        input_node.pair_with_output(output_node)
 
         input_node.location -= Vector(self.offset)
         output_node.location += Vector(self.offset)

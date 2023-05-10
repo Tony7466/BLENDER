@@ -26,6 +26,9 @@ struct bNode *NOD_geometry_simulation_input_get_paired_output(
 bool NOD_geometry_simulation_input_pair_with_output(const struct bNodeTree *node_tree,
                                                     struct bNode *simulation_input_node,
                                                     const struct bNode *simulation_output_node);
+bool NOD_geometry_serial_loop_input_pair_with_output(const struct bNodeTree *node_tree,
+                                                     struct bNode *serial_loop_input_node,
+                                                     const struct bNode *serial_loop_output_node);
 
 /** \} */
 

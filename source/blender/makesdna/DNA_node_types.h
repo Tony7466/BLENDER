@@ -1631,6 +1631,11 @@ typedef struct NodeGeometrySimulationOutput {
 #endif
 } NodeGeometrySimulationOutput;
 
+typedef struct NodeGeometrySerialLoopInput {
+  /** bNode.identifier of the corresponding output node. */
+  int32_t output_node_id;
+} NodeGeometrySerialLoopInput;
+
 typedef struct NodeGeometryDistributePointsInVolume {
   /* GeometryNodePointDistributeVolumeMode. */
   uint8_t mode;

@@ -49,14 +49,12 @@ static Vector<std::unique_ptr<TreeZone>> find_zone_nodes(
     }
   }
   for (const bNode *node : tree.nodes_by_type("GeometryNodeSerialLoopInput")) {
-    auto serial_loop_outputs = tree.nodes_by_type("GeometryNodeSerialLoopOutput");
-    if (serial_loop_outputs.is_empty()) {
-      continue;
-    }
-    const bNode *loop_output_node = serial_loop_outputs[0];
-    if (TreeZone *zone = r_zone_by_inout_node.lookup_default(loop_output_node, nullptr)) {
-      zone->input_node = node;
-      r_zone_by_inout_node.add(node, zone);
+    const auto &storage = *static_cast<NodeGeometrySerialLoopInput *>(node->storage);
+    if (const bNode *loop_output_node = tree.node_by_id(storage.output_node_id)) {
+      if (TreeZone *zone = r_zone_by_inout_node.lookup_default(loop_output_node, nullptr)) {
+        zone->input_node = node;
+        r_zone_by_inout_node.add(node, zone);
+      }
     }
   }
   return zones;

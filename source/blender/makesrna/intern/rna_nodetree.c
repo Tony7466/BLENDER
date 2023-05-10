@@ -4171,6 +4171,27 @@ static bool rna_GeometryNodeSimulationInput_pair_with_output(
   return true;
 }
 
+static bool rna_GeometryNodeSerialLoopInput_pair_with_output(
+    ID *id, bNode *node, bContext *C, ReportList *reports, bNode *output_node)
+{
+  bNodeTree *ntree = (bNodeTree *)id;
+
+  if (!NOD_geometry_serial_loop_input_pair_with_output(ntree, node, output_node)) {
+    BKE_reportf(reports,
+                RPT_ERROR,
+                "Failed to pair serial loop input node %s with output node %s",
+                node->name,
+                output_node->name);
+    return false;
+  }
+
+  BKE_ntree_update_tag_node_property(ntree, node);
+  ED_node_tree_propagate_change(C, CTX_data_main(C), ntree);
+  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+
+  return true;
+}
+
 static NodeSimulationItem *rna_NodeGeometrySimulationOutput_items_new(
     ID *id, bNode *node, Main *bmain, ReportList *reports, int socket_type, const char *name)
 {
@@ -9925,6 +9946,27 @@ static void def_geo_simulation_input(StructRNA *srna)
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_REPORTS | FUNC_USE_CONTEXT);
   parm = RNA_def_pointer(
       func, "output_node", "GeometryNode", "Output Node", "Simulation output node to pair with");
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+  /* return value */
+  parm = RNA_def_boolean(
+      func, "result", false, "Result", "True if pairing the node was successful");
+  RNA_def_function_return(func, parm);
+}
+
+static void def_geo_serial_loop_input(StructRNA *srna)
+{
+  PropertyRNA *prop;
+  FunctionRNA *func;
+  PropertyRNA *parm;
+
+  RNA_def_struct_sdna_from(srna, "NodeGeometrySerialLoopInput", "storage");
+
+  func = RNA_def_function(
+      srna, "pair_with_output", "rna_GeometryNodeSerialLoopInput_pair_with_output");
+  RNA_def_function_ui_description(func, "Pair a serial loop input node with an output node.");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_REPORTS | FUNC_USE_CONTEXT);
+  parm = RNA_def_pointer(
+      func, "output_node", "GeometryNode", "Output Node", "Serial loop output node to pair with");
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
   /* return value */
   parm = RNA_def_boolean(
