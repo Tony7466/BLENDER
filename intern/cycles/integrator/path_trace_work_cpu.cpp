@@ -57,7 +57,7 @@ void PathTraceWorkCPU::init_execution()
   device_->get_cpu_kernel_thread_globals(kernel_thread_globals_);
 }
 
-void PathTraceWorkCPU::render_samples(RenderStatistics &statistics,
+void PathTraceWorkCPU::render_samples_impl(RenderStatistics &statistics,
                                       int start_sample,
                                       int samples_num,
                                       int sample_offset)
@@ -161,7 +161,7 @@ void PathTraceWorkCPU::render_samples_full_pipeline(KernelGlobalsCPU *kernel_glo
   }
 }
 
-void PathTraceWorkCPU::copy_to_display(PathTraceDisplay *display,
+void PathTraceWorkCPU::copy_to_display_impl(PathTraceDisplay *display,
                                        PassMode pass_mode,
                                        int num_samples)
 {
@@ -183,7 +183,7 @@ void PathTraceWorkCPU::copy_to_display(PathTraceDisplay *display,
 
   tbb::task_arena local_arena = local_tbb_arena_create(device_);
   local_arena.execute([&]() {
-    pass_accessor.get_render_tile_pixels(buffers_.get(), effective_buffer_params_, destination);
+    pass_accessor.get_render_tile_pixels(buffers_, effective_buffer_params_, destination);
   });
 
   display->unmap_texture_buffer();
@@ -191,18 +191,18 @@ void PathTraceWorkCPU::copy_to_display(PathTraceDisplay *display,
 
 void PathTraceWorkCPU::destroy_gpu_resources(PathTraceDisplay * /*display*/) {}
 
-bool PathTraceWorkCPU::copy_render_buffers_from_device()
+bool PathTraceWorkCPU::copy_render_buffers_from_device_impl()
 {
   return buffers_->copy_from_device();
 }
 
-bool PathTraceWorkCPU::copy_render_buffers_to_device()
+bool PathTraceWorkCPU::copy_render_buffers_to_device_impl()
 {
   buffers_->buffer.copy_to_device();
   return true;
 }
 
-bool PathTraceWorkCPU::zero_render_buffers()
+bool PathTraceWorkCPU::zero_render_buffers_impl()
 {
   buffers_->zero();
   return true;
@@ -210,6 +210,9 @@ bool PathTraceWorkCPU::zero_render_buffers()
 
 int PathTraceWorkCPU::adaptive_sampling_converge_filter_count_active(float threshold, bool reset)
 {
+  uint num_active_pixels = 0;
+  for (int i = 0; i < work_set_.size(); i++ ) {
+  set_current_work_set(i);
   const int full_x = effective_buffer_params_.full_x;
   const int full_y = effective_buffer_params_.full_y;
   const int width = effective_buffer_params_.width;
@@ -219,7 +222,6 @@ int PathTraceWorkCPU::adaptive_sampling_converge_filter_count_active(float thres
 
   float *render_buffer = buffers_->buffer.data();
 
-  uint num_active_pixels = 0;
 
   tbb::task_arena local_arena = local_tbb_arena_create(device_);
 
@@ -257,12 +259,14 @@ int PathTraceWorkCPU::adaptive_sampling_converge_filter_count_active(float thres
       });
     });
   }
-
+  }
   return num_active_pixels;
 }
 
 void PathTraceWorkCPU::cryptomatte_postproces()
 {
+  for (int i = 0; i < work_set_.size(); i++ ) {
+  set_current_work_set(i);
   const int width = effective_buffer_params_.width;
   const int height = effective_buffer_params_.height;
 
@@ -281,6 +285,7 @@ void PathTraceWorkCPU::cryptomatte_postproces()
       }
     });
   });
+  }
 }
 
 #ifdef WITH_PATH_GUIDING

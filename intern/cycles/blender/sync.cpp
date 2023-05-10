@@ -843,6 +843,8 @@ SessionParams BlenderSync::get_session_params(BL::RenderEngine &b_engine,
   SessionParams params;
   PointerRNA cscene = RNA_pointer_get(&b_scene.ptr, "cycles");
 
+  params.device_scale_factor = get_int(cscene, "device_scale_factor");
+
   if (background && !b_engine.is_preview()) {
     /* Viewport and preview renders do not require temp directory and do request session
      * parameters more often than the background render.

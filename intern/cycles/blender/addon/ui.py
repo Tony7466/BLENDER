@@ -861,6 +861,20 @@ class CYCLES_RENDER_PT_performance_viewport(CyclesButtonsPanel, Panel):
         col = layout.column()
         col.prop(rd, "preview_pixel_size", text="Pixel Size")
 
+class CYCLES_RENDER_PT_performance_multiple_device(CyclesButtonsPanel, Panel):
+    bl_label = "Multiple Device"
+    bl_parent_id = "CYCLES_RENDER_PT_performance"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        scene = context.scene
+        cscene = scene.cycles
+
+        col = layout.column()
+        col.prop(cscene, "device_scale_factor")
 
 class CYCLES_RENDER_PT_filter(CyclesButtonsPanel, Panel):
     bl_label = "Filter"
@@ -2431,6 +2445,7 @@ classes = (
     CYCLES_RENDER_PT_performance_acceleration_structure,
     CYCLES_RENDER_PT_performance_final_render,
     CYCLES_RENDER_PT_performance_viewport,
+    CYCLES_RENDER_PT_performance_multiple_device,
     CYCLES_RENDER_PT_passes,
     CYCLES_RENDER_PT_passes_data,
     CYCLES_RENDER_PT_passes_light,

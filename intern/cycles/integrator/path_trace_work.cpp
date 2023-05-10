@@ -38,41 +38,131 @@ PathTraceWork::PathTraceWork(Device *device,
     : device_(device),
       film_(film),
       device_scene_(device_scene),
-      buffers_(make_unique<RenderBuffers>(device)),
-      effective_buffer_params_(buffers_->params),
+      buffers_(NULL),
+      effective_buffer_params_(effective_full_params_),
       cancel_requested_flag_(cancel_requested_flag)
 {
 }
 
 PathTraceWork::~PathTraceWork() {}
 
-RenderBuffers *PathTraceWork::get_render_buffers()
+WorkSet::~WorkSet()
 {
-  return buffers_.get();
+      for (int i = 0; i < size(); i++) {
+        if (render_buffers_set_[i])  {
+          delete render_buffers_set_[i];
+          render_buffers_set_[i] = NULL;
+        }
+      }
 }
 
-void PathTraceWork::set_effective_buffer_params(const BufferParams &effective_full_params,
-                                                const BufferParams &effective_big_tile_params,
-                                                const BufferParams &effective_buffer_params)
+void PathTraceWork::clear_or_create_work_set(int device_scale_factor)
+{
+  if (work_set_.size() < device_scale_factor) {
+    if (work_set_.size() > 0) {
+      for (int i = 0; i < work_set_.size(); i++) {
+        if (work_set_.render_buffers_set_[i])  {
+          delete work_set_.render_buffers_set_[i];
+          work_set_.render_buffers_set_[i] = NULL;
+        }
+      }
+    }
+    work_set_.resize(device_scale_factor);
+    for (int i = 0; i < device_scale_factor; i++) {
+      work_set_.render_buffers_set_[i] = new RenderBuffers(device_);
+    }
+  }
+}
+
+void PathTraceWork::clear_work_set_buffers(const BufferParams& empty_params) 
+{
+ for (int i = 0; i < work_set_.size(); i++) {
+   if (work_set_.render_buffers_set_[i])  {
+     work_set_.render_buffers_set_[i]->reset(empty_params); 
+   }
+ }
+}
+
+void PathTraceWork::set_render_buffers_in_work_set(const BufferParams& p, int i) 
+{
+  work_set_.render_buffers_set_[i]->reset(p);
+}
+
+void PathTraceWork::set_effective_buffer_params_in_work_set(const BufferParams& p, int i) 
+{
+  work_set_.effective_buffer_params_set_[i] = p;
+}
+
+void PathTraceWork::set_effective_full_buffer_params(const BufferParams &effective_full_params,
+                                                const BufferParams &effective_big_tile_params)
 {
   effective_full_params_ = effective_full_params;
   effective_big_tile_params_ = effective_big_tile_params;
-  effective_buffer_params_ = effective_buffer_params;
 }
 
-bool PathTraceWork::has_multiple_works() const
+void PathTraceWork::set_current_work_set(int i) 
 {
-  /* Assume if there are multiple works working on the same big tile none of the works gets the
-   * entire big tile to work on. */
-  return !(effective_big_tile_params_.width == effective_buffer_params_.width &&
-           effective_big_tile_params_.height == effective_buffer_params_.height &&
-           effective_big_tile_params_.full_x == effective_buffer_params_.full_x &&
-           effective_big_tile_params_.full_y == effective_buffer_params_.full_y);
+  buffers_ = work_set_.render_buffers_set_[i];
+  effective_buffer_params_ = work_set_.effective_buffer_params_set_[i];
 }
+
+void PathTraceWork::render_samples(RenderStatistics &statistics,
+                              int start_sample,
+                              int samples_num,
+                              int sample_offset)
+{
+  for (int i = 0; i < work_set_.size(); i++) {
+  set_current_work_set(i);
+  render_samples_impl(statistics, start_sample, samples_num, sample_offset);
+  //send_render_buffers_to_network(buffers_);
+  //FRL_CGR
+  //output_work(work_set_.render_buffers_set_[i], work_set_.effective_buffer_params_set_[i]);
+  //FRL_CGR
+  }
+}
+
+void PathTraceWork::copy_to_display(PathTraceDisplay *display, PassMode pass_mode, int num_samples)
+{
+  for (int i = 0; i < work_set_.size(); i++) {
+  set_current_work_set(i);
+  copy_to_display_impl(display, pass_mode, num_samples);
+  }
+}
+
+bool PathTraceWork::copy_render_buffers_from_device()
+{
+  for (int i = 0; i < work_set_.size(); i++) {
+  set_current_work_set(i);
+  if (!copy_render_buffers_from_device_impl()) return false;
+  }
+  return true;
+}
+
+bool PathTraceWork::copy_render_buffers_to_device()
+{
+  for (int i = 0; i < work_set_.size(); i++) {
+  set_current_work_set(i);
+  if (!copy_render_buffers_to_device_impl()) return false;
+  }
+  return true;
+}
+
+bool PathTraceWork::zero_render_buffers()
+{
+  for (int i = 0; i < work_set_.size(); i++) {
+  set_current_work_set(i);
+  if (!zero_render_buffers_impl()) return false;
+  }
+  return true;
+}
+
 
 void PathTraceWork::copy_to_render_buffers(RenderBuffers *render_buffers)
 {
   copy_render_buffers_from_device();
+  for (int i = 0; i < work_set_.size(); i++) {
+  set_current_work_set(i);
+
 
   const int64_t width = effective_buffer_params_.width;
   const int64_t height = effective_buffer_params_.height;
@@ -87,10 +177,13 @@ void PathTraceWork::copy_to_render_buffers(RenderBuffers *render_buffers)
   float *dst = render_buffers->buffer.data() + offset_in_floats;
 
   memcpy(dst, src, data_size);
+  }
 }
 
 void PathTraceWork::copy_from_render_buffers(const RenderBuffers *render_buffers)
 {
+  for (int i = 0; i < work_set_.size(); i++) {
+  set_current_work_set(i);
   const int64_t width = effective_buffer_params_.width;
   const int64_t height = effective_buffer_params_.height;
   const int64_t pass_stride = effective_buffer_params_.pass_stride;
@@ -104,25 +197,31 @@ void PathTraceWork::copy_from_render_buffers(const RenderBuffers *render_buffers
   float *dst = buffers_->buffer.data();
 
   memcpy(dst, src, data_size);
-
+  }
   copy_render_buffers_to_device();
 }
 
 void PathTraceWork::copy_from_denoised_render_buffers(const RenderBuffers *render_buffers)
 {
+  for (int i = 0; i < work_set_.size(); i++) {
+  set_current_work_set(i);
   const int64_t width = effective_buffer_params_.width;
   const int64_t offset_y = effective_buffer_params_.full_y - effective_big_tile_params_.full_y;
   const int64_t offset = offset_y * width;
 
   render_buffers_host_copy_denoised(
-      buffers_.get(), effective_buffer_params_, render_buffers, effective_buffer_params_, offset);
+      buffers_, effective_buffer_params_, render_buffers, effective_buffer_params_, offset);
 
+  }
   copy_render_buffers_to_device();
 }
 
 bool PathTraceWork::get_render_tile_pixels(const PassAccessor &pass_accessor,
                                            const PassAccessor::Destination &destination)
 {
+  
+  for (int i = 0; i < work_set_.size(); i++) {
+  set_current_work_set(i);
   const int offset_y = (effective_buffer_params_.full_y + effective_buffer_params_.window_y) -
                        (effective_big_tile_params_.full_y + effective_big_tile_params_.window_y);
   const int width = effective_buffer_params_.width;
@@ -130,19 +229,25 @@ bool PathTraceWork::get_render_tile_pixels(const PassAccessor &pass_accessor,
   PassAccessor::Destination slice_destination = destination;
   slice_destination.offset += offset_y * width;
 
-  return pass_accessor.get_render_tile_pixels(buffers_.get(), slice_destination);
+  if (!pass_accessor.get_render_tile_pixels(buffers_, slice_destination)) return false;
+  }
+  return true;
 }
 
 bool PathTraceWork::set_render_tile_pixels(PassAccessor &pass_accessor,
                                            const PassAccessor::Source &source)
 {
+  for (int i = 0; i < work_set_.size(); i++) {
+  set_current_work_set(i);
   const int offset_y = effective_buffer_params_.full_y - effective_big_tile_params_.full_y;
   const int width = effective_buffer_params_.width;
 
   PassAccessor::Source slice_source = source;
   slice_source.offset += offset_y * width;
 
-  return pass_accessor.set_render_tile_pixels(buffers_.get(), slice_source);
+  if (!pass_accessor.set_render_tile_pixels(buffers_, slice_source)) return false;
+  }
+  return true;
 }
 
 PassAccessor::PassAccessInfo PathTraceWork::get_display_pass_access_info(PassMode pass_mode) const

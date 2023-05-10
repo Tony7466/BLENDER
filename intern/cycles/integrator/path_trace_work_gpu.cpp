@@ -295,7 +295,7 @@ void PathTraceWorkGPU::init_execution()
       "integrator_state", &integrator_state_gpu_, sizeof(integrator_state_gpu_));
 }
 
-void PathTraceWorkGPU::render_samples(RenderStatistics &statistics,
+void PathTraceWorkGPU::render_samples_impl(RenderStatistics &statistics,
                                       int start_sample,
                                       int samples_num,
                                       int sample_offset)
@@ -884,9 +884,9 @@ bool PathTraceWorkGPU::should_use_graphics_interop()
    *   CUDA will return `CUDA_ERROR_NOT_SUPPORTED` from `cuGraphicsGLRegisterBuffer()` when
    *   attempting to register OpenGL PBO which has been mapped. Which makes sense, because
    *   otherwise one would run into a conflict of where the source of truth is. */
-  if (has_multiple_works()) {
-    return false;
-  }
+  // if (has_multiple_works()) {
+  //   return false;
+  // }
 
   if (!interop_use_checked_) {
     Device *device = queue_->device;
@@ -905,7 +905,7 @@ bool PathTraceWorkGPU::should_use_graphics_interop()
   return interop_use_;
 }
 
-void PathTraceWorkGPU::copy_to_display(PathTraceDisplay *display,
+void PathTraceWorkGPU::copy_to_display_impl(PathTraceDisplay *display,
                                        PassMode pass_mode,
                                        int num_samples)
 {
@@ -915,11 +915,12 @@ void PathTraceWorkGPU::copy_to_display(PathTraceDisplay *display,
     return;
   }
 
+/*
   if (!buffers_->buffer.device_pointer) {
     LOG(WARNING) << "Request for GPU display update without allocated render buffers.";
     return;
   }
-
+*/
   if (should_use_graphics_interop()) {
     if (copy_to_display_interop(display, pass_mode, num_samples)) {
       return;
@@ -1018,7 +1019,7 @@ void PathTraceWorkGPU::get_render_tile_film_pixels(const PassAccessor::Destinati
   const PassAccessor::PassAccessInfo pass_access_info = get_display_pass_access_info(pass_mode);
   const PassAccessorGPU pass_accessor(queue_.get(), pass_access_info, kfilm.exposure, num_samples);
 
-  pass_accessor.get_render_tile_pixels(buffers_.get(), effective_buffer_params_, destination);
+  pass_accessor.get_render_tile_pixels(buffers_, effective_buffer_params_, destination);
 }
 
 int PathTraceWorkGPU::adaptive_sampling_converge_filter_count_active(float threshold, bool reset)
@@ -1026,8 +1027,11 @@ int PathTraceWorkGPU::adaptive_sampling_converge_filter_count_active(float thres
   const int num_active_pixels = adaptive_sampling_convergence_check_count_active(threshold, reset);
 
   if (num_active_pixels) {
+    for (int i = 0; i<work_set_.size(); i++) {
+    set_current_work_set(i);
     enqueue_adaptive_sampling_filter_x();
     enqueue_adaptive_sampling_filter_y();
+    }
     queue_->synchronize();
   }
 
@@ -1040,6 +1044,9 @@ int PathTraceWorkGPU::adaptive_sampling_convergence_check_count_active(float thr
   num_active_pixels.alloc(1);
 
   queue_->zero_to_device(num_active_pixels);
+
+  for (int i = 0; i < work_set_.size(); i++) {
+  set_current_work_set(i);
 
   const int work_size = effective_buffer_params_.width * effective_buffer_params_.height;
 
@@ -1055,6 +1062,7 @@ int PathTraceWorkGPU::adaptive_sampling_convergence_check_count_active(float thr
                              &num_active_pixels.device_pointer);
 
   queue_->enqueue(DEVICE_KERNEL_ADAPTIVE_SAMPLING_CONVERGENCE_CHECK, work_size, args);
+  }
 
   queue_->copy_from_device(num_active_pixels);
   queue_->synchronize();
@@ -1094,6 +1102,8 @@ void PathTraceWorkGPU::enqueue_adaptive_sampling_filter_y()
 
 void PathTraceWorkGPU::cryptomatte_postproces()
 {
+  for (int i = 0; i < work_set_.size(); i++){
+  set_current_work_set(i);
   const int work_size = effective_buffer_params_.width * effective_buffer_params_.height;
 
   DeviceKernelArguments args(&buffers_->buffer.device_pointer,
@@ -1102,9 +1112,10 @@ void PathTraceWorkGPU::cryptomatte_postproces()
                              &effective_buffer_params_.stride);
 
   queue_->enqueue(DEVICE_KERNEL_CRYPTOMATTE_POSTPROCESS, work_size, args);
+  }
 }
 
-bool PathTraceWorkGPU::copy_render_buffers_from_device()
+bool PathTraceWorkGPU::copy_render_buffers_from_device_impl()
 {
   queue_->copy_from_device(buffers_->buffer);
 
@@ -1112,7 +1123,7 @@ bool PathTraceWorkGPU::copy_render_buffers_from_device()
   return queue_->synchronize();
 }
 
-bool PathTraceWorkGPU::copy_render_buffers_to_device()
+bool PathTraceWorkGPU::copy_render_buffers_to_device_impl()
 {
   queue_->copy_to_device(buffers_->buffer);
 
@@ -1123,7 +1134,7 @@ bool PathTraceWorkGPU::copy_render_buffers_to_device()
   return true;
 }
 
-bool PathTraceWorkGPU::zero_render_buffers()
+bool PathTraceWorkGPU::zero_render_buffers_impl()
 {
   queue_->zero_to_device(buffers_->buffer);
 

@@ -18,6 +18,17 @@ class Film;
 class PathTraceDisplay;
 class RenderBuffers;
 
+class WorkSet {
+public:
+  WorkSet(): count_(0) {}
+  ~WorkSet();
+  int size() const { return count_; }
+  void resize(int s) { count_ = s; render_buffers_set_.resize(count_); effective_buffer_params_set_.resize(count_); }
+  int count_;
+  vector<RenderBuffers *> render_buffers_set_;
+  vector<BufferParams>  effective_buffer_params_set_;
+};
+
 class PathTraceWork {
  public:
   struct RenderStatistics {
@@ -40,15 +51,14 @@ class PathTraceWork {
    *
    * Is only supposed to be used by the PathTrace to update buffer allocation and slicing to
    * correspond to the big tile size and relative device performance. */
-  RenderBuffers *get_render_buffers();
+  RenderBuffers *get_unique_buffers() { return work_set_.size() == 1 ? work_set_.render_buffers_set_[0] : NULL; }
 
   /* Set effective parameters of the big tile and the work itself. */
-  void set_effective_buffer_params(const BufferParams &effective_full_params,
-                                   const BufferParams &effective_big_tile_params,
-                                   const BufferParams &effective_buffer_params);
+  void set_effective_full_buffer_params(const BufferParams &effective_full_params,
+                                   const BufferParams &effective_big_tile_params);
 
   /* Check whether the big tile is being worked on by multiple path trace works. */
-  bool has_multiple_works() const;
+  //bool has_multiple_works() const;
 
   /* Allocate working memory for execution. Must be called before init_execution(). */
   virtual void alloc_work_memory(){};
@@ -65,6 +75,11 @@ class PathTraceWork {
   virtual void render_samples(RenderStatistics &statistics,
                               int start_sample,
                               int samples_num,
+                              int sample_offset);
+  
+  virtual void render_samples_impl(RenderStatistics &statistics,
+                              int start_sample,
+                              int samples_num,
                               int sample_offset) = 0;
 
   /* Copy render result from this work to the corresponding place of the GPU display.
@@ -73,9 +88,24 @@ class PathTraceWork {
    * noisy pass mode will be passed here when it is known that the buffer does not have denoised
    * passes yet (because denoiser did not run). If the denoised pass is requested and denoiser is
    * not used then this function will fall-back to the noisy pass instead. */
-  virtual void copy_to_display(PathTraceDisplay *display, PassMode pass_mode, int num_samples) = 0;
+  virtual void copy_to_display(PathTraceDisplay *display, PassMode pass_mode, int num_samples);
+  virtual void copy_to_display_impl(PathTraceDisplay *display, PassMode pass_mode, int num_samples) = 0;
 
   virtual void destroy_gpu_resources(PathTraceDisplay *display) = 0;
+  
+  /* Copy render buffers to/from device using an appropriate device queue when needed so that
+   * things are executed in order with the `render_samples()`. */
+  virtual bool copy_render_buffers_from_device();
+  virtual bool copy_render_buffers_from_device_impl() = 0;
+  virtual bool copy_render_buffers_to_device();
+  virtual bool copy_render_buffers_to_device_impl() = 0;
+  
+  /* Zero render buffers to/from device using an appropriate device queue when needed so that
+   * things are executed in order with the `render_samples()`. */
+  virtual bool zero_render_buffers();
+  virtual bool zero_render_buffers_impl() = 0 ;
+
+
 
   /* Copy data from/to given render buffers.
    * Will copy pixels from a corresponding place (from multi-device point of view) of the render
@@ -97,15 +127,6 @@ class PathTraceWork {
    *
    * Same notes about device copying applies to this call as well. */
   void copy_from_denoised_render_buffers(const RenderBuffers *render_buffers);
-
-  /* Copy render buffers to/from device using an appropriate device queue when needed so that
-   * things are executed in order with the `render_samples()`. */
-  virtual bool copy_render_buffers_from_device() = 0;
-  virtual bool copy_render_buffers_to_device() = 0;
-
-  /* Zero render buffers to/from device using an appropriate device queue when needed so that
-   * things are executed in order with the `render_samples()`. */
-  virtual bool zero_render_buffers() = 0;
 
   /* Access pixels rendered by this work and copy them to the corresponding location in the
    * destination.
@@ -145,6 +166,12 @@ class PathTraceWork {
   virtual void guiding_init_kernel_globals(void *, void *, const bool) {}
 #endif
 
+  void clear_or_create_work_set(int deviceScaleFactor);
+  void clear_work_set_buffers(const BufferParams&);
+  void set_render_buffers_in_work_set(const BufferParams&, int i);
+  void set_effective_buffer_params_in_work_set(const BufferParams&, int i);
+  void set_current_work_set(int i);
+
  protected:
   PathTraceWork(Device *device,
                 Film *film,
@@ -172,14 +199,18 @@ class PathTraceWork {
   /* Render buffers where sampling is being accumulated into, allocated for a fraction of the big
    * tile which is being rendered by this work.
    * It also defines possible subset of a big tile in the case of multi-device rendering. */
-  unique_ptr<RenderBuffers> buffers_;
+  //unique_ptr<RenderBuffers> buffers_;
+  RenderBuffers* buffers_;
 
   /* Effective parameters of the full, big tile, and current work render buffer.
    * The latter might be different from `buffers_->params` when there is a resolution divider
    * involved. */
   BufferParams effective_full_params_;
   BufferParams effective_big_tile_params_;
-  BufferParams effective_buffer_params_;
+  BufferParams& effective_buffer_params_;
+
+  WorkSet work_set_;
+
 
   bool *cancel_requested_flag_ = nullptr;
 };

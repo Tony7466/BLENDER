@@ -944,6 +944,13 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         min=8, max=8192,
     )
 
+    device_scale_factor: IntProperty(
+        name="Device Scale Factor",
+        default=1,
+        description="Higher device scale factor can improve load distribution between multiple GPUs but comes with some overhead",
+        min=1, max=10,
+    )
+
     # Various fine-tuning debug flags
 
     def _devices_update_callback(self, context):
