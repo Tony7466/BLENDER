@@ -140,6 +140,8 @@ void register_node_type_geo_select_by_handle_type();
 void register_node_type_geo_self_object();
 void register_node_type_geo_separate_components();
 void register_node_type_geo_separate_geometry();
+void register_node_type_geo_serial_loop_input();
+void register_node_type_geo_serial_loop_output();
 void register_node_type_geo_set_curve_handles();
 void register_node_type_geo_set_curve_normal();
 void register_node_type_geo_set_curve_radius();

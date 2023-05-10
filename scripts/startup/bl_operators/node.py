@@ -150,14 +150,7 @@ class NODE_OT_add_node(NodeAddOperator, Operator):
             return ""
 
 
-class NODE_OT_add_simulation_zone(NodeAddOperator, Operator):
-    """Add simulation zone input and output nodes to the active tree"""
-    bl_idname = "node.add_simulation_zone"
-    bl_label = "Add Simulation Zone"
-    bl_options = {'REGISTER', 'UNDO'}
-
-    input_node_type = "GeometryNodeSimulationInput"
-    output_node_type = "GeometryNodeSimulationOutput"
+class NodeAddZoneOperator(NodeAddOperator):
     offset: FloatVectorProperty(
         name="Offset",
         description="Offset of nodes from the cursor when added",
@@ -178,7 +171,8 @@ class NODE_OT_add_simulation_zone(NodeAddOperator, Operator):
             return {'CANCELLED'}
 
         # Simulation input must be paired with the output.
-        input_node.pair_with_output(output_node)
+        if "Simulation" in self.input_node_type:
+            input_node.pair_with_output(output_node)
 
         input_node.location -= Vector(self.offset)
         output_node.location += Vector(self.offset)
@@ -189,6 +183,25 @@ class NODE_OT_add_simulation_zone(NodeAddOperator, Operator):
         tree.links.new(to_socket, from_socket)
 
         return {'FINISHED'}
+
+class NODE_OT_add_simulation_zone(NodeAddZoneOperator, Operator):
+    """Add simulation zone input and output nodes to the active tree"""
+    bl_idname = "node.add_simulation_zone"
+    bl_label = "Add Simulation Zone"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    input_node_type = "GeometryNodeSimulationInput"
+    output_node_type = "GeometryNodeSimulationOutput"
+
+
+class NODE_OT_add_serial_loop_zone(NodeAddZoneOperator, Operator):
+    bl_idname = "node.add_serial_loop_zone"
+    bl_label = "Add Serial Loop Zone"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    input_node_type = "GeometryNodeSerialLoopInput"
+    output_node_type = "GeometryNodeSerialLoopOutput"
+
 
 
 class NODE_OT_collapse_hide_unused_toggle(Operator):
@@ -247,6 +260,7 @@ classes = (
 
     NODE_OT_add_node,
     NODE_OT_add_simulation_zone,
+    NODE_OT_add_serial_loop_zone,
     NODE_OT_collapse_hide_unused_toggle,
     NODE_OT_tree_path_parent,
 )
