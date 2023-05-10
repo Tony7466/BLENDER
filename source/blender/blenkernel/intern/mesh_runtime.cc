@@ -180,6 +180,8 @@ blender::GroupedSpan<int> Mesh::vert_to_poly_map() const
     if (this->runtime->vert_to_corner_map_cache.is_cached() &&
         this->runtime->corner_to_poly_map_cache.is_cached())
     {
+      /* The vertex to face cache can be built from the vertex to face corner
+       * and face corner to face maps if they are both already cached. */
       array_utils::gather(this->runtime->vert_to_corner_map_cache.data().as_span(),
                           this->runtime->corner_to_poly_map_cache.data().as_span(),
                           r_data.as_mutable_span());
