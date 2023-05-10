@@ -704,7 +704,7 @@ static bool do_versions_sequencer_init_retiming_tool_data(Sequence *seq, void *u
 
   SeqRetimingHandle *handle = &seq->retiming_handles[seq->retiming_handle_num - 1];
   handle->strip_frame_index = round_fl_to_int(content_length / seq->speed_factor);
-  seq->speed_factor = 0.0f;
+  seq->speed_factor = 1.0f;
 
   return true;
 }
@@ -1174,7 +1174,8 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
                      SOCK_OBJECT,
                      SOCK_COLLECTION,
                      SOCK_TEXTURE,
-                     SOCK_MATERIAL)) {
+                     SOCK_MATERIAL))
+            {
               link->tosock = link->tosock->next;
             }
           }
@@ -1783,6 +1784,18 @@ static bool version_set_seq_single_frame_content(Sequence *seq, void * /*user_da
   {
     seq->flag |= SEQ_SINGLE_FRAME_CONTENT;
   }
+  return true;
+}
+
+static bool version_seq_fix_broken_sound_strips(Sequence *seq, void * /*user_data*/)
+{
+  if (seq->type != SEQ_TYPE_SOUND_RAM || seq->speed_factor != 0.0f) {
+    return true;
+  }
+
+  seq->speed_factor = 1.0f;
+  SEQ_retiming_data_clear(seq);
+  seq->startofs = 0.0f;
   return true;
 }
 
@@ -2633,7 +2646,8 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_ATLEAST(bmain, 300, 17)) {
     if (!DNA_struct_elem_find(
-            fd->filesdna, "View3DOverlay", "float", "normals_constant_screen_size")) {
+            fd->filesdna, "View3DOverlay", "float", "normals_constant_screen_size"))
+    {
       LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
         LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
           LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
@@ -2661,7 +2675,8 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_ATLEAST(bmain, 300, 18)) {
     if (!DNA_struct_elem_find(
-            fd->filesdna, "WorkSpace", "AssetLibraryReference", "asset_library_ref")) {
+            fd->filesdna, "WorkSpace", "AssetLibraryReference", "asset_library_ref"))
+    {
       LISTBASE_FOREACH (WorkSpace *, workspace, &bmain->workspaces) {
         BKE_asset_library_reference_init_default(&workspace->asset_library_ref);
       }
@@ -4354,5 +4369,13 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+
+    /* Fix sound strips with speed factor set to 0. See #107289. */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      Editing *ed = SEQ_editing_get(scene);
+      if (ed != nullptr) {
+        SEQ_for_each_callback(&ed->seqbase, version_seq_fix_broken_sound_strips, nullptr);
+      }
+    }
   }
 }
