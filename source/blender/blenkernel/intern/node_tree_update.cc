@@ -761,6 +761,10 @@ class NodeTreeMainUpdater {
     }
 
     LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
+      if (!link->is_available()) {
+        link->flag &= ~NODE_LINK_VALID;
+        continue;
+      }
       link->flag |= NODE_LINK_VALID;
       const bNode &from_node = *link->fromnode;
       const bNode &to_node = *link->tonode;
