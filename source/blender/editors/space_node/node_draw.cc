@@ -2151,7 +2151,12 @@ static void node_draw_basis(const bContext &C,
   }
 
   /* Shadow. */
-  if (!ELEM(node.type, GEO_NODE_SIMULATION_INPUT, GEO_NODE_SIMULATION_OUTPUT)) {
+  if (!ELEM(node.type,
+            GEO_NODE_SIMULATION_INPUT,
+            GEO_NODE_SIMULATION_OUTPUT,
+            GEO_NODE_SERIAL_LOOP_INPUT,
+            GEO_NODE_SERIAL_LOOP_OUTPUT))
+  {
     node_draw_shadow(snode, node, BASIS_RAD, 1.0f);
   }
 
@@ -2429,6 +2434,10 @@ static void node_draw_basis(const bContext &C,
     }
     else if (ELEM(node.type, GEO_NODE_SIMULATION_INPUT, GEO_NODE_SIMULATION_OUTPUT)) {
       UI_GetThemeColor4fv(TH_NODE_ZONE_SIMULATION, color_outline);
+      color_outline[3] = 1.0f;
+    }
+    else if (ELEM(node.type, GEO_NODE_SERIAL_LOOP_INPUT, GEO_NODE_SERIAL_LOOP_OUTPUT)) {
+      UI_GetThemeColor4fv(TH_NODE_ZONE_SERIAL_LOOP, color_outline);
       color_outline[3] = 1.0f;
     }
     else {
@@ -3165,21 +3174,29 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
   float line_width = 1.0f * scale;
   float viewport[4] = {};
   GPU_viewport_size_get_f(viewport);
-  float zone_color[4];
-  UI_GetThemeColor4fv(TH_NODE_ZONE_SIMULATION, zone_color);
+
+  const auto get_theme_id = [&](const int zone_i) {
+    const bNode *node = zones->zones[zone_i]->output_node;
+    if (node->type == GEO_NODE_SIMULATION_OUTPUT) {
+      return TH_NODE_ZONE_SIMULATION;
+    }
+    return TH_NODE_ZONE_SERIAL_LOOP;
+  };
 
   const uint pos = GPU_vertformat_attr_add(
       immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
 
   /* Draw all the contour lines after to prevent them from getting hidden by overlapping zones. */
   for (const int zone_i : zones->zones.index_range()) {
+    float zone_color[4];
+    UI_GetThemeColor4fv(get_theme_id(zone_i), zone_color);
     if (zone_color[3] == 0.0f) {
       break;
     }
     const Span<float3> fillet_boundary_positions = fillet_curve_by_zone[zone_i].positions();
     /* Draw the background. */
     immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-    immUniformThemeColorBlend(TH_BACK, TH_NODE_ZONE_SIMULATION, zone_color[3]);
+    immUniformThemeColorBlend(TH_BACK, get_theme_id(zone_i), zone_color[3]);
 
     immBegin(GPU_PRIM_TRI_FAN, fillet_boundary_positions.size() + 1);
     for (const float3 &p : fillet_boundary_positions) {
@@ -3199,7 +3216,7 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
     immUniform2fv("viewportSize", &viewport[2]);
     immUniform1f("lineWidth", line_width * U.pixelsize);
 
-    immUniformThemeColorAlpha(TH_NODE_ZONE_SIMULATION, 1.0f);
+    immUniformThemeColorAlpha(get_theme_id(zone_i), 1.0f);
     immBegin(GPU_PRIM_LINE_STRIP, fillet_boundary_positions.size() + 1);
     for (const float3 &p : fillet_boundary_positions) {
       immVertex3fv(pos, p);
