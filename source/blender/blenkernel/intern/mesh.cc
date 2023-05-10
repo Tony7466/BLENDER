@@ -1023,7 +1023,7 @@ static void mesh_ensure_cdlayers_primary(Mesh &mesh)
   blender::bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
   blender::bke::AttributeInitConstruct attribute_init;
 
-  /* Try to create attributes if it not exist. */
+  /* Try to create attributes if they do not exist. */
   attributes.add("position", ATTR_DOMAIN_POINT, CD_PROP_FLOAT3, attribute_init);
   attributes.add(".edge_verts", ATTR_DOMAIN_EDGE, CD_PROP_INT32_2D, attribute_init);
   attributes.add(".corner_vert", ATTR_DOMAIN_CORNER, CD_PROP_INT32, attribute_init);
