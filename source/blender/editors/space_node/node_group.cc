@@ -138,9 +138,8 @@ static bNode *node_group_get_active(bContext *C, const char *node_idname)
 }
 
 /* Maps old to new identifiers for simulation input node pairing. */
-template<typename NodeIterator>
 static void remap_pairing(bNodeTree &dst_tree,
-                          NodeIterator nodes,
+                          Span<bNode *> nodes,
                           const Map<int32_t, int32_t> &identifier_map)
 {
   for (bNode *dst_node : nodes) {
@@ -561,7 +560,7 @@ static bool node_group_separate_selected(
     }
   }
 
-  remap_pairing(ntree, node_map.values(), node_identifier_map);
+  remap_pairing(ntree, nodes_to_move, node_identifier_map);
 
   for (bNode *node : node_map.values()) {
     nodeDeclarationEnsure(&ntree, node);
