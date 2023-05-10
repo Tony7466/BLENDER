@@ -441,22 +441,21 @@ void NODE_OT_group_ungroup(wmOperatorType *ot)
 /** \name Separate Operator
  * \{ */
 
-static void remap_pairing(bNodeTree &dst_tree, const Set<bNode *> &nodes)
+/* Maps old to new identifiers for simulation input node pairing. */
+static void remap_pairing(bNodeTree &dst_tree,
+                          const Map<bNode *, bNode *> node_map,
+                          const Map<int32_t, int32_t> &identifier_map)
 {
-  for (bNode *dst_node : nodes) {
+  for (bNode *dst_node : node_map.values()) {
     if (dst_node->type == GEO_NODE_SIMULATION_INPUT) {
-      NodeGeometrySimulationInput &data = *static_cast<NodeGeometrySimulationInput *>(
+      NodeGeometrySimulationInput *data = static_cast<NodeGeometrySimulationInput *>(
           dst_node->storage);
-      /* XXX Technically this is not correct because the output_node_id is only valid
-       * in the original node group tree and we'd have map old IDs to new nodes first.
-       * The ungroup operator does not build a node map, it just expects node IDs to
-       * remain unchanged, which is probably true most of the time because they are
-       * mostly random numbers out of the uint32_t range. */
-      if (const bNode *output_node = dst_tree.node_by_id(data.output_node_id)) {
-        data.output_node_id = output_node->identifier;
+      if (data->output_node_id == 0) {
+        continue;
       }
-      else {
-        data.output_node_id = 0;
+
+      data->output_node_id = identifier_map.lookup_default(data->output_node_id, 0);
+      if (data->output_node_id == 0) {
         blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
       }
     }
@@ -473,28 +472,31 @@ static bool node_group_separate_selected(
 
   ListBase anim_basepaths = {nullptr, nullptr};
 
+  Map<bNode *, bNode *> node_map;
   Map<const bNodeSocket *, bNodeSocket *> socket_map;
+  Map<int32_t, int32_t> identifier_map;
 
   /* Add selected nodes into the ntree, ignoring interface nodes. */
   VectorSet<bNode *> nodes_to_move = get_selected_nodes(ngroup);
   nodes_to_move.remove_if(
       [](const bNode *node) { return node->is_group_input() || node->is_group_output(); });
 
-  Set<bNode *> new_nodes;
-
   for (bNode *node : nodes_to_move) {
     bNode *newnode;
     if (make_copy) {
       newnode = bke::node_copy_with_mapping(&ntree, *node, LIB_ID_COPY_DEFAULT, true, socket_map);
-      new_nodes.add_new(newnode);
+      identifier_map.add(node->identifier, newnode->identifier);
     }
     else {
       newnode = node;
       BLI_remlink(&ngroup.nodes, newnode);
       BLI_addtail(&ntree.nodes, newnode);
+      const int32_t old_identifier = node->identifier;
       nodeUniqueID(&ntree, newnode);
       nodeUniqueName(&ntree, newnode);
+      identifier_map.add(old_identifier, newnode->identifier);
     }
+    node_map.add_new(node, newnode);
 
     /* Keep track of this node's RNA "base" path (the part of the path identifying the node)
      * if the old node-tree has animation data which potentially covers this node. */
@@ -526,16 +528,16 @@ static bool node_group_separate_selected(
 
   /* add internal links to the ntree */
   LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &ngroup.links) {
-    const bool fromselect = (link->fromnode && (link->fromnode->flag & NODE_SELECT));
-    const bool toselect = (link->tonode && (link->tonode->flag & NODE_SELECT));
+    const bool fromselect = (link->fromnode && nodes_to_move.contains(link->fromnode));
+    const bool toselect = (link->tonode && nodes_to_move.contains(link->tonode));
 
     if (make_copy) {
       /* make a copy of internal links */
       if (fromselect && toselect) {
         nodeAddLink(&ntree,
-                    ntree.node_by_id(link->fromnode->identifier),
+                    node_map.lookup(link->fromnode),
                     socket_map.lookup(link->fromsock),
-                    ntree.node_by_id(link->tonode->identifier),
+                    node_map.lookup(link->tonode),
                     socket_map.lookup(link->tosock));
       }
     }
@@ -551,7 +553,9 @@ static bool node_group_separate_selected(
     }
   }
 
-  for (bNode *node : new_nodes) {
+  remap_pairing(ntree, node_map, identifier_map);
+
+  for (bNode *node : node_map.values()) {
     nodeDeclarationEnsure(&ntree, node);
   }
 
@@ -566,8 +570,6 @@ static bool node_group_separate_selected(
       animation_basepath_change_free(basepath_change);
     }
   }
-
-  remap_pairing(ntree, new_nodes);
 
   BKE_ntree_update_tag_all(&ntree);
   if (!make_copy) {
