@@ -694,11 +694,11 @@ static void timeline_cache_draw_simulation_nodes(
   UI_GetThemeColor4fv(TH_SIMULATED_FRAMES, color);
   switch (cache.cache_state()) {
     case blender::bke::sim::CacheState::Invalid: {
-      color[3] = 0.25f;
+      color[3] = 0.4f;
       break;
     }
     case blender::bke::sim::CacheState::Valid: {
-      color[3] = 0.5f;
+      color[3] = 0.7f;
       break;
     }
     case blender::bke::sim::CacheState::Baked: {
