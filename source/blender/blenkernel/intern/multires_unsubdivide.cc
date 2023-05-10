@@ -922,7 +922,6 @@ static void multires_unsubdivide_prepare_original_bmesh_for_extract(
     MultiresUnsubdivideContext *context)
 {
   Mesh *original_mesh = context->original_mesh;
-  const blender::OffsetIndices original_polys = original_mesh->polys();
 
   Mesh *base_mesh = context->base_mesh;
 
@@ -950,7 +949,7 @@ static void multires_unsubdivide_prepare_original_bmesh_for_extract(
     BM_elem_flag_set(v, BM_ELEM_TAG, true);
   }
 
-  context->loop_to_face_map = blender::bke::mesh_topology::build_loop_to_poly_map(original_polys);
+  context->loop_to_face_map = original_mesh->corner_to_poly_map();
 }
 
 /**

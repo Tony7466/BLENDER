@@ -345,7 +345,7 @@ void mesh_render_data_update_normals(MeshRenderData *mr, const eMRDataType data_
                                             mr->polys,
                                             mr->corner_verts,
                                             mr->corner_edges,
-                                            {},
+                                            mr->me->corner_to_poly_map(),
                                             mr->vert_normals,
                                             mr->poly_normals,
                                             sharp_edges,

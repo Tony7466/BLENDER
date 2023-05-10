@@ -11,7 +11,6 @@
 #include "BLI_compiler_compat.h"
 #include "BLI_ghash.h"
 #ifdef __cplusplus
-#  include "BKE_mesh.hh"
 #  include "BLI_offset_indices.hh"
 #  include "BLI_vector.hh"
 #endif
@@ -818,7 +817,7 @@ bool BKE_pbvh_draw_cache_invalid(const PBVH *pbvh);
 int BKE_pbvh_debug_draw_gen_get(PBVHNode *node);
 
 #ifdef __cplusplus
-void BKE_pbvh_pmap_set(PBVH *pbvh, blender::bke::mesh::VertToPolyMap pmap);
+void BKE_pbvh_pmap_set(PBVH *pbvh, blender::GroupedSpan<int> pmap);
 }
 
 namespace blender::bke::pbvh {

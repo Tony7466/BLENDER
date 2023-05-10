@@ -363,8 +363,8 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
   int i = 0;
   const CustomDataLayer *layer;
 
-  blender::bke::mesh::VertToCornerMap source_lmap;
-  blender::bke::mesh::VertToCornerMap target_lmap;
+  blender::GroupedSpan<int> source_lmap;
+  blender::GroupedSpan<int> target_lmap;
 
   while ((layer = BKE_id_attribute_from_index(
               const_cast<ID *>(&source->id), i++, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL)))

@@ -6,8 +6,6 @@
  * \ingroup bke
  */
 
-#include "BLI_offset_indices.hh"
-
 #include "BKE_mesh.h"
 
 namespace blender::bke::mesh {
@@ -132,7 +130,6 @@ void lnor_space_custom_normal_to_data(const CornerNormalSpace *lnor_space,
  * Useful to materialize sharp edges (or non-smooth faces) without actually modifying the geometry
  * (splitting edges).
  *
- * \param loop_to_poly_map: Optional pre-created map from corners to their polygon.
  * \param sharp_edges: Optional array of sharp edge tags, used to split the evaluated normals on
  * each side of the edge.
  * \param r_lnors_spacearr: Optional return data filled with information about the custom
@@ -190,6 +187,7 @@ void edges_sharp_from_angle_set(OffsetIndices<int> polys,
                                 Span<int> corner_verts,
                                 Span<int> corner_edges,
                                 Span<float3> poly_normals,
+                                Span<int> loop_to_poly,
                                 const bool *sharp_faces,
                                 const float split_angle,
                                 MutableSpan<bool> sharp_edges);
@@ -265,50 +263,10 @@ inline int edge_other_vert(const int2 &edge, const int vert)
 }  // namespace blender::bke::mesh
 
 /* -------------------------------------------------------------------- */
-/** \name Mesh Topology Caches
+/** \name Mesh Topology Maps
  * \{ */
 
 namespace blender::bke::mesh {
-
-class VertToPolyMap {
-  OffsetIndices<int> offsets_;
-  Span<int> indices_;
-
- public:
-  VertToPolyMap() = default;
-  VertToPolyMap(OffsetIndices<int> offsets, Span<int> indices)
-      : offsets_(offsets), indices_(indices)
-  {
-  }
-  /* Indices of all faces using the indexed vertex. */
-  Span<int> operator[](const int64_t vert_index) const
-  {
-    return indices_.slice(offsets_[vert_index]);
-  }
-};
-
-class VertToCornerMap {
-  OffsetIndices<int> offsets_;
-  Span<int> indices_;
-
- public:
-  VertToCornerMap() = default;
-  VertToCornerMap(OffsetIndices<int> offsets, Span<int> indices)
-      : offsets_(offsets), indices_(indices)
-  {
-  }
-  /* Indices of all faces using the indexed vertex. */
-  Span<int> operator[](const int64_t vert_index) const
-  {
-    return indices_.slice(offsets_[vert_index]);
-  }
-};
-
-/**
- * Build offsets per vertex used to slice arrays containing the indices of connected
- * faces or face corners (each vertex used by the same number of corners and faces).
- */
-void build_poly_and_corner_by_vert_offsets(Span<int> corner_verts, MutableSpan<int> offsets);
 
 /**
  * Fill the indices of polygons connected to each vertex, ordered smallest index to largest.
@@ -319,6 +277,10 @@ void build_vert_to_poly_indices(OffsetIndices<int> polys,
                                 OffsetIndices<int> offsets,
                                 MutableSpan<int> poly_indices);
 
+/**
+ * Fill the indices of face corners connected to each vertex, ordered smallest index to largest.
+ * \param offsets: Encodes the number of polygons connected to each vertex.
+ */
 void build_vert_to_corner_indices(Span<int> corner_verts,
                                   OffsetIndices<int> offsets,
                                   MutableSpan<int> corner_indices);

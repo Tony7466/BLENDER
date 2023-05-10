@@ -806,6 +806,7 @@ void edges_sharp_from_angle_set(const OffsetIndices<int> polys,
                                 const Span<int> corner_verts,
                                 const Span<int> corner_edges,
                                 const Span<float3> poly_normals,
+                                const Span<int> loop_to_poly,
                                 const bool *sharp_faces,
                                 const float split_angle,
                                 MutableSpan<bool> sharp_edges)
@@ -817,9 +818,6 @@ void edges_sharp_from_angle_set(const OffsetIndices<int> polys,
 
   /* Mapping edge -> loops. See #bke::mesh::normals_calc_loop for details. */
   Array<int2> edge_to_loops(sharp_edges.size(), int2(0));
-
-  /* Simple mapping from a loop to its polygon index. */
-  const Array<int> loop_to_poly = mesh_topology::build_loop_to_poly_map(polys);
 
   mesh_edges_sharp_tag(polys,
                        corner_verts,
@@ -1314,17 +1312,6 @@ void normals_calc_loop(const Span<float3> vert_positions,
    * Note also that loose edges always have both values set to 0! */
   Array<int2> edge_to_loops(edges.size(), int2(0));
 
-  /* Simple mapping from a loop to its polygon index. */
-  Span<int> loop_to_poly;
-  Array<int> local_loop_to_poly_map;
-  if (loop_to_poly_map.is_empty()) {
-    local_loop_to_poly_map = mesh_topology::build_loop_to_poly_map(polys);
-    loop_to_poly = local_loop_to_poly_map;
-  }
-  else {
-    loop_to_poly = loop_to_poly_map;
-  }
-
   /* When using custom loop normals, disable the angle feature! */
   const bool check_angle = (split_angle < float(M_PI)) && (clnors_data == nullptr);
 
@@ -1351,7 +1338,7 @@ void normals_calc_loop(const Span<float3> vert_positions,
   common_data.corner_verts = corner_verts;
   common_data.corner_edges = corner_edges;
   common_data.edge_to_loops = edge_to_loops;
-  common_data.loop_to_poly = loop_to_poly;
+  common_data.loop_to_poly = loop_to_poly_map;
   common_data.poly_normals = poly_normals;
   common_data.vert_normals = vert_normals;
 
@@ -1363,7 +1350,7 @@ void normals_calc_loop(const Span<float3> vert_positions,
   mesh_edges_sharp_tag(polys,
                        corner_verts,
                        corner_edges,
-                       loop_to_poly,
+                       loop_to_poly_map,
                        poly_normals,
                        Span<bool>(sharp_faces, sharp_faces ? polys.size() : 0),
                        Span<bool>(sharp_edges, sharp_edges ? edges.size() : 0),
@@ -1419,11 +1406,8 @@ static void reverse_index_array(const Span<int> item_indices,
                                 Array<int> &r_reverse_indices)
 {
   r_offsets = Array<int>(items_num + 1, 0);
-  for (const int index : item_indices) {
-    r_offsets[index]++;
-  }
+  offset_indices::build_reverse_offsets(item_indices, r_offsets);
 
-  offset_indices::accumulate_counts_to_offsets(r_offsets);
   r_reverse_indices.reinitialize(r_offsets.last());
 
   Array<int> count_per_item(items_num, 0);

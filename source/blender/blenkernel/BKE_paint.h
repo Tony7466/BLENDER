@@ -273,10 +273,12 @@ void BKE_paint_blend_read_lib(struct BlendLibReader *reader,
 #define SCULPT_FACE_SET_NONE 0
 
 /** Used for both vertex color and weight paint. */
+#ifdef __cplusplus
 struct SculptVertexPaintGeomMap {
-  int *vert_map_mem;
-  struct MeshElemMap *vert_to_loop;
+  blender::GroupedSpan<int> vert_to_loop;
+  blender::GroupedSpan<int> vert_to_poly;
 };
+#endif
 
 /** Pose Brush IK Chain. */
 typedef struct SculptPoseIKChainSegment {
@@ -597,7 +599,7 @@ typedef struct SculptSession {
 
   /* Mesh connectivity maps. */
   /* Vertices to adjacent polys. */
-  blender::bke::mesh::VertToPolyMap pmap;
+  blender::GroupedSpan<int> pmap;
 
   /* Edges to adjacent polys. */
   struct MeshElemMap *epmap;
@@ -703,7 +705,7 @@ typedef struct SculptSession {
   float prev_pivot_rot[4];
   float prev_pivot_scale[3];
 
-  union {
+  struct {
     struct {
       struct SculptVertexPaintGeomMap gmap;
     } vpaint;

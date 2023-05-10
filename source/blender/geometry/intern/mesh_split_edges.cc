@@ -385,7 +385,7 @@ void split_edges(Mesh &mesh,
                                                                                    mesh.totvert);
   Vector<Vector<int>> edge_to_loop_map = bke::mesh_topology::build_edge_to_loop_map_resizable(
       mesh.corner_edges(), mesh.totedge);
-  Array<int> loop_to_poly_map = bke::mesh_topology::build_loop_to_poly_map(mesh.polys());
+  const Span<int> loop_to_poly_map = mesh.corner_to_poly_map();
 
   /* Store offsets, so we can split edges in parallel. */
   Array<int> edge_offsets(edges.size());

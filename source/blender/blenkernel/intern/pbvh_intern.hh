@@ -2,9 +2,9 @@
 
 #pragma once
 
-#include "BLI_vector.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
+#include "BLI_vector.hh"
 
 /** \file
  * \ingroup bke
@@ -206,7 +206,7 @@ struct PBVH {
   BMLog *bm_log;
   SubdivCCG *subdiv_ccg;
 
-  blender::bke::mesh::VertToPolyMap pmap;
+  blender::GroupedSpan<int> pmap;
 
   CustomDataLayer *color_layer;
   eAttrDomain color_domain;

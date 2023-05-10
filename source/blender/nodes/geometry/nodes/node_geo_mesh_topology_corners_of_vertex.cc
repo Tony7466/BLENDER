@@ -61,7 +61,7 @@ class CornersOfVertInput final : public bke::MeshFieldInput {
   {
     const IndexRange vert_range(mesh.totvert);
     const Span<int> corner_verts = mesh.corner_verts();
-    const bke::mesh::VertToCornerMap vert_to_corner_map = mesh.vert_to_corner_map();
+    const GroupedSpan<int> vert_to_corner_map = mesh.vert_to_corner_map();
 
     const bke::MeshFieldContext context{mesh, domain};
     fn::FieldEvaluator evaluator{context, &mask};

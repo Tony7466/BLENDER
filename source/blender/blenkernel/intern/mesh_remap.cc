@@ -1285,15 +1285,15 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
 
     blender::Array<blender::float3> poly_cents_src;
 
-    blender::bke::mesh::VertToCornerMap vert_to_loop_map_src;
-    blender::bke::mesh::VertToPolyMap vert_to_poly_map_src;
+    blender::GroupedSpan<int> vert_to_loop_map_src;
+    blender::GroupedSpan<int> vert_to_poly_map_src;
     MeshElemMap *edge_to_poly_map_src = nullptr;
     int *edge_to_poly_map_src_buff = nullptr;
     MeshElemMap *poly_to_looptri_map_src = nullptr;
     int *poly_to_looptri_map_src_buff = nullptr;
 
     /* Unlike above, those are one-to-one mappings, simpler! */
-    blender::Array<int> loop_to_poly_map_src;
+    blender::Span<int> loop_to_poly_map_src;
 
     const blender::Span<blender::float3> positions_src = me_src->vert_positions();
     const int num_verts_src = me_src->totvert;
@@ -1358,7 +1358,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
               polys_dst,
               {corner_verts_dst, numloops_dst},
               {corner_edges_dst, numloops_dst},
-              {},
+              mesh_dst->corner_to_poly_map(),
               mesh_dst->vert_normals(),
               mesh_dst->poly_normals(),
               sharp_edges,
@@ -1398,7 +1398,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
                                   corner_edges_src.data(),
                                   int(corner_edges_src.size()));
     if (use_from_vert) {
-      loop_to_poly_map_src = blender::bke::mesh_topology::build_loop_to_poly_map(polys_src);
+      loop_to_poly_map_src = me_src->corner_to_poly_map();
       poly_cents_src.reinitialize(polys_src.size());
       for (const int64_t i : polys_src.index_range()) {
         poly_cents_src[i] = blender::bke::mesh::poly_center_calc(

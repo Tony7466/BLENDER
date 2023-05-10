@@ -456,15 +456,6 @@ void BKE_mesh_origindex_map_create_looptri(MeshElemMap **r_map,
 
 namespace blender::bke::mesh {
 
-void build_poly_and_corner_by_vert_offsets(const Span<int> corner_verts, MutableSpan<int> offsets)
-{
-  BLI_assert(std::all_of(offsets.begin(), offsets.end(), [](int value) { return value == 0; }));
-  for (const int vert : corner_verts) {
-    offsets[vert]++;
-  }
-  offset_indices::accumulate_counts_to_offsets(offsets);
-}
-
 void build_vert_to_poly_indices(const OffsetIndices<int> polys,
                                 const Span<int> corner_verts,
                                 const OffsetIndices<int> offsets,

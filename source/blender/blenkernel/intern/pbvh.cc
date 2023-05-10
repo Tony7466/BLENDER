@@ -3449,7 +3449,7 @@ void BKE_pbvh_update_active_vcol(PBVH *pbvh, const Mesh *mesh)
   BKE_pbvh_get_color_layer(mesh, &pbvh->color_layer, &pbvh->color_domain);
 }
 
-void BKE_pbvh_pmap_set(PBVH *pbvh, const blender::bke::mesh::VertToPolyMap pmap)
+void BKE_pbvh_pmap_set(PBVH *pbvh, const blender::GroupedSpan<int> pmap)
 {
   pbvh->pmap = pmap;
 }

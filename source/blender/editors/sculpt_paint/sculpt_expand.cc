@@ -1985,7 +1985,7 @@ static void sculpt_expand_delete_face_set_id(int *r_face_sets,
                                              const int delete_id)
 {
   const int totface = ss->totfaces;
-  const blender::bke::mesh::VertToPolyMap pmap = ss->pmap;
+  const blender::GroupedSpan<int> pmap = ss->pmap;
   const blender::OffsetIndices polys = mesh->polys();
   const blender::Span<int> corner_verts = mesh->corner_verts();
 

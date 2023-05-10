@@ -93,7 +93,7 @@ class FairingContext {
   int totvert_;
   int totloop_;
 
-  blender::bke::mesh::VertToCornerMap vlmap_;
+  blender::GroupedSpan<int> vlmap_;
 
  private:
   void fair_setup_fairing(const int v,
@@ -216,7 +216,7 @@ class MeshFairingContext : public FairingContext {
       }
     }
 
-    loop_to_poly_map_ = blender::bke::mesh_topology::build_loop_to_poly_map(polys);
+    loop_to_poly_map_ = mesh->corner_to_poly_map();
   }
 
   ~MeshFairingContext() override {}
@@ -245,7 +245,7 @@ class MeshFairingContext : public FairingContext {
   Span<int> corner_edges_;
   blender::OffsetIndices<int> polys;
   Span<blender::int2> edges_;
-  Array<int> loop_to_poly_map_;
+  Span<int> loop_to_poly_map_;
 };
 
 class BMeshFairingContext : public FairingContext {

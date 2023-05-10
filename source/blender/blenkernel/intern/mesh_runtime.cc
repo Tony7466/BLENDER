@@ -13,6 +13,7 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_math_geom.h"
 #include "BLI_task.hh"
 #include "BLI_timeit.hh"
@@ -21,6 +22,7 @@
 #include "BKE_editmesh_cache.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
+#include "BKE_mesh_mapping.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_shrinkwrap.h"
 #include "BKE_subdiv_ccg.h"
@@ -150,41 +152,54 @@ static void try_tag_verts_no_face_none(const Mesh &mesh)
 
 }  // namespace blender::bke
 
-blender::bke::mesh::VertToPolyMap Mesh::vert_to_poly_map() const
+blender::Span<int> Mesh::corner_to_poly_map() const
 {
   using namespace blender;
-  const OffsetIndices offsets = this->vert_to_poly_map_offsets();
-  this->runtime->vert_to_poly_map_offset_cache.ensure([&](Array<int> &r_data) {
-    r_data.reinitialize(this->totloop);
-    blender::bke::mesh::build_vert_to_poly_indices(
-        this->polys(), this->corner_verts(), offsets, r_data);
+  this->runtime->corner_to_poly_map_cache.ensure([&](Array<int> &r_data) {
+    r_data = bke::mesh_topology::build_loop_to_poly_map(this->polys());
   });
-  return {offsets, this->runtime->vert_to_poly_map_cache.data()};
-}
-
-blender::bke::mesh::VertToCornerMap Mesh::vert_to_corner_map() const
-{
-  using namespace blender;
-  const OffsetIndices offsets = this->vert_to_poly_map_offsets();
-  this->runtime->vert_to_corner_map_cache.ensure([&](Array<int> &r_data) {
-    r_data.reinitialize(this->totloop);
-    blender::bke::mesh::build_vert_to_corner_indices(this->corner_verts(), offsets, r_data);
-  });
-  return {offsets, this->runtime->vert_to_corner_map_cache.data()};
+  return this->runtime->corner_to_poly_map_cache.data();
 }
 
 blender::OffsetIndices<int> Mesh::vert_to_poly_map_offsets() const
 {
   using namespace blender;
-  this->runtime->vert_to_poly_map_offset_cache.ensure([&](Array<int> &r_data) {
-    r_data.reinitialize(this->totvert + 1);
-    bke::mesh::build_poly_and_corner_by_vert_offsets(this->corner_verts(), r_data);
-
-    r_data.reinitialize(this->totloop);
-    blender::bke::mesh::build_vert_to_poly_indices(
-        this->polys(), this->corner_verts(), OffsetIndices<int>(r_data), r_data);
+  this->runtime->vert_to_poly_offset_cache.ensure([&](Array<int> &r_data) {
+    r_data = Array<int>(this->totvert + 1, 0);
+    offset_indices::build_reverse_offsets(this->corner_verts(), r_data);
   });
-  return OffsetIndices<int>(this->runtime->vert_to_poly_map_offset_cache.data());
+  return OffsetIndices<int>(this->runtime->vert_to_poly_offset_cache.data());
+}
+
+blender::GroupedSpan<int> Mesh::vert_to_poly_map() const
+{
+  using namespace blender;
+  const OffsetIndices offsets = this->vert_to_poly_map_offsets();
+  this->runtime->vert_to_poly_map_cache.ensure([&](Array<int> &r_data) {
+    r_data.reinitialize(this->totloop);
+    if (this->runtime->vert_to_corner_map_cache.is_cached() &&
+        this->runtime->corner_to_poly_map_cache.is_cached())
+    {
+      array_utils::gather(this->runtime->vert_to_corner_map_cache.data().as_span(),
+                          this->runtime->corner_to_poly_map_cache.data().as_span(),
+                          r_data.as_mutable_span());
+    }
+    else {
+      bke::mesh::build_vert_to_poly_indices(this->polys(), this->corner_verts(), offsets, r_data);
+    }
+  });
+  return {offsets, this->runtime->vert_to_poly_map_cache.data()};
+}
+
+blender::GroupedSpan<int> Mesh::vert_to_corner_map() const
+{
+  using namespace blender;
+  const OffsetIndices offsets = this->vert_to_poly_map_offsets();
+  this->runtime->vert_to_corner_map_cache.ensure([&](Array<int> &r_data) {
+    r_data.reinitialize(this->totloop);
+    bke::mesh::build_vert_to_corner_indices(this->corner_verts(), offsets, r_data);
+  });
+  return {offsets, this->runtime->vert_to_corner_map_cache.data()};
 }
 
 const blender::bke::LooseVertCache &Mesh::loose_verts() const
@@ -330,7 +345,10 @@ void BKE_mesh_runtime_clear_geometry(Mesh *mesh)
   reset_normals(*mesh->runtime);
   free_subdiv_ccg(*mesh->runtime);
   mesh->runtime->bounds_cache.tag_dirty();
+  mesh->runtime->vert_to_poly_offset_cache.tag_dirty();
   mesh->runtime->vert_to_poly_map_cache.tag_dirty();
+  mesh->runtime->vert_to_corner_map_cache.tag_dirty();
+  mesh->runtime->corner_to_poly_map_cache.tag_dirty();
   mesh->runtime->loose_edges_cache.tag_dirty();
   mesh->runtime->loose_verts_cache.tag_dirty();
   mesh->runtime->verts_no_face_cache.tag_dirty();
@@ -352,7 +370,9 @@ void BKE_mesh_tag_edges_split(struct Mesh *mesh)
   free_bvh_cache(*mesh->runtime);
   reset_normals(*mesh->runtime);
   free_subdiv_ccg(*mesh->runtime);
+  mesh->runtime->vert_to_poly_offset_cache.tag_dirty();
   mesh->runtime->vert_to_poly_map_cache.tag_dirty();
+  mesh->runtime->vert_to_corner_map_cache.tag_dirty();
   mesh->runtime->loose_edges_cache.tag_dirty();
   mesh->runtime->loose_verts_cache.tag_dirty();
   mesh->runtime->verts_no_face_cache.tag_dirty();
@@ -368,6 +388,7 @@ void BKE_mesh_tag_face_winding_changed(Mesh *mesh)
 {
   mesh->runtime->vert_normals_dirty = true;
   mesh->runtime->poly_normals_dirty = true;
+  mesh->runtime->vert_to_corner_map_cache.tag_dirty();
 }
 
 void BKE_mesh_tag_positions_changed(Mesh *mesh)

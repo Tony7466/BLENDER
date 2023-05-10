@@ -29,10 +29,6 @@ class AttributeAccessor;
 class MutableAttributeAccessor;
 struct LooseVertCache;
 struct LooseEdgeCache;
-namespace mesh {
-class VertToPolyMap;
-class VertToCornerMap;
-}  // namespace mesh
 }  // namespace bke
 }  // namespace blender
 using MeshRuntimeHandle = blender::bke::MeshRuntime;
@@ -309,11 +305,21 @@ typedef struct Mesh {
   void bounds_set_eager(const blender::Bounds<blender::float3> &bounds);
 
   /**
-   * A cached topology map of the faces connected to (using) each vertex.
+   * Cached map containing the index of the face using each face corner.
    */
-  blender::bke::mesh::VertToPolyMap vert_to_poly_map() const;
-  blender::bke::mesh::VertToCornerMap vert_to_corner_map() const;
+  blender::Span<int> corner_to_poly_map() const;
+  /**
+   * Offsets per vertex used to slice arrays containing data for connected faces or face corners.
+   */
   blender::OffsetIndices<int> vert_to_poly_map_offsets() const;
+  /**
+   * Cached map from each vertex to the corners using it.
+   */
+  blender::GroupedSpan<int> vert_to_corner_map() const;
+  /**
+   * Cached map from each vertex to the faces using it.
+   */
+  blender::GroupedSpan<int> vert_to_poly_map() const;
 
   /**
    * Cached information about loose edges, calculated lazily when necessary.

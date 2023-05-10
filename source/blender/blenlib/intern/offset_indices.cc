@@ -26,4 +26,13 @@ void build_reverse_map(OffsetIndices<int> offsets, MutableSpan<int> r_map)
   });
 }
 
+void build_reverse_offsets(const Span<int> indices, MutableSpan<int> offsets)
+{
+  BLI_assert(std::all_of(offsets.begin(), offsets.end(), [](int value) { return value == 0; }));
+  for (const int vert : indices) {
+    offsets[vert]++;
+  }
+  offset_indices::accumulate_counts_to_offsets(offsets);
+}
+
 }  // namespace blender::offset_indices

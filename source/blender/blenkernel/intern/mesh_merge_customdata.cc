@@ -113,7 +113,7 @@ void BKE_mesh_merge_customdata_for_apply_modifier(Mesh *me)
     return;
   }
 
-  const blender::bke::mesh::VertToCornerMap vert_to_loop = me->vert_to_corner_map();
+  const blender::GroupedSpan<int> vert_to_loop = me->vert_to_corner_map();
 
   Vector<float2 *> mloopuv_layers;
   mloopuv_layers.reserve(mloopuv_layers_num);

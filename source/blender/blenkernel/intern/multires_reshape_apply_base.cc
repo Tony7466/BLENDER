@@ -70,7 +70,7 @@ void multires_reshape_apply_base_refit_base_mesh(MultiresReshapeContext *reshape
   float(*base_positions)[3] = BKE_mesh_vert_positions_for_write(base_mesh);
   /* Update the context in case the vertices were duplicated. */
   reshape_context->base_positions = base_positions;
-  blender::bke::mesh::VertToPolyMap pmap = base_mesh->vert_to_poly_map();
+  const blender::GroupedSpan<int> pmap = base_mesh->vert_to_poly_map();
 
   float(*origco)[3] = static_cast<float(*)[3]>(
       MEM_calloc_arrayN(base_mesh->totvert, sizeof(float[3]), __func__));
