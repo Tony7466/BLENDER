@@ -336,11 +336,17 @@ typedef struct Mesh {
   void tag_loose_verts_none() const;
 
   /**
-   * \warning This ignores auto-smooth currently. This has to land *after* auto-smooth is turned
-   * into a modifier.
+   * Returns the least complex attribute domain needed to store normals encoding all relevant mesh
+   * data. When all edges or faces are sharp, face normals are enough. When all are smooth, vertex
+   * normals are enough. With a combination of sharp and smooth, normals may be "split",
+   * requiring face corner storage.
+   *
+   * Depending on the sharp edge and face tags and custom normals, sometimes a less complex
+   * domain is enough. When possible, it's preferred to use face normals over vertex normals and
+   * vertex normals over face corner normals, since there is a 2-4x performance cost increase for
+   * each step.
    */
   eAttrDomain normal_domain_all_info() const;
-
   /**
    * Normal direction of polygons, defined by positions and the winding direction of face corners.
    */
