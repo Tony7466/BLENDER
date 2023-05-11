@@ -643,7 +643,7 @@ static int blend_to_neighbor_invoke(bContext *C, wmOperator *op, const wmEvent *
   gso->modal_update = blend_to_neighbor_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   common_draw_status_header(C, gso, "Blend to Neighbor");
-  ED_slider_is_bidirectional_set(gso->slider, true);
+  ED_slider_factor_bounds_set(gso->slider, -1, 1);
   ED_slider_factor_set(gso->slider, 0.0f);
 
   return invoke_result;
@@ -730,7 +730,7 @@ static int breakdown_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   gso->modal_update = breakdown_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   common_draw_status_header(C, gso, "Breakdown");
-  ED_slider_is_bidirectional_set(gso->slider, true);
+  ED_slider_factor_bounds_set(gso->slider, -1, 1);
   ED_slider_factor_set(gso->slider, 0.0f);
 
   return invoke_result;
@@ -837,7 +837,6 @@ static int blend_to_default_invoke(bContext *C, wmOperator *op, const wmEvent *e
   gso->modal_update = blend_to_default_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   common_draw_status_header(C, gso, "Blend to Default Value");
-  ED_slider_is_bidirectional_set(gso->slider, true);
   ED_slider_factor_set(gso->slider, 0.0f);
 
   return invoke_result;
@@ -923,7 +922,7 @@ static int ease_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   gso->modal_update = ease_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   common_draw_status_header(C, gso, "Ease Keys");
-  ED_slider_is_bidirectional_set(gso->slider, true);
+  ED_slider_factor_bounds_set(gso->slider, -1, 1);
   ED_slider_factor_set(gso->slider, 0.0f);
 
   return invoke_result;
