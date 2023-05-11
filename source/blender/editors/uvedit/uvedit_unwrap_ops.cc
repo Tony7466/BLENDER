@@ -61,6 +61,7 @@
 #include "ED_image.h"
 #include "ED_mesh.h"
 #include "ED_screen.h"
+#include "ED_undo.h"
 #include "ED_uvedit.h"
 #include "ED_view3d.h"
 
@@ -1363,6 +1364,9 @@ static void uvedit_pack_islands_multi(const Scene *scene,
 /** \name Pack UV Islands Operator
  * \{ */
 
+/* TODO: support this, interaction with the job-system needs to be handled carefully. */
+// #define USE_INTERACTIVE_PACK
+
 /* Packing targets. */
 enum {
   PACK_UDIM_SRC_CLOSEST = 0,
@@ -1379,6 +1383,9 @@ struct pack_islands_data {
   uint objects_len;
   const SpaceImage *sima;
   int udim_source;
+
+  bContext *undo_context;
+  const char *undo_str;
 
   blender::geometry::UVPackIsland_Params pack_island_params;
 };
@@ -1407,6 +1414,21 @@ static void pack_islands_startjob(void *pidv, bool *stop, bool *do_update, float
   *do_update = 1;
 }
 
+static void pack_islands_endjob(void *pidv)
+{
+  pack_islands_data *pid = static_cast<pack_islands_data *>(pidv);
+  for (uint ob_index = 0; ob_index < pid->objects_len; ob_index++) {
+    Object *obedit = pid->objects[ob_index];
+    DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_GEOMETRY);
+    WM_main_add_notifier(NC_GEOM | ND_DATA, obedit->data);
+  }
+  WM_main_add_notifier(NC_SPACE | ND_SPACE_IMAGE, NULL);
+
+  if (pid->undo_str) {
+    ED_undo_push(pid->undo_context, pid->undo_str);
+  }
+}
+
 static void pack_islands_freejob(void *pidv)
 {
   WM_cursor_wait(false);
@@ -1416,8 +1438,9 @@ static void pack_islands_freejob(void *pidv)
   MEM_freeN(pid);
 }
 
-static int pack_islands_combined(bContext *C, wmOperator *op, const bool use_job)
+static int pack_islands_exec(bContext *C, wmOperator *op)
 {
+  const bool use_job = op->flag & OP_IS_INVOKE;
   ViewLayer *view_layer = CTX_data_view_layer(C);
   const Scene *scene = CTX_data_scene(C);
   const SpaceImage *sima = CTX_wm_space_image(C);
@@ -1449,8 +1472,14 @@ static int pack_islands_combined(bContext *C, wmOperator *op, const bool use_job
   }
 
   pack_islands_data *pid = static_cast<pack_islands_data *>(
-      MEM_mallocN(sizeof(pack_islands_data), "pack_islands_data"));
+      MEM_callocN(sizeof(pack_islands_data), "pack_islands_data"));
+
   pid->wm = CTX_wm_manager(C);
+  /* The job must do it's own undo push. */
+  if (use_job && pid->wm->op_undo_depth == 0) {
+    pid->undo_context = C;
+    pid->undo_str = op->type->name;
+  }
 
   blender::geometry::UVPackIsland_Params pack_island_params;
 
@@ -1481,32 +1510,20 @@ static int pack_islands_combined(bContext *C, wmOperator *op, const bool use_job
   WM_jobs_customdata_set(wm_job, pid, pack_islands_freejob);
   WM_jobs_timer(wm_job, 0.1, 0, 0);
   WM_set_locked_interface(pid->wm, true);
-  WM_jobs_callbacks(wm_job, pack_islands_startjob, nullptr, nullptr, nullptr);
+  WM_jobs_callbacks(wm_job, pack_islands_startjob, nullptr, nullptr, pack_islands_endjob);
 
   if (use_job) {
     WM_cursor_wait(true);
     G.is_break = false;
     WM_jobs_start(CTX_wm_manager(C), wm_job);
-
-    /* add modal handler for ESC */
-    WM_event_add_modal_handler(C, op);
-    return OPERATOR_RUNNING_MODAL;
+    return OPERATOR_FINISHED;
   }
 
   pack_islands_startjob(pid, nullptr, nullptr, nullptr);
+  pack_islands_endjob(pid);
 
   MEM_freeN(pid);
   return OPERATOR_FINISHED;
-}
-
-static int pack_islands_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
-{
-  return pack_islands_combined(C, op, true);
-}
-
-static int pack_islands_exec(bContext *C, wmOperator *op)
-{
-  return pack_islands_combined(C, op, false);
 }
 
 static const EnumPropertyItem pack_margin_method_items[] = {
@@ -1568,11 +1585,21 @@ void UV_OT_pack_islands(wmOperatorType *ot)
   ot->description =
       "Transform all islands so that they fill up the UV/UDIM space as much as possible";
 
+#ifdef USE_INTERACTIVE_PACK
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+#else
+  /* The operator handle undo, so the job system can push() it after the job completes. */
+  ot->flag = OPTYPE_REGISTER;
+#endif
 
   /* api callbacks */
   ot->exec = pack_islands_exec;
-  ot->invoke = pack_islands_invoke;
+
+#ifdef USE_INTERACTIVE_PACK
+  ot->invoke = WM_operator_props_popup_call;
+#else
+  ot->invoke = WM_operator_props_popup_confirm;
+#endif
   ot->poll = ED_operator_uvedit;
 
   /* properties */
