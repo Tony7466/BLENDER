@@ -483,16 +483,17 @@ void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const boo
     return;
   }
 
+  ARegion *region = CTX_wm_region(C);
+  RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
+  ED_view3d_init_mats_rv3d(ob_eval, rv3d);
+
   Mesh *mesh = BKE_mesh_from_object(ob);
   const Span<int> corner_edges = mesh->corner_edges();
   const Span<float3> verts = mesh->vert_positions();
   const OffsetIndices polys = mesh->polys();
   const Span<int2> edges = mesh->edges();
-  IndexRange poly = polys[poly_pick_index];
 
-  ARegion *region = CTX_wm_region(C);
-  RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
-  ED_view3d_init_mats_rv3d(ob_eval, rv3d);
+  IndexRange poly = polys[poly_pick_index];
   int closest_edge_index = get_closest_edge_index(
       region, edges, corner_edges.slice(poly), verts, mval);
 
@@ -508,7 +509,8 @@ void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const boo
   const VArray<bool> hide_poly = *attributes.lookup_or_default<bool>(
       ".hide_poly", ATTR_DOMAIN_FACE, false);
 
-  const bool traced_full_loop = follow_face_loop(poly_pick_index,
+  Vector<int, 2> polys_to_closest_edge = edge_to_poly_map[closest_edge_index];
+  const bool traced_full_loop = follow_face_loop(polys_to_closest_edge[0],
                                                  closest_edge_index,
                                                  polys,
                                                  hide_poly,
@@ -518,11 +520,8 @@ void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const boo
 
   if (!traced_full_loop) {
     /* Trace the other way. */
-    IndexRange poly = polys[poly_pick_index];
-    const int closest_edge_opposite = get_opposing_edge_index(
-        poly, corner_edges, closest_edge_index);
-    follow_face_loop(poly_pick_index,
-                     closest_edge_opposite,
+    follow_face_loop(polys_to_closest_edge[1],
+                     closest_edge_index,
                      polys,
                      hide_poly,
                      corner_edges,

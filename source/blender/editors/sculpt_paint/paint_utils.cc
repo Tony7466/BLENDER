@@ -766,7 +766,7 @@ static int paintface_select_loop_invoke(bContext *C, wmOperator *op, const wmEve
   const bool select = RNA_boolean_get(op->ptr, "select");
   const bool extend = RNA_boolean_get(op->ptr, "extend");
   if (!extend) {
-    paintface_deselect_all_visible(ob, SEL_DESELECT, false);
+    paintface_deselect_all_visible(C, CTX_data_active_object(C), SEL_DESELECT, false);
   }
   view3d_operator_needs_opengl(C);
   paintface_select_loop(C, CTX_data_active_object(C), event->mval, select);
