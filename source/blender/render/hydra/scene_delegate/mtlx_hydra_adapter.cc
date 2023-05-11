@@ -22,6 +22,8 @@
 
 namespace mx = MaterialX;
 
+namespace blender::render::hydra {
+
 void hdmtlx_convert_to_materialnetworkmap(std::string const &mtlx_path,
                                           pxr::TfTokenVector const &shader_source_types,
                                           pxr::TfTokenVector const &render_contexts,
@@ -77,3 +79,5 @@ void hdmtlx_convert_to_materialnetworkmap(std::string const &mtlx_path,
     }
   }
 }
+
+}  // namespace blender::render::hydra

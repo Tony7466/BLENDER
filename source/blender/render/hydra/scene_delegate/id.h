@@ -5,7 +5,7 @@
 
 #include <pxr/base/tf/token.h>
 #include <pxr/base/vt/value.h>
-#include <pxr/imaging/hd/sceneDelegate.h>
+#include <pxr/usd/sdf/path.h>
 
 #include "DNA_ID.h"
 
@@ -39,7 +39,11 @@ template<class T> const T IdData::get_data(pxr::TfToken const &key) const
 }
 
 #define ID_LOG(level, msg, ...) \
-  CLOG_INFO( \
-      LOG_RENDER_HYDRA_SCENE, level, "%s (%s): " msg, prim_id.GetText(), id->name, __VA_ARGS__);
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, \
+            level, \
+            "%s (%s): " msg, \
+            prim_id.GetText(), \
+            id->name, \
+            ##__VA_ARGS__);
 
 }  // namespace blender::render::hydra

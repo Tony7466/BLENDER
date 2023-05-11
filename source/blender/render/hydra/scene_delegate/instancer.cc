@@ -253,7 +253,7 @@ pxr::SdfPath InstancerData::light_prim_id(LightInstance const &inst, int index) 
 int InstancerData::light_prim_id_index(pxr::SdfPath const &id) const
 {
   int index;
-  sscanf_s(id.GetName().c_str(), "L_%x", &index);
+  sscanf(id.GetName().c_str(), "L_%x", &index);
   return index;
 }
 
