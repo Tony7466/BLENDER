@@ -84,9 +84,9 @@ VkViewport VKFrameBuffer::vk_viewport_get() const
   viewport.maxDepth = 1.0f;
 
   /*
-   * Vulkan has origin to the top left, Blender uses the origin at the bottom left. We counteract
-   * this by using a negative viewport (only when flip_viewport_ is set to true). This flips the
-   * viewport making any vkCmdDraw use the correct orientation.
+   * Vulkan has origin to the top left, Blender bottom left. We counteract this by using a negative
+   * viewport when flip_viewport_ is set. This flips the viewport making any draw/blit use the
+   * correct orientation.
    */
   if (flip_viewport_) {
     viewport.y = height_ - viewport_rect[1];
@@ -257,8 +257,8 @@ void VKFrameBuffer::read(eGPUFrameBufferBits plane,
    * TODO:
    * - Add support for area.
    * - Add support for channel_len.
-   * Best option would be to add this to a specific interface in VKTexture so we don't
-   * over-allocate and reduce number of times copies are made.
+   * Best option would be to add this to VKTexture so we don't over-allocate and reduce number of
+   * times copies are made.
    */
   BLI_assert(format == GPU_DATA_FLOAT);
   BLI_assert(channel_len == 4);
@@ -382,10 +382,6 @@ void VKFrameBuffer::render_pass_create()
   std::array<VkAttachmentDescription, GPU_FB_MAX_ATTACHMENT> attachment_descriptions;
   std::array<VkImageView, GPU_FB_MAX_ATTACHMENT> image_views;
   std::array<VkAttachmentReference, GPU_FB_MAX_ATTACHMENT> attachment_references;
-#if 0
-  Vector<VkAttachmentReference> color_attachments;
-  VkAttachmentReference depth_attachment = {};
-#endif
   bool has_depth_attachment = false;
   bool found_attachment = false;
   int depth_location = -1;

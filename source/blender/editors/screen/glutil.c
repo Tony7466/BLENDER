@@ -148,10 +148,11 @@ void immDrawPixelsTexTiled_scaling_clipping(IMMDrawPixelsTexState *state,
 {
   int subpart_x, subpart_y, tex_w = 256, tex_h = 256;
   if (ELEM(GPU_backend_get_type(), GPU_BACKEND_METAL, GPU_BACKEND_VULKAN)) {
-    /* NOTE(Metal,Vulkan): The backend will keep all temporary texture memory within a command
+    /* NOTE: These backend will keep all temporary texture memory within a command
      * submission in-flight, so using a partial tile size does not provide any tangible memory
-     * reduction, but does incur additional API overhead and significant cache inefficiency on AMD
-     * platforms.
+     * reduction, but does incur additional API overhead and significant cache inefficiency on
+     * specific platforms.
+     *
      * The Metal API also provides smart resource paging such that the application can
      * still efficiently swap memory, even if system is low in physical memory. */
     tex_w = img_w;
