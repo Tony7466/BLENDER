@@ -1332,8 +1332,8 @@ void ED_view3d_shade_update(struct Main *bmain, struct View3D *v3d, struct ScrAr
   (((overlay).edit_flag & V3D_OVERLAY_EDIT_RETOPOLOGY) != 0)
 #ifdef __APPLE__
 /* Apple silicon tile depth test requires a higher value to reduce drawing artifacts.*/
-#  define OVERLAY_RETOPOLOGY_MIN_OFFSET_ENABLED 0.0015f
-#  define OVERLAY_RETOPOLOGY_MIN_OFFSET_DISABLED 0.0015f
+#  define OVERLAY_RETOPOLOGY_MIN_OFFSET_ENABLED 0.0045f
+#  define OVERLAY_RETOPOLOGY_MIN_OFFSET_DISABLED 0.0045f
 #else
 #  define OVERLAY_RETOPOLOGY_MIN_OFFSET_ENABLED FLT_EPSILON
 #  define OVERLAY_RETOPOLOGY_MIN_OFFSET_DISABLED 0.0f
