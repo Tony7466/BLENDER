@@ -350,14 +350,14 @@ void paintface_select_linked(bContext *C, Object *ob, const int mval[2], const b
   paintface_flush_flags(C, ob, true, false);
 }
 
-static blender::int2 get_closest_edge(ARegion *region,
-                                      blender::Span<blender::int2> edges,
-                                      blender::Span<int> poly_edges,
-                                      blender::Span<blender::float3> verts,
-                                      const int mval[2])
+static int get_closest_edge_index(ARegion *region,
+                                  blender::Span<blender::int2> edges,
+                                  blender::Span<int> poly_edges,
+                                  blender::Span<blender::float3> verts,
+                                  const int mval[2])
 {
   using namespace blender;
-  int2 closest_edge;
+  int closest_edge_index;
 
   const float mval_f[2] = {float(mval[0]), float(mval[1])};
   float min_distance = FLT_MAX;
@@ -377,10 +377,15 @@ static blender::int2 get_closest_edge(ARegion *region,
     const float distance = len_v2v2(screen_coordinate, mval_f);
     if (distance < min_distance) {
       min_distance = distance;
-      closest_edge = edge;
+      closest_edge_index = i;
     }
   }
-  return closest_edge;
+  return closest_edge_index;
+}
+
+static int get_opposing_edge_index()
+{
+  return 1;
 }
 
 void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const bool select)
@@ -398,20 +403,17 @@ void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const boo
 
   /* Need to use the evaluated mesh for projection to region space. */
   Scene *scene_eval = DEG_get_evaluated_scene(vc.depsgraph);
-  Mesh *mesh = mesh_get_eval_final(vc.depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH);
-  if (mesh == nullptr || mesh->totpoly == 0) {
+  Mesh *mesh_eval = mesh_get_eval_final(vc.depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH);
+  if (mesh_eval == nullptr || mesh_eval->totpoly == 0) {
     return;
   }
-
-  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
-  bke::SpanAttributeWriter<bool> select_poly = attributes.lookup_or_add_for_write_span<bool>(
-      ".select_poly", ATTR_DOMAIN_FACE);
 
   uint index = uint(-1);
   if (!ED_mesh_pick_face(C, ob_eval, mval, ED_MESH_PICK_DEFAULT_FACE_DIST, &index)) {
-    select_poly.finish();
     return;
   }
+
+  Mesh *mesh = BKE_mesh_from_object(ob);
   const Span<int> corner_edges = mesh->corner_edges();
   const Span<float3> verts = mesh->vert_positions();
   const OffsetIndices polys = mesh->polys();
@@ -421,7 +423,75 @@ void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const boo
   ARegion *region = CTX_wm_region(C);
   RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
   ED_view3d_init_mats_rv3d(ob_eval, rv3d);
-  int2 closest_edge = get_closest_edge(region, edges, corner_edges.slice(poly), verts, mval);
+  int closest_edge_index = get_closest_edge_index(
+      region, edges, corner_edges.slice(poly), verts, mval);
+
+  const Array<Vector<int, 2>> edge_to_poly_map = bke::mesh_topology::build_edge_to_poly_map(
+      polys, corner_edges, mesh->totedge);
+
+  Array<Vector<int>> edge_to_loop_map = bke::mesh_topology::build_edge_to_loop_map(corner_edges,
+                                                                                   mesh->totedge);
+
+  Vector<int> polys_to_select;
+  polys_to_select.append(index);
+
+  int current_poly_index = index;
+  int current_edge_index = closest_edge_index;
+
+  while (current_edge_index > 0) {
+    int next_poly_index;
+    bool found_poly = false;
+
+    for (const int poly_index : edge_to_poly_map[current_edge_index]) {
+      if (poly_index != current_poly_index) {
+        next_poly_index = poly_index;
+        found_poly = true;
+        break;
+      }
+    }
+
+    /* Edge might only have 1 poly connected. */
+    if (!found_poly) {
+      break;
+    }
+
+    /* Only works on quads. */
+    if (polys[next_poly_index].size() != 4) {
+      break;
+    }
+
+    /* Happens if we looped around the mesh. */
+    if (polys_to_select.contains(next_poly_index)) {
+      break;
+    }
+
+    polys_to_select.append(next_poly_index);
+
+    IndexRange next_poly = polys[next_poly_index];
+    for (int i = 0; i < next_poly.size(); i++) {
+      const int edge_index = corner_edges[next_poly[i]];
+      /* Assumes that edge index of opposing face edge is always off by 2 on quads. */
+      if (edge_index != current_edge_index) {
+        continue;
+      }
+      if (i - 2 >= 0) {
+        current_edge_index = corner_edges[next_poly[i - 2]];
+      }
+      else {
+        current_edge_index = corner_edges[next_poly[i + 2]];
+      }
+      break;
+    }
+    current_poly_index = next_poly_index;
+  }
+
+  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
+  bke::SpanAttributeWriter<bool> select_poly = attributes.lookup_or_add_for_write_span<bool>(
+      ".select_poly", ATTR_DOMAIN_FACE);
+
+  for (const int poly_index : polys_to_select) {
+    select_poly.span[poly_index] = select;
+  }
 
   select_poly.finish();
   paintface_flush_flags(C, ob, true, false);
