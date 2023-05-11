@@ -4,6 +4,7 @@
 
 #include "device/cpu/device.h"
 #include "device/cpu/device_impl.h"
+#include "integrator/denoiser_oidn.h"
 
 /* Used for `info.denoisers`. */
 /* TODO(sergey): The denoisers are probably to be moved completely out of the device into their
@@ -35,7 +36,7 @@ void device_cpu_info(vector<DeviceInfo> &devices)
   else {
     info.has_guiding = false;
   }
-  if (openimagedenoise_supported()) {
+  if (OIDNDenoiser::is_device_supported(info)) {
     info.denoisers |= DENOISER_OPENIMAGEDENOISE;
   }
 

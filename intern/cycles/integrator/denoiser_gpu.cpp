@@ -223,6 +223,34 @@ bool DenoiserGPU::denoise_filter_color_preprocess(const DenoiseContext &context,
   return denoiser_queue_->enqueue(DEVICE_KERNEL_FILTER_COLOR_PREPROCESS, work_size, args);
 }
 
+bool DenoiserGPU::denoise_filter_guiding_preprocess(const DenoiseContext &context)
+{
+  const BufferParams &buffer_params = context.buffer_params;
+
+  const int work_size = buffer_params.width * buffer_params.height;
+
+  DeviceKernelArguments args(&context.guiding_params.device_pointer,
+                             &context.guiding_params.pass_stride,
+                             &context.guiding_params.pass_albedo,
+                             &context.guiding_params.pass_normal,
+                             &context.guiding_params.pass_flow,
+                             &context.render_buffers->buffer.device_pointer,
+                             &buffer_params.offset,
+                             &buffer_params.stride,
+                             &buffer_params.pass_stride,
+                             &context.pass_sample_count,
+                             &context.pass_denoising_albedo,
+                             &context.pass_denoising_normal,
+                             &context.pass_motion,
+                             &buffer_params.full_x,
+                             &buffer_params.full_y,
+                             &buffer_params.width,
+                             &buffer_params.height,
+                             &context.num_samples);
+
+  return denoiser_queue_->enqueue(DEVICE_KERNEL_FILTER_GUIDING_PREPROCESS, work_size, args);
+}
+
 bool DenoiserGPU::denoise_filter_guiding_set_fake_albedo(const DenoiseContext &context)
 {
   const BufferParams &buffer_params = context.buffer_params;

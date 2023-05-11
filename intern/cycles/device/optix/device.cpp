@@ -8,6 +8,10 @@
 #include "device/cuda/device.h"
 #include "device/optix/device_impl.h"
 
+#ifdef WITH_OPENIMAGEDENOISE
+#  include <OpenImageDenoise/oidn.hpp>
+#endif
+
 #include "util/log.h"
 
 #ifdef WITH_OSL
@@ -74,6 +78,11 @@ void device_optix_info(const vector<DeviceInfo> &cuda_devices, vector<DeviceInfo
     info.has_osl = true;
 #  endif
     info.denoisers |= DENOISER_OPTIX;
+#  if defined(WITH_OPENIMAGEDENOISE) && defined(OIDN_DEVICE_CUDA)
+    if (major >= 7) {
+      info.denoisers |= DENOISER_OPENIMAGEDENOISE;
+    }
+#  endif
 
     devices.push_back(info);
   }

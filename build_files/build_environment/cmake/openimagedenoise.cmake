@@ -8,6 +8,7 @@ set(OIDN_EXTRA_ARGS
   -DISPC_EXECUTABLE=${LIBDIR}/ispc/bin/ispc
   -DOIDN_FILTER_RTLIGHTMAP=OFF
   -DPYTHON_EXECUTABLE=${PYTHON_BINARY}
+  -DOIDN_DEVICE_SYCL=ON
 )
 if(NOT APPLE)
   set(OIDN_EXTRA_ARGS
@@ -38,6 +39,8 @@ else()
     ${OIDN_EXTRA_ARGS}
     -Dtbb_LIBRARY_RELEASE=${LIBDIR}/tbb/lib/tbb_static.a
     -Dtbbmalloc_LIBRARY_RELEASE=${LIBDIR}/tbb/lib/tbbmalloc_static.a
+    -DCMAKE_CXX_COMPILER=${LIBDIR}/dpcpp/bin/clang++
+    -DCMAKE_C_COMPILER=${LIBDIR}/dpcpp/bin/clang
   )
   if(NOT APPLE)
     set(OIDN_EXTRA_ARGS

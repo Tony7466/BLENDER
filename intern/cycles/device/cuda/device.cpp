@@ -10,6 +10,10 @@
 #  include "device/cuda/device_impl.h"
 #  include "device/device.h"
 
+#ifdef WITH_OPENIMAGEDENOISE
+#  include <OpenImageDenoise/oidn.hpp>
+#endif
+
 #  include "util/string.h"
 #  include "util/windows.h"
 #endif /* WITH_CUDA */
@@ -138,6 +142,11 @@ void device_cuda_info(vector<DeviceInfo> &devices)
 
     info.has_nanovdb = true;
     info.denoisers = 0;
+#  if defined(WITH_OPENIMAGEDENOISE) && defined(OIDN_DEVICE_CUDA)
+    if (major >= 7) {
+      info.denoisers |= DENOISER_OPENIMAGEDENOISE;
+    }
+#  endif
 
     info.has_gpu_queue = true;
 
