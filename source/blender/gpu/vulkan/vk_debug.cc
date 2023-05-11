@@ -408,10 +408,6 @@ void raise_message(int32_t id_number,
                    const char *format,
                    ...)
 {
-  VKContext *context = VKContext::get();
-  if (!context) {
-    return;
-  }
   const VKDevice &device = VKBackend::get().device_get();
   const VKDebuggingTools &debugging_tools = device.debugging_tools_get();
   if (debugging_tools.enabled) {
