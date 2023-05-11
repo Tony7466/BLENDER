@@ -37,7 +37,7 @@ static void node_declare(const bNodeTree &node_tree,
   r_declaration.skip_updating_sockets = false;
 
   LISTBASE_FOREACH (const bNodeSocket *, input, &group->inputs) {
-    r_declaration.inputs.append(declaration_for_interface_socket(*input));
+    r_declaration.inputs.append(declaration_for_interface_socket(node_tree, *input));
   }
 
   const FieldInferencingInterface &field_interface = *group->runtime->field_inferencing_interface;

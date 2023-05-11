@@ -1152,35 +1152,183 @@ class LazyFunctionForSwitchSocketUsage : public lf::LazyFunction {
   }
 };
 
+/* Specialized Params class that passes parameters to a graph executor
+ * and communicates input requests back to the evaluation node. */
+class EvaluateFunctionNodeParams final : public lf::Params {
+ private:
+  Params &outer_params_;
+  /* Index of outer parameter used for a groph parameter,
+   * or -1 if the bound value must be used instead. */
+  const Span<int> outer_input_indices_;
+  const Span<int> outer_output_indices_;
+
+  const Span<GMutablePointer> bound_inputs_;
+  const Span<GMutablePointer> bound_outputs_;
+  MutableSpan<std::optional<lf::ValueUsage>> bound_input_usages_;
+  Span<lf::ValueUsage> bound_output_usages_;
+  MutableSpan<bool> set_bound_outputs_;
+
+ public:
+  EvaluateFunctionNodeParams(const lf::LazyFunction &fn,
+                             const Span<GMutablePointer> bound_inputs,
+                             const Span<GMutablePointer> bound_outputs,
+                             MutableSpan<std::optional<lf::ValueUsage>> bound_input_usages,
+                             Span<lf::ValueUsage> bound_output_usages,
+                             MutableSpan<bool> set_bound_outputs,
+                             Params &outer_params,
+                             Span<int> outer_input_indices,
+                             Span<int> outer_output_indices)
+      : lf::Params(fn, outer_params.allow_multi_threading_),
+        outer_params_(outer_params),
+        outer_input_indices_(outer_input_indices),
+        outer_output_indices_(outer_output_indices),
+        bound_inputs_(bound_inputs),
+        bound_outputs_(bound_outputs),
+        bound_input_usages_(bound_input_usages),
+        bound_output_usages_(bound_output_usages),
+        set_bound_outputs_(set_bound_outputs)
+  {
+  }
+
+ private:
+  void *try_get_input_data_ptr_impl(const int index) const override
+  {
+    const int outer_index = outer_input_indices_[index];
+    if (outer_index >= 0) {
+      return outer_params_.try_get_input_data_ptr(outer_index);
+    }
+    else {
+      return bound_inputs_[index].get();
+    }
+  }
+
+  void *try_get_input_data_ptr_or_request_impl(const int index) override
+  {
+    const int outer_index = outer_input_indices_[index];
+    if (outer_index >= 0) {
+      return outer_params_.try_get_input_data_ptr_or_request(outer_index);
+    }
+    else {
+      void *value = bound_inputs_[index].get();
+      if (value == nullptr) {
+        bound_input_usages_[index] = lf::ValueUsage::Used;
+      }
+      return value;
+    }
+  }
+
+  void *get_output_data_ptr_impl(const int index) override
+  {
+    const int outer_index = outer_output_indices_[index];
+    if (outer_index >= 0) {
+      return outer_params_.get_output_data_ptr(outer_index);
+    }
+    else {
+      return bound_outputs_[index].get();
+    }
+  }
+
+  void output_set_impl(const int index) override
+  {
+    const int outer_index = outer_output_indices_[index];
+    if (outer_index >= 0) {
+      return outer_params_.output_set(outer_index);
+    }
+    else {
+      set_bound_outputs_[index] = true;
+    }
+  }
+
+  bool output_was_set_impl(const int index) const override
+  {
+    const int outer_index = outer_output_indices_[index];
+    if (outer_index >= 0) {
+      return outer_params_.output_was_set(outer_index);
+    }
+    else {
+      return set_bound_outputs_[index];
+    }
+  }
+
+  lf::ValueUsage get_output_usage_impl(const int index) const override
+  {
+    const int outer_index = outer_output_indices_[index];
+    if (outer_index >= 0) {
+      return outer_params_.get_output_usage(outer_index);
+    }
+    else {
+      return bound_output_usages_[index];
+    }
+  }
+
+  void set_input_unused_impl(const int index) override
+  {
+    const int outer_index = outer_input_indices_[index];
+    if (outer_index >= 0) {
+      return outer_params_.set_input_unused(outer_index);
+    }
+    else {
+      bound_input_usages_[index] = lf::ValueUsage::Unused;
+    }
+  }
+
+  bool try_enable_multi_threading_impl() override
+  {
+    return outer_params_.try_enable_multi_threading();
+  }
+};
+
 /**
  * Evaluates the function input and then executes it.
  */
 class LazyFunctionForEvaluateFunctionNode : public LazyFunction {
  private:
   const bNode &eval_node_;
-  //bool has_many_nodes_ = false;
-
-  struct Storage {
-    void *graph_executor_storage = nullptr;
-    /* To avoid computing the hash more than once. */
-    std::optional<ComputeContextHash> context_hash_cache;
-  };
+  // bool has_many_nodes_ = false;
 
  public:
-
   LazyFunctionForEvaluateFunctionNode(const bNode &eval_node,
-                                      MutableSpan<int> r_lf_index_by_bsocket)
+                                      GeometryNodesLazyFunctionGraphInfo &own_lf_graph_info)
       : eval_node_(eval_node)
   {
     debug_name_ = eval_node.name;
     allow_missing_requested_inputs_ = true;
 
-    lazy_function_interface_from_node(eval_node, inputs_, outputs_, r_lf_index_by_bsocket);
+    lazy_function_interface_from_node(
+        eval_node, inputs_, outputs_, own_lf_graph_info.mapping.lf_index_by_bsocket);
+    for (lf::Input &input : inputs_) {
+      input.usage = lf::ValueUsage::Maybe;
+    }
+    /* Add a boolean input for every output bsocket that indicates whether that socket is used. */
+    for (const int i : eval_node.output_sockets().index_range()) {
+      own_lf_graph_info.mapping.lf_input_index_for_output_bsocket_usage
+          [eval_node.output_socket(i).index_in_all_outputs()] = inputs_.append_and_get_index_as(
+          "Output is Used", CPPType::get<bool>(), lf::ValueUsage::Maybe);
+    }
+    /* Add an attribute set input for every output geometry socket that can propagate attributes
+     * from inputs. */
+    for (const int i : eval_node.output_sockets().index_range()) {
+      own_lf_graph_info.mapping.lf_input_index_for_attribute_propagation_to_output
+          [eval_node.output_socket(i).index_in_all_outputs()] = inputs_.append_and_get_index_as(
+          "Attribute Set", CPPType::get<bke::AnonymousAttributeSet>(), lf::ValueUsage::Maybe);
+    }
+
+    /* Add a boolean output for every input bsocket that indicates whether that socket is used. */
+    for (const int i : eval_node.input_sockets().index_range()) {
+      /* Treat all sockets as dynamic, i.e. their usage is undetermined at this point
+       * and a usage output is added. */
+      outputs_.append_as("Input is Used", CPPType::get<bool>());
+      UNUSED_VARS(i);
+    }
   }
 
   void execute_impl(lf::Params &params, const lf::Context &context) const override
   {
-    const Closure *closure = params.get_input<Closure *>(0);
+    Closure *closure = params.try_get_input_data_ptr_or_request<Closure>(0);
+    if (!closure) {
+      return;
+    }
+
     if (!closure->lf_graph_info()) {
       return;
     }
@@ -1191,55 +1339,22 @@ class LazyFunctionForEvaluateFunctionNode : public LazyFunction {
     Vector<const lf::OutputSocket *> graph_inputs;
     /* Add inputs that also exist on the bnode. */
     graph_inputs.extend(lf_graph_info.mapping.group_input_sockets);
-
-    /**
-     * For every input bsocket there is a corresponding boolean output that indicates whether that
-     * input is used.
-     */
-    Map<int, int> lf_output_for_input_bsocket_usage;
-    /**
-     * For every output bsocket there is a corresponding boolean input that indicates whether the
-     * output is used.
-     */
-    Map<int, int> lf_input_for_output_bsocket_usage;
-    /**
-     * For every geometry output that can propagate attributes from an input, there is an attribute
-     * set input. It indicates which attributes should be propagated to the output.
-     */
-    Map<int, int> lf_input_for_attribute_propagation_to_output;
-
-    /* Add a boolean input for every output bsocket that indicates whether that socket is used. */
-    //const NodeGeometryEvaluateFunction &node_data = params.
-    for (const int i :  group_node.output_sockets().index_range()) {
-      lf_input_for_output_bsocket_usage.add_new(
-          i,
-          graph_inputs.append_and_get_index(lf_graph_info.mapping.group_output_used_sockets[i]));
-      //inputs_.append_as("Output is Used", CPPType::get<bool>(), lf::ValueUsage::Maybe);
-    }
+    /* Add a boolean input for every output bsocket that indicates whether that socket is
+     * used. */
     graph_inputs.extend(lf_graph_info.mapping.group_output_used_sockets);
-
     /* Add an attribute set input for every output geometry socket that can propagate attributes
      * from inputs. */
-    for (auto [output_index, lf_socket] :
-         lf_graph_info.mapping.attribute_set_by_geometry_output.items()) {
-      const int lf_index = inputs_.append_and_get_index_as(
-          "Attribute Set", CPPType::get<bke::AnonymousAttributeSet>(), lf::ValueUsage::Maybe);
+    for (const lf::OutputSocket *lf_socket :
+         lf_graph_info.mapping.attribute_set_by_geometry_output.values())
+    {
       graph_inputs.append(lf_socket);
-      lf_input_for_attribute_propagation_to_output.add(output_index, lf_index);
     }
 
     Vector<const lf::InputSocket *> graph_outputs;
     /* Add outputs that also exist on the bnode. */
     graph_outputs.extend(lf_graph_info.mapping.standard_group_output_sockets);
     /* Add a boolean output for every input bsocket that indicates whether that socket is used. */
-    for (const int i : group_node.input_sockets().index_range()) {
-      const InputUsageHint &input_usage_hint = lf_graph_info.mapping.group_input_usage_hints[i];
-      if (input_usage_hint.type == InputUsageHintType::DynamicSocket) {
-        const lf::InputSocket *lf_socket = lf_graph_info.mapping.group_input_usage_sockets[i];
-        lf_output_for_input_bsocket_usage.add_new(i, graph_outputs.append_and_get_index(lf_socket));
-        //outputs_.append_as("Input is Used", CPPType::get<bool>());
-      }
-    }
+    graph_outputs.extend(lf_graph_info.mapping.group_input_usage_sockets);
 
     GeometryNodesLazyFunctionLogger lf_logger(lf_graph_info);
     GeometryNodesLazyFunctionSideEffectProvider lf_side_effect_provider;
@@ -1252,98 +1367,113 @@ class LazyFunctionForEvaluateFunctionNode : public LazyFunction {
     GeoNodesLFUserData *user_data = dynamic_cast<GeoNodesLFUserData *>(context.user_data);
     BLI_assert(user_data != nullptr);
 
-    //if (has_many_nodes_) {
-    //  /* If the called node group has many nodes, it's likely that executing it takes a while even
-    //   * if every individual node is very small. */
-    //  lazy_threading::send_hint();
-    //}
+    // if (has_many_nodes_) {
+    //   /* If the called node group has many nodes, it's likely that executing it takes a while
+    //    * even if every individual node is very small. */
+    //   lazy_threading::send_hint();
+    // }
 
-    Storage *storage = static_cast<Storage *>(context.storage);
+    Array<GMutablePointer> bound_inputs(graph_inputs.size());
+    Array<GMutablePointer> bound_outputs(graph_outputs.size());
+    Array<std::optional<lf::ValueUsage>> bound_input_usages(graph_inputs.size());
+    Array<lf::ValueUsage> bound_output_usages(graph_outputs.size(), lf::ValueUsage::Used);
+    Array<bool> bound_set_outputs(graph_outputs.size(), false);
+    Array<int> outer_input_indices(graph_inputs.size());
+    Array<int> outer_output_indices(graph_outputs.size());
+
+    // TODO fill those arrays
+
+    LinearAllocator allocator;
+    void *graph_executor_storage = graph_executor.init_storage(allocator);
 
     /* The compute context changes when entering a node group. */
+    std::optional<ComputeContextHash> context_hash_cache;
     bke::NodeGroupComputeContext compute_context{
-        user_data->compute_context, eval_node_.identifier, storage->context_hash_cache};
-    storage->context_hash_cache = compute_context.hash();
+        user_data->compute_context, eval_node_.identifier, context_hash_cache};
+    context_hash_cache = compute_context.hash();
 
-    GeoNodesLFUserData group_user_data = *user_data;
-    group_user_data.compute_context = &compute_context;
+    GeoNodesLFUserData func_user_data = *user_data;
+    func_user_data.compute_context = &compute_context;
     if (user_data->modifier_data->socket_log_contexts) {
-      group_user_data.log_socket_values = user_data->modifier_data->socket_log_contexts->contains(
+      func_user_data.log_socket_values = user_data->modifier_data->socket_log_contexts->contains(
           compute_context.hash());
     }
 
     lf::Context func_context = context;
-    func_context.user_data = &group_user_data;
-    func_context.storage = storage->graph_executor_storage;
-    lf::BasicParams func_params{graph_executor,
-                                param_inputs,
-                                param_outputs,
-                                param_input_usages,
-                                param_output_usages,
-                                param_set_outputs};
+    func_context.user_data = &func_user_data;
+    func_context.storage = graph_executor_storage;
+    EvaluateFunctionNodeParams func_params{graph_executor,
+                                           bound_inputs,
+                                           bound_outputs,
+                                           bound_input_usages,
+                                           bound_output_usages,
+                                           bound_set_outputs,
+                                           params,
+                                           outer_input_indices,
+                                           outer_output_indices};
     graph_executor.execute(func_params, func_context);
   }
 
-  void *init_storage(LinearAllocator<> &allocator) const override
-  {
-    Storage *s = allocator.construct<Storage>().release();
-    s->graph_executor_storage = graph_executor_->init_storage(allocator);
-    return s;
-  }
+  //  void *init_storage(LinearAllocator<> &allocator) const override
+  //  {
+  //    Storage *s = allocator.construct<Storage>().release();
+  //    s->graph_executor_storage = graph_executor_->init_storage(allocator);
+  //    return s;
+  //  }
 
-  void destruct_storage(void *storage) const override
-  {
-    Storage *s = static_cast<Storage *>(storage);
-    graph_executor_->destruct_storage(s->graph_executor_storage);
-    std::destroy_at(s);
-  }
+  //  void destruct_storage(void *storage) const override
+  //  {
+  //    Storage *s = static_cast<Storage *>(storage);
+  //    graph_executor_->destruct_storage(s->graph_executor_storage);
+  //    std::destroy_at(s);
+  //  }
 
-//  std::string name() const override
-//  {
-//    std::stringstream ss;
-//    ss << "Group '" << (group_node_.id->name + 2) << "' (" << group_node_.name << ")";
-//    return ss.str();
-//  }
+  //  std::string name() const override
+  //  {
+  //    std::stringstream ss;
+  //    ss << "Group '" << (group_node_.id->name + 2) << "' (" << group_node_.name << ")";
+  //    return ss.str();
+  //  }
 
-//  std::string input_name(const int i) const override
-//  {
-//    if (i < group_node_.input_sockets().size()) {
-//      return group_node_.input_socket(i).name;
-//    }
-//    for (const auto [bsocket_index, lf_socket_index] :
-//         lf_input_for_output_bsocket_usage_.items()) {
-//      if (i == lf_socket_index) {
-//        std::stringstream ss;
-//        ss << "'" << group_node_.output_socket(bsocket_index).name << "' output is used";
-//        return ss.str();
-//      }
-//    }
-//    for (const auto [bsocket_index, lf_index] :
-//         lf_input_for_attribute_propagation_to_output_.items()) {
-//      if (i == lf_index) {
-//        std::stringstream ss;
-//        ss << "Propagate to '" << group_node_.output_socket(bsocket_index).name << "'";
-//        return ss.str();
-//      }
-//    }
-//    return inputs_[i].debug_name;
-//  }
+  //  std::string input_name(const int i) const override
+  //  {
+  //    if (i < group_node_.input_sockets().size()) {
+  //      return group_node_.input_socket(i).name;
+  //    }
+  //    for (const auto [bsocket_index, lf_socket_index] :
+  //         lf_input_for_output_bsocket_usage_.items()) {
+  //      if (i == lf_socket_index) {
+  //        std::stringstream ss;
+  //        ss << "'" << group_node_.output_socket(bsocket_index).name << "' output is used";
+  //        return ss.str();
+  //      }
+  //    }
+  //    for (const auto [bsocket_index, lf_index] :
+  //         lf_input_for_attribute_propagation_to_output_.items()) {
+  //      if (i == lf_index) {
+  //        std::stringstream ss;
+  //        ss << "Propagate to '" << group_node_.output_socket(bsocket_index).name << "'";
+  //        return ss.str();
+  //      }
+  //    }
+  //    return inputs_[i].debug_name;
+  //  }
 
-//  std::string output_name(const int i) const override
-//  {
-//    if (i < group_node_.output_sockets().size()) {
-//      return group_node_.output_socket(i).name;
-//    }
-//    for (const auto [bsocket_index, lf_socket_index] :
-//         lf_output_for_input_bsocket_usage_.items()) {
-//      if (i == lf_socket_index) {
-//        std::stringstream ss;
-//        ss << "'" << group_node_.input_socket(bsocket_index).name << "' input is used";
-//        return ss.str();
-//      }
-//    }
-//    return outputs_[i].debug_name;
-//  }
+  //  std::string output_name(const int i) const override
+  //  {
+  //    if (i < group_node_.output_sockets().size()) {
+  //      return group_node_.output_socket(i).name;
+  //    }
+  //    for (const auto [bsocket_index, lf_socket_index] :
+  //         lf_output_for_input_bsocket_usage_.items()) {
+  //      if (i == lf_socket_index) {
+  //        std::stringstream ss;
+  //        ss << "'" << group_node_.input_socket(bsocket_index).name << "' input is used";
+  //        return ss.str();
+  //      }
+  //    }
+  //    return outputs_[i].debug_name;
+  //  }
 };
 
 /**
@@ -1564,8 +1694,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
    */
   Map<const bNodeSocket *, lf::InputSocket *> attribute_set_propagation_map_;
   /**
-   * Boolean inputs that tell a node if some socket (of the same or another node) is used. If this
-   * socket is in a link-cycle, its input can become a constant true.
+   * Boolean inputs that tell a node if some socket (of the same or another node) is used. If
+   * this socket is in a link-cycle, its input can become a constant true.
    */
   Set<const lf::InputSocket *> socket_usage_inputs_;
 
@@ -2102,7 +2232,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
   void handle_evaluate_function_node(const bNode &bnode)
   {
-    auto lazy_function = std::make_unique<LazyFunctionForEvaluateFunctionNode>(bnode);
+    auto lazy_function = std::make_unique<LazyFunctionForEvaluateFunctionNode>(bnode,
+                                                                               *lf_graph_info_);
     lf::FunctionNode &lf_node = lf_graph_->add_function(*lazy_function);
 
     for (const int i : bnode.input_sockets().index_range()) {
@@ -2118,19 +2249,27 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       output_socket_map_.add_new(&bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
     }
-    mapping_->group_node_map.add(&bnode, &lf_node);
-    //lf_graph_info_->num_inline_nodes_approximate +=
-    //    group_lf_graph_info->num_inline_nodes_approximate;
+
     static const bool static_false = false;
-    for (const int i : lazy_function->lf_input_for_output_bsocket_usage_.values()) {
-      lf_node.input(i).set_default_value(&static_false);
-      socket_usage_inputs_.add(&lf_node.input(i));
-    }
-    /* Keep track of attribute set inputs that need to be populated later. */
-    for (const auto [output_index, lf_input_index] :
-         lazy_function->lf_input_for_attribute_propagation_to_output_.items()) {
-      attribute_set_propagation_map_.add(&bnode.output_socket(output_index),
-                                         &lf_node.input(lf_input_index));
+    for (const bNodeSocket *bsocket : bnode.output_sockets()) {
+      {
+        const int lf_input_index =
+            mapping_->lf_input_index_for_output_bsocket_usage[bsocket->index_in_all_outputs()];
+        if (lf_input_index != -1) {
+          lf::InputSocket &lf_input = lf_node.input(lf_input_index);
+          lf_input.set_default_value(&static_false);
+          socket_usage_inputs_.add(&lf_input);
+        }
+      }
+      {
+        /* Keep track of attribute set inputs that need to be populated later. */
+        const int lf_input_index = mapping_->lf_input_index_for_attribute_propagation_to_output
+                                       [bsocket->index_in_all_outputs()];
+        if (lf_input_index != -1) {
+          lf::InputSocket &lf_input = lf_node.input(lf_input_index);
+          attribute_set_propagation_map_.add(bsocket, &lf_input);
+        }
+      }
     }
     lf_graph_info_->functions.append(std::move(lazy_function));
   }
@@ -2338,8 +2477,9 @@ struct GeometryNodesLazyFunctionGraphBuilder {
   }
 
   /**
-   * Every output geometry socket that may propagate attributes has to know which attributes should
-   * be propagated. Therefore, every one of these outputs gets a corresponding attribute set input.
+   * Every output geometry socket that may propagate attributes has to know which attributes
+   * should be propagated. Therefore, every one of these outputs gets a corresponding attribute
+   * set input.
    */
   void build_attribute_propagation_input_node()
   {
@@ -2695,7 +2835,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
           Vector<lf::OutputSocket *> output_usages;
           for (const int i : input_usage_hint.output_dependencies) {
             if (lf::OutputSocket *lf_socket =
-                    socket_is_used_map_[bnode.output_socket(i).index_in_tree()]) {
+                    socket_is_used_map_[bnode.output_socket(i).index_in_tree()])
+            {
               output_usages.append(lf_socket);
             }
           }
@@ -2718,7 +2859,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       BLI_assert(lf_input_index >= 0);
       lf::InputSocket &lf_socket = lf_group_node.input(lf_input_index);
       if (lf::OutputSocket *lf_output_is_used =
-              socket_is_used_map_[output_bsocket->index_in_tree()]) {
+              socket_is_used_map_[output_bsocket->index_in_tree()])
+      {
         lf_graph_->add_link(*lf_output_is_used, lf_socket);
       }
       else {
@@ -2825,8 +2967,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     const int sockets_num = btree_.all_sockets().size();
     const int attribute_references_num = attribute_reference_keys.size();
 
-    /* The code below uses #BitGroupVector to store a set of attribute references per socket. Each
-     * socket has a bit span where each bit corresponds to one attribute reference. */
+    /* The code below uses #BitGroupVector to store a set of attribute references per socket.
+     * Each socket has a bit span where each bit corresponds to one attribute reference. */
     BitGroupVector<> referenced_by_field_socket(sockets_num, attribute_references_num, false);
     BitGroupVector<> propagated_to_geometry_socket(sockets_num, attribute_references_num, false);
     this->gather_referenced_and_potentially_propagated_data(relations_by_node,
@@ -3181,15 +3323,15 @@ struct GeometryNodesLazyFunctionGraphBuilder {
   }
 
   /**
-   * By depending on "the future" (whether a specific socket is used in the future), it is possible
-   * to introduce cycles in the graph. This function finds those cycles and breaks them by removing
-   * specific links.
+   * By depending on "the future" (whether a specific socket is used in the future), it is
+   * possible to introduce cycles in the graph. This function finds those cycles and breaks them
+   * by removing specific links.
    *
    * Example for a cycle: There is a `Distribute Points on Faces` node and its `Normal` output is
-   * only used when the number of generated points is larger than 1000 because of some switch node
-   * later in the tree. In this case, to know whether the `Normal` output is needed, one first has
-   * to compute the points, but for that one has to know whether the normal information has to be
-   * added to the points. The fix is to always add the normal information in this case.
+   * only used when the number of generated points is larger than 1000 because of some switch
+   * node later in the tree. In this case, to know whether the `Normal` output is needed, one
+   * first has to compute the points, but for that one has to know whether the normal information
+   * has to be added to the points. The fix is to always add the normal information in this case.
    */
   void fix_link_cycles()
   {
@@ -3260,8 +3402,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
            * computation later, but does not change correctness.
            *
            * After the cycle is broken, the cycle-detection is "rolled back" to the socket where
-           * the first socket of the cycle was found. This is necessary in case another cycle goes
-           * through this socket. */
+           * the first socket of the cycle was found. This is necessary in case another cycle
+           * goes through this socket. */
 
           detected_cycle = true;
           const int index_in_socket_stack = lf_socket_stack.first_index_of(lf_origin_socket);
@@ -3273,7 +3415,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
           bool broke_cycle = false;
           for (lf::Socket *lf_cycle_socket : cycle) {
             if (lf_cycle_socket->is_input() &&
-                socket_usage_inputs_.contains(&lf_cycle_socket->as_input())) {
+                socket_usage_inputs_.contains(&lf_cycle_socket->as_input()))
+            {
               lf::InputSocket &lf_cycle_input_socket = lf_cycle_socket->as_input();
               lf_graph_->clear_origin(lf_cycle_input_socket);
               static const bool static_true = true;

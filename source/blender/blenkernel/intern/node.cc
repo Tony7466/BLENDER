@@ -226,7 +226,8 @@ bool nodeFunctionParameterFindNode(bNodeTree *ntree,
 {
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     if (node->type == GEO_NODE_EVALUATE_FUNCTION) {
-      NodeGeometryEvaluateFunction *data = static_cast<NodeGeometryEvaluateFunction *>(node->storage);
+      NodeGeometryEvaluateFunction *data = static_cast<NodeGeometryEvaluateFunction *>(
+          node->storage);
       if (nodeFunctionSignatureContainsParameter(&data->signature, param, nullptr)) {
         if (r_node) {
           *r_node = node;
@@ -274,7 +275,8 @@ bool nodeFunctionSignatureFindNode(bNodeTree *ntree,
 {
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     if (node->type == GEO_NODE_EVALUATE_FUNCTION) {
-      NodeGeometryEvaluateFunction *data = static_cast<NodeGeometryEvaluateFunction *>(node->storage);
+      NodeGeometryEvaluateFunction *data = static_cast<NodeGeometryEvaluateFunction *>(
+          node->storage);
       if (sig == &data->signature) {
         if (r_node) {
           *r_node = node;
@@ -361,7 +363,8 @@ bNodeFunctionParameter *nodeFunctionSignatureAddParameter(bNodeFunctionSignature
                                                           short socket_type,
                                                           const char *name)
 {
-  return nodeFunctionSignatureInsertParameter(sig, param_type, socket_type, name, sig->params_range(param_type).size());
+  return nodeFunctionSignatureInsertParameter(
+      sig, param_type, socket_type, name, sig->params_range(param_type).size());
 }
 
 bNodeFunctionParameter *nodeFunctionSignatureInsertParameter(bNodeFunctionSignature *sig,
@@ -408,8 +411,8 @@ static void nodeFunctionSignatureRemoveParameter(bNodeFunctionSignature *sig,
                                                  eNodeFunctionParameterType param_type,
                                                  bNodeFunctionParameter *param)
 {
-  const Span<bNodeFunctionParameter> old_params = sig->params_span(param_type);
-  if (!old_params.contains_ptr(param)) {
+  const MutableSpan<bNodeFunctionParameter> old_params = sig->params_span(param_type);
+  if (!old_params.as_span().contains_ptr(param)) {
     return;
   }
   const int index = param - old_params.data();
@@ -1420,7 +1423,7 @@ static void expand_node_socket(BlendExpander *expander, bNodeSocket *sock)
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
-      case SOCK_FUNCTION:
+    case SOCK_FUNCTION:
       break;
   }
 }
@@ -3024,7 +3027,8 @@ bNodeLink *nodeAddLink(
 
   bNodeLink *link = nullptr;
   if (eNodeSocketInOut(fromsock->in_out) == SOCK_OUT &&
-      eNodeSocketInOut(tosock->in_out) == SOCK_IN) {
+      eNodeSocketInOut(tosock->in_out) == SOCK_IN)
+  {
     link = MEM_cnew<bNodeLink>("link");
     if (ntree) {
       BLI_addtail(&ntree->links, link);
@@ -3152,7 +3156,8 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node)
       /* remove the link that would be the same as the relinked one */
       LISTBASE_FOREACH_MUTABLE (bNodeLink *, link_to_compare, &ntree->links) {
         if (link_to_compare->fromsock == fromlink->fromsock &&
-            link_to_compare->tosock == link->tosock) {
+            link_to_compare->tosock == link->tosock)
+        {
           adjust_multi_input_indices_after_removed_link(
               ntree, link_to_compare->tosock, link_to_compare->multi_input_socket_index);
           duplicate_links_to_remove.append_non_duplicates(link_to_compare);

@@ -14,7 +14,7 @@ struct GeometryNodesLazyFunctionGraphInfo;
 
 class Closure {
  private:
-  const GeometryNodesLazyFunctionGraphInfo *lf_graph_info_;
+  const GeometryNodesLazyFunctionGraphInfo *lf_graph_info_ = nullptr;
 
  public:
   Closure() = default;
@@ -26,6 +26,5 @@ class Closure {
 
   const GeometryNodesLazyFunctionGraphInfo *lf_graph_info() const;
 };
-
 
 }  // namespace blender::nodes
