@@ -106,8 +106,8 @@ typedef struct BLI_mempool_chunk {
  * The mempool, stores and tracks memory \a chunks and elements within those chunks \a free.
  */
 struct BLI_mempool {
-  /* Serialize access to mempools when debugging wih ASAN. */
 #ifdef WITH_ASAN
+  /** Serialize access to memory-pools when debugging with ASAN. */
   ThreadMutex mutex;
 #endif
   /** Single linked list of allocated chunks. */
@@ -290,7 +290,11 @@ static BLI_freenode *mempool_chunk_add(BLI_mempool *pool,
 
 static void mempool_chunk_free(BLI_mempool_chunk *mpchunk, BLI_mempool *pool)
 {
+#ifdef WITH_ASAN
   BLI_asan_unpoison(mpchunk, sizeof(BLI_mempool_chunk) + pool->esize * pool->csize);
+#else
+  UNUSED_VARS(pool);
+#endif
   MEM_freeN(mpchunk);
 }
 
@@ -734,7 +738,8 @@ void *mempool_iter_threadsafe_step(BLI_mempool_threadsafe_iter *ts_iter)
            (iter->curchunk != NULL) && (atomic_cas_ptr((void **)ts_iter->curchunk_threaded_shared,
                                                        iter->curchunk,
                                                        iter->curchunk->next) != iter->curchunk);
-           iter->curchunk = *ts_iter->curchunk_threaded_shared) {
+           iter->curchunk = *ts_iter->curchunk_threaded_shared)
+      {
         /* pass. */
       }
       if (UNLIKELY(iter->curchunk == NULL)) {
