@@ -42,8 +42,6 @@ VKContext::VKContext(void *ghost_window, void *ghost_context)
 
 VKContext::~VKContext()
 {
-  /* IMM owns a buffer that should be freed before the memory allocator is freed. */
-  /* TODO: Introduce a buffer pool for temporary buffers. */
   delete imm;
   imm = nullptr;
 }
