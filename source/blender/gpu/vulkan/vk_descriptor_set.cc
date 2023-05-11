@@ -94,16 +94,6 @@ void VKDescriptorSetTracker::bind(VKTexture &texture,
   binding.vk_sampler = sampler.vk_handle();
 }
 
-void VKDescriptorSetTracker::unbind(VKTexture &texture)
-{
-  for (Binding &binding : bindings_) {
-    if (binding.texture == &texture) {
-      binding.texture = nullptr;
-      binding.vk_sampler = VK_NULL_HANDLE;
-    }
-  }
-}
-
 VKDescriptorSetTracker::Binding &VKDescriptorSetTracker::ensure_location(
     const VKDescriptorSet::Location location)
 {
@@ -158,7 +148,6 @@ void VKDescriptorSetTracker::update(VKContext &context)
     VkDescriptorImageInfo image_info = {};
     image_info.sampler = binding.vk_sampler;
     image_info.imageView = binding.texture->vk_image_view_handle();
-    /* TODO: use the correct one from the texture. */
     image_info.imageLayout = binding.texture->current_layout_get();
     image_infos.append(image_info);
 

@@ -157,7 +157,6 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
   /* TODO: bind as image */
   void image_bind(VKTexture &texture, VKDescriptorSet::Location location);
   void bind(VKTexture &texture, VKDescriptorSet::Location location, VKSampler &sampler);
-  void unbind(VKTexture &texture);
 
   /**
    * Some shaders don't need any descriptor sets so we don't need to bind them.
