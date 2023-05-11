@@ -5,7 +5,7 @@
  * \ingroup gpu
  */
 
-#include "vk_buffer_types.hh"
+#include "vk_buffer.hh"
 #include "vk_common.hh"
 
 #include "BLI_vector.hh"
@@ -17,7 +17,6 @@ namespace blender::gpu {
 class VKVertexBuffer;
 class VKContext;
 class VKBatch;
-class VKBuffer;
 class VKShaderInterface;
 class VKImmediate;
 

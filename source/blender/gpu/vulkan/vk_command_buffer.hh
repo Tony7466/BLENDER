@@ -7,7 +7,6 @@
 
 #pragma once
 
-#include "vk_buffer_types.hh"
 #include "vk_common.hh"
 #include "vk_resource_tracker.hh"
 
@@ -15,6 +14,7 @@
 
 namespace blender::gpu {
 class VKBuffer;
+struct VKBufferWithOffset;
 class VKDescriptorSet;
 class VKFrameBuffer;
 class VKIndexBuffer;
