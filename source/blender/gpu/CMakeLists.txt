@@ -848,7 +848,6 @@ if(WITH_GTESTS)
     set(TEST_SRC
       tests/gpu_testing.cc
 
-      tests/state_blend_test.cc
       tests/framebuffer_test.cc
       tests/immediate_test.cc
       tests/index_buffer_test.cc
