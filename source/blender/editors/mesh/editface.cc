@@ -403,6 +403,60 @@ static int get_opposing_edge_index(blender::IndexRange &poly,
   return -1;
 }
 
+/* Bool return value indicates if whole loop has been traced. */
+static bool follow_face_loop(const int poly_start_index,
+                             const int edge_start_index,
+                             const blender::offset_indices::OffsetIndices<int> polys,
+                             const blender::VArray<bool> hide_poly,
+                             const blender::Span<int> corner_edges,
+                             blender::Vector<int> &r_loop_polys,
+                             const blender::Array<blender::Vector<int, 2>> edge_to_poly_map)
+{
+  using namespace blender;
+  int current_poly_index = poly_start_index;
+  int current_edge_index = edge_start_index;
+
+  while (current_edge_index > 0) {
+    int next_poly_index;
+    bool found_poly = false;
+
+    for (const int poly_index : edge_to_poly_map[current_edge_index]) {
+      if (poly_index != current_poly_index) {
+        next_poly_index = poly_index;
+        found_poly = true;
+        break;
+      }
+    }
+
+    /* Edge might only have 1 poly connected. */
+    if (!found_poly) {
+      return false;
+    }
+
+    /* Only works on quads. */
+    if (polys[next_poly_index].size() != 4) {
+      return false;
+    }
+
+    /* Happens if we looped around the mesh. */
+    if (r_loop_polys.contains(next_poly_index)) {
+      return true;
+    }
+
+    /* Hidden polygons stop selection. */
+    if (hide_poly[next_poly_index]) {
+      return false;
+    }
+
+    r_loop_polys.append(next_poly_index);
+
+    IndexRange next_poly = polys[next_poly_index];
+    current_edge_index = get_opposing_edge_index(next_poly, corner_edges, current_edge_index);
+    current_poly_index = next_poly_index;
+  }
+  return false;
+}
+
 void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const bool select)
 {
   using namespace blender;
@@ -423,8 +477,8 @@ void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const boo
     return;
   }
 
-  uint index = uint(-1);
-  if (!ED_mesh_pick_face(C, ob_eval, mval, ED_MESH_PICK_DEFAULT_FACE_DIST, &index)) {
+  uint poly_pick_index = uint(-1);
+  if (!ED_mesh_pick_face(C, ob_eval, mval, ED_MESH_PICK_DEFAULT_FACE_DIST, &poly_pick_index)) {
     return;
   }
 
@@ -433,7 +487,7 @@ void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const boo
   const Span<float3> verts = mesh->vert_positions();
   const OffsetIndices polys = mesh->polys();
   const Span<int2> edges = mesh->edges();
-  IndexRange poly = polys[index];
+  IndexRange poly = polys[poly_pick_index];
 
   ARegion *region = CTX_wm_region(C);
   RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
@@ -448,52 +502,21 @@ void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const boo
                                                                                    mesh->totedge);
 
   Vector<int> polys_to_select;
-  polys_to_select.append(index);
-
-  int current_poly_index = index;
-  int current_edge_index = closest_edge_index;
+  polys_to_select.append(poly_pick_index);
 
   bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
   const VArray<bool> hide_poly = *attributes.lookup_or_default<bool>(
       ".hide_poly", ATTR_DOMAIN_FACE, false);
 
-  while (current_edge_index > 0) {
-    int next_poly_index;
-    bool found_poly = false;
+  const bool traced_full_loop = follow_face_loop(poly_pick_index,
+                                                 closest_edge_index,
+                                                 polys,
+                                                 hide_poly,
+                                                 corner_edges,
+                                                 polys_to_select,
+                                                 edge_to_poly_map);
 
-    for (const int poly_index : edge_to_poly_map[current_edge_index]) {
-      if (poly_index != current_poly_index) {
-        next_poly_index = poly_index;
-        found_poly = true;
-        break;
-      }
-    }
-
-    /* Edge might only have 1 poly connected. */
-    if (!found_poly) {
-      break;
-    }
-
-    /* Only works on quads. */
-    if (polys[next_poly_index].size() != 4) {
-      break;
-    }
-
-    /* Happens if we looped around the mesh. */
-    if (polys_to_select.contains(next_poly_index)) {
-      break;
-    }
-
-    /* Hidden polygons stop selection. */
-    if (hide_poly[next_poly_index]) {
-      break;
-    }
-
-    polys_to_select.append(next_poly_index);
-
-    IndexRange next_poly = polys[next_poly_index];
-    current_edge_index = get_opposing_edge_index(next_poly, corner_edges, current_edge_index);
-    current_poly_index = next_poly_index;
+  if (!traced_full_loop) {
   }
 
   bke::SpanAttributeWriter<bool> select_poly = attributes.lookup_or_add_for_write_span<bool>(
