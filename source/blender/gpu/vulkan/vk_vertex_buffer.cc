@@ -68,16 +68,15 @@ void VKVertexBuffer::release_data()
   MEM_SAFE_FREE(data);
 }
 
-static bool inplace_conversion_doable(const GPUUsageType &usage)
+static bool inplace_conversion_supported(const GPUUsageType &usage)
 {
-  /* based on the flags the conversion can be done inplace.*/
   return ELEM(usage, GPU_USAGE_STATIC, GPU_USAGE_STREAM);
 }
 
 void *VKVertexBuffer::convert() const
 {
   void *out_data = data;
-  if (!inplace_conversion_doable(usage_)) {
+  if (!inplace_conversion_supported(usage_)) {
     out_data = MEM_dupallocN(out_data);
   }
   BLI_assert(format.deinterleaved);
@@ -92,13 +91,13 @@ void VKVertexBuffer::upload_data()
   }
 
   if (flag &= GPU_VERTBUF_DATA_DIRTY) {
-    void *converted_data = data;
+    void *data_to_upload = data;
     if (conversion_needed(format)) {
-      converted_data = convert();
+      data_to_upload = convert();
     }
-    buffer_.update(converted_data);
-    if (converted_data != data) {
-      MEM_SAFE_FREE(converted_data);
+    buffer_.update(data_to_upload);
+    if (data_to_upload != data) {
+      MEM_SAFE_FREE(data_to_upload);
     }
     if (usage_ == GPU_USAGE_STATIC) {
       MEM_SAFE_FREE(data);

@@ -911,7 +911,7 @@ void convert_in_place(void *data, const GPUVertFormat &vertex_format, const uint
     if (!conversion_needed(vert_attr)) {
       continue;
     }
-    void *row_data = data + vert_attr.offset;
+    void *row_data = static_cast<uint8_t *>(data) + vert_attr.offset;
     for (int vert_index = 0; vert_index < vertex_len; vert_index++) {
       if (vert_attr.comp_type == GPU_COMP_I32) {
         for (int component : IndexRange(vert_attr.comp_len)) {
@@ -927,7 +927,7 @@ void convert_in_place(void *data, const GPUVertFormat &vertex_format, const uint
           *component_out = float(*component_in);
         }
       }
-      row_data += vertex_format.stride;
+      row_data = static_cast<uint8_t *>(row_data) + vertex_format.stride;
     }
   }
 }
