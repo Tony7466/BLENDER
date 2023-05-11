@@ -38,6 +38,9 @@ void VKCommandBuffer::init(const VkDevice vk_device,
   submission_id_.reset();
   state.stage = Stage::Initial;
 
+  /* When a the last GHOST context is destroyed the device is deallocate. A moment later the GPU
+   * context is destroyed. The first step is to activate it. Activating would retrieve the device
+   * from GHOST which in that case is a VK_NULL_HANDLE.*/
   if (vk_device == VK_NULL_HANDLE) {
     return;
   }
