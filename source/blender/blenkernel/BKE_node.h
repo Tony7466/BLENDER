@@ -764,9 +764,7 @@ void node_free_node(bNodeTree *tree, bNode *node);
 
 }  // namespace blender::bke
 
-// To move^!
-#endif  // +++++++++++++++ I AM THERE!!!!!!!!!!!!!!
-// Finished.!
+#endif
 
 /**
  * Also used via RNA API, so we check for proper input output direction.

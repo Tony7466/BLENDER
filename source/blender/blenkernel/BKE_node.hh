@@ -24,6 +24,12 @@
 
 namespace blender::bke {
 
+
+
+}
+
+namespace blender::bke {
+
 /**
  * Set the mute status of a single link.
  */
