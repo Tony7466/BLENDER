@@ -12,7 +12,23 @@
 
 namespace blender::draw {
 
-bool volume_sub_pass(PassMain::Sub &ps, Scene *scene, Object *ob, GPUMaterial *gpu_material);
-bool volume_sub_pass(PassSimple::Sub &ps, Scene *scene, Object *ob, GPUMaterial *gpu_material);
+/**
+ * Add attributes bindings of volume grids to an existing pass.
+ * No draw call is added so the caller can decide how to use the data.
+ * \return nullptr if there is nothing to draw.
+ */
+PassMain::Sub *volume_sub_pass(PassMain::Sub &ps,
+                               Scene *scene,
+                               Object *ob,
+                               GPUMaterial *gpu_material);
+/**
+ * Add attributes bindings of volume grids to an existing pass.
+ * No draw call is added so the caller can decide how to use the data.
+ * \return nullptr if there is nothing to draw.
+ */
+PassSimple::Sub *volume_sub_pass(PassSimple::Sub &ps,
+                                 Scene *scene,
+                                 Object *ob,
+                                 GPUMaterial *gpu_material);
 
 }  // namespace blender::draw

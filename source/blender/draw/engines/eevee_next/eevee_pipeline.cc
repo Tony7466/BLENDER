@@ -77,18 +77,17 @@ void WorldVolumePipeline::sync(GPUMaterial *gpumat)
   inst_.lights.bind_resources(&world_ps_);
   inst_.shadows.bind_resources(&world_ps_);
 
-  PassSimple::Sub &ps = world_ps_.sub("World Volume");
   if (gpumat) {
-    ps.material_set(*inst_.manager, gpumat);
-    volume_sub_pass(ps, nullptr, nullptr, gpumat);
+    world_ps_.material_set(*inst_.manager, gpumat);
+    volume_sub_pass(world_ps_, nullptr, nullptr, gpumat);
   }
   else {
     /* If no world or volume material is present just clear the buffer. */
-    ps.shader_set(inst_.shaders.static_shader_get(VOLUME_CLEAR));
+    world_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_CLEAR));
   }
-  ps.dispatch(math::divide_ceil(inst_.volume.grid_size(), int3(VOLUME_GROUP_SIZE)));
+  world_ps_.dispatch(math::divide_ceil(inst_.volume.grid_size(), int3(VOLUME_GROUP_SIZE)));
   /* Sync with object property pass. */
-  ps.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
+  world_ps_.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
 }
 
 void WorldVolumePipeline::render(View &view)

@@ -283,19 +283,20 @@ DRWShadingGroup *DRW_shgroup_volume_create_sub(Scene *scene,
 namespace blender::draw {
 
 template<typename PassType>
-bool volume_world_grids_init(PassType &ps, ListBaseWrapper<GPUMaterialAttribute> &attrs)
+PassType *volume_world_grids_init(PassType &ps, ListBaseWrapper<GPUMaterialAttribute> &attrs)
 {
+  PassType *sub = &ps.sub("World Volume");
   for (const GPUMaterialAttribute *attr : attrs) {
-    ps.bind_texture(attr->input_name, grid_default_texture(attr->default_value));
+    sub->bind_texture(attr->input_name, grid_default_texture(attr->default_value));
   }
 
-  return true;
+  return sub;
 }
 
 template<typename PassType>
-bool volume_object_grids_init(PassType &ps,
-                              Object *ob,
-                              ListBaseWrapper<GPUMaterialAttribute> &attrs)
+PassType *volume_object_grids_init(PassType &ps,
+                                   Object *ob,
+                                   ListBaseWrapper<GPUMaterialAttribute> &attrs)
 {
   VolumeUniformBufPool *pool = (VolumeUniformBufPool *)DST.vmempool->volume_grids_ubos;
   VolumeInfosBuf &volume_infos = *pool->alloc();
@@ -318,8 +319,10 @@ bool volume_object_grids_init(PassType &ps,
   /* Render nothing if there is no attribute for the shader to render.
    * This also avoids an assert caused by the bounding box being zero in size. */
   if (!has_grids) {
-    return false;
+    return nullptr;
   }
+
+  PassType *sub = &ps.sub(ob->id.name);
 
   /* Bind volume grid textures. */
   int grid_id = 0;
@@ -336,7 +339,7 @@ bool volume_object_grids_init(PassType &ps,
                                  (volume_grid) ? g_data.dummy_zero :
                                                  grid_default_texture(attr->default_value);
     /* TODO (Miguel Pozo): bind_texture const support ? */
-    ps.bind_texture(attr->input_name, (GPUTexture *)grid_tex);
+    sub->bind_texture(attr->input_name, (GPUTexture *)grid_tex);
 
     volume_infos.grids_xform[grid_id++] = float4x4(drw_grid ? drw_grid->object_to_texture :
                                                               g_data.dummy_grid_mat);
@@ -344,16 +347,16 @@ bool volume_object_grids_init(PassType &ps,
 
   volume_infos.push_update();
 
-  ps.bind_ubo("drw_volume", volume_infos);
+  sub->bind_ubo("drw_volume", volume_infos);
 
-  return true;
+  return sub;
 }
 
 template<typename PassType>
-bool drw_volume_object_mesh_init(PassType &ps,
-                                 Scene *scene,
-                                 Object *ob,
-                                 ListBaseWrapper<GPUMaterialAttribute> &attrs)
+PassType *drw_volume_object_mesh_init(PassType &ps,
+                                      Scene *scene,
+                                      Object *ob,
+                                      ListBaseWrapper<GPUMaterialAttribute> &attrs)
 {
   VolumeUniformBufPool *pool = (VolumeUniformBufPool *)DST.vmempool->volume_grids_ubos;
   VolumeInfosBuf &volume_infos = *pool->alloc();
@@ -365,36 +368,41 @@ bool drw_volume_object_mesh_init(PassType &ps,
   volume_infos.temperature_mul = 1.0f;
   volume_infos.temperature_bias = 0.0f;
 
+  PassType *sub = nullptr;
+
   /* Smoke Simulation. */
   if ((md = BKE_modifiers_findby_type(ob, eModifierType_Fluid)) &&
       BKE_modifier_is_enabled(scene, md, eModifierMode_Realtime) &&
-      ((FluidModifierData *)md)->domain != nullptr) {
+      ((FluidModifierData *)md)->domain != nullptr)
+  {
     FluidModifierData *fmd = (FluidModifierData *)md;
     FluidDomainSettings *fds = fmd->domain;
 
     /* Don't try to show liquid domains here. */
     if (!fds->fluid || !(fds->type == FLUID_DOMAIN_TYPE_GAS)) {
-      return false;
+      return nullptr;
     }
 
     if (fds->fluid && (fds->type == FLUID_DOMAIN_TYPE_GAS)) {
       DRW_smoke_ensure(fmd, fds->flags & FLUID_DOMAIN_USE_NOISE);
     }
 
+    sub = &ps.sub(ob->id.name);
+
     int grid_id = 0;
     for (const GPUMaterialAttribute *attr : attrs) {
       if (STREQ(attr->name, "density")) {
-        ps.bind_texture(attr->input_name,
-                        fds->tex_density ? &fds->tex_density : &g_data.dummy_one);
+        sub->bind_texture(attr->input_name,
+                          fds->tex_density ? &fds->tex_density : &g_data.dummy_one);
       }
       else if (STREQ(attr->name, "color")) {
-        ps.bind_texture(attr->input_name, fds->tex_color ? &fds->tex_color : &g_data.dummy_one);
+        sub->bind_texture(attr->input_name, fds->tex_color ? &fds->tex_color : &g_data.dummy_one);
       }
       else if (STR_ELEM(attr->name, "flame", "temperature")) {
-        ps.bind_texture(attr->input_name, fds->tex_flame ? &fds->tex_flame : &g_data.dummy_zero);
+        sub->bind_texture(attr->input_name, fds->tex_flame ? &fds->tex_flame : &g_data.dummy_zero);
       }
       else {
-        ps.bind_texture(attr->input_name, grid_default_texture(attr->default_value));
+        sub->bind_texture(attr->input_name, grid_default_texture(attr->default_value));
       }
       volume_infos.grids_xform[grid_id++] = float4x4(g_data.dummy_grid_mat);
     }
@@ -410,25 +418,27 @@ bool drw_volume_object_mesh_init(PassType &ps,
     volume_infos.temperature_bias = fds->flame_ignition;
   }
   else {
+    sub = &ps.sub(ob->id.name);
     int grid_id = 0;
     for (const GPUMaterialAttribute *attr : attrs) {
-      ps.bind_texture(attr->input_name, grid_default_texture(attr->default_value));
+      sub->bind_texture(attr->input_name, grid_default_texture(attr->default_value));
       volume_infos.grids_xform[grid_id++] = float4x4(g_data.dummy_grid_mat);
     }
   }
 
-  volume_infos.push_update();
+  if (sub) {
+    volume_infos.push_update();
+    sub->bind_ubo("drw_volume", volume_infos);
+  }
 
-  ps.bind_ubo("drw_volume", volume_infos);
-
-  return true;
+  return sub;
 }
 
 template<typename PassType>
-bool volume_sub_pass_implementation(PassType &ps,
-                                    Scene *scene,
-                                    Object *ob,
-                                    GPUMaterial *gpu_material)
+PassType *volume_sub_pass_implementation(PassType &ps,
+                                         Scene *scene,
+                                         Object *ob,
+                                         GPUMaterial *gpu_material)
 {
   ListBase attr_list = GPU_material_attributes(gpu_material);
   ListBaseWrapper<GPUMaterialAttribute> attrs(attr_list);
@@ -443,12 +453,18 @@ bool volume_sub_pass_implementation(PassType &ps,
   }
 }
 
-bool volume_sub_pass(PassMain::Sub &ps, Scene *scene, Object *ob, GPUMaterial *gpu_material)
+PassMain::Sub *volume_sub_pass(PassMain::Sub &ps,
+                               Scene *scene,
+                               Object *ob,
+                               GPUMaterial *gpu_material)
 {
   return volume_sub_pass_implementation(ps, scene, ob, gpu_material);
 }
 
-bool volume_sub_pass(PassSimple::Sub &ps, Scene *scene, Object *ob, GPUMaterial *gpu_material)
+PassSimple::Sub *volume_sub_pass(PassSimple::Sub &ps,
+                                 Scene *scene,
+                                 Object *ob,
+                                 GPUMaterial *gpu_material)
 {
   return volume_sub_pass_implementation(ps, scene, ob, gpu_material);
 }
