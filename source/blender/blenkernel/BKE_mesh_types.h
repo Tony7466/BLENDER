@@ -166,7 +166,7 @@ struct MeshRuntime {
    */
   bool vert_normals_dirty = true;
   bool poly_normals_dirty = true;
-  bool corner_normals_dirty = false;
+  bool corner_normals_dirty = true;
   mutable Vector<float3> vert_normals;
   mutable Vector<float3> poly_normals;
   mutable Vector<float3> corner_normals;
