@@ -50,7 +50,7 @@ struct USDExportParams {
   bool export_textures;
   bool overwrite_textures;
   bool relative_paths;
-  bool add_root_node;
+  char root_prim_path[1024]; /* FILE_MAX */
 };
 
 struct USDImportParams {

@@ -96,6 +96,21 @@ typedef struct eUSDOperatorOptions {
   bool as_background_job;
 } eUSDOperatorOptions;
 
+/* Ensure that the prim_path is not set to
+ * the absolute root path '/'. */
+static void process_prim_path(char *prim_path)
+{
+  if (prim_path == NULL || prim_path[0] == '\0') {
+    return prim_path;
+  }
+
+  /* The absolute root "/" path indicates a no-op,
+   * so clear the string. */
+  if (prim_path[0] == '/' && strlen(prim_path) == 1) {
+    prim_path[0] = '\0';
+  }
+}
+
 static int wm_usd_export_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
   eUSDOperatorOptions *options = MEM_callocN(sizeof(eUSDOperatorOptions), "eUSDOperatorOptions");
@@ -137,7 +152,10 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool export_textures = RNA_boolean_get(op->ptr, "export_textures");
   const bool overwrite_textures = RNA_boolean_get(op->ptr, "overwrite_textures");
   const bool relative_paths = RNA_boolean_get(op->ptr, "relative_paths");
-  const bool add_root_node = RNA_boolean_get(op->ptr, "add_root_node");
+
+  char root_prim_path[FILE_MAX];
+  RNA_string_get(op->ptr, "root_prim_path", root_prim_path);
+  process_prim_path(root_prim_path);
 
   struct USDExportParams params = {
       export_animation,
@@ -153,8 +171,9 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
       export_textures,
       overwrite_textures,
       relative_paths,
-      add_root_node,
   };
+
+  STRNCPY(params.root_prim_path, root_prim_path);
 
   bool ok = USD_export(C, filename, &params, as_background_job);
 
@@ -181,7 +200,7 @@ static void wm_usd_export_draw(bContext *UNUSED(C), wmOperator *op)
   uiItemR(col, ptr, "export_uvmaps", 0, NULL, ICON_NONE);
   uiItemR(col, ptr, "export_normals", 0, NULL, ICON_NONE);
   uiItemR(col, ptr, "export_materials", 0, NULL, ICON_NONE);
-  uiItemR(col, ptr, "add_root_node", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "root_prim_path", 0, NULL, ICON_NONE);
 
   col = uiLayoutColumn(box, true);
   uiItemR(col, ptr, "evaluation_mode", 0, NULL, ICON_NONE);
@@ -341,12 +360,13 @@ void WM_OT_usd_export(struct wmOperatorType *ot)
                   "Use relative paths to reference external files (i.e. textures, volumes) in "
                   "USD, otherwise use absolute paths");
 
-  RNA_def_boolean(ot->srna,
-                  "add_root_node",
-                  false,
-                  "Add Root Node",
-                  "Add a Root 'Xform' node to the stage that can be used in other applications"
-                  "to transform all the primitives in the stage");
+  RNA_def_string(ot->srna,
+                 "root_prim_path",
+                 NULL,
+                 FILE_MAX,
+                 "Root Prim",
+                 "If set, add a transform primitive with the given path to the stage "
+                 "as the parent of all exported data");
 }
 
 /* ====== USD Import ====== */
