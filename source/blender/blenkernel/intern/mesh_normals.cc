@@ -484,6 +484,8 @@ blender::Span<blender::float3> Mesh::corner_normals() const
     return this->runtime->corner_normals;
   }
 
+  const Span<float3> vert_normals = this->vert_normals();
+  const Span<float3> poly_normals = this->poly_normals();
   std::lock_guard lock{this->runtime->normals_mutex};
   if (!this->runtime->corner_normals_dirty) {
     BLI_assert(this->runtime->corner_normals.size() == this->totloop);
@@ -497,11 +499,10 @@ blender::Span<blender::float3> Mesh::corner_normals() const
     MutableSpan<float3> corner_normals = this->runtime->corner_normals;
     switch (this->normal_domain_all_info()) {
       case ATTR_DOMAIN_POINT: {
-        array_utils::gather(this->vert_normals(), this->corner_verts(), corner_normals);
+        array_utils::gather(vert_normals, this->corner_verts(), corner_normals);
         break;
       }
       case ATTR_DOMAIN_FACE: {
-        const Span<float3> poly_normals = this->poly_normals();
         threading::parallel_for(poly_normals.index_range(), 1024, [&](const IndexRange range) {
           for (const int i : range) {
             corner_normals.slice(polys[i]).fill(poly_normals[i]);
@@ -524,8 +525,8 @@ blender::Span<blender::float3> Mesh::corner_normals() const
                                      this->corner_verts(),
                                      this->corner_edges(),
                                      {},
-                                     this->vert_normals(),
-                                     this->poly_normals(),
+                                     vert_normals,
+                                     poly_normals,
                                      sharp_edges,
                                      sharp_faces,
                                      custom_normals,
