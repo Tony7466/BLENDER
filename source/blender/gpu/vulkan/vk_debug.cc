@@ -6,6 +6,7 @@
  */
 
 #include "BKE_global.h"
+#include "BLI_dynstr.h"
 #include "CLG_log.h"
 
 #include "vk_backend.hh"
@@ -226,7 +227,7 @@ void VKDebuggingTools::print_vulkan_version()
   uint32_t minor = VK_VERSION_MINOR(instanceVersion);
   uint32_t patch = VK_VERSION_PATCH(instanceVersion);
 
-  printf("Vulkan Version:%d.%d.%d\n", major, minor, patch);
+  printf("Vulkan Version:%u.%u.%u\n", major, minor, patch);
 }
 
 void VKDebuggingTools::print_labels(const VkDebugUtilsMessengerCallbackDataEXT *callback_data)
@@ -266,7 +267,11 @@ void VKDebuggingTools::print_labels(const VkDebugUtilsMessengerCallbackDataEXT *
   printf("%s\n", ss.str().c_str());
   fflush(stdout);
 }
-
+VKAPI_ATTR VkBool32 VKAPI_CALL
+messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
+                   VkDebugUtilsMessageTypeFlagsEXT /* message_type*/,
+                   const VkDebugUtilsMessengerCallbackDataEXT *callback_data,
+                   void *user_data);
 VKAPI_ATTR VkBool32 VKAPI_CALL
 messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
                    VkDebugUtilsMessageTypeFlagsEXT /* message_type*/,
@@ -283,8 +288,7 @@ messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
   if ((message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) ||
       (message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT))
   {
-    if ((LOG.type->flag & CLG_FLAG_USE) && (LOG.type->level >= CLG_SEVERITY_INFO))
-    {
+    if ((LOG.type->flag & CLG_FLAG_USE) && (LOG.type->level >= CLG_SEVERITY_INFO)) {
       const char *format = "{0x%x}% s\n %s ";
       CLG_logf(LOG.type,
                CLG_SEVERITY_INFO,
@@ -397,4 +401,47 @@ void VKDebuggingTools::remove_group(int32_t id_number)
   std::scoped_lock lock(ignore_mutex);
   vk_message_id_number_ignored.remove(id_number);
 };
+
+void raise_message(int32_t id_number,
+                   VkDebugUtilsMessageSeverityFlagBitsEXT vk_severity_flag_bits,
+                   const char *format,
+                   ...)
+{
+  VKContext *context = VKContext::get();
+  if (!context) {
+    return;
+  }
+  const VKDevice &device = VKBackend::get().device_get();
+  const VKDebuggingTools &debugging_tools = device.debugging_tools_get();
+  if (debugging_tools.enabled) {
+    DynStr *ds = nullptr;
+    va_list arg;
+    char *info = nullptr;
+
+    va_start(arg, format);
+
+    ds = BLI_dynstr_new();
+    BLI_dynstr_vappendf(ds, format, arg);
+    info = BLI_dynstr_get_cstring(ds);
+    BLI_dynstr_free(ds);
+
+    va_end(arg);
+
+    static VkDebugUtilsMessengerCallbackDataEXT vk_call_back_data;
+    vk_call_back_data.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CALLBACK_DATA_EXT;
+    vk_call_back_data.pNext = VK_NULL_HANDLE;
+    vk_call_back_data.messageIdNumber = id_number;
+    vk_call_back_data.pMessageIdName = "VulkanMessenger";
+    vk_call_back_data.objectCount = 0;
+    vk_call_back_data.flags = 0;
+    vk_call_back_data.pObjects = VK_NULL_HANDLE;
+    vk_call_back_data.pMessage = info;
+    debugging_tools.vkSubmitDebugUtilsMessageEXT_r(device.instance_get(),
+                                                   vk_severity_flag_bits,
+                                                   VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT,
+                                                   &vk_call_back_data);
+    MEM_freeN((void *)info);
+  }
+}
+
 };  // namespace blender::gpu::debug

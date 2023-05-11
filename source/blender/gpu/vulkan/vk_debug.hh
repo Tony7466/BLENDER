@@ -78,38 +78,11 @@ void pop_marker(VkCommandBuffer vk_command_buffer);
 void push_marker(const VKDevice &device, const char *name);
 void set_marker(const VKDevice &device, const char *name);
 void pop_marker(const VKDevice &device);
-
-/* how to use : debug::raise_message(-12345,VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,"This is
- * a raise message. %llx", (uintptr_t)vk_object); */
-template<typename... Args>
+/* how to use : debug::raise_message(0xB41ca2,VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,"This
+ * is a raise message. %llx", (uintptr_t)vk_object); */
 void raise_message(int32_t id_number,
                    VkDebugUtilsMessageSeverityFlagBitsEXT vk_severity_flag_bits,
                    const char *fmt,
-                   Args... args)
-{
-  VKContext *context = VKContext::get();
-  if (!context) {
-    return;
-  }
-  const VKDevice &device = VKBackend::get().device_get();
-  const VKDebuggingTools &debugging_tools = device.debugging_tools_get();
-  if (debugging_tools.enabled) {
-    char *info = BLI_sprintfN(fmt, args...);
-    static VkDebugUtilsMessengerCallbackDataEXT vk_call_back_data;
-    vk_call_back_data.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CALLBACK_DATA_EXT;
-    vk_call_back_data.pNext = VK_NULL_HANDLE;
-    vk_call_back_data.messageIdNumber = id_number;
-    vk_call_back_data.pMessageIdName = "VulkanMessenger";
-    vk_call_back_data.objectCount = 0;
-    vk_call_back_data.flags = 0;
-    vk_call_back_data.pObjects = VK_NULL_HANDLE;
-    vk_call_back_data.pMessage = info;
-    debugging_tools.vkSubmitDebugUtilsMessageEXT_r(device.instance_get(),
-                                                   vk_severity_flag_bits,
-                                                   VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT,
-                                                   &vk_call_back_data);
-    MEM_freeN((void *)info);
-  }
-}
+                   ...);
 }  // namespace debug
 }  // namespace blender::gpu
