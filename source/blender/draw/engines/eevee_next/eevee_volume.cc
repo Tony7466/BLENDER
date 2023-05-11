@@ -189,17 +189,6 @@ void VolumeModule::begin_sync()
 
   data_.push_update();
 
-  sync_world();
-}
-
-void VolumeModule::sync_world()
-{
-  world_ps_.init();
-  world_ps_.state_set(DRW_STATE_WRITE_COLOR);
-  this->bind_properties_buffers(world_ps_);
-  inst_.lights.bind_resources(&world_ps_);
-  inst_.shadows.bind_resources(&world_ps_);
-
   GPUMaterial *material = nullptr;
 
   ::World *world = inst_.scene->world;
@@ -211,20 +200,8 @@ void VolumeModule::sync_world()
     }
   }
 
-  PassSimple::Sub &ps = world_ps_.sub("World Volume");
-  if (material) {
-    ps.material_set(*inst_.manager, material);
-    if (volume_sub_pass(ps, nullptr, nullptr, material)) {
-      enabled_ = true;
-    }
-  }
-  else {
-    /* If no world or volume material is present just clear the buffer. */
-    ps.shader_set(inst_.shaders.static_shader_get(VOLUME_CLEAR));
-  }
-  ps.dispatch(math::divide_ceil(data_.tex_size, int3(VOLUME_GROUP_SIZE)));
-  /* Sync with object property pass. */
-  ps.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
+  enabled_ = material != nullptr;
+  inst_.pipelines.world_volume.sync(material);
 }
 
 void VolumeModule::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHandle res_handle)
@@ -374,7 +351,7 @@ void VolumeModule::draw_compute(View &view)
 
   DRW_stats_group_start("Volumes");
 
-  inst_.manager->submit(world_ps_, view);
+  inst_.pipelines.world_volume.render(view);
   inst_.pipelines.volume.render(view);
 
   inst_.manager->submit(scatter_ps_, view);

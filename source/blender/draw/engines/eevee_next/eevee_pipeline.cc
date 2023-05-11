@@ -14,6 +14,8 @@
 
 #include "eevee_pipeline.hh"
 
+#include "draw_common.hh"
+
 namespace blender::eevee {
 
 /* -------------------------------------------------------------------- */
@@ -56,6 +58,40 @@ void WorldPipeline::sync(GPUMaterial *gpumat)
 }
 
 void WorldPipeline::render(View &view)
+{
+  inst_.manager->submit(world_ps_, view);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name World Volume Pipeline
+ *
+ * \{ */
+
+void WorldVolumePipeline::sync(GPUMaterial *gpumat)
+{
+  world_ps_.init();
+  world_ps_.state_set(DRW_STATE_WRITE_COLOR);
+  inst_.volume.bind_properties_buffers(world_ps_);
+  inst_.lights.bind_resources(&world_ps_);
+  inst_.shadows.bind_resources(&world_ps_);
+
+  PassSimple::Sub &ps = world_ps_.sub("World Volume");
+  if (gpumat) {
+    ps.material_set(*inst_.manager, gpumat);
+    volume_sub_pass(ps, nullptr, nullptr, gpumat);
+  }
+  else {
+    /* If no world or volume material is present just clear the buffer. */
+    ps.shader_set(inst_.shaders.static_shader_get(VOLUME_CLEAR));
+  }
+  ps.dispatch(math::divide_ceil(inst_.volume.grid_size(), int3(VOLUME_GROUP_SIZE)));
+  /* Sync with object property pass. */
+  ps.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
+}
+
+void WorldVolumePipeline::render(View &view)
 {
   inst_.manager->submit(world_ps_, view);
 }
@@ -440,7 +476,8 @@ void DeferredLayer::render(View &view,
   GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(gbuffer_ps_, view);
 
-  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE | GPU_TEXTURE_USAGE_ATTACHMENT;
+  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE |
+                           GPU_TEXTURE_USAGE_ATTACHMENT;
   diffuse_light_tx_.acquire(extent, GPU_RGBA16F, usage);
   specular_light_tx_.acquire(extent, GPU_RGBA16F, usage);
   diffuse_light_tx_.clear(float4(0.0f));

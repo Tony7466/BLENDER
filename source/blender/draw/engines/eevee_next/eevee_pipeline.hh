@@ -44,6 +44,26 @@ class WorldPipeline {
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Volume World Pipeline
+ *
+ * \{ */
+
+class WorldVolumePipeline {
+ private:
+  Instance &inst_;
+
+  PassSimple world_ps_ = {"World.Volume"};
+
+ public:
+  WorldVolumePipeline(Instance &inst) : inst_(inst){};
+
+  void sync(GPUMaterial *gpumat);
+  void render(View &view);
+};
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Shadow Pass
  *
  * \{ */
@@ -290,6 +310,7 @@ class UtilityTexture : public Texture {
 class PipelineModule {
  public:
   WorldPipeline world;
+  WorldVolumePipeline world_volume;
   DeferredPipeline deferred;
   ForwardPipeline forward;
   ShadowPipeline shadow;
@@ -299,7 +320,12 @@ class PipelineModule {
 
  public:
   PipelineModule(Instance &inst)
-      : world(inst), deferred(inst), forward(inst), shadow(inst), volume(inst){};
+      : world(inst),
+        world_volume(inst),
+        deferred(inst),
+        forward(inst),
+        shadow(inst),
+        volume(inst){};
 
   void begin_sync()
   {

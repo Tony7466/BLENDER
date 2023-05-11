@@ -48,8 +48,6 @@ class VolumeModule {
   VolumesInfoDataBuf data_;
 
   /* Material Parameters */
-  /** NOTE: The objects pass is in VolumePipeline (PipelineModule). */
-  PassSimple world_ps_ = {"Volumes.World"};
   Framebuffer volumetric_fb_;
   Texture prop_scattering_tx_;
   Texture prop_extinction_tx_;
@@ -119,6 +117,11 @@ class VolumeModule {
     ps.bind_image(VOLUME_PROP_EXTINCTION_TEX_SLOT, &prop_extinction_tx_);
     ps.bind_image(VOLUME_PROP_EMISSION_TEX_SLOT, &prop_emission_tx_);
     ps.bind_image(VOLUME_PROP_PHASE_TEX_SLOT, &prop_phase_tx_);
+  }
+
+  int3 grid_size()
+  {
+    return data_.tex_size;
   }
 
   void init();
