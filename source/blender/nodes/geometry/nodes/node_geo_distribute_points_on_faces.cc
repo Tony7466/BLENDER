@@ -343,7 +343,7 @@ static void compute_normal_outputs(const Mesh &mesh,
     }
     case ATTR_DOMAIN_FACE: {
       const Span<float3> poly_normals = mesh.poly_normals();
-      bke::mesh_surface_sample::sample_face_attribute(mesh.looptris(),
+      bke::mesh_surface_sample::sample_face_attribute(mesh.looptri_polys(),
                                                       looptri_indices,
                                                       VArray<float3>::ForSpan(poly_normals),
                                                       IndexMask(looptri_indices.index_range()),

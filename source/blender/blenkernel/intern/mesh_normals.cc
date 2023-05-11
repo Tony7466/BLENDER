@@ -1494,7 +1494,8 @@ void normals_calc_loop(const Span<float3> vert_positions,
 
   CornerNormalSpaceArray _lnors_spacearr;
 
-#ifdef DEBUG_TIME SCOPED_TIMER_AVERAGED(__func__);
+#ifdef DEBUG_TIME
+  SCOPED_TIMER_AVERAGED(__func__);
 #endif
 
   if (!r_lnors_spacearr && custom_normals_data) {
