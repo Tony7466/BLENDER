@@ -71,7 +71,7 @@ void Instance::init(const int2 &output_res,
   motion_blur.init();
   main_view.init();
   irradiance_cache.init();
-  volumes.init();
+  volume.init();
 }
 
 void Instance::set_time(float time)
@@ -106,7 +106,7 @@ void Instance::begin_sync()
   velocity.begin_sync(); /* NOTE: Also syncs camera. */
   lights.begin_sync();
   shadows.begin_sync();
-  volumes.begin_sync();
+  volume.begin_sync();
   pipelines.begin_sync();
   cryptomatte.begin_sync();
 
@@ -175,7 +175,7 @@ void Instance::object_sync(Object *ob)
         sync.sync_mesh(ob, ob_handle, res_handle, ob_ref);
         break;
       case OB_VOLUME:
-        volumes.sync_object(ob, ob_handle, res_handle);
+        volume.sync_object(ob, ob_handle, res_handle);
         break;
       case OB_CURVES:
         sync.sync_curves(ob, ob_handle, res_handle);
@@ -211,7 +211,7 @@ void Instance::end_sync()
   film.end_sync();
   cryptomatte.end_sync();
   pipelines.end_sync();
-  volumes.end_sync();
+  volume.end_sync();
 }
 
 void Instance::render_sync()

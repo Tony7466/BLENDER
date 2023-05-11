@@ -32,7 +32,7 @@
 #include "eevee_shadow.hh"
 #include "eevee_sync.hh"
 #include "eevee_view.hh"
-#include "eevee_volumes.hh"
+#include "eevee_volume.hh"
 #include "eevee_world.hh"
 
 namespace blender::eevee {
@@ -65,7 +65,7 @@ class Instance {
   MainView main_view;
   World world;
   IrradianceCache irradiance_cache;
-  VolumeModule volumes;
+  VolumeModule volume;
 
   /** Input data. */
   Depsgraph *depsgraph;
@@ -111,7 +111,7 @@ class Instance {
         main_view(*this),
         world(*this),
         irradiance_cache(*this),
-        volumes(*this){};
+        volume(*this){};
   ~Instance(){};
 
   void init(const int2 &output_res,

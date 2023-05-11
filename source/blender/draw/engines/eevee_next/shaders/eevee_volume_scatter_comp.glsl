@@ -48,7 +48,7 @@ void main()
 {
   ivec3 froxel = ivec3(gl_GlobalInvocationID);
 
-  if (any(greaterThanEqual(froxel, volumes_buf.tex_size))) {
+  if (any(greaterThanEqual(froxel, volumes_info_buf.tex_size))) {
     return;
   }
 
@@ -57,7 +57,7 @@ void main()
   vec3 transmittance = imageLoad(in_extinction_img, froxel).rgb;
   vec3 s_scattering = imageLoad(in_scattering_img, froxel).rgb;
 
-  vec3 volume_ndc = volume_to_ndc((vec3(froxel) + volumes_buf.jitter) * volumes_buf.inv_tex_size);
+  vec3 volume_ndc = volume_to_ndc((vec3(froxel) + volumes_info_buf.jitter) * volumes_info_buf.inv_tex_size);
   vec3 vP = get_view_space_from_depth(volume_ndc.xy, volume_ndc.z);
   vec3 P = point_view_to_world(vP);
   vec3 V = cameraVec(P);
@@ -74,8 +74,8 @@ void main()
   }
   LIGHT_FOREACH_END
 
-  vec2 pixel = (vec2(froxel.xy) + vec2(0.5)) / vec2(volumes_buf.tex_size.xy) /
-               volumes_buf.viewport_size_inv;
+  vec2 pixel = (vec2(froxel.xy) + vec2(0.5)) / vec2(volumes_info_buf.tex_size.xy) /
+               volumes_info_buf.viewport_size_inv;
 
   LIGHT_FOREACH_BEGIN_LOCAL (light_cull_buf, light_zbin_buf, light_tile_buf, pixel, vP.z, l_idx) {
     scattering += volume_scatter_light_eval(P, V, l_idx, s_anisotropy) * s_scattering;

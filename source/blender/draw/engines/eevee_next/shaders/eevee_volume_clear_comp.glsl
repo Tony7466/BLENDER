@@ -3,7 +3,7 @@ void main()
 {
   ivec3 froxel = ivec3(gl_GlobalInvocationID);
 
-  if (any(greaterThanEqual(froxel, volumes_buf.tex_size))) {
+  if (any(greaterThanEqual(froxel, volumes_info_buf.tex_size))) {
     return;
   }
 

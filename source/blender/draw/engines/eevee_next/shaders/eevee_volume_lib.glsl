@@ -8,9 +8,9 @@
 /* Volume slice to view space depth. */
 float volume_z_to_view_z(float z)
 {
-  float near = volumes_buf.depth_near;
-  float far = volumes_buf.depth_far;
-  float distribution = volumes_buf.depth_distribution;
+  float near = volumes_info_buf.depth_near;
+  float far = volumes_info_buf.depth_far;
+  float distribution = volumes_info_buf.depth_distribution;
 
   bool is_persp = ProjectionMatrix[3][3] == 0.0;
   if (is_persp) {
@@ -25,9 +25,9 @@ float volume_z_to_view_z(float z)
 
 float view_z_to_volume_z(float depth)
 {
-  float near = volumes_buf.depth_near;
-  float far = volumes_buf.depth_far;
-  float distribution = volumes_buf.depth_distribution;
+  float near = volumes_info_buf.depth_near;
+  float far = volumes_info_buf.depth_far;
+  float distribution = volumes_info_buf.depth_distribution;
 
   bool is_persp = ProjectionMatrix[3][3] == 0.0;
   if (is_persp) {
@@ -45,7 +45,7 @@ vec3 volume_to_ndc(vec3 coord)
 {
   coord.z = volume_z_to_view_z(coord.z);
   coord.z = get_depth_from_view_z(coord.z);
-  coord.xy /= volumes_buf.coord_scale;
+  coord.xy /= volumes_info_buf.coord_scale;
   return coord;
 }
 
@@ -54,7 +54,7 @@ vec3 ndc_to_volume(vec3 coord)
   /** NOTE: Keep in sync with to_global_grid_coords. */
   coord.z = get_view_z_from_depth(coord.z);
   coord.z = view_z_to_volume_z(coord.z);
-  coord.xy *= volumes_buf.coord_scale;
+  coord.xy *= volumes_info_buf.coord_scale;
   return coord;
 }
 
@@ -78,7 +78,7 @@ vec3 light_volume(LightData ld, vec4 l_vector)
   if (ld.type != LIGHT_SUN) {
 
     float volume_radius_squared = ld.radius_squared;
-    float light_clamp = volumes_buf.light_clamp;
+    float light_clamp = volumes_info_buf.light_clamp;
     if (light_clamp != 0.0) {
       /* 0.0 light clamp means it's disabled. */
       float max_power = max_v3(ld.color) * ld.volume_power;
@@ -156,7 +156,7 @@ vec3 light_volume_shadow(LightData ld, vec3 ray_wpos, vec4 l_vector)
   /* TODO (Miguel Pozo) */
 #if 0 && defined(VOLUME_SHADOW)
   /* If light is shadowed, use the shadow vector, if not, reuse the light vector. */
-  if (volumes_buf.use_soft_shadows && ld.shadowid >= 0.0) {
+  if (volumes_info_buf.use_soft_shadows && ld.shadowid >= 0.0) {
     ShadowData sd = shadows_data[int(ld.shadowid)];
 
     if (ld.type == LIGHT_SUN) {
@@ -170,8 +170,8 @@ vec3 light_volume_shadow(LightData ld, vec3 ray_wpos, vec4 l_vector)
   }
 
   /* Heterogeneous volume shadows. */
-  float dd = l_vector.w / volumes_buf.shadow_steps;
-  vec3 L = l_vector.xyz / volumes_buf.shadow_steps;
+  float dd = l_vector.w / volumes_info_buf.shadow_steps;
+  vec3 L = l_vector.xyz / volumes_info_buf.shadow_steps;
 
   if (ld.type == LIGHT_SUN) {
     /* For sun light we scan the whole frustum. So we need to get the correct endpoints. */
@@ -184,13 +184,13 @@ vec3 light_volume_shadow(LightData ld, vec3 ray_wpos, vec4 l_vector)
 
     vec4 L_hom = ViewMatrixInverse * (ProjectionMatrixInverse * vec4(frustum_isect, 1.0));
     L = (L_hom.xyz / L_hom.w) - ray_wpos;
-    L /= volumes_buf.shadow_steps;
+    L /= volumes_info_buf.shadow_steps;
     dd = length(L);
   }
 
 #  if 0 /* TODO use shadow maps instead. */
   vec3 shadow = vec3(1.0);
-  for (float s = 1.0; s < VOLUMETRIC_SHADOW_MAX_STEP && s <= volumes_buf.shadow_steps; s += 1.0) {
+  for (float s = 1.0; s < VOLUMETRIC_SHADOW_MAX_STEP && s <= volumes_info_buf.shadow_steps; s += 1.0) {
     vec3 pos = ray_wpos + L * s;
     vec3 s_extinction = participating_media_extinction(pos, volume_extinction);
     shadow *= exp(-s_extinction * dd);

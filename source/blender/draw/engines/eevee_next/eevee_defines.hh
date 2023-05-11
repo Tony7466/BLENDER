@@ -88,7 +88,7 @@
 
 /* Volumes. */
 #define VOLUME_GROUP_SIZE 4
-#define VOLUME_2D_GROUP_SIZE 8
+#define VOLUME_INTEGRATION_GROUP_SIZE 8
 
 /* Resource bindings. */
 
@@ -129,7 +129,7 @@
 
 #define CAMERA_BUF_SLOT 6
 
-#define VOLUMES_BUF_SLOT 7
+#define VOLUMES_INFO_BUF_SLOT 7
 
 /* Storage Buffers. */
 #define LIGHT_CULL_BUF_SLOT 0

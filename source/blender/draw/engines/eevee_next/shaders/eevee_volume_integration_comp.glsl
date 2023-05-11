@@ -10,7 +10,7 @@
 void main()
 {
   ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
-  ivec3 tex_size = volumes_buf.tex_size;
+  ivec3 tex_size = volumes_info_buf.tex_size;
 
   if (any(greaterThanEqual(texel, tex_size.xy))) {
     return;

@@ -117,7 +117,7 @@ void main()
 
 #ifdef MAT_TRANSPARENT
   /* Volumetric resolve and compositing. */
-  vec2 uvs = gl_FragCoord.xy * volumes_buf.viewport_size_inv;
+  vec2 uvs = gl_FragCoord.xy * volumes_info_buf.viewport_size_inv;
   VolumeResolveSample vol = volumetric_resolve(
       vec3(uvs, gl_FragCoord.z), volume_scattering_tx, volume_transmittance_tx);
 

@@ -126,7 +126,7 @@ void SyncModule::sync_mesh(Object *ob,
   bool use_volume_material = material_array.gpu_materials[0] &&
                              GPU_material_has_volume_output(material_array.gpu_materials[0]);
   if (use_volume_material) {
-    inst_.volumes.sync_object(ob, ob_handle, res_handle);
+    inst_.volume.sync_object(ob, ob_handle, res_handle);
   }
 
   if ((ob->dt < OB_SOLID) && !DRW_state_is_scene_render()) {

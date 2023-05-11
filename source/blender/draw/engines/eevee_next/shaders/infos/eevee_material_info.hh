@@ -194,7 +194,7 @@ GPU_SHADER_CREATE_INFO(eevee_volume_material_common)
     .compute_source("eevee_volume_material_comp.glsl")
     .local_group_size(VOLUME_GROUP_SIZE, VOLUME_GROUP_SIZE, VOLUME_GROUP_SIZE)
     .define("VOLUMETRICS")
-    .uniform_buf(VOLUMES_BUF_SLOT, "VolumesData", "volumes_buf")
+    .uniform_buf(VOLUMES_INFO_BUF_SLOT, "VolumesInfoData", "volumes_info_buf")
     .additional_info("draw_resource_id_uniform",
                      "draw_object_infos_new",
                      "draw_volume_infos",

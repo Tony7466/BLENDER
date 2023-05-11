@@ -430,7 +430,7 @@ BLI_STATIC_ASSERT_ALIGN(MotionBlurTileIndirection, 16)
 /** \name Volumes
  * \{ */
 
-struct VolumesData {
+struct VolumesInfoData {
   float2 coord_scale;
   float2 viewport_size_inv;
   packed_int3 tex_size;
@@ -444,7 +444,7 @@ struct VolumesData {
   float depth_far;
   float depth_distribution;
 };
-BLI_STATIC_ASSERT_ALIGN(VolumesData, 16)
+BLI_STATIC_ASSERT_ALIGN(VolumesInfoData, 16)
 
 /** \} */
 
@@ -993,7 +993,7 @@ using ShadowTileDataBuf = draw::StorageArrayBuffer<ShadowTileDataPacked, SHADOW_
 using VelocityGeometryBuf = draw::StorageArrayBuffer<float4, 16, true>;
 using VelocityIndexBuf = draw::StorageArrayBuffer<VelocityIndex, 16>;
 using VelocityObjectBuf = draw::StorageArrayBuffer<float4x4, 16>;
-using VolumesDataBuf = draw::UniformBuffer<VolumesData>;
+using VolumesInfoDataBuf = draw::UniformBuffer<VolumesInfoData>;
 using CryptomatteObjectBuf = draw::StorageArrayBuffer<float2, 16>;
 
 }  // namespace blender::eevee

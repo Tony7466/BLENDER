@@ -123,7 +123,7 @@ void ShadingView::render()
   /* TODO(fclem): Move it after the first prepass (and hiz update) once pipeline is stabilized. */
   inst_.lights.set_view(render_view_new_, extent_);
 
-  inst_.volumes.draw_compute(render_view_new_);
+  inst_.volume.draw_compute(render_view_new_);
 
   inst_.pipelines.deferred.render(render_view_new_, prepass_fb_, combined_fb_, extent_);
 
@@ -134,7 +134,7 @@ void ShadingView::render()
   inst_.pipelines.forward.render_opaque(
       render_view_new_, prepass_fb_, combined_fb_, rbufs.combined_tx);
 
-  inst_.volumes.draw_resolve(render_view_new_);
+  inst_.volume.draw_resolve(render_view_new_);
 
   inst_.pipelines.forward.render_transparent(render_view_new_, combined_fb_, rbufs.combined_tx);
 

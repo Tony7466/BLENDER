@@ -3,7 +3,9 @@
 /** \file
  * \ingroup draw_engine
  *
- * Volumetric effects rendering using frostbite approach.
+ * Volumetric effects rendering using Frostbite's Physically-based & Unified Volumetric Rendering
+ * approach.
+ * https://www.ea.com/frostbite/news/physically-based-unified-volumetric-rendering-in-frostbite
  *
  * The rendering is separated in 4 stages:
  *
@@ -43,7 +45,7 @@ class VolumeModule {
 
   bool enabled_;
 
-  VolumesDataBuf data_;
+  VolumesInfoDataBuf data_;
 
   /* Material Parameters */
   /** NOTE: The objects pass is in VolumePipeline (PipelineModule). */
@@ -83,7 +85,7 @@ class VolumeModule {
     int3 min, max;
 
     /* Returns true if visible. */
-    bool init(Object *ob, const Camera &camera, const VolumesDataBuf &data);
+    bool init(Object *ob, const Camera &camera, const VolumesInfoDataBuf &data);
 
     bool overlaps(const GridAABB &aabb);
   };
@@ -93,14 +95,18 @@ class VolumeModule {
   Map<GPUShader *, Vector<GridAABB>> subpass_aabbs_;
 
  public:
-  VolumeModule(Instance &inst) : inst_(inst){};
+  VolumeModule(Instance &inst) : inst_(inst)
+  {
+    dummy_scatter_tx_.ensure_3d(GPU_RGBA8, int3(1), GPU_TEXTURE_USAGE_SHADER_READ, float4(0.0f));
+    dummy_transmit_tx_.ensure_3d(GPU_RGBA8, int3(1), GPU_TEXTURE_USAGE_SHADER_READ, float4(1.0f));
+  };
 
   ~VolumeModule(){};
 
   /* Bind resources needed by external passes to perform their own resolve. */
   template<typename PassType> void bind_resources(PassType &ps)
   {
-    ps.bind_ubo(VOLUMES_BUF_SLOT, data_);
+    ps.bind_ubo(VOLUMES_INFO_BUF_SLOT, data_);
     ps.bind_texture(VOLUME_SCATTERING_TEX_SLOT, &transparent_pass_scatter_tx_);
     ps.bind_texture(VOLUME_TRANSMITTANCE_TEX_SLOT, &transparent_pass_transmit_tx_);
   }
@@ -108,7 +114,7 @@ class VolumeModule {
   /* Bind the common resources needed by all volumetric passes. */
   template<typename PassType> void bind_properties_buffers(PassType &ps)
   {
-    ps.bind_ubo(VOLUMES_BUF_SLOT, data_);
+    ps.bind_ubo(VOLUMES_INFO_BUF_SLOT, data_);
     ps.bind_image(VOLUME_PROP_SCATTERING_TEX_SLOT, &prop_scattering_tx_);
     ps.bind_image(VOLUME_PROP_EXTINCTION_TEX_SLOT, &prop_extinction_tx_);
     ps.bind_image(VOLUME_PROP_EMISSION_TEX_SLOT, &prop_emission_tx_);

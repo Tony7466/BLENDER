@@ -3,7 +3,10 @@
 /** \file
  * \ingroup draw_engine
  *
- * Volumetric effects rendering using frostbite approach.
+ * Volumetric effects rendering using Frostbite's Physically-based & Unified Volumetric Rendering
+ * approach.
+ * https://www.ea.com/frostbite/news/physically-based-unified-volumetric-rendering-in-frostbite
+ *
  */
 
 #include "DRW_render.h"
@@ -40,7 +43,7 @@
 #include "eevee_pipeline.hh"
 #include "eevee_shader.hh"
 
-#include "eevee_volumes.hh"
+#include "eevee_volume.hh"
 
 #define LOOK_DEV_STUDIO_LIGHT_ENABLED(v3d) \
   ((v3d) && (((v3d->shading.type == OB_MATERIAL) && \
@@ -50,14 +53,15 @@
 
 namespace blender::eevee {
 
-bool VolumeModule::GridAABB::init(Object *ob, const Camera &camera, const VolumesDataBuf &data)
+bool VolumeModule::GridAABB::init(Object *ob, const Camera &camera, const VolumesInfoDataBuf &data)
 {
+  /* Returns the unified volume grid cell index of a world space coordinate. */
   auto to_global_grid_coords = [&](float3 wP) -> int3 {
     const float4x4 &view_matrix = camera.data_get().viewmat;
     const float4x4 &perspective_matrix = camera.data_get().winmat * view_matrix;
 
     /** NOTE: Keep in sync with ndc_to_volume. */
-    float view_z = (view_matrix * float4(wP, 1.0)).z;
+    float view_z = math::transform_point(view_matrix, wP).z;
 
     float volume_z;
     if (camera.is_orthographic()) {
@@ -67,15 +71,14 @@ bool VolumeModule::GridAABB::init(Object *ob, const Camera &camera, const Volume
       volume_z = data.depth_distribution * log2(view_z * data.depth_far + data.depth_near);
     }
 
-    float4 grid_coords = perspective_matrix * float4(wP, 1.0);
-    grid_coords /= grid_coords.w;
-    grid_coords = (grid_coords * 0.5f) + float4(0.5f);
+    float3 grid_coords = math::project_point(perspective_matrix, wP);
+    grid_coords = (grid_coords * 0.5f) + float3(0.5f);
 
     grid_coords.x *= data.coord_scale.x;
     grid_coords.y *= data.coord_scale.y;
     grid_coords.z = volume_z;
 
-    return int3(grid_coords.xyz() * float3(data.tex_size));
+    return int3(grid_coords * float3(data.tex_size));
   };
 
   const BoundBox &bbox = *BKE_object_boundbox_get(ob);
@@ -83,7 +86,7 @@ bool VolumeModule::GridAABB::init(Object *ob, const Camera &camera, const Volume
   max = int3(INT32_MIN);
 
   for (float3 corner : bbox.vec) {
-    corner = (float4x4(ob->object_to_world) * float4(corner, 1.0)).xyz();
+    corner = math::transform_point(float4x4(ob->object_to_world), corner);
     int3 grid_coord = to_global_grid_coords(corner);
     min = math::min(min, grid_coord);
     max = math::max(max, grid_coord);
@@ -118,11 +121,11 @@ void VolumeModule::init()
 
   const Scene *scene_eval = inst_.scene;
 
-  const float3 viewport_size = DRW_viewport_size_get();
+  const float2 viewport_size = float2(inst_.film.render_extent_get());
   const int tile_size = scene_eval->eevee.volumetric_tile_size;
 
   /* Find Froxel Texture resolution. */
-  int3 tex_size = int3(math::ceil(math::max(float3(1.0f), viewport_size / float(tile_size))));
+  int3 tex_size = int3(math::ceil(math::max(float2(1.0f), viewport_size / float(tile_size))), 0);
   tex_size.z = std::max(1, scene_eval->eevee.volumetric_samples);
 
   /* Clamp 3D texture size based on device maximum. */
@@ -130,8 +133,8 @@ void VolumeModule::init()
   BLI_assert(tex_size == math::min(tex_size, max_size));
   tex_size = math::min(tex_size, max_size);
 
-  data_.coord_scale = float2(viewport_size) / float2(tile_size * tex_size);
-  data_.viewport_size_inv = 1.0f / float2(viewport_size);
+  data_.coord_scale = viewport_size / float2(tile_size * tex_size);
+  data_.viewport_size_inv = 1.0f / viewport_size;
 
   /* TODO: compute snap to maxZBuffer for clustered rendering. */
   if (data_.tex_size != tex_size) {
@@ -303,10 +306,6 @@ void VolumeModule::end_sync()
     integrated_scatter_tx_.free();
     integrated_transmit_tx_.free();
 
-    float4 scatter = float4(0.0f);
-    float4 transmit = float4(1.0f);
-    dummy_scatter_tx_.ensure_3d(GPU_RGBA8, int3(1), GPU_TEXTURE_USAGE_SHADER_READ, scatter);
-    dummy_transmit_tx_.ensure_3d(GPU_RGBA8, int3(1), GPU_TEXTURE_USAGE_SHADER_READ, transmit);
     transparent_pass_scatter_tx_ = dummy_scatter_tx_;
     transparent_pass_transmit_tx_ = dummy_transmit_tx_;
 
@@ -347,14 +346,15 @@ void VolumeModule::end_sync()
 
   integration_ps_.init();
   integration_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_INTEGRATION));
-  integration_ps_.bind_ubo(VOLUMES_BUF_SLOT, data_);
+  integration_ps_.bind_ubo(VOLUMES_INFO_BUF_SLOT, data_);
   integration_ps_.bind_texture("in_scattering_tx", &scatter_tx_);
   integration_ps_.bind_texture("in_extinction_tx", &extinction_tx_);
   integration_ps_.bind_image("out_scattering_img", &integrated_scatter_tx_);
   integration_ps_.bind_image("out_transmittance_img", &integrated_transmit_tx_);
   /* Sync with the scatter pass. */
   integration_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH);
-  integration_ps_.dispatch(math::divide_ceil(int2(data_.tex_size), int2(VOLUME_2D_GROUP_SIZE)));
+  integration_ps_.dispatch(
+      math::divide_ceil(int2(data_.tex_size), int2(VOLUME_INTEGRATION_GROUP_SIZE)));
 
   resolve_ps_.init();
   resolve_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);

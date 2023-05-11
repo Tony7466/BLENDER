@@ -187,7 +187,7 @@ void ForwardPipeline::sync()
 
     inst_.lights.bind_resources(&sub);
     inst_.shadows.bind_resources(&sub);
-    inst_.volumes.bind_resources(sub);
+    inst_.volume.bind_resources(sub);
     inst_.sampling.bind_resources(&sub);
   }
 }
@@ -521,7 +521,7 @@ void VolumePipeline::sync()
 {
   volume_ps_.init();
   volume_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
-  inst_.volumes.bind_properties_buffers(volume_ps_);
+  inst_.volume.bind_properties_buffers(volume_ps_);
   inst_.sampling.bind_resources(&volume_ps_);
 }
 
