@@ -3348,7 +3348,7 @@ static bool screen_maximize_area_poll(bContext *C)
          /* Don't change temporary screens. */
          !WM_window_is_temp_screen(win) &&
          /* Don't maximize when dragging. */
-         !wm->drags.first;
+         !BLI_listbase_is_empty(&wm->drags);
 }
 
 static void SCREEN_OT_screen_full_area(wmOperatorType *ot)
