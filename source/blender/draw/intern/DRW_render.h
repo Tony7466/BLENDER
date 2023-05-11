@@ -877,6 +877,14 @@ bool DRW_object_is_renderable(const struct Object *ob);
  * This will not be the case when one of the objects are influenced by modifiers.
  */
 bool DRW_object_is_in_edit_mode(const struct Object *ob);
+
+/**
+ * Should `ob` be used for occlusion in selection when in weight and vertex paint mode, this
+ * is needed for when retopology overlay is enabled to still be able to render IDs for face
+ * and vertex selection.
+ */
+bool DRW_object_should_not_occlude(const Object *ob);
+
 /**
  * Return whether this object is visible depending if
  * we are rendering or drawing in the viewport.

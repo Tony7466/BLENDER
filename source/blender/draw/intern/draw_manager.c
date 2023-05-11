@@ -210,6 +210,21 @@ bool DRW_object_is_in_edit_mode(const Object *ob)
   return false;
 }
 
+bool DRW_object_should_not_occlude(const Object *ob)
+{
+  if (DRW_object_is_in_edit_mode(ob)) {
+    return true;
+  }
+  if (ob->type == OB_MESH && (ob->mode & OB_MODE_VERTEX_PAINT) ||
+      (ob->mode & OB_MODE_WEIGHT_PAINT)) {
+    Mesh *me = ob->data;
+    if ((ME_EDIT_PAINT_SEL_MODE(me))) {
+      return true;
+    }
+  }
+  return false;
+}
+
 int DRW_object_visibility_in_active_context(const Object *ob)
 {
   const eEvaluationMode mode = DRW_state_is_scene_render() ? DAG_EVAL_RENDER : DAG_EVAL_VIEWPORT;
@@ -2788,7 +2803,7 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *region, View3D *v3d, cons
            * It also has non-mesh objects however, which are not supported here. */
           continue;
         }
-        if (DRW_object_is_in_edit_mode(ob)) {
+        if (DRW_object_should_not_occlude(ob)) {
           /* Only background (non-edit) objects are used for occlusion. */
           continue;
         }

@@ -217,7 +217,7 @@ static void select_cache_populate(void *vedata, Object *ob)
 
   const bool retopology_occlusion = RETOPOLOGY_ENABLED(draw_ctx->v3d) &&
                                     !XRAY_ENABLED(draw_ctx->v3d);
-  if (retopology_occlusion && !DRW_object_is_in_edit_mode(ob)) {
+  if (retopology_occlusion && !DRW_object_should_not_occlude(ob)) {
     if (ob->dt >= OB_SOLID) {
       struct GPUBatch *geom_faces = DRW_mesh_batch_cache_get_surface(ob->data);
       DRW_shgroup_call_obmat(stl->g_data->shgrp_occlude, geom_faces, ob->object_to_world);
