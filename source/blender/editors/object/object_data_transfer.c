@@ -519,7 +519,8 @@ static int data_transfer_exec(bContext *C, wmOperator *op)
                                         mix_factor,
                                         NULL,
                                         false,
-                                        op->reports)) {
+                                        op->reports))
+      {
 
 
         DEG_id_tag_update(&ob_dst->id, ID_RECALC_GEOMETRY);
