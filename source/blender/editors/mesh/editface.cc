@@ -383,9 +383,24 @@ static int get_closest_edge_index(ARegion *region,
   return closest_edge_index;
 }
 
-static int get_opposing_edge_index()
+static int get_opposing_edge_index(blender::IndexRange &poly,
+                                   const blender::Span<int> corner_edges,
+                                   const int current_edge_index)
 {
-  return 1;
+  for (int i = 0; i < poly.size(); i++) {
+    const int edge_index = corner_edges[poly[i]];
+    /* Assumes that edge index of opposing face edge is always off by 2 on quads. */
+    if (edge_index != current_edge_index) {
+      continue;
+    }
+    if (i - 2 >= 0) {
+      return corner_edges[poly[i - 2]];
+    }
+    else {
+      return corner_edges[poly[i + 2]];
+    }
+  }
+  return -1;
 }
 
 void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const bool select)
@@ -438,6 +453,10 @@ void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const boo
   int current_poly_index = index;
   int current_edge_index = closest_edge_index;
 
+  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
+  const VArray<bool> hide_poly = *attributes.lookup_or_default<bool>(
+      ".hide_poly", ATTR_DOMAIN_FACE, false);
+
   while (current_edge_index > 0) {
     int next_poly_index;
     bool found_poly = false;
@@ -465,27 +484,18 @@ void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const boo
       break;
     }
 
+    /* Hidden polygons stop selection. */
+    if (hide_poly[next_poly_index]) {
+      break;
+    }
+
     polys_to_select.append(next_poly_index);
 
     IndexRange next_poly = polys[next_poly_index];
-    for (int i = 0; i < next_poly.size(); i++) {
-      const int edge_index = corner_edges[next_poly[i]];
-      /* Assumes that edge index of opposing face edge is always off by 2 on quads. */
-      if (edge_index != current_edge_index) {
-        continue;
-      }
-      if (i - 2 >= 0) {
-        current_edge_index = corner_edges[next_poly[i - 2]];
-      }
-      else {
-        current_edge_index = corner_edges[next_poly[i + 2]];
-      }
-      break;
-    }
+    current_edge_index = get_opposing_edge_index(next_poly, corner_edges, current_edge_index);
     current_poly_index = next_poly_index;
   }
 
-  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
   bke::SpanAttributeWriter<bool> select_poly = attributes.lookup_or_add_for_write_span<bool>(
       ".select_poly", ATTR_DOMAIN_FACE);
 
