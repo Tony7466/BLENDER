@@ -2184,7 +2184,7 @@ static int ntree_socket_add_exec(bContext *C, wmOperator *op)
   bNodeSocket *sock;
   if (active_sock) {
     /* Insert a copy of the active socket right after it. */
-    sock = ntreeInsertSocketInterface(
+    sock = blender::bke::ntreeInsertSocketInterface(
         ntree, in_out, active_sock->idname, active_sock->next, active_sock->name);
     /* XXX this only works for actual sockets, not interface templates! */
     // nodeSocketCopyValue(sock, &ntree_ptr, active_sock, &ntree_ptr);
@@ -2302,7 +2302,7 @@ static int ntree_socket_change_type_exec(bContext *C, wmOperator *op)
     return OPERATOR_FINISHED;
   }
 
-  nodeModifySocketType(ntree, nullptr, iosock, socket_type->idname);
+  blender::bke::nodeModifySocketType(ntree, nullptr, iosock, socket_type->idname);
 
   /* Need the extra update here because the loop above does not check for valid links in the node
    * group we're currently editing. */

@@ -142,7 +142,7 @@ static void composite_node_add_init(bNodeTree * /*bnodetree*/, bNode *bnode)
 static bool composite_node_tree_socket_type_valid(bNodeTreeType * /*ntreetype*/,
                                                   bNodeSocketType *socket_type)
 {
-  return nodeIsStaticSocketType(socket_type) &&
+  return blender::bke::nodeIsStaticSocketType(socket_type) &&
          ELEM(socket_type->type, SOCK_FLOAT, SOCK_VECTOR, SOCK_RGBA);
 }
 

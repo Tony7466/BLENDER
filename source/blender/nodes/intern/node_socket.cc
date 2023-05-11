@@ -240,7 +240,7 @@ static void refresh_socket_list(bNodeTree &ntree,
   }
   LISTBASE_FOREACH_MUTABLE (bNodeSocket *, old_socket, &sockets) {
     if (!new_sockets.contains(old_socket)) {
-      nodeRemoveSocketEx(&ntree, &node, old_socket, do_id_user);
+      blender::bke::nodeRemoveSocketEx(&ntree, &node, old_socket, do_id_user);
     }
   }
   BLI_listbase_clear(&sockets);
@@ -537,7 +537,7 @@ static bNodeSocketType *make_standard_socket_type(int type, int subtype)
   const char *socket_idname = nodeStaticSocketType(type, subtype);
   const char *interface_idname = nodeStaticSocketInterfaceType(type, subtype);
   const char *socket_label = nodeStaticSocketLabel(type, subtype);
-  const char *socket_subtype_label = nodeSocketSubTypeLabel(subtype);
+  const char *socket_subtype_label = blender::bke::nodeSocketSubTypeLabel(subtype);
   bNodeSocketType *stype;
   StructRNA *srna;
 

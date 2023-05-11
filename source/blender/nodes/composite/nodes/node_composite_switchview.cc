@@ -53,7 +53,7 @@ static void cmp_node_switch_view_update(bNodeTree *ntree, bNode *node)
   }
 
   if (scene == nullptr) {
-    nodeRemoveAllSockets(ntree, node);
+    blender::bke::nodeRemoveAllSockets(ntree, node);
     /* make sure there is always one socket */
     cmp_node_switch_view_sanitycheck(ntree, node);
     return;

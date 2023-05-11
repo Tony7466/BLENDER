@@ -580,31 +580,12 @@ void ntreeBlendReadExpand(struct BlendExpander *expander, struct bNodeTree *ntre
 /** \name Node Tree Interface
  * \{ */
 
-struct bNodeSocket *ntreeFindSocketInterface(struct bNodeTree *ntree,
-                                             eNodeSocketInOut in_out,
-                                             const char *identifier);
+void ntreeRemoveSocketInterface(bNodeTree *ntree, bNodeSocket *sock);
+
 struct bNodeSocket *ntreeAddSocketInterface(struct bNodeTree *ntree,
                                             eNodeSocketInOut in_out,
                                             const char *idname,
                                             const char *name);
-struct bNodeSocket *ntreeInsertSocketInterface(struct bNodeTree *ntree,
-                                               eNodeSocketInOut in_out,
-                                               const char *idname,
-                                               struct bNodeSocket *next_sock,
-                                               const char *name);
-struct bNodeSocket *ntreeAddSocketInterfaceFromSocket(struct bNodeTree *ntree,
-                                                      const struct bNode *from_node,
-                                                      const struct bNodeSocket *from_sock);
-struct bNodeSocket *ntreeAddSocketInterfaceFromSocketWithName(struct bNodeTree *ntree,
-                                                              const struct bNode *from_node,
-                                                              const struct bNodeSocket *from_sock,
-                                                              const char *idname,
-                                                              const char *name);
-struct bNodeSocket *ntreeInsertSocketInterfaceFromSocket(struct bNodeTree *ntree,
-                                                         struct bNodeSocket *next_sock,
-                                                         const struct bNode *from_node,
-                                                         const struct bNodeSocket *from_sock);
-void ntreeRemoveSocketInterface(struct bNodeTree *ntree, struct bNodeSocket *sock);
 
 /** \} */
 
@@ -615,7 +596,6 @@ void ntreeRemoveSocketInterface(struct bNodeTree *ntree, struct bNodeSocket *soc
 struct bNodeType *nodeTypeFind(const char *idname);
 void nodeRegisterType(struct bNodeType *ntype);
 void nodeUnregisterType(struct bNodeType *ntype);
-bool nodeTypeUndefined(const struct bNode *node);
 struct GHashIterator *nodeTypeGetIterator(void);
 
 /* Helper macros for iterating over node types. */
@@ -639,11 +619,9 @@ bool nodeSocketIsRegistered(const struct bNodeSocket *sock);
 struct GHashIterator *nodeSocketTypeGetIterator(void);
 const char *nodeSocketTypeLabel(const bNodeSocketType *stype);
 
-bool nodeIsStaticSocketType(const struct bNodeSocketType *stype);
 const char *nodeStaticSocketType(int type, int subtype);
 const char *nodeStaticSocketInterfaceType(int type, int subtype);
 const char *nodeStaticSocketLabel(int type, int subtype);
-const char *nodeSocketSubTypeLabel(int subtype);
 
 /* Helper macros for iterating over node types. */
 #define NODE_SOCKET_TYPES_BEGIN(stype) \
@@ -678,24 +656,13 @@ struct bNodeSocket *nodeAddStaticSocket(struct bNodeTree *ntree,
                                         const char *identifier,
                                         const char *name);
 void nodeRemoveSocket(struct bNodeTree *ntree, struct bNode *node, struct bNodeSocket *sock);
-void nodeRemoveSocketEx(struct bNodeTree *ntree,
-                        struct bNode *node,
-                        struct bNodeSocket *sock,
-                        bool do_id_user);
-void nodeRemoveAllSockets(struct bNodeTree *ntree, struct bNode *node);
-void nodeModifySocketType(struct bNodeTree *ntree,
-                          struct bNode *node,
-                          struct bNodeSocket *sock,
-                          const char *idname);
+
 void nodeModifySocketTypeStatic(
     struct bNodeTree *ntree, struct bNode *node, struct bNodeSocket *sock, int type, int subtype);
 
 struct bNode *nodeAddNode(const struct bContext *C, struct bNodeTree *ntree, const char *idname);
 struct bNode *nodeAddStaticNode(const struct bContext *C, struct bNodeTree *ntree, int type);
-/**
- * \note Goes over entire tree.
- */
-void nodeUnlinkNode(struct bNodeTree *ntree, struct bNode *node);
+
 /**
  * Find the first available, non-duplicate name for a given node.
  */
@@ -705,13 +672,6 @@ void nodeUniqueName(struct bNodeTree *ntree, struct bNode *node);
  * index in the tree, which is an eagerly maintained cache.
  */
 void nodeUniqueID(struct bNodeTree *ntree, struct bNode *node);
-
-/**
- * Rebuild the `node_by_id` runtime vector set. Call after removing a node if not handled
- * separately. This is important instead of just using `nodes_by_id.remove()` since it maintains
- * the node order.
- */
-void nodeRebuildIDVector(struct bNodeTree *node_tree);
 
 /**
  * Delete node, associated animation data and ID user count.
@@ -724,47 +684,6 @@ void nodeRemoveNode(struct Main *bmain,
 void nodeDimensionsGet(const struct bNode *node, float *r_width, float *r_height);
 void nodeTagUpdateID(struct bNode *node);
 void nodeInternalLinks(struct bNode *node, struct bNodeLink **r_links, int *r_len);
-
-#ifdef __cplusplus
-
-namespace blender::bke {
-
-/**
- * \note keeps socket list order identical, for copying links.
- * \param use_unique: If true, make sure the node's identifier and name are unique in the new
- * tree. Must be *true* if the \a dst_tree had nodes that weren't in the source node's tree.
- * Must be *false* when simply copying a node tree, so that identifiers don't change.
- */
-bNode *node_copy_with_mapping(bNodeTree *dst_tree,
-                              const bNode &node_src,
-                              int flag,
-                              bool use_unique,
-                              Map<const bNodeSocket *, bNodeSocket *> &new_socket_map);
-
-bNode *node_copy(bNodeTree *dst_tree, const bNode &src_node, int flag, bool use_unique);
-
-/**
- * Move socket default from \a src (input socket) to locations specified by \a dst (output socket).
- * Result value moved in specific location. (potentially multiple group nodes socket values, if \a
- * dst is a group input node).
- * \note Conceptually, the effect should be such that the evaluation of
- * this graph again returns the value in src.
- */
-void node_socket_move_default_value(Main &bmain,
-                                    bNodeTree &tree,
-                                    bNodeSocket &src,
-                                    bNodeSocket &dst);
-
-/**
- * Free the node itself.
- *
- * \note ID user reference-counting and changing the `nodes_by_id` vector are up to the caller.
- */
-void node_free_node(bNodeTree *tree, bNode *node);
-
-}  // namespace blender::bke
-
-#endif
 
 /**
  * Also used via RNA API, so we check for proper input output direction.

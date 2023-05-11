@@ -24,34 +24,119 @@
 
 namespace blender::bke {
 
+/* -------------------------------------------------------------------- */
+/** \name Node Tree Interface
+ * \{ */
 
+bNodeSocket *ntreeFindSocketInterface(bNodeTree *ntree,
+                                      eNodeSocketInOut in_out,
+                                      const char *identifier);
 
-}
+bNodeSocket *ntreeInsertSocketInterface(bNodeTree *ntree,
+                                        eNodeSocketInOut in_out,
+                                        const char *idname,
+                                        bNodeSocket *next_sock,
+                                        const char *name);
+
+bNodeSocket *ntreeAddSocketInterfaceFromSocket(bNodeTree *ntree,
+                                               const bNode *from_node,
+                                               const bNodeSocket *from_sock);
+
+bNodeSocket *ntreeAddSocketInterfaceFromSocketWithName(bNodeTree *ntree,
+                                                       const bNode *from_node,
+                                                       const bNodeSocket *from_sock,
+                                                       const char *idname,
+                                                       const char *name);
+
+bNodeSocket *ntreeInsertSocketInterfaceFromSocket(bNodeTree *ntree,
+                                                  bNodeSocket *next_sock,
+                                                  const bNode *from_node,
+                                                  const bNodeSocket *from_sock);
+
+/** \} */
+
+bool nodeTypeUndefined(const bNode *node);
+
+bool nodeIsStaticSocketType(const bNodeSocketType *stype);
+
+const char *nodeSocketSubTypeLabel(int subtype);
+
+void nodeRemoveSocketEx(bNodeTree *ntree, bNode *node, bNodeSocket *sock, bool do_id_user);
+
+void nodeRemoveAllSockets(bNodeTree *ntree, bNode *node);
+
+void nodeModifySocketType(bNodeTree *ntree, bNode *node, bNodeSocket *sock, const char *idname);
+
+/**
+ * \note Goes over entire tree.
+ */
+void nodeUnlinkNode(bNodeTree *ntree, bNode *node);
+
+/**
+ * Rebuild the `node_by_id` runtime vector set. Call after removing a node if not handled
+ * separately. This is important instead of just using `nodes_by_id.remove()` since it maintains
+ * the node order.
+ */
+void nodeRebuildIDVector(bNodeTree *node_tree);
+
+/**
+ * \note keeps socket list order identical, for copying links.
+ * \param use_unique: If true, make sure the node's identifier and name are unique in the new
+ * tree. Must be *true* if the \a dst_tree had nodes that weren't in the source node's tree.
+ * Must be *false* when simply copying a node tree, so that identifiers don't change.
+ */
+bNode *node_copy_with_mapping(bNodeTree *dst_tree,
+                              const bNode &node_src,
+                              int flag,
+                              bool use_unique,
+                              Map<const bNodeSocket *, bNodeSocket *> &new_socket_map);
+
+bNode *node_copy(bNodeTree *dst_tree, const bNode &src_node, int flag, bool use_unique);
+
+/**
+ * Move socket default from \a src (input socket) to locations specified by \a dst (output socket).
+ * Result value moved in specific location. (potentially multiple group nodes socket values, if \a
+ * dst is a group input node).
+ * \note Conceptually, the effect should be such that the evaluation of
+ * this graph again returns the value in src.
+ */
+void node_socket_move_default_value(Main &bmain,
+                                    bNodeTree &tree,
+                                    bNodeSocket &src,
+                                    bNodeSocket &dst);
+
+/**
+ * Free the node itself.
+ *
+ * \note ID user reference-counting and changing the `nodes_by_id` vector are up to the caller.
+ */
+void node_free_node(bNodeTree *tree, bNode *node);
+
+}  // namespace blender::bke
 
 namespace blender::bke {
 
 /**
  * Set the mute status of a single link.
  */
-void nodeLinkSetMute( bNodeTree *ntree,  bNodeLink *link, const bool muted);
-bool nodeLinkIsSelected(const  bNodeLink *link);
-void nodeInternalRelink( bNodeTree *ntree,  bNode *node);
+void nodeLinkSetMute(bNodeTree *ntree, bNodeLink *link, const bool muted);
+bool nodeLinkIsSelected(const bNodeLink *link);
+void nodeInternalRelink(bNodeTree *ntree, bNode *node);
 
-void nodeToView(const  bNode *node, float x, float y, float *rx, float *ry);
-void nodeFromView(const  bNode *node, float x, float y, float *rx, float *ry);
+void nodeToView(const bNode *node, float x, float y, float *rx, float *ry);
+void nodeFromView(const bNode *node, float x, float y, float *rx, float *ry);
 
-void nodePositionRelative( bNode *from_node,
-                          const  bNode *to_node,
-                          const  bNodeSocket *from_sock,
-                          const  bNodeSocket *to_sock);
+void nodePositionRelative(bNode *from_node,
+                          const bNode *to_node,
+                          const bNodeSocket *from_sock,
+                          const bNodeSocket *to_sock);
 
-
-void nodePositionPropagate( bNode *node);
+void nodePositionPropagate(bNode *node);
 
 /**
  * \note Recursive.
  */
- bNode *nodeFindRootParent(bNode *node);
+bNode *nodeFindRootParent(bNode *node);
 
 /**
  * Iterate over a chain of nodes, starting with \a node_start, executing
@@ -102,7 +187,7 @@ struct bNodeLink *nodeFindLink(struct bNodeTree *ntree,
 
 struct bNode *nodeGetActivePaintCanvas(struct bNodeTree *ntree);
 
-}
+}  // namespace blender::bke
 
 namespace blender::bke {
 
@@ -133,7 +218,7 @@ bool nodeDeclarationEnsureOnOutdatedNode(struct bNodeTree *ntree, struct bNode *
  */
 void nodeSocketDeclarationsUpdate(struct bNode *node);
 
-}
+}  // namespace blender::bke
 
 namespace blender::bke {
 
@@ -144,7 +229,7 @@ BLI_INLINE bNodeInstanceHashIterator *node_instance_hash_iterator_new(bNodeInsta
   return BLI_ghashIterator_new(hash->ghash);
 }
 BLI_INLINE void node_instance_hash_iterator_init(bNodeInstanceHashIterator *iter,
-                                                     bNodeInstanceHash *hash)
+                                                 bNodeInstanceHash *hash)
 {
   BLI_ghashIterator_init(iter, hash->ghash);
 }
@@ -174,22 +259,21 @@ BLI_INLINE bool node_instance_hash_iterator_done(bNodeInstanceHashIterator *iter
        blender::bke::node_instance_hash_iterator_done(&iter_) == false; \
        blender::bke::node_instance_hash_iterator_step(&iter_))
 
-}
+}  // namespace blender::bke
 
 namespace blender::bke {
 
 /* Node Previews */
-bool node_preview_used(const  bNode *node);
-bNodePreview *node_preview_verify(bNodeInstanceHash *previews, bNodeInstanceKey key, int xsize, int ysize, bool create);
-bNodePreview *node_preview_copy( bNodePreview *preview);
-void node_preview_free( bNodePreview *preview);
+bool node_preview_used(const bNode *node);
+bNodePreview *node_preview_verify(
+    bNodeInstanceHash *previews, bNodeInstanceKey key, int xsize, int ysize, bool create);
+bNodePreview *node_preview_copy(bNodePreview *preview);
+void node_preview_free(bNodePreview *preview);
 
 void node_preview_init_tree(bNodeTree *ntree, int xsize, int ysize);
 void node_preview_remove_unused(bNodeTree *ntree);
 void node_preview_clear(bNodePreview *preview);
-void node_preview_merge_tree(bNodeTree *to_ntree,
-                             bNodeTree *from_ntree,
-                             bool remove_old);
+void node_preview_merge_tree(bNodeTree *to_ntree, bNodeTree *from_ntree, bool remove_old);
 
 /* -------------------------------------------------------------------- */
 /** \name Node Type Access

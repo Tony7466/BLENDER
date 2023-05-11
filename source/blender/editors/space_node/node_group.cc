@@ -529,7 +529,7 @@ static bool node_group_separate_selected(
     }
   }
   if (!make_copy) {
-    nodeRebuildIDVector(&ngroup);
+    blender::bke::nodeRebuildIDVector(&ngroup);
   }
 
   /* add internal links to the ntree */
@@ -844,7 +844,7 @@ static bNodeSocket *add_interface_from_socket(const bNodeTree &original_tree,
   const bNodeSocket &socket_for_name = prefer_node_for_interface_name(socket.owner_node()) ?
                                            socket :
                                            socket_for_io;
-  return ntreeAddSocketInterfaceFromSocketWithName(&tree_for_interface,
+  return blender::bke::ntreeAddSocketInterfaceFromSocketWithName(&tree_for_interface,
                                                    &node_for_io,
                                                    &socket_for_io,
                                                    socket_for_io.idname,
@@ -960,7 +960,7 @@ static void node_group_make_insert_selected(const bContext &C,
           if (socket->is_directly_linked()) {
             continue;
           }
-          const bNodeSocket *io_socket = ntreeAddSocketInterfaceFromSocket(&group, node, socket);
+          const bNodeSocket *io_socket = blender::bke::ntreeAddSocketInterfaceFromSocket(&group, node, socket);
           new_internal_links.append({node, socket, io_socket});
         }
       };
@@ -1012,7 +1012,7 @@ static void node_group_make_insert_selected(const bContext &C,
     BKE_ntree_update_tag_node_removed(&ntree);
     BKE_ntree_update_tag_node_new(&group, node);
   }
-  nodeRebuildIDVector(&ntree);
+  blender::bke::nodeRebuildIDVector(&ntree);
 
   /* Update input and output node first, since the group node declaration can depend on them. */
   nodes::update_node_declaration_and_sockets(group, *input_node);
