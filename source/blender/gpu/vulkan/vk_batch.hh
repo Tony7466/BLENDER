@@ -15,7 +15,7 @@ class VKIndexBuffer;
 
 class VKBatch : public Batch {
  public:
-  void draw(int v_first, int v_count, int i_first, int i_count) override;
+  void draw(int vertex_first, int vertex_count, int instance_first, int instance_count) override;
   void draw_indirect(GPUStorageBuf *indirect_buf, intptr_t offset) override;
   void multi_draw_indirect(GPUStorageBuf *indirect_buf,
                            int count,

@@ -14,7 +14,7 @@
 
 namespace blender::gpu {
 
-void VKBatch::draw(int v_first, int v_count, int i_first, int i_count)
+void VKBatch::draw(int vertex_first, int vertex_count, int instance_first, int instance_count)
 {
   /* Currently the pipeline is rebuild on each draw command. Clearing the dirty flag for
    * consistency with the internals of GPU module.  */
@@ -35,10 +35,10 @@ void VKBatch::draw(int v_first, int v_count, int i_first, int i_count)
     index_buffer->upload_data();
     index_buffer->bind(context);
     context.command_buffer_get().draw(
-        index_buffer->index_len_get(), i_count, index_buffer->index_start_get(), v_first, i_first);
+        index_buffer->index_len_get(), instance_count, index_buffer->index_start_get(), vertex_first, instance_first);
   }
   else {
-    context.command_buffer_get().draw(v_first, v_count, i_first, i_count);
+    context.command_buffer_get().draw(vertex_first, vertex_count, instance_first, instance_count);
   }
 
   context.command_buffer_get().submit();
