@@ -446,6 +446,33 @@ struct VolumesInfoData {
 };
 BLI_STATIC_ASSERT_ALIGN(VolumesInfoData, 16)
 
+/* Volume slice to view space depth. */
+static inline float volume_z_to_view_z(
+    float near, float far, float distribution, bool is_persp, float z)
+{
+  if (is_persp) {
+    /* Exponential distribution. */
+    return (exp2(z / distribution) - near) / far;
+  }
+  else {
+    /* Linear distribution. */
+    return near + (far - near) * z;
+  }
+}
+
+static inline float view_z_to_volume_z(
+    float near, float far, float distribution, bool is_persp, float depth)
+{
+  if (is_persp) {
+    /* Exponential distribution. */
+    return distribution * log2(depth * far + near);
+  }
+  else {
+    /* Linear distribution. */
+    return (depth - near) * distribution;
+  }
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

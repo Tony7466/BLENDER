@@ -11,16 +11,9 @@ float volume_z_to_view_z(float z)
   float near = volumes_info_buf.depth_near;
   float far = volumes_info_buf.depth_far;
   float distribution = volumes_info_buf.depth_distribution;
-
   bool is_persp = ProjectionMatrix[3][3] == 0.0;
-  if (is_persp) {
-    /* Exponential distribution. */
-    return (exp2(z / distribution) - near) / far;
-  }
-  else {
-    /* Linear distribution. */
-    return mix(near, far, z);
-  }
+  /* Implemented in eevee_shader_shared.cc */
+  return volume_z_to_view_z(near, far, distribution, is_persp, z);
 }
 
 float view_z_to_volume_z(float depth)
@@ -28,16 +21,9 @@ float view_z_to_volume_z(float depth)
   float near = volumes_info_buf.depth_near;
   float far = volumes_info_buf.depth_far;
   float distribution = volumes_info_buf.depth_distribution;
-
   bool is_persp = ProjectionMatrix[3][3] == 0.0;
-  if (is_persp) {
-    /* Exponential distribution. */
-    return distribution * log2(depth * far + near);
-  }
-  else {
-    /* Linear distribution. */
-    return (depth - near) * distribution;
-  }
+  /* Implemented in eevee_shader_shared.cc */
+  return view_z_to_volume_z(near, far, distribution, is_persp, depth);
 }
 
 /* Volume texture normalized coordinates to NDC (special range [0, 1]). */

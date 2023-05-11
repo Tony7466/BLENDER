@@ -62,18 +62,10 @@ bool VolumeModule::GridAABB::init(Object *ob, const Camera &camera, const Volume
 
     /** NOTE: Keep in sync with ndc_to_volume. */
     float view_z = math::transform_point(view_matrix, wP).z;
-
-    float volume_z;
-    if (camera.is_orthographic()) {
-      volume_z = (view_z - data.depth_near) * data.depth_distribution;
-    }
-    else {
-      volume_z = data.depth_distribution * log2(view_z * data.depth_far + data.depth_near);
-    }
-
+    float volume_z = view_z_to_volume_z(
+        data.depth_near, data.depth_far, data.depth_distribution, camera.is_perspective(), view_z);
     float3 grid_coords = math::project_point(perspective_matrix, wP);
     grid_coords = (grid_coords * 0.5f) + float3(0.5f);
-
     grid_coords.x *= data.coord_scale.x;
     grid_coords.y *= data.coord_scale.y;
     grid_coords.z = volume_z;
