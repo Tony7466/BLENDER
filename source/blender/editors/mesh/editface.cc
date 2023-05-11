@@ -403,7 +403,8 @@ static int get_opposing_edge_index(blender::IndexRange &poly,
   return -1;
 }
 
-/* Bool return value indicates if whole loop has been traced. */
+/* Follow quads around the mesh by finding opposing edges. Bool return value indicates if the whole
+ * loop has been traced. */
 static bool follow_face_loop(const int poly_start_index,
                              const int edge_start_index,
                              const blender::offset_indices::OffsetIndices<int> polys,
@@ -502,7 +503,6 @@ void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const boo
                                                                                    mesh->totedge);
 
   Vector<int> polys_to_select;
-  polys_to_select.append(poly_pick_index);
 
   bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
   const VArray<bool> hide_poly = *attributes.lookup_or_default<bool>(
@@ -517,6 +517,17 @@ void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const boo
                                                  edge_to_poly_map);
 
   if (!traced_full_loop) {
+    /* Trace the other way. */
+    IndexRange poly = polys[poly_pick_index];
+    const int closest_edge_opposite = get_opposing_edge_index(
+        poly, corner_edges, closest_edge_index);
+    follow_face_loop(poly_pick_index,
+                     closest_edge_opposite,
+                     polys,
+                     hide_poly,
+                     corner_edges,
+                     polys_to_select,
+                     edge_to_poly_map);
   }
 
   bke::SpanAttributeWriter<bool> select_poly = attributes.lookup_or_add_for_write_span<bool>(

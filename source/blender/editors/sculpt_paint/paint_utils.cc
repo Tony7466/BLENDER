@@ -764,6 +764,10 @@ void PAINT_OT_face_select_less(wmOperatorType *ot)
 static int paintface_select_loop_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   const bool select = RNA_boolean_get(op->ptr, "select");
+  const bool extend = RNA_boolean_get(op->ptr, "extend");
+  if (!extend) {
+    paintface_deselect_all_visible(ob, SEL_DESELECT, false);
+  }
   view3d_operator_needs_opengl(C);
   paintface_select_loop(C, CTX_data_active_object(C), event->mval, select);
   ED_region_tag_redraw(CTX_wm_region(C));
@@ -782,6 +786,7 @@ void PAINT_OT_face_select_loop(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   RNA_def_boolean(ot->srna, "select", true, "Select", "If false, faces will be deseleced");
+  RNA_def_boolean(ot->srna, "extend", false, "Extend", "Extend the selection");
 }
 
 static int vert_select_all_exec(bContext *C, wmOperator *op)
