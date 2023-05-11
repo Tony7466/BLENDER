@@ -233,24 +233,34 @@ void VKDebuggingTools::print_labels(const VkDebugUtilsMessengerCallbackDataEXT *
 {
   std::stringstream ss;
   if (callback_data->objectCount > 0) {
+    ss << std::endl;
     ss << callback_data->objectCount << " Object[s] related \n";
     for (uint32_t object = 0; object < callback_data->objectCount; ++object) {
       ss << "ObjectType[" << to_string(callback_data->pObjects[object].objectType) << "],";
-      ss << "Handle[" << std::hex
-         << static_cast<uintptr_t>(callback_data->pObjects[object].objectHandle) << "],";
-      ss << "Name[" << callback_data->pObjects[object].pObjectName << "] \n";
+      ss << "Handle[0x" << std::hex
+         << static_cast<uintptr_t>(callback_data->pObjects[object].objectHandle) << "]";
+      if (callback_data->pObjects[object].pObjectName) {
+        ss << ",Name[" << callback_data->pObjects[object].pObjectName << "]";
+      }
+      ss << std::endl;
     }
   }
   if (callback_data->cmdBufLabelCount > 0) {
-    ss << callback_data->cmdBufLabelCount << " Command Buffer Label[s] \n";
+    ss << std::endl;
+    ss << callback_data->cmdBufLabelCount << " Command Buffer Label[s] " << std::endl;
     for (uint32_t label = 0; label < callback_data->cmdBufLabelCount; ++label) {
-      ss << "CmdBufLabelName : " << callback_data->pCmdBufLabels[label].pLabelName << "\n";
+      if (callback_data->pCmdBufLabels[label].pLabelName) {
+        ss << "CmdBufLabelName : " << callback_data->pCmdBufLabels[label].pLabelName << std::endl;
+      }
     }
   }
   if (callback_data->queueLabelCount > 0) {
+    ss << std::endl;
     ss << callback_data->queueLabelCount << " Queue Label[s]\n";
     for (uint32_t label = 0; label < callback_data->queueLabelCount; ++label) {
-      ss << "QueueLabelName : " << callback_data->pQueueLabels[label].pLabelName << "\n";
+      if (callback_data->pQueueLabels[label].pLabelName) {
+        ss << "QueueLabelName : " << callback_data->pQueueLabels[label].pLabelName << std::endl;
+      }
     }
   }
   printf("%s\n", ss.str().c_str());
