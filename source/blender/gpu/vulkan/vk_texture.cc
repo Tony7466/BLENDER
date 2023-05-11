@@ -356,17 +356,6 @@ void VKTexture::image_bind(int binding)
   }
 }
 
-void VKTexture::unbind()
-{
-  VKContext &context = *VKContext::get();
-  /* TODO get a list of shaders this texture is bound to. */
-  VKShader *shader = static_cast<VKShader *>(context.shader);
-  if (shader) {
-    VKDescriptorSetTracker &descriptor_set = shader->pipeline_get().descriptor_set_get();
-    descriptor_set.unbind(*this);
-  }
-}
-
 /* -------------------------------------------------------------------- */
 /** \name Image Layout
  * \{ */

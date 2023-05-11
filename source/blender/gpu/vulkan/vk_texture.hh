@@ -50,7 +50,6 @@ class VKTexture : public Texture {
   uint gl_bindcode_get() const override;
 
   void bind(int unit, VKSampler &sampler);
-  void unbind();
   /* TODO: bind_as_image. */
   void image_bind(int location);
 
