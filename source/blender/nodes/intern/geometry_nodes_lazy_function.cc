@@ -1382,6 +1382,9 @@ class LazyFunctionForEvaluateFunctionNode : public LazyFunction {
     Array<int> outer_output_indices(graph_outputs.size());
 
     // TODO fill those arrays
+    // for (const int i :) {
+    // bound_inputs[i] = params.try_get_input_data_ptr_or_request;
+    //}
 
     LinearAllocator allocator;
     void *graph_executor_storage = graph_executor.init_storage(allocator);

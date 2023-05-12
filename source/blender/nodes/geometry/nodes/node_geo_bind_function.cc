@@ -37,12 +37,10 @@ static void node_declare(const bNodeTree &node_tree,
   r_declaration.skip_updating_sockets = false;
 
   LISTBASE_FOREACH (const bNodeSocket *, input, &group->inputs) {
-    r_declaration.inputs.append(declaration_for_interface_socket(node_tree, *input));
-  }
-
-  const FieldInferencingInterface &field_interface = *group->runtime->field_inferencing_interface;
-  for (const int i : r_declaration.inputs.index_range()) {
-    r_declaration.inputs[i]->input_field_type = field_interface.inputs[i];
+    SocketDeclarationPtr decl = declaration_for_interface_socket(node_tree, *input);
+    /* Need single values to bind. */
+    decl->input_field_type = InputSocketFieldType::None;
+    r_declaration.inputs.append(std::move(decl));
   }
 }
 
@@ -54,15 +52,49 @@ static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  if (params.node().id) {
-    const bNodeTree &bind_tree = *reinterpret_cast<bNodeTree *>(params.node().id);
-    const std::unique_ptr<GeometryNodesLazyFunctionGraphInfo> &lf_graph_info_ptr =
-        bind_tree.runtime->geometry_nodes_lazy_function_graph_info;
-    BLI_assert(lf_graph_info_ptr);
-
-    Closure closure(*lf_graph_info_ptr);
-    params.set_output("Function", std::move(closure));
+  if (params.node().id == nullptr) {
+    params.set_default_remaining_outputs();
+    return;
   }
+
+  const bNodeTree &bind_tree = *reinterpret_cast<bNodeTree *>(params.node().id);
+  const std::unique_ptr<GeometryNodesLazyFunctionGraphInfo> &lf_graph_info_ptr =
+      bind_tree.runtime->geometry_nodes_lazy_function_graph_info;
+  BLI_assert(lf_graph_info_ptr);
+
+  Array<GMutablePointer> bound_values(params.node().input_sockets().size());
+  for (const int i : params.node().input_sockets().index_range()) {
+    const bNodeSocket *socket = params.node().input_sockets()[i];
+    const CPPType *cpptype = socket->typeinfo->geometry_nodes_cpp_type;
+    BLI_assert(cpptype != nullptr);
+
+    void *bound_value_buffer = MEM_mallocN_aligned(
+        cpptype->size(), cpptype->alignment(), "function bound value");
+    switch (socket->type) {
+      case SOCK_FLOAT:
+        float value = params.get_input<float>(socket->identifier);
+        cpptype->move_construct(&value, bound_value_buffer);
+        break;
+      case SOCK_VECTOR:
+      case SOCK_RGBA:
+      case SOCK_BOOLEAN:
+      case SOCK_INT:
+      case SOCK_STRING:
+      case SOCK_OBJECT:
+      case SOCK_IMAGE:
+      case SOCK_GEOMETRY:
+      case SOCK_COLLECTION:
+      case SOCK_TEXTURE:
+      case SOCK_MATERIAL:
+      case SOCK_FUNCTION:
+        BLI_assert_unreachable();
+    }
+
+    bound_values[i] = {cpptype, bound_value_buffer};
+  }
+
+  Closure closure(*lf_graph_info_ptr, bound_values);
+  params.set_output("Function", std::move(closure));
 
   params.set_default_remaining_outputs();
 }
