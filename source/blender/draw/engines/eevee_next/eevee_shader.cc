@@ -172,8 +172,6 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_shadow_tag_usage_opaque";
     case SHADOW_TILEMAP_TAG_USAGE_TRANSPARENT:
       return "eevee_shadow_tag_usage_transparent";
-    case VOLUME_CLEAR:
-      return "eevee_volume_clear";
     case VOLUME_INTEGRATION:
       return "eevee_volume_integration";
     case VOLUME_RESOLVE:

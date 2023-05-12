@@ -186,13 +186,9 @@ void VolumeModule::begin_sync()
   ::World *world = inst_.scene->world;
   if (world && world->use_nodes && world->nodetree && !inst_.use_studio_light()) {
     material = inst_.shaders.world_shader_get(world, world->nodetree, MAT_PIPE_VOLUME);
-
-    if (!GPU_material_has_volume_output(material)) {
-      material = nullptr;
-    }
+    enabled_ = GPU_material_has_volume_output(material);
   }
 
-  enabled_ = material != nullptr;
   inst_.pipelines.world_volume.sync(material);
 }
 

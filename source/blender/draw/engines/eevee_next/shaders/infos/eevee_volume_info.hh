@@ -12,18 +12,6 @@ GPU_SHADER_CREATE_INFO(eevee_volume_lib)
     .sampler(VOLUME_SCATTERING_TEX_SLOT, ImageType::FLOAT_3D, "volume_scattering_tx")
     .sampler(VOLUME_TRANSMITTANCE_TEX_SLOT, ImageType::FLOAT_3D, "volume_transmittance_tx");
 
-GPU_SHADER_CREATE_INFO(eevee_volume_clear)
-    .additional_info("eevee_shared")
-    .uniform_buf(VOLUMES_INFO_BUF_SLOT, "VolumesInfoData", "volumes_info_buf")
-    .compute_source("eevee_volume_clear_comp.glsl")
-    .local_group_size(VOLUME_GROUP_SIZE, VOLUME_GROUP_SIZE, VOLUME_GROUP_SIZE)
-    /* Outputs. */
-    .image(0, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_scattering_img")
-    .image(1, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_extinction_img")
-    .image(2, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_emissive_img")
-    .image(3, GPU_RG16F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_phase_img")
-    .do_static_compilation(true);
-
 GPU_SHADER_CREATE_INFO(eevee_volume_scatter)
     .additional_info("eevee_shared")
     .additional_info("draw_resource_id_varying")
