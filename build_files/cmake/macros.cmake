@@ -276,22 +276,10 @@ macro(add_cc_flags_custom_test
 
 endmacro()
 
-
-# only MSVC uses SOURCE_GROUP
-function(blender_add_lib__impl
-  name
-  sources
-  includes
-  includes_sys
+function(blender_link_libraries
+  target
   library_deps
   )
-
-  # message(STATUS "Configuring library ${name}")
-
-  add_library(${name} ${sources})
-
-  blender_target_include_dirs(${name} ${includes})
-  blender_target_include_dirs_sys(${name} ${includes_sys})
 
   # On Windows certain libraries have two sets of binaries: one for debug builds and one for
   # release builds. The root of this requirement goes into ABI, I believe, but that's outside
@@ -330,22 +318,48 @@ function(blender_add_lib__impl
   # NOT: "optimized libfoo libbar debug libfoo_d libbar_d"
   if(NOT "${library_deps}" STREQUAL "")
     set(next_library_mode "")
+    set(next_interface_mode "PRIVATE")
     foreach(library ${library_deps})
       string(TOLOWER "${library}" library_lower)
       if(("${library_lower}" STREQUAL "optimized") OR
          ("${library_lower}" STREQUAL "debug"))
         set(next_library_mode "${library_lower}")
+      elseif(("${library}" STREQUAL "PUBLIC") OR
+             ("${library}" STREQUAL "PRIVATE") OR
+             ("${library}" STREQUAL "INTERFACE"))
+        set(next_interface_mode "${library}")
       else()
         if("${next_library_mode}" STREQUAL "optimized")
-          target_link_libraries(${name} INTERFACE optimized ${library})
+          target_link_libraries(${target} ${next_interface_mode} optimized ${library})
         elseif("${next_library_mode}" STREQUAL "debug")
-          target_link_libraries(${name} INTERFACE debug ${library})
+          target_link_libraries(${target} ${next_interface_mode} debug ${library})
         else()
-          target_link_libraries(${name} INTERFACE ${library})
+          target_link_libraries(${target} ${next_interface_mode} ${library})
         endif()
         set(next_library_mode "")
       endif()
     endforeach()
+  endif()
+endfunction()
+
+# only MSVC uses SOURCE_GROUP
+function(blender_add_lib__impl
+  name
+  sources
+  includes
+  includes_sys
+  library_deps
+  )
+
+  # message(STATUS "Configuring library ${name}")
+
+  add_library(${name} ${sources})
+
+  blender_target_include_dirs(${name} ${includes})
+  blender_target_include_dirs_sys(${name} ${includes_sys})
+
+  if(library_deps)
+    blender_link_libraries(${name} "${library_deps}")
   endif()
 
   # works fine without having the includes
@@ -476,8 +490,9 @@ endfunction()
 # To be used for smaller isolated libraries, that do not have many dependencies.
 # For libraries that do drag in many other Blender libraries and would create a
 # very large executable, blender_add_test_lib() should be used instead.
-function(blender_add_test_executable
+function(blender_add_test_executable_impl
   name
+  add_test_suite
   sources
   includes
   includes_sys
@@ -495,14 +510,48 @@ function(blender_add_test_executable
     EXTRA_LIBS "${library_deps}"
     SKIP_ADD_TEST
   )
-
+  if(add_test_suite)
+    blender_add_test_suite(
+      TARGET ${name}_test
+      SUITE_NAME ${name}
+      SOURCES "${sources}"
+    )
+  endif()
   blender_target_include_dirs(${name}_test ${includes})
   blender_target_include_dirs_sys(${name}_test ${includes_sys})
+endfunction()
 
-  blender_add_test_suite(
-    TARGET ${name}_test
-    SUITE_NAME ${name}
-    SOURCES "${sources}"
+function(blender_add_test_executable
+  name
+  sources
+  includes
+  includes_sys
+  library_deps
+  )
+  blender_add_test_executable_impl(
+    "${name}"
+    True
+    "${sources}"
+    "${includes}"
+    "${includes_sys}"
+    "${library_deps}"
+   )
+endfunction()
+
+function(blender_add_performancetest_executable
+  name
+  sources
+  includes
+  includes_sys
+  library_deps
+  )
+  blender_add_test_executable_impl(
+    "${name}"
+    False
+    "${sources}"
+    "${includes}"
+    "${includes_sys}"
+    "${library_deps}"
   )
 endfunction()
 
@@ -546,17 +595,17 @@ function(setup_platform_linker_libs
   )
   # jemalloc must be early in the list, to be before pthread (see #57998).
   if(WITH_MEM_JEMALLOC)
-    target_link_libraries(${target} ${JEMALLOC_LIBRARIES})
+    target_link_libraries(${target} PRIVATE ${JEMALLOC_LIBRARIES})
   endif()
 
   if(WIN32 AND NOT UNIX)
     if(DEFINED PTHREADS_LIBRARIES)
-      target_link_libraries(${target} ${PTHREADS_LIBRARIES})
+      target_link_libraries(${target} PRIVATE ${PTHREADS_LIBRARIES})
     endif()
   endif()
 
   # target_link_libraries(${target} ${PLATFORM_LINKLIBS} ${CMAKE_DL_LIBS})
-  target_link_libraries(${target} ${PLATFORM_LINKLIBS})
+  target_link_libraries(${target} PRIVATE ${PLATFORM_LINKLIBS})
 endfunction()
 
 macro(TEST_SSE_SUPPORT
