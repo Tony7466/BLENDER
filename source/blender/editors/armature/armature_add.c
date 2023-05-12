@@ -494,7 +494,8 @@ static void updateDuplicateActionConstraintSettings(
   ListBase ani_curves;
   BLI_listbase_clear(&ani_curves);
   if ((act != NULL) &&
-      BKE_fcurves_filter(&ani_curves, &act->curves, "pose.bones[", orig_bone->name)) {
+      BKE_fcurves_filter(&ani_curves, &act->curves, "pose.bones[", orig_bone->name))
+  {
     /* Create a copy and mirror the animation */
     for (LinkData *ld = ani_curves.first; ld; ld = ld->next) {
       FCurve *old_curve = ld->data;
@@ -513,7 +514,8 @@ static void updateDuplicateActionConstraintSettings(
         const size_t slength = strlen(new_curve->rna_path);
         bool flip = false;
         if (BLI_strn_endswith(new_curve->rna_path, "location", slength) &&
-            new_curve->array_index == 0) {
+            new_curve->array_index == 0)
+        {
           flip = true;
         }
         else if (BLI_strn_endswith(new_curve->rna_path, "rotation_quaternion", slength) &&
@@ -1118,9 +1120,9 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
   const int direction = RNA_enum_get(op->ptr, "direction");
   const int axis = 0;
 
-  /* cancel if nothing selected */
+  bool is_relevant_selection = true;
   if (CTX_DATA_COUNT(C, selected_bones) == 0) {
-    return OPERATOR_CANCELLED;
+    is_relevant_selection = false;
   }
 
   uint objects_len = 0;
@@ -1138,26 +1140,26 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
 
     preEditBoneDuplicate(arm->edbo);
 
-    /* Deselect ebones depending on input axis and direction.
+    /* (De)select ebones depending on input axis and direction.
      * A symmetrizable selection contains selected ebones of the input direction
      * and unique selected bones with an unique flippable name.
      *
      * Storing temp ptrs to mirrored unselected ebones. */
     for (ebone_iter = arm->edbo->first; ebone_iter; ebone_iter = ebone_iter->next) {
-      if (!(EBONE_VISIBLE(arm, ebone_iter) && (ebone_iter->flag & BONE_SELECTED))) {
-        /* Skipping invisible selected bones. */
+      if (!(EBONE_VISIBLE(arm, ebone_iter))) {
         continue;
       }
 
       char name_flip[MAXBONENAME];
-      if (ebone_iter == NULL) {
+      if (is_relevant_selection && ((ebone_iter->flag & BONE_SELECTED) == 0)) {
         continue;
       }
 
       BLI_string_flip_side_name(name_flip, ebone_iter->name, false, sizeof(name_flip));
 
-      if (STREQ(name_flip, ebone_iter->name)) {
-        /* Skipping ebones without flippable as they don't have the potential to be mirrored. */
+      if (STREQ(name_flip, ebone_iter->name) && (ebone_iter->flag & BONE_SELECTED)) {
+        /* Skipping and deselecting ebones without flippable as they
+         * don't have the potential to be mirrored. */
         ebone_iter->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
         continue;
       }
@@ -1165,13 +1167,16 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
       EditBone *ebone = ED_armature_ebone_find_name(arm->edbo, name_flip);
 
       if (!ebone) {
-        /* The ebone_iter is unique and mirrorable. */
+        /* The ebone_iter is unique and mirrorable. Ensure selection. */
+        ebone_iter->flag |= (BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
         continue;
       }
 
-      if (ebone->flag & BONE_SELECTED) {
-        /* The mirrored ebone and the ebone_iter are selected.
-         * Deselect based on the input direction and axis. */
+      if ((ebone_iter->flag & BONE_SELECTED) && ((ebone->flag & BONE_SELECTED) == 0)) {
+        /* Iterbone selected, mirrored bone is not, so set temp ptr. */
+        ebone_iter->temp.ebone = ebone;
+      }
+      else if ((ebone->flag & BONE_SELECTED) | (!is_relevant_selection)) {
         float axis_delta;
 
         axis_delta = ebone->head[axis] - ebone_iter->head[axis];
@@ -1188,19 +1193,27 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
           }
         }
 
-        /* Deselect depending on direction. */
+        EditBone *ebone_src, *ebone_dst;
+        /* (De)select depending on direction. */
         if (((axis_delta < 0.0f) ? -1 : 1) == direction) {
-          /* Don't store temp ptr if the iter_bone gets deselected.
-           * In this case, the ebone.temp should point to the ebone_iter. */
-          ebone_iter->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
-          continue;
+          ebone_src = ebone;
+          ebone_dst = ebone_iter;
+        }
+        else {
+          ebone_src = ebone_iter;
+          ebone_dst = ebone;
         }
 
-        ebone->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
+        /* Both bones are selected, or at least the ebone is currently selected. */
+        ebone_dst->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
+        if (is_relevant_selection) {
+          ebone_src->temp.ebone = ebone_dst;
+        }
+        else {
+          ebone_src->flag |= (BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
+          ebone_src->temp.ebone = ebone_dst;
+        }
       }
-
-      /* Set temp pointer to mirrored ebones */
-      ebone_iter->temp.ebone = ebone;
     }
 
     /* Find the selected bones and duplicate them as needed, with mirrored name. */
