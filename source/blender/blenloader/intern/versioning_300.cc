@@ -4374,5 +4374,18 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
         SEQ_for_each_callback(&ed->seqbase, version_seq_fix_broken_sound_strips, nullptr);
       }
     }
+
+    /* Enable the iTaSC ITASC_TRANSLATE_ROOT_BONES flag for backward compatibility. */
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      if (ob->type != OB_ARMATURE || ob->pose == nullptr) {
+        continue;
+      }
+      bPose *pose = ob->pose;
+      if (pose->iksolver != IKSOLVER_ITASC || pose->ikparam == nullptr) {
+        continue;
+      }
+      bItasc *ikparam = (bItasc *)pose->ikparam;
+      ikparam->flag |= ITASC_TRANSLATE_ROOT_BONES;
+    }
   }
 }
