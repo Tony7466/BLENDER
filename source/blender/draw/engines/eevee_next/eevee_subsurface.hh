@@ -37,6 +37,10 @@ struct SubsurfaceModule {
   SubsurfaceDataBuf data_;
   /** Contains translucence profile for a single color channel. */
   Texture transmittance_tx_;
+  /** Scene diffuse irradiance. Pointer binded at sync time, set at render time. */
+  GPUTexture *diffuse_light_tx_;
+  /** Subsurface eval pass. Runs after the deferred pass. */
+  PassSimple subsurface_ps_ = {"Subsurface"};
 
  public:
   SubsurfaceModule(Instance &inst) : inst_(inst)
@@ -48,6 +52,8 @@ struct SubsurfaceModule {
   ~SubsurfaceModule(){};
 
   void end_sync();
+
+  void render(View &view, Framebuffer &fb, Texture &diffuse_light_tx);
 
   template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)
   {

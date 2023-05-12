@@ -38,6 +38,27 @@ void SubsurfaceModule::end_sync()
   precompute_samples_location();
 
   data_.push_update();
+
+  subsurface_ps_.init();
+  subsurface_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_EQUAL |
+                           DRW_STATE_BLEND_ADD_FULL);
+  subsurface_ps_.state_stencil(0x00u, 0xFFu, CLOSURE_SSS);
+  subsurface_ps_.shader_set(inst_.shaders.static_shader_get(SUBSURFACE_EVAL));
+  inst_.subsurface.bind_resources(&subsurface_ps_);
+  inst_.hiz_buffer.bind_resources(&subsurface_ps_);
+  subsurface_ps_.bind_texture("radiance_tx", &diffuse_light_tx_);
+  subsurface_ps_.bind_texture("gbuffer_closure_tx", &inst_.gbuffer.closure_tx);
+  subsurface_ps_.bind_texture("gbuffer_color_tx", &inst_.gbuffer.color_tx);
+
+  subsurface_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH);
+  subsurface_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
+}
+
+void SubsurfaceModule::render(View &view, Framebuffer &fb, Texture &diffuse_light_tx)
+{
+  fb.bind();
+  diffuse_light_tx_ = *&diffuse_light_tx;
+  inst_.manager->submit(subsurface_ps_, view);
 }
 
 void SubsurfaceModule::precompute_samples_location()
