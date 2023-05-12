@@ -11,6 +11,7 @@
 
 #include "BLI_array_utils.hh"
 #include "BLI_bounds.hh"
+#include "BLI_index_mask.hh"
 #include "BLI_length_parameterize.hh"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_rotation_legacy.hh"
@@ -280,7 +281,7 @@ void CurvesGeometry::fill_curve_types(const IndexMask &selection, const CurveTyp
     }
   }
   /* A potential performance optimization is only counting the changed indices. */
-  this->curve_types_for_write().fill_indices(selection.indices(), type);
+  index_mask::masked_fill<int8_t>(this->curve_types_for_write(), type, selection);
   this->update_curve_types();
   this->tag_topology_changed();
 }
@@ -628,7 +629,7 @@ Span<float3> CurvesGeometry::evaluated_positions() const
     const OffsetIndices<int> evaluated_points_by_curve = this->evaluated_points_by_curve();
     const Span<float3> positions = this->positions();
 
-    auto evaluate_catmull = [&](const IndexMask selection) {
+    auto evaluate_catmull = [&](const IndexMask &selection) {
       const VArray<bool> cyclic = this->cyclic();
       const VArray<int> resolution = this->resolution();
       selection.foreach_index(GrainSize(128), [&](const int curve_index) {
@@ -640,11 +641,11 @@ Span<float3> CurvesGeometry::evaluated_positions() const
                                                       evaluated_positions.slice(evaluated_points));
       });
     };
-    auto evaluate_poly = [&](const IndexMask selection) {
+    auto evaluate_poly = [&](const IndexMask &selection) {
       curves::copy_point_data(
           points_by_curve, evaluated_points_by_curve, selection, positions, evaluated_positions);
     };
-    auto evaluate_bezier = [&](const IndexMask selection) {
+    auto evaluate_bezier = [&](const IndexMask &selection) {
       const Span<float3> handle_positions_left = this->handle_positions_left();
       const Span<float3> handle_positions_right = this->handle_positions_right();
       if (handle_positions_left.is_empty() || handle_positions_right.is_empty()) {
@@ -664,7 +665,7 @@ Span<float3> CurvesGeometry::evaluated_positions() const
                                                       evaluated_positions.slice(evaluated_points));
       });
     };
-    auto evaluate_nurbs = [&](const IndexMask selection) {
+    auto evaluate_nurbs = [&](const IndexMask &selection) {
       this->ensure_nurbs_basis_cache();
       const VArray<int8_t> nurbs_orders = this->nurbs_orders();
       const Span<float> nurbs_weights = this->nurbs_weights();
@@ -721,24 +722,25 @@ Span<float3> CurvesGeometry::evaluated_tangents() const
       const Span<float3> handles_left = this->handle_positions_left();
       const Span<float3> handles_right = this->handle_positions_right();
 
-      threading::parallel_for(bezier_mask.index_range(), 1024, [&](IndexRange range) {
-        bezier_mask.slice(range).foreach_span([&](const auto mask_segment) {
-          for (const int curve_index : mask_segment) {
-            if (cyclic[curve_index]) {
-              continue;
-            }
-            const IndexRange points = points_by_curve[curve_index];
-            const IndexRange evaluated_points = evaluated_points_by_curve[curve_index];
+      bezier_mask.foreach_index(GrainSize(1024), [&](const int curve_index) {
+        if (cyclic[curve_index]) {
+          return;
+        }
+        const IndexRange points = points_by_curve[curve_index];
+        const IndexRange evaluated_points = evaluated_points_by_curve[curve_index];
 
-            const float epsilon = 1e-6f;
-            if (!math::almost_equal_relative(
-                    handles_right[points.first()], positions[points.first()], epsilon))
-            {
-              tangents[evaluated_points.first()] = math::normalize(handles_right[points.first()] -
-                                                                   positions[points.first()]);
-            }
-          }
-        });
+        const float epsilon = 1e-6f;
+        if (!math::almost_equal_relative(
+                handles_right[points.first()], positions[points.first()], epsilon))
+        {
+          tangents[evaluated_points.first()] = math::normalize(handles_right[points.first()] -
+                                                               positions[points.first()]);
+        }
+        if (!math::almost_equal_relative(
+                handles_left[points.last()], positions[points.last()], epsilon)) {
+          tangents[evaluated_points.last()] = math::normalize(positions[points.last()] -
+                                                              handles_left[points.last()]);
+        }
       });
     }
   });
@@ -1112,14 +1114,6 @@ static void copy_construct_data(const GSpan src, GMutableSpan dst)
   src.type().copy_construct_n(src.data(), dst.data(), src.size());
 }
 
-static void copy_with_map(const GSpan src, const Span<int> map, GMutableSpan dst)
-{
-  attribute_math::convert_to_static_type(src.type(), [&](auto dummy) {
-    using T = decltype(dummy);
-    array_utils::gather(src.typed<T>(), map, dst.typed<T>());
-  });
-}
-
 static CurvesGeometry copy_with_removed_points(
     const CurvesGeometry &curves,
     const IndexMask points_to_delete,
@@ -1204,7 +1198,7 @@ static CurvesGeometry copy_with_removed_points(
             attribute.dst.span.copy_from(attribute.src);
           }
           else {
-            copy_with_map(attribute.src, new_curve_orig_indices, attribute.dst.span);
+            bke::attribute_math::gather(attribute.src, new_curve_orig_indices, attribute.dst.span);
           }
         }
       });
@@ -1353,8 +1347,11 @@ static void reverse_curve_point_data(const CurvesGeometry &curves,
                                      MutableSpan<T> data)
 {
   const OffsetIndices points_by_curve = curves.points_by_curve();
-  curve_selection.foreach_index(
-      [&](const int curve_i) { data.slice(points_by_curve[curve_i]).reverse(); });
+  threading::parallel_for(curve_selection.index_range(), 256, [&](IndexRange range) {
+    for (const int curve_i : curve_selection.slice(range)) {
+      data.slice(points_by_curve[curve_i]).reverse();
+    }
+  });
 }
 
 template<typename T>
@@ -1364,18 +1361,20 @@ static void reverse_swap_curve_point_data(const CurvesGeometry &curves,
                                           MutableSpan<T> data_b)
 {
   const OffsetIndices points_by_curve = curves.points_by_curve();
-  curve_selection.foreach_index(GrainSize(256), [&](const int curve_i) {
-    const IndexRange points = points_by_curve[curve_i];
-    MutableSpan<T> a = data_a.slice(points);
-    MutableSpan<T> b = data_b.slice(points);
-    for (const int i : IndexRange(points.size() / 2)) {
-      const int end_index = points.size() - 1 - i;
-      std::swap(a[end_index], b[i]);
-      std::swap(b[end_index], a[i]);
-    }
-    if (points.size() % 2) {
-      const int64_t middle_index = points.size() / 2;
-      std::swap(a[middle_index], b[middle_index]);
+  threading::parallel_for(curve_selection.index_range(), 256, [&](IndexRange range) {
+    for (const int curve_i : curve_selection.slice(range)) {
+      const IndexRange points = points_by_curve[curve_i];
+      MutableSpan<T> a = data_a.slice(points);
+      MutableSpan<T> b = data_b.slice(points);
+      for (const int i : IndexRange(points.size() / 2)) {
+        const int end_index = points.size() - 1 - i;
+        std::swap(a[end_index], b[i]);
+        std::swap(b[end_index], a[i]);
+      }
+      if (points.size() % 2) {
+        const int64_t middle_index = points.size() / 2;
+        std::swap(a[middle_index], b[middle_index]);
+      }
     }
   });
 }
@@ -1409,10 +1408,10 @@ void CurvesGeometry::reverse_curves(const IndexMask curves_to_reverse)
     return true;
   });
 
-  /* In order to maintain the shape of Bezier curves, handle attributes must reverse, but also
-   * the values for the left and right must swap. Use a utility to swap and reverse at the same
-   * time, to avoid loading the attribute twice. Generally we can expect the right layer to exist
-   * when the left does, but there's no need to count on it, so check for both attributes. */
+  /* In order to maintain the shape of Bezier curves, handle attributes must reverse, but also the
+   * values for the left and right must swap. Use a utility to swap and reverse at the same time,
+   * to avoid loading the attribute twice. Generally we can expect the right layer to exist when
+   * the left does, but there's no need to count on it, so check for both attributes. */
 
   if (attributes.contains(ATTR_HANDLE_POSITION_LEFT) &&
       attributes.contains(ATTR_HANDLE_POSITION_RIGHT))

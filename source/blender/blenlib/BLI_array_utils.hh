@@ -64,19 +64,22 @@ inline void copy(const Span<T> src,
 /**
  * Fill the destination span by gathering indexed values from the `src` array.
  */
-void gather(const GVArray &src, IndexMask indices, GMutableSpan dst, int64_t grain_size = 4096);
+void gather(const GVArray &src,
+            const IndexMask &indices,
+            GMutableSpan dst,
+            int64_t grain_size = 4096);
 
 /**
  * Fill the destination span by gathering indexed values from the `src` array.
  */
-void gather(GSpan src, IndexMask indices, GMutableSpan dst, int64_t grain_size = 4096);
+void gather(GSpan src, const IndexMask &indices, GMutableSpan dst, int64_t grain_size = 4096);
 
 /**
  * Fill the destination span by gathering indexed values from the `src` array.
  */
 template<typename T>
 inline void gather(const VArray<T> &src,
-                   const IndexMask indices,
+                   const IndexMask &indices,
                    MutableSpan<T> dst,
                    const int64_t grain_size = 4096)
 {
