@@ -14,6 +14,7 @@
 
 namespace blender::gpu {
 class VKBuffer;
+struct VKBufferWithOffset;
 class VKDescriptorSet;
 class VKFrameBuffer;
 class VKIndexBuffer;
@@ -118,6 +119,7 @@ class VKCommandBuffer : NonCopyable, NonMovable {
   void stage_transfer(Stage stage_from, Stage stage_to)
   {
     BLI_assert(is_in_stage(stage_from));
+    UNUSED_VARS_NDEBUG(stage_from);
 #if 0
     printf(" *** Transfer stage from %s to %s\n",
            to_string(stage_from).c_str(),
@@ -140,8 +142,10 @@ class VKCommandBuffer : NonCopyable, NonMovable {
             const VKVertexBuffer &vertex_buffer,
             const VkDeviceSize offset);
   /* Bind the given buffer as a vertex buffer. */
+  void bind(const uint32_t binding, const VKBufferWithOffset &vertex_buffer);
   void bind(const uint32_t binding, const VkBuffer &vk_vertex_buffer, const VkDeviceSize offset);
-  void bind(const VKIndexBuffer &index_buffer, VkIndexType index_type);
+  /* Bind the given buffer as an index buffer. */
+  void bind(const VKBufferWithOffset &index_buffer, VkIndexType index_type);
 
   void begin_render_pass(const VKFrameBuffer &framebuffer);
   void end_render_pass(const VKFrameBuffer &framebuffer);
