@@ -1,7 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BLI_index_mask_ops.hh"
-
 #include "DNA_mesh_types.h"
 
 #include "BKE_attribute_math.hh"
