@@ -71,7 +71,8 @@ struct AllSpanOrSingle {
       }
       else if constexpr (ELEM(ParamTag::category,
                               ParamCategory::SingleOutput,
-                              ParamCategory::SingleMutable)) {
+                              ParamCategory::SingleMutable))
+      {
         T *ptr = std::get<I>(loaded_params);
         return BasicDevirtualizer<T *>{ptr};
       }
@@ -104,7 +105,8 @@ template<size_t... Indices> struct SomeSpanOrSingle {
       }
       else if constexpr (ELEM(ParamTag::category,
                               ParamCategory::SingleOutput,
-                              ParamCategory::SingleMutable)) {
+                              ParamCategory::SingleMutable))
+      {
         T *ptr = std::get<I>(loaded_params);
         return BasicDevirtualizer<T *>{ptr};
       }
@@ -306,7 +308,8 @@ inline void execute_materialized(TypeSequence<ParamTags...> /* param_tags */,
           }
           else if constexpr (ELEM(ParamTag::category,
                                   ParamCategory::SingleOutput,
-                                  ParamCategory::SingleMutable)) {
+                                  ParamCategory::SingleMutable))
+          {
             /* For outputs, just pass a pointer. This is important so that `__restrict` works. */
             if (sliced_mask_is_range) {
               /* Can write into the caller-provided buffer directly. */
@@ -461,7 +464,8 @@ inline void execute_element_fn_as_multi_function(const ElementFn element_fn,
             }
             else if constexpr (ELEM(ParamTag::category,
                                     ParamCategory::SingleOutput,
-                                    ParamCategory::SingleMutable)) {
+                                    ParamCategory::SingleMutable))
+            {
               T *ptr = std::get<I>(loaded_params);
               return ptr;
             }

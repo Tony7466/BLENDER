@@ -31,7 +31,7 @@ class HandlePositionFieldInput final : public bke::CurvesFieldInput {
                                  const eAttrDomain domain,
                                  const IndexMask &mask) const final
   {
-    bke::CurvesFieldContext field_context{curves, ATTR_DOMAIN_POINT};
+    const bke::CurvesFieldContext field_context{curves, ATTR_DOMAIN_POINT};
     fn::FieldEvaluator evaluator(field_context, &mask);
     evaluator.add(relative_);
     evaluator.evaluate();
@@ -82,7 +82,8 @@ class HandlePositionFieldInput final : public bke::CurvesFieldInput {
   bool is_equal_to(const fn::FieldNode &other) const override
   {
     if (const HandlePositionFieldInput *other_handle =
-            dynamic_cast<const HandlePositionFieldInput *>(&other)) {
+            dynamic_cast<const HandlePositionFieldInput *>(&other))
+    {
       return relative_ == other_handle->relative_ && left_ == other_handle->left_;
     }
     return false;

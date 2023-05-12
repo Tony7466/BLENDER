@@ -57,7 +57,8 @@ static bool interpolate_attribute_to_curves(const bke::AttributeIDRef &attribute
            "handle_type_left",
            "handle_type_right",
            "handle_left",
-           "handle_right")) {
+           "handle_right"))
+  {
     return type_counts[CURVE_TYPE_BEZIER] != 0;
   }
   if (ELEM(attribute_id.name(), "nurbs_weight")) {
@@ -313,7 +314,8 @@ static CurvesGeometry resample_to_uniform(const CurvesGeometry &src_curves,
     /* For every attribute, evaluate attributes from every curve in the range in the original
      * curve's "evaluated points", then use linear interpolation to sample to the result. */
     for (const int i_attribute : attributes.dst.index_range()) {
-      attribute_math::convert_to_static_type(attributes.src[i_attribute].type(), [&](auto dummy) {
+      const CPPType &type = attributes.src[i_attribute].type();
+      bke::attribute_math::convert_to_static_type(type, [&](auto dummy) {
         using T = decltype(dummy);
         Span<T> src = attributes.src[i_attribute].typed<T>();
         MutableSpan<T> dst = attributes.dst[i_attribute].typed<T>();
@@ -436,7 +438,8 @@ CurvesGeometry resample_to_evaluated(const CurvesGeometry &src_curves,
   selection.foreach_span(GrainSize(512), [&](const auto sliced_selection) {
     /* Evaluate generic point attributes directly to the result attributes. */
     for (const int i_attribute : attributes.dst.index_range()) {
-      attribute_math::convert_to_static_type(attributes.src[i_attribute].type(), [&](auto dummy) {
+      const CPPType &type = attributes.src[i_attribute].type();
+      bke::attribute_math::convert_to_static_type(type, [&](auto dummy) {
         using T = decltype(dummy);
         Span<T> src = attributes.src[i_attribute].typed<T>();
         MutableSpan<T> dst = attributes.dst[i_attribute].typed<T>();

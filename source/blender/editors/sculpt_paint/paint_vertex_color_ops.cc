@@ -32,7 +32,7 @@
 
 #include "ED_mesh.h"
 
-#include "paint_intern.h" /* own include */
+#include "paint_intern.hh" /* own include */
 #include "sculpt_intern.hh"
 
 using blender::Array;
@@ -198,8 +198,8 @@ static void face_corner_color_equalize_verts(Mesh &mesh, const IndexMask selecti
 static bool vertex_color_smooth(Object *ob)
 {
   Mesh *me;
-  if (((me = BKE_mesh_from_object(ob)) == nullptr) ||
-      (ED_mesh_color_ensure(me, nullptr) == false)) {
+  if (((me = BKE_mesh_from_object(ob)) == nullptr) || (ED_mesh_color_ensure(me, nullptr) == false))
+  {
     return false;
   }
 
@@ -264,7 +264,7 @@ static void transform_active_color_data(Mesh &mesh, const TransformFn &transform
   IndexMaskMemory memory;
   const IndexMask selection = get_selected_indices(mesh, color_attribute.domain, memory);
 
-  attribute_math::convert_to_static_type(color_attribute.varray.type(), [&](auto dummy) {
+  bke::attribute_math::convert_to_static_type(color_attribute.varray.type(), [&](auto dummy) {
     using T = decltype(dummy);
     selection.foreach_index(GrainSize(1024), [&](const int i) {
       if constexpr (std::is_same_v<T, ColorGeometry4f>) {
@@ -342,7 +342,8 @@ static int vertex_color_brightness_contrast_exec(bContext *C, wmOperator *op)
 
   Mesh *me;
   if (((me = BKE_mesh_from_object(obact)) == nullptr) ||
-      (ED_mesh_color_ensure(me, nullptr) == false)) {
+      (ED_mesh_color_ensure(me, nullptr) == false))
+  {
     return OPERATOR_CANCELLED;
   }
 
@@ -388,7 +389,8 @@ static int vertex_color_hsv_exec(bContext *C, wmOperator *op)
 
   Mesh *me;
   if (((me = BKE_mesh_from_object(obact)) == nullptr) ||
-      (ED_mesh_color_ensure(me, nullptr) == false)) {
+      (ED_mesh_color_ensure(me, nullptr) == false))
+  {
     return OPERATOR_CANCELLED;
   }
 
@@ -438,7 +440,8 @@ static int vertex_color_invert_exec(bContext *C, wmOperator *op)
 
   Mesh *me;
   if (((me = BKE_mesh_from_object(obact)) == nullptr) ||
-      (ED_mesh_color_ensure(me, nullptr) == false)) {
+      (ED_mesh_color_ensure(me, nullptr) == false))
+  {
     return OPERATOR_CANCELLED;
   }
 
@@ -475,7 +478,8 @@ static int vertex_color_levels_exec(bContext *C, wmOperator *op)
 
   Mesh *me;
   if (((me = BKE_mesh_from_object(obact)) == nullptr) ||
-      (ED_mesh_color_ensure(me, nullptr) == false)) {
+      (ED_mesh_color_ensure(me, nullptr) == false))
+  {
     return OPERATOR_CANCELLED;
   }
 

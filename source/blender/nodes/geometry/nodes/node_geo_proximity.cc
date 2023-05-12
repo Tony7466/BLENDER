@@ -41,7 +41,7 @@ static void geo_proximity_init(bNodeTree * /*tree*/, bNode *node)
 }
 
 static bool calculate_mesh_proximity(const VArray<float3> &positions,
-                                     const IndexMask &mask,
+                                     const IndexMask mask,
                                      const Mesh &mesh,
                                      const GeometryNodeProximityTargetType type,
                                      const MutableSpan<float> r_distances,
@@ -91,7 +91,7 @@ static bool calculate_mesh_proximity(const VArray<float3> &positions,
 }
 
 static bool calculate_pointcloud_proximity(const VArray<float3> &positions,
-                                           const IndexMask &mask,
+                                           const IndexMask mask,
                                            const PointCloud &pointcloud,
                                            MutableSpan<float> r_distances,
                                            MutableSpan<float3> r_locations)
@@ -150,7 +150,7 @@ class ProximityFunction : public mf::MultiFunction {
     this->set_signature(&signature);
   }
 
-  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
+  void call(IndexMask mask, mf::Params params, mf::Context /*context*/) const override
   {
     const VArray<float3> &src_positions = params.readonly_single_input<float3>(0,
                                                                                "Source Position");
@@ -162,7 +162,7 @@ class ProximityFunction : public mf::MultiFunction {
      * comparison per vertex, so it's likely not worth it. */
     MutableSpan<float> distances = params.uninitialized_single_output<float>(2, "Distance");
 
-    index_mask::masked_fill(distances, FLT_MAX, mask);
+    distances.fill_indices(mask.indices(), FLT_MAX);
 
     bool success = false;
     if (target_.has_mesh()) {
@@ -177,10 +177,10 @@ class ProximityFunction : public mf::MultiFunction {
 
     if (!success) {
       if (!positions.is_empty()) {
-        index_mask::masked_fill(positions, float3(0), mask);
+        positions.fill_indices(mask.indices(), float3(0));
       }
       if (!distances.is_empty()) {
-        index_mask::masked_fill(distances, 0.0f, mask);
+        distances.fill_indices(mask.indices(), 0.0f);
       }
       return;
     }

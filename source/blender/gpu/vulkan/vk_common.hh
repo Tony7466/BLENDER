@@ -17,16 +17,23 @@
 
 #include "vk_mem_alloc.h"
 
+#include "gpu_index_buffer_private.hh"
 #include "gpu_texture_private.hh"
 
 namespace blender::gpu {
 
 VkImageAspectFlagBits to_vk_image_aspect_flag_bits(const eGPUTextureFormat format);
 VkFormat to_vk_format(const eGPUTextureFormat format);
+VkFormat to_vk_format(const GPUVertCompType type,
+                      const uint32_t size,
+                      const GPUVertFetchMode fetch_mode);
 VkComponentMapping to_vk_component_mapping(const eGPUTextureFormat format);
 VkImageViewType to_vk_image_view_type(const eGPUTextureType type);
 VkImageType to_vk_image_type(const eGPUTextureType type);
 VkClearColorValue to_vk_clear_color_value(const eGPUDataFormat format, const void *data);
+VkIndexType to_vk_index_type(const GPUIndexBufType index_type);
+VkPrimitiveTopology to_vk_primitive_topology(const GPUPrimType prim_type);
+VkCullModeFlags to_vk_cull_mode_flags(const eGPUFaceCullTest cull_test);
 
 template<typename T> VkObjectType to_vk_object_type(T /*vk_obj*/)
 {
@@ -89,5 +96,7 @@ template<typename T> VkObjectType to_vk_object_type(T /*vk_obj*/)
 #undef VK_EQ_TYPEID
   return VK_OBJECT_TYPE_UNKNOWN;
 }
+
+#define NOT_YET_IMPLEMENTED printf("%s not implemented yet\n", __func__);
 
 }  // namespace blender::gpu

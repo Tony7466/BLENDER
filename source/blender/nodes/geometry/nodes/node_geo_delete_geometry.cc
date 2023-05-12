@@ -121,7 +121,7 @@ static void copy_attributes_based_on_map(const Map<AttributeIDRef, AttributeKind
       continue;
     }
 
-    attribute_math::convert_to_static_type(data_type, [&](auto dummy) {
+    bke::attribute_math::convert_to_static_type(data_type, [&](auto dummy) {
       using T = decltype(dummy);
       VArraySpan<T> span{attribute.varray.typed<T>()};
       MutableSpan<T> out_span = result_attribute.span.typed<T>();
@@ -308,7 +308,7 @@ static void delete_curves_selection(GeometrySet &geometry_set,
   const bke::CurvesGeometry &src_curves = src_curves_id.geometry.wrap();
 
   const int domain_size = src_curves.attributes().domain_size(selection_domain);
-  bke::CurvesFieldContext field_context{src_curves, selection_domain};
+  const bke::CurvesFieldContext field_context{src_curves, selection_domain};
   fn::FieldEvaluator evaluator{field_context, domain_size};
   evaluator.set_selection(selection_field);
   evaluator.evaluate();
@@ -340,7 +340,7 @@ static void separate_point_cloud_selection(
 {
   const PointCloud &src_pointcloud = *geometry_set.get_pointcloud_for_read();
 
-  bke::PointCloudFieldContext field_context{src_pointcloud};
+  const bke::PointCloudFieldContext field_context{src_pointcloud};
   fn::FieldEvaluator evaluator{field_context, src_pointcloud.totpoint};
   evaluator.set_selection(selection_field);
   evaluator.evaluate();
@@ -1097,7 +1097,7 @@ static void separate_mesh_selection(GeometrySet &geometry_set,
                                     const AnonymousAttributePropagationInfo &propagation_info)
 {
   const Mesh &src_mesh = *geometry_set.get_mesh_for_read();
-  bke::MeshFieldContext field_context{src_mesh, selection_domain};
+  const bke::MeshFieldContext field_context{src_mesh, selection_domain};
   fn::FieldEvaluator evaluator{field_context, src_mesh.attributes().domain_size(selection_domain)};
   evaluator.add(selection_field);
   evaluator.evaluate();
