@@ -1727,7 +1727,7 @@ static Mesh *create_merged_mesh(const Mesh &mesh,
  * \{ */
 
 std::optional<Mesh *> mesh_merge_by_distance_all(const Mesh &mesh,
-                                                 const IndexMask selection,
+                                                 const IndexMask &selection,
                                                  const float merge_distance)
 {
   Array<int> vert_dest_map(mesh.totvert, OUT_OF_CONTEXT);

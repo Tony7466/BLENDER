@@ -22,7 +22,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static VArray<bool> select_mesh_faces_by_material(const Mesh &mesh,
                                                   const Material *material,
-                                                  const IndexMask face_mask)
+                                                  const IndexMask &face_mask)
 {
   Vector<int> slots;
   for (const int slot_i : IndexRange(mesh.totcol)) {

@@ -26,7 +26,7 @@ bool try_curves_conversion_in_place(const IndexMask &selection,
  * Change the types of the selected curves, potentially changing the total point count.
  */
 bke::CurvesGeometry convert_curves(const bke::CurvesGeometry &src_curves,
-                                   IndexMask selection,
+                                   const IndexMask &selection,
                                    CurveType dst_type,
                                    const bke::AnonymousAttributePropagationInfo &propagation_info);
 

@@ -555,7 +555,7 @@ IndexMask CurvesGeometry::indices_for_curve_type(const CurveType type,
 }
 
 IndexMask CurvesGeometry::indices_for_curve_type(const CurveType type,
-                                                 const IndexMask selection,
+                                                 const IndexMask &selection,
                                                  IndexMaskMemory &memory) const
 {
   return curves::indices_for_type(
@@ -1116,7 +1116,7 @@ static void copy_construct_data(const GSpan src, GMutableSpan dst)
 
 static CurvesGeometry copy_with_removed_points(
     const CurvesGeometry &curves,
-    const IndexMask points_to_delete,
+    const IndexMask &points_to_delete,
     const AnonymousAttributePropagationInfo &propagation_info)
 {
   /* Use a map from points to curves to facilitate using an #IndexMask input. */
@@ -1217,7 +1217,7 @@ static CurvesGeometry copy_with_removed_points(
   return new_curves;
 }
 
-void CurvesGeometry::remove_points(const IndexMask points_to_delete,
+void CurvesGeometry::remove_points(const IndexMask &points_to_delete,
                                    const AnonymousAttributePropagationInfo &propagation_info)
 {
   if (points_to_delete.is_empty()) {
@@ -1231,7 +1231,7 @@ void CurvesGeometry::remove_points(const IndexMask points_to_delete,
 
 static CurvesGeometry copy_with_removed_curves(
     const CurvesGeometry &curves,
-    const IndexMask curves_to_delete,
+    const IndexMask &curves_to_delete,
     const AnonymousAttributePropagationInfo &propagation_info)
 {
   const OffsetIndices old_points_by_curve = curves.points_by_curve();
@@ -1328,7 +1328,7 @@ static CurvesGeometry copy_with_removed_curves(
   return new_curves;
 }
 
-void CurvesGeometry::remove_curves(const IndexMask curves_to_delete,
+void CurvesGeometry::remove_curves(const IndexMask &curves_to_delete,
                                    const AnonymousAttributePropagationInfo &propagation_info)
 {
   if (curves_to_delete.is_empty()) {
@@ -1343,7 +1343,7 @@ void CurvesGeometry::remove_curves(const IndexMask curves_to_delete,
 
 template<typename T>
 static void reverse_curve_point_data(const CurvesGeometry &curves,
-                                     const IndexMask curve_selection,
+                                     const IndexMask &curve_selection,
                                      MutableSpan<T> data)
 {
   const OffsetIndices points_by_curve = curves.points_by_curve();
@@ -1356,7 +1356,7 @@ static void reverse_curve_point_data(const CurvesGeometry &curves,
 
 template<typename T>
 static void reverse_swap_curve_point_data(const CurvesGeometry &curves,
-                                          const IndexMask curve_selection,
+                                          const IndexMask &curve_selection,
                                           MutableSpan<T> data_a,
                                           MutableSpan<T> data_b)
 {
@@ -1379,7 +1379,7 @@ static void reverse_swap_curve_point_data(const CurvesGeometry &curves,
   });
 }
 
-void CurvesGeometry::reverse_curves(const IndexMask curves_to_reverse)
+void CurvesGeometry::reverse_curves(const IndexMask &curves_to_reverse)
 {
   Set<StringRef> bezier_handle_names{{ATTR_HANDLE_POSITION_LEFT,
                                       ATTR_HANDLE_POSITION_RIGHT,

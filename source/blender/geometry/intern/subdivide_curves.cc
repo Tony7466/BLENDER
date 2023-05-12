@@ -12,7 +12,7 @@
 namespace blender::geometry {
 
 static void calculate_result_offsets(const bke::CurvesGeometry &src_curves,
-                                     const IndexMask selection,
+                                     const IndexMask &selection,
                                      const Span<IndexRange> unselected_ranges,
                                      const VArray<int> &cuts,
                                      const Span<bool> cyclic,
@@ -64,7 +64,7 @@ static inline void linear_interpolation(const T &a, const T &b, MutableSpan<T> d
 template<typename T>
 static void subdivide_attribute_linear(const OffsetIndices<int> src_points_by_curve,
                                        const OffsetIndices<int> dst_points_by_curve,
-                                       const IndexMask selection,
+                                       const IndexMask &selection,
                                        const Span<int> all_point_offsets,
                                        const Span<T> src,
                                        MutableSpan<T> dst)
@@ -92,7 +92,7 @@ static void subdivide_attribute_linear(const OffsetIndices<int> src_points_by_cu
 
 static void subdivide_attribute_linear(const OffsetIndices<int> src_points_by_curve,
                                        const OffsetIndices<int> dst_points_by_curve,
-                                       const IndexMask selection,
+                                       const IndexMask &selection,
                                        const Span<int> all_point_offsets,
                                        const GSpan src,
                                        GMutableSpan dst)
@@ -111,7 +111,7 @@ static void subdivide_attribute_linear(const OffsetIndices<int> src_points_by_cu
 template<typename T>
 static void subdivide_attribute_catmull_rom(const OffsetIndices<int> src_points_by_curve,
                                             const OffsetIndices<int> dst_points_by_curve,
-                                            const IndexMask selection,
+                                            const IndexMask &selection,
                                             const Span<int> all_point_offsets,
                                             const Span<bool> cyclic,
                                             const Span<T> src,
@@ -131,7 +131,7 @@ static void subdivide_attribute_catmull_rom(const OffsetIndices<int> src_points_
 
 static void subdivide_attribute_catmull_rom(const OffsetIndices<int> src_points_by_curve,
                                             const OffsetIndices<int> dst_points_by_curve,
-                                            const IndexMask selection,
+                                            const IndexMask &selection,
                                             const Span<int> all_point_offsets,
                                             const Span<bool> cyclic,
                                             const GSpan src,
@@ -290,7 +290,7 @@ static void subdivide_bezier_positions(const Span<float3> src_positions,
 
 bke::CurvesGeometry subdivide_curves(
     const bke::CurvesGeometry &src_curves,
-    const IndexMask selection,
+    const IndexMask &selection,
     const VArray<int> &cuts,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {

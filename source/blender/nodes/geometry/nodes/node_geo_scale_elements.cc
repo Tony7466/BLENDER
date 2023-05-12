@@ -237,7 +237,8 @@ static void scale_vertex_islands_on_axis(Mesh &mesh,
   BKE_mesh_tag_positions_changed(&mesh);
 }
 
-static Vector<ElementIsland> prepare_face_islands(const Mesh &mesh, const IndexMask face_selection)
+static Vector<ElementIsland> prepare_face_islands(const Mesh &mesh,
+                                                  const IndexMask &face_selection)
 {
   const OffsetIndices polys = mesh.polys();
   const Span<int> corner_verts = mesh.corner_verts();
@@ -328,7 +329,8 @@ static void scale_faces_uniformly(Mesh &mesh, const UniformScaleFields &fields)
   scale_vertex_islands_uniformly(mesh, island, params, get_face_verts);
 }
 
-static Vector<ElementIsland> prepare_edge_islands(const Mesh &mesh, const IndexMask edge_selection)
+static Vector<ElementIsland> prepare_edge_islands(const Mesh &mesh,
+                                                  const IndexMask &edge_selection)
 {
   const Span<int2> edges = mesh.edges();
 

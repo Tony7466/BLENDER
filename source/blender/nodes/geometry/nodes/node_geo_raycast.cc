@@ -118,7 +118,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   }
 }
 
-static void raycast_to_mesh(IndexMask mask,
+static void raycast_to_mesh(const IndexMask &mask,
                             const Mesh &mesh,
                             const VArray<float3> &ray_origins,
                             const VArray<float3> &ray_directions,
@@ -216,7 +216,7 @@ class RaycastFunction : public mf::MultiFunction {
     this->set_signature(&signature);
   }
 
-  void call(IndexMask mask, mf::Params params, mf::Context /*context*/) const override
+  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
   {
     BLI_assert(target_.has_mesh());
     const Mesh &mesh = *target_.get_mesh_for_read();

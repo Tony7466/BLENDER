@@ -148,7 +148,7 @@ static Array<Vector<int>> build_vert_to_vert_by_edge_map(const Span<int2> edges,
 
 static Array<Vector<int>> build_edge_to_edge_by_vert_map(const Span<int2> edges,
                                                          const int verts_num,
-                                                         const IndexMask edge_mask)
+                                                         const IndexMask &edge_mask)
 {
   Array<Vector<int>> map(edges.size());
   Array<Vector<int>> vert_to_edge_map = bke::mesh_topology::build_vert_to_edge_map(edges,
@@ -190,7 +190,7 @@ static Array<Vector<int>> build_face_to_edge_by_loop_map(const OffsetIndices<int
 static Array<Vector<int>> build_face_to_face_by_edge_map(const OffsetIndices<int> polys,
                                                          const Span<int> corner_edges,
                                                          const int edges_num,
-                                                         const IndexMask poly_mask)
+                                                         const IndexMask &poly_mask)
 {
   Array<Vector<int>> map(polys.size());
   Array<Vector<int>> faces_by_edge = build_face_to_edge_by_loop_map(

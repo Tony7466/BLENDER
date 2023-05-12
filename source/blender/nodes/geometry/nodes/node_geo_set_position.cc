@@ -26,7 +26,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 static void set_computed_position_and_offset(GeometryComponent &component,
                                              const VArray<float3> &in_positions,
                                              const VArray<float3> &in_offsets,
-                                             const IndexMask selection)
+                                             const IndexMask &selection)
 {
   MutableAttributeAccessor attributes = *component.attributes_for_write();
 

@@ -41,7 +41,10 @@ inline void copy(const Span<T> src, MutableSpan<T> dst, const int64_t grain_size
  * Fill the destination span by copying masked values from the `src` array. Threaded based on
  * grain-size.
  */
-void copy(const GVArray &src, IndexMask selection, GMutableSpan dst, int64_t grain_size = 4096);
+void copy(const GVArray &src,
+          const IndexMask &selection,
+          GMutableSpan dst,
+          int64_t grain_size = 4096);
 
 /**
  * Fill the destination span by copying values from the `src` array. Threaded based on
@@ -49,7 +52,7 @@ void copy(const GVArray &src, IndexMask selection, GMutableSpan dst, int64_t gra
  */
 template<typename T>
 inline void copy(const Span<T> src,
-                 const IndexMask selection,
+                 const IndexMask &selection,
                  MutableSpan<T> dst,
                  const int64_t grain_size = 4096)
 {
@@ -94,7 +97,7 @@ inline void gather(const VArray<T> &src,
  */
 template<typename T, typename IndexT>
 inline void gather(const Span<T> src,
-                   const IndexMask indices,
+                   const IndexMask &indices,
                    MutableSpan<T> dst,
                    const int64_t grain_size = 4096)
 {

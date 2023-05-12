@@ -151,7 +151,7 @@ void simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_i
 
 void copy_with_checked_indices(const GVArray &src,
                                const VArray<int> &indices,
-                               IndexMask mask,
+                               const IndexMask &mask,
                                GMutableSpan dst);
 
 }  // namespace blender::nodes

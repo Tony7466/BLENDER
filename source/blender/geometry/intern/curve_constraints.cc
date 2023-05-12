@@ -18,7 +18,7 @@ namespace blender::geometry::curve_constraints {
 
 void compute_segment_lengths(const OffsetIndices<int> points_by_curve,
                              const Span<float3> positions,
-                             const IndexMask curve_selection,
+                             const IndexMask &curve_selection,
                              MutableSpan<float> r_segment_lengths)
 {
   BLI_assert(r_segment_lengths.size() == points_by_curve.total_size());
@@ -37,7 +37,7 @@ void compute_segment_lengths(const OffsetIndices<int> points_by_curve,
 }
 
 void solve_length_constraints(const OffsetIndices<int> points_by_curve,
-                              const IndexMask curve_selection,
+                              const IndexMask &curve_selection,
                               const Span<float> segment_lenghts,
                               MutableSpan<float3> positions)
 {
@@ -58,7 +58,7 @@ void solve_length_constraints(const OffsetIndices<int> points_by_curve,
 }
 
 void solve_length_and_collision_constraints(const OffsetIndices<int> points_by_curve,
-                                            const IndexMask curve_selection,
+                                            const IndexMask &curve_selection,
                                             const Span<float> segment_lengths_cu,
                                             const Span<float3> start_positions_cu,
                                             const Mesh &surface,

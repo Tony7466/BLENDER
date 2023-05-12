@@ -175,7 +175,7 @@ class CurvesGeometry : public ::CurvesGeometry {
    */
   IndexMask indices_for_curve_type(CurveType type, IndexMaskMemory &memory) const;
   IndexMask indices_for_curve_type(CurveType type,
-                                   IndexMask selection,
+                                   const IndexMask &selection,
                                    IndexMaskMemory &memory) const;
 
   Array<int> point_to_curve_map() const;
@@ -361,16 +361,16 @@ class CurvesGeometry : public ::CurvesGeometry {
 
   void calculate_bezier_auto_handles();
 
-  void remove_points(IndexMask points_to_delete,
+  void remove_points(const IndexMask &points_to_delete,
                      const AnonymousAttributePropagationInfo &propagation_info = {});
-  void remove_curves(IndexMask curves_to_delete,
+  void remove_curves(const IndexMask &curves_to_delete,
                      const AnonymousAttributePropagationInfo &propagation_info = {});
 
   /**
    * Change the direction of selected curves (switch the start and end) without changing their
    * shape.
    */
-  void reverse_curves(IndexMask curves_to_reverse);
+  void reverse_curves(cosnt IndexMask &curves_to_reverse);
 
   /**
    * Remove any attributes that are unused based on the types in the curves.

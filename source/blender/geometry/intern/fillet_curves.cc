@@ -28,7 +28,7 @@ static void threaded_slice_fill(const Span<T> src,
 template<typename T>
 static void duplicate_fillet_point_data(const OffsetIndices<int> src_points_by_curve,
                                         const OffsetIndices<int> dst_points_by_curve,
-                                        const IndexMask curve_selection,
+                                        const IndexMask &curve_selection,
                                         const Span<int> all_point_offsets,
                                         const Span<T> src,
                                         MutableSpan<T> dst)
@@ -45,7 +45,7 @@ static void duplicate_fillet_point_data(const OffsetIndices<int> src_points_by_c
 
 static void duplicate_fillet_point_data(const OffsetIndices<int> src_points_by_curve,
                                         const OffsetIndices<int> dst_points_by_curve,
-                                        const IndexMask selection,
+                                        const IndexMask &selection,
                                         const Span<int> all_point_offsets,
                                         const GSpan src,
                                         GMutableSpan dst)
@@ -62,7 +62,7 @@ static void duplicate_fillet_point_data(const OffsetIndices<int> src_points_by_c
 }
 
 static void calculate_result_offsets(const OffsetIndices<int> src_points_by_curve,
-                                     const IndexMask selection,
+                                     const IndexMask &selection,
                                      const Span<IndexRange> unselected_ranges,
                                      const VArray<float> &radii,
                                      const VArray<int> &counts,
@@ -393,7 +393,7 @@ static void calculate_bezier_handles_poly_mode(const Span<float3> src_handles_l,
 
 static bke::CurvesGeometry fillet_curves(
     const bke::CurvesGeometry &src_curves,
-    const IndexMask curve_selection,
+    const IndexMask &curve_selection,
     const VArray<float> &radius_input,
     const VArray<int> &counts,
     const bool limit_radius,
@@ -549,7 +549,7 @@ static bke::CurvesGeometry fillet_curves(
 
 bke::CurvesGeometry fillet_curves_poly(
     const bke::CurvesGeometry &src_curves,
-    const IndexMask curve_selection,
+    const IndexMask &curve_selection,
     const VArray<float> &radius,
     const VArray<int> &count,
     const bool limit_radius,
@@ -561,7 +561,7 @@ bke::CurvesGeometry fillet_curves_poly(
 
 bke::CurvesGeometry fillet_curves_bezier(
     const bke::CurvesGeometry &src_curves,
-    const IndexMask curve_selection,
+    const IndexMask &curve_selection,
     const VArray<float> &radius,
     const bool limit_radius,
     const bke::AnonymousAttributePropagationInfo &propagation_info)

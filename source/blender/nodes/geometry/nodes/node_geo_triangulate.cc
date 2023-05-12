@@ -38,7 +38,7 @@ static void geo_triangulate_init(bNodeTree * /*tree*/, bNode *node)
 static Mesh *triangulate_mesh_selection(const Mesh &mesh,
                                         const int quad_method,
                                         const int ngon_method,
-                                        const IndexMask selection,
+                                        const IndexMask &selection,
                                         const int min_vertices)
 {
   CustomData_MeshMasks cd_mask_extra = {

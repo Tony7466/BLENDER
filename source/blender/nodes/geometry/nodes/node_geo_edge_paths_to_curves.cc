@@ -20,7 +20,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static Curves *edge_paths_to_curves_convert(
     const Mesh &mesh,
-    const IndexMask start_verts_mask,
+    const IndexMask &start_verts_mask,
     const Span<int> next_indices,
     const AnonymousAttributePropagationInfo &propagation_info)
 {

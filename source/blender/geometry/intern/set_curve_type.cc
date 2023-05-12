@@ -279,7 +279,7 @@ static int to_nurbs_size(const CurveType src_type, const int src_size)
 
 static bke::CurvesGeometry convert_curves_to_bezier(
     const bke::CurvesGeometry &src_curves,
-    const IndexMask selection,
+    const IndexMask &selection,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   const OffsetIndices src_points_by_curve = src_curves.points_by_curve();
@@ -324,7 +324,7 @@ static bke::CurvesGeometry convert_curves_to_bezier(
       propagation_info,
       attributes_to_skip);
 
-  auto catmull_rom_to_bezier = [&](IndexMask selection) {
+  auto catmull_rom_to_bezier = [&](const IndexMask &selection) {
     bke::curves::fill_points<int8_t>(
         dst_points_by_curve, selection, BEZIER_HANDLE_ALIGN, dst_types_l);
     bke::curves::fill_points<int8_t>(
@@ -347,7 +347,7 @@ static bke::CurvesGeometry convert_curves_to_bezier(
     }
   };
 
-  auto poly_to_bezier = [&](IndexMask selection) {
+  auto poly_to_bezier = [&](const IndexMask &selection) {
     bke::curves::copy_point_data(
         src_points_by_curve, dst_points_by_curve, selection, src_positions, dst_positions);
     bke::curves::fill_points<int8_t>(
@@ -361,7 +361,7 @@ static bke::CurvesGeometry convert_curves_to_bezier(
     }
   };
 
-  auto bezier_to_bezier = [&](IndexMask selection) {
+  auto bezier_to_bezier = [&](const IndexMask &selection) {
     const VArraySpan<int8_t> src_types_l = src_curves.handle_types_left();
     const VArraySpan<int8_t> src_types_r = src_curves.handle_types_right();
     const Span<float3> src_handles_l = src_curves.handle_positions_left();
@@ -386,7 +386,7 @@ static bke::CurvesGeometry convert_curves_to_bezier(
     }
   };
 
-  auto nurbs_to_bezier = [&](IndexMask selection) {
+  auto nurbs_to_bezier = [&](const IndexMask &selection) {
     bke::curves::fill_points<int8_t>(
         dst_points_by_curve, selection, BEZIER_HANDLE_ALIGN, dst_types_l);
     bke::curves::fill_points<int8_t>(
@@ -463,7 +463,7 @@ static bke::CurvesGeometry convert_curves_to_bezier(
 
 static bke::CurvesGeometry convert_curves_to_nurbs(
     const bke::CurvesGeometry &src_curves,
-    const IndexMask selection,
+    const IndexMask &selection,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   const OffsetIndices src_points_by_curve = src_curves.points_by_curve();
@@ -500,7 +500,7 @@ static bke::CurvesGeometry convert_curves_to_nurbs(
        "handle_left",
        "nurbs_weight"});
 
-  auto fill_weights_if_necessary = [&](const IndexMask selection) {
+  auto fill_weights_if_necessary = [&](const IndexMask &selection) {
     if (src_attributes.contains("nurbs_weight")) {
       bke::curves::fill_points(
           dst_points_by_curve, selection, 1.0f, dst_curves.nurbs_weights_for_write());
@@ -589,7 +589,7 @@ static bke::CurvesGeometry convert_curves_to_nurbs(
     }
   };
 
-  auto nurbs_to_nurbs = [&](IndexMask selection) {
+  auto nurbs_to_nurbs = [&](const IndexMask &selection) {
     bke::curves::copy_point_data(
         src_points_by_curve, dst_points_by_curve, selection, src_positions, dst_positions);
 
@@ -631,7 +631,7 @@ static bke::CurvesGeometry convert_curves_to_nurbs(
 }
 
 static bke::CurvesGeometry convert_curves_trivial(const bke::CurvesGeometry &src_curves,
-                                                  const IndexMask selection,
+                                                  const IndexMask &selection,
                                                   const CurveType dst_type)
 {
   bke::CurvesGeometry dst_curves(src_curves);
@@ -641,7 +641,7 @@ static bke::CurvesGeometry convert_curves_trivial(const bke::CurvesGeometry &src
 }
 
 bke::CurvesGeometry convert_curves(const bke::CurvesGeometry &src_curves,
-                                   const IndexMask selection,
+                                   const IndexMask &selection,
                                    const CurveType dst_type,
                                    const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
@@ -658,7 +658,7 @@ bke::CurvesGeometry convert_curves(const bke::CurvesGeometry &src_curves,
   return {};
 }
 
-bool try_curves_conversion_in_place(const IndexMask selection,
+bool try_curves_conversion_in_place(const IndexMask &selection,
                                     const CurveType dst_type,
                                     FunctionRef<bke::CurvesGeometry &()> get_writable_curves_fn)
 {

@@ -71,7 +71,7 @@ struct AttributeOutputs {
 static void save_selection_as_attribute(Mesh &mesh,
                                         const AnonymousAttributeID *id,
                                         const eAttrDomain domain,
-                                        const IndexMask selection)
+                                        const IndexMask &selection)
 {
   MutableAttributeAccessor attributes = mesh.attributes_for_write();
   BLI_assert(!attributes.contains(id));

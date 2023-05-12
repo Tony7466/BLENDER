@@ -18,7 +18,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Bool>(N_("Has Neighbor")).field_source();
 }
 
-static KDTree_3d *build_kdtree(const Span<float3> positions, const IndexMask mask)
+static KDTree_3d *build_kdtree(const Span<float3> positions, const IndexMask &mask)
 {
   KDTree_3d *tree = BLI_kdtree_3d_new(mask.size());
   for (const int index : mask) {
@@ -38,7 +38,7 @@ static int find_nearest_non_self(const KDTree_3d &tree, const float3 &position, 
 
 static void find_neighbors(const KDTree_3d &tree,
                            const Span<float3> positions,
-                           const IndexMask mask,
+                           const IndexMask &mask,
                            MutableSpan<int> r_indices)
 {
   threading::parallel_for(mask.index_range(), 1024, [&](const IndexRange range) {
@@ -62,7 +62,7 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
   }
 
   GVArray get_varray_for_context(const bke::GeometryFieldContext &context,
-                                 const IndexMask mask) const final
+                                 const IndexMask &mask) const final
   {
     if (!context.attributes()) {
       return {};
@@ -110,15 +110,15 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
       result.reinitialize(domain_size);
     }
 
-    const auto build_group_masks = [&](const IndexMask mask,
+    const auto build_group_masks = [&](const IndexMask &mask,
                                        MutableSpan<Vector<int64_t>> r_groups) {
-      for (const int index : mask) {
+      mask.foreach_index([&](const int index) {
         const int group_id = group_ids_span[index];
         const int index_of_group = group_indexing.index_of_try(group_id);
         if (index_of_group != -1) {
           r_groups[index_of_group].append(index);
         }
-      }
+      });
     };
 
     threading::parallel_invoke(
@@ -187,7 +187,7 @@ class HasNeighborFieldInput final : public bke::GeometryFieldInput {
   }
 
   GVArray get_varray_for_context(const bke::GeometryFieldContext &context,
-                                 const IndexMask mask) const final
+                                 const IndexMask &mask) const final
   {
     if (!context.attributes()) {
       return {};

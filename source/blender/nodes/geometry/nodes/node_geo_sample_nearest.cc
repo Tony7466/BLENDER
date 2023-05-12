@@ -17,7 +17,7 @@ namespace blender::nodes {
 
 void get_closest_in_bvhtree(BVHTreeFromMesh &tree_data,
                             const VArray<float3> &positions,
-                            const IndexMask mask,
+                            const IndexMask &mask,
                             const MutableSpan<int> r_indices,
                             const MutableSpan<float> r_distances_sq,
                             const MutableSpan<float3> r_positions)
@@ -69,7 +69,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void get_closest_pointcloud_points(const PointCloud &pointcloud,
                                           const VArray<float3> &positions,
-                                          const IndexMask mask,
+                                          const IndexMask &mask,
                                           const MutableSpan<int> r_indices,
                                           const MutableSpan<float> r_distances_sq)
 {
@@ -96,7 +96,7 @@ static void get_closest_pointcloud_points(const PointCloud &pointcloud,
 
 static void get_closest_mesh_points(const Mesh &mesh,
                                     const VArray<float3> &positions,
-                                    const IndexMask mask,
+                                    const IndexMask &mask,
                                     const MutableSpan<int> r_point_indices,
                                     const MutableSpan<float> r_distances_sq,
                                     const MutableSpan<float3> r_positions)
@@ -110,7 +110,7 @@ static void get_closest_mesh_points(const Mesh &mesh,
 
 static void get_closest_mesh_edges(const Mesh &mesh,
                                    const VArray<float3> &positions,
-                                   const IndexMask mask,
+                                   const IndexMask &mask,
                                    const MutableSpan<int> r_edge_indices,
                                    const MutableSpan<float> r_distances_sq,
                                    const MutableSpan<float3> r_positions)
@@ -124,7 +124,7 @@ static void get_closest_mesh_edges(const Mesh &mesh,
 
 static void get_closest_mesh_looptris(const Mesh &mesh,
                                       const VArray<float3> &positions,
-                                      const IndexMask mask,
+                                      const IndexMask &mask,
                                       const MutableSpan<int> r_looptri_indices,
                                       const MutableSpan<float> r_distances_sq,
                                       const MutableSpan<float3> r_positions)
@@ -139,7 +139,7 @@ static void get_closest_mesh_looptris(const Mesh &mesh,
 
 static void get_closest_mesh_polys(const Mesh &mesh,
                                    const VArray<float3> &positions,
-                                   const IndexMask mask,
+                                   const IndexMask &mask,
                                    const MutableSpan<int> r_poly_indices,
                                    const MutableSpan<float> r_distances_sq,
                                    const MutableSpan<float3> r_positions)
@@ -159,7 +159,7 @@ static void get_closest_mesh_polys(const Mesh &mesh,
 /* The closest corner is defined to be the closest corner on the closest face. */
 static void get_closest_mesh_corners(const Mesh &mesh,
                                      const VArray<float3> &positions,
-                                     const IndexMask mask,
+                                     const IndexMask &mask,
                                      const MutableSpan<int> r_corner_indices,
                                      const MutableSpan<float> r_distances_sq,
                                      const MutableSpan<float3> r_positions)
@@ -251,7 +251,7 @@ class SampleNearestFunction : public mf::MultiFunction {
     this->set_signature(&signature_);
   }
 
-  void call(IndexMask mask, mf::Params params, mf::Context /*context*/) const override
+  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
   {
     const VArray<float3> &positions = params.readonly_single_input<float3>(0, "Position");
     MutableSpan<int> indices = params.uninitialized_single_output<int>(1, "Index");

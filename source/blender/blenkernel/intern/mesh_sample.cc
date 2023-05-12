@@ -20,7 +20,7 @@ BLI_NOINLINE static void sample_point_attribute(const Span<int> corner_verts,
                                                 const Span<int> looptri_indices,
                                                 const Span<float3> bary_coords,
                                                 const VArray<T> &src,
-                                                const IndexMask mask,
+                                                const IndexMask &mask,
                                                 const MutableSpan<T> dst)
 {
   for (const int i : mask) {
@@ -37,7 +37,7 @@ void sample_point_attribute(const Span<int> corner_verts,
                             const Span<int> looptri_indices,
                             const Span<float3> bary_coords,
                             const GVArray &src,
-                            const IndexMask mask,
+                            const IndexMask &mask,
                             const GMutableSpan dst)
 {
   BLI_assert(src.type() == dst.type());
@@ -60,7 +60,7 @@ BLI_NOINLINE static void sample_corner_attribute(const Span<MLoopTri> looptris,
                                                  const Span<int> looptri_indices,
                                                  const Span<float3> bary_coords,
                                                  const VArray<T> &src,
-                                                 const IndexMask mask,
+                                                 const IndexMask &mask,
                                                  const MutableSpan<T> dst)
 {
   for (const int i : mask) {
@@ -79,7 +79,7 @@ void sample_corner_normals(const Span<MLoopTri> looptris,
                            const Span<int> looptri_indices,
                            const Span<float3> bary_coords,
                            const Span<float3> src,
-                           const IndexMask mask,
+                           const IndexMask &mask,
                            const MutableSpan<float3> dst)
 {
   for (const int i : mask) {
@@ -93,7 +93,7 @@ void sample_corner_attribute(const Span<MLoopTri> looptris,
                              const Span<int> looptri_indices,
                              const Span<float3> bary_coords,
                              const GVArray &src,
-                             const IndexMask mask,
+                             const IndexMask &mask,
                              const GMutableSpan dst)
 {
   BLI_assert(src.type() == dst.type());
@@ -110,7 +110,7 @@ template<typename T>
 void sample_face_attribute(const Span<int> looptri_polys,
                            const Span<int> looptri_indices,
                            const VArray<T> &src,
-                           const IndexMask mask,
+                           const IndexMask &mask,
                            const MutableSpan<T> dst)
 {
   for (const int i : mask) {
@@ -123,7 +123,7 @@ void sample_face_attribute(const Span<int> looptri_polys,
 void sample_face_attribute(const Span<int> looptri_polys,
                            const Span<int> looptri_indices,
                            const GVArray &src,
-                           const IndexMask mask,
+                           const IndexMask &mask,
                            const GMutableSpan dst)
 {
   BLI_assert(src.type() == dst.type());
@@ -141,7 +141,7 @@ static void sample_barycentric_weights(const Span<float3> vert_positions,
                                        const Span<MLoopTri> looptris,
                                        const Span<int> looptri_indices,
                                        const Span<float3> sample_positions,
-                                       const IndexMask mask,
+                                       const IndexMask &mask,
                                        MutableSpan<float3> bary_coords)
 {
   for (const int i : mask) {
@@ -163,7 +163,7 @@ static void sample_nearest_weights(const Span<float3> vert_positions,
                                    const Span<MLoopTri> looptris,
                                    const Span<int> looptri_indices,
                                    const Span<float3> sample_positions,
-                                   const IndexMask mask,
+                                   const IndexMask &mask,
                                    MutableSpan<float3> bary_coords)
 {
   for (const int i : mask) {
@@ -376,7 +376,7 @@ BaryWeightFromPositionFn::BaryWeightFromPositionFn(GeometrySet geometry)
   looptris_ = mesh.looptris();
 }
 
-void BaryWeightFromPositionFn::call(IndexMask mask,
+void BaryWeightFromPositionFn::call(const IndexMask &mask,
                                     mf::Params params,
                                     mf::Context /*context*/) const
 {
@@ -412,7 +412,7 @@ CornerBaryWeightFromPositionFn::CornerBaryWeightFromPositionFn(GeometrySet geome
   looptris_ = mesh.looptris();
 }
 
-void CornerBaryWeightFromPositionFn::call(IndexMask mask,
+void CornerBaryWeightFromPositionFn::call(const IndexMask &mask,
                                           mf::Params params,
                                           mf::Context /*context*/) const
 {
@@ -441,7 +441,7 @@ BaryWeightSampleFn::BaryWeightSampleFn(GeometrySet geometry, fn::GField src_fiel
   this->set_signature(&signature_);
 }
 
-void BaryWeightSampleFn::call(const IndexMask mask,
+void BaryWeightSampleFn::call(const IndexMask &mask,
                               mf::Params params,
                               mf::Context /*context*/) const
 {

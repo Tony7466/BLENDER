@@ -21,7 +21,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 }
 
 static void edge_paths_to_selection(const Mesh &src_mesh,
-                                    const IndexMask start_selection,
+                                    const IndexMask &start_selection,
                                     const Span<int> next_indices,
                                     MutableSpan<bool> r_selection)
 {

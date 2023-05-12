@@ -28,7 +28,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Geometry>(N_("Geometry")).propagate_all();
 }
 
-static void assign_material_to_faces(Mesh &mesh, const IndexMask selection, Material *material)
+static void assign_material_to_faces(Mesh &mesh, const IndexMask &selection, Material *material)
 {
   if (selection.size() != mesh.totpoly) {
     /* If the entire mesh isn't selected, and there is no material slot yet, add an empty

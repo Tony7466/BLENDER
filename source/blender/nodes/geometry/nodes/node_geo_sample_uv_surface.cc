@@ -135,7 +135,7 @@ class ReverseUVSampleFunction : public mf::MultiFunction {
     this->set_signature(&signature);
   }
 
-  void call(IndexMask mask, mf::Params params, mf::Context /*context*/) const override
+  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
   {
     const VArraySpan<float2> sample_uvs = params.readonly_single_input<float2>(0, "Sample UV");
     MutableSpan<bool> is_valid = params.uninitialized_single_output_if_required<bool>(1,
