@@ -101,7 +101,7 @@ typedef struct eUSDOperatorOptions {
 static void process_prim_path(char *prim_path)
 {
   if (prim_path == NULL || prim_path[0] == '\0') {
-    return prim_path;
+    return;
   }
 
   /* The absolute root "/" path indicates a no-op,
