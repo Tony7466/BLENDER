@@ -1120,6 +1120,10 @@ bool PathTraceWorkGPU::copy_render_buffers_from_device_impl()
   queue_->copy_from_device(buffers_->buffer);
 
   /* Synchronize so that the CPU-side buffer is available at the exit of this function. */
+  return true; //queue_->synchronize();
+}
+
+bool PathTraceWorkGPU::synchronize() {
   return queue_->synchronize();
 }
 

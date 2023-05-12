@@ -85,11 +85,46 @@ void PathTraceWork::clear_work_set_buffers(const BufferParams& empty_params)
 
 void PathTraceWork::set_render_buffers_in_work_set(const BufferParams& p, int i) 
 {
+  VLOG_INFO << "set_render_buffers_in_work_set (" << i <<  ") Slice parameters"
+	    << " full_x:" << p.full_x
+	    << " full_y:" << p.full_y
+      
+	    << " window_x:" << p.window_x
+	    << " window_y:" << p.window_y
+
+	    << " window_width:" << p.window_width 
+	    << " window_height:" << p.window_height
+      
+	    << " width:" << p.width
+	    << " height:" << p.height
+
+	    << " offset:" << p.offset
+	    << " stride:" << p.stride
+
+	    << " pass stride:" << p.pass_stride;
+
   work_set_.render_buffers_set_[i]->reset(p);
 }
 
 void PathTraceWork::set_effective_buffer_params_in_work_set(const BufferParams& p, int i) 
 {
+  VLOG_INFO << "set_effective_buffer_params_in_work_set (" << i <<  ") Slice parameters"
+	    << " full_x:" << p.full_x
+	    << " full_y:" << p.full_y
+      
+	    << " window_x:" << p.window_x
+	    << " window_y:" << p.window_y
+
+	    << " window_width:" << p.window_width 
+	    << " window_height:" << p.window_height
+      
+	    << " width:" << p.width
+	    << " height:" << p.height
+
+	    << " offset:" << p.offset
+	    << " stride:" << p.stride
+
+	    << " pass stride:" << p.pass_stride;  
   work_set_.effective_buffer_params_set_[i] = p;
 }
 
@@ -102,6 +137,7 @@ void PathTraceWork::set_effective_full_buffer_params(const BufferParams &effecti
 
 void PathTraceWork::set_current_work_set(int i) 
 {
+  
   buffers_ = work_set_.render_buffers_set_[i];
   effective_buffer_params_ = work_set_.effective_buffer_params_set_[i];
 }
@@ -135,7 +171,8 @@ bool PathTraceWork::copy_render_buffers_from_device()
   set_current_work_set(i);
   if (!copy_render_buffers_from_device_impl()) return false;
   }
-  return true;
+  
+  return synchronize();
 }
 
 bool PathTraceWork::copy_render_buffers_to_device()

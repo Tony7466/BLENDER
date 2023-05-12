@@ -97,6 +97,7 @@ class PathTraceWork {
    * things are executed in order with the `render_samples()`. */
   virtual bool copy_render_buffers_from_device();
   virtual bool copy_render_buffers_from_device_impl() = 0;
+  virtual bool synchronize() { return true; };
   virtual bool copy_render_buffers_to_device();
   virtual bool copy_render_buffers_to_device_impl() = 0;
   
