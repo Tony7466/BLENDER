@@ -83,7 +83,7 @@ static bool prim_path_valid(const char *path)
   std::string errMsg;
   if (!pxr::SdfPath::IsValidPathString(path, &errMsg)) {
     WM_reportf(
-        RPT_ERROR, "USD Export: invalid Root Prim path string '%s': %s", path, errMsg.c_str());
+        RPT_ERROR, "USD Export: invalid path string '%s': %s", path, errMsg.c_str());
     return false;
   }
 
@@ -92,7 +92,7 @@ static bool prim_path_valid(const char *path)
 
   pxr::SdfPath sdf_path(path);
   if (!sdf_path.IsAbsolutePath()) {
-    WM_reportf(RPT_ERROR, "USD Export: Path '%s' is not an absolute path", path);
+    WM_reportf(RPT_ERROR, "USD Export: path '%s' is not an absolute path", path);
     return false;
   }
 
