@@ -291,7 +291,7 @@ static StructRNA *rna_Panel_register(Main *bmain,
       if ((1 << dummy_pt.space_type) & WM_TOOLSYSTEM_SPACE_MASK) {
         BKE_reportf(reports,
                     RPT_ERROR,
-                    "%s '%s' has category '%s' ",
+                    "%s '%s' has category '%s'",
                     error_prefix,
                     dummy_pt.idname,
                     dummy_pt.category);
@@ -418,7 +418,7 @@ static StructRNA *rna_Panel_register(Main *bmain,
   {
     const char *owner_id = RNA_struct_state_owner_get();
     if (owner_id) {
-      BLI_strncpy(pt->owner_id, owner_id, sizeof(pt->owner_id));
+      STRNCPY(pt->owner_id, owner_id);
     }
   }
 
@@ -1050,7 +1050,7 @@ static StructRNA *rna_Menu_register(Main *bmain,
   {
     const char *owner_id = RNA_struct_state_owner_get();
     if (owner_id) {
-      BLI_strncpy(mt->owner_id, owner_id, sizeof(mt->owner_id));
+      STRNCPY(mt->owner_id, owner_id);
     }
   }
 

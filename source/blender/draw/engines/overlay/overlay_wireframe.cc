@@ -54,7 +54,7 @@ void OVERLAY_wireframe_cache_init(OVERLAY_Data *vedata)
    * becomes more proportional with a variation of angle. */
   pd->shdata.wire_step_param = sqrt(abs(pd->overlay.wireframe_threshold));
 
-  /* The maximum value (255 in the vbo) is used to force hide the edge. */
+  /* The maximum value (255 in the VBO) is used to force hide the edge. */
   pd->shdata.wire_step_param = interpolate(0.0f, 1.0f - (1.0f / 255), pd->shdata.wire_step_param);
 
   pd->shdata.wire_opacity = pd->overlay.wireframe_opacity;
@@ -195,7 +195,8 @@ void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata,
   if (use_wire && pd->wireframe_mode && ob->particlesystem.first) {
     for (ParticleSystem *psys = static_cast<ParticleSystem *>(ob->particlesystem.first);
          psys != nullptr;
-         psys = psys->next) {
+         psys = psys->next)
+    {
       if (!DRW_object_is_visible_psys_in_active_context(ob, psys)) {
         continue;
       }

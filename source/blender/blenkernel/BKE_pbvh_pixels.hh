@@ -328,7 +328,7 @@ struct CopyPixelCommand {
       return false;
     }
 
-    /* Can only extend when the delta between with the previous source fits in a single byte.*/
+    /* Can only extend when the delta between with the previous source fits in a single byte. */
     int2 delta_source_1 = source_1 - command.source_1;
     if (max_ii(UNPACK2(blender::math::abs(delta_source_1))) > 127) {
       return false;
@@ -376,7 +376,8 @@ struct CopyPixelTile {
       const CopyPixelGroup &group = groups[group_index];
       CopyPixelCommand copy_command(group);
       for (const DeltaCopyPixelCommand &item : Span<const DeltaCopyPixelCommand>(
-               &command_deltas[group.start_delta_index], group.num_deltas)) {
+               &command_deltas[group.start_delta_index], group.num_deltas))
+      {
         copy_command.apply(item);
         copy_command.mix_source_and_write_destination<T>(image_buffer);
       }

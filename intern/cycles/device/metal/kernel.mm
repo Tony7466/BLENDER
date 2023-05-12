@@ -263,7 +263,8 @@ bool ShaderCache::should_load_kernel(DeviceKernel device_kernel,
   if (pso_type != PSO_GENERIC) {
     /* Only specialize kernels where it can make an impact. */
     if (device_kernel < DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST ||
-        device_kernel > DEVICE_KERNEL_INTEGRATOR_MEGAKERNEL) {
+        device_kernel > DEVICE_KERNEL_INTEGRATOR_MEGAKERNEL)
+    {
       return false;
     }
 
@@ -342,7 +343,7 @@ void ShaderCache::load_kernel(DeviceKernel device_kernel,
 
 MetalKernelPipeline *ShaderCache::get_best_pipeline(DeviceKernel kernel, const MetalDevice *device)
 {
-  while (running) {
+  while (running && !device->has_error) {
     /* Search all loaded pipelines with matching kernels_md5 checksums. */
     MetalKernelPipeline *best_match = nullptr;
     {
@@ -400,7 +401,8 @@ bool MetalKernelPipeline::should_use_binary_archive() const
     if ((device_kernel >= DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND &&
          device_kernel <= DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW) ||
         (device_kernel >= DEVICE_KERNEL_SHADER_EVAL_DISPLACE &&
-         device_kernel <= DEVICE_KERNEL_SHADER_EVAL_CURVE_SHADOW_TRANSPARENCY)) {
+         device_kernel <= DEVICE_KERNEL_SHADER_EVAL_CURVE_SHADOW_TRANSPARENCY))
+    {
       /* Archive all shade kernels - they take a long time to compile. */
       return true;
     }
@@ -445,12 +447,10 @@ void MetalKernelPipeline::compile()
   const std::string function_name = std::string("cycles_metal_") +
                                     device_kernel_as_string(device_kernel);
 
-  NSString *entryPoint = [@(function_name.c_str()) copy];
-
   NSError *error = NULL;
   if (@available(macOS 11.0, *)) {
     MTLFunctionDescriptor *func_desc = [MTLIntersectionFunctionDescriptor functionDescriptor];
-    func_desc.name = entryPoint;
+    func_desc.name = [@(function_name.c_str()) copy];
 
     if (pso_type != PSO_GENERIC) {
       func_desc.constantValues = GetConstantValues(&kernel_data_);
@@ -462,8 +462,6 @@ void MetalKernelPipeline::compile()
     function = [mtlLibrary newFunctionWithDescriptor:func_desc error:&error];
   }
 
-  [entryPoint release];
-
   if (function == nil) {
     NSString *err = [error localizedDescription];
     string errors = [err UTF8String];
@@ -471,7 +469,7 @@ void MetalKernelPipeline::compile()
     return;
   }
 
-  function.label = [entryPoint copy];
+  function.label = [@(function_name.c_str()) copy];
 
   if (use_metalrt) {
     if (@available(macOS 11.0, *)) {
@@ -708,7 +706,8 @@ void MetalKernelPipeline::compile()
         if (creating_new_archive && ShaderCache::running) {
           NSError *error;
           if (![archive addComputePipelineFunctionsWithDescriptor:computePipelineStateDescriptor
-                                                            error:&error]) {
+                                                            error:&error])
+          {
             NSString *errStr = [error localizedDescription];
             metal_printf("Failed to add PSO to archive:\n%s\n",
                          errStr ? [errStr UTF8String] : "nil");
