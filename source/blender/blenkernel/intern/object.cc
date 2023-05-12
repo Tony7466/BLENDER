@@ -4479,7 +4479,7 @@ Mesh *BKE_object_get_evaluated_mesh(const Object *object)
     return nullptr;
   }
 
-  if (object->data && GS(((const ID *)object->data)->name) == ID_ME) {
+  if (object->data && ELEM(GS(((const ID *)object->data)->name), ID_ME, ID_CV)) {
     mesh = BKE_mesh_wrapper_ensure_subdivision(mesh);
   }
 
