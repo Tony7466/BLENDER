@@ -45,7 +45,7 @@ template<typename T>
 inline void interpolate_to_masked(const Span<T> src,
                                   const Span<int> indices,
                                   const Span<float> factors,
-                                  const IndexMask dst_mask,
+                                  const IndexMask &dst_mask,
                                   MutableSpan<T> dst)
 {
   BLI_assert(indices.size() == factors.size());
