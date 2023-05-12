@@ -55,6 +55,7 @@ class UVPackIsland_Params {
 
   void setFromUnwrapOptions(const UnwrapOptions &options);
   void setUDIMOffsetFromSpaceImage(const SpaceImage *sima);
+  bool isCancelled() const;
 
   /** Islands can be rotated to improve packing. */
   bool rotate;

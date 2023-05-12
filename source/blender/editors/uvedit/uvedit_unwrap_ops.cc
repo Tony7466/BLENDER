@@ -172,6 +172,14 @@ void blender::geometry::UVPackIsland_Params::setUDIMOffsetFromSpaceImage(const S
 }
 /** \} */
 
+bool blender::geometry::UVPackIsland_Params::isCancelled() const
+{
+  if (stop) {
+    return *stop;
+  }
+  return false;
+}
+
 /* -------------------------------------------------------------------- */
 /** \name Parametrizer Conversion
  * \{ */
@@ -1274,6 +1282,7 @@ static void uvedit_pack_islands_multi(const Scene *scene,
   BLI_memarena_free(arena);
 
   const float scale = pack_islands(pack_island_vector, *params);
+  const bool is_cancelled = params->isCancelled();
 
   float base_offset[2] = {0.0f, 0.0f};
   copy_v2_v2(base_offset, params->udim_base_offset);
@@ -1312,7 +1321,10 @@ static void uvedit_pack_islands_multi(const Scene *scene,
   float matrix[2][2];
   float matrix_inverse[2][2];
   float pre_translate[2];
-  for (int64_t i : pack_island_vector.index_range()) {
+  for (const int64_t i : pack_island_vector.index_range()) {
+    if (is_cancelled) {
+      continue;
+    }
     blender::geometry::PackIsland *pack_island = pack_island_vector[i];
     FaceIsland *island = island_vector[pack_island->caller_index];
     const float island_scale = pack_island->can_scale_(*params) ? scale : 1.0f;
@@ -1342,16 +1354,13 @@ static void uvedit_pack_islands_multi(const Scene *scene,
       pre_translate[1] = selection_min_co[1] / rescale;
       island_uv_transform(island, matrix, pre_translate);
     }
+  }
 
+  for (const int64_t i : pack_island_vector.index_range()) {
+    blender::geometry::PackIsland *pack_island = pack_island_vector[i];
     /* Cleanup memory. */
     pack_island_vector[i] = nullptr;
     delete pack_island;
-  }
-
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
-    DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_GEOMETRY);
-    WM_main_add_notifier(NC_GEOM | ND_DATA, obedit->data);
   }
 
   for (FaceIsland *island : island_vector) {
@@ -1374,7 +1383,7 @@ enum {
   PACK_ORIGINAL_AABB,
 };
 
-struct pack_islands_data {
+struct UVPackIslandsData {
   wmWindowManager *wm;
 
   const Scene *scene;
@@ -1396,7 +1405,7 @@ static void pack_islands_startjob(void *pidv, bool *stop, bool *do_update, float
   *progress = 0.02f;
   //  *do_update = 1;
 
-  pack_islands_data *pid = static_cast<pack_islands_data *>(pidv);
+  UVPackIslandsData *pid = static_cast<UVPackIslandsData *>(pidv);
 
   pid->pack_island_params.stop = stop;
   pid->pack_island_params.do_update = do_update;
@@ -1416,7 +1425,7 @@ static void pack_islands_startjob(void *pidv, bool *stop, bool *do_update, float
 
 static void pack_islands_endjob(void *pidv)
 {
-  pack_islands_data *pid = static_cast<pack_islands_data *>(pidv);
+  UVPackIslandsData *pid = static_cast<UVPackIslandsData *>(pidv);
   for (uint ob_index = 0; ob_index < pid->objects_len; ob_index++) {
     Object *obedit = pid->objects[ob_index];
     DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_GEOMETRY);
@@ -1432,7 +1441,7 @@ static void pack_islands_endjob(void *pidv)
 static void pack_islands_freejob(void *pidv)
 {
   WM_cursor_wait(false);
-  pack_islands_data *pid = static_cast<pack_islands_data *>(pidv);
+  UVPackIslandsData *pid = static_cast<UVPackIslandsData *>(pidv);
   MEM_freeN(pid->objects);
   WM_set_locked_interface(pid->wm, false);
   MEM_freeN(pid);
@@ -1471,8 +1480,8 @@ static int pack_islands_exec(bContext *C, wmOperator *op)
     RNA_float_set(op->ptr, "margin", scene->toolsettings->uvcalc_margin);
   }
 
-  pack_islands_data *pid = static_cast<pack_islands_data *>(
-      MEM_callocN(sizeof(pack_islands_data), "pack_islands_data"));
+  UVPackIslandsData *pid = static_cast<UVPackIslandsData *>(
+      MEM_callocN(sizeof(UVPackIslandsData), "pack_islands_data"));
 
   pid->wm = CTX_wm_manager(C);
   /* The job must do it's own undo push. */
@@ -1505,14 +1514,15 @@ static int pack_islands_exec(bContext *C, wmOperator *op)
   pid->sima = sima;
   pid->udim_source = udim_source;
   pid->pack_island_params = pack_island_params;
-  wmJob *wm_job = WM_jobs_get(
-      pid->wm, CTX_wm_window(C), scene, "Packing UVs", WM_JOB_PROGRESS, WM_JOB_TYPE_UV_PACK);
-  WM_jobs_customdata_set(wm_job, pid, pack_islands_freejob);
-  WM_jobs_timer(wm_job, 0.1, 0, 0);
-  WM_set_locked_interface(pid->wm, true);
-  WM_jobs_callbacks(wm_job, pack_islands_startjob, nullptr, nullptr, pack_islands_endjob);
 
   if (use_job) {
+    wmJob *wm_job = WM_jobs_get(
+        pid->wm, CTX_wm_window(C), scene, "Packing UVs", WM_JOB_PROGRESS, WM_JOB_TYPE_UV_PACK);
+    WM_jobs_customdata_set(wm_job, pid, pack_islands_freejob);
+    WM_jobs_timer(wm_job, 0.1, 0, 0);
+    WM_set_locked_interface(pid->wm, true);
+    WM_jobs_callbacks(wm_job, pack_islands_startjob, nullptr, nullptr, pack_islands_endjob);
+
     WM_cursor_wait(true);
     G.is_break = false;
     WM_jobs_start(CTX_wm_manager(C), wm_job);

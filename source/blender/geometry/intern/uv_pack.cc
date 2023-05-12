@@ -1205,13 +1205,11 @@ static int64_t pack_island_xatlas(const Span<UVAABBIsland *> island_indices,
 
   while (i < island_indices.size()) {
 
-    if (params.stop) {
-      if (G.is_break) {
-        *params.stop = true;
-      }
-      if (*params.stop) {
-        break;
-      }
+    if (params.stop && G.is_break) {
+      *params.stop = true;
+    }
+    if (params.isCancelled()) {
+      break;
     }
 
     while (traced_islands < i) {
