@@ -69,9 +69,10 @@ void main()
   nodetree_volume();
 
   vec3 scattering = g_volume_scatter_data.scattering;
-  float anisotropy = g_volume_scatter_data.anisotropy;
   vec3 absorption = g_volume_absorption_data.absorption;
   vec3 emission = g_emission;
+  float anisotropy = g_volume_scatter_data.anisotropy;
+  vec2 phase = vec2(anisotropy, 1.0);
 
 #ifdef MAT_GEOM_VOLUME_OBJECT
   scattering *= drw_volume.density_scale;
@@ -83,7 +84,7 @@ void main()
 
   /* Do not add phase weight if there's no scattering. */
   if (all(equal(scattering, vec3(0.0)))) {
-    anisotropy = 0.0;
+    phase = vec2(0.0);
   }
 
 #ifdef MAT_GEOM_VOLUME_OBJECT
@@ -92,11 +93,11 @@ void main()
   scattering += imageLoad(out_scattering_img, froxel).rgb;
   extinction += imageLoad(out_extinction_img, froxel).rgb;
   emission += imageLoad(out_emissive_img, froxel).rgb;
-  anisotropy += imageLoad(out_phase_img, froxel).r;
+  phase += imageLoad(out_phase_img, froxel).rg;
 #endif
 
   imageStore(out_scattering_img, froxel, vec4(scattering, 1.0));
   imageStore(out_extinction_img, froxel, vec4(extinction, 1.0));
   imageStore(out_emissive_img, froxel, vec4(emission, 1.0));
-  imageStore(out_phase_img, froxel, vec4(anisotropy, vec3(1.0)));
+  imageStore(out_phase_img, froxel, vec4(phase, vec2(1.0)));
 }

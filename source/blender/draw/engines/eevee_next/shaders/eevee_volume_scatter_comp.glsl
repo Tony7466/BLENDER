@@ -63,6 +63,7 @@ void main()
   vec3 V = cameraVec(P);
 
   vec2 phase = imageLoad(in_phase_img, froxel).rg;
+  /* Divide by phase total weight, to compute the mean anisotropy. */
   float s_anisotropy = phase.x / max(1.0, phase.y);
 
   scattering += irradiance_volumetric(P) * s_scattering * phase_function_isotropic();
