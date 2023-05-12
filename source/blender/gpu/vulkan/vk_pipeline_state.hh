@@ -12,14 +12,21 @@
 #include "BLI_vector.hh"
 
 namespace blender::gpu {
+class VKFrameBuffer;
 
 class VKPipelineStateManager {
+
  private:
   GPUState current_;
   GPUStateMutable current_mutable_;
 
  public:
   VkPipelineColorBlendStateCreateInfo pipeline_color_blend_state;
+  /* Template of the color blending for color attachments.
+   * Blending is not supported on Integer based textures.
+   */
+  VkPipelineColorBlendAttachmentState color_blend_attachment_template;
+  VkPipelineColorBlendAttachmentState color_blend_attachment_int_template;
   Vector<VkPipelineColorBlendAttachmentState> color_blend_attachments;
   VkPipelineRasterizationStateCreateInfo rasterization_state;
   VkPipelineDepthStencilStateCreateInfo depth_stencil_state;
@@ -28,6 +35,8 @@ class VKPipelineStateManager {
 
   void set_state(const GPUState &state, const GPUStateMutable &mutable_state);
   void force_state(const GPUState &state, const GPUStateMutable &mutable_state);
+
+  void finalize_color_blend_state(const VKFrameBuffer &framebuffer);
 
  private:
   void set_blend(eGPUBlend blend);

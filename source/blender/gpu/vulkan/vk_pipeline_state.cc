@@ -6,6 +6,8 @@
  */
 
 #include "vk_pipeline_state.hh"
+#include "vk_framebuffer.hh"
+#include "vk_texture.hh"
 
 namespace blender::gpu {
 VKPipelineStateManager::VKPipelineStateManager()
@@ -22,12 +24,12 @@ VKPipelineStateManager::VKPipelineStateManager()
 
   /* TODO should be extracted from current framebuffer and should not be done here and now. */
   /* When the attachments differ the state should be forced. */
-  VkPipelineColorBlendAttachmentState color_blend_attachment = {};
-  color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-                                          VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-  color_blend_attachments.append(color_blend_attachment);
-  pipeline_color_blend_state.attachmentCount = color_blend_attachments.size();
-  pipeline_color_blend_state.pAttachments = color_blend_attachments.data();
+  color_blend_attachment_template = {};
+  color_blend_attachment_template.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
+                                                   VK_COLOR_COMPONENT_G_BIT |
+                                                   VK_COLOR_COMPONENT_B_BIT |
+                                                   VK_COLOR_COMPONENT_A_BIT;
+  color_blend_attachment_int_template = color_blend_attachment_template;
 }
 
 void VKPipelineStateManager::set_state(const GPUState &state, const GPUStateMutable &mutable_state)
@@ -74,10 +76,34 @@ void VKPipelineStateManager::force_state(const GPUState &state,
   set_state(state, mutable_state);
 }
 
+void VKPipelineStateManager::finalize_color_blend_state(const VKFrameBuffer &framebuffer)
+{
+  color_blend_attachments.clear();
+
+  for (int color_slot = 0; color_slot < GPU_FB_MAX_COLOR_ATTACHMENT; color_slot++) {
+    VKTexture *texture = unwrap(unwrap(framebuffer.color_tex(color_slot)));
+    if (texture) {
+      eGPUTextureFormatFlag format_flag = texture->format_flag_get();
+      if (format_flag & GPU_FORMAT_INTEGER) {
+        color_blend_attachments.append(color_blend_attachment_int_template);
+      }
+      else {
+        color_blend_attachments.append(color_blend_attachment_template);
+      }
+    }
+    else {
+      color_blend_attachments.append(color_blend_attachment_template);
+    }
+  }
+
+  pipeline_color_blend_state.attachmentCount = color_blend_attachments.size();
+  pipeline_color_blend_state.pAttachments = color_blend_attachments.data();
+}
+
 void VKPipelineStateManager::set_blend(const eGPUBlend blend)
 {
   VkPipelineColorBlendStateCreateInfo &cb = pipeline_color_blend_state;
-  VkPipelineColorBlendAttachmentState &att_state = color_blend_attachments.last();
+  VkPipelineColorBlendAttachmentState &att_state = color_blend_attachment_template;
 
   att_state.blendEnable = VK_TRUE;
   att_state.alphaBlendOp = VK_BLEND_OP_ADD;
@@ -186,20 +212,19 @@ void VKPipelineStateManager::set_write_mask(const eGPUWriteMask write_mask)
 {
   depth_stencil_state.depthWriteEnable = (write_mask & GPU_WRITE_DEPTH) ? VK_TRUE : VK_FALSE;
 
-  VkPipelineColorBlendAttachmentState &att_state = color_blend_attachments.last();
-  att_state.colorWriteMask = 0;
+  color_blend_attachment_template.colorWriteMask = 0;
 
   if ((write_mask & GPU_WRITE_RED) != 0) {
-    att_state.colorWriteMask |= VK_COLOR_COMPONENT_R_BIT;
+    color_blend_attachment_template.colorWriteMask |= VK_COLOR_COMPONENT_R_BIT;
   }
   if ((write_mask & GPU_WRITE_GREEN) != 0) {
-    att_state.colorWriteMask |= VK_COLOR_COMPONENT_G_BIT;
+    color_blend_attachment_template.colorWriteMask |= VK_COLOR_COMPONENT_G_BIT;
   }
   if ((write_mask & GPU_WRITE_BLUE) != 0) {
-    att_state.colorWriteMask |= VK_COLOR_COMPONENT_B_BIT;
+    color_blend_attachment_template.colorWriteMask |= VK_COLOR_COMPONENT_B_BIT;
   }
   if ((write_mask & GPU_WRITE_ALPHA) != 0) {
-    att_state.colorWriteMask |= VK_COLOR_COMPONENT_A_BIT;
+    color_blend_attachment_template.colorWriteMask |= VK_COLOR_COMPONENT_A_BIT;
   }
 }
 

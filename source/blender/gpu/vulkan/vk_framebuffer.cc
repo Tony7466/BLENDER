@@ -423,8 +423,8 @@ void VKFrameBuffer::render_pass_create()
       attachment_description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       attachment_description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
       attachment_description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-      attachment_description.initialLayout = VK_IMAGE_LAYOUT_GENERAL;
-      attachment_description.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
+      attachment_description.initialLayout = texture.current_layout_get();
+      attachment_description.finalLayout = texture.current_layout_get();
 
       /* Create the attachment reference. */
       const bool is_depth_attachment = ELEM(
