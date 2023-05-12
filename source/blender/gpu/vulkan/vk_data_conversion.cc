@@ -697,6 +697,7 @@ static void convert(FLOAT4 &dst, const SRGBA8 &src)
   dst.value = src.value.decode();
 }
 
+// TODO: These still have to be validated.
 static void convert(FLOAT4 &dst, const R11F_G11F_B10F &src)
 {
   dst.value.r = float((src.value >> 21) & 0b11111111111) / (0b11111111111);
@@ -704,6 +705,7 @@ static void convert(FLOAT4 &dst, const R11F_G11F_B10F &src)
   dst.value.b = float((src.value) & 0b1111111111) / float(0b1111111111);
   dst.value.a = 1.0f;
 }
+
 static void convert(R11F_G11F_B10F &dst, const FLOAT4 &src)
 {
   int32_t r = clamp_f(src.value.r, 0.0f, 1.0f) * 0b11111111111;
