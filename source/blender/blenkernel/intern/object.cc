@@ -4479,16 +4479,7 @@ Mesh *BKE_object_get_evaluated_mesh(const Object *object)
     return nullptr;
   }
 
-  const ID *object_data = static_cast<const ID *>(object->data);
-  if (object_data == nullptr) {
-    return mesh;
-  }
-
-  const ID_Type data_type = GS(object_data->name);
-  if (ELEM(data_type, ID_ME, ID_CV)) {
-    mesh = BKE_mesh_wrapper_ensure_subdivision(mesh);
-  }
-
+  mesh = BKE_mesh_wrapper_ensure_subdivision(mesh);
   return mesh;
 }
 
