@@ -249,7 +249,8 @@ static void build_poly_connections(blender::AtomicDisjointSet &islands,
         }
 
         for (const int inner_edge :
-             poly_edges.slice(poly_loop_index, poly_edges.size() - poly_loop_index)) {
+             poly_edges.slice(poly_loop_index, poly_edges.size() - poly_loop_index))
+        {
           if (outer_edge == inner_edge) {
             continue;
           }
@@ -1072,4 +1073,23 @@ void paintvert_reveal(bContext *C, Object *ob, const bool select)
 
   paintvert_flush_flags(ob);
   paintvert_tag_select_update(C, ob);
+}
+
+void paintvert_select_loop(bContext *C,
+                           Object *ob,
+                           const int region_coordinates[2],
+                           const bool select)
+{
+  using namespace blender;
+
+  Mesh *mesh = BKE_mesh_from_object(ob);
+  if (mesh == nullptr || mesh->totvert == 0) {
+    return;
+  }
+
+  uint index;
+  if (!ED_mesh_pick_vert(C, ob, region_coordinates, ED_MESH_PICK_DEFAULT_VERT_DIST, true, &index))
+  {
+    return;
+  }
 }

@@ -453,6 +453,7 @@ void paintvert_select_more(struct Mesh *mesh, bool face_step);
 void paintvert_select_less(struct Mesh *mesh, bool face_step);
 void paintvert_hide(struct bContext *C, struct Object *ob, bool unselected);
 void paintvert_reveal(struct bContext *C, struct Object *ob, bool select);
+void paintvert_select_loop(struct bContext *C, struct Object *ob, const int mval[2], bool select);
 
 /* mirrtopo */
 typedef struct MirrTopoStore_t {
