@@ -23,9 +23,7 @@ class AddPrefixFunction : public MultiFunction {
     const VArray<std::string> &prefixes = params.readonly_single_input<std::string>(0, "Prefix");
     MutableSpan<std::string> strings = params.single_mutable<std::string>(1, "Strings");
 
-    for (int64_t i : mask) {
-      strings[i] = prefixes[i] + strings[i];
-    }
+    mask.foreach_index([&](const int64_t i) { strings[i] = prefixes[i] + strings[i]; });
   }
 };
 
@@ -48,12 +46,12 @@ class CreateRangeFunction : public MultiFunction {
     const VArray<int> &sizes = params.readonly_single_input<int>(0, "Size");
     GVectorArray &ranges = params.vector_output(1, "Range");
 
-    for (int64_t i : mask) {
+    mask.foreach_index([&](const int64_t i) {
       int size = sizes[i];
       for (int j : IndexRange(size)) {
         ranges.append(i, &j);
       }
-    }
+    });
   }
 };
 
@@ -75,12 +73,12 @@ class GenericAppendFunction : public MultiFunction {
     GVectorArray &vectors = params.vector_mutable(0, "Vector");
     const GVArray &values = params.readonly_single_input(1, "Value");
 
-    for (int64_t i : mask) {
+    mask.foreach_index([&](const int64_t i) {
       BUFFER_FOR_CPP_TYPE_VALUE(values.type(), buffer);
       values.get(i, buffer);
       vectors.append(i, buffer);
       values.type().destruct(buffer);
-    }
+    });
   }
 };
 
@@ -125,9 +123,7 @@ class AppendFunction : public MultiFunction {
     GVectorArray_TypedMutableRef<int> vectors = params.vector_mutable<int>(0);
     const VArray<int> &values = params.readonly_single_input<int>(1);
 
-    for (int64_t i : mask) {
-      vectors.append(i, values[i]);
-    }
+    mask.foreach_index([&](const int64_t i) { vectors.append(i, values[i]); });
   }
 };
 
@@ -150,13 +146,13 @@ class SumVectorFunction : public MultiFunction {
     const VVectorArray<int> &vectors = params.readonly_vector_input<int>(0);
     MutableSpan<int> sums = params.uninitialized_single_output<int>(1);
 
-    for (int64_t i : mask) {
+    mask.foreach_index([&](const int64_t i) {
       int sum = 0;
       for (int j : IndexRange(vectors.get_vector_size(i))) {
         sum += vectors.get_vector_element(i, j);
       }
       sums[i] = sum;
-    }
+    });
   }
 };
 
@@ -181,9 +177,8 @@ class OptionalOutputsFunction : public MultiFunction {
       index_mask::masked_fill(values, 5, mask);
     }
     MutableSpan<std::string> values = params.uninitialized_single_output<std::string>(1, "Out 2");
-    for (const int i : mask) {
-      new (&values[i]) std::string("hello, this is a long string");
-    }
+    mask.foreach_index(
+        [&](const int i) { new (&values[i]) std::string("hello, this is a long string"); });
   }
 };
 

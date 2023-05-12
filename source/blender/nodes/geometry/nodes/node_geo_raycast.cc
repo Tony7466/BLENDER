@@ -137,7 +137,7 @@ static void raycast_to_mesh(const IndexMask &mask,
   /* We shouldn't be rebuilding the BVH tree when calling this function in parallel. */
   BLI_assert(tree_data.cached);
 
-  for (const int i : mask) {
+  mask.foreach_index([&](const int i) {
     const float ray_length = ray_lengths[i];
     const float3 ray_origin = ray_origins[i];
     const float3 ray_direction = ray_directions[i];
@@ -187,7 +187,7 @@ static void raycast_to_mesh(const IndexMask &mask,
         r_hit_distances[i] = ray_length;
       }
     }
-  }
+  });
 }
 
 class RaycastFunction : public mf::MultiFunction {

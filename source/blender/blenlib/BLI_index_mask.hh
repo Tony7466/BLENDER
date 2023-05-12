@@ -6,6 +6,7 @@
 #include <optional>
 #include <variant>
 
+#include "BLI_array.hh"
 #include "BLI_bit_vector.hh"
 #include "BLI_function_ref.hh"
 #include "BLI_index_range.hh"
@@ -201,6 +202,11 @@ class IndexMask {
                                   GrainSize grain_size,
                                   IndexMaskMemory &memory,
                                   Fn &&predicate);
+  template<typename T, typename Fn>
+  static void from_groups(const IndexMask &universe,
+                          IndexMaskMemory &memory,
+                          Fn &&get_group_index,
+                          MutableSpan<IndexMask> r_masks);
 
   template<typename T> void to_indices(MutableSpan<T> r_indices) const;
   void to_bits(MutableBitSpan r_bits, int64_t offset = 0) const;
@@ -696,7 +702,8 @@ template<typename Fn> inline void ChunkSlice::foreach_span(Fn &&fn) const
       fn(indices);
     }
     for (int64_t segment_i = this->begin_it.segment_i + 1; segment_i < this->end_it.segment_i;
-         segment_i++) {
+         segment_i++)
+    {
       const int64_t begin_i = 0;
       const int64_t end_i = this->chunk->segment_size(segment_i);
       const Span<int16_t> indices{this->chunk->indices_by_segment[segment_i] + begin_i,
@@ -773,8 +780,8 @@ template<typename Fn> inline void IndexMask::foreach_span_template(Fn &&fn) cons
             chunk.indices_by_segment[segment_i] + begin_it.index_in_segment, segment_size};
         fn(chunk_id, indices);
       }
-      for (int64_t segment_i = begin_it.segment_i + 1; segment_i < chunk.segments_num;
-           segment_i++) {
+      for (int64_t segment_i = begin_it.segment_i + 1; segment_i < chunk.segments_num; segment_i++)
+      {
         const int64_t segment_size = chunk.cumulative_segment_sizes[segment_i + 1] -
                                      chunk.cumulative_segment_sizes[segment_i];
         const Span<int16_t> indices{chunk.indices_by_segment[segment_i], segment_size};
@@ -1014,6 +1021,22 @@ inline IndexMask IndexMask::from_predicate(const IndexMask &universe,
     }
   });
   return IndexMask::from_indices<int64_t>(indices, memory);
+}
+
+template<typename T, typename Fn>
+void IndexMask::from_groups(const IndexMask &universe,
+                            IndexMaskMemory &memory,
+                            Fn &&get_group_index,
+                            MutableSpan<IndexMask> r_masks)
+{
+  Array<Vector<T>> indices_by_group(r_masks.size());
+  universe.foreach_index([&](const int64_t i) {
+    const int group_index = get_group_index(i);
+    indices_by_group[group_index].append(T(i));
+  });
+  for (const int64_t i : r_masks.index_range()) {
+    r_masks[i] = IndexMask::from_indices<T>(indices_by_group[i], memory);
+  }
 }
 
 std::optional<IndexRange> inline IndexMask::to_range() const

@@ -67,7 +67,7 @@ BLI_NOINLINE static void sample_corner_attribute(const Span<MLoopTri> looptris,
     if constexpr (check_indices) {
       if (looptri_indices[i] == -1) {
         dst[i] = {};
-        continue;
+        return;
       }
     }
     const MLoopTri &tri = looptris[looptri_indices[i]];
@@ -144,17 +144,17 @@ static void sample_barycentric_weights(const Span<float3> vert_positions,
                                        const IndexMask &mask,
                                        MutableSpan<float3> bary_coords)
 {
-  for (const int i : mask) {
+  mask.foreach_index([&](const int i) {
     if constexpr (check_indices) {
       if (looptri_indices[i] == -1) {
         bary_coords[i] = {};
-        continue;
+        return;
       }
     }
     const MLoopTri &tri = looptris[looptri_indices[i]];
     bary_coords[i] = compute_bary_coord_in_triangle(
         vert_positions, corner_verts, tri, sample_positions[i]);
-  }
+  });
 }
 
 template<bool check_indices = false>
@@ -170,7 +170,7 @@ static void sample_nearest_weights(const Span<float3> vert_positions,
     if constexpr (check_indices) {
       if (looptri_indices[i] == -1) {
         bary_coords[i] = {};
-        continue;
+        return;
       }
     }
     const MLoopTri &tri = looptris[looptri_indices[i]];

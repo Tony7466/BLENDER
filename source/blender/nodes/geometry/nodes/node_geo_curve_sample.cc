@@ -398,7 +398,7 @@ class SampleCurveFunction : public mf::MultiFunction {
       Vector<int> invalid_indices;
       MultiValueMap<int, int> indices_per_curve;
       devirtualize_varray(curve_indices, [&](const auto curve_indices) {
-        for (const int i : mask) {
+        mask.foreach_index([&](const int i) {
           const int curve_i = curve_indices[i];
           if (curves.curves_range().contains(curve_i)) {
             indices_per_curve.add(curve_i, i);
@@ -406,7 +406,7 @@ class SampleCurveFunction : public mf::MultiFunction {
           else {
             invalid_indices.append(i);
           }
-        }
+        });
       });
 
       IndexMaskMemory memory;
