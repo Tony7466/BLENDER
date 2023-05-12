@@ -1091,7 +1091,7 @@ static void init_iconfile_list(ListBase *list)
         /* found a potential icon file, so make an entry for it in the cache list */
         IconFile *ifile = MEM_cnew<IconFile>(__func__);
 
-        BLI_strncpy(ifile->filename, filename, sizeof(ifile->filename));
+        STRNCPY(ifile->filename, filename);
         ifile->index = index;
 
         BLI_addtail(list, ifile);
@@ -1624,7 +1624,7 @@ static void icon_draw_cache_texture_flush_ex(GPUTexture *texture,
   GPU_uniformbuf_bind(ubo, data_binding);
 
   const int img_binding = GPU_shader_get_sampler_binding(shader, "image");
-  GPU_texture_bind_ex(texture, GPU_SAMPLER_ICON, img_binding);
+  GPU_texture_bind_ex(texture, GPUSamplerState::icon_sampler(), img_binding);
 
   GPUBatch *quad = GPU_batch_preset_quad();
   GPU_batch_set_shader(quad, shader);
@@ -1816,7 +1816,7 @@ static void icon_draw_texture(float x,
   GPU_shader_uniform_float_ex(shader, rect_geom_loc, 4, 1, geom_color);
   GPU_shader_uniform_1f(shader, "text_width", text_width);
 
-  GPU_texture_bind_ex(texture, GPU_SAMPLER_ICON, img_binding);
+  GPU_texture_bind_ex(texture, GPUSamplerState::icon_sampler(), img_binding);
 
   GPUBatch *quad = GPU_batch_preset_quad();
   GPU_batch_set_shader(quad, shader);
@@ -2215,6 +2215,15 @@ static int ui_id_brush_get_icon(const bContext *C, ID *id)
         case GP_BRUSH_ICON_GPBRUSH_WEIGHT:
           br->id.icon_id = ICON_GPBRUSH_WEIGHT;
           break;
+        case GP_BRUSH_ICON_GPBRUSH_BLUR:
+          br->id.icon_id = ICON_BRUSH_BLUR;
+          break;
+        case GP_BRUSH_ICON_GPBRUSH_AVERAGE:
+          br->id.icon_id = ICON_BRUSH_BLUR;
+          break;
+        case GP_BRUSH_ICON_GPBRUSH_SMEAR:
+          br->id.icon_id = ICON_BRUSH_BLUR;
+          break;
         default:
           br->id.icon_id = ICON_GPBRUSH_PEN;
           break;
@@ -2291,7 +2300,8 @@ int UI_icon_from_library(const ID *id)
   }
   if (ID_IS_OVERRIDE_LIBRARY(id)) {
     if (!ID_IS_OVERRIDE_LIBRARY_REAL(id) ||
-        (id->override_library->flag & IDOVERRIDE_LIBRARY_FLAG_SYSTEM_DEFINED) != 0) {
+        (id->override_library->flag & LIBOVERRIDE_FLAG_SYSTEM_DEFINED) != 0)
+    {
       return ICON_LIBRARY_DATA_OVERRIDE_NONEDITABLE;
     }
     return ICON_LIBRARY_DATA_OVERRIDE;

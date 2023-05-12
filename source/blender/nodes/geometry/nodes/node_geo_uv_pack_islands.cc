@@ -38,10 +38,10 @@ static VArray<float3> construct_uv_gvarray(const Mesh &mesh,
                                            const eAttrDomain domain)
 {
   const Span<float3> positions = mesh.vert_positions();
-  const Span<MPoly> polys = mesh.polys();
+  const OffsetIndices polys = mesh.polys();
   const Span<int> corner_verts = mesh.corner_verts();
 
-  bke::MeshFieldContext face_context{mesh, ATTR_DOMAIN_FACE};
+  const bke::MeshFieldContext face_context{mesh, ATTR_DOMAIN_FACE};
   FieldEvaluator face_evaluator{face_context, polys.size()};
   face_evaluator.add(selection_field);
   face_evaluator.evaluate();
@@ -50,7 +50,7 @@ static VArray<float3> construct_uv_gvarray(const Mesh &mesh,
     return {};
   }
 
-  bke::MeshFieldContext corner_context{mesh, ATTR_DOMAIN_CORNER};
+  const bke::MeshFieldContext corner_context{mesh, ATTR_DOMAIN_CORNER};
   FieldEvaluator evaluator{corner_context, mesh.totloop};
   Array<float3> uv(mesh.totloop);
   evaluator.add_with_destination(uv_field, uv.as_mutable_span());
@@ -58,14 +58,14 @@ static VArray<float3> construct_uv_gvarray(const Mesh &mesh,
 
   geometry::ParamHandle *handle = geometry::uv_parametrizer_construct_begin();
   for (const int poly_index : selection) {
-    const MPoly &poly = polys[poly_index];
-    Array<geometry::ParamKey, 16> mp_vkeys(poly.totloop);
-    Array<bool, 16> mp_pin(poly.totloop);
-    Array<bool, 16> mp_select(poly.totloop);
-    Array<const float *, 16> mp_co(poly.totloop);
-    Array<float *, 16> mp_uv(poly.totloop);
-    for (const int i : IndexRange(poly.totloop)) {
-      const int corner = poly.loopstart + i;
+    const IndexRange poly = polys[poly_index];
+    Array<geometry::ParamKey, 16> mp_vkeys(poly.size());
+    Array<bool, 16> mp_pin(poly.size());
+    Array<bool, 16> mp_select(poly.size());
+    Array<const float *, 16> mp_co(poly.size());
+    Array<float *, 16> mp_uv(poly.size());
+    for (const int i : IndexRange(poly.size())) {
+      const int corner = poly[i];
       const int vert = corner_verts[corner];
       mp_vkeys[i] = vert;
       mp_co[i] = positions[vert];
@@ -75,7 +75,7 @@ static VArray<float3> construct_uv_gvarray(const Mesh &mesh,
     }
     geometry::uv_parametrizer_face_add(handle,
                                        poly_index,
-                                       poly.totloop,
+                                       poly.size(),
                                        mp_vkeys.data(),
                                        mp_co.data(),
                                        mp_uv.data(),

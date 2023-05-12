@@ -52,7 +52,8 @@ static int compare_v2_classify(const float uv_a[2], const float uv_b[2])
   const int diff_ulp = 12;
 
   if (compare_ff_relative(uv_a[0], uv_b[0], diff_abs, diff_ulp) &&
-      compare_ff_relative(uv_a[1], uv_b[1], diff_abs, diff_ulp)) {
+      compare_ff_relative(uv_a[1], uv_b[1], diff_abs, diff_ulp))
+  {
     return CMP_CLOSE;
   }
   return CMP_APART;
@@ -114,13 +115,8 @@ void BKE_mesh_merge_customdata_for_apply_modifier(Mesh *me)
 
   int *vert_map_mem;
   struct MeshElemMap *vert_to_loop;
-  BKE_mesh_vert_loop_map_create(&vert_to_loop,
-                                &vert_map_mem,
-                                me->polys().data(),
-                                me->corner_verts().data(),
-                                me->totvert,
-                                me->totpoly,
-                                me->totloop);
+  BKE_mesh_vert_loop_map_create(
+      &vert_to_loop, &vert_map_mem, me->polys(), me->corner_verts().data(), me->totvert);
 
   Vector<float2 *> mloopuv_layers;
   mloopuv_layers.reserve(mloopuv_layers_num);
