@@ -26,7 +26,7 @@ void get_closest_in_bvhtree(BVHTreeFromMesh &tree_data,
   BLI_assert(positions.size() >= r_distances_sq.size());
   BLI_assert(positions.size() >= r_positions.size());
 
-  for (const int i : mask) {
+  mask.foreach_index([&](const int i) {
     BVHTreeNearest nearest;
     nearest.dist_sq = FLT_MAX;
     const float3 position = positions[i];
@@ -41,7 +41,7 @@ void get_closest_in_bvhtree(BVHTreeFromMesh &tree_data,
     if (!r_positions.is_empty()) {
       r_positions[i] = nearest.co;
     }
-  }
+  });
 }
 
 }  // namespace blender::nodes
@@ -79,7 +79,7 @@ static void get_closest_pointcloud_points(const PointCloud &pointcloud,
   BVHTreeFromPointCloud tree_data;
   BKE_bvhtree_from_pointcloud_get(&tree_data, &pointcloud, 2);
 
-  for (const int i : mask) {
+  mask.foreach_index([&](const int i) {
     BVHTreeNearest nearest;
     nearest.dist_sq = FLT_MAX;
     const float3 position = positions[i];
@@ -89,7 +89,7 @@ static void get_closest_pointcloud_points(const PointCloud &pointcloud,
     if (!r_distances_sq.is_empty()) {
       r_distances_sq[i] = nearest.dist_sq;
     }
-  }
+  });
 
   free_bvhtree_from_pointcloud(&tree_data);
 }
@@ -151,9 +151,7 @@ static void get_closest_mesh_polys(const Mesh &mesh,
 
   const Span<int> looptri_polys = mesh.looptri_polys();
 
-  for (const int i : mask) {
-    r_poly_indices[i] = looptri_polys[looptri_indices[i]];
-  }
+  mask.foreach_index([&](const int i) { r_poly_indices[i] = looptri_polys[looptri_indices[i]]; });
 }
 
 /* The closest corner is defined to be the closest corner on the closest face. */
@@ -172,7 +170,7 @@ static void get_closest_mesh_corners(const Mesh &mesh,
   Array<int> poly_indices(positions.size());
   get_closest_mesh_polys(mesh, positions, mask, poly_indices, {}, {});
 
-  for (const int i : mask) {
+  mask.foreach_index([&](const int i) {
     const float3 position = positions[i];
     const int poly_index = poly_indices[i];
 
@@ -198,7 +196,7 @@ static void get_closest_mesh_corners(const Mesh &mesh,
     if (!r_distances_sq.is_empty()) {
       r_distances_sq[i] = min_distance_sq;
     }
-  }
+  });
 }
 
 static bool component_is_available(const GeometrySet &geometry,
@@ -256,7 +254,7 @@ class SampleNearestFunction : public mf::MultiFunction {
     const VArray<float3> &positions = params.readonly_single_input<float3>(0, "Position");
     MutableSpan<int> indices = params.uninitialized_single_output<int>(1, "Index");
     if (!src_component_) {
-      indices.fill_indices(mask.indices(), 0);
+      index_mask::masked_fill(indices, 0, mask);
       return;
     }
 
