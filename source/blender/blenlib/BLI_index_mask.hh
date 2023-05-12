@@ -499,7 +499,8 @@ inline IndexMask::IndexMask(const IndexRange range)
     init_empty_mask(data_);
     return;
   }
-  *this = get_static_index_mask_for_min_size(range.one_after_last());
+  const int64_t one_after_last = range.one_after_last();
+  *this = get_static_index_mask_for_min_size(one_after_last);
 
   const int64_t first_chunk_id = index_to_chunk_id(range.first());
   const int64_t last_chunk_id = index_to_chunk_id(range.last());
@@ -512,7 +513,9 @@ inline IndexMask::IndexMask(const IndexRange range)
   data_.begin_it.segment_i = 0;
   data_.begin_it.index_in_segment = range.first() & chunk_mask_low;
   data_.end_it.segment_i = 0;
-  data_.end_it.index_in_segment = range.one_after_last() & chunk_mask_low;
+  data_.end_it.index_in_segment = (one_after_last == chunk_capacity) ?
+                                      chunk_capacity :
+                                      range.one_after_last() & chunk_mask_low;
 }
 
 inline int64_t IndexMask::size() const

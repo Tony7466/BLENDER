@@ -218,4 +218,11 @@ TEST(index_mask, ToRange)
   }
 }
 
+TEST(index_mask, FromRange)
+{
+  const IndexRange range(16320, 64);
+  const IndexMask mask = range;
+  EXPECT_EQ(mask.to_range(), range);
+}
+
 }  // namespace blender::index_mask::tests
