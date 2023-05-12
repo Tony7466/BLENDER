@@ -335,7 +335,7 @@ class SampleCurveFunction : public mf::MultiFunction {
       }
       if (!sampled_values.is_empty()) {
         const CPPType &type = sampled_values.type();
-        type.fill_assign_indices(type.default_value(), sampled_values.data(), mask);
+        type.fill_construct_indices(type.default_value(), sampled_values.data(), mask);
       }
     };
 
