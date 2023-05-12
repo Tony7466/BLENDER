@@ -2775,7 +2775,7 @@ static PyObject *BPy_BoolProperty(PyObject *self, PyObject *args, PyObject *kw)
       .srna = srna,
   };
   const char *name = NULL, *description = "";
-  const char *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
+  const char *translation_context = NULL;
   bool default_value = false;
   PropertyRNA *prop;
   struct BPy_EnumProperty_Parse options_enum = {
@@ -2927,7 +2927,7 @@ static PyObject *BPy_BoolVectorProperty(PyObject *self, PyObject *args, PyObject
       .srna = srna,
   };
   const char *name = NULL, *description = "";
-  const char *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
+  const char *translation_context = NULL;
   bool default_value[RNA_MAX_ARRAY_DIMENSION][PYRNA_STACK_ARRAY] = {{false}};
   struct BPyPropArrayLength array_len_info = {.len_total = 3};
   PropertyRNA *prop;
@@ -3108,7 +3108,7 @@ static PyObject *BPy_IntProperty(PyObject *self, PyObject *args, PyObject *kw)
       .srna = srna,
   };
   const char *name = NULL, *description = "";
-  const char *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
+  const char *translation_context = NULL;
   int min = INT_MIN, max = INT_MAX, soft_min = INT_MIN, soft_max = INT_MAX;
   int step = 1;
   int default_value = 0;
@@ -3285,7 +3285,7 @@ static PyObject *BPy_IntVectorProperty(PyObject *self, PyObject *args, PyObject 
       .srna = srna,
   };
   const char *name = NULL, *description = "";
-  const char *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
+  const char *translation_context = NULL;
   int min = INT_MIN, max = INT_MAX, soft_min = INT_MIN, soft_max = INT_MAX;
   int step = 1;
   int default_value[RNA_MAX_ARRAY_DIMENSION][PYRNA_STACK_ARRAY] = {0};
@@ -3475,7 +3475,7 @@ static PyObject *BPy_FloatProperty(PyObject *self, PyObject *args, PyObject *kw)
       .srna = srna,
   };
   const char *name = NULL, *description = "";
-  const char *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
+  const char *translation_context = NULL;
   float min = -FLT_MAX, max = FLT_MAX, soft_min = -FLT_MAX, soft_max = FLT_MAX;
   float step = 3;
   float default_value = 0.0f;
@@ -3653,7 +3653,7 @@ static PyObject *BPy_FloatVectorProperty(PyObject *self, PyObject *args, PyObjec
       .srna = srna,
   };
   const char *name = NULL, *description = "";
-  const char *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
+  const char *translation_context = NULL;
   float min = -FLT_MAX, max = FLT_MAX, soft_min = -FLT_MAX, soft_max = FLT_MAX;
   float step = 3;
   float default_value[RNA_MAX_ARRAY_DIMENSION][PYRNA_STACK_ARRAY] = {{0.0f}};
@@ -4064,7 +4064,7 @@ static PyObject *BPy_EnumProperty(PyObject *self, PyObject *args, PyObject *kw)
       .srna = srna,
   };
   const char *name = NULL, *description = "";
-  const char *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
+  const char *translation_context = NULL;
   PyObject *default_py = NULL;
   int default_value = 0;
   PyObject *items, *items_fast;
@@ -4295,7 +4295,7 @@ PyObject *BPy_PointerProperty(PyObject *self, PyObject *args, PyObject *kw)
       .srna = srna,
   };
   const char *name = NULL, *description = "";
-  const char *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
+  const char *translation_context = NULL;
   PropertyRNA *prop;
   StructRNA *ptype;
   PyObject *type = Py_None;
@@ -4438,7 +4438,7 @@ PyObject *BPy_CollectionProperty(PyObject *self, PyObject *args, PyObject *kw)
       .srna = srna,
   };
   const char *name = NULL, *description = "";
-  const char *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA;
+  const char *translation_context = NULL;
   PropertyRNA *prop;
   StructRNA *ptype;
   PyObject *type = Py_None;
