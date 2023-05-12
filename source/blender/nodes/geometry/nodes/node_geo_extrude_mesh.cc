@@ -421,8 +421,10 @@ static void extrude_mesh_edges(Mesh &mesh,
     return;
   }
 
-  const Array<Vector<int, 2>> edge_to_poly_map = bke::mesh_topology::build_edge_to_poly_map(
-      orig_polys, mesh.corner_edges(), mesh.totedge);
+  Array<int> edge_to_poly_offsets;
+  Array<int> edge_to_poly_indices;
+  const GroupedSpan<int> edge_to_poly_map = bke::mesh::build_edge_to_poly_map(
+      orig_polys, mesh.corner_edges(), mesh.totedge, edge_to_poly_offsets, edge_to_poly_indices);
 
   /* Find the offsets on the vertex domain for translation. This must be done before the mesh's
    * custom data layers are reallocated, in case the virtual array references one of them. */
@@ -562,7 +564,7 @@ static void extrude_mesh_edges(Mesh &mesh,
            * original edge. */
           copy_with_mixing(
               data.as_span(),
-              [&](const int i) { return edge_to_poly_map[edge_selection[i]].as_span(); },
+              [&](const int i) { return edge_to_poly_map[edge_selection[i]]; },
               data.slice(new_poly_range));
 
           break;
@@ -730,8 +732,10 @@ static void extrude_mesh_face_regions(Mesh &mesh,
   }
 
   /* All of the faces (selected and deselected) connected to each edge. */
-  const Array<Vector<int, 2>> edge_to_poly_map = bke::mesh_topology::build_edge_to_poly_map(
-      orig_polys, mesh.corner_edges(), orig_edges.size());
+  Array<int> edge_to_poly_offsets;
+  Array<int> edge_to_poly_indices;
+  const GroupedSpan<int> edge_to_poly_map = bke::mesh::build_edge_to_poly_map(
+      orig_polys, mesh.corner_edges(), mesh.totedge, edge_to_poly_offsets, edge_to_poly_indices);
 
   /* All vertices that are connected to the selected polygons.
    * Start the size at one vert per poly to reduce unnecessary reallocation. */

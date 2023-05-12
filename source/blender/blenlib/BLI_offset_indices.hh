@@ -93,9 +93,36 @@ template<typename T> class OffsetIndices {
 };
 
 /**
+ * References many separate spans in a larger contiguous array. This gives a more efficient way to
+ * store many grouped arrays, without requiring many small allocations, giving the general benefits
+ * of using contiguous memory.
+ */
+template<typename T> struct GroupedSpan {
+  OffsetIndices<int> offsets;
+  Span<T> data;
+
+  GroupedSpan() = default;
+  GroupedSpan(OffsetIndices<int> offsets, Span<T> data) : offsets(offsets), data(data)
+  {
+    BLI_assert(offsets.total_size() == data.size());
+  }
+
+  Span<T> operator[](const int64_t vert_index) const
+  {
+    return data.slice(offsets[vert_index]);
+  }
+
+  bool is_empty() const
+  {
+    return data.size() == 0;
+  }
+};
+
+/**
  * Turn an array of sizes into the offset at each index including all previous sizes.
  */
-void accumulate_counts_to_offsets(MutableSpan<int> counts_to_offsets, int start_offset = 0);
+OffsetIndices<int> accumulate_counts_to_offsets(MutableSpan<int> counts_to_offsets,
+                                                int start_offset = 0);
 
 /**
  * Create a map from indexed elements to the source indices, in other words from the larger array
@@ -103,8 +130,14 @@ void accumulate_counts_to_offsets(MutableSpan<int> counts_to_offsets, int start_
  */
 void build_reverse_map(OffsetIndices<int> offsets, MutableSpan<int> r_map);
 
+/**
+ * Build offsets to group the elements of \a indices pointing to the same index.
+ */
+void build_reverse_offsets(Span<int> indices, MutableSpan<int> r_map);
+
 }  // namespace blender::offset_indices
 
 namespace blender {
+using offset_indices::GroupedSpan;
 using offset_indices::OffsetIndices;
-}
+}  // namespace blender
