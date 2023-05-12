@@ -8,6 +8,7 @@
 #pragma once
 
 #include "BLI_math_vector_types.hh"
+#include "BLI_offset_indices.hh"
 #include "BLI_sys_types.h"
 
 struct Mesh;
