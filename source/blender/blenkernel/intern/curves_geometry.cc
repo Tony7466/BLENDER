@@ -588,9 +588,9 @@ void CurvesGeometry::ensure_nurbs_basis_cache() const
     const VArray<int8_t> orders = this->nurbs_orders();
     const VArray<int8_t> knots_modes = this->nurbs_knots_modes();
 
-    nurbs_mask.foreach_span(GrainSize(64), [&](const auto sliced_mask) {
+    nurbs_mask.foreach_span(GrainSize(64), [&](const auto mask_segment) {
       Vector<float, 32> knots;
-      for (const int curve_index : sliced_mask) {
+      for (const int curve_index : mask_segment) {
         const IndexRange points = points_by_curve[curve_index];
         const IndexRange evaluated_points = evaluated_points_by_curve[curve_index];
 
@@ -1347,11 +1347,8 @@ static void reverse_curve_point_data(const CurvesGeometry &curves,
                                      MutableSpan<T> data)
 {
   const OffsetIndices points_by_curve = curves.points_by_curve();
-  threading::parallel_for(curve_selection.index_range(), 256, [&](IndexRange range) {
-    for (const int curve_i : curve_selection.slice(range)) {
-      data.slice(points_by_curve[curve_i]).reverse();
-    }
-  });
+  curve_selection.foreach_index(
+      GrainSize(256), [&](const int curve_i) { data.slice(points_by_curve[curve_i]).reverse(); });
 }
 
 template<typename T>
@@ -1361,20 +1358,18 @@ static void reverse_swap_curve_point_data(const CurvesGeometry &curves,
                                           MutableSpan<T> data_b)
 {
   const OffsetIndices points_by_curve = curves.points_by_curve();
-  threading::parallel_for(curve_selection.index_range(), 256, [&](IndexRange range) {
-    for (const int curve_i : curve_selection.slice(range)) {
-      const IndexRange points = points_by_curve[curve_i];
-      MutableSpan<T> a = data_a.slice(points);
-      MutableSpan<T> b = data_b.slice(points);
-      for (const int i : IndexRange(points.size() / 2)) {
-        const int end_index = points.size() - 1 - i;
-        std::swap(a[end_index], b[i]);
-        std::swap(b[end_index], a[i]);
-      }
-      if (points.size() % 2) {
-        const int64_t middle_index = points.size() / 2;
-        std::swap(a[middle_index], b[middle_index]);
-      }
+  curve_selection.foreach_index(GrainSize(256), [&](const int curve_i) {
+    const IndexRange points = points_by_curve[curve_i];
+    MutableSpan<T> a = data_a.slice(points);
+    MutableSpan<T> b = data_b.slice(points);
+    for (const int i : IndexRange(points.size() / 2)) {
+      const int end_index = points.size() - 1 - i;
+      std::swap(a[end_index], b[i]);
+      std::swap(b[end_index], a[i]);
+    }
+    if (points.size() % 2) {
+      const int64_t middle_index = points.size() / 2;
+      std::swap(a[middle_index], b[middle_index]);
     }
   });
 }

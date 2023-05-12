@@ -673,8 +673,8 @@ struct DensitySubtractOperationExecutor {
     });
 
     /* Detect curves that are too close to other existing curves. */
-    curve_selection_.foreach_span([&](const auto sliced_selection) {
-      for (const int curve_i : sliced_selection) {
+    curve_selection_.foreach_span([&](const auto mask_segment) {
+      for (const int curve_i : mask_segment) {
         if (curves_to_delete[curve_i]) {
           continue;
         }
@@ -762,8 +762,8 @@ struct DensitySubtractOperationExecutor {
     });
 
     /* Detect curves that are too close to other existing curves. */
-    curve_selection_.foreach_span([&](const auto sliced_selection) {
-      for (const int curve_i : sliced_selection) {
+    curve_selection_.foreach_span([&](const auto mask_segment) {
+      for (const int curve_i : mask_segment) {
         if (curves_to_delete[curve_i]) {
           continue;
         }

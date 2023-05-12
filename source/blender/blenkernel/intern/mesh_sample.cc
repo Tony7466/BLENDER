@@ -23,13 +23,13 @@ BLI_NOINLINE static void sample_point_attribute(const Span<int> corner_verts,
                                                 const IndexMask &mask,
                                                 const MutableSpan<T> dst)
 {
-  for (const int i : mask) {
+  mask.foreach_index([&](const int i) {
     const MLoopTri &tri = looptris[looptri_indices[i]];
     dst[i] = attribute_math::mix3(bary_coords[i],
                                   src[corner_verts[tri.tri[0]]],
                                   src[corner_verts[tri.tri[1]]],
                                   src[corner_verts[tri.tri[2]]]);
-  }
+  });
 }
 
 void sample_point_attribute(const Span<int> corner_verts,
@@ -63,7 +63,7 @@ BLI_NOINLINE static void sample_corner_attribute(const Span<MLoopTri> looptris,
                                                  const IndexMask &mask,
                                                  const MutableSpan<T> dst)
 {
-  for (const int i : mask) {
+  mask.foreach_index([&](const int i) {
     if constexpr (check_indices) {
       if (looptri_indices[i] == -1) {
         dst[i] = {};
@@ -72,7 +72,7 @@ BLI_NOINLINE static void sample_corner_attribute(const Span<MLoopTri> looptris,
     }
     const MLoopTri &tri = looptris[looptri_indices[i]];
     dst[i] = sample_corner_attribute_with_bary_coords(bary_coords[i], tri, src);
-  }
+  });
 }
 
 void sample_corner_normals(const Span<MLoopTri> looptris,
@@ -82,11 +82,11 @@ void sample_corner_normals(const Span<MLoopTri> looptris,
                            const IndexMask &mask,
                            const MutableSpan<float3> dst)
 {
-  for (const int i : mask) {
+  mask.foreach_index([&](const int i) {
     const MLoopTri &tri = looptris[looptri_indices[i]];
     const float3 value = sample_corner_attribute_with_bary_coords(bary_coords[i], tri, src);
     dst[i] = math::normalize(value);
-  }
+  });
 }
 
 void sample_corner_attribute(const Span<MLoopTri> looptris,
@@ -113,11 +113,11 @@ void sample_face_attribute(const Span<int> looptri_polys,
                            const IndexMask &mask,
                            const MutableSpan<T> dst)
 {
-  for (const int i : mask) {
+  mask.foreach_index([&](const int i) {
     const int looptri_index = looptri_indices[i];
     const int poly_index = looptri_polys[looptri_index];
     dst[i] = src[poly_index];
-  }
+  });
 }
 
 void sample_face_attribute(const Span<int> looptri_polys,
@@ -166,7 +166,7 @@ static void sample_nearest_weights(const Span<float3> vert_positions,
                                    const IndexMask &mask,
                                    MutableSpan<float3> bary_coords)
 {
-  for (const int i : mask) {
+  mask.foreach_index([&](const int i) {
     if constexpr (check_indices) {
       if (looptri_indices[i] == -1) {
         bary_coords[i] = {};
@@ -181,7 +181,7 @@ static void sample_nearest_weights(const Span<float3> vert_positions,
         float3(1, 0, 0),
         float3(0, 1, 0),
         float3(0, 0, 1));
-  }
+  });
 }
 
 int sample_surface_points_spherical(RandomNumberGenerator &rng,

@@ -67,12 +67,12 @@ class CornersOfFaceInput final : public bke::MeshFieldInput {
     const bool use_sorting = !all_sort_weights.is_single();
 
     Array<int> corner_of_face(mask.min_array_size());
-    mask.foreach_span(GrainSize(1024), [&](const auto sliced_mask) {
+    mask.foreach_span(GrainSize(1024), [&](const auto mask_segment) {
       /* Reuse arrays to avoid allocation. */
       Array<float> sort_weights;
       Array<int> sort_indices;
 
-      for (const int selection_i : sliced_mask) {
+      for (const int selection_i : mask_segment) {
         const int poly_i = face_indices[selection_i];
         const int index_in_sort = indices_in_sort[selection_i];
         if (!polys.index_range().contains(poly_i)) {

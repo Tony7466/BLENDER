@@ -595,17 +595,14 @@ static void trim_attribute_linear(const bke::CurvesGeometry &src_curves,
     bke::attribute_math::convert_to_static_type(attribute.meta_data.data_type, [&](auto dummy) {
       using T = decltype(dummy);
 
-      threading::parallel_for(selection.index_range(), 512, [&](const IndexRange range) {
-        for (const int64_t curve_i : selection.slice(range)) {
-          const IndexRange src_points = src_points_by_curve[curve_i];
-
-          sample_interval_linear<T>(attribute.src.template typed<T>().slice(src_points),
-                                    attribute.dst.span.typed<T>(),
-                                    src_ranges[curve_i],
-                                    dst_points_by_curve[curve_i],
-                                    start_points[curve_i],
-                                    end_points[curve_i]);
-        }
+      selection.foreach_index(GrainSize(512), [&](const int curve_i) {
+        const IndexRange src_points = src_points_by_curve[curve_i];
+        sample_interval_linear<T>(attribute.src.template typed<T>().slice(src_points),
+                                  attribute.dst.span.typed<T>(),
+                                  src_ranges[curve_i],
+                                  dst_points_by_curve[curve_i],
+                                  start_points[curve_i],
+                                  end_points[curve_i]);
       });
     });
   }
@@ -679,19 +676,17 @@ static void trim_catmull_rom_curves(const bke::CurvesGeometry &src_curves,
     bke::attribute_math::convert_to_static_type(attribute.meta_data.data_type, [&](auto dummy) {
       using T = decltype(dummy);
 
-      threading::parallel_for(selection.index_range(), 512, [&](const IndexRange range) {
-        for (const int64_t curve_i : selection.slice(range)) {
-          const IndexRange src_points = src_points_by_curve[curve_i];
-          const IndexRange dst_points = dst_points_by_curve[curve_i];
+      selection.foreach_index(GrainSize(512), [&](const int curve_i) {
+        const IndexRange src_points = src_points_by_curve[curve_i];
+        const IndexRange dst_points = dst_points_by_curve[curve_i];
 
-          sample_interval_catmull_rom<T>(attribute.src.template typed<T>().slice(src_points),
-                                         attribute.dst.span.typed<T>(),
-                                         src_ranges[curve_i],
-                                         dst_points,
-                                         start_points[curve_i],
-                                         end_points[curve_i],
-                                         src_cyclic[curve_i]);
-        }
+        sample_interval_catmull_rom<T>(attribute.src.template typed<T>().slice(src_points),
+                                       attribute.dst.span.typed<T>(),
+                                       src_ranges[curve_i],
+                                       dst_points,
+                                       start_points[curve_i],
+                                       end_points[curve_i],
+                                       src_cyclic[curve_i]);
       });
     });
   }
@@ -779,9 +774,9 @@ static void trim_evaluated_curves(const bke::CurvesGeometry &src_curves,
     bke::attribute_math::convert_to_static_type(attribute.meta_data.data_type, [&](auto dummy) {
       using T = decltype(dummy);
 
-      threading::parallel_for(selection.index_range(), 512, [&](const IndexRange range) {
+      selection.foreach_span(GrainSize(512), [&](const auto mask_segment) {
         Vector<std::byte> evaluated_buffer;
-        for (const int64_t curve_i : selection.slice(range)) {
+        for (const int64_t curve_i : mask_segment) {
           const IndexRange src_points = src_points_by_curve[curve_i];
 
           /* Interpolate onto the evaluated point domain and sample the evaluated domain. */

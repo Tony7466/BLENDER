@@ -370,7 +370,7 @@ class CurvesGeometry : public ::CurvesGeometry {
    * Change the direction of selected curves (switch the start and end) without changing their
    * shape.
    */
-  void reverse_curves(cosnt IndexMask &curves_to_reverse);
+  void reverse_curves(const IndexMask &curves_to_reverse);
 
   /**
    * Remove any attributes that are unused based on the types in the curves.
