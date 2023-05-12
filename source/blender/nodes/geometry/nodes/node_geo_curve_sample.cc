@@ -43,15 +43,15 @@ static void node_declare(NodeDeclarationBuilder &b)
     node_storage(node).use_all_curves = false;
   });
 
-  b.add_output<decl::Float>(N_("Value"), "Value_Float").dependent_field();
-  b.add_output<decl::Int>(N_("Value"), "Value_Int").dependent_field();
-  b.add_output<decl::Vector>(N_("Value"), "Value_Vector").dependent_field();
-  b.add_output<decl::Color>(N_("Value"), "Value_Color").dependent_field();
-  b.add_output<decl::Bool>(N_("Value"), "Value_Bool").dependent_field();
+  b.add_output<decl::Float>(N_("Value"), "Value_Float").dependent_field({6, 7, 8});
+  b.add_output<decl::Int>(N_("Value"), "Value_Int").dependent_field({6, 7, 8});
+  b.add_output<decl::Vector>(N_("Value"), "Value_Vector").dependent_field({6, 7, 8});
+  b.add_output<decl::Color>(N_("Value"), "Value_Color").dependent_field({6, 7, 8});
+  b.add_output<decl::Bool>(N_("Value"), "Value_Bool").dependent_field({6, 7, 8});
 
-  b.add_output<decl::Vector>(N_("Position")).dependent_field();
-  b.add_output<decl::Vector>(N_("Tangent")).dependent_field();
-  b.add_output<decl::Vector>(N_("Normal")).dependent_field();
+  b.add_output<decl::Vector>(N_("Position")).dependent_field({6, 7, 8});
+  b.add_output<decl::Vector>(N_("Tangent")).dependent_field({6, 7, 8});
+  b.add_output<decl::Vector>(N_("Normal")).dependent_field({6, 7, 8});
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -169,8 +169,8 @@ static void sample_indices_and_factors_to_compressed(const Span<float> accumulat
 
   switch (length_mode) {
     case GEO_NODE_CURVE_SAMPLE_FACTOR:
-      mask.foreach_index_optimized([&](const int i) {
-        const float length = sample_lengths[mask[i]] * total_length;
+      mask.foreach_index_optimized([&](const int mask_i, const int i) {
+        const float length = sample_lengths[mask_i] * total_length;
         length_parameterize::sample_at_length(accumulated_lengths,
                                               std::clamp(length, 0.0f, total_length),
                                               r_segment_indices[i],
@@ -179,8 +179,8 @@ static void sample_indices_and_factors_to_compressed(const Span<float> accumulat
       });
       break;
     case GEO_NODE_CURVE_SAMPLE_LENGTH:
-      mask.foreach_index_optimized([&](const int i) {
-        const float length = sample_lengths[mask[i]];
+      mask.foreach_index_optimized([&](const int mask_i, const int i) {
+        const float length = sample_lengths[mask_i];
         length_parameterize::sample_at_length(accumulated_lengths,
                                               std::clamp(length, 0.0f, total_length),
                                               r_segment_indices[i],
