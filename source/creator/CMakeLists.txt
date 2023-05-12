@@ -1012,7 +1012,6 @@ elseif(WIN32)
       ${LIBDIR}/materialx/bin/MaterialXGenMdl.dll
       ${LIBDIR}/materialx/bin/MaterialXGenOsl.dll
       ${LIBDIR}/materialx/bin/MaterialXGenShader.dll
-      ${LIBDIR}/materialx/bin/MaterialXRender.dll
     RELEASE
   )
   if(EXISTS ${LIBDIR}/materialx/bin/MaterialXRender.dll) # 3.6+
@@ -1041,7 +1040,6 @@ elseif(WIN32)
       ${LIBDIR}/materialx/bin/MaterialXGenMdl_d.dll
       ${LIBDIR}/materialx/bin/MaterialXGenOsl_d.dll
       ${LIBDIR}/materialx/bin/MaterialXGenShader_d.dll
-      ${LIBDIR}/materialx/bin/MaterialXRender_d.dll
     DEBUG
   )
 
