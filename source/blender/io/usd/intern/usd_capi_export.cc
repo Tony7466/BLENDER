@@ -82,8 +82,7 @@ static bool prim_path_valid(const char *path)
   /* Check path syntax. */
   std::string errMsg;
   if (!pxr::SdfPath::IsValidPathString(path, &errMsg)) {
-    WM_reportf(
-        RPT_ERROR, "USD Export: invalid path string '%s': %s", path, errMsg.c_str());
+    WM_reportf(RPT_ERROR, "USD Export: invalid path string '%s': %s", path, errMsg.c_str());
     return false;
   }
 
