@@ -218,13 +218,15 @@ static Array<int> mesh_render_data_mat_tri_len_build(const MeshRenderData &mr)
     accumululate_material_counts_mesh(mr, all_tri_counts);
   }
 
-  Array<int> mat_tri_len(mr.mat_len, 0);
+  Array<int> &mat_tri_len = all_tri_counts.local();
   for (const Array<int> &counts : all_tri_counts) {
-    for (const int i : mat_tri_len.index_range()) {
-      mat_tri_len[i] += counts[i];
+    if (&counts != &mat_tri_len) {
+      for (const int i : mat_tri_len.index_range()) {
+        mat_tri_len[i] += counts[i];
+      }
     }
   }
-  return mat_tri_len;
+  return std::move(mat_tri_len);
 }
 
 static void mesh_render_data_polys_sorted_build(MeshRenderData *mr, MeshBufferCache *cache)
