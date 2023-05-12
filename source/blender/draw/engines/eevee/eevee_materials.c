@@ -1209,13 +1209,13 @@ void EEVEE_material_transparent_output_init(EEVEE_Data *vedata)
                                    GPU_TEXTURE_USAGE_ATTACHMENT;
     DRW_texture_ensure_fullscreen_2d_ex(&txl->transparent_accum, texture_format, usage_accum, 0);
     GPU_framebuffer_ensure_config(
-        &fbl->transparent_rpass_fb,
+        &fbl->transparent_rpass_accum_fb,
         {GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(txl->transparent_accum)});
 
     {
       /* This pass Accumulate 1 sample of the transparent pass into the the transparent
        * accumulation buffer. */
-      DRW_PASS_CREATE(psl->transparent_accum_ps, DRW_STATE_WRITE_COLOR);
+      DRW_PASS_CREATE(psl->transparent_accum_ps, DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ADD_FULL);
       DRWShadingGroup *grp = DRW_shgroup_create(EEVEE_shaders_renderpasses_accumulate_sh_get(),
                                                 psl->transparent_accum_ps);
       DRW_shgroup_uniform_texture(grp, "inputBuffer", txl->transparent_color_tmp);
@@ -1242,18 +1242,16 @@ void EEVEE_material_transparent_output_accumulate(EEVEE_Data *vedata)
      * the transparent object to the main pass. */
     GPU_texture_copy(txl->transparent_depth_tmp, dtxl->depth);
 
+    /* Render transparent objects on a black background. */
     GPU_framebuffer_bind(fbl->transparent_rpass_fb);
     GPU_framebuffer_clear_color(fbl->transparent_rpass_fb, clear);
-
-    /* Render transparent objects on a black background. */
     DRW_draw_pass(psl->transparent_pass);
 
     /* Accumulate the resulting color buffer. */
-    GPU_framebuffer_bind(fbl->transparent_rpass_fb);
+    GPU_framebuffer_bind(fbl->transparent_rpass_accum_fb);
     if (effects->taa_current_sample == 1) {
-      GPU_framebuffer_clear_color(fbl->transparent_rpass_fb, clear);
+      GPU_framebuffer_clear_color(fbl->transparent_rpass_accum_fb, clear);
     }
-
     DRW_draw_pass(psl->transparent_accum_ps);
 
     /* Restore default. */

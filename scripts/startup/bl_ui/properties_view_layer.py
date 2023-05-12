@@ -149,7 +149,6 @@ class VIEWLAYER_PT_eevee_layer_passes_effects(ViewLayerButtonsPanel, Panel):
 
         col = layout.column()
         col.prop(view_layer_eevee, "use_pass_transparent")
-        col.active = scene_eevee.use_pass_transparent
 
 
 class ViewLayerAOVPanel(ViewLayerButtonsPanel, Panel):

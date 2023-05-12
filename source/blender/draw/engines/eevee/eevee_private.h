@@ -352,6 +352,7 @@ typedef struct EEVEE_FramebufferList {
   struct GPUFrameBuffer *double_buffer_color_fb;
   struct GPUFrameBuffer *double_buffer_depth_fb;
   struct GPUFrameBuffer *transparent_rpass_fb;
+  struct GPUFrameBuffer *transparent_rpass_accum_fb;
   struct GPUFrameBuffer *taa_history_fb;
   struct GPUFrameBuffer *taa_history_color_fb;
 } EEVEE_FramebufferList;

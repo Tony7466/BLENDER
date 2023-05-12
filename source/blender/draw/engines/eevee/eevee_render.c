@@ -390,7 +390,7 @@ static void eevee_render_result_transparent(RenderLayer *rl,
   if ((vedata->stl->g_data->render_passes & EEVEE_RENDER_PASS_TRANSPARENT) != 0) {
     EEVEE_renderpasses_postprocess(sldata, vedata, EEVEE_RENDER_PASS_TRANSPARENT, 0);
     eevee_render_color_result(
-        rl, viewname, rect, RE_PASSNAME_TRANSPARENT, 3, vedata->fbl->renderpass_fb, vedata);
+        rl, viewname, rect, RE_PASSNAME_TRANSPARENT, 4, vedata->fbl->renderpass_fb, vedata);
   }
 }
 
