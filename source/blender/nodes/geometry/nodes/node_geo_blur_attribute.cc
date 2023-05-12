@@ -146,7 +146,7 @@ static void build_vert_to_vert_by_edge_map(const Span<int2> edges,
     for (const int vert : range) {
       MutableSpan<int> neighbors = r_indices.as_mutable_span().slice(offsets[vert]);
       for (const int i : neighbors.index_range()) {
-        neighbors[i] = bke::mesh::edge_other_vert(edges[i], neighbors[i]);
+        neighbors[i] = bke::mesh::edge_other_vert(edges[neighbors[i]], vert);
       }
     }
   });
