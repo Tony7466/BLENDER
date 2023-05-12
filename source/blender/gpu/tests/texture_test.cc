@@ -255,12 +255,13 @@ static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RGB10_A2UI()
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RGB10_A2UI);
 
+#endif
+
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_R11F_G11F_B10F()
 {
   texture_create_upload_read_with_bias<GPU_R11F_G11F_B10F, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_R11F_G11F_B10F);
-#endif
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_SRGB8_A8()
 {
