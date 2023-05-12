@@ -234,8 +234,6 @@ void VKPipelineStateManager::set_depth_test(const eGPUDepthTest value)
     depth_stencil_state.depthTestEnable = VK_FALSE;
     depth_stencil_state.depthCompareOp = VK_COMPARE_OP_NEVER;
   }
-
-  depth_stencil_state.depthBoundsTestEnable = VK_TRUE;
 }
 
 void VKPipelineStateManager::set_stencil_test(const eGPUStencilTest test,
