@@ -47,7 +47,8 @@ void main()
     return;
   }
 
-  vec3 ndc_cell = volume_to_ndc((vec3(froxel) + volumes_info_buf.jitter) * volumes_info_buf.inv_tex_size);
+  vec3 ndc_cell = volume_to_ndc((vec3(froxel) + volumes_info_buf.jitter) *
+                                volumes_info_buf.inv_tex_size);
 
   viewPosition = get_view_space_from_depth(ndc_cell.xy, ndc_cell.z);
   worldPosition = point_view_to_world(viewPosition);

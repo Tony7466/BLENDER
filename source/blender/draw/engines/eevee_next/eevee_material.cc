@@ -174,7 +174,7 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
     case GPU_MAT_QUEUED:
       queued_shaders_count++;
       blender_mat = (geometry_type == MAT_GEOM_VOLUME_OBJECT) ? BKE_material_default_volume() :
-                                                         BKE_material_default_surface();
+                                                                BKE_material_default_surface();
       matpass.gpumat = inst_.shaders.material_shader_get(
           blender_mat, blender_mat->nodetree, pipeline_type, geometry_type, false);
       break;
