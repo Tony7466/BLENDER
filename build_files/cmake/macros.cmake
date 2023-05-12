@@ -530,7 +530,7 @@ function(blender_add_test_executable
   )
   blender_add_test_executable_impl(
     "${name}"
-    True
+    TRUE
     "${sources}"
     "${includes}"
     "${includes_sys}"
@@ -547,7 +547,7 @@ function(blender_add_performancetest_executable
   )
   blender_add_test_executable_impl(
     "${name}"
-    False
+    FALSE
     "${sources}"
     "${includes}"
     "${includes_sys}"
