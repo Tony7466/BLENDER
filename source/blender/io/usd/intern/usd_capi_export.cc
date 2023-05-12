@@ -111,7 +111,6 @@ static bool export_params_valid(const USDExportParams &params)
   bool valid = true;
 
   if (!prim_path_valid(params.root_prim_path)) {
-    WM_reportf(RPT_ERROR, "USD Export: Root Prim option is invalid");
     valid = false;
   }
 
