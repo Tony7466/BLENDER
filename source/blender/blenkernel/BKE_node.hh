@@ -24,6 +24,42 @@
 
 namespace blender::bke {
 
+bNodeTree *ntreeAddTreeEmbedded(Main *bmain, ID *owner_id, const char *name, const char *idname);
+
+/* Copy/free functions, need to manage ID users. */
+
+/**
+ * Free (or release) any data used by this node-tree.
+ * Does not free the node-tree itself and does no ID user counting.
+ */
+void ntreeFreeTree(bNodeTree *ntree);
+
+bNodeTree *ntreeCopyTree_ex(const bNodeTree *ntree, Main *bmain, bool do_id_user);
+bNodeTree *ntreeCopyTree(Main *bmain, const bNodeTree *ntree);
+
+void ntreeFreeLocalNode(bNodeTree *ntree, bNode *node);
+
+bNode *ntreeFindType(bNodeTree *ntree, int type);
+
+void ntreeUpdateAllNew(Main *main);
+
+void ntreeNodeFlagSet(const bNodeTree *ntree, int flag, bool enable);
+
+/**
+ * Merge local tree results back, and free local tree.
+ *
+ * We have to assume the editor already changed completely.
+ */
+void ntreeLocalMerge(Main *bmain, bNodeTree *localtree, bNodeTree *ntree);
+
+/**
+ * \note `ntree` itself has been read!
+ */
+void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree);
+void ntreeBlendReadLib(BlendLibReader *reader, bNodeTree *ntree);
+
+void ntreeBlendReadExpand(BlendExpander *expander, bNodeTree *ntree);
+
 /* -------------------------------------------------------------------- */
 /** \name Node Tree Interface
  * \{ */
@@ -55,7 +91,7 @@ bNodeSocket *ntreeInsertSocketInterfaceFromSocket(bNodeTree *ntree,
 
 /** \} */
 
-bool nodeTypeUndefined(const bNode *node);
+bool node_type_is_undefined(const bNode *node);
 
 bool nodeIsStaticSocketType(const bNodeSocketType *stype);
 
@@ -112,18 +148,17 @@ void node_socket_move_default_value(Main &bmain,
  */
 void node_free_node(bNodeTree *tree, bNode *node);
 
-}  // namespace blender::bke
-
-namespace blender::bke {
-
 /**
  * Set the mute status of a single link.
  */
 void nodeLinkSetMute(bNodeTree *ntree, bNodeLink *link, const bool muted);
+
 bool nodeLinkIsSelected(const bNodeLink *link);
+
 void nodeInternalRelink(bNodeTree *ntree, bNode *node);
 
 void nodeToView(const bNode *node, float x, float y, float *rx, float *ry);
+
 void nodeFromView(const bNode *node, float x, float y, float *rx, float *ry);
 
 void nodePositionRelative(bNode *from_node,
@@ -167,6 +202,7 @@ void nodeChainIterBackwards(const bNodeTree *ntree,
                             bool (*callback)(bNode *, bNode *, void *),
                             void *userdata,
                             int recursion_lvl);
+
 /**
  * Iterate over all parents of \a node, executing \a callback for each parent
  * (which can return false to end iterator)
@@ -187,10 +223,6 @@ struct bNodeLink *nodeFindLink(struct bNodeTree *ntree,
 
 struct bNode *nodeGetActivePaintCanvas(struct bNodeTree *ntree);
 
-}  // namespace blender::bke
-
-namespace blender::bke {
-
 /**
  * \brief Does the given node supports the sub active flag.
  *
@@ -207,20 +239,18 @@ void nodeSetSocketAvailability(struct bNodeTree *ntree,
  * is up to date. It is expected that the sockets of the node are up to date already.
  */
 bool nodeDeclarationEnsure(struct bNodeTree *ntree, struct bNode *node);
+
 /**
  * Just update `node->declaration` if necessary. This can also be called on nodes that may not be
  * up to date (e.g. because the need versioning or are dynamic).
  */
 bool nodeDeclarationEnsureOnOutdatedNode(struct bNodeTree *ntree, struct bNode *node);
+
 /**
  * Update `socket->declaration` for all sockets in the node. This assumes that the node declaration
  * and sockets are up to date already.
  */
 void nodeSocketDeclarationsUpdate(struct bNode *node);
-
-}  // namespace blender::bke
-
-namespace blender::bke {
 
 typedef GHashIterator bNodeInstanceHashIterator;
 
@@ -228,27 +258,33 @@ BLI_INLINE bNodeInstanceHashIterator *node_instance_hash_iterator_new(bNodeInsta
 {
   return BLI_ghashIterator_new(hash->ghash);
 }
+
 BLI_INLINE void node_instance_hash_iterator_init(bNodeInstanceHashIterator *iter,
                                                  bNodeInstanceHash *hash)
 {
   BLI_ghashIterator_init(iter, hash->ghash);
 }
+
 BLI_INLINE void node_instance_hash_iterator_free(bNodeInstanceHashIterator *iter)
 {
   BLI_ghashIterator_free(iter);
 }
+
 BLI_INLINE bNodeInstanceKey node_instance_hash_iterator_get_key(bNodeInstanceHashIterator *iter)
 {
   return *(bNodeInstanceKey *)BLI_ghashIterator_getKey(iter);
 }
+
 BLI_INLINE void *node_instance_hash_iterator_get_value(bNodeInstanceHashIterator *iter)
 {
   return BLI_ghashIterator_getValue(iter);
 }
+
 BLI_INLINE void node_instance_hash_iterator_step(bNodeInstanceHashIterator *iter)
 {
   BLI_ghashIterator_step(iter);
 }
+
 BLI_INLINE bool node_instance_hash_iterator_done(bNodeInstanceHashIterator *iter)
 {
   return BLI_ghashIterator_done(iter);
@@ -259,20 +295,22 @@ BLI_INLINE bool node_instance_hash_iterator_done(bNodeInstanceHashIterator *iter
        blender::bke::node_instance_hash_iterator_done(&iter_) == false; \
        blender::bke::node_instance_hash_iterator_step(&iter_))
 
-}  // namespace blender::bke
-
-namespace blender::bke {
-
 /* Node Previews */
 bool node_preview_used(const bNode *node);
+
 bNodePreview *node_preview_verify(
     bNodeInstanceHash *previews, bNodeInstanceKey key, int xsize, int ysize, bool create);
+
 bNodePreview *node_preview_copy(bNodePreview *preview);
+
 void node_preview_free(bNodePreview *preview);
 
 void node_preview_init_tree(bNodeTree *ntree, int xsize, int ysize);
+
 void node_preview_remove_unused(bNodeTree *ntree);
+
 void node_preview_clear(bNodePreview *preview);
+
 void node_preview_merge_tree(bNodeTree *to_ntree, bNodeTree *from_ntree, bool remove_old);
 
 /* -------------------------------------------------------------------- */
@@ -289,10 +327,20 @@ const char *nodeSocketLabel(const bNodeSocket *sock);
  * Initialize a new node type struct with default values and callbacks.
  */
 void node_type_base(bNodeType *ntype, int type, const char *name, short nclass);
+
 void node_type_socket_templates(bNodeType *ntype,
                                 bNodeSocketTemplate *inputs,
                                 bNodeSocketTemplate *outputs);
+
 void node_type_size(bNodeType *ntype, int width, int minwidth, int maxwidth);
+
+enum class eNodeSizePreset : int8_t {
+  Default,
+  Small,
+  Middle,
+  Large,
+};
+
 void node_type_size_preset(bNodeType *ntype, eNodeSizePreset size);
 
 /* -------------------------------------------------------------------- */
@@ -301,13 +349,15 @@ void node_type_size_preset(bNodeType *ntype, eNodeSizePreset size);
 
 bool node_is_connected_to_output(const struct bNodeTree *ntree, const struct bNode *node);
 
-}  // namespace blender::bke
-
-namespace blender::bke {
-
 bNodeSocket *node_find_enabled_socket(bNode &node, eNodeSocketInOut in_out, StringRef name);
+
 bNodeSocket *node_find_enabled_input_socket(bNode &node, StringRef name);
+
 bNodeSocket *node_find_enabled_output_socket(bNode &node, StringRef name);
+
+extern bNodeTreeType NodeTreeTypeUndefined;
+extern bNodeType NodeTypeUndefined;
+extern bNodeSocketType NodeSocketTypeUndefined;
 
 }  // namespace blender::bke
 

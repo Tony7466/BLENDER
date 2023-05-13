@@ -108,7 +108,7 @@ static void localize(bNodeTree *localtree, bNodeTree * /*ntree*/)
 
     if (node->flag & NODE_MUTED || node->type == NODE_REROUTE) {
       blender::bke::nodeInternalRelink(localtree, node);
-      ntreeFreeLocalNode(localtree, node);
+      blender::bke::ntreeFreeLocalNode(localtree, node);
     }
   }
 }

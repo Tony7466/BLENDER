@@ -130,7 +130,7 @@ Node *COM_convert_bnode(bNode *b_node)
   Node *node = nullptr;
 
   /* ignore undefined nodes with missing or invalid node data */
-  if (blender::bke::nodeTypeUndefined(b_node)) {
+  if (blender::bke::node_type_is_undefined(b_node)) {
     return nullptr;
   }
 

@@ -1543,7 +1543,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
             this->handle_multi_function_node(*bnode, fn_item);
             break;
           }
-          if (node_type == &NodeTypeUndefined) {
+          if (node_type == &blender::bke::NodeTypeUndefined) {
             this->handle_undefined_node(*bnode);
             break;
           }

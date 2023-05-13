@@ -6636,7 +6636,7 @@ static void default_paint_slot_color_get(int layer_type, Material *ma, float col
     case LAYER_ROUGHNESS:
     case LAYER_METALLIC: {
       bNodeTree *ntree = nullptr;
-      bNode *in_node = ma ? ntreeFindType(ma->nodetree, SH_NODE_BSDF_PRINCIPLED) : nullptr;
+      bNode *in_node = ma ? blender::bke::ntreeFindType(ma->nodetree, SH_NODE_BSDF_PRINCIPLED) : nullptr;
       if (!in_node) {
         /* An existing material or Principled BSDF node could not be found.
          * Copy default color values from a default Principled BSDF instead. */
@@ -6667,7 +6667,7 @@ static void default_paint_slot_color_get(int layer_type, Material *ma, float col
       }
       /* Cleanup */
       if (ntree) {
-        ntreeFreeTree(ntree);
+        blender::bke::ntreeFreeTree(ntree);
         MEM_freeN(ntree);
       }
       return;
@@ -6740,7 +6740,7 @@ static bool proj_paint_add_slot(bContext *C, wmOperator *op)
     nodeSetActive(ntree, new_node);
 
     /* Connect to first available principled BSDF node. */
-    bNode *in_node = ntreeFindType(ntree, SH_NODE_BSDF_PRINCIPLED);
+    bNode *in_node = blender::bke::ntreeFindType(ntree, SH_NODE_BSDF_PRINCIPLED);
     bNode *out_node = new_node;
 
     if (in_node != nullptr) {
@@ -6776,7 +6776,7 @@ static bool proj_paint_add_slot(bContext *C, wmOperator *op)
       }
       else if (type == LAYER_DISPLACEMENT) {
         /* Connect to the displacement output socket */
-        in_node = ntreeFindType(ntree, SH_NODE_OUTPUT_MATERIAL);
+        in_node = blender::bke::ntreeFindType(ntree, SH_NODE_OUTPUT_MATERIAL);
 
         if (in_node != nullptr) {
           in_sock = nodeFindSocket(in_node, SOCK_IN, layer_type_items[type].name);

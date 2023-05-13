@@ -250,7 +250,7 @@ static bool node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
    * - `ngroup` (i.e. the source NodeTree) is left unscathed.
    * - Temp copy. do change ID user-count for the copies.
    */
-  bNodeTree *wgroup = ntreeCopyTree(bmain, ngroup);
+  bNodeTree *wgroup = blender::bke::ntreeCopyTree(bmain, ngroup);
 
   /* Add the nodes into the `ntree`. */
   Vector<bNode *> new_nodes;
@@ -697,7 +697,7 @@ static bool node_group_make_test_selected(bNodeTree &ntree,
   /* make a local pseudo node tree to pass to the node poll functions */
   bNodeTree *ngroup = ntreeAddTree(nullptr, "Pseudo Node Group", ntree_idname);
   BLI_SCOPED_DEFER([&]() {
-    ntreeFreeTree(ngroup);
+    blender::bke::ntreeFreeTree(ngroup);
     MEM_freeN(ngroup);
   });
 

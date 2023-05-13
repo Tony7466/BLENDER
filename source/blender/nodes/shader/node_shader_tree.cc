@@ -129,7 +129,7 @@ static void localize(bNodeTree *localtree, bNodeTree * /*ntree*/)
   LISTBASE_FOREACH_MUTABLE (bNode *, node, &localtree->nodes) {
     if (node->flag & NODE_MUTED || node->type == NODE_REROUTE) {
       blender::bke::nodeInternalRelink(localtree, node);
-      ntreeFreeLocalNode(localtree, node);
+      blender::bke::ntreeFreeLocalNode(localtree, node);
     }
   }
 }
@@ -505,7 +505,7 @@ static void flatten_group_do(bNodeTree *ntree, bNode *gnode)
 
   while (group_interface_nodes) {
     bNode *node = static_cast<bNode *>(BLI_linklist_pop(&group_interface_nodes));
-    ntreeFreeLocalNode(ntree, node);
+    blender::bke::ntreeFreeLocalNode(ntree, node);
   }
 
   BKE_ntree_update_tag_all(ntree);
@@ -525,8 +525,8 @@ static void ntree_shader_groups_flatten(bNodeTree *localtree)
       node_next = node->next;
       /* delete the group instance and its localtree. */
       bNodeTree *ngroup = (bNodeTree *)node->id;
-      ntreeFreeLocalNode(localtree, node);
-      ntreeFreeTree(ngroup);
+      blender::bke::ntreeFreeLocalNode(localtree, node);
+      blender::bke::ntreeFreeTree(ngroup);
       BLI_assert(!ngroup->id.py_instance); /* Or call #BKE_libblock_free_data_py. */
       MEM_freeN(ngroup);
     }
@@ -1126,7 +1126,7 @@ static void ntree_shader_pruned_unused(bNodeTree *ntree, bNode *output_node)
 
   LISTBASE_FOREACH_MUTABLE (bNode *, node, &ntree->nodes) {
     if (node->runtime->tmp_flag == 0) {
-      ntreeFreeLocalNode(ntree, node);
+      blender::bke::ntreeFreeLocalNode(ntree, node);
       changed = true;
     }
   }

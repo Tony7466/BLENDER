@@ -1150,6 +1150,9 @@ void ED_node_init_butfuncs()
    * Defined in blenkernel, but not registered in type hashes.
    */
 
+  using blender::bke::NodeTypeUndefined;
+  using blender::bke::NodeSocketTypeUndefined;
+
   NodeTypeUndefined.draw_buttons = nullptr;
   NodeTypeUndefined.draw_buttons_ex = nullptr;
 

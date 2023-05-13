@@ -1932,7 +1932,7 @@ void BKE_material_copybuf_copy(Main *bmain, Material *ma)
   matcopybuf = blender::dna::shallow_copy(*ma);
 
   if (ma->nodetree != nullptr) {
-    matcopybuf.nodetree = ntreeCopyTree_ex(ma->nodetree, bmain, false);
+    matcopybuf.nodetree = blender::bke::ntreeCopyTree_ex(ma->nodetree, bmain, false);
   }
 
   matcopybuf.preview = nullptr;
@@ -1962,7 +1962,7 @@ void BKE_material_copybuf_paste(Main *bmain, Material *ma)
   (ma->id) = id;
 
   if (matcopybuf.nodetree != nullptr) {
-    ma->nodetree = ntreeCopyTree_ex(matcopybuf.nodetree, bmain, false);
+    ma->nodetree = blender::bke::ntreeCopyTree_ex(matcopybuf.nodetree, bmain, false);
   }
 }
 
@@ -2001,7 +2001,7 @@ static void material_default_surface_init(Material *ma)
 {
   strcpy(ma->id.name, "MADefault Surface");
 
-  bNodeTree *ntree = ntreeAddTreeEmbedded(
+  bNodeTree *ntree = blender::bke::ntreeAddTreeEmbedded(
       nullptr, &ma->id, "Shader Nodetree", ntreeType_Shader->idname);
   ma->use_nodes = true;
 
@@ -2029,7 +2029,7 @@ static void material_default_volume_init(Material *ma)
 {
   strcpy(ma->id.name, "MADefault Volume");
 
-  bNodeTree *ntree = ntreeAddTreeEmbedded(
+  bNodeTree *ntree = blender::bke::ntreeAddTreeEmbedded(
       nullptr, &ma->id, "Shader Nodetree", ntreeType_Shader->idname);
   ma->use_nodes = true;
 
@@ -2054,7 +2054,7 @@ static void material_default_holdout_init(Material *ma)
 {
   strcpy(ma->id.name, "MADefault Holdout");
 
-  bNodeTree *ntree = ntreeAddTreeEmbedded(
+  bNodeTree *ntree = blender::bke::ntreeAddTreeEmbedded(
       nullptr, &ma->id, "Shader Nodetree", ntreeType_Shader->idname);
   ma->use_nodes = true;
 

@@ -75,7 +75,7 @@ static void localize(bNodeTree *localtree, bNodeTree *ntree)
     local_node->runtime->original = node;
 
     /* move over the compbufs */
-    /* right after #ntreeCopyTree() `oldsock` pointers are valid */
+    /* right after #blender::bke::ntreeCopyTree() `oldsock` pointers are valid */
 
     if (ELEM(node->type, CMP_NODE_VIEWER, CMP_NODE_SPLITVIEWER)) {
       if (node->id) {

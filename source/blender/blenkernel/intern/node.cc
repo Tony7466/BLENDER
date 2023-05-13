@@ -112,12 +112,16 @@ using blender::nodes::OutputFieldDependency;
 using blender::nodes::OutputSocketFieldType;
 using blender::nodes::SocketDeclaration;
 
-/* Fallback types for undefined tree, nodes, sockets */
+static CLG_LogRef LOG = {"bke.node"};
+
+namespace blender::bke {
+
+/* Fallback types for undefined tree, nodes, sockets. */
 bNodeTreeType NodeTreeTypeUndefined;
 bNodeType NodeTypeUndefined;
 bNodeSocketType NodeSocketTypeUndefined;
 
-static CLG_LogRef LOG = {"bke.node"};
+}  // namespace blender::bke
 
 static void ntree_set_typeinfo(bNodeTree *ntree, bNodeTreeType *typeinfo);
 static void node_socket_copy(bNodeSocket *sock_dst, const bNodeSocket *sock_src, const int flag);
@@ -594,7 +598,7 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
         }
         BLO_write_struct_by_name(writer, node->typeinfo->storagename, storage);
       }
-      else if (node->typeinfo != &NodeTypeUndefined) {
+      else if (node->typeinfo != &blender::bke::NodeTypeUndefined) {
         BLO_write_struct_by_name(writer, node->typeinfo->storagename, node->storage);
       }
     }
@@ -667,208 +671,10 @@ static void direct_link_node_socket(BlendDataReader *reader, bNodeSocket *sock)
   sock->runtime = MEM_new<bNodeSocketRuntime>(__func__);
 }
 
-void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
-{
-  /* Special case for this pointer, do not rely on regular `lib_link` process here. Avoids needs
-   * for do_versioning, and ensures coherence of data in any case.
-   *
-   * NOTE: Old versions are very often 'broken' here, just fix it silently in these cases.
-   */
-  if (BLO_read_fileversion_get(reader) > 300) {
-    BLI_assert((ntree->id.flag & LIB_EMBEDDED_DATA) != 0 || owner_id == nullptr);
-  }
-  BLI_assert(owner_id == nullptr || owner_id->lib == ntree->id.lib);
-  if (owner_id != nullptr && (ntree->id.flag & LIB_EMBEDDED_DATA) == 0) {
-    /* This is unfortunate, but currently a lot of existing files (including startup ones) have
-     * missing `LIB_EMBEDDED_DATA` flag.
-     *
-     * NOTE: Using do_version is not a solution here, since this code will be called before any
-     * do_version takes place. Keeping it here also ensures future (or unknown existing) similar
-     * bugs won't go easily unnoticed. */
-    if (BLO_read_fileversion_get(reader) > 300) {
-      CLOG_WARN(&LOG,
-                "Fixing root node tree '%s' owned by '%s' missing EMBEDDED tag, please consider "
-                "re-saving your (startup) file",
-                ntree->id.name,
-                owner_id->name);
-    }
-    ntree->id.flag |= LIB_EMBEDDED_DATA;
-  }
-  ntree->owner_id = owner_id;
-
-  /* NOTE: writing and reading goes in sync, for speed. */
-  ntree->typeinfo = nullptr;
-
-  ntree->runtime = MEM_new<bNodeTreeRuntime>(__func__);
-  BKE_ntree_update_tag_missing_runtime_data(ntree);
-
-  BLO_read_data_address(reader, &ntree->adt);
-  BKE_animdata_blend_read_data(reader, ntree->adt);
-
-  BLO_read_list(reader, &ntree->nodes);
-  int i;
-  LISTBASE_FOREACH_INDEX (bNode *, node, &ntree->nodes, i) {
-    node->runtime = MEM_new<bNodeRuntime>(__func__);
-    node->typeinfo = nullptr;
-    node->runtime->index_in_tree = i;
-
-    /* Create the `nodes_by_id` cache eagerly so it can be expected to be valid. Because
-     * we create it here we also have to check for zero identifiers from previous versions. */
-    if (node->identifier == 0 || ntree->runtime->nodes_by_id.contains_as(node->identifier)) {
-      nodeUniqueID(ntree, node);
-    }
-    else {
-      ntree->runtime->nodes_by_id.add_new(node);
-    }
-
-    BLO_read_list(reader, &node->inputs);
-    BLO_read_list(reader, &node->outputs);
-
-    BLO_read_data_address(reader, &node->prop);
-    IDP_BlendDataRead(reader, &node->prop);
-
-    if (node->type == CMP_NODE_MOVIEDISTORTION) {
-      /* Do nothing, this is runtime cache and hence handled by generic code using
-       * `IDTypeInfo.foreach_cache` callback. */
-    }
-    else {
-      BLO_read_data_address(reader, &node->storage);
-    }
-
-    if (node->storage) {
-      switch (node->type) {
-        case SH_NODE_CURVE_VEC:
-        case SH_NODE_CURVE_RGB:
-        case SH_NODE_CURVE_FLOAT:
-        case CMP_NODE_TIME:
-        case CMP_NODE_CURVE_VEC:
-        case CMP_NODE_CURVE_RGB:
-        case CMP_NODE_HUECORRECT:
-        case TEX_NODE_CURVE_RGB:
-        case TEX_NODE_CURVE_TIME: {
-          BKE_curvemapping_blend_read(reader, static_cast<CurveMapping *>(node->storage));
-          break;
-        }
-        case SH_NODE_SCRIPT: {
-          NodeShaderScript *nss = static_cast<NodeShaderScript *>(node->storage);
-          BLO_read_data_address(reader, &nss->bytecode);
-          break;
-        }
-        case SH_NODE_TEX_POINTDENSITY: {
-          NodeShaderTexPointDensity *npd = static_cast<NodeShaderTexPointDensity *>(node->storage);
-          npd->pd = blender::dna::shallow_zero_initialize();
-          break;
-        }
-        case SH_NODE_TEX_IMAGE: {
-          NodeTexImage *tex = static_cast<NodeTexImage *>(node->storage);
-          tex->iuser.scene = nullptr;
-          break;
-        }
-        case SH_NODE_TEX_ENVIRONMENT: {
-          NodeTexEnvironment *tex = static_cast<NodeTexEnvironment *>(node->storage);
-          tex->iuser.scene = nullptr;
-          break;
-        }
-        case CMP_NODE_IMAGE:
-        case CMP_NODE_R_LAYERS:
-        case CMP_NODE_VIEWER:
-        case CMP_NODE_SPLITVIEWER: {
-          ImageUser *iuser = static_cast<ImageUser *>(node->storage);
-          iuser->scene = nullptr;
-          break;
-        }
-        case CMP_NODE_CRYPTOMATTE_LEGACY:
-        case CMP_NODE_CRYPTOMATTE: {
-          NodeCryptomatte *nc = static_cast<NodeCryptomatte *>(node->storage);
-          BLO_read_data_address(reader, &nc->matte_id);
-          BLO_read_list(reader, &nc->entries);
-          BLI_listbase_clear(&nc->runtime.layers);
-          break;
-        }
-        case TEX_NODE_IMAGE: {
-          ImageUser *iuser = static_cast<ImageUser *>(node->storage);
-          iuser->scene = nullptr;
-          break;
-        }
-        case CMP_NODE_OUTPUT_FILE: {
-          NodeImageMultiFile *nimf = static_cast<NodeImageMultiFile *>(node->storage);
-          BKE_image_format_blend_read_data(reader, &nimf->format);
-          break;
-        }
-        case FN_NODE_INPUT_STRING: {
-          NodeInputString *storage = static_cast<NodeInputString *>(node->storage);
-          BLO_read_data_address(reader, &storage->string);
-          break;
-        }
-        case GEO_NODE_SIMULATION_OUTPUT: {
-          NodeGeometrySimulationOutput &storage = *static_cast<NodeGeometrySimulationOutput *>(
-              node->storage);
-          BLO_read_data_address(reader, &storage.items);
-          for (const NodeSimulationItem &item : Span(storage.items, storage.items_num)) {
-            BLO_read_data_address(reader, &item.name);
-          }
-          break;
-        }
-
-        default:
-          break;
-      }
-    }
-  }
-  BLO_read_list(reader, &ntree->links);
-  BLI_assert(ntree->all_nodes().size() == BLI_listbase_count(&ntree->nodes));
-
-  /* and we connect the rest */
-  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-    BLO_read_data_address(reader, &node->parent);
-
-    LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
-      direct_link_node_socket(reader, sock);
-    }
-    LISTBASE_FOREACH (bNodeSocket *, sock, &node->outputs) {
-      direct_link_node_socket(reader, sock);
-    }
-
-    /* Socket storage. */
-    if (node->type == CMP_NODE_OUTPUT_FILE) {
-      LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
-        NodeImageMultiFileSocket *sockdata = static_cast<NodeImageMultiFileSocket *>(
-            sock->storage);
-        BKE_image_format_blend_read_data(reader, &sockdata->format);
-      }
-    }
-  }
-
-  /* interface socket lists */
-  BLO_read_list(reader, &ntree->inputs);
-  BLO_read_list(reader, &ntree->outputs);
-  LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->inputs) {
-    direct_link_node_socket(reader, sock);
-  }
-  LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->outputs) {
-    direct_link_node_socket(reader, sock);
-  }
-
-  LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
-    BLO_read_data_address(reader, &link->fromnode);
-    BLO_read_data_address(reader, &link->tonode);
-    BLO_read_data_address(reader, &link->fromsock);
-    BLO_read_data_address(reader, &link->tosock);
-  }
-
-  /* TODO: should be dealt by new generic cache handling of IDs... */
-  ntree->previews = nullptr;
-
-  BLO_read_data_address(reader, &ntree->preview);
-  BKE_previewimg_blend_read(reader, ntree->preview);
-
-  /* type verification is in lib-link */
-}
-
 static void ntree_blend_read_data(BlendDataReader *reader, ID *id)
 {
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  ntreeBlendReadData(reader, nullptr, ntree);
+  blender::bke::ntreeBlendReadData(reader, nullptr, ntree);
 }
 
 static void lib_link_node_socket(BlendLibReader *reader, Library *lib, bNodeSocket *sock)
@@ -928,49 +734,10 @@ static void lib_link_node_sockets(BlendLibReader *reader, Library *lib, ListBase
   }
 }
 
-void ntreeBlendReadLib(BlendLibReader *reader, bNodeTree *ntree)
-{
-  Library *lib = ntree->id.lib;
-
-  BLO_read_id_address(reader, lib, &ntree->gpd);
-
-  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-    /* Link ID Properties -- and copy this comment EXACTLY for easy finding
-     * of library blocks that implement this. */
-    IDP_BlendReadLib(reader, lib, node->prop);
-
-    BLO_read_id_address(reader, lib, &node->id);
-
-    lib_link_node_sockets(reader, lib, &node->inputs);
-    lib_link_node_sockets(reader, lib, &node->outputs);
-  }
-
-  lib_link_node_sockets(reader, lib, &ntree->inputs);
-  lib_link_node_sockets(reader, lib, &ntree->outputs);
-
-  /* Set `node->typeinfo` pointers. This is done in lib linking, after the
-   * first versioning that can change types still without functions that
-   * update the `typeinfo` pointers. Versioning after lib linking needs
-   * these top be valid. */
-  ntreeSetTypes(nullptr, ntree);
-
-  /* For nodes with static socket layout, add/remove sockets as needed
-   * to match the static layout. */
-  if (!BLO_read_lib_is_undo(reader)) {
-    LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-      /* Don't update node groups here because they may depend on other node groups which are not
-       * fully versioned yet and don't have `typeinfo` pointers set. */
-      if (!node->is_group()) {
-        node_verify_sockets(ntree, node, false);
-      }
-    }
-  }
-}
-
 static void ntree_blend_read_lib(BlendLibReader *reader, ID *id)
 {
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  ntreeBlendReadLib(reader, ntree);
+  blender::bke::ntreeBlendReadLib(reader, ntree);
 }
 
 static void expand_node_socket(BlendExpander *expander, bNodeSocket *sock)
@@ -1023,33 +790,10 @@ static void expand_node_sockets(BlendExpander *expander, ListBase *sockets)
   }
 }
 
-void ntreeBlendReadExpand(BlendExpander *expander, bNodeTree *ntree)
-{
-  if (ntree->gpd) {
-    BLO_expand(expander, ntree->gpd);
-  }
-
-  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-    if (node->id && !(node->type == CMP_NODE_R_LAYERS) &&
-        !(node->type == CMP_NODE_CRYPTOMATTE && node->custom1 == CMP_CRYPTOMATTE_SRC_RENDER))
-    {
-      BLO_expand(expander, node->id);
-    }
-
-    IDP_BlendReadExpand(expander, node->prop);
-
-    expand_node_sockets(expander, &node->inputs);
-    expand_node_sockets(expander, &node->outputs);
-  }
-
-  expand_node_sockets(expander, &ntree->inputs);
-  expand_node_sockets(expander, &ntree->outputs);
-}
-
 static void ntree_blend_read_expand(BlendExpander *expander, ID *id)
 {
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  ntreeBlendReadExpand(expander, ntree);
+  blender::bke::ntreeBlendReadExpand(expander, ntree);
 }
 
 namespace blender::bke {
@@ -1141,7 +885,7 @@ static void node_init(const bContext *C, bNodeTree *ntree, bNode *node)
 {
   BLI_assert(ntree != nullptr);
   bNodeType *ntype = node->typeinfo;
-  if (ntype == &NodeTypeUndefined) {
+  if (ntype == &blender::bke::NodeTypeUndefined) {
     return;
   }
 
@@ -1207,7 +951,7 @@ static void ntree_set_typeinfo(bNodeTree *ntree, bNodeTreeType *typeinfo)
     ntree->typeinfo = typeinfo;
   }
   else {
-    ntree->typeinfo = &NodeTreeTypeUndefined;
+    ntree->typeinfo = &blender::bke::NodeTreeTypeUndefined;
   }
 
   /* Deprecated integer type. */
@@ -1237,7 +981,7 @@ static void node_set_typeinfo(const bContext *C,
     node_init(C, ntree, node);
   }
   else {
-    node->typeinfo = &NodeTypeUndefined;
+    node->typeinfo = &blender::bke::NodeTypeUndefined;
   }
 }
 
@@ -1260,7 +1004,7 @@ static void node_socket_set_typeinfo(bNodeTree *ntree,
     }
   }
   else {
-    sock->typeinfo = &NodeSocketTypeUndefined;
+    sock->typeinfo = &blender::bke::NodeSocketTypeUndefined;
   }
   BKE_ntree_update_tag_socket_type(ntree, sock);
 }
@@ -1381,7 +1125,7 @@ void ntreeTypeFreeLink(const bNodeTreeType *nt)
 
 bool ntreeIsRegistered(const bNodeTree *ntree)
 {
-  return (ntree->typeinfo != &NodeTreeTypeUndefined);
+  return (ntree->typeinfo != &blender::bke::NodeTreeTypeUndefined);
 }
 
 GHashIterator *ntreeTypeGetIterator()
@@ -1488,7 +1232,7 @@ void nodeUnregisterSocketType(bNodeSocketType *st)
 
 bool nodeSocketIsRegistered(const bNodeSocket *sock)
 {
-  return (sock->typeinfo != &NodeSocketTypeUndefined);
+  return (sock->typeinfo != &blender::bke::NodeSocketTypeUndefined);
 }
 
 GHashIterator *nodeSocketTypeGetIterator()
@@ -2476,27 +2220,6 @@ bNodeTree *ntreeAddTree(Main *bmain, const char *name, const char *idname)
   return ntreeAddTree_do(bmain, nullptr, false, name, idname);
 }
 
-bNodeTree *ntreeAddTreeEmbedded(Main * /*bmain*/,
-                                ID *owner_id,
-                                const char *name,
-                                const char *idname)
-{
-  return ntreeAddTree_do(nullptr, owner_id, true, name, idname);
-}
-
-bNodeTree *ntreeCopyTree_ex(const bNodeTree *ntree, Main *bmain, const bool do_id_user)
-{
-  const int flag = do_id_user ? 0 : LIB_ID_CREATE_NO_USER_REFCOUNT | LIB_ID_CREATE_NO_MAIN;
-
-  bNodeTree *ntree_copy = reinterpret_cast<bNodeTree *>(
-      BKE_id_copy_ex(bmain, reinterpret_cast<const ID *>(ntree), nullptr, flag));
-  return ntree_copy;
-}
-bNodeTree *ntreeCopyTree(Main *bmain, const bNodeTree *ntree)
-{
-  return ntreeCopyTree_ex(ntree, bmain, true);
-}
-
 /* *************** Node Preview *********** */
 
 /* XXX this should be removed eventually ...
@@ -2679,20 +2402,6 @@ void node_free_node(bNodeTree *ntree, bNode *node)
 
 }  // namespace blender::bke
 
-void ntreeFreeLocalNode(bNodeTree *ntree, bNode *node)
-{
-  /* For removing nodes while editing localized node trees. */
-  BLI_assert((ntree->id.tag & LIB_TAG_LOCALIZED) != 0);
-
-  /* These two lines assume the caller might want to free a single node and maintain
-   * a valid state in the node tree. */
-  blender::bke::nodeUnlinkNode(ntree, node);
-  node_unlink_attached(ntree, node);
-
-  blender::bke::node_free_node(ntree, node);
-  blender::bke::nodeRebuildIDVector(ntree);
-}
-
 void nodeRemoveNode(Main *bmain, bNodeTree *ntree, bNode *node, const bool do_id_user)
 {
   BLI_assert(ntree != nullptr);
@@ -2789,21 +2498,15 @@ static void free_localized_node_groups(bNodeTree *ntree)
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     bNodeTree *ngroup = reinterpret_cast<bNodeTree *>(node->id);
     if (node->is_group() && ngroup != nullptr) {
-      ntreeFreeTree(ngroup);
+      blender::bke::ntreeFreeTree(ngroup);
       MEM_freeN(ngroup);
     }
   }
 }
 
-void ntreeFreeTree(bNodeTree *ntree)
-{
-  ntree_free_data(&ntree->id);
-  BKE_animdata_free(&ntree->id, false);
-}
-
 void ntreeFreeEmbeddedTree(bNodeTree *ntree)
 {
-  ntreeFreeTree(ntree);
+  blender::bke::ntreeFreeTree(ntree);
   BKE_libblock_free_data(&ntree->id, true);
   BKE_libblock_free_data_py(&ntree->id);
 }
@@ -2811,10 +2514,10 @@ void ntreeFreeEmbeddedTree(bNodeTree *ntree)
 void ntreeFreeLocalTree(bNodeTree *ntree)
 {
   if (ntree->id.tag & LIB_TAG_LOCALIZED) {
-    ntreeFreeTree(ntree);
+    blender::bke::ntreeFreeTree(ntree);
   }
   else {
-    ntreeFreeTree(ntree);
+    blender::bke::ntreeFreeTree(ntree);
     BKE_libblock_free_data(&ntree->id, true);
   }
 }
@@ -2909,18 +2612,6 @@ bNodeTree *ntreeFromID(ID *id)
   return (nodetree != nullptr) ? *nodetree : nullptr;
 }
 
-void ntreeNodeFlagSet(const bNodeTree *ntree, const int flag, const bool enable)
-{
-  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-    if (enable) {
-      node->flag |= flag;
-    }
-    else {
-      node->flag &= ~flag;
-    }
-  }
-}
-
 bNodeTree *ntreeLocalize(bNodeTree *ntree)
 {
   if (ntree == nullptr) {
@@ -2957,18 +2648,6 @@ bNodeTree *ntreeLocalize(bNodeTree *ntree)
   }
 
   return ltree;
-}
-
-void ntreeLocalMerge(Main *bmain, bNodeTree *localtree, bNodeTree *ntree)
-{
-  if (ntree && localtree) {
-    if (ntree->typeinfo->local_merge) {
-      ntree->typeinfo->local_merge(bmain, localtree, ntree);
-    }
-
-    ntreeFreeTree(localtree);
-    MEM_freeN(localtree);
-  }
 }
 
 /* ************ NODE TREE INTERFACE *************** */
@@ -3038,18 +2717,6 @@ bNodeSocket *ntreeAddSocketInterface(bNodeTree *ntree,
 }
 
 /* ************ find stuff *************** */
-
-bNode *ntreeFindType(bNodeTree *ntree, const int type)
-{
-  if (ntree) {
-    LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-      if (node->type == type) {
-        return node;
-      }
-    }
-  }
-  return nullptr;
-}
 
 static bool ntree_contains_tree_exec(const bNodeTree *tree_to_search_in,
                                      const bNodeTree *tree_to_search_for,
@@ -3349,20 +3016,6 @@ void BKE_node_instance_hash_remove_untagged(bNodeInstanceHash *hash,
   MEM_freeN(untagged);
 }
 
-void ntreeUpdateAllNew(Main *main)
-{
-  /* Update all new node trees on file read or append, to add/remove sockets
-   * in groups nodes if the group changed, and handle any update flags that
-   * might have been set in file reading or versioning. */
-  FOREACH_NODETREE_BEGIN (main, ntree, owner_id) {
-    if (owner_id->tag & LIB_TAG_NEW) {
-      BKE_ntree_update_tag_all(ntree);
-    }
-  }
-  FOREACH_NODETREE_END;
-  BKE_ntree_update_main(main, nullptr);
-}
-
 void ntreeUpdateAllUsers(Main *main, ID *id)
 {
   if (id == nullptr) {
@@ -3391,7 +3044,7 @@ void ntreeUpdateAllUsers(Main *main, ID *id)
 static void node_type_base_defaults(bNodeType *ntype)
 {
   /* default size values */
-  blender::bke::node_type_size_preset(ntype, NODE_SIZE_DEFAULT);
+  blender::bke::node_type_size_preset(ntype, blender::bke::eNodeSizePreset::Default);
   ntype->height = 100;
   ntype->minheight = 30;
   ntype->maxheight = FLT_MAX;
@@ -3630,6 +3283,360 @@ void nodeFindNode(bNodeTree *ntree, bNodeSocket *sock, bNode **r_node, int *r_so
 
 namespace blender::bke {
 
+bNodeTree *ntreeAddTreeEmbedded(Main * /*bmain*/,
+                                ID *owner_id,
+                                const char *name,
+                                const char *idname)
+{
+  return ntreeAddTree_do(nullptr, owner_id, true, name, idname);
+}
+
+void ntreeFreeTree(bNodeTree *ntree)
+{
+  ntree_free_data(&ntree->id);
+  BKE_animdata_free(&ntree->id, false);
+}
+
+bNodeTree *ntreeCopyTree_ex(const bNodeTree *ntree, Main *bmain, const bool do_id_user)
+{
+  const int flag = do_id_user ? 0 : LIB_ID_CREATE_NO_USER_REFCOUNT | LIB_ID_CREATE_NO_MAIN;
+
+  bNodeTree *ntree_copy = reinterpret_cast<bNodeTree *>(
+      BKE_id_copy_ex(bmain, reinterpret_cast<const ID *>(ntree), nullptr, flag));
+  return ntree_copy;
+}
+
+bNodeTree *ntreeCopyTree(Main *bmain, const bNodeTree *ntree)
+{
+  return ntreeCopyTree_ex(ntree, bmain, true);
+}
+
+void ntreeFreeLocalNode(bNodeTree *ntree, bNode *node)
+{
+  /* For removing nodes while editing localized node trees. */
+  BLI_assert((ntree->id.tag & LIB_TAG_LOCALIZED) != 0);
+
+  /* These two lines assume the caller might want to free a single node and maintain
+   * a valid state in the node tree. */
+  blender::bke::nodeUnlinkNode(ntree, node);
+  node_unlink_attached(ntree, node);
+
+  blender::bke::node_free_node(ntree, node);
+  blender::bke::nodeRebuildIDVector(ntree);
+}
+
+/* ************ find stuff *************** */
+
+bNode *ntreeFindType(bNodeTree *ntree, const int type)
+{
+  if (ntree) {
+    LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+      if (node->type == type) {
+        return node;
+      }
+    }
+  }
+  return nullptr;
+}
+
+void ntreeUpdateAllNew(Main *main)
+{
+  /* Update all new node trees on file read or append, to add/remove sockets
+   * in groups nodes if the group changed, and handle any update flags that
+   * might have been set in file reading or versioning. */
+  FOREACH_NODETREE_BEGIN (main, ntree, owner_id) {
+    if (owner_id->tag & LIB_TAG_NEW) {
+      BKE_ntree_update_tag_all(ntree);
+    }
+  }
+  FOREACH_NODETREE_END;
+  BKE_ntree_update_main(main, nullptr);
+}
+
+void ntreeNodeFlagSet(const bNodeTree *ntree, const int flag, const bool enable)
+{
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (enable) {
+      node->flag |= flag;
+    }
+    else {
+      node->flag &= ~flag;
+    }
+  }
+}
+
+void ntreeLocalMerge(Main *bmain, bNodeTree *localtree, bNodeTree *ntree)
+{
+  if (ntree && localtree) {
+    if (ntree->typeinfo->local_merge) {
+      ntree->typeinfo->local_merge(bmain, localtree, ntree);
+    }
+
+    blender::bke::ntreeFreeTree(localtree);
+    MEM_freeN(localtree);
+  }
+}
+
+void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
+{
+  /* Special case for this pointer, do not rely on regular `lib_link` process here. Avoids needs
+   * for do_versioning, and ensures coherence of data in any case.
+   *
+   * NOTE: Old versions are very often 'broken' here, just fix it silently in these cases.
+   */
+  if (BLO_read_fileversion_get(reader) > 300) {
+    BLI_assert((ntree->id.flag & LIB_EMBEDDED_DATA) != 0 || owner_id == nullptr);
+  }
+  BLI_assert(owner_id == nullptr || owner_id->lib == ntree->id.lib);
+  if (owner_id != nullptr && (ntree->id.flag & LIB_EMBEDDED_DATA) == 0) {
+    /* This is unfortunate, but currently a lot of existing files (including startup ones) have
+     * missing `LIB_EMBEDDED_DATA` flag.
+     *
+     * NOTE: Using do_version is not a solution here, since this code will be called before any
+     * do_version takes place. Keeping it here also ensures future (or unknown existing) similar
+     * bugs won't go easily unnoticed. */
+    if (BLO_read_fileversion_get(reader) > 300) {
+      CLOG_WARN(&LOG,
+                "Fixing root node tree '%s' owned by '%s' missing EMBEDDED tag, please consider "
+                "re-saving your (startup) file",
+                ntree->id.name,
+                owner_id->name);
+    }
+    ntree->id.flag |= LIB_EMBEDDED_DATA;
+  }
+  ntree->owner_id = owner_id;
+
+  /* NOTE: writing and reading goes in sync, for speed. */
+  ntree->typeinfo = nullptr;
+
+  ntree->runtime = MEM_new<bNodeTreeRuntime>(__func__);
+  BKE_ntree_update_tag_missing_runtime_data(ntree);
+
+  BLO_read_data_address(reader, &ntree->adt);
+  BKE_animdata_blend_read_data(reader, ntree->adt);
+
+  BLO_read_list(reader, &ntree->nodes);
+  int i;
+  LISTBASE_FOREACH_INDEX (bNode *, node, &ntree->nodes, i) {
+    node->runtime = MEM_new<bNodeRuntime>(__func__);
+    node->typeinfo = nullptr;
+    node->runtime->index_in_tree = i;
+
+    /* Create the `nodes_by_id` cache eagerly so it can be expected to be valid. Because
+     * we create it here we also have to check for zero identifiers from previous versions. */
+    if (node->identifier == 0 || ntree->runtime->nodes_by_id.contains_as(node->identifier)) {
+      nodeUniqueID(ntree, node);
+    }
+    else {
+      ntree->runtime->nodes_by_id.add_new(node);
+    }
+
+    BLO_read_list(reader, &node->inputs);
+    BLO_read_list(reader, &node->outputs);
+
+    BLO_read_data_address(reader, &node->prop);
+    IDP_BlendDataRead(reader, &node->prop);
+
+    if (node->type == CMP_NODE_MOVIEDISTORTION) {
+      /* Do nothing, this is runtime cache and hence handled by generic code using
+       * `IDTypeInfo.foreach_cache` callback. */
+    }
+    else {
+      BLO_read_data_address(reader, &node->storage);
+    }
+
+    if (node->storage) {
+      switch (node->type) {
+        case SH_NODE_CURVE_VEC:
+        case SH_NODE_CURVE_RGB:
+        case SH_NODE_CURVE_FLOAT:
+        case CMP_NODE_TIME:
+        case CMP_NODE_CURVE_VEC:
+        case CMP_NODE_CURVE_RGB:
+        case CMP_NODE_HUECORRECT:
+        case TEX_NODE_CURVE_RGB:
+        case TEX_NODE_CURVE_TIME: {
+          BKE_curvemapping_blend_read(reader, static_cast<CurveMapping *>(node->storage));
+          break;
+        }
+        case SH_NODE_SCRIPT: {
+          NodeShaderScript *nss = static_cast<NodeShaderScript *>(node->storage);
+          BLO_read_data_address(reader, &nss->bytecode);
+          break;
+        }
+        case SH_NODE_TEX_POINTDENSITY: {
+          NodeShaderTexPointDensity *npd = static_cast<NodeShaderTexPointDensity *>(node->storage);
+          npd->pd = blender::dna::shallow_zero_initialize();
+          break;
+        }
+        case SH_NODE_TEX_IMAGE: {
+          NodeTexImage *tex = static_cast<NodeTexImage *>(node->storage);
+          tex->iuser.scene = nullptr;
+          break;
+        }
+        case SH_NODE_TEX_ENVIRONMENT: {
+          NodeTexEnvironment *tex = static_cast<NodeTexEnvironment *>(node->storage);
+          tex->iuser.scene = nullptr;
+          break;
+        }
+        case CMP_NODE_IMAGE:
+        case CMP_NODE_R_LAYERS:
+        case CMP_NODE_VIEWER:
+        case CMP_NODE_SPLITVIEWER: {
+          ImageUser *iuser = static_cast<ImageUser *>(node->storage);
+          iuser->scene = nullptr;
+          break;
+        }
+        case CMP_NODE_CRYPTOMATTE_LEGACY:
+        case CMP_NODE_CRYPTOMATTE: {
+          NodeCryptomatte *nc = static_cast<NodeCryptomatte *>(node->storage);
+          BLO_read_data_address(reader, &nc->matte_id);
+          BLO_read_list(reader, &nc->entries);
+          BLI_listbase_clear(&nc->runtime.layers);
+          break;
+        }
+        case TEX_NODE_IMAGE: {
+          ImageUser *iuser = static_cast<ImageUser *>(node->storage);
+          iuser->scene = nullptr;
+          break;
+        }
+        case CMP_NODE_OUTPUT_FILE: {
+          NodeImageMultiFile *nimf = static_cast<NodeImageMultiFile *>(node->storage);
+          BKE_image_format_blend_read_data(reader, &nimf->format);
+          break;
+        }
+        case FN_NODE_INPUT_STRING: {
+          NodeInputString *storage = static_cast<NodeInputString *>(node->storage);
+          BLO_read_data_address(reader, &storage->string);
+          break;
+        }
+        case GEO_NODE_SIMULATION_OUTPUT: {
+          NodeGeometrySimulationOutput &storage = *static_cast<NodeGeometrySimulationOutput *>(
+              node->storage);
+          BLO_read_data_address(reader, &storage.items);
+          for (const NodeSimulationItem &item : Span(storage.items, storage.items_num)) {
+            BLO_read_data_address(reader, &item.name);
+          }
+          break;
+        }
+
+        default:
+          break;
+      }
+    }
+  }
+  BLO_read_list(reader, &ntree->links);
+  BLI_assert(ntree->all_nodes().size() == BLI_listbase_count(&ntree->nodes));
+
+  /* and we connect the rest */
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    BLO_read_data_address(reader, &node->parent);
+
+    LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
+      direct_link_node_socket(reader, sock);
+    }
+    LISTBASE_FOREACH (bNodeSocket *, sock, &node->outputs) {
+      direct_link_node_socket(reader, sock);
+    }
+
+    /* Socket storage. */
+    if (node->type == CMP_NODE_OUTPUT_FILE) {
+      LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
+        NodeImageMultiFileSocket *sockdata = static_cast<NodeImageMultiFileSocket *>(
+            sock->storage);
+        BKE_image_format_blend_read_data(reader, &sockdata->format);
+      }
+    }
+  }
+
+  /* interface socket lists */
+  BLO_read_list(reader, &ntree->inputs);
+  BLO_read_list(reader, &ntree->outputs);
+  LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->inputs) {
+    direct_link_node_socket(reader, sock);
+  }
+  LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->outputs) {
+    direct_link_node_socket(reader, sock);
+  }
+
+  LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
+    BLO_read_data_address(reader, &link->fromnode);
+    BLO_read_data_address(reader, &link->tonode);
+    BLO_read_data_address(reader, &link->fromsock);
+    BLO_read_data_address(reader, &link->tosock);
+  }
+
+  /* TODO: should be dealt by new generic cache handling of IDs... */
+  ntree->previews = nullptr;
+
+  BLO_read_data_address(reader, &ntree->preview);
+  BKE_previewimg_blend_read(reader, ntree->preview);
+
+  /* type verification is in lib-link */
+}
+
+void ntreeBlendReadLib(BlendLibReader *reader, bNodeTree *ntree)
+{
+  Library *lib = ntree->id.lib;
+
+  BLO_read_id_address(reader, lib, &ntree->gpd);
+
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    /* Link ID Properties -- and copy this comment EXACTLY for easy finding
+     * of library blocks that implement this. */
+    IDP_BlendReadLib(reader, lib, node->prop);
+
+    BLO_read_id_address(reader, lib, &node->id);
+
+    lib_link_node_sockets(reader, lib, &node->inputs);
+    lib_link_node_sockets(reader, lib, &node->outputs);
+  }
+
+  lib_link_node_sockets(reader, lib, &ntree->inputs);
+  lib_link_node_sockets(reader, lib, &ntree->outputs);
+
+  /* Set `node->typeinfo` pointers. This is done in lib linking, after the
+   * first versioning that can change types still without functions that
+   * update the `typeinfo` pointers. Versioning after lib linking needs
+   * these top be valid. */
+  ntreeSetTypes(nullptr, ntree);
+
+  /* For nodes with static socket layout, add/remove sockets as needed
+   * to match the static layout. */
+  if (!BLO_read_lib_is_undo(reader)) {
+    LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+      /* Don't update node groups here because they may depend on other node groups which are not
+       * fully versioned yet and don't have `typeinfo` pointers set. */
+      if (!node->is_group()) {
+        node_verify_sockets(ntree, node, false);
+      }
+    }
+  }
+}
+
+void ntreeBlendReadExpand(BlendExpander *expander, bNodeTree *ntree)
+{
+  if (ntree->gpd) {
+    BLO_expand(expander, ntree->gpd);
+  }
+
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (node->id && !(node->type == CMP_NODE_R_LAYERS) &&
+        !(node->type == CMP_NODE_CRYPTOMATTE && node->custom1 == CMP_CRYPTOMATTE_SRC_RENDER))
+    {
+      BLO_expand(expander, node->id);
+    }
+
+    IDP_BlendReadExpand(expander, node->prop);
+
+    expand_node_sockets(expander, &node->inputs);
+    expand_node_sockets(expander, &node->outputs);
+  }
+
+  expand_node_sockets(expander, &ntree->inputs);
+  expand_node_sockets(expander, &ntree->outputs);
+}
+
 void nodeModifySocketType(bNodeTree *ntree,
                           bNode * /*node*/,
                           bNodeSocket *sock,
@@ -3798,9 +3805,9 @@ bool nodeIsStaticSocketType(const bNodeSocketType *stype)
   return RNA_struct_is_a(stype->ext_socket.srna, &RNA_NodeSocketStandard);
 }
 
-bool nodeTypeUndefined(const bNode *node)
+bool node_type_is_undefined(const bNode *node)
 {
-  if (node->typeinfo == &NodeTypeUndefined) {
+  if (node->typeinfo == &blender::bke::NodeTypeUndefined) {
     return true;
   }
 
@@ -4355,16 +4362,16 @@ const char *nodeSocketLabel(const bNodeSocket *sock)
 void node_type_size_preset(bNodeType *ntype, const eNodeSizePreset size)
 {
   switch (size) {
-    case NODE_SIZE_DEFAULT:
+    case blender::bke::eNodeSizePreset::Default:
       node_type_size(ntype, 140, 100, NODE_DEFAULT_MAX_WIDTH);
       break;
-    case NODE_SIZE_SMALL:
+    case blender::bke::eNodeSizePreset::Small:
       node_type_size(ntype, 100, 80, NODE_DEFAULT_MAX_WIDTH);
       break;
-    case NODE_SIZE_MIDDLE:
+    case blender::bke::eNodeSizePreset::Middle:
       node_type_size(ntype, 150, 120, NODE_DEFAULT_MAX_WIDTH);
       break;
-    case NODE_SIZE_LARGE:
+    case blender::bke::eNodeSizePreset::Large:
       node_type_size(ntype, 240, 140, NODE_DEFAULT_MAX_WIDTH);
       break;
   }

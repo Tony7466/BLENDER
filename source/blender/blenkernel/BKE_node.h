@@ -406,13 +406,6 @@ typedef struct bNodeType {
 #define NODE_CLASS_ATTRIBUTE 42
 #define NODE_CLASS_LAYOUT 100
 
-typedef enum eNodeSizePreset {
-  NODE_SIZE_DEFAULT,
-  NODE_SIZE_SMALL,
-  NODE_SIZE_MIDDLE,
-  NODE_SIZE_LARGE,
-} eNodeSizePreset;
-
 struct bNodeTreeExec;
 
 typedef void (*bNodeClassCallback)(void *calldata, int nclass, const char *name);
@@ -496,26 +489,10 @@ void ntreeSetTypes(const struct bContext *C, struct bNodeTree *ntree);
 
 struct bNodeTree *ntreeAddTree(struct Main *bmain, const char *name, const char *idname);
 
-struct bNodeTree *ntreeAddTreeEmbedded(struct Main *bmain,
-                                       struct ID *owner_id,
-                                       const char *name,
-                                       const char *idname);
-
-/* Copy/free functions, need to manage ID users. */
-
-/**
- * Free (or release) any data used by this node-tree.
- * Does not free the node-tree itself and does no ID user counting.
- */
-void ntreeFreeTree(struct bNodeTree *ntree);
 /**
  * Free tree which is embedded into another data-block.
  */
 void ntreeFreeEmbeddedTree(struct bNodeTree *ntree);
-struct bNodeTree *ntreeCopyTree_ex(const struct bNodeTree *ntree,
-                                   struct Main *bmain,
-                                   bool do_id_user);
-struct bNodeTree *ntreeCopyTree(struct Main *bmain, const struct bNodeTree *ntree);
 
 /**
  * Get address of potential node-tree pointer of given ID.
@@ -524,14 +501,13 @@ struct bNodeTree *ntreeCopyTree(struct Main *bmain, const struct bNodeTree *ntre
  * sure, please use `ntreeFromID()` instead.
  */
 struct bNodeTree **BKE_ntree_ptr_from_id(struct ID *id);
+
 /**
  * Returns the private NodeTree object of the data-block, if it has one.
  */
 struct bNodeTree *ntreeFromID(struct ID *id);
 
-void ntreeFreeLocalNode(struct bNodeTree *ntree, struct bNode *node);
 void ntreeFreeLocalTree(struct bNodeTree *ntree);
-struct bNode *ntreeFindType(struct bNodeTree *ntree, int type);
 
 /**
  * Check recursively if a node tree contains another.
@@ -539,7 +515,6 @@ struct bNode *ntreeFindType(struct bNodeTree *ntree, int type);
 bool ntreeContainsTree(const struct bNodeTree *tree_to_search_in,
                        const struct bNodeTree *tree_to_search_for);
 
-void ntreeUpdateAllNew(struct Main *main);
 void ntreeUpdateAllUsers(struct Main *main, struct ID *id);
 
 /**
@@ -549,30 +524,15 @@ void ntreeUpdateAllUsers(struct Main *main, struct ID *id);
  */
 void ntreeSetOutput(struct bNodeTree *ntree);
 
-void ntreeNodeFlagSet(const bNodeTree *ntree, int flag, bool enable);
 /**
  * Returns localized tree for execution in threads.
  */
 struct bNodeTree *ntreeLocalize(struct bNodeTree *ntree);
-/**
- * Merge local tree results back, and free local tree.
- *
- * We have to assume the editor already changed completely.
- */
-void ntreeLocalMerge(struct Main *bmain, struct bNodeTree *localtree, struct bNodeTree *ntree);
 
 /**
  * This is only direct data, tree itself should have been written.
  */
 void ntreeBlendWrite(struct BlendWriter *writer, struct bNodeTree *ntree);
-/**
- * \note `ntree` itself has been read!
- */
-void ntreeBlendReadData(struct BlendDataReader *reader,
-                        struct ID *owner_id,
-                        struct bNodeTree *ntree);
-void ntreeBlendReadLib(struct BlendLibReader *reader, struct bNodeTree *ntree);
-void ntreeBlendReadExpand(struct BlendExpander *expander, struct bNodeTree *ntree);
 
 /** \} */
 
@@ -1375,10 +1335,6 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 
 void BKE_node_system_init(void);
 void BKE_node_system_exit(void);
-
-extern bNodeTreeType NodeTreeTypeUndefined;
-extern struct bNodeType NodeTypeUndefined;
-extern struct bNodeSocketType NodeSocketTypeUndefined;
 
 #ifdef __cplusplus
 }

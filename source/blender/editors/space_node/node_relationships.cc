@@ -2430,7 +2430,7 @@ static void node_link_insert_offset_ntree(NodeInsertOfsData *iofsd,
   float margin = width;
 
   /* NODE_TEST will be used later, so disable for all nodes */
-  ntreeNodeFlagSet(ntree, NODE_TEST, false);
+  blender::bke::ntreeNodeFlagSet(ntree, NODE_TEST, false);
 
   /* `insert.totr` isn't updated yet,
    * so `totr_insert` is used to get the correct world-space coords. */

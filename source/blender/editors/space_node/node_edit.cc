@@ -206,7 +206,7 @@ static void compo_freejob(void *cjv)
   CompoJob *cj = (CompoJob *)cjv;
 
   if (cj->localtree) {
-    ntreeLocalMerge(cj->bmain, cj->localtree, cj->ntree);
+    blender::bke::ntreeLocalMerge(cj->bmain, cj->localtree, cj->ntree);
   }
   if (cj->compositor_depsgraph != nullptr) {
     DEG_graph_free(cj->compositor_depsgraph);
@@ -506,7 +506,7 @@ void ED_node_shader_default(const bContext *C, ID *id)
       ma_default = BKE_material_default_surface();
     }
 
-    ma->nodetree = ntreeCopyTree(bmain, ma_default->nodetree);
+    ma->nodetree = blender::bke::ntreeCopyTree(bmain, ma_default->nodetree);
     ma->nodetree->owner_id = &ma->id;
     for (bNode *node_iter : ma->nodetree->all_nodes()) {
       STRNCPY_UTF8(node_iter->name, DATA_(node_iter->name));
@@ -517,7 +517,7 @@ void ED_node_shader_default(const bContext *C, ID *id)
   }
   else if (ELEM(GS(id->name), ID_WO, ID_LA)) {
     /* Emission */
-    bNodeTree *ntree = ntreeAddTreeEmbedded(
+    bNodeTree *ntree = blender::bke::ntreeAddTreeEmbedded(
         nullptr, id, "Shader Nodetree", ntreeType_Shader->idname);
     bNode *shader, *output;
 
@@ -568,7 +568,7 @@ void ED_node_composit_default(const bContext *C, Scene *sce)
     return;
   }
 
-  sce->nodetree = ntreeAddTreeEmbedded(
+  sce->nodetree = blender::bke::ntreeAddTreeEmbedded(
       nullptr, &sce->id, "Compositing Nodetree", ntreeType_Composite->idname);
 
   sce->nodetree->chunksize = 256;
@@ -601,7 +601,7 @@ void ED_node_texture_default(const bContext *C, Tex *tex)
     return;
   }
 
-  tex->nodetree = ntreeAddTreeEmbedded(
+  tex->nodetree = blender::bke::ntreeAddTreeEmbedded(
       nullptr, &tex->id, "Texture Nodetree", ntreeType_Texture->idname);
 
   bNode *out = nodeAddStaticNode(C, tex->nodetree, TEX_NODE_OUTPUT);
