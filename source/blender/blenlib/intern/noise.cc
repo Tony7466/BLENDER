@@ -2256,19 +2256,19 @@ template<typename T> VoronoiOutput fractal_voronoi_x_fx(const VoronoiParams &par
       max_amplitude += amplitude;
       output.distance += octave.distance * amplitude;
       output.color += octave.color * amplitude;
-      output.position = lerp(output.position, octave.position / scale, amplitude);
+      output.position = mix(output.position, octave.position / scale, amplitude);
       scale *= params.lacunarity;
       amplitude *= params.roughness;
     }
     else {
       float remainder = params.detail - floorf(params.detail);
       if (remainder != 0.0f) {
-        max_amplitude = lerp(max_amplitude, max_amplitude + amplitude, remainder);
-        output.distance = lerp(
+        max_amplitude = mix(max_amplitude, max_amplitude + amplitude, remainder);
+        output.distance = mix(
             output.distance, output.distance + octave.distance * amplitude, remainder);
-        output.color = lerp(output.color, output.color + octave.color * amplitude, remainder);
-        output.position = lerp(
-            output.position, lerp(output.position, octave.position / scale, amplitude), remainder);
+        output.color = mix(output.color, output.color + octave.color * amplitude, remainder);
+        output.position = mix(
+            output.position, mix(output.position, octave.position / scale, amplitude), remainder);
       }
     }
   }
@@ -2302,20 +2302,20 @@ float fractal_voronoi_distance_to_edge(const VoronoiParams &params, const T coor
       break;
     }
     else if (i <= params.detail) {
-      max_amplitude = lerp(max_amplitude, (0.5f + 0.5f * params.randomness) / scale, amplitude);
-      distance = lerp(distance, math::min(distance, octave_distance / scale), amplitude);
+      max_amplitude = mix(max_amplitude, (0.5f + 0.5f * params.randomness) / scale, amplitude);
+      distance = mix(distance, math::min(distance, octave_distance / scale), amplitude);
       scale *= params.lacunarity;
       amplitude *= params.roughness;
     }
     else {
       float remainder = params.detail - floorf(params.detail);
       if (remainder != 0.0f) {
-        float lerp_amplitude = lerp(
+        float lerp_amplitude = mix(
             max_amplitude, (0.5f + 0.5f * params.randomness) / scale, amplitude);
-        max_amplitude = lerp(max_amplitude, lerp_amplitude, remainder);
-        float lerp_distance = lerp(
+        max_amplitude = mix(max_amplitude, lerp_amplitude, remainder);
+        float lerp_distance = mix(
             distance, math::min(distance, octave_distance / scale), amplitude);
-        distance = lerp(distance, math::min(distance, lerp_distance), remainder);
+        distance = mix(distance, math::min(distance, lerp_distance), remainder);
       }
     }
   }

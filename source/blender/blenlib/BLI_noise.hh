@@ -324,11 +324,6 @@ struct VoronoiOutput {
   float4 position{0.0f, 0.0f, 0.0f, 0.0f};
 };
 
-template<class A, class B> static A lerp(const A &a, const A &b, const B &t)
-{
-  return (A)(a * ((B)1 - t) + b * t);
-}
-
 /* ***** Distances ***** */
 
 float voronoi_distance_1d(const float a, const float b, const VoronoiParams &params);

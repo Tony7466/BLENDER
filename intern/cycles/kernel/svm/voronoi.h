@@ -44,7 +44,7 @@ struct VoronoiOutput {
 
 /* ***** Distances ***** */
 
-ccl_device float voronoi_distance_1d(const float a, const float b, const VoronoiParams &params)
+ccl_device float voronoi_distance_1d(const float a, const float b, ccl_private const VoronoiParams &params)
 {
   /* Supress compiler warnings, not used for 1D. */
   (void)params;
@@ -53,7 +53,7 @@ ccl_device float voronoi_distance_1d(const float a, const float b, const Voronoi
 }
 
 template<typename T>
-ccl_device float voronoi_distance(const T a, const T b, const VoronoiParams &params)
+ccl_device float voronoi_distance(const T a, const T b, ccl_private const VoronoiParams &params)
 {
   if (params.metric == NODE_VORONOI_EUCLIDEAN) {
     return distance(a, b);
@@ -79,7 +79,7 @@ ccl_device float4 voronoi_position(const float coord)
   return make_float4(0.0f, 0.0f, 0.0f, coord);
 }
 
-ccl_device VoronoiOutput voronoi_f1(const VoronoiParams &params, const float coord)
+ccl_device VoronoiOutput voronoi_f1(ccl_private const VoronoiParams &params, const float coord)
 {
   float cellPosition = floorf(coord);
   float localPosition = coord - cellPosition;
@@ -106,7 +106,7 @@ ccl_device VoronoiOutput voronoi_f1(const VoronoiParams &params, const float coo
   return octave;
 }
 
-ccl_device VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params, const float coord)
+ccl_device VoronoiOutput voronoi_smooth_f1(ccl_private const VoronoiParams &params, const float coord)
 {
   float cellPosition = floorf(coord);
   float localPosition = coord - cellPosition;
@@ -136,7 +136,7 @@ ccl_device VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params, const fl
   return octave;
 }
 
-ccl_device VoronoiOutput voronoi_f2(const VoronoiParams &params, const float coord)
+ccl_device VoronoiOutput voronoi_f2(ccl_private const VoronoiParams &params, const float coord)
 {
   float cellPosition = floorf(coord);
   float localPosition = coord - cellPosition;
@@ -174,7 +174,7 @@ ccl_device VoronoiOutput voronoi_f2(const VoronoiParams &params, const float coo
   return octave;
 }
 
-ccl_device float voronoi_distance_to_edge(const VoronoiParams &params, const float coord)
+ccl_device float voronoi_distance_to_edge(ccl_private const VoronoiParams &params, const float coord)
 {
   float cellPosition = floorf(coord);
   float localPosition = coord - cellPosition;
@@ -188,7 +188,7 @@ ccl_device float voronoi_distance_to_edge(const VoronoiParams &params, const flo
   return min(distanceToMidLeft, distanceToMidRight);
 }
 
-ccl_device float voronoi_n_sphere_radius(const VoronoiParams &params, const float coord)
+ccl_device float voronoi_n_sphere_radius(ccl_private const VoronoiParams &params, const float coord)
 {
   float cellPosition = floorf(coord);
   float localPosition = coord - cellPosition;
@@ -234,7 +234,7 @@ ccl_device float4 voronoi_position(const float2 coord)
   return make_float4(coord.x, coord.y, 0.0f, 0.0f);
 }
 
-ccl_device VoronoiOutput voronoi_f1(const VoronoiParams &params, const float2 coord)
+ccl_device VoronoiOutput voronoi_f1(ccl_private const VoronoiParams &params, const float2 coord)
 {
   float2 cellPosition = floor(coord);
   float2 localPosition = coord - cellPosition;
@@ -263,7 +263,7 @@ ccl_device VoronoiOutput voronoi_f1(const VoronoiParams &params, const float2 co
   return octave;
 }
 
-ccl_device VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params, const float2 coord)
+ccl_device VoronoiOutput voronoi_smooth_f1(ccl_private const VoronoiParams &params, const float2 coord)
 {
   float2 cellPosition = floor(coord);
   float2 localPosition = coord - cellPosition;
@@ -295,7 +295,7 @@ ccl_device VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params, const fl
   return octave;
 }
 
-ccl_device VoronoiOutput voronoi_f2(const VoronoiParams &params, const float2 coord)
+ccl_device VoronoiOutput voronoi_f2(ccl_private const VoronoiParams &params, const float2 coord)
 {
   float2 cellPosition = floor(coord);
   float2 localPosition = coord - cellPosition;
@@ -335,7 +335,7 @@ ccl_device VoronoiOutput voronoi_f2(const VoronoiParams &params, const float2 co
   return octave;
 }
 
-ccl_device float voronoi_distance_to_edge(const VoronoiParams &params, const float2 coord)
+ccl_device float voronoi_distance_to_edge(ccl_private const VoronoiParams &params, const float2 coord)
 {
   float2 cellPosition = floor(coord);
   float2 localPosition = coord - cellPosition;
@@ -375,7 +375,7 @@ ccl_device float voronoi_distance_to_edge(const VoronoiParams &params, const flo
   return minDistance;
 }
 
-ccl_device float voronoi_n_sphere_radius(const VoronoiParams &params, const float2 coord)
+ccl_device float voronoi_n_sphere_radius(ccl_private const VoronoiParams &params, const float2 coord)
 {
   float2 cellPosition = floor(coord);
   float2 localPosition = coord - cellPosition;
@@ -425,7 +425,7 @@ ccl_device float4 voronoi_position(const float3 coord)
   return float3_to_float4(coord);
 }
 
-ccl_device VoronoiOutput voronoi_f1(const VoronoiParams &params, const float3 coord)
+ccl_device VoronoiOutput voronoi_f1(ccl_private const VoronoiParams &params, const float3 coord)
 {
   float3 cellPosition = floor(coord);
   float3 localPosition = coord - cellPosition;
@@ -456,7 +456,7 @@ ccl_device VoronoiOutput voronoi_f1(const VoronoiParams &params, const float3 co
   return octave;
 }
 
-ccl_device VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params, const float3 coord)
+ccl_device VoronoiOutput voronoi_smooth_f1(ccl_private const VoronoiParams &params, const float3 coord)
 {
   float3 cellPosition = floor(coord);
   float3 localPosition = coord - cellPosition;
@@ -490,7 +490,7 @@ ccl_device VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params, const fl
   return octave;
 }
 
-ccl_device VoronoiOutput voronoi_f2(const VoronoiParams &params, const float3 coord)
+ccl_device VoronoiOutput voronoi_f2(ccl_private const VoronoiParams &params, const float3 coord)
 {
   float3 cellPosition = floor(coord);
   float3 localPosition = coord - cellPosition;
@@ -532,7 +532,7 @@ ccl_device VoronoiOutput voronoi_f2(const VoronoiParams &params, const float3 co
   return octave;
 }
 
-ccl_device float voronoi_distance_to_edge(const VoronoiParams &params, const float3 coord)
+ccl_device float voronoi_distance_to_edge(ccl_private const VoronoiParams &params, const float3 coord)
 {
   float3 cellPosition = floor(coord);
   float3 localPosition = coord - cellPosition;
@@ -578,7 +578,7 @@ ccl_device float voronoi_distance_to_edge(const VoronoiParams &params, const flo
   return minDistance;
 }
 
-ccl_device float voronoi_n_sphere_radius(const VoronoiParams &params, const float3 coord)
+ccl_device float voronoi_n_sphere_radius(ccl_private const VoronoiParams &params, const float3 coord)
 {
   float3 cellPosition = floor(coord);
   float3 localPosition = coord - cellPosition;
@@ -632,7 +632,7 @@ ccl_device float4 voronoi_position(const float4 coord)
   return coord;
 }
 
-ccl_device VoronoiOutput voronoi_f1(const VoronoiParams &params, const float4 coord)
+ccl_device VoronoiOutput voronoi_f1(ccl_private const VoronoiParams &params, const float4 coord)
 {
   float4 cellPosition = floor(coord);
   float4 localPosition = coord - cellPosition;
@@ -666,7 +666,7 @@ ccl_device VoronoiOutput voronoi_f1(const VoronoiParams &params, const float4 co
   return octave;
 }
 
-ccl_device VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params, const float4 coord)
+ccl_device VoronoiOutput voronoi_smooth_f1(ccl_private const VoronoiParams &params, const float4 coord)
 {
   float4 cellPosition = floor(coord);
   float4 localPosition = coord - cellPosition;
@@ -703,7 +703,7 @@ ccl_device VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params, const fl
   return octave;
 }
 
-ccl_device VoronoiOutput voronoi_f2(const VoronoiParams &params, const float4 coord)
+ccl_device VoronoiOutput voronoi_f2(ccl_private const VoronoiParams &params, const float4 coord)
 {
   float4 cellPosition = floor(coord);
   float4 localPosition = coord - cellPosition;
@@ -748,7 +748,7 @@ ccl_device VoronoiOutput voronoi_f2(const VoronoiParams &params, const float4 co
   return octave;
 }
 
-ccl_device float voronoi_distance_to_edge(const VoronoiParams &params, const float4 coord)
+ccl_device float voronoi_distance_to_edge(ccl_private const VoronoiParams &params, const float4 coord)
 {
   float4 cellPosition = floor(coord);
   float4 localPosition = coord - cellPosition;
@@ -800,7 +800,7 @@ ccl_device float voronoi_distance_to_edge(const VoronoiParams &params, const flo
   return minDistance;
 }
 
-ccl_device float voronoi_n_sphere_radius(const VoronoiParams &params, const float4 coord)
+ccl_device float voronoi_n_sphere_radius(ccl_private const VoronoiParams &params, const float4 coord)
 {
   float4 cellPosition = floor(coord);
   float4 localPosition = coord - cellPosition;
@@ -856,7 +856,7 @@ ccl_device float voronoi_n_sphere_radius(const VoronoiParams &params, const floa
 /* **** Fractal Voronoi **** */
 
 template<typename T>
-ccl_device VoronoiOutput fractal_voronoi_x_fx(const VoronoiParams &params, const T coord)
+ccl_device VoronoiOutput fractal_voronoi_x_fx(ccl_private const VoronoiParams &params, const T coord)
 {
   float amplitude = 1.0f;
   float max_amplitude = 0.0f;
@@ -883,19 +883,19 @@ ccl_device VoronoiOutput fractal_voronoi_x_fx(const VoronoiParams &params, const
       max_amplitude += amplitude;
       output.distance += octave.distance * amplitude;
       output.color += octave.color * amplitude;
-      output.position = lerp(output.position, octave.position / scale, amplitude);
+      output.position = mix(output.position, octave.position / scale, amplitude);
       scale *= params.lacunarity;
       amplitude *= params.roughness;
     }
     else {
       float remainder = params.detail - floorf(params.detail);
       if (remainder != 0.0f) {
-        max_amplitude = lerp(max_amplitude, max_amplitude + amplitude, remainder);
-        output.distance = lerp(
+        max_amplitude = mix(max_amplitude, max_amplitude + amplitude, remainder);
+        output.distance = mix(
             output.distance, output.distance + octave.distance * amplitude, remainder);
-        output.color = lerp(output.color, output.color + octave.color * amplitude, remainder);
-        output.position = lerp(
-            output.position, lerp(output.position, octave.position / scale, amplitude), remainder);
+        output.color = mix(output.color, output.color + octave.color * amplitude, remainder);
+        output.position = mix(
+            output.position, mix(output.position, octave.position / scale, amplitude), remainder);
       }
     }
   }
@@ -911,7 +911,7 @@ ccl_device VoronoiOutput fractal_voronoi_x_fx(const VoronoiParams &params, const
 }
 
 template<typename T>
-ccl_device float fractal_voronoi_distance_to_edge(const VoronoiParams &params, const T coord)
+ccl_device float fractal_voronoi_distance_to_edge(ccl_private const VoronoiParams &params, const T coord)
 {
   float amplitude = 1.0f;
   float max_amplitude = 0.5f + 0.5f * params.randomness;
@@ -928,19 +928,19 @@ ccl_device float fractal_voronoi_distance_to_edge(const VoronoiParams &params, c
       break;
     }
     else if (i <= params.detail) {
-      max_amplitude = lerp(max_amplitude, (0.5f + 0.5f * params.randomness) / scale, amplitude);
-      distance = lerp(distance, min(distance, octave_distance / scale), amplitude);
+      max_amplitude = mix(max_amplitude, (0.5f + 0.5f * params.randomness) / scale, amplitude);
+      distance = mix(distance, min(distance, octave_distance / scale), amplitude);
       scale *= params.lacunarity;
       amplitude *= params.roughness;
     }
     else {
       float remainder = params.detail - floorf(params.detail);
       if (remainder != 0.0f) {
-        float lerp_amplitude = lerp(
+        float lerp_amplitude = mix(
             max_amplitude, (0.5f + 0.5f * params.randomness) / scale, amplitude);
-        max_amplitude = lerp(max_amplitude, lerp_amplitude, remainder);
-        float lerp_distance = lerp(distance, min(distance, octave_distance / scale), amplitude);
-        distance = lerp(distance, min(distance, lerp_distance), remainder);
+        max_amplitude = mix(max_amplitude, lerp_amplitude, remainder);
+        float lerp_distance = mix(distance, min(distance, octave_distance / scale), amplitude);
+        distance = mix(distance, min(distance, lerp_distance), remainder);
       }
     }
   }
