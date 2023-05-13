@@ -19,12 +19,12 @@ NODE_STORAGE_FUNCS(NodeAccumulateField)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  std::string value_in_description = N_("The values to be accumulated");
-  std::string leading_out_description = N_(
+  const StringRef value_in_description = N_("The values to be accumulated");
+  const StringRef leading_out_description = N_(
       "The running total of values in the corresponding group, starting at the first value");
-  std::string trailing_out_description = N_(
+  const StringRef trailing_out_description = N_(
       "The running total of values in the corresponding group, starting at zero");
-  std::string total_out_description = N_(
+  const StringRef total_out_description = N_(
       "The total of all of the values in the corresponding group");
 
   b.add_input<decl::Vector>(N_("Value"), "Value Vector")
