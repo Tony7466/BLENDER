@@ -44,7 +44,7 @@ void KuwaharaAnisotropicOperation::execute_pixel_sampled(float output[4],
                                                          PixelSampler sampler)
 {
   const int width = this->get_width();
-  const int height = this->get_width();
+  const int height = this->get_height();
 
   BLI_assert(width == s_xx_reader_->get_width());
   BLI_assert(height == s_xx_reader_->get_height());
@@ -193,7 +193,7 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
   MemoryBuffer *s_xy = inputs[3];
 
   const int width = image->get_width();
-  const int height = image->get_width();
+  const int height = image->get_height();
 
   BLI_assert(width == s_xx->get_width());
   BLI_assert(height == s_xx->get_height());
