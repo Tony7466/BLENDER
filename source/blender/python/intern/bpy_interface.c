@@ -656,7 +656,7 @@ void BPY_modules_load_user(bContext *C)
       if (!(G.f & G_FLAG_SCRIPT_AUTOEXEC)) {
         if (!(G.f & G_FLAG_SCRIPT_AUTOEXEC_FAIL_QUIET)) {
           G.f |= G_FLAG_SCRIPT_AUTOEXEC_FAIL;
-          BLI_snprintf(G.autoexec_fail, sizeof(G.autoexec_fail), "Text '%s'", text->id.name + 2);
+          SNPRINTF(G.autoexec_fail, "Text '%s'", text->id.name + 2);
 
           printf("scripts disabled for \"%s\", skipping '%s'\n",
                  BKE_main_blendfile_path(bmain),
@@ -803,7 +803,7 @@ static void bpy_module_delay_init(PyObject *bpy_proxy)
   const char *filepath_rel = PyUnicode_AsUTF8(filepath_obj); /* can be relative */
   char filepath_abs[1024];
 
-  BLI_strncpy(filepath_abs, filepath_rel, sizeof(filepath_abs));
+  STRNCPY(filepath_abs, filepath_rel);
   BLI_path_abs_from_cwd(filepath_abs, sizeof(filepath_abs));
   Py_DECREF(filepath_obj);
 

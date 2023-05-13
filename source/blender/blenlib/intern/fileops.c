@@ -290,7 +290,11 @@ static bool dir_create_recursive(char *dirname, int len)
   BLI_assert(strlen(dirname) == len);
   BLI_assert(BLI_exists(dirname) == 0);
   /* Caller must ensure the path doesn't have trailing slashes. */
-  BLI_assert(len && !BLI_path_slash_is_native_compat(dirname[len - 1]));
+  BLI_assert_msg(len && !BLI_path_slash_is_native_compat(dirname[len - 1]),
+                 "Paths must not end with a slash!");
+  BLI_assert_msg(!((len >= 3) && BLI_path_slash_is_native_compat(dirname[len - 3]) &&
+                   STREQ(dirname + (len - 2), "..")),
+                 "Paths containing \"..\" components must be normalized first!");
 
   bool ret = true;
   char *dirname_parent_end = (char *)BLI_path_parent_dir_end(dirname, len);
@@ -338,19 +342,17 @@ bool BLI_dir_create_recursive(const char *dirname)
     return S_ISDIR(mode) ? true : false;
   }
 
-  size_t len;
-  char *dirname_mut;
+  char dirname_static_buf[FILE_MAX];
+  char *dirname_mut = dirname_static_buf;
 
-#ifdef MAXPATHLEN
-  char static_buf[MAXPATHLEN];
-  len = BLI_strncpy_rlen(static_buf, dirname, sizeof(static_buf));
-  dirname_mut = static_buf;
-#else
-  len = strlen(dirname);
-  dirname_mut = MEM_mallocN(len + 1, __func__);
-  memcpy(dirname_mut, dirname, len + 1)
-#endif
+  size_t len = strlen(dirname);
+  if (len >= sizeof(dirname_static_buf)) {
+    dirname_mut = MEM_mallocN(len + 1, __func__);
+  }
+  memcpy(dirname_mut, dirname, len + 1);
 
+  /* Strip trailing chars, important for first entering #dir_create_recursive
+   * when then ensures this is the case for recursive calls. */
   while ((len > 0) && BLI_path_slash_is_native_compat(dirname_mut[len - 1])) {
     len--;
   }
@@ -361,9 +363,9 @@ bool BLI_dir_create_recursive(const char *dirname)
   /* Ensure the string was properly restored. */
   BLI_assert(memcmp(dirname, dirname_mut, len) == 0);
 
-#ifndef MAXPATHLEN
-  MEM_freeN(dirname_mut);
-#endif
+  if (dirname_mut != dirname_static_buf) {
+    MEM_freeN(dirname_mut);
+  }
 
   return ret;
 }
@@ -551,16 +553,14 @@ static bool delete_recursive(const char *dir)
   i = filelist_num = BLI_filelist_dir_contents(dir, &filelist);
   fl = filelist;
   while (i--) {
-    const char *filename = BLI_path_basename(fl->path);
-
-    if (FILENAME_IS_CURRPAR(filename)) {
+    if (FILENAME_IS_CURRPAR(fl->relname)) {
       /* Skip! */
     }
     else if (S_ISDIR(fl->type)) {
       char path[FILE_MAXDIR];
 
       /* dir listing produces dir path without trailing slash... */
-      BLI_strncpy(path, fl->path, sizeof(path));
+      STRNCPY(path, fl->path);
       BLI_path_slash_ensure(path, sizeof(path));
 
       if (delete_recursive(path)) {
@@ -627,7 +627,7 @@ int BLI_path_move(const char *file, const char *to)
    * it has to be 'mv filepath filepath' and not
    * 'mv filepath destination_directory' */
 
-  BLI_strncpy(str, to, sizeof(str));
+  STRNCPY(str, to);
   /* points 'to' to a directory ? */
   if (BLI_path_slash_rfind(str) == (str + strlen(str) - 1)) {
     if (BLI_path_slash_rfind(file) != NULL) {
@@ -658,7 +658,7 @@ int BLI_copy(const char *file, const char *to)
    * it has to be 'cp filepath filepath' and not
    * 'cp filepath destdir' */
 
-  BLI_strncpy(str, to, sizeof(str));
+  STRNCPY(str, to);
   /* points 'to' to a directory ? */
   if (BLI_path_slash_rfind(str) == (str + strlen(str) - 1)) {
     if (BLI_path_slash_rfind(file) != NULL) {
@@ -741,9 +741,9 @@ static void join_dirfile_alloc(char **dst, size_t *alloc_len, const char *dir, c
   BLI_path_join(*dst, len + 1, dir, file);
 }
 
-static char *strip_last_slash(const char *dir)
+static char *strip_last_slash(const char *dirpath)
 {
-  char *result = BLI_strdup(dir);
+  char *result = BLI_strdup(dirpath);
   BLI_path_slash_rstrip(result);
 
   return result;
