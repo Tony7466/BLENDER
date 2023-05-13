@@ -9423,6 +9423,7 @@ static void def_cmp_kuwahara(StructRNA *srna)
 
   prop = RNA_def_property(srna, "size", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "size");
+  RNA_def_property_range(prop, 1.0, 100.0);
   RNA_def_property_ui_range(prop, 1, 100, 1, -1);
   RNA_def_property_ui_text(
       prop, "Size", "Size of filter. Larger values give stronger stylized effect");
@@ -9436,6 +9437,7 @@ static void def_cmp_kuwahara(StructRNA *srna)
 
   prop = RNA_def_property(srna, "smoothing", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "smoothing");
+  RNA_def_property_range(prop, 0.0, 50.0);
   RNA_def_property_ui_range(prop, 0, 50, 1, -1);
   RNA_def_property_ui_text(prop,
                            "Smoothing",

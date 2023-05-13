@@ -43,12 +43,15 @@ void KuwaharaAnisotropicOperation::execute_pixel_sampled(float output[4],
                                                          float y,
                                                          PixelSampler sampler)
 {
-  BLI_assert(this->get_width() == s_xx_reader_->get_width());
-  BLI_assert(this->get_height() == s_xx_reader_->get_height());
-  BLI_assert(this->get_width() == s_yy_reader_->get_width());
-  BLI_assert(this->get_height() == s_yy_reader_->get_height());
-  BLI_assert(this->get_width() == s_xy_reader_->get_width());
-  BLI_assert(this->get_height() == s_xy_reader_->get_height());
+  const int width = this->get_width();
+  const int height = this->get_width();
+
+  BLI_assert(width == s_xx_reader_->get_width());
+  BLI_assert(height == s_xx_reader_->get_height());
+  BLI_assert(width == s_yy_reader_->get_width());
+  BLI_assert(height == s_yy_reader_->get_height());
+  BLI_assert(width == s_xy_reader_->get_width());
+  BLI_assert(height == s_xy_reader_->get_height());
 
   /* Values recommended by authors in original paper. */
   const float angle = 2.0 * M_PI / n_div_;
@@ -93,8 +96,8 @@ void KuwaharaAnisotropicOperation::execute_pixel_sampled(float output[4],
           continue;
 
         /* Rotate and scale the kernel. This is the "anisotropic" part. */
-        int dx2 = (int)(sx * (cos(theta) * dx - sin(theta) * dy));
-        int dy2 = (int)(sy * (sin(theta) * dx + cos(theta) * dy));
+        int dx2 = int(sx * (cos(theta) * dx - sin(theta) * dy));
+        int dy2 = int(sy * (sin(theta) * dx + cos(theta) * dy));
         int xx = x + dx2;
         int yy = y + dy2;
 
@@ -102,20 +105,20 @@ void KuwaharaAnisotropicOperation::execute_pixel_sampled(float output[4],
         if (xx < 0) {
           xx = 0;
         }
-        if (xx >= this->get_width()) {
-          xx = this->get_width() - 1;
+        if (xx >= width) {
+          xx = width - 1;
         }
         if (yy < 0) {
           yy = 0;
         }
-        if (yy >= this->get_height()) {
-          yy = this->get_height() - 1;
+        if (yy >= height) {
+          yy = height - 1;
         }
 
-        double ddx2 = (double)dx2;
-        double ddy2 = (double)dy2;
-        double theta = atan2(ddy2, ddx2) + M_PI;
-        int t = static_cast<int>(floor(theta / angle)) % n_div_;
+        const double ddx2 = double(dx2);
+        const double ddy2 = double(dy2);
+        const double theta = atan2(ddy2, ddx2) + M_PI;
+        const int t = int(floor(theta / angle)) % n_div_;
         double d2 = dx2 * dx2 + dy2 * dy2;
         double g = exp(-d2 / (2.0 * kernel_size_));
         float color[4];
@@ -135,9 +138,10 @@ void KuwaharaAnisotropicOperation::execute_pixel_sampled(float output[4],
     double de = 0.0;
     double nu = 0.0;
     for (int i = 0; i < n_div_; i++) {
-      mean[i] = weight[i] != 0 ? mean[i] / weight[i] : 0.0;
-      sum[i] = weight[i] != 0 ? sum[i] / weight[i] : 0.0;
-      var[i] = weight[i] != 0 ? var[i] / weight[i] : 0.0;
+      double weight_inv = 1.0 / weight[i];
+      mean[i] = weight[i] != 0 ? mean[i] * weight_inv : 0.0;
+      sum[i] = weight[i] != 0 ? sum[i] * weight_inv : 0.0;
+      var[i] = weight[i] != 0 ? var[i] * weight_inv : 0.0;
       var[i] = var[i] - sum[i] * sum[i];
       var[i] = var[i] > FLT_EPSILON ? sqrt(var[i]) : FLT_EPSILON;
       double w = powf(var[i], -q);
@@ -147,7 +151,6 @@ void KuwaharaAnisotropicOperation::execute_pixel_sampled(float output[4],
     }
 
     double val = nu > EPS ? de / nu : 0.0;
-    CLAMP_MAX(val, 1.0f);
     output[ch] = val;
   }
 
@@ -189,12 +192,15 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
   MemoryBuffer *s_yy = inputs[2];
   MemoryBuffer *s_xy = inputs[3];
 
-  BLI_assert(image->get_width() == s_xx->get_width());
-  BLI_assert(image->get_height() == s_xx->get_height());
-  BLI_assert(image->get_width() == s_yy->get_width());
-  BLI_assert(image->get_height() == s_yy->get_height());
-  BLI_assert(image->get_width() == s_xy->get_width());
-  BLI_assert(image->get_height() == s_xy->get_height());
+  const int width = image->get_width();
+  const int height = image->get_width();
+
+  BLI_assert(width == s_xx->get_width());
+  BLI_assert(height == s_xx->get_height());
+  BLI_assert(width == s_yy->get_width());
+  BLI_assert(height == s_yy->get_height());
+  BLI_assert(width == s_xy->get_width());
+  BLI_assert(height == s_xy->get_height());
 
   /* Values recommended by authors in original paper. */
   const float angle = 2.0 * M_PI / n_div_;
@@ -240,8 +246,8 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
             continue;
 
           /* Rotate and scale the kernel. This is the "anisotropic" part. */
-          int dx2 = (int)(sx * (cos(theta) * dx - sin(theta) * dy));
-          int dy2 = (int)(sy * (sin(theta) * dx + cos(theta) * dy));
+          int dx2 = int(sx * (cos(theta) * dx - sin(theta) * dy));
+          int dy2 = int(sy * (sin(theta) * dx + cos(theta) * dy));
           int xx = x + dx2;
           int yy = y + dy2;
 
@@ -249,23 +255,23 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
           if (xx < 0) {
             xx = 0;
           }
-          if (xx >= image->get_width()) {
-            xx = image->get_width() - 1;
+          if (xx >= width) {
+            xx = width - 1;
           }
           if (yy < 0) {
             yy = 0;
           }
-          if (yy >= image->get_height()) {
-            yy = image->get_height() - 1;
+          if (yy >= height) {
+            yy = height - 1;
           }
 
-          double ddx2 = (double)dx2;
-          double ddy2 = (double)dy2;
-          double theta = atan2(ddy2, ddx2) + M_PI;
-          int t = static_cast<int>(floor(theta / angle)) % n_div_;
+          const double ddx2 = double(dx2);
+          const double ddy2 = double(dy2);
+          const double theta = atan2(ddy2, ddx2) + M_PI;
+          const int t = int(floor(theta / angle)) % n_div_;
           double d2 = dx2 * dx2 + dy2 * dy2;
           double g = exp(-d2 / (2.0 * kernel_size_));
-          double v = image->get_value(xx, yy, ch);
+          const double v = image->get_value(xx, yy, ch);
           float color[4];
           image->read_elem(xx, yy, color);
           /* todo(zazizizou): only compute lum once per region */
@@ -282,9 +288,10 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
       double de = 0.0;
       double nu = 0.0;
       for (int i = 0; i < n_div_; i++) {
-        mean[i] = weight[i] != 0 ? mean[i] / weight[i] : 0.0;
-        sum[i] = weight[i] != 0 ? sum[i] / weight[i] : 0.0;
-        var[i] = weight[i] != 0 ? var[i] / weight[i] : 0.0;
+        double weight_inv = 1.0 / weight[i];
+        mean[i] = weight[i] != 0 ? mean[i] * weight_inv : 0.0;
+        sum[i] = weight[i] != 0 ? sum[i] * weight_inv : 0.0;
+        var[i] = weight[i] != 0 ? var[i] * weight_inv : 0.0;
         var[i] = var[i] - sum[i] * sum[i];
         var[i] = var[i] > FLT_EPSILON ? sqrt(var[i]) : FLT_EPSILON;
         double w = powf(var[i], -q);
@@ -294,7 +301,6 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
       }
 
       double val = nu > EPS ? de / nu : 0.0;
-      CLAMP_MAX(val, 1.0f);
       it.out[ch] = val;
     }
 
