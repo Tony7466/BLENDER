@@ -9,6 +9,8 @@
 
 #include "DNA_defs.h"
 
+#include "BLT_translation.h"
+
 /* XXX(@ideasman42): temp feature. */
 #define DURIAN_CAMERA_SWITCH
 
@@ -278,45 +280,45 @@ typedef enum eScenePassType {
   SCE_PASS_ROUGHNESS = (1u << 31u),
 } eScenePassType;
 
-#define RE_PASSNAME_DEPRECATED "Deprecated"
+#define RE_PASSNAME_DEPRECATED N_("Deprecated")
 
-#define RE_PASSNAME_COMBINED "Combined"
-#define RE_PASSNAME_Z "Depth"
-#define RE_PASSNAME_VECTOR "Vector"
-#define RE_PASSNAME_POSITION "Position"
-#define RE_PASSNAME_NORMAL "Normal"
-#define RE_PASSNAME_UV "UV"
-#define RE_PASSNAME_EMIT "Emit"
-#define RE_PASSNAME_SHADOW "Shadow"
+#define RE_PASSNAME_COMBINED N_("Combined")
+#define RE_PASSNAME_Z N_("Depth")
+#define RE_PASSNAME_VECTOR N_("Vector")
+#define RE_PASSNAME_POSITION N_("Position")
+#define RE_PASSNAME_NORMAL N_("Normal")
+#define RE_PASSNAME_UV N_("UV")
+#define RE_PASSNAME_EMIT N_("Emit")
+#define RE_PASSNAME_SHADOW N_("Shadow")
 
-#define RE_PASSNAME_AO "AO"
-#define RE_PASSNAME_ENVIRONMENT "Env"
-#define RE_PASSNAME_INDEXOB "IndexOB"
-#define RE_PASSNAME_INDEXMA "IndexMA"
-#define RE_PASSNAME_MIST "Mist"
+#define RE_PASSNAME_AO N_("AO")
+#define RE_PASSNAME_ENVIRONMENT N_("Env")
+#define RE_PASSNAME_INDEXOB N_("IndexOB")
+#define RE_PASSNAME_INDEXMA N_("IndexMA")
+#define RE_PASSNAME_MIST N_("Mist")
 
-#define RE_PASSNAME_DIFFUSE_DIRECT "DiffDir"
-#define RE_PASSNAME_DIFFUSE_INDIRECT "DiffInd"
-#define RE_PASSNAME_DIFFUSE_COLOR "DiffCol"
-#define RE_PASSNAME_GLOSSY_DIRECT "GlossDir"
-#define RE_PASSNAME_GLOSSY_INDIRECT "GlossInd"
-#define RE_PASSNAME_GLOSSY_COLOR "GlossCol"
-#define RE_PASSNAME_TRANSM_DIRECT "TransDir"
-#define RE_PASSNAME_TRANSM_INDIRECT "TransInd"
-#define RE_PASSNAME_TRANSM_COLOR "TransCol"
+#define RE_PASSNAME_DIFFUSE_DIRECT N_("DiffDir")
+#define RE_PASSNAME_DIFFUSE_INDIRECT N_("DiffInd")
+#define RE_PASSNAME_DIFFUSE_COLOR N_("DiffCol")
+#define RE_PASSNAME_GLOSSY_DIRECT N_("GlossDir")
+#define RE_PASSNAME_GLOSSY_INDIRECT N_("GlossInd")
+#define RE_PASSNAME_GLOSSY_COLOR N_("GlossCol")
+#define RE_PASSNAME_TRANSM_DIRECT N_("TransDir")
+#define RE_PASSNAME_TRANSM_INDIRECT N_("TransInd")
+#define RE_PASSNAME_TRANSM_COLOR N_("TransCol")
 
-#define RE_PASSNAME_SUBSURFACE_DIRECT "SubsurfaceDir"
-#define RE_PASSNAME_SUBSURFACE_INDIRECT "SubsurfaceInd"
-#define RE_PASSNAME_SUBSURFACE_COLOR "SubsurfaceCol"
+#define RE_PASSNAME_SUBSURFACE_DIRECT N_("SubsurfaceDir")
+#define RE_PASSNAME_SUBSURFACE_INDIRECT N_("SubsurfaceInd")
+#define RE_PASSNAME_SUBSURFACE_COLOR N_("SubsurfaceCol")
 
-#define RE_PASSNAME_FREESTYLE "Freestyle"
-#define RE_PASSNAME_BLOOM "BloomCol"
-#define RE_PASSNAME_VOLUME_LIGHT "VolumeDir"
-#define RE_PASSNAME_TRANSPARENT "Transp"
+#define RE_PASSNAME_FREESTYLE N_("Freestyle")
+#define RE_PASSNAME_BLOOM N_("BloomCol")
+#define RE_PASSNAME_VOLUME_LIGHT N_("VolumeDir")
+#define RE_PASSNAME_TRANSPARENT N_("Transp")
 
-#define RE_PASSNAME_CRYPTOMATTE_OBJECT "CryptoObject"
-#define RE_PASSNAME_CRYPTOMATTE_ASSET "CryptoAsset"
-#define RE_PASSNAME_CRYPTOMATTE_MATERIAL "CryptoMaterial"
+#define RE_PASSNAME_CRYPTOMATTE_OBJECT N_("CryptoObject")
+#define RE_PASSNAME_CRYPTOMATTE_ASSET N_("CryptoAsset")
+#define RE_PASSNAME_CRYPTOMATTE_MATERIAL N_("CryptoMaterial")
 
 /** \} */
 
