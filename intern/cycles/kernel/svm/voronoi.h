@@ -44,7 +44,9 @@ struct VoronoiOutput {
 
 /* ***** Distances ***** */
 
-ccl_device float voronoi_distance_1d(const float a, const float b, ccl_private const VoronoiParams &params)
+ccl_device float voronoi_distance_1d(const float a,
+                                     const float b,
+                                     ccl_private const VoronoiParams &params)
 {
   /* Supress compiler warnings, not used for 1D. */
   (void)params;
@@ -106,7 +108,8 @@ ccl_device VoronoiOutput voronoi_f1(ccl_private const VoronoiParams &params, con
   return octave;
 }
 
-ccl_device VoronoiOutput voronoi_smooth_f1(ccl_private const VoronoiParams &params, const float coord)
+ccl_device VoronoiOutput voronoi_smooth_f1(ccl_private const VoronoiParams &params,
+                                           const float coord)
 {
   float cellPosition = floorf(coord);
   float localPosition = coord - cellPosition;
@@ -174,7 +177,8 @@ ccl_device VoronoiOutput voronoi_f2(ccl_private const VoronoiParams &params, con
   return octave;
 }
 
-ccl_device float voronoi_distance_to_edge(ccl_private const VoronoiParams &params, const float coord)
+ccl_device float voronoi_distance_to_edge(ccl_private const VoronoiParams &params,
+                                          const float coord)
 {
   float cellPosition = floorf(coord);
   float localPosition = coord - cellPosition;
@@ -188,7 +192,8 @@ ccl_device float voronoi_distance_to_edge(ccl_private const VoronoiParams &param
   return min(distanceToMidLeft, distanceToMidRight);
 }
 
-ccl_device float voronoi_n_sphere_radius(ccl_private const VoronoiParams &params, const float coord)
+ccl_device float voronoi_n_sphere_radius(ccl_private const VoronoiParams &params,
+                                         const float coord)
 {
   float cellPosition = floorf(coord);
   float localPosition = coord - cellPosition;
@@ -263,7 +268,8 @@ ccl_device VoronoiOutput voronoi_f1(ccl_private const VoronoiParams &params, con
   return octave;
 }
 
-ccl_device VoronoiOutput voronoi_smooth_f1(ccl_private const VoronoiParams &params, const float2 coord)
+ccl_device VoronoiOutput voronoi_smooth_f1(ccl_private const VoronoiParams &params,
+                                           const float2 coord)
 {
   float2 cellPosition = floor(coord);
   float2 localPosition = coord - cellPosition;
@@ -335,7 +341,8 @@ ccl_device VoronoiOutput voronoi_f2(ccl_private const VoronoiParams &params, con
   return octave;
 }
 
-ccl_device float voronoi_distance_to_edge(ccl_private const VoronoiParams &params, const float2 coord)
+ccl_device float voronoi_distance_to_edge(ccl_private const VoronoiParams &params,
+                                          const float2 coord)
 {
   float2 cellPosition = floor(coord);
   float2 localPosition = coord - cellPosition;
@@ -375,7 +382,8 @@ ccl_device float voronoi_distance_to_edge(ccl_private const VoronoiParams &param
   return minDistance;
 }
 
-ccl_device float voronoi_n_sphere_radius(ccl_private const VoronoiParams &params, const float2 coord)
+ccl_device float voronoi_n_sphere_radius(ccl_private const VoronoiParams &params,
+                                         const float2 coord)
 {
   float2 cellPosition = floor(coord);
   float2 localPosition = coord - cellPosition;
@@ -456,7 +464,8 @@ ccl_device VoronoiOutput voronoi_f1(ccl_private const VoronoiParams &params, con
   return octave;
 }
 
-ccl_device VoronoiOutput voronoi_smooth_f1(ccl_private const VoronoiParams &params, const float3 coord)
+ccl_device VoronoiOutput voronoi_smooth_f1(ccl_private const VoronoiParams &params,
+                                           const float3 coord)
 {
   float3 cellPosition = floor(coord);
   float3 localPosition = coord - cellPosition;
@@ -532,7 +541,8 @@ ccl_device VoronoiOutput voronoi_f2(ccl_private const VoronoiParams &params, con
   return octave;
 }
 
-ccl_device float voronoi_distance_to_edge(ccl_private const VoronoiParams &params, const float3 coord)
+ccl_device float voronoi_distance_to_edge(ccl_private const VoronoiParams &params,
+                                          const float3 coord)
 {
   float3 cellPosition = floor(coord);
   float3 localPosition = coord - cellPosition;
@@ -578,7 +588,8 @@ ccl_device float voronoi_distance_to_edge(ccl_private const VoronoiParams &param
   return minDistance;
 }
 
-ccl_device float voronoi_n_sphere_radius(ccl_private const VoronoiParams &params, const float3 coord)
+ccl_device float voronoi_n_sphere_radius(ccl_private const VoronoiParams &params,
+                                         const float3 coord)
 {
   float3 cellPosition = floor(coord);
   float3 localPosition = coord - cellPosition;
@@ -666,7 +677,8 @@ ccl_device VoronoiOutput voronoi_f1(ccl_private const VoronoiParams &params, con
   return octave;
 }
 
-ccl_device VoronoiOutput voronoi_smooth_f1(ccl_private const VoronoiParams &params, const float4 coord)
+ccl_device VoronoiOutput voronoi_smooth_f1(ccl_private const VoronoiParams &params,
+                                           const float4 coord)
 {
   float4 cellPosition = floor(coord);
   float4 localPosition = coord - cellPosition;
@@ -748,7 +760,8 @@ ccl_device VoronoiOutput voronoi_f2(ccl_private const VoronoiParams &params, con
   return octave;
 }
 
-ccl_device float voronoi_distance_to_edge(ccl_private const VoronoiParams &params, const float4 coord)
+ccl_device float voronoi_distance_to_edge(ccl_private const VoronoiParams &params,
+                                          const float4 coord)
 {
   float4 cellPosition = floor(coord);
   float4 localPosition = coord - cellPosition;
@@ -800,7 +813,8 @@ ccl_device float voronoi_distance_to_edge(ccl_private const VoronoiParams &param
   return minDistance;
 }
 
-ccl_device float voronoi_n_sphere_radius(ccl_private const VoronoiParams &params, const float4 coord)
+ccl_device float voronoi_n_sphere_radius(ccl_private const VoronoiParams &params,
+                                         const float4 coord)
 {
   float4 cellPosition = floor(coord);
   float4 localPosition = coord - cellPosition;
@@ -856,7 +870,8 @@ ccl_device float voronoi_n_sphere_radius(ccl_private const VoronoiParams &params
 /* **** Fractal Voronoi **** */
 
 template<typename T>
-ccl_device VoronoiOutput fractal_voronoi_x_fx(ccl_private const VoronoiParams &params, const T coord)
+ccl_device VoronoiOutput fractal_voronoi_x_fx(ccl_private const VoronoiParams &params,
+                                              const T coord)
 {
   float amplitude = 1.0f;
   float max_amplitude = 0.0f;
@@ -911,7 +926,8 @@ ccl_device VoronoiOutput fractal_voronoi_x_fx(ccl_private const VoronoiParams &p
 }
 
 template<typename T>
-ccl_device float fractal_voronoi_distance_to_edge(ccl_private const VoronoiParams &params, const T coord)
+ccl_device float fractal_voronoi_distance_to_edge(ccl_private const VoronoiParams &params,
+                                                  const T coord)
 {
   float amplitude = 1.0f;
   float max_amplitude = 0.5f + 0.5f * params.randomness;
