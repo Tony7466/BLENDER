@@ -2109,7 +2109,7 @@ void ntreeUpdateAllUsers(Main *main, ID *id)
 static void node_type_base_defaults(bNodeType *ntype)
 {
   /* default size values */
-  blender::bke::node_type_size_preset(ntype, blender::bke::eNodeSizePreset::Default);
+  blender::bke::node_type_size_preset(ntype, blender::bke::eNodeSizePreset::DEFAULT);
   ntype->height = 100;
   ntype->minheight = 30;
   ntype->maxheight = FLT_MAX;
@@ -4307,16 +4307,16 @@ const char *nodeSocketLabel(const bNodeSocket *sock)
 void node_type_size_preset(bNodeType *ntype, const eNodeSizePreset size)
 {
   switch (size) {
-    case eNodeSizePreset::Default:
+    case eNodeSizePreset::DEFAULT:
       node_type_size(ntype, 140, 100, NODE_DEFAULT_MAX_WIDTH);
       break;
-    case eNodeSizePreset::Small:
+    case eNodeSizePreset::SMALL:
       node_type_size(ntype, 100, 80, NODE_DEFAULT_MAX_WIDTH);
       break;
-    case eNodeSizePreset::Middle:
+    case eNodeSizePreset::MIDDLE:
       node_type_size(ntype, 150, 120, NODE_DEFAULT_MAX_WIDTH);
       break;
-    case eNodeSizePreset::Large:
+    case eNodeSizePreset::LARGE:
       node_type_size(ntype, 240, 140, NODE_DEFAULT_MAX_WIDTH);
       break;
   }
