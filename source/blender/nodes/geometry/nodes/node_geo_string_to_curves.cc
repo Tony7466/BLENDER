@@ -88,11 +88,11 @@ static void node_update(bNodeTree *ntree, bNode *node)
   const GeometryNodeStringToCurvesOverflowMode overflow = (GeometryNodeStringToCurvesOverflowMode)
                                                               storage.overflow;
   bNodeSocket *socket_remainder = static_cast<bNodeSocket *>(node->outputs.first)->next;
-  blender::bke::nodeSetSocketAvailability(
+  bke::nodeSetSocketAvailability(
       ntree, socket_remainder, overflow == GEO_NODE_STRING_TO_CURVES_MODE_TRUNCATE);
 
   bNodeSocket *height_socket = static_cast<bNodeSocket *>(node->inputs.last);
-  blender::bke::nodeSetSocketAvailability(
+  bke::nodeSetSocketAvailability(
       ntree, height_socket, overflow != GEO_NODE_STRING_TO_CURVES_MODE_OVERFLOW);
 }
 

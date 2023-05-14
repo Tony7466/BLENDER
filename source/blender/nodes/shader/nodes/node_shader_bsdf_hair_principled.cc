@@ -81,27 +81,27 @@ static void node_shader_update_hair_principled(bNodeTree *ntree, bNode *node)
 
   LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
     if (STREQ(sock->name, "Color")) {
-      blender::bke::nodeSetSocketAvailability(
+      bke::nodeSetSocketAvailability(
           ntree, sock, parametrization == SHD_PRINCIPLED_HAIR_REFLECTANCE);
     }
     else if (STREQ(sock->name, "Melanin")) {
-      blender::bke::nodeSetSocketAvailability(
+      bke::nodeSetSocketAvailability(
           ntree, sock, parametrization == SHD_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION);
     }
     else if (STREQ(sock->name, "Melanin Redness")) {
-      blender::bke::nodeSetSocketAvailability(
+      bke::nodeSetSocketAvailability(
           ntree, sock, parametrization == SHD_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION);
     }
     else if (STREQ(sock->name, "Tint")) {
-      blender::bke::nodeSetSocketAvailability(
+      bke::nodeSetSocketAvailability(
           ntree, sock, parametrization == SHD_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION);
     }
     else if (STREQ(sock->name, "Absorption Coefficient")) {
-      blender::bke::nodeSetSocketAvailability(
+      bke::nodeSetSocketAvailability(
           ntree, sock, parametrization == SHD_PRINCIPLED_HAIR_DIRECT_ABSORPTION);
     }
     else if (STREQ(sock->name, "Random Color")) {
-      blender::bke::nodeSetSocketAvailability(
+      bke::nodeSetSocketAvailability(
           ntree, sock, parametrization == SHD_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION);
     }
   }

@@ -275,7 +275,7 @@ static void node_shader_update_sky(bNodeTree *ntree, bNode *node)
   bNodeSocket *sockVector = nodeFindSocket(node, SOCK_IN, "Vector");
 
   NodeTexSky *tex = (NodeTexSky *)node->storage;
-  blender::bke::nodeSetSocketAvailability(
+  bke::nodeSetSocketAvailability(
       ntree, sockVector, !(tex->sky_model == 2 && tex->sun_disc == 1));
 }
 

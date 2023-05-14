@@ -75,13 +75,13 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *sock_spacing = sock_seed->next;
   bNodeSocket *sock_threshold = sock_spacing->next;
 
-  blender::bke::nodeSetSocketAvailability(
+  bke::nodeSetSocketAvailability(
       ntree, sock_density, mode == GEO_NODE_DISTRIBUTE_POINTS_IN_VOLUME_DENSITY_RANDOM);
-  blender::bke::nodeSetSocketAvailability(
+  bke::nodeSetSocketAvailability(
       ntree, sock_seed, mode == GEO_NODE_DISTRIBUTE_POINTS_IN_VOLUME_DENSITY_RANDOM);
-  blender::bke::nodeSetSocketAvailability(
+  bke::nodeSetSocketAvailability(
       ntree, sock_spacing, mode == GEO_NODE_DISTRIBUTE_POINTS_IN_VOLUME_DENSITY_GRID);
-  blender::bke::nodeSetSocketAvailability(
+  bke::nodeSetSocketAvailability(
       ntree, sock_threshold, mode == GEO_NODE_DISTRIBUTE_POINTS_IN_VOLUME_DENSITY_GRID);
 }
 

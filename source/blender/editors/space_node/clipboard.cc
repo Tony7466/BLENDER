@@ -315,7 +315,7 @@ static int node_clipboard_paste_exec(bContext *C, wmOperator *op)
   }
 
   for (bNode *new_node : node_map.values()) {
-    blender::bke::nodeDeclarationEnsure(&tree, new_node);
+    bke::nodeDeclarationEnsure(&tree, new_node);
   }
 
   remap_pairing(tree, node_map);

@@ -74,7 +74,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
     if (socket->type == SOCK_GEOMETRY) {
       continue;
     }
-    blender::bke::nodeSetSocketAvailability(ntree, socket, socket->type == socket_type);
+    bke::nodeSetSocketAvailability(ntree, socket, socket->type == socket_type);
   }
 }
 

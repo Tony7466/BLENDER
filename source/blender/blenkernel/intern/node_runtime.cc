@@ -39,8 +39,7 @@ static void update_node_vector(const bNodeTree &ntree)
     bNode &node = *nodes[i];
     node.runtime->index_in_tree = i;
     node.runtime->owner_tree = const_cast<bNodeTree *>(&ntree);
-    tree_runtime.has_undefined_nodes_or_sockets |= node.typeinfo ==
-                                                   &blender::bke::NodeTypeUndefined;
+    tree_runtime.has_undefined_nodes_or_sockets |= node.typeinfo == &bke::NodeTypeUndefined;
     if (node.is_group()) {
       tree_runtime.group_nodes.append(&node);
     }
@@ -77,7 +76,7 @@ static void update_socket_vectors_and_owner_node(const bNodeTree &ntree)
           socket);
       socket->runtime->owner_node = node;
       tree_runtime.has_undefined_nodes_or_sockets |= socket->typeinfo ==
-                                                     &blender::bke::NodeSocketTypeUndefined;
+                                                     &bke::NodeSocketTypeUndefined;
     }
     LISTBASE_FOREACH (bNodeSocket *, socket, &node->outputs) {
       socket->runtime->index_in_node = node_runtime.outputs.append_and_get_index(socket);
@@ -86,7 +85,7 @@ static void update_socket_vectors_and_owner_node(const bNodeTree &ntree)
           socket);
       socket->runtime->owner_node = node;
       tree_runtime.has_undefined_nodes_or_sockets |= socket->typeinfo ==
-                                                     &blender::bke::NodeSocketTypeUndefined;
+                                                     &bke::NodeSocketTypeUndefined;
     }
   }
 }

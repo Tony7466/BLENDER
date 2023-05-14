@@ -110,14 +110,14 @@ static void node_shader_update_tex_musgrave(bNodeTree *ntree, bNode *node)
   bNodeSocket *inOffsetSock = nodeFindSocket(node, SOCK_IN, "Offset");
   bNodeSocket *inGainSock = nodeFindSocket(node, SOCK_IN, "Gain");
 
-  blender::bke::nodeSetSocketAvailability(ntree, inVectorSock, storage.dimensions != 1);
-  blender::bke::nodeSetSocketAvailability(
+  bke::nodeSetSocketAvailability(ntree, inVectorSock, storage.dimensions != 1);
+  bke::nodeSetSocketAvailability(
       ntree, inWSock, storage.dimensions == 1 || storage.dimensions == 4);
-  blender::bke::nodeSetSocketAvailability(ntree,
+  bke::nodeSetSocketAvailability(ntree,
                                           inOffsetSock,
                                           storage.musgrave_type != SHD_MUSGRAVE_MULTIFRACTAL &&
                                               storage.musgrave_type != SHD_MUSGRAVE_FBM);
-  blender::bke::nodeSetSocketAvailability(
+  bke::nodeSetSocketAvailability(
       ntree,
       inGainSock,
       storage.musgrave_type == SHD_MUSGRAVE_HYBRID_MULTIFRACTAL ||

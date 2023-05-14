@@ -70,7 +70,7 @@ static void node_shader_update_subsurface_scattering(bNodeTree *ntree, bNode *no
 
   LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
     if (STR_ELEM(sock->name, "IOR", "Anisotropy")) {
-      blender::bke::nodeSetSocketAvailability(ntree, sock, sss_method != SHD_SUBSURFACE_BURLEY);
+      bke::nodeSetSocketAvailability(ntree, sock, sss_method != SHD_SUBSURFACE_BURLEY);
     }
   }
 }

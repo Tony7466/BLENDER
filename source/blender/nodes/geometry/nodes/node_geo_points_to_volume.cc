@@ -184,11 +184,11 @@ static void node_update(bNodeTree *ntree, bNode *node)
   const NodeGeometryPointsToVolume &storage = node_storage(*node);
   bNodeSocket *voxel_size_socket = nodeFindSocket(node, SOCK_IN, "Voxel Size");
   bNodeSocket *voxel_amount_socket = nodeFindSocket(node, SOCK_IN, "Voxel Amount");
-  blender::bke::nodeSetSocketAvailability(ntree,
+  bke::nodeSetSocketAvailability(ntree,
                             voxel_amount_socket,
                             storage.resolution_mode ==
                                 GEO_NODE_POINTS_TO_VOLUME_RESOLUTION_MODE_AMOUNT);
-  blender::bke::nodeSetSocketAvailability(ntree,
+  bke::nodeSetSocketAvailability(ntree,
                             voxel_size_socket,
                             storage.resolution_mode ==
                                 GEO_NODE_POINTS_TO_VOLUME_RESOLUTION_MODE_SIZE);

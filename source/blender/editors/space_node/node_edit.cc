@@ -206,7 +206,7 @@ static void compo_freejob(void *cjv)
   CompoJob *cj = (CompoJob *)cjv;
 
   if (cj->localtree) {
-    blender::bke::ntreeLocalMerge(cj->bmain, cj->localtree, cj->ntree);
+    bke::ntreeLocalMerge(cj->bmain, cj->localtree, cj->ntree);
   }
   if (cj->compositor_depsgraph != nullptr) {
     DEG_graph_free(cj->compositor_depsgraph);

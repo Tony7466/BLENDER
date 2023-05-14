@@ -70,11 +70,11 @@ static void node_update(bNodeTree *ntree, bNode *node)
 
   bNodeSocket *voxel_size_socket = nodeFindSocket(node, SOCK_IN, "Voxel Size");
   bNodeSocket *voxel_amount_socket = nodeFindSocket(node, SOCK_IN, "Voxel Amount");
-  blender::bke::nodeSetSocketAvailability(ntree,
+  bke::nodeSetSocketAvailability(ntree,
                             voxel_amount_socket,
                             storage.resolution_mode ==
                                 VOLUME_TO_MESH_RESOLUTION_MODE_VOXEL_AMOUNT);
-  blender::bke::nodeSetSocketAvailability(ntree,
+  bke::nodeSetSocketAvailability(ntree,
                             voxel_size_socket,
                             storage.resolution_mode == VOLUME_TO_MESH_RESOLUTION_MODE_VOXEL_SIZE);
 }
