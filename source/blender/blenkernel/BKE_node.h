@@ -1147,16 +1147,16 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 
 /* NOTE: types are needed to restore callbacks, don't change values. */
 
-//#define SH_NODE_MATERIAL  100
+// #define SH_NODE_MATERIAL  100
 #define SH_NODE_RGB 101
 #define SH_NODE_VALUE 102
 #define SH_NODE_MIX_RGB_LEGACY 103
 #define SH_NODE_VALTORGB 104
 #define SH_NODE_RGBTOBW 105
 #define SH_NODE_SHADERTORGB 106
-//#define SH_NODE_TEXTURE       106
+// #define SH_NODE_TEXTURE       106
 #define SH_NODE_NORMAL 107
-//#define SH_NODE_GEOMETRY  108
+// #define SH_NODE_GEOMETRY  108
 #define SH_NODE_MAPPING 109
 #define SH_NODE_CURVE_VEC 110
 #define SH_NODE_CURVE_RGB 111
@@ -1164,7 +1164,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define SH_NODE_MATH 115
 #define SH_NODE_VECTOR_MATH 116
 #define SH_NODE_SQUEEZE 117
-//#define SH_NODE_MATERIAL_EXT  118
+// #define SH_NODE_MATERIAL_EXT  118
 #define SH_NODE_INVERT 119
 #define SH_NODE_SEPRGB_LEGACY 120
 #define SH_NODE_COMBRGB_LEGACY 121
@@ -1587,7 +1587,8 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 /* Function nodes use the range starting at 1200. */
 #define GEO_NODE_SIMULATION_INPUT 2100
 #define GEO_NODE_SIMULATION_OUTPUT 2101
-#define GEO_NODE_SAMPLE_VOLUME 2102
+#define GEO_NODE_INPUT_SIGNED_DISTANCE 2102
+#define GEO_NODE_SAMPLE_VOLUME 2103
 
 /** \} */
 
