@@ -4716,7 +4716,7 @@ static uiBut *ui_def_but_rna(uiBlock *block,
   }
 
   if (but->rnapoin.data && RNA_property_is_inactive_info(&but->rnapoin, prop, &info)) {
-    UI_but_inactive(but, info);
+    UI_but_set_disabled_hint(but, info);
   }
 
   if (proptype == PROP_POINTER) {
@@ -5908,26 +5908,21 @@ void UI_but_dragflag_disable(uiBut *but, int flag)
   but->dragflag &= ~flag;
 }
 
-void UI_but_inactive(uiBut *but, const char *inactive_hint)
+void UI_but_set_disabled_hint(uiBut *but, const char *disabled_hint)
 {
-  /* Only one inactive hint at a time currently. Don't override the previous one here. */
-  if (but->disabled_info && but->disabled_info[0]) {
-    return;
-  }
-
-  but->disabled_info = inactive_hint;
-}
-
-void UI_but_disable(uiBut *but, const char *disabled_hint)
-{
-  UI_but_flag_enable(but, UI_BUT_DISABLED);
-
   /* Only one disabled hint at a time currently. Don't override the previous one here. */
   if (but->disabled_info && but->disabled_info[0]) {
     return;
   }
 
   but->disabled_info = disabled_hint;
+}
+
+void UI_but_disable(uiBut *but, const char *disabled_hint)
+{
+  UI_but_flag_enable(but, UI_BUT_DISABLED);
+
+  UI_but_set_disabled_hint(but, disabled_hint);
 }
 
 void UI_but_type_set_menu_from_pulldown(uiBut *but)
