@@ -220,9 +220,19 @@ TEST(index_mask, ToRange)
 
 TEST(index_mask, FromRange)
 {
-  const IndexRange range(16320, 64);
-  const IndexMask mask = range;
-  EXPECT_EQ(mask.to_range(), range);
+  const auto test_range = [](const IndexRange range) {
+    const IndexMask mask = range;
+    EXPECT_EQ(mask.to_range(), range);
+  };
+
+  test_range({0, 0});
+  test_range({0, 10});
+  test_range({0, 16384});
+  test_range({16320, 64});
+  test_range({16384, 64});
+  test_range({0, 100000});
+  test_range({100000, 100000});
+  test_range({688064, 64});
 }
 
 }  // namespace blender::index_mask::tests

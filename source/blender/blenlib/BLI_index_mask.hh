@@ -486,11 +486,14 @@ inline IndexMask::IndexMask()
 
 inline IndexMask::IndexMask(const int64_t size)
 {
+  if (size == 0) {
+    init_empty_mask(data_);
+    return;
+  }
   *this = get_static_index_mask_for_min_size(size);
   data_.chunks_num = size_to_chunk_num(size);
   data_.indices_num = size;
-  data_.end_it.index_in_segment = (size == chunk_capacity) ? chunk_capacity :
-                                                             size & chunk_mask_low;
+  data_.end_it.index_in_segment = size - ((size - 1) & chunk_mask_high);
 }
 
 inline IndexMask::IndexMask(const IndexRange range)
@@ -507,15 +510,13 @@ inline IndexMask::IndexMask(const IndexRange range)
 
   data_.chunks_num = last_chunk_id - first_chunk_id + 1;
   data_.indices_num = range.size();
-  data_.chunks -= first_chunk_id;
-  data_.chunk_ids -= first_chunk_id;
-  data_.cumulative_chunk_sizes -= first_chunk_id;
+  data_.chunks += first_chunk_id;
+  data_.chunk_ids += first_chunk_id;
+  data_.cumulative_chunk_sizes += first_chunk_id;
   data_.begin_it.segment_i = 0;
   data_.begin_it.index_in_segment = range.first() & chunk_mask_low;
   data_.end_it.segment_i = 0;
-  data_.end_it.index_in_segment = (one_after_last == chunk_capacity) ?
-                                      chunk_capacity :
-                                      range.one_after_last() & chunk_mask_low;
+  data_.end_it.index_in_segment = one_after_last - ((one_after_last - 1) & chunk_mask_high);
 }
 
 inline int64_t IndexMask::size() const
