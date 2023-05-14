@@ -430,6 +430,18 @@ if(WITH_GMP)
   )
 endif()
 
+if(WITH_OK_COLOR)
+  add_definitions(-DWITH_OK_COLOR)
+
+  list(APPEND INC_SYS
+    ../../../extern/ok_color
+  )
+
+  list(APPEND LIB
+    extern_ok_color
+  )
+endif()
+
 if(WIN32)
   if(WITH_BLENDER_THUMBNAILER)
     # Needed for querying the `thumbnailer .dll` in `winstuff.c`.

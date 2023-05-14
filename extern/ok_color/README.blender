@@ -1,0 +1,5 @@
+Project: ok_color
+URL: https://github.com/bottosson/bottosson.github.io/blob/master/misc/ok_color.h
+License: MIT
+Upstream version: N/A (d69831e, 2021 Sep 8)
+Local modifications: Ported from C++ to C.

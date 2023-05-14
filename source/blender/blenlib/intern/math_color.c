@@ -10,8 +10,19 @@
 
 #include "BLI_strict_flags.h"
 
+#ifdef WITH_OK_COLOR
+#  include "ok_color.h"
+#endif
+
 void hsv_to_rgb(float h, float s, float v, float *r_r, float *r_g, float *r_b)
 {
+#ifdef WITH_OK_COLOR
+  RGB rgb = okhsv_to_srgb((HSV){h, s, v});
+
+  *r_r = rgb.r;
+  *r_g = rgb.g;
+  *r_b = rgb.b;
+#else
   float nr, ng, nb;
 
   nr = fabsf(h * 6.0f - 3.0f) - 1.0f;
@@ -25,10 +36,18 @@ void hsv_to_rgb(float h, float s, float v, float *r_r, float *r_g, float *r_b)
   *r_r = ((nr - 1.0f) * s + 1.0f) * v;
   *r_g = ((ng - 1.0f) * s + 1.0f) * v;
   *r_b = ((nb - 1.0f) * s + 1.0f) * v;
+#endif
 }
 
 void hsl_to_rgb(float h, float s, float l, float *r_r, float *r_g, float *r_b)
 {
+#ifdef WITH_OK_COLOR
+  RGB rgb = okhsl_to_srgb((HSL){h, s, l});
+
+  *r_r = rgb.r;
+  *r_g = rgb.g;
+  *r_b = rgb.b;
+#else
   float nr, ng, nb, chroma;
 
   nr = fabsf(h * 6.0f - 3.0f) - 1.0f;
@@ -44,6 +63,7 @@ void hsl_to_rgb(float h, float s, float l, float *r_r, float *r_g, float *r_b)
   *r_r = (nr - 0.5f) * chroma + l;
   *r_g = (ng - 0.5f) * chroma + l;
   *r_b = (nb - 0.5f) * chroma + l;
+#endif
 }
 
 void hsv_to_rgb_v(const float hsv[3], float r_rgb[3])
@@ -207,6 +227,14 @@ void hex_to_rgb(const char *hexcol, float *r_r, float *r_g, float *r_b)
 
 void rgb_to_hsv(float r, float g, float b, float *r_h, float *r_s, float *r_v)
 {
+#ifdef WITH_OK_COLOR
+  RGB rgb = {r, g, b};
+  HSV hsv = srgb_to_okhsv(rgb);
+
+  *r_h = hsv.h;
+  *r_s = hsv.s;
+  *r_v = hsv.v;
+#else
   float k = 0.0f;
   float chroma;
   float min_gb;
@@ -227,6 +255,7 @@ void rgb_to_hsv(float r, float g, float b, float *r_h, float *r_s, float *r_v)
   *r_h = fabsf(k + (g - b) / (6.0f * chroma + 1e-20f));
   *r_s = chroma / (r + 1e-20f);
   *r_v = r;
+#endif
 }
 
 void rgb_to_hsv_v(const float rgb[3], float r_hsv[3])
@@ -236,6 +265,14 @@ void rgb_to_hsv_v(const float rgb[3], float r_hsv[3])
 
 void rgb_to_hsl(float r, float g, float b, float *r_h, float *r_s, float *r_l)
 {
+#ifdef WITH_OK_COLOR
+  RGB rgb = {r, g, b};
+  HSL hsl = srgb_to_okhsl(rgb);
+
+  *r_h = hsl.h;
+  *r_s = hsl.s;
+  *r_l = hsl.l;
+#else
   const float cmax = max_fff(r, g, b);
   const float cmin = min_fff(r, g, b);
   float h, s, l = min_ff(1.0f, (cmax + cmin) / 2.0f);
@@ -261,6 +298,7 @@ void rgb_to_hsl(float r, float g, float b, float *r_h, float *r_s, float *r_l)
   *r_h = h;
   *r_s = s;
   *r_l = l;
+#endif
 }
 
 void rgb_to_hsl_compat(float r, float g, float b, float *r_h, float *r_s, float *r_l)

@@ -95,3 +95,7 @@ endif()
 if(WITH_VULKAN_BACKEND)
   add_subdirectory(vulkan_memory_allocator)
 endif()
+
+if(WITH_OK_COLOR)
+  add_subdirectory(ok_color)
+endif()

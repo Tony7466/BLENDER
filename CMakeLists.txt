@@ -414,6 +414,9 @@ mark_as_advanced(WITH_SYSTEM_GLOG)
 # Freestyle
 option(WITH_FREESTYLE     "Enable Freestyle (advanced edges rendering)" ON)
 
+# OK Color
+option(WITH_OK_COLOR "Enable OK Color for color pickers" ON)
+
 # Libraries.
 if(UNIX AND NOT APPLE)
   # Optionally build without pre-compiled libraries.
