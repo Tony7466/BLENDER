@@ -1920,7 +1920,6 @@ void FONT_OT_selection_set(struct wmOperatorType *ot)
 
 static int font_select_word_exec(bContext *C, wmOperator *UNUSED(op))
 {
-  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object *obedit = CTX_data_edit_object(C);
   Curve *cu = obedit->data;
   EditFont *ef = cu->editfont;
