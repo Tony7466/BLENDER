@@ -2,6 +2,8 @@
 
 #include "Materials.h"
 
+#include "BKE_node.hh"
+
 #include "BKE_node_tree_update.h"
 
 MaterialNode::MaterialNode(bContext *C, Material *ma, KeyImageMap &key_image_map)
