@@ -86,7 +86,7 @@ bNodeTree *MaterialNode::prepare_material_nodetree()
     return nullptr;
   }
 
-  ntreeAddTreeEmbedded(nullptr, &material->id, "Shader Nodetree", "ShaderNodeTree");
+  blender::bke::ntreeAddTreeEmbedded(nullptr, &material->id, "Shader Nodetree", "ShaderNodeTree");
   material->use_nodes = true;
   ntree = material->nodetree;
   return ntree;
@@ -247,7 +247,7 @@ void MaterialNode::set_diffuse(COLLADAFW::ColorOrTexture &cot)
 
 Image *MaterialNode::get_diffuse_image()
 {
-  bNode *shader = ntreeFindType(ntree, SH_NODE_BSDF_PRINCIPLED);
+  bNode *shader = blender::bke::ntreeFindType(ntree, SH_NODE_BSDF_PRINCIPLED);
   if (shader == nullptr) {
     return nullptr;
   }
