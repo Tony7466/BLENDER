@@ -2,10 +2,14 @@
 
 #include "DEG_depsgraph_query.h"
 
+#include "BKE_type_conversions.hh"
 #include "BKE_volume.h"
+
 #include "BLI_virtual_array.hh"
+
 #include "NOD_add_node_search.hh"
 #include "NOD_socket_search_link.hh"
+
 #include "node_geometry_util.hh"
 
 #include "UI_interface.h"
@@ -56,15 +60,30 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void search_node_add_ops(GatherAddNodeSearchParams &params)
 {
-  if (U.experimental.use_new_volume_nodes) {
-    blender::nodes::search_node_add_ops_for_basic_node(params);
+  if (!U.experimental.use_new_volume_nodes) {
+    return;
   }
+  blender::nodes::search_node_add_ops_for_basic_node(params);
 }
 
 static void search_link_ops(GatherLinkSearchOpParams &params)
 {
-  if (U.experimental.use_new_volume_nodes) {
-    blender::nodes::search_link_ops_for_basic_node(params);
+  if (!U.experimental.use_new_volume_nodes) {
+    return;
+  }
+  const NodeDeclaration &declaration = *params.node_type().fixed_declaration;
+  search_link_ops_for_declarations(params, declaration.inputs.as_span().take_back(1));
+  search_link_ops_for_declarations(params, declaration.inputs.as_span().take_front(1));
+
+  const std::optional<eCustomDataType> type = node_data_type_to_custom_data_type(
+      (eNodeSocketDatatype)params.other_socket().type);
+  if (type && *type != CD_PROP_STRING) {
+    /* The input and output sockets have the same name. */
+    params.add_item(IFACE_("Grid"), [type](LinkSearchOpParams &params) {
+      bNode &node = params.add_node("GeometryNodeSampleVolume");
+      node_storage(node).grid_type = *type;
+      params.update_and_connect_available_socket(node, "Grid");
+    });
   }
 }
 
@@ -129,6 +148,25 @@ static const StringRefNull get_grid_name(GField &field)
   return "";
 }
 
+static std::optional<eCustomDataType> vdb_grid_type_to_customdata_type(
+    const VolumeGridType grid_type)
+{
+  switch (grid_type) {
+    case VOLUME_GRID_FLOAT:
+      return CD_PROP_FLOAT;
+    case VOLUME_GRID_VECTOR_FLOAT:
+      return CD_PROP_FLOAT3;
+    case VOLUME_GRID_INT:
+      return CD_PROP_INT32;
+    case VOLUME_GRID_BOOLEAN:
+    case VOLUME_GRID_MASK:
+      return CD_PROP_BOOL;
+    default:
+      break;
+  }
+  return std::nullopt;
+}
+
 template<typename GridT>
 void sample_grid(openvdb::GridBase::ConstPtr base_grid,
                  const Span<float3> positions,
@@ -182,21 +220,23 @@ void sample_grid(openvdb::GridBase::ConstPtr base_grid,
 
 class SampleVolumeFunction : public mf::MultiFunction {
   openvdb::GridBase::ConstPtr base_grid_;
-  GField grid_field_;
+  VolumeGridType grid_type_;
   GeometryNodeSampleVolumeInterpolationMode interpolation_mode_;
   mf::Signature signature_;
 
  public:
   SampleVolumeFunction(openvdb::GridBase::ConstPtr base_grid,
-                       GField grid_field,
                        GeometryNodeSampleVolumeInterpolationMode interpolation_mode)
-      : base_grid_(std::move(base_grid)),
-        grid_field_(std::move(grid_field)),
-        interpolation_mode_(interpolation_mode)
+      : base_grid_(std::move(base_grid)), interpolation_mode_(interpolation_mode)
   {
+    grid_type_ = BKE_volume_grid_type_openvdb(*base_grid_);
+    std::optional<eCustomDataType> grid_customdata_type = vdb_grid_type_to_customdata_type(
+        grid_type_);
     mf::SignatureBuilder builder{"Sample Volume", signature_};
     builder.single_input<float3>("Position");
-    builder.single_output("Value", grid_field_.cpp_type());
+    BLI_assert(grid_customdata_type.has_value());
+    builder.single_output("Value",
+                          *bke::custom_data_type_to_cpp_type(grid_customdata_type.value()));
     this->set_signature(&signature_);
   }
 
@@ -204,9 +244,8 @@ class SampleVolumeFunction : public mf::MultiFunction {
   {
     const VArraySpan<float3> positions = params.readonly_single_input<float3>(0, "Position");
     GMutableSpan dst = params.uninitialized_single_output(1, "Value");
-    const VolumeGridType grid_type = BKE_volume_grid_type_openvdb(*base_grid_);
 
-    switch (grid_type) {
+    switch (grid_type_) {
       case VOLUME_GRID_FLOAT:
         sample_grid<openvdb::FloatGrid>(base_grid_, positions, mask, dst, interpolation_mode_);
         break;
@@ -246,45 +285,23 @@ static GField get_input_attribute_field(GeoNodeExecParams &params, const eCustom
 static void output_attribute_field(GeoNodeExecParams &params, GField field)
 {
   switch (bke::cpp_type_to_custom_data_type(field.cpp_type())) {
-    case CD_PROP_FLOAT: {
+    case CD_PROP_FLOAT:
       params.set_output("Value_Float", Field<float>(field));
       break;
-    }
-    case CD_PROP_FLOAT3: {
+    case CD_PROP_FLOAT3:
       params.set_output("Value_Vector", Field<float3>(field));
       break;
-    }
-    case CD_PROP_BOOL: {
+    case CD_PROP_BOOL:
       params.set_output("Value_Bool", Field<bool>(field));
       break;
-    }
-    case CD_PROP_INT32: {
+    case CD_PROP_INT32:
       params.set_output("Value_Int", Field<int>(field));
       break;
-    }
     default:
       break;
   }
 }
 
-static std::optional<eCustomDataType> vdb_grid_type_to_customdata_type(
-    const VolumeGridType grid_type)
-{
-  switch (grid_type) {
-    case VOLUME_GRID_FLOAT:
-      return CD_PROP_FLOAT;
-    case VOLUME_GRID_VECTOR_FLOAT:
-      return CD_PROP_FLOAT3;
-    case VOLUME_GRID_INT:
-      return CD_PROP_INT32;
-    case VOLUME_GRID_BOOLEAN:
-    case VOLUME_GRID_MASK:
-      return CD_PROP_BOOL;
-    default:
-      break;
-  }
-  return std::nullopt;
-}
 #endif /* WITH_OPENVDB */
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -296,10 +313,10 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
   const NodeGeometrySampleVolume &storage = node_storage(params.node());
-  const eCustomDataType input_grid_type = eCustomDataType(storage.grid_type);
+  const eCustomDataType output_field_type = eCustomDataType(storage.grid_type);
   auto interpolation_mode = GeometryNodeSampleVolumeInterpolationMode(storage.interpolation_mode);
 
-  GField grid_field = get_input_attribute_field(params, input_grid_type);
+  GField grid_field = get_input_attribute_field(params, output_field_type);
   const StringRefNull grid_name = get_grid_name(grid_field);
   if (grid_name == "") {
     params.error_message_add(NodeWarningType::Error, TIP_("Grid name needs to be specified"));
@@ -318,18 +335,16 @@ static void node_geo_exec(GeoNodeExecParams params)
   openvdb::GridBase::ConstPtr base_grid = BKE_volume_grid_openvdb_for_read(volume, volume_grid);
   const VolumeGridType grid_type = BKE_volume_grid_type_openvdb(*base_grid);
 
-  /* Check that the input grid socket type matches the grid type. */
+  /* Check that the grid type is supported. */
   std::optional<eCustomDataType> grid_customdata_type = vdb_grid_type_to_customdata_type(
       grid_type);
-  if (!grid_customdata_type.has_value() || grid_customdata_type.value() != input_grid_type) {
+  if (!grid_customdata_type.has_value()) {
     params.set_default_remaining_outputs();
-    params.error_message_add(
-        NodeWarningType::Error,
-        TIP_("The grid type is unsupported or does not match the grid input socket type"));
+    params.error_message_add(NodeWarningType::Error, TIP_("The grid type is unsupported"));
     return;
   }
 
-  /* Switch to the Nearest Neighbor sampler for Bool grids (no interpolation). */
+  /* Use to the Nearest Neighbor sampler for Bool grids (no interpolation). */
   if (grid_type == VOLUME_GRID_BOOLEAN &&
       interpolation_mode != GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_NEAREST)
   {
@@ -337,10 +352,14 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   Field<float3> position_field = params.extract_input<Field<float3>>("Position");
-  auto fn = std::make_shared<SampleVolumeFunction>(
-      std::move(base_grid), std::move(grid_field), interpolation_mode);
+  auto fn = std::make_shared<SampleVolumeFunction>(std::move(base_grid), interpolation_mode);
   auto op = FieldOperation::Create(std::move(fn), {position_field});
   GField output_field = GField(std::move(op));
+
+  if (grid_customdata_type.value() != output_field_type) {
+    output_field = bke::get_implicit_type_conversions().try_convert(
+        output_field, *bke::custom_data_type_to_cpp_type(output_field_type));
+  }
 
   output_attribute_field(params, std::move(output_field));
 #else
