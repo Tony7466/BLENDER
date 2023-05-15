@@ -71,10 +71,11 @@ static void node_geo_exec(GeoNodeExecParams params)
     void *bound_value_buffer = MEM_mallocN_aligned(
         cpptype->size(), cpptype->alignment(), "function bound value");
     switch (socket->type) {
-      case SOCK_FLOAT:
-        float value = params.get_input<float>(socket->identifier);
+      case SOCK_FLOAT: {
+        ValueOrField<float> value = params.get_input<float>(socket->identifier);
         cpptype->move_construct(&value, bound_value_buffer);
         break;
+      }
       case SOCK_VECTOR:
       case SOCK_RGBA:
       case SOCK_BOOLEAN:

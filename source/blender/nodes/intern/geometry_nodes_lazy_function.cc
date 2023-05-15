@@ -1324,17 +1324,51 @@ class LazyFunctionForEvaluateFunctionNode : public LazyFunction {
 
   void execute_impl(lf::Params &params, const lf::Context &context) const override
   {
+    GeoNodesLFUserData *user_data = dynamic_cast<GeoNodesLFUserData *>(context.user_data);
+    BLI_assert(user_data != nullptr);
+    geo_eval_log::GeoTreeLogger *tree_logger =
+        (user_data->modifier_data->eval_log != nullptr) ?
+            &user_data->modifier_data->eval_log->get_local_tree_logger(
+                *user_data->compute_context) :
+            nullptr;
+
     Closure *closure = params.try_get_input_data_ptr_or_request<Closure>(0);
     if (!closure) {
+      /* Wait for closure request. */
       return;
     }
 
     if (!closure->lf_graph_info()) {
+      if (tree_logger) {
+        tree_logger->node_warnings.append(
+            {eval_node_.identifier,
+             {NodeWarningType::Info,
+              tree_logger->allocator->copy_string("Function graph undefined")}});
+      }
+      params.set_default_remaining_outputs();
       return;
     }
     const GeometryNodesLazyFunctionGraphInfo &lf_graph_info = *closure->lf_graph_info();
 
     // has_many_nodes_ = lf_graph_info.num_inline_nodes_approximate > 1000;
+
+    /* There is a bound value for each regular graph input. */
+    const IndexRange input_values_range{0, lf_graph_info.mapping.group_input_sockets.size()};
+    /* There is a bound value for each "output used" flag. */
+    const IndexRange output_used_range{lf_graph_info.mapping.group_input_sockets.size(),
+                                       lf_graph_info.mapping.group_output_used_sockets.size()};
+    /* There is a bound value for each output attribute set. */
+    const IndexRange attribute_set_range(
+        lf_graph_info.mapping.group_output_used_sockets.size(),
+        lf_graph_info.mapping.attribute_set_by_geometry_output.size());
+    const IndexRange output_values_range{
+        0, lf_graph_info.mapping.standard_group_output_sockets.size()};
+    const IndexRange input_usage_range{lf_graph_info.mapping.standard_group_output_sockets.size(),
+                                       lf_graph_info.mapping.group_input_usage_sockets.size()};
+    /* We make a few assumptions below about the size of these ranges. */
+    BLI_assert(closure->bound_values().size() == input_values_range.size());
+    BLI_assert(lf_graph_info.mapping.group_input_usage_sockets.size() ==
+               input_values_range.size());
 
     Vector<const lf::OutputSocket *> graph_inputs;
     /* Add inputs that also exist on the bnode. */
@@ -1364,9 +1398,6 @@ class LazyFunctionForEvaluateFunctionNode : public LazyFunction {
                                      &lf_logger,
                                      &lf_side_effect_provider);
 
-    GeoNodesLFUserData *user_data = dynamic_cast<GeoNodesLFUserData *>(context.user_data);
-    BLI_assert(user_data != nullptr);
-
     // if (has_many_nodes_) {
     //   /* If the called node group has many nodes, it's likely that executing it takes a while
     //    * even if every individual node is very small. */
@@ -1374,17 +1405,83 @@ class LazyFunctionForEvaluateFunctionNode : public LazyFunction {
     // }
 
     Array<GMutablePointer> bound_inputs(graph_inputs.size());
-    Array<GMutablePointer> bound_outputs(graph_outputs.size());
+    bound_inputs.as_mutable_span().slice(input_values_range).copy_from(closure->bound_values());
+    Array<bool> bound_input_for_output_used(output_used_range.size(), false);
+    for (const int i : bound_input_for_output_used.index_range()) {
+      bound_inputs[output_used_range[i]] = {CPPType::get<bool>(), &bound_input_for_output_used[i]};
+    }
+    Array<bke::AnonymousAttributeSet> bound_input_for_attribute_set(attribute_set_range.size());
+    for (const int i : bound_input_for_attribute_set.index_range()) {
+      bound_inputs[attribute_set_range[i]] = {CPPType::get<bke::AnonymousAttributeSet>(),
+                                              &bound_input_for_attribute_set[i]};
+    }
+
+    /* These are written to if the graph outputs a value that is not captured by the evaluation
+     * node.
+     * XXX Could find a better way to handle this. */
+    Array<GMutablePointer> unused_outputs(graph_outputs.size());
+    for (const int i : unused_outputs.index_range()) {
+      const CPPType &cpptype = graph_outputs[i]->type();
+      void *buffer = MEM_mallocN_aligned(
+          cpptype.size(), cpptype.alignment(), "unused graph output buffer");
+      unused_outputs[i] = {&cpptype, buffer};
+    }
     Array<std::optional<lf::ValueUsage>> bound_input_usages(graph_inputs.size());
     Array<lf::ValueUsage> bound_output_usages(graph_outputs.size(), lf::ValueUsage::Used);
     Array<bool> bound_set_outputs(graph_outputs.size(), false);
-    Array<int> outer_input_indices(graph_inputs.size());
-    Array<int> outer_output_indices(graph_outputs.size());
 
-    // TODO fill those arrays
-    // for (const int i :) {
-    // bound_inputs[i] = params.try_get_input_data_ptr_or_request;
-    //}
+    Array<int> outer_input_indices(graph_inputs.size(), -1);
+    Array<int> outer_output_indices(graph_outputs.size(), -1);
+    /* Find a socket in the evaluation node that matches the graph socket. */
+    auto find_matching_socket = [](const Span<const bNodeSocket *> &sockets,
+                                   const StringRef name,
+                                   const CPPType &type) -> int {
+      for (const int socket_i : sockets.index_range()) {
+        const bNodeSocket *socket = sockets[socket_i];
+        BLI_assert(socket->typeinfo->geometry_nodes_cpp_type != nullptr);
+        if (socket->name == name && *socket->typeinfo->geometry_nodes_cpp_type == type) {
+          /* Index relative to the socket list (ignore the Function input socket). */
+          return socket_i - sockets.index_range().start();
+        }
+      }
+      return -1;
+    };
+    for (const int i : lf_graph_info.mapping.group_input_sockets.index_range()) {
+      const lf::OutputSocket *graph_input = lf_graph_info.mapping.group_input_sockets[i];
+      /* Drop the Function output socket at the start of the list. */
+      const int matching_socket_index = find_matching_socket(
+          eval_node_.input_sockets().drop_front(1), graph_input->name(), graph_input->type());
+      outer_input_indices[input_values_range[i]] = matching_socket_index;
+    }
+    for (const int i : lf_graph_info.mapping.standard_group_output_sockets.index_range()) {
+      const lf::InputSocket *graph_output = lf_graph_info.mapping.standard_group_output_sockets[i];
+      const int matching_socket_index = find_matching_socket(
+          eval_node_.output_sockets(), graph_output->name(), graph_output->type());
+      outer_output_indices[output_values_range[i]] = matching_socket_index;
+    }
+    for (const int i : lf_graph_info.mapping.group_output_used_sockets.index_range()) {
+      outer_input_indices[output_used_range[i]] =
+          outer_output_indices[i] >= 0 ?
+              lf_graph_info.mapping.group_input_sockets.size() + outer_output_indices[i] :
+              -1;
+    }
+    for (const int i : lf_graph_info.mapping.group_input_usage_sockets.index_range()) {
+      outer_output_indices[input_usage_range[i]] =
+          outer_input_indices[i] >= 0 ?
+              lf_graph_info.mapping.standard_group_output_sockets.size() + outer_input_indices[i] :
+              -1;
+    }
+    // XXX TODO
+    //    {
+    //      int i = 0;
+    //      for (auto [output_index, lf_socket] :
+    //           lf_graph_info.mapping.attribute_set_by_geometry_output.items())
+    //      {
+    //        const int lf_socket_index = lf_graph_info.mapping.group_
+    //        outer_input_indices[attribute_set_range[i]] = ;
+    //        ++i;
+    //      }
+    //    }
 
     LinearAllocator allocator;
     void *graph_executor_storage = graph_executor.init_storage(allocator);
@@ -1407,7 +1504,7 @@ class LazyFunctionForEvaluateFunctionNode : public LazyFunction {
     func_context.storage = graph_executor_storage;
     EvaluateFunctionNodeParams func_params{graph_executor,
                                            bound_inputs,
-                                           bound_outputs,
+                                           unused_outputs,
                                            bound_input_usages,
                                            bound_output_usages,
                                            bound_set_outputs,

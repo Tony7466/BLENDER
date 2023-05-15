@@ -13,10 +13,22 @@ namespace blender::nodes {
 
 struct GeometryNodesLazyFunctionGraphInfo;
 
+class ClosureInputValues {
+ private:
+  Vector<GMutablePointer> values_;
+
+ public:
+  ClosureInputValues(const Span<GMutablePointer> &values);
+  ~ClosureInputValues();
+
+  Span<GMutablePointer> values() const;
+  MutableSpan<GMutablePointer> values();
+};
+
 class Closure {
  private:
   const GeometryNodesLazyFunctionGraphInfo *lf_graph_info_ = nullptr;
-  Vector<GMutablePointer> bound_values_;
+  std::shared_ptr<ClosureInputValues> bound_values_;
 
  public:
   Closure() = default;
