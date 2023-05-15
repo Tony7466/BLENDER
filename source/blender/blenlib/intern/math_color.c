@@ -11,7 +11,7 @@
 #include "BLI_strict_flags.h"
 
 #ifdef WITH_OK_COLOR
-#  include "ok_color.h"
+#include "ok_color.h"
 #endif
 
 void hsv_to_rgb(float h, float s, float v, float *r_r, float *r_g, float *r_b)
