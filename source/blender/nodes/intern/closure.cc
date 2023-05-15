@@ -72,14 +72,14 @@ Closure Closure ::make_from_node_tree(const bNodeTree *node_tree)
   }
 
   BLI_assert(node_tree->runtime);
-  const std::unique_ptr<blender::nodes::GeometryNodesLazyFunctionGraphInfo> &lf_graph_info_ptr =
-      node_tree->runtime->geometry_nodes_lazy_function_graph_info;
-  BLI_assert(lf_graph_info_ptr);
+  const blender::nodes::GeometryNodesLazyFunctionGraphInfo *lf_graph_info =
+      ensure_geometry_nodes_lazy_function_graph(*node_tree);
+  BLI_assert(lf_graph_info);
 
   Array<GMutablePointer> bound_values(node_tree->interface_inputs().size());
   // TODO fill with default values of the tree
 
-  return Closure(*lf_graph_info_ptr.get(), bound_values);
+  return Closure(*lf_graph_info, bound_values);
 }
 
 }  // namespace blender::nodes

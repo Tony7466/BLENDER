@@ -58,9 +58,9 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   const bNodeTree &bind_tree = *reinterpret_cast<bNodeTree *>(params.node().id);
-  const std::unique_ptr<GeometryNodesLazyFunctionGraphInfo> &lf_graph_info_ptr =
-      bind_tree.runtime->geometry_nodes_lazy_function_graph_info;
-  BLI_assert(lf_graph_info_ptr);
+  const GeometryNodesLazyFunctionGraphInfo *lf_graph_info =
+      ensure_geometry_nodes_lazy_function_graph(bind_tree);
+  BLI_assert(lf_graph_info);
 
   Array<GMutablePointer> bound_values(params.node().input_sockets().size());
   for (const int i : params.node().input_sockets().index_range()) {
@@ -94,7 +94,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     bound_values[i] = {cpptype, bound_value_buffer};
   }
 
-  Closure closure(*lf_graph_info_ptr, bound_values);
+  Closure closure(*lf_graph_info, bound_values);
   params.set_output("Function", std::move(closure));
 
   params.set_default_remaining_outputs();
