@@ -32,7 +32,7 @@ void PreviewOperation::verify_preview(bNodeInstanceHash *previews, bNodeInstance
   /* Size (0, 0) ensures the preview rect is not allocated in advance,
    * this is set later in init_execution once the resolution is determined.
    */
-  preview_ = BKE_node_preview_verify(previews, key, 0, 0, true);
+  preview_ = blender::bke::node_preview_verify(previews, key, 0, 0, true);
 }
 
 void PreviewOperation::init_execution()
