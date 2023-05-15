@@ -39,19 +39,26 @@ template<typename T> struct QuaternionBase {
   QuaternionBase() = default;
 
   QuaternionBase(const T &new_w, const T &new_x, const T &new_y, const T &new_z)
-      : w(new_w), x(new_x), y(new_y), z(new_z){};
+      : w(new_w), x(new_x), y(new_y), z(new_z)
+  {
+  }
 
   /**
    * Creates a quaternion from an vector without reordering the components.
    * \note Component order must follow the scalar constructor (w, x, y, z).
    */
-  explicit QuaternionBase(const VecBase<T, 4> &vec) : QuaternionBase(UNPACK4(vec)){};
+  explicit QuaternionBase(const VecBase<T, 4> &vec)
+      : QuaternionBase(vec[0], vec[1], vec[2], vec[3])
+  {
+  }
 
   /**
    * Creates a quaternion from real (w) and imaginary parts (x, y, z).
    */
   QuaternionBase(const T &real, const VecBase<T, 3> &imaginary)
-      : QuaternionBase(real, UNPACK3(imaginary)){};
+      : QuaternionBase(real, UNPACK3(imaginary))
+  {
+  }
 
   /** Static functions. */
 
@@ -160,6 +167,11 @@ template<typename T> struct QuaternionBase {
   friend bool operator==(const QuaternionBase &a, const QuaternionBase &b)
   {
     return (a.w == b.w) && (a.x == b.x) && (a.y == b.y) && (a.z == b.z);
+  }
+
+  uint64_t hash() const
+  {
+    return VecBase<T, 4>(*this).hash();
   }
 
   friend std::ostream &operator<<(std::ostream &stream, const QuaternionBase &rot)
@@ -313,9 +325,9 @@ template<> struct TypeTraits<float> {
   using DoublePrecision = double;
 };
 
+/** \} */
+
 using Quaternion = QuaternionBase<float>;
 using DualQuaternion = DualQuaternionBase<float>;
-
-/** \} */
 
 }  // namespace blender::math

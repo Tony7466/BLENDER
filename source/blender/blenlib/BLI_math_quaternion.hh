@@ -669,6 +669,16 @@ template<typename T> Euler3Base<T> to_euler(const QuaternionBase<T> &quat, Euler
 /** \name Conversion from/to Expmap
  * \{ */
 
+template<typename T> T mod_inline(const T a, const T b)
+{
+  return a - (b * math::floor(a / b));
+}
+
+template<typename T> T angle_wrap_rad(const T angle)
+{
+  return mod_inline(angle + float(M_PI), float(M_PI) * 2.0f) - float(M_PI);
+}
+
 /* Prototype needed to avoid interdependencies of headers. */
 template<typename T, typename AngleT>
 QuaternionBase<T> to_quaternion(const AxisAngleBase<T, AngleT> &axis_angle);
