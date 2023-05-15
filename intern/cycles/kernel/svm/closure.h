@@ -292,10 +292,8 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
 
             /* setup bsdf */
             sd->flag |= bsdf_microfacet_ggx_setup(bsdf);
-            bsdf_microfacet_setup_fresnel_generalized_schlick(bsdf, sd, fresnel);
-            if (distribution == CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID) {
-              /* TODO: Energy preservation */
-            }
+            const bool is_multiggx = (distribution == CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
+            bsdf_microfacet_setup_fresnel_generalized_schlick(kg, bsdf, sd, fresnel, is_multiggx);
           }
         }
 #ifdef __CAUSTICS_TRICKS__
@@ -346,7 +344,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
                 fresnel->reflection_tint = one_spectrum();
                 fresnel->transmission_tint = zero_spectrum();
 
-                bsdf_microfacet_setup_fresnel_generalized_schlick(bsdf, sd, fresnel);
+                bsdf_microfacet_setup_fresnel_generalized_schlick(kg, bsdf, sd, fresnel, false);
               }
             }
 
@@ -404,8 +402,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
 
               /* setup bsdf */
               sd->flag |= bsdf_microfacet_ggx_glass_setup(bsdf);
-              bsdf_microfacet_setup_fresnel_generalized_schlick(bsdf, sd, fresnel);
-              /* TODO: Energy preservation */
+              bsdf_microfacet_setup_fresnel_generalized_schlick(kg, bsdf, sd, fresnel, true);
             }
           }
         }
@@ -534,7 +531,8 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
         sd->flag |= bsdf_microfacet_ggx_setup(bsdf);
         if (type == CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID) {
           kernel_assert(stack_valid(data_node.w));
-          /* TODO: Color multiplier and energy preservation */
+          const Spectrum color = rgb_to_spectrum(stack_load_float3(stack, data_node.w));
+          bsdf_microfacet_setup_fresnel_constant(kg, bsdf, sd, color);
         }
       }
 
@@ -622,7 +620,8 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
             sd->flag |= bsdf_microfacet_ggx_glass_setup(bsdf);
             if (type == CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID) {
               kernel_assert(stack_valid(data_node.z));
-              /* TODO: Color multiplier and energy preservation */
+              const Spectrum color = rgb_to_spectrum(stack_load_float3(stack, data_node.z));
+              bsdf_microfacet_setup_fresnel_constant(kg, bsdf, sd, color);
             }
           }
         }
