@@ -77,7 +77,16 @@ Closure Closure ::make_from_node_tree(const bNodeTree *node_tree)
   BLI_assert(lf_graph_info);
 
   Array<GMutablePointer> bound_values(node_tree->interface_inputs().size());
-  // TODO fill with default values of the tree
+  for (const int i : node_tree->interface_inputs().index_range()) {
+    const bNodeSocket *socket = node_tree->interface_inputs()[i];
+    const CPPType *cpptype = socket->typeinfo->geometry_nodes_cpp_type;
+    if (cpptype && socket->typeinfo->get_geometry_nodes_cpp_value) {
+      void *buffer = MEM_mallocN_aligned(
+          cpptype->size(), cpptype->alignment(), "default graph input buffer");
+      socket->typeinfo->get_geometry_nodes_cpp_value(*socket, buffer);
+      bound_values[i] = {cpptype, buffer};
+    }
+  }
 
   return Closure(*lf_graph_info, bound_values);
 }
