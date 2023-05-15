@@ -2136,6 +2136,20 @@ void mat4_to_size(float size[3], const float M[4][4])
   size[2] = len_v3(M[2]);
 }
 
+void mat4_to_size_handed(float size[3], const float M[4][4])
+{
+  size[0] = len_v3(M[0]);
+  size[1] = len_v3(M[1]);
+  size[2] = len_v3(M[2]);
+
+  /* Check handedness, correctly represent negative scaling. */
+  float t[3];
+  cross_v3_v3v3(t, M[0], M[1]);
+  if (dot_v3v3(t, M[2]) < 0) {
+    negate_v3(size);
+  }
+}
+
 float mat3_to_size_max_axis(const float M[3][3])
 {
   return sqrtf(max_fff(len_squared_v3(M[0]), len_squared_v3(M[1]), len_squared_v3(M[2])));
