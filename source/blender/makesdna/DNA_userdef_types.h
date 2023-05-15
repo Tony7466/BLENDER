@@ -1312,6 +1312,8 @@ typedef enum eColorPicker_Types {
   USER_CP_SQUARE_HS = 2,
   USER_CP_SQUARE_HV = 3,
   USER_CP_CIRCLE_HSL = 4,
+  USER_CP_CIRCLE_OK_HSV = 5,
+  USER_CP_CIRCLE_OK_HSL = 6,
 } eColorPicker_Types;
 
 /**

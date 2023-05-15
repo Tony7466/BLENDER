@@ -4560,6 +4560,18 @@ static void rna_def_userdef_view(BlenderRNA *brna)
        0,
        "Square (HV + S)",
        "A square showing Hue/Value, with Saturation slider"},
+      {USER_CP_CIRCLE_OK_HSV,
+       "CIRCLE_OK_HSV",
+       0,
+       "Circle (OK HSV)",
+       "A circular Hue/Saturation color wheel, with "
+       "Value slider"},
+      {USER_CP_CIRCLE_OK_HSL,
+       "CIRCLE_OK_HSL",
+       0,
+       "Circle (OK HSL)",
+       "A circular Hue/Saturation color wheel, with "
+       "Lightness slider"},
       {0, NULL, 0, NULL, NULL},
   };
 
