@@ -1572,11 +1572,12 @@ static size_t animfilter_nla(bAnimContext *UNUSED(ac),
           if (filter_mode & ANIMFILTER_FOREDIT) {
             NlaStrip *strip;
             for (strip = nlt->strips.first; strip; strip = strip->next) {
+              /* Don't have to check all, if any is linked the nla track should not be edited.*/
               if (strip->act) {
                 if (ID_IS_LINKED(strip->act)) {
                   is_lib_linked = true;
-                  break;
                 }
+                break;
               }
             }
           }
