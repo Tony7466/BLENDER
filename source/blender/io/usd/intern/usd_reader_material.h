@@ -4,9 +4,11 @@
 
 #include "usd.h"
 
+#include "BLI_map.hh"
+
 #include <pxr/usd/usdShade/material.h>
 
-#include <map>
+#include <string>
 
 struct Main;
 struct Material;
@@ -15,7 +17,7 @@ struct bNodeTree;
 
 namespace blender::io::usd {
 
-typedef std::map<pxr::SdfPath, bNode *> ShaderToNodeMap;
+using ShaderToNodeMap = blender::Map<std::string, bNode *>;
 
 /* Helper struct used when arranging nodes in columns, keeping track the
  * occupancy information for a given column.  I.e., for column n,

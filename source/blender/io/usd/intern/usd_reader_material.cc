@@ -92,11 +92,10 @@ using blender::io::usd::ShaderToNodeMap;
 static bNode *get_cached_node(const ShaderToNodeMap &node_cache,
                               const pxr::UsdShadeShader &usd_shader)
 {
-  ShaderToNodeMap::const_iterator iter = node_cache.find(usd_shader.GetPath());
-  if (iter != node_cache.end()) {
-    return iter->second;
+  const std::string path_str = usd_shader.GetPath().GetAsString();
+  if (node_cache.contains(path_str)) {
+    return node_cache.lookup(path_str);
   }
-
   return nullptr;
 }
 
@@ -106,7 +105,7 @@ static void cache_node(ShaderToNodeMap &node_cache,
                        const pxr::UsdShadeShader &usd_shader,
                        bNode *node)
 {
-  node_cache.insert(std::make_pair(usd_shader.GetPath(), node));
+  node_cache.add(usd_shader.GetPath().GetAsString(), node);
 }
 
 /* Add a node of the given type at the given location coordinates. */
