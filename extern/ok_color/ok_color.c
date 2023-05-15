@@ -24,6 +24,9 @@
 #include "ok_color.h"
 
 typedef struct { float L; float a; float b; } Lab;
+typedef struct { float r; float g; float b; } RGB;
+typedef struct { float h; float s; float v; } HSV;
+typedef struct { float h; float s; float l; } HSL;
 typedef struct { float L; float C; } LC;
 typedef struct { float S; float T; } ST;
 typedef struct { float C_0; float C_mid; float C_max; } Cs;
@@ -32,10 +35,6 @@ const float pi = 3.1415926535897932384626433832795028841971693993751058209749445
 
 float clamp(float x, float min, float max)
 {
-  if (isnan(x)) {
-    return 0.0f;
-  }
-
   if (x < min)
     return min;
   if (x > max)
@@ -572,16 +571,6 @@ HSL srgb_to_okhsl(RGB rgb)
   }
 
   float l = toe(L);
-
-  if (rgb.r == rgb.g && rgb.g == rgb.b) {
-    h = 0.0f;
-    s = 0.0f;
-  }
-
-  h = clamp(h, 0.0f, 1.0f);
-  s = clamp(s, 0.0f, 1.0f);
-  l = clamp(l, 0.0f, 1.0f);
-
   return (HSL){ h, s, l };
 }
 
@@ -634,12 +623,6 @@ RGB okhsv_to_srgb(HSV hsv)
 
 HSV srgb_to_okhsv(RGB rgb)
 {
-  if (rgb.r == rgb.g && rgb.g == rgb.b) {
-    // Fallback to avoid edge cases with NaN value.
-    HSL hsl = srgb_to_okhsl(rgb);
-    return (HSV){hsl.h, hsl.s, hsl.l};
-  }
-
   Lab lab = linear_srgb_to_oklab((RGB){
     srgb_transfer_function_inv(rgb.r),
     srgb_transfer_function_inv(rgb.g),
@@ -684,9 +667,82 @@ HSV srgb_to_okhsv(RGB rgb)
   float v = L / L_v;
   float s = (S_0 + T_max) * C_v / ((T_max * S_0) + T_max * k * C_v);
 
-  h = clamp(h, 0.0f, 1.0f);
-  s = clamp(s, 0.0f, 1.0f);
-  v = clamp(v, 0.0f, 1.0f);
-
   return (HSV){ h, s, v };
+}
+
+float clamp_safe(float x)
+{
+  if (isnan(x)) {
+    return 0.0f;
+  }
+
+  return clamp(x, 0.0f, 1.0f);
+}
+
+void ok_color_hsv_to_rgb(float h, float s, float v, float *r_r, float *r_g, float *r_b)
+{
+  RGB rgb = okhsv_to_srgb((HSV){h, s, v});
+
+  *r_r = rgb.r;
+  *r_g = rgb.g;
+  *r_b = rgb.b;
+}
+
+void ok_color_hsv_to_rgb_v(const float hsv[3], float r_rgb[3])
+{
+  ok_color_hsv_to_rgb(hsv[0], hsv[1], hsv[2], &r_rgb[0], &r_rgb[1], &r_rgb[2]);
+}
+
+void ok_color_hsl_to_rgb(float h, float s, float l, float *r_r, float *r_g, float *r_b)
+{
+  RGB rgb = okhsl_to_srgb((HSL){h, s, l});
+
+  *r_r = rgb.r;
+  *r_g = rgb.g;
+  *r_b = rgb.b;
+}
+
+void ok_color_hsl_to_rgb_v(const float hsl[3], float r_rgb[3])
+{
+  ok_color_hsl_to_rgb(hsl[0], hsl[1], hsl[2], &r_rgb[0], &r_rgb[1], &r_rgb[2]);
+}
+
+void ok_color_rgb_to_hsv(float r, float g, float b, float *r_h, float *r_s, float *r_v)
+{
+  if (r == g && g == b) {
+    // Fallback to avoid edge cases with NaN value.
+    ok_color_rgb_to_hsl(r, g, b, r_h, r_s, r_v);
+    return;
+  }
+
+  HSV hsv = srgb_to_okhsv((RGB){r, g, b});
+
+  *r_h = clamp_safe(hsv.h);
+  *r_s = clamp_safe(hsv.s);
+  *r_v = clamp_safe(hsv.v);
+}
+
+void ok_color_rgb_to_hsv_v(const float rgb[3], float r_hsv[3])
+{
+  ok_color_rgb_to_hsv(rgb[0], rgb[1], rgb[2], &r_hsv[0], &r_hsv[1], &r_hsv[2]);
+}
+
+void ok_color_rgb_to_hsl(float r, float g, float b, float *r_h, float *r_s, float *r_l)
+{
+  HSL hsl = srgb_to_okhsl((RGB){r, g, b});
+
+  if (r == g && g == b) {
+    // Make hue and saturation zero for grays.
+    hsl.h = 0.0f;
+    hsl.s = 0.0f;
+  }
+
+  *r_h = clamp_safe(hsl.h);
+  *r_s = clamp_safe(hsl.s);
+  *r_l = clamp_safe(hsl.l);
+}
+
+void ok_color_rgb_to_hsl_v(const float rgb[3], float r_hsl[3])
+{
+  ok_color_rgb_to_hsl(rgb[0], rgb[1], rgb[2], &r_hsl[0], &r_hsl[1], &r_hsl[2]);
 }

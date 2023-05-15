@@ -24,15 +24,17 @@
 extern "C" {
 #endif
 
-typedef struct { float r; float g; float b; } RGB;
-typedef struct { float h; float s; float v; } HSV;
-typedef struct { float h; float s; float l; } HSL;
+void ok_color_hsv_to_rgb(float h, float s, float v, float *r_r, float *r_g, float *r_b);
+void ok_color_hsv_to_rgb_v(const float hsv[3], float r_rgb[3]);
 
-RGB okhsl_to_srgb(HSL hsl);
-HSL srgb_to_okhsl(RGB rgb);
+void ok_color_hsl_to_rgb(float h, float s, float l, float *r_r, float *r_g, float *r_b);
+void ok_color_hsl_to_rgb_v(const float hsl[3], float r_rgb[3]);
 
-RGB okhsv_to_srgb(HSV hsv);
-HSV srgb_to_okhsv(RGB rgb);
+void ok_color_rgb_to_hsv(float r, float g, float b, float *r_h, float *r_s, float *r_v);
+void ok_color_rgb_to_hsv_v(const float rgb[3], float r_hsv[3]);
+
+void ok_color_rgb_to_hsl(float r, float g, float b, float *r_h, float *r_s, float *r_l);
+void ok_color_rgb_to_hsl_v(const float rgb[3], float r_hsl[3]);
 
 #ifdef __cplusplus
 }

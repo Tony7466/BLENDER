@@ -17,11 +17,7 @@
 void hsv_to_rgb(float h, float s, float v, float *r_r, float *r_g, float *r_b)
 {
 #ifdef WITH_OK_COLOR
-  RGB rgb = okhsv_to_srgb((HSV){h, s, v});
-
-  *r_r = rgb.r;
-  *r_g = rgb.g;
-  *r_b = rgb.b;
+  ok_color_hsv_to_rgb(h, s, v, r_r, r_g, r_b);
 #else
   float nr, ng, nb;
 
@@ -42,11 +38,7 @@ void hsv_to_rgb(float h, float s, float v, float *r_r, float *r_g, float *r_b)
 void hsl_to_rgb(float h, float s, float l, float *r_r, float *r_g, float *r_b)
 {
 #ifdef WITH_OK_COLOR
-  RGB rgb = okhsl_to_srgb((HSL){h, s, l});
-
-  *r_r = rgb.r;
-  *r_g = rgb.g;
-  *r_b = rgb.b;
+  ok_color_hsl_to_rgb(h, s, l, r_r, r_g, r_b);
 #else
   float nr, ng, nb, chroma;
 
@@ -228,12 +220,7 @@ void hex_to_rgb(const char *hexcol, float *r_r, float *r_g, float *r_b)
 void rgb_to_hsv(float r, float g, float b, float *r_h, float *r_s, float *r_v)
 {
 #ifdef WITH_OK_COLOR
-  RGB rgb = {r, g, b};
-  HSV hsv = srgb_to_okhsv(rgb);
-
-  *r_h = hsv.h;
-  *r_s = hsv.s;
-  *r_v = hsv.v;
+  ok_color_rgb_to_hsv(r, g, b, r_h, r_s, r_v);
 #else
   float k = 0.0f;
   float chroma;
@@ -266,12 +253,7 @@ void rgb_to_hsv_v(const float rgb[3], float r_hsv[3])
 void rgb_to_hsl(float r, float g, float b, float *r_h, float *r_s, float *r_l)
 {
 #ifdef WITH_OK_COLOR
-  RGB rgb = {r, g, b};
-  HSL hsl = srgb_to_okhsl(rgb);
-
-  *r_h = hsl.h;
-  *r_s = hsl.s;
-  *r_l = hsl.l;
+  ok_color_rgb_to_hsl(r, g, b, r_h, r_s, r_l);
 #else
   const float cmax = max_fff(r, g, b);
   const float cmin = min_fff(r, g, b);
