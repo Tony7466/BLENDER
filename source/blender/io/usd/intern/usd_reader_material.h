@@ -15,6 +15,8 @@ struct bNodeTree;
 
 namespace blender::io::usd {
 
+typedef std::map<pxr::SdfPath, bNode *> ShaderToNodeMap;
+
 /* Helper struct used when arranging nodes in columns, keeping track the
  * occupancy information for a given column.  I.e., for column n,
  * column_offsets[n] is the y-offset (from top to bottom) of the occupied
@@ -25,6 +27,12 @@ struct NodePlacementContext {
   std::vector<float> column_offsets;
   const float horizontal_step;
   const float vertical_step;
+
+  /* Map a USD shader prim path to the Blender node converted
+   * from that shader.  This map is updated during shader
+   * conversion and is used to avoid creating duplicate nodes
+   * for a given shader.  */
+  ShaderToNodeMap node_cache;
 
   NodePlacementContext(float in_origx,
                        float in_origy,
