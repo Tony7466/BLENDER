@@ -1354,7 +1354,7 @@ void BKE_mesh_legacy_bevel_weight_from_layers(Mesh *mesh)
   using namespace blender;
   MutableSpan<MVert> verts(mesh->mvert, mesh->totvert);
   if (const float *weights = static_cast<const float *>(
-          CustomData_get_layer(&mesh->vdata, CD_BWEIGHT)))
+          CustomData_get_layer_named(&mesh->vdata, CD_PROP_FLOAT, "bevel_weight_vert")))
   {
     mesh->cd_flag |= ME_CDFLAG_VERT_BWEIGHT;
     for (const int i : verts.index_range()) {
@@ -1369,7 +1369,7 @@ void BKE_mesh_legacy_bevel_weight_from_layers(Mesh *mesh)
   }
   MutableSpan<MEdge> edges(mesh->medge, mesh->totedge);
   if (const float *weights = static_cast<const float *>(
-          CustomData_get_layer(&mesh->edata, CD_BWEIGHT)))
+          CustomData_get_layer_named(&mesh->edata, CD_PROP_FLOAT, "bevel_weight_edge")))
   {
     mesh->cd_flag |= ME_CDFLAG_EDGE_BWEIGHT;
     for (const int i : edges.index_range()) {
@@ -1387,22 +1387,24 @@ void BKE_mesh_legacy_bevel_weight_from_layers(Mesh *mesh)
 void BKE_mesh_legacy_bevel_weight_to_layers(Mesh *mesh)
 {
   using namespace blender;
-  if (mesh->mvert && !CustomData_has_layer(&mesh->vdata, CD_BWEIGHT)) {
+  if (mesh->mvert && !CustomData_get_layer_named(&mesh->vdata, CD_PROP_FLOAT, "bevel_weight_vert"))
+  {
     const Span<MVert> verts(mesh->mvert, mesh->totvert);
     if (mesh->cd_flag & ME_CDFLAG_VERT_BWEIGHT) {
       float *weights = static_cast<float *>(
-          CustomData_add_layer(&mesh->vdata, CD_BWEIGHT, CD_CONSTRUCT, verts.size()));
+          CustomData_add_layer(&mesh->vdata, CD_PROP_FLOAT, CD_CONSTRUCT, verts.size()));
       for (const int i : verts.index_range()) {
         weights[i] = verts[i].bweight_legacy / 255.0f;
       }
     }
   }
 
-  if (mesh->medge && !CustomData_has_layer(&mesh->edata, CD_BWEIGHT)) {
+  if (mesh->medge && !CustomData_get_layer_named(&mesh->edata, CD_PROP_FLOAT, "bevel_weight_edge"))
+  {
     const Span<MEdge> edges(mesh->medge, mesh->totedge);
     if (mesh->cd_flag & ME_CDFLAG_EDGE_BWEIGHT) {
       float *weights = static_cast<float *>(
-          CustomData_add_layer(&mesh->edata, CD_BWEIGHT, CD_CONSTRUCT, edges.size()));
+          CustomData_add_layer(&mesh->edata, CD_PROP_FLOAT, CD_CONSTRUCT, edges.size()));
       for (const int i : edges.index_range()) {
         weights[i] = edges[i].bweight_legacy / 255.0f;
       }
