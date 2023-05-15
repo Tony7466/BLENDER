@@ -93,24 +93,28 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *sock_in_vector = sock_in_int->next;
   bNodeSocket *sock_in_color = sock_in_vector->next;
   bNodeSocket *sock_in_bool = sock_in_color->next;
+  bNodeSocket *sock_in_quat = sock_in_bool->next;
 
   bNodeSocket *sock_out_float = static_cast<bNodeSocket *>(node->outputs.first);
   bNodeSocket *sock_out_int = sock_out_float->next;
   bNodeSocket *sock_out_vector = sock_out_int->next;
   bNodeSocket *sock_out_color = sock_out_vector->next;
   bNodeSocket *sock_out_bool = sock_out_color->next;
+  bNodeSocket *sock_out_quat = sock_out_bool->next;
 
   bke::nodeSetSocketAvailability(ntree, sock_in_float, data_type == CD_PROP_FLOAT);
   bke::nodeSetSocketAvailability(ntree, sock_in_int, data_type == CD_PROP_INT32);
   bke::nodeSetSocketAvailability(ntree, sock_in_vector, data_type == CD_PROP_FLOAT3);
   bke::nodeSetSocketAvailability(ntree, sock_in_color, data_type == CD_PROP_COLOR);
   bke::nodeSetSocketAvailability(ntree, sock_in_bool, data_type == CD_PROP_BOOL);
+  bke::nodeSetSocketAvailability(ntree, sock_in_quat, data_type == CD_PROP_QUATERNION);
 
   bke::nodeSetSocketAvailability(ntree, sock_out_float, data_type == CD_PROP_FLOAT);
   bke::nodeSetSocketAvailability(ntree, sock_out_int, data_type == CD_PROP_INT32);
   bke::nodeSetSocketAvailability(ntree, sock_out_vector, data_type == CD_PROP_FLOAT3);
   bke::nodeSetSocketAvailability(ntree, sock_out_color, data_type == CD_PROP_COLOR);
   bke::nodeSetSocketAvailability(ntree, sock_out_bool, data_type == CD_PROP_BOOL);
+  bke::nodeSetSocketAvailability(ntree, sock_out_quat, data_type == CD_PROP_QUATERNION);
 }
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
@@ -148,6 +152,8 @@ static StringRefNull identifier_suffix(eCustomDataType data_type)
       return "Color";
     case CD_PROP_FLOAT3:
       return "Vector";
+    case CD_PROP_QUATERNION:
+      return "Rotation";
     default:
       BLI_assert_unreachable();
       return "";
