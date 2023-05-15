@@ -310,7 +310,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
 #endif
         if (final_transmission > CLOSURE_WEIGHT_CUTOFF) {
           Spectrum glass_weight = weight * final_transmission;
-          float3 cspec0 = base_color * specular_tint + make_float3(1.0f - specular_tint);
+          Spectrum cspec0 = base_color * specular_tint + make_float3(1.0f - specular_tint);
 
           /* Use single-scatter GGX. */
           if (roughness <= 5e-2f || distribution == CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID) {
@@ -332,7 +332,6 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
               if (bsdf && fresnel) {
                 bsdf->N = valid_reflection_N;
                 bsdf->T = zero_float3();
-                bsdf->fresnel = fresnel;
 
                 bsdf->alpha_x = refl_roughness * refl_roughness;
                 bsdf->alpha_y = refl_roughness * refl_roughness;
@@ -365,7 +364,6 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
               if (bsdf) {
                 bsdf->N = valid_reflection_N;
                 bsdf->T = zero_float3();
-                bsdf->fresnel = NULL;
 
                 if (distribution == CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID)
                   transmission_roughness = 1.0f - (1.0f - refl_roughness) *
@@ -392,7 +390,6 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
 
             if (bsdf && fresnel) {
               bsdf->N = valid_reflection_N;
-              bsdf->fresnel = fresnel;
               bsdf->T = zero_float3();
 
               bsdf->alpha_x = roughness * roughness;
@@ -498,7 +495,6 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
 
       bsdf->N = maybe_ensure_valid_specular_reflection(sd, N);
       bsdf->ior = 1.0f;
-      bsdf->fresnel = NULL;
 
       /* compute roughness */
       float anisotropy = clamp(param2, -0.99f, 0.99f);
@@ -558,7 +554,6 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       if (bsdf) {
         bsdf->N = maybe_ensure_valid_specular_reflection(sd, N);
         bsdf->T = zero_float3();
-        bsdf->fresnel = NULL;
 
         float eta = fmaxf(param2, 1e-5f);
         eta = (sd->flag & SD_BACKFACING) ? 1.0f / eta : eta;

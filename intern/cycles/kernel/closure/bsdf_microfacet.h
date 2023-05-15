@@ -240,7 +240,7 @@ ccl_device_forceinline Spectrum microfacet_fresnel(ccl_private const MicrofacetB
       float cosI = dot(wi, H);
       if (bsdf->ior < 1.0f) {
         /* When going from a higher to a lower IOR, we must use the transmitted angle. */
-        float sinT2 = (1.0f - sqr(cosI)) / sqr(bsdf->ior);
+        const float sinT2 = (1.0f - sqr(cosI)) / sqr(bsdf->ior);
         if (sinT2 >= 1.0f) {
           /* Total internal reflection */
           return refraction ? zero_spectrum() : fresnel->reflection_tint;

@@ -318,7 +318,7 @@ ccl_device void osl_closure_generalized_schlick_bsdf_setup(
   bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
   bsdf->alpha_x = closure->alpha_x;
   bsdf->alpha_y = closure->alpha_y;
-  bsdf->ior = ior_from_F0(closure->f0);
+  bsdf->ior = ior_from_F0(average(closure->f0));
   if (sd->flag & SD_BACKFACING) {
     bsdf->ior = 1.0f / bsdf->ior;
   }
