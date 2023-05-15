@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+ * Copyright 2008 Blender Foundation */
 
 /** \file
  * \ingroup edinterface
@@ -376,9 +376,9 @@ bool ui_searchbox_event(
              * (a little confusing if this isn't the case, although it does work). */
             rcti rect;
             ui_searchbox_butrect(&rect, data, data->active);
-            if (BLI_rcti_isect_pt(&rect,
-                                  event->xy[0] - region->winrct.xmin,
-                                  event->xy[1] - region->winrct.ymin)) {
+            if (BLI_rcti_isect_pt(
+                    &rect, event->xy[0] - region->winrct.xmin, event->xy[1] - region->winrct.ymin))
+            {
 
               void *active = data->items.pointers[data->active];
               if (search_but->item_context_menu_fn(C, search_but->arg, active, event)) {
@@ -399,7 +399,8 @@ bool ui_searchbox_event(
         for (a = 0; a < data->items.totitem; a++) {
           ui_searchbox_butrect(&rect, data, a);
           if (BLI_rcti_isect_pt(
-                  &rect, event->xy[0] - region->winrct.xmin, event->xy[1] - region->winrct.ymin)) {
+                  &rect, event->xy[0] - region->winrct.xmin, event->xy[1] - region->winrct.ymin))
+          {
             is_inside = true;
             if (data->active != a) {
               data->active = a;
@@ -651,7 +652,7 @@ static void ui_searchbox_region_draw_fn(const bContext *C, ARegion *region)
 
           if (icon == ICON_BLANK1) {
             icon = ICON_NONE;
-            rect.xmin -= UI_DPI_ICON_SIZE / 4;
+            rect.xmin -= UI_ICON_SIZE / 4;
           }
 
           /* The previous menu item draws the active selection. */
@@ -762,7 +763,7 @@ static void ui_searchbox_region_layout_fn(const struct bContext *C, struct ARegi
 
     /* We should make this wider if there is a path or hint on the right. */
     if (ui_searchbox_item_separator(data) != UI_MENU_ITEM_SEPARATOR_NONE) {
-      searchbox_width += 12 * data->fstyle.points * U.dpi_fac;
+      searchbox_width += 12 * data->fstyle.points * UI_SCALE_FAC;
     }
 
     rctf rect_fl;
@@ -833,8 +834,8 @@ static void ui_searchbox_region_layout_fn(const struct bContext *C, struct ARegi
     region->winrct.ymax = rect_i.ymax;
   }
 
-  region->winx = region->winrct.xmax - region->winrct.xmin;
-  region->winy = region->winrct.ymax - region->winrct.ymin;
+  region->winx = region->winrct.xmax - region->winrct.xmin + 1;
+  region->winy = region->winrct.ymax - region->winrct.ymin + 1;
 
   data->size_set = true;
 }

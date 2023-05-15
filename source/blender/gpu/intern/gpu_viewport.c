@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation. All rights reserved. */
+ * Copyright 2006 Blender Foundation */
 
 /** \file
  * \ingroup gpu
@@ -155,7 +155,7 @@ static void gpu_viewport_textures_create(GPUViewport *viewport)
 
   /* Can be shared with GPUOffscreen. */
   if (viewport->depth_tx == NULL) {
-    /* Depth texture can be read back by gizmos #view3d_depths_create .*/
+    /* Depth texture can be read back by gizmos #view3d_depths_create. */
     viewport->depth_tx = GPU_texture_create_2d("dtxl_depth",
                                                UNPACK2(size),
                                                1,
@@ -244,7 +244,8 @@ void GPU_viewport_colorspace_set(GPUViewport *viewport,
   if (view_settings->curve_mapping) {
     if (viewport->view_settings.curve_mapping) {
       if (view_settings->curve_mapping->changed_timestamp !=
-          viewport->view_settings.curve_mapping->changed_timestamp) {
+          viewport->view_settings.curve_mapping->changed_timestamp)
+      {
         BKE_color_managed_view_settings_free(&viewport->view_settings);
       }
     }

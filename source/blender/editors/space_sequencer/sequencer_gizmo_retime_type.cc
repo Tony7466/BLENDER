@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. All rights reserved. */
+ * Copyright 2022 Blender Foundation. */
 
 /** \file
  * \ingroup spseq
@@ -54,10 +54,16 @@
 
 using blender::MutableSpan;
 
-#define REMOVE_GIZMO_HEIGHT 14.0f * U.dpi_fac               /* Pixels from bottom of strip.  */
-#define RETIME_HANDLE_TRIANGLE_SIZE 14.0f * U.dpi_fac       /* Size in pixels. */
-#define RETIME_HANDLE_MOUSEOVER_THRESHOLD 16.0f * U.dpi_fac /* Size in pixels. */
-#define RETIME_BUTTON_SIZE 0.6f                             /* Factor based on icon size. */
+/** Size in pixels. */
+#define RETIME_HANDLE_MOUSEOVER_THRESHOLD (16.0f * UI_SCALE_FAC)
+/** Factor based on icon size. */
+#define RETIME_BUTTON_SIZE 0.6f
+
+static float remove_gizmo_height_get(const View2D *v2d)
+{
+  const float max_size = (SEQ_STRIP_OFSTOP - SEQ_STRIP_OFSBOTTOM) * UI_view2d_scale_get_y(v2d);
+  return min_ff(14.0f * UI_SCALE_FAC, max_size * 0.4f);
+}
 
 static float strip_y_rescale(const Sequence *seq, const float y_value)
 {
@@ -65,16 +71,17 @@ static float strip_y_rescale(const Sequence *seq, const float y_value)
   return (y_value * y_range) + seq->machine + SEQ_STRIP_OFSBOTTOM;
 }
 
-static float handle_x_get(const Sequence *seq, const SeqRetimingHandle *handle)
+static float handle_x_get(const Scene *scene, const Sequence *seq, const SeqRetimingHandle *handle)
 {
 
   const SeqRetimingHandle *last_handle = SEQ_retiming_last_handle_get(seq);
   const bool is_last_handle = (handle == last_handle);
 
-  return SEQ_time_start_frame_get(seq) + handle->strip_frame_index + (is_last_handle ? 1 : 0);
+  return SEQ_retiming_handle_timeline_frame_get(scene, seq, handle) + (is_last_handle ? 1 : 0);
 }
 
-static const SeqRetimingHandle *mouse_over_handle_get(const Sequence *seq,
+static const SeqRetimingHandle *mouse_over_handle_get(const Scene *scene,
+                                                      const Sequence *seq,
                                                       const View2D *v2d,
                                                       const int mval[2])
 {
@@ -84,7 +91,7 @@ static const SeqRetimingHandle *mouse_over_handle_get(const Sequence *seq,
   MutableSpan handles = SEQ_retiming_handles_get(seq);
   for (const SeqRetimingHandle &handle : handles) {
     int distance = round_fl_to_int(
-        fabsf(UI_view2d_view_to_region_x(v2d, handle_x_get(seq, &handle)) - mval[0]));
+        fabsf(UI_view2d_view_to_region_x(v2d, handle_x_get(scene, seq, &handle)) - mval[0]));
 
     if (distance < RETIME_HANDLE_MOUSEOVER_THRESHOLD && distance < best_distance) {
       best_distance = distance;
@@ -142,8 +149,9 @@ static rctf strip_box_get(const bContext *C, const Sequence *seq)
 
 static rctf remove_box_get(const bContext *C, const Sequence *seq)
 {
+  const View2D *v2d = UI_view2d_fromcontext(C);
   rctf rect = strip_box_get(C, seq);
-  rect.ymax = rect.ymin + REMOVE_GIZMO_HEIGHT;
+  rect.ymax = rect.ymin + remove_gizmo_height_get(v2d);
   return rect;
 }
 
@@ -177,8 +185,8 @@ static ButtonDimensions button_dimensions_get(const bContext *C, const RetimeBut
   const View2D *v2d = UI_view2d_fromcontext(C);
   const Sequence *seq = active_seq_from_context(C);
 
-  const float icon_height = UI_icon_get_height(gizmo->icon_id) * U.dpi_fac;
-  const float icon_width = UI_icon_get_width(gizmo->icon_id) * U.dpi_fac;
+  const float icon_height = UI_icon_get_height(gizmo->icon_id) * UI_SCALE_FAC;
+  const float icon_width = UI_icon_get_width(gizmo->icon_id) * UI_SCALE_FAC;
   const float icon_x = UI_view2d_view_to_region_x(v2d, BKE_scene_frame_get(scene)) +
                        icon_width / 2;
   const float icon_y = UI_view2d_view_to_region_y(v2d, strip_y_rescale(seq, 0.5)) -
@@ -316,7 +324,7 @@ static void retime_handle_draw(const bContext *C,
                                const SeqRetimingHandle *handle)
 {
   const Scene *scene = CTX_data_scene(C);
-  const float handle_x = handle_x_get(seq, handle);
+  const float handle_x = handle_x_get(scene, seq, handle);
 
   if (handle_x == SEQ_time_left_handle_frame_get(scene, seq)) {
     return;
@@ -331,7 +339,7 @@ static void retime_handle_draw(const bContext *C,
     return; /* Handle out of strip bounds. */
   }
 
-  const int ui_triangle_size = RETIME_HANDLE_TRIANGLE_SIZE;
+  const int ui_triangle_size = remove_gizmo_height_get(v2d);
   const float bottom = UI_view2d_view_to_region_y(v2d, strip_y_rescale(seq, 0.0f)) + 2;
   const float top = UI_view2d_view_to_region_y(v2d, strip_y_rescale(seq, 1.0f)) - 2;
   const float handle_position = UI_view2d_view_to_region_x(v2d, handle_x);
@@ -371,21 +379,23 @@ static void retime_speed_text_draw(const bContext *C,
 
   int next_handle_index = SEQ_retiming_handle_index_get(seq, handle) + 1;
   const SeqRetimingHandle *next_handle = &SEQ_retiming_handles_get(seq)[next_handle_index];
-  if (handle_x_get(seq, next_handle) < start_frame || handle_x_get(seq, handle) > end_frame) {
+  if (handle_x_get(scene, seq, next_handle) < start_frame ||
+      handle_x_get(scene, seq, handle) > end_frame)
+  {
     return; /* Label out of strip bounds. */
   }
 
-  const float speed = SEQ_retiming_handle_speed_get(scene, seq, next_handle);
+  const float speed = SEQ_retiming_handle_speed_get(seq, next_handle);
 
   char label_str[20];
-  const size_t label_len = BLI_snprintf_rlen(
-      label_str, sizeof(label_str), "%d%%", round_fl_to_int(speed * 100.0f));
+  const size_t label_len = SNPRINTF_RLEN(label_str, "%d%%", round_fl_to_int(speed * 100.0f));
 
   const float width = pixels_to_view_width(C, BLF_width(BLF_default(), label_str, label_len));
 
-  const float xmin = max_ff(SEQ_time_left_handle_frame_get(scene, seq), handle_x_get(seq, handle));
+  const float xmin = max_ff(SEQ_time_left_handle_frame_get(scene, seq),
+                            handle_x_get(scene, seq, handle));
   const float xmax = min_ff(SEQ_time_right_handle_frame_get(scene, seq),
-                            handle_x_get(seq, next_handle));
+                            handle_x_get(scene, seq, next_handle));
 
   const float text_x = (xmin + xmax - width) / 2;
   const float text_y = strip_y_rescale(seq, 0) + pixels_to_view_height(C, 5);
@@ -409,7 +419,7 @@ static void gizmo_retime_handle_draw(const bContext *C, wmGizmo *gz)
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
   Sequence *seq = active_seq_from_context(C);
-  SEQ_retiming_data_ensure(CTX_data_scene(C), seq);
+  SEQ_retiming_data_ensure(seq);
   MutableSpan handles = SEQ_retiming_handles_get(seq);
 
   for (const SeqRetimingHandle &handle : handles) {
@@ -436,27 +446,30 @@ static int gizmo_retime_handle_test_select(bContext *C, wmGizmo *gz, const int m
   gizmo->mouse_over_seq = nullptr;
 
   Sequence *seq = active_seq_from_context(C);
-  SEQ_retiming_data_ensure(CTX_data_scene(C), seq);
-  const SeqRetimingHandle *handle = mouse_over_handle_get(seq, UI_view2d_fromcontext(C), mval);
+  SEQ_retiming_data_ensure(seq);
+  const SeqRetimingHandle *handle = mouse_over_handle_get(
+      scene, seq, UI_view2d_fromcontext(C), mval);
   const int handle_index = SEQ_retiming_handle_index_get(seq, handle);
 
   if (handle == nullptr) {
     return -1;
   }
 
-  if (handle_x_get(seq, handle) == SEQ_time_left_handle_frame_get(scene, seq) ||
-      handle_index == 0) {
+  if (handle_x_get(scene, seq, handle) == SEQ_time_left_handle_frame_get(scene, seq) ||
+      handle_index == 0)
+  {
     return -1;
   }
 
+  const View2D *v2d = UI_view2d_fromcontext(C);
   rctf strip_box = strip_box_get(C, seq);
-  BLI_rctf_resize_x(&strip_box, BLI_rctf_size_x(&strip_box) + 2 * RETIME_HANDLE_TRIANGLE_SIZE);
+  BLI_rctf_resize_x(&strip_box, BLI_rctf_size_x(&strip_box) + 2 * remove_gizmo_height_get(v2d));
   if (!mouse_is_inside_box(&strip_box, mval)) {
     return -1;
   }
 
   gizmo->mouse_over_seq = seq;
-  gizmo->mouse_over_handle_x = handle_x_get(seq, handle);
+  gizmo->mouse_over_handle_x = handle_x_get(scene, seq, handle);
 
   wmGizmoOpElem *op_elem = WM_gizmo_operator_get(gz, 0);
   RNA_int_set(&op_elem->ptr, "handle_index", handle_index);
@@ -510,16 +523,18 @@ static int gizmo_retime_remove_test_select(bContext *C, wmGizmo *gz, const int m
   Scene *scene = CTX_data_scene(C);
   Sequence *seq = active_seq_from_context(C);
 
-  SEQ_retiming_data_ensure(CTX_data_scene(C), seq);
-  const SeqRetimingHandle *handle = mouse_over_handle_get(seq, UI_view2d_fromcontext(C), mval);
+  SEQ_retiming_data_ensure(seq);
+  const SeqRetimingHandle *handle = mouse_over_handle_get(
+      scene, seq, UI_view2d_fromcontext(C), mval);
   const int handle_index = SEQ_retiming_handle_index_get(seq, handle);
 
   if (handle == nullptr) {
     return -1;
   }
 
-  if (handle_x_get(seq, handle) == SEQ_time_left_handle_frame_get(scene, seq) ||
-      handle_index == 0) {
+  if (handle_x_get(scene, seq, handle) == SEQ_time_left_handle_frame_get(scene, seq) ||
+      handle_index == 0)
+  {
     return -1; /* Ignore first handle. */
   }
 
@@ -528,9 +543,9 @@ static int gizmo_retime_remove_test_select(bContext *C, wmGizmo *gz, const int m
     return -1; /* Last handle can not be removed. */
   }
 
+  const View2D *v2d = UI_view2d_fromcontext(C);
   rctf box = remove_box_get(C, seq);
-
-  BLI_rctf_resize_x(&box, BLI_rctf_size_x(&box) + 2 * RETIME_HANDLE_TRIANGLE_SIZE);
+  BLI_rctf_resize_x(&box, BLI_rctf_size_x(&box) + 2 * remove_gizmo_height_get(v2d));
   if (!mouse_is_inside_box(&box, mval)) {
     return -1;
   }

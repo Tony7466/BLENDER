@@ -23,7 +23,8 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
-/* enum defines exported for rna_animation.c */
+/* Enum defines exported for `rna_animation.c`. */
+
 const EnumPropertyItem rna_enum_nla_mode_blend_items[] = {
     {NLASTRIP_MODE_REPLACE,
      "REPLACE",
@@ -88,7 +89,7 @@ static void rna_NlaStrip_name_set(PointerRNA *ptr, const char *value)
   NlaStrip *data = (NlaStrip *)ptr->data;
 
   /* copy the name first */
-  BLI_strncpy_utf8(data->name, value, sizeof(data->name));
+  STRNCPY_UTF8(data->name, value);
 
   /* validate if there's enough info to do so */
   if (ptr->owner_id) {

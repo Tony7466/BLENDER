@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+ * Copyright 2005 Blender Foundation */
 
 /** \file
  * \ingroup modifiers
@@ -25,12 +25,13 @@
 #include "DNA_screen_types.h"
 
 #include "BKE_anim_path.h"
+#include "BKE_attribute.hh"
 #include "BKE_context.h"
 #include "BKE_curve.h"
 #include "BKE_displist.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_modifier.h"
 #include "BKE_object_deform.h"
 #include "BKE_screen.h"
@@ -41,8 +42,8 @@
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
-#include "MOD_ui_common.h"
-#include "MOD_util.h"
+#include "MOD_ui_common.hh"
+#include "MOD_util.hh"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -188,7 +189,8 @@ static void dm_mvert_map_doubles(int *doubles_map,
   /* Scan source vertices, in #SortVertsElem sorted array,
    * all the while maintaining the lower bound of possible doubles in target vertices. */
   for (i_source = 0, sve_source = sorted_verts_source; i_source < source_verts_num;
-       i_source++, sve_source++) {
+       i_source++, sve_source++)
+  {
     int best_target_vertex = -1;
     float best_dist_sq = dist * dist;
     float sve_source_sumco;
@@ -209,7 +211,8 @@ static void dm_mvert_map_doubles(int *doubles_map,
     /* Skip all target vertices that are more than dist3 lower in terms of sumco */
     /* and advance the overall lower bound, applicable to all remaining vertices as well. */
     while ((i_target_low_bound < target_verts_num) &&
-           (sve_target_low_bound->sum_co < sve_source_sumco - dist3)) {
+           (sve_target_low_bound->sum_co < sve_source_sumco - dist3))
+    {
       i_target_low_bound++;
       sve_target_low_bound++;
     }
@@ -245,7 +248,8 @@ static void dm_mvert_map_doubles(int *doubles_map,
                !ELEM(doubles_map[best_target_vertex], -1, best_target_vertex)) {
           if (compare_len_v3v3(vert_positions[sve_source->vertex_num],
                                vert_positions[doubles_map[best_target_vertex]],
-                               dist)) {
+                               dist))
+          {
             best_target_vertex = doubles_map[best_target_vertex];
           }
           else {
@@ -279,15 +283,16 @@ static void mesh_merge_transform(Mesh *result,
                                  int remap_len,
                                  const bool recalc_normals_later)
 {
+  using namespace blender;
   int *index_orig;
   int i;
-  MEdge *me;
-  MLoop *ml;
-  MPoly *mp;
+  int2 *edge;
+  const blender::Span<int> cap_poly_offsets = cap_mesh->poly_offsets();
   float(*result_positions)[3] = BKE_mesh_vert_positions_for_write(result);
-  blender::MutableSpan<MEdge> result_edges = result->edges_for_write();
-  blender::MutableSpan<MPoly> result_polys = result->polys_for_write();
-  blender::MutableSpan<MLoop> result_loops = result->loops_for_write();
+  blender::MutableSpan<int2> result_edges = result->edges_for_write();
+  blender::MutableSpan<int> result_poly_offsets = result->poly_offsets_for_write();
+  blender::MutableSpan<int> result_corner_verts = result->corner_verts_for_write();
+  blender::MutableSpan<int> result_corner_edges = result->corner_edges_for_write();
 
   CustomData_copy_data(&cap_mesh->vdata, &result->vdata, 0, cap_verts_index, cap_nverts);
   CustomData_copy_data(&cap_mesh->edata, &result->edata, 0, cap_edges_index, cap_nedges);
@@ -300,7 +305,7 @@ static void mesh_merge_transform(Mesh *result,
 
   /* We have to correct normals too, if we do not tag them as dirty later! */
   if (!recalc_normals_later) {
-    float(*dst_vert_normals)[3] = BKE_mesh_vertex_normals_for_write(result);
+    float(*dst_vert_normals)[3] = BKE_mesh_vert_normals_for_write(result);
     for (i = 0; i < cap_nverts; i++) {
       mul_mat3_m4_v3(cap_offset, dst_vert_normals[cap_verts_index + i]);
       normalize_v3(dst_vert_normals[cap_verts_index + i]);
@@ -314,23 +319,32 @@ static void mesh_merge_transform(Mesh *result,
   }
 
   /* adjust cap edge vertex indices */
-  me = &result_edges[cap_edges_index];
-  for (i = 0; i < cap_nedges; i++, me++) {
-    me->v1 += cap_verts_index;
-    me->v2 += cap_verts_index;
+  edge = &result_edges[cap_edges_index];
+  for (i = 0; i < cap_nedges; i++, edge++) {
+    (*edge) += cap_verts_index;
   }
 
-  /* adjust cap poly loopstart indices */
-  mp = &result_polys[cap_polys_index];
-  for (i = 0; i < cap_npolys; i++, mp++) {
-    mp->loopstart += cap_loops_index;
+  /* Adjust cap poly loop-start indices. */
+  for (i = 0; i < cap_npolys; i++) {
+    result_poly_offsets[cap_polys_index + i] = cap_poly_offsets[i] + cap_loops_index;
   }
 
   /* adjust cap loop vertex and edge indices */
-  ml = &result_loops[cap_loops_index];
-  for (i = 0; i < cap_nloops; i++, ml++) {
-    ml->v += cap_verts_index;
-    ml->e += cap_edges_index;
+  for (i = 0; i < cap_nloops; i++) {
+    result_corner_verts[cap_loops_index + i] += cap_verts_index;
+    result_corner_edges[cap_loops_index + i] += cap_edges_index;
+  }
+
+  const bke::AttributeAccessor cap_attributes = cap_mesh->attributes();
+  if (const VArray cap_material_indices = *cap_attributes.lookup<int>("material_index",
+                                                                      ATTR_DOMAIN_FACE))
+  {
+    bke::MutableAttributeAccessor result_attributes = result->attributes_for_write();
+    bke::SpanAttributeWriter<int> result_material_indices =
+        result_attributes.lookup_or_add_for_write_span<int>("material_index", ATTR_DOMAIN_FACE);
+    cap_material_indices.materialize(
+        result_material_indices.span.slice(cap_polys_index, cap_npolys));
+    result_material_indices.finish();
   }
 
   /* Set #CD_ORIGINDEX. */
@@ -361,11 +375,13 @@ static void mesh_merge_transform(Mesh *result,
 
 static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
                                    const ModifierEvalContext *ctx,
-                                   const Mesh *mesh)
+                                   Mesh *mesh)
 {
-  MEdge *me;
-  MLoop *ml;
-  MPoly *mp;
+  if (mesh->totvert == 0) {
+    return mesh;
+  }
+
+  int2 *edge;
   int i, j, c, count;
   float length = amd->length;
   /* offset matrix */
@@ -378,7 +394,7 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
   int tot_doubles;
 
   const bool use_merge = (amd->flags & MOD_ARR_MERGE) != 0;
-  const bool use_recalc_normals = BKE_mesh_vertex_normals_are_dirty(mesh) || use_merge;
+  const bool use_recalc_normals = BKE_mesh_vert_normals_are_dirty(mesh) || use_merge;
   const bool use_offset_ob = ((amd->offset_type & MOD_ARR_OFF_OBJ) && amd->offset_ob != nullptr);
 
   int start_cap_nverts = 0, start_cap_nedges = 0, start_cap_npolys = 0, start_cap_nloops = 0;
@@ -497,7 +513,8 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
        * vertices.
        */
       if ((size_t(count) * size_t(chunk_nverts) + size_t(start_cap_nverts) +
-           size_t(end_cap_nverts)) > max_verts_num) {
+           size_t(end_cap_nverts)) > max_verts_num)
+      {
         count = 1;
         offset_is_too_small = true;
       }
@@ -519,7 +536,8 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
    * vertices.
    */
   else if ((size_t(count) * size_t(chunk_nverts) + size_t(start_cap_nverts) +
-            size_t(end_cap_nverts)) > max_verts_num) {
+            size_t(end_cap_nverts)) > max_verts_num)
+  {
     count = 1;
     BKE_modifier_set_error(ctx->object,
                            &amd->modifier,
@@ -539,11 +557,12 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
 
   /* Initialize a result dm */
   result = BKE_mesh_new_nomain_from_template(
-      mesh, result_nverts, result_nedges, 0, result_nloops, result_npolys);
+      mesh, result_nverts, result_nedges, result_npolys, result_nloops);
   float(*result_positions)[3] = BKE_mesh_vert_positions_for_write(result);
-  blender::MutableSpan<MEdge> result_edges = result->edges_for_write();
-  blender::MutableSpan<MPoly> result_polys = result->polys_for_write();
-  blender::MutableSpan<MLoop> result_loops = result->loops_for_write();
+  blender::MutableSpan<int2> result_edges = result->edges_for_write();
+  blender::MutableSpan<int> result_poly_offsets = result->poly_offsets_for_write();
+  blender::MutableSpan<int> result_corner_verts = result->corner_verts_for_write();
+  blender::MutableSpan<int> result_corner_edges = result->corner_edges_for_write();
 
   if (use_merge) {
     /* Will need full_doubles_map for handling merge */
@@ -557,17 +576,19 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
   CustomData_copy_data(&mesh->ldata, &result->ldata, 0, 0, chunk_nloops);
   CustomData_copy_data(&mesh->pdata, &result->pdata, 0, 0, chunk_npolys);
 
+  result_poly_offsets.take_front(mesh->totpoly).copy_from(mesh->poly_offsets().drop_back(1));
+
   /* Remember first chunk, in case of cap merge */
   first_chunk_start = 0;
   first_chunk_nverts = chunk_nverts;
 
   unit_m4(current_offset);
-  const float(*src_vert_normals)[3] = nullptr;
+  blender::Span<blender::float3> src_vert_normals;
   float(*dst_vert_normals)[3] = nullptr;
   if (!use_recalc_normals) {
-    src_vert_normals = BKE_mesh_vertex_normals_ensure(mesh);
-    dst_vert_normals = BKE_mesh_vertex_normals_for_write(result);
-    BKE_mesh_vertex_normals_clear_dirty(result);
+    src_vert_normals = mesh->vert_normals();
+    dst_vert_normals = BKE_mesh_vert_normals_for_write(result);
+    BKE_mesh_vert_normals_clear_dirty(result);
   }
 
   for (c = 1; c < count; c++) {
@@ -596,22 +617,20 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
     }
 
     /* adjust edge vertex indices */
-    me = &result_edges[c * chunk_nedges];
-    for (i = 0; i < chunk_nedges; i++, me++) {
-      me->v1 += c * chunk_nverts;
-      me->v2 += c * chunk_nverts;
+    edge = &result_edges[c * chunk_nedges];
+    for (i = 0; i < chunk_nedges; i++, edge++) {
+      (*edge) += c * chunk_nverts;
     }
 
-    mp = &result_polys[c * chunk_npolys];
-    for (i = 0; i < chunk_npolys; i++, mp++) {
-      mp->loopstart += c * chunk_nloops;
+    for (i = 0; i < chunk_npolys; i++) {
+      result_poly_offsets[c * chunk_npolys + i] = result_poly_offsets[i] + c * chunk_nloops;
     }
 
     /* adjust loop vertex and edge indices */
-    ml = &result_loops[c * chunk_nloops];
-    for (i = 0; i < chunk_nloops; i++, ml++) {
-      ml->v += c * chunk_nverts;
-      ml->e += c * chunk_nedges;
+    const int chunk_corner_start = c * chunk_nloops;
+    for (i = 0; i < chunk_nloops; i++) {
+      result_corner_verts[chunk_corner_start + i] += c * chunk_nverts;
+      result_corner_edges[chunk_corner_start + i] += c * chunk_nedges;
     }
 
     /* Handle merge between chunk n and n-1 */
@@ -631,7 +650,8 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
                * close enough from current vert (otherwise no mapping at all). */
               if (compare_len_v3v3(result_positions[this_chunk_index],
                                    result_positions[full_doubles_map[target]],
-                                   amd->merge_dist)) {
+                                   amd->merge_dist))
+              {
                 target = full_doubles_map[target];
               }
               else {
@@ -671,6 +691,36 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
           (*dmloopuv)[0] += uv_offset[0];
           (*dmloopuv)[1] += uv_offset[1];
         }
+      }
+    }
+  }
+
+  if (!use_merge && !mesh->runtime->subsurf_optimal_display_edges.is_empty()) {
+    const BoundedBitSpan src = mesh->runtime->subsurf_optimal_display_edges;
+
+    result->runtime->subsurf_optimal_display_edges.resize(result->totedge);
+    MutableBoundedBitSpan dst = result->runtime->subsurf_optimal_display_edges;
+    for (const int i : IndexRange(count)) {
+      dst.slice({i * mesh->totedge, mesh->totedge}).copy_from(src);
+    }
+
+    if (start_cap_mesh) {
+      MutableBitSpan cap_bits = dst.slice(
+          {result_nedges - start_cap_nedges - end_cap_nedges, start_cap_mesh->totedge});
+      if (start_cap_mesh->runtime->subsurf_optimal_display_edges.is_empty()) {
+        cap_bits.set_all(true);
+      }
+      else {
+        cap_bits.copy_from(start_cap_mesh->runtime->subsurf_optimal_display_edges);
+      }
+    }
+    if (end_cap_mesh) {
+      MutableBitSpan cap_bits = dst.slice({result_nedges - end_cap_nedges, end_cap_mesh->totedge});
+      if (end_cap_mesh->runtime->subsurf_optimal_display_edges.is_empty()) {
+        cap_bits.set_all(true);
+      }
+      else {
+        cap_bits.copy_from(end_cap_mesh->runtime->subsurf_optimal_display_edges);
       }
     }
   }
@@ -778,7 +828,7 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
       Mesh *tmp = result;
       result = geometry::mesh_merge_verts(
           *tmp, MutableSpan<int>{full_doubles_map, result->totvert}, tot_doubles);
-      BKE_id_free(NULL, tmp);
+      BKE_id_free(nullptr, tmp);
     }
     MEM_freeN(full_doubles_map);
   }

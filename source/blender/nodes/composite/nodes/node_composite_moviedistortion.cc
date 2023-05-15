@@ -1,11 +1,13 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. All rights reserved. */
+ * Copyright 2011 Blender Foundation */
 
 /** \file
  * \ingroup cmpnodes
  */
 
 #include "BLT_translation.h"
+
+#include "BLI_string_utf8.h"
 
 #include "BKE_context.h"
 #include "BKE_lib_id.h"
@@ -28,13 +30,13 @@ static void cmp_node_moviedistortion_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Color>(N_("Image"));
 }
 
-static void label(const bNodeTree * /*ntree*/, const bNode *node, char *label, int maxlen)
+static void label(const bNodeTree * /*ntree*/, const bNode *node, char *label, int label_maxncpy)
 {
   if (node->custom1 == 0) {
-    BLI_strncpy(label, IFACE_("Undistortion"), maxlen);
+    BLI_strncpy_utf8(label, IFACE_("Undistortion"), label_maxncpy);
   }
   else {
-    BLI_strncpy(label, IFACE_("Distortion"), maxlen);
+    BLI_strncpy_utf8(label, IFACE_("Distortion"), label_maxncpy);
   }
 }
 
