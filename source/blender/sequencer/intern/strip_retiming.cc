@@ -134,26 +134,6 @@ static int seq_retiming_segment_length_get(const SeqRetimingHandle *start_handle
   return end_handle->strip_frame_index - start_handle->strip_frame_index;
 }
 
-float seq_retiming_evaluate(const Sequence *seq, const float frame_index)
-{
-  const SeqRetimingHandle *previous_handle = retiming_find_segment_start_handle(seq, frame_index);
-  const SeqRetimingHandle *next_handle = previous_handle + 1;
-  const int previous_handle_index = previous_handle - seq->retiming_handles;
-
-  BLI_assert(previous_handle_index < seq->retiming_handle_num);
-  UNUSED_VARS_NDEBUG(previous_handle_index);
-
-  if (next_handle == nullptr) {
-    return 1.0f;
-  }
-
-  const int segment_length = next_handle->strip_frame_index - previous_handle->strip_frame_index;
-  const float segment_frame_index = frame_index - previous_handle->strip_frame_index;
-  const float segment_fac = segment_frame_index / (float)segment_length;
-  const float target_diff = next_handle->retiming_factor - previous_handle->retiming_factor;
-  return previous_handle->retiming_factor + (target_diff * segment_fac);
-}
-
 static float seq_retiming_segment_step_get(const SeqRetimingHandle *start_handle)
 {
   const SeqRetimingHandle *end_handle = start_handle + 1;
@@ -211,14 +191,14 @@ static bool seq_retiming_handle_is_transition_type(const SeqRetimingHandle *hand
   return (handle->flag & 1) != 0;
 }
 
-float seq_retiming_evaluate(const Sequence *seq, const int frame_index)
+float seq_retiming_evaluate(const Sequence *seq, const float frame_index)
 {
   const SeqRetimingHandle *start_handle = retiming_find_segment_start_handle(seq, frame_index);
 
   const int start_handle_index = start_handle - seq->retiming_handles;
   BLI_assert(start_handle_index < seq->retiming_handle_num);
 
-  const int segment_frame_index = frame_index - start_handle->strip_frame_index;
+  const float segment_frame_index = frame_index - start_handle->strip_frame_index;
 
   if (!seq_retiming_handle_is_transition_type(start_handle)) {
     const float segment_step = seq_retiming_segment_step_get(start_handle);
@@ -611,7 +591,7 @@ void SEQ_retiming_sound_animation_data_set(const Scene *scene, const Sequence *s
         /* We need number actual number of frames here. */
         double normal_step = 1 / (double)seq->len;
 
-        // xxx who needs calculus, when you can have slow code?
+        /* Who needs calculus, when you can have slow code? */
         double val_prev = seq_retiming_evaluate(seq, frame - 1);
         double val = seq_retiming_evaluate(seq, frame);
         double speed_at_frame = (val - val_prev) / normal_step;
