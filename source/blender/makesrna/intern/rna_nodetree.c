@@ -68,6 +68,7 @@ static const EnumPropertyItem node_socket_data_type_items[] = {
     {SOCK_INT, "INT", 0, "Integer", ""},
     {SOCK_BOOLEAN, "BOOLEAN", 0, "Boolean", ""},
     {SOCK_VECTOR, "VECTOR", 0, "Vector", ""},
+    {SOCK_ROTATION, "ROTATION", 0, "Rotation", ""},
     {SOCK_STRING, "STRING", 0, "String", ""},
     {SOCK_RGBA, "RGBA", 0, "Color", ""},
     {SOCK_OBJECT, "OBJECT", 0, "Object", ""},
@@ -95,6 +96,7 @@ static const EnumPropertyItem node_socket_type_items[] = {
     {SOCK_INT, "INT", 0, "Integer", ""},
     {SOCK_BOOLEAN, "BOOLEAN", 0, "Boolean", ""},
     {SOCK_VECTOR, "VECTOR", 0, "Vector", ""},
+    {SOCK_ROTATION, "ROTATION", 0, "Rotation", ""},
     {SOCK_STRING, "STRING", 0, "String", ""},
     {SOCK_RGBA, "RGBA", 0, "RGBA", ""},
     {SOCK_SHADER, "SHADER", 0, "Shader", ""},
@@ -507,6 +509,12 @@ static const EnumPropertyItem rna_node_combsep_color_items[] = {
     {NODE_COMBSEP_COLOR_RGB, "RGB", ICON_NONE, "RGB", "Use RGB color processing"},
     {NODE_COMBSEP_COLOR_HSV, "HSV", ICON_NONE, "HSV", "Use HSV color processing"},
     {NODE_COMBSEP_COLOR_HSL, "HSL", ICON_NONE, "HSL", "Use HSL color processing"},
+    {0, NULL, 0, NULL, NULL},
+};
+
+static const EnumPropertyItem rna_node_combine_separate_rotation_items[] = {
+    {NODE_COMBINE_SEPARATE_ROTATION_EULER_XYZ, "EULER_XYZ", ICON_NONE, "Euler", ""},
+    {NODE_COMBINE_SEPARATE_ROTATION_AXIS_ANGLE, "AXIS_ANGLE", ICON_NONE, "Axis Angle", ""},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -2084,6 +2092,7 @@ static bool switch_type_supported(const EnumPropertyItem *item)
               SOCK_FLOAT,
               SOCK_INT,
               SOCK_BOOLEAN,
+              SOCK_ROTATION,
               SOCK_VECTOR,
               SOCK_STRING,
               SOCK_RGBA,
@@ -2232,7 +2241,8 @@ static bool generic_attribute_type_supported(const EnumPropertyItem *item)
               CD_PROP_COLOR,
               CD_PROP_BOOL,
               CD_PROP_INT32,
-              CD_PROP_BYTE_COLOR);
+              CD_PROP_BYTE_COLOR,
+              CD_PROP_QUATERNION);
 }
 static const EnumPropertyItem *rna_GeometryNodeAttributeType_type_itemf(bContext *UNUSED(C),
                                                                         PointerRNA *UNUSED(ptr),
@@ -5336,6 +5346,28 @@ static void def_fn_combsep_color(StructRNA *srna)
   prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_node_combsep_color_items);
   RNA_def_property_ui_text(prop, "Mode", "Mode of color processing");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+}
+
+static void def_fn_combine_rotation(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "custom1");
+  RNA_def_property_enum_items(prop, rna_node_combine_separate_rotation_items);
+  RNA_def_property_ui_text(prop, "Mode", "");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+}
+
+static void def_fn_separate_rotation(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "custom1");
+  RNA_def_property_enum_items(prop, rna_node_combine_separate_rotation_items);
+  RNA_def_property_ui_text(prop, "Mode", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 
@@ -11896,6 +11928,44 @@ static void rna_def_node_socket_bool(BlenderRNA *brna,
   RNA_def_struct_sdna_from(srna, "bNodeSocket", NULL);
 }
 
+static void rna_def_node_socket_rotation(BlenderRNA *brna,
+                                         const char *identifier,
+                                         const char *interface_idname)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, identifier, "NodeSocketStandard");
+  RNA_def_struct_ui_text(srna, "Rotation Node Socket", "Rotation value socket of a node");
+  RNA_def_struct_sdna(srna, "bNodeSocket");
+
+  RNA_def_struct_sdna_from(srna, "bNodeSocketValueRotation", "default_value");
+
+  prop = RNA_def_property(srna, "default_value", PROP_FLOAT, PROP_EULER);
+  RNA_def_property_float_sdna(prop, NULL, "value_euler");
+  // RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop, "Default Value", "Input value used for unconnected socket");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeSocketInterface_update");
+
+  RNA_def_struct_sdna_from(srna, "bNodeSocket", NULL);
+
+  /* socket interface */
+  srna = RNA_def_struct(brna, interface_idname, "NodeSocketInterfaceStandard");
+  RNA_def_struct_ui_text(
+      srna, "Rotation Node Socket Interface", "Rotation value socket of a node");
+  RNA_def_struct_sdna(srna, "bNodeSocket");
+
+  RNA_def_struct_sdna_from(srna, "bNodeSocketValueRotation", "default_value");
+
+  prop = RNA_def_property(srna, "default_value", PROP_FLOAT, PROP_EULER);
+  RNA_def_property_float_sdna(prop, NULL, "value_euler");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_ui_text(prop, "Default Value", "Input value used for unconnected socket");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeSocketInterface_update");
+
+  RNA_def_struct_sdna_from(srna, "bNodeSocket", NULL);
+}
+
 static void rna_def_node_socket_vector(BlenderRNA *brna,
                                        const char *identifier,
                                        const char *interface_idname,
@@ -12386,6 +12456,7 @@ static void rna_def_node_socket_standard_types(BlenderRNA *brna)
       brna, "NodeSocketIntFactor", "NodeSocketInterfaceIntFactor", PROP_FACTOR);
 
   rna_def_node_socket_bool(brna, "NodeSocketBool", "NodeSocketInterfaceBool");
+  rna_def_node_socket_rotation(brna, "NodeSocketRotation", "NodeSocketInterfaceRotation");
 
   rna_def_node_socket_vector(brna, "NodeSocketVector", "NodeSocketInterfaceVector", PROP_NONE);
   rna_def_node_socket_vector(brna,

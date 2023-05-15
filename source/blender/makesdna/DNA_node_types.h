@@ -238,6 +238,7 @@ typedef enum eNodeSocketDatatype {
   SOCK_COLLECTION = 11,
   SOCK_TEXTURE = 12,
   SOCK_MATERIAL = 13,
+  SOCK_ROTATION = 14,
 } eNodeSocketDatatype;
 
 /** Socket shape. */
@@ -723,6 +724,10 @@ typedef struct bNodeSocketValueVector {
   float value[3];
   float min, max;
 } bNodeSocketValueVector;
+
+typedef struct bNodeSocketValueRotation {
+  float value_euler[3];
+} bNodeSocketValueRotation;
 
 typedef struct bNodeSocketValueRGBA {
   float value[4];
@@ -2461,3 +2466,8 @@ typedef enum NodeCombSepColorMode {
   NODE_COMBSEP_COLOR_HSV = 1,
   NODE_COMBSEP_COLOR_HSL = 2,
 } NodeCombSepColorMode;
+
+typedef enum NodeCombineSeparateRotatioNMode {
+  NODE_COMBINE_SEPARATE_ROTATION_EULER_XYZ = 0,
+  NODE_COMBINE_SEPARATE_ROTATION_AXIS_ANGLE = 1,
+} NodeCombineSeparateRotatioNMode;
