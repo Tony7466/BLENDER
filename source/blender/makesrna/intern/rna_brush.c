@@ -1041,7 +1041,8 @@ static void rna_BrushGpencilSettings_default_eraser_update(Main *bmain,
   /* disable default eraser in all brushes */
   for (Brush *brush = bmain->brushes.first; brush; brush = brush->id.next) {
     if ((brush != brush_cur) && (brush->ob_mode == OB_MODE_PAINT_GPENCIL) &&
-        (brush->gpencil_tool == GPAINT_TOOL_ERASE)) {
+        (brush->gpencil_tool == GPAINT_TOOL_ERASE))
+    {
       brush->gpencil_settings->flag &= ~GP_BRUSH_DEFAULT_ERASER;
     }
   }
@@ -3483,7 +3484,10 @@ static void rna_def_brush(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_plane_trim", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", BRUSH_PLANE_TRIM);
-  RNA_def_property_ui_text(prop, "Use Plane Trim", "Enable Plane Trim");
+  RNA_def_property_ui_text(
+      prop,
+      "Use Plane Trim",
+      "Limit the distance from the offset plane that a vertex can be affected");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
 
   prop = RNA_def_property(srna, "use_frontface", PROP_BOOLEAN, PROP_NONE);

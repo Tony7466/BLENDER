@@ -110,7 +110,8 @@ class DATA_PT_bone_groups(ArmatureButtonsPanel, Panel):
 
     @classmethod
     def poll(cls, context):
-        return (context.object and context.object.type == 'ARMATURE' and context.object.pose)
+        ob = context.object
+        return (ob and ob.type == 'ARMATURE' and ob.pose)
 
     def draw(self, context):
         layout = self.layout
@@ -191,6 +192,7 @@ class DATA_PT_iksolver_itasc(ArmatureButtonsPanel, Panel):
 
         if itasc:
             layout.prop(itasc, "mode")
+            layout.prop(itasc, "translate_root_bones")
             simulation = (itasc.mode == 'SIMULATION')
             if simulation:
                 layout.prop(itasc, "reiteration_method", expand=False)
