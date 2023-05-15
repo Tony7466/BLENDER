@@ -214,12 +214,14 @@ uint32_t convert_float_formats(uint32_t value)
   const bool is_denormalized = exponent == 0;
   if (!is_denormalized) {
     exponent -= SourceFormat::ExponentBias;
+    /*
     if constexpr (SourceFormat::ExponentLen > DestinationFormat::ExponentLen) {
       exponent = exponent >> (SourceFormat::ExponentLen - DestinationFormat::ExponentLen);
     }
     else if constexpr (SourceFormat::ExponentLen < DestinationFormat::ExponentLen) {
       exponent = exponent << (DestinationFormat::ExponentLen - SourceFormat::ExponentLen);
     }
+    */
     exponent += DestinationFormat::ExponentBias;
   }
 
