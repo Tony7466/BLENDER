@@ -4,6 +4,8 @@
  * \ingroup nodes
  */
 
+#include "BLI_math_quaternion.hh"
+
 #include "NOD_geometry_nodes_execute.hh"
 #include "NOD_geometry_nodes_lazy_function.hh"
 #include "NOD_node_declaration.hh"
@@ -115,6 +117,9 @@ std::unique_ptr<IDProperty, bke::idprop::IDPropertyDeleter> id_property_create_f
       ui_data->default_value = value->value != 0;
       return property;
     }
+    case SOCK_ROTATION: {
+      return nullptr;
+    }
     case SOCK_STRING: {
       const bNodeSocketValueString *value = static_cast<const bNodeSocketValueString *>(
           socket.default_value);
@@ -166,6 +171,7 @@ bool id_property_type_matches_socket(const bNodeSocket &socket, const IDProperty
     case SOCK_VECTOR:
       return property.type == IDP_ARRAY && property.subtype == IDP_FLOAT && property.len == 3;
     case SOCK_RGBA:
+    case SOCK_ROTATION:
       return property.type == IDP_ARRAY && property.subtype == IDP_FLOAT && property.len == 4;
     case SOCK_BOOLEAN:
       return property.type == IDP_BOOLEAN;
@@ -216,6 +222,12 @@ static void init_socket_cpp_value_from_property(const IDProperty &property,
     case SOCK_BOOLEAN: {
       const bool value = IDP_Bool(&property);
       new (r_value) fn::ValueOrField<bool>(value);
+      break;
+    }
+    case SOCK_ROTATION: {
+      const math::Quaternion value = math::Quaternion(
+          float4(static_cast<const float *>(IDP_Array(&property))));
+      new (r_value) fn::ValueOrField<math::Quaternion>(value);
       break;
     }
     case SOCK_STRING: {
