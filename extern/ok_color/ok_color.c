@@ -32,6 +32,10 @@ const float pi = 3.1415926535897932384626433832795028841971693993751058209749445
 
 float clamp(float x, float min, float max)
 {
+  if (isnan(x)) {
+    return 0.0f;
+  }
+
   if (x < min)
     return min;
   if (x > max)
@@ -568,6 +572,16 @@ HSL srgb_to_okhsl(RGB rgb)
   }
 
   float l = toe(L);
+
+  if (rgb.r == rgb.g && rgb.g == rgb.b) {
+    h = 0.0f;
+    s = 0.0f;
+  }
+
+  h = clamp(h, 0.0f, 1.0f);
+  s = clamp(s, 0.0f, 1.0f);
+  l = clamp(l, 0.0f, 1.0f);
+
   return (HSL){ h, s, l };
 }
 
@@ -620,6 +634,12 @@ RGB okhsv_to_srgb(HSV hsv)
 
 HSV srgb_to_okhsv(RGB rgb)
 {
+  if (rgb.r == rgb.g && rgb.g == rgb.b) {
+    // Fallback to avoid edge cases with NaN value.
+    HSL hsl = srgb_to_okhsl(rgb);
+    return (HSV){hsl.h, hsl.s, hsl.l};
+  }
+
   Lab lab = linear_srgb_to_oklab((RGB){
     srgb_transfer_function_inv(rgb.r),
     srgb_transfer_function_inv(rgb.g),
@@ -663,6 +683,10 @@ HSV srgb_to_okhsv(RGB rgb)
 
   float v = L / L_v;
   float s = (S_0 + T_max) * C_v / ((T_max * S_0) + T_max * k * C_v);
+
+  h = clamp(h, 0.0f, 1.0f);
+  s = clamp(s, 0.0f, 1.0f);
+  v = clamp(v, 0.0f, 1.0f);
 
   return (HSV){ h, s, v };
 }
