@@ -33,7 +33,7 @@ class GPUShaderCreator;
 /* -------------------------------------------------------------------------------------------------
  * OCIO Color Space Conversion Shader.
  *
- * A cached resource that creates and caches a GPU shader that converts the source OICO color space
+ * A cached resource that creates and caches a GPU shader that converts the source OCIO color space
  * of an image into a different target OCIO color space. */
 class OCIOColorSpaceConversionShader : public CachedResource {
  private:
