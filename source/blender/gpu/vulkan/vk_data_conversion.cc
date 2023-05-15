@@ -55,8 +55,8 @@ enum class ConversionType {
   FLOAT_TO_DEPTH_COMPONENT24,
   DEPTH_COMPONENT24_TO_FLOAT,
 
-  FLOAT_TO_R11F_G11F_B10F,
-  R11F_G11F_B10F_TO_FLOAT,
+  FLOAT_TO_B10F_G11F_R11F,
+  B10F_G11F_R11F_TO_FLOAT,
 
   /**
    * The requested conversion isn't supported.
@@ -108,7 +108,7 @@ static ConversionType type_of_conversion_float(eGPUTextureFormat device_format)
       return ConversionType::FLOAT_TO_DEPTH_COMPONENT24;
 
     case GPU_R11F_G11F_B10F:
-      return ConversionType::FLOAT_TO_R11F_G11F_B10F;
+      return ConversionType::FLOAT_TO_B10F_G11F_R11F;
 
     case GPU_RGB32F: /* GPU_RGB32F Not supported by vendors. */
     case GPU_RGBA8UI:
@@ -531,7 +531,7 @@ static ConversionType reversed(ConversionType type)
       CASE_PAIR(FLOAT, HALF)
       CASE_PAIR(FLOAT, SRGBA8)
       CASE_PAIR(FLOAT, DEPTH_COMPONENT24)
-      CASE_PAIR(FLOAT, R11F_G11F_B10F)
+      CASE_PAIR(FLOAT, B10F_G11F_R11F)
 
     case ConversionType::UNSUPPORTED:
       return ConversionType::UNSUPPORTED;
@@ -565,8 +565,10 @@ using I32 = ComponentValue<int32_t>;
 using F32 = ComponentValue<float>;
 using F16 = ComponentValue<uint16_t>;
 using SRGBA8 = PixelValue<ColorSceneLinearByteEncoded4b<eAlpha::Premultiplied>>;
+using FLOAT3 = PixelValue<float3>;
 using FLOAT4 = PixelValue<ColorSceneLinear4f<eAlpha::Premultiplied>>;
-class R11F_G11F_B10F : public PixelValue<uint32_t> {};
+/* NOTE: Vulkan stores R11_G11_B10 in reverse component order. */
+class B10F_G11G_R11F : public PixelValue<uint32_t> {};
 
 class DepthComponent24 : public ComponentValue<uint32_t> {
  public:
@@ -697,21 +699,48 @@ static void convert(FLOAT4 &dst, const SRGBA8 &src)
   dst.value = src.value.decode();
 }
 
-// TODO: These still have to be validated.
-static void convert(FLOAT4 &dst, const R11F_G11F_B10F &src)
+constexpr uint32_t MASK_10_BITS = 0b1111111111;
+constexpr uint32_t MASK_11_BITS = 0b11111111111;
+constexpr uint8_t SHIFT_B = 22;
+constexpr uint8_t SHIFT_G = 11;
+constexpr uint8_t SHIFT_R = 0;
+
+static uint32_t float_to_uint32_t(float value)
 {
-  dst.value.r = float((src.value >> 21) & 0b11111111111) / (0b11111111111);
-  dst.value.g = float((src.value >> 10) & 0b11111111111) / float(0b11111111111);
-  dst.value.b = float((src.value) & 0b1111111111) / float(0b1111111111);
-  dst.value.a = 1.0f;
+  union {
+    float fl;
+    uint32_t u;
+  } float_to_bits;
+  float_to_bits.fl = value;
+  return float_to_bits.u;
 }
 
-static void convert(R11F_G11F_B10F &dst, const FLOAT4 &src)
+static float uint32_t_to_float(uint32_t value)
 {
-  int32_t r = clamp_f(src.value.r, 0.0f, 1.0f) * 0b11111111111;
-  int32_t g = clamp_f(src.value.g, 0.0f, 1.0f) * 0b11111111111;
-  int32_t b = clamp_f(src.value.b, 0.0f, 1.0f) * 0b1111111111;
-  dst.value = r << 21 | g << 10 | b;
+  union {
+    float fl;
+    uint32_t u;
+  } float_to_bits;
+  float_to_bits.u = value;
+  return float_to_bits.fl;
+}
+
+static void convert(FLOAT3 &dst, const B10F_G11G_R11F &src)
+{
+  dst.value.x = uint32_t_to_float(
+      convert_float_formats<Format32F, Format11F>((src.value >> SHIFT_R) && MASK_11_BITS));
+  dst.value.y = uint32_t_to_float(
+      convert_float_formats<Format32F, Format11F>((src.value >> SHIFT_G) && MASK_11_BITS));
+  dst.value.z = uint32_t_to_float(
+      convert_float_formats<Format32F, Format11F>((src.value >> SHIFT_B) && MASK_10_BITS));
+}
+
+static void convert(B10F_G11G_R11F &dst, const FLOAT3 &src)
+{
+  uint32_t r = convert_float_formats<Format11F, Format32F>(float_to_uint32_t(src.value.x));
+  uint32_t g = convert_float_formats<Format11F, Format32F>(float_to_uint32_t(src.value.y));
+  uint32_t b = convert_float_formats<Format10F, Format32F>(float_to_uint32_t(src.value.z));
+  dst.value = r << SHIFT_R | g << SHIFT_G | b << SHIFT_B;
 }
 
 /* \} */
@@ -854,12 +883,12 @@ static void convert_buffer(void *dst_memory,
           dst_memory, src_memory, buffer_size, device_format);
       break;
 
-    case ConversionType::FLOAT_TO_R11F_G11F_B10F:
-      convert_per_pixel<R11F_G11F_B10F, FLOAT4>(dst_memory, src_memory, buffer_size);
+    case ConversionType::FLOAT_TO_B10F_G11F_R11F:
+      convert_per_pixel<B10F_G11G_R11F, FLOAT3>(dst_memory, src_memory, buffer_size);
       break;
 
-    case ConversionType::R11F_G11F_B10F_TO_FLOAT:
-      convert_per_pixel<FLOAT4, R11F_G11F_B10F>(dst_memory, src_memory, buffer_size);
+    case ConversionType::B10F_G11F_R11F_TO_FLOAT:
+      convert_per_pixel<FLOAT3, B10F_G11G_R11F>(dst_memory, src_memory, buffer_size);
       break;
   }
 }

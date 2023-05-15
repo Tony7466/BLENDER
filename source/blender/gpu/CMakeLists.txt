@@ -863,6 +863,7 @@ if(WITH_GTESTS)
     if(WITH_VULKAN_BACKEND)
       list(APPEND TEST_SRC
         tests/memory_layout_test.cc
+        vulkan/vk_data_conversion_test.cc
       )
     endif()
 
