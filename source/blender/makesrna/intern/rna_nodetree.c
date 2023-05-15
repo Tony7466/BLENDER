@@ -4865,6 +4865,20 @@ bool rna_NodeSocketMaterial_default_value_poll(PointerRNA *UNUSED(ptr), PointerR
   return ma->gp_style == NULL;
 }
 
+bool rna_NodeSocketFunction_default_value_poll(PointerRNA *ptr, PointerRNA value)
+{
+  bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
+  bNodeTree *ngroup = value.data;
+
+  /* only allow node trees of the same type as the group node's tree */
+  if (ngroup->type != ntree->type) {
+    return false;
+  }
+
+  const char *disabled_hint = NULL;
+  return nodeGroupPoll(ntree, ngroup, &disabled_hint);
+}
+
 static int rna_NodeConvertColorSpace_from_color_space_get(struct PointerRNA *ptr)
 {
   bNode *node = (bNode *)ptr->data;
@@ -12666,14 +12680,40 @@ static void rna_def_node_socket_function(BlenderRNA *brna,
                                          const char *interface_idname)
 {
   StructRNA *srna;
+  PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, identifier, "NodeSocketStandard");
   RNA_def_struct_ui_text(srna, "Function Node Socket", "Function socket of a node");
   RNA_def_struct_sdna(srna, "bNodeSocket");
 
+  RNA_def_struct_sdna_from(srna, "bNodeSocketValueMaterial", "default_value");
+
+  prop = RNA_def_property(srna, "default_value", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, NULL, "value");
+  RNA_def_property_struct_type(prop, "NodeTree");
+  RNA_def_property_pointer_funcs(
+      prop, NULL, NULL, NULL, "rna_NodeSocketFunction_default_value_poll");
+  RNA_def_property_ui_text(prop, "Default Value", "Input value used for unconnected socket");
+  RNA_def_property_update(
+      prop, NC_NODE | NA_EDITED, "rna_NodeSocketStandard_value_and_relation_update");
+  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_REFCOUNT | PROP_CONTEXT_UPDATE);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+
   srna = RNA_def_struct(brna, interface_idname, "NodeSocketInterfaceStandard");
   RNA_def_struct_ui_text(srna, "Function Node Socket Interface", "Function socket of a node");
   RNA_def_struct_sdna(srna, "bNodeSocket");
+
+  RNA_def_struct_sdna_from(srna, "bNodeSocketValueMaterial", "default_value");
+
+  prop = RNA_def_property(srna, "default_value", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, NULL, "value");
+  RNA_def_property_struct_type(prop, "NodeTree");
+  RNA_def_property_pointer_funcs(
+      prop, NULL, NULL, NULL, "rna_NodeSocketFunction_default_value_poll");
+  RNA_def_property_ui_text(prop, "Default Value", "Input value used for unconnected socket");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeSocketInterface_update");
+  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_REFCOUNT);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
 }
 
 static void rna_def_node_socket_standard_types(BlenderRNA *brna)

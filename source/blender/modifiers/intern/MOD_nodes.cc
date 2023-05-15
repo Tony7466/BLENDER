@@ -85,6 +85,7 @@
 #include "ED_undo.h"
 #include "ED_viewer_path.hh"
 
+#include "NOD_closure.hh"
 #include "NOD_geometry.h"
 #include "NOD_geometry_nodes_lazy_function.hh"
 #include "NOD_node_declaration.hh"
@@ -141,6 +142,12 @@ static void add_used_ids_from_sockets(const ListBase &sockets, Set<ID *> &ids)
       case SOCK_IMAGE: {
         if (Image *image = ((bNodeSocketValueImage *)socket->default_value)->value) {
           ids.add(&image->id);
+        }
+        break;
+      }
+      case SOCK_FUNCTION: {
+        if (bNodeTree *ntree = ((bNodeSocketValueFunction *)socket->default_value)->value) {
+          ids.add(&ntree->id);
         }
         break;
       }
@@ -508,6 +515,11 @@ static std::unique_ptr<IDProperty, bke::idprop::IDPropertyDeleter> id_property_c
           socket.default_value);
       return bke::idprop::create(socket.identifier, reinterpret_cast<ID *>(value->value));
     }
+    case SOCK_FUNCTION: {
+      const bNodeSocketValueFunction *value = static_cast<const bNodeSocketValueFunction *>(
+          socket.default_value);
+      return bke::idprop::create(socket.identifier, reinterpret_cast<ID *>(value->value));
+    }
   }
   return nullptr;
 }
@@ -532,6 +544,7 @@ static bool id_property_type_matches_socket(const bNodeSocket &socket, const IDP
     case SOCK_TEXTURE:
     case SOCK_IMAGE:
     case SOCK_MATERIAL:
+    case SOCK_FUNCTION:
       return property.type == IDP_ID;
   }
   BLI_assert_unreachable();
@@ -609,6 +622,14 @@ static void init_socket_cpp_value_from_property(const IDProperty &property,
       ID *id = IDP_Id(&property);
       Material *material = (id && GS(id->name) == ID_MA) ? (Material *)id : nullptr;
       *(Material **)r_value = material;
+      break;
+    }
+    case SOCK_FUNCTION: {
+      using Closure = blender::nodes::Closure;
+
+      ID *id = IDP_Id(&property);
+      bNodeTree *ntree = (id && GS(id->name) == ID_NT) ? (bNodeTree *)id : nullptr;
+      new (r_value) Closure(Closure::make_from_node_tree(ntree));
       break;
     }
     default: {
@@ -1790,6 +1811,10 @@ static void draw_property_for_socket(const bContext &C,
     }
     case SOCK_IMAGE: {
       uiItemPointerR(row, md_ptr, rna_path, bmain_ptr, "images", socket.name, ICON_IMAGE);
+      break;
+    }
+    case SOCK_FUNCTION: {
+      uiItemPointerR(row, md_ptr, rna_path, bmain_ptr, "node_groups", socket.name, ICON_NODETREE);
       break;
     }
     default: {

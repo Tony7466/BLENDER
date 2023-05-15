@@ -256,9 +256,12 @@ SocketDeclarationPtr declaration_for_interface_socket(const bNodeTree &ntree,
       dst = std::move(value);
       break;
     }
-    case SOCK_FUNCTION:
-      dst = std::make_unique<decl::Function>();
+    case SOCK_FUNCTION: {
+      auto value = std::make_unique<decl::Function>();
+      value->default_value_fn = get_default_id_getter(ntree, io_socket);
+      dst = std::move(value);
       break;
+    }
     case SOCK_CUSTOM:
       std::unique_ptr<decl::Custom> decl = std::make_unique<decl::Custom>();
       decl->idname_ = io_socket.idname;
@@ -368,7 +371,8 @@ void node_function_signature_declare(const bNodeFunctionSignature &sig,
     r_declaration.inputs.append(std::move(decl));
   }
   for (const int socket_i : IndexRange(sig.outputs_num)) {
-    SocketDeclarationPtr decl = declaration_for_signature_parameter(sig.outputs[socket_i], SOCK_OUT);
+    SocketDeclarationPtr decl = declaration_for_signature_parameter(sig.outputs[socket_i],
+                                                                    SOCK_OUT);
     if (field_interface) {
       decl->output_field_dependency = field_interface->outputs[socket_i];
     }
@@ -543,7 +547,8 @@ bool BKE_node_is_connected_to_output(const bNodeTree *ntree, const bNode *node)
     for (const bNodeSocket *socket : next_node->output_sockets()) {
       for (const bNodeLink *link : socket->directly_linked_links()) {
         if (link->tonode->typeinfo->nclass == NODE_CLASS_OUTPUT &&
-            link->tonode->flag & NODE_DO_OUTPUT) {
+            link->tonode->flag & NODE_DO_OUTPUT)
+        {
           return true;
         }
         nodes_to_check.push(link->tonode);

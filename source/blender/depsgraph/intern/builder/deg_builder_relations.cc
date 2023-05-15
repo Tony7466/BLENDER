@@ -2647,6 +2647,12 @@ void DepsgraphRelationBuilder::build_nodetree_socket(bNodeSocket *socket)
       build_material(material);
     }
   }
+  else if (socket->type == SOCK_FUNCTION) {
+    bNodeTree *ntree = ((bNodeSocketValueFunction *)socket->default_value)->value;
+    if (ntree != nullptr) {
+      build_nodetree(ntree);
+    }
+  }
 }
 
 void DepsgraphRelationBuilder::build_nodetree(bNodeTree *ntree)

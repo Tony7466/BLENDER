@@ -1294,7 +1294,8 @@ static void std_node_socket_draw(
   }
 
   if ((sock->in_out == SOCK_OUT) || (sock->flag & SOCK_IS_LINKED) ||
-      (sock->flag & SOCK_HIDE_VALUE)) {
+      (sock->flag & SOCK_HIDE_VALUE))
+  {
     node_socket_button_label(C, layout, ptr, node_ptr, text);
     return;
   }
@@ -1416,6 +1417,10 @@ static void std_node_socket_draw(
       uiItemR(layout, ptr, "default_value", DEFAULT_FLAGS, text, 0);
       break;
     }
+    case SOCK_FUNCTION: {
+      uiItemR(layout, ptr, "default_value", DEFAULT_FLAGS, text, 0);
+      break;
+    }
     default:
       node_socket_button_label(C, layout, ptr, node_ptr, text);
       break;
@@ -1458,7 +1463,8 @@ static void std_node_socket_interface_draw(bContext * /*C*/, uiLayout *layout, P
     case SOCK_COLLECTION:
     case SOCK_IMAGE:
     case SOCK_TEXTURE:
-    case SOCK_MATERIAL: {
+    case SOCK_MATERIAL:
+    case SOCK_FUNCTION: {
       uiItemR(col, ptr, "default_value", DEFAULT_FLAGS, IFACE_("Default"), 0);
       break;
     }

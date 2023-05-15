@@ -694,6 +694,12 @@ static void library_foreach_node_socket(LibraryForeachIDData *data, bNodeSocket 
       BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, default_value.value, IDWALK_CB_USER);
       break;
     }
+    case SOCK_FUNCTION: {
+      bNodeSocketValueFunction &default_value =
+          *sock->default_value_typed<bNodeSocketValueFunction>();
+      BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, default_value.value, IDWALK_CB_USER);
+      break;
+    }
     case SOCK_FLOAT:
     case SOCK_VECTOR:
     case SOCK_RGBA:
@@ -704,7 +710,6 @@ static void library_foreach_node_socket(LibraryForeachIDData *data, bNodeSocket 
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
-    case SOCK_FUNCTION:
       break;
   }
 }
@@ -844,13 +849,15 @@ static void write_node_socket_default_value(BlendWriter *writer, bNodeSocket *so
     case SOCK_MATERIAL:
       BLO_write_struct(writer, bNodeSocketValueMaterial, sock->default_value);
       break;
+    case SOCK_FUNCTION:
+      BLO_write_struct(writer, bNodeSocketValueFunction, sock->default_value);
+      break;
     case SOCK_CUSTOM:
       /* Custom node sockets where default_value is defined uses custom properties for storage. */
       break;
     case __SOCK_MESH:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
-    case SOCK_FUNCTION:
       BLI_assert_unreachable();
       break;
   }
@@ -1319,6 +1326,11 @@ static void lib_link_node_socket(BlendLibReader *reader, Library *lib, bNodeSock
           reader, lib, &sock->default_value_typed<bNodeSocketValueMaterial>()->value);
       break;
     }
+    case SOCK_FUNCTION: {
+      BLO_read_id_address(
+          reader, lib, &sock->default_value_typed<bNodeSocketValueFunction>()->value);
+      break;
+    }
     case SOCK_FLOAT:
     case SOCK_VECTOR:
     case SOCK_RGBA:
@@ -1329,7 +1341,6 @@ static void lib_link_node_socket(BlendLibReader *reader, Library *lib, bNodeSock
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
-    case SOCK_FUNCTION:
       break;
   }
 }
@@ -1413,6 +1424,10 @@ static void expand_node_socket(BlendExpander *expander, bNodeSocket *sock)
       BLO_expand(expander, sock->default_value_typed<bNodeSocketValueMaterial>()->value);
       break;
     }
+    case SOCK_FUNCTION: {
+      BLO_expand(expander, sock->default_value_typed<bNodeSocketValueFunction>()->value);
+      break;
+    }
     case SOCK_FLOAT:
     case SOCK_VECTOR:
     case SOCK_RGBA:
@@ -1423,7 +1438,6 @@ static void expand_node_socket(BlendExpander *expander, bNodeSocket *sock)
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
-    case SOCK_FUNCTION:
       break;
   }
 }
@@ -2070,6 +2084,12 @@ static void socket_id_user_increment(bNodeSocket *sock)
       id_us_plus(reinterpret_cast<ID *>(default_value.value));
       break;
     }
+    case SOCK_FUNCTION: {
+      bNodeSocketValueFunction &default_value =
+          *sock->default_value_typed<bNodeSocketValueFunction>();
+      id_us_plus(reinterpret_cast<ID *>(default_value.value));
+      break;
+    }
     case SOCK_FLOAT:
     case SOCK_VECTOR:
     case SOCK_RGBA:
@@ -2080,7 +2100,6 @@ static void socket_id_user_increment(bNodeSocket *sock)
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
-    case SOCK_FUNCTION:
       break;
   }
 }
@@ -2117,6 +2136,12 @@ static bool socket_id_user_decrement(bNodeSocket *sock)
       id_us_min(reinterpret_cast<ID *>(default_value.value));
       return default_value.value != nullptr;
     }
+    case SOCK_FUNCTION: {
+      bNodeSocketValueFunction &default_value =
+          *sock->default_value_typed<bNodeSocketValueFunction>();
+      id_us_min(reinterpret_cast<ID *>(default_value.value));
+      return default_value.value != nullptr;
+    }
     case SOCK_FLOAT:
     case SOCK_VECTOR:
     case SOCK_RGBA:
@@ -2127,7 +2152,6 @@ static bool socket_id_user_decrement(bNodeSocket *sock)
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
-    case SOCK_FUNCTION:
       break;
   }
   return false;
@@ -2935,6 +2959,8 @@ static void *socket_value_storage(bNodeSocket &socket)
       return &socket.default_value_typed<bNodeSocketValueObject>()->value;
     case SOCK_MATERIAL:
       return &socket.default_value_typed<bNodeSocketValueMaterial>()->value;
+    case SOCK_FUNCTION:
+      return &socket.default_value_typed<bNodeSocketValueFunction>()->value;
     case SOCK_STRING:
       /* We don't want do this now! */
       return nullptr;
@@ -2992,7 +3018,8 @@ void node_socket_move_default_value(Main & /*bmain*/,
            SOCK_IMAGE,
            SOCK_MATERIAL,
            SOCK_TEXTURE,
-           SOCK_OBJECT))
+           SOCK_OBJECT,
+           SOCK_FUNCTION))
   {
     src_type.value_initialize(src_value);
   }

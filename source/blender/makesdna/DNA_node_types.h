@@ -756,6 +756,10 @@ typedef struct bNodeSocketValueMaterial {
   struct Material *value;
 } bNodeSocketValueMaterial;
 
+typedef struct bNodeSocketValueFunction {
+  struct bNodeTree *value;
+} bNodeSocketValueFunction;
+
 /* Data structs, for `node->storage`. */
 
 typedef enum CMPNodeMaskType {

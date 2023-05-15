@@ -6,8 +6,9 @@
  * \ingroup nodes
  */
 
-#include "BLI_cpp_type.hh"
 #include "BLI_generic_pointer.hh"
+
+struct bNodeTree;
 
 namespace blender::nodes {
 
@@ -31,11 +32,11 @@ class Closure {
   std::shared_ptr<ClosureInputValues> bound_values_;
 
  public:
-  Closure() = default;
-  Closure(const Closure &other) = default;
+  Closure();
+  Closure(const Closure &other);
   explicit Closure(const GeometryNodesLazyFunctionGraphInfo &lf_graph_info,
                    MutableSpan<GMutablePointer> &&bound_values);
-  ~Closure();
+  ~Closure() = default;
 
   Closure &operator=(const Closure &other) = default;
 
@@ -43,6 +44,8 @@ class Closure {
 
   Span<GMutablePointer> bound_values() const;
   MutableSpan<GMutablePointer> bound_values();
+
+  static Closure make_from_node_tree(const bNodeTree *node_tree);
 };
 
 }  // namespace blender::nodes

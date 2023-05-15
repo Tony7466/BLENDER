@@ -915,7 +915,8 @@ void DepsgraphNodeBuilder::build_object_modifiers(Object *object)
         }
         if (modifier_node->flag & DEPSOP_FLAG_USER_MODIFIED) {
           if (nmd->simulation_cache &&
-              nmd->simulation_cache->cache_state() == bke::sim::CacheState::Valid) {
+              nmd->simulation_cache->cache_state() == bke::sim::CacheState::Valid)
+          {
             nmd->simulation_cache->invalidate();
           }
         }
@@ -1766,6 +1767,9 @@ void DepsgraphNodeBuilder::build_nodetree_socket(bNodeSocket *socket)
   }
   else if (socket->type == SOCK_MATERIAL) {
     build_id((ID *)((bNodeSocketValueMaterial *)socket->default_value)->value);
+  }
+  else if (socket->type == SOCK_FUNCTION) {
+    build_id((ID *)((bNodeSocketValueFunction *)socket->default_value)->value);
   }
 }
 

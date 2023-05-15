@@ -421,6 +421,14 @@ void node_socket_init_default_value(bNodeSocket *sock)
       sock->default_value = dval;
       break;
     }
+    case SOCK_FUNCTION: {
+      bNodeSocketValueFunction *dval = MEM_cnew<bNodeSocketValueFunction>(
+          "node socket value function");
+      dval->value = nullptr;
+
+      sock->default_value = dval;
+      break;
+    }
   }
 }
 
@@ -510,6 +518,13 @@ void node_socket_copy_default_value(bNodeSocket *to, const bNodeSocket *from)
     case SOCK_MATERIAL: {
       bNodeSocketValueMaterial *toval = (bNodeSocketValueMaterial *)to->default_value;
       bNodeSocketValueMaterial *fromval = (bNodeSocketValueMaterial *)from->default_value;
+      *toval = *fromval;
+      id_us_plus(&toval->value->id);
+      break;
+    }
+    case SOCK_FUNCTION: {
+      bNodeSocketValueFunction *toval = (bNodeSocketValueFunction *)to->default_value;
+      bNodeSocketValueFunction *fromval = (bNodeSocketValueFunction *)from->default_value;
       *toval = *fromval;
       id_us_plus(&toval->value->id);
       break;
@@ -796,10 +811,13 @@ static bNodeSocketType *make_socket_type_material()
 
 static bNodeSocketType *make_socket_type_function()
 {
+  using Closure = blender::nodes::Closure;
+
   bNodeSocketType *socktype = make_standard_socket_type(SOCK_FUNCTION, PROP_NONE);
-  socktype->base_cpp_type = &blender::CPPType::get<blender::nodes::Closure>();
-  socktype->get_base_cpp_value = [](const bNodeSocket &/*socket*/, void *r_value) {
-    new (r_value) blender::nodes::Closure();
+  socktype->base_cpp_type = &blender::CPPType::get<Closure>();
+  socktype->get_base_cpp_value = [](const bNodeSocket &socket, void *r_value) {
+    const bNodeTree *ntree = ((bNodeSocketValueFunction *)socket.default_value)->value;
+    new (r_value) Closure(Closure::make_from_node_tree(ntree));
   };
   socktype->geometry_nodes_cpp_type = socktype->base_cpp_type;
   socktype->get_geometry_nodes_cpp_value = socktype->get_base_cpp_value;
