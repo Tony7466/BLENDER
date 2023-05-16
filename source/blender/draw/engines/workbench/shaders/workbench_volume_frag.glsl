@@ -212,7 +212,7 @@ vec4 volume_integration(vec3 ray_ori, vec3 ray_dir, float ray_inc, float ray_max
 
     if (final_transmittance <= 0.01) {
       /* Early out */
-      final_transmittance = 0;
+      final_transmittance = 0.0;
       break;
     }
   }
