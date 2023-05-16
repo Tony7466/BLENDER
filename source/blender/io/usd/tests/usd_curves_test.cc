@@ -55,8 +55,11 @@ static void check_bezier_curve(const pxr::UsdPrim bezier_prim,
 static void check_nurbs_curve(const pxr::UsdPrim nurbs_prim,
                               const int vertex_count,
                               const int knots_count,
-                              const int order,
-                              const bool is_periodic);
+                              const int order);
+static void check_nurbs_circle(const pxr::UsdPrim nurbs_prim,
+                               const int vertex_count,
+                               const int knots_count,
+                               const int order);
 
 class UsdCurvesTest : public BlendfileLoadingBaseTest {
  protected:
@@ -135,14 +138,14 @@ TEST_F(UsdCurvesTest, usd_export_curves)
     std::string prim_name = pxr::TfMakeValidIdentifier("NurbsCurve");
     pxr::UsdPrim test_prim = stage->GetPrimAtPath(pxr::SdfPath("/NurbsCurve/" + prim_name));
     EXPECT_TRUE(test_prim.IsValid());
-    check_nurbs_curve(test_prim, 6, 10, 4, false);
+    check_nurbs_curve(test_prim, 6, 20, 4);
   }
 
   {
     std::string prim_name = pxr::TfMakeValidIdentifier("NurbsCircle");
     pxr::UsdPrim test_prim = stage->GetPrimAtPath(pxr::SdfPath("/NurbsCircle/" + prim_name));
     EXPECT_TRUE(test_prim.IsValid());
-    check_nurbs_curve(test_prim, 8, 13, 3, true);
+    check_nurbs_circle(test_prim, 8, 13, 3);
   }
 
   {
@@ -263,8 +266,7 @@ static void check_bezier_curve(const pxr::UsdPrim bezier_prim,
 static void check_nurbs_curve(const pxr::UsdPrim nurbs_prim,
                               const int vertex_count,
                               const int knots_count,
-                              const int order,
-                              const bool is_periodic)
+                              const int order)
 {
   auto curve = pxr::UsdGeomNurbsCurves(nurbs_prim);
 
@@ -272,22 +274,19 @@ static void check_nurbs_curve(const pxr::UsdPrim nurbs_prim,
   pxr::VtArray<int> orders;
   order_attr.Get(&orders);
 
-  EXPECT_EQ(orders.size(), 1) << "Prim should only contain orders for a single curve";
-  EXPECT_EQ(orders[0], order) << "Curve should have order " << order;
+  EXPECT_EQ(orders.size(), 2) << "Prim should contain orders for two curves";
+  EXPECT_EQ(orders[0], order) << "Curves should have order " << order;
+  EXPECT_EQ(orders[1], order) << "Curves should have order " << order;
 
   pxr::UsdAttribute knots_attr = curve.GetKnotsAttr();
   pxr::VtArray<double> knots;
   knots_attr.Get(&knots);
 
   EXPECT_EQ(knots.size(), knots_count) << "Curve should have " << knots_count << " knots.";
-  if (is_periodic) {
-    EXPECT_EQ(knots[0], knots[1] - (knots[knots.size() - 2] - knots[knots.size() - 3]))
-        << "NURBS curve should satisfy this knots rule for a periodic curve";
-    EXPECT_EQ(knots[knots.size() - 1], knots[knots.size() - 2] + (knots[2] - knots[1]))
-        << "NURBS curve should satisfy this knots rule for a periodic curve";
-  }
-  else {
-    EXPECT_EQ(knots[0], knots[1])
+  for (int i = 0; i < 2; i++) {
+    int zeroth_knot_index = i * (knots_count / 2);
+
+    EXPECT_EQ(knots[zeroth_knot_index], knots[zeroth_knot_index + 1])
         << "NURBS curve should satisfy this knots rule for a nonperiodic curve";
     EXPECT_EQ(knots[knots.size() - 1], knots[knots.size() - 2])
         << "NURBS curve should satisfy this knots rule for a nonperiodic curve";
@@ -301,7 +300,50 @@ static void check_nurbs_curve(const pxr::UsdPrim nurbs_prim,
   pxr::VtArray<int> vert_counts;
   vert_count_attr.Get(&vert_counts);
 
-  EXPECT_EQ(vert_counts.size(), 1) << "Prim should only contains verts for a single curve";
+  EXPECT_EQ(vert_counts.size(), 2) << "Prim should contain verts for two curves";
+  EXPECT_EQ(vert_counts[0], vertex_count) << "Curve should have " << vertex_count << " verts.";
+  EXPECT_EQ(vert_counts[1], vertex_count) << "Curve should have " << vertex_count << " verts.";
+}
+
+/**
+ * Test that the provided prim is a valid NURBS curve. We also check it matches the expected
+ * wrap type, and has the expected number of vertices. For NURBS, we also validate that the knots
+ * layout matches the expected layout for periodic/non-periodic curves according to the USD spec.
+ */
+static void check_nurbs_circle(const pxr::UsdPrim nurbs_prim,
+                               const int vertex_count,
+                               const int knots_count,
+                               const int order)
+{
+  auto curve = pxr::UsdGeomNurbsCurves(nurbs_prim);
+
+  pxr::UsdAttribute order_attr = curve.GetOrderAttr();
+  pxr::VtArray<int> orders;
+  order_attr.Get(&orders);
+
+  EXPECT_EQ(orders.size(), 1) << "Prim should contain orders for one curves";
+  EXPECT_EQ(orders[0], order) << "Curve should have order " << order;
+
+  pxr::UsdAttribute knots_attr = curve.GetKnotsAttr();
+  pxr::VtArray<double> knots;
+  knots_attr.Get(&knots);
+
+  EXPECT_EQ(knots.size(), knots_count) << "Curve should have " << knots_count << " knots.";
+
+  EXPECT_EQ(knots[0], knots[1] - (knots[knots.size() - 2] - knots[knots.size() - 3]))
+      << "NURBS curve should satisfy this knots rule for a periodic curve";
+  EXPECT_EQ(knots[knots.size() - 1], knots[knots.size() - 2] + (knots[2] - knots[1]))
+      << "NURBS curve should satisfy this knots rule for a periodic curve";
+
+  auto widths_interp_token = curve.GetWidthsInterpolation();
+  EXPECT_EQ(widths_interp_token, pxr::UsdGeomTokens->vertex)
+      << "Widths interpolation token should be vertex for NURBS curve";
+
+  pxr::UsdAttribute vert_count_attr = curve.GetCurveVertexCountsAttr();
+  pxr::VtArray<int> vert_counts;
+  vert_count_attr.Get(&vert_counts);
+
+  EXPECT_EQ(vert_counts.size(), 1) << "Prim should contain verts for one curve";
   EXPECT_EQ(vert_counts[0], vertex_count) << "Curve should have " << vertex_count << " verts.";
 }
 

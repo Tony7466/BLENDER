@@ -29,13 +29,9 @@
 
 namespace blender::io::usd {
 
-USDCurvesWriter::USDCurvesWriter(const USDExporterContext &ctx) : USDAbstractWriter(ctx)
-{
-}
+USDCurvesWriter::USDCurvesWriter(const USDExporterContext &ctx) : USDAbstractWriter(ctx) {}
 
-USDCurvesWriter::~USDCurvesWriter()
-{
-}
+USDCurvesWriter::~USDCurvesWriter() {}
 
 pxr::UsdGeomCurves USDCurvesWriter::DefineUsdGeomBasisCurves(pxr::VtValue curve_basis,
                                                              const bool is_cyclic,
@@ -68,12 +64,13 @@ pxr::UsdGeomCurves USDCurvesWriter::DefineUsdGeomBasisCurves(pxr::VtValue curve_
 static void populate_curve_widths(const bke::CurvesGeometry &geometry, pxr::VtArray<float> &widths)
 {
   const bke::AttributeAccessor curve_attributes = geometry.attributes();
-  const VArray<float> radii = curve_attributes.lookup<float>("radius", ATTR_DOMAIN_POINT);
+  const bke::AttributeReader<float> radii = curve_attributes.lookup<float>("radius",
+                                                                           ATTR_DOMAIN_POINT);
 
-  widths.resize(radii.size());
+  widths.resize(radii.varray.size());
 
-  for (const int i : radii.index_range()) {
-    widths[i] = radii[i] * 2.0f;
+  for (const int i : radii.varray.index_range()) {
+    widths[i] = radii.varray[i] * 2.0f;
   }
 }
 
@@ -269,6 +266,8 @@ static void populate_curve_props_for_nurbs(const bke::CurvesGeometry &geometry,
                                            pxr::TfToken &interpolation,
                                            const bool is_cyclic)
 {
+  /* Order and range, when representing a batched NurbsCurve should be authored one value per
+   * curve.*/
   const int num_curves = geometry.curve_num;
   orders.resize(num_curves);
 
@@ -297,20 +296,23 @@ static void populate_curve_props_for_nurbs(const bke::CurvesGeometry &geometry,
     Array<float> temp_knots(knots_num);
     bke::curves::nurbs::calculate_knots(tot_points, mode, order, is_cyclic, temp_knots);
 
-    knots.resize(knots_num);
+    /* Knots should be the concatentation of all batched curves.
+     * https://graphics.pixar.com/usd/dev/api/class_usd_geom_nurbs_curves.html#details */
     for (int i_knot = 0; i_knot < knots_num; i_knot++) {
-      knots[i_knot] = double(temp_knots[i_knot]);
+      knots.push_back(double(temp_knots[i_knot]));
     }
 
-    /* Set end knots according to the USD spec for periodic curves
+    /* For USD it is required to set specific end knots for periodic/non-periodic curves
      * https://graphics.pixar.com/usd/dev/api/class_usd_geom_nurbs_curves.html#details */
+    int zeroth_knot_index = knots.size() - knots_num;
     if (is_cyclic) {
-      knots[0] = knots[1] - (knots[knots.size() - 2] - knots[knots.size() - 3]);
-      knots[knots.size() - 1] = knots[knots.size() - 2] + (knots[2] - knots[1]);
+      knots[zeroth_knot_index] = knots[zeroth_knot_index + 1] -
+                                 (knots[knots.size() - 2] - knots[knots.size() - 3]);
+      knots[knots.size() - 1] = knots[knots.size() - 2] +
+                                (knots[zeroth_knot_index + 2] - knots[zeroth_knot_index + 1]);
     }
     else {
-      /* Set end knots according to the USD spec for non-periodic curves */
-      knots[0] = knots[1];
+      knots[zeroth_knot_index] = knots[zeroth_knot_index + 1];
       knots[knots.size() - 1] = knots[knots.size() - 2];
     }
   }
