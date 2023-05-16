@@ -83,13 +83,13 @@ static pxr::TfToken get_curve_width_interpolation(const pxr::VtArray<float> &wid
     return pxr::TfToken();
   }
 
-  const size_t accumulatedControlPointCount = std::accumulate(
+  const size_t accumulated_control_point_count = std::accumulate(
       control_point_counts.begin(), control_point_counts.end(), 0);
 
   /* For Blender curves, radii are always stored per point. For linear curves, this should match
    * with USD's vertex interpolation. For cubic curves, this should match with USD's varying
    * interpolation. */
-  if (widths.size() == accumulatedControlPointCount) {
+  if (widths.size() == accumulated_control_point_count) {
     return pxr::UsdGeomTokens->vertex;
   }
 
@@ -102,7 +102,7 @@ static pxr::TfToken get_curve_width_interpolation(const pxr::VtArray<float> &wid
     return pxr::UsdGeomTokens->varying;
   }
 
-  WM_report(RPT_WARNING, "Curve width size not supported for USD interpolation.");
+  WM_report(RPT_WARNING, "Curve width size not supported for USD interpolation");
   return pxr::TfToken();
 }
 
@@ -389,7 +389,7 @@ void USDCurvesWriter::do_write(HierarchyContext &context)
       });
 
   if (number_of_curve_types > 1) {
-    WM_report(RPT_WARNING, "Cannot export mixed curve types in the same Curves object.");
+    WM_report(RPT_WARNING, "Cannot export mixed curve types in the same Curves object");
     return;
   }
 
@@ -406,7 +406,7 @@ void USDCurvesWriter::do_write(HierarchyContext &context)
 
   if (!all_same_cyclic_type) {
     WM_report(RPT_WARNING,
-              "Cannot export mixed cyclic and non-cyclic curves in the same Curves object.");
+              "Cannot export mixed cyclic and non-cyclic curves in the same Curves object");
     return;
   }
 
