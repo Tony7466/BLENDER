@@ -134,16 +134,9 @@ static void node_update(bNodeTree *ntree, bNode *node)
 
 static const StringRefNull get_grid_name(GField &field)
 {
-  if (field.node().field_inputs() != nullptr) {
-    const std::shared_ptr<const fn::FieldInputs> &field_inputs = field.node().field_inputs();
-
-    for (const fn::FieldInput &field_input : field_inputs->deduplicated_nodes) {
-      if (const auto *attribute_field_input = dynamic_cast<const AttributeFieldInput *>(
-              &field_input))
-      {
-        return attribute_field_input->attribute_name();
-      }
-    }
+  if (const auto *attribute_field_input = dynamic_cast<const AttributeFieldInput *>(&field.node()))
+  {
+    return attribute_field_input->attribute_name();
   }
   return "";
 }
