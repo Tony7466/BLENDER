@@ -272,7 +272,7 @@ class device_memory {
   /* Host allocation on the device. All host_pointer memory should be
    * allocated with these functions, for devices that support using
    * the same pointer for host and device. */
-  void *host_alloc(size_t size);
+  void *host_alloc(size_t size, bool pinned = false);
   void host_free();
 
   /* Device memory allocation and copying. */
@@ -289,6 +289,7 @@ class device_memory {
   Device *original_device;
   bool need_realloc_;
   bool modified;
+  bool pinned;
 };
 
 /* Device Only Memory
@@ -373,15 +374,16 @@ template<typename T> class device_vector : public device_memory {
   }
 
   /* Host memory allocation. */
-  T *alloc(size_t width, size_t height = 0, size_t depth = 0)
+  T *alloc(size_t width, size_t height = 0, size_t depth = 0, bool pinned_mem = false)
   {
     size_t new_size = size(width, height, depth);
 
     if (new_size != data_size) {
       device_free();
       host_free();
-      host_pointer = host_alloc(sizeof(T) * new_size);
+      host_pointer = host_alloc(sizeof(T) * new_size, pinned);
       modified = true;
+      pinned = pinned_mem;
       assert(device_pointer == 0);
     }
 
@@ -400,7 +402,7 @@ template<typename T> class device_vector : public device_memory {
     size_t new_size = size(width, height, depth);
 
     if (new_size != data_size) {
-      void *new_ptr = host_alloc(sizeof(T) * new_size);
+      void *new_ptr = host_alloc(sizeof(T) * new_size, pinned);
 
       if (new_size && data_size) {
         size_t min_size = ((new_size < data_size) ? new_size : data_size);

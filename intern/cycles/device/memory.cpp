@@ -37,13 +37,18 @@ device_memory::~device_memory()
   assert(shared_counter == 0);
 }
 
-void *device_memory::host_alloc(size_t size)
+void *device_memory::host_alloc(size_t size, bool pinned_mem)
 {
   if (!size) {
     return 0;
   }
 
-  void *ptr = util_aligned_malloc(size, MIN_ALIGNMENT_CPU_DATA_TYPES);
+  void *ptr = NULL;
+  // if(!pinned_mem) {
+  //   ptr = util_aligned_malloc(size, MIN_ALIGNMENT_CPU_DATA_TYPES);
+  // } else {
+    device->alloc_host(ptr, size, pinned);
+  // }
 
   if (ptr) {
     util_guarded_mem_alloc(size);
@@ -59,7 +64,12 @@ void device_memory::host_free()
 {
   if (host_pointer) {
     util_guarded_mem_free(memory_size());
-    util_aligned_free((void *)host_pointer);
+    // if(!pinned) {
+    //   util_aligned_free((void *)host_pointer);
+    // } else {
+      device->free_host((void *)host_pointer);
+    // }   
+  
     host_pointer = 0;
   }
 }
@@ -211,7 +221,7 @@ void *device_texture::alloc(const size_t width, const size_t height, const size_
   if (new_size != data_size) {
     device_free();
     host_free();
-    host_pointer = host_alloc(data_elements * datatype_size(data_type) * new_size);
+    host_pointer = host_alloc(data_elements * datatype_size(data_type) * new_size, false);
     assert(device_pointer == 0);
   }
 

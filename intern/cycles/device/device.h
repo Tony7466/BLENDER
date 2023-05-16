@@ -293,6 +293,9 @@ class Device {
   virtual void mem_zero(device_memory &mem) = 0;
   virtual void mem_free(device_memory &mem) = 0;
 
+  virtual bool alloc_host(void *&shared_pointer, size_t size, bool pinned = false);
+  virtual void free_host(void *shared_pointer);
+  
  private:
   /* Indicted whether device types and devices lists were initialized. */
   static bool need_types_update, need_devices_update;
@@ -379,9 +382,9 @@ class GPUDevice : public Device {
 
   virtual void free_device(void *device_pointer) = 0;
 
-  virtual bool alloc_host(void *&shared_pointer, size_t size) = 0;
+  //virtual bool alloc_host(void *&shared_pointer, size_t size, bool pinned = false) = 0;
 
-  virtual void free_host(void *shared_pointer) = 0;
+  //virtual void free_host(void *shared_pointer) = 0;
 
   /* This function should return device pointer corresponding to shared pointer, which
    * is host buffer, allocated in `alloc_host`. The function should `true`, if such
