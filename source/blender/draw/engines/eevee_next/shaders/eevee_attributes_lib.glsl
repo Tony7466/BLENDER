@@ -190,11 +190,8 @@ float attr_load_float(samplerBuffer cd_buf)
 #    error draw_object_infos is mandatory for volume objects
 #  endif
 
-/** WARNING: these are not attributes, these are global vars. */
-vec3 worldPosition = vec3(0.0);
+/** WARNING: This is a global var, not an attribute. */
 vec3 objectPosition = vec3(0.0);
-vec3 viewPosition = vec3(0.0);
-vec3 viewNormal = vec3(0.0);
 
 vec3 g_orco = vec3(0.0);
 int g_attr_id = 0;
