@@ -46,6 +46,8 @@ bool VKBuffer::create(int64_t size_in_bytes,
                       VkBufferUsageFlagBits buffer_usage)
 {
   BLI_assert(!is_allocated());
+  BLI_assert(vk_buffer_ == VK_NULL_HANDLE);
+  BLI_assert(mapped_memory_ == nullptr);
 
   size_in_bytes_ = size_in_bytes;
   const VKDevice &device = VKBackend::get().device_get();

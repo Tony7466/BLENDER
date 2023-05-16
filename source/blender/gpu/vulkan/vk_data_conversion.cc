@@ -238,6 +238,7 @@ static ConversionType type_of_conversion_uint(eGPUTextureFormat device_format)
     case GPU_RGBA32UI:
     case GPU_RG32UI:
     case GPU_R32UI:
+    case GPU_DEPTH_COMPONENT24:
       return ConversionType::PASS_THROUGH;
 
     case GPU_RGBA16UI:
@@ -304,7 +305,6 @@ static ConversionType type_of_conversion_uint(eGPUTextureFormat device_format)
     case GPU_SRGB8:
     case GPU_RGB9_E5:
     case GPU_DEPTH_COMPONENT32F:
-    case GPU_DEPTH_COMPONENT24:
     case GPU_DEPTH_COMPONENT16:
       return ConversionType::UNSUPPORTED;
   }
@@ -935,7 +935,8 @@ void convert_device_to_host(void *dst_buffer,
                             eGPUTextureFormat device_format)
 {
   ConversionType conversion_type = reversed(host_to_device(host_format, device_format));
-  BLI_assert(conversion_type != ConversionType::UNSUPPORTED);
+  BLI_assert_msg(conversion_type != ConversionType::UNSUPPORTED,
+                 "Data conversion between host_format and device_format isn't supported (yet).");
   convert_buffer(dst_buffer, src_buffer, buffer_size, device_format, conversion_type);
 }
 
