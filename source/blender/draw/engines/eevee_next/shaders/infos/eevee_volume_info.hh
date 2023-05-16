@@ -51,7 +51,7 @@ GPU_SHADER_CREATE_INFO(eevee_volume_integration)
     .image(1, GPU_R11F_G11F_B10F, Qualifier::WRITE, ImageType::FLOAT_3D, "out_transmittance_img")
     .do_static_compilation(true);
 
-GPU_SHADER_CREATE_INFO(eevee_volume_resolve_opaque)
+GPU_SHADER_CREATE_INFO(eevee_volume_resolve)
     .additional_info("eevee_shared")
     .additional_info("eevee_volume_lib")
     .additional_info("draw_fullscreen")
@@ -59,4 +59,5 @@ GPU_SHADER_CREATE_INFO(eevee_volume_resolve_opaque)
     .sampler(0, ImageType::DEPTH_2D, "depth_tx")
     .fragment_out(0, Type::VEC4, "out_radiance", DualBlend::SRC_0)
     .fragment_out(0, Type::VEC4, "out_transmittance", DualBlend::SRC_1)
+    /** TODO(Miguel Pozo): Volume RenderPasses. */
     .do_static_compilation(true);
