@@ -386,7 +386,8 @@ void SEQ_retiming_offset_handle(const Scene *scene,
   corrected_offset = min_ii(corrected_offset, offset_max);
 
   if (SEQ_retiming_handle_is_transition_type(handle) ||
-      SEQ_retiming_handle_is_transition_type(prev_handle)) {
+      SEQ_retiming_handle_is_transition_type(prev_handle))
+  {
     seq_retiming_offset_transition_handle(scene, seq, handle, corrected_offset);
   }
   else {
@@ -454,7 +455,8 @@ SeqRetimingHandle *SEQ_retiming_add_transition(const Scene *scene,
                                                const int offset)
 {
   if (SEQ_retiming_handle_is_transition_type(handle) ||
-      SEQ_retiming_handle_is_transition_type(handle - 1)) {
+      SEQ_retiming_handle_is_transition_type(handle - 1))
+  {
     return nullptr;
   }
 
