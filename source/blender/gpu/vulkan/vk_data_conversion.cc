@@ -726,11 +726,11 @@ constexpr uint8_t SHIFT_R = 0;
 static void convert(FLOAT3 &dst, const B10F_G11G_R11F &src)
 {
   dst.value.x = uint32_t_to_float(
-      convert_float_formats<FormatF32, FormatF11>((src.value >> SHIFT_R) && MASK_11_BITS));
+      convert_float_formats<FormatF32, FormatF11>((src.value >> SHIFT_R) & MASK_11_BITS));
   dst.value.y = uint32_t_to_float(
-      convert_float_formats<FormatF32, FormatF11>((src.value >> SHIFT_G) && MASK_11_BITS));
+      convert_float_formats<FormatF32, FormatF11>((src.value >> SHIFT_G) & MASK_11_BITS));
   dst.value.z = uint32_t_to_float(
-      convert_float_formats<FormatF32, FormatF10>((src.value >> SHIFT_B) && MASK_10_BITS));
+      convert_float_formats<FormatF32, FormatF10>((src.value >> SHIFT_B) & MASK_10_BITS));
 }
 
 static void convert(B10F_G11G_R11F &dst, const FLOAT3 &src)
