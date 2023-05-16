@@ -9,8 +9,6 @@
 
 #include "BLI_color.hh"
 
-#include "Imath/half.h"
-
 namespace blender::gpu {
 
 /* -------------------------------------------------------------------- */
@@ -549,6 +547,26 @@ static ConversionType reversed(ConversionType type)
 /** \name Data Conversion
  * \{ */
 
+static uint32_t float_to_uint32_t(float value)
+{
+  union {
+    float fl;
+    uint32_t u;
+  } float_to_bits;
+  float_to_bits.fl = value;
+  return float_to_bits.u;
+}
+
+static float uint32_t_to_float(uint32_t value)
+{
+  union {
+    float fl;
+    uint32_t u;
+  } float_to_bits;
+  float_to_bits.u = value;
+  return float_to_bits.fl;
+}
+
 template<typename InnerType> struct ComponentValue {
   InnerType value;
 };
@@ -681,12 +699,12 @@ void convert(DestinationType &dst, const SourceType &src)
 
 static void convert(F16 &dst, const F32 &src)
 {
-  dst.value = imath_float_to_half(src.value);
+  dst.value = convert_float_formats<FormatF16, FormatF32>(float_to_uint32_t(src.value));
 }
 
 static void convert(F32 &dst, const F16 &src)
 {
-  dst.value = imath_half_to_float(src.value);
+  dst.value = uint32_t_to_float(convert_float_formats<FormatF32, FormatF16>(src.value));
 }
 
 static void convert(SRGBA8 &dst, const FLOAT4 &src)
@@ -705,41 +723,21 @@ constexpr uint8_t SHIFT_B = 22;
 constexpr uint8_t SHIFT_G = 11;
 constexpr uint8_t SHIFT_R = 0;
 
-static uint32_t float_to_uint32_t(float value)
-{
-  union {
-    float fl;
-    uint32_t u;
-  } float_to_bits;
-  float_to_bits.fl = value;
-  return float_to_bits.u;
-}
-
-static float uint32_t_to_float(uint32_t value)
-{
-  union {
-    float fl;
-    uint32_t u;
-  } float_to_bits;
-  float_to_bits.u = value;
-  return float_to_bits.fl;
-}
-
 static void convert(FLOAT3 &dst, const B10F_G11G_R11F &src)
 {
   dst.value.x = uint32_t_to_float(
-      convert_float_formats<Format32F, Format11F>((src.value >> SHIFT_R) && MASK_11_BITS));
+      convert_float_formats<FormatF32, FormatF11>((src.value >> SHIFT_R) && MASK_11_BITS));
   dst.value.y = uint32_t_to_float(
-      convert_float_formats<Format32F, Format11F>((src.value >> SHIFT_G) && MASK_11_BITS));
+      convert_float_formats<FormatF32, FormatF11>((src.value >> SHIFT_G) && MASK_11_BITS));
   dst.value.z = uint32_t_to_float(
-      convert_float_formats<Format32F, Format11F>((src.value >> SHIFT_B) && MASK_10_BITS));
+      convert_float_formats<FormatF32, FormatF10>((src.value >> SHIFT_B) && MASK_10_BITS));
 }
 
 static void convert(B10F_G11G_R11F &dst, const FLOAT3 &src)
 {
-  uint32_t r = convert_float_formats<Format11F, Format32F>(float_to_uint32_t(src.value.x));
-  uint32_t g = convert_float_formats<Format11F, Format32F>(float_to_uint32_t(src.value.y));
-  uint32_t b = convert_float_formats<Format10F, Format32F>(float_to_uint32_t(src.value.z));
+  uint32_t r = convert_float_formats<FormatF11, FormatF32>(float_to_uint32_t(src.value.x));
+  uint32_t g = convert_float_formats<FormatF11, FormatF32>(float_to_uint32_t(src.value.y));
+  uint32_t b = convert_float_formats<FormatF10, FormatF32>(float_to_uint32_t(src.value.z));
   dst.value = r << SHIFT_R | g << SHIFT_G | b << SHIFT_B;
 }
 
