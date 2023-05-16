@@ -364,13 +364,11 @@ static void retime_handle_draw(const bContext *C,
   const float top = UI_view2d_view_to_region_y(v2d, strip_y_rescale(seq, 1.0f)) - 2;
   const float handle_position = UI_view2d_view_to_region_x(v2d, handle_x);
 
-  const float nongreen = handle->flag ? 0.0f : 1.0f;
-
   if (seq == gizmo->mouse_over_seq && handle_x == gizmo->mouse_over_handle_x) {
-    immUniformColor4f(1.0f * nongreen, 1.0f, 1.0f * nongreen, 1.0f);
+    immUniformColor4f(1.0f, 1.0f, 1.0f, 1.0f);
   }
   else {
-    immUniformColor4f(0.65f * nongreen, 0.65f, 0.65f * nongreen, 1.0f);
+    immUniformColor4f(0.65f, 0.65f, 0.65f, 1.0f);
   }
 
   immBegin(GPU_PRIM_TRI_FAN, 3);
