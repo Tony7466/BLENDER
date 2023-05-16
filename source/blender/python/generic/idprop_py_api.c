@@ -266,7 +266,7 @@ static int BPy_IDGroup_SetName(BPy_IDProperty *self, PyObject *value, void *UNUS
     return -1;
   }
 
-  memcpy(self->prop->name, name, name_size);
+  memcpy(self->prop->name, name, name_size + 1);
   return 0;
 }
 
