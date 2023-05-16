@@ -8,6 +8,7 @@
 
 #include "CLG_log.h"
 
+#include "DNA_mesh_types.h"
 #include "DNA_movieclip_types.h"
 
 #include "BLI_assert.h"
@@ -15,15 +16,67 @@
 
 #include "BKE_main.h"
 #include "BKE_mesh_legacy_convert.h"
+#include "BKE_modifier.h"
+#include "BKE_node.h"
 #include "BKE_tracking.h"
 
 #include "BLO_readfile.h"
+
+#include "BLT_translation.h"
 
 #include "readfile.h"
 
 #include "versioning_common.h"
 
 // static CLG_LogRef LOG = {"blo.readfile.doversion"};
+
+static bNodeTree *add_realize_node_tree(Main &bmain)
+{
+  bNodeTree *node_tree = ntreeAddTree(&bmain, DATA_("Auto Smooth 4.0 Legacy"), "GeometryNodeTree");
+
+  ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketGeometry", "Geometry");
+  ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketFloatAngle", "Angle");
+  ntreeAddSocketInterface(node_tree, SOCK_OUT, "NodeSocketGeometry", "Geometry");
+
+  bNode *group_input = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
+  group_input->locx = -400.0f;
+  bNode *group_output = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_OUTPUT);
+  group_output->locx = 500.0f;
+  group_output->flag |= NODE_DO_OUTPUT;
+
+  bNode *shade_smooth = nodeAddNode(nullptr, node_tree, "GeometryNodeSetShadeSmooth");
+
+  bNode *store_node = nodeAddNode(nullptr, node_tree, "GeometryNodeStoreNamedAttribute");
+  static_cast<NodeGeometryStoreNamedAttribute *>(store_node->storage)->data_type = CD_PROP_BOOL;
+  static_cast<NodeGeometryStoreNamedAttribute *>(store_node->storage)->domain = ATTR_DOMAIN_EDGE;
+  bNodeSocket *name = nodeFindSocket(store_node, SOCK_IN, DATA_("Name"));
+  STRNCPY(name->default_value_typed<bNodeSocketValueString>()->value, "sharp_face");
+
+  bNode *greater_node = nodeAddNode(nullptr, node_tree, "FunctionNodeCompare");
+  static_cast<NodeFunctionCompare *>(store_node->storage)->operation = NODE_COMPARE_GREATER_THAN;
+  static_cast<NodeFunctionCompare *>(store_node->storage)->data_type = CD_PROP_FLOAT;
+}
+
+void do_versions_after_linking_400(FileData * /*fd*/, Main *bmain)
+{
+  bNodeTree *auto_smooth_node_tree = nullptr;
+  LISTBASE_FOREACH (Object *, object, &bmain->objects) {
+    if (object->type == OB_MESH) {
+      Mesh *mesh = static_cast<Mesh *>(object->data);
+      if (mesh->flag & ME_AUTOSMOOTH) {
+        if (!auto_smooth_node_tree) {
+          auto_smooth_node_tree = add_realize_node_tree(*bmain);
+        }
+        auto *md = reinterpret_cast<NodesModifierData *>(BKE_modifier_new(eModifierType_Nodes));
+        STRNCPY(md->modifier.name, DATA_("Auto Smooth 4.0 Legacy"));
+        BKE_modifier_unique_name(&object->modifiers, &md->modifier);
+        md->node_group = auto_smooth_node_tree;
+
+        BLI_addtail(&object->modifiers, md);
+      }
+    }
+  }
+}
 
 static void version_mesh_legacy_to_struct_of_array_format(Mesh &mesh)
 {
