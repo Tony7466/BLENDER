@@ -871,6 +871,14 @@ static void tag_component_positions_changed(void *owner)
   }
 }
 
+static void tag_component_corner_normals_dirty(void *owner)
+{
+  Mesh *mesh = static_cast<Mesh *>(owner);
+  if (mesh != nullptr) {
+    mesh->runtime->corner_normals_dirty = true;
+  }
+}
+
 class VArrayImpl_For_VertexWeights final : public VMutableArrayImpl<float> {
  private:
   MDeformVert *dverts_;
@@ -1195,7 +1203,7 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
                                                    BuiltinAttributeProvider::Creatable,
                                                    BuiltinAttributeProvider::Deletable,
                                                    face_access,
-                                                   nullptr);
+                                                   tag_component_corner_normals_dirty);
 
   static BuiltinCustomDataLayerProvider sharp_edge("sharp_edge",
                                                    ATTR_DOMAIN_EDGE,
@@ -1204,7 +1212,7 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
                                                    BuiltinAttributeProvider::Creatable,
                                                    BuiltinAttributeProvider::Deletable,
                                                    edge_access,
-                                                   nullptr);
+                                                   tag_component_corner_normals_dirty);
 
   static const auto crease_clamp = mf::build::SI1_SO<float, float>(
       "Crease Clamp",
