@@ -42,7 +42,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_legacy_convert.h"
 #include "BKE_mesh_runtime.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_object.h"
 #include "BKE_scene.h"
 
@@ -516,7 +516,7 @@ char *BoneExtended::get_name()
 
 void BoneExtended::set_name(char *aName)
 {
-  BLI_strncpy(name, aName, MAXBONENAME);
+  STRNCPY(name, aName);
 }
 
 int BoneExtended::get_chain_length()
@@ -771,7 +771,7 @@ void bc_enable_fcurves(bAction *act, char *bone_name)
   if (bone_name) {
     char bone_name_esc[sizeof(Bone::name) * 2];
     BLI_str_escape(bone_name_esc, bone_name, sizeof(bone_name_esc));
-    BLI_snprintf(prefix, sizeof(prefix), "pose.bones[\"%s\"]", bone_name_esc);
+    SNPRINTF(prefix, "pose.bones[\"%s\"]", bone_name_esc);
   }
 
   for (fcu = (FCurve *)act->curves.first; fcu; fcu = fcu->next) {
@@ -1114,7 +1114,7 @@ static std::string bc_get_uvlayer_name(Mesh *me, int layer)
 static bNodeTree *prepare_material_nodetree(Material *ma)
 {
   if (ma->nodetree == nullptr) {
-    ntreeAddTreeEmbedded(nullptr, &ma->id, "Shader Nodetree", "ShaderNodeTree");
+    blender::bke::ntreeAddTreeEmbedded(nullptr, &ma->id, "Shader Nodetree", "ShaderNodeTree");
     ma->use_nodes = true;
   }
   return ma->nodetree;
