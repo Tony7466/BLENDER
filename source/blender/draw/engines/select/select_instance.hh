@@ -24,7 +24,7 @@
 
 namespace blender::draw::select {
 
-enum class eSelectionType { DISABLED = 0, ENABLED = 1 };
+enum class SelectionType { DISABLED = 0, ENABLED = 1 };
 
 class ID {
  private:
@@ -48,29 +48,29 @@ class ID {
  * To be used when not using a #PassMain which can pass the select ID via CustomID.
  */
 struct SelectBuf {
-  const eSelectionType selection_type;
+  const SelectionType selection_type;
 
   StorageVectorBuffer<uint32_t> select_buf = {"select_buf"};
 
-  SelectBuf(const eSelectionType selection_type) : selection_type(selection_type){};
+  SelectBuf(const SelectionType selection_type) : selection_type(selection_type){};
 
   void select_clear()
   {
-    if (selection_type != eSelectionType::DISABLED) {
+    if (selection_type != SelectionType::DISABLED) {
       select_buf.clear();
     }
   }
 
   void select_append(ID select_id)
   {
-    if (selection_type != eSelectionType::DISABLED) {
+    if (selection_type != SelectionType::DISABLED) {
       select_buf.append(select_id.get());
     }
   }
 
   void select_bind(PassSimple &pass)
   {
-    if (selection_type != eSelectionType::DISABLED) {
+    if (selection_type != SelectionType::DISABLED) {
       select_buf.push_update();
       pass.bind_ssbo(SELECT_ID_IN, &select_buf);
     }
@@ -82,7 +82,7 @@ struct SelectBuf {
  * The id's are contiguous so that we can create a destination buffer.
  */
 struct SelectMap {
-  const eSelectionType selection_type;
+  const SelectionType selection_type;
 
   /** Mapping between internal IDs and `object->runtime.select_id`. */
   Vector<uint> select_id_map;
@@ -99,13 +99,13 @@ struct SelectMap {
   /** Will remove the depth test state from any pass drawing objects with select id. */
   bool disable_depth_test;
 
-  SelectMap(const eSelectionType selection_type) : selection_type(selection_type){};
+  SelectMap(const SelectionType selection_type) : selection_type(selection_type){};
 
   /* TODO(fclem): The sub_object_id id should eventually become some enum or take a sub-object
    * reference directly. This would isolate the selection logic to this class. */
   [[nodiscard]] const ID select_id(const ObjectRef &ob_ref, uint sub_object_id = 0)
   {
-    if (selection_type == eSelectionType::DISABLED) {
+    if (selection_type == SelectionType::DISABLED) {
       return {0};
     }
 
@@ -125,7 +125,7 @@ struct SelectMap {
 
   void begin_sync()
   {
-    if (selection_type == eSelectionType::DISABLED) {
+    if (selection_type == SelectionType::DISABLED) {
       return;
     }
 
@@ -159,7 +159,7 @@ struct SelectMap {
   /** IMPORTANT: Changes the draw state. Need to be called after the pass own state_set. */
   void select_bind(PassSimple &pass)
   {
-    if (selection_type == eSelectionType::DISABLED) {
+    if (selection_type == SelectionType::DISABLED) {
       return;
     }
 
@@ -174,7 +174,7 @@ struct SelectMap {
   /** IMPORTANT: Changes the draw state. Need to be called after the pass own state_set. */
   void select_bind(PassMain &pass)
   {
-    if (selection_type == eSelectionType::DISABLED) {
+    if (selection_type == SelectionType::DISABLED) {
       return;
     }
 
@@ -191,7 +191,7 @@ struct SelectMap {
 
   void end_sync()
   {
-    if (selection_type == eSelectionType::DISABLED) {
+    if (selection_type == SelectionType::DISABLED) {
       return;
     }
 
@@ -209,7 +209,7 @@ struct SelectMap {
 
   void read_result()
   {
-    if (selection_type == eSelectionType::DISABLED) {
+    if (selection_type == SelectionType::DISABLED) {
       return;
     }
 

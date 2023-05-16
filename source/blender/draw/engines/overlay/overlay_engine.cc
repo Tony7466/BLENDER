@@ -55,7 +55,7 @@ static void OVERLAY_engine_init(void *vedata)
 
   /* Allocate instance. */
   if (data->instance == nullptr) {
-    data->instance = new Instance(select::eSelectionType::DISABLED);
+    data->instance = new Instance(select::SelectionType::DISABLED);
   }
 
   OVERLAY_PrivateData *pd = stl->pd;

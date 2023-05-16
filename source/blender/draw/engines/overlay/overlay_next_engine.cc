@@ -47,7 +47,7 @@ static void OVERLAY_next_engine_init(void *vedata)
   OVERLAY_Data *ved = reinterpret_cast<OVERLAY_Data *>(vedata);
 
   if (ved->instance == nullptr) {
-    ved->instance = new Instance(select::eSelectionType::DISABLED);
+    ved->instance = new Instance(select::SelectionType::DISABLED);
   }
 
   reinterpret_cast<Instance *>(ved->instance)->init();

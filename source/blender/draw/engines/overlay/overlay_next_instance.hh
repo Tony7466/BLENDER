@@ -19,7 +19,7 @@ namespace blender::draw::overlay {
 /* Selection engine reuse most of the Overlay engine by creating selection IDs for each
  * selectable component and using a special shaders for drawing.*/
 class Instance {
-  const eSelectionType selection_type_;
+  const SelectionType selection_type_;
 
  public:
   /* WORKAROUND: Legacy. Move to grid pass. */
@@ -39,7 +39,7 @@ class Instance {
   Empties empties = {selection_type_};
   Grid grid = {selection_type_};
 
-  Instance(const eSelectionType selection_type) : selection_type_(selection_type){};
+  Instance(const SelectionType selection_type) : selection_type_(selection_type){};
 
   ~Instance()
   {

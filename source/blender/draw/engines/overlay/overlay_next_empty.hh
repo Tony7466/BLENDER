@@ -14,13 +14,13 @@ class Empties {
   using EmptyInstanceBuf = ShapeInstanceBuf<ExtraInstanceData>;
 
  private:
-  const eSelectionType selection_type_;
+  const SelectionType selection_type_;
 
   PassSimple empty_ps_ = {"Empties"};
   PassSimple empty_in_front_ps_ = {"Empties_In_front"};
 
   struct CallBuffers {
-    const eSelectionType selection_type_;
+    const SelectionType selection_type_;
     EmptyInstanceBuf plain_axes_buf = {selection_type_, "plain_axes_buf"};
     EmptyInstanceBuf single_arrow_buf = {selection_type_, "single_arrow_buf"};
     EmptyInstanceBuf cube_buf = {selection_type_, "cube_buf"};
@@ -32,7 +32,7 @@ class Empties {
   } call_buffers_[2] = {{selection_type_}, {selection_type_}};
 
  public:
-  Empties(const eSelectionType selection_type) : selection_type_(selection_type){};
+  Empties(const SelectionType selection_type) : selection_type_(selection_type){};
 
   void begin_sync()
   {
