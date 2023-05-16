@@ -30,7 +30,11 @@ static void sh_node_tex_brick_declare(NodeDeclarationBuilder &b)
       .max(0.125f)
       .default_value(0.02f)
       .no_muted_links();
-  b.add_input<decl::Float>(N_("Mortar Smooth")).min(0.0f).max(1.0f).no_muted_links();
+  b.add_input<decl::Float>(N_("Mortar Smooth"))
+      .min(0.0f)
+      .max(1.0f)
+      .default_value(0.1f)
+      .no_muted_links();
   b.add_input<decl::Float>(N_("Bias")).min(-1.0f).max(1.0f).no_muted_links();
   b.add_input<decl::Float>(N_("Brick Width"))
       .min(0.01f)
@@ -78,12 +82,6 @@ static void node_shader_init_tex_brick(bNodeTree * /*ntree*/, bNode *node)
   tex->squash_freq = 2;
 
   node->storage = tex;
-
-  LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
-    if (STREQ(sock->name, "Mortar Smooth")) {
-      ((bNodeSocketValueFloat *)sock->default_value)->value = 0.1f;
-    }
-  }
 }
 
 static int node_shader_gpu_tex_brick(GPUMaterial *mat,
@@ -280,7 +278,7 @@ void register_node_type_sh_tex_brick()
   sh_fn_node_type_base(&ntype, SH_NODE_TEX_BRICK, "Brick Texture", NODE_CLASS_TEXTURE);
   ntype.declare = file_ns::sh_node_tex_brick_declare;
   ntype.draw_buttons = file_ns::node_shader_buts_tex_brick;
-  node_type_size_preset(&ntype, NODE_SIZE_MIDDLE);
+  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::MIDDLE);
   ntype.initfunc = file_ns::node_shader_init_tex_brick;
   node_type_storage(
       &ntype, "NodeTexBrick", node_free_standard_storage, node_copy_standard_storage);
