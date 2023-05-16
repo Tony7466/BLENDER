@@ -198,7 +198,7 @@ static int sequencer_retiming_handle_move_modal(bContext *C, wmOperator *op, con
 
       /* Add retiming gradient and move handle. */
       if (op->customdata) {
-        SeqRetimingHandle *gradient_handle = SEQ_retiming_add_gradient(
+        SeqRetimingHandle *gradient_handle = SEQ_retiming_add_transition(
             scene, seq, handle, abs(offset));
         /* New gradient handle was created - update operator properties. */
         if (gradient_handle != nullptr) {

@@ -286,10 +286,10 @@ static void seq_retiming_offset_linear_handle(const Scene *scene,
   seq_time_update_effects_strip_range(scene, seq_sequence_lookup_effects_by_seq(scene, seq));
 }
 
-static void seq_retiming_offset_gradient_handle(const Scene *scene,
-                                                Sequence *seq,
-                                                SeqRetimingHandle *handle,
-                                                const int offset)
+static void seq_retiming_offset_transition_handle(const Scene *scene,
+                                                  Sequence *seq,
+                                                  SeqRetimingHandle *handle,
+                                                  const int offset)
 {
   SeqRetimingHandle *handle_start, *handle_end;
   int corrected_offset;
@@ -305,7 +305,7 @@ static void seq_retiming_offset_gradient_handle(const Scene *scene,
     corrected_offset = -1 * offset;
   }
 
-  /* Prevent gradient handles crossing each other. */
+  /* Prevent transition handles crossing each other. */
   const float start_frame = SEQ_retiming_handle_timeline_frame_get(scene, seq, handle_start);
   const float end_frame = SEQ_retiming_handle_timeline_frame_get(scene, seq, handle_end);
   int xmax = ((start_frame + end_frame) / 2) - 1;
@@ -353,7 +353,7 @@ void SEQ_retiming_offset_handle(const Scene *scene,
 
   if (seq_retiming_handle_is_transition_type(handle) ||
       seq_retiming_handle_is_transition_type(prev_handle)) {
-    seq_retiming_offset_gradient_handle(scene, seq, handle, corrected_offset);
+    seq_retiming_offset_transition_handle(scene, seq, handle, corrected_offset);
   }
   else {
     seq_retiming_offset_linear_handle(scene, seq, handle, corrected_offset);
@@ -382,14 +382,14 @@ static void seq_retiming_remove_handle_ex(Sequence *seq, SeqRetimingHandle *hand
 }
 
 /* This function removes gradual segment and creates retiming handle where it originally was. */
-static void seq_retiming_remove_gradient(const Scene *scene,
-                                         Sequence *seq,
-                                         SeqRetimingHandle *handle)
+static void seq_retiming_remove_transition(const Scene *scene,
+                                           Sequence *seq,
+                                           SeqRetimingHandle *handle)
 {
   const int orig_frame_index = handle->original_strip_frame_index;
   const float orig_retiming_factor = handle->original_retiming_factor;
 
-  /* Remove both handles defining gradient. */
+  /* Remove both handles defining transition. */
   /* Remove handle to the left (gradual) and to the right (linear). */
   int handle_index = SEQ_retiming_handle_index_get(seq, handle);
   seq_retiming_remove_handle_ex(seq, handle);
@@ -404,21 +404,21 @@ static void seq_retiming_remove_gradient(const Scene *scene,
 void SEQ_retiming_remove_handle(const Scene *scene, Sequence *seq, SeqRetimingHandle *handle)
 {
   if (seq_retiming_handle_is_transition_type(handle)) {
-    seq_retiming_remove_gradient(scene, seq, handle);
+    seq_retiming_remove_transition(scene, seq, handle);
     return;
   }
   SeqRetimingHandle *previous_handle = handle - 1;
   if (seq_retiming_handle_is_transition_type(previous_handle)) {
-    seq_retiming_remove_gradient(scene, seq, previous_handle);
+    seq_retiming_remove_transition(scene, seq, previous_handle);
     return;
   }
   seq_retiming_remove_handle_ex(seq, handle);
 }
 
-SeqRetimingHandle *SEQ_retiming_add_gradient(const Scene *scene,
-                                             Sequence *seq,
-                                             SeqRetimingHandle *handle,
-                                             const int offset)
+SeqRetimingHandle *SEQ_retiming_add_transition(const Scene *scene,
+                                               Sequence *seq,
+                                               SeqRetimingHandle *handle,
+                                               const int offset)
 {
   if (seq_retiming_handle_is_transition_type(handle) ||
       seq_retiming_handle_is_transition_type(handle - 1)) {

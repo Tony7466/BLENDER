@@ -29,10 +29,10 @@ bool SEQ_retiming_is_allowed(const struct Sequence *seq);
 struct SeqRetimingHandle *SEQ_retiming_add_handle(const struct Scene *scene,
                                                   struct Sequence *seq,
                                                   const int timeline_frame);
-SeqRetimingHandle *SEQ_retiming_add_gradient(const struct Scene *scene,
-                                             struct Sequence *seq,
-                                             struct SeqRetimingHandle *handle,
-                                             const int offset);
+SeqRetimingHandle *SEQ_retiming_add_transition(const struct Scene *scene,
+                                               struct Sequence *seq,
+                                               struct SeqRetimingHandle *handle,
+                                               const int offset);
 struct SeqRetimingHandle *SEQ_retiming_last_handle_get(const struct Sequence *seq);
 void SEQ_retiming_remove_handle(const struct Scene *scene,
                                 struct Sequence *seq,
