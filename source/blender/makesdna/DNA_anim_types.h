@@ -905,7 +905,6 @@ typedef enum eNlaTrack_Flag {
    * usually as result of tweaking being enabled (internal flag) */
   NLATRACK_DISABLED = (1 << 10),
 
-// TODO is this the best name?
   /** Marks tracks automatically added for space while dragging strips vertically.
    * Internal flag that's only set during transform operator. */
   NLATRACK_TEMPORARILY_ADDED = (1 << 11),

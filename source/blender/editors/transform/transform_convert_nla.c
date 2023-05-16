@@ -55,7 +55,6 @@ typedef struct TransDataNla {
   /** index of track that strip is currently in. */
   int trackIndex;
 
-  // TODO go over this comment
   /** NOTE: This index is relative to the initial first track at the start of transforming and
    * thus can be negative when the tracks list grows downward. */
   int signed_track_index;
@@ -144,7 +143,6 @@ static float transdata_get_time_shuffle_offset(ListBase *trans_datas)
   return -offset_left < offset_right ? offset_left : offset_right;
 }
 
-// TODO go over these comments
 /** Assumes all of given trans_datas are part of the same ID.
  *
  * \param r_total_offset: The minimal total signed offset that results in valid strip track-moves
@@ -197,7 +195,6 @@ static bool transdata_get_track_shuffle_offset_side(ListBase *trans_datas,
   return true;
 }
 
-// TODO go over these comments
 /** Assumes all of given trans_datas are part of the same ID.
  *
  * \param r_track_offset: The minimal total signed offset that results in valid strip track-moves
@@ -758,9 +755,9 @@ static void recalcData_nla(TransInfo *t)
         delta_new_tracks++;
       }
 
-      /** We assume all library tracks are grouped at the bottom of the nla stack. Thus, no
-      need
-       * to check for them when moving tracks upward. */
+      /* We assume all library tracks are grouped at the bottom of the nla stack.
+       * Thus, no need to check for them when moving tracks upward.
+       */
       while (delta_new_tracks > 0) {
         dst_track = dst_track->next;
         delta_new_tracks--;
