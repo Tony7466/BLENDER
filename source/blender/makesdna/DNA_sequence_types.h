@@ -120,10 +120,14 @@ typedef struct Strip {
   ColorManagedColorspaceSettings colorspace_settings;
 } Strip;
 
+typedef enum eSeqRetimingHandleFlag {
+  SPEED_TRANSITION = (1 << 0),
+} eSeqRetimingHandleFlag;
+
 typedef struct SeqRetimingHandle {
   int strip_frame_index;
   int flag;
-  int _pad0;
+  int _pad0;             /* eSeqRetimingHandleFlag */
   float retiming_factor; /* Value between 0-1 mapped to original content range. */
 
   int original_strip_frame_index; /* Used for transition handles only. */

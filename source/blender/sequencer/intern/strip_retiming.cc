@@ -187,7 +187,7 @@ static void seq_retiming_line_segments_tangent_circle(const SeqRetimingHandle *s
 
 static bool seq_retiming_handle_is_transition_type(const SeqRetimingHandle *handle)
 {
-  return (handle->flag & 1) != 0;
+  return (handle->flag & SPEED_TRANSITION) != 0;
 }
 
 /* Check colinearity of 2 segments allowing for some imprecision.
@@ -432,7 +432,7 @@ SeqRetimingHandle *SEQ_retiming_add_gradient(const Scene *scene,
   SEQ_retiming_add_handle(scene, seq, orig_timeline_frame + offset);
   SeqRetimingHandle *transition_handle = SEQ_retiming_add_handle(
       scene, seq, orig_timeline_frame - offset);
-  transition_handle->flag |= 1;
+  transition_handle->flag |= SPEED_TRANSITION;
   transition_handle->original_strip_frame_index = orig_frame_index;
   transition_handle->original_retiming_factor = orig_retiming_factor;
   seq_retiming_remove_handle_ex(seq, seq->retiming_handles + orig_handle_index + 1);
