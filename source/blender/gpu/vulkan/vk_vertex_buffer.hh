@@ -12,6 +12,7 @@
 #include "vk_buffer.hh"
 
 namespace blender::gpu {
+class VKTexture;
 
 class VKVertexBuffer : public VertBuf {
   VKBuffer buffer_;
@@ -42,6 +43,9 @@ class VKVertexBuffer : public VertBuf {
  private:
   void allocate();
   void *convert() const;
+
+  /* VKTexture requires access to `buffer_` to convert a vertex buffer to a texture.*/
+  friend class VKTexture;
 };
 
 static inline VKVertexBuffer *unwrap(VertBuf *vertex_buffer)

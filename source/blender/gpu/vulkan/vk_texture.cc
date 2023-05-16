@@ -14,6 +14,7 @@
 #include "vk_shader.hh"
 #include "vk_shader_interface.hh"
 #include "vk_state_manager.hh"
+#include "vk_vertex_buffer.hh"
 
 #include "BLI_math_vector.hh"
 
@@ -42,9 +43,34 @@ void VKTexture::generate_mipmap()
   NOT_YET_IMPLEMENTED
 }
 
-void VKTexture::copy_to(Texture * /*tex*/)
+void VKTexture::copy_to(Texture *tex)
 {
-  NOT_YET_IMPLEMENTED;
+  VKTexture *dst = unwrap(tex);
+  VKTexture *src = this;
+  BLI_assert(dst);
+  BLI_assert(src->w_ == dst->w_ && src->h_ == dst->h_ && src->d_ == dst->d_);
+  BLI_assert(src->format_ == dst->format_);
+  UNUSED_VARS_NDEBUG(src);
+
+  VKContext &context = *VKContext::get();
+  layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+  dst->ensure_allocated();
+  dst->layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+  VkImageCopy region = {};
+  region.srcSubresource.aspectMask = to_vk_image_aspect_flag_bits(format_);
+  region.srcSubresource.mipLevel = 0;
+  region.srcSubresource.layerCount = 1;
+  region.dstSubresource.aspectMask = to_vk_image_aspect_flag_bits(format_);
+  region.dstSubresource.mipLevel = 0;
+  region.dstSubresource.layerCount = 1;
+  region.extent.width = w_;
+  region.extent.height = h_;
+  region.extent.depth = d_;
+
+  VKCommandBuffer &command_buffer = context.command_buffer_get();
+  command_buffer.copy(*dst, *this, Span<VkImageCopy>(&region, 1));
+  command_buffer.submit();
 }
 
 void VKTexture::clear(eGPUDataFormat format, const void *data)
@@ -201,13 +227,34 @@ bool VKTexture::init_internal()
   return true;
 }
 
-bool VKTexture::init_internal(GPUVertBuf * /*vbo*/)
+bool VKTexture::init_internal(GPUVertBuf *vbo)
 {
-  return false;
+  if (!allocate()) {
+    return false;
+  }
+
+  VKVertexBuffer *vertex_buffer = unwrap(unwrap(vbo));
+
+  VkBufferImageCopy region = {};
+  region.imageExtent.width = w_;
+  region.imageExtent.height = 1;
+  region.imageExtent.depth = 1;
+  region.imageSubresource.aspectMask = to_vk_image_aspect_flag_bits(format_);
+  region.imageSubresource.mipLevel = 0;
+  region.imageSubresource.layerCount = 1;
+
+  VKContext &context = *VKContext::get();
+  layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  VKCommandBuffer &command_buffer = context.command_buffer_get();
+  command_buffer.copy(*this, vertex_buffer->buffer_, Span<VkBufferImageCopy>(&region, 1));
+  command_buffer.submit();
+
+  return true;
 }
 
 bool VKTexture::init_internal(GPUTexture * /*src*/, int /*mip_offset*/, int /*layer_offset*/)
 {
+  NOT_YET_IMPLEMENTED;
   return false;
 }
 

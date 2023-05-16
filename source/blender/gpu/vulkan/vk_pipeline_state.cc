@@ -27,7 +27,6 @@ VKPipelineStateManager::VKPipelineStateManager()
                                                    VK_COLOR_COMPONENT_G_BIT |
                                                    VK_COLOR_COMPONENT_B_BIT |
                                                    VK_COLOR_COMPONENT_A_BIT;
-  color_blend_attachment_int_template = color_blend_attachment_template;
 }
 
 void VKPipelineStateManager::set_state(const GPUState &state, const GPUStateMutable &mutable_state)
@@ -90,13 +89,7 @@ void VKPipelineStateManager::finalize_color_blend_state(const VKFrameBuffer &fra
       VKTexture *texture = unwrap(unwrap(framebuffer.color_tex(color_slot)));
       if (texture) {
         BLI_assert(is_sequential);
-        eGPUTextureFormatFlag format_flag = texture->format_flag_get();
-        if (format_flag & GPU_FORMAT_INTEGER) {
-          color_blend_attachments.append(color_blend_attachment_int_template);
-        }
-        else {
-          color_blend_attachments.append(color_blend_attachment_template);
-        }
+        color_blend_attachments.append(color_blend_attachment_template);
       }
       else {
         /* Test to detect if all color textures are sequential attached from the first slot. We

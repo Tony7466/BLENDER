@@ -22,11 +22,7 @@ class VKPipelineStateManager {
 
  public:
   VkPipelineColorBlendStateCreateInfo pipeline_color_blend_state;
-  /* Template of the color blending for color attachments.
-   * Blending is not supported on Integer based textures.
-   */
   VkPipelineColorBlendAttachmentState color_blend_attachment_template;
-  VkPipelineColorBlendAttachmentState color_blend_attachment_int_template;
   Vector<VkPipelineColorBlendAttachmentState> color_blend_attachments;
   VkPipelineRasterizationStateCreateInfo rasterization_state;
   VkPipelineDepthStencilStateCreateInfo depth_stencil_state;

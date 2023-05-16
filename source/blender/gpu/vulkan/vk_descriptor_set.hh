@@ -128,7 +128,10 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
 
     bool is_buffer() const
     {
-      return ELEM(type, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+      return ELEM(type,
+                  VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                  VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER);
     }
 
     bool is_image() const
