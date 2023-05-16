@@ -92,9 +92,8 @@ using blender::io::usd::ShaderToNodeMap;
 static bNode *get_cached_node(const ShaderToNodeMap &node_cache,
                               const pxr::UsdShadeShader &usd_shader)
 {
-  const std::string path_str = usd_shader.GetPath().GetAsString();
-  if (node_cache.contains(path_str)) {
-    return node_cache.lookup(path_str);
+  if (bNode *const *node_ptr = node_cache.lookup_ptr(usd_shader.GetPath().GetAsString())) {
+    return *node_ptr;
   }
   return nullptr;
 }
