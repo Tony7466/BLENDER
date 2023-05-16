@@ -190,9 +190,7 @@ float attr_load_float(samplerBuffer cd_buf)
 #    error draw_object_infos is mandatory for volume objects
 #  endif
 
-/** WARNING: This is a global var, not an attribute. */
-vec3 objectPosition = vec3(0.0);
-
+vec3 g_lP = vec3(0.0);
 vec3 g_orco = vec3(0.0);
 int g_attr_id = 0;
 
@@ -202,7 +200,7 @@ vec3 grid_coordinates()
 #  ifdef MAT_GEOM_VOLUME_OBJECT
   /* Optional per-grid transform. */
   if (drw_volume.grids_xform[g_attr_id][3][3] != 0.0) {
-    co = (drw_volume.grids_xform[g_attr_id] * vec4(objectPosition, 1.0)).xyz;
+    co = (drw_volume.grids_xform[g_attr_id] * vec4(g_lP, 1.0)).xyz;
   }
 #  endif
   g_attr_id += 1;

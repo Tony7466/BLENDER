@@ -13,10 +13,10 @@
 
 /* Store volumetric properties into the froxel textures. */
 
-GlobalData init_globals(void)
+GlobalData init_globals(vec3 wP)
 {
   GlobalData surf;
-  surf.P = worldPosition;
+  surf.P = wP;
   surf.N = vec3(0.0);
   surf.Ng = vec3(0.0);
   surf.is_strand = false;
@@ -50,20 +50,20 @@ void main()
   vec3 ndc_cell = volume_to_ndc((vec3(froxel) + volumes_info_buf.jitter) *
                                 volumes_info_buf.inv_tex_size);
 
-  viewPosition = get_view_space_from_depth(ndc_cell.xy, ndc_cell.z);
-  worldPosition = point_view_to_world(viewPosition);
+  vec3 vP = get_view_space_from_depth(ndc_cell.xy, ndc_cell.z);
+  vec3 wP = point_view_to_world(vP);
 #ifdef MAT_GEOM_VOLUME_OBJECT
-  objectPosition = point_world_to_object(worldPosition);
-  g_orco = OrcoTexCoFactors[0].xyz + objectPosition * OrcoTexCoFactors[1].xyz;
+  g_lP = point_world_to_object(wP);
+  g_orco = OrcoTexCoFactors[0].xyz + g_lP * OrcoTexCoFactors[1].xyz;
 
   if (any(lessThan(g_orco, vec3(0.0))) || any(greaterThan(g_orco, vec3(1.0)))) {
     return;
   }
 #else /* WORLD_SHADER */
-  g_orco = worldPosition;
+  g_orco = wP;
 #endif
 
-  g_data = init_globals();
+  g_data = init_globals(wP);
 #ifndef NO_ATTRIB_LOAD
   attrib_load();
 #endif
