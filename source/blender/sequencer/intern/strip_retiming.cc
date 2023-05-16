@@ -548,7 +548,7 @@ class RetimingRange {
   /* Create new range representing overlap of 2 ranges.
    * Returns overlapping range. In case
    */
-  RetimingRange &operator*(const RetimingRange rhs_range)
+  RetimingRange operator*(const RetimingRange rhs_range)
   {
     RetimingRange new_range = RetimingRange(0, 0, 0, LINEAR);
 
