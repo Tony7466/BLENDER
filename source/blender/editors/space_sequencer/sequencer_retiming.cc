@@ -286,6 +286,14 @@ static int sequesequencer_retiming_handle_add_exec(bContext *C, wmOperator *op)
     timeline_frame = BKE_scene_frame_get(scene);
   }
 
+  const int frame_index = BKE_scene_frame_get(scene) - SEQ_time_start_frame_get(seq);
+  const SeqRetimingHandle *handle = SEQ_retiming_find_segment_start_handle(seq, frame_index);
+
+  if (SEQ_retiming_handle_is_transition_type(handle)) {
+    BKE_report(op->reports, RPT_ERROR, "Can not create handle inside of speed transition");
+    return OPERATOR_CANCELLED;
+  }
+
   bool inserted = false;
   const float end_frame = seq->start + SEQ_time_strip_length_get(scene, seq);
   if (seq->start < timeline_frame && end_frame > timeline_frame) {

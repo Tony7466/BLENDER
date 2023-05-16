@@ -64,8 +64,8 @@ static bool seq_retiming_is_last_handle(const Sequence *seq, const SeqRetimingHa
   return SEQ_retiming_handle_index_get(seq, handle) == seq->retiming_handle_num - 1;
 }
 
-static const SeqRetimingHandle *retiming_find_segment_start_handle(const Sequence *seq,
-                                                                   const int frame_index)
+const SeqRetimingHandle *SEQ_retiming_find_segment_start_handle(const Sequence *seq,
+                                                                const int frame_index)
 {
   const SeqRetimingHandle *start_handle = nullptr;
   for (auto const &handle : SEQ_retiming_handles_get(seq)) {
@@ -185,7 +185,7 @@ static void seq_retiming_line_segments_tangent_circle(const SeqRetimingHandle *s
   *radius = len_v2v2_db(p1_2, r_center);
 }
 
-static bool seq_retiming_handle_is_transition_type(const SeqRetimingHandle *handle)
+bool SEQ_retiming_handle_is_transition_type(const SeqRetimingHandle *handle)
 {
   return (handle->flag & SPEED_TRANSITION) != 0;
 }
@@ -202,14 +202,14 @@ static bool seq_retiming_transition_is_linear(const Sequence *seq, const SeqReti
 }
 float seq_retiming_evaluate(const Sequence *seq, const float frame_index)
 {
-  const SeqRetimingHandle *start_handle = retiming_find_segment_start_handle(seq, frame_index);
+  const SeqRetimingHandle *start_handle = SEQ_retiming_find_segment_start_handle(seq, frame_index);
 
   const int start_handle_index = start_handle - seq->retiming_handles;
   BLI_assert(start_handle_index < seq->retiming_handle_num);
 
   const float segment_frame_index = frame_index - start_handle->strip_frame_index;
 
-  if (!seq_retiming_handle_is_transition_type(start_handle)) {
+  if (!SEQ_retiming_handle_is_transition_type(start_handle)) {
     const float segment_step = seq_retiming_segment_step_get(start_handle);
     return start_handle->retiming_factor + segment_step * segment_frame_index;
   }
@@ -240,9 +240,14 @@ SeqRetimingHandle *SEQ_retiming_add_handle(const Scene *scene,
                       seq_time_media_playback_rate_factor_get(scene, seq);
   float value = seq_retiming_evaluate(seq, frame_index);
 
-  const SeqRetimingHandle *closest_handle = retiming_find_segment_start_handle(seq, frame_index);
+  const SeqRetimingHandle *closest_handle = SEQ_retiming_find_segment_start_handle(seq,
+                                                                                   frame_index);
   if (closest_handle->strip_frame_index == frame_index) {
     return nullptr; /* Retiming handle already exists. */
+  }
+
+  if (SEQ_retiming_handle_is_transition_type(closest_handle)) {
+    return nullptr;
   }
 
   SeqRetimingHandle *handles = seq->retiming_handles;
@@ -294,7 +299,7 @@ static void seq_retiming_offset_transition_handle(const Scene *scene,
   SeqRetimingHandle *handle_start, *handle_end;
   int corrected_offset;
 
-  if (seq_retiming_handle_is_transition_type(handle)) {
+  if (SEQ_retiming_handle_is_transition_type(handle)) {
     handle_start = handle;
     handle_end = handle + 1;
     corrected_offset = offset;
@@ -351,8 +356,8 @@ void SEQ_retiming_offset_handle(const Scene *scene,
   corrected_offset = max_ii(corrected_offset, offset_min);
   corrected_offset = min_ii(corrected_offset, offset_max);
 
-  if (seq_retiming_handle_is_transition_type(handle) ||
-      seq_retiming_handle_is_transition_type(prev_handle)) {
+  if (SEQ_retiming_handle_is_transition_type(handle) ||
+      SEQ_retiming_handle_is_transition_type(prev_handle)) {
     seq_retiming_offset_transition_handle(scene, seq, handle, corrected_offset);
   }
   else {
@@ -403,12 +408,12 @@ static void seq_retiming_remove_transition(const Scene *scene,
 
 void SEQ_retiming_remove_handle(const Scene *scene, Sequence *seq, SeqRetimingHandle *handle)
 {
-  if (seq_retiming_handle_is_transition_type(handle)) {
+  if (SEQ_retiming_handle_is_transition_type(handle)) {
     seq_retiming_remove_transition(scene, seq, handle);
     return;
   }
   SeqRetimingHandle *previous_handle = handle - 1;
-  if (seq_retiming_handle_is_transition_type(previous_handle)) {
+  if (SEQ_retiming_handle_is_transition_type(previous_handle)) {
     seq_retiming_remove_transition(scene, seq, previous_handle);
     return;
   }
@@ -420,8 +425,8 @@ SeqRetimingHandle *SEQ_retiming_add_transition(const Scene *scene,
                                                SeqRetimingHandle *handle,
                                                const int offset)
 {
-  if (seq_retiming_handle_is_transition_type(handle) ||
-      seq_retiming_handle_is_transition_type(handle - 1)) {
+  if (SEQ_retiming_handle_is_transition_type(handle) ||
+      SEQ_retiming_handle_is_transition_type(handle - 1)) {
     return nullptr;
   }
 
@@ -619,7 +624,7 @@ class RetimingRangeData {
       int frame_start = SEQ_time_start_frame_get(seq) + handle_prev->strip_frame_index;
       int frame_end = SEQ_time_start_frame_get(seq) + handle.strip_frame_index;
 
-      eRangeType type = seq_retiming_handle_is_transition_type(handle_prev) ? TRANSITION : LINEAR;
+      eRangeType type = SEQ_retiming_handle_is_transition_type(handle_prev) ? TRANSITION : LINEAR;
       RetimingRange range = RetimingRange(seq, frame_start, frame_end, speed, type);
       ranges.append(range);
     }

@@ -219,6 +219,15 @@ static void gizmo_retime_handle_add_draw(const bContext *C, wmGizmo *gz)
     return;
   }
 
+  const Scene *scene = CTX_data_scene(C);
+  const Sequence *seq = active_seq_from_context(C);
+  const int frame_index = BKE_scene_frame_get(scene) - SEQ_time_start_frame_get(seq);
+  const SeqRetimingHandle *handle = SEQ_retiming_find_segment_start_handle(seq, frame_index);
+
+  if (SEQ_retiming_handle_is_transition_type(handle)) {
+    return;
+  }
+
   const ButtonDimensions button = button_dimensions_get(C, gizmo);
   const rctf strip_box = strip_box_get(C, active_seq_from_context(C));
   if (!BLI_rctf_isect_pt(&strip_box, button.x, button.y)) {
@@ -397,11 +406,23 @@ static void retime_speed_text_draw(const bContext *C,
     return; /* Label out of strip bounds. */
   }
 
-  const float speed = SEQ_retiming_handle_speed_get(seq, next_handle);
+  char label_str[40];
+  size_t label_len;
 
-  char label_str[20];
-  const size_t label_len = BLI_snprintf_rlen(
-      label_str, sizeof(label_str), "%d%%", round_fl_to_int(speed * 100.0f));
+  if (SEQ_retiming_handle_is_transition_type(handle)) {
+    const float prev_speed = SEQ_retiming_handle_speed_get(seq, handle - 1);
+    const float next_speed = SEQ_retiming_handle_speed_get(seq, next_handle + 1);
+    label_len = BLI_snprintf_rlen(label_str,
+                                  sizeof(label_str),
+                                  "%d%% -> %d%%",
+                                  round_fl_to_int(prev_speed * 100.0f),
+                                  round_fl_to_int(next_speed * 100.0f));
+  }
+  else {
+    const float speed = SEQ_retiming_handle_speed_get(seq, next_handle);
+    label_len = BLI_snprintf_rlen(
+        label_str, sizeof(label_str), "%d%%", round_fl_to_int(speed * 100.0f));
+  }
 
   const float width = pixels_to_view_width(C, BLF_width(BLF_default(), label_str, label_len));
 
