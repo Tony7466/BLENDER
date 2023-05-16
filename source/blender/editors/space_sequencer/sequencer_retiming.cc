@@ -212,8 +212,8 @@ static int sequencer_retiming_handle_move_modal(bContext *C, wmOperator *op, con
         }
       }
 
-      bool handle_is_transition = SEQ_retiming_handle_is_transition_type(handle);
-      bool prev_handle_is_transition = SEQ_retiming_handle_is_transition_type(handle - 1);
+      const bool handle_is_transition = SEQ_retiming_handle_is_transition_type(handle);
+      const bool prev_handle_is_transition = SEQ_retiming_handle_is_transition_type(handle - 1);
 
       /* When working with transiton, change handles when moving past pivot point. */
       if (handle_is_transition || prev_handle_is_transition) {
@@ -226,10 +226,10 @@ static int sequencer_retiming_handle_move_modal(bContext *C, wmOperator *op, con
           transition_start = handle - 1;
           transition_end = handle;
         }
-        int offset_l = mouse_x -
-                       SEQ_retiming_handle_timeline_frame_get(scene, seq, transition_start);
-        int offset_r = mouse_x -
-                       SEQ_retiming_handle_timeline_frame_get(scene, seq, transition_end);
+        const int offset_l = mouse_x -
+                             SEQ_retiming_handle_timeline_frame_get(scene, seq, transition_start);
+        const int offset_r = mouse_x -
+                             SEQ_retiming_handle_timeline_frame_get(scene, seq, transition_end);
 
         if (prev_handle_is_transition && offset_l < 0) {
           RNA_int_set(
@@ -246,7 +246,6 @@ static int sequencer_retiming_handle_move_modal(bContext *C, wmOperator *op, con
       WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
       return OPERATOR_RUNNING_MODAL;
     }
-
     case LEFTMOUSE:
     case EVT_RETKEY:
     case EVT_SPACEKEY: {

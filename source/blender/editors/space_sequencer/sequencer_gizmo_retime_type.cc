@@ -457,7 +457,9 @@ static void gizmo_retime_handle_draw(const bContext *C, wmGizmo *gz)
   RetimeHandleMoveGizmo *gizmo = (RetimeHandleMoveGizmo *)gz;
   const View2D *v2d = UI_view2d_fromcontext(C);
 
-  /* Hack: Switch action mode based on key input */
+  /* TODO: This is hardcoded behavior, same as preselect gizmos in 3D view.
+   * Better solution would be to check operator keymap and display this information in status bar
+   * and tooltip. */
   wmEvent *event = CTX_wm_window(C)->eventstate;
   gizmo->create_transition_operation = (event->modifier & KM_SHIFT) != 0;
 

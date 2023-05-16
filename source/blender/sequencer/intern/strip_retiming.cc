@@ -168,7 +168,7 @@ static void seq_retiming_line_segments_tangent_circle(const SeqRetimingHandle *s
   double v1[2], v2[2];
   sub_v2_v2v2_db(v1, s1_1, s1_2);
   sub_v2_v2v2_db(v2, s2_1, s2_2);
-  /* Rotate segments by 90 degrees around seg. 1 end and start seg. 2 start point. */
+  /* Rotate segments by 90 degrees around seg. 1 end and seg. 2 start point. */
   SWAP(double, v1[0], v1[1]);
   SWAP(double, v2[0], v2[1]);
   v1[0] *= -1;
@@ -191,7 +191,7 @@ bool SEQ_retiming_handle_is_transition_type(const SeqRetimingHandle *handle)
 }
 
 /* Check colinearity of 2 segments allowing for some imprecision.
- * 'isect_seg_seg_v2_lambda_mu_db()' return value does not work well in this case. */
+ * `isect_seg_seg_v2_lambda_mu_db()` return value does not work well in this case. */
 
 static bool seq_retiming_transition_is_linear(const Sequence *seq, const SeqRetimingHandle *handle)
 {
@@ -230,7 +230,7 @@ float seq_retiming_evaluate(const Sequence *seq, const float frame_index)
     return start_handle->retiming_factor + segment_step * segment_frame_index;
   }
 
-  /* Gradual speed change. */
+  /* Sanity check for transition type. */
   BLI_assert(start_handle_index > 0);
   BLI_assert(start_handle_index < seq->retiming_handle_num - 1);
   UNUSED_VARS_NDEBUG(start_handle_index);
@@ -246,19 +246,18 @@ SeqRetimingHandle *SEQ_retiming_add_handle(const Scene *scene,
                       seq_time_media_playback_rate_factor_get(scene, seq);
   float value = seq_retiming_evaluate(seq, frame_index);
 
-  const SeqRetimingHandle *closest_handle = SEQ_retiming_find_segment_start_handle(seq,
-                                                                                   frame_index);
-  if (closest_handle->strip_frame_index == frame_index) {
+  const SeqRetimingHandle *start_handle = SEQ_retiming_find_segment_start_handle(seq, frame_index);
+  if (start_handle->strip_frame_index == frame_index) {
     return nullptr; /* Retiming handle already exists. */
   }
 
-  if (SEQ_retiming_handle_is_transition_type(closest_handle)) {
+  if (SEQ_retiming_handle_is_transition_type(start_handle)) {
     return nullptr;
   }
 
   SeqRetimingHandle *handles = seq->retiming_handles;
   size_t handle_count = SEQ_retiming_handles_count(seq);
-  const int new_handle_index = closest_handle - handles + 1;
+  const int new_handle_index = start_handle - handles + 1;
   BLI_assert(new_handle_index >= 0);
   BLI_assert(new_handle_index < handle_count);
 
@@ -294,11 +293,10 @@ static void seq_retiming_offset_linear_handle(const Scene *scene,
     next_handle->strip_frame_index += offset * seq_time_media_playback_rate_factor_get(scene, seq);
   }
 
-  /* One solution is to find where in arc segment the y val is closest to `handle` retiming factor,
-   * then trim arc segment to that point.
-   * Alternative is quite destructive, but easiest - remove and re-create transition. This way
-   * transition won't change length.
-   */
+  /* Handle affected transitions: remove and re-create transition. This way transition won't change
+   * length.
+   * Alternative solution is to find where in arc segment the `y` value is closest to `handle`
+   * retiming factor, then trim transition to that point. This would change transition length. */
   if (SEQ_retiming_handle_is_transition_type(handle - 2)) {
     SeqRetimingHandle *transition_handle = handle - 2;
 
@@ -317,7 +315,7 @@ static void seq_retiming_offset_linear_handle(const Scene *scene,
 }
 
 static void seq_retiming_offset_transition_handle(const Scene *scene,
-                                                  Sequence *seq,
+                                                  const Sequence *seq,
                                                   SeqRetimingHandle *handle,
                                                   const int offset)
 {
@@ -343,15 +341,15 @@ static void seq_retiming_offset_transition_handle(const Scene *scene,
   corrected_offset = min_ii(corrected_offset, max_offset);
   /* Prevent mirrored movement crossing any handle. */
   SeqRetimingHandle *prev_segment_end = handle_start - 1, *next_segment_start = handle_end + 1;
-  int offset_min_left = SEQ_retiming_handle_timeline_frame_get(scene, seq, prev_segment_end) + 1 -
-                        start_frame;
-  int offset_min_right = end_frame -
-                         SEQ_retiming_handle_timeline_frame_get(scene, seq, next_segment_start) -
-                         1;
+  const int offset_min_left = SEQ_retiming_handle_timeline_frame_get(
+                                  scene, seq, prev_segment_end) +
+                              1 - start_frame;
+  const int offset_min_right =
+      end_frame - SEQ_retiming_handle_timeline_frame_get(scene, seq, next_segment_start) - 1;
   corrected_offset = max_iii(corrected_offset, offset_min_left, offset_min_right);
 
-  float prev_segment_step = seq_retiming_segment_step_get(handle_start - 1);
-  float next_segment_step = seq_retiming_segment_step_get(handle_end);
+  const float prev_segment_step = seq_retiming_segment_step_get(handle_start - 1);
+  const float next_segment_step = seq_retiming_segment_step_get(handle_end);
 
   handle_start->strip_frame_index += corrected_offset;
   handle_start->retiming_factor += corrected_offset * prev_segment_step;
@@ -417,7 +415,7 @@ static void seq_retiming_remove_handle_ex(Sequence *seq, SeqRetimingHandle *hand
   seq->retiming_handle_num--;
 }
 
-/* This function removes gradual segment and creates retiming handle where it originally was. */
+/* This function removes transition segment and creates retiming handle where it originally was. */
 static void seq_retiming_remove_transition(const Scene *scene,
                                            Sequence *seq,
                                            SeqRetimingHandle *handle)
@@ -426,7 +424,6 @@ static void seq_retiming_remove_transition(const Scene *scene,
   const float orig_retiming_factor = handle->original_retiming_factor;
 
   /* Remove both handles defining transition. */
-  /* Remove handle to the left (gradual) and to the right (linear). */
   int handle_index = SEQ_retiming_handle_index_get(seq, handle);
   seq_retiming_remove_handle_ex(seq, handle);
   seq_retiming_remove_handle_ex(seq, seq->retiming_handles + handle_index);
@@ -501,6 +498,14 @@ enum eRangeType {
   TRANSITION = 1,
 };
 
+enum eIntersectType {
+  FULL,
+  PARTIAL_START,
+  PARTIAL_END,
+  INSIDE,
+  NONE,
+};
+
 class RetimingRange {
  public:
   int start, end;
@@ -508,20 +513,6 @@ class RetimingRange {
   blender::Vector<float> speed_table;
 
   eRangeType type;
-
-  enum eIntersectType {
-    FULL,
-    PARTIAL_START,
-    PARTIAL_END,
-    INSIDE,
-    NONE,
-  };
-
-  enum eRangeReturnSide {
-    LEFT,
-    RIGHT,
-  };
-
   RetimingRange(const Sequence *seq, int start_frame, int end_frame, float speed, eRangeType type)
       : start(start_frame), end(end_frame), speed(speed), type(type)
   {
@@ -546,15 +537,14 @@ class RetimingRange {
   }
 
   /* Create new range representing overlap of 2 ranges.
-   * Returns overlapping range. In case
-   */
+   * Returns overlapping range. */
   RetimingRange operator*(const RetimingRange rhs_range)
   {
     RetimingRange new_range = RetimingRange(0, 0, 0, LINEAR);
 
     /* Offsets to merge speed tables. */
     int range_offset = 0, rhs_range_offset = 0;
-    if (intersect_type(rhs_range) == RetimingRange::FULL) {
+    if (intersect_type(rhs_range) == FULL) {
       new_range.start = start;
       new_range.end = end;
       rhs_range_offset = start - rhs_range.start;
@@ -612,12 +602,12 @@ class RetimingRange {
   {
     for (int frame = start; frame <= end; frame++) {
       /* We need number actual number of frames here. */
-      double normal_step = 1 / (double)seq->len;
+      const double normal_step = 1 / (double)seq->len;
 
       /* Who needs calculus, when you can have slow code? */
-      double val_prev = seq_retiming_evaluate(seq, frame - 1);
-      double val = seq_retiming_evaluate(seq, frame);
-      double speed_at_frame = (val - val_prev) / normal_step;
+      const double val_prev = seq_retiming_evaluate(seq, frame - 1);
+      const double val = seq_retiming_evaluate(seq, frame);
+      const double speed_at_frame = (val - val_prev) / normal_step;
       speed_table.append(speed_at_frame);
     }
   }
@@ -675,26 +665,27 @@ class RetimingRangeData {
     for (int i = 0; i < ranges.size(); i++) {
       RetimingRange &range = ranges[i];
       for (const RetimingRange &rhs_range : rhs.ranges) {
-        if (range.intersect_type(rhs_range) == RetimingRange::NONE) {
+        if (range.intersect_type(rhs_range) == NONE) {
           continue;
         }
-        else if (range.intersect_type(rhs_range) == RetimingRange::FULL) {
+        else if (range.intersect_type(rhs_range) == FULL) {
           RetimingRange isect = range * rhs_range;
           ranges.remove(i);
           ranges.insert(i, isect);
         }
-        if (range.intersect_type(rhs_range) == RetimingRange::PARTIAL_START) {
+        if (range.intersect_type(rhs_range) == PARTIAL_START) {
+          ranges.insert(i, range * rhs_range);
           ranges.insert(i, range * rhs_range);
           range.start = rhs_range.end + 1;
         }
-        else if (range.intersect_type(rhs_range) == RetimingRange::PARTIAL_END) {
+        else if (range.intersect_type(rhs_range) == PARTIAL_END) {
           ranges.insert(i, range * rhs_range);
           range.end = rhs_range.start;
         }
-        else if (range.intersect_type(rhs_range) == RetimingRange::INSIDE) {
+        else if (range.intersect_type(rhs_range) == INSIDE) {
           RetimingRange left_range = range.duplicate();
           left_range.end = rhs_range.start;
-          range.start = rhs_range.end + 1; /* Right side. */
+          range.start = rhs_range.end + 1;
 
           ranges.insert(i, left_range);
           ranges.insert(i, range * rhs_range);
