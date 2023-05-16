@@ -747,9 +747,7 @@ static void recalcData_nla(TransInfo *t)
 
       while (delta_new_tracks < 0) {
         dst_track = dst_track->prev;
-        if ((event->modifier & KM_CTRL) &&
-            (dst_track == NULL || BKE_nlatrack_is_nonlocal_in_liboverride(tdn->id, dst_track)))
-        {
+        if (dst_track == NULL || BKE_nlatrack_is_nonlocal_in_liboverride(tdn->id, dst_track)) {
           break;
         }
         delta_new_tracks++;
@@ -870,8 +868,7 @@ static void nlastrip_shuffle_transformed(TransDataContainer *tc, TransDataNla *f
 
     /* Apply vertical shuffle. */
     int minimum_track_offset = 0;
-    const bool track_offset_valid = transdata_get_track_shuffle_offset(trans_datas,
-                                                                       &minimum_track_offset);
+    transdata_get_track_shuffle_offset(trans_datas, &minimum_track_offset);
     if (minimum_track_offset != 0) {
       ListBase *tracks = &BKE_animdata_from_id(group->id)->nla_tracks;
 
@@ -883,7 +880,6 @@ static void nlastrip_shuffle_transformed(TransDataContainer *tc, TransDataNla *f
         if ((dst_track->flag & NLATRACK_PROTECTED) != 0) {
 
           BKE_nlatrack_remove_strip(trans_data->nlt, strip);
-          // Should this be false? Should we short circuit the loop
           BKE_nlatrack_add_strip(dst_track, strip, false);
 
           trans_data->nlt = dst_track;
