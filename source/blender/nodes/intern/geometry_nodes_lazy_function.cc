@@ -1342,7 +1342,7 @@ class LazyFunctionForEvaluateFunctionNode : public LazyFunction {
       if (tree_logger) {
         tree_logger->node_warnings.append(
             {eval_node_.identifier,
-             {NodeWarningType::Info,
+             {NodeWarningType::Warning,
               tree_logger->allocator->copy_string("Function graph undefined")}});
       }
       params.set_default_remaining_outputs();
@@ -1417,8 +1417,7 @@ class LazyFunctionForEvaluateFunctionNode : public LazyFunction {
     }
 
     /* These are written to if the graph outputs a value that is not captured by the evaluation
-     * node.
-     * XXX Could find a better way to handle this. */
+     * node. */
     Array<GMutablePointer> unused_outputs(graph_outputs.size());
     for (const int i : unused_outputs.index_range()) {
       const CPPType &cpptype = graph_outputs[i]->type();
@@ -1434,11 +1433,19 @@ class LazyFunctionForEvaluateFunctionNode : public LazyFunction {
     Array<int> outer_output_indices(graph_outputs.size(), -1);
     /* Find a socket in the evaluation node that matches the graph socket. */
     auto find_matching_socket = [](const Span<const bNodeSocket *> &sockets,
+                                   const Span<int> matched_sockets,
                                    const StringRef name,
                                    const CPPType &type) -> int {
+      BLI_assert(matched_sockets.size() == sockets.index_range().one_after_last());
       for (const int socket_i : sockets.index_range()) {
         const bNodeSocket *socket = sockets[socket_i];
         BLI_assert(socket->typeinfo->geometry_nodes_cpp_type != nullptr);
+
+        /* Skip sockets that have been matched already. */
+        if (matched_sockets[socket_i] >= 0) {
+          continue;
+        }
+
         if (socket->name == name && *socket->typeinfo->geometry_nodes_cpp_type == type) {
           /* Index relative to the socket list (ignore the Function input socket). */
           return socket_i - sockets.index_range().start();
@@ -1446,17 +1453,24 @@ class LazyFunctionForEvaluateFunctionNode : public LazyFunction {
       }
       return -1;
     };
+    Array<int> matched_inputs(eval_node_.input_sockets().size(), -1);
     for (const int i : lf_graph_info.mapping.group_input_sockets.index_range()) {
       const lf::OutputSocket *graph_input = lf_graph_info.mapping.group_input_sockets[i];
       /* Drop the Function output socket at the start of the list. */
       const int matching_socket_index = find_matching_socket(
-          eval_node_.input_sockets().drop_front(1), graph_input->name(), graph_input->type());
+          eval_node_.input_sockets().drop_front(1),
+          matched_inputs,
+          graph_input->name(),
+          graph_input->type());
       outer_input_indices[input_values_range[i]] = matching_socket_index;
     }
+    Array<int> matched_outputs(eval_node_.output_sockets().size(), -1);
     for (const int i : lf_graph_info.mapping.standard_group_output_sockets.index_range()) {
       const lf::InputSocket *graph_output = lf_graph_info.mapping.standard_group_output_sockets[i];
-      const int matching_socket_index = find_matching_socket(
-          eval_node_.output_sockets(), graph_output->name(), graph_output->type());
+      const int matching_socket_index = find_matching_socket(eval_node_.output_sockets(),
+                                                             matched_outputs,
+                                                             graph_output->name(),
+                                                             graph_output->type());
       outer_output_indices[output_values_range[i]] = matching_socket_index;
     }
     for (const int i : lf_graph_info.mapping.group_output_used_sockets.index_range()) {
@@ -1482,6 +1496,20 @@ class LazyFunctionForEvaluateFunctionNode : public LazyFunction {
     //        ++i;
     //      }
     //    }
+
+    /* If any output is not mapped the graph is considered invalid. */
+    for (const int matched_graph_output : matched_outputs) {
+      if (matched_graph_output < 0) {
+        if (tree_logger) {
+          tree_logger->node_warnings.append(
+              {eval_node_.identifier,
+               {NodeWarningType::Warning,
+                tree_logger->allocator->copy_string("Missing output in graph")}});
+        }
+        params.set_default_remaining_outputs();
+        return;
+      }
+    }
 
     LinearAllocator allocator;
     void *graph_executor_storage = graph_executor.init_storage(allocator);
