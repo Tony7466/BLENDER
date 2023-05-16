@@ -405,6 +405,7 @@ ccl_device int lights_intersect_shadow_linked(KernelGlobals kg,
                                               const int last_object,
                                               const int last_type,
                                               const uint32_t path_flag,
+                                              const int receiver_forward,
                                               ccl_private uint *lcg_state)
 {
   return lights_intersect_impl<false>(kg,
@@ -415,7 +416,7 @@ ccl_device int lights_intersect_shadow_linked(KernelGlobals kg,
                                       last_type,
                                       path_flag,
                                       PATH_MNEE_NONE,
-                                      OBJECT_NONE,
+                                      receiver_forward,
                                       lcg_state);
 }
 

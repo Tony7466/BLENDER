@@ -46,8 +46,9 @@ ccl_device bool shadow_linking_pick_light_intersection(KernelGlobals kg,
 
   // TODO: Only if ray is not fully occluded.
 
+  const int receiver_forward = light_link_receiver_forward(kg, state);
   const int num_hits = lights_intersect_shadow_linked(
-      kg, ray, isect, last_prim, last_object, last_type, path_flag, &lcg_state);
+      kg, ray, isect, last_prim, last_object, last_type, path_flag, receiver_forward, &lcg_state);
 
   if (num_hits == 0) {
     return false;
