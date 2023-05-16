@@ -297,7 +297,7 @@ ccl_device_forceinline int lights_intersect_impl(KernelGlobals kg,
      * For the shadow path used for the dedicated light shading ignore all non-shadow-linked
      * lights. */
     if (kernel_data.kernel_features & KERNEL_FEATURE_SHADOW_LINKING) {
-      if constexpr (is_main_path) {
+      if (is_main_path) {
         if (is_indirect_ray && kernel_data_fetch(lights, lamp).shadow_set_membership) {
           continue;
         }
@@ -345,7 +345,7 @@ ccl_device_forceinline int lights_intersect_impl(KernelGlobals kg,
     ++num_hits;
 
 #ifdef __SHADOW_LINKING__
-    if constexpr (!is_main_path) {
+    if (!is_main_path) {
       /* The non-main rays are only raced by the dedicated light kernel, after the shadow linking
        * feature check. */
       kernel_assert(kernel_data.kernel_features & KERNEL_FEATURE_SHADOW_LINKING);
