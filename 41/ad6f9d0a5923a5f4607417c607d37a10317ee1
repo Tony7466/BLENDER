@@ -1,0 +1,1 @@
+Referenced by commit 8ab019660722b7e57608de5160786215450342aa, BLI_file: BLI_rename no longer checks for the destination path on WIN32
