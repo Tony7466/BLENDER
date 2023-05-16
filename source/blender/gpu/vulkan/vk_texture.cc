@@ -65,8 +65,8 @@ void VKTexture::copy_to(Texture *tex)
   region.dstSubresource.mipLevel = 0;
   region.dstSubresource.layerCount = 1;
   region.extent.width = w_;
-  region.extent.height = h_;
-  region.extent.depth = d_;
+  region.extent.height = max_ii(h_, 1);
+  region.extent.depth = max_ii(d_, 1);
 
   VKCommandBuffer &command_buffer = context.command_buffer_get();
   command_buffer.copy(*dst, *this, Span<VkImageCopy>(&region, 1));
