@@ -138,20 +138,6 @@ class CornersOfEdgeInput final : public bke::MeshFieldInput {
     sort_weight_.node().for_each_field_input_recursive(fn);
   }
 
-  uint64_t hash() const final
-  {
-    return 125394805703121;
-  }
-
-  bool is_equal_to(const fn::FieldNode &other) const final
-  {
-    if (const auto *typed = dynamic_cast<const CornersOfEdgeInput *>(&other)) {
-      return typed->edge_index_ == edge_index_ && typed->sort_index_ == sort_index_ &&
-             typed->sort_weight_ == sort_weight_;
-    }
-    return false;
-  }
-
   std::optional<eAttrDomain> preferred_domain(const Mesh & /*mesh*/) const final
   {
     return ATTR_DOMAIN_EDGE;
@@ -178,19 +164,6 @@ class CornersOfEdgeCountInput final : public bke::MeshFieldInput {
       counts[corner_edges[i]]++;
     }
     return VArray<int>::ForContainer(std::move(counts));
-  }
-
-  uint64_t hash() const final
-  {
-    return 253098745374645;
-  }
-
-  bool is_equal_to(const fn::FieldNode &other) const final
-  {
-    if (dynamic_cast<const CornersOfEdgeCountInput *>(&other)) {
-      return true;
-    }
-    return false;
   }
 
   std::optional<eAttrDomain> preferred_domain(const Mesh & /*mesh*/) const final
