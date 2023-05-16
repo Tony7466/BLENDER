@@ -2240,6 +2240,43 @@ static void version_fix_image_format_copy(Main *bmain, ImageFormatData *format)
   }
 }
 
+/** Change the RNA path of a library override on a property.
+ *
+ * No-op if the property override cannot be found.
+ *
+ * \param from_rna_path The RNA path of the property to change.
+ * \param to_rna_path The new RNA path. This should be allocated on the heap, and ownership will be
+ * transferred to the library override system.
+ */
+static void version_liboverride_rnapath_change(IDOverrideLibrary *liboverride,
+                                               const char *from_rna_path,
+                                               char *to_rna_path)
+{
+  IDOverrideLibraryProperty *op;
+  op = BKE_lib_override_library_property_find(liboverride, from_rna_path);
+
+  if (op == nullptr) {
+    return;
+  }
+
+  MEM_SAFE_FREE(op->rna_path);
+  op->rna_path = to_rna_path;
+}
+
+/** Delete the property override, if it exists.
+ *
+ * No-op if the property voerride cannot be found.
+ */
+static void version_liboverride_property_delete(IDOverrideLibrary *liboverride,
+                                                const char *rna_path)
+{
+  IDOverrideLibraryProperty *op = BKE_lib_override_library_property_find(liboverride, rna_path);
+  if (op == nullptr) {
+    return;
+  }
+  BKE_lib_override_library_property_delete(liboverride, op);
+}
+
 /**
  * Some editors would manually manage visibility of regions, or lazy create them based on
  * context. Ensure they are always there now, and use the new #ARegionType.poll().
@@ -2313,6 +2350,79 @@ static void version_ensure_missing_regions(ScrArea *area, SpaceLink *sl)
       break;
     }
   }
+}
+
+/**
+ * Change override RNA path from `frame_{start,end}` to `frame_{start,end}_raw`.
+ * See #102662.
+ */
+static void version_liboverride_nla_strip_frame_start_end(IDOverrideLibrary *liboverride,
+                                                          const char *parent_rna_path,
+                                                          NlaStrip *strip)
+{
+  if (!strip) {
+    return;
+  }
+
+  char name_esc_strip[sizeof(strip->name) * 2];
+  BLI_str_escape(name_esc_strip, strip->name, sizeof(name_esc_strip));
+
+  /* 11 chars extra for '.strips[""]', 16 for '.frame_start_ui' + terminating null. */
+  const int strip_rna_path_len = strlen(parent_rna_path) + strlen(name_esc_strip) + 11;
+  const int strlen_max = strip_rna_path_len + 16;
+
+  char *rna_path = new char[strlen_max];
+  snprintf(rna_path, strlen_max, "%s.strips[\"%s\"]", parent_rna_path, name_esc_strip);
+
+  /* `rna_path` contains the strip RNA path. Later some properties will be appended to it. But
+   * before we modify it further, first use it as parent path for meta-strips. */
+  LISTBASE_FOREACH (NlaStrip *, substrip, &strip->strips) {
+    version_liboverride_nla_strip_frame_start_end(liboverride, rna_path, substrip);
+  }
+
+  char *rna_path_at_property_name = rna_path + strip_rna_path_len;
+
+  /* .frame_start -> .frame_start_raw */
+  strcpy(rna_path_at_property_name, ".frame_start");
+  version_liboverride_rnapath_change(liboverride, rna_path, BLI_sprintfN("%s_raw", rna_path));
+
+  /* .frame_end -> .frame_end_raw */
+  strcpy(rna_path_at_property_name, ".frame_end");
+  version_liboverride_rnapath_change(liboverride, rna_path, BLI_sprintfN("%s_raw", rna_path));
+
+  /* remove .frame_start_ui */
+  strcpy(rna_path_at_property_name, ".frame_start_ui");
+  version_liboverride_property_delete(liboverride, rna_path);
+
+  /* remove .frame_end_ui */
+  strcpy(rna_path_at_property_name, ".frame_end_ui");
+  version_liboverride_property_delete(liboverride, rna_path);
+
+  delete[] rna_path;
+}
+
+/** Fix the `frame_start` and `frame_end` overrides on NLA strips. See #102662. */
+static void version_liboverride_nla_frame_start_end(ID *id, AnimData *adt, void * /*user_data*/)
+{
+  IDOverrideLibrary *liboverride = id->override_library;
+  if (!liboverride) {
+    return;
+  }
+
+  int track_index;
+  LISTBASE_FOREACH_INDEX (NlaTrack *, track, &adt->nla_tracks, track_index) {
+    char *rna_path_track = BLI_sprintfN("animation_data.nla_tracks[%d]", track_index);
+
+    LISTBASE_FOREACH (NlaStrip *, strip, &track->strips) {
+      version_liboverride_nla_strip_frame_start_end(liboverride, rna_path_track, strip);
+    }
+
+    MEM_freeN(rna_path_track);
+  }
+
+  /* Force a rebuild of the path cache on the next query to the liboverrides system, because we may
+   * have changed RNA paths. */
+  BKE_lib_override_library_rna_path_cache_clear(liboverride);
 }
 
 /* NOLINTNEXTLINE: readability-function-size */
@@ -4409,5 +4519,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+
+    BKE_animdata_main_cb(bmain, version_liboverride_nla_frame_start_end, NULL);
   }
 }

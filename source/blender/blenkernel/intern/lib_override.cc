@@ -229,9 +229,7 @@ void BKE_lib_override_library_clear(IDOverrideLibrary *override, const bool do_i
 {
   BLI_assert(override != nullptr);
 
-  if (!ELEM(nullptr, override->runtime, override->runtime->rna_path_to_override_properties)) {
-    BLI_ghash_clear(override->runtime->rna_path_to_override_properties, nullptr, nullptr);
-  }
+  BKE_lib_override_library_rna_path_cache_clear(override);
 
   LISTBASE_FOREACH (IDOverrideLibraryProperty *, op, &override->properties) {
     lib_override_library_property_clear(op);
@@ -3454,6 +3452,16 @@ BLI_INLINE GHash *override_library_rna_path_mapping_ensure(IDOverrideLibrary *ov
   }
 
   return override_runtime->rna_path_to_override_properties;
+}
+
+void BKE_lib_override_library_rna_path_cache_clear(IDOverrideLibrary *override)
+{
+  if (ELEM(nullptr, override->runtime, override->runtime->rna_path_to_override_properties)) {
+    return;
+  }
+
+  BLI_ghash_free(override->runtime->rna_path_to_override_properties, nullptr, nullptr);
+  override->runtime->rna_path_to_override_properties = nullptr;
 }
 
 IDOverrideLibraryProperty *BKE_lib_override_library_property_find(IDOverrideLibrary *override,
