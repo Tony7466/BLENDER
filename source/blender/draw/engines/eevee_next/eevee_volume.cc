@@ -181,15 +181,18 @@ void VolumeModule::begin_sync()
 
   data_.push_update();
 
-  GPUMaterial *material = nullptr;
-
   ::World *world = inst_.scene->world;
-  if (world && world->use_nodes && world->nodetree && !inst_.use_studio_light()) {
-    material = inst_.shaders.world_shader_get(world, world->nodetree, MAT_PIPE_VOLUME);
-    enabled_ = GPU_material_has_volume_output(material);
+  if (world == nullptr) {
+    world = inst_.world.default_world_get();
   }
+  bNodeTree *ntree = world->nodetree;
+  if (!ntree || !world->use_nodes || inst_.use_studio_light()) {
+    ntree = inst_.world.default_tree.nodetree_get(world);
+  }
+  GPUMaterial *gpumat = inst_.shaders.world_shader_get(world, ntree, MAT_PIPE_VOLUME);
 
-  inst_.pipelines.world_volume.sync(material);
+  enabled_ = GPU_material_has_volume_output(gpumat);
+  inst_.pipelines.world_volume.sync(gpumat);
 }
 
 void VolumeModule::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHandle res_handle)

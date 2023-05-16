@@ -48,18 +48,19 @@ class World {
  private:
   Instance &inst_;
 
-  DefaultWorldNodeTree default_tree;
-
   /* Used to detect if world change. */
   ::World *prev_original_world = nullptr;
 
   /* Used when the scene doesn't have a world. */
   ::World *default_world_ = nullptr;
-  ::World *default_world_get();
 
  public:
+  DefaultWorldNodeTree default_tree;
+
   World(Instance &inst) : inst_(inst){};
   ~World();
+
+  ::World *default_world_get();
 
   void sync();
 };
