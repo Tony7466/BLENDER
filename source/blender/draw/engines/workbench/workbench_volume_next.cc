@@ -10,77 +10,6 @@
 
 namespace blender::workbench {
 
-GPUShader *VolumePass::get_shader(bool slice, bool coba, int interpolation, bool smoke)
-{
-  GPUShader *&shader = shaders_[slice][coba][interpolation][smoke];
-
-  if (shader == nullptr) {
-    std::string create_info_name = "workbench_next_volume";
-    create_info_name += (smoke) ? "_smoke" : "_object";
-    switch (interpolation) {
-      case VOLUME_DISPLAY_INTERP_LINEAR:
-        create_info_name += "_linear";
-        break;
-      case VOLUME_DISPLAY_INTERP_CUBIC:
-        create_info_name += "_cubic";
-        break;
-      case VOLUME_DISPLAY_INTERP_CLOSEST:
-        create_info_name += "_closest";
-        break;
-      default:
-        BLI_assert_unreachable();
-    }
-    create_info_name += (coba) ? "_coba" : "_no_coba";
-    create_info_name += (slice) ? "_slice" : "_no_slice";
-    shader = GPU_shader_create_from_info_name(create_info_name.c_str());
-  }
-  return shader;
-}
-
-void VolumePass::draw_slice_ps(
-    Manager &manager, PassMain::Sub &ps, ObjectRef &ob_ref, int slice_axis_enum, float slice_depth)
-{
-  float4x4 view_mat_inv;
-  DRW_view_viewmat_get(nullptr, view_mat_inv.ptr(), true);
-
-  const int axis = (slice_axis_enum == SLICE_AXIS_AUTO) ?
-                       axis_dominant_v3_single(view_mat_inv[2]) :
-                       slice_axis_enum - 1;
-
-  float3 dimensions;
-  BKE_object_dimensions_get(ob_ref.object, dimensions);
-  /* 0.05f to achieve somewhat the same opacity as the full view. */
-  float step_length = std::max(1e-16f, dimensions[axis] * 0.05f);
-
-  ps.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL);
-  ps.push_constant("slicePosition", slice_depth);
-  ps.push_constant("sliceAxis", axis);
-  ps.push_constant("stepLength", step_length);
-
-  ps.draw(DRW_cache_quad_get(), manager.resource_handle(ob_ref));
-}
-
-void VolumePass::draw_volume_ps(Manager &manager,
-                                PassMain::Sub &ps,
-                                ObjectRef &ob_ref,
-                                int taa_sample,
-                                float3 slice_count,
-                                float3 world_size)
-{
-  double noise_offset;
-  BLI_halton_1d(3, 0.0, taa_sample, &noise_offset);
-
-  int max_slice = std::max({UNPACK3(slice_count)});
-  float step_length = math::length((1.0f / slice_count) * world_size);
-
-  ps.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL | DRW_STATE_CULL_FRONT);
-  ps.push_constant("samplesLen", max_slice);
-  ps.push_constant("stepLength", step_length);
-  ps.push_constant("noiseOfs", float(noise_offset));
-
-  ps.draw(DRW_cache_cube_get(), manager.resource_handle(ob_ref));
-}
-
 void VolumePass::sync(SceneResources &resources)
 {
   active_ = false;
@@ -251,6 +180,77 @@ void VolumePass::draw(Manager &manager, View &view, SceneResources &resources)
   fb_.ensure(GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(resources.color_tx));
   fb_.bind();
   manager.submit(ps_, view);
+}
+
+GPUShader *VolumePass::get_shader(bool slice, bool coba, int interpolation, bool smoke)
+{
+  GPUShader *&shader = shaders_[slice][coba][interpolation][smoke];
+
+  if (shader == nullptr) {
+    std::string create_info_name = "workbench_next_volume";
+    create_info_name += (smoke) ? "_smoke" : "_object";
+    switch (interpolation) {
+      case VOLUME_DISPLAY_INTERP_LINEAR:
+        create_info_name += "_linear";
+        break;
+      case VOLUME_DISPLAY_INTERP_CUBIC:
+        create_info_name += "_cubic";
+        break;
+      case VOLUME_DISPLAY_INTERP_CLOSEST:
+        create_info_name += "_closest";
+        break;
+      default:
+        BLI_assert_unreachable();
+    }
+    create_info_name += (coba) ? "_coba" : "_no_coba";
+    create_info_name += (slice) ? "_slice" : "_no_slice";
+    shader = GPU_shader_create_from_info_name(create_info_name.c_str());
+  }
+  return shader;
+}
+
+void VolumePass::draw_slice_ps(
+    Manager &manager, PassMain::Sub &ps, ObjectRef &ob_ref, int slice_axis_enum, float slice_depth)
+{
+  float4x4 view_mat_inv;
+  DRW_view_viewmat_get(nullptr, view_mat_inv.ptr(), true);
+
+  const int axis = (slice_axis_enum == SLICE_AXIS_AUTO) ?
+                       axis_dominant_v3_single(view_mat_inv[2]) :
+                       slice_axis_enum - 1;
+
+  float3 dimensions;
+  BKE_object_dimensions_get(ob_ref.object, dimensions);
+  /* 0.05f to achieve somewhat the same opacity as the full view. */
+  float step_length = std::max(1e-16f, dimensions[axis] * 0.05f);
+
+  ps.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL);
+  ps.push_constant("slicePosition", slice_depth);
+  ps.push_constant("sliceAxis", axis);
+  ps.push_constant("stepLength", step_length);
+
+  ps.draw(DRW_cache_quad_get(), manager.resource_handle(ob_ref));
+}
+
+void VolumePass::draw_volume_ps(Manager &manager,
+                                PassMain::Sub &ps,
+                                ObjectRef &ob_ref,
+                                int taa_sample,
+                                float3 slice_count,
+                                float3 world_size)
+{
+  double noise_offset;
+  BLI_halton_1d(3, 0.0, taa_sample, &noise_offset);
+
+  int max_slice = std::max({UNPACK3(slice_count)});
+  float step_length = math::length((1.0f / slice_count) * world_size);
+
+  ps.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL | DRW_STATE_CULL_FRONT);
+  ps.push_constant("samplesLen", max_slice);
+  ps.push_constant("stepLength", step_length);
+  ps.push_constant("noiseOfs", float(noise_offset));
+
+  ps.draw(DRW_cache_cube_get(), manager.resource_handle(ob_ref));
 }
 
 }  // namespace blender::workbench

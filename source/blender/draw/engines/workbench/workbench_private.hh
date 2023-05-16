@@ -334,21 +334,7 @@ class VolumePass {
   Texture dummy_volume_tx_ = {"Volume.Dummy Volume Tx"};
   Texture dummy_coba_tx_ = {"Volume.Dummy Coba Tx"};
 
-  GPUShader *shaders_[2][2][3][2];
-  GPUShader *get_shader(bool slice, bool coba, int interpolation, bool smoke);
-
-  void draw_slice_ps(Manager &manager,
-                     PassMain::Sub &ps,
-                     ObjectRef &ob_ref,
-                     int slice_axis_enum,
-                     float slice_depth);
-
-  void draw_volume_ps(Manager &manager,
-                      PassMain::Sub &ps,
-                      ObjectRef &ob_ref,
-                      int taa_sample,
-                      float3 slice_count,
-                      float3 world_size);
+  GPUShader *shaders_[2 /*slice*/][2 /*coba*/][3 /*interpolation*/][2 /*smoke*/];
 
  public:
   void sync(SceneResources &resources);
@@ -366,6 +352,22 @@ class VolumePass {
                             ModifierData *md);
 
   void draw(Manager &manager, View &view, SceneResources &resources);
+
+ private:
+  GPUShader *get_shader(bool slice, bool coba, int interpolation, bool smoke);
+
+  void draw_slice_ps(Manager &manager,
+                     PassMain::Sub &ps,
+                     ObjectRef &ob_ref,
+                     int slice_axis_enum,
+                     float slice_depth);
+
+  void draw_volume_ps(Manager &manager,
+                      PassMain::Sub &ps,
+                      ObjectRef &ob_ref,
+                      int taa_sample,
+                      float3 slice_count,
+                      float3 world_size);
 };
 
 class OutlinePass {
