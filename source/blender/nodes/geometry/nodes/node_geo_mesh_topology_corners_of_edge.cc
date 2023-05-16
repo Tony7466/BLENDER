@@ -61,7 +61,7 @@ class CornersOfEdgeInput final : public bke::MeshFieldInput {
   {
     const IndexRange edge_range(mesh.totedge);
     const Span<int> corner_edges = mesh.corner_edges();
-    Array<Vector<int>> edge_to_loop_map = bke::mesh_topology::build_edge_to_loop_map(corner_edges,
+    const Array<Vector<int>> edge_to_loop_map = bke::mesh_topology::build_edge_to_loop_map(corner_edges,
                                                                                      mesh.totedge);
 
     const bke::MeshFieldContext context{mesh, domain};
