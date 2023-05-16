@@ -114,20 +114,20 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *socket_value_boolean = socket_value_float->next;
   bNodeSocket *socket_value_int32 = socket_value_boolean->next;
 
-  nodeSetSocketAvailability(ntree, socket_value_vector, grid_type == CD_PROP_FLOAT3);
-  nodeSetSocketAvailability(ntree, socket_value_float, grid_type == CD_PROP_FLOAT);
-  nodeSetSocketAvailability(ntree, socket_value_boolean, grid_type == CD_PROP_BOOL);
-  nodeSetSocketAvailability(ntree, socket_value_int32, grid_type == CD_PROP_INT32);
+  bke::nodeSetSocketAvailability(ntree, socket_value_vector, grid_type == CD_PROP_FLOAT3);
+  bke::nodeSetSocketAvailability(ntree, socket_value_float, grid_type == CD_PROP_FLOAT);
+  bke::nodeSetSocketAvailability(ntree, socket_value_boolean, grid_type == CD_PROP_BOOL);
+  bke::nodeSetSocketAvailability(ntree, socket_value_int32, grid_type == CD_PROP_INT32);
 
   bNodeSocket *out_socket_value_vector = static_cast<bNodeSocket *>(node->outputs.first);
   bNodeSocket *out_socket_value_float = out_socket_value_vector->next;
   bNodeSocket *out_socket_value_boolean = out_socket_value_float->next;
   bNodeSocket *out_socket_value_int32 = out_socket_value_boolean->next;
 
-  nodeSetSocketAvailability(ntree, out_socket_value_vector, grid_type == CD_PROP_FLOAT3);
-  nodeSetSocketAvailability(ntree, out_socket_value_float, grid_type == CD_PROP_FLOAT);
-  nodeSetSocketAvailability(ntree, out_socket_value_boolean, grid_type == CD_PROP_BOOL);
-  nodeSetSocketAvailability(ntree, out_socket_value_int32, grid_type == CD_PROP_INT32);
+  bke::nodeSetSocketAvailability(ntree, out_socket_value_vector, grid_type == CD_PROP_FLOAT3);
+  bke::nodeSetSocketAvailability(ntree, out_socket_value_float, grid_type == CD_PROP_FLOAT);
+  bke::nodeSetSocketAvailability(ntree, out_socket_value_boolean, grid_type == CD_PROP_BOOL);
+  bke::nodeSetSocketAvailability(ntree, out_socket_value_int32, grid_type == CD_PROP_INT32);
 }
 
 #ifdef WITH_OPENVDB
@@ -148,23 +148,21 @@ static const StringRefNull get_grid_name(GField &field)
   return "";
 }
 
-static std::optional<eCustomDataType> vdb_grid_type_to_customdata_type(
-    const VolumeGridType grid_type)
+static const blender::CPPType *vdb_grid_type_to_cpp_type(const VolumeGridType grid_type)
 {
   switch (grid_type) {
     case VOLUME_GRID_FLOAT:
-      return CD_PROP_FLOAT;
+      return &CPPType::get<float>();
     case VOLUME_GRID_VECTOR_FLOAT:
-      return CD_PROP_FLOAT3;
+      return &CPPType::get<float3>();
     case VOLUME_GRID_INT:
-      return CD_PROP_INT32;
+      return &CPPType::get<int>();
     case VOLUME_GRID_BOOLEAN:
-    case VOLUME_GRID_MASK:
-      return CD_PROP_BOOL;
+      return &CPPType::get<bool>();
     default:
       break;
   }
-  return std::nullopt;
+  return nullptr;
 }
 
 template<typename GridT>
@@ -179,7 +177,7 @@ void sample_grid(openvdb::GridBase::ConstPtr base_grid,
   const GridT::ConstPtr grid = openvdb::gridConstPtrCast<GridT>(base_grid);
   AccessorT accessor = grid->getConstAccessor();
 
-  auto copy_data = [&](auto sampler) {
+  auto sample_data = [&](auto sampler) {
     mask.foreach_index([&](const int64_t i) {
       const float3 &pos = positions[i];
       ValueT value = sampler.wsSample(openvdb::Vec3R(pos.x, pos.y, pos.z));
@@ -199,20 +197,20 @@ void sample_grid(openvdb::GridBase::ConstPtr base_grid,
     case GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRILINEAR: {
       openvdb::tools::GridSampler<AccessorT, openvdb::tools::BoxSampler> sampler(
           accessor, grid->transform());
-      copy_data(sampler);
+      sample_data(sampler);
       break;
     }
     case GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRIQUADRATIC: {
       openvdb::tools::GridSampler<AccessorT, openvdb::tools::QuadraticSampler> sampler(
           accessor, grid->transform());
-      copy_data(sampler);
+      sample_data(sampler);
       break;
     }
     case GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_NEAREST:
     default: {
       openvdb::tools::GridSampler<AccessorT, openvdb::tools::PointSampler> sampler(
           accessor, grid->transform());
-      copy_data(sampler);
+      sample_data(sampler);
       break;
     }
   }
@@ -230,13 +228,11 @@ class SampleVolumeFunction : public mf::MultiFunction {
       : base_grid_(std::move(base_grid)), interpolation_mode_(interpolation_mode)
   {
     grid_type_ = BKE_volume_grid_type_openvdb(*base_grid_);
-    std::optional<eCustomDataType> grid_customdata_type = vdb_grid_type_to_customdata_type(
-        grid_type_);
+    const CPPType *grid_cpp_type = vdb_grid_type_to_cpp_type(grid_type_);
+    BLI_assert(grid_cpp_type != nullptr);
     mf::SignatureBuilder builder{"Sample Volume", signature_};
     builder.single_input<float3>("Position");
-    BLI_assert(grid_customdata_type.has_value());
-    builder.single_output("Value",
-                          *bke::custom_data_type_to_cpp_type(grid_customdata_type.value()));
+    builder.single_output("Value", *grid_cpp_type);
     this->set_signature(&signature_);
   }
 
@@ -336,9 +332,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   const VolumeGridType grid_type = BKE_volume_grid_type_openvdb(*base_grid);
 
   /* Check that the grid type is supported. */
-  std::optional<eCustomDataType> grid_customdata_type = vdb_grid_type_to_customdata_type(
-      grid_type);
-  if (!grid_customdata_type.has_value()) {
+  const CPPType *grid_cpp_type = vdb_grid_type_to_cpp_type(grid_type);
+  if (grid_cpp_type == nullptr) {
     params.set_default_remaining_outputs();
     params.error_message_add(NodeWarningType::Error, TIP_("The grid type is unsupported"));
     return;
@@ -356,10 +351,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   auto op = FieldOperation::Create(std::move(fn), {position_field});
   GField output_field = GField(std::move(op));
 
-  if (grid_customdata_type.value() != output_field_type) {
-    output_field = bke::get_implicit_type_conversions().try_convert(
-        output_field, *bke::custom_data_type_to_cpp_type(output_field_type));
-  }
+  output_field = bke::get_implicit_type_conversions().try_convert(
+      output_field, *bke::custom_data_type_to_cpp_type(output_field_type));
 
   output_attribute_field(params, std::move(output_field));
 #else
