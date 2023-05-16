@@ -14,6 +14,7 @@
 #include "BLI_assert.h"
 #include "BLI_listbase.h"
 
+#include "BKE_idprop.hh"
 #include "BKE_main.h"
 #include "BKE_mesh_legacy_convert.h"
 #include "BKE_modifier.h"
@@ -34,9 +35,9 @@ static bNodeTree *add_realize_node_tree(Main &bmain)
 {
   bNodeTree *node_tree = ntreeAddTree(&bmain, DATA_("Auto Smooth 4.0 Legacy"), "GeometryNodeTree");
 
-  ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketGeometry", "Geometry");
-  ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketFloatAngle", "Angle");
-  ntreeAddSocketInterface(node_tree, SOCK_OUT, "NodeSocketGeometry", "Geometry");
+  ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketGeometry", DATA_("Geometry"));
+  ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketFloatAngle", DATA_("Angle"));
+  ntreeAddSocketInterface(node_tree, SOCK_OUT, "NodeSocketGeometry", DATA_("Geometry"));
 
   bNode *group_input = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
   group_input->locx = -400.0f;
@@ -50,32 +51,75 @@ static bNodeTree *add_realize_node_tree(Main &bmain)
   static_cast<NodeGeometryStoreNamedAttribute *>(store_node->storage)->data_type = CD_PROP_BOOL;
   static_cast<NodeGeometryStoreNamedAttribute *>(store_node->storage)->domain = ATTR_DOMAIN_EDGE;
   bNodeSocket *name = nodeFindSocket(store_node, SOCK_IN, DATA_("Name"));
-  STRNCPY(name->default_value_typed<bNodeSocketValueString>()->value, "sharp_face");
+  STRNCPY(name->default_value_typed<bNodeSocketValueString>()->value, "sharp_edge");
 
   bNode *greater_node = nodeAddNode(nullptr, node_tree, "FunctionNodeCompare");
-  static_cast<NodeFunctionCompare *>(store_node->storage)->operation = NODE_COMPARE_GREATER_THAN;
-  static_cast<NodeFunctionCompare *>(store_node->storage)->data_type = CD_PROP_FLOAT;
+  static_cast<NodeFunctionCompare *>(greater_node->storage)->operation = NODE_COMPARE_GREATER_THAN;
+  static_cast<NodeFunctionCompare *>(greater_node->storage)->data_type = SOCK_FLOAT;
+
+  bNode *edge_angle_node = nodeAddNode(nullptr, node_tree, "GeometryNodeInputMeshEdgeAngle");
+
+  nodeAddLink(node_tree,
+              group_input,
+              static_cast<bNodeSocket *>(group_input->outputs.first),
+              shade_smooth,
+              nodeFindSocket(shade_smooth, SOCK_IN, "Geometry"));
+  nodeAddLink(node_tree,
+              shade_smooth,
+              nodeFindSocket(shade_smooth, SOCK_OUT, "Geometry"),
+              store_node,
+              nodeFindSocket(store_node, SOCK_IN, "Geometry"));
+  nodeAddLink(node_tree,
+              edge_angle_node,
+              nodeFindSocket(edge_angle_node, SOCK_OUT, "Unsigned Angle"),
+              greater_node,
+              nodeFindSocket(greater_node, SOCK_IN, "A"));
+  nodeAddLink(node_tree,
+              group_input,
+              static_cast<bNodeSocket *>(BLI_findlink(&group_input->outputs, 1)),
+              greater_node,
+              nodeFindSocket(greater_node, SOCK_IN, "B"));
+  nodeAddLink(node_tree,
+              greater_node,
+              nodeFindSocket(greater_node, SOCK_OUT, "Result"),
+              store_node,
+              nodeFindSocket(store_node, SOCK_IN, "Value_Bool"));
+  nodeAddLink(node_tree,
+              store_node,
+              nodeFindSocket(store_node, SOCK_OUT, "Geometry"),
+              group_output,
+              static_cast<bNodeSocket *>(group_output->inputs.first));
+  return node_tree;
 }
 
-void do_versions_after_linking_400(FileData * /*fd*/, Main *bmain)
+static void version_mesh_objects_replace_auto_smooth(Main &bmain)
 {
+  using namespace blender;
   bNodeTree *auto_smooth_node_tree = nullptr;
-  LISTBASE_FOREACH (Object *, object, &bmain->objects) {
+  LISTBASE_FOREACH (Object *, object, &bmain.objects) {
     if (object->type == OB_MESH) {
       Mesh *mesh = static_cast<Mesh *>(object->data);
       if (mesh->flag & ME_AUTOSMOOTH) {
         if (!auto_smooth_node_tree) {
-          auto_smooth_node_tree = add_realize_node_tree(*bmain);
+          auto_smooth_node_tree = add_realize_node_tree(bmain);
         }
         auto *md = reinterpret_cast<NodesModifierData *>(BKE_modifier_new(eModifierType_Nodes));
         STRNCPY(md->modifier.name, DATA_("Auto Smooth 4.0 Legacy"));
         BKE_modifier_unique_name(&object->modifiers, &md->modifier);
         md->node_group = auto_smooth_node_tree;
-
         BLI_addtail(&object->modifiers, md);
+
+        md->settings.properties = bke::idprop::create_group("Nodes Modifier Settings").release();
+        IDProperty *angle_prop = bke::idprop::create(DATA_("Input_1"), mesh->smoothresh).release();
+        IDP_AddToGroup(md->settings.properties, angle_prop);
       }
     }
   }
+}
+
+void do_versions_after_linking_400(FileData * /*fd*/, Main *bmain)
+{
+  version_mesh_objects_replace_auto_smooth(*bmain);
 }
 
 static void version_mesh_legacy_to_struct_of_array_format(Mesh &mesh)
