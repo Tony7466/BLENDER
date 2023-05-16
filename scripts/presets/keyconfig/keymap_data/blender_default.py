@@ -2604,8 +2604,6 @@ def km_nla_editor(params):
          {"properties": [("mode", 'TIME_EXTEND')]}),
         ("transform.transform", {"type": 'S', "value": 'PRESS'},
          {"properties": [("mode", 'TIME_SCALE')]}),
-        ("transform.transform", {"type": 'G', "value": 'PRESS', "ctrl": True},
-         {"properties": [("mode", 'TRANSLATION')]}),
         ("marker.add", {"type": 'M', "value": 'PRESS'}, None),
         *_template_items_context_menu("NLA_MT_context_menu", params.context_menu_event),
         *_template_items_change_frame(params),
