@@ -324,6 +324,7 @@ typedef struct RetimeHandleMoveGizmo {
   wmGizmo gizmo;
   const Sequence *mouse_over_seq;
   int mouse_over_handle_x;
+  bool create_transition_operation;
 } RetimeHandleMoveGizmo;
 
 static void seq_retiming_segment_as_line_segment(const SeqRetimingHandle *start_handle,
@@ -364,12 +365,23 @@ static void retime_handle_draw(const bContext *C,
   const float top = UI_view2d_view_to_region_y(v2d, strip_y_rescale(seq, 1.0f)) - 2;
   const float handle_position = UI_view2d_view_to_region_x(v2d, handle_x);
 
+  float col[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+
   if (seq == gizmo->mouse_over_seq && handle_x == gizmo->mouse_over_handle_x) {
-    immUniformColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+    if (gizmo->create_transition_operation) {
+      bool handle_is_transition = SEQ_retiming_handle_is_transition_type(handle);
+      bool prev_handle_is_transition = SEQ_retiming_handle_is_transition_type(handle - 1);
+      if (!(handle_is_transition || prev_handle_is_transition)) {
+        col[0] = 0.5f;
+        col[2] = 0.4f;
+      }
+    }
   }
   else {
-    immUniformColor4f(0.65f, 0.65f, 0.65f, 1.0f);
+    mul_v3_fl(col, 0.65f);
   }
+
+  immUniformColor4fv(col);
 
   immBegin(GPU_PRIM_TRI_FAN, 3);
   immVertex2f(pos, handle_position - ui_triangle_size / 2, bottom);
@@ -412,7 +424,7 @@ static void retime_speed_text_draw(const bContext *C,
     const float next_speed = SEQ_retiming_handle_speed_get(seq, next_handle + 1);
     label_len = BLI_snprintf_rlen(label_str,
                                   sizeof(label_str),
-                                  "%d%% -> %d%%",
+                                  "%d%% - %d%%",
                                   round_fl_to_int(prev_speed * 100.0f),
                                   round_fl_to_int(next_speed * 100.0f));
   }
@@ -442,8 +454,12 @@ static void retime_speed_text_draw(const bContext *C,
 
 static void gizmo_retime_handle_draw(const bContext *C, wmGizmo *gz)
 {
-  const RetimeHandleMoveGizmo *gizmo = (RetimeHandleMoveGizmo *)gz;
+  RetimeHandleMoveGizmo *gizmo = (RetimeHandleMoveGizmo *)gz;
   const View2D *v2d = UI_view2d_fromcontext(C);
+
+  /* Hack: Switch action mode based on key input */
+  wmEvent *event = CTX_wm_window(C)->eventstate;
+  gizmo->create_transition_operation = (event->modifier & KM_SHIFT) != 0;
 
   wmOrtho2_region_pixelspace(CTX_wm_region(C));
   GPU_blend(GPU_BLEND_ALPHA);
