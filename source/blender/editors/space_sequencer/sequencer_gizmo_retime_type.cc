@@ -327,17 +327,6 @@ typedef struct RetimeHandleMoveGizmo {
   bool create_transition_operation;
 } RetimeHandleMoveGizmo;
 
-static void seq_retiming_segment_as_line_segment(const SeqRetimingHandle *start_handle,
-                                                 double r_v1[2],
-                                                 double r_v2[2])
-{
-  const SeqRetimingHandle *end_handle = start_handle + 1;
-  r_v1[0] = start_handle->strip_frame_index;
-  r_v1[1] = start_handle->retiming_factor;
-  r_v2[0] = end_handle->strip_frame_index;
-  r_v2[1] = end_handle->retiming_factor;
-}
-
 static void retime_handle_draw(const bContext *C,
                                const RetimeHandleMoveGizmo *gizmo,
                                uint pos,
