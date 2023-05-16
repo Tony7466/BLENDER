@@ -278,7 +278,7 @@ void RenderBuffers::reset(const BufferParams &params_)
 
   /* re-allocate buffer */
   if(buffer.size() < buffer.memory_elements_size(params.width*params.pass_stride*params.height)) {
-    buffer.alloc(params.width * params.pass_stride, params.height);
+    buffer.alloc(params.width * params.pass_stride, params.height, true);
   }
 }
 
