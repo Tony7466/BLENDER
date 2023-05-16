@@ -198,17 +198,45 @@ static int sequencer_retiming_handle_move_modal(bContext *C, wmOperator *op, con
 
       /* Add retiming gradient and move handle. */
       if (op->customdata) {
-        SeqRetimingHandle *gradient_handle = SEQ_retiming_add_transition(
+        SeqRetimingHandle *transition_handle = SEQ_retiming_add_transition(
             scene, seq, handle, abs(offset));
         /* New gradient handle was created - update operator properties. */
-        if (gradient_handle != nullptr) {
+        if (transition_handle != nullptr) {
           if (offset < 0) {
-            handle = gradient_handle;
+            handle = transition_handle;
           }
           else {
-            handle = gradient_handle + 1;
+            handle = transition_handle + 1;
           }
           RNA_int_set(op->ptr, "handle_index", SEQ_retiming_handle_index_get(seq, handle));
+        }
+      }
+
+      bool handle_is_transition = SEQ_retiming_handle_is_transition_type(handle);
+      bool prev_handle_is_transition = SEQ_retiming_handle_is_transition_type(handle - 1);
+
+      /* When working with transiton, change handles when moving past pivot point. */
+      if (handle_is_transition || prev_handle_is_transition) {
+        SeqRetimingHandle *transition_start, *transition_end;
+        if (handle_is_transition) {
+          transition_start = handle;
+          transition_end = handle + 1;
+        }
+        else {
+          transition_start = handle - 1;
+          transition_end = handle;
+        }
+        int offset_l = mouse_x -
+                       SEQ_retiming_handle_timeline_frame_get(scene, seq, transition_start);
+        int offset_r = mouse_x -
+                       SEQ_retiming_handle_timeline_frame_get(scene, seq, transition_end);
+
+        if (prev_handle_is_transition && offset_l < 0) {
+          RNA_int_set(
+              op->ptr, "handle_index", SEQ_retiming_handle_index_get(seq, transition_start));
+        }
+        if (handle_is_transition && offset_r > 0) {
+          RNA_int_set(op->ptr, "handle_index", SEQ_retiming_handle_index_get(seq, transition_end));
         }
       }
 

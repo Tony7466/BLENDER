@@ -224,7 +224,7 @@ static void gizmo_retime_handle_add_draw(const bContext *C, wmGizmo *gz)
   const int frame_index = BKE_scene_frame_get(scene) - SEQ_time_start_frame_get(seq);
   const SeqRetimingHandle *handle = SEQ_retiming_find_segment_start_handle(seq, frame_index);
 
-  if (SEQ_retiming_handle_is_transition_type(handle)) {
+  if (handle != nullptr && SEQ_retiming_handle_is_transition_type(handle)) {
     return;
   }
 
@@ -347,7 +347,7 @@ static void retime_handle_draw(const bContext *C,
   const float handle_x = handle_x_get(scene, seq, handle);
 
   if (handle_x == SEQ_time_left_handle_frame_get(scene, seq)) {
-    // return;
+    return;
   }
   if (handle_x == SEQ_time_right_handle_frame_get(scene, seq)) {
     return;
@@ -460,7 +460,7 @@ static void gizmo_retime_handle_draw(const bContext *C, wmGizmo *gz)
     retime_speed_text_draw(C, seq, &handle);
 
     if (&handle == handles.begin()) {
-      // continue; /* Ignore first handle. */
+      continue; /* Ignore first handle. */
     }
     retime_handle_draw(C, gizmo, pos, seq, &handle);
   }

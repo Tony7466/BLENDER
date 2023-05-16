@@ -200,6 +200,17 @@ static bool seq_retiming_transition_is_linear(const Sequence *seq, const SeqReti
 
   return abs(prev_speed - next_speed) < 0.01f;
 }
+
+static float seq_retiming_evaluate_arc_segment(const SeqRetimingHandle *handle,
+                                               const float frame_index)
+{
+  double c[2], r;
+  seq_retiming_line_segments_tangent_circle(handle, c, &r);
+  const int side = c[1] > handle->retiming_factor ? -1 : 1;
+  const float y = c[1] + side * sqrt(pow(r, 2) - pow((frame_index - c[0]), 2));
+  return y;
+}
+
 float seq_retiming_evaluate(const Sequence *seq, const float frame_index)
 {
   const SeqRetimingHandle *start_handle = SEQ_retiming_find_segment_start_handle(seq, frame_index);
@@ -219,17 +230,12 @@ float seq_retiming_evaluate(const Sequence *seq, const float frame_index)
     return start_handle->retiming_factor + segment_step * segment_frame_index;
   }
 
-  double c[2], r;
-  seq_retiming_line_segments_tangent_circle(start_handle, c, &r);
-
   /* Gradual speed change. */
   BLI_assert(start_handle_index > 0);
   BLI_assert(start_handle_index < seq->retiming_handle_num - 1);
   UNUSED_VARS_NDEBUG(start_handle_index);
 
-  const int side = c[1] > start_handle->retiming_factor ? -1 : 1;
-  const float y = c[1] + side * sqrt(pow(r, 2) - pow((frame_index - c[0]), 2));
-  return y;
+  return seq_retiming_evaluate_arc_segment(start_handle, frame_index);
 }
 
 SeqRetimingHandle *SEQ_retiming_add_handle(const Scene *scene,
@@ -283,8 +289,27 @@ static void seq_retiming_offset_linear_handle(const Scene *scene,
                                               const int offset)
 {
   MutableSpan handles = SEQ_retiming_handles_get(seq);
-  for (; handle < handles.end(); handle++) {
-    handle->strip_frame_index += offset * seq_time_media_playback_rate_factor_get(scene, seq);
+
+  for (SeqRetimingHandle *next_handle = handle; next_handle < handles.end(); next_handle++) {
+    next_handle->strip_frame_index += offset * seq_time_media_playback_rate_factor_get(scene, seq);
+  }
+
+  /* One solution is to find where in arc segment the y val is closest to `handle` retiming factor,
+   * then trim arc segment to that point.
+   * Alternative is quite destructive, but easiest - remove and re-create transition. This way
+   * transition won't change length.
+   */
+  if (SEQ_retiming_handle_is_transition_type(handle - 2)) {
+    SeqRetimingHandle *transition_handle = handle - 2;
+
+    const int transition_offset = transition_handle->strip_frame_index -
+                                  transition_handle->original_strip_frame_index;
+
+    const int transition_handle_index = SEQ_retiming_handle_index_get(seq, transition_handle);
+
+    SEQ_retiming_remove_handle(scene, seq, transition_handle);
+    SeqRetimingHandle *orig_handle = seq->retiming_handles + transition_handle_index;
+    SEQ_retiming_add_transition(scene, seq, orig_handle, -transition_offset);
   }
 
   SEQ_time_update_meta_strip_range(scene, seq_sequence_lookup_meta_by_seq(scene, seq));
@@ -351,8 +376,14 @@ void SEQ_retiming_offset_handle(const Scene *scene,
   int handle_frame = SEQ_retiming_handle_timeline_frame_get(scene, seq, handle);
   int offset_min = SEQ_retiming_handle_timeline_frame_get(scene, seq, prev_handle) + 1 -
                    handle_frame;
-  int offset_max = SEQ_retiming_handle_timeline_frame_get(scene, seq, next_handle) - 1 -
-                   handle_frame;
+  int offset_max;
+  if (SEQ_retiming_handle_index_get(seq, handle) == seq->retiming_handle_num - 1) {
+    offset_max = INT_MAX;
+  }
+  else {
+    offset_max = SEQ_retiming_handle_timeline_frame_get(scene, seq, next_handle) - 1 -
+                 handle_frame;
+  }
   corrected_offset = max_ii(corrected_offset, offset_min);
   corrected_offset = min_ii(corrected_offset, offset_max);
 
