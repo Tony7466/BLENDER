@@ -76,17 +76,62 @@ static void node_geo_exec(GeoNodeExecParams params)
         cpptype->move_construct(&value, bound_value_buffer);
         break;
       }
-      case SOCK_VECTOR:
-      case SOCK_RGBA:
-      case SOCK_BOOLEAN:
-      case SOCK_INT:
-      case SOCK_STRING:
-      case SOCK_OBJECT:
-      case SOCK_IMAGE:
-      case SOCK_GEOMETRY:
-      case SOCK_COLLECTION:
-      case SOCK_TEXTURE:
-      case SOCK_MATERIAL:
+      case SOCK_VECTOR: {
+        ValueOrField<float3> value = params.get_input<float3>(socket->identifier);
+        cpptype->move_construct(&value, bound_value_buffer);
+        break;
+      }
+      case SOCK_RGBA: {
+        ValueOrField<ColorGeometry4f> value = params.get_input<ColorGeometry4f>(
+            socket->identifier);
+        cpptype->move_construct(&value, bound_value_buffer);
+        break;
+      }
+      case SOCK_BOOLEAN: {
+        ValueOrField<bool> value = params.get_input<bool>(socket->identifier);
+        cpptype->move_construct(&value, bound_value_buffer);
+        break;
+      }
+      case SOCK_INT: {
+        ValueOrField<int> value = params.get_input<int>(socket->identifier);
+        cpptype->move_construct(&value, bound_value_buffer);
+        break;
+      }
+      case SOCK_STRING: {
+        ValueOrField<std::string> value = params.get_input<std::string>(socket->identifier);
+        cpptype->move_construct(&value, bound_value_buffer);
+        break;
+      }
+      case SOCK_OBJECT: {
+        Object *value = params.get_input<Object *>(socket->identifier);
+        cpptype->move_construct(&value, bound_value_buffer);
+        break;
+      }
+      case SOCK_IMAGE: {
+        Image *value = params.get_input<Image *>(socket->identifier);
+        cpptype->move_construct(&value, bound_value_buffer);
+        break;
+      }
+      case SOCK_GEOMETRY: {
+        GeometrySet value = params.get_input<GeometrySet>(socket->identifier);
+        cpptype->move_construct(&value, bound_value_buffer);
+        break;
+      }
+      case SOCK_COLLECTION: {
+        Collection *value = params.get_input<Collection *>(socket->identifier);
+        cpptype->move_construct(&value, bound_value_buffer);
+        break;
+      }
+      case SOCK_TEXTURE: {
+        Tex *value = params.get_input<Tex *>(socket->identifier);
+        cpptype->move_construct(&value, bound_value_buffer);
+        break;
+      }
+      case SOCK_MATERIAL: {
+        Material *value = params.get_input<Material *>(socket->identifier);
+        cpptype->move_construct(&value, bound_value_buffer);
+        break;
+      }
       case SOCK_FUNCTION:
         BLI_assert_unreachable();
     }
