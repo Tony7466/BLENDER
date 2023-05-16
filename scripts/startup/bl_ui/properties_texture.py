@@ -12,6 +12,7 @@ from bpy.types import (
     ParticleSettings,
     Texture,
 )
+from bpy.app.translations import contexts as i18n_contexts
 
 from rna_prop_ui import PropertyPanel
 from bl_ui.properties_paint_common import brush_texture_settings
@@ -527,8 +528,8 @@ class TEXTURE_PT_image_mapping(TextureTypePanel, Panel):
             col = flow.column()
             col.prop(tex, "checker_distance", text="Distance")
 
-            col = flow.column()
-            col.prop(tex, "use_checker_even", text="Tiles Even")
+            col = flow.column(heading="Tiles")
+            col.prop(tex, "use_checker_even", text="Even", text_ctxt=i18n_contexts.amount)
             col.prop(tex, "use_checker_odd", text="Odd")
         else:
             del flow
