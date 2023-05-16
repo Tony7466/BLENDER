@@ -33,31 +33,39 @@
 
 static bNodeTree *add_realize_node_tree(Main &bmain)
 {
-  bNodeTree *node_tree = ntreeAddTree(&bmain, DATA_("Auto Smooth 4.0 Legacy"), "GeometryNodeTree");
+  bNodeTree *node_tree = ntreeAddTree(&bmain, DATA_("Auto Smooth"), "GeometryNodeTree");
 
   ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketGeometry", DATA_("Geometry"));
   ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketFloatAngle", DATA_("Angle"));
   ntreeAddSocketInterface(node_tree, SOCK_OUT, "NodeSocketGeometry", DATA_("Geometry"));
 
   bNode *group_input = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
-  group_input->locx = -400.0f;
+  group_input->locx = -380.0f;
   bNode *group_output = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_OUTPUT);
-  group_output->locx = 500.0f;
+  group_output->locx = 260.0f;
   group_output->flag |= NODE_DO_OUTPUT;
 
   bNode *shade_smooth = nodeAddNode(nullptr, node_tree, "GeometryNodeSetShadeSmooth");
+  shade_smooth->locx = -160.0f;
+  shade_smooth->locy = 40.0f;
 
   bNode *store_node = nodeAddNode(nullptr, node_tree, "GeometryNodeStoreNamedAttribute");
+  store_node->locx = 40.0f;
+  store_node->locy = 40.0f;
   static_cast<NodeGeometryStoreNamedAttribute *>(store_node->storage)->data_type = CD_PROP_BOOL;
   static_cast<NodeGeometryStoreNamedAttribute *>(store_node->storage)->domain = ATTR_DOMAIN_EDGE;
   bNodeSocket *name = nodeFindSocket(store_node, SOCK_IN, DATA_("Name"));
   STRNCPY(name->default_value_typed<bNodeSocketValueString>()->value, "sharp_edge");
 
   bNode *greater_node = nodeAddNode(nullptr, node_tree, "FunctionNodeCompare");
+  greater_node->locx = -160.0f;
+  greater_node->locy = -100.0f;
   static_cast<NodeFunctionCompare *>(greater_node->storage)->operation = NODE_COMPARE_GREATER_THAN;
   static_cast<NodeFunctionCompare *>(greater_node->storage)->data_type = SOCK_FLOAT;
 
   bNode *edge_angle_node = nodeAddNode(nullptr, node_tree, "GeometryNodeInputMeshEdgeAngle");
+  edge_angle_node->locx = -380.0f;
+  edge_angle_node->locy = -180.0f;
 
   nodeAddLink(node_tree,
               group_input,
@@ -104,7 +112,7 @@ static void version_mesh_objects_replace_auto_smooth(Main &bmain)
           auto_smooth_node_tree = add_realize_node_tree(bmain);
         }
         auto *md = reinterpret_cast<NodesModifierData *>(BKE_modifier_new(eModifierType_Nodes));
-        STRNCPY(md->modifier.name, DATA_("Auto Smooth 4.0 Legacy"));
+        STRNCPY(md->modifier.name, DATA_("Auto Smooth"));
         BKE_modifier_unique_name(&object->modifiers, &md->modifier);
         md->node_group = auto_smooth_node_tree;
         BLI_addtail(&object->modifiers, md);
