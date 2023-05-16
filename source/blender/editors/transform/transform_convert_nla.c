@@ -747,9 +747,6 @@ static void recalcData_nla(TransInfo *t)
 
       while (delta_new_tracks < 0) {
         dst_track = dst_track->prev;
-        if (dst_track == NULL || BKE_nlatrack_is_nonlocal_in_liboverride(tdn->id, dst_track)) {
-          break;
-        }
         delta_new_tracks++;
       }
 
