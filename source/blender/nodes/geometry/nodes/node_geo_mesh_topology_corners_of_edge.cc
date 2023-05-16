@@ -33,7 +33,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .description(N_("The number of faces or corners connected to each edge"));
 }
 
-static void conedge_span(const Span<int> src, MutableSpan<int64_t> dst)
+static void convert_span(const Span<int> src, MutableSpan<int64_t> dst)
 {
   for (const int i : src.index_range()) {
     dst[i] = src[i];
