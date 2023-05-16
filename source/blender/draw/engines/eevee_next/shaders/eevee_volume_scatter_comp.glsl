@@ -17,29 +17,23 @@ vec3 volume_scatter_light_eval(vec3 P, vec3 V, uint l_idx, float s_anisotropy)
     return vec3(0);
   }
 
-  vec4 l_vector;
-  l_vector.xyz = light_volume_light_vector(ld, P);
-  l_vector.w = length(l_vector.xyz);
-
   vec3 L;
-  float dist;
-  light_vector_get(ld, P, L, dist);
-  float attenuation = light_attenuation(ld, L, dist);
+  float l_dist;
+  light_shape_vector_get(ld, P, L, l_dist);
 
 #  if 0
-  /* TODO(Miguel Pozo): Was shadowing applied twice ? */
+  /* TODO(Miguel Pozo): Shadows */
   float vis = light_visibility(ld, P, l_vector);
 #  else
-  float vis = attenuation;
+  float vis = light_attenuation(ld, L, l_dist);
 #  endif
 
   if (vis < 1e-4) {
     return vec3(0);
   }
 
-  vec3 Li = light_volume(ld, l_vector) * light_volume_shadow(ld, P, l_vector);
-
-  return Li * vis * phase_function(-V, l_vector.xyz / l_vector.w, s_anisotropy);
+  vec3 Li = light_volume(ld, L, l_dist) * light_volume_shadow(ld, P, L, l_dist);
+  return Li * vis * phase_function(-V, L, s_anisotropy);
 }
 
 #endif

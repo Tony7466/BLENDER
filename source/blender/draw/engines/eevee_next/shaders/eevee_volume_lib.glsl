@@ -58,7 +58,7 @@ float phase_function(vec3 v, vec3 l, float g)
   return (1 - sqr_g) / max(1e-8, 4.0 * M_PI * pow(1 + sqr_g - 2 * g * cos_theta, 3.0 / 2.0));
 }
 
-vec3 light_volume(LightData ld, vec4 l_vector)
+vec3 light_volume(LightData ld, vec3 L, float l_dist)
 {
   float power = 1.0;
   if (ld.type != LIGHT_SUN) {
@@ -83,7 +83,7 @@ vec3 light_volume(LightData ld, vec4 l_vector)
      * http://www.cemyuksel.com/research/pointlightattenuation/pointlightattenuation.pdf
      * http://www.cemyuksel.com/research/pointlightattenuation/
      */
-    float d = l_vector.w;
+    float d = l_dist;
     float d_sqr = sqr(d);
     float r_sqr = volume_radius_squared;
 
@@ -92,37 +92,10 @@ vec3 light_volume(LightData ld, vec4 l_vector)
 
     if (ld.type == LIGHT_RECT || ld.type == LIGHT_ELLIPSE) {
       /* Modulate by light plane orientation / solid angle. */
-      power *= saturate(dot(ld._back, l_vector.xyz / l_vector.w));
+      power *= saturate(dot(ld._back, L));
     }
   }
   return ld.color * ld.volume_power * power;
-}
-
-vec3 light_volume_light_vector(LightData ld, vec3 P)
-{
-  if (ld.type == LIGHT_SUN) {
-    return ld._back;
-  }
-  else if (ld.type == LIGHT_RECT || ld.type == LIGHT_ELLIPSE) {
-    vec3 L = P - ld._position;
-    vec2 closest_point = vec2(dot(ld._right, L), dot(ld._up, L));
-    vec2 max_pos = vec2(ld._area_size_x, ld._area_size_y);
-    closest_point /= max_pos;
-
-    if (ld.type == LIGHT_ELLIPSE) {
-      closest_point /= max(1.0, length(closest_point));
-    }
-    else {
-      closest_point = clamp(closest_point, -1.0, 1.0);
-    }
-    closest_point *= max_pos;
-
-    vec3 L_prime = ld._right * closest_point.x + ld._up * closest_point.y;
-    return L_prime - L;
-  }
-  else {
-    return ld._position - P;
-  }
 }
 
 #define VOLUMETRIC_SHADOW_MAX_STEP 128.0
@@ -137,10 +110,12 @@ vec3 participating_media_extinction(vec3 wpos, sampler3D volume_extinction)
   return texture(volume_extinction, volume_co).rgb;
 }
 
-vec3 light_volume_shadow(LightData ld, vec3 ray_wpos, vec4 l_vector)
+vec3 light_volume_shadow(LightData ld, vec3 ray_wpos, vec3 L, float l_dist)
 {
   /* TODO (Miguel Pozo) */
 #if 0 && defined(VOLUME_SHADOW)
+  vec4 l_vector = vec4(L * l_dist, l_dist);
+
   /* If light is shadowed, use the shadow vector, if not, reuse the light vector. */
   if (volumes_info_buf.use_soft_shadows && ld.shadowid >= 0.0) {
     ShadowData sd = shadows_data[int(ld.shadowid)];
