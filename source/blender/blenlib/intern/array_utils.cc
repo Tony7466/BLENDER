@@ -52,4 +52,55 @@ void invert_booleans(MutableSpan<bool> span)
   });
 }
 
+BoolArrayMix bool_array_mix_calc(const VArray<bool> &varray, const IndexRange range_to_check)
+{
+  if (varray.is_empty()) {
+    return BoolArrayMix::None;
+  }
+  const CommonVArrayInfo info = varray.common_info();
+  if (info.type == CommonVArrayInfo::Type::Single) {
+    return *static_cast<const bool *>(info.data) ? BoolArrayMix::AllTrue : BoolArrayMix::AllFalse;
+  }
+  if (info.type == CommonVArrayInfo::Type::Span) {
+    const Span<bool> span(static_cast<const bool *>(info.data), varray.size());
+    return threading::parallel_reduce(
+        range_to_check,
+        4096,
+        BoolArrayMix::None,
+        [&](const IndexRange range, const BoolArrayMix init) {
+          if (init == BoolArrayMix::Mixed) {
+            return init;
+          }
+
+          const Span<bool> slice = span.slice(range);
+          const bool first = slice.first();
+          for (const bool value : slice.drop_front(1)) {
+            if (value != first) {
+              return BoolArrayMix::Mixed;
+            }
+          }
+          return first ? BoolArrayMix::AllTrue : BoolArrayMix::AllFalse;
+        },
+        [&](BoolArrayMix a, BoolArrayMix b) { return (a == b) ? a : BoolArrayMix::Mixed; });
+  }
+  return threading::parallel_reduce(
+      range_to_check,
+      2048,
+      BoolArrayMix::None,
+      [&](const IndexRange range, const BoolArrayMix init) {
+        if (init == BoolArrayMix::Mixed) {
+          return init;
+        }
+        /* Alternatively, this could use #materialize to retrieve many values at once. */
+        const bool first = varray[range.first()];
+        for (const int64_t i : range.drop_front(1)) {
+          if (varray[i] != first) {
+            return BoolArrayMix::Mixed;
+          }
+        }
+        return first ? BoolArrayMix::AllTrue : BoolArrayMix::AllFalse;
+      },
+      [&](BoolArrayMix a, BoolArrayMix b) { return (a == b) ? a : BoolArrayMix::Mixed; });
+}
+
 }  // namespace blender::array_utils

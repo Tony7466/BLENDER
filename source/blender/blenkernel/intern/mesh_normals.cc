@@ -301,74 +301,6 @@ void normals_calc_poly_vert(const Span<float3> positions,
 /** \name Mesh Normal Calculation
  * \{ */
 
-namespace blender::bke {
-
-enum class BoolArrayMix {
-  None,
-  AllFalse,
-  AllTrue,
-  Mixed,
-};
-static BoolArrayMix bool_array_mix_calc(const VArray<bool> &varray,
-                                        const blender::IndexRange range_to_check)
-{
-  using namespace blender;
-  if (varray.is_empty()) {
-    return BoolArrayMix::None;
-  }
-  const CommonVArrayInfo info = varray.common_info();
-  if (info.type == CommonVArrayInfo::Type::Single) {
-    return *static_cast<const bool *>(info.data) ? BoolArrayMix::AllTrue : BoolArrayMix::AllFalse;
-  }
-  if (info.type == CommonVArrayInfo::Type::Span) {
-    const Span<bool> span(static_cast<const bool *>(info.data), varray.size());
-    return threading::parallel_reduce(
-        range_to_check,
-        4096,
-        BoolArrayMix::None,
-        [&](const IndexRange range, const BoolArrayMix init) {
-          if (init == BoolArrayMix::Mixed) {
-            return init;
-          }
-
-          const Span<bool> slice = span.slice(range);
-          const bool first = slice.first();
-          for (const bool value : slice.drop_front(1)) {
-            if (value != first) {
-              return BoolArrayMix::Mixed;
-            }
-          }
-          return first ? BoolArrayMix::AllTrue : BoolArrayMix::AllFalse;
-        },
-        [&](BoolArrayMix a, BoolArrayMix b) { return (a == b) ? a : BoolArrayMix::Mixed; });
-  }
-  return threading::parallel_reduce(
-      range_to_check,
-      2048,
-      BoolArrayMix::None,
-      [&](const IndexRange range, const BoolArrayMix init) {
-        if (init == BoolArrayMix::Mixed) {
-          return init;
-        }
-        /* Alternatively, this could use #materialize to retrieve many values at once. */
-        const bool first = varray[range.first()];
-        for (const int64_t i : range.drop_front(1)) {
-          if (varray[i] != first) {
-            return BoolArrayMix::Mixed;
-          }
-        }
-        return first ? BoolArrayMix::AllTrue : BoolArrayMix::AllFalse;
-      },
-      [&](BoolArrayMix a, BoolArrayMix b) { return (a == b) ? a : BoolArrayMix::Mixed; });
-}
-
-static BoolArrayMix bool_array_mix_calc(const VArray<bool> &varray)
-{
-  return bool_array_mix_calc(varray, varray.index_range());
-}
-
-}  // namespace blender::bke
-
 eAttrDomain Mesh::normal_domain_all_info() const
 {
   using namespace blender;
@@ -385,19 +317,21 @@ eAttrDomain Mesh::normal_domain_all_info() const
   const VArray<bool> sharp_faces = *attributes.lookup_or_default<bool>(
       "sharp_face", ATTR_DOMAIN_FACE, false);
 
-  const BoolArrayMix face_mix = bool_array_mix_calc(sharp_faces);
-  if (face_mix == BoolArrayMix::AllTrue) {
+  const array_utils::BoolArrayMix face_mix = array_utils::bool_array_mix_calc(sharp_faces);
+  if (face_mix == array_utils::BoolArrayMix::AllTrue) {
     return ATTR_DOMAIN_FACE;
   }
 
   const VArray<bool> sharp_edges = *attributes.lookup_or_default<bool>(
       "sharp_edge", ATTR_DOMAIN_EDGE, false);
-  const BoolArrayMix edge_mix = bool_array_mix_calc(sharp_edges);
-  if (edge_mix == BoolArrayMix::AllTrue) {
+  const array_utils::BoolArrayMix edge_mix = array_utils::bool_array_mix_calc(sharp_edges);
+  if (edge_mix == array_utils::BoolArrayMix::AllTrue) {
     return ATTR_DOMAIN_FACE;
   }
 
-  if (edge_mix == BoolArrayMix::AllFalse && face_mix == BoolArrayMix::AllFalse) {
+  if (edge_mix == array_utils::BoolArrayMix::AllFalse &&
+      face_mix == array_utils::BoolArrayMix::AllFalse)
+  {
     return ATTR_DOMAIN_POINT;
   }
 
