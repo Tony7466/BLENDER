@@ -21,7 +21,7 @@
 
 #include "BKE_context.h"
 #include "BKE_main.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_workspace.h"
@@ -304,6 +304,21 @@ void node_deselect_all_output_sockets(bNodeTree &node_tree, const bool deselect_
 
       if (!sel) {
         node->flag &= ~SELECT;
+      }
+    }
+  }
+}
+
+void node_select_paired(bNodeTree &node_tree)
+{
+  for (bNode *input_node : node_tree.nodes_by_type("GeometryNodeSimulationInput")) {
+    const auto *storage = static_cast<const NodeGeometrySimulationInput *>(input_node->storage);
+    if (bNode *output_node = node_tree.node_by_id(storage->output_node_id)) {
+      if (input_node->flag & NODE_SELECT) {
+        output_node->flag |= NODE_SELECT;
+      }
+      if (output_node->flag & NODE_SELECT) {
+        input_node->flag |= NODE_SELECT;
       }
     }
   }
@@ -1307,13 +1322,13 @@ void NODE_OT_select_same_type_step(wmOperatorType *ot)
 /** \name Find Node by Name Operator
  * \{ */
 
-static void node_find_create_label(const bNode *node, char *str, int maxlen)
+static void node_find_create_label(const bNode *node, char *str, int str_maxncpy)
 {
   if (node->label[0]) {
-    BLI_snprintf(str, maxlen, "%s (%s)", node->name, node->label);
+    BLI_snprintf(str, str_maxncpy, "%s (%s)", node->name, node->label);
   }
   else {
-    BLI_strncpy(str, node->name, maxlen);
+    BLI_strncpy(str, node->name, str_maxncpy);
   }
 }
 

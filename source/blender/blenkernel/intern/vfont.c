@@ -66,7 +66,7 @@ static void vfont_init_data(ID *id)
     if (vfd) {
       vfont->data = vfd;
 
-      BLI_strncpy(vfont->filepath, FO_BUILTIN_NAME, sizeof(vfont->filepath));
+      STRNCPY(vfont->filepath, FO_BUILTIN_NAME);
     }
 
     /* Free the packed file */
@@ -321,7 +321,7 @@ VFont *BKE_vfont_load(Main *bmain, const char *filepath)
   bool is_builtin;
 
   if (STREQ(filepath, FO_BUILTIN_NAME)) {
-    BLI_strncpy(filename, filepath, sizeof(filename));
+    STRNCPY(filename, filepath);
 
     pf = get_builtin_packedfile();
     is_builtin = true;
@@ -341,7 +341,7 @@ VFont *BKE_vfont_load(Main *bmain, const char *filepath)
       /* If there's a font name, use it for the ID name. */
       vfont = BKE_libblock_alloc(bmain, ID_VF, vfd->name[0] ? vfd->name : filename, 0);
       vfont->data = vfd;
-      BLI_strncpy(vfont->filepath, filepath, sizeof(vfont->filepath));
+      STRNCPY(vfont->filepath, filepath);
 
       /* if auto-pack is on store the packed-file in de font structure */
       if (!is_builtin && (G.fileflags & G_FILE_AUTOPACK)) {
@@ -368,12 +368,12 @@ VFont *BKE_vfont_load_exists_ex(struct Main *bmain, const char *filepath, bool *
   VFont *vfont;
   char str[FILE_MAX], strtest[FILE_MAX];
 
-  BLI_strncpy(str, filepath, sizeof(str));
+  STRNCPY(str, filepath);
   BLI_path_abs(str, BKE_main_blendfile_path(bmain));
 
   /* first search an identical filepath */
   for (vfont = bmain->fonts.first; vfont; vfont = vfont->id.next) {
-    BLI_strncpy(strtest, vfont->filepath, sizeof(vfont->filepath));
+    STRNCPY(strtest, vfont->filepath);
     BLI_path_abs(strtest, ID_BLEND_PATH(bmain, &vfont->id));
 
     if (BLI_path_cmp(strtest, str) == 0) {
@@ -1475,38 +1475,6 @@ static bool vfont_to_curve(Object *ob,
     }
   }
 
-  if (cursor_params) {
-    cursor_params->r_string_offset = -1;
-    for (i = 0; i <= slen; i++, ct++) {
-      info = &custrinfo[i];
-      ascii = mem[i];
-      if (info->flag & CU_CHINFO_SMALLCAPS_CHECK) {
-        ascii = towupper(ascii);
-      }
-      ct = &chartransdata[i];
-      che = find_vfont_char(vfd, ascii);
-      float charwidth = char_width(cu, che, info);
-      float charhalf = (charwidth / 2.0f);
-      if (cursor_params->cursor_location[1] >= ct->yof - (0.25f * linedist) &&
-          cursor_params->cursor_location[1] <= (ct->yof + (0.75f * linedist)))
-      {
-        /* On this row. */
-        if (cursor_params->cursor_location[0] >= (ct->xof) &&
-            cursor_params->cursor_location[0] <= (ct->xof + charhalf))
-        {
-          /* Left half of character. */
-          cursor_params->r_string_offset = i;
-        }
-        else if (cursor_params->cursor_location[0] >= (ct->xof + charhalf) &&
-                 cursor_params->cursor_location[0] <= (ct->xof + charwidth))
-        {
-          /* Right half of character. */
-          cursor_params->r_string_offset = i + 1;
-        }
-      }
-    }
-  }
-
   if (ELEM(mode, FO_CURSUP, FO_CURSDOWN, FO_PAGEUP, FO_PAGEDOWN) &&
       iter_data->status == VFONT_TO_CURVE_INIT)
   {
@@ -1767,6 +1735,38 @@ static bool vfont_to_curve(Object *ob,
             iter_data->scale_to_fit = iter_data->bisect.min;
             iter_data->status = VFONT_TO_CURVE_SCALE_ONCE;
           }
+        }
+      }
+    }
+  }
+
+  if (cursor_params) {
+    cursor_params->r_string_offset = -1;
+    for (i = 0; i <= slen; i++, ct++) {
+      info = &custrinfo[i];
+      ascii = mem[i];
+      if (info->flag & CU_CHINFO_SMALLCAPS_CHECK) {
+        ascii = towupper(ascii);
+      }
+      ct = &chartransdata[i];
+      che = find_vfont_char(vfd, ascii);
+      float charwidth = char_width(cu, che, info);
+      float charhalf = (charwidth / 2.0f);
+      if (cursor_params->cursor_location[1] >= (ct->yof - (0.25f * linedist)) * font_size &&
+          cursor_params->cursor_location[1] <= (ct->yof + (0.75f * linedist)) * font_size)
+      {
+        /* On this row. */
+        if (cursor_params->cursor_location[0] >= (ct->xof * font_size) &&
+            cursor_params->cursor_location[0] <= ((ct->xof + charhalf) * font_size))
+        {
+          /* Left half of character. */
+          cursor_params->r_string_offset = i;
+        }
+        else if (cursor_params->cursor_location[0] >= ((ct->xof + charhalf) * font_size) &&
+                 cursor_params->cursor_location[0] <= ((ct->xof + charwidth) * font_size))
+        {
+          /* Right half of character. */
+          cursor_params->r_string_offset = i + 1;
         }
       }
     }

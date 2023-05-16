@@ -1608,7 +1608,7 @@ static int image_file_browse_invoke(bContext *C, wmOperator *op, const wmEvent *
   }
 
   char filepath[FILE_MAX];
-  BLI_strncpy(filepath, ima->filepath, sizeof(filepath));
+  STRNCPY(filepath, ima->filepath);
 
   /* Shift+Click to open the file, Alt+Click to browse a folder in the OS's browser. */
   if (event->modifier & (KM_SHIFT | KM_ALT)) {
@@ -1745,7 +1745,7 @@ static int image_replace_exec(bContext *C, wmOperator *op)
   RNA_string_get(op->ptr, "filepath", str);
 
   /* we can't do much if the str is longer than FILE_MAX :/ */
-  BLI_strncpy(sima->image->filepath, str, sizeof(sima->image->filepath));
+  STRNCPY(sima->image->filepath, str);
 
   if (sima->image->source == IMA_SRC_GENERATED) {
     sima->image->source = IMA_SRC_FILE;
@@ -1852,7 +1852,7 @@ static bool save_image_op(
   WM_cursor_wait(false);
 
   /* Remember file path for next save. */
-  BLI_strncpy(G.ima, opts->filepath, sizeof(G.ima));
+  STRNCPY(G.ima, opts->filepath);
 
   WM_main_add_notifier(NC_IMAGE | NA_EDITED, ima);
 
@@ -2206,7 +2206,6 @@ void IMAGE_OT_save(wmOperatorType *ot)
 
 static int image_save_sequence_exec(bContext *C, wmOperator *op)
 {
-  Main *bmain = CTX_data_main(C);
   Image *image = image_from_context(C);
   ImBuf *ibuf, *first_ibuf = NULL;
   int tot = 0;
@@ -2250,7 +2249,7 @@ static int image_save_sequence_exec(bContext *C, wmOperator *op)
   }
 
   /* get a filename for menu */
-  BLI_path_split_dir_part(first_ibuf->name, di, sizeof(di));
+  BLI_path_split_dir_part(first_ibuf->filepath, di, sizeof(di));
   BKE_reportf(op->reports, RPT_INFO, "%d image(s) will be saved in %s", tot, di);
 
   iter = IMB_moviecacheIter_new(image->cache);
@@ -2258,17 +2257,12 @@ static int image_save_sequence_exec(bContext *C, wmOperator *op)
     ibuf = IMB_moviecacheIter_getImBuf(iter);
 
     if (ibuf != NULL && ibuf->userflags & IB_BITMAPDIRTY) {
-      char name[FILE_MAX];
-      BLI_strncpy(name, ibuf->name, sizeof(name));
-
-      BLI_path_abs(name, BKE_main_blendfile_path(bmain));
-
-      if (0 == IMB_saveiff(ibuf, name, IB_rect | IB_zbuf | IB_zbuffloat)) {
+      if (0 == IMB_saveiff(ibuf, ibuf->filepath, IB_rect | IB_zbuf | IB_zbuffloat)) {
         BKE_reportf(op->reports, RPT_ERROR, "Could not write image: %s", strerror(errno));
         break;
       }
 
-      BKE_reportf(op->reports, RPT_INFO, "Saved %s", ibuf->name);
+      BKE_reportf(op->reports, RPT_INFO, "Saved %s", ibuf->filepath);
       ibuf->userflags &= ~IB_BITMAPDIRTY;
     }
 

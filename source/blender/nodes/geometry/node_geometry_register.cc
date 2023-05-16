@@ -86,6 +86,7 @@ void register_geometry_nodes()
   register_node_type_geo_input_scene_time();
   register_node_type_geo_input_shade_smooth();
   register_node_type_geo_input_shortest_edge_paths();
+  register_node_type_geo_input_signed_distance();
   register_node_type_geo_input_spline_cyclic();
   register_node_type_geo_input_spline_length();
   register_node_type_geo_input_spline_resolution();
@@ -136,6 +137,7 @@ void register_geometry_nodes()
   register_node_type_geo_sample_nearest_surface();
   register_node_type_geo_sample_nearest();
   register_node_type_geo_sample_uv_surface();
+  register_node_type_geo_sample_volume();
   register_node_type_geo_scale_elements();
   register_node_type_geo_scale_instances();
   register_node_type_geo_sdf_volume_sphere();
@@ -154,6 +156,8 @@ void register_geometry_nodes()
   register_node_type_geo_set_shade_smooth();
   register_node_type_geo_set_spline_cyclic();
   register_node_type_geo_set_spline_resolution();
+  register_node_type_geo_simulation_input();
+  register_node_type_geo_simulation_output();
   register_node_type_geo_store_named_attribute();
   register_node_type_geo_string_join();
   register_node_type_geo_string_to_curves();

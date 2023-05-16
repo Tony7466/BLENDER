@@ -217,7 +217,7 @@ static void file_draw_string(int sx,
 {
   uiFontStyle fs;
   rcti rect;
-  char fname[FILE_MAXFILE];
+  char filename[FILE_MAXFILE];
 
   if (string[0] == '\0' || width < 1) {
     return;
@@ -226,8 +226,8 @@ static void file_draw_string(int sx,
   const uiStyle *style = UI_style_get();
   fs = style->widget;
 
-  BLI_strncpy(fname, string, FILE_MAXFILE);
-  UI_text_clip_middle_ex(&fs, fname, width, UI_ICON_SIZE, sizeof(fname), '\0');
+  STRNCPY(filename, string);
+  UI_text_clip_middle_ex(&fs, filename, width, UI_ICON_SIZE, sizeof(filename), '\0');
 
   /* no text clipping needed, UI_fontstyle_draw does it but is a bit too strict
    * (for buttons it works) */
@@ -239,7 +239,7 @@ static void file_draw_string(int sx,
   uiFontStyleDraw_Params font_style_params{};
   font_style_params.align = align;
 
-  UI_fontstyle_draw(&fs, &rect, fname, sizeof(fname), col, &font_style_params);
+  UI_fontstyle_draw(&fs, &rect, filename, sizeof(filename), col, &font_style_params);
 }
 
 /**
@@ -599,8 +599,8 @@ static void renamebutton_cb(bContext *C, void * /*arg1*/, char *oldname)
   FileSelectParams *params = ED_fileselect_get_active_params(sfile);
 
   BLI_path_join(orgname, sizeof(orgname), params->dir, oldname);
-  BLI_strncpy(filename, params->renamefile, sizeof(filename));
-  BLI_filename_make_safe(filename);
+  STRNCPY(filename, params->renamefile);
+  BLI_path_make_safe_filename(filename);
   BLI_path_join(newname, sizeof(newname), params->dir, filename);
 
   if (!STREQ(orgname, newname)) {
@@ -612,7 +612,7 @@ static void renamebutton_cb(bContext *C, void * /*arg1*/, char *oldname)
       }
       else {
         /* If rename is successful, scroll to newly renamed entry. */
-        BLI_strncpy(params->renamefile, filename, sizeof(params->renamefile));
+        STRNCPY(params->renamefile, filename);
         file_params_invoke_rename_postscroll(wm, win, sfile);
       }
 
@@ -621,7 +621,7 @@ static void renamebutton_cb(bContext *C, void * /*arg1*/, char *oldname)
     }
     else {
       /* Renaming failed, reset the name for further renaming handling. */
-      BLI_strncpy(params->renamefile, oldname, sizeof(params->renamefile));
+      STRNCPY(params->renamefile, oldname);
     }
 
     ED_region_tag_redraw(region);
@@ -813,13 +813,9 @@ static const char *filelist_get_details_column_string(
               nullptr, file->time, small_size, time, date, &is_today, &is_yesterday);
 
           if (is_today || is_yesterday) {
-            BLI_strncpy(date, is_today ? N_("Today") : N_("Yesterday"), sizeof(date));
+            STRNCPY(date, is_today ? N_("Today") : N_("Yesterday"));
           }
-          BLI_snprintf(file->draw_data.datetime_str,
-                       sizeof(file->draw_data.datetime_str),
-                       "%s %s",
-                       date,
-                       time);
+          SNPRINTF(file->draw_data.datetime_str, "%s %s", date, time);
         }
 
         return file->draw_data.datetime_str;

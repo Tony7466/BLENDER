@@ -70,7 +70,7 @@
 #include "BKE_image_format.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_packedFile.h"
@@ -290,7 +290,7 @@ static void image_foreach_path(ID *id, BPathForeachPathData *bpath_data)
   bool result = false;
   if (ima->source == IMA_SRC_TILED && (flag & BKE_BPATH_FOREACH_PATH_RESOLVE_TOKEN) != 0) {
     char temp_path[FILE_MAX], orig_file[FILE_MAXFILE];
-    BLI_strncpy(temp_path, ima->filepath, sizeof(temp_path));
+    STRNCPY(temp_path, ima->filepath);
     BLI_path_split_file_part(temp_path, orig_file, sizeof(orig_file));
 
     eUDIM_TILE_FORMAT tile_format;
@@ -976,12 +976,12 @@ int BKE_image_find_nearest_tile(const struct Image *image, const float co[2])
 static void image_init_color_management(Image *ima)
 {
   ImBuf *ibuf;
-  char name[FILE_MAX];
+  char filepath[FILE_MAX];
 
-  BKE_image_user_file_path(nullptr, ima, name);
+  BKE_image_user_file_path(nullptr, ima, filepath);
 
   /* Will set input color space to image format default's. */
-  ibuf = IMB_loadiffname(name, IB_test | IB_alphamode_detect, ima->colorspace_settings.name);
+  ibuf = IMB_loadiffname(filepath, IB_test | IB_alphamode_detect, ima->colorspace_settings.name);
 
   if (ibuf) {
     if (ibuf->flags & IB_alphamode_premul) {
@@ -1019,15 +1019,15 @@ Image *BKE_image_load(Main *bmain, const char *filepath)
 {
   Image *ima;
   int file;
-  char str[FILE_MAX];
+  char filepath_abs[FILE_MAX];
 
-  STRNCPY(str, filepath);
-  BLI_path_abs(str, BKE_main_blendfile_path(bmain));
+  STRNCPY(filepath_abs, filepath);
+  BLI_path_abs(filepath_abs, BKE_main_blendfile_path(bmain));
 
   /* exists? */
-  file = BLI_open(str, O_BINARY | O_RDONLY, 0);
+  file = BLI_open(filepath_abs, O_BINARY | O_RDONLY, 0);
   if (file == -1) {
-    if (!BKE_image_tile_filepath_exists(str)) {
+    if (!BKE_image_tile_filepath_exists(filepath_abs)) {
       return nullptr;
     }
   }
@@ -1050,20 +1050,20 @@ Image *BKE_image_load(Main *bmain, const char *filepath)
 Image *BKE_image_load_exists_ex(Main *bmain, const char *filepath, bool *r_exists)
 {
   Image *ima;
-  char str[FILE_MAX], strtest[FILE_MAX];
+  char filepath_abs[FILE_MAX], filepath_test[FILE_MAX];
 
-  STRNCPY(str, filepath);
-  BLI_path_abs(str, bmain->filepath);
+  STRNCPY(filepath_abs, filepath);
+  BLI_path_abs(filepath_abs, bmain->filepath);
 
   /* first search an identical filepath */
   for (ima = static_cast<Image *>(bmain->images.first); ima;
        ima = static_cast<Image *>(ima->id.next))
   {
     if (!ELEM(ima->source, IMA_SRC_VIEWER, IMA_SRC_GENERATED)) {
-      STRNCPY(strtest, ima->filepath);
-      BLI_path_abs(strtest, ID_BLEND_PATH(bmain, &ima->id));
+      STRNCPY(filepath_test, ima->filepath);
+      BLI_path_abs(filepath_test, ID_BLEND_PATH(bmain, &ima->id));
 
-      if (BLI_path_cmp(strtest, str) == 0) {
+      if (BLI_path_cmp(filepath_test, filepath_abs) == 0) {
         if ((BKE_image_has_anim(ima) == false) || (ima->id.us == 0)) {
           id_us_plus(&ima->id); /* officially should not, it doesn't link here! */
           if (r_exists) {
@@ -1173,7 +1173,8 @@ static ImBuf *add_ibuf_for_tile(Image *ima, ImageTile *tile)
     return nullptr;
   }
 
-  STRNCPY(ibuf->name, ima->filepath);
+  STRNCPY(ibuf->filepath, ima->filepath);
+  BLI_path_abs(ibuf->filepath, ID_BLEND_PATH_FROM_GLOBAL(&ima->id));
 
   /* Mark the tile itself as having been generated. */
   tile->gen_flag |= IMA_GEN_TILE;
@@ -1286,13 +1287,13 @@ static void image_colorspace_from_imbuf(Image *image, const ImBuf *ibuf)
 Image *BKE_image_add_from_imbuf(Main *bmain, ImBuf *ibuf, const char *name)
 {
   if (name == nullptr) {
-    name = BLI_path_basename(ibuf->name);
+    name = BLI_path_basename(ibuf->filepath);
   }
 
   /* When the image buffer has valid path create a new image with "file" source and copy the path
    * from the image buffer.
    * Otherwise create "generated" image, avoiding invalid configuration with an empty file path. */
-  const eImageSource source = ibuf->name[0] != '\0' ? IMA_SRC_FILE : IMA_SRC_GENERATED;
+  const eImageSource source = ibuf->filepath[0] != '\0' ? IMA_SRC_FILE : IMA_SRC_GENERATED;
 
   Image *ima = image_alloc(bmain, name, source, IMA_TYPE_IMAGE);
 
@@ -1392,7 +1393,7 @@ bool BKE_image_memorypack(Image *ima)
         break;
       }
 
-      const char *filepath = ibuf->name;
+      const char *filepath = ibuf->filepath;
       if (is_tiled) {
         iuser.tile = tile->tile_number;
         BKE_image_user_file_path(&iuser, ima, tiled_filepath);
@@ -2485,18 +2486,24 @@ void BKE_stamp_data_free(StampData *stamp_data)
 }
 
 /* wrap for callback only */
-static void metadata_set_field(void *data, const char *propname, char *propvalue, int /*len*/)
+static void metadata_set_field(void *data,
+                               const char *propname,
+                               char *propvalue,
+                               int /*propvalue_maxncpy*/)
 {
   /* We know it is an ImBuf* because that's what we pass to BKE_stamp_info_callback. */
   ImBuf *imbuf = static_cast<ImBuf *>(data);
   IMB_metadata_set_field(imbuf->metadata, propname, propvalue);
 }
 
-static void metadata_get_field(void *data, const char *propname, char *propvalue, int len)
+static void metadata_get_field(void *data,
+                               const char *propname,
+                               char *propvalue,
+                               int propvalue_maxncpy)
 {
   /* We know it is an ImBuf* because that's what we pass to BKE_stamp_info_callback. */
   ImBuf *imbuf = static_cast<ImBuf *>(data);
-  IMB_metadata_get_field(imbuf->metadata, propname, propvalue, len);
+  IMB_metadata_get_field(imbuf->metadata, propname, propvalue, propvalue_maxncpy);
 }
 
 void BKE_imbuf_stamp_info(const RenderResult *rr, ImBuf *ibuf)
@@ -2550,22 +2557,22 @@ bool BKE_imbuf_alpha_test(ImBuf *ibuf)
   return false;
 }
 
-int BKE_imbuf_write(ImBuf *ibuf, const char *name, const ImageFormatData *imf)
+int BKE_imbuf_write(ImBuf *ibuf, const char *filepath, const ImageFormatData *imf)
 {
   BKE_image_format_to_imbuf(ibuf, imf);
 
-  BLI_make_existing_file(name);
+  BLI_file_ensure_parent_dir_exists(filepath);
 
-  const bool ok = IMB_saveiff(ibuf, name, IB_rect | IB_zbuf | IB_zbuffloat);
+  const bool ok = IMB_saveiff(ibuf, filepath, IB_rect | IB_zbuf | IB_zbuffloat);
   if (ok == 0) {
-    perror(name);
+    perror(filepath);
   }
 
   return ok;
 }
 
 int BKE_imbuf_write_as(ImBuf *ibuf,
-                       const char *name,
+                       const char *filepath,
                        const ImageFormatData *imf,
                        const bool save_copy)
 {
@@ -2575,7 +2582,7 @@ int BKE_imbuf_write_as(ImBuf *ibuf,
   /* All data is RGBA anyway, this just controls how to save for some formats. */
   ibuf->planes = imf->planes;
 
-  ok = BKE_imbuf_write(ibuf, name, imf);
+  ok = BKE_imbuf_write(ibuf, filepath, imf);
 
   if (save_copy) {
     /* note that we are not restoring _all_ settings */
@@ -2590,44 +2597,47 @@ int BKE_imbuf_write_as(ImBuf *ibuf,
 int BKE_imbuf_write_stamp(const Scene *scene,
                           const struct RenderResult *rr,
                           ImBuf *ibuf,
-                          const char *name,
+                          const char *filepath,
                           const struct ImageFormatData *imf)
 {
   if (scene && scene->r.stamp & R_STAMP_ALL) {
     BKE_imbuf_stamp_info(rr, ibuf);
   }
 
-  return BKE_imbuf_write(ibuf, name, imf);
+  return BKE_imbuf_write(ibuf, filepath, imf);
 }
 
-struct anim *openanim_noload(const char *name,
+struct anim *openanim_noload(const char *filepath,
                              int flags,
                              int streamindex,
                              char colorspace[IMA_MAX_SPACE])
 {
   struct anim *anim;
 
-  anim = IMB_open_anim(name, flags, streamindex, colorspace);
+  anim = IMB_open_anim(filepath, flags, streamindex, colorspace);
   return anim;
 }
 
-struct anim *openanim(const char *name, int flags, int streamindex, char colorspace[IMA_MAX_SPACE])
+struct anim *openanim(const char *filepath,
+                      int flags,
+                      int streamindex,
+                      char colorspace[IMA_MAX_SPACE])
 {
   struct anim *anim;
   struct ImBuf *ibuf;
 
-  anim = IMB_open_anim(name, flags, streamindex, colorspace);
+  anim = IMB_open_anim(filepath, flags, streamindex, colorspace);
   if (anim == nullptr) {
     return nullptr;
   }
 
   ibuf = IMB_anim_absolute(anim, 0, IMB_TC_NONE, IMB_PROXY_NONE);
   if (ibuf == nullptr) {
-    if (BLI_exists(name)) {
-      printf("not an anim: %s\n", name);
+    if (BLI_exists(filepath)) {
+      printf("not an anim: %s\n", filepath);
     }
     else {
-      printf("anim file doesn't exist: %s\n", name);
+      printf("anim file doesn't exist: %s\n", filepath);
     }
     IMB_free_anim(anim);
     return nullptr;
@@ -3191,7 +3201,7 @@ void BKE_image_signal(Main *bmain, Image *ima, ImageUser *iuser, int signal)
         int new_start, new_range;
 
         char filepath[FILE_MAX];
-        BLI_strncpy(filepath, ima->filepath, sizeof(filepath));
+        STRNCPY(filepath, ima->filepath);
         BLI_path_abs(filepath, ID_BLEND_PATH_FROM_GLOBAL(&ima->id));
         bool result = BKE_image_get_tile_info(filepath, &new_tiles, &new_start, &new_range);
         if (result) {
@@ -3301,19 +3311,20 @@ static RenderPass *image_render_pass_get(RenderLayer *rl,
   return rpass_ret;
 }
 
-void BKE_image_get_tile_label(Image *ima, ImageTile *tile, char *label, int len_label)
+int BKE_image_get_tile_label(const Image *ima,
+                             const ImageTile *tile,
+                             char *label,
+                             const int label_maxncpy)
 {
   label[0] = '\0';
   if (ima == nullptr || tile == nullptr) {
-    return;
+    return 0;
   }
 
   if (tile->label[0]) {
-    BLI_strncpy(label, tile->label, len_label);
+    return BLI_strncpy_rlen(label, tile->label, label_maxncpy);
   }
-  else {
-    BLI_snprintf(label, len_label, "%d", tile->tile_number);
-  }
+  return BLI_snprintf_rlen(label, label_maxncpy, "%d", tile->tile_number);
 }
 
 bool BKE_image_get_tile_info(char *filepath, ListBase *tiles, int *r_tile_start, int *r_tile_range)
@@ -3402,7 +3413,7 @@ ImageTile *BKE_image_add_tile(struct Image *ima, int tile_number, const char *la
   }
 
   if (label) {
-    BLI_strncpy(tile->label, label, sizeof(tile->label));
+    STRNCPY(tile->label, label);
   }
 
   for (int eye = 0; eye < 2; eye++) {
@@ -4020,7 +4031,7 @@ static ImBuf *load_movie_single(Image *ima, ImageUser *iuser, int frame, const i
   ia = static_cast<ImageAnim *>(BLI_findlink(&ima->anims, view_id));
 
   if (ia->anim == nullptr) {
-    char str[FILE_MAX];
+    char filepath[FILE_MAX];
     int flags = IB_rect;
     ImageUser iuser_t{};
 
@@ -4034,10 +4045,10 @@ static ImBuf *load_movie_single(Image *ima, ImageUser *iuser, int frame, const i
 
     iuser_t.view = view_id;
 
-    BKE_image_user_file_path(&iuser_t, ima, str);
+    BKE_image_user_file_path(&iuser_t, ima, filepath);
 
     /* FIXME: make several stream accessible in image editor, too. */
-    ia->anim = openanim(str, flags, 0, ima->colorspace_settings.name);
+    ia->anim = openanim(filepath, flags, 0, ima->colorspace_settings.name);
 
     /* let's initialize this user */
     if (ia->anim && iuser && iuser->frames == 0) {
@@ -5425,8 +5436,9 @@ bool BKE_image_has_loaded_ibuf(Image *image)
   return has_loaded_ibuf;
 }
 
-ImBuf *BKE_image_get_ibuf_with_name(Image *image, const char *name)
+ImBuf *BKE_image_get_ibuf_with_name(Image *image, const char *filepath)
 {
+  BLI_assert(!BLI_path_is_rel(filepath));
   ImBuf *ibuf = nullptr;
 
   BLI_mutex_lock(static_cast<ThreadMutex *>(image->runtime.cache_mutex));
@@ -5435,7 +5447,7 @@ ImBuf *BKE_image_get_ibuf_with_name(Image *image, const char *name)
 
     while (!IMB_moviecacheIter_done(iter)) {
       ImBuf *current_ibuf = IMB_moviecacheIter_getImBuf(iter);
-      if (current_ibuf != nullptr && STREQ(current_ibuf->name, name)) {
+      if (current_ibuf != nullptr && STREQ(current_ibuf->filepath, filepath)) {
         ibuf = current_ibuf;
         IMB_refImBuf(ibuf);
         break;
@@ -5496,10 +5508,10 @@ static void image_update_views_format(Image *ima, ImageUser *iuser)
   else {
     /* R_IMF_VIEWS_INDIVIDUAL */
     char prefix[FILE_MAX] = {'\0'};
-    char *name = ima->filepath;
+    char *filepath = ima->filepath;
     const char *ext = nullptr;
 
-    BKE_scene_multiview_view_prefix_get(scene, name, prefix, &ext);
+    BKE_scene_multiview_view_prefix_get(scene, filepath, prefix, &ext);
 
     if (prefix[0] == '\0') {
       BKE_image_free_views(ima);
@@ -5509,9 +5521,9 @@ static void image_update_views_format(Image *ima, ImageUser *iuser)
     /* create all the image views */
     for (srv = static_cast<SceneRenderView *>(scene->r.views.first); srv; srv = srv->next) {
       if (BKE_scene_multiview_is_render_view_active(&scene->r, srv)) {
-        char filepath[FILE_MAX];
-        SNPRINTF(filepath, "%s%s%s", prefix, srv->suffix, ext);
-        image_add_view(ima, srv->name, filepath);
+        char filepath_view[FILE_MAX];
+        SNPRINTF(filepath_view, "%s%s%s", prefix, srv->suffix, ext);
+        image_add_view(ima, srv->name, filepath_view);
       }
     }
 
@@ -5519,13 +5531,13 @@ static void image_update_views_format(Image *ima, ImageUser *iuser)
     iv = static_cast<ImageView *>(ima->views.last);
     while (iv) {
       int file;
-      char str[FILE_MAX];
+      char filepath[FILE_MAX];
 
-      STRNCPY(str, iv->filepath);
-      BLI_path_abs(str, ID_BLEND_PATH_FROM_GLOBAL(&ima->id));
+      STRNCPY(filepath, iv->filepath);
+      BLI_path_abs(filepath, ID_BLEND_PATH_FROM_GLOBAL(&ima->id));
 
       /* exists? */
-      file = BLI_open(str, O_BINARY | O_RDONLY, 0);
+      file = BLI_open(filepath, O_BINARY | O_RDONLY, 0);
       if (file == -1) {
         ImageView *iv_del = iv;
         iv = iv->prev;
@@ -5555,11 +5567,11 @@ RenderSlot *BKE_image_add_renderslot(Image *ima, const char *name)
 {
   RenderSlot *slot = MEM_cnew<RenderSlot>("Image new Render Slot");
   if (name && name[0]) {
-    BLI_strncpy(slot->name, name, sizeof(slot->name));
+    STRNCPY(slot->name, name);
   }
   else {
     int n = BLI_listbase_count(&ima->renderslots) + 1;
-    BLI_snprintf(slot->name, sizeof(slot->name), DATA_("Slot %d"), n);
+    SNPRINTF(slot->name, DATA_("Slot %d"), n);
   }
   BLI_addtail(&ima->renderslots, slot);
   return slot;

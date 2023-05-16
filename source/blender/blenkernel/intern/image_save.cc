@@ -8,6 +8,7 @@
 #include <cerrno>
 #include <cstring>
 
+#include "BLI_fileops.h"
 #include "BLI_listbase.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
@@ -166,7 +167,7 @@ bool BKE_image_save_options_init(ImageSaveOptions *opts,
       const bool is_prev_save = !STREQ(G.ima, "//");
       if (opts->save_as_render) {
         if (is_prev_save) {
-          BLI_strncpy(opts->filepath, G.ima, sizeof(opts->filepath));
+          STRNCPY(opts->filepath, G.ima);
         }
         else {
           BLI_path_join(opts->filepath, sizeof(opts->filepath), "//", DATA_("untitled"));
@@ -251,7 +252,7 @@ static void image_save_update_filepath(Image *ima,
                                        const ImageSaveOptions *opts)
 {
   if (opts->do_newpath) {
-    BLI_strncpy(ima->filepath, filepath, sizeof(ima->filepath));
+    STRNCPY(ima->filepath, filepath);
 
     /* only image path, never ibuf */
     if (opts->relative) {
@@ -266,7 +267,7 @@ static void image_save_post(ReportList *reports,
                             ImBuf *ibuf,
                             int ok,
                             const ImageSaveOptions *opts,
-                            int save_copy,
+                            const bool save_copy,
                             const char *filepath,
                             bool *r_colorspace_changed)
 {
@@ -280,7 +281,7 @@ static void image_save_post(ReportList *reports,
   }
 
   if (opts->do_newpath) {
-    BLI_strncpy(ibuf->name, filepath, sizeof(ibuf->name));
+    STRNCPY(ibuf->filepath, filepath);
   }
 
   /* The tiled image code-path must call this on its own. */
@@ -349,7 +350,8 @@ static void imbuf_save_post(ImBuf *ibuf, ImBuf *colormanaged_ibuf)
 
 /**
  * \return success.
- * \note `ima->filepath` and `ibuf->name` should end up the same.
+ * \note `ima->filepath` and `ibuf->filepath` will reference the same path
+ * (although `ima->filepath` may be blend-file relative).
  * \note for multi-view the first `ibuf` is important to get the settings.
  */
 static bool image_save_single(ReportList *reports,
@@ -774,7 +776,7 @@ bool BKE_image_render_write_exr(ReportList *reports,
 
         if (multi_layer) {
           RE_render_result_full_channel_name(passname, nullptr, "Combined", nullptr, chan_id, a);
-          BLI_strncpy(layname, "Composite", sizeof(layname));
+          STRNCPY(layname, "Composite");
         }
         else {
           passname[0] = chan_id[a];
@@ -840,7 +842,7 @@ bool BKE_image_render_write_exr(ReportList *reports,
 
         if (multi_layer) {
           RE_render_result_full_channel_name(passname, nullptr, rp->name, nullptr, rp->chan_id, a);
-          BLI_strncpy(layname, rl->name, sizeof(layname));
+          STRNCPY(layname, rl->name);
         }
         else {
           passname[0] = rp->chan_id[a];
@@ -862,7 +864,7 @@ bool BKE_image_render_write_exr(ReportList *reports,
 
   errno = 0;
 
-  BLI_make_existing_file(filepath);
+  BLI_file_ensure_parent_dir_exists(filepath);
 
   int compress = (imf ? imf->exr_codec : 0);
   bool success = IMB_exr_begin_write(
@@ -886,15 +888,19 @@ bool BKE_image_render_write_exr(ReportList *reports,
 
 /* Render output. */
 
-static void image_render_print_save_message(ReportList *reports, const char *name, int ok, int err)
+static void image_render_print_save_message(ReportList *reports,
+                                            const char *filepath,
+                                            int ok,
+                                            int err)
 {
   if (ok) {
     /* no need to report, just some helpful console info */
-    printf("Saved: '%s'\n", name);
+    printf("Saved: '%s'\n", filepath);
   }
   else {
     /* report on error since users will want to know what failed */
-    BKE_reportf(reports, RPT_ERROR, "Render error (%s) cannot save: '%s'", strerror(err), name);
+    BKE_reportf(
+        reports, RPT_ERROR, "Render error (%s) cannot save: '%s'", strerror(err), filepath);
   }
 }
 
@@ -902,7 +908,7 @@ static int image_render_write_stamp_test(ReportList *reports,
                                          const Scene *scene,
                                          const RenderResult *rr,
                                          ImBuf *ibuf,
-                                         const char *name,
+                                         const char *filepath,
                                          const ImageFormatData *imf,
                                          const bool stamp)
 {
@@ -910,13 +916,13 @@ static int image_render_write_stamp_test(ReportList *reports,
 
   if (stamp) {
     /* writes the name of the individual cameras */
-    ok = BKE_imbuf_write_stamp(scene, rr, ibuf, name, imf);
+    ok = BKE_imbuf_write_stamp(scene, rr, ibuf, filepath, imf);
   }
   else {
-    ok = BKE_imbuf_write(ibuf, name, imf);
+    ok = BKE_imbuf_write(ibuf, filepath, imf);
   }
 
-  image_render_print_save_message(reports, name, ok, errno);
+  image_render_print_save_message(reports, filepath, ok, errno);
 
   return ok;
 }
@@ -972,7 +978,7 @@ bool BKE_image_render_write(ReportList *reports,
           if (BLI_path_extension_check(filepath, ".exr")) {
             filepath[strlen(filepath) - 4] = 0;
           }
-          BKE_image_path_ensure_ext_from_imformat(filepath, &image_format);
+          BKE_image_path_ext_from_imformat_ensure(filepath, sizeof(filepath), &image_format);
 
           ImBuf *ibuf = RE_render_result_rect_to_ibuf(rr, &image_format, dither, view_id);
           ibuf->planes = 24;
@@ -1031,7 +1037,7 @@ bool BKE_image_render_write(ReportList *reports,
           filepath[strlen(filepath) - 4] = 0;
         }
 
-        BKE_image_path_ensure_ext_from_imformat(filepath, &image_format);
+        BKE_image_path_ext_from_imformat_ensure(filepath, sizeof(filepath), &image_format);
         ibuf_arr[2]->planes = 24;
 
         ok = image_render_write_stamp_test(
