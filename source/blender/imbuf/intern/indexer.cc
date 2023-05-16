@@ -148,7 +148,7 @@ void IMB_index_builder_finish(anim_index_builder *fp, int rollback)
   }
   else {
     unlink(fp->filepath);
-    BLI_rename(fp->filepath_temp, fp->filepath);
+    BLI_rename_overwrite(fp->filepath_temp, fp->filepath);
   }
 
   MEM_freeN(fp);
@@ -378,16 +378,16 @@ int IMB_timecode_to_array_index(IMB_Timecode_Type tc)
  * - rebuild helper functions
  * ---------------------------------------------------------------------- */
 
-static void get_index_dir(struct anim *anim, char *index_dir, size_t index_dir_len)
+static void get_index_dir(struct anim *anim, char *index_dir, size_t index_dir_maxncpy)
 {
   if (!anim->index_dir[0]) {
     char filename[FILE_MAXFILE];
     char dirname[FILE_MAXDIR];
     BLI_path_split_dir_file(anim->filepath, dirname, sizeof(dirname), filename, sizeof(filename));
-    BLI_path_join(index_dir, index_dir_len, dirname, "BL_proxy", filename);
+    BLI_path_join(index_dir, index_dir_maxncpy, dirname, "BL_proxy", filename);
   }
   else {
-    BLI_strncpy(index_dir, anim->index_dir, index_dir_len);
+    BLI_strncpy(index_dir, anim->index_dir, index_dir_maxncpy);
   }
 }
 
@@ -784,7 +784,7 @@ static void free_proxy_output_ffmpeg(struct proxy_output_ctx *ctx, int rollback)
   else {
     get_proxy_filepath(ctx->anim, ctx->proxy_size, filepath, false);
     unlink(filepath);
-    BLI_rename(filepath_tmp, filepath);
+    BLI_rename_overwrite(filepath_tmp, filepath);
   }
 
   MEM_freeN(ctx);
