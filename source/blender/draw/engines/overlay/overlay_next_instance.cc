@@ -28,6 +28,7 @@ void Instance::init()
   state.object_mode = ctx->object_mode;
 
   state.pixelsize = U.pixelsize;
+  state.space_type = ctx->v3d != nullptr ? SPACE_VIEW3D : eSpace_Type(ctx->space_data->spacetype);
   state.ctx_mode = CTX_data_mode_enum_ex(ctx->object_edit, ctx->obact, ctx->object_mode);
   state.clear_in_front = (state.v3d->shading.type != OB_SOLID);
   state.use_in_front = (state.v3d->shading.type <= OB_SOLID) ||

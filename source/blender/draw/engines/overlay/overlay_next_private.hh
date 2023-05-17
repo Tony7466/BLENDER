@@ -39,6 +39,7 @@ struct State {
   const Base *active_base;
   View3DOverlay overlay;
   float pixelsize;
+  enum eSpace_Type space_type;
   enum eContextObjectMode ctx_mode;
   enum eObjectMode object_mode;
   bool clear_in_front;
