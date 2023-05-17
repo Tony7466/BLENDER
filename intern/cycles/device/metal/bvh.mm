@@ -13,6 +13,7 @@
 #  include "device/device.h"
 #  include "device/metal/bvh.h"
 #  include "device/metal/util.h"
+#  include "device/device.h"
 
 CCL_NAMESPACE_BEGIN
 
