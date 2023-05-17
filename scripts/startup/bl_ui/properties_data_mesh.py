@@ -198,9 +198,9 @@ class DATA_PT_normals(MeshButtonsPanel, Panel):
         mesh = context.mesh
 
         if mesh.has_custom_normals:
-            col.operator("mesh.customdata_custom_splitnormals_clear", icon='X')
+            layout.operator("mesh.customdata_custom_splitnormals_clear", icon='X')
         else:
-            col.operator("mesh.customdata_custom_splitnormals_add", icon='ADD')
+            layout.operator("mesh.customdata_custom_splitnormals_add", icon='ADD')
 
 
 class DATA_PT_texture_space(MeshButtonsPanel, Panel):

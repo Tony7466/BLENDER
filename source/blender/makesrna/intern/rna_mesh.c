@@ -2451,8 +2451,7 @@ static void rna_def_mlooptri(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop,
       "Split Normals",
-      "Local space unit length split normals vectors of the vertices of this triangle "
-      "(must be computed beforehand using calc_normals_split or calc_tangents)");
+      "Local space unit length split normal vectors of the face corners of this triangle");
 
   prop = RNA_def_property(srna, "area", PROP_FLOAT, PROP_UNSIGNED);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);

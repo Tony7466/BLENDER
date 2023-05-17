@@ -749,6 +749,7 @@ static int mesh_customdata_custom_splitnormals_add_exec(bContext *C, wmOperator 
   }
   else {
     CustomData_add_layer(&me->ldata, CD_CUSTOMLOOPNORMAL, CD_SET_DEFAULT, me->totloop);
+    me->runtime->corner_normals_dirty = true;
   }
 
   DEG_id_tag_update(&me->id, 0);

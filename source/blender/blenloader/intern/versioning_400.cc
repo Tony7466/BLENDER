@@ -131,7 +131,17 @@ static void version_mesh_objects_replace_auto_smooth(Main &bmain)
     STRNCPY(md->modifier.name, DATA_("Auto Smooth"));
     BKE_modifier_unique_name(&object->modifiers, &md->modifier);
     md->node_group = auto_smooth_node_tree;
-    BLI_addtail(&object->modifiers, md);
+    if (!BLI_listbase_is_empty(&object->modifiers) &&
+        static_cast<ModifierData *>(object->modifiers.last)->type == eModifierType_Subsurf)
+    {
+      /* Add the auto smooth node group before the last subdivision surface modifier if possible.
+       * Subdivision surface modifiers have special handling for interpolating face corner normals,
+       * and recalculating them afterwards isn't usually helpful and can be much slower. */
+      BLI_insertlinkbefore(&object->modifiers, object->modifiers.last, md);
+    }
+    else {
+      BLI_addtail(&object->modifiers, md);
+    }
 
     md->settings.properties = bke::idprop::create_group("Nodes Modifier Settings").release();
     IDProperty *angle_prop = bke::idprop::create(DATA_("Input_1"), mesh->smoothresh).release();
