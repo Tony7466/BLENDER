@@ -91,7 +91,7 @@ struct MeshRenderData {
   const int *material_indices;
   blender::Span<blender::float3> vert_normals;
   blender::Span<blender::float3> poly_normals;
-  blender::Span<blender::float3> corner_normals;
+  blender::Span<blender::float3> loop_normals;
   const bool *hide_vert;
   const bool *hide_edge;
   const bool *hide_poly;

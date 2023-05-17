@@ -332,8 +332,9 @@ void mesh_render_data_update_normals(MeshRenderData *mr, const eMRDataType data_
     }
     if (((data_flag & MR_DATA_LOOP_NOR) &&
          mr->me->normal_domain_all_info() == ATTR_DOMAIN_CORNER) ||
-        (data_flag & MR_DATA_TAN_LOOP_NOR)) {
-      mr->corner_normals = mr->me->corner_normals();
+        (data_flag & MR_DATA_TAN_LOOP_NOR))
+    {
+      mr->loop_normals = mr->me->corner_normals();
     }
   }
   else {
@@ -365,7 +366,7 @@ void mesh_render_data_update_normals(MeshRenderData *mr, const eMRDataType data_
                                 nullptr,
                                 clnors_offset,
                                 false);
-      mr->corner_normals = mr->bm_loop_normals;
+      mr->loop_normals = mr->bm_loop_normals;
     }
   }
 }

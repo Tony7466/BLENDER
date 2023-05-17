@@ -102,17 +102,16 @@ static void extract_tan_init_common(const MeshRenderData *mr,
     short tangent_mask = 0;
     bool calc_active_tangent = false;
     if (mr->extract_type == MR_EXTRACT_BMESH) {
-      BKE_editmesh_loop_tangent_calc(
-          mr->edit_bmesh,
-          calc_active_tangent,
-          r_tangent_names,
-          tan_len,
-          reinterpret_cast<const float(*)[3]>(mr->poly_normals.data()),
-          reinterpret_cast<const float(*)[3]>(mr->corner_normals.data()),
-          orco,
-          r_loop_data,
-          mr->loop_len,
-          &tangent_mask);
+      BKE_editmesh_loop_tangent_calc(mr->edit_bmesh,
+                                     calc_active_tangent,
+                                     r_tangent_names,
+                                     tan_len,
+                                     reinterpret_cast<const float(*)[3]>(mr->poly_normals.data()),
+                                     reinterpret_cast<const float(*)[3]>(mr->loop_normals.data()),
+                                     orco,
+                                     r_loop_data,
+                                     mr->loop_len,
+                                     &tangent_mask);
     }
     else {
       BKE_mesh_calc_loop_tangent_ex(reinterpret_cast<const float(*)[3]>(mr->vert_positions.data()),
@@ -128,7 +127,7 @@ static void extract_tan_init_common(const MeshRenderData *mr,
                                     tan_len,
                                     reinterpret_cast<const float(*)[3]>(mr->vert_normals.data()),
                                     reinterpret_cast<const float(*)[3]>(mr->poly_normals.data()),
-                                    reinterpret_cast<const float(*)[3]>(mr->corner_normals.data()),
+                                    reinterpret_cast<const float(*)[3]>(mr->loop_normals.data()),
                                     orco,
                                     r_loop_data,
                                     mr->corner_verts.size(),

@@ -41,9 +41,8 @@ static void extract_lnor_iter_poly_bm(const MeshRenderData *mr,
   l_iter = l_first = BM_FACE_FIRST_LOOP(f);
   do {
     const int l_index = BM_elem_index_get(l_iter);
-    if (!mr->corner_normals.is_empty()) {
-      (*(GPUPackedNormal **)data)[l_index] = GPU_normal_convert_i10_v3(
-          mr->corner_normals[l_index]);
+    if (!mr->loop_normals.is_empty()) {
+      (*(GPUPackedNormal **)data)[l_index] = GPU_normal_convert_i10_v3(mr->loop_normals[l_index]);
     }
     else {
       if (BM_elem_flag_test(f, BM_ELEM_SMOOTH)) {
@@ -65,8 +64,8 @@ static void extract_lnor_iter_poly_mesh(const MeshRenderData *mr, const int poly
   for (const int ml_index : mr->polys[poly_index]) {
     const int vert = mr->corner_verts[ml_index];
     GPUPackedNormal *lnor_data = &(*(GPUPackedNormal **)data)[ml_index];
-    if (!mr->corner_normals.is_empty()) {
-      *lnor_data = GPU_normal_convert_i10_v3(mr->corner_normals[ml_index]);
+    if (!mr->loop_normals.is_empty()) {
+      *lnor_data = GPU_normal_convert_i10_v3(mr->loop_normals[ml_index]);
     }
     else if (mr->sharp_faces && mr->sharp_faces[poly_index]) {
       *lnor_data = GPU_normal_convert_i10_v3(mr->poly_normals[poly_index]);
@@ -164,8 +163,8 @@ static void extract_lnor_hq_iter_poly_bm(const MeshRenderData *mr,
   l_iter = l_first = BM_FACE_FIRST_LOOP(f);
   do {
     const int l_index = BM_elem_index_get(l_iter);
-    if (!mr->corner_normals.is_empty()) {
-      normal_float_to_short_v3(&(*(gpuHQNor **)data)[l_index].x, mr->corner_normals[l_index]);
+    if (!mr->loop_normals.is_empty()) {
+      normal_float_to_short_v3(&(*(gpuHQNor **)data)[l_index].x, mr->loop_normals[l_index]);
     }
     else {
       if (BM_elem_flag_test(f, BM_ELEM_SMOOTH)) {
@@ -187,8 +186,8 @@ static void extract_lnor_hq_iter_poly_mesh(const MeshRenderData *mr,
   for (const int ml_index : mr->polys[poly_index]) {
     const int vert = mr->corner_verts[ml_index];
     gpuHQNor *lnor_data = &(*(gpuHQNor **)data)[ml_index];
-    if (!mr->corner_normals.is_empty()) {
-      normal_float_to_short_v3(&lnor_data->x, mr->corner_normals[ml_index]);
+    if (!mr->loop_normals.is_empty()) {
+      normal_float_to_short_v3(&lnor_data->x, mr->loop_normals[ml_index]);
     }
     else if (mr->sharp_faces && mr->sharp_faces[poly_index]) {
       normal_float_to_short_v3(&lnor_data->x, mr->poly_normals[poly_index]);
