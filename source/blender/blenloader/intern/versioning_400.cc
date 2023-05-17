@@ -20,6 +20,7 @@
 #include "BKE_modifier.h"
 #include "BKE_node.h"
 #include "BKE_node_runtime.hh"
+#include "BKE_node_tree_update.h"
 #include "BKE_tracking.h"
 
 #include "BLO_readfile.h"
@@ -98,6 +99,13 @@ static bNodeTree *add_realize_node_tree(Main &bmain)
               nodeFindSocket(store_node, SOCK_OUT, "Geometry"),
               group_output,
               static_cast<bNodeSocket *>(group_output->inputs.first));
+
+  LISTBASE_FOREACH (bNode *, node, &node_tree->nodes) {
+    nodeSetSelected(node, false);
+  }
+
+  version_socket_update_is_used(node_tree);
+
   return node_tree;
 }
 
