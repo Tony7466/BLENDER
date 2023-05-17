@@ -441,6 +441,8 @@ void DeferredLayer::render(View &view,
 
   inst_.manager->submit(eval_light_ps_, view);
 
+  inst_.raytracing.trace(extent, closure_bits_, view);
+
   diffuse_light_tx_.release();
   specular_light_tx_.release();
 

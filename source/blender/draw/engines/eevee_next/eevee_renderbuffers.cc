@@ -35,9 +35,13 @@ void RenderBuffers::acquire(int2 extent)
 
   eGPUTextureFormat color_format = GPU_RGBA16F;
   eGPUTextureFormat float_format = GPU_R16F;
+  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
 
   /* Depth and combined are always needed. */
-  depth_tx.acquire(extent, GPU_DEPTH24_STENCIL8);
+  depth_tx.ensure_2d(GPU_DEPTH24_STENCIL8, extent, usage);
+  /* TODO(fclem): depth_tx should ideally be a texture from pool but we need stencil_view
+   * which is currently unsupported by pool textures. */
+  // depth_tx.acquire(extent, GPU_DEPTH24_STENCIL8);
   combined_tx.acquire(extent, color_format);
 
   bool do_vector_render_pass = (enabled_passes & EEVEE_RENDER_PASS_VECTOR) ||
@@ -90,7 +94,9 @@ void RenderBuffers::acquire(int2 extent)
 
 void RenderBuffers::release()
 {
-  depth_tx.release();
+  /* TODO(fclem): depth_tx should ideally be a texture from pool but we need stencil_view
+   * which is currently unsupported by pool textures. */
+  // depth_tx.release();
   combined_tx.release();
 
   normal_tx.release();

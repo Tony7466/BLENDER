@@ -58,7 +58,7 @@
 #define SHADOW_VIEW_MAX 64 /* Must match DRW_VIEW_MAX. */
 
 /* Ray-tracing. */
-#define RAYTRACE_GROUP_SIZE 16
+#define RAYTRACE_GROUP_SIZE 8
 #define RAYTRACE_MAX_TILES (16384 / RAYTRACE_GROUP_SIZE) * (16384 / RAYTRACE_GROUP_SIZE)
 
 /* Minimum visibility size. */
