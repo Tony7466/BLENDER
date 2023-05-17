@@ -93,9 +93,6 @@ static void version_movieclips_legacy_camera_object(Main *bmain)
 void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_ATLEAST(bmain, 400, 1)) {
-    /* This is done here because we will continue to write with the old format until 4.0, so we
-     * need to convert even "current" files. Keep the check commented out for now so the versioning
-     * isn't turned off right after the 4.0 bump. */
     LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
       version_mesh_legacy_to_struct_of_array_format(*mesh);
     }
