@@ -1311,27 +1311,75 @@ void BKE_mesh_legacy_face_set_to_generic(Mesh *mesh)
 void BKE_mesh_legacy_bevel_weight_to_layers(Mesh *mesh)
 {
   using namespace blender;
-  if (mesh->mvert && !CustomData_get_layer_named(&mesh->vdata, CD_PROP_FLOAT, "bevel_weight_vert"))
-  {
+  if (mesh->mvert && !CustomData_has_layer(&mesh->vdata, CD_BWEIGHT)) {
     const Span<MVert> verts(mesh->mvert, mesh->totvert);
     if (mesh->cd_flag & ME_CDFLAG_VERT_BWEIGHT) {
       float *weights = static_cast<float *>(
-          CustomData_add_layer(&mesh->vdata, CD_PROP_FLOAT, CD_CONSTRUCT, verts.size()));
+          CustomData_add_layer(&mesh->vdata, CD_BWEIGHT, CD_CONSTRUCT, verts.size()));
       for (const int i : verts.index_range()) {
         weights[i] = verts[i].bweight_legacy / 255.0f;
       }
     }
   }
 
-  if (mesh->medge && !CustomData_get_layer_named(&mesh->edata, CD_PROP_FLOAT, "bevel_weight_edge"))
-  {
+  if (mesh->medge && !CustomData_has_layer(&mesh->edata, CD_BWEIGHT)) {
     const Span<MEdge> edges(mesh->medge, mesh->totedge);
     if (mesh->cd_flag & ME_CDFLAG_EDGE_BWEIGHT) {
       float *weights = static_cast<float *>(
-          CustomData_add_layer(&mesh->edata, CD_PROP_FLOAT, CD_CONSTRUCT, edges.size()));
+          CustomData_add_layer(&mesh->edata, CD_BWEIGHT, CD_CONSTRUCT, edges.size()));
       for (const int i : edges.index_range()) {
         weights[i] = edges[i].bweight_legacy / 255.0f;
       }
+    }
+  }
+}
+
+void BKE_mesh_legacy_bevel_weight_to_generic(Mesh *mesh)
+{
+  using namespace blender;
+  if (!mesh->attributes().contains("bevel_weight_vert")) {
+    void *data = nullptr;
+    const ImplicitSharingInfo *sharing_info = nullptr;
+    for (const int i : IndexRange(mesh->vdata.totlayer)) {
+      CustomDataLayer &layer = mesh->vdata.layers[i];
+      if (layer.type == CD_BWEIGHT) {
+        data = layer.data;
+        sharing_info = layer.sharing_info;
+        layer.data = nullptr;
+        layer.sharing_info = nullptr;
+        CustomData_free_layer(&mesh->vdata, CD_BWEIGHT, mesh->totvert, i);
+        break;
+      }
+    }
+    if (data != nullptr) {
+      CustomData_add_layer_named_with_data(
+          &mesh->vdata, CD_PROP_FLOAT, data, mesh->totvert, "bevel_weight_vert", sharing_info);
+    }
+    if (sharing_info != nullptr) {
+      sharing_info->remove_user_and_delete_if_last();
+    }
+  }
+
+  if (!mesh->attributes().contains("bevel_weight_edge")) {
+    void *data = nullptr;
+    const ImplicitSharingInfo *sharing_info = nullptr;
+    for (const int i : IndexRange(mesh->edata.totlayer)) {
+      CustomDataLayer &layer = mesh->edata.layers[i];
+      if (layer.type == CD_BWEIGHT) {
+        data = layer.data;
+        sharing_info = layer.sharing_info;
+        layer.data = nullptr;
+        layer.sharing_info = nullptr;
+        CustomData_free_layer(&mesh->edata, CD_BWEIGHT, mesh->totedge, i);
+        break;
+      }
+    }
+    if (data != nullptr) {
+      CustomData_add_layer_named_with_data(
+          &mesh->edata, CD_PROP_FLOAT, data, mesh->totedge, "bevel_weight_edge", sharing_info);
+    }
+    if (sharing_info != nullptr) {
+      sharing_info->remove_user_and_delete_if_last();
     }
   }
 }
