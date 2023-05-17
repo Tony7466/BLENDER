@@ -1568,7 +1568,6 @@ static void set_ccgdm_all_geometry(CCGDerivedMesh *ccgdm,
                             loopindex2);
           loopindex2++;
 
-          /* Copy over poly data, e.g. #CD_FACEMAP. */
           CustomData_copy_data(&dm->polyData, &ccgdm->dm.polyData, origIndex, faceNum, 1);
 
           if (polyOrigIndex) {
