@@ -16,13 +16,13 @@ class Extras {
   using InstanceBuf = ShapeInstanceBuf<ExtraInstanceData>;
 
  private:
-  const eSelectionType selection_type_;
+  const SelectionType selection_type_;
 
   PassSimple empty_ps_ = {"Extras"};
   PassSimple empty_in_front_ps_ = {"Extras_In_front"};
 
   struct InstanceBuffers {
-    const eSelectionType selection_type_;
+    const SelectionType selection_type_;
     InstanceBuf plain_axes = {selection_type_, "plain_axes_buf"};
     InstanceBuf single_arrow = {selection_type_, "single_arrow_buf"};
     InstanceBuf arrows = {selection_type_, "arrows_buf"};
@@ -38,7 +38,7 @@ class Extras {
   } buffers_[2] = {{selection_type_}, {selection_type_}};
 
  public:
-  Extras(const eSelectionType selection_type) : selection_type_(selection_type){};
+  Extras(const SelectionType selection_type) : selection_type_(selection_type){};
 
   void begin_sync()
   {
@@ -165,7 +165,7 @@ class Extras {
     const bool show_parallax = (probe->flag & LIGHTPROBE_FLAG_SHOW_PARALLAX) != 0;
     const bool show_influence = (probe->flag & LIGHTPROBE_FLAG_SHOW_INFLUENCE) != 0;
     const bool show_data = (ob_ref.object->base_flag & BASE_SELECTED) ||
-                           selection_type_ != eSelectionType::DISABLED;
+                           selection_type_ != SelectionType::DISABLED;
 
     if (probe->type == LIGHTPROBE_TYPE_CUBE) {
       ExtraInstanceData _data = data;
@@ -240,7 +240,7 @@ class Extras {
     else if (probe->type == LIGHTPROBE_TYPE_PLANAR) {
       buffers_->probe_planar.append(data, select_id);
 
-      if (selection_type_ != eSelectionType::DISABLED && (probe->flag & LIGHTPROBE_FLAG_SHOW_DATA))
+      if (selection_type_ != SelectionType::DISABLED && (probe->flag & LIGHTPROBE_FLAG_SHOW_DATA))
       {
         /* TODO(Miguel Pozo) */
         // bufs.solid_quad.append(data, select_id);

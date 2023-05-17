@@ -17,7 +17,7 @@ class Metaballs {
   using SphereOutlineInstanceBuf = ShapeInstanceBuf<BoneInstanceData>;
 
  private:
-  const eSelectionType selection_type_;
+  const SelectionType selection_type_;
 
   PassSimple metaball_ps_ = {"MetaBalls"};
   PassSimple metaball_in_front_ps_ = {"MetaBalls_In_front"};
@@ -26,7 +26,7 @@ class Metaballs {
   SphereOutlineInstanceBuf circle_in_front_buf_ = {selection_type_, "metaball_data_buf"};
 
  public:
-  Metaballs(const eSelectionType selection_type) : selection_type_(selection_type){};
+  Metaballs(const SelectionType selection_type) : selection_type_(selection_type){};
 
   void begin_sync()
   {

@@ -22,7 +22,7 @@
 
 namespace blender::draw::overlay {
 
-using eSelectionType = select::eSelectionType;
+using SelectionType = select::SelectionType;
 
 using blender::draw::Framebuffer;
 using blender::draw::StorageVectorBuffer;
@@ -39,6 +39,7 @@ struct State {
   const Base *active_base;
   View3DOverlay overlay;
   float pixelsize;
+  enum eSpace_Type space_type;
   enum eContextObjectMode ctx_mode;
   enum eObjectMode object_mode;
   bool clear_in_front;
@@ -137,7 +138,7 @@ class ShaderModule {
   /** Shared shader module across all engine instances. */
   static ShaderModule *g_shader_modules[2 /*Selection Instance*/][2 /*Clipping Enabled*/];
 
-  const eSelectionType selection_type_;
+  const SelectionType selection_type_;
   /** TODO: Support clipping. This global state should be set by the overlay::Instance and switch
    * to the shader variations that use clipping. */
   const bool clipping_enabled_;
@@ -153,11 +154,11 @@ class ShaderModule {
   ShaderPtr depth_mesh;
   ShaderPtr extra_shape;
 
-  ShaderModule(const eSelectionType selection_type, const bool clipping_enabled);
+  ShaderModule(const SelectionType selection_type, const bool clipping_enabled);
 
   /** Module */
   /** Only to be used by Instance constructor. */
-  static ShaderModule &module_get(eSelectionType selection_type, bool clipping_enabled);
+  static ShaderModule &module_get(SelectionType selection_type, bool clipping_enabled);
   static void module_free();
 
  private:
@@ -194,7 +195,7 @@ struct Resources : public select::SelectMap {
   TextureRef color_overlay_tx;
   TextureRef color_render_tx;
 
-  Resources(const eSelectionType selection_type_, ShaderModule &shader_module)
+  Resources(const SelectionType selection_type_, ShaderModule &shader_module)
       : select::SelectMap(selection_type_), shaders(shader_module){};
 
   ThemeColorID object_wire_theme_id(const ObjectRef &ob_ref, const State &state) const
@@ -277,7 +278,7 @@ template<typename InstanceDataT> struct ShapeInstanceBuf : private select::Selec
 
   StorageVectorBuffer<InstanceDataT> data_buf;
 
-  ShapeInstanceBuf(const eSelectionType selection_type, const char *name = nullptr)
+  ShapeInstanceBuf(const SelectionType selection_type, const char *name = nullptr)
       : select::SelectBuf(selection_type), data_buf(name){};
 
   void clear()

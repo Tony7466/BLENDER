@@ -24,7 +24,7 @@ ShaderModule::ShaderPtr ShaderModule::selectable_shader(const char *create_info_
   gpu::shader::ShaderCreateInfo info = *reinterpret_cast<const gpu::shader::ShaderCreateInfo *>(
       GPU_shader_create_info_get(create_info_name));
 
-  if (selection_type_ != eSelectionType::DISABLED) {
+  if (selection_type_ != SelectionType::DISABLED) {
     info.define("SELECT_ENABLE");
   }
 
@@ -40,7 +40,7 @@ ShaderModule::ShaderPtr ShaderModule::selectable_shader(
 
   patch(info);
 
-  if (selection_type_ != eSelectionType::DISABLED) {
+  if (selection_type_ != SelectionType::DISABLED) {
     info.define("SELECT_ENABLE");
     /* Replace additional info. */
     for (StringRefNull &str : info.additional_infos_) {
@@ -57,7 +57,7 @@ ShaderModule::ShaderPtr ShaderModule::selectable_shader(
 
 using namespace blender::gpu::shader;
 
-ShaderModule::ShaderModule(const eSelectionType selection_type, const bool clipping_enabled)
+ShaderModule::ShaderModule(const SelectionType selection_type, const bool clipping_enabled)
     : selection_type_(selection_type), clipping_enabled_(clipping_enabled)
 {
   armature_sphere_outline = selectable_shader(
@@ -81,9 +81,9 @@ ShaderModule::ShaderModule(const eSelectionType selection_type, const bool clipp
   });
 }
 
-ShaderModule &ShaderModule::module_get(eSelectionType selection_type, bool clipping_enabled)
+ShaderModule &ShaderModule::module_get(SelectionType selection_type, bool clipping_enabled)
 {
-  int selection_index = selection_type == eSelectionType::DISABLED ? 0 : 1;
+  int selection_index = selection_type == SelectionType::DISABLED ? 0 : 1;
   ShaderModule *&g_shader_module = g_shader_modules[selection_index][clipping_enabled];
   if (g_shader_module == nullptr) {
     /* TODO(@fclem) thread-safety. */

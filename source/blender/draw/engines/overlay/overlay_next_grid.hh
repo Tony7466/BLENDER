@@ -17,7 +17,7 @@ namespace blender::draw::overlay {
 
 class Grid {
  private:
-  const eSelectionType selection_type_;
+  const SelectionType selection_type_;
 
   UniformBuffer<OVERLAY_GridData> data_;
 
@@ -32,7 +32,7 @@ class Grid {
   bool enabled_ = false;
 
  public:
-  Grid(const eSelectionType selection_type) : selection_type_(selection_type){};
+  Grid(const SelectionType selection_type) : selection_type_(selection_type){};
 
   void begin_sync(Resources &res, const State &state, const View &view)
   {
@@ -78,6 +78,12 @@ class Grid {
  private:
   void update_ubo(const State &state, const View &view)
   {
+    if (state.space_type == SPACE_IMAGE) {
+      /* TODO */
+      enabled_ = false;
+      return;
+    }
+
     float grid_steps[SI_GRID_STEPS_LEN] = {
         0.001f, 0.01f, 0.1f, 1.0f, 10.0f, 100.0f, 1000.0f, 10000.0f};
     float grid_steps_y[SI_GRID_STEPS_LEN] = {0.0f}; /* When zero, use value from grid_steps. */

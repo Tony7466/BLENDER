@@ -40,7 +40,7 @@ static void SELECT_next_engine_init(void *vedata)
   OVERLAY_Data *ved = reinterpret_cast<OVERLAY_Data *>(vedata);
 
   if (ved->instance == nullptr) {
-    ved->instance = new Instance(select::eSelectionType::ENABLED);
+    ved->instance = new Instance(select::SelectionType::ENABLED);
   }
 
   reinterpret_cast<Instance *>(ved->instance)->init();
