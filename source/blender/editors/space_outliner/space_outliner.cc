@@ -261,7 +261,8 @@ static void outliner_main_region_listener(const wmRegionListenerParams *params)
       break;
     case NC_NODE:
       if (ELEM(wmn->action, NA_ADDED, NA_REMOVED) &&
-          ELEM(space_outliner->outlinevis, SO_LIBRARIES, SO_DATA_API)) {
+          ELEM(space_outliner->outlinevis, SO_LIBRARIES, SO_DATA_API))
+      {
         ED_region_tag_redraw(region);
       }
       break;
@@ -492,6 +493,9 @@ static void outliner_space_blend_read_lib(BlendLibReader *reader,
     while ((tselem = static_cast<TreeStoreElem *>(BLI_mempool_iterstep(&iter)))) {
       if (TSE_IS_REAL_ID(tselem)) {
         BLO_read_id_address(reader, nullptr, &tselem->id);
+      }
+      else {
+        tselem->id = nullptr;
       }
     }
     /* rebuild hash table, because it depends on ids too */
