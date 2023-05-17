@@ -238,10 +238,10 @@ static void nlatrack_truncate_temporary_tracks(bAnimContext *ac)
 {
   short filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_ANIMDATA);
   ListBase anim_data = {NULL, NULL};
-  bAnimListElem *ale;
+
   ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
 
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     ListBase *nla_tracks = &ale->adt->nla_tracks;
 
     /** Remove top tracks that weren't necessary. */
