@@ -19,6 +19,7 @@
 #include "BKE_mesh_legacy_convert.h"
 #include "BKE_modifier.h"
 #include "BKE_node.h"
+#include "BKE_node_runtime.hh"
 #include "BKE_tracking.h"
 
 #include "BLO_readfile.h"
@@ -105,23 +106,28 @@ static void version_mesh_objects_replace_auto_smooth(Main &bmain)
   using namespace blender;
   bNodeTree *auto_smooth_node_tree = nullptr;
   LISTBASE_FOREACH (Object *, object, &bmain.objects) {
-    if (object->type == OB_MESH) {
-      Mesh *mesh = static_cast<Mesh *>(object->data);
-      if (mesh->flag & ME_AUTOSMOOTH) {
-        if (!auto_smooth_node_tree) {
-          auto_smooth_node_tree = add_realize_node_tree(bmain);
-        }
-        auto *md = reinterpret_cast<NodesModifierData *>(BKE_modifier_new(eModifierType_Nodes));
-        STRNCPY(md->modifier.name, DATA_("Auto Smooth"));
-        BKE_modifier_unique_name(&object->modifiers, &md->modifier);
-        md->node_group = auto_smooth_node_tree;
-        BLI_addtail(&object->modifiers, md);
-
-        md->settings.properties = bke::idprop::create_group("Nodes Modifier Settings").release();
-        IDProperty *angle_prop = bke::idprop::create(DATA_("Input_1"), mesh->smoothresh).release();
-        IDP_AddToGroup(md->settings.properties, angle_prop);
-      }
+    if (object->type != OB_MESH) {
+      continue;
     }
+    Mesh *mesh = static_cast<Mesh *>(object->data);
+    if (!(mesh->flag & ME_AUTOSMOOTH)) {
+      continue;
+    }
+    if (CustomData_has_layer(&mesh->ldata, CD_CUSTOMLOOPNORMAL)) {
+      continue;
+    }
+    if (!auto_smooth_node_tree) {
+      auto_smooth_node_tree = add_realize_node_tree(bmain);
+    }
+    auto *md = reinterpret_cast<NodesModifierData *>(BKE_modifier_new(eModifierType_Nodes));
+    STRNCPY(md->modifier.name, DATA_("Auto Smooth"));
+    BKE_modifier_unique_name(&object->modifiers, &md->modifier);
+    md->node_group = auto_smooth_node_tree;
+    BLI_addtail(&object->modifiers, md);
+
+    md->settings.properties = bke::idprop::create_group("Nodes Modifier Settings").release();
+    IDProperty *angle_prop = bke::idprop::create(DATA_("Input_1"), mesh->smoothresh).release();
+    IDP_AddToGroup(md->settings.properties, angle_prop);
   }
 }
 
