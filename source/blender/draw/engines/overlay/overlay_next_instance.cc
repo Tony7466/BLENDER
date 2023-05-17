@@ -28,34 +28,35 @@ void Instance::init()
   state.object_mode = ctx->object_mode;
 
   state.pixelsize = U.pixelsize;
-  state.space_type = ctx->v3d != nullptr ? SPACE_VIEW3D : eSpace_Type(ctx->space_data->spacetype);
   state.ctx_mode = CTX_data_mode_enum_ex(ctx->object_edit, ctx->obact, ctx->object_mode);
-  state.clear_in_front = (state.v3d->shading.type != OB_SOLID);
-  state.use_in_front = (state.v3d->shading.type <= OB_SOLID) ||
-                       BKE_scene_uses_blender_workbench(state.scene);
-  state.is_wireframe_mode = (state.v3d->shading.type == OB_WIRE);
-  state.hide_overlays = (state.v3d->flag2 & V3D_HIDE_OVERLAYS) != 0;
-  state.xray_enabled = XRAY_ACTIVE(state.v3d);
-  state.xray_enabled_and_not_wire = state.xray_enabled && (state.v3d->shading.type > OB_WIRE);
-  state.xray_opacity = XRAY_ALPHA(state.v3d);
-  state.cfra = DEG_get_ctime(state.depsgraph);
-  state.clipping_state = RV3D_CLIPPING_ENABLED(state.v3d, state.rv3d) ? DRW_STATE_CLIP_PLANES :
-                                                                        DRWState(0);
-
-  if (!state.hide_overlays) {
-    state.overlay = state.v3d->overlay;
-    state.v3d_flag = state.v3d->flag;
-    state.v3d_gridflag = state.v3d->gridflag;
-  }
-  else {
-    memset(&state.overlay, 0, sizeof(state.overlay));
-    state.v3d_flag = 0;
-    state.v3d_gridflag = 0;
-    state.overlay.flag = V3D_OVERLAY_HIDE_TEXT | V3D_OVERLAY_HIDE_MOTION_PATHS |
-                         V3D_OVERLAY_HIDE_BONES | V3D_OVERLAY_HIDE_OBJECT_XTRAS |
-                         V3D_OVERLAY_HIDE_OBJECT_ORIGINS;
-    state.overlay.wireframe_threshold = state.v3d->overlay.wireframe_threshold;
-    state.overlay.wireframe_opacity = state.v3d->overlay.wireframe_opacity;
+  state.space_type = state.v3d != nullptr ? SPACE_VIEW3D : eSpace_Type(ctx->space_data->spacetype);
+  if (state.v3d != nullptr) {
+    state.clear_in_front = (state.v3d->shading.type != OB_SOLID);
+    state.use_in_front = (state.v3d->shading.type <= OB_SOLID) ||
+                         BKE_scene_uses_blender_workbench(state.scene);
+    state.is_wireframe_mode = (state.v3d->shading.type == OB_WIRE);
+    state.hide_overlays = (state.v3d->flag2 & V3D_HIDE_OVERLAYS) != 0;
+    state.xray_enabled = XRAY_ACTIVE(state.v3d);
+    state.xray_enabled_and_not_wire = state.xray_enabled && (state.v3d->shading.type > OB_WIRE);
+    state.xray_opacity = XRAY_ALPHA(state.v3d);
+    state.cfra = DEG_get_ctime(state.depsgraph);
+    state.clipping_state = RV3D_CLIPPING_ENABLED(state.v3d, state.rv3d) ? DRW_STATE_CLIP_PLANES :
+                                                                          DRWState(0);
+    if (!state.hide_overlays) {
+      state.overlay = state.v3d->overlay;
+      state.v3d_flag = state.v3d->flag;
+      state.v3d_gridflag = state.v3d->gridflag;
+    }
+    else {
+      memset(&state.overlay, 0, sizeof(state.overlay));
+      state.v3d_flag = 0;
+      state.v3d_gridflag = 0;
+      state.overlay.flag = V3D_OVERLAY_HIDE_TEXT | V3D_OVERLAY_HIDE_MOTION_PATHS |
+                           V3D_OVERLAY_HIDE_BONES | V3D_OVERLAY_HIDE_OBJECT_XTRAS |
+                           V3D_OVERLAY_HIDE_OBJECT_ORIGINS;
+      state.overlay.wireframe_threshold = state.v3d->overlay.wireframe_threshold;
+      state.overlay.wireframe_opacity = state.v3d->overlay.wireframe_opacity;
+    }
   }
 
   /* TODO(fclem): Remove DRW global usage. */
