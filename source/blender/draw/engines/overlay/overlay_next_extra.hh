@@ -13,7 +13,12 @@
 namespace blender::draw::overlay {
 
 class Extras {
-  using InstanceBuf = ShapeInstanceBuf<ExtraInstanceData>;
+  struct InstanceBuf : public ShapeInstanceBuf<ExtraInstanceData> {
+    GPUBatch *shape;
+
+    InstanceBuf(const SelectionType selection_type, const char *name, GPUBatch *shape)
+        : ShapeInstanceBuf<ExtraInstanceData>(selection_type, name), shape(shape){};
+  };
 
  private:
   const SelectionType selection_type_;
@@ -22,39 +27,46 @@ class Extras {
   PassSimple empty_in_front_ps_ = {"Extras_In_front"};
 
   struct InstanceBuffers {
-    const SelectionType selection_type_;
-    InstanceBuf plain_axes = {selection_type_, "plain_axes_buf"};
-    InstanceBuf single_arrow = {selection_type_, "single_arrow_buf"};
-    InstanceBuf arrows = {selection_type_, "arrows_buf"};
-    InstanceBuf image = {selection_type_, "image_buf"};
-    InstanceBuf cube = {selection_type_, "cube_buf"};
-    InstanceBuf circle = {selection_type_, "circle_buf"};
-    InstanceBuf sphere = {selection_type_, "sphere_buf"};
-    InstanceBuf cone = {selection_type_, "cone_buf"};
-    InstanceBuf speaker = {selection_type_, "speaker_buf"};
-    InstanceBuf probe_cube = {selection_type_, "probe_cube_buf"};
-    InstanceBuf probe_grid = {selection_type_, "probe_grid_buf"};
-    InstanceBuf probe_planar = {selection_type_, "probe_planar_buf"};
-  } buffers_[2] = {{selection_type_}, {selection_type_}};
+    const SelectionType selection_type;
+    const ShapeCache &shapes;
+
+    Vector<InstanceBuf> vector;
+
+    InstanceBuffers(SelectionType selection_type, const ShapeCache &shapes)
+        : selection_type(selection_type), shapes(shapes){};
+
+    InstanceBuf &add_buffer(const char *name, GPUBatch *shape)
+    {
+      vector.append({selection_type, name, shape});
+      return vector.last();
+    };
+
+    InstanceBuf &plain_axes = add_buffer("plain_axes", shapes.plain_axes.get());
+    InstanceBuf &single_arrow = add_buffer("single_arrow", shapes.single_arrow.get());
+    InstanceBuf &arrows = add_buffer("arrows", shapes.arrows.get());
+    InstanceBuf &image = add_buffer("image", shapes.quad_wire.get());
+    InstanceBuf &circle = add_buffer("circle", shapes.circle.get());
+    InstanceBuf &cube = add_buffer("cube", shapes.empty_cube.get());
+    InstanceBuf &sphere = add_buffer("sphere", shapes.empty_sphere.get());
+    InstanceBuf &cone = add_buffer("cone", shapes.empty_cone.get());
+    InstanceBuf &speaker = add_buffer("speaker", shapes.speaker.get());
+    InstanceBuf &probe_cube = add_buffer("probe_cube", shapes.probe_cube.get());
+    InstanceBuf &probe_grid = add_buffer("probe_grid", shapes.probe_grid.get());
+    InstanceBuf &probe_planar = add_buffer("probe_planar", shapes.probe_planar.get());
+
+  } buffers_[2];
 
  public:
-  Extras(const SelectionType selection_type) : selection_type_(selection_type){};
+  Extras(const SelectionType selection_type, const ShapeCache &shapes)
+      : selection_type_(selection_type),
+        buffers_{{selection_type, shapes}, {selection_type, shapes}} {};
 
   void begin_sync()
   {
     for (InstanceBuffers &bufs : buffers_) {
-      bufs.plain_axes.clear();
-      bufs.single_arrow.clear();
-      bufs.arrows.clear();
-      bufs.image.clear();
-      bufs.cube.clear();
-      bufs.circle.clear();
-      bufs.sphere.clear();
-      bufs.cone.clear();
-      bufs.speaker.clear();
-      bufs.probe_cube.clear();
-      bufs.probe_grid.clear();
-      bufs.probe_planar.clear();
+      for (InstanceBuf &buf : bufs.vector) {
+        buf.clear();
+      }
     }
   }
 
@@ -81,7 +93,7 @@ class Extras {
     }
   }
 
-  void end_sync(Resources &res, ShapeCache &shapes, const State &state)
+  void end_sync(Resources &res, const State &state)
   {
     auto init_pass = [&](PassSimple &pass, InstanceBuffers &bufs) {
       pass.init();
@@ -91,18 +103,9 @@ class Extras {
       pass.bind_ubo("globalsBlock", &res.globals_buf);
       res.select_bind(pass);
 
-      bufs.plain_axes.end_sync(pass, shapes.plain_axes.get());
-      bufs.single_arrow.end_sync(pass, shapes.single_arrow.get());
-      bufs.arrows.end_sync(pass, shapes.arrows.get());
-      bufs.image.end_sync(pass, shapes.quad_wire.get());
-      bufs.circle.end_sync(pass, shapes.circle.get());
-      bufs.cube.end_sync(pass, shapes.empty_cube.get());
-      bufs.sphere.end_sync(pass, shapes.empty_sphere.get());
-      bufs.cone.end_sync(pass, shapes.empty_cone.get());
-      bufs.speaker.end_sync(pass, shapes.speaker.get());
-      bufs.probe_cube.end_sync(pass, shapes.probe_cube.get());
-      bufs.probe_grid.end_sync(pass, shapes.probe_grid.get());
-      bufs.probe_planar.end_sync(pass, shapes.probe_planar.get());
+      for (InstanceBuf &buf : bufs.vector) {
+        buf.end_sync(pass, buf.shape);
+      }
     };
     init_pass(empty_ps_, buffers_[0]);
     init_pass(empty_in_front_ps_, buffers_[1]);

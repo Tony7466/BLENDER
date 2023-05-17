@@ -142,7 +142,7 @@ void Instance::end_sync()
   resources.end_sync();
 
   metaballs.end_sync(resources, shapes, state);
-  extras.end_sync(resources, shapes, state);
+  extras.end_sync(resources, state);
 }
 
 void Instance::draw(Manager &manager)

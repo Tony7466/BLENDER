@@ -36,7 +36,7 @@ class Instance {
   Background background = {selection_type_};
   Prepass prepass = {selection_type_};
   Metaballs metaballs = {selection_type_};
-  Extras extras = {selection_type_};
+  Extras extras = {selection_type_, shapes};
   Grid grid = {selection_type_};
 
   Instance(const SelectionType selection_type) : selection_type_(selection_type){};
