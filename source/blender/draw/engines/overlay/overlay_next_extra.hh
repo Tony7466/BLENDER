@@ -16,45 +16,46 @@ class Extras {
   struct InstanceBuf : public ShapeInstanceBuf<ExtraInstanceData> {
     GPUBatch *shape;
 
-    InstanceBuf(const SelectionType selection_type, const char *name, GPUBatch *shape)
-        : ShapeInstanceBuf<ExtraInstanceData>(selection_type, name), shape(shape){};
+    InstanceBuf(const char *name,
+                GPUBatch *shape,
+                const SelectionType selection_type,
+                Vector<InstanceBuf *> &vector)
+        : ShapeInstanceBuf<ExtraInstanceData>(selection_type, name), shape(shape)
+    {
+      vector.append(this);
+    };
   };
-
- private:
-  const SelectionType selection_type_;
-
-  PassSimple empty_ps_ = {"Extras"};
-  PassSimple empty_in_front_ps_ = {"Extras_In_front"};
 
   struct InstanceBuffers {
     const SelectionType selection_type;
     const ShapeCache &shapes;
 
-    Vector<InstanceBuf> vector;
+    Vector<InstanceBuf *> vector;
 
     InstanceBuffers(SelectionType selection_type, const ShapeCache &shapes)
         : selection_type(selection_type), shapes(shapes){};
 
-    InstanceBuf &add_buffer(const char *name, GPUBatch *shape)
-    {
-      vector.append({selection_type, name, shape});
-      return vector.last();
-    };
+    InstanceBuf plain_axes = {"plain_axes", shapes.plain_axes.get(), selection_type, vector};
+    InstanceBuf single_arrow = {"single_arrow", shapes.single_arrow.get(), selection_type, vector};
+    InstanceBuf arrows = {"arrows", shapes.arrows.get(), selection_type, vector};
+    InstanceBuf image = {"image", shapes.quad_wire.get(), selection_type, vector};
+    InstanceBuf circle = {"circle", shapes.circle.get(), selection_type, vector};
+    InstanceBuf cube = {"cube", shapes.empty_cube.get(), selection_type, vector};
+    InstanceBuf sphere = {"sphere", shapes.empty_sphere.get(), selection_type, vector};
+    InstanceBuf cone = {"cone", shapes.empty_cone.get(), selection_type, vector};
+    InstanceBuf speaker = {"speaker", shapes.speaker.get(), selection_type, vector};
+    InstanceBuf probe_cube = {"probe_cube", shapes.probe_cube.get(), selection_type, vector};
+    InstanceBuf probe_grid = {"probe_grid", shapes.probe_grid.get(), selection_type, vector};
+    InstanceBuf probe_planar = {"probe_planar", shapes.probe_planar.get(), selection_type, vector};
+  };
 
-    InstanceBuf &plain_axes = add_buffer("plain_axes", shapes.plain_axes.get());
-    InstanceBuf &single_arrow = add_buffer("single_arrow", shapes.single_arrow.get());
-    InstanceBuf &arrows = add_buffer("arrows", shapes.arrows.get());
-    InstanceBuf &image = add_buffer("image", shapes.quad_wire.get());
-    InstanceBuf &circle = add_buffer("circle", shapes.circle.get());
-    InstanceBuf &cube = add_buffer("cube", shapes.empty_cube.get());
-    InstanceBuf &sphere = add_buffer("sphere", shapes.empty_sphere.get());
-    InstanceBuf &cone = add_buffer("cone", shapes.empty_cone.get());
-    InstanceBuf &speaker = add_buffer("speaker", shapes.speaker.get());
-    InstanceBuf &probe_cube = add_buffer("probe_cube", shapes.probe_cube.get());
-    InstanceBuf &probe_grid = add_buffer("probe_grid", shapes.probe_grid.get());
-    InstanceBuf &probe_planar = add_buffer("probe_planar", shapes.probe_planar.get());
+ private:
+  const SelectionType selection_type_;
 
-  } buffers_[2];
+  InstanceBuffers buffers_[2];
+
+  PassSimple empty_ps_ = {"Extras"};
+  PassSimple empty_in_front_ps_ = {"Extras_In_front"};
 
  public:
   Extras(const SelectionType selection_type, const ShapeCache &shapes)
@@ -64,8 +65,8 @@ class Extras {
   void begin_sync()
   {
     for (InstanceBuffers &bufs : buffers_) {
-      for (InstanceBuf &buf : bufs.vector) {
-        buf.clear();
+      for (InstanceBuf *buf : bufs.vector) {
+        buf->clear();
       }
     }
   }
@@ -103,8 +104,8 @@ class Extras {
       pass.bind_ubo("globalsBlock", &res.globals_buf);
       res.select_bind(pass);
 
-      for (InstanceBuf &buf : bufs.vector) {
-        buf.end_sync(pass, buf.shape);
+      for (InstanceBuf *buf : bufs.vector) {
+        buf->end_sync(pass, buf->shape);
       }
     };
     init_pass(empty_ps_, buffers_[0]);
