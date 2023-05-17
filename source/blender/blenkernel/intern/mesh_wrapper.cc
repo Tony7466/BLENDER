@@ -332,11 +332,8 @@ static Mesh *mesh_wrapper_ensure_subdivision(Mesh *me)
   if (use_clnors) {
     /* If custom normals are present and the option is turned on calculate the split
      * normals and clear flag so the normals get interpolated to the result mesh. */
-    blender::MutableSpan<float3> data(static_cast<float3 *>(CustomData_add_layer(
-                                          &me->ldata, CD_NORMAL, CD_CONSTRUCT, me->totloop)),
-                                      me->totloop);
-    data.copy_from(me->corner_normals());
-    CustomData_clear_layer_flag(&me->ldata, CD_NORMAL, CD_FLAG_TEMPORARY);
+    void *data = CustomData_add_layer(&me->ldata, CD_NORMAL, CD_CONSTRUCT, me->totloop);
+    memcpy(data, me->corner_normals().data(), me->corner_normals().size_in_bytes());
   }
 
   Mesh *subdiv_mesh = BKE_subdiv_to_mesh(subdiv, &mesh_settings, me);

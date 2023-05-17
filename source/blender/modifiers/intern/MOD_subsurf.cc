@@ -261,11 +261,8 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   }
   const bool use_clnors = BKE_subsurf_modifier_use_custom_loop_normals(smd, mesh);
   if (use_clnors) {
-    blender::MutableSpan<blender::float3> data(
-        static_cast<blender::float3 *>(
-            CustomData_add_layer(&mesh->ldata, CD_NORMAL, CD_CONSTRUCT, mesh->totloop)),
-        mesh->totloop);
-    data.copy_from(mesh->corner_normals());
+    void *data = CustomData_add_layer(&mesh->ldata, CD_NORMAL, CD_CONSTRUCT, mesh->totloop);
+    memcpy(data, mesh->corner_normals().data(), mesh->corner_normals().size_in_bytes());
   }
   /* TODO(sergey): Decide whether we ever want to use CCG for subsurf,
    * maybe when it is a last modifier in the stack? */

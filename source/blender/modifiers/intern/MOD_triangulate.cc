@@ -53,6 +53,7 @@ static Mesh *triangulate_mesh(Mesh *mesh,
   if (keep_clnors) {
     void *data = CustomData_add_layer(&mesh->ldata, CD_NORMAL, CD_CONSTRUCT, mesh->totloop);
     memcpy(data, mesh->corner_normals().data(), mesh->corner_normals().size_in_bytes());
+    cd_mask_extra.lmask |= CD_MASK_NORMAL;
   }
 
   BMeshCreateParams bmesh_create_params{};
