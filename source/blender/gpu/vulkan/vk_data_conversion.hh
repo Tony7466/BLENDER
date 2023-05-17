@@ -110,12 +110,14 @@ class FloatingPointFormat {
   static constexpr uint8_t MantissaLen = MantissaBitLen;
   static constexpr uint8_t MantissaShift = 0;
   static constexpr uint32_t MantissaMask = (1 << MantissaBitLen) - 1;
+  static constexpr uint32_t MantissaNanMask = MantissaMask;
   static constexpr uint8_t ExponentShift = MantissaBitLen;
   static constexpr uint8_t ExponentLen = ExponentBitLen;
   static constexpr uint32_t ExponentMask = (1 << ExponentBitLen) - 1;
+  static constexpr uint32_t ExponentBias = (1 << (ExponentBitLen - 1)) - 1;
+  static constexpr int32_t ExponentSpecialMask = ExponentMask;
   static constexpr uint8_t SignShift = MantissaBitLen + ExponentBitLen;
   static constexpr uint32_t SignMask = HasSignBit ? 1 : 0;
-  static constexpr uint32_t ExponentBias = (1 << (ExponentBitLen - 1)) - 1;
 
   static uint32_t get_mantissa(uint32_t floating_point_number)
   {
@@ -161,7 +163,7 @@ class FloatingPointFormat {
 
   static uint32_t set_sign(bool sign, uint32_t floating_point_number)
   {
-    if constexpr (HasSignBit) {
+    if constexpr (!HasSignBit) {
       return floating_point_number;
     }
     uint32_t result = clear_sign(floating_point_number);
@@ -182,9 +184,6 @@ using FormatF10 = FloatingPointFormat<false, 5, 5>;
  * convert between the formats. Additional conversion rules can be applied to the conversion
  * function. Due to the implementation the compiler would make an optimized version depending on
  * the actual possibilities.
- *
- * NOTE: Implementation should be extended to support Nan, Inf, -Inf and clamping to min/max when
- * values don't fit in the destination.
  */
 template<
     /**
@@ -199,7 +198,7 @@ template<
 
     /**
      * Should negative values be clamped to zero when DestinationFormat doesn't contain a sign
-     * bit.
+     * bit. Also -Inf will be clamped to zero.
      *
      * When set to `false` and DestinationFormat doesn't contain a sign bit the value will be
      * made absolute.
@@ -211,25 +210,46 @@ uint32_t convert_float_formats(uint32_t value)
   uint32_t mantissa = SourceFormat::get_mantissa(value);
   int32_t exponent = SourceFormat::get_exponent(value);
 
+  const bool is_nan = (exponent == SourceFormat::ExponentSpecialMask) && mantissa;
+  const bool is_inf = (exponent == SourceFormat::ExponentSpecialMask) && (mantissa == 0);
+
   /* Sign conversion */
   if constexpr (!DestinationFormat::HasSign && ClampNegativeToZero) {
-    if (is_signed) {
+    if (is_signed && !is_nan) {
       return 0;
     }
   }
 
-  /* Mantissa conversion */
-  if constexpr (SourceFormat::MantissaLen > DestinationFormat::MantissaLen) {
-    mantissa = mantissa >> (SourceFormat::MantissaLen - DestinationFormat::MantissaLen);
+  if (is_inf) {
+    exponent = DestinationFormat::ExponentSpecialMask;
   }
-  else if constexpr (SourceFormat::MantissaLen < DestinationFormat::MantissaLen) {
-    mantissa = mantissa << (DestinationFormat::MantissaLen - SourceFormat::MantissaLen);
+  else if (is_nan) {
+    exponent = DestinationFormat::ExponentSpecialMask;
+    mantissa = DestinationFormat::MantissaNanMask;
   }
+  else {
+    /* Exponent conversion */
+    exponent -= SourceFormat::ExponentBias;
+    /* Clamping when destination has lower precision. */
+    if constexpr (SourceFormat::ExponentLen > DestinationFormat::ExponentLen) {
+      if (exponent > DestinationFormat::ExponentBias) {
+        exponent = 0;
+        mantissa = SourceFormat::MantissaMask;
+      }
+      else if (exponent < -int32_t(DestinationFormat::ExponentBias)) {
+        return 0;
+      }
+    }
+    exponent += DestinationFormat::ExponentBias;
 
-  /* Exponent conversion */
-  exponent += DestinationFormat::ExponentBias - SourceFormat::ExponentBias;
-  // TODO: Clamp to min/max value? only when Destination::ExponentBias <
-  // SourceFormat::ExponentBias.
+    /* Mantissa conversion */
+    if constexpr (SourceFormat::MantissaLen > DestinationFormat::MantissaLen) {
+      mantissa = mantissa >> (SourceFormat::MantissaLen - DestinationFormat::MantissaLen);
+    }
+    else if constexpr (SourceFormat::MantissaLen < DestinationFormat::MantissaLen) {
+      mantissa = mantissa << (DestinationFormat::MantissaLen - SourceFormat::MantissaLen);
+    }
+  }
 
   uint32_t result = 0;
   result = DestinationFormat::set_sign(is_signed, result);
