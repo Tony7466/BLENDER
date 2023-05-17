@@ -52,13 +52,6 @@ static void version_motion_tracking_legacy_camera_object(MovieClip &movieclip)
 
   BLI_assert(tracking_camera_object != nullptr);
 
-  /* NOTE: The regular .blend file saving converts the new format to the legacy format, but the
-   * auto-save one does not do this. Likely, the regular saving clears the new storage before
-   * write, so it can be used to make a decision here.
-   *
-   * The idea is basically to not override the new storage if it exists. This is only supposed to
-   * happen for auto-save files. */
-
   if (BLI_listbase_is_empty(&tracking_camera_object->tracks)) {
     tracking_camera_object->tracks = tracking.tracks_legacy;
     active_tracking_object->active_track = tracking.act_track_legacy;
