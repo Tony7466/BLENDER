@@ -1180,7 +1180,7 @@ static bool add_layer(SurDeformGpencilModifierData *smd_orig,
   }
 
   // for (int c = 0; c < 128; c++)
-  //{smd_orig->layers->layer_info[c] = gpl->info[c];}
+  strcpy(smd_orig->layers->layer_info, gpl->info);
   // smd_orig->layers->layer_idx
 
   return true;
@@ -1190,12 +1190,9 @@ static bool add_frame(SurDeformGpencilModifierData *smd_orig,
                       SurDeformGpencilModifierData *smd_eval,
                       SDefGPLayer *sdef_layer,
                       bGPDframe *gpf)
-{ /* If we're not on the first frame, rollback the pointer*/
-  if (sdef_layer->frames != NULL) {
-    if (sdef_layer->frames->blender_frame->prev != NULL) {
-      rollback_lframes_a(smd_orig, sdef_layer);
-    }
-  }
+  {
+  rollback_lframes_a(smd_orig, sdef_layer);
+  
   /* every time we add a new frame to our array, by the bind operator, we should
   free the old one and copy in to a new bigger/smaller location.
 
@@ -1322,7 +1319,7 @@ static bool free_frame(SurDeformGpencilModifierData *smd_orig,
   if (sdef_layer->num_of_frames > 0) {
     /* Copy one frame at a time, except the one we are unbinding*/
     for (int f = 0; f < sdef_layer->num_of_frames; f++) {
-      if (sdef_layer->frames[f].blender_frame == gpf) {
+      if (sdef_layer->frames[f].frame_number == gpf->framenum) {
         f--;
         continue;
       }
@@ -1477,74 +1474,24 @@ static bool surfacedeformBind(Object *ob,
   bGPDlayer *gpl_active = BKE_gpencil_layer_active_get(gpd);
 
   /*If unbind mode: unbind and exit */
-  if (smd_orig->bind_modes & GP_MOD_SDEF_UNBIND_MODE) {
+  if (smd_orig->bind_modes & GP_MOD_SDEF_UNBIND_MODE) 
+  {
     rollback_layers_a(smd_orig);
-    if (smd_orig->bind_modes & GP_MOD_SDEF_BIND_ALL_LAYERS) {
-      /*free one frame or all the frames?*/
-      if (smd_orig->bind_modes & GP_MOD_SDEF_BIND_ALL_FRAMES) {
-        /*Just free al of the data*/
-        freeData_a(smd_orig);
-      }
-      else {
-        for (int l = 0; l < smd_orig->num_of_layers; l++) {
-
-          free_frame(smd_orig,
-                     smd_eval,
-                     &(smd_orig->layers[l]),
-                     BKE_gpencil_frame_retime_get(
-                         depsgraph, scene, ob, smd_orig->layers[l].blender_layer));
-        }
-      }
-    }
-    else /* Unbind only current layer*/
+    
+    /*free one frame or all the frames?*/
+    if (smd_orig->bind_modes & GP_MOD_SDEF_BIND_ALL_FRAMES) 
     {
-      while (smd_orig->layers->blender_layer != gpl_active) {
-        smd_orig->layers++;
-      }
-      /*free one frame or all the frames?*/
-      if (smd_orig->bind_modes & GP_MOD_SDEF_BIND_ALL_FRAMES) {
-        if (smd_orig->num_of_layers > 1) {
-          for (int f = 0; f < smd_orig->layers->num_of_frames; f++) {
-            free_frame(smd_orig,
-                       smd_eval,
-                       &(smd_orig->layers),
-                       smd_orig->layers->frames[f].blender_frame);
-          }
+      /*Just free al of the data*/
+      freeData_a(smd_orig);
+    }
+    else {
+      for (int l = 0; l < smd_orig->num_of_layers; l++) {
 
-          {
-            free_layer(smd_orig, smd_eval, smd_orig->layers->blender_layer);
-          }
-        }
-        else  // If this is the only layer, free all data
-        {
-          freeData_a(smd_orig);
-        }
-      }
-      else {
-        if (smd_orig->num_of_layers > 1) {
-          if (smd_orig->layers->num_of_frames > 1) {
-            free_frame(smd_orig,
-                       smd_eval,
-                       &(smd_orig->layers),
-                       BKE_gpencil_frame_retime_get(
-                           depsgraph, scene, ob, smd_orig->layers->blender_layer));
-          }
-          else {
-            free_layer(smd_orig, smd_eval, smd_orig->layers->blender_layer);
-          }
-        }
-        else {  // If this is the only layer, only frame, free all data
-          if (smd_orig->layers->num_of_frames > 1) {
-            free_frame(smd_orig,
-                       smd_eval,
-                       &(smd_orig->layers),
-                       BKE_gpencil_frame_retime_get(
-                           depsgraph, scene, ob, smd_orig->layers->blender_layer));
-          }
-          else {
-            freeData_a(smd_orig);
-          }
-        }
+        free_frame(smd_orig,
+                    smd_eval,
+                    &(smd_orig->layers[l]),
+                    BKE_gpencil_frame_retime_get(
+                        depsgraph, scene, ob, smd_orig->layers[l].blender_layer));
       }
     }
     rollback_layers_a(smd_orig);
@@ -1636,16 +1583,21 @@ static bool surfacedeformBind(Object *ob,
     int l = 0;
     bool resutl = 1;
     while (l != smd_orig->num_of_layers && resutl != 0) {
-      resutl = strcmp(smd_orig->layers[l].blender_layer->info, curr_gpl->info);
+      resutl = strcmp(smd_orig->layers[l].layer_info, curr_gpl->info);
       if (resutl)
         ++l;
     }
     if (l != smd_orig->num_of_layers) {
-      continue;
+      smd_orig->layers = &smd_orig->layers[l];
+    }
+    else
+    {
+      add_layer(smd_orig, smd_eval, curr_gpl);
+      /* Now smd_orig->layers should point to the new layer. */
     }
 
-    add_layer(smd_orig, smd_eval, curr_gpl);
-    /* Now smd_orig->layers should point to the new layer. */
+    
+    
 
     if (smd_orig->bind_modes & GP_MOD_SDEF_BIND_ALL_FRAMES) {
       LISTBASE_FOREACH (bGPDframe *, curr_gpf, &curr_gpl->frames) {
@@ -1660,7 +1612,7 @@ static bool surfacedeformBind(Object *ob,
         /* If a frame is already bound, skip it.*/
         int f = 0;
         while (f != smd_orig->layers->num_of_frames &&
-                smd_orig->layers->frames[f].blender_frame->framenum != curr_gpf->framenum)
+                smd_orig->layers->frames[f].frame_number != curr_gpf->framenum)
           ++f;  // credits for this line: "Vlad from Moscow " from stack overflow. This is so
                 // fricking smart I can't
         if (f != smd_orig->layers->num_of_frames) {
@@ -1702,8 +1654,8 @@ static bool surfacedeformBind(Object *ob,
       rollback_lframes_a(smd_orig, smd_orig->layers);
       int f = 0;
       while (f != smd_orig->layers->num_of_frames &&
-              smd_orig->layers->frames[f].blender_frame->framenum !=
-                  smd_orig->layers->frames->blender_frame->framenum)
+              smd_orig->layers->frames[f].frame_number !=
+                  smd_orig->layers->frames->frame_number)
         ++f;  // credits for this line: "Vlad from Moscow " from stack overflow. This is so
               // fricking smart I can't
       if (f == smd_orig->layers->num_of_frames) {
