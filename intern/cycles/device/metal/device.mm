@@ -32,35 +32,38 @@ void device_metal_info(vector<DeviceInfo> &devices)
   /* Devices are numbered consecutively across platforms. */
   set<string> unique_ids;
   int device_index = 0;
-  for (id<MTLDevice> &device : usable_devices) {
-    /* Compute unique ID for persistent user preferences. */
-    string device_name = MetalInfo::get_device_name(device);
-
-    string id = string("METAL_") + device_name;
-
-    /* Hardware ID might not be unique, add device number in that case. */
-    if (unique_ids.find(id) != unique_ids.end()) {
-      id += string_printf("_ID_%d", device_index);
-    }
-    unique_ids.insert(id);
-
-    /* Create DeviceInfo. */
-    DeviceInfo info;
-    info.type = DEVICE_METAL;
-    info.description = string_remove_trademark(string(device_name));
-
-    info.num = device_index;
-    /* We don't know if it's used for display, but assume it is. */
-    info.display_device = true;
-    info.denoisers = DENOISER_NONE;
-    info.id = id;
-
-    MetalGPUVendor vendor = MetalInfo::get_device_vendor(device);
-
-    info.has_nanovdb = vendor == METAL_GPU_APPLE;
-    info.has_light_tree = vendor != METAL_GPU_AMD;
-    info.use_hardware_raytracing = vendor != METAL_GPU_INTEL;
-
+    for (id<MTLDevice> &device : usable_devices) {
+        /* Compute unique ID for persistent user preferences. */
+        string device_name = MetalInfo::get_device_name(device);
+        
+        string id = string("METAL_") + device_name;
+        
+        /* Hardware ID might not be unique, add device number in that case. */
+        if (unique_ids.find(id) != unique_ids.end()) {
+            id += string_printf("_ID_%d", device_index);
+        }
+        unique_ids.insert(id);
+        
+        /* Create DeviceInfo. */
+        DeviceInfo info;
+        info.type = DEVICE_METAL;
+        info.description = string_remove_trademark(string(device_name));
+        
+        info.num = device_index;
+        /* We don't know if it's used for display, but assume it is. */
+        info.display_device = true;
+        info.denoisers = DENOISER_NONE;
+        info.id = id;
+        
+        MetalGPUVendor vendor = MetalInfo::get_device_vendor(device);
+        info.has_nanovdb = vendor == METAL_GPU_APPLE;
+        info.has_light_tree = vendor != METAL_GPU_AMD;
+        
+        if (@available(macos 11.0, *)) {
+            info.use_hardware_raytracing =  device.supportsRaytracing;
+        } else {
+            info.use_hardware_raytracing =  vendor != METAL_GPU_INTEL;
+        }
     devices.push_back(info);
     device_index++;
   }
