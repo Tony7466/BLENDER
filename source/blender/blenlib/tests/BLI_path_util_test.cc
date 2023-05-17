@@ -166,7 +166,7 @@ TEST(path_util, CompareNormalized)
   /* Trailing slash should not matter. */
   EXPECT_EQ(BLI_path_cmp_normalized("/tmp/", "/tmp"), 0);
   /* Slash direction should not matter. */
-  EXPECT_EQ(BLI_path_cmp_normalized("\\tmp\\", "/tmp/"), 0);
+  EXPECT_EQ(BLI_path_cmp_normalized("c:\\tmp\\", "c:/tmp/"), 0);
   /* Empty paths should be supported. */
   EXPECT_EQ(BLI_path_cmp_normalized("", ""), 0);
 
