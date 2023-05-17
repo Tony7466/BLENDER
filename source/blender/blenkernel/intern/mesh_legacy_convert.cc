@@ -1772,7 +1772,7 @@ void BKE_mesh_legacy_convert_verts_to_positions(Mesh *mesh)
   using namespace blender;
   using namespace blender::bke;
   const MVert *mvert = static_cast<const MVert *>(CustomData_get_layer(&mesh->vdata, CD_MVERT));
-  if (!mvert || CustomData_get_layer_named(&mesh->vdata, CD_PROP_FLOAT3, "position")) {
+  if (!mvert || CustomData_has_layer_named(&mesh->vdata, CD_PROP_FLOAT3, "position")) {
     return;
   }
 
@@ -1802,7 +1802,7 @@ void BKE_mesh_legacy_convert_edges_to_generic(Mesh *mesh)
   using namespace blender;
   using namespace blender::bke;
   const MEdge *medge = static_cast<const MEdge *>(CustomData_get_layer(&mesh->edata, CD_MEDGE));
-  if (!medge || CustomData_get_layer_named(&mesh->edata, CD_PROP_INT32_2D, ".edge_verts")) {
+  if (!medge || CustomData_has_layer_named(&mesh->edata, CD_PROP_INT32_2D, ".edge_verts")) {
     return;
   }
 
@@ -1900,8 +1900,8 @@ void BKE_mesh_legacy_attribute_flags_to_strings(Mesh *mesh)
 void BKE_mesh_legacy_convert_loops_to_corners(Mesh *mesh)
 {
   using namespace blender;
-  if (CustomData_get_layer_named(&mesh->ldata, CD_PROP_INT32, ".corner_vert") &&
-      CustomData_get_layer_named(&mesh->ldata, CD_PROP_INT32, ".corner_edge"))
+  if (CustomData_has_layer_named(&mesh->ldata, CD_PROP_INT32, ".corner_vert") &&
+      CustomData_has_layer_named(&mesh->ldata, CD_PROP_INT32, ".corner_edge"))
   {
     return;
   }
