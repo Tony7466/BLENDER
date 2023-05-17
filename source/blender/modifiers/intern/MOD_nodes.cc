@@ -1189,6 +1189,20 @@ static void prepare_simulation_states_for_evaluation(const NodesModifierData &nm
     const bke::sim::StatesAroundFrame sim_states =
         nmd_orig.simulation_cache->get_states_around_frame(current_frame);
     if (nmd_orig.simulation_cache->cache_state() != bke::sim::CacheState::Baked) {
+      float prev_frame = float(current_frame);
+      if (sim_states.prev) {
+        prev_frame = float(sim_states.prev->frame);
+      }
+      const float max_delta_frames = 1.0f;
+      const float scene_delta_frames = float(current_frame) - float(prev_frame);
+      const float delta_frames = std::min(max_delta_frames, scene_delta_frames);
+      const float delta_seconds = delta_frames / FPS;
+      const float old_delta_seconds = nmd_orig.simulation_cache->delta_seconds_;
+      if (old_delta_seconds && (!compare_ff(old_delta_seconds, delta_seconds, 1e-8))) {
+        nmd_orig.simulation_cache->reset();
+        exec_data.simulation_time_delta = delta_seconds;
+      }
+      nmd_orig.simulation_cache->delta_seconds_ = delta_seconds;
       if (sim_states.current == nullptr) {
         if (is_start_frame || !nmd_orig.simulation_cache->has_states()) {
           bke::sim::ModifierSimulationState &current_sim_state =
@@ -1202,16 +1216,12 @@ static void prepare_simulation_states_for_evaluation(const NodesModifierData &nm
           }
         }
         else if (sim_states.prev != nullptr && sim_states.next == nullptr) {
-          const float max_delta_frames = 1.0f;
-          const float scene_delta_frames = float(current_frame) - float(sim_states.prev->frame);
-          const float delta_frames = std::min(max_delta_frames, scene_delta_frames);
           if (delta_frames != scene_delta_frames) {
             nmd_orig.simulation_cache->invalidate();
           }
           bke::sim::ModifierSimulationState &current_sim_state =
               nmd_orig.simulation_cache->get_state_at_frame_for_write(current_frame);
           exec_data.current_simulation_state_for_write = &current_sim_state;
-          const float delta_seconds = delta_frames / FPS;
           exec_data.simulation_time_delta = delta_seconds;
         }
       }
