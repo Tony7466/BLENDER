@@ -160,9 +160,10 @@ static bool transdata_get_track_shuffle_offset_side(ListBase *trans_datas,
     return false;
   }
 
-  ListBase *tracks = &BKE_animdata_from_id(
-                          ((TransDataNla *)((LinkData *)trans_datas->first)->data)->id)
-                          ->nla_tracks;
+  LinkData *first_link = trans_datas->first;
+  TransDataNla *first_transdata = first_link->data;
+  AnimData *adt = BKE_animdata_from_id(first_transdata->id);
+  ListBase *tracks = &adt->nla_tracks;
 
   int offset;
   do {
