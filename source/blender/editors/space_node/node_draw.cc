@@ -2082,8 +2082,8 @@ static void node_draw_extra_info_row(const bNode &node,
 static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
                                        const SpaceNode &snode,
                                        const bNode &node,
-                                       uiBlock &block,
-                                       bNodePreview *preview)
+                                       bNodePreview *preview,
+                                       uiBlock &block)
 {
   Vector<NodeExtraInfoRow> extra_info_rows = node_get_extra_info(tree_draw_ctx, snode, node);
   if (extra_info_rows.size() == 0 && !preview) {
@@ -2095,7 +2095,7 @@ static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
   rctf extra_info_rect;
 
   const float width = (node.width - 6.0f) * UI_SCALE_FAC;
-  const float preview_height = preview ? width * preview->ysize/preview->xsize : 0;
+  const float preview_height = preview ? width * preview->ysize / preview->xsize : 0;
 
   if (node.is_frame()) {
     extra_info_rect.xmin = rct.xmin;
@@ -2107,8 +2107,7 @@ static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
     extra_info_rect.xmin = rct.xmin + 3.0f * UI_SCALE_FAC;
     extra_info_rect.xmax = rct.xmin + width;
     extra_info_rect.ymin = rct.ymax;
-    extra_info_rect.ymax = rct.ymax +
-                           extra_info_rows.size() * (20.0f * UI_SCALE_FAC) +
+    extra_info_rect.ymax = rct.ymax + extra_info_rows.size() * (20.0f * UI_SCALE_FAC) +
                            preview_height;
 
     if (node.flag & NODE_MUTED) {
@@ -2129,8 +2128,7 @@ static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
     extra_info_rect.xmax = rct.xmin + width + outline_width;
     extra_info_rect.ymin = rct.ymax - outline_width;
     extra_info_rect.ymax = rct.ymax + outline_width +
-                           extra_info_rows.size() * (20.0f * UI_SCALE_FAC) +
-                           preview_height;
+                           extra_info_rows.size() * (20.0f * UI_SCALE_FAC) + preview_height;
 
     UI_GetThemeColorBlendShade4fv(TH_BACK, TH_NODE, 0.4f, -20, color);
     UI_draw_roundbox_corner_set(
@@ -2192,7 +2190,7 @@ static void node_draw_basis(const bContext &C,
     }
   }
 
-  node_draw_extra_info_panel(tree_draw_ctx, snode, node, block, preview);
+  node_draw_extra_info_panel(tree_draw_ctx, snode, node, preview, block);
 
   /* Header. */
   {
@@ -2499,7 +2497,7 @@ static void node_draw_hidden(const bContext &C,
 
   const int color_id = node_get_colorid(tree_draw_ctx, node);
 
-  node_draw_extra_info_panel(tree_draw_ctx, snode, node, block, NULL);
+  node_draw_extra_info_panel(tree_draw_ctx, snode, node, NULL, block);
 
   /* Shadow. */
   node_draw_shadow(snode, node, hiddenrad, 1.0f);
@@ -2985,7 +2983,7 @@ static void frame_node_draw(const bContext &C,
   /* Label and text. */
   frame_node_draw_label(tree_draw_ctx, ntree, node, snode);
 
-  node_draw_extra_info_panel(tree_draw_ctx, snode, node, block, NULL);
+  node_draw_extra_info_panel(tree_draw_ctx, snode, node, NULL, block);
 
   UI_block_end(&C, &block);
   UI_block_draw(&C, &block);
