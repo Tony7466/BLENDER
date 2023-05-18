@@ -107,13 +107,18 @@ def draw_vpaint_symmetry(layout, vpaint, obj):
     col.prop(vpaint, "radial_symmetry", text="Radial")
 
 
-# Most of these panels should not be visible in GP edit modes
-def is_not_gpencil_edit_mode(context):
-    is_gpmode = (
-        context.active_object and
-        context.active_object.mode in {'EDIT_GPENCIL', 'PAINT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL'}
-    )
-    return not is_gpmode
+def draw_options_placement(layout, tool_settings):
+    layout.use_property_split = True
+    layout.use_property_decorate = False
+
+    col = layout.column(align=True)
+    col.prop(tool_settings, "plane_depth", text="Depth")
+    col.prop(tool_settings, "plane_orientation")
+    col.prop(tool_settings, "snap_elements_tool")
+    sub = col.column(align=True)
+    sub.active = not tool_settings.plane_axis_auto
+    sub.prop(tool_settings, "plane_axis")
+    col.prop(tool_settings, "plane_axis_auto")
 
 
 # ********** default tools for object mode ****************
@@ -149,6 +154,16 @@ class VIEW3D_PT_tools_object_options_transform(View3DPanel, Panel):
         col.prop(tool_settings, "use_transform_skip_children", text="Parents")
 
 
+class VIEW3D_PT_tools_object_options_placement(View3DPanel, Panel):
+    bl_category = "Tool"
+    bl_context = ".objectmode"  # dot on purpose (access from topbar)
+    bl_label = "Placement"
+    bl_parent_id = "VIEW3D_PT_tools_object_options"
+
+    def draw(self, context):
+        draw_options_placement(self.layout, context.tool_settings)
+
+
 # ********** default tools for editmode_mesh ****************
 
 
@@ -162,6 +177,16 @@ class VIEW3D_PT_tools_meshedit_options(View3DPanel, Panel):
     def draw(self, _context):
         # layout = self.layout
         pass
+
+
+class VIEW3D_PT_tools_meshedit_options_placement(View3DPanel, Panel):
+    bl_category = "Tool"
+    bl_context = ".mesh_edit"  # dot on purpose (access from topbar)
+    bl_label = "Placement"
+    bl_parent_id = "VIEW3D_PT_tools_meshedit_options"
+
+    def draw(self, context):
+        draw_options_placement(self.layout, context.tool_settings)
 
 
 class VIEW3D_PT_tools_meshedit_options_transform(View3DPanel, Panel):
@@ -2372,9 +2397,11 @@ classes = (
     VIEW3D_MT_brush_gpencil_context_menu,
     VIEW3D_PT_tools_object_options,
     VIEW3D_PT_tools_object_options_transform,
+    VIEW3D_PT_tools_object_options_placement,
     VIEW3D_PT_tools_meshedit_options,
     VIEW3D_PT_tools_meshedit_options_transform,
     VIEW3D_PT_tools_meshedit_options_uvs,
+    VIEW3D_PT_tools_meshedit_options_placement,
     VIEW3D_PT_tools_armatureedit_options,
     VIEW3D_PT_tools_posemode_options,
 
