@@ -843,9 +843,6 @@ void blo_do_versions_260(FileData *fd, Library *UNUSED(lib), Main *bmain)
           clip->aspy = 1.0f;
         }
 
-        clip->proxy.build_tc_flag = IMB_TC_RECORD_RUN | IMB_TC_FREE_RUN |
-                                    IMB_TC_INTERPOLATED_REC_DATE_FREE_RUN;
-
         if (clip->proxy.build_size_flag == 0) {
           clip->proxy.build_size_flag = IMB_PROXY_25;
         }
@@ -980,8 +977,6 @@ void blo_do_versions_260(FileData *fd, Library *UNUSED(lib), Main *bmain)
       for (clip = bmain->movieclips.first; clip; clip = clip->id.next) {
         MovieTracking *tracking = &clip->tracking;
         MovieTrackingObject *tracking_object = tracking->objects.first;
-
-        clip->proxy.build_tc_flag |= IMB_TC_RECORD_RUN_NO_GAPS;
 
         if (!tracking->settings.object_distance) {
           tracking->settings.object_distance = 1.0f;

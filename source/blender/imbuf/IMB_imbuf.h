@@ -293,30 +293,6 @@ void IMB_rectblend_threaded(struct ImBuf *dbuf,
  * \attention Defined in indexer.c
  */
 
-typedef enum IMB_Timecode_Type {
-  /** Don't use time-code files at all. */
-  IMB_TC_NONE = 0,
-  /**
-   * Use images in the order as they are recorded
-   * (currently, this is the only one implemented
-   * and is a sane default).
-   */
-  IMB_TC_RECORD_RUN = 1,
-  /**
-   * Use global timestamp written by recording
-   * device (prosumer camcorders e.g. can do that).
-   */
-  IMB_TC_FREE_RUN = 2,
-  /**
-   * Interpolate a global timestamp using the
-   * record date and time written by recording
-   * device (*every* consumer camcorder can do that).
-   */
-  IMB_TC_INTERPOLATED_REC_DATE_FREE_RUN = 4,
-  IMB_TC_RECORD_RUN_NO_GAPS = 8,
-  IMB_TC_MAX_SLOT = 4,
-} IMB_Timecode_Type;
-
 typedef enum IMB_Proxy_Size {
   IMB_PROXY_NONE = 0,
   IMB_PROXY_25 = 1,
@@ -334,20 +310,19 @@ typedef enum eIMBInterpolationFilterMode {
 /**
  * Defaults to BL_proxy within the directory of the animation.
  */
-void IMB_anim_set_index_dir(struct anim *anim, const char *dir);
+void IMB_anim_set_proxy_dir(struct anim *anim, const char *dir);
 void IMB_anim_get_filename(struct anim *anim, char *filename, int filename_maxncpy);
 
-int IMB_anim_index_get_frame_index(struct anim *anim, IMB_Timecode_Type tc, int position);
+int IMB_anim_index_get_frame_index(struct anim *anim, int position);
 
 int IMB_anim_proxy_get_existing(struct anim *anim);
 
-struct IndexBuildContext;
+struct ProxyBuildContext;
 
 /**
  * Prepare context for proxies/time-codes builder
  */
-struct IndexBuildContext *IMB_anim_index_rebuild_context(struct anim *anim,
-                                                         IMB_Timecode_Type tcs_in_use,
+struct ProxyBuildContext *IMB_anim_proxy_rebuild_context(struct anim *anim,
                                                          int proxy_sizes_in_use,
                                                          int quality,
                                                          const bool overwrite,
@@ -357,7 +332,7 @@ struct IndexBuildContext *IMB_anim_index_rebuild_context(struct anim *anim,
 /**
  * Will rebuild all used indices and proxies at once.
  */
-void IMB_anim_index_rebuild(struct IndexBuildContext *context,
+void IMB_anim_proxy_rebuild(struct ProxyBuildContext *context,
                             bool *stop,
                             bool *do_update,
                             float *progress);
@@ -365,12 +340,12 @@ void IMB_anim_index_rebuild(struct IndexBuildContext *context,
 /**
  * Finish rebuilding proxies/time-codes and free temporary contexts used.
  */
-void IMB_anim_index_rebuild_finish(struct IndexBuildContext *context, bool stop);
+void IMB_anim_proxy_rebuild_finish(struct ProxyBuildContext *context, bool stop);
 
 /**
  * Return the length (in frames) of the given \a anim.
  */
-int IMB_anim_get_duration(struct anim *anim, IMB_Timecode_Type tc);
+int IMB_anim_get_duration(struct anim *anim);
 
 /**
  * Return the encoded start offset (in seconds) of the given \a anim.
@@ -410,7 +385,6 @@ bool IMB_get_gop_decode_time(struct anim *anim);
 
 struct ImBuf *IMB_anim_absolute(struct anim *anim,
                                 int position,
-                                IMB_Timecode_Type tc /* = 1 = IMB_TC_RECORD_RUN */,
                                 IMB_Proxy_Size preview_size /* = 0 = IMB_PROXY_NONE */);
 
 /**

@@ -17,7 +17,7 @@ struct ListBase;
 struct ListBase;
 struct Main;
 struct Scene;
-struct SeqIndexBuildContext;
+struct SeqProxyBuildContext;
 struct SeqRenderData;
 struct Sequence;
 
@@ -28,11 +28,11 @@ bool SEQ_proxy_rebuild_context(struct Main *bmain,
                                struct GSet *file_list,
                                struct ListBase *queue,
                                bool build_only_on_bad_performance);
-void SEQ_proxy_rebuild(struct SeqIndexBuildContext *context,
+void SEQ_proxy_rebuild(struct SeqProxyBuildContext *context,
                        bool *stop,
                        bool *do_update,
                        float *progress);
-void SEQ_proxy_rebuild_finish(struct SeqIndexBuildContext *context, bool stop);
+void SEQ_proxy_rebuild_finish(struct SeqProxyBuildContext *context, bool stop);
 void SEQ_proxy_set(struct Sequence *seq, bool value);
 bool SEQ_can_use_proxy(const struct SeqRenderData *context, struct Sequence *seq, int psize);
 int SEQ_rendersize_to_proxysize(int render_size);

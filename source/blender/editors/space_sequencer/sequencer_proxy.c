@@ -124,7 +124,7 @@ static int sequencer_rebuild_proxy_exec(bContext *C, wmOperator *UNUSED(op))
       SEQ_proxy_rebuild_context(bmain, depsgraph, scene, seq, file_list, &queue, false);
 
       for (link = queue.first; link; link = link->next) {
-        struct SeqIndexBuildContext *context = link->data;
+        struct SeqProxyBuildContext *context = link->data;
         SEQ_proxy_rebuild(context, &stop, &do_update, &progress);
         SEQ_proxy_rebuild_finish(context, false);
       }
@@ -140,9 +140,9 @@ static int sequencer_rebuild_proxy_exec(bContext *C, wmOperator *UNUSED(op))
 void SEQUENCER_OT_rebuild_proxy(wmOperatorType *ot)
 {
   /* Identifiers. */
-  ot->name = "Rebuild Proxy and Timecode Indices";
+  ot->name = "Rebuild Proxis";
   ot->idname = "SEQUENCER_OT_rebuild_proxy";
-  ot->description = "Rebuild all selected proxies and timecode indices using the job system";
+  ot->description = "Rebuild all selected proxies using the job system";
 
   /* Api callbacks. */
   ot->invoke = sequencer_rebuild_proxy_invoke;

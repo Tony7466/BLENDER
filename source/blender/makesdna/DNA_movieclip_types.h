@@ -34,14 +34,11 @@ typedef struct MovieClipProxy {
   /** 768=FILE_MAXDIR custom directory for index and proxy files (defaults to BL_proxy). */
   char dir[768];
 
-  /** Time code in use. */
-  short tc;
+  short _pad0[2];
   /** Proxy build quality. */
   short quality;
   /** Size flags (see below) of all proxies to build. */
   short build_size_flag;
-  /** Time code flags (see below) of all tc indices to build. */
-  short build_tc_flag;
 } MovieClipProxy;
 
 typedef struct MovieClip_RuntimeGPUTexture {

@@ -631,19 +631,12 @@ enum {
 #define SEQ_COLOR_BALANCE_INVERSE_OFFSET 16
 #define SEQ_COLOR_BALANCE_INVERSE_POWER 32
 
-/* !!! has to be same as IMB_imbuf.h IMB_PROXY_... and IMB_TC_... */
+/* !!! has to be same as IMB_imbuf.h IMB_PROXY_... */
 
 #define SEQ_PROXY_IMAGE_SIZE_25 1
 #define SEQ_PROXY_IMAGE_SIZE_50 2
 #define SEQ_PROXY_IMAGE_SIZE_75 4
 #define SEQ_PROXY_IMAGE_SIZE_100 8
-
-#define SEQ_PROXY_TC_NONE 0
-#define SEQ_PROXY_TC_RECORD_RUN 1
-#define SEQ_PROXY_TC_FREE_RUN 2
-#define SEQ_PROXY_TC_INTERP_REC_DATE_FREE_RUN 4
-#define SEQ_PROXY_TC_RECORD_RUN_NO_GAPS 8
-#define SEQ_PROXY_TC_ALL 15
 
 /** SeqProxy.build_flags */
 enum {

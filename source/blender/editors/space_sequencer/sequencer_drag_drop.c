@@ -538,7 +538,7 @@ static void prefetch_data_fn(void *custom_data,
   struct anim *anim = openanim(job_data->path, IB_rect, 0, colorspace);
 
   if (anim != NULL) {
-    g_drop_coords.strip_len = IMB_anim_get_duration(anim, IMB_TC_NONE);
+    g_drop_coords.strip_len = IMB_anim_get_duration(anim);
     short frs_sec;
     float frs_sec_base;
     if (IMB_anim_get_fps(anim, &frs_sec, &frs_sec_base, true)) {

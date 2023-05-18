@@ -465,15 +465,6 @@ static int rendersize_to_number(int render_size)
   return 100;
 }
 
-static int get_timecode(MovieClip *clip, int flag)
-{
-  if ((flag & MCLIP_USE_PROXY) == 0) {
-    return IMB_TC_NONE;
-  }
-
-  return clip->proxy.tc;
-}
-
 static void get_sequence_filepath(const MovieClip *clip,
                                   const int framenr,
                                   char filepath[FILE_MAX])
@@ -682,7 +673,7 @@ static void movieclip_open_anim_file(MovieClip *clip)
         char dir[FILE_MAX];
         STRNCPY(dir, clip->proxy.dir);
         BLI_path_abs(dir, BKE_main_blendfile_path_from_global());
-        IMB_anim_set_index_dir(clip->anim, dir);
+        IMB_anim_set_proxy_dir(clip->anim, dir);
       }
     }
   }
@@ -694,7 +685,6 @@ static ImBuf *movieclip_load_movie_file(MovieClip *clip,
                                         int flag)
 {
   ImBuf *ibuf = NULL;
-  int tc = get_timecode(clip, flag);
   int proxy = rendersize_to_proxy(user, flag);
 
   movieclip_open_anim_file(clip);
@@ -702,7 +692,7 @@ static ImBuf *movieclip_load_movie_file(MovieClip *clip,
   if (clip->anim) {
     int fra = framenr - clip->start_frame + clip->frame_offset;
 
-    ibuf = IMB_anim_absolute(clip->anim, fra, tc, proxy);
+    ibuf = IMB_anim_absolute(clip->anim, fra, proxy);
   }
 
   return ibuf;
@@ -714,7 +704,7 @@ static void movieclip_calc_length(MovieClip *clip)
     movieclip_open_anim_file(clip);
 
     if (clip->anim) {
-      clip->len = IMB_anim_get_duration(clip->anim, clip->proxy.tc);
+      clip->len = IMB_anim_get_duration(clip->anim);
     }
   }
   else if (clip->source == MCLIP_SRC_SEQUENCE) {

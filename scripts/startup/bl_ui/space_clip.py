@@ -1123,7 +1123,7 @@ class CLIP_PT_proxy(CLIP_PT_clip_view_panel, Panel):
     bl_space_type = 'CLIP_EDITOR'
     bl_region_type = 'UI'
     bl_category = "Footage"
-    bl_label = "Proxy/Timecode"
+    bl_label = "Proxy"
     bl_options = {'DEFAULT_CLOSED'}
 
     def draw_header(self, context):
@@ -1166,14 +1166,7 @@ class CLIP_PT_proxy(CLIP_PT_clip_view_panel, Panel):
             col.prop(clip.proxy, "directory")
 
         col.operator(
-            "clip.rebuild_proxy",
-            text="Build Proxy / Timecode" if clip.source == 'MOVIE'
-            else "Build Proxy"
-        )
-
-        if clip.source == 'MOVIE':
-            col2 = col.column()
-            col2.prop(clip.proxy, "timecode", text="Timecode Index")
+            "clip.rebuild_proxy", text="Build Proxy")
 
         col.separator()
 

@@ -680,7 +680,8 @@ static ImBuf *seq_render_preprocess_ibuf(const SeqRenderData *context,
                                          const bool is_proxy_image)
 {
   if (context->is_proxy_render == false &&
-      (ibuf->x != context->rectx || ibuf->y != context->recty)) {
+      (ibuf->x != context->rectx || ibuf->y != context->recty))
+  {
     use_preprocess = true;
   }
 
@@ -1049,16 +1050,7 @@ static ImBuf *seq_render_movie_strip_custom_file_proxy(const SeqRenderData *cont
 
   int frameno = (int)SEQ_give_frame_index(context->scene, seq, timeline_frame) +
                 seq->anim_startofs;
-  return IMB_anim_absolute(proxy->anim, frameno, IMB_TC_NONE, IMB_PROXY_NONE);
-}
-
-static IMB_Timecode_Type seq_render_movie_strip_timecode_get(Sequence *seq)
-{
-  bool use_timecodes = (seq->flag & SEQ_USE_PROXY) != 0;
-  if (!use_timecodes) {
-    return IMB_TC_NONE;
-  }
-  return seq->strip->proxy ? seq->strip->proxy->tc : IMB_TC_NONE;
+  return IMB_anim_absolute(proxy->anim, frameno, IMB_PROXY_NONE);
 }
 
 /**
@@ -1083,10 +1075,7 @@ static ImBuf *seq_render_movie_strip_view(const SeqRenderData *context,
       ibuf = seq_render_movie_strip_custom_file_proxy(context, seq, timeline_frame);
     }
     else {
-      ibuf = IMB_anim_absolute(sanim->anim,
-                               frame_index + seq->anim_startofs,
-                               seq_render_movie_strip_timecode_get(seq),
-                               psize);
+      ibuf = IMB_anim_absolute(sanim->anim, frame_index + seq->anim_startofs, psize);
     }
 
     if (ibuf != NULL) {
@@ -1096,10 +1085,7 @@ static ImBuf *seq_render_movie_strip_view(const SeqRenderData *context,
 
   /* Fetching for requested proxy size failed, try fetching the original instead. */
   if (ibuf == NULL) {
-    ibuf = IMB_anim_absolute(sanim->anim,
-                             frame_index + seq->anim_startofs,
-                             seq_render_movie_strip_timecode_get(seq),
-                             IMB_PROXY_NONE);
+    ibuf = IMB_anim_absolute(sanim->anim, frame_index + seq->anim_startofs, IMB_PROXY_NONE);
   }
   if (ibuf == NULL) {
     return NULL;

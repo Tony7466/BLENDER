@@ -36,7 +36,7 @@ set(SRC
   intern/format_targa.cc
   intern/format_tiff.cc
   intern/imageprocess.cc
-  intern/indexer.cc
+  intern/proxy.cc
   intern/iris.cc
   intern/jpeg.cc
   intern/metadata.cc
@@ -67,7 +67,7 @@ set(SRC
   intern/IMB_colormanagement_intern.h
   intern/IMB_filetype.h
   intern/IMB_filter.h
-  intern/IMB_indexer.h
+  intern/IMB_proxy.h
   intern/imbuf.h
 
   # orphan include

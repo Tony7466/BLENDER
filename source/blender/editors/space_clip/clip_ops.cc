@@ -1173,7 +1173,7 @@ typedef struct ProxyBuildJob {
   MovieClip *clip;
   int clip_flag;
   bool stop;
-  struct IndexBuildContext *index_context;
+  struct ProxyBuildContext *index_context;
 } ProxyJob;
 
 static void proxy_freejob(void *pjv)
@@ -1228,7 +1228,7 @@ static void do_movie_proxy(void *pjv,
   struct MovieDistortion *distortion = nullptr;
 
   if (pj->index_context) {
-    IMB_anim_index_rebuild(pj->index_context, stop, do_update, progress);
+    IMB_anim_proxy_rebuild(pj->index_context, stop, do_update, progress);
   }
 
   if (!build_undistort_count) {
@@ -1497,7 +1497,7 @@ static void proxy_endjob(void *pjv)
   }
 
   if (pj->index_context) {
-    IMB_anim_index_rebuild_finish(pj->index_context, pj->stop);
+    IMB_anim_proxy_rebuild_finish(pj->index_context, pj->stop);
   }
 
   if (pj->clip->source == MCLIP_SRC_MOVIE) {
@@ -1539,14 +1539,12 @@ static int clip_rebuild_proxy_exec(bContext *C, wmOperator * /*op*/)
   pj->clip_flag = clip->flag & MCLIP_TIMECODE_FLAGS;
 
   if (clip->anim) {
-    pj->index_context = IMB_anim_index_rebuild_context(
-        clip->anim,
-        IMB_Timecode_Type(clip->proxy.build_tc_flag),
-        IMB_Proxy_Size(clip->proxy.build_size_flag),
-        clip->proxy.quality,
-        true,
-        nullptr,
-        false);
+    pj->index_context = IMB_anim_proxy_rebuild_context(clip->anim,
+                                                       IMB_Proxy_Size(clip->proxy.build_size_flag),
+                                                       clip->proxy.quality,
+                                                       true,
+                                                       nullptr,
+                                                       false);
   }
 
   WM_jobs_customdata_set(wm_job, pj, proxy_freejob);
@@ -1564,9 +1562,9 @@ static int clip_rebuild_proxy_exec(bContext *C, wmOperator * /*op*/)
 void CLIP_OT_rebuild_proxy(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Rebuild Proxy and Timecode Indices";
+  ot->name = "Rebuild Proxy";
   ot->idname = "CLIP_OT_rebuild_proxy";
-  ot->description = "Rebuild all selected proxies and timecode indices in the background";
+  ot->description = "Rebuild all selected proxies in the background";
 
   /* api callbacks */
   ot->exec = clip_rebuild_proxy_exec;

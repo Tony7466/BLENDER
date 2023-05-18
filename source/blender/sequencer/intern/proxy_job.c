@@ -47,7 +47,7 @@ static void proxy_startjob(void *pjv, bool *stop, bool *do_update, float *progre
   LinkData *link;
 
   for (link = pj->queue.first; link; link = link->next) {
-    struct SeqIndexBuildContext *context = link->data;
+    struct SeqProxyBuildContext *context = link->data;
 
     SEQ_proxy_rebuild(context, stop, do_update, progress);
 

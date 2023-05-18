@@ -1712,33 +1712,6 @@ static void rna_def_strip_proxy(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  static const EnumPropertyItem seq_tc_items[] = {
-      {SEQ_PROXY_TC_NONE, "NONE", 0, "None", ""},
-      {SEQ_PROXY_TC_RECORD_RUN,
-       "RECORD_RUN",
-       0,
-       "Record Run",
-       "Use images in the order as they are recorded"},
-      {SEQ_PROXY_TC_FREE_RUN,
-       "FREE_RUN",
-       0,
-       "Free Run",
-       "Use global timestamp written by recording device"},
-      {SEQ_PROXY_TC_INTERP_REC_DATE_FREE_RUN,
-       "FREE_RUN_REC_DATE",
-       0,
-       "Free Run (rec date)",
-       "Interpolate a global timestamp using the "
-       "record date and time written by recording device"},
-      {SEQ_PROXY_TC_RECORD_RUN_NO_GAPS,
-       "RECORD_RUN_NO_GAPS",
-       0,
-       "Record Run No Gaps",
-       "Like record run, but ignore timecode, "
-       "changes in framerate or dropouts"},
-      {0, NULL, 0, NULL, NULL},
-  };
-
   srna = RNA_def_struct(brna, "SequenceProxy", NULL);
   RNA_def_struct_ui_text(srna, "Sequence Proxy", "Proxy parameters for a sequence strip");
   RNA_def_struct_sdna(srna, "StripProxy");
@@ -1777,30 +1750,10 @@ static void rna_def_strip_proxy(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "build_size_flags", SEQ_PROXY_IMAGE_SIZE_100);
   RNA_def_property_ui_text(prop, "100%", "Build 100% proxy resolution");
 
-  prop = RNA_def_property(srna, "build_record_run", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "build_tc_flags", SEQ_PROXY_TC_RECORD_RUN);
-  RNA_def_property_ui_text(prop, "Rec Run", "Build record run time code index");
-
-  prop = RNA_def_property(srna, "build_free_run", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "build_tc_flags", SEQ_PROXY_TC_FREE_RUN);
-  RNA_def_property_ui_text(prop, "Free Run", "Build free run time code index");
-
-  prop = RNA_def_property(srna, "build_free_run_rec_date", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(
-      prop, NULL, "build_tc_flags", SEQ_PROXY_TC_INTERP_REC_DATE_FREE_RUN);
-  RNA_def_property_ui_text(
-      prop, "Free Run (Rec Date)", "Build free run time code index using Record Date/Time");
-
   prop = RNA_def_property(srna, "quality", PROP_INT, PROP_UNSIGNED);
   RNA_def_property_int_sdna(prop, NULL, "quality");
   RNA_def_property_ui_text(prop, "Quality", "Quality of proxies to build");
   RNA_def_property_ui_range(prop, 1, 100, 1, -1);
-
-  prop = RNA_def_property(srna, "timecode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "tc");
-  RNA_def_property_enum_items(prop, seq_tc_items);
-  RNA_def_property_ui_text(prop, "Timecode", "Method for reading the inputs timecode");
-  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_tcindex_update");
 
   prop = RNA_def_property(srna, "use_proxy_custom_directory", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "storage", SEQ_STORAGE_PROXY_CUSTOM_DIR);

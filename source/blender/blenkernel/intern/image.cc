@@ -1584,7 +1584,8 @@ void BKE_image_free_all_textures(Main *bmain)
   }
 
   for (tex = static_cast<Tex *>(bmain->textures.first); tex;
-       tex = static_cast<Tex *>(tex->id.next)) {
+       tex = static_cast<Tex *>(tex->id.next))
+  {
     if (tex->ima) {
       tex->ima->id.tag |= LIB_TAG_DOIT;
     }
@@ -2631,7 +2632,7 @@ struct anim *openanim(const char *filepath,
     return nullptr;
   }
 
-  ibuf = IMB_anim_absolute(anim, 0, IMB_TC_NONE, IMB_PROXY_NONE);
+  ibuf = IMB_anim_absolute(anim, 0, IMB_PROXY_NONE);
   if (ibuf == nullptr) {
     if (BLI_exists(filepath)) {
       printf("not an anim: %s\n", filepath);
@@ -2703,7 +2704,8 @@ static void image_viewer_create_views(const RenderData *rd, Image *ima)
   }
   else {
     for (SceneRenderView *srv = static_cast<SceneRenderView *>(rd->views.first); srv;
-         srv = srv->next) {
+         srv = srv->next)
+    {
       if (BKE_scene_multiview_is_render_view_active(rd, srv) == false) {
         continue;
       }
@@ -3175,7 +3177,8 @@ void BKE_image_signal(Main *bmain, Image *ima, ImageUser *iuser, int signal)
         else {
           ImagePackedFile *imapf;
           for (imapf = static_cast<ImagePackedFile *>(ima->packedfiles.first); imapf;
-               imapf = imapf->next) {
+               imapf = imapf->next)
+          {
             PackedFile *pf;
             pf = BKE_packedfile_new(nullptr, imapf->filepath, ID_BLEND_PATH(bmain, &ima->id));
             if (pf) {
@@ -3706,7 +3709,8 @@ void BKE_image_multiview_index(const Image *ima, ImageUser *iuser)
     }
     else {
       if ((iuser->view < 0) ||
-          (iuser->view >= BLI_listbase_count_at_most(&ima->views, iuser->view + 1))) {
+          (iuser->view >= BLI_listbase_count_at_most(&ima->views, iuser->view + 1)))
+      {
         iuser->multi_index = iuser->view = 0;
       }
       else {
@@ -4052,12 +4056,12 @@ static ImBuf *load_movie_single(Image *ima, ImageUser *iuser, int frame, const i
 
     /* let's initialize this user */
     if (ia->anim && iuser && iuser->frames == 0) {
-      iuser->frames = IMB_anim_get_duration(ia->anim, IMB_TC_RECORD_RUN);
+      iuser->frames = IMB_anim_get_duration(ia->anim);
     }
   }
 
   if (ia->anim) {
-    int dur = IMB_anim_get_duration(ia->anim, IMB_TC_RECORD_RUN);
+    int dur = IMB_anim_get_duration(ia->anim);
     int fra = frame - 1;
 
     if (fra < 0) {
@@ -4066,7 +4070,7 @@ static ImBuf *load_movie_single(Image *ima, ImageUser *iuser, int frame, const i
     if (fra > (dur - 1)) {
       fra = dur - 1;
     }
-    ibuf = IMB_makeSingleUser(IMB_anim_absolute(ia->anim, fra, IMB_TC_RECORD_RUN, IMB_PROXY_NONE));
+    ibuf = IMB_makeSingleUser(IMB_anim_absolute(ia->anim, fra, IMB_PROXY_NONE));
 
     if (ibuf) {
       image_init_after_load(ima, iuser, ibuf);
