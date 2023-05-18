@@ -1413,10 +1413,10 @@ SequenceModifierData *SEQ_modifier_new(Sequence *seq, const char *name, int type
   smd->flag |= SEQUENCE_MODIFIER_EXPANDED;
 
   if (!name || !name[0]) {
-    BLI_strncpy(smd->name, smti->name, sizeof(smd->name));
+    STRNCPY(smd->name, smti->name);
   }
   else {
-    BLI_strncpy(smd->name, name, sizeof(smd->name));
+    STRNCPY(smd->name, name);
   }
 
   BLI_addtail(&seq->modifiers, smd);
@@ -1620,7 +1620,7 @@ void SEQ_modifier_blend_read_lib(BlendLibReader *reader, Scene *scene, ListBase 
 {
   LISTBASE_FOREACH (SequenceModifierData *, smd, lb) {
     if (smd->mask_id) {
-      BLO_read_id_address(reader, scene->id.lib, &smd->mask_id);
+      BLO_read_id_address(reader, &scene->id, &smd->mask_id);
     }
   }
 }

@@ -420,16 +420,16 @@ static void mesh_blend_read_lib(BlendLibReader *reader, ID *id)
   /* this check added for python created meshes */
   if (me->mat) {
     for (int i = 0; i < me->totcol; i++) {
-      BLO_read_id_address(reader, me->id.lib, &me->mat[i]);
+      BLO_read_id_address(reader, id, &me->mat[i]);
     }
   }
   else {
     me->totcol = 0;
   }
 
-  BLO_read_id_address(reader, me->id.lib, &me->ipo);  // XXX: deprecated: old anim sys
-  BLO_read_id_address(reader, me->id.lib, &me->key);
-  BLO_read_id_address(reader, me->id.lib, &me->texcomesh);
+  BLO_read_id_address(reader, id, &me->ipo);  // XXX: deprecated: old anim sys
+  BLO_read_id_address(reader, id, &me->key);
+  BLO_read_id_address(reader, id, &me->texcomesh);
 }
 
 static void mesh_read_expand(BlendExpander *expander, ID *id)
@@ -1020,22 +1020,14 @@ int *BKE_mesh_poly_offsets_for_write(Mesh *mesh)
 
 static void mesh_ensure_cdlayers_primary(Mesh &mesh)
 {
-  if (!CustomData_get_layer_named(&mesh.vdata, CD_PROP_FLOAT3, "position")) {
-    CustomData_add_layer_named(
-        &mesh.vdata, CD_PROP_FLOAT3, CD_CONSTRUCT, mesh.totvert, "position");
-  }
-  if (!CustomData_get_layer_named(&mesh.edata, CD_PROP_INT32_2D, ".edge_verts")) {
-    CustomData_add_layer_named(
-        &mesh.edata, CD_PROP_INT32_2D, CD_CONSTRUCT, mesh.totedge, ".edge_verts");
-  }
-  if (!CustomData_get_layer_named(&mesh.ldata, CD_PROP_INT32, ".corner_vert")) {
-    CustomData_add_layer_named(
-        &mesh.ldata, CD_PROP_INT32, CD_CONSTRUCT, mesh.totloop, ".corner_vert");
-  }
-  if (!CustomData_get_layer_named(&mesh.ldata, CD_PROP_INT32, ".corner_edge")) {
-    CustomData_add_layer_named(
-        &mesh.ldata, CD_PROP_INT32, CD_CONSTRUCT, mesh.totloop, ".corner_edge");
-  }
+  blender::bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
+  blender::bke::AttributeInitConstruct attribute_init;
+
+  /* Try to create attributes if they do not exist. */
+  attributes.add("position", ATTR_DOMAIN_POINT, CD_PROP_FLOAT3, attribute_init);
+  attributes.add(".edge_verts", ATTR_DOMAIN_EDGE, CD_PROP_INT32_2D, attribute_init);
+  attributes.add(".corner_vert", ATTR_DOMAIN_CORNER, CD_PROP_INT32, attribute_init);
+  attributes.add(".corner_edge", ATTR_DOMAIN_CORNER, CD_PROP_INT32, attribute_init);
 }
 
 Mesh *BKE_mesh_new_nomain(const int verts_num,
