@@ -386,6 +386,9 @@ typedef struct bNode {
   /** A span containing all internal links when the node is muted. */
   blender::Span<bNodeLink> internal_links() const;
 
+  bool is_selected() const;
+  bool is_active() const;
+
   /* The following methods are only available when #bNodeTree.ensure_topology_cache has been
    * called. */
 

@@ -215,8 +215,8 @@ static bool compare_node_depth(const bNode *a, const bNode *b)
 {
   /* These tell if either the node or any of the parent nodes is selected.
    * A selected parent means an unselected node is also in foreground! */
-  bool a_select = (a->flag & NODE_SELECT) != 0, b_select = (b->flag & NODE_SELECT) != 0;
-  bool a_active = (a->flag & NODE_ACTIVE) != 0, b_active = (b->flag & NODE_ACTIVE) != 0;
+  bool a_select = a->is_selected(), b_select = b->is_selected();
+  bool a_active = a->is_active(), b_active = b->is_active();
 
   /* If one is an ancestor of the other. */
   /* XXX there might be a better sorting algorithm for stable topological sort,
@@ -227,7 +227,7 @@ static bool compare_node_depth(const bNode *a, const bNode *b)
       return false;
     }
     /* Any selected ancestor moves the node forward. */
-    if (parent->flag & NODE_ACTIVE) {
+    if (parent->is_active()) {
       a_active = true;
     }
     if (parent->flag & NODE_SELECT) {
@@ -240,7 +240,7 @@ static bool compare_node_depth(const bNode *a, const bNode *b)
       return true;
     }
     /* Any selected ancestor moves the node forward. */
-    if (parent->flag & NODE_ACTIVE) {
+    if (parent->is_active()) {
       b_active = true;
     }
     if (parent->flag & NODE_SELECT) {
@@ -2286,14 +2286,6 @@ static void node_draw_basis(const bContext &C,
 
   node_add_error_message_button(tree_draw_ctx, node, block, rct, iconofs);
 
-  /* Title. */
-  if (node.flag & NODE_ACTIVE) {
-    UI_GetThemeColor4fv(TH_SELECT, color);
-  }
-  else {
-    UI_GetThemeColorBlendShade4fv(TH_SELECT, color_id, 0.4f, 10, color);
-  }
-
   /* Collapse/expand icon. */
   {
     const int but_size = U.widget_unit * 0.8f;
@@ -2411,18 +2403,19 @@ static void node_draw_basis(const bContext &C,
 
   /* Outline. */
   {
-    const rctf rect = {
-        rct.xmin - outline_width,
-        rct.xmax + outline_width,
-        rct.ymin - outline_width,
-        rct.ymax + outline_width,
-    };
+    rctf rect = rct;
+    BLI_rctf_pad(&rect, outline_width, outline_width);
 
     /* Color the outline according to active, selected, or undefined status. */
     float color_outline[4];
 
-    if (node.flag & NODE_ACTIVE) {
-      UI_GetThemeColor4fv((node.flag & NODE_ACTIVE) ? TH_ACTIVE : TH_SELECT, color_outline);
+    if (node.is_selected()) {
+      if (node.is_active()) {
+        UI_GetThemeColor4fv(TH_ACTIVE, color_outline);
+      }
+      else {
+        UI_GetThemeColor4fv(TH_SELECT, color_outline);
+      }
     }
     else if (bke::node_type_is_undefined(&node)) {
       UI_GetThemeColor4fv(TH_REDALERT, color_outline);
@@ -2577,18 +2570,19 @@ static void node_draw_hidden(const bContext &C,
   /* Outline. */
   {
     const float outline_width = 1.0f;
-    const rctf rect = {
-        rct.xmin - outline_width,
-        rct.xmax + outline_width,
-        rct.ymin - outline_width,
-        rct.ymax + outline_width,
-    };
+    rctf rect = rct;
+    BLI_rctf_pad(&rect, outline_width, outline_width);
 
     /* Color the outline according to active, selected, or undefined status. */
     float color_outline[4];
 
-    if (node.flag & NODE_ACTIVE) {
-      UI_GetThemeColor4fv((node.flag & NODE_ACTIVE) ? TH_ACTIVE : TH_SELECT, color_outline);
+    if (node.is_selected()) {
+      if (node.is_active()) {
+        UI_GetThemeColor4fv(TH_ACTIVE, color_outline);
+      }
+      else {
+        UI_GetThemeColor4fv(TH_SELECT, color_outline);
+      }
     }
     else if (bke::node_type_is_undefined(&node)) {
       UI_GetThemeColor4fv(TH_REDALERT, color_outline);
@@ -2952,14 +2946,13 @@ static void frame_node_draw(const bContext &C,
   UI_draw_roundbox_4fv(&rct, true, BASIS_RAD, color);
 
   /* Outline active and selected emphasis. */
-  if (node.flag & NODE_ACTIVE) {
-    if (node.flag & NODE_ACTIVE) {
+  if (node.is_selected()) {
+    if (node.is_active()) {
       UI_GetThemeColorShadeAlpha4fv(TH_ACTIVE, 0, -40, color);
     }
     else {
       UI_GetThemeColorShadeAlpha4fv(TH_SELECT, 0, -40, color);
     }
-
     UI_draw_roundbox_aa(&rct, false, BASIS_RAD, color);
   }
 
@@ -3031,6 +3024,7 @@ static void node_draw(const bContext &C,
     frame_node_draw(C, tree_draw_ctx, region, snode, ntree, node, block);
   }
   else if (node.is_reroute()) {
+    /* TODO: What a hell there?? */
     reroute_node_draw(C, region, ntree, node, block);
   }
   else {

@@ -1374,10 +1374,12 @@ static int node_duplicate_exec(bContext *C, wmOperator *op)
   for (const auto item : node_map.items()) {
     bNode *src_node = item.key;
     bNode *dst_node = item.value;
-
+    if (!src_node->is_selected()) {
+      continue;
+    }
     nodeSetSelected(src_node, false);
-    src_node->flag &= ~(NODE_ACTIVE | NODE_ACTIVE_TEXTURE);
     nodeSetSelected(dst_node, true);
+    src_node->flag &= ~(NODE_ACTIVE_TEXTURE);
   }
 
   ED_node_tree_propagate_change(C, bmain, snode->edittree);

@@ -2731,7 +2731,7 @@ namespace blender::bke {
 
 bool nodeLinkIsSelected(const bNodeLink *link)
 {
-  return (link->fromnode->flag & NODE_SELECT) || (link->tonode->flag & NODE_SELECT);
+  return (link->fromnode->is_selected()) || (link->tonode->is_selected());
 }
 
 /* Adjust the indices of links connected to the given multi input socket after deleting the link at
@@ -3793,7 +3793,7 @@ bNode *nodeGetActive(bNodeTree *ntree)
   }
 
   for (bNode *node : ntree->all_nodes()) {
-    if (node->flag & NODE_ACTIVE) {
+    if (node->is_active()) {
       return node;
     }
   }

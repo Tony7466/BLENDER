@@ -42,6 +42,7 @@ struct NodeClipboardItem {
 };
 
 struct NodeClipboard {
+  bNode *active_node;
   Vector<NodeClipboardItem> nodes;
   Vector<bNodeLink> links;
 
@@ -52,6 +53,7 @@ struct NodeClipboard {
     }
     this->nodes.clear_and_shrink();
     this->links.clear_and_shrink();
+    this->active_node = nullptr;
   }
 
   /**
@@ -130,9 +132,13 @@ static int node_clipboard_copy_exec(bContext *C, wmOperator * /*op*/)
   Map<const bNodeSocket *, bNodeSocket *> socket_map;
 
   for (const bNode *node : tree.all_nodes()) {
-    if (node->flag & SELECT) {
+    if (node->is_selected()) {
       clipboard.add_node(*node, node_map, socket_map);
     }
+  }
+
+  if (bNode *active_node = nodeGetActive(&tree)) {
+    clipboard.active_node = node_map.lookup_default(active_node, nullptr);
   }
 
   for (bNode *new_node : node_map.values()) {
@@ -319,6 +325,11 @@ static int node_clipboard_paste_exec(bContext *C, wmOperator *op)
   }
 
   remap_pairing(tree, node_map);
+
+  if (clipboard.active_node != nullptr) {
+    bNode *new_active_node = node_map.lookup(clipboard.active_node);
+    nodeSetActive(&tree, new_active_node);
+  }
 
   tree.ensure_topology_cache();
   for (bNode *new_node : node_map.values()) {

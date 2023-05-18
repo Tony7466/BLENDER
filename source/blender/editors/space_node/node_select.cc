@@ -983,7 +983,7 @@ static bool do_lasso_select_node(bContext *C,
   BLI_lasso_boundbox(&rect, mcoords, mcoords_len);
 
   for (bNode *node : node_tree.all_nodes()) {
-    if (select && (node->flag & NODE_SELECT)) {
+    if (select && (node->is_selected())) {
       continue;
     }
 

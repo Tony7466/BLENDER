@@ -644,6 +644,16 @@ inline bool bNode::is_group_output() const
   return this->type == NODE_GROUP_OUTPUT;
 }
 
+inline bool bNode::is_selected() const
+{
+  return this->flag & SELECT;
+}
+
+inline bool bNode::is_active() const
+{
+  return this->flag & NODE_ACTIVE;
+}
+
 inline blender::Span<bNodeLink> bNode::internal_links() const
 {
   return this->runtime->internal_links;
