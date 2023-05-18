@@ -158,31 +158,60 @@ function(absolute_include_dirs
 
   set(_ALL_INCS "")
   foreach(_INC ${ARGN})
-    get_filename_component(_ABS_INC ${_INC} ABSOLUTE)
-    list(APPEND _ALL_INCS ${_ABS_INC})
-    # for checking for invalid includes, disable for regular use
-    # if(NOT EXISTS "${_ABS_INC}/")
-    #   message(FATAL_ERROR "Include not found: ${_ABS_INC}/")
-    # endif()
+    # Pass any scoping keywords as is
+    if(("${_INC}" STREQUAL "PUBLIC") OR
+       ("${_INC}" STREQUAL "PRIVATE") OR
+       ("${_INC}" STREQUAL "INTERFACE"))
+      list(APPEND _ALL_INCS ${_INC})
+    else()
+      get_filename_component(_ABS_INC ${_INC} ABSOLUTE)
+      list(APPEND _ALL_INCS ${_ABS_INC})
+      # for checking for invalid includes, disable for regular use
+      # if(NOT EXISTS "${_ABS_INC}/")
+      #   message(FATAL_ERROR "Include not found: ${_ABS_INC}/")
+      # endif()
+    endif()
   endforeach()
 
   set(${includes_absolute} ${_ALL_INCS} PARENT_SCOPE)
 endfunction()
 
-function(blender_target_include_dirs
-  name
+function(blender_target_include_dirs_impl
+  target
+  system
+  includes
   )
+  set(next_interface_mode "PRIVATE")
+  foreach(_INC ${includes})
+    if(("${_INC}" STREQUAL "PUBLIC") OR
+       ("${_INC}" STREQUAL "PRIVATE") OR
+       ("${_INC}" STREQUAL "INTERFACE"))
+      set(next_interface_mode "${_INC}")
+    else()
+      if(system)
+        target_include_directories(${target} SYSTEM ${next_interface_mode} ${_INC})
+      else()
+        target_include_directories(${target} ${next_interface_mode} ${_INC})
+      endif()
+      set(next_interface_mode "PRIVATE")
+    endif()
+  endforeach()
+endfunction()
 
+# Nicer makefiles with -I/1/foo/ instead of -I/1/2/3/../../foo/
+# use it instead of target_include_directories()
+function(blender_target_include_dirs
+  target
+  )
   absolute_include_dirs(_ALL_INCS ${ARGN})
-  target_include_directories(${name} PRIVATE ${_ALL_INCS})
+  blender_target_include_dirs_impl(${target} FALSE "${_ALL_INCS}")
 endfunction()
 
 function(blender_target_include_dirs_sys
-  name
+  target
   )
-
   absolute_include_dirs(_ALL_INCS ${ARGN})
-  target_include_directories(${name} SYSTEM PRIVATE ${_ALL_INCS})
+  blender_target_include_dirs_impl(${target} TRUE "${_ALL_INCS}")
 endfunction()
 
 # Set include paths for header files included with "*.h" syntax.
