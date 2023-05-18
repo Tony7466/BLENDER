@@ -5552,6 +5552,104 @@ static void SCREEN_OT_space_type_set_or_cycle(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Area Space Cycle
+ * \{ */
+
+static const EnumPropertyItem area_space_cycle_direction[] = {
+    {0, "BACK", 0, "Back", ""},
+    {1, "FORWARD", 0, "Forward", ""},
+    {0, NULL, 0, NULL, NULL},
+};
+
+static bool area_space_cycle_poll(bContext *C)
+{
+  ScrArea *area = CTX_wm_area(C);
+  return (area && !ELEM(area->spacetype, SPACE_TOPBAR, SPACE_STATUSBAR) &&
+              BLI_listbase_count_at_most(&area->spacedata, 2) > 1);
+}
+
+static int area_space_cycle_exec(bContext *C, wmOperator *op)
+{
+  const eScreenCycle direction = RNA_enum_get(op->ptr, "direction");
+
+  ScrArea *area = CTX_wm_area(C);
+  wmWindow *win = CTX_wm_window(C);
+  SpaceLink *slold = area->spacedata.first;
+  SpaceLink *slnew;
+
+  /* XXX: No attempt to deal with header alignment. */
+
+  bool skip_region_exit = true;
+  void *area_exit = area->type ? area->type->exit : NULL;
+  if (skip_region_exit && area->type) {
+    area->type->exit = NULL;
+  }
+  ED_area_exit(C, area);
+  if (skip_region_exit && area->type) {
+    area->type->exit = area_exit;
+  }
+
+  if (direction == SPACE_CONTEXT_CYCLE_PREV) {
+    BLI_remlink(&area->spacedata, slold);
+    BLI_addtail(&area->spacedata, slold);
+    slnew = area->spacedata.first;
+  }
+  else {
+    slnew = area->spacedata.last;
+    BLI_remlink(&area->spacedata, slnew);
+    BLI_addhead(&area->spacedata, slnew);
+  }
+
+  area->spacetype = slnew->spacetype;
+
+  /* swap regions */
+  slold->regionbase = area->regionbase;
+  area->regionbase = slnew->regionbase;
+  BLI_listbase_clear(&slnew->regionbase);
+  /* SPACE_FLAG_TYPE_WAS_ACTIVE is only used to go back to a previously active space that is
+   * overlapped by temporary ones. It's now properly activated, so the flag should be cleared
+   * at this point. */
+  slnew->link_flag &= ~SPACE_FLAG_TYPE_WAS_ACTIVE;
+
+  ED_area_init(CTX_wm_manager(C), win, area);
+
+  /* tell WM to refresh, cursor types etc */
+  WM_event_add_mousemove(win);
+
+  /* send space change notifier */
+  WM_event_add_notifier(C, NC_SPACE | ND_SPACE_CHANGED, area);
+
+  ED_area_tag_refresh(area);
+  ED_area_tag_redraw(area);
+
+  return OPERATOR_FINISHED;
+}
+
+static void SCREEN_OT_area_space_cycle(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Cycle Area Editors";
+  ot->description = "Cycle through an area's editors";
+  ot->idname = "SCREEN_OT_area_space_cycle";
+
+  /* api callbacks */
+  ot->exec = area_space_cycle_exec;
+  ot->poll = area_space_cycle_poll;
+
+  ot->flag = 0;
+
+  RNA_def_enum(ot->srna,
+               "direction",
+               area_space_cycle_direction,
+               0,
+               "Direction",
+               "Direction to cycle through");
+}
+
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Space Context Cycle Operator
  * \{ */
 
@@ -5745,6 +5843,7 @@ void ED_operatortypes_screen(void)
   WM_operatortype_append(SCREEN_OT_space_type_set_or_cycle);
   WM_operatortype_append(SCREEN_OT_space_context_cycle);
   WM_operatortype_append(SCREEN_OT_workspace_cycle);
+  WM_operatortype_append(SCREEN_OT_area_space_cycle);
 
   /* Frame changes. */
   WM_operatortype_append(SCREEN_OT_frame_offset);

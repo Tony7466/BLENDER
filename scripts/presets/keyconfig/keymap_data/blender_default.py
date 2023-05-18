@@ -596,6 +596,10 @@ def km_window(params):
         op_menu("SCREEN_MT_user_menu", {"type": 'Q', "value": 'PRESS'}),
 
         # Fast editor switching
+
+        ("screen.area_space_cycle", {"type": 'F1', "value": 'PRESS', "ctrl": True}, {"properties": [("direction", 'BACK')]}),
+        ("screen.area_space_cycle", {"type": 'F2', "value": 'PRESS', "ctrl": True}, {"properties": [("direction", 'FORWARD')]}),
+
         *(
             ("screen.space_type_set_or_cycle",
              {"type": k, "value": 'PRESS', "shift": True},
