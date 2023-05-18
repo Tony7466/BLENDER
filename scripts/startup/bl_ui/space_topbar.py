@@ -228,43 +228,6 @@ class TOPBAR_MT_blender(Menu):
         layout.menu("TOPBAR_MT_blender_system")
 
 
-class TOPBAR_MT_file_cleanup(Menu):
-    bl_label = "Clean Up"
-
-    def draw(self, _context):
-        layout = self.layout
-        layout.separator()
-
-        props = layout.operator("outliner.orphans_purge", text="Unused Data-Blocks")
-        props.do_local_ids = True
-        props.do_linked_ids = True
-        props.do_recursive = False
-        props = layout.operator("outliner.orphans_purge", text="Recursive Unused Data-Blocks")
-        props.do_local_ids = True
-        props.do_linked_ids = True
-        props.do_recursive = True
-
-        layout.separator()
-        props = layout.operator("outliner.orphans_purge", text="Unused Linked Data-Blocks")
-        props.do_local_ids = False
-        props.do_linked_ids = True
-        props.do_recursive = False
-        props = layout.operator("outliner.orphans_purge", text="Recursive Unused Linked Data-Blocks")
-        props.do_local_ids = False
-        props.do_linked_ids = True
-        props.do_recursive = True
-
-        layout.separator()
-        props = layout.operator("outliner.orphans_purge", text="Unused Local Data-Blocks")
-        props.do_local_ids = True
-        props.do_linked_ids = False
-        props.do_recursive = False
-        props = layout.operator("outliner.orphans_purge", text="Recursive Unused Local Data-Blocks")
-        props.do_local_ids = True
-        props.do_linked_ids = False
-        props.do_recursive = True
-
-
 class TOPBAR_MT_file(Menu):
     bl_label = "File"
 
@@ -303,7 +266,7 @@ class TOPBAR_MT_file(Menu):
         layout.separator()
 
         layout.menu("TOPBAR_MT_file_external_data")
-        layout.menu("TOPBAR_MT_file_cleanup")
+        layout.operator("outliner.orphans_cleanup", text="Clean Up...")
 
         layout.separator()
 
@@ -948,7 +911,6 @@ classes = (
     TOPBAR_MT_file_import,
     TOPBAR_MT_file_export,
     TOPBAR_MT_file_external_data,
-    TOPBAR_MT_file_cleanup,
     TOPBAR_MT_file_previews,
     TOPBAR_MT_edit,
     TOPBAR_MT_render,

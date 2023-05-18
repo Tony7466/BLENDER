@@ -505,6 +505,7 @@ void OUTLINER_OT_drivers_add_selected(struct wmOperatorType *ot);
 void OUTLINER_OT_drivers_delete_selected(struct wmOperatorType *ot);
 
 void OUTLINER_OT_orphans_purge(struct wmOperatorType *ot);
+void OUTLINER_OT_orphans_cleanup(struct wmOperatorType *ot);
 
 /* outliner_query.cc ---------------------------------------------- */
 

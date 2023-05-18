@@ -2245,6 +2245,305 @@ void OUTLINER_OT_orphans_purge(wmOperatorType *ot)
                   "data-blocks remain after execution");
 }
 
+static void wm_block_orphans_cancel(bContext *C, void *arg_block, void *arg_data)
+{
+  UNUSED_VARS_NDEBUG(arg_data);
+  UI_popup_block_close(C, CTX_wm_window(C), (uiBlock *)arg_block);
+}
+
+static void wm_block_orphans_cancel_button(uiBlock *block)
+{
+  uiBut *but = uiDefIconTextBut(
+      block, UI_BTYPE_BUT, 0, 0, IFACE_("Cancel"), 0, 0, 0, UI_UNIT_Y, 0, 0, 0, 0, 0, "");
+  UI_but_func_set(but, wm_block_orphans_cancel, block, NULL);
+  UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
+  UI_but_flag_enable(but, UI_BUT_ACTIVE_DEFAULT);
+}
+
+static char orphans_purge_do_local = true;
+static char orphans_purge_do_linked = false;
+static char orphans_purge_do_recursive = false;
+
+static void wm_block_orphans_purge(bContext *C, void *arg_block, void *arg_data)
+{
+  wmOperator *op = (wmOperator *)arg_data;
+  Main *bmain = CTX_data_main(C);
+  int num_tagged[INDEX_ID_MAX] = {0};
+
+  /* Tag all IDs to delete. */
+  BKE_lib_query_unused_ids_tag(bmain,
+                               LIB_TAG_DOIT,
+                               orphans_purge_do_local,
+                               orphans_purge_do_linked,
+                               orphans_purge_do_recursive,
+                               num_tagged);
+
+  if (num_tagged[INDEX_ID_NULL] == 0) {
+    BKE_report(op->reports, RPT_INFO, "No orphaned data-blocks to purge");
+  }
+  else {
+    BKE_id_multi_tagged_delete(bmain);
+    BKE_reportf(op->reports, RPT_INFO, "Deleted %d data-block(s)", num_tagged[INDEX_ID_NULL]);
+    DEG_relations_tag_update(bmain);
+    WM_event_add_notifier(C, NC_ID | NA_REMOVED, nullptr);
+    /* Force full redraw of the UI. */
+    WM_main_add_notifier(NC_WINDOW, nullptr);
+  }
+
+  UI_popup_block_close(C, CTX_wm_window(C), (uiBlock *)arg_block);
+}
+
+static void wm_block_orphans_keep(bContext *C, void *arg_block, void *arg_data)
+{
+  wmOperator *op = (wmOperator *)arg_data;
+  Main *bmain = CTX_data_main(C);
+  int num_tagged[INDEX_ID_MAX] = {0};
+
+  /* Tag all IDs that are unused. */
+  BKE_lib_query_unused_ids_tag(bmain,
+                               LIB_TAG_DOIT,
+                               orphans_purge_do_local,
+                               orphans_purge_do_linked,
+                               orphans_purge_do_recursive,
+                               num_tagged);
+
+  if (num_tagged[INDEX_ID_NULL] == 0) {
+    BKE_report(op->reports, RPT_INFO, "No orphaned data-blocks");
+  }
+  else {
+    ListBase *lbarray[INDEX_ID_MAX];
+    int a;
+    a = set_listbasepointers(bmain, lbarray);
+    while (a--) {
+      LISTBASE_FOREACH (ID *, id, lbarray[a]) {
+        if (id->tag & LIB_TAG_DOIT) {
+          id_fake_user_set(id);
+        }
+      }
+    }
+
+    BKE_reportf(op->reports, RPT_INFO, "Set fake user on %d data-block(s)", num_tagged[INDEX_ID_NULL]);
+    DEG_relations_tag_update(bmain);
+    WM_event_add_notifier(C, NC_ID | NA_EDITED, nullptr);
+    /* Force full redraw of the UI. */
+    WM_main_add_notifier(NC_WINDOW, nullptr);
+  }
+
+  UI_popup_block_close(C, CTX_wm_window(C), (uiBlock *)arg_block);
+}
+
+static void wm_block_orphans_manage(bContext *C, void *arg_block, void *arg_data)
+{
+  wmWindow *win = CTX_wm_window(C);
+  if (WM_window_open(C,
+                     IFACE_("Manage Unused Data"),
+                     0,
+                     0,
+                     500 * UI_SCALE_FAC,
+                     500 * UI_SCALE_FAC,
+                     SPACE_OUTLINER,
+                     false,
+                     false,
+                     true,
+                     WIN_ALIGN_PARENT_CENTER) != NULL) {
+    SpaceOutliner *soutline = (SpaceOutliner *)CTX_wm_area(C)->spacedata.first;
+    soutline->outlinevis = SO_ID_ORPHANS;
+  }
+  UI_popup_block_close(C, win, (uiBlock *)arg_block);
+}
+
+static void wm_block_orphans_purge_button(uiBlock *block, wmOperator *op)
+{
+  uiBut *but = uiDefIconTextBut(
+      block, UI_BTYPE_BUT, 0, 0, IFACE_("Delete"), 0, 0, 0, UI_UNIT_Y, 0, 0, 0, 0, 0, "");
+  UI_but_func_set(but, wm_block_orphans_purge, block, op);
+  UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
+}
+
+static void wm_block_orphans_keep_button(uiBlock *block, wmOperator *op)
+{
+  uiBut *but = uiDefIconTextBut(
+      block, UI_BTYPE_BUT, 0, 0, IFACE_("Protect"), 0, 0, 0, UI_UNIT_Y, 0, 0, 0, 0, 0, "");
+  UI_but_func_set(but, wm_block_orphans_keep, block, op);
+  UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
+}
+
+static void wm_block_orphans_manage_button(uiBlock *block, wmOperator *op)
+{
+  uiBut *but = uiDefIconTextBut(
+      block, UI_BTYPE_BUT, 0, 0, IFACE_("Manage"), 0, 0, 0, UI_UNIT_Y, 0, 0, 0, 0, 0, "");
+  UI_but_func_set(but, wm_block_orphans_manage, block, op);
+  UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
+}
+
+static void orphan_desc(bContext *C, DynStr *desc_r, bool local, bool linked, bool recursive)
+{
+  Main *bmain = CTX_data_main(C);
+  int num_tagged[INDEX_ID_MAX] = {0};
+
+  BKE_lib_query_unused_ids_tag(bmain, LIB_TAG_DOIT, local, linked, recursive, num_tagged);
+
+  bool is_first = true;
+  for (int i = 0; i < INDEX_ID_MAX - 2; i++) {
+    if (num_tagged[i] != 0) {
+      if (!is_first) {
+        BLI_dynstr_append(desc_r, ", ");
+      }
+      else {
+        is_first = false;
+      }
+      BLI_dynstr_appendf(
+          desc_r,
+          "%d %s",
+          num_tagged[i],
+          num_tagged[i] > 1 ?
+              TIP_(BKE_idtype_idcode_to_name_plural(BKE_idtype_idcode_from_index(i))) :
+              TIP_(BKE_idtype_idcode_to_name(BKE_idtype_idcode_from_index(i))));
+    }
+  }
+  if (BLI_dynstr_get_len(desc_r) == 0) {
+    BLI_dynstr_append(desc_r, "Nothing");
+  }
+}
+
+static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, void *arg)
+{
+  wmOperator *op = (wmOperator *)arg;
+  uiBlock *block = UI_block_begin(C, region, "orphans_remove_popup", UI_EMBOSS);
+  UI_block_flag_enable(
+      block, UI_BLOCK_KEEP_OPEN | UI_BLOCK_LOOP | UI_BLOCK_NO_WIN_CLIP | UI_BLOCK_NUMSELECT);
+  UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
+
+  uiLayout *layout = uiItemsAlertBox(block, 40, ALERT_ICON_WARNING);
+
+  /* Title. */
+  uiItemL_ex(layout, TIP_("Clean Up Unused Data in this File"), 0, true, false);
+
+  uiItemS(layout);
+
+  char text[1024];
+  DynStr *dyn_str = BLI_dynstr_new();
+  orphan_desc(C, dyn_str, true, false, false);
+  BLI_snprintf(text, 1024, "Local (%s)", BLI_dynstr_get_cstring(dyn_str));
+
+  uiDefButBitC(block,
+               UI_BTYPE_CHECKBOX,
+               1,
+               0,
+               text,
+               0,
+               0,
+               0,
+               UI_UNIT_Y,
+               &orphans_purge_do_local,
+               0,
+               0,
+               0,
+               0,
+               "Delete unused local data-blocks");
+
+  BLI_dynstr_clear(dyn_str);
+  orphan_desc(C, dyn_str, false, true, false);
+  BLI_snprintf(text, 1024, "Linked (%s)", BLI_dynstr_get_cstring(dyn_str));
+
+  uiDefButBitC(block,
+               UI_BTYPE_CHECKBOX,
+               1,
+               0,
+               text,
+               0,
+               0,
+               0,
+               UI_UNIT_Y,
+               &orphans_purge_do_linked,
+               0,
+               0,
+               0,
+               0,
+               "Delete unused linked data-blocks");
+
+  BLI_dynstr_clear(dyn_str);
+  orphan_desc(C, dyn_str, false, false, true);
+  BLI_snprintf(text, 1024, "Indirectly Unused (%s)", BLI_dynstr_get_cstring(dyn_str));
+
+  uiDefButBitC(block,
+               UI_BTYPE_CHECKBOX,
+               1,
+               0,
+               text,
+               0,
+               0,
+               0,
+               UI_UNIT_Y,
+               &orphans_purge_do_recursive,
+               0,
+               0,
+               0,
+               0,
+               "Recursively check for indirectly unused data-blocks, ensuring that no orphaned "
+               "data-blocks remain after execution");
+
+  BLI_dynstr_free(dyn_str);
+
+  uiItemS_ex(layout, 2.0f);
+
+  /* Buttons. */
+#ifdef _WIN32
+  const bool windows_layout = true;
+#else
+  const bool windows_layout = false;
+#endif
+
+  uiLayout *split = uiLayoutSplit(layout, 0.0f, true);
+  uiLayoutSetScaleY(split, 1.2f);
+
+  if (windows_layout) {
+    /* Windows standard layout. */
+    uiLayoutColumn(split, false);
+    wm_block_orphans_purge_button(block, op);
+    uiLayoutColumn(split, false);
+    wm_block_orphans_keep_button(block, op);
+    uiLayoutColumn(split, false);
+    wm_block_orphans_manage_button(block, op);
+    uiLayoutColumn(split, false);
+    wm_block_orphans_cancel_button(block);
+  }
+  else {
+    /* Non-Windows layout (macOS and Linux). */
+    uiLayoutColumn(split, false);
+    wm_block_orphans_cancel_button(block);
+    uiLayoutColumn(split, false);
+    wm_block_orphans_manage_button(block, op);
+    uiLayoutColumn(split, false);
+    wm_block_orphans_keep_button(block, op);
+    uiLayoutColumn(split, false);
+    wm_block_orphans_purge_button(block, op);
+  }
+
+  UI_block_bounds_set_centered(block, 14 * UI_SCALE_FAC);
+  return block;
+}
+
+static int outliner_orphans_cleanup_exec(bContext *C, wmOperator *op)
+{
+  UI_popup_block_invoke(C, wm_block_create_orphans_cleanup, op, NULL);
+  return OPERATOR_FINISHED;
+}
+
+void OUTLINER_OT_orphans_cleanup(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->idname = "OUTLINER_OT_orphans_cleanup";
+  ot->name = "Clean Up Unused Data...";
+  ot->description = "Clean Up Unused data-blocks in the file";
+
+  /* callbacks */
+  ot->exec = outliner_orphans_cleanup_exec;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER;
+}
+
 /** \} */
 
 }  // namespace blender::ed::outliner
