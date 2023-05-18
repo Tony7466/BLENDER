@@ -43,8 +43,8 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "MOD_gpencil_lineart.h"
-#include "MOD_gpencil_modifiertypes.h"
+#include "MOD_gpencil_legacy_lineart.h"
+#include "MOD_gpencil_legacy_modifiertypes.h"
 
 #include "BLO_read_write.h"
 
@@ -201,7 +201,8 @@ bool BKE_gpencil_has_transform_modifiers(Object *ob)
                eGpencilModifierType_Armature,
                eGpencilModifierType_Hook,
                eGpencilModifierType_Lattice,
-               eGpencilModifierType_Offset)) {
+               eGpencilModifierType_Offset))
+      {
         return true;
       }
     }
@@ -329,7 +330,7 @@ void BKE_gpencil_frame_active_set(Depsgraph *depsgraph, bGPdata *gpd)
 void BKE_gpencil_modifier_init(void)
 {
   /* Initialize modifier types */
-  gpencil_modifier_type_init(modifier_gpencil_types); /* MOD_gpencil_util.c */
+  gpencil_modifier_type_init(modifier_gpencil_types); /* MOD_gpencil_legacy_util.c */
 
 #if 0
   /* Note that GPencil actually does not support these at the moment,
@@ -355,7 +356,7 @@ GpencilModifierData *BKE_gpencil_modifier_new(int type)
   GpencilModifierData *md = MEM_callocN(mti->struct_size, mti->struct_name);
 
   /* NOTE: this name must be made unique later. */
-  BLI_strncpy(md->name, DATA_(mti->name), sizeof(md->name));
+  STRNCPY_UTF8(md->name, DATA_(mti->name));
 
   md->type = type;
   md->mode = eGpencilModifierMode_Realtime | eGpencilModifierMode_Render;
@@ -435,7 +436,8 @@ const GpencilModifierTypeInfo *BKE_gpencil_modifier_get_info(GpencilModifierType
 {
   /* type unsigned, no need to check < 0 */
   if (type < NUM_GREASEPENCIL_MODIFIER_TYPES && type > 0 &&
-      modifier_gpencil_types[type]->name[0] != '\0') {
+      modifier_gpencil_types[type]->name[0] != '\0')
+  {
     return modifier_gpencil_types[type];
   }
 

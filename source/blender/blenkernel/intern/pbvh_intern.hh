@@ -2,6 +2,10 @@
 
 #pragma once
 
+#include "BLI_math_vector_types.hh"
+#include "BLI_span.hh"
+#include "BLI_vector.hh"
+
 /** \file
  * \ingroup bke
  */
@@ -153,6 +157,7 @@ struct PBVH {
 
   /* NOTE: Normals are not `const` because they can be updated for drawing by sculpt code. */
   float (*vert_normals)[3];
+  blender::MutableSpan<blender::float3> poly_normals;
   bool *hide_vert;
   float (*vert_positions)[3];
   blender::OffsetIndices<int> polys;
@@ -161,6 +166,7 @@ struct PBVH {
   const int *corner_verts;
   /* Owned by the #PBVH, because after deformations they have to be recomputed. */
   const MLoopTri *looptri;
+  const int *looptri_polys;
   CustomData *vdata;
   CustomData *ldata;
   CustomData *pdata;
@@ -187,7 +193,6 @@ struct PBVH {
 
   /* flag are verts/faces deformed */
   bool deformed;
-  bool respect_hide;
 
   /* Dynamic topology */
   float bm_max_edge_len;
@@ -282,7 +287,7 @@ bool pbvh_bmesh_node_nearest_to_ray(PBVHNode *node,
                                     float *dist_sq,
                                     bool use_original);
 
-void pbvh_bmesh_normals_update(PBVHNode **nodes, int totnode);
+void pbvh_bmesh_normals_update(blender::Span<PBVHNode *> nodes);
 
 /* pbvh_pixels.hh */
 

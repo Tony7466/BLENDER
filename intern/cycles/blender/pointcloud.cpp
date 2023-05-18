@@ -21,7 +21,8 @@ static void attr_create_motion(PointCloud *pointcloud,
                                const float motion_scale)
 {
   if (!(b_attribute.domain() == BL::Attribute::domain_POINT) &&
-      (b_attribute.data_type() == BL::Attribute::data_type_FLOAT_VECTOR)) {
+      (b_attribute.data_type() == BL::Attribute::data_type_FLOAT_VECTOR))
+  {
     return;
   }
 
@@ -99,6 +100,16 @@ static void copy_attributes(PointCloud *pointcloud,
         float *data = attr->data_float();
         for (int i = 0; i < num_points; i++) {
           data[i] = float(src[i]);
+        }
+        break;
+      }
+      case BL::Attribute::data_type_INT32_2D: {
+        BL::Int2Attribute b_int2_attribute{b_attribute};
+        const int2 *src = static_cast<const int2 *>(b_int2_attribute.data[0].ptr.data);
+        Attribute *attr = attributes.add(name, TypeFloat2, element);
+        float2 *data = attr->data_float2();
+        for (int i = 0; i < num_points; i++) {
+          data[i] = make_float2(float(src[i][0]), float(src[i][1]));
         }
         break;
       }
@@ -303,7 +314,8 @@ void BlenderSync::sync_pointcloud(PointCloud *pointcloud, BObjectInfo &b_ob_info
   for (const SocketType &socket : new_pointcloud.type->inputs) {
     /* Those sockets are updated in sync_object, so do not modify them. */
     if (socket.name == "use_motion_blur" || socket.name == "motion_steps" ||
-        socket.name == "used_shaders") {
+        socket.name == "used_shaders")
+    {
       continue;
     }
     pointcloud->set_value(socket, new_pointcloud, socket);

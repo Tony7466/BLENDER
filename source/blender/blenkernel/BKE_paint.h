@@ -48,6 +48,7 @@ struct PaintCurve;
 struct PaintModeSettings;
 struct Palette;
 struct PaletteColor;
+struct RegionView3D;
 struct Scene;
 struct StrokeCache;
 struct Sculpt;
@@ -217,7 +218,7 @@ bool BKE_paint_always_hide_test(struct Object *ob);
 /**
  * Returns non-zero if any of the face's vertices are hidden, zero otherwise.
  */
-bool paint_is_face_hidden(const struct MLoopTri *lt, const bool *hide_poly);
+bool paint_is_face_hidden(const int *looptri_polys, const bool *hide_poly, int tri_index);
 /**
  * Returns non-zero if any of the corners of the grid
  * face whose inner corner is at (x, y) are hidden, zero otherwise.
@@ -238,7 +239,8 @@ void BKE_paint_face_set_overlay_color_get(int face_set, int seed, uchar r_color[
 
 bool paint_calculate_rake_rotation(struct UnifiedPaintSettings *ups,
                                    struct Brush *brush,
-                                   const float mouse_pos[2]);
+                                   const float mouse_pos[2],
+                                   ePaintMode paint_mode);
 void paint_update_brush_rake_rotation(struct UnifiedPaintSettings *ups,
                                       struct Brush *brush,
                                       float rotation);

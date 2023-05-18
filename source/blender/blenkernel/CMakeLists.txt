@@ -12,7 +12,7 @@ set(INC
   ../depsgraph
   ../draw
   ../functions
-  ../gpencil_modifiers
+  ../gpencil_modifiers_legacy
   ../gpu
   ../ikplugin
   ../imbuf
@@ -144,9 +144,9 @@ set(SRC
   intern/geometry_fields.cc
   intern/geometry_set.cc
   intern/geometry_set_instances.cc
-  intern/gpencil_legacy.c
   intern/gpencil_curve_legacy.c
   intern/gpencil_geom_legacy.cc
+  intern/gpencil_legacy.c
   intern/gpencil_modifier_legacy.c
   intern/gpencil_update_cache_legacy.c
   intern/icons.cc
@@ -186,9 +186,9 @@ set(SRC
   intern/main.c
   intern/main_idmap.c
   intern/main_namemap.cc
-  intern/mask.c
-  intern/mask_evaluate.c
-  intern/mask_rasterize.c
+  intern/mask.cc
+  intern/mask_evaluate.cc
+  intern/mask_rasterize.cc
   intern/material.cc
   intern/mball.cc
   intern/mball_tessellate.cc
@@ -232,6 +232,7 @@ set(SRC
   intern/node_tree_anonymous_attributes.cc
   intern/node_tree_field_inferencing.cc
   intern/node_tree_update.cc
+  intern/node_tree_zones.cc
   intern/object.cc
   intern/object_deform.c
   intern/object_dupli.cc
@@ -265,6 +266,8 @@ set(SRC
   intern/shader_fx.c
   intern/shrinkwrap.cc
   intern/simulation.cc
+  intern/simulation_state.cc
+  intern/simulation_state_serialize.cc
   intern/softbody.c
   intern/sound.c
   intern/speaker.c
@@ -384,9 +387,9 @@ set(SRC
   BKE_geometry_set.hh
   BKE_geometry_set_instances.hh
   BKE_global.h
-  BKE_gpencil_legacy.h
   BKE_gpencil_curve_legacy.h
   BKE_gpencil_geom_legacy.h
+  BKE_gpencil_legacy.h
   BKE_gpencil_modifier_legacy.h
   BKE_gpencil_update_cache_legacy.h
   BKE_icons.h
@@ -440,8 +443,10 @@ set(SRC
   BKE_multires.h
   BKE_nla.h
   BKE_node.h
+  BKE_node.hh
   BKE_node_runtime.hh
   BKE_node_tree_update.h
+  BKE_node_tree_zones.hh
   BKE_object.h
   BKE_object_deform.h
   BKE_object_facemap.h
@@ -464,6 +469,8 @@ set(SRC
   BKE_shader_fx.h
   BKE_shrinkwrap.h
   BKE_simulation.h
+  BKE_simulation_state.hh
+  BKE_simulation_state_serialize.hh
   BKE_softbody.h
   BKE_sound.h
   BKE_speaker.h
@@ -525,7 +532,7 @@ set(LIB
   bf_depsgraph
   bf_draw
   bf_functions
-  bf_gpencil_modifiers
+  bf_gpencil_modifiers_legacy
   bf_gpu
   bf_ikplugin
   bf_imbuf
