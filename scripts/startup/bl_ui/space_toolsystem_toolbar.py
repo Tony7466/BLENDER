@@ -509,16 +509,9 @@ class _defs_view3d_add:
     def draw_settings_interactive_add(layout, tool_settings, tool, extra):
         show_extra = False
         if not extra:
-            row = layout.row()
-            row.label(text="Depth:")
-            row = layout.row()
-            row.prop(tool_settings, "plane_depth", text="")
-            row = layout.row()
-            row.label(text="Orientation:")
-            row = layout.row()
-            row.prop(tool_settings, "plane_orientation", text="")
-            row = layout.row()
-            row.prop(tool_settings, "snap_elements_tool")
+            layout.row().prop(tool_settings, "plane_depth", text="Depth")
+            layout.row().prop(tool_settings, "plane_orientation")
+            layout.row().prop(tool_settings, "snap_elements_tool")
 
             region_is_header = bpy.context.region.type == 'TOOL_HEADER'
             if region_is_header:

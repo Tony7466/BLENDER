@@ -158,7 +158,7 @@ class VIEW3D_PT_tools_object_options_dragdrop(View3DPanel, Panel):
         col.prop(tool_settings, "plane_depth", text="Depth")
         col.prop(tool_settings, "plane_orientation")
         col.prop(tool_settings, "snap_elements_tool")
-        sub = col.column(align=True)
+        sub = col.row(align=True)
         sub.active = not tool_settings.plane_axis_auto
         sub.prop(tool_settings, "plane_axis")
         col.prop(tool_settings, "plane_axis_auto")
