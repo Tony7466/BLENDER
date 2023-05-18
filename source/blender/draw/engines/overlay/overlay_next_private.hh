@@ -66,11 +66,11 @@ class ShapeCache {
       GPU_BATCH_DISCARD_SAFE(shader);
     }
   };
-  using BatchPtr = std::unique_ptr<GPUBatch, BatchDeleter>;
 
  public:
-  // GPUBatch *drw_normal_arrow; /* Single Arrow? */
+  using BatchPtr = std::unique_ptr<GPUBatch, BatchDeleter>;
 
+  // GPUBatch *drw_normal_arrow; /* Single Arrow? */
   BatchPtr plain_axes;
   BatchPtr single_arrow;
   BatchPtr arrows;

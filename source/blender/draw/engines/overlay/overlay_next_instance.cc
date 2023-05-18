@@ -122,7 +122,6 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
       case OB_EMPTY:
       case OB_LIGHTPROBE:
       case OB_SPEAKER:
-        extras.object_sync(ob_ref, resources, state);
         break;
       case OB_ARMATURE:
         break;
@@ -134,6 +133,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
       case OB_GPENCIL_LEGACY:
         break;
     }
+    extras.object_sync(ob_ref, resources, state);
   }
 }
 

@@ -481,7 +481,7 @@ static const Vector<Vertex> &empty_capsule_cap_verts()
     verts.append({{p[pi].x, 0.0f, p[pi].y}, VCLASS_NONE});
     /* X half circle */
     verts.append({{0.0f, p[ci].x, p[ci].y}, VCLASS_NONE});
-    verts.append({{0.0f, p[ci].x, p[ci].y}, VCLASS_NONE});
+    verts.append({{0.0f, p[pi].x, p[pi].y}, VCLASS_NONE});
   }
 
   return verts;
