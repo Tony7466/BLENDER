@@ -487,6 +487,21 @@ static const Vector<Vertex> &empty_capsule_cap_verts()
   return verts;
 }
 
+static const Vector<Vertex> &quad_verts()
+{
+  static Vector<Vertex> verts;
+  if (!verts.is_empty()) {
+    return verts;
+  }
+
+  verts = {{{-1.0f, 1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
+           {{1.0f, 1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
+           {{-1.0f, -1.0f, 0.0f}, VCLASS_EMPTY_SCALED},
+           {{1.0f, -1.0f, 0.0f}, VCLASS_EMPTY_SCALED}};
+
+  return verts;
+}
+
 static const Vector<Vertex> &grid_verts()
 {
   static Vector<Vertex> verts;
@@ -1205,6 +1220,7 @@ ShapeCache::ShapeCache()
   empty_capsule_body = batch_ptr(empty_capsule_body_verts());
   empty_capsule_cap = batch_ptr(empty_capsule_cap_verts());
 
+  quad = batch_ptr(quad_verts(), GPU_PRIM_TRI_STRIP);
   grid = batch_ptr(grid_verts(), GPU_PRIM_TRIS);
 
   metaball_wire_circle = batch_ptr(metaball_wire_circle_verts(), GPU_PRIM_LINE_STRIP);

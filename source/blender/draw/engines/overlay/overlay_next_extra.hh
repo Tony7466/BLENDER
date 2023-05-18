@@ -43,6 +43,7 @@ class Extras {
     InstanceBuf cube = {"cube", shapes.empty_cube.get(), selection_type, vector};
     InstanceBuf sphere = {"sphere", shapes.empty_sphere.get(), selection_type, vector};
     InstanceBuf cone = {"cone", shapes.empty_cone.get(), selection_type, vector};
+    InstanceBuf quad = {"quad", shapes.quad.get(), selection_type, vector};
     InstanceBuf speaker = {"speaker", shapes.speaker.get(), selection_type, vector};
     InstanceBuf probe_cube = {"probe_cube", shapes.probe_cube.get(), selection_type, vector};
     InstanceBuf probe_grid = {"probe_grid", shapes.probe_grid.get(), selection_type, vector};
@@ -176,10 +177,14 @@ class Extras {
       _data.object_to_world_[2][3] = show_clipping ? probe->clipsta : -1.0;
       _data.object_to_world_[3][3] = show_clipping ? probe->clipend : -1.0;
 
-      buffers_->probe_cube.append(_data, select_id);
+      bufs.probe_cube.append(_data, select_id);
 
-      /* TODO(Miguel Pozo) */
-      // DRW_buffer_add_entry(cb->groundline, data.object_to_world_.location());
+#if 0
+      /* TODO: This requires a different shader.  */
+      _data.object_to_world_ = math::translate(float4x4::identity(),
+                                               _data.object_to_world_.location());
+      bufs.groundline.append(_data, select_id);
+#endif
 
       if (show_influence) {
         float influence_start = probe->distinf * (1.0f - probe->falloff);
@@ -206,7 +211,7 @@ class Extras {
       ExtraInstanceData _data = data;
       _data.object_to_world_[2][3] = show_clipping ? probe->clipsta : -1.0;
       _data.object_to_world_[3][3] = show_clipping ? probe->clipend : -1.0;
-      buffers_->probe_grid.append(_data, select_id);
+      bufs.probe_grid.append(_data, select_id);
 
       if (show_influence) {
         float influence_start = 1.0f + probe->distinf * (1.0f - probe->falloff);
@@ -242,12 +247,11 @@ class Extras {
 #endif
     }
     else if (probe->type == LIGHTPROBE_TYPE_PLANAR) {
-      buffers_->probe_planar.append(data, select_id);
+      bufs.probe_planar.append(data, select_id);
 
       if (selection_type_ != SelectionType::DISABLED && (probe->flag & LIGHTPROBE_FLAG_SHOW_DATA))
       {
-        /* TODO(Miguel Pozo) */
-        // bufs.solid_quad.append(data, select_id);
+        bufs.quad.append(data, select_id);
       }
 
       ExtraInstanceData _data = data;
