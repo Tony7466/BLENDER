@@ -18,8 +18,6 @@
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
-
 #include "bpy_capi_utils.h"
 #include "bpy_props.h"
 #include "bpy_rna.h"
@@ -2880,7 +2878,9 @@ static PyObject *BPy_BoolProperty(PyObject *self, PyObject *args, PyObject *kw)
 
   RNA_def_property_boolean_default(prop, default_value);
   RNA_def_property_ui_text(prop, name ? name : id_data.value, description);
-  RNA_def_property_translation_context(prop, translation_context);
+  if (translation_context) {
+    RNA_def_property_translation_context(prop, translation_context);
+  }
 
   if (tags_enum.base.is_set) {
     RNA_def_property_tags(prop, tags_enum.base.value);
@@ -3061,7 +3061,9 @@ static PyObject *BPy_BoolVectorProperty(PyObject *self, PyObject *args, PyObject
   }
 
   RNA_def_property_ui_text(prop, name ? name : id_data.value, description);
-  RNA_def_property_translation_context(prop, translation_context);
+  if (translation_context) {
+    RNA_def_property_translation_context(prop, translation_context);
+  }
 
   if (tags_enum.base.is_set) {
     RNA_def_property_tags(prop, tags_enum.base.value);
@@ -3232,7 +3234,9 @@ static PyObject *BPy_IntProperty(PyObject *self, PyObject *args, PyObject *kw)
 
   RNA_def_property_int_default(prop, default_value);
   RNA_def_property_ui_text(prop, name ? name : id_data.value, description);
-  RNA_def_property_translation_context(prop, translation_context);
+  if (translation_context) {
+    RNA_def_property_translation_context(prop, translation_context);
+  }
   RNA_def_property_range(prop, min, max);
   RNA_def_property_ui_range(prop, MAX2(soft_min, min), MIN2(soft_max, max), step, 3);
 
@@ -3427,7 +3431,9 @@ static PyObject *BPy_IntVectorProperty(PyObject *self, PyObject *args, PyObject 
 
   RNA_def_property_range(prop, min, max);
   RNA_def_property_ui_text(prop, name ? name : id_data.value, description);
-  RNA_def_property_translation_context(prop, translation_context);
+  if (translation_context) {
+    RNA_def_property_translation_context(prop, translation_context);
+  }
   RNA_def_property_ui_range(prop, MAX2(soft_min, min), MIN2(soft_max, max), step, 3);
 
   if (tags_enum.base.is_set) {
@@ -3601,7 +3607,9 @@ static PyObject *BPy_FloatProperty(PyObject *self, PyObject *args, PyObject *kw)
   RNA_def_property_float_default(prop, default_value);
   RNA_def_property_range(prop, min, max);
   RNA_def_property_ui_text(prop, name ? name : id_data.value, description);
-  RNA_def_property_translation_context(prop, translation_context);
+  if (translation_context) {
+    RNA_def_property_translation_context(prop, translation_context);
+  }
   RNA_def_property_ui_range(prop, MAX2(soft_min, min), MIN2(soft_max, max), step, precision);
 
   if (tags_enum.base.is_set) {
@@ -3813,7 +3821,9 @@ static PyObject *BPy_FloatVectorProperty(PyObject *self, PyObject *args, PyObjec
 
   RNA_def_property_range(prop, min, max);
   RNA_def_property_ui_text(prop, name ? name : id_data.value, description);
-  RNA_def_property_translation_context(prop, translation_context);
+  if (translation_context) {
+    RNA_def_property_translation_context(prop, translation_context);
+  }
   RNA_def_property_ui_range(prop, MAX2(soft_min, min), MIN2(soft_max, max), step, precision);
 
   if (tags_enum.base.is_set) {
@@ -3871,7 +3881,7 @@ static PyObject *BPy_StringProperty(PyObject *self, PyObject *args, PyObject *kw
       .srna = srna,
   };
   const char *name = NULL, *description = "";
-  const char *translation_context = BLT_I18NCONTEXT_DEFAULT_BPYRNA, *default_value = "";
+  const char *translation_context = NULL, *default_value = "";
   int maxlen = 0;
   PropertyRNA *prop;
 
@@ -3992,7 +4002,9 @@ static PyObject *BPy_StringProperty(PyObject *self, PyObject *args, PyObject *kw
     RNA_def_property_string_default(prop, default_value);
   }
   RNA_def_property_ui_text(prop, name ? name : id_data.value, description);
-  RNA_def_property_translation_context(prop, translation_context);
+  if (translation_context) {
+    RNA_def_property_translation_context(prop, translation_context);
+  }
 
   if (tags_enum.base.is_set) {
     RNA_def_property_tags(prop, tags_enum.base.value);
@@ -4230,7 +4242,9 @@ static PyObject *BPy_EnumProperty(PyObject *self, PyObject *args, PyObject *kw)
     prop = RNA_def_enum(
         srna, id_data.value, eitems, default_value, name ? name : id_data.value, description);
   }
-  RNA_def_property_translation_context(prop, translation_context);
+  if (translation_context) {
+    RNA_def_property_translation_context(prop, translation_context);
+  }
 
   if (tags_enum.base.is_set) {
     RNA_def_property_tags(prop, tags_enum.base.value);
@@ -4405,7 +4419,9 @@ PyObject *BPy_PointerProperty(PyObject *self, PyObject *args, PyObject *kw)
   }
   prop = RNA_def_pointer_runtime(
       srna, id_data.value, ptype, name ? name : id_data.value, description);
-  RNA_def_property_translation_context(prop, translation_context);
+  if (translation_context) {
+    RNA_def_property_translation_context(prop, translation_context);
+  }
 
   if (tags_enum.base.is_set) {
     RNA_def_property_tags(prop, tags_enum.base.value);
@@ -4536,7 +4552,9 @@ PyObject *BPy_CollectionProperty(PyObject *self, PyObject *args, PyObject *kw)
   }
   prop = RNA_def_collection_runtime(
       srna, id_data.value, ptype, name ? name : id_data.value, description);
-  RNA_def_property_translation_context(prop, translation_context);
+  if (translation_context) {
+    RNA_def_property_translation_context(prop, translation_context);
+  }
 
   if (tags_enum.base.is_set) {
     RNA_def_property_tags(prop, tags_enum.base.value);
