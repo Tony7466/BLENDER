@@ -1447,3 +1447,11 @@ void ED_mesh_split_faces(Mesh *mesh)
 
   geometry::split_edges(*mesh, split_mask, {});
 }
+
+void ED_mesh_sharp_from_angle_set(Mesh *mesh, const float angle)
+{
+  mesh->attributes_for_write().remove("sharp_edge");
+  mesh->attributes_for_write().remove("sharp_face");
+  BKE_mesh_sharp_edges_set_from_angle(mesh, angle);
+  DEG_id_tag_update(&mesh->id, ID_RECALC_GEOMETRY);
+}

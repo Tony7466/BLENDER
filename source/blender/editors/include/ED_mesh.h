@@ -602,6 +602,11 @@ struct Mesh *ED_mesh_context(struct bContext *C);
  */
 void ED_mesh_split_faces(struct Mesh *mesh);
 
+/**
+ * Reset and fill the "sharp_edge" attribute based on the angle of manifold edges.
+ */
+void ED_mesh_sharp_from_angle_set(struct Mesh *mesh, float angle);
+
 /* mesh backup */
 typedef struct BMBackup {
   struct BMesh *bmcopy;

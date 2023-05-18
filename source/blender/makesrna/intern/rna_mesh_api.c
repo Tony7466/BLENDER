@@ -12,8 +12,8 @@
 
 #include "DNA_customdata_types.h"
 
+#include "BLI_math_base.h"
 #include "BLI_sys_types.h"
-
 #include "BLI_utildefines.h"
 
 #include "rna_internal.h" /* own include */
@@ -214,6 +214,11 @@ void RNA_api_mesh(StructRNA *srna)
   func = RNA_def_function(srna, "calc_normals", "rna_Mesh_calc_normals");
   RNA_def_function_ui_description(
       func, "Deprecated. Has no effect. Normals are calculated upon retrieval");
+
+  func = RNA_def_function(srna, "set_sharp_from_angle", "ED_mesh_sharp_from_angle_set");
+  RNA_def_function_ui_description(
+      func, "Set the sharp edge status for edges based on the angle of incident faces");
+  RNA_def_float(func, "angle", M_PI, 0.0f, M_PI, "Angle", "", 0.0f, M_PI);
 
   func = RNA_def_function(srna, "split_faces", "rna_Mesh_split_faces");
   RNA_def_function_ui_description(func, "Split faces based on the edge angle");
