@@ -1483,9 +1483,11 @@ void BKE_mesh_smooth_flag_set(Mesh *me, const bool use_smooth)
   using namespace blender::bke;
   MutableAttributeAccessor attributes = me->attributes_for_write();
   if (use_smooth) {
+    attributes.remove("sharp_edge");
     attributes.remove("sharp_face");
   }
   else {
+    attributes.remove("sharp_edge");
     SpanAttributeWriter<bool> sharp_faces = attributes.lookup_or_add_for_write_only_span<bool>(
         "sharp_face", ATTR_DOMAIN_FACE);
     sharp_faces.span.fill(true);
@@ -1498,6 +1500,15 @@ void BKE_mesh_sharp_edges_set_from_angle(Mesh *me, const float angle)
   using namespace blender;
   using namespace blender::bke;
   bke::MutableAttributeAccessor attributes = me->attributes_for_write();
+  if (angle >= M_PI) {
+    attributes.remove("sharp_edge");
+    attributes.remove("sharp_face");
+    return;
+  }
+  if (angle == 0.0f) {
+    BKE_mesh_smooth_flag_set(me, false);
+    return;
+  }
   bke::SpanAttributeWriter<bool> sharp_edges = attributes.lookup_or_add_for_write_span<bool>(
       "sharp_edge", ATTR_DOMAIN_EDGE);
   const VArray<bool> sharp_faces = *attributes.lookup_or_default<bool>(
