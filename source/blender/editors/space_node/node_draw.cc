@@ -1425,7 +1425,7 @@ static void node_draw_shadow(const SpaceNode &snode,
 {
   const rctf &rct = node.runtime->totr;
   UI_draw_roundbox_corner_set(UI_CNR_ALL);
-  ui_draw_dropshadow(&rct, radius, snode.runtime->aspect, alpha, node.flag & SELECT);
+  ui_draw_dropshadow(&rct, radius, snode.runtime->aspect, alpha, node.flag & NODE_ACTIVE);
 }
 
 static void node_draw_sockets(const View2D &v2d,
@@ -2287,7 +2287,7 @@ static void node_draw_basis(const bContext &C,
   node_add_error_message_button(tree_draw_ctx, node, block, rct, iconofs);
 
   /* Title. */
-  if (node.flag & SELECT) {
+  if (node.flag & NODE_ACTIVE) {
     UI_GetThemeColor4fv(TH_SELECT, color);
   }
   else {
@@ -2366,7 +2366,7 @@ static void node_draw_basis(const bContext &C,
     }
 
     /* Draw selected nodes fully opaque. */
-    if (node.flag & SELECT) {
+    if (node.flag & NODE_ACTIVE) {
       color[3] = 1.0f;
     }
 
@@ -2421,7 +2421,7 @@ static void node_draw_basis(const bContext &C,
     /* Color the outline according to active, selected, or undefined status. */
     float color_outline[4];
 
-    if (node.flag & SELECT) {
+    if (node.flag & NODE_ACTIVE) {
       UI_GetThemeColor4fv((node.flag & NODE_ACTIVE) ? TH_ACTIVE : TH_SELECT, color_outline);
     }
     else if (bke::node_type_is_undefined(&node)) {
@@ -2509,7 +2509,7 @@ static void node_draw_hidden(const bContext &C,
     }
 
     /* Draw selected nodes fully opaque. */
-    if (node.flag & SELECT) {
+    if (node.flag & NODE_ACTIVE) {
       color[3] = 1.0f;
     }
 
@@ -2522,7 +2522,7 @@ static void node_draw_hidden(const bContext &C,
   }
 
   /* Title. */
-  if (node.flag & SELECT) {
+  if (node.flag & NODE_ACTIVE) {
     UI_GetThemeColor4fv(TH_SELECT, color);
   }
   else {
@@ -2587,7 +2587,7 @@ static void node_draw_hidden(const bContext &C,
     /* Color the outline according to active, selected, or undefined status. */
     float color_outline[4];
 
-    if (node.flag & SELECT) {
+    if (node.flag & NODE_ACTIVE) {
       UI_GetThemeColor4fv((node.flag & NODE_ACTIVE) ? TH_ACTIVE : TH_SELECT, color_outline);
     }
     else if (bke::node_type_is_undefined(&node)) {
@@ -2952,7 +2952,7 @@ static void frame_node_draw(const bContext &C,
   UI_draw_roundbox_4fv(&rct, true, BASIS_RAD, color);
 
   /* Outline active and selected emphasis. */
-  if (node.flag & SELECT) {
+  if (node.flag & NODE_ACTIVE) {
     if (node.flag & NODE_ACTIVE) {
       UI_GetThemeColorShadeAlpha4fv(TH_ACTIVE, 0, -40, color);
     }
@@ -3012,7 +3012,7 @@ static void reroute_node_draw(
 
   /* Only draw input socket as they all are placed on the same position highlight
    * if node itself is selected, since we don't display the node body separately. */
-  node_draw_sockets(region.v2d, C, ntree, node, block, false, node.flag & SELECT);
+  node_draw_sockets(region.v2d, C, ntree, node, block, false, node.flag & NODE_ACTIVE);
 
   UI_block_end(&C, &block);
   UI_block_draw(&C, &block);
