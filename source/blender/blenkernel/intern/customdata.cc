@@ -3176,6 +3176,13 @@ void CustomData_free_layers(CustomData *data, const eCustomDataType type, const 
   }
 }
 
+bool CustomData_has_layer_named(const CustomData *data,
+                                const eCustomDataType type,
+                                const char *name)
+{
+  return CustomData_get_named_layer_index(data, type, name) != -1;
+}
+
 bool CustomData_has_layer(const CustomData *data, const eCustomDataType type)
 {
   return (CustomData_get_layer_index(data, type) != -1);
@@ -5179,9 +5186,6 @@ void CustomData_blend_write(BlendWriter *writer,
             writer, count, static_cast<const MDisps *>(layer.data), layer.flag & CD_FLAG_EXTERNAL);
         break;
       case CD_PAINT_MASK:
-        BLO_write_raw(writer, sizeof(float) * count, static_cast<const float *>(layer.data));
-        break;
-      case CD_SCULPT_FACE_SETS:
         BLO_write_raw(writer, sizeof(float) * count, static_cast<const float *>(layer.data));
         break;
       case CD_GRID_PAINT_MASK:

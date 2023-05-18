@@ -201,8 +201,10 @@ void blo_do_versions_oldnewmap_insert(struct OldNewMap *onm,
 /**
  * Only library data.
  */
-void *blo_do_versions_newlibadr(struct FileData *fd, const void *lib, const void *adr);
-void *blo_do_versions_newlibadr_us(struct FileData *fd, const void *lib, const void *adr);
+void *blo_do_versions_newlibadr(struct FileData *fd,
+                                ID *self_id,
+                                const bool is_linked_only,
+                                const void *adr);
 
 /**
  * \note this version patch is intended for versions < 2.52.2,
@@ -232,6 +234,7 @@ void do_versions_after_linking_270(struct Main *bmain);
 void do_versions_after_linking_280(struct FileData *fd, struct Main *bmain);
 void do_versions_after_linking_290(struct FileData *fd, struct Main *bmain);
 void do_versions_after_linking_300(struct FileData *fd, struct Main *bmain);
+void do_versions_after_linking_400(struct FileData *fd, struct Main *bmain);
 void do_versions_after_linking_cycles(struct Main *bmain);
 
 /**

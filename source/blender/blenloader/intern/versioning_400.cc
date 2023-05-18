@@ -25,6 +25,11 @@
 
 // static CLG_LogRef LOG = {"blo.readfile.doversion"};
 
+void do_versions_after_linking_400(FileData * /*fd*/, Main *bmain)
+{
+  UNUSED_VARS(bmain);
+}
+
 static void version_mesh_legacy_to_struct_of_array_format(Mesh &mesh)
 {
   BKE_mesh_legacy_convert_flags_to_selection_layers(&mesh);
@@ -51,13 +56,6 @@ static void version_motion_tracking_legacy_camera_object(MovieClip &movieclip)
   MovieTrackingObject *tracking_camera_object = BKE_tracking_object_get_camera(&tracking);
 
   BLI_assert(tracking_camera_object != nullptr);
-
-  /* NOTE: The regular .blend file saving converts the new format to the legacy format, but the
-   * auto-save one does not do this. Likely, the regular saving clears the new storage before
-   * write, so it can be used to make a decision here.
-   *
-   * The idea is basically to not override the new storage if it exists. This is only supposed to
-   * happen for auto-save files. */
 
   if (BLI_listbase_is_empty(&tracking_camera_object->tracks)) {
     tracking_camera_object->tracks = tracking.tracks_legacy;
@@ -92,15 +90,12 @@ static void version_movieclips_legacy_camera_object(Main *bmain)
 
 void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
 {
-  // if (!MAIN_VERSION_ATLEAST(bmain, 400, 0)) {
-  /* This is done here because we will continue to write with the old format until 4.0, so we need
-   * to convert even "current" files. Keep the check commented out for now so the versioning isn't
-   * turned off right after the 4.0 bump. */
-  LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
-    version_mesh_legacy_to_struct_of_array_format(*mesh);
+  if (!MAIN_VERSION_ATLEAST(bmain, 400, 1)) {
+    LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
+      version_mesh_legacy_to_struct_of_array_format(*mesh);
+    }
+    version_movieclips_legacy_camera_object(bmain);
   }
-  version_movieclips_legacy_camera_object(bmain);
-  // }
 
   /**
    * Versioning code until next subversion bump goes here.
