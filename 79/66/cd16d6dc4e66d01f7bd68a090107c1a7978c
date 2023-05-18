@@ -1,6 +1,6 @@
 Referenced by commit 11ba8c6ab4d7805c00371801db0af4a98b6abd46, Fix #106622: Various errors filling cone/cylinder primitive faces
 Referenced by issue #106671, [3.5] Mirror does not Mirror properly Data Transfer modifer, and ignores the Modifier Stack.
-Referenced by issue #106783, Regression: Recent MPoly refactor causes crash during FBX import
+Referenced by issue #106783, Regression: Recent MPoly refactor causes crash during FBX or 3DS import
 Referenced by issue #106780, Regression: In sculpt mode, remesh + undo 2 times, closes blender
 Referenced by commit 1a6cfa1ae1621b1498431a3d9c21932abd48549c, Fix: Incorrect mesh data used in mesh remap code
 Referenced by issue #106828, Regression: Geometry Nodes: Extrude Mesh node to faceless mesh causes crash
