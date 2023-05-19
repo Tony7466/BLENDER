@@ -1013,16 +1013,7 @@ inline IndexMask IndexMask::from_predicate(const IndexRange universe,
                                            IndexMaskMemory &memory,
                                            Fn &&predicate)
 {
-  BitVector bits(universe.size());
-  threading::parallel_for_aligned(
-      bits.index_range(), grain_size.value, bits::BitsPerInt, [&](const IndexRange range) {
-        for (const int64_t i : range) {
-          const int64_t index = universe[i];
-          const bool result = predicate(index);
-          bits[i].set(result);
-        }
-      });
-  return IndexMask::from_bits(bits, memory, universe.start());
+  return IndexMask::from_predicate(IndexMask(universe), grain_size, memory, predicate);
 }
 
 template<typename Fn>
