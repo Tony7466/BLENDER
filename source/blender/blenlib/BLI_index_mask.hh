@@ -171,6 +171,7 @@ class IndexMask {
   ChunkSlice chunk(const int64_t chunk_i) const;
 
   int64_t operator[](const int64_t i) const;
+  int64_t operator[](const RawMaskIterator &it) const;
 
   template<typename Fn> void foreach_span(Fn &&fn) const;
   template<typename Fn> void foreach_range(Fn &&fn) const;
@@ -577,12 +578,11 @@ inline RawMaskIterator IndexMask::index_to_iterator(const int64_t index) const
   BLI_assert(index >= 0);
   BLI_assert(index < data_.indices_num);
   RawMaskIterator it;
-  const int16_t begin_index = data_.chunks[0].iterator_to_index(data_.begin_it);
-  it.chunk_i = this->chunk_offsets().find_range_index(index + begin_index +
-                                                      data_.cumulative_chunk_sizes[0]);
+  const int64_t full_index = index + data_.chunks[0].iterator_to_index(data_.begin_it) +
+                             data_.cumulative_chunk_sizes[0];
+  it.chunk_i = this->chunk_offsets().find_range_index(full_index);
   const Chunk &chunk = data_.chunks[it.chunk_i];
-  it.chunk_it = chunk.index_to_iterator(index + begin_index -
-                                        data_.cumulative_chunk_sizes[it.chunk_i]);
+  it.chunk_it = chunk.index_to_iterator(full_index - data_.cumulative_chunk_sizes[it.chunk_i]);
   return it;
 }
 
@@ -590,8 +590,11 @@ inline int64_t IndexMask::iterator_to_index(const RawMaskIterator &it) const
 {
   BLI_assert(it.chunk_i >= 0);
   BLI_assert(it.chunk_i < data_.chunks_num);
-  const int16_t begin_index = data_.chunks[0].iterator_to_index(data_.begin_it);
-  return data_.cumulative_chunk_sizes[it.chunk_i] - data_.cumulative_chunk_sizes[0] - begin_index;
+  const Chunk &chunk = data_.chunks[it.chunk_i];
+  BLI_assert(chunk.cumulative_segment_sizes[0] == 0);
+  return it.chunk_it.index_in_segment + chunk.cumulative_segment_sizes[it.chunk_it.segment_i] +
+         data_.cumulative_chunk_sizes[it.chunk_i] - data_.cumulative_chunk_sizes[0] -
+         data_.chunks[0].iterator_to_index(data_.begin_it);
 }
 
 inline ChunkSlice IndexMask::chunk(const int64_t chunk_i) const
@@ -609,6 +612,11 @@ inline ChunkSlice IndexMask::chunk(const int64_t chunk_i) const
 inline int64_t IndexMask::operator[](const int64_t i) const
 {
   const RawMaskIterator it = this->index_to_iterator(i);
+  return (*this)[it];
+}
+
+inline int64_t IndexMask::operator[](const RawMaskIterator &it) const
+{
   return data_.chunks[it.chunk_i]
              .indices_by_segment[it.chunk_it.segment_i][it.chunk_it.index_in_segment] +
          (data_.chunk_ids[it.chunk_i] << chunk_size_shift);

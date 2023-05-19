@@ -2,6 +2,7 @@
 
 #include "BLI_array.hh"
 #include "BLI_index_mask.hh"
+#include "BLI_rand.hh"
 #include "BLI_strict_flags.h"
 #include "BLI_timeit.hh"
 
@@ -256,6 +257,43 @@ TEST(index_mask, FromPredicate)
     Vector<int64_t> new_indices(mask.size());
     mask.to_indices<int64_t>(new_indices);
     EXPECT_EQ(indices, new_indices);
+  }
+}
+
+TEST(index_mask, IndexIteratorConversion)
+{
+  RandomNumberGenerator rng;
+
+  Vector<int64_t> indices;
+  indices.append(5);
+  for ([[maybe_unused]] const int64_t i : IndexRange(1000)) {
+    for ([[maybe_unused]] const int64_t j :
+         IndexRange(indices.last() + rng.get_int32(1000), rng.get_int32(64)))
+    {
+      indices.append(j);
+    }
+  }
+
+  IndexMaskMemory memory;
+  const IndexMask mask = IndexMask::from_indices<int64_t>(indices, memory);
+
+  for ([[maybe_unused]] const int64_t _ : IndexRange(100)) {
+    const int64_t index = rng.get_int32(int(indices.size()));
+    const RawMaskIterator it = mask.index_to_iterator(index);
+    EXPECT_EQ(mask[it], indices[index]);
+    const int64_t new_index = mask.iterator_to_index(it);
+    EXPECT_EQ(index, new_index);
+  }
+
+  for ([[maybe_unused]] const int64_t _ : IndexRange(100)) {
+    const int64_t start = rng.get_int32(int(indices.size() - 1));
+    const int64_t size = 1 + rng.get_int32(int(indices.size() - start - 1));
+    const IndexMask sub_mask = mask.slice(start, size);
+    const int64_t index = rng.get_int32(int(sub_mask.size()));
+    const RawMaskIterator it = sub_mask.index_to_iterator(index);
+    EXPECT_EQ(sub_mask[it], indices[start + index]);
+    const int64_t new_index = sub_mask.iterator_to_index(it);
+    EXPECT_EQ(index, new_index);
   }
 }
 
