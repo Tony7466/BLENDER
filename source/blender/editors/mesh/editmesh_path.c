@@ -193,7 +193,7 @@ static void mouse_mesh_shortest_path_vert(Scene *UNUSED(scene),
 #endif
       break;
     case EDGE_MODE_TAG_CREASE:
-      cd_offset = CustomData_get_offset(&bm->edata, CD_CREASE);
+      cd_offset = CustomData_get_offset_named(&bm->edata, CD_PROP_FLOAT, "crease_edge");
       break;
     case EDGE_MODE_TAG_BEVEL:
       cd_offset = CustomData_get_offset_named(&bm->edata, CD_PROP_FLOAT, "bevel_weight_edge");
@@ -362,8 +362,8 @@ static void edgetag_ensure_cd_flag(Mesh *me, const char edge_mode)
 
   switch (edge_mode) {
     case EDGE_MODE_TAG_CREASE:
-      if (!CustomData_has_layer(&bm->edata, CD_CREASE)) {
-        BM_data_layer_add(bm, &bm->edata, CD_CREASE);
+      if (!CustomData_has_layer_named(&bm->edata, CD_PROP_FLOAT, "crease_edge")) {
+        BM_data_layer_add_named(bm, &bm->edata, CD_PROP_FLOAT, "crease_edge");
       }
       break;
     case EDGE_MODE_TAG_BEVEL:
@@ -405,7 +405,7 @@ static void mouse_mesh_shortest_path_edge(Scene *scene,
 #endif
       break;
     case EDGE_MODE_TAG_CREASE:
-      cd_offset = CustomData_get_offset(&bm->edata, CD_CREASE);
+      cd_offset = CustomData_get_offset_named(&bm->edata, CD_PROP_FLOAT, "crease_edge");
       break;
     case EDGE_MODE_TAG_BEVEL:
       cd_offset = CustomData_get_offset_named(&bm->edata, CD_PROP_FLOAT, "bevel_weight_edge");
@@ -558,7 +558,7 @@ static void mouse_mesh_shortest_path_face(Scene *UNUSED(scene),
 #endif
       break;
     case EDGE_MODE_TAG_CREASE:
-      cd_offset = CustomData_get_offset(&bm->edata, CD_CREASE);
+      cd_offset = CustomData_get_offset_named(&bm->edata, CD_PROP_FLOAT, "crease_edge");
       break;
     case EDGE_MODE_TAG_BEVEL:
       cd_offset = CustomData_get_offset_named(&bm->edata, CD_PROP_FLOAT, "bevel_weight_edge");

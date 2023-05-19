@@ -1406,6 +1406,56 @@ void BKE_mesh_legacy_edge_crease_to_layers(Mesh *mesh)
   }
 }
 
+void BKE_mesh_legacy_crease_to_generic(Mesh *mesh)
+{
+  using namespace blender;
+  if (!mesh->attributes().contains("crease_vert")) {
+    void *data = nullptr;
+    const ImplicitSharingInfo *sharing_info = nullptr;
+    for (const int i : IndexRange(mesh->vdata.totlayer)) {
+      CustomDataLayer &layer = mesh->vdata.layers[i];
+      if (layer.type == CD_CREASE) {
+        data = layer.data;
+        sharing_info = layer.sharing_info;
+        layer.data = nullptr;
+        layer.sharing_info = nullptr;
+        CustomData_free_layer(&mesh->vdata, CD_CREASE, mesh->totvert, i);
+        break;
+      }
+    }
+    if (data != nullptr) {
+      CustomData_add_layer_named_with_data(
+          &mesh->vdata, CD_PROP_FLOAT, data, mesh->totvert, "crease_vert", sharing_info);
+    }
+    if (sharing_info != nullptr) {
+      sharing_info->remove_user_and_delete_if_last();
+    }
+  }
+
+  if (!mesh->attributes().contains("crease_edge")) {
+    void *data = nullptr;
+    const ImplicitSharingInfo *sharing_info = nullptr;
+    for (const int i : IndexRange(mesh->edata.totlayer)) {
+      CustomDataLayer &layer = mesh->edata.layers[i];
+      if (layer.type == CD_CREASE) {
+        data = layer.data;
+        sharing_info = layer.sharing_info;
+        layer.data = nullptr;
+        layer.sharing_info = nullptr;
+        CustomData_free_layer(&mesh->edata, CD_CREASE, mesh->totedge, i);
+        break;
+      }
+    }
+    if (data != nullptr) {
+      CustomData_add_layer_named_with_data(
+          &mesh->edata, CD_PROP_FLOAT, data, mesh->totedge, "crease_edge", sharing_info);
+    }
+    if (sharing_info != nullptr) {
+      sharing_info->remove_user_and_delete_if_last();
+    }
+  }
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

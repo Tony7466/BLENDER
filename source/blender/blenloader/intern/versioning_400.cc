@@ -8,15 +8,19 @@
 
 #include "CLG_log.h"
 
+#include "DNA_modifier_types.h"
 #include "DNA_movieclip_types.h"
 
 #include "BLI_assert.h"
 #include "BLI_listbase.h"
 #include "BLI_set.hh"
+#include "BLI_string_ref.hh"
 
+#include "BKE_idprop.hh"
 #include "BKE_main.h"
 #include "BKE_mesh_legacy_convert.h"
 #include "BKE_node.hh"
+#include "BKE_node_runtime.hh"
 #include "BKE_tracking.h"
 
 #include "BLO_readfile.h"
@@ -125,6 +129,41 @@ void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+    LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
+      BKE_mesh_legacy_crease_to_generic(mesh);
+    }
+
+    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
+      if (ntree->type == NTREE_GEOMETRY) {
+        LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+          if (STR_ELEM(node->idname,
+                       "GeometryNodeStoreNamedAttribute",
+                       "GeometryNodeInputNamedAttribute")) {
+            bNodeSocket *socket = nodeFindSocket(node, SOCK_IN, "Name");
+            if (STREQ(socket->default_value_typed<bNodeSocketValueString>()->value, "crease")) {
+              STRNCPY(socket->default_value_typed<bNodeSocketValueString>()->value, "crease_edge");
+            }
+          }
+        }
+      }
+    }
+
+    LISTBASE_FOREACH (Object *, object, &bmain->objects) {
+      LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
+        if (md->type == eModifierType_Nodes) {
+          if (IDProperty *settings =
+                  reinterpret_cast<NodesModifierData *>(md)->settings.properties) {
+            LISTBASE_FOREACH (IDProperty *, prop, &settings->data.group) {
+              if (blender::StringRef(prop->name).endswith("_attribute_name")) {
+                if (STREQ(IDP_String(prop), "crease")) {
+                  IDP_AssignString(prop, "crease_edge");
+                }
+              }
+            }
+          }
+        }
+      }
+    }
 
     LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
       if (ntree->type == NTREE_GEOMETRY) {
