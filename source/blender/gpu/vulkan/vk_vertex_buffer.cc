@@ -47,6 +47,16 @@ void VKVertexBuffer::bind_as_texture(uint binding)
 
 void VKVertexBuffer::bind(uint binding)
 {
+  VKContext &context = *VKContext::get();
+  VKShader *shader = static_cast<VKShader *>(context.shader);
+  const VKShaderInterface &shader_interface = shader->interface_get();
+  const std::optional<VKDescriptorSet::Location> location =
+      shader_interface.descriptor_set_location(
+          shader::ShaderCreateInfo::Resource::BindType::SAMPLER, binding);
+  if (!location) {
+    return;
+  }
+
   upload_data();
 
   if (vk_buffer_view_ == VK_NULL_HANDLE) {
@@ -64,13 +74,6 @@ void VKVertexBuffer::bind(uint binding)
         device.device_get(), &buffer_view_info, vk_allocation_callbacks, &vk_buffer_view_);
   }
 
-  VKContext &context = *VKContext::get();
-  VKShader *shader = static_cast<VKShader *>(context.shader);
-  const VKShaderInterface &shader_interface = shader->interface_get();
-  const std::optional<VKDescriptorSet::Location> location =
-      shader_interface.descriptor_set_location(
-          shader::ShaderCreateInfo::Resource::BindType::SAMPLER, binding);
-  BLI_assert_msg(location, "Locations to Texel buffers should always exist.");
   shader->pipeline_get().descriptor_set_get().bind(*this, *location);
 }
 
