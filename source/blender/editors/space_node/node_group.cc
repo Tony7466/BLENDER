@@ -519,7 +519,7 @@ static bool node_group_separate_selected(
     }
 
     /* ensure valid parent pointers, detach if parent stays inside the group */
-    if (newnode->parent && !(newnode->parent->flag & NODE_SELECT)) {
+    if (newnode->parent && !(newnode->parent->is_selected())) {
       nodeDetachNode(&ngroup, newnode);
     }
 

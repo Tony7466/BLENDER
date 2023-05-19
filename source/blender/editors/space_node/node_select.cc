@@ -314,10 +314,10 @@ void node_select_paired(bNodeTree &node_tree)
   for (bNode *input_node : node_tree.nodes_by_type("GeometryNodeSimulationInput")) {
     const auto *storage = static_cast<const NodeGeometrySimulationInput *>(input_node->storage);
     if (bNode *output_node = node_tree.node_by_id(storage->output_node_id)) {
-      if (input_node->flag & NODE_SELECT) {
+      if (input_node->is_selected()) {
         output_node->flag |= NODE_SELECT;
       }
-      if (output_node->flag & NODE_SELECT) {
+      if (output_node->is_selected()) {
         input_node->flag |= NODE_SELECT;
       }
     }
@@ -328,7 +328,7 @@ VectorSet<bNode *> get_selected_nodes(bNodeTree &node_tree)
 {
   VectorSet<bNode *> selected_nodes;
   for (bNode *node : node_tree.all_nodes()) {
-    if (node->flag & NODE_SELECT) {
+    if (node->is_selected()) {
       selected_nodes.add(node);
     }
   }
@@ -619,10 +619,10 @@ static bool node_mouse_select(bContext *C,
     /* Find the closest visible node. */
     node = node_under_mouse_select(node_tree, cursor);
     found = (node != nullptr);
-    node_was_selected = node && (node->is_selected());
+    node_was_selected = node && node->is_selected();
 
     if (params->sel_op == SEL_OP_SET) {
-      if ((found && params->select_passthrough) && (node->is_selected())) {
+      if (found && params->select_passthrough && node->is_selected()) {
         found = false;
       }
       else if (found || params->deselect_all) {
@@ -642,7 +642,7 @@ static bool node_mouse_select(bContext *C,
           break;
         case SEL_OP_XOR: {
           /* Check active so clicking on an inactive node activates it. */
-          bool is_selected = (node->flag & NODE_SELECT) && (node->is_active());
+          bool is_selected = node->is_selected() && node->is_active();
           nodeSetSelected(node, !is_selected);
           break;
         }
@@ -1083,7 +1083,7 @@ void NODE_OT_select_lasso(wmOperatorType *ot)
 static bool any_node_selected(const bNodeTree &node_tree)
 {
   for (const bNode *node : node_tree.all_nodes()) {
-    if (node->flag & NODE_SELECT) {
+    if (node->is_selected()) {
       return true;
     }
   }

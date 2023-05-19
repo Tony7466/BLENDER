@@ -1498,7 +1498,7 @@ bool peelObjectsTransform(TransInfo *t,
 static bool snapNodeTest(View2D *v2d, bNode *node, eSnapTargetOP snap_target_select)
 {
   /* node is use for snapping only if a) snap mode matches and b) node is inside the view */
-  return (((snap_target_select & SCE_SNAP_TARGET_NOT_SELECTED) && !(node->flag & NODE_SELECT)) ||
+  return (((snap_target_select & SCE_SNAP_TARGET_NOT_SELECTED) && !(node->is_selected())) ||
           (snap_target_select == SCE_SNAP_TARGET_ALL && !(node->is_active()))) &&
          (node->runtime->totr.xmin < v2d->cur.xmax && node->runtime->totr.xmax > v2d->cur.xmin &&
           node->runtime->totr.ymin < v2d->cur.ymax && node->runtime->totr.ymax > v2d->cur.ymin);

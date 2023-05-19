@@ -646,7 +646,7 @@ inline bool bNode::is_group_output() const
 
 inline bool bNode::is_selected() const
 {
-  return this->flag & SELECT;
+  return this->flag & NODE_SELECT;
 }
 
 inline bool bNode::is_active() const

@@ -3811,6 +3811,19 @@ bNode *nodeGetActive(bNodeTree *ntree)
     return nullptr;
   }
 
+  BLI_assert([ntree]() -> bool {
+    int active_node_count = 0;
+    for (bNode *node : ntree->all_nodes()) {
+      if (node->is_active()) {
+        active_node_count++;
+      }
+    }
+    if (ELEM(active_node_count, 0, 1)) {
+      return true;
+    }
+    return false;
+  }());
+
   for (bNode *node : ntree->all_nodes()) {
     if (node->is_active()) {
       return node;

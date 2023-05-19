@@ -230,7 +230,7 @@ static bool compare_node_depth(const bNode *a, const bNode *b)
     if (parent->is_active()) {
       a_active = true;
     }
-    if (parent->flag & NODE_SELECT) {
+    if (parent->is_selected()) {
       a_select = true;
     }
   }
@@ -243,7 +243,7 @@ static bool compare_node_depth(const bNode *a, const bNode *b)
     if (parent->is_active()) {
       b_active = true;
     }
-    if (parent->flag & NODE_SELECT) {
+    if (parent->is_selected()) {
       b_select = true;
     }
   }
@@ -1425,7 +1425,7 @@ static void node_draw_shadow(const SpaceNode &snode,
 {
   const rctf &rct = node.runtime->totr;
   UI_draw_roundbox_corner_set(UI_CNR_ALL);
-  ui_draw_dropshadow(&rct, radius, snode.runtime->aspect, alpha, node.is_active());
+  ui_draw_dropshadow(&rct, radius, snode.runtime->aspect, alpha, node.is_selected());
 }
 
 static void node_draw_sockets(const View2D &v2d,
@@ -3024,7 +3024,6 @@ static void node_draw(const bContext &C,
     frame_node_draw(C, tree_draw_ctx, region, snode, ntree, node, block);
   }
   else if (node.is_reroute()) {
-    /* TODO: What a hell there?? */
     reroute_node_draw(C, region, ntree, node, block);
   }
   else {

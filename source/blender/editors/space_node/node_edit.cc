@@ -1295,6 +1295,8 @@ static int node_duplicate_exec(bContext *C, wmOperator *op)
   Map<const bNodeSocket *, bNodeSocket *> socket_map;
   Map<const ID *, ID *> duplicated_node_groups;
 
+  bNode *actibe_node = nodeGetActive(ntree);
+
   for (bNode *node : get_selected_nodes(*ntree)) {
     bNode *new_node = bke::node_copy_with_mapping(
         ntree, *node, LIB_ID_COPY_DEFAULT, true, socket_map);
@@ -1322,8 +1324,8 @@ static int node_duplicate_exec(bContext *C, wmOperator *op)
   LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
     /* This creates new links between copied nodes. If keep_inputs is set, also copies input links
      * from unselected (when fromnode is null)! */
-    if (link->tonode && (link->tonode->flag & NODE_SELECT) &&
-        (keep_inputs || (link->fromnode && (link->fromnode->flag & NODE_SELECT))))
+    if (link->tonode && (link->tonode->is_selected()) &&
+        (keep_inputs || (link->fromnode && (link->fromnode->is_selected()))))
     {
       bNodeLink *newlink = MEM_cnew<bNodeLink>("bNodeLink");
       newlink->flag = link->flag;
@@ -1334,7 +1336,7 @@ static int node_duplicate_exec(bContext *C, wmOperator *op)
         newlink->multi_input_socket_index = link->multi_input_socket_index;
       }
 
-      if (link->fromnode && (link->fromnode->flag & NODE_SELECT)) {
+      if (link->fromnode && (link->fromnode->is_selected())) {
         newlink->fromnode = node_map.lookup(link->fromnode);
         newlink->fromsock = socket_map.lookup(link->fromsock);
       }
@@ -1370,15 +1372,16 @@ static int node_duplicate_exec(bContext *C, wmOperator *op)
 
   remap_pairing(*ntree, node_map);
 
+  if (bNode *new_active_node = node_map.lookup_default(actibe_node, nullptr)) {
+    nodeSetActive(ntree, new_active_node);
+  }
+
   /* Deselect old nodes, select the copies instead. */
   for (const auto item : node_map.items()) {
     bNode *src_node = item.key;
     bNode *dst_node = item.value;
-    if (!src_node->is_selected()) {
-      continue;
-    }
-    nodeSetSelected(src_node, false);
     nodeSetSelected(dst_node, true);
+    nodeSetSelected(src_node, false);
     src_node->flag &= ~(NODE_ACTIVE_TEXTURE);
   }
 
@@ -1767,7 +1770,7 @@ static int node_mute_exec(bContext *C, wmOperator * /*op*/)
   ED_preview_kill_jobs(CTX_wm_manager(C), bmain);
 
   for (bNode *node : snode->edittree->all_nodes()) {
-    if ((node->is_selected()) && !node->typeinfo->no_muting) {
+    if (node->is_selected() && !node->typeinfo->no_muting) {
       node->flag ^= NODE_MUTED;
       BKE_ntree_update_tag_node_mute(snode->edittree, node);
     }
@@ -2124,7 +2127,7 @@ static int node_copy_color_exec(bContext *C, wmOperator * /*op*/)
   }
 
   for (bNode *node : ntree.all_nodes()) {
-    if (node->flag & NODE_SELECT && node != active_node) {
+    if (node->is_selected() && node != active_node) {
       if (active_node->flag & NODE_CUSTOM_COLOR) {
         node->flag |= NODE_CUSTOM_COLOR;
         copy_v3_v3(node->color, active_node->color);

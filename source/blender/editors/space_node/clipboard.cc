@@ -157,7 +157,7 @@ static int node_clipboard_copy_exec(bContext *C, wmOperator * /*op*/)
   LISTBASE_FOREACH (bNodeLink *, link, &tree.links) {
     BLI_assert(link->tonode);
     BLI_assert(link->fromnode);
-    if (link->tonode->flag & NODE_SELECT && link->fromnode->flag & NODE_SELECT) {
+    if (link->tonode->is_selected() && link->fromnode->is_selected()) {
       bNodeLink new_link{};
       new_link.flag = link->flag;
       new_link.tonode = node_map.lookup(link->tonode);

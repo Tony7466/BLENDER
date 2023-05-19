@@ -91,7 +91,7 @@ static void create_transform_data_for_node(TransData &td,
 static bool is_node_parent_select(const bNode *node)
 {
   while ((node = node->parent)) {
-    if (node->flag & NODE_SELECT) {
+    if (node->is_selected()) {
       return true;
     }
   }
@@ -292,7 +292,7 @@ static void special_aftertrans_update__node(bContext *C, TransInfo *t)
     /* remove selected nodes on cancel */
     if (ntree) {
       LISTBASE_FOREACH_MUTABLE (bNode *, node, &ntree->nodes) {
-        if (node->flag & NODE_SELECT) {
+        if (node->is_selected()) {
           nodeRemoveNode(bmain, ntree, node, true);
         }
       }

@@ -336,7 +336,7 @@ static void snode_autoconnect(SpaceNode &snode, const bool allow_multiple, const
   Vector<bNode *> sorted_nodes;
 
   for (bNode *node : ntree->all_nodes()) {
-    if (node->flag & NODE_SELECT) {
+    if (node->is_selected()) {
       sorted_nodes.append(node);
     }
   }
@@ -1763,7 +1763,7 @@ static int node_parent_set_exec(bContext *C, wmOperator * /*op*/)
     if (node == frame) {
       continue;
     }
-    if (node->flag & NODE_SELECT) {
+    if (node->is_selected()) {
       nodeDetachNode(&ntree, node);
       nodeAttachNode(&ntree, node, frame);
     }
@@ -1894,7 +1894,7 @@ static bNode *node_find_frame_to_attach(ARegion &region,
 
   LISTBASE_FOREACH_BACKWARD (bNode *, frame, &ntree.nodes) {
     /* skip selected, those are the nodes we want to attach */
-    if ((frame->type != NODE_FRAME) || (frame->flag & NODE_SELECT)) {
+    if ((frame->type != NODE_FRAME) || (frame->is_selected())) {
       continue;
     }
     if (BLI_rctf_isect_pt_v(&frame->runtime->totr, cursor)) {
@@ -1917,7 +1917,7 @@ static int node_attach_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *e
   }
 
   LISTBASE_FOREACH_BACKWARD (bNode *, node, &ntree.nodes) {
-    if (!(node->flag & NODE_SELECT)) {
+    if (!(node->is_selected())) {
       continue;
     }
 
@@ -1990,13 +1990,13 @@ static void node_detach_recursive(bNodeTree &ntree,
     if (detach_states[node->parent->index()].descendent) {
       detach_states[node->index()].descendent = true;
     }
-    else if (node->flag & NODE_SELECT) {
+    else if (node->is_selected()) {
       /* If parent is not a descendant of a selected node, detach. */
       nodeDetachNode(&ntree, node);
       detach_states[node->index()].descendent = true;
     }
   }
-  else if (node->flag & NODE_SELECT) {
+  else if (node->is_selected()) {
     detach_states[node->index()].descendent = true;
   }
 }
@@ -2453,7 +2453,7 @@ static void node_link_insert_offset_ntree(NodeInsertOfsData *iofsd,
     /* check nodes front to back */
     for (frame = (bNode *)ntree->nodes.last; frame; frame = frame->prev) {
       /* skip selected, those are the nodes we want to attach */
-      if ((frame->type != NODE_FRAME) || (frame->flag & NODE_SELECT)) {
+      if ((frame->type != NODE_FRAME) || (frame->is_selected())) {
         continue;
       }
 
