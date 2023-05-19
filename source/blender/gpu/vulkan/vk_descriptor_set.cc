@@ -58,6 +58,15 @@ void VKDescriptorSetTracker::bind_as_ssbo(VKVertexBuffer &buffer,
   binding.buffer_size = buffer.size_used_get();
 }
 
+void VKDescriptorSetTracker::bind_as_texture(VKVertexBuffer &buffer,
+                                             const VKDescriptorSet::Location location)
+{
+  Binding &binding = ensure_location(location);
+  binding.type = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+  binding.vk_buffer = buffer.vk_handle();
+  binding.buffer_size = buffer.size_used_get();
+}
+
 void VKDescriptorSetTracker::bind(VKUniformBuffer &buffer,
                                   const VKDescriptorSet::Location location)
 {
@@ -115,6 +124,7 @@ void VKDescriptorSetTracker::update(VKContext &context)
   tracked_resource_for(context, !bindings_.is_empty());
   std::unique_ptr<VKDescriptorSet> &descriptor_set = active_descriptor_set();
   VkDescriptorSet vk_descriptor_set = descriptor_set->vk_handle();
+  BLI_assert(vk_descriptor_set != VK_NULL_HANDLE);
 
   Vector<VkDescriptorBufferInfo> buffer_infos;
   Vector<VkWriteDescriptorSet> descriptor_writes;

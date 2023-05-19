@@ -83,12 +83,14 @@ class VKDescriptorSet : NonCopyable {
   VKDescriptorSet(VkDescriptorPool vk_descriptor_pool, VkDescriptorSet vk_descriptor_set)
       : vk_descriptor_pool_(vk_descriptor_pool), vk_descriptor_set_(vk_descriptor_set)
   {
+    BLI_assert(vk_descriptor_set_ != VK_NULL_HANDLE);
   }
   VKDescriptorSet(VKDescriptorSet &&other);
   virtual ~VKDescriptorSet();
 
   VKDescriptorSet &operator=(VKDescriptorSet &&other)
   {
+    BLI_assert(other.vk_descriptor_set_ != VK_NULL_HANDLE);
     vk_descriptor_set_ = other.vk_descriptor_set_;
     vk_descriptor_pool_ = other.vk_descriptor_pool_;
     other.mark_freed();
@@ -154,6 +156,7 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
   VKDescriptorSetTracker(VkDescriptorSetLayout layout) : layout_(layout) {}
 
   void bind_as_ssbo(VKVertexBuffer &buffer, VKDescriptorSet::Location location);
+  void bind_as_texture(VKVertexBuffer &buffer, VKDescriptorSet::Location location);
   void bind_as_ssbo(VKIndexBuffer &buffer, VKDescriptorSet::Location location);
   void bind(VKStorageBuffer &buffer, VKDescriptorSet::Location location);
   void bind(VKUniformBuffer &buffer, VKDescriptorSet::Location location);

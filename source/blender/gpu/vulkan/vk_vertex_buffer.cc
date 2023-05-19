@@ -35,9 +35,20 @@ void VKVertexBuffer::bind_as_ssbo(uint binding)
   shader->pipeline_get().descriptor_set_get().bind_as_ssbo(*this, *location);
 }
 
-void VKVertexBuffer::bind_as_texture(uint /*binding*/)
+void VKVertexBuffer::bind_as_texture(uint binding)
 {
-  NOT_YET_IMPLEMENTED
+  if (!buffer_.is_allocated()) {
+    allocate();
+  }
+
+  VKContext &context = *VKContext::get();
+  VKShader *shader = static_cast<VKShader *>(context.shader);
+  const VKShaderInterface &shader_interface = shader->interface_get();
+  const std::optional<VKDescriptorSet::Location> location =
+      shader_interface.descriptor_set_location(
+          shader::ShaderCreateInfo::Resource::BindType::SAMPLER, binding);
+  BLI_assert_msg(location, "Locations to texel buffers should always exist.");
+  shader->pipeline_get().descriptor_set_get().bind_as_texture(*this, *location);
 }
 
 void VKVertexBuffer::wrap_handle(uint64_t /*handle*/)
