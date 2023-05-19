@@ -2240,43 +2240,6 @@ static void version_fix_image_format_copy(Main *bmain, ImageFormatData *format)
   }
 }
 
-/** Change the RNA path of a library override on a property.
- *
- * No-op if the property override cannot be found.
- *
- * \param from_rna_path The RNA path of the property to change.
- * \param to_rna_path The new RNA path. This should be allocated on the heap, and ownership will be
- * transferred to the library override system.
- */
-static void version_liboverride_rnapath_change(IDOverrideLibrary *liboverride,
-                                               const char *from_rna_path,
-                                               char *to_rna_path)
-{
-  IDOverrideLibraryProperty *op;
-  op = BKE_lib_override_library_property_find(liboverride, from_rna_path);
-
-  if (op == nullptr) {
-    return;
-  }
-
-  MEM_SAFE_FREE(op->rna_path);
-  op->rna_path = to_rna_path;
-}
-
-/** Delete the property override, if it exists.
- *
- * No-op if the property voerride cannot be found.
- */
-static void version_liboverride_property_delete(IDOverrideLibrary *liboverride,
-                                                const char *rna_path)
-{
-  IDOverrideLibraryProperty *op = BKE_lib_override_library_property_find(liboverride, rna_path);
-  if (op == nullptr) {
-    return;
-  }
-  BKE_lib_override_library_property_delete(liboverride, op);
-}
-
 /**
  * Some editors would manually manage visibility of regions, or lazy create them based on
  * context. Ensure they are always there now, and use the new #ARegionType.poll().
@@ -2364,41 +2327,39 @@ static void version_liboverride_nla_strip_frame_start_end(IDOverrideLibrary *lib
     return;
   }
 
+  /* Escape the strip name for inclusion in the RNA path. */
   char name_esc_strip[sizeof(strip->name) * 2];
   BLI_str_escape(name_esc_strip, strip->name, sizeof(name_esc_strip));
 
-  /* 11 chars extra for '.strips[""]', 16 for '.frame_start_ui' + terminating null. */
-  const int strip_rna_path_len = strlen(parent_rna_path) + strlen(name_esc_strip) + 11;
-  const int strlen_max = strip_rna_path_len + 16;
+  const std::string rna_path_strip = std::string(parent_rna_path) + ".strips[\"" + name_esc_strip +
+                                     "\"]";
 
-  char *rna_path = new char[strlen_max];
-  snprintf(rna_path, strlen_max, "%s.strips[\"%s\"]", parent_rna_path, name_esc_strip);
-
-  /* `rna_path` contains the strip RNA path. Later some properties will be appended to it. But
-   * before we modify it further, first use it as parent path for meta-strips. */
-  LISTBASE_FOREACH (NlaStrip *, substrip, &strip->strips) {
-    version_liboverride_nla_strip_frame_start_end(liboverride, rna_path, substrip);
+  { /* Rename .frame_start -> .frame_start_raw: */
+    const std::string rna_path_prop = rna_path_strip + ".frame_start";
+    BKE_lib_override_library_property_rna_path_change(
+        liboverride, rna_path_prop.c_str(), (rna_path_prop + "_raw").c_str());
   }
 
-  char *rna_path_at_property_name = rna_path + strip_rna_path_len;
+  { /* Rename .frame_end -> .frame_end_raw: */
+    const std::string rna_path_prop = rna_path_strip + ".frame_end";
+    BKE_lib_override_library_property_rna_path_change(
+        liboverride, rna_path_prop.c_str(), (rna_path_prop + "_raw").c_str());
+  }
 
-  /* .frame_start -> .frame_start_raw */
-  strcpy(rna_path_at_property_name, ".frame_start");
-  version_liboverride_rnapath_change(liboverride, rna_path, BLI_sprintfN("%s_raw", rna_path));
+  { /* Remove .frame_start_ui: */
+    const std::string rna_path_prop = rna_path_strip + ".frame_start_ui";
+    BKE_lib_override_library_property_search_and_delete(liboverride, rna_path_prop.c_str());
+  }
 
-  /* .frame_end -> .frame_end_raw */
-  strcpy(rna_path_at_property_name, ".frame_end");
-  version_liboverride_rnapath_change(liboverride, rna_path, BLI_sprintfN("%s_raw", rna_path));
+  { /* Remove .frame_end_ui: */
+    const std::string rna_path_prop = rna_path_strip + ".frame_end_ui";
+    BKE_lib_override_library_property_search_and_delete(liboverride, rna_path_prop.c_str());
+  }
 
-  /* remove .frame_start_ui */
-  strcpy(rna_path_at_property_name, ".frame_start_ui");
-  version_liboverride_property_delete(liboverride, rna_path);
-
-  /* remove .frame_end_ui */
-  strcpy(rna_path_at_property_name, ".frame_end_ui");
-  version_liboverride_property_delete(liboverride, rna_path);
-
-  delete[] rna_path;
+  /* Handle meta-strip contents. */
+  LISTBASE_FOREACH (NlaStrip *, substrip, &strip->strips) {
+    version_liboverride_nla_strip_frame_start_end(liboverride, rna_path_strip.c_str(), substrip);
+  }
 }
 
 /** Fix the `frame_start` and `frame_end` overrides on NLA strips. See #102662. */

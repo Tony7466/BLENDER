@@ -787,7 +787,7 @@ static void rna_def_nlastrip(BlenderRNA *brna)
   RNA_def_property_update(
       prop, NC_ANIMATION | ND_NLA | NA_EDITED, "rna_NlaStrip_transform_update");
   /* The `..._ui` properties should NOT be considered for library overrides, as they are meant to
-   * have different behaviour when setting their non-`..._ui` counterparts. */
+   * have different behavior than when setting their non-`..._ui` counterparts. */
   RNA_def_property_override_flag(prop, PROPOVERRIDE_NO_COMPARISON);
 
   prop = RNA_def_property(srna, "frame_end_ui", PROP_FLOAT, PROP_TIME);
@@ -802,7 +802,7 @@ static void rna_def_nlastrip(BlenderRNA *brna)
   RNA_def_property_update(
       prop, NC_ANIMATION | ND_NLA | NA_EDITED, "rna_NlaStrip_transform_update");
   /* The `..._ui` properties should NOT be considered for library overrides, as they are meant to
-   * have different behaviour when setting their non-`..._ui` counterparts. */
+   * have different behavior than when setting their non-`..._ui` counterparts. */
   RNA_def_property_override_flag(prop, PROPOVERRIDE_NO_COMPARISON);
 
   /* Blending */
