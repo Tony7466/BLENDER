@@ -2750,7 +2750,7 @@ NODE_DEFINE(PrincipledBsdfNode)
   NodeType *type = NodeType::add("principled_bsdf", create, NodeType::SHADER);
 
   static NodeEnum distribution_enum;
-  distribution_enum.insert("GGX", CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID);
+  distribution_enum.insert("ggx", CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID);
   distribution_enum.insert("multi_ggx", CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
   SOCKET_ENUM(
       distribution, "Distribution", distribution_enum, CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);

@@ -698,23 +698,43 @@ ccl_device int bsdf_microfacet_sample(ccl_private const ShaderClosure *sc,
 /* Fresnel term setup functions. These get called after the distribution-specific setup functions
  * like bsdf_microfacet_ggx_setup. */
 
-ccl_device void bsdf_microfacet_setup_fresnel_conductor(ccl_private MicrofacetBsdf *bsdf,
+ccl_device void bsdf_microfacet_setup_fresnel_conductor(KernelGlobals kg,
+                                                        ccl_private MicrofacetBsdf *bsdf,
                                                         ccl_private const ShaderData *sd,
-                                                        ccl_private FresnelConductor *fresnel)
+                                                        ccl_private FresnelConductor *fresnel,
+                                                        const bool preserve_energy)
 {
   bsdf->fresnel_type = MicrofacetFresnel::CONDUCTOR;
   bsdf->fresnel = fresnel;
   bsdf->sample_weight *= average(bsdf_microfacet_estimate_fresnel(sd, bsdf));
+
+  if (preserve_energy) {
+    /* In order to estimate Fss of the conductor, we fit the F82-tint model to it based on the
+     * value at 0° and ~82° and then use the analytic expression for its Fss. */
+    Spectrum F0 = fresnel_conductor(1.0f, fresnel->n, fresnel->k);
+    Spectrum F82 = fresnel_conductor(1.0f / 7.0f, fresnel->n, fresnel->k);
+    /* 0.46266436f is (1 - 1/7)^5, 17.651384f is 1/(1/7 * (1 - 1/7)^6) */
+    Spectrum B = (mix(F0, one_spectrum(), 0.46266436f) - F82) * 17.651384f;
+    Spectrum Fss = saturate(mix(F0, one_spectrum(), 1.0f / 21.0f) - B * (1.0f / 126.0f));
+    microfacet_ggx_preserve_energy(kg, bsdf, sd, Fss);
+  }
 }
 
 ccl_device void bsdf_microfacet_setup_fresnel_dielectric_tint(
+    KernelGlobals kg,
     ccl_private MicrofacetBsdf *bsdf,
     ccl_private const ShaderData *sd,
-    ccl_private FresnelDielectricTint *fresnel)
+    ccl_private FresnelDielectricTint *fresnel,
+    const bool preserve_energy)
 {
   bsdf->fresnel_type = MicrofacetFresnel::DIELECTRIC_TINT;
   bsdf->fresnel = fresnel;
   bsdf->sample_weight *= average(bsdf_microfacet_estimate_fresnel(sd, bsdf));
+
+  if (preserve_energy) {
+    /* Assume that the transmissive tint makes up most of the overall color. */
+    microfacet_ggx_preserve_energy(kg, bsdf, sd, fresnel->transmission_tint);
+  }
 }
 
 ccl_device void bsdf_microfacet_setup_fresnel_generalized_schlick(
@@ -727,6 +747,7 @@ ccl_device void bsdf_microfacet_setup_fresnel_generalized_schlick(
   bsdf->fresnel_type = MicrofacetFresnel::GENERALIZED_SCHLICK;
   bsdf->fresnel = fresnel;
   bsdf->sample_weight *= average(bsdf_microfacet_estimate_fresnel(sd, bsdf));
+
   if (preserve_energy) {
     Spectrum Fss = one_spectrum();
     /* Multi-bounce Fresnel is only supported for reflective lobes here. */
@@ -755,6 +776,11 @@ ccl_device void bsdf_microfacet_setup_fresnel_generalized_schlick(
       /* Due to the linearity of the generalized model, this ends up working. */
       Fss = fresnel->reflection_tint * mix(fresnel->f0, fresnel->f90, s);
     }
+    else {
+      /* For transmissive BSDFs, assume that the transmissive tint makes up most of the overall
+       * color. */
+      Fss = fresnel->transmission_tint;
+    }
 
     microfacet_ggx_preserve_energy(kg, bsdf, sd, Fss);
   }
@@ -767,7 +793,8 @@ ccl_device void bsdf_microfacet_setup_fresnel_constant(KernelGlobals kg,
 {
   /* Constant Fresnel is a special case - the color is already baked into the closure's
    * weight, so we just need to perform the energy preservation. */
-  kernel_assert(bsdf->fresnel_type == MicrofacetFresnel::NONE);
+  kernel_assert(bsdf->fresnel_type == MicrofacetFresnel::NONE ||
+                bsdf->fresnel_type == MicrofacetFresnel::DIELECTRIC);
 
   microfacet_ggx_preserve_energy(kg, bsdf, sd, color);
 }
