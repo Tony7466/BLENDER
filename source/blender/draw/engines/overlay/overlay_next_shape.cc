@@ -626,7 +626,7 @@ static const Vector<Vertex> &groundline_verts()
   return verts;
 }
 
-static const Vector<Vertex> &light_icon_inner_lines_verts()
+static const Vector<Vertex> &light_icon_inner_verts()
 {
   static Vector<Vertex> verts;
   if (!verts.is_empty()) {
@@ -640,7 +640,7 @@ static const Vector<Vertex> &light_icon_inner_lines_verts()
   return verts;
 }
 
-static const Vector<Vertex> &light_icon_outer_lines_verts()
+static const Vector<Vertex> &light_icon_outer_verts()
 {
   static Vector<Vertex> verts;
   if (!verts.is_empty()) {
@@ -676,7 +676,7 @@ static const Vector<Vertex> &light_icon_sun_rays_verts()
   return verts;
 }
 
-static const Vector<Vertex> &light_point_lines_verts()
+static const Vector<Vertex> &light_point_verts()
 {
   static Vector<Vertex> verts;
   if (!verts.is_empty()) {
@@ -689,7 +689,7 @@ static const Vector<Vertex> &light_point_lines_verts()
   return verts;
 }
 
-static const Vector<Vertex> &light_sun_lines_verts()
+static const Vector<Vertex> &light_sun_verts()
 {
   static Vector<Vertex> verts;
   if (!verts.is_empty()) {
@@ -702,7 +702,7 @@ static const Vector<Vertex> &light_sun_lines_verts()
   return verts;
 }
 
-static const Vector<Vertex> &light_spot_lines_verts()
+static const Vector<Vertex> &light_spot_verts()
 {
   static Vector<Vertex> verts;
   if (!verts.is_empty()) {
@@ -738,7 +738,7 @@ static const Vector<Vertex> &light_spot_lines_verts()
   return verts;
 }
 
-static const Vector<Vertex> &light_spot_volume_verts()
+static const Vector<Vertex> &light_spot_cone_verts()
 {
   static Vector<Vertex> verts;
   if (!verts.is_empty()) {
@@ -758,7 +758,7 @@ static const Vector<Vertex> &light_spot_volume_verts()
   return verts;
 }
 
-static const Vector<Vertex> &light_area_disk_lines_verts()
+static const Vector<Vertex> &light_area_disk_verts()
 {
   static Vector<Vertex> verts;
   if (!verts.is_empty()) {
@@ -779,7 +779,7 @@ static const Vector<Vertex> &light_area_disk_lines_verts()
   return verts;
 }
 
-static const Vector<Vertex> &light_area_square_lines_verts()
+static const Vector<Vertex> &light_area_square_verts()
 {
   static Vector<Vertex> verts;
   if (!verts.is_empty()) {
@@ -1228,15 +1228,15 @@ ShapeCache::ShapeCache()
   speaker = batch_ptr(speaker_verts());
 
   groundline = batch_ptr(groundline_verts());
-  light_icon_inner_lines = batch_ptr(light_icon_inner_lines_verts());
-  light_icon_outer_lines = batch_ptr(light_icon_outer_lines_verts());
+  light_icon_inner = batch_ptr(light_icon_inner_verts());
+  light_icon_outer = batch_ptr(light_icon_outer_verts());
   light_icon_sun_rays = batch_ptr(light_icon_sun_rays_verts());
-  light_point_lines = batch_ptr(light_point_lines_verts());
-  light_sun_lines = batch_ptr(light_sun_lines_verts());
-  light_spot_lines = batch_ptr(light_spot_lines_verts());
-  light_spot_volume = batch_ptr(light_spot_volume_verts());
-  light_area_disk_lines = batch_ptr(light_area_disk_lines_verts());
-  light_area_square_lines = batch_ptr(light_area_square_lines_verts());
+  light_point = batch_ptr(light_point_verts());
+  light_sun = batch_ptr(light_sun_verts());
+  light_spot = batch_ptr(light_spot_verts());
+  light_spot_cone = batch_ptr(light_spot_cone_verts());
+  light_area_disk = batch_ptr(light_area_disk_verts());
+  light_area_square = batch_ptr(light_area_square_verts());
 
   probe_cube = batch_ptr(probe_cube_verts());
   probe_grid = batch_ptr(probe_grid_verts());

@@ -12,7 +12,7 @@ namespace blender::draw::overlay {
 
 ShaderModule *ShaderModule::g_shader_modules[2][2] = {{nullptr}};
 
-ShaderModule::ShaderPtr ShaderModule::selectable_shader(const char *create_info_name)
+ShaderPtr ShaderModule::selectable_shader(const char *create_info_name)
 {
   /* TODO: This is what it should be like with all variations defined with create infos. */
   // std::string create_info_name = base_create_info;
@@ -32,7 +32,7 @@ ShaderModule::ShaderPtr ShaderModule::selectable_shader(const char *create_info_
       GPU_shader_create_from_info(reinterpret_cast<const GPUShaderCreateInfo *>(&info)));
 }
 
-ShaderModule::ShaderPtr ShaderModule::selectable_shader(
+ShaderPtr ShaderModule::selectable_shader(
     const char *create_info_name, std::function<void(gpu::shader::ShaderCreateInfo &info)> patch)
 {
   gpu::shader::ShaderCreateInfo info = *reinterpret_cast<const gpu::shader::ShaderCreateInfo *>(

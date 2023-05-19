@@ -21,42 +21,168 @@ class Extras {
     InstanceBuf(const char *name,
                 GPUBatch *shape,
                 const SelectionType selection_type,
-                Vector<InstanceBuf *> &vector)
+                Vector<InstanceBuf *> &pass_vector)
         : ShapeInstanceBuf<ExtraInstanceData>(selection_type, name), shape(shape)
     {
-      vector.append(this);
+      pass_vector.append(this);
     };
   };
 
-  struct InstanceBuffers {
+  class InstanceBuffers {
+    enum PassType {
+      DEFAULT = 0,
+      DEFAULT_ALWAYS,
+      BLEND_CULL_FRONT,
+      BLEND_CULL_BACK,
+      GROUNDLINE,
+      WIRE,
+      WIRE_OB,
+      POINT,
+      LOOSE_POINT,
+      CENTER,
+      MAX
+    };
+
+   private:
     const SelectionType selection_type;
     const ShapeCache &shapes;
 
-    Vector<InstanceBuf *> vector;
+    Vector<InstanceBuf *> pass_buffers[PassType::MAX] = {{}};
 
+   public:
     InstanceBuffers(SelectionType selection_type, const ShapeCache &shapes)
         : selection_type(selection_type), shapes(shapes){};
 
-    InstanceBuf plain_axes = make_buf("plain_axes", shapes.plain_axes);
-    InstanceBuf single_arrow = make_buf("single_arrow", shapes.single_arrow);
-    InstanceBuf arrows = make_buf("arrows", shapes.arrows);
-    InstanceBuf image = make_buf("image", shapes.quad_wire);
-    InstanceBuf circle = make_buf("circle", shapes.circle);
-    InstanceBuf cube = make_buf("cube", shapes.empty_cube);
-    InstanceBuf sphere = make_buf("sphere", shapes.empty_sphere);
-    InstanceBuf cone = make_buf("cone", shapes.empty_cone);
-    InstanceBuf cylinder = make_buf("cylinder", shapes.empty_cylinder);
-    InstanceBuf capsule_body = make_buf("capsule_body", shapes.empty_capsule_body);
-    InstanceBuf capsule_cap = make_buf("capsule_cap", shapes.empty_capsule_cap);
-    InstanceBuf quad = make_buf("quad", shapes.quad);
-    InstanceBuf speaker = make_buf("speaker", shapes.speaker);
-    InstanceBuf probe_cube = make_buf("probe_cube", shapes.probe_cube);
-    InstanceBuf probe_grid = make_buf("probe_grid", shapes.probe_grid);
-    InstanceBuf probe_planar = make_buf("probe_planar", shapes.probe_planar);
+    InstanceBuf plain_axes = make_buf("plain_axes", shapes.plain_axes, DEFAULT);
+    InstanceBuf single_arrow = make_buf("single_arrow", shapes.single_arrow, DEFAULT);
+    InstanceBuf arrows = make_buf("arrows", shapes.arrows, DEFAULT);
+    InstanceBuf image = make_buf("image", shapes.quad_wire, DEFAULT);
+    InstanceBuf circle = make_buf("circle", shapes.circle, DEFAULT);
+    InstanceBuf cube = make_buf("cube", shapes.empty_cube, DEFAULT);
+    InstanceBuf sphere = make_buf("sphere", shapes.empty_sphere, DEFAULT);
+    InstanceBuf cone = make_buf("cone", shapes.empty_cone, DEFAULT);
+    InstanceBuf cylinder = make_buf("cylinder", shapes.empty_cylinder, DEFAULT);
+    InstanceBuf capsule_body = make_buf("capsule_body", shapes.empty_capsule_body, DEFAULT);
+    InstanceBuf capsule_cap = make_buf("capsule_cap", shapes.empty_capsule_cap, DEFAULT);
+
+    InstanceBuf quad = make_buf("quad", shapes.quad, DEFAULT);
+
+    InstanceBuf speaker = make_buf("speaker", shapes.speaker, DEFAULT);
+
+    InstanceBuf groundline = make_buf("groundline", shapes.groundline, GROUNDLINE);
+    InstanceBuf light_icon_inner = make_buf("light_icon_inner", shapes.light_icon_inner, DEFAULT);
+    InstanceBuf light_icon_outer = make_buf("light_icon_outer", shapes.light_icon_outer, DEFAULT);
+    InstanceBuf light_icon_sun_rays = make_buf(
+        "light_icon_sun_rays", shapes.light_icon_sun_rays, DEFAULT);
+    InstanceBuf light_point = make_buf("light_point", shapes.light_point, DEFAULT);
+    InstanceBuf light_sun = make_buf("light_sun", shapes.light_sun, DEFAULT);
+    InstanceBuf light_spot = make_buf("light_spot", shapes.light_spot, DEFAULT);
+    InstanceBuf light_spot_cone_back = make_buf(
+        "light_spot_cone_back", shapes.light_spot_cone, BLEND_CULL_BACK);
+    InstanceBuf light_spot_cone_front = make_buf(
+        "light_spot_cone_front", shapes.light_spot_cone, BLEND_CULL_FRONT);
+    InstanceBuf light_area_disk = make_buf("light_area_disk", shapes.light_area_disk, DEFAULT);
+    InstanceBuf light_area_square = make_buf(
+        "light_area_square", shapes.light_area_square, DEFAULT);
+
+    InstanceBuf probe_cube = make_buf("probe_cube", shapes.probe_cube, DEFAULT);
+    InstanceBuf probe_grid = make_buf("probe_grid", shapes.probe_grid, DEFAULT);
+    InstanceBuf probe_planar = make_buf("probe_planar", shapes.probe_planar, DEFAULT);
+
+    InstanceBuf camera_volume = make_buf("camera_volume", shapes.camera_volume, BLEND_CULL_BACK);
+    InstanceBuf camera_volume_wire = make_buf(
+        "camera_volume_wire", shapes.camera_volume_wire, BLEND_CULL_BACK);
+    InstanceBuf camera_frame = make_buf("camera_frame", shapes.camera_frame, DEFAULT);
+    InstanceBuf camera_distances = make_buf("camera_distances", shapes.camera_distances, DEFAULT);
+    InstanceBuf camera_tria_wire = make_buf("camera_tria_wire", shapes.camera_tria_wire, DEFAULT);
+    InstanceBuf camera_tria = make_buf("camera_tria", shapes.camera_tria, DEFAULT);
+
+    InstanceBuf field_wind = make_buf("field_wind", shapes.field_wind, DEFAULT);
+    InstanceBuf field_force = make_buf("field_force", shapes.field_force, DEFAULT);
+    InstanceBuf field_vortex = make_buf("field_vortex", shapes.field_vortex, DEFAULT);
+    InstanceBuf field_curve = make_buf("field_curve", shapes.field_curve, DEFAULT);
+    InstanceBuf field_tube_limit = make_buf("field_tube_limit", shapes.field_tube_limit, DEFAULT);
+    InstanceBuf field_cone_limit = make_buf("field_cone_limit", shapes.field_cone_limit, DEFAULT);
+    InstanceBuf field_sphere_limit = make_buf(
+        "field_sphere_limit", shapes.field_sphere_limit, DEFAULT);
+
+    InstanceBuf origin_xform = make_buf("origin_xform", shapes.plain_axes, DEFAULT_ALWAYS);
+
+    /* TODO
+    InstanceBuf dashed_lines = make_buf("dashed_lines", nullptr, WIRE);
+    InstanceBuf lines = make_buf("lines", nullptr, WIRE);
+
+    InstanceBuf wires = make_buf("wires", nullptr, WIRE_OB);
+
+    InstanceBuf loose_points = make_buf("loose_points", nullptr, LOOSE_POINTS);
+
+    InstanceBuf points = make_buf("points", nullptr, POINTS);
+
+    InstanceBuf center_active = make_buf("center_active", nullptr, CENTER);
+    InstanceBuf center_selected = make_buf("center_selected", nullptr, CENTER);
+    InstanceBuf center_deselected = make_buf("center_deselected", nullptr, CENTER);
+    InstanceBuf center_selected_lib = make_buf("center_selected_lib", nullptr, CENTER);
+    InstanceBuf center_deselected_lib = make_buf("center_deselected_lib", nullptr, CENTER);
+    */
+
+    void begin_sync()
+    {
+      for (Vector<InstanceBuf *> &vector : pass_buffers) {
+        for (InstanceBuf *buf : vector) {
+          buf->clear();
+        }
+      }
+    }
+
+    void end_sync(PassSimple &pass, Resources &res, const State &state)
+    {
+      pass.init();
+      res.select_bind(pass);
+
+      auto sub_pass = [&](const char *name, PassType type, ShaderPtr &shader, DRWState drw_state) {
+        if (shader == nullptr) {
+          /*TODO*/
+          return;
+        }
+        PassSimple::Sub &ps = pass.sub(name);
+        ps.state_set(drw_state);
+        ps.shader_set(shader.get());
+        /* TODO: Fixed index. */
+        ps.bind_ubo("globalsBlock", &res.globals_buf);
+        for (InstanceBuf *buf : pass_buffers[type]) {
+          buf->end_sync(ps, buf->shape);
+        }
+      };
+
+      DRWState state_base = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | state.clipping_state;
+      DRWState state_default = state_base | DRW_STATE_DEPTH_LESS_EQUAL;
+      DRWState state_blend = state_default | DRW_STATE_BLEND_ALPHA;
+
+      sub_pass("Default", DEFAULT, res.shaders.extra_shape, state_default);
+      sub_pass("Default Always",
+               DEFAULT_ALWAYS,
+               res.shaders.extra_shape,
+               state_base | DRW_STATE_DEPTH_ALWAYS);
+      sub_pass("Blend Cull Back",
+               BLEND_CULL_BACK,
+               res.shaders.extra_shape,
+               state_blend | DRW_STATE_CULL_BACK);
+      sub_pass("Blend Cull Front",
+               BLEND_CULL_FRONT,
+               res.shaders.extra_shape,
+               state_blend | DRW_STATE_CULL_FRONT);
+      sub_pass("GroundLine", GROUNDLINE, res.shaders.extra_groundline, state_blend);
+      sub_pass("Wire", WIRE, res.shaders.extra_wire, state_default);
+      sub_pass("Wire Object", WIRE_OB, res.shaders.extra_wire_object, state_default);
+      sub_pass("Point", POINT, res.shaders.extra_point, state_default);
+      sub_pass("Loose Point", LOOSE_POINT, res.shaders.extra_loose_point, state_default);
+      sub_pass("Center", CENTER, res.shaders.extra_point, state_blend);
+    }
 
    private:
-    InstanceBuf make_buf(const char *name, const ShapeCache::BatchPtr &shape_ptr)
+    InstanceBuf make_buf(const char *name, const BatchPtr &shape_ptr, PassType pass_type = DEFAULT)
     {
+      Vector<InstanceBuf *> &vector = pass_buffers[pass_type];
       return {name, shape_ptr.get(), selection_type, vector};
     };
   };
@@ -76,11 +202,8 @@ class Extras {
 
   void begin_sync()
   {
-    for (InstanceBuffers &bufs : buffers_) {
-      for (InstanceBuf *buf : bufs.vector) {
-        buf->clear();
-      }
-    }
+    buffers_[0].begin_sync();
+    buffers_[1].begin_sync();
   }
 
   void object_sync(const ObjectRef &ob_ref, Resources &res, const State &state)
@@ -183,9 +306,7 @@ class Extras {
         collision_sync(bufs, ob_ref, data, select_id);
       }
       if (ob->dtx & OB_AXIS) {
-        /* TODO
-        DRW_buffer_add_entry(cb->empty_axes, color, ob->object_to_world);
-        */
+        bufs.arrows.append(data, select_id);
       }
       /* TODO
       if (draw_volume) {
@@ -197,20 +318,8 @@ class Extras {
 
   void end_sync(Resources &res, const State &state)
   {
-    auto init_pass = [&](PassSimple &pass, InstanceBuffers &bufs) {
-      pass.init();
-      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
-                     state.clipping_state);
-      pass.shader_set(res.shaders.extra_shape.get());
-      pass.bind_ubo("globalsBlock", &res.globals_buf);
-      res.select_bind(pass);
-
-      for (InstanceBuf *buf : bufs.vector) {
-        buf->end_sync(pass, buf->shape);
-      }
-    };
-    init_pass(empty_ps_, buffers_[0]);
-    init_pass(empty_in_front_ps_, buffers_[1]);
+    buffers_[0].end_sync(empty_ps_, res, state);
+    buffers_[1].end_sync(empty_in_front_ps_, res, state);
   }
 
   void draw(Resources &res, Manager &manager, View &view)

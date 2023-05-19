@@ -118,11 +118,8 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
   }
 
   if (!state.hide_overlays) {
+    extras.object_sync(ob_ref, resources, state);
     switch (ob_ref.object->type) {
-      case OB_EMPTY:
-      case OB_LIGHTPROBE:
-      case OB_SPEAKER:
-        break;
       case OB_ARMATURE:
         break;
       case OB_MBALL:
@@ -133,7 +130,6 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
       case OB_GPENCIL_LEGACY:
         break;
     }
-    extras.object_sync(ob_ref, resources, state);
   }
 }
 

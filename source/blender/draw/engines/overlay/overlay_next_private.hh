@@ -55,21 +55,19 @@ struct State {
   DRWState clipping_state;
 };
 
+struct BatchDeleter {
+  void operator()(GPUBatch *shader)
+  {
+    GPU_BATCH_DISCARD_SAFE(shader);
+  }
+};
+using BatchPtr = std::unique_ptr<GPUBatch, BatchDeleter>;
+
 /**
  * Contains all overlay generic geometry batches.
  */
 class ShapeCache {
- private:
-  struct BatchDeleter {
-    void operator()(GPUBatch *shader)
-    {
-      GPU_BATCH_DISCARD_SAFE(shader);
-    }
-  };
-
  public:
-  using BatchPtr = std::unique_ptr<GPUBatch, BatchDeleter>;
-
   // GPUBatch *drw_normal_arrow; /* Single Arrow? */
   BatchPtr plain_axes;
   BatchPtr single_arrow;
@@ -91,23 +89,23 @@ class ShapeCache {
   BatchPtr speaker;
 
   BatchPtr groundline;
-  BatchPtr light_icon_inner_lines;
-  BatchPtr light_icon_outer_lines;
+  BatchPtr light_icon_inner;
+  BatchPtr light_icon_outer;
   BatchPtr light_icon_sun_rays;
-  BatchPtr light_point_lines;
-  BatchPtr light_sun_lines;
-  BatchPtr light_spot_lines;
-  BatchPtr light_spot_volume;
-  BatchPtr light_area_disk_lines;
-  BatchPtr light_area_square_lines;
+  BatchPtr light_point;
+  BatchPtr light_sun;
+  BatchPtr light_spot;
+  BatchPtr light_spot_cone;
+  BatchPtr light_area_disk;
+  BatchPtr light_area_square;
 
   BatchPtr probe_cube;
   BatchPtr probe_grid;
   BatchPtr probe_planar;
 
-  BatchPtr camera_frame;
   BatchPtr camera_volume;
   BatchPtr camera_volume_wire;
+  BatchPtr camera_frame;
   BatchPtr camera_tria_wire;
   BatchPtr camera_tria;
   BatchPtr camera_distances;
@@ -123,19 +121,20 @@ class ShapeCache {
   ShapeCache();
 };
 
+struct ShaderDeleter {
+  void operator()(GPUShader *shader)
+  {
+    DRW_SHADER_FREE_SAFE(shader);
+  }
+};
+
+using ShaderPtr = std::unique_ptr<GPUShader, ShaderDeleter>;
+
 /**
  * Shader module. Shared between instances.
  */
 class ShaderModule {
  private:
-  struct ShaderDeleter {
-    void operator()(GPUShader *shader)
-    {
-      DRW_SHADER_FREE_SAFE(shader);
-    }
-  };
-  using ShaderPtr = std::unique_ptr<GPUShader, ShaderDeleter>;
-
   /** Shared shader module across all engine instances. */
   static ShaderModule *g_shader_modules[2 /*Selection Instance*/][2 /*Clipping Enabled*/];
 
@@ -154,6 +153,13 @@ class ShaderModule {
   ShaderPtr armature_sphere_outline;
   ShaderPtr depth_mesh;
   ShaderPtr extra_shape;
+
+  /* TODO */
+  ShaderPtr extra_groundline;
+  ShaderPtr extra_wire;
+  ShaderPtr extra_wire_object;
+  ShaderPtr extra_point;
+  ShaderPtr extra_loose_point;
 
   ShaderModule(const SelectionType selection_type, const bool clipping_enabled);
 
@@ -294,7 +300,7 @@ template<typename InstanceDataT> struct ShapeInstanceBuf : private select::Selec
     data_buf.append(data);
   }
 
-  void end_sync(PassSimple &pass, GPUBatch *shape)
+  void end_sync(PassSimple::Sub &pass, GPUBatch *shape)
   {
     if (data_buf.size() == 0) {
       return;
