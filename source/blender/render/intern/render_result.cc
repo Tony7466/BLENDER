@@ -1178,39 +1178,12 @@ RenderResult *RE_DuplicateRenderResult(RenderResult *rr)
  * Render buffer.
  */
 
-/* An #ImplicitSharingInfo that knows how to free the referenced render rpass data. */
-class PassImplicitSharing : public blender::ImplicitSharingInfo {
- private:
-  const void *data_;
-
- public:
-  explicit PassImplicitSharing(const void *data) : ImplicitSharingInfo(), data_(data) {}
-
- private:
-  void delete_self_with_data() override
-  {
-    MEM_freeN(const_cast<void *>(data_));
-    MEM_delete(this);
-  }
-
-  void delete_data_only() override
-  {
-    MEM_freeN(const_cast<void *>(data_));
-    data_ = nullptr;
-  }
-};
-
-static const blender::ImplicitSharingInfo *make_implicit_sharing_info_for_pass(const void *data)
-{
-  return MEM_new<PassImplicitSharing>(__func__, data);
-}
-
 template<class BufferType> static BufferType render_buffer_new(decltype(BufferType::data) data)
 {
   BufferType buffer;
 
   buffer.data = data;
-  buffer.sharing_info = make_implicit_sharing_info_for_pass(data);
+  buffer.sharing_info = blender::implicit_sharing::info_for_mem_free(data);
 
   return buffer;
 }
@@ -1222,10 +1195,7 @@ template<class BufferType> static void render_buffer_data_free(BufferType *rende
     return;
   }
 
-  render_buffer->sharing_info->remove_user_and_delete_if_last();
-
-  render_buffer->data = nullptr;
-  render_buffer->sharing_info = nullptr;
+  blender::implicit_sharing::free_shared_data(&render_buffer->data, &render_buffer->sharing_info);
 }
 
 template<class BufferType>
@@ -1240,26 +1210,17 @@ static void render_buffer_assign_data(BufferType *render_buffer, decltype(Buffer
   }
 
   render_buffer->data = data;
-  render_buffer->sharing_info = make_implicit_sharing_info_for_pass(data);
+  render_buffer->sharing_info = blender::implicit_sharing::info_for_mem_free(data);
 }
 
 template<class BufferType>
 static void render_buffer_assign_shared(BufferType *lhs, const BufferType *rhs)
 {
-  if (lhs->sharing_info) {
-    lhs->sharing_info->remove_user_and_delete_if_last();
-    lhs->sharing_info = nullptr;
-  }
+  render_buffer_data_free(lhs);
 
   if (rhs) {
-    *lhs = *rhs;
-  }
-  else {
-    lhs->data = nullptr;
-  }
-
-  if (lhs->sharing_info) {
-    lhs->sharing_info->add_user();
+    blender::implicit_sharing::copy_shared_pointer(
+        rhs->data, rhs->sharing_info, &lhs->data, &lhs->sharing_info);
   }
 }
 

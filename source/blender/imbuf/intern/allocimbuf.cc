@@ -67,7 +67,7 @@ void imb_mmap_unlock(void)
 template<class BufferType> static void imb_free_buffer(BufferType &buffer)
 {
   if (buffer.implicit_sharing) {
-    buffer.implicit_sharing->remove_user_and_delete_if_last();
+    blender::implicit_sharing::free_shared_data(&buffer.data, &buffer.implicit_sharing);
   }
   else if (buffer.data) {
     switch (buffer.ownership) {
@@ -167,15 +167,16 @@ void imb_assign_shared_buffer(BufferType &buffer,
   if (implicit_sharing) {
     BLI_assert(buffer_data != nullptr);
 
-    implicit_sharing->add_user();
+    blender::implicit_sharing::copy_shared_pointer(
+        buffer_data, implicit_sharing, &buffer.data, &buffer.implicit_sharing);
   }
   else {
     BLI_assert(buffer_data == nullptr);
+    buffer.data = nullptr;
+    buffer.implicit_sharing = nullptr;
   }
 
-  buffer.data = buffer_data;
   buffer.ownership = IB_DO_NOT_TAKE_OWNERSHIP;
-  buffer.implicit_sharing = implicit_sharing;
 }
 
 void imb_freemipmapImBuf(ImBuf *ibuf)
