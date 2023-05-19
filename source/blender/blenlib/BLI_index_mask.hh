@@ -581,7 +581,8 @@ inline RawMaskIterator IndexMask::index_to_iterator(const int64_t index) const
   it.chunk_i = this->chunk_offsets().find_range_index(index + begin_index +
                                                       data_.cumulative_chunk_sizes[0]);
   const Chunk &chunk = data_.chunks[it.chunk_i];
-  it.chunk_it = chunk.index_to_iterator((index + begin_index) & chunk_mask_low);
+  it.chunk_it = chunk.index_to_iterator(index + begin_index -
+                                        data_.cumulative_chunk_sizes[it.chunk_i]);
   return it;
 }
 

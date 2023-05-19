@@ -235,4 +235,28 @@ TEST(index_mask, FromRange)
   test_range({688064, 64});
 }
 
+TEST(index_mask, FromPredicate)
+{
+  IndexMaskMemory memory;
+  {
+    const IndexRange range{20'000, 50'000};
+    const IndexMask mask = IndexMask::from_predicate(
+        IndexRange(100'000), GrainSize(1024), memory, [&](const int64_t i) {
+          return range.contains(i);
+        });
+    EXPECT_EQ(mask.to_range(), range);
+  }
+  {
+    const Vector<int64_t> indices = {0, 500, 20'000, 50'000};
+    const IndexMask mask = IndexMask::from_predicate(
+        IndexRange(100'000), GrainSize(1024), memory, [&](const int64_t i) {
+          return indices.contains(i);
+        });
+    EXPECT_EQ(mask.size(), indices.size());
+    Vector<int64_t> new_indices(mask.size());
+    mask.to_indices<int64_t>(new_indices);
+    EXPECT_EQ(indices, new_indices);
+  }
+}
+
 }  // namespace blender::index_mask::tests

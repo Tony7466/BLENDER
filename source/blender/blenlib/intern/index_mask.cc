@@ -875,9 +875,10 @@ IndexMask IndexMask::from_predicate_impl(
   UNUSED_VARS(grain_size);
 
   const int64_t universe_chunks_num = universe.data_.chunks_num;
-  Vector<Chunk> chunks;
-  Vector<int64_t> chunk_ids;
-  for (const int64_t chunk_i : IndexRange(universe_chunks_num)) {
+  Vector<Chunk> chunks(universe_chunks_num);
+  Vector<int64_t> chunk_ids(universe_chunks_num);
+
+  const auto process_chunk = [&](const int64_t chunk_i, LinearAllocator<> &allocator) {
     const int64_t chunk_id = universe.data_.chunk_ids[chunk_i];
     const int64_t chunk_offset = chunk_id << chunk_size_shift;
     const ChunkSlice universe_chunk = universe.chunk(chunk_i);
@@ -889,24 +890,49 @@ IndexMask IndexMask::from_predicate_impl(
                                     indices_ptr);
     });
     const int16_t indices_num = int16_t(indices_ptr - indices_array.data());
+
+    Chunk &chunk = chunks[chunk_i];
+
     if (indices_num == 0) {
-      continue;
+      /* This chunk still has to be removed because it's empty. */
+      chunk.segments_num = 0;
+      chunk_ids[chunk_i] = -1;
+      return;
     }
 
-    MutableSpan<int16_t> indices = memory.construct_array_copy<int16_t>(
-        {indices_array.data(), indices_num});
-    MutableSpan<int16_t> cumulative_segment_sizes = memory.construct_array_copy<int16_t>(
-        {0, indices_num});
-    MutableSpan<const int16_t *> indices_by_segment = memory.construct_array_copy<const int16_t *>(
-        {indices.data()});
+    chunk_ids[chunk_i] = chunk_id;
 
-    Chunk chunk;
+    MutableSpan<int16_t> indices = allocator.construct_array_copy<int16_t>(
+        {indices_array.data(), indices_num});
+    MutableSpan<int16_t> cumulative_segment_sizes = allocator.construct_array_copy<int16_t>(
+        {0, indices_num});
+    MutableSpan<const int16_t *> indices_by_segment =
+        allocator.construct_array_copy<const int16_t *>({indices.data()});
+
     chunk.segments_num = 1;
     chunk.cumulative_segment_sizes = cumulative_segment_sizes.data();
     chunk.indices_by_segment = indices_by_segment.data();
-    chunks.append(chunk);
-    chunk_ids.append(chunk_id);
+  };
+
+  if (universe_chunks_num > 1) {
+    threading::EnumerableThreadSpecific<LinearAllocator<>> allocators;
+    threading::parallel_for(
+        IndexRange(universe_chunks_num), 1, [&](const IndexRange chunks_range) {
+          LinearAllocator<> &allocator = allocators.local();
+          for (const int64_t chunk_i : chunks_range) {
+            process_chunk(chunk_i, allocator);
+          }
+        });
+    for (LinearAllocator<> &allocator : allocators) {
+      memory.give_ownership_of_buffers_in(allocator);
+    }
   }
+  else {
+    process_chunk(0, memory);
+  }
+
+  chunks.remove_if([&](const Chunk &chunk) { return chunk.segments_num == 0; });
+  chunk_ids.remove_if([&](const int64_t chunk_id) { return chunk_id == -1; });
 
   const int64_t chunks_num = chunks.size();
   if (chunks_num == 0) {
