@@ -2095,7 +2095,6 @@ static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
   rctf extra_info_rect;
 
   const float width = (node.width - 6.0f) * UI_SCALE_FAC;
-  const float preview_height = preview ? width * preview->ysize / preview->xsize : 0;
 
   if (node.is_frame()) {
     extra_info_rect.xmin = rct.xmin;
@@ -2107,8 +2106,7 @@ static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
     extra_info_rect.xmin = rct.xmin + 3.0f * UI_SCALE_FAC;
     extra_info_rect.xmax = rct.xmin + width;
     extra_info_rect.ymin = rct.ymax;
-    extra_info_rect.ymax = rct.ymax + extra_info_rows.size() * (20.0f * UI_SCALE_FAC) +
-                           preview_height;
+    extra_info_rect.ymax = rct.ymax + extra_info_rows.size() * (20.0f * UI_SCALE_FAC);
 
     if (node.flag & NODE_MUTED) {
       UI_GetThemeColorBlend4f(TH_BACK, TH_NODE, 0.2f, color);
@@ -2128,7 +2126,7 @@ static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
     extra_info_rect.xmax = rct.xmin + width + outline_width;
     extra_info_rect.ymin = rct.ymax - outline_width;
     extra_info_rect.ymax = rct.ymax + outline_width +
-                           extra_info_rows.size() * (20.0f * UI_SCALE_FAC) + preview_height;
+                           extra_info_rows.size() * (20.0f * UI_SCALE_FAC);
 
     UI_GetThemeColorBlendShade4fv(TH_BACK, TH_NODE, 0.4f, -20, color);
     UI_draw_roundbox_corner_set(
@@ -2140,14 +2138,14 @@ static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
   for (int row : extra_info_rows.index_range()) {
     node_draw_extra_info_row(node, block, extra_info_rect, row, extra_info_rows[row]);
   }
+
   if (preview) {
     rctf preview_rect;
-    preview_rect.ymax = extra_info_rect.ymax;
-    preview_rect.ymin = preview_rect.ymax - preview_height;
-    preview_rect.xmin = extra_info_rect.xmin + BASIS_RAD;
-    preview_rect.xmax = extra_info_rect.xmax - BASIS_RAD;
-    preview_rect.ymin += BASIS_RAD;
-    preview_rect.ymax -= BASIS_RAD;
+    const float preview_height = width * preview->ysize / preview->xsize;
+    preview_rect.ymax = extra_info_rect.ymax + preview_height;
+    preview_rect.ymin = extra_info_rect.ymax;
+    preview_rect.xmin = extra_info_rect.xmin;
+    preview_rect.xmax = extra_info_rect.xmax;
     node_draw_preview(preview, &preview_rect);
   }
 }
@@ -2182,11 +2180,11 @@ static void node_draw_basis(const bContext &C,
 
   bNodeInstanceHash *previews =
       (bNodeInstanceHash *)CTX_data_pointer_get(&C, "node_previews").data;
-  bNodePreview *preview = NULL;
+  bNodePreview *preview = nullptr;
   if (node.flag & NODE_PREVIEW && previews) {
     preview = (bNodePreview *)BKE_node_instance_hash_lookup(previews, key);
     if (!preview || !(preview->xsize && preview->ysize)) {
-      preview = NULL;
+      preview = nullptr;
     }
   }
 
@@ -2497,7 +2495,7 @@ static void node_draw_hidden(const bContext &C,
 
   const int color_id = node_get_colorid(tree_draw_ctx, node);
 
-  node_draw_extra_info_panel(tree_draw_ctx, snode, node, NULL, block);
+  node_draw_extra_info_panel(tree_draw_ctx, snode, node, nullptr, block);
 
   /* Shadow. */
   node_draw_shadow(snode, node, hiddenrad, 1.0f);
@@ -2983,7 +2981,7 @@ static void frame_node_draw(const bContext &C,
   /* Label and text. */
   frame_node_draw_label(tree_draw_ctx, ntree, node, snode);
 
-  node_draw_extra_info_panel(tree_draw_ctx, snode, node, NULL, block);
+  node_draw_extra_info_panel(tree_draw_ctx, snode, node, nullptr, block);
 
   UI_block_end(&C, &block);
   UI_block_draw(&C, &block);
