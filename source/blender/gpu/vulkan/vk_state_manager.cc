@@ -22,12 +22,10 @@ VKStateManager::VKStateManager()
   constexpr int max_bindings = 16;
   image_bindings_ = Array<ImageBinding>(max_bindings);
   image_bindings_.fill(ImageBinding());
-  texture_bindings_ = Array<ImageBinding>(max_bindings);
-  texture_bindings_.fill(ImageBinding());
+  texture_bindings_ = Array<TextureBinding>(max_bindings);
+  texture_bindings_.fill(TextureBinding());
   uniform_buffer_bindings_ = Array<UniformBufferBinding>(max_bindings);
   uniform_buffer_bindings_.fill(UniformBufferBinding());
-  uniform_texel_buffer_bindings_ = Array<UniformTexelBufferBinding>(max_bindings);
-  uniform_texel_buffer_bindings_.fill(UniformTexelBufferBinding());
 }
 
 void VKStateManager::apply_state()
@@ -45,32 +43,25 @@ void VKStateManager::apply_bindings()
   VKContext &context = *VKContext::get();
   if (context.shader) {
     for (int binding : IndexRange(image_bindings_.size())) {
-      if (image_bindings_[binding].texture == nullptr) {
-        continue;
+      if (image_bindings_[binding].texture) {
+        image_bindings_[binding].texture->image_bind(binding);
       }
-      image_bindings_[binding].texture->image_bind(binding);
     }
 
     for (int binding : IndexRange(texture_bindings_.size())) {
-      if (texture_bindings_[binding].texture == nullptr) {
-        continue;
+      if (texture_bindings_[binding].texture) {
+        texture_bindings_[binding].texture->bind(binding, sampler_);
       }
-      texture_bindings_[binding].texture->bind(binding, sampler_);
-    }
-
-    for (int binding : IndexRange(uniform_texel_buffer_bindings_.size())) {
-      if (uniform_texel_buffer_bindings_[binding].vertex_buffer == nullptr) {
-        continue;
+      else if (texture_bindings_[binding].vertex_buffer) {
+        texture_bindings_[binding].vertex_buffer->bind(binding);
       }
-      uniform_texel_buffer_bindings_[binding].vertex_buffer->bind(binding);
     }
 
     for (int binding : IndexRange(uniform_buffer_bindings_.size())) {
-      if (uniform_buffer_bindings_[binding].buffer == nullptr) {
-        continue;
+      if (uniform_buffer_bindings_[binding].buffer) {
+        uniform_buffer_bindings_[binding].buffer->bind(
+            binding, shader::ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER);
       }
-      uniform_buffer_bindings_[binding].buffer->bind(
-          binding, shader::ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER);
     }
   }
 }
@@ -97,12 +88,13 @@ void VKStateManager::texture_bind(Texture *tex, GPUSamplerState /*sampler*/, int
 {
   VKTexture *texture = unwrap(tex);
   texture_bindings_[unit].texture = texture;
+  texture_bindings_[unit].vertex_buffer = nullptr;
 }
 
 void VKStateManager::texture_unbind(Texture *tex)
 {
   VKTexture *texture = unwrap(tex);
-  for (ImageBinding &binding : texture_bindings_) {
+  for (TextureBinding &binding : texture_bindings_) {
     if (binding.texture == texture) {
       binding.texture = nullptr;
     }
@@ -111,10 +103,8 @@ void VKStateManager::texture_unbind(Texture *tex)
 
 void VKStateManager::texture_unbind_all()
 {
-  for (ImageBinding &binding : texture_bindings_) {
-    if (binding.texture != nullptr) {
-      binding.texture = nullptr;
-    }
+  for (TextureBinding &binding : texture_bindings_) {
+    binding.texture = nullptr;
   }
 }
 
@@ -136,10 +126,8 @@ void VKStateManager::image_unbind(Texture *tex)
 
 void VKStateManager::image_unbind_all()
 {
-  for (ImageBinding &binding : texture_bindings_) {
-    if (binding.texture != nullptr) {
-      binding.texture = nullptr;
-    }
+  for (ImageBinding &binding : image_bindings_) {
+    binding.texture = nullptr;
   }
 }
 
@@ -159,14 +147,16 @@ void VKStateManager::uniform_buffer_unbind(VKUniformBuffer *uniform_buffer)
 
 void VKStateManager::texel_buffer_bind(VKVertexBuffer *vertex_buffer, int slot)
 {
-  uniform_texel_buffer_bindings_[slot].vertex_buffer = vertex_buffer;
+  texture_bindings_[slot].vertex_buffer = vertex_buffer;
+  texture_bindings_[slot].texture = nullptr;
 }
 
 void VKStateManager::texel_buffer_unbind(VKVertexBuffer *vertex_buffer)
 {
-  for (UniformTexelBufferBinding &binding : uniform_texel_buffer_bindings_) {
+  for (TextureBinding &binding : texture_bindings_) {
     if (binding.vertex_buffer == vertex_buffer) {
       binding.vertex_buffer = nullptr;
+      binding.texture = nullptr;
     }
   }
 }

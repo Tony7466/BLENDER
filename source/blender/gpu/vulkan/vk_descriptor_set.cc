@@ -153,11 +153,6 @@ void VKDescriptorSetTracker::update(VKContext &context)
     if (!binding.is_texel_buffer()) {
       continue;
     }
-    VkDescriptorBufferInfo buffer_info = {};
-    buffer_info.buffer = binding.vk_buffer;
-    buffer_info.range = binding.buffer_size;
-    buffer_infos.append(buffer_info);
-
     VkWriteDescriptorSet write_descriptor = {};
     write_descriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     write_descriptor.dstSet = vk_descriptor_set;
@@ -192,9 +187,6 @@ void VKDescriptorSetTracker::update(VKContext &context)
     descriptor_writes.append(write_descriptor);
   }
 
-  BLI_assert_msg(image_infos.size() + buffer_infos.size() == descriptor_writes.size(),
-                 "Not all changes have been converted to a write descriptor. Check "
-                 "`Binding::is_buffer` and `Binding::is_image`.");
   const VKDevice &device = VKBackend::get().device_get();
   vkUpdateDescriptorSets(
       device.device_get(), descriptor_writes.size(), descriptor_writes.data(), 0, nullptr);

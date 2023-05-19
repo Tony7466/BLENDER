@@ -24,19 +24,20 @@ class VKStateManager : public StateManager {
 
   uint texture_unpack_row_length_ = 0;
 
+  struct TextureBinding {
+    VKTexture *texture = nullptr;
+    /* bufferTextures and samplers share the same namespace. */
+    VKVertexBuffer *vertex_buffer = nullptr;
+  };
   struct ImageBinding {
     VKTexture *texture = nullptr;
   };
   struct UniformBufferBinding {
     VKUniformBuffer *buffer = nullptr;
   };
-  struct UniformTexelBufferBinding {
-    VKVertexBuffer *vertex_buffer = nullptr;
-  };
   Array<ImageBinding> image_bindings_;
-  Array<ImageBinding> texture_bindings_;
+  Array<TextureBinding> texture_bindings_;
   Array<UniformBufferBinding> uniform_buffer_bindings_;
-  Array<UniformTexelBufferBinding> uniform_texel_buffer_bindings_;
 
  public:
   VKStateManager();
