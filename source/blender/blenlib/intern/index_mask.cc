@@ -214,8 +214,66 @@ int64_t split_to_ranges_and_spans(const Span<T> indices,
   return r_segments.size() - old_segments_num;
 }
 
-template<typename T> IndexMask to_index_mask(const Span<T> indices, IndexMaskMemory &memory)
+template<typename T> static void from_set(const Set<T> &set, MutableSpan<T> span)
 {
+  int64_t i = 0;
+  for (const T value : set) {
+    span[i] = value;
+    i++;
+  }
+  std::sort(span.begin(), span.end());
+}
+
+}  // namespace unique_sorted_indices
+
+void IndexMask::foreach_span_impl(const FunctionRef<void(OffsetSpan<int64_t, int16_t>)> fn) const
+{
+  this->foreach_span_template([fn](const int64_t chunk_id, const Span<int16_t> indices) {
+    fn(OffsetSpan<int64_t, int16_t>(chunk_id << chunk_size_shift, indices));
+  });
+}
+
+IndexMask IndexMask::slice_and_offset(const IndexRange range, IndexMaskMemory &memory) const
+{
+  return this->slice_and_offset(range.start(), range.size(), memory);
+}
+
+IndexMask IndexMask::slice_and_offset(const int64_t start,
+                                      const int64_t size,
+                                      IndexMaskMemory &memory) const
+{
+  if (size == 0) {
+    return {};
+  }
+  if (this->to_range().has_value()) {
+    return IndexMask(size);
+  }
+  const IndexMask sliced_mask = this->slice(start, size);
+  const int64_t offset = sliced_mask.first();
+  if (offset == 0) {
+    return sliced_mask;
+  }
+  if (sliced_mask.to_range().has_value()) {
+    return IndexMask(size);
+  }
+  const int64_t range_size = sliced_mask.last() - sliced_mask.first() + 1;
+  BitVector bits(range_size);
+  sliced_mask.to_bits(bits, offset);
+  return IndexMask::from_bits(bits, memory);
+}
+
+IndexMask IndexMask::complement(const IndexRange universe, IndexMaskMemory &memory) const
+{
+  const AtomicExpr atomic_expr{*this};
+  const ComplementExpr complement_expr{atomic_expr};
+  return IndexMask::from_expr(complement_expr, universe, memory);
+}
+
+template<typename T>
+IndexMask IndexMask::from_indices(const Span<T> indices, IndexMaskMemory &memory)
+{
+  using namespace unique_sorted_indices;
+
   if (indices.is_empty()) {
     return {};
   }
@@ -374,100 +432,15 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, IndexMaskMem
   return mask;
 }
 
-template<typename T> void from_index_mask(const IndexMask &mask, MutableSpan<T> r_indices)
-{
-  BLI_assert(mask.size() == r_indices.size());
-  int64_t current_i = 0;
-  mask.foreach_index([&](const int64_t index) mutable {
-    r_indices[current_i] = T(index);
-    current_i++;
-  });
-}
-
-template<typename T> static void from_set(const Set<T> &set, MutableSpan<T> span)
-{
-  int64_t i = 0;
-  for (const T value : set) {
-    span[i] = value;
-    i++;
-  }
-  std::sort(span.begin(), span.end());
-}
-
-}  // namespace unique_sorted_indices
-
-void IndexMask::foreach_span_impl(const FunctionRef<void(OffsetSpan<int64_t, int16_t>)> fn) const
-{
-  this->foreach_span_template([fn](const int64_t chunk_id, const Span<int16_t> indices) {
-    fn(OffsetSpan<int64_t, int16_t>(chunk_id << chunk_size_shift, indices));
-  });
-}
-
-IndexMask IndexMask::slice_and_offset(const IndexRange range, IndexMaskMemory &memory) const
-{
-  return this->slice_and_offset(range.start(), range.size(), memory);
-}
-
-IndexMask IndexMask::slice_and_offset(const int64_t start,
-                                      const int64_t size,
-                                      IndexMaskMemory &memory) const
-{
-  if (size == 0) {
-    return {};
-  }
-  if (this->to_range().has_value()) {
-    return IndexMask(size);
-  }
-  const IndexMask sliced_mask = this->slice(start, size);
-  const int64_t offset = sliced_mask.first();
-  if (offset == 0) {
-    return sliced_mask;
-  }
-  if (sliced_mask.to_range().has_value()) {
-    return IndexMask(size);
-  }
-  const int64_t range_size = sliced_mask.last() - sliced_mask.first() + 1;
-  BitVector bits(range_size);
-  sliced_mask.to_bits(bits, offset);
-  return IndexMask::from_bits(bits, memory);
-}
-
-IndexMask IndexMask::complement(const IndexRange universe, IndexMaskMemory &memory) const
-{
-  const AtomicExpr atomic_expr{*this};
-  const ComplementExpr complement_expr{atomic_expr};
-  return IndexMask::from_expr(complement_expr, universe, memory);
-}
-
-static IndexMask bits_to_index_mask(const BitSpan bits,
-                                    const int64_t start,
-                                    IndexMaskMemory &memory)
+IndexMask IndexMask::from_bits(const BitSpan bits, IndexMaskMemory &memory, const int64_t offset)
 {
   Vector<int64_t> indices;
   for (const int64_t i : bits.index_range()) {
     if (bits[i]) {
-      indices.append(i + start);
+      indices.append(i + offset);
     }
   }
-  return unique_sorted_indices::to_index_mask<int64_t>(indices, memory);
-}
-
-static void index_mask_to_bits(const IndexMask &mask, const int64_t start, MutableBitSpan r_bits)
-{
-  BLI_assert(r_bits.size() >= mask.min_array_size() - start);
-  r_bits.reset_all();
-  mask.foreach_index([&](const int64_t i) { r_bits[i - start].set(); });
-}
-
-template<typename T>
-IndexMask IndexMask::from_indices(const Span<T> indices, IndexMaskMemory &memory)
-{
-  return unique_sorted_indices::to_index_mask(indices, memory);
-}
-
-IndexMask IndexMask::from_bits(const BitSpan bits, IndexMaskMemory &memory, const int64_t offset)
-{
-  return bits_to_index_mask(bits, offset, memory);
+  return IndexMask::from_indices<int64_t>(indices, memory);
 }
 
 IndexMask IndexMask::from_bools(Span<bool> bools, IndexMaskMemory &memory)
@@ -872,12 +845,19 @@ IndexMask IndexMask::from_expr(const Expr &expr,
 
 template<typename T> void IndexMask::to_indices(MutableSpan<T> r_indices) const
 {
-  unique_sorted_indices::from_index_mask(*this, r_indices);
+  BLI_assert(this->size() == r_indices.size());
+  int64_t current_i = 0;
+  this->foreach_index([&](const int64_t index) mutable {
+    r_indices[current_i] = T(index);
+    current_i++;
+  });
 }
 
 void IndexMask::to_bits(MutableBitSpan r_bits, int64_t offset) const
 {
-  index_mask_to_bits(*this, offset, r_bits);
+  BLI_assert(r_bits.size() >= this->min_array_size() - offset);
+  r_bits.reset_all();
+  this->foreach_index([&](const int64_t i) { r_bits[i - offset].set(); });
 }
 
 void IndexMask::to_bools(MutableSpan<bool> r_bools, int64_t offset) const
