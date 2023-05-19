@@ -167,8 +167,13 @@ class IndexMask {
 
   IndexMask slice(IndexRange range) const;
   IndexMask slice(int64_t start, int64_t size) const;
-  IndexMask slice_and_offset(IndexRange range, IndexMaskMemory &memory) const;
-  IndexMask slice_and_offset(int64_t start, int64_t size, IndexMaskMemory &memory) const;
+  IndexMask slice_and_offset(IndexRange range,
+                             const int64_t offset,
+                             IndexMaskMemory &memory) const;
+  IndexMask slice_and_offset(int64_t start,
+                             int64_t size,
+                             const int64_t offset,
+                             IndexMaskMemory &memory) const;
   IndexMask complement(const IndexRange universe, IndexMaskMemory &memory) const;
 
   ChunkSlice chunk(const int64_t chunk_i) const;
@@ -188,7 +193,8 @@ class IndexMask {
   template<typename Fn> void foreach_index_optimized(GrainSize grain_size, Fn &&fn) const;
 
   template<typename T> static IndexMask from_indices(Span<T> indices, IndexMaskMemory &memory);
-  static IndexMask from_bits(BitSpan bits, IndexMaskMemory &memory, int64_t offset = 0);
+  static IndexMask from_bits(BitSpan bits, IndexMaskMemory &memory);
+  static IndexMask from_bits(const IndexMask &universe, BitSpan bits, IndexMaskMemory &memory);
   static IndexMask from_bools(Span<bool> bools, IndexMaskMemory &memory);
   static IndexMask from_bools(const VArray<bool> &bools, IndexMaskMemory &memory);
   static IndexMask from_bools(const IndexMask &universe,
@@ -215,8 +221,8 @@ class IndexMask {
                           MutableSpan<IndexMask> r_masks);
 
   template<typename T> void to_indices(MutableSpan<T> r_indices) const;
-  void to_bits(MutableBitSpan r_bits, int64_t offset = 0) const;
-  void to_bools(MutableSpan<bool> r_bools, int64_t offset = 0) const;
+  void to_bits(MutableBitSpan r_bits) const;
+  void to_bools(MutableSpan<bool> r_bools) const;
   std::optional<IndexRange> to_range() const;
   Vector<IndexRange> to_ranges() const;
   Vector<IndexRange> to_ranges_invert(IndexRange universe) const;

@@ -97,18 +97,14 @@ TEST(index_mask, FromBits)
   IndexMaskMemory memory;
   const uint64_t bits =
       0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'1111'0010'0000;
-  const IndexMask mask = IndexMask::from_bits(BitSpan(&bits, IndexRange(2, 40)), memory, 100);
+  const IndexMask mask = IndexMask::from_bits(BitSpan(&bits, IndexRange(2, 40)), memory);
   Array<int> indices(5);
   mask.to_indices<int>(indices);
-  EXPECT_EQ(indices[0], 103);
-  EXPECT_EQ(indices[1], 106);
-  EXPECT_EQ(indices[2], 107);
-  EXPECT_EQ(indices[3], 108);
-  EXPECT_EQ(indices[4], 109);
-
-  uint64_t new_bits = 0;
-  mask.to_bits(MutableBitSpan(&new_bits, IndexRange(5, 40)), 100);
-  EXPECT_EQ(new_bits, bits << 3);
+  EXPECT_EQ(indices[0], 3);
+  EXPECT_EQ(indices[1], 6);
+  EXPECT_EQ(indices[2], 7);
+  EXPECT_EQ(indices[3], 8);
+  EXPECT_EQ(indices[4], 9);
 }
 
 TEST(index_mask, FromSize)
