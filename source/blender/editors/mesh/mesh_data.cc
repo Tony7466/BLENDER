@@ -825,126 +825,6 @@ void MESH_OT_customdata_custom_splitnormals_clear(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-/* Vertex bevel weight. */
-
-static int mesh_customdata_bevel_weight_vertex_state(bContext *C)
-{
-  const Object *object = ED_object_context(C);
-
-  if (object && object->type == OB_MESH) {
-    const Mesh *mesh = static_cast<Mesh *>(object->data);
-    if (!ID_IS_LINKED(mesh)) {
-      const CustomData *data = GET_CD_DATA(mesh, vdata);
-      return CustomData_has_layer(data, CD_BWEIGHT);
-    }
-  }
-  return -1;
-}
-
-static bool mesh_customdata_bevel_weight_vertex_add_poll(bContext *C)
-{
-  return mesh_customdata_bevel_weight_vertex_state(C) == 0;
-}
-
-static int mesh_customdata_bevel_weight_vertex_add_exec(bContext *C, wmOperator * /*op*/)
-{
-  return mesh_customdata_add_exec__internal(C, BM_VERT, CD_BWEIGHT);
-}
-
-void MESH_OT_customdata_bevel_weight_vertex_add(wmOperatorType *ot)
-{
-  ot->name = "Add Vertex Bevel Weight";
-  ot->idname = "MESH_OT_customdata_bevel_weight_vertex_add";
-  ot->description = "Add a vertex bevel weight layer";
-
-  ot->exec = mesh_customdata_bevel_weight_vertex_add_exec;
-  ot->poll = mesh_customdata_bevel_weight_vertex_add_poll;
-
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-}
-
-static bool mesh_customdata_bevel_weight_vertex_clear_poll(bContext *C)
-{
-  return (mesh_customdata_bevel_weight_vertex_state(C) == 1);
-}
-
-static int mesh_customdata_bevel_weight_vertex_clear_exec(bContext *C, wmOperator * /*op*/)
-{
-  return mesh_customdata_clear_exec__internal(C, BM_VERT, CD_BWEIGHT);
-}
-
-void MESH_OT_customdata_bevel_weight_vertex_clear(wmOperatorType *ot)
-{
-  ot->name = "Clear Vertex Bevel Weight";
-  ot->idname = "MESH_OT_customdata_bevel_weight_vertex_clear";
-  ot->description = "Clear the vertex bevel weight layer";
-
-  ot->exec = mesh_customdata_bevel_weight_vertex_clear_exec;
-  ot->poll = mesh_customdata_bevel_weight_vertex_clear_poll;
-
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-}
-
-/* Edge bevel weight. */
-
-static int mesh_customdata_bevel_weight_edge_state(bContext *C)
-{
-  const Object *ob = ED_object_context(C);
-
-  if (ob && ob->type == OB_MESH) {
-    const Mesh *mesh = static_cast<Mesh *>(ob->data);
-    if (!ID_IS_LINKED(mesh)) {
-      const CustomData *data = GET_CD_DATA(mesh, edata);
-      return CustomData_has_layer(data, CD_BWEIGHT);
-    }
-  }
-  return -1;
-}
-
-static bool mesh_customdata_bevel_weight_edge_add_poll(bContext *C)
-{
-  return mesh_customdata_bevel_weight_edge_state(C) == 0;
-}
-
-static int mesh_customdata_bevel_weight_edge_add_exec(bContext *C, wmOperator * /*op*/)
-{
-  return mesh_customdata_add_exec__internal(C, BM_EDGE, CD_BWEIGHT);
-}
-
-void MESH_OT_customdata_bevel_weight_edge_add(wmOperatorType *ot)
-{
-  ot->name = "Add Edge Bevel Weight";
-  ot->idname = "MESH_OT_customdata_bevel_weight_edge_add";
-  ot->description = "Add an edge bevel weight layer";
-
-  ot->exec = mesh_customdata_bevel_weight_edge_add_exec;
-  ot->poll = mesh_customdata_bevel_weight_edge_add_poll;
-
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-}
-
-static bool mesh_customdata_bevel_weight_edge_clear_poll(bContext *C)
-{
-  return mesh_customdata_bevel_weight_edge_state(C) == 1;
-}
-
-static int mesh_customdata_bevel_weight_edge_clear_exec(bContext *C, wmOperator * /*op*/)
-{
-  return mesh_customdata_clear_exec__internal(C, BM_EDGE, CD_BWEIGHT);
-}
-
-void MESH_OT_customdata_bevel_weight_edge_clear(wmOperatorType *ot)
-{
-  ot->name = "Clear Edge Bevel Weight";
-  ot->idname = "MESH_OT_customdata_bevel_weight_edge_clear";
-  ot->description = "Clear the edge bevel weight layer";
-
-  ot->exec = mesh_customdata_bevel_weight_edge_clear_exec;
-  ot->poll = mesh_customdata_bevel_weight_edge_clear_poll;
-
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-}
-
 /* Edge crease. */
 
 static int mesh_customdata_crease_edge_state(bContext *C)
@@ -1106,7 +986,7 @@ static void mesh_add_verts(Mesh *mesh, int len)
   CustomData_copy_layout(&mesh->vdata, &vdata, CD_MASK_MESH.vmask, CD_SET_DEFAULT, totvert);
   CustomData_copy_data(&mesh->vdata, &vdata, 0, 0, mesh->totvert);
 
-  if (!CustomData_get_layer_named(&vdata, CD_PROP_FLOAT3, "position")) {
+  if (!CustomData_has_layer_named(&vdata, CD_PROP_FLOAT3, "position")) {
     CustomData_add_layer_named(&vdata, CD_PROP_FLOAT3, CD_SET_DEFAULT, totvert, "position");
   }
 
@@ -1140,7 +1020,7 @@ static void mesh_add_edges(Mesh *mesh, int len)
   CustomData_copy_layout(&mesh->edata, &edata, CD_MASK_MESH.emask, CD_SET_DEFAULT, totedge);
   CustomData_copy_data(&mesh->edata, &edata, 0, 0, mesh->totedge);
 
-  if (!CustomData_get_layer_named(&edata, CD_PROP_INT32_2D, ".edge_verts")) {
+  if (!CustomData_has_layer_named(&edata, CD_PROP_INT32_2D, ".edge_verts")) {
     CustomData_add_layer_named(&edata, CD_PROP_INT32_2D, CD_SET_DEFAULT, totedge, ".edge_verts");
   }
 
@@ -1173,10 +1053,10 @@ static void mesh_add_loops(Mesh *mesh, int len)
   CustomData_copy_layout(&mesh->ldata, &ldata, CD_MASK_MESH.lmask, CD_SET_DEFAULT, totloop);
   CustomData_copy_data(&mesh->ldata, &ldata, 0, 0, mesh->totloop);
 
-  if (!CustomData_get_layer_named(&ldata, CD_PROP_INT32, ".corner_vert")) {
+  if (!CustomData_has_layer_named(&ldata, CD_PROP_INT32, ".corner_vert")) {
     CustomData_add_layer_named(&ldata, CD_PROP_INT32, CD_SET_DEFAULT, totloop, ".corner_vert");
   }
-  if (!CustomData_get_layer_named(&ldata, CD_PROP_INT32, ".corner_edge")) {
+  if (!CustomData_has_layer_named(&ldata, CD_PROP_INT32, ".corner_edge")) {
     CustomData_add_layer_named(&ldata, CD_PROP_INT32, CD_SET_DEFAULT, totloop, ".corner_edge");
   }
 
