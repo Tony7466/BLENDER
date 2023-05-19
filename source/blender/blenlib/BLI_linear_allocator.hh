@@ -216,6 +216,18 @@ template<typename Allocator = GuardedAllocator> class LinearAllocator : NonCopya
     owned_buffers_.append(const_cast<void *>(buffer));
   }
 
+  void give_ownership_of_buffers_in(LinearAllocator<> &other)
+  {
+    owned_buffers_.extend(other.owned_buffers_);
+#ifdef BLI_DEBUG_LINEAR_ALLOCATOR_SIZE
+    user_requested_size_ += other.user_requested_size_;
+    owned_allocation_size_ += other.owned_allocation_size_;
+#endif
+    other.owned_buffers_.clear();
+    std::destroy_at(&other);
+    new (&other) LinearAllocator<>();
+  }
+
  private:
   void allocate_new_buffer(int64_t min_allocation_size, int64_t min_alignment)
   {
