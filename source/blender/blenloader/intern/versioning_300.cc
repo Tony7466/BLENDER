@@ -65,7 +65,7 @@
 #include "BKE_main_namemap.h"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_screen.h"
 #include "BKE_workspace.h"
 
@@ -497,44 +497,6 @@ static bool do_versions_sequencer_color_balance_sop(Sequence *seq, void * /*user
   return true;
 }
 
-static bNodeLink *find_connected_link(bNodeTree *ntree, bNodeSocket *in_socket)
-{
-  LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
-    if (link->tosock == in_socket) {
-      return link;
-    }
-  }
-  return nullptr;
-}
-
-static void add_realize_instances_before_socket(bNodeTree *ntree,
-                                                bNode *node,
-                                                bNodeSocket *geometry_socket)
-{
-  BLI_assert(geometry_socket->type == SOCK_GEOMETRY);
-  bNodeLink *link = find_connected_link(ntree, geometry_socket);
-  if (link == nullptr) {
-    return;
-  }
-
-  /* If the realize instances node is already before this socket, no need to continue. */
-  if (link->fromnode->type == GEO_NODE_REALIZE_INSTANCES) {
-    return;
-  }
-
-  bNode *realize_node = nodeAddStaticNode(nullptr, ntree, GEO_NODE_REALIZE_INSTANCES);
-  realize_node->parent = node->parent;
-  realize_node->locx = node->locx - 100;
-  realize_node->locy = node->locy;
-  nodeAddLink(ntree,
-              link->fromnode,
-              link->fromsock,
-              realize_node,
-              static_cast<bNodeSocket *>(realize_node->inputs.first));
-  link->fromnode = realize_node;
-  link->fromsock = static_cast<bNodeSocket *>(realize_node->outputs.first);
-}
-
 /**
  * If a node used to realize instances implicitly and will no longer do so in 3.0, add a "Realize
  * Instances" node in front of it to avoid changing behavior. Don't do this if the node will be
@@ -940,7 +902,7 @@ static void version_geometry_nodes_primitive_uv_maps(bNodeTree &ntree)
     BLI_addhead(&ntree.nodes, node);
   }
   if (!new_nodes.is_empty()) {
-    nodeRebuildIDVector(&ntree);
+    blender::bke::nodeRebuildIDVector(&ntree);
   }
 }
 
@@ -1074,7 +1036,7 @@ static void version_geometry_nodes_extrude_smooth_propagation(bNodeTree &ntree)
     BLI_addhead(&ntree.nodes, node);
   }
   if (!new_nodes.is_empty()) {
-    nodeRebuildIDVector(&ntree);
+    blender::bke::nodeRebuildIDVector(&ntree);
   }
 }
 
@@ -2210,6 +2172,46 @@ static void versioning_replace_legacy_mix_rgb_node(bNodeTree *ntree)
       data->data_type = SOCK_RGBA;
       data->factor_mode = NODE_MIX_MODE_UNIFORM;
       node->storage = data;
+    }
+  }
+}
+
+static void versioning_replace_legacy_glossy_node(bNodeTree *ntree)
+{
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (node->type == SH_NODE_BSDF_GLOSSY_LEGACY) {
+      strcpy(node->idname, "ShaderNodeBsdfAnisotropic");
+      node->type = SH_NODE_BSDF_GLOSSY;
+    }
+  }
+}
+
+static void versioning_remove_microfacet_sharp_distribution(bNodeTree *ntree)
+{
+  /* Find all glossy, glass and refraction BSDF nodes that have their distribution
+   * set to SHARP and set them to GGX, disconnect any link to the Roughness input
+   * and set its value to zero. */
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (!ELEM(node->type, SH_NODE_BSDF_GLOSSY, SH_NODE_BSDF_GLASS, SH_NODE_BSDF_REFRACTION)) {
+      continue;
+    }
+    if (node->custom1 != SHD_GLOSSY_SHARP_DEPRECATED) {
+      continue;
+    }
+
+    node->custom1 = SHD_GLOSSY_GGX;
+    LISTBASE_FOREACH (bNodeSocket *, socket, &node->inputs) {
+      if (!STREQ(socket->identifier, "Roughness")) {
+        continue;
+      }
+
+      if (socket->link != nullptr) {
+        nodeRemLink(ntree, socket->link);
+      }
+      bNodeSocketValueFloat *socket_value = (bNodeSocketValueFloat *)socket->default_value;
+      socket_value->value = 0.0f;
+
+      break;
     }
   }
 }
@@ -4355,6 +4357,49 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 9)) {
+    /* Fix sound strips with speed factor set to 0. See #107289. */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      Editing *ed = SEQ_editing_get(scene);
+      if (ed != nullptr) {
+        SEQ_for_each_callback(&ed->seqbase, version_seq_fix_broken_sound_strips, nullptr);
+      }
+    }
+
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          if (sl->spacetype == SPACE_ACTION) {
+            SpaceAction *saction = reinterpret_cast<SpaceAction *>(sl);
+            saction->cache_display |= TIME_CACHE_SIMULATION_NODES;
+          }
+        }
+      }
+    }
+
+    /* Enable the iTaSC ITASC_TRANSLATE_ROOT_BONES flag for backward compatibility.
+     * See #104606. */
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      if (ob->type != OB_ARMATURE || ob->pose == nullptr) {
+        continue;
+      }
+      bPose *pose = ob->pose;
+      if (pose->iksolver != IKSOLVER_ITASC || pose->ikparam == nullptr) {
+        continue;
+      }
+      bItasc *ikparam = (bItasc *)pose->ikparam;
+      ikparam->flag |= ITASC_TRANSLATE_ROOT_BONES;
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 10)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      /* Set default values for new members. */
+      scene->toolsettings->snap_mode_tools = SCE_SNAP_MODE_GEOM;
+      scene->toolsettings->plane_axis = 2;
+    }
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -4367,12 +4412,11 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
   {
     /* Keep this block, even when empty. */
 
-    /* Fix sound strips with speed factor set to 0. See #107289. */
-    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-      Editing *ed = SEQ_editing_get(scene);
-      if (ed != nullptr) {
-        SEQ_for_each_callback(&ed->seqbase, version_seq_fix_broken_sound_strips, nullptr);
-      }
+    /* Convert anisotropic BSDF node to glossy BSDF. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      versioning_replace_legacy_glossy_node(ntree);
+      versioning_remove_microfacet_sharp_distribution(ntree);
     }
+    FOREACH_NODETREE_END;
   }
 }
