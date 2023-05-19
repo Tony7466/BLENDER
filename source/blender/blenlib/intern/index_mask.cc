@@ -874,6 +874,10 @@ IndexMask IndexMask::from_predicate_impl(
 {
   UNUSED_VARS(grain_size);
 
+  if (universe.is_empty()) {
+    return {};
+  }
+
   const int64_t universe_chunks_num = universe.data_.chunks_num;
   Vector<Chunk> chunks(universe_chunks_num);
   Vector<int64_t> chunk_ids(universe_chunks_num);
@@ -956,6 +960,53 @@ IndexMask IndexMask::from_predicate_impl(
   mask_data.end_it = chunks.last().end_iterator();
 
   return mask;
+}
+
+std::optional<RawChunkIterator> Chunk::find(const int16_t index) const
+{
+  BLI_assert(this->cumulative_segment_sizes[0] == 0);
+  for (const int64_t segment_i : IndexRange(this->segments_num)) {
+    const int64_t size = this->segment_size(int16_t(segment_i));
+    const Span<int16_t> indices{this->indices_by_segment[segment_i], size};
+    if (index < indices[0]) {
+      continue;
+    }
+    if (index > indices.last()) {
+      continue;
+    }
+    const int16_t *found = std::lower_bound(indices.begin(), indices.end(), index);
+    if (found == indices.end()) {
+      return std::nullopt;
+    }
+    if (*found == index) {
+      const int16_t index_in_segment = int16_t(found - indices.begin());
+      return RawChunkIterator{int16_t(segment_i), index_in_segment};
+    }
+  }
+  return std::nullopt;
+}
+
+std::optional<RawMaskIterator> IndexMask::find(const int64_t index) const
+{
+  const int64_t chunk_id = index_to_chunk_id(index);
+  const int64_t chunk_i = std::lower_bound(
+                              data_.chunk_ids, data_.chunk_ids + data_.chunks_num, chunk_id) -
+                          data_.chunk_ids;
+  if (chunk_i == data_.chunks_num) {
+    return std::nullopt;
+  }
+  const Chunk &chunk = data_.chunks[chunk_i];
+  const int16_t index_in_chunk = index & chunk_mask_low;
+  const std::optional<RawChunkIterator> chunk_it = chunk.find(index_in_chunk);
+  if (!chunk_it.has_value()) {
+    return std::nullopt;
+  }
+  return RawMaskIterator{chunk_i, *chunk_it};
+}
+
+bool IndexMask::contains(const int64_t index) const
+{
+  return this->find(index).has_value();
 }
 
 template IndexMask IndexMask::from_indices(Span<int32_t>, IndexMaskMemory &);

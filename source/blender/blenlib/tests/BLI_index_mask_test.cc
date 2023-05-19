@@ -3,6 +3,7 @@
 #include "BLI_array.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_rand.hh"
+#include "BLI_set.hh"
 #include "BLI_strict_flags.h"
 #include "BLI_timeit.hh"
 
@@ -260,7 +261,7 @@ TEST(index_mask, FromPredicate)
   }
 }
 
-TEST(index_mask, IndexIteratorConversion)
+TEST(index_mask, IndexIteratorConversionFuzzy)
 {
   RandomNumberGenerator rng;
 
@@ -276,6 +277,7 @@ TEST(index_mask, IndexIteratorConversion)
 
   IndexMaskMemory memory;
   const IndexMask mask = IndexMask::from_indices<int64_t>(indices, memory);
+  EXPECT_EQ(mask.size(), indices.size());
 
   for ([[maybe_unused]] const int64_t _ : IndexRange(100)) {
     const int64_t index = rng.get_int32(int(indices.size()));
@@ -295,6 +297,27 @@ TEST(index_mask, IndexIteratorConversion)
     const int64_t new_index = sub_mask.iterator_to_index(it);
     EXPECT_EQ(index, new_index);
   }
+}
+
+TEST(index_mask, FromPredicateFuzzy)
+{
+  RandomNumberGenerator rng;
+  Set<int> values;
+
+  for ([[maybe_unused]] const int64_t _ : IndexRange(10000)) {
+    values.add(rng.get_int32(100'000));
+  }
+
+  IndexMaskMemory memory;
+  const IndexMask mask = IndexMask::from_predicate(
+      IndexRange(110'000), GrainSize(1024), memory, [&](const int64_t i) {
+        return values.contains(int(i));
+      });
+  EXPECT_EQ(mask.size(), values.size());
+  for (const int index : values) {
+    EXPECT_TRUE(mask.contains(index));
+  }
+  mask.foreach_index([&](const int64_t index) { EXPECT_TRUE(values.contains(int(index))); });
 }
 
 }  // namespace blender::index_mask::tests

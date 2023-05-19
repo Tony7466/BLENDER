@@ -67,6 +67,7 @@ struct Chunk {
   bool is_full() const;
   bool is_full_after_inclusive(const RawChunkIterator &it) const;
   bool is_full_until_exclusive(const RawChunkIterator &it) const;
+  std::optional<RawChunkIterator> find(int16_t index) const;
 
   template<typename Fn> void foreach_span(Fn &&fn) const;
 };
@@ -158,6 +159,8 @@ class IndexMask {
   int64_t first() const;
   int64_t last() const;
   int64_t min_array_size() const;
+  std::optional<RawMaskIterator> find(const int64_t index) const;
+  bool contains(const int64_t index) const;
 
   RawMaskIterator index_to_iterator(const int64_t index) const;
   int64_t iterator_to_index(const RawMaskIterator &it) const;
