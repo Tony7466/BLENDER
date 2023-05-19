@@ -42,7 +42,7 @@ struct NodeClipboardItem {
 };
 
 struct NodeClipboard {
-  bNode *active_node;
+  bNode *active_node = nullptr;
   Vector<NodeClipboardItem> nodes;
   Vector<bNodeLink> links;
 
