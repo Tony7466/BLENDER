@@ -748,12 +748,7 @@ static std::optional<ChunkSlice> try_get_chunk_by_id(const IndexMask &mask, cons
   if (data.chunk_ids[index] != chunk_id) {
     return std::nullopt;
   }
-  ChunkSlice chunk_slice;
-  chunk_slice.chunk = data.chunks + index;
-  chunk_slice.begin_it = (index == 0) ? data.begin_it : RawChunkIterator{0, 0};
-  chunk_slice.end_it = (index == data.chunks_num - 1) ? data.end_it :
-                                                        chunk_slice.chunk->end_iterator();
-  return chunk_slice;
+  return mask.chunk(index);
 }
 
 static Set<int16_t> eval_expr_for_chunk_id__index_set(const Expr &base_expr,
