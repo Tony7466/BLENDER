@@ -226,6 +226,12 @@ class IndexMask {
   void foreach_span_impl(FunctionRef<void(OffsetSpan<int64_t, int16_t>)> fn) const;
   void to_ranges_and_spans_impl(Vector<IndexRange> &r_ranges,
                                 Vector<OffsetSpan<int64_t, int16_t>> &r_spans) const;
+  static IndexMask from_predicate_impl(
+      const IndexMask &universe,
+      const GrainSize grain_size,
+      IndexMaskMemory &memory,
+      FunctionRef<int64_t(OffsetSpan<int64_t, int16_t> indices, int16_t *r_true_indices)>
+          filter_indices);
 
   template<typename Fn> void foreach_span_template(Fn &&fn) const;
 };
@@ -1022,68 +1028,26 @@ inline IndexMask IndexMask::from_predicate(const IndexMask &universe,
                                            IndexMaskMemory &memory,
                                            Fn &&predicate)
 {
-  UNUSED_VARS(grain_size);
-
-  const int64_t universe_chunks_num = universe.data_.chunks_num;
-  Vector<Chunk> chunks;
-  Vector<int64_t> chunk_ids;
-  for (const int64_t chunk_i : IndexRange(universe_chunks_num)) {
-    const int64_t chunk_id = universe.data_.chunk_ids[chunk_i];
-    const int64_t chunk_offset = chunk_id << chunk_size_shift;
-    const ChunkSlice universe_chunk = universe.chunk(chunk_i);
-
-    std::array<int16_t, chunk_capacity> indices_array;
-    int16_t *indices_ptr = indices_array.data();
-    universe_chunk.foreach_span([&](const Span<int16_t> segment) {
-      for (const int16_t i : segment) {
-        const int64_t index = chunk_offset + int64_t(i);
-        const bool condition = predicate(index);
-        *indices_ptr = i;
-        indices_ptr += condition;
-      }
-    });
-    const int16_t indices_num = int16_t(indices_ptr - indices_array.data());
-    if (indices_num == 0) {
-      continue;
-    }
-
-    MutableSpan<int16_t> indices = memory.construct_array_copy<int16_t>(
-        {indices_array.data(), indices_num});
-    MutableSpan<int16_t> cumulative_segment_sizes = memory.construct_array_copy<int16_t>(
-        {0, indices_num});
-    MutableSpan<const int16_t *> indices_by_segment = memory.construct_array_copy<const int16_t *>(
-        {indices.data()});
-
-    Chunk chunk;
-    chunk.segments_num = 1;
-    chunk.cumulative_segment_sizes = cumulative_segment_sizes.data();
-    chunk.indices_by_segment = indices_by_segment.data();
-    chunks.append(chunk);
-    chunk_ids.append(chunk_id);
-  }
-
-  const int64_t chunks_num = chunks.size();
-  if (chunks_num == 0) {
-    return {};
-  }
-
-  MutableSpan<int64_t> cumulative_chunk_sizes = memory.allocate_array<int64_t>(chunks_num + 1);
-  cumulative_chunk_sizes[0] = 0;
-  for (const int chunk_i : IndexRange(chunks_num)) {
-    cumulative_chunk_sizes[chunk_i + 1] = cumulative_chunk_sizes[chunk_i] + chunks[chunk_i].size();
-  }
-
-  IndexMask mask;
-  IndexMaskData &mask_data = mask.data_for_inplace_construction();
-  mask_data.chunks_num = chunks_num;
-  mask_data.indices_num = cumulative_chunk_sizes.last();
-  mask_data.chunks = memory.construct_array_copy<Chunk>(chunks).data();
-  mask_data.chunk_ids = memory.construct_array_copy<int64_t>(chunk_ids).data();
-  mask_data.cumulative_chunk_sizes = cumulative_chunk_sizes.data();
-  mask_data.begin_it = RawChunkIterator{0, 0};
-  mask_data.end_it = chunks.last().end_iterator();
-
-  return mask;
+  return IndexMask::from_predicate_impl(
+      universe,
+      grain_size,
+      memory,
+      [&](const OffsetSpan<int64_t, int16_t> indices, int16_t *__restrict r_true_indices) {
+        int16_t *r_current = r_true_indices;
+        const int16_t *in_end = indices.base_span().end();
+        const int64_t offset = indices.offset();
+        for (const int16_t *in_current = indices.base_span().data(); in_current < in_end;
+             in_current++) {
+          const int16_t local_index = *in_current;
+          const int64_t global_index = int64_t(local_index) + offset;
+          const bool condition = predicate(global_index);
+          *r_current = local_index;
+          /* Branchless conditional increment. */
+          r_current += condition;
+        }
+        const int16_t true_indices_num = int16_t(r_current - r_true_indices);
+        return true_indices_num;
+      });
 }
 
 template<typename T, typename Fn>
