@@ -28,16 +28,18 @@ class Engine {
   Engine(RenderEngine *bl_engine, const std::string &render_delegate_name);
   virtual ~Engine() = default;
 
-  virtual void sync(Depsgraph *depsgraph,
-                    bContext *context,
-                    pxr::HdRenderSettingsMap &render_settings) = 0;
+  void sync(Depsgraph *depsgraph, bContext *context);
   virtual void render(Depsgraph *depsgraph) = 0;
+
+  void set_sync_setting(const std::string &key, const pxr::VtValue &val);
+  void set_render_setting(const std::string &key, const pxr::VtValue &val);
+
+  std::string render_delegate_name;
 
  protected:
   float renderer_percent_done();
 
   RenderEngine *bl_engine_;
-  std::string render_delegate_name_;
 
   /* The order is important due to deletion order */
   pxr::HgiUniquePtr hgi_;

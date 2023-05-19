@@ -14,6 +14,7 @@
 #include "RNA_blender_cpp.h"
 #include "bpy_rna.h"
 
+#include "../engine.h"
 #include "blender_scene_delegate.h"
 #include "material.h"
 #include "mtlx_hydra_adapter.h"
@@ -31,8 +32,65 @@ void MaterialData::init()
 {
   ID_LOG(2, "");
   double_sided = (((Material *)id)->blend_flag & MA_BL_CULL_BACKFACE) == 0;
-  material_network_map_ = pxr::VtValue();
 
+  export_mtlx();
+  if (scene_delegate_->settings.mx_filename_key.IsEmpty()) {
+    write_material_network_map();
+  }
+}
+
+void MaterialData::insert()
+{
+  ID_LOG(2, "");
+  scene_delegate_->GetRenderIndex().InsertSprim(
+      pxr::HdPrimTypeTokens->material, scene_delegate_, prim_id);
+}
+
+void MaterialData::remove()
+{
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 2, "%s", prim_id.GetText());
+  scene_delegate_->GetRenderIndex().RemoveSprim(pxr::HdPrimTypeTokens->material, prim_id);
+}
+
+void MaterialData::update()
+{
+  ID_LOG(2, "");
+  bool prev_double_sided = double_sided;
+  init();
+  scene_delegate_->GetRenderIndex().GetChangeTracker().MarkSprimDirty(prim_id,
+                                                                      pxr::HdMaterial::AllDirty);
+  if (prev_double_sided != double_sided) {
+    for (auto &it : scene_delegate_->objects_) {
+      MeshData *m_data = dynamic_cast<MeshData *>(it.second.get());
+      if (m_data) {
+        m_data->update_double_sided(this);
+      }
+    }
+    for (auto &it : scene_delegate_->instancers_) {
+      it.second->update_double_sided(this);
+    }
+  }
+}
+
+pxr::VtValue MaterialData::get_data(pxr::TfToken const &key) const
+{
+  pxr::VtValue ret;
+  if (key == scene_delegate_->settings.mx_filename_key) {
+    if (!mtlx_path_.GetResolvedPath().empty()) {
+      ret = mtlx_path_;
+    }
+    ID_LOG(3, "%s", key.GetText());
+  }
+  return ret;
+}
+
+pxr::VtValue MaterialData::get_material_resource() const
+{
+  return material_network_map_;
+}
+
+void MaterialData::export_mtlx()
+{
   /* Call of python function hydra.export_mtlx() */
 
   PyGILState_STATE gstate;
@@ -87,71 +145,25 @@ void MaterialData::init()
 
   mtlx_path_ = pxr::SdfAssetPath(path, path);
   ID_LOG(2, "mtlx=%s", mtlx_path_.GetResolvedPath().c_str());
+}
 
-  /* Calculate material network map */
-  if (!path.empty()) {
-    pxr::HdRenderDelegate *render_delegate = scene_delegate_->GetRenderIndex().GetRenderDelegate();
-    pxr::TfTokenVector shader_source_types = render_delegate->GetShaderSourceTypes();
-    pxr::TfTokenVector render_contexts = render_delegate->GetMaterialRenderContexts();
-
-    pxr::HdMaterialNetworkMap network_map;
-    hdmtlx_convert_to_materialnetworkmap(path, shader_source_types, render_contexts, &network_map);
-
-    material_network_map_ = network_map;
-  }
-  else {
+void MaterialData::write_material_network_map()
+{
+  ID_LOG(2, "");
+  if (mtlx_path_.GetResolvedPath().empty()) {
     material_network_map_ = pxr::VtValue();
+    return;
   }
-}
 
-void MaterialData::insert()
-{
-  ID_LOG(2, "");
-  scene_delegate_->GetRenderIndex().InsertSprim(
-      pxr::HdPrimTypeTokens->material, scene_delegate_, prim_id);
-}
+  pxr::HdRenderDelegate *render_delegate = scene_delegate_->GetRenderIndex().GetRenderDelegate();
+  pxr::TfTokenVector shader_source_types = render_delegate->GetShaderSourceTypes();
+  pxr::TfTokenVector render_contexts = render_delegate->GetMaterialRenderContexts();
 
-void MaterialData::remove()
-{
-  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 2, "%s", prim_id.GetText());
-  scene_delegate_->GetRenderIndex().RemoveSprim(pxr::HdPrimTypeTokens->material, prim_id);
-}
+  pxr::HdMaterialNetworkMap network_map;
+  hdmtlx_convert_to_materialnetworkmap(
+      mtlx_path_.GetResolvedPath(), shader_source_types, render_contexts, &network_map);
 
-void MaterialData::update()
-{
-  ID_LOG(2, "");
-  bool prev_double_sided = double_sided;
-  init();
-  scene_delegate_->GetRenderIndex().GetChangeTracker().MarkSprimDirty(prim_id,
-                                                                      pxr::HdMaterial::AllDirty);
-  if (prev_double_sided != double_sided) {
-    for (auto &it : scene_delegate_->objects_) {
-      MeshData *m_data = dynamic_cast<MeshData *>(it.second.get());
-      if (m_data) {
-        m_data->update_double_sided(this);
-      }
-    }
-    for (auto &it : scene_delegate_->instancers_) {
-      it.second->update_double_sided(this);
-    }
-  }
-}
-
-pxr::VtValue MaterialData::get_data(pxr::TfToken const &key) const
-{
-  pxr::VtValue ret;
-  if (key.GetString() == "MaterialXFilename") {
-    if (!mtlx_path_.GetResolvedPath().empty()) {
-      ret = mtlx_path_;
-    }
-    ID_LOG(3, "%s", key.GetText());
-  }
-  return ret;
-}
-
-pxr::VtValue MaterialData::get_material_resource() const
-{
-  return material_network_map_;
+  material_network_map_ = network_map;
 }
 
 }  // namespace blender::render::hydra

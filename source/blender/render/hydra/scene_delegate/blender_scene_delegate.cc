@@ -14,11 +14,8 @@ CLG_LOGREF_DECLARE_GLOBAL(LOG_RENDER_HYDRA_SCENE, "render.hydra.scene");
 
 BlenderSceneDelegate::BlenderSceneDelegate(pxr::HdRenderIndex *parent_index,
                                            pxr::SdfPath const &delegate_id,
-                                           BlenderSceneDelegate::EngineType engine_type,
-                                           const std::string &render_delegate_name)
-    : HdSceneDelegate(parent_index, delegate_id),
-      engine_type(engine_type),
-      render_delegate_name(render_delegate_name)
+                                           Engine *engine)
+    : HdSceneDelegate(parent_index, delegate_id), engine(engine)
 {
 }
 
@@ -206,6 +203,13 @@ void BlenderSceneDelegate::clear()
   view3d = nullptr;
 }
 
+void BlenderSceneDelegate::set_setting(const std::string &key, const pxr::VtValue &val)
+{
+  if (key == "MaterialXFilenameKey") {
+    settings.mx_filename_key = pxr::TfToken(val.Get<std::string>());
+  }
+}
+
 pxr::SdfPath BlenderSceneDelegate::prim_id(ID *id, const char *prefix) const
 {
   /* Making id of object in form like <prefix>_<pointer in 16 hex digits format> */
@@ -376,8 +380,8 @@ void BlenderSceneDelegate::check_updates()
   DEGIDIterData data = {0};
   data.graph = depsgraph;
   data.only_updated = true;
-  ITER_BEGIN (
-      DEG_iterator_ids_begin, DEG_iterator_ids_next, DEG_iterator_ids_end, &data, ID *, id) {
+  ITER_BEGIN (DEG_iterator_ids_begin, DEG_iterator_ids_next, DEG_iterator_ids_end, &data, ID *, id)
+  {
 
     CLOG_INFO(LOG_RENDER_HYDRA_SCENE,
               2,
@@ -451,7 +455,8 @@ void BlenderSceneDelegate::add_new_objects()
               DEG_iterator_objects_end,
               &data,
               Object *,
-              object) {
+              object)
+  {
 
     update_objects(object);
     update_instancers(object);
@@ -476,7 +481,8 @@ void BlenderSceneDelegate::remove_unused_objects()
               DEG_iterator_objects_end,
               &data,
               Object *,
-              object) {
+              object)
+  {
     if (ObjectData::is_supported(object)) {
       available_objects.insert(object_prim_id(object).GetName());
     }
@@ -554,7 +560,8 @@ void BlenderSceneDelegate::update_visibility()
               DEG_iterator_objects_end,
               &data,
               Object *,
-              object) {
+              object)
+  {
 
     if (!object_data(object_prim_id(object))) {
       update_objects(object);

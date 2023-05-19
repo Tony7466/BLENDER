@@ -66,7 +66,8 @@ void InstancerData::update()
   Object *object = (Object *)id;
   if (id->recalc & ID_RECALC_GEOMETRY ||
       (object->data && ((ID *)object->data)->recalc & ID_RECALC_GEOMETRY) ||
-      id->recalc & ID_RECALC_TRANSFORM) {
+      id->recalc & ID_RECALC_TRANSFORM)
+  {
     set_instances();
     scene_delegate_->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(
         prim_id, pxr::HdChangeTracker::AllDirty);
@@ -174,7 +175,8 @@ void InstancerData::check_update(Object *object)
   if (l_it != light_instances_.end()) {
     Object *obj = (Object *)l_it->second.data->id;
     if (obj->id.recalc & (ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY) ||
-        ((ID *)obj->data)->recalc & ID_RECALC_GEOMETRY) {
+        ((ID *)obj->data)->recalc & ID_RECALC_GEOMETRY)
+    {
       set_instances();
     }
     return;

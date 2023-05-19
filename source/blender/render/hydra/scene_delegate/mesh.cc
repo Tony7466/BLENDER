@@ -27,7 +27,8 @@ void MeshData::init()
 
   Object *object = (Object *)id;
   if (object->type == OB_MESH && object->mode == OB_MODE_OBJECT &&
-      BLI_listbase_is_empty(&object->modifiers)) {
+      BLI_listbase_is_empty(&object->modifiers))
+  {
     write_mesh((Mesh *)object->data);
   }
   else {

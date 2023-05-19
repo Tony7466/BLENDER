@@ -13,22 +13,6 @@
 
 namespace blender::render::hydra {
 
-void FinalEngine::sync(Depsgraph *depsgraph,
-                       bContext *context,
-                       pxr::HdRenderSettingsMap &render_settings)
-{
-  scene_delegate_ = std::make_unique<BlenderSceneDelegate>(
-      render_index_.get(),
-      pxr::SdfPath::AbsoluteRootPath().AppendElementString("scene"),
-      BlenderSceneDelegate::EngineType::FINAL,
-      render_delegate_name_);
-  scene_delegate_->populate(depsgraph, context);
-
-  for (auto const &setting : render_settings) {
-    render_delegate_->SetRenderSetting(setting.first, setting.second);
-  }
-}
-
 void FinalEngine::render(Depsgraph *depsgraph)
 {
   prepare_for_render(depsgraph);

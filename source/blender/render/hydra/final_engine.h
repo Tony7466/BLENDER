@@ -11,10 +11,7 @@ class FinalEngine : public Engine {
  public:
   using Engine::Engine;
 
-  virtual void sync(Depsgraph *depsgraph,
-                    bContext *context,
-                    pxr::HdRenderSettingsMap &render_settings) override;
-  virtual void render(Depsgraph *b_depsgraph) override;
+  void render(Depsgraph *b_depsgraph) override;
 
  protected:
   void update_render_result();

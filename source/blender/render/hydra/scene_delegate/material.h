@@ -30,6 +30,9 @@ class MaterialData : public IdData {
   bool double_sided = true;
 
  private:
+  void export_mtlx();
+  void write_material_network_map();
+
   pxr::SdfAssetPath mtlx_path_;
   pxr::VtValue material_network_map_;
 };

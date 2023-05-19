@@ -111,7 +111,7 @@ static PyObject *engine_create_func(PyObject * /*self*/, PyObject *args)
     engine = new ViewportEngine(bl_engine, render_delegate_id);
   }
   else if (STREQ(engine_type, "PREVIEW")) {
-    engine = PreviewEngine::get_instance(bl_engine, render_delegate_id);
+    engine = PreviewEngine::create(bl_engine, render_delegate_id);
   }
   else {
     if (bl_engine->type->flag & RE_USE_GPU_CONTEXT) {
@@ -123,7 +123,6 @@ static PyObject *engine_create_func(PyObject * /*self*/, PyObject *args)
   }
 
   CLOG_INFO(LOG_RENDER_HYDRA, 2, "Engine %016llx %s", engine, engine_type);
-
   return PyLong_FromVoidPtr(engine);
 }
 
@@ -137,7 +136,7 @@ static PyObject *engine_free_func(PyObject * /*self*/, PyObject *args)
   Engine *engine = (Engine *)PyLong_AsVoidPtr(pyengine);
   PreviewEngine *preview_engine = dynamic_cast<PreviewEngine *>(engine);
   if (preview_engine) {
-    PreviewEngine::schedule_free();
+    PreviewEngine::free();
   }
   else {
     delete engine;
@@ -149,8 +148,8 @@ static PyObject *engine_free_func(PyObject * /*self*/, PyObject *args)
 
 static PyObject *engine_sync_func(PyObject * /*self*/, PyObject *args)
 {
-  PyObject *pyengine, *pydepsgraph, *pycontext, *pysettings;
-  if (!PyArg_ParseTuple(args, "OOOO", &pyengine, &pydepsgraph, &pycontext, &pysettings)) {
+  PyObject *pyengine, *pydepsgraph, *pycontext;
+  if (!PyArg_ParseTuple(args, "OOO", &pyengine, &pydepsgraph, &pycontext)) {
     Py_RETURN_NONE;
   }
 
@@ -158,29 +157,7 @@ static PyObject *engine_sync_func(PyObject * /*self*/, PyObject *args)
   Depsgraph *depsgraph = (Depsgraph *)PyLong_AsVoidPtr(pydepsgraph);
   bContext *context = (bContext *)PyLong_AsVoidPtr(pycontext);
 
-  pxr::HdRenderSettingsMap settings;
-  PyObject *pyiter = PyObject_GetIter(pysettings);
-  if (pyiter) {
-    PyObject *pykey, *pyval;
-    while (pykey = PyIter_Next(pyiter)) {
-      pxr::TfToken key(PyUnicode_AsUTF8(pykey));
-      pyval = PyDict_GetItem(pysettings, pykey);
-
-      if (PyLong_Check(pyval)) {
-        settings[key] = PyLong_AsLong(pyval);
-      }
-      else if (PyFloat_Check(pyval)) {
-        settings[key] = PyFloat_AsDouble(pyval);
-      }
-      else if (PyUnicode_Check(pyval)) {
-        settings[key] = PyUnicode_AsUTF8(pyval);
-      }
-      Py_DECREF(pykey);
-    }
-    Py_DECREF(pyiter);
-  }
-
-  engine->sync(depsgraph, context, settings);
+  engine->sync(depsgraph, context);
 
   CLOG_INFO(LOG_RENDER_HYDRA, 2, "Engine %016llx", engine);
   Py_RETURN_NONE;
@@ -226,6 +203,54 @@ static PyObject *engine_view_draw_func(PyObject * /*self*/, PyObject *args)
   Py_RETURN_NONE;
 }
 
+static pxr::VtValue get_setting_val(PyObject *pyval)
+{
+  pxr::VtValue val;
+  if (PyBool_Check(pyval)) {
+    val = Py_IsTrue(pyval);
+  }
+  else if (PyLong_Check(pyval)) {
+    val = PyLong_AsLong(pyval);
+  }
+  else if (PyFloat_Check(pyval)) {
+    val = PyFloat_AsDouble(pyval);
+  }
+  else if (PyUnicode_Check(pyval)) {
+    val = std::string(PyUnicode_AsUTF8(pyval));
+  }
+  return val;
+}
+
+static PyObject *engine_set_sync_setting_func(PyObject * /*self*/, PyObject *args)
+{
+  PyObject *pyengine, *pyval;
+  char *key;
+  if (!PyArg_ParseTuple(args, "OsO", &pyengine, &key, &pyval)) {
+    Py_RETURN_NONE;
+  }
+
+  Engine *engine = (Engine *)PyLong_AsVoidPtr(pyengine);
+  engine->set_sync_setting(key, get_setting_val(pyval));
+
+  CLOG_INFO(LOG_RENDER_HYDRA, 3, "Engine %016llx: %s", engine, key);
+  Py_RETURN_NONE;
+}
+
+static PyObject *engine_set_render_setting_func(PyObject * /*self*/, PyObject *args)
+{
+  PyObject *pyengine, *pyval;
+  char *key;
+  if (!PyArg_ParseTuple(args, "OsO", &pyengine, &key, &pyval)) {
+    Py_RETURN_NONE;
+  }
+
+  Engine *engine = (Engine *)PyLong_AsVoidPtr(pyengine);
+  engine->set_render_setting(key, get_setting_val(pyval));
+
+  CLOG_INFO(LOG_RENDER_HYDRA, 3, "Engine %016llx: %s", engine, key);
+  Py_RETURN_NONE;
+}
+
 static PyMethodDef methods[] = {
     {"init", init_func, METH_VARARGS, ""},
     {"register_plugins", register_plugins_func, METH_VARARGS, ""},
@@ -236,6 +261,8 @@ static PyMethodDef methods[] = {
     {"engine_sync", engine_sync_func, METH_VARARGS, ""},
     {"engine_render", engine_render_func, METH_VARARGS, ""},
     {"engine_view_draw", engine_view_draw_func, METH_VARARGS, ""},
+    {"engine_set_sync_setting", engine_set_sync_setting_func, METH_VARARGS, ""},
+    {"engine_set_render_setting", engine_set_render_setting_func, METH_VARARGS, ""},
 
     {NULL, NULL, 0, NULL},
 };

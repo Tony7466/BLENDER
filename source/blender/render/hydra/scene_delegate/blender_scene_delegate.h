@@ -21,18 +21,21 @@ namespace blender::render::hydra {
 
 extern struct CLG_LogRef *LOG_RENDER_HYDRA_SCENE;
 
+class Engine;
+
 class BlenderSceneDelegate : public pxr::HdSceneDelegate {
   friend ObjectData;   /* has access to instances */
   friend MeshData;     /* has access to materials */
   friend MaterialData; /* has access to objects and instancers */
 
  public:
-  enum class EngineType { VIEWPORT = 1, FINAL, PREVIEW };
+  struct Settings {
+    pxr::TfToken mx_filename_key;
+  };
 
   BlenderSceneDelegate(pxr::HdRenderIndex *parent_index,
                        pxr::SdfPath const &delegate_id,
-                       BlenderSceneDelegate::EngineType engine_type,
-                       const std::string &render_delegate_name);
+                       Engine *engine);
   ~BlenderSceneDelegate() override = default;
 
   /* Delegate methods */
@@ -55,14 +58,14 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
 
   void populate(Depsgraph *depsgraph, bContext *context);
   void clear();
+  void set_setting(const std::string &key, const pxr::VtValue &val);
 
-  EngineType engine_type;
   Depsgraph *depsgraph = nullptr;
   bContext *context = nullptr;
   View3D *view3d = nullptr;
   Scene *scene = nullptr;
-
-  std::string render_delegate_name;
+  Engine *engine;
+  Settings settings;
 
  private:
   pxr::SdfPath prim_id(ID *id, const char *prefix) const;

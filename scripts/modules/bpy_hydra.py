@@ -21,10 +21,15 @@ class CustomHydraRenderEngine(HydraRenderEngine):
 
         bpy_hydra.register_plugins(["/path/to/plugin")])
 
-    def get_delegate_settings(self, engine_type):
+    def get_sync_settings(self, engine_type):
         return {
-            'setting1': 1,
-            'setting2': "2",
+            'MaterialXFilenameKey': "MaterialXFilename",
+        }
+
+    def get_render_settings(self, engine_type):
+        return {
+            'enableTinyPrimCulling': True,
+            'maxLights': 8,
         }
 ```
 """
@@ -73,27 +78,52 @@ class HydraRenderEngine(bpy.types.RenderEngine):
     def unregister(cls):
         pass
 
-    def get_delegate_settings(self, engine_type):
+    def get_sync_settings(self, engine_type):
+        """
+        Provide settings for Blender scene delegate. Available settings:
+            `MaterialXFilenameKey` - if provided then MaterialX file will be provided directly to render delegate
+                                     without converting to HdMaterialNetwork
+        """
+        return {}
+
+    def get_render_settings(self, engine_type):
+        """
+        Provide render settings for render delegate. List of settings should be available in render delegate
+        documentation or in `pxr.UsdImagingGL.Engine.GetRendererSettingsList()`
+        """
         return {}
 
     # final render
     def update(self, data, depsgraph):
         engine_type = 'PREVIEW' if self.is_preview else 'FINAL'
         self.engine_ptr = _bpy_hydra.engine_create(self.as_pointer(), engine_type, self.delegate_id)
-        delegate_settings = self.get_delegate_settings(engine_type)
-        _bpy_hydra.engine_sync(self.engine_ptr, depsgraph.as_pointer(), bpy.context.as_pointer(), delegate_settings)
+
+        for key, val in self.get_sync_settings(engine_type).items():
+            _bpy_hydra.engine_set_sync_setting(self.engine_ptr, key, val)
+
+        _bpy_hydra.engine_sync(self.engine_ptr, depsgraph.as_pointer(), bpy.context.as_pointer())
 
     def render(self, depsgraph):
-        if self.engine_ptr:
-            _bpy_hydra.engine_render(self.engine_ptr, depsgraph.as_pointer())
+        if not self.engine_ptr:
+            return
+
+        for key, val in self.get_render_settings('PREVIEW' if self.is_preview else 'FINAL').items():
+            _bpy_hydra.engine_set_render_setting(self.engine_ptr, key, val)
+
+        _bpy_hydra.engine_render(self.engine_ptr, depsgraph.as_pointer())
 
     # viewport render
     def view_update(self, context, depsgraph):
         if not self.engine_ptr:
             self.engine_ptr = _bpy_hydra.engine_create(self.as_pointer(), 'VIEWPORT', self.delegate_id)
 
-        delegate_settings = self.get_delegate_settings('VIEWPORT')
-        _bpy_hydra.engine_sync(self.engine_ptr, depsgraph.as_pointer(), context.as_pointer(), delegate_settings)
+        for key, val in self.get_sync_settings('VIEWPORT').items():
+            _bpy_hydra.engine_set_sync_setting(self.engine_ptr, key, val)
+
+        _bpy_hydra.engine_sync(self.engine_ptr, depsgraph.as_pointer(), context.as_pointer())
+
+        for key, val in self.get_render_settings('VIEWPORT').items():
+            _bpy_hydra.engine_set_render_setting(self.engine_ptr, key, val)
 
     def view_draw(self, context, depsgraph):
         if not self.engine_ptr:

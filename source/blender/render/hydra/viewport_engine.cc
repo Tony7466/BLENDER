@@ -217,24 +217,6 @@ void DrawTexture::free()
   texture_ = nullptr;
 }
 
-void ViewportEngine::sync(Depsgraph *depsgraph,
-                          bContext *context,
-                          pxr::HdRenderSettingsMap &render_settings)
-{
-  if (!scene_delegate_) {
-    scene_delegate_ = std::make_unique<BlenderSceneDelegate>(
-        render_index_.get(),
-        pxr::SdfPath::AbsoluteRootPath().AppendElementString("scene"),
-        BlenderSceneDelegate::EngineType::VIEWPORT,
-        render_delegate_name_);
-  }
-  scene_delegate_->populate(depsgraph, context);
-
-  for (auto const &setting : render_settings) {
-    render_delegate_->SetRenderSetting(setting.first, setting.second);
-  }
-}
-
 void ViewportEngine::render(Depsgraph *depsgraph)
 {
   /* Empty function */

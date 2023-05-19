@@ -13,46 +13,36 @@ const double LIFETIME = 180.0;
 
 std::unique_ptr<PreviewEngine> PreviewEngine::instance_;
 
-PreviewEngine *PreviewEngine::get_instance(RenderEngine *bl_engine,
-                                           const std::string &render_delegate_name)
+PreviewEngine *PreviewEngine::create(RenderEngine *bl_engine,
+                                     const std::string &render_delegate_name)
 {
   if (!instance_) {
     instance_ = std::make_unique<PreviewEngine>(bl_engine, render_delegate_name);
   }
-  if (BLI_timer_is_registered((uintptr_t)instance_.get())) {
-    /* Unregister timer while PreviewEngine is working */
-    BLI_timer_unregister((uintptr_t)instance_.get());
+  else if (instance_->render_delegate_name != render_delegate_name) {
+    instance_->render_delegate_->Stop();
+    instance_ = std::make_unique<PreviewEngine>(bl_engine, render_delegate_name);
   }
-  instance_->update(bl_engine, render_delegate_name);
+  else {
+    instance_->bl_engine_ = bl_engine;
+  }
+
+  instance_->scene_delegate_->clear();
+
+  if (BLI_timer_is_registered((uintptr_t)&instance_)) {
+    /* Unregister timer while PreviewEngine is working */
+    BLI_timer_unregister((uintptr_t)&instance_);
+  }
 
   return instance_.get();
 }
 
-void PreviewEngine::schedule_free()
+void PreviewEngine::free()
 {
   instance_->render_delegate_->Stop();
 
   /* Register timer for schedule free PreviewEngine instance */
-  BLI_timer_register((uintptr_t)instance_.get(), free_instance, nullptr, nullptr, LIFETIME, true);
-}
-
-void PreviewEngine::sync(Depsgraph *depsgraph,
-                         bContext *context,
-                         pxr::HdRenderSettingsMap &render_settings)
-{
-  if (!scene_delegate_) {
-    scene_delegate_ = std::make_unique<BlenderSceneDelegate>(
-        render_index_.get(),
-        pxr::SdfPath::AbsoluteRootPath().AppendElementString("scene"),
-        BlenderSceneDelegate::EngineType::PREVIEW,
-        render_delegate_name_);
-  }
-  scene_delegate_->clear();
-  scene_delegate_->populate(depsgraph, context);
-
-  for (auto const &setting : render_settings) {
-    render_delegate_->SetRenderSetting(setting.first, setting.second);
-  }
+  BLI_timer_register((uintptr_t)&instance_, free_instance, nullptr, nullptr, LIFETIME, true);
 }
 
 void PreviewEngine::render(Depsgraph *depsgraph)
@@ -94,15 +84,6 @@ double PreviewEngine::free_instance(uintptr_t uuid, void *user_data)
   CLOG_INFO(LOG_RENDER_HYDRA, 2, "");
   instance_ = nullptr;
   return -1;
-}
-
-void PreviewEngine::update(RenderEngine *bl_engine, const std::string &render_delegate_name)
-{
-  bl_engine_ = bl_engine;
-  if (render_delegate_name != render_delegate_name_) {
-    render_delegate_->Stop();
-    instance_.reset(new PreviewEngine(bl_engine, render_delegate_name));
-  }
 }
 
 void PreviewEngine::update_render_result(std::vector<float> &pixels)

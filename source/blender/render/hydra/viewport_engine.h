@@ -34,9 +34,6 @@ class ViewportEngine : public Engine {
  public:
   using Engine::Engine;
 
-  void sync(Depsgraph *depsgraph,
-            bContext *context,
-            pxr::HdRenderSettingsMap &render_settings) override;
   void render(Depsgraph *depsgraph) override;
   void render(Depsgraph *depsgraph, bContext *context);
 
