@@ -40,14 +40,14 @@ void sample_point_normals(const Span<int> corner_verts,
                           const IndexMask mask,
                           const MutableSpan<float3> dst)
 {
-  for (const int i : mask) {
+  mask.foreach_index([&](const int i) {
     const MLoopTri &tri = looptris[looptri_indices[i]];
     const float3 value = attribute_math::mix3(bary_coords[i],
                                               src[corner_verts[tri.tri[0]]],
                                               src[corner_verts[tri.tri[1]]],
                                               src[corner_verts[tri.tri[2]]]);
     dst[i] = math::normalize(value);
-  }
+  });
 }
 
 void sample_point_attribute(const Span<int> corner_verts,
