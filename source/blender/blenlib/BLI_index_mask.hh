@@ -838,7 +838,7 @@ template<typename Fn> inline void IndexMask::foreach_span_or_range(Fn &&fn) cons
   IndexRangeChecker is_index_mask;
   this->foreach_span(
       [&, is_index_mask](const OffsetSpan<int64_t, int16_t> mask_segment, const int64_t start) {
-        if (is_index_mask.check(mask_segment.base_span())) {
+        if (is_index_mask.check_static(mask_segment.base_span())) {
           const IndexRange range(mask_segment[0], mask_segment.size());
           if constexpr (has_mask_segment_and_start_parameter<Fn>) {
             fn(range, start);
