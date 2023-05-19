@@ -3,22 +3,26 @@
 #include "vk_data_conversion.hh"
 
 namespace blender::gpu::tests {
+static void test_f32_f16(uint32_t f32_in, uint32_t f16_expected)
+{
+  const uint32_t f16 = convert_float_formats<FormatF16, FormatF32>(f32_in);
+  EXPECT_EQ(f16, f16_expected);
+  const uint32_t f32_reverse = convert_float_formats<FormatF32, FormatF16>(f16);
+  EXPECT_EQ(f32_reverse, f32_in);
+}
+
 TEST(VulkanDataConversion, ConvertF32F16)
 {
-  const uint32_t f32_2 = 0b01000000000000000000000000000000;
-  const uint32_t f16_2_expected = 0b0100000000000000;
-  const uint32_t f16_2 = convert_float_formats<FormatF16, FormatF32>(f32_2);
-  EXPECT_EQ(f16_2, f16_2_expected);
-
-  const uint32_t f32_3 = 0b01000000010000000000000000000000;
-  const uint32_t f16_3_expected = 0b0100001000000000;
-  const uint32_t f16_3 = convert_float_formats<FormatF16, FormatF32>(f32_3);
-  EXPECT_EQ(f16_3, f16_3_expected);
-
-  const uint32_t f32_4 = 0b01000000100000000000000000000000;
-  const uint32_t f16_4_expected = 0b0100010000000000;
-  const uint32_t f16_4 = convert_float_formats<FormatF16, FormatF32>(f32_4);
-  EXPECT_EQ(f16_4, f16_4_expected);
+  /* 0.0 */
+  test_f32_f16(0b00000000000000000000000000000000, 0b0000000000000000);
+  /* 0.125 */
+  test_f32_f16(0b00111110000000000000000000000000, 0b0011000000000000);
+  /* 2.0 */
+  test_f32_f16(0b01000000000000000000000000000000, 0b0100000000000000);
+  /* 3.0 */
+  test_f32_f16(0b01000000010000000000000000000000, 0b0100001000000000);
+  /* 4.0 */
+  test_f32_f16(0b01000000100000000000000000000000, 0b0100010000000000);
 }
 
 TEST(VulkanDataConversion, clamp_negative_to_zero)

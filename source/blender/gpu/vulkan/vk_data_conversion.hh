@@ -107,6 +107,8 @@ template<bool HasSignBit, uint8_t MantissaBitLen, uint8_t ExponentBitLen>
 class FloatingPointFormat {
  public:
   static constexpr bool HasSign = HasSignBit;
+  static constexpr uint8_t SignShift = MantissaBitLen + ExponentBitLen;
+  static constexpr uint32_t SignMask = HasSignBit ? 1 : 0;
   static constexpr uint8_t MantissaLen = MantissaBitLen;
   static constexpr uint8_t MantissaShift = 0;
   static constexpr uint32_t MantissaMask = (1 << MantissaBitLen) - 1;
@@ -114,10 +116,8 @@ class FloatingPointFormat {
   static constexpr uint8_t ExponentShift = MantissaBitLen;
   static constexpr uint8_t ExponentLen = ExponentBitLen;
   static constexpr uint32_t ExponentMask = (1 << ExponentBitLen) - 1;
-  static constexpr uint32_t ExponentBias = (1 << (ExponentBitLen - 1)) - 1;
+  static constexpr int32_t ExponentBias = (1 << (ExponentBitLen - 1)) - 1;
   static constexpr int32_t ExponentSpecialMask = ExponentMask;
-  static constexpr uint8_t SignShift = MantissaBitLen + ExponentBitLen;
-  static constexpr uint32_t SignMask = HasSignBit ? 1 : 0;
 
   static uint32_t get_mantissa(uint32_t floating_point_number)
   {
@@ -212,12 +212,16 @@ uint32_t convert_float_formats(uint32_t value)
 
   const bool is_nan = (exponent == SourceFormat::ExponentSpecialMask) && mantissa;
   const bool is_inf = (exponent == SourceFormat::ExponentSpecialMask) && (mantissa == 0);
+  const bool is_zero = (exponent == 0 && mantissa == 0);
 
   /* Sign conversion */
   if constexpr (!DestinationFormat::HasSign && ClampNegativeToZero) {
     if (is_signed && !is_nan) {
       return 0;
     }
+  }
+  if (is_zero) {
+    return 0;
   }
 
   if (is_inf) {
@@ -236,7 +240,7 @@ uint32_t convert_float_formats(uint32_t value)
         exponent = 0;
         mantissa = SourceFormat::MantissaMask;
       }
-      else if (exponent < -int32_t(DestinationFormat::ExponentBias)) {
+      else if (exponent < -DestinationFormat::ExponentBias) {
         return 0;
       }
     }
