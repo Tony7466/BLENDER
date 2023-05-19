@@ -135,6 +135,8 @@ static void node_socket_set_typeinfo(bNodeTree *ntree,
                                      bNodeSocket *sock,
                                      bNodeSocketType *typeinfo);
 
+}  // namespace blender::bke
+
 /* ************ NODE FUNCTION SIGNATURE *************** */
 
 blender::Span<bNodeFunctionParameter> bNodeFunctionSignature::inputs_span() const
@@ -508,6 +510,8 @@ void nodeFunctionSignatureMoveParameter(bNodeFunctionSignature *sig,
     params[to_index] = tmp;
   }
 }
+
+namespace blender::bke {
 
 static void ntree_init_data(ID *id)
 {
@@ -1340,7 +1344,7 @@ static void lib_link_node_socket(BlendLibReader *reader, ID *self_id, bNodeSocke
     }
     case SOCK_FUNCTION: {
       BLO_read_id_address(
-          reader, lib, &sock->default_value_typed<bNodeSocketValueFunction>()->value);
+          reader, self_id, &sock->default_value_typed<bNodeSocketValueFunction>()->value);
       break;
     }
     case SOCK_FLOAT:
@@ -3253,7 +3257,8 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node)
       /* remove the link that would be the same as the relinked one */
       LISTBASE_FOREACH_MUTABLE (bNodeLink *, link_to_compare, &ntree->links) {
         if (link_to_compare->fromsock == fromlink->fromsock &&
-            link_to_compare->tosock == link->tosock) {
+            link_to_compare->tosock == link->tosock)
+        {
           blender::bke::adjust_multi_input_indices_after_removed_link(
               ntree, link_to_compare->tosock, link_to_compare->multi_input_socket_index);
           duplicate_links_to_remove.append_non_duplicates(link_to_compare);
