@@ -278,7 +278,7 @@ template<typename T> Vector<IndexRange> split_by_chunk(Span<T> indices);
 template<typename T>
 int64_t split_to_ranges_and_spans(Span<T> indices,
                                   int64_t range_threshold,
-                                  Vector<std::variant<IndexRange, Span<T>>> &r_parts);
+                                  Vector<std::variant<IndexRange, Span<T>>> &r_segments);
 template<typename T> bool non_empty_is_range(const Span<T> indices);
 template<typename T> IndexRange non_empty_as_range(const Span<T> indices);
 template<typename T> int64_t find_size_of_next_range(const Span<T> indices);
