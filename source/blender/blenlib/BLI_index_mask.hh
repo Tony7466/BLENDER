@@ -807,20 +807,42 @@ foreach_index_in_range(const IndexRange range, Fn &&fn)
   }
 }
 
+template<typename Fn>
+#if (defined(__GNUC__) && !defined(__clang__))
+[[gnu::optimize("-funroll-loops")]] [[gnu::optimize("O3")]]
+#endif
+inline void
+foreach_index_in_range(const IndexRange range, const int64_t offset, Fn &&fn)
+{
+  const int64_t start = range.start();
+  const int64_t end = range.one_after_last();
+  for (int64_t i = start, mask_i = offset; i < end; i++, mask_i++) {
+    fn(i, mask_i);
+  }
+}
+
 template<typename Fn> inline void IndexMask::foreach_index_optimized(Fn &&fn) const
 {
   this->foreach_span_or_range([&](const auto mask_segment, const int64_t start) {
+    constexpr bool is_range = std::is_same_v<std::decay_t<decltype(mask_segment)>, IndexRange>;
     if constexpr (std::is_invocable_r_v<void, Fn, int64_t, int64_t>) {
-      for (const int64_t i : mask_segment.index_range()) {
-        fn(mask_segment[i], start + i);
+      if constexpr (is_range) {
+        foreach_index_in_range(mask_segment, start, fn);
+      }
+      else {
+        for (const int64_t i : mask_segment.index_range()) {
+          fn(mask_segment[i], start + i);
+        }
       }
     }
-    else if constexpr (std::is_same_v<std::decay_t<decltype(mask_segment)>, IndexRange>) {
-      foreach_index_in_range(mask_segment, fn);
-    }
     else {
-      for (const int64_t index : mask_segment) {
-        fn(index);
+      if constexpr (is_range) {
+        foreach_index_in_range(mask_segment, fn);
+      }
+      else {
+        for (const int64_t index : mask_segment) {
+          fn(index);
+        }
       }
     }
   });
@@ -938,7 +960,7 @@ inline void IndexMask::foreach_index_optimized(const GrainSize grain_size, Fn &&
 {
   threading::parallel_for(this->index_range(), grain_size.value, [&](const IndexRange range) {
     const IndexMask sub_mask = this->slice(range);
-    if constexpr (has_mask_segment_and_start_parameter<Fn>) {
+    if constexpr (std::is_invocable_r_v<void, Fn, int64_t, int64_t>) {
       sub_mask.foreach_index_optimized(
           [&](const int64_t i, const int64_t i_in_mask) { fn(i, i_in_mask + range.start()); });
     }
