@@ -16,6 +16,7 @@
 namespace blender::gpu {
 class VKTexture;
 class VKUniformBuffer;
+class VKVertexBuffer;
 
 class VKStateManager : public StateManager {
   /* Dummy sampler for now.*/
@@ -29,9 +30,13 @@ class VKStateManager : public StateManager {
   struct UniformBufferBinding {
     VKUniformBuffer *buffer = nullptr;
   };
+  struct UniformTexelBufferBinding {
+    VKVertexBuffer *vertex_buffer = nullptr;
+  };
   Array<ImageBinding> image_bindings_;
   Array<ImageBinding> texture_bindings_;
   Array<UniformBufferBinding> uniform_buffer_bindings_;
+  Array<UniformTexelBufferBinding> uniform_texel_buffer_bindings_;
 
  public:
   VKStateManager();
@@ -40,6 +45,9 @@ class VKStateManager : public StateManager {
   void force_state() override;
 
   void issue_barrier(eGPUBarrier barrier_bits) override;
+
+  /** Apply resources to the bindings of the active shader.*/
+  void apply_bindings();
 
   void texture_bind(Texture *tex, GPUSamplerState sampler, int unit) override;
   void texture_unbind(Texture *tex) override;
@@ -51,6 +59,9 @@ class VKStateManager : public StateManager {
 
   void uniform_buffer_bind(VKUniformBuffer *uniform_buffer, int slot);
   void uniform_buffer_unbind(VKUniformBuffer *uniform_buffer);
+
+  void texel_buffer_bind(VKVertexBuffer *vertex_buffer, int slot);
+  void texel_buffer_unbind(VKVertexBuffer *vertex_buffer);
 
   void texture_unpack_row_length_set(uint len) override;
 

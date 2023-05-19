@@ -10,6 +10,7 @@
 #include "vk_data_conversion.hh"
 #include "vk_shader.hh"
 #include "vk_shader_interface.hh"
+#include "vk_state_manager.hh"
 #include "vk_vertex_buffer.hh"
 
 namespace blender::gpu {
@@ -37,9 +38,15 @@ void VKVertexBuffer::bind_as_ssbo(uint binding)
 
 void VKVertexBuffer::bind_as_texture(uint binding)
 {
-  if (!buffer_.is_allocated()) {
-    allocate();
-  }
+  VKContext &context = *VKContext::get();
+  VKStateManager &state_manager = context.state_manager_get();
+  state_manager.texel_buffer_bind(this, binding);
+  should_unbind_ = true;
+}
+
+void VKVertexBuffer::bind(uint binding)
+{
+  upload_data();
 
   VKContext &context = *VKContext::get();
   VKShader *shader = static_cast<VKShader *>(context.shader);
@@ -47,8 +54,8 @@ void VKVertexBuffer::bind_as_texture(uint binding)
   const std::optional<VKDescriptorSet::Location> location =
       shader_interface.descriptor_set_location(
           shader::ShaderCreateInfo::Resource::BindType::SAMPLER, binding);
-  BLI_assert_msg(location, "Locations to texel buffers should always exist.");
-  shader->pipeline_get().descriptor_set_get().bind_as_texture(*this, *location);
+  BLI_assert_msg(location, "Locations to Texel buffers should always exist.");
+  shader->pipeline_get().descriptor_set_get().bind(*this, *location);
 }
 
 void VKVertexBuffer::wrap_handle(uint64_t /*handle*/)
@@ -92,6 +99,11 @@ void VKVertexBuffer::resize_data()
 
 void VKVertexBuffer::release_data()
 {
+  if (should_unbind_) {
+    VKContext &context = *VKContext::get();
+    context.state_manager_get().texel_buffer_unbind(this);
+  }
+
   MEM_SAFE_FREE(data);
 }
 

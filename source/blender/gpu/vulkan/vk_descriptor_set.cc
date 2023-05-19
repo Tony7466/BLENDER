@@ -58,15 +58,6 @@ void VKDescriptorSetTracker::bind_as_ssbo(VKVertexBuffer &buffer,
   binding.buffer_size = buffer.size_used_get();
 }
 
-void VKDescriptorSetTracker::bind_as_texture(VKVertexBuffer &buffer,
-                                             const VKDescriptorSet::Location location)
-{
-  Binding &binding = ensure_location(location);
-  binding.type = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-  binding.vk_buffer = buffer.vk_handle();
-  binding.buffer_size = buffer.size_used_get();
-}
-
 void VKDescriptorSetTracker::bind(VKUniformBuffer &buffer,
                                   const VKDescriptorSet::Location location)
 {
@@ -101,6 +92,15 @@ void VKDescriptorSetTracker::bind(VKTexture &texture,
   binding.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
   binding.texture = &texture;
   binding.vk_sampler = sampler.vk_handle();
+}
+
+void VKDescriptorSetTracker::bind(VKVertexBuffer &vertex_buffer,
+                                  const VKDescriptorSet::Location location)
+{
+  Binding &binding = ensure_location(location);
+  binding.type = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+  binding.vk_buffer = vertex_buffer.vk_handle();
+  binding.buffer_size = vertex_buffer.size_alloc_get();
 }
 
 VKDescriptorSetTracker::Binding &VKDescriptorSetTracker::ensure_location(

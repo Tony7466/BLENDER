@@ -10,6 +10,7 @@
 #include "vk_pipeline.hh"
 #include "vk_shader.hh"
 #include "vk_texture.hh"
+#include "vk_vertex_buffer.hh"
 
 #include "GPU_capabilities.h"
 
@@ -25,6 +26,8 @@ VKStateManager::VKStateManager()
   texture_bindings_.fill(ImageBinding());
   uniform_buffer_bindings_ = Array<UniformBufferBinding>(max_bindings);
   uniform_buffer_bindings_.fill(UniformBufferBinding());
+  uniform_texel_buffer_bindings_ = Array<UniformTexelBufferBinding>(max_bindings);
+  uniform_texel_buffer_bindings_.fill(UniformTexelBufferBinding());
 }
 
 void VKStateManager::apply_state()
@@ -34,7 +37,13 @@ void VKStateManager::apply_state()
     VKShader &shader = unwrap(*context.shader);
     VKPipeline &pipeline = shader.pipeline_get();
     pipeline.state_manager_get().set_state(state, mutable_state);
+  }
+}
 
+void VKStateManager::apply_bindings()
+{
+  VKContext &context = *VKContext::get();
+  if (context.shader) {
     for (int binding : IndexRange(image_bindings_.size())) {
       if (image_bindings_[binding].texture == nullptr) {
         continue;
@@ -42,11 +51,18 @@ void VKStateManager::apply_state()
       image_bindings_[binding].texture->image_bind(binding);
     }
 
-    for (int binding : IndexRange(image_bindings_.size())) {
+    for (int binding : IndexRange(texture_bindings_.size())) {
       if (texture_bindings_[binding].texture == nullptr) {
         continue;
       }
       texture_bindings_[binding].texture->bind(binding, sampler_);
+    }
+
+    for (int binding : IndexRange(uniform_texel_buffer_bindings_.size())) {
+      if (uniform_texel_buffer_bindings_[binding].vertex_buffer == nullptr) {
+        continue;
+      }
+      uniform_texel_buffer_bindings_[binding].vertex_buffer->bind(binding);
     }
 
     for (int binding : IndexRange(uniform_buffer_bindings_.size())) {
@@ -137,6 +153,20 @@ void VKStateManager::uniform_buffer_unbind(VKUniformBuffer *uniform_buffer)
   for (UniformBufferBinding &binding : uniform_buffer_bindings_) {
     if (binding.buffer == uniform_buffer) {
       binding.buffer = nullptr;
+    }
+  }
+}
+
+void VKStateManager::texel_buffer_bind(VKVertexBuffer *vertex_buffer, int slot)
+{
+  uniform_texel_buffer_bindings_[slot].vertex_buffer = vertex_buffer;
+}
+
+void VKStateManager::texel_buffer_unbind(VKVertexBuffer *vertex_buffer)
+{
+  for (UniformTexelBufferBinding &binding : uniform_texel_buffer_bindings_) {
+    if (binding.vertex_buffer == vertex_buffer) {
+      binding.vertex_buffer = nullptr;
     }
   }
 }

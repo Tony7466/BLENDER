@@ -16,12 +16,14 @@ class VKTexture;
 
 class VKVertexBuffer : public VertBuf {
   VKBuffer buffer_;
+  bool should_unbind_ = false;
 
  public:
   ~VKVertexBuffer();
 
   void bind_as_ssbo(uint binding) override;
   void bind_as_texture(uint binding) override;
+  void bind(uint binding);
   void wrap_handle(uint64_t handle) override;
 
   void update_sub(uint start, uint len, const void *data) override;

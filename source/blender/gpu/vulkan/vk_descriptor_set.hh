@@ -156,13 +156,14 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
   VKDescriptorSetTracker(VkDescriptorSetLayout layout) : layout_(layout) {}
 
   void bind_as_ssbo(VKVertexBuffer &buffer, VKDescriptorSet::Location location);
-  void bind_as_texture(VKVertexBuffer &buffer, VKDescriptorSet::Location location);
   void bind_as_ssbo(VKIndexBuffer &buffer, VKDescriptorSet::Location location);
   void bind(VKStorageBuffer &buffer, VKDescriptorSet::Location location);
   void bind(VKUniformBuffer &buffer, VKDescriptorSet::Location location);
   /* TODO: bind as image */
   void image_bind(VKTexture &texture, VKDescriptorSet::Location location);
   void bind(VKTexture &texture, VKDescriptorSet::Location location, VKSampler &sampler);
+  /* Bind as uniform texel buffer. */
+  void bind(VKVertexBuffer &vertex_buffer, VKDescriptorSet::Location location);
 
   /**
    * Some shaders don't need any descriptor sets so we don't need to bind them.
