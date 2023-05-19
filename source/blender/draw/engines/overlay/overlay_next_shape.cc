@@ -1251,7 +1251,7 @@ ShapeCache::ShapeCache()
 
   field_wind = batch_ptr(field_wind_verts());
   field_force = batch_ptr(field_force_verts());
-  field_vortex = batch_ptr(field_vortex_verts());
+  field_vortex = batch_ptr(field_vortex_verts(), GPU_PRIM_LINE_STRIP);
   field_curve = batch_ptr(field_curve_verts());
   field_tube_limit = batch_ptr(field_tube_limit_verts());
   field_cone_limit = batch_ptr(field_cone_limit_verts());
