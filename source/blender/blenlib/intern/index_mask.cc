@@ -590,8 +590,8 @@ static Set<int64_t> find_chunk_ids_to_process(const Expr &base_expr, const Index
     case Expr::Type::Complement: {
       const int64_t first_chunk_id = index_to_chunk_id(universe.first());
       const int64_t last_chunk_id = index_to_chunk_id(universe.last());
-      for (const int64_t chunk_id :
-           IndexRange(first_chunk_id, last_chunk_id - first_chunk_id + 1)) {
+      for (const int64_t chunk_id : IndexRange(first_chunk_id, last_chunk_id - first_chunk_id + 1))
+      {
         result.add(chunk_id);
       }
       break;
@@ -643,12 +643,13 @@ static void find_chunk_ids_to_process(const Expr &base_expr,
         r_chunk_non_empty[chunk_id].set();
         MutableBitRef is_full = r_chunk_is_full[chunk_id];
         if (chunk.is_full()) {
-          if (chunk_i == 0 && data.begin_it.segment_i == 0 &&
-              data.begin_it.index_in_segment == 0) {
+          if (chunk_i == 0 && data.begin_it.segment_i == 0 && data.begin_it.index_in_segment == 0)
+          {
             is_full.set();
           }
           else if (chunk_i == data.chunks_num - 1 && data.end_it.segment_i == 0 &&
-                   data.end_it.index_in_segment == chunk_capacity) {
+                   data.end_it.index_in_segment == chunk_capacity)
+          {
             is_full.set();
           }
           else {
@@ -926,8 +927,6 @@ template Vector<IndexRange> split_by_chunk(const Span<int64_t> indices);
 }  // namespace unique_sorted_indices
 
 void do_benchmark(const int64_t total);
-void do_benchmark(const int64_t /*total*/)
-{
-}
+void do_benchmark(const int64_t /*total*/) {}
 
 }  // namespace blender::index_mask
