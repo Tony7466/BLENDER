@@ -1852,13 +1852,13 @@ typedef struct SceneGpencil {
 typedef struct OnionSkinMeshLink {
   struct OnionSkinMeshLink *prev, *next;
   /* Having a Mesh pointer here breaks compilation. Complains about "extern C" issues. */
-  void *mesh;
+  struct Object *object;
 } OnionSkinMeshLink;
 
 typedef struct SceneOnionSkin {
   float color[3];
   float alpha;
-  ListBase meshes /* OnionSkinMeshLink */;
+  ListBase objects /* OnionSkinMeshLink */;
 } SceneOnionSkin;
 
 /** \} */

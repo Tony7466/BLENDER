@@ -1,3 +1,4 @@
+#include "BKE_mesh.h"
 #include "DRW_render.h"
 #include "draw_cache_impl.h"
 #include "overlay_private.hh"
@@ -27,8 +28,13 @@ void OVERLAY_onion_skin_populate(OVERLAY_Data *vedata, Object *ob)
   DRW_shgroup_uniform_vec3_copy(grp, "color", draw_ctx->scene->onion_skin_cache.color);
   DRW_shgroup_uniform_float_copy(grp, "alpha", draw_ctx->scene->onion_skin_cache.alpha);
 
-  LISTBASE_FOREACH (OnionSkinMeshLink *, mesh_link, &draw_ctx->scene->onion_skin_cache.meshes) {
-    struct GPUBatch *geom = DRW_mesh_batch_cache_get_surface((Mesh *)mesh_link->mesh);
+  LISTBASE_FOREACH (OnionSkinMeshLink *, mesh_link, &draw_ctx->scene->onion_skin_cache.objects) {
+    if (ob != mesh_link->object) {
+      continue;
+    }
+    Mesh *mesh = BKE_mesh_from_object(ob);
+
+    struct GPUBatch *geom = DRW_mesh_batch_cache_get_surface(mesh);
     if (geom) {
       DRW_shgroup_call(pd->onion_skin_grp, geom, ob);
     }
