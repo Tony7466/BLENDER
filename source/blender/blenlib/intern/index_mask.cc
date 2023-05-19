@@ -846,11 +846,9 @@ IndexMask IndexMask::from_expr(const Expr &expr,
 template<typename T> void IndexMask::to_indices(MutableSpan<T> r_indices) const
 {
   BLI_assert(this->size() == r_indices.size());
-  int64_t current_i = 0;
-  this->foreach_index([&](const int64_t index) mutable {
-    r_indices[current_i] = T(index);
-    current_i++;
-  });
+  this->foreach_index_optimized(
+      GrainSize(1024),
+      [&](const int64_t i, const int64_t mask_i) mutable { r_indices[mask_i] = T(i); });
 }
 
 void IndexMask::to_bits(MutableBitSpan r_bits, int64_t offset) const
@@ -858,6 +856,17 @@ void IndexMask::to_bits(MutableBitSpan r_bits, int64_t offset) const
   BLI_assert(r_bits.size() >= this->min_array_size() - offset);
   r_bits.reset_all();
   this->foreach_index([&](const int64_t i) { r_bits[i - offset].set(); });
+  this->foreach_span_or_range([&](const auto mask_segment) {
+    if constexpr (std::is_same_v<std::decay_t<decltype(mask_segment)>, IndexRange>) {
+      const IndexRange range = mask_segment.shift(-offset);
+      r_bits.slice(range).set_all();
+    }
+    else {
+      for (const int64_t i : mask_segment) {
+        r_bits[i - offset].set();
+      }
+    }
+  });
 }
 
 void IndexMask::to_bools(MutableSpan<bool> r_bools, int64_t offset) const
