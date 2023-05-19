@@ -270,6 +270,61 @@ IndexMask IndexMask::complement(const IndexRange universe, IndexMaskMemory &memo
 }
 
 template<typename T>
+static void fill_chunk_with_segments(Chunk &chunk,
+                                     const Span<std::variant<IndexRange, Span<T>>> segments,
+                                     const int64_t offset,
+                                     LinearAllocator<> &allocator)
+{
+  BLI_assert(!segments.is_empty());
+  const int64_t segments_num = segments.size();
+
+  MutableSpan<const int16_t *> indices_by_segment = allocator.allocate_array<const int16_t *>(
+      segments_num);
+  MutableSpan<int16_t> cumulative_segment_sizes = allocator.allocate_array<int16_t>(segments_num +
+                                                                                    1);
+
+  /* Code below may reuse memory from the global index array if possible. */
+  static const int16_t *static_offsets = get_static_indices_array().data();
+
+  int64_t cumulative_size = 0;
+  for (const int64_t segment_i : segments.index_range()) {
+    const std::variant<IndexRange, Span<T>> &segment = segments[segment_i];
+    cumulative_segment_sizes[segment_i] = int16_t(cumulative_size);
+
+    if (std::holds_alternative<IndexRange>(segment)) {
+      /* No extra allocations necessary because static memory is used. */
+      const IndexRange range_in_segment = std::get<IndexRange>(segment);
+      indices_by_segment[segment_i] = static_offsets + (range_in_segment.first() - offset);
+      cumulative_size += range_in_segment.size();
+    }
+    else {
+      const Span<T> indices_in_segment = std::get<Span<T>>(segment);
+      MutableSpan<int16_t> new_indices = allocator.allocate_array<int16_t>(
+          indices_in_segment.size());
+      if (offset == 0) {
+        /* This is a simple copy in the case when offset is zero. */
+        for (const int64_t i : new_indices.index_range()) {
+          new_indices[i] = int16_t(indices_in_segment[i]);
+        }
+      }
+      else {
+        for (const int64_t i : new_indices.index_range()) {
+          new_indices[i] = int16_t(indices_in_segment[i] - offset);
+        }
+      }
+      indices_by_segment[segment_i] = new_indices.data();
+      cumulative_size += indices_in_segment.size();
+    }
+  }
+
+  cumulative_segment_sizes.last() = int16_t(cumulative_size);
+
+  chunk.segments_num = int16_t(segments_num);
+  chunk.indices_by_segment = indices_by_segment.data();
+  chunk.cumulative_segment_sizes = cumulative_segment_sizes.data();
+}
+
+template<typename T>
 IndexMask IndexMask::from_indices(const Span<T> indices, IndexMaskMemory &memory)
 {
   using namespace unique_sorted_indices;
@@ -290,8 +345,6 @@ IndexMask IndexMask::from_indices(const Span<T> indices, IndexMaskMemory &memory
   MutableSpan<Chunk> chunks = memory.allocate_array<Chunk>(chunks_num);
   MutableSpan<int64_t> chunk_ids = memory.allocate_array<int64_t>(chunks_num);
 
-  /* Code below may reuse memory from the global index array if possible. */
-  static const int16_t *static_offsets = get_static_indices_array().data();
   /* If every index in a chunk is in the mask, it can be processed more efficiently. */
   const Chunk full_chunk_template = IndexMask(chunk_capacity).data().chunks[0];
 
@@ -317,43 +370,9 @@ IndexMask IndexMask::from_indices(const Span<T> indices, IndexMaskMemory &memory
 
     /* Split indices in current chunk into segments. */
     Vector<std::variant<IndexRange, Span<T>>> segments;
-    const int64_t segments_num = split_to_ranges_and_spans(indices_in_chunk, 64, segments);
-    BLI_assert(segments_num > 0);
+    split_to_ranges_and_spans<T>(indices_in_chunk, 64, segments);
 
-    MutableSpan<const int16_t *> indices_by_segment = allocator.allocate_array<const int16_t *>(
-        segments_num);
-    MutableSpan<int16_t> cumulative_segment_sizes = allocator.allocate_array<int16_t>(
-        segments_num + 1);
-
-    int64_t cumulative_size = 0;
-    for (const int64_t segment_i : segments.index_range()) {
-      const std::variant<IndexRange, Span<T>> &segment = segments[segment_i];
-      cumulative_segment_sizes[segment_i] = int16_t(cumulative_size);
-
-      if (std::holds_alternative<IndexRange>(segment)) {
-        /* No extra allocations necessary because static memory is used. */
-        const IndexRange range_in_segment = std::get<IndexRange>(segment);
-        indices_by_segment[segment_i] = static_offsets + (range_in_segment.first() - chunk_offset);
-        cumulative_size += range_in_segment.size();
-      }
-      else {
-        const Span<T> indices_in_segment = std::get<Span<T>>(segment);
-        MutableSpan<int16_t> new_indices = allocator.allocate_array<int16_t>(
-            indices_in_segment.size());
-        for (const int64_t index_in_segment : new_indices.index_range()) {
-          new_indices[index_in_segment] = int16_t(indices_in_segment[index_in_segment] -
-                                                  chunk_offset);
-        }
-        indices_by_segment[segment_i] = new_indices.data();
-        cumulative_size += indices_in_segment.size();
-      }
-    }
-
-    cumulative_segment_sizes.last() = int16_t(cumulative_size);
-
-    chunk.segments_num = int16_t(segments_num);
-    chunk.indices_by_segment = indices_by_segment.data();
-    chunk.cumulative_segment_sizes = cumulative_segment_sizes.data();
+    fill_chunk_with_segments<T>(chunk, segments, chunk_offset, allocator);
   };
 
   if (chunks_num > chunk_grain_size) {
@@ -904,18 +923,12 @@ IndexMask IndexMask::from_predicate_impl(
       return;
     }
 
+    Vector<std::variant<IndexRange, Span<int16_t>>> segments;
+    unique_sorted_indices::split_to_ranges_and_spans<int16_t>(
+        Span<int16_t>{indices_array.data(), indices_num}, 64, segments);
+    fill_chunk_with_segments<int16_t>(chunk, segments, 0, allocator);
+
     chunk_ids[chunk_i] = chunk_id;
-
-    MutableSpan<int16_t> indices = allocator.construct_array_copy<int16_t>(
-        {indices_array.data(), indices_num});
-    MutableSpan<int16_t> cumulative_segment_sizes = allocator.construct_array_copy<int16_t>(
-        {0, indices_num});
-    MutableSpan<const int16_t *> indices_by_segment =
-        allocator.construct_array_copy<const int16_t *>({indices.data()});
-
-    chunk.segments_num = 1;
-    chunk.cumulative_segment_sizes = cumulative_segment_sizes.data();
-    chunk.indices_by_segment = indices_by_segment.data();
   };
 
   if (universe_chunks_num > 1) {
@@ -1015,8 +1028,11 @@ template void IndexMask::to_indices(MutableSpan<int32_t>) const;
 template void IndexMask::to_indices(MutableSpan<int64_t>) const;
 
 namespace unique_sorted_indices {
-template Vector<IndexRange> split_by_chunk(const Span<int32_t> indices);
-template Vector<IndexRange> split_by_chunk(const Span<int64_t> indices);
+template Vector<IndexRange> split_by_chunk(const Span<int32_t>);
+template Vector<IndexRange> split_by_chunk(const Span<int64_t>);
+template int64_t split_to_ranges_and_spans(Span<int32_t>,
+                                           int64_t,
+                                           Vector<std::variant<IndexRange, Span<int32_t>>> &);
 }  // namespace unique_sorted_indices
 
 void do_benchmark(const int64_t total);
