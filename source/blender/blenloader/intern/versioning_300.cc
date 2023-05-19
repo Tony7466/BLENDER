@@ -2380,10 +2380,6 @@ static void version_liboverride_nla_frame_start_end(ID *id, AnimData *adt, void 
 
     MEM_freeN(rna_path_track);
   }
-
-  /* Force a rebuild of the path cache on the next query to the liboverrides system, because we may
-   * have changed RNA paths. */
-  BKE_lib_override_library_rna_path_cache_clear(liboverride);
 }
 
 /* NOLINTNEXTLINE: readability-function-size */

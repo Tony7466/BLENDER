@@ -225,11 +225,27 @@ void BKE_lib_override_library_copy(ID *dst_id, const ID *src_id, const bool do_f
   dst_id->tag &= ~LIB_TAG_LIBOVERRIDE_REFOK;
 }
 
+/**
+ * Clear the 'RNA path'-to-'override' cache.
+ *
+ * This cache will be automatically rebuilt on a call to
+ * #BKE_lib_override_library_property_find.
+ */
+static void lib_override_library_rna_path_cache_clear(IDOverrideLibrary *override)
+{
+  if (ELEM(nullptr, override->runtime, override->runtime->rna_path_to_override_properties)) {
+    return;
+  }
+
+  BLI_ghash_free(override->runtime->rna_path_to_override_properties, nullptr, nullptr);
+  override->runtime->rna_path_to_override_properties = nullptr;
+}
+
 void BKE_lib_override_library_clear(IDOverrideLibrary *override, const bool do_id_user)
 {
   BLI_assert(override != nullptr);
 
-  BKE_lib_override_library_rna_path_cache_clear(override);
+  lib_override_library_rna_path_cache_clear(override);
 
   LISTBASE_FOREACH (IDOverrideLibraryProperty *, op, &override->properties) {
     lib_override_library_property_clear(op);
@@ -3452,16 +3468,6 @@ BLI_INLINE GHash *override_library_rna_path_mapping_ensure(IDOverrideLibrary *ov
   }
 
   return override_runtime->rna_path_to_override_properties;
-}
-
-void BKE_lib_override_library_rna_path_cache_clear(IDOverrideLibrary *override)
-{
-  if (ELEM(nullptr, override->runtime, override->runtime->rna_path_to_override_properties)) {
-    return;
-  }
-
-  BLI_ghash_free(override->runtime->rna_path_to_override_properties, nullptr, nullptr);
-  override->runtime->rna_path_to_override_properties = nullptr;
 }
 
 IDOverrideLibraryProperty *BKE_lib_override_library_property_find(IDOverrideLibrary *override,

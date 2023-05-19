@@ -289,17 +289,6 @@ void BKE_lib_override_library_delete(struct Main *bmain, struct ID *id_root);
 void BKE_lib_override_library_make_local(struct ID *id);
 
 /**
- * Clear the 'RNA path'-to-'override' cache.
- *
- * This shouldn't be necessary during normal use, and is only here to accomodate
- * versioning code that needs to adjust the RNA path of property overrides.
- *
- * This cache will be automatically rebuilt on a call to
- * #BKE_lib_override_library_property_find.
- */
-void BKE_lib_override_library_rna_path_cache_clear(struct IDOverrideLibrary *override);
-
-/**
  * Find override property from given RNA path, if it exists.
  */
 struct IDOverrideLibraryProperty *BKE_lib_override_library_property_find(
