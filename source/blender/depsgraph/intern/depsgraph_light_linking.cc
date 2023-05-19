@@ -381,7 +381,7 @@ void Cache::add_light_linking_emitter(const Scene &scene, const Object &emitter)
                                                                                           emitter);
   if (light_emitter_data) {
     foreach_light_collection_object(
-        *emitter.light_linking.receiver_collection,
+        *emitter.light_linking->receiver_collection,
         [&](const CollectionLightLinking &collection_light_linking, const Object &receiver) {
           add_receiver_object(*light_emitter_data, collection_light_linking, receiver);
         });
@@ -400,7 +400,7 @@ void Cache::add_shadow_linking_emitter(const Scene &scene, const Object &emitter
       scene, emitter);
   if (shadow_emitter_data) {
     foreach_light_collection_object(
-        *emitter.light_linking.blocker_collection,
+        *emitter.light_linking->blocker_collection,
         [&](const CollectionLightLinking &collection_light_linking, const Object &receiver) {
           add_blocker_object(*shadow_emitter_data, collection_light_linking, receiver);
         });
@@ -448,19 +448,26 @@ void Cache::end_build(const Scene &scene)
 /* Set runtime data in light linking. */
 void Cache::eval_runtime_data(Object &object_eval) const
 {
-  LightLinking &light_linking = object_eval.light_linking;
-
   if (!has_light_linking()) {
-    /* No light linking used in the scene. */
+    /* No light linking used in the scene, still reset to default on objects that have
+     * allocated light linking data structures since we can't free them here. */
+    if (object_eval.light_linking) {
+      LightLinking &light_linking = *object_eval.light_linking;
+      light_linking.runtime.receiver_light_set = 0;
+      light_linking.runtime.light_set_membership = EmitterSetMembership::SET_MEMBERSHIP_ALL;
 
-    light_linking.runtime.receiver_light_set = 0;
-    light_linking.runtime.light_set_membership = EmitterSetMembership::SET_MEMBERSHIP_ALL;
-
-    light_linking.runtime.blocker_shadow_set = 0;
-    light_linking.runtime.shadow_set_membership = EmitterSetMembership::SET_MEMBERSHIP_ALL;
+      light_linking.runtime.blocker_shadow_set = 0;
+      light_linking.runtime.shadow_set_membership = EmitterSetMembership::SET_MEMBERSHIP_ALL;
+    }
 
     return;
   }
+
+  /* Allocate light linking on demand. */
+  if (!object_eval.light_linking) {
+    object_eval.light_linking = MEM_cnew<LightLinking>(__func__);
+  }
+  LightLinking &light_linking = *object_eval.light_linking;
 
   /* Receiver and blocker configuration. */
   light_linking.runtime.receiver_light_set = light_linking_.get_light_set_for(object_eval);
