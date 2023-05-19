@@ -207,6 +207,15 @@ template<typename Allocator = GuardedAllocator> class LinearAllocator : NonCopya
     this->provide_buffer(aligned_buffer.ptr(), Size);
   }
 
+  /**
+   * Pass ownership of a buffer to this allocator. It is freed when the allocator is freed. The
+   * buffer won't be used for further small allocations. For that purpose use #provide_buffer.
+   */
+  void give_ownership_of_buffer(const void *buffer)
+  {
+    owned_buffers_.append(const_cast<void *>(buffer));
+  }
+
  private:
   void allocate_new_buffer(int64_t min_allocation_size, int64_t min_alignment)
   {
