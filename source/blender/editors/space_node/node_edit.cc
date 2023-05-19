@@ -1295,6 +1295,8 @@ static int node_duplicate_exec(bContext *C, wmOperator *op)
   Map<const bNodeSocket *, bNodeSocket *> socket_map;
   Map<const ID *, ID *> duplicated_node_groups;
 
+  bNode *actibe_node = nodeGetActive(ntree);
+
   for (bNode *node : get_selected_nodes(*ntree)) {
     bNode *new_node = bke::node_copy_with_mapping(
         ntree, *node, LIB_ID_COPY_DEFAULT, true, socket_map);
@@ -1369,6 +1371,10 @@ static int node_duplicate_exec(bContext *C, wmOperator *op)
   }
 
   remap_pairing(*ntree, node_map);
+
+  if (bNode *new_active_node = node_map.lookup_default(actibe_node, nullptr)) {
+    nodeSetActive(ntree, new_active_node);
+  }
 
   /* Deselect old nodes, select the copies instead. */
   for (const auto item : node_map.items()) {

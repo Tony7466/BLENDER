@@ -42,6 +42,7 @@ struct NodeClipboardItem {
 };
 
 struct NodeClipboard {
+  bNode *active_node;
   Vector<NodeClipboardItem> nodes;
   Vector<bNodeLink> links;
 
@@ -52,6 +53,7 @@ struct NodeClipboard {
     }
     this->nodes.clear_and_shrink();
     this->links.clear_and_shrink();
+    this->active_node = nullptr;
   }
 
   /**
@@ -133,6 +135,10 @@ static int node_clipboard_copy_exec(bContext *C, wmOperator * /*op*/)
     if (node->flag & SELECT) {
       clipboard.add_node(*node, node_map, socket_map);
     }
+  }
+
+  if (bNode *active_node = nodeGetActive(&tree)) {
+    clipboard.active_node = node_map.lookup_default(active_node, nullptr);
   }
 
   for (bNode *new_node : node_map.values()) {
@@ -324,6 +330,11 @@ static int node_clipboard_paste_exec(bContext *C, wmOperator *op)
   for (bNode *new_node : node_map.values()) {
     /* Update multi input socket indices in case all connected nodes weren't copied. */
     update_multi_input_indices_for_removed_links(*new_node);
+  }
+
+  if (clipboard.active_node != nullptr) {
+    bNode *new_active_node = node_map.lookup(clipboard.active_node);
+    nodeSetActive(&tree, new_active_node);
   }
 
   Main *bmain = CTX_data_main(C);
