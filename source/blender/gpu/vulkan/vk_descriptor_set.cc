@@ -99,7 +99,7 @@ void VKDescriptorSetTracker::bind(VKVertexBuffer &vertex_buffer,
 {
   Binding &binding = ensure_location(location);
   binding.type = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-  binding.vk_buffer = vertex_buffer.vk_handle();
+  binding.vk_buffer_view = vertex_buffer.vk_buffer_view_get();
   binding.buffer_size = vertex_buffer.size_alloc_get();
 }
 
@@ -127,6 +127,7 @@ void VKDescriptorSetTracker::update(VKContext &context)
   BLI_assert(vk_descriptor_set != VK_NULL_HANDLE);
 
   Vector<VkDescriptorBufferInfo> buffer_infos;
+  buffer_infos.reserve(16);
   Vector<VkWriteDescriptorSet> descriptor_writes;
 
   for (const Binding &binding : bindings_) {
@@ -148,7 +149,27 @@ void VKDescriptorSetTracker::update(VKContext &context)
     descriptor_writes.append(write_descriptor);
   }
 
+  for (const Binding &binding : bindings_) {
+    if (!binding.is_texel_buffer()) {
+      continue;
+    }
+    VkDescriptorBufferInfo buffer_info = {};
+    buffer_info.buffer = binding.vk_buffer;
+    buffer_info.range = binding.buffer_size;
+    buffer_infos.append(buffer_info);
+
+    VkWriteDescriptorSet write_descriptor = {};
+    write_descriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    write_descriptor.dstSet = vk_descriptor_set;
+    write_descriptor.dstBinding = binding.location;
+    write_descriptor.descriptorCount = 1;
+    write_descriptor.descriptorType = binding.type;
+    write_descriptor.pTexelBufferView = &binding.vk_buffer_view;
+    descriptor_writes.append(write_descriptor);
+  }
+
   Vector<VkDescriptorImageInfo> image_infos;
+  image_infos.reserve(16);
   for (const Binding &binding : bindings_) {
     if (!binding.is_image()) {
       continue;

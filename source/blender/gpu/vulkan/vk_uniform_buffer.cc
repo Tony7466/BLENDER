@@ -13,6 +13,11 @@
 
 namespace blender::gpu {
 
+VKUniformBuffer::~VKUniformBuffer()
+{
+  unbind();
+}
+
 void VKUniformBuffer::update(const void *data)
 {
   if (!buffer_.is_allocated()) {
@@ -67,8 +72,10 @@ void VKUniformBuffer::bind_as_ssbo(int slot)
 
 void VKUniformBuffer::unbind()
 {
-  VKContext &context = *VKContext::get();
-  context.state_manager_get().uniform_buffer_unbind(this);
+  VKContext *context = VKContext::get();
+  if (context) {
+    context->state_manager_get().uniform_buffer_unbind(this);
+  }
 }
 
 }  // namespace blender::gpu

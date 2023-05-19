@@ -120,6 +120,8 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
     VkBuffer vk_buffer = VK_NULL_HANDLE;
     VkDeviceSize buffer_size = 0;
 
+    VkBufferView vk_buffer_view = VK_NULL_HANDLE;
+
     VKTexture *texture = nullptr;
     VkSampler vk_sampler = VK_NULL_HANDLE;
 
@@ -130,10 +132,12 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
 
     bool is_buffer() const
     {
-      return ELEM(type,
-                  VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                  VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER);
+      return ELEM(type, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    }
+
+    bool is_texel_buffer() const
+    {
+      return ELEM(type, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER);
     }
 
     bool is_image() const

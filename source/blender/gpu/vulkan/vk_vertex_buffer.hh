@@ -17,6 +17,8 @@ class VKTexture;
 class VKVertexBuffer : public VertBuf {
   VKBuffer buffer_;
   bool should_unbind_ = false;
+  /** When a vertex buffer is used as a UNIFORM_TEXEL_BUFFER the buffer requires a buffer view. */
+  VkBufferView vk_buffer_view_ = VK_NULL_HANDLE;
 
  public:
   ~VKVertexBuffer();
@@ -33,6 +35,12 @@ class VKVertexBuffer : public VertBuf {
   {
     BLI_assert(buffer_.is_allocated());
     return buffer_.vk_handle();
+  }
+
+  VkBufferView vk_buffer_view_get() const
+  {
+    BLI_assert(vk_buffer_view_ != VK_NULL_HANDLE);
+    return vk_buffer_view_;
   }
 
  protected:

@@ -8,6 +8,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "vk_data_conversion.hh"
+#include "vk_memory.hh"
 #include "vk_shader.hh"
 #include "vk_shader_interface.hh"
 #include "vk_state_manager.hh"
@@ -47,6 +48,21 @@ void VKVertexBuffer::bind_as_texture(uint binding)
 void VKVertexBuffer::bind(uint binding)
 {
   upload_data();
+
+  if (vk_buffer_view_ == VK_NULL_HANDLE) {
+    VkBufferViewCreateInfo buffer_view_info = {};
+    eGPUTextureFormat texture_format = to_texture_format(&format);
+
+    buffer_view_info.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
+    buffer_view_info.buffer = buffer_.vk_handle();
+    buffer_view_info.format = to_vk_format(texture_format);
+    buffer_view_info.range = buffer_.size_in_bytes();
+
+    VK_ALLOCATION_CALLBACKS;
+    const VKDevice &device = VKBackend::get().device_get();
+    vkCreateBufferView(
+        device.device_get(), &buffer_view_info, vk_allocation_callbacks, &vk_buffer_view_);
+  }
 
   VKContext &context = *VKContext::get();
   VKShader *shader = static_cast<VKShader *>(context.shader);
@@ -104,6 +120,13 @@ void VKVertexBuffer::release_data()
     context.state_manager_get().texel_buffer_unbind(this);
   }
 
+  if (vk_buffer_view_ != VK_NULL_HANDLE) {
+    VK_ALLOCATION_CALLBACKS;
+    const VKDevice &device = VKBackend::get().device_get();
+    vkDestroyBufferView(device.device_get(), vk_buffer_view_, vk_allocation_callbacks);
+    vk_buffer_view_ = VK_NULL_HANDLE;
+  }
+
   MEM_SAFE_FREE(data);
 }
 
@@ -128,7 +151,9 @@ void VKVertexBuffer::upload_data()
   if (!buffer_.is_allocated()) {
     allocate();
   }
-
+  if (!ELEM(usage_, GPU_USAGE_STATIC, GPU_USAGE_STREAM, GPU_USAGE_DYNAMIC)) {
+    return;
+  }
   if (flag & GPU_VERTBUF_DATA_DIRTY) {
     void *data_to_upload = data;
     if (conversion_needed(format)) {
@@ -158,7 +183,8 @@ void VKVertexBuffer::allocate()
                  usage_,
                  static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
                                                     VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-                                                    VK_BUFFER_USAGE_VERTEX_BUFFER_BIT));
+                                                    VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+                                                    VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT));
   debug::object_label(buffer_.vk_handle(), "VertexBuffer");
 }
 
