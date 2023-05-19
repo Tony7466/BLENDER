@@ -176,7 +176,7 @@ typedef enum ImBufOwnership {
  * Note on the implicit sharing
  * ----------------------------
  *
- * The buffer allows to implicitly share data with other users of such data. In this case the
+ * The buffer allows implicitly sharing data with other users of such data. In this case the
  * ownership is set to IB_DO_NOT_TAKE_OWNERSHIP. */
 /* TODO(sergey): Once everything is C++ replace with a template. */
 
