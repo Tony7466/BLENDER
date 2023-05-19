@@ -1,0 +1,66 @@
+/**
+ * Ray generation routines for each BSDF types.
+ */
+
+#pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_vector_lib.glsl)
+#pragma BLENDER_REQUIRE(common_view_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_bsdf_sampling_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_ray_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
+
+/* Returns viewspace ray. */
+vec3 raytrace_reflection_direction(
+    SamplingData data, vec2 noise, ClosureReflection reflection, vec3 V, out float pdf)
+{
+  vec2 noise_offset = sampling_rng_2D_get(SAMPLING_RAYTRACE_U);
+  vec3 Xi = sample_cylinder(fract(noise_offset + noise));
+
+  float roughness_sqr = max(1e-3, sqr(reflection.roughness));
+  /* Gives *perfect* reflection for very small roughness. */
+  if (reflection.roughness < 0.0016) {
+    Xi = vec3(0.0);
+  }
+
+  vec3 T, B, N = reflection.N;
+  make_orthonormal_basis(N, T, B);
+  return sample_ggx_reflect(Xi, roughness_sqr, V, N, T, B, pdf);
+}
+
+/* Returns viewspace ray. */
+vec3 raytrace_refraction_direction(
+    SamplingData data, vec2 noise, ClosureRefraction refraction, vec3 V, out float pdf)
+{
+  vec2 noise_offset = sampling_rng_2D_get(SAMPLING_RAYTRACE_U);
+  vec3 Xi = sample_cylinder(fract(noise_offset + noise));
+
+  float roughness_sqr = max(1e-3, sqr(refraction.roughness));
+  /* Gives *perfect* refraction for very small roughness. */
+  if (refraction.roughness < 0.0016) {
+    Xi = vec3(0.0);
+  }
+
+  vec3 T, B, N = refraction.N;
+  make_orthonormal_basis(N, T, B);
+  return sample_ggx_refract(Xi, roughness_sqr, refraction.ior, V, N, T, B, pdf);
+}
+
+/* Returns viewspace ray. */
+vec3 raytrace_diffuse_direction(SamplingData data,
+                                vec2 noise,
+                                ClosureDiffuse diffuse,
+                                out float pdf)
+{
+  vec2 noise_offset = sampling_rng_2D_get(SAMPLING_RAYTRACE_U);
+  vec3 Xi = sample_cylinder(fract(noise_offset + noise));
+
+  /* Bias the rays so we never get really high energy rays almost parallel to the surface. */
+  Xi.x = Xi.x * 0.98 + 0.02;
+
+  vec3 T, B, N = diffuse.N;
+  make_orthonormal_basis(N, T, B);
+
+  return sample_cosine_hemisphere(Xi, N, T, B, pdf);
+}

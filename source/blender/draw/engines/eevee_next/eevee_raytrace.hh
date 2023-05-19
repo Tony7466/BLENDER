@@ -28,7 +28,19 @@ class RaytracingModule {
 
   draw::PassSimple raytrace_ps_ = {"Raytrace"};
 
-  TextureFromPool tile_mask_tx_;
+  TextureFromPool tile_mask_tx_ = {"tile_mask_tx"};
+
+  /**
+   * Each ray type has a indirect dispatch and a tile buffer that contains references to tiles.
+   * This avoid dispatching workgroups that ultimately won't do any tracing.
+   */
+
+  /** Resources for reflection rays. */
+  DispatchIndirectBuf dispatch_reflect_buf_ = {"dispatch_reflect_buf"};
+  RaytraceTileBuf tiles_reflect_buf_ = {"tiles_reflect_buf"};
+
+  /** Trace results. Results are in scheduled tile order. */
+  StorageArrayBuffer<float4, 512, true> tiles_reflect_buf_ = {"tiles_reflect_buf"};
 
   int3 tile_dispatch_size_ = int3(1);
 

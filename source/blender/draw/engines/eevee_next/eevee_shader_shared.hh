@@ -872,6 +872,30 @@ enum eClosureBits : uint32_t {
   CLOSURE_AMBIENT_OCCLUSION = (1u << 12u),
 };
 
+struct RaytraceData {
+  /** ViewProjection matrix used to render the previous frame. */
+  float4x4 history_persmat;
+  /** False if the history buffer was just allocated and contains uninitialized data. */
+  bool1 valid_history_reflection;
+  /** Scale and bias to go from raytrace resolution to input resolution. */
+  int resolution_scale;
+  int2 resolution_bias;
+  /** View space thickness the objects. */
+  float thickness;
+  /** Determine how fast the sample steps are getting bigger. */
+  float quality;
+  /** Maximum brightness during lighting evaluation. */
+  float brightness_clamp;
+  /** Maximum roughness for which we will trace a ray. */
+  float max_roughness;
+  /** Resolve sample pool offset, based on scene current sample. */
+  int pool_offset;
+  int _pad0;
+  int _pad1;
+  int _pad2;
+};
+BLI_STATIC_ASSERT_ALIGN(RaytraceData, 16)
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -946,6 +970,7 @@ using CameraDataBuf = draw::UniformBuffer<CameraData>;
 using DepthOfFieldDataBuf = draw::UniformBuffer<DepthOfFieldData>;
 using DepthOfFieldScatterListBuf = draw::StorageArrayBuffer<ScatterRect, 16, true>;
 using DrawIndirectBuf = draw::StorageBuffer<DrawCommand, true>;
+using DispatchIndirectBuf = draw::StorageBuffer<DispatchCommand>;
 using FilmDataBuf = draw::UniformBuffer<FilmData>;
 using DebugSurfelBuf = draw::StorageArrayBuffer<DebugSurfel, 64>;
 using HiZDataBuf = draw::UniformBuffer<HiZData>;
@@ -957,6 +982,7 @@ using LightCullingZdistBuf = draw::StorageArrayBuffer<float, LIGHT_CHUNK, true>;
 using LightDataBuf = draw::StorageArrayBuffer<LightData, LIGHT_CHUNK>;
 using MotionBlurDataBuf = draw::UniformBuffer<MotionBlurData>;
 using MotionBlurTileIndirectionBuf = draw::StorageBuffer<MotionBlurTileIndirection, true>;
+using RaytraceTileBuf = draw::StorageArrayBuffer<uint, 1024, true>;
 using SamplingDataBuf = draw::StorageBuffer<SamplingData>;
 using ShadowStatisticsBuf = draw::StorageBuffer<ShadowStatistics>;
 using ShadowPagesInfoDataBuf = draw::StorageBuffer<ShadowPagesInfoData>;

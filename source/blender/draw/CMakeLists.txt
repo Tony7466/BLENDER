@@ -425,6 +425,8 @@ set(GLSL_SRC
   engines/eevee/engine_eevee_shared_defines.h
 
   engines/eevee_next/shaders/eevee_attributes_lib.glsl
+  engines/eevee_next/shaders/eevee_bsdf_microfacet_lib.glsl
+  engines/eevee_next/shaders/eevee_bsdf_sampling_lib.glsl
   engines/eevee_next/shaders/eevee_camera_lib.glsl
   engines/eevee_next/shaders/eevee_colorspace_lib.glsl
   engines/eevee_next/shaders/eevee_cryptomatte_lib.glsl
@@ -476,6 +478,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_ray_denoise_spatial_comp.glsl
   engines/eevee_next/shaders/eevee_ray_denoise_temporal_comp.glsl
   engines/eevee_next/shaders/eevee_ray_generate_comp.glsl
+  engines/eevee_next/shaders/eevee_ray_generate_lib.glsl
   engines/eevee_next/shaders/eevee_ray_lib.glsl
   engines/eevee_next/shaders/eevee_ray_tile_classify_comp.glsl
   engines/eevee_next/shaders/eevee_ray_tile_compact_comp.glsl
