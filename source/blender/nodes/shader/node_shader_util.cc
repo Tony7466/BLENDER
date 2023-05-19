@@ -236,7 +236,7 @@ static bNode *node_get_active(bNodeTree *ntree, int sub_activity)
     if (node->flag & sub_activity) {
       activetexnode = node;
       /* if active we can return immediately */
-      if (node->flag & NODE_ACTIVE) {
+      if (node->is_active()) {
         return node;
       }
     }
@@ -244,7 +244,7 @@ static bNode *node_get_active(bNodeTree *ntree, int sub_activity)
       inactivenode = node;
     }
     else if (node->type == NODE_GROUP) {
-      if (node->flag & NODE_ACTIVE) {
+      if (node->is_active()) {
         activegroup = node;
       }
       else {

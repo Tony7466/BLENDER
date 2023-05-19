@@ -1239,7 +1239,7 @@ static void node_duplicate_reparent_recursive(bNodeTree *ntree,
 
   /* Find first selected parent. */
   for (parent = node->parent; parent; parent = parent->parent) {
-    if (parent->flag & SELECT) {
+    if (parent->is_selected()) {
       if (!(parent->flag & NODE_TEST)) {
         node_duplicate_reparent_recursive(ntree, node_map, parent);
       }
@@ -1527,7 +1527,7 @@ static void node_flag_toggle_exec(SpaceNode *snode, int toggle_flag)
   int tot_eq = 0, tot_neq = 0;
 
   for (bNode *node : snode->edittree->all_nodes()) {
-    if (node->flag & SELECT) {
+    if (node->is_selected()) {
 
       if (toggle_flag == NODE_PREVIEW && (node->typeinfo->flag & NODE_PREVIEW) == 0) {
         continue;
@@ -1547,7 +1547,7 @@ static void node_flag_toggle_exec(SpaceNode *snode, int toggle_flag)
     }
   }
   for (bNode *node : snode->edittree->all_nodes()) {
-    if (node->flag & SELECT) {
+    if (node->is_selected()) {
 
       if (toggle_flag == NODE_PREVIEW && (node->typeinfo->flag & NODE_PREVIEW) == 0) {
         continue;
@@ -1643,7 +1643,7 @@ static int node_deactivate_viewer_exec(bContext *C, wmOperator * /*op*/)
     if (node->type != GEO_NODE_VIEWER) {
       continue;
     }
-    if (!(node->flag & SELECT)) {
+    if (!(node->is_selected())) {
       continue;
     }
     if (node == active_viewer) {
@@ -1717,7 +1717,7 @@ static int node_socket_toggle_exec(bContext *C, wmOperator * /*op*/)
   /* Toggle for all selected nodes */
   bool hidden = false;
   for (bNode *node : snode->edittree->all_nodes()) {
-    if (node->flag & SELECT) {
+    if (node->is_selected()) {
       if (node_has_hidden_sockets(node)) {
         hidden = true;
         break;
@@ -1726,7 +1726,7 @@ static int node_socket_toggle_exec(bContext *C, wmOperator * /*op*/)
   }
 
   for (bNode *node : snode->edittree->all_nodes()) {
-    if (node->flag & SELECT) {
+    if (node->is_selected()) {
       node_set_hidden_sockets(snode, node, !hidden);
     }
   }
@@ -1767,7 +1767,7 @@ static int node_mute_exec(bContext *C, wmOperator * /*op*/)
   ED_preview_kill_jobs(CTX_wm_manager(C), bmain);
 
   for (bNode *node : snode->edittree->all_nodes()) {
-    if ((node->flag & SELECT) && !node->typeinfo->no_muting) {
+    if ((node->is_selected()) && !node->typeinfo->no_muting) {
       node->flag ^= NODE_MUTED;
       BKE_ntree_update_tag_node_mute(snode->edittree, node);
     }
@@ -1810,7 +1810,7 @@ static int node_delete_exec(bContext *C, wmOperator * /*op*/)
   node_select_paired(*snode->edittree);
 
   LISTBASE_FOREACH_MUTABLE (bNode *, node, &snode->edittree->nodes) {
-    if (node->flag & SELECT) {
+    if (node->is_selected()) {
       nodeRemoveNode(bmain, snode->edittree, node, true);
     }
   }
@@ -1857,7 +1857,7 @@ static int node_switch_view_exec(bContext *C, wmOperator * /*op*/)
   SpaceNode *snode = CTX_wm_space_node(C);
 
   LISTBASE_FOREACH_MUTABLE (bNode *, node, &snode->edittree->nodes) {
-    if (node->flag & SELECT) {
+    if (node->is_selected()) {
       /* Call the update function from the Switch View node. */
       node->runtime->update = NODE_UPDATE_OPERATOR;
     }
@@ -1900,7 +1900,7 @@ static int node_delete_reconnect_exec(bContext *C, wmOperator * /*op*/)
   node_select_paired(*snode->edittree);
 
   LISTBASE_FOREACH_MUTABLE (bNode *, node, &snode->edittree->nodes) {
-    if (node->flag & SELECT) {
+    if (node->is_selected()) {
       blender::bke::nodeInternalRelink(snode->edittree, node);
       nodeRemoveNode(bmain, snode->edittree, node, true);
     }

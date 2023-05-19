@@ -1721,7 +1721,7 @@ static int detach_links_exec(bContext *C, wmOperator * /*op*/)
   ED_preview_kill_jobs(CTX_wm_manager(C), CTX_data_main(C));
 
   for (bNode *node : ntree.all_nodes()) {
-    if (node->flag & SELECT) {
+    if (node->is_selected()) {
       bke::nodeInternalRelink(&ntree, node);
     }
   }
@@ -2048,7 +2048,7 @@ static bNode *get_selected_node_for_insertion(bNodeTree &node_tree)
   bNode *selected_node = nullptr;
   int selected_node_count = 0;
   for (bNode *node : node_tree.all_nodes()) {
-    if (node->flag & SELECT) {
+    if (node->is_selected()) {
       selected_node = node;
       selected_node_count++;
     }

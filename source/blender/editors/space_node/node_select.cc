@@ -347,7 +347,7 @@ static bool node_select_grouped_type(bNodeTree &node_tree, bNode &node_act)
 {
   bool changed = false;
   for (bNode *node : node_tree.all_nodes()) {
-    if ((node->flag & SELECT) == 0) {
+    if (!node->is_selected()) {
       if (node->type == node_act.type) {
         nodeSetSelected(node, true);
         changed = true;
@@ -361,7 +361,7 @@ static bool node_select_grouped_color(bNodeTree &node_tree, bNode &node_act)
 {
   bool changed = false;
   for (bNode *node : node_tree.all_nodes()) {
-    if ((node->flag & SELECT) == 0) {
+    if (!node->is_selected()) {
       if (compare_v3v3(node->color, node_act.color, 0.005f)) {
         nodeSetSelected(node, true);
         changed = true;
@@ -388,7 +388,7 @@ static bool node_select_grouped_name(bNodeTree &node_tree, bNode &node_act, cons
   }
 
   for (bNode *node : node_tree.all_nodes()) {
-    if (node->flag & SELECT) {
+    if (node->is_selected()) {
       continue;
     }
     pref_len_curr = BLI_str_partition_ex_utf8(
@@ -566,7 +566,7 @@ static bool node_mouse_select(bContext *C,
     if (sock) {
       node = &sock->owner_node();
       found = true;
-      node_was_selected = node->flag & SELECT;
+      node_was_selected = node->is_selected();
 
       /* NOTE: SOCK_IN does not take into account the extend case...
        * This feature is not really used anyway currently? */
@@ -578,7 +578,7 @@ static bool node_mouse_select(bContext *C,
       if (sock) {
         node = &sock->owner_node();
         found = true;
-        node_was_selected = node->flag & SELECT;
+        node_was_selected = node->is_selected();
 
         if (sock->flag & SELECT) {
           if (extend) {
@@ -619,10 +619,10 @@ static bool node_mouse_select(bContext *C,
     /* Find the closest visible node. */
     node = node_under_mouse_select(node_tree, cursor);
     found = (node != nullptr);
-    node_was_selected = node && (node->flag & SELECT);
+    node_was_selected = node && (node->is_selected());
 
     if (params->sel_op == SEL_OP_SET) {
-      if ((found && params->select_passthrough) && (node->flag & SELECT)) {
+      if ((found && params->select_passthrough) && (node->is_selected())) {
         found = false;
       }
       else if (found || params->deselect_all) {
@@ -642,7 +642,7 @@ static bool node_mouse_select(bContext *C,
           break;
         case SEL_OP_XOR: {
           /* Check active so clicking on an inactive node activates it. */
-          bool is_selected = (node->flag & NODE_SELECT) && (node->flag & NODE_ACTIVE);
+          bool is_selected = (node->flag & NODE_SELECT) && (node->is_active());
           nodeSetSelected(node, !is_selected);
           break;
         }
@@ -1118,7 +1118,7 @@ static int node_select_all_exec(bContext *C, wmOperator *op)
       break;
     case SEL_INVERT:
       for (bNode *node : node_tree.all_nodes()) {
-        nodeSetSelected(node, !(node->flag & SELECT));
+        nodeSetSelected(node, !(node->is_selected()));
       }
       break;
   }

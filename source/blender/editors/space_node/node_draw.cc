@@ -1425,7 +1425,7 @@ static void node_draw_shadow(const SpaceNode &snode,
 {
   const rctf &rct = node.runtime->totr;
   UI_draw_roundbox_corner_set(UI_CNR_ALL);
-  ui_draw_dropshadow(&rct, radius, snode.runtime->aspect, alpha, node.flag & NODE_ACTIVE);
+  ui_draw_dropshadow(&rct, radius, snode.runtime->aspect, alpha, node.is_active());
 }
 
 static void node_draw_sockets(const View2D &v2d,
@@ -2358,7 +2358,7 @@ static void node_draw_basis(const bContext &C,
     }
 
     /* Draw selected nodes fully opaque. */
-    if (node.flag & NODE_ACTIVE) {
+    if (node.is_active()) {
       color[3] = 1.0f;
     }
 
@@ -2502,7 +2502,7 @@ static void node_draw_hidden(const bContext &C,
     }
 
     /* Draw selected nodes fully opaque. */
-    if (node.flag & NODE_ACTIVE) {
+    if (node.is_active()) {
       color[3] = 1.0f;
     }
 
@@ -2515,7 +2515,7 @@ static void node_draw_hidden(const bContext &C,
   }
 
   /* Title. */
-  if (node.flag & NODE_ACTIVE) {
+  if (node.is_active()) {
     UI_GetThemeColor4fv(TH_SELECT, color);
   }
   else {
@@ -3005,7 +3005,7 @@ static void reroute_node_draw(
 
   /* Only draw input socket as they all are placed on the same position highlight
    * if node itself is selected, since we don't display the node body separately. */
-  node_draw_sockets(region.v2d, C, ntree, node, block, false, node.flag & NODE_ACTIVE);
+  node_draw_sockets(region.v2d, C, ntree, node, block, false, node.is_selected());
 
   UI_block_end(&C, &block);
   UI_block_draw(&C, &block);
