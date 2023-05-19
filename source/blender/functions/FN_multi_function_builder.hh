@@ -249,7 +249,7 @@ inline void execute_materialized(TypeSequence<ParamTags...> /* param_tags */,
     const int64_t chunk_size = chunk_end - chunk_start;
     const OffsetSpan<int64_t, int16_t> sliced_mask = mask.slice(chunk_start, chunk_size);
     const int64_t mask_start = sliced_mask[0];
-    const bool sliced_mask_is_range = range_checker.check(sliced_mask.base_span());
+    const bool sliced_mask_is_range = range_checker.check_static(sliced_mask.base_span());
 
     /* Move mutable data into temporary array. */
     if (!sliced_mask_is_range) {

@@ -305,21 +305,6 @@ int64_t find_size_until_next_range(const Span<T> indices, const int64_t min_rang
 
 }  // namespace unique_sorted_indices
 
-template<typename Fn>
-inline IndexMask grow_indices_to_ranges(const IndexMask &mask,
-                                        const Fn &fn,
-                                        IndexMaskMemory &memory)
-{
-  Vector<int64_t> indices;
-  mask.foreach_index([&](const int64_t i) {
-    const IndexRange new_range = fn(i);
-    for (const int64_t new_index : new_range) {
-      indices.append(new_index);
-    }
-  });
-  return IndexMask::from_indices<int64_t>(indices, memory);
-}
-
 /* -------------------------------------------------------------------- */
 /** \name Inline Utilities
  * \{ */

@@ -140,26 +140,6 @@ TEST(index_mask, DefaultConstructor)
   EXPECT_EQ(mask.min_array_size(), 0);
 }
 
-TEST(index_mask, IndicesToRanges)
-{
-  IndexMaskMemory memory;
-  const IndexMask mask = IndexMask::from_indices<int>({0, 1, 5}, memory);
-  const IndexMask new_mask = grow_indices_to_ranges(
-      mask, [&](const int64_t i) { return IndexRange(i * 10, 3); }, memory);
-  Vector<int64_t> indices(new_mask.size());
-  new_mask.to_indices<int64_t>(indices);
-  EXPECT_EQ(indices.size(), 9);
-  EXPECT_EQ(indices[0], 0);
-  EXPECT_EQ(indices[1], 1);
-  EXPECT_EQ(indices[2], 2);
-  EXPECT_EQ(indices[3], 10);
-  EXPECT_EQ(indices[4], 11);
-  EXPECT_EQ(indices[5], 12);
-  EXPECT_EQ(indices[6], 50);
-  EXPECT_EQ(indices[7], 51);
-  EXPECT_EQ(indices[8], 52);
-}
-
 TEST(index_mask, ForeachRange)
 {
   IndexMaskMemory memory;
