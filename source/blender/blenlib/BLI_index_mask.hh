@@ -15,29 +15,37 @@
 #include "BLI_vector.hh"
 
 namespace blender {
-
-struct GrainSize {
-  int64_t value;
-
-  explicit constexpr GrainSize(const int64_t grain_size) : value(grain_size) {}
-};
-
 template<typename T> class VArray;
+}
 
-namespace index_mask {
+namespace blender::index_mask {
 
-class IndexMask;
-
+/**
+ * Constants that define the maximum segment size. Segment sizes are limited so that the indices
+ * within each segment can be stored as #int16_t.
+ * - The most-significant-bit is not used so that signed integers can be used which avoids common
+ *   issues when mixing signed and unsigned ints.
+ * - The second most-significant bit is not used for indices so that #max_segment_size itself can
+ *   be stored in the #int16_t.
+ * - The maximum number of indices in a segment is 16384, which is generally enough to make the
+ *   overhead per segment negilible when processing large index masks.
+ * - A power of two is used for #max_segment_size, because that allows for faster construction of
+ *   index masks for index ranges.
+ */
 static constexpr int64_t max_segment_size_shift = 14;
 static constexpr int64_t max_segment_size = (1 << max_segment_size_shift); /* 16384 */
 static constexpr int64_t max_segment_size_mask_low = max_segment_size - 1;
 static constexpr int64_t max_segment_size_mask_high = ~max_segment_size_mask_low;
 
-std::array<int16_t, max_segment_size> build_static_indices_array();
-const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size);
-
+/**
+ * Encodes a position in an #IndexMask. The term "raw" just means that this does not have the usual
+ * iterator methods like `operator++`. Supporting those would require storing more data. Generally,
+ * the fastest way to iterate over an #IndexMask is use a `foreach_*` method anyway.
+ */
 struct RawMaskIterator {
+  /** Index of the segment in the index mask. */
   int64_t segment_i;
+  /** Element within the segment. */
   int16_t index_in_segment;
 };
 
@@ -164,6 +172,9 @@ class IndexMaskFromSegment : NonCopyable, NonMovable {
   IndexMaskFromSegment();
   void update(OffsetSpan<int64_t, int16_t> segment);
 };
+
+std::array<int16_t, max_segment_size> build_static_indices_array();
+const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size);
 
 inline IndexMaskFromSegment::IndexMaskFromSegment()
 {
@@ -696,9 +707,9 @@ inline void IndexMask::to_ranges_and_spans(Vector<IndexRange> &r_ranges,
   }
 }
 
-}  // namespace index_mask
+}  // namespace blender::index_mask
 
+namespace blender {
 using index_mask::IndexMask;
 using index_mask::IndexMaskMemory;
-
 }  // namespace blender
