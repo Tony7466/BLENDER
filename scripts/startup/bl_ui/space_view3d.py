@@ -7029,8 +7029,6 @@ class VIEW3D_PT_snapping(Panel):
         col.prop(tool_settings, "snap_elements", expand=True)
 
         col.separator()
-        if 'INCREMENT' in snap_elements:
-            col.prop(tool_settings, "use_snap_grid_absolute")
 
         if snap_elements != {'INCREMENT'}:
             if snap_elements != {'FACE_NEAREST'}:

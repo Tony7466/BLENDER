@@ -370,68 +370,6 @@ static void translate_snap_target_grid_ensure(TransInfo *t)
   }
 }
 
-static void translate_snap_grid_apply(TransInfo *t,
-                                      const int max_index,
-                                      const float grid_dist[3],
-                                      const float loc[3],
-                                      float r_out[3])
-{
-  BLI_assert(max_index <= 2);
-  translate_snap_target_grid_ensure(t);
-  const float *center_global = t->tsnap.snap_target_grid;
-  const float *asp = t->aspect;
-
-  float in[3];
-  if (t->con.mode & CON_APPLY) {
-    BLI_assert(t->tsnap.snapElem == SCE_SNAP_MODE_NONE);
-    t->con.applyVec(t, NULL, NULL, loc, in);
-  }
-  else {
-    copy_v3_v3(in, loc);
-  }
-
-  for (int i = 0; i <= max_index; i++) {
-    const float iter_fac = grid_dist[i] * asp[i];
-    r_out[i] = iter_fac * roundf((in[i] + center_global[i]) / iter_fac) - center_global[i];
-  }
-}
-
-static bool translate_snap_grid(TransInfo *t, float *val)
-{
-  if (!transform_snap_is_active(t)) {
-    return false;
-  }
-
-  if (!(t->tsnap.mode & SCE_SNAP_MODE_GRID) || validSnap(t)) {
-    /* Don't do grid snapping if there is a valid snap point. */
-    return false;
-  }
-
-  /* Don't do grid snapping if not in 3D viewport or UV editor */
-  if (!ELEM(t->spacetype, SPACE_VIEW3D, SPACE_IMAGE)) {
-    return false;
-  }
-
-  if (t->mode != TFM_TRANSLATION) {
-    return false;
-  }
-
-  float grid_dist[3];
-  copy_v3_v3(grid_dist, t->snap_spatial);
-  if (t->modifiers & MOD_PRECISION) {
-    mul_v3_fl(grid_dist, t->snap_spatial_precision);
-  }
-
-  /* Early bailing out if no need to snap */
-  if (is_zero_v3(grid_dist)) {
-    return false;
-  }
-
-  translate_snap_grid_apply(t, t->idx_max, grid_dist, val, val);
-  t->tsnap.snapElem = SCE_SNAP_MODE_GRID;
-  return true;
-}
-
 static void ApplySnapTranslation(TransInfo *t, float vec[3])
 {
   float point[3];
@@ -459,7 +397,13 @@ static void ApplySnapTranslation(TransInfo *t, float vec[3])
       }
     }
 
-    sub_v3_v3v3(vec, point, t->tsnap.snap_source);
+    if (t->tsnap.snapElem == SCE_SNAP_MODE_GRID) {
+      translate_snap_target_grid_ensure(t);
+      sub_v3_v3v3(vec, point, t->tsnap.snap_target_grid);
+    }
+    else {
+      sub_v3_v3v3(vec, point, t->tsnap.snap_source);
+    }
   }
 }
 
@@ -610,7 +554,6 @@ static void applyTranslation(TransInfo *t, const int UNUSED(mval[2]))
     }
 
     transform_snap_mixed_apply(t, global_dir);
-    translate_snap_grid(t, global_dir);
 
     if (t->con.mode & CON_APPLY) {
       float in[3];

@@ -219,7 +219,7 @@ static bool idp_snap_calc_incremental(
     return false;
   }
 
-  if (scene->toolsettings->snap_flag & SCE_SNAP_ABS_GRID) {
+  if (scene->toolsettings->snap_mode & SCE_SNAP_MODE_GRID) {
     co_relative = NULL;
   }
 

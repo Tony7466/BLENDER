@@ -38,6 +38,8 @@ bool snapNodesTransform(struct TransInfo *t,
 
 bool transformModeUseSnap(const TransInfo *t);
 
+void transform_snap_grid_init(TransInfo *t);
+
 void tranform_snap_target_median_calc(const TransInfo *t, float r_median[3]);
 bool transform_snap_increment_ex(const TransInfo *t, bool use_local_space, float *r_val);
 bool transform_snap_increment(const TransInfo *t, float *val);

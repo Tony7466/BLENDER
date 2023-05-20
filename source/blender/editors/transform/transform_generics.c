@@ -1229,6 +1229,7 @@ void tranformViewUpdate(TransInfo *t)
 
   calculateCenter2D(t);
   transform_input_update(t, zoom_prev / zoom_new);
+  transform_snap_grid_init(t);
 }
 
 void calculatePropRatio(TransInfo *t)

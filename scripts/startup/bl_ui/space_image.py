@@ -978,8 +978,6 @@ class IMAGE_PT_snapping(Panel):
             row.prop(tool_settings, "snap_target", expand=True)
 
         col.separator()
-        if 'INCREMENT' in tool_settings.snap_uv_element:
-            col.prop(tool_settings, "use_snap_uv_grid_absolute")
 
         col.label(text="Affect")
         row = col.row(align=True)
