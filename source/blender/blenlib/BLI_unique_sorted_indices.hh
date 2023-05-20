@@ -2,6 +2,25 @@
 
 #pragma once
 
+/** \file
+ * \ingroup bli
+ *
+ * This file provides functions that deal with integer arrays fulfill follow two constraints:
+ * - The arrays are sorted in ascending order, e.g. [2, 3, 6, 8].
+ * - The arrays don't have any duplicate elements, so [3, 4, 4, 5] is not allowed.
+ *
+ * Arrays which satisfy these constraints are useful to "mask" indices that should be processed for
+ * two main reasons:
+ * - The sorted order makes the hardware prefetching work best, because memory access patterns are
+ *   more predictable (unless the indices are too far apart).
+ * - One can check in constant time whether an array of indices contains consecutive integers which
+ *   encode an #IndexRange.
+ *
+ * Just using a single array as a mask works well as long as the number of indices is not too
+ * large. For potentially larger masks it's better to use #IndexMask which allows for better
+ * multi-threading.
+ */
+
 #include <optional>
 #include <variant>
 
