@@ -38,7 +38,7 @@
 #include "BKE_main.h"
 #include "BKE_main_namemap.h"
 #include "BKE_modifier.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_object.h"
 
@@ -125,10 +125,10 @@ static void change_node_socket_name(ListBase *sockets, const char *old_name, con
 {
   LISTBASE_FOREACH (bNodeSocket *, socket, sockets) {
     if (STREQ(socket->name, old_name)) {
-      BLI_strncpy(socket->name, new_name, sizeof(socket->name));
+      STRNCPY(socket->name, new_name);
     }
     if (STREQ(socket->identifier, old_name)) {
-      BLI_strncpy(socket->identifier, new_name, sizeof(socket->name));
+      STRNCPY(socket->identifier, new_name);
     }
   }
 }
@@ -306,6 +306,43 @@ void node_tree_relink_with_socket_id_map(bNodeTree &ntree,
         old_socket->link = nullptr;
       }
     }
+  }
+}
+
+static blender::Vector<bNodeLink *> find_connected_links(bNodeTree *ntree, bNodeSocket *in_socket)
+{
+  blender::Vector<bNodeLink *> links;
+  LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
+    if (link->tosock == in_socket) {
+      links.append(link);
+    }
+  }
+  return links;
+}
+
+void add_realize_instances_before_socket(bNodeTree *ntree,
+                                         bNode *node,
+                                         bNodeSocket *geometry_socket)
+{
+  BLI_assert(geometry_socket->type == SOCK_GEOMETRY);
+  blender::Vector<bNodeLink *> links = find_connected_links(ntree, geometry_socket);
+  for (bNodeLink *link : links) {
+    /* If the realize instances node is already before this socket, no need to continue. */
+    if (link->fromnode->type == GEO_NODE_REALIZE_INSTANCES) {
+      return;
+    }
+
+    bNode *realize_node = nodeAddStaticNode(nullptr, ntree, GEO_NODE_REALIZE_INSTANCES);
+    realize_node->parent = node->parent;
+    realize_node->locx = node->locx - 100;
+    realize_node->locy = node->locy;
+    nodeAddLink(ntree,
+                link->fromnode,
+                link->fromsock,
+                realize_node,
+                static_cast<bNodeSocket *>(realize_node->inputs.first));
+    link->fromnode = realize_node;
+    link->fromsock = static_cast<bNodeSocket *>(realize_node->outputs.first);
   }
 }
 
@@ -994,6 +1031,7 @@ static bNodeTree *instances_on_faces_tree(Main *bmain, RegularNodeTrees &cached_
   ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketGeometry", "Instancer");
 
   ntreeAddSocketInterface(node_tree, SOCK_OUT, "NodeSocketGeometry", "Instances");
+  ntreeAddSocketInterface(node_tree, SOCK_OUT, "NodeSocketFloat", "Instances Size");
 
   const auto connect = [node_tree](bNode *node_out,
                                    const StringRefNull name_out,
@@ -1048,7 +1086,6 @@ static bNodeTree *instances_on_faces_tree(Main *bmain, RegularNodeTrees &cached_
   connect(duplicate_instances, "Geometry", instance_on_points, "Points");
   connect(reset_transform, "Instances", instance_on_points, "Instance");
   connect(face_aling_group, "Rotation", instance_on_points, "Rotation");
-  connect(face_size_group, "Size", instance_on_points, "Scale");
 
   bNode *instances_source_in = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
   bNode *apply_transform = add_node_group(sample_apply_instances_transform_tree);
@@ -1058,6 +1095,7 @@ static bNodeTree *instances_on_faces_tree(Main *bmain, RegularNodeTrees &cached_
 
   bNode *out = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_OUTPUT);
   connect(apply_transform, "Instances", out, "Instances");
+  connect(face_size_group, "Size", out, "Instances Size");
 
   bke::node_field_inferencing::update_field_inferencing(*node_tree);
   cached_node_trees.instances_on_faces = node_tree;
@@ -1166,18 +1204,26 @@ static bNodeTree *instances_on_faces(const Span<Object *> objects,
 
   bNode *join_geometrys = join_objects_as_instances(objects, node_tree);
 
-  bNode *scale_factor_input = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
-
-  bNode *scale_instances = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_SCALE_INSTANCES);
-  connect(join_geometrys, "Geometry", scale_instances, "Instances");
-  connect(scale_factor_input, "Scale by Face Size", scale_instances, "Selection");
-  connect(scale_factor_input, "Factor", scale_instances, "Scale");
-
   bNode *instansing_group = add_node_group(instances_on_faces_tree);
-  connect(scale_instances, "Instances", instansing_group, "Instance");
+  connect(join_geometrys, "Geometry", instansing_group, "Instance");
 
   bNode *geometry_input = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
   connect(geometry_input, "Geometry", instansing_group, "Instancer");
+
+  bNode *scale_instances = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_SCALE_INSTANCES);
+  connect(instansing_group, "Instances", scale_instances, "Instances");
+
+  bNode *math_apply_scale_factor = nodeAddStaticNode(nullptr, node_tree, SH_NODE_MATH);
+  math_apply_scale_factor->custom1 = NODE_MATH_MULTIPLY;
+  math_apply_scale_factor->typeinfo->updatefunc(node_tree, math_apply_scale_factor);
+  connect(instansing_group, "Instances Size", math_apply_scale_factor, "Value_001");
+  connect(math_apply_scale_factor, "Value", scale_instances, "Scale");
+
+  bNode *scale_factor_input = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
+  connect(scale_factor_input, "Factor", math_apply_scale_factor, "Value");
+
+  bNode *scale_use_input = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
+  connect(scale_use_input, "Scale by Face Size", scale_instances, "Selection");
 
   bNode *geometry_viewport_render_input = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
 
@@ -1187,7 +1233,7 @@ static bNodeTree *instances_on_faces(const Span<Object *> objects,
   connect(geometry_viewport_render_input, "Render", view_switch_group, "Render");
 
   bNode *join_parent = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_JOIN_GEOMETRY);
-  connect(instansing_group, "Instances", join_parent, "Geometry");
+  connect(scale_instances, "Instances", join_parent, "Geometry");
   connect(view_switch_group, "Geometry", join_parent, "Geometry");
 
   bNode *realize_instances = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_REALIZE_INSTANCES);
@@ -1198,10 +1244,7 @@ static bNodeTree *instances_on_faces(const Span<Object *> objects,
   return node_tree;
 }
 
-static void move_rna_to_id_prop(PropertyRNA &src_prop,
-                                PointerRNA &src_ptr,
-                                IDProperty &dst,
-                                Object &object)
+static void copy_value_rna_to_id(PropertyRNA &src_prop, PointerRNA &src_ptr, IDProperty &dst)
 {
   switch (IDP_ui_data_type(&dst)) {
     case IDP_UI_DATA_TYPE_INT: {
@@ -1225,9 +1268,6 @@ static void move_rna_to_id_prop(PropertyRNA &src_prop,
       BLI_assert_unreachable();
       break;
   }
-
-  // BKE_animdata_fix_paths_rename_all(&object.id, "modifiers['Instances on Points 3.6'][",
-  // "use_instance_vertices_rotation", "Input_3");
 }
 
 static void object_push_instances_modifier(const StringRefNull name,
@@ -1267,19 +1307,35 @@ static void object_push_instances_modifier(const StringRefNull name,
   }
   ();
 
+  Vector<std::string> legacy_rna_paths;
+  Vector<AnimationBasePathChange> animation_data_move;
   node_tree.ensure_topology_cache();
   for (const bNodeSocket *socket : node_tree.interface_inputs().drop_front(1)) {
-
     IDProperty *dst = IDP_GetPropertyFromGroup(nmd.settings.properties, socket->identifier);
     BLI_assert(dst != nullptr);
 
     const StringRef legacy_prop_name = socket_legacy_name_maping.lookup(socket->name);
-
     PropertyRNA *obkect_prop = RNA_struct_find_property(&object_ptr, legacy_prop_name.data());
     BLI_assert(obkect_prop != nullptr);
 
-    move_rna_to_id_prop(*obkect_prop, object_ptr, *dst, object);
+    copy_value_rna_to_id(*obkect_prop, object_ptr, *dst);
+
+    std::string rna_path_to_new = "modifiers[\"" + std::string(name) + "\"][\"" +
+                                  std::string(socket->identifier) + "\"]";
+    AnimationBasePathChange animation_to_move;
+    animation_to_move.src_basepath = legacy_prop_name.data();
+    animation_to_move.dst_basepath = rna_path_to_new.c_str();
+    legacy_rna_paths.append(std::move(rna_path_to_new));
+    animation_data_move.append(animation_to_move);
   }
+
+  ListBase change_list = {nullptr, nullptr};
+  ;
+  for (AnimationBasePathChange &animation_path : animation_data_move) {
+    BLI_addtail(&change_list, &animation_path);
+  }
+
+  BKE_animdata_transfer_by_basepath(bmain, &object.id, &object.id, &change_list);
 }
 
 }  //  namespace replace_legacy_instances
