@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <optional>
 #include <variant>
 
 #include "BLI_vector.hh"
@@ -19,6 +20,14 @@ template<typename T> inline IndexRange non_empty_as_range(const Span<T> indices)
   BLI_assert(!indices.is_empty());
   BLI_assert(non_empty_is_range(indices));
   return IndexRange(indices.first(), indices.size());
+}
+
+template<typename T> inline std::optional<IndexRange> non_empty_as_range_try(const Span<T> indices)
+{
+  if (non_empty_is_range(indices)) {
+    return non_empty_as_range(indices);
+  }
+  return std::nullopt;
 }
 
 template<typename T> inline int64_t find_size_of_next_range(const Span<T> indices)
@@ -66,9 +75,9 @@ inline int64_t split_to_ranges_and_spans(const Span<T> indices,
   const int64_t old_segments_num = r_segments.size();
   Span<T> remaining_indices = indices;
   while (!remaining_indices.is_empty()) {
-    if (non_empty_is_range(remaining_indices)) {
+    if (const std::optional<IndexRange> range = non_empty_as_range_try(remaining_indices)) {
       /* All remaining indices are range. */
-      r_segments.append(non_empty_as_range(remaining_indices));
+      r_segments.append(*range);
       break;
     }
     if (non_empty_is_range(remaining_indices.take_front(range_threshold))) {
@@ -81,8 +90,8 @@ inline int64_t split_to_ranges_and_spans(const Span<T> indices,
     /* Next segment is just indices. Now find the place where the next range starts. */
     const int64_t segment_size = find_size_until_next_range(remaining_indices, range_threshold);
     const Span<T> segment_indices = remaining_indices.take_front(segment_size);
-    if (non_empty_is_range(segment_indices)) {
-      r_segments.append(non_empty_as_range(segment_indices));
+    if (const std::optional<IndexRange> range = non_empty_as_range_try(segment_indices)) {
+      r_segments.append(*range);
     }
     else {
       r_segments.append(segment_indices);

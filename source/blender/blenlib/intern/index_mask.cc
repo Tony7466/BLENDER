@@ -311,9 +311,10 @@ IndexMask IndexMask::from_indices(const Span<T> indices, IndexMaskMemory &memory
     /* Return early when there are no indices. */
     return {};
   }
-  if (unique_sorted_indices::non_empty_is_range(indices)) {
+  if (const std::optional<IndexRange> range = unique_sorted_indices::non_empty_as_range_try(
+          indices)) {
     /* Use faster method of creating the mask when the input indices are a range. */
-    return unique_sorted_indices::non_empty_as_range(indices);
+    return *range;
   }
 
   /* Find indices that go into each chunk. */
