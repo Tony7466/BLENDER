@@ -525,6 +525,23 @@ enum {
 
 /** \} */
 
+
+/** \name Sound Modifiers
+* \{ */
+
+typedef struct EQCurveMappingData{
+  struct EQCurveMappingData *next, *prev;
+  struct CurveMapping curve_mapping;
+} EQCurveMappingData;
+
+
+typedef struct SoundEqualizerModifierData{
+  SequenceModifierData modifier;
+  /* EQCurveMappingData */
+  ListBase graphics;
+} SoundEqualizerModifierData;
+/** \} */
+
 /* -------------------------------------------------------------------- */
 /** \name Scopes
  * \{ */
@@ -738,6 +755,7 @@ enum {
   seqModifierType_Mask = 5,
   seqModifierType_WhiteBalance = 6,
   seqModifierType_Tonemap = 7,
+  seqModifierType_SoundEqualizer = 8,
   /* Keep last. */
   NUM_SEQUENCE_MODIFIER_TYPES,
 };
