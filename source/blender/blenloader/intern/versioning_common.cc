@@ -1262,9 +1262,7 @@ static void copy_value_rna_to_id(PropertyRNA &src_prop, PointerRNA &src_ptr, IDP
       *reinterpret_cast<bool *>(&IDP_Bool(&dst)) = values;
       break;
     }
-    case IDP_UI_DATA_TYPE_UNSUPPORTED:
-    case IDP_UI_DATA_TYPE_STRING:
-    case IDP_UI_DATA_TYPE_ID:
+    case default:
       BLI_assert_unreachable();
       break;
   }
@@ -1320,17 +1318,16 @@ static void object_push_instances_modifier(const StringRefNull name,
 
     copy_value_rna_to_id(*obkect_prop, object_ptr, *dst);
 
-    std::string rna_path_to_new = "modifiers[\"" + std::string(name) + "\"][\"" +
-                                  std::string(socket->identifier) + "\"]";
+    std::string new_rna_path = "modifiers[\"" + std::string(name) + "\"][\"" +
+                               std::string(socket->identifier) + "\"]";
     AnimationBasePathChange animation_to_move;
     animation_to_move.src_basepath = legacy_prop_name.data();
-    animation_to_move.dst_basepath = rna_path_to_new.c_str();
-    legacy_rna_paths.append(std::move(rna_path_to_new));
+    animation_to_move.dst_basepath = new_rna_path.c_str();
+    legacy_rna_paths.append(std::move(new_rna_path));
     animation_data_move.append(animation_to_move);
   }
 
   ListBase change_list = {nullptr, nullptr};
-  ;
   for (AnimationBasePathChange &animation_path : animation_data_move) {
     BLI_addtail(&change_list, &animation_path);
   }
@@ -1396,6 +1393,4 @@ void remove_legacy_instances_on(Main *bmain, ListBase &lb_objects)
 
     parent->transflag = 0;
   }
-
-  printf("HELLO!\n");
 }
