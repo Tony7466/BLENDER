@@ -239,7 +239,6 @@ inline void execute_materialized(TypeSequence<ParamTags...> /* param_tags */,
       }(),
       ...);
 
-  const index_mask::IndexRangeChecker range_checker;
   index_mask::IndexMaskFromSegment index_mask_from_segment;
   const int64_t segment_offset = mask.offset();
 
@@ -249,7 +248,8 @@ inline void execute_materialized(TypeSequence<ParamTags...> /* param_tags */,
     const int64_t chunk_size = chunk_end - chunk_start;
     const OffsetSpan<int64_t, int16_t> sliced_mask = mask.slice(chunk_start, chunk_size);
     const int64_t mask_start = sliced_mask[0];
-    const bool sliced_mask_is_range = range_checker.check_static(sliced_mask.base_span());
+    const bool sliced_mask_is_range = unique_sorted_indices::non_empty_is_range(
+        sliced_mask.base_span());
 
     /* Move mutable data into temporary array. */
     if (!sliced_mask_is_range) {
@@ -406,30 +406,35 @@ inline void execute_element_fn_as_multi_function(const ElementFn element_fn,
     }
   }()...);
 
-  Vector<IndexRange> mask_ranges;
-  Vector<OffsetSpan<int64_t, int16_t>> mask_spans;
-  mask.to_ranges_and_spans(mask_ranges, mask_spans);
-
   /* Try execute devirtualized if enabled and the input types allow it. */
   bool executed_devirtualized = false;
   if constexpr (ExecPreset::use_devirtualization) {
+    /* Get segments before devirtualization to avoid generating this code multiple times. */
+    const Vector<std::variant<IndexRange, OffsetSpan<int64_t, int16_t>>, 16> mask_segments =
+        mask.to_spans_and_ranges<16>();
+
     const auto devirtualizers = exec_preset.create_devirtualizers(
         TypeSequence<ParamTags...>(), std::index_sequence<I...>(), loaded_params);
     executed_devirtualized = call_with_devirtualized_parameters(
         devirtualizers, [&](auto &&...args) {
-          for (const IndexRange &mask_range : mask_ranges) {
-            execute_array(TypeSequence<ParamTags...>(),
-                          std::index_sequence<I...>(),
-                          element_fn,
-                          mask_range,
-                          std::forward<decltype(args)>(args)...);
-          }
-          for (const OffsetSpan<int64_t, int16_t> &mask_span : mask_spans) {
-            execute_array(TypeSequence<ParamTags...>(),
-                          std::index_sequence<I...>(),
-                          element_fn,
-                          mask_span,
-                          std::forward<decltype(args)>(args)...);
+          for (const std::variant<IndexRange, OffsetSpan<int64_t, int16_t>> &segment :
+               mask_segments) {
+            if (std::holds_alternative<IndexRange>(segment)) {
+              const auto segment_range = std::get<IndexRange>(segment);
+              execute_array(TypeSequence<ParamTags...>(),
+                            std::index_sequence<I...>(),
+                            element_fn,
+                            segment_range,
+                            std::forward<decltype(args)>(args)...);
+            }
+            else {
+              const auto segment_indices = std::get<OffsetSpan<int64_t, int16_t>>(segment);
+              execute_array(TypeSequence<ParamTags...>(),
+                            std::index_sequence<I...>(),
+                            element_fn,
+                            segment_indices,
+                            std::forward<decltype(args)>(args)...);
+            }
           }
         });
   }

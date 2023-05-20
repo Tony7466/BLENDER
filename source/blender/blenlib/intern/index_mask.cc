@@ -91,14 +91,6 @@ std::ostream &operator<<(std::ostream &stream, const IndexMask &mask)
   return stream;
 }
 
-void IndexMask::foreach_span_impl(const FunctionRef<void(OffsetSpan<int64_t, int16_t>)> fn) const
-{
-  for (const int64_t segment_i : IndexRange(segments_num_)) {
-    const OffsetSpan<int64_t, int16_t> segment = this->segment(segment_i);
-    fn(segment);
-  }
-}
-
 IndexMask IndexMask::slice(const int64_t start, const int64_t size) const
 {
   if (size == 0) {
@@ -430,20 +422,6 @@ Vector<IndexRange> IndexMask::to_ranges_invert(const IndexRange universe) const
 {
   IndexMaskMemory memory;
   return this->complement(universe, memory).to_ranges();
-}
-
-void IndexMask::to_ranges_and_spans_impl(Vector<IndexRange> &r_ranges,
-                                         Vector<OffsetSpan<int64_t, int16_t>> &r_spans) const
-{
-  const IndexRangeChecker range_checker;
-  this->foreach_span_or_range([&](const auto segment) {
-    if constexpr (std::is_same_v<std::decay_t<decltype(segment)>, IndexRange>) {
-      r_ranges.append(segment);
-    }
-    else {
-      r_spans.append(segment);
-    }
-  });
 }
 
 IndexMask IndexMask::from_predicate_impl(
