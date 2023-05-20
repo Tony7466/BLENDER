@@ -50,22 +50,19 @@ struct RawMaskIterator {
 };
 
 struct IndexMaskData {
-  int64_t indices_num;
-  int64_t segments_num;
-  const int16_t **indices_by_segment;
-  const int64_t *segment_offsets;
-  const int64_t *cumulative_segment_sizes;
-  int64_t begin_index_in_segment;
-  int64_t end_index_in_segment;
+  int64_t indices_num_;
+  int64_t segments_num_;
+  const int16_t **indices_by_segment_;
+  const int64_t *segment_offsets_;
+  const int64_t *cumulative_segment_sizes_;
+  int64_t begin_index_in_segment_;
+  int64_t end_index_in_segment_;
 };
 
 class IndexMaskMemory : public LinearAllocator<> {
 };
 
-class IndexMask {
- private:
-  IndexMaskData data_;
-
+class IndexMask : private IndexMaskData {
  public:
   IndexMask();
   IndexMask(int64_t size);
@@ -180,11 +177,11 @@ inline IndexMaskFromSegment::IndexMaskFromSegment()
 {
   IndexMaskData &data = mask.data_for_inplace_construction();
   this->cumulative_segment_sizes[0] = 0;
-  data.segments_num = 1;
-  data.indices_by_segment = &this->segment_indices;
-  data.segment_offsets = &this->segment_offset;
-  data.cumulative_segment_sizes = this->cumulative_segment_sizes.data();
-  data.begin_index_in_segment = 0;
+  data.segments_num_ = 1;
+  data.indices_by_segment_ = &this->segment_indices;
+  data.segment_offsets_ = &this->segment_offset;
+  data.cumulative_segment_sizes_ = this->cumulative_segment_sizes.data();
+  data.begin_index_in_segment_ = 0;
 }
 
 inline void IndexMaskFromSegment::update(const OffsetSpan<int64_t, int16_t> segment)
@@ -200,8 +197,8 @@ inline void IndexMaskFromSegment::update(const OffsetSpan<int64_t, int16_t> segm
   this->segment_offset = segment.offset();
   this->segment_indices = indices.data();
   this->cumulative_segment_sizes[1] = int16_t(indices_num);
-  data.indices_num = indices_num;
-  data.end_index_in_segment = indices_num;
+  data.indices_num_ = indices_num;
+  data.end_index_in_segment_ = indices_num;
 }
 
 std::ostream &operator<<(std::ostream &stream, const IndexMask &mask);
@@ -274,35 +271,35 @@ inline void init_empty_mask(IndexMaskData &data)
 {
   static constexpr int64_t cumulative_sizes_for_empty_mask[1] = {0};
 
-  data.indices_num = 0;
-  data.segments_num = 0;
-  data.cumulative_segment_sizes = cumulative_sizes_for_empty_mask;
+  data.indices_num_ = 0;
+  data.segments_num_ = 0;
+  data.cumulative_segment_sizes_ = cumulative_sizes_for_empty_mask;
   /* Intentionally leave some pointer uninitialized which must not be accessed on empty masks
    * anyway. */
 }
 
 inline IndexMask::IndexMask()
 {
-  init_empty_mask(data_);
+  init_empty_mask(*this);
 }
 
 inline IndexMask::IndexMask(const int64_t size)
 {
   if (size == 0) {
-    init_empty_mask(data_);
+    init_empty_mask(*this);
     return;
   }
   *this = get_static_index_mask_for_min_size(size);
-  data_.indices_num = size;
-  data_.segments_num = ((size + max_segment_size - 1) >> max_segment_size_shift);
-  data_.begin_index_in_segment = 0;
-  data_.end_index_in_segment = size - ((size - 1) & max_segment_size_mask_high);
+  indices_num_ = size;
+  segments_num_ = ((size + max_segment_size - 1) >> max_segment_size_shift);
+  begin_index_in_segment_ = 0;
+  end_index_in_segment_ = size - ((size - 1) & max_segment_size_mask_high);
 }
 
 inline IndexMask::IndexMask(const IndexRange range)
 {
   if (range.is_empty()) {
-    init_empty_mask(data_);
+    init_empty_mask(*this);
     return;
   }
   const int64_t one_after_last = range.one_after_last();
@@ -311,48 +308,47 @@ inline IndexMask::IndexMask(const IndexRange range)
   const int64_t first_segment_i = range.first() >> max_segment_size_shift;
   const int64_t last_segment_i = range.last() >> max_segment_size_shift;
 
-  data_.indices_num = range.size();
-  data_.segments_num = last_segment_i - first_segment_i + 1;
-  data_.indices_by_segment += first_segment_i;
-  data_.segment_offsets += first_segment_i;
-  data_.cumulative_segment_sizes += first_segment_i;
-  data_.begin_index_in_segment = range.first() & max_segment_size_mask_low;
-  data_.end_index_in_segment = one_after_last -
-                               ((one_after_last - 1) & max_segment_size_mask_high);
+  indices_num_ = range.size();
+  segments_num_ = last_segment_i - first_segment_i + 1;
+  indices_by_segment_ += first_segment_i;
+  segment_offsets_ += first_segment_i;
+  cumulative_segment_sizes_ += first_segment_i;
+  begin_index_in_segment_ = range.first() & max_segment_size_mask_low;
+  end_index_in_segment_ = one_after_last - ((one_after_last - 1) & max_segment_size_mask_high);
 }
 
 inline int64_t IndexMask::size() const
 {
-  return data_.indices_num;
+  return indices_num_;
 }
 
 inline bool IndexMask::is_empty() const
 {
-  return data_.indices_num == 0;
+  return indices_num_ == 0;
 }
 
 inline IndexRange IndexMask::index_range() const
 {
-  return IndexRange(data_.indices_num);
+  return IndexRange(indices_num_);
 }
 
 inline int64_t IndexMask::first() const
 {
-  BLI_assert(data_.indices_num > 0);
-  return data_.segment_offsets[0] + data_.indices_by_segment[0][data_.begin_index_in_segment];
+  BLI_assert(indices_num_ > 0);
+  return segment_offsets_[0] + indices_by_segment_[0][begin_index_in_segment_];
 }
 
 inline int64_t IndexMask::last() const
 {
-  BLI_assert(data_.indices_num > 0);
-  const int64_t last_segment_i = data_.segments_num - 1;
-  return data_.segment_offsets[last_segment_i] +
-         data_.indices_by_segment[last_segment_i][data_.end_index_in_segment - 1];
+  BLI_assert(indices_num_ > 0);
+  const int64_t last_segment_i = segments_num_ - 1;
+  return segment_offsets_[last_segment_i] +
+         indices_by_segment_[last_segment_i][end_index_in_segment_ - 1];
 }
 
 inline int64_t IndexMask::min_array_size() const
 {
-  if (data_.indices_num == 0) {
+  if (indices_num_ == 0) {
     return 0;
   }
   return this->last() + 1;
@@ -361,28 +357,27 @@ inline int64_t IndexMask::min_array_size() const
 inline RawMaskIterator IndexMask::index_to_iterator(const int64_t index) const
 {
   BLI_assert(index >= 0);
-  BLI_assert(index < data_.indices_num);
+  BLI_assert(index < indices_num_);
   RawMaskIterator it;
-  const int64_t full_index = index + data_.cumulative_segment_sizes[0] +
-                             data_.begin_index_in_segment;
+  const int64_t full_index = index + cumulative_segment_sizes_[0] + begin_index_in_segment_;
   it.segment_i = -1 +
                  binary_search::find_predicate_begin(
-                     data_.cumulative_segment_sizes,
-                     data_.cumulative_segment_sizes + data_.segments_num + 1,
+                     cumulative_segment_sizes_,
+                     cumulative_segment_sizes_ + segments_num_ + 1,
                      [&](const int64_t cumulative_size) { return cumulative_size > full_index; });
-  it.index_in_segment = full_index - data_.cumulative_segment_sizes[it.segment_i];
+  it.index_in_segment = full_index - cumulative_segment_sizes_[it.segment_i];
   return it;
 }
 
 inline int64_t IndexMask::iterator_to_index(const RawMaskIterator &it) const
 {
   BLI_assert(it.segment_i >= 0);
-  BLI_assert(it.segment_i < data_.segments_num);
+  BLI_assert(it.segment_i < segments_num_);
   BLI_assert(it.index_in_segment >= 0);
-  BLI_assert(it.index_in_segment < data_.cumulative_segment_sizes[it.segment_i + 1] -
-                                       data_.cumulative_segment_sizes[it.segment_i]);
-  return it.index_in_segment + data_.cumulative_segment_sizes[it.segment_i] -
-         data_.cumulative_segment_sizes[0] - data_.begin_index_in_segment;
+  BLI_assert(it.index_in_segment < cumulative_segment_sizes_[it.segment_i + 1] -
+                                       cumulative_segment_sizes_[it.segment_i]);
+  return it.index_in_segment + cumulative_segment_sizes_[it.segment_i] -
+         cumulative_segment_sizes_[0] - begin_index_in_segment_;
 }
 
 inline int64_t IndexMask::operator[](const int64_t i) const
@@ -393,28 +388,26 @@ inline int64_t IndexMask::operator[](const int64_t i) const
 
 inline int64_t IndexMask::operator[](const RawMaskIterator &it) const
 {
-  return data_.segment_offsets[it.segment_i] +
-         data_.indices_by_segment[it.segment_i][it.index_in_segment];
+  return segment_offsets_[it.segment_i] + indices_by_segment_[it.segment_i][it.index_in_segment];
 }
 
 inline int64_t IndexMask::segments_num() const
 {
-  return data_.segments_num;
+  return segments_num_;
 }
 
 inline OffsetSpan<int64_t, int16_t> IndexMask::segment(const int64_t segment_i) const
 {
   BLI_assert(segment_i >= 0);
-  BLI_assert(segment_i < data_.segments_num);
-  const int64_t full_segment_size = data_.cumulative_segment_sizes[segment_i + 1] -
-                                    data_.cumulative_segment_sizes[segment_i];
-  const int64_t begin_index = (segment_i == 0) ? data_.begin_index_in_segment : 0;
-  const int64_t end_index = (segment_i == data_.segments_num - 1) ? data_.end_index_in_segment :
-                                                                    full_segment_size;
+  BLI_assert(segment_i < segments_num_);
+  const int64_t full_segment_size = cumulative_segment_sizes_[segment_i + 1] -
+                                    cumulative_segment_sizes_[segment_i];
+  const int64_t begin_index = (segment_i == 0) ? begin_index_in_segment_ : 0;
+  const int64_t end_index = (segment_i == segments_num_ - 1) ? end_index_in_segment_ :
+                                                               full_segment_size;
   const int64_t segment_size = end_index - begin_index;
   return OffsetSpan<int64_t, int16_t>{
-      data_.segment_offsets[segment_i],
-      {data_.indices_by_segment[segment_i] + begin_index, segment_size}};
+      segment_offsets_[segment_i], {indices_by_segment_[segment_i] + begin_index, segment_size}};
 }
 
 inline IndexMask IndexMask::slice(const IndexRange range) const
@@ -424,12 +417,12 @@ inline IndexMask IndexMask::slice(const IndexRange range) const
 
 inline const IndexMaskData &IndexMask::data() const
 {
-  return data_;
+  return *this;
 }
 
 inline IndexMaskData &IndexMask::data_for_inplace_construction()
 {
-  return const_cast<IndexMaskData &>(data_);
+  return *this;
 }
 
 template<typename Fn>
@@ -685,13 +678,13 @@ void IndexMask::from_groups(const IndexMask &universe,
 
 std::optional<IndexRange> inline IndexMask::to_range() const
 {
-  if (data_.indices_num == 0) {
+  if (indices_num_ == 0) {
     return IndexRange{};
   }
   const int64_t first_index = this->first();
   const int64_t last_index = this->last();
-  if (last_index - first_index == data_.indices_num - 1) {
-    return IndexRange(first_index, data_.indices_num);
+  if (last_index - first_index == indices_num_ - 1) {
+    return IndexRange(first_index, indices_num_);
   }
   return std::nullopt;
 }

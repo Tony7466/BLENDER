@@ -52,13 +52,13 @@ const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size)
 
     IndexMask mask;
     IndexMaskData &data = mask.data_for_inplace_construction();
-    data.indices_num = max_size;
-    data.segments_num = segments_num;
-    data.indices_by_segment = indices_by_segment.data();
-    data.segment_offsets = segment_offsets.data();
-    data.cumulative_segment_sizes = segment_offsets.data();
-    data.begin_index_in_segment = 0;
-    data.end_index_in_segment = max_segment_size;
+    data.indices_num_ = max_size;
+    data.segments_num_ = segments_num;
+    data.indices_by_segment_ = indices_by_segment.data();
+    data.segment_offsets_ = segment_offsets.data();
+    data.cumulative_segment_sizes_ = segment_offsets.data();
+    data.begin_index_in_segment_ = 0;
+    data.end_index_in_segment_ = max_segment_size;
 
     return mask;
   }();
@@ -93,7 +93,7 @@ std::ostream &operator<<(std::ostream &stream, const IndexMask &mask)
 
 void IndexMask::foreach_span_impl(const FunctionRef<void(OffsetSpan<int64_t, int16_t>)> fn) const
 {
-  for (const int64_t segment_i : IndexRange(data_.segments_num)) {
+  for (const int64_t segment_i : IndexRange(segments_num_)) {
     const OffsetSpan<int64_t, int16_t> segment = this->segment(segment_i);
     fn(segment);
   }
@@ -108,13 +108,13 @@ IndexMask IndexMask::slice(const int64_t start, const int64_t size) const
   const RawMaskIterator last_it = this->index_to_iterator(start + size - 1);
 
   IndexMask sliced = *this;
-  sliced.data_.indices_num = size;
-  sliced.data_.segments_num = last_it.segment_i - first_it.segment_i + 1;
-  sliced.data_.indices_by_segment += first_it.segment_i;
-  sliced.data_.segment_offsets += first_it.segment_i;
-  sliced.data_.cumulative_segment_sizes += first_it.segment_i;
-  sliced.data_.begin_index_in_segment = first_it.index_in_segment;
-  sliced.data_.end_index_in_segment = last_it.index_in_segment + 1;
+  sliced.indices_num_ = size;
+  sliced.segments_num_ = last_it.segment_i - first_it.segment_i + 1;
+  sliced.indices_by_segment_ += first_it.segment_i;
+  sliced.segment_offsets_ += first_it.segment_i;
+  sliced.cumulative_segment_sizes_ += first_it.segment_i;
+  sliced.begin_index_in_segment_ = first_it.index_in_segment;
+  sliced.end_index_in_segment_ = last_it.index_in_segment + 1;
   return sliced;
 }
 
@@ -143,12 +143,12 @@ IndexMask IndexMask::slice_and_offset(const int64_t start,
   if (std::optional<IndexRange> range = sliced_mask.to_range()) {
     return range->shift(offset);
   }
-  MutableSpan<int64_t> new_segment_offsets = memory.allocate_array<int64_t>(data_.segments_num);
-  for (const int64_t i : IndexRange(data_.segments_num)) {
-    new_segment_offsets[i] = data_.segment_offsets[i] + offset;
+  MutableSpan<int64_t> new_segment_offsets = memory.allocate_array<int64_t>(segments_num_);
+  for (const int64_t i : IndexRange(segments_num_)) {
+    new_segment_offsets[i] = segment_offsets_[i] + offset;
   }
   IndexMask offset_mask = *this;
-  offset_mask.data_.segment_offsets = new_segment_offsets.data();
+  offset_mask.segment_offsets_ = new_segment_offsets.data();
   return offset_mask;
 }
 
@@ -232,13 +232,13 @@ static IndexMask mask_from_segments(const Span<OffsetSpan<int64_t, int16_t>> seg
 
   IndexMask mask;
   IndexMaskData &data = mask.data_for_inplace_construction();
-  data.indices_num = cumulative_segment_sizes.last();
-  data.segments_num = segments_num;
-  data.indices_by_segment = indices_by_segment.data();
-  data.segment_offsets = segment_offsets.data();
-  data.cumulative_segment_sizes = cumulative_segment_sizes.data();
-  data.begin_index_in_segment = 0;
-  data.end_index_in_segment = segments.last().size();
+  data.indices_num_ = cumulative_segment_sizes.last();
+  data.segments_num_ = segments_num;
+  data.indices_by_segment_ = indices_by_segment.data();
+  data.segment_offsets_ = segment_offsets.data();
+  data.cumulative_segment_sizes_ = cumulative_segment_sizes.data();
+  data.begin_index_in_segment_ = 0;
+  data.end_index_in_segment_ = segments.last().size();
   return mask;
 }
 
@@ -486,7 +486,7 @@ IndexMask IndexMask::from_predicate_impl(
 
   Vector<OffsetSpan<int64_t, int16_t>> segments;
   if (universe.size() <= grain_size.value) {
-    for (const int64_t segment_i : IndexRange(universe.data_.segments_num)) {
+    for (const int64_t segment_i : IndexRange(universe.segments_num_)) {
       const OffsetSpan<int64_t, int16_t> universe_segment = universe.segment(segment_i);
       process_segment(universe_segment, memory, segments);
     }
@@ -517,7 +517,7 @@ std::optional<RawMaskIterator> IndexMask::find(const int64_t query_index) const
   }
 
   const int64_t segment_i = -1 + binary_search::find_predicate_begin(
-                                     IndexRange(data_.segments_num), [&](const int64_t value) {
+                                     IndexRange(segments_num_), [&](const int64_t value) {
                                        return query_index < this->segment(value)[0];
                                      });
 
