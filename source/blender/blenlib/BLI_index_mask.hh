@@ -65,8 +65,6 @@ struct Chunk {
   int16_t size() const;
   int16_t segment_size(const int16_t segment_i) const;
   bool is_full() const;
-  bool is_full_after_inclusive(const RawChunkIterator &it) const;
-  bool is_full_until_exclusive(const RawChunkIterator &it) const;
   std::optional<RawChunkIterator> find(int16_t index) const;
 
   template<typename Fn> void foreach_span(Fn &&fn) const;
@@ -678,21 +676,6 @@ inline int16_t Chunk::size() const
 inline bool Chunk::is_full() const
 {
   return this->size() == chunk_capacity;
-}
-
-inline bool Chunk::is_full_after_inclusive(const RawChunkIterator &it) const
-{
-  const Span<int16_t> indices{this->indices_by_segment[it.segment_i] + it.index_in_segment,
-                              this->segment_size(it.segment_i) - it.index_in_segment};
-  return unique_sorted_indices::non_empty_is_range(indices);
-}
-
-inline bool Chunk::is_full_until_exclusive(const RawChunkIterator &it) const
-{
-  if (it.segment_i > 0) {
-    return false;
-  }
-  return this->indices_by_segment[0][it.index_in_segment] == it.index_in_segment;
 }
 
 inline int16_t Chunk::segment_size(const int16_t segment_i) const
