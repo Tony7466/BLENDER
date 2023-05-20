@@ -7,7 +7,6 @@
 #include <variant>
 
 #include "BLI_array.hh"
-#include "BLI_binary_search.hh"
 #include "BLI_bit_vector.hh"
 #include "BLI_function_ref.hh"
 #include "BLI_index_range.hh"

@@ -5,16 +5,23 @@
 #include <optional>
 #include <variant>
 
+#include "BLI_binary_search.hh"
 #include "BLI_vector.hh"
 
 namespace blender::unique_sorted_indices {
 
+/**
+ * \return True when the indices are consecutive and can be encoded as #IndexRange.
+ */
 template<typename T> inline bool non_empty_is_range(const Span<T> indices)
 {
   BLI_assert(!indices.is_empty());
   return indices.last() - indices.first() == indices.size() - 1;
 }
 
+/**
+ * \return The range encoded by the indices. It is assumed that all indices are consecutive.
+ */
 template<typename T> inline IndexRange non_empty_as_range(const Span<T> indices)
 {
   BLI_assert(!indices.is_empty());
@@ -22,6 +29,9 @@ template<typename T> inline IndexRange non_empty_as_range(const Span<T> indices)
   return IndexRange(indices.first(), indices.size());
 }
 
+/**
+ * \return The range encoded by the indices if all indices are consecutive. Otherwise none.
+ */
 template<typename T> inline std::optional<IndexRange> non_empty_as_range_try(const Span<T> indices)
 {
   if (non_empty_is_range(indices)) {
@@ -30,20 +40,31 @@ template<typename T> inline std::optional<IndexRange> non_empty_as_range_try(con
   return std::nullopt;
 }
 
+/**
+ * \return Amount of consecutive indices at the start of the span.
+ *
+ * Example:
+ *   [3, 4, 5, 6, 8, 9, 10]
+ *                ^ Range ends here because 6 and 8 are not consecutive.
+ */
 template<typename T> inline int64_t find_size_of_next_range(const Span<T> indices)
 {
   BLI_assert(!indices.is_empty());
-  return std::lower_bound(
-             indices.begin(),
-             indices.end(),
-             0,
-             [indices, offset = indices[0]](const T &element, const int64_t /*dummy*/) {
-               const int64_t element_index = &element - indices.begin();
-               return element - offset == element_index;
-             }) -
-         indices.begin();
+  return binary_search::find_predicate_begin(indices,
+                                             [indices, offset = indices[0]](const T &value) {
+                                               const int64_t index = &value - indices.begin();
+                                               return value - offset > index;
+                                             });
 }
 
+/**
+ * \return Amount of non-consecutive indices until the next encoded range of at least
+ * #min_range_size elements starts.
+ *
+ * Example:
+ *   [1, 2, 4, 6, 7, 8, 9, 10, 13];
+ *             ^ Range of at least size 4 starts here.
+ */
 template<typename T>
 inline int64_t find_size_until_next_range(const Span<T> indices, const int64_t min_range_size)
 {
@@ -66,6 +87,12 @@ inline int64_t find_size_until_next_range(const Span<T> indices, const int64_t m
   return indices.size();
 }
 
+/**
+ * Split the indices up into segments, whereby each segment is either a range (because the indices
+ * are consecutive) or not. There are two opposing goals: The number of segments should be
+ * minimized while the amount indices in a range should be maximized. The #range_threshold allows
+ * the caller to balance these goals.
+ */
 template<typename T>
 inline int64_t split_to_ranges_and_spans(const Span<T> indices,
                                          const int64_t range_threshold,
