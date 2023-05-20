@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
+#include "BLI_array.hh"
 #include "BLI_unique_sorted_indices.hh"
 
 #include "testing/testing.h"

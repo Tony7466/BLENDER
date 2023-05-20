@@ -6,14 +6,10 @@
 #include <optional>
 #include <variant>
 
-#include "BLI_array.hh"
-#include "BLI_bit_vector.hh"
+#include "BLI_bit_span.hh"
 #include "BLI_function_ref.hh"
-#include "BLI_index_range.hh"
 #include "BLI_linear_allocator.hh"
-#include "BLI_offset_indices.hh"
 #include "BLI_offset_span.hh"
-#include "BLI_span.hh"
 #include "BLI_task.hh"
 #include "BLI_unique_sorted_indices.hh"
 #include "BLI_vector.hh"
@@ -666,7 +662,7 @@ void IndexMask::from_groups(const IndexMask &universe,
                             Fn &&get_group_index,
                             MutableSpan<IndexMask> r_masks)
 {
-  Array<Vector<T>> indices_by_group(r_masks.size());
+  Vector<Vector<T>> indices_by_group(r_masks.size());
   universe.foreach_index([&](const int64_t i) {
     const int group_index = get_group_index(i);
     indices_by_group[group_index].append(T(i));
