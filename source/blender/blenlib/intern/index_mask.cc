@@ -7,6 +7,7 @@
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_set.hh"
+#include "BLI_sort.hh"
 #include "BLI_strict_flags.h"
 #include "BLI_task.hh"
 #include "BLI_timeit.hh"
@@ -331,33 +332,58 @@ IndexMask IndexMask::from_predicate_impl(
 
   const Span<int16_t> static_indices = get_static_indices_array();
 
-  Vector<OffsetSpan<int64_t, int16_t>> segments(universe.data_.segments_num);
-
-  auto process_segment = [&](const int64_t segment_i, LinearAllocator<> &allocator) {
-    const OffsetSpan<int64_t, int16_t> universe_segment = universe.segment(segment_i);
-
+  auto process_segment = [&](const OffsetSpan<int64_t, int16_t> universe_segment,
+                             LinearAllocator<> &allocator,
+                             Vector<OffsetSpan<int64_t, int16_t>> &r_segments) {
     std::array<int16_t, max_segment_size> indices_array;
     const int64_t true_indices_num = filter_indices(universe_segment, indices_array.data());
     if (true_indices_num == 0) {
       return;
     }
     const Span<int16_t> true_indices{indices_array.data(), true_indices_num};
-    if (const std::optional<IndexRange> range = unique_sorted_indices::non_empty_as_range_try(
-            true_indices))
-    {
-      segments.append_as(universe_segment.offset(), static_indices.slice(*range));
-    }
-    else {
-      segments.append_as(universe_segment.offset(), allocator.construct_array_copy(true_indices));
+    Vector<std::variant<IndexRange, Span<int16_t>>> true_segments;
+    unique_sorted_indices::split_to_ranges_and_spans<int16_t>(true_indices, 64, true_segments);
+
+    for (const auto &true_segment : true_segments) {
+      if (std::holds_alternative<IndexRange>(true_segment)) {
+        const IndexRange segment_range = std::get<IndexRange>(true_segment);
+        r_segments.append_as(universe_segment.offset(), static_indices.slice(segment_range));
+      }
+      else {
+        const Span<int16_t> segment_indices = std::get<Span<int16_t>>(true_segment);
+        r_segments.append_as(universe_segment.offset(),
+                             allocator.construct_array_copy(segment_indices));
+      }
     }
   };
 
-  for (const int64_t segment_i : IndexRange(universe.data_.segments_num)) {
-    process_segment(segment_i, memory);
+  Vector<OffsetSpan<int64_t, int16_t>> segments;
+  if (universe.size() <= grain_size.value) {
+    for (const int64_t segment_i : IndexRange(universe.data_.segments_num)) {
+      const OffsetSpan<int64_t, int16_t> universe_segment = universe.segment(segment_i);
+      process_segment(universe_segment, memory, segments);
+    }
   }
-
-  segments.remove_if(
-      [](const OffsetSpan<int64_t, int16_t> segment) { return segment.is_empty(); });
+  else {
+    struct LocalData {
+      LinearAllocator<> allocator;
+      Vector<OffsetSpan<int64_t, int16_t>> segments;
+    };
+    threading::EnumerableThreadSpecific<LocalData> data_by_thread;
+    universe.foreach_span(grain_size, [&](const OffsetSpan<int64_t, int16_t> universe_segment) {
+      LocalData &data = data_by_thread.local();
+      process_segment(universe_segment, data.allocator, data.segments);
+    });
+    for (LocalData &data : data_by_thread) {
+      memory.give_ownership_of_buffers_in(data.allocator);
+      segments.extend(data.segments);
+    }
+    parallel_sort(segments.begin(),
+                  segments.end(),
+                  [](const OffsetSpan<int64_t, int16_t> a, const OffsetSpan<int64_t, int16_t> b) {
+                    return a[0] < b[0];
+                  });
+  }
 
   const int64_t segments_num = segments.size();
   if (segments_num == 0) {
@@ -401,10 +427,17 @@ std::optional<RawMaskIterator> IndexMask::find(const int64_t query_index) const
     return std::nullopt;
   }
 
-  const int64_t segment_i = std::upper_bound(data_.segment_offsets,
-                                             data_.segment_offsets + data_.segments_num,
-                                             query_index) -
-                            data_.segment_offsets - 1;
+  const int64_t segment_i =
+      std::upper_bound(data_.segment_offsets,
+                       data_.segment_offsets + data_.segments_num,
+                       query_index,
+                       [&](const int64_t /*query_index*/, const int64_t &segment_offset) {
+                         const int64_t current_segment_i = &segment_offset - data_.segment_offsets;
+                         const OffsetSpan<int64_t, int16_t> current_segment = this->segment(
+                             current_segment_i);
+                         return query_index < current_segment[0];
+                       }) -
+      data_.segment_offsets - 1;
   const OffsetSpan<int64_t, int16_t> segment = this->segment(segment_i);
   const Span<int16_t> local_segment = segment.base_span();
   const int64_t local_query_index = query_index - segment.offset();
