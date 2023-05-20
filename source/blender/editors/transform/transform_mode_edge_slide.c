@@ -1483,6 +1483,41 @@ static void applyEdgeSlide(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
+static void edge_slide_transform_matrix_fn(struct TransInfo *t, float mat_xform[4][4])
+{
+  float delta[3], orig_co[3], final_co[3];
+
+  EdgeSlideParams *slp = t->custom.mode.data;
+  TransDataContainer *tc = edge_slide_container_first_ok(t);
+  EdgeSlideData *sld_active = tc->custom.mode.data;
+  TransDataEdgeSlideVert *sv_active = &sld_active->sv[sld_active->curr_sv_index];
+
+  copy_v3_v3(orig_co, sv_active->v_co_orig);
+
+  const float fac = t->values_final[0];
+  float curr_length_fac = 0.0f;
+  if (slp->use_even) {
+    curr_length_fac = sv_active->edge_len * (((slp->flipped ? fac : -fac) + 1.0f) / 2.0f);
+  }
+
+  edge_slide_apply_elem(sv_active,
+                        fac,
+                        curr_length_fac,
+                        slp->curr_side_unclamp,
+                        !(t->flag & T_ALT_TRANSFORM),
+                        slp->use_even,
+                        slp->flipped,
+                        final_co);
+
+  if (tc->use_local_mat) {
+    mul_m4_v3(tc->mat, orig_co);
+    mul_m4_v3(tc->mat, final_co);
+  }
+
+  sub_v3_v3v3(delta, final_co, orig_co);
+  add_v3_v3(mat_xform[3], delta);
+}
+
 void initEdgeSlide_ex(
     TransInfo *t, bool use_double_side, bool use_even, bool flipped, bool use_clamp)
 {
@@ -1492,7 +1527,7 @@ void initEdgeSlide_ex(
   t->mode = TFM_EDGE_SLIDE;
   t->transform = applyEdgeSlide;
   t->handleEvent = handleEventEdgeSlide;
-  t->transform_matrix = NULL;
+  t->transform_matrix = edge_slide_transform_matrix_fn;
   t->tsnap.snap_mode_apply_fn = edge_slide_snap_apply;
   t->tsnap.snap_mode_distance_fn = transform_snap_distance_len_squared_fn;
 

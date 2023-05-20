@@ -281,11 +281,19 @@ static void applyResize(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
+static void resize_transform_matrix_fn(struct TransInfo *t, float mat_xform[4][4])
+{
+  float mat4[4][4];
+  copy_m4_m3(mat4, t->mat);
+  transform_pivot_set_m4(mat4, t->center_global);
+  mul_m4_m4m4(mat_xform, mat4, mat_xform);
+}
+
 void initResize(TransInfo *t, float mouse_dir_constraint[3])
 {
   t->mode = TFM_RESIZE;
   t->transform = applyResize;
-  t->transform_matrix = NULL;
+  t->transform_matrix = resize_transform_matrix_fn;
   t->tsnap.snap_mode_apply_fn = ApplySnapResize;
   t->tsnap.snap_mode_distance_fn = ResizeBetween;
 

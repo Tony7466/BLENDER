@@ -155,6 +155,10 @@ void initShrinkFatten(TransInfo *t);
 
 void initSkinResize(TransInfo *t);
 
+/* transform_mode_snapsource.c */
+
+void transform_mode_snap_source_init(TransInfo *t);
+
 /* transform_mode_tilt.c */
 
 void initTilt(TransInfo *t);
