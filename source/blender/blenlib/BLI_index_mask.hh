@@ -49,13 +49,46 @@ struct RawMaskIterator {
   int16_t index_in_segment;
 };
 
+/**
+ * Base type of #IndexMask. This only exists to make it more convinient to construct an index mask
+ * in a few functions with #IndexMask::data_for_inplace_construction.
+ *
+ * The names intentionally have a trailing underscore here even though they are public in
+ * #IndexMaskData because they are private in #IndexMask.
+ */
 struct IndexMaskData {
+  /**
+   * Size of the index mask, i.e. the number if indices.
+   */
   int64_t indices_num_;
+  /**
+   * Number of segments in the index mask. Each segment contains at least one of the indices.
+   */
   int64_t segments_num_;
+  /**
+   * Pointer to the index array for every segment. The size of each array can be computed from
+   * #cumulative_segment_sizes_.
+   */
   const int16_t **indices_by_segment_;
+  /**
+   * Offset that is applied to the indices in each segment.
+   */
   const int64_t *segment_offsets_;
+  /**
+   * Encodes the size of each segment. The size of a specific segment can be computed by
+   * subtracting consecutive elements (also see #OffsetIndices). The size of this array is one
+   * larger than #segments_num_. Note that the first elements is _not_ necessarily zero.
+   */
   const int64_t *cumulative_segment_sizes_;
+  /**
+   * Index into the first segment where the #IndexMask starts. This exists to support slicing
+   * without having to modify and therefor allocate a new #indices_by_segment_ array.
+   */
   int64_t begin_index_in_segment_;
+  /**
+   * Index into the last segment where the #IndexMask ends. This exists to support slicing without
+   * having to modify and therefore allocate a new #cumulative_segment_sizes_ array.
+   */
   int64_t end_index_in_segment_;
 };
 
@@ -144,7 +177,6 @@ class IndexMask : private IndexMaskData {
   void to_ranges_and_spans(Vector<IndexRange> &r_ranges,
                            Vector<OffsetSpan<int64_t, int16_t>> &r_spans) const;
 
-  const IndexMaskData &data() const;
   IndexMaskData &data_for_inplace_construction();
 
  private:
@@ -413,11 +445,6 @@ inline OffsetSpan<int64_t, int16_t> IndexMask::segment(const int64_t segment_i) 
 inline IndexMask IndexMask::slice(const IndexRange range) const
 {
   return this->slice(range.start(), range.size());
-}
-
-inline const IndexMaskData &IndexMask::data() const
-{
-  return *this;
 }
 
 inline IndexMaskData &IndexMask::data_for_inplace_construction()
