@@ -12,9 +12,8 @@ template<typename T, typename BaseT> class OffsetSpan {
   Span<BaseT> data_;
 
  public:
-  OffsetSpan(const T offset, const Span<BaseT> data) : offset_(offset), data_(data)
-  {
-  }
+  OffsetSpan() = default;
+  OffsetSpan(const T offset, const Span<BaseT> data) : offset_(offset), data_(data) {}
 
   Span<BaseT> base_span() const
   {
@@ -24,6 +23,11 @@ template<typename T, typename BaseT> class OffsetSpan {
   T offset() const
   {
     return offset_;
+  }
+
+  bool is_empty() const
+  {
+    return data_.is_empty();
   }
 
   int64_t size() const
@@ -57,9 +61,7 @@ template<typename T, typename BaseT> class OffsetSpan {
     const BaseT *data_;
 
    public:
-    Iterator(const T offset, const BaseT *data) : offset_(offset), data_(data)
-    {
-    }
+    Iterator(const T offset, const BaseT *data) : offset_(offset), data_(data) {}
 
     Iterator &operator++()
     {

@@ -329,20 +329,35 @@ IndexMask IndexMask::from_predicate_impl(
     return {};
   }
 
-  Vector<OffsetSpan<int64_t, int16_t>> segments;
+  const Span<int16_t> static_indices = get_static_indices_array();
 
-  for (const int64_t segment_i : IndexRange(universe.data_.segments_num)) {
+  Vector<OffsetSpan<int64_t, int16_t>> segments(universe.data_.segments_num);
+
+  auto process_segment = [&](const int64_t segment_i, LinearAllocator<> &allocator) {
     const OffsetSpan<int64_t, int16_t> universe_segment = universe.segment(segment_i);
 
     std::array<int16_t, max_segment_size> indices_array;
     const int64_t true_indices_num = filter_indices(universe_segment, indices_array.data());
     if (true_indices_num == 0) {
-      continue;
+      return;
     }
-    segments.append_as(
-        universe_segment.offset(),
-        memory.construct_array_copy(Span<int16_t>(indices_array.data(), true_indices_num)));
+    const Span<int16_t> true_indices{indices_array.data(), true_indices_num};
+    if (const std::optional<IndexRange> range = unique_sorted_indices::non_empty_as_range_try(
+            true_indices))
+    {
+      segments.append_as(universe_segment.offset(), static_indices.slice(*range));
+    }
+    else {
+      segments.append_as(universe_segment.offset(), allocator.construct_array_copy(true_indices));
+    }
+  };
+
+  for (const int64_t segment_i : IndexRange(universe.data_.segments_num)) {
+    process_segment(segment_i, memory);
   }
+
+  segments.remove_if(
+      [](const OffsetSpan<int64_t, int16_t> segment) { return segment.is_empty(); });
 
   const int64_t segments_num = segments.size();
   if (segments_num == 0) {
