@@ -133,6 +133,10 @@ class IndexMaskMemory : public LinearAllocator<> {
  *   from various sources. Those generally need additional memory which is provided with by a
  *   #IndexMaskMemory.
  *
+ *   Some of the `IndexMask::from_* functions are have an `IndexMask universe` input. When
+ *   provided, the function will only consider the indices in the "universe". The term comes from
+ *   mathematics: https://en.wikipedia.org/wiki/Universe_(mathematics).
+ *
  * Iteration:
  *   To iterate over the indices, one usually has to use one of the `foreach_*` functions which
  *   require a callback function. Due to the internal segmentation of the index mask, this is more
@@ -153,24 +157,89 @@ class IndexMaskMemory : public LinearAllocator<> {
  */
 class IndexMask : private IndexMaskData {
  public:
+  /** Construct an empty mask. */
   IndexMask();
+  /** Construct a mask that contains the indices from 0 to size-1. This takes O(1) time. */
   IndexMask(int64_t size);
+  /** Construct a mask that contains the indices in the range. This takes O(1) time. */
   IndexMask(IndexRange range);
+
+  /** Construct a mask from unique sorted indices. */
+  template<typename T> static IndexMask from_indices(Span<T> indices, IndexMaskMemory &memory);
+  /** Construct a mask from the set bit indices. */
+  static IndexMask from_bits(BitSpan bits, IndexMaskMemory &memory);
+  /** Construct a mask from the set bit indices, but limited by the indices in #universe. */
+  static IndexMask from_bits(const IndexMask &universe, BitSpan bits, IndexMaskMemory &memory);
+  /** Construct a mask from the true indices. */
+  static IndexMask from_bools(Span<bool> bools, IndexMaskMemory &memory);
+  static IndexMask from_bools(const VArray<bool> &bools, IndexMaskMemory &memory);
+  /** Construct a mask from the true indices, but limited by the indices in #universe. */
+  static IndexMask from_bools(const IndexMask &universe,
+                              Span<bool> bools,
+                              IndexMaskMemory &memory);
+  static IndexMask from_bools(const IndexMask &universe,
+                              const VArray<bool> &bools,
+                              IndexMaskMemory &memory);
+  /** Construct a mask from all the indices for which the predicate is true. */
+  template<typename Fn>
+  static IndexMask from_predicate(const IndexMask &universe,
+                                  GrainSize grain_size,
+                                  IndexMaskMemory &memory,
+                                  Fn &&predicate);
+  /** Sorts all indices from #universe into the different output masks. */
+  template<typename T, typename Fn>
+  static void from_groups(const IndexMask &universe,
+                          IndexMaskMemory &memory,
+                          Fn &&get_group_index,
+                          MutableSpan<IndexMask> r_masks);
 
   int64_t size() const;
   bool is_empty() const;
   IndexRange index_range() const;
   int64_t first() const;
   int64_t last() const;
+
+  /**
+   * \return Minimum number of elements an array has to have so that it can be indexed by every
+   * index stored in the mask.
+   */
   int64_t min_array_size() const;
+
+  /**
+   * \return Position where the #query_index is stored, or none if the index is not in the mask.
+   */
   std::optional<RawMaskIterator> find(const int64_t query_index) const;
+  /**
+   * \return True when the #query_index is stored in the mask.
+   */
   bool contains(const int64_t query_index) const;
 
+  /** \return The iterator for the given index such that `mask[iterator] == mask[index]`. */
   RawMaskIterator index_to_iterator(const int64_t index) const;
+  /** \return The index for the given iterator such that `mask[iterator] == mask[index]`. */
   int64_t iterator_to_index(const RawMaskIterator &it) const;
 
+  /**
+   * Get the index at the given position. Prefer `foreach_*` methods for better performance. This
+   * takes O(log n) time.
+   */
+  int64_t operator[](const int64_t i) const;
+  /**
+   * Same as above but takes O(1) time. It's still preferable to use `foreach_*` methods for
+   * iteration.
+   */
+  int64_t operator[](const RawMaskIterator &it) const;
+
+  /**
+   * Get a new mask that contains a consecutive subset of this mask. Takes O(log n) time and but
+   * can reuse the memory from the source mask.
+   */
   IndexMask slice(IndexRange range) const;
   IndexMask slice(int64_t start, int64_t size) const;
+  /**
+   * Same as above but can also add an offset to every index in the mask.
+   * Takes O(log n + range.size()) time but with a very small constant factor.
+   */
   IndexMask slice_and_offset(IndexRange range,
                              const int64_t offset,
                              IndexMaskMemory &memory) const;
@@ -178,51 +247,62 @@ class IndexMask : private IndexMaskData {
                              int64_t size,
                              const int64_t offset,
                              IndexMaskMemory &memory) const;
+
+  /**
+   * \return A new index mask that contains all the indices from the universe that are not in the
+   * current mask.
+   */
   IndexMask complement(const IndexRange universe, IndexMaskMemory &memory) const;
 
-  int64_t operator[](const int64_t i) const;
-  int64_t operator[](const RawMaskIterator &it) const;
-
+  /**
+   * \return Number of segments in the mask.
+   */
   int64_t segments_num() const;
+  /**
+   * \return Indices stored in the n-th segment.
+   */
   OffsetSpan<int64_t, int16_t> segment(const int64_t segment_i) const;
 
+  /**
+   * Calls the function once for every segment with these parameters:
+   *  - `OffsetSpan<int64_t, int16_t>`: Indices in the segment.
+   *  - `int64_t`: Start position in the mask (optional).
+   */
   template<typename Fn> void foreach_span(Fn &&fn) const;
-  template<typename Fn> void foreach_range(Fn &&fn) const;
-  template<typename Fn> void foreach_span_or_range(Fn &&fn) const;
-  template<typename Fn> void foreach_index(Fn &&fn) const;
-  template<typename Fn> void foreach_index_optimized(Fn &&fn) const;
-
-  template<typename Fn> void foreach_index(GrainSize grain_size, Fn &&fn) const;
   template<typename Fn> void foreach_span(GrainSize grain_size, Fn &&fn) const;
+
+  /**
+   * Calls the function once for every segment with these parameters:
+   * - `OffsetSpan<int64_t, int16_t>` and `IndexRange`: Indices in the segment. The callback has to
+   *     support both types as first parameter.
+   * - `int64_t`: Start position in the mask (optional).
+   */
+  template<typename Fn> void foreach_span_or_range(Fn &&fn) const;
   template<typename Fn> void foreach_span_or_range(GrainSize grain_size, Fn &&fn) const;
+
+  /**
+   * Calls the function once for every index with these parameters:
+   * - `int64_t`: Index.
+   * - `int64_t`: Position in the mask (optional).
+   */
+  template<typename Fn> void foreach_index(Fn &&fn) const;
+  template<typename Fn> void foreach_index(GrainSize grain_size, Fn &&fn) const;
+
+  /**
+   * Same as above but may generate more code at compile time because it optimizes for the case
+   * when segments are a range internally. Use this only when the function itself is doing very
+   * little work and will likely be called many times.
+   */
+  template<typename Fn> void foreach_index_optimized(Fn &&fn) const;
   template<typename Fn> void foreach_index_optimized(GrainSize grain_size, Fn &&fn) const;
 
-  template<typename T> static IndexMask from_indices(Span<T> indices, IndexMaskMemory &memory);
-  static IndexMask from_bits(BitSpan bits, IndexMaskMemory &memory);
-  static IndexMask from_bits(const IndexMask &universe, BitSpan bits, IndexMaskMemory &memory);
-  static IndexMask from_bools(Span<bool> bools, IndexMaskMemory &memory);
-  static IndexMask from_bools(const VArray<bool> &bools, IndexMaskMemory &memory);
-  static IndexMask from_bools(const IndexMask &universe,
-                              Span<bool> bools,
-                              IndexMaskMemory &memory);
-  static IndexMask from_bools(const IndexMask &universe,
-                              const VArray<bool> &bools,
-                              IndexMaskMemory &memory);
-  template<typename Fn>
-  static IndexMask from_predicate(IndexRange universe,
-                                  GrainSize grain_size,
-                                  IndexMaskMemory &memory,
-                                  Fn &&predicate);
-  template<typename Fn>
-  static IndexMask from_predicate(const IndexMask &universe,
-                                  GrainSize grain_size,
-                                  IndexMaskMemory &memory,
-                                  Fn &&predicate);
-  template<typename T, typename Fn>
-  static void from_groups(const IndexMask &universe,
-                          IndexMaskMemory &memory,
-                          Fn &&get_group_index,
-                          MutableSpan<IndexMask> r_masks);
+  /**
+   * Calls the function once for every range. Note that this might call the function for each index
+   * separately in the worst case if there are no consecutive indices.
+   * - `IndexRange`: Range of indices in the mask.
+   * - `int64_t`: Position in the mask (optional).
+   */
+  template<typename Fn> void foreach_range(Fn &&fn) const;
 
   template<typename T> void to_indices(MutableSpan<T> r_indices) const;
   void to_bits(MutableBitSpan r_bits) const;
@@ -490,6 +570,22 @@ template<typename Fn> inline void IndexMask::foreach_index(Fn &&fn) const
 }
 
 template<typename Fn>
+inline void IndexMask::foreach_index(const GrainSize grain_size, Fn &&fn) const
+{
+  threading::parallel_for(this->index_range(), grain_size.value, [&](const IndexRange range) {
+    const IndexMask sub_mask = this->slice(range);
+    sub_mask.foreach_index([&](const int64_t i, const int64_t i_in_mask) {
+      if constexpr (std::is_invocable_r_v<void, Fn, int64_t, int64_t>) {
+        fn(i, i_in_mask + range.start());
+      }
+      else {
+        fn(i);
+      }
+    });
+  });
+}
+
+template<typename Fn>
 #if (defined(__GNUC__) && !defined(__clang__))
 [[gnu::optimize("-funroll-loops")]] [[gnu::optimize("O3")]]
 #endif
@@ -544,6 +640,21 @@ template<typename Fn> inline void IndexMask::foreach_index_optimized(Fn &&fn) co
   });
 }
 
+template<typename Fn>
+inline void IndexMask::foreach_index_optimized(const GrainSize grain_size, Fn &&fn) const
+{
+  threading::parallel_for(this->index_range(), grain_size.value, [&](const IndexRange range) {
+    const IndexMask sub_mask = this->slice(range);
+    if constexpr (std::is_invocable_r_v<void, Fn, int64_t, int64_t>) {
+      sub_mask.foreach_index_optimized(
+          [&](const int64_t i, const int64_t i_in_mask) { fn(i, i_in_mask + range.start()); });
+    }
+    else {
+      sub_mask.foreach_index_optimized(fn);
+    }
+  });
+}
+
 template<typename Fn> inline void IndexMask::foreach_span_or_range(Fn &&fn) const
 {
   this->foreach_span([&](const OffsetSpan<int64_t, int16_t> mask_segment, const int64_t start) {
@@ -567,6 +678,22 @@ template<typename Fn> inline void IndexMask::foreach_span_or_range(Fn &&fn) cons
   });
 }
 
+template<typename Fn>
+inline void IndexMask::foreach_span_or_range(const GrainSize grain_size, Fn &&fn) const
+{
+  threading::parallel_for(this->index_range(), grain_size.value, [&](const IndexRange range) {
+    const IndexMask sub_mask = this->slice(range);
+    sub_mask.foreach_span_or_range([&](const auto mask_segment, const int64_t start) {
+      if constexpr (has_mask_segment_and_start_parameter<Fn>) {
+        fn(mask_segment, start + range.start());
+      }
+      else {
+        fn(mask_segment);
+      }
+    });
+  });
+}
+
 template<typename Fn> inline void IndexMask::foreach_span(Fn &&fn) const
 {
   [[maybe_unused]] int64_t counter = 0;
@@ -580,41 +707,6 @@ template<typename Fn> inline void IndexMask::foreach_span(Fn &&fn) const
       fn(segment);
     }
   }
-}
-
-template<typename Fn> inline void IndexMask::foreach_range(Fn &&fn) const
-{
-  this->foreach_span([&](const OffsetSpan<int64_t, int16_t> indices, int64_t start) {
-    Span<int16_t> base_indices = indices.base_span();
-    while (!base_indices.is_empty()) {
-      const int64_t next_range_size = unique_sorted_indices::find_size_of_next_range(base_indices);
-      const IndexRange range(int64_t(base_indices[0]) + indices.offset(), next_range_size);
-      if constexpr (has_mask_segment_and_start_parameter<Fn>) {
-        fn(range, start);
-      }
-      else {
-        fn(range);
-      }
-      start += next_range_size;
-      base_indices = base_indices.drop_front(next_range_size);
-    }
-  });
-}
-
-template<typename Fn>
-inline void IndexMask::foreach_index(const GrainSize grain_size, Fn &&fn) const
-{
-  threading::parallel_for(this->index_range(), grain_size.value, [&](const IndexRange range) {
-    const IndexMask sub_mask = this->slice(range);
-    sub_mask.foreach_index([&](const int64_t i, const int64_t i_in_mask) {
-      if constexpr (std::is_invocable_r_v<void, Fn, int64_t, int64_t>) {
-        fn(i, i_in_mask + range.start());
-      }
-      else {
-        fn(i);
-      }
-    });
-  });
 }
 
 template<typename Fn>
@@ -634,44 +726,23 @@ inline void IndexMask::foreach_span(const GrainSize grain_size, Fn &&fn) const
   });
 }
 
-template<typename Fn>
-inline void IndexMask::foreach_span_or_range(const GrainSize grain_size, Fn &&fn) const
+template<typename Fn> inline void IndexMask::foreach_range(Fn &&fn) const
 {
-  threading::parallel_for(this->index_range(), grain_size.value, [&](const IndexRange range) {
-    const IndexMask sub_mask = this->slice(range);
-    sub_mask.foreach_span_or_range([&](const auto mask_segment, const int64_t start) {
+  this->foreach_span([&](const OffsetSpan<int64_t, int16_t> indices, int64_t start) {
+    Span<int16_t> base_indices = indices.base_span();
+    while (!base_indices.is_empty()) {
+      const int64_t next_range_size = unique_sorted_indices::find_size_of_next_range(base_indices);
+      const IndexRange range(int64_t(base_indices[0]) + indices.offset(), next_range_size);
       if constexpr (has_mask_segment_and_start_parameter<Fn>) {
-        fn(mask_segment, start + range.start());
+        fn(range, start);
       }
       else {
-        fn(mask_segment);
+        fn(range);
       }
-    });
-  });
-}
-
-template<typename Fn>
-inline void IndexMask::foreach_index_optimized(const GrainSize grain_size, Fn &&fn) const
-{
-  threading::parallel_for(this->index_range(), grain_size.value, [&](const IndexRange range) {
-    const IndexMask sub_mask = this->slice(range);
-    if constexpr (std::is_invocable_r_v<void, Fn, int64_t, int64_t>) {
-      sub_mask.foreach_index_optimized(
-          [&](const int64_t i, const int64_t i_in_mask) { fn(i, i_in_mask + range.start()); });
-    }
-    else {
-      sub_mask.foreach_index_optimized(fn);
+      start += next_range_size;
+      base_indices = base_indices.drop_front(next_range_size);
     }
   });
-}
-
-template<typename Fn>
-inline IndexMask IndexMask::from_predicate(const IndexRange universe,
-                                           const GrainSize grain_size,
-                                           IndexMaskMemory &memory,
-                                           Fn &&predicate)
-{
-  return IndexMask::from_predicate(IndexMask(universe), grain_size, memory, predicate);
 }
 
 namespace detail {
