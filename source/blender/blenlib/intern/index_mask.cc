@@ -521,102 +521,6 @@ static Set<int64_t> eval_expr(const Expr &base_expr, const IndexRange universe)
   return result;
 }
 
-static void find_chunk_ids_to_process(const Expr &base_expr,
-                                      const IndexRange universe,
-                                      MutableBitSpan r_chunk_is_full,
-                                      MutableBitSpan r_chunk_non_empty)
-{
-  using TmpBitVector = BitVector<1024>;
-
-  const int64_t max_chunk_id = index_to_chunk_id(universe.last());
-  const int64_t r_size = max_chunk_id + 1;
-  BLI_assert(r_chunk_is_full.size() == r_size);
-  BLI_assert(r_chunk_non_empty.size() == r_size);
-
-  switch (base_expr.type) {
-    case Expr::Type::Atomic: {
-      const AtomicExpr &expr = static_cast<const AtomicExpr &>(base_expr);
-      const IndexMaskData &data = expr.mask->data();
-      if (data.chunks_num == 0) {
-        break;
-      }
-      if (data.chunks_num == 1) {
-        const int64_t chunk_id = data.chunk_ids[0];
-        r_chunk_non_empty[chunk_id].set();
-        if (data.indices_num == chunk_capacity) {
-          r_chunk_is_full[data.chunk_ids[0]].set();
-        }
-        break;
-      }
-      for (const int64_t chunk_i : IndexRange(data.chunks_num)) {
-        const int64_t chunk_id = data.chunk_ids[chunk_i];
-        const Chunk &chunk = data.chunks[chunk_i];
-        r_chunk_non_empty[chunk_id].set();
-        MutableBitRef is_full = r_chunk_is_full[chunk_id];
-        if (chunk.is_full()) {
-          if (chunk_i == 0 && data.begin_it.segment_i == 0 && data.begin_it.index_in_segment == 0)
-          {
-            is_full.set();
-          }
-          else if (chunk_i == data.chunks_num - 1 && data.end_it.segment_i == 0 &&
-                   data.end_it.index_in_segment == chunk_capacity)
-          {
-            is_full.set();
-          }
-          else {
-            is_full.set();
-          }
-        }
-      }
-      break;
-    }
-    case Expr::Type::Union: {
-      const UnionExpr &expr = static_cast<const UnionExpr &>(base_expr);
-      for (const Expr *child : expr.children) {
-        TmpBitVector child_chunk_is_full(r_size, false);
-        TmpBitVector child_chunk_non_empty(r_size, false);
-        find_chunk_ids_to_process(*child, universe, child_chunk_is_full, child_chunk_non_empty);
-        r_chunk_is_full |= child_chunk_is_full;
-        r_chunk_non_empty |= child_chunk_non_empty;
-      }
-      break;
-    }
-    case Expr::Type::Difference: {
-      const DifferenceExpr &expr = static_cast<const DifferenceExpr &>(base_expr);
-      find_chunk_ids_to_process(*expr.base, universe, r_chunk_is_full, r_chunk_non_empty);
-      for (const Expr *child : expr.children) {
-        TmpBitVector child_chunk_is_full(r_size, false);
-        TmpBitVector child_chunk_non_empty(r_size, false);
-        find_chunk_ids_to_process(*child, universe, child_chunk_is_full, child_chunk_non_empty);
-        r_chunk_is_full.clear_by_set_bits(child_chunk_non_empty);
-        r_chunk_non_empty.clear_by_set_bits(child_chunk_is_full);
-      }
-      break;
-    }
-    case Expr::Type::Complement: {
-      const ComplementExpr &expr = static_cast<const ComplementExpr &>(base_expr);
-      /* The parameters are reversed intentionally. */
-      find_chunk_ids_to_process(*expr.base, universe, r_chunk_non_empty, r_chunk_is_full);
-      r_chunk_is_full.flip();
-      r_chunk_non_empty.flip();
-      break;
-    }
-    case Expr::Type::Intersection: {
-      const IntersectionExpr &expr = static_cast<const IntersectionExpr &>(base_expr);
-      BLI_assert(!expr.children.is_empty());
-      find_chunk_ids_to_process(*expr.children[0], universe, r_chunk_is_full, r_chunk_non_empty);
-      for (const Expr *child : expr.children.as_span().drop_front(1)) {
-        TmpBitVector child_chunk_is_full(r_size, false);
-        TmpBitVector child_chunk_non_empty(r_size, false);
-        find_chunk_ids_to_process(*child, universe, child_chunk_is_full, child_chunk_non_empty);
-        r_chunk_is_full &= child_chunk_is_full;
-        r_chunk_non_empty &= child_chunk_non_empty;
-      }
-      break;
-    }
-  }
-}
-
 static Vector<int64_t> get_chunk_ids_to_evaluate_expression_in(const Expr & /*expr*/,
                                                                const IndexRange universe)
 {
@@ -714,8 +618,7 @@ static void eval_expressions_for_chunk_ids(const Expr &expr,
                                            const IndexRange universe,
                                            const Span<int64_t> chunk_ids,
                                            MutableSpan<Chunk> r_chunks,
-                                           IndexMaskMemory &memory,
-                                           std::mutex &memory_mutex)
+                                           LinearAllocator<> &allocator)
 {
   BLI_assert(chunk_ids.size() == r_chunks.size());
   for (const int64_t chunk_i : chunk_ids.index_range()) {
@@ -734,12 +637,10 @@ static void eval_expressions_for_chunk_ids(const Expr &expr,
     MutableSpan<const int16_t *> indices_by_segment;
     MutableSpan<int16_t> indices_in_segment;
     MutableSpan<int16_t> cumulative_segment_sizes;
-    {
-      std::lock_guard lock{memory_mutex};
-      indices_by_segment = memory.allocate_array<const int16_t *>(1);
-      indices_in_segment = memory.allocate_array<int16_t>(indices_in_chunk.size());
-      cumulative_segment_sizes = memory.allocate_array<int16_t>(2);
-    }
+
+    indices_by_segment = allocator.allocate_array<const int16_t *>(1);
+    indices_in_segment = allocator.allocate_array<int16_t>(indices_in_chunk.size());
+    cumulative_segment_sizes = allocator.allocate_array<int16_t>(2);
 
     indices_by_segment[0] = indices_in_segment.data();
     cumulative_segment_sizes[0] = 0;
@@ -763,15 +664,24 @@ IndexMask IndexMask::from_expr(const Expr &expr,
   const Vector<int64_t> possible_chunk_ids = get_chunk_ids_to_evaluate_expression_in(expr,
                                                                                      universe);
   Array<Chunk> possible_chunks(possible_chunk_ids.size());
-  std::mutex memory_mutex;
-  threading::parallel_for(possible_chunk_ids.index_range(), 32, [&](const IndexRange range) {
-    eval_expressions_for_chunk_ids(expr,
-                                   universe,
-                                   possible_chunk_ids.as_span().slice(range),
-                                   possible_chunks.as_mutable_span().slice(range),
-                                   memory,
-                                   memory_mutex);
-  });
+
+  if (possible_chunk_ids.size() > 1) {
+    threading::EnumerableThreadSpecific<LinearAllocator<>> allocators;
+    threading::parallel_for(possible_chunk_ids.index_range(), 32, [&](const IndexRange range) {
+      LinearAllocator<> &allocator = allocators.local();
+      eval_expressions_for_chunk_ids(expr,
+                                     universe,
+                                     possible_chunk_ids.as_span().slice(range),
+                                     possible_chunks.as_mutable_span().slice(range),
+                                     allocator);
+    });
+    for (LinearAllocator<> &allocator : allocators) {
+      memory.give_ownership_of_buffers_in(allocator);
+    }
+  }
+  else {
+    eval_expressions_for_chunk_ids(expr, universe, possible_chunk_ids, possible_chunks, memory);
+  }
 
   return strip_empty_chunks_and_create_mask(possible_chunks, possible_chunk_ids, memory);
 }
