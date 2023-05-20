@@ -253,37 +253,40 @@ class IndexMaskFromSegment : NonCopyable, NonMovable {
   std::array<int64_t, 2> cumulative_chunk_sizes;
   IndexMask mask;
 
-  IndexMaskFromSegment()
-  {
-    IndexMaskData &data = mask.data_for_inplace_construction();
-    this->cumulative_segment_sizes[0] = 0;
-    this->cumulative_chunk_sizes[0] = 0;
-    this->chunk.segments_num = 1;
-    this->chunk.indices_by_segment = &this->segment_indices;
-    this->chunk.cumulative_segment_sizes = this->cumulative_segment_sizes.data();
-    data.chunks = &chunk;
-    data.chunks_num = 1;
-    data.chunk_ids = &this->chunk_id;
-    data.cumulative_chunk_sizes = this->cumulative_chunk_sizes.data();
-  }
-
-  void update(const int64_t chunk_id, const Span<int16_t> indices)
-  {
-    BLI_assert(!indices.is_empty());
-    BLI_assert(std::is_sorted(indices.begin(), indices.end()));
-    BLI_assert(indices[0] >= 0);
-    BLI_assert(indices.last() < chunk_capacity);
-    const int64_t indices_num = indices.size();
-
-    IndexMaskData &data = mask.data_for_inplace_construction();
-    this->segment_indices = indices.data();
-    this->chunk_id = chunk_id;
-    this->cumulative_segment_sizes[1] = int16_t(indices_num);
-    this->cumulative_chunk_sizes[1] = indices_num;
-    data.end_it.index_in_segment = indices_num;
-    data.indices_num = indices_num;
-  }
+  IndexMaskFromSegment();
+  void update(const int64_t chunk_id, const Span<int16_t> indices);
 };
+
+inline IndexMaskFromSegment::IndexMaskFromSegment()
+{
+  IndexMaskData &data = mask.data_for_inplace_construction();
+  this->cumulative_segment_sizes[0] = 0;
+  this->cumulative_chunk_sizes[0] = 0;
+  this->chunk.segments_num = 1;
+  this->chunk.indices_by_segment = &this->segment_indices;
+  this->chunk.cumulative_segment_sizes = this->cumulative_segment_sizes.data();
+  data.chunks = &chunk;
+  data.chunks_num = 1;
+  data.chunk_ids = &this->chunk_id;
+  data.cumulative_chunk_sizes = this->cumulative_chunk_sizes.data();
+}
+
+inline void IndexMaskFromSegment::update(const int64_t chunk_id, const Span<int16_t> indices)
+{
+  BLI_assert(!indices.is_empty());
+  BLI_assert(std::is_sorted(indices.begin(), indices.end()));
+  BLI_assert(indices[0] >= 0);
+  BLI_assert(indices.last() < chunk_capacity);
+  const int64_t indices_num = indices.size();
+
+  IndexMaskData &data = mask.data_for_inplace_construction();
+  this->segment_indices = indices.data();
+  this->chunk_id = chunk_id;
+  this->cumulative_segment_sizes[1] = int16_t(indices_num);
+  this->cumulative_chunk_sizes[1] = indices_num;
+  data.end_it.index_in_segment = indices_num;
+  data.indices_num = indices_num;
+}
 
 std::ostream &operator<<(std::ostream &stream, const IndexMask &mask);
 
