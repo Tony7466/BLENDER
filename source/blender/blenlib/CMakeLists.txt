@@ -182,6 +182,7 @@ set(SRC
   BLI_assert.h
   BLI_astar.h
   BLI_atomic_disjoint_set.hh
+  BLI_binary_search.hh
   BLI_bit_group_vector.hh
   BLI_bit_ref.hh
   BLI_bit_span.hh
@@ -362,6 +363,7 @@ set(SRC
   BLI_timecode.h
   BLI_timeit.hh
   BLI_timer.h
+  BLI_unique_sorted_indices.hh
   BLI_utildefines.h
   BLI_utildefines_iter.h
   BLI_utildefines_stack.h
@@ -479,6 +481,7 @@ if(WITH_GTESTS)
     tests/BLI_array_store_test.cc
     tests/BLI_array_test.cc
     tests/BLI_array_utils_test.cc
+    tests/BLI_binary_search_test.cc
     tests/BLI_bit_group_vector_test.cc
     tests/BLI_bit_ref_test.cc
     tests/BLI_bit_span_test.cc

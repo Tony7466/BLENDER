@@ -66,16 +66,6 @@ TEST(index_mask, SplitToRangesAndSpans)
   EXPECT_EQ(std::get<IndexRange>(parts[3]), IndexRange(20, 5));
 }
 
-TEST(index_mask, SplitByChunk)
-{
-  Array<int> data = {5, 100, 16383, 16384, 16385, 20000, 20001, 100000, 101000};
-  Vector<IndexRange> ranges = split_indices_by_aligned_segment<int>(data);
-  EXPECT_EQ(ranges.size(), 3);
-  EXPECT_EQ(data.as_span().slice(ranges[0]), Span<int>({5, 100, 16383}));
-  EXPECT_EQ(data.as_span().slice(ranges[1]), Span<int>({16384, 16385, 20000, 20001}));
-  EXPECT_EQ(data.as_span().slice(ranges[2]), Span<int>({100000, 101000}));
-}
-
 TEST(index_mask, IndicesToMask)
 {
   IndexMaskMemory memory;
@@ -285,25 +275,6 @@ TEST(index_mask, FromPredicateFuzzy)
     EXPECT_TRUE(mask.contains(index));
   }
   mask.foreach_index([&](const int64_t index) { EXPECT_TRUE(values.contains(int(index))); });
-}
-
-TEST(index_mask, Benchmark)
-{
-  Set<int> indices_set;
-  RandomNumberGenerator rng;
-  for (const int64_t _ : IndexRange(1e6)) {
-    indices_set.add(rng.get_int32(1e6));
-  }
-
-  Vector<int> indices;
-  indices.extend(indices_set.begin(), indices_set.end());
-  std::sort(indices.begin(), indices.end());
-
-  for (const int64_t _ : IndexRange(5)) {
-    SCOPED_TIMER("from indices");
-    IndexMaskMemory memory;
-    IndexMask::from_indices<int>(indices, memory);
-  }
 }
 
 }  // namespace blender::index_mask::tests

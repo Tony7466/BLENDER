@@ -7,6 +7,7 @@
 #include <variant>
 
 #include "BLI_array.hh"
+#include "BLI_binary_search.hh"
 #include "BLI_bit_vector.hh"
 #include "BLI_function_ref.hh"
 #include "BLI_index_range.hh"
@@ -23,7 +24,7 @@ namespace blender {
 struct GrainSize {
   int64_t value;
 
-  explicit GrainSize(const int64_t grain_size) : value(grain_size) {}
+  explicit constexpr GrainSize(const int64_t grain_size) : value(grain_size) {}
 };
 
 template<typename T> class VArray;
@@ -199,8 +200,6 @@ inline void IndexMaskFromSegment::update(const OffsetSpan<int64_t, int16_t> segm
 
 std::ostream &operator<<(std::ostream &stream, const IndexMask &mask);
 
-template<typename T> Vector<IndexRange> split_indices_by_aligned_segment(const Span<T> indices);
-
 /* -------------------------------------------------------------------- */
 /** \name Inline Utilities
  * \{ */
@@ -360,10 +359,11 @@ inline RawMaskIterator IndexMask::index_to_iterator(const int64_t index) const
   RawMaskIterator it;
   const int64_t full_index = index + data_.cumulative_segment_sizes[0] +
                              data_.begin_index_in_segment;
-  it.segment_i = std::upper_bound(data_.cumulative_segment_sizes,
-                                  data_.cumulative_segment_sizes + data_.segments_num + 1,
-                                  full_index) -
-                 data_.cumulative_segment_sizes - 1;
+  it.segment_i = -1 +
+                 binary_search::find_predicate_begin(
+                     data_.cumulative_segment_sizes,
+                     data_.cumulative_segment_sizes + data_.segments_num + 1,
+                     [&](const int64_t cumulative_size) { return cumulative_size > full_index; });
   it.index_in_segment = full_index - data_.cumulative_segment_sizes[it.segment_i];
   return it;
 }
