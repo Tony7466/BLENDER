@@ -9,10 +9,6 @@
 
 #include "testing/testing.h"
 
-namespace blender::index_mask {
-void do_benchmark(const int64_t total);
-}
-
 namespace blender::index_mask::tests {
 
 TEST(index_mask, FindRangeEnd)
@@ -289,6 +285,25 @@ TEST(index_mask, FromPredicateFuzzy)
     EXPECT_TRUE(mask.contains(index));
   }
   mask.foreach_index([&](const int64_t index) { EXPECT_TRUE(values.contains(int(index))); });
+}
+
+TEST(index_mask, Benchmark)
+{
+  Set<int> indices_set;
+  RandomNumberGenerator rng;
+  for (const int64_t _ : IndexRange(1e6)) {
+    indices_set.add(rng.get_int32(1e6));
+  }
+
+  Vector<int> indices;
+  indices.extend(indices_set.begin(), indices_set.end());
+  std::sort(indices.begin(), indices.end());
+
+  for (const int64_t _ : IndexRange(5)) {
+    SCOPED_TIMER("from indices");
+    IndexMaskMemory memory;
+    IndexMask::from_indices<int>(indices, memory);
+  }
 }
 
 }  // namespace blender::index_mask::tests
