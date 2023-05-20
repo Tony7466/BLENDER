@@ -320,6 +320,10 @@ void IndexMask::to_ranges_and_spans_impl(Vector<IndexRange> &r_ranges,
 static void consolidate_segments(Vector<OffsetSpan<int64_t, int16_t>> &segments,
                                  IndexMaskMemory &memory)
 {
+  if (segments.is_empty()) {
+    return;
+  }
+
   const Span<int16_t> static_indices = get_static_indices_array();
 
   int64_t group_start_segment_i = 0;
