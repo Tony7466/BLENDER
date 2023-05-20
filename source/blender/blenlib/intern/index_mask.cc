@@ -317,6 +317,53 @@ void IndexMask::to_ranges_and_spans_impl(Vector<IndexRange> &r_ranges,
   });
 }
 
+static void consolidate_segments(Vector<OffsetSpan<int64_t, int16_t>> &segments,
+                                 IndexMaskMemory &memory)
+{
+  const Span<int16_t> static_indices = get_static_indices_array();
+
+  int64_t group_start_segment_i = 0;
+  int64_t group_first = segments[0][0];
+  int64_t group_last = segments[0].last();
+  bool group_as_range = unique_sorted_indices::non_empty_is_range(segments[0].base_span());
+
+  auto finish_group = [&](const int64_t last_segment_i) {
+    if (group_start_segment_i == last_segment_i) {
+      return;
+    }
+    const IndexRange range{group_first, group_last + 1 - group_first};
+    segments[group_start_segment_i] = OffsetSpan<int64_t, int16_t>(
+        range[0], static_indices.take_front(range.size()));
+    for (int64_t i = group_start_segment_i + 1; i <= last_segment_i; i++) {
+      segments[i] = {};
+    }
+  };
+
+  for (const int64_t segment_i : segments.index_range().drop_front(1)) {
+    const OffsetSpan<int64_t, int16_t> segment = segments[segment_i];
+    const std::optional<IndexRange> segment_base_range =
+        unique_sorted_indices::non_empty_as_range_try(segment.base_span());
+
+    if (group_as_range && segment_base_range.has_value()) {
+      if (group_last + 1 == segment[0]) {
+        if (segment.last() - group_first + 1 < max_segment_size) {
+          /* Can combine previous and current range. */
+          group_last = segment.last();
+          continue;
+        }
+      }
+    }
+    finish_group(segment_i - 1);
+
+    group_start_segment_i = segment_i;
+    group_first = segment[0];
+    group_last = segment.last();
+  }
+  finish_group(segments.size() - 1);
+  segments.remove_if(
+      [](const OffsetSpan<int64_t, int16_t> segment) { return segment.is_empty(); });
+}
+
 IndexMask IndexMask::from_predicate_impl(
     const IndexMask &universe,
     const GrainSize grain_size,
@@ -384,6 +431,8 @@ IndexMask IndexMask::from_predicate_impl(
                     return a[0] < b[0];
                   });
   }
+
+  consolidate_segments(segments, memory);
 
   const int64_t segments_num = segments.size();
   if (segments_num == 0) {
