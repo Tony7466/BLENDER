@@ -123,17 +123,7 @@
 AUD_NAMESPACE_BEGIN
 
 /// Sample type.(float samples)
-// double samples because of the fftw3 library
 typedef float sample_t;
-
-// Indicates that the FFT library uses "double"
-#define AUDASPACE_FFTW
-
-#ifdef AUDASPACE_FFTW
-typedef double fft_real;
-#else
-typedef float fft_real;
-#endif
 
 /// Sample data type (format samples)
 typedef unsigned char data_t;

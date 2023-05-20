@@ -45,18 +45,6 @@ private:
 	*/
 	int m_N;
 
-#ifdef AUDASPACE_FFTW
-	/**
-	* The plan to transform the input to the frequency domain.
-	*/
-	fftw_plan m_fftPlanR2C;
-
-	/**
-	* The plan to transform the input to the time domain again.
-	*/
-	fftw_plan m_fftPlanC2R;
-
-#else
 	/**
 	* The plan to transform the input to the frequency domain.
 	*/
@@ -66,7 +54,6 @@ private:
 	* The plan to transform the input to the time domain again.
 	*/
 	fftwf_plan m_fftPlanC2R;
-#endif
 
 	/**
 	* The size of a buffer for its use with the FFT plan (in bytes).

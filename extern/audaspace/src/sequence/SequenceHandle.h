@@ -26,9 +26,6 @@ class ReadDevice;
 class IHandle;
 class I3DHandle;
 class SequenceEntry;
-class IReader;
-class EqualizerReader;
-class ISound;
 
 /**
  * Represents a playing sequenced entry.
@@ -76,10 +73,6 @@ private:
 	 */
 	bool updatePosition(double position);
 
-	/**
-	 * Creates the handles needed to play the sound
-	 */
-	void createHandles();
 public:
 	/**
 	 * Creates a new sequenced handle.

@@ -21,18 +21,23 @@
 
 #include <mutex>
 
-#include "util/Buffer.h"
-
-
 #define KEEP_TIME 10
 #define POSITION_EPSILON (1.0 / static_cast<double>(RATE_48000))
 
 AUD_NAMESPACE_BEGIN
 
-
-void SequenceHandle::createHandles()
+void SequenceHandle::start()
 {
+	// we already tried to start, aborting
+	if(!m_valid)
+		return;
+
+	// in case the sound is playing, we need to stop first
+	stop();
+
 	std::lock_guard<ILockable> lock(*m_entry);
+
+	// let's try playing
 	if(m_entry->m_sound.get())
 	{
 		try
@@ -48,19 +53,7 @@ void SequenceHandle::createHandles()
 		// after starting we have to set the properties, so let's ensure that
 		m_status--;
 	}
-}
 
-void SequenceHandle::start()
-{
-	// we already tried to start, aborting
-	if(!m_valid)
-		return;
-
-	// in case the sound is playing, we need to stop first
-	stop();
-
-
-	createHandles();
 	// if the sound could not be played, we invalidate
 	m_valid = m_handle.get();
 }
