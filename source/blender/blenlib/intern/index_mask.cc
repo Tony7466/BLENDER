@@ -424,12 +424,12 @@ Vector<IndexRange> IndexMask::to_ranges_invert(const IndexRange universe) const
   return this->complement(universe, memory).to_ranges();
 }
 
-IndexMask IndexMask::from_predicate_impl(
-    const IndexMask &universe,
-    const GrainSize grain_size,
-    IndexMaskMemory &memory,
-    const FunctionRef<int64_t(OffsetSpan<int64_t, int16_t> indices, int16_t *r_true_indices)>
-        filter_indices)
+namespace detail {
+IndexMask from_predicate_impl(const IndexMask &universe,
+                              const GrainSize grain_size,
+                              IndexMaskMemory &memory,
+                              const FunctionRef<int64_t(OffsetSpan<int64_t, int16_t> indices,
+                                                        int16_t *r_true_indices)> filter_indices)
 {
   if (universe.is_empty()) {
     return {};
@@ -464,7 +464,7 @@ IndexMask IndexMask::from_predicate_impl(
 
   Vector<OffsetSpan<int64_t, int16_t>> segments;
   if (universe.size() <= grain_size.value) {
-    for (const int64_t segment_i : IndexRange(universe.segments_num_)) {
+    for (const int64_t segment_i : IndexRange(universe.segments_num())) {
       const OffsetSpan<int64_t, int16_t> universe_segment = universe.segment(segment_i);
       process_segment(universe_segment, memory, segments);
     }
@@ -481,6 +481,7 @@ IndexMask IndexMask::from_predicate_impl(
   consolidate_segments(segments, memory);
   return mask_from_segments(segments, memory);
 }
+}  // namespace detail
 
 std::optional<RawMaskIterator> IndexMask::find(const int64_t query_index) const
 {

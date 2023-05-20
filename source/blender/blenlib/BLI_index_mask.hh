@@ -234,14 +234,6 @@ class IndexMask : private IndexMaskData {
   Vector<std::variant<IndexRange, OffsetSpan<int64_t, int16_t>>, N> to_spans_and_ranges() const;
 
   IndexMaskData &data_for_inplace_construction();
-
- private:
-  static IndexMask from_predicate_impl(
-      const IndexMask &universe,
-      const GrainSize grain_size,
-      IndexMaskMemory &memory,
-      FunctionRef<int64_t(OffsetSpan<int64_t, int16_t> indices, int16_t *r_true_indices)>
-          filter_indices);
 };
 
 class IndexMaskFromSegment : NonCopyable, NonMovable {
@@ -682,13 +674,21 @@ inline IndexMask IndexMask::from_predicate(const IndexRange universe,
   return IndexMask::from_predicate(IndexMask(universe), grain_size, memory, predicate);
 }
 
+namespace detail {
+IndexMask from_predicate_impl(const IndexMask &universe,
+                              const GrainSize grain_size,
+                              IndexMaskMemory &memory,
+                              FunctionRef<int64_t(OffsetSpan<int64_t, int16_t> indices,
+                                                  int16_t *r_true_indices)> filter_indices);
+}
+
 template<typename Fn>
 inline IndexMask IndexMask::from_predicate(const IndexMask &universe,
                                            const GrainSize grain_size,
                                            IndexMaskMemory &memory,
                                            Fn &&predicate)
 {
-  return IndexMask::from_predicate_impl(
+  return detail::from_predicate_impl(
       universe,
       grain_size,
       memory,
