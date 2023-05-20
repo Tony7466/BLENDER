@@ -73,7 +73,7 @@ TEST(index_mask, SplitToRangesAndSpans)
 TEST(index_mask, SplitByChunk)
 {
   Array<int> data = {5, 100, 16383, 16384, 16385, 20000, 20001, 100000, 101000};
-  Vector<IndexRange> ranges = unique_sorted_indices::split_by_chunk<int>(data);
+  Vector<IndexRange> ranges = split_indices_by_chunk<int>(data);
   EXPECT_EQ(ranges.size(), 3);
   EXPECT_EQ(data.as_span().slice(ranges[0]), Span<int>({5, 100, 16383}));
   EXPECT_EQ(data.as_span().slice(ranges[1]), Span<int>({16384, 16385, 20000, 20001}));
