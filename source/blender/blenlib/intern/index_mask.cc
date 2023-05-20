@@ -196,6 +196,26 @@ void IndexMask::foreach_span_impl(const FunctionRef<void(OffsetSpan<int64_t, int
   });
 }
 
+IndexMask IndexMask::slice(const int64_t start, const int64_t size) const
+{
+  if (size == 0) {
+    return {};
+  }
+  const RawMaskIterator first_it = this->index_to_iterator(start);
+  const RawMaskIterator last_it = this->index_to_iterator(start + size - 1);
+
+  IndexMask sliced;
+  sliced.data_.chunks_num = last_it.chunk_i - first_it.chunk_i + 1;
+  sliced.data_.indices_num = size;
+  sliced.data_.chunks = data_.chunks + first_it.chunk_i;
+  sliced.data_.chunk_ids = data_.chunk_ids + first_it.chunk_i;
+  sliced.data_.cumulative_chunk_sizes = data_.cumulative_chunk_sizes + first_it.chunk_i;
+  sliced.data_.begin_it = first_it.chunk_it;
+  sliced.data_.end_it.segment_i = last_it.chunk_it.segment_i;
+  sliced.data_.end_it.index_in_segment = last_it.chunk_it.index_in_segment + 1;
+  return sliced;
+}
+
 IndexMask IndexMask::slice_and_offset(const IndexRange range,
                                       const int64_t offset,
                                       IndexMaskMemory &memory) const

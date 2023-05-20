@@ -552,26 +552,6 @@ inline IndexMask IndexMask::slice(const IndexRange range) const
   return this->slice(range.start(), range.size());
 }
 
-inline IndexMask IndexMask::slice(const int64_t start, const int64_t size) const
-{
-  if (size == 0) {
-    return {};
-  }
-  const RawMaskIterator first_it = this->index_to_iterator(start);
-  const RawMaskIterator last_it = this->index_to_iterator(start + size - 1);
-
-  IndexMask sliced;
-  sliced.data_.chunks_num = last_it.chunk_i - first_it.chunk_i + 1;
-  sliced.data_.indices_num = size;
-  sliced.data_.chunks = data_.chunks + first_it.chunk_i;
-  sliced.data_.chunk_ids = data_.chunk_ids + first_it.chunk_i;
-  sliced.data_.cumulative_chunk_sizes = data_.cumulative_chunk_sizes + first_it.chunk_i;
-  sliced.data_.begin_it = first_it.chunk_it;
-  sliced.data_.end_it.segment_i = last_it.chunk_it.segment_i;
-  sliced.data_.end_it.index_in_segment = last_it.chunk_it.index_in_segment + 1;
-  return sliced;
-}
-
 inline const IndexMaskData &IndexMask::data() const
 {
   return data_;
