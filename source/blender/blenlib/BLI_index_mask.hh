@@ -92,9 +92,65 @@ struct IndexMaskData {
   int64_t end_index_in_segment_;
 };
 
+/**
+ * #IndexMask does not own any memory itself. In many cases the memory referenced by a mask has
+ * static life-time (e.g. when a mask is a range). To create more complex masks, additional memory
+ * is necessary. #IndexMaskMemory is a simple wrapper around a linear allocator that has to be
+ * passed to functions that might need to allocate extra memory.
+ */
 class IndexMaskMemory : public LinearAllocator<> {
+ private:
+  /** Inline buffer to avoid heap allocations when working with small index masks. */
+  AlignedBuffer<1024, 8> inline_buffer_;
+
+ public:
+  IndexMaskMemory()
+  {
+    this->provide_buffer(inline_buffer_);
+  }
 };
 
+/**
+ * An #IndexMask is a sequence of unique and sorted indices (`BLI_unique_sorted_indices.hh`).
+ * It's commonly used when a subset of elements in an array has to be processed.
+ *
+ * #IndexMask is a non-owning container. That data it references is usually either statically
+ * allocated or is owned by an #IndexMaskMemory.
+ *
+ * Internally, an index mask is split into an arbitrary number of ordered segments. Each segment
+ * contains up to #max_segment_size (2^14 = 16384) indices. The indices in a segment are stored as
+ * `int16_t`, but each segment also has a `int64_t` offset.
+ *
+ * The data structure is designed to satisfy the following key requirements:
+ * - Construct index mask for an #IndexRange in O(1) time (after initial setup).
+ * - Support efficient slicing (O(log n) with a low constant factor).
+ * - Support multi-threaded construction without severe serial bottlenecks.
+ * - Support efficient iteration over indices that uses #IndexRange when possible.
+ *
+ * Construction:
+ *   An new index mask is usually created by either calling one of its constructors which are O(1).
+ *   For more complex masks, there are various `IndexMask::from_*` functions that can create masks
+ *   from various sources. Those generally need additional memory which is provided with by a
+ *   #IndexMaskMemory.
+ *
+ * Iteration:
+ *   To iterate over the indices, one usually has to use one of the `foreach_*` functions which
+ *   require a callback function. Due to the internal segmentation of the index mask, this is more
+ *   efficient than using a normal C++ iterator and range-based for loops.
+ *
+ *   There are multiple variants of the `foreach_*` functions which are useful in different
+ *   scenarios. The callback can generally take one or two arguments. The first is the index that's
+ *   stored in the mask and the second is the index that would have to be passed into `operator[]`
+ *   to get the first index.
+ *
+ *   The `foreach_*` methods also accept an optional `GrainSize`. When it is provided,
+ *   multi-threading is used when appropriate. Integrating multi-threading at this level works well
+ *   because mask iteration and parallelism is often used at the same time.
+ *
+ * Extraction:
+ *   An #IndexMask can be converted into various other forms using the `to_*` methods.
+ *
+ */
 class IndexMask : private IndexMaskData {
  public:
   IndexMask();
