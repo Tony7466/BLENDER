@@ -14,10 +14,10 @@
 
 namespace blender::index_mask {
 
-std::array<int16_t, chunk_capacity> build_static_indices_array()
+std::array<int16_t, max_segment_size> build_static_indices_array()
 {
-  std::array<int16_t, chunk_capacity> data;
-  for (int16_t i = 0; i < chunk_capacity; i++) {
+  std::array<int16_t, max_segment_size> data;
+  for (int16_t i = 0; i < max_segment_size; i++) {
     data[size_t(i)] = i;
   }
   return data;
@@ -27,86 +27,78 @@ const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size)
 {
   static constexpr int64_t size_shift = 30;
   static constexpr int64_t max_size = (1 << size_shift);
-  static constexpr int64_t chunks_num = max_size / chunk_capacity;
+  static constexpr int64_t segments_num = max_size / max_segment_size;
 
   BLI_assert(min_size <= max_size);
   UNUSED_VARS_NDEBUG(min_size);
 
   static IndexMask static_mask = []() {
-    static Array<Chunk> chunks_array(chunks_num);
-    static Array<int64_t> chunk_ids_array(chunks_num);
-    static Array<int64_t> cumulative_chunk_sizes(chunks_num + 1);
+    static Array<const int16_t *> indices_by_segment(segments_num);
+    static Array<int64_t> segment_offsets(segments_num + 1);
 
     static const int16_t *static_offsets = get_static_indices_array().data();
-    static const int16_t static_cumulative_segment_sizes[2] = {0, chunk_capacity};
 
     threading::isolate_task([&]() {
-      threading::parallel_for(IndexRange(chunks_num), 1024, [&](const IndexRange range) {
-        for (const int64_t i : range) {
-          Chunk &chunk = chunks_array[i];
-          chunk.segments_num = 1;
-          chunk.indices_by_segment = &static_offsets;
-          chunk.cumulative_segment_sizes = static_cumulative_segment_sizes;
-
-          chunk_ids_array[i] = i;
-          cumulative_chunk_sizes[i] = i * chunk_capacity;
+      threading::parallel_for(IndexRange(segments_num), 1024, [&](const IndexRange range) {
+        for (const int64_t segment_i : range) {
+          indices_by_segment[segment_i] = static_offsets;
+          segment_offsets[segment_i] = segment_i * max_segment_size;
         }
       });
     });
-    cumulative_chunk_sizes.last() = max_size;
+    segment_offsets.last() = max_size;
 
     IndexMask mask;
-    IndexMaskData &mask_data = mask.data_for_inplace_construction();
-    mask_data.chunks_num = chunks_num;
-    mask_data.indices_num = max_size;
-    mask_data.chunks = chunks_array.data();
-    mask_data.chunk_ids = chunk_ids_array.data();
-    mask_data.cumulative_chunk_sizes = cumulative_chunk_sizes.data();
-    mask_data.begin_it.segment_i = 0;
-    mask_data.begin_it.index_in_segment = 0;
-    mask_data.end_it.segment_i = 0;
-    mask_data.end_it.index_in_segment = chunk_capacity;
+    IndexMaskData &data = mask.data_for_inplace_construction();
+    data.indices_num = max_size;
+    data.segments_num = segments_num;
+    data.indices_by_segment = indices_by_segment.data();
+    data.segment_offsets = segment_offsets.data();
+    data.cumulative_segment_sizes = segment_offsets.data();
+    data.begin_index_in_segment = 0;
+    data.end_index_in_segment = max_segment_size;
+
     return mask;
   }();
   return static_mask;
 }
 
 template<typename T>
-static void split_by_chunk_recursive(const Span<T> indices,
-                                     const int64_t offset,
-                                     Vector<IndexRange> &r_chunks)
+static void split_by_aligned_segment_recursive(const Span<T> indices,
+                                               const int64_t offset,
+                                               Vector<IndexRange> &r_result)
 {
   if (indices.is_empty()) {
     return;
   }
   const T first_index = indices.first();
   const T last_index = indices.last();
-  const int64_t first_chunk_id = index_to_chunk_id(first_index);
-  const int64_t last_chunk_id = index_to_chunk_id(last_index);
-  if (first_chunk_id == last_chunk_id) {
-    r_chunks.append_as(offset, indices.size());
+  const int64_t first_segment_id = first_index >> max_segment_size_shift;
+  const int64_t last_segment_id = last_index >> max_segment_size_shift;
+  if (first_segment_id == last_segment_id) {
+    r_result.append_as(offset, indices.size());
     return;
   }
-  const int64_t middle_chunk_index = (first_chunk_id + last_chunk_id + 1) / 2;
-  const int64_t split_value = middle_chunk_index * chunk_capacity - 1;
+  const int64_t middle_chunk_index = (first_segment_id + last_segment_id + 1) / 2;
+  const int64_t split_value = middle_chunk_index * max_segment_size - 1;
   const int64_t left_split_size = std::upper_bound(indices.begin(), indices.end(), split_value) -
                                   indices.begin();
-  split_by_chunk_recursive(indices.take_front(left_split_size), offset, r_chunks);
-  split_by_chunk_recursive(
-      indices.drop_front(left_split_size), offset + left_split_size, r_chunks);
+  split_by_aligned_segment_recursive(indices.take_front(left_split_size), offset, r_result);
+  split_by_aligned_segment_recursive(
+      indices.drop_front(left_split_size), offset + left_split_size, r_result);
 }
 
-template<typename T> Vector<IndexRange> split_indices_by_chunk(const Span<T> indices)
+template<typename T> Vector<IndexRange> split_indices_by_aligned_segment(const Span<T> indices)
 {
   BLI_assert(std::is_sorted(indices.begin(), indices.end()));
-  Vector<IndexRange> chunks;
-  /* This can be too low in some cases, but it's never too large. */
-  chunks.reserve(size_to_chunk_num(indices.size()));
-  split_by_chunk_recursive(indices, 0, chunks);
-  return chunks;
+  Vector<IndexRange> result;
+  /* This can be too low in some cases. */
+  result.reserve((indices.size() >> max_segment_size_shift) + 1);
+  split_by_aligned_segment_recursive(indices, 0, result);
+  return result;
 }
 
-template Vector<IndexRange> split_indices_by_chunk(Span<int>);
+template Vector<IndexRange> split_indices_by_aligned_segment(Span<int>);
 
 std::ostream &operator<<(std::ostream &stream, const IndexMask &mask)
 {
@@ -134,66 +126,12 @@ std::ostream &operator<<(std::ostream &stream, const IndexMask &mask)
   return stream;
 }
 
-static IndexMask strip_empty_chunks_and_create_mask(const Span<Chunk> possible_chunks,
-                                                    const Span<int64_t> possible_chunk_ids,
-                                                    IndexMaskMemory &memory)
-{
-  Vector<int64_t> non_empty_chunks;
-  for (const int64_t i : possible_chunks.index_range()) {
-    const Chunk &chunk = possible_chunks[i];
-    if (chunk.size() > 0) {
-      non_empty_chunks.append(i);
-    }
-  }
-  const int64_t chunks_num = non_empty_chunks.size();
-  if (chunks_num == 0) {
-    return {};
-  }
-
-  MutableSpan<Chunk> final_chunks = memory.allocate_array<Chunk>(chunks_num);
-  MutableSpan<int64_t> final_chunk_ids = memory.allocate_array<int64_t>(chunks_num);
-  MutableSpan<int64_t> final_cumulative_chunk_sizes = memory.allocate_array<int64_t>(chunks_num +
-                                                                                     1);
-  int64_t counter = 0;
-  for (const int64_t i : IndexRange(chunks_num)) {
-    const int64_t i2 = non_empty_chunks[i];
-    const Chunk &chunk = possible_chunks[i2];
-    final_chunks[i] = chunk;
-    final_chunk_ids[i] = possible_chunk_ids[i2];
-    final_cumulative_chunk_sizes[i] = counter;
-    counter += chunk.size();
-  }
-  final_cumulative_chunk_sizes.last() = counter;
-
-  const Chunk &last_chunk = final_chunks.last();
-
-  IndexMask mask;
-  IndexMaskData &data = mask.data_for_inplace_construction();
-  data.chunks_num = chunks_num;
-  data.indices_num = counter;
-  data.chunks = final_chunks.data();
-  data.chunk_ids = final_chunk_ids.data();
-  data.cumulative_chunk_sizes = final_cumulative_chunk_sizes.data();
-  data.begin_it = RawChunkIterator{0, 0};
-  data.end_it = last_chunk.end_iterator();
-  return mask;
-}
-
-template<typename T> static void sorted_indices_from_set(const Set<T> &set, MutableSpan<T> span)
-{
-  int64_t i = 0;
-  for (const T value : set) {
-    span[i] = value;
-    i++;
-  }
-  std::sort(span.begin(), span.end());
-}
-
 void IndexMask::foreach_span_impl(const FunctionRef<void(OffsetSpan<int64_t, int16_t>)> fn) const
 {
-  this->foreach_span_template([fn](const int64_t chunk_id, const Span<int16_t> indices) {
-    fn(OffsetSpan<int64_t, int16_t>(chunk_id << chunk_size_shift, indices));
-  });
+  for (const int64_t segment_i : IndexRange(data_.segments_num)) {
+    const OffsetSpan<int64_t, int16_t> segment = this->segment(segment_i);
+    fn(segment);
+  }
 }
 
 IndexMask IndexMask::slice(const int64_t start, const int64_t size) const
@@ -204,15 +142,14 @@ IndexMask IndexMask::slice(const int64_t start, const int64_t size) const
   const RawMaskIterator first_it = this->index_to_iterator(start);
   const RawMaskIterator last_it = this->index_to_iterator(start + size - 1);
 
-  IndexMask sliced;
-  sliced.data_.chunks_num = last_it.chunk_i - first_it.chunk_i + 1;
+  IndexMask sliced = *this;
   sliced.data_.indices_num = size;
-  sliced.data_.chunks = data_.chunks + first_it.chunk_i;
-  sliced.data_.chunk_ids = data_.chunk_ids + first_it.chunk_i;
-  sliced.data_.cumulative_chunk_sizes = data_.cumulative_chunk_sizes + first_it.chunk_i;
-  sliced.data_.begin_it = first_it.chunk_it;
-  sliced.data_.end_it.segment_i = last_it.chunk_it.segment_i;
-  sliced.data_.end_it.index_in_segment = last_it.chunk_it.index_in_segment + 1;
+  sliced.data_.segments_num = last_it.segment_i - first_it.segment_i + 1;
+  sliced.data_.indices_by_segment += first_it.segment_i;
+  sliced.data_.segment_offsets += first_it.segment_i;
+  sliced.data_.cumulative_segment_sizes += first_it.segment_i;
+  sliced.data_.begin_index_in_segment = first_it.index_in_segment;
+  sliced.data_.end_index_in_segment = last_it.index_in_segment + 1;
   return sliced;
 }
 
@@ -221,21 +158,6 @@ IndexMask IndexMask::slice_and_offset(const IndexRange range,
                                       IndexMaskMemory &memory) const
 {
   return this->slice_and_offset(range.start(), range.size(), offset, memory);
-}
-
-template<typename T>
-static IndexMask offset_indices_in_mask(const IndexMask &mask,
-                                        const int64_t offset,
-                                        IndexMaskMemory &memory)
-{
-  Vector<T, chunk_capacity> indices(mask.size());
-  mask.to_indices<T>(indices);
-  threading::parallel_for(indices.index_range(), 2048, [&](const IndexRange range) {
-    for (T &index : indices.as_mutable_span().slice(range)) {
-      index += T(offset);
-    }
-  });
-  return IndexMask::from_indices<T>(indices, memory);
 }
 
 IndexMask IndexMask::slice_and_offset(const int64_t start,
@@ -256,164 +178,35 @@ IndexMask IndexMask::slice_and_offset(const int64_t start,
   if (std::optional<IndexRange> range = sliced_mask.to_range()) {
     return range->shift(offset);
   }
-  if (sliced_mask.last() < INT32_MAX && sliced_mask.last() + offset < INT32_MAX) {
-    return offset_indices_in_mask<int32_t>(sliced_mask, offset, memory);
+  MutableSpan<int64_t> new_segment_offsets = memory.allocate_array<int64_t>(data_.segments_num);
+  for (const int64_t i : IndexRange(data_.segments_num)) {
+    new_segment_offsets[i] = data_.segment_offsets[i] + offset;
   }
-  return offset_indices_in_mask<int64_t>(sliced_mask, offset, memory);
+  IndexMask offset_mask = *this;
+  offset_mask.data_.segment_offsets = new_segment_offsets.data();
+  return offset_mask;
 }
 
 IndexMask IndexMask::complement(const IndexRange universe, IndexMaskMemory &memory) const
 {
-  const AtomicExpr atomic_expr{*this};
-  const ComplementExpr complement_expr{atomic_expr};
-  return IndexMask::from_expr(complement_expr, universe, memory);
-}
-
-template<typename T>
-static void fill_chunk_with_segments(Chunk &chunk,
-                                     const Span<std::variant<IndexRange, Span<T>>> segments,
-                                     const int64_t offset,
-                                     LinearAllocator<> &allocator)
-{
-  BLI_assert(!segments.is_empty());
-  const int64_t segments_num = segments.size();
-
-  MutableSpan<const int16_t *> indices_by_segment = allocator.allocate_array<const int16_t *>(
-      segments_num);
-  MutableSpan<int16_t> cumulative_segment_sizes = allocator.allocate_array<int16_t>(segments_num +
-                                                                                    1);
-
-  /* Code below may reuse memory from the global index array if possible. */
-  static const int16_t *static_offsets = get_static_indices_array().data();
-
-  int64_t cumulative_size = 0;
-  for (const int64_t segment_i : segments.index_range()) {
-    const std::variant<IndexRange, Span<T>> &segment = segments[segment_i];
-    cumulative_segment_sizes[segment_i] = int16_t(cumulative_size);
-
-    if (std::holds_alternative<IndexRange>(segment)) {
-      /* No extra allocations necessary because static memory is used. */
-      const IndexRange range_in_segment = std::get<IndexRange>(segment);
-      indices_by_segment[segment_i] = static_offsets + (range_in_segment.first() - offset);
-      cumulative_size += range_in_segment.size();
-    }
-    else {
-      const Span<T> indices_in_segment = std::get<Span<T>>(segment);
-      MutableSpan<int16_t> new_indices = allocator.allocate_array<int16_t>(
-          indices_in_segment.size());
-      if (offset == 0) {
-        /* This is a simple copy in the case when offset is zero. */
-        for (const int64_t i : new_indices.index_range()) {
-          new_indices[i] = int16_t(indices_in_segment[i]);
-        }
-      }
-      else {
-        for (const int64_t i : new_indices.index_range()) {
-          new_indices[i] = int16_t(indices_in_segment[i] - offset);
-        }
-      }
-      indices_by_segment[segment_i] = new_indices.data();
-      cumulative_size += indices_in_segment.size();
-    }
-  }
-
-  cumulative_segment_sizes.last() = int16_t(cumulative_size);
-
-  chunk.segments_num = int16_t(segments_num);
-  chunk.indices_by_segment = indices_by_segment.data();
-  chunk.cumulative_segment_sizes = cumulative_segment_sizes.data();
+  return IndexMask::from_predicate(universe, GrainSize(512), memory, [&](const int64_t index) {
+    return !this->contains(index);
+  });
 }
 
 template<typename T>
 IndexMask IndexMask::from_indices(const Span<T> indices, IndexMaskMemory &memory)
 {
   if (indices.is_empty()) {
-    /* Return early when there are no indices. */
     return {};
   }
-  if (const std::optional<IndexRange> range = unique_sorted_indices::non_empty_as_range_try(
-          indices)) {
-    /* Use faster method of creating the mask when the input indices are a range. */
-    return *range;
-  }
-
-  /* Find indices that go into each chunk. */
-  const Vector<IndexRange> split_ranges = split_indices_by_chunk(indices);
-  const int64_t chunks_num = split_ranges.size();
-
-  MutableSpan<Chunk> chunks = memory.allocate_array<Chunk>(chunks_num);
-  MutableSpan<int64_t> chunk_ids = memory.allocate_array<int64_t>(chunks_num);
-
-  /* If every index in a chunk is in the mask, it can be processed more efficiently. */
-  const Chunk full_chunk_template = IndexMask(chunk_capacity).data().chunks[0];
-
-  /* Process multiple chunks at once to reduce the number of memory allocations. */
-  constexpr int64_t chunk_grain_size = 16;
-  const auto build_chunk = [&](const int64_t chunk_i, LinearAllocator<> &allocator) {
-    const IndexRange range_for_chunk = split_ranges[chunk_i];
-    const Span<T> indices_in_chunk = indices.slice(range_for_chunk);
-    BLI_assert(!indices_in_chunk.is_empty());
-
-    const int64_t chunk_id = index_to_chunk_id(int64_t(indices_in_chunk[0]));
-    BLI_assert(chunk_id == index_to_chunk_id(int64_t(indices_in_chunk.last())));
-    Chunk &chunk = chunks[chunk_i];
-    chunk_ids[chunk_i] = chunk_id;
-
-    if (indices_in_chunk.size() == chunk_capacity) {
-      /* Fast case when the chunk is full. */
-      chunk = full_chunk_template;
-      return;
-    }
-
-    const int64_t chunk_offset = chunk_ids[chunk_i] * chunk_capacity;
-
-    /* Split indices in current chunk into segments. */
-    Vector<std::variant<IndexRange, Span<T>>> segments;
-    unique_sorted_indices::split_to_ranges_and_spans<T>(indices_in_chunk, 64, segments);
-
-    fill_chunk_with_segments<T>(chunk, segments, chunk_offset, allocator);
-  };
-
-  if (chunks_num > chunk_grain_size) {
-    /* There are many chunks, so use multi-threading and also use the global allocator for
-     * allocations in each thread. */
-    threading::EnumerableThreadSpecific<LinearAllocator<>> allocators;
-    threading::parallel_for(
-        IndexRange(chunks_num), chunk_grain_size, [&](const IndexRange chunks_range) {
-          LinearAllocator<> &allocator = allocators.local();
-          for (const int64_t chunk_i : chunks_range) {
-            build_chunk(chunk_i, allocator);
-          }
-        });
-    for (LinearAllocator<> &allocator : allocators) {
-      memory.give_ownership_of_buffers_in(allocator);
-    }
-  }
-  else {
-    for (const int64_t chunk_i : IndexRange(chunks_num)) {
-      build_chunk(chunk_i, memory);
-    }
-  }
-
-  /* Fill cumulative chunk sizes of the entire index mask. */
-  MutableSpan<int64_t> cumulative_chunk_sizes = memory.allocate_array<int64_t>(chunks_num + 1);
-  int64_t cumulative_size = 0;
-  for (const int64_t i : chunks.index_range()) {
-    cumulative_chunk_sizes[i] = cumulative_size;
-    cumulative_size += chunks[i].size();
-  }
-  cumulative_chunk_sizes.last() = cumulative_size;
-
-  IndexMask mask;
-  IndexMaskData &mask_data = mask.data_for_inplace_construction();
-  mask_data.chunks_num = chunks_num;
-  mask_data.indices_num = indices.size();
-  mask_data.chunks = chunks.data();
-  mask_data.chunk_ids = chunk_ids.data();
-  mask_data.cumulative_chunk_sizes = cumulative_chunk_sizes.data();
-  mask_data.begin_it = {0, 0};
-  mask_data.end_it = chunks.last().end_iterator();
-  return mask;
+  return IndexMask::from_predicate(
+      IndexRange(indices.first(), indices.last() - indices.first() + 1),
+      GrainSize(512),
+      memory,
+      [&](const int64_t index) {
+        return std::binary_search(indices.begin(), indices.end(), T(index));
+      });
 }
 
 IndexMask IndexMask::from_bits(const BitSpan bits, IndexMaskMemory &memory)
@@ -458,232 +251,10 @@ IndexMask IndexMask::from_bools(const IndexMask &universe,
   }
   if (info.type == CommonVArrayInfo::Type::Span) {
     const Span<bool> span(static_cast<const bool *>(info.data), bools.size());
-    return from_bools(universe, span, memory);
+    return IndexMask::from_bools(universe, span, memory);
   }
   return IndexMask::from_predicate(
       universe, GrainSize(512), memory, [&](const int64_t index) { return bools[index]; });
-}
-
-static Set<int64_t> eval_expr(const Expr &base_expr, const IndexRange universe)
-{
-  Set<int64_t> result;
-  switch (base_expr.type) {
-    case Expr::Type::Atomic: {
-      const AtomicExpr &expr = static_cast<const AtomicExpr &>(base_expr);
-      expr.mask->foreach_index([&](const int64_t i) {
-        BLI_assert(universe.contains(i));
-        result.add_new(i);
-      });
-      break;
-    }
-    case Expr::Type::Union: {
-      const UnionExpr &expr = static_cast<const UnionExpr &>(base_expr);
-      for (const Expr *child : expr.children) {
-        const Set<int64_t> child_result = eval_expr(*child, universe);
-        for (const int64_t i : child_result) {
-          result.add(i);
-        }
-      }
-      break;
-    }
-    case Expr::Type::Difference: {
-      const DifferenceExpr &expr = static_cast<const DifferenceExpr &>(base_expr);
-      result = eval_expr(*expr.base, universe);
-      for (const Expr *child : expr.children) {
-        const Set<int64_t> child_result = eval_expr(*child, universe);
-        for (const int64_t i : child_result) {
-          result.remove(i);
-        }
-      }
-      break;
-    }
-    case Expr::Type::Complement: {
-      const ComplementExpr &expr = static_cast<const ComplementExpr &>(base_expr);
-      const Set<int64_t> child_result = eval_expr(*expr.base, universe);
-      for (const int64_t i : universe) {
-        if (!child_result.contains(i)) {
-          result.add_new(i);
-        }
-      }
-      break;
-    }
-    case Expr::Type::Intersection: {
-      const IntersectionExpr &expr = static_cast<const IntersectionExpr &>(base_expr);
-      BLI_assert(!expr.children.is_empty());
-      result = eval_expr(*expr.children.first(), universe);
-      for (const Expr *child : expr.children.as_span().drop_front(1)) {
-        const Set<int64_t> child_result = eval_expr(*child, universe);
-        result.remove_if([&](const int64_t i) { return !child_result.contains(i); });
-      }
-      break;
-    }
-  }
-  return result;
-}
-
-static Vector<int64_t> get_chunk_ids_to_evaluate_expression_in(const Expr & /*expr*/,
-                                                               const IndexRange universe)
-{
-  const int64_t first_chunk_id = index_to_chunk_id(universe.first());
-  const int64_t last_chunk_id = index_to_chunk_id(universe.last());
-  Vector<int64_t> chunk_ids(last_chunk_id - first_chunk_id + 1);
-  for (const int64_t i : chunk_ids.index_range()) {
-    chunk_ids[i] = first_chunk_id + i;
-  }
-  return chunk_ids;
-}
-
-static std::optional<ChunkSlice> try_get_chunk_by_id(const IndexMask &mask, const int64_t chunk_id)
-{
-  const IndexMaskData &data = mask.data();
-  const int64_t *chunk_id_iterator = std::lower_bound(
-      data.chunk_ids, data.chunk_ids + data.chunks_num, chunk_id);
-  const int64_t index = chunk_id_iterator - data.chunk_ids;
-  if (index == data.chunks_num) {
-    return std::nullopt;
-  }
-  if (data.chunk_ids[index] != chunk_id) {
-    return std::nullopt;
-  }
-  return mask.chunk(index);
-}
-
-static Set<int16_t> eval_expr_for_chunk_id__index_set(const Expr &base_expr,
-                                                      const IndexRange chunk_universe,
-                                                      const int64_t chunk_id)
-{
-  Set<int16_t> result;
-  switch (base_expr.type) {
-    case Expr::Type::Atomic: {
-      const AtomicExpr &expr = static_cast<const AtomicExpr &>(base_expr);
-      const IndexMask &mask = *expr.mask;
-      const std::optional<ChunkSlice> chunk_slice = try_get_chunk_by_id(mask, chunk_id);
-      if (!chunk_slice.has_value()) {
-        break;
-      }
-      chunk_slice->foreach_span([&](const Span<int16_t> indices) {
-        for (const int16_t index : indices) {
-          result.add_new(index);
-        }
-      });
-      break;
-    }
-    case Expr::Type::Union: {
-      const UnionExpr &expr = static_cast<const UnionExpr &>(base_expr);
-      for (const Expr *child : expr.children) {
-        const Set<int16_t> child_result = eval_expr_for_chunk_id__index_set(
-            *child, chunk_universe, chunk_id);
-        for (const int16_t index : child_result) {
-          result.add(index);
-        }
-      }
-      break;
-    }
-    case Expr::Type::Difference: {
-      const DifferenceExpr &expr = static_cast<const DifferenceExpr &>(base_expr);
-      result = eval_expr_for_chunk_id__index_set(*expr.base, chunk_universe, chunk_id);
-      for (const Expr *child : expr.children) {
-        const Set<int16_t> child_result = eval_expr_for_chunk_id__index_set(
-            *child, chunk_universe, chunk_id);
-        result.remove_if([&](const int16_t index) { return child_result.contains(index); });
-      }
-      break;
-    }
-    case Expr::Type::Complement: {
-      const ComplementExpr &expr = static_cast<const ComplementExpr &>(base_expr);
-      const Set<int16_t> child_result = eval_expr_for_chunk_id__index_set(
-          *expr.base, chunk_universe, chunk_id);
-      for (const int64_t index : chunk_universe) {
-        if (!child_result.contains(int16_t(index))) {
-          result.add_new(int16_t(index));
-        }
-      }
-      break;
-    }
-    case Expr::Type::Intersection: {
-      const IntersectionExpr &expr = static_cast<const IntersectionExpr &>(base_expr);
-      result = eval_expr_for_chunk_id__index_set(*expr.children[0], chunk_universe, chunk_id);
-      for (const Expr *child : expr.children.as_span().drop_front(1)) {
-        const Set<int16_t> child_result = eval_expr_for_chunk_id__index_set(
-            *child, chunk_universe, chunk_id);
-        result.remove_if([&](const int16_t index) { return !child_result.contains(index); });
-      }
-      break;
-    }
-  }
-  return result;
-}
-
-static void eval_expressions_for_chunk_ids(const Expr &expr,
-                                           const IndexRange universe,
-                                           const Span<int64_t> chunk_ids,
-                                           MutableSpan<Chunk> r_chunks,
-                                           LinearAllocator<> &allocator)
-{
-  BLI_assert(chunk_ids.size() == r_chunks.size());
-  for (const int64_t chunk_i : chunk_ids.index_range()) {
-    const int64_t chunk_id = chunk_ids[chunk_i];
-    Chunk &chunk = r_chunks[chunk_i];
-
-    const int64_t chunk_offset = chunk_id * chunk_capacity;
-    const int64_t chunk_universe_start = std::max<int64_t>(0, universe.start() - chunk_offset);
-    const int64_t chunk_universe_end = std::min<int64_t>(chunk_capacity,
-                                                         universe.one_after_last() - chunk_offset);
-    const IndexRange chunk_universe{chunk_universe_start,
-                                    chunk_universe_end - chunk_universe_start};
-    const Set<int16_t> indices_in_chunk = eval_expr_for_chunk_id__index_set(
-        expr, chunk_universe, chunk_id);
-
-    MutableSpan<const int16_t *> indices_by_segment;
-    MutableSpan<int16_t> indices_in_segment;
-    MutableSpan<int16_t> cumulative_segment_sizes;
-
-    indices_by_segment = allocator.allocate_array<const int16_t *>(1);
-    indices_in_segment = allocator.allocate_array<int16_t>(indices_in_chunk.size());
-    cumulative_segment_sizes = allocator.allocate_array<int16_t>(2);
-
-    indices_by_segment[0] = indices_in_segment.data();
-    cumulative_segment_sizes[0] = 0;
-    cumulative_segment_sizes[1] = int16_t(indices_in_chunk.size());
-    sorted_indices_from_set(indices_in_chunk, indices_in_segment);
-
-    chunk.segments_num = 1;
-    chunk.indices_by_segment = indices_by_segment.data();
-    chunk.cumulative_segment_sizes = cumulative_segment_sizes.data();
-  }
-}
-
-IndexMask IndexMask::from_expr(const Expr &expr,
-                               const IndexRange universe,
-                               IndexMaskMemory &memory)
-{
-  if (universe.is_empty()) {
-    return {};
-  }
-
-  const Vector<int64_t> possible_chunk_ids = get_chunk_ids_to_evaluate_expression_in(expr,
-                                                                                     universe);
-  Array<Chunk> possible_chunks(possible_chunk_ids.size());
-
-  if (possible_chunk_ids.size() > 1) {
-    threading::EnumerableThreadSpecific<LinearAllocator<>> allocators;
-    threading::parallel_for(possible_chunk_ids.index_range(), 32, [&](const IndexRange range) {
-      LinearAllocator<> &allocator = allocators.local();
-      eval_expressions_for_chunk_ids(expr,
-                                     universe,
-                                     possible_chunk_ids.as_span().slice(range),
-                                     possible_chunks.as_mutable_span().slice(range),
-                                     allocator);
-    });
-    for (LinearAllocator<> &allocator : allocators) {
-      memory.give_ownership_of_buffers_in(allocator);
-    }
-  }
-  else {
-    eval_expressions_for_chunk_ids(expr, universe, possible_chunk_ids, possible_chunks, memory);
-  }
-
-  return strip_empty_chunks_and_create_mask(possible_chunks, possible_chunk_ids, memory);
 }
 
 template<typename T> void IndexMask::to_indices(MutableSpan<T> r_indices) const
@@ -735,16 +306,14 @@ void IndexMask::to_ranges_and_spans_impl(Vector<IndexRange> &r_ranges,
                                          Vector<OffsetSpan<int64_t, int16_t>> &r_spans) const
 {
   const IndexRangeChecker range_checker;
-  this->foreach_span_template(
-      [&, range_checker](const int64_t chunk_id, const Span<int16_t> indices) {
-        const int64_t chunk_offset = chunk_id << chunk_size_shift;
-        if (range_checker.check(indices)) {
-          r_ranges.append_as(indices[0] + chunk_offset, indices.size());
-        }
-        else {
-          r_spans.append_as(chunk_offset, indices);
-        }
-      });
+  this->foreach_span_or_range([&](const auto segment) {
+    if constexpr (std::is_same_v<std::decay_t<decltype(segment)>, IndexRange>) {
+      r_ranges.append(segment);
+    }
+    else {
+      r_spans.append(segment);
+    }
+  });
 }
 
 IndexMask IndexMask::from_predicate_impl(
@@ -760,124 +329,72 @@ IndexMask IndexMask::from_predicate_impl(
     return {};
   }
 
-  const int64_t universe_chunks_num = universe.data_.chunks_num;
-  Vector<Chunk> chunks(universe_chunks_num);
-  Vector<int64_t> chunk_ids(universe_chunks_num);
+  Vector<OffsetSpan<int64_t, int16_t>> segments;
 
-  const auto process_chunk = [&](const int64_t chunk_i, LinearAllocator<> &allocator) {
-    const int64_t chunk_id = universe.data_.chunk_ids[chunk_i];
-    const int64_t chunk_offset = chunk_id << chunk_size_shift;
-    const ChunkSlice universe_chunk = universe.chunk(chunk_i);
+  for (const int64_t segment_i : IndexRange(universe.data_.segments_num)) {
+    const OffsetSpan<int64_t, int16_t> universe_segment = universe.segment(segment_i);
 
-    std::array<int16_t, chunk_capacity> indices_array;
-    int16_t *indices_ptr = indices_array.data();
-    universe_chunk.foreach_span([&](const Span<int16_t> segment) {
-      indices_ptr += filter_indices(OffsetSpan<int64_t, int16_t>(chunk_offset, segment),
-                                    indices_ptr);
-    });
-    const int16_t indices_num = int16_t(indices_ptr - indices_array.data());
-
-    Chunk &chunk = chunks[chunk_i];
-
-    if (indices_num == 0) {
-      /* This chunk still has to be removed because it's empty. */
-      chunk.segments_num = 0;
-      chunk_ids[chunk_i] = -1;
-      return;
+    std::array<int16_t, max_segment_size> indices_array;
+    const int64_t true_indices_num = filter_indices(universe_segment, indices_array.data());
+    if (true_indices_num == 0) {
+      continue;
     }
-
-    Vector<std::variant<IndexRange, Span<int16_t>>> segments;
-    unique_sorted_indices::split_to_ranges_and_spans<int16_t>(
-        Span<int16_t>{indices_array.data(), indices_num}, 64, segments);
-    fill_chunk_with_segments<int16_t>(chunk, segments, 0, allocator);
-
-    chunk_ids[chunk_i] = chunk_id;
-  };
-
-  if (universe_chunks_num > 1) {
-    threading::EnumerableThreadSpecific<LinearAllocator<>> allocators;
-    threading::parallel_for(
-        IndexRange(universe_chunks_num), 1, [&](const IndexRange chunks_range) {
-          LinearAllocator<> &allocator = allocators.local();
-          for (const int64_t chunk_i : chunks_range) {
-            process_chunk(chunk_i, allocator);
-          }
-        });
-    for (LinearAllocator<> &allocator : allocators) {
-      memory.give_ownership_of_buffers_in(allocator);
-    }
-  }
-  else {
-    process_chunk(0, memory);
+    segments.append_as(
+        universe_segment.offset(),
+        memory.construct_array_copy(Span<int16_t>(indices_array.data(), true_indices_num)));
   }
 
-  chunks.remove_if([&](const Chunk &chunk) { return chunk.segments_num == 0; });
-  chunk_ids.remove_if([&](const int64_t chunk_id) { return chunk_id == -1; });
-
-  const int64_t chunks_num = chunks.size();
-  if (chunks_num == 0) {
+  const int64_t segments_num = segments.size();
+  if (segments_num == 0) {
     return {};
   }
 
-  MutableSpan<int64_t> cumulative_chunk_sizes = memory.allocate_array<int64_t>(chunks_num + 1);
-  cumulative_chunk_sizes[0] = 0;
-  for (const int64_t chunk_i : IndexRange(chunks_num)) {
-    cumulative_chunk_sizes[chunk_i + 1] = cumulative_chunk_sizes[chunk_i] + chunks[chunk_i].size();
+  MutableSpan<const int16_t *> indices_by_segment = memory.allocate_array<const int16_t *>(
+      segments_num);
+  MutableSpan<int64_t> segment_offsets = memory.allocate_array<int64_t>(segments_num);
+  MutableSpan<int64_t> cumulative_segment_sizes = memory.allocate_array<int64_t>(segments_num + 1);
+
+  cumulative_segment_sizes[0] = 0;
+  for (const int64_t segment_i : segments.index_range()) {
+    const OffsetSpan<int64_t, int16_t> segment = segments[segment_i];
+    indices_by_segment[segment_i] = segment.base_span().data();
+    segment_offsets[segment_i] = segment.offset();
+    cumulative_segment_sizes[segment_i + 1] = cumulative_segment_sizes[segment_i] + segment.size();
   }
 
   IndexMask mask;
-  IndexMaskData &mask_data = mask.data_for_inplace_construction();
-  mask_data.chunks_num = chunks_num;
-  mask_data.indices_num = cumulative_chunk_sizes.last();
-  mask_data.chunks = memory.construct_array_copy<Chunk>(chunks).data();
-  mask_data.chunk_ids = memory.construct_array_copy<int64_t>(chunk_ids).data();
-  mask_data.cumulative_chunk_sizes = cumulative_chunk_sizes.data();
-  mask_data.begin_it = RawChunkIterator{0, 0};
-  mask_data.end_it = chunks.last().end_iterator();
-
+  IndexMaskData &data = mask.data_for_inplace_construction();
+  data.indices_num = cumulative_segment_sizes.last();
+  data.segments_num = segments_num;
+  data.indices_by_segment = indices_by_segment.data();
+  data.segment_offsets = segment_offsets.data();
+  data.cumulative_segment_sizes = cumulative_segment_sizes.data();
+  data.begin_index_in_segment = 0;
+  data.end_index_in_segment = segments.last().size();
   return mask;
-}
-
-std::optional<RawChunkIterator> Chunk::find(const int16_t index) const
-{
-  BLI_assert(this->cumulative_segment_sizes[0] == 0);
-  for (const int64_t segment_i : IndexRange(this->segments_num)) {
-    const int64_t size = this->segment_size(int16_t(segment_i));
-    const Span<int16_t> indices{this->indices_by_segment[segment_i], size};
-    if (index < indices[0]) {
-      continue;
-    }
-    if (index > indices.last()) {
-      continue;
-    }
-    const int16_t *found = std::lower_bound(indices.begin(), indices.end(), index);
-    if (found == indices.end()) {
-      return std::nullopt;
-    }
-    if (*found == index) {
-      const int16_t index_in_segment = int16_t(found - indices.begin());
-      return RawChunkIterator{int16_t(segment_i), index_in_segment};
-    }
-  }
-  return std::nullopt;
 }
 
 std::optional<RawMaskIterator> IndexMask::find(const int64_t index) const
 {
-  const int64_t chunk_id = index_to_chunk_id(index);
-  const int64_t chunk_i = std::lower_bound(
-                              data_.chunk_ids, data_.chunk_ids + data_.chunks_num, chunk_id) -
-                          data_.chunk_ids;
-  if (chunk_i == data_.chunks_num) {
+  if (this->is_empty()) {
     return std::nullopt;
   }
-  const Chunk &chunk = data_.chunks[chunk_i];
-  const int16_t index_in_chunk = index & chunk_mask_low;
-  const std::optional<RawChunkIterator> chunk_it = chunk.find(index_in_chunk);
-  if (!chunk_it.has_value()) {
+  if (index < this->first()) {
     return std::nullopt;
   }
-  return RawMaskIterator{chunk_i, *chunk_it};
+  if (index > this->last()) {
+    return std::nullopt;
+  }
+
+  for (const int64_t segment_i : IndexRange(data_.segments_num)) {
+    const OffsetSpan<int64_t, int16_t> segment = this->segment(segment_i);
+    for (const int64_t index_in_segment : segment.index_range()) {
+      if (segment[index_in_segment] == index) {
+        return RawMaskIterator{segment_i, int16_t(index_in_segment)};
+      }
+    }
+  }
+  return std::nullopt;
 }
 
 bool IndexMask::contains(const int64_t index) const

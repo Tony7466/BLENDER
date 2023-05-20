@@ -73,7 +73,7 @@ TEST(index_mask, SplitToRangesAndSpans)
 TEST(index_mask, SplitByChunk)
 {
   Array<int> data = {5, 100, 16383, 16384, 16385, 20000, 20001, 100000, 101000};
-  Vector<IndexRange> ranges = split_indices_by_chunk<int>(data);
+  Vector<IndexRange> ranges = split_indices_by_aligned_segment<int>(data);
   EXPECT_EQ(ranges.size(), 3);
   EXPECT_EQ(data.as_span().slice(ranges[0]), Span<int>({5, 100, 16383}));
   EXPECT_EQ(data.as_span().slice(ranges[1]), Span<int>({16384, 16385, 20000, 20001}));
@@ -110,7 +110,7 @@ TEST(index_mask, FromBits)
 TEST(index_mask, FromSize)
 {
   {
-    const IndexMask &mask(5);
+    const IndexMask mask(5);
     Vector<OffsetSpan<int64_t, int16_t>> segments;
     mask.foreach_span(
         [&](const OffsetSpan<int64_t, int16_t> segment) { segments.append(segment); });
@@ -121,15 +121,15 @@ TEST(index_mask, FromSize)
     EXPECT_EQ(mask.min_array_size(), 5);
   }
   {
-    const IndexMask &mask(chunk_capacity);
+    const IndexMask mask(max_segment_size);
     Vector<OffsetSpan<int64_t, int16_t>> segments;
     mask.foreach_span(
         [&](const OffsetSpan<int64_t, int16_t> segment) { segments.append(segment); });
     EXPECT_EQ(segments.size(), 1);
-    EXPECT_EQ(segments[0].size(), chunk_capacity);
+    EXPECT_EQ(segments[0].size(), max_segment_size);
     EXPECT_EQ(mask.first(), 0);
-    EXPECT_EQ(mask.last(), chunk_capacity - 1);
-    EXPECT_EQ(mask.min_array_size(), chunk_capacity);
+    EXPECT_EQ(mask.last(), max_segment_size - 1);
+    EXPECT_EQ(mask.min_array_size(), max_segment_size);
   }
 }
 
@@ -151,24 +151,6 @@ TEST(index_mask, ForeachRange)
   EXPECT_EQ(ranges[0], IndexRange(2, 3));
   EXPECT_EQ(ranges[1], IndexRange(10, 1));
   EXPECT_EQ(ranges[2], IndexRange(40, 2));
-}
-
-TEST(index_mask, Expr)
-{
-  IndexMaskMemory memory;
-
-  const IndexMask &mask1(IndexRange(10, 5));
-  const IndexMask &mask2(IndexRange(40, 5));
-  const IndexMask &mask3 = IndexMask::from_indices<int>({12, 13, 20, 21, 22}, memory);
-
-  const AtomicExpr expr1{mask1};
-  const AtomicExpr expr2{mask2};
-  const AtomicExpr expr3{mask3};
-  const UnionExpr union_expr({&expr1, &expr2});
-  const DifferenceExpr difference_expr(union_expr, {&expr3});
-
-  const IndexMask result = IndexMask::from_expr(difference_expr, IndexRange(100), memory);
-  std::cout << result << "\n";
 }
 
 TEST(index_mask, ToRange)
@@ -245,7 +227,7 @@ TEST(index_mask, IndexIteratorConversionFuzzy)
   indices.append(5);
   for ([[maybe_unused]] const int64_t i : IndexRange(1000)) {
     for ([[maybe_unused]] const int64_t j :
-         IndexRange(indices.last() + rng.get_int32(1000), rng.get_int32(64)))
+         IndexRange(indices.last() + 1 + rng.get_int32(1000), rng.get_int32(64)))
     {
       indices.append(j);
     }

@@ -241,7 +241,7 @@ inline void execute_materialized(TypeSequence<ParamTags...> /* param_tags */,
 
   const index_mask::IndexRangeChecker range_checker;
   index_mask::IndexMaskFromSegment index_mask_from_segment;
-  const int64_t index_mask_chunk_id = index_mask::index_to_chunk_id(mask.offset());
+  const int64_t segment_offset = mask.offset();
 
   /* Outer loop over all chunks. */
   for (int64_t chunk_start = 0; chunk_start < mask_size; chunk_start += MaxChunkSize) {
@@ -294,7 +294,7 @@ inline void execute_materialized(TypeSequence<ParamTags...> /* param_tags */,
             }
             const GVArrayImpl &varray_impl = *std::get<I>(loaded_params);
             if (!updated_mask_from_segment) {
-              index_mask_from_segment.update(index_mask_chunk_id, sliced_mask.base_span());
+              index_mask_from_segment.update({segment_offset, sliced_mask.base_span()});
               updated_mask_from_segment = true;
             }
             /* As a fallback, do a virtual function call to retrieve all elements in the current
