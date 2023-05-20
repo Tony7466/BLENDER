@@ -332,8 +332,7 @@ static int node_clipboard_paste_exec(bContext *C, wmOperator *op)
     update_multi_input_indices_for_removed_links(*new_node);
   }
 
-  if (clipboard.active_node != nullptr) {
-    bNode *new_active_node = node_map.lookup(clipboard.active_node);
+  if (bNode *new_active_node = node_map.lookup_default(clipboard.active_node, nullptr)) {
     nodeSetActive(&tree, new_active_node);
   }
 
