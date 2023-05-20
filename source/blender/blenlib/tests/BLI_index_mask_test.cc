@@ -255,6 +255,19 @@ TEST(index_mask, IndexIteratorConversionFuzzy)
     const int64_t new_index = sub_mask.iterator_to_index(it);
     EXPECT_EQ(index, new_index);
   }
+
+  for ([[maybe_unused]] const int64_t _ : IndexRange(100)) {
+    const int64_t index = rng.get_int32(int(indices.size() - 1000));
+    for (const int64_t offset : {0, 1, 2, 100, 500}) {
+      const int64_t index_to_search = indices[index] + offset;
+      const bool contained = std::binary_search(indices.begin(), indices.end(), index_to_search);
+      const std::optional<RawMaskIterator> it = mask.find(index_to_search);
+      EXPECT_EQ(contained, it.has_value());
+      if (contained) {
+        EXPECT_EQ(index_to_search, mask[*it]);
+      }
+    }
+  }
 }
 
 TEST(index_mask, FromPredicateFuzzy)

@@ -73,8 +73,8 @@ class IndexMask {
   int64_t first() const;
   int64_t last() const;
   int64_t min_array_size() const;
-  std::optional<RawMaskIterator> find(const int64_t index) const;
-  bool contains(const int64_t index) const;
+  std::optional<RawMaskIterator> find(const int64_t query_index) const;
+  bool contains(const int64_t query_index) const;
 
   RawMaskIterator index_to_iterator(const int64_t index) const;
   int64_t iterator_to_index(const RawMaskIterator &it) const;

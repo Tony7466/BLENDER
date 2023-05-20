@@ -374,32 +374,42 @@ IndexMask IndexMask::from_predicate_impl(
   return mask;
 }
 
-std::optional<RawMaskIterator> IndexMask::find(const int64_t index) const
+std::optional<RawMaskIterator> IndexMask::find(const int64_t query_index) const
 {
   if (this->is_empty()) {
     return std::nullopt;
   }
-  if (index < this->first()) {
+  if (query_index < this->first()) {
     return std::nullopt;
   }
-  if (index > this->last()) {
+  if (query_index > this->last()) {
     return std::nullopt;
   }
 
-  for (const int64_t segment_i : IndexRange(data_.segments_num)) {
-    const OffsetSpan<int64_t, int16_t> segment = this->segment(segment_i);
-    for (const int64_t index_in_segment : segment.index_range()) {
-      if (segment[index_in_segment] == index) {
-        return RawMaskIterator{segment_i, int16_t(index_in_segment)};
-      }
-    }
+  const int64_t segment_i = std::upper_bound(data_.segment_offsets,
+                                             data_.segment_offsets + data_.segments_num,
+                                             query_index) -
+                            data_.segment_offsets - 1;
+  const OffsetSpan<int64_t, int16_t> segment = this->segment(segment_i);
+  const Span<int16_t> local_segment = segment.base_span();
+  const int64_t local_query_index = query_index - segment.offset();
+  if (local_query_index > local_segment.last()) {
+    return std::nullopt;
   }
-  return std::nullopt;
+  const int64_t index_in_segment = std::lower_bound(local_segment.begin(),
+                                                    local_segment.end(),
+                                                    local_query_index) -
+                                   local_segment.begin();
+  BLI_assert(index_in_segment < local_segment.size());
+  if (local_segment[index_in_segment] != local_query_index) {
+    return std::nullopt;
+  }
+  return RawMaskIterator{segment_i, int16_t(index_in_segment)};
 }
 
-bool IndexMask::contains(const int64_t index) const
+bool IndexMask::contains(const int64_t query_index) const
 {
-  return this->find(index).has_value();
+  return this->find(query_index).has_value();
 }
 
 template IndexMask IndexMask::from_indices(Span<int32_t>, IndexMaskMemory &);
