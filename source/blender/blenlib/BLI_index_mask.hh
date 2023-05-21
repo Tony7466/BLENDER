@@ -304,18 +304,52 @@ class IndexMask : private IndexMaskData {
    */
   template<typename Fn> void foreach_range(Fn &&fn) const;
 
+  /**
+   * Fill the provided span with the indices in the mask. The span is expected to have the same
+   * size as the mask.
+   */
   template<typename T> void to_indices(MutableSpan<T> r_indices) const;
+  /**
+   * Set the bits at indices in the mask to 1 and all other bits to 0.
+   */
   void to_bits(MutableBitSpan r_bits) const;
+  /**
+   * Set the bools at indies inthe mask to true and all others to false.
+   */
   void to_bools(MutableSpan<bool> r_bools) const;
+  /**
+   * Try to convert the entire index mask into a range. This only works if there are no gaps
+   * between any indices.
+   */
   std::optional<IndexRange> to_range() const;
+  /**
+   * \return All index ranges in the mask. In the worst case this is a separate range for every
+   * index.
+   */
   Vector<IndexRange> to_ranges() const;
+  /**
+   * \return All index ranges in the universe that are not in the mask. In the worst case this is a
+   * separate range for every index.
+   */
   Vector<IndexRange> to_ranges_invert(IndexRange universe) const;
+  /**
+   * \return All segments in sorted vector. Segments that encode a range are already converted to
+   * an #IndexRange.
+   */
   template<int64_t N = 4>
   Vector<std::variant<IndexRange, OffsetSpan<int64_t, int16_t>>, N> to_spans_and_ranges() const;
 
+  /**
+   * Is used by some functions to get low level access to the mask in order to construct it.
+   */
   IndexMaskData &data_for_inplace_construction();
 };
 
+/**
+ * Utility that makes it efficient to build many small index masks from segments one after another.
+ * The class has to be constructed once. Afterwards, `update` has to be called to fill the mask
+ * with the provided segment.
+ */
 class IndexMaskFromSegment : NonCopyable, NonMovable {
  public:
   int64_t segment_offset;
@@ -326,9 +360,6 @@ class IndexMaskFromSegment : NonCopyable, NonMovable {
   IndexMaskFromSegment();
   void update(OffsetSpan<int64_t, int16_t> segment);
 };
-
-std::array<int16_t, max_segment_size> build_static_indices_array();
-const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size);
 
 inline IndexMaskFromSegment::IndexMaskFromSegment()
 {
@@ -358,6 +389,8 @@ inline void IndexMaskFromSegment::update(const OffsetSpan<int64_t, int16_t> segm
   data.end_index_in_segment_ = indices_num;
 }
 
+std::array<int16_t, max_segment_size> build_static_indices_array();
+const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size);
 std::ostream &operator<<(std::ostream &stream, const IndexMask &mask);
 
 /* -------------------------------------------------------------------- */
