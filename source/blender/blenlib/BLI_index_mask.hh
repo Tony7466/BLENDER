@@ -270,8 +270,8 @@ class IndexMask : private IndexMaskData {
    *  - `IndexMaskSegment`: Indices in the segment.
    *  - `int64_t`: Start position in the mask (optional).
    */
-  template<typename Fn> void foreach_span(Fn &&fn) const;
-  template<typename Fn> void foreach_span(GrainSize grain_size, Fn &&fn) const;
+  template<typename Fn> void foreach_segment(Fn &&fn) const;
+  template<typename Fn> void foreach_segment(GrainSize grain_size, Fn &&fn) const;
 
   /**
    * Calls the function once for every segment with these parameters:
@@ -279,8 +279,8 @@ class IndexMask : private IndexMaskData {
    *     support both types as first parameter.
    * - `int64_t`: Start position in the mask (optional).
    */
-  template<typename Fn> void foreach_span_or_range(Fn &&fn) const;
-  template<typename Fn> void foreach_span_or_range(GrainSize grain_size, Fn &&fn) const;
+  template<typename Fn> void foreach_segment_optimized(Fn &&fn) const;
+  template<typename Fn> void foreach_segment_optimized(GrainSize grain_size, Fn &&fn) const;
 
   /**
    * Calls the function once for every index with these parameters:
@@ -584,17 +584,17 @@ inline IndexMaskData &IndexMask::data_for_inplace_construction()
 }
 
 template<typename Fn>
-constexpr bool has_mask_segment_and_start_parameter =
+constexpr bool has_segment_and_start_parameter =
     std::is_invocable_r_v<void, Fn, IndexMaskSegment, int64_t> ||
     std::is_invocable_r_v<void, Fn, IndexRange, int64_t>;
 
 template<typename Fn> inline void IndexMask::foreach_index(Fn &&fn) const
 {
-  this->foreach_span(
-      [&](const IndexMaskSegment indices, [[maybe_unused]] const int64_t start_mask_position) {
+  this->foreach_segment(
+      [&](const IndexMaskSegment indices, [[maybe_unused]] const int64_t start_segment_pos) {
         if constexpr (std::is_invocable_r_v<void, Fn, int64_t, int64_t>) {
           for (const int64_t i : indices.index_range()) {
-            fn(indices[i], start_mask_position + i);
+            fn(indices[i], start_segment_pos + i);
           }
         }
         else {
@@ -610,9 +610,9 @@ inline void IndexMask::foreach_index(const GrainSize grain_size, Fn &&fn) const
 {
   threading::parallel_for(this->index_range(), grain_size.value, [&](const IndexRange range) {
     const IndexMask sub_mask = this->slice(range);
-    sub_mask.foreach_index([&](const int64_t i, [[maybe_unused]] const int64_t mask_position) {
+    sub_mask.foreach_index([&](const int64_t i, [[maybe_unused]] const int64_t index_pos) {
       if constexpr (std::is_invocable_r_v<void, Fn, int64_t, int64_t>) {
-        fn(i, mask_position + range.start());
+        fn(i, index_pos + range.start());
       }
       else {
         fn(i);
@@ -651,25 +651,25 @@ foreach_index_in_range(const IndexRange range, const int64_t start_mask_position
 
 template<typename Fn> inline void IndexMask::foreach_index_optimized(Fn &&fn) const
 {
-  this->foreach_span_or_range(
-      [&](const auto mask_segment, [[maybe_unused]] const int64_t start_mask_position) {
-        constexpr bool is_range = std::is_same_v<std::decay_t<decltype(mask_segment)>, IndexRange>;
+  this->foreach_segment_optimized(
+      [&](const auto segment, [[maybe_unused]] const int64_t start_mask_position) {
+        constexpr bool is_range = std::is_same_v<std::decay_t<decltype(segment)>, IndexRange>;
         if constexpr (std::is_invocable_r_v<void, Fn, int64_t, int64_t>) {
           if constexpr (is_range) {
-            foreach_index_in_range(mask_segment, start_mask_position, fn);
+            foreach_index_in_range(segment, start_mask_position, fn);
           }
           else {
-            for (const int64_t i : mask_segment.index_range()) {
-              fn(mask_segment[i], start_mask_position + i);
+            for (const int64_t i : segment.index_range()) {
+              fn(segment[i], start_mask_position + i);
             }
           }
         }
         else {
           if constexpr (is_range) {
-            foreach_index_in_range(mask_segment, fn);
+            foreach_index_in_range(segment, fn);
           }
           else {
-            for (const int64_t index : mask_segment) {
+            for (const int64_t index : segment) {
               fn(index);
             }
           }
@@ -694,56 +694,56 @@ inline void IndexMask::foreach_index_optimized(const GrainSize grain_size, Fn &&
   });
 }
 
-template<typename Fn> inline void IndexMask::foreach_span_or_range(Fn &&fn) const
+template<typename Fn> inline void IndexMask::foreach_segment_optimized(Fn &&fn) const
 {
-  this->foreach_span([&](const IndexMaskSegment mask_segment,
-                         [[maybe_unused]] const int64_t start_mask_position) {
-    if (unique_sorted_indices::non_empty_is_range(mask_segment.base_span())) {
-      const IndexRange range(mask_segment[0], mask_segment.size());
-      if constexpr (has_mask_segment_and_start_parameter<Fn>) {
-        fn(range, start_mask_position);
-      }
-      else {
-        fn(range);
-      }
-    }
-    else {
-      if constexpr (has_mask_segment_and_start_parameter<Fn>) {
-        fn(mask_segment, start_mask_position);
-      }
-      else {
-        fn(mask_segment);
-      }
-    }
-  });
+  this->foreach_segment(
+      [&](const IndexMaskSegment segment, [[maybe_unused]] const int64_t start_segment_pos) {
+        if (unique_sorted_indices::non_empty_is_range(segment.base_span())) {
+          const IndexRange range(segment[0], segment.size());
+          if constexpr (has_segment_and_start_parameter<Fn>) {
+            fn(range, start_segment_pos);
+          }
+          else {
+            fn(range);
+          }
+        }
+        else {
+          if constexpr (has_segment_and_start_parameter<Fn>) {
+            fn(segment, start_segment_pos);
+          }
+          else {
+            fn(segment);
+          }
+        }
+      });
 }
 
 template<typename Fn>
-inline void IndexMask::foreach_span_or_range(const GrainSize grain_size, Fn &&fn) const
+inline void IndexMask::foreach_segment_optimized(const GrainSize grain_size, Fn &&fn) const
 {
   threading::parallel_for(this->index_range(), grain_size.value, [&](const IndexRange range) {
     const IndexMask sub_mask = this->slice(range);
-    sub_mask.foreach_span_or_range(
-        [&fn, range_start = range.start()](const auto mask_segment,
-                                           [[maybe_unused]] const int64_t start_mask_position) {
-          if constexpr (has_mask_segment_and_start_parameter<Fn>) {
-            fn(mask_segment, start_mask_position + range_start);
+    sub_mask.foreach_segment_optimized(
+        [&fn, range_start = range.start()](const auto segment,
+                                           [[maybe_unused]] const int64_t start_segment_pos) {
+          if constexpr (has_segment_and_start_parameter<Fn>) {
+            fn(segment, start_segment_pos + range_start);
           }
           else {
-            fn(mask_segment);
+            fn(segment);
           }
         });
   });
 }
 
-template<typename Fn> inline void IndexMask::foreach_span(Fn &&fn) const
+template<typename Fn> inline void IndexMask::foreach_segment(Fn &&fn) const
 {
-  [[maybe_unused]] int64_t mask_position = 0;
+  [[maybe_unused]] int64_t segment_pos = 0;
   for (const int64_t segment_i : IndexRange(segments_num_)) {
     const IndexMaskSegment segment = this->segment(segment_i);
-    if constexpr (has_mask_segment_and_start_parameter<Fn>) {
-      fn(segment, mask_position);
-      mask_position += segment.size();
+    if constexpr (has_segment_and_start_parameter<Fn>) {
+      fn(segment, segment_pos);
+      segment_pos += segment.size();
     }
     else {
       fn(segment);
@@ -752,15 +752,15 @@ template<typename Fn> inline void IndexMask::foreach_span(Fn &&fn) const
 }
 
 template<typename Fn>
-inline void IndexMask::foreach_span(const GrainSize grain_size, Fn &&fn) const
+inline void IndexMask::foreach_segment(const GrainSize grain_size, Fn &&fn) const
 {
   threading::parallel_for(this->index_range(), grain_size.value, [&](const IndexRange range) {
     const IndexMask sub_mask = this->slice(range);
-    sub_mask.foreach_span(
+    sub_mask.foreach_segment(
         [&fn, range_start = range.start()](const IndexMaskSegment mask_segment,
-                                           [[maybe_unused]] const int64_t start_mask_position) {
-          if constexpr (has_mask_segment_and_start_parameter<Fn>) {
-            fn(mask_segment, start_mask_position + range_start);
+                                           [[maybe_unused]] const int64_t segment_pos) {
+          if constexpr (has_segment_and_start_parameter<Fn>) {
+            fn(mask_segment, segment_pos + range_start);
           }
           else {
             fn(mask_segment);
@@ -771,19 +771,18 @@ inline void IndexMask::foreach_span(const GrainSize grain_size, Fn &&fn) const
 
 template<typename Fn> inline void IndexMask::foreach_range(Fn &&fn) const
 {
-  this->foreach_span([&](const IndexMaskSegment indices,
-                         [[maybe_unused]] int64_t start_mask_position) {
+  this->foreach_segment([&](const IndexMaskSegment indices, [[maybe_unused]] int64_t segment_pos) {
     Span<int16_t> base_indices = indices.base_span();
     while (!base_indices.is_empty()) {
       const int64_t next_range_size = unique_sorted_indices::find_size_of_next_range(base_indices);
       const IndexRange range(int64_t(base_indices[0]) + indices.offset(), next_range_size);
-      if constexpr (has_mask_segment_and_start_parameter<Fn>) {
-        fn(range, start_mask_position);
+      if constexpr (has_segment_and_start_parameter<Fn>) {
+        fn(range, segment_pos);
       }
       else {
         fn(range);
       }
-      start_mask_position += next_range_size;
+      segment_pos += next_range_size;
       base_indices = base_indices.drop_front(next_range_size);
     }
   });
@@ -857,10 +856,9 @@ std::optional<IndexRange> inline IndexMask::to_range() const
 template<int64_t N>
 inline Vector<std::variant<IndexRange, IndexMaskSegment>, N> IndexMask::to_spans_and_ranges() const
 {
-  Vector<std::variant<IndexRange, IndexMaskSegment>, N> mask_segments;
-  this->foreach_span_or_range(
-      [&](const auto mask_segment) { mask_segments.append(mask_segment); });
-  return mask_segments;
+  Vector<std::variant<IndexRange, IndexMaskSegment>, N> segments;
+  this->foreach_segment_optimized([&](const auto segment) { segments.append(segment); });
+  return segments;
 }
 
 }  // namespace blender::index_mask

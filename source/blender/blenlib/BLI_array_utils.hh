@@ -102,12 +102,12 @@ inline void gather(const Span<T> src,
                    const int64_t grain_size = 4096)
 {
   BLI_assert(indices.size() == dst.size());
-  indices.foreach_span(GrainSize(grain_size),
-                       [&](const auto mask_segment, const IndexRange range) {
-                         for (const int64_t i : mask_segment.index_range()) {
-                           dst[range[i]] = src[mask_segment[i]];
-                         }
-                       });
+  indices.foreach_segment(GrainSize(grain_size),
+                          [&](const IndexMaskSegment segment, const int64_t segment_pos) {
+                            for (const int64_t i : segment.index_range()) {
+                              dst[segment_pos + i] = src[segment[i]];
+                            }
+                          });
 }
 
 /**

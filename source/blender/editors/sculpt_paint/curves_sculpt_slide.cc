@@ -269,8 +269,8 @@ struct SlideOperationExecutor {
     const float brush_radius_sq_cu = pow2f(brush_radius_cu);
 
     const Span<int> offsets = curves_orig_->offsets();
-    curve_selection_.foreach_span([&](const auto mask_segment) {
-      for (const int curve_i : mask_segment) {
+    curve_selection_.foreach_segment([&](const IndexMaskSegment segment) {
+      for (const int curve_i : segment) {
         const int first_point_i = offsets[curve_i];
         const float3 old_pos_cu = self_->initial_deformed_positions_cu_[first_point_i];
         const float dist_to_brush_sq_cu = math::distance_squared(old_pos_cu, brush_pos_cu);

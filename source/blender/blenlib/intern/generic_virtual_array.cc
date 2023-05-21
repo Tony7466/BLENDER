@@ -26,16 +26,16 @@ void GVArrayImpl::materialize_to_uninitialized(const IndexMask &mask, void *dst)
 
 void GVArrayImpl::materialize_compressed(const IndexMask &mask, void *dst) const
 {
-  mask.foreach_index_optimized([&](const int64_t i, const int64_t i_in_mask) {
-    void *elem_dst = POINTER_OFFSET(dst, type_->size() * i_in_mask);
+  mask.foreach_index_optimized([&](const int64_t i, const int64_t pos) {
+    void *elem_dst = POINTER_OFFSET(dst, type_->size() * pos);
     this->get(i, elem_dst);
   });
 }
 
 void GVArrayImpl::materialize_compressed_to_uninitialized(const IndexMask &mask, void *dst) const
 {
-  mask.foreach_index_optimized([&](const int64_t i, const int64_t i_in_mask) {
-    void *elem_dst = POINTER_OFFSET(dst, type_->size() * i_in_mask);
+  mask.foreach_index_optimized([&](const int64_t i, const int64_t pos) {
+    void *elem_dst = POINTER_OFFSET(dst, type_->size() * pos);
     this->get_to_uninitialized(i, elem_dst);
   });
 }
@@ -497,8 +497,8 @@ class GVArrayImpl_For_SlicedGVArray : public GVArrayImpl {
 
   void materialize_compressed_to_uninitialized(const IndexMask &mask, void *dst) const override
   {
-    mask.foreach_range([&](const IndexRange mask_segment, const int64_t start) {
-      const IndexRange offset_mask_range = mask_segment.shift(offset_);
+    mask.foreach_range([&](const IndexRange range, const int64_t start) {
+      const IndexRange offset_mask_range = range.shift(offset_);
       varray_.materialize_compressed_to_uninitialized(offset_mask_range,
                                                       POINTER_OFFSET(dst, type_->size() * start));
     });

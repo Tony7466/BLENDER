@@ -127,11 +127,8 @@ template<typename T> class VArrayImpl {
    */
   virtual void materialize_compressed(const IndexMask &mask, T *dst) const
   {
-    mask.foreach_span_or_range([&](const auto mask_segment) {
-      for (const int64_t i : IndexRange(mask_segment.size())) {
-        dst[i] = this->get(mask_segment[i]);
-      }
-    });
+    mask.foreach_index_optimized(
+        [&](const int64_t i, const int64_t pos) { dst[pos] = this->get(i); });
   }
 
   /**
@@ -139,11 +136,8 @@ template<typename T> class VArrayImpl {
    */
   virtual void materialize_compressed_to_uninitialized(const IndexMask &mask, T *dst) const
   {
-    mask.foreach_span_or_range([&](const auto mask_segment) {
-      for (const int64_t i : IndexRange(mask_segment.size())) {
-        new (dst + i) T(this->get(mask_segment[i]));
-      }
-    });
+    mask.foreach_index_optimized(
+        [&](const int64_t i, const int64_t pos) { new (dst + pos) T(this->get(i)); });
   }
 
   /**
@@ -229,30 +223,23 @@ template<typename T> class VArrayImpl_For_Span : public VMutableArrayImpl<T> {
 
   void materialize(const IndexMask &mask, T *dst) const override
   {
-    mask.foreach_index([&](const int64_t i) { dst[i] = data_[i]; });
+    mask.foreach_index_optimized([&](const int64_t i) { dst[i] = data_[i]; });
   }
 
   void materialize_to_uninitialized(const IndexMask &mask, T *dst) const override
   {
-    mask.foreach_index([&](const int64_t i) { new (dst + i) T(data_[i]); });
+    mask.foreach_index_optimized([&](const int64_t i) { new (dst + i) T(data_[i]); });
   }
 
   void materialize_compressed(const IndexMask &mask, T *dst) const override
   {
-    mask.foreach_span_or_range([&](const auto mask_segment) {
-      for (const int64_t i : IndexRange(mask_segment.size())) {
-        dst[i] = data_[mask_segment[i]];
-      }
-    });
+    mask.foreach_index_optimized([&](const int64_t i, const int64_t pos) { dst[pos] = data_[i]; });
   }
 
   void materialize_compressed_to_uninitialized(const IndexMask &mask, T *dst) const override
   {
-    mask.foreach_span_or_range([&](const auto mask_segment) {
-      for (const int64_t i : IndexRange(mask_segment.size())) {
-        new (dst + i) T(data_[mask_segment[i]]);
-      }
-    });
+    mask.foreach_index_optimized(
+        [&](const int64_t i, const int64_t pos) { new (dst + pos) T(data_[i]); });
   }
 };
 
@@ -371,30 +358,24 @@ template<typename T, typename GetFunc> class VArrayImpl_For_Func final : public 
 
   void materialize(const IndexMask &mask, T *dst) const override
   {
-    mask.foreach_index([&](const int64_t i) { dst[i] = get_func_(i); });
+    mask.foreach_index_optimized([&](const int64_t i) { dst[i] = get_func_(i); });
   }
 
   void materialize_to_uninitialized(const IndexMask &mask, T *dst) const override
   {
-    mask.foreach_index([&](const int64_t i) { new (dst + i) T(get_func_(i)); });
+    mask.foreach_index_optimized([&](const int64_t i) { new (dst + i) T(get_func_(i)); });
   }
 
   void materialize_compressed(const IndexMask &mask, T *dst) const override
   {
-    mask.foreach_span_or_range([&](const auto mask_segment) {
-      for (const int64_t i : IndexRange(mask_segment.size())) {
-        dst[i] = get_func_(mask_segment[i]);
-      }
-    });
+    mask.foreach_index_optimized(
+        [&](const int64_t i, const int64_t pos) { dst[pos] = get_func_(i); });
   }
 
   void materialize_compressed_to_uninitialized(const IndexMask &mask, T *dst) const override
   {
-    mask.foreach_span_or_range([&](const auto mask_segment) {
-      for (const int64_t i : IndexRange(mask_segment.size())) {
-        new (dst + i) T(get_func_(mask_segment[i]));
-      }
-    });
+    mask.foreach_index_optimized(
+        [&](const int64_t i, const int64_t pos) { new (dst + pos) T(get_func_(i)); });
   }
 };
 
@@ -434,30 +415,24 @@ class VArrayImpl_For_DerivedSpan final : public VMutableArrayImpl<ElemT> {
 
   void materialize(const IndexMask &mask, ElemT *dst) const override
   {
-    mask.foreach_index([&](const int64_t i) { dst[i] = GetFunc(data_[i]); });
+    mask.foreach_index_optimized([&](const int64_t i) { dst[i] = GetFunc(data_[i]); });
   }
 
   void materialize_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
   {
-    mask.foreach_index([&](const int64_t i) { new (dst + i) ElemT(GetFunc(data_[i])); });
+    mask.foreach_index_optimized([&](const int64_t i) { new (dst + i) ElemT(GetFunc(data_[i])); });
   }
 
   void materialize_compressed(const IndexMask &mask, ElemT *dst) const override
   {
-    mask.foreach_span_or_range([&](const auto mask_segment) {
-      for (const int64_t i : IndexRange(mask_segment.size())) {
-        dst[i] = GetFunc(data_[mask_segment[i]]);
-      }
-    });
+    mask.foreach_index_optimized(
+        [&](const int64_t i, const int64_t pos) { dst[pos] = GetFunc(data_[i]); });
   }
 
   void materialize_compressed_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
   {
-    mask.foreach_span_or_range([&](const auto mask_segment) {
-      for (const int64_t i : IndexRange(mask_segment.size())) {
-        new (dst + i) ElemT(GetFunc(data_[mask_segment[i]]));
-      }
-    });
+    mask.foreach_index_optimized(
+        [&](const int64_t i, const int64_t pos) { new (dst + pos) ElemT(GetFunc(data_[i])); });
   }
 };
 

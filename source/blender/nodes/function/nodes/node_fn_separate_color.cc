@@ -80,11 +80,11 @@ class SeparateRGBAFunction : public mf::MultiFunction {
     }
 
     devirtualize_varray(colors, [&](auto colors) {
-      mask.foreach_span_or_range([&](const auto mask_segment) {
+      mask.foreach_segment_optimized([&](const auto segment) {
         const int used_outputs_num = used_outputs.size();
         const int *used_outputs_data = used_outputs.data();
 
-        for (const int64_t i : mask_segment) {
+        for (const int64_t i : segment) {
           const ColorGeometry4f &color = colors[i];
           for (const int out_i : IndexRange(used_outputs_num)) {
             const int channel = used_outputs_data[out_i];

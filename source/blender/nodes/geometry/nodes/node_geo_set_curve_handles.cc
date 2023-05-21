@@ -109,11 +109,11 @@ static void set_position_in_component(bke::CurvesGeometry &curves,
                                                    curves.handle_positions_right_for_write() :
                                                    curves.handle_positions_left_for_write();
 
-  selection.foreach_span(GrainSize(2048), [&](const auto mask_segment) {
-    for (const int i : mask_segment) {
+  selection.foreach_segment(GrainSize(2048), [&](const IndexMaskSegment segment) {
+    for (const int i : segment) {
       update_handle_types_for_movement(handle_types[i], handle_types_other[i]);
     }
-    for (const int i : mask_segment) {
+    for (const int i : segment) {
       bke::curves::bezier::set_handle_position(positions[i],
                                                HandleType(handle_types[i]),
                                                HandleType(handle_types_other[i]),

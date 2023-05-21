@@ -168,22 +168,22 @@ static void sample_indices_and_factors_to_compressed(const Span<float> accumulat
 
   switch (length_mode) {
     case GEO_NODE_CURVE_SAMPLE_FACTOR:
-      mask.foreach_index_optimized([&](const int mask_i, const int i) {
-        const float length = sample_lengths[mask_i] * total_length;
+      mask.foreach_index_optimized([&](const int i, const int pos) {
+        const float length = sample_lengths[i] * total_length;
         length_parameterize::sample_at_length(accumulated_lengths,
                                               std::clamp(length, 0.0f, total_length),
-                                              r_segment_indices[i],
-                                              r_factor_in_segment[i],
+                                              r_segment_indices[pos],
+                                              r_factor_in_segment[pos],
                                               &hint);
       });
       break;
     case GEO_NODE_CURVE_SAMPLE_LENGTH:
-      mask.foreach_index_optimized([&](const int mask_i, const int i) {
-        const float length = sample_lengths[mask_i];
+      mask.foreach_index_optimized([&](const int i, const int pos) {
+        const float length = sample_lengths[i];
         length_parameterize::sample_at_length(accumulated_lengths,
                                               std::clamp(length, 0.0f, total_length),
-                                              r_segment_indices[i],
-                                              r_factor_in_segment[i],
+                                              r_segment_indices[pos],
+                                              r_factor_in_segment[pos],
                                               &hint);
       });
       break;

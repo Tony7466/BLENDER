@@ -224,9 +224,9 @@ struct SmoothOperationExecutor {
     const OffsetIndices points_by_curve = curves_->points_by_curve();
     MutableSpan<float3> positions = curves_->positions_for_write();
 
-    curve_selection_.foreach_span(GrainSize(256), [&](const auto mask_segment) {
+    curve_selection_.foreach_segment(GrainSize(256), [&](const IndexMaskSegment segment) {
       Vector<float3> old_positions;
-      for (const int curve_i : mask_segment) {
+      for (const int curve_i : segment) {
         const IndexRange points = points_by_curve[curve_i];
         old_positions.clear();
         old_positions.extend(positions.slice(points));

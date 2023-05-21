@@ -446,13 +446,13 @@ static bke::CurvesGeometry fillet_curves(
     dst_handles_r = dst_curves.handle_positions_right_for_write();
   }
 
-  curve_selection.foreach_span(GrainSize(512), [&](const auto mask_segment) {
+  curve_selection.foreach_segment(GrainSize(512), [&](const IndexMaskSegment segment) {
     Array<float3> directions;
     Array<float> angles;
     Array<float> radii;
     Array<float> input_radii_buffer;
 
-    for (const int curve_i : mask_segment) {
+    for (const int curve_i : segment) {
       const IndexRange src_points = src_points_by_curve[curve_i];
       const IndexRange offsets_range = bke::curves::per_curve_point_offsets_range(src_points,
                                                                                   curve_i);

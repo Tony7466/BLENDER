@@ -174,8 +174,8 @@ struct PinchOperationExecutor {
     const float brush_radius_re = brush_radius_base_re_ * brush_radius_factor_;
     const float brush_radius_sq_re = pow2f(brush_radius_re);
 
-    curve_selection_.foreach_span(GrainSize(256), [&](const auto mask_segment) {
-      for (const int curve_i : mask_segment) {
+    curve_selection_.foreach_segment(GrainSize(256), [&](const IndexMaskSegment segment) {
+      for (const int curve_i : segment) {
         const IndexRange points = points_by_curve[curve_i];
         for (const int point_i : points.drop_front(1)) {
           const float3 old_pos_cu = deformation.positions[point_i];
@@ -247,8 +247,8 @@ struct PinchOperationExecutor {
         bke::crazyspace::get_evaluated_curves_deformation(*ctx_.depsgraph, *object_);
     const OffsetIndices points_by_curve = curves_->points_by_curve();
 
-    curve_selection_.foreach_span(GrainSize(256), [&](const auto mask_segment) {
-      for (const int curve_i : mask_segment) {
+    curve_selection_.foreach_segment(GrainSize(256), [&](const IndexMaskSegment segment) {
+      for (const int curve_i : segment) {
         const IndexRange points = points_by_curve[curve_i];
         for (const int point_i : points.drop_front(1)) {
           const float3 old_pos_cu = deformation.positions[point_i];

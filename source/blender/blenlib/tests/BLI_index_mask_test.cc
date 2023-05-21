@@ -43,7 +43,7 @@ TEST(index_mask, FromSize)
   {
     const IndexMask mask(5);
     Vector<IndexMaskSegment> segments;
-    mask.foreach_span([&](const IndexMaskSegment segment) { segments.append(segment); });
+    mask.foreach_segment([&](const IndexMaskSegment segment) { segments.append(segment); });
     EXPECT_EQ(segments.size(), 1);
     EXPECT_EQ(segments[0].size(), 5);
     EXPECT_EQ(mask.first(), 0);
@@ -53,7 +53,7 @@ TEST(index_mask, FromSize)
   {
     const IndexMask mask(max_segment_size);
     Vector<IndexMaskSegment> segments;
-    mask.foreach_span([&](const IndexMaskSegment segment) { segments.append(segment); });
+    mask.foreach_segment([&](const IndexMaskSegment segment) { segments.append(segment); });
     EXPECT_EQ(segments.size(), 1);
     EXPECT_EQ(segments[0].size(), max_segment_size);
     EXPECT_EQ(mask.first(), 0);

@@ -149,8 +149,8 @@ struct CombOperationExecutor {
       self_->curve_lengths_.reinitialize(curves_orig_->curves_num());
       const Span<float> segment_lengths = self_->constraint_solver_.segment_lengths();
       const OffsetIndices points_by_curve = curves_orig_->points_by_curve();
-      curve_selection_.foreach_span(GrainSize(512), [&](auto mask_segment) {
-        for (const int curve_i : mask_segment) {
+      curve_selection_.foreach_segment(GrainSize(512), [&](const IndexMaskSegment segment) {
+        for (const int curve_i : segment) {
           const IndexRange points = points_by_curve[curve_i];
           const Span<float> lengths = segment_lengths.slice(points.drop_back(1));
           self_->curve_lengths_[curve_i] = std::accumulate(lengths.begin(), lengths.end(), 0.0f);
@@ -219,8 +219,8 @@ struct CombOperationExecutor {
 
     const Span<float> segment_lengths = self_->constraint_solver_.segment_lengths();
 
-    curve_selection_.foreach_span(GrainSize(256), [&](const auto mask_segment) {
-      for (const int curve_i : mask_segment) {
+    curve_selection_.foreach_segment(GrainSize(256), [&](const IndexMaskSegment segment) {
+      for (const int curve_i : segment) {
         bool curve_changed = false;
         const IndexRange points = points_by_curve[curve_i];
 
@@ -338,8 +338,8 @@ struct CombOperationExecutor {
     const OffsetIndices points_by_curve = curves_orig_->points_by_curve();
     const Span<float> segment_lengths = self_->constraint_solver_.segment_lengths();
 
-    curve_selection_.foreach_span(GrainSize(256), [&](const auto mask_segment) {
-      for (const int curve_i : mask_segment) {
+    curve_selection_.foreach_segment(GrainSize(256), [&](const IndexMaskSegment segment) {
+      for (const int curve_i : segment) {
         bool curve_changed = false;
         const IndexRange points = points_by_curve[curve_i];
 

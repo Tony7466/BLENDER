@@ -63,12 +63,12 @@ class PointsOfCurveInput final : public bke::CurvesFieldInput {
     const bool use_sorting = !all_sort_weights.is_single();
 
     Array<int> point_of_curve(mask.min_array_size());
-    mask.foreach_span(GrainSize(256), [&](const auto mask_segment) {
+    mask.foreach_segment(GrainSize(256), [&](const IndexMaskSegment segment) {
       /* Reuse arrays to avoid allocation. */
       Array<float> sort_weights;
       Array<int> sort_indices;
 
-      for (const int selection_i : mask_segment) {
+      for (const int selection_i : segment) {
         const int curve_i = curve_indices[selection_i];
         const int index_in_sort = indices_in_sort[selection_i];
         if (!curves.curves_range().contains(curve_i)) {

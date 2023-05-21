@@ -588,9 +588,9 @@ void CurvesGeometry::ensure_nurbs_basis_cache() const
     const VArray<int8_t> orders = this->nurbs_orders();
     const VArray<int8_t> knots_modes = this->nurbs_knots_modes();
 
-    nurbs_mask.foreach_span(GrainSize(64), [&](const auto mask_segment) {
+    nurbs_mask.foreach_segment(GrainSize(64), [&](const IndexMaskSegment segment) {
       Vector<float, 32> knots;
-      for (const int curve_index : mask_segment) {
+      for (const int curve_index : segment) {
         const IndexRange points = points_by_curve[curve_index];
         const IndexRange evaluated_points = evaluated_points_by_curve[curve_index];
 

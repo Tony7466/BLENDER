@@ -447,11 +447,11 @@ inline void execute_element_fn_as_multi_function(const ElementFn element_fn,
     /* The materialized method is most common because it avoids most virtual function overhead but
      * still instantiates the function only once. */
     if constexpr (ExecPreset::fallback_mode == exec_presets::FallbackMode::Materialized) {
-      mask.foreach_span([&](const IndexMaskSegment mask_segment) {
+      mask.foreach_segment([&](const IndexMaskSegment segment) {
         execute_materialized(TypeSequence<ParamTags...>(),
                              std::index_sequence<I...>(),
                              element_fn,
-                             mask_segment,
+                             segment,
                              loaded_params);
       });
     }
@@ -704,11 +704,7 @@ template<typename T> class CustomMF_Constant : public MultiFunction {
   void call(const IndexMask &mask, Params params, Context /*context*/) const override
   {
     MutableSpan<T> output = params.uninitialized_single_output<T>(0);
-    mask.foreach_span_or_range([&](const auto mask_segment) {
-      for (const int64_t i : mask_segment) {
-        new (&output[i]) T(value_);
-      }
-    });
+    mask.foreach_index_optimized([&](const int64_t i) { new (&output[i]) T(value_); });
   }
 
   uint64_t hash() const override

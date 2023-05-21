@@ -290,11 +290,11 @@ static CurvesGeometry resample_to_uniform(const CurvesGeometry &src_curves,
   /* Use a "for each group of curves: for each attribute: for each curve" pattern to work on
    * smaller sections of data that ideally fit into CPU cache better than simply one attribute at a
    * time or one curve at a time. */
-  selection.foreach_span(GrainSize(512), [&](const auto sliced_selection) {
+  selection.foreach_segment(GrainSize(512), [&](const IndexMaskSegment selection_segment) {
     Vector<std::byte> evaluated_buffer;
 
     /* Gather uniform samples based on the accumulated lengths of the original curve. */
-    for (const int64_t i_curve : sliced_selection) {
+    for (const int64_t i_curve : selection_segment) {
       const bool cyclic = curves_cyclic[i_curve];
       const IndexRange dst_points = dst_points_by_curve[i_curve];
       const Span<float> lengths = src_curves.evaluated_lengths_for_curve(i_curve, cyclic);
@@ -320,7 +320,7 @@ static CurvesGeometry resample_to_uniform(const CurvesGeometry &src_curves,
         Span<T> src = attributes.src[i_attribute].typed<T>();
         MutableSpan<T> dst = attributes.dst[i_attribute].typed<T>();
 
-        for (const int i_curve : sliced_selection) {
+        for (const int i_curve : selection_segment) {
           const IndexRange src_points = src_points_by_curve[i_curve];
           const IndexRange dst_points = dst_points_by_curve[i_curve];
 
@@ -345,7 +345,7 @@ static CurvesGeometry resample_to_uniform(const CurvesGeometry &src_curves,
     }
 
     auto interpolate_evaluated_data = [&](const Span<float3> src, MutableSpan<float3> dst) {
-      for (const int64_t i_curve : sliced_selection) {
+      for (const int64_t i_curve : selection_segment) {
         const IndexRange src_points = evaluated_points_by_curve[i_curve];
         const IndexRange dst_points = dst_points_by_curve[i_curve];
         length_parameterize::interpolate(src.slice(src_points),
@@ -360,16 +360,16 @@ static CurvesGeometry resample_to_uniform(const CurvesGeometry &src_curves,
 
     if (!attributes.dst_tangents.is_empty()) {
       interpolate_evaluated_data(attributes.src_evaluated_tangents, attributes.dst_tangents);
-      normalize_curve_point_data(sliced_selection, dst_points_by_curve, attributes.dst_tangents);
+      normalize_curve_point_data(selection_segment, dst_points_by_curve, attributes.dst_tangents);
     }
     if (!attributes.dst_normals.is_empty()) {
       interpolate_evaluated_data(attributes.src_evaluated_normals, attributes.dst_normals);
-      normalize_curve_point_data(sliced_selection, dst_points_by_curve, attributes.dst_normals);
+      normalize_curve_point_data(selection_segment, dst_points_by_curve, attributes.dst_normals);
     }
 
     /* Fill the default value for non-interpolating attributes that still must be copied. */
     for (GMutableSpan dst : attributes.dst_no_interpolation) {
-      for (const int i_curve : sliced_selection) {
+      for (const int i_curve : selection_segment) {
         const IndexRange dst_points = dst_points_by_curve[i_curve];
         dst.type().value_initialize_n(dst.slice(dst_points).data(), dst_points.size());
       }
@@ -435,7 +435,7 @@ CurvesGeometry resample_to_evaluated(const CurvesGeometry &src_curves,
   gather_point_attributes_to_interpolate(src_curves, dst_curves, attributes, output_ids);
 
   src_curves.ensure_can_interpolate_to_evaluated();
-  selection.foreach_span(GrainSize(512), [&](const auto sliced_selection) {
+  selection.foreach_segment(GrainSize(512), [&](const IndexMaskSegment selection_segment) {
     /* Evaluate generic point attributes directly to the result attributes. */
     for (const int i_attribute : attributes.dst.index_range()) {
       const CPPType &type = attributes.src[i_attribute].type();
@@ -444,7 +444,7 @@ CurvesGeometry resample_to_evaluated(const CurvesGeometry &src_curves,
         Span<T> src = attributes.src[i_attribute].typed<T>();
         MutableSpan<T> dst = attributes.dst[i_attribute].typed<T>();
 
-        for (const int i_curve : sliced_selection) {
+        for (const int i_curve : selection_segment) {
           const IndexRange src_points = src_points_by_curve[i_curve];
           const IndexRange dst_points = dst_points_by_curve[i_curve];
           src_curves.interpolate_to_evaluated(
@@ -454,7 +454,7 @@ CurvesGeometry resample_to_evaluated(const CurvesGeometry &src_curves,
     }
 
     auto copy_evaluated_data = [&](const Span<float3> src, MutableSpan<float3> dst) {
-      for (const int64_t i_curve : sliced_selection) {
+      for (const int64_t i_curve : selection_segment) {
         const IndexRange src_points = src_evaluated_points_by_curve[i_curve];
         const IndexRange dst_points = dst_points_by_curve[i_curve];
         dst.slice(dst_points).copy_from(src.slice(src_points));
@@ -466,16 +466,16 @@ CurvesGeometry resample_to_evaluated(const CurvesGeometry &src_curves,
 
     if (!attributes.dst_tangents.is_empty()) {
       copy_evaluated_data(attributes.src_evaluated_tangents, attributes.dst_tangents);
-      normalize_curve_point_data(sliced_selection, dst_points_by_curve, attributes.dst_tangents);
+      normalize_curve_point_data(selection_segment, dst_points_by_curve, attributes.dst_tangents);
     }
     if (!attributes.dst_normals.is_empty()) {
       copy_evaluated_data(attributes.src_evaluated_normals, attributes.dst_normals);
-      normalize_curve_point_data(sliced_selection, dst_points_by_curve, attributes.dst_normals);
+      normalize_curve_point_data(selection_segment, dst_points_by_curve, attributes.dst_normals);
     }
 
     /* Fill the default value for non-interpolating attributes that still must be copied. */
     for (GMutableSpan dst : attributes.dst_no_interpolation) {
-      for (const int64_t i_curve : sliced_selection) {
+      for (const int64_t i_curve : selection_segment) {
         const IndexRange dst_points = dst_points_by_curve[i_curve];
         dst.type().value_initialize_n(dst.slice(dst_points).data(), dst_points.size());
       }

@@ -67,12 +67,12 @@ class CornersOfVertInput final : public bke::MeshFieldInput {
     const bool use_sorting = !all_sort_weights.is_single();
 
     Array<int> corner_of_vertex(mask.min_array_size());
-    mask.foreach_span(GrainSize(1024), [&](const auto mask_segment) {
+    mask.foreach_segment(GrainSize(1024), [&](const IndexMaskSegment segment) {
       /* Reuse arrays to avoid allocation. */
       Array<float> sort_weights;
       Array<int> sort_indices;
 
-      for (const int selection_i : mask_segment) {
+      for (const int selection_i : segment) {
         const int vert_i = vert_indices[selection_i];
         const int index_in_sort = indices_in_sort[selection_i];
         if (!vert_range.contains(vert_i)) {

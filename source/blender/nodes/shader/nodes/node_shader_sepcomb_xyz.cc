@@ -63,11 +63,11 @@ class MF_SeparateXYZ : public mf::MultiFunction {
     }
 
     devirtualize_varray(vectors, [&](auto vectors) {
-      mask.foreach_span_or_range([&](const auto mask_segment) {
+      mask.foreach_segment_optimized([&](const auto segment) {
         const int used_outputs_num = used_outputs.size();
         const int *used_outputs_data = used_outputs.data();
 
-        for (const int64_t i : mask_segment) {
+        for (const int64_t i : segment) {
           const float3 &vector = vectors[i];
           for (const int out_i : IndexRange(used_outputs_num)) {
             const int coordinate = used_outputs_data[out_i];

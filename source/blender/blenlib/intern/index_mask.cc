@@ -408,21 +408,20 @@ template<typename T> void IndexMask::to_indices(MutableSpan<T> r_indices) const
 {
   BLI_assert(this->size() == r_indices.size());
   this->foreach_index_optimized(
-      GrainSize(1024),
-      [&](const int64_t i, const int64_t mask_i) mutable { r_indices[mask_i] = T(i); });
+      GrainSize(1024), [&](const int64_t i, const int64_t pos) mutable { r_indices[pos] = T(i); });
 }
 
 void IndexMask::to_bits(MutableBitSpan r_bits) const
 {
   BLI_assert(r_bits.size() >= this->min_array_size());
   r_bits.reset_all();
-  this->foreach_span_or_range([&](const auto mask_segment) {
-    if constexpr (std::is_same_v<std::decay_t<decltype(mask_segment)>, IndexRange>) {
-      const IndexRange range = mask_segment;
+  this->foreach_segment_optimized([&](const auto segment) {
+    if constexpr (std::is_same_v<std::decay_t<decltype(segment)>, IndexRange>) {
+      const IndexRange range = segment;
       r_bits.slice(range).set_all();
     }
     else {
-      for (const int64_t i : mask_segment) {
+      for (const int64_t i : segment) {
         r_bits[i].set();
       }
     }
@@ -504,7 +503,7 @@ IndexMask from_predicate_impl(
   }
   else {
     ParallelSegmentsCollector segments_collector;
-    universe.foreach_span(grain_size, [&](const IndexMaskSegment universe_segment) {
+    universe.foreach_segment(grain_size, [&](const IndexMaskSegment universe_segment) {
       ParallelSegmentsCollector::LocalData &data = segments_collector.data_by_thread.local();
       segments_from_predicate_filter(
           universe_segment, data.allocator, filter_indices, data.segments);

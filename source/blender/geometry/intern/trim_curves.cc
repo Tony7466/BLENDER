@@ -774,9 +774,9 @@ static void trim_evaluated_curves(const bke::CurvesGeometry &src_curves,
     bke::attribute_math::convert_to_static_type(attribute.meta_data.data_type, [&](auto dummy) {
       using T = decltype(dummy);
 
-      selection.foreach_span(GrainSize(512), [&](const auto mask_segment) {
+      selection.foreach_segment(GrainSize(512), [&](const IndexMaskSegment segment) {
         Vector<std::byte> evaluated_buffer;
-        for (const int64_t curve_i : mask_segment) {
+        for (const int64_t curve_i : segment) {
           const IndexRange src_points = src_points_by_curve[curve_i];
 
           /* Interpolate onto the evaluated point domain and sample the evaluated domain. */
