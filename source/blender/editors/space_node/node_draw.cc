@@ -2176,7 +2176,7 @@ static void node_draw_basis(const bContext &C,
         (bNodeInstanceHash *)CTX_data_pointer_get(&C, "node_previews").data;
     if (node.flag & NODE_PREVIEW && previews) {
       bNodePreview *preview = (bNodePreview *)BKE_node_instance_hash_lookup(previews, key);
-      if (preview && (preview->xsize && preview->ysize)) {
+      if (preview && (preview->xsize && preview->ysize) && preview->rect) {
         show_preview = true;
         rctf preview_rect;
         const float preview_height = (rct.xmax - rct.xmin) * preview->ysize / preview->xsize;
