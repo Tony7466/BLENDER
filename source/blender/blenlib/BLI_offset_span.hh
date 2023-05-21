@@ -6,15 +6,22 @@
 
 namespace blender {
 
+/**
+ * An #OffsetSpan where a constant offset is added to every value when accessed. This allows e.g.
+ * storing multiple `int64_t` indices as an array of `int16_t` with an additional `int64_t` offset.
+ */
 template<typename T, typename BaseT> class OffsetSpan {
  private:
+  /** Value that is added to every element in #data_ when accessed. */
   T offset_ = 0;
+  /** Original span where each element is offset by #offset_. */
   Span<BaseT> data_;
 
  public:
   OffsetSpan() = default;
   OffsetSpan(const T offset, const Span<BaseT> data) : offset_(offset), data_(data) {}
 
+  /** \return Underlying span containing the values that are not offset. */
   Span<BaseT> base_span() const
   {
     return data_;
