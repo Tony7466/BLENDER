@@ -192,7 +192,7 @@ template<typename... ParamTags, size_t... I, typename ElementFn, typename... Loa
 inline void execute_materialized(TypeSequence<ParamTags...> /* param_tags */,
                                  std::index_sequence<I...> /* indices */,
                                  const ElementFn element_fn,
-                                 const OffsetSpan<int64_t, int16_t> mask,
+                                 const IndexMaskSegment mask,
                                  const std::tuple<LoadedParams...> &loaded_params)
 {
 
@@ -246,7 +246,7 @@ inline void execute_materialized(TypeSequence<ParamTags...> /* param_tags */,
   for (int64_t chunk_start = 0; chunk_start < mask_size; chunk_start += MaxChunkSize) {
     const int64_t chunk_end = std::min<int64_t>(chunk_start + MaxChunkSize, mask_size);
     const int64_t chunk_size = chunk_end - chunk_start;
-    const OffsetSpan<int64_t, int16_t> sliced_mask = mask.slice(chunk_start, chunk_size);
+    const IndexMaskSegment sliced_mask = mask.slice(chunk_start, chunk_size);
     const int64_t mask_start = sliced_mask[0];
     const bool sliced_mask_is_range = unique_sorted_indices::non_empty_is_range(
         sliced_mask.base_span());
@@ -410,15 +410,14 @@ inline void execute_element_fn_as_multi_function(const ElementFn element_fn,
   bool executed_devirtualized = false;
   if constexpr (ExecPreset::use_devirtualization) {
     /* Get segments before devirtualization to avoid generating this code multiple times. */
-    const Vector<std::variant<IndexRange, OffsetSpan<int64_t, int16_t>>, 16> mask_segments =
+    const Vector<std::variant<IndexRange, IndexMaskSegment>, 16> mask_segments =
         mask.to_spans_and_ranges<16>();
 
     const auto devirtualizers = exec_preset.create_devirtualizers(
         TypeSequence<ParamTags...>(), std::index_sequence<I...>(), loaded_params);
     executed_devirtualized = call_with_devirtualized_parameters(
         devirtualizers, [&](auto &&...args) {
-          for (const std::variant<IndexRange, OffsetSpan<int64_t, int16_t>> &segment :
-               mask_segments) {
+          for (const std::variant<IndexRange, IndexMaskSegment> &segment : mask_segments) {
             if (std::holds_alternative<IndexRange>(segment)) {
               const auto segment_range = std::get<IndexRange>(segment);
               execute_array(TypeSequence<ParamTags...>(),
@@ -428,7 +427,7 @@ inline void execute_element_fn_as_multi_function(const ElementFn element_fn,
                             std::forward<decltype(args)>(args)...);
             }
             else {
-              const auto segment_indices = std::get<OffsetSpan<int64_t, int16_t>>(segment);
+              const auto segment_indices = std::get<IndexMaskSegment>(segment);
               execute_array(TypeSequence<ParamTags...>(),
                             std::index_sequence<I...>(),
                             element_fn,
@@ -448,7 +447,7 @@ inline void execute_element_fn_as_multi_function(const ElementFn element_fn,
     /* The materialized method is most common because it avoids most virtual function overhead but
      * still instantiates the function only once. */
     if constexpr (ExecPreset::fallback_mode == exec_presets::FallbackMode::Materialized) {
-      mask.foreach_span([&](const OffsetSpan<int64_t, int16_t> mask_segment) {
+      mask.foreach_span([&](const IndexMaskSegment mask_segment) {
         execute_materialized(TypeSequence<ParamTags...>(),
                              std::index_sequence<I...>(),
                              element_fn,

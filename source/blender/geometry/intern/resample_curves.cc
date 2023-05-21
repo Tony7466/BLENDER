@@ -230,7 +230,7 @@ static void normalize_span(MutableSpan<float3> data)
   }
 }
 
-static void normalize_curve_point_data(const OffsetSpan<int64_t, int16_t> curve_selection,
+static void normalize_curve_point_data(const IndexMaskSegment curve_selection,
                                        const OffsetIndices<int> points_by_curve,
                                        MutableSpan<float3> data)
 {
