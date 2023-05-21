@@ -70,7 +70,7 @@ std::ostream &operator<<(std::ostream &stream, const IndexMask &mask)
   Array<int64_t> indices(mask.size());
   mask.to_indices<int64_t>(indices);
   Vector<std::variant<IndexRange, Span<int64_t>>> segments;
-  unique_sorted_indices::split_to_ranges_and_spans<int64_t>(indices, 16, segments);
+  unique_sorted_indices::split_to_ranges_and_spans<int64_t>(indices, 8, segments);
   std::cout << "(Size: " << mask.size() << " | ";
   for (const std::variant<IndexRange, Span<int64_t>> &segment : segments) {
     if (std::holds_alternative<IndexRange>(segment)) {
@@ -146,11 +146,16 @@ IndexMask IndexMask::slice_and_offset(const int64_t start,
 
 IndexMask IndexMask::complement(const IndexRange universe, IndexMaskMemory &memory) const
 {
+  /* TODO: Implement more efficient solution. */
   return IndexMask::from_predicate(universe, GrainSize(512), memory, [&](const int64_t index) {
     return !this->contains(index);
   });
 }
 
+/**
+ * Merges consecutive segments in some cases. Having fewer but larger segments generally allows for
+ * better performance when using the mask later on.
+ */
 static void consolidate_segments(Vector<OffsetSpan<int64_t, int16_t>> &segments,
                                  IndexMaskMemory & /*memory*/)
 {
@@ -160,6 +165,7 @@ static void consolidate_segments(Vector<OffsetSpan<int64_t, int16_t>> &segments,
 
   const Span<int16_t> static_indices = get_static_indices_array();
 
+  /* TODO: Support merging non-range segments in some cases as well. */
   int64_t group_start_segment_i = 0;
   int64_t group_first = segments[0][0];
   int64_t group_last = segments[0].last();
@@ -169,6 +175,7 @@ static void consolidate_segments(Vector<OffsetSpan<int64_t, int16_t>> &segments,
     if (group_start_segment_i == last_segment_i) {
       return;
     }
+    /* Join multiple ranges together into a bigger range. */
     const IndexRange range{group_first, group_last + 1 - group_first};
     segments[group_start_segment_i] = OffsetSpan<int64_t, int16_t>(
         range[0], static_indices.take_front(range.size()));
@@ -198,10 +205,16 @@ static void consolidate_segments(Vector<OffsetSpan<int64_t, int16_t>> &segments,
     group_last = segment.last();
   }
   finish_group(segments.size() - 1);
+
+  /* Remove all segments that have been merged into previous segments. */
   segments.remove_if(
       [](const OffsetSpan<int64_t, int16_t> segment) { return segment.is_empty(); });
 }
 
+/**
+ * Create a new #IndexMask from the given segments. The provided segments are expected to be
+ * owned by #memory already.
+ */
 static IndexMask mask_from_segments(const Span<OffsetSpan<int64_t, int16_t>> segments,
                                     IndexMaskMemory &memory)
 {
@@ -209,11 +222,14 @@ static IndexMask mask_from_segments(const Span<OffsetSpan<int64_t, int16_t>> seg
     return {};
   }
   const int64_t segments_num = segments.size();
+
+  /* Allocate buffers for the mask. */
   MutableSpan<const int16_t *> indices_by_segment = memory.allocate_array<const int16_t *>(
       segments_num);
   MutableSpan<int64_t> segment_offsets = memory.allocate_array<int64_t>(segments_num);
   MutableSpan<int64_t> cumulative_segment_sizes = memory.allocate_array<int64_t>(segments_num + 1);
 
+  /* Fill buffers. */
   cumulative_segment_sizes[0] = 0;
   for (const int64_t segment_i : segments.index_range()) {
     const OffsetSpan<int64_t, int16_t> segment = segments[segment_i];
@@ -222,6 +238,7 @@ static IndexMask mask_from_segments(const Span<OffsetSpan<int64_t, int16_t>> seg
     cumulative_segment_sizes[segment_i + 1] = cumulative_segment_sizes[segment_i] + segment.size();
   }
 
+  /* Initialize mask. */
   IndexMask mask;
   IndexMaskData &data = mask.data_for_inplace_construction();
   data.indices_num_ = cumulative_segment_sizes.last();
@@ -234,6 +251,10 @@ static IndexMask mask_from_segments(const Span<OffsetSpan<int64_t, int16_t>> seg
   return mask;
 }
 
+/**
+ * Split the indices into segments. Afterwards, the indices referenced by #r_segments are either
+ * owned by #allocator or statically allocated.
+ */
 template<typename T>
 static void segments_from_indices(const Span<T> indices,
                                   LinearAllocator<> &allocator,
@@ -274,6 +295,9 @@ static void segments_from_indices(const Span<T> indices,
   }
 }
 
+/**
+ * Utility to generate segments on multiple threads and to reduce the result in the end.
+ */
 struct ParallelSegmentsCollector {
   struct LocalData {
     LinearAllocator<> allocator;
@@ -282,7 +306,12 @@ struct ParallelSegmentsCollector {
 
   threading::EnumerableThreadSpecific<LocalData> data_by_thread;
 
-  void finish(LinearAllocator<> &main_allocator,
+  /**
+   * Move ownership of memory allocated from all threads to #main_allocator. Also, extend
+   * #main_segments with the segments created on each thread. The segments are also sorted to make
+   * sure that they are in the correct order.
+   */
+  void reduce(LinearAllocator<> &main_allocator,
               Vector<OffsetSpan<int64_t, int16_t>> &main_segments)
   {
     for (LocalData &data : this->data_by_thread) {
@@ -305,6 +334,7 @@ IndexMask IndexMask::from_indices(const Span<T> indices, IndexMaskMemory &memory
   }
   if (const std::optional<IndexRange> range = unique_sorted_indices::non_empty_as_range_try(
           indices)) {
+    /* Fast case when the indices encode a single range. */
     return *range;
   }
 
@@ -317,6 +347,7 @@ IndexMask IndexMask::from_indices(const Span<T> indices, IndexMaskMemory &memory
   }
   else {
     const int64_t threads_num = BLI_system_thread_count();
+    /* Can be faster with a larger grain size, but only when there are enough indices. */
     const int64_t grain_size = std::clamp(
         indices.size() / (threads_num * 4), min_grain_size, max_grain_size);
 
@@ -325,7 +356,7 @@ IndexMask IndexMask::from_indices(const Span<T> indices, IndexMaskMemory &memory
       ParallelSegmentsCollector::LocalData &local_data = segments_collector.data_by_thread.local();
       segments_from_indices(indices.slice(range), local_data.allocator, local_data.segments);
     });
-    segments_collector.finish(memory, segments);
+    segments_collector.reduce(memory, segments);
   }
   consolidate_segments(segments, memory);
   return mask_from_segments(segments, memory);
@@ -425,6 +456,42 @@ Vector<IndexRange> IndexMask::to_ranges_invert(const IndexRange universe) const
 }
 
 namespace detail {
+
+/**
+ * Filter the indices from #universe_segment using #filter_indices. Store the resulting indices as
+ * segments.
+ */
+static void segments_from_predicate_filter(
+    const OffsetSpan<int64_t, int16_t> universe_segment,
+    LinearAllocator<> &allocator,
+    const FunctionRef<int64_t(OffsetSpan<int64_t, int16_t> indices, int16_t *r_true_indices)>
+        filter_indices,
+    Vector<OffsetSpan<int64_t, int16_t>> &r_segments)
+{
+  std::array<int16_t, max_segment_size> indices_array;
+  const int64_t true_indices_num = filter_indices(universe_segment, indices_array.data());
+  if (true_indices_num == 0) {
+    return;
+  }
+  const Span<int16_t> true_indices{indices_array.data(), true_indices_num};
+  Vector<std::variant<IndexRange, Span<int16_t>>> true_segments;
+  unique_sorted_indices::split_to_ranges_and_spans<int16_t>(true_indices, 64, true_segments);
+
+  const Span<int16_t> static_indices = get_static_indices_array();
+
+  for (const auto &true_segment : true_segments) {
+    if (std::holds_alternative<IndexRange>(true_segment)) {
+      const IndexRange segment_range = std::get<IndexRange>(true_segment);
+      r_segments.append_as(universe_segment.offset(), static_indices.slice(segment_range));
+    }
+    else {
+      const Span<int16_t> segment_indices = std::get<Span<int16_t>>(true_segment);
+      r_segments.append_as(universe_segment.offset(),
+                           allocator.construct_array_copy(segment_indices));
+    }
+  }
+}
+
 IndexMask from_predicate_impl(const IndexMask &universe,
                               const GrainSize grain_size,
                               IndexMaskMemory &memory,
@@ -435,47 +502,21 @@ IndexMask from_predicate_impl(const IndexMask &universe,
     return {};
   }
 
-  const Span<int16_t> static_indices = get_static_indices_array();
-
-  auto process_segment = [&](const OffsetSpan<int64_t, int16_t> universe_segment,
-                             LinearAllocator<> &allocator,
-                             Vector<OffsetSpan<int64_t, int16_t>> &r_segments) {
-    std::array<int16_t, max_segment_size> indices_array;
-    const int64_t true_indices_num = filter_indices(universe_segment, indices_array.data());
-    if (true_indices_num == 0) {
-      return;
-    }
-    const Span<int16_t> true_indices{indices_array.data(), true_indices_num};
-    Vector<std::variant<IndexRange, Span<int16_t>>> true_segments;
-    unique_sorted_indices::split_to_ranges_and_spans<int16_t>(true_indices, 64, true_segments);
-
-    for (const auto &true_segment : true_segments) {
-      if (std::holds_alternative<IndexRange>(true_segment)) {
-        const IndexRange segment_range = std::get<IndexRange>(true_segment);
-        r_segments.append_as(universe_segment.offset(), static_indices.slice(segment_range));
-      }
-      else {
-        const Span<int16_t> segment_indices = std::get<Span<int16_t>>(true_segment);
-        r_segments.append_as(universe_segment.offset(),
-                             allocator.construct_array_copy(segment_indices));
-      }
-    }
-  };
-
   Vector<OffsetSpan<int64_t, int16_t>> segments;
   if (universe.size() <= grain_size.value) {
     for (const int64_t segment_i : IndexRange(universe.segments_num())) {
       const OffsetSpan<int64_t, int16_t> universe_segment = universe.segment(segment_i);
-      process_segment(universe_segment, memory, segments);
+      segments_from_predicate_filter(universe_segment, memory, filter_indices, segments);
     }
   }
   else {
     ParallelSegmentsCollector segments_collector;
     universe.foreach_span(grain_size, [&](const OffsetSpan<int64_t, int16_t> universe_segment) {
       ParallelSegmentsCollector::LocalData &data = segments_collector.data_by_thread.local();
-      process_segment(universe_segment, data.allocator, data.segments);
+      segments_from_predicate_filter(
+          universe_segment, data.allocator, filter_indices, data.segments);
     });
-    segments_collector.finish(memory, segments);
+    segments_collector.reduce(memory, segments);
   }
 
   consolidate_segments(segments, memory);
