@@ -312,46 +312,6 @@ class MutableBitSpan {
   {
     this->set_all(value);
   }
-
-  template<typename Fn> void foreach_1(Fn &&fn) const
-  {
-    for (const int64_t i : this->index_range()) {
-      if ((*this)[i].test()) {
-        fn(i);
-      }
-    }
-  }
-
-  void operator|=(const BitSpan other)
-  {
-    BLI_assert(this->size() == other.size());
-    for (const int64_t i : this->index_range()) {
-      (*this)[i].set((*this)[i].test() | other[i].test());
-    }
-  }
-
-  void operator&=(const BitSpan other)
-  {
-    BLI_assert(this->size() == other.size());
-    for (const int64_t i : this->index_range()) {
-      (*this)[i].set((*this)[i].test() & other[i].test());
-    }
-  }
-
-  void clear_by_set_bits(const BitSpan other)
-  {
-    BLI_assert(this->size() == other.size());
-    for (const int64_t i : this->index_range()) {
-      (*this)[i].set((*this)[i].test() & !other[i].test());
-    }
-  }
-
-  void flip()
-  {
-    for (const int64_t i : this->index_range()) {
-      (*this)[i].flip();
-    }
-  }
 };
 
 /**

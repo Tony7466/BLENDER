@@ -16,7 +16,6 @@
  */
 
 #include "BLI_index_range.hh"
-#include "BLI_math_bits.h"
 #include "BLI_utildefines.h"
 
 #include <ostream>
@@ -75,15 +74,6 @@ inline BitInt *int_containing_bit(BitInt *data, const int64_t bit_index)
 inline const BitInt *int_containing_bit(const BitInt *data, const int64_t bit_index)
 {
   return data + (bit_index >> BitToIntIndexShift);
-}
-
-template<typename Fn> inline void foreach_1_in_int(BitInt value, Fn &&fn)
-{
-  while (value != 0) {
-    const int index = bitscan_forward_uint64(value);
-    value &= ~mask_single_bit(index);
-    fn(index);
-  }
 }
 
 /**
@@ -191,11 +181,6 @@ class MutableBitRef {
   void reset()
   {
     *int_ &= ~mask_;
-  }
-
-  void flip()
-  {
-    *int_ ^= mask_;
   }
 
   /**

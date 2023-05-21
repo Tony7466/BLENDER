@@ -216,6 +216,10 @@ template<typename Allocator = GuardedAllocator> class LinearAllocator : NonCopya
     owned_buffers_.append(const_cast<void *>(buffer));
   }
 
+  /**
+   * This allocator takes ownership of the buffers owned by `other`. Therefor, when `other` is
+   * destructed, memory allocated using it is not freed.
+   */
   void give_ownership_of_buffers_in(LinearAllocator<> &other)
   {
     owned_buffers_.extend(other.owned_buffers_);

@@ -22,15 +22,12 @@ void transverts_from_curves_positions_create(bke::CurvesGeometry &curves, TransV
       MEM_calloc_arrayN(selection.size(), sizeof(TransVert), __func__));
   tvs->transverts_tot = selection.size();
 
-  selection.foreach_segment(GrainSize(1024),
-                            [&](const IndexMaskSegment segment, const int64_t segment_pos) {
-                              for (const int i : segment.index_range()) {
-                                TransVert &tv = tvs->transverts[segment_pos + i];
-                                tv.loc = positions[segment[i]];
-                                tv.flag = SELECT;
-                                copy_v3_v3(tv.oldloc, tv.loc);
-                              }
-                            });
+  selection.foreach_index(GrainSize(1024), [&](const int64_t i, const int64_t pos) {
+    TransVert &tv = tvs->transverts[pos];
+    tv.loc = positions[i];
+    tv.flag = SELECT;
+    copy_v3_v3(tv.oldloc, tv.loc);
+  });
 }
 
 }  // namespace blender::ed::curves
