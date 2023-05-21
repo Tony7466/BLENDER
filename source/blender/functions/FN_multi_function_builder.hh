@@ -239,7 +239,7 @@ inline void execute_materialized(TypeSequence<ParamTags...> /* param_tags */,
       }(),
       ...);
 
-  index_mask::IndexMaskFromSegment index_mask_from_segment;
+  IndexMaskFromSegment index_mask_from_segment;
   const int64_t segment_offset = mask.offset();
 
   /* Outer loop over all chunks. */

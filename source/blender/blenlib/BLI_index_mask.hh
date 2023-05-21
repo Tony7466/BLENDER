@@ -865,6 +865,7 @@ inline Vector<std::variant<IndexRange, IndexMaskSegment>, N> IndexMask::to_spans
 
 namespace blender {
 using index_mask::IndexMask;
+using index_mask::IndexMaskFromSegment;
 using index_mask::IndexMaskMemory;
 using index_mask::IndexMaskSegment;
 }  // namespace blender
