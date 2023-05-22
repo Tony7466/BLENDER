@@ -320,10 +320,16 @@ DRWShadingGroup *DRW_shgroup_curves_create_sub(Object *object,
 
   /* Fix issue with certain driver not drawing anything if there is no texture bound to
    * "ac", "au", "u" or "c". */
+  DRW_shgroup_buffer_texture(shgrp, "u", g_dummy_vbo);
+  DRW_shgroup_buffer_texture(shgrp, "au", g_dummy_vbo);
+  DRW_shgroup_buffer_texture(shgrp, "c", g_dummy_vbo);
+  DRW_shgroup_buffer_texture(shgrp, "ac", g_dummy_vbo);
+  /*
   DRW_shgroup_uniform_texture(shgrp, "u", g_dummy_texture);
   DRW_shgroup_uniform_texture(shgrp, "au", g_dummy_texture);
   DRW_shgroup_uniform_texture(shgrp, "c", g_dummy_texture);
   DRW_shgroup_uniform_texture(shgrp, "ac", g_dummy_texture);
+  */
 
   /* TODO: Generalize radius implementation for curves data type. */
   float hair_rad_shape = 0.0f;
