@@ -3557,9 +3557,7 @@ bool BKE_lib_override_library_property_rna_path_change(IDOverrideLibrary *overri
   override_property->rna_path = BLI_strdup(new_rna_path);
 
   /* Put property back into the lookup mapping, using the new RNA path. */
-  BLI_ghash_insert(override->runtime->rna_path_to_override_properties,
-                   override_property->rna_path,
-                   override_property);
+  BLI_ghash_insert(override_runtime, override_property->rna_path, override_property);
 
   return true;
 }
