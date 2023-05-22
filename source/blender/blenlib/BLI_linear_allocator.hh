@@ -16,7 +16,11 @@
 
 namespace blender {
 
-#define BLI_DEBUG_LINEAR_ALLOCATOR_SIZE
+/**
+ * If enabled, #LinearAllocator keeps track of how much memory it owns and how much it has
+ * allocated.
+ */
+// #define BLI_DEBUG_LINEAR_ALLOCATOR_SIZE
 
 template<typename Allocator = GuardedAllocator> class LinearAllocator : NonCopyable, NonMovable {
  private:
@@ -208,19 +212,13 @@ template<typename Allocator = GuardedAllocator> class LinearAllocator : NonCopya
   }
 
   /**
-   * Pass ownership of a buffer to this allocator. It is freed when the allocator is freed. The
-   * buffer won't be used for further small allocations. For that purpose use #provide_buffer.
-   */
-  void give_ownership_of_buffer(const void *buffer)
-  {
-    owned_buffers_.append(const_cast<void *>(buffer));
-  }
-
-  /**
    * This allocator takes ownership of the buffers owned by `other`. Therefor, when `other` is
    * destructed, memory allocated using it is not freed.
+   *
+   * Note that the caller is responsible for making sure that buffers passed into #provide_buffer
+   * of `other` live at least as long as this allocator.
    */
-  void give_ownership_of_buffers_in(LinearAllocator<> &other)
+  void transfer_ownership_from(LinearAllocator<> &other)
   {
     owned_buffers_.extend(other.owned_buffers_);
 #ifdef BLI_DEBUG_LINEAR_ALLOCATOR_SIZE
