@@ -260,10 +260,7 @@ static IDRemapper *reuse_bmain_data_remapper_ensure(ReuseOldBMainData *reuse_dat
   Main *old_bmain = reuse_data->old_bmain;
   IDRemapper *remapper = reuse_data->remapper;
 
-  for (Library *old_lib_iter = static_cast<Library *>(old_bmain->libraries.first);
-       old_lib_iter != nullptr;
-       old_lib_iter = static_cast<Library *>(old_lib_iter->id.next))
-  {
+  LISTBASE_FOREACH (Library *, old_lib_iter, &old_bmain->libraries) {
     /* In case newly opened `new_bmain` is a library of the `old_bmain`, remap it to NULL, since a
      * file should never ever have linked data from itself. */
     if (STREQ(old_lib_iter->filepath_abs, new_bmain->filepath)) {
@@ -271,15 +268,17 @@ static IDRemapper *reuse_bmain_data_remapper_ensure(ReuseOldBMainData *reuse_dat
       continue;
     }
 
-    for (Library *new_lib_iter = static_cast<Library *>(new_bmain->libraries.first);
-         new_lib_iter != nullptr;
-         new_lib_iter = static_cast<Library *>(new_lib_iter->id.next))
-    {
+    /* NOTE: Although this is quadratic complexity, it is not expected to be an issue in practice:
+     *  - Files using more than a few tens of libraries are extremely rare.
+     *  - This code is only executed once for every file reading (not on undos).
+     */
+    LISTBASE_FOREACH (Library *, new_lib_iter, &new_bmain->libraries) {
       if (!STREQ(old_lib_iter->filepath_abs, new_lib_iter->filepath_abs)) {
         continue;
       }
 
       BKE_id_remapper_add(remapper, &old_lib_iter->id, &new_lib_iter->id);
+      break;
     }
   }
 
@@ -400,44 +399,46 @@ static void swap_wm_data_for_blendfile(ReuseOldBMainData *reuse_data, const bool
   wmWindowManager *old_wm = static_cast<wmWindowManager *>(old_wm_list->first);
   wmWindowManager *new_wm = static_cast<wmWindowManager *>(new_wm_list->first);
 
-  if (old_wm != nullptr) {
-    /* Current WM, and WM in file, and loading UI: use WM from file, keep old WM around for
-     * further processing in WM code. */
-    if (load_ui && new_wm != nullptr) {
-      /* Support window-manager ID references being held between file load operations by keeping
-       * #Main.wm.first memory address in-place, while swapping all of it's contents.
-       *
-       * This is needed so items such as key-maps can be held by an add-on,
-       * without it pointing to invalid memory, see: #86431. */
-      BLI_remlink(old_wm_list, old_wm);
-      BLI_remlink(new_wm_list, new_wm);
-      BKE_lib_id_swap_full(nullptr,
-                           &old_wm->id,
-                           &new_wm->id,
-                           true,
-                           (ID_REMAP_SKIP_NEVER_NULL_USAGE | ID_REMAP_SKIP_UPDATE_TAGGING |
-                            ID_REMAP_SKIP_USER_REFCOUNT | ID_REMAP_FORCE_UI_POINTERS));
-      /* Not strictly necessary, but helps for readability. */
-      std::swap<wmWindowManager *>(old_wm, new_wm);
-      BLI_addhead(new_wm_list, new_wm);
-      /* Do not add old WM back to `old_bmain`, so that it does not get freed when `old_bmain` is
-       * freed. Calling WM code will need this old WM to restore some windows etc. data into the
-       * new WM, and is responsible to free it properly. */
-      new_wm->readfile_old_wm = old_wm;
-      old_wm->readfile_old_wm = nullptr;
-
-      IDRemapper *remapper = reuse_bmain_data_remapper_ensure(reuse_data);
-      BKE_id_remapper_add(remapper, &old_wm->id, &new_wm->id);
-    }
-    /* Current WM, but none in file (should only happen when reading pre 2.5 files, no WM back
-     * then), or not loading UI: Keep current WM. */
-    else {
-      swap_old_bmain_data_for_blendfile(reuse_data, ID_WM);
-      old_wm->initialized &= ~WM_WINDOW_IS_INIT;
-    }
+  if (old_wm == nullptr) {
+    /* No current (old) WM. Either (new) WM from file is used, or if none, WM code is responsible
+     * to add a new default WM. Nothing to do here. */
+    return;
   }
-  /* Else, nothing to do here, either new WM from file is used, or if none, WM code is responsible
-   * to add a new default WM. */
+
+  /* Current (old) WM, and (new) WM in file, and loading UI: use WM from file, keep old WM around
+   * for further processing in WM code. */
+  if (load_ui && new_wm != nullptr) {
+    /* Support window-manager ID references being held between file load operations by keeping
+     * #Main.wm.first memory address in-place, while swapping all of it's contents.
+     *
+     * This is needed so items such as key-maps can be held by an add-on,
+     * without it pointing to invalid memory, see: #86431. */
+    BLI_remlink(old_wm_list, old_wm);
+    BLI_remlink(new_wm_list, new_wm);
+    BKE_lib_id_swap_full(nullptr,
+                         &old_wm->id,
+                         &new_wm->id,
+                         true,
+                         (ID_REMAP_SKIP_NEVER_NULL_USAGE | ID_REMAP_SKIP_UPDATE_TAGGING |
+                          ID_REMAP_SKIP_USER_REFCOUNT | ID_REMAP_FORCE_UI_POINTERS));
+    /* Not strictly necessary, but helps for readability. */
+    std::swap<wmWindowManager *>(old_wm, new_wm);
+    BLI_addhead(new_wm_list, new_wm);
+    /* Do not add old WM back to `old_bmain`, so that it does not get freed when `old_bmain` is
+     * freed. Calling WM code will need this old WM to restore some windows etc. data into the
+     * new WM, and is responsible to free it properly. */
+    new_wm->readfile_old_wm = old_wm;
+    old_wm->readfile_old_wm = nullptr;
+
+    IDRemapper *remapper = reuse_bmain_data_remapper_ensure(reuse_data);
+    BKE_id_remapper_add(remapper, &old_wm->id, &new_wm->id);
+  }
+  /* Current (old) WM, but no (new) one in file (should only happen when reading pre 2.5 files, no
+   * WM back then), or not loading UI: Keep current WM. */
+  else {
+    swap_old_bmain_data_for_blendfile(reuse_data, ID_WM);
+    old_wm->initialized &= ~WM_WINDOW_IS_INIT;
+  }
 }
 
 static int swap_old_bmain_data_for_blendfile_dependencies_process_cb(
