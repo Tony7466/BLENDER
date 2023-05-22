@@ -1,2 +1,3 @@
 Referenced by issue #108099, Render Error using the HIP backend
 Referenced by issue #108101, "Save System Info" crashes Blender
+Referenced by commit 24ca886ac042b59049c4b6de687557b4db0cc889, Revert "Animation: Update NLA "TAB" tweak mode to be full stack evaluation"
