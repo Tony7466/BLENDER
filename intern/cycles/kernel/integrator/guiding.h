@@ -7,9 +7,7 @@
 #include "kernel/closure/bsdf.h"
 #include "kernel/film/write.h"
 
-#if OPENPGL_VERSION_MINOR >= 5
 #  define RIS_INCOMING_RADIANCE
-#endif
 
 CCL_NAMESPACE_BEGIN
 
@@ -511,14 +509,8 @@ ccl_device_forceinline bool guiding_bsdf_init(KernelGlobals kg,
                                               ccl_private float &rand)
 {
 #if defined(__PATH_GUIDING__) && PATH_GUIDING_LEVEL >= 4
-#  if OPENPGL_VERSION_MINOR >= 5
   if (kg->opgl_surface_sampling_distribution->Init(
           kg->opgl_guiding_field, guiding_point3f(P), rand)) {
-#  else
-  if (kg->opgl_surface_sampling_distribution->Init(
-          kg->opgl_guiding_field, guiding_point3f(P), rand, true))
-  {
-#  endif
     kg->opgl_surface_sampling_distribution->ApplyCosineProduct(guiding_point3f(N));
     return true;
   }
@@ -558,7 +550,7 @@ ccl_device_forceinline float guiding_surface_incoming_radiance_pdf(KernelGlobals
                                                                    IntegratorState state,
                                                                    const float3 wo)
 {
-#if defined(__PATH_GUIDING__) && PATH_GUIDING_LEVEL >= 4 && OPENPGL_VERSION_MINOR >= 5
+#if defined(__PATH_GUIDING__) && PATH_GUIDING_LEVEL >= 4
   return kg->opgl_surface_sampling_distribution->IncomingRadiancePDF(guiding_vec3f(wo));
 #else
   return 0.0f;
@@ -580,14 +572,8 @@ ccl_device_forceinline bool guiding_phase_init(KernelGlobals kg,
     return false;
   }
 
-#  if OPENPGL_VERSION_MINOR >= 5
   if (kg->opgl_volume_sampling_distribution->Init(
           kg->opgl_guiding_field, guiding_point3f(P), rand)) {
-#  else
-  if (kg->opgl_volume_sampling_distribution->Init(
-          kg->opgl_guiding_field, guiding_point3f(P), rand, true))
-  {
-#  endif
     kg->opgl_volume_sampling_distribution->ApplySingleLobeHenyeyGreensteinProduct(guiding_vec3f(D),
                                                                                   g);
     return true;
