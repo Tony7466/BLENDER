@@ -627,13 +627,20 @@ template<typename T, typename Fn>
 [[gnu::optimize("O3")]]
 #endif
 inline void
-optimized_foreach_index_in_range(const IndexRange segment, const Fn fn)
+optimized_foreach_index(const IndexMaskSegment segment, const Fn fn)
 {
-  BLI_assert(segment.one_after_last() <= std::numeric_limits<T>::max());
-  const T start = T(segment.start());
-  const T end = T(segment.one_after_last());
-  for (T i = start; i < end; i++) {
-    fn(i);
+  BLI_assert(segment.last() < std::numeric_limits<T>::max());
+  if (unique_sorted_indices::non_empty_is_range(segment.base_span())) {
+    const T start = T(segment[0]);
+    const T last = T(segment.last());
+    for (T i = start; i <= last; i++) {
+      fn(i);
+    }
+  }
+  else {
+    for (const int64_t i : segment) {
+      fn(T(i));
+    }
   }
 }
 
@@ -642,43 +649,39 @@ template<typename T, typename Fn>
 [[gnu::optimize("O3")]]
 #endif
 inline void
-optimized_foreach_index_in_range_with_pos(const IndexRange segment,
-                                          const T segment_pos,
-                                          const Fn fn)
+optimized_foreach_index_with_pos(const IndexMaskSegment segment,
+                                 const int64_t segment_pos,
+                                 const Fn fn)
 {
-  BLI_assert(segment.one_after_last() <= std::numeric_limits<T>::max());
-  const T start = T(segment.start());
-  const T end = T(segment.one_after_last());
-  for (T i = start, pos = segment_pos; i < end; i++, pos++) {
-    fn(i, pos);
+  BLI_assert(segment.last() < std::numeric_limits<T>::max());
+  BLI_assert(segment.size() + segment_pos < std::numeric_limits<T>::max());
+  if (unique_sorted_indices::non_empty_is_range(segment.base_span())) {
+    const T start = T(segment[0]);
+    const T last = T(segment.last());
+    for (T i = start, pos = T(segment_pos); i <= last; i++, pos++) {
+      fn(i, pos);
+    }
+  }
+  else {
+    T pos = T(segment_pos);
+    for (const int64_t i : segment.index_range()) {
+      const T index = T(segment[i]);
+      fn(index, pos);
+      pos++;
+    }
   }
 }
 
 template<typename IndexT, typename Fn>
 inline void IndexMask::foreach_index_optimized(Fn &&fn) const
 {
-  this->foreach_segment_optimized(
-      [fn](const auto segment, [[maybe_unused]] const int64_t segment_pos) {
-        constexpr bool is_range = std::is_same_v<std::decay_t<decltype(segment)>, IndexRange>;
+  this->foreach_segment(
+      [&](const IndexMaskSegment segment, [[maybe_unused]] const int64_t segment_pos) {
         if constexpr (std::is_invocable_r_v<void, Fn, IndexT, IndexT>) {
-          if constexpr (is_range) {
-            optimized_foreach_index_in_range_with_pos<IndexT>(segment, IndexT(segment_pos), fn);
-          }
-          else {
-            for (const int64_t i : segment.index_range()) {
-              fn(segment[i], segment_pos + i);
-            }
-          }
+          optimized_foreach_index_with_pos<IndexT>(segment, segment_pos, fn);
         }
         else {
-          if constexpr (is_range) {
-            optimized_foreach_index_in_range<IndexT>(segment, fn);
-          }
-          else {
-            for (const int64_t index : segment) {
-              fn(index);
-            }
-          }
+          optimized_foreach_index<IndexT>(segment, fn);
         }
       });
 }
@@ -688,15 +691,15 @@ inline void IndexMask::foreach_index_optimized(const GrainSize grain_size, Fn &&
 {
   threading::parallel_for(this->index_range(), grain_size.value, [&](const IndexRange range) {
     const IndexMask sub_mask = this->slice(range);
-    if constexpr (std::is_invocable_r_v<void, Fn, IndexT, IndexT>) {
-      sub_mask.foreach_index_optimized<IndexT>(
-          [fn, range_start = IndexT(range.start())](const IndexT i, const IndexT pos) {
-            fn(i, pos + range_start);
-          });
-    }
-    else {
-      sub_mask.foreach_index_optimized<IndexT>(fn);
-    }
+    sub_mask.foreach_segment(
+        [&](const IndexMaskSegment segment, [[maybe_unused]] const int64_t segment_pos) {
+          if constexpr (std::is_invocable_r_v<void, Fn, IndexT, IndexT>) {
+            optimized_foreach_index_with_pos<IndexT>(segment, segment_pos + range.start(), fn);
+          }
+          else {
+            optimized_foreach_index<IndexT>(segment, fn);
+          }
+        });
   });
 }
 
