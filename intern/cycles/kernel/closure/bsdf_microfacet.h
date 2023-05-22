@@ -52,8 +52,18 @@ typedef struct MicrofacetBsdf {
   SHADER_CLOSURE_BASE;
 
   float alpha_x, alpha_y, ior;
+
+  /* Used to account for missing energy due to the single-scattering microfacet model.
+   * This could be included in bsdf->weight as well, but there it would mess up the color
+   * channels.
+   * Note that this is currently only used by GGX. */
+  float energy_scale;
+
+  /* Fresnel model to apply, as well as the extra data for it.
+   * For NONE and DIELECTRIC, no extra storage is needed, so the pointer is NULL for them. */
   int fresnel_type;
   ccl_private void *fresnel;
+
   float3 T;
 } MicrofacetBsdf;
 
@@ -296,28 +306,37 @@ ccl_device_inline void microfacet_ggx_preserve_energy(KernelGlobals kg,
     E_avg = 1.0f;
   }
 
-  /* Check if we need to account for extra saturation due to multi-bounce Fresnel. */
-  if (Fss == one_spectrum()) {
-    bsdf->weight *= 1.0f + ((1.0f - E) / E);
-  }
-  else {
+  const float missing_factor = ((1.0f - E) / E);
+  bsdf->energy_scale = 1.0f + missing_factor;
+
+  /* Check if we need to account for extra darkening/saturation due to multi-bounce Fresnel. */
+  if (Fss != one_spectrum()) {
     /* Fms here is based on the appendix of "Revisiting Physically Based Shading at Imageworks"
      * by Christopher Kulla and Alejandro Conty,
      * with one Fss cancelled out since this is just a multiplier on top of
      * the single-scattering BSDF, which already contains one bounce of Fresnel. */
     const Spectrum Fms = Fss * E_avg / (one_spectrum() - Fss * (1.0f - E_avg));
-
-    bsdf->weight *= one_spectrum() + Fms * ((1.0f - E) / E);
+    /* Since we already include the energy compensation in bsdf->energy_scale,
+     * this term is what's needed to make the full BSDF * weight * energy_scale
+     * computation work out to the correct value. */
+    const Spectrum darkening = (one_spectrum() + Fms * missing_factor) / bsdf->energy_scale;
+    bsdf->weight *= darkening;
+    bsdf->sample_weight *= average(darkening);
   }
-  /* TODO: Ensure that increase in weight does not mess up glossy color, albedo etc. passes */
 }
 
 /* This function estimates the albedo of the BSDF (NOT including the bsdf->weight) as caused by
  * the applied Fresnel model for the given view direction.
- * The base microfacet model is assumed to have an albedo of 1, but e.g. a reflection-only
- * closure with Fresnel applied can end up having a very low overall albedo.
+ * The base microfacet model is assumed to have an albedo of 1 (we have the energy preservation
+ * code for that), but e.g. a reflection-only closure with Fresnel applied can end up having
+ * a very low overall albedo.
  * This is used to adjust the sample weight, as well as for the Diff/Gloss/Trans Color pass
- * and the Denoising Albedo pass. */
+ * and the Denoising Albedo pass.
+ *
+ * NOTE: This code assumes the microfacet surface is fairly smooth. For very high roughness,
+ * the results are much more uniform across the surface.
+ * For better results, we'd be blending between this and Fss based on roughness, but that
+ * would involve storing or recomputing Fss, which is probably not worth it. */
 ccl_device Spectrum bsdf_microfacet_estimate_fresnel(ccl_private const ShaderData *sd,
                                                      ccl_private const MicrofacetBsdf *bsdf)
 {
@@ -818,6 +837,7 @@ ccl_device int bsdf_microfacet_ggx_setup(ccl_private MicrofacetBsdf *bsdf)
   bsdf->alpha_y = saturatef(bsdf->alpha_y);
 
   bsdf->fresnel_type = MicrofacetFresnel::NONE;
+  bsdf->energy_scale = 1.0f;
   bsdf->type = CLOSURE_BSDF_MICROFACET_GGX_ID;
 
   return SD_BSDF | SD_BSDF_HAS_EVAL;
@@ -830,6 +850,7 @@ ccl_device int bsdf_microfacet_ggx_clearcoat_setup(ccl_private MicrofacetBsdf *b
   bsdf->alpha_y = bsdf->alpha_x;
 
   bsdf->fresnel_type = MicrofacetFresnel::DIELECTRIC;
+  bsdf->energy_scale = 1.0f;
   bsdf->type = CLOSURE_BSDF_MICROFACET_GGX_CLEARCOAT_ID;
   bsdf->sample_weight *= average(bsdf_microfacet_estimate_fresnel(sd, bsdf));
 
@@ -842,6 +863,7 @@ ccl_device int bsdf_microfacet_ggx_refraction_setup(ccl_private MicrofacetBsdf *
   bsdf->alpha_y = bsdf->alpha_x;
 
   bsdf->fresnel_type = MicrofacetFresnel::NONE;
+  bsdf->energy_scale = 1.0f;
   bsdf->type = CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID;
 
   return SD_BSDF | SD_BSDF_HAS_EVAL | SD_BSDF_HAS_TRANSMISSION;
@@ -853,6 +875,7 @@ ccl_device int bsdf_microfacet_ggx_glass_setup(ccl_private MicrofacetBsdf *bsdf)
   bsdf->alpha_y = bsdf->alpha_x;
 
   bsdf->fresnel_type = MicrofacetFresnel::DIELECTRIC;
+  bsdf->energy_scale = 1.0f;
   bsdf->type = CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID;
 
   return SD_BSDF | SD_BSDF_HAS_EVAL | SD_BSDF_HAS_TRANSMISSION;
@@ -872,7 +895,8 @@ ccl_device Spectrum bsdf_microfacet_ggx_eval(ccl_private const ShaderClosure *sc
                                              const float3 wo,
                                              ccl_private float *pdf)
 {
-  return bsdf_microfacet_eval<MicrofacetType::GGX>(sc, Ng, wi, wo, pdf);
+  ccl_private const MicrofacetBsdf *bsdf = (ccl_private const MicrofacetBsdf *)sc;
+  return bsdf->energy_scale * bsdf_microfacet_eval<MicrofacetType::GGX>(sc, Ng, wi, wo, pdf);
 }
 
 ccl_device int bsdf_microfacet_ggx_sample(ccl_private const ShaderClosure *sc,
@@ -886,8 +910,11 @@ ccl_device int bsdf_microfacet_ggx_sample(ccl_private const ShaderClosure *sc,
                                           ccl_private float2 *sampled_roughness,
                                           ccl_private float *eta)
 {
-  return bsdf_microfacet_sample<MicrofacetType::GGX>(
+
+  int label = bsdf_microfacet_sample<MicrofacetType::GGX>(
       sc, path_flag, Ng, wi, rand, eval, wo, pdf, sampled_roughness, eta);
+  *eval *= ((ccl_private const MicrofacetBsdf *)sc)->energy_scale;
+  return label;
 }
 
 /* Beckmann microfacet with Smith shadow-masking from:
