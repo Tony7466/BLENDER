@@ -407,8 +407,10 @@ IndexMask IndexMask::from_bools(const IndexMask &universe,
 template<typename T> void IndexMask::to_indices(MutableSpan<T> r_indices) const
 {
   BLI_assert(this->size() == r_indices.size());
-  this->foreach_index_optimized(
-      GrainSize(1024), [&](const int64_t i, const int64_t pos) mutable { r_indices[pos] = T(i); });
+  this->foreach_index_optimized<int64_t>(
+      GrainSize(1024), [r_indices = r_indices.data()](const int64_t i, const int64_t pos) {
+        r_indices[pos] = T(i);
+      });
 }
 
 void IndexMask::to_bits(MutableBitSpan r_bits) const
@@ -432,7 +434,8 @@ void IndexMask::to_bools(MutableSpan<bool> r_bools) const
 {
   BLI_assert(r_bools.size() >= this->min_array_size());
   r_bools.fill(false);
-  this->foreach_index_optimized(GrainSize(2048), [&](const int64_t i) { r_bools[i] = true; });
+  this->foreach_index_optimized<int64_t>(GrainSize(2048),
+                                         [&](const int64_t i) { r_bools[i] = true; });
 }
 
 Vector<IndexRange> IndexMask::to_ranges() const

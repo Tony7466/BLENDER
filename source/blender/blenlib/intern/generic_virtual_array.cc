@@ -10,7 +10,7 @@ namespace blender {
 
 void GVArrayImpl::materialize(const IndexMask &mask, void *dst) const
 {
-  mask.foreach_index_optimized([&](const int64_t i) {
+  mask.foreach_index_optimized<int64_t>([&](const int64_t i) {
     void *elem_dst = POINTER_OFFSET(dst, type_->size() * i);
     this->get(i, elem_dst);
   });
@@ -18,7 +18,7 @@ void GVArrayImpl::materialize(const IndexMask &mask, void *dst) const
 
 void GVArrayImpl::materialize_to_uninitialized(const IndexMask &mask, void *dst) const
 {
-  mask.foreach_index_optimized([&](const int64_t i) {
+  mask.foreach_index_optimized<int64_t>([&](const int64_t i) {
     void *elem_dst = POINTER_OFFSET(dst, type_->size() * i);
     this->get_to_uninitialized(i, elem_dst);
   });
@@ -26,7 +26,7 @@ void GVArrayImpl::materialize_to_uninitialized(const IndexMask &mask, void *dst)
 
 void GVArrayImpl::materialize_compressed(const IndexMask &mask, void *dst) const
 {
-  mask.foreach_index_optimized([&](const int64_t i, const int64_t pos) {
+  mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
     void *elem_dst = POINTER_OFFSET(dst, type_->size() * pos);
     this->get(i, elem_dst);
   });
@@ -34,7 +34,7 @@ void GVArrayImpl::materialize_compressed(const IndexMask &mask, void *dst) const
 
 void GVArrayImpl::materialize_compressed_to_uninitialized(const IndexMask &mask, void *dst) const
 {
-  mask.foreach_index_optimized([&](const int64_t i, const int64_t pos) {
+  mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
     void *elem_dst = POINTER_OFFSET(dst, type_->size() * pos);
     this->get_to_uninitialized(i, elem_dst);
   });

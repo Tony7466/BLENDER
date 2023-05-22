@@ -295,8 +295,9 @@ class IndexMask : private IndexMaskData {
    * when segments are a range internally. Use this only when the function itself is doing very
    * little work and will likely be called many times.
    */
-  template<typename Fn> void foreach_index_optimized(Fn &&fn) const;
-  template<typename Fn> void foreach_index_optimized(GrainSize grain_size, Fn &&fn) const;
+  template<typename IndexT, typename Fn> void foreach_index_optimized(Fn &&fn) const;
+  template<typename IndexT, typename Fn>
+  void foreach_index_optimized(GrainSize grain_size, Fn &&fn) const;
 
   /**
    * Calls the function once for every range. Note that this might call the function for each index
@@ -409,7 +410,7 @@ inline const std::array<int16_t, max_segment_size> &get_static_indices_array()
 template<typename T>
 inline void masked_fill(MutableSpan<T> data, const T &value, const IndexMask &mask)
 {
-  mask.foreach_index_optimized([&](const int64_t i) { data[i] = value; });
+  mask.foreach_index_optimized<int64_t>([&](const int64_t i) { data[i] = value; });
 }
 
 /* -------------------------------------------------------------------- */
@@ -621,52 +622,57 @@ inline void IndexMask::foreach_index(const GrainSize grain_size, Fn &&fn) const
   });
 }
 
-template<typename Fn>
+template<typename T, typename Fn>
 #if (defined(__GNUC__) && !defined(__clang__))
-[[gnu::optimize("-funroll-loops")]] [[gnu::optimize("O3")]]
+[[gnu::optimize("O3")]]
 #endif
 inline void
-foreach_index_in_range(const IndexRange range, Fn &&fn)
+optimized_foreach_index_in_range(const IndexRange segment, const Fn fn)
 {
-  const int64_t start = range.start();
-  const int64_t end = range.one_after_last();
-  for (int64_t i = start; i < end; i++) {
+  BLI_assert(segment.one_after_last() <= std::numeric_limits<T>::max());
+  const T start = T(segment.start());
+  const T end = T(segment.one_after_last());
+  for (T i = start; i < end; i++) {
     fn(i);
   }
 }
 
-template<typename Fn>
+template<typename T, typename Fn>
 #if (defined(__GNUC__) && !defined(__clang__))
-[[gnu::optimize("-funroll-loops")]] [[gnu::optimize("O3")]]
+[[gnu::optimize("O3")]]
 #endif
 inline void
-foreach_index_in_range(const IndexRange range, const int64_t start_mask_position, Fn &&fn)
+optimized_foreach_index_in_range_with_pos(const IndexRange segment,
+                                          const T segment_pos,
+                                          const Fn fn)
 {
-  const int64_t start = range.start();
-  const int64_t end = range.one_after_last();
-  for (int64_t i = start, mask_position = start_mask_position; i < end; i++, mask_position++) {
-    fn(i, mask_position);
+  BLI_assert(segment.one_after_last() <= std::numeric_limits<T>::max());
+  const T start = T(segment.start());
+  const T end = T(segment.one_after_last());
+  for (T i = start, pos = segment_pos; i < end; i++, pos++) {
+    fn(i, pos);
   }
 }
 
-template<typename Fn> inline void IndexMask::foreach_index_optimized(Fn &&fn) const
+template<typename IndexT, typename Fn>
+inline void IndexMask::foreach_index_optimized(Fn &&fn) const
 {
   this->foreach_segment_optimized(
-      [&](const auto segment, [[maybe_unused]] const int64_t start_mask_position) {
+      [fn](const auto segment, [[maybe_unused]] const int64_t segment_pos) {
         constexpr bool is_range = std::is_same_v<std::decay_t<decltype(segment)>, IndexRange>;
-        if constexpr (std::is_invocable_r_v<void, Fn, int64_t, int64_t>) {
+        if constexpr (std::is_invocable_r_v<void, Fn, IndexT, IndexT>) {
           if constexpr (is_range) {
-            foreach_index_in_range(segment, start_mask_position, fn);
+            optimized_foreach_index_in_range_with_pos<IndexT>(segment, IndexT(segment_pos), fn);
           }
           else {
             for (const int64_t i : segment.index_range()) {
-              fn(segment[i], start_mask_position + i);
+              fn(segment[i], segment_pos + i);
             }
           }
         }
         else {
           if constexpr (is_range) {
-            foreach_index_in_range(segment, fn);
+            optimized_foreach_index_in_range<IndexT>(segment, fn);
           }
           else {
             for (const int64_t index : segment) {
@@ -677,19 +683,19 @@ template<typename Fn> inline void IndexMask::foreach_index_optimized(Fn &&fn) co
       });
 }
 
-template<typename Fn>
+template<typename IndexT, typename Fn>
 inline void IndexMask::foreach_index_optimized(const GrainSize grain_size, Fn &&fn) const
 {
   threading::parallel_for(this->index_range(), grain_size.value, [&](const IndexRange range) {
     const IndexMask sub_mask = this->slice(range);
-    if constexpr (std::is_invocable_r_v<void, Fn, int64_t, int64_t>) {
-      sub_mask.foreach_index_optimized(
-          [&fn, range_start = range.start()](const int64_t i, const int64_t mask_position) {
-            fn(i, mask_position + range_start);
+    if constexpr (std::is_invocable_r_v<void, Fn, IndexT, IndexT>) {
+      sub_mask.foreach_index_optimized<IndexT>(
+          [fn, range_start = IndexT(range.start())](const IndexT i, const IndexT pos) {
+            fn(i, pos + range_start);
           });
     }
     else {
-      sub_mask.foreach_index_optimized(fn);
+      sub_mask.foreach_index_optimized<IndexT>(fn);
     }
   });
 }

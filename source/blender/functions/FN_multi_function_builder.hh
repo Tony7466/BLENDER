@@ -704,7 +704,7 @@ template<typename T> class CustomMF_Constant : public MultiFunction {
   void call(const IndexMask &mask, Params params, Context /*context*/) const override
   {
     MutableSpan<T> output = params.uninitialized_single_output<T>(0);
-    mask.foreach_index_optimized([&](const int64_t i) { new (&output[i]) T(value_); });
+    mask.foreach_index_optimized<int64_t>([&](const int64_t i) { new (&output[i]) T(value_); });
   }
 
   uint64_t hash() const override

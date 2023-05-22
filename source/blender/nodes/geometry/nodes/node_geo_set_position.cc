@@ -62,7 +62,7 @@ static void set_computed_position_and_offset(GeometryComponent &component,
         MutableVArraySpan<float3> out_positions_span = positions.varray;
         devirtualize_varray2(
             in_positions, in_offsets, [&](const auto in_positions, const auto in_offsets) {
-              selection.foreach_index_optimized(grain_size, [&](const int i) {
+              selection.foreach_index_optimized<int>(grain_size, [&](const int i) {
                 const float3 new_position = in_positions[i] + in_offsets[i];
                 const float3 delta = new_position - out_positions_span[i];
                 handle_right_attribute.span[i] += delta;
@@ -87,14 +87,14 @@ static void set_computed_position_and_offset(GeometryComponent &component,
       MutableVArraySpan<float3> out_positions_span = positions.varray;
       if (positions_are_original) {
         devirtualize_varray(in_offsets, [&](const auto in_offsets) {
-          selection.foreach_index_optimized(
+          selection.foreach_index_optimized<int>(
               grain_size, [&](const int i) { out_positions_span[i] += in_offsets[i]; });
         });
       }
       else {
         devirtualize_varray2(
             in_positions, in_offsets, [&](const auto in_positions, const auto in_offsets) {
-              selection.foreach_index_optimized(grain_size, [&](const int i) {
+              selection.foreach_index_optimized<int>(grain_size, [&](const int i) {
                 out_positions_span[i] = in_positions[i] + in_offsets[i];
               });
             });

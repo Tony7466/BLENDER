@@ -154,7 +154,7 @@ class ClampWrapperFunction : public mf::MultiFunction {
     /* This has actually been initialized in the call above. */
     MutableSpan<float> results = params.uninitialized_single_output<float>(output_param_index);
 
-    mask.foreach_index_optimized([&](const int i) {
+    mask.foreach_index_optimized<int>([&](const int i) {
       float &value = results[i];
       CLAMP(value, 0.0f, 1.0f);
     });
