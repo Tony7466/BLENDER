@@ -6,3 +6,4 @@ Referenced by issue #106396, UV editing Stitch crashes Blender with UV sync sele
 Referenced by pull request #106493, Fix #106396: UV stitch crash with hidden faces
 Referenced by commit 58c54b585923711b5e09e02bad2aced6e51e84bd, Fix #106396: UV stitch crash with hidden faces
 Referenced by pull request #108130, Fix #108117: Crash in uv editor with hidden geometry
+Referenced by commit ae9ac99d2b93236887dfc87402c725d68a72689d, Fix #108117: Crash in uv editor with hidden geometry
