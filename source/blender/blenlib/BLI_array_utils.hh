@@ -57,11 +57,8 @@ inline void copy(const Span<T> src,
                  const int64_t grain_size = 4096)
 {
   BLI_assert(src.size() == dst.size());
-  threading::parallel_for(selection.index_range(), grain_size, [&](const IndexRange range) {
-    for (const int64_t index : selection.slice(range)) {
-      dst[index] = src[index];
-    }
-  });
+  selection.foreach_index_optimized<int64_t>(GrainSize(grain_size),
+                                             [&](const int64_t i) { dst[i] = src[i]; });
 }
 
 /**
