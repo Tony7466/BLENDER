@@ -192,14 +192,14 @@ static void grease_pencil_blend_read_lib(BlendLibReader *reader, ID *id)
 {
   GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(id);
   for (int i = 0; i < grease_pencil->material_array_size; i++) {
-    BLO_read_id_address(reader, grease_pencil->id.lib, &grease_pencil->material_array[i]);
+    BLO_read_id_address(reader, id, &grease_pencil->material_array[i]);
   }
   for (int i = 0; i < grease_pencil->drawing_array_size; i++) {
     GreasePencilDrawingBase *drawing_base = grease_pencil->drawing_array[i];
     if (drawing_base->type == GP_DRAWING_REFERENCE) {
       GreasePencilDrawingReference *drawing_reference =
           reinterpret_cast<GreasePencilDrawingReference *>(drawing_base);
-      BLO_read_id_address(reader, grease_pencil->id.lib, &drawing_reference->id_reference);
+      BLO_read_id_address(reader, id, &drawing_reference->id_reference);
     }
   }
 }

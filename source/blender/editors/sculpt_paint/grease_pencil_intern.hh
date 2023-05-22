@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "paint_intern.h"
+#include "paint_intern.hh"
 
 #include "BLI_math_vector.hh"
 

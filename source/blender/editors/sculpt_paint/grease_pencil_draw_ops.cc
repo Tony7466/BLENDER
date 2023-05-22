@@ -22,7 +22,7 @@
 #include "WM_toolsystem.h"
 
 #include "grease_pencil_intern.hh"
-#include "paint_intern.h"
+#include "paint_intern.hh"
 
 namespace blender::ed::sculpt_paint {
 

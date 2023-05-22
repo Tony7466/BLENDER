@@ -101,7 +101,7 @@ class MaterialModule {
 
     ibuf = BKE_image_acquire_ibuf(image, &iuser, &lock);
 
-    if (ibuf != nullptr && ibuf->rect != nullptr) {
+    if (ibuf != nullptr) {
       gpu_tex = BKE_image_get_gpu_texture(image, &iuser, ibuf);
       premul = (image->alpha_mode == IMA_ALPHA_PREMUL) != 0;
     }
