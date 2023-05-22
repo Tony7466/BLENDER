@@ -311,7 +311,7 @@ struct ParallelSegmentsCollector {
   void reduce(LinearAllocator<> &main_allocator, Vector<IndexMaskSegment> &main_segments)
   {
     for (LocalData &data : this->data_by_thread) {
-      main_allocator.give_ownership_of_buffers_in(data.allocator);
+      main_allocator.transfer_ownership_from(data.allocator);
       main_segments.extend(data.segments);
     }
     parallel_sort(main_segments.begin(),
