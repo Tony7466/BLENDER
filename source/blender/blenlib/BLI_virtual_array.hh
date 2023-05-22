@@ -127,8 +127,7 @@ template<typename T> class VArrayImpl {
    */
   virtual void materialize_compressed(const IndexMask &mask, T *dst) const
   {
-    mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t i, const int64_t pos) { dst[pos] = this->get(i); });
+    mask.foreach_index([&](const int64_t i, const int64_t pos) { dst[pos] = this->get(i); });
   }
 
   /**
@@ -136,7 +135,7 @@ template<typename T> class VArrayImpl {
    */
   virtual void materialize_compressed_to_uninitialized(const IndexMask &mask, T *dst) const
   {
-    mask.foreach_index_optimized<int64_t>(
+    mask.foreach_index(
         [&](const int64_t i, const int64_t pos) { new (dst + pos) T(this->get(i)); });
   }
 
@@ -359,23 +358,22 @@ template<typename T, typename GetFunc> class VArrayImpl_For_Func final : public 
 
   void materialize(const IndexMask &mask, T *dst) const override
   {
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i) { dst[i] = get_func_(i); });
+    mask.foreach_index([&](const int64_t i) { dst[i] = get_func_(i); });
   }
 
   void materialize_to_uninitialized(const IndexMask &mask, T *dst) const override
   {
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i) { new (dst + i) T(get_func_(i)); });
+    mask.foreach_index([&](const int64_t i) { new (dst + i) T(get_func_(i)); });
   }
 
   void materialize_compressed(const IndexMask &mask, T *dst) const override
   {
-    mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t i, const int64_t pos) { dst[pos] = get_func_(i); });
+    mask.foreach_index([&](const int64_t i, const int64_t pos) { dst[pos] = get_func_(i); });
   }
 
   void materialize_compressed_to_uninitialized(const IndexMask &mask, T *dst) const override
   {
-    mask.foreach_index_optimized<int64_t>(
+    mask.foreach_index(
         [&](const int64_t i, const int64_t pos) { new (dst + pos) T(get_func_(i)); });
   }
 };
