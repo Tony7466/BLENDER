@@ -2934,6 +2934,7 @@ static void rna_def_view3d_cursor(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_float_sdna(prop, NULL, "rotation_euler");
   RNA_def_property_ui_text(prop, "Euler Rotation", "3D rotation");
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 100, RNA_TRANSLATION_PREC_DEFAULT);
   RNA_def_property_update(prop, NC_WINDOW, NULL);
 
   prop = RNA_def_property(srna, "rotation_mode", PROP_ENUM, PROP_NONE);
@@ -4353,6 +4354,12 @@ static void rna_def_view_layer_eevee(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_pass_bloom", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "render_passes", EEVEE_RENDER_PASS_BLOOM);
   RNA_def_property_ui_text(prop, "Bloom", "Deliver bloom pass");
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_ViewLayer_pass_update");
+
+  prop = RNA_def_property(srna, "use_pass_transparent", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "render_passes", EEVEE_RENDER_PASS_TRANSPARENT);
+  RNA_def_property_ui_text(
+      prop, "Transparent", "Deliver alpha blended surfaces in a separate pass");
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_ViewLayer_pass_update");
 }
 
