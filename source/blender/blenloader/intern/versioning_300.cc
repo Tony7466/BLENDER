@@ -497,44 +497,6 @@ static bool do_versions_sequencer_color_balance_sop(Sequence *seq, void * /*user
   return true;
 }
 
-static bNodeLink *find_connected_link(bNodeTree *ntree, bNodeSocket *in_socket)
-{
-  LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
-    if (link->tosock == in_socket) {
-      return link;
-    }
-  }
-  return nullptr;
-}
-
-static void add_realize_instances_before_socket(bNodeTree *ntree,
-                                                bNode *node,
-                                                bNodeSocket *geometry_socket)
-{
-  BLI_assert(geometry_socket->type == SOCK_GEOMETRY);
-  bNodeLink *link = find_connected_link(ntree, geometry_socket);
-  if (link == nullptr) {
-    return;
-  }
-
-  /* If the realize instances node is already before this socket, no need to continue. */
-  if (link->fromnode->type == GEO_NODE_REALIZE_INSTANCES) {
-    return;
-  }
-
-  bNode *realize_node = nodeAddStaticNode(nullptr, ntree, GEO_NODE_REALIZE_INSTANCES);
-  realize_node->parent = node->parent;
-  realize_node->locx = node->locx - 100;
-  realize_node->locy = node->locy;
-  nodeAddLink(ntree,
-              link->fromnode,
-              link->fromsock,
-              realize_node,
-              static_cast<bNodeSocket *>(realize_node->inputs.first));
-  link->fromnode = realize_node;
-  link->fromsock = static_cast<bNodeSocket *>(realize_node->outputs.first);
-}
-
 /**
  * If a node used to realize instances implicitly and will no longer do so in 3.0, add a "Realize
  * Instances" node in front of it to avoid changing behavior. Don't do this if the node will be
@@ -680,6 +642,11 @@ static bool seq_speed_factor_set(Sequence *seq, void *user_data)
     }
     if (scene->adt && !BLI_listbase_is_empty(&scene->adt->drivers)) {
       seq_speed_factor_fix_rna_path(seq, &scene->adt->drivers);
+    }
+
+    /* Pitch value of 0 has been found in some files. This would cause problems. */
+    if (seq->pitch <= 0.0f) {
+      seq->pitch = 1.0f;
     }
 
     seq->speed_factor = seq->pitch;
@@ -1174,7 +1141,8 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
                      SOCK_OBJECT,
                      SOCK_COLLECTION,
                      SOCK_TEXTURE,
-                     SOCK_MATERIAL)) {
+                     SOCK_MATERIAL))
+            {
               link->tosock = link->tosock->next;
             }
           }
@@ -2214,6 +2182,46 @@ static void versioning_replace_legacy_mix_rgb_node(bNodeTree *ntree)
   }
 }
 
+static void versioning_replace_legacy_glossy_node(bNodeTree *ntree)
+{
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (node->type == SH_NODE_BSDF_GLOSSY_LEGACY) {
+      strcpy(node->idname, "ShaderNodeBsdfAnisotropic");
+      node->type = SH_NODE_BSDF_GLOSSY;
+    }
+  }
+}
+
+static void versioning_remove_microfacet_sharp_distribution(bNodeTree *ntree)
+{
+  /* Find all glossy, glass and refraction BSDF nodes that have their distribution
+   * set to SHARP and set them to GGX, disconnect any link to the Roughness input
+   * and set its value to zero. */
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (!ELEM(node->type, SH_NODE_BSDF_GLOSSY, SH_NODE_BSDF_GLASS, SH_NODE_BSDF_REFRACTION)) {
+      continue;
+    }
+    if (node->custom1 != SHD_GLOSSY_SHARP_DEPRECATED) {
+      continue;
+    }
+
+    node->custom1 = SHD_GLOSSY_GGX;
+    LISTBASE_FOREACH (bNodeSocket *, socket, &node->inputs) {
+      if (!STREQ(socket->identifier, "Roughness")) {
+        continue;
+      }
+
+      if (socket->link != nullptr) {
+        nodeRemLink(ntree, socket->link);
+      }
+      bNodeSocketValueFloat *socket_value = (bNodeSocketValueFloat *)socket->default_value;
+      socket_value->value = 0.0f;
+
+      break;
+    }
+  }
+}
+
 static void version_fix_image_format_copy(Main *bmain, ImageFormatData *format)
 {
   /* Fix bug where curves in image format were not properly copied to file output
@@ -2645,7 +2653,8 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_ATLEAST(bmain, 300, 17)) {
     if (!DNA_struct_elem_find(
-            fd->filesdna, "View3DOverlay", "float", "normals_constant_screen_size")) {
+            fd->filesdna, "View3DOverlay", "float", "normals_constant_screen_size"))
+    {
       LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
         LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
           LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
@@ -2673,7 +2682,8 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_ATLEAST(bmain, 300, 18)) {
     if (!DNA_struct_elem_find(
-            fd->filesdna, "WorkSpace", "AssetLibraryReference", "asset_library_ref")) {
+            fd->filesdna, "WorkSpace", "AssetLibraryReference", "asset_library_ref"))
+    {
       LISTBASE_FOREACH (WorkSpace *, workspace, &bmain->workspaces) {
         BKE_asset_library_reference_init_default(&workspace->asset_library_ref);
       }
@@ -3245,20 +3255,6 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
             snode->overlay.flag |= SN_OVERLAY_SHOW_PATH;
           }
         }
-      }
-    }
-  }
-
-  if (!MAIN_VERSION_ATLEAST(bmain, 301, 5)) {
-    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
-      if (ntree->type != NTREE_GEOMETRY) {
-        continue;
-      }
-      LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-        if (node->type != GEO_NODE_REALIZE_INSTANCES) {
-          continue;
-        }
-        node->custom1 |= GEO_NODE_REALIZE_INSTANCES_LEGACY_BEHAVIOR;
       }
     }
   }
@@ -4390,6 +4386,14 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 10)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      /* Set default values for new members. */
+      scene->toolsettings->snap_mode_tools = SCE_SNAP_MODE_GEOM;
+      scene->toolsettings->plane_axis = 2;
+    }
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -4401,5 +4405,12 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+
+    /* Convert anisotropic BSDF node to glossy BSDF. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      versioning_replace_legacy_glossy_node(ntree);
+      versioning_remove_microfacet_sharp_distribution(ntree);
+    }
+    FOREACH_NODETREE_END;
   }
 }
