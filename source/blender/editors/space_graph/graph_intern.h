@@ -74,6 +74,13 @@ enum eGraphKeys_LeftRightSelect_Mode {
   GRAPHKEYS_LRSEL_RIGHT,
 };
 
+/* Defines for handle selection */
+enum eGraphKey_HandleSelect_Mode {
+  GRAPHKEYS_HANDLESEL_LR = 0,
+  GRAPHKEYS_HANDLESEL_L,
+  GRAPHKEYS_HANDLESEL_R,
+};
+
 /* defines for column-select mode */
 enum eGraphKeys_ColumnSelect_Mode {
   GRAPHKEYS_COLUMNSEL_KEYS = 0,
@@ -124,6 +131,7 @@ void GRAPH_OT_sound_bake(struct wmOperatorType *ot);
 void GRAPH_OT_smooth(struct wmOperatorType *ot);
 void GRAPH_OT_euler_filter(struct wmOperatorType *ot);
 
+void GRAPH_OT_select_handles(struct wmOperatorType *ot);
 void GRAPH_OT_handle_type(struct wmOperatorType *ot);
 void GRAPH_OT_interpolation_type(struct wmOperatorType *ot);
 void GRAPH_OT_extrapolation_type(struct wmOperatorType *ot);
