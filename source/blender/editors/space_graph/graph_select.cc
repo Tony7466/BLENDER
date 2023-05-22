@@ -216,7 +216,8 @@ static void get_nearest_fcurve_verts_list(bAnimContext *ac, const int mval[2], L
         if (fcurve_handle_sel_check(sipo, bezt1)) {
           /* first handle only visible if previous segment had handles */
           if ((!prevbezt && (bezt1->ipo == BEZT_IPO_BEZ)) ||
-              (prevbezt && (prevbezt->ipo == BEZT_IPO_BEZ))) {
+              (prevbezt && (prevbezt->ipo == BEZT_IPO_BEZ)))
+          {
             nearest_fcurve_vert_store(matches,
                                       v2d,
                                       fcu,
@@ -2064,3 +2065,131 @@ void GRAPH_OT_clickselect(wmOperatorType *ot)
 }
 
 /** \} */
+/* Handle selection */
+
+/* defines for left-right select tool */
+static const EnumPropertyItem prop_graphkeys_leftright_handle_select_types[] = {
+    {GRAPHKEYS_HANDLESEL_LR, "CHECK", 0, "Select Both Handles", ""},
+    {GRAPHKEYS_HANDLESEL_L, "LEFT", 0, "Select Left Handles", ""},
+    {GRAPHKEYS_HANDLESEL_R, "RIGHT", 0, "Select Right Handles", ""},
+    {0, NULL, 0, NULL, NULL},
+};
+
+short bezt_sel_left_handles(KeyframeEditData *ked, BezTriple *bezt)
+{
+  if (BEZT_ISSEL_ANY(bezt)) {
+    BEZT_SEL_IDX(bezt, 0);
+    BEZT_DESEL_IDX(bezt, 2);
+  }
+  return 0;
+}
+
+short bezt_sel_right_handles(KeyframeEditData *ked, BezTriple *bezt)
+{
+  if (BEZT_ISSEL_ANY(bezt)) {
+    BEZT_DESEL_IDX(bezt, 0);
+    BEZT_SEL_IDX(bezt, 2);
+  }
+  return 0;
+}
+
+short bezt_sel_both_handles(KeyframeEditData *ked, BezTriple *bezt)
+{
+  if (BEZT_ISSEL_ANY(bezt)) {
+    BEZT_SEL_IDX(bezt, 0);
+    BEZT_SEL_IDX(bezt, 2);
+  }
+  return 0;
+}
+
+short bezt_desel_keys(KeyframeEditData *ked, BezTriple *bezt)
+{
+  if (BEZT_ISSEL_ANY(bezt)) {
+    BEZT_DESEL_IDX(bezt, 1);
+  }
+  return 0;
+}
+
+static void graphkeys_de_select_handles(bAnimContext *ac, short mode, const bool desel_kf)
+{
+  ListBase anim_data = {NULL, NULL};
+  bAnimListElem *ale;
+  int filter;
+
+  KeyframeEditData ked;
+
+  filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FCURVESONLY |
+            ANIMFILTER_NODUPLIS);
+  ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
+
+  for (ale = anim_data.first; ale; ale = ale->next) {
+    FCurve *fcu = (FCurve *)ale->key_data;
+
+    /* Only continue if F-Curve has keyframes. */
+    if (fcu->bezt == NULL) {
+      continue;
+    }
+    switch (mode) {
+      case GRAPHKEYS_HANDLESEL_LR: {
+        ANIM_fcurve_keyframes_loop(&ked, fcu, NULL, bezt_sel_both_handles, NULL);
+      } break;
+      case GRAPHKEYS_HANDLESEL_R: {
+        ANIM_fcurve_keyframes_loop(&ked, fcu, NULL, bezt_sel_right_handles, NULL);
+      } break;
+      case GRAPHKEYS_HANDLESEL_L: {
+        ANIM_fcurve_keyframes_loop(&ked, fcu, NULL, bezt_sel_left_handles, NULL);
+      } break;
+    }
+    if (desel_kf) {
+      ANIM_fcurve_keyframes_loop(&ked, fcu, NULL, bezt_desel_keys, NULL);
+    }
+  }
+
+  /* Cleanup */
+  ANIM_animdata_freelist(&anim_data);
+}
+
+static int graphkeys_select_handles_exec(bContext *C, wmOperator *op)
+{
+  bAnimContext ac;
+
+  /* Get editor data. */
+  if (ANIM_animdata_get_context(C, &ac) == 0) {
+    return OPERATOR_CANCELLED;
+  }
+
+  short leftright = RNA_enum_get(op->ptr, "mode");
+  bool desel_kf = RNA_boolean_get(op->ptr, "desel_kf");
+  /* Perform selection changes. */
+  graphkeys_de_select_handles(&ac, leftright, desel_kf);
+
+  /* Set notifier that keyframe selection has changed. */
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
+
+  return OPERATOR_FINISHED;
+}
+
+void GRAPH_OT_select_handles(wmOperatorType *ot)
+{
+  PropertyRNA *prop;
+
+  /* identifiers */
+  ot->name = "Select Handles";
+  ot->idname = "GRAPH_OT_select_handles";
+  ot->description = "(De)Select handles of based on the active selection";
+
+  /* callbacks */
+  ot->poll = graphop_visible_keyframes_poll;
+  ot->exec = graphkeys_select_handles_exec;
+
+  /* flags */
+  ot->flag = OPTYPE_UNDO | OPTYPE_REGISTER;
+
+  ot->prop = RNA_def_enum(ot->srna,
+                          "mode",
+                          prop_graphkeys_leftright_handle_select_types,
+                          GRAPHKEYS_LRSEL_TEST,
+                          "Mode",
+                          "(De)Select handles based on selection");
+  prop = RNA_def_boolean(ot->srna, "desel_kf", 1, "Deselect Keyframes", "");
+}

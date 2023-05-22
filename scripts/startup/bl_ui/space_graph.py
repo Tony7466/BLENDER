@@ -218,6 +218,10 @@ class GRAPH_MT_select(Menu):
         props.mode = 'RIGHT'
 
         layout.separator()
+        # layout.operator("graph.select_handles", text="All").action = 'SELECT'
+        layout.operator("graph.select_handles")
+
+        layout.separator()
         layout.operator("graph.select_more")
         layout.operator("graph.select_less")
 

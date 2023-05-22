@@ -448,6 +448,8 @@ void graphedit_operatortypes()
   WM_operatortype_append(GRAPH_OT_select_less);
   WM_operatortype_append(GRAPH_OT_select_leftright);
 
+  WM_operatortype_append(GRAPH_OT_select_handles);
+
   /* editing */
   WM_operatortype_append(GRAPH_OT_snap);
   WM_operatortype_append(GRAPH_OT_equalize_handles);
