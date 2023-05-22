@@ -5472,7 +5472,7 @@ NODE_DEFINE(BrightContrastNode)
   NodeType *type = NodeType::add("brightness_contrast", create, NodeType::SHADER);
 
   SOCKET_IN_COLOR(color, "Color", zero_float3());
-  SOCKET_IN_FLOAT(bright, "Bright", 0.0f);
+  SOCKET_IN_FLOAT(bright, "Brightness", 0.0f);
   SOCKET_IN_FLOAT(contrast, "Contrast", 0.0f);
 
   SOCKET_OUT_COLOR(color, "Color");
@@ -5492,7 +5492,7 @@ void BrightContrastNode::constant_fold(const ConstantFolder &folder)
 void BrightContrastNode::compile(SVMCompiler &compiler)
 {
   ShaderInput *color_in = input("Color");
-  ShaderInput *bright_in = input("Bright");
+  ShaderInput *bright_in = input("Brightness");
   ShaderInput *contrast_in = input("Contrast");
   ShaderOutput *color_out = output("Color");
 
