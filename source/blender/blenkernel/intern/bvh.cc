@@ -19,18 +19,14 @@
 
 namespace blender::bvh {
 
-BVHTree::BVHTree()
-{
-}
+BVHTree::BVHTree() {}
 
 BVHTree::~BVHTree()
 {
   free();
 }
 
-static void rtc_error_func(void *, enum RTCError, const char *str)
-{
-}
+static void rtc_error_func(void *, enum RTCError, const char *str) {}
 
 static bool rtc_memory_monitor_func(void *userPtr, const ssize_t bytes, const bool)
 {
@@ -60,40 +56,40 @@ struct BvhBuildContext {
 
 void set_tri_vertex_buffer(RTCGeometry geom_id, Span<float3> positions, const bool update)
 {
-  //const Attribute *attr_mP = NULL;
+  // const Attribute *attr_mP = NULL;
   size_t num_motion_steps = 1;
-  //int t_mid = 0;
-  //if (mesh->has_motion_blur()) {
-  //  attr_mP = mesh->attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
-  //  if (attr_mP) {
-  //    num_motion_steps = mesh->get_motion_steps();
-  //    t_mid = (num_motion_steps - 1) / 2;
-  //    if (num_motion_steps > RTC_MAX_TIME_STEP_COUNT) {
-  //      assert(0);
-  //      num_motion_steps = RTC_MAX_TIME_STEP_COUNT;
-  //    }
-  //  }
-  //}
+  // int t_mid = 0;
+  // if (mesh->has_motion_blur()) {
+  //   attr_mP = mesh->attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
+  //   if (attr_mP) {
+  //     num_motion_steps = mesh->get_motion_steps();
+  //     t_mid = (num_motion_steps - 1) / 2;
+  //     if (num_motion_steps > RTC_MAX_TIME_STEP_COUNT) {
+  //       assert(0);
+  //       num_motion_steps = RTC_MAX_TIME_STEP_COUNT;
+  //     }
+  //   }
+  // }
 
   const int num_verts = positions.size();
   for (int t = 0; t < num_motion_steps; ++t) {
     const float3 *verts;
-    //if (t == t_mid) {
-      verts = positions.data();
+    // if (t == t_mid) {
+    verts = positions.data();
     //}
-    //else {
+    // else {
     //  int t_ = (t > t_mid) ? (t - 1) : t;
     //  verts = &attr_mP->data_float3()[t_ * num_verts];
     //}
 
-    float *rtc_verts = (update) ? (float *)rtcGetGeometryBufferData(
-                                        geom_id, RTC_BUFFER_TYPE_VERTEX, t) :
-                                    (float *)rtcSetNewGeometryBuffer(geom_id,
-                                                                     RTC_BUFFER_TYPE_VERTEX,
-                                                                     t,
-                                                                     RTC_FORMAT_FLOAT3,
-                                                                     sizeof(float) * 3,
-                                                                     num_verts);
+    float *rtc_verts = (update) ?
+                           (float *)rtcGetGeometryBufferData(geom_id, RTC_BUFFER_TYPE_VERTEX, t) :
+                           (float *)rtcSetNewGeometryBuffer(geom_id,
+                                                            RTC_BUFFER_TYPE_VERTEX,
+                                                            t,
+                                                            RTC_FORMAT_FLOAT3,
+                                                            sizeof(float) * 3,
+                                                            num_verts);
 
     BLI_assert(rtc_verts);
     if (rtc_verts) {
@@ -111,7 +107,11 @@ void set_tri_vertex_buffer(RTCGeometry geom_id, Span<float3> positions, const bo
   }
 }
 
-void add_triangles(BvhBuildContext ctx, int id, Span<float3> positions, Span<MLoop> loops, Span<MLoopTri> looptris)
+void add_triangles(BvhBuildContext ctx,
+                   int id,
+                   Span<float3> positions,
+                   Span<int> corner_verts,
+                   Span<MLoopTri> looptris)
 {
   // size_t prim_offset = mesh->prim_offset;
 
@@ -129,29 +129,30 @@ void add_triangles(BvhBuildContext ctx, int id, Span<float3> positions, Span<MLo
 
   RTCGeometry geom_id = rtcNewGeometry(ctx.device, RTC_GEOMETRY_TYPE_TRIANGLE);
   rtcSetGeometryBuildQuality(geom_id, ctx.build_quality);
-  //rtcSetGeometryTimeStepCount(geom_id, num_motion_steps);
+  // rtcSetGeometryTimeStepCount(geom_id, num_motion_steps);
 
   unsigned *rtc_indices = static_cast<unsigned *>(rtcSetNewGeometryBuffer(
       geom_id, RTC_BUFFER_TYPE_INDEX, 0, RTC_FORMAT_UINT3, sizeof(int) * 3, looptris.size()));
   BLI_assert(rtc_indices);
-  //if (!rtc_indices) {
-  //  VLOG_WARNING << "Embree could not create new geometry buffer for mesh " << mesh->name.c_str()
-  //               << ".\n";
-  //  return;
-  //}
+  // if (!rtc_indices) {
+  //   VLOG_WARNING << "Embree could not create new geometry buffer for mesh " <<
+  //   mesh->name.c_str()
+  //                << ".\n";
+  //   return;
+  // }
   for (size_t j = 0; j < looptris.size(); ++j) {
-    rtc_indices[0] = loops[looptris[j].tri[0]].v;
-    rtc_indices[1] = loops[looptris[j].tri[1]].v;
-    rtc_indices[2] = loops[looptris[j].tri[2]].v;
+    rtc_indices[0] = corner_verts[looptris[j].tri[0]];
+    rtc_indices[1] = corner_verts[looptris[j].tri[1]];
+    rtc_indices[2] = corner_verts[looptris[j].tri[2]];
     rtc_indices += 3;
   }
 
   set_tri_vertex_buffer(geom_id, positions, false);
 
-  //rtcSetGeometryUserData(geom_id, (void *)prim_offset);
-  //rtcSetGeometryOccludedFilterFunction(geom_id, kernel_embree_filter_occluded_func);
-  //rtcSetGeometryIntersectFilterFunction(geom_id, kernel_embree_filter_intersection_func);
-  //rtcSetGeometryMask(geom_id, 1);
+  // rtcSetGeometryUserData(geom_id, (void *)prim_offset);
+  // rtcSetGeometryOccludedFilterFunction(geom_id, kernel_embree_filter_occluded_func);
+  // rtcSetGeometryIntersectFilterFunction(geom_id, kernel_embree_filter_intersection_func);
+  // rtcSetGeometryMask(geom_id, 1);
 
   rtcCommitGeometry(geom_id);
   rtcAttachGeometryByID(ctx.scene, geom_id, id);
@@ -167,10 +168,10 @@ void add_mesh(BvhBuildContext ctx, int id, const Mesh &mesh)
   }
 
   add_triangles(
-      ctx, id, mesh.vert_positions(), mesh.loops(), Span<MLoopTri>(looptri, looptri_len));
+      ctx, id, mesh.vert_positions(), mesh.corner_verts(), Span<MLoopTri>(looptri, looptri_len));
 }
 
-}
+}  // namespace
 
 void BVHTree::build_single_mesh(const Mesh &mesh)
 {
@@ -215,7 +216,8 @@ bool BVHTree::ray_intersect1(const BVHRay &ray, BVHRayHit &r_hit) const
   rtcIntersect1(rtc_scene, &rtc_ctx, &rtc_hit);
 
   if (rtc_hit.hit.geomID == RTC_INVALID_GEOMETRY_ID ||
-      rtc_hit.hit.primID == RTC_INVALID_GEOMETRY_ID) {
+      rtc_hit.hit.primID == RTC_INVALID_GEOMETRY_ID)
+  {
     return false;
   }
 
@@ -244,33 +246,29 @@ bool BVHTree::ray_intersect1(const BVHRay &ray, BVHRayHit &r_hit) const
   return true;
 }
 
-}  // namespace blender
+}  // namespace blender::bvh
 
 #else /* WITH_BVH_EMBREE */
 
-namespace blender {
+namespace blender::bvh {
 
-BVHTree::BVHTree()
-{
-}
+BVHTree::BVHTree() {}
 
-BVHTree::~BVHTree()
-{
-}
+BVHTree::~BVHTree() {}
 
-void BVHTree::free()
-{
-}
+void BVHTree::free() {}
 
 void BVHTree::build_single_mesh(const Mesh &mesh)
 {
+  UNUSED_VARS(mesh);
 }
 
-bool BVHTree::ray_intersect1(const BVHRay &ray, BVHRayHit &r_hit)
+bool BVHTree::ray_intersect1(const BVHRay &ray, BVHRayHit &r_hit) const
 {
+  UNUSED_VARS(ray, r_hit);
   return false;
 }
 
-}  // namespace blender
+}  // namespace blender::bvh
 
 #endif /* WITH_BVH_EMBREE */

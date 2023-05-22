@@ -16,6 +16,7 @@
 #include "DNA_meshdata_types.h"
 
 #include "BKE_attribute.h"
+#include "BKE_attribute_math.hh"
 #include "BKE_geometry_fields.hh"
 
 struct Mesh;

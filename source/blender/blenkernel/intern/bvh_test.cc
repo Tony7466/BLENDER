@@ -15,6 +15,7 @@
 #include "BKE_main.h"
 #include "BKE_main_namemap.h"
 #include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_modifier.h"
 #include "BKE_node.h"
 
@@ -41,7 +42,7 @@
 
 #include "RNA_define.h"
 
-#include "GHOST_Path-api.h"
+#include "GHOST_Path-api.hh"
 
 #include "CLG_log.h"
 
@@ -57,9 +58,7 @@ struct ScopedTimer {
   double start_time_;
 
  public:
-  ScopedTimer(StringRef name) : name_(name), start_time_(PIL_check_seconds_timer())
-  {
-  }
+  ScopedTimer(StringRef name) : name_(name), start_time_(PIL_check_seconds_timer()) {}
 
   ~ScopedTimer()
   {
@@ -94,10 +93,7 @@ class BVHPerfTest : public testing::Test {
     // CLG_exit();
   }
 
-  void init_ray(RandomNumberGenerator &rng,
-                float3 &r_origin,
-                float3 &r_direction,
-                float &r_length)
+  void init_ray(RandomNumberGenerator &rng, float3 &r_origin, float3 &r_direction, float &r_length)
   {
     r_origin = float3(rng.get_float(), rng.get_float(), rng.get_float()) * 200.0f - 100.0f;
     r_direction = rng.get_unit_float3();
@@ -205,7 +201,7 @@ class BVHBlendFileTest : public testing::Test {
     RNA_init();
     BKE_node_system_init();
     BKE_callback_global_init();
-    //BKE_vfont_builtin_register(datatoc_bfont_pfb, datatoc_bfont_pfb_size);
+    // BKE_vfont_builtin_register(datatoc_bfont_pfb, datatoc_bfont_pfb_size);
 
     G.background = true;
     G.factory_startup = true;
@@ -332,19 +328,17 @@ class UniformAreaTrianglesGenerator : public MeshGenerator {
   float min_angle_ = DEG2RAD(20.0f);
   float min_side_factor = 0.333f;
 
-  UniformAreaTrianglesGenerator(int num_triangles) : MeshGenerator(num_triangles)
-  {
-  }
+  UniformAreaTrianglesGenerator(int num_triangles) : MeshGenerator(num_triangles) {}
 
   Mesh *create_mesh() const
   {
     const int num_tris = num_triangles_;
     const int num_verts = num_tris * 3;
-    const int num_loops = num_tris * 3;
-    Mesh *mesh = BKE_mesh_new_nomain(num_verts, 0, 0, num_loops, num_tris);
+    const int num_corners = num_tris * 3;
+    Mesh *mesh = BKE_mesh_new_nomain(num_verts, 0, num_tris, num_corners);
     MutableSpan<float3> positions = mesh->vert_positions_for_write();
-    MutableSpan<MPoly> polys = mesh->polys_for_write();
-    MutableSpan<MLoop> loops = mesh->loops_for_write();
+    MutableSpan<int> poly_offsets = mesh->poly_offsets_for_write();
+    MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
 
     RandomNumberGenerator rng(mesh_seed_);
     for (int i = 0; i < num_tris; ++i) {
@@ -357,7 +351,8 @@ class UniformAreaTrianglesGenerator : public MeshGenerator {
         v = rng.get_unit_float3();
         dot_uv = math::dot(u, v);
       } while (math::abs(dot_uv) >= math::cos(min_angle_));
-      const float side_scale = math::sqrt(2.0f * triangle_area() / math::sqrt(1.0f - dot_uv * dot_uv));
+      const float side_scale = math::sqrt(2.0f * triangle_area() /
+                                          math::sqrt(1.0f - dot_uv * dot_uv));
       const float r = min_side_factor + (1.0f - min_side_factor) * rng.get_float();
       const float s = 1.0f / r;
       float3 p1 = p0 + side_scale * r * u;
@@ -367,13 +362,13 @@ class UniformAreaTrianglesGenerator : public MeshGenerator {
       positions[i * 3 + 1] = p1;
       positions[i * 3 + 2] = p2;
 
-      polys[i].loopstart = i * 3;
-      polys[i].totloop = 3;
+      poly_offsets[i] = i * 3;
 
-      loops[i * 3 + 0].v = i * 3 + 0;
-      loops[i * 3 + 1].v = i * 3 + 1;
-      loops[i * 3 + 2].v = i * 3 + 2;
+      corner_verts[i * 3 + 0] = i * 3 + 0;
+      corner_verts[i * 3 + 1] = i * 3 + 1;
+      corner_verts[i * 3 + 2] = i * 3 + 2;
     }
+    poly_offsets[num_tris] = num_tris * 3;
     BKE_mesh_calc_edges(mesh, false, false);
 
     return mesh;
@@ -386,9 +381,7 @@ class DonutCloudGenerator : MeshGenerator {
   int min_segments_ = 4;
   int max_segments_ = 128;
 
-  DonutCloudGenerator(int num_triangles) : MeshGenerator(num_triangles)
-  {
-  }
+  DonutCloudGenerator(int num_triangles) : MeshGenerator(num_triangles) {}
 
   void get_donut_params(RandomNumberGenerator &rng,
                         int &r_major_segments,
@@ -411,15 +404,16 @@ class DonutCloudGenerator : MeshGenerator {
     mul_qt_qtqt((float4 &)r_rotation,
                 float4(math::sin(a0), 0.0f, 0.0f, math::cos(a0)),
                 float4(0.0f, math::sin(a1), 0.0f, math::cos(a1)));
-    mul_qt_qtqt(
-        (float4 &)r_rotation, (float4)r_rotation, float4(0.0f, 0.0f, math::sin(a2), math::cos(a2)));
+    mul_qt_qtqt((float4 &)r_rotation,
+                (float4)r_rotation,
+                float4(0.0f, 0.0f, math::sin(a2), math::cos(a2)));
   }
 
-  void generate_donut(MutableSpan<MPoly> polys,
-                      MutableSpan<MLoop> loops,
+  void generate_donut(MutableSpan<int> poly_offsets,
+                      MutableSpan<int> corner_verts,
                       MutableSpan<float3> positions,
-                      int poly_start,
-                      int loop_start,
+                      int verts_start,
+                      int corners_start,
                       int major_segments,
                       int minor_segments,
                       float major_radius,
@@ -427,8 +421,8 @@ class DonutCloudGenerator : MeshGenerator {
                       const float3 &center,
                       const math::Quaternion &rotation) const
   {
-    BLI_assert(polys.size() == major_segments * minor_segments);
-    BLI_assert(loops.size() == 4 * major_segments * minor_segments);
+    BLI_assert(poly_offsets.size() == major_segments * minor_segments + 1);
+    BLI_assert(corner_verts.size() == 4 * major_segments * minor_segments);
     BLI_assert(positions.size() == major_segments * minor_segments);
 
     const float major_delta = M_PI * 2.0f / (float)major_segments;
@@ -437,23 +431,21 @@ class DonutCloudGenerator : MeshGenerator {
       for (const int j : IndexRange(minor_segments)) {
         const int index = i * minor_segments + j;
 
-        polys[index].loopstart = loop_start + index * 4;
-        //BLI_assert(polys[index].loopstart < loop_start + loops.size());
-        polys[index].totloop = 4;
+        poly_offsets[index] = corners_start + index * 4;
 
-        const int vert00 = poly_start + index;
+        const int vert00 = verts_start + index;
         const int vert10 = j + 1 < minor_segments ? vert00 + 1 : vert00 - j;
         const int vert01 = i + 1 < major_segments ? vert00 + minor_segments :
                                                     vert00 - i * minor_segments;
         const int vert11 = j + 1 < minor_segments ? vert01 + 1 : vert01 - j;
-        //BLI_assert(vert00 < poly_start + polys.size());
-        //BLI_assert(vert10 < poly_start + polys.size());
-        //BLI_assert(vert01 < poly_start + polys.size());
-        //BLI_assert(vert11 < poly_start + polys.size());
-        loops[index * 4 + 0].v = vert00;
-        loops[index * 4 + 1].v = vert10;
-        loops[index * 4 + 2].v = vert11;
-        loops[index * 4 + 3].v = vert01;
+        // BLI_assert(vert00 < poly_start + polys.size());
+        // BLI_assert(vert10 < poly_start + polys.size());
+        // BLI_assert(vert01 < poly_start + polys.size());
+        // BLI_assert(vert11 < poly_start + polys.size());
+        corner_verts[index * 4 + 0] = vert00;
+        corner_verts[index * 4 + 1] = vert10;
+        corner_verts[index * 4 + 2] = vert11;
+        corner_verts[index * 4 + 3] = vert01;
 
         const float major_angle = i * major_delta;
         const float minor_angle = j * minor_delta;
@@ -469,6 +461,8 @@ class DonutCloudGenerator : MeshGenerator {
         positions[index] = pos;
       }
     }
+    poly_offsets[major_segments * minor_segments] = corners_start +
+                                                    major_segments * minor_segments * 4;
   }
 
   Mesh *create_mesh() const
@@ -494,15 +488,16 @@ class DonutCloudGenerator : MeshGenerator {
     }
 
     /* Torus has same number of verts as polys, 4 loops per poly */
-    Mesh *mesh = BKE_mesh_new_nomain(num_polys, 0, 0, num_polys * 4, num_polys);
+    Mesh *mesh = BKE_mesh_new_nomain(num_polys, 0, num_polys, num_polys * 4);
     MutableSpan<float3> positions = mesh->vert_positions_for_write();
-    MutableSpan<MPoly> polys = mesh->polys_for_write();
-    MutableSpan<MLoop> loops = mesh->loops_for_write();
+    MutableSpan<int> poly_offsets = mesh->poly_offsets_for_write();
+    MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
 
     /* Reset RNG */
     rng.seed(mesh_seed_);
-    int poly_start = 0;
-    int loop_start = 0;
+    int polys_start = 0;
+    int corners_start = 0;
+    int verts_start = 0;
     for (const int idonut : IndexRange(num_donuts)) {
       float r_maj, r_min;
       int seg_maj, seg_min;
@@ -511,11 +506,11 @@ class DonutCloudGenerator : MeshGenerator {
       get_donut_params(rng, seg_maj, seg_min, r_maj, r_min, center, rotation);
       const int donut_polys = seg_min * seg_maj;
 
-      generate_donut(polys.slice(poly_start, donut_polys),
-                     loops.slice(loop_start, donut_polys * 4),
-                     positions.slice(poly_start, donut_polys),
-                     poly_start,
-                     loop_start,
+      generate_donut(poly_offsets.slice(polys_start, donut_polys + 1),
+                     corner_verts.slice(corners_start, donut_polys * 4),
+                     positions.slice(verts_start, donut_polys),
+                     verts_start,
+                     corners_start,
                      seg_maj,
                      seg_min,
                      r_maj,
@@ -523,12 +518,13 @@ class DonutCloudGenerator : MeshGenerator {
                      center,
                      rotation);
 
-      poly_start += donut_polys;
-      loop_start += donut_polys * 4;
+      polys_start += donut_polys;
+      corners_start += donut_polys * 4;
+      verts_start += donut_polys;
     }
     BKE_mesh_calc_edges(mesh, false, false);
 
-    //BKE_mesh_validate(mesh, true, true);
+    // BKE_mesh_validate(mesh, true, true);
 
     return mesh;
   }

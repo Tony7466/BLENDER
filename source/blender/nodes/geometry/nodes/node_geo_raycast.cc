@@ -1,10 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BLI_index_mask_ops.hh"
-
 #include "DNA_mesh_types.h"
 
-#include "BKE_attribute_math.hh"
 #include "BKE_mesh_sample.hh"
 
 #include "UI_interface.h"
@@ -196,8 +193,7 @@ static void raycast_to_mesh(BVHType bvh_type,
           }
         }
       }
-    }
-    break;
+    } break;
 
     case BVHType::Embree: {
       const bvh::BVHTree &tree = mesh.bvh_tree();
@@ -210,7 +206,6 @@ static void raycast_to_mesh(BVHType bvh_type,
 
         bvh::BVHRayHit hit;
         if (tree.ray_intersect1(ray, hit)) {
-          hit_count++;
           if (!r_hit.is_empty()) {
             r_hit[i] = true;
           }
@@ -247,8 +242,7 @@ static void raycast_to_mesh(BVHType bvh_type,
           }
         }
       }
-    }
-    break;
+    } break;
   }
 }
 
@@ -258,7 +252,8 @@ class RaycastFunction : public mf::MultiFunction {
   GeometrySet target_;
 
  public:
-  RaycastFunction(BVHType bvh_type, GeometrySet target) : bvh_type_(bvh_type), target_(std::move(target))
+  RaycastFunction(BVHType bvh_type, GeometrySet target)
+      : bvh_type_(bvh_type), target_(std::move(target))
   {
     target_.ensure_owns_direct_data();
     static const mf::Signature signature = []() {
@@ -459,7 +454,7 @@ void register_node_type_geo_raycast_embree()
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_RAYCAST_EMBREE, "Raycast (Embree)", NODE_CLASS_GEOMETRY);
-  node_type_size_preset(&ntype, NODE_SIZE_MIDDLE);
+  node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::MIDDLE);
   ntype.initfunc = file_ns::node_init;
   ntype.updatefunc = file_ns::node_update;
   node_type_storage(
