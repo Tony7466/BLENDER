@@ -15,6 +15,7 @@
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
 #include "BLI_math_base.h"
+#include "BLI_string_cursor_utf8.h"
 
 #include "BLT_translation.h"
 
@@ -159,6 +160,22 @@ BLI_INLINE int text_pixel_x_to_column(SpaceText *st, const int x)
   return (x + (st->runtime.cwidth_px / 2)) / st->runtime.cwidth_px;
 }
 
+static void text_select_update_primary_clipboard(const Text *text)
+{
+  if ((WM_capabilities_flag() & WM_CAPABILITY_PRIMARY_CLIPBOARD) == 0) {
+    return;
+  }
+  if (!txt_has_sel(text)) {
+    return;
+  }
+  char *buf = txt_sel_to_buf(text, NULL);
+  if (buf == NULL) {
+    return;
+  }
+  WM_clipboard_text_set(buf, true);
+  MEM_freeN(buf);
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -289,7 +306,7 @@ static int text_new_exec(bContext *C, wmOperator *UNUSED(op))
     st->top = 0;
     st->runtime.scroll_ofs_px[0] = 0;
     st->runtime.scroll_ofs_px[1] = 0;
-    text_drawcache_tag_update(st, 1);
+    text_drawcache_tag_update(st, true);
   }
 
   WM_event_add_notifier(C, NC_TEXT | NA_ADDED, text);
@@ -372,7 +389,7 @@ static int text_open_exec(bContext *C, wmOperator *op)
     st->runtime.scroll_ofs_px[1] = 0;
   }
 
-  text_drawcache_tag_update(st, 1);
+  text_drawcache_tag_update(st, true);
   WM_event_add_notifier(C, NC_TEXT | NA_ADDED, text);
 
   MEM_freeN(op->customdata);
@@ -462,7 +479,7 @@ static int text_reload_exec(bContext *C, wmOperator *op)
 
   text_update_edited(text);
   text_update_cursor_moved(C);
-  text_drawcache_tag_update(CTX_wm_space_text(C), 1);
+  text_drawcache_tag_update(st, true);
   WM_event_add_notifier(C, NC_TEXT | NA_EDITED, text);
 
   text->flags &= ~TXT_ISDIRTY;
@@ -521,7 +538,7 @@ static int text_unlink_exec(bContext *C, wmOperator *UNUSED(op))
 
   BKE_id_delete(bmain, text);
 
-  text_drawcache_tag_update(st, 1);
+  text_drawcache_tag_update(st, true);
   WM_event_add_notifier(C, NC_TEXT | NA_REMOVED, NULL);
 
   return OPERATOR_FINISHED;
@@ -591,7 +608,7 @@ static void txt_write_file(Main *bmain, Text *text, ReportList *reports)
   BLI_stat_t st;
   char filepath[FILE_MAX];
 
-  BLI_strncpy(filepath, text->filepath, FILE_MAX);
+  STRNCPY(filepath, text->filepath);
   BLI_path_abs(filepath, BKE_main_blendfile_path(bmain));
 
   /* Check if file write permission is ok. */
@@ -632,7 +649,7 @@ static void txt_write_file(Main *bmain, Text *text, ReportList *reports)
                 RPT_WARNING,
                 "Unable to stat '%s': %s",
                 filepath,
-                errno ? strerror(errno) : TIP_("unknown error stating file"));
+                errno ? strerror(errno) : TIP_("unknown error statting file"));
   }
 
   text->flags &= ~TXT_ISDIRTY;
@@ -901,18 +918,22 @@ void TEXT_OT_refresh_pyconstraints(wmOperatorType *ot)
 
 static int text_paste_exec(bContext *C, wmOperator *op)
 {
-  const bool selection = RNA_boolean_get(op->ptr, "selection");
+  SpaceText *st = CTX_wm_space_text(C);
   Text *text = CTX_data_edit_text(C);
+
+  const bool selection = RNA_boolean_get(op->ptr, "selection");
+
   char *buf;
   int buf_len;
 
-  buf = WM_clipboard_text_get(selection, &buf_len);
+  /* No need for UTF8 validation as the conversion handles invalid sequences gracefully. */
+  buf = WM_clipboard_text_get(selection, false, &buf_len);
 
   if (!buf) {
     return OPERATOR_CANCELLED;
   }
 
-  text_drawcache_tag_update(CTX_wm_space_text(C), 0);
+  text_drawcache_tag_update(st, false);
 
   ED_text_undo_push_init(C);
 
@@ -932,7 +953,7 @@ static int text_paste_exec(bContext *C, wmOperator *op)
   WM_event_add_notifier(C, NC_TEXT | NA_EDITED, text);
 
   /* run the script while editing, evil but useful */
-  if (CTX_wm_space_text(C)->live_edit) {
+  if (st->live_edit) {
     text_run_script(C, NULL);
   }
 
@@ -954,11 +975,13 @@ void TEXT_OT_paste(wmOperatorType *ot)
   ot->flag = OPTYPE_UNDO;
 
   /* properties */
-  RNA_def_boolean(ot->srna,
-                  "selection",
-                  0,
-                  "Selection",
-                  "Paste text selected elsewhere rather than copied (X11 only)");
+  PropertyRNA *prop;
+  prop = RNA_def_boolean(ot->srna,
+                         "selection",
+                         0,
+                         "Selection",
+                         "Paste text selected elsewhere rather than copied (X11/Wayland only)");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
 /** \} */
@@ -1051,9 +1074,10 @@ void TEXT_OT_copy(wmOperatorType *ot)
 
 static int text_cut_exec(bContext *C, wmOperator *UNUSED(op))
 {
+  SpaceText *st = CTX_wm_space_text(C);
   Text *text = CTX_data_edit_text(C);
 
-  text_drawcache_tag_update(CTX_wm_space_text(C), 0);
+  text_drawcache_tag_update(st, false);
 
   txt_copy_clipboard(text);
 
@@ -1064,7 +1088,7 @@ static int text_cut_exec(bContext *C, wmOperator *UNUSED(op))
   WM_event_add_notifier(C, NC_TEXT | NA_EDITED, text);
 
   /* run the script while editing, evil but useful */
-  if (CTX_wm_space_text(C)->live_edit) {
+  if (st->live_edit) {
     text_run_script(C, NULL);
   }
 
@@ -1129,9 +1153,10 @@ void TEXT_OT_indent_or_autocomplete(wmOperatorType *ot)
 
 static int text_indent_exec(bContext *C, wmOperator *UNUSED(op))
 {
+  SpaceText *st = CTX_wm_space_text(C);
   Text *text = CTX_data_edit_text(C);
 
-  text_drawcache_tag_update(CTX_wm_space_text(C), 0);
+  text_drawcache_tag_update(st, false);
 
   ED_text_undo_push_init(C);
 
@@ -1174,9 +1199,10 @@ void TEXT_OT_indent(wmOperatorType *ot)
 
 static int text_unindent_exec(bContext *C, wmOperator *UNUSED(op))
 {
+  SpaceText *st = CTX_wm_space_text(C);
   Text *text = CTX_data_edit_text(C);
 
-  text_drawcache_tag_update(CTX_wm_space_text(C), 0);
+  text_drawcache_tag_update(st, false);
 
   ED_text_undo_push_init(C);
 
@@ -1219,7 +1245,7 @@ static int text_line_break_exec(bContext *C, wmOperator *UNUSED(op))
   int a, curts;
   int space = (text->flags & TXT_TABSTOSPACES) ? st->tabnumber : 1;
 
-  text_drawcache_tag_update(st, 0);
+  text_drawcache_tag_update(st, false);
 
   /* Double check tabs/spaces before splitting the line. */
   curts = txt_setcurr_tab_spaces(text, space);
@@ -1271,10 +1297,12 @@ void TEXT_OT_line_break(wmOperatorType *ot)
 
 static int text_comment_exec(bContext *C, wmOperator *op)
 {
+  SpaceText *st = CTX_wm_space_text(C);
   Text *text = CTX_data_edit_text(C);
   int type = RNA_enum_get(op->ptr, "type");
+  const char *prefix = ED_text_format_comment_line_prefix(text);
 
-  text_drawcache_tag_update(CTX_wm_space_text(C), 0);
+  text_drawcache_tag_update(st, false);
 
   ED_text_undo_push_init(C);
 
@@ -1284,14 +1312,14 @@ static int text_comment_exec(bContext *C, wmOperator *op)
 
   switch (type) {
     case 1:
-      txt_comment(text);
+      txt_comment(text, prefix);
       break;
     case -1:
-      txt_uncomment(text);
+      txt_uncomment(text, prefix);
       break;
     default:
-      if (txt_uncomment(text) == false) {
-        txt_comment(text);
+      if (txt_uncomment(text, prefix) == false) {
+        txt_comment(text, prefix);
       }
       break;
   }
@@ -1456,7 +1484,7 @@ static int text_convert_whitespace_exec(bContext *C, wmOperator *op)
 
   text_update_edited(text);
   text_update_cursor_moved(C);
-  text_drawcache_tag_update(st, 1);
+  text_drawcache_tag_update(st, true);
   WM_event_add_notifier(C, NC_TEXT | NA_EDITED, text);
 
   return OPERATOR_FINISHED;
@@ -1498,6 +1526,8 @@ static int text_select_all_exec(bContext *C, wmOperator *UNUSED(op))
   txt_sel_all(text);
 
   text_update_cursor_moved(C);
+  text_select_update_primary_clipboard(text);
+
   WM_event_add_notifier(C, NC_TEXT | NA_EDITED, text);
 
   return OPERATOR_FINISHED;
@@ -1528,6 +1558,8 @@ static int text_select_line_exec(bContext *C, wmOperator *UNUSED(op))
   txt_sel_line(text);
 
   text_update_cursor_moved(C);
+  text_select_update_primary_clipboard(text);
+
   WM_event_add_notifier(C, NC_TEXT | NA_EDITED, text);
 
   return OPERATOR_FINISHED;
@@ -1554,13 +1586,13 @@ void TEXT_OT_select_line(wmOperatorType *ot)
 static int text_select_word_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Text *text = CTX_data_edit_text(C);
-  /* don't advance cursor before stepping */
-  const bool use_init_step = false;
 
-  txt_jump_left(text, false, use_init_step);
-  txt_jump_right(text, true, use_init_step);
+  BLI_str_cursor_step_bounds_utf8(
+      text->curl->line, text->curl->len, text->selc, &text->curc, &text->selc);
 
   text_update_cursor_moved(C);
+  text_select_update_primary_clipboard(text);
+
   WM_event_add_notifier(C, NC_TEXT | NA_EDITED, text);
 
   return OPERATOR_FINISHED;
@@ -2245,6 +2277,10 @@ static int text_move_cursor(bContext *C, int type, bool select)
   }
 
   text_update_cursor_moved(C);
+  if (select) {
+    text_select_update_primary_clipboard(st->text);
+  }
+
   WM_event_add_notifier(C, NC_TEXT | ND_CURSOR, text);
 
   return OPERATOR_FINISHED;
@@ -2377,7 +2413,7 @@ static int text_delete_exec(bContext *C, wmOperator *op)
   Text *text = CTX_data_edit_text(C);
   int type = RNA_enum_get(op->ptr, "type");
 
-  text_drawcache_tag_update(st, 0);
+  text_drawcache_tag_update(st, true);
 
   /* behavior could be changed here,
    * but for now just don't jump words when we have a selection */
@@ -2416,7 +2452,8 @@ static int text_delete_exec(bContext *C, wmOperator *op)
       if (*curr != '\0') {
         const char *prev = BLI_str_find_prev_char_utf8(curr, text->curl->line);
         if ((curr != prev) && /* When back-spacing from the start of the line. */
-            (*curr == text_closing_character_pair_get(*prev))) {
+            (*curr == text_closing_character_pair_get(*prev)))
+        {
           txt_move_right(text, false);
           txt_backspace_char(text);
         }
@@ -2682,7 +2719,8 @@ static void text_scroll_apply(bContext *C, wmOperator *op, const wmEvent *event)
   if (scroll_ofs_new[0] != st->left || scroll_ofs_new[1] != st->top ||
       /* Horizontal sub-pixel offset currently isn't used. */
       /* scroll_ofs_px_new[0] != st->scroll_ofs_px[0] || */
-      scroll_ofs_px_new[1] != st->runtime.scroll_ofs_px[1]) {
+      scroll_ofs_px_new[1] != st->runtime.scroll_ofs_px[1])
+  {
 
     st->left = scroll_ofs_new[0];
     st->top = scroll_ofs_new[1];
@@ -2809,8 +2847,10 @@ void TEXT_OT_scroll(wmOperatorType *ot)
   ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_XY | OPTYPE_INTERNAL;
 
   /* properties */
-  RNA_def_int(
+  PropertyRNA *prop;
+  prop = RNA_def_int(
       ot->srna, "lines", 1, INT_MIN, INT_MAX, "Lines", "Number of lines to scroll", -100, 100);
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_TEXT);
 }
 
 /** \} */
@@ -2851,9 +2891,11 @@ static int text_scroll_bar_invoke(bContext *C, wmOperator *op, const wmEvent *ev
 
   /* verify we are in the right zone */
   if (mval[0] > st->runtime.scroll_region_handle.xmin &&
-      mval[0] < st->runtime.scroll_region_handle.xmax) {
+      mval[0] < st->runtime.scroll_region_handle.xmax)
+  {
     if (mval[1] >= st->runtime.scroll_region_handle.ymin &&
-        mval[1] <= st->runtime.scroll_region_handle.ymax) {
+        mval[1] <= st->runtime.scroll_region_handle.ymax)
+    {
       /* mouse inside scroll handle */
       zone = SCROLLHANDLE_BAR;
     }
@@ -2914,8 +2956,10 @@ void TEXT_OT_scroll_bar(wmOperatorType *ot)
   ot->flag = OPTYPE_BLOCKING | OPTYPE_INTERNAL;
 
   /* properties */
-  RNA_def_int(
+  PropertyRNA *prop;
+  prop = RNA_def_int(
       ot->srna, "lines", 1, INT_MIN, INT_MAX, "Lines", "Number of lines to scroll", -100, 100);
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_TEXT);
 }
 
 /** \} */
@@ -3009,7 +3053,8 @@ static void text_cursor_set_to_pos_wrapped(
     char ch;
 
     for (j = 0; !found && ((ch = linep->line[j]) != '\0');
-         j += BLI_str_utf8_size_safe(linep->line + j)) {
+         j += BLI_str_utf8_size_safe(linep->line + j))
+    {
       int chars;
       int columns = BLI_str_utf8_char_width_safe(linep->line + j); /* = 1 for tab */
 
@@ -3238,17 +3283,11 @@ static void text_cursor_set_apply(bContext *C, wmOperator *op, const wmEvent *ev
 static void text_cursor_set_exit(bContext *C, wmOperator *op)
 {
   SpaceText *st = CTX_wm_space_text(C);
-  Text *text = st->text;
   SetSelection *ssel = op->customdata;
-  char *buffer;
-
-  if (txt_has_sel(text)) {
-    buffer = txt_sel_to_buf(text, NULL);
-    WM_clipboard_text_set(buffer, 1);
-    MEM_freeN(buffer);
-  }
 
   text_update_cursor_moved(C);
+  text_select_update_primary_clipboard(st->text);
+
   WM_event_add_notifier(C, NC_TEXT | ND_CURSOR, st->text);
 
   text_cursor_timer_remove(C, ssel);
@@ -3307,7 +3346,7 @@ void TEXT_OT_selection_set(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Set Selection";
   ot->idname = "TEXT_OT_selection_set";
-  ot->description = "Set cursor selection";
+  ot->description = "Set text selection";
 
   /* api callbacks */
   ot->invoke = text_selection_set_invoke;
@@ -3392,7 +3431,8 @@ static int text_line_number_invoke(bContext *C, wmOperator *UNUSED(op), const wm
 
   if (!(mval[0] > 2 &&
         mval[0] < (TXT_NUMCOL_WIDTH(st) + (TXT_BODY_LPAD * st->runtime.cwidth_px)) &&
-        mval[1] > 2 && mval[1] < region->winy - 2)) {
+        mval[1] > 2 && mval[1] < region->winy - 2))
+  {
     return OPERATOR_PASS_THROUGH;
   }
 
@@ -3446,7 +3486,7 @@ static int text_insert_exec(bContext *C, wmOperator *op)
   size_t i = 0;
   uint code;
 
-  text_drawcache_tag_update(st, 0);
+  text_drawcache_tag_update(st, false);
 
   str = RNA_string_get_alloc(op->ptr, "text", NULL, 0, &str_len);
 
@@ -3481,6 +3521,7 @@ static int text_insert_exec(bContext *C, wmOperator *op)
 
 static int text_insert_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
+  SpaceText *st = CTX_wm_space_text(C);
   uint auto_close_char = 0;
   int ret;
 
@@ -3518,7 +3559,7 @@ static int text_insert_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   }
 
   /* run the script while editing, evil but useful */
-  if (ret == OPERATOR_FINISHED && CTX_wm_space_text(C)->live_edit) {
+  if (ret == OPERATOR_FINISHED && st->live_edit) {
     text_run_script(C, NULL);
   }
 
@@ -3597,7 +3638,7 @@ static int text_find_and_replace(bContext *C, wmOperator *op, short mode)
         }
         text_update_cursor_moved(C);
         WM_event_add_notifier(C, NC_TEXT | NA_EDITED, text);
-        text_drawcache_tag_update(CTX_wm_space_text(C), 1);
+        text_drawcache_tag_update(st, true);
       }
     }
     MEM_freeN(tmp);
@@ -3683,7 +3724,7 @@ static int text_replace_all(bContext *C)
     } while (found);
 
     WM_event_add_notifier(C, NC_TEXT | NA_EDITED, text);
-    text_drawcache_tag_update(CTX_wm_space_text(C), 1);
+    text_drawcache_tag_update(st, true);
   }
   else {
     /* Restore position */
@@ -3736,7 +3777,7 @@ static int text_find_set_selected_exec(bContext *C, wmOperator *op)
   char *tmp;
 
   tmp = txt_sel_to_buf(text, NULL);
-  BLI_strncpy(st->findstr, tmp, ST_MAX_FIND_STR);
+  STRNCPY(st->findstr, tmp);
   MEM_freeN(tmp);
 
   if (!st->findstr[0]) {
@@ -3771,7 +3812,7 @@ static int text_replace_set_selected_exec(bContext *C, wmOperator *UNUSED(op))
   char *tmp;
 
   tmp = txt_sel_to_buf(text, NULL);
-  BLI_strncpy(st->replacestr, tmp, ST_MAX_FIND_STR);
+  STRNCPY(st->replacestr, tmp);
   MEM_freeN(tmp);
 
   return OPERATOR_FINISHED;

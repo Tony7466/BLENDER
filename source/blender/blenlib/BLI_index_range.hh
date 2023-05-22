@@ -80,9 +80,7 @@ class IndexRange {
     int64_t current_;
 
    public:
-    constexpr explicit Iterator(int64_t current) : current_(current)
-    {
-    }
+    constexpr explicit Iterator(int64_t current) : current_(current) {}
 
     constexpr Iterator &operator++()
     {
@@ -105,6 +103,11 @@ class IndexRange {
     constexpr friend bool operator==(const Iterator &a, const Iterator &b)
     {
       return a.current_ == b.current_;
+    }
+
+    constexpr friend int64_t operator-(const Iterator &a, const Iterator &b)
+    {
+      return a.current_ - b.current_;
     }
 
     constexpr int64_t operator*() const
@@ -151,6 +154,11 @@ class IndexRange {
   constexpr int64_t size() const
   {
     return size_;
+  }
+
+  constexpr IndexRange index_range() const
+  {
+    return IndexRange(size_);
   }
 
   /**

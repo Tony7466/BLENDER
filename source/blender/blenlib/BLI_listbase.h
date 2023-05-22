@@ -136,6 +136,8 @@ void BLI_freelistN(struct ListBase *listbase) ATTR_NONNULL(1);
 void BLI_addtail(struct ListBase *listbase, void *vlink) ATTR_NONNULL(1);
 /**
  * Removes \a vlink from \a listbase. Assumes it is linked into there!
+ *
+ * \warning Does _not_ clear the `prev`/`next` pointers of the removed `vlink`.
  */
 void BLI_remlink(struct ListBase *listbase, void *vlink) ATTR_NONNULL(1);
 /**
@@ -282,6 +284,11 @@ BLI_INLINE void BLI_listbase_clear(struct ListBase *lb)
 {
   lb->first = lb->last = (void *)0;
 }
+
+/** Validate the integrity of a given ListBase, returns `true` if everything is OK, false
+ * otherwise.
+ */
+bool BLI_listbase_validate(struct ListBase *lb);
 
 /**
  * Equality check for ListBase.

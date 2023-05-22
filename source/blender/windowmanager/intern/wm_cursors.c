@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005-2007 Blender Foundation. All rights reserved. */
+ * Copyright 2005-2007 Blender Foundation */
 
 /** \file
  * \ingroup wm
@@ -154,7 +154,8 @@ void WM_cursor_set(wmWindow *win, int curs)
   GHOST_TStandardCursor ghost_cursor = convert_to_ghost_standard_cursor(curs);
 
   if (ghost_cursor != GHOST_kStandardCursorCustom &&
-      GHOST_HasCursorShape(win->ghostwin, ghost_cursor)) {
+      GHOST_HasCursorShape(win->ghostwin, ghost_cursor))
+  {
     /* Use native GHOST cursor when available. */
     GHOST_SetCursorShape(win->ghostwin, ghost_cursor);
   }
@@ -384,7 +385,7 @@ void WM_cursor_time(wmWindow *win, int nr)
  *
  * There is a nice Python GUI utility that can be used for drawing cursors in
  * this format in the Blender source distribution, in
- * `./source/tools/utils/make_cursor_gui.py` .
+ * `./tools/utils/make_cursor_gui.py` .
  *
  * Start it with the command `python3 make_cursor_gui.py`
  * It will copy its output to the console when you press 'Do it'.

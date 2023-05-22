@@ -7,7 +7,7 @@
  *
  * We should avoid adding code here, and prefer:
  * - `source/blender/makesrna/intern/rna_context.c` using the RNA C API.
- * - `release/scripts/modules/bpy_types.py` when additions c an be written in Python.
+ * - `scripts/modules/bpy_types.py` when additions c an be written in Python.
  *
  * Otherwise functions can be added here as a last resort.
  */
@@ -111,7 +111,8 @@ PyDoc_STRVAR(pyrna_WindowManager_clipboard_doc, "Clipboard text storage.\n\n:typ
 static PyObject *pyrna_WindowManager_clipboard_get(PyObject *UNUSED(self), void *UNUSED(flag))
 {
   int text_len = 0;
-  char *text = WM_clipboard_text_get(false, &text_len);
+  /* No need for UTF8 validation as #PyC_UnicodeFromBytesAndSize handles invalid byte sequences. */
+  char *text = WM_clipboard_text_get(false, false, &text_len);
   PyObject *result = PyC_UnicodeFromBytesAndSize(text ? text : "", text_len);
   if (text != NULL) {
     MEM_freeN(text);

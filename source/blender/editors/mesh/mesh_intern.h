@@ -230,7 +230,7 @@ void MESH_OT_shortest_path_select(struct wmOperatorType *ot);
 
 extern struct EnumPropertyItem *corner_type_items;
 
-/* *** editmesh_tools.c *** */
+/* *** editmesh_tools.cc *** */
 void MESH_OT_subdivide(struct wmOperatorType *ot);
 void MESH_OT_subdivide_edgering(struct wmOperatorType *ot);
 void MESH_OT_unsubdivide(struct wmOperatorType *ot);
@@ -323,10 +323,6 @@ void MESH_OT_customdata_skin_add(struct wmOperatorType *ot);
 void MESH_OT_customdata_skin_clear(struct wmOperatorType *ot);
 void MESH_OT_customdata_custom_splitnormals_add(struct wmOperatorType *ot);
 void MESH_OT_customdata_custom_splitnormals_clear(struct wmOperatorType *ot);
-void MESH_OT_customdata_bevel_weight_vertex_add(struct wmOperatorType *ot);
-void MESH_OT_customdata_bevel_weight_vertex_clear(struct wmOperatorType *ot);
-void MESH_OT_customdata_bevel_weight_edge_add(struct wmOperatorType *ot);
-void MESH_OT_customdata_bevel_weight_edge_clear(struct wmOperatorType *ot);
 void MESH_OT_customdata_crease_vertex_add(struct wmOperatorType *ot);
 void MESH_OT_customdata_crease_vertex_clear(struct wmOperatorType *ot);
 void MESH_OT_customdata_crease_edge_add(struct wmOperatorType *ot);
