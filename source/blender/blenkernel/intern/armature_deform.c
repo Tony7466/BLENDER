@@ -367,7 +367,6 @@ static void armature_vert_task_with_dvert(const ArmatureUserdata *data,
 
       if (armature_weight != 1.0f) {
         copy_v3_v3(dco, co);
-        if(vert_deform_mats)mul_v3_m3v3(co,summat,co);
         mul_v3m3_dq(dco, (vert_deform_mats) ? summat : NULL, dq);
         sub_v3_v3(dco, co);
         mul_v3_fl(dco, armature_weight);
