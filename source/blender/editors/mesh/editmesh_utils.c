@@ -687,7 +687,7 @@ static int bm_uv_edge_select_build_islands(UvElementMap *element_map,
         /* Scan forwards around the BMFace that contains element->l. */
         if (!uv_selected || uvedit_edge_select_test(scene, element->l, offsets)) {
           UvElement *next = BM_uv_element_get(element_map, element->l->next->f, element->l->next);
-          if (next->island == INVALID_ISLAND) {
+          if (next && next->island == INVALID_ISLAND) {
             UvElement *tail = element_map->head_table[next - element_map->storage];
             stack_uv[stacksize_uv++] = tail;
             while (tail) {
@@ -703,7 +703,7 @@ static int bm_uv_edge_select_build_islands(UvElementMap *element_map,
         /* Scan backwards around the BMFace that contains element->l. */
         if (!uv_selected || uvedit_edge_select_test(scene, element->l->prev, offsets)) {
           UvElement *prev = BM_uv_element_get(element_map, element->l->prev->f, element->l->prev);
-          if (prev->island == INVALID_ISLAND) {
+          if (prev && prev->island == INVALID_ISLAND) {
             UvElement *tail = element_map->head_table[prev - element_map->storage];
             stack_uv[stacksize_uv++] = tail;
             while (tail) {

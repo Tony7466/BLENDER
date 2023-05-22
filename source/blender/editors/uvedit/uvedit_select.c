@@ -5452,7 +5452,9 @@ static void uv_isolate_selected_islands(const Scene *scene,
     BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
       if (!uvedit_edge_select_test(scene, l, offsets)) {
         UvElement *element = BM_uv_element_get(elementmap, efa, l);
-        is_island_not_selected[element->island] = true;
+        if (element) {
+          is_island_not_selected[element->island] = true;
+        }
       }
     }
   }
@@ -5465,7 +5467,7 @@ static void uv_isolate_selected_islands(const Scene *scene,
     BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
       UvElement *element = BM_uv_element_get(elementmap, efa, l);
       /* Deselect all elements of islands which are not completely selected. */
-      if (is_island_not_selected[element->island] == true) {
+      if (element && is_island_not_selected[element->island]) {
         BM_ELEM_CD_SET_BOOL(l, offsets.select_vert, false);
         BM_ELEM_CD_SET_BOOL(l, offsets.select_edge, false);
       }

@@ -1798,6 +1798,10 @@ static UvEdge *uv_edge_get(BMLoop *l, StitchState *state)
   UvElement *element1 = BM_uv_element_get(state->element_map, l->f, l);
   UvElement *element2 = BM_uv_element_get(state->element_map, l->f, l->next);
 
+  if (!element1 || !element2) {
+    return NULL;
+  }
+
   int uv1 = state->map[element1 - state->element_map->storage];
   int uv2 = state->map[element2 - state->element_map->storage];
 
@@ -2485,7 +2489,9 @@ static StitchState *stitch_select(bContext *C,
 
       /* This works due to setting of tmp in find nearest uv vert */
       UvElement *element = BM_uv_element_get(state->element_map, hit.efa, hit.l);
-      stitch_select_uv(element, state, false);
+      if (element) {
+        stitch_select_uv(element, state, false);
+      }
 
       return state;
     }
