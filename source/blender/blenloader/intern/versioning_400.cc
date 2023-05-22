@@ -114,6 +114,13 @@ void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
     }
   }
 
+    if(!MAIN_VERSION_ATLEAST(bmain, 400, 3)){
+    LISTBASE_FOREACH(bAction *, act, &bmain->actions){
+      act->frame_start = max_ii(act->frame_start, MINFRAME);
+      act->frame_end = min_ii(act->frame_end, MAXFRAME);
+    }
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
