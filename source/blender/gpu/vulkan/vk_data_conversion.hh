@@ -96,4 +96,171 @@ bool conversion_needed(const GPUVertFormat &vertex_format);
  */
 void convert_in_place(void *data, const GPUVertFormat &vertex_format, const uint vertex_len);
 
+/* -------------------------------------------------------------------- */
+/** \name Floating point conversions
+ * \{ */
+
+/**
+ * Description of a IEEE 754-1985 standard floating point data type.
+ */
+template<bool HasSignBit, uint8_t MantissaBitLen, uint8_t ExponentBitLen>
+class FloatingPointFormat {
+ public:
+  static constexpr bool HasSign = HasSignBit;
+  static constexpr uint8_t SignShift = MantissaBitLen + ExponentBitLen;
+  static constexpr uint32_t SignMask = HasSignBit ? 1 : 0;
+  static constexpr uint8_t MantissaLen = MantissaBitLen;
+  static constexpr uint8_t MantissaShift = 0;
+  static constexpr uint32_t MantissaMask = (1 << MantissaBitLen) - 1;
+  static constexpr uint32_t MantissaNanMask = MantissaMask;
+  static constexpr uint8_t ExponentShift = MantissaBitLen;
+  static constexpr uint8_t ExponentLen = ExponentBitLen;
+  static constexpr uint32_t ExponentMask = (1 << ExponentBitLen) - 1;
+  static constexpr int32_t ExponentBias = (1 << (ExponentBitLen - 1)) - 1;
+  static constexpr int32_t ExponentSpecialMask = ExponentMask;
+
+  static uint32_t get_mantissa(uint32_t floating_point_number)
+  {
+    return (floating_point_number >> MantissaShift) & MantissaMask;
+  }
+  static uint32_t clear_mantissa(uint32_t floating_point_number)
+  {
+    return floating_point_number & ~(MantissaMask << MantissaShift);
+  }
+  static uint32_t set_mantissa(uint32_t mantissa, uint32_t floating_point_number)
+  {
+    uint32_t result = clear_mantissa(floating_point_number);
+    result |= mantissa << MantissaShift;
+    return result;
+  }
+
+  static uint32_t get_exponent(uint32_t floating_point_number)
+  {
+    return ((floating_point_number >> ExponentShift) & ExponentMask);
+  }
+  static uint32_t clear_exponent(uint32_t floating_point_number)
+  {
+    return floating_point_number & ~(ExponentMask << ExponentShift);
+  }
+  static uint32_t set_exponent(uint32_t exponent, uint32_t floating_point_number)
+  {
+    uint32_t result = clear_exponent(floating_point_number);
+    result |= (exponent) << ExponentShift;
+    return result;
+  }
+
+  static bool is_signed(uint32_t floating_point_number)
+  {
+    if constexpr (HasSignBit) {
+      return (floating_point_number >> SignShift) & SignMask;
+    }
+    return false;
+  }
+  static uint32_t clear_sign(uint32_t floating_point_number)
+  {
+    return floating_point_number & ~(1 << SignShift);
+  }
+
+  static uint32_t set_sign(bool sign, uint32_t floating_point_number)
+  {
+    if constexpr (!HasSignBit) {
+      return floating_point_number;
+    }
+    uint32_t result = clear_sign(floating_point_number);
+    result |= uint32_t(sign) << SignShift;
+    return result;
+  }
+};
+
+using FormatF32 = FloatingPointFormat<true, 23, 8>;
+using FormatF16 = FloatingPointFormat<true, 10, 5>;
+using FormatF11 = FloatingPointFormat<false, 6, 5>;
+using FormatF10 = FloatingPointFormat<false, 5, 5>;
+
+/**
+ * Convert between low precision floating (including 32 bit floats).
+ *
+ * The input and output values are bits (uint32_t) as this function does a bit-wise operations to
+ * convert between the formats. Additional conversion rules can be applied to the conversion
+ * function. Due to the implementation the compiler would make an optimized version depending on
+ * the actual possibilities.
+ */
+template<
+    /**
+     * FloatingPointFormat of the the value that is converted to.
+     */
+    typename DestinationFormat,
+
+    /**
+     * FloatingPointFormat of the the value that is converted from.
+     */
+    typename SourceFormat,
+
+    /**
+     * Should negative values be clamped to zero when DestinationFormat doesn't contain a sign
+     * bit. Also -Inf will be clamped to zero.
+     *
+     * When set to `false` and DestinationFormat doesn't contain a sign bit the value will be
+     * made absolute.
+     */
+    bool ClampNegativeToZero = true>
+uint32_t convert_float_formats(uint32_t value)
+{
+  bool is_signed = SourceFormat::is_signed(value);
+  uint32_t mantissa = SourceFormat::get_mantissa(value);
+  int32_t exponent = SourceFormat::get_exponent(value);
+
+  const bool is_nan = (exponent == SourceFormat::ExponentSpecialMask) && mantissa;
+  const bool is_inf = (exponent == SourceFormat::ExponentSpecialMask) && (mantissa == 0);
+  const bool is_zero = (exponent == 0 && mantissa == 0);
+
+  /* Sign conversion */
+  if constexpr (!DestinationFormat::HasSign && ClampNegativeToZero) {
+    if (is_signed && !is_nan) {
+      return 0;
+    }
+  }
+  if (is_zero) {
+    return 0;
+  }
+
+  if (is_inf) {
+    exponent = DestinationFormat::ExponentSpecialMask;
+  }
+  else if (is_nan) {
+    exponent = DestinationFormat::ExponentSpecialMask;
+    mantissa = DestinationFormat::MantissaNanMask;
+  }
+  else {
+    /* Exponent conversion */
+    exponent -= SourceFormat::ExponentBias;
+    /* Clamping when destination has lower precision. */
+    if constexpr (SourceFormat::ExponentLen > DestinationFormat::ExponentLen) {
+      if (exponent > DestinationFormat::ExponentBias) {
+        exponent = 0;
+        mantissa = SourceFormat::MantissaMask;
+      }
+      else if (exponent < -DestinationFormat::ExponentBias) {
+        return 0;
+      }
+    }
+    exponent += DestinationFormat::ExponentBias;
+
+    /* Mantissa conversion */
+    if constexpr (SourceFormat::MantissaLen > DestinationFormat::MantissaLen) {
+      mantissa = mantissa >> (SourceFormat::MantissaLen - DestinationFormat::MantissaLen);
+    }
+    else if constexpr (SourceFormat::MantissaLen < DestinationFormat::MantissaLen) {
+      mantissa = mantissa << (DestinationFormat::MantissaLen - SourceFormat::MantissaLen);
+    }
+  }
+
+  uint32_t result = 0;
+  result = DestinationFormat::set_sign(is_signed, result);
+  result = DestinationFormat::set_exponent(exponent, result);
+  result = DestinationFormat::set_mantissa(mantissa, result);
+  return result;
+}
+
+/* \} */
 };  // namespace blender::gpu
