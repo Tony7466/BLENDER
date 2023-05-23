@@ -204,10 +204,6 @@ void RNA_api_mesh(StructRNA *srna)
                                   "Invert winding of all polygons "
                                   "(clears tessellation, does not handle custom normals)");
 
-  func = RNA_def_function(srna, "calc_normals", "rna_Mesh_calc_normals");
-  RNA_def_function_ui_description(
-      func, "Deprecated. Has no effect. Normals are calculated upon retrieval");
-
   func = RNA_def_function(srna, "set_sharp_from_angle", "ED_mesh_sharp_from_angle_set");
   RNA_def_function_ui_description(
       func, "Set the sharp edge status for edges based on the angle of incident faces");
