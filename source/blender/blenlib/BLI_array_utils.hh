@@ -146,7 +146,7 @@ enum class BoolArrayMix {
   AllTrue,
   Mixed,
 };
-BoolArrayMix bool_array_mix_calc(const VArray<bool> &varray, const IndexRange range_to_check);
+BoolArrayMix bool_array_mix_calc(const VArray<bool> &varray, IndexRange range_to_check);
 inline BoolArrayMix bool_array_mix_calc(const VArray<bool> &varray)
 {
   return bool_array_mix_calc(varray, varray.index_range());
