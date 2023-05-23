@@ -101,17 +101,14 @@ void main()
 
 #ifdef MAT_RENDER_PASS_SUPPORT
   ivec2 out_texel = ivec2(gl_FragCoord.xy);
-  imageStore(rp_normal_img, out_texel, vec4(out_normal, 1.0));
-  imageStore(
-      rp_light_img, ivec3(out_texel, RENDER_PASS_LAYER_DIFFUSE_LIGHT), vec4(diffuse_light, 1.0));
-  imageStore(
-      rp_light_img, ivec3(out_texel, RENDER_PASS_LAYER_SPECULAR_LIGHT), vec4(specular_light, 1.0));
-  imageStore(rp_diffuse_color_img, out_texel, vec4(g_diffuse_data.color, 1.0));
-  imageStore(rp_specular_color_img, out_texel, vec4(specular_color, 1.0));
-  imageStore(rp_emission_img, out_texel, vec4(g_emission, 1.0));
-  imageStore(rp_cryptomatte_img,
-             out_texel,
-             vec4(cryptomatte_object_buf[resource_id], node_tree.crypto_hash, 0.0));
+  vec4 cryptomatte_output = vec4(cryptomatte_object_buf[resource_id], node_tree.crypto_hash, 0.0);
+  imageStore(rp_cryptomatte_img, out_texel, cryptomatte_output);
+  RP_OUTPUT_COLOR(normal_id, out_texel, vec4(out_normal, 1.0));
+  RP_OUTPUT_COLOR(diffuse_color_id, out_texel, vec4(g_diffuse_data.color, 1.0));
+  RP_OUTPUT_COLOR(diffuse_light_id, out_texel, vec4(diffuse_light, 1.0));
+  RP_OUTPUT_COLOR(specular_color_id, out_texel, vec4(specular_color, 1.0));
+  RP_OUTPUT_COLOR(specular_light_id, out_texel, vec4(specular_light, 1.0));
+  RP_OUTPUT_COLOR(emission_id, out_texel, vec4(g_emission, 1.0));
 #endif
 
   out_radiance.rgb *= 1.0 - g_holdout;

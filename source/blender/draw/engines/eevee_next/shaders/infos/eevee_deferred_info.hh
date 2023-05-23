@@ -25,10 +25,11 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_base)
     .fragment_out(0, Type::VEC4, "out_radiance", DualBlend::SRC_0)
     .fragment_out(0, Type::VEC4, "out_transmittance", DualBlend::SRC_1)
     /* Light pass output. */
-    .image_array_out(RBUFS_LIGHT_SLOT, Qualifier::READ_WRITE, GPU_RGBA16F, "rp_light_img")
+    .image_array_out(RBUFS_COLOR_SLOT, Qualifier::WRITE, GPU_RGBA16F, "rp_color_img")
+    .storage_buf(RBUFS_BUF_SLOT, Qualifier::READ, "RenderBuffersInfoData", "rp_buf")
     /* Chaining to next pass. */
-    .image_out(2, Qualifier::READ_WRITE, GPU_RGBA16F, "out_diffuse_light_img")
-    .image_out(3, Qualifier::READ_WRITE, GPU_RGBA16F, "out_specular_light_img");
+    .image_out(1, Qualifier::WRITE, GPU_RGBA16F, "out_diffuse_light_img")
+    .image_out(2, Qualifier::WRITE, GPU_RGBA16F, "out_specular_light_img");
 
 GPU_SHADER_CREATE_INFO(eevee_deferred_light)
     .fragment_source("eevee_deferred_light_frag.glsl")

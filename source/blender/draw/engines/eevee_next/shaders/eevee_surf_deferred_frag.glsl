@@ -66,12 +66,10 @@ void main()
   /* Some render pass can be written during the gbuffer pass. Light passes are written later. */
   vec4 cryptomatte_output = vec4(cryptomatte_object_buf[resource_id], node_tree.crypto_hash, 0.0);
   imageStore(rp_cryptomatte_img, out_texel, cryptomatte_output);
-  imageStore(rp_normal_img, out_texel, vec4(out_normal, 1.0));
-  /* TODO(fclem): For now, just don't do anything. In the future all render passes should be in an
-   * array texture and have a UBO with indirection to the correct layer. */
-  // imageStore(rp_diffuse_color_img, out_texel, vec4(g_diffuse_data.color, 1.0));
-  imageStore(rp_specular_color_img, out_texel, vec4(specular_color, 1.0));
-  imageStore(rp_emission_img, out_texel, vec4(g_emission, 1.0));
+  RP_OUTPUT_COLOR(normal_id, out_texel, vec4(out_normal, 1.0));
+  RP_OUTPUT_COLOR(diffuse_color_id, out_texel, vec4(g_diffuse_data.color, 1.0));
+  RP_OUTPUT_COLOR(specular_color_id, out_texel, vec4(specular_color, 1.0));
+  RP_OUTPUT_COLOR(emission_id, out_texel, vec4(g_emission, 1.0));
 #endif
 
   /* ----- GBuffer output ----- */

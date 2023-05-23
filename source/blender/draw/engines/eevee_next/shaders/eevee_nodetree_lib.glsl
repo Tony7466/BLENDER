@@ -237,18 +237,27 @@ float F_eta(float a, float b)
 {
   return a;
 }
+
+#define RP_OUTPUT_COLOR(id, texel, color) \
+  if (rp_buf.id >= 0) \
+    imageStore(rp_color_img, ivec3(texel, rp_buf.id), color);
+#define RP_OUTPUT_VALUE(id, texel, value) \
+  if (rp_buf.id >= 0) \
+    imageStore(rp_value_img, ivec3(texel, rp_buf.id), value);
+
 void output_aov(vec4 color, float value, uint hash)
 {
 #if defined(MAT_AOV_SUPPORT) && defined(GPU_FRAGMENT_SHADER)
-  for (uint i = 0; i < AOV_MAX && i < aov_buf.color_len; i++) {
-    if (aov_buf.hash_color[i] == hash) {
-      imageStore(aov_color_img, ivec3(ivec2(gl_FragCoord.xy), i), color);
+
+  for (uint i = 0; i < AOV_MAX && i < rp_buf.aovs.color_len; i++) {
+    if (rp_buf.aovs.hash_color[i] == hash) {
+      imageStore(rp_color_img, ivec3(ivec2(gl_FragCoord.xy), rp_buf.color_len + i), color);
       return;
     }
   }
-  for (uint i = 0; i < AOV_MAX && i < aov_buf.value_len; i++) {
-    if (aov_buf.hash_value[i] == hash) {
-      imageStore(aov_value_img, ivec3(ivec2(gl_FragCoord.xy), i), vec4(value));
+  for (uint i = 0; i < AOV_MAX && i < rp_buf.aovs.value_len; i++) {
+    if (rp_buf.aovs.hash_value[i] == hash) {
+      imageStore(rp_value_img, ivec3(ivec2(gl_FragCoord.xy), rp_buf.value_len + i), vec4(value));
       return;
     }
   }

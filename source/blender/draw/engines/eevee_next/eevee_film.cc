@@ -431,18 +431,9 @@ void Film::sync()
   accumulate_ps_.bind_ubo("camera_next", &(*velocity.camera_steps[step_next]));
   accumulate_ps_.bind_texture("depth_tx", &rbuffers.depth_tx);
   accumulate_ps_.bind_texture("combined_tx", &combined_final_tx_);
-  accumulate_ps_.bind_texture("normal_tx", &rbuffers.normal_tx);
   accumulate_ps_.bind_texture("vector_tx", &rbuffers.vector_tx);
-  accumulate_ps_.bind_texture("light_tx", &rbuffers.light_tx);
-  accumulate_ps_.bind_texture("diffuse_color_tx", &rbuffers.diffuse_color_tx);
-  accumulate_ps_.bind_texture("specular_color_tx", &rbuffers.specular_color_tx);
-  accumulate_ps_.bind_texture("volume_light_tx", &rbuffers.volume_light_tx);
-  accumulate_ps_.bind_texture("emission_tx", &rbuffers.emission_tx);
-  accumulate_ps_.bind_texture("environment_tx", &rbuffers.environment_tx);
-  accumulate_ps_.bind_texture("shadow_tx", &rbuffers.shadow_tx);
-  accumulate_ps_.bind_texture("ambient_occlusion_tx", &rbuffers.ambient_occlusion_tx);
-  accumulate_ps_.bind_texture("aov_color_tx", &rbuffers.aov_color_tx);
-  accumulate_ps_.bind_texture("aov_value_tx", &rbuffers.aov_value_tx);
+  accumulate_ps_.bind_texture("rp_color_tx", &rbuffers.rp_color_tx);
+  accumulate_ps_.bind_texture("rp_value_tx", &rbuffers.rp_value_tx);
   accumulate_ps_.bind_texture("cryptomatte_tx", &rbuffers.cryptomatte_tx);
   /* NOTE(@fclem): 16 is the max number of sampled texture in many implementations.
    * If we need more, we need to pack more of the similar passes in the same textures as arrays or
@@ -455,6 +446,7 @@ void Film::sync()
   accumulate_ps_.bind_image("color_accum_img", &color_accum_tx_);
   accumulate_ps_.bind_image("value_accum_img", &value_accum_tx_);
   accumulate_ps_.bind_image("cryptomatte_img", &cryptomatte_tx_);
+  accumulate_ps_.bind_ssbo(RBUFS_BUF_SLOT, &inst_.render_buffers.data);
   /* Sync with rendering passes. */
   accumulate_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
   if (use_compute) {

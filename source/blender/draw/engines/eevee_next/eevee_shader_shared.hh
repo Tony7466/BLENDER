@@ -317,7 +317,7 @@ enum eRenderPassLayerIndex : uint32_t {
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Arbitrary Output Variables
+/** \name RenderBuffers
  * \{ */
 
 /* Theoretical max is 128 as we are using texture array and VRAM usage.
@@ -338,6 +338,26 @@ struct AOVsInfoData {
   bool1 display_is_value;
 };
 BLI_STATIC_ASSERT_ALIGN(AOVsInfoData, 16)
+
+struct RenderBuffersInfoData {
+  AOVsInfoData aovs;
+  /* Color. */
+  int color_len;
+  int normal_id;
+  int diffuse_light_id;
+  int diffuse_color_id;
+  int specular_light_id;
+  int specular_color_id;
+  int volume_light_id;
+  int emission_id;
+  int environment_id;
+  /* Value */
+  int value_len;
+  int shadow_id;
+  int ambient_occlusion_id;
+  int _pad0[4];
+};
+BLI_STATIC_ASSERT_ALIGN(RenderBuffersInfoData, 16)
 
 /** \} */
 

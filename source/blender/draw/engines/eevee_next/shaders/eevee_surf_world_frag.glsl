@@ -25,14 +25,12 @@ void main()
   g_holdout = saturate(g_holdout);
 
   ivec2 out_texel = ivec2(gl_FragCoord.xy);
-  imageStore(rp_normal_img, out_texel, vec4(0.0, 0.0, 0.0, 1.0));
-  imageStore(
-      rp_light_img, ivec3(out_texel, RENDER_PASS_LAYER_DIFFUSE_LIGHT), vec4(0.0, 0.0, 0.0, 1.0));
-  imageStore(
-      rp_light_img, ivec3(out_texel, RENDER_PASS_LAYER_SPECULAR_LIGHT), vec4(0.0, 0.0, 0.0, 1.0));
-  imageStore(rp_diffuse_color_img, out_texel, vec4(0.0, 0.0, 0.0, 1.0));
-  imageStore(rp_specular_color_img, out_texel, vec4(0.0, 0.0, 0.0, 1.0));
-  imageStore(rp_emission_img, out_texel, vec4(0.0, 0.0, 0.0, 1.0));
+  RP_OUTPUT_COLOR(normal_id, out_texel, vec4(0.0, 0.0, 0.0, 1.0));
+  RP_OUTPUT_COLOR(diffuse_light_id, out_texel, vec4(0.0, 0.0, 0.0, 1.0));
+  RP_OUTPUT_COLOR(specular_light_id, out_texel, vec4(0.0, 0.0, 0.0, 1.0));
+  RP_OUTPUT_COLOR(diffuse_color_id, out_texel, vec4(0.0, 0.0, 0.0, 1.0));
+  RP_OUTPUT_COLOR(specular_color_id, out_texel, vec4(0.0, 0.0, 0.0, 1.0));
+  RP_OUTPUT_COLOR(emission_id, out_texel, vec4(0.0, 0.0, 0.0, 1.0));
   imageStore(rp_cryptomatte_img, out_texel, vec4(0.0));
 
   out_background.rgb = safe_color(g_emission) * (1.0 - g_holdout);
@@ -40,4 +38,9 @@ void main()
 
   /* World opacity. */
   out_background = mix(vec4(0.0, 0.0, 0.0, 1.0), out_background, world_opacity_fade);
+
+  vec4 environment = out_background;
+  environment.a = 1.0 - environment.a;
+  environment.rgb *= environment.a;
+  RP_OUTPUT_COLOR(environment_id, out_texel, environment);
 }
