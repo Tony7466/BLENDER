@@ -996,12 +996,12 @@ void GreasePencil::foreach_visible_drawing(
     if (index == -1) {
       continue;
     }
-    GreasePencilDrawingBase *drawing_baseerence = drawings[index];
-    if (drawing_baseerence->type == GP_DRAWING) {
-      GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_baseerence);
+    GreasePencilDrawingBase *drawing_base = drawings[index];
+    if (drawing_base->type == GP_DRAWING) {
+      GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
       function(*drawing);
     }
-    else if (drawing_baseerence->type == GP_DRAWING_REFERENCE) {
+    else if (drawing_base->type == GP_DRAWING_REFERENCE) {
       /* TODO */
     }
   }
