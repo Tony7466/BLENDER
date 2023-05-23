@@ -598,6 +598,7 @@ static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), vo
   printf("\n");
   BLI_args_print_arg_doc(ba, "--debug-fpe");
   BLI_args_print_arg_doc(ba, "--debug-exit-on-error");
+  BLI_args_print_arg_doc(ba, "--debug-freestyle");
   BLI_args_print_arg_doc(ba, "--disable-crash-handler");
   BLI_args_print_arg_doc(ba, "--disable-abort-handler");
 
