@@ -356,7 +356,7 @@ enum eVelocityStep : uint32_t {
 
 struct VelocityObjectIndex {
   /** Offset inside #VelocityObjectBuf for each timestep. Indexed using eVelocityStep. */
-  int3 ofs;
+  packed_int3 ofs;
   /** Temporary index to copy this to the #VelocityIndexBuf. */
   uint resource_id;
 
@@ -368,11 +368,11 @@ BLI_STATIC_ASSERT_ALIGN(VelocityObjectIndex, 16)
 
 struct VelocityGeometryIndex {
   /** Offset inside #VelocityGeometryBuf for each timestep. Indexed using eVelocityStep. */
-  int3 ofs;
+  packed_int3 ofs;
   /** If true, compute deformation motion blur. */
   bool1 do_deform;
   /** Length of data inside #VelocityGeometryBuf for each timestep. Indexed using eVelocityStep. */
-  int3 len;
+  packed_int3 len;
 
   int _pad0;
 
@@ -863,7 +863,7 @@ BLI_STATIC_ASSERT_ALIGN(Surfel, 16)
 
 struct CaptureInfoData {
   /** Number of surfels inside the surfel buffer or the needed len. */
-  int3 irradiance_grid_size;
+  packed_int3 irradiance_grid_size;
   /** True if the surface shader needs to write the surfel data. */
   bool1 do_surfel_output;
   /** True if the surface shader needs to increment the surfel_len. */
@@ -906,7 +906,7 @@ struct IrradianceGridData {
   /** World to non-normalized local grid space [0..size-1]. Stored transposed for compactness. */
   float3x4 world_to_grid_transposed;
   /** Number of bricks for this grid. */
-  int3 grid_size;
+  packed_int3 grid_size;
   /** Index in brick descriptor list of the first brick of this grid. */
   int brick_offset;
 };
