@@ -28,6 +28,18 @@ vec4 closure_to_rgba(Closure cl)
 
 void main()
 {
+  ivec2 out_texel = ivec2(gl_FragCoord.xy);
+
+#ifdef MAT_RENDER_PASS_SUPPORT /* Needed because node_tree isn't present in test shaders. */
+  /* Clear AOVs first. In case the material renders to them. */
+  for (int i = 0; i < AOV_MAX && i < rp_buf.aovs.color_len; i++) {
+    imageStore(rp_color_img, ivec3(out_texel, rp_buf.color_len + i), vec4(0));
+  }
+  for (int i = 0; i < AOV_MAX && i < rp_buf.aovs.value_len; i++) {
+    imageStore(rp_value_img, ivec3(out_texel, rp_buf.value_len + i), vec4(0));
+  }
+#endif
+
   init_globals();
 
   float noise = utility_tx_fetch(utility_tx, gl_FragCoord.xy, UTIL_BLUE_NOISE_LAYER).r;
@@ -61,7 +73,6 @@ void main()
 
   /* ----- Render Passes output ----- */
 
-  ivec2 out_texel = ivec2(gl_FragCoord.xy);
 #ifdef MAT_RENDER_PASS_SUPPORT /* Needed because node_tree isn't present in test shaders. */
   /* Some render pass can be written during the gbuffer pass. Light passes are written later. */
   vec4 cryptomatte_output = vec4(cryptomatte_object_buf[resource_id], node_tree.crypto_hash, 0.0);

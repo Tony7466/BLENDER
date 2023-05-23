@@ -75,6 +75,7 @@ void main()
       imageStore(
           rp_color_img, ivec3(texel, rp_buf.specular_light_id), vec4(reflection_light, 1.0));
     }
+    /* TODO: Shadows and AO. */
 
     diffuse_light *= diffuse_data.color;
     reflection_light *= reflection_data.color;
