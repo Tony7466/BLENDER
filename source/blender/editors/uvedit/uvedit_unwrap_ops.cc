@@ -1542,8 +1542,11 @@ static int pack_islands_exec(bContext *C, wmOperator *op)
     return OPERATOR_FINISHED;
   }
 
-  pack_islands_startjob(pid, nullptr, nullptr, nullptr);
+  bool stop = false, do_update = false;
+  float progress = 0.0f;
+  pack_islands_startjob(pid, &stop, &do_update, &progress);
   pack_islands_endjob(pid);
+  pack_islands_freejob(pid);
 
   MEM_freeN(pid);
   return OPERATOR_FINISHED;
