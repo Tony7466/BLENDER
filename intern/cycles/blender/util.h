@@ -93,7 +93,8 @@ static inline BL::Mesh object_to_mesh(BL::BlendData & /*data*/,
        * UV are not empty. */
       if (mesh.is_editmode() ||
           (mesh.normal_domain_all_info() == BL::Mesh::normal_domain_all_info_CORNER &&
-           subdivision_type == Mesh::SUBDIVISION_NONE)) {
+           subdivision_type == Mesh::SUBDIVISION_NONE))
+      {
         BL::Depsgraph depsgraph(PointerRNA_NULL);
         mesh = b_ob_info.real_object.to_mesh(false, depsgraph);
       }
@@ -118,7 +119,7 @@ static inline BL::Mesh object_to_mesh(BL::BlendData & /*data*/,
 
   if ((bool)mesh && subdivision_type == Mesh::SUBDIVISION_NONE) {
     if (mesh.normal_domain_all_info() == BL::Mesh::normal_domain_all_info_CORNER) {
-      mesh.split_faces(false);
+      mesh.split_faces();
     }
 
     mesh.calc_loop_triangles();
