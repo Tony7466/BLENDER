@@ -7,8 +7,6 @@
 #include "kernel/closure/bsdf.h"
 #include "kernel/film/write.h"
 
-#  define RIS_INCOMING_RADIANCE
-
 CCL_NAMESPACE_BEGIN
 
 /* Utilities. */
@@ -25,11 +23,7 @@ struct GuidingRISSample {
   float ris_pdf{0.0f};
   float ris_weight{0.0f};
 
-#ifdef RIS_INCOMING_RADIANCE
   float incoming_radiance_pdf{0.0f};
-#else
-  float cosine{0.0f};
-#endif
   BsdfEval bsdf_eval;
   float avg_bsdf_eval{0.0f};
   Spectrum eval{zero_spectrum()};
@@ -43,16 +37,9 @@ ccl_device_forceinline bool calculate_ris_target(ccl_private GuidingRISSample *r
   if (ris_sample->avg_bsdf_eval > 0.0f && ris_sample->bsdf_pdf > 1e-10f &&
       ris_sample->guide_pdf > 0.0f)
   {
-
-#  ifdef RIS_INCOMING_RADIANCE
     ris_sample->ris_target = (ris_sample->avg_bsdf_eval *
                               ((((1.0f - guiding_sampling_prob) * (1.0f / (pi_factor * M_PI_F))) +
                                 (guiding_sampling_prob * ris_sample->incoming_radiance_pdf))));
-#  else
-    ris_sample->ris_target = (ris_sample->avg_bsdf_eval / ris_sample->cosine *
-                              ((((1.0f - guiding_sampling_prob) * (1.0f / (pi_factor * M_PI_F))) +
-                                (guiding_sampling_prob * ris_sample->guide_pdf))));
-#  endif
     ris_sample->ris_pdf = (0.5f * (ris_sample->bsdf_pdf + ris_sample->guide_pdf));
     ris_sample->ris_weight = ris_sample->ris_target / ris_sample->ris_pdf;
     return true;
