@@ -52,11 +52,12 @@ struct PaintOperationExecutor {
      * original object.
      */
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob_eval->data);
-    if (!grease_pencil.runtime->has_active_layer()) {
+    if (grease_pencil.active_layer != NULL) {
       /* TODO: create a new layer. */
-      grease_pencil.runtime->set_active_layer_index(0);
+      BLI_assert_unreachable();
+      // grease_pencil.runtime->set_active_layer_index(0);
     }
-    const bke::greasepencil::Layer &active_layer = grease_pencil.runtime->active_layer();
+    const bke::greasepencil::Layer &active_layer = grease_pencil.active_layer->wrap();
     int index = active_layer.drawing_index_at(scene->r.cfra);
     BLI_assert(index != -1);
 
@@ -67,7 +68,8 @@ struct PaintOperationExecutor {
     float3 proj_pos;
     ED_view3d_win_to_3d_on_plane(region, plane, stroke_extension.mouse_position, false, proj_pos);
 
-    bke::greasepencil::StrokePoint new_point{proj_pos, stroke_extension.pressure * 100.0f, 1.0f, float4(1.0f)};
+    bke::greasepencil::StrokePoint new_point{
+        proj_pos, stroke_extension.pressure * 100.0f, 1.0f, float4(1.0f)};
 
     drawing.runtime->stroke_cache.points.append(std::move(new_point));
 
@@ -91,10 +93,9 @@ void PaintOperation::on_stroke_done(const bContext &C)
 
   GreasePencil &grease_pencil_orig = *static_cast<GreasePencil *>(obact->data);
   GreasePencil &grease_pencil_eval = *static_cast<GreasePencil *>(ob_eval->data);
-  BLI_assert(grease_pencil_orig.runtime->has_active_layer() &&
-             grease_pencil_eval.runtime->has_active_layer());
-  const bke::greasepencil::Layer &active_layer_orig = grease_pencil_orig.runtime->active_layer();
-  const bke::greasepencil::Layer &active_layer_eval = grease_pencil_eval.runtime->active_layer();
+  BLI_assert(grease_pencil_orig.active_layer != NULL && grease_pencil_eval.active_layer != NULL);
+  const bke::greasepencil::Layer &active_layer_orig = grease_pencil_orig.active_layer->wrap();
+  const bke::greasepencil::Layer &active_layer_eval = grease_pencil_eval.active_layer->wrap();
   int index_orig = active_layer_orig.drawing_index_at(scene->r.cfra);
   int index_eval = active_layer_eval.drawing_index_at(scene->r.cfra);
   BLI_assert(index_orig != -1 && index_eval != -1);

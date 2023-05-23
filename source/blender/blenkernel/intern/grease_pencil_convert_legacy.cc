@@ -19,12 +19,13 @@
 
 namespace blender::bke::greasepencil::convert {
 
-void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf, GreasePencilDrawing &r_drawing)
+void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
+                                                   GreasePencilDrawing &r_drawing)
 {
   /* Construct an empty CurvesGeometry in-place. */
   new (&r_drawing.geometry) CurvesGeometry();
   r_drawing.base.type = GP_DRAWING;
-  r_drawing.runtime = MEM_new<bke::GreasePencilDrawingRuntime>(__func__);
+  r_drawing.runtime = MEM_new<bke::greasepencil::DrawingRuntime>(__func__);
 
   /* Get the number of points, number of strokes and the offsets for each stroke. */
   Vector<int> offsets;
@@ -187,52 +188,35 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
       MEM_cnew_array<GreasePencilDrawing *>(num_drawings, __func__));
 
   int i = 0, layer_idx = 0;
-  int active_layer_index = 0;
+  LayerGroup &root_goup = grease_pencil.root_group.wrap();
   LISTBASE_FOREACH_INDEX (bGPDlayer *, gpl, &gpd.layers, layer_idx) {
-    if ((gpl->flag & GP_LAYER_ACTIVE) != 0) {
-      active_layer_index = layer_idx;
-    }
-
     /* Create a new layer. */
-    Layer &new_layer = grease_pencil.root_group_for_write().add_layer(
-        Layer(StringRefNull(gpl->info, BLI_strnlen(gpl->info, 128))));
+    Layer &new_layer = root_goup.add_layer(StringRefNull(gpl->info, BLI_strnlen(gpl->info, 128)));
 
     /* Flags. */
-    SET_FLAG_FROM_TEST(new_layer.flag, (gpl->flag & GP_LAYER_HIDE), GP_LAYER_TREE_NODE_HIDE);
-    SET_FLAG_FROM_TEST(new_layer.flag, (gpl->flag & GP_LAYER_LOCKED), GP_LAYER_TREE_NODE_LOCKED);
-    SET_FLAG_FROM_TEST(new_layer.flag, (gpl->flag & GP_LAYER_SELECT), GP_LAYER_TREE_NODE_SELECT);
-    SET_FLAG_FROM_TEST(new_layer.flag, (gpl->flag & GP_LAYER_FRAMELOCK), GP_LAYER_TREE_NODE_MUTE);
+    SET_FLAG_FROM_TEST(new_layer.base.flag, (gpl->flag & GP_LAYER_HIDE), GP_LAYER_TREE_NODE_HIDE);
     SET_FLAG_FROM_TEST(
-        new_layer.flag, (gpl->flag & GP_LAYER_USE_LIGHTS), GP_LAYER_TREE_NODE_USE_LIGHTS);
-    SET_FLAG_FROM_TEST(new_layer.flag,
+        new_layer.base.flag, (gpl->flag & GP_LAYER_LOCKED), GP_LAYER_TREE_NODE_LOCKED);
+    SET_FLAG_FROM_TEST(
+        new_layer.base.flag, (gpl->flag & GP_LAYER_SELECT), GP_LAYER_TREE_NODE_SELECT);
+    SET_FLAG_FROM_TEST(
+        new_layer.base.flag, (gpl->flag & GP_LAYER_FRAMELOCK), GP_LAYER_TREE_NODE_MUTE);
+    SET_FLAG_FROM_TEST(
+        new_layer.base.flag, (gpl->flag & GP_LAYER_USE_LIGHTS), GP_LAYER_TREE_NODE_USE_LIGHTS);
+    SET_FLAG_FROM_TEST(new_layer.base.flag,
                        (gpl->onion_flag & GP_LAYER_ONIONSKIN),
                        GP_LAYER_TREE_NODE_USE_ONION_SKINNING);
 
-    new_layer.parent_type = static_cast<int8_t>(gpl->partype);
     new_layer.blend_mode = static_cast<int8_t>(gpl->blend_mode);
-    new_layer.thickness_adjustment = static_cast<int16_t>(gpl->line_change);
-    /* Copy the pointer to the parent. */
-    new_layer.parent = gpl->parent;
-    size_t parsubstr_len = BLI_strnlen(gpl->parsubstr, MAX_ID_NAME - 2);
-    if (parsubstr_len > 0) {
-      new_layer.parsubstr = BLI_strdupn(gpl->parsubstr, parsubstr_len);
-    }
-    size_t viewlayername_len = BLI_strnlen(gpl->viewlayername, MAX_ID_NAME - 2);
-    if (viewlayername_len > 0) {
-      new_layer.viewlayer_name = BLI_strdupn(gpl->viewlayername, viewlayername_len);
-    }
+
     /* Convert the layer masks. */
-    Vector<LayerMask> masks = new_layer.masks_for_write();
-    LISTBASE_FOREACH (bGPDlayer_Mask *, mask, &gpl->mask_layers) {
-      LayerMask new_mask = LayerMask(mask->name);
-      new_mask.flag = mask->flag;
-      masks.append(std::move(new_mask));
-    }
-    new_layer.opacity = gpl->opacity;
-    copy_v4_v4(new_layer.tint_color, gpl->tintcolor);
-    copy_v3_v3(new_layer.location, gpl->location);
-    copy_v3_v3(new_layer.rotation, gpl->rotation);
-    copy_v3_v3(new_layer.scale, gpl->scale);
+    // Vector<LayerMask> masks = new_layer.masks_for_write();
+    // LISTBASE_FOREACH (bGPDlayer_Mask *, mask, &gpl->mask_layers) {
+    //   LayerMask new_mask = LayerMask(mask->name);
+    //   new_mask.flag = mask->flag;
+    //   masks.append(std::move(new_mask));
+    // }
+    // new_layer.opacity = gpl->opacity;
 
     LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
       grease_pencil.drawing_array[i] = reinterpret_cast<GreasePencilDrawingBase *>(
@@ -249,6 +233,10 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
       SET_FLAG_FROM_TEST(new_frame.flag, (gpf->flag & GP_FRAME_SELECT), GP_FRAME_SELECTED);
       new_layer.insert_frame(gpf->framenum, std::move(new_frame));
       i++;
+    }
+
+    if ((gpl->flag & GP_LAYER_ACTIVE) != 0) {
+      grease_pencil.active_layer = static_cast<GreasePencilLayer *>(&new_layer);
     }
 
     /* TODO: Update drawing user counts. */
@@ -270,7 +258,7 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
   copy_v3_v3(grease_pencil.onion_skinning_settings.color_before, gpd.gcolor_prev);
   copy_v3_v3(grease_pencil.onion_skinning_settings.color_after, gpd.gcolor_next);
 
-  grease_pencil.runtime->set_active_layer_index(active_layer_index);
+  // grease_pencil.runtime->set_active_layer_index(active_layer_index);
 
   BKE_id_materials_copy(&bmain, &gpd.id, &grease_pencil.id);
 }

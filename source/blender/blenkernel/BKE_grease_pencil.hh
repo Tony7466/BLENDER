@@ -21,27 +21,55 @@ namespace blender::bke {
 
 namespace greasepencil {
 
+/**
+ * A single point for a stroke that is currently being drawn.
+ */
+struct StrokePoint {
+  float3 position;
+  float radius;
+  float opacity;
+  float4 color;
+};
+
+/**
+ * Stroke cache for a stroke that is currently being drawn.
+ */
+struct StrokeCache {
+  Vector<StrokePoint> points;
+  Vector<uint3> triangles;
+  int mat = 0;
+
+  void clear()
+  {
+    this->points.clear_and_shrink();
+    this->triangles.clear_and_shrink();
+    this->mat = 0;
+  }
+};
+
+class DrawingRuntime {
+ public:
+  /**
+   * Triangle cache for all the strokes in the drawing.
+   */
+  mutable SharedCache<Vector<uint3>> triangles_cache;
+
+  StrokeCache stroke_cache;
+};
+
 class LayerGroup;
 class Layer;
 
 /**
  * A TreeNode represents one node in the layer tree.
- * It can either be a layer or a group. The node has zero children if it is a layer or zero or more
+ * It can either be a layer or a group. The node has zero children if it is a layer or zero or
+ more
  * children if it is a group.
  */
-class TreeNode : public ::GreasePencilLayerTreeNode, NonMovable {
-  friend class LayerGroup;
-
+class TreeNode : public ::GreasePencilLayerTreeNode {
  public:
   explicit TreeNode(GreasePencilLayerTreeNodeType type);
   explicit TreeNode(GreasePencilLayerTreeNodeType type, StringRefNull name);
-  TreeNode(const TreeNode &other);
-  TreeNode &operator=(const TreeNode &other) = delete;
-  virtual ~TreeNode();
-
- private:
-  LayerGroup *parent_ = nullptr;
-  Vector<std::unique_ptr<TreeNode>> children_;
 
  public:
   /**
@@ -96,12 +124,8 @@ class LayerMask : public ::GreasePencilLayerMask {
   ~LayerMask();
 };
 
-/**
- * A layer maps drawings to scene frames. It can be thought of as one independent channel in the
- * timeline.
- */
-class Layer : public TreeNode, public ::GreasePencilLayer {
- private:
+class LayerRuntime {
+ public:
   /**
    * This Map maps a scene frame number (key) to a GreasePencilFrame. This struct holds an index
    * (drawing_index) to the drawing in the GreasePencil->drawings array. The frame number indicates
@@ -137,7 +161,13 @@ class Layer : public TreeNode, public ::GreasePencilLayer {
    * A layer can have zero or more layer masks.
    */
   Vector<LayerMask> masks_;
+};
 
+/**
+ * A layer maps drawings to scene frames. It can be thought of as one independent channel in the
+ * timeline.
+ */
+class Layer : public ::GreasePencilLayer {
  public:
   Layer();
   explicit Layer(StringRefNull name);
@@ -153,8 +183,8 @@ class Layer : public TreeNode, public ::GreasePencilLayer {
   /**
    * \returns the layer masks.
    */
-  Span<LayerMask> masks() const;
-  Vector<LayerMask> &masks_for_write();
+  // Span<LayerMask> masks() const;
+  // Vector<LayerMask> &masks_for_write();
 
   bool is_visible() const;
   bool is_locked() const;
@@ -192,51 +222,56 @@ class Layer : public TreeNode, public ::GreasePencilLayer {
   void tag_frames_map_keys_changed();
 };
 
-/**
- * A LayerGroup is a grouping of zero or more Layers.
- */
-class LayerGroup : public TreeNode {
+class LayerGroupRuntime {
  public:
-  LayerGroup() : TreeNode(GP_LAYER_TREE_GROUP) {}
-  explicit LayerGroup(const StringRefNull name) : TreeNode(GP_LAYER_TREE_GROUP, name) {}
-  LayerGroup(const LayerGroup &other);
-
- private:
   /**
-   * CacheMutex for `children_cache_` and `layer_cache_`;
+   * CacheMutex for `nodes_cache_` and `layer_cache_`;
    */
-  mutable CacheMutex children_cache_mutex_;
+  mutable CacheMutex nodes_cache_mutex_;
   /**
-   * Caches all the children of this group in a single pre-ordered vector.
+   * Caches all the nodes of this group in a single pre-ordered vector.
    */
-  mutable Vector<TreeNode *> children_cache_;
+  mutable Vector<TreeNode *> nodes_cache_;
   /**
    * Caches all the layers in this group in a single pre-ordered vector.
    */
   mutable Vector<Layer *> layer_cache_;
+};
+
+/**
+ * A LayerGroup is a grouping of zero or more Layers.
+ */
+class LayerGroup : public ::GreasePencilLayerTreeGroup {
+ public:
+  LayerGroup();
+  explicit LayerGroup(const StringRefNull name);
+  LayerGroup(const LayerGroup &other);
+  ~LayerGroup();
 
  public:
   /**
    * Adds a group at the end of this group.
    */
-  void add_group(LayerGroup &group);
-  void add_group(LayerGroup &&group);
+  LayerGroup &add_group(LayerGroup *group);
+  LayerGroup &add_group(StringRefNull name);
+  // void add_group(LayerGroup &&group);
 
   /**
    * Adds a layer at the end of this group and returns it.
    */
-  Layer &add_layer(Layer &layer);
-  Layer &add_layer(Layer &&layer);
+  Layer &add_layer(Layer *layer);
+  Layer &add_layer(StringRefNull name);
+  // Layer &add_layer(Layer &&layer);
 
   /**
-   * Returns the number of direct children in this group.
+   * Returns the number of direct nodes in this group.
    */
-  int64_t num_direct_children() const;
+  int64_t num_direct_nodes() const;
 
   /**
-   * Returns the total number of children in this group.
+   * Returns the total number of nodes in this group.
    */
-  int64_t num_children_total() const;
+  int64_t num_nodes_total() const;
 
   /**
    * Removes a child from the group by index.
@@ -246,8 +281,8 @@ class LayerGroup : public TreeNode {
   /**
    * Returns a `Span` of pointers to all the `TreeNode`s in this group.
    */
-  Span<const TreeNode *> children() const;
-  Span<TreeNode *> children_for_write();
+  Span<const TreeNode *> nodes() const;
+  Span<TreeNode *> nodes_for_write();
 
   /**
    * Returns a `Span` of pointers to all the `Layers`s in this group.
@@ -256,13 +291,13 @@ class LayerGroup : public TreeNode {
   Span<Layer *> layers_for_write();
 
   /**
-   * Print the children. For debugging purposes.
+   * Print the nodes. For debugging purposes.
    */
-  void print_children(StringRefNull header) const;
+  void print_nodes(StringRefNull header) const;
 
  private:
-  void ensure_children_cache() const;
-  void tag_children_cache_dirty() const;
+  void ensure_nodes_cache() const;
+  void tag_nodes_cache_dirty() const;
 };
 
 namespace convert {
@@ -273,71 +308,39 @@ void legacy_gpencil_to_grease_pencil(Main &main, GreasePencil &grease_pencil, bG
 
 }  // namespace convert
 
-/**
- * A single point for a stroke that is currently being drawn.
- */
-struct StrokePoint {
-  float3 position;
-  float radius;
-  float opacity;
-  float4 color;
-};
-
-/**
- * Stroke cache for a stroke that is currently being drawn.
- */
-struct StrokeCache {
-  Vector<StrokePoint> points;
-  Vector<uint3> triangles;
-  int mat = 0;
-
-  void clear()
-  {
-    this->points.clear_and_shrink();
-    this->triangles.clear_and_shrink();
-    this->mat = 0;
-  }
-};
-
 }  // namespace greasepencil
-
-class GreasePencilDrawingRuntime {
- public:
-  /**
-   * Triangle cache for all the strokes in the drawing.
-   */
-  mutable SharedCache<Vector<uint3>> triangles_cache;
-
-  greasepencil::StrokeCache stroke_cache;
-};
 
 class GreasePencilRuntime {
  public:
   void *batch_cache = nullptr;
 
- private:
-  greasepencil::LayerGroup root_group_;
-  int active_layer_index_ = -1;
-
  public:
-  GreasePencilRuntime() {}
-  GreasePencilRuntime(const GreasePencilRuntime &other);
-
- public:
-  const greasepencil::LayerGroup &root_group() const;
-  greasepencil::LayerGroup &root_group_for_write();
-
-  Span<const greasepencil::Layer *> layers() const;
-  Span<greasepencil::Layer *> layers_for_write();
-
-  bool has_active_layer() const;
-  const greasepencil::Layer &active_layer() const;
-  greasepencil::Layer &active_layer_for_write();
-  void set_active_layer_index(int index);
-  int active_layer_index() const;
+  // bool has_active_layer() const;
+  // const greasepencil::Layer &active_layer() const;
+  // greasepencil::Layer &active_layer_for_write();
+  // void set_active_layer_index(int index);
+  // int active_layer_index() const;
 };
 
 }  // namespace blender::bke
+
+inline blender::bke::greasepencil::Layer &GreasePencilLayer::wrap()
+{
+  return *reinterpret_cast<blender::bke::greasepencil::Layer *>(this);
+}
+inline const blender::bke::greasepencil::Layer &GreasePencilLayer::wrap() const
+{
+  return *reinterpret_cast<const blender::bke::greasepencil::Layer *>(this);
+}
+
+inline blender::bke::greasepencil::LayerGroup &GreasePencilLayerTreeGroup::wrap()
+{
+  return *reinterpret_cast<blender::bke::greasepencil::LayerGroup *>(this);
+}
+inline const blender::bke::greasepencil::LayerGroup &GreasePencilLayerTreeGroup::wrap() const
+{
+  return *reinterpret_cast<const blender::bke::greasepencil::LayerGroup *>(this);
+}
 
 struct Main;
 struct Depsgraph;
