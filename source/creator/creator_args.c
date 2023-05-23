@@ -665,6 +665,14 @@ static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), vo
       "that was set.\n");
   printf("\t# blender --background test.blend --render-output /tmp --render-frame 1\n");
   printf("\t...works as expected.\n\n");
+  
+  printf("Additional Cycles Arguments:\n");
+  printf("\tIn addition to the options above, which apply to all render engines, ");
+  printf("\tCycles has additional options to further control its behavior.\n");
+  printf("\t# blender -b file.blend -f 20 -- --cycles-device CPU\n")
+  printf("Note:\n")
+  printf("\tUnlike the generic options, the Cycles-specific ones must be passed on the end of the command line, following a double dash.\n");
+  printf("");
 
   printf("Environment Variables:\n");
   printf("  $BLENDER_USER_RESOURCES  Top level directory for user files.\n");
