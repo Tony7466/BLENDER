@@ -105,6 +105,8 @@ float *Film::read_aov(ViewLayerAOV *aov)
   int index = aov_index + (is_value ? data_.aov_value_id : data_.aov_color_id);
   GPUTexture *pass_tx = accum_tx.layer_view(index);
 
+  GPU_memory_barrier(GPU_BARRIER_TEXTURE_UPDATE);
+
   return (float *)GPU_texture_read(pass_tx, GPU_DATA_FLOAT, 0);
 }
 

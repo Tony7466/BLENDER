@@ -290,6 +290,29 @@ void Instance::render_read_result(RenderLayer *render_layer, const char *view_na
     }
   }
 
+  /* AOVs. */
+  LISTBASE_FOREACH (ViewLayerAOV *, aov, &view_layer->aovs) {
+    if ((aov->flag & AOV_CONFLICT) != 0) {
+      continue;
+    }
+    RenderPass *rp = RE_pass_find_by_name(render_layer, aov->name, view_name);
+    if (!rp) {
+      continue;
+    }
+    float *result = film.read_aov(aov);
+
+    if (result) {
+      BLI_mutex_lock(&render->update_render_passes_mutex);
+      /* WORKAROUND: We use texture read to avoid using a framebuffer to get the render result.
+       * However, on some implementation, we need a buffer with a few extra bytes for the read to
+       * happen correctly (see GLTexture::read()). So we need a custom memory allocation. */
+      /* Avoid memcpy(), replace the pointer directly. */
+      MEM_SAFE_FREE(rp->rect);
+      rp->rect = result;
+      BLI_mutex_unlock(&render->update_render_passes_mutex);
+    }
+  }
+
   /* The vector pass is initialized to weird values. Set it to neutral value if not rendered. */
   if ((pass_bits & EEVEE_RENDER_PASS_VECTOR) == 0) {
     for (std::string vector_pass_name :
