@@ -523,6 +523,7 @@ static bke::CurvesGeometry convert_curves_to_nurbs(
             src_positions.slice(src_points), src_cyclic[i], dst_positions.slice(dst_points));
       }
     });
+
     for (bke::AttributeTransferData &attribute : generic_attributes) {
       selection.foreach_index(GrainSize(512), [&](const int i) {
         const IndexRange src_points = src_points_by_curve[i];

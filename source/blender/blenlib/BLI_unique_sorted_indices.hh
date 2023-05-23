@@ -5,16 +5,16 @@
 /** \file
  * \ingroup bli
  *
- * This file provides functions that deal with integer arrays fulfill follow two constraints:
- * - The arrays are sorted in ascending order, e.g. [2, 3, 6, 8].
- * - The arrays don't have any duplicate elements, so [3, 4, 4, 5] is not allowed.
+ * This file provides functions that deal with integer arrays fulfilling two constraints:
+ * - Values are sorted in ascending order, e.g. [2, 3, 6, 8].
+ * - The array doesn't have any duplicate elements, so [3, 4, 4, 5] is not allowed.
  *
- * Arrays which satisfy these constraints are useful to "mask" indices that should be processed for
+ * Arrays satisfying these constraints are useful to "mask" indices that should be processed for
  * two main reasons:
- * - The sorted order makes the hardware prefetching work best, because memory access patterns are
+ * - The sorted order makes hardware prefetching work best, because memory access patterns are
  *   more predictable (unless the indices are too far apart).
  * - One can check in constant time whether an array of indices contains consecutive integers which
- *   encode an #IndexRange.
+ *   can be represented more efficiently with an #IndexRange.
  *
  * Just using a single array as a mask works well as long as the number of indices is not too
  * large. For potentially larger masks it's better to use #IndexMask which allows for better
@@ -107,10 +107,10 @@ inline int64_t find_size_until_next_range(const Span<T> indices, const int64_t m
 }
 
 /**
- * Split the indices up into segments, whereby each segment is either a range (because the indices
+ * Split the indices up into segments, where each segment is either a range (because the indices
  * are consecutive) or not. There are two opposing goals: The number of segments should be
- * minimized while the amount indices in a range should be maximized. The #range_threshold allows
- * the caller to balance these goals.
+ * minimized while the amount of indices in a range should be maximized. The #range_threshold
+ * allows the caller to balance these goals.
  */
 template<typename T>
 inline int64_t split_to_ranges_and_spans(const Span<T> indices,

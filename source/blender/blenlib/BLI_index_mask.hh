@@ -40,7 +40,7 @@ static constexpr int64_t max_segment_size_mask_high = ~max_segment_size_mask_low
 /**
  * Encodes a position in an #IndexMask. The term "raw" just means that this does not have the usual
  * iterator methods like `operator++`. Supporting those would require storing more data. Generally,
- * the fastest way to iterate over an #IndexMask is use a `foreach_*` method anyway.
+ * the fastest way to iterate over an #IndexMask is using a `foreach_*` method anyway.
  */
 struct RawMaskIterator {
   /** Index of the segment in the index mask. */
@@ -50,7 +50,7 @@ struct RawMaskIterator {
 };
 
 /**
- * Base type of #IndexMask. This only exists to make it more convinient to construct an index mask
+ * Base type of #IndexMask. This only exists to make it more convenient to construct an index mask
  * in a few functions with #IndexMask::data_for_inplace_construction.
  *
  * The names intentionally have a trailing underscore here even though they are public in
@@ -58,7 +58,7 @@ struct RawMaskIterator {
  */
 struct IndexMaskData {
   /**
-   * Size of the index mask, i.e. the number if indices.
+   * Size of the index mask, i.e. the number of indices.
    */
   int64_t indices_num_;
   /**
@@ -130,9 +130,9 @@ using IndexMaskSegment = OffsetSpan<int64_t, int16_t>;
  * - Support efficient iteration over indices that uses #IndexRange when possible.
  *
  * Construction:
- *   An new index mask is usually created by either calling one of its constructors which are O(1).
- *   For more complex masks, there are various `IndexMask::from_*` functions that can create masks
- *   from various sources. Those generally need additional memory which is provided with by a
+ *   A new index mask is usually created by calling one of its constructors which are O(1), or for
+ *   more complex masks, by calling various `IndexMask::from_*` functions that create masks from
+ *   various sources. Those generally need additional memory which is provided with by an
  *   #IndexMaskMemory.
  *
  *   Some of the `IndexMask::from_* functions are have an `IndexMask universe` input. When
@@ -145,13 +145,13 @@ using IndexMaskSegment = OffsetSpan<int64_t, int16_t>;
  *   efficient than using a normal C++ iterator and range-based for loops.
  *
  *   There are multiple variants of the `foreach_*` functions which are useful in different
- *   scenarios. The callback can generally take one or two arguments. The first is the index that's
+ *   scenarios. The callback can generally take one or two arguments. The first is the index
  *   stored in the mask and the second is the index that would have to be passed into `operator[]`
  *   to get the first index.
  *
- *   The `foreach_*` methods also accept an optional `GrainSize`. When it is provided,
+ *   The `foreach_*` methods also accept an optional `GrainSize` argument. When that is provided,
  *   multi-threading is used when appropriate. Integrating multi-threading at this level works well
- *   because mask iteration and parallelism is often used at the same time.
+ *   because mask iteration and parallelism are often used at the same time.
  *
  * Extraction:
  *   An #IndexMask can be converted into various other forms using the `to_*` methods.
@@ -161,16 +161,16 @@ class IndexMask : private IndexMaskData {
  public:
   /** Construct an empty mask. */
   IndexMask();
-  /** Construct a mask that contains the indices from 0 to size-1. This takes O(1) time. */
+  /** Construct a mask that contains the indices from 0 to `size - 1`. This takes O(1) time. */
   IndexMask(int64_t size);
   /** Construct a mask that contains the indices in the range. This takes O(1) time. */
   IndexMask(IndexRange range);
 
   /** Construct a mask from unique sorted indices. */
   template<typename T> static IndexMask from_indices(Span<T> indices, IndexMaskMemory &memory);
-  /** Construct a mask from the set bit indices. */
+  /** Construct a mask from the indices of set bits. */
   static IndexMask from_bits(BitSpan bits, IndexMaskMemory &memory);
-  /** Construct a mask from the set bit indices, but limited by the indices in #universe. */
+  /** Construct a mask from the indices of set bits, but limited to the indices in #universe. */
   static IndexMask from_bits(const IndexMask &universe, BitSpan bits, IndexMaskMemory &memory);
   /** Construct a mask from the true indices. */
   static IndexMask from_bools(Span<bool> bools, IndexMaskMemory &memory);
