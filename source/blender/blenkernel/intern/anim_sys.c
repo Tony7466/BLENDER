@@ -989,8 +989,21 @@ NlaEvalStrip *nlastrips_ctime_get_strip(ListBase *list,
   /* loop over strips, checking if they fall within the range */
   for (strip = strips->first; strip; strip = strip->next) {
     /* Check if current time occurs within this strip. */
-    if (IN_RANGE_INCL(ctime, strip->start, strip->end) ||
-        (strip->flag & NLASTRIP_FLAG_NO_TIME_MAP)) {
+
+    /* This block leads to the Action Track and non-time-remapped tweak strip evaluation to respect
+     * the extrapolation modes. If in_range, these two tracks will always output NES_TIME_WITHIN so
+     * fcurve extrapolation isn't clamped to the keyframe bounds. */
+    bool in_range = IN_RANGE_INCL(ctime, strip->start, strip->end);
+    if (strip->flag & NLASTRIP_FLAG_NO_TIME_MAP) {
+      if (ELEM(strip->extendmode, NLASTRIP_EXTEND_HOLD)) {
+        in_range = true;
+      }
+      else if (ELEM(strip->extendmode, NLASTRIP_EXTEND_HOLD_FORWARD)) {
+        in_range = ctime >= strip->start;
+      }
+    }
+
+    if (in_range) {
       /* this strip is active, so try to use it */
       estrip = strip;
       side = NES_TIME_WITHIN;
