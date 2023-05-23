@@ -40,7 +40,7 @@
  * reports of color differences between OpenGL and Vulkan to narrow down if there are other
  * configurations we need to support.
  */
-#define SELECT_COMPATIBLE_SURFACES false
+#define SELECT_COMPATIBLE_SURFACES_ONLY false
 
 using namespace std;
 
@@ -842,7 +842,7 @@ static bool selectSurfaceFormat(const VkPhysicalDevice physical_device,
     }
   }
 
-#if !SELECT_COMPATIBLE_SURFACES
+#if !SELECT_COMPATIBLE_SURFACES_ONLY
   r_surfaceFormat = formats[0];
 #endif
 
@@ -857,7 +857,7 @@ GHOST_TSuccess GHOST_ContextVK::createSwapchain()
   VkPhysicalDevice physical_device = vulkan_device->physical_device;
 
   VkSurfaceFormatKHR format = {};
-#if SELECT_COMPATIBLE_SURFACES
+#if SELECT_COMPATIBLE_SURFACES_ONLY
   if (!selectSurfaceFormat(physical_device, m_surface, format)) {
     return GHOST_kFailure;
   }

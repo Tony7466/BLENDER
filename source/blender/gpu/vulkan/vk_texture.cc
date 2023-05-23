@@ -97,11 +97,6 @@ void VKTexture::swizzle_set(const char /*swizzle_mask*/[4])
   NOT_YET_IMPLEMENTED;
 }
 
-void VKTexture::stencil_texture_mode_set(bool /*use_stencil*/)
-{
-  NOT_YET_IMPLEMENTED;
-}
-
 void VKTexture::mip_range_set(int /*min*/, int /*max*/)
 {
   NOT_YET_IMPLEMENTED;
@@ -252,7 +247,10 @@ bool VKTexture::init_internal(GPUVertBuf *vbo)
   return true;
 }
 
-bool VKTexture::init_internal(GPUTexture * /*src*/, int /*mip_offset*/, int /*layer_offset*/)
+bool VKTexture::init_internal(GPUTexture * /*src*/,
+                              int /*mip_offset*/,
+                              int /*layer_offset*/,
+                              bool /*use_stencil*/)
 {
   NOT_YET_IMPLEMENTED;
   return false;
