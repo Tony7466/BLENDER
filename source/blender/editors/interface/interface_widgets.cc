@@ -4181,11 +4181,11 @@ static void widget_optionbut(uiWidgetColors *wcol,
     immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
     immUniformColor3ubvAlpha(wcol->text, 192);
 
-    float extent = (recttemp.ymax - recttemp.ymin);
-    float w = extent * 0.6f;
-    float h = MAX2(w / 6.0f, U.pixelsize);
-    float x = recttemp.xmin + (extent * 0.2f);
-    float y = recttemp.ymin + (extent * 0.5f) - (h * 0.5f);
+    const float extent = (recttemp.ymax - recttemp.ymin);
+    const float w = extent * 0.6f;
+    const float h = MAX2(w / 6.0f, U.pixelsize);
+    const float x = recttemp.xmin + (extent * 0.2f);
+    const float y = recttemp.ymin + (extent * 0.5f) - (h * 0.5f);
     immRectf(pos, x, y, x + w, y + h);
     immUnbindProgram();
     GPU_blend(GPU_BLEND_NONE);
