@@ -145,6 +145,10 @@ static float transdata_get_time_shuffle_offset(ListBase *trans_datas)
 
 /** Assumes all of given trans_datas are part of the same ID.
  *
+ *
+ * \param shuffle_direction: the direction the strip is traveling. Positive is towards the bottom
+ * of the stack, negative is away from it.
+ *
  * \param r_total_offset: The minimal total signed offset that results in valid strip track-moves
  * for all strips from \a trans_datas.
  *
@@ -152,7 +156,7 @@ static float transdata_get_time_shuffle_offset(ListBase *trans_datas)
  * desired direction.
  */
 static bool transdata_get_track_shuffle_offset_side(ListBase *trans_datas,
-                                                    const bool shuffle_down,
+                                                    const int shuffle_direction,
                                                     int *r_total_offset)
 {
   *r_total_offset = 0;
@@ -160,9 +164,10 @@ static bool transdata_get_track_shuffle_offset_side(ListBase *trans_datas,
     return false;
   }
 
-  ListBase *tracks = &BKE_animdata_from_id(
-                          ((TransDataNla *)((LinkData *)trans_datas->first)->data)->id)
-                          ->nla_tracks;
+  LinkData *first_link = trans_datas->first;
+  TransDataNla *first_transdata = first_link->data;
+  AnimData *adt = BKE_animdata_from_id(first_transdata->id);
+  ListBase *tracks = &adt->nla_tracks;
 
   int offset;
   do {
@@ -185,7 +190,7 @@ static bool transdata_get_track_shuffle_offset_side(ListBase *trans_datas,
         continue;
       }
 
-      offset = shuffle_down ? 1 : -1;
+      offset = shuffle_direction;
       break;
     }
 
@@ -206,13 +211,13 @@ static bool transdata_get_track_shuffle_offset_side(ListBase *trans_datas,
 static bool transdata_get_track_shuffle_offset(ListBase *trans_datas, int *r_track_offset)
 {
   int offset_down = 0;
-  const bool down_valid = transdata_get_track_shuffle_offset_side(trans_datas, true, &offset_down);
+  const bool down_valid = transdata_get_track_shuffle_offset_side(trans_datas, 1, &offset_down);
 
   int offset_up = 0;
-  const bool up_valid = transdata_get_track_shuffle_offset_side(trans_datas, false, &offset_up);
+  const bool up_valid = transdata_get_track_shuffle_offset_side(trans_datas, -1, &offset_up);
 
   if (down_valid && up_valid) {
-    if (abs(offset_down) < offset_up) {
+    if (offset_down < abs(offset_up)) {
       *r_track_offset = offset_down;
     }
     else {
@@ -238,10 +243,9 @@ static void nlatrack_truncate_temporary_tracks(bAnimContext *ac)
 {
   short filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_ANIMDATA);
   ListBase anim_data = {NULL, NULL};
-  bAnimListElem *ale;
   ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
 
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     ListBase *nla_tracks = &ale->adt->nla_tracks;
 
     /** Remove top tracks that weren't necessary. */
@@ -882,7 +886,9 @@ static void nlastrip_shuffle_transformed(TransDataContainer *tc, TransDataNla *f
           trans_data->nlt = dst_track;
         }
         else {
-          NlaTrack *old_track = BLI_findlink(tracks, trans_data->oldTrack->index);
+          /* if destination track is locked, we need revert strip to source track. */
+          int old_track_index = BLI_findindex(tracks, trans_data->oldTrack);
+          NlaTrack *old_track = BLI_findlink(tracks, old_track_index);
 
           BKE_nlatrack_remove_strip(trans_data->nlt, strip);
           BKE_nlastrips_add_strip_unsafe(&old_track->strips, strip);
@@ -928,7 +934,7 @@ static void special_aftertrans_update__nla(bContext *C, TransInfo *t)
   TransDataNla *first_trans_data = tc->custom.type.data;
 
   /* Shuffle transformed strips. */
-  if (ELEM(t->mode, TFM_TRANSLATION)) {
+  if (ELEM(t->mode, TFM_TRANSLATION) && t->state != TRANS_CANCEL) {
     nlastrip_shuffle_transformed(tc, first_trans_data);
   }
 
