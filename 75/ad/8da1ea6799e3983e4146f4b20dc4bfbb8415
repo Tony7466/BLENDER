@@ -1,2 +1,3 @@
 Referenced by commit efc2e5134f5d179e3b02b73e125e751d0f331969, Fix #104841: Split function for Cycles for sharp edges ignores attribute
 Referenced by issue #107930, Baking of normals show different results between versions
+Referenced by commit efbcfd870301b9d3d257c74fb13020575a0b6216, Mesh: Remove deprecated argumen to split_faces API function
