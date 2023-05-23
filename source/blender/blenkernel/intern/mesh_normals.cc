@@ -317,14 +317,14 @@ eAttrDomain Mesh::normal_domain_all_info() const
   const VArray<bool> sharp_faces = *attributes.lookup_or_default<bool>(
       "sharp_face", ATTR_DOMAIN_FACE, false);
 
-  const array_utils::BoolArrayMix face_mix = array_utils::bool_array_mix_calc(sharp_faces);
+  const array_utils::BoolArrayMix face_mix = array_utils::booleans_mix_calc(sharp_faces);
   if (face_mix == array_utils::BoolArrayMix::AllTrue) {
     return ATTR_DOMAIN_FACE;
   }
 
   const VArray<bool> sharp_edges = *attributes.lookup_or_default<bool>(
       "sharp_edge", ATTR_DOMAIN_EDGE, false);
-  const array_utils::BoolArrayMix edge_mix = array_utils::bool_array_mix_calc(sharp_edges);
+  const array_utils::BoolArrayMix edge_mix = array_utils::booleans_mix_calc(sharp_edges);
   if (edge_mix == array_utils::BoolArrayMix::AllTrue) {
     return ATTR_DOMAIN_FACE;
   }

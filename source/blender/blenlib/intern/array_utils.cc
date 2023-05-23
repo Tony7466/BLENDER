@@ -52,7 +52,7 @@ void invert_booleans(MutableSpan<bool> span)
   });
 }
 
-BoolArrayMix bool_array_mix_calc(const VArray<bool> &varray, const IndexRange range_to_check)
+BoolArrayMix booleans_mix_calc(const VArray<bool> &varray, const IndexRange range_to_check)
 {
   if (varray.is_empty()) {
     return BoolArrayMix::None;
