@@ -180,6 +180,19 @@ TEST(greasepencil, layer_tree_pre_order_iteration)
   }
 }
 
+TEST(greasepencil, layer_tree_pre_order_iteration2)
+{
+  GreasePencilLayerTreeExample ex;
+
+  Span<const Layer *> layers = ex.root.layers();
+  char name[64];
+  for (const int i : layers.index_range()) {
+    const Layer &layer = *layers[i];
+    snprintf(name, 64, "%s%d", "Layer", i + 1);
+    EXPECT_STREQ(layer.name().data(), name);
+  }
+}
+
 TEST(greasepencil, layer_tree_total_size)
 {
   GreasePencilLayerTreeExample ex;
