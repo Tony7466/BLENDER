@@ -11,6 +11,12 @@
 using namespace blender;
 using namespace blender::gpu;
 
+/* Memory size in bytes macros, used as pool flushing frequency thresholds. */
+#define MEMORY_SIZE_2GB 2147483648LL
+#define MEMORY_SIZE_1GB 1073741824LL
+#define MEMORY_SIZE_512MB 536870912LL
+#define MEMORY_SIZE_256MB 268435456LL
+
 namespace blender::gpu {
 
 /* -------------------------------------------------------------------- */
@@ -297,21 +303,21 @@ void MTLBufferPool::update_memory_pools()
        * the application is using. */
       time_t deletion_time_threshold_s = 600;
       /* Spare pool memory >= 2GB. */
-      if (allocations_in_pool_ >= 2147483648LL) {
+      if (allocations_in_pool_ >= MEMORY_SIZE_2GB) {
         deletion_time_threshold_s = 2;
       }
       else
           /* Spare pool memory >= 1GB. */
-          if (allocations_in_pool_ >= 1073741824LL)
+          if (allocations_in_pool_ >= MEMORY_SIZE_1GB)
       {
         deletion_time_threshold_s = 4;
       }
       /* Spare pool memory >= 512MB.*/
-      else if (allocations_in_pool_ >= 536870912LL) {
+      else if (allocations_in_pool_ >= MEMORY_SIZE_512MB) {
         deletion_time_threshold_s = 15;
       }
       /* Spare pool memory >= 256MB. */
-      else if (allocations_in_pool_ >= 268435456LL) {
+      else if (allocations_in_pool_ >= MEMORY_SIZE_256MB) {
         deletion_time_threshold_s = 60;
       }
 
