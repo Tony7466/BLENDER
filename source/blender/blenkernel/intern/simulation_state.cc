@@ -37,16 +37,16 @@ StringSimulationStateItem::StringSimulationStateItem(std::string value) : value_
 {
 }
 
-void ModifierSimulationCache::try_discover_bake(const StringRefNull bake_dir)
+void ModifierSimulationCache::try_discover_bake(const StringRefNull absolute_bake_dir)
 {
   if (failed_finding_bake_) {
     return;
   }
 
   char meta_dir[FILE_MAX];
-  BLI_path_join(meta_dir, sizeof(meta_dir), bake_dir.c_str(), "meta");
+  BLI_path_join(meta_dir, sizeof(meta_dir), absolute_bake_dir.c_str(), "meta");
   char bdata_dir[FILE_MAX];
-  BLI_path_join(bdata_dir, sizeof(bdata_dir), bake_dir.c_str(), "bdata");
+  BLI_path_join(bdata_dir, sizeof(bdata_dir), absolute_bake_dir.c_str(), "bdata");
 
   if (!BLI_is_dir(meta_dir) || !BLI_is_dir(bdata_dir)) {
     failed_finding_bake_ = true;

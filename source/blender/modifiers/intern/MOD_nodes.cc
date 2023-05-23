@@ -1153,10 +1153,10 @@ static void prepare_simulation_states_for_evaluation(const NodesModifierData &nm
       if (nmd_orig.simulation_cache->cache_state() != bke::sim::CacheState::Baked &&
           !bmain_path.is_empty())
       {
-        if (!StringRef(nmd.bake_directory).is_empty()) {
+        if (!StringRef(nmd.simulation_bake_directory).is_empty()) {
           if (const char *base_path = ID_BLEND_PATH(bmain, &ctx.object->id)) {
             char absolute_bake_dir[FILE_MAX];
-            STRNCPY(absolute_bake_dir, nmd.bake_directory);
+            STRNCPY(absolute_bake_dir, nmd.simulation_bake_directory);
             BLI_path_abs(absolute_bake_dir, base_path);
             nmd_orig.simulation_cache->try_discover_bake(absolute_bake_dir);
           }
@@ -2001,7 +2001,7 @@ static void blendWrite(BlendWriter *writer, const ID * /*id_owner*/, const Modif
 
   BLO_write_struct(writer, NodesModifierData, nmd);
 
-  BLO_write_string(writer, nmd->bake_directory);
+  BLO_write_string(writer, nmd->simulation_bake_directory);
 
   if (nmd->settings.properties != nullptr) {
     Map<IDProperty *, IDPropertyUIDataBool *> boolean_props;
@@ -2041,7 +2041,7 @@ static void blendWrite(BlendWriter *writer, const ID * /*id_owner*/, const Modif
 static void blendRead(BlendDataReader *reader, ModifierData *md)
 {
   NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-  BLO_read_data_address(reader, &nmd->bake_directory);
+  BLO_read_data_address(reader, &nmd->simulation_bake_directory);
   if (nmd->node_group == nullptr) {
     nmd->settings.properties = nullptr;
   }
@@ -2062,7 +2062,9 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
 
   tnmd->runtime_eval_log = nullptr;
   tnmd->simulation_cache = nullptr;
-  tnmd->bake_directory = nmd->bake_directory ? BLI_strdup(nmd->bake_directory) : nullptr;
+  tnmd->simulation_bake_directory = nmd->simulation_bake_directory ?
+                                        BLI_strdup(nmd->simulation_bake_directory) :
+                                        nullptr;
 
   if (nmd->settings.properties != nullptr) {
     tnmd->settings.properties = IDP_CopyProperty_ex(nmd->settings.properties, flag);
@@ -2078,7 +2080,7 @@ static void freeData(ModifierData *md)
   }
 
   MEM_delete(nmd->simulation_cache);
-  MEM_SAFE_FREE(nmd->bake_directory);
+  MEM_SAFE_FREE(nmd->simulation_bake_directory);
 
   clear_runtime_data(nmd);
 }

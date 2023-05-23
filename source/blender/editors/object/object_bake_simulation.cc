@@ -254,12 +254,12 @@ static void bake_simulation_job_startjob(void *customdata,
         if (nmd->simulation_cache != nullptr) {
           nmd->simulation_cache->reset();
         }
-        if (StringRef(nmd->bake_directory).is_empty()) {
-          nmd->bake_directory = BLI_strdup(
+        if (StringRef(nmd->simulation_bake_directory).is_empty()) {
+          nmd->simulation_bake_directory = BLI_strdup(
               bke::sim::get_default_modifier_bake_directory(*job.bmain, *object, *md).c_str());
         }
         char absolute_bake_dir[FILE_MAX];
-        STRNCPY(absolute_bake_dir, nmd->bake_directory);
+        STRNCPY(absolute_bake_dir, nmd->simulation_bake_directory);
         BLI_path_abs(absolute_bake_dir, base_path);
         bake_data.modifiers.append({nmd, absolute_bake_dir, std::make_unique<BDataSharing>()});
       }
@@ -444,11 +444,11 @@ static int delete_baked_simulation_exec(bContext *C, wmOperator *op)
         if (nmd->simulation_cache != nullptr) {
           nmd->simulation_cache->reset();
         }
-        if (StringRef(nmd->bake_directory).is_empty()) {
+        if (StringRef(nmd->simulation_bake_directory).is_empty()) {
           continue;
         }
         char absolute_bake_dir[FILE_MAX];
-        STRNCPY(absolute_bake_dir, nmd->bake_directory);
+        STRNCPY(absolute_bake_dir, nmd->simulation_bake_directory);
         BLI_path_abs(absolute_bake_dir, base_path);
         if (BLI_exists(absolute_bake_dir)) {
           if (BLI_delete(absolute_bake_dir, true, true)) {

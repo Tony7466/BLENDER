@@ -2319,7 +2319,10 @@ typedef struct NodesModifierData {
   ModifierData modifier;
   struct bNodeTree *node_group;
   struct NodesModifierSettings settings;
-  char *bake_directory;
+  /**
+   * Directory where baked simulation states are stored. This may be relative to the .blend file.
+   */
+  char *simulation_bake_directory;
   void *_pad;
 
   /**

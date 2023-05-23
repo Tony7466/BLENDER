@@ -4492,12 +4492,12 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
           continue;
         }
         NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-        if (nmd->bake_directory) {
+        if (nmd->simulation_bake_directory) {
           continue;
         }
         const std::string bake_dir = blender::bke::sim::get_default_modifier_bake_directory(
             *bmain, *ob, *md);
-        nmd->bake_directory = BLI_strdup(bake_dir.c_str());
+        nmd->simulation_bake_directory = BLI_strdup(bake_dir.c_str());
       }
     }
   }

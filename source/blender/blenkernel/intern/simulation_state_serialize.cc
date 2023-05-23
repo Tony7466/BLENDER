@@ -68,6 +68,7 @@ std::string get_default_modifier_bake_directory(const Main &bmain,
                                                 const ModifierData &md)
 {
   char dir[FILE_MAX];
+  /* Make path that's relative to the .blend file. */
   BLI_path_join(dir,
                 sizeof(dir),
                 "//",
