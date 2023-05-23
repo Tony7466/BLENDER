@@ -14,8 +14,6 @@
 
 namespace blender::gpu::tests {
 
-static constexpr int Size = 256;
-
 static void test_buffer_texture()
 {
   if (!GPU_compute_shader_support() && !GPU_shader_storage_buffer_objects_support()) {
