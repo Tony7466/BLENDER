@@ -107,17 +107,17 @@ template<typename T> struct GroupedSpan {
   GroupedSpan() = default;
   GroupedSpan(OffsetIndices<int> offsets, Span<T> data) : offsets(offsets), data(data)
   {
-    BLI_assert(offsets.total_size() == data.size());
+    BLI_assert(this->offsets.total_size() == this->data.size());
   }
 
   Span<T> operator[](const int64_t index) const
   {
-    return data.slice(offsets[index]);
+    return this->data.slice(this->offsets[index]);
   }
 
   bool is_empty() const
   {
-    return data.size() == 0;
+    return this->data.size() == 0;
   }
 };
 
