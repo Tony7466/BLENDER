@@ -148,7 +148,7 @@ void IMB_index_builder_finish(anim_index_builder *fp, int rollback)
   }
   else {
     unlink(fp->filepath);
-    BLI_rename_overwrite(fp->filepath_temp, fp->filepath);
+    BLI_rename(fp->filepath_temp, fp->filepath);
   }
 
   MEM_freeN(fp);
@@ -784,7 +784,7 @@ static void free_proxy_output_ffmpeg(struct proxy_output_ctx *ctx, int rollback)
   else {
     get_proxy_filepath(ctx->anim, ctx->proxy_size, filepath, false);
     unlink(filepath);
-    BLI_rename_overwrite(filepath_tmp, filepath);
+    BLI_rename(filepath_tmp, filepath);
   }
 
   MEM_freeN(ctx);
@@ -1392,10 +1392,9 @@ static void index_rebuild_fallback(FallbackIndexBuilderContext *context,
 
         IMB_convert_rgba_to_abgr(s_ibuf);
 
-        AVI_write_frame(context->proxy_ctx[i], pos, AVI_FORMAT_RGB32, s_ibuf->rect, x * y * 4);
-
         /* note that libavi free's the buffer... */
-        s_ibuf->rect = nullptr;
+        uint8_t *rect = IMB_steal_byte_buffer(s_ibuf);
+        AVI_write_frame(context->proxy_ctx[i], pos, AVI_FORMAT_RGB32, rect, x * y * 4);
 
         IMB_freeImBuf(s_ibuf);
       }

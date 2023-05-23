@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+ * Copyright 2023 Blender Foundation */
 
 #pragma once
 
@@ -38,7 +38,6 @@ bNodeTree *ntreeCopyTree_ex(const bNodeTree *ntree, Main *bmain, bool do_id_user
 bNodeTree *ntreeCopyTree(Main *bmain, const bNodeTree *ntree);
 
 void ntreeFreeLocalNode(bNodeTree *ntree, bNode *node);
-
 
 void ntreeUpdateAllNew(Main *main);
 

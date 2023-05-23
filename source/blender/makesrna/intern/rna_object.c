@@ -3316,6 +3316,7 @@ static void rna_def_object(BlenderRNA *brna)
   prop = RNA_def_property(srna, "rotation_euler", PROP_FLOAT, PROP_EULER);
   RNA_def_property_float_sdna(prop, NULL, "rot");
   RNA_def_property_editable_array_func(prop, "rna_Object_rotation_euler_editable");
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 100, RNA_TRANSLATION_PREC_DEFAULT);
   RNA_def_property_ui_text(prop, "Euler Rotation", "Rotation in Eulers");
   RNA_def_property_update(prop, NC_OBJECT | ND_TRANSFORM, "rna_Object_internal_update");
 
@@ -3363,6 +3364,7 @@ static void rna_def_object(BlenderRNA *brna)
       prop,
       "Delta Rotation (Euler)",
       "Extra rotation added to the rotation of the object (when using Euler rotations)");
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 100, RNA_TRANSLATION_PREC_DEFAULT);
   RNA_def_property_update(prop, NC_OBJECT | ND_TRANSFORM, "rna_Object_internal_update");
 
   prop = RNA_def_property(srna, "delta_rotation_quaternion", PROP_FLOAT, PROP_QUATERNION);
@@ -3796,14 +3798,14 @@ static void rna_def_object(BlenderRNA *brna)
   /* shape keys */
   prop = RNA_def_property(srna, "show_only_shape_key", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "shapeflag", OB_SHAPE_LOCK);
-  RNA_def_property_ui_text(prop, "Shape Key Lock", "Only show the active shape at full strength");
+  RNA_def_property_ui_text(prop, "Shape Key Lock", "Only show the active shape key at full value");
   RNA_def_property_ui_icon(prop, ICON_UNPINNED, 1);
   RNA_def_property_update(prop, 0, "rna_Object_internal_update_data");
 
   prop = RNA_def_property(srna, "use_shape_key_edit_mode", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "shapeflag", OB_SHAPE_EDIT_MODE);
   RNA_def_property_ui_text(
-      prop, "Shape Key Edit Mode", "Apply shape keys in edit mode (for meshes only)");
+      prop, "Shape Key Edit Mode", "Display shape keys in edit mode (for meshes only)");
   RNA_def_property_ui_icon(prop, ICON_EDITMODE_HLT, 0);
   RNA_def_property_update(prop, 0, "rna_Object_internal_update_data");
 
