@@ -1153,6 +1153,12 @@ static void read_layer(BlendDataReader *reader, GreasePencilLayer *node)
   LISTBASE_FOREACH (GreasePencilLayerMask *, mask, &node->masks) {
     BLO_read_data_address(reader, &mask->layer_name);
   }
+
+  node->wrap().runtime = MEM_new<blender::bke::greasepencil::LayerRuntime>(__func__);
+  for (int i = 0; i < node->frames_storage.size; i++) {
+    node->wrap().frames_for_write().add(node->frames_storage.keys[i],
+                                        node->frames_storage.values[i]);
+  }
 }
 
 static void read_layer_tree_group(BlendDataReader *reader, GreasePencilLayerTreeGroup *node)
@@ -1175,6 +1181,8 @@ static void read_layer_tree_group(BlendDataReader *reader, GreasePencilLayerTree
       }
     }
   }
+
+  node->wrap().runtime = MEM_new<blender::bke::greasepencil::LayerGroupRuntime>(__func__);
 }
 
 void GreasePencil::read_layer_tree(BlendDataReader *reader)
