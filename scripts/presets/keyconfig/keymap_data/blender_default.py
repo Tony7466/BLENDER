@@ -123,7 +123,7 @@ class Params:
             use_file_single_click=False,
             v3d_tilde_action='VIEW',
             v3d_alt_mmb_drag_action='RELATIVE',
-            experimental=None
+            experimental=None,
             use_transform_navigation=False,
     ):
         from sys import platform
