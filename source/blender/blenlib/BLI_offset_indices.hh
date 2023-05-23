@@ -96,6 +96,9 @@ template<typename T> class OffsetIndices {
  * References many separate spans in a larger contiguous array. This gives a more efficient way to
  * store many grouped arrays, without requiring many small allocations, giving the general benefits
  * of using contiguous memory.
+ *
+ * \note If the offsets are shared between many #GroupedSpan objects, it will still
+ * be more efficient to retrieve the #IndexRange only once and slice each span.
  */
 template<typename T> struct GroupedSpan {
   OffsetIndices<int> offsets;
