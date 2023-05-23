@@ -159,9 +159,6 @@ void VKBackend::capabilities_init()
   GCaps.compute_shader_support = true;
   GCaps.shader_storage_buffer_objects_support = true;
   GCaps.shader_image_load_store_support = true;
-  /* Although not used or implemented, it is required to make sure that curve/hair drawing uses the
-   * right branch. This should be fixed in the draw manager. */
-  GCaps.transform_feedback_support = true;
 
   GCaps.max_texture_size = max_ii(limits.maxImageDimension1D, limits.maxImageDimension2D);
   GCaps.max_texture_3d_size = limits.maxImageDimension3D;
