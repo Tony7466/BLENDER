@@ -2319,6 +2319,8 @@ typedef struct NodesModifierData {
   ModifierData modifier;
   struct bNodeTree *node_group;
   struct NodesModifierSettings settings;
+  char *bake_directory;
+  void *_pad;
 
   /**
    * Contains logged information from the last evaluation.
