@@ -68,8 +68,10 @@ class Layer;
  */
 class TreeNode : public ::GreasePencilLayerTreeNode {
  public:
+  TreeNode();
   explicit TreeNode(GreasePencilLayerTreeNodeType type);
   explicit TreeNode(GreasePencilLayerTreeNodeType type, StringRefNull name);
+  TreeNode(const TreeNode &other);
 
  public:
   /**
@@ -174,6 +176,11 @@ class Layer : public ::GreasePencilLayer {
   Layer(const Layer &other);
   ~Layer();
 
+  StringRefNull name() const
+  {
+    return this->base.name;
+  }
+
   /**
    * \returns the frames mapping.
    */
@@ -254,14 +261,12 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
    */
   LayerGroup &add_group(LayerGroup *group);
   LayerGroup &add_group(StringRefNull name);
-  // void add_group(LayerGroup &&group);
 
   /**
    * Adds a layer at the end of this group and returns it.
    */
   Layer &add_layer(Layer *layer);
   Layer &add_layer(StringRefNull name);
-  // Layer &add_layer(Layer &&layer);
 
   /**
    * Returns the number of direct nodes in this group.
@@ -323,6 +328,15 @@ class GreasePencilRuntime {
 };
 
 }  // namespace blender::bke
+
+inline blender::bke::greasepencil::TreeNode &GreasePencilLayerTreeNode::wrap()
+{
+  return *reinterpret_cast<blender::bke::greasepencil::TreeNode *>(this);
+}
+inline const blender::bke::greasepencil::TreeNode &GreasePencilLayerTreeNode::wrap() const
+{
+  return *reinterpret_cast<const blender::bke::greasepencil::TreeNode *>(this);
+}
 
 inline blender::bke::greasepencil::Layer &GreasePencilLayer::wrap()
 {

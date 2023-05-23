@@ -21,6 +21,7 @@ class GreasePencilRuntime;
 class GreasePencilDrawingRuntime;
 namespace greasepencil {
 class DrawingRuntime;
+class TreeNode;
 class Layer;
 class LayerRuntime;
 class LayerGroup;
@@ -250,6 +251,10 @@ typedef struct GreasePencilLayerTreeNode {
    * See `GreasePencilLayerTreeNodeFlag`.
    */
   uint32_t flag;
+#ifdef __cplusplus
+  blender::bke::greasepencil::TreeNode &wrap();
+  const blender::bke::greasepencil::TreeNode &wrap() const;
+#endif
 } GreasePencilLayerTreeNode;
 
 /**

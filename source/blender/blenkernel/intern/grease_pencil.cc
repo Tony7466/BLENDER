@@ -248,34 +248,35 @@ IDTypeInfo IDType_ID_GP = {
 
 namespace blender::bke::greasepencil {
 
-TreeNode::TreeNode(GreasePencilLayerTreeNodeType type)
+TreeNode::TreeNode()
 {
-  this->type = type;
+  this->next = this->prev = nullptr;
+  this->parent = nullptr;
+
   this->name = nullptr;
+  this->flag = 0;
 }
 
-TreeNode::TreeNode(GreasePencilLayerTreeNodeType type, StringRefNull name)
+TreeNode::TreeNode(GreasePencilLayerTreeNodeType type) : TreeNode()
+{
+  this->type = type;
+}
+
+TreeNode::TreeNode(GreasePencilLayerTreeNodeType type, StringRefNull name) : TreeNode()
 {
   this->type = type;
   this->name = BLI_strdup(name.c_str());
 }
 
-// TreeNode::TreeNode(const TreeNode &other)
-//     : TreeNode::TreeNode(GreasePencilLayerTreeNodeType(other.type))
-// {
-//   if (other.name) {
-//     this->name = BLI_strdup(other.name);
-//   }
-//   this->flag = other.flag;
-//   copy_v3_v3_uchar(this->color, other.color);
-// }
-
-// TreeNode::~TreeNode()
-// {
-//   if (this->name) {
-//     MEM_freeN(this->name);
-//   }
-// }
+TreeNode::TreeNode(const TreeNode &other)
+    : TreeNode::TreeNode(GreasePencilLayerTreeNodeType(other.type))
+{
+  if (other.name) {
+    this->name = BLI_strdup(other.name);
+  }
+  this->flag = other.flag;
+  copy_v3_v3_uchar(this->color, other.color);
+}
 
 const LayerGroup &TreeNode::as_group() const
 {
@@ -324,10 +325,7 @@ LayerMask::~LayerMask()
 
 Layer::Layer()
 {
-  this->base.type = GP_LAYER_TREE_LEAF;
-  this->base.next = this->base.prev = nullptr;
-  this->base.parent = nullptr;
-  this->base.name = nullptr;
+  this->base = TreeNode(GP_LAYER_TREE_LEAF);
 
   this->frames_storage.size = 0;
   this->frames_storage.keys = nullptr;
@@ -345,13 +343,11 @@ Layer::Layer(StringRefNull name) : Layer()
 
 Layer::Layer(const Layer &other) : Layer()
 {
-  if (other.base.name) {
-    this->base.name = BLI_strdup(other.base.name);
-  }
-  this->base.flag = other.base.flag;
-  copy_v3_v3_uchar(this->base.color, other.base.color);
+  this->base = TreeNode(other.base.wrap());
 
   /* TODO: duplicate masks. */
+
+  /* Note: We do not duplicate the frame storage since it is only needed for writing. */
 
   this->blend_mode = other.blend_mode;
   this->opacity = other.opacity;
@@ -459,10 +455,7 @@ void Layer::tag_frames_map_keys_changed()
 
 LayerGroup::LayerGroup()
 {
-  this->base.type = GP_LAYER_TREE_GROUP;
-  this->base.next = this->base.prev = nullptr;
-  this->base.parent = nullptr;
-  this->base.name = nullptr;
+  this->base = TreeNode(GP_LAYER_TREE_GROUP);
 
   BLI_listbase_clear(&this->children);
 
@@ -476,9 +469,7 @@ LayerGroup::LayerGroup(StringRefNull name) : LayerGroup()
 
 LayerGroup::LayerGroup(const LayerGroup &other) : LayerGroup()
 {
-  if (other.base.name) {
-    this->base.name = BLI_strdup(other.base.name);
-  }
+  this->base = TreeNode(other.base.wrap());
 
   LISTBASE_FOREACH (GreasePencilLayerTreeNode *, child, &other.children) {
     switch (child->type) {
