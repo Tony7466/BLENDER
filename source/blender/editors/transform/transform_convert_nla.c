@@ -146,8 +146,8 @@ static float transdata_get_time_shuffle_offset(ListBase *trans_datas)
 /** Assumes all of given trans_datas are part of the same ID.
  *
  *
- * \param shuffle_direction: the direction the strip is traveling. Positive is towards the bottom
- * of the stack, negative is away from it.
+ * \param shuffle_direction: the direction the strip is traveling. 1 is towards the bottom
+ * of the stack, -1 is away from it.
  *
  * \param r_total_offset: The minimal total signed offset that results in valid strip track-moves
  * for all strips from \a trans_datas.
