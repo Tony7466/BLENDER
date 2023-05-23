@@ -317,6 +317,9 @@ enum {
 
   /* Draw the checkbox buttons inverted. */
   UI_BUT_CHECKBOX_INVERT = 1 << 25,
+
+  /* Drawn in a way that indicates that the state/value is unknown. */
+  UI_BUT_INDETERMINATE = 1 << 26,
 };
 
 /**

@@ -3716,7 +3716,7 @@ static void widget_numslider(uiBut *but,
   widgetbase_draw(&wtb, wcol);
 
   /* Draw slider part only when not in text editing. */
-  if (!state->is_text_input) {
+  if (!state->is_text_input && !(but->drawflag & UI_BUT_INDETERMINATE)) {
     int roundboxalign_slider = roundboxalign;
 
     uchar outline[3];
@@ -4151,15 +4151,45 @@ static void widget_optionbut(uiWidgetColors *wcol,
   /* Keep one edge in place. */
   BLI_rcti_translate(&recttemp, text_before_widget ? delta : -delta, 0);
 
+  if (state->but_drawflag & UI_BUT_INDETERMINATE) {
+    /* The same muted background color regardless of state. */
+    wcol->inner[0] = wcol->inner_sel[0];
+    wcol->inner[1] = wcol->inner_sel[1];
+    wcol->inner[2] = wcol->inner_sel[2];
+    wcol->inner[3] = 96;
+  }
+
   const float rad = widget_radius_from_rcti(&recttemp, wcol);
   round_box_edges(&wtb, UI_CNR_ALL, &recttemp, rad);
 
   /* decoration */
-  if (state->but_flag & UI_SELECT) {
+  if (state->but_flag & UI_SELECT && !(state->but_drawflag & UI_BUT_INDETERMINATE)) {
     shape_preset_trias_from_rect_checkmark(&wtb.tria1, &recttemp);
   }
 
   widgetbase_draw(&wtb, wcol);
+
+  if (state->but_drawflag & UI_BUT_INDETERMINATE) {
+
+    /* Flush the widget cache so we can draw on top. */
+    GPU_blend(GPU_BLEND_ALPHA);
+    UI_widgetbase_draw_cache_flush();
+
+    /* Draw a horizontal line instead of checkmark. */
+    const uint pos = GPU_vertformat_attr_add(
+        immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+    immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+    immUniformColor3ubvAlpha(wcol->text, 192);
+
+    float extent = (recttemp.ymax - recttemp.ymin);
+    float w = extent * 0.6f;
+    float h = MAX2(w / 6.0f, U.pixelsize);
+    float x = recttemp.xmin + (extent * 0.2f);
+    float y = recttemp.ymin + (extent * 0.5f) - (h * 0.5f);
+    immRectf(pos, x, y, x + w, y + h);
+    immUnbindProgram();
+    GPU_blend(GPU_BLEND_NONE);
+  }
 
   /* Text space - factor is really just eyeballed. */
   const float offset = delta * 0.9;
