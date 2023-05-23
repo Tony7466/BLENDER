@@ -110,9 +110,9 @@ template<typename T> struct GroupedSpan {
     BLI_assert(offsets.total_size() == data.size());
   }
 
-  Span<T> operator[](const int64_t vert_index) const
+  Span<T> operator[](const int64_t index) const
   {
-    return data.slice(offsets[vert_index]);
+    return data.slice(offsets[index]);
   }
 
   bool is_empty() const
