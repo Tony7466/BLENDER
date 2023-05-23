@@ -210,14 +210,14 @@ class IndexMask : private IndexMaskData {
   /**
    * \return Position where the #query_index is stored, or none if the index is not in the mask.
    */
-  std::optional<RawMaskIterator> find(const int64_t query_index) const;
+  std::optional<RawMaskIterator> find(int64_t query_index) const;
   /**
    * \return True when the #query_index is stored in the mask.
    */
-  bool contains(const int64_t query_index) const;
+  bool contains(int64_t query_index) const;
 
   /** \return The iterator for the given index such that `mask[iterator] == mask[index]`. */
-  RawMaskIterator index_to_iterator(const int64_t index) const;
+  RawMaskIterator index_to_iterator(int64_t index) const;
   /** \return The index for the given iterator such that `mask[iterator] == mask[index]`. */
   int64_t iterator_to_index(const RawMaskIterator &it) const;
 
@@ -225,7 +225,7 @@ class IndexMask : private IndexMaskData {
    * Get the index at the given position. Prefer `foreach_*` methods for better performance. This
    * takes O(log n) time.
    */
-  int64_t operator[](const int64_t i) const;
+  int64_t operator[](int64_t i) const;
   /**
    * Same as above but takes O(1) time. It's still preferable to use `foreach_*` methods for
    * iteration.
@@ -242,19 +242,17 @@ class IndexMask : private IndexMaskData {
    * Same as above but can also add an offset to every index in the mask.
    * Takes O(log n + range.size()) time but with a very small constant factor.
    */
-  IndexMask slice_and_offset(IndexRange range,
-                             const int64_t offset,
-                             IndexMaskMemory &memory) const;
+  IndexMask slice_and_offset(IndexRange range, int64_t offset, IndexMaskMemory &memory) const;
   IndexMask slice_and_offset(int64_t start,
                              int64_t size,
-                             const int64_t offset,
+                             int64_t offset,
                              IndexMaskMemory &memory) const;
 
   /**
    * \return A new index mask that contains all the indices from the universe that are not in the
    * current mask.
    */
-  IndexMask complement(const IndexRange universe, IndexMaskMemory &memory) const;
+  IndexMask complement(IndexRange universe, IndexMaskMemory &memory) const;
 
   /**
    * \return Number of segments in the mask.
@@ -263,7 +261,7 @@ class IndexMask : private IndexMaskData {
   /**
    * \return Indices stored in the n-th segment.
    */
-  IndexMaskSegment segment(const int64_t segment_i) const;
+  IndexMaskSegment segment(int64_t segment_i) const;
 
   /**
    * Calls the function once for every segment with these parameters:
@@ -800,7 +798,7 @@ template<typename Fn> inline void IndexMask::foreach_range(Fn &&fn) const
 namespace detail {
 IndexMask from_predicate_impl(
     const IndexMask &universe,
-    const GrainSize grain_size,
+    GrainSize grain_size,
     IndexMaskMemory &memory,
     FunctionRef<int64_t(IndexMaskSegment indices, int16_t *r_true_indices)> filter_indices);
 }
