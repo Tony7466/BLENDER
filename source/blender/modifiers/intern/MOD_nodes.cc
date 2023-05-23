@@ -1845,8 +1845,6 @@ static void panel_draw(const bContext *C, Panel *panel)
    * attribute/value toggle requires a manually built layout anyway. */
   uiLayoutSetPropDecorate(layout, false);
 
-  uiItemL(layout, (StringRefNull("Dir: ") + StringRef(nmd->bake_directory)).c_str(), ICON_NONE);
-
   uiTemplateID(layout,
                C,
                ptr,
