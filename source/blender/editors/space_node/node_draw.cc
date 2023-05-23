@@ -2083,7 +2083,7 @@ static void node_draw_extra_info_row(const bNode &node,
 static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
                                        const SpaceNode &snode,
                                        const bNode &node,
-                                       const rctf &rct,
+                                       const rctf &node_rct,
                                        uiBlock &block)
 {
   Vector<NodeExtraInfoRow> extra_info_rows = node_get_extra_info(tree_draw_ctx, snode, node);
@@ -2097,16 +2097,16 @@ static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
   const float width = (node.width - 6.0f) * UI_SCALE_FAC;
 
   if (node.is_frame()) {
-    extra_info_rect.xmin = rct.xmin;
-    extra_info_rect.xmax = rct.xmin + 95.0f * UI_SCALE_FAC;
-    extra_info_rect.ymin = rct.ymin + 2.0f * UI_SCALE_FAC;
-    extra_info_rect.ymax = rct.ymin + 2.0f * UI_SCALE_FAC;
+    extra_info_rect.xmin = node_rct.xmin;
+    extra_info_rect.xmax = node_rct.xmin + 95.0f * UI_SCALE_FAC;
+    extra_info_rect.ymin = node_rct.ymin + 2.0f * UI_SCALE_FAC;
+    extra_info_rect.ymax = node_rct.ymin + 2.0f * UI_SCALE_FAC;
   }
   else {
-    extra_info_rect.xmin = rct.xmin + 3.0f * UI_SCALE_FAC;
-    extra_info_rect.xmax = rct.xmin + width;
-    extra_info_rect.ymin = rct.ymax;
-    extra_info_rect.ymax = rct.ymax + extra_info_rows.size() * (20.0f * UI_SCALE_FAC);
+    extra_info_rect.xmin = node_rct.xmin + 3.0f * UI_SCALE_FAC;
+    extra_info_rect.xmax = node_rct.xmin + width;
+    extra_info_rect.ymin = node_rct.ymax;
+    extra_info_rect.ymax = node_rct.ymax + extra_info_rows.size() * (20.0f * UI_SCALE_FAC);
 
     if (node.flag & NODE_MUTED) {
       UI_GetThemeColorBlend4f(TH_BACK, TH_NODE, 0.2f, color);
@@ -2117,21 +2117,21 @@ static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
     color[3] -= 0.35f;
     UI_draw_roundbox_corner_set(
         UI_CNR_ALL & ~UI_CNR_BOTTOM_LEFT &
-        ((rct.xmax) > extra_info_rect.xmax ? ~UI_CNR_BOTTOM_RIGHT : UI_CNR_ALL));
+        ((node_rct.xmax) > extra_info_rect.xmax ? ~UI_CNR_BOTTOM_RIGHT : UI_CNR_ALL));
     UI_draw_roundbox_4fv(&extra_info_rect, true, BASIS_RAD, color);
 
     /* Draw outline. */
     const float outline_width = 1.0f;
-    extra_info_rect.xmin = rct.xmin + 3.0f * UI_SCALE_FAC - outline_width;
-    extra_info_rect.xmax = rct.xmin + width + outline_width;
-    extra_info_rect.ymin = rct.ymax - outline_width;
-    extra_info_rect.ymax = rct.ymax + outline_width +
+    extra_info_rect.xmin = node_rct.xmin + 3.0f * UI_SCALE_FAC - outline_width;
+    extra_info_rect.xmax = node_rct.xmin + width + outline_width;
+    extra_info_rect.ymin = node_rct.ymax - outline_width;
+    extra_info_rect.ymax = node_rct.ymax + outline_width +
                            extra_info_rows.size() * (20.0f * UI_SCALE_FAC);
 
     UI_GetThemeColorBlendShade4fv(TH_BACK, TH_NODE, 0.4f, -20, color);
     UI_draw_roundbox_corner_set(
         UI_CNR_ALL & ~UI_CNR_BOTTOM_LEFT &
-        ((rct.xmax) > extra_info_rect.xmax ? ~UI_CNR_BOTTOM_RIGHT : UI_CNR_ALL));
+        ((node_rct.xmax) > extra_info_rect.xmax ? ~UI_CNR_BOTTOM_RIGHT : UI_CNR_ALL));
     UI_draw_roundbox_4fv(&extra_info_rect, false, BASIS_RAD, color);
   }
 
