@@ -220,8 +220,6 @@ class MeshFairingContext : public FairingContext {
     loop_to_poly_map_ = blender::bke::mesh::build_loop_to_poly_map(polys);
   }
 
-  ~MeshFairingContext() override {}
-
   void adjacents_coords_from_loop(const int loop,
                                   float r_adj_next[3],
                                   float r_adj_prev[3]) override
@@ -294,8 +292,6 @@ class BMeshFairingContext : public FairingContext {
     }
     vert_to_loop_offsets_.last() = index_iter;
   }
-
-  ~BMeshFairingContext() override {}
 
   void adjacents_coords_from_loop(const int loop,
                                   float r_adj_next[3],
