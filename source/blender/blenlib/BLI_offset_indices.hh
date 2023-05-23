@@ -115,6 +115,16 @@ template<typename T> struct GroupedSpan {
     return this->data.slice(this->offsets[index]);
   }
 
+  int64_t size() const
+  {
+    return this->offsets.size();
+  }
+
+  IndexRange index_range() const
+  {
+    return this->offsets.index_range();
+  }
+
   bool is_empty() const
   {
     return this->data.size() == 0;
