@@ -162,7 +162,8 @@ IndexMask IndexMask::complement(const IndexRange universe, IndexMaskMemory &memo
  * Merges consecutive segments in some cases. Having fewer but larger segments generally allows for
  * better performance when using the mask later on.
  */
-static void consolidate_segments(Vector<IndexMaskSegment> &segments, IndexMaskMemory & /*memory*/)
+static void consolidate_segments(Vector<IndexMaskSegment, 16> &segments,
+                                 IndexMaskMemory & /*memory*/)
 {
   if (segments.is_empty()) {
     return;
@@ -260,12 +261,12 @@ static IndexMask mask_from_segments(const Span<IndexMaskSegment> segments, Index
  * Split the indices into segments. Afterwards, the indices referenced by #r_segments are either
  * owned by #allocator or statically allocated.
  */
-template<typename T>
+template<typename T, int64_t InlineBufferSize>
 static void segments_from_indices(const Span<T> indices,
                                   LinearAllocator<> &allocator,
-                                  Vector<IndexMaskSegment> &r_segments)
+                                  Vector<IndexMaskSegment, InlineBufferSize> &r_segments)
 {
-  Vector<std::variant<IndexRange, Span<T>>, 64> segments;
+  Vector<std::variant<IndexRange, Span<T>>, 16> segments;
 
   for (int64_t start = 0; start < indices.size(); start += max_segment_size) {
     /* Slice to make sure that each segment is no longer than #max_segment_size. */
@@ -317,7 +318,7 @@ struct ParallelSegmentsCollector {
    * #main_segments with the segments created on each thread. The segments are also sorted to make
    * sure that they are in the correct order.
    */
-  void reduce(LinearAllocator<> &main_allocator, Vector<IndexMaskSegment> &main_segments)
+  void reduce(LinearAllocator<> &main_allocator, Vector<IndexMaskSegment, 16> &main_segments)
   {
     for (LocalData &data : this->data_by_thread) {
       main_allocator.transfer_ownership_from(data.allocator);
@@ -341,7 +342,7 @@ IndexMask IndexMask::from_indices(const Span<T> indices, IndexMaskMemory &memory
     return *range;
   }
 
-  Vector<IndexMaskSegment> segments;
+  Vector<IndexMaskSegment, 16> segments;
 
   constexpr int64_t min_grain_size = 4096;
   constexpr int64_t max_grain_size = max_segment_size;
@@ -470,7 +471,7 @@ static void segments_from_predicate_filter(
     const IndexMaskSegment universe_segment,
     LinearAllocator<> &allocator,
     const FunctionRef<int64_t(IndexMaskSegment indices, int16_t *r_true_indices)> filter_indices,
-    Vector<IndexMaskSegment> &r_segments)
+    Vector<IndexMaskSegment, 16> &r_segments)
 {
   std::array<int16_t, max_segment_size> indices_array;
   const int64_t true_indices_num = filter_indices(universe_segment, indices_array.data());
@@ -506,7 +507,7 @@ IndexMask from_predicate_impl(
     return {};
   }
 
-  Vector<IndexMaskSegment> segments;
+  Vector<IndexMaskSegment, 16> segments;
   if (universe.size() <= grain_size.value) {
     for (const int64_t segment_i : IndexRange(universe.segments_num())) {
       const IndexMaskSegment universe_segment = universe.segment(segment_i);

@@ -112,10 +112,11 @@ inline int64_t find_size_until_next_range(const Span<T> indices, const int64_t m
  * minimized while the amount of indices in a range should be maximized. The #range_threshold
  * allows the caller to balance these goals.
  */
-template<typename T>
-inline int64_t split_to_ranges_and_spans(const Span<T> indices,
-                                         const int64_t range_threshold,
-                                         Vector<std::variant<IndexRange, Span<T>>> &r_segments)
+template<typename T, int64_t InlineBufferSize>
+inline int64_t split_to_ranges_and_spans(
+    const Span<T> indices,
+    const int64_t range_threshold,
+    Vector<std::variant<IndexRange, Span<T>>, InlineBufferSize> &r_segments)
 {
   BLI_assert(range_threshold >= 1);
   const int64_t old_segments_num = r_segments.size();
