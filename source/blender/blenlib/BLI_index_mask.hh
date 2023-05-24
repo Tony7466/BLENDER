@@ -166,7 +166,7 @@ class IndexMask : private IndexMaskData {
   /** Construct an empty mask. */
   IndexMask();
   /** Construct a mask that contains the indices from 0 to `size - 1`. This takes O(1) time. */
-  IndexMask(int64_t size);
+  explicit IndexMask(int64_t size);
   /** Construct a mask that contains the indices in the range. This takes O(1) time. */
   IndexMask(IndexRange range);
 
