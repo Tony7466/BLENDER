@@ -43,8 +43,12 @@
 #include "BLI_fileops.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
+#include "BLI_string_utils.h"
 #include "BLI_sys_types.h" /* for intptr_t support */
 #include "BLI_utildefines.h"
+
+/** Sizes above this must be allocated. */
+#define FILE_MAX_STATIC_BUF 16
 
 #ifdef WIN32
 /* Text string used as the "verb" for Windows shell operations. */
@@ -655,75 +659,93 @@ int BLI_delete_soft(const char *file, const char **error_message)
   return err;
 }
 
-int BLI_path_move(const char *file, const char *to)
+/**
+ * MS-Windows doesn't support moving to a directory
+ * it has to be `mv filepath filepath` and not `mv filepath destination_directory` (same for copy).
+ *
+ * Ensure the filename component of `path_src` is added to a copy of `path_dst` when
+ * `path_dst` ends with a slash.
+ */
+static const char *path_filename_ensure_for_copy_or_move(const char *path_src,
+                                                         const char *path_dst,
+                                                         char *buf,
+                                                         size_t buf_size)
 {
-  char str[MAXPATHLEN + 12];
-  int err;
-
-  /* windows doesn't support moving to a directory
-   * it has to be 'mv filepath filepath' and not
-   * 'mv filepath destination_directory' */
-
-  STRNCPY(str, to);
-  /* points 'to' to a directory ? */
-  if (BLI_path_slash_rfind(str) == (str + strlen(str) - 1)) {
-    if (BLI_path_slash_rfind(file) != NULL) {
-      strcat(str, BLI_path_slash_rfind(file) + 1);
+  const char *filename_src = BLI_path_basename(path_src);
+  if (filename_src != path_src) {
+    const size_t path_dst_len = strlen(path_dst);
+    /* Check if `path_dst` points to a directory. */
+    if (path_dst_len && BLI_path_slash_is_native_compat(path_dst[path_dst_len - 1])) {
+      char *path_dst_with_filename = buf;
+      size_t buf_size_needed = path_dst_len + strlen(filename_src) + 1;
+      if (buf_size < buf_size_needed) {
+        path_dst_with_filename = MEM_mallocN(buf_size_needed, __func__);
+      }
+      BLI_string_join(path_dst_with_filename, buf_size_needed, path_dst, filename_src);
+      return path_dst_with_filename;
     }
   }
+  return path_dst;
+}
 
-  UTF16_ENCODE(file);
-  UTF16_ENCODE(str);
-  err = !MoveFileW(file_16, str_16);
-  UTF16_UN_ENCODE(str);
-  UTF16_UN_ENCODE(file);
+int BLI_path_move(const char *path_src, const char *path_dst)
+{
+  char path_dst_buf[FILE_MAX_STATIC_BUF];
+  const char *path_dst_with_filename = path_filename_ensure_for_copy_or_move(
+      path_src, path_dst, path_dst_buf, sizeof(path_dst_buf));
+
+  int err;
+
+  UTF16_ENCODE(path_src);
+  UTF16_ENCODE(path_dst_with_filename);
+  err = !MoveFileW(path_src_16, path_dst_with_filename_16);
+  UTF16_UN_ENCODE(path_dst_with_filename);
+  UTF16_UN_ENCODE(path_src);
 
   if (err) {
     callLocalErrorCallBack("Unable to move file");
-    printf(" Move from '%s' to '%s' failed\n", file, str);
+    printf(" Move from '%s' to '%s' failed\n", path_src, path_dst_with_filename);
+  }
+
+  if (!ELEM(path_dst_with_filename, path_dst_buf, path_dst)) {
+    MEM_freeN((void *)path_dst_with_filename);
   }
 
   return err;
 }
 
-int BLI_copy(const char *file, const char *to)
+int BLI_copy(const char *path_src, const char *path_dst)
 {
-  char str[MAXPATHLEN + 12];
+  char path_dst_buf[FILE_MAX_STATIC_BUF];
+  const char *path_dst_with_filename = path_filename_ensure_for_copy_or_move(
+      path_src, path_dst, path_dst_buf, sizeof(path_dst_buf));
   int err;
 
-  /* windows doesn't support copying to a directory
-   * it has to be 'cp filepath filepath' and not
-   * 'cp filepath destdir' */
-
-  STRNCPY(str, to);
-  /* points 'to' to a directory ? */
-  if (BLI_path_slash_rfind(str) == (str + strlen(str) - 1)) {
-    if (BLI_path_slash_rfind(file) != NULL) {
-      strcat(str, BLI_path_slash_rfind(file) + 1);
-    }
-  }
-
-  UTF16_ENCODE(file);
-  UTF16_ENCODE(str);
-  err = !CopyFileW(file_16, str_16, false);
-  UTF16_UN_ENCODE(str);
-  UTF16_UN_ENCODE(file);
+  UTF16_ENCODE(path_src);
+  UTF16_ENCODE(path_dst_with_filename);
+  err = !CopyFileW(path_src_16, path_dst_with_filename_16, false);
+  UTF16_UN_ENCODE(path_dst_with_filename);
+  UTF16_UN_ENCODE(path_src);
 
   if (err) {
     callLocalErrorCallBack("Unable to copy file!");
-    printf(" Copy from '%s' to '%s' failed\n", file, str);
+    printf(" Copy from '%s' to '%s' failed\n", path_src, path_dst_with_filename);
+  }
+
+  if (!ELEM(path_dst_with_filename, path_dst_buf, path_dst)) {
+    MEM_freeN((void *)path_dst_with_filename);
   }
 
   return err;
 }
 
 #  if 0
-int BLI_create_symlink(const char *file, const char *to)
+int BLI_create_symlink(const char *path_src, const char *path_dst)
 {
   /* See patch from #30870, should this ever become needed. */
   callLocalErrorCallBack("Linking files is unsupported on Windows");
-  (void)file;
-  (void)to;
+  (void)path_src;
+  (void)path_dst;
   return 1;
 }
 #  endif
@@ -1277,12 +1299,12 @@ static int move_single_file(const char *from, const char *to)
   return RecursiveOp_Callback_OK;
 }
 
-int BLI_path_move(const char *path, const char *to)
+int BLI_path_move(const char *path_src, const char *path_dst)
 {
-  int ret = recursive_operation(path, to, move_callback_pre, move_single_file, NULL);
+  int ret = recursive_operation(path_src, path_dst, move_callback_pre, move_single_file, NULL);
 
   if (ret && ret != -1) {
-    return recursive_operation(path, NULL, NULL, delete_single_file, delete_callback_post);
+    return recursive_operation(path_src, NULL, NULL, delete_single_file, delete_callback_post);
   }
 
   return ret;
@@ -1322,14 +1344,14 @@ static const char *check_destination(const char *file, const char *to)
   return to;
 }
 
-int BLI_copy(const char *file, const char *to)
+int BLI_copy(const char *path_src, const char *path_dst)
 {
-  const char *actual_to = check_destination(file, to);
+  const char *actual_to = check_destination(path_src, path_dst);
   int ret;
 
-  ret = recursive_operation(file, actual_to, copy_callback_pre, copy_single_file, NULL);
+  ret = recursive_operation(path_src, actual_to, copy_callback_pre, copy_single_file, NULL);
 
-  if (actual_to != to) {
+  if (actual_to != path_dst) {
     MEM_freeN((void *)actual_to);
   }
 
@@ -1337,9 +1359,9 @@ int BLI_copy(const char *file, const char *to)
 }
 
 #  if 0
-int BLI_create_symlink(const char *file, const char *to)
+int BLI_create_symlink(const char *path_src, const char *path_dst)
 {
-  return symlink(to, file);
+  return symlink(path_dst, path_src);
 }
 #  endif
 
