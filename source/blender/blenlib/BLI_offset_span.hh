@@ -7,8 +7,9 @@
 namespace blender {
 
 /**
- * An #OffsetSpan where a constant offset is added to every value when accessed. This allows e.g.
- * storing multiple `int64_t` indices as an array of `int16_t` with an additional `int64_t` offset.
+ * An #OffsetSpan is a #Span with a constant offset that is added to every value when accessed.
+ * This allows e.g. storing multiple `int64_t` indices as an array of `int16_t` with an additional
+ * `int64_t` offset.
  */
 template<typename T, typename BaseT> class OffsetSpan {
  private:

@@ -60,7 +60,7 @@ template<typename T> inline std::optional<IndexRange> non_empty_as_range_try(con
 }
 
 /**
- * \return Amount of consecutive indices at the start of the span.
+ * \return Amount of consecutive indices at the start of the span. This takes O(log #indices) time.
  *
  * Example:
  *   [3, 4, 5, 6, 8, 9, 10]
@@ -78,7 +78,7 @@ template<typename T> inline int64_t find_size_of_next_range(const Span<T> indice
 
 /**
  * \return Amount of non-consecutive indices until the next encoded range of at least
- * #min_range_size elements starts.
+ * #min_range_size elements starts. This takes O(size_until_next_range) time.
  *
  * Example:
  *   [1, 2, 4, 6, 7, 8, 9, 10, 13];
