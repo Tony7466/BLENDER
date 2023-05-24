@@ -217,7 +217,10 @@ TEST(index_mask, FromPredicateFuzzy)
   for (const int index : values) {
     EXPECT_TRUE(mask.contains(index));
   }
-  mask.foreach_index([&](const int64_t index) { EXPECT_TRUE(values.contains(int(index))); });
+  mask.foreach_index([&](const int64_t index, const int64_t pos) {
+    EXPECT_TRUE(values.contains(int(index)));
+    EXPECT_EQ(index, mask[pos]);
+  });
 }
 
 }  // namespace blender::index_mask::tests
