@@ -298,12 +298,19 @@ GroupedSpan<int> build_vert_to_edge_map(Span<int2> edges,
                                         Array<int> &r_offsets,
                                         Array<int> &r_indices);
 
+void build_vert_to_poly_indices(OffsetIndices<int> polys,
+                                Span<int> corner_verts,
+                                OffsetIndices<int> offsets,
+                                MutableSpan<int> poly_indices);
 GroupedSpan<int> build_vert_to_poly_map(OffsetIndices<int> polys,
                                         Span<int> corner_verts,
                                         int verts_num,
                                         Array<int> &r_offsets,
                                         Array<int> &r_indices);
 
+void build_vert_to_corner_indices(Span<int> corner_verts,
+                                  OffsetIndices<int> offsets,
+                                  MutableSpan<int> corner_indices);
 GroupedSpan<int> build_vert_to_loop_map(Span<int> corner_verts,
                                         int verts_num,
                                         Array<int> &r_offsets,

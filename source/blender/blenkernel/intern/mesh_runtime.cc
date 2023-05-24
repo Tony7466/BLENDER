@@ -156,7 +156,8 @@ blender::Span<int> Mesh::corner_to_poly_map() const
 {
   using namespace blender;
   this->runtime->corner_to_poly_map_cache.ensure([&](Array<int> &r_data) {
-    r_data = bke::mesh_topology::build_loop_to_poly_map(this->polys());
+    const OffsetIndices polys = this->polys();
+    r_data = bke::mesh::build_loop_to_poly_map(polys);
   });
   return this->runtime->corner_to_poly_map_cache.data();
 }

@@ -263,33 +263,6 @@ inline int edge_other_vert(const int2 &edge, const int vert)
 }  // namespace blender::bke::mesh
 
 /* -------------------------------------------------------------------- */
-/** \name Mesh Topology Maps
- * \{ */
-
-namespace blender::bke::mesh {
-
-/**
- * Fill the indices of polygons connected to each vertex, ordered smallest index to largest.
- * \param offsets: Encodes the number of polygons connected to each vertex.
- */
-void build_vert_to_poly_indices(OffsetIndices<int> polys,
-                                Span<int> corner_verts,
-                                OffsetIndices<int> offsets,
-                                MutableSpan<int> poly_indices);
-
-/**
- * Fill the indices of face corners connected to each vertex, ordered smallest index to largest.
- * \param offsets: Encodes the number of polygons connected to each vertex.
- */
-void build_vert_to_corner_indices(Span<int> corner_verts,
-                                  OffsetIndices<int> offsets,
-                                  MutableSpan<int> corner_indices);
-
-}  // namespace blender::bke::mesh
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Inline Mesh Data Access
  * \{ */
 
