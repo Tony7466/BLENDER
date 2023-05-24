@@ -325,10 +325,16 @@ enum eRenderPassLayerIndex : uint32_t {
  * If we find a way to avoid this we could bump this number up. */
 #define AOV_MAX 16
 
-/* NOTE(@fclem): Needs to be used in #StorageBuffer because of arrays of scalar. */
 struct AOVsInfoData {
+#ifdef __cplusplus
   uint hash_value[AOV_MAX];
   uint hash_color[AOV_MAX];
+#else
+  /* Workaround std140 packing rules.
+   * Access as `hash_value[i/4][i%4]`. */
+  uint4 hash_value[AOV_MAX / 4];
+  uint4 hash_color[AOV_MAX / 4];
+#endif
   /* Length of used data. */
   uint color_len;
   uint value_len;
@@ -355,7 +361,7 @@ struct RenderBuffersInfoData {
   int value_len;
   int shadow_id;
   int ambient_occlusion_id;
-  int _pad0[4];
+  int4 _pad0;
 };
 BLI_STATIC_ASSERT_ALIGN(RenderBuffersInfoData, 16)
 

@@ -22,7 +22,7 @@ GPU_SHADER_CREATE_INFO(eevee_film)
     .image(5, GPU_RGBA16F, Qualifier::READ_WRITE, ImageType::FLOAT_2D_ARRAY, "color_accum_img")
     .image(6, GPU_R16F, Qualifier::READ_WRITE, ImageType::FLOAT_2D_ARRAY, "value_accum_img")
     .image(7, GPU_RGBA32F, Qualifier::READ_WRITE, ImageType::FLOAT_2D_ARRAY, "cryptomatte_img")
-    .storage_buf(RBUFS_BUF_SLOT, Qualifier::READ, "RenderBuffersInfoData", "rp_buf")
+    .uniform_buf(RBUFS_BUF_SLOT, "RenderBuffersInfoData", "rp_buf")
     .additional_info("eevee_shared")
     .additional_info("eevee_velocity_camera")
     .additional_info("draw_view");

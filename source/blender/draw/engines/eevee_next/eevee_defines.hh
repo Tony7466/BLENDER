@@ -110,14 +110,13 @@
 #define VELOCITY_CAMERA_NEXT_BUF 5
 
 #define CAMERA_BUF_SLOT 6
+#define RBUFS_BUF_SLOT 7
 
 /* Storage Buffers. */
 #define LIGHT_CULL_BUF_SLOT 0
 #define LIGHT_BUF_SLOT 1
 #define LIGHT_ZBIN_BUF_SLOT 2
 #define LIGHT_TILE_BUF_SLOT 3
-/* Only during surface shading. */
-#define RBUFS_BUF_SLOT 4
 /* Only during shadow rendering. */
 #define SHADOW_PAGE_INFO_SLOT 4
 #define SAMPLING_BUF_SLOT 5

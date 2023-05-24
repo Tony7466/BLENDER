@@ -84,7 +84,7 @@ GPU_SHADER_CREATE_INFO(eevee_render_pass_out)
     .define("MAT_RENDER_PASS_SUPPORT")
     .image_array_out(RBUFS_COLOR_SLOT, Qualifier::WRITE, GPU_RGBA16F, "rp_color_img")
     .image_array_out(RBUFS_VALUE_SLOT, Qualifier::WRITE, GPU_R16F, "rp_value_img")
-    .storage_buf(RBUFS_BUF_SLOT, Qualifier::READ, "RenderBuffersInfoData", "rp_buf");
+    .uniform_buf(RBUFS_BUF_SLOT, "RenderBuffersInfoData", "rp_buf");
 
 GPU_SHADER_CREATE_INFO(eevee_cryptomatte_out)
     .storage_buf(CRYPTOMATTE_BUF_SLOT, Qualifier::READ, "vec2", "cryptomatte_object_buf[]")

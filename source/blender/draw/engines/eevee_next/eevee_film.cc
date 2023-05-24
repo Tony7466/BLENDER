@@ -448,7 +448,7 @@ void Film::sync()
   accumulate_ps_.bind_image("color_accum_img", &color_accum_tx_);
   accumulate_ps_.bind_image("value_accum_img", &value_accum_tx_);
   accumulate_ps_.bind_image("cryptomatte_img", &cryptomatte_tx_);
-  accumulate_ps_.bind_ssbo(RBUFS_BUF_SLOT, &inst_.render_buffers.data);
+  accumulate_ps_.bind_ubo(RBUFS_BUF_SLOT, &inst_.render_buffers.data);
   /* Sync with rendering passes. */
   accumulate_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
   if (use_compute) {

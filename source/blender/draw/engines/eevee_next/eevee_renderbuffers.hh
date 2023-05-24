@@ -22,7 +22,7 @@ class Instance;
 
 class RenderBuffers {
  public:
-  StorageBuffer<RenderBuffersInfoData> data;
+  UniformBuffer<RenderBuffersInfoData> data;
 
   TextureFromPool depth_tx;
   TextureFromPool combined_tx;

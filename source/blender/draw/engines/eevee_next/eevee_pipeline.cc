@@ -37,12 +37,12 @@ void WorldPipeline::sync(GPUMaterial *gpumat)
   /* RenderPasses & AOVs. Cleared by background (even if bad practice). */
   world_ps_.bind_image("rp_color_img", &rbufs.rp_color_tx);
   world_ps_.bind_image("rp_value_img", &rbufs.rp_value_tx);
-  world_ps_.bind_ssbo("rp_buf", &inst_.render_buffers.data);
   world_ps_.bind_image("rp_cryptomatte_img", &rbufs.cryptomatte_tx);
   /* Required by validation layers. */
   inst_.cryptomatte.bind_resources(&world_ps_);
 
   world_ps_.bind_ubo(CAMERA_BUF_SLOT, inst_.camera.ubo_get());
+  world_ps_.bind_ubo(RBUFS_BUF_SLOT, &inst_.render_buffers.data);
 
   world_ps_.draw(DRW_cache_fullscreen_quad_get(), handle);
   /* To allow opaque pass rendering over it. */
@@ -139,12 +139,11 @@ void ForwardPipeline::sync()
       opaque_ps_.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
       /* Cryptomatte. */
       opaque_ps_.bind_image(RBUFS_CRYPTOMATTE_SLOT, &inst_.render_buffers.cryptomatte_tx);
-      /* Storage Buffer. */
-      opaque_ps_.bind_ssbo(RBUFS_BUF_SLOT, &inst_.render_buffers.data);
       /* Textures. */
       opaque_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
       /* Uniform Buffer. */
       opaque_ps_.bind_ubo(CAMERA_BUF_SLOT, inst_.camera.ubo_get());
+      opaque_ps_.bind_ubo(RBUFS_BUF_SLOT, &inst_.render_buffers.data);
 
       inst_.lights.bind_resources(&opaque_ps_);
       inst_.shadows.bind_resources(&opaque_ps_);
@@ -320,11 +319,11 @@ void DeferredLayer::begin_sync()
       /* Cryptomatte. */
       gbuffer_ps_.bind_image(RBUFS_CRYPTOMATTE_SLOT, &inst_.render_buffers.cryptomatte_tx);
       /* Storage Buffer. */
-      gbuffer_ps_.bind_ssbo(RBUFS_BUF_SLOT, &inst_.render_buffers.data);
       /* Textures. */
       gbuffer_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
       /* Uniform Buffer. */
       gbuffer_ps_.bind_ubo(CAMERA_BUF_SLOT, inst_.camera.ubo_get());
+      gbuffer_ps_.bind_ubo(RBUFS_BUF_SLOT, &inst_.render_buffers.data);
 
       inst_.sampling.bind_resources(&gbuffer_ps_);
       inst_.cryptomatte.bind_resources(&gbuffer_ps_);
@@ -362,8 +361,8 @@ void DeferredLayer::end_sync()
     eval_light_ps_.bind_texture("gbuffer_color_tx", &inst_.gbuffer.color_tx);
     eval_light_ps_.push_constant("is_last_eval_pass", is_last_eval_pass);
     eval_light_ps_.bind_image(RBUFS_COLOR_SLOT, &inst_.render_buffers.rp_color_tx);
-    eval_light_ps_.bind_ssbo(RBUFS_BUF_SLOT, &inst_.render_buffers.data);
     eval_light_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
+    eval_light_ps_.bind_ubo(RBUFS_BUF_SLOT, &inst_.render_buffers.data);
 
     inst_.lights.bind_resources(&eval_light_ps_);
     inst_.shadows.bind_resources(&eval_light_ps_);
