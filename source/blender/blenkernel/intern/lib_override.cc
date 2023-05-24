@@ -2192,7 +2192,7 @@ static bool lib_override_library_resync(Main *bmain,
        * old liboverrides are also remapped, it means that the old liboverride owner of the shape
        * key is also now pointing to the new liboverride shape key, not the old one. Since shape
        * keys do not own their liboverride data, the old liboverride shape key user has to be
-       * restored to use the old liboverride shapekey, otherwise applying shape key override
+       * restored to use the old liboverride shape-key, otherwise applying shape key override
        * operations will be useless (would apply using the new, from linked data, liboverride,
        * being effectively a no-op). */
       Key **key_override_old_p = BKE_key_from_id_p(id_override_old);
@@ -2668,7 +2668,7 @@ static bool lib_override_library_main_resync_id_skip_check(ID *id,
  * Clear 'unreachable' tag of existing liboverrides if they are using another reachable liboverride
  * (typical case: Mesh object which only relationship to the rest of the liboverride hierarchy is
  * though its 'parent' pointer (i.e. rest of the hierarchy has no actual relationship to this mesh
- * object). Sadge.
+ * object). This is unfortunate.
  *
  * Logic and rational of this function are very similar to these of
  * #lib_override_hierarchy_dependencies_recursive_tag_from, but withing specific resync context.
@@ -3555,18 +3555,6 @@ void lib_override_library_property_clear(IDOverrideLibraryProperty *op)
   BLI_freelistN(&op->operations);
 }
 
-bool BKE_lib_override_library_property_search_and_delete(IDOverrideLibrary *override,
-                                                         const char *rna_path)
-{
-  IDOverrideLibraryProperty *override_property = BKE_lib_override_library_property_find(override,
-                                                                                        rna_path);
-  if (override_property == nullptr) {
-    return false;
-  }
-  BKE_lib_override_library_property_delete(override, override_property);
-  return true;
-}
-
 bool BKE_lib_override_library_property_rna_path_change(IDOverrideLibrary *override,
                                                        const char *old_rna_path,
                                                        const char *new_rna_path)
@@ -3590,10 +3578,13 @@ bool BKE_lib_override_library_property_rna_path_change(IDOverrideLibrary *overri
   return true;
 }
 
-void BKE_lib_override_library_property_delete(IDOverrideLibrary *override,
-                                              IDOverrideLibraryProperty *override_property)
+static void lib_override_library_property_delete(IDOverrideLibrary *override,
+                                                 IDOverrideLibraryProperty *override_property,
+                                                 const bool do_runtime_updates)
 {
-  if (!ELEM(nullptr, override->runtime, override->runtime->rna_path_to_override_properties)) {
+  if (do_runtime_updates &&
+      !ELEM(nullptr, override->runtime, override->runtime->rna_path_to_override_properties))
+  {
     BLI_ghash_remove(override->runtime->rna_path_to_override_properties,
                      override_property->rna_path,
                      nullptr,
@@ -3601,6 +3592,29 @@ void BKE_lib_override_library_property_delete(IDOverrideLibrary *override,
   }
   lib_override_library_property_clear(override_property);
   BLI_freelinkN(&override->properties, override_property);
+}
+
+bool BKE_lib_override_library_property_search_and_delete(IDOverrideLibrary *override,
+                                                         const char *rna_path)
+{
+  /* Find the override property by its old RNA path. */
+  GHash *override_runtime = override_library_rna_path_mapping_ensure(override);
+  IDOverrideLibraryProperty *override_property = static_cast<IDOverrideLibraryProperty *>(
+      BLI_ghash_popkey(override_runtime, rna_path, nullptr));
+
+  if (override_property == nullptr) {
+    return false;
+  }
+
+  /* The key (rna_path) was already popped out of the runtime mapping above. */
+  lib_override_library_property_delete(override, override_property, false);
+  return true;
+}
+
+void BKE_lib_override_library_property_delete(IDOverrideLibrary *override,
+                                              IDOverrideLibraryProperty *override_property)
+{
+  lib_override_library_property_delete(override, override_property, true);
 }
 
 IDOverrideLibraryPropertyOperation *BKE_lib_override_library_property_operation_find(
