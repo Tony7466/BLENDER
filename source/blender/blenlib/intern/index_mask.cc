@@ -265,7 +265,7 @@ static void segments_from_indices(const Span<T> indices,
                                   LinearAllocator<> &allocator,
                                   Vector<IndexMaskSegment> &r_segments)
 {
-  Vector<std::variant<IndexRange, Span<T>>> segments;
+  Vector<std::variant<IndexRange, Span<T>>, 64> segments;
 
   for (int64_t start = 0; start < indices.size(); start += max_segment_size) {
     /* Slice to make sure that each segment is no longer than #max_segment_size. */
@@ -286,7 +286,8 @@ static void segments_from_indices(const Span<T> indices,
       while (!segment_indices.is_empty()) {
         const int64_t offset = segment_indices[0];
         const int64_t next_segment_size = binary_search::find_predicate_begin(
-            segment_indices, [&](const T value) { return value - offset >= max_segment_size; });
+            segment_indices.take_front(max_segment_size),
+            [&](const T value) { return value - offset >= max_segment_size; });
         for (const int64_t i : IndexRange(next_segment_size)) {
           const int64_t offset_index = segment_indices[i] - offset;
           BLI_assert(offset_index < max_segment_size);
@@ -306,7 +307,7 @@ static void segments_from_indices(const Span<T> indices,
 struct ParallelSegmentsCollector {
   struct LocalData {
     LinearAllocator<> allocator;
-    Vector<IndexMaskSegment> segments;
+    Vector<IndexMaskSegment, 16> segments;
   };
 
   threading::EnumerableThreadSpecific<LocalData> data_by_thread;
