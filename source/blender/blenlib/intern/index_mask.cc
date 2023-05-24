@@ -27,19 +27,25 @@ std::array<int16_t, max_segment_size> build_static_indices_array()
 
 const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size)
 {
-  static constexpr int64_t size_shift = 30;
-  static constexpr int64_t max_size = (1 << size_shift);
-  static constexpr int64_t segments_num = max_size / max_segment_size;
+  static constexpr int64_t size_shift = 31;
+  static constexpr int64_t max_size = (int64_t(1) << size_shift);      /* 2'147'483'648 */
+  static constexpr int64_t segments_num = max_size / max_segment_size; /*       131'072 */
 
+  /* Make sure we are never requesting a size that's larger than what was statically allocated.
+   * If that's ever needed, we can either increase #size_shift or dynamically allocate an even
+   * larger mask. */
   BLI_assert(min_size <= max_size);
   UNUSED_VARS_NDEBUG(min_size);
 
   static IndexMask static_mask = []() {
     static Array<const int16_t *> indices_by_segment(segments_num);
+    /* The offsets and cumulative segment sizes array contain the same values here, so just use a
+     * single array for both. */
     static Array<int64_t> segment_offsets(segments_num + 1);
 
     static const int16_t *static_offsets = get_static_indices_array().data();
 
+    /* Isolate because the mutex protecting the initialization of #static_mask is locked. */
     threading::isolate_task([&]() {
       threading::parallel_for(IndexRange(segments_num), 1024, [&](const IndexRange range) {
         for (const int64_t segment_i : range) {
