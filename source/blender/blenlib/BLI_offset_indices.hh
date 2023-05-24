@@ -96,6 +96,9 @@ template<typename T> class OffsetIndices {
  * References many separate spans in a larger contiguous array. This gives a more efficient way to
  * store many grouped arrays, without requiring many small allocations, giving the general benefits
  * of using contiguous memory.
+ *
+ * \note If the offsets are shared between many #GroupedSpan objects, it will still
+ * be more efficient to retrieve the #IndexRange only once and slice each span.
  */
 template<typename T> struct GroupedSpan {
   OffsetIndices<int> offsets;
@@ -104,19 +107,35 @@ template<typename T> struct GroupedSpan {
   GroupedSpan() = default;
   GroupedSpan(OffsetIndices<int> offsets, Span<T> data) : offsets(offsets), data(data)
   {
-    BLI_assert(offsets.total_size() == data.size());
+    BLI_assert(this->offsets.total_size() == this->data.size());
   }
 
-  Span<T> operator[](const int64_t vert_index) const
+  Span<T> operator[](const int64_t index) const
   {
-    return data.slice(offsets[vert_index]);
+    return this->data.slice(this->offsets[index]);
+  }
+
+  int64_t size() const
+  {
+    return this->offsets.size();
+  }
+
+  IndexRange index_range() const
+  {
+    return this->offsets.index_range();
+  }
+
+  bool is_empty() const
+  {
+    return this->data.size() == 0;
   }
 };
 
 /**
  * Turn an array of sizes into the offset at each index including all previous sizes.
  */
-void accumulate_counts_to_offsets(MutableSpan<int> counts_to_offsets, int start_offset = 0);
+OffsetIndices<int> accumulate_counts_to_offsets(MutableSpan<int> counts_to_offsets,
+                                                int start_offset = 0);
 
 /**
  * Create a map from indexed elements to the source indices, in other words from the larger array

@@ -551,9 +551,9 @@ static void sculpt_face_sets_init_flood_fill(Object *ob, const FaceSetsFloodFill
   const OffsetIndices polys = mesh->polys();
   const Span<int> corner_edges = mesh->corner_edges();
 
-  if (!ss->epmap) {
-    BKE_mesh_edge_poly_map_create(
-        &ss->epmap, &ss->epmap_mem, edges.size(), polys, corner_edges.data(), corner_edges.size());
+  if (ss->epmap.is_empty()) {
+    ss->epmap = bke::mesh::build_edge_to_poly_map(
+        polys, corner_edges, edges.size(), ss->edge_to_poly_offsets, ss->edge_to_poly_indices);
   }
 
   int next_face_set = 1;
@@ -573,8 +573,7 @@ static void sculpt_face_sets_init_flood_fill(Object *ob, const FaceSetsFloodFill
       queue.pop();
 
       for (const int edge_i : corner_edges.slice(polys[poly_i])) {
-        const Span<int> neighbor_polys(ss->epmap[edge_i].indices, ss->epmap[edge_i].count);
-        for (const int neighbor_i : neighbor_polys) {
+        for (const int neighbor_i : ss->epmap[edge_i]) {
           if (neighbor_i == poly_i) {
             continue;
           }
@@ -704,7 +703,7 @@ static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
     }
     case SCULPT_FACE_SETS_FROM_BEVEL_WEIGHT: {
       const float *bevel_weights = static_cast<const float *>(
-          CustomData_get_layer(&mesh->edata, CD_BWEIGHT));
+          CustomData_get_layer_named(&mesh->edata, CD_PROP_FLOAT, "bevel_weight_edge"));
       sculpt_face_sets_init_flood_fill(
           ob, [&](const int /*from_face*/, const int edge, const int /*to_face*/) -> bool {
             return bevel_weights ? bevel_weights[edge] < threshold : true;

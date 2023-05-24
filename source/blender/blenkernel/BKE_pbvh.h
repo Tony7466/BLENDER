@@ -35,7 +35,6 @@ struct DMFlagMat;
 struct IsectRayPrecalc;
 struct MLoopTri;
 struct Mesh;
-struct MeshElemMap;
 struct PBVH;
 struct PBVHBatches;
 struct PBVHNode;
@@ -45,7 +44,6 @@ struct SubdivCCG;
 struct TaskParallelSettings;
 struct Image;
 struct ImageUser;
-struct MeshElemMap;
 
 typedef struct PBVH PBVH;
 typedef struct PBVHNode PBVHNode;

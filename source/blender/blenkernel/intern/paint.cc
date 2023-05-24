@@ -1246,13 +1246,13 @@ void BKE_paint_blend_read_data(BlendDataReader *reader, const Scene *scene, Pain
 void BKE_paint_blend_read_lib(BlendLibReader *reader, Scene *sce, Paint *p)
 {
   if (p) {
-    BLO_read_id_address(reader, sce->id.lib, &p->brush);
+    BLO_read_id_address(reader, &sce->id, &p->brush);
     for (int i = 0; i < p->tool_slots_len; i++) {
       if (p->tool_slots[i].brush != nullptr) {
-        BLO_read_id_address(reader, sce->id.lib, &p->tool_slots[i].brush);
+        BLO_read_id_address(reader, &sce->id, &p->tool_slots[i].brush);
       }
     }
-    BLO_read_id_address(reader, sce->id.lib, &p->palette);
+    BLO_read_id_address(reader, &sce->id, &p->palette);
     p->paint_cursor = nullptr;
 
     BKE_paint_runtime_init(sce->toolsettings, p);
@@ -1429,12 +1429,6 @@ static void sculptsession_free_pbvh(Object *object)
     ss->pbvh = nullptr;
   }
 
-  MEM_SAFE_FREE(ss->epmap);
-  MEM_SAFE_FREE(ss->epmap_mem);
-
-  MEM_SAFE_FREE(ss->vemap);
-  MEM_SAFE_FREE(ss->vemap_mem);
-
   MEM_SAFE_FREE(ss->preview_vert_list);
   ss->preview_vert_count = 0;
 
@@ -1479,12 +1473,6 @@ void BKE_sculptsession_free(Object *ob)
 
     sculptsession_free_pbvh(ob);
 
-    MEM_SAFE_FREE(ss->epmap);
-    MEM_SAFE_FREE(ss->epmap_mem);
-
-    MEM_SAFE_FREE(ss->vemap);
-    MEM_SAFE_FREE(ss->vemap_mem);
-
     if (ss->bm_log) {
       BM_log_free(ss->bm_log);
     }
@@ -1517,7 +1505,7 @@ void BKE_sculptsession_free(Object *ob)
 
     MEM_SAFE_FREE(ss->last_paint_canvas_key);
 
-    MEM_freeN(ss);
+    MEM_delete(ss);
 
     ob->sculpt = nullptr;
   }

@@ -693,6 +693,7 @@ void BKE_mesh_remap_calc_edges_from_mesh(const int mode,
                                          Mesh *me_dst,
                                          MeshPairRemap *r_map)
 {
+  using namespace blender;
   const float full_weight = 1.0f;
   const float max_dist_sq = max_dist * max_dist;
   int i;
@@ -719,9 +720,6 @@ void BKE_mesh_remap_calc_edges_from_mesh(const int mode,
       const blender::Span<blender::int2> edges_src = me_src->edges();
       const float(*positions_src)[3] = BKE_mesh_vert_positions(me_src);
 
-      MeshElemMap *vert_to_edge_src_map;
-      int *vert_to_edge_src_map_mem;
-
       struct HitData {
         float hit_dist;
         int index;
@@ -733,11 +731,10 @@ void BKE_mesh_remap_calc_edges_from_mesh(const int mode,
         v_dst_to_src_map[i].hit_dist = -1.0f;
       }
 
-      BKE_mesh_vert_edge_map_create(&vert_to_edge_src_map,
-                                    &vert_to_edge_src_map_mem,
-                                    edges_src.data(),
-                                    num_verts_src,
-                                    int(edges_src.size()));
+      Array<int> vert_to_edge_src_offsets;
+      Array<int> vert_to_edge_src_indices;
+      const GroupedSpan<int> vert_to_edge_src_map = bke::mesh::build_vert_to_edge_map(
+          edges_src, num_verts_src, vert_to_edge_src_offsets, vert_to_edge_src_indices);
 
       BKE_bvhtree_from_mesh_get(&treedata, me_src, BVHTREE_FROM_VERTS, 2);
       nearest.index = -1;
@@ -778,14 +775,15 @@ void BKE_mesh_remap_calc_edges_from_mesh(const int mode,
           const int vidx_dst = j ? e_dst[0] : e_dst[1];
           const float first_dist = v_dst_to_src_map[vidx_dst].hit_dist;
           const int vidx_src = v_dst_to_src_map[vidx_dst].index;
-          int *eidx_src, k;
+          const int *eidx_src;
+          int k;
 
           if (vidx_src < 0) {
             continue;
           }
 
-          eidx_src = vert_to_edge_src_map[vidx_src].indices;
-          k = vert_to_edge_src_map[vidx_src].count;
+          eidx_src = vert_to_edge_src_map[vidx_src].data();
+          k = int(vert_to_edge_src_map[vidx_src].size());
 
           for (; k--; eidx_src++) {
             const blender::int2 &edge_src = edges_src[*eidx_src];
@@ -838,8 +836,6 @@ void BKE_mesh_remap_calc_edges_from_mesh(const int mode,
       }
 
       MEM_freeN(v_dst_to_src_map);
-      MEM_freeN(vert_to_edge_src_map);
-      MEM_freeN(vert_to_edge_src_map_mem);
     }
     else if (mode == MREMAP_MODE_EDGE_NEAREST) {
       BKE_bvhtree_from_mesh_get(&treedata, me_src, BVHTREE_FROM_EDGES, 2);
@@ -1036,25 +1032,26 @@ void BKE_mesh_remap_calc_edges_from_mesh(const int mode,
 #define POLY_CENTER_INIT 1
 #define POLY_COMPLETE 2
 
-static void mesh_island_to_astar_graph_edge_process(MeshIslandStore *islands,
-                                                    const int island_index,
-                                                    BLI_AStarGraph *as_graph,
-                                                    const blender::Span<blender::float3> positions,
-                                                    const blender::OffsetIndices<int> polys,
-                                                    const blender::Span<int> corner_verts,
-                                                    const int edge_idx,
-                                                    BLI_bitmap *done_edges,
-                                                    MeshElemMap *edge_to_poly_map,
-                                                    const bool is_edge_innercut,
-                                                    const int *poly_island_index_map,
-                                                    float (*poly_centers)[3],
-                                                    uchar *poly_status)
+static void mesh_island_to_astar_graph_edge_process(
+    MeshIslandStore *islands,
+    const int island_index,
+    BLI_AStarGraph *as_graph,
+    const blender::Span<blender::float3> positions,
+    const blender::OffsetIndices<int> polys,
+    const blender::Span<int> corner_verts,
+    const int edge_idx,
+    BLI_bitmap *done_edges,
+    const blender::GroupedSpan<int> edge_to_poly_map,
+    const bool is_edge_innercut,
+    const int *poly_island_index_map,
+    float (*poly_centers)[3],
+    uchar *poly_status)
 {
-  blender::Array<int, 16> poly_island_indices(edge_to_poly_map[edge_idx].count);
+  blender::Array<int, 16> poly_island_indices(edge_to_poly_map[edge_idx].size());
   int i, j;
 
-  for (i = 0; i < edge_to_poly_map[edge_idx].count; i++) {
-    const int pidx = edge_to_poly_map[edge_idx].indices[i];
+  for (i = 0; i < edge_to_poly_map[edge_idx].size(); i++) {
+    const int pidx = edge_to_poly_map[edge_idx][i];
     const blender::IndexRange poly = polys[pidx];
     const int pidx_isld = islands ? poly_island_index_map[pidx] : pidx;
     void *custom_data = is_edge_innercut ? POINTER_FROM_INT(edge_idx) : POINTER_FROM_INT(-1);
@@ -1098,7 +1095,7 @@ static void mesh_island_to_astar_graph_edge_process(MeshIslandStore *islands,
 static void mesh_island_to_astar_graph(MeshIslandStore *islands,
                                        const int island_index,
                                        const blender::Span<blender::float3> positions,
-                                       MeshElemMap *edge_to_poly_map,
+                                       const blender::GroupedSpan<int> edge_to_poly_map,
                                        const int numedges,
                                        const blender::OffsetIndices<int> polys,
                                        const blender::Span<int> corner_verts,
@@ -1242,6 +1239,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
                                          const float islands_precision_src,
                                          MeshPairRemap *r_map)
 {
+  using namespace blender;
   const float full_weight = 1.0f;
   const float max_dist_sq = max_dist * max_dist;
 
@@ -1287,8 +1285,11 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
 
     blender::GroupedSpan<int> vert_to_loop_map_src;
     blender::GroupedSpan<int> vert_to_poly_map_src;
-    MeshElemMap *edge_to_poly_map_src = nullptr;
-    int *edge_to_poly_map_src_buff = nullptr;
+
+    Array<int> edge_to_poly_src_offsets;
+    Array<int> edge_to_poly_src_indices;
+    GroupedSpan<int> edge_to_poly_map_src;
+
     MeshElemMap *poly_to_looptri_map_src = nullptr;
     int *poly_to_looptri_map_src_buff = nullptr;
 
@@ -1391,12 +1392,12 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
     }
 
     /* Needed for islands (or plain mesh) to AStar graph conversion. */
-    BKE_mesh_edge_poly_map_create(&edge_to_poly_map_src,
-                                  &edge_to_poly_map_src_buff,
-                                  int(edges_src.size()),
-                                  polys_src,
-                                  corner_edges_src.data(),
-                                  int(corner_edges_src.size()));
+    edge_to_poly_map_src = bke::mesh::build_edge_to_poly_map(polys_src,
+                                                             corner_edges_src,
+                                                             int(edges_src.size()),
+                                                             edge_to_poly_src_offsets,
+                                                             edge_to_poly_src_indices);
+
     if (use_from_vert) {
       loop_to_poly_map_src = me_src->corner_to_poly_map();
       poly_cents_src.reinitialize(polys_src.size());
@@ -2073,12 +2074,6 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
       BLI_astar_solution_free(&as_solution);
     }
 
-    if (edge_to_poly_map_src) {
-      MEM_freeN(edge_to_poly_map_src);
-    }
-    if (edge_to_poly_map_src_buff) {
-      MEM_freeN(edge_to_poly_map_src_buff);
-    }
     if (poly_to_looptri_map_src) {
       MEM_freeN(poly_to_looptri_map_src);
     }

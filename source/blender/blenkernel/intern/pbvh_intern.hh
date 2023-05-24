@@ -12,7 +12,6 @@
 
 struct PBVHGPUFormat;
 struct MLoopTri;
-struct MeshElemMap;
 
 /* Axis-aligned bounding box */
 struct BB {

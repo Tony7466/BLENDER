@@ -1449,7 +1449,7 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
   CornerNormalSpaceArray lnors_spacearr;
   BitVector<> done_loops(corner_verts.size(), false);
   Array<float3> loop_normals(corner_verts.size());
-  const Array<int> loop_to_poly = mesh_topology::build_loop_to_poly_map(polys);
+  const Array<int> loop_to_poly = build_loop_to_poly_map(polys);
   /* In this case we always consider split nors as ON,
    * and do not want to use angle to define smooth fans! */
   const bool use_split_normals = true;

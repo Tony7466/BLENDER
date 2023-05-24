@@ -9,6 +9,10 @@
 
 #include "BLI_bitmap.h"
 #include "BLI_compiler_compat.h"
+#ifdef __cplusplus
+#  include "BLI_array.hh"
+#  include "BLI_offset_indices.hh"
+#endif
 #include "BLI_utildefines.h"
 
 #include "DNA_brush_enums.h"
@@ -40,7 +44,6 @@ struct ListBase;
 struct MLoopTri;
 struct Main;
 struct Mesh;
-struct MeshElemMap;
 struct Object;
 struct PBVH;
 struct Paint;
@@ -602,12 +605,14 @@ typedef struct SculptSession {
   blender::GroupedSpan<int> pmap;
 
   /* Edges to adjacent polys. */
-  struct MeshElemMap *epmap;
-  int *epmap_mem;
+  blender::Array<int> edge_to_poly_offsets;
+  blender::Array<int> edge_to_poly_indices;
+  blender::GroupedSpan<int> epmap;
 
   /* Vertices to adjacent edges. */
-  struct MeshElemMap *vemap;
-  int *vemap_mem;
+  blender::Array<int> vert_to_edge_offsets;
+  blender::Array<int> vert_to_edge_indices;
+  blender::GroupedSpan<int> vemap;
 
   /* Mesh Face Sets */
   /* Total number of polys of the base mesh. */
