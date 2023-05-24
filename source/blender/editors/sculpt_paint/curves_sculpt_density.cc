@@ -604,7 +604,7 @@ struct DensitySubtractOperationExecutor {
     }
 
     IndexMaskMemory mask_memory;
-    const IndexMask &mask_to_delete = IndexMask::from_bools(curves_to_delete, mask_memory);
+    const IndexMask mask_to_delete = IndexMask::from_bools(curves_to_delete, mask_memory);
 
     /* Remove deleted curves from the stored deformed root positions. */
     const Vector<IndexRange> ranges_to_keep = mask_to_delete.to_ranges_invert(

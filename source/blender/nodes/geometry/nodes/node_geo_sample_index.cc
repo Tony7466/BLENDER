@@ -331,7 +331,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       index = std::clamp(index, 0, domain_size - 1);
     }
     if (index >= 0 && index < domain_size) {
-      const IndexMask &mask = IndexRange(index, 1);
+      const IndexMask mask = IndexRange(index, 1);
       const bke::GeometryFieldContext geometry_context(*component, domain);
       FieldEvaluator evaluator(geometry_context, &mask);
       evaluator.add(value_field);
