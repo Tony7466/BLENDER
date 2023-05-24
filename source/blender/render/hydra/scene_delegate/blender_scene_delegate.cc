@@ -3,6 +3,7 @@
 
 #include <bitset>
 
+#include "BKE_object.h"
 #include "DEG_depsgraph_query.h"
 #include "DNA_scene_types.h"
 
@@ -305,22 +306,26 @@ void BlenderSceneDelegate::update_objects(Object *object)
   if (!ObjectData::is_supported(object)) {
     return;
   }
+
   pxr::SdfPath id = object_prim_id(object);
   ObjectData *obj_data = object_data(id);
   if (obj_data) {
     obj_data->update_parent();
     obj_data->update();
+    obj_data->update_visibility();
     return;
   }
-  if (view3d && !BKE_object_is_visible_in_viewport(view3d, object)) {
+
+  if (!ObjectData::is_visible(this, object)) {
+    /* Do not export new object if it is invisible */
     return;
   }
+
   objects_[id] = ObjectData::create(this, object, id);
   obj_data = object_data(id);
   obj_data->update_parent();
   obj_data->init();
   obj_data->insert();
-  obj_data->update_visibility();
 }
 
 void BlenderSceneDelegate::update_instancers(Object *object)
@@ -333,26 +338,30 @@ void BlenderSceneDelegate::update_instancers(Object *object)
   pxr::SdfPath id = instancer_prim_id(object);
   InstancerData *i_data = instancer_data(id);
   if (i_data) {
-    if (object->transflag & OB_DUPLI) {
-      i_data->update();
-    }
-    else {
+    if ((object->transflag & OB_DUPLI) == 0) {
+      /* Object isn't instancer anymore and should be removed */
       i_data->remove();
       instancers_.erase(id);
+      return;
     }
+
+    i_data->update();
     return;
   }
+
   if ((object->transflag & OB_DUPLI) == 0) {
     return;
   }
-  if (view3d && !BKE_object_is_visible_in_viewport(view3d, object)) {
+
+  if (!InstancerData::is_visible(this, object)) {
+    /* Do not export new instancer if it is invisible */
     return;
   }
+
   instancers_[id] = std::make_unique<InstancerData>(this, object, id);
   i_data = instancer_data(id);
   i_data->init();
   i_data->insert();
-  i_data->update_visibility();
 }
 
 void BlenderSceneDelegate::update_world()
@@ -385,6 +394,8 @@ void BlenderSceneDelegate::check_updates()
   DEGIDIterData data = {0};
   data.graph = depsgraph;
   data.only_updated = true;
+  eEvaluationMode deg_mode = DEG_get_mode(depsgraph);
+
   ITER_BEGIN (DEG_iterator_ids_begin, DEG_iterator_ids_next, DEG_iterator_ids_end, &data, ID *, id)
   {
     CLOG_INFO(LOG_RENDER_HYDRA_SCENE,
@@ -396,6 +407,11 @@ void BlenderSceneDelegate::check_updates()
     switch (GS(id->name)) {
       case ID_OB: {
         Object *object = (Object *)id;
+        CLOG_INFO(LOG_RENDER_HYDRA_SCENE,
+                  2,
+                  "Visibility: %s [%s]",
+                  object->id.name,
+                  std::bitset<3>(BKE_object_visibility(object, deg_mode)).to_string().c_str());
         update_objects(object);
         update_instancers(object);
       } break;
@@ -414,6 +430,10 @@ void BlenderSceneDelegate::check_updates()
       } break;
 
       case ID_SCE: {
+        if (id->recalc & ID_RECALC_COPY_ON_WRITE && !(id->recalc & ID_RECALC_SELECT)) {
+          do_update_collection = true;
+          do_update_visibility = true;
+        }
         if (id->recalc & ID_RECALC_BASE_FLAGS) {
           do_update_visibility = true;
         }
@@ -448,12 +468,13 @@ void BlenderSceneDelegate::add_new_objects()
 {
   DEGObjectIterSettings settings = {0};
   settings.depsgraph = depsgraph;
-  settings.flags = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_VISIBLE |
-                   DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET;
+  settings.flags = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET;
   DEGObjectIterData data = {0};
   data.settings = &settings;
   data.graph = settings.depsgraph;
   data.flag = settings.flags;
+  eEvaluationMode deg_mode = DEG_get_mode(depsgraph);
+
   ITER_BEGIN (DEG_iterator_objects_begin,
               DEG_iterator_objects_next,
               DEG_iterator_objects_end,
@@ -461,7 +482,11 @@ void BlenderSceneDelegate::add_new_objects()
               Object *,
               object)
   {
-
+    CLOG_INFO(LOG_RENDER_HYDRA_SCENE,
+              2,
+              "Visibility: %s [%s]",
+              object->id.name,
+              std::bitset<3>(BKE_object_visibility(object, deg_mode)).to_string().c_str());
     update_objects(object);
     update_instancers(object);
   }
@@ -480,6 +505,7 @@ void BlenderSceneDelegate::remove_unused_objects()
   data.settings = &settings;
   data.graph = settings.depsgraph;
   data.flag = settings.flags;
+
   ITER_BEGIN (DEG_iterator_objects_begin,
               DEG_iterator_objects_next,
               DEG_iterator_objects_end,
@@ -539,6 +565,7 @@ void BlenderSceneDelegate::remove_unused_objects()
 
 void BlenderSceneDelegate::update_visibility()
 {
+  /* Updating visibility of existing objects/instancers */
   for (auto &it : objects_) {
     it.second->update_visibility();
   }
@@ -546,15 +573,16 @@ void BlenderSceneDelegate::update_visibility()
     it.second->update_visibility();
   }
 
-  /* Add objects which were invisible before and not added yet */
+  /* Add objects/instancers which were invisible before and not added yet */
   DEGObjectIterSettings settings = {0};
   settings.depsgraph = depsgraph;
-  settings.flags = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_VISIBLE |
-                   DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET;
+  settings.flags = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET;
   DEGObjectIterData data = {0};
   data.settings = &settings;
   data.graph = settings.depsgraph;
   data.flag = settings.flags;
+  eEvaluationMode deg_mode = DEG_get_mode(depsgraph);
+
   ITER_BEGIN (DEG_iterator_objects_begin,
               DEG_iterator_objects_next,
               DEG_iterator_objects_end,
@@ -562,7 +590,11 @@ void BlenderSceneDelegate::update_visibility()
               Object *,
               object)
   {
-
+    CLOG_INFO(LOG_RENDER_HYDRA_SCENE,
+              2,
+              "Visibility: %s [%s]",
+              object->id.name,
+              std::bitset<3>(BKE_object_visibility(object, deg_mode)).to_string().c_str());
     if (!object_data(object_prim_id(object))) {
       update_objects(object);
     }

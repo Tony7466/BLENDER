@@ -22,6 +22,7 @@ class ObjectData : public IdData {
                                             Object *object,
                                             pxr::SdfPath const &prim_id);
   static bool is_supported(Object *object);
+  static bool is_visible(BlenderSceneDelegate *scene_delegate, Object *object);
 
   virtual bool update_visibility();
   void update_parent();

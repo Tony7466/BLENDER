@@ -2,6 +2,7 @@
  * Copyright 2011-2022 Blender Foundation */
 
 #include "BKE_object.h"
+#include "DEG_depsgraph_query.h"
 
 #include "blender_scene_delegate.h"
 #include "light.h"
@@ -59,19 +60,34 @@ bool ObjectData::is_supported(Object *object)
   return false;
 }
 
-bool ObjectData::update_visibility()
+bool ObjectData::is_visible(BlenderSceneDelegate *scene_delegate, Object *object)
 {
-  if (!scene_delegate_->view3d) {
-    return false;
+  eEvaluationMode deg_mode = DEG_get_mode(scene_delegate->depsgraph);
+  int vis = BKE_object_visibility(object, deg_mode);
+  bool ret = vis & OB_VISIBLE_SELF;
+  if (deg_mode == DAG_EVAL_VIEWPORT) {
+    ret &= BKE_object_is_visible_in_viewport(scene_delegate->view3d, object);
   }
-
-  bool prev_visible = visible;
-  visible = BKE_object_is_visible_in_viewport(scene_delegate_->view3d, (Object *)id);
-  bool ret = visible != prev_visible;
-  if (ret) {
-    ID_LOG(2, "");
+  else {
+    if (ret) {
+      /* If some of parent object is instancer, then currenct object
+       * is invisible in Final render */
+      for (Object *ob = object->parent; ob != nullptr; ob = ob->parent) {
+        if (ob->transflag & OB_DUPLI) {
+          ret = false;
+          break;
+        }
+      }
+    }
   }
   return ret;
+}
+
+bool ObjectData::update_visibility()
+{
+  bool prev_visible = visible;
+  visible = is_visible(scene_delegate_, (Object *)id);
+  return visible != prev_visible;
 }
 
 void ObjectData::update_parent()
@@ -87,7 +103,6 @@ void ObjectData::update_parent()
           scene_delegate_->instancer_prim_id(ob));
       if (i_data) {
         i_data->update_as_parent();
-        break;
       }
     }
   }

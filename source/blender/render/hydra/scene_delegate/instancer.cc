@@ -4,6 +4,9 @@
 #include <pxr/base/gf/vec2f.h>
 #include <pxr/imaging/hd/light.h>
 
+#include "BKE_object.h"
+#include "DEG_depsgraph_query.h"
+
 #include "blender_scene_delegate.h"
 #include "instancer.h"
 
@@ -31,6 +34,29 @@ bool InstancerData::is_supported(Object *object)
       break;
   }
   return false;
+}
+
+bool InstancerData::is_visible(BlenderSceneDelegate *scene_delegate, Object *object)
+{
+  eEvaluationMode deg_mode = DEG_get_mode(scene_delegate->depsgraph);
+  int vis = BKE_object_visibility(object, deg_mode);
+  bool ret = vis & OB_VISIBLE_INSTANCES;
+  if (deg_mode == DAG_EVAL_VIEWPORT) {
+    ret &= BKE_object_is_visible_in_viewport(scene_delegate->view3d, object);
+  }
+  else {
+    if (ret) {
+      /* If some of parent object is instancer, then currenct object as instancer
+       * is invisible in Final render */
+      for (Object *ob = object->parent; ob != nullptr; ob = ob->parent) {
+        if (ob->transflag & OB_DUPLI) {
+          ret = false;
+          break;
+        }
+      }
+    }
+  }
+  return ret;
 }
 
 void InstancerData::init()
@@ -62,7 +88,6 @@ void InstancerData::remove()
 void InstancerData::update()
 {
   ID_LOG(2, "");
-
   Object *object = (Object *)id;
   if (id->recalc & ID_RECALC_GEOMETRY ||
       (object->data && ((ID *)object->data)->recalc & ID_RECALC_GEOMETRY) ||
@@ -86,7 +111,10 @@ pxr::VtValue InstancerData::get_data(pxr::TfToken const &key) const
 
 bool InstancerData::update_visibility()
 {
-  bool ret = ObjectData::update_visibility();
+  bool prev_visible = visible;
+  visible = is_visible(scene_delegate_, (Object *)id);
+  bool ret = visible != prev_visible;
+
   if (ret) {
     auto &change_tracker = scene_delegate_->GetRenderIndex().GetChangeTracker();
     change_tracker.MarkInstancerDirty(prim_id, pxr::HdChangeTracker::DirtyVisibility);
@@ -164,6 +192,14 @@ void InstancerData::check_update(Object *object)
   pxr::SdfPath path = object_prim_id(object);
   MeshInstance *m_inst = mesh_instance(path);
   if (m_inst) {
+    if (!is_instance_visible(object)) {
+      m_inst->data->remove();
+      mesh_instances_.erase(path);
+      scene_delegate_->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(
+          prim_id, pxr::HdChangeTracker::AllDirty);
+      return;
+    }
+
     m_inst->data->update();
 
     if (m_inst->data->id->recalc & ID_RECALC_TRANSFORM) {
@@ -176,6 +212,13 @@ void InstancerData::check_update(Object *object)
 
   LightInstance *l_inst = light_instance(path);
   if (l_inst) {
+    if (!is_instance_visible(object)) {
+      l_inst->transforms.clear();
+      update_light_instance(*l_inst);
+      light_instances_.erase(path);
+      return;
+    }
+
     Object *obj = (Object *)l_inst->data->id;
     if (obj->id.recalc & (ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY) ||
         ((ID *)obj->data)->recalc & ID_RECALC_GEOMETRY)
@@ -183,6 +226,28 @@ void InstancerData::check_update(Object *object)
       write_instances();
     }
     return;
+  }
+
+  /* Checking if object wasn't added to instances before */
+  if (is_supported(object) && is_instance_visible(object)) {
+    bool do_write_instances = false;
+    ListBase *lb = object_duplilist(
+        scene_delegate_->depsgraph, scene_delegate_->scene, (Object *)id);
+    LISTBASE_FOREACH (DupliObject *, dupli, lb) {
+      if (dupli->ob == object) {
+        do_write_instances = true;
+        break;
+      }
+    }
+    free_object_duplilist(lb);
+
+    if (do_write_instances) {
+      write_instances();
+      if (!mesh_instances_.empty()) {
+        scene_delegate_->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(
+            prim_id, pxr::HdChangeTracker::AllDirty);
+      }
+    }
   }
 }
 
@@ -237,6 +302,22 @@ void InstancerData::update_double_sided(MaterialData *mat_data)
   }
 }
 
+bool InstancerData::is_instance_visible(Object *object)
+{
+  eEvaluationMode deg_mode = DEG_get_mode(scene_delegate_->depsgraph);
+  int vis = BKE_object_visibility(object, deg_mode);
+  bool ret = vis & OB_VISIBLE_SELF;
+  if (deg_mode == DAG_EVAL_VIEWPORT) {
+    if (!ret && ((object->transflag & OB_DUPLI) == 0 ||
+                 (object->transflag & OB_DUPLI &&
+                  object->duplicator_visibility_flag & OB_DUPLI_FLAG_VIEWPORT)))
+    {
+      ret = true;
+    }
+  }
+  return ret;
+}
+
 pxr::SdfPath InstancerData::object_prim_id(Object *object) const
 {
   /* Making id of object in form like <prefix>_<pointer in 16 hex digits format> */
@@ -273,7 +354,7 @@ void InstancerData::write_instances()
       scene_delegate_->depsgraph, scene_delegate_->scene, (Object *)id);
   LISTBASE_FOREACH (DupliObject *, dupli, lb) {
     Object *ob = dupli->ob;
-    if (!is_supported(ob)) {
+    if (!is_supported(ob) || !is_instance_visible(ob)) {
       continue;
     }
 

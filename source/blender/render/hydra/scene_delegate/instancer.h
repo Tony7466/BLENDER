@@ -25,6 +25,7 @@ class InstancerData : public ObjectData {
  public:
   InstancerData(BlenderSceneDelegate *scene_delegate, Object *object, pxr::SdfPath const &prim_id);
   static bool is_supported(Object *object);
+  static bool is_visible(BlenderSceneDelegate *scene_delegate, Object *object);
 
   void init() override;
   void insert() override;
@@ -46,6 +47,7 @@ class InstancerData : public ObjectData {
   void update_double_sided(MaterialData *mat_data);
 
  private:
+  bool is_instance_visible(Object *object);
   pxr::SdfPath object_prim_id(Object *object) const;
   pxr::SdfPath light_prim_id(LightInstance const &inst, int index) const;
   int light_prim_id_index(pxr::SdfPath const &id) const;
