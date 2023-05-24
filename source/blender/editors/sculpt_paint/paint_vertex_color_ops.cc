@@ -12,6 +12,7 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_array.hh"
+#include "BLI_function_ref.hh"
 #include "BLI_math_base.h"
 #include "BLI_math_color.h"
 #include "BLI_vector.hh"
@@ -37,6 +38,7 @@
 
 using blender::Array;
 using blender::ColorGeometry4f;
+using blender::FunctionRef;
 using blender::GMutableSpan;
 using blender::IndexMask;
 using blender::IndexMaskMemory;
@@ -244,8 +246,8 @@ void PAINT_OT_vertex_color_smooth(wmOperatorType *ot)
 /** \name Vertex Color Transformation Operators
  * \{ */
 
-template<typename TransformFn>
-static void transform_active_color_data(Mesh &mesh, const TransformFn &transform_fn)
+static void transform_active_color_data(
+    Mesh &mesh, const FunctionRef<void(ColorGeometry4f &color)> transform_fn)
 {
   using namespace blender;
   const StringRef name = mesh.active_color_attribute;
@@ -264,21 +266,24 @@ static void transform_active_color_data(Mesh &mesh, const TransformFn &transform
   IndexMaskMemory memory;
   const IndexMask selection = get_selected_indices(mesh, color_attribute.domain, memory);
 
-  bke::attribute_math::convert_to_static_type(color_attribute.varray.type(), [&](auto dummy) {
-    using T = decltype(dummy);
-    selection.foreach_index(GrainSize(1024), [&](const int i) {
-      if constexpr (std::is_same_v<T, ColorGeometry4f>) {
-        ColorGeometry4f color = color_attribute.varray.get<ColorGeometry4f>(i);
-        transform_fn(color);
-        color_attribute.varray.set_by_copy(i, &color);
-      }
-      else if constexpr (std::is_same_v<T, ColorGeometry4b>) {
-        ColorGeometry4f color = color_attribute.varray.get<ColorGeometry4b>(i).decode();
-        transform_fn(color);
-        ColorGeometry4b color_encoded = color.encode();
-        color_attribute.varray.set_by_copy(i, &color_encoded);
-      }
-    });
+  threading::parallel_for(selection.index_range(), 1024, [&](IndexRange range) {
+    color_attribute.varray.type().to_static_type_tag<ColorGeometry4f, ColorGeometry4b>(
+        [&](auto type_tag) {
+          using T = typename decltype(type_tag)::type;
+          selection.foreach_index(GrainSize(1024), [&](const int i) {
+            if constexpr (std::is_same_v<T, ColorGeometry4f>) {
+              ColorGeometry4f color = color_attribute.varray.get<ColorGeometry4f>(i);
+              transform_fn(color);
+              color_attribute.varray.set_by_copy(i, &color);
+            }
+            else if constexpr (std::is_same_v<T, ColorGeometry4b>) {
+              ColorGeometry4f color = color_attribute.varray.get<ColorGeometry4b>(i).decode();
+              transform_fn(color);
+              ColorGeometry4b color_encoded = color.encode();
+              color_attribute.varray.set_by_copy(i, &color_encoded);
+            }
+          });
+        });
   });
 
   color_attribute.finish();
@@ -286,8 +291,9 @@ static void transform_active_color_data(Mesh &mesh, const TransformFn &transform
   DEG_id_tag_update(&mesh.id, 0);
 }
 
-template<typename TransformFn>
-static void transform_active_color(bContext *C, wmOperator *op, const TransformFn &transform_fn)
+static void transform_active_color(bContext *C,
+                                   wmOperator *op,
+                                   const FunctionRef<void(ColorGeometry4f &color)> transform_fn)
 {
   Object *obact = CTX_data_active_object(C);
 
