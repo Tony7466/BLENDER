@@ -38,6 +38,7 @@
 #include "sculpt_intern.hh"
 
 using blender::Array;
+using blender::ColorGeometry4b;
 using blender::ColorGeometry4f;
 using blender::FunctionRef;
 using blender::GMutableSpan;
