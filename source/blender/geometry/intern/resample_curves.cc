@@ -294,7 +294,7 @@ static CurvesGeometry resample_to_uniform(const CurvesGeometry &src_curves,
     Vector<std::byte> evaluated_buffer;
 
     /* Gather uniform samples based on the accumulated lengths of the original curve. */
-    for (const int64_t i_curve : selection_segment) {
+    for (const int i_curve : selection_segment) {
       const bool cyclic = curves_cyclic[i_curve];
       const IndexRange dst_points = dst_points_by_curve[i_curve];
       const Span<float> lengths = src_curves.evaluated_lengths_for_curve(i_curve, cyclic);
@@ -345,7 +345,7 @@ static CurvesGeometry resample_to_uniform(const CurvesGeometry &src_curves,
     }
 
     auto interpolate_evaluated_data = [&](const Span<float3> src, MutableSpan<float3> dst) {
-      for (const int64_t i_curve : selection_segment) {
+      for (const int i_curve : selection_segment) {
         const IndexRange src_points = evaluated_points_by_curve[i_curve];
         const IndexRange dst_points = dst_points_by_curve[i_curve];
         length_parameterize::interpolate(src.slice(src_points),
@@ -454,7 +454,7 @@ CurvesGeometry resample_to_evaluated(const CurvesGeometry &src_curves,
     }
 
     auto copy_evaluated_data = [&](const Span<float3> src, MutableSpan<float3> dst) {
-      for (const int64_t i_curve : selection_segment) {
+      for (const int i_curve : selection_segment) {
         const IndexRange src_points = src_evaluated_points_by_curve[i_curve];
         const IndexRange dst_points = dst_points_by_curve[i_curve];
         dst.slice(dst_points).copy_from(src.slice(src_points));
@@ -475,7 +475,7 @@ CurvesGeometry resample_to_evaluated(const CurvesGeometry &src_curves,
 
     /* Fill the default value for non-interpolating attributes that still must be copied. */
     for (GMutableSpan dst : attributes.dst_no_interpolation) {
-      for (const int64_t i_curve : selection_segment) {
+      for (const int i_curve : selection_segment) {
         const IndexRange dst_points = dst_points_by_curve[i_curve];
         dst.type().value_initialize_n(dst.slice(dst_points).data(), dst_points.size());
       }
