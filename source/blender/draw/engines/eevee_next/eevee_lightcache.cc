@@ -156,7 +156,7 @@ class LightBake {
           [this]() { context_enable(); },
           [this]() { context_disable(); },
           [&]() { return (G.is_break == true) || ((stop != nullptr) ? *stop : false); },
-          [&](LightProbeGridCacheFrame *cache_frame) {
+          [&](LightProbeGridCacheFrame *cache_frame, float grid_progress) {
             {
               std::scoped_lock lock(result_mutex_);
               /* Delete any existing cache that wasn't transferred to the original object. */
@@ -171,7 +171,7 @@ class LightBake {
             }
 
             if (progress) {
-              /* TODO: Update progress. */
+              *progress = (i + grid_progress) / original_probes_.size();
             }
           });
 

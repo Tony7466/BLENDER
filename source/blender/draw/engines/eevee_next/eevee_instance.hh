@@ -146,11 +146,12 @@ class Instance {
   /* Light bake. */
 
   void init_light_bake(Depsgraph *depsgraph, draw::Manager *manager);
-  void light_bake_irradiance(Object &probe,
-                             std::function<void()> context_enable,
-                             std::function<void()> context_disable,
-                             std::function<bool()> stop,
-                             std::function<void(LightProbeGridCacheFrame *)> result_update);
+  void light_bake_irradiance(
+      Object &probe,
+      std::function<void()> context_enable,
+      std::function<void()> context_disable,
+      std::function<bool()> stop,
+      std::function<void(LightProbeGridCacheFrame *, float progress)> result_update);
 
   static void update_passes(RenderEngine *engine, Scene *scene, ViewLayer *view_layer);
 

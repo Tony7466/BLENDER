@@ -452,11 +452,12 @@ void Instance::update_passes(RenderEngine *engine, Scene *scene, ViewLayer *view
                               EEVEE_RENDER_PASS_CRYPTOMATTE_MATERIAL);
 }
 
-void Instance::light_bake_irradiance(Object &probe,
-                                     std::function<void()> context_enable,
-                                     std::function<void()> context_disable,
-                                     std::function<bool()> stop,
-                                     std::function<void(LightProbeGridCacheFrame *)> result_update)
+void Instance::light_bake_irradiance(
+    Object &probe,
+    std::function<void()> context_enable,
+    std::function<void()> context_disable,
+    std::function<bool()> stop,
+    std::function<void(LightProbeGridCacheFrame *, float progress)> result_update)
 {
   BLI_assert(is_baking());
 
@@ -508,7 +509,10 @@ void Instance::light_bake_irradiance(Object &probe,
         else {
           cache_frame = irradiance_cache.bake.read_result_packed();
         }
-        result_update(cache_frame);
+
+        float bounce_progress = sampling.sample_index() / float(sampling.sample_count());
+        float progress = (bounce - 1 + bounce_progress) / float(bounce_len);
+        result_update(cache_frame, progress);
       });
 
       if (stop()) {

@@ -129,9 +129,16 @@ class Sampling {
     return interactive_mode_;
   }
 
+  /* Target sample count. */
   uint64_t sample_count() const
   {
     return sample_count_;
+  }
+
+  /* 0 based current sample. Might not increase sequentially in viewport. */
+  uint64_t sample_index() const
+  {
+    return sample_;
   }
 
   /* Return true if we are starting a new motion blur step. We need to run sync again since
