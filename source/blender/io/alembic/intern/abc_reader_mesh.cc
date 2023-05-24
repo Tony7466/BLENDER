@@ -888,8 +888,6 @@ static void read_vertex_creases(Mesh *mesh,
     return;
   }
 
-
-
   float *vertex_crease_data = (float *)CustomData_add_layer_named(
       &mesh->vdata, CD_PROP_FLOAT, CD_SET_DEFAULT, mesh->totvert, "crease_vert");
   const int totvert = mesh->totvert;
