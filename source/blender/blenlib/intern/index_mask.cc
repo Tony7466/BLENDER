@@ -193,8 +193,9 @@ static void consolidate_segments(Vector<IndexMaskSegment> &segments, IndexMaskMe
     const IndexMaskSegment segment = segments[segment_i];
     const std::optional<IndexRange> segment_base_range =
         unique_sorted_indices::non_empty_as_range_try(segment.base_span());
+    const bool segment_is_range = segment_base_range.has_value();
 
-    if (group_as_range && segment_base_range.has_value()) {
+    if (group_as_range && segment_is_range) {
       if (group_last + 1 == segment[0]) {
         if (segment.last() - group_first + 1 < max_segment_size) {
           /* Can combine previous and current range. */
@@ -208,6 +209,7 @@ static void consolidate_segments(Vector<IndexMaskSegment> &segments, IndexMaskMe
     group_start_segment_i = segment_i;
     group_first = segment[0];
     group_last = segment.last();
+    group_as_range = segment_is_range;
   }
   finish_group(segments.size() - 1);
 
