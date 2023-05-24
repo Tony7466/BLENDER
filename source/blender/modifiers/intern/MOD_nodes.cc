@@ -1197,12 +1197,12 @@ static void prepare_simulation_states_for_evaluation(const NodesModifierData &nm
       const float scene_delta_frames = float(current_frame) - float(prev_frame);
       const float delta_frames = std::min(max_delta_frames, scene_delta_frames);
       const float delta_seconds = delta_frames / FPS;
-      const float old_delta_seconds = nmd_orig.simulation_cache->delta_seconds_;
-      if (old_delta_seconds && (!compare_ff(old_delta_seconds, delta_seconds, 1e-8))) {
+      const float old_fps = nmd_orig.simulation_cache->last_fps_;
+      if (old_fps && (!compare_ff(FPS, old_fps, 1e-8))) {
         nmd_orig.simulation_cache->reset();
         exec_data.simulation_time_delta = delta_seconds;
       }
-      nmd_orig.simulation_cache->delta_seconds_ = delta_seconds;
+      nmd_orig.simulation_cache->last_fps_ = FPS;
       if (sim_states.current == nullptr) {
         if (is_start_frame || !nmd_orig.simulation_cache->has_states()) {
           bke::sim::ModifierSimulationState &current_sim_state =

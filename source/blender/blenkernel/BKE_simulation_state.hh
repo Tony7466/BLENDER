@@ -162,7 +162,7 @@ class ModifierSimulationCache {
   CacheState cache_state_ = CacheState::Valid;
   bool failed_finding_bake_ = false;
 
-  float delta_seconds_ = 0.0f;
+  float last_fps_ = 0.0f;
 
   void try_discover_bake(StringRefNull absolute_bake_dir);
 
