@@ -47,6 +47,7 @@ void *device_memory::host_alloc(size_t size, bool pinned_mem)
   void *ptr = NULL;
   if(!pinned_mem) {
      ptr = util_aligned_malloc(size, MIN_ALIGNMENT_CPU_DATA_TYPES);
+     pinned = false;
   } else {
     device->alloc_host(ptr, size, pinned);
     pinned = true;
