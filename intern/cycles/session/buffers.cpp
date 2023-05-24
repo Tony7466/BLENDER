@@ -270,6 +270,23 @@ RenderBuffers::~RenderBuffers()
   buffer.free();
 }
 
+void RenderBuffers::reset(size_t width, size_t height) {
+      buffer.alloc(width, height, 0, true);
+}
+
+void RenderBuffers::reset(const BufferParams &params_, size_t offset, RenderBuffers *buffers)
+{
+  DCHECK(params_.pass_stride != -1);
+
+  params = params_;
+
+  /* re-allocate buffer */
+  //if(buffer.size() < buffer.memory_elements_size(params.width*params.pass_stride*params.height)) {
+  //  buffer.alloc(params.width * params.pass_stride, params.height, true);
+  //}
+  buffer.slice(&(buffers->buffer), offset, params.width * params.pass_stride, params.height);
+}
+
 void RenderBuffers::reset(const BufferParams &params_)
 {
   DCHECK(params_.pass_stride != -1);
@@ -278,7 +295,7 @@ void RenderBuffers::reset(const BufferParams &params_)
 
   /* re-allocate buffer */
   if(buffer.size() < buffer.memory_elements_size(params.width*params.pass_stride*params.height)) {
-    buffer.alloc(params.width * params.pass_stride, params.height, true);
+    buffer.alloc(params.width * params.pass_stride, params.height, 0, true);
   }
 }
 
@@ -289,12 +306,12 @@ void RenderBuffers::zero()
 
 bool RenderBuffers::copy_from_device()
 {
-  DCHECK(params.pass_stride != -1);
+  //DCHECK(params.pass_stride != -1);
 
   if (!buffer.device_pointer)
     return false;
 
-  buffer.copy_from_device(0, params.width * params.pass_stride, params.height);
+  buffer.copy_from_device(); //0, params.width * params.pass_stride, params.height);
 
   return true;
 }

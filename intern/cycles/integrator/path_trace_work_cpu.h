@@ -45,8 +45,13 @@ class PathTraceWorkCPU : public PathTraceWork {
   virtual void destroy_gpu_resources(PathTraceDisplay *display) override;
 
   virtual bool copy_render_buffers_from_device_impl() override;
+  virtual bool copy_master_render_buffers_from_device_impl() override;
+  
   virtual bool copy_render_buffers_to_device_impl() override;
+  virtual bool copy_master_render_buffers_to_device_impl() override;
+  
   virtual bool zero_render_buffers_impl() override;
+  virtual bool zero_master_render_buffers_impl() override;
 
   virtual int adaptive_sampling_converge_filter_count_active(float threshold, bool reset) override;
   virtual void cryptomatte_postproces() override;

@@ -161,6 +161,8 @@ class RenderBuffers {
   explicit RenderBuffers(Device *device);
   ~RenderBuffers();
 
+  void reset(size_t width, size_t height);
+  void reset(const BufferParams &params_, size_t offset, RenderBuffers *buffers);
   void reset(const BufferParams &params);
   void zero();
 

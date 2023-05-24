@@ -196,9 +196,26 @@ bool PathTraceWorkCPU::copy_render_buffers_from_device_impl()
   return buffers_->copy_from_device();
 }
 
+bool PathTraceWorkCPU::copy_master_render_buffers_from_device_impl()
+{
+  return master_buffers_->copy_from_device();
+}
+
 bool PathTraceWorkCPU::copy_render_buffers_to_device_impl()
 {
   buffers_->buffer.copy_to_device();
+  return true;
+}
+
+bool PathTraceWorkCPU::copy_master_render_buffers_to_device_impl()
+{
+  master_buffers_->buffer.copy_to_device();
+  return true;
+}
+
+bool PathTraceWorkCPU::zero_master_render_buffers_impl()
+{
+  master_buffers_->zero();
   return true;
 }
 

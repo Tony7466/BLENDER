@@ -178,7 +178,7 @@ void PathTraceWorkGPU::alloc_integrator_soa()
 void PathTraceWorkGPU::alloc_integrator_queue()
 {
   if (integrator_queue_counter_.size() == 0) {
-    integrator_queue_counter_.alloc(1,0,0,true);
+    integrator_queue_counter_.alloc(1,0,0,false /*true*/);
     integrator_queue_counter_.zero_to_device();
     integrator_queue_counter_.copy_from_device();
     integrator_state_gpu_.queue_counter = (IntegratorQueueCounter *)
@@ -187,7 +187,7 @@ void PathTraceWorkGPU::alloc_integrator_queue()
 
   /* Allocate data for active path index arrays. */
   if (num_queued_paths_.size() == 0) {
-    num_queued_paths_.alloc(1,0,0,true);
+    num_queued_paths_.alloc(1,0,0,false /*true*/);
     num_queued_paths_.zero_to_device();
   }
 
@@ -261,7 +261,7 @@ void PathTraceWorkGPU::alloc_integrator_sorting()
 void PathTraceWorkGPU::alloc_integrator_path_split()
 {
   if (integrator_next_shadow_path_index_.size() == 0) {
-    integrator_next_shadow_path_index_.alloc(1,0,0,true);
+    integrator_next_shadow_path_index_.alloc(1,0,0,false/*true*/);
     integrator_next_shadow_path_index_.zero_to_device();
 
     integrator_state_gpu_.next_shadow_path_index =
@@ -269,7 +269,7 @@ void PathTraceWorkGPU::alloc_integrator_path_split()
   }
 
   if (integrator_next_main_path_index_.size() == 0) {
-    integrator_next_main_path_index_.alloc(1,0,0,true);
+    integrator_next_main_path_index_.alloc(1,0,0,false /*true*/);
     integrator_next_shadow_path_index_.data()[0] = 0;
     integrator_next_main_path_index_.zero_to_device();
 
@@ -360,7 +360,7 @@ void PathTraceWorkGPU::render_samples_impl(RenderStatistics &statistics,
   }
 
   statistics.occupancy = static_cast<float>(num_busy_accum) / num_iterations / max_num_paths_;
-  queue_->copy_from_device(buffers_->buffer);
+  //queue_->copy_from_device(buffers_->buffer);
 }
 
 DeviceKernel PathTraceWorkGPU::get_most_queued_kernel() const
@@ -1124,14 +1124,30 @@ void PathTraceWorkGPU::cryptomatte_postproces()
 
 bool PathTraceWorkGPU::copy_render_buffers_from_device_impl()
 {
-  //queue_->copy_from_device(buffers_->buffer);
+  queue_->copy_from_device(buffers_->buffer);
 
   /* Synchronize so that the CPU-side buffer is available at the exit of this function. */
-  return true; //queue_->synchronize();
+  return queue_->synchronize();
 }
+
+bool PathTraceWorkGPU::copy_master_render_buffers_from_device_impl()
+{
+  queue_->copy_from_device(master_buffers_->buffer);
+
+  /* Synchronize so that the CPU-side buffer is available at the exit of this function. */
+  return queue_->synchronize();
+}
+
 
 bool PathTraceWorkGPU::synchronize() {
   return queue_->synchronize();
+}
+
+bool PathTraceWorkGPU::copy_master_render_buffers_to_device_impl()
+{
+  queue_->copy_to_device(master_buffers_->buffer);
+
+  return true;
 }
 
 bool PathTraceWorkGPU::copy_render_buffers_to_device_impl()
@@ -1141,6 +1157,13 @@ bool PathTraceWorkGPU::copy_render_buffers_to_device_impl()
   /* NOTE: The direct device access to the buffers only happens within this path trace work. The
    * rest of communication happens via API calls which involves `copy_render_buffers_from_device()`
    * which will perform synchronization as needed. */
+
+  return true;
+}
+
+bool PathTraceWorkGPU::zero_master_render_buffers_impl()
+{
+  queue_->zero_to_device(master_buffers_->buffer);
 
   return true;
 }

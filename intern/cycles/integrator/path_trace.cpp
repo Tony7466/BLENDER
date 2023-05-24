@@ -251,9 +251,9 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
   const int window_height = buffer_params.window_height;
 
   int current_y = 0;
-  
-  const double device_scale = 1.0/ (double)(device_scale_factor);
 
+  const double device_scale = 1.0/ (double)(device_scale_factor);
+  size_t offsets[num_works] = { 0 };
   for (int j = 0; j < device_scale_factor; j++) {
   for (int i = 0; i < num_works; ++i) {
     const double weight = work_balance_infos[i].weight * device_scale;
@@ -278,11 +278,12 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
 
     slice_params.height = slice_params.window_y + slice_params.window_height + overscan;
     slice_params.height = min(slice_params.height,
-                              buffer_params.height + buffer_params.full_y - slice_params.full_y);
+    buffer_params.height + buffer_params.full_y - slice_params.full_y);
 
     slice_params.update_offset_stride();
 
-    callback(path_trace_works[i].get(), slice_params, j);
+    callback(path_trace_works[i].get(), slice_params, i, j, offsets[i]);
+    offsets[i] += slice_params.height;
 
     current_y += slice_params.window_height;
   }
@@ -292,12 +293,32 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
 void PathTrace::update_allocated_work_buffer_params()
 {
   const int overscan = tile_manager_.get_tile_overscan();
+  /* Calcualte the master buffer size*/
+  const int num_works = path_trace_works_.size();
+  size_t sizes[num_works] = { 0 };
+  size_t strides[num_works] = { 0 };
+  size_t widths[num_works] = { 0 };
   foreach_sliced_buffer_params(path_trace_works_,
                                work_balance_infos_,
                                big_tile_params_,
                                overscan, device_scale_factor,
-                               [](PathTraceWork *path_trace_work, const BufferParams &params, int i) {
-                                 path_trace_work->set_render_buffers_in_work_set(params, i );
+                               [&sizes, &strides, &widths](PathTraceWork *path_trace_work, const BufferParams &params, int work, int slice, size_t offset) {
+                                 sizes[work] += params.height;
+				 strides[work] = params.pass_stride;
+				 widths[work] = params.width;
+				 // VLOG_INFO << "Work " << work << " slice " << slice << " height:" << params.height << " stride:" << params.pass_stride << " widths:" << params.width;
+                               });
+  for(int i = 0;i < num_works;i++) {
+    path_trace_works_[i]->reset_master_buffer(widths[i]*strides[i], sizes[i]);
+  }
+  
+  /* Assign each slice */
+  foreach_sliced_buffer_params(path_trace_works_,
+                               work_balance_infos_,
+                               big_tile_params_,
+                               overscan, device_scale_factor,
+                               [](PathTraceWork *path_trace_work, const BufferParams &params, int work, int slice, size_t offset) {
+                                 path_trace_work->set_render_buffers_in_work_set(params, slice, offset);
                                });
 }
 
@@ -340,8 +361,8 @@ void PathTrace::update_effective_work_buffer_params(const RenderWork &render_wor
                                work_balance_infos_,
                                scaled_big_tile_params,
                                overscan, device_scale_factor,
-                               [&](PathTraceWork *path_trace_work, const BufferParams params, int i) {
-                                   path_trace_work->set_effective_buffer_params_in_work_set(params, i);
+                               [&](PathTraceWork *path_trace_work, const BufferParams params, int work, int slice, size_t offset) {
+				 path_trace_work->set_effective_buffer_params_in_work_set(params, slice, offset);
                                });
 
   render_state_.effective_big_tile_params = scaled_big_tile_params;
@@ -373,8 +394,9 @@ void PathTrace::init_render_buffers(const RenderWork &render_work)
 
   /* Handle initialization scheduled by the render scheduler. */
   if (render_work.init_render_buffers) {
+    // Buffer is already initialized on creation
     parallel_for_each(path_trace_works_, [&](unique_ptr<PathTraceWork> &path_trace_work) {
-      path_trace_work->zero_render_buffers();
+       path_trace_work->zero_render_buffers();
     });
 
     tile_buffer_read();
@@ -562,9 +584,11 @@ void PathTrace::denoise(const RenderWork &render_work)
     big_tile_denoise_work_->clear_or_create_work_set(device_scale_factor);
     big_tile_denoise_work_->set_effective_full_buffer_params(render_state_.effective_big_tile_params,
                                                              render_state_.effective_big_tile_params);
+    int offset = 0;
     for (int i = 0; i < device_scale_factor; i++) {
-      big_tile_denoise_work_->set_effective_buffer_params_in_work_set(render_state_.effective_big_tile_params, i);
-      big_tile_denoise_work_->set_render_buffers_in_work_set(render_state_.effective_big_tile_params, i);
+      big_tile_denoise_work_->set_effective_buffer_params_in_work_set(render_state_.effective_big_tile_params, i, 0);      
+      big_tile_denoise_work_->set_render_buffers_in_work_set(render_state_.effective_big_tile_params, i, offset);
+      offset += render_state_.effective_big_tile_params.height;
     }
 
     buffer_to_denoise = big_tile_denoise_work_->get_unique_buffers();

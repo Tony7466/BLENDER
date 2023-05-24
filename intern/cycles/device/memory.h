@@ -240,7 +240,8 @@ class device_memory {
   void *shared_pointer;
   /* reference counter for shared_pointer */
   int shared_counter;
-
+  /* Indicated if this device_memory is a slice of an existing buffer*/
+  bool mem_slice;
   virtual ~device_memory();
 
   void swap_device(Device *new_device, size_t new_device_size, device_ptr new_device_ptr);
@@ -381,9 +382,8 @@ template<typename T> class device_vector : public device_memory {
     if (new_size != data_size) {
       device_free();
       host_free();
-      host_pointer = host_alloc(sizeof(T) * new_size, pinned);
+      host_pointer = host_alloc(sizeof(T) * new_size, pinned_mem);
       modified = true;
-      pinned = pinned_mem;
       assert(device_pointer == 0);
     }
 
@@ -421,6 +421,22 @@ template<typename T> class device_vector : public device_memory {
     data_depth = depth;
 
     return data();
+  }
+
+  void slice(device_vector<T> *mem, size_t offset, size_t width, size_t height) {
+    data_size = size(width, height, 0);
+    device_size = memory_elements_size(width*height);
+    data_width = width;
+    data_height = height;
+    data_depth = 0;
+    data_type = mem->data_type;
+    type = mem->type;
+    name = mem->name;
+    host_pointer = static_cast<void *>(reinterpret_cast<char *>(mem->host_pointer) + memory_elements_size(offset*width));
+    device_pointer = mem->device_pointer + memory_elements_size(offset*width);
+    shared_pointer = NULL;
+    shared_counter = 0;
+    mem_slice = true;
   }
 
   /* Take over data from an existing array. */

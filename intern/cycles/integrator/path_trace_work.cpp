@@ -39,6 +39,7 @@ PathTraceWork::PathTraceWork(Device *device,
       film_(film),
       device_scene_(device_scene),
       buffers_(NULL),
+      master_buffers_(make_unique<RenderBuffers>(device)),
       effective_buffer_params_(effective_full_params_),
       cancel_requested_flag_(cancel_requested_flag)
 {
@@ -83,48 +84,13 @@ void PathTraceWork::clear_work_set_buffers(const BufferParams& empty_params)
  }
 }
 
-void PathTraceWork::set_render_buffers_in_work_set(const BufferParams& p, int i) 
+void PathTraceWork::set_render_buffers_in_work_set(const BufferParams& p, int i, size_t offset) 
 {
-  VLOG_INFO << "set_render_buffers_in_work_set (" << i <<  ") Slice parameters"
-	    << " full_x:" << p.full_x
-	    << " full_y:" << p.full_y
-      
-	    << " window_x:" << p.window_x
-	    << " window_y:" << p.window_y
-
-	    << " window_width:" << p.window_width 
-	    << " window_height:" << p.window_height
-      
-	    << " width:" << p.width
-	    << " height:" << p.height
-
-	    << " offset:" << p.offset
-	    << " stride:" << p.stride
-
-	    << " pass stride:" << p.pass_stride;
-
-  work_set_.render_buffers_set_[i]->reset(p);
+  work_set_.render_buffers_set_[i]->reset(p, offset, master_buffers_.get());
 }
 
-void PathTraceWork::set_effective_buffer_params_in_work_set(const BufferParams& p, int i) 
+void PathTraceWork::set_effective_buffer_params_in_work_set(const BufferParams& p, int i, size_t offset) 
 {
-  VLOG_INFO << "set_effective_buffer_params_in_work_set (" << i <<  ") Slice parameters"
-	    << " full_x:" << p.full_x
-	    << " full_y:" << p.full_y
-      
-	    << " window_x:" << p.window_x
-	    << " window_y:" << p.window_y
-
-	    << " window_width:" << p.window_width 
-	    << " window_height:" << p.window_height
-      
-	    << " width:" << p.width
-	    << " height:" << p.height
-
-	    << " offset:" << p.offset
-	    << " stride:" << p.stride
-
-	    << " pass stride:" << p.pass_stride;  
   work_set_.effective_buffer_params_set_[i] = p;
 }
 
@@ -150,10 +116,6 @@ void PathTraceWork::render_samples(RenderStatistics &statistics,
   for (int i = 0; i < work_set_.size(); i++) {
   set_current_work_set(i);
   render_samples_impl(statistics, start_sample, samples_num, sample_offset);
-  //send_render_buffers_to_network(buffers_);
-  //FRL_CGR
-  //output_work(work_set_.render_buffers_set_[i], work_set_.effective_buffer_params_set_[i]);
-  //FRL_CGR
   }
 }
 
@@ -167,39 +129,40 @@ void PathTraceWork::copy_to_display(PathTraceDisplay *display, PassMode pass_mod
 
 bool PathTraceWork::copy_render_buffers_from_device()
 {
-  for (int i = 0; i < work_set_.size(); i++) {
-  set_current_work_set(i);
-  if (!copy_render_buffers_from_device_impl()) return false;
-  }
+  copy_master_render_buffers_from_device_impl();
+  // for (int i = 0; i < work_set_.size(); i++) {
+  // set_current_work_set(i);
+  // if (!copy_render_buffers_from_device_impl()) return false;
+  // }
   
   return synchronize();
 }
 
 bool PathTraceWork::copy_render_buffers_to_device()
 {
-  for (int i = 0; i < work_set_.size(); i++) {
-  set_current_work_set(i);
-  if (!copy_render_buffers_to_device_impl()) return false;
-  }
+  copy_master_render_buffers_from_device_impl();
+  // for (int i = 0; i < work_set_.size(); i++) {
+  // set_current_work_set(i);
+  // if (!copy_render_buffers_to_device_impl()) return false;
+  // }
   return true;
 }
 
 bool PathTraceWork::zero_render_buffers()
 {
-  for (int i = 0; i < work_set_.size(); i++) {
-  set_current_work_set(i);
-  if (!zero_render_buffers_impl()) return false;
-  }
+  zero_master_render_buffers_impl();
+  // for (int i = 0; i < work_set_.size(); i++) {
+  // set_current_work_set(i);
+  // if (!zero_render_buffers_impl()) return false;
+  // }
   return true;
 }
-
 
 void PathTraceWork::copy_to_render_buffers(RenderBuffers *render_buffers)
 {
   copy_render_buffers_from_device();
   for (int i = 0; i < work_set_.size(); i++) {
   set_current_work_set(i);
-
 
   const int64_t width = effective_buffer_params_.width;
   const int64_t height = effective_buffer_params_.height;

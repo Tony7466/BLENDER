@@ -97,16 +97,22 @@ class PathTraceWork {
    * things are executed in order with the `render_samples()`. */
   virtual bool copy_render_buffers_from_device();
   virtual bool copy_render_buffers_from_device_impl() = 0;
+  virtual bool copy_master_render_buffers_from_device_impl() = 0;
   virtual bool synchronize() { return true; };
   virtual bool copy_render_buffers_to_device();
   virtual bool copy_render_buffers_to_device_impl() = 0;
+  virtual bool copy_master_render_buffers_to_device_impl() = 0;
   
   /* Zero render buffers to/from device using an appropriate device queue when needed so that
    * things are executed in order with the `render_samples()`. */
   virtual bool zero_render_buffers();
   virtual bool zero_render_buffers_impl() = 0 ;
+  virtual bool zero_master_render_buffers_impl() = 0 ;
 
-
+  void reset_master_buffer(size_t width, size_t height) {
+    master_buffers_->reset(width, height);
+    master_buffers_->zero();
+  };
 
   /* Copy data from/to given render buffers.
    * Will copy pixels from a corresponding place (from multi-device point of view) of the render
@@ -169,8 +175,8 @@ class PathTraceWork {
 
   void clear_or_create_work_set(int deviceScaleFactor);
   void clear_work_set_buffers(const BufferParams&);
-  void set_render_buffers_in_work_set(const BufferParams&, int i);
-  void set_effective_buffer_params_in_work_set(const BufferParams&, int i);
+  void set_render_buffers_in_work_set(const BufferParams&, int i, size_t offset);
+  void set_effective_buffer_params_in_work_set(const BufferParams&, int i, size_t offset);
   void set_current_work_set(int i);
 
  protected:
@@ -200,9 +206,9 @@ class PathTraceWork {
   /* Render buffers where sampling is being accumulated into, allocated for a fraction of the big
    * tile which is being rendered by this work.
    * It also defines possible subset of a big tile in the case of multi-device rendering. */
-  //unique_ptr<RenderBuffers> buffers_;
   RenderBuffers* buffers_;
-
+  unique_ptr<RenderBuffers> master_buffers_;
+    
   /* Effective parameters of the full, big tile, and current work render buffer.
    * The latter might be different from `buffers_->params` when there is a resolution divider
    * involved. */
@@ -211,7 +217,6 @@ class PathTraceWork {
   BufferParams& effective_buffer_params_;
 
   WorkSet work_set_;
-
 
   bool *cancel_requested_flag_ = nullptr;
 };
