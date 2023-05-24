@@ -254,6 +254,7 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
 
   const double device_scale = 1.0/ (double)(device_scale_factor);
   size_t offsets[num_works] = { 0 };
+  int work_item = 0;
   for (int j = 0; j < device_scale_factor; j++) {
   for (int i = 0; i < num_works; ++i) {
     const double weight = work_balance_infos[i].weight * device_scale;
@@ -269,10 +270,14 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
     slice_params.full_y = max(slice_window_full_y - overscan, buffer_params.full_y);
     slice_params.window_y = slice_window_full_y - slice_params.full_y;
 
-    if (i < num_works * device_scale_factor - 1) {
+    /* If this is the last work item then all the remaing scanlines
+       should be added */
+    if (work_item < num_works * device_scale_factor - 1) {
       slice_params.window_height = min(slice_window_height, remaining_window_height);
+      VLOG_INFO << "Normal item gets height:" << slice_params.window_height;
     }
     else {
+      VLOG_INFO << "Last work item gets height:" << remaining_window_height;
       slice_params.window_height = remaining_window_height;
     }
 
@@ -286,6 +291,7 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
     offsets[i] += slice_params.height;
 
     current_y += slice_params.window_height;
+    work_item++;
   }
   }
 }
