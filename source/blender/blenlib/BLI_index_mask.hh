@@ -22,7 +22,10 @@ namespace blender::index_mask {
 
 /**
  * Constants that define the maximum segment size. Segment sizes are limited so that the indices
- * within each segment can be stored as #int16_t.
+ * within each segment can be stored as #int16_t, which allows the mask to stored much more
+ * compactly than if 32 or 64 bit ints would be used.
+ * - Using 8 bit ints does not work well, because then the maximum segment size would be too small
+ *   for eliminate per-segment over head in many cases and also leads to many more segments.
  * - The most-significant-bit is not used so that signed integers can be used which avoids common
  *   issues when mixing signed and unsigned ints.
  * - The second most-significant bit is not used for indices so that #max_segment_size itself can
@@ -77,7 +80,8 @@ struct IndexMaskData {
   /**
    * Encodes the size of each segment. The size of a specific segment can be computed by
    * subtracting consecutive elements (also see #OffsetIndices). The size of this array is one
-   * larger than #segments_num_. Note that the first elements is _not_ necessarily zero.
+   * larger than #segments_num_. Note that the first elements is _not_ necessarily zero. This is
+   * the case when an index mask is a slice of another mask.
    */
   const int64_t *cumulative_segment_sizes_;
   /**
@@ -289,9 +293,9 @@ class IndexMask : private IndexMaskData {
   template<typename Fn> void foreach_index(GrainSize grain_size, Fn &&fn) const;
 
   /**
-   * Same as above but may generate more code at compile time because it optimizes for the case
-   * when segments are a range internally. Use this only when the function itself is doing very
-   * little work and will likely be called many times.
+   * Same as above but may generate more code at compile time because it generates a separate case
+   * for segments that are a range. Use this only when the function itself is doing very little
+   * work and will likely be called many times.
    */
   template<typename IndexT, typename Fn> void foreach_index_optimized(Fn &&fn) const;
   template<typename IndexT, typename Fn>
