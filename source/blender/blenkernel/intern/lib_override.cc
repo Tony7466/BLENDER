@@ -2192,7 +2192,7 @@ static bool lib_override_library_resync(Main *bmain,
        * old liboverrides are also remapped, it means that the old liboverride owner of the shape
        * key is also now pointing to the new liboverride shape key, not the old one. Since shape
        * keys do not own their liboverride data, the old liboverride shape key user has to be
-       * restored to use the old liboverride shapekey, otherwise applying shape key override
+       * restored to use the old liboverride shape-key, otherwise applying shape key override
        * operations will be useless (would apply using the new, from linked data, liboverride,
        * being effectively a no-op). */
       Key **key_override_old_p = BKE_key_from_id_p(id_override_old);
@@ -2668,7 +2668,7 @@ static bool lib_override_library_main_resync_id_skip_check(ID *id,
  * Clear 'unreachable' tag of existing liboverrides if they are using another reachable liboverride
  * (typical case: Mesh object which only relationship to the rest of the liboverride hierarchy is
  * though its 'parent' pointer (i.e. rest of the hierarchy has no actual relationship to this mesh
- * object). Sadge.
+ * object). This is unfortunate.
  *
  * Logic and rational of this function are very similar to these of
  * #lib_override_hierarchy_dependencies_recursive_tag_from, but withing specific resync context.
