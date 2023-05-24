@@ -44,6 +44,13 @@ class PHYSICS_PT_geometry_nodes(Panel):
         ob = context.object
         layout.prop(ob, "use_simulation_cache", text="Cache")
 
+        for ob in context.selected_editable_objects:
+            for modifier in ob.modifiers:
+                if modifier.type != 'NODES':
+                    continue
+                layout.prop(modifier, "simulation_bake_directory")
+
+
 
 classes = (
     PHYSICS_PT_geometry_nodes,
