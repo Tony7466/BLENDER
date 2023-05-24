@@ -30,6 +30,8 @@
 #include "devices/SoftwareDevice.h"
 
 #include <memory>
+#include <thread>
+#include <ctime>
 
 #include <AudioUnit/AudioUnit.h>
 
@@ -67,10 +69,42 @@ private:
 	 */
 	AUD_LOCAL static OSStatus CoreAudio_mix(void* data, AudioUnitRenderActionFlags* flags, const AudioTimeStamp* time_stamp, UInt32 bus_number, UInt32 number_frames, AudioBufferList* buffer_list);
 
+    /**
+     * Whether the device is opened.
+     */
     bool m_device_opened;
-    void openDeviceOnDemand();
-    void closeDevice();
+    
+    /**
+     * Acquires the  device.
+     */
+    void open();
 
+    /**
+     * Releases the device.
+     */
+    void close();
+    
+
+    /**
+     * Thread used to release the device after time delay.
+     */
+    std::thread m_delayed_close_thread;
+
+    /**
+     * Whether thread released the device.
+     */
+    bool m_delayed_close_finished = false;
+
+    /**
+     * Time when playback has stopped.
+     */
+    time_t m_playback_stopped_time;
+
+    /**
+     * Releases the device after time delay.
+     */
+    void closeAfterDelay();
+    
 	// delete copy constructor and operator=
 	CoreAudioDevice(const CoreAudioDevice&) = delete;
 	CoreAudioDevice& operator=(const CoreAudioDevice&) = delete;

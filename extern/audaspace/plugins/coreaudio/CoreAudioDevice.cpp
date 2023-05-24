@@ -33,7 +33,6 @@ OSStatus CoreAudioDevice::CoreAudio_mix(void* data, AudioUnitRenderActionFlags* 
 		device->mix((data_t*)buffer.mData, buffer.mDataByteSize / AUD_DEVICE_SAMPLE_SIZE(device->m_specs));
 	}
 
-    if (!device->m_playback) device->closeDevice();
 	return noErr;
 }
 
@@ -43,16 +42,24 @@ void CoreAudioDevice::playing(bool playing)
 	{
         m_playback = playing;
         if(playing){
-            openDeviceOnDemand();
+            open();
             AudioOutputUnitStart(m_audio_unit);
         }
         else{
             AudioOutputUnitStop(m_audio_unit);
+            time(&m_playback_stopped_time);
+            if (m_delayed_close_thread.joinable() && m_delayed_close_finished){
+                    m_delayed_close_thread.join();
+                    m_delayed_close_finished = false;
+            }
+            
+            if(!m_delayed_close_thread.joinable())
+                m_delayed_close_thread = std::thread(&CoreAudioDevice::closeAfterDelay, this);
         }
 	}
 }
 
-void CoreAudioDevice::openDeviceOnDemand(){
+void CoreAudioDevice::open(){
     if (m_device_opened) return;
 
     AudioComponentDescription component_description = {};
@@ -166,12 +173,13 @@ m_audio_unit(nullptr)
         specs.rate = RATE_48000;
 
     m_specs = specs;
-    openDeviceOnDemand();
-    closeDevice();
+    m_playback_stopped_time = 0;
+    open();
+    close();
 	create();
 }
 
-void CoreAudioDevice::closeDevice(){
+void CoreAudioDevice::close(){
     if (!m_device_opened) return;
     AudioOutputUnitStop(m_audio_unit);
     AudioUnitUninitialize(m_audio_unit);
@@ -179,9 +187,20 @@ void CoreAudioDevice::closeDevice(){
     m_device_opened = false;
 }
 
+void CoreAudioDevice::closeAfterDelay(){
+    for (;;){
+        std::this_thread::sleep_for(std::chrono::microseconds(5));
+        if (m_playback || m_playback_stopped_time == 0) time(&m_playback_stopped_time);
+        if (time(NULL) < m_playback_stopped_time + 5) continue;
+        break;
+    }
+    close();
+    m_delayed_close_finished = true;
+}
+
 CoreAudioDevice::~CoreAudioDevice()
 {
-    closeDevice();
+    close();
 	destroy();
 }
 
