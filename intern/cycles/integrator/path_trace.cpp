@@ -581,19 +581,23 @@ void PathTrace::denoise(const RenderWork &render_work)
   }
 
   if (big_tile_denoise_work_) {
-    big_tile_denoise_work_->clear_or_create_work_set(device_scale_factor);
+    int denoise_device_scale_factor = 1;
+    big_tile_denoise_work_->clear_or_create_work_set(denoise_device_scale_factor);
     big_tile_denoise_work_->set_effective_full_buffer_params(render_state_.effective_big_tile_params,
                                                              render_state_.effective_big_tile_params);
-    int offset = 0;
-    for (int i = 0; i < device_scale_factor; i++) {
+    // Allocate the master buffer
+    size_t width = render_state_.effective_big_tile_params.width;
+    size_t stride =render_state_.effective_big_tile_params.pass_stride;
+    size_t height = render_state_.effective_big_tile_params.height;
+    big_tile_denoise_work_->reset_master_buffer(width*stride, height);
+    for (int i = 0; i < denoise_device_scale_factor; i++) {
       big_tile_denoise_work_->set_effective_buffer_params_in_work_set(render_state_.effective_big_tile_params, i, 0);      
-      big_tile_denoise_work_->set_render_buffers_in_work_set(render_state_.effective_big_tile_params, i, offset);
-      offset += render_state_.effective_big_tile_params.height;
+      big_tile_denoise_work_->set_render_buffers_in_work_set(render_state_.effective_big_tile_params, i, 0);
     }
 
     buffer_to_denoise = big_tile_denoise_work_->get_unique_buffers();
     if (buffer_to_denoise) {
-      // buffer_to_denoise->reset(render_state_.effective_big_tile_params);
+      buffer_to_denoise->zero(); //reset(render_state_.effective_big_tile_params);
 
       copy_to_render_buffers(buffer_to_denoise);
 
@@ -603,7 +607,14 @@ void PathTrace::denoise(const RenderWork &render_work)
   else {
     DCHECK_EQ(path_trace_works_.size(), 1);
 
-    buffer_to_denoise = path_trace_works_.front()->get_unique_buffers();//.front()->get_render_buffers();
+    if(device_scale_factor == 1) {
+      buffer_to_denoise = path_trace_works_.front()->get_unique_buffers();//.front()->get_render_buffers();
+    } else {
+      /* There is only one worker but there are many slices so
+	 the master_buffer is the full image
+       */
+      buffer_to_denoise = path_trace_works_.front()->get_master_buffers();
+    }
   }
 
   if(buffer_to_denoise) {

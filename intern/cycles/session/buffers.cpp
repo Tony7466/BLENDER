@@ -280,11 +280,19 @@ void RenderBuffers::reset(const BufferParams &params_, size_t offset, RenderBuff
 
   params = params_;
 
-  /* re-allocate buffer */
-  //if(buffer.size() < buffer.memory_elements_size(params.width*params.pass_stride*params.height)) {
-  //  buffer.alloc(params.width * params.pass_stride, params.height, true);
-  //}
-  buffer.slice(&(buffers->buffer), offset, params.width * params.pass_stride, params.height);
+  if (offset == -1) {
+    /* Allocate the buffer */
+    size_t new_size = buffer.memory_elements_size(params.width * params.pass_stride *
+                                                  params.height);
+    if (buffer.size() < new_size) {
+      /* re-allocate buffer */
+      buffer.alloc(params.width * params.pass_stride, params.height, true);
+    }
+  }
+  else {
+    /* Use a slice of the master buffer */
+    buffer.slice(&(buffers->buffer), offset, params.width * params.pass_stride, params.height);
+  }
 }
 
 void RenderBuffers::reset(const BufferParams &params_)

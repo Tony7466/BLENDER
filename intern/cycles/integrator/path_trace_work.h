@@ -47,6 +47,9 @@ class PathTraceWork {
 
   virtual ~PathTraceWork();
 
+  RenderBuffers *get_master_buffers() {
+    return master_buffers_.get();
+  };
   /* Access the render buffers.
    *
    * Is only supposed to be used by the PathTrace to update buffer allocation and slicing to

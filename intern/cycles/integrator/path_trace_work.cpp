@@ -140,7 +140,7 @@ bool PathTraceWork::copy_render_buffers_from_device()
 
 bool PathTraceWork::copy_render_buffers_to_device()
 {
-  copy_master_render_buffers_from_device_impl();
+  copy_master_render_buffers_to_device_impl();
   // for (int i = 0; i < work_set_.size(); i++) {
   // set_current_work_set(i);
   // if (!copy_render_buffers_to_device_impl()) return false;
@@ -150,11 +150,11 @@ bool PathTraceWork::copy_render_buffers_to_device()
 
 bool PathTraceWork::zero_render_buffers()
 {
-  zero_master_render_buffers_impl();
-  // for (int i = 0; i < work_set_.size(); i++) {
-  // set_current_work_set(i);
-  // if (!zero_render_buffers_impl()) return false;
-  // }
+  //zero_master_render_buffers_impl();
+  for (int i = 0; i < work_set_.size(); i++) {
+  set_current_work_set(i);
+  if (!zero_render_buffers_impl()) return false;
+  }
   return true;
 }
 
