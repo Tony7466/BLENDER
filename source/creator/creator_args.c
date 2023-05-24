@@ -665,7 +665,8 @@ static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), vo
       "that was set.\n");
   printf("\t# blender --background test.blend --render-output /tmp --render-frame 1\n");
   printf("\t...works as expected.\n\n");
-  
+
+#  ifdef WITH_CYCLES
   printf("Additional Cycles Arguments:\n");
   printf("\tIn addition to the options above, which apply to all render engines, ");
   printf("\tCycles has additional options to further control its behavior.\n");
@@ -677,6 +678,7 @@ static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), vo
   printf("``OPTIX``, ``HIP``, ``ONEAPI``, and ``METAL``. Additionally, you can append ``+CPU`` to any GPU type for hybrid rendering.\n");
   printf("``--cycles-print-stats``\n");
   printf("\tShow detailed statistics about memory and time usage for Cycles renders on the console.\n");
+#  endif WITH_CYCLES
 
   printf("Environment Variables:\n");
   printf("  $BLENDER_USER_RESOURCES  Top level directory for user files.\n");
