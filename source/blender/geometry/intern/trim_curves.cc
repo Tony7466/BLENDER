@@ -1050,7 +1050,7 @@ bke::CurvesGeometry trim_curves(const bke::CurvesGeometry &src_curves,
   else {
     /* Only trimmed curves are no longer cyclic. */
     if (bke::SpanAttributeWriter cyclic = dst_attributes.lookup_for_write_span<bool>("cyclic")) {
-      selection.foreach_index(GrainSize(4096), [&](const int64_t i) { cyclic.span[i] = false; });
+      index_mask::masked_fill(cyclic.span, false, selection);
       cyclic.finish();
     }
 

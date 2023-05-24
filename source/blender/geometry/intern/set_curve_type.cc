@@ -508,14 +508,12 @@ static bke::CurvesGeometry convert_curves_to_nurbs(
   };
 
   auto catmull_rom_to_nurbs = [&](const IndexMask &selection) {
-    MutableSpan<int8_t> nurbs_order = dst_curves.nurbs_orders_for_write();
-    MutableSpan<int8_t> nurbs_knots_modes = dst_curves.nurbs_knots_modes_for_write();
+    index_mask::masked_fill<int8_t>(dst_curves.nurbs_orders_for_write(), 4, selection);
+    index_mask::masked_fill<int8_t>(
+        dst_curves.nurbs_knots_modes_for_write(), NURBS_KNOT_MODE_BEZIER, selection);
     fill_weights_if_necessary(selection);
+
     selection.foreach_segment(GrainSize(512), [&](const IndexMaskSegment segment) {
-      for (const int i : segment) {
-        nurbs_order[i] = 4;
-        nurbs_knots_modes[i] = NURBS_KNOT_MODE_BEZIER;
-      }
       for (const int i : segment) {
         const IndexRange src_points = src_points_by_curve[i];
         const IndexRange dst_points = dst_points_by_curve[i];
