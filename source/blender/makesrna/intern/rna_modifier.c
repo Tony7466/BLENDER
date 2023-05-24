@@ -2769,7 +2769,7 @@ static void rna_def_modifier_boolean(BlenderRNA *brna)
        0,
        "Index Based",
        "Set the material on new faces based on the order of the material slot lists. If a "
-       "material doesn't exist on the modified object, the face will use the same material slot "
+       "material doesn't exist on the modifier object, the face will use the same material slot "
        "or the first if the object doesn't have enough slots"},
       {eBooleanModifierMaterialMode_Transfer,
        "TRANSFER",

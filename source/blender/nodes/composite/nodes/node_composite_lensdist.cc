@@ -39,7 +39,7 @@ static void cmp_node_lensdist_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Color>("Image")
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .compositor_domain_priority(0);
-  b.add_input<decl::Float>("Distortion")
+  b.add_input<decl::Float>("Distort")
       .default_value(0.0f)
       .min(MINIMUM_DISTORTION)
       .max(1.0f)

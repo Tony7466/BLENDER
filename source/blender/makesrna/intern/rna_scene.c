@@ -6257,7 +6257,7 @@ static void rna_def_scene_ffmpeg_settings(BlenderRNA *brna)
   RNA_def_property_int_sdna(prop, NULL, "audio_mixrate");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_range(prop, 8000, 192000);
-  RNA_def_property_ui_text(prop, "Sample rate", "Audio sample rate (samples/s)");
+  RNA_def_property_ui_text(prop, "Sample Rate", "Audio sample rate (samples/s)");
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, NULL);
 
   prop = RNA_def_property(srna, "audio_channels", PROP_ENUM, PROP_NONE);
