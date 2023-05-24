@@ -18,6 +18,7 @@ vec4 closure_to_rgba(Closure cl)
   vec3 diffuse_light = vec3(0.0);
   vec3 reflection_light = vec3(0.0);
   vec3 refraction_light = vec3(0.0);
+  float shadow = 1.0;
 
   float vP_z = dot(cameraForward, g_data.P) - dot(cameraForward, cameraPos);
 
@@ -29,7 +30,8 @@ vec4 closure_to_rgba(Closure cl)
              vP_z,
              0.01 /* TODO(fclem) thickness. */,
              diffuse_light,
-             reflection_light);
+             reflection_light,
+             shadow);
 
   vec4 out_color;
   out_color.rgb = g_emission;
@@ -64,6 +66,7 @@ void main()
   vec3 diffuse_light = vec3(0.0);
   vec3 reflection_light = vec3(0.0);
   vec3 refraction_light = vec3(0.0);
+  float shadow = 1.0;
 
   float vP_z = dot(cameraForward, g_data.P) - dot(cameraForward, cameraPos);
 
@@ -75,7 +78,8 @@ void main()
              vP_z,
              0.01 /* TODO(fclem) thickness. */,
              diffuse_light,
-             reflection_light);
+             reflection_light,
+             shadow);
 
   g_diffuse_data.color *= g_diffuse_data.weight;
   g_reflection_data.color *= g_reflection_data.weight;
@@ -112,7 +116,8 @@ void main()
   output_renderpass_color(rp_buf.specular_color_id, vec4(specular_color, 1.0));
   output_renderpass_color(rp_buf.specular_light_id, vec4(specular_light, 1.0));
   output_renderpass_color(rp_buf.emission_id, vec4(g_emission, 1.0));
-  /* TODO: Shadows and AO. */
+  output_renderpass_value(rp_buf.shadow_id, shadow);
+  /* TODO: AO. */
 #endif
 
   out_radiance.rgb *= 1.0 - g_holdout;

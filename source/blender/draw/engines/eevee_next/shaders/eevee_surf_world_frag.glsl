@@ -48,5 +48,7 @@ void main()
   output_renderpass_color(rp_buf.diffuse_color_id, clear_color);
   output_renderpass_color(rp_buf.specular_color_id, clear_color);
   output_renderpass_color(rp_buf.emission_id, clear_color);
+  output_renderpass_value(rp_buf.shadow_id, 1.0);
+  output_renderpass_value(rp_buf.ambient_occlusion_id, 0.0);
   imageStore(rp_cryptomatte_img, texel, vec4(0.0));
 }
