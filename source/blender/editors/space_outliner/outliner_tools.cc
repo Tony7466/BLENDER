@@ -395,14 +395,14 @@ static void unlink_collection_fn(bContext *C,
     if (GS(tsep->id->name) == ID_OB) {
       Object *ob = (Object *)tsep->id;
       ob->instance_collection = nullptr;
-      DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
+      DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_HIERARCHY);
       DEG_relations_tag_update(bmain);
     }
     else if (GS(tsep->id->name) == ID_GR) {
       Collection *parent = (Collection *)tsep->id;
       id_fake_user_set(&collection->id);
       BKE_collection_child_remove(bmain, parent, collection);
-      DEG_id_tag_update(&parent->id, ID_RECALC_COPY_ON_WRITE);
+      DEG_id_tag_update(&parent->id, ID_RECALC_COPY_ON_WRITE | ID_RECALC_HIERARCHY);
       DEG_relations_tag_update(bmain);
     }
     else if (GS(tsep->id->name) == ID_SCE) {
@@ -410,7 +410,7 @@ static void unlink_collection_fn(bContext *C,
       Collection *parent = scene->master_collection;
       id_fake_user_set(&collection->id);
       BKE_collection_child_remove(bmain, parent, collection);
-      DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+      DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE | ID_RECALC_HIERARCHY);
       DEG_relations_tag_update(bmain);
     }
   }
@@ -457,14 +457,15 @@ static void unlink_object_fn(bContext *C,
       if (GS(tsep->id->name) == ID_GR) {
         Collection *parent = (Collection *)tsep->id;
         BKE_collection_object_remove(bmain, parent, ob, true);
-        DEG_id_tag_update(&parent->id, ID_RECALC_COPY_ON_WRITE);
+        DEG_id_tag_update(&parent->id, ID_RECALC_COPY_ON_WRITE | ID_RECALC_HIERARCHY);
+        DEG_id_tag_update(&ob->id, ID_RECALC_HIERARCHY);
         DEG_relations_tag_update(bmain);
       }
       else if (GS(tsep->id->name) == ID_SCE) {
         Scene *scene = (Scene *)tsep->id;
         Collection *parent = scene->master_collection;
         BKE_collection_object_remove(bmain, parent, ob, true);
-        DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+        DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE | ID_RECALC_HIERARCHY);
         DEG_relations_tag_update(bmain);
       }
     }
@@ -730,7 +731,7 @@ static void merged_element_search_fn_recursive(
 
     if (tree_element_id_type_to_index(te) == type && tselem_type == tselem->type) {
       if (BLI_strcasestr(te->name, str)) {
-        BLI_strncpy(name, te->name, 64);
+        STRNCPY(name, te->name);
 
         iconid = tree_element_get_icon(tselem, te).icon;
 
@@ -1040,6 +1041,14 @@ static void id_override_library_create_hierarchy_pre_process_fn(bContext *C,
   if (!BKE_idtype_idcode_is_linkable(GS(id_root_reference->name)) ||
       (id_root_reference->flag & (LIB_EMBEDDED_DATA | LIB_EMBEDDED_DATA_LIB_OVERRIDE)) != 0)
   {
+    return;
+  }
+
+  if (!ID_IS_OVERRIDABLE_LIBRARY_HIERARCHY(id_root_reference)) {
+    BKE_reportf(reports,
+                RPT_WARNING,
+                "Could not create library override from data-block '%s', as it is not overridable",
+                id_root_reference->name);
     return;
   }
 
@@ -1604,7 +1613,7 @@ void outliner_do_object_operation_ex(bContext *C,
     bool select_handled = false;
     if (tselem->flag & TSE_SELECTED) {
       if ((tselem->type == TSE_SOME_ID) && (te->idcode == ID_OB)) {
-        /* When objects selected in other scenes... dunno if that should be allowed. */
+        /* When objects selected in other scenes, don't know if that should be allowed. */
         Scene *scene_owner = (Scene *)outliner_search_back(te, ID_SCE);
         if (scene_owner && scene_act != scene_owner) {
           WM_window_set_active_scene(CTX_data_main(C), C, CTX_wm_window(C), scene_owner);
@@ -2557,7 +2566,7 @@ static int outliner_delete_exec(bContext *C, wmOperator *op)
    * cleanup tree here to prevent such cases. */
   outliner_cleanup_tree(space_outliner);
 
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE | ID_RECALC_HIERARCHY);
   DEG_relations_tag_update(bmain);
 
   BKE_view_layer_synced_ensure(scene, view_layer);

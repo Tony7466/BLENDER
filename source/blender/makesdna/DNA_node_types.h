@@ -692,6 +692,8 @@ typedef enum eNodeTreeRuntimeFlag {
   NTREE_RUNTIME_FLAG_HAS_IMAGE_ANIMATION = 1 << 0,
   /** There is a material output node in the group. */
   NTREE_RUNTIME_FLAG_HAS_MATERIAL_OUTPUT = 1 << 1,
+  /** There is a simulation zone in the group. */
+  NTREE_RUNTIME_FLAG_HAS_SIMULATION_ZONE = 1 << 2,
 } eNodeTreeRuntimeFlag;
 
 /* socket value structs for input buttons
@@ -1518,11 +1520,6 @@ typedef struct NodeGeometryRaycast {
 
   /* eCustomDataType. */
   int8_t data_type;
-
-  /* Deprecated input types in new Ray-cast node. Can be removed when legacy nodes are no longer
-   * supported. */
-  uint8_t input_type_ray_direction;
-  uint8_t input_type_ray_length;
 } NodeGeometryRaycast;
 
 typedef struct NodeGeometryCurveFill {
@@ -1636,6 +1633,13 @@ typedef struct NodeGeometryDistributePointsInVolume {
   uint8_t mode;
 } NodeGeometryDistributePointsInVolume;
 
+typedef struct NodeGeometrySampleVolume {
+  /* eCustomDataType. */
+  int8_t grid_type;
+  /* GeometryNodeSampleVolumeInterpolationMode */
+  int8_t interpolation_mode;
+} NodeGeometrySampleVolume;
+
 typedef struct NodeFunctionCompare {
   /* NodeCompareOperation */
   int8_t operation;
@@ -1691,7 +1695,7 @@ typedef struct NodeShaderMix {
 
 /* glossy distributions */
 #define SHD_GLOSSY_BECKMANN 0
-#define SHD_GLOSSY_SHARP 1
+#define SHD_GLOSSY_SHARP_DEPRECATED 1 /* deprecated */
 #define SHD_GLOSSY_GGX 2
 #define SHD_GLOSSY_ASHIKHMIN_SHIRLEY 3
 #define SHD_GLOSSY_MULTI_GGX 4
@@ -2145,11 +2149,12 @@ typedef enum CMPNodeStabilizeInverse {
   CMP_NODE_STABILIZE_FLAG_INVERSE = 1,
 } CMPNodeStabilizeInverse;
 
-/* Plane track deform node. */
+#define CMP_NODE_PLANE_TRACK_DEFORM_MOTION_BLUR_SAMPLES_MAX 64
 
-enum {
-  CMP_NODEFLAG_PLANETRACKDEFORM_MOTION_BLUR = 1,
-};
+/* Plane track deform node. */
+typedef enum CMPNodePlaneTrackDeformFlags {
+  CMP_NODE_PLANE_TRACK_DEFORM_FLAG_MOTION_BLUR = 1,
+} CMPNodePlaneTrackDeformFlags;
 
 /* Set Alpha Node. */
 
@@ -2177,8 +2182,6 @@ typedef enum CMPNodeCombSepColorMode {
   CMP_NODE_COMBSEP_COLOR_YCC = 3,
   CMP_NODE_COMBSEP_COLOR_YUV = 4,
 } CMPNodeCombSepColorMode;
-
-#define CMP_NODE_PLANETRACKDEFORM_MBLUR_SAMPLES_MAX 64
 
 /* Point Density shader node */
 
@@ -2431,14 +2434,16 @@ typedef enum GeometryNodeDeleteGeometryMode {
   GEO_NODE_DELETE_GEOMETRY_MODE_ONLY_FACE = 2,
 } GeometryNodeDeleteGeometryMode;
 
-typedef enum GeometryNodeRealizeInstancesFlag {
-  GEO_NODE_REALIZE_INSTANCES_LEGACY_BEHAVIOR = (1 << 0),
-} GeometryNodeRealizeInstancesFlag;
-
 typedef enum GeometryNodeScaleElementsMode {
   GEO_NODE_SCALE_ELEMENTS_UNIFORM = 0,
   GEO_NODE_SCALE_ELEMENTS_SINGLE_AXIS = 1,
 } GeometryNodeScaleElementsMode;
+
+typedef enum GeometryNodeSampleVolumeInterpolationMode {
+  GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_NEAREST = 0,
+  GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRILINEAR = 1,
+  GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRIQUADRATIC = 2,
+} GeometryNodeSampleVolumeInterpolationMode;
 
 typedef enum NodeCombSepColorMode {
   NODE_COMBSEP_COLOR_RGB = 0,

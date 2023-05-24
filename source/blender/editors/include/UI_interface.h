@@ -2619,6 +2619,10 @@ void uiTemplateAssetView(struct uiLayout *layout,
                          const char *drag_opname,
                          struct PointerRNA *r_drag_op_properties);
 
+void uiTemplateLightLinkingCollection(struct uiLayout *layout,
+                                      struct PointerRNA *ptr,
+                                      const char *propname);
+
 /**
  * \return: A RNA pointer for the operator properties.
  */
@@ -3175,7 +3179,7 @@ const char *UI_key_event_operator_string(const struct bContext *C,
                                          IDProperty *properties,
                                          const bool is_strict,
                                          char *result,
-                                         const int result_len);
+                                         const int result_maxncpy);
 
 /* ui_interface_region_tooltip.c */
 
