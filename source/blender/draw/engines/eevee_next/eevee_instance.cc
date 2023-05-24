@@ -486,8 +486,10 @@ void Instance::light_bake_irradiance(
   });
 
   int bounce_len = scene->eevee.gi_diffuse_bounces;
-  /* Start at bounce 1 as 0 bounce is no indirect lighting. */
-  for (int bounce = 1; bounce <= bounce_len; bounce++) {
+  for (int bounce = 0; bounce <= bounce_len; bounce++) {
+    /* Last iteration only captures lighting. */
+    const bool is_last_bounce = (bounce == bounce_len);
+
     sampling.init(scene);
     while (!sampling.finished()) {
       context_wrapper([&]() {
@@ -495,9 +497,16 @@ void Instance::light_bake_irradiance(
          * the update function & context switch. */
         for (int i = 0; i < 16 && !sampling.finished(); i++) {
           sampling.step();
-          irradiance_cache.bake.propagate_light_sample();
+
+          irradiance_cache.bake.raylists_build();
+          if (!is_last_bounce) {
+            irradiance_cache.bake.propagate_light();
+          }
+          if (is_last_bounce) {
+            irradiance_cache.bake.irradiance_capture();
+          }
         }
-        if (sampling.finished()) {
+        if (sampling.finished() && !is_last_bounce) {
           irradiance_cache.bake.accumulate_bounce();
         }
 
@@ -511,7 +520,7 @@ void Instance::light_bake_irradiance(
         }
 
         float bounce_progress = sampling.sample_index() / float(sampling.sample_count());
-        float progress = (bounce - 1 + bounce_progress) / float(bounce_len);
+        float progress = (bounce + bounce_progress) / float(bounce_len + 1);
         result_update(cache_frame, progress);
       });
 

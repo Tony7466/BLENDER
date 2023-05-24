@@ -399,7 +399,7 @@ void IrradianceBake::sync()
     pass.dispatch(&dispatch_per_surfel_);
   }
   {
-    PassSimple &pass = surfel_light_propagate_ps_;
+    PassSimple &pass = surfel_ray_build_ps_;
     pass.init();
     {
       PassSimple::Sub &sub = pass.sub("ListBuild");
@@ -421,6 +421,10 @@ void IrradianceBake::sync()
       sub.barrier(GPU_BARRIER_SHADER_STORAGE);
       sub.dispatch(&dispatch_per_list_);
     }
+  }
+  {
+    PassSimple &pass = surfel_light_propagate_ps_;
+    pass.init();
     {
       PassSimple::Sub &sub = pass.sub("RayEval");
       sub.shader_set(inst_.shaders.static_shader_get(SURFEL_RAY));
@@ -500,10 +504,7 @@ void IrradianceBake::surfels_create(const Object &probe_object)
   capture_info_buf_.irradiance_grid_local_to_world = grid_local_to_world;
   capture_info_buf_.irradiance_grid_world_to_local_rotation = float4x4(
       (invert(normalize(float3x3(grid_local_to_world)))));
-  capture_info_buf_.irradiance_accum_solid_angle = 0.0f;
-  /* Divide by twice the sample count because each ray is evaluated in both directions. */
-  capture_info_buf_.irradiance_sample_solid_angle = 4.0f * float(M_PI) /
-                                                    (2 * inst_.sampling.sample_count());
+  capture_info_buf_.irradiance_accum_sample_count = 0;
 
   eGPUTextureUsage texture_usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE |
                                    GPU_TEXTURE_USAGE_HOST_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
@@ -633,6 +634,8 @@ void IrradianceBake::surfels_create(const Object &probe_object)
 
   /* Sync with any other following pass using the surfel buffer. */
   GPU_memory_barrier(GPU_BARRIER_SHADER_STORAGE);
+  /* Read back so that following push_update will contain correct surfel count. */
+  capture_info_buf_.read();
 
   DRW_stats_group_end();
 }
@@ -649,7 +652,7 @@ void IrradianceBake::surfels_lights_eval()
   inst_.manager->submit(surfel_light_eval_ps_, view_z_);
 }
 
-void IrradianceBake::propagate_light_sample()
+void IrradianceBake::raylists_build()
 {
   using namespace blender::math;
 
@@ -670,8 +673,7 @@ void IrradianceBake::propagate_light_sample()
   /* NOTE: Z values do not really matter since we are not doing any rasterization. */
   const float4x4 winmat = projection::orthographic<float>(min.x, max.x, min.y, max.y, 0, 1);
 
-  View ray_view = {"RayProjectionView"};
-  ray_view.sync(viewmat, winmat);
+  ray_view_.sync(viewmat, winmat);
 
   /* This avoid light leaking by making sure that for one surface there will always be at least 1
    * surfel capture inside a ray list. Since the surface with the maximum distance (after
@@ -694,8 +696,22 @@ void IrradianceBake::propagate_light_sample()
   list_start_buf_.resize(ceil_to_multiple_u(list_info_buf_.list_max, 4));
 
   GPU_storagebuf_clear(list_start_buf_, -1);
-  inst_.manager->submit(surfel_light_propagate_ps_, ray_view);
-  inst_.manager->submit(irradiance_capture_ps_, ray_view);
+  inst_.manager->submit(surfel_ray_build_ps_, ray_view_);
+}
+
+void IrradianceBake::propagate_light()
+{
+  inst_.manager->submit(surfel_light_propagate_ps_, ray_view_);
+}
+
+void IrradianceBake::irradiance_capture()
+{
+  capture_info_buf_.push_update();
+
+  inst_.manager->submit(irradiance_capture_ps_, ray_view_);
+
+  /* Increment twice because each ray is evaluated in both directions. */
+  capture_info_buf_.irradiance_accum_sample_count += 2;
 }
 
 void IrradianceBake::accumulate_bounce()

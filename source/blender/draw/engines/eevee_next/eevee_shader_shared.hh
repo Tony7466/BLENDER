@@ -870,10 +870,10 @@ struct CaptureInfoData {
   bool1 do_surfel_count;
   /** Number of surfels inside the surfel buffer or the needed len. */
   uint surfel_len;
-  /** Solid angle subtended by a single ray sample. Equal to `4 * pi / sample_count`. */
-  float irradiance_sample_solid_angle;
-  /** Accumulated solid angle. Should reach `4 * pi` at the end of the accumulation. */
-  float irradiance_accum_solid_angle;
+
+  float _pad3;
+  /** Accumulated directional samples in irradiance grid. */
+  int irradiance_accum_sample_count;
   /** Transform of the lightprobe object. */
   float4x4 irradiance_grid_local_to_world;
   /** Transform vectors from world space to local space. Does not have location component. */
