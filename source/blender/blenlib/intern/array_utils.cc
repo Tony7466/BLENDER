@@ -52,23 +52,23 @@ void invert_booleans(MutableSpan<bool> span)
   });
 }
 
-BoolArrayMix booleans_mix_calc(const VArray<bool> &varray, const IndexRange range_to_check)
+BooleanMix booleans_mix_calc(const VArray<bool> &varray, const IndexRange range_to_check)
 {
   if (varray.is_empty()) {
-    return BoolArrayMix::None;
+    return BooleanMix::None;
   }
   const CommonVArrayInfo info = varray.common_info();
   if (info.type == CommonVArrayInfo::Type::Single) {
-    return *static_cast<const bool *>(info.data) ? BoolArrayMix::AllTrue : BoolArrayMix::AllFalse;
+    return *static_cast<const bool *>(info.data) ? BooleanMix::AllTrue : BooleanMix::AllFalse;
   }
   if (info.type == CommonVArrayInfo::Type::Span) {
     const Span<bool> span(static_cast<const bool *>(info.data), varray.size());
     return threading::parallel_reduce(
         range_to_check,
         4096,
-        BoolArrayMix::None,
-        [&](const IndexRange range, const BoolArrayMix init) {
-          if (init == BoolArrayMix::Mixed) {
+        BooleanMix::None,
+        [&](const IndexRange range, const BooleanMix init) {
+          if (init == BooleanMix::Mixed) {
             return init;
           }
 
@@ -76,31 +76,31 @@ BoolArrayMix booleans_mix_calc(const VArray<bool> &varray, const IndexRange rang
           const bool first = slice.first();
           for (const bool value : slice.drop_front(1)) {
             if (value != first) {
-              return BoolArrayMix::Mixed;
+              return BooleanMix::Mixed;
             }
           }
-          return first ? BoolArrayMix::AllTrue : BoolArrayMix::AllFalse;
+          return first ? BooleanMix::AllTrue : BooleanMix::AllFalse;
         },
-        [&](BoolArrayMix a, BoolArrayMix b) { return (a == b) ? a : BoolArrayMix::Mixed; });
+        [&](BooleanMix a, BooleanMix b) { return (a == b) ? a : BooleanMix::Mixed; });
   }
   return threading::parallel_reduce(
       range_to_check,
       2048,
-      BoolArrayMix::None,
-      [&](const IndexRange range, const BoolArrayMix init) {
-        if (init == BoolArrayMix::Mixed) {
+      BooleanMix::None,
+      [&](const IndexRange range, const BooleanMix init) {
+        if (init == BooleanMix::Mixed) {
           return init;
         }
         /* Alternatively, this could use #materialize to retrieve many values at once. */
         const bool first = varray[range.first()];
         for (const int64_t i : range.drop_front(1)) {
           if (varray[i] != first) {
-            return BoolArrayMix::Mixed;
+            return BooleanMix::Mixed;
           }
         }
-        return first ? BoolArrayMix::AllTrue : BoolArrayMix::AllFalse;
+        return first ? BooleanMix::AllTrue : BooleanMix::AllFalse;
       },
-      [&](BoolArrayMix a, BoolArrayMix b) { return (a == b) ? a : BoolArrayMix::Mixed; });
+      [&](BooleanMix a, BooleanMix b) { return (a == b) ? a : BooleanMix::Mixed; });
 }
 
 }  // namespace blender::array_utils

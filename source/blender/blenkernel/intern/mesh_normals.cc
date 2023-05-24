@@ -317,21 +317,20 @@ eAttrDomain Mesh::normal_domain_all_info() const
   const VArray<bool> sharp_faces = *attributes.lookup_or_default<bool>(
       "sharp_face", ATTR_DOMAIN_FACE, false);
 
-  const array_utils::BoolArrayMix face_mix = array_utils::booleans_mix_calc(sharp_faces);
-  if (face_mix == array_utils::BoolArrayMix::AllTrue) {
+  const array_utils::BooleanMix face_mix = array_utils::booleans_mix_calc(sharp_faces);
+  if (face_mix == array_utils::BooleanMix::AllTrue) {
     return ATTR_DOMAIN_FACE;
   }
 
   const VArray<bool> sharp_edges = *attributes.lookup_or_default<bool>(
       "sharp_edge", ATTR_DOMAIN_EDGE, false);
-  const array_utils::BoolArrayMix edge_mix = array_utils::booleans_mix_calc(sharp_edges);
-  if (edge_mix == array_utils::BoolArrayMix::AllTrue) {
+  const array_utils::BooleanMix edge_mix = array_utils::booleans_mix_calc(sharp_edges);
+  if (edge_mix == array_utils::BooleanMix::AllTrue) {
     return ATTR_DOMAIN_FACE;
   }
 
-  if (edge_mix == array_utils::BoolArrayMix::AllFalse &&
-      face_mix == array_utils::BoolArrayMix::AllFalse)
-  {
+  if (edge_mix == array_utils::BooleanMix::AllFalse &&
+      face_mix == array_utils::BooleanMix::AllFalse) {
     return ATTR_DOMAIN_POINT;
   }
 

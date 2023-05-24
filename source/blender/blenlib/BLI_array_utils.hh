@@ -140,14 +140,15 @@ inline void gather(const VArray<T> &src,
 }
 
 void invert_booleans(MutableSpan<bool> span);
-enum class BoolArrayMix {
+
+enum class BooleanMix {
   None,
   AllFalse,
   AllTrue,
   Mixed,
 };
-BoolArrayMix booleans_mix_calc(const VArray<bool> &varray, IndexRange range_to_check);
-inline BoolArrayMix booleans_mix_calc(const VArray<bool> &varray)
+BooleanMix booleans_mix_calc(const VArray<bool> &varray, IndexRange range_to_check);
+inline BooleanMix booleans_mix_calc(const VArray<bool> &varray)
 {
   return booleans_mix_calc(varray, varray.index_range());
 }
