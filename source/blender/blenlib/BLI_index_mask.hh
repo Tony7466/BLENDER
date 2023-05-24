@@ -25,7 +25,7 @@ namespace blender::index_mask {
  * within each segment can be stored as #int16_t, which allows the mask to stored much more
  * compactly than if 32 or 64 bit ints would be used.
  * - Using 8 bit ints does not work well, because then the maximum segment size would be too small
- *   for eliminate per-segment over head in many cases and also leads to many more segments.
+ *   for eliminate per-segment overhead in many cases and also leads to many more segments.
  * - The most-significant-bit is not used so that signed integers can be used which avoids common
  *   issues when mixing signed and unsigned ints.
  * - The second most-significant bit is not used for indices so that #max_segment_size itself can
@@ -80,8 +80,8 @@ struct IndexMaskData {
   /**
    * Encodes the size of each segment. The size of a specific segment can be computed by
    * subtracting consecutive elements (also see #OffsetIndices). The size of this array is one
-   * larger than #segments_num_. Note that the first elements is _not_ necessarily zero. This is
-   * the case when an index mask is a slice of another mask.
+   * larger than #segments_num_. Note that the first elements is _not_ necessarily zero when an
+   * index mask is a slice of another mask.
    */
   const int64_t *cumulative_segment_sizes_;
   /**
@@ -281,7 +281,7 @@ class IndexMask : private IndexMaskData {
   template<typename Fn> void foreach_index(GrainSize grain_size, Fn &&fn) const;
 
   /**
-   * Same as #foreach_index, but generates more code increasing compile time and binary size. This
+   * Same as #foreach_index, but generates more code, increasing compile time and binary size. This
    * is because separate loops are generated for segments that are ranges and those that are not.
    * Only use this when very little processing is done for each element.
    */
