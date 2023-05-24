@@ -674,7 +674,7 @@ static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), vo
   printf("\tNote:\n");
   printf("\t# Unlike the generic options, the Cycles-specific ones must be passed on the end of the command line, following a double dash.\n");
   printf("``--cycles-device CPU``\n");
-  printf("\tOverride the device that is used to render frames. Currently supported options are ``CPU``, ``CUDA``,");
+  printf("\tOverride the device that is used to render frames. Currently supported options are ``CPU``, ``CUDA``, ");
   printf("``OPTIX``, ``HIP``, ``ONEAPI``, and ``METAL``. Additionally, you can append ``+CPU`` to any GPU type for hybrid rendering.\n");
   printf("``--cycles-print-stats``\n");
   printf("\tShow detailed statistics about memory and time usage for Cycles renders on the console.\n");
