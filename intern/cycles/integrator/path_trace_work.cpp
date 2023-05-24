@@ -123,7 +123,8 @@ void PathTraceWork::copy_to_display(PathTraceDisplay *display, PassMode pass_mod
 {
   for (int i = 0; i < work_set_.size(); i++) {
   set_current_work_set(i);
-  copy_to_display_impl(display, pass_mode, num_samples);
+  if(effective_buffer_params_.height > 0)
+    copy_to_display_impl(display, pass_mode, num_samples);
   }
 }
 
@@ -150,11 +151,11 @@ bool PathTraceWork::copy_render_buffers_to_device()
 
 bool PathTraceWork::zero_render_buffers()
 {
-  //zero_master_render_buffers_impl();
-  for (int i = 0; i < work_set_.size(); i++) {
-  set_current_work_set(i);
-  if (!zero_render_buffers_impl()) return false;
-  }
+  zero_master_render_buffers_impl();
+  // for (int i = 0; i < work_set_.size(); i++) {
+  // set_current_work_set(i);
+  // if (!zero_render_buffers_impl()) return false;
+  // }
   return true;
 }
 
