@@ -14,6 +14,15 @@
 namespace blender::render::hydra {
 
 class MeshData : public ObjectData {
+  struct SubMesh {
+    pxr::VtIntArray face_vertex_counts;
+    pxr::VtIntArray face_vertex_indices;
+    pxr::VtVec3fArray normals;
+    pxr::VtVec2fArray uvs;
+    int mat_index = 0;
+    MaterialData *mat_data = nullptr;
+  };
+
  public:
   MeshData(BlenderSceneDelegate *scene_delegate, Object *object, pxr::SdfPath const &prim_id);
 
@@ -22,30 +31,27 @@ class MeshData : public ObjectData {
   void remove() override;
   void update() override;
 
-  pxr::VtValue get_data(pxr::TfToken const &key) const override;
+  pxr::VtValue get_data(pxr::SdfPath const &id, pxr::TfToken const &key) const;
   bool update_visibility() override;
 
-  pxr::HdMeshTopology mesh_topology() const;
+  pxr::HdMeshTopology mesh_topology(pxr::SdfPath const &id) const;
   pxr::HdPrimvarDescriptorVector primvar_descriptors(pxr::HdInterpolation interpolation) const;
-  pxr::SdfPath material_id() const;
-  bool double_sided() const;
+  pxr::SdfPath material_id(pxr::SdfPath const &id) const;
+  bool double_sided(pxr::SdfPath const &id) const;
   void update_double_sided(MaterialData *mat_data);
+  void available_materials(std::set<pxr::SdfPath> &paths) const;
+  pxr::SdfPathVector submesh_paths() const;
 
   pxr::HdCullStyle cull_style = pxr::HdCullStyleBackUnlessDoubleSided;
 
  private:
-  void write_mesh(Mesh *mesh);
-  void write_material();
-  void write_uv_maps(Mesh *mesh);
-  void write_normals(Mesh *mesh);
+  pxr::SdfPath submesh_prim_id(int index) const;
+  const SubMesh &submesh(pxr::SdfPath const &id) const;
+  void write_submeshes(Mesh *mesh);
+  void write_materials();
 
-  pxr::VtIntArray face_vertex_counts_;
-  pxr::VtIntArray face_vertex_indices_;
   pxr::VtVec3fArray vertices_;
-  pxr::VtVec2fArray uvs_;
-  pxr::VtVec3fArray normals_;
-
-  MaterialData *mat_data_ = nullptr;
+  std::vector<SubMesh> submeshes_;
 };
 
 }  // namespace blender::render::hydra

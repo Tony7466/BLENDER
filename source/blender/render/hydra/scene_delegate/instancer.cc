@@ -36,7 +36,7 @@ bool InstancerData::is_supported(Object *object)
 void InstancerData::init()
 {
   ID_LOG(2, "");
-  set_instances();
+  write_instances();
 }
 
 void InstancerData::insert()
@@ -68,7 +68,7 @@ void InstancerData::update()
       (object->data && ((ID *)object->data)->recalc & ID_RECALC_GEOMETRY) ||
       id->recalc & ID_RECALC_TRANSFORM)
   {
-    set_instances();
+    write_instances();
     scene_delegate_->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(
         prim_id, pxr::HdChangeTracker::AllDirty);
   }
@@ -92,8 +92,9 @@ bool InstancerData::update_visibility()
     change_tracker.MarkInstancerDirty(prim_id, pxr::HdChangeTracker::DirtyVisibility);
     for (auto &it : mesh_instances_) {
       it.second.data->visible = visible;
-      change_tracker.MarkRprimDirty(it.second.data->prim_id,
-                                    pxr::HdChangeTracker::DirtyVisibility);
+      for (auto &p : it.second.data->submesh_paths()) {
+        change_tracker.MarkRprimDirty(p, pxr::HdChangeTracker::DirtyVisibility);
+      }
     }
     char name[16];
     for (auto &it : light_instances_) {
@@ -109,9 +110,9 @@ bool InstancerData::update_visibility()
 
 pxr::GfMatrix4d InstancerData::get_transform(pxr::SdfPath const &id) const
 {
-  if (id.GetPathElementCount() == 4) {
-    const auto &inst = light_instances_.find(id.GetParentPath())->second;
-    return inst.transforms[light_prim_id_index(id)];
+  LightInstance *l_inst = light_instance(id);
+  if (l_inst) {
+    return l_inst->transforms[light_prim_id_index(id)];
   }
 
   /* Mesh instance transform must be identity */
@@ -131,18 +132,18 @@ pxr::HdPrimvarDescriptorVector InstancerData::primvar_descriptors(
 
 pxr::VtIntArray InstancerData::indices(pxr::SdfPath const &id) const
 {
-  return mesh_instances_.find(id)->second.indices;
+  return mesh_instance(id)->indices;
 }
 
 ObjectData *InstancerData::object_data(pxr::SdfPath const &id) const
 {
-  auto m_it = mesh_instances_.find(id);
-  if (m_it != mesh_instances_.end()) {
-    return m_it->second.data.get();
+  MeshInstance *m_inst = mesh_instance(id);
+  if (m_inst) {
+    return m_inst->data.get();
   }
-  auto l_it = light_instances_.find(id.GetParentPath());
-  if (l_it != light_instances_.end()) {
-    return l_it->second.data.get();
+  LightInstance *l_inst = light_instance(id);
+  if (l_inst) {
+    return l_inst->data.get();
   }
   return nullptr;
 }
@@ -151,7 +152,9 @@ pxr::SdfPathVector InstancerData::prototypes() const
 {
   pxr::SdfPathVector paths;
   for (auto &it : mesh_instances_) {
-    paths.push_back(it.first);
+    for (auto &p : it.second.data->submesh_paths()) {
+      paths.push_back(p);
+    }
   }
   return paths;
 }
@@ -159,25 +162,25 @@ pxr::SdfPathVector InstancerData::prototypes() const
 void InstancerData::check_update(Object *object)
 {
   pxr::SdfPath path = object_prim_id(object);
-  auto m_it = mesh_instances_.find(path);
-  if (m_it != mesh_instances_.end()) {
-    m_it->second.data->update();
+  MeshInstance *m_inst = mesh_instance(path);
+  if (m_inst) {
+    m_inst->data->update();
 
-    if (m_it->second.data->id->recalc & ID_RECALC_TRANSFORM) {
-      set_instances();
+    if (m_inst->data->id->recalc & ID_RECALC_TRANSFORM) {
+      write_instances();
       scene_delegate_->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(
           prim_id, pxr::HdChangeTracker::AllDirty);
     }
     return;
   }
 
-  auto l_it = light_instances_.find(path);
-  if (l_it != light_instances_.end()) {
-    Object *obj = (Object *)l_it->second.data->id;
+  LightInstance *l_inst = light_instance(path);
+  if (l_inst) {
+    Object *obj = (Object *)l_inst->data->id;
     if (obj->id.recalc & (ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY) ||
         ((ID *)obj->data)->recalc & ID_RECALC_GEOMETRY)
     {
-      set_instances();
+      write_instances();
     }
     return;
   }
@@ -196,7 +199,7 @@ void InstancerData::check_remove(std::set<std::string> &available_objects)
     ret = true;
   }
   if (ret) {
-    set_instances();
+    write_instances();
     scene_delegate_->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(
         prim_id, pxr::HdChangeTracker::AllDirty);
   }
@@ -216,16 +219,13 @@ void InstancerData::check_remove(std::set<std::string> &available_objects)
 void InstancerData::available_materials(std::set<pxr::SdfPath> &paths) const
 {
   for (auto &it : mesh_instances_) {
-    pxr::SdfPath mat_id = ((MeshData *)it.second.data.get())->material_id();
-    if (!mat_id.IsEmpty()) {
-      paths.insert(mat_id);
-    }
+    ((MeshData *)it.second.data.get())->available_materials(paths);
   }
 }
 
 void InstancerData::update_as_parent()
 {
-  set_instances();
+  write_instances();
   scene_delegate_->GetRenderIndex().GetChangeTracker().MarkInstancerDirty(
       prim_id, pxr::HdChangeTracker::AllDirty);
 }
@@ -259,7 +259,7 @@ int InstancerData::light_prim_id_index(pxr::SdfPath const &id) const
   return index;
 }
 
-void InstancerData::set_instances()
+void InstancerData::write_instances()
 {
   mesh_transforms_.clear();
   for (auto &it : mesh_instances_) {
@@ -279,30 +279,22 @@ void InstancerData::set_instances()
 
     pxr::SdfPath p_id = object_prim_id(ob);
     if (ob->type == OB_LAMP) {
-      LightInstance *inst;
-      auto it = light_instances_.find(p_id);
-      if (it == light_instances_.end()) {
+      LightInstance *inst = light_instance(p_id);
+      if (!inst) {
         inst = &light_instances_[p_id];
         inst->data = std::make_unique<LightData>(scene_delegate_, ob, p_id);
         inst->data->init();
-      }
-      else {
-        inst = &it->second;
       }
       ID_LOG(2, "Light %s %d", inst->data->id->name, inst->transforms.size());
       inst->transforms.push_back(gf_matrix_from_transform(dupli->mat));
     }
     else {
-      MeshInstance *inst;
-      auto it = mesh_instances_.find(p_id);
-      if (it == mesh_instances_.end()) {
+      MeshInstance *inst = mesh_instance(p_id);
+      if (!inst) {
         inst = &mesh_instances_[p_id];
         inst->data = std::make_unique<MeshData>(scene_delegate_, ob, p_id);
         inst->data->init();
         inst->data->insert();
-      }
-      else {
-        inst = &it->second;
       }
       ID_LOG(2, "Mesh %s %d", inst->data->id->name, mesh_transforms_.size());
       inst->indices.push_back(mesh_transforms_.size());
@@ -384,6 +376,24 @@ void InstancerData::update_light_instance(LightInstance &inst)
     ID_LOG(2, "Insert %s (%s)", p.GetText(), l_data.id->name);
     ++inst.count;
   }
+}
+
+InstancerData::MeshInstance *InstancerData::mesh_instance(pxr::SdfPath const &id) const
+{
+  auto it = mesh_instances_.find(id.GetPathElementCount() == 4 ? id.GetParentPath() : id);
+  if (it == mesh_instances_.end()) {
+    return nullptr;
+  }
+  return const_cast<MeshInstance *>(&it->second);
+}
+
+InstancerData::LightInstance *InstancerData::light_instance(pxr::SdfPath const &id) const
+{
+  auto it = light_instances_.find(id.GetPathElementCount() == 4 ? id.GetParentPath() : id);
+  if (it == light_instances_.end()) {
+    return nullptr;
+  }
+  return const_cast<LightInstance *>(&it->second);
 }
 
 }  // namespace blender::render::hydra

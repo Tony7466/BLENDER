@@ -29,89 +29,72 @@ void MeshData::init()
   if (object->type == OB_MESH && object->mode == OB_MODE_OBJECT &&
       BLI_listbase_is_empty(&object->modifiers))
   {
-    write_mesh((Mesh *)object->data);
+    write_submeshes((Mesh *)object->data);
   }
   else {
     Mesh *mesh = BKE_object_to_mesh(nullptr, object, false);
     if (mesh) {
-      write_mesh(mesh);
+      write_submeshes(mesh);
     }
     BKE_object_to_mesh_clear(object);
   }
 
-  write_material();
   write_transform();
+  write_materials();
 }
 
 void MeshData::insert()
 {
-  if (face_vertex_counts_.empty()) {
-    return;
-  }
-
-  ID_LOG(2, "");
-  scene_delegate_->GetRenderIndex().InsertRprim(
-      pxr::HdPrimTypeTokens->mesh, scene_delegate_, prim_id);
+  /* Empty, because insertion of rprims happen in write_submeshes() */
 }
 
 void MeshData::remove()
 {
-  if (!scene_delegate_->GetRenderIndex().HasRprim(prim_id)) {
-    return;
+  for (int i = 0; i < submeshes_.size(); ++i) {
+    scene_delegate_->GetRenderIndex().RemoveRprim(submesh_prim_id(i));
+    CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 2, "%s: %d", prim_id.GetText(), i);
   }
-
-  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 2, "%s", prim_id.GetText());
-  scene_delegate_->GetRenderIndex().RemoveRprim(prim_id);
 }
 
 void MeshData::update()
 {
   Object *object = (Object *)id;
-  pxr::HdDirtyBits bits = pxr::HdChangeTracker::Clean;
   if ((id->recalc & ID_RECALC_GEOMETRY) || (((ID *)object->data)->recalc & ID_RECALC_GEOMETRY)) {
     init();
-    bits = pxr::HdChangeTracker::AllDirty;
+    return;
   }
-  else {
-    if (id->recalc & ID_RECALC_SHADING) {
-      write_material();
-      bits |= pxr::HdChangeTracker::DirtyMaterialId | pxr::HdChangeTracker::DirtyDoubleSided;
-    }
-    if (id->recalc & ID_RECALC_TRANSFORM) {
-      write_transform();
-      bits |= pxr::HdChangeTracker::DirtyTransform;
-    }
+
+  pxr::HdDirtyBits bits = pxr::HdChangeTracker::Clean;
+  if (id->recalc & ID_RECALC_SHADING) {
+    write_materials();
+    bits |= pxr::HdChangeTracker::DirtyMaterialId | pxr::HdChangeTracker::DirtyDoubleSided;
+  }
+  if (id->recalc & ID_RECALC_TRANSFORM) {
+    write_transform();
+    bits |= pxr::HdChangeTracker::DirtyTransform;
   }
 
   if (bits == pxr::HdChangeTracker::Clean) {
     return;
   }
 
-  if (!scene_delegate_->GetRenderIndex().HasRprim(prim_id)) {
-    insert();
-    return;
+  for (int i = 0; i < submeshes_.size(); ++i) {
+    scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(submesh_prim_id(i), bits);
+    ID_LOG(2, "%d", i);
   }
-
-  if (face_vertex_counts_.empty()) {
-    /* Remove prim without faces */
-    remove();
-    return;
-  }
-  ID_LOG(2, "");
-  scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(prim_id, bits);
 }
 
-pxr::VtValue MeshData::get_data(pxr::TfToken const &key) const
+pxr::VtValue MeshData::get_data(pxr::SdfPath const &id, pxr::TfToken const &key) const
 {
   pxr::VtValue ret;
   if (key == pxr::HdTokens->points) {
     ret = vertices_;
   }
   else if (key == pxr::HdTokens->normals) {
-    ret = normals_;
+    ret = submesh(id).normals;
   }
   else if (key == pxr::HdPrimvarRoleTokens->textureCoordinate) {
-    ret = uvs_;
+    ret = submesh(id).uvs;
   }
   return ret;
 }
@@ -120,19 +103,22 @@ bool MeshData::update_visibility()
 {
   bool ret = ObjectData::update_visibility();
   if (ret) {
-    ID_LOG(2, "");
-    scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(
-        prim_id, pxr::HdChangeTracker::DirtyVisibility);
+    for (int i = 0; i < submeshes_.size(); ++i) {
+      scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(
+          submesh_prim_id(i), pxr::HdChangeTracker::DirtyVisibility);
+      ID_LOG(2, "%d", i);
+    }
   }
   return ret;
 }
 
-pxr::HdMeshTopology MeshData::mesh_topology() const
+pxr::HdMeshTopology MeshData::mesh_topology(pxr::SdfPath const &id) const
 {
+  const SubMesh &sm = submesh(id);
   return pxr::HdMeshTopology(pxr::PxOsdOpenSubdivTokens->none,
                              pxr::HdTokens->rightHanded,
-                             face_vertex_counts_,
-                             face_vertex_indices_);
+                             sm.face_vertex_counts,
+                             sm.face_vertex_indices);
 }
 
 pxr::HdPrimvarDescriptorVector MeshData::primvar_descriptors(
@@ -145,11 +131,11 @@ pxr::HdPrimvarDescriptorVector MeshData::primvar_descriptors(
     }
   }
   else if (interpolation == pxr::HdInterpolationFaceVarying) {
-    if (!normals_.empty()) {
+    if (!submeshes_[0].normals.empty()) {
       primvars.emplace_back(
           pxr::HdTokens->normals, interpolation, pxr::HdPrimvarRoleTokens->normal);
     }
-    if (!uvs_.empty()) {
+    if (!submeshes_[0].uvs.empty()) {
       primvars.emplace_back(pxr::HdPrimvarRoleTokens->textureCoordinate,
                             interpolation,
                             pxr::HdPrimvarRoleTokens->textureCoordinate);
@@ -158,116 +144,171 @@ pxr::HdPrimvarDescriptorVector MeshData::primvar_descriptors(
   return primvars;
 }
 
-pxr::SdfPath MeshData::material_id() const
+pxr::SdfPath MeshData::material_id(pxr::SdfPath const &id) const
 {
-  if (!mat_data_) {
+  const SubMesh &sm = submesh(id);
+  if (!sm.mat_data) {
     return pxr::SdfPath();
   }
-  return mat_data_->prim_id;
+  return sm.mat_data->prim_id;
 }
 
-bool MeshData::double_sided() const
+bool MeshData::double_sided(pxr::SdfPath const &id) const
 {
-  if (mat_data_) {
-    return mat_data_->double_sided;
+  const SubMesh &sm = submesh(id);
+  if (sm.mat_data) {
+    return sm.mat_data->double_sided;
   }
   return true;
 }
 
 void MeshData::update_double_sided(MaterialData *mat_data)
 {
-  if (mat_data_ == mat_data) {
-    ID_LOG(2, "");
-    scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(
-        prim_id, pxr::HdChangeTracker::DirtyDoubleSided);
-  }
-}
-
-void MeshData::write_mesh(Mesh *mesh)
-{
-  face_vertex_counts_.clear();
-  face_vertex_indices_.clear();
-  vertices_.clear();
-  normals_.clear();
-  uvs_.clear();
-
-  BKE_mesh_calc_normals_split(mesh);
-  int tris_len = BKE_mesh_runtime_looptri_len(mesh);
-  if (tris_len == 0) {
-    return;
-  }
-
-  blender::Span<MLoopTri> loopTris = mesh->looptris();
-
-  /* face_vertex_counts */
-  face_vertex_counts_ = pxr::VtIntArray(tris_len, 3);
-
-  /* face_vertex_indices */
-  blender::Span<int> corner_verts = mesh->corner_verts();
-  face_vertex_indices_.reserve(loopTris.size() * 3);
-  for (MLoopTri lt : loopTris) {
-    face_vertex_indices_.push_back(corner_verts[lt.tri[0]]);
-    face_vertex_indices_.push_back(corner_verts[lt.tri[1]]);
-    face_vertex_indices_.push_back(corner_verts[lt.tri[2]]);
-  }
-
-  /* vertices */
-  vertices_.reserve(mesh->totvert);
-  blender::Span<blender::float3> verts = mesh->vert_positions();
-  for (blender::float3 v : verts) {
-    vertices_.push_back(pxr::GfVec3f(v.x, v.y, v.z));
-  }
-
-  write_normals(mesh);
-  write_uv_maps(mesh);
-}
-
-void MeshData::write_material()
-{
-  Object *object = (Object *)id;
-  Material *mat = nullptr;
-  if (BKE_object_material_count_eval(object) > 0) {
-    mat = BKE_object_material_get_eval(object, object->actcol);
-  }
-
-  if (!mat) {
-    mat_data_ = nullptr;
-    return;
-  }
-  pxr::SdfPath p_id = scene_delegate_->material_prim_id(mat);
-  mat_data_ = scene_delegate_->material_data(p_id);
-  if (!mat_data_) {
-    scene_delegate_->materials_[p_id] = std::make_unique<MaterialData>(scene_delegate_, mat, p_id);
-    mat_data_ = scene_delegate_->material_data(p_id);
-    mat_data_->init();
-    mat_data_->insert();
-  }
-}
-
-void MeshData::write_uv_maps(Mesh *mesh)
-{
-  blender::Span<MLoopTri> loopTris = mesh->looptris();
-  const float(*luvs)[2] = (float(*)[2])CustomData_get_layer(&mesh->ldata, CD_PROP_FLOAT2);
-  if (luvs) {
-    uvs_.reserve(loopTris.size() * 3);
-    for (MLoopTri lt : loopTris) {
-      uvs_.push_back(pxr::GfVec2f(luvs[lt.tri[0]]));
-      uvs_.push_back(pxr::GfVec2f(luvs[lt.tri[1]]));
-      uvs_.push_back(pxr::GfVec2f(luvs[lt.tri[2]]));
+  for (int i = 0; i < submeshes_.size(); ++i) {
+    if (submeshes_[i].mat_data == mat_data) {
+      scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(
+          submesh_prim_id(i), pxr::HdChangeTracker::DirtyDoubleSided);
+      ID_LOG(2, "%d", i);
     }
   }
 }
 
-void MeshData::write_normals(Mesh *mesh)
+void MeshData::available_materials(std::set<pxr::SdfPath> &paths) const
 {
-  blender::Span<MLoopTri> loopTris = mesh->looptris();
+  for (auto &sm : submeshes_) {
+    if (sm.mat_data && !sm.mat_data->prim_id.IsEmpty()) {
+      paths.insert(sm.mat_data->prim_id);
+    }
+  }
+}
+
+pxr::SdfPathVector MeshData::submesh_paths() const
+{
+  pxr::SdfPathVector ret;
+  for (int i = 0; i < submeshes_.size(); ++i) {
+    ret.push_back(submesh_prim_id(i));
+  }
+  return ret;
+}
+
+pxr::SdfPath MeshData::submesh_prim_id(int index) const
+{
+  char name[16];
+  snprintf(name, 16, "SM_%04x", index);
+  return prim_id.AppendElementString(name);
+}
+
+const MeshData::SubMesh &MeshData::submesh(pxr::SdfPath const &id) const
+{
+  int index;
+  sscanf(id.GetName().c_str(), "SM_%x", &index);
+  return submeshes_[index];
+}
+
+void MeshData::write_submeshes(Mesh *mesh)
+{
+  int sub_meshes_prev_count = submeshes_.size();
+  submeshes_.clear();
+  vertices_.clear();
+
+  /* Insert base submeshes */
+  int mat_count = BKE_object_material_count_eval((Object *)id);
+  for (int i = 0; i < std::max(mat_count, 1); ++i) {
+    SubMesh sm;
+    sm.mat_index = i;
+    submeshes_.push_back(sm);
+  }
+
+  /* Fill submeshes data */
+  const int *material_indices = BKE_mesh_material_indices(mesh);
+  const int *looptri_polys = BKE_mesh_runtime_looptri_polys_ensure(mesh);
+  blender::Span<int> corner_verts = mesh->corner_verts();
+  blender::Span<MLoopTri> looptris = mesh->looptris();
+
+  BKE_mesh_calc_normals_split(mesh);
   const float(*lnors)[3] = (float(*)[3])CustomData_get_layer(&mesh->ldata, CD_NORMAL);
-  if (lnors) {
-    normals_.reserve(loopTris.size() * 3);
-    for (MLoopTri lt : loopTris) {
-      normals_.push_back(pxr::GfVec3f(lnors[lt.tri[0]]));
-      normals_.push_back(pxr::GfVec3f(lnors[lt.tri[1]]));
-      normals_.push_back(pxr::GfVec3f(lnors[lt.tri[2]]));
+  const float(*luvs)[2] = (float(*)[2])CustomData_get_layer(&mesh->ldata, CD_PROP_FLOAT2);
+
+  for (size_t i = 0; i < looptris.size(); ++i) {
+    int mat_ind = material_indices ? material_indices[looptri_polys[i]] : 0;
+    const MLoopTri &lt = looptris[i];
+    SubMesh &sm = submeshes_[mat_ind];
+
+    sm.face_vertex_counts.push_back(3);
+    sm.face_vertex_indices.push_back(corner_verts[lt.tri[0]]);
+    sm.face_vertex_indices.push_back(corner_verts[lt.tri[1]]);
+    sm.face_vertex_indices.push_back(corner_verts[lt.tri[2]]);
+
+    if (lnors) {
+      sm.normals.push_back(pxr::GfVec3f(lnors[lt.tri[0]]));
+      sm.normals.push_back(pxr::GfVec3f(lnors[lt.tri[1]]));
+      sm.normals.push_back(pxr::GfVec3f(lnors[lt.tri[2]]));
+    }
+
+    if (luvs) {
+      sm.uvs.push_back(pxr::GfVec2f(luvs[lt.tri[0]]));
+      sm.uvs.push_back(pxr::GfVec2f(luvs[lt.tri[1]]));
+      sm.uvs.push_back(pxr::GfVec2f(luvs[lt.tri[2]]));
+    }
+  }
+
+  /* Remove submeshes without faces */
+  for (auto it = submeshes_.begin(); it != submeshes_.end();) {
+    if (it->face_vertex_counts.empty()) {
+      it = submeshes_.erase(it);
+    }
+    else {
+      ++it;
+    }
+  }
+
+  if (!submeshes_.empty()) {
+    /* vertices */
+    vertices_.reserve(mesh->totvert);
+    blender::Span<blender::float3> verts = mesh->vert_positions();
+    for (blender::float3 v : verts) {
+      vertices_.push_back(pxr::GfVec3f(v.x, v.y, v.z));
+    }
+  }
+
+  /* Update prims in render index */
+  auto &render_index = scene_delegate_->GetRenderIndex();
+  int i;
+  for (i = 0; i < submeshes_.size(); ++i) {
+    pxr::SdfPath p = submesh_prim_id(i);
+    if (i < sub_meshes_prev_count) {
+      render_index.GetChangeTracker().MarkRprimDirty(p, pxr::HdChangeTracker::AllDirty);
+      ID_LOG(2, "Update %d", i);
+    }
+    else {
+      render_index.InsertRprim(pxr::HdPrimTypeTokens->mesh, scene_delegate_, p);
+      ID_LOG(2, "Insert %d", i);
+    }
+  }
+  for (; i < sub_meshes_prev_count; ++i) {
+    render_index.RemoveRprim(submesh_prim_id(i));
+    ID_LOG(2, "Remove %d", i);
+  }
+}
+
+void MeshData::write_materials()
+{
+  Object *object = (Object *)id;
+  for (int i = 0; i < submeshes_.size(); ++i) {
+    SubMesh &m = submeshes_[i];
+    Material *mat = BKE_object_material_get_eval(object, m.mat_index + 1);
+    if (!mat) {
+      m.mat_data = nullptr;
+      continue;
+    }
+    pxr::SdfPath p_id = scene_delegate_->material_prim_id(mat);
+    m.mat_data = scene_delegate_->material_data(p_id);
+    if (!m.mat_data) {
+      scene_delegate_->materials_[p_id] = std::make_unique<MaterialData>(
+          scene_delegate_, mat, p_id);
+      m.mat_data = scene_delegate_->material_data(p_id);
+      m.mat_data->init();
+      m.mat_data->insert();
     }
   }
 }

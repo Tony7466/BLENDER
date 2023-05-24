@@ -49,8 +49,10 @@ class InstancerData : public ObjectData {
   pxr::SdfPath object_prim_id(Object *object) const;
   pxr::SdfPath light_prim_id(LightInstance const &inst, int index) const;
   int light_prim_id_index(pxr::SdfPath const &id) const;
-  void set_instances();
+  void write_instances();
   void update_light_instance(LightInstance &inst);
+  MeshInstance *mesh_instance(pxr::SdfPath const &id) const;
+  LightInstance *light_instance(pxr::SdfPath const &id) const;
 
   pxr::TfHashMap<pxr::SdfPath, MeshInstance, pxr::SdfPath::Hash> mesh_instances_;
   pxr::TfHashMap<pxr::SdfPath, LightInstance, pxr::SdfPath::Hash> light_instances_;

@@ -23,7 +23,7 @@ pxr::HdMeshTopology BlenderSceneDelegate::GetMeshTopology(pxr::SdfPath const &id
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", id.GetText());
   MeshData *m_data = mesh_data(id);
-  return m_data->mesh_topology();
+  return m_data->mesh_topology(id);
 }
 
 pxr::GfMatrix4d BlenderSceneDelegate::GetTransform(pxr::SdfPath const &id)
@@ -46,6 +46,10 @@ pxr::GfMatrix4d BlenderSceneDelegate::GetTransform(pxr::SdfPath const &id)
 pxr::VtValue BlenderSceneDelegate::Get(pxr::SdfPath const &id, pxr::TfToken const &key)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s, %s", id.GetText(), key.GetText());
+  MeshData *m_data = mesh_data(id);
+  if (m_data) {
+    return m_data->get_data(id, key);
+  }
   ObjectData *obj_data = object_data(id);
   if (obj_data) {
     return obj_data->get_data(key);
@@ -93,7 +97,7 @@ pxr::HdPrimvarDescriptorVector BlenderSceneDelegate::GetPrimvarDescriptors(
 pxr::SdfPath BlenderSceneDelegate::GetMaterialId(pxr::SdfPath const &rprim_id)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", rprim_id.GetText());
-  return mesh_data(rprim_id)->material_id();
+  return mesh_data(rprim_id)->material_id(rprim_id);
 }
 
 pxr::VtValue BlenderSceneDelegate::GetMaterialResource(pxr::SdfPath const &id)
@@ -122,7 +126,7 @@ bool BlenderSceneDelegate::GetVisible(pxr::SdfPath const &id)
 bool BlenderSceneDelegate::GetDoubleSided(pxr::SdfPath const &id)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", id.GetText());
-  return mesh_data(id)->double_sided();
+  return mesh_data(id)->double_sided(id);
 }
 
 pxr::HdCullStyle BlenderSceneDelegate::GetCullStyle(pxr::SdfPath const &id)
@@ -134,7 +138,7 @@ pxr::HdCullStyle BlenderSceneDelegate::GetCullStyle(pxr::SdfPath const &id)
 pxr::SdfPath BlenderSceneDelegate::GetInstancerId(pxr::SdfPath const &prim_id)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", prim_id.GetText());
-  InstancerData *i_data = instancer_data(prim_id.GetParentPath());
+  InstancerData *i_data = instancer_data(prim_id, true);
   if (i_data) {
     return i_data->prim_id;
   }
@@ -240,11 +244,12 @@ pxr::SdfPath BlenderSceneDelegate::world_prim_id() const
 
 ObjectData *BlenderSceneDelegate::object_data(pxr::SdfPath const &id) const
 {
-  auto it = objects_.find(id);
+  pxr::SdfPath p_id = (id.GetName().find("SM_") == 0) ? id.GetParentPath() : id;
+  auto it = objects_.find(p_id);
   if (it != objects_.end()) {
     return it->second.get();
   }
-  InstancerData *i_data = instancer_data(id, true);
+  InstancerData *i_data = instancer_data(p_id, true);
   if (i_data) {
     return i_data->object_data(id);
   }
@@ -382,7 +387,6 @@ void BlenderSceneDelegate::check_updates()
   data.only_updated = true;
   ITER_BEGIN (DEG_iterator_ids_begin, DEG_iterator_ids_next, DEG_iterator_ids_end, &data, ID *, id)
   {
-
     CLOG_INFO(LOG_RENDER_HYDRA_SCENE,
               2,
               "Update: %s [%s]",
@@ -516,12 +520,8 @@ void BlenderSceneDelegate::remove_unused_objects()
   std::set<pxr::SdfPath> available_materials;
   for (auto &it : objects_) {
     MeshData *m_data = dynamic_cast<MeshData *>(it.second.get());
-    if (!m_data) {
-      continue;
-    }
-    pxr::SdfPath mat_id = m_data->material_id();
-    if (!mat_id.IsEmpty()) {
-      available_materials.insert(mat_id);
+    if (m_data) {
+      m_data->available_materials(available_materials);
     }
   }
   for (auto &it : instancers_) {
