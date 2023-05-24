@@ -2,3 +2,4 @@ Referenced by pull request #104924, Geometry Nodes: add simulation support
 Referenced by pull request #107808, Fix #107608 : Changing color for simulation zone doesn't save
 Referenced by issue #107826, Regression: Volumes not rendering (EEVEE & Cycles)
 Referenced by commit 2db23d38ca4356ddcc6a9152df794ac87ca5304d, Fix #107826: Missing defaults for principlied volume string sockets
+Referenced by issue #108120, Regression: User interface graphic artefacts during cycles render
