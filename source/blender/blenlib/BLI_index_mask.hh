@@ -356,28 +356,29 @@ class IndexMask : private IndexMaskData {
  * with the provided segment.
  */
 class IndexMaskFromSegment : NonCopyable, NonMovable {
- public:
-  int64_t segment_offset;
-  const int16_t *segment_indices;
-  std::array<int64_t, 2> cumulative_segment_sizes;
-  IndexMask mask;
+ private:
+  int64_t segment_offset_;
+  const int16_t *segment_indices_;
+  std::array<int64_t, 2> cumulative_segment_sizes_;
+  IndexMask mask_;
 
+ public:
   IndexMaskFromSegment();
-  void update(IndexMaskSegment segment);
+  const IndexMask &update(IndexMaskSegment segment);
 };
 
 inline IndexMaskFromSegment::IndexMaskFromSegment()
 {
-  IndexMaskData &data = mask.data_for_inplace_construction();
-  this->cumulative_segment_sizes[0] = 0;
+  IndexMaskData &data = mask_.data_for_inplace_construction();
+  cumulative_segment_sizes_[0] = 0;
   data.segments_num_ = 1;
-  data.indices_by_segment_ = &this->segment_indices;
-  data.segment_offsets_ = &this->segment_offset;
-  data.cumulative_segment_sizes_ = this->cumulative_segment_sizes.data();
+  data.indices_by_segment_ = &segment_indices_;
+  data.segment_offsets_ = &segment_offset_;
+  data.cumulative_segment_sizes_ = cumulative_segment_sizes_.data();
   data.begin_index_in_segment_ = 0;
 }
 
-inline void IndexMaskFromSegment::update(const IndexMaskSegment segment)
+inline const IndexMask &IndexMaskFromSegment::update(const IndexMaskSegment segment)
 {
   const Span<int16_t> indices = segment.base_span();
   BLI_assert(!indices.is_empty());
@@ -386,12 +387,14 @@ inline void IndexMaskFromSegment::update(const IndexMaskSegment segment)
   BLI_assert(indices.last() < max_segment_size);
   const int64_t indices_num = indices.size();
 
-  IndexMaskData &data = mask.data_for_inplace_construction();
-  this->segment_offset = segment.offset();
-  this->segment_indices = indices.data();
-  this->cumulative_segment_sizes[1] = int16_t(indices_num);
+  IndexMaskData &data = mask_.data_for_inplace_construction();
+  segment_offset_ = segment.offset();
+  segment_indices_ = indices.data();
+  cumulative_segment_sizes_[1] = int16_t(indices_num);
   data.indices_num_ = indices_num;
   data.end_index_in_segment_ = indices_num;
+
+  return mask_;
 }
 
 std::array<int16_t, max_segment_size> build_static_indices_array();

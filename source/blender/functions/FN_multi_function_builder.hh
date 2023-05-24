@@ -269,7 +269,7 @@ inline void execute_materialized(TypeSequence<ParamTags...> /* param_tags */,
           ...);
     }
 
-    bool updated_mask_from_segment = false;
+    const IndexMask *current_segment_mask = nullptr;
 
     execute_materialized_impl(
         TypeSequence<ParamTags...>(),
@@ -293,14 +293,13 @@ inline void execute_materialized(TypeSequence<ParamTags...> /* param_tags */,
               return arg_info.internal_span_data + mask_start;
             }
             const GVArrayImpl &varray_impl = *std::get<I>(loaded_params);
-            if (!updated_mask_from_segment) {
-              index_mask_from_segment.update({segment_offset, sliced_mask.base_span()});
-              updated_mask_from_segment = true;
+            if (current_segment_mask == nullptr) {
+              current_segment_mask = &index_mask_from_segment.update(
+                  {segment_offset, sliced_mask.base_span()});
             }
             /* As a fallback, do a virtual function call to retrieve all elements in the current
              * chunk. The elements are stored in a temporary buffer reused for every chunk. */
-            varray_impl.materialize_compressed_to_uninitialized(index_mask_from_segment.mask,
-                                                                tmp_buffer);
+            varray_impl.materialize_compressed_to_uninitialized(*current_segment_mask, tmp_buffer);
             /* Remember that this parameter has been materialized, so that the values are
              * destructed properly when the chunk is done. */
             arg_info.mode = MaterializeArgMode::Materialized;

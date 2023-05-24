@@ -499,8 +499,9 @@ class GVArrayImpl_For_SlicedGVArray : public GVArrayImpl {
   {
     IndexMaskFromSegment mask_from_segment;
     mask.foreach_segment([&](const IndexMaskSegment segment, const int64_t start) {
-      mask_from_segment.update({segment.offset() + offset_, segment.base_span()});
-      varray_.materialize_compressed_to_uninitialized(mask_from_segment.mask,
+      const IndexMask &segment_mask = mask_from_segment.update(
+          {segment.offset() + offset_, segment.base_span()});
+      varray_.materialize_compressed_to_uninitialized(segment_mask,
                                                       POINTER_OFFSET(dst, type_->size() * start));
     });
   }
