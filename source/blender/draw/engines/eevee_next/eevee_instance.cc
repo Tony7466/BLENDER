@@ -118,6 +118,7 @@ void Instance::begin_sync()
   main_view.sync();
   world.sync();
   film.sync();
+  render_buffers.sync();
   irradiance_cache.sync();
 }
 

@@ -24,29 +24,9 @@
 
 namespace blender::eevee {
 
-void RenderBuffers::acquire(int2 extent)
+void RenderBuffers::sync()
 {
   const eViewLayerEEVEEPassType enabled_passes = inst_.film.enabled_passes_get();
-
-  auto pass_extent = [&](eViewLayerEEVEEPassType pass_bit) -> int2 {
-    /* Use dummy texture for disabled passes. Allows correct bindings. */
-    return (enabled_passes & pass_bit) ? extent : int2(1);
-  };
-
-  eGPUTextureFormat color_format = GPU_RGBA16F;
-  eGPUTextureFormat float_format = GPU_R16F;
-
-  /* Depth and combined are always needed. */
-  depth_tx.acquire(extent, GPU_DEPTH24_STENCIL8);
-  combined_tx.acquire(extent, color_format);
-
-  bool do_vector_render_pass = (enabled_passes & EEVEE_RENDER_PASS_VECTOR) ||
-                               (inst_.motion_blur.postfx_enabled() && !inst_.is_viewport());
-
-  /* Only RG16F when only doing only reprojection or motion blur. */
-  eGPUTextureFormat vector_format = do_vector_render_pass ? GPU_RGBA16F : GPU_RG16F;
-  /* TODO(fclem): Make vector pass allocation optional if no TAA or motion blur is needed. */
-  vector_tx.acquire(extent, vector_format);
 
   data.color_len = 0;
   data.value_len = 0;
@@ -72,6 +52,31 @@ void RenderBuffers::acquire(int2 extent)
 
   data.aovs = inst_.film.aovs_info;
   data.push_update();
+}
+
+void RenderBuffers::acquire(int2 extent)
+{
+  const eViewLayerEEVEEPassType enabled_passes = inst_.film.enabled_passes_get();
+
+  auto pass_extent = [&](eViewLayerEEVEEPassType pass_bit) -> int2 {
+    /* Use dummy texture for disabled passes. Allows correct bindings. */
+    return (enabled_passes & pass_bit) ? extent : int2(1);
+  };
+
+  eGPUTextureFormat color_format = GPU_RGBA16F;
+  eGPUTextureFormat float_format = GPU_R16F;
+
+  /* Depth and combined are always needed. */
+  depth_tx.acquire(extent, GPU_DEPTH24_STENCIL8);
+  combined_tx.acquire(extent, color_format);
+
+  bool do_vector_render_pass = (enabled_passes & EEVEE_RENDER_PASS_VECTOR) ||
+                               (inst_.motion_blur.postfx_enabled() && !inst_.is_viewport());
+
+  /* Only RG16F when only doing only reprojection or motion blur. */
+  eGPUTextureFormat vector_format = do_vector_render_pass ? GPU_RGBA16F : GPU_RG16F;
+  /* TODO(fclem): Make vector pass allocation optional if no TAA or motion blur is needed. */
+  vector_tx.acquire(extent, vector_format);
 
   int color_len = data.color_len + data.aovs.color_len;
   int value_len = data.value_len + data.aovs.value_len;

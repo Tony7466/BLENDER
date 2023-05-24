@@ -13,15 +13,8 @@
 
 void main()
 {
-  ivec2 texel = ivec2(gl_FragCoord.xy);
-
   /* Clear AOVs first. In case the material renders to them. */
-  for (int i = 0; i < AOV_MAX && i < rp_buf.aovs.color_len; i++) {
-    imageStore(rp_color_img, ivec3(texel, rp_buf.color_len + i), vec4(0));
-  }
-  for (int i = 0; i < AOV_MAX && i < rp_buf.aovs.value_len; i++) {
-    imageStore(rp_value_img, ivec3(texel, rp_buf.value_len + i), vec4(0));
-  }
+  clear_aovs();
 
   init_globals();
   /* View position is passed to keep accuracy. */
@@ -41,16 +34,19 @@ void main()
   out_background = mix(vec4(0.0, 0.0, 0.0, 1.0), out_background, world_opacity_fade);
 
   /* Clear Render Buffers. */
+  ivec2 texel = ivec2(gl_FragCoord.xy);
+
   vec4 environment = out_background;
   environment.a = 1.0 - environment.a;
   environment.rgb *= environment.a;
-  RP_OUTPUT_COLOR(environment_id, texel, environment);
+  output_renderpass_color(rp_buf.environment_id, environment);
+
   vec4 clear_color = vec4(0.0, 0.0, 0.0, 1.0);
-  RP_OUTPUT_COLOR(normal_id, texel, clear_color);
-  RP_OUTPUT_COLOR(diffuse_light_id, texel, clear_color);
-  RP_OUTPUT_COLOR(specular_light_id, texel, clear_color);
-  RP_OUTPUT_COLOR(diffuse_color_id, texel, clear_color);
-  RP_OUTPUT_COLOR(specular_color_id, texel, clear_color);
-  RP_OUTPUT_COLOR(emission_id, texel, clear_color);
+  output_renderpass_color(rp_buf.normal_id, clear_color);
+  output_renderpass_color(rp_buf.diffuse_light_id, clear_color);
+  output_renderpass_color(rp_buf.specular_light_id, clear_color);
+  output_renderpass_color(rp_buf.diffuse_color_id, clear_color);
+  output_renderpass_color(rp_buf.specular_color_id, clear_color);
+  output_renderpass_color(rp_buf.emission_id, clear_color);
   imageStore(rp_cryptomatte_img, texel, vec4(0.0));
 }

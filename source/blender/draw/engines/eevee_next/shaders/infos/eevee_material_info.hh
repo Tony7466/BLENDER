@@ -86,10 +86,6 @@ GPU_SHADER_CREATE_INFO(eevee_render_pass_out)
     .image_array_out(RBUFS_VALUE_SLOT, Qualifier::WRITE, GPU_R16F, "rp_value_img")
     .storage_buf(RBUFS_BUF_SLOT, Qualifier::READ, "RenderBuffersInfoData", "rp_buf");
 
-GPU_SHADER_CREATE_INFO(eevee_aov_out)
-    .define("MAT_AOV_SUPPORT")
-    .additional_info("eevee_render_pass_out");
-
 GPU_SHADER_CREATE_INFO(eevee_cryptomatte_out)
     .storage_buf(CRYPTOMATTE_BUF_SLOT, Qualifier::READ, "vec2", "cryptomatte_object_buf[]")
     .image_out(RBUFS_CRYPTOMATTE_SLOT, Qualifier::WRITE, GPU_RGBA32F, "rp_cryptomatte_img");
@@ -110,8 +106,7 @@ GPU_SHADER_CREATE_INFO(eevee_surf_deferred)
                      "eevee_utility_texture",
                      "eevee_sampling_data",
                      "eevee_render_pass_out",
-                     "eevee_cryptomatte_out",
-                     "eevee_aov_out");
+                     "eevee_cryptomatte_out");
 
 GPU_SHADER_CREATE_INFO(eevee_surf_forward)
     .vertex_out(eevee_surf_iface)
@@ -127,11 +122,10 @@ GPU_SHADER_CREATE_INFO(eevee_surf_forward)
                      "eevee_sampling_data",
                      "eevee_shadow_data"
                      /* Optionally added depending on the material. */
+                     // "eevee_render_pass_out",
                      // "eevee_cryptomatte_out",
                      // "eevee_raytrace_data",
                      // "eevee_transmittance_data",
-                     // "eevee_aov_out",
-                     // "eevee_render_pass_out",
     );
 
 GPU_SHADER_CREATE_INFO(eevee_surf_depth)
@@ -144,9 +138,8 @@ GPU_SHADER_CREATE_INFO(eevee_surf_world)
     .push_constant(Type::FLOAT, "world_opacity_fade")
     .fragment_out(0, Type::VEC4, "out_background")
     .fragment_source("eevee_surf_world_frag.glsl")
-    .additional_info("eevee_aov_out",
+    .additional_info("eevee_render_pass_out",
                      "eevee_cryptomatte_out",
-                     "eevee_render_pass_out",
                      "eevee_camera",
                      "eevee_utility_texture");
 
