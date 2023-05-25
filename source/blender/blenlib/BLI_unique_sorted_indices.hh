@@ -129,9 +129,10 @@ inline int64_t split_to_ranges_and_spans(
     }
     if (non_empty_is_range(remaining_indices.take_front(range_threshold))) {
       /* Next segment is a range. Now find the place where the range ends. */
+      const T segment_start = remaining_indices.first();
+      remaining_indices = remaining_indices.drop_front(range_threshold);
       const int64_t segment_size = find_size_of_next_range(remaining_indices);
-      r_segments.append(IndexRange(remaining_indices[0], segment_size));
-      remaining_indices = remaining_indices.drop_front(segment_size);
+      r_segments.append(IndexRange(segment_start, segment_size));
       continue;
     }
     /* Next segment is just indices. Now find the place where the next range starts. */
