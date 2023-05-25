@@ -12,6 +12,7 @@
 #include "BLI_math.h"
 #include "BLI_math_vector.hh"
 #include "BLI_task.hh"
+#include "BLI_vector_set.hh"
 
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
@@ -412,6 +413,8 @@ static bool follow_face_loop(const int poly_start_index,
   int current_poly_index = poly_start_index;
   int current_edge_index = edge_start_index;
 
+  VectorSet<int> vector_set;
+
   while (current_edge_index > 0) {
     int next_poly_index = -1;
 
@@ -433,7 +436,7 @@ static bool follow_face_loop(const int poly_start_index,
     }
 
     /* Happens if we looped around the mesh. */
-    if (r_loop_polys.contains(next_poly_index)) {
+    if (vector_set.contains(next_poly_index)) {
       return true;
     }
 
@@ -443,6 +446,7 @@ static bool follow_face_loop(const int poly_start_index,
     }
 
     r_loop_polys.append(next_poly_index);
+    vector_set.add(next_poly_index);
 
     const IndexRange next_poly = polys[next_poly_index];
     current_edge_index = get_opposing_edge_index(next_poly, corner_edges, current_edge_index);
