@@ -159,6 +159,15 @@ endif()
 
 get_blender_version()
 
+if(WIN32)
+  add_definitions(
+    # This is the app ID used for file registration, given it's used from several modules
+    # there really is no nice way to get this information consistent without a global define.
+    -DBLENDER_WIN_APPID="blender.${BLENDER_VERSION_MAJOR}.${BLENDER_VERSION_MINOR}"
+    # This is the name that will be shown in the taskbar and OpenWith windows UI
+    -DBLENDER_WIN_APPID_FRIENDLY_NAME="Blender ${BLENDER_VERSION_MAJOR}.${BLENDER_VERSION_MINOR}"
+  )
+endif()
 
 # -----------------------------------------------------------------------------
 # Declare Options
@@ -445,6 +454,9 @@ endif()
 
 option(WITH_PYTHON_INSTALL       "Copy system python into the blender install folder" ON)
 
+option(WITH_INSTALL_COPYRIGHT    "Copy the official Blender Foundation's copyright.txt into the Blender install folder" OFF)
+mark_as_advanced(WITH_INSTALL_COPYRIGHT)
+
 if((WITH_AUDASPACE AND NOT WITH_SYSTEM_AUDASPACE) OR WITH_MOD_FLUID)
   option(WITH_PYTHON_NUMPY "Include NumPy in Blender (used by Audaspace and Mantaflow)"  ON)
 endif()
@@ -503,7 +515,7 @@ if(NOT APPLE)
   mark_as_advanced(WITH_CYCLES_DEVICE_CUDA)
 
   option(WITH_CYCLES_CUDA_BINARIES     "Build Cycles NVIDIA CUDA binaries" OFF)
-  set(CYCLES_CUDA_BINARIES_ARCH sm_30 sm_35 sm_37 sm_50 sm_52 sm_60 sm_61 sm_70 sm_75 sm_86 compute_75 CACHE STRING "CUDA architectures to build binaries for")
+  set(CYCLES_CUDA_BINARIES_ARCH sm_30 sm_35 sm_37 sm_50 sm_52 sm_60 sm_61 sm_70 sm_75 sm_86 sm_89 compute_75 CACHE STRING "CUDA architectures to build binaries for")
   option(WITH_CYCLES_CUDA_BUILD_SERIAL "Build cubins one after another (useful on machines with limited RAM)" OFF)
   option(WITH_CUDA_DYNLOAD             "Dynamically load CUDA libraries at runtime (for developers, makes cuda-gdb work)" ON)
 

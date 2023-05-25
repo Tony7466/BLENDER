@@ -1487,7 +1487,7 @@ static void split_groups_action_temp(bAction *act, bActionGroup *tgrp)
   /* Initialize memory for temp-group */
   memset(tgrp, 0, sizeof(bActionGroup));
   tgrp->flag |= (AGRP_EXPANDED | AGRP_TEMP);
-  BLI_strncpy(tgrp->name, "#TempGroup", sizeof(tgrp->name));
+  STRNCPY(tgrp->name, "#TempGroup");
 
   /* Move any action-channels not already moved, to the temp group */
   if (act->curves.first) {
@@ -1674,7 +1674,7 @@ static void rearrange_gpencil_channels(bAnimContext *ac, eRearrangeAnimChan_Mode
     /* Filter visible data. */
     rearrange_animchannels_filter_visible(&anim_data_visible, ac, ANIMTYPE_GPLAYER);
 
-    /* rearrange datablock's layers */
+    /* Rearrange data-block's layers. */
     rearrange_animchannel_islands(
         &gpd->layers, rearrange_func, mode, ANIMTYPE_GPLAYER, &anim_data_visible);
 

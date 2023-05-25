@@ -56,7 +56,7 @@
 #include "ED_screen.h"
 #include "ED_sculpt.h"
 
-#include "paint_intern.h"
+#include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
 #include "RNA_access.h"
@@ -576,10 +576,6 @@ void SCULPT_geometry_preview_lines_update(bContext *C, SculptSession *ss, float 
   }
 
   BKE_sculpt_update_object_for_edit(depsgraph, ob, true, true, false);
-
-  if (!ss->pmap) {
-    return;
-  }
 
   float brush_co[3];
   copy_v3_v3(brush_co, SCULPT_active_vertex_co_get(ss));
