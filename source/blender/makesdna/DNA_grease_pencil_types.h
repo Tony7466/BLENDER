@@ -155,6 +155,10 @@ typedef struct GreasePencilFrame {
   char _pad[3];
 } GreasePencilFrame;
 
+typedef enum GreasePencilLayerFramesMapStorageFlag {
+  GP_LAYER_FRAMES_STORAGE_DIRTY = (1 << 0),
+} GreasePencilLayerFramesMapStorageFlag;
+
 /**
  * Storage for the Map in `blender::bke::greasepencil::Layer`.
  * See the description there for more detail.
@@ -166,7 +170,8 @@ typedef struct GreasePencilLayerFramesMapStorage {
   GreasePencilFrame *values;
   /* Size of the map (number of key-value pairs). */
   int size;
-  char _pad[4];
+  /* Flag for the status of the storage. */
+  int flag;
 } GreasePencilLayerFramesMapStorage;
 
 /**

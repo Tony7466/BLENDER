@@ -222,6 +222,8 @@ class Layer : public ::GreasePencilLayer {
    */
   int drawing_index_at(const int frame) const;
 
+  void tag_frames_map_changed();
+
   /**
    * Should be called whenever the keys in the frames map have changed. E.g. when new keys were
    * added, removed or updated.

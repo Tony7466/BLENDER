@@ -334,6 +334,7 @@ Layer::Layer()
   this->frames_storage.size = 0;
   this->frames_storage.keys = nullptr;
   this->frames_storage.values = nullptr;
+  this->frames_storage.flag = 0;
 
   BLI_listbase_clear(&this->masks);
 
@@ -398,21 +399,25 @@ bool Layer::is_locked() const
 
 bool Layer::insert_frame(int frame_number, const GreasePencilFrame &frame)
 {
+  this->tag_frames_map_changed();
   return this->frames_for_write().add(frame_number, frame);
 }
 
 bool Layer::insert_frame(int frame_number, GreasePencilFrame &&frame)
 {
+  this->tag_frames_map_changed();
   return this->frames_for_write().add(frame_number, frame);
 }
 
 bool Layer::overwrite_frame(int frame_number, const GreasePencilFrame &frame)
 {
+  this->tag_frames_map_changed();
   return this->frames_for_write().add_overwrite(frame_number, frame);
 }
 
 bool Layer::overwrite_frame(int frame_number, GreasePencilFrame &&frame)
 {
+  this->tag_frames_map_changed();
   return this->frames_for_write().add_overwrite(frame_number, std::move(frame));
 }
 
@@ -452,8 +457,14 @@ int Layer::drawing_index_at(const int frame) const
   return this->frames().lookup(*std::prev(it)).drawing_index;
 }
 
+void Layer::tag_frames_map_changed()
+{
+  this->frames_storage.flag |= GP_LAYER_FRAMES_STORAGE_DIRTY;
+}
+
 void Layer::tag_frames_map_keys_changed()
 {
+  this->tag_frames_map_changed();
   this->runtime->sorted_keys_cache_.tag_dirty();
 }
 
@@ -1193,10 +1204,24 @@ static void write_layer(BlendWriter *writer, GreasePencilLayer *node)
   BLO_write_struct(writer, GreasePencilLayer, node);
   BLO_write_string(writer, node->base.name);
 
-  MEM_SAFE_FREE(node->frames_storage.keys);
-  MEM_SAFE_FREE(node->frames_storage.values);
+  /* Re-create the frames storage only if it was tagged dirty. */
+  if ((node->frames_storage.flag & GP_LAYER_FRAMES_STORAGE_DIRTY) != 0) {
+    MEM_SAFE_FREE(node->frames_storage.keys);
+    MEM_SAFE_FREE(node->frames_storage.values);
 
+    const Layer &layer = node->wrap();
+    node->frames_storage.size = layer.frames().size();
+    node->frames_storage.keys = MEM_cnew_array<int>(node->frames_storage.size, __func__);
+    node->frames_storage.values = MEM_cnew_array<GreasePencilFrame>(node->frames_storage.size,
+                                                                    __func__);
+    const Span<int> sorted_keys = layer.sorted_keys();
     for (const int i : sorted_keys.index_range()) {
+      node->frames_storage.keys[i] = sorted_keys[i];
+      node->frames_storage.values[i] = layer.frames().lookup(sorted_keys[i]);
+    }
+
+    /* Reset the flag. */
+    node->frames_storage.flag &= ~GP_LAYER_FRAMES_STORAGE_DIRTY;
   }
 
   BLO_write_int32_array(writer, node->frames_storage.size, node->frames_storage.keys);
