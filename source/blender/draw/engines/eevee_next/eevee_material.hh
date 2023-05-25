@@ -108,29 +108,28 @@ static inline eMaterialGeometry to_material_geometry(const Object *ob)
 
 /** Unique key to identify each material in the hash-map. */
 struct MaterialKey {
-  ::Material *mat;
-  uint64_t options;
+  uint64_t hash_;
 
-  MaterialKey(::Material *mat_, eMaterialGeometry geometry, eMaterialPipeline surface_pipeline)
-      : mat(mat_)
+  MaterialKey(::Material *mat, eMaterialGeometry geometry, eMaterialPipeline surface_pipeline)
   {
-    options = shader_uuid_from_material_type(surface_pipeline, geometry);
+    uint64_t uuid = shader_uuid_from_material_type(surface_pipeline, geometry);
+    BLI_assert(uuid < sizeof(*mat));
+    hash_ = uint64_t(mat) + uuid;
   }
 
   uint64_t hash() const
   {
-    BLI_assert(options < sizeof(*mat));
-    return uint64_t(mat) + options;
+    return hash_;
   }
 
   bool operator<(const MaterialKey &k) const
   {
-    return (mat < k.mat) || (options < k.options);
+    return hash_ < k.hash_;
   }
 
   bool operator==(const MaterialKey &k) const
   {
-    return (mat == k.mat) && (options == k.options);
+    return hash_ == k.hash_;
   }
 };
 
@@ -142,33 +141,32 @@ struct MaterialKey {
  * \{ */
 
 struct ShaderKey {
-  GPUShader *shader;
-  uint64_t options;
+  uint64_t hash_;
 
   ShaderKey(GPUMaterial *gpumat,
             eMaterialGeometry geometry,
             eMaterialPipeline pipeline,
             char blend_flags)
   {
-    shader = GPU_material_get_shader(gpumat);
-    options = blend_flags;
-    options = (options << 6u) | shader_uuid_from_material_type(pipeline, geometry);
-    options = (options << 16u) | shader_closure_bits_from_flag(gpumat);
+    hash_ = uint64_t(GPU_material_get_shader(gpumat)) / 2;
+    hash_ = (hash_ << 16u) | shader_closure_bits_from_flag(gpumat);
+    hash_ = (hash_ << 6u) | shader_uuid_from_material_type(pipeline, geometry);
+    hash_ = (hash_ << 4u) | blend_flags;
   }
 
   uint64_t hash() const
   {
-    return uint64_t(shader) + options;
+    return hash_;
   }
 
   bool operator<(const ShaderKey &k) const
   {
-    return (shader == k.shader) ? (options < k.options) : (shader < k.shader);
+    return hash_ < k.hash_;
   }
 
   bool operator==(const ShaderKey &k) const
   {
-    return (shader == k.shader) && (options == k.options);
+    return hash_ == k.hash_;
   }
 };
 
