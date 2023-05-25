@@ -291,7 +291,7 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
   Span<TreeNode *> nodes_for_write();
 
   /**
-   * Returns a `Span` of pointers to all the `Layers`s in this group.
+   * Returns a `Span` of pointers to all the `Layer`s in this group.
    */
   Span<const Layer *> layers() const;
   Span<Layer *> layers_for_write();

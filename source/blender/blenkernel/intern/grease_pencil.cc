@@ -48,6 +48,7 @@ static void grease_pencil_init_data(ID *id)
   grease_pencil->runtime = MEM_new<GreasePencilRuntime>(__func__);
 
   new (&grease_pencil->root_group) greasepencil::LayerGroup();
+  grease_pencil->active_layer = nullptr;
 }
 
 static void grease_pencil_copy_data(Main * /*bmain*/,
@@ -158,6 +159,8 @@ static void grease_pencil_blend_write(BlendWriter *writer, ID *id, const void *i
   grease_pencil->write_drawing_array(writer);
   /* Write layer tree. */
   grease_pencil->write_layer_tree(writer);
+  /* Write active layer pointer. */
+  BLO_write_raw(writer, sizeof(void *), grease_pencil->active_layer);
 
   /* Write materials. */
   BLO_write_pointer_array(
@@ -177,6 +180,9 @@ static void grease_pencil_blend_read_data(BlendDataReader *reader, ID *id)
   grease_pencil->read_drawing_array(reader);
   /* Read layer tree. */
   grease_pencil->read_layer_tree(reader);
+  /* Read active layer. */
+  BLO_read_data_address(reader, reinterpret_cast<void **>(&grease_pencil->active_layer));
+
   /* Read materials. */
   BLO_read_pointer_array(reader, reinterpret_cast<void **>(&grease_pencil->material_array));
 
