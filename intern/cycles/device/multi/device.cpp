@@ -129,6 +129,11 @@ class MultiDevice : public Device {
       return BVH_LAYOUT_MULTI_HIPRT;
     }
 
+    /* With multiple oneAPI devices, every device needs its own acceleration structure */
+    if (bvh_layout_mask == BVH_LAYOUT_EMBREEGPU) {
+      return BVH_LAYOUT_MULTI_EMBREEGPU;
+    }
+
     /* When devices do not share a common BVH layout, fall back to creating one for each */
     const BVHLayoutMask BVH_LAYOUT_OPTIX_EMBREE = (BVH_LAYOUT_OPTIX | BVH_LAYOUT_EMBREE);
     if ((bvh_layout_mask_all & BVH_LAYOUT_OPTIX_EMBREE) == BVH_LAYOUT_OPTIX_EMBREE) {
@@ -137,6 +142,10 @@ class MultiDevice : public Device {
     const BVHLayoutMask BVH_LAYOUT_METAL_EMBREE = (BVH_LAYOUT_METAL | BVH_LAYOUT_EMBREE);
     if ((bvh_layout_mask_all & BVH_LAYOUT_METAL_EMBREE) == BVH_LAYOUT_METAL_EMBREE) {
       return BVH_LAYOUT_MULTI_METAL_EMBREE;
+    }
+    const BVHLayoutMask BVH_LAYOUT_EMBREEGPU_EMBREE = (BVH_LAYOUT_EMBREEGPU | BVH_LAYOUT_EMBREE);
+    if ((bvh_layout_mask_all & BVH_LAYOUT_EMBREEGPU_EMBREE) == BVH_LAYOUT_EMBREEGPU_EMBREE) {
+      return BVH_LAYOUT_MULTI_EMBREEGPU_EMBREE;
     }
 
     return bvh_layout_mask;
@@ -171,9 +180,11 @@ class MultiDevice : public Device {
     assert(bvh->params.bvh_layout == BVH_LAYOUT_MULTI_OPTIX ||
            bvh->params.bvh_layout == BVH_LAYOUT_MULTI_METAL ||
            bvh->params.bvh_layout == BVH_LAYOUT_MULTI_HIPRT ||
+           bvh->params.bvh_layout == BVH_LAYOUT_MULTI_EMBREEGPU ||
            bvh->params.bvh_layout == BVH_LAYOUT_MULTI_OPTIX_EMBREE ||
            bvh->params.bvh_layout == BVH_LAYOUT_MULTI_METAL_EMBREE ||
-           bvh->params.bvh_layout == BVH_LAYOUT_MULTI_HIPRT_EMBREE);
+           bvh->params.bvh_layout == BVH_LAYOUT_MULTI_HIPRT_EMBREE ||
+           bvh->params.bvh_layout == BVH_LAYOUT_MULTI_EMBREEGPU_EMBREE);
 
     BVHMulti *const bvh_multi = static_cast<BVHMulti *>(bvh);
     bvh_multi->sub_bvhs.resize(devices.size());
@@ -187,6 +198,7 @@ class MultiDevice : public Device {
 
           if (!bvh_multi->sub_bvhs[id]) {
             BVHParams params = bvh_multi->params;
+	    
 	    params.bvh_layout = get_bvh_layout(sub->device.get(), bvh_multi->params.bvh_layout);
 
             /* Skip building a bottom level acceleration structure for non-instanced geometry on
