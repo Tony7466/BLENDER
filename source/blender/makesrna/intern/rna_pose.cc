@@ -298,7 +298,7 @@ static void rna_PoseChannel_name_set(PointerRNA *ptr, const char *value)
   STRNCPY(oldname, pchan->name);
 
   BLI_assert(BKE_id_is_in_global_main(&ob->id));
-  BLI_assert(BKE_id_is_in_global_main(ob->data));
+  BLI_assert(BKE_id_is_in_global_main(static_cast<ID *>(ob->data)));
   ED_armature_bone_rename(G_MAIN, static_cast<bArmature *>(ob->data), oldname, newname);
 }
 
