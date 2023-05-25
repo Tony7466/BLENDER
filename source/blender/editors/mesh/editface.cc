@@ -385,20 +385,15 @@ static int get_opposing_edge_index(blender::IndexRange poly,
                                    const blender::Span<int> corner_edges,
                                    const int current_edge_index)
 {
-  for (int i = 0; i < poly.size(); i++) {
-    const int edge_index = corner_edges[poly[i]];
-    /* Assumes that edge index of opposing face edge is always off by 2 on quads. */
-    if (edge_index != current_edge_index) {
-      continue;
-    }
-    if (i - 2 >= 0) {
-      return corner_edges[poly[i - 2]];
-    }
-    else {
-      return corner_edges[poly[i + 2]];
-    }
+  const int poly_index = corner_edges.slice(poly).first_index(current_edge_index);
+  const int edge_index = corner_edges[poly[poly_index]];
+  /* Assumes that edge index of opposing face edge is always off by 2 on quads. */
+  if (poly_index - 2 >= 0) {
+    return corner_edges[poly[poly_index - 2]];
   }
-  return -1;
+  else {
+    return corner_edges[poly[poly_index + 2]];
+  }
 }
 
 /**
