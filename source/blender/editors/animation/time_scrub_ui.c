@@ -122,20 +122,6 @@ static void draw_current_frame(const Scene *scene,
   float outline_color[4];
   UI_GetThemeColorShade4fv(TH_CFRAME, 5, outline_color);
 
-  UI_draw_roundbox_4fv_ex(
-      &(const rctf){
-          .xmin = frame_x - box_width / 2 + U.pixelsize / 2,
-          .xmax = frame_x + box_width / 2 + U.pixelsize / 2,
-          .ymin = scrub_region_rect->ymin + box_padding,
-          .ymax = scrub_region_rect->ymax - box_padding,
-      },
-      bg_color,
-      NULL,
-      1.0f,
-      outline_color,
-      U.pixelsize,
-      4 * UI_SCALE_FAC);
-
   if (scene->onion_skin_cache.relative_left != 0) {
     const int frame_relative_left = UI_view2d_view_to_region_x(
         v2d, current_frame - scene->onion_skin_cache.relative_left);
@@ -170,6 +156,20 @@ static void draw_current_frame(const Scene *scene,
         U.pixelsize,
         4 * UI_SCALE_FAC);
   }
+
+  UI_draw_roundbox_4fv_ex(
+      &(const rctf){
+          .xmin = frame_x - box_width / 2 + U.pixelsize / 2,
+          .xmax = frame_x + box_width / 2 + U.pixelsize / 2,
+          .ymin = scrub_region_rect->ymin + box_padding,
+          .ymax = scrub_region_rect->ymax - box_padding,
+      },
+      bg_color,
+      NULL,
+      1.0f,
+      outline_color,
+      U.pixelsize,
+      4 * UI_SCALE_FAC);
 
   uchar text_color[4];
   UI_GetThemeColor4ubv(TH_HEADER_TEXT_HI, text_color);
