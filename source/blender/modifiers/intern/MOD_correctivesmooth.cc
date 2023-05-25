@@ -658,8 +658,9 @@ static void correctivesmooth_modifier_do(ModifierData *md,
         is_rest_coords_alloc = true;
       }
       else {
-        rest_coords = BKE_mesh_vert_positions(static_cast<const Mesh *>(ob->data));
-        me_numVerts = static_cast<const Mesh *>(ob->data)->totvert;
+        const Mesh *me = static_cast<const Mesh *>(ob->data);
+        rest_coords = BKE_mesh_vert_positions(me);
+        me_numVerts = me->totvert;
       }
 
       BLI_assert((uint)me_numVerts == verts_num);
