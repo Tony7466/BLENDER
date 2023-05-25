@@ -1263,7 +1263,7 @@ static char *rna_def_property_set_func(
           }
         }
 
-        fprintf(f, "    *(void **)data->%s = value.data;\n", dp->dnaname);
+        fprintf(f, "    *(void **)&data->%s = value.data;\n", dp->dnaname);
       }
       fprintf(f, "}\n\n");
       break;
