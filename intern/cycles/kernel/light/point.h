@@ -9,8 +9,7 @@ CCL_NAMESPACE_BEGIN
 
 template<bool in_volume_segment>
 ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
-                                          const float randu,
-                                          const float randv,
+                                          const float2 rand,
                                           const float3 P,
                                           ccl_private LightSample *ls)
 {
@@ -21,7 +20,7 @@ ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
   ls->P = center;
 
   if (radius > 0.0f) {
-    ls->P += disk_light_sample(lightN, randu, randv) * radius;
+    ls->P += disk_light_sample(lightN, rand) * radius;
   }
   ls->pdf = klight->spot.invarea;
 
@@ -41,9 +40,9 @@ ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
   return true;
 }
 
-ccl_device_forceinline void point_light_update_position(const ccl_global KernelLight *klight,
-                                                        ccl_private LightSample *ls,
-                                                        const float3 P)
+ccl_device_forceinline void point_light_mnee_sample_update(const ccl_global KernelLight *klight,
+                                                           ccl_private LightSample *ls,
+                                                           const float3 P)
 {
   ls->D = normalize_len(ls->P - P, &ls->t);
   ls->Ng = -ls->D;
@@ -54,6 +53,7 @@ ccl_device_forceinline void point_light_update_position(const ccl_global KernelL
 
   float invarea = klight->spot.invarea;
   ls->eval_fac = (0.25f * M_1_PI_F) * invarea;
+  /* NOTE : preserve pdf in area measure. */
   ls->pdf = invarea;
 }
 
