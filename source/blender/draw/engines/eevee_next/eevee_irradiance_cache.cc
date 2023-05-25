@@ -165,7 +165,28 @@ void IrradianceCache::set_view(View & /*view*/)
     grid.grid_index = grids_len;
     grids_infos_buf_[grids_len++] = grid;
   }
-  /* TODO: Stable sorting of grids. */
+
+  {
+    /* Stable sorting of grids. */
+    MutableSpan<IrradianceGridData> grid_span(grids_infos_buf_.data(), grids_len);
+
+    std::sort(grid_span.begin(),
+              grid_span.end(),
+              [](const IrradianceGridData &a, const IrradianceGridData &b) {
+                float volume_a = math::determinant(float3x3(a.world_to_grid_transposed));
+                float volume_b = math::determinant(float3x3(b.world_to_grid_transposed));
+                if (volume_a != volume_b) {
+                  /* Smallest first. */
+                  return volume_a > volume_b;
+                }
+                /* Volumes are identical. Any arbitrary criteria can be used to sort them.
+                 * Use position to avoid unstable result caused by depsgraph non deterministic eval
+                 * order. This could also become a parameter. */
+                return a.world_to_grid_transposed[0][0] < a.world_to_grid_transposed[0][0] ||
+                       a.world_to_grid_transposed[0][1] < a.world_to_grid_transposed[0][1] ||
+                       a.world_to_grid_transposed[0][2] < a.world_to_grid_transposed[0][2];
+              });
+  }
 
   {
     /* Insert world grid last. */
