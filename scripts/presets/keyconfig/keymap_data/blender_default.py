@@ -1056,6 +1056,7 @@ def km_time_scrub(_params):
 
     items.extend([
         ("anim.change_frame", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
+        ("anim.change_onion_skin_range", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True}, None),
     ])
 
     return keymap

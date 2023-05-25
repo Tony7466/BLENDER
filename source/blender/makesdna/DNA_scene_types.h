@@ -1866,6 +1866,7 @@ typedef struct OnionSkinMeshLink {
 typedef struct SceneOnionSkin {
   float color[3];
   float alpha;
+  int relative_left, relative_right;
   ListBase objects /* OnionSkinMeshLink */;
 } SceneOnionSkin;
 
