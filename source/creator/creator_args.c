@@ -639,8 +639,8 @@ static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), vo
   printf("\t.. note::\n");
   printf("\t\tCycles add-on options must be specified following a double dash.\n");
   printf("``--cycles-device OPTIX``\n");
-  printf("\tSet the device used for rendering. Options: ``CPU``, ``CUDA``, ``OPTIX``, ``HIP``, ``ONEAPI``, ``METAL``. ");
-  printf("Append ``+CPU`` to a GPU device to render on both CPU and GPU.\n\n");
+  printf("\tSet the device used for rendering. Options: CPU, CUDA, OPTIX, HIP, ONEAPI, METAL. ");
+  printf("Append +CPU to a GPU device to render on both CPU and GPU.\n\n");
   printf("\tExample:\n");
   printf("\t# blender -b file.blend -f 20 -- --cycles-device OPTIX\n");
   printf("``--cycles-print-stats``\n");
