@@ -40,6 +40,7 @@
     .wireframe_threshold = 1.0f, \
     .wireframe_opacity = 1.0f, \
     .retopology_offset = 0.2f, \
+    .retopology_color = {0.3125f, 0.78125f, 1.0f, 0.0625f}, \
     .viewer_attribute_opacity = 1.0f, \
     .xray_alpha_bone = 0.5f, \
     .bone_wire_alpha = 1.0f, \

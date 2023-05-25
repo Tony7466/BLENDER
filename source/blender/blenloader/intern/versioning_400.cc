@@ -8,6 +8,9 @@
 
 #include "CLG_log.h"
 
+#include "MEM_guardedalloc.h"
+
+#include "DNA_genfile.h"
 #include "DNA_movieclip_types.h"
 
 #include "BLI_assert.h"
@@ -99,7 +102,7 @@ static void version_geometry_nodes_add_realize_instance_nodes(bNodeTree *ntree)
   }
 }
 
-void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
+void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_ATLEAST(bmain, 400, 1)) {
     LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
@@ -133,5 +136,22 @@ void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+
+    /* Color for retopology overlay. */
+    if (!DNA_struct_elem_find(fd->filesdna, "View3DOverlay", "float", "retopology_color[4]")) {
+      LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+        LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+          LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+            if (sl->spacetype == SPACE_VIEW3D) {
+              View3D *v3d = (View3D *)sl;
+              v3d->overlay.retopology_color[0] = 0.3125f;
+              v3d->overlay.retopology_color[1] = 0.78125f;
+              v3d->overlay.retopology_color[2] = 1.0f;
+              v3d->overlay.retopology_color[3] = 0.0625f;
+            }
+          }
+        }
+      }
+    }
   }
 }

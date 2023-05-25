@@ -114,6 +114,7 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
     sh = OVERLAY_shader_edit_mesh_depth();
     grp = pd->edit_mesh_depth_grp[i] = DRW_shgroup_create(sh, psl->edit_mesh_depth_ps[i]);
     DRW_shgroup_uniform_float_copy(grp, "retopologyOffset", retopology_offset);
+    DRW_shgroup_uniform_vec4_copy(grp, "retopologyColor", v3d->overlay.retopology_color);
   }
   {
     /* Normals */
@@ -133,6 +134,7 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
     DRW_shgroup_uniform_float_copy(
         grp, "normalScreenSize", v3d->overlay.normals_constant_screen_size);
     DRW_shgroup_uniform_float_copy(grp, "retopologyOffset", retopology_offset);
+    DRW_shgroup_uniform_vec4_copy(grp, "retopologyColor", v3d->overlay.retopology_color);
   }
   {
     /* Mesh Analysis Pass */
@@ -173,6 +175,7 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_uniform_float_copy(grp, "alpha", face_alpha);
       DRW_shgroup_uniform_bool_copy(grp, "selectFaces", select_face);
       DRW_shgroup_uniform_float_copy(grp, "retopologyOffset", retopology_offset);
+      DRW_shgroup_uniform_vec4_copy(grp, "retopologyColor", v3d->overlay.retopology_color);
     }
 
     if (do_zbufclip) {
@@ -193,6 +196,7 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
     DRW_shgroup_uniform_bool_copy(grp, "selectEdges", pd->edit_mesh.do_edges || select_edge);
     DRW_shgroup_uniform_bool_copy(grp, "do_smooth_wire", do_smooth_wire);
     DRW_shgroup_uniform_float_copy(grp, "retopologyOffset", retopology_offset);
+    DRW_shgroup_uniform_vec4_copy(grp, "retopologyColor", v3d->overlay.retopology_color);
 
     /* Verts */
     state |= DRW_STATE_WRITE_DEPTH;
@@ -207,11 +211,13 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_uniform_texture_ref(grp, "depthTex", depth_tex);
       DRW_shgroup_uniform_ivec4_copy(grp, "dataMask", vert_mask);
       DRW_shgroup_uniform_float_copy(grp, "retopologyOffset", retopology_offset);
+      DRW_shgroup_uniform_vec4_copy(grp, "retopologyColor", v3d->overlay.retopology_color);
 
       sh = OVERLAY_shader_edit_mesh_skin_root();
       grp = pd->edit_mesh_skin_roots_grp[i] = DRW_shgroup_create(sh, psl->edit_mesh_verts_ps[i]);
       DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
       DRW_shgroup_uniform_float_copy(grp, "retopologyOffset", retopology_offset);
+      DRW_shgroup_uniform_vec4_copy(grp, "retopologyColor", v3d->overlay.retopology_color);
     }
     /* Face-dots */
     if (select_face && show_face_dots) {
@@ -222,6 +228,7 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_uniform_texture_ref(grp, "depthTex", depth_tex);
       DRW_shgroup_uniform_ivec4_copy(grp, "dataMask", vert_mask);
       DRW_shgroup_uniform_float_copy(grp, "retopologyOffset", retopology_offset);
+      DRW_shgroup_uniform_vec4_copy(grp, "retopologyColor", v3d->overlay.retopology_color);
       DRW_shgroup_state_enable(grp, DRW_STATE_WRITE_DEPTH);
     }
     else {

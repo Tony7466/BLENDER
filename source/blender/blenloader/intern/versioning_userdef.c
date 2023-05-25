@@ -94,10 +94,6 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     btheme->tui.wcol_view_item = U_theme_default.tui.wcol_view_item;
   }
 
-  if (!USER_VERSION_ATLEAST(306, 3)) {
-    FROM_DEFAULT_V4_UCHAR(space_view3d.face_retopology);
-  }
-
   if (!USER_VERSION_ATLEAST(306, 8)) {
     FROM_DEFAULT_V4_UCHAR(space_node.node_zone_simulation);
     FROM_DEFAULT_V4_UCHAR(space_action.simulated_frames);
