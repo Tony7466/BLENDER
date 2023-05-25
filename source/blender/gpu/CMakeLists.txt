@@ -29,6 +29,7 @@ set(INC
   # For *_info.hh includes.
   ../compositor/realtime_compositor
   ../draw/engines/eevee_next
+  ../draw/engines/select
   ../draw/engines/workbench
   ../draw/intern
 
@@ -75,6 +76,7 @@ set(SRC
   intern/gpu_platform.cc
   intern/gpu_query.cc
   intern/gpu_select.c
+  intern/gpu_select_next.cc
   intern/gpu_select_pick.c
   intern/gpu_select_sample_query.cc
   intern/gpu_shader.cc
