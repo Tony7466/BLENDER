@@ -1038,8 +1038,10 @@ int PathTraceWorkGPU::adaptive_sampling_converge_filter_count_active(float thres
   if (num_active_pixels) {
     for (int i = 0; i<work_set_.size(); i++) {
     set_current_work_set(i);
+    if(effective_buffer_params_.height > 0) {
     enqueue_adaptive_sampling_filter_x();
     enqueue_adaptive_sampling_filter_y();
+    }
     }
     queue_->synchronize();
   }
@@ -1056,7 +1058,7 @@ int PathTraceWorkGPU::adaptive_sampling_convergence_check_count_active(float thr
 
   for (int i = 0; i < work_set_.size(); i++) {
   set_current_work_set(i);
-
+  if(effective_buffer_params_.height > 0) {
   const int work_size = effective_buffer_params_.width * effective_buffer_params_.height;
 
   DeviceKernelArguments args(&buffers_->buffer.device_pointer,
@@ -1071,6 +1073,7 @@ int PathTraceWorkGPU::adaptive_sampling_convergence_check_count_active(float thr
                              &num_active_pixels.device_pointer);
 
   queue_->enqueue(DEVICE_KERNEL_ADAPTIVE_SAMPLING_CONVERGENCE_CHECK, work_size, args);
+  }
   }
 
   queue_->copy_from_device(num_active_pixels);
@@ -1113,6 +1116,7 @@ void PathTraceWorkGPU::cryptomatte_postproces()
 {
   for (int i = 0; i < work_set_.size(); i++){
   set_current_work_set(i);
+  if(effective_buffer_params_.height > 0) {
   const int work_size = effective_buffer_params_.width * effective_buffer_params_.height;
 
   DeviceKernelArguments args(&buffers_->buffer.device_pointer,
@@ -1121,6 +1125,7 @@ void PathTraceWorkGPU::cryptomatte_postproces()
                              &effective_buffer_params_.stride);
 
   queue_->enqueue(DEVICE_KERNEL_CRYPTOMATTE_POSTPROCESS, work_size, args);
+  }
   }
 }
 

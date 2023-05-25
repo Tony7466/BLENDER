@@ -230,6 +230,7 @@ int PathTraceWorkCPU::adaptive_sampling_converge_filter_count_active(float thres
   uint num_active_pixels = 0;
   for (int i = 0; i < work_set_.size(); i++ ) {
   set_current_work_set(i);
+  if(effective_buffer_params_.height > 0) {
   const int full_x = effective_buffer_params_.full_x;
   const int full_y = effective_buffer_params_.full_y;
   const int width = effective_buffer_params_.width;
@@ -277,6 +278,7 @@ int PathTraceWorkCPU::adaptive_sampling_converge_filter_count_active(float thres
     });
   }
   }
+  }
   return num_active_pixels;
 }
 
@@ -284,6 +286,7 @@ void PathTraceWorkCPU::cryptomatte_postproces()
 {
   for (int i = 0; i < work_set_.size(); i++ ) {
   set_current_work_set(i);
+  if(effective_buffer_params_.height > 0) {
   const int width = effective_buffer_params_.width;
   const int height = effective_buffer_params_.height;
 
@@ -302,6 +305,7 @@ void PathTraceWorkCPU::cryptomatte_postproces()
       }
     });
   });
+  }
   }
 }
 
