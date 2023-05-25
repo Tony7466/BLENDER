@@ -483,7 +483,7 @@ void GPUCodegen::generate_library()
   GPUCodegenCreateInfo &info = *create_info;
 
   void *value;
-  std::vector<std::string> source_files;
+  blender::Vector<std::string> source_files;
 
   /* Iterate over libraries. We need to keep this struct intact in case it is required for the
    * optimization pass. The first pass just collects the keys from the GSET, given items in a GSET
@@ -493,7 +493,7 @@ void GPUCodegen::generate_library()
   GHashIterator *ihash = BLI_ghashIterator_new((GHash *)graph.used_libraries);
   while (!BLI_ghashIterator_done(ihash)) {
     value = BLI_ghashIterator_getKey(ihash);
-    source_files.push_back((const char *)value);
+    source_files.append((const char *)value);
     BLI_ghashIterator_step(ihash);
   }
   BLI_ghashIterator_free(ihash);
