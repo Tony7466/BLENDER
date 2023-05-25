@@ -1752,6 +1752,20 @@ static char *rna_def_property_lookup_string_func(FILE *f,
 
   func = rna_alloc_function_name(srna->identifier, rna_safe_id(prop->identifier), "lookup_string");
 
+  if (!manualfunc) {
+    /* XXX extern declaration could be avoid by including RNA_blender.h, but this has lots of
+     * unknown DNA types in functions, leading to conflicting function signatures.
+     */
+    fprintf(f,
+            "RNA_EXTERN_C int %s_%s_length(PointerRNA *);\n",
+            item_name_base->identifier,
+            rna_safe_id(item_name_prop->identifier));
+    fprintf(f,
+            "RNA_EXTERN_C void %s_%s_get(PointerRNA *, char *);\n\n",
+            item_name_base->identifier,
+            rna_safe_id(item_name_prop->identifier));
+  }
+
   fprintf(f, "int %s(PointerRNA *ptr, const char *key, PointerRNA *r_ptr)\n", func);
   fprintf(f, "{\n");
 
@@ -1760,18 +1774,6 @@ static char *rna_def_property_lookup_string_func(FILE *f,
     fprintf(f, "}\n\n");
     return func;
   }
-
-  /* XXX extern declaration could be avoid by including RNA_blender.h, but this has lots of unknown
-   * DNA types in functions, leading to conflicting function signatures.
-   */
-  fprintf(f,
-          "    extern int %s_%s_length(PointerRNA *);\n",
-          item_name_base->identifier,
-          rna_safe_id(item_name_prop->identifier));
-  fprintf(f,
-          "    extern void %s_%s_get(PointerRNA *, char *);\n\n",
-          item_name_base->identifier,
-          rna_safe_id(item_name_prop->identifier));
 
   fprintf(f, "    bool found = false;\n");
   fprintf(f, "    CollectionPropertyIterator iter;\n");
@@ -4626,6 +4628,11 @@ static void rna_generate(BlenderRNA *brna, FILE *f, const char *filename, const 
     fprintf(f, "#include \"%s\"\n", api_filename);
   }
   fprintf(f, "\n");
+  fprintf(f, "#ifdef __cplusplus\n");
+  fprintf(f, "#  define RNA_EXTERN_C extern \"C\"\n");
+  fprintf(f, "#else\n");
+  fprintf(f, "#  define RNA_EXTERN_C\n");
+  fprintf(f, "#endif\n");
 
   /* we want the included C files to have warnings enabled but for the generated code
    * ignore unused-parameter warnings which are hard to prevent */
