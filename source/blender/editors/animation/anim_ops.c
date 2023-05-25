@@ -396,7 +396,7 @@ static void ANIM_OT_change_frame(wmOperatorType *ot)
 /** \} */
 
 /* Set the new frame number */
-static void change_onion_skin_range_apply(bContext *C, wmOperator *op, const bool always_update)
+static void change_onion_skin_range_apply(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   const int left = RNA_int_get(op->ptr, "left");
@@ -405,10 +405,20 @@ static void change_onion_skin_range_apply(bContext *C, wmOperator *op, const boo
   scene->onion_skin_cache.relative_left = left;
   scene->onion_skin_cache.relative_right = right;
 
-  /* do updates */
-  if (always_update) {
-    DEG_id_tag_update(&scene->id, ID_RECALC_FRAME_CHANGE);
-    WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
+  DEG_id_tag_update(&scene->id, ID_RECALC_FRAME_CHANGE);
+  WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
+}
+
+static void onion_skin_range_foo(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  Scene *scene = CTX_data_scene(C);
+  const int clicked_frame = roundf(frame_from_event(C, event));
+  const int current_scene_frame = BKE_scene_ctime_get(scene);
+  if (clicked_frame > current_scene_frame) {
+    RNA_int_set(op->ptr, "right", clicked_frame - current_scene_frame);
+  }
+  else if (clicked_frame < current_scene_frame) {
+    RNA_int_set(op->ptr, "left", current_scene_frame - clicked_frame);
   }
 }
 
@@ -439,19 +449,8 @@ static int change_onion_skin_range_modal(bContext *C, wmOperator *op, const wmEv
       break;
 
     case MOUSEMOVE:
-      Scene *scene = CTX_data_scene(C);
-      const int clicked_frame = roundf(frame_from_event(C, event));
-      const int current_scene_frame = BKE_scene_ctime_get(scene);
-      if (clicked_frame > current_scene_frame) {
-        RNA_int_set(op->ptr, "right", clicked_frame);
-      }
-      else if (clicked_frame < current_scene_frame) {
-        RNA_int_set(op->ptr, "left", clicked_frame);
-      }
-      else {
-        return OPERATOR_CANCELLED;
-      }
-      change_onion_skin_range_apply(C, op, false);
+      onion_skin_range_foo(C, op, event);
+      change_onion_skin_range_apply(C, op);
       break;
 
     case LEFTMOUSE:
@@ -468,10 +467,6 @@ static int change_onion_skin_range_modal(bContext *C, wmOperator *op, const wmEv
     bScreen *screen = CTX_wm_screen(C);
     screen->scrubbing = false;
 
-    SpaceSeq *sseq = CTX_wm_space_seq(C);
-    if (sseq != NULL) {
-      change_frame_seq_preview_end(sseq);
-    }
     if (need_extra_redraw_after_scrubbing_ends(C)) {
       Scene *scene = CTX_data_scene(C);
       WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
@@ -494,21 +489,11 @@ static int change_onion_skin_range_invoke(bContext *C, wmOperator *op, const wmE
   RNA_int_set(op->ptr, "right", scene->onion_skin_cache.relative_right);
   RNA_int_set(op->ptr, "left", scene->onion_skin_cache.relative_left);
 
-  const int clicked_frame = roundf(frame_from_event(C, event));
-  const int current_scene_frame = BKE_scene_ctime_get(scene);
-  if (clicked_frame > current_scene_frame) {
-    RNA_int_set(op->ptr, "right", clicked_frame);
-  }
-  else if (clicked_frame < current_scene_frame) {
-    RNA_int_set(op->ptr, "left", clicked_frame);
-  }
-  else {
-    return OPERATOR_CANCELLED;
-  }
+  onion_skin_range_foo(C, op, event);
 
   screen->scrubbing = true;
 
-  change_onion_skin_range_apply(C, op, true);
+  change_onion_skin_range_apply(C, op);
 
   /* add temp handler */
   WM_event_add_modal_handler(C, op);
@@ -518,7 +503,7 @@ static int change_onion_skin_range_invoke(bContext *C, wmOperator *op, const wmE
 
 static int change_onion_skin_range_exec(bContext *C, wmOperator *op)
 {
-  change_onion_skin_range_apply(C, op, true);
+  change_onion_skin_range_apply(C, op);
   return OPERATOR_FINISHED;
 }
 

@@ -155,7 +155,7 @@ static void draw_current_frame(const Scene *scene,
   }
   if (scene->onion_skin_cache.relative_right != 0) {
     const int frame_relative_right = UI_view2d_view_to_region_x(
-        v2d, current_frame - scene->onion_skin_cache.relative_right);
+        v2d, current_frame + scene->onion_skin_cache.relative_right);
     UI_draw_roundbox_4fv_ex(
         &(const rctf){
             .xmin = frame_relative_right - box_width / 4 + U.pixelsize / 2,
