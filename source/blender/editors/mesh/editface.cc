@@ -470,12 +470,6 @@ void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const boo
     return;
   }
 
-  /* Need to use the evaluated mesh for projection to region space. */
-  Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob);
-  if (mesh_eval == nullptr || mesh_eval->totpoly == 0) {
-    return;
-  }
-
   uint poly_pick_index = uint(-1);
   if (!ED_mesh_pick_face(C, ob_eval, mval, ED_MESH_PICK_DEFAULT_FACE_DIST, &poly_pick_index)) {
     return;
