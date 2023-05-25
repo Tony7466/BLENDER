@@ -40,7 +40,7 @@ set(DEFSRC
   rna_gpencil_legacy_modifier.c
   rna_image.c
   rna_key.c
-  rna_lattice.c
+  rna_lattice.cc
   rna_layer.c
   rna_light.c
   rna_lightprobe.c
@@ -103,7 +103,7 @@ set(APISRC
   rna_curve_api.c
   rna_fcurve_api.c
   rna_image_api.c
-  rna_lattice_api.c
+  rna_lattice_api.cc
   rna_main_api.c
   rna_material_api.c
   rna_mesh_api.c
