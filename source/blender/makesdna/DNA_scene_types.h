@@ -1861,6 +1861,8 @@ typedef struct OnionSkinMeshLink {
   struct OnionSkinMeshLink *prev, *next;
   /* Having a Mesh pointer here breaks compilation. Complains about "extern C" issues. */
   struct Object *object;
+  float frame;
+  char _pad[4];
 } OnionSkinMeshLink;
 
 typedef struct SceneOnionSkin {

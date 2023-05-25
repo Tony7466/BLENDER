@@ -4,6 +4,7 @@
 #include "BKE_main.h"
 #include "BKE_mesh.h"
 #include "BKE_object.h"
+#include "BKE_scene.h"
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
 #include "DNA_scene_types.h"
@@ -60,6 +61,7 @@ static int onion_skin_add_exec(bContext *C, wmOperator *op)
   OnionSkinMeshLink *link = MEM_callocN(sizeof(OnionSkinMeshLink), "onion skin mesh link");
   link->object = ob_new;
   ob_new->adt = NULL;
+  link->frame = BKE_scene_ctime_get(scene);
   BLI_addtail(&scene->onion_skin_cache.objects, link);
 
   ED_outliner_select_sync_from_object_tag(C);
