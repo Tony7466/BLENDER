@@ -569,7 +569,7 @@ class _draw_tool_settings_context_mode:
             row.prop(brush.curves_sculpt_settings, "density_add_attempts", text="Count Max")
             layout.popover("VIEW3D_PT_tools_brush_falloff")
             layout.popover("VIEW3D_PT_curves_sculpt_add_shape", text="Curve Shape")
-        elif curves_tool == "SLIDE":
+        elif curves_tool == 'SLIDE':
             layout.popover("VIEW3D_PT_tools_brush_falloff")
 
         return True
@@ -1038,10 +1038,22 @@ class VIEW3D_MT_transform_base:
     # TODO: get rid of the custom text strings?
     def draw(self, context):
         layout = self.layout
+        allow_navigation = getattr(
+            context.window_manager.keyconfigs.active.preferences,
+            "use_transform_navigation",
+            False)
 
-        layout.operator("transform.translate")
-        layout.operator("transform.rotate")
-        layout.operator("transform.resize", text="Scale")
+        props = layout.operator("transform.translate")
+        props.release_confirm = False
+        props.allow_navigation = allow_navigation
+
+        props = layout.operator("transform.rotate")
+        props.release_confirm = False
+        props.allow_navigation = allow_navigation
+
+        props = layout.operator("transform.resize", text="Scale")
+        props.release_confirm = False
+        props.allow_navigation = allow_navigation
 
         layout.separator()
 
@@ -3034,6 +3046,10 @@ class VIEW3D_MT_make_links(Menu):
         layout.operator("object.data_transfer")
         layout.operator("object.datalayout_transfer")
 
+        layout.separator()
+        layout.operator_menu_enum("object.light_linking_receivers_link", "link_state")
+        layout.operator_menu_enum("object.light_linking_blockers_link", "link_state")
+
 
 class VIEW3D_MT_brush_paint_modes(Menu):
     bl_label = "Enabled Modes"
@@ -3413,7 +3429,7 @@ class VIEW3D_MT_mask(Menu):
         layout.separator()
 
         props = layout.operator("sculpt.mask_from_cavity", text="Mask From Cavity")
-        props.settings_source = "OPERATOR"
+        props.settings_source = 'OPERATOR'
 
         layout.separator()
 
@@ -7899,7 +7915,7 @@ class VIEW3D_PT_sculpt_automasking(Panel):
 
         if is_cavity_active:
             props = row.operator("sculpt.mask_from_cavity", text="Create Mask")
-            props.settings_source = "SCENE"
+            props.settings_source = 'SCENE'
 
         col.prop(sculpt, "use_automasking_cavity_inverted", text="Cavity (inverted)")
 
