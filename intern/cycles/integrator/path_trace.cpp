@@ -264,7 +264,6 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
     /* Disallow negative values to deal with situations when there are more compute devices than
      * scan-lines. */
     const int remaining_window_height = max(0, window_height - current_y);
-
     BufferParams slice_params = buffer_params;
 
     slice_params.full_y = max(slice_window_full_y - overscan, buffer_params.full_y);
@@ -274,10 +273,8 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
        should be added */
     if (work_item < num_works * device_scale_factor - 1) {
       slice_params.window_height = min(slice_window_height, remaining_window_height);
-      VLOG_INFO << "Normal item gets height:" << slice_params.window_height;
     }
     else {
-      VLOG_INFO << "Last work item gets height:" << remaining_window_height;
       slice_params.window_height = remaining_window_height;
     }
 
@@ -312,7 +309,6 @@ void PathTrace::update_allocated_work_buffer_params()
                                  sizes[work] += params.height;
 				 strides[work] = params.pass_stride;
 				 widths[work] = params.width;
-				 // VLOG_INFO << "Work " << work << " slice " << slice << " height:" << params.height << " stride:" << params.pass_stride << " widths:" << params.width;
                                });
   for(int i = 0;i < num_works;i++) {
     path_trace_works_[i]->reset_master_buffer(widths[i]*strides[i], sizes[i]);
@@ -400,10 +396,10 @@ void PathTrace::init_render_buffers(const RenderWork &render_work)
 
   /* Handle initialization scheduled by the render scheduler. */
   if (render_work.init_render_buffers) {
-    // Buffer is already initialized on creation
-    parallel_for_each(path_trace_works_, [&](unique_ptr<PathTraceWork> &path_trace_work) {
-       path_trace_work->zero_render_buffers();
-    });
+    /* Buffer is already initialized to zero on creation to allocate the device memory */
+    /*   parallel_for_each(path_trace_works_, [&](unique_ptr<PathTraceWork> &path_trace_work) {
+         path_trace_work->zero_render_buffers();
+	 }); */
 
     tile_buffer_read();
   }

@@ -365,7 +365,7 @@ template<typename T> class device_vector : public device_memory {
     data_elements = device_type_traits<T>::num_elements;
     modified = true;
     need_realloc_ = true;
-
+    pinned = false;
     assert(data_elements > 0);
   }
 

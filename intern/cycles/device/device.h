@@ -382,10 +382,6 @@ class GPUDevice : public Device {
 
   virtual void free_device(void *device_pointer) = 0;
 
-  //virtual bool alloc_host(void *&shared_pointer, size_t size, bool pinned = false) = 0;
-
-  //virtual void free_host(void *shared_pointer) = 0;
-
   /* This function should return device pointer corresponding to shared pointer, which
    * is host buffer, allocated in `alloc_host`. The function should `true`, if such
    * address transformation is possible and `false` otherwise. */
