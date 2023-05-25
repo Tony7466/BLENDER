@@ -15,6 +15,7 @@
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
 #include "BLI_math_base.h"
+#include "BLI_string_cursor_utf8.h"
 
 #include "BLT_translation.h"
 
@@ -922,7 +923,8 @@ static int text_paste_exec(bContext *C, wmOperator *op)
   char *buf;
   int buf_len;
 
-  buf = WM_clipboard_text_get(selection, &buf_len);
+  /* No need for UTF8 validation as the conversion handles invalid sequences gracefully. */
+  buf = WM_clipboard_text_get(selection, false, &buf_len);
 
   if (!buf) {
     return OPERATOR_CANCELLED;
@@ -1577,11 +1579,9 @@ void TEXT_OT_select_line(wmOperatorType *ot)
 static int text_select_word_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Text *text = CTX_data_edit_text(C);
-  /* don't advance cursor before stepping */
-  const bool use_init_step = false;
 
-  txt_jump_left(text, false, use_init_step);
-  txt_jump_right(text, true, use_init_step);
+  BLI_str_cursor_step_bounds_utf8(
+      text->curl->line, text->curl->len, text->selc, &text->curc, &text->selc);
 
   text_update_cursor_moved(C);
   text_select_update_primary_clipboard(text);
