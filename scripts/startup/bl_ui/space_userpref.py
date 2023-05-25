@@ -610,12 +610,6 @@ class USERPREF_PT_system_cycles_devices(SystemPanel, CenterAlignMixIn, Panel):
 class USERPREF_PT_system_gpu_backend(SystemPanel, CenterAlignMixIn, Panel):
     bl_label = "GPU Backend"
 
-    @classmethod
-    def poll(cls, _context):
-        # Only for Apple so far
-        import sys
-        return sys.platform == "darwin"
-
     def draw_centered(self, context, layout):
         import gpu
         prefs = context.preferences
