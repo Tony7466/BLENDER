@@ -5198,7 +5198,7 @@ static void rna_def_modifier_weightvgedit(BlenderRNA *brna)
   RNA_def_property_ui_range(prop, 0.0, 1.0, 1, -1);
   RNA_def_property_ui_text(prop,
                            "Add Threshold",
-                           "Lower bound for a vertex's weight "
+                           "Lower (inclusive) bound for a vertex's weight "
                            "to be added to the vgroup");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
@@ -5208,7 +5208,7 @@ static void rna_def_modifier_weightvgedit(BlenderRNA *brna)
   RNA_def_property_ui_range(prop, 0.0, 1.0, 1, -1);
   RNA_def_property_ui_text(prop,
                            "Remove Threshold",
-                           "Upper bound for a vertex's weight "
+                           "Upper (inclusive) bound for a vertex's weight "
                            "to be removed from the vgroup");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
