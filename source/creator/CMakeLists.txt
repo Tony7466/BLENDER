@@ -1573,6 +1573,7 @@ if((DEFINED LIBDIR) AND TARGETDIR_LIB)
         DESTINATION ${TARGETDIR_LIB}
       )
       install(DIRECTORY
+        ${LIBDIR}/usd/plugin/usd/hdStorm
         ${LIBDIR}/usd/plugin/usd/usdShaders
         ${LIBDIR}/usd/plugin/usd/hioOiio
         DESTINATION "./blender.shared/usd"
@@ -1583,6 +1584,7 @@ if((DEFINED LIBDIR) AND TARGETDIR_LIB)
         DESTINATION ${TARGETDIR_LIB}
       )
       install(DIRECTORY
+        ${LIBDIR}/usd/plugin/usd/hdStorm
         ${LIBDIR}/usd/plugin/usd/usdShaders
         DESTINATION ${TARGETDIR_LIB}/usd
       )
@@ -1592,6 +1594,7 @@ if((DEFINED LIBDIR) AND TARGETDIR_LIB)
         DESTINATION "${TARGETDIR_VER}/datafiles"
       )
       install(DIRECTORY
+        ${LIBDIR}/usd/plugin/usd/hdStorm
         ${LIBDIR}/usd/plugin/usd/usdShaders
         DESTINATION "${TARGETDIR_VER}/datafiles/usd"
       )
