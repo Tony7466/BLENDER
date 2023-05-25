@@ -2127,7 +2127,7 @@ static void rna_def_property_funcs_header(FILE *f, StructRNA *srna, PropertyDefR
         fprintf(f, "bool %sget(PointerRNA *ptr);\n", func);
         fprintf(f, "void %sset(PointerRNA *ptr, bool value);\n", func);
       }
-      else if (prop->arraydimension && prop->totarraylength) {
+      else if ((prop->flag & PROP_DYNAMIC) == 0 && prop->arraydimension && prop->totarraylength) {
         fprintf(f, "void %sget(PointerRNA *ptr, bool values[%u]);\n", func, prop->totarraylength);
         fprintf(f,
                 "void %sset(PointerRNA *ptr, const bool values[%u]);\n",
@@ -2145,7 +2145,7 @@ static void rna_def_property_funcs_header(FILE *f, StructRNA *srna, PropertyDefR
         fprintf(f, "int %sget(PointerRNA *ptr);\n", func);
         fprintf(f, "void %sset(PointerRNA *ptr, int value);\n", func);
       }
-      else if (prop->arraydimension && prop->totarraylength) {
+      else if ((prop->flag & PROP_DYNAMIC) == 0 && prop->arraydimension && prop->totarraylength) {
         fprintf(f, "void %sget(PointerRNA *ptr, int values[%u]);\n", func, prop->totarraylength);
         fprintf(
             f, "void %sset(PointerRNA *ptr, const int values[%u]);\n", func, prop->totarraylength);
@@ -2161,7 +2161,7 @@ static void rna_def_property_funcs_header(FILE *f, StructRNA *srna, PropertyDefR
         fprintf(f, "float %sget(PointerRNA *ptr);\n", func);
         fprintf(f, "void %sset(PointerRNA *ptr, float value);\n", func);
       }
-      else if (prop->arraydimension && prop->totarraylength) {
+      else if ((prop->flag & PROP_DYNAMIC) == 0 && prop->arraydimension && prop->totarraylength) {
         fprintf(f, "void %sget(PointerRNA *ptr, float values[%u]);\n", func, prop->totarraylength);
         fprintf(f,
                 "void %sset(PointerRNA *ptr, const float values[%u]);\n",
