@@ -146,14 +146,14 @@ static void grease_pencil_blend_write(BlendWriter *writer, ID *id, const void *i
 {
   GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(id);
 
+  /* Write LibData */
+  BLO_write_id_struct(writer, GreasePencil, id_address, &grease_pencil->id);
+  BKE_id_blend_write(writer, &grease_pencil->id);
+
   /* Write animation data. */
   if (grease_pencil->adt) {
     BKE_animdata_blend_write(writer, grease_pencil->adt);
   }
-
-  /* Write LibData */
-  BLO_write_id_struct(writer, GreasePencil, id_address, &grease_pencil->id);
-  BKE_id_blend_write(writer, &grease_pencil->id);
 
   /* Write drawings. */
   grease_pencil->write_drawing_array(writer);
