@@ -17,7 +17,7 @@ namespace blender::bke::greasepencil::tests {
 /* Grease Pencil ID Tests. */
 
 /* Note: Using a struct with constructor and destructor instead of a fixture here, to have all the
- * tests in the same group. */
+ * tests in the same group (`greasepencil`). */
 struct GreasePencilIDTestContext {
   Main *bmain = nullptr;
 
@@ -40,38 +40,6 @@ TEST(greasepencil, create_grease_pencil_id)
   EXPECT_EQ(grease_pencil.drawings().size(), 0);
   EXPECT_EQ(grease_pencil.root_group.wrap().num_nodes_total(), 0);
 }
-
-// TEST(greasepencil, set_active_layer_index)
-// {
-//   GreasePencilIDTestContext ctx;
-
-//   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(BKE_id_new(ctx.bmain, ID_GP,
-//   "GP")); grease_pencil.add_empty_drawings(3);
-
-//   const Layer &layer1 = grease_pencil.root_group.wrap().add_layer("Layer1");
-//   const Layer &layer2 = grease_pencil.root_group.wrap().add_layer("Layer2");
-
-//   grease_pencil.runtime->set_active_layer_index(0);
-//   EXPECT_TRUE(grease_pencil.runtime->has_active_layer());
-//   EXPECT_STREQ(layer1.name, grease_pencil.runtime->active_layer().name);
-
-//   grease_pencil.runtime->set_active_layer_index(1);
-//   EXPECT_TRUE(grease_pencil.runtime->has_active_layer());
-//   EXPECT_STREQ(layer2.name, grease_pencil.runtime->active_layer().name);
-
-//   /* Save to storage. */
-//   grease_pencil.free_layer_tree_storage();
-//   grease_pencil.save_layer_tree_to_storage();
-//   MEM_delete(grease_pencil.runtime);
-
-//   /* Load from storage. */
-//   grease_pencil.runtime = MEM_new<blender::bke::GreasePencilRuntime>(__func__);
-//   grease_pencil.load_layer_tree_from_storage();
-
-//   /* Check if the active layer is still the second one. */
-//   EXPECT_TRUE(grease_pencil.runtime->has_active_layer());
-//   EXPECT_STREQ(grease_pencil.runtime->active_layer().name, "Layer2");
-// }
 
 /* --------------------------------------------------------------------------------------------- */
 /* Drawing Array Tests. */

@@ -251,7 +251,7 @@ class LayerGroupRuntime {
 class LayerGroup : public ::GreasePencilLayerTreeGroup {
  public:
   LayerGroup();
-  explicit LayerGroup(const StringRefNull name);
+  explicit LayerGroup(StringRefNull name);
   LayerGroup(const LayerGroup &other);
   ~LayerGroup();
 
@@ -279,7 +279,8 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
   int64_t num_nodes_total() const;
 
   /**
-   * Removes a child from the group by index.
+   * Removes a child from the group by index. Does not free the memory.
+   * \note: Assumes the removed child is not the active layer.
    */
   void remove_child(int64_t index);
 
@@ -318,13 +319,6 @@ void legacy_gpencil_to_grease_pencil(Main &main, GreasePencil &grease_pencil, bG
 class GreasePencilRuntime {
  public:
   void *batch_cache = nullptr;
-
- public:
-  // bool has_active_layer() const;
-  // const greasepencil::Layer &active_layer() const;
-  // greasepencil::Layer &active_layer_for_write();
-  // void set_active_layer_index(int index);
-  // int active_layer_index() const;
 };
 
 }  // namespace blender::bke
