@@ -350,6 +350,11 @@ inline const blender::bke::greasepencil::LayerGroup &GreasePencilLayerTreeGroup:
   return *reinterpret_cast<const blender::bke::greasepencil::LayerGroup *>(this);
 }
 
+inline bool GreasePencil::has_active_layer() const
+{
+  return (this->active_layer != nullptr);
+}
+
 struct Main;
 struct Depsgraph;
 struct BoundBox;
