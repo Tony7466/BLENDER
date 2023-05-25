@@ -1619,7 +1619,7 @@ static int gpencil_primitive_modal(bContext *C, wmOperator *op, const wmEvent *e
   copy_v2fl_v2i(tgpi->mval, event->mval);
 
   if (tgpi->flag == IN_MOVE) {
-    int handled = 1;
+    bool is_mouse_event = true;
     switch (event->type) {
       case MOUSEMOVE: {
         gpencil_primitive_move(tgpi, false);
@@ -1641,11 +1641,11 @@ static int gpencil_primitive_modal(bContext *C, wmOperator *op, const wmEvent *e
         break;
       }
       default: {
-        handled = 0; /* Prevent overwriting `tgpi->mvalo`. */
+        is_mouse_event = false; /* Prevent overwriting `tgpi->mvalo`. */
         break;
       }
     }
-    if (handled) {
+    if (is_mouse_event) {
       copy_v2_v2(tgpi->mvalo, tgpi->mval);
     }
     return OPERATOR_RUNNING_MODAL;
