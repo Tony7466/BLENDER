@@ -248,7 +248,7 @@ static void grease_pencil_batches_ensure(GreasePencil &grease_pencil, int cfra)
       const int num_buffer_points = drawing.stroke_buffer().size();
       total_points_num += 1 + num_buffer_points + 1;
       total_triangles_num += num_buffer_points * 2;
-      verts_start_offsets[curves.curves_range().last()] = v_offset;
+      verts_start_offsets[curves.curves_range().size()] = v_offset;
       /* TODO: triangles for stroke buffer. */
       v_offset += 1 + num_buffer_points + 1;
     }
