@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_array_utils.hh"
+
 #include "BKE_attribute_math.hh"
 
 namespace blender::bke::attribute_math {
@@ -11,7 +13,7 @@ ColorGeometry4fMixer::ColorGeometry4fMixer(MutableSpan<ColorGeometry4f> buffer,
 }
 
 ColorGeometry4fMixer::ColorGeometry4fMixer(MutableSpan<ColorGeometry4f> buffer,
-                                           const IndexMask mask,
+                                           const IndexMask &mask,
                                            const ColorGeometry4f default_color)
     : buffer_(buffer), default_color_(default_color), total_weights_(buffer.size(), 0.0f)
 {
@@ -47,7 +49,7 @@ void ColorGeometry4fMixer::finalize()
   this->finalize(buffer_.index_range());
 }
 
-void ColorGeometry4fMixer::finalize(const IndexMask mask)
+void ColorGeometry4fMixer::finalize(const IndexMask &mask)
 {
   mask.foreach_index([&](const int64_t i) {
     const float weight = total_weights_[i];
@@ -72,7 +74,7 @@ ColorGeometry4bMixer::ColorGeometry4bMixer(MutableSpan<ColorGeometry4b> buffer,
 }
 
 ColorGeometry4bMixer::ColorGeometry4bMixer(MutableSpan<ColorGeometry4b> buffer,
-                                           const IndexMask mask,
+                                           const IndexMask &mask,
                                            const ColorGeometry4b default_color)
     : buffer_(buffer),
       default_color_(default_color),
@@ -109,7 +111,7 @@ void ColorGeometry4bMixer::finalize()
   this->finalize(buffer_.index_range());
 }
 
-void ColorGeometry4bMixer::finalize(const IndexMask mask)
+void ColorGeometry4bMixer::finalize(const IndexMask &mask)
 {
   mask.foreach_index([&](const int64_t i) {
     const float weight = total_weights_[i];
@@ -125,6 +127,22 @@ void ColorGeometry4bMixer::finalize(const IndexMask mask)
     else {
       output_color = default_color_;
     }
+  });
+}
+
+void gather(const GSpan src, const Span<int> map, GMutableSpan dst)
+{
+  attribute_math::convert_to_static_type(src.type(), [&](auto dummy) {
+    using T = decltype(dummy);
+    array_utils::gather(src.typed<T>(), map, dst.typed<T>());
+  });
+}
+
+void gather(const GVArray &src, const Span<int> map, GMutableSpan dst)
+{
+  attribute_math::convert_to_static_type(src.type(), [&](auto dummy) {
+    using T = decltype(dummy);
+    array_utils::gather(src.typed<T>(), map, dst.typed<T>());
   });
 }
 

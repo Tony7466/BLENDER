@@ -1246,13 +1246,13 @@ void BKE_paint_blend_read_data(BlendDataReader *reader, const Scene *scene, Pain
 void BKE_paint_blend_read_lib(BlendLibReader *reader, Scene *sce, Paint *p)
 {
   if (p) {
-    BLO_read_id_address(reader, sce->id.lib, &p->brush);
+    BLO_read_id_address(reader, &sce->id, &p->brush);
     for (int i = 0; i < p->tool_slots_len; i++) {
       if (p->tool_slots[i].brush != nullptr) {
-        BLO_read_id_address(reader, sce->id.lib, &p->tool_slots[i].brush);
+        BLO_read_id_address(reader, &sce->id, &p->tool_slots[i].brush);
       }
     }
-    BLO_read_id_address(reader, sce->id.lib, &p->palette);
+    BLO_read_id_address(reader, &sce->id, &p->palette);
     p->paint_cursor = nullptr;
 
     BKE_paint_runtime_init(sce->toolsettings, p);
@@ -1388,10 +1388,12 @@ void BKE_sculptsession_free_vwpaint_data(SculptSession *ss)
   else {
     return;
   }
-  MEM_SAFE_FREE(gmap->vert_to_loop);
-  MEM_SAFE_FREE(gmap->vert_map_mem);
-  MEM_SAFE_FREE(gmap->vert_to_poly);
-  MEM_SAFE_FREE(gmap->poly_map_mem);
+  gmap->vert_to_loop_offsets = {};
+  gmap->vert_to_loop_indices = {};
+  gmap->vert_to_loop = {};
+  gmap->vert_to_poly_offsets = {};
+  gmap->vert_to_poly_indices = {};
+  gmap->vert_to_poly = {};
 }
 
 /**
@@ -1442,15 +1444,6 @@ static void sculptsession_free_pbvh(Object *object)
     ss->pbvh = nullptr;
   }
 
-  MEM_SAFE_FREE(ss->pmap);
-  MEM_SAFE_FREE(ss->pmap_mem);
-
-  MEM_SAFE_FREE(ss->epmap);
-  MEM_SAFE_FREE(ss->epmap_mem);
-
-  MEM_SAFE_FREE(ss->vemap);
-  MEM_SAFE_FREE(ss->vemap_mem);
-
   MEM_SAFE_FREE(ss->preview_vert_list);
   ss->preview_vert_count = 0;
 
@@ -1495,15 +1488,6 @@ void BKE_sculptsession_free(Object *ob)
 
     sculptsession_free_pbvh(ob);
 
-    MEM_SAFE_FREE(ss->pmap);
-    MEM_SAFE_FREE(ss->pmap_mem);
-
-    MEM_SAFE_FREE(ss->epmap);
-    MEM_SAFE_FREE(ss->epmap_mem);
-
-    MEM_SAFE_FREE(ss->vemap);
-    MEM_SAFE_FREE(ss->vemap_mem);
-
     if (ss->bm_log) {
       BM_log_free(ss->bm_log);
     }
@@ -1536,7 +1520,7 @@ void BKE_sculptsession_free(Object *ob)
 
     MEM_SAFE_FREE(ss->last_paint_canvas_key);
 
-    MEM_freeN(ss);
+    MEM_delete(ss);
 
     ob->sculpt = nullptr;
   }
@@ -1660,7 +1644,7 @@ static void sculpt_update_persistent_base(Object *ob)
 }
 
 static void sculpt_update_object(
-    Depsgraph *depsgraph, Object *ob, Object *ob_eval, bool need_pmap, bool is_paint_tool)
+    Depsgraph *depsgraph, Object *ob, Object *ob_eval, bool /*need_pmap*/, bool is_paint_tool)
 {
   Scene *scene = DEG_get_input_scene(depsgraph);
   Sculpt *sd = scene->toolsettings->sculpt;
@@ -1766,13 +1750,16 @@ static void sculpt_update_object(
   sculpt_attribute_update_refs(ob);
   sculpt_update_persistent_base(ob);
 
-  if (need_pmap && ob->type == OB_MESH && !ss->pmap) {
-    BKE_mesh_vert_poly_map_create(
-        &ss->pmap, &ss->pmap_mem, me->polys(), me->corner_verts().data(), me->totvert);
+  if (ob->type == OB_MESH && ss->pmap.is_empty()) {
+    ss->pmap = blender::bke::mesh::build_vert_to_poly_map(me->polys(),
+                                                          me->corner_verts(),
+                                                          me->totvert,
+                                                          ss->vert_to_poly_offsets,
+                                                          ss->vert_to_poly_indices);
+  }
 
-    if (ss->pbvh) {
-      BKE_pbvh_pmap_set(ss->pbvh, ss->pmap);
-    }
+  if (ss->pbvh) {
+    BKE_pbvh_pmap_set(ss->pbvh, ss->pmap);
   }
 
   if (ss->deform_modifiers_active) {
