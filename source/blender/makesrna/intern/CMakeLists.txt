@@ -136,7 +136,7 @@ set_source_files_properties(${GENSRC} PROPERTIES GENERATED TRUE)
 # less strict flags for generated source
 set(GENSRC_CFLAGS)
 if(CMAKE_COMPILER_IS_GNUCC OR (CMAKE_C_COMPILER_ID MATCHES "Clang"))
-  set(GENSRC_CFLAGS "-Wno-missing-prototypes")
+  set(GENSRC_CFLAGS "-Wno-missing-prototypes -Wno-missing-declarations")
 endif()
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
   string(APPEND GENSRC_CFLAGS " -Wno-missing-variable-declarations")
