@@ -1,0 +1,1 @@
+Referenced by pull request #108249, Cleanup: Remove IndexRange::as_span() static array and cache
