@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 import bpy
-from bpy.types import Header, Menu, Panel
+from bpy.types import Header, Menu, Panel, Operator
 from bpy.app.translations import (
     contexts as i18n_contexts,
     pgettext_iface as iface_,
@@ -246,7 +246,15 @@ class TEXT_MT_text(Menu):
 
         if text:
             layout.separator()
-            layout.operator("text.reload")
+            row = layout.row()
+            row.operator("text.reload")
+            row.enabled = not text.is_in_memory
+
+            row = layout.row()
+            op = row.operator("text.jump_to_file_at_line", text="Edit Externally")
+            op.filepath = text.filepath
+            op.line = text.current_line_index + 1
+            row.enabled = (not text.is_in_memory and bpy.context.preferences.filepaths.text_editor_preset != "INTERNAL")
 
             layout.separator()
             layout.operator("text.save", icon='FILE_TICK')
@@ -433,6 +441,32 @@ class TEXT_MT_context_menu(Menu):
         layout.operator("text.autocomplete")
 
 
+class TEXT_OT_jump_to_file_at_line(Operator):
+    bl_idname = "text.jump_to_file_at_line"
+    bl_label = "Open Text File at line"
+    bl_description = "Edit text file in external text editor"
+
+    filepath: bpy.props.StringProperty(name="filepath")
+    line: bpy.props.IntProperty(name="line")
+
+    def execute(self, context):
+        preset = bpy.context.preferences.filepaths.text_editor_preset
+        arguments = []
+        import platform
+        if preset == 'VSCODE':
+            arguments = ["code.cmd" if platform.system() == 'Windows' else "code", "-g", f"{self.filepath}:{self.line}"]
+        if preset == 'CUSTOM':
+            arguments = [bpy.context.preferences.filepaths.text_editor, f"{self.filepath}"]
+        import subprocess
+        try:
+            process = subprocess.run(arguments)
+            if process.returncode != 0:
+                return {'CANCELLED'}
+            return {'FINISHED'}
+        except:
+            return {'CANCELLED'}
+
+
 classes = (
     TEXT_HT_header,
     TEXT_HT_footer,
@@ -456,3 +490,11 @@ if __name__ == "__main__":  # only for live edit.
     from bpy.utils import register_class
     for cls in classes:
         register_class(cls)
+
+
+def register_text_ot():
+    from bpy.utils import register_class
+    register_class(TEXT_OT_jump_to_file_at_line)
+
+
+register_text_ot()

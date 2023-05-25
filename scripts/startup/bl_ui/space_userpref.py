@@ -1411,6 +1411,9 @@ class USERPREF_PT_file_paths_applications(FilePathsPanel, Panel):
 
         col = layout.column()
         col.prop(paths, "image_editor", text="Image Editor")
+        col.prop(paths, "text_editor_preset", text="Text Editor")
+        if paths.text_editor_preset == 'CUSTOM':
+            col.prop(paths, "text_editor", text="Text Editor")
         col.prop(paths, "animation_player_preset", text="Animation Player")
         if paths.animation_player_preset == 'CUSTOM':
             col.prop(paths, "animation_player", text="Player")
