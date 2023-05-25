@@ -4194,7 +4194,7 @@ static void rna_generate_property(FILE *f, StructRNA *srna, const char *nest, Pr
               rna_function_string(iprop->getarray_ex),
               rna_function_string(iprop->setarray_ex),
               rna_function_string(iprop->range_ex));
-      rna_int_print(f, iprop->ui_scale_type);
+      fprintf(f, "%s", rna_ui_scale_type_string(iprop->ui_scale_type));
       fprintf(f, ", ");
       rna_int_print(f, iprop->softmin);
       fprintf(f, ", ");
@@ -4256,7 +4256,7 @@ static void rna_generate_property(FILE *f, StructRNA *srna, const char *nest, Pr
     case PROP_STRING: {
       StringPropertyRNA *sprop = (StringPropertyRNA *)prop;
       fprintf(f,
-              "\t%s, %s, %s, %s, %s, %s, %s, %d, %d, ",
+              "\t%s, %s, %s, %s, %s, %s, %s, (eStringPropertySearchFlag)%d, %d, ",
               rna_function_string(sprop->get),
               rna_function_string(sprop->length),
               rna_function_string(sprop->set),
@@ -4626,7 +4626,7 @@ static RNAProcessItem PROCESS_ITEMS[] = {
     {"rna_world.c", NULL, RNA_def_world},
     {"rna_movieclip.c", NULL, RNA_def_movieclip},
     {"rna_tracking.c", NULL, RNA_def_tracking},
-    {"rna_mask.c", NULL, RNA_def_mask},
+    {"rna_mask.cc", NULL, RNA_def_mask},
     {"rna_xr.c", NULL, RNA_def_xr},
     {NULL, NULL},
 };
