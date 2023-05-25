@@ -495,7 +495,7 @@ void IrradianceBake::surfel_raster_views_sync(const float3 &scene_min, const flo
     float3 extent_min = transform_point(invert(basis), scene_min);
     float3 extent_max = transform_point(invert(basis), scene_max);
     float4x4 winmat = projection::orthographic(
-        extent_min.x, extent_max.x, extent_min.y, extent_max.y, extent_min.z, extent_max.z);
+        extent_min.x, extent_max.x, extent_min.y, extent_max.y, -extent_min.z, -extent_max.z);
     float4x4 viewinv = from_rotation<float4x4>(to_quaternion<float>(basis));
     view.visibility_test(false);
     view.sync(invert(viewinv), winmat);
