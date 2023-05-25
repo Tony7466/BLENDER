@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. All rights reserved. */
+ * Copyright 2016 Blender Foundation */
 
 /** \file
  * \ingroup wm
@@ -218,7 +218,7 @@ struct wmGizmoGroupType *WM_gizmogrouptype_append_ptr(void (*wtfunc)(struct wmGi
 void WM_gizmogrouptype_iter(struct GHashIterator *ghi);
 
 /**
- * Append and insert into a gizmo typemap.
+ * Append and insert into a gizmo type-map.
  * This is most common for C gizmos which are enabled by default.
  */
 struct wmGizmoGroupTypeRef *WM_gizmogrouptype_append_and_link(

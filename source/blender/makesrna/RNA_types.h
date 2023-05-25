@@ -286,11 +286,11 @@ typedef enum PropertyFlag {
 
   /** This is an IDProperty, not a DNA one. */
   PROP_IDPROPERTY = (1 << 10),
-  /** For dynamic arrays, and retvals of type string. */
+  /** For dynamic arrays & return values of type string. */
   PROP_DYNAMIC = (1 << 17),
   /** For enum that shouldn't be contextual */
   PROP_ENUM_NO_CONTEXT = (1 << 24),
-  /** For enums not to be translated (e.g. viewlayers' names in nodes). */
+  /** For enums not to be translated (e.g. view-layers' names in nodes). */
   PROP_ENUM_NO_TRANSLATE = (1 << 29),
 
   /**
@@ -735,7 +735,7 @@ typedef enum StructFlag {
   STRUCT_NO_CONTEXT_WITHOUT_OWNER_ID = (1 << 11),
 } StructFlag;
 
-typedef int (*StructValidateFunc)(struct PointerRNA *ptr, void *data, int *have_function);
+typedef int (*StructValidateFunc)(struct PointerRNA *ptr, void *data, bool *have_function);
 typedef int (*StructCallbackFunc)(struct bContext *C,
                                   struct PointerRNA *ptr,
                                   struct FunctionRNA *func,
@@ -748,8 +748,8 @@ typedef struct StructRNA *(*StructRegisterFunc)(struct Main *bmain,
                                                 StructValidateFunc validate,
                                                 StructCallbackFunc call,
                                                 StructFreeFunc free);
-
-typedef void (*StructUnregisterFunc)(struct Main *bmain, struct StructRNA *type);
+/** Return true when `type` was successfully unregistered & freed. */
+typedef bool (*StructUnregisterFunc)(struct Main *bmain, struct StructRNA *type);
 typedef void **(*StructInstanceFunc)(PointerRNA *ptr);
 
 typedef struct StructRNA StructRNA;
@@ -773,6 +773,24 @@ typedef struct ExtensionRNA {
   StructCallbackFunc call;
   StructFreeFunc free;
 } ExtensionRNA;
+
+/* Primitive types. */
+
+typedef struct PrimitiveStringRNA {
+  const char *value;
+} PrimitiveStringRNA;
+
+typedef struct PrimitiveIntRNA {
+  int value;
+} PrimitiveIntRNA;
+
+typedef struct PrimitiveFloatRNA {
+  float value;
+} PrimitiveFloatRNA;
+
+typedef struct PrimitiveBooleanRNA {
+  bool value;
+} PrimitiveBooleanRNA;
 
 #ifdef __cplusplus
 }

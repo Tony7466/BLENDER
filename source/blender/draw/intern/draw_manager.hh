@@ -116,8 +116,7 @@ class Manager {
   ~Manager();
 
   /**
-   * Create a new resource handle for the given object. Can be called multiple time with the
-   * same object **successively** without duplicating the data.
+   * Create a new resource handle for the given object.
    */
   ResourceHandle resource_handle(const ObjectRef ref);
   /**
@@ -127,8 +126,8 @@ class Manager {
   ResourceHandle resource_handle(const float4x4 &model_matrix);
   /**
    * Get resource id for a loose matrix with bounds. The draw-calls for this resource handle will
-   * be culled bute there won't be any associated object info / bounds. Assumes correct handedness
-   * / winding.
+   * be culled but there won't be any associated object info / bounds.
+   * Assumes correct handedness / winding.
    */
   ResourceHandle resource_handle(const float4x4 &model_matrix,
                                  const float3 &bounds_center,

@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.5.0 Beta (b'5fd4d47206ff')\n"
+"Project-Id-Version: Blender 3.6.0 Beta (b'24ca886ac042')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-02-20 13:46:36\n"
+"POT-Creation-Date: 2023-05-22 16:40:40\n"
 "PO-Revision-Date: 2021-12-05 20:05+0100\n"
 "Language: nl\n"
 "MIME-Version: 1.0\n"
@@ -414,10 +414,6 @@ msgid "Filename"
 msgstr "Bestandsnaam"
 
 
-msgid "Grease Pencil"
-msgstr "Vetkrijt"
-
-
 msgid "Images"
 msgstr "Afbeeldingen"
 
@@ -682,16 +678,12 @@ msgid "Fill"
 msgstr "Vul"
 
 
-msgid "Smooth"
-msgstr "Glad"
-
-
-msgid "Twist"
-msgstr "Draai"
-
-
 msgid "Draw"
 msgstr "Potlood"
+
+
+msgid "Smooth"
+msgstr "Glad"
 
 
 msgid "Show Lines"
@@ -1387,6 +1379,10 @@ msgid "Fonts"
 msgstr "Lettertypen"
 
 
+msgid "Grease Pencil"
+msgstr "Vetkrijt"
+
+
 msgid "Particles Settings"
 msgstr "Deeltjes Instellingen"
 
@@ -1501,10 +1497,6 @@ msgstr "Tijd"
 
 msgid "Compression"
 msgstr "Compressie"
-
-
-msgid "Number"
-msgstr "Nummer"
 
 
 msgid "Maximum Resolution"
@@ -1921,10 +1913,6 @@ msgid "Box"
 msgstr "Doos"
 
 
-msgid "Bend"
-msgstr "Buig"
-
-
 msgid "Force Falloff"
 msgstr "Kracht Afvlakking"
 
@@ -1955,22 +1943,6 @@ msgstr "Voeg Kleur Toe"
 
 msgid "Subtract Color"
 msgstr "Trek Kleur Af"
-
-
-msgid "Smoother"
-msgstr "Gladder"
-
-
-msgid "Root"
-msgstr "Wortel"
-
-
-msgid "Sharp"
-msgstr "Scherp"
-
-
-msgid "Inverse Square"
-msgstr "Inverse Wortel"
 
 
 msgid "Cloth Simulation"
@@ -2031,10 +2003,6 @@ msgstr "Aangepast Icoon"
 
 msgid "Forward"
 msgstr "Vooruit"
-
-
-msgid "Second"
-msgstr "Seconde"
 
 
 msgid "Clip End"
@@ -2260,6 +2228,10 @@ msgid "Falloff Type"
 msgstr "Type Afvlakking"
 
 
+msgid "Inverse Square"
+msgstr "Inverse Wortel"
+
+
 msgid "Shadow Color"
 msgstr "Schaduwkleur"
 
@@ -2416,8 +2388,16 @@ msgid "Size 2"
 msgstr "Grootte 2"
 
 
+msgid "Number"
+msgstr "Nummer"
+
+
 msgid "Random Size"
 msgstr "Willekeurige Grootte"
+
+
+msgid "Twist"
+msgstr "Draai"
 
 
 msgid "Particle type"
@@ -2430,6 +2410,10 @@ msgstr "Geavanceerd"
 
 msgid "Rotations"
 msgstr "Rotaties"
+
+
+msgid "Mirror Object"
+msgstr "Spiegel Object"
 
 
 msgid "Speed of Sound"
@@ -2487,6 +2471,10 @@ msgstr "Spiegel X"
 
 msgid "Mirror Y"
 msgstr "Spiegel Y"
+
+
+msgid "Sharp"
+msgstr "Scherp"
 
 
 msgid "Workspace"
@@ -2711,6 +2699,10 @@ msgid "Calculate Holes"
 msgstr "Bereken Gaten"
 
 
+msgid "Active Point"
+msgstr "Actieve Punt"
+
+
 msgctxt "MovieClip"
 msgid "Clip"
 msgstr "Clip"
@@ -2878,6 +2870,10 @@ msgid "Split Normals"
 msgstr "Splits Normalen"
 
 
+msgid "Root"
+msgstr "Wortel"
+
+
 msgid "Size X"
 msgstr "Grote X"
 
@@ -2930,10 +2926,6 @@ msgid "Time Mode"
 msgstr "Tijdsmodus"
 
 
-msgid "Mirror Object"
-msgstr "Spiegel Object"
-
-
 msgid "Mirror Axis"
 msgstr "Spiegel As"
 
@@ -2948,6 +2940,11 @@ msgstr "Genereer"
 
 msgid "World"
 msgstr "Wereld"
+
+
+msgctxt "Operator"
+msgid "Bend"
+msgstr "Buig"
 
 
 msgid "Origin"
@@ -3772,6 +3769,10 @@ msgid "To Sphere"
 msgstr "Naar Bal"
 
 
+msgid "Bend"
+msgstr "Buig"
+
+
 msgid "Edge Slide"
 msgstr "Glij over Rand"
 
@@ -3958,6 +3959,10 @@ msgid "Execute File Window"
 msgstr "Voer Bestand Scherm Uit"
 
 
+msgid "Play"
+msgstr "Afspelen"
+
+
 msgctxt "Operator"
 msgid "Increment Number in Filename"
 msgstr "Verhoog Nummer in Bestandsnaam"
@@ -3980,11 +3985,6 @@ msgstr "Markeer Bestand"
 msgctxt "Operator"
 msgid "Next Folder"
 msgstr "Volgende Map"
-
-
-msgctxt "Operator"
-msgid "Parent File"
-msgstr "Ouder Bestand"
 
 
 msgctxt "Operator"
@@ -5959,11 +5959,6 @@ msgstr "Split Lijnen"
 
 
 msgctxt "Operator"
-msgid "Bend"
-msgstr "Buig"
-
-
-msgctxt "Operator"
 msgid "Create Orientation"
 msgstr "Maak Oriëntatie"
 
@@ -6052,10 +6047,6 @@ msgstr "Cylinder Projectie"
 msgctxt "Operator"
 msgid "Export UV Layout"
 msgstr "Exporteer UV Indeling"
-
-
-msgid "New Image"
-msgstr "Nieuwe Afbeelding"
 
 
 msgid "Selected Faces"
@@ -6210,10 +6201,6 @@ msgstr "Tijd Min"
 
 msgid "Search Path"
 msgstr "Zoek Pad"
-
-
-msgid "Play"
-msgstr "Afspelen"
 
 
 msgid "Export grease pencil to PDF"
@@ -6449,10 +6436,6 @@ msgstr "Palet Kleur"
 
 msgid "Custom Shape"
 msgstr "Aangepaste Vorm"
-
-
-msgid "Active Point"
-msgstr "Actieve Punt"
 
 
 msgctxt "MovieClip"
@@ -6751,6 +6734,10 @@ msgstr "Vertaal de Interface"
 
 msgid "Seconds"
 msgstr "Seconden"
+
+
+msgid "Temperature"
+msgstr "Temperatuur"
 
 
 msgid "Find/Replace"
@@ -7213,101 +7200,6 @@ msgid "Show Weights"
 msgstr "Toon Gewichten"
 
 
-msgctxt "Operator"
-msgid "Camera:"
-msgstr "Camera:"
-
-
-msgctxt "Operator"
-msgid "Collection:"
-msgstr "Collectie:"
-
-
-msgctxt "Operator"
-msgid "Curve:"
-msgstr "Kromme:"
-
-
-msgctxt "Operator"
-msgid "File:"
-msgstr "Bestand:"
-
-
-msgctxt "Operator"
-msgid "Font:"
-msgstr "Lettertype:"
-
-
-msgctxt "Operator"
-msgid "Image:"
-msgstr "Afbeelding:"
-
-
-msgctxt "Operator"
-msgid "Material:"
-msgstr "Materiaal:"
-
-
-msgctxt "Operator"
-msgid "Object:"
-msgstr "Object:"
-
-
-msgctxt "Operator"
-msgid "Preferences:"
-msgstr "Instellingen:"
-
-
-msgctxt "Operator"
-msgid "Render:"
-msgstr "Render:"
-
-
-msgctxt "Operator"
-msgid "Rigidbody:"
-msgstr "Star Lichaam:"
-
-
-msgctxt "Operator"
-msgid "Scene:"
-msgstr "Scene:"
-
-
-msgctxt "Operator"
-msgid "Sculpt:"
-msgstr "Beeldhouwen:"
-
-
-msgctxt "Operator"
-msgid "Sound:"
-msgstr "Geluid:"
-
-
-msgctxt "Operator"
-msgid "Surface:"
-msgstr "Oppervlak:"
-
-
-msgctxt "Operator"
-msgid "Text:"
-msgstr "Tekst:"
-
-
-msgctxt "Operator"
-msgid "Transform:"
-msgstr "Transformeer:"
-
-
-msgctxt "Operator"
-msgid "Workspace:"
-msgstr "Werkomgeving:"
-
-
-msgctxt "Operator"
-msgid "World:"
-msgstr "Wereld:"
-
-
 msgid "Search"
 msgstr "Zoeken"
 
@@ -7719,10 +7611,6 @@ msgid "Copy All Materials to Selected"
 msgstr "Kopieer Alle Materialen naar Geselecteerde"
 
 
-msgid "Old"
-msgstr "Oud"
-
-
 msgid "Date"
 msgstr "Datum"
 
@@ -7804,12 +7692,12 @@ msgid "Resume"
 msgstr "Hervat"
 
 
+msgid "Second"
+msgstr "Seconde"
+
+
 msgid "Auto-Step"
 msgstr "Auto-Stap"
-
-
-msgid "Temperature"
-msgstr "Temperatuur"
 
 
 msgid "Paths:"
@@ -8397,10 +8285,6 @@ msgstr "Bestand:"
 
 msgid "Author:"
 msgstr "Auteur:"
-
-
-msgid "author"
-msgstr "auteur"
 
 
 msgid "Version:"
@@ -9074,10 +8958,6 @@ msgid "Copy All to Selected"
 msgstr "Kopieer Alles naar Geselecteerd"
 
 
-msgid "Value:"
-msgstr "Waarde:"
-
-
 msgid "Value: %s"
 msgstr "Waarde: %s"
 
@@ -9407,10 +9287,6 @@ msgid "Active Keyframe"
 msgstr "Actieve Sleutelframe"
 
 
-msgid "into"
-msgstr "in"
-
-
 msgid "Today"
 msgstr "Vandaag"
 
@@ -9445,6 +9321,10 @@ msgstr "Video's"
 
 msgid "Movies"
 msgstr "Films"
+
+
+msgid "Value:"
+msgstr "Waarde:"
 
 
 msgid "Add Modifier"
@@ -9513,10 +9393,6 @@ msgstr "kan afbeelding niet opslaan tijdens renderen"
 
 msgid "Now"
 msgstr "Nu"
-
-
-msgid " (Vector)"
-msgstr " (Punt)"
 
 
 msgctxt "Action"
@@ -9609,6 +9485,10 @@ msgstr "Pad:"
 
 msgid "Speed:"
 msgstr "Snelheid:"
+
+
+msgid "Old"
+msgstr "Oud"
 
 
 msgid "Random Roughness"

@@ -126,7 +126,8 @@ static PyObject *pygpu_shader__tp_new(PyTypeObject *UNUSED(type), PyObject *args
                                         &params.geocode,
                                         &params.libcode,
                                         &params.defines,
-                                        &params.name)) {
+                                        &params.name))
+  {
     return NULL;
   }
 
@@ -219,7 +220,8 @@ static bool pygpu_shader_uniform_vector_impl(PyObject *args,
 
   *r_count = 1;
   if (!PyArg_ParseTuple(
-          args, "iOi|i:GPUShader.uniform_vector_*", r_location, &buffer, r_length, r_count)) {
+          args, "iOi|i:GPUShader.uniform_vector_*", r_location, &buffer, r_length, r_count))
+  {
     return false;
   }
 
@@ -286,8 +288,8 @@ static PyObject *pygpu_shader_uniform_vector_int(BPyGPUShader *self, PyObject *a
 
   Py_buffer pybuffer;
 
-  if (!pygpu_shader_uniform_vector_impl(
-          args, sizeof(int), &location, &length, &count, &pybuffer)) {
+  if (!pygpu_shader_uniform_vector_impl(args, sizeof(int), &location, &length, &count, &pybuffer))
+  {
     return NULL;
   }
 
@@ -528,7 +530,8 @@ static PyObject *pygpu_shader_uniform_sampler(BPyGPUShader *self, PyObject *args
   const char *name;
   BPyGPUTexture *py_texture;
   if (!PyArg_ParseTuple(
-          args, "sO!:GPUShader.uniform_sampler", &name, &BPyGPUTexture_Type, &py_texture)) {
+          args, "sO!:GPUShader.uniform_sampler", &name, &BPyGPUTexture_Type, &py_texture))
+  {
     return NULL;
   }
 
@@ -782,24 +785,6 @@ PyTypeObject BPyGPUShader_Type = {
 /** \name gpu.shader Module API
  * \{ */
 
-static int pyc_parse_buitinshader_w_backward_compatibility(PyObject *o, void *p)
-{
-  struct PyC_StringEnum *e = p;
-  const char *value = PyUnicode_AsUTF8(o);
-  if (value && ELEM(value[0], u'2', u'3')) {
-    /* Deprecated enums that start with "3D_" or "2D_". */
-    value += 3;
-    for (int i = 0; e->items[i].id; i++) {
-      if (STREQ(e->items[i].id, value)) {
-        e->value_found = e->items[i].value;
-        return 1;
-      }
-    }
-  }
-
-  return PyC_ParseStringEnum(o, p);
-}
-
 PyDoc_STRVAR(pygpu_shader_unbind_doc,
              ".. function:: unbind()\n"
              "\n"
@@ -848,10 +833,11 @@ static PyObject *pygpu_shader_from_builtin(PyObject *UNUSED(self), PyObject *arg
   if (!_PyArg_ParseTupleAndKeywordsFast(args,
                                         kwds,
                                         &_parser,
-                                        pyc_parse_buitinshader_w_backward_compatibility,
+                                        PyC_ParseStringEnum,
                                         &pygpu_bultinshader,
                                         PyC_ParseStringEnum,
-                                        &pygpu_config)) {
+                                        &pygpu_config))
+  {
     return NULL;
   }
 

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2017 Blender Foundation. All rights reserved. */
+ * Copyright 2017 Blender Foundation */
 
 /** \file
  * \ingroup draw
@@ -33,7 +33,13 @@
 
 BLI_INLINE eParticleRefineShaderType drw_curves_shader_type_get()
 {
-  if (GPU_compute_shader_support() && GPU_shader_storage_buffer_objects_support()) {
+  /* NOTE: Curve refine is faster using transform feedback via vertex processing pipeline with
+   * Metal and Apple Silicon GPUs. This is also because vertex work can more easily be executed in
+   * parallel with fragment work, whereas compute inserts an explicit dependency,
+   * due to switching of command encoder types. */
+  if (GPU_compute_shader_support() && GPU_shader_storage_buffer_objects_support() &&
+      (GPU_backend_get_type() != GPU_BACKEND_METAL))
+  {
     return PART_REFINE_SHADER_COMPUTE;
   }
   if (GPU_transform_feedback_support()) {
@@ -55,7 +61,6 @@ static int g_tf_target_width;
 static int g_tf_target_height;
 
 static GPUVertBuf *g_dummy_vbo = nullptr;
-static GPUTexture *g_dummy_texture = nullptr;
 static DRWPass *g_tf_pass; /* XXX can be a problem with multiple DRWManager in the future */
 
 using CurvesInfosBuf = blender::draw::UniformBuffer<CurvesInfos>;
@@ -115,8 +120,6 @@ void DRW_curves_init(DRWData *drw_data)
     GPU_vertbuf_attr_fill(g_dummy_vbo, dummy_id, vert);
     /* Create vbo immediately to bind to texture buffer. */
     GPU_vertbuf_use(g_dummy_vbo);
-
-    g_dummy_texture = GPU_texture_create_from_vertbuf("hair_dummy_attr", g_dummy_vbo);
   }
 }
 
@@ -312,12 +315,12 @@ DRWShadingGroup *DRW_shgroup_curves_create_sub(Object *object,
 
   DRWShadingGroup *shgrp = DRW_shgroup_create_sub(shgrp_parent);
 
-  /* Fix issue with certain driver not drawing anything if there is no texture bound to
+  /* Fix issue with certain driver not drawing anything if there is nothing bound to
    * "ac", "au", "u" or "c". */
-  DRW_shgroup_uniform_texture(shgrp, "u", g_dummy_texture);
-  DRW_shgroup_uniform_texture(shgrp, "au", g_dummy_texture);
-  DRW_shgroup_uniform_texture(shgrp, "c", g_dummy_texture);
-  DRW_shgroup_uniform_texture(shgrp, "ac", g_dummy_texture);
+  DRW_shgroup_buffer_texture(shgrp, "u", g_dummy_vbo);
+  DRW_shgroup_buffer_texture(shgrp, "au", g_dummy_vbo);
+  DRW_shgroup_buffer_texture(shgrp, "c", g_dummy_vbo);
+  DRW_shgroup_buffer_texture(shgrp, "ac", g_dummy_vbo);
 
   /* TODO: Generalize radius implementation for curves data type. */
   float hair_rad_shape = 0.0f;
@@ -329,7 +332,7 @@ DRWShadingGroup *DRW_shgroup_curves_create_sub(Object *object,
    * use for now because we can't use a per-point radius yet. */
   const blender::bke::CurvesGeometry &curves = curves_id.geometry.wrap();
   if (curves.curves_num() >= 1) {
-    blender::VArray<float> radii = curves.attributes().lookup_or_default(
+    blender::VArray<float> radii = *curves.attributes().lookup_or_default(
         "radius", ATTR_DOMAIN_POINT, 0.005f);
     const blender::IndexRange first_curve_points = curves.points_by_curve()[0];
     const float first_radius = radii[first_curve_points.first()];
@@ -409,7 +412,7 @@ void DRW_curves_update()
   /* Update legacy hair too, to avoid verbosity in callers. */
   DRW_hair_update();
 
-  if (!GPU_transform_feedback_support()) {
+  if (drw_curves_shader_type_get() == PART_REFINE_SHADER_TRANSFORM_FEEDBACK_WORKAROUND) {
     /**
      * Workaround to transform feedback not working on mac.
      * On some system it crashes (see #58489) and on some other it renders garbage (see #60171).
@@ -532,5 +535,4 @@ void DRW_curves_free()
   DRW_hair_free();
 
   GPU_VERTBUF_DISCARD_SAFE(g_dummy_vbo);
-  DRW_TEXTURE_FREE_SAFE(g_dummy_texture);
 }

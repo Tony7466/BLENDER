@@ -274,7 +274,7 @@ static BMOpDefine bmo_reverse_faces_def = {
  * Flip Quad Tessellation
  *
  * Flip the tessellation direction of the selected quads.
-*/
+ */
 static BMOpDefine bmo_flip_quad_tessellation_def = {
   "flip_quad_tessellation",
   /* slot_in */
@@ -426,7 +426,7 @@ static BMOpDefine bmo_pointmerge_facedata_def = {
 };
 
 /*
- * Average Vertices Facevert Data.
+ * Average Vertices Face-vert Data.
  *
  * Merge uv/vcols associated with the input vertices at
  * the bounding box center. (I know, it's not averaging but

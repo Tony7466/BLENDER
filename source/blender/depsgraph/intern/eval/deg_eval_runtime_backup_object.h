@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. All rights reserved. */
+ * Copyright 2019 Blender Foundation */
 
 /** \file
  * \ingroup depsgraph
@@ -39,6 +39,7 @@ class ObjectRuntimeBackup {
   void restore_pose_channel_runtime_data(Object *object);
 
   Object_Runtime runtime;
+  LightLinkingRuntime light_linking_runtime;
   short base_flag;
   unsigned short base_local_view_bits;
   Map<SessionUUID, ModifierDataBackup> modifier_runtime_data;

@@ -5,7 +5,6 @@
  */
 
 #include "BLI_array.hh"
-#include "BLI_index_mask_ops.hh"
 #include "BLI_inplace_priority_queue.hh"
 #include "BLI_span.hh"
 
@@ -60,7 +59,7 @@ static void calculate_curve_point_distances_for_proportional_editing(
 static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
 {
   MutableSpan<TransDataContainer> trans_data_contrainers(t->data_container, t->data_container_len);
-  Array<Vector<int64_t>> selected_indices_per_object(t->data_container_len);
+  IndexMaskMemory memory;
   Array<IndexMask> selection_per_object(t->data_container_len);
   const bool use_proportional_edit = (t->flag & T_PROP_EDIT_ALL) != 0;
   const bool use_connected_only = (t->flag & T_PROP_CONNECTED) != 0;
@@ -75,8 +74,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
       tc.data_len = curves.point_num;
     }
     else {
-      selection_per_object[i] = ed::curves::retrieve_selected_points(
-          curves, selected_indices_per_object[i]);
+      selection_per_object[i] = ed::curves::retrieve_selected_points(curves, memory);
       tc.data_len = selection_per_object[i].size();
     }
 
@@ -101,22 +99,19 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
     MutableSpan<float3> positions = curves.positions_for_write();
     if (use_proportional_edit) {
       const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-      const VArray<bool> selection = curves.attributes().lookup_or_default<bool>(
+      const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
           ".selection", ATTR_DOMAIN_POINT, true);
       threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange range) {
         Vector<float> closest_distances;
         for (const int curve_i : range) {
           const IndexRange points = points_by_curve[curve_i];
           const bool has_any_selected = ed::curves::has_anything_selected(selection, points);
-          if (!has_any_selected) {
+          if (!has_any_selected && use_connected_only) {
             for (const int point_i : points) {
               TransData &td = tc.data[point_i];
-              td.flag |= TD_NOTCONNECTED;
-              td.dist = FLT_MAX;
+              td.flag |= TD_SKIP;
             }
-            if (use_connected_only) {
-              continue;
-            }
+            continue;
           }
 
           closest_distances.reinitialize(points.size());

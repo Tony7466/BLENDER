@@ -29,11 +29,13 @@ extern "C" {
 
 struct AnimData;
 struct BoundBox;
+struct Collection;
 struct Curve;
 struct FluidsimSettings;
 struct GeometrySet;
 struct Ipo;
 struct LightgroupMembership;
+struct LightProbeGridCacheFrame;
 struct Material;
 struct Mesh;
 struct Object;
@@ -113,12 +115,7 @@ typedef struct Object_Runtime {
   /** Did last modifier stack generation need mapping support? */
   char last_need_mapping;
 
-  /** Opaque data reserved for management of objects in collection context.
-   *  E.g. used currently to check for potential duplicates of objects in a collection, after
-   * remapping process. */
-  char collection_management;
-
-  char _pad0[2];
+  char _pad0[3];
 
   /** Only used for drawing the parent/child help-line. */
   float parent_display_origin[3];
@@ -251,6 +248,61 @@ enum eObjectLineArt_Flags {
   OBJECT_LRT_OWN_INTERSECTION_PRIORITY = (1 << 1),
 };
 
+/* Evaluated light linking state needed for the render engines integration. */
+typedef struct LightLinkingRuntime {
+
+  /* For objects that emit light: a bitmask of light sets this emitter is part of for the light
+   * linking.
+   * A light set is a combination of emitters used by one or more receiver objects.
+   *
+   * If there is no light linking in the scene or if the emitter does not specify light linking all
+   * bits are set.
+   *
+   * NOTE: There can only be 64 light sets in a scene. */
+  uint64_t light_set_membership;
+
+  /* For objects that emit light: a bitmask of light sets this emitter is part of for the shadow
+   * linking.
+   * A light set is a combination of emitters from which a blocked object does not cast a shadow.
+   *
+   * If there is no shadow linking in the scene or if the emitter does not specify shadow linking
+   * all bits are set.
+   *
+   * NOTE: There can only be 64 light sets in a scene. */
+  uint64_t shadow_set_membership;
+
+  /* For receiver objects: the index of the light set from which this object receives light.
+   *
+   * If there is no light linking in the scene or the receiver is not linked to any light this is
+   * assigned zero. */
+  uint8_t receiver_light_set;
+
+  /* For blocker objects: the index of the light set from which this object casts shadow from.
+   *
+   *If there is no shadow shadow in the scene or the blocker is not linked to any emitter this is
+   *assigned zero. */
+  uint8_t blocker_shadow_set;
+
+  uint8_t _pad[6];
+} LightLinkingRuntime;
+
+typedef struct LightLinking {
+  /* Collections which contains objects (possibly via nested collection indirection) which defines
+   * the light linking relation: such as whether objects are included or excluded from being lit by
+   * this emitter (receiver_collection), oe whether they block light from this emitter
+   * (blocker_collection).
+   *
+   * If the collection is a null pointer then all objects from the current scene are receiving
+   * light from this emitter, and nothing is excluded from receiving the light and shadows.
+   *
+   * The emitter in this context is assumed to be either object of lamp type, or objects with
+   * surface which has emissive shader. */
+  struct Collection *receiver_collection;
+  struct Collection *blocker_collection;
+
+  LightLinkingRuntime runtime;
+} LightLinking;
+
 typedef struct Object {
   DNA_DEFINE_CXX_METHODS(Object)
 
@@ -262,10 +314,11 @@ typedef struct Object {
 
   struct SculptSession *sculpt;
 
-  short type, partype;
-  /** Can be vertexnrs. */
+  short type; /* #ObjectType */
+  short partype;
+  /** Can be vertex indices. */
   int par1, par2, par3;
-  /** String describing subobject info, MAX_ID_NAME-2. */
+  /** String describing sub-object info, `MAX_ID_NAME - 2`. */
   char parsubstr[64];
   struct Object *parent, *track;
   /* Proxy pointer are deprecated, only kept for conversion to liboverrides. */
@@ -453,6 +506,12 @@ typedef struct Object {
   /** Lightgroup membership information. */
   struct LightgroupMembership *lightgroup;
 
+  /** Light linking information. */
+  LightLinking *light_linking;
+
+  /** Irradiance caches baked for this object (light-probes only). */
+  struct LightProbeObjectCache *lightprobe_cache;
+
   /** Runtime evaluation data (keep last). */
   Object_Runtime runtime;
 } Object;
@@ -494,7 +553,7 @@ typedef struct ObHook {
 #define SELECT 1
 
 /** #Object.type */
-enum {
+typedef enum ObjectType {
   OB_EMPTY = 0,
   OB_MESH = 1,
   /** Curve object is still used but replaced by "Curves" for the future (see #95355). */
@@ -514,7 +573,7 @@ enum {
   OB_ARMATURE = 25,
 
   /** Grease Pencil object used in 3D view but not used for annotation in 2D. */
-  OB_GPENCIL = 26,
+  OB_GPENCIL_LEGACY = 26,
 
   OB_CURVES = 27,
 
@@ -524,23 +583,26 @@ enum {
 
   /* Keep last. */
   OB_TYPE_MAX,
-};
+} ObjectType;
 
 /* check if the object type supports materials */
 #define OB_TYPE_SUPPORT_MATERIAL(_type) \
-  (((_type) >= OB_MESH && (_type) <= OB_MBALL) || ((_type) >= OB_GPENCIL && (_type) <= OB_VOLUME))
-/** Does the object have some render-able geometry (unlike empties, cameras, etc.). */
+  (((_type) >= OB_MESH && (_type) <= OB_MBALL) || \
+   ((_type) >= OB_GPENCIL_LEGACY && (_type) <= OB_VOLUME))
+/** Does the object have some render-able geometry (unlike empties, cameras, etc.). True for
+ * #OB_CURVES_LEGACY, since these often evaluate to objects with geometry. */
 #define OB_TYPE_IS_GEOMETRY(_type) \
   (ELEM(_type, \
         OB_MESH, \
         OB_SURF, \
         OB_FONT, \
         OB_MBALL, \
-        OB_GPENCIL, \
+        OB_GPENCIL_LEGACY, \
+        OB_CURVES_LEGACY, \
         OB_CURVES, \
         OB_POINTCLOUD, \
         OB_VOLUME))
-#define OB_TYPE_SUPPORT_VGROUP(_type) (ELEM(_type, OB_MESH, OB_LATTICE, OB_GPENCIL))
+#define OB_TYPE_SUPPORT_VGROUP(_type) (ELEM(_type, OB_MESH, OB_LATTICE, OB_GPENCIL_LEGACY))
 #define OB_TYPE_SUPPORT_EDITMODE(_type) \
   (ELEM(_type, \
         OB_MESH, \
@@ -569,7 +631,7 @@ enum {
         ID_LP, \
         ID_CA, \
         ID_LT, \
-        ID_GD, \
+        ID_GD_LEGACY, \
         ID_AR, \
         ID_CV, \
         ID_PT, \
@@ -584,7 +646,7 @@ enum {
   case ID_LP: \
   case ID_CA: \
   case ID_LT: \
-  case ID_GD: \
+  case ID_GD_LEGACY: \
   case ID_AR: \
   case ID_CV: \
   case ID_PT: \
@@ -715,8 +777,8 @@ enum {
 
 #define OB_FROMDUPLI (1 << 9)
 #define OB_DONE (1 << 10) /* unknown state, clear before use */
+#define OB_FLAG_USE_SIMULATION_CACHE (1 << 11)
 #ifdef DNA_DEPRECATED_ALLOW
-#  define OB_FLAG_UNUSED_11 (1 << 11) /* cleared */
 #  define OB_FLAG_UNUSED_12 (1 << 12) /* cleared */
 #endif
 

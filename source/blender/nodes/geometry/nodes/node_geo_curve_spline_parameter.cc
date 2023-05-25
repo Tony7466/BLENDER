@@ -10,19 +10,14 @@ namespace blender::nodes::node_geo_curve_spline_parameter_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Float>(N_("Factor"))
-      .field_source()
-      .description(
-          N_("For points, the portion of the spline's total length at the control point. For "
-             "Splines, the factor of that spline within the entire curve"));
-  b.add_output<decl::Float>(N_("Length"))
-      .field_source()
-      .description(
-          N_("For points, the distance along the control point's spline, For splines, the "
-             "distance along the entire curve"));
-  b.add_output<decl::Int>(N_("Index"))
-      .field_source()
-      .description(N_("Each control point's index on its spline"));
+  b.add_output<decl::Float>("Factor").field_source().description(
+      "For points, the portion of the spline's total length at the control point. For "
+      "Splines, the factor of that spline within the entire curve");
+  b.add_output<decl::Float>("Length").field_source().description(
+      "For points, the distance along the control point's spline, For splines, the "
+      "distance along the entire curve");
+  b.add_output<decl::Int>("Index").field_source().description(
+      "Each control point's index on its spline");
 }
 
 /**
@@ -99,6 +94,8 @@ static Array<float> calculate_point_lengths(
       const Span<float> evaluated_lengths = curves.evaluated_lengths_for_curve(i_curve, is_cyclic);
       MutableSpan<float> lengths = result.as_mutable_span().slice(points);
       lengths.first() = 0.0f;
+      const float last_evaluated_length = evaluated_lengths.is_empty() ? 0.0f :
+                                                                         evaluated_lengths.last();
 
       float total;
       switch (types[i_curve]) {
@@ -107,19 +104,19 @@ static Array<float> calculate_point_lengths(
           for (const int i : IndexRange(points.size()).drop_back(1)) {
             lengths[i + 1] = evaluated_lengths[resolution * (i + 1) - 1];
           }
-          total = evaluated_lengths.last();
+          total = last_evaluated_length;
           break;
         }
         case CURVE_TYPE_POLY:
           lengths.drop_front(1).copy_from(evaluated_lengths.take_front(lengths.size() - 1));
-          total = evaluated_lengths.last();
+          total = last_evaluated_length;
           break;
         case CURVE_TYPE_BEZIER: {
           const Span<int> offsets = curves.bezier_evaluated_offsets_for_curve(i_curve);
           for (const int i : IndexRange(points.size()).drop_back(1)) {
             lengths[i + 1] = evaluated_lengths[offsets[i + 1] - 1];
           }
-          total = evaluated_lengths.last();
+          total = last_evaluated_length;
           break;
         }
         case CURVE_TYPE_NURBS: {
@@ -179,7 +176,7 @@ class CurveParameterFieldInput final : public bke::CurvesFieldInput {
 
   GVArray get_varray_for_context(const bke::CurvesGeometry &curves,
                                  const eAttrDomain domain,
-                                 const IndexMask /*mask*/) const final
+                                 const IndexMask & /*mask*/) const final
   {
     switch (domain) {
       case ATTR_DOMAIN_POINT:
@@ -213,7 +210,7 @@ class CurveLengthParameterFieldInput final : public bke::CurvesFieldInput {
 
   GVArray get_varray_for_context(const bke::CurvesGeometry &curves,
                                  const eAttrDomain domain,
-                                 const IndexMask /*mask*/) const final
+                                 const IndexMask & /*mask*/) const final
   {
     switch (domain) {
       case ATTR_DOMAIN_POINT:
@@ -247,7 +244,7 @@ class IndexOnSplineFieldInput final : public bke::CurvesFieldInput {
 
   GVArray get_varray_for_context(const bke::CurvesGeometry &curves,
                                  const eAttrDomain domain,
-                                 const IndexMask /*mask*/) const final
+                                 const IndexMask & /*mask*/) const final
   {
     if (domain != ATTR_DOMAIN_POINT) {
       return {};

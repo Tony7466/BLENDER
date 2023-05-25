@@ -269,7 +269,7 @@ typedef struct WORKBENCH_PrivateData {
   /** If the shadow has changed direction and ob bboxes needs to be updated. */
   bool shadow_changed;
 
-  /* Temporal Antialiasing */
+  /* Temporal Anti-aliasing. */
   /** Total number of samples to after which TAA stops accumulating samples. */
   int taa_sample_len;
   /** Total number of samples of the previous TAA. When changed TAA will be reset. */
@@ -499,7 +499,7 @@ DRWShadingGroup *workbench_image_setup_ex(WORKBENCH_PrivateData *wpd,
                                           int mat_nr,
                                           Image *ima,
                                           ImageUser *iuser,
-                                          eGPUSamplerState sampler,
+                                          GPUSamplerState sampler,
                                           eWORKBENCH_DataType datatype);
 
 #define WORKBENCH_OBJECT_DATATYPE(ob) \

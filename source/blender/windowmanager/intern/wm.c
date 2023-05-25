@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 Blender Foundation. All rights reserved. */
+ * Copyright 2007 Blender Foundation */
 
 /** \file
  * \ingroup wm
@@ -93,6 +93,9 @@ static void window_manager_foreach_id(ID *id, LibraryForeachIDData *data)
       }
     }
   }
+
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(
+      data, wm->xr.session_settings.base_pose_object, IDWALK_CB_USER_ONE);
 }
 
 static void write_wm_xr_data(BlendWriter *writer, wmXrData *xr_data)
@@ -179,6 +182,8 @@ static void window_manager_blend_read_data(BlendDataReader *reader, ID *id)
     win->event_queue_check_click = 0;
     win->event_queue_check_drag = 0;
     win->event_queue_check_drag_handled = 0;
+    win->event_queue_consecutive_gesture_type = 0;
+    win->event_queue_consecutive_gesture_data = NULL;
     BLO_read_data_address(reader, &win->stereo3d_format);
 
     /* Multi-view always fallback to anaglyph at file opening
@@ -219,7 +224,7 @@ static void window_manager_blend_read_data(BlendDataReader *reader, ID *id)
 
 static void lib_link_wm_xr_data(BlendLibReader *reader, ID *parent_id, wmXrData *xr_data)
 {
-  BLO_read_id_address(reader, parent_id->lib, &xr_data->session_settings.base_pose_object);
+  BLO_read_id_address(reader, parent_id, &xr_data->session_settings.base_pose_object);
 }
 
 static void lib_link_workspace_instance_hook(BlendLibReader *reader,
@@ -227,7 +232,7 @@ static void lib_link_workspace_instance_hook(BlendLibReader *reader,
                                              ID *id)
 {
   WorkSpace *workspace = BKE_workspace_active_get(hook);
-  BLO_read_id_address(reader, id->lib, &workspace);
+  BLO_read_id_address(reader, id, &workspace);
 
   BKE_workspace_active_set(hook, workspace);
 }
@@ -238,22 +243,22 @@ static void window_manager_blend_read_lib(BlendLibReader *reader, ID *id)
 
   LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
     if (win->workspace_hook) { /* NULL for old files */
-      lib_link_workspace_instance_hook(reader, win->workspace_hook, &wm->id);
+      lib_link_workspace_instance_hook(reader, win->workspace_hook, id);
     }
-    BLO_read_id_address(reader, wm->id.lib, &win->scene);
+    BLO_read_id_address(reader, id, &win->scene);
     /* deprecated, but needed for versioning (will be NULL'ed then) */
-    BLO_read_id_address(reader, NULL, &win->screen);
+    BLO_read_id_address(reader, id, &win->screen);
 
     /* The unpinned scene is a UI->Scene-data pointer, and should be NULL'ed on linking (like
      * WorkSpace.pin_scene). But the WindowManager ID (owning the window) is never linked. */
     BLI_assert(!ID_IS_LINKED(id));
-    BLO_read_id_address(reader, id->lib, &win->unpinned_scene);
+    BLO_read_id_address(reader, id, &win->unpinned_scene);
 
     LISTBASE_FOREACH (ScrArea *, area, &win->global_areas.areabase) {
-      BKE_screen_area_blend_read_lib(reader, &wm->id, area);
+      BKE_screen_area_blend_read_lib(reader, id, area);
     }
 
-    lib_link_wm_xr_data(reader, &wm->id, &wm->xr);
+    lib_link_wm_xr_data(reader, id, &wm->xr);
   }
 }
 

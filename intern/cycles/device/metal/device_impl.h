@@ -50,7 +50,7 @@ class MetalDevice : public Device {
   int max_threads_per_threadgroup;
 
   int mtlDevId = 0;
-  bool first_error = true;
+  bool has_error = false;
 
   struct MetalMem {
     device_memory *mem = nullptr;
@@ -100,7 +100,7 @@ class MetalDevice : public Device {
 
   virtual void cancel() override;
 
-  virtual BVHLayoutMask get_bvh_layout_mask() const override;
+  virtual BVHLayoutMask get_bvh_layout_mask(uint /*kernel_features*/) const override;
 
   void set_error(const string &error) override;
 
@@ -116,7 +116,9 @@ class MetalDevice : public Device {
 
   bool use_local_atomic_sort() const;
 
-  string preprocess_source(MetalPipelineType pso_type, const uint kernel_features, string* source = nullptr);
+  string preprocess_source(MetalPipelineType pso_type,
+                           const uint kernel_features,
+                           string *source = nullptr);
 
   bool make_source_and_check_if_compile_needed(MetalPipelineType pso_type);
 
