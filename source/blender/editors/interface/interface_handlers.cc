@@ -2248,10 +2248,17 @@ static void ui_apply_but(
         if (data->select_others.elems_len == 0)
     {
       wmWindow *win = CTX_wm_window(C);
-      /* may have been enabled before activating */
-      if (data->select_others.is_enabled || IS_ALLSELECT_EVENT(win->eventstate)) {
-        ui_selectcontext_begin(C, but, &data->select_others);
-        data->select_others.is_enabled = true;
+      wmEvent *event = win->eventstate;
+      /* May have been enabled before activating, dont do for array pasting. */
+      if (data->select_others.is_enabled || IS_ALLSELECT_EVENT(event)) {
+        const bool is_array_paste = (event->val == KM_PRESS) &&
+                                    (event->modifier & (KM_CTRL | KM_OSKEY)) &&
+                                    (event->modifier & KM_SHIFT) == 0 &&
+                                    (event->type == EVT_VKEY);
+        if (!is_array_paste) {
+          ui_selectcontext_begin(C, but, &data->select_others);
+          data->select_others.is_enabled = true;
+        }
       }
     }
     if (data->select_others.elems_len == 0) {
