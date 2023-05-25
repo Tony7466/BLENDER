@@ -60,7 +60,7 @@ set(DEFSRC
   rna_palette.c
   rna_particle.c
   rna_pointcloud.c
-  rna_pose.c
+  rna_pose.cc
   rna_render.c
   rna_rigidbody.c
   rna_rna.c
