@@ -16,7 +16,7 @@
 namespace blender::bke::sim {
 
 GeometrySimulationStateItem::GeometrySimulationStateItem(GeometrySet geometry)
-    : geometry_(std::move(geometry))
+    : geometry(std::move(geometry))
 {
 }
 
@@ -37,19 +37,24 @@ StringSimulationStateItem::StringSimulationStateItem(std::string value) : value_
 {
 }
 
-void ModifierSimulationCache::try_discover_bake(const StringRefNull meta_dir,
-                                                const StringRefNull bdata_dir)
+void ModifierSimulationCache::try_discover_bake(const StringRefNull absolute_bake_dir)
 {
   if (failed_finding_bake_) {
     return;
   }
-  if (!BLI_is_dir(meta_dir.c_str()) || !BLI_is_dir(bdata_dir.c_str())) {
+
+  char meta_dir[FILE_MAX];
+  BLI_path_join(meta_dir, sizeof(meta_dir), absolute_bake_dir.c_str(), "meta");
+  char bdata_dir[FILE_MAX];
+  BLI_path_join(bdata_dir, sizeof(bdata_dir), absolute_bake_dir.c_str(), "bdata");
+
+  if (!BLI_is_dir(meta_dir) || !BLI_is_dir(bdata_dir)) {
     failed_finding_bake_ = true;
     return;
   }
 
   direntry *dir_entries = nullptr;
-  const int dir_entries_num = BLI_filelist_dir_contents(meta_dir.c_str(), &dir_entries);
+  const int dir_entries_num = BLI_filelist_dir_contents(meta_dir, &dir_entries);
   BLI_SCOPED_DEFER([&]() { BLI_filelist_free(dir_entries, dir_entries_num); });
 
   if (dir_entries_num == 0) {
@@ -68,8 +73,8 @@ void ModifierSimulationCache::try_discover_bake(const StringRefNull meta_dir,
       if (!dir_entry_path.endswith(".json")) {
         continue;
       }
-      char modified_file_name[FILENAME_MAX];
-      BLI_strncpy(modified_file_name, dir_entry.relname, sizeof(modified_file_name));
+      char modified_file_name[FILE_MAX];
+      STRNCPY(modified_file_name, dir_entry.relname);
       BLI_str_replace_char(modified_file_name, '_', '.');
 
       const SubFrame frame = std::stof(modified_file_name);
@@ -200,6 +205,15 @@ void ModifierSimulationState::ensure_bake_loaded() const
                                         *owner_->bdata_sharing_,
                                         const_cast<ModifierSimulationState &>(*this));
   bake_loaded_ = true;
+}
+
+void ModifierSimulationCache::clear_prev_states()
+{
+  std::lock_guard lock(states_at_frames_mutex_);
+  std::unique_ptr<ModifierSimulationStateAtFrame> temp = std::move(states_at_frames_.last());
+  states_at_frames_.clear_and_shrink();
+  bdata_sharing_.reset();
+  states_at_frames_.append(std::move(temp));
 }
 
 void ModifierSimulationCache::reset()

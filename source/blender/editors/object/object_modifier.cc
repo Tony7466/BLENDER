@@ -193,7 +193,7 @@ ModifierData *ED_object_modifier_add(
     }
 
     if (name) {
-      BLI_strncpy_utf8(new_md->name, name, sizeof(new_md->name));
+      STRNCPY_UTF8(new_md->name, name);
     }
 
     /* make sure modifier data has unique name */
@@ -2469,7 +2469,7 @@ static int multires_external_save_invoke(bContext *C, wmOperator *op, const wmEv
 
   op->customdata = me;
 
-  BLI_snprintf(path, sizeof(path), "//%s.btx", me->id.name + 2);
+  SNPRINTF(path, "//%s.btx", me->id.name + 2);
   RNA_string_set(op->ptr, "filepath", path);
 
   WM_event_add_fileselect(C, op);
@@ -2900,12 +2900,12 @@ static void skin_armature_bone_create(Object *skin_ob,
                                       const blender::int2 *edges,
                                       bArmature *arm,
                                       BLI_bitmap *edges_visited,
-                                      const MeshElemMap *emap,
+                                      const blender::GroupedSpan<int> emap,
                                       EditBone *parent_bone,
                                       int parent_v)
 {
-  for (int i = 0; i < emap[parent_v].count; i++) {
-    int endx = emap[parent_v].indices[i];
+  for (int i = 0; i < emap[parent_v].size(); i++) {
+    int endx = emap[parent_v][i];
     const blender::int2 &edge = edges[endx];
 
     /* ignore edge if already visited */
@@ -2926,7 +2926,7 @@ static void skin_armature_bone_create(Object *skin_ob,
     copy_v3_v3(bone->head, positions[parent_v]);
     copy_v3_v3(bone->tail, positions[v]);
     bone->rad_head = bone->rad_tail = 0.25;
-    BLI_snprintf(bone->name, sizeof(bone->name), "Bone.%.2d", endx);
+    SNPRINTF(bone->name, "Bone.%.2d", endx);
 
     /* add bDeformGroup */
     bDeformGroup *dg = BKE_object_defgroup_add_name(skin_ob, bone->name);
@@ -2967,9 +2967,11 @@ static Object *modifier_skin_armature_create(Depsgraph *depsgraph, Main *bmain, 
 
   MVertSkin *mvert_skin = static_cast<MVertSkin *>(
       CustomData_get_layer_for_write(&me->vdata, CD_MVERT_SKIN, me->totvert));
-  int *emap_mem;
-  MeshElemMap *emap;
-  BKE_mesh_vert_edge_map_create(&emap, &emap_mem, me_edges.data(), me->totvert, me->totedge);
+
+  blender::Array<int> vert_to_edge_offsets;
+  blender::Array<int> vert_to_edge_indices;
+  const blender::GroupedSpan<int> emap = blender::bke::mesh::build_vert_to_edge_map(
+      me_edges, me->totvert, vert_to_edge_offsets, vert_to_edge_indices);
 
   BLI_bitmap *edges_visited = BLI_BITMAP_NEW(me->totedge, "edge_visited");
 
@@ -2982,7 +2984,7 @@ static Object *modifier_skin_armature_create(Depsgraph *depsgraph, Main *bmain, 
       /* Unless the skin root has just one adjacent edge, create
        * a fake root bone (have it going off in the Y direction
        * (arbitrary) */
-      if (emap[v].count > 1) {
+      if (emap[v].size() > 1) {
         bone = ED_armature_ebone_add(arm, "Bone");
 
         copy_v3_v3(bone->head, me_positions[v]);
@@ -2992,7 +2994,7 @@ static Object *modifier_skin_armature_create(Depsgraph *depsgraph, Main *bmain, 
         bone->rad_head = bone->rad_tail = 0.25;
       }
 
-      if (emap[v].count >= 1) {
+      if (emap[v].size() >= 1) {
         skin_armature_bone_create(
             skin_ob, positions_eval, me_edges.data(), arm, edges_visited, emap, bone, v);
       }
@@ -3000,8 +3002,6 @@ static Object *modifier_skin_armature_create(Depsgraph *depsgraph, Main *bmain, 
   }
 
   MEM_freeN(edges_visited);
-  MEM_freeN(emap);
-  MEM_freeN(emap_mem);
 
   ED_armature_from_edit(bmain, arm);
   ED_armature_edit_free(arm);

@@ -952,7 +952,7 @@ static int foreach_libblock_link_append_callback(LibraryIDLinkCallbackData *cb_d
      * meshes for shape keys e.g.), or this is an unsupported case (two shape-keys depending on
      * each-other need to be also 'linked' in by their respective meshes, independent shape-keys
      * are not allowed). ref #96048. */
-    if (id != cb_data->id_self && BKE_idtype_idcode_is_linkable(GS(cb_data->id_self->name))) {
+    if (id != cb_data->self_id && BKE_idtype_idcode_is_linkable(GS(cb_data->self_id->name))) {
       BKE_library_foreach_ID_link(
           cb_data->bmain, id, foreach_libblock_link_append_callback, data, IDWALK_NOP);
     }
@@ -972,7 +972,7 @@ static int foreach_libblock_link_append_callback(LibraryIDLinkCallbackData *cb_d
   const bool do_recursive = (data->lapp_context->params->flag & BLO_LIBLINK_APPEND_RECURSIVE) !=
                                 0 ||
                             do_link;
-  if (!do_recursive && cb_data->id_owner->lib != id->lib) {
+  if (!do_recursive && cb_data->owner_id->lib != id->lib) {
     return IDWALK_RET_NOP;
   }
 
@@ -1116,9 +1116,9 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
 
     ID *local_appended_new_id = NULL;
     char lib_filepath[FILE_MAX];
-    BLI_strncpy(lib_filepath, id->lib->filepath, sizeof(lib_filepath));
+    STRNCPY(lib_filepath, id->lib->filepath);
     char lib_id_name[MAX_ID_NAME];
-    BLI_strncpy(lib_id_name, id->name, sizeof(lib_id_name));
+    STRNCPY(lib_id_name, id->name);
 
     switch (item->action) {
       case LINK_APPEND_ACT_COPY_LOCAL:
