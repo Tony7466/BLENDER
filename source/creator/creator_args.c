@@ -636,16 +636,15 @@ static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), vo
 
 #  ifdef WITH_CYCLES
   printf("Cycles Render Options:\n");
-  printf("\tIn addition to the options above, which apply to all render engines, ");
-  printf("\tCycles has additional options to further control its behavior.\n");
-  printf("\t# blender -b file.blend -f 20 -- --cycles-device CPU\n");
   printf("\t.. note::\n");
-  printf("\t\tUnlike the generic options, the Cycles-specific ones must be passed on the end of the command line, following a double dash.\n");
-  printf("``--cycles-device CPU``\n");
-  printf("\tOverride the device that is used to render frames. Currently supported options are ``CPU``, ``CUDA``, ");
-  printf("``OPTIX``, ``HIP``, ``ONEAPI``, and ``METAL``. Additionally, you can append ``+CPU`` to any GPU type for hybrid rendering.\n");
+  printf("\t\tCycles add-on options must be specified following a double dash.\n");
+  printf("``--cycles-device OPTIX``\n");
+  printf("\tSet the device used for rendering. Options: ``CPU``, ``CUDA``, ``OPTIX``, ``HIP``, ``ONEAPI``, ``METAL``. ");
+  printf("Append ``+CPU`` to a GPU device to render on both CPU and GPU.\n\n");
+  printf("\tExample:\n");
+  printf("\t# blender -b file.blend -f 20 -- --cycles-device OPTIX\n");
   printf("``--cycles-print-stats``\n");
-  printf("\tShow detailed statistics about memory and time usage for Cycles renders on the console.\n");
+  printf("\tLog statistics about render memory and time usage.\n");
 #  endif WITH_CYCLES
 
   // printf("\n");
