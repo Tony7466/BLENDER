@@ -2889,10 +2889,10 @@ static void rna_def_struct_function_impl_cpp(FILE *f, StructRNA *srna, FunctionD
 static void rna_def_property_wrapper_funcs(FILE *f, StructDefRNA *dsrna, PropertyDefRNA *dp)
 {
   if (dp->prop->getlength) {
-    char funcname[2048];
+    char funcname[1024];
     rna_construct_wrapper_function_name(
         funcname, sizeof(funcname), dsrna->srna->identifier, dp->prop->identifier, "get_length");
-    fprintf(f, "int %s(PointerRNA *ptr, int *arraylen)\n", funcname);
+    print_global_function_signature(f, "int %s(PointerRNA *ptr, int *arraylen)", funcname);
     fprintf(f, "{\n");
     fprintf(f, "\treturn %s(ptr, arraylen);\n", rna_function_string(dp->prop->getlength));
     fprintf(f, "}\n\n");
