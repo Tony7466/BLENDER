@@ -2946,9 +2946,10 @@ static void rna_def_function_funcs(FILE *f, StructDefRNA *dsrna, FunctionDefRNA 
   funcname = rna_alloc_function_name(srna->identifier, func->identifier, "call");
 
   /* function definition */
-  fprintf(f,
-          "void %s(bContext *C, ReportList *reports, PointerRNA *_ptr, ParameterList *_parms)",
-          funcname);
+  fprintf(
+      f,
+      "static void %s(bContext *C, ReportList *reports, PointerRNA *_ptr, ParameterList *_parms)",
+      funcname);
   fprintf(f, "\n{\n");
 
   /* variable definitions */
