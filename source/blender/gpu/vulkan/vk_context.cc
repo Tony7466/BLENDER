@@ -211,4 +211,5 @@ void VKContext::bind_graphics_pipeline(const GPUPrimType prim_type,
 
 /** \} */
 
+
 }  // namespace blender::gpu
