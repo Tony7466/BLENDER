@@ -640,7 +640,7 @@ static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), vo
   printf("\tCycles has additional options to further control its behavior.\n");
   printf("\t# blender -b file.blend -f 20 -- --cycles-device CPU\n");
   printf("\t.. note::\n");
-  printf("   Unlike the generic options, the Cycles-specific ones must be passed on the end of the command line, following a double dash.\n");
+  printf("\t\tUnlike the generic options, the Cycles-specific ones must be passed on the end of the command line, following a double dash.\n");
   printf("``--cycles-device CPU``\n");
   printf("\tOverride the device that is used to render frames. Currently supported options are ``CPU``, ``CUDA``, ");
   printf("``OPTIX``, ``HIP``, ``ONEAPI``, and ``METAL``. Additionally, you can append ``+CPU`` to any GPU type for hybrid rendering.\n");
