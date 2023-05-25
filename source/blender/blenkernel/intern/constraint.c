@@ -1735,6 +1735,12 @@ static void sizelimit_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *U
 
   mat4_to_size(size, cob->matrix);
 
+  /* This will only correctly handle the situation where xyz scales being all negative or all positive.
+   * Flipping the size is effectively flipping the limit range. */
+  if (is_negative_m4(cob->matrix)) {
+    negate_v3(size);
+  } 
+
   copy_v3_v3(obsize, size);
 
   if (data->flag & LIMIT_XMIN) {
