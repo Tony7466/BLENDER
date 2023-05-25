@@ -494,8 +494,7 @@ static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), vo
   bArgs *ba = (bArgs *)data;
 
   printf("Blender %s\n", BKE_blender_version_string());
-  printf("Usage: ``blender [args ...] [file] [args ...]``");
-  printf("\n\n");
+  printf("Usage: ``blender [args ...] [file] [args ...]``\n\n");
 
   printf("Render Options:\n");
   BLI_args_print_arg_doc(ba, "--background");
