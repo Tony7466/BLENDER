@@ -5424,7 +5424,9 @@ static int rna_preprocess(const char *outfile, const char *public_header_outfile
     fprintf(file,
             "/* Automatically generated function declarations for the Data API.\n"
             " * Do not edit manually, changes will be overwritten.              */\n\n");
+    fprintf(file, "#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n");
     rna_generate_struct_rna_prototypes(brna, file);
+    fprintf(file, "#ifdef __cplusplus\n}\n#endif\n");
     fclose(file);
     status = (DefRNA.error != 0);
   }
