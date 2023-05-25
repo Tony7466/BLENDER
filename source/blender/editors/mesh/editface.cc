@@ -449,7 +449,7 @@ static bool follow_face_loop(const int poly_start_index,
 
     r_loop_polys.append(next_poly_index);
 
-    IndexRange next_poly = polys[next_poly_index];
+    const IndexRange next_poly = polys[next_poly_index];
     current_edge_index = get_opposing_edge_index(next_poly, corner_edges, current_edge_index);
     current_poly_index = next_poly_index;
   }
