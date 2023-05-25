@@ -10,6 +10,7 @@
 #include "BLI_bitmap.h"
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
+#include "BLI_math_vector.hh"
 #include "BLI_task.hh"
 
 #include "IMB_imbuf.h"
@@ -350,31 +351,28 @@ void paintface_select_linked(bContext *C, Object *ob, const int mval[2], const b
   paintface_flush_flags(C, ob, true, false);
 }
 
-static int get_closest_edge_index(ARegion *region,
-                                  blender::Span<blender::int2> edges,
-                                  blender::Span<int> poly_edges,
-                                  blender::Span<blender::float3> verts,
-                                  const int mval[2])
+static int find_closest_edge_in_poly(ARegion *region,
+                                     blender::Span<blender::int2> edges,
+                                     blender::Span<int> poly_edges,
+                                     blender::Span<blender::float3> vert_positions,
+                                     const int mval[2])
 {
   using namespace blender;
   int closest_edge_index;
 
-  const float mval_f[2] = {float(mval[0]), float(mval[1])};
+  const float2 mval_f = {float(mval[0]), float(mval[1])};
   float min_distance = FLT_MAX;
   for (const int i : poly_edges) {
-    float screen_coordinate[2];
+    float2 screen_coordinate;
     const int2 edge = edges[i];
-    const float3 v1 = verts[edge[0]];
-    const float3 v2 = verts[edge[1]];
-    float3 edge_vert_average;
-    add_v3_v3v3(edge_vert_average, v1, v2);
-    mul_v3_fl(edge_vert_average, 0.5f);
+    const float3 edge_vert_average = math::midpoint(vert_positions[edge[0]],
+                                                    vert_positions[edge[1]]);
     eV3DProjStatus status = ED_view3d_project_float_object(
         region, edge_vert_average, screen_coordinate, V3D_PROJ_TEST_CLIP_DEFAULT);
     if (status != V3D_PROJ_RET_OK) {
       continue;
     }
-    const float distance = len_v2v2(screen_coordinate, mval_f);
+    const float distance = math::distance_squared(mval_f, screen_coordinate);
     if (distance < min_distance) {
       min_distance = distance;
       closest_edge_index = i;
@@ -383,7 +381,7 @@ static int get_closest_edge_index(ARegion *region,
   return closest_edge_index;
 }
 
-static int get_opposing_edge_index(blender::IndexRange &poly,
+static int get_opposing_edge_index(blender::IndexRange poly,
                                    const blender::Span<int> corner_edges,
                                    const int current_edge_index)
 {
@@ -403,34 +401,34 @@ static int get_opposing_edge_index(blender::IndexRange &poly,
   return -1;
 }
 
-/* Follow quads around the mesh by finding opposing edges. Bool return value indicates if the whole
- * loop has been traced. */
+/**
+ * Follow quads around the mesh by finding opposing edges.
+ * \return True if the search has looped back on itself, finding the same index twice.
+ */
 static bool follow_face_loop(const int poly_start_index,
                              const int edge_start_index,
-                             const blender::offset_indices::OffsetIndices<int> polys,
-                             const blender::VArray<bool> hide_poly,
+                             const blender::OffsetIndices<int> polys,
+                             const blender::VArray<bool> &hide_poly,
                              const blender::Span<int> corner_edges,
-                             blender::Vector<int> &r_loop_polys,
-                             const blender::GroupedSpan<int> edge_to_poly_map)
+                             const blender::GroupedSpan<int> edge_to_poly_map,
+                             blender::Vector<int> &r_loop_polys)
 {
   using namespace blender;
   int current_poly_index = poly_start_index;
   int current_edge_index = edge_start_index;
 
   while (current_edge_index > 0) {
-    int next_poly_index;
-    bool found_poly = false;
+    int next_poly_index = -1;
 
     for (const int poly_index : edge_to_poly_map[current_edge_index]) {
       if (poly_index != current_poly_index) {
         next_poly_index = poly_index;
-        found_poly = true;
         break;
       }
     }
 
     /* Edge might only have 1 poly connected. */
-    if (!found_poly) {
+    if (next_poly_index == -1) {
       return false;
     }
 
@@ -461,6 +459,7 @@ static bool follow_face_loop(const int poly_start_index,
 void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const bool select)
 {
   using namespace blender;
+
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   ViewContext vc;
   ED_view3d_viewcontext_init(C, &vc, depsgraph);
@@ -472,8 +471,7 @@ void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const boo
   }
 
   /* Need to use the evaluated mesh for projection to region space. */
-  Scene *scene_eval = DEG_get_evaluated_scene(vc.depsgraph);
-  Mesh *mesh_eval = mesh_get_eval_final(vc.depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH);
+  Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob);
   if (mesh_eval == nullptr || mesh_eval->totpoly == 0) {
     return;
   }
@@ -493,8 +491,8 @@ void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const boo
   const OffsetIndices polys = mesh->polys();
   const Span<int2> edges = mesh->edges();
 
-  IndexRange poly = polys[poly_pick_index];
-  int closest_edge_index = get_closest_edge_index(
+  const IndexRange poly = polys[poly_pick_index];
+  const int closest_edge_index = find_closest_edge_in_poly(
       region, edges, corner_edges.slice(poly), verts, mval);
 
   Array<int> edge_to_poly_offsets;
@@ -513,14 +511,14 @@ void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const boo
   const VArray<bool> hide_poly = *attributes.lookup_or_default<bool>(
       ".hide_poly", ATTR_DOMAIN_FACE, false);
 
-  Vector<int, 2> polys_to_closest_edge = edge_to_poly_map[closest_edge_index];
+  const Span<int> polys_to_closest_edge = edge_to_poly_map[closest_edge_index];
   const bool traced_full_loop = follow_face_loop(polys_to_closest_edge[0],
                                                  closest_edge_index,
                                                  polys,
                                                  hide_poly,
                                                  corner_edges,
-                                                 polys_to_select,
-                                                 edge_to_poly_map);
+                                                 edge_to_poly_map,
+                                                 polys_to_select);
 
   if (!traced_full_loop) {
     /* Trace the other way. */
@@ -529,8 +527,8 @@ void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const boo
                      polys,
                      hide_poly,
                      corner_edges,
-                     polys_to_select,
-                     edge_to_poly_map);
+                     edge_to_poly_map,
+                     polys_to_select);
   }
 
   bke::SpanAttributeWriter<bool> select_poly = attributes.lookup_or_add_for_write_span<bool>(
