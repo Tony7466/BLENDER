@@ -411,7 +411,7 @@ static bool follow_face_loop(const int poly_start_index,
                              const blender::VArray<bool> hide_poly,
                              const blender::Span<int> corner_edges,
                              blender::Vector<int> &r_loop_polys,
-                             const blender::Array<blender::Vector<int, 2>> edge_to_poly_map)
+                             const blender::GroupedSpan<int> edge_to_poly_map)
 {
   using namespace blender;
   int current_poly_index = poly_start_index;
@@ -497,11 +497,15 @@ void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const boo
   int closest_edge_index = get_closest_edge_index(
       region, edges, corner_edges.slice(poly), verts, mval);
 
-  const Array<Vector<int, 2>> edge_to_poly_map = bke::mesh_topology::build_edge_to_poly_map(
-      polys, corner_edges, mesh->totedge);
+  Array<int> edge_to_poly_offsets;
+  Array<int> edge_to_poly_indices;
+  const GroupedSpan<int> edge_to_poly_map = bke::mesh::build_edge_to_poly_map(
+      polys, corner_edges, mesh->totedge, edge_to_poly_offsets, edge_to_poly_indices);
 
-  Array<Vector<int>> edge_to_loop_map = bke::mesh_topology::build_edge_to_loop_map(corner_edges,
-                                                                                   mesh->totedge);
+  Array<int> edge_to_loop_offsets;
+  Array<int> edge_to_loop_indices;
+  const GroupedSpan<int> edge_to_loop_map = bke::mesh::build_edge_to_loop_map(
+      corner_edges, mesh->totedge, edge_to_loop_offsets, edge_to_loop_indices);
 
   Vector<int> polys_to_select;
 
