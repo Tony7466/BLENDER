@@ -466,7 +466,7 @@ void butterworth_smooth_fcurve_segment(FCurve *fcu,
   for (int i = 0; i < sample_count; i++) {
     double x = (double)(samples[i] - fwd_offset);
     const double filtered_value = butterworth_filter_value(x, w0, w1, w2, bw_coeff);
-    filtered_values[i] = (float)(filtered_value + fwd_offset);
+    filtered_values[i] = (float)(filtered_value) + fwd_offset;
   }
 
   for (int i = 0; i < filter_order; i++) {
@@ -481,7 +481,7 @@ void butterworth_smooth_fcurve_segment(FCurve *fcu,
   for (int i = sample_count - 1; i >= 0; i--) {
     double x = (double)(filtered_values[i] - bwd_offset);
     const double filtered_value = butterworth_filter_value(x, w0, w1, w2, bw_coeff);
-    filtered_values[i] = (float)(filtered_value + bwd_offset);
+    filtered_values[i] = (float)(filtered_value) + bwd_offset;
   }
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
