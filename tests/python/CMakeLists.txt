@@ -646,7 +646,7 @@ add_blender_test(
 endif()
 
 # SVG Import
-if(True)
+if(TRUE)
   if(NOT OPENIMAGEIO_IDIFF)
     message(WARNING "Disabling SVG tests because OIIO idiff does not exist")
   else()
@@ -687,6 +687,7 @@ if(WITH_CYCLES OR WITH_OPENGL_RENDER_TESTS)
       image_texture_limit
       integrator
       light
+      light_linking
       mesh
       pointcloud
       shader
@@ -946,17 +947,11 @@ else()
   if(WITH_IMAGE_CINEON)
     set(OPTIONAL_FORMATS "${OPTIONAL_FORMATS} CINEON")
   endif()
-  if(WITH_IMAGE_HDR)
-    set(OPTIONAL_FORMATS "${OPTIONAL_FORMATS} HDR")
-  endif()
   if(WITH_IMAGE_OPENEXR)
     set(OPTIONAL_FORMATS "${OPTIONAL_FORMATS} OPENEXR")
   endif()
   if(WITH_IMAGE_OPENJPEG)
     set(OPTIONAL_FORMATS "${OPTIONAL_FORMATS} OPENJPEG")
-  endif()
-  if(WITH_IMAGE_TIFF)
-    set(OPTIONAL_FORMATS "${OPTIONAL_FORMATS} TIFF")
   endif()
   if(WITH_IMAGE_WEBP)
     set(OPTIONAL_FORMATS "${OPTIONAL_FORMATS} WEBP")

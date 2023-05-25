@@ -1,10 +1,10 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.6.0 Alpha (b'e05010b2f292')\n"
+"Project-Id-Version: Blender 3.6.0 Beta (b'24ca886ac042')\n"
 "(b'0000000000000000000000000000000000000000')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-04-03 10:36:36\n"
+"POT-Creation-Date: 2023-05-22 16:40:40\n"
 "PO-Revision-Date: 2013-11-05 13:47+0600\n"
 "Last-Translator: Chyngyz Dzhumaliev <kyrgyzl10n@gmail.com>\n"
 "Language-Team: Kirghiz <kyrgyzl10n@gmail.com>\n"
@@ -229,10 +229,6 @@ msgid "Filename"
 msgstr "Файл аты"
 
 
-msgid "Grease Pencil"
-msgstr "Эскиз карандашы"
-
-
 msgid "Images"
 msgstr "Сүрөттөр"
 
@@ -333,12 +329,12 @@ msgid "Marker"
 msgstr "Маркер"
 
 
-msgid "Smooth"
-msgstr "Тегиз"
-
-
 msgid "Draw"
 msgstr "Тартуу"
+
+
+msgid "Smooth"
+msgstr "Тегиз"
 
 
 msgid "Background Image"
@@ -787,6 +783,10 @@ msgid "Fonts"
 msgstr "Ариптер"
 
 
+msgid "Grease Pencil"
+msgstr "Эскиз карандашы"
+
+
 msgid "Save"
 msgstr "Сактоо"
 
@@ -1104,12 +1104,12 @@ msgid "Intensity"
 msgstr "Күчөгөндүгү"
 
 
-msgid "Opaque"
-msgstr "Күңүрттүк"
-
-
 msgid "Hair"
 msgstr "Чач"
+
+
+msgid "Opaque"
+msgstr "Күңүрттүк"
 
 
 msgid "Update"
@@ -1929,6 +1929,10 @@ msgid "Open"
 msgstr "Ачуу"
 
 
+msgid "Play"
+msgstr "Ойнотуу"
+
+
 msgid "Increment"
 msgstr "Өсүү"
 
@@ -2637,10 +2641,6 @@ msgid "PNG Image (.png)"
 msgstr "PNG сүрөт (.png)"
 
 
-msgid "New Image"
-msgstr "Жаңы сүрөт"
-
-
 msgctxt "Operator"
 msgid "Reset"
 msgstr "Түшүрүү"
@@ -2657,10 +2657,6 @@ msgstr "Фон сүрөтүн өчүрүү"
 
 msgid "Save a Collada file"
 msgstr "Collada файлын сактоо"
-
-
-msgid "Play"
-msgstr "Ойнотуу"
 
 
 msgctxt "Operator"
@@ -2723,10 +2719,6 @@ msgstr "Чечим"
 
 msgid "Tracking Settings"
 msgstr "Трекингдин ырастоолору"
-
-
-msgid "Lens"
-msgstr "Объектив"
 
 
 msgid "Post Processing"
@@ -3040,6 +3032,10 @@ msgstr "Z-буфер"
 
 msgid "UV Editor"
 msgstr "UV-редактор"
+
+
+msgid "Lens"
+msgstr "Объектив"
 
 
 msgid "Speaker"
@@ -3609,6 +3605,10 @@ msgid "Apply"
 msgstr "Колдонуу"
 
 
+msgid "Untitled"
+msgstr "Аты жок"
+
+
 msgctxt "Curve"
 msgid "Surface"
 msgstr "Бет"
@@ -3826,10 +3826,6 @@ msgid "Stone"
 msgstr "Таш"
 
 
-msgid "Untitled"
-msgstr "Аты жок"
-
-
 msgid "OK"
 msgstr "ООБА"
 
@@ -4021,10 +4017,6 @@ msgid "Japanese (日本語)"
 msgstr "Жапон (日本語)"
 
 
-msgid "Dutch (Nederlandse taal)"
-msgstr "Голланд (Nederlandse taal)"
-
-
 msgid "Italian (Italiano)"
 msgstr "Итальян (Italiano)"
 
@@ -4125,10 +4117,6 @@ msgid "Hebrew (תירִבְעִ)"
 msgstr "Иврит (תירִבְעִ)"
 
 
-msgid "Estonian (Eestlane)"
-msgstr "Эстон (Eestlane)"
-
-
 msgid "Esperanto (Esperanto)"
 msgstr "Эсперанто (Esperanto)"
 
@@ -4143,10 +4131,6 @@ msgstr "Өзбек (Oʻzbek)"
 
 msgid "Uzbek Cyrillic (Ўзбек)"
 msgstr "Өзбек кириллица (Ўзбек)"
-
-
-msgid "Hindi (मानक हिन्दी)"
-msgstr "Хинди (मानक हिन्दी)"
 
 
 msgid "Complete"

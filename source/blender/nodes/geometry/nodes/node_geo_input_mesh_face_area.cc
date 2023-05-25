@@ -11,9 +11,10 @@ namespace blender::nodes::node_geo_input_mesh_face_area_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Float>(N_("Area"))
+  b.add_output<decl::Float>("Area")
+      .translation_context(BLT_I18NCONTEXT_AMOUNT)
       .field_source()
-      .description(N_("The surface area of each of the mesh's faces"));
+      .description("The surface area of each of the mesh's faces");
 }
 
 static VArray<float> construct_face_area_varray(const Mesh &mesh, const eAttrDomain domain)
@@ -39,7 +40,7 @@ class FaceAreaFieldInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask /*mask*/) const final
+                                 const IndexMask & /*mask*/) const final
   {
     return construct_face_area_varray(mesh, domain);
   }

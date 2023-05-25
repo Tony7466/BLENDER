@@ -25,7 +25,7 @@ namespace blender::gpu {
 Texture::Texture(const char *name)
 {
   if (name) {
-    BLI_strncpy(name_, name, sizeof(name_));
+    STRNCPY(name_, name);
   }
   else {
     name_[0] = '\0';
@@ -132,14 +132,15 @@ bool Texture::init_buffer(GPUVertBuf *vbo, eGPUTextureFormat format)
   return this->init_internal(vbo);
 }
 
-bool Texture::init_view(const GPUTexture *src_,
+bool Texture::init_view(GPUTexture *src_,
                         eGPUTextureFormat format,
                         eGPUTextureType type,
                         int mip_start,
                         int mip_len,
                         int layer_start,
                         int layer_len,
-                        bool cube_as_array)
+                        bool cube_as_array,
+                        bool use_stencil)
 {
   const Texture *src = unwrap(src_);
   w_ = src->w_;
@@ -172,12 +173,15 @@ bool Texture::init_view(const GPUTexture *src_,
     type_ = (type_ & ~GPU_TEXTURE_CUBE) | GPU_TEXTURE_2D_ARRAY;
   }
   sampler_state = src->sampler_state;
-  return this->init_internal(src_, mip_start, layer_start);
+  return this->init_internal(src_, mip_start, layer_start, use_stencil);
 }
 
 void Texture::usage_set(eGPUTextureUsage usage_flags)
 {
   gpu_image_usage_flags_ = usage_flags;
+  /* Metal: Texture clearing is done using frame-buffer clear. This has no performance impact. */
+  /* TODO(fclem): Move this to metal backend instead to avoid side effects in other back-ends. */
+  gpu_image_usage_flags_ |= GPU_TEXTURE_USAGE_ATTACHMENT;
 }
 
 /** \} */
@@ -448,16 +452,20 @@ GPUTexture *GPU_texture_create_error(int dimension, bool is_array)
 }
 
 GPUTexture *GPU_texture_create_view(const char *name,
-                                    const GPUTexture *src,
+                                    GPUTexture *src,
                                     eGPUTextureFormat format,
                                     int mip_start,
                                     int mip_len,
                                     int layer_start,
                                     int layer_len,
-                                    bool cube_as_array)
+                                    bool cube_as_array,
+                                    bool use_stencil)
 {
   BLI_assert(mip_len > 0);
   BLI_assert(layer_len > 0);
+  BLI_assert_msg(
+      GPU_texture_usage(src) & GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
+      "Source texture of TextureView must have GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW usage flag.");
   Texture *view = GPUBackend::get()->texture_alloc(name);
   view->init_view(src,
                   format,
@@ -466,7 +474,8 @@ GPUTexture *GPU_texture_create_view(const char *name,
                   mip_len,
                   layer_start,
                   layer_len,
-                  cube_as_array);
+                  cube_as_array,
+                  use_stencil);
   return wrap(view);
 }
 
@@ -662,12 +671,6 @@ void GPU_texture_swizzle_set(GPUTexture *tex, const char swizzle[4])
   reinterpret_cast<Texture *>(tex)->swizzle_set(swizzle);
 }
 
-void GPU_texture_stencil_texture_mode_set(GPUTexture *tex, bool use_stencil)
-{
-  BLI_assert(GPU_texture_has_stencil_format(tex) || !use_stencil);
-  reinterpret_cast<Texture *>(tex)->stencil_texture_mode_set(use_stencil);
-}
-
 void GPU_texture_free(GPUTexture *tex_)
 {
   Texture *tex = reinterpret_cast<Texture *>(tex_);
@@ -714,6 +717,11 @@ int GPU_texture_width(const GPUTexture *tex)
 int GPU_texture_height(const GPUTexture *tex)
 {
   return reinterpret_cast<const Texture *>(tex)->height_get();
+}
+
+int GPU_texture_depth(const GPUTexture *tex)
+{
+  return reinterpret_cast<const Texture *>(tex)->depth_get();
 }
 
 int GPU_texture_layer_count(const GPUTexture *tex)

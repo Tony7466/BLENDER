@@ -213,7 +213,7 @@ PyObject *BPy_BMLoopUV_CreatePyObject(struct BMesh *bm, BMLoop *loop, int layer)
 {
   BPy_BMLoopUV *self = PyObject_New(BPy_BMLoopUV, &BPy_BMLoopUV_Type);
 
-  const BMUVOffsets offsets = BM_uv_map_get_offsets_n(bm, layer);
+  const BMUVOffsets offsets = BM_uv_map_get_offsets_from_layer(bm, layer);
 
   self->uv = BM_ELEM_CD_GET_FLOAT_P(loop, offsets.uv);
   self->vert_select = offsets.select_vert >= 0 ? BM_ELEM_CD_GET_BOOL_P(loop, offsets.select_vert) :
@@ -588,7 +588,7 @@ static PySequenceMethods bpy_bmdeformvert_as_sequence = {
 };
 
 static PyMappingMethods bpy_bmdeformvert_as_mapping = {
-    /*mp_len*/ (lenfunc)bpy_bmdeformvert_len,
+    /*mp_length*/ (lenfunc)bpy_bmdeformvert_len,
     /*mp_subscript*/ (binaryfunc)bpy_bmdeformvert_subscript,
     /*mp_ass_subscript*/ (objobjargproc)bpy_bmdeformvert_ass_subscript,
 };
@@ -600,7 +600,7 @@ PyDoc_STRVAR(bpy_bmdeformvert_keys_doc,
              ".. method:: keys()\n"
              "\n"
              "   Return the group indices used by this vertex\n"
-             "   (matching pythons dict.keys() functionality).\n"
+             "   (matching Python's dict.keys() functionality).\n"
              "\n"
              "   :return: the deform group this vertex uses\n"
              "   :rtype: list of ints\n");
@@ -622,7 +622,7 @@ PyDoc_STRVAR(bpy_bmdeformvert_values_doc,
              ".. method:: values()\n"
              "\n"
              "   Return the weights of the deform vertex\n"
-             "   (matching pythons dict.values() functionality).\n"
+             "   (matching Python's dict.values() functionality).\n"
              "\n"
              "   :return: The weights that influence this vertex\n"
              "   :rtype: list of floats\n");
@@ -644,7 +644,7 @@ PyDoc_STRVAR(bpy_bmdeformvert_items_doc,
              ".. method:: items()\n"
              "\n"
              "   Return (group, weight) pairs for this vertex\n"
-             "   (matching pythons dict.items() functionality).\n"
+             "   (matching Python's dict.items() functionality).\n"
              "\n"
              "   :return: (key, value) pairs for each deform weight of this vertex.\n"
              "   :rtype: list of tuples\n");
@@ -669,7 +669,7 @@ PyDoc_STRVAR(bpy_bmdeformvert_get_doc,
              ".. method:: get(key, default=None)\n"
              "\n"
              "   Returns the deform weight matching the key or default\n"
-             "   when not found (matches pythons dictionary function of the same name).\n"
+             "   when not found (matches Python's dictionary function of the same name).\n"
              "\n"
              "   :arg key: The key associated with deform weight.\n"
              "   :type key: int\n"
