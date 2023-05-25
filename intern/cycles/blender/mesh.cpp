@@ -247,25 +247,29 @@ static void fill_generic_attribute(BL::Mesh &b_mesh,
           return;
         }
         const int *poly_offsets = static_cast<const int *>(b_mesh.polygons[0].ptr.data);
-        for (int i = 0; i < polys_num; i++) {
-          const int poly_start = poly_offsets[i];
-          const int poly_size = poly_offsets[i + 1] - poly_start;
-          for (int j = 0; j < poly_size; j++) {
-            *data = get_value_at_index(poly_start + j);
-            data++;
+        parallel_for(blocked_range<int>(0, polys_num, 4096), [&](const blocked_range<int> &r) {
+          for (int i = r.begin(); i != r.end(); i++) {
+            const int poly_start = poly_offsets[i];
+            const int poly_size = poly_offsets[i + 1] - poly_start;
+            for (int j = 0; j < poly_size; j++) {
+              *data = get_value_at_index(poly_start + j);
+              data++;
+            }
           }
-        }
+        });
       }
       else {
         const int tris_num = b_mesh.loop_triangles.length();
         const MLoopTri *looptris = static_cast<const MLoopTri *>(
             b_mesh.loop_triangles[0].ptr.data);
-        for (int i = 0; i < tris_num; i++) {
-          const MLoopTri &tri = looptris[i];
-          data[i * 3 + 0] = get_value_at_index(tri.tri[0]);
-          data[i * 3 + 1] = get_value_at_index(tri.tri[1]);
-          data[i * 3 + 2] = get_value_at_index(tri.tri[2]);
-        }
+        parallel_for(blocked_range<int>(0, tris_num, 4096), [&](const blocked_range<int> &r) {
+          for (int i = r.begin(); i != r.end(); i++) {
+            const MLoopTri &tri = looptris[i];
+            data[i * 3 + 0] = get_value_at_index(tri.tri[0]);
+            data[i * 3 + 1] = get_value_at_index(tri.tri[1]);
+            data[i * 3 + 2] = get_value_at_index(tri.tri[2]);
+          }
+        });
       }
       break;
     }
@@ -998,6 +1002,8 @@ static void create_mesh(Scene *scene,
                         const bool subdivision = false,
                         const bool subdivide_uvs = true)
 {
+  scoped_timer timer;
+
   const int numverts = b_mesh.vertices.length();
   const int polys_num = b_mesh.polygons.length();
   int numfaces = (!subdivision) ? b_mesh.loop_triangles.length() : b_mesh.polygons.length();
@@ -1051,10 +1057,12 @@ static void create_mesh(Scene *scene,
   if (subdivision || !(use_loop_normals && corner_normals)) {
     const float(*b_vert_normals)[3] = static_cast<const float(*)[3]>(
         b_mesh.vertex_normals[0].ptr.data);
-    for (int i = 0; i < numverts; i++) {
-      const float *b_vert_normal = b_vert_normals[i];
-      N[i] = make_float3(b_vert_normal[0], b_vert_normal[1], b_vert_normal[2]);
-    }
+    parallel_for(blocked_range<int>(0, numverts, 4096), [&](const blocked_range<int> &r) {
+      for (int i = r.begin(); i != r.end(); i++) {
+        const float *b_vert_normal = b_vert_normals[i];
+        N[i] = make_float3(b_vert_normal[0], b_vert_normal[1], b_vert_normal[2]);
+      }
+    });
   }
 
   /* create generated coordinates from undeformed coordinates */
@@ -1087,19 +1095,23 @@ static void create_mesh(Scene *scene,
     int *shader = mesh->get_shader().data();
 
     const MLoopTri *looptris = static_cast<const MLoopTri *>(b_mesh.loop_triangles[0].ptr.data);
-    for (int i = 0; i < numtris; i++) {
-      const MLoopTri &tri = looptris[i];
-      triangles[i * 3 + 0] = corner_verts[tri.tri[0]];
-      triangles[i * 3 + 1] = corner_verts[tri.tri[1]];
-      triangles[i * 3 + 2] = corner_verts[tri.tri[2]];
-    }
+    parallel_for(blocked_range<int>(0, numtris, 8196), [&](const blocked_range<int> &r) {
+      for (int i = r.begin(); i != r.end(); i++) {
+        const MLoopTri &tri = looptris[i];
+        triangles[i * 3 + 0] = corner_verts[tri.tri[0]];
+        triangles[i * 3 + 1] = corner_verts[tri.tri[1]];
+        triangles[i * 3 + 2] = corner_verts[tri.tri[2]];
+      }
+    });
 
     if (material_indices) {
       const int *looptri_polys = static_cast<const int *>(
           b_mesh.loop_triangle_polygons[0].ptr.data);
-      for (int i = 0; i < numtris; i++) {
-        shader[i] = clamp_material_index(material_indices[looptri_polys[i]]);
-      }
+      parallel_for(blocked_range<int>(0, numtris, 4096), [&](const blocked_range<int> &r) {
+        for (int i = r.begin(); i != r.end(); i++) {
+          shader[i] = clamp_material_index(material_indices[looptri_polys[i]]);
+        }
+      });
     }
     else {
       std::fill(shader, shader + numtris, 0);
@@ -1108,24 +1120,28 @@ static void create_mesh(Scene *scene,
     if (sharp_faces && !(use_loop_normals && corner_normals)) {
       const int *looptri_polys = static_cast<const int *>(
           b_mesh.loop_triangle_polygons[0].ptr.data);
-      for (int i = 0; i < numtris; i++) {
-        smooth[i] = !sharp_faces[looptri_polys[i]];
-      }
+      parallel_for(blocked_range<int>(0, numtris, 4096), [&](const blocked_range<int> &r) {
+        for (int i = r.begin(); i != r.end(); i++) {
+          smooth[i] = !sharp_faces[looptri_polys[i]];
+        }
+      });
     }
     else {
       std::fill(smooth, smooth + numtris, true);
     }
 
     if (use_loop_normals && corner_normals) {
-      for (int i = 0; i < numtris; i++) {
-        const MLoopTri &tri = looptris[i];
-        for (int i = 0; i < 3; i++) {
-          const int corner = tri.tri[i];
-          const int vert = corner_verts[corner];
-          const float *normal = corner_normals[corner];
-          N[vert] = make_float3(normal[0], normal[1], normal[2]);
+      parallel_for(blocked_range<int>(0, numtris, 4096), [&](const blocked_range<int> &r) {
+        for (int i = r.begin(); i != r.end(); i++) {
+          const MLoopTri &tri = looptris[i];
+          for (int i = 0; i < 3; i++) {
+            const int corner = tri.tri[i];
+            const int vert = corner_verts[corner];
+            const float *normal = corner_normals[corner];
+            N[vert] = make_float3(normal[0], normal[1], normal[2]);
+          }
         }
-      }
+      });
     }
 
     mesh->tag_triangles_modified();
@@ -1207,6 +1223,8 @@ static void create_mesh(Scene *scene,
 
     *tfm = transform_translate(-loc) * transform_scale(size);
   }
+
+  std::cout << time_human_readable_from_seconds(timer.get_time()) << '\n';
 }
 
 static void create_subd_mesh(Scene *scene,

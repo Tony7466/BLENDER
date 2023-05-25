@@ -910,6 +910,8 @@ static void export_hair_curves(Scene *scene,
                                const bool need_motion,
                                const float motion_scale)
 {
+  scoped_timer timer;
+
   const int num_keys = b_curves.points.length();
   const int num_curves = b_curves.curves.length();
 
@@ -993,6 +995,8 @@ static void export_hair_curves(Scene *scene,
   }
 
   attr_create_generic(scene, hair, b_curves, need_motion, motion_scale);
+
+  std::cout << time_human_readable_from_seconds(timer.get_time()) << '\n';
 }
 
 static void export_hair_curves_motion(Hair *hair, BL::Curves b_curves, int motion_step)
