@@ -159,8 +159,6 @@ static void grease_pencil_blend_write(BlendWriter *writer, ID *id, const void *i
   grease_pencil->write_drawing_array(writer);
   /* Write layer tree. */
   grease_pencil->write_layer_tree(writer);
-  /* Write active layer pointer. */
-  BLO_write_raw(writer, sizeof(void *), grease_pencil->active_layer);
 
   /* Write materials. */
   BLO_write_pointer_array(
@@ -1136,44 +1134,45 @@ void GreasePencil::free_drawing_array()
 /** \name Layer tree read/write functions
  * \{ */
 
-static void read_layer(BlendDataReader *reader, GreasePencilLayer *node)
+static void read_layer(BlendDataReader *reader, GreasePencilLayer *node, GreasePencilLayerTreeGroup *parent)
 {
-  BLO_read_data_address(reader, &node->base.parent);
   BLO_read_data_address(reader, &node->base.name);
+  node->base.parent = parent;
 
   /* Read frames storage. */
   BLO_read_int32_array(reader, node->frames_storage.size, &node->frames_storage.keys);
   BLO_read_data_address(reader, &node->frames_storage.values);
+
+  /* Re-create frames data in runtime map. */
+  node->wrap().runtime = MEM_new<blender::bke::greasepencil::LayerRuntime>(__func__);
+  for (int i = 0; i < node->frames_storage.size; i++) {
+    node->wrap().frames_for_write().add(node->frames_storage.keys[i],
+                                        node->frames_storage.values[i]);
+  }
 
   /* Read layer masks. */
   BLO_read_list(reader, &node->masks);
   LISTBASE_FOREACH (GreasePencilLayerMask *, mask, &node->masks) {
     BLO_read_data_address(reader, &mask->layer_name);
   }
-
-  node->wrap().runtime = MEM_new<blender::bke::greasepencil::LayerRuntime>(__func__);
-  for (int i = 0; i < node->frames_storage.size; i++) {
-    node->wrap().frames_for_write().add(node->frames_storage.keys[i],
-                                        node->frames_storage.values[i]);
-  }
 }
 
-static void read_layer_tree_group(BlendDataReader *reader, GreasePencilLayerTreeGroup *node)
+static void read_layer_tree_group(BlendDataReader *reader, GreasePencilLayerTreeGroup *node, GreasePencilLayerTreeGroup *parent)
 {
-  BLO_read_data_address(reader, &node->base.parent);
   BLO_read_data_address(reader, &node->base.name);
+  node->base.parent = parent;
   /* Read list of children. */
   BLO_read_list(reader, &node->children);
   LISTBASE_FOREACH (GreasePencilLayerTreeNode *, child, &node->children) {
     switch (child->type) {
       case GP_LAYER_TREE_LEAF: {
         GreasePencilLayer *layer = reinterpret_cast<GreasePencilLayer *>(child);
-        read_layer(reader, layer);
+        read_layer(reader, layer, node);
         break;
       }
       case GP_LAYER_TREE_GROUP: {
         GreasePencilLayerTreeGroup *group = reinterpret_cast<GreasePencilLayerTreeGroup *>(child);
-        read_layer_tree_group(reader, group);
+        read_layer_tree_group(reader, group, node);
         break;
       }
     }
@@ -1184,7 +1183,7 @@ static void read_layer_tree_group(BlendDataReader *reader, GreasePencilLayerTree
 
 void GreasePencil::read_layer_tree(BlendDataReader *reader)
 {
-  read_layer_tree_group(reader, &this->root_group);
+  read_layer_tree_group(reader, &this->root_group, nullptr);
 }
 
 static void write_layer(BlendWriter *writer, GreasePencilLayer *node)
@@ -1197,15 +1196,7 @@ static void write_layer(BlendWriter *writer, GreasePencilLayer *node)
   MEM_SAFE_FREE(node->frames_storage.keys);
   MEM_SAFE_FREE(node->frames_storage.values);
 
-  const Layer &layer = node->wrap();
-  node->frames_storage.size = layer.frames().size();
-  node->frames_storage.keys = MEM_cnew_array<int>(node->frames_storage.size, __func__);
-  node->frames_storage.values = MEM_cnew_array<GreasePencilFrame>(node->frames_storage.size,
-                                                                  __func__);
-  const Span<int> sorted_keys = layer.sorted_keys();
-  for (const int i : sorted_keys.index_range()) {
-    node->frames_storage.keys[i] = sorted_keys[i];
-    node->frames_storage.values[i] = layer.frames().lookup(sorted_keys[i]);
+    for (const int i : sorted_keys.index_range()) {
   }
 
   BLO_write_int32_array(writer, node->frames_storage.size, node->frames_storage.keys);
