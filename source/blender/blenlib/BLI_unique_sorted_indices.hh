@@ -132,7 +132,7 @@ inline int64_t split_to_ranges_and_spans(
       const T segment_start = remaining_indices.first();
       remaining_indices = remaining_indices.drop_front(range_threshold);
       const int64_t segment_size = find_size_of_next_range(remaining_indices);
-      r_segments.append(IndexRange(segment_start, segment_size));
+      r_segments.append(IndexRange(segment_start, range_threshold + segment_size));
       continue;
     }
     /* Next segment is just indices. Now find the place where the next range starts. */
