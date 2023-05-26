@@ -3631,6 +3631,26 @@ static void ui_textedit_prev_but(uiBlock *block, uiBut *actbut, uiHandleButtonDa
   }
 }
 
+/**
+ * Return the jump type used for cursor motion & back-space/delete actions.
+ */
+static eStrCursorJumpType ui_textedit_jump_type_from_event(const wmEvent *event)
+{
+#ifdef __APPLE__
+  if (event->modifier & KM_OSKEY) {
+    return STRCUR_JUMP_ALL;
+  }
+  if (event->modifier & KM_ALT) {
+    return STRCUR_JUMP_DELIM;
+  }
+#else
+  if (event->modifier & KM_CTRL) {
+    return STRCUR_JUMP_DELIM;
+  }
+#endif
+  return STRCUR_JUMP_NONE;
+}
+
 static void ui_do_but_textedit(
     bContext *C, uiBlock *block, uiBut *but, uiHandleButtonData *data, const wmEvent *event)
 {
@@ -3776,21 +3796,15 @@ static void ui_do_but_textedit(
         }
         break;
       case EVT_RIGHTARROWKEY:
-        ui_textedit_move(but,
-                         data,
-                         STRCUR_DIR_NEXT,
-                         event->modifier & KM_SHIFT,
-                         (event->modifier & KM_CTRL) ? STRCUR_JUMP_DELIM : STRCUR_JUMP_NONE);
+      case EVT_LEFTARROWKEY: {
+        const eStrCursorJumpDirection direction = (event->type == EVT_RIGHTARROWKEY) ?
+                                                      STRCUR_DIR_NEXT :
+                                                      STRCUR_DIR_PREV;
+        const eStrCursorJumpType jump = ui_textedit_jump_type_from_event(event);
+        ui_textedit_move(but, data, direction, event->modifier & KM_SHIFT, jump);
         retval = WM_UI_HANDLER_BREAK;
         break;
-      case EVT_LEFTARROWKEY:
-        ui_textedit_move(but,
-                         data,
-                         STRCUR_DIR_PREV,
-                         event->modifier & KM_SHIFT,
-                         (event->modifier & KM_CTRL) ? STRCUR_JUMP_DELIM : STRCUR_JUMP_NONE);
-        retval = WM_UI_HANDLER_BREAK;
-        break;
+      }
       case WHEELDOWNMOUSE:
       case EVT_DOWNARROWKEY:
         if (data->searchbox) {
@@ -3831,22 +3845,14 @@ static void ui_do_but_textedit(
         retval = WM_UI_HANDLER_BREAK;
         break;
       case EVT_DELKEY:
-        changed = ui_textedit_delete(but,
-                                     data,
-                                     STRCUR_DIR_NEXT,
-                                     (event->modifier & KM_CTRL) ? STRCUR_JUMP_DELIM :
-                                                                   STRCUR_JUMP_NONE);
+      case EVT_BACKSPACEKEY: {
+        const eStrCursorJumpDirection direction = (event->type == EVT_DELKEY) ? STRCUR_DIR_NEXT :
+                                                                                STRCUR_DIR_PREV;
+        const eStrCursorJumpType jump = ui_textedit_jump_type_from_event(event);
+        changed = ui_textedit_delete(but, data, direction, jump);
         retval = WM_UI_HANDLER_BREAK;
         break;
-
-      case EVT_BACKSPACEKEY:
-        changed = ui_textedit_delete(but,
-                                     data,
-                                     STRCUR_DIR_PREV,
-                                     (event->modifier & KM_CTRL) ? STRCUR_JUMP_DELIM :
-                                                                   STRCUR_JUMP_NONE);
-        retval = WM_UI_HANDLER_BREAK;
-        break;
+      }
 
       case EVT_AKEY:
 
