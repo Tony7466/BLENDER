@@ -3575,7 +3575,7 @@ static void rna_generate_internal_property_prototypes(BlenderRNA *UNUSED(brna),
 
   for (prop = srna->cont.properties.first; prop; prop = prop->next) {
     fprintf(f,
-            "extern %s rna_%s_%s;\n",
+            "RNA_EXTERN_C %s rna_%s_%s;\n",
             rna_property_structname(prop->type),
             srna->identifier,
             prop->identifier);
