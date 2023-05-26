@@ -884,7 +884,40 @@ enum eClosureBits : uint32_t {
   CLOSURE_AMBIENT_OCCLUSION = (1u << 12u),
 };
 
+struct RayTracingData {
+  float2 pixel_size;
+  float quality;
+  float thickness;
+  float border_factor; /* This is the only one used */
+  float max_roughness;
+  float firefly_factor;
+  float brdf_bias;
+  bool1 toggle;
+  int _pad0;
+  int _pad1;
+  int _pad2;
+};
+BLI_STATIC_ASSERT_ALIGN(RayTracingData, 16)
+
 /** \} */
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Ambient Occlussion
+ * \{ */
+
+struct AOData {
+  bool1 enabled;
+  bool1 use_bent_normals;
+  float distance;
+  float factor;
+  float bounce_factor;
+  float quality;
+  int _pad0;
+  int _pad1;
+};
+BLI_STATIC_ASSERT_ALIGN(AOData, 16)
 
 /* -------------------------------------------------------------------- */
 /** \name Subsurface

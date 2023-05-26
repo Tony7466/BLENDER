@@ -66,6 +66,7 @@ void Instance::init(const int2 &output_res,
   sampling.init(scene);
   camera.init();
   film.init(output_res, output_rect);
+  ao.init();
   velocity.init();
   depth_of_field.init();
   shadows.init();
@@ -116,6 +117,7 @@ void Instance::begin_sync()
   depth_of_field.sync();
   motion_blur.sync();
   hiz_buffer.sync();
+  ao.sync();
   main_view.sync();
   world.sync();
   film.sync();

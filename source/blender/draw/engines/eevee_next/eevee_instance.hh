@@ -16,6 +16,7 @@
 #include "DNA_lightprobe_types.h"
 #include "DRW_render.h"
 
+#include "eevee_ao.hh"
 #include "eevee_camera.hh"
 #include "eevee_cryptomatte.hh"
 #include "eevee_depth_of_field.hh"
@@ -52,6 +53,7 @@ class Instance {
   PipelineModule pipelines;
   ShadowModule shadows;
   LightModule lights;
+  AmbientOcclusion ao;
   VelocityModule velocity;
   MotionBlurModule motion_blur;
   DepthOfField depth_of_field;
@@ -98,6 +100,7 @@ class Instance {
         pipelines(*this),
         shadows(*this),
         lights(*this),
+        ao(*this),
         velocity(*this),
         motion_blur(*this),
         depth_of_field(*this),

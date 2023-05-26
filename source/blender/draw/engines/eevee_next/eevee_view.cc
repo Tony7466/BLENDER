@@ -124,6 +124,7 @@ void ShadingView::render()
   /* TODO(fclem): Move it after the first prepass (and hiz update) once pipeline is stabilized. */
   inst_.lights.set_view(render_view_new_, extent_);
 
+  /* TODO(Miguel Pozo): Deferred and forward prepass should happen before the GBuffer pass. */
   inst_.pipelines.deferred.render(render_view_new_, prepass_fb_, combined_fb_, extent_);
 
   // inst_.lightprobes.draw_cache_display();

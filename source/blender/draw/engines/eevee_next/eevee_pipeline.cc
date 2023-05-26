@@ -410,6 +410,7 @@ void DeferredLayer::render(View &view,
 
   inst_.hiz_buffer.set_dirty();
   inst_.shadows.set_view(view);
+  inst_.ao.render(view);
 
   inst_.gbuffer.acquire(extent, closure_bits_);
 
