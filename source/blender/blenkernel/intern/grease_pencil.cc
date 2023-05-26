@@ -259,6 +259,7 @@ TreeNode::TreeNode()
 
   this->name = nullptr;
   this->flag = 0;
+  this->color[0] = this->color[1] = this->color[2] = 0;
 }
 
 TreeNode::TreeNode(GreasePencilLayerTreeNodeType type) : TreeNode()
