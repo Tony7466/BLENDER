@@ -115,11 +115,13 @@ ccl_device_inline float pdf_uniform_cone(const float3 N, float3 D, float angle)
   return 0.0f;
 }
 
-/* Sample direction uniformly distributed in a cone around `N`. Using concentric mapping to better
- * preserve stratification. */
+/* Uniformly sample a direction in a cone of given angle around `N`. Use concentric mapping to
+ * better preserve stratification. Return the angle between `N` and the sampled direction as
+ * `cos_theta`. Be careful of precision issues at small angles (see sphere light for reference). */
 ccl_device_inline void sample_uniform_cone_concentric(const float3 N,
                                                       const float one_minus_cos_angle,
                                                       const float2 rand,
+                                                      ccl_private float *cos_theta,
                                                       ccl_private float3 *wo,
                                                       ccl_private float *pdf)
 {
@@ -129,7 +131,7 @@ ccl_device_inline void sample_uniform_cone_concentric(const float3 N,
     const float r2 = len_squared(xy);
 
     /* Equivalent to `mix(cos_angle, 1.0f, 1.0f - r2)` */
-    const float cos_theta = 1.0f - r2 * one_minus_cos_angle;
+    *cos_theta = 1.0f - r2 * one_minus_cos_angle;
 
     /* Equivalent to `xy *= sin_theta / sqrt(r2); */
     xy *= safe_sqrtf(one_minus_cos_angle * (2.0f - one_minus_cos_angle * r2));
@@ -137,10 +139,11 @@ ccl_device_inline void sample_uniform_cone_concentric(const float3 N,
     float3 T, B;
     make_orthonormals(N, &T, &B);
 
-    *wo = xy.x * T + xy.y * B + cos_theta * N;
+    *wo = xy.x * T + xy.y * B + *cos_theta * N;
     *pdf = M_1_2PI_F / one_minus_cos_angle;
   }
   else {
+    *cos_theta = 1.0f;
     *wo = N;
     *pdf = 1.0f;
   }

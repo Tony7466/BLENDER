@@ -16,20 +16,35 @@ ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
   float dist;
   const float3 lightN = normalize_len(P - klight->co, &dist);
 
-  const float one_minus_cos_angle = tan_to_one_minus_cos(klight->spot.radius / dist);
+  const float radius = klight->spot.radius;
 
-  /* We set the light normal to the outgoing direction to support texturing. */
-  sample_uniform_cone_concentric(lightN, one_minus_cos_angle, rand, &ls->Ng, &ls->pdf);
-  ls->D = -ls->Ng;
-  ls->t = dist / dot(ls->Ng, lightN);
-  ls->P = P + ls->D * ls->t;
+  if (dist > radius) {
+    const float one_minus_cos = sin_to_one_minus_cos(radius / dist);
 
-  /* TODO: change invarea to that of a sphere. */
-  ls->eval_fac = M_1_PI_F * 0.25f * klight->spot.invarea;
-  if (one_minus_cos_angle == 0) {
-    /* Use intensity instead of radiance for point light. */
-    ls->eval_fac /= sqr(ls->t);
+    float cos_theta;
+    /* We set the light normal to the outgoing direction to support texturing. */
+    sample_uniform_cone_concentric(lightN, one_minus_cos, rand, &cos_theta, &ls->Ng, &ls->pdf);
+    ls->D = -ls->Ng;
+
+    const float d_cos_theta = dist * cos_theta;
+    /* Law of cosines. */
+    ls->t = d_cos_theta - safe_sqrtf(sqr(radius) - sqr(dist) + sqr(d_cos_theta));
+
+    ls->P = P + ls->D * ls->t;
+
+    kernel_assert(fabsf(len(ls->P - klight->co) - radius) < 1e-4f);
+
+    /* TODO: change invarea to that of a sphere. */
+    ls->eval_fac = M_1_PI_F * 0.25f * klight->spot.invarea;
+    if (radius == 0) {
+      /* Use intensity instead of radiance for point light. */
+      ls->eval_fac /= sqr(ls->t);
+    }
   }
+  else {
+    /* TODO */
+  }
+
   const float2 uv = map_to_sphere(ls->Ng);
   ls->u = uv.x;
   ls->v = uv.y;
@@ -37,6 +52,7 @@ ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
   return true;
 }
 
+/* TODO: could there be visibility problem? what if P is inside? */
 ccl_device_forceinline void point_light_mnee_sample_update(const ccl_global KernelLight *klight,
                                                            ccl_private LightSample *ls,
                                                            const float3 P)
@@ -52,7 +68,7 @@ ccl_device_forceinline void point_light_mnee_sample_update(const ccl_global Kern
 
   if (radius > 0) {
     const float dist = len(P - klight->co);
-    const float one_minus_cos_angle = tan_to_one_minus_cos(radius / dist);
+    const float one_minus_cos_angle = sin_to_one_minus_cos(radius / dist);
     /* NOTE : preserve pdf in area measure. */
     ls->pdf = M_1_2PI_F / one_minus_cos_angle * dist / powf(ls->t, 3.0f);
   }
@@ -66,17 +82,13 @@ ccl_device_inline bool point_light_intersect(const ccl_global KernelLight *kligh
                                              const ccl_private Ray *ccl_restrict ray,
                                              ccl_private float *t)
 {
-  /* Sphere light (aka, aligned disk light). */
-  const float3 lightP = klight->co;
   const float radius = klight->spot.radius;
   if (radius == 0.0f) {
     return false;
   }
 
-  /* Disk oriented normal. */
-  const float3 lightN = normalize(ray->P - lightP);
   float3 P;
-  return ray_disk_intersect(ray->P, ray->D, ray->tmin, ray->tmax, lightP, lightN, radius, &P, t);
+  return ray_sphere_intersect(ray->P, ray->D, ray->tmin, ray->tmax, klight->co, radius, &P, t);
 }
 
 ccl_device_inline bool point_light_sample_from_intersection(
@@ -95,19 +107,11 @@ ccl_device_inline bool point_light_sample_from_intersection(
   ls->u = uv.x;
   ls->v = uv.y;
 
-  if (ls->t != FLT_MAX) {
-    const float radius = klight->spot.radius;
-    if (radius > 0) {
-      ls->pdf = M_1_2PI_F / sin_to_one_minus_cos(radius / ls->t);
-    }
-    else {
-      ls->eval_fac /= sqr(ls->t);
-      ls->pdf = 1.0f;
-    }
-  }
-  else {
-    ls->pdf = 0.f;
-  }
+  ls->pdf = (ls->t == FLT_MAX) ?
+                0.0f :
+                M_1_2PI_F / sin_to_one_minus_cos(klight->spot.radius / len(ray_P - klight->co));
+
+  /* TODO: inside. */
 
   return true;
 }
@@ -124,16 +128,21 @@ ccl_device_forceinline bool point_light_tree_parameters(const ccl_global KernelL
     cos_theta_u = 1.0f; /* Any value in [-1, 1], irrelevant since theta = 0 */
     return true;
   }
-  float min_distance;
-  point_to_centroid = safe_normalize_len(centroid - P, &min_distance);
+
+  float dist_point_to_centroid;
+  point_to_centroid = safe_normalize_len(centroid - P, &dist_point_to_centroid);
 
   const float radius = klight->spot.radius;
-  const float hypotenus = sqrtf(sqr(radius) + sqr(min_distance));
-  cos_theta_u = min_distance / hypotenus;
+  if (dist_point_to_centroid > radius) {
+    const float min_dist = dist_point_to_centroid - radius;
+    const float max_dist = sqrtf(sqr(dist_point_to_centroid) - sqr(radius));
+    cos_theta_u = max_dist / dist_point_to_centroid;
+    distance = make_float2(max_dist, min_dist);
+    return true;
+  }
 
-  distance = make_float2(hypotenus, min_distance);
-
-  return true;
+  /* TODO */
+  return false;
 }
 
 CCL_NAMESPACE_END

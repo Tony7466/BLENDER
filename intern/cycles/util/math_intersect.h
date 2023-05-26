@@ -40,6 +40,8 @@ ccl_device bool ray_sphere_intersect(float3 ray_P,
       return true;
     }
   }
+
+  /* TODO */
   return false;
 }
 
