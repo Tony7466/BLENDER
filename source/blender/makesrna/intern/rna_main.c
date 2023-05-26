@@ -340,7 +340,7 @@ void RNA_def_main(BlenderRNA *brna)
        "Grease Pencil",
        "Grease Pencil data-blocks",
 #  endif
-       RNA_def_main_gpencil},
+       RNA_def_main_gpencil_legacy},
       {"grease_pencils_v3",
        "GreasePencilv3",
        "rna_Main_grease_pencils_begin",
