@@ -6,6 +6,8 @@
 
 #define DNA_DEPRECATED_ALLOW
 
+#include <cmath>
+
 #include "CLG_log.h"
 
 #include "DNA_movieclip_types.h"
@@ -14,12 +16,16 @@
 #include "BLI_listbase.h"
 #include "BLI_set.hh"
 
+#include "BKE_deform.h"
 #include "BKE_main.h"
+#include "BKE_mesh.h"
 #include "BKE_mesh_legacy_convert.h"
 #include "BKE_node.hh"
 #include "BKE_tracking.h"
 
 #include "BLO_readfile.h"
+
+#include "DNA_modifier_types.h"
 
 #include "readfile.h"
 
@@ -99,13 +105,46 @@ static void version_geometry_nodes_add_realize_instance_nodes(bNodeTree *ntree)
   }
 }
 
+/* Version VertexWeightEdit modifier to make existing weights exclusive of the threshold. */
+static void version_vertex_weight_edit(Main *bmain)
+{
+  /* Object */
+  LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+    /* Object modifiers */
+    LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
+      if (md->type == eModifierType_WeightVGEdit && ob->type == OB_MESH) {
+
+        WeightVGEditModifierData *wmd = (WeightVGEditModifierData *)md;
+        Mesh *mesh = static_cast<Mesh *>(ob->data);
+
+        MDeformVert *dvert = BKE_mesh_deform_verts_for_write(mesh);
+        const int defgrp_index = BKE_id_defgroup_name_index(&mesh->id, wmd->defgrp_name);
+
+        // For each weight, check against the threshold
+        for (int i = 0; i < mesh->totvert; i++) {
+          MDeformWeight *def_weight = BKE_defvert_find_index(&dvert[i], defgrp_index);
+
+          if (def_weight->weight == wmd->add_threshold) {
+            def_weight->weight = nexttoward(def_weight->weight, 0.0);
+          }
+          if (def_weight->weight == wmd->rem_threshold) {
+            def_weight->weight = nexttoward(def_weight->weight, 1.0);
+          }
+        }
+      }
+    }
+  }
+}
+
 void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_ATLEAST(bmain, 400, 1)) {
     LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
       version_mesh_legacy_to_struct_of_array_format(*mesh);
+      // mesh_test(mesh);
     }
     version_movieclips_legacy_camera_object(bmain);
+    version_vertex_weight_edit(bmain);
   }
 
   if (!MAIN_VERSION_ATLEAST(bmain, 400, 2)) {
