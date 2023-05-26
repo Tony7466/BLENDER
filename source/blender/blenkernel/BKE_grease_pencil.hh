@@ -293,6 +293,12 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
   Span<Layer *> layers_for_write();
 
   /**
+   * Returns a pointer to the layer with \a name. If no such layer was found, returns nullptr.
+   */
+  const Layer *find_layer_by_name(StringRefNull name) const;
+  Layer *find_layer_by_name(StringRefNull name);
+
+  /**
    * Print the nodes. For debugging purposes.
    */
   void print_nodes(StringRefNull header) const;

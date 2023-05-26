@@ -188,10 +188,11 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
       MEM_cnew_array<GreasePencilDrawing *>(num_drawings, __func__));
 
   int i = 0, layer_idx = 0;
-  LayerGroup &root_goup = grease_pencil.root_group.wrap();
+  LayerGroup &root_group = grease_pencil.root_group.wrap();
   LISTBASE_FOREACH_INDEX (bGPDlayer *, gpl, &gpd.layers, layer_idx) {
     /* Create a new layer. */
-    Layer &new_layer = root_goup.add_layer(StringRefNull(gpl->info, BLI_strnlen(gpl->info, 128)));
+    Layer &new_layer = grease_pencil.add_layer(
+        root_group, StringRefNull(gpl->info, BLI_strnlen(gpl->info, 128)));
 
     /* Flags. */
     SET_FLAG_FROM_TEST(new_layer.base.flag, (gpl->flag & GP_LAYER_HIDE), GP_LAYER_TREE_NODE_HIDE);
@@ -239,8 +240,6 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
     }
 
     /* TODO: Update drawing user counts. */
-
-    new_layer.tag_frames_map_keys_changed();
   }
 
   /* Convert the onion skinning settings. */
@@ -256,8 +255,6 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
   grease_pencil.onion_skinning_settings.num_frames_after = gpd.gstep_next;
   copy_v3_v3(grease_pencil.onion_skinning_settings.color_before, gpd.gcolor_prev);
   copy_v3_v3(grease_pencil.onion_skinning_settings.color_after, gpd.gcolor_next);
-
-  // grease_pencil.runtime->set_active_layer_index(active_layer_index);
 
   BKE_id_materials_copy(&bmain, &gpd.id, &grease_pencil.id);
 }

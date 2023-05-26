@@ -103,6 +103,12 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
   new (&grease_pencil_dst->root_group)
       bke::greasepencil::LayerGroup(grease_pencil_src->root_group.wrap());
 
+  /* Set active layer. */
+  if (grease_pencil_src->has_active_layer()) {
+    grease_pencil_dst->active_layer = grease_pencil_dst->find_layer_by_name(
+        grease_pencil_src->active_layer->wrap().name());
+  }
+
   /* Duplicate runtime data. */
   if (grease_pencil_src->runtime) {
     grease_pencil_dst->runtime = MEM_new<bke::GreasePencilRuntime>(__func__,
@@ -185,7 +191,6 @@ static void grease_pencil_blend_read_data(BlendDataReader *reader, ID *id)
   BLO_read_pointer_array(reader, reinterpret_cast<void **>(&grease_pencil->material_array));
 
   grease_pencil->runtime = MEM_new<blender::bke::GreasePencilRuntime>(__func__);
-  // grease_pencil->load_layer_tree_from_storage();
 }
 
 static void grease_pencil_blend_read_lib(BlendLibReader *reader, ID *id)
@@ -601,6 +606,26 @@ Span<Layer *> LayerGroup::layers_for_write()
   return this->runtime->layer_cache_.as_span();
 }
 
+const Layer *LayerGroup::find_layer_by_name(const StringRefNull name) const
+{
+  for (const Layer *layer : this->layers()) {
+    if (StringRef(layer->name()) == StringRef(name)) {
+      return layer;
+    }
+  }
+  return nullptr;
+}
+
+Layer *LayerGroup::find_layer_by_name(const StringRefNull name)
+{
+  for (Layer *layer : this->layers_for_write()) {
+    if (StringRef(layer->name()) == StringRef(name)) {
+      return layer;
+    }
+  }
+  return nullptr;
+}
+
 void LayerGroup::print_nodes(StringRefNull header) const
 {
   std::cout << header << std::endl;
@@ -615,10 +640,10 @@ void LayerGroup::print_nodes(StringRefNull header) const
       std::cout << "  ";
     }
     if (node->is_layer()) {
-      std::cout << node->name;
+      std::cout << StringRefNull(node->name);
     }
     else if (node->is_group()) {
-      std::cout << node->name << ": ";
+      std::cout << StringRefNull(node->name) << ": ";
       LISTBASE_FOREACH_BACKWARD (GreasePencilLayerTreeNode *, child_, &node->as_group().children) {
         TreeNode *child = reinterpret_cast<TreeNode *>(child_);
         next_node.push(std::make_pair(indent + 1, child));
@@ -626,6 +651,7 @@ void LayerGroup::print_nodes(StringRefNull header) const
     }
     std::cout << std::endl;
   }
+  std::cout << std::endl;
 }
 
 void LayerGroup::ensure_nodes_cache() const
@@ -1052,6 +1078,27 @@ blender::Span<blender::bke::greasepencil::Layer *> GreasePencil::layers_for_writ
 {
   BLI_assert(this->runtime != nullptr);
   return this->root_group.wrap().layers_for_write();
+}
+
+blender::bke::greasepencil::Layer &GreasePencil::add_layer(
+    blender::bke::greasepencil::LayerGroup &group, const blender::StringRefNull name)
+{
+  using namespace blender;
+  StringRefNull checked_name;
+  /* TODO: Check for name collisions and resolve them. */
+  return group.add_layer(name);
+}
+
+const blender::bke::greasepencil::Layer *GreasePencil::find_layer_by_name(
+    const blender::StringRefNull name) const
+{
+  return this->root_group.wrap().find_layer_by_name(name);
+}
+
+blender::bke::greasepencil::Layer *GreasePencil::find_layer_by_name(
+    const blender::StringRefNull name)
+{
+  return this->root_group.wrap().find_layer_by_name(name);
 }
 
 void GreasePencil::print_layer_tree()
