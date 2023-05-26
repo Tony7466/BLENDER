@@ -281,6 +281,7 @@ typedef struct OVERLAY_PrivateData {
   DRWShadingGroup *motion_path_lines_grp;
   DRWShadingGroup *motion_path_points_grp;
   DRWShadingGroup *onion_skin_grp;
+  DRWShadingGroup *onion_skin_outline_grp;
   DRWShadingGroup *outlines_grp;
   DRWShadingGroup *outlines_curves_grp;
   DRWShadingGroup *outlines_ptcloud_grp;
@@ -777,6 +778,7 @@ GPUShader *OVERLAY_shader_image(void);
 GPUShader *OVERLAY_shader_motion_path_line(void);
 GPUShader *OVERLAY_shader_motion_path_vert(void);
 GPUShader *OVERLAY_shader_onion_skin_mesh(void);
+GPUShader *OVERLAY_shader_onion_skin_outline(void);
 GPUShader *OVERLAY_shader_uniform_color(void);
 GPUShader *OVERLAY_shader_uniform_color_pointcloud(void);
 GPUShader *OVERLAY_shader_outline_prepass(bool use_wire);

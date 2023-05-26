@@ -739,6 +739,7 @@ class RENDER_PT_onion_skins(RenderButtonsPanel, Panel):
         col.prop(scene, "os_relative_left")
         col.prop(scene, "os_relative_right")
         col.prop(scene, "onion_skin_alpha")
+        col.prop(scene, "onion_skin_draw_modes")
 
 
 class RENDER_PT_opengl_sampling(RenderButtonsPanel, Panel):

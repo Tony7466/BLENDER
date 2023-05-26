@@ -79,6 +79,7 @@ struct OVERLAY_Shaders {
   GPUShader *motion_path_line;
   GPUShader *motion_path_vert;
   GPUShader *onion_skin_mesh;
+  GPUShader *onion_skin_outline;
   GPUShader *outline_prepass;
   GPUShader *outline_prepass_curves;
   GPUShader *outline_prepass_gpencil;
@@ -694,6 +695,16 @@ GPUShader *OVERLAY_shader_onion_skin_mesh(void)
     sh_data->onion_skin_mesh = GPU_shader_create_from_info_name("overlay_onion_skin_mesh");
   }
   return sh_data->onion_skin_mesh;
+}
+
+GPUShader *OVERLAY_shader_onion_skin_outline(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->onion_skin_outline) {
+    sh_data->onion_skin_outline = GPU_shader_create_from_info_name("overlay_outline_detect");
+  }
+  return sh_data->onion_skin_outline;
 }
 
 GPUShader *OVERLAY_shader_outline_prepass(bool use_wire)

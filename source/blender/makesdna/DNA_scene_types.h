@@ -1865,12 +1865,17 @@ typedef struct OnionSkinMeshLink {
   char _pad[4];
 } OnionSkinMeshLink;
 
+enum {
+  ONION_SKIN_DRAW_SOLID = 0,
+  ONION_SKIN_DRAW_OUTLINE = 1,
+};
+
 typedef struct SceneOnionSkin {
   float color_left[3];
   float color_right[3];
   float alpha;
   int relative_left, relative_right;
-  char _pad[4];
+  int draw_method;
   ListBase objects /* OnionSkinMeshLink */;
 } SceneOnionSkin;
 

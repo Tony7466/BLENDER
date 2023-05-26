@@ -11,10 +11,14 @@ void OVERLAY_onion_skin_init(OVERLAY_Data *vedata)
   DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA;
   DRW_PASS_CREATE(psl->onion_skin_ps, state | pd->clipping_state);
 
-  GPUShader *shader = OVERLAY_shader_onion_skin_mesh();
   DRWShadingGroup *grp;
-  pd->onion_skin_grp = grp = DRW_shgroup_create(shader, psl->onion_skin_ps);
 
+  GPUShader *shader = OVERLAY_shader_onion_skin_mesh();
+  pd->onion_skin_grp = grp = DRW_shgroup_create(shader, psl->onion_skin_ps);
+  DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
+
+  GPUShader *shader_outline = OVERLAY_shader_onion_skin_outline();
+  pd->onion_skin_outline_grp = grp = DRW_shgroup_create(shader_outline, psl->onion_skin_ps);
   DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
 }
 
@@ -32,14 +36,20 @@ static bool str_equals(const char *__restrict str, const char *__restrict start)
 void OVERLAY_onion_skin_populate(OVERLAY_Data *vedata, Object *ob)
 {
   OVERLAY_PrivateData *pd = vedata->stl->pd;
-  DRWShadingGroup *grp = pd->onion_skin_grp;
 
   const DRWContextState *draw_ctx = DRW_context_state_get();
 
   Scene *scene = draw_ctx->scene;
   const float current_frame = BKE_scene_ctime_get(scene);
 
-  DRW_shgroup_uniform_float_copy(grp, "alpha", draw_ctx->scene->onion_skin_cache.alpha);
+  DRWShadingGroup *grp = nullptr;
+  if (scene->onion_skin_cache.draw_method == ONION_SKIN_DRAW_SOLID) {
+    grp = pd->onion_skin_grp;
+  }
+  else {
+    grp = pd->onion_skin_outline_grp;
+  }
+  DRW_shgroup_uniform_float_copy(grp, "alpha", scene->onion_skin_cache.alpha);
 
   LISTBASE_FOREACH (OnionSkinMeshLink *, mesh_link, &scene->onion_skin_cache.objects) {
     if (!str_equals(ob->id.name, mesh_link->object->id.name)) {

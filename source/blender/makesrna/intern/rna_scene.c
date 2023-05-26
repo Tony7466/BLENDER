@@ -671,6 +671,12 @@ static const EnumPropertyItem plane_orientation_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
+static const EnumPropertyItem onion_skin_draw_modes[] = {
+    {ONION_SKIN_DRAW_SOLID, "SOLID", 0, "Solid", "Draw solid shape"},
+    {ONION_SKIN_DRAW_OUTLINE, "OUTLINE", 0, "Outline", "Draw outline"},
+    {0, NULL, 0, NULL, NULL},
+};
+
 static const EnumPropertyItem snap_to_items[] = {
     {SCE_SNAP_MODE_GEOM, "GEOMETRY", 0, "Geometry", "Snap to all geometry"},
     {SCE_SNAP_MODE_NONE, "DEFAULT", 0, "Default", "Use the current snap settings"},
@@ -8477,6 +8483,12 @@ void RNA_def_scene(BlenderRNA *brna)
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 1, 2);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D | NS_VIEW3D_SHADING, NULL);
+
+  prop = RNA_def_property(srna, "onion_skin_draw_modes", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "onion_skin_cache.draw_method");
+  RNA_def_property_enum_items(prop, onion_skin_draw_modes);
+  RNA_def_property_enum_default(prop, ONION_SKIN_DRAW_SOLID);
+  RNA_def_property_ui_text(prop, "Onion Skin Draw Modes", "How to draw os's");
 
   /* Nestled Data. */
   /* *** Non-Animated *** */
