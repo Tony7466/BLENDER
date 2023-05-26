@@ -71,6 +71,7 @@ void Instance::init(const int2 &output_res,
   motion_blur.init();
   main_view.init();
   irradiance_cache.init();
+  reflection_probes.init();
 }
 
 void Instance::set_time(float time)
@@ -117,6 +118,7 @@ void Instance::begin_sync()
   hiz_buffer.sync();
   main_view.sync();
   world.sync();
+  reflection_probes.sync();
   film.sync();
   irradiance_cache.sync();
 }

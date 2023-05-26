@@ -674,7 +674,7 @@ class Texture : NonCopyable {
                          float *data = nullptr,
                          int mip_len = 1)
   {
-    return ensure_impl(extent, extent, layers, mip_len, format, usage, data, false, true);
+    return ensure_impl(extent, extent, layers, mip_len, format, usage, data, true, true);
   }
 
   /**
@@ -1033,8 +1033,7 @@ class TextureRef : public Texture {
  * Dummy type to bind texture as image.
  * It is just a GPUTexture in disguise.
  */
-class Image {
-};
+class Image {};
 
 static inline Image *as_image(GPUTexture *tex)
 {

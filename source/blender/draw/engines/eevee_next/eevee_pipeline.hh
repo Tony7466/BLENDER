@@ -44,6 +44,45 @@ class WorldPipeline {
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name World Probe Pipeline
+ *
+ * Render reflection probe of the world background.
+ * \{ */
+
+class WorldProbePipeline {
+ private:
+  Instance &inst_;
+
+  struct CubemapSide {
+    PassSimple cubemap_face_ps;
+    View view;
+    Framebuffer cubemap_face_fb;
+    void render(Instance &instance);
+  };
+
+  CubemapSide sides_[6] = {
+      {{"PosX"}, {"PosX"}},
+      {{"NegX"}, {"NegX"}},
+      {{"PosY"}, {"PosY"}},
+      {{"NegY"}, {"NegY"}},
+      {{"PosZ"}, {"PosZ"}},
+      {{"NegZ"}, {"NegZ"}},
+  };
+
+ public:
+  WorldProbePipeline(Instance &inst) : inst_(inst){};
+
+  void sync();
+  void sync(GPUMaterial *gpumat);
+  void render();
+
+ private:
+  void sync(GPUMaterial *gpumat, int face);
+};  // namespace blender::eevee
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Shadow Pass
  *
  * \{ */
@@ -266,6 +305,7 @@ class UtilityTexture : public Texture {
 class PipelineModule {
  public:
   WorldPipeline world;
+  WorldProbePipeline world_probe;
   DeferredPipeline deferred;
   ForwardPipeline forward;
   ShadowPipeline shadow;
@@ -273,13 +313,15 @@ class PipelineModule {
   UtilityTexture utility_tx;
 
  public:
-  PipelineModule(Instance &inst) : world(inst), deferred(inst), forward(inst), shadow(inst){};
+  PipelineModule(Instance &inst)
+      : world(inst), world_probe(inst), deferred(inst), forward(inst), shadow(inst){};
 
   void begin_sync()
   {
     deferred.begin_sync();
     forward.sync();
     shadow.sync();
+    world_probe.sync();
   }
 
   void end_sync()

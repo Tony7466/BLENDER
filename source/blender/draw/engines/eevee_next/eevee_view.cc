@@ -119,13 +119,12 @@ void ShadingView::render()
   GPU_framebuffer_clear_color_depth(combined_fb_, clear_color, 1.0f);
 
   inst_.pipelines.world.render(render_view_new_);
+  inst_.pipelines.world_probe.render();
 
   /* TODO(fclem): Move it after the first prepass (and hiz update) once pipeline is stabilized. */
   inst_.lights.set_view(render_view_new_, extent_);
 
   inst_.pipelines.deferred.render(render_view_new_, prepass_fb_, combined_fb_, extent_);
-
-  // inst_.lightprobes.draw_cache_display();
 
   // inst_.lookdev.render_overlay(view_fb_);
 
