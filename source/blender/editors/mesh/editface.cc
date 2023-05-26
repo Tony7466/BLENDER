@@ -27,7 +27,6 @@
 #include "BKE_global.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.h"
-#include "BKE_mesh_runtime.h"
 #include "BKE_object.h"
 
 #include "ED_mesh.h"
