@@ -1172,15 +1172,26 @@ static PyObject *C_BVHTree_FromObject(PyObject * /*cls*/, PyObject *args, PyObje
       blender::MutableSpan(orig_normal, poly_normals.size()).copy_from(poly_normals);
     }
 
-    if (free_mesh) {
-      BKE_id_free(nullptr, const_cast<Mesh *>(mesh));
+    for (const int64_t i : looptris.index_range()) {
+      float co[3][3];
+
+      tris[i][0] = uint(corner_verts[looptris[i].tri[0]]);
+      tris[i][1] = uint(corner_verts[looptris[i].tri[1]]);
+      tris[i][2] = uint(corner_verts[looptris[i].tri[2]]);
+
+      copy_v3_v3(co[0], coords[tris[i][0]]);
+      copy_v3_v3(co[1], coords[tris[i][1]]);
+      copy_v3_v3(co[2], coords[tris[i][2]]);
+
+      BLI_bvhtree_insert(tree, int(i), co[0], 3);
+      orig_index[i] = int(looptri_polys[i]);
     }
 
     BLI_bvhtree_balance(tree);
   }
 
   if (free_mesh) {
-    BKE_id_free(nullptr, mesh);
+    BKE_id_free(nullptr, const_cast<Mesh *>(mesh));
   }
 
   return bvhtree_CreatePyObject(tree,

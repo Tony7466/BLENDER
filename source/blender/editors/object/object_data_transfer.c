@@ -182,6 +182,11 @@ static const EnumPropertyItem *dt_layers_select_src_itemf(bContext *C,
     const Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
     const Object *ob_src_eval = DEG_get_evaluated_object(depsgraph, ob_src);
     const Mesh *me_eval = BKE_object_get_evaluated_mesh_no_subsurf(ob_src_eval);
+    if (!me_eval) {
+      RNA_enum_item_end(&item, &totitem);
+      *r_free = true;
+      return item;
+    }
     int num_data = CustomData_number_of_layers(&me_eval->ldata, CD_PROP_FLOAT2);
 
     RNA_enum_item_add_separator(&item, &totitem);
@@ -197,6 +202,11 @@ static const EnumPropertyItem *dt_layers_select_src_itemf(bContext *C,
     const Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
     const Object *ob_src_eval = DEG_get_evaluated_object(depsgraph, ob_src);
     const Mesh *me_eval = BKE_object_get_evaluated_mesh_no_subsurf(ob_src_eval);
+    if (!me_eval) {
+      RNA_enum_item_end(&item, &totitem);
+      *r_free = true;
+      return item;
+    }
 
     CustomData_MeshMasks cddata_masks = CD_MASK_BAREMESH;
     if (data_type & (DT_TYPE_MPROPCOL_VERT)) {

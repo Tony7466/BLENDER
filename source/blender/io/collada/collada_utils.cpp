@@ -234,7 +234,7 @@ Mesh *bc_get_mesh_copy(BlenderContext &blender_context,
     tmpmesh = (Mesh *)ob->data;
   }
 
-  Mesh *mesh = (Mesh *)BKE_id_copy_ex(nullptr, &tmpmesh->id, nullptr, LIB_ID_COPY_LOCALIZE);
+  Mesh *mesh = BKE_mesh_copy_for_eval(tmpmesh);
 
   if (triangulate) {
     bc_triangulate_mesh(mesh);

@@ -397,8 +397,10 @@ static void add_verts_to_dgroups(ReportList *reports,
     /* if in weight paint mode, use final verts from evaluated mesh */
     const Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
     const Mesh *me_eval = BKE_object_get_evaluated_mesh(ob_eval);
-    BKE_mesh_foreach_mapped_vert_coords_get(me_eval, verts, mesh->totvert);
-    vertsfilled = 1;
+    if (me_eval) {
+      BKE_mesh_foreach_mapped_vert_coords_get(me_eval, verts, mesh->totvert);
+      vertsfilled = 1;
+    }
   }
   else if (BKE_modifiers_findby_type(ob, eModifierType_Subsurf)) {
     /* Is subdivision-surface on? Lets use the verts on the limit surface then.

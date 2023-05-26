@@ -1260,6 +1260,9 @@ bool ED_mesh_pick_face_vert(
   if (ED_mesh_pick_face(C, ob, mval, dist_px, &poly_index)) {
     const Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
     const Mesh *me_eval = BKE_object_get_evaluated_mesh(ob_eval);
+    if (!me_eval) {
+      return false;
+    }
     ARegion *region = CTX_wm_region(C);
 
     int v_idx_best = ORIGINDEX_NONE;

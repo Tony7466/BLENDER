@@ -65,6 +65,9 @@ bool ABCHairWriter::check_is_animated(const HierarchyContext & /*context*/) cons
 void ABCHairWriter::do_write(HierarchyContext &context)
 {
   const Mesh *mesh = BKE_object_get_evaluated_mesh(context.object);
+  if (!mesh) {
+    return;
+  }
   BKE_mesh_tessface_ensure(const_cast<Mesh *>(mesh));
 
   std::vector<Imath::V3f> verts;
