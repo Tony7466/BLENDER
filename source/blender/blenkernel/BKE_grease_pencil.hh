@@ -320,7 +320,14 @@ void legacy_gpencil_to_grease_pencil(Main &main, GreasePencil &grease_pencil, bG
 
 class GreasePencilRuntime {
  public:
+  /**
+   * Allocated and freed by the drawing code. See `DRW_grease_pencil_batch_cache_*` functions.
+   */
   void *batch_cache = nullptr;
+
+ public:
+  GreasePencilRuntime() {}
+  ~GreasePencilRuntime() {}
 };
 
 }  // namespace blender::bke

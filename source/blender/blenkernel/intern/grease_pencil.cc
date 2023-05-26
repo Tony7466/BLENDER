@@ -109,11 +109,8 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
         grease_pencil_src->active_layer->wrap().name());
   }
 
-  /* Duplicate runtime data. */
-  if (grease_pencil_src->runtime) {
-    grease_pencil_dst->runtime = MEM_new<bke::GreasePencilRuntime>(__func__,
-                                                                   *grease_pencil_src->runtime);
-  }
+  /* Make sure the runtime pointer exists. */
+  grease_pencil_dst->runtime = MEM_new<bke::GreasePencilRuntime>(__func__);
 }
 
 static void grease_pencil_free_data(ID *id)
