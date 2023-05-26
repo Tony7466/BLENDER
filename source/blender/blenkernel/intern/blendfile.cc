@@ -218,7 +218,7 @@ static void setup_app_userdef(BlendFileData *bfd)
   }
 }
 
-/** Helper struct to manage IDs that are re-used accross blendfile loading (i.e. moved from the old
+/** Helper struct to manage IDs that are re-used across blendfile loading (i.e. moved from the old
  * Main the the new one).
  *
  * NOTE: this is only used when actually loading a real .blend file, loading of memfile undo steps
@@ -291,7 +291,7 @@ static bool reuse_bmain_data_remapper_is_id_remapped(IDRemapper *remapper, ID *i
   IDRemapperApplyResult result = BKE_id_remapper_get_mapping_result(
       remapper, id, ID_REMAP_APPLY_DEFAULT, nullptr);
   if (ELEM(result, ID_REMAP_RESULT_SOURCE_REMAPPED, ID_REMAP_RESULT_SOURCE_UNASSIGNED)) {
-    /* ID is already remapped to its msatching ID in the new main, or explicitly remapped to NULL,
+    /* ID is already remapped to its matching ID in the new main, or explicitly remapped to NULL,
      * nothing else to do here. */
     return true;
   }

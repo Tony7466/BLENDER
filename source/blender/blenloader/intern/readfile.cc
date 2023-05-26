@@ -2798,7 +2798,7 @@ static bool read_libblock_undo_restore(
      * have moved it into the new main, and populated accordingly the new_idmap_uuid.
      *
      * If this is the case, it can also be remapped for newly read data. Otherwise, this is 'lost'
-     * data that cannot be restored on undo, so no remmaping should exist for it in the ID
+     * data that cannot be restored on undo, so no remapping should exist for it in the ID
      * oldnewmap. */
     if (id_old) {
       BLI_assert(id_old == static_cast<ID *>(
@@ -3571,7 +3571,7 @@ BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath)
     }
   }
 
-  /* Do versionning before read_libraries, but skip in undo case. */
+  /* Do versioning before read_libraries, but skip in undo case. */
   if (!is_undo) {
     if ((fd->skip_flags & BLO_READ_SKIP_DATA) == 0) {
       do_versions(fd, nullptr, bfd->main);
