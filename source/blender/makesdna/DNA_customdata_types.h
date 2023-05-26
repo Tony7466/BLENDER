@@ -60,6 +60,14 @@ typedef struct CustomDataLayer {
    * other geometries).
    */
   const ImplicitSharingInfoHandle *sharing_info;
+  /**
+   * Run-time index into the layer_locator array of the owning CustomData
+   * this array is used by PointerRNA to have a permanent address to
+   * find CustomDataLayer, while the CustomDataLayer itself gets moved around
+   * when layers are added and deleted.
+   */
+  int this_locator;
+  char _pad2[4];
 } CustomDataLayer;
 
 #define MAX_CUSTOMDATA_LAYER_NAME 68
@@ -84,6 +92,12 @@ typedef struct CustomData {
    * Correct size is ensured in CustomData_update_typemap assert().
    */
   int typemap[52];
+  /**
+  * runtime only! - the indices are updated together with the typemap
+  * the same location in the array will always point to the same layer
+  * as long as it exists
+  */
+  CustomDataLayer **layer_locator;
   char _pad[4];
   /** Number of layers, size of layers array. */
   int totlayer, maxlayer;

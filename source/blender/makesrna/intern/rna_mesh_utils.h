@@ -10,29 +10,48 @@
 
 /* Define the accessors for a basic CustomDataLayer collection, skipping anonymous layers */
 #define DEFINE_CUSTOMDATA_LAYER_COLLECTION(collection_name, customdata_type, layer_type) \
-  /* check */ \
-  static int rna_##collection_name##_check(CollectionPropertyIterator *UNUSED(iter), void *data) \
-  { \
-    CustomDataLayer *layer = (CustomDataLayer *)data; \
-    return (layer->anonymous_id != NULL || layer->type != layer_type); \
-  } \
   /* begin */ \
   static void rna_Mesh_##collection_name##s_begin(CollectionPropertyIterator *iter, \
                                                   PointerRNA *ptr) \
   { \
     CustomData *data = rna_mesh_##customdata_type(ptr); \
-    if (data) { \
-      rna_iterator_array_begin(iter, \
-                               (void *)data->layers, \
-                               sizeof(CustomDataLayer), \
-                               data->totlayer, \
-                               0, \
-                               rna_##collection_name##_check); \
-    } \
-    else { \
-      rna_iterator_array_begin(iter, NULL, 0, 0, 0, NULL); \
-    } \
+    iter->internal.count.item = 0;  \
+    iter->internal.count.ptr = data; \
+    iter->valid = CustomData_number_of_layers(data, layer_type) > 0 ? 1 : 0; \
+    printf("rna_Mesh_%ss_begin() CD= %p valid = %d\n", #collection_name, data, iter->valid); \
   } \
+  /* next */ \
+  static void rna_Mesh_##collection_name##s_next(CollectionPropertyIterator *iter) \
+  {\
+    CustomData *data = (CustomData *)(iter->internal.count.ptr); \
+    int item = iter->internal.count.item;\
+    int nr_layers = CustomData_number_of_layers(data, layer_type); \
+    while (++item < nr_layers) {\
+     int index = CustomData_get_layer_index_n(data, layer_type, item);\
+     if (data->layers[index].anonymous_id == NULL) { \
+       break; \
+     } \
+    } \
+    iter->valid = item < nr_layers; \
+    iter->internal.count.item = item; \
+    printf("rna_Mesh_%ss_next() item now %d\n", #collection_name, iter->internal.count.item);\
+  }\
+  /* get */ \
+  static PointerRNA rna_Mesh_##collection_name##s_get(CollectionPropertyIterator *iter) \
+  { \
+    CustomData *data = (CustomData *)(iter->internal.count.ptr); \
+    if (iter->internal.count.item >= CustomData_number_of_layers(data, layer_type)) {\
+      printf("rna_Mesh_%ss_get() return null\n", #collection_name);\
+      return PointerRNA_NULL;\
+    }\
+    int index = CustomData_get_layer_index_n(data, layer_type, iter->internal.count.item); \
+    CustomDataLayer const *cdl = &data->layers[index]; \
+    printf("rna_Mesh_%ss_get() CD= %p item = %d cdl = %p locator = %p\n", #collection_name, data, iter->internal.count.item, cdl, &(data->layer_locator[cdl->this_locator]));\
+    return rna_pointer_inherit_refine(&iter->parent, &RNA_MeshUVLoopLayer,  &(data->layer_locator[cdl->this_locator])) ;\
+  } \
+  static void rna_Mesh_##collection_name##s_end(CollectionPropertyIterator *UNUSED(iter)) \
+  {\
+  }\
   /* length */ \
   static int rna_Mesh_##collection_name##s_length(PointerRNA *ptr) \
   { \

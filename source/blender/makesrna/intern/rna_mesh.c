@@ -154,7 +154,7 @@ static void rna_MeshEdgeLayer_name_set(PointerRNA *ptr, const char *value)
 #  endif
 static void rna_MeshPolyLayer_name_set(PointerRNA *ptr, const char *value)
 {
-  CustomDataLayer *layer = (CustomDataLayer *)ptr->data;
+  CustomDataLayer *layer = *(CustomDataLayer **)ptr->data;
 
   if (CD_TYPE_AS_MASK(layer->type) & CD_MASK_PROP_ALL) {
     BKE_id_attribute_rename(ptr->owner_id, layer->name, value, NULL);
@@ -163,6 +163,22 @@ static void rna_MeshPolyLayer_name_set(PointerRNA *ptr, const char *value)
     rna_cd_layer_name_set(rna_mesh_pdata(ptr), layer, value);
   }
 }
+
+static void rna_MeshLoopLayer_name_get(PointerRNA *ptr, char *value)
+{
+  CustomDataLayer *layer = *(CustomDataLayer **)ptr->data;
+
+  strcpy(value, layer->name); //! add checks
+
+}
+
+static int rna_MeshLoopLayer_name_length(PointerRNA *ptr)
+{
+  CustomDataLayer *layer = *(CustomDataLayer **)ptr->data;
+
+  return layer->name ? strlen(layer->name) : 0;
+}
+
 static void rna_MeshLoopLayer_name_set(PointerRNA *ptr, const char *value)
 {
   CustomDataLayer *layer = (CustomDataLayer *)ptr->data;
@@ -977,7 +993,7 @@ DEFINE_CUSTOMDATA_LAYER_COLLECTION_ACTIVEITEM(
 
 static char *rna_MeshUVLoopLayer_path(const PointerRNA *ptr)
 {
-  const CustomDataLayer *cdl = ptr->data;
+  const CustomDataLayer *cdl = *(CustomDataLayer **)(ptr->data);
   char name_esc[sizeof(cdl->name) * 2];
   BLI_str_escape(name_esc, cdl->name, sizeof(name_esc));
   return BLI_sprintfN("uv_layers[\"%s\"]", name_esc);
@@ -986,7 +1002,7 @@ static char *rna_MeshUVLoopLayer_path(const PointerRNA *ptr)
 static void rna_MeshUVLoopLayer_data_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   Mesh *mesh = rna_mesh(ptr);
-  CustomDataLayer *layer = (CustomDataLayer *)ptr->data;
+  CustomDataLayer *layer = *(CustomDataLayer **)(ptr->data);
   rna_iterator_array_begin(
       iter, layer->data, sizeof(float[2]), (mesh->edit_mesh) ? 0 : mesh->totloop, 0, NULL);
 }
@@ -1017,7 +1033,7 @@ static void bool_layer_begin(CollectionPropertyIterator *iter,
 {
   char bool_layer_name[MAX_CUSTOMDATA_LAYER_NAME];
   Mesh *mesh = rna_mesh(ptr);
-  CustomDataLayer *layer = (CustomDataLayer *)ptr->data;
+  CustomDataLayer *layer = *(CustomDataLayer **)(ptr->data);
   layername_func(layer->name, bool_layer_name);
 
   rna_iterator_array_begin(iter,
@@ -1038,7 +1054,7 @@ static int bool_layer_lookup_int(PointerRNA *ptr,
   if (mesh->edit_mesh || index < 0 || index >= mesh->totloop) {
     return 0;
   }
-  CustomDataLayer *layer = (CustomDataLayer *)ptr->data;
+  CustomDataLayer *layer = *(CustomDataLayer **)(ptr->data);
   layername_func(layer->name, bool_layer_name);
 
   r_ptr->owner_id = &mesh->id;
@@ -1089,7 +1105,7 @@ static int rna_MeshUVLoopLayer_pin_lookup_int(PointerRNA *ptr, int index, Pointe
 static void rna_MeshUVLoopLayer_uv_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   Mesh *me = rna_mesh(ptr);
-  CustomDataLayer *layer = (CustomDataLayer *)ptr->data;
+  CustomDataLayer *layer = *(CustomDataLayer **)(ptr->data);
 
   rna_iterator_array_begin(
       iter, layer->data, sizeof(float[2]), (me->edit_mesh) ? 0 : me->totloop, 0, NULL);
@@ -1101,7 +1117,7 @@ int rna_MeshUVLoopLayer_uv_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_
   if (mesh->edit_mesh || index < 0 || index >= mesh->totloop) {
     return 0;
   }
-  CustomDataLayer *layer = (CustomDataLayer *)ptr->data;
+  CustomDataLayer *layer = *(CustomDataLayer **)(ptr->data);
 
   r_ptr->owner_id = &mesh->id;
   r_ptr->type = &RNA_Float2AttributeValue;
@@ -2122,17 +2138,17 @@ static PointerRNA rna_Mesh_uv_layers_new(struct Mesh *me,
     cdl = &ldata->layers[CustomData_get_layer_index_n(ldata, CD_PROP_FLOAT2, index)];
   }
 
-  RNA_pointer_create(&me->id, &RNA_MeshUVLoopLayer, cdl, &ptr);
+  RNA_pointer_create(&me->id, &RNA_MeshUVLoopLayer, ldata->layer_locator[cdl->this_locator], &ptr);
   return ptr;
 }
 
-static void rna_Mesh_uv_layers_remove(struct Mesh *me, ReportList *reports, CustomDataLayer *layer)
+static void rna_Mesh_uv_layers_remove(struct Mesh *me, ReportList *reports, CustomDataLayer **layer)
 {
-  if (!BKE_id_attribute_find(&me->id, layer->name, CD_PROP_FLOAT2, ATTR_DOMAIN_CORNER)) {
-    BKE_reportf(reports, RPT_ERROR, "UV map '%s' not found", layer->name);
+  if (!BKE_id_attribute_find(&me->id, (*layer)->name, CD_PROP_FLOAT2, ATTR_DOMAIN_CORNER)) {
+    BKE_reportf(reports, RPT_ERROR, "UV map '%s' not found", (*layer)->name);
     return;
   }
-  BKE_id_attribute_remove(&me->id, layer->name, reports);
+  BKE_id_attribute_remove(&me->id, (*layer)->name, reports);
 }
 
 static bool rna_Mesh_is_editmode_get(PointerRNA *ptr)
@@ -2606,7 +2622,7 @@ static void rna_def_mloopuv(BlenderRNA *brna)
   PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, "MeshUVLoopLayer", NULL);
-  RNA_def_struct_sdna(srna, "CustomDataLayer");
+//  RNA_def_struct_sdna(srna, "CustomDataLayer");
   RNA_def_struct_path_func(srna, "rna_MeshUVLoopLayer_path");
 
   prop = RNA_def_property(srna, "data", PROP_COLLECTION, PROP_NONE);
@@ -2628,7 +2644,7 @@ static void rna_def_mloopuv(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_struct_name_property(srna, prop);
-  RNA_def_property_string_funcs(prop, NULL, NULL, "rna_MeshLoopLayer_name_set");
+  RNA_def_property_string_funcs(prop, "rna_MeshLoopLayer_name_get", "rna_MeshLoopLayer_name_length", "rna_MeshLoopLayer_name_set");
   RNA_def_property_string_maxlength(prop, MAX_CUSTOMDATA_LAYER_NAME_NO_PREFIX);
   RNA_def_property_ui_text(prop, "Name", "Name of UV map");
   RNA_def_property_update(prop, 0, "rna_Mesh_update_data_legacy_deg_tag_all");
@@ -2640,14 +2656,14 @@ static void rna_def_mloopuv(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Mesh_update_data_legacy_deg_tag_all");
 
   prop = RNA_def_property(srna, "active_render", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "active_rnd", 0);
+//  RNA_def_property_boolean_sdna(prop, NULL, "active_rnd", 0);
   RNA_def_property_boolean_funcs(
       prop, "rna_MeshUVLoopLayer_active_render_get", "rna_MeshUVLoopLayer_active_render_set");
   RNA_def_property_ui_text(prop, "Active Render", "Set the UV map as active for rendering");
   RNA_def_property_update(prop, 0, "rna_Mesh_update_data_legacy_deg_tag_all");
 
   prop = RNA_def_property(srna, "active_clone", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "active_clone", 0);
+//  RNA_def_property_boolean_sdna(prop, NULL, "active_clone", 0);
   RNA_def_property_boolean_funcs(
       prop, "rna_MeshUVLoopLayer_clone_get", "rna_MeshUVLoopLayer_clone_set");
   RNA_def_property_ui_text(prop, "Active Clone", "Set the map as active for cloning");
@@ -3034,13 +3050,13 @@ static void rna_def_uv_layers(BlenderRNA *brna, PropertyRNA *cprop)
   parm = RNA_def_pointer(func, "layer", "MeshUVLoopLayer", "", "The newly created layer");
   RNA_def_parameter_flags(parm, 0, PARM_RNAPTR);
   RNA_def_function_return(func, parm);
-
+#if 0
   func = RNA_def_function(srna, "remove", "rna_Mesh_uv_layers_remove");
-  RNA_def_function_ui_description(func, "Remove a vertex color layer");
+  RNA_def_function_ui_description(func, "Remove a UV map");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
   parm = RNA_def_pointer(func, "layer", "MeshUVLoopLayer", "", "The layer to remove");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
-
+#endif
   prop = RNA_def_property(srna, "active", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "MeshUVLoopLayer");
   RNA_def_property_pointer_funcs(
@@ -3486,9 +3502,9 @@ static void rna_def_mesh(BlenderRNA *brna)
   RNA_def_property_collection_sdna(prop, NULL, "ldata.layers", "ldata.totlayer");
   RNA_def_property_collection_funcs(prop,
                                     "rna_Mesh_uv_layers_begin",
-                                    NULL,
-                                    NULL,
-                                    NULL,
+                                    "rna_Mesh_uv_layers_next",
+                                    "rna_Mesh_uv_layers_end",
+                                    "rna_Mesh_uv_layers_get",
                                     "rna_Mesh_uv_layers_length",
                                     NULL,
                                     NULL,

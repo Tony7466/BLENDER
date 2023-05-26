@@ -2146,6 +2146,15 @@ static CustomDataLayer *customData_add_layer__internal(
     int totelem,
     const char *name);
 
+static void CustomData_ensure_locator(CustomData *data)
+{
+  if (!data->layer_locator) {
+        data->layer_locator = static_cast<CustomDataLayer **>(
+      MEM_mallocN(64 * sizeof(CustomDataLayer *), __FUNCTION__));       //!hack! hardcoded 64 just for testing
+      memset(data->layer_locator, 0, 64*sizeof(CustomDataLayer *));
+  }
+}
+
 void CustomData_update_typemap(CustomData *data)
 {
   int lasttype = -1;
@@ -2154,12 +2163,15 @@ void CustomData_update_typemap(CustomData *data)
     data->typemap[i] = -1;
   }
 
+  CustomData_ensure_locator(data);
+
   for (int i = 0; i < data->totlayer; i++) {
     const eCustomDataType type = eCustomDataType(data->layers[i].type);
     if (type != lasttype) {
       data->typemap[type] = i;
       lasttype = type;
     }
+    data->layer_locator[data->layers[i].this_locator] = data->layers+i;
   }
 }
 
@@ -2324,6 +2336,9 @@ CustomData CustomData_shallow_copy_remove_non_bmesh_attributes(const CustomData 
       MEM_calloc_arrayN(dst_layers.size(), sizeof(CustomDataLayer), __func__));
   dst.maxlayer = dst.totlayer = dst_layers.size();
   memcpy(dst.layers, dst_layers.data(), dst_layers.as_span().size_in_bytes());
+
+  dst.layer_locator  = static_cast<CustomDataLayer **>(MEM_malloc_arrayN(dst.totlayer, sizeof(CustomDataLayer *), __func__));
+  std::fill(dst.layer_locator, dst.layer_locator+dst.totlayer, nullptr);
 
   CustomData_update_typemap(&dst);
 
@@ -2507,6 +2522,10 @@ void CustomData_free(CustomData *data, const int totelem)
     MEM_freeN(data->layers);
   }
 
+  if (data->layer_locator) {
+    MEM_freeN(data->layer_locator);
+  }
+
   CustomData_external_free(data);
   CustomData_reset(data);
 }
@@ -2524,6 +2543,11 @@ void CustomData_free_typemask(CustomData *data, const int totelem, eCustomDataMa
   if (data->layers) {
     MEM_freeN(data->layers);
   }
+
+  if (data->layer_locator) {
+    MEM_freeN(data->layer_locator);
+  }
+
 
   CustomData_external_free(data);
   CustomData_reset(data);
@@ -2939,6 +2963,20 @@ static CustomDataLayer *customData_add_layer__internal(
   else {
     new_layer.name[0] = '\0';
   }
+
+  CustomData_ensure_locator(data);
+  new_layer.this_locator = -1;
+  for (int i = 0; i < 64; i++)  {
+    if (data->layer_locator[i] == nullptr) {
+      data->layer_locator[i] = &data->layers[index];
+      new_layer.this_locator = i;
+      break;
+    }
+  }
+
+  /* In this proof-of-concept we can't handle more than 64 layers */
+  BLI_assert(new_layer.this_locator >=0);
+
 
   if (index > 0 && data->layers[index - 1].type == type) {
     new_layer.active = data->layers[index - 1].active;
