@@ -35,6 +35,7 @@ set(SRC
 )
 
 set(LIB
+  bf_draw
 )
 
 if(WITH_HEADLESS)
