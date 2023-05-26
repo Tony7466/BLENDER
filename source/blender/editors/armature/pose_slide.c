@@ -1579,7 +1579,7 @@ static int pose_slide_blend_rest_exec(bContext *C, wmOperator *op)
   return pose_slide_exec_common(C, op, pso);
 }
 
-void POSE_OT_blend_rest(wmOperatorType *ot)
+void POSE_OT_blend_to_rest(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Blend Pose to Rest Pose";
