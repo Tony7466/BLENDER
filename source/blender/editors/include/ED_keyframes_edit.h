@@ -447,6 +447,7 @@ void ED_anim_calculate_butterworth_coefficients(float cutoff,
 void butterworth_smooth_fcurve_segment(struct FCurve *fcu,
                                        struct FCurveSegment *segment,
                                        float *samples,
+                                       int sample_count,
                                        float factor,
                                        int sample_rate,
                                        struct ButterworthCoefficients *bw_coeff);

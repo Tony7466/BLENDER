@@ -987,6 +987,7 @@ typedef struct tFCurveSegmentLink {
   FCurve *fcu;
   FCurveSegment *segment;
   float *samples; /* Array of y-values of the FCurve segment. */
+  int sample_count;
 } tFCurveSegmentLink;
 
 static void gaussian_smooth_allocate_operator_data(tGraphSliderOp *gso,
@@ -1019,6 +1020,7 @@ static void gaussian_smooth_allocate_operator_data(tGraphSliderOp *gso,
       float *samples = MEM_callocN(sizeof(float) * sample_count, "Smooth FCurve Op Samples");
       sample_fcurve_segment(fcu, left_bezt.vec[1][0] - filter_width, 1, samples, sample_count);
       segment_link->samples = samples;
+      segment_link->sample_count = sample_count;
       BLI_addtail(&segment_links, segment_link);
     }
   }
@@ -1211,6 +1213,20 @@ typedef struct tBtwOperatorData {
   ListBase anim_data;     /* bAnimListElem */
 } tBtwOperatorData;
 
+static int btw_calculate_sample_count(BezTriple *right_bezt,
+                                      BezTriple *left_bezt,
+                                      const int filter_order,
+                                      const int samples_per_frame)
+{
+  /* Adding a constant 60 frames to combat the issue that the phase delay is shifting data out of
+   * the sample count range. This becomes an issue when running the filter backwards. */
+  const int sample_count = ((int)(right_bezt->vec[1][0] - left_bezt->vec[1][0]) + 1 +
+                            (filter_order * 2)) *
+                               samples_per_frame +
+                           60;
+  return sample_count;
+}
+
 static void btw_smooth_allocate_operator_data(tGraphSliderOp *gso,
                                               const int filter_order,
                                               const int samples_per_frame)
@@ -1234,13 +1250,13 @@ static void btw_smooth_allocate_operator_data(tGraphSliderOp *gso,
       segment_link->segment = segment;
       BezTriple left_bezt = fcu->bezt[segment->start_index];
       BezTriple right_bezt = fcu->bezt[segment->start_index + segment->length - 1];
-      const int sample_count = ((int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) + 1 +
-                                (filter_order * 2)) *
-                               samples_per_frame;
+      const int sample_count = btw_calculate_sample_count(
+          &right_bezt, &left_bezt, filter_order, samples_per_frame);
       float *samples = MEM_callocN(sizeof(float) * sample_count, "Btw Smooth FCurve Op Samples");
       sample_fcurve_segment(
           fcu, left_bezt.vec[1][0] - filter_order, samples_per_frame, samples, sample_count);
       segment_link->samples = samples;
+      segment_link->sample_count = sample_count;
       BLI_addtail(&segment_links, segment_link);
     }
   }
@@ -1280,8 +1296,9 @@ static void btw_smooth_modal_update(bContext *C, wmOperator *op)
   const float frame_rate = (float)(ac.scene->r.frs_sec) / ac.scene->r.frs_sec_base;
   const int samples_per_frame = RNA_int_get(op->ptr, "samples_per_frame");
   const float sampling_frequency = frame_rate * samples_per_frame;
+  /* Invert factor so 1 means perfectly smoothed. */
+  const float slider_cutoff_factor = 1 - slider_factor_get_and_remember(op);
   /* Clamp cutoff frequency to Nyquist Frequency. */
-  const float slider_cutoff_factor = slider_factor_get_and_remember(op);
   const float cutoff_frequency = (sampling_frequency / 2) * slider_cutoff_factor;
   RNA_float_set(op->ptr, "cutoff_frequency", cutoff_frequency);
 
@@ -1292,6 +1309,7 @@ static void btw_smooth_modal_update(bContext *C, wmOperator *op)
     butterworth_smooth_fcurve_segment(segment->fcu,
                                       segment->segment,
                                       segment->samples,
+                                      segment->sample_count,
                                       1,
                                       samples_per_frame,
                                       operator_data->coefficients);
@@ -1353,14 +1371,13 @@ static void btw_smooth_graph_keys(bAnimContext *ac,
     LISTBASE_FOREACH (FCurveSegment *, segment, &segments) {
       BezTriple left_bezt = fcu->bezt[segment->start_index];
       BezTriple right_bezt = fcu->bezt[segment->start_index + segment->length - 1];
-      const int sample_count = ((int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) + 1 +
-                                filter_order * 2) *
-                               samples_per_frame;
+      const int sample_count = btw_calculate_sample_count(
+          &right_bezt, &left_bezt, filter_order, samples_per_frame);
       float *samples = MEM_callocN(sizeof(float) * sample_count, "Smooth FCurve Op Samples");
       sample_fcurve_segment(
           fcu, left_bezt.vec[1][0] - filter_order, samples_per_frame, samples, sample_count);
       butterworth_smooth_fcurve_segment(
-          fcu, segment, samples, factor, samples_per_frame, bw_coeff);
+          fcu, segment, samples, sample_count, factor, samples_per_frame, bw_coeff);
       MEM_freeN(samples);
     }
 

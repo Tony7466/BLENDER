@@ -436,21 +436,19 @@ static double butterworth_filter_value(
   }
   return x;
 }
-
+/**
+ * \param samples are expected to be centered around the segment with a buffer of size filter_order
+ * at the left.
+ */
 void butterworth_smooth_fcurve_segment(FCurve *fcu,
                                        FCurveSegment *segment,
                                        float *samples,
+                                       const int sample_count,
                                        const float factor,
                                        const int sample_rate,
                                        ButterworthCoefficients *bw_coeff)
 {
   const int filter_order = bw_coeff->filter_order;
-  BezTriple left_bezt = fcu->bezt[segment->start_index];
-  BezTriple right_bezt = fcu->bezt[segment->start_index + segment->length - 1];
-
-  const int sample_count = ((int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) + 1 +
-                            filter_order * 2) *
-                           sample_rate;
 
   float *filtered_values = MEM_callocN(sizeof(float) * sample_count,
                                        "Butterworth Filtered FCurve Values");
@@ -484,6 +482,7 @@ void butterworth_smooth_fcurve_segment(FCurve *fcu,
     filtered_values[i] = (float)(filtered_value) + bwd_offset;
   }
 
+  BezTriple left_bezt = fcu->bezt[segment->start_index];
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
     const float x_delta = fcu->bezt[i].vec[1][0] - left_bezt.vec[1][0] + filter_order;
     const int filter_index = (int)(x_delta * sample_rate);
