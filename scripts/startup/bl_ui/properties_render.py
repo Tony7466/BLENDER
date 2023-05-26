@@ -734,7 +734,10 @@ class RENDER_PT_onion_skins(RenderButtonsPanel, Panel):
         scene = context.scene
 
         col = layout.column()
-        col.prop(scene, "onion_skin_color")
+        col.prop(scene, "onion_skin_color_left")
+        col.prop(scene, "onion_skin_color_right")
+        col.prop(scene, "os_relative_left")
+        col.prop(scene, "os_relative_right")
         col.prop(scene, "onion_skin_alpha")
 
 

@@ -36,14 +36,17 @@ void OVERLAY_onion_skin_populate(OVERLAY_Data *vedata, Object *ob)
 
   const DRWContextState *draw_ctx = DRW_context_state_get();
 
-  DRW_shgroup_uniform_vec3_copy(grp, "color", draw_ctx->scene->onion_skin_cache.color);
-  DRW_shgroup_uniform_float_copy(grp, "alpha", draw_ctx->scene->onion_skin_cache.alpha);
-
   Scene *scene = draw_ctx->scene;
   const float current_frame = BKE_scene_ctime_get(scene);
 
+  DRW_shgroup_uniform_float_copy(grp, "alpha", draw_ctx->scene->onion_skin_cache.alpha);
+
   LISTBASE_FOREACH (OnionSkinMeshLink *, mesh_link, &scene->onion_skin_cache.objects) {
     if (!str_equals(ob->id.name, mesh_link->object->id.name)) {
+      continue;
+    }
+
+    if (compare_ff(mesh_link->frame, current_frame, FLT_EPSILON)) {
       continue;
     }
 
@@ -54,10 +57,16 @@ void OVERLAY_onion_skin_populate(OVERLAY_Data *vedata, Object *ob)
     if (mesh_link->frame > current_frame + scene->onion_skin_cache.relative_right) {
       continue;
     }
+    if (mesh_link->frame < current_frame) {
+      DRW_shgroup_uniform_vec3_copy(grp, "color", draw_ctx->scene->onion_skin_cache.color_left);
+    }
+    else {
+      DRW_shgroup_uniform_vec3_copy(grp, "color", draw_ctx->scene->onion_skin_cache.color_right);
+    }
 
     struct GPUBatch *geom = DRW_cache_object_surface_get(ob);
     if (geom) {
-      DRW_shgroup_call(pd->onion_skin_grp, geom, ob);
+      DRW_shgroup_call(grp, geom, ob);
     }
   }
 }
