@@ -20,6 +20,29 @@ ccl_device void to_unit_disk(ccl_private float2 *rand)
   rand->y = r * sinf(phi);
 }
 
+/* Distribute 2D uniform random samples on [0, 1] over unit disk [-1, 1], with concentric mapping
+ * to better preserve stratification for some RNG sequences. */
+ccl_device float2 concentric_sample_disk(const float2 rand)
+{
+  float phi, r;
+  float a = 2.0f * rand.x - 1.0f;
+  float b = 2.0f * rand.y - 1.0f;
+
+  if (a == 0.0f && b == 0.0f) {
+    return zero_float2();
+  }
+  else if (a * a > b * b) {
+    r = a;
+    phi = M_PI_4_F * (b / a);
+  }
+  else {
+    r = b;
+    phi = M_PI_2_F - M_PI_4_F * (a / b);
+  }
+
+  return make_float2(r * cosf(phi), r * sinf(phi));
+}
+
 /* return an orthogonal tangent and bitangent given a normal and tangent that
  * may not be exactly orthogonal */
 ccl_device void make_orthonormals_tangent(const float3 N,
@@ -92,6 +115,37 @@ ccl_device_inline float pdf_uniform_cone(const float3 N, float3 D, float angle)
   return 0.0f;
 }
 
+/* Sample direction uniformly distributed in a cone around `N`. Using concentric mapping to better
+ * preserve stratification. */
+ccl_device_inline void sample_uniform_cone_concentric(const float3 N,
+                                                      const float one_minus_cos_angle,
+                                                      const float2 rand,
+                                                      ccl_private float3 *wo,
+                                                      ccl_private float *pdf)
+{
+  if (one_minus_cos_angle > 0) {
+    /* Map random number from 2D to 1D. */
+    float2 xy = concentric_sample_disk(rand);
+    const float r2 = len_squared(xy);
+
+    /* Equivalent to `mix(cos_angle, 1.0f, 1.0f - r2)` */
+    const float cos_theta = 1.0f - r2 * one_minus_cos_angle;
+
+    /* Equivalent to `xy *= sin_theta / sqrt(r2); */
+    xy *= safe_sqrtf(one_minus_cos_angle * (2.0f - one_minus_cos_angle * r2));
+
+    float3 T, B;
+    make_orthonormals(N, &T, &B);
+
+    *wo = xy.x * T + xy.y * B + cos_theta * N;
+    *pdf = M_1_2PI_F / one_minus_cos_angle;
+  }
+  else {
+    *wo = N;
+    *pdf = 1.0f;
+  }
+}
+
 /* sample uniform point on the surface of a sphere */
 ccl_device float3 sample_uniform_sphere(const float2 rand)
 {
@@ -102,29 +156,6 @@ ccl_device float3 sample_uniform_sphere(const float2 rand)
   float y = r * sinf(phi);
 
   return make_float3(x, y, z);
-}
-
-/* distribute uniform xy on [0,1] over unit disk [-1,1], with concentric mapping
- * to better preserve stratification for some RNG sequences */
-ccl_device float2 concentric_sample_disk(const float2 rand)
-{
-  float phi, r;
-  float a = 2.0f * rand.x - 1.0f;
-  float b = 2.0f * rand.y - 1.0f;
-
-  if (a == 0.0f && b == 0.0f) {
-    return zero_float2();
-  }
-  else if (a * a > b * b) {
-    r = a;
-    phi = M_PI_4_F * (b / a);
-  }
-  else {
-    r = b;
-    phi = M_PI_2_F - M_PI_4_F * (a / b);
-  }
-
-  return make_float2(r * cosf(phi), r * sinf(phi));
 }
 
 /* sample point in unit polygon with given number of corners and rotation */

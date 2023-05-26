@@ -13,27 +13,27 @@ ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
                                           const float3 P,
                                           ccl_private LightSample *ls)
 {
-  float3 center = klight->co;
-  float radius = klight->spot.radius;
-  /* disk oriented normal */
-  const float3 lightN = normalize(P - center);
-  ls->P = center;
+  float dist;
+  const float3 lightN = normalize_len(P - klight->co, &dist);
 
-  if (radius > 0.0f) {
-    ls->P += disk_light_sample(lightN, rand) * radius;
-  }
-  ls->pdf = klight->spot.invarea;
+  const float one_minus_cos_angle = tan_to_one_minus_cos(klight->spot.radius / dist);
 
-  ls->D = normalize_len(ls->P - P, &ls->t);
-  /* we set the light normal to the outgoing direction to support texturing */
-  ls->Ng = -ls->D;
+  /* We set the light normal to the outgoing direction to support texturing. */
+  sample_uniform_cone_concentric(lightN, one_minus_cos_angle, rand, &ls->Ng, &ls->pdf);
+  ls->D = -ls->Ng;
+  ls->t = dist / dot(ls->Ng, lightN);
+  ls->P = P + ls->D * ls->t;
 
+  /* TODO: change invarea to that of a sphere. */
   ls->eval_fac = M_1_PI_F * 0.25f * klight->spot.invarea;
-
-  float2 uv = map_to_sphere(ls->Ng);
+  if (one_minus_cos_angle == 0) {
+    /* Use intensity instead of radiance for point light. */
+    ls->eval_fac /= sqr(ls->t);
+  }
+  const float2 uv = map_to_sphere(ls->Ng);
   ls->u = uv.x;
   ls->v = uv.y;
-  ls->pdf *= lamp_light_pdf(lightN, -ls->D, ls->t);
+
   return true;
 }
 
@@ -44,14 +44,22 @@ ccl_device_forceinline void point_light_mnee_sample_update(const ccl_global Kern
   ls->D = normalize_len(ls->P - P, &ls->t);
   ls->Ng = -ls->D;
 
-  float2 uv = map_to_sphere(ls->Ng);
+  const float2 uv = map_to_sphere(ls->Ng);
   ls->u = uv.x;
   ls->v = uv.y;
 
-  float invarea = klight->spot.invarea;
-  ls->eval_fac = (0.25f * M_1_PI_F) * invarea;
-  /* NOTE : preserve pdf in area measure. */
-  ls->pdf = invarea;
+  const float radius = klight->spot.radius;
+
+  if (radius > 0) {
+    const float dist = len(P - klight->co);
+    const float one_minus_cos_angle = tan_to_one_minus_cos(radius / dist);
+    /* NOTE : preserve pdf in area measure. */
+    ls->pdf = M_1_2PI_F / one_minus_cos_angle * dist / powf(ls->t, 3.0f);
+  }
+  else {
+    ls->eval_fac = M_1_PI_F * 0.25f * klight->spot.invarea;
+    /* PDF does not change. */
+  }
 }
 
 ccl_device_inline bool point_light_intersect(const ccl_global KernelLight *klight,
@@ -65,7 +73,7 @@ ccl_device_inline bool point_light_intersect(const ccl_global KernelLight *kligh
     return false;
   }
 
-  /* disk oriented normal */
+  /* Disk oriented normal. */
   const float3 lightN = normalize(ray->P - lightP);
   float3 P;
   return ray_disk_intersect(ray->P, ray->D, ray->tmin, ray->tmax, lightP, lightN, radius, &P, t);
@@ -78,22 +86,24 @@ ccl_device_inline bool point_light_sample_from_intersection(
     const float3 ray_D,
     ccl_private LightSample *ccl_restrict ls)
 {
-  const float3 lighN = normalize(ray_P - klight->co);
-
   /* We set the light normal to the outgoing direction to support texturing. */
   ls->Ng = -ls->D;
 
-  float invarea = klight->spot.invarea;
-  ls->eval_fac = (0.25f * M_1_PI_F) * invarea;
-  ls->pdf = invarea;
+  ls->eval_fac = (0.25f * M_1_PI_F) * klight->spot.invarea;
 
-  float2 uv = map_to_sphere(ls->Ng);
+  const float2 uv = map_to_sphere(ls->Ng);
   ls->u = uv.x;
   ls->v = uv.y;
 
-  /* compute pdf */
   if (ls->t != FLT_MAX) {
-    ls->pdf *= lamp_light_pdf(lighN, -ls->D, ls->t);
+    const float radius = klight->spot.radius;
+    if (radius > 0) {
+      ls->pdf = M_1_2PI_F / sin_to_one_minus_cos(radius / ls->t);
+    }
+    else {
+      ls->eval_fac /= sqr(ls->t);
+      ls->pdf = 1.0f;
+    }
   }
   else {
     ls->pdf = 0.f;
