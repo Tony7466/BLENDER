@@ -254,11 +254,7 @@ const EnumPropertyItem rna_enum_object_type_items[] = {
     {OB_CURVES, "CURVES", ICON_OUTLINER_OB_CURVES, "Hair Curves", ""},
     {OB_POINTCLOUD, "POINTCLOUD", ICON_OUTLINER_OB_POINTCLOUD, "Point Cloud", ""},
     {OB_VOLUME, "VOLUME", ICON_OUTLINER_OB_VOLUME, "Volume", ""},
-#ifdef WITH_GREASE_PENCIL_V3
     {OB_GPENCIL_LEGACY, "GPENCIL", ICON_OUTLINER_OB_GREASEPENCIL, "Grease Pencil (legacy)", ""},
-#else
-    {OB_GPENCIL_LEGACY, "GPENCIL", ICON_OUTLINER_OB_GREASEPENCIL, "Grease Pencil", ""},
-#endif
     {OB_GREASE_PENCIL, "GREASEPENCIL", ICON_OUTLINER_OB_GREASEPENCIL, "Grease Pencil", ""},
     RNA_ENUM_ITEM_SEPR,
     {OB_ARMATURE, "ARMATURE", ICON_OUTLINER_OB_ARMATURE, "Armature", ""},
@@ -608,11 +604,7 @@ static StructRNA *rna_Object_data_typef(PointerRNA *ptr)
     case OB_GPENCIL_LEGACY:
       return &RNA_GreasePencil;
     case OB_GREASE_PENCIL:
-#  ifdef WITH_GREASE_PENCIL_V3
       return &RNA_GreasePencilv3;
-#  else
-      return &RNA_ID;
-#  endif
     case OB_CURVES:
       return &RNA_Curves;
     case OB_POINTCLOUD:
