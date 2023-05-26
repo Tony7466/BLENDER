@@ -3120,6 +3120,7 @@ bool CustomData_free_layer(CustomData *data,
   }
   BLI_assert(data->layers[index].type == type);
 
+  data->layer_locator[data->layers[index].this_locator] = nullptr;
   customData_free_layer__internal(&data->layers[index], totelem);
 
   for (int i = index + 1; i < data->totlayer; i++) {
@@ -3253,6 +3254,7 @@ void CustomData_free_temporary(CustomData *data, const int totelem)
     }
 
     if ((layer->flag & CD_FLAG_TEMPORARY) == CD_FLAG_TEMPORARY) {
+      data->layer_locator[layer->this_locator] = nullptr;
       customData_free_layer__internal(layer, totelem);
       changed = true;
     }
