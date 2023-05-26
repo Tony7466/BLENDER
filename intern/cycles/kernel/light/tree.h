@@ -531,7 +531,8 @@ ccl_device void sample_reservoir(const int current_index,
   else {
     rand = (rand - thresh) / (1.0f - thresh);
   }
-  kernel_assert(rand >= 0.0f && rand <= 1.0f);
+
+  rand = saturatef(rand);
 }
 
 /* Pick an emitter from a leaf node using reservoir sampling, keep two reservoirs for upper and
