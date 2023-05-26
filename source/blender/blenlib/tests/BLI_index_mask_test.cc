@@ -223,4 +223,55 @@ TEST(index_mask, FromPredicateFuzzy)
   });
 }
 
+TEST(index_mask, Complement)
+{
+  RandomNumberGenerator rng;
+
+  const int64_t mask_size = 100;
+  const int64_t iter_num = 100;
+  const int64_t universe_size = 110;
+
+  for (const int64_t iter : IndexRange(iter_num)) {
+    Set<int> values;
+    for ([[maybe_unused]] const int64_t _ : IndexRange(iter)) {
+      values.add(rng.get_int32(mask_size));
+    }
+    IndexMaskMemory memory;
+    const IndexMask mask = IndexMask::from_predicate(
+        IndexRange(mask_size), GrainSize(1024), memory, [&](const int64_t i) {
+          return values.contains(int(i));
+        });
+
+    const IndexMask complement = mask.complement(IndexRange(universe_size), memory);
+    EXPECT_EQ(universe_size - mask.size(), complement.size());
+    complement.foreach_index([&](const int64_t i) { EXPECT_FALSE(mask.contains(i)); });
+  }
+}
+
+TEST(index_mask, ComplementLarge)
+{
+  RandomNumberGenerator rng;
+
+  const int64_t mask_size = 100000;
+  const int64_t iter_num = 100;
+  const int64_t universe_size = 110000;
+
+  for (const int64_t iter : IndexRange(100)) {
+    Set<int> values;
+    for ([[maybe_unused]] const int64_t _ : IndexRange(iter * mask_size / iter_num)) {
+      values.add(rng.get_int32(mask_size));
+    }
+    IndexMaskMemory memory;
+    const IndexMask mask = IndexMask::from_predicate(
+        IndexRange(mask_size), GrainSize(1024), memory, [&](const int64_t i) {
+          return values.contains(int(i));
+        });
+
+    const IndexMask complement = mask.complement(IndexRange(universe_size), memory);
+    complement.foreach_index([&](const int64_t i) { EXPECT_FALSE(mask.contains(i)); });
+    mask.foreach_index([&](const int64_t i) { EXPECT_FALSE(complement.contains(i)); });
+    EXPECT_EQ(universe_size - mask.size(), complement.size());
+  }
+}
+
 }  // namespace blender::index_mask::tests
