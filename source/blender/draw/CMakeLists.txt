@@ -150,6 +150,7 @@ set(SRC
   engines/eevee_next/eevee_material.cc
   engines/eevee_next/eevee_motion_blur.cc
   engines/eevee_next/eevee_pipeline.cc
+  engines/eevee_next/eevee_reflection_probes.cc
   engines/eevee_next/eevee_renderbuffers.cc
   engines/eevee_next/eevee_sampling.cc
   engines/eevee_next/eevee_shader.cc
@@ -194,6 +195,7 @@ set(SRC
   engines/gpencil/gpencil_shader_fx.c
   engines/select/select_draw_utils.c
   engines/select/select_engine.c
+  engines/select/select_instance.cc
   engines/overlay/overlay_antialiasing.cc
   engines/overlay/overlay_armature.cc
   engines/overlay/overlay_background.cc
@@ -213,6 +215,10 @@ set(SRC
   engines/overlay/overlay_metaball.cc
   engines/overlay/overlay_mode_transfer.cc
   engines/overlay/overlay_motion_path.cc
+  engines/overlay/overlay_next_engine.cc
+  engines/overlay/overlay_next_instance.cc
+  engines/overlay/overlay_next_shader.cc
+  engines/overlay/overlay_next_shape.cc
   engines/overlay/overlay_outline.cc
   engines/overlay/overlay_paint.cc
   engines/overlay/overlay_particle.cc
@@ -283,6 +289,7 @@ set(SRC
   engines/eevee_next/eevee_material.hh
   engines/eevee_next/eevee_motion_blur.hh
   engines/eevee_next/eevee_pipeline.hh
+  engines/eevee_next/eevee_reflection_probes.hh
   engines/eevee_next/eevee_renderbuffers.hh
   engines/eevee_next/eevee_sampling.hh
   engines/eevee_next/eevee_shader.hh
@@ -315,6 +322,8 @@ set(SRC
   engines/select/select_engine.h
   engines/select/select_private.h
   engines/overlay/overlay_engine.h
+  engines/overlay/overlay_next_instance.hh
+  engines/overlay/overlay_next_private.hh
   engines/overlay/overlay_private.hh
 )
 
@@ -479,6 +488,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_motion_blur_gather_comp.glsl
   engines/eevee_next/shaders/eevee_motion_blur_lib.glsl
   engines/eevee_next/shaders/eevee_nodetree_lib.glsl
+  engines/eevee_next/shaders/eevee_reflection_probe_lib.glsl
   engines/eevee_next/shaders/eevee_sampling_lib.glsl
   engines/eevee_next/shaders/eevee_shadow_debug_frag.glsl
   engines/eevee_next/shaders/eevee_shadow_lib.glsl
@@ -618,6 +628,9 @@ set(GLSL_SRC
 
   engines/select/shaders/select_id_vert.glsl
   engines/select/shaders/select_id_frag.glsl
+  engines/select/shaders/select_lib.glsl
+
+  engines/select/select_shader_shared.hh
 
   engines/basic/shaders/basic_conservative_depth_geom.glsl
   engines/basic/shaders/basic_depth_vert.glsl

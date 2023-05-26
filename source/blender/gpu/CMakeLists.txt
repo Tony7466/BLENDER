@@ -29,6 +29,7 @@ set(INC
   # For *_info.hh includes.
   ../compositor/realtime_compositor
   ../draw/engines/eevee_next
+  ../draw/engines/select
   ../draw/engines/workbench
   ../draw/intern
 
@@ -76,6 +77,7 @@ set(SRC
   intern/gpu_platform.cc
   intern/gpu_query.cc
   intern/gpu_select.c
+  intern/gpu_select_next.cc
   intern/gpu_select_pick.c
   intern/gpu_select_sample_query.cc
   intern/gpu_shader.cc
@@ -646,6 +648,7 @@ set(SRC_SHADER_CREATE_INFOS
   ../draw/engines/eevee_next/shaders/infos/eevee_light_culling_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_material_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_motion_blur_info.hh
+  ../draw/engines/eevee_next/shaders/infos/eevee_reflection_probe_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_shadow_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_velocity_info.hh
   ../draw/engines/gpencil/shaders/infos/gpencil_info.hh
