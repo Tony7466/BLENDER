@@ -482,6 +482,7 @@ class NodeTreeMainUpdater {
 
     this->update_socket_link_and_use(ntree);
     this->update_link_validation(ntree);
+    this->propagate_internal_link_validation(ntree);
 
     if (ntree.type == NTREE_TEXTURE) {
       ntreeTexCheckCyclics(&ntree);
@@ -758,13 +759,34 @@ class NodeTreeMainUpdater {
         continue;
       }
 
-      link->flag |= NODE_LINK_VALID;
       if (ntree.typeinfo->validate_link) {
         const eNodeSocketDatatype from_type = eNodeSocketDatatype(link->fromsock->type);
         const eNodeSocketDatatype to_type = eNodeSocketDatatype(link->tosock->type);
         if (!ntree.typeinfo->validate_link(from_type, to_type)) {
           link->flag &= ~NODE_LINK_VALID;
           continue;
+        }
+      }
+
+      link->flag |= NODE_LINK_VALID;
+    }
+  }
+
+  void propagate_internal_link_validation(bNodeTree &ntree)
+  {
+    ntree.ensure_topology_cache();
+    for (bNode *node : ntree.all_nodes()) {
+      for (bNodeLink &link : node->runtime->internal_links) {
+        link.flag |= NODE_LINK_VALID;
+        bool is_valid = true;
+        for (const bNodeLink *input_link : link.fromsock->directly_linked_links()) {
+          is_valid &= bool(input_link->flag & NODE_LINK_VALID);
+        }
+        for (const bNodeLink *output_link : link.tosock->directly_linked_links()) {
+          is_valid &= bool(output_link->flag & NODE_LINK_VALID);
+        }
+        if (!is_valid) {
+          link.flag &= ~NODE_LINK_VALID;
         }
       }
     }
