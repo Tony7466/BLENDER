@@ -18,7 +18,7 @@
 #include "BKE_gpencil_legacy.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_remap.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_screen.h"
 
@@ -1155,6 +1155,7 @@ void ED_spacetype_node()
   art->cursor = node_cursor;
   art->event_cursor = true;
   art->clip_gizmo_events_by_ui = true;
+  art->lock = 1;
 
   BLI_addhead(&st->regiontypes, art);
 
