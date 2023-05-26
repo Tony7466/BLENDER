@@ -61,7 +61,13 @@ bool multiresModifier_reshapeFromObject(Depsgraph *depsgraph,
                                         Object *src)
 {
   const Object *ob_eval = DEG_get_evaluated_object(depsgraph, src);
+  if (!ob_eval) {
+    return false;
+  }
   const Mesh *src_mesh_eval = BKE_object_get_evaluated_mesh(ob_eval);
+  if (!src_mesh_eval) {
+    return false;
+  }
 
   int num_deformed_verts;
   float(*deformed_verts)[3] = BKE_mesh_vert_coords_alloc(src_mesh_eval, &num_deformed_verts);

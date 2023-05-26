@@ -1351,7 +1351,13 @@ static const EnumPropertyItem *rna_DataTransferModifier_layers_select_src_itemf(
 
       Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
       const Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob_src);
+      if (!ob_eval) {
+        return;
+      }
       const Mesh *me_eval = BKE_object_get_evaluated_mesh(ob_eval);
+      if (!me_eval) {
+        return;
+      }
 
       num_data = CustomData_number_of_layers(&me_eval->ldata, CD_PROP_FLOAT2);
 
@@ -1377,7 +1383,13 @@ static const EnumPropertyItem *rna_DataTransferModifier_layers_select_src_itemf(
 
       Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
       const Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob_src);
+      if (!ob_eval) {
+        return;
+      }
       const Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob_eval);
+      if (!me_eval) {
+        return;
+      }
 
       const CustomData *cdata;
       if (domain == ATTR_DOMAIN_POINT) {

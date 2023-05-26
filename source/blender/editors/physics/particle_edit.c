@@ -4154,8 +4154,7 @@ static int particle_intersect_mesh(Depsgraph *depsgraph,
     Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
     mesh = (Mesh *)BKE_object_get_evaluated_mesh(ob_eval);
     if (mesh == NULL) {
-      Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
-      mesh = mesh_get_eval_deform(depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH);
+      return 0;
     }
 
     psys_enable_all(ob);

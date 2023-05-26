@@ -509,7 +509,14 @@ void BKE_mesh_to_curve_nurblist(const Mesh *me, ListBase *nurblist, const int ed
 void BKE_mesh_to_curve(Main *bmain, Depsgraph *depsgraph, Scene * /*scene*/, Object *ob)
 {
   const Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
+  if (!ob_eval) {
+    return;
+  }
   const Mesh *me_eval = BKE_object_get_evaluated_mesh_no_subsurf(ob_eval);
+  if (!me_eval) {
+    return;
+  }
+
   ListBase nurblist = {nullptr, nullptr};
 
   BKE_mesh_to_curve_nurblist(me_eval, &nurblist, 0);
@@ -540,7 +547,13 @@ void BKE_mesh_to_pointcloud(Main *bmain, Depsgraph *depsgraph, Scene * /*scene*/
 {
   BLI_assert(ob->type == OB_MESH);
   const Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
+  if (!ob_eval) {
+    return;
+  }
   const Mesh *me_eval = BKE_object_get_evaluated_mesh_no_subsurf(ob_eval);
+  if (!me_eval) {
+    return;
+  }
 
   PointCloud *pointcloud = (PointCloud *)BKE_pointcloud_add(bmain, ob->id.name + 2);
 
