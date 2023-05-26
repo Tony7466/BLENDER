@@ -96,7 +96,8 @@
 /* Only during shadow rendering. */
 #define SHADOW_RENDER_MAP_SLOT 13
 #define RBUFS_UTILITY_TEX_SLOT 14
-#define AO_HORIZONS_TEX_SLOT 15
+#define HIZ_TEX_SLOT 15
+#define AO_HORIZONS_TEX_SLOT 16
 
 /* Images. */
 #define RBUFS_COLOR_SLOT 0
@@ -111,6 +112,7 @@
 #define VELOCITY_CAMERA_CURR_BUF 4
 #define VELOCITY_CAMERA_NEXT_BUF 5
 
+#define HIZ_BUF_SLOT 5
 #define CAMERA_BUF_SLOT 6
 #define RBUFS_BUF_SLOT 7
 #define RAYTRACE_BUF_SLOT 8
