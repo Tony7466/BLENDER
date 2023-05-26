@@ -19,15 +19,15 @@ void irradiance_capture(vec3 L, vec3 irradiance, inout SphericalHarmonicL1 sh)
 {
   vec3 lL = transform_direction(capture_info_buf.irradiance_grid_world_to_local_rotation, L);
 
-  spherical_harmonics_encode_signal_sample(
-      lL, vec4(irradiance, 1.0) * capture_info_buf.irradiance_sample_solid_angle, sh);
+  spherical_harmonics_encode_signal_sample(lL, vec4(irradiance, 1.0), sh);
 }
 
 void irradiance_capture(Surfel surfel_emitter, vec3 P, inout SphericalHarmonicL1 sh)
 {
   vec3 L = safe_normalize(surfel_emitter.position - P);
   bool facing = dot(-L, surfel_emitter.normal) > 0.0;
-  vec3 irradiance = facing ? surfel_emitter.radiance_front : surfel_emitter.radiance_back;
+  vec3 irradiance = facing ? surfel_emitter.outgoing_light_front :
+                             surfel_emitter.outgoing_light_back;
 
   irradiance_capture(L, irradiance, sh);
 }
@@ -73,6 +73,15 @@ void main()
   sh.L1.M0 = imageLoad(irradiance_L1_b_img, grid_coord);
   sh.L1.Mp1 = imageLoad(irradiance_L1_c_img, grid_coord);
 
+  /* Spherical harmonics need to be weighted by sphere area. */
+  const float sphere_area = 4.0 * M_PI;
+  /* Un-normalize for accumulation. */
+  float weight_captured = float(capture_info_buf.irradiance_accum_sample_count) / sphere_area;
+  sh.L0.M0 *= weight_captured;
+  sh.L1.Mn1 *= weight_captured;
+  sh.L1.M0 *= weight_captured;
+  sh.L1.Mp1 *= weight_captured;
+
   if (surfel_next > -1) {
     irradiance_capture(surfel_buf[surfel_next], P, sh);
   }
@@ -88,6 +97,13 @@ void main()
     vec3 world_radiance = irradiance_sky_sample(-sky_L);
     irradiance_capture(-sky_L, world_radiance, sh);
   }
+
+  /* Normalize for storage. */
+  weight_captured += 2.0 / sphere_area;
+  sh.L0.M0 /= weight_captured;
+  sh.L1.Mn1 /= weight_captured;
+  sh.L1.M0 /= weight_captured;
+  sh.L1.Mp1 /= weight_captured;
 
   imageStore(irradiance_L0_img, grid_coord, sh.L0.M0);
   imageStore(irradiance_L1_a_img, grid_coord, sh.L1.Mn1);

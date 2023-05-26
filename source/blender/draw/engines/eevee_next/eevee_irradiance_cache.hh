@@ -41,6 +41,8 @@ class IrradianceBake {
   Framebuffer empty_raster_fb_ = {"empty_raster_fb_"};
   /** Evaluate light object contribution and store result to surfel. */
   PassSimple surfel_light_eval_ps_ = {"LightEval"};
+  /** Create linked list of surfel to emulated raycast. */
+  PassSimple surfel_ray_build_ps_ = {"RayBuild"};
   /** Propagate light from surfel to surfel. */
   PassSimple surfel_light_propagate_ps_ = {"LightPropagate"};
   /** Start of a light bounce. Accumulate light from previous propagation. */
@@ -78,6 +80,9 @@ class IrradianceBake {
   /* Dispatch size for per grid sample workload. */
   int3 dispatch_per_grid_sample_ = int3(1);
 
+  /** View used to flatten the surfels into surfel lists representing rays. */
+  View ray_view_ = {"RayProjectionView"};
+
   /** Irradiance textures for baking. Only represents one grid in there. */
   Texture irradiance_L0_tx_ = {"irradiance_L0_tx_"};
   Texture irradiance_L1_a_tx_ = {"irradiance_L1_a_tx_"};
@@ -100,8 +105,12 @@ class IrradianceBake {
   void surfels_create(const Object &probe_object);
   /** Evaluate direct lighting (and also clear the surfels radiance). */
   void surfels_lights_eval();
+  /** Create a surfel lists to emulate ray-casts for the current sample random direction. */
+  void raylists_build();
   /** Propagate light from surfel to surfel in a random direction over the sphere. */
-  void propagate_light_sample();
+  void propagate_light();
+  /** Store surfel irradiance inside the irradiance grid samples. */
+  void irradiance_capture();
   /** Accumulate light inside `surfel.radiance_bounce` to `surfel.radiance`. */
   void accumulate_bounce();
 
