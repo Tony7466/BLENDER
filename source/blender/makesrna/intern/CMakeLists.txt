@@ -134,21 +134,42 @@ set_source_files_properties(${GENSRC} PROPERTIES GENERATED TRUE)
 # CFLAGS for Generated Files
 #
 # less strict flags for generated source
+set(GENSRC_FLAGS)
 set(GENSRC_CFLAGS)
+set(GENSRC_CXXFLAGS)
 if(CMAKE_COMPILER_IS_GNUCC OR (CMAKE_C_COMPILER_ID MATCHES "Clang"))
-  set(GENSRC_CFLAGS "-Wno-missing-prototypes -Wno-missing-declarations")
+  set(GENSRC_CFLAGS "-Wno-missing-prototypes")
+  set(GENSRC_CXXFLAGS "-Wno-missing-declarations")
 endif()
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-  string(APPEND GENSRC_CFLAGS " -Wno-missing-variable-declarations")
+  string(APPEND GENSRC_FLAGS " -Wno-missing-variable-declarations")
 elseif(MSVC)
   # Restore warn C4100 (unreferenced formal parameter) back to w4
   remove_cc_flag(/w34100)
 endif()
 
-if(GENSRC_CFLAGS)
-  set_source_files_properties(${GENSRC} PROPERTIES COMPILE_FLAGS "${GENSRC_CFLAGS}")
+set(GENSRC_C ${GENSRC})
+list(FILTER GENSRC_C INCLUDE REGEX ".*\.c$")
+set(GENSRC_CXX ${GENSRC})
+list(FILTER GENSRC_CXX INCLUDE REGEX ".*\.cc$")
+
+if(GENSRC_FLAGS)
+  set_source_files_properties(${GENSRC} PROPERTIES COMPILE_FLAGS "${GENSRC_FLAGS}")
 endif()
+
+if(GENSRC_CFLAGS)
+  set_source_files_properties(${GENSRC_C} PROPERTIES COMPILE_FLAGS "${GENSRC_CFLAGS}")
+endif()
+
+if(GENSRC_CXXFLAGS)
+  set_source_files_properties(${GENSRC_CXX} PROPERTIES COMPILE_FLAGS "${GENSRC_CXXFLAGS}")
+endif()
+
+unset(GENSRC_C)
+unset(GENSRC_CXX)
+unset(GENSRC_FLAGS)
 unset(GENSRC_CFLAGS)
+unset(GENSRC_CXXFLAGS)
 
 
 # NOTE: Disable clang-tidy because generated files are stored outside of the source,
