@@ -266,7 +266,7 @@ CurveLengthFieldInput::CurveLengthFieldInput()
 
 GVArray CurveLengthFieldInput::get_varray_for_context(const CurvesGeometry &curves,
                                                       const eAttrDomain domain,
-                                                      const IndexMask /*mask*/) const
+                                                      const IndexMask & /*mask*/) const
 {
   return construct_curve_length_gvarray(curves, domain);
 }
@@ -372,7 +372,7 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
                                                  ATTR_DOMAIN_POINT,
                                                  CD_PROP_FLOAT3,
                                                  CD_PROP_FLOAT3,
-                                                 BuiltinAttributeProvider::NonCreatable,
+                                                 BuiltinAttributeProvider::Creatable,
                                                  BuiltinAttributeProvider::NonDeletable,
                                                  point_access,
                                                  tag_component_positions_changed);

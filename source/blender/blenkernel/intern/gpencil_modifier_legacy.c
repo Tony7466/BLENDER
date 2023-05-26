@@ -38,6 +38,7 @@
 #include "BKE_material.h"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
+#include "BKE_screen.h"
 #include "BKE_shrinkwrap.h"
 
 #include "DEG_depsgraph.h"
@@ -201,7 +202,8 @@ bool BKE_gpencil_has_transform_modifiers(Object *ob)
                eGpencilModifierType_Armature,
                eGpencilModifierType_Hook,
                eGpencilModifierType_Lattice,
-               eGpencilModifierType_Offset)) {
+               eGpencilModifierType_Offset))
+      {
         return true;
       }
     }
@@ -355,7 +357,7 @@ GpencilModifierData *BKE_gpencil_modifier_new(int type)
   GpencilModifierData *md = MEM_callocN(mti->struct_size, mti->struct_name);
 
   /* NOTE: this name must be made unique later. */
-  BLI_strncpy(md->name, DATA_(mti->name), sizeof(md->name));
+  STRNCPY_UTF8(md->name, DATA_(mti->name));
 
   md->type = type;
   md->mode = eGpencilModifierMode_Realtime | eGpencilModifierMode_Render;
@@ -435,7 +437,8 @@ const GpencilModifierTypeInfo *BKE_gpencil_modifier_get_info(GpencilModifierType
 {
   /* type unsigned, no need to check < 0 */
   if (type < NUM_GREASEPENCIL_MODIFIER_TYPES && type > 0 &&
-      modifier_gpencil_types[type]->name[0] != '\0') {
+      modifier_gpencil_types[type]->name[0] != '\0')
+  {
     return modifier_gpencil_types[type];
   }
 
@@ -445,9 +448,7 @@ const GpencilModifierTypeInfo *BKE_gpencil_modifier_get_info(GpencilModifierType
 void BKE_gpencil_modifierType_panel_id(GpencilModifierType type, char *r_idname)
 {
   const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(type);
-
-  strcpy(r_idname, GPENCIL_MODIFIER_TYPE_PANEL_PREFIX);
-  strcat(r_idname, mti->name);
+  BLI_string_join(r_idname, BKE_ST_MAXNAME, GPENCIL_MODIFIER_TYPE_PANEL_PREFIX, mti->name);
 }
 
 void BKE_gpencil_modifier_panel_expand(GpencilModifierData *md)

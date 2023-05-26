@@ -808,8 +808,8 @@ static bool gpencil_weightpaint_brush_init(bContext *C, wmOperator *op)
   gso->fn_kdtree = NULL;
   gso->fn_used = 0;
   gso->fn_size = 0;
-  gso->use_find_nearest = ((gso->brush->gpencil_weight_tool == GPWEIGHT_TOOL_BLUR) ||
-                           (gso->brush->gpencil_weight_tool == GPWEIGHT_TOOL_SMEAR));
+  gso->use_find_nearest = ELEM(
+      gso->brush->gpencil_weight_tool, GPWEIGHT_TOOL_BLUR, GPWEIGHT_TOOL_SMEAR);
 
   gso->gpd = ED_gpencil_data_get_active(C);
   gso->scene = scene;
@@ -1059,13 +1059,14 @@ static void gpencil_weightpaint_select_stroke(tGP_BrushWeightpaintData *gso,
 
       /* Check that point segment of the bound-box of the selection stroke */
       if ((!ELEM(V2D_IS_CLIPPED, pc1[0], pc1[1]) && BLI_rcti_isect_pt(rect, pc1[0], pc1[1])) ||
-          (!ELEM(V2D_IS_CLIPPED, pc2[0], pc2[1]) && BLI_rcti_isect_pt(rect, pc2[0], pc2[1]))) {
+          (!ELEM(V2D_IS_CLIPPED, pc2[0], pc2[1]) && BLI_rcti_isect_pt(rect, pc2[0], pc2[1])))
+      {
         /* Check if point segment of stroke had anything to do with
          * brush region  (either within stroke painted, or on its lines)
          * - this assumes that line-width is irrelevant.
          */
-        if (gpencil_stroke_inside_circle(
-                gso->mouse, radius_wide, pc1[0], pc1[1], pc2[0], pc2[1])) {
+        if (gpencil_stroke_inside_circle(gso->mouse, radius_wide, pc1[0], pc1[1], pc2[0], pc2[1]))
+        {
           if (widen_brush) {
             within_brush = (gpencil_stroke_inside_circle(
                 gso->mouse, radius_brush, pc1[0], pc1[1], pc2[0], pc2[1]));

@@ -344,7 +344,7 @@ void GeometryExporter::create_mesh_primitive_list(short material_index,
   Material *ma = ob->totcol ? BKE_object_material_get(ob, material_index + 1) : nullptr;
   COLLADASW::PrimitivesBase *primitive_list = create_primitive_list(is_triangulated, mSW);
 
-  /* sets count attribute in <polylist> */
+  /* sets count attribute in `<polylist>`. */
   primitive_list->setCount(polygon_count);
 
   /* sets material name */
@@ -527,7 +527,7 @@ std::string GeometryExporter::makeTexcoordSourceId(std::string &geom_id,
     suffix[0] = '\0';
   }
   else {
-    BLI_snprintf(suffix, sizeof(suffix), "-%d", layer_index);
+    SNPRINTF(suffix, "-%d", layer_index);
   }
   return getIdBySemantics(geom_id, COLLADASW::InputSemantic::TEXCOORD) + suffix;
 }

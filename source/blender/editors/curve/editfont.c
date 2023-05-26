@@ -1051,7 +1051,8 @@ static int paste_text_exec(bContext *C, wmOperator *op)
     int len;
   } clipboard_system = {NULL}, clipboard_vfont = {NULL};
 
-  clipboard_system.buf = WM_clipboard_text_get(selection, &clipboard_system.len);
+  /* No need for UTF8 validation as the conversion handles invalid sequences gracefully. */
+  clipboard_system.buf = WM_clipboard_text_get(selection, false, &clipboard_system.len);
 
   if (clipboard_system.buf == NULL) {
     return OPERATOR_CANCELLED;
@@ -1075,7 +1076,8 @@ static int paste_text_exec(bContext *C, wmOperator *op)
   }
   else {
     if ((clipboard_system.len <= MAXTEXT) &&
-        font_paste_utf8(C, clipboard_system.buf, clipboard_system.len)) {
+        font_paste_utf8(C, clipboard_system.buf, clipboard_system.len))
+    {
       text_update_edited(C, obedit, FO_EDIT);
       retval = OPERATOR_FINISHED;
     }
@@ -1811,8 +1813,6 @@ void FONT_OT_text_insert(wmOperatorType *ot)
 
 static int font_cursor_text_index_from_event(bContext *C, Object *obedit, const wmEvent *event)
 {
-  Curve *cu = obedit->data;
-
   /* Calculate a plane from the text object's orientation. */
   float plane[4];
   plane_from_point_normal_v3(plane, obedit->object_to_world[3], obedit->object_to_world[2]);
@@ -1825,7 +1825,7 @@ static int font_cursor_text_index_from_event(bContext *C, Object *obedit, const 
   /* Convert to object space and scale by font size. */
   mul_m4_v3(obedit->world_to_object, mouse_loc);
 
-  float curs_loc[2] = {mouse_loc[0] / cu->fsize, mouse_loc[1] / cu->fsize};
+  float curs_loc[2] = {mouse_loc[0], mouse_loc[1]};
   return BKE_vfont_cursor_to_text_index(obedit, curs_loc);
 }
 
@@ -1921,9 +1921,19 @@ void FONT_OT_selection_set(struct wmOperatorType *ot)
 
 static int font_select_word_exec(bContext *C, wmOperator *UNUSED(op))
 {
-  move_cursor(C, NEXT_CHAR, false);
-  move_cursor(C, PREV_WORD, false);
-  move_cursor(C, NEXT_WORD, true);
+  Object *obedit = CTX_data_edit_object(C);
+  Curve *cu = obedit->data;
+  EditFont *ef = cu->editfont;
+
+  BLI_str_cursor_step_bounds_utf32(ef->textbuf, ef->len, ef->pos, &ef->selstart, &ef->selend);
+  ef->pos = ef->selend;
+
+  /* XXX: Text object selection start is 1-based, unlike text processing elsewhere in Blender. */
+  ef->selstart += 1;
+
+  font_select_update_primary_clipboard(obedit);
+  text_update_edited(C, obedit, FO_CURS);
+
   return OPERATOR_FINISHED;
 }
 
@@ -2399,7 +2409,8 @@ bool ED_curve_editfont_select_pick(
 
     for (j = 0; j < 4; j++) {
       if (ED_view3d_project_float_object(
-              vc.region, obedit_co[j], screen_co[j], V3D_PROJ_TEST_CLIP_BB) == V3D_PROJ_RET_OK) {
+              vc.region, obedit_co[j], screen_co[j], V3D_PROJ_TEST_CLIP_BB) == V3D_PROJ_RET_OK)
+      {
         project_ok |= (1 << j);
       }
     }

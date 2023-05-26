@@ -8,7 +8,7 @@
 
 #include "NOD_derived_node_tree.hh"
 
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 
 #include "COM_scheduler.hh"
@@ -267,8 +267,8 @@ static NeededBuffers compute_number_of_needed_buffers(DNode output_node)
 
       /* If any of the links is not between two shader nodes, it means that the node outputs
        * a buffer through this output and so we increment the number of output buffers. */
-      if (!is_output_linked_to_node_conditioned(doutput, is_shader_node) ||
-          !is_shader_node(node)) {
+      if (!is_output_linked_to_node_conditioned(doutput, is_shader_node) || !is_shader_node(node))
+      {
         number_of_output_buffers++;
       }
     }

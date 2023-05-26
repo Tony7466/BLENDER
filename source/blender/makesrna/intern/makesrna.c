@@ -615,6 +615,20 @@ static void rna_float_print(FILE *f, float num)
   }
 }
 
+static const char *rna_ui_scale_type_string(const PropertyScaleType type)
+{
+  switch (type) {
+    case PROP_SCALE_LINEAR:
+      return "PROP_SCALE_LINEAR";
+    case PROP_SCALE_LOG:
+      return "PROP_SCALE_LOG";
+    case PROP_SCALE_CUBIC:
+      return "PROP_SCALE_CUBIC";
+  }
+  BLI_assert_unreachable();
+  return "";
+}
+
 static void rna_int_print(FILE *f, int64_t num)
 {
   if (num == INT_MIN) {
@@ -711,8 +725,8 @@ static char *rna_def_property_get_func(
     if (prop->type == PROP_INT) {
       IntPropertyRNA *iprop = (IntPropertyRNA *)prop;
       /* Only UI_BTYPE_NUM_SLIDER is implemented and that one can't have a softmin of zero. */
-      if ((iprop->ui_scale_type == PROP_SCALE_LOG) &&
-          (iprop->hardmin <= 0 || iprop->softmin <= 0)) {
+      if ((iprop->ui_scale_type == PROP_SCALE_LOG) && (iprop->hardmin <= 0 || iprop->softmin <= 0))
+      {
         CLOG_ERROR(
             &LOG, "\"%s.%s\", range for log scale <= 0.", srna->identifier, prop->identifier);
         DefRNA.error = true;
@@ -726,18 +740,13 @@ static char *rna_def_property_get_func(
   switch (prop->type) {
     case PROP_STRING: {
       StringPropertyRNA *sprop = (StringPropertyRNA *)prop;
+      UNUSED_VARS_NDEBUG(sprop);
       fprintf(f, "void %s(PointerRNA *ptr, char *value)\n", func);
       fprintf(f, "{\n");
       if (manualfunc) {
         fprintf(f, "    %s(ptr, value);\n", manualfunc);
       }
       else {
-        const PropertySubType subtype = prop->subtype;
-        const char *string_copy_func =
-            ELEM(subtype, PROP_FILEPATH, PROP_DIRPATH, PROP_FILENAME, PROP_BYTESTRING) ?
-                "BLI_strncpy" :
-                "BLI_strncpy_utf8";
-
         rna_print_data_get(f, dp);
 
         if (dp->dnapointerlevel == 1) {
@@ -746,28 +755,24 @@ static char *rna_def_property_get_func(
           fprintf(f, "        *value = '\\0';\n");
           fprintf(f, "        return;\n");
           fprintf(f, "    }\n");
-          fprintf(f,
-                  "    %s(value, data->%s, strlen(data->%s) + 1);\n",
-                  string_copy_func,
-                  dp->dnaname,
-                  dp->dnaname);
+          fprintf(f, "    strcpy(value, data->%s);\n", dp->dnaname);
         }
         else {
           /* Handle char array properties. */
+
+#ifndef NDEBUG /* Assert lengths never exceed their maximum expected value. */
           if (sprop->maxlength) {
-            fprintf(f,
-                    "    %s(value, data->%s, %d);\n",
-                    string_copy_func,
-                    dp->dnaname,
-                    sprop->maxlength);
+            fprintf(f, "    BLI_assert(strlen(data->%s) < %d);\n", dp->dnaname, sprop->maxlength);
           }
           else {
             fprintf(f,
-                    "    %s(value, data->%s, sizeof(data->%s));\n",
-                    string_copy_func,
+                    "    BLI_assert(strlen(data->%s) < sizeof(data->%s));\n",
                     dp->dnaname,
                     dp->dnaname);
           }
+#endif
+
+          fprintf(f, "    strcpy(value, data->%s);\n", dp->dnaname);
         }
       }
       fprintf(f, "}\n\n");
@@ -807,7 +812,8 @@ static char *rna_def_property_get_func(
         if (STR_ELEM(manualfunc,
                      "rna_iterator_listbase_get",
                      "rna_iterator_array_get",
-                     "rna_iterator_array_dereference_get")) {
+                     "rna_iterator_array_dereference_get"))
+        {
           fprintf(f,
                   "    return rna_pointer_inherit_refine(&iter->parent, &RNA_%s, %s(iter));\n",
                   (cprop->item_type) ? (const char *)cprop->item_type : "UnknownType",
@@ -1150,11 +1156,6 @@ static char *rna_def_property_set_func(
       }
       else {
         const PropertySubType subtype = prop->subtype;
-        const char *string_copy_func =
-            ELEM(subtype, PROP_FILEPATH, PROP_DIRPATH, PROP_FILENAME, PROP_BYTESTRING) ?
-                "BLI_strncpy" :
-                "BLI_strncpy_utf8";
-
         rna_print_data_get(f, dp);
 
         if (dp->dnapointerlevel == 1) {
@@ -1164,10 +1165,14 @@ static char *rna_def_property_set_func(
           fprintf(f, "    const int length = strlen(value);\n");
           fprintf(f, "    if (length > 0) {\n");
           fprintf(f, "        data->%s = MEM_mallocN(length + 1, __func__);\n", dp->dnaname);
-          fprintf(f, "        %s(data->%s, value, length + 1);\n", string_copy_func, dp->dnaname);
+          fprintf(f, "        memcpy(data->%s, value, length + 1);\n", dp->dnaname);
           fprintf(f, "    } else { data->%s = NULL; }\n", dp->dnaname);
         }
         else {
+          const char *string_copy_func =
+              ELEM(subtype, PROP_FILEPATH, PROP_DIRPATH, PROP_FILENAME, PROP_BYTESTRING) ?
+                  "BLI_strncpy" :
+                  "BLI_strncpy_utf8";
           /* Handle char array properties. */
           if (sprop->maxlength) {
             fprintf(f,
@@ -1793,7 +1798,7 @@ static char *rna_def_property_lookup_string_func(FILE *f,
   fprintf(f, "                }\n");
   fprintf(f, "            }\n");
   fprintf(f, "            else {\n");
-  fprintf(f, "                name = MEM_mallocN(namelen+1, \"name string\");\n");
+  fprintf(f, "                name = (char *)MEM_mallocN(namelen+1, \"name string\");\n");
   fprintf(f,
           "                %s_%s_get(&iter.ptr, name);\n",
           item_name_base->identifier,
@@ -1911,7 +1916,8 @@ static void rna_set_raw_offset(FILE *f, StructRNA *srna, PropertyRNA *prop)
 {
   PropertyDefRNA *dp = rna_find_struct_property_def(srna, prop);
 
-  fprintf(f, "\toffsetof(%s, %s), %d", dp->dnastructname, dp->dnaname, prop->rawtype);
+  fprintf(
+      f, "\toffsetof(%s, %s), (RawPropertyType)%d", dp->dnastructname, dp->dnaname, prop->rawtype);
 }
 
 static void rna_def_property_funcs(FILE *f, StructRNA *srna, PropertyDefRNA *dp)
@@ -2048,7 +2054,8 @@ static void rna_def_property_funcs(FILE *f, StructRNA *srna, PropertyDefRNA *dp)
        * array get/next function, we can be sure it is an actual array */
       if (cprop->next && cprop->get) {
         if (STREQ((const char *)cprop->next, "rna_iterator_array_next") &&
-            STREQ((const char *)cprop->get, "rna_iterator_array_get")) {
+            STREQ((const char *)cprop->get, "rna_iterator_array_get"))
+        {
           prop->flag_internal |= PROP_INTERN_RAW_ARRAY;
         }
       }
@@ -2389,7 +2396,8 @@ static void rna_def_property_funcs_header_cpp(FILE *f, StructRNA *srna, Property
       const char *collection_funcs = "DefaultCollectionFunctions";
 
       if (!(dp->prop->flag & PROP_IDPROPERTY || dp->prop->flag_internal & PROP_INTERN_BUILTIN) &&
-          cprop->property.srna) {
+          cprop->property.srna)
+      {
         collection_funcs = (char *)cprop->property.srna;
       }
 
@@ -2987,8 +2995,8 @@ static void rna_def_function_funcs(FILE *f, StructDefRNA *dsrna, FunctionDefRNA 
     else if (type == PROP_POINTER || dparm->prop->arraydimension) {
       ptrstr = "*";
     }
-    else if ((type == PROP_POINTER) && (flag_parameter & PARM_RNAPTR) &&
-             !(flag & PROP_THICK_WRAP)) {
+    else if ((type == PROP_POINTER) && (flag_parameter & PARM_RNAPTR) && !(flag & PROP_THICK_WRAP))
+    {
       ptrstr = "*";
       /* PROP_THICK_WRAP strings are pre-allocated on the ParameterList stack,
        * but type name for string props is already (char *), so leave empty */
@@ -3499,7 +3507,7 @@ static void rna_generate_internal_property_prototypes(BlenderRNA *UNUSED(brna),
 
   for (prop = srna->cont.properties.first; prop; prop = prop->next) {
     fprintf(f,
-            "%s rna_%s_%s;\n",
+            "extern %s rna_%s_%s;\n",
             rna_property_structname(prop->type),
             srna->identifier,
             prop->identifier);
@@ -4061,7 +4069,7 @@ static void rna_generate_property(FILE *f, StructRNA *srna, const char *nest, Pr
   rna_print_c_string(f, prop->translation_context);
   fprintf(f, ",\n");
   fprintf(f,
-          "\t%s, %s | %s, %s, %u, {%u, %u, %u}, %u,\n",
+          "\t%s, (PropertySubType)((int)%s | (int)%s), %s, %u, {%u, %u, %u}, %u,\n",
           RNA_property_typename(prop->type),
           rna_property_subtypename(prop->subtype),
           rna_property_subtype_unit(prop->subtype),
@@ -4086,7 +4094,7 @@ static void rna_generate_property(FILE *f, StructRNA *srna, const char *nest, Pr
     rna_set_raw_offset(f, srna, prop);
   }
   else {
-    fprintf(f, "\t0, -1");
+    fprintf(f, "\t0, PROP_RAW_UNSET");
   }
 
   /* our own type - collections/arrays only */
@@ -4171,8 +4179,7 @@ static void rna_generate_property(FILE *f, StructRNA *srna, const char *nest, Pr
               rna_function_string(fprop->getarray_ex),
               rna_function_string(fprop->setarray_ex),
               rna_function_string(fprop->range_ex));
-      rna_float_print(f, fprop->ui_scale_type);
-      fprintf(f, ", ");
+      fprintf(f, "%s, ", rna_ui_scale_type_string(fprop->ui_scale_type));
       rna_float_print(f, fprop->softmin);
       fprintf(f, ", ");
       rna_float_print(f, fprop->softmax);
@@ -4939,7 +4946,7 @@ static const char *cpp_classes =
     "    operator const PointerRNA&() { return ptr; }\n"
     "    bool is_a(StructRNA *type) { return RNA_struct_is_a(ptr.type, type) ? true: false; }\n"
     "    operator void*() { return ptr.data; }\n"
-    "    operator bool() { return ptr.data != NULL; }\n"
+    "    operator bool() const { return ptr.data != NULL; }\n"
     "\n"
     "    bool operator==(const Pointer &other) const { return ptr.data == other.ptr.data; }\n"
     "    bool operator!=(const Pointer &other) const { return ptr.data != other.ptr.data; }\n"
@@ -5011,7 +5018,7 @@ static const char *cpp_classes =
     "    CollectionIterator &operator=(const CollectionIterator &other) = delete;\n"
     "    CollectionIterator &operator=(CollectionIterator &&other) = delete;\n"
     "\n"
-    "    operator bool(void)\n"
+    "    operator bool(void) const\n"
     "    { return iter.valid != 0; }\n"
     "    const CollectionIterator<T, Tbegin, Tnext, Tend>& operator++() { Tnext(&iter); t = "
     "T(iter.ptr); return *this; }\n"

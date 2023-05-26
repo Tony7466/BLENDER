@@ -134,26 +134,29 @@ const Instances *GeometryFieldContext::instances() const
 }
 
 GVArray GeometryFieldInput::get_varray_for_context(const fn::FieldContext &context,
-                                                   const IndexMask mask,
+                                                   const IndexMask &mask,
                                                    ResourceScope & /*scope*/) const
 {
   if (const GeometryFieldContext *geometry_context = dynamic_cast<const GeometryFieldContext *>(
-          &context)) {
+          &context))
+  {
     return this->get_varray_for_context(*geometry_context, mask);
   }
   if (const MeshFieldContext *mesh_context = dynamic_cast<const MeshFieldContext *>(&context)) {
     return this->get_varray_for_context({mesh_context->mesh(), mesh_context->domain()}, mask);
   }
-  if (const CurvesFieldContext *curve_context = dynamic_cast<const CurvesFieldContext *>(
-          &context)) {
+  if (const CurvesFieldContext *curve_context = dynamic_cast<const CurvesFieldContext *>(&context))
+  {
     return this->get_varray_for_context({curve_context->curves(), curve_context->domain()}, mask);
   }
   if (const PointCloudFieldContext *point_context = dynamic_cast<const PointCloudFieldContext *>(
-          &context)) {
+          &context))
+  {
     return this->get_varray_for_context({point_context->pointcloud()}, mask);
   }
   if (const InstancesFieldContext *instances_context = dynamic_cast<const InstancesFieldContext *>(
-          &context)) {
+          &context))
+  {
     return this->get_varray_for_context({instances_context->instances()}, mask);
   }
   return {};
@@ -166,11 +169,12 @@ std::optional<eAttrDomain> GeometryFieldInput::preferred_domain(
 }
 
 GVArray MeshFieldInput::get_varray_for_context(const fn::FieldContext &context,
-                                               const IndexMask mask,
+                                               const IndexMask &mask,
                                                ResourceScope & /*scope*/) const
 {
   if (const GeometryFieldContext *geometry_context = dynamic_cast<const GeometryFieldContext *>(
-          &context)) {
+          &context))
+  {
     if (const Mesh *mesh = geometry_context->mesh()) {
       return this->get_varray_for_context(*mesh, geometry_context->domain(), mask);
     }
@@ -187,11 +191,12 @@ std::optional<eAttrDomain> MeshFieldInput::preferred_domain(const Mesh & /*mesh*
 }
 
 GVArray CurvesFieldInput::get_varray_for_context(const fn::FieldContext &context,
-                                                 IndexMask mask,
+                                                 const IndexMask &mask,
                                                  ResourceScope & /*scope*/) const
 {
   if (const GeometryFieldContext *geometry_context = dynamic_cast<const GeometryFieldContext *>(
-          &context)) {
+          &context))
+  {
     if (const CurvesGeometry *curves = geometry_context->curves()) {
       return this->get_varray_for_context(*curves, geometry_context->domain(), mask);
     }
@@ -210,41 +215,45 @@ std::optional<eAttrDomain> CurvesFieldInput::preferred_domain(
 }
 
 GVArray PointCloudFieldInput::get_varray_for_context(const fn::FieldContext &context,
-                                                     IndexMask mask,
+                                                     const IndexMask &mask,
                                                      ResourceScope & /*scope*/) const
 {
   if (const GeometryFieldContext *geometry_context = dynamic_cast<const GeometryFieldContext *>(
-          &context)) {
+          &context))
+  {
     if (const PointCloud *pointcloud = geometry_context->pointcloud()) {
       return this->get_varray_for_context(*pointcloud, mask);
     }
   }
   if (const PointCloudFieldContext *point_context = dynamic_cast<const PointCloudFieldContext *>(
-          &context)) {
+          &context))
+  {
     return this->get_varray_for_context(point_context->pointcloud(), mask);
   }
   return {};
 }
 
 GVArray InstancesFieldInput::get_varray_for_context(const fn::FieldContext &context,
-                                                    IndexMask mask,
+                                                    const IndexMask &mask,
                                                     ResourceScope & /*scope*/) const
 {
   if (const GeometryFieldContext *geometry_context = dynamic_cast<const GeometryFieldContext *>(
-          &context)) {
+          &context))
+  {
     if (const Instances *instances = geometry_context->instances()) {
       return this->get_varray_for_context(*instances, mask);
     }
   }
   if (const InstancesFieldContext *instances_context = dynamic_cast<const InstancesFieldContext *>(
-          &context)) {
+          &context))
+  {
     return this->get_varray_for_context(instances_context->instances(), mask);
   }
   return {};
 }
 
 GVArray AttributeFieldInput::get_varray_for_context(const GeometryFieldContext &context,
-                                                    const IndexMask /*mask*/) const
+                                                    const IndexMask & /*mask*/) const
 {
   const eCustomDataType data_type = cpp_type_to_custom_data_type(*type_);
   if (auto attributes = context.attributes()) {
@@ -299,7 +308,7 @@ static StringRef get_random_id_attribute_name(const eAttrDomain domain)
 }
 
 GVArray IDAttributeFieldInput::get_varray_for_context(const GeometryFieldContext &context,
-                                                      const IndexMask mask) const
+                                                      const IndexMask &mask) const
 {
 
   const StringRef name = get_random_id_attribute_name(context.domain());
@@ -331,7 +340,7 @@ bool IDAttributeFieldInput::is_equal_to(const fn::FieldNode &other) const
 }
 
 GVArray AnonymousAttributeFieldInput::get_varray_for_context(const GeometryFieldContext &context,
-                                                             const IndexMask /*mask*/) const
+                                                             const IndexMask & /*mask*/) const
 {
   const eCustomDataType data_type = cpp_type_to_custom_data_type(*type_);
   return *context.attributes()->lookup(*anonymous_id_, context.domain(), data_type);
@@ -352,7 +361,8 @@ uint64_t AnonymousAttributeFieldInput::hash() const
 bool AnonymousAttributeFieldInput::is_equal_to(const fn::FieldNode &other) const
 {
   if (const AnonymousAttributeFieldInput *other_typed =
-          dynamic_cast<const AnonymousAttributeFieldInput *>(&other)) {
+          dynamic_cast<const AnonymousAttributeFieldInput *>(&other))
+  {
     return anonymous_id_.get() == other_typed->anonymous_id_.get() && type_ == other_typed->type_;
   }
   return false;
@@ -381,7 +391,7 @@ std::optional<eAttrDomain> AnonymousAttributeFieldInput::preferred_domain(
 namespace blender::bke {
 
 GVArray NormalFieldInput::get_varray_for_context(const GeometryFieldContext &context,
-                                                 const IndexMask mask) const
+                                                 const IndexMask &mask) const
 {
   if (const Mesh *mesh = context.mesh()) {
     return mesh_normals_varray(*mesh, mask, context.domain());

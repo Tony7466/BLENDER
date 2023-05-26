@@ -20,15 +20,13 @@
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
-
 #include "BKE_colorband.h"
 #include "BKE_colortools.h"
 #include "BKE_global.h"
 #include "BKE_image.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_texture.h"
 
 #include "DNA_ID.h"
@@ -56,7 +54,7 @@
 #include "NOD_socket_declarations.hh"
 
 #include "node_shader_register.hh"
-#include "node_util.h"
+#include "node_util.hh"
 
 #include "RE_pipeline.h"
 #include "RE_texture.h"

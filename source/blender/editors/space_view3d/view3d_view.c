@@ -170,7 +170,8 @@ static void sync_viewport_camera_smoothview(bContext *C,
   for (bScreen *screen = bmain->screens.first; screen != NULL; screen = screen->id.next) {
     for (ScrArea *area = screen->areabase.first; area != NULL; area = area->next) {
       for (SpaceLink *space_link = area->spacedata.first; space_link != NULL;
-           space_link = space_link->next) {
+           space_link = space_link->next)
+      {
         if (space_link->spacetype == SPACE_VIEW3D) {
           View3D *other_v3d = (View3D *)space_link;
           if (other_v3d == v3d) {
@@ -486,7 +487,7 @@ static bool drw_select_loop_pass(eDRWSelectStage stage, void *user_data)
   bool continue_pass = false;
   struct DrawSelectLoopUserData *data = user_data;
   if (stage == DRW_SELECT_PASS_PRE) {
-    GPU_select_begin(
+    GPU_select_begin_next(
         data->buffer, data->buffer_len, data->rect, data->gpu_select_mode, data->hits);
     /* always run POST after PRE. */
     continue_pass = true;
@@ -513,7 +514,8 @@ eV3DSelectObjectFilter ED_view3d_select_filter_from_mode(const Scene *scene, con
 {
   if (scene->toolsettings->object_flag & SCE_OBJECT_MODE_LOCK) {
     if (obact && (obact->mode & OB_MODE_ALL_WEIGHT_PAINT) &&
-        BKE_object_pose_armature_get((Object *)obact)) {
+        BKE_object_pose_armature_get((Object *)obact))
+    {
       return VIEW3D_SELECT_FILTER_WPAINT_POSE_MODE_LOCK;
     }
     return VIEW3D_SELECT_FILTER_OBJECT_MODE_LOCK;
@@ -597,7 +599,7 @@ int view3d_opengl_select_ex(ViewContext *vc,
   /* Re-use cache (rect must be smaller than the cached)
    * other context is assumed to be unchanged */
   if (GPU_select_is_cached()) {
-    GPU_select_begin(buffer, buffer_len, &rect, gpu_select_mode, 0);
+    GPU_select_begin_next(buffer, buffer_len, &rect, gpu_select_mode, 0);
     GPU_select_cache_load_id();
     hits = GPU_select_end();
     goto finally;

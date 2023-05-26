@@ -132,7 +132,7 @@ static void text_listener(const wmSpaceTypeListenerParams *params)
       switch (wmn->action) {
         case NA_EDITED:
           if (st->text) {
-            text_drawcache_tag_update(st, 1);
+            text_drawcache_tag_update(st, true);
             text_update_edited(st->text);
           }
 
@@ -289,7 +289,8 @@ static void text_cursor(wmWindow *win, ScrArea *area, ARegion *region)
 
   if (st->text && BLI_rcti_isect_pt(&st->runtime.scroll_region_handle,
                                     win->eventstate->xy[0] - region->winrct.xmin,
-                                    st->runtime.scroll_region_handle.ymin)) {
+                                    st->runtime.scroll_region_handle.ymin))
+  {
     wmcursor = WM_CURSOR_DEFAULT;
   }
 
@@ -404,7 +405,7 @@ static void text_space_blend_read_data(BlendDataReader *UNUSED(reader), SpaceLin
 static void text_space_blend_read_lib(BlendLibReader *reader, ID *parent_id, SpaceLink *sl)
 {
   SpaceText *st = (SpaceText *)sl;
-  BLO_read_id_address(reader, parent_id->lib, &st->text);
+  BLO_read_id_address(reader, parent_id, &st->text);
 }
 
 static void text_space_blend_write(BlendWriter *writer, SpaceLink *sl)

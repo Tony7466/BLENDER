@@ -47,7 +47,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_material.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_scene.h"
 #include "BKE_texture.h"
@@ -194,8 +194,8 @@ static void texture_blend_read_data(BlendDataReader *reader, ID *id)
 static void texture_blend_read_lib(BlendLibReader *reader, ID *id)
 {
   Tex *tex = (Tex *)id;
-  BLO_read_id_address(reader, tex->id.lib, &tex->ima);
-  BLO_read_id_address(reader, tex->id.lib, &tex->ipo); /* XXX deprecated - old animation system */
+  BLO_read_id_address(reader, id, &tex->ima);
+  BLO_read_id_address(reader, id, &tex->ipo); /* XXX deprecated - old animation system */
 }
 
 static void texture_blend_read_expand(BlendExpander *expander, ID *id)
@@ -272,7 +272,8 @@ void BKE_texture_mapping_init(TexMapping *texmap)
   float smat[4][4], rmat[4][4], tmat[4][4], proj[4][4], size[3];
 
   if (texmap->projx == PROJ_X && texmap->projy == PROJ_Y && texmap->projz == PROJ_Z &&
-      is_zero_v3(texmap->loc) && is_zero_v3(texmap->rot) && is_one_v3(texmap->size)) {
+      is_zero_v3(texmap->loc) && is_zero_v3(texmap->rot) && is_one_v3(texmap->size))
+  {
     unit_m4(texmap->mat);
 
     texmap->flag |= TEXMAP_UNIT_MATRIX;

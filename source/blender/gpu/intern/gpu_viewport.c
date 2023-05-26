@@ -72,7 +72,7 @@ struct GPUViewport {
   ColorManagedDisplaySettings display_settings;
   CurveMapping *orig_curve_mapping;
   float dither;
-  /* TODO(fclem): the uvimage display use the viewport but do not set any view transform for the
+  /* TODO(@fclem): the UV-image display use the viewport but do not set any view transform for the
    * moment. The end goal would be to let the GPUViewport do the color management. */
   bool do_color_management;
   struct GPUViewportBatch batch;
@@ -244,7 +244,8 @@ void GPU_viewport_colorspace_set(GPUViewport *viewport,
   if (view_settings->curve_mapping) {
     if (viewport->view_settings.curve_mapping) {
       if (view_settings->curve_mapping->changed_timestamp !=
-          viewport->view_settings.curve_mapping->changed_timestamp) {
+          viewport->view_settings.curve_mapping->changed_timestamp)
+      {
         BKE_color_managed_view_settings_free(&viewport->view_settings);
       }
     }

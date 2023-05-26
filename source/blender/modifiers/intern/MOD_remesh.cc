@@ -32,8 +32,8 @@
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
-#include "MOD_modifiertypes.h"
-#include "MOD_ui_common.h"
+#include "MOD_modifiertypes.hh"
+#include "MOD_ui_common.hh"
 
 #include <cstdlib>
 #include <cstring>
@@ -188,7 +188,6 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext * /*ctx*/, M
                                                   rmd->scale,
                                                   rmd->depth));
     BLI_mutex_unlock(&dualcon_mutex);
-    output->mesh->poly_offsets_for_write().last() = output->mesh->totloop;
     result = output->mesh;
     MEM_freeN(output);
   }

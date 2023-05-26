@@ -393,8 +393,8 @@ void paintface_select_more(Mesh *mesh, const bool face_step)
         continue;
       }
       const IndexRange poly = polys[i];
-      if (poly_has_selected_neighbor(
-              corner_edges.slice(poly), edges, select_vert.span, face_step)) {
+      if (poly_has_selected_neighbor(corner_edges.slice(poly), edges, select_vert.span, face_step))
+      {
         select_poly.span[i] = true;
       }
     }
@@ -460,7 +460,8 @@ void paintface_select_less(Mesh *mesh, const bool face_step)
       }
       const IndexRange poly = polys[i];
       if (poly_has_unselected_neighbor(
-              corner_edges.slice(poly), edges, verts_of_unselected_faces, face_step)) {
+              corner_edges.slice(poly), edges, verts_of_unselected_faces, face_step))
+      {
         select_poly.span[i] = false;
       }
     }
@@ -747,8 +748,8 @@ void paintvert_select_linked_pick(bContext *C,
                                   const bool select)
 {
   uint index = uint(-1);
-  if (!ED_mesh_pick_vert(
-          C, ob, region_coordinates, ED_MESH_PICK_DEFAULT_VERT_DIST, true, &index)) {
+  if (!ED_mesh_pick_vert(C, ob, region_coordinates, ED_MESH_PICK_DEFAULT_VERT_DIST, true, &index))
+  {
     return;
   }
 
@@ -794,10 +795,12 @@ void paintvert_select_more(Mesh *mesh, const bool face_step)
   const Span<int> corner_verts = mesh->corner_verts();
   const Span<int2> edges = mesh->edges();
 
-  Array<Vector<int, 2>> edge_to_face_map;
+  Array<int> edge_to_face_offsets;
+  Array<int> edge_to_face_indices;
+  GroupedSpan<int> edge_to_face_map;
   if (face_step) {
-    edge_to_face_map = bke::mesh_topology::build_edge_to_poly_map(
-        polys, corner_edges, mesh->totedge);
+    edge_to_face_map = bke::mesh::build_edge_to_poly_map(
+        polys, corner_edges, mesh->totedge, edge_to_face_offsets, edge_to_face_indices);
   }
 
   /* Need a copy of the selected verts that we can read from and is not modified. */
@@ -850,15 +853,12 @@ void paintvert_select_less(Mesh *mesh, const bool face_step)
   const Span<int> corner_verts = mesh->corner_verts();
   const Span<int2> edges = mesh->edges();
 
-  MeshElemMap *edge_poly_map;
-  int *edge_poly_mem = nullptr;
+  GroupedSpan<int> edge_to_poly_map;
+  Array<int> edge_to_poly_offsets;
+  Array<int> edge_to_poly_indices;
   if (face_step) {
-    BKE_mesh_edge_poly_map_create(&edge_poly_map,
-                                  &edge_poly_mem,
-                                  edges.size(),
-                                  polys,
-                                  corner_edges.data(),
-                                  corner_edges.size());
+    edge_to_poly_map = bke::mesh::build_edge_to_poly_map(
+        polys, corner_edges, edges.size(), edge_to_poly_offsets, edge_to_poly_indices);
   }
 
   /* Need a copy of the selected verts that we can read from and is not modified. */
@@ -878,8 +878,7 @@ void paintvert_select_less(Mesh *mesh, const bool face_step)
     if (!face_step) {
       continue;
     }
-    const Span<int> neighbor_polys(edge_poly_map[i].indices, edge_poly_map[i].count);
-    for (const int poly_i : neighbor_polys) {
+    for (const int poly_i : edge_to_poly_map[i]) {
       if (hide_poly[poly_i]) {
         continue;
       }
@@ -888,10 +887,6 @@ void paintvert_select_less(Mesh *mesh, const bool face_step)
         select_vert.span[vert] = false;
       }
     }
-  }
-  if (edge_poly_mem) {
-    MEM_freeN(edge_poly_map);
-    MEM_freeN(edge_poly_mem);
   }
   select_vert.finish();
 }

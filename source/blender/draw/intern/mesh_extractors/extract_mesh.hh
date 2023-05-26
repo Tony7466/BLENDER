@@ -86,6 +86,7 @@ struct MeshRenderData {
   BMFace *efa_act_uv;
   /* The triangulation of #Mesh polygons, owned by the mesh. */
   blender::Span<MLoopTri> looptris;
+  blender::Span<int> looptri_polys;
   const int *material_indices;
   blender::Span<blender::float3> vert_normals;
   blender::Span<blender::float3> poly_normals;
@@ -256,17 +257,17 @@ using ExtractPolyBMeshFn = void(const MeshRenderData *mr,
 using ExtractPolyMeshFn = void(const MeshRenderData *mr, int poly_index, void *data);
 using ExtractLEdgeBMeshFn = void(const MeshRenderData *mr,
                                  const BMEdge *eed,
-                                 int ledge_index,
+                                 int loose_edge_i,
                                  void *data);
 using ExtractLEdgeMeshFn = void(const MeshRenderData *mr,
                                 blender::int2 edge,
-                                int ledge_index,
+                                int loose_edge_i,
                                 void *data);
 using ExtractLVertBMeshFn = void(const MeshRenderData *mr,
                                  const BMVert *eve,
-                                 int lvert_index,
+                                 int loose_vert_i,
                                  void *data);
-using ExtractLVertMeshFn = void(const MeshRenderData *mr, int lvert_index, void *data);
+using ExtractLVertMeshFn = void(const MeshRenderData *mr, int loose_vert_i, void *data);
 using ExtractLooseGeomSubdivFn = void(const DRWSubdivCache *subdiv_cache,
                                       const MeshRenderData *mr,
                                       void *buffer,

@@ -274,7 +274,8 @@ static void sequencer_refresh(const bContext *C, ScrArea *area)
       }
       /* Final check that both preview and main height are reasonable. */
       if (region_preview->sizey < 10 || region_main->sizey < 10 ||
-          region_preview->sizey + region_main->sizey > height) {
+          region_preview->sizey + region_main->sizey > height)
+      {
         region_preview->sizey = roundf(height * 0.4f);
         region_main->sizey = (int)(height - region_preview->sizey);
         view_changed = true;
@@ -751,7 +752,8 @@ static bool is_cursor_visible(const SpaceSeq *sseq)
   }
 
   if ((sseq->flag & SEQ_SHOW_OVERLAY) &&
-      (sseq->preview_overlay.flag & SEQ_PREVIEW_SHOW_2D_CURSOR) != 0) {
+      (sseq->preview_overlay.flag & SEQ_PREVIEW_SHOW_2D_CURSOR) != 0)
+  {
     return true;
   }
   return false;
@@ -783,8 +785,8 @@ static void sequencer_preview_region_draw(const bContext *C, ARegion *region)
       over_cfra = scene->r.cfra + scene->ed->overlay_frame_ofs;
     }
 
-    if ((over_cfra != scene->r.cfra) ||
-        (sseq->overlay_frame_type != SEQ_OVERLAY_FRAME_TYPE_RECT)) {
+    if ((over_cfra != scene->r.cfra) || (sseq->overlay_frame_type != SEQ_OVERLAY_FRAME_TYPE_RECT))
+    {
       sequencer_draw_preview(
           C, scene, region, sseq, scene->r.cfra, over_cfra - scene->r.cfra, true, false);
     }
@@ -985,7 +987,7 @@ static void sequencer_space_blend_read_lib(BlendLibReader *reader, ID *parent_id
   /* NOTE: pre-2.5, this was local data not lib data, but now we need this as lib data
    * so fingers crossed this works fine!
    */
-  BLO_read_id_address(reader, parent_id->lib, &sseq->gpd);
+  BLO_read_id_address(reader, parent_id, &sseq->gpd);
 }
 
 static void sequencer_space_blend_write(BlendWriter *writer, SpaceLink *sl)
@@ -1046,7 +1048,7 @@ void ED_spacetype_sequencer(void)
                     ED_KEYMAP_GPENCIL;
   BLI_addhead(&st->regiontypes, art);
 
-  /* Listview/buttons. */
+  /* List-view/buttons. */
   art = MEM_callocN(sizeof(ARegionType), "spacetype sequencer region");
   art->regionid = RGN_TYPE_UI;
   art->prefsizex = UI_SIDEBAR_PANEL_WIDTH * 1.3f;

@@ -368,7 +368,7 @@ static void screen_blend_read_lib(BlendLibReader *reader, ID *id)
 {
   bScreen *screen = (bScreen *)id;
   /* deprecated, but needed for versioning (will be NULL'ed then) */
-  BLO_read_id_address(reader, screen->id.lib, &screen->scene);
+  BLO_read_id_address(reader, id, &screen->scene);
 
   screen->animtimer = NULL; /* saved in rare cases */
   screen->tool_tip = NULL;
@@ -1066,7 +1066,8 @@ ScrArea *BKE_screen_area_map_find_area_xy(const ScrAreaMap *areamap,
   LISTBASE_FOREACH (ScrArea *, area, &areamap->areabase) {
     /* Test area's outer screen verts, not inner `area->totrct`. */
     if (xy[0] >= area->v1->vec.x && xy[0] <= area->v4->vec.x && xy[1] >= area->v1->vec.y &&
-        xy[1] <= area->v2->vec.y) {
+        xy[1] <= area->v2->vec.y)
+    {
       if (ELEM(spacetype, SPACE_TYPE_ANY, area->spacetype)) {
         return area;
       }
@@ -1482,7 +1483,7 @@ bool BKE_screen_area_map_blend_read_data(BlendDataReader *reader, ScrAreaMap *ar
 
 void BKE_screen_area_blend_read_lib(BlendLibReader *reader, ID *parent_id, ScrArea *area)
 {
-  BLO_read_id_address(reader, parent_id->lib, &area->full);
+  BLO_read_id_address(reader, parent_id, &area->full);
 
   memset(&area->runtime, 0x0, sizeof(area->runtime));
 

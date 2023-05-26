@@ -363,7 +363,8 @@ bool Scene::need_global_attribute(AttributeStandard std)
   else if (std == ATTR_STD_MOTION_VERTEX_NORMAL)
     return need_motion() == MOTION_BLUR;
   else if (std == ATTR_STD_VOLUME_VELOCITY || std == ATTR_STD_VOLUME_VELOCITY_X ||
-           std == ATTR_STD_VOLUME_VELOCITY_Y || std == ATTR_STD_VOLUME_VELOCITY_Z) {
+           std == ATTR_STD_VOLUME_VELOCITY_Y || std == ATTR_STD_VOLUME_VELOCITY_Z)
+  {
     return need_motion() != MOTION_NONE;
   }
 
@@ -489,6 +490,12 @@ void Scene::update_kernel_features()
     }
     else if (geom->is_pointcloud()) {
       kernel_features |= KERNEL_FEATURE_POINTCLOUD;
+    }
+    if (object->get_receiver_light_set()) {
+      kernel_features |= KERNEL_FEATURE_LIGHT_LINKING;
+    }
+    if (object->get_blocker_shadow_set()) {
+      kernel_features |= KERNEL_FEATURE_SHADOW_LINKING;
     }
   }
 

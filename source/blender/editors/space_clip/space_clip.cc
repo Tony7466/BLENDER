@@ -527,7 +527,7 @@ static void clip_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
   PointerRNA itemptr;
   char dir[FILE_MAX], file[FILE_MAX];
 
-  BLI_split_dirfile(WM_drag_get_path(drag), dir, file, sizeof(dir), sizeof(file));
+  BLI_path_split_dir_file(WM_drag_get_path(drag), dir, sizeof(dir), file, sizeof(file));
 
   RNA_string_set(drop->ptr, "directory", dir);
 
@@ -1133,8 +1133,8 @@ static void clip_space_blend_read_data(BlendDataReader * /*reader*/, SpaceLink *
 static void clip_space_blend_read_lib(BlendLibReader *reader, ID *parent_id, SpaceLink *sl)
 {
   SpaceClip *sclip = (SpaceClip *)sl;
-  BLO_read_id_address(reader, parent_id->lib, &sclip->clip);
-  BLO_read_id_address(reader, parent_id->lib, &sclip->mask_info.mask);
+  BLO_read_id_address(reader, parent_id, &sclip->clip);
+  BLO_read_id_address(reader, parent_id, &sclip->mask_info.mask);
 }
 
 static void clip_space_blend_write(BlendWriter *writer, SpaceLink *sl)
