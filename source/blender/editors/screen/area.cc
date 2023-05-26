@@ -3138,18 +3138,15 @@ void ED_region_panels_draw(const bContext *C, ARegion *region)
     UI_view2d_mask_from_win(v2d, &mask);
     const int category_tabs_width = round_fl_to_int(UI_view2d_scale_get_x(&region->v2d) *
                                                     UI_PANEL_CATEGORY_MARGIN_WIDTH);
-    mask.xmax = mask.xmax - category_tabs_width;
+    mask.xmax -= category_tabs_width;
     BLI_rcti_translate(&region->v2d.vert, -category_tabs_width, 0);
 
     /* Adjust the scroller's action zone. */
-    LISTBASE_FOREACH (AZone *, az, &CTX_wm_area(C)->actionzones) {
-      if (!(az->region == region && az->type == AZONE_REGION_SCROLL)) {
-        continue;
-      }
-      az->x1 = region->v2d.vert.xmin + region->winrct.xmin - V2D_SCROLL_HIDE_WIDTH;
-      az->x2 = region->v2d.vert.xmax + region->winrct.xmin + V2D_SCROLL_HIDE_WIDTH;
+    AZone *az = ED_area_actionzone_find_by_type(CTX_wm_area(C), region, AZONE_REGION_SCROLL);
+    if (az) {
+      az->x1 = region->winrct.xmin + region->v2d.vert.xmin - V2D_SCROLL_HIDE_WIDTH;
+      az->x2 = region->winrct.xmin + region->v2d.vert.xmax + V2D_SCROLL_HIDE_WIDTH;
       BLI_rcti_init(&az->rect, az->x1, az->x2, az->y1, az->y2);
-      break;
     }
   }
   bool use_full_hide = false;

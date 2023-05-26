@@ -997,6 +997,16 @@ AZone *ED_area_actionzone_find_xy(ScrArea *area, const int xy[2])
   return area_actionzone_refresh_xy(area, xy, true);
 }
 
+AZone *ED_area_actionzone_find_by_type(ScrArea *area, ARegion *region, int azone_type)
+{
+  LISTBASE_FOREACH (AZone *, az, &area->actionzones) {
+    if (az->region == region && az->type == azone_type) {
+      return az;
+    }
+  }
+  return NULL;
+}
+
 AZone *ED_area_azones_update(ScrArea *area, const int xy[2])
 {
   return area_actionzone_refresh_xy(area, xy, false);
