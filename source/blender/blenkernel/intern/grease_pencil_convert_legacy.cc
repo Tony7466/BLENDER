@@ -210,13 +210,12 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
     new_layer.blend_mode = static_cast<int8_t>(gpl->blend_mode);
 
     /* Convert the layer masks. */
-    // Vector<LayerMask> masks = new_layer.masks_for_write();
-    // LISTBASE_FOREACH (bGPDlayer_Mask *, mask, &gpl->mask_layers) {
-    //   LayerMask new_mask = LayerMask(mask->name);
-    //   new_mask.flag = mask->flag;
-    //   masks.append(std::move(new_mask));
-    // }
-    // new_layer.opacity = gpl->opacity;
+    LISTBASE_FOREACH (bGPDlayer_Mask *, mask, &gpl->mask_layers) {
+      LayerMask *new_mask = new LayerMask(mask->name);
+      new_mask->flag = mask->flag;
+      BLI_addtail(&new_layer.masks, new_mask);
+    }
+    new_layer.opacity = gpl->opacity;
 
     LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
       grease_pencil.drawing_array[i] = reinterpret_cast<GreasePencilDrawingBase *>(

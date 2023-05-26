@@ -306,9 +306,10 @@ Layer &TreeNode::as_layer_for_write()
 LayerMask::LayerMask()
 {
   this->layer_name = nullptr;
+  this->flag = 0;
 }
 
-LayerMask::LayerMask(StringRefNull name)
+LayerMask::LayerMask(StringRefNull name) : LayerMask()
 {
   this->layer_name = BLI_strdup(name.c_str());
 }

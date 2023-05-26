@@ -187,12 +187,6 @@ class Layer : public ::GreasePencilLayer {
   const Map<int, GreasePencilFrame> &frames() const;
   Map<int, GreasePencilFrame> &frames_for_write();
 
-  /**
-   * \returns the layer masks.
-   */
-  // Span<LayerMask> masks() const;
-  // Vector<LayerMask> &masks_for_write();
-
   bool is_visible() const;
   bool is_locked() const;
 
