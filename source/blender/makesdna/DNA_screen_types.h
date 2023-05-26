@@ -572,6 +572,7 @@ typedef enum eScreen_Redraws_Flag {
   // TIME_CONTINUE_PHYSICS  = (1 << 7), /* UNUSED */
   TIME_NODES = (1 << 8),
   TIME_CLIPS = (1 << 9),
+  TIME_SPREADSHEETS = (1 << 10),
 
   TIME_FOLLOW = (1 << 15),
 } eScreen_Redraws_Flag;
@@ -725,6 +726,9 @@ enum {
    * region's layout pass. so that expansion is still interactive,
    */
   RGN_FLAG_SEARCH_FILTER_UPDATE = (1 << 9),
+  /** #ARegionType.poll() failed for the current context, and the region should be treated as if it
+   * wouldn't exist. Runtime only flag. */
+  RGN_FLAG_POLL_FAILED = (1 << 10),
 };
 
 /** #ARegion.do_draw */

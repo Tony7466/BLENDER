@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 Blender Foundation. All rights reserved. */
+ * Copyright 2007 Blender Foundation */
 
 /** \file
  * \ingroup wm
@@ -77,7 +77,7 @@ static void wm_block_splash_add_label(uiBlock *block, const char *label, int x, 
 #ifndef WITH_HEADLESS
 static void wm_block_splash_image_roundcorners_add(ImBuf *ibuf)
 {
-  uchar *rct = (uchar *)ibuf->rect;
+  uchar *rct = ibuf->byte_buffer.data;
   if (!rct) {
     return;
   }
@@ -139,7 +139,8 @@ static ImBuf *wm_block_splash_image(int width, int *r_height)
     char splash_filepath[FILE_MAX];
     char template_directory[FILE_MAX];
     if (BKE_appdir_app_template_id_search(
-            U.app_template, template_directory, sizeof(template_directory))) {
+            U.app_template, template_directory, sizeof(template_directory)))
+    {
       BLI_path_join(splash_filepath, sizeof(splash_filepath), template_directory, "splash.png");
       ibuf = IMB_loadiffname(splash_filepath, IB_rect, NULL);
     }

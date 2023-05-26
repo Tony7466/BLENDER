@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.5.0 Beta (b'3962d9b931f1')\n"
+"Project-Id-Version: Blender 3.6.0 Beta (b'24ca886ac042')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-03-20 13:37:56\n"
+"POT-Creation-Date: 2023-05-22 16:40:40\n"
 "PO-Revision-Date: 2015-03-03 16:21+0530\n"
 "Last-Translator: Roshan Lal Gumasta <roshan@anisecrets.com>\n"
 "Language-Team: Hindi <www.anisecrets.com>\n"
@@ -455,10 +455,6 @@ msgid "Brushes"
 msgstr "तूलिका"
 
 
-msgid "Grease Pencil"
-msgstr "तैलीय पेंसिल"
-
-
 msgid "Images"
 msgstr "छवि"
 
@@ -675,26 +671,6 @@ msgid "Fill"
 msgstr "भरण"
 
 
-msgid "Smooth"
-msgstr "चिकना"
-
-
-msgid "Grab"
-msgstr "स्थानांतर"
-
-
-msgid "Push"
-msgstr "दबाव"
-
-
-msgid "Pinch"
-msgstr "चुटकी"
-
-
-msgid "Clone"
-msgstr "प्रतिरूप"
-
-
 msgid "Draw"
 msgstr "चित्रण"
 
@@ -705,6 +681,10 @@ msgstr "धुंधला"
 
 msgid "Smear"
 msgstr "धब्बा"
+
+
+msgid "Smooth"
+msgstr "चिकना"
 
 
 msgid "Iterations"
@@ -1445,6 +1425,10 @@ msgid "Fonts"
 msgstr "मुद्र्"
 
 
+msgid "Grease Pencil"
+msgstr "तैलीय पेंसिल"
+
+
 msgid "Save"
 msgstr "सहेजें"
 
@@ -1814,14 +1798,6 @@ msgid "Box"
 msgstr "सन्दूक"
 
 
-msgid "Bend"
-msgstr "मोड"
-
-
-msgid "Expand"
-msgstr "विस्तृत करें"
-
-
 msgid "Loop"
 msgstr "कुण्डली"
 
@@ -1832,6 +1808,18 @@ msgstr "प्रतिरूप पारदर्शिता"
 
 msgid "Clone Image"
 msgstr "प्रतिरूप छवि"
+
+
+msgid "Push"
+msgstr "दबाव"
+
+
+msgid "Grab"
+msgstr "स्थानांतर"
+
+
+msgid "Expand"
+msgstr "विस्तृत करें"
 
 
 msgid "Local"
@@ -1850,6 +1838,14 @@ msgid "Add Color"
 msgstr "रंग जोड़ें"
 
 
+msgid "Pinch"
+msgstr "चुटकी"
+
+
+msgid "Puff"
+msgstr "कश"
+
+
 msgid "Repeat"
 msgstr "दोहराएँ"
 
@@ -1860,6 +1856,10 @@ msgstr "कीलक"
 
 msgid "Soften"
 msgstr "मॄदु"
+
+
+msgid "Clone"
+msgstr "प्रतिरूप"
 
 
 msgid "Mask"
@@ -2555,10 +2555,6 @@ msgid "Memory"
 msgstr "स्मृति"
 
 
-msgid "Modified"
-msgstr "संशोधित"
-
-
 msgid "Register"
 msgstr "पंजीकृत करें"
 
@@ -3097,10 +3093,6 @@ msgid "Dynamic Paint modifier"
 msgstr "गतिकी रंग संशोधक"
 
 
-msgid "Canvas"
-msgstr "चित्रपटी"
-
-
 msgid "Alive"
 msgstr "जीवित"
 
@@ -3384,10 +3376,6 @@ msgstr "प्रक्षेपण"
 
 msgid "Air"
 msgstr "वायु"
-
-
-msgid "Wrap"
-msgstr "आच्छादन"
 
 
 msgid "At"
@@ -3708,6 +3696,10 @@ msgid "Duplicate Curve"
 msgstr "अनुकृति वक्र"
 
 
+msgid "Bend"
+msgstr "मोड"
+
+
 msgid "Shrink/Fatten"
 msgstr "सिकोड़ें/मोटा करें"
 
@@ -3810,6 +3802,14 @@ msgid "Open"
 msgstr "खोलें"
 
 
+msgid "Show"
+msgstr "दिखाएँ"
+
+
+msgid "Play"
+msgstr "चलाएँ"
+
+
 msgid "Next"
 msgstr "अगला"
 
@@ -3845,6 +3845,10 @@ msgstr "सीमा"
 
 msgid "Modifier"
 msgstr "संशोधक"
+
+
+msgid "Sigma"
+msgstr "सिग्मा"
 
 
 msgid "Create a new image"
@@ -4157,10 +4161,6 @@ msgstr "चिन्ह"
 
 msgid "Reset"
 msgstr "पूर्ववत करें"
-
-
-msgid "Show"
-msgstr "दिखाएँ"
 
 
 msgid "Fill the whole mask with a given value, or invert its values"
@@ -4490,6 +4490,10 @@ msgid "Cylinder Projection"
 msgstr "बेलन प्रक्षेपण"
 
 
+msgid "Modified"
+msgstr "संशोधित"
+
+
 msgctxt "Operator"
 msgid "Pin"
 msgstr "कील"
@@ -4547,6 +4551,10 @@ msgid "Pan Right"
 msgstr "दाएँ पैन करें"
 
 
+msgid "Wrap"
+msgstr "आच्छादन"
+
+
 msgctxt "Operator"
 msgid "Demo"
 msgstr "प्रदर्शित करें"
@@ -4558,10 +4566,6 @@ msgstr "पिछ"
 
 msgid "Pause"
 msgstr "विराम दें"
-
-
-msgid "Play"
-msgstr "चलाएँ"
 
 
 msgctxt "Operator"
@@ -4669,6 +4673,10 @@ msgid "Shapes"
 msgstr "आकृतियाँ"
 
 
+msgid "Canvas"
+msgstr "चित्रपटी"
+
+
 msgid "Lock X"
 msgstr "तालाबंदी x"
 
@@ -4691,10 +4699,6 @@ msgstr "पूर्वनिर्धारित ट्रैक रंग"
 
 msgid "Color Presets"
 msgstr "पूर्वनिश्चित रंग"
-
-
-msgid "Lens"
-msgstr "केन्द्रण-वीक्ष"
 
 
 msgid "Cloth Presets"
@@ -4815,10 +4819,6 @@ msgid "Tip"
 msgstr "युक्ति"
 
 
-msgid "Puff"
-msgstr "कश"
-
-
 msgid "Enemy"
 msgstr "विरोधी"
 
@@ -4873,6 +4873,10 @@ msgstr "प्रतिशत"
 
 msgid "New Window"
 msgstr "नई खिडकी"
+
+
+msgid "Base"
+msgstr "आधार"
 
 
 msgid "Case"
@@ -4989,10 +4993,6 @@ msgstr "रेखीय मोटर को सक्षम करें"
 
 msgid "Rigid Body Object"
 msgstr "कठोर वस्तु"
-
-
-msgid "Base"
-msgstr "आधार"
 
 
 msgid "Rest Density"
@@ -5209,6 +5209,10 @@ msgstr "पाठ ढूँढें"
 
 msgid "Replace Text"
 msgstr "पाठ बदलें"
+
+
+msgid "Lens"
+msgstr "केन्द्रण-वीक्ष"
 
 
 msgid "Lock Camera to View"
@@ -5579,10 +5583,6 @@ msgid "Animate Path"
 msgstr "पथ अनुप्राणित करें"
 
 
-msgid "Blender 2.6 doesn't support python constraints yet"
-msgstr "ब्लेंडर २.६ पाइथन प्रतिबंधी का अभी तक समर्थन नहीं करता।"
-
-
 msgid "Layers:"
 msgstr "परत:"
 
@@ -5594,10 +5594,6 @@ msgstr "अक्ष"
 msgctxt "Operator"
 msgid "Remove"
 msgstr "हटाएँ"
-
-
-msgid "Out"
-msgstr "बाहर"
 
 
 msgctxt "Operator"
@@ -5680,10 +5676,6 @@ msgstr "स्पष्ट"
 msgctxt "Operator"
 msgid "All"
 msgstr "सभी"
-
-
-msgid "Old"
-msgstr "पुराने"
 
 
 msgid "Date"
@@ -6229,10 +6221,6 @@ msgid "Loading failed: "
 msgstr "उद्भरण में विफल: "
 
 
-msgid "Loading '%s' failed: "
-msgstr "उद्भरण में  '%s' विफल: "
-
-
 msgid "Not enough free memory"
 msgstr "मुक्त स्मृति पर्याप्त नहीं है"
 
@@ -6330,10 +6318,6 @@ msgid "Render height has to be 576 pixels for DV-PAL!"
 msgstr " प्रतिपादन ऊंचाई ५७६ पिक्सल DV-पाल लिए होना चाहिए!"
 
 
-msgid "FFMPEG only supports 48khz / stereo audio for DV!"
-msgstr "FFMPEG केवल ४८ khz समर्थन करता है / स्टीरियो श्रव्य डीवी के लिए!"
-
-
 msgid "Error initializing video stream"
 msgstr "वीडियो स्ट्रीम आरंभ करने में त्रुटि"
 
@@ -6412,6 +6396,10 @@ msgstr "< कोई पथ >"
 
 msgid "Scene not found"
 msgstr "दृश्य नहीं मिला"
+
+
+msgid "Out"
+msgstr "बाहर"
 
 
 msgid "<Unknown Modifier>"
@@ -7058,6 +7046,10 @@ msgid "Dot"
 msgstr "बिन्दु"
 
 
+msgid "Old"
+msgstr "पुराने"
+
+
 msgid "AO"
 msgstr "ए ओ"
 
@@ -7068,10 +7060,6 @@ msgstr "बीएसडीएफ़"
 
 msgid "IOR"
 msgstr "आईओआर"
-
-
-msgid "Sigma"
-msgstr "सिग्मा"
 
 
 msgid "W1"
@@ -7145,10 +7133,6 @@ msgstr "अंग्रेजी (English)"
 
 msgid "Japanese (日本語)"
 msgstr "जापानी (日本語)"
-
-
-msgid "Dutch (Nederlandse taal)"
-msgstr "डच (Nederlandse taal)"
 
 
 msgid "Italian (Italiano)"
@@ -7255,10 +7239,6 @@ msgid "Hebrew (תירִבְעִ)"
 msgstr "हिब्रू (תירִבְעִ)"
 
 
-msgid "Estonian (Eestlane)"
-msgstr "एस्टोनियाई (Eestlane)"
-
-
 msgid "Spanish from Spain (Español de España)"
 msgstr "स्पेनिश स्पेन से (Español de España)"
 
@@ -7273,10 +7253,6 @@ msgstr "उज़्बेक (Oʻzbek)"
 
 msgid "Uzbek Cyrillic (Ўзбек)"
 msgstr "उज़्बेक सिरिलिक (Ўзбек)"
-
-
-msgid "Hindi (मानक हिन्दी)"
-msgstr "हिन्दी (मानक हिन्दी)"
 
 
 msgid "Complete"

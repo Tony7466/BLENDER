@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+ * Copyright 2020 Blender Foundation */
 
 /** \file
  * \ingroup edsculpt
@@ -69,10 +69,6 @@ void SCULPT_pbvh_clear(Object *ob)
     BKE_pbvh_free(ss->pbvh);
     ss->pbvh = nullptr;
   }
-
-  MEM_SAFE_FREE(ss->pmap);
-
-  MEM_SAFE_FREE(ss->pmap_mem);
 
   BKE_object_free_derived_caches(ob);
 
@@ -148,11 +144,7 @@ static void SCULPT_dynamic_topology_disable_ex(
 
   if (unode) {
     /* Free all existing custom data. */
-    CustomData_free(&me->vdata, me->totvert);
-    CustomData_free(&me->edata, me->totedge);
-    CustomData_free(&me->fdata, me->totface);
-    CustomData_free(&me->ldata, me->totloop);
-    CustomData_free(&me->pdata, me->totpoly);
+    BKE_mesh_clear_geometry(me);
 
     /* Copy over stored custom data. */
     SculptUndoNodeGeometry *geometry = &unode->geometry_bmesh_enter;
@@ -161,14 +153,14 @@ static void SCULPT_dynamic_topology_disable_ex(
     me->totpoly = geometry->totpoly;
     me->totedge = geometry->totedge;
     me->totface = 0;
-    CustomData_copy(
-        &geometry->vdata, &me->vdata, CD_MASK_MESH.vmask, CD_DUPLICATE, geometry->totvert);
-    CustomData_copy(
-        &geometry->edata, &me->edata, CD_MASK_MESH.emask, CD_DUPLICATE, geometry->totedge);
-    CustomData_copy(
-        &geometry->ldata, &me->ldata, CD_MASK_MESH.lmask, CD_DUPLICATE, geometry->totloop);
-    CustomData_copy(
-        &geometry->pdata, &me->pdata, CD_MASK_MESH.pmask, CD_DUPLICATE, geometry->totpoly);
+    CustomData_copy(&geometry->vdata, &me->vdata, CD_MASK_MESH.vmask, geometry->totvert);
+    CustomData_copy(&geometry->edata, &me->edata, CD_MASK_MESH.emask, geometry->totedge);
+    CustomData_copy(&geometry->ldata, &me->ldata, CD_MASK_MESH.lmask, geometry->totloop);
+    CustomData_copy(&geometry->pdata, &me->pdata, CD_MASK_MESH.pmask, geometry->totpoly);
+    blender::implicit_sharing::copy_shared_pointer(geometry->poly_offset_indices,
+                                                   geometry->poly_offsets_sharing_info,
+                                                   &me->poly_offset_indices,
+                                                   &me->runtime->poly_offsets_sharing_info);
   }
   else {
     BKE_sculptsession_bm_to_me(ob, true);
@@ -177,7 +169,7 @@ static void SCULPT_dynamic_topology_disable_ex(
     CustomData_free_layer_named(&me->pdata, ".sculpt_face_set", me->totpoly);
     me->face_sets_color_default = 1;
 
-    /* Sync the visibility to vertices manually as the pmap is still not initialized. */
+    /* Sync the visibility to vertices manually as the `pmap` is still not initialized. */
     bool *hide_vert = (bool *)CustomData_get_layer_named_for_write(
         &me->vdata, CD_PROP_BOOL, ".hide_vert", me->totvert);
     if (hide_vert != nullptr) {
@@ -326,7 +318,7 @@ static bool dyntopo_supports_layer(const CustomDataLayer &layer, const int elem_
     return BM_attribute_stored_in_bmesh_builtin(layer.name);
   }
   /* Some layers just encode #Mesh topology or are handled as special cases for dyntopo. */
-  return ELEM(layer.type, CD_MEDGE, CD_MPOLY, CD_PAINT_MASK, CD_ORIGINDEX);
+  return ELEM(layer.type, CD_PAINT_MASK, CD_ORIGINDEX);
 }
 
 static bool dyntopo_supports_customdata_layers(const blender::Span<CustomDataLayer> layers,

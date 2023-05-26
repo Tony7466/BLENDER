@@ -361,8 +361,8 @@ int main(int argc,
     }
     else {
       const char *unknown = "date-unknown";
-      BLI_strncpy(build_commit_date, unknown, sizeof(build_commit_date));
-      BLI_strncpy(build_commit_time, unknown, sizeof(build_commit_time));
+      STRNCPY(build_commit_date, unknown);
+      STRNCPY(build_commit_time, unknown);
     }
   }
 #endif
@@ -577,11 +577,9 @@ int main(int argc,
     WM_exit(C);
   }
   else {
-    /* When no file is loaded, show the splash screen. */
-    const char *blendfile_path = BKE_main_blendfile_path_from_global();
-    if (blendfile_path[0] == '\0') {
-      WM_init_splash(C);
-    }
+    /* Shows the splash as needed. */
+    WM_init_splash_on_startup(C);
+
     WM_main(C);
   }
   /* Neither #WM_exit, #WM_main return, this quiets CLANG's `unreachable-code-return` warning. */

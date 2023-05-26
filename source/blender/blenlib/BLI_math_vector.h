@@ -371,6 +371,7 @@ bool interp_v2_v2v2_slerp(float target[2], const float a[2], const float b[2], f
 void interp_v3_v3v3_slerp_safe(float target[3], const float a[3], const float b[3], float t);
 void interp_v2_v2v2_slerp_safe(float target[2], const float a[2], const float b[2], float t);
 
+/** Cubic curve interpolation (bezier spline). */
 void interp_v2_v2v2v2v2_cubic(float p[2],
                               const float v1[2],
                               const float v2[2],
@@ -629,7 +630,7 @@ void ortho_basis_v3v3_v3(float r_n1[3], float r_n2[3], const float n[3]);
  */
 void ortho_v3_v3(float out[3], const float v[3]);
 /**
- * no brainer compared to v3, just have for consistency.
+ * Trivial compared to v3, include for consistency.
  */
 void ortho_v2_v2(float out[2], const float v[2]);
 /**
@@ -689,11 +690,9 @@ MINLINE void clamp_v4_v4v4(float vec[4], const float min[4], const float max[4])
 
 /* -------------------------------------------------------------------- */
 /** \name Array Functions
- * \{ */
-
-/**
+ *
  * Follow fixed length vector function conventions.
- */
+ * \{ */
 
 double dot_vn_vn(const float *array_src_a,
                  const float *array_src_b,

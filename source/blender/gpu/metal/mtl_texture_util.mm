@@ -185,7 +185,7 @@ MTLPixelFormat gpu_texture_format_to_metal(eGPUTextureFormat tex_format)
   return MTLPixelFormatRGBA8Unorm;
 }
 
-int get_mtl_format_bytesize(MTLPixelFormat tex_format)
+size_t get_mtl_format_bytesize(MTLPixelFormat tex_format)
 {
   switch (tex_format) {
     case MTLPixelFormatRGBA8Uint:
@@ -586,7 +586,7 @@ void gpu::MTLTexture::update_sub_depth_2d(
                                                       GPU_TEXTURE_USAGE_ATTACHMENT,
                                                   nullptr);
   GPU_texture_filter_mode(r32_tex_tmp, false);
-  GPU_texture_wrap_mode(r32_tex_tmp, false, true);
+  GPU_texture_extend_mode(r32_tex_tmp, GPU_SAMPLER_EXTEND_MODE_EXTEND);
   gpu::MTLTexture *mtl_tex = static_cast<gpu::MTLTexture *>(unwrap(r32_tex_tmp));
   mtl_tex->update_sub(mip, offset, extent, type, data);
 

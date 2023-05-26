@@ -26,8 +26,8 @@ class ShadowPunctual;
 
 using namespace draw;
 
-constexpr eGPUSamplerState no_filter = GPU_SAMPLER_DEFAULT;
-constexpr eGPUSamplerState with_filter = GPU_SAMPLER_FILTER;
+constexpr GPUSamplerState no_filter = GPUSamplerState::default_sampler();
+constexpr GPUSamplerState with_filter = {GPU_SAMPLER_FILTERING_LINEAR};
 
 #endif
 
@@ -354,8 +354,8 @@ enum eVelocityStep : uint32_t {
 };
 
 struct VelocityObjectIndex {
-  /** Offset inside #VelocityObjectBuf for each timestep. Indexed using eVelocityStep. */
-  int3 ofs;
+  /** Offset inside #VelocityObjectBuf for each time-step. Indexed using eVelocityStep. */
+  packed_int3 ofs;
   /** Temporary index to copy this to the #VelocityIndexBuf. */
   uint resource_id;
 
@@ -367,11 +367,11 @@ BLI_STATIC_ASSERT_ALIGN(VelocityObjectIndex, 16)
 
 struct VelocityGeometryIndex {
   /** Offset inside #VelocityGeometryBuf for each timestep. Indexed using eVelocityStep. */
-  int3 ofs;
+  packed_int3 ofs;
   /** If true, compute deformation motion blur. */
   bool1 do_deform;
   /** Length of data inside #VelocityGeometryBuf for each timestep. Indexed using eVelocityStep. */
-  int3 len;
+  packed_int3 len;
 
   int _pad0;
 
@@ -628,7 +628,7 @@ struct LightData {
   float radius_squared;
   /** NOTE: It is ok to use float3 here. A float is declared right after it.
    * float3 is also aligned to 16 bytes. */
-  float3 color;
+  packed_float3 color;
   /** Light Type. */
   eLightType type;
   /** Spot size. Aligned to size of float2. */

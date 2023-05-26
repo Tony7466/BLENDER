@@ -78,6 +78,7 @@ set(SRC
   nodes/node_geo_image.cc
   nodes/node_geo_image_info.cc
   nodes/node_geo_image_texture.cc
+  nodes/node_geo_index_of_nearest.cc
   nodes/node_geo_input_curve_handles.cc
   nodes/node_geo_input_curve_tilt.cc
   nodes/node_geo_input_id.cc
@@ -101,6 +102,7 @@ set(SRC
   nodes/node_geo_input_scene_time.cc
   nodes/node_geo_input_shade_smooth.cc
   nodes/node_geo_input_shortest_edge_paths.cc
+  nodes/node_geo_input_signed_distance.cc
   nodes/node_geo_input_spline_cyclic.cc
   nodes/node_geo_input_spline_length.cc
   nodes/node_geo_input_spline_resolution.cc
@@ -125,8 +127,8 @@ set(SRC
   nodes/node_geo_mesh_primitive_uv_sphere.cc
   nodes/node_geo_mesh_subdivide.cc
   nodes/node_geo_mesh_to_curve.cc
-  nodes/node_geo_mesh_to_sdf_volume.cc
   nodes/node_geo_mesh_to_points.cc
+  nodes/node_geo_mesh_to_sdf_volume.cc
   nodes/node_geo_mesh_to_volume.cc
   nodes/node_geo_mesh_topology_corners_of_face.cc
   nodes/node_geo_mesh_topology_corners_of_vertex.cc
@@ -139,8 +141,8 @@ set(SRC
   nodes/node_geo_offset_point_in_curve.cc
   nodes/node_geo_offset_sdf_volume.cc
   nodes/node_geo_points.cc
-  nodes/node_geo_points_to_vertices.cc
   nodes/node_geo_points_to_sdf_volume.cc
+  nodes/node_geo_points_to_vertices.cc
   nodes/node_geo_points_to_volume.cc
   nodes/node_geo_proximity.cc
   nodes/node_geo_raycast.cc
@@ -151,6 +153,7 @@ set(SRC
   nodes/node_geo_sample_nearest.cc
   nodes/node_geo_sample_nearest_surface.cc
   nodes/node_geo_sample_uv_surface.cc
+  nodes/node_geo_sample_volume.cc
   nodes/node_geo_scale_elements.cc
   nodes/node_geo_scale_instances.cc
   nodes/node_geo_sdf_volume_sphere.cc
@@ -169,6 +172,8 @@ set(SRC
   nodes/node_geo_set_shade_smooth.cc
   nodes/node_geo_set_spline_cyclic.cc
   nodes/node_geo_set_spline_resolution.cc
+  nodes/node_geo_simulation_input.cc
+  nodes/node_geo_simulation_output.cc
   nodes/node_geo_store_named_attribute.cc
   nodes/node_geo_string_join.cc
   nodes/node_geo_string_to_curves.cc

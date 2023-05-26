@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation. All rights reserved. */
+ * Copyright 2013 Blender Foundation */
 
 /** \file
  * \ingroup depsgraph
@@ -28,12 +28,15 @@ enum class OperationCode {
   /* Placeholder for operations which don't need special mention */
   OPERATION = 0,
 
-  /* Generic parameters evaluation. */
+  /* Generic parameters evaluation. --------------------------------------- */
   ID_PROPERTY,
   PARAMETERS_ENTRY,
   PARAMETERS_EVAL,
   PARAMETERS_EXIT,
   VISIBILITY,
+
+  /* Hierarchy. ----------------------------------------------------------- */
+  HIERARCHY,
 
   /* Animation, Drivers, etc. --------------------------------------------- */
   /* NLA + Action */
@@ -162,6 +165,9 @@ enum class OperationCode {
   MATERIAL_UPDATE,
   LIGHT_UPDATE,
   WORLD_UPDATE,
+
+  /* Light linking. ------------------------------------------------------- */
+  LIGHT_LINKING_UPDATE,
 
   /* Node Tree. ----------------------------------------------------------- */
   NTREE_OUTPUT,

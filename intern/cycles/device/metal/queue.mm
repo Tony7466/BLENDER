@@ -531,6 +531,7 @@ bool MetalDeviceQueue::enqueue(DeviceKernel kernel,
         case DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW:
         case DEVICE_KERNEL_INTEGRATOR_INTERSECT_SUBSURFACE:
         case DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK:
+        case DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT:
         case DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE:
         case DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_MNEE:
           break;
@@ -590,11 +591,10 @@ bool MetalDeviceQueue::enqueue(DeviceKernel kernel,
     [mtlComputeCommandEncoder setThreadgroupMemoryLength:shared_mem_bytes atIndex:0];
   }
 
-  MTLSize size_threadgroups_per_dispatch = MTLSizeMake(
-      divide_up(work_size, num_threads_per_block), 1, 1);
+  MTLSize size_threads_per_dispatch = MTLSizeMake(work_size, 1, 1);
   MTLSize size_threads_per_threadgroup = MTLSizeMake(num_threads_per_block, 1, 1);
-  [mtlComputeCommandEncoder dispatchThreadgroups:size_threadgroups_per_dispatch
-                           threadsPerThreadgroup:size_threads_per_threadgroup];
+  [mtlComputeCommandEncoder dispatchThreads:size_threads_per_dispatch
+                      threadsPerThreadgroup:size_threads_per_threadgroup];
 
   [mtlCommandBuffer_ addCompletedHandler:^(id<MTLCommandBuffer> command_buffer) {
     NSString *kernel_name = metal_kernel_pso->function.label;
@@ -893,7 +893,8 @@ id<MTLComputeCommandEncoder> MetalDeviceQueue::get_compute_encoder(DeviceKernel 
 
     if (mtlComputeEncoder_) {
       if (mtlComputeEncoder_.dispatchType == concurrent ? MTLDispatchTypeConcurrent :
-                                                          MTLDispatchTypeSerial) {
+                                                          MTLDispatchTypeSerial)
+      {
         /* declare usage of MTLBuffers etc */
         prepare_resources(kernel);
 

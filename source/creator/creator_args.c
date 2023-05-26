@@ -149,8 +149,8 @@ static bool parse_int_range_relative(const char *str,
                                      const char **r_err_msg)
 {
   if (parse_int_relative(str, str_end_range, pos, neg, &r_value_range[0], r_err_msg) &&
-      parse_int_relative(
-          str_end_range + 2, str_end_test, pos, neg, &r_value_range[1], r_err_msg)) {
+      parse_int_relative(str_end_range + 2, str_end_test, pos, neg, &r_value_range[1], r_err_msg))
+  {
     return true;
   }
   return false;
@@ -329,7 +329,8 @@ static int (*parse_int_range_relative_clamp_n(const char *str,
                  parse_int_range_relative_clamp(
                      str, str_end_range, str_end, pos, neg, min, max, values[i], r_err_msg) :
                  parse_int_relative_clamp(
-                     str, str_end, pos, neg, min, max, &values[i][0], r_err_msg)) {
+                     str, str_end, pos, neg, min, max, &values[i][0], r_err_msg))
+    {
       if (str_end_range == NULL) {
         values[i][1] = values[i][0];
       }
@@ -395,7 +396,8 @@ static void arg_py_context_restore(bContext *C, struct BlendePyContextStore *c_p
   /* script may load a file, check old data is valid before using */
   if (c_py->has_win) {
     if ((c_py->win == NULL) || ((BLI_findindex(&G_MAIN->wm, c_py->wm) != -1) &&
-                                (BLI_findindex(&c_py->wm->windows, c_py->win) != -1))) {
+                                (BLI_findindex(&c_py->wm->windows, c_py->win) != -1)))
+    {
       CTX_wm_window_set(C, c_py->win);
     }
   }
@@ -582,6 +584,9 @@ static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), vo
   BLI_args_print_arg_doc(ba, "--debug-gpu");
   BLI_args_print_arg_doc(ba, "--debug-gpu-force-workarounds");
   BLI_args_print_arg_doc(ba, "--debug-gpu-disable-ssbo");
+#  ifdef WITH_RENDERDOC
+  BLI_args_print_arg_doc(ba, "--debug-gpu-renderdoc");
+#  endif
   BLI_args_print_arg_doc(ba, "--debug-wm");
 #  ifdef WITH_XR_OPENXR
   BLI_args_print_arg_doc(ba, "--debug-xr");
@@ -622,8 +627,10 @@ static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), vo
   BLI_args_print_arg_doc(ba, "/?");
 
   /* WIN32 only (ignored for non-win32) */
-  BLI_args_print_arg_doc(ba, "-R");
-  BLI_args_print_arg_doc(ba, "-r");
+  BLI_args_print_arg_doc(ba, "--register");
+  BLI_args_print_arg_doc(ba, "--register-allusers");
+  BLI_args_print_arg_doc(ba, "--unregister");
+  BLI_args_print_arg_doc(ba, "--unregister-allusers");
 
   BLI_args_print_arg_doc(ba, "--version");
 
@@ -1118,6 +1125,19 @@ static int arg_handle_debug_gpu_set(int UNUSED(argc),
   return 0;
 }
 
+#  ifdef WITH_RENDERDOC
+static const char arg_handle_debug_gpu_renderdoc_set_doc[] =
+    "\n"
+    "\tEnable Renderdoc integration for GPU frame grabbing and debugging.";
+static int arg_handle_debug_gpu_renderdoc_set(int UNUSED(argc),
+                                              const char **UNUSED(argv),
+                                              void *UNUSED(data))
+{
+  G.debug |= G_DEBUG_GPU_RENDERDOC | G_DEBUG_GPU;
+  return 0;
+}
+#  endif
+
 static const char arg_handle_gpu_backend_set_doc[] =
     "\n"
     "\tForce to use a specific GPU backend. Valid options: "
@@ -1381,20 +1401,60 @@ static int arg_handle_start_with_console(int UNUSED(argc),
 
 static const char arg_handle_register_extension_doc[] =
     "\n\t"
-    "Register blend-file extension, then exit (Windows only).";
-static const char arg_handle_register_extension_doc_silent[] =
-    "\n\t"
-    "Silently register blend-file extension, then exit (Windows only).";
-static int arg_handle_register_extension(int UNUSED(argc), const char **UNUSED(argv), void *data)
+    "Register blend-file extension for current user, then exit (Windows only).";
+static int arg_handle_register_extension(int UNUSED(argc),
+                                         const char **UNUSED(argv),
+                                         void *UNUSED(data))
 {
 #  ifdef WIN32
-  if (data) {
-    G.background = 1;
-  }
-  BLI_windows_register_blend_extension(G.background);
+  G.background = 1;
+  BLI_windows_register_blend_extension(false);
   TerminateProcess(GetCurrentProcess(), 0);
-#  else
-  (void)data; /* unused */
+#  endif
+  return 0;
+}
+
+static const char arg_handle_register_extension_all_doc[] =
+    "\n\t"
+    "Register blend-file extension for all users, then exit (Windows only).";
+static int arg_handle_register_extension_all(int UNUSED(argc),
+                                             const char **UNUSED(argv),
+                                             void *UNUSED(data))
+{
+#  ifdef WIN32
+  G.background = 1;
+  BLI_windows_register_blend_extension(true);
+  TerminateProcess(GetCurrentProcess(), 0);
+#  endif
+  return 0;
+}
+
+static const char arg_handle_unregister_extension_doc[] =
+    "\n\t"
+    "Unregister blend-file extension for current user, then exit (Windows only).";
+static int arg_handle_unregister_extension(int UNUSED(argc),
+                                           const char **UNUSED(argv),
+                                           void *UNUSED(data))
+{
+#  ifdef WIN32
+  G.background = 1;
+  BLI_windows_unregister_blend_extension(false);
+  TerminateProcess(GetCurrentProcess(), 0);
+#  endif
+  return 0;
+}
+
+static const char arg_handle_unregister_extension_all_doc[] =
+    "\n\t"
+    "Unregister blend-file extension for all users, then exit (Windows only).";
+static int arg_handle_unregister_extension_all(int UNUSED(argc),
+                                               const char **UNUSED(argv),
+                                               void *UNUSED(data))
+{
+#  ifdef WIN32
+  G.background = 1;
+  BLI_windows_unregister_blend_extension(true);
+  TerminateProcess(GetCurrentProcess(), 0);
 #  endif
   return 0;
 }
@@ -1447,7 +1507,7 @@ static int arg_handle_output_set(int argc, const char **argv, void *data)
   if (argc > 1) {
     Scene *scene = CTX_data_scene(C);
     if (scene) {
-      BLI_strncpy(scene->r.pic, argv[1], sizeof(scene->r.pic));
+      STRNCPY(scene->r.pic, argv[1]);
       DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
     }
     else {
@@ -1479,7 +1539,7 @@ static int arg_handle_engine_set(int argc, const char **argv, void *data)
       Scene *scene = CTX_data_scene(C);
       if (scene) {
         if (BLI_findstring(&R_engines, argv[1], offsetof(RenderEngineType, idname))) {
-          BLI_strncpy_utf8(scene->r.engine, argv[1], sizeof(scene->r.engine));
+          STRNCPY_UTF8(scene->r.engine, argv[1]);
           DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
         }
         else {
@@ -1659,7 +1719,8 @@ static int arg_handle_render_frame(int argc, const char **argv, void *data)
                                                               MINAFRAME,
                                                               MAXFRAME,
                                                               &frames_range_len,
-                                                              &err_msg)) == NULL) {
+                                                              &err_msg)) == NULL)
+      {
         fprintf(stderr, "\nError: %s '%s %s'.\n", err_msg, arg_id, argv[1]);
         return 1;
       }
@@ -1758,7 +1819,8 @@ static int arg_handle_frame_start_set(int argc, const char **argv, void *data)
                                     MINAFRAME,
                                     MAXFRAME,
                                     &scene->r.sfra,
-                                    &err_msg)) {
+                                    &err_msg))
+      {
         fprintf(stderr, "\nError: %s '%s %s'.\n", err_msg, arg_id, argv[1]);
       }
       else {
@@ -1791,7 +1853,8 @@ static int arg_handle_frame_end_set(int argc, const char **argv, void *data)
                                     MINAFRAME,
                                     MAXFRAME,
                                     &scene->r.efra,
-                                    &err_msg)) {
+                                    &err_msg))
+      {
         fprintf(stderr, "\nError: %s '%s %s'.\n", err_msg, arg_id, argv[1]);
       }
       else {
@@ -1844,8 +1907,8 @@ static int arg_handle_python_file_run(int argc, const char **argv, void *data)
   if (argc > 1) {
     /* Make the path absolute because its needed for relative linked blends to be found */
     char filepath[FILE_MAX];
-    BLI_strncpy(filepath, argv[1], sizeof(filepath));
-    BLI_path_abs_from_cwd(filepath, sizeof(filepath));
+    STRNCPY(filepath, argv[1]);
+    BLI_path_canonicalize_native(filepath, sizeof(filepath));
 
     bool ok;
     BPY_CTX_SETUP(ok = BPY_run_filepath(C, filepath, NULL));
@@ -2041,10 +2104,8 @@ static int arg_handle_load_file(int UNUSED(argc), const char **argv, void *data)
     fprintf(stderr, "unknown argument, loading as file: %s\n", argv[0]);
   }
 
-  BLI_strncpy(filepath, argv[0], sizeof(filepath));
-  BLI_path_slash_native(filepath);
-  BLI_path_abs_from_cwd(filepath, sizeof(filepath));
-  BLI_path_normalize(NULL, filepath);
+  STRNCPY(filepath, argv[0]);
+  BLI_path_canonicalize_native(filepath, sizeof(filepath));
 
   /* load the file */
   BKE_reports_init(&reports, RPT_PRINT);
@@ -2140,8 +2201,8 @@ void main_args_setup(bContext *C, bArgs *ba)
   BLI_args_add(ba, NULL, "--log-show-timestamp", CB(arg_handle_log_show_timestamp_set), ba);
   BLI_args_add(ba, NULL, "--log-file", CB(arg_handle_log_file_set), ba);
 
-  /* GPU backend selection should be part of ARG_PASS_ENVIRONMENT for correct GPU context selection
-   * for anim player. */
+  /* GPU backend selection should be part of #ARG_PASS_ENVIRONMENT for correct GPU context
+   * selection for animation player. */
   BLI_args_add(ba, NULL, "--gpu-backend", CB(arg_handle_gpu_backend_set), NULL);
 
   /* Pass: Background Mode & Settings
@@ -2245,6 +2306,9 @@ void main_args_setup(bContext *C, bArgs *ba)
                CB_EX(arg_handle_debug_mode_generic_set, jobs),
                (void *)G_DEBUG_JOBS);
   BLI_args_add(ba, NULL, "--debug-gpu", CB(arg_handle_debug_gpu_set), NULL);
+#  ifdef WITH_RENDERDOC
+  BLI_args_add(ba, NULL, "--debug-gpu-renderdoc", CB(arg_handle_debug_gpu_renderdoc_set), NULL);
+#  endif
 
   BLI_args_add(ba,
                NULL,
@@ -2313,8 +2377,10 @@ void main_args_setup(bContext *C, bArgs *ba)
   BLI_args_add(ba, "-M", "--window-maximized", CB(arg_handle_window_maximized), NULL);
   BLI_args_add(ba, NULL, "--no-window-focus", CB(arg_handle_no_window_focus), NULL);
   BLI_args_add(ba, "-con", "--start-console", CB(arg_handle_start_with_console), NULL);
-  BLI_args_add(ba, "-R", NULL, CB(arg_handle_register_extension), NULL);
-  BLI_args_add(ba, "-r", NULL, CB_EX(arg_handle_register_extension, silent), ba);
+  BLI_args_add(ba, "-r", "--register", CB(arg_handle_register_extension), NULL);
+  BLI_args_add(ba, NULL, "--register-allusers", CB(arg_handle_register_extension_all), NULL);
+  BLI_args_add(ba, NULL, "--unregister", CB(arg_handle_unregister_extension), NULL);
+  BLI_args_add(ba, NULL, "--unregister-allusers", CB(arg_handle_unregister_extension_all), NULL);
   BLI_args_add(ba, NULL, "--no-native-pixels", CB(arg_handle_native_pixels_set), ba);
 
   /* Pass: Disabling Things & Forcing Settings. */

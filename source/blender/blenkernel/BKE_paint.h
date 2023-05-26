@@ -9,6 +9,10 @@
 
 #include "BLI_bitmap.h"
 #include "BLI_compiler_compat.h"
+#ifdef __cplusplus
+#  include "BLI_array.hh"
+#  include "BLI_offset_indices.hh"
+#endif
 #include "BLI_utildefines.h"
 
 #include "DNA_brush_enums.h"
@@ -40,7 +44,6 @@ struct ListBase;
 struct MLoopTri;
 struct Main;
 struct Mesh;
-struct MeshElemMap;
 struct Object;
 struct PBVH;
 struct Paint;
@@ -48,6 +51,7 @@ struct PaintCurve;
 struct PaintModeSettings;
 struct Palette;
 struct PaletteColor;
+struct RegionView3D;
 struct Scene;
 struct StrokeCache;
 struct Sculpt;
@@ -217,7 +221,7 @@ bool BKE_paint_always_hide_test(struct Object *ob);
 /**
  * Returns non-zero if any of the face's vertices are hidden, zero otherwise.
  */
-bool paint_is_face_hidden(const struct MLoopTri *lt, const bool *hide_poly);
+bool paint_is_face_hidden(const int *looptri_polys, const bool *hide_poly, int tri_index);
 /**
  * Returns non-zero if any of the corners of the grid
  * face whose inner corner is at (x, y) are hidden, zero otherwise.
@@ -238,7 +242,8 @@ void BKE_paint_face_set_overlay_color_get(int face_set, int seed, uchar r_color[
 
 bool paint_calculate_rake_rotation(struct UnifiedPaintSettings *ups,
                                    struct Brush *brush,
-                                   const float mouse_pos[2]);
+                                   const float mouse_pos[2],
+                                   ePaintMode paint_mode);
 void paint_update_brush_rake_rotation(struct UnifiedPaintSettings *ups,
                                       struct Brush *brush,
                                       float rotation);
@@ -271,12 +276,17 @@ void BKE_paint_blend_read_lib(struct BlendLibReader *reader,
 #define SCULPT_FACE_SET_NONE 0
 
 /** Used for both vertex color and weight paint. */
+#ifdef __cplusplus
 struct SculptVertexPaintGeomMap {
-  int *vert_map_mem;
-  struct MeshElemMap *vert_to_loop;
-  int *poly_map_mem;
-  struct MeshElemMap *vert_to_poly;
+  blender::Array<int> vert_to_loop_offsets;
+  blender::Array<int> vert_to_loop_indices;
+  blender::GroupedSpan<int> vert_to_loop;
+
+  blender::Array<int> vert_to_poly_offsets;
+  blender::Array<int> vert_to_poly_indices;
+  blender::GroupedSpan<int> vert_to_poly;
 };
+#endif
 
 /** Pose Brush IK Chain. */
 typedef struct SculptPoseIKChainSegment {
@@ -524,7 +534,8 @@ typedef struct SculptAttribute {
   /* Sculpt usage */
   SculptAttributeParams params;
 
-  /* Used to keep track of which preallocated SculptAttribute instances
+  /**
+   * Used to keep track of which pre-allocated SculptAttribute instances
    * inside of SculptSession.temp_attribute are used.
    */
   bool used;
@@ -579,7 +590,7 @@ typedef struct SculptSession {
 
   /* These are always assigned to base mesh data when using PBVH_FACES and PBVH_GRIDS. */
   float (*vert_positions)[3];
-  blender::Span<MPoly> polys;
+  blender::OffsetIndices<int> polys;
   blender::Span<int> corner_verts;
 
   /* These contain the vertex and poly counts of the final mesh. */
@@ -596,16 +607,19 @@ typedef struct SculptSession {
 
   /* Mesh connectivity maps. */
   /* Vertices to adjacent polys. */
-  struct MeshElemMap *pmap;
-  int *pmap_mem;
+  blender::Array<int> vert_to_poly_offsets;
+  blender::Array<int> vert_to_poly_indices;
+  blender::GroupedSpan<int> pmap;
 
   /* Edges to adjacent polys. */
-  struct MeshElemMap *epmap;
-  int *epmap_mem;
+  blender::Array<int> edge_to_poly_offsets;
+  blender::Array<int> edge_to_poly_indices;
+  blender::GroupedSpan<int> epmap;
 
   /* Vertices to adjacent edges. */
-  struct MeshElemMap *vemap;
-  int *vemap_mem;
+  blender::Array<int> vert_to_edge_offsets;
+  blender::Array<int> vert_to_edge_indices;
+  blender::GroupedSpan<int> vemap;
 
   /* Mesh Face Sets */
   /* Total number of polys of the base mesh. */
@@ -703,7 +717,7 @@ typedef struct SculptSession {
   float prev_pivot_rot[4];
   float prev_pivot_scale[3];
 
-  union {
+  struct {
     struct {
       struct SculptVertexPaintGeomMap gmap;
     } vpaint;

@@ -26,9 +26,7 @@ MTLImmediate::MTLImmediate(MTLContext *ctx)
   context_ = ctx;
 }
 
-MTLImmediate::~MTLImmediate()
-{
-}
+MTLImmediate::~MTLImmediate() {}
 
 uchar *MTLImmediate::begin()
 {
@@ -68,7 +66,8 @@ void MTLImmediate::end()
 
     /* Skip draw if Metal shader is not valid. */
     if (active_mtl_shader == nullptr || !active_mtl_shader->is_valid() ||
-        active_mtl_shader->get_interface() == nullptr) {
+        active_mtl_shader->get_interface() == nullptr)
+    {
 
       const char *ptr = (active_mtl_shader) ? active_mtl_shader->name_get() : nullptr;
       MTL_LOG_WARNING(
@@ -323,7 +322,7 @@ void MTLImmediate::end()
             @autoreleasepool {
 
               id<MTLBuffer> index_buffer_mtl = nil;
-              uint32_t index_buffer_offset = 0;
+              uint64_t index_buffer_offset = 0;
 
               /* Region of scratch buffer used for topology emulation element data.
                * NOTE(Metal): We do not need to manually flush as the entire scratch

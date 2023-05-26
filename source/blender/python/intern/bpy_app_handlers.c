@@ -255,8 +255,8 @@ PyObject *BPY_app_handlers_struct(void)
   /* prevent user from creating new instances */
   BlenderAppCbType.tp_init = NULL;
   BlenderAppCbType.tp_new = NULL;
-  BlenderAppCbType.tp_hash = (hashfunc)
-      _Py_HashPointer; /* without this we can't do set(sys.modules) #29635. */
+  /* Without this we can't do `set(sys.modules)` #29635. */
+  BlenderAppCbType.tp_hash = (hashfunc)_Py_HashPointer;
 
   /* assign the C callbacks */
   if (ret) {
@@ -310,7 +310,8 @@ void BPY_app_handlers_reset(const bool do_all)
 
         PyObject **dict_ptr;
         if (PyFunction_Check(item) && (dict_ptr = _PyObject_GetDictPtr(item)) && (*dict_ptr) &&
-            (PyDict_GetItem(*dict_ptr, perm_id_str) != NULL)) {
+            (PyDict_GetItem(*dict_ptr, perm_id_str) != NULL))
+        {
           /* keep */
         }
         else {

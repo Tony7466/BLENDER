@@ -646,6 +646,8 @@ typedef struct uiPopupMenu uiPopupMenu;
 
 uiPopupMenu *UI_popup_menu_begin(struct bContext *C, const char *title, int icon) ATTR_NONNULL();
 /**
+ * Directly create a popup menu that is not refreshed on redraw.
+ *
  * Only return handler, and set optional title.
  * \param block_name: Assigned to uiBlock.name (useful info for debugging).
  */
@@ -2617,6 +2619,10 @@ void uiTemplateAssetView(struct uiLayout *layout,
                          const char *drag_opname,
                          struct PointerRNA *r_drag_op_properties);
 
+void uiTemplateLightLinkingCollection(struct uiLayout *layout,
+                                      struct PointerRNA *ptr,
+                                      const char *propname);
+
 /**
  * \return: A RNA pointer for the operator properties.
  */
@@ -2889,21 +2895,21 @@ void uiItemMenuF(uiLayout *layout, const char *name, int icon, uiMenuCreateFunc 
  */
 void uiItemMenuFN(uiLayout *layout, const char *name, int icon, uiMenuCreateFunc func, void *argN);
 void uiItemMenuEnumFullO_ptr(uiLayout *layout,
-                             struct bContext *C,
+                             const struct bContext *C,
                              struct wmOperatorType *ot,
                              const char *propname,
                              const char *name,
                              int icon,
                              struct PointerRNA *r_opptr);
 void uiItemMenuEnumFullO(uiLayout *layout,
-                         struct bContext *C,
+                         const struct bContext *C,
                          const char *opname,
                          const char *propname,
                          const char *name,
                          int icon,
                          struct PointerRNA *r_opptr);
 void uiItemMenuEnumO(uiLayout *layout,
-                     struct bContext *C,
+                     const struct bContext *C,
                      const char *opname,
                      const char *propname,
                      const char *name,
@@ -3010,6 +3016,8 @@ void UI_context_active_but_prop_get_filebrowser(const struct bContext *C,
                                                 bool *r_is_userdef);
 /**
  * For new/open operators.
+ *
+ * This is for browsing and editing the ID-blocks used.
  */
 void UI_context_active_but_prop_get_templateID(struct bContext *C,
                                                struct PointerRNA *r_ptr,
@@ -3171,7 +3179,7 @@ const char *UI_key_event_operator_string(const struct bContext *C,
                                          IDProperty *properties,
                                          const bool is_strict,
                                          char *result,
-                                         const int result_len);
+                                         const int result_maxncpy);
 
 /* ui_interface_region_tooltip.c */
 
@@ -3254,6 +3262,7 @@ void UI_interface_tag_script_reload(void);
 /* Support click-drag motion which presses the button and closes a popover (like a menu). */
 #define USE_UI_POPOVER_ONCE
 
+bool UI_view_item_is_interactive(const uiViewItemHandle *item_handle);
 bool UI_view_item_is_active(const uiViewItemHandle *item_handle);
 bool UI_view_item_matches(const uiViewItemHandle *a_handle, const uiViewItemHandle *b_handle);
 /**

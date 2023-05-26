@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2004 Blender Foundation. All rights reserved. */
+ * Copyright 2004 Blender Foundation */
 
 /** \file
  * \ingroup edobj
@@ -188,11 +188,11 @@ static bool multiresbake_check(bContext *C, wmOperator *op)
               ok = false;
             }
             else {
-              if (ibuf->rect == nullptr && ibuf->rect_float == nullptr) {
+              if (ibuf->byte_buffer.data == nullptr && ibuf->float_buffer.data == nullptr) {
                 ok = false;
               }
 
-              if (ibuf->rect_float && !ELEM(ibuf->channels, 0, 4)) {
+              if (ibuf->float_buffer.data && !ELEM(ibuf->channels, 0, 4)) {
                 ok = false;
               }
 

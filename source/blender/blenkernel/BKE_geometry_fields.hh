@@ -62,9 +62,7 @@ class PointCloudFieldContext : public fn::FieldContext {
   const PointCloud &pointcloud_;
 
  public:
-  PointCloudFieldContext(const PointCloud &pointcloud) : pointcloud_(pointcloud)
-  {
-  }
+  PointCloudFieldContext(const PointCloud &pointcloud) : pointcloud_(pointcloud) {}
 
   const PointCloud &pointcloud() const
   {
@@ -77,9 +75,7 @@ class InstancesFieldContext : public fn::FieldContext {
   const Instances &instances_;
 
  public:
-  InstancesFieldContext(const Instances &instances) : instances_(instances)
-  {
-  }
+  InstancesFieldContext(const Instances &instances) : instances_(instances) {}
 
   const Instances &instances() const
   {
@@ -140,10 +136,10 @@ class GeometryFieldInput : public fn::FieldInput {
  public:
   using fn::FieldInput::FieldInput;
   GVArray get_varray_for_context(const fn::FieldContext &context,
-                                 IndexMask mask,
+                                 const IndexMask &mask,
                                  ResourceScope &scope) const override;
   virtual GVArray get_varray_for_context(const GeometryFieldContext &context,
-                                         IndexMask mask) const = 0;
+                                         const IndexMask &mask) const = 0;
   virtual std::optional<eAttrDomain> preferred_domain(const GeometryComponent &component) const;
 };
 
@@ -151,11 +147,11 @@ class MeshFieldInput : public fn::FieldInput {
  public:
   using fn::FieldInput::FieldInput;
   GVArray get_varray_for_context(const fn::FieldContext &context,
-                                 IndexMask mask,
+                                 const IndexMask &mask,
                                  ResourceScope &scope) const override;
   virtual GVArray get_varray_for_context(const Mesh &mesh,
                                          eAttrDomain domain,
-                                         IndexMask mask) const = 0;
+                                         const IndexMask &mask) const = 0;
   virtual std::optional<eAttrDomain> preferred_domain(const Mesh &mesh) const;
 };
 
@@ -163,11 +159,11 @@ class CurvesFieldInput : public fn::FieldInput {
  public:
   using fn::FieldInput::FieldInput;
   GVArray get_varray_for_context(const fn::FieldContext &context,
-                                 IndexMask mask,
+                                 const IndexMask &mask,
                                  ResourceScope &scope) const override;
   virtual GVArray get_varray_for_context(const CurvesGeometry &curves,
                                          eAttrDomain domain,
-                                         IndexMask mask) const = 0;
+                                         const IndexMask &mask) const = 0;
   virtual std::optional<eAttrDomain> preferred_domain(const CurvesGeometry &curves) const;
 };
 
@@ -175,18 +171,20 @@ class PointCloudFieldInput : public fn::FieldInput {
  public:
   using fn::FieldInput::FieldInput;
   GVArray get_varray_for_context(const fn::FieldContext &context,
-                                 IndexMask mask,
+                                 const IndexMask &mask,
                                  ResourceScope &scope) const override;
-  virtual GVArray get_varray_for_context(const PointCloud &pointcloud, IndexMask mask) const = 0;
+  virtual GVArray get_varray_for_context(const PointCloud &pointcloud,
+                                         const IndexMask &mask) const = 0;
 };
 
 class InstancesFieldInput : public fn::FieldInput {
  public:
   using fn::FieldInput::FieldInput;
   GVArray get_varray_for_context(const fn::FieldContext &context,
-                                 IndexMask mask,
+                                 const IndexMask &mask,
                                  ResourceScope &scope) const override;
-  virtual GVArray get_varray_for_context(const Instances &instances, IndexMask mask) const = 0;
+  virtual GVArray get_varray_for_context(const Instances &instances,
+                                         const IndexMask &mask) const = 0;
 };
 
 class AttributeFieldInput : public GeometryFieldInput {
@@ -200,11 +198,14 @@ class AttributeFieldInput : public GeometryFieldInput {
     category_ = Category::NamedAttribute;
   }
 
+  static fn::GField Create(std::string name, const CPPType &type)
+  {
+    auto field_input = std::make_shared<AttributeFieldInput>(std::move(name), type);
+    return fn::GField(field_input);
+  }
   template<typename T> static fn::Field<T> Create(std::string name)
   {
-    const CPPType &type = CPPType::get<T>();
-    auto field_input = std::make_shared<AttributeFieldInput>(std::move(name), type);
-    return fn::Field<T>{field_input};
+    return fn::Field<T>(Create(std::move(name), CPPType::get<T>()));
   }
 
   StringRefNull attribute_name() const
@@ -213,7 +214,7 @@ class AttributeFieldInput : public GeometryFieldInput {
   }
 
   GVArray get_varray_for_context(const GeometryFieldContext &context,
-                                 IndexMask mask) const override;
+                                 const IndexMask &mask) const override;
 
   std::string socket_inspection_name() const override;
 
@@ -230,7 +231,7 @@ class IDAttributeFieldInput : public GeometryFieldInput {
   }
 
   GVArray get_varray_for_context(const GeometryFieldContext &context,
-                                 IndexMask mask) const override;
+                                 const IndexMask &mask) const override;
 
   std::string socket_inspection_name() const override;
 
@@ -240,7 +241,7 @@ class IDAttributeFieldInput : public GeometryFieldInput {
 
 VArray<float3> curve_normals_varray(const CurvesGeometry &curves, const eAttrDomain domain);
 
-VArray<float3> mesh_normals_varray(const Mesh &mesh, const IndexMask mask, eAttrDomain domain);
+VArray<float3> mesh_normals_varray(const Mesh &mesh, const IndexMask &mask, eAttrDomain domain);
 
 class NormalFieldInput : public GeometryFieldInput {
  public:
@@ -250,7 +251,7 @@ class NormalFieldInput : public GeometryFieldInput {
   }
 
   GVArray get_varray_for_context(const GeometryFieldContext &context,
-                                 IndexMask mask) const override;
+                                 const IndexMask &mask) const override;
 
   std::string socket_inspection_name() const override;
 
@@ -260,11 +261,11 @@ class NormalFieldInput : public GeometryFieldInput {
 
 class AnonymousAttributeFieldInput : public GeometryFieldInput {
  private:
-  AutoAnonymousAttributeID anonymous_id_;
+  AnonymousAttributeIDPtr anonymous_id_;
   std::string producer_name_;
 
  public:
-  AnonymousAttributeFieldInput(AutoAnonymousAttributeID anonymous_id,
+  AnonymousAttributeFieldInput(AnonymousAttributeIDPtr anonymous_id,
                                const CPPType &type,
                                std::string producer_name)
       : GeometryFieldInput(type, anonymous_id->user_name()),
@@ -275,7 +276,7 @@ class AnonymousAttributeFieldInput : public GeometryFieldInput {
   }
 
   template<typename T>
-  static fn::Field<T> Create(AutoAnonymousAttributeID anonymous_id, std::string producer_name)
+  static fn::Field<T> Create(AnonymousAttributeIDPtr anonymous_id, std::string producer_name)
   {
     const CPPType &type = CPPType::get<T>();
     auto field_input = std::make_shared<AnonymousAttributeFieldInput>(
@@ -283,13 +284,13 @@ class AnonymousAttributeFieldInput : public GeometryFieldInput {
     return fn::Field<T>{field_input};
   }
 
-  const AutoAnonymousAttributeID &anonymous_id() const
+  const AnonymousAttributeIDPtr &anonymous_id() const
   {
     return anonymous_id_;
   }
 
   GVArray get_varray_for_context(const GeometryFieldContext &context,
-                                 IndexMask mask) const override;
+                                 const IndexMask &mask) const override;
 
   std::string socket_inspection_name() const override;
 
@@ -303,7 +304,7 @@ class CurveLengthFieldInput final : public CurvesFieldInput {
   CurveLengthFieldInput();
   GVArray get_varray_for_context(const CurvesGeometry &curves,
                                  eAttrDomain domain,
-                                 IndexMask mask) const final;
+                                 const IndexMask &mask) const final;
   uint64_t hash() const override;
   bool is_equal_to(const fn::FieldNode &other) const override;
   std::optional<eAttrDomain> preferred_domain(const bke::CurvesGeometry &curves) const final;
