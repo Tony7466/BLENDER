@@ -2337,8 +2337,7 @@ CustomData CustomData_shallow_copy_remove_non_bmesh_attributes(const CustomData 
   dst.maxlayer = dst.totlayer = dst_layers.size();
   memcpy(dst.layers, dst_layers.data(), dst_layers.as_span().size_in_bytes());
 
-  dst.layer_locator  = static_cast<CustomDataLayer **>(MEM_malloc_arrayN(dst.totlayer, sizeof(CustomDataLayer *), __func__));
-  std::fill(dst.layer_locator, dst.layer_locator+dst.totlayer, nullptr);
+  dst.layer_locator  = nullptr;
 
   CustomData_update_typemap(&dst);
 
