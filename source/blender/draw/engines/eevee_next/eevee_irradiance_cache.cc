@@ -426,6 +426,7 @@ void IrradianceBake::sync()
       sub.shader_set(inst_.shaders.static_shader_get(SURFEL_RAY));
       sub.bind_ssbo(SURFEL_BUF_SLOT, &surfels_buf_);
       sub.bind_ssbo(CAPTURE_BUF_SLOT, &capture_info_buf_);
+      inst_.reflection_probes.bind_resources(&sub);
       sub.barrier(GPU_BARRIER_SHADER_STORAGE);
       sub.dispatch(&dispatch_per_surfel_);
     }
@@ -442,6 +443,7 @@ void IrradianceBake::sync()
     pass.bind_image("irradiance_L1_a_img", &irradiance_L1_a_tx_);
     pass.bind_image("irradiance_L1_b_img", &irradiance_L1_b_tx_);
     pass.bind_image("irradiance_L1_c_img", &irradiance_L1_c_tx_);
+    inst_.reflection_probes.bind_resources(&pass);
     pass.barrier(GPU_BARRIER_SHADER_STORAGE | GPU_BARRIER_SHADER_IMAGE_ACCESS);
     pass.dispatch(&dispatch_per_grid_sample_);
   }

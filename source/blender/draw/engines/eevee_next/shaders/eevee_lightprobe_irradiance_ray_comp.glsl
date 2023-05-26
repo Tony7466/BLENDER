@@ -13,6 +13,7 @@
 #pragma BLENDER_REQUIRE(eevee_surfel_list_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_lightprobe_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
+#pragma BLENDER_REQUIRE(cubemap_lib.glsl)
 
 void irradiance_capture(vec3 L, vec3 irradiance, inout SphericalHarmonicL1 sh)
 {
@@ -29,6 +30,11 @@ void irradiance_capture(Surfel surfel_emitter, vec3 P, inout SphericalHarmonicL1
   vec3 irradiance = facing ? surfel_emitter.radiance_front : surfel_emitter.radiance_back;
 
   irradiance_capture(L, irradiance, sh);
+}
+
+vec3 irradiance_sky_sample(vec3 R)
+{
+  return textureLod_cubemapArray(reflectionProbes, vec4(R, 0.0), 0.0).rgb;
 }
 
 void main()
@@ -71,16 +77,16 @@ void main()
     irradiance_capture(surfel_buf[surfel_next], P, sh);
   }
   else {
-    /* TODO(fclem): Sky radiance. */
-    irradiance_capture(sky_L, vec3(0.0), sh);
+    vec3 world_radiance = irradiance_sky_sample(sky_L);
+    irradiance_capture(sky_L, world_radiance, sh);
   }
 
   if (surfel_prev > -1) {
     irradiance_capture(surfel_buf[surfel_prev], P, sh);
   }
   else {
-    /* TODO(fclem): Sky radiance. */
-    irradiance_capture(-sky_L, vec3(0.0), sh);
+    vec3 world_radiance = irradiance_sky_sample(-sky_L);
+    irradiance_capture(-sky_L, world_radiance, sh);
   }
 
   imageStore(irradiance_L0_img, grid_coord, sh.L0.M0);

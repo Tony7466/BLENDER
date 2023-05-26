@@ -100,6 +100,7 @@ void Instance::init_light_bake(Depsgraph *depsgraph, draw::Manager *manager)
   shadows.init();
   main_view.init();
   irradiance_cache.init();
+  reflection_probes.init();
 }
 
 void Instance::set_time(float time)

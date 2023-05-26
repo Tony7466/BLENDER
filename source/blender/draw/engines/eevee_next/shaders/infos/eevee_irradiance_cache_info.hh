@@ -87,7 +87,10 @@ GPU_SHADER_CREATE_INFO(eevee_surfel_list_sort)
 
 GPU_SHADER_CREATE_INFO(eevee_surfel_ray)
     .local_group_size(SURFEL_GROUP_SIZE)
-    .additional_info("eevee_shared", "eevee_surfel_common", "draw_view")
+    .additional_info("eevee_shared",
+                     "eevee_surfel_common",
+                     "eevee_reflection_probe_data",
+                     "draw_view")
     .compute_source("eevee_surfel_ray_comp.glsl")
     .do_static_compilation(true);
 
@@ -105,7 +108,10 @@ GPU_SHADER_CREATE_INFO(eevee_lightprobe_irradiance_ray)
     .local_group_size(IRRADIANCE_GRID_GROUP_SIZE,
                       IRRADIANCE_GRID_GROUP_SIZE,
                       IRRADIANCE_GRID_GROUP_SIZE)
-    .additional_info("eevee_shared", "eevee_surfel_common", "draw_view")
+    .additional_info("eevee_shared",
+                     "eevee_surfel_common",
+                     "eevee_reflection_probe_data",
+                     "draw_view")
     .storage_buf(0, Qualifier::READ, "int", "list_start_buf[]")
     .storage_buf(6, Qualifier::READ, "SurfelListInfoData", "list_info_buf")
     .image(0, GPU_RGBA16F, Qualifier::READ_WRITE, ImageType::FLOAT_3D, "irradiance_L0_img")
