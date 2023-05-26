@@ -510,7 +510,7 @@ ccl_device void sample_reservoir(const int current_index,
   }
   total_weight += current_weight;
 
-  /* When `-fast-math` is used it is possible that the threshold is almost 1 but not quite.
+  /* When `-ffast-math` is used it is possible that the threshold is almost 1 but not quite.
    * For this case we check the first assignment explicitly (instead of relying on the threshold to
    * be 1, giving it certain probability). */
   if (selected_index == -1) {
@@ -532,6 +532,8 @@ ccl_device void sample_reservoir(const int current_index,
     rand = (rand - thresh) / (1.0f - thresh);
   }
 
+  /* Ensure the `rand` is always within 0..1 range, which could be violated above when
+   * `-ffast-math` is used. */
   rand = saturatef(rand);
 }
 
