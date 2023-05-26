@@ -484,6 +484,8 @@ void Instance::light_bake_irradiance(
     render_sync();
     manager->end_sync();
 
+    pipelines.world_probe.render();
+
     irradiance_cache.bake.surfels_create(probe);
     irradiance_cache.bake.surfels_lights_eval();
   });
