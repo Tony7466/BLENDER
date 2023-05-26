@@ -387,12 +387,11 @@ static int get_opposing_edge_index(blender::IndexRange poly,
 {
   const int poly_index = corner_edges.slice(poly).first_index(current_edge_index);
   /* Assumes that edge index of opposing face edge is always off by 2 on quads. */
-  if (poly_index - 2 >= 0) {
+  if (poly_index >= 2) {
     return corner_edges[poly[poly_index - 2]];
   }
-  else {
-    return corner_edges[poly[poly_index + 2]];
-  }
+  /* Cannot be out of bounds because of the preceding if statement: if i < 2 then i+2 < 4. */
+  return corner_edges[poly[poly_index + 2]];
 }
 
 /**
