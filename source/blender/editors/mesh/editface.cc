@@ -387,7 +387,6 @@ static int get_opposing_edge_index(blender::IndexRange poly,
                                    const int current_edge_index)
 {
   const int poly_index = corner_edges.slice(poly).first_index(current_edge_index);
-  const int edge_index = corner_edges[poly[poly_index]];
   /* Assumes that edge index of opposing face edge is always off by 2 on quads. */
   if (poly_index - 2 >= 0) {
     return corner_edges[poly[poly_index - 2]];
@@ -470,7 +469,7 @@ void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const boo
   }
 
   uint poly_pick_index = uint(-1);
-  if (!ED_mesh_pick_face(C, ob_eval, mval, ED_MESH_PICK_DEFAULT_FACE_DIST, &poly_pick_index)) {
+  if (!ED_mesh_pick_face(C, ob, mval, ED_MESH_PICK_DEFAULT_FACE_DIST, &poly_pick_index)) {
     return;
   }
 
@@ -492,11 +491,6 @@ void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const boo
   Array<int> edge_to_poly_indices;
   const GroupedSpan<int> edge_to_poly_map = bke::mesh::build_edge_to_poly_map(
       polys, corner_edges, mesh->totedge, edge_to_poly_offsets, edge_to_poly_indices);
-
-  Array<int> edge_to_loop_offsets;
-  Array<int> edge_to_loop_indices;
-  const GroupedSpan<int> edge_to_loop_map = bke::mesh::build_edge_to_loop_map(
-      corner_edges, mesh->totedge, edge_to_loop_offsets, edge_to_loop_indices);
 
   Vector<int> polys_to_select;
 
@@ -527,9 +521,7 @@ void paintface_select_loop(bContext *C, Object *ob, const int mval[2], const boo
   bke::SpanAttributeWriter<bool> select_poly = attributes.lookup_or_add_for_write_span<bool>(
       ".select_poly", ATTR_DOMAIN_FACE);
 
-  for (const int poly_index : polys_to_select) {
-    select_poly.span[poly_index] = select;
-  }
+  select_poly.span.fill_indices(polys_to_select.as_span(), select);
 
   select_poly.finish();
   paintface_flush_flags(C, ob, true, false);
