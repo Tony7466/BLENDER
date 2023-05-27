@@ -19,6 +19,7 @@
 #  endif
 
 #  include "BLI_args.h"
+#  include "BLI_dynstr.h"
 #  include "BLI_fileops.h"
 #  include "BLI_listbase.h"
 #  include "BLI_mempool.h"
@@ -74,6 +75,69 @@
 #  include "WM_types.h"
 
 #  include "creator_intern.h" /* own include */
+
+/* -------------------------------------------------------------------- */
+/** \name Build Defines
+ * \{ */
+
+/**
+ * Support extracting arguments for all platforms (for documentation purposes).
+ * These names match the upper case defines.
+ */
+struct BuildDefs {
+  bool win32;
+  bool with_cycles;
+  bool with_cycles_logging;
+  bool with_ffmpeg;
+  bool with_freestyle;
+  bool with_libmv;
+  bool with_ocio;
+  bool with_renderdoc;
+  bool with_xr_openxr;
+};
+
+static void build_defs_init(struct BuildDefs *build_defs, bool force_all)
+{
+  if (force_all) {
+    bool *var_end = (bool *)(build_defs + 1);
+    for (bool *var = (bool *)build_defs; var < var_end; var++) {
+      *var = true;
+    }
+    return;
+  }
+
+  memset(build_defs, 0x0, sizeof(*build_defs));
+
+#  ifdef WIN32
+  build_defs->win32 = true;
+#  endif
+#  ifdef WITH_CYCLES
+  build_defs->with_cycles = true;
+#  endif
+#  ifdef WITH_CYCLES_LOGGING
+  build_defs->with_cycles_logging = true;
+#  endif
+#  ifdef WITH_FFMPEG
+  build_defs->with_ffmpeg = true;
+#  endif
+#  ifdef WITH_FREESTYLE
+  build_defs->with_freestyle = true;
+#  endif
+#  ifdef WITH_LIBMV
+  build_defs->with_libmv = true;
+#  endif
+#  ifdef WITH_OCIO
+  build_defs->with_ocio = true;
+#  endif
+#  ifdef WITH_RENDERDOC
+  build_defs->with_renderdoc = true;
+#  endif
+#  ifdef WITH_XR_OPENXR
+  build_defs->with_xr_openxr = true;
+#  endif
+}
+
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Utility String Parsing
@@ -483,20 +547,21 @@ static int arg_handle_print_version(int UNUSED(argc),
   return 0;
 }
 
-static const char arg_handle_print_help_doc[] =
-    "\n\t"
-    "Print this help text and exit.";
-static const char arg_handle_print_help_doc_win32[] =
-    "\n\t"
-    "Print this help text and exit (Windows only).";
-static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), void *data)
+static void print_help(bArgs *ba, bool all)
 {
-  bArgs *ba = (bArgs *)data;
+  struct BuildDefs defs;
+  build_defs_init(&defs, all);
 
-  printf("Blender %s\n", BKE_blender_version_string());
-  printf("Usage: blender [args ...] [file] [args ...]\n\n");
+/* All printing must go via `PRINT` macro.  */
+#  define printf __ERROR__
 
-  printf("Render Options:\n");
+#  define PRINT(...) BLI_args_printf(ba, __VA_ARGS__)
+
+  PRINT("Blender %s\n", BKE_blender_version_string());
+  PRINT("Usage: blender [args ...] [file] [args ...]\n");
+  PRINT("\n");
+
+  PRINT("Render Options:\n");
   BLI_args_print_arg_doc(ba, "--background");
   BLI_args_print_arg_doc(ba, "--render-anim");
   BLI_args_print_arg_doc(ba, "--scene");
@@ -508,17 +573,32 @@ static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), vo
   BLI_args_print_arg_doc(ba, "--engine");
   BLI_args_print_arg_doc(ba, "--threads");
 
-  printf("\n");
-  printf("Format Options:\n");
+  if (defs.with_cycles) {
+    PRINT("Cycles Render Options:\n");
+    PRINT("\tCycles add-on options must be specified following a double dash.\n");
+    PRINT("\n");
+    PRINT("--cycles-device OPTIX\n");
+    PRINT("\tSet the device used for rendering. Options: CPU, CUDA, OPTIX, HIP, ONEAPI, METAL.\n");
+    PRINT("\n");
+    PRINT("\tAppend +CPU to a GPU device to render on both CPU and GPU.\n");
+    PRINT("\n");
+    PRINT("\tExample:\n");
+    PRINT("\t# blender -b file.blend -f 20 -- --cycles-device OPTIX\n");
+    PRINT("--cycles-print-stats\n");
+    PRINT("\tLog statistics about render memory and time usage.\n");
+  }
+
+  PRINT("\n");
+  PRINT("Format Options:\n");
   BLI_args_print_arg_doc(ba, "--render-format");
   BLI_args_print_arg_doc(ba, "--use-extension");
 
-  printf("\n");
-  printf("Animation Playback Options:\n");
+  PRINT("\n");
+  PRINT("Animation Playback Options:\n");
   BLI_args_print_arg_doc(ba, "-a");
 
-  printf("\n");
-  printf("Window Options:\n");
+  PRINT("\n");
+  PRINT("Window Options:\n");
   BLI_args_print_arg_doc(ba, "--window-border");
   BLI_args_print_arg_doc(ba, "--window-fullscreen");
   BLI_args_print_arg_doc(ba, "--window-geometry");
@@ -527,12 +607,12 @@ static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), vo
   BLI_args_print_arg_doc(ba, "--no-native-pixels");
   BLI_args_print_arg_doc(ba, "--no-window-focus");
 
-  printf("\n");
-  printf("Python Options:\n");
+  PRINT("\n");
+  PRINT("Python Options:\n");
   BLI_args_print_arg_doc(ba, "--enable-autoexec");
   BLI_args_print_arg_doc(ba, "--disable-autoexec");
 
-  printf("\n");
+  PRINT("\n");
 
   BLI_args_print_arg_doc(ba, "--python");
   BLI_args_print_arg_doc(ba, "--python-text");
@@ -542,8 +622,8 @@ static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), vo
   BLI_args_print_arg_doc(ba, "--python-use-system-env");
   BLI_args_print_arg_doc(ba, "--addons");
 
-  printf("\n");
-  printf("Logging Options:\n");
+  PRINT("\n");
+  PRINT("Logging Options:\n");
   BLI_args_print_arg_doc(ba, "--log");
   BLI_args_print_arg_doc(ba, "--log-level");
   BLI_args_print_arg_doc(ba, "--log-show-basename");
@@ -551,23 +631,23 @@ static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), vo
   BLI_args_print_arg_doc(ba, "--log-show-timestamp");
   BLI_args_print_arg_doc(ba, "--log-file");
 
-  printf("\n");
-  printf("Debug Options:\n");
+  PRINT("\n");
+  PRINT("Debug Options:\n");
   BLI_args_print_arg_doc(ba, "--debug");
   BLI_args_print_arg_doc(ba, "--debug-value");
 
-  printf("\n");
+  PRINT("\n");
   BLI_args_print_arg_doc(ba, "--debug-events");
-#  ifdef WITH_FFMPEG
-  BLI_args_print_arg_doc(ba, "--debug-ffmpeg");
-#  endif
+  if (defs.with_ffmpeg) {
+    BLI_args_print_arg_doc(ba, "--debug-ffmpeg");
+  }
   BLI_args_print_arg_doc(ba, "--debug-handlers");
-#  ifdef WITH_LIBMV
-  BLI_args_print_arg_doc(ba, "--debug-libmv");
-#  endif
-#  ifdef WITH_CYCLES_LOGGING
-  BLI_args_print_arg_doc(ba, "--debug-cycles");
-#  endif
+  if (defs.with_libmv) {
+    BLI_args_print_arg_doc(ba, "--debug-libmv");
+  }
+  if (defs.with_cycles_logging) {
+    BLI_args_print_arg_doc(ba, "--debug-cycles");
+  }
   BLI_args_print_arg_doc(ba, "--debug-memory");
   BLI_args_print_arg_doc(ba, "--debug-jobs");
   BLI_args_print_arg_doc(ba, "--debug-python");
@@ -584,44 +664,47 @@ static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), vo
   BLI_args_print_arg_doc(ba, "--debug-gpu");
   BLI_args_print_arg_doc(ba, "--debug-gpu-force-workarounds");
   BLI_args_print_arg_doc(ba, "--debug-gpu-disable-ssbo");
-#  ifdef WITH_RENDERDOC
-  BLI_args_print_arg_doc(ba, "--debug-gpu-renderdoc");
-#  endif
+  if (defs.with_renderdoc) {
+    BLI_args_print_arg_doc(ba, "--debug-gpu-renderdoc");
+  }
   BLI_args_print_arg_doc(ba, "--debug-wm");
-#  ifdef WITH_XR_OPENXR
-  BLI_args_print_arg_doc(ba, "--debug-xr");
-  BLI_args_print_arg_doc(ba, "--debug-xr-time");
-#  endif
+  if (defs.with_xr_openxr) {
+    BLI_args_print_arg_doc(ba, "--debug-xr");
+    BLI_args_print_arg_doc(ba, "--debug-xr-time");
+  }
   BLI_args_print_arg_doc(ba, "--debug-all");
   BLI_args_print_arg_doc(ba, "--debug-io");
 
-  printf("\n");
+  PRINT("\n");
   BLI_args_print_arg_doc(ba, "--debug-fpe");
   BLI_args_print_arg_doc(ba, "--debug-exit-on-error");
+  if (defs.with_freestyle) {
+    BLI_args_print_arg_doc(ba, "--debug-freestyle");
+  }
   BLI_args_print_arg_doc(ba, "--disable-crash-handler");
   BLI_args_print_arg_doc(ba, "--disable-abort-handler");
 
   BLI_args_print_arg_doc(ba, "--verbose");
 
-  printf("\n");
-  printf("GPU Options:\n");
+  PRINT("\n");
+  PRINT("GPU Options:\n");
   BLI_args_print_arg_doc(ba, "--gpu-backend");
 
-  printf("\n");
-  printf("Misc Options:\n");
+  PRINT("\n");
+  PRINT("Misc Options:\n");
   BLI_args_print_arg_doc(ba, "--open-last");
   BLI_args_print_arg_doc(ba, "--app-template");
   BLI_args_print_arg_doc(ba, "--factory-startup");
   BLI_args_print_arg_doc(ba, "--enable-event-simulate");
-  printf("\n");
+  PRINT("\n");
   BLI_args_print_arg_doc(ba, "--env-system-datafiles");
   BLI_args_print_arg_doc(ba, "--env-system-scripts");
   BLI_args_print_arg_doc(ba, "--env-system-python");
-  printf("\n");
+  PRINT("\n");
   BLI_args_print_arg_doc(ba, "-noaudio");
   BLI_args_print_arg_doc(ba, "-setaudio");
 
-  printf("\n");
+  PRINT("\n");
 
   BLI_args_print_arg_doc(ba, "--help");
   BLI_args_print_arg_doc(ba, "/?");
@@ -636,59 +719,99 @@ static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), vo
 
   BLI_args_print_arg_doc(ba, "--");
 
-  // printf("\n");
-  // printf("Experimental Features:\n");
+  // PRINT("\n");
+  // PRINT("Experimental Features:\n");
 
   /* Other options _must_ be last (anything not handled will show here).
    *
    * Note that it's good practice for this to remain empty,
    * nevertheless print if any exist. */
   if (BLI_args_has_other_doc(ba)) {
-    printf("\n");
-    printf("Other Options:\n");
+    PRINT("\n");
+    PRINT("Other Options:\n");
     BLI_args_print_other_doc(ba);
   }
 
-  printf("\n");
-  printf("Argument Parsing:\n");
-  printf("\tArguments must be separated by white space, eg:\n");
-  printf("\t# blender -ba test.blend\n");
-  printf("\t...will exit since '-ba' is an unknown argument.\n");
+  PRINT("\n");
+  PRINT("Argument Parsing:\n");
+  PRINT("\tArguments must be separated by white space, eg:\n");
+  PRINT("\t# blender -ba test.blend\n");
+  PRINT("\t...will exit since '-ba' is an unknown argument.\n");
 
-  printf("Argument Order:\n");
-  printf("\tArguments are executed in the order they are given. eg:\n");
-  printf("\t# blender --background test.blend --render-frame 1 --render-output '/tmp'\n");
-  printf(
+  PRINT("Argument Order:\n");
+  PRINT("\tArguments are executed in the order they are given. eg:\n");
+  PRINT("\t# blender --background test.blend --render-frame 1 --render-output '/tmp'\n");
+  PRINT(
       "\t...will not render to '/tmp' because '--render-frame 1' renders before the output path "
       "is set.\n");
-  printf("\t# blender --background --render-output /tmp test.blend --render-frame 1\n");
-  printf(
+  PRINT("\t# blender --background --render-output /tmp test.blend --render-frame 1\n");
+  PRINT(
       "\t...will not render to '/tmp' because loading the blend-file overwrites the render output "
       "that was set.\n");
-  printf("\t# blender --background test.blend --render-output /tmp --render-frame 1\n");
-  printf("\t...works as expected.\n\n");
+  PRINT("\t# blender --background test.blend --render-output /tmp --render-frame 1\n");
+  PRINT("\t...works as expected.\n");
+  PRINT("\n");
 
-  printf("Environment Variables:\n");
-  printf("  $BLENDER_USER_RESOURCES  Top level directory for user files.\n");
-  printf("                           (other 'BLENDER_USER_*' variables override when set).\n");
-  printf("  $BLENDER_USER_CONFIG     Directory for user configuration files.\n");
-  printf("  $BLENDER_USER_SCRIPTS    Directory for user scripts.\n");
-  printf("  $BLENDER_USER_DATAFILES  Directory for user data files (icons, translations, ..).\n");
-  printf("\n");
-  printf("  $BLENDER_SYSTEM_RESOURCES  Top level directory for system files.\n");
-  printf("                             (other 'BLENDER_SYSTEM_*' variables override when set).\n");
-  printf("  $BLENDER_SYSTEM_SCRIPTS    Directory for system wide scripts.\n");
-  printf("  $BLENDER_SYSTEM_DATAFILES  Directory for system wide data files.\n");
-  printf("  $BLENDER_SYSTEM_PYTHON     Directory for system Python libraries.\n");
+  PRINT("Environment Variables:\n");
+  PRINT("  $BLENDER_USER_RESOURCES  Top level directory for user files.\n");
+  PRINT("                           (other 'BLENDER_USER_*' variables override when set).\n");
+  PRINT("  $BLENDER_USER_CONFIG     Directory for user configuration files.\n");
+  PRINT("  $BLENDER_USER_SCRIPTS    Directory for user scripts.\n");
+  PRINT("  $BLENDER_USER_DATAFILES  Directory for user data files (icons, translations, ..).\n");
+  PRINT("\n");
+  PRINT("  $BLENDER_SYSTEM_RESOURCES  Top level directory for system files.\n");
+  PRINT("                             (other 'BLENDER_SYSTEM_*' variables override when set).\n");
+  PRINT("  $BLENDER_SYSTEM_SCRIPTS    Directory for system wide scripts.\n");
+  PRINT("  $BLENDER_SYSTEM_DATAFILES  Directory for system wide data files.\n");
+  PRINT("  $BLENDER_SYSTEM_PYTHON     Directory for system Python libraries.\n");
 
-#  ifdef WITH_OCIO
-  printf("  $OCIO                     Path to override the OpenColorIO config file.\n");
-#  endif
-#  ifdef WIN32
-  printf("  $TEMP                     Store temporary files here.\n");
-#  else
-  printf("  $TMP or $TMPDIR           Store temporary files here.\n");
-#  endif
+  if (defs.with_ocio) {
+    PRINT("  $OCIO                     Path to override the OpenColorIO config file.\n");
+  }
+  if (defs.win32) {
+    PRINT("  $TEMP                     Store temporary files here (MS-Windows).\n");
+  }
+  if (!defs.win32 || all) {
+    PRINT("  $TMP or $TMPDIR           Store temporary files here (UNIX Systems).\n");
+  }
+
+#  undef printf
+#  undef PRINT
+}
+
+ATTR_PRINTF_FORMAT(2, 0)
+static void help_print_ds_fn(void *ds_v, const char *format, va_list args)
+{
+  DynStr *ds = ds_v;
+  BLI_dynstr_vappendf(ds, format, args);
+}
+
+static char *main_args_help_as_string(bool all)
+{
+  DynStr *ds = BLI_dynstr_new();
+  {
+    bArgs *ba = BLI_args_create(0, NULL);
+    main_args_setup(NULL, ba, all);
+    BLI_args_print_fn_set(ba, help_print_ds_fn, ds);
+    print_help(ba, all);
+    BLI_args_destroy(ba);
+  }
+  char *buf = BLI_dynstr_get_cstring(ds);
+  BLI_dynstr_free(ds);
+  return buf;
+}
+
+static const char arg_handle_print_help_doc[] =
+    "\n\t"
+    "Print this help text and exit.";
+static const char arg_handle_print_help_doc_win32[] =
+    "\n\t"
+    "Print this help text and exit (Windows only).";
+static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), void *data)
+{
+  bArgs *ba = (bArgs *)data;
+
+  print_help(ba, false);
 
   exit(0);
   BLI_assert_unreachable();
@@ -942,16 +1065,12 @@ static int arg_handle_debug_mode_set(int UNUSED(argc), const char **UNUSED(argv)
   return 0;
 }
 
-#  ifdef WITH_FFMPEG
 static const char arg_handle_debug_mode_generic_set_doc_ffmpeg[] =
     "\n\t"
     "Enable debug messages from FFmpeg library.";
-#  endif
-#  ifdef WITH_FREESTYLE
 static const char arg_handle_debug_mode_generic_set_doc_freestyle[] =
     "\n\t"
     "Enable debug messages for Freestyle.";
-#  endif
 static const char arg_handle_debug_mode_generic_set_doc_python[] =
     "\n\t"
     "Enable debug messages for Python.";
@@ -971,7 +1090,6 @@ static const char arg_handle_debug_mode_generic_set_doc_ghost[] =
 static const char arg_handle_debug_mode_generic_set_doc_wintab[] =
     "\n\t"
     "Enable debug messages for Wintab.";
-#  ifdef WITH_XR_OPENXR
 static const char arg_handle_debug_mode_generic_set_doc_xr[] =
     "\n\t"
     "Enable debug messages for virtual reality contexts.\n"
@@ -980,7 +1098,6 @@ static const char arg_handle_debug_mode_generic_set_doc_xr[] =
 static const char arg_handle_debug_mode_generic_set_doc_xr_time[] =
     "\n\t"
     "Enable debug messages for virtual reality frame rendering times.";
-#  endif
 static const char arg_handle_debug_mode_generic_set_doc_jobs[] =
     "\n\t"
     "Enable time profiling for background jobs.";
@@ -1051,7 +1168,6 @@ static int arg_handle_debug_mode_all(int UNUSED(argc),
   return 0;
 }
 
-#  ifdef WITH_LIBMV
 static const char arg_handle_debug_mode_libmv_doc[] =
     "\n\t"
     "Enable debug messages from libmv library.";
@@ -1059,13 +1175,12 @@ static int arg_handle_debug_mode_libmv(int UNUSED(argc),
                                        const char **UNUSED(argv),
                                        void *UNUSED(data))
 {
+#  ifdef WITH_LIBMV
   libmv_startDebugLogging();
-
+#  endif
   return 0;
 }
-#  endif
 
-#  ifdef WITH_CYCLES_LOGGING
 static const char arg_handle_debug_mode_cycles_doc[] =
     "\n\t"
     "Enable debug messages from Cycles.";
@@ -1073,10 +1188,11 @@ static int arg_handle_debug_mode_cycles(int UNUSED(argc),
                                         const char **UNUSED(argv),
                                         void *UNUSED(data))
 {
+#  ifdef WITH_CYCLES_LOGGING
   CCL_start_debug_logging();
+#  endif
   return 0;
 }
-#  endif
 
 static const char arg_handle_debug_mode_memory_set_doc[] =
     "\n\t"
@@ -1125,7 +1241,6 @@ static int arg_handle_debug_gpu_set(int UNUSED(argc),
   return 0;
 }
 
-#  ifdef WITH_RENDERDOC
 static const char arg_handle_debug_gpu_renderdoc_set_doc[] =
     "\n"
     "\tEnable Renderdoc integration for GPU frame grabbing and debugging.";
@@ -1133,10 +1248,11 @@ static int arg_handle_debug_gpu_renderdoc_set(int UNUSED(argc),
                                               const char **UNUSED(argv),
                                               void *UNUSED(data))
 {
+#  ifdef WITH_RENDERDOC
   G.debug |= G_DEBUG_GPU_RENDERDOC | G_DEBUG_GPU;
+#  endif
   return 0;
 }
-#  endif
 
 static const char arg_handle_gpu_backend_set_doc[] =
     "\n"
@@ -2165,11 +2281,13 @@ static int arg_handle_load_last_file(int UNUSED(argc), const char **UNUSED(argv)
   return arg_handle_load_file(ARRAY_SIZE(fake_argv), fake_argv, data);
 }
 
-void main_args_setup(bContext *C, bArgs *ba)
+void main_args_setup(bContext *C, bArgs *ba, bool all)
 {
-
 #  define CB(a) a##_doc, a
 #  define CB_EX(a, b) a##_doc_##b, a
+
+  struct BuildDefs defs;
+  build_defs_init(&defs, all);
 
   /* end argument processing after -- */
   BLI_args_pass_set(ba, -1);
@@ -2228,53 +2346,47 @@ void main_args_setup(bContext *C, bArgs *ba)
 
   BLI_args_add(ba, "-d", "--debug", CB(arg_handle_debug_mode_set), ba);
 
-#  ifdef WITH_FFMPEG
+  if (defs.with_ffmpeg) {
+    BLI_args_add(ba,
+                 NULL,
+                 "--debug-ffmpeg",
+                 CB_EX(arg_handle_debug_mode_generic_set, ffmpeg),
+                 (void *)G_DEBUG_FFMPEG);
+  }
+
+  if (defs.with_freestyle) {
+    BLI_args_add(ba,
+                 NULL,
+                 "--debug-freestyle",
+                 CB_EX(arg_handle_debug_mode_generic_set, freestyle),
+                 (void *)G_DEBUG_FREESTYLE);
+  }
   BLI_args_add(ba,
-               NULL,
-               "--debug-ffmpeg",
-               CB_EX(arg_handle_debug_mode_generic_set, ffmpeg),
-               (void *)G_DEBUG_FFMPEG);
-#  endif
-
-#  ifdef WITH_FREESTYLE
-  BLI_args_add(ba,
-
-               NULL,
-               "--debug-freestyle",
-               CB_EX(arg_handle_debug_mode_generic_set, freestyle),
-               (void *)G_DEBUG_FREESTYLE);
-#  endif
-
-  BLI_args_add(ba,
-
                NULL,
                "--debug-python",
                CB_EX(arg_handle_debug_mode_generic_set, python),
                (void *)G_DEBUG_PYTHON);
   BLI_args_add(ba,
-
                NULL,
                "--debug-events",
                CB_EX(arg_handle_debug_mode_generic_set, events),
                (void *)G_DEBUG_EVENTS);
   BLI_args_add(ba,
-
                NULL,
                "--debug-handlers",
                CB_EX(arg_handle_debug_mode_generic_set, handlers),
                (void *)G_DEBUG_HANDLERS);
   BLI_args_add(
       ba, NULL, "--debug-wm", CB_EX(arg_handle_debug_mode_generic_set, wm), (void *)G_DEBUG_WM);
-#  ifdef WITH_XR_OPENXR
-  BLI_args_add(
-      ba, NULL, "--debug-xr", CB_EX(arg_handle_debug_mode_generic_set, xr), (void *)G_DEBUG_XR);
-  BLI_args_add(ba,
-
-               NULL,
-               "--debug-xr-time",
-               CB_EX(arg_handle_debug_mode_generic_set, xr_time),
-               (void *)G_DEBUG_XR_TIME);
-#  endif
+  if (defs.with_xr_openxr) {
+    BLI_args_add(
+        ba, NULL, "--debug-xr", CB_EX(arg_handle_debug_mode_generic_set, xr), (void *)G_DEBUG_XR);
+    BLI_args_add(ba,
+                 NULL,
+                 "--debug-xr-time",
+                 CB_EX(arg_handle_debug_mode_generic_set, xr_time),
+                 (void *)G_DEBUG_XR_TIME);
+  }
   BLI_args_add(ba,
                NULL,
                "--debug-ghost",
@@ -2291,12 +2403,12 @@ void main_args_setup(bContext *C, bArgs *ba)
 
   BLI_args_add(ba, NULL, "--debug-fpe", CB(arg_handle_debug_fpe_set), NULL);
 
-#  ifdef WITH_LIBMV
-  BLI_args_add(ba, NULL, "--debug-libmv", CB(arg_handle_debug_mode_libmv), NULL);
-#  endif
-#  ifdef WITH_CYCLES_LOGGING
-  BLI_args_add(ba, NULL, "--debug-cycles", CB(arg_handle_debug_mode_cycles), NULL);
-#  endif
+  if (defs.with_libmv) {
+    BLI_args_add(ba, NULL, "--debug-libmv", CB(arg_handle_debug_mode_libmv), NULL);
+  }
+  if (defs.with_cycles_logging) {
+    BLI_args_add(ba, NULL, "--debug-cycles", CB(arg_handle_debug_mode_cycles), NULL);
+  }
   BLI_args_add(ba, NULL, "--debug-memory", CB(arg_handle_debug_mode_memory_set), NULL);
 
   BLI_args_add(ba, NULL, "--debug-value", CB(arg_handle_debug_value_set), NULL);
@@ -2306,9 +2418,9 @@ void main_args_setup(bContext *C, bArgs *ba)
                CB_EX(arg_handle_debug_mode_generic_set, jobs),
                (void *)G_DEBUG_JOBS);
   BLI_args_add(ba, NULL, "--debug-gpu", CB(arg_handle_debug_gpu_set), NULL);
-#  ifdef WITH_RENDERDOC
-  BLI_args_add(ba, NULL, "--debug-gpu-renderdoc", CB(arg_handle_debug_gpu_renderdoc_set), NULL);
-#  endif
+  if (defs.with_renderdoc) {
+    BLI_args_add(ba, NULL, "--debug-gpu-renderdoc", CB(arg_handle_debug_gpu_renderdoc_set), NULL);
+  }
 
   BLI_args_add(ba,
                NULL,
@@ -2413,6 +2525,11 @@ void main_args_setup(bContext *C, bArgs *ba)
 
 #  undef CB
 #  undef CB_EX
+
+#  ifdef WITH_PYTHON
+  /* Use for Python to extract help text (Python can't call directly - bad-level call). */
+  BPY_python_app_help_text_fn = main_args_help_as_string;
+#  endif
 }
 
 /**
