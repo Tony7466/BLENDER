@@ -18,6 +18,8 @@
 
 #include <windows.h>
 
+#undef min
+#undef max
 #undef rad
 #undef rad1
 #undef rad2
