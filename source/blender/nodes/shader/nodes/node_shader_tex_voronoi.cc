@@ -303,7 +303,7 @@ class VoronoiMetricFunction : public mf::MultiFunction {
     return signature;
   }
 
-  void call(IndexMask mask, mf::Params mf_params, mf::Context /*context*/) const override
+  void call(const IndexMask &mask, mf::Params mf_params, mf::Context /*context*/) const override
   {
     auto get_vector = [&](int param_index) -> VArray<float3> {
       return mf_params.readonly_single_input<float3>(param_index, "Vector");
@@ -381,7 +381,7 @@ class VoronoiMetricFunction : public mf::MultiFunction {
     noise::VoronoiOutput output;
     switch (dimensions_) {
       case 1: {
-        for (int64_t i : mask) {
+        mask.foreach_index([&](const int64_t i) {
           params.scale = scale[i];
           params.detail = detail[i];
           params.roughness = roughness[i];
@@ -404,11 +404,11 @@ class VoronoiMetricFunction : public mf::MultiFunction {
           if (calc_w) {
             r_w[i] = output.position.w;
           }
-        }
+        });
         break;
       }
       case 2: {
-        for (int64_t i : mask) {
+        mask.foreach_index([&](const int64_t i) {
           params.scale = scale[i];
           params.detail = detail[i];
           params.roughness = roughness[i];
@@ -437,11 +437,11 @@ class VoronoiMetricFunction : public mf::MultiFunction {
           if (calc_position) {
             r_position[i] = float3{output.position.x, output.position.y, 0.0f};
           }
-        }
+        });
         break;
       }
       case 3: {
-        for (int64_t i : mask) {
+        mask.foreach_index([&](const int64_t i) {
           params.scale = scale[i];
           params.detail = detail[i];
           params.roughness = roughness[i];
@@ -470,11 +470,11 @@ class VoronoiMetricFunction : public mf::MultiFunction {
           if (calc_position) {
             r_position[i] = float3{output.position.x, output.position.y, output.position.z};
           }
-        }
+        });
         break;
       }
       case 4: {
-        for (int64_t i : mask) {
+        mask.foreach_index([&](const int64_t i) {
           params.scale = scale[i];
           params.detail = detail[i];
           params.roughness = roughness[i];
@@ -508,7 +508,7 @@ class VoronoiMetricFunction : public mf::MultiFunction {
           if (calc_w) {
             r_w[i] = output.position.w;
           }
-        }
+        });
         break;
       }
     }
@@ -561,7 +561,7 @@ class VoronoiDistToEdgeFunction : public mf::MultiFunction {
     return signature;
   }
 
-  void call(IndexMask mask, mf::Params mf_params, mf::Context /*context*/) const override
+  void call(const IndexMask &mask, mf::Params mf_params, mf::Context /*context*/) const override
   {
     auto get_vector = [&](int param_index) -> VArray<float3> {
       return mf_params.readonly_single_input<float3>(param_index, "Vector");
@@ -605,7 +605,7 @@ class VoronoiDistToEdgeFunction : public mf::MultiFunction {
 
     switch (dimensions_) {
       case 1: {
-        for (int64_t i : mask) {
+        mask.foreach_index([&](const int64_t i) {
           params.scale = scale[i];
           params.detail = detail[i];
           params.roughness = roughness[i];
@@ -614,11 +614,11 @@ class VoronoiDistToEdgeFunction : public mf::MultiFunction {
 
           r_distance[i] = noise::fractal_voronoi_distance_to_edge<float>(params,
                                                                          w[i] * params.scale);
-        }
+        });
         break;
       }
       case 2: {
-        for (int64_t i : mask) {
+        mask.foreach_index([&](const int64_t i) {
           params.scale = scale[i];
           params.detail = detail[i];
           params.roughness = roughness[i];
@@ -627,11 +627,11 @@ class VoronoiDistToEdgeFunction : public mf::MultiFunction {
 
           r_distance[i] = noise::fractal_voronoi_distance_to_edge<float2>(
               params, float2{vector[i].x, vector[i].y} * params.scale);
-        }
+        });
         break;
       }
       case 3: {
-        for (int64_t i : mask) {
+        mask.foreach_index([&](const int64_t i) {
           params.scale = scale[i];
           params.detail = detail[i];
           params.roughness = roughness[i];
@@ -640,11 +640,11 @@ class VoronoiDistToEdgeFunction : public mf::MultiFunction {
 
           r_distance[i] = noise::fractal_voronoi_distance_to_edge<float3>(
               params, vector[i] * params.scale);
-        }
+        });
         break;
       }
       case 4: {
-        for (int64_t i : mask) {
+        mask.foreach_index([&](const int64_t i) {
           params.scale = scale[i];
           params.detail = detail[i];
           params.roughness = roughness[i];
@@ -653,7 +653,7 @@ class VoronoiDistToEdgeFunction : public mf::MultiFunction {
 
           r_distance[i] = noise::fractal_voronoi_distance_to_edge<float4>(
               params, float4{vector[i].x, vector[i].y, vector[i].z, w[i]} * params.scale);
-        }
+        });
         break;
       }
     }
@@ -701,7 +701,7 @@ class VoronoiNSphereFunction : public mf::MultiFunction {
     return signature;
   }
 
-  void call(IndexMask mask, mf::Params mf_params, mf::Context /*context*/) const override
+  void call(const IndexMask &mask, mf::Params mf_params, mf::Context /*context*/) const override
   {
     auto get_vector = [&](int param_index) -> VArray<float3> {
       return mf_params.readonly_single_input<float3>(param_index, "Vector");
@@ -732,37 +732,37 @@ class VoronoiNSphereFunction : public mf::MultiFunction {
 
     switch (dimensions_) {
       case 1: {
-        for (int64_t i : mask) {
+        mask.foreach_index([&](const int64_t i) {
           params.scale = scale[i];
           params.randomness = std::min(std::max(randomness[i], 0.0f), 1.0f);
           r_radius[i] = noise::voronoi_n_sphere_radius(params, w[i] * params.scale);
-        }
+        });
         break;
       }
       case 2: {
-        for (int64_t i : mask) {
+        mask.foreach_index([&](const int64_t i) {
           params.scale = scale[i];
           params.randomness = std::min(std::max(randomness[i], 0.0f), 1.0f);
           r_radius[i] = noise::voronoi_n_sphere_radius(
               params, float2{vector[i].x, vector[i].y} * params.scale);
-        }
+        });
         break;
       }
       case 3: {
-        for (int64_t i : mask) {
+        mask.foreach_index([&](const int64_t i) {
           params.scale = scale[i];
           params.randomness = std::min(std::max(randomness[i], 0.0f), 1.0f);
           r_radius[i] = noise::voronoi_n_sphere_radius(params, vector[i] * params.scale);
-        }
+        });
         break;
       }
       case 4: {
-        for (int64_t i : mask) {
+        mask.foreach_index([&](const int64_t i) {
           params.scale = scale[i];
           params.randomness = std::min(std::max(randomness[i], 0.0f), 1.0f);
           r_radius[i] = noise::voronoi_n_sphere_radius(
               params, float4{vector[i].x, vector[i].y, vector[i].z, w[i]} * params.scale);
-        }
+        });
         break;
       }
     }
