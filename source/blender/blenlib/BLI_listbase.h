@@ -9,11 +9,6 @@
 
 #include "BLI_compiler_attrs.h"
 #include "BLI_utildefines.h"
-
-#ifdef __cplusplus
-#  include "BLI_span.hh"
-#endif
-
 #include "DNA_listBase.h"
 // struct ListBase;
 // struct LinkData;
@@ -394,15 +389,4 @@ BLI_INLINE bool operator==(const ListBase &a, const ListBase &b)
 {
   return BLI_listbase_equal(&a, &b);
 }
-namespace blender {
-
-template<typename ItemT> void span_to_list(MutableSpan<ItemT> src, ListBase &dst)
-{
-  for (ItemT &item : src) {
-    BLI_addtail(&dst, &item);
-  }
-}
-
-}  // namespace blender
-
 #endif

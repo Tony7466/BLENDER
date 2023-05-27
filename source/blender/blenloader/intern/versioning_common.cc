@@ -1244,25 +1244,25 @@ static bNodeTree *instances_on_faces(const Span<Object *> objects,
   return node_tree;
 }
 
-static void copy_rna_to_id(PropertyRNA &src_prop, PointerRNA &src_ptr, IDProperty &dst)
+static void copy_value_rna_to_id(PropertyRNA &src_prop, PointerRNA &src_ptr, IDProperty &dst)
 {
   switch (IDP_ui_data_type(&dst)) {
     case IDP_UI_DATA_TYPE_INT: {
       const int values = RNA_property_int_get(&src_ptr, &src_prop);
-      IDP_Int(&dst) = values;
+      *reinterpret_cast<int *>(&IDP_Int(&dst)) = values;
       break;
     }
     case IDP_UI_DATA_TYPE_FLOAT: {
       const int values = RNA_property_float_get(&src_ptr, &src_prop);
-      IDP_Float(&dst) = values;
+      *reinterpret_cast<float *>(&IDP_Float(&dst)) = values;
       break;
     }
     case IDP_UI_DATA_TYPE_BOOLEAN: {
       const bool values = RNA_property_boolean_get(&src_ptr, &src_prop);
-      IDP_Bool(&dst) = values;
+      *reinterpret_cast<bool *>(&IDP_Bool(&dst)) = values;
       break;
     }
-    default:
+    case default:
       BLI_assert_unreachable();
       break;
   }
@@ -1316,7 +1316,7 @@ static void object_push_instances_modifier(const StringRefNull name,
     PropertyRNA *obkect_prop = RNA_struct_find_property(&object_ptr, legacy_prop_name.data());
     BLI_assert(obkect_prop != nullptr);
 
-    copy_rna_to_id(*obkect_prop, object_ptr, *dst);
+    copy_value_rna_to_id(*obkect_prop, object_ptr, *dst);
 
     std::string new_rna_path = "modifiers[\"" + std::string(name) + "\"][\"" +
                                std::string(socket->identifier) + "\"]";
@@ -1328,7 +1328,10 @@ static void object_push_instances_modifier(const StringRefNull name,
   }
 
   ListBase change_list = {nullptr, nullptr};
-  blender::span_to_list(animation_data_move.as_mutable_span(), change_list);
+  for (AnimationBasePathChange &animation_path : animation_data_move) {
+    BLI_addtail(&change_list, &animation_path);
+  }
+
   BKE_animdata_transfer_by_basepath(bmain, &object.id, &object.id, &change_list);
 }
 

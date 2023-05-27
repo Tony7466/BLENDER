@@ -247,7 +247,7 @@ void IDP_ClearProperty(struct IDProperty *prop);
 void IDP_Reset(struct IDProperty *prop, const struct IDProperty *reference);
 
 #define IDP_Int(prop) ((prop)->data.val)
-#define IDP_Bool(prop) (*(bool *)&(prop)->data.val)
+#define IDP_Bool(prop) ((prop)->data.val)
 #define IDP_Array(prop) ((prop)->data.pointer)
 /* C11 const correctness for casts */
 #if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
