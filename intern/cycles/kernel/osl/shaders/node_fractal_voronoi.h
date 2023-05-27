@@ -8,7 +8,8 @@
 
 #define vector3 point
 
-#define FRACTAL_VORONOI_X_FX_FUNCTION_BODY \
+#define FRACTAL_VORONOI_X_FX(T) \
+  VoronoiOutput fractal_voronoi_x_fx(VoronoiParams params, T coord) \
   { \
     float amplitude = 1.0; \
     float max_amplitude = 0.0; \
@@ -71,7 +72,8 @@
     return Output; \
   }
 
-#define FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION_BODY \
+#define FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION(T) \
+  float fractal_voronoi_distance_to_edge(VoronoiParams params, T coord) \
   { \
     float amplitude = 1.0; \
     float max_amplitude = 0.5 + 0.5 * params.randomness; \
@@ -114,32 +116,24 @@
 
 /* **** 1D Fractal Voronoi **** */
 
-VoronoiOutput fractal_voronoi_x_fx(VoronoiParams params,
-                                   float coord) FRACTAL_VORONOI_X_FX_FUNCTION_BODY
+FRACTAL_VORONOI_X_FX(float)
 
-    float fractal_voronoi_distance_to_edge(VoronoiParams params, float coord)
-        FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION_BODY
+FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION(float)
 
-    /* **** 2D Fractal Voronoi **** */
+/* **** 2D Fractal Voronoi **** */
 
-    VoronoiOutput
-    fractal_voronoi_x_fx(VoronoiParams params, vector2 coord) FRACTAL_VORONOI_X_FX_FUNCTION_BODY
+FRACTAL_VORONOI_X_FX(vector2)
 
-    float fractal_voronoi_distance_to_edge(VoronoiParams params, vector2 coord)
-        FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION_BODY
+FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION(vector2)
 
-    /* **** 3D Fractal Voronoi **** */
+/* **** 3D Fractal Voronoi **** */
 
-    VoronoiOutput
-    fractal_voronoi_x_fx(VoronoiParams params, vector3 coord) FRACTAL_VORONOI_X_FX_FUNCTION_BODY
+FRACTAL_VORONOI_X_FX(vector3)
 
-    float fractal_voronoi_distance_to_edge(VoronoiParams params, vector3 coord)
-        FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION_BODY
+FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION(vector3)
 
-    /* **** 4D Fractal Voronoi **** */
+/* **** 4D Fractal Voronoi **** */
 
-    VoronoiOutput
-    fractal_voronoi_x_fx(VoronoiParams params, vector4 coord) FRACTAL_VORONOI_X_FX_FUNCTION_BODY
+FRACTAL_VORONOI_X_FX(vector4)
 
-    float fractal_voronoi_distance_to_edge(VoronoiParams params, vector4 coord)
-        FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION_BODY
+FRACTAL_VORONOI_DISTANCE_TO_EDGE_FUNCTION(vector4)

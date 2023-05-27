@@ -159,7 +159,7 @@ VoronoiOutput voronoi_smooth_f1(VoronoiParams params, float coord)
 
   float smoothDistance = 8.0;
   float smoothPosition = 0.0;
-  vec3 smoothColor = vec3(0.0, 0.0, 0.0);
+  vec3 smoothColor = vec3(0.0);
   for (int i = -2; i <= 2; i++) {
     float cellOffset = i;
     float pointPosition = cellOffset +
@@ -286,8 +286,8 @@ VoronoiOutput voronoi_f1(VoronoiParams params, vec2 coord)
   vec2 localPosition = coord - cellPosition;
 
   float minDistance = 8.0;
-  vec2 targetOffset = vec2(0.0, 0.0);
-  vec2 targetPosition = vec2(0.0, 0.0);
+  vec2 targetOffset = vec2(0.0);
+  vec2 targetPosition = vec2(0.0);
   for (int j = -1; j <= 1; j++) {
     for (int i = -1; i <= 1; i++) {
       vec2 cellOffset = vec2(i, j);
@@ -315,8 +315,8 @@ VoronoiOutput voronoi_smooth_f1(VoronoiParams params, vec2 coord)
   vec2 localPosition = coord - cellPosition;
 
   float smoothDistance = 8.0;
-  vec3 smoothColor = vec3(0.0, 0.0, 0.0);
-  vec2 smoothPosition = vec2(0.0, 0.0);
+  vec3 smoothColor = vec3(0.0);
+  vec2 smoothPosition = vec2(0.0);
   for (int j = -2; j <= 2; j++) {
     for (int i = -2; i <= 2; i++) {
       vec2 cellOffset = vec2(i, j);
@@ -348,10 +348,10 @@ VoronoiOutput voronoi_f2(VoronoiParams params, vec2 coord)
 
   float distanceF1 = 8.0;
   float distanceF2 = 8.0;
-  vec2 offsetF1 = vec2(0.0, 0.0);
-  vec2 positionF1 = vec2(0.0, 0.0);
-  vec2 offsetF2 = vec2(0.0, 0.0);
-  vec2 positionF2 = vec2(0.0, 0.0);
+  vec2 offsetF1 = vec2(0.0);
+  vec2 positionF1 = vec2(0.0);
+  vec2 offsetF2 = vec2(0.0);
+  vec2 positionF2 = vec2(0.0);
   for (int j = -1; j <= 1; j++) {
     for (int i = -1; i <= 1; i++) {
       vec2 cellOffset = vec2(i, j);
@@ -386,7 +386,7 @@ float voronoi_distance_to_edge(VoronoiParams params, vec2 coord)
   vec2 cellPosition = floor(coord);
   vec2 localPosition = coord - cellPosition;
 
-  vec2 vectorToClosest = vec2(0.0, 0.0);
+  vec2 vectorToClosest = vec2(0.0);
   float minDistance = 8.0;
   for (int j = -1; j <= 1; j++) {
     for (int i = -1; i <= 1; i++) {
@@ -426,8 +426,8 @@ float voronoi_n_sphere_radius(VoronoiParams params, vec2 coord)
   vec2 cellPosition = floor(coord);
   vec2 localPosition = coord - cellPosition;
 
-  vec2 closestPoint = vec2(0.0, 0.0);
-  vec2 closestPointOffset = vec2(0.0, 0.0);
+  vec2 closestPoint = vec2(0.0);
+  vec2 closestPointOffset = vec2(0.0);
   float minDistance = 8.0;
   for (int j = -1; j <= 1; j++) {
     for (int i = -1; i <= 1; i++) {
@@ -444,7 +444,7 @@ float voronoi_n_sphere_radius(VoronoiParams params, vec2 coord)
   }
 
   minDistance = 8.0;
-  vec2 closestPointToClosestPoint = vec2(0.0, 0.0);
+  vec2 closestPointToClosestPoint = vec2(0.0);
   for (int j = -1; j <= 1; j++) {
     for (int i = -1; i <= 1; i++) {
       if (i == 0 && j == 0) {
@@ -477,8 +477,8 @@ VoronoiOutput voronoi_f1(VoronoiParams params, vec3 coord)
   vec3 localPosition = coord - cellPosition;
 
   float minDistance = 8.0;
-  vec3 targetOffset = vec3(0.0, 0.0, 0.0);
-  vec3 targetPosition = vec3(0.0, 0.0, 0.0);
+  vec3 targetOffset = vec3(0.0);
+  vec3 targetPosition = vec3(0.0);
   for (int k = -1; k <= 1; k++) {
     for (int j = -1; j <= 1; j++) {
       for (int i = -1; i <= 1; i++) {
@@ -508,8 +508,8 @@ VoronoiOutput voronoi_smooth_f1(VoronoiParams params, vec3 coord)
   vec3 localPosition = coord - cellPosition;
 
   float smoothDistance = 8.0;
-  vec3 smoothColor = vec3(0.0, 0.0, 0.0);
-  vec3 smoothPosition = vec3(0.0, 0.0, 0.0);
+  vec3 smoothColor = vec3(0.0);
+  vec3 smoothPosition = vec3(0.0);
   for (int k = -2; k <= 2; k++) {
     for (int j = -2; j <= 2; j++) {
       for (int i = -2; i <= 2; i++) {
@@ -543,10 +543,10 @@ VoronoiOutput voronoi_f2(VoronoiParams params, vec3 coord)
 
   float distanceF1 = 8.0;
   float distanceF2 = 8.0;
-  vec3 offsetF1 = vec3(0.0, 0.0, 0.0);
-  vec3 positionF1 = vec3(0.0, 0.0, 0.0);
-  vec3 offsetF2 = vec3(0.0, 0.0, 0.0);
-  vec3 positionF2 = vec3(0.0, 0.0, 0.0);
+  vec3 offsetF1 = vec3(0.0);
+  vec3 positionF1 = vec3(0.0);
+  vec3 offsetF2 = vec3(0.0);
+  vec3 positionF2 = vec3(0.0);
   for (int k = -1; k <= 1; k++) {
     for (int j = -1; j <= 1; j++) {
       for (int i = -1; i <= 1; i++) {
@@ -583,7 +583,7 @@ float voronoi_distance_to_edge(VoronoiParams params, vec3 coord)
   vec3 cellPosition = floor(coord);
   vec3 localPosition = coord - cellPosition;
 
-  vec3 vectorToClosest = vec3(0.0, 0.0, 0.0);
+  vec3 vectorToClosest = vec3(0.0);
   float minDistance = 8.0;
   for (int k = -1; k <= 1; k++) {
     for (int j = -1; j <= 1; j++) {
@@ -627,8 +627,8 @@ float voronoi_n_sphere_radius(VoronoiParams params, vec3 coord)
   vec3 cellPosition = floor(coord);
   vec3 localPosition = coord - cellPosition;
 
-  vec3 closestPoint = vec3(0.0, 0.0, 0.0);
-  vec3 closestPointOffset = vec3(0.0, 0.0, 0.0);
+  vec3 closestPoint = vec3(0.0);
+  vec3 closestPointOffset = vec3(0.0);
   float minDistance = 8.0;
   for (int k = -1; k <= 1; k++) {
     for (int j = -1; j <= 1; j++) {
@@ -647,7 +647,7 @@ float voronoi_n_sphere_radius(VoronoiParams params, vec3 coord)
   }
 
   minDistance = 8.0;
-  vec3 closestPointToClosestPoint = vec3(0.0, 0.0, 0.0);
+  vec3 closestPointToClosestPoint = vec3(0.0);
   for (int k = -1; k <= 1; k++) {
     for (int j = -1; j <= 1; j++) {
       for (int i = -1; i <= 1; i++) {
@@ -682,8 +682,8 @@ VoronoiOutput voronoi_f1(VoronoiParams params, vec4 coord)
   vec4 localPosition = coord - cellPosition;
 
   float minDistance = 8.0;
-  vec4 targetOffset = vec4(0.0, 0.0, 0.0, 0.0);
-  vec4 targetPosition = vec4(0.0, 0.0, 0.0, 0.0);
+  vec4 targetOffset = vec4(0.0);
+  vec4 targetPosition = vec4(0.0);
   for (int u = -1; u <= 1; u++) {
     for (int k = -1; k <= 1; k++) {
       for (int j = -1; j <= 1; j++) {
@@ -715,8 +715,8 @@ VoronoiOutput voronoi_smooth_f1(VoronoiParams params, vec4 coord)
   vec4 localPosition = coord - cellPosition;
 
   float smoothDistance = 8.0;
-  vec3 smoothColor = vec3(0.0, 0.0, 0.0);
-  vec4 smoothPosition = vec4(0.0, 0.0, 0.0, 0.0);
+  vec3 smoothColor = vec3(0.0);
+  vec4 smoothPosition = vec4(0.0);
   for (int u = -2; u <= 2; u++) {
     for (int k = -2; k <= 2; k++) {
       for (int j = -2; j <= 2; j++) {
@@ -752,10 +752,10 @@ VoronoiOutput voronoi_f2(VoronoiParams params, vec4 coord)
 
   float distanceF1 = 8.0;
   float distanceF2 = 8.0;
-  vec4 offsetF1 = vec4(0.0, 0.0, 0.0, 0.0);
-  vec4 positionF1 = vec4(0.0, 0.0, 0.0, 0.0);
-  vec4 offsetF2 = vec4(0.0, 0.0, 0.0, 0.0);
-  vec4 positionF2 = vec4(0.0, 0.0, 0.0, 0.0);
+  vec4 offsetF1 = vec4(0.0);
+  vec4 positionF1 = vec4(0.0);
+  vec4 offsetF2 = vec4(0.0);
+  vec4 positionF2 = vec4(0.0);
   for (int u = -1; u <= 1; u++) {
     for (int k = -1; k <= 1; k++) {
       for (int j = -1; j <= 1; j++) {
@@ -794,7 +794,7 @@ float voronoi_distance_to_edge(VoronoiParams params, vec4 coord)
   vec4 cellPosition = floor(coord);
   vec4 localPosition = coord - cellPosition;
 
-  vec4 vectorToClosest = vec4(0.0, 0.0, 0.0, 0.0);
+  vec4 vectorToClosest = vec4(0.0);
   float minDistance = 8.0;
   for (int u = -1; u <= 1; u++) {
     for (int k = -1; k <= 1; k++) {
@@ -842,8 +842,8 @@ float voronoi_n_sphere_radius(VoronoiParams params, vec4 coord)
   vec4 cellPosition = floor(coord);
   vec4 localPosition = coord - cellPosition;
 
-  vec4 closestPoint = vec4(0.0, 0.0, 0.0, 0.0);
-  vec4 closestPointOffset = vec4(0.0, 0.0, 0.0, 0.0);
+  vec4 closestPoint = vec4(0.0);
+  vec4 closestPointOffset = vec4(0.0);
   float minDistance = 8.0;
   for (int u = -1; u <= 1; u++) {
     for (int k = -1; k <= 1; k++) {
@@ -864,7 +864,7 @@ float voronoi_n_sphere_radius(VoronoiParams params, vec4 coord)
   }
 
   minDistance = 8.0;
-  vec4 closestPointToClosestPoint = vec4(0.0, 0.0, 0.0, 0.0);
+  vec4 closestPointToClosestPoint = vec4(0.0);
   for (int u = -1; u <= 1; u++) {
     for (int k = -1; k <= 1; k++) {
       for (int j = -1; j <= 1; j++) {
