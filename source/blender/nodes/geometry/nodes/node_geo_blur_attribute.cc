@@ -442,10 +442,10 @@ class BlurAttributeFieldInput final : public bke::GeometryFieldInput {
     }
 
     BLI_assert(ELEM(result_buffer.data(), buffer_a.data(), buffer_b.data()));
-    if (result_buffer.data() == buffer_a.data()) {
-      return GVArray::ForGArray(std::move(buffer_a));
+    if (result_buffer.data() == buffer_b.data()) {
+      return GVArray::ForGArray(std::move(buffer_b));
     }
-    return GVArray::ForGArray(std::move(buffer_b));
+    return GVArray::ForGArray(std::move(buffer_a));
   }
 
   void for_each_field_input_recursive(FunctionRef<void(const FieldInput &)> fn) const override
