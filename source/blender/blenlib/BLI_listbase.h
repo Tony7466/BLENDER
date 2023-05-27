@@ -396,7 +396,7 @@ BLI_INLINE bool operator==(const ListBase &a, const ListBase &b)
 }
 namespace blender {
 
-template<typename ItemT> void span_to_list(MutableSpan<ItemT> &src, ListBase &dst)
+template<typename ItemT> void span_to_list(MutableSpan<ItemT> src, ListBase &dst)
 {
   for (ItemT &item : src) {
     BLI_addtail(&dst, &item);

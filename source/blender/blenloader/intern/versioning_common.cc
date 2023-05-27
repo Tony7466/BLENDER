@@ -1328,7 +1328,7 @@ static void object_push_instances_modifier(const StringRefNull name,
   }
 
   ListBase change_list = {nullptr, nullptr};
-  span_to_list(animation_data_move, change_list);
+  blender::span_to_list(animation_data_move.as_mutable_span(), change_list);
   BKE_animdata_transfer_by_basepath(bmain, &object.id, &object.id, &change_list);
 }
 
