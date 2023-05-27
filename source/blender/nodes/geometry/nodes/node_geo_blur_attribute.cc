@@ -419,7 +419,7 @@ class BlurAttributeFieldInput final : public bke::GeometryFieldInput {
     VArraySpan<float> neighbor_weights = evaluator.get_evaluated<float>(1);
     GArray<> buffer_b(*type_, domain_size);
 
-    GSpan result_buffer;
+    GSpan result_buffer = buffer_a.as_span();
     switch (context.type()) {
       case GEO_COMPONENT_TYPE_MESH:
         if (ELEM(context.domain(), ATTR_DOMAIN_POINT, ATTR_DOMAIN_EDGE, ATTR_DOMAIN_FACE)) {
@@ -442,10 +442,10 @@ class BlurAttributeFieldInput final : public bke::GeometryFieldInput {
     }
 
     BLI_assert(ELEM(result_buffer.data(), buffer_a.data(), buffer_b.data()));
-    if (result_buffer.data() == buffer_b.data()) {
-      return GVArray::ForGArray(std::move(buffer_b));
+    if (result_buffer.data() == buffer_a.data()) {
+      return GVArray::ForGArray(std::move(buffer_a));
     }
-    return GVArray::ForGArray(std::move(buffer_a));
+    return GVArray::ForGArray(std::move(buffer_b));
   }
 
   void for_each_field_input_recursive(FunctionRef<void(const FieldInput &)> fn) const override
