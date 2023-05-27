@@ -5,6 +5,8 @@
 #ifndef __BLI_UTILDEFINES_H__
 #define __BLI_UTILDEFINES_H__
 
+
+#include <windows.h>
 /** \file
  * \ingroup bli
  */
@@ -870,3 +872,18 @@ extern bool BLI_memory_is_zero(const void *arr, size_t arr_size);
 #endif
 
 #endif /* __BLI_UTILDEFINES_H__ */
+
+#undef min
+#undef max
+#undef rad
+#undef rad1
+#undef rad2
+#undef rad3
+#undef vec
+#undef rect
+#undef rct1
+#undef rct2
+#undef near
+
+#undef small
+#undef MEM_CacheLimiterHandle
