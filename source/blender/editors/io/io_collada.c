@@ -678,7 +678,7 @@ void WM_OT_collada_export(wmOperatorType *ot)
 
 static int wm_collada_import_exec(bContext *C, wmOperator *op)
 {
-  char filename[FILE_MAX];
+  char filepath[FILE_MAX];
   int import_units;
   int find_chains;
   int auto_connect;
@@ -705,9 +705,9 @@ static int wm_collada_import_exec(bContext *C, wmOperator *op)
 
   min_chain_length = RNA_int_get(op->ptr, "min_chain_length");
 
-  RNA_string_get(op->ptr, "filepath", filename);
+  RNA_string_get(op->ptr, "filepath", filepath);
 
-  import_settings.filepath = filename;
+  import_settings.filepath = filepath;
   import_settings.import_units = import_units != 0;
   import_settings.custom_normals = custom_normals != 0;
   import_settings.auto_connect = auto_connect != 0;
