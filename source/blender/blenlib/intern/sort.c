@@ -164,6 +164,9 @@ loop:
   }
 }
 
+#undef min
+#undef swapcode
+
 /* clang-format on */
 
 #endif /* __GLIBC__ */
