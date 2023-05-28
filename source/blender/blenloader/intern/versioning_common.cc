@@ -346,7 +346,7 @@ void add_realize_instances_before_socket(bNodeTree *ntree,
   }
 }
 
-namespace replace_legacy_instances {
+namespace replace_legacy_instances_imp {
 
 using namespace blender;
 
@@ -399,6 +399,8 @@ struct RegularNodeTrees {
   bNodeTree *instances_on_faces = nullptr;
 
   bNodeTree *view_geometry = nullptr;
+  /* TODO */
+  bNodeTree *invert_rotation = nullptr;
 
   bNodeTree *reset_instances_transform = nullptr;
   bNodeTree *sample_apply_instances_transform = nullptr;
@@ -1275,7 +1277,7 @@ template<typename ItemT> static void span_to_list(MutableSpan<ItemT> src, ListBa
   }
 }
 
-static void object_push_instances_modifier(const StringRefNull name,
+static void object_push_instances_modifier(const StringRefNull modifier_name,
                                            Main *bmain,
                                            Object &object,
                                            bNodeTree &node_tree)
@@ -1286,7 +1288,7 @@ static void object_push_instances_modifier(const StringRefNull name,
   nmd.node_group = &node_tree;
   id_us_plus(&node_tree.id);
 
-  STRNCPY(nmd.modifier.name, name.c_str());
+  STRNCPY(nmd.modifier.name, modifier_name.c_str());
   BKE_modifier_unique_name(&object.modifiers, md);
 
   BLI_addtail(&object.modifiers, md);
@@ -1313,37 +1315,42 @@ static void object_push_instances_modifier(const StringRefNull name,
   ();
 
   Vector<std::string> legacy_rna_paths;
-  Vector<AnimationBasePathChange> animation_data_move;
+  Vector<AnimationBasePathChange> animation_data;
   node_tree.ensure_topology_cache();
   for (const bNodeSocket *socket : node_tree.interface_inputs().drop_front(1)) {
-    IDProperty *dst = IDP_GetPropertyFromGroup(nmd.settings.properties, socket->identifier);
-    BLI_assert(dst != nullptr);
+    IDProperty *modifier_prop = IDP_GetPropertyFromGroup(nmd.settings.properties,
+                                                         socket->identifier);
+    BLI_assert(modifier_prop != nullptr);
 
     const StringRef legacy_prop_name = socket_legacy_name_maping.lookup(socket->name);
-    PropertyRNA *obkect_prop = RNA_struct_find_property(&object_ptr, legacy_prop_name.data());
-    BLI_assert(obkect_prop != nullptr);
+    PropertyRNA *object_prop = RNA_struct_find_property(&object_ptr, legacy_prop_name.data());
+    BLI_assert(object_prop != nullptr);
 
-    copy_rna_to_id(*obkect_prop, object_ptr, *dst);
+    copy_rna_to_id(*object_prop, object_ptr, *modifier_prop);
 
-    std::string new_rna_path = "modifiers[\"" + std::string(name) + "\"][\"" +
-                               std::string(socket->identifier) + "\"]";
+    std::stringstream new_rna_path_stream;
+    new_rna_path_stream << "modifiers[\"" << nmd.modifier.name << "\"][\"" << socket->identifier
+                        << "\"]";
+    std::string new_rna_path = new_rna_path_stream.str();
+
     AnimationBasePathChange animation_to_move;
     animation_to_move.src_basepath = legacy_prop_name.data();
     animation_to_move.dst_basepath = new_rna_path.c_str();
     legacy_rna_paths.append(std::move(new_rna_path));
-    animation_data_move.append(animation_to_move);
+    animation_data.append(animation_to_move);
   }
 
   ListBase change_list = {nullptr, nullptr};
-  span_to_list<AnimationBasePathChange>(animation_data_move, change_list);
+  span_to_list<AnimationBasePathChange>(animation_data, change_list);
   BKE_animdata_transfer_by_basepath(bmain, &object.id, &object.id, &change_list);
 }
 
-}  //  namespace replace_legacy_instances
+}  // namespace replace_legacy_instances_imp
 
 void remove_legacy_instances_on(Main *bmain, ListBase &lb_objects)
 {
   using namespace blender;
+  using namespace replace_legacy_instances_imp;
 
   MultiValueMap<Object *, Object *> parents_map;
 
@@ -1364,7 +1371,7 @@ void remove_legacy_instances_on(Main *bmain, ListBase &lb_objects)
   }
 
   /* Not a static. Pointers are valid only during one project session. */
-  replace_legacy_instances::RegularNodeTrees cached_node_trees;
+  RegularNodeTrees cached_node_trees;
 
   for (auto &&[parent, objects] : parents_map.items()) {
 
@@ -1385,7 +1392,6 @@ void remove_legacy_instances_on(Main *bmain, ListBase &lb_objects)
     BLI_snprintf(
         modifier_name, sizeof(modifier_name), N_("Instances on %s 3.6"), domain_name.c_str());
 
-    using namespace replace_legacy_instances;
     bNodeTree *instances_node_tree;
     if (on_vertices) {
       instances_node_tree = instances_on_points(objects, tree_name, bmain, cached_node_trees);
