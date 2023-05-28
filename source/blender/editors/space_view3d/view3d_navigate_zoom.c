@@ -506,9 +506,10 @@ static int viewzoom_exec(bContext *C, wmOperator *op)
   }
 
   ED_view3d_dist_range_get(v3d, dist_range);
+  const float zoom_speed = RNA_float_get(op->ptr, "zoom_speed");
 
   if (delta < 0) {
-    const float step = 1.2f;
+    const float step = zoom_speed;
     if (use_cam_zoom) {
       view_zoom_to_window_xy_camera(scene, depsgraph, v3d, region, step, zoom_xy);
     }
@@ -519,7 +520,7 @@ static int viewzoom_exec(bContext *C, wmOperator *op)
     }
   }
   else {
-    const float step = 1.0f / 1.2f;
+    const float step = 1.0f / zoom_speed;
     if (use_cam_zoom) {
       view_zoom_to_window_xy_camera(scene, depsgraph, v3d, region, step, zoom_xy);
     }
@@ -631,8 +632,9 @@ void VIEW3D_OT_zoom(wmOperatorType *ot)
   ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_XY;
 
   /* properties */
-  view3d_operator_properties_common(
-      ot, V3D_OP_PROP_DELTA | V3D_OP_PROP_MOUSE_CO | V3D_OP_PROP_USE_MOUSE_INIT);
+  view3d_operator_properties_common(ot,
+                                    V3D_OP_PROP_DELTA | V3D_OP_PROP_MOUSE_CO |
+                                        V3D_OP_PROP_USE_MOUSE_INIT | V3D_OP_PROP_ZOOM_SPEED);
 }
 
 /** \} */

@@ -100,7 +100,10 @@ void ED_getTransformOrientationMatrix(const struct Scene *scene,
                                       struct Object *ob,
                                       struct Object *obedit,
                                       short around,
-                                      float r_orientation_mat[3][3]);
+                                      float r_orientation_mat[3][3],
+                                      struct BMVert *eve,
+                                      struct BMEdge *eed,
+                                      struct BMFace *efa);
 
 int BIF_countTransformOrientation(const struct bContext *C);
 
