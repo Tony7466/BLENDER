@@ -279,8 +279,8 @@ typedef struct LightLinkingRuntime {
 
   /* For blocker objects: the index of the light set from which this object casts shadow from.
    *
-   *If there is no shadow shadow in the scene or the blocker is not linked to any emitter this is
-   *assigned zero. */
+   * If there is no shadow in the scene or the blocker is not linked to any emitter this is
+   * assigned zero. */
   uint8_t blocker_shadow_set;
 
   uint8_t _pad[6];
@@ -289,7 +289,7 @@ typedef struct LightLinkingRuntime {
 typedef struct LightLinking {
   /* Collections which contains objects (possibly via nested collection indirection) which defines
    * the light linking relation: such as whether objects are included or excluded from being lit by
-   * this emitter (receiver_collection), oe whether they block light from this emitter
+   * this emitter (receiver_collection), or whether they block light from this emitter
    * (blocker_collection).
    *
    * If the collection is a null pointer then all objects from the current scene are receiving
@@ -503,7 +503,7 @@ typedef struct Object {
 
   ObjectLineArt lineart;
 
-  /** Lightgroup membership information. */
+  /** Light-group membership information. */
   struct LightgroupMembership *lightgroup;
 
   /** Light linking information. */

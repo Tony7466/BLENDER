@@ -318,9 +318,7 @@ ccl_device_inline float light_sample_mis_weight_nee(KernelGlobals kg,
  * Uses either a flat distribution or light tree. */
 
 ccl_device_inline bool light_sample_from_volume_segment(KernelGlobals kg,
-                                                        const float randn,
-                                                        const float randu,
-                                                        const float randv,
+                                                        const float3 rand,
                                                         const float time,
                                                         const float3 P,
                                                         const float3 D,
@@ -332,33 +330,20 @@ ccl_device_inline bool light_sample_from_volume_segment(KernelGlobals kg,
 {
 #ifdef __LIGHT_TREE__
   if (kernel_data.integrator.use_light_tree) {
-    return light_tree_sample<true>(kg,
-                                   randn,
-                                   randu,
-                                   randv,
-                                   time,
-                                   P,
-                                   D,
-                                   t,
-                                   object_receiver,
-                                   SD_BSDF_HAS_TRANSMISSION,
-                                   bounce,
-                                   path_flag,
-                                   ls);
+    return light_tree_sample<true>(
+        kg, rand, time, P, D, t, object_receiver, SD_BSDF_HAS_TRANSMISSION, bounce, path_flag, ls);
   }
   else
 #endif
   {
     return light_distribution_sample<true>(
-        kg, randn, randu, randv, time, P, object_receiver, bounce, path_flag, ls);
+        kg, rand, time, P, object_receiver, bounce, path_flag, ls);
   }
 }
 
 ccl_device bool light_sample_from_position(KernelGlobals kg,
                                            ccl_private const RNGState *rng_state,
-                                           const float randn,
-                                           const float randu,
-                                           const float randv,
+                                           const float3 rand,
                                            const float time,
                                            const float3 P,
                                            const float3 N,
@@ -370,37 +355,37 @@ ccl_device bool light_sample_from_position(KernelGlobals kg,
 {
 #ifdef __LIGHT_TREE__
   if (kernel_data.integrator.use_light_tree) {
-    return light_tree_sample<false>(kg,
-                                    randn,
-                                    randu,
-                                    randv,
-                                    time,
-                                    P,
-                                    N,
-                                    0.0f,
-                                    object_receiver,
-                                    shader_flags,
-                                    bounce,
-                                    path_flag,
-                                    ls);
+    return light_tree_sample<false>(
+        kg, rand, time, P, N, 0.0f, object_receiver, shader_flags, bounce, path_flag, ls);
   }
   else
 #endif
   {
     return light_distribution_sample<false>(
-        kg, randn, randu, randv, time, P, object_receiver, bounce, path_flag, ls);
+        kg, rand, time, P, object_receiver, bounce, path_flag, ls);
   }
 }
 
-ccl_device_forceinline void light_sample_update_position(KernelGlobals kg,
-                                                         ccl_private LightSample *ls,
-                                                         const float3 P)
+/* Update light sample with new shading point position for MNEE. The position on the light is fixed
+ * except for directional light. */
+ccl_device_forceinline void light_sample_update(KernelGlobals kg,
+                                                ccl_private LightSample *ls,
+                                                const float3 P)
 {
-  /* Update light sample for new shading point position, while keeping
-   * position on the light fixed. */
+  const ccl_global KernelLight *klight = &kernel_data_fetch(lights, ls->lamp);
 
-  /* NOTE : preserve pdf in area measure. */
-  light_update_position(kg, ls, P);
+  if (ls->type == LIGHT_POINT) {
+    point_light_mnee_sample_update(klight, ls, P);
+  }
+  else if (ls->type == LIGHT_SPOT) {
+    spot_light_mnee_sample_update(klight, ls, P);
+  }
+  else if (ls->type == LIGHT_AREA) {
+    area_light_mnee_sample_update(klight, ls, P);
+  }
+  else {
+    /* Keep previous values. */
+  }
 
   /* Re-apply already computed selection pdf. */
   ls->pdf *= ls->pdf_selection;
