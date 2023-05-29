@@ -6388,8 +6388,8 @@ static void rna_def_userdef_filepaths(BlenderRNA *brna)
   };
   static const EnumPropertyItem text_editor_presets[] = {
       {0, "INTERNAL", 0, "Internal", "Built-in text editor"},
-      {1, "VSCODE", 0, "Visual Studio Code", "Open source Text Editor"},
-      {50, "CUSTOM", 0, "Custom", "Custom Text Editor executable path"},
+      {1, "VSCODE", 0, "Visual Studio Code", "Open source code editor"},
+      {50, "CUSTOM", 0, "Custom", "Custom text editor executable path"},
       {0, NULL, 0, NULL, NULL},
   };
   static const EnumPropertyItem preview_type_items[] = {
