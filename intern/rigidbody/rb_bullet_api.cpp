@@ -352,7 +352,13 @@ void RB_body_delete(rbRigidBody *object)
    * but since we delete everything when the world is rebult, we need to do it manually here */
   for (int i = body->getNumConstraintRefs() - 1; i >= 0; i--) {
     btTypedConstraint *con = body->getConstraintRef(i);
-    body->removeConstraintRef(con);
+
+    if (con->isEnabled()) {
+      con->getRigidBodyA().removeConstraintRef(con);
+      con->getRigidBodyB().removeConstraintRef(con);
+      con->setEnabled(false);
+    }
+
   }
 
   delete body;
@@ -1119,6 +1125,12 @@ rbConstraint *RB_constraint_new_motor(float pivot[3],
 void RB_constraint_delete(rbConstraint *con)
 {
   btTypedConstraint *constraint = reinterpret_cast<btTypedConstraint *>(con);
+  
+  if (constraint->isEnabled()) {
+    constraint->getRigidBodyA().removeConstraintRef(constraint);
+    constraint->getRigidBodyB().removeConstraintRef(constraint);
+  }
+
   delete constraint;
 }
 
