@@ -199,12 +199,25 @@ Closure closure_mix(Closure cl1, Closure cl2, float fac)
 }
 
 float ambient_occlusion_eval(vec3 normal,
-                             float distance,
+                             float max_distance,
                              const float inverted,
                              const float sample_count)
 {
-  /* TODO */
+#if defined(GPU_FRAGMENT_SHADER) && defined(MAT_AO) && !defined(MAT_DEPTH) && !defined(MAT_SHADOW)
+  vec3 vP = transform_point(ViewMatrix, g_data.P);
+  OcclusionData data = occlusion_search(vP, hiz_tx, max_distance, inverted, sample_count);
+
+  vec3 V = cameraVec(g_data.P);
+  vec3 N = g_data.N;
+  vec3 Ng = g_data.Ng;
+
+  float unused_error, visibility;
+  vec3 unused;
+  occlusion_eval(data, V, N, Ng, inverted, visibility, unused_error, unused);
+  return visibility;
+#else
   return 1.0;
+#endif
 }
 
 #ifndef GPU_METAL

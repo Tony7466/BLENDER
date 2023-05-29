@@ -47,6 +47,14 @@ class AmbientOcclusion {
   void sync();
 
   void render(View &view);
+
+  template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)
+  {
+    inst_.hiz_buffer.bind_resources(pass);
+    pass->bind_ubo(AO_BUF_SLOT, &data_);
+    pass->bind_ubo(RAYTRACE_BUF_SLOT, &rt_data_);
+    pass->bind_texture(AO_HORIZONS_TEX_SLOT, data_.enabled ? &horizons_tx_ : &dummy_horizons_tx_);
+  }
 };
 
 /** \} */

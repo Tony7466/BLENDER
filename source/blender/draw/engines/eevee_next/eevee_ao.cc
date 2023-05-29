@@ -61,6 +61,10 @@ void AmbientOcclusion::init()
 
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_SHADER_READ;
   horizons_tx_.ensure_2d(GPU_RGBA8, inst_.film.render_extent_get(), usage);
+
+  /* Compute pixel size. Size is multiplied by 2 because it is applied in NDC [-1..1] range. */
+  rt_data_.pixel_size = float2(2.0f) / float2(inst_.film.render_extent_get());
+  rt_data_.push_update();
 }
 
 void AmbientOcclusion::sync()

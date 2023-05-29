@@ -24,21 +24,23 @@ float cone_cosine(float r)
  * http://blog.selfshadow.com/publications/s2016-shading-course/activision/s2016_pbs_activision_occlusion.pptx
  */
 
-#if defined(MESH_SHADER)
+/* TODO(Miguel Pozo) */
+
+#if defined(MAT_GEOM_MESH)
 #  if !defined(USE_ALPHA_HASH)
 #    if !defined(DEPTH_SHADER)
-#      if !defined(USE_ALPHA_BLEND)
+#      if !defined(MAT_TRANSPARENT)
 #        if !defined(USE_REFRACTION)
-#          define ENABLE_DEFERED_AO
+#          define ENABLE_DEFERRED_AO
 #        endif
 #      endif
 #    endif
 #  endif
 #endif
 
-#ifndef ENABLE_DEFERED_AO
+#ifndef ENABLE_DEFERRED_AO
 #  if defined(STEP_RESOLVE)
-#    define ENABLE_DEFERED_AO
+#    define ENABLE_DEFERRED_AO
 #  endif
 #endif
 
@@ -440,9 +442,9 @@ OcclusionData occlusion_load(vec3 vP, float custom_occlusion)
   /* Default to fully opened cone. */
   OcclusionData data = NO_OCCLUSION_DATA;
 
-#ifdef ENABLE_DEFERED_AO
-  if ((ao_buf.settings & AO_ENABLED) != 0) {
-    data = unpack_occlusion_data(texelFetch(horizonBuffer, ivec2(gl_FragCoord.xy), 0));
+#ifdef ENABLE_DEFERRED_AO
+  if (ao_buf.enabled) {
+    data = unpack_occlusion_data(texelFetch(horizons_tx, ivec2(gl_FragCoord.xy), 0));
   }
 #else
   /* For blended surfaces. */
@@ -457,30 +459,3 @@ OcclusionData occlusion_load(vec3 vP, float custom_occlusion)
 #ifndef GPU_FRAGMENT_SHADER
 #  undef gl_FragCoord
 #endif
-
-float ambient_occlusion_eval(vec3 normal,
-                             float max_distance,
-                             const float inverted,
-                             const float sample_count)
-{
-  /* Avoid multiline define causing compiler issues. */
-  /* clang-format off */
-#if defined(GPU_FRAGMENT_SHADER) && (defined(MESH_SHADER) || defined(HAIR_SHADER)) && !defined(DEPTH_SHADER) && !defined(VOLUMETRICS)
-  /* clang-format on */
-  vec3 bent_normal;
-  vec4 rand = texelfetch_noise_tex(gl_FragCoord.xy);
-  OcclusionData data = occlusion_search(
-      viewPosition, hiz_tx, max_distance, inverted, sample_count);
-
-  vec3 V = cameraVec(worldPosition);
-  vec3 N = normalize(normal);
-  vec3 Ng = safe_normalize(cross(dFdx(worldPosition), dFdy(worldPosition)));
-
-  float unused_error, visibility;
-  vec3 unused;
-  occlusion_eval(data, V, N, Ng, inverted, visibility, unused_error, unused);
-  return visibility;
-#else
-  return 1.0;
-#endif
-}

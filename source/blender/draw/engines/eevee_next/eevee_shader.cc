@@ -254,6 +254,13 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     info.define("MAT_RENDER_PASS_SUPPORT");
   }
 
+  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_AO) &&
+      ELEM(pipeline_type, MAT_PIPE_FORWARD, MAT_PIPE_DEFERRED) &&
+      ELEM(geometry_type, MAT_GEOM_MESH, MAT_GEOM_CURVES))
+  {
+    info.define("MAT_AO");
+  }
+
   if (GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSPARENT)) {
     info.define("MAT_TRANSPARENT");
     /* Transparent material do not have any velocity specific pipeline. */

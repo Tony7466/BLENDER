@@ -41,6 +41,7 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_light)
                      "eevee_deferred_base",
                      "eevee_hiz_data",
                      "eevee_render_pass_out",
+                     "eevee_ao_lib",
                      "draw_view",
                      "draw_fullscreen")
     .do_static_compilation(true);

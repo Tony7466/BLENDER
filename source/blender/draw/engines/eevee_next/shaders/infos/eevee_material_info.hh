@@ -108,7 +108,8 @@ GPU_SHADER_CREATE_INFO(eevee_surf_deferred)
                      "eevee_utility_texture",
                      "eevee_sampling_data",
                      "eevee_render_pass_out",
-                     "eevee_cryptomatte_out");
+                     "eevee_cryptomatte_out",
+                     "eevee_ao_lib");
 
 GPU_SHADER_CREATE_INFO(eevee_surf_forward)
     .vertex_out(eevee_surf_iface)
@@ -122,7 +123,8 @@ GPU_SHADER_CREATE_INFO(eevee_surf_forward)
                      "eevee_camera",
                      "eevee_utility_texture",
                      "eevee_sampling_data",
-                     "eevee_shadow_data"
+                     "eevee_shadow_data",
+                     "eevee_ao_lib"
                      /* Optionally added depending on the material. */
                      // "eevee_render_pass_out",
                      // "eevee_cryptomatte_out",
@@ -131,6 +133,7 @@ GPU_SHADER_CREATE_INFO(eevee_surf_forward)
     );
 
 GPU_SHADER_CREATE_INFO(eevee_surf_depth)
+    .define("MAT_DEPTH")
     .vertex_out(eevee_surf_iface)
     .fragment_source("eevee_surf_depth_frag.glsl")
     .additional_info("eevee_sampling_data", "eevee_camera", "eevee_utility_texture");
