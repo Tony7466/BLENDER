@@ -361,8 +361,8 @@ int main(int argc,
     }
     else {
       const char *unknown = "date-unknown";
-      BLI_strncpy(build_commit_date, unknown, sizeof(build_commit_date));
-      BLI_strncpy(build_commit_time, unknown, sizeof(build_commit_time));
+      STRNCPY(build_commit_date, unknown);
+      STRNCPY(build_commit_time, unknown);
     }
   }
 #endif
@@ -451,7 +451,7 @@ int main(int argc,
   /* Ensure we free on early exit. */
   app_init_data.ba = ba;
 
-  main_args_setup(C, ba);
+  main_args_setup(C, ba, false);
 
   /* Begin argument parsing, ignore leaks so arguments that call #exit
    * (such as '--version' & '--help') don't report leaks. */
@@ -547,7 +547,7 @@ int main(int argc,
   /* OK we are ready for it */
 #ifndef WITH_PYTHON_MODULE
   /* Handles #ARG_PASS_FINAL. */
-  main_args_setup_post(C, ba);
+  BLI_args_parse(ba, ARG_PASS_FINAL, main_args_handle_load_file, C);
 #endif
 
   /* Explicitly free data allocated for argument parsing:

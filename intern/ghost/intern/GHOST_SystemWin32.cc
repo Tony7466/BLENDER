@@ -1867,9 +1867,10 @@ LRESULT WINAPI GHOST_SystemWin32::s_wndProc(HWND hwnd, uint msg, WPARAM wParam, 
           /* Mouse Tracking is now off. TrackMouseEvent restarts in MouseMove. */
           window->m_mousePresent = false;
 
-          /* Auto-focus only occurs within Blender windows, not with _other_ applications. */
+          /* Auto-focus only occurs within Blender windows, not with _other_ applications. We are
+           * notified of change of focus from our console, but it returns null from GetFocus. */
           HWND old_hwnd = ::GetFocus();
-          if (hwnd != old_hwnd) {
+          if (old_hwnd && hwnd != old_hwnd) {
             HWND new_parent = ::GetParent(hwnd);
             HWND old_parent = ::GetParent(old_hwnd);
             if (hwnd == old_parent || old_hwnd == new_parent) {
@@ -2422,7 +2423,7 @@ static uint *getClipboardImageImBuf(int *r_width, int *r_height, UINT format)
     *r_width = ibuf->x;
     *r_height = ibuf->y;
     rgba = (uint *)malloc(4 * ibuf->x * ibuf->y);
-    memcpy(rgba, ibuf->rect, 4 * ibuf->x * ibuf->y);
+    memcpy(rgba, ibuf->byte_buffer.data, 4 * ibuf->x * ibuf->y);
     IMB_freeImBuf(ibuf);
   }
 
@@ -2513,7 +2514,7 @@ static bool putClipboardImagePNG(uint *rgba, int width, int height)
   UINT cf = RegisterClipboardFormat("PNG");
 
   /* Load buffer into ImBuf, convert to PNG. */
-  ImBuf *ibuf = IMB_allocFromBuffer(rgba, nullptr, width, height, 32);
+  ImBuf *ibuf = IMB_allocFromBuffer(reinterpret_cast<uint8_t *>(rgba), nullptr, width, height, 32);
   ibuf->ftype = IMB_FTYPE_PNG;
   ibuf->foptions.quality = 15;
   if (!IMB_saveiff(ibuf, "<memory>", IB_rect | IB_mem)) {
@@ -2521,7 +2522,7 @@ static bool putClipboardImagePNG(uint *rgba, int width, int height)
     return false;
   }
 
-  HGLOBAL hMem = GlobalAlloc(GHND, ibuf->encodedbuffersize);
+  HGLOBAL hMem = GlobalAlloc(GHND, ibuf->encoded_buffer_size);
   if (!hMem) {
     IMB_freeImBuf(ibuf);
     return false;
@@ -2534,7 +2535,7 @@ static bool putClipboardImagePNG(uint *rgba, int width, int height)
     return false;
   }
 
-  memcpy(pMem, ibuf->encodedbuffer, ibuf->encodedbuffersize);
+  memcpy(pMem, ibuf->encoded_buffer.data, ibuf->encoded_buffer_size);
 
   GlobalUnlock(hMem);
   IMB_freeImBuf(ibuf);

@@ -286,6 +286,12 @@ BLI_INLINE void BLI_listbase_clear(struct ListBase *lb)
 }
 
 /**
+ * Validate the integrity of a given ListBase.
+ * \return true if everything is OK, false otherwise.
+ */
+bool BLI_listbase_validate(struct ListBase *lb);
+
+/**
  * Equality check for ListBase.
  *
  * This only shallowly compares the ListBase itself (so the first/last

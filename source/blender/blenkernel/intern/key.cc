@@ -185,8 +185,8 @@ static void shapekey_blend_read_lib(BlendLibReader *reader, ID *id)
   Key *key = (Key *)id;
   BLI_assert((key->id.tag & LIB_TAG_EXTERN) == 0);
 
-  BLO_read_id_address(reader, key->id.lib, &key->ipo); /* XXX deprecated - old animation system */
-  BLO_read_id_address(reader, key->id.lib, &key->from);
+  BLO_read_id_address(reader, id, &key->ipo); /* XXX deprecated - old animation system */
+  BLO_read_id_address(reader, id, &key->from);
 }
 
 static void shapekey_blend_read_expand(BlendExpander *expander, ID *id)
@@ -1845,7 +1845,7 @@ KeyBlock *BKE_keyblock_add(Key *key, const char *name)
   }
   else {
     if (tot == 1) {
-      STRNCPY(kb->name, DATA_("Basis"));
+      STRNCPY_UTF8(kb->name, DATA_("Basis"));
     }
     else {
       SNPRINTF(kb->name, DATA_("Key %d"), tot - 1);
@@ -1864,9 +1864,8 @@ KeyBlock *BKE_keyblock_add(Key *key, const char *name)
   kb->slidermin = 0.0f;
   kb->slidermax = 1.0f;
 
-  /**
-   * \note caller may want to set this to current time, but don't do it here since we need to sort
-   * which could cause problems in some cases, see #BKE_keyblock_add_ctime */
+  /* \note caller may want to set this to current time, but don't do it here since we need to sort
+   * which could cause problems in some cases, see #BKE_keyblock_add_ctime. */
   kb->pos = curpos + 0.1f; /* only used for absolute shape keys */
 
   return kb;

@@ -802,7 +802,7 @@ void uiTemplateMovieclipInformation(uiLayout *layout,
   ofs += BLI_snprintf_rlen(str + ofs, sizeof(str) - ofs, TIP_("%d x %d"), width, height);
 
   if (ibuf) {
-    if (ibuf->rect_float) {
+    if (ibuf->float_buffer.data) {
       if (ibuf->channels != 4) {
         ofs += BLI_snprintf_rlen(
             str + ofs, sizeof(str) - ofs, TIP_(", %d float channel(s)"), ibuf->channels);
@@ -855,7 +855,7 @@ void uiTemplateMovieclipInformation(uiLayout *layout,
 
     if (framenr <= clip->len) {
       BKE_movieclip_filepath_for_frame(clip, user, filepath);
-      file = BLI_path_slash_rfind(filepath);
+      file = BLI_path_basename(filepath);
     }
     else {
       file = "-";

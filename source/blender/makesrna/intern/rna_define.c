@@ -528,7 +528,8 @@ static int rna_validate_identifier(const char *identifier, char *error, bool pro
 {
   int a = 0;
 
-  /** List is from:
+  /**
+   * List is from:
    * \code{.py}
    * ", ".join([
    *     '"%s"' % kw for kw in __import__("keyword").kwlist
@@ -574,7 +575,7 @@ static int rna_validate_identifier(const char *identifier, char *error, bool pro
 
   for (a = 0; kwlist[a]; a++) {
     if (STREQ(identifier, kwlist[a])) {
-      strcpy(error, "this keyword is reserved by python");
+      strcpy(error, "this keyword is reserved by Python");
       return 0;
     }
   }
@@ -591,7 +592,7 @@ static int rna_validate_identifier(const char *identifier, char *error, bool pro
 
     for (a = 0; kwlist_prop[a]; a++) {
       if (STREQ(identifier, kwlist_prop[a])) {
-        strcpy(error, "this keyword is reserved by python");
+        strcpy(error, "this keyword is reserved by Python");
         return 0;
       }
     }
@@ -784,7 +785,7 @@ void RNA_struct_free(BlenderRNA *brna, StructRNA *srna)
 #  if 0
   if (srna->flag & STRUCT_RUNTIME) {
     if (RNA_struct_py_type_get(srna)) {
-      fprintf(stderr, "%s '%s' freed while holding a python reference.", srna->identifier);
+      fprintf(stderr, "%s '%s' freed while holding a Python reference.", srna->identifier);
     }
   }
 #  endif

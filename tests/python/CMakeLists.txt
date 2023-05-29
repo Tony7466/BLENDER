@@ -168,6 +168,7 @@ add_blender_test(
   blendfile_library_overrides
   --python ${CMAKE_CURRENT_LIST_DIR}/bl_blendfile_library_overrides.py --
   --output-dir ${TEST_OUT_DIR}/blendfile_io/
+  --test-dir "${TEST_SRC_DIR}/libraries_and_linking"
 )
 
 # ------------------------------------------------------------------------------
@@ -646,7 +647,7 @@ add_blender_test(
 endif()
 
 # SVG Import
-if(True)
+if(TRUE)
   if(NOT OPENIMAGEIO_IDIFF)
     message(WARNING "Disabling SVG tests because OIIO idiff does not exist")
   else()
@@ -687,6 +688,7 @@ if(WITH_CYCLES OR WITH_OPENGL_RENDER_TESTS)
       image_texture_limit
       integrator
       light
+      light_linking
       mesh
       pointcloud
       shader

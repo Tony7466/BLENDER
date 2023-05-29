@@ -411,8 +411,8 @@ static void *ocio_transform_ibuf(PlayState *ps,
     *r_glsl_used = false;
     display_buffer = NULL;
   }
-  else if (ibuf->rect_float) {
-    display_buffer = ibuf->rect_float;
+  else if (ibuf->float_buffer.data) {
+    display_buffer = ibuf->float_buffer.data;
 
     *r_data = GPU_DATA_FLOAT;
     if (ibuf->channels == 4) {
@@ -436,8 +436,8 @@ static void *ocio_transform_ibuf(PlayState *ps,
           &ps->view_settings, &ps->display_settings, ibuf->dither, false);
     }
   }
-  else if (ibuf->rect) {
-    display_buffer = ibuf->rect;
+  else if (ibuf->byte_buffer.data) {
+    display_buffer = ibuf->byte_buffer.data;
     *r_glsl_used = IMB_colormanagement_setup_glsl_draw_from_space(&ps->view_settings,
                                                                   &ps->display_settings,
                                                                   ibuf->rect_colorspace,
@@ -451,7 +451,7 @@ static void *ocio_transform_ibuf(PlayState *ps,
 
   /* There is data to be displayed, but GLSL is not initialized
    * properly, in this case we fallback to CPU-based display transform. */
-  if ((ibuf->rect || ibuf->rect_float) && !*r_glsl_used) {
+  if ((ibuf->byte_buffer.data || ibuf->float_buffer.data) && !*r_glsl_used) {
     display_buffer = IMB_display_buffer_acquire(
         ibuf, &ps->view_settings, &ps->display_settings, r_buffer_cache_handle);
     *r_format = GPU_RGBA8;
@@ -677,17 +677,6 @@ static void build_pict_list_ex(
 
     pupdate_time();
     ptottime = 1.0;
-
-    /* O_DIRECT
-     *
-     * If set, all reads and writes on the resulting file descriptor will
-     * be performed directly to or from the user program buffer, provided
-     * appropriate size and alignment restrictions are met. Refer to the
-     * F_SETFL and F_DIOINFO commands in the fcntl(2) manual entry for
-     * information about how to determine the alignment constraints.
-     * O_DIRECT is a Silicon Graphics extension and is only supported on
-     * local EFS and XFS file systems.
-     */
 
     while (IMB_ispic(filepath) && totframes) {
       bool has_event;
