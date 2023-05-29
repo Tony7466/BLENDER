@@ -1014,6 +1014,8 @@ using VelocityGeometryBuf = draw::StorageArrayBuffer<float4, 16, true>;
 using VelocityIndexBuf = draw::StorageArrayBuffer<VelocityIndex, 16>;
 using VelocityObjectBuf = draw::StorageArrayBuffer<float4x4, 16>;
 using CryptomatteObjectBuf = draw::StorageArrayBuffer<float2, 16>;
+using AODataBuf = draw::UniformBuffer<AOData>;
+using RayTracingDataBuf = draw::UniformBuffer<RayTracingData>;
 
 }  // namespace blender::eevee
 #endif

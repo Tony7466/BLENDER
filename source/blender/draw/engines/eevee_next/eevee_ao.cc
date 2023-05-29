@@ -35,9 +35,6 @@ namespace blender::eevee {
 
 void AmbientOcclusion::init()
 {
-  dummy_horizons_tx_.ensure_2d(
-      GPU_RGBA8, int2(1), GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_SHADER_READ, float4(0));
-
   debug_ = G.debug_value == 6;
 
   const Scene *scene = inst_.scene;

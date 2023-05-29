@@ -26,20 +26,25 @@ class AmbientOcclusion {
   bool debug_;
 
   /* TODO: Move somewhere else. */
-  UniformBuffer<RayTracingData> rt_data_;
+  RayTracingDataBuf rt_data_;
 
-  UniformBuffer<AOData> data_;
+  AODataBuf data_;
 
   Texture dummy_horizons_tx_;
   Texture horizons_tx_;
-  Texture horizons_debug_tx_;
 
   Framebuffer fb_ = {"GTAO"};
 
   PassSimple horizons_search_ps_ = {"GTAO Horizons Search"};
 
  public:
-  AmbientOcclusion(Instance &inst) : inst_(inst){};
+  AmbientOcclusion(Instance &inst) : inst_(inst)
+  {
+    dummy_horizons_tx_.ensure_2d(GPU_RGBA8,
+                                 int2(1),
+                                 GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_SHADER_READ,
+                                 float4(0));
+  };
   ~AmbientOcclusion(){};
 
   void init();
