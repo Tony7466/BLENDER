@@ -1777,7 +1777,7 @@ static bool seq_update_flags_cb(Sequence *seq, void * /*user_data*/)
   return true;
 }
 
-enum struct eNTreeDoVersionErrors : int8_t {
+enum class eNTreeDoVersionErrors : int8_t {
   NTREE_DOVERSION_NO_ERROR = 0,
   NTREE_DOVERSION_NEED_OUTPUT = (1 << 0),
   NTREE_DOVERSION_TRANSPARENCY_EMISSION = (1 << 1),
