@@ -398,9 +398,9 @@ void PathTrace::init_render_buffers(const RenderWork &render_work)
   /* Handle initialization scheduled by the render scheduler. */
   if (render_work.init_render_buffers) {
     /* Buffer is already initialized to zero on creation to allocate the device memory */
-    /*   parallel_for_each(path_trace_works_, [&](unique_ptr<PathTraceWork> &path_trace_work) {
+    parallel_for_each(path_trace_works_, [&](unique_ptr<PathTraceWork> &path_trace_work) {
          path_trace_work->zero_render_buffers();
-	 }); */
+	 });
 
     tile_buffer_read();
   }
