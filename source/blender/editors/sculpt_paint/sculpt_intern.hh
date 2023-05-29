@@ -1195,9 +1195,9 @@ PBVHVertRef SCULPT_nearest_vertex_get(
 int SCULPT_plane_point_side(const float co[3], const float plane[4]);
 int SCULPT_plane_trim(const StrokeCache *cache, const Brush *brush, const float val[3]);
 /**
- * Handles clipping against a mirror modifier and #SCULPT_LOCK_X/Y/Z axis flags.
+ * Handles clipping against a mirror modifier and #ME_LOCK_X/Y/Z axis flags.
  */
-void SCULPT_clip(Sculpt *sd, SculptSession *ss, float co[3], const float val[3]);
+void SCULPT_clip(Object *ob, SculptSession *ss, float co[3], const float val[3]);
 
 float SCULPT_brush_plane_offset_get(Sculpt *sd, SculptSession *ss);
 

@@ -1009,9 +1009,9 @@ class VIEW3D_PT_sculpt_symmetry(Panel, View3DPaintPanel):
         row.prop(mesh, "use_mirror_z", text="Z", toggle=True)
 
         row = layout.row(align=True, heading="Lock")
-        row.prop(sculpt, "lock_x", text="X", toggle=True)
-        row.prop(sculpt, "lock_y", text="Y", toggle=True)
-        row.prop(sculpt, "lock_z", text="Z", toggle=True)
+        row.prop(mesh, "lock_x", text="X", toggle=True)
+        row.prop(mesh, "lock_y", text="Y", toggle=True)
+        row.prop(mesh, "lock_z", text="Z", toggle=True)
 
         row = layout.row(align=True, heading="Tiling")
         row.prop(sculpt, "tile_x", text="X", toggle=True)

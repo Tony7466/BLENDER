@@ -2806,10 +2806,15 @@ bool SCULPT_search_circle_cb(PBVHNode *node, void *data_v)
   return dist_sq < data->radius_squared || true;
 }
 
-void SCULPT_clip(Sculpt *sd, SculptSession *ss, float co[3], const float val[3])
+#define ME_USING_LOCK_AXIS(_me, _axis) \
+  ((_me)->lock & (ME_LOCK_X << _axis))
+
+void SCULPT_clip(Object *ob, SculptSession *ss, float co[3], const float val[3])
 {
+  Mesh *me = BKE_mesh_from_object(ob);
+
   for (int i = 0; i < 3; i++) {
-    if (sd->flags & (SCULPT_LOCK_X << i)) {
+    if (ME_USING_LOCK_AXIS(me, i)) {
       continue;
     }
 
@@ -3896,7 +3901,7 @@ static void sculpt_combine_proxies_node(Object &object,
       add_v3_v3(val, proxies[p].co[vd.i]);
     }
 
-    SCULPT_clip(&sd, ss, vd.co, val);
+    SCULPT_clip(&object, ss, vd.co, val);
 
     if (ss->deform_modifiers_active) {
       sculpt_flush_pbvhvert_deform(*ss, vd, positions);

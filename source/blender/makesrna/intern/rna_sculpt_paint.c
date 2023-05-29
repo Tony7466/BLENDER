@@ -804,6 +804,9 @@ static void rna_def_sculpt(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Radial Symmetry Count X Axis", "Number of times to copy strokes across the surface");
 
+  // TODO: 
+  // do these need to be remapped to a mesh property so that they can be
+  // deprecated before they're removed?
   prop = RNA_def_property(srna, "lock_x", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", SCULPT_LOCK_X);
   RNA_def_property_ui_text(prop, "Lock X", "Disallow changes to the X axis of vertices");

@@ -219,7 +219,7 @@ static void do_enhance_details_brush_task_cb_ex(void *__restrict userdata,
 
     float disp[3];
     madd_v3_v3v3fl(disp, vd.co, ss->cache->detail_directions[vd.index], fade);
-    SCULPT_clip(sd, ss, vd.co, disp);
+    SCULPT_clip(data->ob, ss, vd.co, disp);
 
     if (vd.is_mesh) {
       BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
@@ -314,7 +314,7 @@ static void do_smooth_brush_task_cb_ex(void *__restrict userdata,
       SCULPT_neighbor_coords_average_interior(ss, avg, vd.vertex);
       sub_v3_v3v3(val, avg, vd.co);
       madd_v3_v3v3fl(val, vd.co, val, fade);
-      SCULPT_clip(sd, ss, vd.co, val);
+      SCULPT_clip(data->ob, ss, vd.co, val);
       if (vd.is_mesh) {
         BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
       }

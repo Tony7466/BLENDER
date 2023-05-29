@@ -171,7 +171,7 @@ typedef struct Mesh {
    * symmetrical geometry. Supported by operations such as transform and weight-painting.
    */
   char symmetry;
-
+ 
   /** Choice between different remesh methods in the UI. */
   char remesh_mode;
 
@@ -218,7 +218,13 @@ typedef struct Mesh {
   /* Deprecated size of #fdata. */
   int totface;
 
-  char _pad1[4];
+  /**
+   * User-defined lock flag (#eMeshLockType) that causes editing operations to be restricted from
+   * transforming along locked axes. Supported by operations such as transform.
+   */
+  char lock;
+
+  char _pad1[3];
 
   /**
    * Data that isn't saved in files, including caches of derived data, temporary data to improve
@@ -439,6 +445,13 @@ typedef enum eMeshSymmetryType {
   ME_SYMMETRY_Z = 1 << 2,
 } eMeshSymmetryType;
 
+ /** #Mesh.lock */
+typedef enum eMeshLockType {
+  ME_LOCK_X = 1 << 0,
+  ME_LOCK_Y = 1 << 1,
+  ME_LOCK_Z = 1 << 2,
+ } eMeshLockType;
+ 
 #define MESH_MAX_VERTS 2000000000L
 
 #ifdef __cplusplus

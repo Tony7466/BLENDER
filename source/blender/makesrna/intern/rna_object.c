@@ -2321,6 +2321,65 @@ static void rna_Object_mesh_symmetry_z_set(PointerRNA *ptr, bool value)
   mesh_symmetry_set_common(ptr, value, ME_SYMMETRY_Z);
 }
 
+static bool mesh_lock_get_common(PointerRNA *ptr, const eMeshLockType lock)
+{
+  const Object *ob = (Object *)ptr->owner_id;
+  if (ob->type != OB_MESH) {
+    return false;
+  }
+
+  const Mesh *mesh = ob->data;
+  return mesh->lock & lock;
+}
+
+static bool rna_Object_mesh_lock_x_get(PointerRNA *ptr)
+{
+  return mesh_lock_get_common(ptr, ME_LOCK_X);
+}
+
+static bool rna_Object_mesh_lock_y_get(PointerRNA *ptr)
+{
+  return mesh_lock_get_common(ptr, ME_LOCK_Y);
+}
+
+static bool rna_Object_mesh_lock_z_get(PointerRNA *ptr)
+{
+  return mesh_lock_get_common(ptr, ME_LOCK_Z);
+}
+
+static void mesh_lock_set_common(PointerRNA *ptr,
+                                 const bool value,
+                                 const eMeshLockType lock)
+{
+  Object *ob = (Object *)ptr->owner_id;
+  if (ob->type != OB_MESH) {
+    return;
+  }
+
+  Mesh *mesh = ob->data;
+  if (value) {
+    mesh->lock |= lock;
+  }
+  else {
+    mesh->lock &= ~lock;
+  }
+}
+
+static void rna_Object_mesh_lock_x_set(PointerRNA *ptr, bool value)
+{
+  mesh_lock_set_common(ptr, value, ME_LOCK_X);
+}
+
+static void rna_Object_mesh_lock_y_set(PointerRNA *ptr, bool value)
+{
+  mesh_lock_set_common(ptr, value, ME_LOCK_Y);
+}
+
+static void rna_Object_mesh_lock_z_set(PointerRNA *ptr, bool value)
+{
+  mesh_lock_set_common(ptr, value, ME_LOCK_Z);
+}
+
 static int rna_Object_mesh_symmetry_yz_editable(PointerRNA *ptr, const char **UNUSED(r_info))
 {
   const Object *ob = (Object *)ptr->owner_id;
@@ -3882,6 +3941,29 @@ static void rna_def_object(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_editable_func(prop, "rna_Object_mesh_symmetry_yz_editable");
   RNA_def_property_ui_text(prop, "Z", "Enable mesh symmetry in the Z axis");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
+
+  /* Mesh Lock Settings */
+
+  prop = RNA_def_property(srna, "use_mesh_lock_x", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(
+      prop, "rna_Object_mesh_lock_x_get", "rna_Object_mesh_lock_x_set");
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "X", "Disallow changes to the X axis of vertices");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
+
+  prop = RNA_def_property(srna, "use_mesh_lock_y", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(
+      prop, "rna_Object_mesh_lock_y_get", "rna_Object_mesh_lock_y_set");
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Y", "Disallow changes to the Y axis of vertices");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
+
+  prop = RNA_def_property(srna, "use_mesh_lock_z", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(
+      prop, "rna_Object_mesh_lock_z_get", "rna_Object_mesh_lock_z_set");
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Z", "Disallow changes to the Z axis of vertices");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
   /* Lightgroup Membership */

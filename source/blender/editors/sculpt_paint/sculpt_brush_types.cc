@@ -1596,7 +1596,7 @@ static void do_layer_brush_task_cb_ex(void *__restrict userdata,
     mul_v3_fl(vdisp, fabsf(fade));
     add_v3_v3v3(final_co, vd.co, vdisp);
 
-    SCULPT_clip(sd, ss, vd.co, final_co);
+    SCULPT_clip(data->ob, ss, vd.co, final_co);
 
     if (vd.is_mesh) {
       BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
@@ -2866,7 +2866,7 @@ static void do_topology_rake_bmesh_task_cb_ex(void *__restrict userdata,
 
     madd_v3_v3v3fl(val, vd.co, val, fade);
 
-    SCULPT_clip(sd, ss, vd.co, val);
+    SCULPT_clip(data->ob, ss, vd.co, val);
 
     if (vd.is_mesh) {
       BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
