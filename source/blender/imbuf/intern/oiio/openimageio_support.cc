@@ -309,22 +309,23 @@ bool imb_oiio_write(const WriteContext &ctx, const char *filepath, const ImageSp
 
   bool ok = false;
   if (ctx.flags & IB_mem) {
-    /* This memory proxy must remain alive for the full duration of the write. */
+    /* This memory proxy must remain alive until the ImageOutput is finally closed. */
     ImBufMemWriter writer(ctx.ibuf);
 
     imb_addencodedbufferImBuf(ctx.ibuf);
     out->set_ioproxy(&writer);
     if (out->open("", file_spec)) {
       ok = final_buf.write(out.get());
+      ok = ok && out->close();
     }
   }
   else {
     if (out->open(filepath, file_spec)) {
       ok = final_buf.write(out.get());
+      ok = ok && out->close();
     }
   }
 
-  out->close();
   return ok;
 }
 
