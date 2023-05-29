@@ -54,6 +54,12 @@ mat2 rot2_from_angle(float a)
   return mat2(c, -s, s, c);
 }
 
+ivec3 argmax(vec3 v)
+{
+  return ivec3(greaterThan(v, v.xxx)) + ivec3(greaterThan(v, v.yyy)) +
+         ivec3(greaterThan(v, v.zzz));
+}
+
 #define min3(a, b, c) min(a, min(b, c))
 #define min4(a, b, c, d) min(a, min3(b, c, d))
 #define min5(a, b, c, d, e) min(a, min4(b, c, d, e))
