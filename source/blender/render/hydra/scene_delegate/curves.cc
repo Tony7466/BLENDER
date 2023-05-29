@@ -1,0 +1,209 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright 2011-2022 Blender Foundation */
+
+#include <pxr/base/gf/vec2f.h>
+#include <pxr/imaging/hd/tokens.h>
+
+#include "BKE_customdata.h"
+#include "BKE_material.h"
+#include "BKE_object.h"
+
+#include "blender_scene_delegate.h"
+
+namespace blender::render::hydra {
+
+CurvesData::CurvesData(BlenderSceneDelegate *scene_delegate,
+                       Object *object,
+                       pxr::SdfPath const &prim_id)
+    : ObjectData(scene_delegate, object, prim_id)
+{
+}
+
+void CurvesData::init()
+{
+  ID_LOG(2, "");
+
+  Object *object = (Object *)id;
+  write_curves((Curves *)object->data);
+  write_transform();
+  write_material();
+}
+
+void CurvesData::insert()
+{
+  ID_LOG(2, "");
+  scene_delegate_->GetRenderIndex().InsertRprim(
+      pxr::HdPrimTypeTokens->basisCurves, scene_delegate_, prim_id);
+}
+
+void CurvesData::remove()
+{
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 2, "%s", prim_id.GetText());
+  scene_delegate_->GetRenderIndex().RemoveRprim(prim_id);
+}
+
+void CurvesData::update()
+{
+  Object *object = (Object *)id;
+  pxr::HdDirtyBits bits = pxr::HdChangeTracker::Clean;
+  if ((id->recalc & ID_RECALC_GEOMETRY) || (((ID *)object->data)->recalc & ID_RECALC_GEOMETRY)) {
+    init();
+    bits = pxr::HdChangeTracker::AllDirty;
+  }
+  if (id->recalc & ID_RECALC_SHADING) {
+    write_material();
+    bits |= pxr::HdChangeTracker::DirtyMaterialId | pxr::HdChangeTracker::DirtyDoubleSided;
+  }
+  if (id->recalc & ID_RECALC_TRANSFORM) {
+    write_transform();
+    bits |= pxr::HdChangeTracker::DirtyTransform;
+  }
+
+  if (bits == pxr::HdChangeTracker::Clean) {
+    return;
+  }
+
+  scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(prim_id, bits);
+  ID_LOG(2, "");
+}
+
+pxr::VtValue CurvesData::get_data(pxr::SdfPath const &id, pxr::TfToken const &key) const
+{
+  pxr::VtValue ret;
+  if (key == pxr::HdTokens->points) {
+    ret = vertices_;
+  }
+  else if (key == pxr::HdPrimvarRoleTokens->textureCoordinate) {
+    ret = uvs_;
+  }
+  else if (key == pxr::HdTokens->widths) {
+    ret = widths_;
+  }
+  return ret;
+}
+
+bool CurvesData::update_visibility()
+{
+  bool ret = ObjectData::update_visibility();
+  if (ret) {
+    scene_delegate_->GetRenderIndex().GetChangeTracker().MarkRprimDirty(
+        prim_id, pxr::HdChangeTracker::DirtyVisibility);
+    ID_LOG(2, "");
+  }
+  return ret;
+}
+
+pxr::HdBasisCurvesTopology CurvesData::curves_topology(pxr::SdfPath const &id) const
+{
+  return pxr::HdBasisCurvesTopology(pxr::HdTokens->linear,
+                                    pxr::TfToken(),
+                                    pxr::HdTokens->nonperiodic,
+                                    curve_vertex_counts_,
+                                    pxr::VtIntArray());
+}
+
+pxr::HdPrimvarDescriptorVector CurvesData::primvar_descriptors(
+    pxr::HdInterpolation interpolation) const
+{
+  pxr::HdPrimvarDescriptorVector primvars;
+  if (interpolation == pxr::HdInterpolationVertex) {
+    if (!vertices_.empty()) {
+      primvars.emplace_back(pxr::HdTokens->points, interpolation, pxr::HdPrimvarRoleTokens->point);
+    }
+  }
+  else if (interpolation == pxr::HdInterpolationFaceVarying) {
+    if (!uvs_.empty()) {
+      primvars.emplace_back(pxr::HdPrimvarRoleTokens->textureCoordinate,
+                            interpolation,
+                            pxr::HdPrimvarRoleTokens->textureCoordinate);
+    }
+  }
+  else if (interpolation == pxr::HdInterpolationConstant) {
+    if (!widths_.empty()) {
+      primvars.emplace_back(pxr::HdTokens->widths, interpolation, pxr::HdPrimvarRoleTokens->none);
+    }
+  }
+  return primvars;
+}
+
+pxr::SdfPath CurvesData::material_id() const
+{
+  if (!mat_data_) {
+    return pxr::SdfPath();
+  }
+  return mat_data_->prim_id;
+}
+
+void CurvesData::available_materials(std::set<pxr::SdfPath> &paths) const
+{
+  if (mat_data_ && !mat_data_->prim_id.IsEmpty()) {
+    paths.insert(mat_data_->prim_id);
+  }
+}
+
+void CurvesData::write_curves(Curves *curves)
+{
+  curve_vertex_counts_.clear();
+  widths_.clear();
+  vertices_.clear();
+
+  const float *radii = (const float *)CustomData_get_layer_named(
+      &curves->geometry.point_data, CD_PROP_FLOAT, "radius");
+  const float(*positions)[3] = (const float(*)[3])CustomData_get_layer_named(
+      &curves->geometry.point_data, CD_PROP_FLOAT3, "position");
+
+  vertices_.reserve(curves->geometry.curve_num);
+
+  for (int i = 0; i < curves->geometry.curve_num; i++) {
+    int first_point_index = *(curves->geometry.curve_offsets + i);
+    int num_points = *(curves->geometry.curve_offsets + i + 1) - first_point_index;
+    curve_vertex_counts_.push_back(num_points);
+
+    /* Set radius similar to Cycles if isn't set */
+    widths_.push_back(radii ? radii[i] : 0.01f);
+
+    for (int j = 0; j < num_points; j++) {
+      int ind = first_point_index + j;
+      vertices_.push_back(pxr::GfVec3f(positions[ind][0], positions[ind][1], positions[ind][2]));
+    }
+  }
+
+  write_uv_maps(curves);
+}
+
+void CurvesData::write_uv_maps(Curves *curves)
+{
+  uvs_.clear();
+
+  const float(*uvs)[2] = (const float(*)[2])CustomData_get_layer_named(
+      &curves->geometry.curve_data, CD_PROP_FLOAT2, "surface_uv_coordinate");
+  if (uvs) {
+    for (int i = 0; i < curves->geometry.curve_num; i++) {
+      uvs_.push_back(pxr::GfVec2f(uvs[i][0], uvs[i][1]));
+    }
+  }
+}
+
+void CurvesData::write_material()
+{
+  Object *object = (Object *)id;
+  Material *mat = nullptr;
+  if (BKE_object_material_count_eval(object) > 0) {
+    mat = BKE_object_material_get_eval(object, object->actcol);
+  }
+
+  if (!mat) {
+    mat_data_ = nullptr;
+    return;
+  }
+  pxr::SdfPath p_id = scene_delegate_->material_prim_id(mat);
+  mat_data_ = scene_delegate_->material_data(p_id);
+  if (!mat_data_) {
+    scene_delegate_->materials_[p_id] = std::make_unique<MaterialData>(scene_delegate_, mat, p_id);
+    mat_data_ = scene_delegate_->material_data(p_id);
+    mat_data_->init();
+    mat_data_->insert();
+  }
+}
+
+}  // namespace blender::render::hydra

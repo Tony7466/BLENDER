@@ -74,6 +74,8 @@ set(SRC
   scene_delegate/material.cc
   scene_delegate/mesh.h
   scene_delegate/mesh.cc
+  scene_delegate/curves.h
+  scene_delegate/curves.cc
   scene_delegate/mtlx_hydra_adapter.h
   scene_delegate/mtlx_hydra_adapter.cc
   scene_delegate/light.h

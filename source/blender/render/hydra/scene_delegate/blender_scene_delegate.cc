@@ -27,6 +27,13 @@ pxr::HdMeshTopology BlenderSceneDelegate::GetMeshTopology(pxr::SdfPath const &id
   return m_data->mesh_topology(id);
 }
 
+pxr::HdBasisCurvesTopology BlenderSceneDelegate::GetBasisCurvesTopology(pxr::SdfPath const &id)
+{
+  CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", id.GetText());
+  CurvesData *c_data = curves_data(id);
+  return c_data->curves_topology(id);
+};
+
 pxr::GfMatrix4d BlenderSceneDelegate::GetTransform(pxr::SdfPath const &id)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", id.GetText());
@@ -50,6 +57,10 @@ pxr::VtValue BlenderSceneDelegate::Get(pxr::SdfPath const &id, pxr::TfToken cons
   MeshData *m_data = mesh_data(id);
   if (m_data) {
     return m_data->get_data(id, key);
+  }
+  CurvesData *c_data = curves_data(id);
+  if (c_data) {
+    return c_data->get_data(id, key);
   }
   ObjectData *obj_data = object_data(id);
   if (obj_data) {
@@ -88,6 +99,10 @@ pxr::HdPrimvarDescriptorVector BlenderSceneDelegate::GetPrimvarDescriptors(
   if (m_data) {
     return m_data->primvar_descriptors(interpolation);
   }
+  CurvesData *c_data = curves_data(id);
+  if (c_data) {
+    return c_data->primvar_descriptors(interpolation);
+  }
   InstancerData *i_data = instancer_data(id);
   if (i_data) {
     return i_data->primvar_descriptors(interpolation);
@@ -98,7 +113,15 @@ pxr::HdPrimvarDescriptorVector BlenderSceneDelegate::GetPrimvarDescriptors(
 pxr::SdfPath BlenderSceneDelegate::GetMaterialId(pxr::SdfPath const &rprim_id)
 {
   CLOG_INFO(LOG_RENDER_HYDRA_SCENE, 3, "%s", rprim_id.GetText());
-  return mesh_data(rprim_id)->material_id(rprim_id);
+  MeshData *m_data = mesh_data(rprim_id);
+  if (m_data) {
+    return m_data->material_id(rprim_id);
+  }
+  CurvesData *c_data = curves_data(rprim_id);
+  if (c_data) {
+    return c_data->material_id();
+  }
+  return pxr::SdfPath();
 }
 
 pxr::VtValue BlenderSceneDelegate::GetMaterialResource(pxr::SdfPath const &id)
@@ -260,6 +283,11 @@ ObjectData *BlenderSceneDelegate::object_data(pxr::SdfPath const &id) const
 MeshData *BlenderSceneDelegate::mesh_data(pxr::SdfPath const &id) const
 {
   return dynamic_cast<MeshData *>(object_data(id));
+}
+
+CurvesData *BlenderSceneDelegate::curves_data(pxr::SdfPath const &id) const
+{
+  return dynamic_cast<CurvesData *>(object_data(id));
 }
 
 LightData *BlenderSceneDelegate::light_data(pxr::SdfPath const &id) const
@@ -548,6 +576,10 @@ void BlenderSceneDelegate::remove_unused_objects()
     MeshData *m_data = dynamic_cast<MeshData *>(it.second.get());
     if (m_data) {
       m_data->available_materials(available_materials);
+    }
+    CurvesData *c_data = dynamic_cast<CurvesData *>(it.second.get());
+    if (c_data) {
+      c_data->available_materials(available_materials);
     }
   }
   for (auto &it : instancers_) {

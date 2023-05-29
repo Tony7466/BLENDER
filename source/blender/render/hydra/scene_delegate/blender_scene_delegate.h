@@ -11,6 +11,7 @@
 
 #include "CLG_log.h"
 
+#include "curves.h"
 #include "instancer.h"
 #include "light.h"
 #include "mesh.h"
@@ -25,6 +26,7 @@ class Engine;
 
 class BlenderSceneDelegate : public pxr::HdSceneDelegate {
   friend ObjectData;   /* has access to instances */
+  friend CurvesData;   /* has access to materials */
   friend MeshData;     /* has access to materials */
   friend MaterialData; /* has access to objects and instancers */
 
@@ -40,6 +42,7 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
 
   /* Delegate methods */
   pxr::HdMeshTopology GetMeshTopology(pxr::SdfPath const &id) override;
+  pxr::HdBasisCurvesTopology GetBasisCurvesTopology(pxr::SdfPath const &id) override;
   pxr::GfMatrix4d GetTransform(pxr::SdfPath const &id) override;
   pxr::VtValue Get(pxr::SdfPath const &id, pxr::TfToken const &key) override;
   pxr::VtValue GetLightParamValue(pxr::SdfPath const &id, pxr::TfToken const &key) override;
@@ -76,6 +79,7 @@ class BlenderSceneDelegate : public pxr::HdSceneDelegate {
 
   ObjectData *object_data(pxr::SdfPath const &id) const;
   MeshData *mesh_data(pxr::SdfPath const &id) const;
+  CurvesData *curves_data(pxr::SdfPath const &id) const;
   LightData *light_data(pxr::SdfPath const &id) const;
   MaterialData *material_data(pxr::SdfPath const &id) const;
   InstancerData *instancer_data(pxr::SdfPath const &id, bool child_id = false) const;

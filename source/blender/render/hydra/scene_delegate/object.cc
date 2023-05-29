@@ -5,6 +5,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include "blender_scene_delegate.h"
+#include "curves.h"
 #include "light.h"
 #include "mesh.h"
 #include "object.h"
@@ -32,7 +33,9 @@ std::unique_ptr<ObjectData> ObjectData::create(BlenderSceneDelegate *scene_deleg
     case OB_MBALL:
       data = std::make_unique<MeshData>(scene_delegate, object, prim_id);
       break;
-
+    case OB_CURVES:
+      data = std::make_unique<CurvesData>(scene_delegate, object, prim_id);
+      break;
     case OB_LAMP:
       data = std::make_unique<LightData>(scene_delegate, object, prim_id);
       break;
@@ -49,6 +52,7 @@ bool ObjectData::is_supported(Object *object)
     case OB_MESH:
     case OB_SURF:
     case OB_FONT:
+    case OB_CURVES:
     case OB_CURVES_LEGACY:
     case OB_MBALL:
     case OB_LAMP:
