@@ -84,6 +84,7 @@ btTypedConstraint : public btTypedObject
 	btScalar m_breakingImpulseThreshold;
 	bool m_isEnabled;
 	bool m_needsFeedback;
+	bool m_isValid;
 	int m_overrideNumSolverIterations;
 
 	btTypedConstraint& operator=(btTypedConstraint& other)
@@ -196,6 +197,18 @@ public:
 	void setBreakingImpulseThreshold(btScalar threshold)
 	{
 		m_breakingImpulseThreshold = threshold;
+	}
+
+	bool isValid() const{
+		return m_isValid;
+	}
+
+	void invalidate(){
+		if(isValid()){
+			m_rbA.removeConstraintRef(this);
+			m_rbB.removeConstraintRef(this);
+			m_isValid = false;
+		}
 	}
 
 	bool isEnabled() const

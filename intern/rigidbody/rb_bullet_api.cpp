@@ -353,7 +353,7 @@ void RB_body_delete(rbRigidBody *object)
    * but since we delete everything when the world is rebult, we need to do it manually here */
   for (int i = body->getNumConstraintRefs() - 1; i >= 0; i--) {
     btTypedConstraint *con = body->getConstraintRef(i);
-    body->removeConstraintRef(con);
+    con->invalidate();
   }
 
   delete body;
@@ -1124,9 +1124,7 @@ void RB_constraint_delete(rbConstraint *con)
   /* If the constraint has disabled collisions between the bodies, those bodies
    * will have a pointer back to the constraint. We need to remove the constraint
    * from each body to avoid dereferencing the deleted constraint later (#91369) */
-  constraint->getRigidBodyA().removeConstraintRef(constraint);
-  constraint->getRigidBodyB().removeConstraintRef(constraint);
-
+  constraint->invalidate();
   delete constraint;
 }
 

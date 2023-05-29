@@ -530,6 +530,10 @@ void btDiscreteDynamicsWorld::removeCollisionObject(btCollisionObject* collision
 
 void btDiscreteDynamicsWorld::removeRigidBody(btRigidBody* body)
 {
+	for (int i = body->getNumConstraintRefs() - 1; i >= 0; i--) {
+		btTypedConstraint *con=body->getConstraintRef(i);
+		removeConstraint(con);
+	}
 	m_nonStaticRigidBodies.remove(body);
 	btCollisionWorld::removeCollisionObject(body);
 }
@@ -644,8 +648,7 @@ void btDiscreteDynamicsWorld::addConstraint(btTypedConstraint* constraint, bool 
 void btDiscreteDynamicsWorld::removeConstraint(btTypedConstraint* constraint)
 {
 	m_constraints.remove(constraint);
-	constraint->getRigidBodyA().removeConstraintRef(constraint);
-	constraint->getRigidBodyB().removeConstraintRef(constraint);
+	constraint->invalidate();
 }
 
 void btDiscreteDynamicsWorld::addAction(btActionInterface* action)
