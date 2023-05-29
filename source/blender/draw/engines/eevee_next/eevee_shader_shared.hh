@@ -306,17 +306,6 @@ static inline float film_filter_weight(float filter_radius, float sample_distanc
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Render passes
- * \{ */
-
-enum eRenderPassLayerIndex : uint32_t {
-  RENDER_PASS_LAYER_DIFFUSE_LIGHT = 0u,
-  RENDER_PASS_LAYER_SPECULAR_LIGHT = 1u,
-};
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name RenderBuffers
  * \{ */
 
@@ -326,15 +315,10 @@ enum eRenderPassLayerIndex : uint32_t {
 #define AOV_MAX 16
 
 struct AOVsInfoData {
-#ifdef __cplusplus
-  uint hash_value[AOV_MAX];
-  uint hash_color[AOV_MAX];
-#else
-  /* Workaround std140 packing rules.
-   * Access as `hash_value[i/4][i%4]`. */
-  uint4 hash_value[AOV_MAX / 4];
-  uint4 hash_color[AOV_MAX / 4];
-#endif
+  /* Use uint4 to workaround std140 packing rules.
+   * Only the x value is used. */
+  uint4 hash_value[AOV_MAX];
+  uint4 hash_color[AOV_MAX];
   /* Length of used data. */
   uint color_len;
   uint value_len;
@@ -361,7 +345,6 @@ struct RenderBuffersInfoData {
   int value_len;
   int shadow_id;
   int ambient_occlusion_id;
-  int4 _pad0;
 };
 BLI_STATIC_ASSERT_ALIGN(RenderBuffersInfoData, 16)
 

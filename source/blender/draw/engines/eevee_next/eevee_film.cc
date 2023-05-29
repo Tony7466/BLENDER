@@ -75,7 +75,7 @@ void Film::init_aovs()
   for (ViewLayerAOV *aov : aovs) {
     bool is_value = (aov->type == AOV_TYPE_VALUE);
     uint &index = is_value ? aovs_info.value_len : aovs_info.color_len;
-    uint &hash = is_value ? aovs_info.hash_value[index] : aovs_info.hash_color[index];
+    uint &hash = is_value ? aovs_info.hash_value[index].x : aovs_info.hash_color[index].x;
     hash = BLI_hash_string(aov->name);
     index++;
   }
@@ -86,14 +86,14 @@ float *Film::read_aov(ViewLayerAOV *aov)
   bool is_value = (aov->type == AOV_TYPE_VALUE);
   Texture &accum_tx = is_value ? value_accum_tx_ : color_accum_tx_;
 
-  Span<uint> aovs_hash(is_value ? aovs_info.hash_value : aovs_info.hash_color,
-                       is_value ? aovs_info.value_len : aovs_info.color_len);
+  Span<uint4> aovs_hash(is_value ? aovs_info.hash_value : aovs_info.hash_color,
+                        is_value ? aovs_info.value_len : aovs_info.color_len);
   /* Find AOV index. */
   uint hash = BLI_hash_string(aov->name);
   int aov_index = -1;
   int i = 0;
-  for (uint candidate_hash : aovs_hash) {
-    if (candidate_hash == hash) {
+  for (uint4 candidate_hash : aovs_hash) {
+    if (candidate_hash.x == hash) {
       aov_index = i;
       break;
     }
