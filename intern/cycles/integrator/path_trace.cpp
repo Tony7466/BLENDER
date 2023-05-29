@@ -310,6 +310,7 @@ void PathTrace::update_allocated_work_buffer_params()
 				 strides[work] = params.pass_stride;
 				 widths[work] = params.width;
                                });
+  /* Allocate the master buffer which the slices reference */
   for(int i = 0;i < num_works;i++) {
     path_trace_works_[i]->reset_master_buffer(widths[i]*strides[i], sizes[i]);
   }
