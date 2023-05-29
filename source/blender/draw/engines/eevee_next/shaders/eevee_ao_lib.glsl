@@ -1,6 +1,7 @@
 
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_geom_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_raytrace_lib.glsl)
 
 /* TODO(Miguel Pozo): Move somewhere else. */
@@ -78,11 +79,8 @@ OcclusionData unpack_occlusion_data(vec4 v)
 
 vec2 get_ao_noise(void)
 {
-  vec2 noise = utility_tx_fetch(utility_tx, gl_FragCoord.xy, UTIL_BLUE_NOISE_LAYER).xy;
-
-  /* Decorrelate noise from AA. */
-  /* TODO(@fclem): we should use a more general approach for more random number dimensions. */
-  noise = fract(noise * 6.1803402007);
+  vec2 uv_offset = sampling_rng_2D_get(SAMPLING_SHADOW_X) * vec2(UTIL_TEX_SIZE);
+  vec2 noise = utility_tx_fetch(utility_tx, gl_FragCoord.xy + uv_offset, UTIL_BLUE_NOISE_LAYER).xy;
   return noise;
 }
 

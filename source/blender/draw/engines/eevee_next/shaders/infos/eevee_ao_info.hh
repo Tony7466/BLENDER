@@ -8,7 +8,7 @@ GPU_SHADER_CREATE_INFO(eevee_raytrace_lib)
     .uniform_buf(RAYTRACE_BUF_SLOT, "RayTracingData", "rt_buf");
 
 GPU_SHADER_CREATE_INFO(eevee_ao_lib)
-    .additional_info("eevee_raytrace_lib", "eevee_utility_texture")
+    .additional_info("eevee_raytrace_lib", "eevee_sampling_data", "eevee_utility_texture")
     .sampler(AO_HORIZONS_TEX_SLOT, ImageType::FLOAT_2D, "horizons_tx")
     .uniform_buf(AO_BUF_SLOT, "AOData", "ao_buf");
 
