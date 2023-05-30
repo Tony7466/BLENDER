@@ -1,2 +1,2 @@
 Referenced by issue #95725, Changing render slot doesn't update displayed image
-Referenced by issue #108407, Outliner on Blender File when delete cause crash guide.
+Referenced by issue #108407, Regression: Crash on deleting shape key from Blender File view.
