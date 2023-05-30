@@ -86,6 +86,8 @@ class OptiXDevice : public CUDADevice {
   vector<unique_ptr<device_only_memory<char>>> delayed_free_bvh_memory;
   thread_mutex delayed_free_bvh_mutex;
 
+  unsigned int max_num_instances = 0xFFFFFFFF;
+
  public:
   OptiXDevice(const DeviceInfo &info, Stats &stats, Profiler &profiler);
   ~OptiXDevice();
