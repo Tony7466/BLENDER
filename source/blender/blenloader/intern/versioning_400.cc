@@ -31,11 +31,37 @@
 
 #include "versioning_common.h"
 
-// static CLG_LogRef LOG = {"blo.readfile.doversion"};
+/* Version VertexWeightEdit modifier to make existing weights exclusive of the threshold. */
+static void version_vertex_weight_edit(Main *bmain)
+{
+  /* Object */
+  LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+
+    if (ob->type != OB_MESH) {
+      continue;
+    }
+
+    /* Object modifiers */
+    LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
+      if (md->type == eModifierType_WeightVGEdit) {
+
+        WeightVGEditModifierData *wmd = (WeightVGEditModifierData *)md;
+        if (wmd->default_weight == wmd->add_threshold) {
+          wmd->add_threshold = nexttoward(wmd->add_threshold, 2.0);
+        }
+        if (wmd->default_weight == wmd->rem_threshold) {
+          wmd->rem_threshold = nexttoward(wmd->rem_threshold, -1.0);
+        }
+      }
+    }
+  }
+}
 
 void do_versions_after_linking_400(FileData * /*fd*/, Main *bmain)
 {
-  UNUSED_VARS(bmain);
+  if (!MAIN_VERSION_ATLEAST(bmain, 400, 4)) {
+    version_vertex_weight_edit(bmain);
+  }
 }
 
 static void version_mesh_legacy_to_struct_of_array_format(Mesh &mesh)
@@ -105,46 +131,13 @@ static void version_geometry_nodes_add_realize_instance_nodes(bNodeTree *ntree)
   }
 }
 
-/* Version VertexWeightEdit modifier to make existing weights exclusive of the threshold. */
-static void version_vertex_weight_edit(Main *bmain)
-{
-  /* Object */
-  LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
-    /* Object modifiers */
-    LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
-      if (md->type == eModifierType_WeightVGEdit && ob->type == OB_MESH) {
-
-        WeightVGEditModifierData *wmd = (WeightVGEditModifierData *)md;
-        Mesh *mesh = static_cast<Mesh *>(ob->data);
-
-        MDeformVert *dvert = BKE_mesh_deform_verts_for_write(mesh);
-        const int defgrp_index = BKE_id_defgroup_name_index(&mesh->id, wmd->defgrp_name);
-
-        // For each weight, check against the threshold
-        for (int i = 0; i < mesh->totvert; i++) {
-          MDeformWeight *def_weight = BKE_defvert_find_index(&dvert[i], defgrp_index);
-
-          if (def_weight->weight == wmd->add_threshold) {
-            def_weight->weight = nexttoward(def_weight->weight, 0.0);
-          }
-          if (def_weight->weight == wmd->rem_threshold) {
-            def_weight->weight = nexttoward(def_weight->weight, 1.0);
-          }
-        }
-      }
-    }
-  }
-}
-
 void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_ATLEAST(bmain, 400, 1)) {
     LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
       version_mesh_legacy_to_struct_of_array_format(*mesh);
-      // mesh_test(mesh);
     }
     version_movieclips_legacy_camera_object(bmain);
-    version_vertex_weight_edit(bmain);
   }
 
   if (!MAIN_VERSION_ATLEAST(bmain, 400, 2)) {
@@ -160,7 +153,6 @@ void blo_do_versions_400(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
       }
     }
   }
-
   /**
    * Versioning code until next subversion bump goes here.
    *
