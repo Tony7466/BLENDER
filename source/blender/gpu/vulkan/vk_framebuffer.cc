@@ -80,7 +80,7 @@ VkViewport VKFrameBuffer::vk_viewport_get() const
   viewport.y = viewport_rect[1];
   viewport.width = viewport_rect[2];
   viewport.height = viewport_rect[3];
-  viewport.minDepth = 0.0f;
+  viewport.minDepth = -1.0f;
   viewport.maxDepth = 1.0f;
 
   /*
