@@ -114,13 +114,13 @@ static void path_select_params_from_op(wmOperator *op, struct PathSelectParams *
 /* callbacks */
 static bool verttag_filter_cb(BMLoop *l, void *user_data_v)
 {
-  struct UserData_UV *user_data = user_data_v;
+  struct UserData_UV *user_data = static_cast<UserData_UV *>(user_data_v);
   return uvedit_face_visible_test(user_data->scene, l->f);
 }
 static bool verttag_test_cb(BMLoop *l, void *user_data_v)
 {
   /* All connected loops are selected or we return false. */
-  struct UserData_UV *user_data = user_data_v;
+  struct UserData_UV *user_data = static_cast<UserData_UV *>(user_data_v);
   const Scene *scene = user_data->scene;
   const int cd_loop_uv_offset = user_data->offsets.uv;
   const float *luv = BM_ELEM_CD_GET_FLOAT_P(l, cd_loop_uv_offset);
@@ -140,7 +140,7 @@ static bool verttag_test_cb(BMLoop *l, void *user_data_v)
 }
 static void verttag_set_cb(BMLoop *l, bool val, void *user_data_v)
 {
-  struct UserData_UV *user_data = user_data_v;
+  struct UserData_UV *user_data = static_cast<UserData_UV *>(user_data_v);
   const Scene *scene = user_data->scene;
   BMEditMesh *em = user_data->em;
   const uint cd_loop_uv_offset = user_data->offsets.uv;
@@ -175,12 +175,12 @@ static int mouse_mesh_uv_shortest_path_vert(Scene *scene,
       .offsets = offsets,
   };
 
-  const struct BMCalcPathUVParams params = {
-      .use_topology_distance = op_params->use_topology_distance,
-      .use_step_face = op_params->use_face_step,
-      .aspect_y = aspect_y,
-      .cd_loop_uv_offset = offsets.uv,
+  struct BMCalcPathUVParams params {
   };
+  params.use_topology_distance = op_params->use_topology_distance;
+  params.use_step_face = op_params->use_face_step;
+  params.aspect_y = aspect_y;
+  params.cd_loop_uv_offset = offsets.uv;
 
   LinkNode *path = NULL;
   bool is_path_ordered = false;
@@ -221,7 +221,7 @@ static int mouse_mesh_uv_shortest_path_vert(Scene *scene,
       {
         verttag_set_cb((BMLoop *)node->link, !all_set, &user_data);
         if (is_path_ordered) {
-          l_dst_last = node->link;
+          l_dst_last = static_cast<BMLoop *>(node->link);
         }
       }
     } while ((void)depth++, (node = node->next));
@@ -249,13 +249,13 @@ static int mouse_mesh_uv_shortest_path_vert(Scene *scene,
 /* callbacks */
 static bool edgetag_filter_cb(BMLoop *l, void *user_data_v)
 {
-  struct UserData_UV *user_data = user_data_v;
+  struct UserData_UV *user_data = static_cast<UserData_UV *>(user_data_v);
   return uvedit_face_visible_test(user_data->scene, l->f);
 }
 static bool edgetag_test_cb(BMLoop *l, void *user_data_v)
 {
   /* All connected loops (UV) are selected or we return false. */
-  struct UserData_UV *user_data = user_data_v;
+  struct UserData_UV *user_data = static_cast<UserData_UV *>(user_data_v);
   const Scene *scene = user_data->scene;
   BMIter iter;
   BMLoop *l_iter;
@@ -272,7 +272,7 @@ static bool edgetag_test_cb(BMLoop *l, void *user_data_v)
 }
 static void edgetag_set_cb(BMLoop *l, bool val, void *user_data_v)
 {
-  struct UserData_UV *user_data = user_data_v;
+  struct UserData_UV *user_data = static_cast<UserData_UV *>(user_data_v);
   const Scene *scene = user_data->scene;
   BMEditMesh *em = user_data->em;
   uvedit_edge_select_set_with_sticky(scene, em, l, val, false, user_data->offsets);
@@ -296,12 +296,11 @@ static int mouse_mesh_uv_shortest_path_edge(Scene *scene,
       .offsets = offsets,
   };
 
-  const struct BMCalcPathUVParams params = {
-      .use_topology_distance = op_params->use_topology_distance,
-      .use_step_face = op_params->use_face_step,
-      .aspect_y = aspect_y,
-      .cd_loop_uv_offset = offsets.uv,
-  };
+  struct BMCalcPathUVParams params = {};
+  params.use_topology_distance = op_params->use_topology_distance;
+  params.use_step_face = op_params->use_face_step;
+  params.aspect_y = aspect_y;
+  params.cd_loop_uv_offset = offsets.uv;
 
   LinkNode *path = NULL;
   bool is_path_ordered = false;
@@ -342,7 +341,7 @@ static int mouse_mesh_uv_shortest_path_edge(Scene *scene,
       {
         edgetag_set_cb((BMLoop *)node->link, !all_set, &user_data);
         if (is_path_ordered) {
-          l_dst_last = node->link;
+          l_dst_last = static_cast<BMLoop *>(node->link);
         }
       }
     } while ((void)depth++, (node = node->next));
@@ -370,13 +369,13 @@ static int mouse_mesh_uv_shortest_path_edge(Scene *scene,
 /* callbacks */
 static bool facetag_filter_cb(BMFace *f, void *user_data_v)
 {
-  struct UserData_UV *user_data = user_data_v;
+  struct UserData_UV *user_data = static_cast<UserData_UV *>(user_data_v);
   return uvedit_face_visible_test(user_data->scene, f);
 }
 static bool facetag_test_cb(BMFace *f, void *user_data_v)
 {
   /* All connected loops are selected or we return false. */
-  struct UserData_UV *user_data = user_data_v;
+  struct UserData_UV *user_data = static_cast<UserData_UV *>(user_data_v);
   const Scene *scene = user_data->scene;
   BMIter iter;
   BMLoop *l_iter;
@@ -389,7 +388,7 @@ static bool facetag_test_cb(BMFace *f, void *user_data_v)
 }
 static void facetag_set_cb(BMFace *f, bool val, void *user_data_v)
 {
-  struct UserData_UV *user_data = user_data_v;
+  struct UserData_UV *user_data = static_cast<UserData_UV *>(user_data_v);
   const Scene *scene = user_data->scene;
   BMEditMesh *em = user_data->em;
   uvedit_face_select_set_with_sticky(scene, em, f, val, false, user_data->offsets);
@@ -413,12 +412,11 @@ static int mouse_mesh_uv_shortest_path_face(Scene *scene,
       .offsets = offsets,
   };
 
-  const struct BMCalcPathUVParams params = {
-      .use_topology_distance = op_params->use_topology_distance,
-      .use_step_face = op_params->use_face_step,
-      .aspect_y = aspect_y,
-      .cd_loop_uv_offset = offsets.uv,
-  };
+  struct BMCalcPathUVParams params = {};
+  params.use_topology_distance = op_params->use_topology_distance;
+  params.use_step_face = op_params->use_face_step;
+  params.aspect_y = aspect_y;
+  params.cd_loop_uv_offset = offsets.uv;
 
   LinkNode *path = NULL;
   bool is_path_ordered = false;
@@ -459,7 +457,7 @@ static int mouse_mesh_uv_shortest_path_face(Scene *scene,
       {
         facetag_set_cb((BMFace *)node->link, !all_set, &user_data);
         if (is_path_ordered) {
-          f_dst_last = node->link;
+          f_dst_last = static_cast<BMFace *>(node->link);
         }
       }
     } while ((void)depth++, (node = node->next));
@@ -534,11 +532,12 @@ static bool uv_shortest_path_pick_ex(Scene *scene,
     }
 
     if (ts->uv_flag & UV_SYNC_SELECTION) {
-      DEG_id_tag_update(obedit->data, ID_RECALC_SELECT);
+      DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
     }
     else {
       Object *obedit_eval = DEG_get_evaluated_object(depsgraph, obedit);
-      BKE_mesh_batch_cache_dirty_tag(obedit_eval->data, BKE_MESH_BATCH_DIRTY_UVEDIT_SELECT);
+      BKE_mesh_batch_cache_dirty_tag(static_cast<Mesh *>(obedit_eval->data),
+                                     BKE_MESH_BATCH_DIRTY_UVEDIT_SELECT);
     }
     /* Only for region redraw. */
     WM_main_add_notifier(NC_GEOM | ND_SELECT, obedit->data);
@@ -786,9 +785,9 @@ void UV_OT_shortest_path_pick(wmOperatorType *ot)
 
   /* use for redo */
   prop = RNA_def_int(ot->srna, "object_index", -1, -1, INT_MAX, "", "", 0, INT_MAX);
-  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  RNA_def_property_flag(prop, PropertyFlag(PROP_HIDDEN | PROP_SKIP_SAVE));
   prop = RNA_def_int(ot->srna, "index", -1, -1, INT_MAX, "", "", 0, INT_MAX);
-  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  RNA_def_property_flag(prop, PropertyFlag(PROP_HIDDEN | PROP_SKIP_SAVE));
 }
 
 /** \} */
