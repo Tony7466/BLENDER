@@ -477,6 +477,9 @@ class NodeTreeMainUpdater {
         result.interface_changed = true;
       }
     }
+    else if (ELEM(ntree.type, NTREE_SHADER, NTREE_COMPOSIT, NTREE_TEXTURE)) {
+      this->reset_socket_shapes(ntree);
+    }
 
     result.output_changed = this->check_if_output_changed(ntree);
 
@@ -702,6 +705,13 @@ class NodeTreeMainUpdater {
       return;
     }
     blender::bke::node_preview_remove_unused(&ntree);
+  }
+
+  void reset_socket_shapes(bNodeTree &ntree)
+  {
+    for (bNodeSocket *socket : ntree.all_sockets()) {
+      socket->display_shape = SOCK_DISPLAY_SHAPE_CIRCLE;
+    }
   }
 
   void propagate_runtime_flags(const bNodeTree &ntree)
