@@ -1177,16 +1177,13 @@ static void prepare_simulation_states_for_evaluation(const NodesModifierData &nm
       /* Reset cached data if necessary. */
       const bke::sim::StatesAroundFrame sim_states =
           nmd_orig.simulation_cache->get_states_around_frame(current_frame);
-      const float old_fps = nmd_orig.simulation_cache->last_fps_;
-      if ((nmd_orig.simulation_cache->cache_state() == bke::sim::CacheState::Invalid &&
+      if (nmd_orig.simulation_cache->cache_state() == bke::sim::CacheState::Invalid &&
           (current_frame == start_frame ||
            (sim_states.current == nullptr && sim_states.prev == nullptr &&
-            sim_states.next != nullptr))) ||
-            (old_fps && (!compare_ff(FPS, old_fps, 1e-6))))
+            sim_states.next != nullptr)))
       {
         nmd_orig.simulation_cache->reset();
       }
-      nmd_orig.simulation_cache->last_fps_ = FPS;
     }
     /* Decide if a new simulation state should be created in this evaluation. */
     const bke::sim::StatesAroundFrame sim_states =
