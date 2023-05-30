@@ -253,9 +253,9 @@ TEST(index_mask, ComplementPerformance)
 {
   RandomNumberGenerator rng;
 
-  const int64_t mask_size = 100000;
+  const int64_t mask_size = 1000000;
   const int64_t iter_num = 100;
-  const int64_t universe_size = 110000;
+  const int64_t universe_size = 1100000;
 
   for (const int64_t iter : IndexRange(iter_num)) {
     const float probability = float(iter) / float(iter_num);
