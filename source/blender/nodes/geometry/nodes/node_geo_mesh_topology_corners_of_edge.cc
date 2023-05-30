@@ -19,14 +19,14 @@ static void node_declare(NodeDeclarationBuilder &b)
       .supports_field()
       .hide_value()
       .description(
-          N_("Values used to sort corners attached to the edge. Uses indices by default"));
+          N_("Values that sort the corners attached to the edge"));
   b.add_input<decl::Int>(N_("Sort Index"))
       .min(0)
       .supports_field()
       .description(N_("Which of the sorted corners to output"));
   b.add_output<decl::Int>(N_("Corner Index"))
       .field_source_reference_all()
-      .description(N_("A corner connected to the face, chosen by the sort index"));
+      .description(N_("A corner of the input edge in its face's winding order, chosen by the sort index"));
   b.add_output<decl::Int>(N_("Total"))
       .field_source()
       .reference_pass({0})
@@ -104,7 +104,7 @@ class CornersOfEdgeInput final : public bke::MeshFieldInput {
         if (use_sorting) {
           /* Retrieve the connected edge indices as 64 bit integers for #materialize_compressed. */
           corner_indices.reinitialize(corners.size());
-          conedge_span(corners, corner_indices);
+          convert_span(corners, corner_indices);
 
           /* Retrieve a compressed array of weights for each edge. */
           sort_weights.reinitialize(corners.size());
