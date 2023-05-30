@@ -507,7 +507,7 @@ void SEQ_retiming_handle_speed_set(const Scene *scene,
   const SeqRetimingHandle *handle_prev = handle - 1;
   const float speed_fac = 100.0f / speed;
 
-  const int frame_index_max = seq->len - 1;
+  const int frame_index_max = seq->len;
   const int frame_retimed_prev = round_fl_to_int(handle_prev->retiming_factor * frame_index_max);
   const int frame_retimed = round_fl_to_int(handle->retiming_factor * frame_index_max);
 
