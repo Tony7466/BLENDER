@@ -66,6 +66,7 @@ class ReflectionProbeModule {
 
   Vector<ReflectionProbe> cubemaps_;
   Texture cubemaps_tx_ = {"Probes"};
+  Texture dummy_tx_ = {"DummyProbes"};
 
  public:
   ReflectionProbeModule(Instance &instance) : instance_(instance) {}
@@ -78,6 +79,11 @@ class ReflectionProbeModule {
   template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)
   {
     pass->bind_texture(REFLECTION_PROBE_TEX_SLOT, cubemaps_tx_);
+  }
+
+  template<typename T> void bind_dummy_resources(draw::detail::PassBase<T> *pass)
+  {
+    pass->bind_texture(REFLECTION_PROBE_TEX_SLOT, dummy_tx_);
   }
 
  private:

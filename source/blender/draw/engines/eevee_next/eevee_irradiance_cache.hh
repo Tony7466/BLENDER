@@ -44,7 +44,7 @@ class IrradianceBake {
   /** Create linked list of surfel to emulated raycast. */
   PassSimple surfel_ray_build_ps_ = {"RayBuild"};
   /** Propagate light from surfel to surfel. */
-  PassSimple surfel_light_propagate_ps_ = {"LightPropagate"};
+  PassSimple surfel_light_propagate_ps_[2] = {{"LightPropagateFirstBounce"}, {"LightPropagate"}};
   /** Start of a light bounce. Accumulate light from previous propagation. */
   PassSimple surfel_light_bounce_ps_ = {"LightBounce"};
   /** Capture surfel lighting to irradiance samples. */
@@ -108,7 +108,7 @@ class IrradianceBake {
   /** Create a surfel lists to emulate ray-casts for the current sample random direction. */
   void raylists_build();
   /** Propagate light from surfel to surfel in a random direction over the sphere. */
-  void propagate_light();
+  void propagate_light(bool first_bounce);
   /** Store surfel irradiance inside the irradiance grid samples. */
   void irradiance_capture();
   /** Accumulate light inside `surfel.radiance_bounce` to `surfel.radiance`. */

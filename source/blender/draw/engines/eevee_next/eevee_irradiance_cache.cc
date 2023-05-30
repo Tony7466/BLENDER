@@ -443,15 +443,20 @@ void IrradianceBake::sync()
       sub.dispatch(&dispatch_per_list_);
     }
   }
-  {
-    PassSimple &pass = surfel_light_propagate_ps_;
+  for (int pass_index : IndexRange(2)) {
+    PassSimple &pass = surfel_light_propagate_ps_[pass_index];
     pass.init();
     {
       PassSimple::Sub &sub = pass.sub("RayEval");
       sub.shader_set(inst_.shaders.static_shader_get(SURFEL_RAY));
       sub.bind_ssbo(SURFEL_BUF_SLOT, &surfels_buf_);
       sub.bind_ssbo(CAPTURE_BUF_SLOT, &capture_info_buf_);
-      inst_.reflection_probes.bind_resources(&sub);
+      if (pass_index == 0) {
+        inst_.reflection_probes.bind_resources(&sub);
+      }
+      else {
+        inst_.reflection_probes.bind_dummy_resources(&sub);
+      }
       sub.barrier(GPU_BARRIER_SHADER_STORAGE);
       sub.dispatch(&dispatch_per_surfel_);
     }
@@ -722,9 +727,10 @@ void IrradianceBake::raylists_build()
   inst_.manager->submit(surfel_ray_build_ps_, ray_view_);
 }
 
-void IrradianceBake::propagate_light()
+void IrradianceBake::propagate_light(bool first_bounce)
 {
-  inst_.manager->submit(surfel_light_propagate_ps_, ray_view_);
+  PassSimple &pass = surfel_light_propagate_ps_[first_bounce ? 0 : 1];
+  inst_.manager->submit(pass, ray_view_);
 }
 
 void IrradianceBake::irradiance_capture()

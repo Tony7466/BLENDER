@@ -24,6 +24,11 @@ void ReflectionProbeModule::init()
                                    NULL,
                                    12);
     GPU_texture_mipmap_mode(cubemaps_tx_, true, true);
+
+    dummy_tx_.ensure_cube_array(
+        GPU_RGBA16F, 1, 1, GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT, NULL, 1);
+    dummy_tx_.clear(float4(0.0f));
+    GPU_texture_mipmap_mode(dummy_tx_, false, false);
   }
 }
 

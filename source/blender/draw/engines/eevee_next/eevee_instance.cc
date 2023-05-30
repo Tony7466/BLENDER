@@ -494,6 +494,8 @@ void Instance::light_bake_irradiance(
   for (int bounce = 0; bounce <= bounce_len; bounce++) {
     /* Last iteration only captures lighting. */
     const bool is_last_bounce = (bounce == bounce_len);
+    /* First bounce includes world lighting. */
+    const bool is_first_bounce = bounce == 0;
 
     sampling.init(scene);
     while (!sampling.finished()) {
@@ -505,7 +507,7 @@ void Instance::light_bake_irradiance(
 
           irradiance_cache.bake.raylists_build();
           if (!is_last_bounce) {
-            irradiance_cache.bake.propagate_light();
+            irradiance_cache.bake.propagate_light(is_first_bounce);
           }
           if (is_last_bounce) {
             irradiance_cache.bake.irradiance_capture();
