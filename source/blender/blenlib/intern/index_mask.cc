@@ -398,9 +398,16 @@ IndexMask IndexMask::complement(const IndexRange universe, IndexMaskMemory &memo
 
   if (!this->to_range()) {
     const int64_t segments_num = this->segments_num();
+
+    constexpr int64_t min_grain_size = 16;
+    constexpr int64_t max_grain_size = 4096;
+    const int64_t threads_num = BLI_system_thread_count();
+    const int64_t grain_size = std::clamp(
+        segments_num / threads_num, min_grain_size, max_grain_size);
+
     ParallelSegmentsCollector segments_collector;
     threading::parallel_for(
-        IndexRange(segments_num).drop_back(1), 512, [&](const IndexRange range) {
+        IndexRange(segments_num).drop_back(1), grain_size, [&](const IndexRange range) {
           ParallelSegmentsCollector::LocalData &local_data =
               segments_collector.data_by_thread.local();
 
