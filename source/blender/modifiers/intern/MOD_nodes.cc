@@ -67,6 +67,7 @@
 
 #include "BLT_translation.h"
 
+#include "WM_api.h"
 #include "WM_types.h"
 
 #include "RNA_access.h"
@@ -100,6 +101,10 @@ namespace lf = blender::fn::lazy_function;
 namespace geo_log = blender::nodes::geo_eval_log;
 
 namespace blender {
+
+// XXX This is nasty, but modifier (sub)panel types are not registered with WM_panel_type_add
+// Find better solution
+static PanelType *socket_category_panel_type = nullptr;
 
 static void initData(ModifierData *md)
 {
@@ -1841,6 +1846,33 @@ static void draw_property_for_output_socket(const bContext &C,
   add_attribute_search_button(C, row, nmd, md_ptr, rna_path_attribute_name, socket, true);
 }
 
+static void subpanel_draw(const bContext *C, uiLayout *layout)
+{
+  //    char pt_idname[BKE_ST_MAXNAME];
+  //    SNPRINTF(pt_idname, "%s_%s", panel->type->idname, "socket_category");
+  //    PanelType *pt = WM_paneltype_find(pt_idname, true);
+  PanelType *pt = socket_category_panel_type;
+  if (pt == nullptr) {
+    // TODO error message
+    return;
+  }
+
+  //    if (pt->poll && (pt->poll(C, pt) == false)) {
+  //      return;
+  //    }
+
+  if (pt->draw_header && !(pt->flag & PANEL_TYPE_NO_HEADER)) {
+    uiLayout *row = uiLayoutRow(layout, true);
+    Panel subpanel{};
+    subpanel.type = pt;
+    subpanel.layout = row;
+    subpanel.flag = 0;
+    pt->draw_header(C, &subpanel);
+  }
+
+  UI_paneltype_draw(const_cast<bContext *>(C), pt, layout);
+}
+
 static void panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
@@ -1887,6 +1919,9 @@ static void panel_draw(const bContext *C, Panel *panel)
       }
     }
   }
+
+  subpanel_draw(C, layout);
+  subpanel_draw(C, layout);
 
   modifier_panel_end(layout, ptr);
 }
@@ -1988,6 +2023,32 @@ static void internal_dependencies_panel_draw(const bContext * /*C*/, Panel *pane
   }
 }
 
+static bool socket_category_panel_poll(const bContext * /*C*/, PanelType *panel_type)
+{
+  /* Always hidden, panel is drawn explicitly. */
+  return false;
+}
+
+static void socket_category_panel_draw_header(const bContext * /*C*/, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  //  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
+  //  NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
+
+  uiItemL(layout, "Hello!", ICON_NONE);
+}
+
+static void socket_category_panel_draw(const bContext * /*C*/, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  //  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
+  //  NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
+
+  uiItemL(layout, "World", ICON_NONE);
+}
+
 static void panelRegister(ARegionType *region_type)
 {
   using namespace blender;
@@ -2004,6 +2065,14 @@ static void panelRegister(ARegionType *region_type)
                              nullptr,
                              internal_dependencies_panel_draw,
                              panel_type);
+  socket_category_panel_type = modifier_subpanel_register_ex(region_type,
+                                                             "socket_category",
+                                                             N_("Socket Category"),
+                                                             socket_category_panel_poll,
+                                                             socket_category_panel_draw_header,
+                                                             socket_category_panel_draw,
+                                                             panel_type,
+                                                             0);
 }
 
 static void blendWrite(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
