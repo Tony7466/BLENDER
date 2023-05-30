@@ -328,7 +328,7 @@ static bool pchan_autoik_adjust(bPoseChannel *pchan, short chainlen)
 
   /* check if pchan has ik-constraint */
   for (con = pchan->constraints.first; con; con = con->next) {
-    if ((con->flag & (CONSTRAINT_DISABLE | CONSTRAINT_OFF)){
+    if (con->flag & (CONSTRAINT_DISABLE | CONSTRAINT_OFF)) {
       continue;
     }
     if (con->type == CONSTRAINT_TYPE_KINEMATIC && (con->enforce != 0.0f)) {
