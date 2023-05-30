@@ -271,7 +271,7 @@ RenderBuffers::~RenderBuffers()
 }
 
 void RenderBuffers::reset(size_t width, size_t height) {
-      buffer.alloc(width, height, 0, true);
+  buffer.alloc(width, height);//, 0, true);
 }
 
 void RenderBuffers::reset(const BufferParams &params_, size_t offset, RenderBuffers *buffers)
@@ -282,12 +282,12 @@ void RenderBuffers::reset(const BufferParams &params_, size_t offset, RenderBuff
 
   if (offset == -1) {
     /* Allocate the buffer */
-    size_t new_size = buffer.memory_elements_size(params.width * params.pass_stride *
-                                                  params.height);
-    if (buffer.size() < new_size) {
+    // size_t new_size = buffer.memory_elements_size(params.width * params.pass_stride *
+    //                                               params.height);
+    // if (buffer.size() == new_size) {
       /* re-allocate buffer */
-      buffer.alloc(params.width * params.pass_stride, params.height, true);
-    }
+    buffer.alloc(params.width * params.pass_stride, params.height);//, 0, true);
+    // }
   }
   else {
     /* Use a slice of the master buffer */
@@ -302,9 +302,9 @@ void RenderBuffers::reset(const BufferParams &params_)
   params = params_;
 
   /* re-allocate buffer */
-  if(buffer.size() < buffer.memory_elements_size(params.width*params.pass_stride*params.height)) {
+  //if(buffer.size() < buffer.memory_elements_size(params.width*params.pass_stride*params.height)) {
     buffer.alloc(params.width * params.pass_stride, params.height, 0, true);
-  }
+    //}
 }
 
 void RenderBuffers::zero()
@@ -314,12 +314,12 @@ void RenderBuffers::zero()
 
 bool RenderBuffers::copy_from_device()
 {
-  //DCHECK(params.pass_stride != -1);
+  DCHECK(params.pass_stride != -1);
 
   if (!buffer.device_pointer)
     return false;
 
-  buffer.copy_from_device(); //0, params.width * params.pass_stride, params.height);
+  buffer.copy_from_device(0, params.width * params.pass_stride, params.height);
 
   return true;
 }

@@ -41,7 +41,6 @@ class PathTraceWorkGPU : public PathTraceWork {
                                int num_samples) override;
   virtual void destroy_gpu_resources(PathTraceDisplay *display) override;
 
-  virtual bool synchronize() override;
   virtual bool copy_master_render_buffers_from_device_impl() override;
   virtual bool copy_render_buffers_from_device_impl() override;
   virtual bool copy_master_render_buffers_to_device_impl() override;

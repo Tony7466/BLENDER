@@ -305,8 +305,7 @@ void PathTraceWorkGPU::render_samples_impl(RenderStatistics &statistics,
    * become busy after adding new tiles). This is especially important for the shadow catcher which
    * schedules work in halves of available number of paths. */
   work_tile_scheduler_.set_max_num_path_states(max_num_paths_ / 8);
-  work_tile_scheduler_.set_accelerated_rt(
-      (device_->get_bvh_layout_mask(device_scene_->data.kernel_features) & BVH_LAYOUT_OPTIX) != 0);
+  work_tile_scheduler_.set_accelerated_rt((device_scene_->data.kernel_features & KERNEL_FEATURE_NODE_RAYTRACE) != 0);
   work_tile_scheduler_.reset(effective_buffer_params_,
                              start_sample,
                              samples_num,
@@ -1142,11 +1141,6 @@ bool PathTraceWorkGPU::copy_master_render_buffers_from_device_impl()
   queue_->copy_from_device(master_buffers_->buffer);
 
   /* Synchronize so that the CPU-side buffer is available at the exit of this function. */
-  return queue_->synchronize();
-}
-
-
-bool PathTraceWorkGPU::synchronize() {
   return queue_->synchronize();
 }
 
