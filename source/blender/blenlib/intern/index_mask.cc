@@ -325,19 +325,19 @@ struct ParallelSegmentsCollector {
 /**
  * Convert a range to potentially multiple index mask segments.
  */
-static void range_to_segments(const IndexRange range, Vector<IndexMaskSegment, 16> &segments)
+static void range_to_segments(const IndexRange range, Vector<IndexMaskSegment, 16> &r_segments)
 {
   const Span<int16_t> static_indices = get_static_indices_array();
   for (int64_t start = 0; start < range.size(); start += max_segment_size) {
     const int64_t size = std::min(max_segment_size, range.size() - start);
-    segments.append_as(range.start() + start, static_indices.take_front(size));
+    r_segments.append_as(range.start() + start, static_indices.take_front(size));
   }
 }
 
 static void inverted_indices_to_segments(const IndexMaskSegment segment,
                                          const int64_t range_threshold,
                                          LinearAllocator<> &allocator,
-                                         Vector<IndexMaskSegment, 16> &segments)
+                                         Vector<IndexMaskSegment, 16> &r_segments)
 {
   const int64_t offset = segment.offset();
   const Span<int16_t> static_indices = get_static_indices_array();
@@ -355,7 +355,7 @@ static void inverted_indices_to_segments(const IndexMaskSegment segment,
     }
     MutableSpan<int16_t> offset_indices = allocator.allocate_array<int16_t>(inverted_index_count);
     offset_indices.copy_from(Span(inverted_indices_array).take_front(inverted_index_count));
-    segments.append_as(offset, offset_indices);
+    r_segments.append_as(offset, offset_indices);
     inverted_index_count = 0;
   };
 
@@ -371,7 +371,7 @@ static void inverted_indices_to_segments(const IndexMaskSegment segment,
     const int16_t gap_size = next - gap_first;
     if (gap_size > range_threshold) {
       finish_indices();
-      segments.append_as(offset + gap_first, static_indices.take_front(gap_size));
+      r_segments.append_as(offset + gap_first, static_indices.take_front(gap_size));
     }
     else {
       for (const int64_t i : IndexRange(gap_size)) {
