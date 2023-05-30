@@ -49,7 +49,7 @@ static void test_buffer_texture()
   /* Check if compute has been done. */
   GPU_memory_barrier(GPU_BARRIER_BUFFER_UPDATE);
 
-  /* Download the index buffer. */
+  /* Download the storage buffer. */
   float4 read_data;
   GPU_storagebuf_read(ssbo, read_data);
   EXPECT_EQ(read_data, value);

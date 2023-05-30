@@ -217,7 +217,8 @@ struct FilmData {
   int2 offset;
   /** Extent used by the render buffers when rendering the main views. */
   int2 render_extent;
-  /** Sub-pixel offset applied to the window matrix.
+  /**
+   * Sub-pixel offset applied to the window matrix.
    * NOTE: In final film pixel unit.
    * NOTE: Positive values makes the view translate in the negative axes direction.
    * NOTE: The origin is the center of the lower left film pixel of the area covered by a render
@@ -354,7 +355,7 @@ enum eVelocityStep : uint32_t {
 };
 
 struct VelocityObjectIndex {
-  /** Offset inside #VelocityObjectBuf for each timestep. Indexed using eVelocityStep. */
+  /** Offset inside #VelocityObjectBuf for each time-step. Indexed using eVelocityStep. */
   packed_int3 ofs;
   /** Temporary index to copy this to the #VelocityIndexBuf. */
   uint resource_id;

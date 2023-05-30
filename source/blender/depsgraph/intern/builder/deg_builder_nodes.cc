@@ -63,6 +63,7 @@
 #include "BKE_fcurve_driver.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_idprop.h"
 #include "BKE_idtype.h"
 #include "BKE_image.h"
@@ -108,6 +109,7 @@
 #include "intern/builder/deg_builder_key.h"
 #include "intern/builder/deg_builder_rna.h"
 #include "intern/depsgraph.h"
+#include "intern/depsgraph_light_linking.h"
 #include "intern/depsgraph_tag.h"
 #include "intern/depsgraph_type.h"
 #include "intern/eval/deg_eval_copy_on_write.h"
@@ -538,6 +540,7 @@ void DepsgraphNodeBuilder::tag_previously_tagged_nodes()
 
 void DepsgraphNodeBuilder::end_build()
 {
+  graph_->light_linking_cache.end_build(*graph_->scene);
   tag_previously_tagged_nodes();
   update_invalid_cow_pointers();
 }
@@ -616,6 +619,7 @@ void DepsgraphNodeBuilder::build_id(ID *id)
     case ID_CV:
     case ID_PT:
     case ID_VO:
+    case ID_GP:
       build_object_data_geometry_datablock(id);
       break;
     case ID_SPK:
@@ -840,6 +844,8 @@ void DepsgraphNodeBuilder::build_object(int base_index,
     op_node->flag |= OperationFlag::DEPSOP_FLAG_PINNED;
   }
 
+  build_object_light_linking(object);
+
   /* Synchronization back to original object. */
   add_operation_node(&object->id,
                      NodeType::SYNCHRONIZATION,
@@ -915,22 +921,20 @@ void DepsgraphNodeBuilder::build_object_modifiers(Object *object)
                        deg_evaluate_object_modifiers_mode_node_visibility(depsgraph, id_node);
                      });
 
-  LISTBASE_FOREACH (ModifierData *, modifier, &object->modifiers) {
+  int modifier_index;
+  LISTBASE_FOREACH_INDEX (ModifierData *, modifier, &object->modifiers, modifier_index) {
     OperationNode *modifier_node = add_operation_node(
         &object->id, NodeType::GEOMETRY, OperationCode::MODIFIER, nullptr, modifier->name);
     if (modifier->type == eModifierType_Nodes) {
-      modifier_node->evaluate = [nmd = reinterpret_cast<NodesModifierData *>(modifier),
-                                 modifier_node](::Depsgraph *depsgraph) {
-        if (!DEG_is_active(depsgraph)) {
-          return;
-        }
-        if (modifier_node->flag & DEPSOP_FLAG_USER_MODIFIED) {
-          if (nmd->simulation_cache &&
-              nmd->simulation_cache->cache_state() == bke::sim::CacheState::Valid) {
-            nmd->simulation_cache->invalidate();
-          }
-        }
-      };
+      modifier_node->evaluate =
+          [id_node, modifier_index, modifier_node](::Depsgraph * /*depsgraph*/) {
+            Object *ob_eval = reinterpret_cast<Object *>(id_node->id_cow);
+            ModifierData *md_eval = reinterpret_cast<ModifierData *>(
+                BLI_findlink(&ob_eval->modifiers, modifier_index));
+            /* Set flag that the modifier can check when it is evaluated. */
+            const bool is_user_modified = modifier_node->flag & DEPSOP_FLAG_USER_MODIFIED;
+            SET_FLAG_FROM_TEST(md_eval->flag, is_user_modified, eModifierFlag_UserModified);
+          };
     }
 
     /* Mute modifier mode if the modifier is not enabled for the dependency graph mode.
@@ -966,6 +970,7 @@ void DepsgraphNodeBuilder::build_object_data(Object *object)
     case OB_CURVES:
     case OB_POINTCLOUD:
     case OB_VOLUME:
+    case OB_GREASE_PENCIL:
       build_object_data_geometry(object);
       break;
     case OB_ARMATURE:
@@ -1111,6 +1116,60 @@ void DepsgraphNodeBuilder::build_object_pointcache(Object *object)
                      [scene_cow, object_cow](::Depsgraph *depsgraph) {
                        BKE_object_eval_ptcache_reset(depsgraph, scene_cow, object_cow);
                      });
+}
+
+void DepsgraphNodeBuilder::build_object_light_linking(Object *object)
+{
+  /* For objects put the light linking update callback to the same component as the base flags.
+   * This way the light linking is updated on the view layer hierarchy change (which does not seem
+   * to have a dedicated tag). */
+  Object *object_cow = get_cow_datablock(object);
+  add_operation_node(&object->id,
+                     NodeType::SHADING,
+                     OperationCode::LIGHT_LINKING_UPDATE,
+                     [object_cow](::Depsgraph *depsgraph) {
+                       BKE_object_eval_light_linking(depsgraph, object_cow);
+                     });
+
+  graph_->light_linking_cache.add_emitter(*graph_->scene, *object);
+
+  if (object->light_linking) {
+    build_light_linking_collection(object->light_linking->receiver_collection);
+    build_light_linking_collection(object->light_linking->blocker_collection);
+  }
+}
+
+void DepsgraphNodeBuilder::build_light_linking_collection(Collection *collection)
+{
+  if (collection == nullptr) {
+    return;
+  }
+
+  /* TODO(sergey): Support some sort of weak referencing, so that receiver objects which are
+   * specified by this collection but not in the scene do not use extra memory.
+   *
+   * Until the better solution is implemented pull the objects indirectly, and keep them
+   * invisible. This has penalty of higher memory usage, but not a performance penalty. */
+
+  const bool is_current_parent_collection_visible = is_parent_collection_visible_;
+  is_parent_collection_visible_ = false;
+
+  build_collection(nullptr, collection);
+
+  is_parent_collection_visible_ = is_current_parent_collection_visible;
+
+  /* Ensure the light linking component is created for the collection.
+   *
+   * Note that it is not possible to have early output check based on regular built flags because
+   * the collection might have been first built for the non-light-linking purposes. */
+  /* TODO(sergey): Can optimize this out by explicitly separating the different built tags. This
+   * needs to be done in all places where the collection is built (is not something that can be
+   * easily solved from just adding the light linking functionality). */
+  if (!has_operation_node(
+          &collection->id, NodeType::PARAMETERS, OperationCode::LIGHT_LINKING_UPDATE))
+  {
+    add_operation_node(&collection->id, NodeType::PARAMETERS, OperationCode::LIGHT_LINKING_UPDATE);
+  }
 }
 
 void DepsgraphNodeBuilder::build_animdata(ID *id)
@@ -1681,6 +1740,11 @@ void DepsgraphNodeBuilder::build_object_data_geometry_datablock(ID *obdata)
                                    [obdata_cow](::Depsgraph *depsgraph) {
                                      BKE_volume_eval_geometry(depsgraph, (Volume *)obdata_cow);
                                    });
+      op_node->set_as_entry();
+      break;
+    }
+    case ID_GP: {
+      op_node = add_operation_node(obdata, NodeType::GEOMETRY, OperationCode::GEOMETRY_EVAL);
       op_node->set_as_entry();
       break;
     }
