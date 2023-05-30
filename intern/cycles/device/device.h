@@ -140,6 +140,11 @@ class Device {
   /* noexcept needed to silence TBB warning. */
   virtual ~Device() noexcept(false);
 
+  virtual int get_num_devices() const
+  {
+    return 1;
+  }
+
   /* info */
   DeviceInfo info;
   virtual const string &error_message()
@@ -211,9 +216,15 @@ class Device {
   virtual void release_optix_bvh(BVH * /*bvh*/){};
 
   /* multi device */
-  virtual int device_number(Device * /*sub_device*/)
+  virtual int device_number(const Device * /*sub_device*/) const
   {
     return 0;
+  }
+
+  /* This gets the memory pointer for the given device given the virtual device pointer */
+  virtual device_ptr find_matching_mem(device_ptr key, Device * /*sub*/)
+  {
+    return key;
   }
 
   /* Called after kernel texture setup, and prior to integrator state setup. */
