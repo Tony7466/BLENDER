@@ -334,6 +334,17 @@ static void range_to_segments(const IndexRange range, Vector<IndexMaskSegment, 1
   }
 }
 
+static int64_t get_size_before_gap(const Span<int16_t> indices)
+{
+  BLI_assert(indices.size() >= 2);
+  if (indices[1] > indices[0] + 1) {
+    /* For sparse indices, often the next gap is just after the next index.
+     * In this case we can skip the logarithmic check below.*/
+    return 1;
+  }
+  return unique_sorted_indices::find_size_of_next_range(indices);
+}
+
 static void inverted_indices_to_segments(const IndexMaskSegment segment,
                                          LinearAllocator<> &allocator,
                                          Vector<IndexMaskSegment, 16> &r_segments)
@@ -362,7 +373,7 @@ static void inverted_indices_to_segments(const IndexMaskSegment segment,
 
   Span<int16_t> indices = segment.base_span();
   while (indices.size() > 1) {
-    const int64_t size_before_gap = unique_sorted_indices::find_size_of_next_range(indices);
+    const int64_t size_before_gap = get_size_before_gap(indices);
     if (size_before_gap == indices.size()) {
       break;
     }
