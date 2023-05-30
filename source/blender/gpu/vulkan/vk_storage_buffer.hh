@@ -48,4 +48,9 @@ class VKStorageBuffer : public StorageBuf {
   void allocate();
 };
 
+static inline VKStorageBuffer *unwrap(StorageBuf *storage_buffer)
+{
+  return static_cast<VKStorageBuffer *>(storage_buffer);
+}
+
 }  // namespace blender::gpu

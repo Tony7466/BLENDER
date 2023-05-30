@@ -53,6 +53,7 @@ void VKTexture::copy_to(Texture *tex)
   UNUSED_VARS_NDEBUG(src);
 
   VKContext &context = *VKContext::get();
+  ensure_allocated();
   layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
   dst->ensure_allocated();
   dst->layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -450,6 +451,7 @@ void VKTexture::current_layout_set(const VkImageLayout new_layout)
 
 void VKTexture::layout_ensure(VKContext &context, const VkImageLayout requested_layout)
 {
+  BLI_assert(is_allocated());
   const VkImageLayout current_layout = current_layout_get();
   if (current_layout == requested_layout) {
     return;

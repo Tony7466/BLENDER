@@ -31,6 +31,7 @@ void VKStorageBuffer::allocate()
 
 void VKStorageBuffer::bind(int slot)
 {
+  /* TODO: move Storage buffer bindings to state manager to reuse bindings.*/
   VKContext &context = *VKContext::get();
   if (!buffer_.is_allocated()) {
     allocate();
@@ -40,8 +41,9 @@ void VKStorageBuffer::bind(int slot)
   const std::optional<VKDescriptorSet::Location> location =
       shader_interface.descriptor_set_location(
           shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER, slot);
-  BLI_assert_msg(location, "Locations to SSBOs should always exist.");
-  shader->pipeline_get().descriptor_set_get().bind(*this, *location);
+  if (location) {
+    shader->pipeline_get().descriptor_set_get().bind(*this, *location);
+  }
 }
 
 void VKStorageBuffer::unbind() {}

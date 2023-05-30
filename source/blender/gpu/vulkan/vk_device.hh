@@ -38,6 +38,7 @@ class VKDevice : public NonCopyable {
   /* Workarounds */
   struct {
     bool depth_component_24 = false;
+    bool texture_format_rgb16f = false;
 
   } workarounds_;
 

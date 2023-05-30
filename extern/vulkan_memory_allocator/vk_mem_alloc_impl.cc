@@ -8,5 +8,8 @@
 #endif
 
 #define VMA_IMPLEMENTATION
+#ifdef DEBUG
+#define VMA_ASSERT(test) 
+#endif
 
 #include "vk_mem_alloc.h"

@@ -22,6 +22,7 @@ class VKPipeline;
 class VKPushConstants;
 class VKTexture;
 class VKVertexBuffer;
+class VKStorageBuffer;
 
 /** Command buffer to keep track of the life-time of a command buffer. */
 class VKCommandBuffer : NonCopyable, NonMovable {
@@ -182,8 +183,16 @@ class VKCommandBuffer : NonCopyable, NonMovable {
   void fill(VKBuffer &buffer, uint32_t data);
 
   void draw(int v_first, int v_count, int i_first, int i_count);
-  void draw(
+  void draw_indexed(
       int index_count, int instance_count, int first_index, int vertex_offset, int first_instance);
+  void draw_indirect(const VKStorageBuffer &buffer,
+                     VkDeviceSize offset,
+                     uint32_t draw_count,
+                     uint32_t stride);
+  void draw_indexed_indirect(const VKStorageBuffer &buffer,
+                             VkDeviceSize offset,
+                             uint32_t draw_count,
+                             uint32_t stride);
 
   /**
    * Stop recording commands, encode + send the recordings to Vulkan, wait for the until the
