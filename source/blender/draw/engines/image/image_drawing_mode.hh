@@ -11,6 +11,8 @@
 
 #include "IMB_imbuf_types.h"
 
+#include "GPU_capabilities.h"
+
 #include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
 
@@ -509,7 +511,9 @@ template<typename TextureMethod> class ScreenSpaceDrawingMode : public AbstractD
             offset++;
           }
         }
-        IMB_gpu_clamp_half_float(&extracted_buffer);
+        if (!GPU_texture_clamp_to_half()) {
+          IMB_gpu_clamp_half_float(tile_buffer);
+        }
 
         GPU_texture_update_sub(texture,
                                GPU_DATA_FLOAT,
@@ -562,7 +566,9 @@ template<typename TextureMethod> class ScreenSpaceDrawingMode : public AbstractD
       }
       BKE_image_release_ibuf(image, tile_buffer, lock);
     }
-    IMB_gpu_clamp_half_float(&texture_buffer);
+    if (!GPU_texture_clamp_to_half()) {
+      IMB_gpu_clamp_half_float(&texture_buffer);
+    }
     GPU_texture_update(info.texture, GPU_DATA_FLOAT, texture_buffer.float_buffer.data);
     imb_freerectImbuf_all(&texture_buffer);
   }

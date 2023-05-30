@@ -56,6 +56,7 @@ struct GPUCapabilities {
   bool use_hq_normals_workaround = false;
   bool clear_viewport_workaround = false;
   /* Vulkan related workarounds. */
+  bool texture_clamp_to_half = false;
 
   /* Metal related workarounds. */
   /* Minimum per-vertex stride in bytes (For a vertex buffer). */

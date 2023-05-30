@@ -201,6 +201,11 @@ bool GPU_transform_feedback_support(void)
   return GCaps.transform_feedback_support;
 }
 
+bool GPU_texture_clamp_to_half(void)
+{
+  return GCaps.texture_clamp_to_half;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

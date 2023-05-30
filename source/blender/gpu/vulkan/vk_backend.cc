@@ -193,6 +193,7 @@ void VKBackend::capabilities_init(VKDevice &device)
   GCaps.compute_shader_support = true;
   GCaps.shader_storage_buffer_objects_support = true;
   GCaps.shader_image_load_store_support = true;
+  GCaps.texture_clamp_to_half = true;
 
   GCaps.max_texture_size = max_ii(limits.maxImageDimension1D, limits.maxImageDimension2D);
   GCaps.max_texture_3d_size = limits.maxImageDimension3D;

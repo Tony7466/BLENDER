@@ -55,6 +55,9 @@ bool GPU_shader_draw_parameters_support(void);
 bool GPU_mem_stats_supported(void);
 void GPU_mem_stats_get(int *totalmem, int *freemem);
 
+/* Check if the active GPU backend automatically clamp values to fit in 16F. */
+bool GPU_texture_clamp_to_half(void);
+
 /**
  * Return support for the active context + window.
  */
