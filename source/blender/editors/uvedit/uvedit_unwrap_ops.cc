@@ -1605,7 +1605,6 @@ static const EnumPropertyItem pack_shape_method_items[] = {
 
 static const EnumPropertyItem pinned_islands_method_items[] = {
     {ED_UVPACK_PIN_PACK, "PACK", 0, "Pack", "Pinned islands are packed normally"},
-    {ED_UVPACK_PIN_IGNORE, "IGNORE", 0, "Ignore", "Pinned islands are not packed"},
     {ED_UVPACK_PIN_LOCK_SCALE, "SCALE", 0, "Lock Scale", "Pinned islands won't rescale"},
     {ED_UVPACK_PIN_LOCK_ROTATION, "ROTATION", 0, "Lock Rotation", "Pinned islands won't rotate"},
     {ED_UVPACK_PIN_LOCK_ROTATION_SCALE,
@@ -1614,6 +1613,7 @@ static const EnumPropertyItem pinned_islands_method_items[] = {
      "Lock Rotation and Scale",
      "Pinned islands will translate only"},
     {ED_UVPACK_PIN_LOCK_ALL, "LOCKED", 0, "Lock in Place", "Pinned islands are locked in place"},
+    {ED_UVPACK_PIN_IGNORE, "IGNORE", 0, "Ignore", "Pinned islands are not packed"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -1622,29 +1622,18 @@ static void uv_pack_islands_ui(bContext *C, wmOperator *op)
   uiLayout *layout = op->layout;
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
-
   uiItemR(layout, op->ptr, "shape_method", 0, nullptr, ICON_NONE);
-
   uiItemR(layout, op->ptr, "scale", 0, nullptr, ICON_NONE);
-
   uiItemR(layout, op->ptr, "rotate", 0, nullptr, ICON_NONE);
-
   uiLayout *sub = uiLayoutRow(layout, true);
   uiLayoutSetActive(sub, RNA_boolean_get(op->ptr, "rotate"));
   uiItemR(sub, op->ptr, "rotate_method", 0, nullptr, ICON_NONE);
   uiItemS(layout);
-
   uiItemR(layout, op->ptr, "margin_method", 0, nullptr, ICON_NONE);
-
   uiItemR(layout, op->ptr, "margin", 0, nullptr, ICON_NONE);
   uiItemS(layout);
-
   uiItemR(layout, op->ptr, "pin", 0, nullptr, ICON_NONE);
-  uiItemS(layout);
-
   uiItemR(layout, op->ptr, "merge_overlap", 0, nullptr, ICON_NONE);
-  uiItemS(layout);
-
   uiItemR(layout, op->ptr, "udim_source", 0, nullptr, ICON_NONE);
   uiItemS(layout);
 }
