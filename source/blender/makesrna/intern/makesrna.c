@@ -2883,8 +2883,6 @@ static void rna_def_function_wrapper_funcs(FILE *f, StructDefRNA *dsrna, Functio
       funcname, sizeof(funcname), srna->identifier, func->identifier, "func");
 
   rna_generate_static_parameter_prototypes(f, srna, dfunc, funcname, 0);
-  fprintf(f, ";\n");
-  rna_generate_static_parameter_prototypes(f, srna, dfunc, funcname, 0);
 
   fprintf(f, "\n{\n");
 
