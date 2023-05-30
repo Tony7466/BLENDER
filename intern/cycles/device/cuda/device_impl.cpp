@@ -587,22 +587,19 @@ void CUDADevice::mem_copy_to(device_memory &mem, size_t size, size_t offset)
   }
 }
 
-void CUDADevice::mem_copy_from(device_memory &mem, size_t y, size_t w, size_t h, size_t elem)
+void CUDADevice::mem_copy_from(device_memory &mem)
 {
   if (mem.type == MEM_TEXTURE || mem.type == MEM_GLOBAL) {
     assert(!"mem_copy_from not supported for textures.");
   }
   else if (mem.host_pointer) {
-    const size_t size = elem * w * h;
-    const size_t offset = elem * y * w;
-
     if (mem.device_pointer) {
       const CUDAContextScope scope(this);
       cuda_assert(cuMemcpyDtoH(
-          (char *)mem.host_pointer + offset, (CUdeviceptr)mem.device_pointer + offset, size));
+          (char *)mem.host_pointer, (CUdeviceptr)mem.device_pointer, mem.memory_size()));
     }
     else {
-      memset((char *)mem.host_pointer + offset, 0, size);
+      memset((char *)mem.host_pointer, 0, mem.memory_size());
     }
   }
 }

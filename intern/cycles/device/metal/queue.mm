@@ -645,7 +645,7 @@ bool MetalDeviceQueue::enqueue(DeviceKernel kernel,
           struct MyDeviceMemory : device_memory {
             void device_copy_from__IntegratorQueueCounter()
             {
-              device_copy_from(0, data_width, 1, sizeof(IntegratorQueueCounter));
+              device_copy_from();
             }
           };
           ((MyDeviceMemory *)it.first)->device_copy_from__IntegratorQueueCounter();

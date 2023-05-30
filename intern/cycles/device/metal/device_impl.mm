@@ -852,13 +852,9 @@ void MetalDevice::mem_copy_to(device_memory &mem, size_t size, size_t offset)
   }
 }
 
-void MetalDevice::mem_copy_from(device_memory &mem, size_t y, size_t w, size_t h, size_t elem)
+void MetalDevice::mem_copy_from(device_memory &mem)
 {
   if (mem.host_pointer) {
-
-    bool subcopy = (w >= 0 && h >= 0);
-    const size_t size = subcopy ? (elem * w * h) : mem.memory_size();
-    const size_t offset = subcopy ? (elem * y * w) : 0;
 
     if (mem.device_pointer) {
       std::lock_guard<std::recursive_mutex> lock(metal_mem_map_mutex);
@@ -875,11 +871,11 @@ void MetalDevice::mem_copy_from(device_memory &mem, size_t y, size_t w, size_t h
       }
 
       if (mem.host_pointer != mmem.hostPtr) {
-        memcpy((uchar *)mem.host_pointer + offset, (uchar *)mmem.hostPtr + offset, size);
+        memcpy((uchar *)mem.host_pointer, (uchar *)mmem.hostPtr, mem.memory_size());
       }
     }
     else {
-      memset((char *)mem.host_pointer + offset, 0, size);
+      memset((char *)mem.host_pointer, 0, mem.memory_size());
     }
   }
 }

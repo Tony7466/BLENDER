@@ -153,8 +153,7 @@ void CPUDevice::mem_copy_to(device_memory &mem, size_t /* size */, size_t /* off
   }
 }
 
-void CPUDevice::mem_copy_from(
-    device_memory & /*mem*/, size_t /*y*/, size_t /*w*/, size_t /*h*/, size_t /*elem*/)
+void CPUDevice::mem_copy_from(device_memory & /*mem*/)
 {
   /* no-op */
 }

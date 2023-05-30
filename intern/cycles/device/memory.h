@@ -279,7 +279,7 @@ class device_memory {
   void device_alloc();
   void device_free();
   void device_copy_to(size_t size = -1, size_t offset = 0);
-  void device_copy_from(size_t y, size_t w, size_t h, size_t elem);
+  void device_copy_from();
   void device_zero();
 
   bool device_is_cpu();
@@ -539,12 +539,7 @@ template<typename T> class device_vector : public device_memory {
 
   void copy_from_device()
   {
-    device_copy_from(0, data_width, (data_height == 0) ? 1 : data_height, sizeof(T));
-  }
-
-  void copy_from_device(size_t y, size_t w, size_t h)
-  {
-    device_copy_from(y, w, h, sizeof(T));
+    device_copy_from();
   }
 
   void zero_to_device()

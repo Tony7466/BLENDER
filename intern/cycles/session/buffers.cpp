@@ -292,7 +292,7 @@ bool RenderBuffers::copy_from_device()
   if (!buffer.device_pointer)
     return false;
 
-  buffer.copy_from_device(0, params.width * params.pass_stride, params.height);
+  buffer.copy_from_device();
 
   return true;
 }

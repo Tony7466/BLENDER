@@ -338,20 +338,18 @@ void OneapiDevice::mem_copy_to(device_memory &mem, size_t size, size_t offset)
   }
 }
 
-void OneapiDevice::mem_copy_from(device_memory &mem, size_t y, size_t w, size_t h, size_t elem)
+void OneapiDevice::mem_copy_from(device_memory &mem)
 {
   if (mem.type == MEM_TEXTURE || mem.type == MEM_GLOBAL) {
     assert(!"mem_copy_from not supported for textures.");
   }
   else if (mem.host_pointer) {
-    const size_t size = (w > 0 || h > 0 || elem > 0) ? (elem * w * h) : mem.memory_size();
-    const size_t offset = elem * y * w;
+    const size_t size = mem.memory_size();
 
     if (mem.name) {
       VLOG_DEBUG << "OneapiDevice::mem_copy_from: \"" << mem.name << "\" object of "
                  << string_human_readable_number(mem.memory_size()) << " bytes. ("
-                 << string_human_readable_size(mem.memory_size()) << ") from offset " << offset
-                 << " data " << size << " bytes";
+                 << string_human_readable_size(mem.memory_size()) << ") data " << size << " bytes";
     }
 
     /* After getting runtime errors we need to avoid performing oneAPI runtime operations
@@ -364,8 +362,8 @@ void OneapiDevice::mem_copy_from(device_memory &mem, size_t y, size_t w, size_t 
 
     assert(size != 0);
     if (mem.device_pointer) {
-      char *shifted_host = reinterpret_cast<char *>(mem.host_pointer) + offset;
-      char *shifted_device = reinterpret_cast<char *>(mem.device_pointer) + offset;
+      char *shifted_host = reinterpret_cast<char *>(mem.host_pointer);
+      char *shifted_device = reinterpret_cast<char *>(mem.device_pointer);
       bool is_finished_ok = usm_memcpy(device_queue_, shifted_host, shifted_device, size);
       if (is_finished_ok == false) {
         set_error("oneAPI memory operation error: got runtime exception \"" +

@@ -84,10 +84,10 @@ void device_memory::device_copy_to(size_t size, size_t offset)
   }
 }
 
-void device_memory::device_copy_from(size_t y, size_t w, size_t h, size_t elem)
+void device_memory::device_copy_from()
 {
   assert(type != MEM_TEXTURE && type != MEM_READ_ONLY && type != MEM_GLOBAL);
-  device->mem_copy_from(*this, y, w, h, elem);
+  device->mem_copy_from(*this);
 }
 
 void device_memory::device_zero()

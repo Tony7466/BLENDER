@@ -350,25 +350,9 @@ class MultiDevice : public Device {
     stats.mem_alloc(mem.device_size - existing_size);
   }
 
-  void mem_copy_from(device_memory &mem, size_t y, size_t w, size_t h, size_t elem) override
+  void mem_copy_from(device_memory &mem) override
   {
-    device_ptr key = mem.device_pointer;
-    size_t i = 0, sub_h = h / devices.size();
-
-    foreach (SubDevice &sub, devices) {
-      size_t sy = y + i * sub_h;
-      size_t sh = (i == (size_t)devices.size() - 1) ? h - sub_h * i : sub_h;
-
-      SubDevice *owner_sub = find_matching_mem_device(key, sub);
-      mem.device = owner_sub->device;
-      mem.device_pointer = owner_sub->ptr_map[key];
-
-      owner_sub->device->mem_copy_from(mem, sy, w, sh, elem);
-      i++;
-    }
-
-    mem.device = this;
-    mem.device_pointer = key;
+    assert(!"mem_copy_form not support for multi device");
   }
 
   void mem_zero(device_memory &mem) override

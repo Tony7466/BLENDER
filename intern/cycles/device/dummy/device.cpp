@@ -29,7 +29,7 @@ class DummyDevice : public Device {
 
   virtual void mem_copy_to(device_memory &, size_t, size_t) override {}
 
-  virtual void mem_copy_from(device_memory &, size_t, size_t, size_t, size_t) override {}
+  virtual void mem_copy_from(device_memory &) override {}
 
   virtual void mem_zero(device_memory &) override {}
 

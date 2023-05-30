@@ -75,7 +75,7 @@ class HIPDevice : public GPUDevice {
 
   void mem_copy_to(device_memory &mem, size_t size, size_t offset) override;
 
-  void mem_copy_from(device_memory &mem, size_t y, size_t w, size_t h, size_t elem) override;
+  void mem_copy_from(device_memory &mem) override;
 
   void mem_zero(device_memory &mem) override;
 

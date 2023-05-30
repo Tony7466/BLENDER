@@ -62,7 +62,7 @@ bool ShaderEval::eval(const ShaderEvalType type,
 
     /* Copy data back from device if not canceled. */
     if (success) {
-      output.copy_from_device(0, 1, output.size());
+      output.copy_from_device();
       read_output(output);
     }
 
