@@ -21,7 +21,7 @@ extern "C" {
  * Types needed for using the image buffer.
  *
  * Imbuf is external code, slightly adapted to live in the Blender
- * context. It requires an external jpeg module, and the avi-module
+ * context. It requires an external JPEG module, and the AVI-module
  * (also external code) in order to function correctly.
  *
  * This file contains types and some constants that go with them. Most
@@ -223,13 +223,15 @@ typedef struct ImBuf {
 
   /* pixels */
 
-  /** Image pixel buffer (8bit representation):
+  /**
+   * Image pixel buffer (8bit representation):
    * - color space defaults to `sRGB`.
    * - alpha defaults to 'straight'.
    */
   ImBufByteBuffer byte_buffer;
 
-  /** Image pixel buffer (float representation):
+  /**
+   * Image pixel buffer (float representation):
    * - color space defaults to 'linear' (`rec709`).
    * - alpha defaults to 'premul'.
    * \note May need gamma correction to `sRGB` when generating 8bit representations.
