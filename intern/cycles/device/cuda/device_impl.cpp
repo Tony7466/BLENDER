@@ -544,11 +544,16 @@ void CUDADevice::transform_host_pointer(void *&device_pointer, void *&shared_poi
   cuda_assert(cuMemHostGetDevicePointer_v2((CUdeviceptr *)&device_pointer, shared_pointer, 0));
 }
 
-void CUDADevice::copy_host_to_device(void *device_pointer, void *host_pointer, size_t size)
+void CUDADevice::copy_host_to_device(void *device_pointer,
+                                     void *host_pointer,
+                                     size_t size,
+                                     size_t offset)
 {
   const CUDAContextScope scope(this);
 
-  cuda_assert(cuMemcpyHtoD((CUdeviceptr)device_pointer, host_pointer, size));
+  cuda_assert(cuMemcpyHtoD(reinterpret_cast<CUdeviceptr>(device_pointer) + offset,
+                           reinterpret_cast<unsigned char *>(host_pointer) + offset,
+                           size));
 }
 
 void CUDADevice::mem_alloc(device_memory &mem)
@@ -564,7 +569,7 @@ void CUDADevice::mem_alloc(device_memory &mem)
   }
 }
 
-void CUDADevice::mem_copy_to(device_memory &mem)
+void CUDADevice::mem_copy_to(device_memory &mem, size_t size, size_t offset)
 {
   if (mem.type == MEM_GLOBAL) {
     global_free(mem);
@@ -578,7 +583,7 @@ void CUDADevice::mem_copy_to(device_memory &mem)
     if (!mem.device_pointer) {
       generic_alloc(mem);
     }
-    generic_copy_to(mem);
+    generic_copy_to(mem, size, offset);
   }
 }
 

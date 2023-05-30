@@ -134,7 +134,7 @@ void CPUDevice::mem_alloc(device_memory &mem)
   }
 }
 
-void CPUDevice::mem_copy_to(device_memory &mem)
+void CPUDevice::mem_copy_to(device_memory &mem, size_t /* size */, size_t /* offset */)
 {
   if (mem.type == MEM_GLOBAL) {
     global_free(mem);

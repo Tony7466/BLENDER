@@ -288,7 +288,7 @@ class Device {
   friend class device_memory;
 
   virtual void mem_alloc(device_memory &mem) = 0;
-  virtual void mem_copy_to(device_memory &mem) = 0;
+  virtual void mem_copy_to(device_memory &mem, size_t size, size_t offset) = 0;
   virtual void mem_copy_from(device_memory &mem, size_t y, size_t w, size_t h, size_t elem) = 0;
   virtual void mem_zero(device_memory &mem) = 0;
   virtual void mem_free(device_memory &mem) = 0;
@@ -370,7 +370,7 @@ class GPUDevice : public Device {
    * support of device/host allocations. */
   virtual GPUDevice::Mem *generic_alloc(device_memory &mem, size_t pitch_padding = 0);
   virtual void generic_free(device_memory &mem);
-  virtual void generic_copy_to(device_memory &mem);
+  virtual void generic_copy_to(device_memory &mem, size_t size = -1, size_t offset = 0);
 
   /* total - amount of device memory, free - amount of available device memory */
   virtual void get_device_memory_info(size_t &total, size_t &free) = 0;
@@ -388,7 +388,10 @@ class GPUDevice : public Device {
    * address transformation is possible and `false` otherwise. */
   virtual void transform_host_pointer(void *&device_pointer, void *&shared_pointer) = 0;
 
-  virtual void copy_host_to_device(void *device_pointer, void *host_pointer, size_t size) = 0;
+  virtual void copy_host_to_device(void *device_pointer,
+                                   void *host_pointer,
+                                   size_t size,
+                                   size_t offset) = 0;
 };
 
 CCL_NAMESPACE_END

@@ -63,7 +63,7 @@ class CPUDevice : public Device {
   bool load_texture_info();
 
   virtual void mem_alloc(device_memory &mem) override;
-  virtual void mem_copy_to(device_memory &mem) override;
+  virtual void mem_copy_to(device_memory &mem, size_t size, size_t offset) override;
   virtual void mem_copy_from(
       device_memory &mem, size_t y, size_t w, size_t h, size_t elem) override;
   virtual void mem_zero(device_memory &mem) override;

@@ -757,18 +757,19 @@ void GPUDevice::generic_free(device_memory &mem)
   }
 }
 
-void GPUDevice::generic_copy_to(device_memory &mem)
+void GPUDevice::generic_copy_to(device_memory &mem, size_t size, size_t offset)
 {
   if (!mem.host_pointer || !mem.device_pointer) {
     return;
   }
 
   /* If use_mapped_host of mem is false, the current device only uses device memory allocated by
-   * backend device allocation regardless of mem.host_pointer and mem.shared_pointer, and should
-   * copy data from mem.host_pointer. */
+   * cuMemAlloc regardless of mem.host_pointer and mem.shared_pointer, and should copy data from
+   * mem.host_pointer. */
   thread_scoped_lock lock(device_mem_map_mutex);
   if (!device_mem_map[&mem].use_mapped_host || mem.host_pointer != mem.shared_pointer) {
-    copy_host_to_device((void *)mem.device_pointer, mem.host_pointer, mem.memory_size());
+    size = ((size == -1) ? mem.memory_size() : size);
+    copy_host_to_device((void *)mem.device_pointer, mem.host_pointer, size, offset);
   }
 }
 

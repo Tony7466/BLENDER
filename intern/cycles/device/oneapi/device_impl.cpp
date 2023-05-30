@@ -239,17 +239,20 @@ void OneapiDevice::generic_alloc(device_memory &mem)
   stats.mem_alloc(memory_size);
 }
 
-void OneapiDevice::generic_copy_to(device_memory &mem)
+void OneapiDevice::generic_copy_to(device_memory &mem, size_t size, size_t offset)
 {
   if (!mem.device_pointer) {
     return;
   }
-  size_t memory_size = mem.memory_size();
 
   /* Copy operation from host shouldn't be requested if there is no memory allocated on host. */
   assert(mem.host_pointer);
   assert(device_queue_);
-  usm_memcpy(device_queue_, (void *)mem.device_pointer, (void *)mem.host_pointer, memory_size);
+  size = ((size == -1) ? mem.memory_size() : size);
+  usm_memcpy(device_queue_,
+             reinterpret_cast<unsigned char *>(mem.device_pointer) + offset,
+             reinterpret_cast<unsigned char *>(mem.host_pointer) + offset,
+             size);
 }
 
 /* TODO: Make sycl::queue part of OneapiQueue and avoid using pointers to sycl::queue. */
@@ -305,12 +308,12 @@ void OneapiDevice::mem_alloc(device_memory &mem)
   }
 }
 
-void OneapiDevice::mem_copy_to(device_memory &mem)
+void OneapiDevice::mem_copy_to(device_memory &mem, size_t size, size_t offset)
 {
   if (mem.name) {
     VLOG_DEBUG << "OneapiDevice::mem_copy_to: \"" << mem.name << "\", "
-               << string_human_readable_number(mem.memory_size()) << " bytes. ("
-               << string_human_readable_size(mem.memory_size()) << ")";
+               << string_human_readable_number(size) << " bytes. ("
+               << string_human_readable_size(size) << ")";
   }
 
   /* After getting runtime errors we need to avoid performing oneAPI runtime operations
@@ -331,7 +334,7 @@ void OneapiDevice::mem_copy_to(device_memory &mem)
     if (!mem.device_pointer)
       mem_alloc(mem);
 
-    generic_copy_to(mem);
+    generic_copy_to(mem, size, offset);
   }
 }
 

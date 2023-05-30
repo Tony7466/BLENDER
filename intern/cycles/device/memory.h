@@ -278,7 +278,7 @@ class device_memory {
   /* Device memory allocation and copying. */
   void device_alloc();
   void device_free();
-  void device_copy_to();
+  void device_copy_to(size_t size = -1, size_t offset = 0);
   void device_copy_from(size_t y, size_t w, size_t h, size_t elem);
   void device_zero();
 
@@ -513,20 +513,22 @@ template<typename T> class device_vector : public device_memory {
     return data()[i];
   }
 
-  void copy_to_device()
+  void copy_to_device(size_t size = -1, size_t offset = 0)
   {
+    size = ((size == -1) ? data_size : size);
     if (data_size != 0) {
-      device_copy_to();
+      assert((size + offset) <= data_size);
+      device_copy_to(size, offset);
     }
   }
 
-  void copy_to_device_if_modified()
+  void copy_to_device_if_modified(size_t size = -1, size_t offset = 0)
   {
     if (!modified) {
       return;
     }
 
-    copy_to_device();
+    copy_to_device(size, offset);
   }
 
   void clear_modified()

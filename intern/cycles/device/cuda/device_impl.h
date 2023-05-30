@@ -69,11 +69,14 @@ class CUDADevice : public GPUDevice {
   virtual bool alloc_host(void *&shared_pointer, size_t size) override;
   virtual void free_host(void *shared_pointer) override;
   virtual void transform_host_pointer(void *&device_pointer, void *&shared_pointer) override;
-  virtual void copy_host_to_device(void *device_pointer, void *host_pointer, size_t size) override;
+  virtual void copy_host_to_device(void *device_pointer,
+                                   void *host_pointer,
+                                   size_t size,
+                                   size_t offset) override;
 
   void mem_alloc(device_memory &mem) override;
 
-  void mem_copy_to(device_memory &mem) override;
+  void mem_copy_to(device_memory &mem, size_t size, size_t offset) override;
 
   void mem_copy_from(device_memory &mem, size_t y, size_t w, size_t h, size_t elem) override;
 

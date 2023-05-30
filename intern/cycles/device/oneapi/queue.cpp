@@ -123,7 +123,7 @@ void OneapiDeviceQueue::zero_to_device(device_memory &mem)
 
 void OneapiDeviceQueue::copy_to_device(device_memory &mem)
 {
-  oneapi_device_->mem_copy_to(mem);
+  oneapi_device_->mem_copy_to(mem, mem.memory_size(), 0);
 }
 
 void OneapiDeviceQueue::copy_from_device(device_memory &mem)

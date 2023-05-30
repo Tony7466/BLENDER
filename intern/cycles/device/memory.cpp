@@ -77,10 +77,10 @@ void device_memory::device_free()
   }
 }
 
-void device_memory::device_copy_to()
+void device_memory::device_copy_to(size_t size, size_t offset)
 {
   if (host_pointer) {
-    device->mem_copy_to(*this);
+    device->mem_copy_to(*this, memory_elements_size(size), memory_elements_size(offset));
   }
 }
 

@@ -319,7 +319,7 @@ class MultiDevice : public Device {
     stats.mem_alloc(mem.device_size);
   }
 
-  void mem_copy_to(device_memory &mem) override
+  void mem_copy_to(device_memory &mem, size_t size, size_t offset) override
   {
     device_ptr existing_key = mem.device_pointer;
     device_ptr key = (existing_key) ? existing_key : unique_key++;
@@ -332,14 +332,14 @@ class MultiDevice : public Device {
       mem.device_pointer = (existing_key) ? owner_sub->ptr_map[existing_key] : 0;
       mem.device_size = existing_size;
 
-      owner_sub->device->mem_copy_to(mem);
+      owner_sub->device->mem_copy_to(mem, size, offset);
       owner_sub->ptr_map[key] = mem.device_pointer;
 
       if (mem.type == MEM_GLOBAL || mem.type == MEM_TEXTURE) {
         /* Need to create texture objects and update pointer in kernel globals on all devices */
         foreach (SubDevice *island_sub, island) {
           if (island_sub != owner_sub) {
-            island_sub->device->mem_copy_to(mem);
+            island_sub->device->mem_copy_to(mem, size, offset);
           }
         }
       }

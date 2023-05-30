@@ -805,7 +805,8 @@ void MetalDeviceQueue::copy_to_device(device_memory &mem)
                            size:mmem.size];
   }
   else {
-    metal_device_->mem_copy_to(mem);
+    const size_t size = mem.memory_size();
+    metal_device_->mem_copy_to(mem, size, 0);
   }
 }
 
