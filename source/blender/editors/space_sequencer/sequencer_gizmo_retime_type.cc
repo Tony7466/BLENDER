@@ -611,6 +611,15 @@ static bool label_rect_get(const bContext *C,
   return width < xmax - xmin;
 }
 
+static void label_rect_apply_mouseover_offset(const View2D *v2d, rctf *rect)
+{
+  float scale_x, scale_y;
+  UI_view2d_scale_get_inverse(v2d, &scale_x, &scale_y);
+  rect->xmin -= RETIME_HANDLE_MOUSEOVER_THRESHOLD * scale_x;
+  rect->xmax += RETIME_HANDLE_MOUSEOVER_THRESHOLD * scale_x;
+  rect->ymax += RETIME_HANDLE_MOUSEOVER_THRESHOLD * scale_y;
+}
+
 static void retime_speed_text_draw(const bContext *C,
                                    const Sequence *seq,
                                    const SeqRetimingHandle *handle)
@@ -689,6 +698,8 @@ static int gizmo_retime_speed_set_test_select(bContext *C, wmGizmo *gz, const in
     if (!label_rect_get(C, seq, &handle, label_str, label_len, &label_rect)) {
       continue;
     }
+
+    label_rect_apply_mouseover_offset(v2d, &label_rect);
 
     float mouse_view[2];
     UI_view2d_region_to_view(v2d, mval[0], mval[1], &mouse_view[0], &mouse_view[1]);
