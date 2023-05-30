@@ -245,6 +245,7 @@ TEST(index_mask, Complement)
     const IndexMask complement = mask.complement(IndexRange(universe_size), memory);
     EXPECT_EQ(universe_size - mask.size(), complement.size());
     complement.foreach_index([&](const int64_t i) { EXPECT_FALSE(mask.contains(i)); });
+    mask.foreach_index([&](const int64_t i) { EXPECT_FALSE(complement.contains(i)); });
   }
 }
 
