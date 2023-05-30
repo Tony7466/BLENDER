@@ -335,10 +335,10 @@ static void range_to_segments(const IndexRange range, Vector<IndexMaskSegment, 1
 }
 
 static void inverted_indices_to_segments(const IndexMaskSegment segment,
-                                         const int64_t range_threshold,
                                          LinearAllocator<> &allocator,
                                          Vector<IndexMaskSegment, 16> &r_segments)
 {
+  constexpr int64_t range_threshold = 64;
   const int64_t offset = segment.offset();
   const Span<int16_t> static_indices = get_static_indices_array();
 
@@ -384,6 +384,25 @@ static void inverted_indices_to_segments(const IndexMaskSegment segment,
   finish_indices();
 }
 
+static void invert_segments(const IndexMask &mask,
+                            const IndexRange segment_range,
+                            LinearAllocator<> &allocator,
+                            Vector<IndexMaskSegment, 16> &r_segments)
+{
+  for (const int64_t segment_i : segment_range) {
+    const IndexMaskSegment segment = mask.segment(segment_i);
+    inverted_indices_to_segments(segment, allocator, r_segments);
+
+    const IndexMaskSegment next_segment = mask.segment(segment_i + 1);
+    const int64_t between_start = segment.last() + 1;
+    const int64_t size_between_segments = next_segment[0] - segment.last() - 1;
+    const IndexRange range_between_segments(between_start, size_between_segments);
+    if (!range_between_segments.is_empty()) {
+      range_to_segments(range_between_segments, r_segments);
+    }
+  }
+}
+
 IndexMask IndexMask::complement(const IndexRange universe, IndexMaskMemory &memory) const
 {
   if (this->is_empty()) {
@@ -405,28 +424,20 @@ IndexMask IndexMask::complement(const IndexRange universe, IndexMaskMemory &memo
     const int64_t grain_size = std::clamp(
         segments_num / threads_num, min_grain_size, max_grain_size);
 
-    ParallelSegmentsCollector segments_collector;
-    threading::parallel_for(
-        IndexRange(segments_num).drop_back(1), grain_size, [&](const IndexRange range) {
-          ParallelSegmentsCollector::LocalData &local_data =
-              segments_collector.data_by_thread.local();
-
-          for (const int64_t segment_i : range) {
-            const IndexMaskSegment segment = this->segment(segment_i);
-            inverted_indices_to_segments(segment, 64, local_data.allocator, local_data.segments);
-
-            const IndexMaskSegment next_segment = this->segment(segment_i + 1);
-            const int64_t between_start = segment.last() + 1;
-            const int64_t size_between_segments = next_segment[0] - segment.last() - 1;
-            const IndexRange range_between_segments(between_start, size_between_segments);
-            if (!range_between_segments.is_empty()) {
-              range_to_segments(range_between_segments, local_data.segments);
-            }
-          }
-        });
-
-    inverted_indices_to_segments(this->segment(segments_num - 1), 64, memory, segments);
-    segments_collector.reduce(memory, segments);
+    const IndexRange non_last_segments = IndexRange(segments_num).drop_back(1);
+    if (segments_num < min_grain_size) {
+      invert_segments(*this, non_last_segments, memory, segments);
+    }
+    else {
+      ParallelSegmentsCollector segments_collector;
+      threading::parallel_for(non_last_segments, grain_size, [&](const IndexRange range) {
+        ParallelSegmentsCollector::LocalData &local_data =
+            segments_collector.data_by_thread.local();
+        invert_segments(*this, range, local_data.allocator, local_data.segments);
+      });
+      segments_collector.reduce(memory, segments);
+    }
+    inverted_indices_to_segments(this->segment(segments_num - 1), memory, segments);
   }
 
   if (universe.last() > this->first()) {
