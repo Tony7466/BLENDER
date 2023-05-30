@@ -102,6 +102,7 @@ void WorldProbePipeline::sync(GPUMaterial *gpumat, int face)
 
   side.cubemap_face_ps.framebuffer_set(&side.cubemap_face_fb);
   side.cubemap_face_ps.material_set(manager, gpumat);
+  side.cubemap_face_ps.push_constant("world_opacity_fade", 1.0f);
 
   side.cubemap_face_ps.draw(DRW_cache_fullscreen_quad_get(), handle);
   /* To allow opaque pass rendering over it. */
