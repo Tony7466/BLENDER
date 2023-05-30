@@ -1171,7 +1171,8 @@ static char *rna_def_property_set_func(
               f, "    if (data->%s != NULL) { MEM_freeN(data->%s); }\n", dp->dnaname, dp->dnaname);
           fprintf(f, "    const int length = strlen(value);\n");
           fprintf(f, "    if (length > 0) {\n");
-          fprintf(f, "        data->%s = MEM_mallocN(length + 1, __func__);\n", dp->dnaname);
+          fprintf(
+              f, "        data->%s = (char *)MEM_mallocN(length + 1, __func__);\n", dp->dnaname);
           fprintf(f, "        memcpy(data->%s, value, length + 1);\n", dp->dnaname);
           fprintf(f, "    } else { data->%s = NULL; }\n", dp->dnaname);
         }
@@ -2882,6 +2883,7 @@ static void rna_def_function_wrapper_funcs(FILE *f, StructDefRNA *dsrna, Functio
   rna_construct_wrapper_function_name(
       funcname, sizeof(funcname), srna->identifier, func->identifier, "func");
 
+  fprintf(f, "RNA_EXTERN_C ");
   rna_generate_static_parameter_prototypes(f, srna, dfunc, funcname, 0);
 
   fprintf(f, "\n{\n");
@@ -3034,7 +3036,7 @@ static void rna_def_function_funcs(FILE *f, StructDefRNA *dsrna, FunctionDefRNA 
             rna_type_struct(dparm->prop),
             rna_parameter_type_name(dparm->prop),
             ptrstr,
-            dparm->prop->identifier);
+            rna_safe_id(dparm->prop->identifier));
   }
 
   if (has_data) {
@@ -3115,14 +3117,14 @@ static void rna_def_function_funcs(FILE *f, StructDefRNA *dsrna, FunctionDefRNA 
       if (flag & PROP_DYNAMIC) {
         fprintf(f,
                 "\t%s_len = %s((ParameterDynAlloc *)_data)->array_tot;\n",
-                dparm->prop->identifier,
+                rna_safe_id(dparm->prop->identifier),
                 pout ? "(int *)&" : "(int)");
         data_str = "(&(((ParameterDynAlloc *)_data)->array))";
       }
       else {
         data_str = "_data";
       }
-      fprintf(f, "\t%s = ", dparm->prop->identifier);
+      fprintf(f, "\t%s = ", rna_safe_id(dparm->prop->identifier));
 
       if (!pout) {
         fprintf(f, "%s", valstr);
@@ -3207,10 +3209,13 @@ static void rna_def_function_funcs(FILE *f, StructDefRNA *dsrna, FunctionDefRNA 
       first = 0;
 
       if (dparm->prop->flag & PROP_DYNAMIC) {
-        fprintf(f, "%s_len, %s", dparm->prop->identifier, dparm->prop->identifier);
+        fprintf(f,
+                "%s_len, %s",
+                rna_safe_id(dparm->prop->identifier),
+                rna_safe_id(dparm->prop->identifier));
       }
       else {
-        fprintf(f, "%s", dparm->prop->identifier);
+        fprintf(f, "%s", rna_safe_id(dparm->prop->identifier));
       }
     }
 
