@@ -151,7 +151,7 @@ void VKTexture::update_sub(
     int mip, int offset[3], int extent_[3], eGPUDataFormat format, const void *data)
 {
   if (mip != 0) {
-    /* TODO: not implemented yet. */
+    NOT_YET_IMPLEMENTED;
     return;
   }
   if (!is_allocated()) {

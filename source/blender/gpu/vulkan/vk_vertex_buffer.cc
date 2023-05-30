@@ -157,6 +157,7 @@ void VKVertexBuffer::upload_data()
   if (!ELEM(usage_, GPU_USAGE_STATIC, GPU_USAGE_STREAM, GPU_USAGE_DYNAMIC)) {
     return;
   }
+
   if (flag & GPU_VERTBUF_DATA_DIRTY) {
     void *data_to_upload = data;
     if (conversion_needed(format)) {

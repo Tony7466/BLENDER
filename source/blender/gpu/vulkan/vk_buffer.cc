@@ -90,7 +90,7 @@ void VKBuffer::update(const void *data) const
 
   const VKDevice &device = VKBackend::get().device_get();
   VmaAllocator allocator = device.mem_allocator_get();
-  vmaFlushAllocation(allocator, allocation_, 0, size_in_bytes());
+  vmaFlushAllocation(allocator, allocation_, 0, max_ii(size_in_bytes(), 1));
 }
 
 void VKBuffer::clear(VKContext &context, uint32_t clear_value)
