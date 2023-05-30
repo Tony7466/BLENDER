@@ -3509,7 +3509,7 @@ static void rna_generate_internal_property_prototypes(BlenderRNA *UNUSED(brna),
     for (prop = base->cont.properties.first; prop; prop = prop->next) {
       fprintf(f,
               "%s%s rna_%s_%s;\n",
-              "extern ",
+              "RNA_EXTERN_C_OR_EXTERN ",
               rna_property_structname(prop->type),
               base->identifier,
               prop->identifier);
@@ -4644,8 +4644,10 @@ static void rna_generate(BlenderRNA *brna, FILE *f, const char *filename, const 
   fprintf(f, "\n");
   fprintf(f, "#ifdef __cplusplus\n");
   fprintf(f, "#  define RNA_EXTERN_C extern \"C\"\n");
+  fprintf(f, "#  define RNA_EXTERN_C_OR_EXTERN extern \"C\"\n");
   fprintf(f, "#else\n");
   fprintf(f, "#  define RNA_EXTERN_C\n");
+  fprintf(f, "#  define RNA_EXTERN_C_OR_EXTERN extern\n");
   fprintf(f, "#endif\n");
 
   /* we want the included C files to have warnings enabled but for the generated code
