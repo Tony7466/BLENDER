@@ -54,8 +54,6 @@ void BLI_system_backtrace(FILE *fp)
 /* Replace if different */
 #define TMP_EXT ".tmp"
 
-#define MAX_SIGNATURE_LEN 2048
-
 /* copied from BLI_file_older */
 #include <sys/stat.h>
 static int file_older(const char *file1, const char *file2)
@@ -653,14 +651,6 @@ static void rna_int_print(FILE *f, int64_t num)
   }
 }
 
-static void print_global_function_signature(FILE *f, const char *format, const char *func_name)
-{
-  char signature[MAX_SIGNATURE_LEN];
-  snprintf(signature, sizeof(signature), format, func_name);
-  fprintf(f, "%s;\n", signature);
-  fprintf(f, "%s\n", signature);
-}
-
 static char *rna_def_property_get_func(
     FILE *f, StructRNA *srna, PropertyRNA *prop, PropertyDefRNA *dp, const char *manualfunc)
 {
@@ -751,8 +741,7 @@ static char *rna_def_property_get_func(
     case PROP_STRING: {
       StringPropertyRNA *sprop = (StringPropertyRNA *)prop;
       UNUSED_VARS_NDEBUG(sprop);
-      print_global_function_signature(
-          f, "RNA_EXTERN_C void %s(PointerRNA *ptr, char *value)", func);
+      fprintf(f, "RNA_EXTERN_C void %s(PointerRNA *ptr, char *value)\n", func);
       fprintf(f, "{\n");
       if (manualfunc) {
         fprintf(f, "    %s(ptr, value);\n", manualfunc);
@@ -790,7 +779,7 @@ static char *rna_def_property_get_func(
       break;
     }
     case PROP_POINTER: {
-      print_global_function_signature(f, "RNA_EXTERN_C PointerRNA %s(PointerRNA *ptr)", func);
+      fprintf(f, "RNA_EXTERN_C PointerRNA %s(PointerRNA *ptr)\n", func);
       fprintf(f, "{\n");
       if (manualfunc) {
         fprintf(f, "    return %s(ptr);\n", manualfunc);
@@ -839,24 +828,19 @@ static char *rna_def_property_get_func(
     }
     default:
       if (prop->arraydimension) {
-        char signature[MAX_SIGNATURE_LEN];
         if (prop->flag & PROP_DYNAMIC) {
-          snprintf(signature,
-                   sizeof(signature),
-                   "RNA_EXTERN_C void %s(PointerRNA *ptr, %s values[])",
-                   func,
-                   rna_type_type(prop));
+          fprintf(f,
+                  "RNA_EXTERN_C void %s(PointerRNA *ptr, %s values[])\n",
+                  func,
+                  rna_type_type(prop));
         }
         else {
-          snprintf(signature,
-                   sizeof(signature),
-                   "RNA_EXTERN_C void %s(PointerRNA *ptr, %s values[%u])",
-                   func,
-                   rna_type_type(prop),
-                   prop->totarraylength);
+          fprintf(f,
+                  "RNA_EXTERN_C void %s(PointerRNA *ptr, %s values[%u])\n",
+                  func,
+                  rna_type_type(prop),
+                  prop->totarraylength);
         }
-        fprintf(f, "%s;\n", signature);
-        fprintf(f, "%s\n", signature);
         fprintf(f, "{\n");
 
         if (manualfunc) {
@@ -948,14 +932,7 @@ static char *rna_def_property_get_func(
         fprintf(f, "}\n\n");
       }
       else {
-        char signature[MAX_SIGNATURE_LEN];
-        snprintf(signature,
-                 sizeof(signature),
-                 "RNA_EXTERN_C %s %s(PointerRNA *ptr)",
-                 rna_type_type(prop),
-                 func);
-        fprintf(f, "%s;\n", signature);
-        fprintf(f, "%s\n", signature);
+        fprintf(f, "RNA_EXTERN_C %s %s(PointerRNA *ptr)\n", rna_type_type(prop), func);
         fprintf(f, "{\n");
 
         if (manualfunc) {
@@ -1039,7 +1016,6 @@ static void rna_clamp_value_range(FILE *f, PropertyRNA *prop)
 }
 
 #ifdef USE_RNA_RANGE_CHECK
-
 static void rna_clamp_value_range_check(FILE *f,
                                         PropertyRNA *prop,
                                         const char *dnaname_prefix,
@@ -1138,16 +1114,15 @@ static char *rna_def_property_search_func(FILE *f,
 
   func = rna_alloc_function_name(srna->identifier, rna_safe_id(prop->identifier), "search");
 
-  print_global_function_signature(f,
-                                  "RNA_EXTERN_C void %s("
-                                  "const bContext *C, "
-                                  "PointerRNA *ptr, "
-                                  "PropertyRNA *prop, "
-                                  "const char *edit_text, "
-                                  "StringPropertySearchVisitFunc visit_fn, "
-                                  "void *visit_user_data)",
-                                  func);
-
+  fprintf(f,
+          "RNA_EXTERN_C void %s("
+          "const bContext *C, "
+          "PointerRNA *ptr, "
+          "PropertyRNA *prop, "
+          "const char *edit_text, "
+          "StringPropertySearchVisitFunc visit_fn, "
+          "void *visit_user_data)\n",
+          func);
   fprintf(f, "{\n");
   fprintf(f, "\n    %s(C, ptr, prop, edit_text, visit_fn, visit_user_data);\n", manualfunc);
   fprintf(f, "}\n\n");
@@ -1181,8 +1156,7 @@ static char *rna_def_property_set_func(
   switch (prop->type) {
     case PROP_STRING: {
       StringPropertyRNA *sprop = (StringPropertyRNA *)prop;
-      print_global_function_signature(
-          f, "RNA_EXTERN_C void %s(PointerRNA *ptr, const char *value)", func);
+      fprintf(f, "RNA_EXTERN_C void %s(PointerRNA *ptr, const char *value)\n", func);
       fprintf(f, "{\n");
       if (manualfunc) {
         fprintf(f, "    %s(ptr, value);\n", manualfunc);
@@ -1227,10 +1201,9 @@ static char *rna_def_property_set_func(
       break;
     }
     case PROP_POINTER: {
-      PointerPropertyRNA *pprop = (PointerPropertyRNA *)dp->prop;
-      print_global_function_signature(
+      fprintf(
           f,
-          "RNA_EXTERN_C void %s(PointerRNA *ptr, PointerRNA value, struct ReportList *reports)",
+          "RNA_EXTERN_C void %s(PointerRNA *ptr, PointerRNA value, struct ReportList *reports)\n",
           func);
       fprintf(f, "{\n");
       if (manualfunc) {
@@ -1255,6 +1228,7 @@ static char *rna_def_property_set_func(
           fprintf(f, "    }\n");
         }
         else {
+          PointerPropertyRNA *pprop = (PointerPropertyRNA *)dp->prop;
           StructRNA *type = (pprop->type) ? rna_find_struct((const char *)pprop->type) : NULL;
           if (type && (type->flag & STRUCT_ID)) {
             fprintf(f, "    if (value.data) {\n");
@@ -1270,24 +1244,19 @@ static char *rna_def_property_set_func(
     }
     default:
       if (prop->arraydimension) {
-        char signature[MAX_SIGNATURE_LEN];
         if (prop->flag & PROP_DYNAMIC) {
-          snprintf(signature,
-                   sizeof(signature),
-                   "RNA_EXTERN_C void %s(PointerRNA *ptr, const %s values[])",
-                   func,
-                   rna_type_type(prop));
+          fprintf(f,
+                  "RNA_EXTERN_C void %s(PointerRNA *ptr, const %s values[])\n",
+                  func,
+                  rna_type_type(prop));
         }
         else {
-          snprintf(signature,
-                   sizeof(signature),
-                   "void %s(PointerRNA *ptr, const %s values[%u])",
-                   func,
-                   rna_type_type(prop),
-                   prop->totarraylength);
+          fprintf(f,
+                  "RNA_EXTERN_C void %s(PointerRNA *ptr, const %s values[%u])\n",
+                  func,
+                  rna_type_type(prop),
+                  prop->totarraylength);
         }
-        fprintf(f, "%s;\n", signature);
-        fprintf(f, "%s\n", signature);
         fprintf(f, "{\n");
 
         if (manualfunc) {
@@ -1395,14 +1364,7 @@ static char *rna_def_property_set_func(
         fprintf(f, "}\n\n");
       }
       else {
-        char signature[MAX_SIGNATURE_LEN];
-        snprintf(signature,
-                 sizeof(signature),
-                 "RNA_EXTERN_C void %s(PointerRNA *ptr, %s value)",
-                 func,
-                 rna_type_type(prop));
-        fprintf(f, "%s;\n", signature);
-        fprintf(f, "%s\n", signature);
+        fprintf(f, "RNA_EXTERN_C void %s(PointerRNA *ptr, %s value)\n", func, rna_type_type(prop));
         fprintf(f, "{\n");
 
         if (manualfunc) {
@@ -1488,7 +1450,7 @@ static char *rna_def_property_length_func(
 
     func = rna_alloc_function_name(srna->identifier, rna_safe_id(prop->identifier), "length");
 
-    print_global_function_signature(f, "RNA_EXTERN_C int %s(PointerRNA *ptr)", func);
+    fprintf(f, "RNA_EXTERN_C int %s(PointerRNA *ptr)\n", func);
     fprintf(f, "{\n");
     if (manualfunc) {
       fprintf(f, "    return %s(ptr);\n", manualfunc);
@@ -1521,7 +1483,7 @@ static char *rna_def_property_length_func(
 
     func = rna_alloc_function_name(srna->identifier, rna_safe_id(prop->identifier), "length");
 
-    print_global_function_signature(f, "RNA_EXTERN_C int %s(PointerRNA *ptr)", func);
+    fprintf(f, "RNA_EXTERN_C int %s(PointerRNA *ptr)\n", func);
     fprintf(f, "{\n");
     if (manualfunc) {
       fprintf(f, "    return %s(ptr);\n", manualfunc);
@@ -1570,9 +1532,7 @@ static char *rna_def_property_begin_func(
 
   func = rna_alloc_function_name(srna->identifier, rna_safe_id(prop->identifier), "begin");
 
-  print_global_function_signature(
-      f, "RNA_EXTERN_C void %s(CollectionPropertyIterator *iter, PointerRNA *ptr)", func);
-
+  fprintf(f, "RNA_EXTERN_C void %s(CollectionPropertyIterator *iter, PointerRNA *ptr)\n", func);
   fprintf(f, "{\n");
 
   if (!manualfunc) {
@@ -1660,14 +1620,8 @@ static char *rna_def_property_lookup_int_func(FILE *f,
   }
 
   func = rna_alloc_function_name(srna->identifier, rna_safe_id(prop->identifier), "lookup_int");
-  char signature[MAX_SIGNATURE_LEN];
-  snprintf(signature,
-           sizeof(signature),
-           "RNA_EXTERN_C int %s(PointerRNA *ptr, int index, PointerRNA *r_ptr)",
-           func);
 
-  fprintf(f, "%s;\n", signature);
-  fprintf(f, "%s\n", signature);
+  fprintf(f, "RNA_EXTERN_C int %s(PointerRNA *ptr, int index, PointerRNA *r_ptr)\n", func);
   fprintf(f, "{\n");
 
   if (manualfunc) {
@@ -1825,8 +1779,7 @@ static char *rna_def_property_lookup_string_func(FILE *f,
             rna_safe_id(item_name_prop->identifier));
   }
 
-  print_global_function_signature(
-      f, "RNA_EXTERN_C int %s(PointerRNA *ptr, const char *key, PointerRNA *r_ptr)", func);
+  fprintf(f, "RNA_EXTERN_C int %s(PointerRNA *ptr, const char *key, PointerRNA *r_ptr)\n", func);
   fprintf(f, "{\n");
 
   if (manualfunc) {
@@ -1904,8 +1857,7 @@ static char *rna_def_property_next_func(FILE *f,
 
   func = rna_alloc_function_name(srna->identifier, rna_safe_id(prop->identifier), "next");
 
-  print_global_function_signature(
-      f, "RNA_EXTERN_C void %s(CollectionPropertyIterator *iter)", func);
+  fprintf(f, "RNA_EXTERN_C void %s(CollectionPropertyIterator *iter)\n", func);
   fprintf(f, "{\n");
   fprintf(f, "    %s(iter);\n", manualfunc);
 
@@ -1934,8 +1886,7 @@ static char *rna_def_property_end_func(FILE *f,
 
   func = rna_alloc_function_name(srna->identifier, rna_safe_id(prop->identifier), "end");
 
-  print_global_function_signature(
-      f, "RNA_EXTERN_C void %s(CollectionPropertyIterator *iter)", func);
+  fprintf(f, "RNA_EXTERN_C void %s(CollectionPropertyIterator *iter)\n", func);
   fprintf(f, "{\n");
   if (manualfunc) {
     fprintf(f, "    %s(iter);\n", manualfunc);
@@ -2905,11 +2856,10 @@ static void rna_def_struct_function_impl_cpp(FILE *f, StructRNA *srna, FunctionD
 static void rna_def_property_wrapper_funcs(FILE *f, StructDefRNA *dsrna, PropertyDefRNA *dp)
 {
   if (dp->prop->getlength) {
-    char funcname[1024];
+    char funcname[2048];
     rna_construct_wrapper_function_name(
         funcname, sizeof(funcname), dsrna->srna->identifier, dp->prop->identifier, "get_length");
-    print_global_function_signature(
-        f, "RNA_EXTERN_C int %s(PointerRNA *ptr, int *arraylen)", funcname);
+    fprintf(f, "RNA_EXTERN_C int %s(PointerRNA *ptr, int *arraylen)\n", funcname);
     fprintf(f, "{\n");
     fprintf(f, "\treturn %s(ptr, arraylen);\n", rna_function_string(dp->prop->getlength));
     fprintf(f, "}\n\n");
