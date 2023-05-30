@@ -344,9 +344,10 @@ static void inverted_indices_to_segments(const IndexMaskSegment segment,
 
   int64_t inverted_index_count = 0;
   std::array<int16_t, max_segment_size> inverted_indices_array;
-  auto add_index = [&](const int16_t index) {
-    inverted_indices_array[size_t(inverted_index_count)] = index;
-    inverted_index_count++;
+  auto add_indices = [&](const int16_t start, const int16_t num) {
+    int16_t *new_indices_begin = inverted_indices_array.data() + inverted_index_count;
+    std::iota(new_indices_begin, new_indices_begin + num, start);
+    inverted_index_count += num;
   };
 
   auto finish_indices = [&]() {
@@ -374,9 +375,7 @@ static void inverted_indices_to_segments(const IndexMaskSegment segment,
       r_segments.append_as(offset + gap_first, static_indices.take_front(gap_size));
     }
     else {
-      for (const int64_t i : IndexRange(gap_size)) {
-        add_index(gap_first + int16_t(i));
-      }
+      add_indices(gap_first, gap_size);
     }
 
     indices = indices.drop_front(size_before_gap);
