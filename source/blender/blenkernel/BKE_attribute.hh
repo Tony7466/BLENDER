@@ -9,6 +9,7 @@
 #include "BLI_generic_span.hh"
 #include "BLI_generic_virtual_array.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_offset_indices.hh"
 #include "BLI_set.hh"
 
 #include "BKE_anonymous_attribute_id.hh"
@@ -925,6 +926,15 @@ void gather_attributes(AttributeAccessor src_attributes,
                        const Set<std::string> &skip,
                        const IndexMask &selection,
                        MutableAttributeAccessor dst_attributes);
+
+void gather_attributes_group_to_group(AttributeAccessor src_attributes,
+                                      eAttrDomain domain,
+                                      const AnonymousAttributePropagationInfo &propagation_info,
+                                      const Set<std::string> &skip,
+                                      OffsetIndices<int> src_offsets,
+                                      OffsetIndices<int> dst_offsets,
+                                      const IndexMask &selection,
+                                      MutableAttributeAccessor dst_attributes);
 
 void copy_attributes(const AttributeAccessor src_attributes,
                      const eAttrDomain domain,
