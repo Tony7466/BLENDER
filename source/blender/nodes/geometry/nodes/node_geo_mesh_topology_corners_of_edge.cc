@@ -33,13 +33,6 @@ static void node_declare(NodeDeclarationBuilder &b)
       .description(N_("The number of faces or corners connected to each edge"));
 }
 
-static void convert_span(const Span<int> src, MutableSpan<int64_t> dst)
-{
-  for (const int i : src.index_range()) {
-    dst[i] = src[i];
-  }
-}
-
 class CornersOfEdgeInput final : public bke::MeshFieldInput {
   const Field<int> edge_index_;
   const Field<int> sort_index_;
@@ -57,12 +50,14 @@ class CornersOfEdgeInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask mask) const final
+                                 const IndexMask &mask) const final
   {
     const IndexRange edge_range(mesh.totedge);
+    Array<int> map_offsets;
+    Array<int> map_indices;
     const Span<int> corner_edges = mesh.corner_edges();
-    const Array<Vector<int>> edge_to_loop_map = bke::mesh_topology::build_edge_to_loop_map(corner_edges,
-                                                                                     mesh.totedge);
+    const GroupedSpan<int> edge_to_loop_map = bke::mesh::build_edge_to_loop_map(
+        mesh.corner_edges(), mesh.totedge, map_offsets, map_indices);
 
     const bke::MeshFieldContext context{mesh, domain};
     fn::FieldEvaluator evaluator{context, &mask};
@@ -80,13 +75,13 @@ class CornersOfEdgeInput final : public bke::MeshFieldInput {
     const bool use_sorting = !all_sort_weights.is_single();
 
     Array<int> corner_of_edge(mask.min_array_size());
-    threading::parallel_for(mask.index_range(), 1024, [&](const IndexRange range) {
+    mask.foreach_segment(GrainSize(1024), [&](const IndexMaskSegment segment) {
       /* Reuse arrays to avoid allocation. */
       Array<int64_t> corner_indices;
       Array<float> sort_weights;
       Array<int> sort_indices;
 
-      for (const int selection_i : mask.slice(range)) {
+      for (const int selection_i : segment) {
         const int edge_i = edge_indices[selection_i];
         const int index_in_sort = indices_in_sort[selection_i];
         if (!edge_range.contains(edge_i)) {
@@ -102,13 +97,10 @@ class CornersOfEdgeInput final : public bke::MeshFieldInput {
 
         const int index_in_sort_wrapped = mod_i(index_in_sort, corners.size());
         if (use_sorting) {
-          /* Retrieve the connected edge indices as 64 bit integers for #materialize_compressed. */
-          corner_indices.reinitialize(corners.size());
-          convert_span(corners, corner_indices);
-
           /* Retrieve a compressed array of weights for each edge. */
           sort_weights.reinitialize(corners.size());
-          all_sort_weights.materialize_compressed(IndexMask(corner_indices),
+          IndexMaskMemory memory;
+          all_sort_weights.materialize_compressed(IndexMask::from_indices<int>(corners, memory),
                                                   sort_weights.as_mutable_span());
 
           /* Sort a separate array of compressed indices corresponding to the compressed weights.
@@ -120,7 +112,7 @@ class CornersOfEdgeInput final : public bke::MeshFieldInput {
           std::stable_sort(sort_indices.begin(), sort_indices.end(), [&](int a, int b) {
             return sort_weights[a] < sort_weights[b];
           });
-          corner_of_edge[selection_i] = corner_indices[sort_indices[index_in_sort_wrapped]];
+          corner_of_edge[selection_i] = corners[sort_indices[index_in_sort_wrapped]];
         }
         else {
           corner_of_edge[selection_i] = corners[index_in_sort_wrapped];
@@ -153,7 +145,7 @@ class CornersOfEdgeCountInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask /*mask*/) const final
+                                 const IndexMask & /*mask*/) const final
   {
     if (domain != ATTR_DOMAIN_EDGE) {
       return {};
