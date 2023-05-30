@@ -437,7 +437,7 @@ static void swap_wm_data_for_blendfile(ReuseOldBMainData *reuse_data, const bool
    * WM back then), or not loading UI: Keep current WM. */
   else {
     swap_old_bmain_data_for_blendfile(reuse_data, ID_WM);
-    old_wm->initialized &= ~WM_WINDOW_IS_INIT;
+    old_wm->init_flag &= ~WM_INIT_FLAG_WINDOW;
   }
 }
 
