@@ -498,8 +498,13 @@ ListBase CTX_data_collection_get(const bContext *C, const char *member)
   return list;
 }
 
-int /*eContextResult*/ CTX_data_get(
-    const bContext *C, const char *member, PointerRNA *r_ptr, ListBase *r_lb, PropertyRNA **r_prop, int *r_index, short *r_type)
+int /*eContextResult*/ CTX_data_get(const bContext *C,
+                                    const char *member,
+                                    PointerRNA *r_ptr,
+                                    ListBase *r_lb,
+                                    PropertyRNA **r_prop,
+                                    int *r_index,
+                                    short *r_type)
 {
   bContextDataResult result;
   eContextResult ret = ctx_data_get((bContext *)C, member, &result);
@@ -1179,6 +1184,8 @@ enum eContextObjectMode CTX_data_mode_enum_ex(const Object *obedit,
         return CTX_MODE_EDIT_LATTICE;
       case OB_CURVES:
         return CTX_MODE_EDIT_CURVES;
+      case OB_GREASE_PENCIL:
+        return CTX_MODE_EDIT_GPENCIL;
     }
   }
   else {
