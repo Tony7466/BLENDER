@@ -949,6 +949,8 @@ void GeometryManager::device_update(Device *device,
     TaskPool::Summary summary;
     pool.wait_work(&summary);
     VLOG_WORK << "Objects BVH build pool statistics:\n" << summary.full_report();
+
+    device->flush_operations(progress);
   }
 
   foreach (Shader *shader, scene->shaders) {

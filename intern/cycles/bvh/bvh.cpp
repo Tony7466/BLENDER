@@ -94,7 +94,7 @@ BVH *BVH::create(const BVHParams &params,
     case BVH_LAYOUT_EMBREE:
     case BVH_LAYOUT_EMBREEGPU:
 #ifdef WITH_EMBREE
-      return new BVHEmbree(params, geometry, objects);
+      return new BVHEmbree(params, geometry, objects, device);
 #else
       break;
 #endif
@@ -127,7 +127,7 @@ BVH *BVH::create(const BVHParams &params,
     case BVH_LAYOUT_MULTI_METAL_EMBREE:
     case BVH_LAYOUT_MULTI_HIPRT_EMBREE:
     case BVH_LAYOUT_MULTI_EMBREEGPU_EMBREE:
-      return new BVHMulti(params, geometry, objects);
+      return new BVHMulti(params, geometry, objects, device);
     case BVH_LAYOUT_NONE:
     case BVH_LAYOUT_ALL:
       break;

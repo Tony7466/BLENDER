@@ -315,7 +315,8 @@ void Scene::device_update(Device *device_, Progress &progress)
   if (progress.get_cancel() || device->have_error())
     return;
 
-  device->flush_operations();
+  // TODO: also do this on return, in case of cancel or error.
+  device->flush_operations(progress);
 
   if (progress.get_cancel() || device->have_error())
     return;

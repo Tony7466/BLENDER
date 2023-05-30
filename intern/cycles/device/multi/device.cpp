@@ -109,6 +109,17 @@ class MultiDevice : public Device {
   device_ptr unique_key = 1;
   bool queued_memory_operation = false;
 
+  /* Queued BVH build operations. */
+  struct BVHBuildOperation {
+    BVHBuildOperation(BVH *bvh, bool refit) : bvh(bvh), refit(refit) {}
+
+    BVH *bvh;
+    bool refit;
+  };
+  vector<BVHBuildOperation> bvh_bottom_level_build_queue;
+  vector<BVHBuildOperation> bvh_top_level_build_queue;
+  thread_mutex bvh_mutex;
+
   MultiDevice(const DeviceInfo &info, Stats &stats, Profiler &profiler)
       : Device(info, stats, profiler)
   {
@@ -237,8 +248,6 @@ class MultiDevice : public Device {
 
   void build_bvh(BVH *bvh, Progress &progress, bool refit) override
   {
-    flush_memory_operations();
-
     /* Try to build and share a single acceleration structure, if possible */
     if (bvh->params.bvh_layout == BVH_LAYOUT_BVH2 || bvh->params.bvh_layout == BVH_LAYOUT_EMBREE) {
       devices.back().device->build_bvh(bvh, progress, refit);
@@ -254,65 +263,41 @@ class MultiDevice : public Device {
            bvh->params.bvh_layout == BVH_LAYOUT_MULTI_HIPRT_EMBREE ||
            bvh->params.bvh_layout == BVH_LAYOUT_MULTI_EMBREEGPU_EMBREE);
 
+    // TODO: should not be needed
+    // BVHMulti *const bvh_multi = static_cast<BVHMulti *>(bvh);
+    // bvh_multi->sub_bvhs.resize(devices.size());
+
+    thread_scoped_lock lock(bvh_mutex);
+    if (bvh->params.top_level) {
+      bvh_top_level_build_queue.push_back(BVHBuildOperation(bvh, refit));
+    }
+    else {
+      bvh_bottom_level_build_queue.push_back(BVHBuildOperation(bvh, refit));
+    }
+  }
+
+  void build_bvh_(BVH *bvh, Progress &progress, const bool refit, const size_t device_index)
+  {
     BVHMulti *const bvh_multi = static_cast<BVHMulti *>(bvh);
-    bvh_multi->sub_bvhs.resize(devices.size());
+    SubDevice &sub = devices[device_index];
 
-    vector<BVHMulti *> geom_bvhs;
-    geom_bvhs.reserve(bvh->geometry.size());
-    foreach (Geometry *geom, bvh->geometry) {
-      geom_bvhs.push_back(static_cast<BVHMulti *>(geom->bvh));
-    }
+    if (!bvh_multi->sub_bvhs[device_index]) {
+      BVHParams params = bvh_multi->params;
+      params.bvh_layout = get_bvh_layout(sub.device.get(), bvh_multi->params.bvh_layout);
 
-    /* Broadcast acceleration structure build to all render devices */
-    size_t i = 0;
-    foreach (SubDevice &sub, devices) {
-      /* Change geometry BVH pointers to the sub BVH */
-      for (size_t k = 0; k < bvh->geometry.size(); ++k) {
-        bvh->geometry[k]->bvh = geom_bvhs[k]->sub_bvhs[i];
+      /* Skip building a bottom level acceleration structure for non-instanced geometry on
+       * Embree (since they are put into the top level directly, see bvh_embree.cpp) */
+      if (!params.top_level && params.bvh_layout == BVH_LAYOUT_EMBREE &&
+          !bvh_multi->geometry[0]->is_instanced())
+      {
       }
-
-      if (!bvh_multi->sub_bvhs[i]) {
-        BVHParams params = bvh->params;
-        if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_OPTIX)
-          params.bvh_layout = BVH_LAYOUT_OPTIX;
-        else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_METAL)
-          params.bvh_layout = BVH_LAYOUT_METAL;
-        else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_HIPRT)
-          params.bvh_layout = BVH_LAYOUT_HIPRT;
-        else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_EMBREEGPU)
-          params.bvh_layout = BVH_LAYOUT_EMBREEGPU;
-        else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_OPTIX_EMBREE)
-          params.bvh_layout = sub.device->info.type == DEVICE_OPTIX ? BVH_LAYOUT_OPTIX :
-                                                                      BVH_LAYOUT_EMBREE;
-        else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_METAL_EMBREE)
-          params.bvh_layout = sub.device->info.type == DEVICE_METAL ? BVH_LAYOUT_METAL :
-                                                                      BVH_LAYOUT_EMBREE;
-        else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_HIPRT_EMBREE)
-          params.bvh_layout = sub.device->info.type == DEVICE_HIPRT ? BVH_LAYOUT_HIPRT :
-                                                                      BVH_LAYOUT_EMBREE;
-        else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_EMBREEGPU_EMBREE)
-          params.bvh_layout = sub.device->info.type == DEVICE_ONEAPI ? BVH_LAYOUT_EMBREEGPU :
-                                                                       BVH_LAYOUT_EMBREE;
-        /* Skip building a bottom level acceleration structure for non-instanced geometry on Embree
-         * (since they are put into the top level directly, see bvh_embree.cpp) */
-        if (!params.top_level && params.bvh_layout == BVH_LAYOUT_EMBREE &&
-            !bvh->geometry[0]->is_instanced())
-        {
-          i++;
-          continue;
-        }
-
-        bvh_multi->sub_bvhs[i] = BVH::create(
-            params, bvh->geometry, bvh->objects, sub.device.get());
+      else {
+        bvh_multi->sub_bvhs[device_index] = std::unique_ptr<BVH>(
+            BVH::create(params, bvh_multi->geometry, bvh_multi->objects, sub.device.get()));
       }
-
-      sub.device->build_bvh(bvh_multi->sub_bvhs[i], progress, refit);
-      i++;
     }
-
-    /* Change geometry BVH pointers back to the multi BVH. */
-    for (size_t k = 0; k < bvh->geometry.size(); ++k) {
-      bvh->geometry[k]->bvh = geom_bvhs[k];
+    if (bvh_multi->sub_bvhs[device_index]) {
+      sub.device->build_bvh(bvh_multi->sub_bvhs[device_index].get(), progress, refit);
     }
   }
 
@@ -612,9 +597,31 @@ class MultiDevice : public Device {
     queued_memory_operation = false;
   }
 
-  void flush_operations() override
+  void flush_bvh_operations(Progress &progress)
+  {
+    if (bvh_bottom_level_build_queue.empty() && bvh_top_level_build_queue.empty()) {
+      return;
+    }
+
+    parallel_for(size_t(0), devices.size(), [&](const size_t device_index) {
+      /* Bottom level BVHs first, since top level needs them. */
+      for (BVHBuildOperation &operation : bvh_bottom_level_build_queue) {
+        build_bvh_(operation.bvh, progress, operation.refit, device_index);
+      }
+
+      for (BVHBuildOperation &operation : bvh_top_level_build_queue) {
+        build_bvh_(operation.bvh, progress, operation.refit, device_index);
+      }
+    });
+
+    bvh_bottom_level_build_queue.clear();
+    bvh_top_level_build_queue.clear();
+  }
+
+  void flush_operations(Progress &progress) override
   {
     flush_memory_operations();
+    flush_bvh_operations(progress);
   }
 
   virtual void foreach_device(const function<void(Device *)> &callback) override

@@ -14,6 +14,7 @@
 #include "bvh/unaligned.h"
 
 #include "util/foreach.h"
+#include "util/log.h"
 #include "util/progress.h"
 
 CCL_NAMESPACE_BEGIN
@@ -32,9 +33,37 @@ BVH2::BVH2(const BVHParams &params_,
 {
 }
 
-void BVH2::build(Progress &progress, Stats *)
+void BVH2::build(Progress &progress, Stats *stats, const bool only_refit)
 {
-  progress.set_substatus("Building BVH");
+  thread_scoped_lock build_lock(build_mutex, std::try_to_lock);
+  if (build_lock) {
+    /* Has the BVH already been built? */
+    if (!built) {
+      /* Build the BVH */
+      VLOG_INFO << std::this_thread::get_id() << ":" << this << " Performing BVH2 build.";
+      if (only_refit) {
+        refit(progress);
+      }
+      else {
+        rebuild(progress, stats);
+      }
+      built = true;
+      VLOG_INFO << std::this_thread::get_id() << ":" << this << " Done building BVH2";
+    }
+    else {
+      VLOG_INFO << std::this_thread::get_id() << ":" << this << " BVH2 Already built";
+    }
+  }
+  else {
+    /* Skip, another thread is already building it. */
+    VLOG_INFO << std::this_thread::get_id() << ":" << this
+              << " Leaving BVH2 build to other thread.";
+  }
+}
+
+void BVH2::rebuild(Progress &progress, Stats *)
+{
+  progress.set_substatus("Building BVH2 BVH");
 
   /* build nodes */
   BVHBuild bvh_build(objects,

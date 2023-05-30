@@ -53,12 +53,7 @@ void Device::build_bvh(BVH *bvh, Progress &progress, bool refit)
   assert(bvh->params.bvh_layout == BVH_LAYOUT_BVH2);
 
   BVH2 *const bvh2 = static_cast<BVH2 *>(bvh);
-  if (refit) {
-    bvh2->refit(progress);
-  }
-  else {
-    bvh2->build(progress, &stats);
-  }
+  bvh2->build(progress, &stats, refit);
 }
 
 Device *Device::create(const DeviceInfo &info, Stats &stats, Profiler &profiler)

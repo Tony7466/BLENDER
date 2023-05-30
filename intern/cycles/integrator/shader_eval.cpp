@@ -29,7 +29,7 @@ bool ShaderEval::eval(const ShaderEvalType type,
   bool first_device = true;
   bool success = true;
 
-  device_->flush_operations();
+  device_->flush_operations(progress_);
 
   device_->foreach_device([&](Device *device) {
     if (!first_device) {

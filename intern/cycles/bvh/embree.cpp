@@ -95,11 +95,13 @@ static bool rtc_progress_func(void *user_ptr, const double n)
 
 BVHEmbree::BVHEmbree(const BVHParams &params_,
                      const vector<Geometry *> &geometry_,
-                     const vector<Object *> &objects_)
+                     const vector<Object *> &objects_,
+                     const Device *device_)
     : BVH(params_, geometry_, objects_),
       scene(NULL),
       rtc_device(NULL),
-      build_quality(RTC_BUILD_QUALITY_REFIT)
+      build_quality(RTC_BUILD_QUALITY_REFIT),
+      device(device_)
 {
   SIMD_SET_FLUSH_TO_ZERO;
 }
@@ -203,7 +205,7 @@ void BVHEmbree::add_object(Object *ob, int i)
 
 void BVHEmbree::add_instance(Object *ob, int i)
 {
-  BVHEmbree *instance_bvh = (BVHEmbree *)(ob->get_geometry()->bvh);
+  BVHEmbree *instance_bvh = (BVHEmbree *)(ob->get_geometry()->bvh->get_device_bvh(device));
   assert(instance_bvh != NULL);
 
   const size_t num_object_motion_steps = ob->use_motion() ? ob->get_motion().size() : 1;

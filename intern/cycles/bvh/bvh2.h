@@ -8,8 +8,11 @@
 #include "bvh/bvh.h"
 #include "bvh/params.h"
 
+#include "util/thread.h"
 #include "util/types.h"
 #include "util/vector.h"
+
+#include <atomic>
 
 CCL_NAMESPACE_BEGIN
 
@@ -32,10 +35,14 @@ struct BVHStackEntry {
  */
 class BVH2 : public BVH {
  public:
-  void build(Progress &progress, Stats *stats);
-  void refit(Progress &progress);
+  /* The BVH2 may be shared across multipe devices, but needs to be built
+   * only. These are used to ensure that is the case. */
+  thread_mutex build_mutex;
+  bool built = false;
 
   PackedBVH pack;
+
+  void build(Progress &progress, Stats *stats, const bool only_refit);
 
  protected:
   /* constructor */
@@ -77,6 +84,13 @@ class BVH2 : public BVH {
                            uint visibility0,
                            uint visibility1);
 
+  void replace_geometry(const vector<Geometry *> &geometry,
+                        const vector<Object *> &objects) override
+  {
+    BVH::replace_geometry(geometry, objects);
+    built = false;
+  }
+
   /* refit */
   void refit_nodes();
   void refit_node(int idx, bool leaf, BoundBox &bbox, uint &visibility);
@@ -90,6 +104,10 @@ class BVH2 : public BVH {
 
   /* merge instance BVH's */
   void pack_instances(size_t nodes_size, size_t leaf_nodes_size);
+
+  /* build */
+  void rebuild(Progress &progress, Stats *stats);
+  void refit(Progress &progress);
 };
 
 CCL_NAMESPACE_END

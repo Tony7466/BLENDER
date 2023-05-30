@@ -165,6 +165,27 @@ class Device {
   }
   virtual BVHLayoutMask get_bvh_layout_mask(uint kernel_features) const = 0;
 
+  BVHLayout get_bvh_layout(Device *device, BVHLayout layout)
+  {
+    if (layout == BVH_LAYOUT_MULTI_OPTIX)
+      layout = BVH_LAYOUT_OPTIX;
+    else if (layout == BVH_LAYOUT_MULTI_METAL)
+      layout = BVH_LAYOUT_METAL;
+    else if (layout == BVH_LAYOUT_MULTI_HIPRT)
+      layout = BVH_LAYOUT_HIPRT;
+    else if (layout == BVH_LAYOUT_MULTI_EMBREEGPU)
+      layout = BVH_LAYOUT_EMBREEGPU;
+    else if (layout == BVH_LAYOUT_MULTI_OPTIX_EMBREE)
+      layout = device->info.type == DEVICE_OPTIX ? BVH_LAYOUT_OPTIX : BVH_LAYOUT_EMBREE;
+    else if (layout == BVH_LAYOUT_MULTI_METAL_EMBREE)
+      layout = device->info.type == DEVICE_METAL ? BVH_LAYOUT_METAL : BVH_LAYOUT_EMBREE;
+    else if (layout == BVH_LAYOUT_MULTI_HIPRT_EMBREE)
+      layout = device->info.type == DEVICE_HIPRT ? BVH_LAYOUT_HIPRT : BVH_LAYOUT_EMBREE;
+    else if (layout == BVH_LAYOUT_MULTI_EMBREEGPU_EMBREE)
+      layout = device->info.type == DEVICE_ONEAPI ? BVH_LAYOUT_EMBREEGPU : BVH_LAYOUT_EMBREE;
+    return layout;
+  }
+
   /* statistics */
   Stats &stats;
   Profiler &profiler;
@@ -215,6 +236,9 @@ class Device {
 
   /* acceleration structure building */
   virtual void build_bvh(BVH *bvh, Progress &progress, bool refit);
+
+  /* TODO: protected? */
+  virtual void flush_operations(Progress & /* progress */) {}
 
   /* OptiX specific destructor. */
   virtual void release_optix_bvh(BVH * /*bvh*/){};

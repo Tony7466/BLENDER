@@ -7,21 +7,30 @@
 #include "bvh/bvh.h"
 #include "bvh/params.h"
 
+#include "util/unique_ptr.h"
+#include "util/vector.h"
+
 CCL_NAMESPACE_BEGIN
 
 class BVHMulti : public BVH {
  public:
-  vector<BVH *> sub_bvhs;
+  vector<unique_ptr<BVH>> sub_bvhs;
+
+  virtual BVH *get_device_bvh(const Device *device) override;
+  virtual void set_device_bvh(const Device *sub_device, BVH *bvh) override;
 
  protected:
   friend class BVH;
   BVHMulti(const BVHParams &params,
            const vector<Geometry *> &geometry,
-           const vector<Object *> &objects);
+           const vector<Object *> &objects,
+           const Device *device);
   virtual ~BVHMulti();
 
+  const Device *device;
+
   virtual void replace_geometry(const vector<Geometry *> &geometry,
-                                const vector<Object *> &objects);
+                                const vector<Object *> &objects) override;
 };
 
 CCL_NAMESPACE_END
